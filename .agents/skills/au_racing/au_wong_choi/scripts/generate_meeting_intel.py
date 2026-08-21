@@ -25,6 +25,7 @@ import argparse
 import json
 import re
 import tempfile
+from pathlib import Path
 
 # --- Geo coordinates for Open-Meteo ---
 COURSE_GEO = {

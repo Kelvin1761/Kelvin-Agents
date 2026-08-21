@@ -14,6 +14,33 @@ Antigravity 係一個 prediction / analysis workspace，現時主線最重要嘅
 
 `HKJC Wong Choi` 同 `AU Wong Choi` 呢兩條 pre-race 主線都已經係 **full Python pipeline**，**唔需要 Gemini**，亦**唔需要任何 LLM**先可以運行。`HKJC Reflector` 同 `AU Reflector` 目前則以 Python unified orchestrator 做主入口。
 
+## 日常三條命令
+
+唔使記其他嘢，呢三條就夠：
+
+| 命令 | 做咩 |
+|---|---|
+| `./檢查.sh` | 跑晒所有防線（ruff、評分 golden、模型說明新鮮度、數據合約、單元測試）。加 `--quick` 跳過單元測試。 |
+| `./保存.sh` | 檢查過先 commit + push，順便印個 PR 連結。企喺 `main` 會自動幫你開新分支。 |
+| `./整理.sh` | 列出可以安全刪嘅分支同工作副本（只刪已完全合併入 `main` 嘅）。加 `--做` 先會真係刪。 |
+
+## 想睇個模型而家係點
+
+打開 **[`Wong Choi 模型說明/`](Wong%20Choi%20模型說明/)** 入面兩份 `.html`（雙擊就得）。
+
+呢兩份文件由 live code 自動生成，唔係人手寫，所以永遠唔會同真實模型講唔同嘅嘢
+（上一份人手寫嘅過期咗兩個月都冇人發現）。更新：`./Wong\ Choi\ 模型說明/更新模型說明.sh`
+
+### 五道防線分別捉咩
+
+| 防線 | 捉邊種問題 |
+|---|---|
+| 清 bytecode cache | macOS 系統 Python 淨係靠 (mtime, 檔案大細) 判斷要唔要重新編譯。改個權重由 `0.08037` → `0.09037` 位元組數一樣，同一秒內改完再跑 = **靜靜行返舊 code**。呢個係「A/B 結果同 baseline 一模一樣」嘅其中一個成因。 |
+| `ruff` | undefined name、語法錯。第一次跑就捉到 `generate_meeting_intel.py` 一個 live `NameError`（場地狀況成年攞唔到）。 |
+| 評分 golden | 凍結 120 匹真馬嘅每個維度分。改一行 code 意外郁到第三個維度，會逐匹馬印出嚟。 |
+| 模型說明新鮮度 | 引擎改咗但文件冇重新生成 → 紅燈。 |
+| 數據合約 | 欄位靜靜變空／變常數／單位飛咗。基準由真實語料庫量出嚟，唔係估。 |
+
 ## Start Here
 
 如果你啱啱 clone 完 repo，請按以下次序睇：

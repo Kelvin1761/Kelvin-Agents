@@ -1718,7 +1718,6 @@ def compute_distance_aptitude(entries: list[dict], today_dist_m: int = 0) -> dic
 
 # ── Output Generation ─────────────────────────────────────────────────────
 
-import re
 def translate_notes(text):
     if not text or text == '-': return '-'
     dict_map = {

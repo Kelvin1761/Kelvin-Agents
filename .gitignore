@@ -132,3 +132,18 @@ Wong Choi Tennis Analysis/
 
 # Tennis runtime cache / lock artifacts
 tennis-wong-choi/data/runtime/
+
+# ── 2026-08-21 瘦身 ────────────────────────────────────────────────────────
+# scratch/ 係一次性實驗嘅工作區。啲 .py / .md 有敘述價值，值得留喺 git；
+# 啲 .json / .csv dump 冇 —— 佢哋佔咗 177MB（成個 repo tracked 內容嘅 82%），
+# 而且冇任何 live pipeline 讀佢哋（已逐個 grep 核實）。本機檔案照留，
+# scratch 入面啲實驗腳本照跑得。
+scratch/*.json
+scratch/*.csv
+scratch/**/*.json
+scratch/**/*.csv
+
+# macOS 系統 Python 嘅 bytecode cache 唔喺 __pycache__，喺 ~/Library/Caches/
+# com.apple.python。呢行只係為咗防 repo 內嘅 __pycache__。
+__pycache__/
+*.py[cod]

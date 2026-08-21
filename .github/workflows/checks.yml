@@ -1,0 +1,60 @@
+name: 檢查
+
+# Runs the same gates as ./檢查.sh, minus the ones that need the private data
+# root (that lives on Kelvin's Mac, not in the repo).
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: 裝依賴
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pytest
+          pip install -r requirements.txt || echo "::warning::requirements.txt 有部分裝唔到，繼續"
+
+      # Bytecode caching burned us once already: macOS keys .pyc on
+      # (mtime, size), and a weight edit that keeps the same byte count inside
+      # the same second silently reuses the old bytecode.  Never write .pyc here.
+      - name: 1. ruff — 真係壞嘅嘢
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: ruff check --select F821,F811,F823,F701,F702,F706,F707,E9 .
+
+      - name: 2. 評分 golden（AU + HKJC）
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python .agents/skills/shared_racing/scripts/golden_scoring.py --platform au
+          python .agents/skills/shared_racing/scripts/golden_scoring.py --platform hkjc
+
+      - name: 3. 模型說明有冇過期
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          python .agents/skills/shared_racing/scripts/explain_model.py --platform au --check --no-corpus
+          python .agents/skills/shared_racing/scripts/explain_model.py --platform hkjc --check --no-corpus
+
+      # 4. 數據合約 runs only on Kelvin's Mac — the scored corpus is not in git.
+
+      - name: 5. 單元測試
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: ./run_tests.sh
+
+      - name: ruff 全部提示（唔會令 CI 紅燈）
+        if: always()
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: ruff check --statistics . || true

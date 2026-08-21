@@ -1,0 +1,33 @@
+# Ruff — the cheap layer of the bug net.
+#
+# Scope is deliberately narrow: F (pyflakes) and E9 (syntax/runtime errors) only.
+# These are the rules that find things that are actually BROKEN — undefined
+# names, unused imports, unreachable code — not style opinions.  Ruff found a
+# live `NameError` in generate_meeting_intel.py on its first run (every call to
+# extract_track_conditions() raised, so AU meetings silently lost their going).
+#
+# Style rules are NOT enabled on purpose.  A 243k-line codebase cannot absorb a
+# reformat, and a linter that cries about quote style trains you to ignore it.
+
+line-length = 120
+target-version = "py310"
+
+# Not live code: historical snapshots, one-off experiment scripts, caches, venvs.
+# These are kept for the record; holding them to the live bar produces noise, and
+# noise is what makes a linter get ignored.
+exclude = [
+    ".agents/archive",
+    ".codex",
+    ".venv",
+    ".venv-*",
+    "_temporary_files",
+    "node_modules",
+    "scratch",
+]
+
+[lint]
+select = ["F", "E9"]
+
+[lint.per-file-ignores]
+# Test files legitimately import fixtures for their side effects.
+"**/tests/**" = ["F401"]

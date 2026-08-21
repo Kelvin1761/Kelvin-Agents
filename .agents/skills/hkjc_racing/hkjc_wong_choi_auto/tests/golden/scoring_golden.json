@@ -1,0 +1,3607 @@
+{
+  "platform": "hkjc",
+  "note": "由真實已評分賽事抽樣。改動評分邏輯之後，先確認下面嘅變化係你想要嘅，再跑 --record 更新呢個檔。",
+  "sample_size": 120,
+  "cases": [
+    {
+      "id": "2026-07-12_ShaTin/Race_8_Logic/#7",
+      "features": {
+        "class_score": 66.39,
+        "confidence_score": 83.0,
+        "consistency_score": 76.92,
+        "distance_score": 56.0,
+        "draw_score": 49.06,
+        "form_score": 79.29,
+        "jockey_score": 54.79,
+        "risk_score": 69.0,
+        "speed_score": 70.57,
+        "track_going_score": 60.0,
+        "trainer_score": 59.42,
+        "weight_score": 74.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 68.29,
+          "form_line": 60.0,
+          "horse_health": 70.94,
+          "race_shape": 49.06,
+          "sectional": 70.57,
+          "stability": 76.41,
+          "trainer_signal": 56.87
+        },
+        "ability": 60.8636,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_5_Logic/#2",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 83.0,
+        "consistency_score": 61.85,
+        "distance_score": 72.0,
+        "draw_score": 69.78,
+        "form_score": 70.58,
+        "jockey_score": 64.0,
+        "risk_score": 69.0,
+        "speed_score": 62.24,
+        "track_going_score": 60.0,
+        "trainer_score": 70.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 74.13,
+          "form_line": 60.0,
+          "horse_health": 67.06,
+          "race_shape": 69.78,
+          "sectional": 62.24,
+          "stability": 66.03,
+          "trainer_signal": 66.7
+        },
+        "ability": 67.4429,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_1_Logic/#2",
+      "features": {
+        "class_score": 69.12,
+        "confidence_score": 83.0,
+        "consistency_score": 61.97,
+        "distance_score": 56.0,
+        "draw_score": 75.0,
+        "form_score": 68.03,
+        "jockey_score": 85.0,
+        "risk_score": 70.5,
+        "speed_score": 58.47,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 50.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 64.34,
+          "form_line": 60.0,
+          "horse_health": 62.53,
+          "race_shape": 75.0,
+          "sectional": 58.47,
+          "stability": 64.8,
+          "trainer_signal": 73.75
+        },
+        "ability": 68.3504,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_3_Logic/#5",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 54.98,
+        "distance_score": 72.0,
+        "draw_score": 49.06,
+        "form_score": 48.98,
+        "jockey_score": 70.0,
+        "risk_score": 64.5,
+        "speed_score": 64.73,
+        "track_going_score": 58.0,
+        "trainer_score": 70.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 72.34,
+          "form_line": 60.0,
+          "horse_health": 66.64,
+          "race_shape": 49.06,
+          "sectional": 64.73,
+          "stability": 52.48,
+          "trainer_signal": 70.0
+        },
+        "ability": 61.2667,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_5_Logic/#8",
+      "features": {
+        "class_score": 56.45,
+        "confidence_score": 83.0,
+        "consistency_score": 31.0,
+        "distance_score": 54.0,
+        "draw_score": 49.06,
+        "form_score": 40.0,
+        "jockey_score": 58.09,
+        "risk_score": 66.0,
+        "speed_score": 44.15,
+        "track_going_score": 60.0,
+        "trainer_score": 59.66,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 58.34,
+          "form_line": 60.0,
+          "horse_health": 65.22,
+          "race_shape": 49.06,
+          "sectional": 44.15,
+          "stability": 38.4,
+          "trainer_signal": 58.8
+        },
+        "ability": 52.5361,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_1_Logic/#4",
+      "features": {
+        "class_score": 52.45,
+        "confidence_score": 83.0,
+        "consistency_score": 34.0,
+        "distance_score": 66.0,
+        "draw_score": 62.27,
+        "form_score": 40.0,
+        "jockey_score": 72.4,
+        "risk_score": 75.5,
+        "speed_score": 62.53,
+        "track_going_score": 58.0,
+        "trainer_score": 72.6,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 55.34,
+          "form_line": 60.0,
+          "horse_health": 71.03,
+          "race_shape": 62.27,
+          "sectional": 62.53,
+          "stability": 39.6,
+          "trainer_signal": 72.49
+        },
+        "ability": 61.6714,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_10_Logic/#13",
+      "features": {
+        "class_score": 56.45,
+        "confidence_score": 83.0,
+        "consistency_score": 34.0,
+        "distance_score": 66.0,
+        "draw_score": 75.0,
+        "form_score": 40.0,
+        "jockey_score": 60.0,
+        "risk_score": 73.5,
+        "speed_score": 47.32,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 59.84,
+          "form_line": 60.0,
+          "horse_health": 72.14,
+          "race_shape": 75.0,
+          "sectional": 47.32,
+          "stability": 39.6,
+          "trainer_signal": 60.0
+        },
+        "ability": 60.9384,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_8_Logic/#2",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 83.0,
+        "consistency_score": 61.33,
+        "distance_score": 72.0,
+        "draw_score": 74.31,
+        "form_score": 54.05,
+        "jockey_score": 63.1,
+        "risk_score": 75.5,
+        "speed_score": 63.76,
+        "track_going_score": 60.0,
+        "trainer_score": 60.9,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 74.13,
+          "form_line": 60.0,
+          "horse_health": 71.03,
+          "race_shape": 74.31,
+          "sectional": 63.76,
+          "stability": 57.56,
+          "trainer_signal": 62.11
+        },
+        "ability": 67.1217,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_10_Logic/#13",
+      "features": {
+        "class_score": 68.0,
+        "confidence_score": 83.0,
+        "consistency_score": 69.38,
+        "distance_score": 72.0,
+        "draw_score": 62.27,
+        "form_score": 79.42,
+        "jockey_score": 66.5,
+        "risk_score": 73.5,
+        "speed_score": 84.63,
+        "track_going_score": 60.0,
+        "trainer_score": 76.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 68.5,
+          "form_line": 60.0,
+          "horse_health": 72.14,
+          "race_shape": 62.27,
+          "sectional": 84.63,
+          "stability": 73.46,
+          "trainer_signal": 70.78
+        },
+        "ability": 69.3599,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_1_Logic/#9",
+      "features": {
+        "class_score": 62.0,
+        "confidence_score": 78.0,
+        "consistency_score": 49.08,
+        "distance_score": 56.0,
+        "draw_score": 49.06,
+        "form_score": 44.9,
+        "jockey_score": 54.75,
+        "risk_score": 53.0,
+        "speed_score": 55.96,
+        "track_going_score": 60.0,
+        "trainer_score": 57.92,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 61.5,
+          "form_line": 60.0,
+          "horse_health": 55.72,
+          "race_shape": 49.06,
+          "sectional": 55.96,
+          "stability": 48.08,
+          "trainer_signal": 56.18
+        },
+        "ability": 54.4539,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-01_ShaTin/Race_7_Logic/#11",
+      "features": {
+        "class_score": 52.45,
+        "confidence_score": 83.0,
+        "consistency_score": 34.0,
+        "distance_score": 66.0,
+        "draw_score": 77.45,
+        "form_score": 40.0,
+        "jockey_score": 58.9,
+        "risk_score": 63.0,
+        "speed_score": 53.86,
+        "track_going_score": 60.0,
+        "trainer_score": 59.1,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 56.84,
+          "form_line": 60.0,
+          "horse_health": 65.72,
+          "race_shape": 77.45,
+          "sectional": 53.86,
+          "stability": 39.6,
+          "trainer_signal": 58.99
+        },
+        "ability": 61.523,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_10_Logic/#8",
+      "features": {
+        "class_score": 64.84,
+        "confidence_score": 83.0,
+        "consistency_score": 69.91,
+        "distance_score": 60.0,
+        "draw_score": 75.0,
+        "form_score": 69.39,
+        "jockey_score": 61.25,
+        "risk_score": 69.0,
+        "speed_score": 58.23,
+        "track_going_score": 60.0,
+        "trainer_score": 59.15,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 63.63,
+          "form_line": 60.0,
+          "horse_health": 65.5,
+          "race_shape": 75.0,
+          "sectional": 58.23,
+          "stability": 68.66,
+          "trainer_signal": 60.3
+        },
+        "ability": 65.5408,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-01_ShaTin/Race_7_Logic/#2",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 83.0,
+        "consistency_score": 66.87,
+        "distance_score": 72.0,
+        "draw_score": 65.0,
+        "form_score": 61.7,
+        "jockey_score": 74.0,
+        "risk_score": 74.0,
+        "speed_score": 70.33,
+        "track_going_score": 60.0,
+        "trainer_score": 75.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 74.13,
+          "form_line": 60.0,
+          "horse_health": 70.11,
+          "race_shape": 65.0,
+          "sectional": 70.33,
+          "stability": 63.6,
+          "trainer_signal": 74.45
+        },
+        "ability": 68.8891,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_8_Logic/#8",
+      "features": {
+        "class_score": 71.96,
+        "confidence_score": 83.0,
+        "consistency_score": 69.95,
+        "distance_score": 60.0,
+        "draw_score": 77.45,
+        "form_score": 61.6,
+        "jockey_score": 60.0,
+        "risk_score": 71.5,
+        "speed_score": 75.46,
+        "track_going_score": 60.0,
+        "trainer_score": 80.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 71.47,
+          "form_line": 60.0,
+          "horse_health": 70.92,
+          "race_shape": 77.45,
+          "sectional": 75.46,
+          "stability": 64.78,
+          "trainer_signal": 69.0
+        },
+        "ability": 71.4374,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-07-01_ShaTin/Race_7_Logic/#5",
+      "features": {
+        "class_score": 67.57,
+        "confidence_score": 83.0,
+        "consistency_score": 70.0,
+        "distance_score": 60.0,
+        "draw_score": 77.45,
+        "form_score": 60.2,
+        "jockey_score": 76.1,
+        "risk_score": 75.0,
+        "speed_score": 73.51,
+        "track_going_score": 60.0,
+        "trainer_score": 75.9,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 66.68,
+          "form_line": 60.0,
+          "horse_health": 70.72,
+          "race_shape": 77.45,
+          "sectional": 73.51,
+          "stability": 64.1,
+          "trainer_signal": 76.01
+        },
+        "ability": 72.0837,
+        "grade": "B+"
+      }
+    },
+    {
+      "id": "2026-07-01_ShaTin/Race_5_Logic/#5",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 83.0,
+        "consistency_score": 46.28,
+        "distance_score": 72.0,
+        "draw_score": 75.0,
+        "form_score": 55.1,
+        "jockey_score": 62.2,
+        "risk_score": 71.5,
+        "speed_score": 44.26,
+        "track_going_score": 66.0,
+        "trainer_score": 71.8,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 75.63,
+          "form_line": 60.0,
+          "horse_health": 70.92,
+          "race_shape": 75.0,
+          "sectional": 44.26,
+          "stability": 52.06,
+          "trainer_signal": 66.52
+        },
+        "ability": 65.5156,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_6_Logic/#2",
+      "features": {
+        "class_score": 67.57,
+        "confidence_score": 83.0,
+        "consistency_score": 57.87,
+        "distance_score": 60.0,
+        "draw_score": 66.03,
+        "form_score": 52.93,
+        "jockey_score": 75.0,
+        "risk_score": 75.0,
+        "speed_score": 53.31,
+        "track_going_score": 60.0,
+        "trainer_score": 71.0,
+        "weight_score": 54.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 64.18,
+          "form_line": 60.0,
+          "horse_health": 66.83,
+          "race_shape": 66.03,
+          "sectional": 53.31,
+          "stability": 55.61,
+          "trainer_signal": 73.2
+        },
+        "ability": 64.3499,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_7_Logic/#7",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 63.23,
+        "consistency_score": 65.0,
+        "distance_score": 58.0,
+        "draw_score": 60.35,
+        "form_score": 60.0,
+        "jockey_score": 62.2,
+        "risk_score": 67.5,
+        "speed_score": 60.0,
+        "track_going_score": 60.0,
+        "trainer_score": 61.8,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 61.0,
+          "form_line": 60.0,
+          "horse_health": 66.14,
+          "race_shape": 60.35,
+          "sectional": 60.0,
+          "stability": 62.0,
+          "trainer_signal": 62.02
+        },
+        "ability": 61.1604,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_9_Logic/#9",
+      "features": {
+        "class_score": 63.57,
+        "confidence_score": 83.0,
+        "consistency_score": 37.67,
+        "distance_score": 54.0,
+        "draw_score": 57.93,
+        "form_score": 41.36,
+        "jockey_score": 70.0,
+        "risk_score": 75.0,
+        "speed_score": 50.29,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 65.18,
+          "form_line": 60.0,
+          "horse_health": 73.05,
+          "race_shape": 57.93,
+          "sectional": 50.29,
+          "stability": 41.75,
+          "trainer_signal": 65.5
+        },
+        "ability": 58.9578,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_5_Logic/#10",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 55.07,
+        "distance_score": 72.0,
+        "draw_score": 65.0,
+        "form_score": 55.1,
+        "jockey_score": 75.0,
+        "risk_score": 74.0,
+        "speed_score": 56.56,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 70.84,
+          "form_line": 60.0,
+          "horse_health": 70.11,
+          "race_shape": 65.0,
+          "sectional": 56.56,
+          "stability": 55.58,
+          "trainer_signal": 68.25
+        },
+        "ability": 64.397,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_1_Logic/#3",
+      "features": {
+        "class_score": 66.0,
+        "confidence_score": 83.0,
+        "consistency_score": 58.37,
+        "distance_score": 72.0,
+        "draw_score": 75.0,
+        "form_score": 44.9,
+        "jockey_score": 82.54,
+        "risk_score": 76.0,
+        "speed_score": 65.23,
+        "track_going_score": 60.0,
+        "trainer_score": 61.41,
+        "weight_score": 54.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 63.0,
+          "form_line": 60.0,
+          "horse_health": 67.44,
+          "race_shape": 75.0,
+          "sectional": 65.23,
+          "stability": 51.8,
+          "trainer_signal": 73.03
+        },
+        "ability": 67.7782,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_3_Logic/#10",
+      "features": {
+        "class_score": 66.0,
+        "confidence_score": 83.0,
+        "consistency_score": 50.81,
+        "distance_score": 72.0,
+        "draw_score": 75.0,
+        "form_score": 47.76,
+        "jockey_score": 64.95,
+        "risk_score": 74.5,
+        "speed_score": 43.53,
+        "track_going_score": 60.0,
+        "trainer_score": 61.64,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 65.5,
+          "form_line": 60.0,
+          "horse_health": 70.42,
+          "race_shape": 75.0,
+          "sectional": 43.53,
+          "stability": 50.2,
+          "trainer_signal": 63.46
+        },
+        "ability": 63.0494,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_8_Logic/#8",
+      "features": {
+        "class_score": 52.45,
+        "confidence_score": 83.0,
+        "consistency_score": 71.5,
+        "distance_score": 66.0,
+        "draw_score": 67.07,
+        "form_score": 60.0,
+        "jockey_score": 62.2,
+        "risk_score": 73.5,
+        "speed_score": 64.05,
+        "track_going_score": 60.0,
+        "trainer_score": 71.8,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 55.34,
+          "form_line": 60.0,
+          "horse_health": 69.8,
+          "race_shape": 67.07,
+          "sectional": 64.05,
+          "stability": 64.6,
+          "trainer_signal": 66.52
+        },
+        "ability": 64.1782,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_9_Logic/#1",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 55.49,
+        "distance_score": 72.0,
+        "draw_score": 66.54,
+        "form_score": 54.29,
+        "jockey_score": 73.5,
+        "risk_score": 63.0,
+        "speed_score": 69.94,
+        "track_going_score": 60.0,
+        "trainer_score": 80.0,
+        "weight_score": 54.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 68.34,
+          "form_line": 60.0,
+          "horse_health": 59.5,
+          "race_shape": 66.54,
+          "sectional": 69.94,
+          "stability": 55.34,
+          "trainer_signal": 76.43
+        },
+        "ability": 67.6607,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-01_ShaTin/Race_8_Logic/#5",
+      "features": {
+        "class_score": 54.0,
+        "confidence_score": 83.0,
+        "consistency_score": 58.0,
+        "distance_score": 56.0,
+        "draw_score": 75.0,
+        "form_score": 40.0,
+        "jockey_score": 60.0,
+        "risk_score": 74.5,
+        "speed_score": 64.05,
+        "track_going_score": 66.0,
+        "trainer_score": 60.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 56.5,
+          "form_line": 60.0,
+          "horse_health": 70.42,
+          "race_shape": 75.0,
+          "sectional": 64.05,
+          "stability": 49.2,
+          "trainer_signal": 60.0
+        },
+        "ability": 63.4855,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_10_Logic/#4",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 57.68,
+        "distance_score": 72.0,
+        "draw_score": 63.46,
+        "form_score": 64.32,
+        "jockey_score": 58.0,
+        "risk_score": 72.5,
+        "speed_score": 66.76,
+        "track_going_score": 60.0,
+        "trainer_score": 76.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 70.84,
+          "form_line": 60.0,
+          "horse_health": 69.19,
+          "race_shape": 63.46,
+          "sectional": 66.76,
+          "stability": 61.23,
+          "trainer_signal": 66.1
+        },
+        "ability": 65.2966,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_6_Logic/#5",
+      "features": {
+        "class_score": 54.0,
+        "confidence_score": 83.0,
+        "consistency_score": 58.0,
+        "distance_score": 56.0,
+        "draw_score": 65.0,
+        "form_score": 40.0,
+        "jockey_score": 60.0,
+        "risk_score": 69.5,
+        "speed_score": 64.05,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 56.5,
+          "form_line": 60.0,
+          "horse_health": 67.36,
+          "race_shape": 65.0,
+          "sectional": 64.05,
+          "stability": 49.2,
+          "trainer_signal": 60.0
+        },
+        "ability": 60.6248,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_7_Logic/#8",
+      "features": {
+        "class_score": 58.45,
+        "confidence_score": 83.0,
+        "consistency_score": 67.29,
+        "distance_score": 66.0,
+        "draw_score": 63.08,
+        "form_score": 50.91,
+        "jockey_score": 58.9,
+        "risk_score": 75.5,
+        "speed_score": 62.23,
+        "track_going_score": 60.0,
+        "trainer_score": 59.1,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 61.34,
+          "form_line": 60.0,
+          "horse_health": 73.36,
+          "race_shape": 63.08,
+          "sectional": 62.23,
+          "stability": 58.37,
+          "trainer_signal": 58.99
+        },
+        "ability": 61.4619,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_7_Logic/#6",
+      "features": {
+        "class_score": 68.0,
+        "confidence_score": 83.0,
+        "consistency_score": 66.0,
+        "distance_score": 72.0,
+        "draw_score": 62.27,
+        "form_score": 67.0,
+        "jockey_score": 90.2,
+        "risk_score": 72.5,
+        "speed_score": 66.76,
+        "track_going_score": 60.0,
+        "trainer_score": 77.8,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 67.0,
+          "form_line": 60.0,
+          "horse_health": 69.19,
+          "race_shape": 62.27,
+          "sectional": 66.76,
+          "stability": 65.9,
+          "trainer_signal": 84.62
+        },
+        "ability": 69.256,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_10_Logic/#12",
+      "features": {
+        "class_score": 58.45,
+        "confidence_score": 83.0,
+        "consistency_score": 38.48,
+        "distance_score": 54.0,
+        "draw_score": 49.06,
+        "form_score": 40.0,
+        "jockey_score": 60.0,
+        "risk_score": 65.5,
+        "speed_score": 48.81,
+        "track_going_score": 60.0,
+        "trainer_score": 75.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 61.34,
+          "form_line": 60.0,
+          "horse_health": 67.25,
+          "race_shape": 49.06,
+          "sectional": 48.81,
+          "stability": 41.39,
+          "trainer_signal": 66.75
+        },
+        "ability": 55.817,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_8_Logic/#9",
+      "features": {
+        "class_score": 66.0,
+        "confidence_score": 83.0,
+        "consistency_score": 66.92,
+        "distance_score": 72.0,
+        "draw_score": 49.06,
+        "form_score": 72.24,
+        "jockey_score": 63.22,
+        "risk_score": 70.0,
+        "speed_score": 71.46,
+        "track_going_score": 60.0,
+        "trainer_score": 61.05,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 65.5,
+          "form_line": 60.0,
+          "horse_health": 67.67,
+          "race_shape": 49.06,
+          "sectional": 71.46,
+          "stability": 68.89,
+          "trainer_signal": 62.24
+        },
+        "ability": 60.9766,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_4_Logic/#10",
+      "features": {
+        "class_score": 63.57,
+        "confidence_score": 83.0,
+        "consistency_score": 50.15,
+        "distance_score": 66.0,
+        "draw_score": 73.11,
+        "form_score": 48.16,
+        "jockey_score": 71.0,
+        "risk_score": 73.0,
+        "speed_score": 56.78,
+        "track_going_score": 60.0,
+        "trainer_score": 75.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 63.68,
+          "form_line": 60.0,
+          "horse_health": 69.5,
+          "race_shape": 73.11,
+          "sectional": 56.78,
+          "stability": 50.14,
+          "trainer_signal": 72.8
+        },
+        "ability": 66.1379,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_7_Logic/#8",
+      "features": {
+        "class_score": 52.45,
+        "confidence_score": 83.0,
+        "consistency_score": 54.16,
+        "distance_score": 66.0,
+        "draw_score": 65.0,
+        "form_score": 40.0,
+        "jockey_score": 61.42,
+        "risk_score": 76.0,
+        "speed_score": 64.31,
+        "track_going_score": 60.0,
+        "trainer_score": 64.28,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 56.84,
+          "form_line": 60.0,
+          "horse_health": 73.67,
+          "race_shape": 65.0,
+          "sectional": 64.31,
+          "stability": 47.66,
+          "trainer_signal": 62.71
+        },
+        "ability": 61.4504,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_1_Logic/#2",
+      "features": {
+        "class_score": 66.0,
+        "confidence_score": 83.0,
+        "consistency_score": 67.73,
+        "distance_score": 72.0,
+        "draw_score": 68.21,
+        "form_score": 76.67,
+        "jockey_score": 75.0,
+        "risk_score": 72.0,
+        "speed_score": 79.6,
+        "track_going_score": 58.0,
+        "trainer_score": 81.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 65.5,
+          "form_line": 60.0,
+          "horse_health": 68.89,
+          "race_shape": 68.21,
+          "sectional": 79.6,
+          "stability": 71.43,
+          "trainer_signal": 77.7
+        },
+        "ability": 71.2145,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_3_Logic/#2",
+      "features": {
+        "class_score": 66.0,
+        "confidence_score": 83.0,
+        "consistency_score": 49.97,
+        "distance_score": 72.0,
+        "draw_score": 75.0,
+        "form_score": 46.73,
+        "jockey_score": 57.8,
+        "risk_score": 70.0,
+        "speed_score": 52.26,
+        "track_going_score": 60.0,
+        "trainer_score": 59.42,
+        "weight_score": 54.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 63.0,
+          "form_line": 60.0,
+          "horse_health": 63.78,
+          "race_shape": 75.0,
+          "sectional": 52.26,
+          "stability": 49.35,
+          "trainer_signal": 58.53
+        },
+        "ability": 62.2979,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_3_Logic/#4",
+      "features": {
+        "class_score": 73.51,
+        "confidence_score": 83.0,
+        "consistency_score": 48.54,
+        "distance_score": 56.0,
+        "draw_score": 57.93,
+        "form_score": 48.1,
+        "jockey_score": 60.9,
+        "risk_score": 69.0,
+        "speed_score": 56.79,
+        "track_going_score": 60.0,
+        "trainer_score": 74.1,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 71.13,
+          "form_line": 60.0,
+          "horse_health": 67.06,
+          "race_shape": 57.93,
+          "sectional": 56.79,
+          "stability": 49.47,
+          "trainer_signal": 66.84
+        },
+        "ability": 61.4761,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-01_ShaTin/Race_5_Logic/#7",
+      "features": {
+        "class_score": 71.96,
+        "confidence_score": 83.0,
+        "consistency_score": 51.95,
+        "distance_score": 60.0,
+        "draw_score": 49.06,
+        "form_score": 45.92,
+        "jockey_score": 68.9,
+        "risk_score": 75.5,
+        "speed_score": 50.29,
+        "track_going_score": 58.0,
+        "trainer_score": 59.1,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 71.47,
+          "form_line": 60.0,
+          "horse_health": 73.36,
+          "race_shape": 49.06,
+          "sectional": 50.29,
+          "stability": 49.74,
+          "trainer_signal": 64.49
+        },
+        "ability": 57.9876,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_8_Logic/#7",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 83.0,
+        "consistency_score": 74.19,
+        "distance_score": 72.0,
+        "draw_score": 54.46,
+        "form_score": 89.08,
+        "jockey_score": 91.2,
+        "risk_score": 76.5,
+        "speed_score": 81.45,
+        "track_going_score": 60.0,
+        "trainer_score": 81.8,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 74.13,
+          "form_line": 60.0,
+          "horse_health": 71.64,
+          "race_shape": 54.46,
+          "sectional": 81.45,
+          "stability": 80.22,
+          "trainer_signal": 86.97
+        },
+        "ability": 72.086,
+        "grade": "B+"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_4_Logic/#6",
+      "features": {
+        "class_score": 54.0,
+        "confidence_score": 83.0,
+        "consistency_score": 58.0,
+        "distance_score": 56.0,
+        "draw_score": 60.35,
+        "form_score": 60.0,
+        "jockey_score": 76.1,
+        "risk_score": 73.5,
+        "speed_score": 62.53,
+        "track_going_score": 58.0,
+        "trainer_score": 61.9,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 56.5,
+          "form_line": 60.0,
+          "horse_health": 69.8,
+          "race_shape": 60.35,
+          "sectional": 62.53,
+          "stability": 59.2,
+          "trainer_signal": 69.71
+        },
+        "ability": 62.5319,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_2_Logic/#12",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 83.0,
+        "consistency_score": 64.15,
+        "distance_score": 72.0,
+        "draw_score": 75.0,
+        "form_score": 64.66,
+        "jockey_score": 85.0,
+        "risk_score": 70.5,
+        "speed_score": 64.73,
+        "track_going_score": 60.0,
+        "trainer_score": 80.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 74.13,
+          "form_line": 60.0,
+          "horse_health": 67.97,
+          "race_shape": 75.0,
+          "sectional": 64.73,
+          "stability": 63.99,
+          "trainer_signal": 82.75
+        },
+        "ability": 72.8188,
+        "grade": "B+"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_6_Logic/#8",
+      "features": {
+        "class_score": 70.39,
+        "confidence_score": 83.0,
+        "consistency_score": 68.85,
+        "distance_score": 72.0,
+        "draw_score": 49.06,
+        "form_score": 64.32,
+        "jockey_score": 63.17,
+        "risk_score": 63.0,
+        "speed_score": 64.25,
+        "track_going_score": 60.0,
+        "trainer_score": 59.84,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 68.79,
+          "form_line": 60.0,
+          "horse_health": 63.39,
+          "race_shape": 49.06,
+          "sectional": 64.25,
+          "stability": 65.7,
+          "trainer_signal": 61.67
+        },
+        "ability": 59.8988,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_6_Logic/#12",
+      "features": {
+        "class_score": 66.0,
+        "confidence_score": 83.0,
+        "consistency_score": 59.87,
+        "distance_score": 72.0,
+        "draw_score": 49.06,
+        "form_score": 51.73,
+        "jockey_score": 57.3,
+        "risk_score": 56.0,
+        "speed_score": 80.35,
+        "track_going_score": 60.0,
+        "trainer_score": 60.41,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 66.5,
+          "form_line": 60.0,
+          "horse_health": 60.67,
+          "race_shape": 49.06,
+          "sectional": 80.35,
+          "stability": 55.81,
+          "trainer_signal": 58.7
+        },
+        "ability": 59.857,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_1_Logic/#11",
+      "features": {
+        "class_score": 62.0,
+        "confidence_score": 83.0,
+        "consistency_score": 52.87,
+        "distance_score": 56.0,
+        "draw_score": 65.0,
+        "form_score": 47.31,
+        "jockey_score": 57.85,
+        "risk_score": 52.0,
+        "speed_score": 56.06,
+        "track_going_score": 60.0,
+        "trainer_score": 59.45,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 62.5,
+          "form_line": 60.0,
+          "horse_health": 56.67,
+          "race_shape": 65.0,
+          "sectional": 56.06,
+          "stability": 50.8,
+          "trainer_signal": 58.57
+        },
+        "ability": 59.8426,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_6_Logic/#10",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 47.31,
+        "distance_score": 72.0,
+        "draw_score": 64.66,
+        "form_score": 50.2,
+        "jockey_score": 74.6,
+        "risk_score": 76.5,
+        "speed_score": 58.34,
+        "track_going_score": 60.0,
+        "trainer_score": 82.9,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 70.84,
+          "form_line": 60.0,
+          "horse_health": 71.64,
+          "race_shape": 64.66,
+          "sectional": 58.34,
+          "stability": 50.02,
+          "trainer_signal": 78.34
+        },
+        "ability": 66.4312,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_5_Logic/#6",
+      "features": {
+        "class_score": 63.57,
+        "confidence_score": 83.0,
+        "consistency_score": 35.51,
+        "distance_score": 54.0,
+        "draw_score": 71.48,
+        "form_score": 40.0,
+        "jockey_score": 58.5,
+        "risk_score": 59.5,
+        "speed_score": 49.06,
+        "track_going_score": 58.0,
+        "trainer_score": 75.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 63.68,
+          "form_line": 60.0,
+          "horse_health": 61.25,
+          "race_shape": 71.48,
+          "sectional": 49.06,
+          "stability": 40.2,
+          "trainer_signal": 65.93
+        },
+        "ability": 61.7666,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_9_Logic/#14",
+      "features": {
+        "class_score": 58.45,
+        "confidence_score": 83.0,
+        "consistency_score": 59.4,
+        "distance_score": 66.0,
+        "draw_score": 65.0,
+        "form_score": 54.55,
+        "jockey_score": 70.0,
+        "risk_score": 71.5,
+        "speed_score": 58.47,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 61.34,
+          "form_line": 60.0,
+          "horse_health": 70.92,
+          "race_shape": 65.0,
+          "sectional": 58.47,
+          "stability": 57.03,
+          "trainer_signal": 65.5
+        },
+        "ability": 62.8116,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-01_ShaTin/Race_1_Logic/#10",
+      "features": {
+        "class_score": 71.96,
+        "confidence_score": 83.0,
+        "consistency_score": 58.0,
+        "distance_score": 60.0,
+        "draw_score": 65.0,
+        "form_score": 65.85,
+        "jockey_score": 87.2,
+        "risk_score": 69.5,
+        "speed_score": 43.53,
+        "track_going_score": 60.0,
+        "trainer_score": 76.8,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 71.47,
+          "form_line": 60.0,
+          "horse_health": 69.69,
+          "race_shape": 65.0,
+          "sectional": 43.53,
+          "stability": 62.12,
+          "trainer_signal": 82.52
+        },
+        "ability": 66.8091,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_3_Logic/#11",
+      "features": {
+        "class_score": 63.57,
+        "confidence_score": 83.0,
+        "consistency_score": 40.26,
+        "distance_score": 66.0,
+        "draw_score": 62.27,
+        "form_score": 42.72,
+        "jockey_score": 85.0,
+        "risk_score": 70.5,
+        "speed_score": 49.06,
+        "track_going_score": 58.0,
+        "trainer_score": 82.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 63.68,
+          "form_line": 60.0,
+          "horse_health": 67.97,
+          "race_shape": 62.27,
+          "sectional": 49.06,
+          "stability": 43.46,
+          "trainer_signal": 83.65
+        },
+        "ability": 64.0232,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_3_Logic/#6",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 63.37,
+        "distance_score": 72.0,
+        "draw_score": 75.0,
+        "form_score": 59.49,
+        "jockey_score": 60.0,
+        "risk_score": 76.5,
+        "speed_score": 76.35,
+        "track_going_score": 58.0,
+        "trainer_score": 60.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 70.84,
+          "form_line": 60.0,
+          "horse_health": 71.64,
+          "race_shape": 75.0,
+          "sectional": 76.35,
+          "stability": 61.09,
+          "trainer_signal": 60.0
+        },
+        "ability": 68.3318,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-06-13_ShaTin/Race_9_Logic/#12",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 63.01,
+        "distance_score": 72.0,
+        "draw_score": 61.03,
+        "form_score": 67.21,
+        "jockey_score": 68.0,
+        "risk_score": 75.0,
+        "speed_score": 63.91,
+        "track_going_score": 60.0,
+        "trainer_score": 68.5,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 72.34,
+          "form_line": 60.0,
+          "horse_health": 73.05,
+          "race_shape": 61.03,
+          "sectional": 63.91,
+          "stability": 64.81,
+          "trainer_signal": 68.23
+        },
+        "ability": 65.4905,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_6_Logic/#3",
+      "features": {
+        "class_score": 68.0,
+        "confidence_score": 83.0,
+        "consistency_score": 57.39,
+        "distance_score": 72.0,
+        "draw_score": 62.24,
+        "form_score": 59.4,
+        "jockey_score": 72.9,
+        "risk_score": 65.5,
+        "speed_score": 56.79,
+        "track_going_score": 60.0,
+        "trainer_score": 59.1,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 67.0,
+          "form_line": 60.0,
+          "horse_health": 64.92,
+          "race_shape": 62.24,
+          "sectional": 56.79,
+          "stability": 58.66,
+          "trainer_signal": 66.69
+        },
+        "ability": 62.8474,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_4_Logic/#7",
+      "features": {
+        "class_score": 52.45,
+        "confidence_score": 83.0,
+        "consistency_score": 48.71,
+        "distance_score": 66.0,
+        "draw_score": 75.0,
+        "form_score": 50.91,
+        "jockey_score": 58.76,
+        "risk_score": 73.5,
+        "speed_score": 59.49,
+        "track_going_score": 60.0,
+        "trainer_score": 60.95,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 55.34,
+          "form_line": 60.0,
+          "horse_health": 69.8,
+          "race_shape": 75.0,
+          "sectional": 59.49,
+          "stability": 50.94,
+          "trainer_signal": 59.75
+        },
+        "ability": 62.8208,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_2_Logic/#11",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 48.41,
+        "distance_score": 72.0,
+        "draw_score": 74.26,
+        "form_score": 53.88,
+        "jockey_score": 87.2,
+        "risk_score": 75.0,
+        "speed_score": 44.15,
+        "track_going_score": 60.0,
+        "trainer_score": 76.8,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 72.34,
+          "form_line": 60.0,
+          "horse_health": 73.05,
+          "race_shape": 74.26,
+          "sectional": 44.15,
+          "stability": 52.3,
+          "trainer_signal": 82.52
+        },
+        "ability": 68.7179,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_1_Logic/#10",
+      "features": {
+        "class_score": 58.0,
+        "confidence_score": 83.0,
+        "consistency_score": 50.43,
+        "distance_score": 56.0,
+        "draw_score": 75.0,
+        "form_score": 40.0,
+        "jockey_score": 70.0,
+        "risk_score": 75.0,
+        "speed_score": 68.52,
+        "track_going_score": 60.0,
+        "trainer_score": 72.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 59.5,
+          "form_line": 60.0,
+          "horse_health": 70.72,
+          "race_shape": 75.0,
+          "sectional": 68.52,
+          "stability": 46.17,
+          "trainer_signal": 70.9
+        },
+        "ability": 66.7771,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_8_Logic/#4",
+      "features": {
+        "class_score": 64.84,
+        "confidence_score": 83.0,
+        "consistency_score": 61.58,
+        "distance_score": 60.0,
+        "draw_score": 75.0,
+        "form_score": 58.98,
+        "jockey_score": 63.45,
+        "risk_score": 74.5,
+        "speed_score": 44.15,
+        "track_going_score": 60.0,
+        "trainer_score": 65.59,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 64.63,
+          "form_line": 60.0,
+          "horse_health": 70.42,
+          "race_shape": 75.0,
+          "sectional": 44.15,
+          "stability": 60.12,
+          "trainer_signal": 64.41
+        },
+        "ability": 64.2043,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_7_Logic/#11",
+      "features": {
+        "class_score": 70.39,
+        "confidence_score": 83.0,
+        "consistency_score": 65.12,
+        "distance_score": 72.0,
+        "draw_score": 75.0,
+        "form_score": 64.59,
+        "jockey_score": 57.2,
+        "risk_score": 75.0,
+        "speed_score": 63.76,
+        "track_going_score": 60.0,
+        "trainer_score": 63.79,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 70.29,
+          "form_line": 60.0,
+          "horse_health": 73.05,
+          "race_shape": 75.0,
+          "sectional": 63.76,
+          "stability": 64.34,
+          "trainer_signal": 60.17
+        },
+        "ability": 67.0521,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_11_Logic/#10",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 62.72,
+        "distance_score": 72.0,
+        "draw_score": 57.38,
+        "form_score": 69.08,
+        "jockey_score": 89.0,
+        "risk_score": 67.5,
+        "speed_score": 70.82,
+        "track_going_score": 60.0,
+        "trainer_score": 81.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 70.84,
+          "form_line": 60.0,
+          "horse_health": 66.14,
+          "race_shape": 57.38,
+          "sectional": 70.82,
+          "stability": 65.63,
+          "trainer_signal": 85.4
+        },
+        "ability": 69.0222,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_11_Logic/#3",
+      "features": {
+        "class_score": 66.0,
+        "confidence_score": 83.0,
+        "consistency_score": 68.9,
+        "distance_score": 72.0,
+        "draw_score": 65.0,
+        "form_score": 56.6,
+        "jockey_score": 61.17,
+        "risk_score": 73.5,
+        "speed_score": 68.46,
+        "track_going_score": 60.0,
+        "trainer_score": 61.66,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 65.5,
+          "form_line": 60.0,
+          "horse_health": 69.8,
+          "race_shape": 65.0,
+          "sectional": 68.46,
+          "stability": 61.86,
+          "trainer_signal": 61.39
+        },
+        "ability": 64.1481,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_11_Logic/#11",
+      "features": {
+        "class_score": 68.0,
+        "confidence_score": 83.0,
+        "consistency_score": 70.82,
+        "distance_score": 72.0,
+        "draw_score": 66.23,
+        "form_score": 55.91,
+        "jockey_score": 88.7,
+        "risk_score": 75.0,
+        "speed_score": 62.23,
+        "track_going_score": 60.0,
+        "trainer_score": 83.8,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 67.0,
+          "form_line": 60.0,
+          "horse_health": 70.72,
+          "race_shape": 66.23,
+          "sectional": 62.23,
+          "stability": 62.28,
+          "trainer_signal": 86.5
+        },
+        "ability": 69.9078,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_3_Logic/#9",
+      "features": {
+        "class_score": 52.45,
+        "confidence_score": 83.0,
+        "consistency_score": 34.0,
+        "distance_score": 54.0,
+        "draw_score": 49.06,
+        "form_score": 40.0,
+        "jockey_score": 59.59,
+        "risk_score": 65.0,
+        "speed_score": 44.64,
+        "track_going_score": 60.0,
+        "trainer_score": 59.42,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 55.34,
+          "form_line": 60.0,
+          "horse_health": 64.61,
+          "race_shape": 49.06,
+          "sectional": 44.64,
+          "stability": 39.6,
+          "trainer_signal": 59.51
+        },
+        "ability": 52.4317,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_5_Logic/#2",
+      "features": {
+        "class_score": 69.12,
+        "confidence_score": 83.0,
+        "consistency_score": 70.67,
+        "distance_score": 56.0,
+        "draw_score": 66.9,
+        "form_score": 76.16,
+        "jockey_score": 83.5,
+        "risk_score": 68.5,
+        "speed_score": 62.2,
+        "track_going_score": 60.0,
+        "trainer_score": 80.0,
+        "weight_score": 54.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 65.34,
+          "form_line": 60.0,
+          "horse_health": 62.86,
+          "race_shape": 66.9,
+          "sectional": 62.2,
+          "stability": 72.35,
+          "trainer_signal": 81.93
+        },
+        "ability": 69.4432,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_6_Logic/#3",
+      "features": {
+        "class_score": 70.39,
+        "confidence_score": 83.0,
+        "consistency_score": 72.13,
+        "distance_score": 72.0,
+        "draw_score": 75.0,
+        "form_score": 73.61,
+        "jockey_score": 63.59,
+        "risk_score": 71.0,
+        "speed_score": 76.35,
+        "track_going_score": 60.0,
+        "trainer_score": 60.65,
+        "weight_score": 54.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 66.29,
+          "form_line": 60.0,
+          "horse_health": 64.39,
+          "race_shape": 75.0,
+          "sectional": 76.35,
+          "stability": 71.66,
+          "trainer_signal": 62.27
+        },
+        "ability": 68.9644,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_3_Logic/#9",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 83.0,
+        "consistency_score": 67.04,
+        "distance_score": 72.0,
+        "draw_score": 66.64,
+        "form_score": 59.39,
+        "jockey_score": 60.0,
+        "risk_score": 69.5,
+        "speed_score": 65.47,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 74.13,
+          "form_line": 60.0,
+          "horse_health": 67.36,
+          "race_shape": 66.64,
+          "sectional": 65.47,
+          "stability": 62.51,
+          "trainer_signal": 60.0
+        },
+        "ability": 65.0821,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_10_Logic/#14",
+      "features": {
+        "class_score": 62.0,
+        "confidence_score": 83.0,
+        "consistency_score": 66.56,
+        "distance_score": 72.0,
+        "draw_score": 49.06,
+        "form_score": 58.25,
+        "jockey_score": 55.48,
+        "risk_score": 67.0,
+        "speed_score": 69.35,
+        "track_going_score": 60.0,
+        "trainer_score": 59.98,
+        "weight_score": 74.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 65.0,
+          "form_line": 60.0,
+          "horse_health": 69.72,
+          "race_shape": 49.06,
+          "sectional": 69.35,
+          "stability": 61.75,
+          "trainer_signal": 57.5
+        },
+        "ability": 58.8954,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_3_Logic/#8",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 65.85,
+        "distance_score": 72.0,
+        "draw_score": 62.27,
+        "form_score": 46.12,
+        "jockey_score": 88.7,
+        "risk_score": 65.5,
+        "speed_score": 61.47,
+        "track_going_score": 60.0,
+        "trainer_score": 77.8,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 70.84,
+          "form_line": 60.0,
+          "horse_health": 64.92,
+          "race_shape": 62.27,
+          "sectional": 61.47,
+          "stability": 55.4,
+          "trainer_signal": 83.8
+        },
+        "ability": 67.7263,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_7_Logic/#8",
+      "features": {
+        "class_score": 60.45,
+        "confidence_score": 83.0,
+        "consistency_score": 53.23,
+        "distance_score": 60.0,
+        "draw_score": 49.06,
+        "form_score": 46.12,
+        "jockey_score": 66.15,
+        "risk_score": 68.0,
+        "speed_score": 61.34,
+        "track_going_score": 60.0,
+        "trainer_score": 65.83,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 62.34,
+          "form_line": 60.0,
+          "horse_health": 68.0,
+          "race_shape": 49.06,
+          "sectional": 61.34,
+          "stability": 50.35,
+          "trainer_signal": 66.01
+        },
+        "ability": 58.3062,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_4_Logic/#1",
+      "features": {
+        "class_score": 58.45,
+        "confidence_score": 83.0,
+        "consistency_score": 36.08,
+        "distance_score": 54.0,
+        "draw_score": 61.03,
+        "form_score": 40.0,
+        "jockey_score": 66.5,
+        "risk_score": 55.5,
+        "speed_score": 44.15,
+        "track_going_score": 58.0,
+        "trainer_score": 70.0,
+        "weight_score": 58.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 58.34,
+          "form_line": 60.0,
+          "horse_health": 56.47,
+          "race_shape": 61.03,
+          "sectional": 44.15,
+          "stability": 40.43,
+          "trainer_signal": 68.08
+        },
+        "ability": 57.8503,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_6_Logic/#6",
+      "features": {
+        "class_score": 68.0,
+        "confidence_score": 83.0,
+        "consistency_score": 54.9,
+        "distance_score": 72.0,
+        "draw_score": 61.03,
+        "form_score": 68.8,
+        "jockey_score": 66.9,
+        "risk_score": 65.5,
+        "speed_score": 70.04,
+        "track_going_score": 60.0,
+        "trainer_score": 59.1,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 67.0,
+          "form_line": 60.0,
+          "horse_health": 64.92,
+          "race_shape": 61.03,
+          "sectional": 70.04,
+          "stability": 62.36,
+          "trainer_signal": 63.39
+        },
+        "ability": 63.8031,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_1_Logic/#11",
+      "features": {
+        "class_score": 70.39,
+        "confidence_score": 83.0,
+        "consistency_score": 66.1,
+        "distance_score": 60.0,
+        "draw_score": 65.0,
+        "form_score": 64.29,
+        "jockey_score": 61.75,
+        "risk_score": 71.0,
+        "speed_score": 56.56,
+        "track_going_score": 60.0,
+        "trainer_score": 63.74,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 70.29,
+          "form_line": 60.0,
+          "horse_health": 70.61,
+          "race_shape": 65.0,
+          "sectional": 56.56,
+          "stability": 64.59,
+          "trainer_signal": 62.65
+        },
+        "ability": 63.9016,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_4_Logic/#10",
+      "features": {
+        "class_score": 56.45,
+        "confidence_score": 83.0,
+        "consistency_score": 61.01,
+        "distance_score": 66.0,
+        "draw_score": 49.06,
+        "form_score": 48.84,
+        "jockey_score": 59.35,
+        "risk_score": 69.0,
+        "speed_score": 69.23,
+        "track_going_score": 60.0,
+        "trainer_score": 64.79,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 57.34,
+          "form_line": 60.0,
+          "horse_health": 65.5,
+          "race_shape": 49.06,
+          "sectional": 69.23,
+          "stability": 54.82,
+          "trainer_signal": 61.8
+        },
+        "ability": 57.9501,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_6_Logic/#7",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 83.0,
+        "consistency_score": 63.4,
+        "distance_score": 72.0,
+        "draw_score": 71.67,
+        "form_score": 60.85,
+        "jockey_score": 68.9,
+        "risk_score": 73.0,
+        "speed_score": 65.24,
+        "track_going_score": 60.0,
+        "trainer_score": 59.1,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 75.63,
+          "form_line": 60.0,
+          "horse_health": 71.83,
+          "race_shape": 71.67,
+          "sectional": 65.24,
+          "stability": 61.78,
+          "trainer_signal": 64.49
+        },
+        "ability": 67.8128,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_9_Logic/#4",
+      "features": {
+        "class_score": 63.57,
+        "confidence_score": 83.0,
+        "consistency_score": 49.31,
+        "distance_score": 54.0,
+        "draw_score": 58.95,
+        "form_score": 42.04,
+        "jockey_score": 73.5,
+        "risk_score": 69.5,
+        "speed_score": 76.28,
+        "track_going_score": 60.0,
+        "trainer_score": 80.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 62.68,
+          "form_line": 60.0,
+          "horse_health": 65.8,
+          "race_shape": 58.95,
+          "sectional": 76.28,
+          "stability": 46.74,
+          "trainer_signal": 76.43
+        },
+        "ability": 64.9989,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_5_Logic/#10",
+      "features": {
+        "class_score": 63.57,
+        "confidence_score": 83.0,
+        "consistency_score": 59.71,
+        "distance_score": 66.0,
+        "draw_score": 66.01,
+        "form_score": 46.8,
+        "jockey_score": 86.1,
+        "risk_score": 69.5,
+        "speed_score": 65.93,
+        "track_going_score": 60.0,
+        "trainer_score": 75.9,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 62.68,
+          "form_line": 60.0,
+          "horse_health": 65.8,
+          "race_shape": 66.01,
+          "sectional": 65.93,
+          "stability": 53.28,
+          "trainer_signal": 81.51
+        },
+        "ability": 67.4441,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_8_Logic/#6",
+      "features": {
+        "class_score": 69.12,
+        "confidence_score": 83.0,
+        "consistency_score": 70.5,
+        "distance_score": 56.0,
+        "draw_score": 63.61,
+        "form_score": 68.84,
+        "jockey_score": 75.0,
+        "risk_score": 68.0,
+        "speed_score": 66.43,
+        "track_going_score": 60.0,
+        "trainer_score": 70.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 67.84,
+          "form_line": 60.0,
+          "horse_health": 66.44,
+          "race_shape": 63.61,
+          "sectional": 66.43,
+          "stability": 68.62,
+          "trainer_signal": 72.75
+        },
+        "ability": 67.0529,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_10_Logic/#3",
+      "features": {
+        "class_score": 64.84,
+        "confidence_score": 83.0,
+        "consistency_score": 71.06,
+        "distance_score": 60.0,
+        "draw_score": 49.06,
+        "form_score": 60.92,
+        "jockey_score": 70.15,
+        "risk_score": 73.5,
+        "speed_score": 70.83,
+        "track_going_score": 60.0,
+        "trainer_score": 64.83,
+        "weight_score": 54.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 62.13,
+          "form_line": 60.0,
+          "horse_health": 65.91,
+          "race_shape": 49.06,
+          "sectional": 70.83,
+          "stability": 64.88,
+          "trainer_signal": 67.76
+        },
+        "ability": 61.2529,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_6_Logic/#10",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 83.0,
+        "consistency_score": 74.46,
+        "distance_score": 72.0,
+        "draw_score": 49.06,
+        "form_score": 74.18,
+        "jockey_score": 70.0,
+        "risk_score": 72.5,
+        "speed_score": 71.46,
+        "track_going_score": 60.0,
+        "trainer_score": 80.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 75.63,
+          "form_line": 60.0,
+          "horse_health": 71.53,
+          "race_shape": 49.06,
+          "sectional": 71.46,
+          "stability": 72.87,
+          "trainer_signal": 74.5
+        },
+        "ability": 65.8661,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_9_Logic/#8",
+      "features": {
+        "class_score": 68.0,
+        "confidence_score": 83.0,
+        "consistency_score": 53.32,
+        "distance_score": 72.0,
+        "draw_score": 58.71,
+        "form_score": 61.6,
+        "jockey_score": 61.1,
+        "risk_score": 69.5,
+        "speed_score": 63.04,
+        "track_going_score": 58.0,
+        "trainer_score": 81.9,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 67.0,
+          "form_line": 60.0,
+          "horse_health": 67.36,
+          "race_shape": 58.71,
+          "sectional": 63.04,
+          "stability": 58.13,
+          "trainer_signal": 70.46
+        },
+        "ability": 63.6213,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_3_Logic/#11",
+      "features": {
+        "class_score": 54.0,
+        "confidence_score": 83.0,
+        "consistency_score": 42.16,
+        "distance_score": 56.0,
+        "draw_score": 65.0,
+        "form_score": 40.0,
+        "jockey_score": 54.1,
+        "risk_score": 68.0,
+        "speed_score": 49.67,
+        "track_going_score": 60.0,
+        "trainer_score": 58.79,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 56.5,
+          "form_line": 60.0,
+          "horse_health": 66.44,
+          "race_shape": 65.0,
+          "sectional": 49.67,
+          "stability": 42.86,
+          "trainer_signal": 56.21
+        },
+        "ability": 57.2214,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_2_Logic/#11",
+      "features": {
+        "class_score": 56.45,
+        "confidence_score": 83.0,
+        "consistency_score": 40.87,
+        "distance_score": 66.0,
+        "draw_score": 65.0,
+        "form_score": 40.0,
+        "jockey_score": 52.38,
+        "risk_score": 75.0,
+        "speed_score": 49.67,
+        "track_going_score": 60.0,
+        "trainer_score": 58.76,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 59.84,
+          "form_line": 60.0,
+          "horse_health": 73.05,
+          "race_shape": 65.0,
+          "sectional": 49.67,
+          "stability": 42.35,
+          "trainer_signal": 55.25
+        },
+        "ability": 57.6885,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_10_Logic/#1",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 69.17,
+        "distance_score": 72.0,
+        "draw_score": 65.0,
+        "form_score": 59.32,
+        "jockey_score": 85.0,
+        "risk_score": 75.5,
+        "speed_score": 79.04,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 54.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 68.34,
+          "form_line": 60.0,
+          "horse_health": 67.14,
+          "race_shape": 65.0,
+          "sectional": 79.04,
+          "stability": 63.33,
+          "trainer_signal": 73.75
+        },
+        "ability": 68.8696,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_8_Logic/#5",
+      "features": {
+        "class_score": 68.0,
+        "confidence_score": 83.0,
+        "consistency_score": 61.75,
+        "distance_score": 72.0,
+        "draw_score": 62.57,
+        "form_score": 58.25,
+        "jockey_score": 80.1,
+        "risk_score": 66.5,
+        "speed_score": 61.91,
+        "track_going_score": 60.0,
+        "trainer_score": 80.9,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 68.0,
+          "form_line": 60.0,
+          "horse_health": 67.08,
+          "race_shape": 62.57,
+          "sectional": 61.91,
+          "stability": 59.83,
+          "trainer_signal": 80.46
+        },
+        "ability": 67.1932,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_7_Logic/#6",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 83.0,
+        "consistency_score": 68.17,
+        "distance_score": 72.0,
+        "draw_score": 75.0,
+        "form_score": 71.29,
+        "jockey_score": 77.0,
+        "risk_score": 76.5,
+        "speed_score": 67.76,
+        "track_going_score": 60.0,
+        "trainer_score": 80.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 74.13,
+          "form_line": 60.0,
+          "horse_health": 71.64,
+          "race_shape": 75.0,
+          "sectional": 67.76,
+          "stability": 68.91,
+          "trainer_signal": 78.35
+        },
+        "ability": 72.8008,
+        "grade": "B+"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_11_Logic/#5",
+      "features": {
+        "class_score": 62.0,
+        "confidence_score": 83.0,
+        "consistency_score": 45.53,
+        "distance_score": 72.0,
+        "draw_score": 49.06,
+        "form_score": 50.91,
+        "jockey_score": 62.92,
+        "risk_score": 68.0,
+        "speed_score": 48.26,
+        "track_going_score": 60.0,
+        "trainer_score": 64.28,
+        "weight_score": 74.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 65.0,
+          "form_line": 60.0,
+          "horse_health": 70.33,
+          "race_shape": 49.06,
+          "sectional": 48.26,
+          "stability": 49.67,
+          "trainer_signal": 63.53
+        },
+        "ability": 56.4468,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_5_Logic/#9",
+      "features": {
+        "class_score": 67.57,
+        "confidence_score": 83.0,
+        "consistency_score": 51.04,
+        "distance_score": 60.0,
+        "draw_score": 53.62,
+        "form_score": 42.86,
+        "jockey_score": 60.0,
+        "risk_score": 70.5,
+        "speed_score": 66.76,
+        "track_going_score": 58.0,
+        "trainer_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 65.68,
+          "form_line": 60.0,
+          "horse_health": 66.42,
+          "race_shape": 53.62,
+          "sectional": 66.76,
+          "stability": 47.85,
+          "trainer_signal": 60.0
+        },
+        "ability": 58.9986,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_4_Logic/#2",
+      "features": {
+        "class_score": 67.57,
+        "confidence_score": 83.0,
+        "consistency_score": 52.44,
+        "distance_score": 60.0,
+        "draw_score": 71.79,
+        "form_score": 51.02,
+        "jockey_score": 60.0,
+        "risk_score": 75.5,
+        "speed_score": 64.41,
+        "track_going_score": 66.0,
+        "trainer_score": 61.0,
+        "weight_score": 54.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 64.18,
+          "form_line": 60.0,
+          "horse_health": 67.14,
+          "race_shape": 71.79,
+          "sectional": 64.41,
+          "stability": 52.49,
+          "trainer_signal": 60.45
+        },
+        "ability": 64.047,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_11_Logic/#8",
+      "features": {
+        "class_score": 63.57,
+        "confidence_score": 83.0,
+        "consistency_score": 46.09,
+        "distance_score": 66.0,
+        "draw_score": 65.0,
+        "form_score": 40.0,
+        "jockey_score": 60.0,
+        "risk_score": 75.0,
+        "speed_score": 46.62,
+        "track_going_score": 60.0,
+        "trainer_score": 70.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 63.68,
+          "form_line": 60.0,
+          "horse_health": 70.72,
+          "race_shape": 65.0,
+          "sectional": 46.62,
+          "stability": 44.44,
+          "trainer_signal": 64.5
+        },
+        "ability": 60.1411,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_10_Logic/#2",
+      "features": {
+        "class_score": 52.45,
+        "confidence_score": 83.0,
+        "consistency_score": 34.0,
+        "distance_score": 66.0,
+        "draw_score": 63.46,
+        "form_score": 40.0,
+        "jockey_score": 75.0,
+        "risk_score": 74.5,
+        "speed_score": 62.53,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 55.34,
+          "form_line": 60.0,
+          "horse_health": 70.42,
+          "race_shape": 63.46,
+          "sectional": 62.53,
+          "stability": 39.6,
+          "trainer_signal": 68.25
+        },
+        "ability": 60.971,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_2_Logic/#11",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 83.0,
+        "consistency_score": 62.54,
+        "distance_score": 72.0,
+        "draw_score": 66.03,
+        "form_score": 54.93,
+        "jockey_score": 66.5,
+        "risk_score": 69.0,
+        "speed_score": 70.75,
+        "track_going_score": 60.0,
+        "trainer_score": 70.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 74.13,
+          "form_line": 60.0,
+          "horse_health": 67.06,
+          "race_shape": 66.03,
+          "sectional": 70.75,
+          "stability": 58.48,
+          "trainer_signal": 68.08
+        },
+        "ability": 67.0939,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-01_ShaTin/Race_1_Logic/#5",
+      "features": {
+        "class_score": 69.12,
+        "confidence_score": 83.0,
+        "consistency_score": 51.55,
+        "distance_score": 56.0,
+        "draw_score": 49.06,
+        "form_score": 48.16,
+        "jockey_score": 60.0,
+        "risk_score": 68.0,
+        "speed_score": 59.81,
+        "track_going_score": 60.0,
+        "trainer_score": 70.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 66.84,
+          "form_line": 60.0,
+          "horse_health": 64.89,
+          "race_shape": 49.06,
+          "sectional": 59.81,
+          "stability": 50.7,
+          "trainer_signal": 64.5
+        },
+        "ability": 58.3043,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_2_Logic/#3",
+      "features": {
+        "class_score": 67.57,
+        "confidence_score": 83.0,
+        "consistency_score": 44.55,
+        "distance_score": 60.0,
+        "draw_score": 62.76,
+        "form_score": 44.22,
+        "jockey_score": 70.0,
+        "risk_score": 69.5,
+        "speed_score": 53.31,
+        "track_going_score": 60.0,
+        "trainer_score": 70.0,
+        "weight_score": 50.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 63.18,
+          "form_line": 60.0,
+          "horse_health": 61.91,
+          "race_shape": 62.76,
+          "sectional": 53.31,
+          "stability": 45.93,
+          "trainer_signal": 70.0
+        },
+        "ability": 61.4059,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-01_ShaTin/Race_9_Logic/#1",
+      "features": {
+        "class_score": 58.45,
+        "confidence_score": 83.0,
+        "consistency_score": 47.0,
+        "distance_score": 54.0,
+        "draw_score": 75.0,
+        "form_score": 43.2,
+        "jockey_score": 76.1,
+        "risk_score": 69.5,
+        "speed_score": 70.76,
+        "track_going_score": 60.0,
+        "trainer_score": 75.9,
+        "weight_score": 58.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 58.34,
+          "form_line": 60.0,
+          "horse_health": 65.03,
+          "race_shape": 75.0,
+          "sectional": 70.76,
+          "stability": 46.4,
+          "trainer_signal": 76.01
+        },
+        "ability": 67.899,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_4_Logic/#3",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 50.19,
+        "distance_score": 72.0,
+        "draw_score": 49.06,
+        "form_score": 51.16,
+        "jockey_score": 75.0,
+        "risk_score": 71.0,
+        "speed_score": 48.76,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 70.84,
+          "form_line": 60.0,
+          "horse_health": 68.28,
+          "race_shape": 49.06,
+          "sectional": 48.76,
+          "stability": 51.66,
+          "trainer_signal": 68.25
+        },
+        "ability": 58.5727,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-01_ShaTin/Race_4_Logic/#2",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 78.0,
+        "consistency_score": 71.15,
+        "distance_score": 72.0,
+        "draw_score": 50.0,
+        "form_score": 74.69,
+        "jockey_score": 87.2,
+        "risk_score": 55.0,
+        "speed_score": 79.1,
+        "track_going_score": 60.0,
+        "trainer_score": 71.8,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 73.13,
+          "form_line": 60.0,
+          "horse_health": 56.94,
+          "race_shape": 50.0,
+          "sectional": 79.1,
+          "stability": 71.81,
+          "trainer_signal": 80.27
+        },
+        "ability": 67.4174,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_4_Logic/#11",
+      "features": {
+        "class_score": 63.57,
+        "confidence_score": 83.0,
+        "consistency_score": 46.05,
+        "distance_score": 66.0,
+        "draw_score": 75.0,
+        "form_score": 40.0,
+        "jockey_score": 56.0,
+        "risk_score": 69.0,
+        "speed_score": 58.58,
+        "track_going_score": 60.0,
+        "trainer_score": 80.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 63.68,
+          "form_line": 60.0,
+          "horse_health": 67.06,
+          "race_shape": 75.0,
+          "sectional": 58.58,
+          "stability": 44.42,
+          "trainer_signal": 66.8
+        },
+        "ability": 64.8084,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_2_Logic/#8",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 71.13,
+        "distance_score": 72.0,
+        "draw_score": 71.48,
+        "form_score": 59.39,
+        "jockey_score": 68.5,
+        "risk_score": 68.5,
+        "speed_score": 64.41,
+        "track_going_score": 60.0,
+        "trainer_score": 82.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 70.84,
+          "form_line": 60.0,
+          "horse_health": 66.75,
+          "race_shape": 71.48,
+          "sectional": 64.41,
+          "stability": 64.15,
+          "trainer_signal": 74.58
+        },
+        "ability": 69.3812,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-07-01_ShaTin/Race_8_Logic/#6",
+      "features": {
+        "class_score": 52.45,
+        "confidence_score": 83.0,
+        "consistency_score": 34.0,
+        "distance_score": 66.0,
+        "draw_score": 49.06,
+        "form_score": 40.0,
+        "jockey_score": 70.0,
+        "risk_score": 73.5,
+        "speed_score": 62.53,
+        "track_going_score": 58.0,
+        "trainer_score": 70.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 55.34,
+          "form_line": 60.0,
+          "horse_health": 69.8,
+          "race_shape": 49.06,
+          "sectional": 62.53,
+          "stability": 39.6,
+          "trainer_signal": 70.0
+        },
+        "ability": 57.418,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_6_Logic/#14",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 64.92,
+        "distance_score": 72.0,
+        "draw_score": 53.62,
+        "form_score": 54.59,
+        "jockey_score": 72.0,
+        "risk_score": 68.0,
+        "speed_score": 59.74,
+        "track_going_score": 60.0,
+        "trainer_score": 70.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 72.34,
+          "form_line": 60.0,
+          "horse_health": 68.78,
+          "race_shape": 53.62,
+          "sectional": 59.74,
+          "stability": 59.26,
+          "trainer_signal": 71.1
+        },
+        "ability": 62.8863,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_9_Logic/#12",
+      "features": {
+        "class_score": 58.45,
+        "confidence_score": 83.0,
+        "consistency_score": 48.18,
+        "distance_score": 66.0,
+        "draw_score": 75.0,
+        "form_score": 40.0,
+        "jockey_score": 60.0,
+        "risk_score": 74.5,
+        "speed_score": 62.99,
+        "track_going_score": 60.0,
+        "trainer_score": 70.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 61.34,
+          "form_line": 60.0,
+          "horse_health": 72.75,
+          "race_shape": 75.0,
+          "sectional": 62.99,
+          "stability": 45.27,
+          "trainer_signal": 64.5
+        },
+        "ability": 64.8111,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_4_Logic/#3",
+      "features": {
+        "class_score": 65.12,
+        "confidence_score": 83.0,
+        "consistency_score": 36.9,
+        "distance_score": 56.0,
+        "draw_score": 64.49,
+        "form_score": 40.0,
+        "jockey_score": 87.2,
+        "risk_score": 68.5,
+        "speed_score": 48.81,
+        "track_going_score": 60.0,
+        "trainer_score": 81.8,
+        "weight_score": 54.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 62.34,
+          "form_line": 60.0,
+          "horse_health": 62.86,
+          "race_shape": 64.49,
+          "sectional": 48.81,
+          "stability": 40.76,
+          "trainer_signal": 84.77
+        },
+        "ability": 64.2001,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_7_Logic/#11",
+      "features": {
+        "class_score": 58.45,
+        "confidence_score": 83.0,
+        "consistency_score": 33.0,
+        "distance_score": 54.0,
+        "draw_score": 49.06,
+        "form_score": 40.0,
+        "jockey_score": 60.0,
+        "risk_score": 69.5,
+        "speed_score": 51.76,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 59.84,
+          "form_line": 60.0,
+          "horse_health": 67.36,
+          "race_shape": 49.06,
+          "sectional": 51.76,
+          "stability": 39.2,
+          "trainer_signal": 60.0
+        },
+        "ability": 54.1767,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_7_Logic/#1",
+      "features": {
+        "class_score": 67.57,
+        "confidence_score": 83.0,
+        "consistency_score": 60.12,
+        "distance_score": 60.0,
+        "draw_score": 63.01,
+        "form_score": 52.52,
+        "jockey_score": 73.9,
+        "risk_score": 66.5,
+        "speed_score": 70.75,
+        "track_going_score": 60.0,
+        "trainer_score": 74.1,
+        "weight_score": 58.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 65.18,
+          "form_line": 60.0,
+          "horse_health": 63.19,
+          "race_shape": 63.01,
+          "sectional": 70.75,
+          "stability": 56.31,
+          "trainer_signal": 73.99
+        },
+        "ability": 66.0155,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_3_Logic/#4",
+      "features": {
+        "class_score": 58.45,
+        "confidence_score": 83.0,
+        "consistency_score": 40.83,
+        "distance_score": 66.0,
+        "draw_score": 49.06,
+        "form_score": 40.0,
+        "jockey_score": 70.0,
+        "risk_score": 73.0,
+        "speed_score": 47.79,
+        "track_going_score": 58.0,
+        "trainer_score": 60.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 59.84,
+          "form_line": 60.0,
+          "horse_health": 69.5,
+          "race_shape": 49.06,
+          "sectional": 47.79,
+          "stability": 42.33,
+          "trainer_signal": 65.5
+        },
+        "ability": 55.3598,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_10_Logic/#1",
+      "features": {
+        "class_score": 70.39,
+        "confidence_score": 83.0,
+        "consistency_score": 76.92,
+        "distance_score": 72.0,
+        "draw_score": 65.0,
+        "form_score": 85.07,
+        "jockey_score": 59.3,
+        "risk_score": 71.0,
+        "speed_score": 75.85,
+        "track_going_score": 60.0,
+        "trainer_score": 65.24,
+        "weight_score": 54.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 66.29,
+          "form_line": 60.0,
+          "horse_health": 64.39,
+          "race_shape": 65.0,
+          "sectional": 75.85,
+          "stability": 79.3,
+          "trainer_signal": 61.97
+        },
+        "ability": 66.8433,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_4_Logic/#8",
+      "features": {
+        "class_score": 62.45,
+        "confidence_score": 83.0,
+        "consistency_score": 53.53,
+        "distance_score": 60.0,
+        "draw_score": 71.79,
+        "form_score": 48.18,
+        "jockey_score": 70.0,
+        "risk_score": 69.5,
+        "speed_score": 52.95,
+        "track_going_score": 66.0,
+        "trainer_score": 70.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 62.84,
+          "form_line": 60.0,
+          "horse_health": 67.36,
+          "race_shape": 71.79,
+          "sectional": 52.95,
+          "stability": 51.5,
+          "trainer_signal": 70.0
+        },
+        "ability": 64.5503,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_9_Logic/#11",
+      "features": {
+        "class_score": 58.0,
+        "confidence_score": 83.0,
+        "consistency_score": 50.43,
+        "distance_score": 56.0,
+        "draw_score": 62.76,
+        "form_score": 40.0,
+        "jockey_score": 75.0,
+        "risk_score": 73.5,
+        "speed_score": 48.03,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 59.5,
+          "form_line": 60.0,
+          "horse_health": 69.8,
+          "race_shape": 62.76,
+          "sectional": 48.03,
+          "stability": 46.17,
+          "trainer_signal": 68.25
+        },
+        "ability": 60.1309,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_2_Logic/#8",
+      "features": {
+        "class_score": 54.0,
+        "confidence_score": 83.0,
+        "consistency_score": 65.32,
+        "distance_score": 56.0,
+        "draw_score": 75.0,
+        "form_score": 45.45,
+        "jockey_score": 59.59,
+        "risk_score": 74.5,
+        "speed_score": 77.11,
+        "track_going_score": 60.0,
+        "trainer_score": 59.61,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 56.5,
+          "form_line": 60.0,
+          "horse_health": 70.42,
+          "race_shape": 75.0,
+          "sectional": 77.11,
+          "stability": 54.85,
+          "trainer_signal": 59.6
+        },
+        "ability": 65.6246,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-27_ShaTin/Race_7_Logic/#9",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 83.0,
+        "consistency_score": 46.47,
+        "distance_score": 56.0,
+        "draw_score": 75.0,
+        "form_score": 43.2,
+        "jockey_score": 60.0,
+        "risk_score": 67.5,
+        "speed_score": 52.82,
+        "track_going_score": 60.0,
+        "trainer_score": 75.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 60.0,
+          "form_line": 60.0,
+          "horse_health": 64.58,
+          "race_shape": 75.0,
+          "sectional": 52.82,
+          "stability": 46.19,
+          "trainer_signal": 66.75
+        },
+        "ability": 63.6047,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_8_Logic/#5",
+      "features": {
+        "class_score": 70.39,
+        "confidence_score": 83.0,
+        "consistency_score": 56.88,
+        "distance_score": 72.0,
+        "draw_score": 75.0,
+        "form_score": 61.22,
+        "jockey_score": 66.15,
+        "risk_score": 57.0,
+        "speed_score": 48.81,
+        "track_going_score": 60.0,
+        "trainer_score": 64.83,
+        "weight_score": 66.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 69.29,
+          "form_line": 60.0,
+          "horse_health": 60.5,
+          "race_shape": 75.0,
+          "sectional": 48.81,
+          "stability": 59.36,
+          "trainer_signal": 65.56
+        },
+        "ability": 65.2648,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_2_Logic/#4",
+      "features": {
+        "class_score": 69.12,
+        "confidence_score": 83.0,
+        "consistency_score": 38.37,
+        "distance_score": 66.0,
+        "draw_score": 64.91,
+        "form_score": 41.36,
+        "jockey_score": 75.0,
+        "risk_score": 67.5,
+        "speed_score": 60.56,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 67.84,
+          "form_line": 60.0,
+          "horse_health": 66.14,
+          "race_shape": 64.91,
+          "sectional": 60.56,
+          "stability": 42.03,
+          "trainer_signal": 68.25
+        },
+        "ability": 62.9656,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_1_Logic/#9",
+      "features": {
+        "class_score": 58.0,
+        "confidence_score": 83.0,
+        "consistency_score": 61.0,
+        "distance_score": 56.0,
+        "draw_score": 49.06,
+        "form_score": 40.0,
+        "jockey_score": 57.8,
+        "risk_score": 66.0,
+        "speed_score": 66.91,
+        "track_going_score": 60.0,
+        "trainer_score": 62.65,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 59.5,
+          "form_line": 60.0,
+          "horse_health": 65.22,
+          "race_shape": 49.06,
+          "sectional": 66.91,
+          "stability": 50.4,
+          "trainer_signal": 59.98
+        },
+        "ability": 57.0847,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_9_Logic/#10",
+      "features": {
+        "class_score": 66.0,
+        "confidence_score": 83.0,
+        "consistency_score": 68.18,
+        "distance_score": 72.0,
+        "draw_score": 49.06,
+        "form_score": 56.6,
+        "jockey_score": 61.55,
+        "risk_score": 69.5,
+        "speed_score": 78.96,
+        "track_going_score": 60.0,
+        "trainer_score": 62.45,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 67.0,
+          "form_line": 60.0,
+          "horse_health": 69.69,
+          "race_shape": 49.06,
+          "sectional": 78.96,
+          "stability": 61.57,
+          "trainer_signal": 61.95
+        },
+        "ability": 61.4481,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-13_ShaTin/Race_9_Logic/#10",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 52.06,
+        "distance_score": 72.0,
+        "draw_score": 63.46,
+        "form_score": 51.56,
+        "jockey_score": 73.5,
+        "risk_score": 69.5,
+        "speed_score": 48.15,
+        "track_going_score": 60.0,
+        "trainer_score": 75.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 72.34,
+          "form_line": 60.0,
+          "horse_health": 69.69,
+          "race_shape": 63.46,
+          "sectional": 48.15,
+          "stability": 52.6,
+          "trainer_signal": 74.18
+        },
+        "ability": 64.1998,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-12_ShaTin/Race_1_Logic/#2",
+      "features": {
+        "class_score": 66.0,
+        "confidence_score": 83.0,
+        "consistency_score": 57.9,
+        "distance_score": 60.0,
+        "draw_score": 75.0,
+        "form_score": 56.94,
+        "jockey_score": 63.92,
+        "risk_score": 69.0,
+        "speed_score": 42.62,
+        "track_going_score": 60.0,
+        "trainer_score": 60.56,
+        "weight_score": 58.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 64.0,
+          "form_line": 60.0,
+          "horse_health": 64.72,
+          "race_shape": 75.0,
+          "sectional": 42.62,
+          "stability": 57.63,
+          "trainer_signal": 62.41
+        },
+        "ability": 62.9703,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_5_Logic/#7",
+      "features": {
+        "class_score": 77.51,
+        "confidence_score": 83.0,
+        "consistency_score": 58.7,
+        "distance_score": 72.0,
+        "draw_score": 67.07,
+        "form_score": 62.24,
+        "jockey_score": 61.1,
+        "risk_score": 70.5,
+        "speed_score": 58.34,
+        "track_going_score": 60.0,
+        "trainer_score": 60.9,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 73.13,
+          "form_line": 60.0,
+          "horse_health": 66.42,
+          "race_shape": 67.07,
+          "sectional": 58.34,
+          "stability": 60.6,
+          "trainer_signal": 61.01
+        },
+        "ability": 64.1536,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_5_Logic/#11",
+      "features": {
+        "class_score": 73.12,
+        "confidence_score": 83.0,
+        "consistency_score": 58.35,
+        "distance_score": 72.0,
+        "draw_score": 56.67,
+        "form_score": 58.37,
+        "jockey_score": 70.0,
+        "risk_score": 66.5,
+        "speed_score": 65.38,
+        "track_going_score": 60.0,
+        "trainer_score": 60.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 72.34,
+          "form_line": 60.0,
+          "horse_health": 67.86,
+          "race_shape": 56.67,
+          "sectional": 65.38,
+          "stability": 58.53,
+          "trainer_signal": 65.5
+        },
+        "ability": 63.0142,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-04_ShaTin/Race_1_Logic/#10",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 63.23,
+        "consistency_score": 65.0,
+        "distance_score": 58.0,
+        "draw_score": 58.6,
+        "form_score": 60.0,
+        "jockey_score": 60.0,
+        "risk_score": 69.5,
+        "speed_score": 60.0,
+        "track_going_score": 58.0,
+        "trainer_score": 60.0,
+        "weight_score": 64.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 61.0,
+          "form_line": 60.0,
+          "horse_health": 67.36,
+          "race_shape": 58.6,
+          "sectional": 60.0,
+          "stability": 62.0,
+          "trainer_signal": 60.0
+        },
+        "ability": 60.2536,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-08_HappyValley/Race_3_Logic/#2",
+      "features": {
+        "class_score": 52.45,
+        "confidence_score": 83.0,
+        "consistency_score": 47.25,
+        "distance_score": 54.0,
+        "draw_score": 75.0,
+        "form_score": 41.75,
+        "jockey_score": 57.8,
+        "risk_score": 68.0,
+        "speed_score": 43.12,
+        "track_going_score": 60.0,
+        "trainer_score": 59.98,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 56.34,
+          "form_line": 60.0,
+          "horse_health": 68.0,
+          "race_shape": 75.0,
+          "sectional": 43.12,
+          "stability": 45.78,
+          "trainer_signal": 58.78
+        },
+        "ability": 60.051,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_4_Logic/#9",
+      "features": {
+        "class_score": 73.51,
+        "confidence_score": 83.0,
+        "consistency_score": 49.08,
+        "distance_score": 56.0,
+        "draw_score": 66.64,
+        "form_score": 59.52,
+        "jockey_score": 58.9,
+        "risk_score": 67.5,
+        "speed_score": 38.62,
+        "track_going_score": 60.0,
+        "trainer_score": 74.1,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 70.13,
+          "form_line": 60.0,
+          "horse_health": 64.58,
+          "race_shape": 66.64,
+          "sectional": 38.62,
+          "stability": 55.39,
+          "trainer_signal": 65.74
+        },
+        "ability": 61.6043,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-24_HappyValley/Race_4_Logic/#12",
+      "features": {
+        "class_score": 58.45,
+        "confidence_score": 83.0,
+        "consistency_score": 58.35,
+        "distance_score": 66.0,
+        "draw_score": 58.84,
+        "form_score": 40.0,
+        "jockey_score": 64.9,
+        "risk_score": 66.5,
+        "speed_score": 52.73,
+        "track_going_score": 60.0,
+        "trainer_score": 59.1,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 61.34,
+          "form_line": 60.0,
+          "horse_health": 67.86,
+          "race_shape": 58.84,
+          "sectional": 52.73,
+          "stability": 49.34,
+          "trainer_signal": 62.29
+        },
+        "ability": 58.7502,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-06-21_ShaTin/Race_10_Logic/#7",
+      "features": {
+        "class_score": 68.0,
+        "confidence_score": 83.0,
+        "consistency_score": 55.55,
+        "distance_score": 72.0,
+        "draw_score": 71.79,
+        "form_score": 64.55,
+        "jockey_score": 86.5,
+        "risk_score": 66.5,
+        "speed_score": 66.91,
+        "track_going_score": 60.0,
+        "trainer_score": 70.0,
+        "weight_score": 70.0
+      },
+      "expected": {
+        "matrix": {
+          "class_advantage": 68.5,
+          "form_line": 60.0,
+          "horse_health": 67.86,
+          "race_shape": 71.79,
+          "sectional": 66.91,
+          "stability": 60.49,
+          "trainer_signal": 79.08
+        },
+        "ability": 70.2011,
+        "grade": "B"
+      }
+    }
+  ]
+}

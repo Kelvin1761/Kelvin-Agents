@@ -1,0 +1,4250 @@
+{
+  "platform": "au",
+  "note": "由真實已評分賽事抽樣。改動評分邏輯之後，先確認下面嘅變化係你想要嘅，再跑 --record 更新呢個檔。",
+  "sample_size": 120,
+  "cases": [
+    {
+      "id": "2026-08-21 Sale Race 1-9/Race_8_Logic/#9",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 71.0,
+        "consistency_score": 61.6,
+        "distance_score": 52.0,
+        "form_score": 59.53,
+        "formline_score": 60.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 62.0,
+        "jockey_score": 59.92,
+        "pace_figure_score": 71.44,
+        "pace_map_score": 59.58,
+        "performance_quality_score": 47.52,
+        "rating_score": 59.47,
+        "sectional_score": 60.0,
+        "track_score": 71.9,
+        "trainer_score": 56.12,
+        "trial_score": 67.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 58.98,
+          "form_line": 59.89,
+          "jockey_trainer": 59.07,
+          "pace_perf": 71.08,
+          "race_shape": 58.27,
+          "stability": 54.86,
+          "track": 78.08
+        },
+        "ability": 60.3613,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_5_Logic/#2",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 90.0,
+        "consistency_score": 77.92,
+        "distance_score": 64.0,
+        "form_score": 50.17,
+        "formline_score": 79.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 53.7,
+        "pace_figure_score": 75.63,
+        "pace_map_score": 59.75,
+        "rating_score": 67.07,
+        "sectional_score": 62.44,
+        "track_score": 69.87,
+        "trainer_score": 65.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 73.6,
+          "form_line": 72.95,
+          "jockey_trainer": 58.32,
+          "pace_perf": 74.59,
+          "race_shape": 58.97,
+          "stability": 54.25,
+          "track": 75.0
+        },
+        "ability": 61.9663,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_6_Logic/#13",
+      "features": {
+        "class_score": 62.1,
+        "confidence_score": 86.0,
+        "consistency_score": 61.36,
+        "distance_score": 59.0,
+        "form_score": 64.29,
+        "formline_score": 55.0,
+        "health_score": 59.5,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 62.5,
+        "pace_figure_score": 85.47,
+        "pace_map_score": 46.27,
+        "rating_score": 67.98,
+        "sectional_score": 62.44,
+        "track_score": 62.9,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 56.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 75.36,
+          "form_line": 56.98,
+          "jockey_trainer": 62.08,
+          "pace_perf": 83.77,
+          "race_shape": 3.51,
+          "stability": 62.51,
+          "track": 64.41
+        },
+        "ability": 58.4001,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-03 Moe Race 1-8/Race_7_Logic/#7",
+      "features": {
+        "class_score": 60.7,
+        "confidence_score": 86.0,
+        "consistency_score": 69.46,
+        "distance_score": 61.0,
+        "form_score": 57.14,
+        "formline_score": 70.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 52.29,
+        "pace_figure_score": 48.52,
+        "pace_map_score": 56.26,
+        "rating_score": 60.92,
+        "sectional_score": 35.8,
+        "track_score": 65.69,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 61.77,
+          "form_line": 67.34,
+          "jockey_trainer": 53.58,
+          "pace_perf": 49.29,
+          "race_shape": 44.61,
+          "stability": 58.33,
+          "track": 68.64
+        },
+        "ability": 55.6777,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-12 Sunshine Coast Race 1-8/Race_1_Logic/#7",
+      "features": {
+        "class_score": 53.21,
+        "confidence_score": 86.0,
+        "consistency_score": 72.46,
+        "distance_score": 60.0,
+        "form_score": 58.76,
+        "formline_score": 78.4,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 63.44,
+        "pace_figure_score": 65.11,
+        "pace_map_score": 57.03,
+        "rating_score": 53.21,
+        "sectional_score": 46.08,
+        "track_score": 74.3,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 46.93,
+          "form_line": 74.41,
+          "jockey_trainer": 62.86,
+          "pace_perf": 64.77,
+          "race_shape": 47.78,
+          "stability": 59.27,
+          "track": 81.73
+        },
+        "ability": 59.4446,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-08-21 Canberra Race 1-7/Race_7_Logic/#8",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 73.0,
+        "consistency_score": 61.6,
+        "distance_score": 50.0,
+        "form_score": 73.19,
+        "formline_score": 83.0,
+        "health_score": 59.0,
+        "jockey_horse_fit_score": 58.0,
+        "jockey_score": 50.27,
+        "pace_figure_score": 60.0,
+        "pace_map_score": 58.52,
+        "performance_quality_score": 96.55,
+        "rating_score": 72.65,
+        "sectional_score": 60.0,
+        "track_score": 62.9,
+        "trainer_score": 50.08,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 84.34,
+          "form_line": 81.33,
+          "jockey_trainer": 42.92,
+          "pace_perf": 60.0,
+          "race_shape": 53.91,
+          "stability": 81.97,
+          "track": 64.41
+        },
+        "ability": 65.7757,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-08-21 Sale Race 1-9/Race_3_Logic/#12",
+      "features": {
+        "class_score": 57.7,
+        "confidence_score": 65.0,
+        "consistency_score": 52.4,
+        "distance_score": 50.0,
+        "form_score": 60.0,
+        "formline_score": 60.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 64.57,
+        "jockey_score": 56.43,
+        "pace_figure_score": 60.0,
+        "pace_map_score": 62.96,
+        "performance_quality_score": 52.4,
+        "rating_score": 56.53,
+        "sectional_score": 60.0,
+        "track_score": 62.9,
+        "trainer_score": 60.0,
+        "trial_score": 74.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 53.32,
+          "form_line": 60.0,
+          "jockey_trainer": 61.38,
+          "pace_perf": 60.81,
+          "race_shape": 72.18,
+          "stability": 57.04,
+          "track": 64.41
+        },
+        "ability": 60.6204,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-08-21 Beaudesert Race 1-8/Race_8_Logic/#10",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 81.0,
+        "consistency_score": 67.6,
+        "distance_score": 62.0,
+        "form_score": 63.6,
+        "formline_score": 88.2,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 58.0,
+        "jockey_score": 55.32,
+        "pace_figure_score": 60.14,
+        "pace_map_score": 58.52,
+        "performance_quality_score": 42.29,
+        "rating_score": 66.26,
+        "sectional_score": 60.0,
+        "track_score": 67.9,
+        "trainer_score": 50.07,
+        "trial_score": 67.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 72.05,
+          "form_line": 83.32,
+          "jockey_trainer": 47.12,
+          "pace_perf": 60.53,
+          "race_shape": 53.91,
+          "stability": 55.2,
+          "track": 72.0
+        },
+        "ability": 57.1132,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-08-21 Sale Race 1-9/Race_2_Logic/#4",
+      "features": {
+        "class_score": 62.31,
+        "confidence_score": 78.0,
+        "consistency_score": 67.6,
+        "distance_score": 62.0,
+        "form_score": 76.9,
+        "formline_score": 94.7,
+        "health_score": 59.0,
+        "jockey_horse_fit_score": 57.02,
+        "jockey_score": 41.47,
+        "pace_figure_score": 48.64,
+        "pace_map_score": 57.89,
+        "performance_quality_score": 65.34,
+        "rating_score": 65.06,
+        "sectional_score": 67.75,
+        "track_score": 58.15,
+        "trainer_score": 36.91,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 69.74,
+          "form_line": 91.5,
+          "jockey_trainer": 25.26,
+          "pace_perf": 49.4,
+          "race_shape": 51.32,
+          "stability": 71.97,
+          "track": 57.19
+        },
+        "ability": 54.6226,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-08-21 Murwillumbah Race 1-8/Race_7_Logic/#7",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 83.0,
+        "consistency_score": 67.6,
+        "distance_score": 50.0,
+        "form_score": 64.71,
+        "formline_score": 79.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 66.34,
+        "jockey_score": 54.76,
+        "pace_figure_score": 27.13,
+        "pace_map_score": 62.66,
+        "performance_quality_score": 33.29,
+        "rating_score": 61.78,
+        "sectional_score": 60.0,
+        "track_score": 71.47,
+        "trainer_score": 70.93,
+        "trial_score": 87.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 63.43,
+          "form_line": 76.22,
+          "jockey_trainer": 69.47,
+          "pace_perf": 30.89,
+          "race_shape": 70.94,
+          "stability": 52.34,
+          "track": 77.43
+        },
+        "ability": 59.8678,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-08-21 Murtoa Race 1-8/Race_7_Logic/#6",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 77.0,
+        "consistency_score": 69.31,
+        "distance_score": 62.0,
+        "form_score": 70.26,
+        "formline_score": 55.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 57.02,
+        "jockey_score": 59.09,
+        "pace_figure_score": 77.95,
+        "pace_map_score": 60.89,
+        "performance_quality_score": 60.75,
+        "rating_score": 59.27,
+        "sectional_score": 80.09,
+        "track_score": 58.76,
+        "trainer_score": 43.15,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 58.6,
+          "form_line": 58.32,
+          "jockey_trainer": 44.38,
+          "pace_perf": 76.75,
+          "race_shape": 63.66,
+          "stability": 66.29,
+          "track": 58.12
+        },
+        "ability": 60.4273,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-12 Sunshine Coast Race 1-8/Race_8_Logic/#11",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 83.0,
+        "consistency_score": 93.04,
+        "distance_score": 62.0,
+        "form_score": 64.64,
+        "formline_score": 95.7,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 68.19,
+        "pace_figure_score": 69.82,
+        "pace_map_score": 55.55,
+        "rating_score": 67.44,
+        "sectional_score": 35.8,
+        "track_score": 78.87,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 74.32,
+          "form_line": 89.54,
+          "jockey_trainer": 66.82,
+          "pace_perf": 69.16,
+          "race_shape": 41.69,
+          "stability": 62.71,
+          "track": 88.67
+        },
+        "ability": 64.9845,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-08 Sandown Lakeside Race 1-8/Race_7_Logic/#11",
+      "features": {
+        "class_score": 59.94,
+        "confidence_score": 80.0,
+        "consistency_score": 96.04,
+        "distance_score": 62.0,
+        "form_score": 70.0,
+        "formline_score": 72.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 65.0,
+        "pace_figure_score": 100.0,
+        "pace_map_score": 52.41,
+        "rating_score": 55.74,
+        "sectional_score": 35.8,
+        "track_score": 67.9,
+        "trainer_score": 61.0,
+        "trial_score": 89.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 51.8,
+          "form_line": 71.83,
+          "jockey_trainer": 68.09,
+          "pace_perf": 99.0,
+          "race_shape": 28.77,
+          "stability": 65.85,
+          "track": 72.0
+        },
+        "ability": 63.6667,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-12 Sunshine Coast Race 1-8/Race_2_Logic/#1",
+      "features": {
+        "class_score": 58.54,
+        "confidence_score": 63.0,
+        "consistency_score": 52.4,
+        "distance_score": 50.0,
+        "form_score": 60.0,
+        "formline_score": 58.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 64.09,
+        "pace_figure_score": 60.0,
+        "pace_map_score": 57.03,
+        "rating_score": 58.54,
+        "sectional_score": 35.8,
+        "track_score": 62.9,
+        "trainer_score": 60.0,
+        "trial_score": 83.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 57.19,
+          "form_line": 58.4,
+          "jockey_trainer": 66.62,
+          "pace_perf": 61.33,
+          "race_shape": 47.78,
+          "stability": 60.0,
+          "track": 64.41
+        },
+        "ability": 60.0284,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-01 Sandown Lakeside Race 1-8/Race_3_Logic/#3",
+      "features": {
+        "class_score": 59.94,
+        "confidence_score": 86.0,
+        "consistency_score": 96.04,
+        "distance_score": 61.0,
+        "form_score": 74.62,
+        "formline_score": 55.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 58.13,
+        "pace_figure_score": 58.96,
+        "pace_map_score": 59.75,
+        "rating_score": 65.92,
+        "sectional_score": 70.54,
+        "track_score": 72.94,
+        "trainer_score": 60.0,
+        "trial_score": 67.0,
+        "weight_score": 59.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 71.39,
+          "form_line": 59.3,
+          "jockey_trainer": 58.44,
+          "pace_perf": 59.43,
+          "race_shape": 58.97,
+          "stability": 68.55,
+          "track": 79.66
+        },
+        "ability": 65.2091,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-08-21 Canberra Race 1-7/Race_3_Logic/#5",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 83.0,
+        "consistency_score": 70.3,
+        "distance_score": 62.0,
+        "form_score": 71.89,
+        "formline_score": 61.8,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 64.81,
+        "jockey_score": 46.01,
+        "pace_figure_score": 34.34,
+        "pace_map_score": 60.18,
+        "performance_quality_score": 61.44,
+        "rating_score": 57.6,
+        "sectional_score": 62.74,
+        "track_score": 67.9,
+        "trainer_score": 50.48,
+        "trial_score": 71.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 55.38,
+          "form_line": 64.11,
+          "jockey_trainer": 46.14,
+          "pace_perf": 36.69,
+          "race_shape": 60.74,
+          "stability": 67.52,
+          "track": 72.0
+        },
+        "ability": 57.3403,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_1_Logic/#10",
+      "features": {
+        "class_score": 59.94,
+        "confidence_score": 86.0,
+        "consistency_score": 90.88,
+        "distance_score": 62.0,
+        "form_score": 64.17,
+        "formline_score": 75.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 53.35,
+        "pace_figure_score": 90.02,
+        "pace_map_score": 59.75,
+        "rating_score": 60.33,
+        "sectional_score": 35.8,
+        "track_score": 62.66,
+        "trainer_score": 60.0,
+        "trial_score": 67.0,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 60.63,
+          "form_line": 72.91,
+          "jockey_trainer": 54.46,
+          "pace_perf": 88.42,
+          "race_shape": 58.97,
+          "stability": 62.44,
+          "track": 64.04
+        },
+        "ability": 62.794,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_6_Logic/#3",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 86.0,
+        "consistency_score": 56.5,
+        "distance_score": 60.0,
+        "form_score": 46.67,
+        "formline_score": 61.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 52.42,
+        "pace_figure_score": 51.97,
+        "pace_map_score": 56.03,
+        "rating_score": 62.67,
+        "sectional_score": 35.8,
+        "track_score": 62.9,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 56.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 65.14,
+          "form_line": 57.8,
+          "jockey_trainer": 53.69,
+          "pace_perf": 52.51,
+          "race_shape": 43.67,
+          "stability": 52.2,
+          "track": 64.41
+        },
+        "ability": 53.9641,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-08-21 Murtoa Race 1-8/Race_1_Logic/#4",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 81.0,
+        "consistency_score": 70.3,
+        "distance_score": 62.0,
+        "form_score": 70.86,
+        "formline_score": 61.8,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 60.4,
+        "jockey_score": 66.37,
+        "pace_figure_score": 64.9,
+        "pace_map_score": 60.18,
+        "performance_quality_score": 70.7,
+        "rating_score": 62.12,
+        "sectional_score": 67.75,
+        "track_score": 57.21,
+        "trainer_score": 46.36,
+        "trial_score": 77.0,
+        "weight_score": 53.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 64.08,
+          "form_line": 63.88,
+          "jockey_trainer": 55.95,
+          "pace_perf": 65.55,
+          "race_shape": 60.74,
+          "stability": 70.53,
+          "track": 55.76
+        },
+        "ability": 63.3731,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-08-21 Murtoa Race 1-8/Race_6_Logic/#6",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 79.0,
+        "consistency_score": 61.6,
+        "distance_score": 62.0,
+        "form_score": 80.57,
+        "formline_score": 85.2,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 66.59,
+        "jockey_score": 66.37,
+        "pace_figure_score": 49.25,
+        "pace_map_score": 58.52,
+        "performance_quality_score": 61.37,
+        "rating_score": 66.23,
+        "sectional_score": 80.09,
+        "track_score": 65.7,
+        "trainer_score": 67.49,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 71.99,
+          "form_line": 84.74,
+          "jockey_trainer": 76.92,
+          "pace_perf": 49.97,
+          "race_shape": 53.91,
+          "stability": 72.57,
+          "track": 68.66
+        },
+        "ability": 68.2819,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_5_Logic/#10",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 83.0,
+        "consistency_score": 82.18,
+        "distance_score": 56.0,
+        "form_score": 42.67,
+        "formline_score": 75.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 61.0,
+        "pace_figure_score": 59.43,
+        "pace_map_score": 53.01,
+        "rating_score": 59.2,
+        "sectional_score": 35.8,
+        "track_score": 54.89,
+        "trainer_score": 66.0,
+        "trial_score": 69.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 58.46,
+          "form_line": 68.07,
+          "jockey_trainer": 65.11,
+          "pace_perf": 59.99,
+          "race_shape": 31.24,
+          "stability": 49.86,
+          "track": 52.24
+        },
+        "ability": 53.1466,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-08-21 Sale Race 1-9/Race_5_Logic/#8",
+      "features": {
+        "class_score": 67.52,
+        "confidence_score": 69.0,
+        "consistency_score": 64.3,
+        "distance_score": 52.0,
+        "form_score": 60.67,
+        "formline_score": 60.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 58.0,
+        "jockey_score": 57.78,
+        "pace_figure_score": 88.01,
+        "pace_map_score": 58.72,
+        "performance_quality_score": 25.22,
+        "rating_score": 57.38,
+        "sectional_score": 60.0,
+        "track_score": 79.67,
+        "trainer_score": 45.1,
+        "trial_score": 67.0,
+        "weight_score": 63.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 54.96,
+          "form_line": 60.15,
+          "jockey_trainer": 45.62,
+          "pace_perf": 86.54,
+          "race_shape": 54.73,
+          "stability": 46.83,
+          "track": 89.88
+        },
+        "ability": 56.2495,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-12 Sunshine Coast Race 1-8/Race_5_Logic/#3",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 90.0,
+        "consistency_score": 59.5,
+        "distance_score": 60.0,
+        "form_score": 45.9,
+        "formline_score": 76.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 58.52,
+        "pace_figure_score": 67.97,
+        "pace_map_score": 54.81,
+        "rating_score": 62.81,
+        "sectional_score": 46.08,
+        "track_score": 76.47,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 56.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 65.41,
+          "form_line": 69.6,
+          "jockey_trainer": 58.77,
+          "pace_perf": 67.44,
+          "race_shape": 38.65,
+          "stability": 51.75,
+          "track": 85.02
+        },
+        "ability": 57.5706,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-08-21 Murwillumbah Race 1-8/Race_5_Logic/#3",
+      "features": {
+        "class_score": 62.31,
+        "confidence_score": 77.0,
+        "consistency_score": 67.3,
+        "distance_score": 57.0,
+        "form_score": 84.48,
+        "formline_score": 91.9,
+        "health_score": 59.0,
+        "jockey_horse_fit_score": 60.4,
+        "jockey_score": 64.84,
+        "pace_figure_score": 92.49,
+        "pace_map_score": 58.52,
+        "performance_quality_score": 90.9,
+        "rating_score": 63.44,
+        "sectional_score": 86.19,
+        "track_score": 62.09,
+        "trainer_score": 51.27,
+        "trial_score": 85.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 66.62,
+          "form_line": 90.97,
+          "jockey_trainer": 58.18,
+          "pace_perf": 91.76,
+          "race_shape": 53.91,
+          "stability": 86.37,
+          "track": 63.18
+        },
+        "ability": 71.8482,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_4_Logic/#5",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 83.0,
+        "consistency_score": 96.04,
+        "distance_score": 56.0,
+        "form_score": 51.3,
+        "formline_score": 78.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 65.0,
+        "pace_figure_score": 47.19,
+        "pace_map_score": 53.01,
+        "rating_score": 61.18,
+        "sectional_score": 35.8,
+        "track_score": 76.47,
+        "trainer_score": 66.0,
+        "trial_score": 78.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 62.27,
+          "form_line": 72.41,
+          "jockey_trainer": 71.66,
+          "pace_perf": 49.09,
+          "race_shape": 31.24,
+          "stability": 54.91,
+          "track": 85.02
+        },
+        "ability": 58.2551,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-12 Sunshine Coast Race 1-8/Race_4_Logic/#20",
+      "features": {
+        "class_score": 59.18,
+        "confidence_score": 87.0,
+        "consistency_score": 56.2,
+        "distance_score": 50.0,
+        "form_score": 56.67,
+        "formline_score": 88.2,
+        "health_score": 59.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 52.04,
+        "pace_figure_score": 11.05,
+        "pace_map_score": 52.41,
+        "rating_score": 59.18,
+        "sectional_score": 35.8,
+        "track_score": 57.34,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 58.42,
+          "form_line": 81.76,
+          "jockey_trainer": 53.37,
+          "pace_perf": 14.32,
+          "race_shape": 28.77,
+          "stability": 58.05,
+          "track": 55.96
+        },
+        "ability": 48.2863,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-07-03 Moe Race 1-8/Race_1_Logic/#6",
+      "features": {
+        "class_score": 59.18,
+        "confidence_score": 87.0,
+        "consistency_score": 62.2,
+        "distance_score": 60.0,
+        "form_score": 50.4,
+        "formline_score": 55.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 51.95,
+        "pace_figure_score": 67.16,
+        "pace_map_score": 53.21,
+        "rating_score": 59.18,
+        "sectional_score": 35.8,
+        "track_score": 52.36,
+        "trainer_score": 60.0,
+        "trial_score": 80.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 58.42,
+          "form_line": 53.85,
+          "jockey_trainer": 56.51,
+          "pace_perf": 67.84,
+          "race_shape": 32.06,
+          "stability": 54.38,
+          "track": 48.39
+        },
+        "ability": 53.2855,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-01 Sandown Lakeside Race 1-8/Race_7_Logic/#11",
+      "features": {
+        "class_score": 53.12,
+        "confidence_score": 87.0,
+        "consistency_score": 74.62,
+        "distance_score": 50.0,
+        "form_score": 54.0,
+        "formline_score": 75.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 61.0,
+        "pace_figure_score": 39.73,
+        "pace_map_score": 51.86,
+        "rating_score": 56.28,
+        "sectional_score": 46.08,
+        "track_score": 61.21,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 52.84,
+          "form_line": 70.62,
+          "jockey_trainer": 60.83,
+          "pace_perf": 41.08,
+          "race_shape": 26.51,
+          "stability": 56.49,
+          "track": 61.84
+        },
+        "ability": 51.8068,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-08-21 Sale Race 1-9/Race_4_Logic/#11",
+      "features": {
+        "class_score": 62.31,
+        "confidence_score": 75.0,
+        "consistency_score": 67.6,
+        "distance_score": 57.0,
+        "form_score": 79.51,
+        "formline_score": 63.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 68.19,
+        "jockey_score": 59.88,
+        "pace_figure_score": 18.33,
+        "pace_map_score": 58.72,
+        "performance_quality_score": 31.82,
+        "rating_score": 58.92,
+        "sectional_score": 60.0,
+        "track_score": 58.15,
+        "trainer_score": 36.91,
+        "trial_score": 91.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 57.92,
+          "form_line": 66.79,
+          "jockey_trainer": 51.22,
+          "pace_perf": 22.9,
+          "race_shape": 54.73,
+          "stability": 60.42,
+          "track": 57.19
+        },
+        "ability": 53.0183,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-12 Sunshine Coast Race 1-8/Race_5_Logic/#8",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 87.0,
+        "consistency_score": 77.32,
+        "distance_score": 61.0,
+        "form_score": 54.81,
+        "formline_score": 76.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 64.09,
+        "pace_figure_score": 21.51,
+        "pace_map_score": 54.04,
+        "rating_score": 53.98,
+        "sectional_score": 62.44,
+        "track_score": 78.87,
+        "trainer_score": 60.0,
+        "trial_score": 67.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 48.42,
+          "form_line": 71.6,
+          "jockey_trainer": 63.4,
+          "pace_perf": 24.49,
+          "race_shape": 35.48,
+          "stability": 56.96,
+          "track": 88.67
+        },
+        "ability": 53.6335,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-08-21 Murwillumbah Race 1-8/Race_7_Logic/#5",
+      "features": {
+        "class_score": 67.52,
+        "confidence_score": 70.0,
+        "consistency_score": 67.6,
+        "distance_score": 50.0,
+        "form_score": 63.23,
+        "formline_score": 60.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 62.0,
+        "jockey_score": 68.51,
+        "pace_figure_score": 82.38,
+        "pace_map_score": 60.02,
+        "performance_quality_score": 74.98,
+        "rating_score": 64.12,
+        "sectional_score": 60.0,
+        "track_score": 63.7,
+        "trainer_score": 74.32,
+        "trial_score": 67.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 67.93,
+          "form_line": 60.73,
+          "jockey_trainer": 79.2,
+          "pace_perf": 81.29,
+          "race_shape": 60.08,
+          "stability": 67.73,
+          "track": 65.62
+        },
+        "ability": 70.6179,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-08-21 Sale Race 1-9/Race_5_Logic/#4",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 73.0,
+        "consistency_score": 64.6,
+        "distance_score": 62.0,
+        "form_score": 62.96,
+        "formline_score": 76.8,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 56.04,
+        "pace_figure_score": 54.19,
+        "pace_map_score": 62.96,
+        "performance_quality_score": 77.13,
+        "rating_score": 63.78,
+        "sectional_score": 60.0,
+        "track_score": 57.34,
+        "trainer_score": 54.44,
+        "trial_score": 76.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 67.27,
+          "form_line": 74.07,
+          "jockey_trainer": 55.95,
+          "pace_perf": 55.5,
+          "race_shape": 72.18,
+          "stability": 68.41,
+          "track": 55.96
+        },
+        "ability": 63.5569,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-08-21 Sale Race 1-9/Race_7_Logic/#13",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 75.0,
+        "consistency_score": 67.3,
+        "distance_score": 64.0,
+        "form_score": 72.04,
+        "formline_score": 85.5,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 66.34,
+        "jockey_score": 38.6,
+        "pace_figure_score": 39.76,
+        "pace_map_score": 58.52,
+        "performance_quality_score": 61.76,
+        "rating_score": 54.61,
+        "sectional_score": 60.0,
+        "track_score": 73.5,
+        "trainer_score": 55.69,
+        "trial_score": 76.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 49.63,
+          "form_line": 83.06,
+          "jockey_trainer": 45.14,
+          "pace_perf": 42.04,
+          "race_shape": 53.91,
+          "stability": 67.73,
+          "track": 80.51
+        },
+        "ability": 56.8153,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_2_Logic/#11",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 83.0,
+        "consistency_score": 67.36,
+        "distance_score": 50.0,
+        "form_score": 49.33,
+        "formline_score": 94.7,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 44.63,
+        "pace_figure_score": 61.71,
+        "pace_map_score": 57.09,
+        "rating_score": 60.0,
+        "sectional_score": 35.8,
+        "track_score": 62.09,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 60.0,
+          "form_line": 85.29,
+          "jockey_trainer": 47.21,
+          "pace_perf": 61.6,
+          "race_shape": 48.03,
+          "stability": 53.76,
+          "track": 63.18
+        },
+        "ability": 53.82,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-03 Moe Race 1-8/Race_5_Logic/#13",
+      "features": {
+        "class_score": 62.1,
+        "confidence_score": 87.0,
+        "consistency_score": 74.92,
+        "distance_score": 61.0,
+        "form_score": 57.0,
+        "formline_score": 78.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 65.0,
+        "pace_figure_score": 41.5,
+        "pace_map_score": 57.09,
+        "rating_score": 51.85,
+        "sectional_score": 35.8,
+        "track_score": 65.7,
+        "trainer_score": 66.0,
+        "trial_score": 67.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 44.32,
+          "form_line": 73.69,
+          "jockey_trainer": 68.44,
+          "pace_perf": 43.14,
+          "race_shape": 48.03,
+          "stability": 58.25,
+          "track": 68.66
+        },
+        "ability": 56.7749,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-01 Sandown Lakeside Race 1-8/Race_6_Logic/#15",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 86.0,
+        "consistency_score": 85.78,
+        "distance_score": 60.0,
+        "form_score": 52.05,
+        "formline_score": 55.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 65.0,
+        "pace_figure_score": 56.96,
+        "pace_map_score": 59.45,
+        "rating_score": 68.05,
+        "sectional_score": 35.8,
+        "track_score": 62.9,
+        "trainer_score": 60.0,
+        "trial_score": 78.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 75.49,
+          "form_line": 54.22,
+          "jockey_trainer": 67.38,
+          "pace_perf": 58.2,
+          "race_shape": 57.74,
+          "stability": 55.35,
+          "track": 64.41
+        },
+        "ability": 61.8884,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_8_Logic/#9",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 83.0,
+        "consistency_score": 56.5,
+        "distance_score": 49.0,
+        "form_score": 41.33,
+        "formline_score": 78.0,
+        "health_score": 58.5,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 65.0,
+        "pace_figure_score": 62.25,
+        "pace_map_score": 51.73,
+        "rating_score": 49.45,
+        "sectional_score": 62.44,
+        "track_score": 82.87,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 39.7,
+          "form_line": 70.16,
+          "jockey_trainer": 64.16,
+          "pace_perf": 62.1,
+          "race_shape": 25.98,
+          "stability": 49.08,
+          "track": 94.75
+        },
+        "ability": 53.3426,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_1_Logic/#2",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 86.0,
+        "consistency_score": 77.62,
+        "distance_score": 62.0,
+        "form_score": 79.75,
+        "formline_score": 60.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 46.48,
+        "pace_figure_score": 44.07,
+        "pace_map_score": 55.7,
+        "rating_score": 60.0,
+        "sectional_score": 35.8,
+        "track_score": 67.9,
+        "trainer_score": 64.0,
+        "trial_score": 71.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 60.0,
+          "form_line": 64.45,
+          "jockey_trainer": 51.6,
+          "pace_perf": 45.77,
+          "race_shape": 42.31,
+          "stability": 71.55,
+          "track": 72.0
+        },
+        "ability": 58.9503,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_8_Logic/#2",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 85.0,
+        "consistency_score": 77.62,
+        "distance_score": 50.0,
+        "form_score": 44.0,
+        "formline_score": 75.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 73.82,
+        "pace_figure_score": 68.36,
+        "pace_map_score": 46.27,
+        "rating_score": 65.94,
+        "sectional_score": 39.44,
+        "track_score": 77.27,
+        "trainer_score": 60.0,
+        "trial_score": 78.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 71.43,
+          "form_line": 68.37,
+          "jockey_trainer": 74.72,
+          "pace_perf": 68.84,
+          "race_shape": 3.51,
+          "stability": 50.64,
+          "track": 86.24
+        },
+        "ability": 57.099,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-03 Moe Race 1-8/Race_8_Logic/#9",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 83.0,
+        "consistency_score": 90.88,
+        "distance_score": 62.0,
+        "form_score": 80.0,
+        "formline_score": 55.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 65.0,
+        "pace_figure_score": 56.83,
+        "pace_map_score": 46.27,
+        "rating_score": 61.6,
+        "sectional_score": 35.8,
+        "track_score": 80.34,
+        "trainer_score": 60.0,
+        "trial_score": 69.0,
+        "weight_score": 58.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 63.08,
+          "form_line": 60.51,
+          "jockey_trainer": 64.16,
+          "pace_perf": 57.56,
+          "race_shape": 3.51,
+          "stability": 71.7,
+          "track": 90.9
+        },
+        "ability": 59.7857,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_2_Logic/#4",
+      "features": {
+        "class_score": 53.21,
+        "confidence_score": 83.0,
+        "consistency_score": 59.2,
+        "distance_score": 60.0,
+        "form_score": 66.0,
+        "formline_score": 55.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 49.48,
+        "pace_figure_score": 60.58,
+        "pace_map_score": 46.53,
+        "rating_score": 53.21,
+        "sectional_score": 35.8,
+        "track_score": 67.9,
+        "trainer_score": 60.0,
+        "trial_score": 68.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 46.93,
+          "form_line": 57.36,
+          "jockey_trainer": 51.24,
+          "pace_perf": 61.0,
+          "race_shape": 4.58,
+          "stability": 63.51,
+          "track": 72.0
+        },
+        "ability": 51.1672,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-08-21 Murwillumbah Race 1-8/Race_4_Logic/#3",
+      "features": {
+        "class_score": 67.52,
+        "confidence_score": 68.0,
+        "consistency_score": 64.6,
+        "distance_score": 64.0,
+        "form_score": 61.28,
+        "formline_score": 60.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 58.0,
+        "jockey_score": 55.09,
+        "pace_figure_score": 57.74,
+        "pace_map_score": 59.76,
+        "performance_quality_score": 60.05,
+        "rating_score": 61.8,
+        "sectional_score": 60.0,
+        "track_score": 72.27,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 63.46,
+          "form_line": 60.29,
+          "jockey_trainer": 54.01,
+          "pace_perf": 57.89,
+          "race_shape": 59.01,
+          "stability": 60.77,
+          "track": 78.64
+        },
+        "ability": 60.4368,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_9_Logic/#13",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 79.0,
+        "consistency_score": 67.06,
+        "distance_score": 60.0,
+        "form_score": 42.67,
+        "formline_score": 75.0,
+        "health_score": 59.5,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 53.22,
+        "pace_figure_score": 19.16,
+        "pace_map_score": 57.85,
+        "rating_score": 56.03,
+        "sectional_score": 35.8,
+        "track_score": 82.07,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 52.36,
+          "form_line": 68.07,
+          "jockey_trainer": 54.36,
+          "pace_perf": 21.89,
+          "race_shape": 51.15,
+          "stability": 49.86,
+          "track": 93.53
+        },
+        "ability": 51.9245,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_7_Logic/#10",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 86.0,
+        "consistency_score": 49.1,
+        "distance_score": 60.0,
+        "form_score": 46.67,
+        "formline_score": 75.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 48.53,
+        "pace_figure_score": 36.69,
+        "pace_map_score": 57.03,
+        "rating_score": 52.34,
+        "sectional_score": 35.8,
+        "track_score": 54.09,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 45.26,
+          "form_line": 68.97,
+          "jockey_trainer": 50.45,
+          "pace_perf": 38.25,
+          "race_shape": 47.78,
+          "stability": 52.2,
+          "track": 51.02
+        },
+        "ability": 48.7987,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-07-08 Sandown Lakeside Race 1-8/Race_6_Logic/#13",
+      "features": {
+        "class_score": 54.52,
+        "confidence_score": 86.0,
+        "consistency_score": 96.04,
+        "distance_score": 50.0,
+        "form_score": 67.7,
+        "formline_score": 71.4,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 65.0,
+        "pace_figure_score": 79.19,
+        "pace_map_score": 59.54,
+        "rating_score": 52.9,
+        "sectional_score": 35.8,
+        "track_score": 72.94,
+        "trainer_score": 66.0,
+        "trial_score": 67.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 46.34,
+          "form_line": 70.83,
+          "jockey_trainer": 68.44,
+          "pace_perf": 78.31,
+          "race_shape": 58.11,
+          "stability": 64.5,
+          "track": 79.66
+        },
+        "ability": 65.0326,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_10_Logic/#10",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 84.0,
+        "consistency_score": 72.22,
+        "distance_score": 61.0,
+        "form_score": 70.0,
+        "formline_score": 72.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 66.0,
+        "pace_figure_score": 77.0,
+        "pace_map_score": 58.36,
+        "rating_score": 57.55,
+        "sectional_score": 62.44,
+        "track_score": 68.27,
+        "trainer_score": 66.0,
+        "trial_score": 80.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 55.29,
+          "form_line": 71.83,
+          "jockey_trainer": 72.49,
+          "pace_perf": 77.02,
+          "race_shape": 53.25,
+          "stability": 65.85,
+          "track": 72.56
+        },
+        "ability": 66.1223,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-08-21 Sale Race 1-9/Race_1_Logic/#4",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 79.0,
+        "consistency_score": 59.6,
+        "distance_score": 50.0,
+        "form_score": 71.84,
+        "formline_score": 61.8,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 64.81,
+        "jockey_score": 51.57,
+        "pace_figure_score": 64.42,
+        "pace_map_score": 57.89,
+        "performance_quality_score": 38.75,
+        "rating_score": 62.52,
+        "sectional_score": 67.75,
+        "track_score": 55.69,
+        "trainer_score": 45.46,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 64.85,
+          "form_line": 64.1,
+          "jockey_trainer": 47.18,
+          "pace_perf": 64.12,
+          "race_shape": 51.32,
+          "stability": 58.64,
+          "track": 53.45
+        },
+        "ability": 55.9313,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_1_Logic/#15",
+      "features": {
+        "class_score": 59.18,
+        "confidence_score": 77.0,
+        "consistency_score": 67.1,
+        "distance_score": 50.0,
+        "form_score": 52.0,
+        "formline_score": 85.5,
+        "health_score": 57.5,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 44.63,
+        "pace_figure_score": 45.35,
+        "pace_map_score": 57.79,
+        "rating_score": 59.18,
+        "sectional_score": 35.8,
+        "track_score": 62.9,
+        "trainer_score": 60.0,
+        "trial_score": 68.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 58.42,
+          "form_line": 78.55,
+          "jockey_trainer": 47.21,
+          "pace_perf": 46.79,
+          "race_shape": 50.91,
+          "stability": 55.32,
+          "track": 64.41
+        },
+        "ability": 53.0667,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-08-21 Murwillumbah Race 1-8/Race_1_Logic/#5",
+      "features": {
+        "class_score": 64.41,
+        "confidence_score": 77.0,
+        "consistency_score": 61.6,
+        "distance_score": 50.0,
+        "form_score": 74.73,
+        "formline_score": 88.5,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 68.51,
+        "pace_figure_score": 80.79,
+        "pace_map_score": 59.76,
+        "performance_quality_score": 75.1,
+        "rating_score": 62.38,
+        "sectional_score": 62.74,
+        "track_score": 63.7,
+        "trainer_score": 74.32,
+        "trial_score": 79.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 64.58,
+          "form_line": 86.06,
+          "jockey_trainer": 80.52,
+          "pace_perf": 80.5,
+          "race_shape": 59.01,
+          "stability": 74.51,
+          "track": 65.62
+        },
+        "ability": 72.5218,
+        "grade": "B+"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_8_Logic/#1",
+      "features": {
+        "class_score": 62.1,
+        "confidence_score": 86.0,
+        "consistency_score": 67.06,
+        "distance_score": 50.0,
+        "form_score": 42.0,
+        "formline_score": 79.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 66.0,
+        "pace_figure_score": 30.83,
+        "pace_map_score": 52.61,
+        "rating_score": 70.94,
+        "sectional_score": 35.8,
+        "track_score": 78.87,
+        "trainer_score": 66.0,
+        "trial_score": 67.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 81.05,
+          "form_line": 71.11,
+          "jockey_trainer": 69.28,
+          "pace_perf": 33.18,
+          "race_shape": 29.6,
+          "stability": 49.47,
+          "track": 88.67
+        },
+        "ability": 56.5716,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_7_Logic/#8",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 82.0,
+        "consistency_score": 67.36,
+        "distance_score": 60.0,
+        "form_score": 48.0,
+        "formline_score": 76.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 45.08,
+        "pace_figure_score": 40.35,
+        "pace_map_score": 56.26,
+        "rating_score": 55.37,
+        "sectional_score": 35.8,
+        "track_score": 70.3,
+        "trainer_score": 60.0,
+        "trial_score": 67.0,
+        "weight_score": 69.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 51.09,
+          "form_line": 70.07,
+          "jockey_trainer": 47.58,
+          "pace_perf": 42.07,
+          "race_shape": 44.61,
+          "stability": 52.98,
+          "track": 75.65
+        },
+        "ability": 51.054,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-07-01 Sandown Lakeside Race 1-8/Race_4_Logic/#12",
+      "features": {
+        "class_score": 62.04,
+        "confidence_score": 90.0,
+        "consistency_score": 85.18,
+        "distance_score": 60.0,
+        "form_score": 54.33,
+        "formline_score": 79.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 51.93,
+        "pace_figure_score": 54.2,
+        "pace_map_score": 55.93,
+        "rating_score": 50.28,
+        "sectional_score": 70.54,
+        "track_score": 71.34,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 71.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 41.3,
+          "form_line": 73.89,
+          "jockey_trainer": 53.28,
+          "pace_perf": 54.59,
+          "race_shape": 43.26,
+          "stability": 56.68,
+          "track": 77.23
+        },
+        "ability": 53.6686,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-12 Sunshine Coast Race 1-8/Race_1_Logic/#10",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 86.0,
+        "consistency_score": 59.2,
+        "distance_score": 50.0,
+        "form_score": 53.52,
+        "formline_score": 55.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 54.84,
+        "pace_figure_score": 54.88,
+        "pace_map_score": 56.26,
+        "rating_score": 60.0,
+        "sectional_score": 35.8,
+        "track_score": 58.15,
+        "trainer_score": 60.0,
+        "trial_score": 71.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 60.0,
+          "form_line": 54.55,
+          "jockey_trainer": 55.7,
+          "pace_perf": 55.86,
+          "race_shape": 44.61,
+          "stability": 56.21,
+          "track": 57.19
+        },
+        "ability": 55.0269,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_3_Logic/#8",
+      "features": {
+        "class_score": 53.21,
+        "confidence_score": 87.0,
+        "consistency_score": 72.76,
+        "distance_score": 62.0,
+        "form_score": 69.54,
+        "formline_score": 60.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 66.0,
+        "pace_figure_score": 73.19,
+        "pace_map_score": 55.26,
+        "rating_score": 53.21,
+        "sectional_score": 70.54,
+        "track_score": 71.9,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 46.93,
+          "form_line": 62.15,
+          "jockey_trainer": 64.99,
+          "pace_perf": 72.31,
+          "race_shape": 40.5,
+          "stability": 65.58,
+          "track": 78.08
+        },
+        "ability": 61.5319,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-01 Sandown Lakeside Race 1-8/Race_8_Logic/#12",
+      "features": {
+        "class_score": 56.62,
+        "confidence_score": 86.0,
+        "consistency_score": 88.18,
+        "distance_score": 62.0,
+        "form_score": 50.0,
+        "formline_score": 79.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 65.0,
+        "pace_figure_score": 90.91,
+        "pace_map_score": 59.75,
+        "rating_score": 54.68,
+        "sectional_score": 77.51,
+        "track_score": 74.7,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 49.76,
+          "form_line": 72.91,
+          "jockey_trainer": 64.16,
+          "pace_perf": 88.84,
+          "race_shape": 58.97,
+          "stability": 54.15,
+          "track": 82.33
+        },
+        "ability": 62.4971,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-01 Sandown Lakeside Race 1-8/Race_2_Logic/#4",
+      "features": {
+        "class_score": 54.52,
+        "confidence_score": 90.0,
+        "consistency_score": 100.0,
+        "distance_score": 64.0,
+        "form_score": 76.45,
+        "formline_score": 95.7,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 58.13,
+        "pace_figure_score": 87.21,
+        "pace_map_score": 55.7,
+        "rating_score": 66.23,
+        "sectional_score": 62.44,
+        "track_score": 62.9,
+        "trainer_score": 66.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 71.99,
+          "form_line": 92.19,
+          "jockey_trainer": 62.72,
+          "pace_perf": 85.39,
+          "race_shape": 42.31,
+          "stability": 69.62,
+          "track": 64.41
+        },
+        "ability": 65.885,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-08-21 Beaudesert Race 1-8/Race_3_Logic/#8",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 73.0,
+        "consistency_score": 64.6,
+        "distance_score": 62.0,
+        "form_score": 86.92,
+        "formline_score": 71.4,
+        "health_score": 59.0,
+        "jockey_horse_fit_score": 60.4,
+        "jockey_score": 57.27,
+        "pace_figure_score": 92.08,
+        "pace_map_score": 60.02,
+        "performance_quality_score": 82.46,
+        "rating_score": 63.23,
+        "sectional_score": 60.0,
+        "track_score": 62.9,
+        "trainer_score": 64.55,
+        "trial_score": 78.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 66.22,
+          "form_line": 75.16,
+          "jockey_trainer": 61.35,
+          "pace_perf": 90.98,
+          "race_shape": 60.08,
+          "stability": 84.51,
+          "track": 64.41
+        },
+        "ability": 72.764,
+        "grade": "B+"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_6_Logic/#7",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 90.0,
+        "consistency_score": 53.5,
+        "distance_score": 50.0,
+        "form_score": 50.48,
+        "formline_score": 75.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 48.53,
+        "pace_figure_score": 55.83,
+        "pace_map_score": 56.03,
+        "rating_score": 55.84,
+        "sectional_score": 35.8,
+        "track_score": 62.9,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 52.0,
+          "form_line": 69.83,
+          "jockey_trainer": 50.45,
+          "pace_perf": 56.11,
+          "race_shape": 43.67,
+          "stability": 54.43,
+          "track": 64.41
+        },
+        "ability": 52.7522,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-03 Moe Race 1-8/Race_3_Logic/#5",
+      "features": {
+        "class_score": 61.28,
+        "confidence_score": 85.0,
+        "consistency_score": 69.8,
+        "distance_score": 60.0,
+        "form_score": 52.0,
+        "formline_score": 78.0,
+        "health_score": 59.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 57.43,
+        "pace_figure_score": 96.26,
+        "pace_map_score": 56.26,
+        "rating_score": 61.28,
+        "sectional_score": 35.8,
+        "track_score": 56.5,
+        "trainer_score": 64.0,
+        "trial_score": 80.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 62.46,
+          "form_line": 72.56,
+          "jockey_trainer": 63.93,
+          "pace_perf": 94.99,
+          "race_shape": 44.61,
+          "stability": 55.32,
+          "track": 54.68
+        },
+        "ability": 60.8495,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-08-21 Murwillumbah Race 1-8/Race_7_Logic/#13",
+      "features": {
+        "class_score": 67.52,
+        "confidence_score": 78.0,
+        "consistency_score": 67.3,
+        "distance_score": 62.0,
+        "form_score": 54.65,
+        "formline_score": 85.2,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 58.0,
+        "jockey_score": 62.7,
+        "pace_figure_score": 61.3,
+        "pace_map_score": 60.24,
+        "performance_quality_score": 27.56,
+        "rating_score": 52.38,
+        "sectional_score": 86.19,
+        "track_score": 79.67,
+        "trainer_score": 55.25,
+        "trial_score": 60.0,
+        "weight_score": 63.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 45.34,
+          "form_line": 78.91,
+          "jockey_trainer": 56.96,
+          "pace_perf": 61.21,
+          "race_shape": 60.99,
+          "stability": 44.22,
+          "track": 89.88
+        },
+        "ability": 55.0047,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_8_Logic/#11",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 83.0,
+        "consistency_score": 48.1,
+        "distance_score": 60.0,
+        "form_score": 48.0,
+        "formline_score": 75.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 66.0,
+        "pace_figure_score": 25.81,
+        "pace_map_score": 57.86,
+        "rating_score": 59.59,
+        "sectional_score": 35.8,
+        "track_score": 70.3,
+        "trainer_score": 60.0,
+        "trial_score": 76.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 59.21,
+          "form_line": 69.27,
+          "jockey_trainer": 68.21,
+          "pace_perf": 29.02,
+          "race_shape": 51.2,
+          "stability": 52.98,
+          "track": 75.65
+        },
+        "ability": 56.2786,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-03 Moe Race 1-8/Race_6_Logic/#6",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 90.0,
+        "consistency_score": 71.92,
+        "distance_score": 60.0,
+        "form_score": 56.67,
+        "formline_score": 78.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 65.0,
+        "pace_figure_score": 61.36,
+        "pace_map_score": 53.72,
+        "rating_score": 51.82,
+        "sectional_score": 46.08,
+        "track_score": 65.7,
+        "trainer_score": 70.59,
+        "trial_score": 60.0,
+        "weight_score": 58.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 44.26,
+          "form_line": 73.62,
+          "jockey_trainer": 71.72,
+          "pace_perf": 61.27,
+          "race_shape": 34.16,
+          "stability": 58.05,
+          "track": 68.66
+        },
+        "ability": 57.4988,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-08-21 Beaudesert Race 1-8/Race_2_Logic/#15",
+      "features": {
+        "class_score": 53.21,
+        "confidence_score": 83.0,
+        "consistency_score": 61.6,
+        "distance_score": 52.0,
+        "form_score": 68.54,
+        "formline_score": 94.5,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 62.0,
+        "jockey_score": 48.49,
+        "pace_figure_score": 53.0,
+        "pace_map_score": 58.52,
+        "performance_quality_score": 43.47,
+        "rating_score": 59.5,
+        "sectional_score": 62.74,
+        "track_score": 62.9,
+        "trainer_score": 53.84,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 59.04,
+          "form_line": 89.46,
+          "jockey_trainer": 47.93,
+          "pace_perf": 53.47,
+          "race_shape": 53.91,
+          "stability": 58.55,
+          "track": 64.41
+        },
+        "ability": 55.4798,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-08-21 Murwillumbah Race 1-8/Race_3_Logic/#8",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 75.0,
+        "consistency_score": 67.6,
+        "distance_score": 51.0,
+        "form_score": 59.67,
+        "formline_score": 60.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 62.0,
+        "jockey_score": 56.93,
+        "pace_figure_score": 79.68,
+        "pace_map_score": 60.0,
+        "performance_quality_score": 21.54,
+        "rating_score": 55.84,
+        "sectional_score": 86.19,
+        "track_score": 63.7,
+        "trainer_score": 54.7,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 52.0,
+          "form_line": 59.93,
+          "jockey_trainer": 55.57,
+          "pace_perf": 78.36,
+          "race_shape": 60.0,
+          "stability": 44.81,
+          "track": 65.62
+        },
+        "ability": 55.4094,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_10_Logic/#5",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 87.0,
+        "consistency_score": 77.92,
+        "distance_score": 61.0,
+        "form_score": 47.1,
+        "formline_score": 76.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 66.0,
+        "pace_figure_score": 52.29,
+        "pace_map_score": 59.75,
+        "rating_score": 63.04,
+        "sectional_score": 35.8,
+        "track_score": 71.47,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 59.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 65.85,
+          "form_line": 69.87,
+          "jockey_trainer": 64.99,
+          "pace_perf": 52.81,
+          "race_shape": 58.97,
+          "stability": 52.45,
+          "track": 77.43
+        },
+        "ability": 59.8673,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-03 Moe Race 1-8/Race_7_Logic/#13",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 90.0,
+        "consistency_score": 72.47,
+        "distance_score": 60.0,
+        "form_score": 53.81,
+        "formline_score": 55.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 56.04,
+        "pace_figure_score": 47.78,
+        "pace_map_score": 57.03,
+        "rating_score": 48.3,
+        "sectional_score": 62.44,
+        "track_score": 76.34,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 37.49,
+          "form_line": 54.62,
+          "jockey_trainer": 56.7,
+          "pace_perf": 48.6,
+          "race_shape": 47.78,
+          "stability": 56.38,
+          "track": 84.83
+        },
+        "ability": 54.4841,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-08-21 Canberra Race 1-7/Race_1_Logic/#3",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 80.0,
+        "consistency_score": 64.6,
+        "distance_score": 50.0,
+        "form_score": 64.06,
+        "formline_score": 63.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 64.74,
+        "jockey_score": 69.12,
+        "pace_figure_score": 36.35,
+        "pace_map_score": 60.18,
+        "performance_quality_score": 68.68,
+        "rating_score": 61.24,
+        "sectional_score": 80.09,
+        "track_score": 62.09,
+        "trainer_score": 65.3,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 62.39,
+          "form_line": 63.31,
+          "jockey_trainer": 75.88,
+          "pace_perf": 37.93,
+          "race_shape": 60.74,
+          "stability": 65.76,
+          "track": 63.18
+        },
+        "ability": 63.8546,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-08 Sandown Lakeside Race 1-8/Race_8_Logic/#8",
+      "features": {
+        "class_score": 54.52,
+        "confidence_score": 86.0,
+        "consistency_score": 82.78,
+        "distance_score": 64.0,
+        "form_score": 58.42,
+        "formline_score": 75.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 65.0,
+        "pace_figure_score": 47.48,
+        "pace_map_score": 53.35,
+        "rating_score": 59.29,
+        "sectional_score": 35.8,
+        "track_score": 62.9,
+        "trainer_score": 60.0,
+        "trial_score": 67.0,
+        "weight_score": 52.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 58.63,
+          "form_line": 71.62,
+          "jockey_trainer": 64.16,
+          "pace_perf": 48.72,
+          "race_shape": 32.64,
+          "stability": 59.08,
+          "track": 64.41
+        },
+        "ability": 55.9611,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-08 Sandown Lakeside Race 1-8/Race_1_Logic/#4",
+      "features": {
+        "class_score": 53.7,
+        "confidence_score": 84.0,
+        "consistency_score": 64.6,
+        "distance_score": 50.0,
+        "form_score": 66.0,
+        "formline_score": 75.0,
+        "health_score": 59.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 61.62,
+        "pace_figure_score": 91.47,
+        "pace_map_score": 59.75,
+        "rating_score": 53.7,
+        "sectional_score": 35.8,
+        "track_score": 56.5,
+        "trainer_score": 60.0,
+        "trial_score": 88.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 47.88,
+          "form_line": 73.32,
+          "jockey_trainer": 64.56,
+          "pace_perf": 90.98,
+          "race_shape": 58.97,
+          "stability": 63.51,
+          "track": 54.68
+        },
+        "ability": 63.4476,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-08-21 Murtoa Race 1-8/Race_2_Logic/#6",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 76.0,
+        "consistency_score": 67.6,
+        "distance_score": 54.0,
+        "form_score": 58.9,
+        "formline_score": 60.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 58.0,
+        "jockey_score": 39.96,
+        "pace_figure_score": 35.62,
+        "pace_map_score": 60.89,
+        "performance_quality_score": 15.55,
+        "rating_score": 65.16,
+        "sectional_score": 62.74,
+        "track_score": 52.21,
+        "trainer_score": 46.74,
+        "trial_score": 60.0,
+        "weight_score": 56.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 69.93,
+          "form_line": 59.75,
+          "jockey_trainer": 31.95,
+          "pace_perf": 37.25,
+          "race_shape": 63.66,
+          "stability": 42.02,
+          "track": 48.16
+        },
+        "ability": 45.9771,
+        "grade": "E"
+      }
+    },
+    {
+      "id": "2026-08-21 Murtoa Race 1-8/Race_8_Logic/#4",
+      "features": {
+        "class_score": 62.1,
+        "confidence_score": 77.0,
+        "consistency_score": 61.6,
+        "distance_score": 64.0,
+        "form_score": 81.12,
+        "formline_score": 100.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 57.02,
+        "jockey_score": 41.02,
+        "pace_figure_score": 35.05,
+        "pace_map_score": 60.02,
+        "performance_quality_score": 87.08,
+        "rating_score": 66.71,
+        "sectional_score": 80.09,
+        "track_score": 65.7,
+        "trainer_score": 68.61,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 72.91,
+          "form_line": 96.68,
+          "jockey_trainer": 47.51,
+          "pace_perf": 36.72,
+          "race_shape": 60.08,
+          "stability": 82.92,
+          "track": 68.66
+        },
+        "ability": 64.4812,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_3_Logic/#11",
+      "features": {
+        "class_score": 62.31,
+        "confidence_score": 84.0,
+        "consistency_score": 68.46,
+        "distance_score": 62.0,
+        "form_score": 55.67,
+        "formline_score": 76.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 66.0,
+        "pace_figure_score": 96.25,
+        "pace_map_score": 53.12,
+        "rating_score": 58.06,
+        "sectional_score": 62.44,
+        "track_score": 58.76,
+        "trainer_score": 72.0,
+        "trial_score": 69.0,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 56.27,
+          "form_line": 71.79,
+          "jockey_trainer": 73.56,
+          "pace_perf": 94.35,
+          "race_shape": 31.69,
+          "stability": 57.47,
+          "track": 58.12
+        },
+        "ability": 61.4892,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-03 Moe Race 1-8/Race_2_Logic/#3",
+      "features": {
+        "class_score": 57.7,
+        "confidence_score": 63.0,
+        "consistency_score": 52.4,
+        "distance_score": 50.0,
+        "form_score": 60.0,
+        "formline_score": 58.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 65.0,
+        "pace_figure_score": 60.0,
+        "pace_map_score": 52.66,
+        "rating_score": 57.7,
+        "sectional_score": 35.8,
+        "track_score": 56.5,
+        "trainer_score": 60.0,
+        "trial_score": 85.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 55.57,
+          "form_line": 58.4,
+          "jockey_trainer": 67.38,
+          "pace_perf": 61.44,
+          "race_shape": 29.8,
+          "stability": 60.0,
+          "track": 54.68
+        },
+        "ability": 56.8128,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-08 Sandown Lakeside Race 1-8/Race_5_Logic/#4",
+      "features": {
+        "class_score": 54.52,
+        "confidence_score": 87.0,
+        "consistency_score": 72.46,
+        "distance_score": 64.0,
+        "form_score": 59.7,
+        "formline_score": 75.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 65.0,
+        "pace_figure_score": 61.12,
+        "pace_map_score": 59.45,
+        "rating_score": 55.47,
+        "sectional_score": 50.87,
+        "track_score": 71.34,
+        "trainer_score": 72.0,
+        "trial_score": 67.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 51.28,
+          "form_line": 71.9,
+          "jockey_trainer": 72.72,
+          "pace_perf": 61.45,
+          "race_shape": 57.74,
+          "stability": 59.82,
+          "track": 77.23
+        },
+        "ability": 63.0439,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_1_Logic/#1",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 87.0,
+        "consistency_score": 72.76,
+        "distance_score": 62.0,
+        "form_score": 66.0,
+        "formline_score": 76.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 51.1,
+        "pace_figure_score": 23.68,
+        "pace_map_score": 57.24,
+        "rating_score": 60.0,
+        "sectional_score": 35.8,
+        "track_score": 62.9,
+        "trainer_score": 60.0,
+        "trial_score": 77.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 60.0,
+          "form_line": 74.12,
+          "jockey_trainer": 55.81,
+          "pace_perf": 27.09,
+          "race_shape": 48.64,
+          "stability": 63.51,
+          "track": 64.41
+        },
+        "ability": 55.5412,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-01 Sandown Lakeside Race 1-8/Race_7_Logic/#15",
+      "features": {
+        "class_score": 54.52,
+        "confidence_score": 87.0,
+        "consistency_score": 76.32,
+        "distance_score": 60.0,
+        "form_score": 58.25,
+        "formline_score": 60.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 65.0,
+        "pace_figure_score": 73.93,
+        "pace_map_score": 59.75,
+        "rating_score": 52.85,
+        "sectional_score": 70.54,
+        "track_score": 56.5,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 46.24,
+          "form_line": 59.61,
+          "jockey_trainer": 64.16,
+          "pace_perf": 73.0,
+          "race_shape": 58.97,
+          "stability": 58.98,
+          "track": 54.68
+        },
+        "ability": 59.7685,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-03 Moe Race 1-8/Race_8_Logic/#2",
+      "features": {
+        "class_score": 67.52,
+        "confidence_score": 83.0,
+        "consistency_score": 77.32,
+        "distance_score": 60.0,
+        "form_score": 73.57,
+        "formline_score": 78.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 51.84,
+        "pace_figure_score": 59.61,
+        "pace_map_score": 56.03,
+        "rating_score": 65.23,
+        "sectional_score": 35.8,
+        "track_score": 80.34,
+        "trainer_score": 61.0,
+        "trial_score": 67.0,
+        "weight_score": 58.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 70.06,
+          "form_line": 77.42,
+          "jockey_trainer": 53.92,
+          "pace_perf": 60.04,
+          "race_shape": 43.67,
+          "stability": 67.94,
+          "track": 90.9
+        },
+        "ability": 62.715,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-08-21 Murtoa Race 1-8/Race_8_Logic/#8",
+      "features": {
+        "class_score": 67.52,
+        "confidence_score": 78.0,
+        "consistency_score": 64.6,
+        "distance_score": 52.0,
+        "form_score": 61.47,
+        "formline_score": 60.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 65.38,
+        "jockey_score": 44.9,
+        "pace_figure_score": 76.47,
+        "pace_map_score": 58.52,
+        "performance_quality_score": 76.44,
+        "rating_score": 62.61,
+        "sectional_score": 80.09,
+        "track_score": 58.76,
+        "trainer_score": 33.85,
+        "trial_score": 76.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 65.02,
+          "form_line": 60.33,
+          "jockey_trainer": 33.89,
+          "pace_perf": 76.29,
+          "race_shape": 53.91,
+          "stability": 67.27,
+          "track": 58.12
+        },
+        "ability": 57.7514,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-08-21 Sale Race 1-9/Race_2_Logic/#10",
+      "features": {
+        "class_score": 62.31,
+        "confidence_score": 73.0,
+        "consistency_score": 64.6,
+        "distance_score": 52.0,
+        "form_score": 70.05,
+        "formline_score": 76.0,
+        "health_score": 59.0,
+        "jockey_horse_fit_score": 68.95,
+        "jockey_score": 76.87,
+        "pace_figure_score": 90.6,
+        "pace_map_score": 62.66,
+        "performance_quality_score": 91.24,
+        "rating_score": 60.35,
+        "sectional_score": 60.0,
+        "track_score": 63.7,
+        "trainer_score": 56.85,
+        "trial_score": 91.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 60.67,
+          "form_line": 75.03,
+          "jockey_trainer": 80.31,
+          "pace_perf": 90.34,
+          "race_shape": 70.94,
+          "stability": 78.06,
+          "track": 65.62
+        },
+        "ability": 75.8191,
+        "grade": "B+"
+      }
+    },
+    {
+      "id": "2026-07-12 Sunshine Coast Race 1-8/Race_6_Logic/#9",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 87.0,
+        "consistency_score": 83.63,
+        "distance_score": 50.0,
+        "form_score": 53.0,
+        "formline_score": 78.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 57.27,
+        "pace_figure_score": 32.06,
+        "pace_map_score": 54.72,
+        "rating_score": 56.43,
+        "sectional_score": 35.8,
+        "track_score": 67.47,
+        "trainer_score": 72.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 53.13,
+          "form_line": 72.79,
+          "jockey_trainer": 66.29,
+          "pace_perf": 33.93,
+          "race_shape": 38.28,
+          "stability": 55.91,
+          "track": 71.35
+        },
+        "ability": 54.5008,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_4_Logic/#6",
+      "features": {
+        "class_score": 62.31,
+        "confidence_score": 87.0,
+        "consistency_score": 98.74,
+        "distance_score": 64.0,
+        "form_score": 58.12,
+        "formline_score": 76.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 61.0,
+        "pace_figure_score": 88.98,
+        "pace_map_score": 59.75,
+        "rating_score": 58.41,
+        "sectional_score": 62.44,
+        "track_score": 68.7,
+        "trainer_score": 72.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 56.94,
+          "form_line": 72.35,
+          "jockey_trainer": 69.39,
+          "pace_perf": 87.04,
+          "race_shape": 58.97,
+          "stability": 58.9,
+          "track": 73.22
+        },
+        "ability": 65.2038,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_10_Logic/#13",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 87.0,
+        "consistency_score": 77.92,
+        "distance_score": 57.0,
+        "form_score": 56.67,
+        "formline_score": 75.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 61.0,
+        "pace_figure_score": 55.38,
+        "pace_map_score": 55.06,
+        "rating_score": 55.35,
+        "sectional_score": 46.08,
+        "track_score": 73.07,
+        "trainer_score": 66.0,
+        "trial_score": 67.0,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 51.05,
+          "form_line": 71.22,
+          "jockey_trainer": 65.11,
+          "pace_perf": 56.09,
+          "race_shape": 39.68,
+          "stability": 58.05,
+          "track": 79.86
+        },
+        "ability": 57.8965,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-01 Sandown Lakeside Race 1-8/Race_6_Logic/#8",
+      "features": {
+        "class_score": 59.94,
+        "confidence_score": 86.0,
+        "consistency_score": 100.0,
+        "distance_score": 62.0,
+        "form_score": 81.0,
+        "formline_score": 75.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 58.13,
+        "pace_figure_score": 36.38,
+        "pace_map_score": 59.75,
+        "rating_score": 63.01,
+        "sectional_score": 35.8,
+        "track_score": 72.94,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 65.79,
+          "form_line": 76.7,
+          "jockey_trainer": 58.44,
+          "pace_perf": 37.96,
+          "race_shape": 58.97,
+          "stability": 72.28,
+          "track": 79.66
+        },
+        "ability": 63.4957,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-08 Sandown Lakeside Race 1-8/Race_4_Logic/#1",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 84.0,
+        "consistency_score": 85.48,
+        "distance_score": 60.0,
+        "form_score": 51.33,
+        "formline_score": 75.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 61.0,
+        "pace_figure_score": 59.95,
+        "pace_map_score": 58.19,
+        "rating_score": 68.99,
+        "sectional_score": 63.9,
+        "track_score": 71.33,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 52.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 77.3,
+          "form_line": 70.02,
+          "jockey_trainer": 60.83,
+          "pace_perf": 59.95,
+          "race_shape": 52.55,
+          "stability": 54.93,
+          "track": 77.21
+        },
+        "ability": 60.978,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_9_Logic/#7",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 82.0,
+        "consistency_score": 51.4,
+        "distance_score": 50.0,
+        "form_score": 48.0,
+        "formline_score": 55.0,
+        "health_score": 57.5,
+        "jockey_horse_fit_score": 63.38,
+        "jockey_score": 52.42,
+        "pace_figure_score": 2.18,
+        "pace_map_score": 55.55,
+        "rating_score": 56.5,
+        "sectional_score": 35.8,
+        "track_score": 70.3,
+        "trainer_score": 60.0,
+        "trial_score": 76.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 53.27,
+          "form_line": 53.31,
+          "jockey_trainer": 56.91,
+          "pace_perf": 6.97,
+          "race_shape": 41.69,
+          "stability": 52.98,
+          "track": 75.65
+        },
+        "ability": 49.3585,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-08-21 Murtoa Race 1-8/Race_1_Logic/#5",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 78.0,
+        "consistency_score": 64.6,
+        "distance_score": 52.0,
+        "form_score": 65.93,
+        "formline_score": 60.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 62.0,
+        "jockey_score": 59.09,
+        "pace_figure_score": 69.0,
+        "pace_map_score": 60.18,
+        "performance_quality_score": 77.41,
+        "rating_score": 62.12,
+        "sectional_score": 80.09,
+        "track_score": 56.5,
+        "trainer_score": 35.27,
+        "trial_score": 68.0,
+        "weight_score": 56.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 64.08,
+          "form_line": 61.33,
+          "jockey_trainer": 43.5,
+          "pace_perf": 68.86,
+          "race_shape": 60.74,
+          "stability": 70.26,
+          "track": 54.68
+        },
+        "ability": 60.6887,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-08-21 Canberra Race 1-7/Race_4_Logic/#1",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 75.0,
+        "consistency_score": 64.3,
+        "distance_score": 62.0,
+        "form_score": 59.65,
+        "formline_score": 86.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 67.54,
+        "jockey_score": 48.79,
+        "pace_figure_score": 27.13,
+        "pace_map_score": 60.89,
+        "performance_quality_score": 50.04,
+        "rating_score": 63.0,
+        "sectional_score": 60.0,
+        "track_score": 62.09,
+        "trainer_score": 33.73,
+        "trial_score": 85.0,
+        "weight_score": 57.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 65.77,
+          "form_line": 80.67,
+          "jockey_trainer": 39.1,
+          "pace_perf": 30.77,
+          "race_shape": 63.66,
+          "stability": 55.91,
+          "track": 63.18
+        },
+        "ability": 52.2131,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-08 Sandown Lakeside Race 1-8/Race_5_Logic/#7",
+      "features": {
+        "class_score": 54.52,
+        "confidence_score": 90.0,
+        "consistency_score": 88.18,
+        "distance_score": 61.0,
+        "form_score": 63.75,
+        "formline_score": 84.2,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 65.0,
+        "pace_figure_score": 52.69,
+        "pace_map_score": 56.7,
+        "rating_score": 55.47,
+        "sectional_score": 62.44,
+        "track_score": 62.9,
+        "trainer_score": 66.0,
+        "trial_score": 67.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 51.28,
+          "form_line": 80.16,
+          "jockey_trainer": 68.44,
+          "pace_perf": 53.58,
+          "race_shape": 46.42,
+          "stability": 62.19,
+          "track": 64.41
+        },
+        "ability": 59.4537,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-08-21 Canberra Race 1-7/Race_1_Logic/#4",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 73.0,
+        "consistency_score": 64.3,
+        "distance_score": 50.0,
+        "form_score": 59.04,
+        "formline_score": 60.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 58.0,
+        "jockey_score": 59.96,
+        "pace_figure_score": 100.0,
+        "pace_map_score": 60.18,
+        "performance_quality_score": 22.62,
+        "rating_score": 50.87,
+        "sectional_score": 80.09,
+        "track_score": 54.09,
+        "trainer_score": 56.48,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 42.43,
+          "form_line": 59.78,
+          "jockey_trainer": 55.55,
+          "pace_perf": 97.33,
+          "race_shape": 60.74,
+          "stability": 44.86,
+          "track": 51.02
+        },
+        "ability": 55.1983,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_4_Logic/#17",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 87.0,
+        "consistency_score": 88.18,
+        "distance_score": 62.0,
+        "form_score": 49.33,
+        "formline_score": 76.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 66.0,
+        "pace_figure_score": 74.66,
+        "pace_map_score": 59.75,
+        "rating_score": 64.86,
+        "sectional_score": 62.44,
+        "track_score": 74.07,
+        "trainer_score": 72.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 69.35,
+          "form_line": 70.37,
+          "jockey_trainer": 73.56,
+          "pace_perf": 73.68,
+          "race_shape": 58.97,
+          "stability": 53.76,
+          "track": 81.38
+        },
+        "ability": 65.2086,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-08 Sandown Lakeside Race 1-8/Race_6_Logic/#9",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 83.0,
+        "consistency_score": 68.46,
+        "distance_score": 60.0,
+        "form_score": 46.71,
+        "formline_score": 55.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 66.0,
+        "pace_figure_score": 54.5,
+        "pace_map_score": 50.3,
+        "rating_score": 58.09,
+        "sectional_score": 35.8,
+        "track_score": 51.55,
+        "trainer_score": 70.59,
+        "trial_score": 69.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 56.32,
+          "form_line": 53.02,
+          "jockey_trainer": 72.55,
+          "pace_perf": 55.39,
+          "race_shape": 20.09,
+          "stability": 52.23,
+          "track": 47.16
+        },
+        "ability": 52.9795,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-12 Sunshine Coast Race 1-8/Race_6_Logic/#11",
+      "features": {
+        "class_score": 60.7,
+        "confidence_score": 83.0,
+        "consistency_score": 79.78,
+        "distance_score": 61.0,
+        "form_score": 56.43,
+        "formline_score": 79.0,
+        "health_score": 58.5,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 55.27,
+        "pace_figure_score": 55.46,
+        "pace_map_score": 46.27,
+        "rating_score": 58.88,
+        "sectional_score": 62.44,
+        "track_score": 76.7,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 57.84,
+          "form_line": 74.36,
+          "jockey_trainer": 56.06,
+          "pace_perf": 55.76,
+          "race_shape": 3.51,
+          "stability": 57.91,
+          "track": 85.37
+        },
+        "ability": 52.121,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-08-21 Murtoa Race 1-8/Race_6_Logic/#19",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 76.0,
+        "consistency_score": 70.3,
+        "distance_score": 52.0,
+        "form_score": 58.95,
+        "formline_score": 60.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 58.0,
+        "jockey_score": 39.96,
+        "pace_figure_score": 46.27,
+        "pace_map_score": 60.89,
+        "performance_quality_score": 40.84,
+        "rating_score": 48.42,
+        "sectional_score": 62.74,
+        "track_score": 64.89,
+        "trainer_score": 54.84,
+        "trial_score": 67.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 37.72,
+          "form_line": 59.76,
+          "jockey_trainer": 37.73,
+          "pace_perf": 47.59,
+          "race_shape": 63.66,
+          "stability": 51.91,
+          "track": 67.43
+        },
+        "ability": 49.3216,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-07-12 Sunshine Coast Race 1-8/Race_8_Logic/#9",
+      "features": {
+        "class_score": 62.31,
+        "confidence_score": 82.0,
+        "consistency_score": 74.62,
+        "distance_score": 62.0,
+        "form_score": 56.9,
+        "formline_score": 86.6,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 53.73,
+        "pace_figure_score": 78.43,
+        "pace_map_score": 57.86,
+        "rating_score": 58.12,
+        "sectional_score": 35.8,
+        "track_score": 71.1,
+        "trainer_score": 60.0,
+        "trial_score": 67.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 56.38,
+          "form_line": 80.53,
+          "jockey_trainer": 54.78,
+          "pace_perf": 77.6,
+          "race_shape": 51.2,
+          "stability": 58.19,
+          "track": 76.86
+        },
+        "ability": 59.7966,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_4_Logic/#6",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 87.0,
+        "consistency_score": 59.5,
+        "distance_score": 62.0,
+        "form_score": 51.43,
+        "formline_score": 76.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 50.36,
+        "pace_figure_score": 58.67,
+        "pace_map_score": 55.55,
+        "rating_score": 58.95,
+        "sectional_score": 35.8,
+        "track_score": 71.9,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 57.98,
+          "form_line": 70.84,
+          "jockey_trainer": 51.98,
+          "pace_perf": 58.76,
+          "race_shape": 41.69,
+          "stability": 54.99,
+          "track": 78.08
+        },
+        "ability": 55.1194,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-01 Sandown Lakeside Race 1-8/Race_7_Logic/#12",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 87.0,
+        "consistency_score": 78.78,
+        "distance_score": 56.0,
+        "form_score": 60.41,
+        "formline_score": 97.7,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 66.0,
+        "pace_figure_score": 30.31,
+        "pace_map_score": 59.75,
+        "rating_score": 55.14,
+        "sectional_score": 46.08,
+        "track_score": 52.21,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 50.65,
+          "form_line": 90.18,
+          "jockey_trainer": 64.99,
+          "pace_perf": 32.29,
+          "race_shape": 58.97,
+          "stability": 60.24,
+          "track": 48.16
+        },
+        "ability": 56.0823,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-08-21 Canberra Race 1-7/Race_7_Logic/#9",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 78.0,
+        "consistency_score": 67.3,
+        "distance_score": 60.0,
+        "form_score": 73.68,
+        "formline_score": 92.9,
+        "health_score": 59.0,
+        "jockey_horse_fit_score": 57.02,
+        "jockey_score": 46.27,
+        "pace_figure_score": 37.76,
+        "pace_map_score": 60.02,
+        "performance_quality_score": 79.48,
+        "rating_score": 54.6,
+        "sectional_score": 62.74,
+        "track_score": 54.09,
+        "trainer_score": 59.9,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 49.61,
+          "form_line": 89.34,
+          "jockey_trainer": 45.66,
+          "pace_perf": 39.25,
+          "race_shape": 60.08,
+          "stability": 75.6,
+          "track": 51.02
+        },
+        "ability": 57.6904,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-08 Sandown Lakeside Race 1-8/Race_8_Logic/#4",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 86.0,
+        "consistency_score": 88.18,
+        "distance_score": 62.0,
+        "form_score": 51.17,
+        "formline_score": 78.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 61.88,
+        "pace_figure_score": 47.69,
+        "pace_map_score": 46.53,
+        "rating_score": 62.48,
+        "sectional_score": 35.8,
+        "track_score": 81.14,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 52.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 64.77,
+          "form_line": 72.38,
+          "jockey_trainer": 61.56,
+          "pace_perf": 48.51,
+          "race_shape": 4.58,
+          "stability": 54.83,
+          "track": 92.12
+        },
+        "ability": 53.1254,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-07-03 Moe Race 1-8/Race_5_Logic/#6",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 87.0,
+        "consistency_score": 96.34,
+        "distance_score": 63.0,
+        "form_score": 83.93,
+        "formline_score": 61.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 54.47,
+        "pace_figure_score": 54.31,
+        "pace_map_score": 55.55,
+        "rating_score": 57.96,
+        "sectional_score": 39.44,
+        "track_score": 81.14,
+        "trainer_score": 60.0,
+        "trial_score": 69.0,
+        "weight_score": 58.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 56.07,
+          "form_line": 66.18,
+          "jockey_trainer": 55.4,
+          "pace_perf": 55.21,
+          "race_shape": 41.69,
+          "stability": 74.0,
+          "track": 92.12
+        },
+        "ability": 62.6861,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-01 Sandown Lakeside Race 1-8/Race_2_Logic/#5",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 87.0,
+        "consistency_score": 85.18,
+        "distance_score": 62.0,
+        "form_score": 55.01,
+        "formline_score": 76.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 66.0,
+        "pace_figure_score": 57.28,
+        "pace_map_score": 55.7,
+        "rating_score": 61.88,
+        "sectional_score": 62.44,
+        "track_score": 65.7,
+        "trainer_score": 60.0,
+        "trial_score": 60.0,
+        "weight_score": 52.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 63.62,
+          "form_line": 71.65,
+          "jockey_trainer": 64.99,
+          "pace_perf": 57.46,
+          "race_shape": 42.31,
+          "stability": 57.08,
+          "track": 68.66
+        },
+        "ability": 58.6625,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-08-21 Murwillumbah Race 1-8/Race_5_Logic/#8",
+      "features": {
+        "class_score": 67.52,
+        "confidence_score": 79.0,
+        "consistency_score": 61.6,
+        "distance_score": 62.0,
+        "form_score": 73.41,
+        "formline_score": 60.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 64.81,
+        "jockey_score": 46.28,
+        "pace_figure_score": 71.22,
+        "pace_map_score": 60.89,
+        "performance_quality_score": 67.53,
+        "rating_score": 52.24,
+        "sectional_score": 62.74,
+        "track_score": 58.15,
+        "trainer_score": 53.98,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 45.07,
+          "form_line": 63.02,
+          "jockey_trainer": 48.86,
+          "pace_perf": 70.47,
+          "race_shape": 63.66,
+          "stability": 70.78,
+          "track": 57.19
+        },
+        "ability": 60.5667,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-03 Moe Race 1-8/Race_8_Logic/#11",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 83.0,
+        "consistency_score": 93.34,
+        "distance_score": 62.0,
+        "form_score": 63.21,
+        "formline_score": 70.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 56.04,
+        "pace_figure_score": 82.46,
+        "pace_map_score": 55.26,
+        "rating_score": 56.14,
+        "sectional_score": 35.8,
+        "track_score": 65.7,
+        "trainer_score": 60.0,
+        "trial_score": 67.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 52.57,
+          "form_line": 68.7,
+          "jockey_trainer": 56.7,
+          "pace_perf": 81.36,
+          "race_shape": 40.5,
+          "stability": 61.88,
+          "track": 68.66
+        },
+        "ability": 59.2884,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-08-21 Beaudesert Race 1-8/Race_6_Logic/#11",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 73.0,
+        "consistency_score": 67.6,
+        "distance_score": 52.0,
+        "form_score": 64.88,
+        "formline_score": 55.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 57.02,
+        "jockey_score": 83.79,
+        "pace_figure_score": 57.1,
+        "pace_map_score": 60.89,
+        "performance_quality_score": 63.99,
+        "rating_score": 58.86,
+        "sectional_score": 60.0,
+        "track_score": 67.9,
+        "trainer_score": 64.55,
+        "trial_score": 67.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 57.81,
+          "form_line": 57.11,
+          "jockey_trainer": 80.22,
+          "pace_perf": 57.7,
+          "race_shape": 63.66,
+          "stability": 64.41,
+          "track": 72.0
+        },
+        "ability": 67.0451,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_10_Logic/#1",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 87.0,
+        "consistency_score": 80.78,
+        "distance_score": 50.0,
+        "form_score": 49.38,
+        "formline_score": 75.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 53.7,
+        "pace_figure_score": 75.07,
+        "pace_map_score": 49.23,
+        "rating_score": 69.69,
+        "sectional_score": 62.44,
+        "track_score": 61.06,
+        "trainer_score": 72.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 78.65,
+          "form_line": 69.58,
+          "jockey_trainer": 63.32,
+          "pace_perf": 74.06,
+          "race_shape": 15.69,
+          "stability": 53.79,
+          "track": 61.61
+        },
+        "ability": 56.6025,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-07-03 Ballarat Synthetic Race 1-9/Race_5_Logic/#4",
+      "features": {
+        "class_score": 58.6,
+        "confidence_score": 86.0,
+        "consistency_score": 48.1,
+        "distance_score": 60.0,
+        "form_score": 46.67,
+        "formline_score": 75.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 51.1,
+        "pace_figure_score": 46.08,
+        "pace_map_score": 57.86,
+        "rating_score": 60.62,
+        "sectional_score": 50.87,
+        "track_score": 62.9,
+        "trainer_score": 60.0,
+        "trial_score": 67.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 61.19,
+          "form_line": 68.97,
+          "jockey_trainer": 52.59,
+          "pace_perf": 47.41,
+          "race_shape": 51.2,
+          "stability": 52.2,
+          "track": 64.41
+        },
+        "ability": 53.7128,
+        "grade": "C-"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_4_Logic/#14",
+      "features": {
+        "class_score": 60.0,
+        "confidence_score": 76.0,
+        "consistency_score": 80.32,
+        "distance_score": 50.0,
+        "form_score": 53.33,
+        "formline_score": 75.0,
+        "health_score": 57.5,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 60.0,
+        "pace_figure_score": 36.57,
+        "pace_map_score": 47.84,
+        "rating_score": 50.07,
+        "sectional_score": 35.8,
+        "track_score": 63.7,
+        "trainer_score": 61.0,
+        "trial_score": 67.0,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 40.89,
+          "form_line": 70.47,
+          "jockey_trainer": 60.71,
+          "pace_perf": 38.54,
+          "race_shape": 9.97,
+          "stability": 56.1,
+          "track": 65.62
+        },
+        "ability": 48.0171,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_4_Logic/#4",
+      "features": {
+        "class_score": 59.18,
+        "confidence_score": 87.0,
+        "consistency_score": 88.18,
+        "distance_score": 62.0,
+        "form_score": 53.92,
+        "formline_score": 79.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 66.0,
+        "pace_figure_score": 40.79,
+        "pace_map_score": 59.75,
+        "rating_score": 61.18,
+        "sectional_score": 62.44,
+        "track_score": 67.46,
+        "trainer_score": 60.0,
+        "trial_score": 67.0,
+        "weight_score": 59.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 62.27,
+          "form_line": 73.8,
+          "jockey_trainer": 64.99,
+          "pace_perf": 42.48,
+          "race_shape": 58.97,
+          "stability": 56.44,
+          "track": 71.33
+        },
+        "ability": 59.1687,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-08-21 Canberra Race 1-7/Race_6_Logic/#4",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 75.0,
+        "consistency_score": 67.3,
+        "distance_score": 62.0,
+        "form_score": 72.84,
+        "formline_score": 76.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 60.31,
+        "jockey_score": 69.12,
+        "pace_figure_score": 92.4,
+        "pace_map_score": 60.89,
+        "performance_quality_score": 82.36,
+        "rating_score": 63.45,
+        "sectional_score": 60.0,
+        "track_score": 71.9,
+        "trainer_score": 65.3,
+        "trial_score": 67.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 66.64,
+          "form_line": 75.66,
+          "jockey_trainer": 71.67,
+          "pace_perf": 90.64,
+          "race_shape": 63.66,
+          "stability": 76.23,
+          "track": 78.08
+        },
+        "ability": 74.0035,
+        "grade": "B+"
+      }
+    },
+    {
+      "id": "2026-08-21 Murwillumbah Race 1-8/Race_7_Logic/#17",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 81.0,
+        "consistency_score": 67.6,
+        "distance_score": 51.0,
+        "form_score": 73.3,
+        "formline_score": 95.7,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 57.02,
+        "jockey_score": 52.95,
+        "pace_figure_score": 29.53,
+        "pace_map_score": 60.02,
+        "performance_quality_score": 34.9,
+        "rating_score": 47.0,
+        "sectional_score": 80.09,
+        "track_score": 66.1,
+        "trainer_score": 55.91,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 34.99,
+          "form_line": 91.49,
+          "jockey_trainer": 48.38,
+          "pace_perf": 31.57,
+          "race_shape": 60.08,
+          "stability": 57.99,
+          "track": 69.27
+        },
+        "ability": 51.4129,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-08-21 Sale Race 1-9/Race_8_Logic/#6",
+      "features": {
+        "class_score": 62.1,
+        "confidence_score": 79.0,
+        "consistency_score": 61.6,
+        "distance_score": 62.0,
+        "form_score": 71.07,
+        "formline_score": 100.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 59.02,
+        "jockey_score": 65.92,
+        "pace_figure_score": 80.76,
+        "pace_map_score": 58.52,
+        "performance_quality_score": 73.01,
+        "rating_score": 60.83,
+        "sectional_score": 62.74,
+        "track_score": 67.46,
+        "trainer_score": 68.54,
+        "trial_score": 60.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 61.6,
+          "form_line": 94.42,
+          "jockey_trainer": 70.09,
+          "pace_perf": 79.37,
+          "race_shape": 53.91,
+          "stability": 71.55,
+          "track": 71.33
+        },
+        "ability": 68.4459,
+        "grade": "B"
+      }
+    },
+    {
+      "id": "2026-08-21 Beaudesert Race 1-8/Race_2_Logic/#9",
+      "features": {
+        "class_score": 57.7,
+        "confidence_score": 65.0,
+        "consistency_score": 52.4,
+        "distance_score": 50.0,
+        "form_score": 60.0,
+        "formline_score": 60.0,
+        "health_score": 60.0,
+        "jockey_horse_fit_score": 62.0,
+        "jockey_score": 47.36,
+        "pace_figure_score": 48.6,
+        "pace_map_score": 58.52,
+        "performance_quality_score": 52.4,
+        "rating_score": 57.32,
+        "sectional_score": 60.0,
+        "track_score": 62.9,
+        "trainer_score": 41.27,
+        "trial_score": 58.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 54.84,
+          "form_line": 60.0,
+          "jockey_trainer": 38.02,
+          "pace_perf": 49.25,
+          "race_shape": 53.91,
+          "stability": 57.04,
+          "track": 64.41
+        },
+        "ability": 51.7564,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-08-21 Sale Race 1-9/Race_7_Logic/#10",
+      "features": {
+        "class_score": 64.41,
+        "confidence_score": 75.0,
+        "consistency_score": 61.6,
+        "distance_score": 62.0,
+        "form_score": 67.43,
+        "formline_score": 94.9,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 66.12,
+        "jockey_score": 56.04,
+        "pace_figure_score": 13.41,
+        "pace_map_score": 58.52,
+        "performance_quality_score": 22.43,
+        "rating_score": 56.67,
+        "sectional_score": 60.0,
+        "track_score": 68.7,
+        "trainer_score": 57.94,
+        "trial_score": 78.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 53.59,
+          "form_line": 89.53,
+          "jockey_trainer": 61.06,
+          "pace_perf": 17.56,
+          "race_shape": 53.91,
+          "stability": 49.69,
+          "track": 73.22
+        },
+        "ability": 51.8374,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-07-01 Sandown Lakeside Race 1-8/Race_8_Logic/#1",
+      "features": {
+        "class_score": 62.04,
+        "confidence_score": 86.0,
+        "consistency_score": 91.18,
+        "distance_score": 66.0,
+        "form_score": 52.17,
+        "formline_score": 79.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 66.0,
+        "pace_figure_score": 69.47,
+        "pace_map_score": 53.01,
+        "rating_score": 66.91,
+        "sectional_score": 35.8,
+        "track_score": 75.5,
+        "trainer_score": 66.0,
+        "trial_score": 60.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 73.3,
+          "form_line": 73.4,
+          "jockey_trainer": 69.28,
+          "pace_perf": 68.84,
+          "race_shape": 31.24,
+          "stability": 55.42,
+          "track": 83.55
+        },
+        "ability": 61.1721,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-08-21 Beaudesert Race 1-8/Race_2_Logic/#17",
+      "features": {
+        "class_score": 62.31,
+        "confidence_score": 66.0,
+        "consistency_score": 64.6,
+        "distance_score": 52.0,
+        "form_score": 66.8,
+        "formline_score": 60.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 58.0,
+        "jockey_score": 62.13,
+        "pace_figure_score": 39.25,
+        "pace_map_score": 58.52,
+        "performance_quality_score": 64.6,
+        "rating_score": 59.63,
+        "sectional_score": 60.0,
+        "track_score": 62.9,
+        "trainer_score": 74.16,
+        "trial_score": 71.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 59.29,
+          "form_line": 61.53,
+          "jockey_trainer": 69.97,
+          "pace_perf": 41.27,
+          "race_shape": 53.91,
+          "stability": 65.77,
+          "track": 64.41
+        },
+        "ability": 61.6583,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-08-21 Murwillumbah Race 1-8/Race_8_Logic/#11",
+      "features": {
+        "class_score": 62.31,
+        "confidence_score": 78.0,
+        "consistency_score": 64.6,
+        "distance_score": 62.0,
+        "form_score": 74.33,
+        "formline_score": 97.1,
+        "health_score": 59.0,
+        "jockey_horse_fit_score": 57.02,
+        "jockey_score": 52.78,
+        "pace_figure_score": 73.64,
+        "pace_map_score": 58.52,
+        "performance_quality_score": 69.52,
+        "rating_score": 59.0,
+        "sectional_score": 62.74,
+        "track_score": 58.15,
+        "trainer_score": 74.32,
+        "trial_score": 69.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 58.08,
+          "form_line": 92.84,
+          "jockey_trainer": 61.37,
+          "pace_perf": 73.25,
+          "race_shape": 53.91,
+          "stability": 72.1,
+          "track": 57.19
+        },
+        "ability": 64.4186,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-07-01 Sandown Lakeside Race 1-8/Race_8_Logic/#9",
+      "features": {
+        "class_score": 62.04,
+        "confidence_score": 87.0,
+        "consistency_score": 100.0,
+        "distance_score": 64.0,
+        "form_score": 54.83,
+        "formline_score": 78.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 65.23,
+        "pace_figure_score": 70.24,
+        "pace_map_score": 58.84,
+        "rating_score": 56.67,
+        "sectional_score": 35.8,
+        "track_score": 65.69,
+        "trainer_score": 72.0,
+        "trial_score": 60.0,
+        "weight_score": 65.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 53.59,
+          "form_line": 73.2,
+          "jockey_trainer": 72.92,
+          "pace_perf": 69.56,
+          "race_shape": 55.23,
+          "stability": 56.98,
+          "track": 68.64
+        },
+        "ability": 62.2606,
+        "grade": "C+"
+      }
+    },
+    {
+      "id": "2026-07-08 Sandown Lakeside Race 1-8/Race_7_Logic/#4",
+      "features": {
+        "class_score": 59.94,
+        "confidence_score": 87.0,
+        "consistency_score": 100.0,
+        "distance_score": 62.0,
+        "form_score": 55.5,
+        "formline_score": 76.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 61.0,
+        "pace_figure_score": 75.87,
+        "pace_map_score": 59.75,
+        "rating_score": 66.99,
+        "sectional_score": 35.8,
+        "track_score": 73.1,
+        "trainer_score": 61.0,
+        "trial_score": 69.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 73.45,
+          "form_line": 71.76,
+          "jockey_trainer": 61.55,
+          "pace_perf": 75.33,
+          "race_shape": 58.97,
+          "stability": 57.37,
+          "track": 79.9
+        },
+        "ability": 64.1888,
+        "grade": "B-"
+      }
+    },
+    {
+      "id": "2026-08-21 Beaudesert Race 1-8/Race_8_Logic/#15",
+      "features": {
+        "class_score": 65.42,
+        "confidence_score": 83.0,
+        "consistency_score": 64.3,
+        "distance_score": 66.0,
+        "form_score": 63.9,
+        "formline_score": 94.7,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 65.38,
+        "jockey_score": 57.27,
+        "pace_figure_score": 57.81,
+        "pace_map_score": 60.89,
+        "performance_quality_score": 46.71,
+        "rating_score": 52.74,
+        "sectional_score": 62.74,
+        "track_score": 62.09,
+        "trainer_score": 49.52,
+        "trial_score": 78.0,
+        "weight_score": 60.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 46.03,
+          "form_line": 88.57,
+          "jockey_trainer": 55.37,
+          "pace_perf": 59.0,
+          "race_shape": 63.66,
+          "stability": 57.1,
+          "track": 63.18
+        },
+        "ability": 56.9437,
+        "grade": "C"
+      }
+    },
+    {
+      "id": "2026-06-27 Rosehill Gardens Race 1-10/Race_4_Logic/#12",
+      "features": {
+        "class_score": 54.52,
+        "confidence_score": 84.0,
+        "consistency_score": 93.34,
+        "distance_score": 62.0,
+        "form_score": 50.81,
+        "formline_score": 75.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 64.38,
+        "jockey_score": 53.22,
+        "pace_figure_score": 19.45,
+        "pace_map_score": 47.84,
+        "rating_score": 57.02,
+        "sectional_score": 39.44,
+        "track_score": 68.7,
+        "trainer_score": 72.0,
+        "trial_score": 76.0,
+        "weight_score": 68.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 54.27,
+          "form_line": 69.9,
+          "jockey_trainer": 67.09,
+          "pace_perf": 23.08,
+          "race_shape": 9.97,
+          "stability": 54.62,
+          "track": 73.22
+        },
+        "ability": 49.5841,
+        "grade": "D"
+      }
+    },
+    {
+      "id": "2026-07-03 Moe Race 1-8/Race_3_Logic/#1",
+      "features": {
+        "class_score": 59.18,
+        "confidence_score": 82.0,
+        "consistency_score": 64.3,
+        "distance_score": 60.0,
+        "form_score": 59.2,
+        "formline_score": 70.0,
+        "health_score": 61.0,
+        "jockey_horse_fit_score": 60.0,
+        "jockey_score": 52.6,
+        "pace_figure_score": 70.78,
+        "pace_map_score": 57.03,
+        "rating_score": 59.18,
+        "sectional_score": 35.8,
+        "track_score": 42.94,
+        "trainer_score": 60.0,
+        "trial_score": 71.0,
+        "weight_score": 62.0
+      },
+      "expected": {
+        "matrix": {
+          "class_weight": 58.42,
+          "form_line": 67.8,
+          "jockey_trainer": 53.84,
+          "pace_perf": 70.69,
+          "race_shape": 47.78,
+          "stability": 59.53,
+          "track": 34.08
+        },
+        "ability": 55.6386,
+        "grade": "C-"
+      }
+    }
+  ]
+}
