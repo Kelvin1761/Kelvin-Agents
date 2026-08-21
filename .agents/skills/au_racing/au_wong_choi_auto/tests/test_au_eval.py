@@ -14,7 +14,7 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(SCRIPTS.parents[2] / "shared_racing"))
 
 import au_eval  # noqa: E402

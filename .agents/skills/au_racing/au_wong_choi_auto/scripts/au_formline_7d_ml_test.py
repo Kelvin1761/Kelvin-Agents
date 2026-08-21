@@ -13,7 +13,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_archive_calibrator import (  # noqa: E402
     ARCHIVE_ROOT,
@@ -28,9 +28,9 @@ from au_archive_calibrator import (  # noqa: E402
     parse_int,
 )
 from au_auto_orchestrator import _build_field_summary  # noqa: E402
-from engine_core import RacingEngine  # noqa: E402
-from matrix_mapper import matrix_score  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.engine_core import RacingEngine  # noqa: E402
+from au_racing_engine.matrix_mapper import matrix_score  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 from au_metric_contract import ranked_performance  # noqa: E402
 
 

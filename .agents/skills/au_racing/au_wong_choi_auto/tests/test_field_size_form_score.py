@@ -14,11 +14,11 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 
 import pytest  # noqa: E402
 
-from engine_core import RacingEngine, _parse_field_size, _record_rows  # noqa: E402
+from au_racing_engine.engine_core import RacingEngine, _parse_field_size, _record_rows  # noqa: E402
 
 HEADER = (
     "| # | 類型 | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 "
@@ -69,7 +69,7 @@ class TestParseFieldSize:
 
     def test_row_parsing_keeps_place_readable(self):
         """嵌入 `/N` 之後，舊 code 用 parse_float 仍然要抓到名次。"""
-        from scoring import parse_float
+        from au_racing_engine.scoring import parse_float
         rows = _record_rows(facts([("2024-08-11", "Casterton", 3500, "4/6 (-12.0L)")]))
         assert len(rows) == 1
         assert parse_float(rows[0][7]) == 4.0

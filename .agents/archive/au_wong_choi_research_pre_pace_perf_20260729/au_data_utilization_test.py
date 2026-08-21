@@ -20,7 +20,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path = [p for p in sys.path if p]
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_archive_calibrator import (
     ARCHIVE_ROOT, HISTORICAL_RESULTS_CSV,

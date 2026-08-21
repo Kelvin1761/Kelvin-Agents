@@ -47,10 +47,10 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_archive_calibrator import ARCHIVE_ROOT, HISTORICAL_RESULTS_CSV  # noqa: E402
-from source_alignment import normalize_horse_name  # noqa: E402
+from au_racing_engine.source_alignment import normalize_horse_name  # noqa: E402
 
 FIELDNAMES = ["Date", "Track", "Race", "Distance", "Condition", "Pos", "Horse",
               "Barrier", "Weight", "Jockey", "Trainer", "Margin", "SP", "Time"]

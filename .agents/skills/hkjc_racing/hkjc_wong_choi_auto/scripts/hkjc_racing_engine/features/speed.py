@@ -1,5 +1,5 @@
-import scoring
-from scoring import BaseScorer, clip_score, parse_float
+from hkjc_racing_engine import scoring
+from hkjc_racing_engine.scoring import BaseScorer, clip_score, parse_float
 
 class SpeedScorer(BaseScorer):
     def _data(self):

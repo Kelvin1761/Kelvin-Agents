@@ -18,7 +18,7 @@ from wongchoi_paths import AU_RACING
 sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
-sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"))
+sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
 
 from reflector_auto_stats import compute_race_stats
 from au_review_auto_weighting import (
@@ -30,8 +30,8 @@ from au_review_auto_weighting import (
     _build_field_summary,
     _facts_path_for_logic,
 )
-from engine_core import RacingEngine, enrich_logic_from_facts
-import scoring
+from au_racing_engine.engine_core import RacingEngine, enrich_logic_from_facts
+from au_racing_engine import scoring
 
 ARCHIVE_ROOT = AU_RACING
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Tactical_Shadow_Test.md"
@@ -112,7 +112,7 @@ def _ranked_picks_from_logic(logic_path: pathlib.Path, variant: dict) -> list:
     def mock_get_weights(ctx):
         return get_simulated_weights(ctx, variant["tactical"], variant["aggressive"])
     
-    import engine_core
+    from au_racing_engine import engine_core
     original_get = engine_core.get_dynamic_matrix_weights
     original_tight = engine_core.PLACE_TIGHTENING_FEATURE_WEIGHTS
     

@@ -17,10 +17,10 @@ import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import AU_RACING, au_historical_results_csv
 AUTO_SCRIPT_DIR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"
 sys.path.append(str(AUTO_SCRIPT_DIR))
-sys.path.append(str(AUTO_SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(AUTO_SCRIPT_DIR))
 
-from matrix_mapper import MATRIX_FORMULAS  # noqa: E402
-from scoring import MATRIX_WEIGHTS, clip_score  # noqa: E402
+from au_racing_engine.matrix_mapper import MATRIX_FORMULAS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS, clip_score  # noqa: E402
 from au_metric_contract import ranked_performance  # noqa: E402
 
 

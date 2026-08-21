@@ -14,7 +14,7 @@ import sys
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_eval import (  # noqa: E402
     baseline_report,
@@ -24,9 +24,9 @@ from au_eval import (  # noqa: E402
     load_races,
     verdict_dict,
 )
-from io_utils import write_json_atomic, write_text_atomic  # noqa: E402
-from matrix_mapper import MATRIX_FORMULAS, map_features_to_matrix_scores  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.io_utils import write_json_atomic, write_text_atomic  # noqa: E402
+from au_racing_engine.matrix_mapper import MATRIX_FORMULAS, map_features_to_matrix_scores  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 
 ACTIVE_MATRICES = tuple(

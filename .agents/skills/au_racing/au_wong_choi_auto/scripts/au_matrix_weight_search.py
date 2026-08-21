@@ -15,7 +15,7 @@ from statistics import mean
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_runtime_micro_ablation import (
     date_partitions,
@@ -24,8 +24,8 @@ from au_runtime_micro_ablation import (
     score_diagnostics,
     select_indices,
 )
-from io_utils import write_json_atomic, write_text_atomic
-from scoring import MATRIX_WEIGHTS
+from au_racing_engine.io_utils import write_json_atomic, write_text_atomic
+from au_racing_engine.scoring import MATRIX_WEIGHTS
 
 
 MATRIX_KEYS = tuple(

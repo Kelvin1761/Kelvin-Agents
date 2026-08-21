@@ -11,12 +11,12 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_pace_profile_shadow_test import load_archive_meetings  # type: ignore
 from au_sip_tester import delta_report, evaluate_races, report_summary  # type: ignore
-from matrix_mapper import MATRIX_FORMULAS  # type: ignore
-from scoring import (  # type: ignore
+from au_racing_engine.matrix_mapper import MATRIX_FORMULAS  # type: ignore
+from au_racing_engine.scoring import (  # type: ignore
     PLACE_TIGHTENING_FEATURE_WEIGHTS,
     PLACE_TIGHTENING_MAX_ABS_BONUS,
     PLACE_TIGHTENING_SCALE,

@@ -26,7 +26,7 @@ from copy import deepcopy
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path = [p for p in sys.path if p]
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_archive_calibrator import (
     ARCHIVE_ROOT,
@@ -51,8 +51,8 @@ from au_market_free_ablation import (
 )
 from re_score_archive import build_field_summary
 
-import matrix_mapper
-import scoring
+from au_racing_engine import matrix_mapper
+from au_racing_engine import scoring
 
 OUTPUT_MD = SCRIPT_DIR.parents[4] / "2026-05-31 AU Targeted Diagnostic Fix Test.md"
 PROJECT_ROOT = SCRIPT_DIR.parents[4]

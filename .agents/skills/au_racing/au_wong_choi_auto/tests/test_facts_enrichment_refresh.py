@@ -10,12 +10,12 @@ ROOT = Path(__file__).resolve().parents[5]
 SCRIPTS = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"
 SHARED_SCRIPTS = ROOT / ".agents" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(SHARED_SCRIPTS))
 
 from au_auto_orchestrator import _facts_path_for_logic
 import build_au_logic
-from engine_core import RacingEngine, enrich_logic_from_facts, _extract_career_starts
+from au_racing_engine.engine_core import RacingEngine, enrich_logic_from_facts, _extract_career_starts
 from inject_fact_anchors import (
     _enrich_stats_from_formguide,
     _history_kind_label,

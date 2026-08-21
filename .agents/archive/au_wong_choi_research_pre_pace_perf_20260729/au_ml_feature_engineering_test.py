@@ -25,7 +25,7 @@ PROJECT_ROOT = SCRIPT_DIR.parents[4]
 
 sys.path = [p for p in sys.path if p]
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_archive_calibrator import (
     ARCHIVE_ROOT,
@@ -38,7 +38,7 @@ from au_archive_calibrator import (
     parse_int,
 )
 from re_score_archive import build_field_summary
-from scoring import clip_score
+from au_racing_engine.scoring import clip_score
 
 OUTPUT_MD = PROJECT_ROOT / "2026-05-31 AU ML Feature Engineering Test.md"
 

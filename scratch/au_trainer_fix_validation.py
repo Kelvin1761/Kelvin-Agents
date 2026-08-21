@@ -7,7 +7,7 @@ sys.path.insert(0,"/Users/imac/Antigravity-repo")
 sys.path.insert(0,"/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts")
 sys.path.insert(0,"/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine")
 from wongchoi_paths import AU_RACING
-from engine_core import RacingEngine
+from au_racing_engine.engine_core import RacingEngine
 OUT=Path("/Users/imac/Antigravity-repo/scratch/au_trainer_fix_scores.json")
 limit=int(sys.argv[1]) if len(sys.argv)>1 else 999
 out=json.loads(OUT.read_text()) if OUT.exists() else {}

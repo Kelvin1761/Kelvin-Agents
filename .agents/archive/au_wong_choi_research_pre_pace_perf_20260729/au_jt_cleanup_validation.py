@@ -23,7 +23,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path = [p for p in sys.path if p]
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_archive_calibrator import (
     ARCHIVE_ROOT, HISTORICAL_RESULTS_CSV,
@@ -168,8 +168,8 @@ def main():
 
     # We need to re-run the engine to test this properly
     # Let's use the engine directly
-    from engine_core import RacingEngine
-    from scoring import FIT_MICRO_WEIGHTS
+    from au_racing_engine.engine_core import RacingEngine
+    from au_racing_engine.scoring import FIT_MICRO_WEIGHTS
 
     # Collect per-horse upgrade/downgrade data from engine re-run
     print("  Running engine to collect upgrade signal data...")

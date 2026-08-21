@@ -11,7 +11,7 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_archive_calibrator import ARCHIVE_ROOT, normalize_condition_bucket  # noqa: E402
 from au_cached_walkforward_ml import (  # noqa: E402
@@ -24,7 +24,7 @@ from au_cached_walkforward_ml import (  # noqa: E402
     metrics_for_races,
     score_baseline,
 )
-from engine_core import _record_rows  # noqa: E402
+from au_racing_engine.engine_core import _record_rows  # noqa: E402
 
 
 OUTPUT_MD = PROJECT_ROOT / "2026-06-07 AU Soft Wet-Proof Cap Test.md"

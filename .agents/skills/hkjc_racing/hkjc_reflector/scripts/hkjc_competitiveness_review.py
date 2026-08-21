@@ -38,13 +38,13 @@ ENGINE_DIR = (
     / "hkjc_racing"
     / "hkjc_wong_choi_auto"
     / "scripts"
-    / "racing_engine"
+    / "hkjc_racing_engine"
 )
 sys.path.insert(0, str(SHARED_RACING))
 sys.path.insert(0, str(ENGINE_DIR))
 
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from hkjc_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 
 DEFAULT_DATASET = ROOT / "scratch" / "hkjc_prerace_replay.csv"

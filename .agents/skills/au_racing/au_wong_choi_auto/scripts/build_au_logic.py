@@ -12,9 +12,9 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 TRACK_RESOURCE_DIR = SCRIPT_DIR.parents[1] / "au_horse_analyst" / "resources"
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
-from source_alignment import (
+from au_racing_engine.source_alignment import (
     HORSE_HEADER_RE,
     RACECARD_HORSE_RE,
     RACECARD_META_RE,
@@ -24,7 +24,7 @@ from source_alignment import (
     validate_facts_horse_alignment,
     venue_from_meeting_name,
 )
-from engine_core import (
+from au_racing_engine.engine_core import (
     _extract_race_meta as _canonical_extract_race_meta,
     _load_meeting_intelligence as _canonical_load_meeting_intelligence,
     _load_track_profile as _canonical_load_track_profile,
@@ -33,7 +33,7 @@ from engine_core import (
     _venue_from_folder_name as _canonical_venue_from_folder_name,
     build_logic_from_facts as _canonical_build_logic_from_facts,
 )
-from io_utils import write_json_atomic
+from au_racing_engine.io_utils import write_json_atomic
 
 VENUE_TRACK_MAP = {
     "randwick": "04b_track_randwick.md",

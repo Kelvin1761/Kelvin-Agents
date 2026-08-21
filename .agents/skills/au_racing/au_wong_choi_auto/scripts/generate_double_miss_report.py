@@ -11,7 +11,7 @@ from wongchoi_paths import AU_RACING
 sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
-sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"))
+sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_reflector" / "scripts"))
 
 from reflector_auto_stats import compute_race_stats
@@ -23,7 +23,7 @@ from au_review_auto_weighting import (
     _build_field_summary,
     _facts_path_for_logic,
 )
-from engine_core import RacingEngine, enrich_logic_from_facts
+from au_racing_engine.engine_core import RacingEngine, enrich_logic_from_facts
 
 ARCHIVE_ROOT = AU_RACING
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Double_Miss_Deep_Dive.md"

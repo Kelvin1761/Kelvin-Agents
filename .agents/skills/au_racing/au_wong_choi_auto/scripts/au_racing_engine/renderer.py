@@ -6,8 +6,8 @@ import os
 import re
 from pathlib import Path
 
-from scoring import clip_score, score_band
-from matrix_mapper import MATRIX_DISPLAY_GAINS, MATRIX_FORMULAS
+from .scoring import clip_score, score_band
+from .matrix_mapper import MATRIX_DISPLAY_GAINS, MATRIX_FORMULAS
 
 
 ABILITY_LABEL = "綜合戰力分"
@@ -176,7 +176,7 @@ def render_race_markdown(logic_data: dict) -> str:
 def render_race_csv(logic_data: dict) -> str:
     ensure_verdict(logic_data)
     output = io.StringIO()
-    from scoring import FEATURE_KEYS
+    from .scoring import FEATURE_KEYS
     fields = [
         "race_number",
         "horse_number",
@@ -1496,7 +1496,7 @@ def _zero_weight_dimensions() -> set:
     近績被計咗兩次。Kelvin 就係咁發現嘅。
     """
     try:
-        from scoring import MATRIX_WEIGHTS
+        from .scoring import MATRIX_WEIGHTS
     except Exception:  # noqa: BLE001 — 攞唔到權重就當全部入排名，唔好靜靜咁隱藏
         return set()
     return (

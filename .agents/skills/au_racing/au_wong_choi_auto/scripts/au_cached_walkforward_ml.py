@@ -14,11 +14,11 @@ from statistics import mean
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "shared_racing"))
 
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from io_utils import write_csv_atomic, write_json_atomic  # noqa: E402
+from au_racing_engine.io_utils import write_csv_atomic, write_json_atomic  # noqa: E402
 
 from au_archive_calibrator import (  # noqa: E402
     ARCHIVE_ROOT,

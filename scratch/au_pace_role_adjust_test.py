@@ -18,7 +18,7 @@ from pathlib import Path
 
 SCRIPTS = Path("/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts")
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, "/Users/imac/Antigravity-repo/.agents/skills/shared_racing")
 
 from au_cached_walkforward_ml import (  # noqa: E402

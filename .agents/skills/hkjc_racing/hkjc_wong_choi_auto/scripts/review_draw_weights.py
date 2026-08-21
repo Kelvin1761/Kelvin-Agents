@@ -12,12 +12,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[5]
 SCRIPT_DIR = Path(__file__).resolve().parent
-ENGINE_DIR = SCRIPT_DIR / "racing_engine"
-sys.path.insert(0, str(ENGINE_DIR))
+ENGINE_DIR = SCRIPT_DIR / "hkjc_racing_engine"
+sys.path.insert(0, str(ENGINE_DIR.parent))
 sys.path.insert(0, str(ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"))
 
-from engine_core import RacingEngine
-from scoring import clip_score
+from hkjc_racing_engine.engine_core import RacingEngine
+from hkjc_racing_engine.scoring import clip_score
 from hkjc_results_db import get_full_results_csv, get_comprehensive_stats_root
 
 RESULTS_CSV = get_full_results_csv()

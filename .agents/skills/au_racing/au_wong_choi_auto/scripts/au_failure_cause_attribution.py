@@ -17,11 +17,11 @@ from statistics import mean
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
-import matrix_mapper  # noqa: E402
+from au_racing_engine import matrix_mapper  # noqa: E402
 from au_eval import default_scorer, load_races  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 MATRIX_KEYS = tuple(MATRIX_WEIGHTS)
 STABILITY_PERFORMANCE_SHARE = 0.40

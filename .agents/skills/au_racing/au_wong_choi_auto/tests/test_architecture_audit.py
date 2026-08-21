@@ -6,12 +6,12 @@ from pathlib import Path
 
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
-ENGINE = SCRIPTS / "racing_engine"
+ENGINE = SCRIPTS / "au_racing_engine"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(ENGINE))
+sys.path.insert(0, str(ENGINE.parent))
 
 from au_architecture_audit import architecture_score, displayed_formula, neutral_formula
-from matrix_mapper import map_features_to_matrix_scores
+from au_racing_engine.matrix_mapper import map_features_to_matrix_scores
 from au_matrix_refit import Dataset
 
 

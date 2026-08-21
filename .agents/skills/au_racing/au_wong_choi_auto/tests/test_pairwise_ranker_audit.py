@@ -4,9 +4,9 @@ from pathlib import Path
 
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
-ENGINE = SCRIPTS / "racing_engine"
+ENGINE = SCRIPTS / "au_racing_engine"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(ENGINE))
+sys.path.insert(0, str(ENGINE.parent))
 
 from au_pairwise_ranker_audit import (
     competitive_cutoff,

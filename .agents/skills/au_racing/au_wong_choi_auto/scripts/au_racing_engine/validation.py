@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from matrix_mapper import MATRIX_KEYS
-from scoring import FEATURE_KEYS, MATRIX_WEIGHTS, compute_grade
-from source_alignment import normalize_horse_name
+from .matrix_mapper import MATRIX_KEYS
+from .scoring import FEATURE_KEYS, MATRIX_WEIGHTS, compute_grade
+from .source_alignment import normalize_horse_name
 
 
 def validate_engine_scripts(script_root: Path) -> list[str]:

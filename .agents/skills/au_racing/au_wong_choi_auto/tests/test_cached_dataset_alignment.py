@@ -15,9 +15,9 @@ SCRIPTS = (
     / "au_wong_choi_auto"
     / "scripts"
 )
-ENGINE = SCRIPTS / "racing_engine"
+ENGINE = SCRIPTS / "au_racing_engine"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(ENGINE))
+sys.path.insert(0, str(ENGINE.parent))
 
 from au_cached_walkforward_ml import materialize_dataset
 

@@ -11,15 +11,15 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_noise_fix_shadow_test import _archive_runtime_races, _target_runtime_races  # type: ignore
 from au_pace_profile_shadow_test import DEFAULT_TARGET_MEETINGS, load_archive_meetings, load_target_meetings  # type: ignore
 from au_sip_tester import delta_report, evaluate_races, report_summary  # type: ignore
 
-import engine_core  # type: ignore
-import matrix_mapper  # type: ignore
-from engine_core import RacingEngine  # type: ignore
+from au_racing_engine import engine_core  # type: ignore
+from au_racing_engine import matrix_mapper  # type: ignore
+from au_racing_engine.engine_core import RacingEngine  # type: ignore
 
 
 OUTPUT_MD = PROJECT_ROOT / "2026-05-31 AU Component Simplification Benchmark（港式中文）.md"

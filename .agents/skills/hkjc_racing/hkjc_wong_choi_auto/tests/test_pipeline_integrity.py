@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[5]
 AUTO_SCRIPT_DIR = (
     ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts"
 )
-ENGINE_DIR = AUTO_SCRIPT_DIR / "racing_engine"
+ENGINE_DIR = AUTO_SCRIPT_DIR / "hkjc_racing_engine"
 MAIN_SCRIPT_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi" / "scripts"
 REFLECTOR_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"
 SHARED_SCRIPT_DIR = ROOT / ".agents" / "scripts"
@@ -26,13 +26,13 @@ for path in (AUTO_SCRIPT_DIR, ENGINE_DIR, MAIN_SCRIPT_DIR, REFLECTOR_DIR, SHARED
 import create_hkjc_logic_skeleton as skeleton
 import hkjc_auto_orchestrator as auto
 import hkjc_orchestrator as main
-import engine_core
-import live_priors
+from hkjc_racing_engine import engine_core
+from hkjc_racing_engine import live_priors
 import rescore_backtest
 import review_auto_weighting
 import run_prerace_pipeline
-from engine_core import RacingEngine
-from renderer import _shadow_flag_candidates, render_race_csv
+from hkjc_racing_engine.engine_core import RacingEngine
+from hkjc_racing_engine.renderer import _shadow_flag_candidates, render_race_csv
 
 
 def _minimal_logic() -> dict:

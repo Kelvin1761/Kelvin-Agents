@@ -26,7 +26,7 @@ from pathlib import Path
 
 SCRIPTS = Path("/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts")
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, "/Users/imac/Antigravity-repo/.agents/skills/shared_racing")
 
 from au_cached_walkforward_ml import (  # noqa: E402
@@ -36,9 +36,9 @@ from au_cached_walkforward_ml import (  # noqa: E402
     materialize_dataset,
     metrics_for_races,
 )
-from scoring import MATRIX_WEIGHTS, PACE_MICRO_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS, PACE_MICRO_WEIGHTS  # noqa: E402
 
-MATRIX = json.loads((SCRIPTS / "racing_engine" / "au_draw_bias_matrix.json").read_text(encoding="utf-8"))
+MATRIX = json.loads((SCRIPTS / "au_racing_engine" / "au_draw_bias_matrix.json").read_text(encoding="utf-8"))
 SANDBOX = Path("/private/tmp/claude-501/-Users-imac-Antigravity-repo/b09ea7dc-ca6d-496d-af27-41b7787ee6ae/scratchpad/data/Wong Choi Horse Race Analysis/AU_Racing")
 RACE_SHAPE_W = MATRIX_WEIGHTS["race_shape"]
 W = PACE_MICRO_WEIGHTS

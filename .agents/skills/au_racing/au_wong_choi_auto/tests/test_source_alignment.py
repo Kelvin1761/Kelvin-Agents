@@ -15,9 +15,9 @@ SCRIPTS = (
     / "au_wong_choi_auto"
     / "scripts"
 )
-ENGINE = SCRIPTS / "racing_engine"
+ENGINE = SCRIPTS / "au_racing_engine"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(ENGINE))
+sys.path.insert(0, str(ENGINE.parent))
 
 from au_auto_orchestrator import (
     _validate_input_shape,
@@ -26,7 +26,7 @@ from au_auto_orchestrator import (
     process_meeting_dir,
 )
 from build_au_logic import _extract_race_meta
-from source_alignment import (
+from au_racing_engine.source_alignment import (
     normalize_horse_name,
     race_source_candidates,
     validate_facts_horse_alignment,

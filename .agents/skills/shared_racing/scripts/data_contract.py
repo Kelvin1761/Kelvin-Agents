@@ -50,12 +50,12 @@ PLATFORMS = {
     "au": {
         "data_root_attr": "AU_RACING",
         "baseline": "au_data_contract.json",
-        "engine": REPO_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine",
+        "engine": REPO_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine",
     },
     "hkjc": {
         "data_root_attr": "HK_RACING",
         "baseline": "hkjc_data_contract.json",
-        "engine": REPO_ROOT / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/racing_engine",
+        "engine": REPO_ROOT / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine",
     },
 }
 

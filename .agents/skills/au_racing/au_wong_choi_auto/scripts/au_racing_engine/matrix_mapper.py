@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from scoring import clip_score, score_band
+from .scoring import clip_score, score_band
 
 
 MATRIX_FORMULAS = {

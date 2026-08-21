@@ -32,12 +32,12 @@ sys.path.insert(
         / "hkjc_racing"
         / "hkjc_wong_choi_auto"
         / "scripts"
-        / "racing_engine"
+        / "au_racing_engine"
     ),
 )
 
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 
 DEFAULT_INPUT = (

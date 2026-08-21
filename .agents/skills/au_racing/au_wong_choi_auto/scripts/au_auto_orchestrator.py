@@ -15,18 +15,18 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
-from engine_core import (
+from au_racing_engine.engine_core import (
     RacingEngine,
     backfill_pf_metrics,
     enrich_logic_from_facts,
     horse_prize_level,
 )
-from io_utils import write_json_atomic as _write_json_atomic
-from io_utils import write_text_atomic as _atomic_write_text
-from renderer import ensure_verdict, render_meeting_csv, validate_report_text, write_race_outputs
-from validation import validate_engine_scripts, validate_logic_data
+from au_racing_engine.io_utils import write_json_atomic as _write_json_atomic
+from au_racing_engine.io_utils import write_text_atomic as _atomic_write_text
+from au_racing_engine.renderer import ensure_verdict, render_meeting_csv, validate_report_text, write_race_outputs
+from au_racing_engine.validation import validate_engine_scripts, validate_logic_data
 
 
 def _condition_family(condition: str) -> str:
@@ -410,7 +410,7 @@ def main():
     )
     args = parser.parse_args()
 
-    script_errors = validate_engine_scripts(SCRIPT_DIR / "racing_engine")
+    script_errors = validate_engine_scripts(SCRIPT_DIR / "au_racing_engine")
     if script_errors:
         raise ValueError("Engine validation failed:\n" + "\n".join(script_errors))
 

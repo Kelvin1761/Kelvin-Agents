@@ -24,10 +24,10 @@ from statistics import median
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_archive_calibrator import ARCHIVE_ROOT, normalize_condition_bucket, normalize_horse_name  # noqa: E402
-from io_utils import write_json_atomic  # noqa: E402
+from au_racing_engine.io_utils import write_json_atomic  # noqa: E402
 from au_cached_walkforward_ml import (  # noqa: E402
     as_float,
     date_folds,
@@ -35,7 +35,7 @@ from au_cached_walkforward_ml import (  # noqa: E402
     materialize_dataset,
     metrics_for_races,
 )
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 
 OUTPUT_MD = PROJECT_ROOT / "2026-07-16 AU Model Improvement Shadow Review.md"

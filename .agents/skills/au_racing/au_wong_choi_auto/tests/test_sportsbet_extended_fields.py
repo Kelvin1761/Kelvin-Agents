@@ -8,9 +8,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[5]
 AU_RACING = ROOT / ".agents" / "skills" / "au_racing"
-ENGINE = AU_RACING / "au_wong_choi_auto" / "scripts" / "racing_engine"
+ENGINE = AU_RACING / "au_wong_choi_auto" / "scripts" / "au_racing_engine"
 sys.path.insert(0, str(AU_RACING))
-sys.path.insert(0, str(ENGINE))
+sys.path.insert(0, str(ENGINE.parent))
 
 from claw_sportsbet_form import (  # noqa: E402
     parse_race,
@@ -18,7 +18,7 @@ from claw_sportsbet_form import (  # noqa: E402
     run_line,
     write_meeting,
 )
-from engine_core import _parse_formguide_entries, _parse_time_to_seconds  # noqa: E402
+from au_racing_engine.engine_core import _parse_formguide_entries, _parse_time_to_seconds  # noqa: E402
 
 
 def _history(in_running: str) -> str:

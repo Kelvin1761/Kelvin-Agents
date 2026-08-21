@@ -9,10 +9,10 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[5]
 SCRIPTS = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 
 import au_runtime_micro_ablation as R
-from source_alignment import normalize_going
+from au_racing_engine.source_alignment import normalize_going
 
 
 class RuntimeAuditParityTests(unittest.TestCase):

@@ -4,9 +4,9 @@ from pathlib import Path
 
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
-ENGINE = SCRIPTS / "racing_engine"
+ENGINE = SCRIPTS / "au_racing_engine"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(ENGINE))
+sys.path.insert(0, str(ENGINE.parent))
 
 from au_matrix_weight_search import (
     candidate_weights,
@@ -15,7 +15,7 @@ from au_matrix_weight_search import (
     selection_summary,
 )
 from au_runtime_micro_ablation import metrics_for_scored_races
-from scoring import MATRIX_WEIGHTS
+from au_racing_engine.scoring import MATRIX_WEIGHTS
 
 
 class MatrixWeightSearchTests(unittest.TestCase):

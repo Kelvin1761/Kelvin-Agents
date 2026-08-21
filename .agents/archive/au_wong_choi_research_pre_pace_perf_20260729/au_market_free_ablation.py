@@ -10,7 +10,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_sip_tester import (  # noqa: E402
     ARCHIVE_ROOT,
@@ -28,7 +28,7 @@ from au_sip_tester import (  # noqa: E402
     race_class_bucket,
     report_summary,
 )
-from scoring import get_dynamic_matrix_weights, parse_float  # noqa: E402
+from au_racing_engine.scoring import get_dynamic_matrix_weights, parse_float  # noqa: E402
 
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Auto_Market_Free_Ablation.md"

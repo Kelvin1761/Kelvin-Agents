@@ -31,7 +31,7 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 # 每個 leaf 嘅「冇證據」值 —— 由 scoring.py 嘅 *_MICRO_WEIGHTS 讀返嚟嘅
 # base / career0_base。呢度寫死係為咗令輸出講得出「呢個值代表咩」。

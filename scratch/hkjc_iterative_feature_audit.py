@@ -21,11 +21,11 @@ from typing import Any, Callable
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE = (
     ROOT / ".agents" / "skills" / "hkjc_racing"
-    / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
+    / "hkjc_wong_choi_auto" / "scripts" / "au_racing_engine"
 )
 sys.path.insert(0, str(ENGINE))
 
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 
 DEFAULT_INPUTS = [

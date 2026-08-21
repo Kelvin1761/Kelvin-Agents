@@ -48,13 +48,13 @@ DEFAULT_OUT_DIR = REPO_ROOT / "Wong Choi 模型說明"
 PLATFORMS = {
     "au": {
         "title": "AU Wong Choi",
-        "engine_dir": REPO_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine",
+        "engine_dir": REPO_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine",
         "corpus_glob": "AU_Racing/*/Race_*_Logic.json",
         "data_root_attr": "AU_RACING",
     },
     "hkjc": {
         "title": "HKJC Wong Choi",
-        "engine_dir": REPO_ROOT / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/racing_engine",
+        "engine_dir": REPO_ROOT / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine",
         "corpus_glob": "HK_Racing/*/Race_*_Logic.json",
         "data_root_attr": "HK_RACING",
     },
@@ -69,10 +69,11 @@ FINGERPRINT_FILES = ("scoring.py", "matrix_mapper.py", "renderer.py")
 
 def load_engine(engine_dir: Path):
     """Import the platform's scoring modules and hand back what they define."""
-    sys.path.insert(0, str(engine_dir))
-    scoring = importlib.import_module("scoring")
-    matrix_mapper = importlib.import_module("matrix_mapper")
-    renderer = importlib.import_module("renderer")
+    sys.path.insert(0, str(engine_dir.parent))
+    package = engine_dir.name
+    scoring = importlib.import_module(f"{package}.scoring")
+    matrix_mapper = importlib.import_module(f"{package}.matrix_mapper")
+    renderer = importlib.import_module(f"{package}.renderer")
 
     weights = dict(scoring.MATRIX_WEIGHTS)
     formulas = {k: list(v) for k, v in matrix_mapper.MATRIX_FORMULAS.items()}

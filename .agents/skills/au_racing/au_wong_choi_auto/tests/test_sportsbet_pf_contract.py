@@ -17,12 +17,12 @@ import unittest
 ROOT = Path(__file__).resolve().parents[5]
 AU_RACING = ROOT / ".agents" / "skills" / "au_racing"
 ENGINE = (ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto"
-          / "scripts" / "racing_engine")
+          / "scripts" / "au_racing_engine")
 sys.path.insert(0, str(AU_RACING))
 sys.path.insert(0, str(ENGINE))
 
 from claw_sportsbet_form import parse_race, run_line  # noqa: E402
-from engine_core import (  # noqa: E402
+from au_racing_engine.engine_core import (  # noqa: E402
     RacingEngine,
     _parse_formguide_pf_metrics,
     _parse_pf_token,

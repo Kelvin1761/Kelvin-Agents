@@ -34,7 +34,7 @@ from au_archive_calibrator import (  # noqa: E402
     normalize_horse_name,
     parse_int,
 )
-from scoring import MATRIX_WEIGHTS as LIVE  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS as LIVE  # noqa: E402
 from au_metric_contract import ranked_performance  # noqa: E402
 
 KEYS = list(MATRIX_KEYS)  # stability, sectional, race_shape, jockey_trainer, class_weight, track, form_line

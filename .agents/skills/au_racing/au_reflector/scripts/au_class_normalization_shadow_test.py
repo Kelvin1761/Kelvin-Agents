@@ -25,7 +25,7 @@ from wongchoi_paths import AU_RACING
 sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
-sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"))
+sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
 
 from reflector_auto_stats import compute_race_stats  # noqa: E402
 from au_review_auto_weighting import (  # noqa: E402
@@ -37,8 +37,8 @@ from au_review_auto_weighting import (  # noqa: E402
     meeting_results_file,
     summarize_race_stats,
 )
-from engine_core import RacingEngine, enrich_logic_from_facts  # noqa: E402
-from scoring import parse_float  # noqa: E402
+from au_racing_engine.engine_core import RacingEngine, enrich_logic_from_facts  # noqa: E402
+from au_racing_engine.scoring import parse_float  # noqa: E402
 
 
 ARCHIVE_ROOT = AU_RACING

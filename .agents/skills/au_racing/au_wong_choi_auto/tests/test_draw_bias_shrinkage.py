@@ -5,11 +5,11 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[5]
-ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"
-sys.path.insert(0, str(ENGINE_DIR))
+ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_racing_engine"
+sys.path.insert(0, str(ENGINE_DIR.parent))
 
-from engine_core import RacingEngine
-from scoring import PACE_MICRO_WEIGHTS
+from au_racing_engine.engine_core import RacingEngine
+from au_racing_engine.scoring import PACE_MICRO_WEIGHTS
 
 
 def _score(barrier: int, venue: str, distance: str, field_count: int) -> tuple[float, str]:
@@ -34,7 +34,7 @@ class DrawBiasShrinkageTests(unittest.TestCase):
         import json
         from pathlib import Path
 
-        from engine_core import _draw_pool_baseline
+        from au_racing_engine.engine_core import _draw_pool_baseline
 
         matrix = json.loads((ENGINE_DIR / "au_draw_bias_matrix.json").read_text(encoding="utf-8"))
         peers = matrix["tracks"]["Rosehill Gardens"]["distances"]["1200"]

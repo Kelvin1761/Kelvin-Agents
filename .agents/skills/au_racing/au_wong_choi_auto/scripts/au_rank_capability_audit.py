@@ -12,11 +12,11 @@ from statistics import mean
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_eval import default_scorer, load_races  # noqa: E402
-from io_utils import write_json_atomic, write_text_atomic  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.io_utils import write_json_atomic, write_text_atomic  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 
 def ranked(race):

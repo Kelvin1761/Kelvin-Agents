@@ -29,7 +29,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = REPO_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 
 def main():
@@ -43,11 +43,11 @@ def main():
         detect_meeting_track, get_true_horse_name, load_historical_results,
         normalize_horse_name, parse_int)
     from au_auto_orchestrator import _build_field_summary  # noqa: E402
-    from engine_core import RacingEngine  # noqa: E402
-    from scoring import FEATURE_KEYS  # noqa: E402
+    from au_racing_engine.engine_core import RacingEngine  # noqa: E402
+    from au_racing_engine.scoring import FEATURE_KEYS  # noqa: E402
 
     try:
-        from engine_core import backfill_pf_metrics
+        from au_racing_engine.engine_core import backfill_pf_metrics
     except ImportError:
         backfill_pf_metrics = None
 

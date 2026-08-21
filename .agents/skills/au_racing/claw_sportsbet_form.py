@@ -565,8 +565,8 @@ def _l600_delta(raw_seconds, track, distance_m):
         return None
     try:
         sys.path.insert(0, str(Path(__file__).resolve().parent
-                               / "au_wong_choi_auto" / "scripts" / "racing_engine"))
-        from engine_core import _lookup_standard_l600
+                               / "au_wong_choi_auto" / "scripts" / "au_racing_engine"))
+        from au_racing_engine.engine_core import _lookup_standard_l600
     except Exception:  # noqa: BLE001 — 抽取唔應該因為 import 死
         return None
     std = _lookup_standard_l600(track, int(distance_m))

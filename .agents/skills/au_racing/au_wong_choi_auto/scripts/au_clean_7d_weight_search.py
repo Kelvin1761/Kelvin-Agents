@@ -8,7 +8,7 @@ from collections import Counter
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(SCRIPT_DIR.parents[2] / "shared_racing"))
 
 from au_archive_calibrator import ARCHIVE_ROOT, MATRIX_KEYS  # noqa: E402
@@ -18,8 +18,8 @@ from au_cached_walkforward_ml import (  # noqa: E402
     materialize_dataset,
 )
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from matrix_mapper import matrix_score  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.matrix_mapper import matrix_score  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Clean_7D_Weight_Search.md"

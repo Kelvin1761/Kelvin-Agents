@@ -18,8 +18,8 @@ sys.path.insert(0, str(Path('.agents/skills/au_racing/au_wong_choi_auto/scripts'
 sys.path.insert(0, str(Path('.agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine')))
 sys.path.insert(0, str(Path('.agents/skills/shared_racing')))
 from eval_metrics import race_metrics, summarize_races
-from matrix_mapper import map_features_to_matrix_scores
-from scoring import MATRIX_WEIGHTS, clip_score
+from au_racing_engine.matrix_mapper import map_features_to_matrix_scores
+from au_racing_engine.scoring import MATRIX_WEIGHTS, clip_score
 
 KEYS=("gold","good_pos","any2","pass1","champ","winT3","t3prec","mrr","blowout","compet","ndcg5")
 LEAF="consistency_score"

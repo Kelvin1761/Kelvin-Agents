@@ -13,7 +13,7 @@ import sys
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_archive_calibrator import (  # noqa: E402
     ARCHIVE_ROOT,
@@ -32,7 +32,7 @@ from hidden_signal_rescue import (  # noqa: E402
     add_rank_metadata,
     apply_hidden_signal_variant,
 )
-from matrix_mapper import map_features_to_matrix_scores  # noqa: E402
+from au_racing_engine.matrix_mapper import map_features_to_matrix_scores  # noqa: E402
 
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Hidden_Signal_Rescue_Backtest.md"

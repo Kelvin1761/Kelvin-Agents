@@ -5,10 +5,10 @@
 import json, sys
 from pathlib import Path
 S=Path('.agents/skills/au_racing/au_wong_choi_auto/scripts')
-sys.path.insert(0,str(S)); sys.path.insert(0,str(S/'racing_engine'))
+sys.path.insert(0,str(S)); sys.path.insert(0,str(S))
 from au_archive_calibrator import ARCHIVE_ROOT, get_true_horse_name, parse_int
-from scoring import MATRIX_WEIGHTS
-from matrix_mapper import MATRIX_FORMULAS
+from au_racing_engine.scoring import MATRIX_WEIGHTS
+from au_racing_engine.matrix_mapper import MATRIX_FORMULAS
 
 sub, rno = sys.argv[1], int(sys.argv[2])
 focus = sys.argv[3:]

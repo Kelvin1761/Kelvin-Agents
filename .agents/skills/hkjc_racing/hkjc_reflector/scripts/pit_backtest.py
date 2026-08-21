@@ -34,17 +34,17 @@ import pandas as pd
 
 _HERE = Path(__file__).resolve()
 # parents: 0=scripts 1=hkjc_reflector 2=hkjc_racing 3=skills 4=.agents 5=repo root
-_ENGINE = _HERE.parents[2] / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
+_ENGINE = _HERE.parents[2] / "hkjc_wong_choi_auto" / "scripts" / "hkjc_racing_engine"
 _SCRIPTS = _HERE.parents[4] / "scripts"   # .agents/scripts
 _REPO = _HERE.parents[5]
-sys.path.insert(0, str(_ENGINE))
+sys.path.insert(0, str(_ENGINE.parent))
 sys.path.insert(0, str(_REPO))            # repo root (wongchoi_paths)
 
 import rescore_backtest as bt  # noqa: E402 (sibling module)
 import live_priors  # noqa: E402
 import engine_core  # noqa: E402
-from engine_core import RacingEngine  # noqa: E402
-from live_priors import JT_RATING_PARAMS  # noqa: E402
+from hkjc_racing_engine.engine_core import RacingEngine  # noqa: E402
+from hkjc_racing_engine.live_priors import JT_RATING_PARAMS  # noqa: E402
 
 # import build_comprehensive_stats by path
 _spec = importlib.util.spec_from_file_location(

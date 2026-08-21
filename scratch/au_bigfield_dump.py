@@ -12,8 +12,8 @@ sys.path.insert(0, "/Users/imac/Antigravity-repo")
 sys.path.insert(0, "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts")
 sys.path.insert(0, "/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine")
 from wongchoi_paths import AU_RACING
-from engine_core import RacingEngine
-from matrix_mapper import map_features_to_matrix_scores
+from au_racing_engine.engine_core import RacingEngine
+from au_racing_engine.matrix_mapper import map_features_to_matrix_scores
 
 OUT = Path("/Users/imac/Antigravity-repo/scratch/au_bigfield_dump.json")
 HEADERS = Path("/Users/imac/Antigravity-repo/scratch/au_racecard_headers.json")

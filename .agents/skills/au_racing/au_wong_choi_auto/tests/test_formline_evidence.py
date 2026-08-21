@@ -22,12 +22,12 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 
 import pytest  # noqa: E402
 
-from engine_core import RacingEngine  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.engine_core import RacingEngine  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 CTX = {"race_class": "BM70, Handicap", "distance": "1400m",
        "field_summary": {"count": 10},

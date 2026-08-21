@@ -8,13 +8,13 @@ SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 AU_RACING = SCRIPTS.parents[1]
 sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(AU_RACING))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(SCRIPTS.parents[2] / "shared_racing"))
 
 from au_unhealthy_leaf_test import evaluate  # noqa: E402
 from au_unused_field_power import runner_features  # noqa: E402
 from sb_backfill_archive import scored_meeting_index  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 
 def test_unhealthy_leaf_harness_accepts_current_runtime_rows() -> None:

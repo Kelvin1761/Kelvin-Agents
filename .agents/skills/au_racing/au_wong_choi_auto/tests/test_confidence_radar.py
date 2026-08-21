@@ -5,10 +5,10 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[5]
-ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"
-sys.path.insert(0, str(ENGINE_DIR))
+ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_racing_engine"
+sys.path.insert(0, str(ENGINE_DIR.parent))
 
-from renderer import _confidence_tier_text, ensure_verdict
+from au_racing_engine.renderer import _confidence_tier_text, ensure_verdict
 
 
 def _logic(scores: list[float]) -> dict:

@@ -21,7 +21,7 @@ PROJECT_ROOT = SCRIPT_DIR.parents[4]
 import sys
 
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_archive_calibrator import (  # noqa: E402
     HISTORICAL_RESULTS_CSV,
@@ -43,7 +43,7 @@ from au_immediate_fix_shadow_test import (  # noqa: E402
     norm_text,
     venue_key,
 )
-from engine_core import RacingEngine, enrich_logic_from_facts  # noqa: E402
+from au_racing_engine.engine_core import RacingEngine, enrich_logic_from_facts  # noqa: E402
 
 
 OUTPUT_MD = PROJECT_ROOT / "2026-06-09 AU Context Recompute Validation.md"

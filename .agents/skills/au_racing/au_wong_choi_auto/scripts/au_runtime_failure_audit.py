@@ -17,7 +17,7 @@ from statistics import mean, pstdev
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_archive_calibrator import (
     detect_meeting_date,
@@ -38,8 +38,8 @@ from au_runtime_micro_ablation import (
     prepare_logic_for_scoring,
     score_variant,
 )
-from io_utils import write_json_atomic, write_text_atomic
-from scoring import MATRIX_WEIGHTS
+from au_racing_engine.io_utils import write_json_atomic, write_text_atomic
+from au_racing_engine.scoring import MATRIX_WEIGHTS
 
 
 PRIMARY_MATRIX_KEYS = tuple(

@@ -13,14 +13,14 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE = (
     ROOT / ".agents" / "skills" / "hkjc_racing"
-    / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
+    / "hkjc_wong_choi_auto" / "scripts" / "au_racing_engine"
 )
 SHARED = ROOT / ".agents" / "skills" / "shared_racing"
 sys.path.insert(0, str(ENGINE))
 sys.path.insert(0, str(SHARED))
 
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 
 DATASET = ROOT / "scratch" / "hkjc_ranking_dataset_2026_07_15_current.csv"

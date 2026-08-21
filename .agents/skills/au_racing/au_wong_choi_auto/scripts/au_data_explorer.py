@@ -13,9 +13,9 @@ from pathlib import Path
 # Match other scripts' path resolution
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 from au_archive_calibrator import ARCHIVE_ROOT as ARCHIVE_DIR
-from io_utils import write_json_atomic
+from au_racing_engine.io_utils import write_json_atomic
 
 # Fields that enrich_logic_from_facts() loads into _data
 LOADED_DATA_FIELDS = [

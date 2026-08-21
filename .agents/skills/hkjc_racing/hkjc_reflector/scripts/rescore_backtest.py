@@ -41,15 +41,15 @@ os.environ.setdefault("PYTHONUTF8", "1")
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-_ENGINE = Path(__file__).resolve().parents[2] / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
+_ENGINE = Path(__file__).resolve().parents[2] / "hkjc_wong_choi_auto" / "scripts" / "hkjc_racing_engine"
 _AUTO = _ENGINE.parent
 _REPO = Path(__file__).resolve().parents[5]
 sys.path.insert(0, str(_AUTO))
-sys.path.insert(0, str(_ENGINE))
+sys.path.insert(0, str(_ENGINE.parent))
 sys.path.insert(0, str(_REPO))
-from engine_core import RacingEngine  # noqa: E402
+from hkjc_racing_engine.engine_core import RacingEngine  # noqa: E402
 from hkjc_auto_orchestrator import _apply_sip_enhancements, _enrich_horse_headers  # noqa: E402
-from renderer import ensure_verdict  # noqa: E402
+from hkjc_racing_engine.renderer import ensure_verdict  # noqa: E402
 from wongchoi_paths import is_materialized_file  # noqa: E402
 
 METRICS = ("gold", "good", "min", "single", "champion", "top3_champ")

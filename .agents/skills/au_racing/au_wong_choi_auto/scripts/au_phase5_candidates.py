@@ -33,11 +33,11 @@ from statistics import median
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(PROJECT_ROOT / ".agents" / "skills" / "shared_racing"))
 
 from au_archive_calibrator import MATRIX_KEYS, normalize_condition_bucket  # noqa: E402
-from io_utils import write_json_atomic  # noqa: E402
+from au_racing_engine.io_utils import write_json_atomic  # noqa: E402
 from au_cached_walkforward_ml import (  # noqa: E402
     as_float,
     date_folds,
@@ -46,7 +46,7 @@ from au_cached_walkforward_ml import (  # noqa: E402
     metrics_for_races,
 )
 from au_failure_cohorts import FEATURE_KEYS_FOR_COVERAGE, field_band  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 GATE = {
     "good_positional_lift_pp": 1.5,

@@ -1,11 +1,11 @@
-import scoring
-from scoring import BaseScorer
-from features.tier_loader import score_tier
-from features.jockey import real_overseas_rows
+from hkjc_racing_engine import scoring
+from hkjc_racing_engine.scoring import BaseScorer
+from hkjc_racing_engine.features.tier_loader import score_tier
+from hkjc_racing_engine.features.jockey import real_overseas_rows
 
 class TrainerScorer(BaseScorer):
     def compute(self):
-        from features.jockey import continuous_rating
+        from hkjc_racing_engine.features.jockey import continuous_rating
         rated = continuous_rating(
             "trainer",
             self.horse_data.get("trainer", ""),

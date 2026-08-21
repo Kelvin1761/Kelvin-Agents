@@ -32,12 +32,12 @@ from statistics import mean
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / ".agents" / "skills" / "shared_racing"))
-ENGINE = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
-sys.path.insert(0, str(ENGINE))
+ENGINE = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts" / "au_racing_engine"
+sys.path.insert(0, str(ENGINE.parent))
 
 from wongchoi_paths import HK_RACING  # noqa: E402
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 MATRIX_KEYS = ("stability", "sectional", "race_shape", "trainer_signal",
                "horse_health", "form_line", "class_advantage")

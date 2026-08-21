@@ -10,20 +10,20 @@ from form import FormScorer
 from jockey import JockeyScorer
 from speed import SpeedScorer
 from trainer import TrainerScorer
-from live_priors import (
+from .live_priors import (
     TrainerSignalPriors,
     empty_trainer_signal_priors,
     prior_source_manifest,
     temporal_source_is_safe,
 )
-from matrix_mapper import (
+from .matrix_mapper import (
     MATRIX_FORMULAS,
     map_features_to_matrix,
     map_features_to_matrix_scores,
     matrix_formula_manifest,
 )
-import scoring
-from scoring import DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade, parse_float, parse_record, score_band
+from . import scoring
+from .scoring import DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade, parse_float, parse_record, score_band
 
 _TRAINER_SIGNAL_PRIORS = None
 

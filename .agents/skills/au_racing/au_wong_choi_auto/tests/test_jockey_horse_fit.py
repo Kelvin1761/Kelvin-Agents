@@ -13,11 +13,11 @@ ENGINE = (
     / "au_racing"
     / "au_wong_choi_auto"
     / "scripts"
-    / "racing_engine"
+    / "au_racing_engine"
 )
 sys.path.insert(0, str(ENGINE))
 
-from engine_core import RacingEngine
+from au_racing_engine.engine_core import RacingEngine
 
 
 def _score(*, wins: int, places: int) -> float:

@@ -58,12 +58,12 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing"))
 
-import matrix_mapper  # noqa: E402
+from au_racing_engine import matrix_mapper  # noqa: E402
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 TOP_K = 5           # 決定 Gold（頭四揀）／Good位 嘅區域，留一格緩衝
 HOLDOUT = 0.15      # 依時間切，holdout 唔准睇住調

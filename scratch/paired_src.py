@@ -7,12 +7,12 @@
 import json, sys, statistics
 from pathlib import Path
 S=Path('.agents/skills/au_racing/au_wong_choi_auto/scripts')
-sys.path.insert(0,str(S)); sys.path.insert(0,str(S/'racing_engine'))
+sys.path.insert(0,str(S)); sys.path.insert(0,str(S))
 sys.path.insert(0,'.agents/skills/au_racing')
 import au_profile_stats as ps
 from au_archive_calibrator import ARCHIVE_ROOT, parse_int
-from engine_core import RacingEngine
-from scoring import clip_score
+from au_racing_engine.engine_core import RacingEngine
+from au_racing_engine.scoring import clip_score
 
 cache = ps.load_cache() or {}
 K = RacingEngine._PLACE_RATE_K

@@ -21,8 +21,8 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine"))
 
-from matrix_mapper import MATRIX_FORMULAS  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.matrix_mapper import MATRIX_FORMULAS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 LEAVES = ("form_score", "consistency_score", "pace_figure_score", "sectional_score",

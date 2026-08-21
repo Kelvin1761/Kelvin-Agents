@@ -16,7 +16,7 @@ from statistics import mean, pstdev
 
 SCRIPTS = Path("/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts")
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, "/Users/imac/Antigravity-repo/.agents/skills/shared_racing")
 
 from au_archive_calibrator import FEATURE_SCORE_KEYS  # noqa: E402

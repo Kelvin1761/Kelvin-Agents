@@ -32,10 +32,10 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 AU_RACING = SCRIPT_DIR.parents[1]
 sys.path.insert(0, str(AU_RACING))
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_leaf_power import norm, results_for  # noqa: E402
-from scoring import FEATURE_KEYS  # noqa: E402
+from au_racing_engine.scoring import FEATURE_KEYS  # noqa: E402
 
 
 def main():

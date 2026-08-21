@@ -22,15 +22,15 @@ from statistics import mean
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
-from matrix_mapper import (  # noqa: E402
+from au_racing_engine.matrix_mapper import (  # noqa: E402
     MATRIX_ADVANTAGE_CUTOFF,
     MATRIX_DISADVANTAGE_CUTOFF,
     MATRIX_DISPLAY_GAINS,
     MATRIX_FORMULAS,
 )
-from scoring import (  # noqa: E402
+from au_racing_engine.scoring import (  # noqa: E402
     FEATURE_KEYS,
     GRADE_THRESHOLDS,
     MATRIX_WEIGHTS,
@@ -778,9 +778,9 @@ def complete_audit(rows: list[dict], base: dict, runtime_path: Path) -> dict:
     ]
     readiness = "NOT READY" if leakage_blockers else "READY WITH LIMITATIONS"
     scorer_sources = (
-        SCRIPT_DIR / "racing_engine" / "engine_core.py",
-        SCRIPT_DIR / "racing_engine" / "scoring.py",
-        SCRIPT_DIR / "racing_engine" / "matrix_mapper.py",
+        SCRIPT_DIR / "au_racing_engine" / "engine_core.py",
+        SCRIPT_DIR / "au_racing_engine" / "scoring.py",
+        SCRIPT_DIR / "au_racing_engine" / "matrix_mapper.py",
     )
     audit = {
         **base,

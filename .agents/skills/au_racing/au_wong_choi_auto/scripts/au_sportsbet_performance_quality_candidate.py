@@ -21,12 +21,12 @@ from statistics import mean, pstdev
 SCRIPT_DIR = Path(__file__).resolve().parent
 AUTO_DIR = SCRIPT_DIR.parent
 AU_RACING = AUTO_DIR.parent
-ENGINE_DIR = SCRIPT_DIR / "racing_engine"
+ENGINE_DIR = SCRIPT_DIR / "au_racing_engine"
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(ENGINE_DIR))
+sys.path.insert(0, str(ENGINE_DIR.parent))
 sys.path.insert(0, str(AU_RACING))
 
-import matrix_mapper  # noqa: E402
+from au_racing_engine import matrix_mapper  # noqa: E402
 from au_eval import (  # noqa: E402
     _auc_indices,
     _pairs,
@@ -37,11 +37,11 @@ from au_eval import (  # noqa: E402
     verdict_dict,
 )
 from claw_sportsbet_form import BASE, parse_race, parse_runner_blocks, run_date  # noqa: E402
-from engine_core import (  # noqa: E402
+from au_racing_engine.engine_core import (  # noqa: E402
     _performance_quality_digest,
     clip_score,
 )
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 
 def _identity(value: str) -> str:

@@ -20,7 +20,7 @@ import au_ordering_phase1 as p1  # noqa: E402  (reuses RAW, h2h_and_quality, dec
 
 SCRIPTS = Path("/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts")
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 
 from au_cached_walkforward_ml import (  # noqa: E402
     as_float,

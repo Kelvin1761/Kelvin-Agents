@@ -1,6 +1,6 @@
 import re
-import scoring
-from scoring import BaseScorer
+from hkjc_racing_engine import scoring
+from hkjc_racing_engine.scoring import BaseScorer
 
 # 檔位評分 = 位置先驗公式（1-4檔好 / 直路8+好）。
 # ⚠️ 2026-07-05 backtest（RICH 131場 + 高覆蓋 60場，harness 重現 production baseline）：

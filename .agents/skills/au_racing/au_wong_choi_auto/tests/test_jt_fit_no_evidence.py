@@ -19,11 +19,11 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 
 import pytest  # noqa: E402
 
-from engine_core import RacingEngine  # noqa: E402
+from au_racing_engine.engine_core import RacingEngine  # noqa: E402
 
 CTX = {"race_class": "BM62, Handicap", "distance": "1400m",
        "field_summary": {"count": 10},
@@ -85,7 +85,7 @@ class TestContrastWithSectional:
         兩個唔同方向係有實測依據嘅，唔係前後不一致。任何人想把
         `_JT_FIT_NO_EVIDENCE` 「修正」返 60 之前，要先重做 cohort 量度。
         """
-        from scoring import SECTIONAL_MICRO_WEIGHTS
+        from au_racing_engine.scoring import SECTIONAL_MICRO_WEIGHTS
 
         assert SECTIONAL_MICRO_WEIGHTS["base"] == 60.0
         assert RacingEngine._JT_FIT_NO_EVIDENCE < 60.0

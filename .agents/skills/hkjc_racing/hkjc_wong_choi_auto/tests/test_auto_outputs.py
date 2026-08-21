@@ -13,18 +13,18 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[5]
 SKILL_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto"
 SCRIPT = SKILL_DIR / "scripts" / "hkjc_auto_orchestrator.py"
-ENGINE_DIR = SKILL_DIR / "scripts" / "racing_engine"
+ENGINE_DIR = SKILL_DIR / "scripts" / "hkjc_racing_engine"
 EXTRACTOR_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_race_extractor" / "scripts"
-sys.path.insert(0, str(ENGINE_DIR))
+sys.path.insert(0, str(ENGINE_DIR.parent))
 sys.path.insert(0, str(EXTRACTOR_DIR))
 
 import extract_trackwork
-from matrix_mapper import map_features_to_matrix_scores
-from scoring import MATRIX_WEIGHTS, compute_grade
-from engine_core import RacingEngine
-from features.jockey import JockeyScorer
-from features.speed import SpeedScorer
-from features.trainer import TrainerScorer
+from hkjc_racing_engine.matrix_mapper import map_features_to_matrix_scores
+from hkjc_racing_engine.scoring import MATRIX_WEIGHTS, compute_grade
+from hkjc_racing_engine.engine_core import RacingEngine
+from hkjc_racing_engine.features.jockey import JockeyScorer
+from hkjc_racing_engine.features.speed import SpeedScorer
+from hkjc_racing_engine.features.trainer import TrainerScorer
 
 
 def _logic() -> dict:

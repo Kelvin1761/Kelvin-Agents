@@ -3,10 +3,10 @@ from pathlib import Path
 
 import sys
 SCRIPT_DIR = Path(".agents/skills/au_racing/au_wong_choi_auto/scripts")
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(SCRIPT_DIR))
 
-from engine_core import RacingEngine
+from au_racing_engine.engine_core import RacingEngine
 from au_archive_calibrator import ARCHIVE_ROOT, HISTORICAL_RESULTS_CSV, iter_logic_rows, load_historical_results, parse_int
 
 class ProposedRacingEngine(RacingEngine):

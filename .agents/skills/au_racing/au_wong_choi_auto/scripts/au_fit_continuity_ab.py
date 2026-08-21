@@ -32,16 +32,16 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing"))
 
 from au_auto_orchestrator import _build_field_summary  # noqa: E402
 from au_runtime_micro_ablation import (discover_logic_files,  # noqa: E402
                                       iter_aligned_races, patched_weights)
 from au_archive_calibrator import detect_meeting_date, load_historical_results  # noqa: E402
-from engine_core import RacingEngine, backfill_pf_metrics  # noqa: E402
+from au_racing_engine.engine_core import RacingEngine, backfill_pf_metrics  # noqa: E402
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from scoring import (CONSISTENCY_MICRO_WEIGHTS, FIT_MICRO_WEIGHTS,  # noqa: E402
+from au_racing_engine.scoring import (CONSISTENCY_MICRO_WEIGHTS, FIT_MICRO_WEIGHTS,  # noqa: E402
                      TRIAL_MICRO_WEIGHTS)
 
 W, C, T = FIT_MICRO_WEIGHTS, CONSISTENCY_MICRO_WEIGHTS, TRIAL_MICRO_WEIGHTS

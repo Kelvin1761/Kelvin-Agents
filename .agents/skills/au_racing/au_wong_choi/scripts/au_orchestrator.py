@@ -25,7 +25,7 @@ AUTO_ENGINE_DIR = (
     / "au_racing"
     / "au_wong_choi_auto"
     / "scripts"
-    / "racing_engine"
+    / "au_racing_engine"
 )
 
 sys.path.insert(0, str(SHARED_SCRIPTS))
@@ -34,7 +34,7 @@ sys.path.insert(0, str(AUTO_ENGINE_DIR))
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
-from source_alignment import validate_facts_horse_alignment, venue_from_meeting_name
+from au_racing_engine.source_alignment import validate_facts_horse_alignment, venue_from_meeting_name
 from subprocess_pool import bounded_workers, run_labeled_commands
 from wongchoi_paths import AU_RACING
 

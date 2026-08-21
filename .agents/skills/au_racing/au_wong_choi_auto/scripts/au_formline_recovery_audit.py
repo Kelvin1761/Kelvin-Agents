@@ -13,11 +13,11 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_eval import compare, default_scorer, load_races, verdict_dict  # noqa: E402
-from io_utils import write_json_atomic, write_text_atomic  # noqa: E402
-from matrix_mapper import map_features_to_matrix_scores  # noqa: E402
+from au_racing_engine.io_utils import write_json_atomic, write_text_atomic  # noqa: E402
+from au_racing_engine.matrix_mapper import map_features_to_matrix_scores  # noqa: E402
 
 
 SHARES = (0.01, 0.02, 0.05, 0.10)

@@ -17,7 +17,7 @@ AUTO_RESOURCES = SCRIPT_DIR.parent / "resources"
 
 JOCKEY_MD = ANALYST_RESOURCES / "07_jockey_profiles.md"
 TRAINER_MD = ANALYST_RESOURCES / "07b_trainer_signals.md"
-ENGINE_CORE = SCRIPT_DIR / "racing_engine" / "engine_core.py"
+ENGINE_CORE = SCRIPT_DIR / "au_racing_engine" / "engine_core.py"
 
 JOCKEY_CSV = AUTO_RESOURCES / "AU_Jockey_Ratings.csv"
 TRAINER_CSV = AUTO_RESOURCES / "AU_Trainer_Ratings.csv"

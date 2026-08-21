@@ -5,10 +5,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-ENGINE = Path(__file__).resolve().parents[1] / "scripts" / "racing_engine"
-sys.path.insert(0, str(ENGINE))
+ENGINE = Path(__file__).resolve().parents[1] / "scripts" / "au_racing_engine"
+sys.path.insert(0, str(ENGINE.parent))
 
-from engine_core import _load_meeting_intelligence, _parse_meeting_intelligence  # noqa: E402
+from au_racing_engine.engine_core import _load_meeting_intelligence, _parse_meeting_intelligence  # noqa: E402
 
 
 class MeetingIntelligenceFormatTests(unittest.TestCase):

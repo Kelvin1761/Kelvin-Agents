@@ -24,28 +24,28 @@ from pathlib import Path
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[5]
-ENGINE_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
-sys.path.insert(0, str(ENGINE_DIR))
+ENGINE_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts" / "hkjc_racing_engine"
+sys.path.insert(0, str(ENGINE_DIR.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT))
 
 from wongchoi_paths import is_materialized_file  # noqa: E402
 
-from engine_core import RacingEngine  # noqa: E402
-from features.draw import DrawScorer  # noqa: E402
-from features.form import FormScorer  # noqa: E402
-from features.jockey import JockeyScorer  # noqa: E402
-from features.speed import SpeedScorer  # noqa: E402
-from features.trainer import TrainerScorer  # noqa: E402
+from hkjc_racing_engine.engine_core import RacingEngine  # noqa: E402
+from hkjc_racing_engine.features.draw import DrawScorer  # noqa: E402
+from hkjc_racing_engine.features.form import FormScorer  # noqa: E402
+from hkjc_racing_engine.features.jockey import JockeyScorer  # noqa: E402
+from hkjc_racing_engine.features.speed import SpeedScorer  # noqa: E402
+from hkjc_racing_engine.features.trainer import TrainerScorer  # noqa: E402
 from hkjc_results_db import (  # noqa: E402
     get_analysis_archive_root,
     get_comprehensive_stats_root,
     get_season_csvs,
     get_season_results_roots,
 )
-from matrix_mapper import MATRIX_FORMULAS as CURRENT_MATRIX_FORMULAS  # noqa: E402
-from scoring import MATRIX_WEIGHTS as CURRENT_MATRIX_WEIGHTS  # noqa: E402
-from scoring import FEATURE_KEYS, clip_score, parse_float  # noqa: E402
+from hkjc_racing_engine.matrix_mapper import MATRIX_FORMULAS as CURRENT_MATRIX_FORMULAS  # noqa: E402
+from hkjc_racing_engine.scoring import MATRIX_WEIGHTS as CURRENT_MATRIX_WEIGHTS  # noqa: E402
+from hkjc_racing_engine.scoring import FEATURE_KEYS, clip_score, parse_float  # noqa: E402
 
 os.environ.setdefault("PYTHONUTF8", "1")
 if hasattr(sys.stdout, "reconfigure"):

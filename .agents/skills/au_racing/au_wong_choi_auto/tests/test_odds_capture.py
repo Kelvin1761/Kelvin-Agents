@@ -16,8 +16,8 @@ from pathlib import Path
 
 AU = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(AU))
-ENGINE = AU / "au_wong_choi_auto" / "scripts" / "racing_engine"
-sys.path.insert(0, str(ENGINE))
+ENGINE = AU / "au_wong_choi_auto" / "scripts" / "au_racing_engine"
+sys.path.insert(0, str(ENGINE.parent))
 
 import claw_sportsbet_form as C  # noqa: E402
 

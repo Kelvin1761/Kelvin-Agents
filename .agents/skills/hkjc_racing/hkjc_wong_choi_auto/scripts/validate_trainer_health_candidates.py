@@ -13,13 +13,13 @@ from typing import Iterable
 
 ROOT = Path(__file__).resolve().parents[5]
 SCRIPT_DIR = Path(__file__).resolve().parent
-ENGINE_DIR = SCRIPT_DIR / "racing_engine"
-sys.path.insert(0, str(ENGINE_DIR))
+ENGINE_DIR = SCRIPT_DIR / "hkjc_racing_engine"
+sys.path.insert(0, str(ENGINE_DIR.parent))
 sys.path.insert(0, str(ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"))
 
-from engine_core import RacingEngine
+from hkjc_racing_engine.engine_core import RacingEngine
 from hkjc_results_db import get_combo_priors_csv, get_full_results_csv
-from renderer import _draw_micro_bonus
+from hkjc_racing_engine.renderer import _draw_micro_bonus
 
 RESULTS_CSV = get_full_results_csv()
 OUTER_WEIGHTS = {

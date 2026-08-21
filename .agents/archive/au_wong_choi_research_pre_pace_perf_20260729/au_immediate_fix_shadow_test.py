@@ -23,7 +23,7 @@ PROJECT_ROOT = SCRIPT_DIR.parents[4]
 import sys
 
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_archive_calibrator import (  # noqa: E402
     ARCHIVE_ROOT,
@@ -35,14 +35,14 @@ from au_archive_calibrator import (  # noqa: E402
     normalize_horse_name,
     parse_int,
 )
-from matrix_mapper import map_features_to_matrix_scores  # noqa: E402
-from scoring import (  # noqa: E402
+from au_racing_engine.matrix_mapper import map_features_to_matrix_scores  # noqa: E402
+from au_racing_engine.scoring import (  # noqa: E402
     PLACE_TIGHTENING_FEATURE_WEIGHTS,
     PLACE_TIGHTENING_SCALE,
     get_dynamic_matrix_weights,
     parse_float,
 )
-import engine_core  # noqa: E402
+from au_racing_engine import engine_core  # noqa: E402
 
 
 OUTPUT_MD = PROJECT_ROOT / "2026-06-09 AU Immediate Fix Shadow Test.md"

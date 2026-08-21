@@ -12,17 +12,17 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 
 import pytest  # noqa: E402
 
-from engine_core import (  # noqa: E402
+from au_racing_engine.engine_core import (  # noqa: E402
     CLASS_PRIZE_K,
     RacingEngine,
     _parse_prize,
     horse_prize_level,
 )
-from scoring import SECTIONAL_MICRO_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import SECTIONAL_MICRO_WEIGHTS  # noqa: E402
 
 HEADER = (
     "| # | 類型 | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 "

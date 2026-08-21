@@ -36,7 +36,7 @@ PROJECT_ROOT = SCRIPT_DIR.parents[4]
 import sys
 sys.path = [p for p in sys.path if p]
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_archive_calibrator import (
     ARCHIVE_ROOT,
@@ -57,12 +57,12 @@ from au_sip_tester import (
     pct,
 )
 from re_score_archive import build_field_summary
-from scoring import clip_score
+from au_racing_engine.scoring import clip_score
 
-import engine_core
-import matrix_mapper
-import scoring
-from engine_core import RacingEngine
+from au_racing_engine import engine_core
+from au_racing_engine import matrix_mapper
+from au_racing_engine import scoring
+from au_racing_engine.engine_core import RacingEngine
 
 OUTPUT_MD = PROJECT_ROOT / "2026-05-31 AU Comprehensive Improvement Test.md"
 

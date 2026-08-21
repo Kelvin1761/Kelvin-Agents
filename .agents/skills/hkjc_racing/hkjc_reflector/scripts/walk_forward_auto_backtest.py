@@ -59,10 +59,10 @@ OLD_MATRIX_FORMULAS = {
 # adjustments (trainer_signal v3, health_only_v2, finish-time trend) are likewise
 # not re-applied. For a faithful production backtest, trust the "prod" column,
 # which ranks by the persisted python_auto.ability_score directly.
-_ENGINE = Path(__file__).resolve().parents[2] / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
-sys.path.insert(0, str(_ENGINE))
-from scoring import MATRIX_WEIGHTS as NEW_MATRIX_WEIGHTS  # type: ignore
-from matrix_mapper import MATRIX_FORMULAS as NEW_MATRIX_FORMULAS  # type: ignore
+_ENGINE = Path(__file__).resolve().parents[2] / "hkjc_wong_choi_auto" / "scripts" / "hkjc_racing_engine"
+sys.path.insert(0, str(_ENGINE.parent))
+from hkjc_racing_engine.scoring import MATRIX_WEIGHTS as NEW_MATRIX_WEIGHTS  # type: ignore
+from hkjc_racing_engine.matrix_mapper import MATRIX_FORMULAS as NEW_MATRIX_FORMULAS  # type: ignore
 
 
 def clip_score(value: object, default: float = 60.0) -> float:

@@ -19,18 +19,18 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 
 import pytest  # noqa: E402
 
-import engine_core  # noqa: E402
-from engine_core import RacingEngine, backfill_pf_metrics  # noqa: E402
-from matrix_mapper import (  # noqa: E402
+from au_racing_engine import engine_core  # noqa: E402
+from au_racing_engine.engine_core import RacingEngine, backfill_pf_metrics  # noqa: E402
+from au_racing_engine.matrix_mapper import (  # noqa: E402
     MATRIX_DISPLAY_GAINS,
     MATRIX_FORMULAS,
     map_features_to_matrix_scores,
 )
-from scoring import (  # noqa: E402
+from au_racing_engine.scoring import (  # noqa: E402
     MATRIX_WEIGHTS,
     PACE_MICRO_WEIGHTS,
     SECTIONAL_MICRO_WEIGHTS,

@@ -41,12 +41,12 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing"))
 
-import matrix_mapper  # noqa: E402
+from au_racing_engine import matrix_mapper  # noqa: E402
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 KEYS = ("gold", "good_positional", "pass", "champion", "winner_in_top3")
 # Kelvin 2026-08-03：Gold + Good 係要追嘅。t3prec / winT3 做守門 ——

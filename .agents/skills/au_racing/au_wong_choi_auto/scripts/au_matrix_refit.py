@@ -42,14 +42,14 @@ import numpy as np
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing"))
 
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from matrix_mapper import (  # noqa: E402
+from au_racing_engine.matrix_mapper import (  # noqa: E402
     MATRIX_DISPLAY_GAINS, MATRIX_DISPLAY_TARGET_SD, MATRIX_FORMULAS,
     map_features_to_matrix_scores)
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 HERE = Path.cwd()
 HOLDOUT = 0.15

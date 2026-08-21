@@ -22,7 +22,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = REPO_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_archive_calibrator import (  # noqa: E402
     ARCHIVE_ROOT,
@@ -32,7 +32,7 @@ from au_archive_calibrator import (  # noqa: E402
     normalize_track_name,
     parse_int,
 )
-from engine_core import _record_rows  # noqa: E402
+from au_racing_engine.engine_core import _record_rows  # noqa: E402
 
 PLACE = re.compile(r"^\s*(\d+)")
 MARGIN = re.compile(r"\(([-+]?\d+(?:\.\d+)?)L\)")

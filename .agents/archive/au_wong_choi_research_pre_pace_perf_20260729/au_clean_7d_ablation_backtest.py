@@ -9,7 +9,7 @@ from copy import deepcopy
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_archive_calibrator import (  # noqa: E402
     ARCHIVE_ROOT,
@@ -21,7 +21,7 @@ from au_archive_calibrator import (  # noqa: E402
     parse_int,
 )
 from au_zero_hit_race_audit import field_size_bucket, race_class_bucket  # noqa: E402
-from scoring import MATRIX_WEIGHTS, get_dynamic_matrix_weights, soft_race_shape_modifier  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS, get_dynamic_matrix_weights, soft_race_shape_modifier  # noqa: E402
 
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Clean_7D_Ablation_Backtest.md"

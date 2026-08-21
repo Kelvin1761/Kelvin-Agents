@@ -7,11 +7,11 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[5]
-ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"
-sys.path.insert(0, str(ENGINE_DIR))
+ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_racing_engine"
+sys.path.insert(0, str(ENGINE_DIR.parent))
 
-from engine_core import RacingEngine
-from renderer import _zero_weight_dimensions, render_race_markdown
+from au_racing_engine.engine_core import RacingEngine
+from au_racing_engine.renderer import _zero_weight_dimensions, render_race_markdown
 
 
 def _analyze(horse: dict, race_context: dict) -> dict:

@@ -15,7 +15,7 @@ from pathlib import Path
 
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 
 import pytest  # noqa: E402
 
@@ -122,7 +122,7 @@ class TestIdempotence:
                 writer.writerow(row)
         known, count = existing_keys(csv_path)
         assert count == len(rows)
-        from source_alignment import normalize_horse_name
+        from au_racing_engine.source_alignment import normalize_horse_name
         fresh = [r for r in rows
                  if (r["Date"], str(r["Race"]), normalize_horse_name(r["Horse"])) not in known]
         assert fresh == []

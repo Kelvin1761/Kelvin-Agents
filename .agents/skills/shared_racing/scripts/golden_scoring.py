@@ -38,12 +38,12 @@ REPO_ROOT = Path(__file__).resolve().parents[4]
 
 PLATFORMS = {
     "au": {
-        "engine": REPO_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine",
+        "engine": REPO_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine",
         "golden": REPO_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/tests/golden/scoring_golden.json",
         "data_root_attr": "AU_RACING",
     },
     "hkjc": {
-        "engine": REPO_ROOT / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/racing_engine",
+        "engine": REPO_ROOT / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine",
         "golden": REPO_ROOT / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/tests/golden/scoring_golden.json",
         "data_root_attr": "HK_RACING",
     },
@@ -55,9 +55,17 @@ TOLERANCE = 0.005               # scores are rounded to 2dp; anything larger is 
 
 
 def load(platform: str):
-    sys.path.insert(0, str(PLATFORMS[platform]["engine"]))
-    scoring = importlib.import_module("scoring")
-    matrix_mapper = importlib.import_module("matrix_mapper")
+    """Import the platform's engine PACKAGE (never its loose modules).
+
+    AU and HKJC used to both expose a top-level `scoring`; importing by bare
+    name silently gave whichever landed on sys.path first.  Going through the
+    uniquely-named package makes that impossible.
+    """
+    engine = PLATFORMS[platform]["engine"]
+    sys.path.insert(0, str(engine.parent))
+    package = engine.name
+    scoring = importlib.import_module(f"{package}.scoring")
+    matrix_mapper = importlib.import_module(f"{package}.matrix_mapper")
     return scoring, matrix_mapper
 
 

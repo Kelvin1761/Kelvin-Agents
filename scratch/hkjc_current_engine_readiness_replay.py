@@ -38,7 +38,7 @@ if str(AUTO_SCRIPT_DIR) not in sys.path:
 
 import hkjc_auto_orchestrator as auto_orchestrator  # noqa: E402
 import live_priors  # noqa: E402
-import engine_core as engine_core_module  # noqa: E402
+from au_racing_engine import engine_core as engine_core_module  # noqa: E402
 
 
 DATASETS = ("independent_recent", "external_2026_07_15")

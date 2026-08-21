@@ -28,7 +28,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_DIR = REPO_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(REPO_ROOT / ".agents/skills/shared_racing"))
 
 from au_archive_calibrator import (  # noqa: E402
@@ -37,8 +37,8 @@ from au_archive_calibrator import (  # noqa: E402
     parse_int,
 )
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from matrix_mapper import map_features_to_matrix_scores  # noqa: E402
-from scoring import MATRIX_WEIGHTS, clip_score  # noqa: E402
+from au_racing_engine.matrix_mapper import map_features_to_matrix_scores  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS, clip_score  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 HOLDOUT_FRACTION = 0.15

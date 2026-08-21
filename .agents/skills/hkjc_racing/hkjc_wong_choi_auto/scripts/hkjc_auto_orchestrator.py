@@ -19,19 +19,19 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.append(str(PROJECT_ROOT))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 
-from engine_core import RacingEngine, scoring_run_contract
-from renderer import (
+from hkjc_racing_engine.engine_core import RacingEngine, scoring_run_contract
+from hkjc_racing_engine.renderer import (
     ensure_verdict,
     prepare_race_outputs,
     render_meeting_csv,
     write_prepared_race_outputs,
 )
-from scoring import compute_grade
-from validation import validate_engine_scripts, validate_logic_data
+from hkjc_racing_engine.scoring import compute_grade
+from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
 # Optional: horse-profile scraper for multi-season (近三季) readout enrichment.

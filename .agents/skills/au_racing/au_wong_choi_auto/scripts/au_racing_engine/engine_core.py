@@ -11,7 +11,7 @@ from collections import Counter
 from datetime import datetime
 from pathlib import Path
 
-from matrix_mapper import (
+from .matrix_mapper import (
     MATRIX_ADVANTAGE_CUTOFF,
     MATRIX_DISADVANTAGE_CUTOFF,
     MATRIX_FORMULAS,
@@ -19,7 +19,7 @@ from matrix_mapper import (
     map_features_to_matrix,
     map_features_to_matrix_scores,
 )
-from source_alignment import (
+from .source_alignment import (
     HORSE_HEADER_RE,
     RACECARD_HORSE_RE,
     RACECARD_META_RE,
@@ -30,7 +30,7 @@ from source_alignment import (
     validate_facts_horse_alignment,
     venue_from_meeting_name,
 )
-from scoring import (
+from .scoring import (
     ABILITY_FEATURE_KEYS,
     FEATURE_KEYS,
     MATRIX_WEIGHTS,

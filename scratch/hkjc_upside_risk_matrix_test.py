@@ -12,9 +12,9 @@ from typing import Callable
 
 ROOT = Path(__file__).resolve().parents[1]
 REFLECTOR_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"
-ENGINE_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
+ENGINE_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts" / "au_racing_engine"
 sys.path.insert(0, str(REFLECTOR_DIR))
-sys.path.insert(0, str(ENGINE_DIR))
+sys.path.insert(0, str(ENGINE_DIR.parent))
 
 from review_auto_weighting import (  # noqa: E402
     build_results_index,
@@ -24,7 +24,7 @@ from review_auto_weighting import (  # noqa: E402
     race_num_from_path,
     venue_from_meeting_dir,
 )
-from scoring import MATRIX_WEIGHTS, clip_score  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS, clip_score  # noqa: E402
 
 
 DEBUT_WEIGHTS = {

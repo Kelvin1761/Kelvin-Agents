@@ -8,14 +8,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[5]
-ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"
+ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_racing_engine"
 SCRIPTS_DIR = ENGINE_DIR.parent
-sys.path.insert(0, str(ENGINE_DIR))
+sys.path.insert(0, str(ENGINE_DIR.parent))
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from au_auto_orchestrator import _build_field_summary
-from engine_core import RacingEngine, _summarize_formguide_section
-from matrix_mapper import map_features_to_matrix_scores
+from au_racing_engine.engine_core import RacingEngine, _summarize_formguide_section
+from au_racing_engine.matrix_mapper import map_features_to_matrix_scores
 
 
 def _run(date: str, prize: int, margin: float, starters: int = 10) -> str:

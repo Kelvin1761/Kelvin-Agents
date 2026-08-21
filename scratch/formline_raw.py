@@ -2,12 +2,12 @@
 import json, sys
 from pathlib import Path
 S=Path('.agents/skills/au_racing/au_wong_choi_auto/scripts')
-sys.path.insert(0,str(S)); sys.path.insert(0,str(S/'racing_engine'))
+sys.path.insert(0,str(S)); sys.path.insert(0,str(S))
 from au_archive_calibrator import (ARCHIVE_ROOT, HISTORICAL_RESULTS_CSV, choose_track_rows,
     detect_meeting_date, detect_meeting_track, get_true_horse_name, load_historical_results,
     normalize_horse_name, parse_int)
 from au_auto_orchestrator import _build_field_summary
-from engine_core import RacingEngine
+from au_racing_engine.engine_core import RacingEngine
 
 results=load_historical_results(HISTORICAL_RESULTS_CSV)
 out=[]

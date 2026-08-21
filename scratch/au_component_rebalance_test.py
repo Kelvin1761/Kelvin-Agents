@@ -24,7 +24,7 @@ from pathlib import Path
 
 SCRIPTS = Path("/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts")
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, "/Users/imac/Antigravity-repo/.agents/skills/shared_racing")
 
 from au_archive_calibrator import MATRIX_KEYS  # noqa: E402
@@ -35,7 +35,7 @@ from au_cached_walkforward_ml import (  # noqa: E402
     materialize_dataset,
     metrics_for_races,
 )
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 CURRENT = {
     "stability": (("form_score", 0.60), ("consistency_score", 0.40)),

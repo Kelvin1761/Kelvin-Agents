@@ -21,7 +21,7 @@ from statistics import mean
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parents[4]
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(PROJECT_ROOT / ".agents" / "skills" / "shared_racing"))
 
 from au_archive_calibrator import (
@@ -35,9 +35,9 @@ from au_archive_calibrator import (
 )
 from au_auto_orchestrator import _build_field_summary, _facts_path_for_logic
 from eval_metrics import race_metrics, summarize_races
-from engine_core import RacingEngine, backfill_pf_metrics, enrich_logic_from_facts
-from io_utils import write_json_atomic, write_text_atomic
-from scoring import (
+from au_racing_engine.engine_core import RacingEngine, backfill_pf_metrics, enrich_logic_from_facts
+from au_racing_engine.io_utils import write_json_atomic, write_text_atomic
+from au_racing_engine.scoring import (
     CLASS_MICRO_WEIGHTS,
     CONSISTENCY_MICRO_WEIGHTS,
     FIT_MICRO_WEIGHTS,

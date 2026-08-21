@@ -11,9 +11,9 @@ from collections import defaultdict
 from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
-from engine_core import RacingEngine
+from au_racing_engine.engine_core import RacingEngine
 
 # Reuse shared helpers
 sys.path.append(str(SCRIPT_DIR))

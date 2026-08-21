@@ -11,7 +11,7 @@ import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import AU_RACING
 AUTO_DIR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"
 sys.path.insert(0, str(AUTO_DIR))
-sys.path.insert(0, str(AUTO_DIR / "racing_engine"))
+sys.path.insert(0, str(AUTO_DIR))
 
 from au_market_free_ablation import (  # noqa: E402
     FORMULA_PRESETS,

@@ -3,13 +3,13 @@
 #
 #   ./run_tests.sh
 #
-# WHY each suite gets its OWN python process:
-# AU and HKJC each ship a top-level module named `scoring` (and `draw`,
-# `trainer`, ...) and each inserts its own scripts/ dir into sys.path. Import
-# them in one process and whichever loads first poisons the other:
-#   ImportError: cannot import name 'DEBUT_MATRIX_WEIGHTS' from 'scoring'
-# So `pytest <au_tests> <hkjc_tests>` in a single call can NEVER work. Do not
-# "simplify" this script by collapsing the suites into one pytest invocation.
+# WHY each suite still gets its OWN python process:
+# The module-name collision that used to make this MANDATORY is gone — the
+# engines are now packages (`au_racing_engine` / `hkjc_racing_engine`), so both
+# can be imported side by side in one interpreter. Separate processes are kept
+# because the suites still differ in working directory and in the sys.path
+# entries their non-engine helpers rely on, and because one suite crashing
+# should not take the others' results with it.
 set -uo pipefail
 cd "$(dirname "$0")"
 REPO_ROOT="$(pwd)"

@@ -14,13 +14,13 @@ import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import AU_RACING
 
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 sys.path.append(str(PROJECT_ROOT / ".agents" / "scripts"))
 
 from au_archive_calibrator import detect_meeting_date, detect_meeting_track, parse_int  # type: ignore
 from build_au_logic import _load_track_profile  # type: ignore
 from inject_fact_anchors import _aggregate_confidence, _classify_pace_v2, _pace_confidence  # type: ignore
-from io_utils import write_json_atomic  # type: ignore
+from au_racing_engine.io_utils import write_json_atomic  # type: ignore
 
 
 ARCHIVE_ROOT = AU_RACING

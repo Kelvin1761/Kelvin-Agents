@@ -35,7 +35,7 @@ from collections import defaultdict
 from pathlib import Path
 
 S = Path(".agents/skills/au_racing/au_wong_choi_auto/scripts").resolve()
-sys.path[:0] = [str(S), str(S / "racing_engine"), str(S.parents[2] / "shared_racing")]
+sys.path[:0] = [str(S), str(S.parents[2] / "shared_racing")]
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
 
 SP = Path("/private/tmp/claude-501/-Users-imac-Antigravity-repo/"
@@ -83,8 +83,8 @@ print(f"{'市場':16}" + "".join(f"{mkt[k]:>8.1f}" if k != "good_positional" els
 
 # 我哋（同一批場次入面能對上嘅）
 leaves = json.loads((SP / "leaves_sb_v3.json").read_text())["races"]
-import matrix_mapper  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine import matrix_mapper  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 rows = []
 for r in leaves:
     sc = []

@@ -12,10 +12,10 @@ from pathlib import Path
 from statistics import mean, median, pstdev
 
 SCRIPT_DIR = Path(__file__).resolve().parent
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
-from io_utils import write_json_atomic, write_text_atomic
-from scoring import ABILITY_FEATURE_KEYS, FEATURE_KEYS, REPORT_ONLY_FEATURE_KEYS
+from au_racing_engine.io_utils import write_json_atomic, write_text_atomic
+from au_racing_engine.scoring import ABILITY_FEATURE_KEYS, FEATURE_KEYS, REPORT_ONLY_FEATURE_KEYS
 
 
 def going_family(value: str) -> str:

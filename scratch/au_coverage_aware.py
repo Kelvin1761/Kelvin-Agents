@@ -1,7 +1,7 @@
 import sys, random
 sys.path.insert(0,".agents/skills/au_racing/au_wong_choi_auto/scripts"); sys.path.insert(0,".agents/skills/au_racing/au_wong_choi_auto/scripts/racing_engine"); sys.path.insert(0,".agents/skills/shared_racing")
 from au_cached_walkforward_ml import materialize_dataset, group_races, as_float, date_folds, metrics_for_races
-from scoring import MATRIX_WEIGHTS
+from au_racing_engine.scoring import MATRIX_WEIGHTS
 def clip(v): return max(0.0,min(100.0,float(v)))
 FORM={"stability":[("form_score",0.6),("consistency_score",0.4)],"pace_perf":[("pace_figure_score",0.759174),("sectional_score",0.193864),("trial_score",0.046962)],"race_shape":[("pace_map_score",1.0)],"jockey_trainer":[("jockey_score",0.28),("trainer_score",0.20),("jockey_horse_fit_score",0.52)],"class_weight":[("class_score",0.159),("rating_score",0.70),("weight_score",0.141)],"track":[("track_score",1.0)]}
 DIMS=list(FORM.keys())

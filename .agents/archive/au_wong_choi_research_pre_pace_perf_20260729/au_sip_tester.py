@@ -26,7 +26,7 @@ PROJECT_ROOT = SCRIPT_DIR.parents[4]
 
 # Import shared backtest logic
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 from au_archive_calibrator import (
     ARCHIVE_ROOT,
     HISTORICAL_RESULTS_CSV,
@@ -43,7 +43,7 @@ from au_target_gap_report import (
     race_class_bucket,
 )
 from rank_adjustments import jt_sample_size_rank_cap, narrow_overrated_rank_shield
-from matrix_mapper import matrix_score
+from au_racing_engine.matrix_mapper import matrix_score
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Auto_SIP_Test_Results.md"
 JT_COMBO_CSV = ARCHIVE_ROOT / "AU_Jockey_Trainer_Combo_Stats.csv"

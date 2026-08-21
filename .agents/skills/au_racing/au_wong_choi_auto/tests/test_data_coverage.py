@@ -6,11 +6,11 @@ from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[5]
-ENGINE = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"
-sys.path.insert(0, str(ENGINE))
+ENGINE = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_racing_engine"
+sys.path.insert(0, str(ENGINE.parent))
 
-from engine_core import RacingEngine
-from renderer import _coverage_cell
+from au_racing_engine.engine_core import RacingEngine
+from au_racing_engine.renderer import _coverage_cell
 
 
 def _ctx():

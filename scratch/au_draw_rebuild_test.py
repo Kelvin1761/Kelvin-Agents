@@ -33,7 +33,7 @@ import au_draw_bias_fix_test as fix  # reuses current_modifier reproduction
 
 SCRIPTS = Path("/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts")
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, "/Users/imac/Antigravity-repo")
 
 from wongchoi_paths import AU_RACING  # noqa: E402

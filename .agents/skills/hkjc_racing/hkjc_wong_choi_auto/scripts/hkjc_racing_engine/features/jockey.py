@@ -1,6 +1,6 @@
-import scoring
-from scoring import BaseScorer
-from features.tier_loader import score_tier
+from hkjc_racing_engine import scoring
+from hkjc_racing_engine.scoring import BaseScorer
+from hkjc_racing_engine.features.tier_loader import score_tier
 
 
 def real_overseas_rows(pdf_races):
@@ -23,7 +23,7 @@ def continuous_rating(group, raw_name, *, as_of_date=None):
     層級先驗做 Bayesian blend，數據儲夠自動過渡去純實績。
     Returns (score, reason) or None."""
     try:
-        from live_priors import get_jt_ratings, JT_RATING_PARAMS
+        from hkjc_racing_engine.live_priors import get_jt_ratings, JT_RATING_PARAMS
         hit = get_jt_ratings(as_of_date=as_of_date).lookup(group, raw_name)
     except Exception:
         hit = None

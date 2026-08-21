@@ -5,21 +5,21 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[5]
-ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"
+ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_racing_engine"
 SCRIPTS_DIR = ENGINE_DIR.parent
-sys.path.insert(0, str(ENGINE_DIR))
+sys.path.insert(0, str(ENGINE_DIR.parent))
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 from au_archive_calibrator import archive_snapshot
-from engine_core import RacingEngine
-from matrix_mapper import (
+from au_racing_engine.engine_core import RacingEngine
+from au_racing_engine.matrix_mapper import (
     MATRIX_FORMULAS,
     MATRIX_KEYS,
     canonicalize_matrix_scores,
     map_features_to_matrix_scores,
     matrix_score,
 )
-from scoring import (
+from au_racing_engine.scoring import (
     ABILITY_FEATURE_KEYS,
     FEATURE_KEYS,
     MATRIX_WEIGHTS,

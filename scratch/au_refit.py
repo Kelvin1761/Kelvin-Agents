@@ -30,14 +30,14 @@ import numpy as np
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = REPO_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/scripts"
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, str(REPO_ROOT / ".agents/skills/shared_racing"))
 
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from matrix_mapper import (  # noqa: E402
+from au_racing_engine.matrix_mapper import (  # noqa: E402
     MATRIX_DISPLAY_GAINS, MATRIX_DISPLAY_TARGET_SD, MATRIX_FORMULAS,
     map_features_to_matrix_scores)
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
 HOLDOUT = 0.15

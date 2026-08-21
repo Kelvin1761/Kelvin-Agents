@@ -15,7 +15,7 @@ import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import AU_RACING
 
 sys.path.append(str(SCRIPT_DIR))
-sys.path.append(str(SCRIPT_DIR / "racing_engine"))
+sys.path.append(str(SCRIPT_DIR))
 
 from au_sip_tester import evaluate_races, report_summary, delta_report  # type: ignore
 from au_archive_calibrator import (  # type: ignore

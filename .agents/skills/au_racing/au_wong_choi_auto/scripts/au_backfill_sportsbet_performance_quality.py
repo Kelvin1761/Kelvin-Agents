@@ -19,7 +19,7 @@ from statistics import mean, pstdev
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_archive_calibrator import (  # noqa: E402
     ARCHIVE_ROOT,
@@ -32,8 +32,8 @@ from au_sportsbet_performance_quality_candidate import (  # noqa: E402
     _identity,
     load_quality_cache,
 )
-from engine_core import clip_score  # noqa: E402
-from io_utils import write_json_atomic  # noqa: E402
+from au_racing_engine.engine_core import clip_score  # noqa: E402
+from au_racing_engine.io_utils import write_json_atomic  # noqa: E402
 
 RECOVERY_KEYS = (
     "sportsbet_performance_quality_raw",

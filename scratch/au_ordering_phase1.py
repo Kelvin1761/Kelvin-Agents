@@ -23,7 +23,7 @@ from statistics import mean, median
 
 SCRIPTS = Path("/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts")
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 
 from au_cached_walkforward_ml import as_float, group_races, materialize_dataset  # noqa: E402
 

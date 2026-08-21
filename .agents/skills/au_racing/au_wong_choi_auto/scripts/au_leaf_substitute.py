@@ -32,14 +32,14 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 AU_RACING = SCRIPT_DIR.parents[1]
 sys.path.insert(0, str(AU_RACING))
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(AU_RACING.parent / "shared_racing"))
 
 from au_leaf_power import norm, results_for  # noqa: E402
 from au_people_going_power import place_rate  # noqa: E402
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from matrix_mapper import map_features_to_matrix_scores  # noqa: E402
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.matrix_mapper import map_features_to_matrix_scores  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 KEYS = ("gold", "good_positional", "pass", "champion", "winner_in_top3")
 

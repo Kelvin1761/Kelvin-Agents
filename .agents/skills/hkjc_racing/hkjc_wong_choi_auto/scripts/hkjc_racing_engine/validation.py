@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from matrix_mapper import matrix_formula_manifest
-from scoring import (
+from .matrix_mapper import matrix_formula_manifest
+from .scoring import (
     DEBUT_MATRIX_WEIGHTS,
     FEATURE_KEYS,
     GRADE_THRESHOLDS,

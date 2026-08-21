@@ -21,7 +21,7 @@ from pathlib import Path
 
 SCRIPTS = Path("/Users/imac/Antigravity-repo/.agents/skills/au_racing/au_wong_choi_auto/scripts")
 sys.path.insert(0, str(SCRIPTS))
-sys.path.insert(0, str(SCRIPTS / "racing_engine"))
+sys.path.insert(0, str(SCRIPTS))
 sys.path.insert(0, "/Users/imac/Antigravity-repo/.agents/skills/shared_racing")
 
 from au_archive_calibrator import HISTORICAL_RESULTS_CSV, MATRIX_KEYS, normalize_horse_name  # noqa: E402
@@ -32,7 +32,7 @@ from au_cached_walkforward_ml import (  # noqa: E402
     materialize_dataset,
     metrics_for_races,
 )
-from scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 JT_FORMULA = (("jockey_score", 0.28), ("trainer_score", 0.20), ("jockey_horse_fit_score", 0.52))
 MIN_RIDES = 5

@@ -37,14 +37,14 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
-sys.path.insert(0, str(SCRIPT_DIR / "racing_engine"))
+sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing"))
 
 from au_archive_calibrator import detect_meeting_date, load_historical_results  # noqa: E402
 from au_auto_orchestrator import _build_field_summary  # noqa: E402
 from au_runtime_micro_ablation import (aligned_race, discover_logic_files,  # noqa: E402
                                       iter_aligned_races)
-from engine_core import RacingEngine, backfill_pf_metrics  # noqa: E402
+from au_racing_engine.engine_core import RacingEngine, backfill_pf_metrics  # noqa: E402
 
 # 邊幾個 leaf 有逐項明細。其餘（class / track / sectional / pace）冇
 # `adjustments` 結構，所以呢個工具照唔到 —— 講明好過靜靜漏。

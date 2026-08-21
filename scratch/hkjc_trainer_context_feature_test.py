@@ -12,14 +12,14 @@ from typing import Callable
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ENGINE_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts" / "racing_engine"
+ENGINE_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts" / "au_racing_engine"
 REFLECTOR_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"
 AUTO_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts"
-sys.path.insert(0, str(ENGINE_DIR))
+sys.path.insert(0, str(ENGINE_DIR.parent))
 sys.path.insert(0, str(REFLECTOR_DIR))
 sys.path.insert(0, str(AUTO_DIR))
 
-from engine_core import RacingEngine  # noqa: E402
+from au_racing_engine.engine_core import RacingEngine  # noqa: E402
 from review_auto_weighting import (  # noqa: E402
     build_results_index,
     default_meeting_roots,
@@ -31,7 +31,7 @@ from review_auto_weighting import (  # noqa: E402
     summarize_model_races,
     venue_from_meeting_dir,
 )
-from scoring import MATRIX_WEIGHTS, clip_score  # noqa: E402
+from au_racing_engine.scoring import MATRIX_WEIGHTS, clip_score  # noqa: E402
 from validate_trainer_health_candidates import (  # noqa: E402
     horse_specific_jockey_change_adjustment,
     load_combo_priors,

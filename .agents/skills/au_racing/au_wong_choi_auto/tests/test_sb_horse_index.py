@@ -187,8 +187,8 @@ class OpponentFollowupStringTests(unittest.TestCase):
         import sys as _sys
         from pathlib import Path as _P
         _sys.path.insert(0, str(_P(__file__).resolve().parents[1]
-                                / "scripts" / "racing_engine"))
-        from engine_core import RE_OPP_FOLLOWUP
+                                / "scripts" / "au_racing_engine"))
+        from au_racing_engine.engine_core import RE_OPP_FOLLOWUP
 
         for text, expected in (("出 3 次: 1 勝", "1"),
                                ("見前三 2 次: 2 勝", "2"),
@@ -203,8 +203,8 @@ class OpponentFollowupStringTests(unittest.TestCase):
         import sys as _sys
         from pathlib import Path as _P
         _sys.path.insert(0, str(_P(__file__).resolve().parents[1]
-                                / "scripts" / "racing_engine"))
-        from engine_core import RE_OPP_FOLLOWUP
+                                / "scripts" / "au_racing_engine"))
+        from au_racing_engine.engine_core import RE_OPP_FOLLOWUP
 
         for text in ("未見前三", "查冊失敗", "查冊不可用", "未有出賽"):
             with self.subTest(text=text):

@@ -1,5 +1,5 @@
-import scoring
-from scoring import BaseScorer
+from hkjc_racing_engine import scoring
+from hkjc_racing_engine.scoring import BaseScorer
 
 class FormScorer(BaseScorer):
     def compute(self):
