@@ -2322,6 +2322,45 @@ def shrink_to_fit(runlog: RunLog, snapshot: Path, today: date) -> Path:
     return out
 
 
+DATA_CONTRACT = (PROJECT_ROOT / ".agents" / "skills" / "shared_racing"
+                 / "scripts" / "data_contract.py")
+
+
+def check_data_contract(runlog: RunLog, meeting_dirs: list[Path]) -> list[str]:
+    """每個要發佈嘅場次跑一次欄位級合約，回「死欄位」問題清單。
+
+    ⚠️ 呢個閘存在嘅原因：2026-08-22 十個場次全部 `pace_figure_score` 中性 60、
+    場內 SD 0.00 —— 排名 **12.2% 權重完全死**，而抽取報「成功」、`WinningTime`
+    54 個齊全、九個 test suite 全綠、日誌零錯。冇任何現有檢查睇得到。
+    真兇係 claw 一句被吞嘅 ImportError。實測影響：71% 場次 top-4 會唔同。
+
+    ⚠️ 只有**死欄位**會攔（幾乎每匹馬都中性，而基準話呢個欄位平時有值）。
+    細場次資料稀疏（例如 5 場鄉道卡嘅試閘分）只出警告 —— 一個會攔住正常
+    日子嘅閘，最後一定會被人關掉。分級喺 `data_contract.py`。
+    """
+    blocking: list[str] = []
+    if not DATA_CONTRACT.exists():
+        runlog.warn("data_contract.py 唔見咗 —— 今次冇跑欄位級合約")
+        return blocking
+    for folder in meeting_dirs:
+        if not list(folder.glob("Race_*_Logic.json")):
+            continue
+        rc, out = run_cmd([sys.executable, str(DATA_CONTRACT), "--platform", "au",
+                           "--meeting", str(folder), "--gate"], timeout=300)
+        dead = [ln.strip() for ln in (out or "").splitlines() if "dead-field" in ln]
+        if rc != 0:
+            for line in dead or [f"exit={rc}"]:
+                blocking.append(f"{folder.name}: {line}")
+        elif dead:
+            # gate said pass but a dead line slipped through — surface it anyway
+            runlog.warn(f"{folder.name}: 合約有 dead-field 但閘放行，請人手睇：{dead[0]}")
+    runlog.step("data-contract", "ok" if not blocking else "failed",
+                meetings=len(meeting_dirs), blocking=len(blocking))
+    for problem in blocking:
+        runlog.error("data-contract", problem)
+    return blocking
+
+
 def validate_snapshot(runlog: RunLog, snapshot: Path,
                       expect_absent: list[str]) -> dict:
     """發佈前驗證。任何一項 fail → 唔發佈。"""
@@ -2465,6 +2504,13 @@ def step_dashboard(runlog: RunLog, meeting_dirs: list[Path],
     runlog.step("dashboard", "start", merge=len(meeting_dirs),
                 archived=len(archived_names))
     expect_absent = [archive_dashboard_key(name) for name in archived_names]
+
+    # 欄位級合約先行 —— snapshot 結構對唔代表欄位有值。2026-08-22 個 snapshot
+    # 結構完全正常，但入面 12.2% 排名權重係死嘅。
+    contract_problems = check_data_contract(runlog, meeting_dirs)
+    if contract_problems:
+        runlog.error("dashboard", f"數據合約有 {len(contract_problems)} 個死欄位 —— 唔發佈")
+        return False
 
     snapshot, expect_absent = build_snapshot(runlog, meeting_dirs, expect_absent)
     snapshot = shrink_to_fit(runlog, snapshot, date.today())

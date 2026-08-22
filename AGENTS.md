@@ -64,6 +64,24 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
    ```
    前提係你已經確認過個變化係你想要嘅 —— golden 會逐匹馬印出邊度變咗。
 
+### 發佈閘：死欄位會攔住 deploy
+
+`step_dashboard` 喺 snapshot 驗證**之前**跑 `data_contract --meeting --gate`，
+逐個場次檢查欄位級健康。只有**死欄位**會攔（幾乎每匹馬中性，而基準話呢個欄位
+平時有值）；細場次資料稀疏只出警告。
+
+呢個閘存在嘅原因：2026-08-22 十個場次全部 `pace_figure_score` 中性 60、場內
+SD 0.00 —— 排名 **12.2% 權重完全死**，而抽取報「成功」、九個 suite 全綠、
+snapshot 結構正常、日誌零錯。真兇係 claw 一句被吞嘅 ImportError
+（`_l600_delta` 條 sys.path 插咗 package 目錄本身）。實測 71% 場次 top-4 會唔同。
+
+**改咗評分邏輯之後要重新 calibrate**，唔然閘會出 `stale-baseline` 警告：
+
+```bash
+python3 .agents/skills/shared_racing/scripts/data_contract.py --platform au \
+  --calibrate --since 2026-08-05 --limit 2000
+```
+
 ### 已知失敗
 
 **而家冇。** `run_tests.sh` 九個 suite 全綠。

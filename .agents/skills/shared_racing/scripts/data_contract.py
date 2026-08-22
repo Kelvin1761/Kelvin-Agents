@@ -87,6 +87,23 @@ NEUTRAL_SLACK = 0.25        # +25 percentage points of "no evidence" horses
 SPREAD_FLOOR_RATIO = 0.40   # a field may lose 60% of its spread before we call it
 RANGE_SLACK = 15.0          # points outside the historical min/max
 
+# ── Severity tiers ────────────────────────────────────────────────────────
+# A single meeting is NOT a corpus. Small country cards legitimately have thin
+# trial / sectional / weight evidence — measured 2026-08-22, a 5-race Gympie
+# card runs `trial_score` at 72.7% neutral against a 36.6% pooled baseline.
+# Gating publication on that would block every country meeting, and a gate that
+# blocks normal days gets switched off.
+#
+# What must block is a field going DEAD: essentially every runner neutral on a
+# field the baseline says is almost always populated. That is what happened on
+# 2026-08-22 — `pace_figure_score` 100% neutral / SD 0.00 against a 2.5%
+# baseline, because a swallowed ImportError killed the L600 benchmark lookup.
+# 12.2% of the ranking weight was gone and nothing else noticed: extraction
+# reported success, nine test suites were green, the logs were clean.
+DEAD_NEUTRAL_RATE = 0.99    # ~every runner has no evidence
+DEAD_BASELINE_MAX = 0.20    # ...on a field that is normally populated
+DEAD_SPREAD = 0.01          # within-race spread indistinguishable from constant
+
 
 @dataclass
 class Violation:
@@ -242,19 +259,35 @@ def check(baseline: dict, paths, platform: str) -> tuple[list, dict]:
         want_neutral = expected.get("neutral_rate")
         got_neutral = actual["neutral_rate"]
         if want_neutral is not None and got_neutral is not None:
-            if got_neutral > want_neutral + NEUTRAL_SLACK:
+            if got_neutral >= DEAD_NEUTRAL_RATE and want_neutral <= DEAD_BASELINE_MAX:
+                violations.append(Violation(
+                    name, "dead-field",
+                    f"整個場次 {got_neutral:.1%} 冇證據，而基準只有 {want_neutral:.1%}"
+                    f" —— 呢個欄位死咗，唔係稀疏",
+                    "error",
+                ))
+            elif got_neutral > want_neutral + NEUTRAL_SLACK:
                 violations.append(Violation(
                     name, "neutral",
                     f"「冇證據」比例 {got_neutral:.1%}，基準 {want_neutral:.1%}"
-                    f"（超出容忍 {NEUTRAL_SLACK:.0%}）",
+                    f"（超出容忍 {NEUTRAL_SLACK:.0%}）—— 細場次資料稀疏屬正常",
+                    "warning",
                 ))
 
         want_spread = expected.get("mean_within_race_spread") or 0.0
         got_spread = actual["mean_within_race_spread"]
-        if want_spread > 1.0 and got_spread < want_spread * SPREAD_FLOOR_RATIO:
+        if want_spread > 1.0 and got_spread <= DEAD_SPREAD:
+            violations.append(Violation(
+                name, "dead-field",
+                f"場內分數散開度 {got_spread:.2f}（基準 {want_spread:.2f}）"
+                f" —— 逐匹馬完全同分，個欄位死咗",
+                "error",
+            ))
+        elif want_spread > 1.0 and got_spread < want_spread * SPREAD_FLOOR_RATIO:
             violations.append(Violation(
                 name, "spread",
-                f"場內分數散開度 {got_spread:.2f}，基準 {want_spread:.2f} —— 個欄位變咗差唔多常數",
+                f"場內分數散開度 {got_spread:.2f}，基準 {want_spread:.2f} —— 偏平，細場次屬正常",
+                "warning",
             ))
 
         for bound, actual_value, expected_value, comparator in (
@@ -277,7 +310,7 @@ def check(baseline: dict, paths, platform: str) -> tuple[list, dict]:
     return violations, {"races": races, "horses": horses}
 
 
-def report(violations, summary, label: str) -> int:
+def report(violations, summary, label: str, gate: bool = False) -> int:
     errors = [v for v in violations if v.severity == "error"]
     warnings = [v for v in violations if v.severity == "warning"]
     print(f"\n數據合約檢查 — {label}")
@@ -292,6 +325,9 @@ def report(violations, summary, label: str) -> int:
         for v in group:
             print(f"  [{v.check}] {v.field_name}: {v.detail}")
     print()
+    if gate:
+        # Only a dead field blocks. Everything else is information.
+        return 1 if any(v.check == "dead-field" for v in errors) else 0
     return 1 if errors else 0
 
 
@@ -303,6 +339,9 @@ def main(argv=None) -> int:
     parser.add_argument("--check", action="store_true", help="Check the most recent corpus races.")
     parser.add_argument("--limit", type=int, default=150, help="How many recent races to use.")
     parser.add_argument("--since", help="Only meetings on/after this date (YYYY-MM-DD).")
+    parser.add_argument("--gate", action="store_true",
+                        help="發佈閘模式：只有『死欄位』會令 exit 1，稀疏只印警告。"
+                             "適合逐場次喺 pipeline 入面跑。")
     args = parser.parse_args(argv)
 
     baseline_path = BASELINE_DIR / PLATFORMS[args.platform]["baseline"]
@@ -355,7 +394,7 @@ def main(argv=None) -> int:
         return 2
     baseline = json.loads(baseline_path.read_text(encoding="utf-8"))
     violations, summary = check(baseline, paths, args.platform)
-    return report(violations, summary, label)
+    return report(violations, summary, label, gate=args.gate)
 
 
 if __name__ == "__main__":
