@@ -551,6 +551,39 @@ def _slim_for_transport(payload):
     return payload, dropped
 
 
+# Cloudflare Pages rejects any SINGLE asset over 25 MiB. Warn well before that:
+# on 2026-08-07 the deploy hit the limit and failed three nights running, and the
+# next morning's run could not recover it (its recovery path only looks at
+# meetings already published). 20 MiB is ~100 races at the current 205 KiB/race,
+# i.e. two more record Saturdays of runway to react in.
+CLOUDFLARE_ASSET_LIMIT = 25 * 1024 * 1024
+CLOUDFLARE_WARN_AT = 20 * 1024 * 1024
+
+
+def _check_upload_size(path: Path, label: str) -> None:
+    """Report an artifact's size against the Cloudflare per-file limit.
+
+    ⚠️ Must be called for the HTML too, not just the JSON snapshot. The HTML
+    inlines the snapshot on top of the template, so it is ALWAYS the larger of
+    the two — measured 2026-08-22: JSON 15.08 MiB, HTML 15.63 MiB. Checking only
+    the JSON (as this did until then) meant the warning fired when the HTML was
+    already at ~24.3 MiB, with essentially no room left to act.
+    """
+    size = path.stat().st_size
+    pct = size / CLOUDFLARE_ASSET_LIMIT * 100
+    print(f"   {label}: {size / (1024 * 1024):.2f} MiB "
+          f"({pct:.0f}% of Cloudflare's 25 MiB per-file limit)")
+    if size >= CLOUDFLARE_ASSET_LIMIT:
+        raise SystemExit(
+            f"❌ {path.name} 係 {size / (1024 * 1024):.2f} MiB，超過 Cloudflare "
+            f"單檔 25 MiB 上限 —— 上傳一定會被拒。唔好白推一次：先瘦身。\n"
+            f"   最大標的係 raw_text（實測佔 snapshot 77.3%，每匹馬 13.78 KiB）。"
+        )
+    if size >= CLOUDFLARE_WARN_AT:
+        print(f"   ⚠️ 逼近 25 MiB 上限（{pct:.0f}%）—— 再多幾個場次就會被拒收，"
+              f"而 2026-08-07 就係咁死咗三晚")
+
+
 def _write_json(path: Path, payload):
     path.parent.mkdir(parents=True, exist_ok=True)
     payload, dropped = _slim_for_transport(payload)
@@ -559,13 +592,10 @@ def _write_json(path: Path, payload):
     body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"),
                       default=str)
     path.write_text(body, encoding="utf-8")
-    size_mib = len(body.encode("utf-8")) / (1024 * 1024)
     if dropped:
         print(f"   Slimmed {dropped} duplicate core_analysis fields")
     if "races" in (payload if isinstance(payload, dict) else {}):
-        print(f"   Snapshot size: {size_mib:.1f} MiB (Cloudflare Pages limit 25)")
-        if size_mib > 24:
-            print("   ⚠️ 逼近 25 MiB 上限 —— 再大就會被 Cloudflare 拒收")
+        _check_upload_size(path, "Snapshot JSON")
 
 
 def parse_args():
@@ -666,6 +696,8 @@ def main():
     output_path = Path(args.output_html)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
+    # The HTML is the biggest artifact we upload — check it, not just the JSON.
+    _check_upload_size(output_path, "Dashboard HTML")
 
     if args.output_json:
         json_path = Path(args.output_json)
