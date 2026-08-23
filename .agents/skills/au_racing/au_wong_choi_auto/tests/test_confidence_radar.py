@@ -142,3 +142,19 @@ class ThinEvidenceRailTests(unittest.TestCase):
         v = ensure_verdict(logic)
         self.assertEqual(v["ranking"][0]["horse_number"], "1")
         self.assertFalse(v["decision_trace"]["changed"])
+
+    def test_confidence_gaps_measured_on_ability_not_display_order(self):
+        """安全欄唔可以污染信心指標。
+
+        第一版把對調放喺 gap 計算**之前**，於是 2026-08-22 Randwick R1 出咗
+        `top1_top2_gap = −0.84`（負數）同 `top_pick_tied = True`（無條件）。
+        呢啲指標描述能力分散度，唔係展示次序。
+        """
+        v = ensure_verdict(self._logic([(71.05, 2), (70.20, 0), (69.88, 0), (68.26, 0)]))
+        # 安全欄要照觸發
+        self.assertEqual(v["ranking"][0]["horse_number"], "2")
+        self.assertIsNotNone(v["decision_trace"]["thin_evidence_swap"])
+        # 但 gap 要用**能力**次序計，一定係正數
+        self.assertAlmostEqual(v["top1_top2_gap"], 0.85, places=2)
+        self.assertAlmostEqual(v["top1_top3_gap"], 1.17, places=2)
+        self.assertFalse(v["top_pick_tied"])

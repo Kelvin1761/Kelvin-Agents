@@ -94,8 +94,20 @@ walk-forward（3 個未見過嘅未來窗口）：首選上名 **+1.84 / +2.45 /
 批評係對嘅。效應顯著（兩個指標 CI 都排除零）、walk-forward 從未負、對四個
 「捉上名」指標結構上零成本、觸發率 6.7%。
 
-⚠️ **呢個修唔到 Gunroom**（佢只有 **1 個**預設 leaf，而 1 個預設嗰批實測 +2.23pp）。
-Gunroom 個第一位嘅原因見下面獨立小節。
+✅ **呢個修到 Gunroom** —— 佢有 **2 個**預設 leaf（`trial_score` 60.00、
+`trainer_score` 60.00，練馬師 Mitchell Beer & George Carpenter 喺 Sportsbet 冇統計），
+所以安全欄觸發，由第 1 位降到第 2，Isawyou（真上名）升上第 1。
+
+⚠️ **我一度講錯**：早前報「Gunroom 只有 1 個預設，所以修唔到」。嗰個係
+`evidence.py` 嘅語料唔包 Randwick 08-22（賽果 CSV 未收），所以嗰個 "Gunroom"
+係另一筆記錄。**引擎本身係權威** —— 實跑出嚟係 2 個。
+
+### 第二個 bug，亦係重跑 Race 1 才發現
+
+第一版把對調放喺 `top1_top2_gap` / `confidence_tier` / `radar_size` 計算**之前**，
+於是 Race 1 出咗 `頭二分差 −0.84`（負數）同 `首選並列 = True`（無條件成立）。
+呢啲指標描述**能力分散度**，唔係展示次序。已把安全欄搬到全部 gap／tier 計完之後，
+並加 regression test。修好後 Race 1：頭三分差 **1.17**、頭二分差 **0.84**、並列 False。
 
 **決定**：**KEEP**
 **commit**：見下

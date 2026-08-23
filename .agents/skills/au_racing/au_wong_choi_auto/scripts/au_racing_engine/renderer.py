@@ -115,6 +115,22 @@ def ensure_verdict(logic_data: dict) -> dict:
         ),
     )
     pre_rank_order = [item["horse_number"] for item in ranked]
+    # Confidence tier from the top1-top3 ability spread (710-race archive
+    # calibration, 2026-07-17): in tight races the top-2 catch >=2 placegetters
+    # only 13% of the time while the top-5 catch 72%, so the betting radar must
+    # widen; in clear races the top-2 are genuinely strong (winner inside 51%).
+    top3_gap = (ranked[0]["ability_score"] - ranked[2]["ability_score"]) if len(ranked) >= 3 else 99.0
+    # Separate top1-vs-top2 calibration (710-race review, 2026-07-25): when the
+    # pair is within 0.5 points, #1 wins only 17.8% and #2 is not a superior
+    # replacement.  Treat them as a tie instead of inventing false precision.
+    top2_gap = (ranked[0]["ability_score"] - ranked[1]["ability_score"]) if len(ranked) >= 2 else 99.0
+    top_pick_tied = top2_gap < 0.5
+    if top3_gap < 2.0:
+        confidence_tier, radar_size = "tight", 5
+    elif top3_gap < 5.0:
+        confidence_tier, radar_size = "medium", 4
+    else:
+        confidence_tier, radar_size = "clear", 4
     # ── 證據厚度安全欄（2026-08-23）──────────────────────────────────────────
     # 首選有 ≥2 個**計分** leaf 停留喺預設 60（＝「唔知」而唔係「量到中性」）時，
     # 同第 2 位對調。呢個係唯一一個要多因子**計數**才搵得到嘅缺陷 —— 任何單一
@@ -146,22 +162,10 @@ def ensure_verdict(logic_data: dict) -> dict:
                 "promoted": pre_rank_order[1],
                 "default_leaf_count": n_default,
             }
-    # Confidence tier from the top1-top3 ability spread (710-race archive
-    # calibration, 2026-07-17): in tight races the top-2 catch >=2 placegetters
-    # only 13% of the time while the top-5 catch 72%, so the betting radar must
-    # widen; in clear races the top-2 are genuinely strong (winner inside 51%).
-    top3_gap = (ranked[0]["ability_score"] - ranked[2]["ability_score"]) if len(ranked) >= 3 else 99.0
-    # Separate top1-vs-top2 calibration (710-race review, 2026-07-25): when the
-    # pair is within 0.5 points, #1 wins only 17.8% and #2 is not a superior
-    # replacement.  Treat them as a tie instead of inventing false precision.
-    top2_gap = (ranked[0]["ability_score"] - ranked[1]["ability_score"]) if len(ranked) >= 2 else 99.0
-    top_pick_tied = top2_gap < 0.5
-    if top3_gap < 2.0:
-        confidence_tier, radar_size = "tight", 5
-    elif top3_gap < 5.0:
-        confidence_tier, radar_size = "medium", 4
-    else:
-        confidence_tier, radar_size = "clear", 4
+    # ⚠️ 安全欄一定要喺 gap / confidence_tier / radar_size 全部計完之後才做。
+    # 放喺前面嘅話，`top1_top2_gap` 會用對調後嘅次序計，變成**負數**
+    # （2026-08-22 Randwick R1 實測 −0.84），而 `top_pick_tied = gap < 0.5`
+    # 就會無條件變 True。呢啲指標描述嘅係**能力分散度**，唔係展示次序。
     watch_limit = max(4, radar_size)
     for idx, item in enumerate(ranked, start=1):
         auto = horses[item["horse_number"]]["python_auto"]
