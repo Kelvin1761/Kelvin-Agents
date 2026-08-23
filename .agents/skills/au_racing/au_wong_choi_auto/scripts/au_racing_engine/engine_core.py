@@ -45,6 +45,7 @@ from .scoring import (
     clip_score,
     compute_grade,
     parse_float,
+    parse_placing,
     parse_numbers,
     parse_record_line,
     parse_recent_finishes,
@@ -758,7 +759,7 @@ class RacingEngine:
         notes = []
 
         for i, entry in enumerate(entries[:4]):
-            place = parse_float(entry.get("placing"))
+            place = parse_placing(entry.get("placing"))
             if place is None:
                 continue
 
@@ -1035,7 +1036,7 @@ class RacingEngine:
           * 有輸距     → 輸距必須 ≤ max_lengths
         兩樣都唔知 → 當有競爭力（保守，行為同修改前一致）。
         """
-        place = parse_float(entry.get("placing"))
+        place = parse_placing(entry.get("placing"))
         field = entry.get("field_size")
         if field and field >= 2 and place and place >= 1:
             if (place - 1) / (field - 1) > 0.5:
@@ -1050,8 +1051,8 @@ class RacingEngine:
             return self._sectional_breakdown_cache
         entries = self._official_entries()
         latest_entry = entries[0] if entries else {}
-        latest_place = parse_float(latest_entry.get("placing")) if latest_entry else None
-        recent_top4 = sum(1 for entry in entries[:3] if (parse_float(entry.get("placing")) or 99) <= 4)
+        latest_place = parse_placing(latest_entry.get("placing")) if latest_entry else None
+        recent_top4 = sum(1 for entry in entries[:3] if (parse_placing(entry.get("placing")) or 99) <= 4)
         forgiveness_count = self._forgiveness_count()
 
         w = SECTIONAL_MICRO_WEIGHTS
@@ -1208,11 +1209,11 @@ class RacingEngine:
         target_line = str(self.data.get("target_distance_line") or "")
         entries = self._official_entries()
         latest_entry = entries[0] if entries else {}
-        latest_place = parse_float(latest_entry.get("placing")) if latest_entry else None
+        latest_place = parse_placing(latest_entry.get("placing")) if latest_entry else None
         latest_flags = self._entry_note_flags(latest_entry) if latest_entry else {"positive": [], "negative": []}
         race_bucket = self._race_class_bucket()
         wet_state = self._wet_state()
-        recent_top3 = sum(1 for entry in entries[:3] if (parse_float(entry.get("placing")) or 99) <= 3)
+        recent_top3 = sum(1 for entry in entries[:3] if (parse_placing(entry.get("placing")) or 99) <= 3)
         breakdown = self._sectional_breakdown()
         score = breakdown["score"]
         notes = []
@@ -3457,8 +3458,22 @@ class RacingEngine:
         avg_weight = parse_float(field.get("avg_weight"))
         min_weight = parse_float(field.get("min_weight"))
         return {
+            # `to_top` keeps the field-minus-horse convention because its label
+            # spells the direction out ("較頂磅**輕** X kg").
             "to_top": (max_weight - weight) if max_weight is not None else None,
-            "to_avg": (avg_weight - weight) if avg_weight is not None else None,
+            # `to_avg` was ALSO field-minus-horse, but it is rendered with a bare
+            # signed label ("較場均 +X kg") which reads as the horse's deviation —
+            # so every sign was printed backwards.  2026-08-22 Randwick R1 made it
+            # self-contradictory on one row: Call Me Sassy carried 52.0kg in a field
+            # averaging 56.41kg and topped at 60.0kg, and the report said
+            # "較頂磅輕 8.0kg；較場均 **+4.4kg**" — 8kg below the top weight yet
+            # somehow 4.4kg above the average.  Gunroom (59.0kg) printed "-2.6kg"
+            # when it was carrying 2.59kg MORE than the field.
+            # Horse-minus-field, matching `_field_rating_delta` directly below and
+            # `to_bottom` in this same dict.  Display-only: the sole consumer is
+            # `_field_weight_brief`, and `weight_score` left the ranking matrix on
+            # 2026-07-30, so no score moves.
+            "to_avg": (weight - avg_weight) if avg_weight is not None else None,
             "to_bottom": (weight - min_weight) if min_weight is not None else None,
         }
 
@@ -3704,7 +3719,7 @@ class RacingEngine:
         race_class = self._race_class_text()
         race_bucket = self._race_class_bucket()
         latest_rt = self._latest_l600_rt_metrics().get("rt")
-        latest_place = parse_float((official_entries[0] or {}).get("placing")) if official_entries else None
+        latest_place = parse_placing((official_entries[0] or {}).get("placing")) if official_entries else None
         
         current_tier = self._venue_tier(self._meeting_intelligence().get("venue") or self._track_profile().get("venue") or "")
         latest_tier = self._venue_tier((official_entries[0] or {}).get("venue") if official_entries else "")
@@ -4027,7 +4042,7 @@ class RacingEngine:
             entry_distance = self._entry_distance_m(entry)
             if not entry_distance or not target_distance:
                 continue
-            placing = parse_float(entry.get("placing"))
+            placing = parse_placing(entry.get("placing"))
             if placing is None or placing > 3:
                 continue
             if entry_distance == target_distance:

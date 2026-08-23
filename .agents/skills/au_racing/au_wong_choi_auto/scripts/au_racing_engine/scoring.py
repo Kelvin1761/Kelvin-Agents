@@ -496,6 +496,31 @@ def parse_float(value):
     match = re.search(r"-?\d+(?:\.\d+)?",str(value))
     return float(match.group(0)) if match else None
 
+def parse_placing(value):
+    """The finishing position from a 賽績表「名次」cell, or None if unknown.
+
+    `parse_float` is the WRONG reader for this cell.  It grabs the first number
+    anywhere in the string, and an unplaced run is written as `- (-1.5L)` — so it
+    returned **-1.5**, the beaten margin, as the finishing position.  Measured on
+    the clean 2026-08-05+ corpus: 18,394 of 27,932 scored form rows (65.9%) carried
+    a negative "placing", median hidden margin 5.0L, p90 11L, max 240L.
+
+    Every downstream comparison then read backwards, because a negative number
+    passes every "did it run well?" test:
+
+        _form_score        `place <= 5`  → base **60** (neutral mid-field) for a
+                                          run beaten by any margin whatsoever
+        _sectional_score   `<= 3`        → counted as a **top-3** finish
+        _sectional_breakdown `<= 4`      → counted as a **top-4** finish
+        _distance_score    `not > 3`     → counted as an **at-distance placing**
+
+    Read the leading integer only.  A cell that does not start with one is missing
+    evidence, and every caller already has an "unknown" branch for that.
+    """
+    match = re.match(r"^\s*(\d+)", str(value or ""))
+    return float(match.group(1)) if match else None
+
+
 def parse_numbers(text):
     if not text: return []
     return [int(m.group(0)) for m in re.finditer(r"\d+",str(text))]

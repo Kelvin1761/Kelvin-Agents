@@ -299,20 +299,73 @@ def parse_racecard(filepath: str) -> list[dict]:
 
 # ── Formguide Stats Enrichment ────────────────────────────────────────────
 
-def _enrich_stats_from_formguide(fg_text: str, horse: dict):
-    """Extract Track/Distance/Surface/Cycle stats from formguide header."""
-    pattern = re.compile(rf'^\[{horse["num"]}\]\s+', re.MULTILINE)
+def _formguide_header(fg_text: str, horse_num: int):
+    """The stats block above a horse's first race entry, or None if absent."""
+    pattern = re.compile(rf'^\[{horse_num}\]\s+', re.MULTILINE)
     match = pattern.search(fg_text)
     if not match:
-        return
+        return None
 
     next_horse = re.search(r'^\[\d+\]\s+', fg_text[match.end():], re.MULTILINE)
     section_end = match.end() + next_horse.start() if next_horse else len(fg_text)
     section = fg_text[match.start():section_end]
 
-    # Extract stats from the header block (before first race entry)
     first_race = re.search(r'^\S.+?\s+R\d+\s+\d{4}-\d{2}-\d{2}', section, re.MULTILINE)
-    header = section[:first_race.start()] if first_race else section[:500]
+    return section[:first_race.start()] if first_race else section[:500]
+
+
+def _enrich_last10_from_formguide(fg_text: str, horse: dict):
+    """Fill `last10_raw`/`decoded` from the Formguide, which is where they live.
+
+    `parse_racecard` looked for `Last 10:` in the **Racecard**, which has no such
+    field — so `last10_raw` was the literal string `'None'` for every horse ever
+    scored (760/760 on 2026-08-22), `decoded` was always `[]`, and the
+    `pos_source='last10'` fallback in `parse_formguide_for_horse` was dead code.
+
+    The consequence was not a missing nicety.  With the fallback starved, the only
+    surviving source of a finishing position was the `1-x, 2-y, 3-z` placegetter
+    line, which by construction names nobody who ran 4th or worse.  Those runs got
+    `名次` = `-`, no ` /starters`, and therefore:
+
+      * `_form_score` read the beaten margin as the placing (`- (-1.5L)` →
+        `parse_float` → **-1.5**), which lands in the `place <= 5` bucket and
+        scores **base 60** — the same neutral mid-field score whether the horse
+        was beaten 0.3L or 24L.  18,394 of 27,932 scored form rows (65.9%).
+      * `field_size` is parsed out of that same cell, so the field-size
+        normalisation only ever applied to top-3 finishes.
+      * PI (`settled - finish`) was computable on 19.1% of runs and **0%** of
+        unplaced ones.  The surviving sample's mean PI is **+2.614** — a horse
+        that led at the 800m and dropped to 4th left no record at all, so the
+        closing-kick signal could only ever see horses running home well.
+
+    Validated before shipping: the decoded positions agree with
+    `AU_Historical_Raw_Race_Results.csv` on **97.91%** of 3,350 checkable past
+    runs (2026-08-05+ corpus).  The remainder are alignment drift and the `0`
+    figure, which means "10th or worse" rather than exactly 10th — which is why
+    this stays a *fallback*: `parse_formguide_for_horse` still prefers the
+    placegetter line and flags any disagreement in `pos_note`.
+    """
+    header = _formguide_header(fg_text, horse['num'])
+    if header is None:
+        return
+    match = re.search(r'Last 10:\s*(\S+)', header)
+    if not match:
+        return
+    raw = match.group(1).strip()
+    if raw in ('None', '-', ''):
+        return
+    decoded = parse_last10(raw)
+    if not decoded:
+        return
+    horse['last10_raw'] = raw
+    horse['decoded'] = decoded
+
+
+def _enrich_stats_from_formguide(fg_text: str, horse: dict):
+    """Extract Track/Distance/Surface/Cycle stats from formguide header."""
+    header = _formguide_header(fg_text, horse['num'])
+    if header is None:
+        return
 
     def _extract(key):
         # Sportsbet serialises record values with an internal space, for example
@@ -473,6 +526,16 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
         note = note_match.group(1).strip() if note_match else ''
         stewards = stewards_match.group(1).strip() if stewards_match else ''
 
+        # `finish:N/M` —— crawler 由源頁面 `Finished N/M` 直寫（源頭覆蓋 100%）。
+        # 呢個係**最高優先**來源：精確、包含馬匹數、唔需要對齊任何其他 token。
+        # 舊 formguide 冇呢個 token，就跌落下面兩層 fallback（上名行 → Last 6）。
+        finish_explicit = finish_field = None
+        fx = re.search(r"\bfinish:(\d+)\s*/\s*(\d+)\b", race_block)
+        if fx:
+            fp, ff = int(fx.group(1)), int(fx.group(2))
+            if ff >= 2 and 1 <= fp <= ff:
+                finish_explicit, finish_field = fp, ff
+
         # Determine finish position
         finish_from_result = None
         if result_line and hn_clean:
@@ -489,6 +552,14 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
             finish_pos = finish_from_result
             pos_source = 'result' if finish_from_result else 'trial'
             pos_note = ''
+        elif finish_explicit is not None:
+            finish_pos = finish_explicit
+            pos_source = 'finish_token'
+            pos_note = ''
+            rp = finish_from_result
+            if rp is not None and rp != finish_explicit:
+                pos_note = f'⚠️ finish:{finish_explicit} ≠ Result={rp}'
+            non_trial_idx += 1
         else:
             result_pos = finish_from_result
             last10_pos = decoded_positions[non_trial_idx] if non_trial_idx < len(decoded_positions) else None
@@ -2173,6 +2244,10 @@ def main():
         else:
             fg_text = Path(formguide_path).read_text(encoding='utf-8')
             for horse in horses:
+                # Must run BEFORE parse_formguide_for_horse: that call consumes
+                # `horse['decoded']` to recover the finishing position of any run
+                # the placegetter line cannot name (i.e. every 4th-or-worse run).
+                _enrich_last10_from_formguide(fg_text, horse)
                 entries = parse_formguide_for_horse(
                     fg_text, horse['num'], horse['name'],
                     horse['decoded']

@@ -643,6 +643,21 @@ def run_line(run):
         tail += f" margin:{run['margin']}L"
     if run.get("field"):
         tail += f" starters:{run['field']}"
+    # ⚠️ 名次一定要寫落去。`Finished 4/8` 喺源頁面**每一條正式賽往績行都有**
+    # （實測 7,069/7,069 = 100.0%），`RE_RUN` 亦一直正確 parse 咗
+    # `run['pos']` —— 但呢個函數由來只寫 `starters:`，把名次靜靜丟掉。
+    # 下游 `inject_fact_anchors` 於是只能由 `1-x, 2-y, 3-z` 上名行重建名次，
+    # 而嗰行按定義唔會提到任何跑第 4 或以後嘅馬。後果（2026-08-22 量度，
+    # 乾淨語料 2026-08-05 起）：
+    #   * 18,394/27,932 計分 form 行（65.9%）名次變 `-`
+    #   * `parse_float("- (-1.5L)")` 讀到 **-1.5**（輸距當名次），
+    #     於 `_form_score` 嘅 `place <= 5` 一律 base 60，輸 0.3L 同 24L 一樣
+    #   * `field_size` 由同一格 parse，所以馬匹數正規化只曾對上名場生效
+    #   * PI（`settled - finish`）只有 19.1% 算得出，未上名嘅 0/22,846
+    # 寫 `finish:N/M` 而唔係只寫 `N` —— 自帶馬匹數，令下游唔需要靠
+    # `starters:` 同一格對齊，亦令舊 formguide（冇呢個 token）有清晰 fallback。
+    if run.get("pos") and run.get("field"):
+        tail += f" finish:{run['pos']}/{run['field']}"
     # 呢個係同場 race-level winning time，唔係本駒 runner time。
     # 先完整 transport，交由 point-in-time 研究程式做 track/distance/going
     # normalization；絕對唔喺呢度直接當成個體速度加分。
