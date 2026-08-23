@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20260823-03](EXP-20260823-03-au-l600-standard-table.md) | 2026-08-23 | AU | L600 標準表向上取整（33.1% pf_runs 中招）＋ 41 處非單調條目 | **KEEP**（Gold +1.06 ✅、walk-forward 3/3 從未負）；試閘按生涯仗數條件剔走 **REJECT**（越剔越蝕）|
 | [EXP-20260823-02](EXP-20260823-02-au-going-specific-overlay-and-pace-perf.md) | 2026-08-23 | AU | 濕地 overlay 按今日地況分離；pace_figure 多個明顯缺陷應該修得到 | 濕地分離 **KEEP**（Gold +0.62 ✅）；pace_figure 七個修法 + 三個分層 **全 REJECT**（佢係模型唯一正交輸入，ρ≤0.13）|
 | [EXP-20260823-01](EXP-20260823-01-au-correct-gold-retest.md) | 2026-08-23 | AU | 08-22 全日用錯 `gold` 定義（用咗「頭馬喺 top-4」而唔係「真前三全部喺 top-4」）；用正確定義重測 | **REJECT ×10**（「gold 升」嘅好處全部消失，幾個變顯著蝕）；`--obj place` **KEEP**；負磅加法版 NEEDS MORE TESTING |
 | [EXP-20260822-04](EXP-20260822-04-au-thin-evidence-rail.md) | 2026-08-23 | AU | 單一 leaf 預設影響量唔到，但**多因子計數**量得到：首選唔應該由「冇證據」撐起 | **KEEP**（首選上名 +1.70pp [+0.15,+3.36]✅、首選頭馬 +1.39✅、四個上名指標結構上零成本；10 個變體冇一個贏）|

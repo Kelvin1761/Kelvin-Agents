@@ -149,8 +149,8 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-08-23 22:48 AEST`
-- Git commit：`db661e32`
+- 生成時間：`2026-08-23 23:38 AEST`
+- Git commit：`243d02d0`
 - Scoring contract：`HKJC_7D_CONTRACT_2026_08_13_CURRENT_MATRIX`
 - `scoring.py` 指紋：`1c6a7ce6c14c`
 - `matrix_mapper.py` 指紋：`c9df25fd184d`

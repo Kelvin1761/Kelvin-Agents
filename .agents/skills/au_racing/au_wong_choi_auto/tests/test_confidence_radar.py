@@ -190,3 +190,43 @@ class WetOverlayGoingSpecificTests(unittest.TestCase):
         gsl = "0:0-0-0 | 軟地: 0:0-0-0 | 重地: 4:2-1-1"
         self.assertGreater(wet_form_feature("Heavy 9", gsl),
                            wet_form_feature("Soft 6", gsl))
+
+
+class StandardL600Tests(unittest.TestCase):
+    """L600 標準表：線性內插 + 強制單調。"""
+
+    def test_interpolates_between_bins(self):
+        from au_racing_engine.engine_core import _lookup_standard_l600, _STANDARD_600M
+        # Kembla Grange 1200 = 34.28、1300 = 34.50 → 1250 應該喺兩者之間
+        lo = _lookup_standard_l600("Kembla Grange", 1200)
+        hi = _lookup_standard_l600("Kembla Grange", 1300)
+        mid = _lookup_standard_l600("Kembla Grange", 1250)
+        self.assertAlmostEqual(lo, 34.28, places=2)
+        self.assertAlmostEqual(hi, 34.50, places=2)
+        self.assertGreater(mid, lo)
+        self.assertLess(mid, hi)
+        # 舊行為會回 1300 嘅值 —— 一定唔可以再係咁
+        self.assertNotAlmostEqual(mid, hi, places=3)
+
+    def test_standard_is_monotone_in_distance(self):
+        """距離越長，最後 600m 唔可以更快。修之前有 41 處反轉。"""
+        from au_racing_engine.engine_core import _STANDARD_600M_MONO, _DISTANCE_ONLY_L600_MONO
+        for table in list(_STANDARD_600M_MONO.values()) + [_DISTANCE_ONLY_L600_MONO]:
+            ds = sorted(table)
+            for a, b in zip(ds, ds[1:]):
+                self.assertLessEqual(table[a], table[b] + 1e-9)
+
+    def test_newcastle_2400_no_longer_faster_than_2200(self):
+        from au_racing_engine.engine_core import _lookup_standard_l600
+        # 原表：2200m 36.75s → 2400m 35.11s（−1.64s，物理上不可能）
+        self.assertGreaterEqual(_lookup_standard_l600("Newcastle", 2400),
+                                _lookup_standard_l600("Newcastle", 2200) - 1e-9)
+
+    def test_below_and_above_table_range_clamp(self):
+        from au_racing_engine.engine_core import _lookup_standard_l600
+        self.assertIsNotNone(_lookup_standard_l600("Randwick", 800))
+        self.assertIsNotNone(_lookup_standard_l600("Randwick", 3200))
+
+    def test_unknown_track_falls_back_to_distance_only(self):
+        from au_racing_engine.engine_core import _lookup_standard_l600
+        self.assertIsNotNone(_lookup_standard_l600("Nowhere Downs", 1250))

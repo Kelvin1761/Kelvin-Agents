@@ -153,10 +153,64 @@ def _normalize_track_name(name: str) -> str:
     return n.strip()
 
 
+def _monotone(table: dict) -> dict:
+    """Longer race ⇒ closing 600m cannot be FASTER (running max, short → long).
+
+    2026-08-23：手嵌嘅 `_STANDARD_600M` 有 **41 處**物理上不可能嘅反轉，最嚴重
+    Newcastle 2200m 36.75s → 2400m **35.11s（−1.64s）**、Bendigo 2200→2400 −0.97s、
+    Morphettville 2000→2600 −0.73s、Randwick 2000→2400 −0.59s。多數係細樣本雜訊。
+    反轉令該距離嘅 delta 方向唔一致地偏移，而且同下面嘅 bin 向上取整互相放大
+    （實測 binned 同內插標準嘅差距達 **±2.1 秒**）。
+    """
+    out = {}
+    run = float("-inf")
+    for dist in sorted(table):
+        run = max(run, table[dist])
+        out[dist] = run
+    return out
+
+
+_STANDARD_600M_MONO = {t: _monotone(tbl) for t, tbl in _STANDARD_600M.items()}
+_DISTANCE_ONLY_L600_MONO = _monotone(_DISTANCE_ONLY_L600)
+
+
 def _lookup_standard_l600(track: str, distance_m: int) -> float | None:
+    """該場地＋該距離嘅「標準」最後 600m 秒數。
+
+    2026-08-23 兩個修正：
+
+    1. **線性內插，唔再向上取整。** 原本行 `_distance_bin`（`dist <= bin`），
+       所以一場 **1250m** 賽事同 **1300m** 嘅標準比 —— 長距離標準較慢，於是
+       delta 偏負（睇落偏快）。實測 **18,175 / 54,914 個 pf_runs（33.1%）**
+       距離短過自己個 bin。Gunroom 十仗五仗中招，`l600_delta_avg`
+       由 −0.163 變 −0.123（慢 0.040 秒）。
+    2. **標準表強制單調**（見 `_monotone`）。
+
+    判決（653 場，contract `gold` ＝捕捉率）：
+      內插 + 單調  Gold **+1.06 [+0.2, +2.1] ✅**  Pass +0.16  t3prec +0.05
+                  Good位 −0.77  首選上名 −0.15
+      walk-forward 3 個窗口：Gold **3/3 全正、從未負、平均 +1.02**；Pass 亦從未負；
+                  t3prec 同首選上名 ±0.00（只內插而唔單調係 −0.07 / −0.41，較差）
+
+    ⚠️ `_distance_bin` 仍然保留 —— 佢有其他 caller。
+    """
     norm = _normalize_track_name(track)
-    dbin = _distance_bin(distance_m)
-    return _STANDARD_600M.get(norm, {}).get(dbin) or _DISTANCE_ONLY_L600.get(dbin)
+    table = _STANDARD_600M_MONO.get(norm)
+    source = table if (table and len(table) >= 2) else _DISTANCE_ONLY_L600_MONO
+    dists = sorted(source)
+    if not dists:
+        return None
+    if distance_m <= dists[0]:
+        return source[dists[0]]
+    if distance_m >= dists[-1]:
+        return source[dists[-1]]
+    for lo, hi in zip(dists, dists[1:]):
+        if lo <= distance_m <= hi:
+            if hi == lo:
+                return source[lo]
+            frac = (distance_m - lo) / (hi - lo)
+            return source[lo] + frac * (source[hi] - source[lo])
+    return None
 VENUE_TRACK_MAP = {
     "randwick": "04b_track_randwick.md",
     "rosehill": "04b_track_rosehill.md",
