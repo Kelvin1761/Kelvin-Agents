@@ -230,3 +230,38 @@ class StandardL600Tests(unittest.TestCase):
     def test_unknown_track_falls_back_to_distance_only(self):
         from au_racing_engine.engine_core import _lookup_standard_l600
         self.assertIsNotNone(_lookup_standard_l600("Nowhere Downs", 1250))
+
+
+class PeopleKeyHtmlEntityTests(unittest.TestCase):
+    """人名 key 一定要先 html.unescape。
+
+    合夥練馬師嘅連結文字係 `Brett &amp; Georgie`；唔 unescape 就會剝出 `amp`
+    留喺 key 中間，令連結 key（`brettampgeorgie`）同總覽表全名
+    （`brettgeorgiecavanough`）互相都唔係前綴。實測修之前合夥名解析成功率
+    **0.0%（0/6）**、修之後 **100%**；合夥練馬師佔 runner 5.8%。
+    """
+
+    @staticmethod
+    def _key(name):
+        import sys, pathlib
+        # parents[0]=tests  [1]=au_wong_choi_auto  [2]=au_racing ← claw 住喺呢層
+        root = pathlib.Path(__file__).resolve().parents[2]
+        if str(root) not in sys.path:
+            sys.path.insert(0, str(root))
+        from claw_sportsbet_form import _people_key
+        return _people_key(name)
+
+    def test_amp_entity_does_not_leak_into_key(self):
+        self.assertNotIn("amp", self._key("Brett &amp; Georgie"))
+
+    def test_entity_and_literal_agree(self):
+        self.assertEqual(self._key("Brett &amp; Georgie"),
+                         self._key("Brett & Georgie"))
+
+    def test_partnership_link_is_a_prefix_of_the_full_name(self):
+        link = self._key("Brett &amp; Georgie")
+        full = self._key("Brett & Georgie Cavanough")
+        self.assertTrue(full.startswith(link), f"{full!r} 應該以 {link!r} 開頭")
+
+    def test_plain_names_unchanged(self):
+        self.assertEqual(self._key("Chris Waller"), "chriswaller")

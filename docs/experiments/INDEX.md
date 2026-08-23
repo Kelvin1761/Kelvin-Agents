@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20260823-04](EXP-20260823-04-au-partnership-trainer-lookup.md) | 2026-08-23 | AU | 合夥練馬師名解析失敗（用戶提問觸發） | **KEEP** — 根因係 `&amp;` 冇 unescape 令 `amp` 留喺 key；合夥名成功率 **0% → 100%**，佔 runner 5.8% |
 | [EXP-20260823-03](EXP-20260823-03-au-l600-standard-table.md) | 2026-08-23 | AU | L600 標準表向上取整（33.1% pf_runs 中招）＋ 41 處非單調條目 | **KEEP**（Gold +1.06 ✅、walk-forward 3/3 從未負）；試閘按生涯仗數條件剔走 **REJECT**（越剔越蝕）|
 | [EXP-20260823-02](EXP-20260823-02-au-going-specific-overlay-and-pace-perf.md) | 2026-08-23 | AU | 濕地 overlay 按今日地況分離；pace_figure 多個明顯缺陷應該修得到 | 濕地分離 **KEEP**（Gold +0.62 ✅）；pace_figure 七個修法 + 三個分層 **全 REJECT**（佢係模型唯一正交輸入，ρ≤0.13）|
 | [EXP-20260823-01](EXP-20260823-01-au-correct-gold-retest.md) | 2026-08-23 | AU | 08-22 全日用錯 `gold` 定義（用咗「頭馬喺 top-4」而唔係「真前三全部喺 top-4」）；用正確定義重測 | **REJECT ×10**（「gold 升」嘅好處全部消失，幾個變顯著蝕）；`--obj place` **KEEP**；負磅加法版 NEEDS MORE TESTING |

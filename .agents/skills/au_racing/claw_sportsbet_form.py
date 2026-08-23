@@ -30,6 +30,7 @@ Playwright 202）。Sportsbet 用返我哋一直用嗰套 `curl_cffi` chrome120 
 """
 import argparse
 import hashlib
+import html as _html
 import json
 import re
 import time
@@ -316,7 +317,18 @@ def parse_people(html):
 
 
 def _people_key(name):
-    return re.sub(r"[^a-z0-9]", "", (name or "").lower())
+    """人名 → 比對用嘅 key。
+
+    ⚠️ 一定要先 `html.unescape`。連結文字係由 HTML 嚟嘅，合夥練馬師寫成
+    `Brett &amp; Georgie`；`re.sub(r"[^a-z0-9]")` 會把 `&amp;` 剝成 **`amp`**
+    留喺 key 中間 —— 於是連結 key `brettampgeorgie` 同總覽表 key
+    `brettgeorgiecavanough` 互相都唔係前綴，`_match_person` 回 None。
+
+    實測（80 個 cache 頁）：合夥練馬師名嘅解析成功率 **0.0%（0/6）**，
+    而單人名 95.9%、騎師 100%。合夥練馬師佔 runner **5.8%**，全部白白跌落
+    `trainer_score` fallback（7.58% 排名權重）。
+    """
+    return re.sub(r"[^a-z0-9]", "", _html.unescape(name or "").lower())
 
 
 def _match_person(people, kind, name, min_len=6):
