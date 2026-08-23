@@ -59,6 +59,42 @@ def _component_label(key, name):
 
 REPORT_BANS = ("[FILL]", "PLACEHOLDER", "待補", "分析中")
 
+# 證據厚度安全欄嘅門檻。3 個或以上喺 654 場只觸發 5 次（太罕），2 個觸發 44 次
+# （6.7%）而效應最大，所以定 2。
+THIN_EVIDENCE_MIN_DEFAULTS = 2
+# 只數**計分**嘅 leaf。0% 權重嘅 leaf（sectional/consistency/distance/...）
+# 停留喺預設唔代表個排名分建基於空氣，所以唔應該數入去。
+THIN_EVIDENCE_SCORED_LEAVES = (
+    "form_score", "performance_quality_score", "pace_figure_score", "trial_score",
+    "jockey_score", "trainer_score", "jockey_horse_fit_score", "rating_score",
+    "track_score",
+)
+
+
+def _default_leaf_count(auto: dict) -> int:
+    """幾多個計分 leaf 剛好停留喺 60.0（＝冇證據嘅預設）。
+
+    用 `== 60.0`（容差 0.005）而唔係 evidence_state，因為 evidence_state 唔係
+    每個 leaf 都寫，而「剛好 60.00」正正就係每個 leaf 嘅 no-evidence 出口。
+    """
+    fs = auto.get("feature_scores")
+    if not isinstance(fs, dict) or not fs:
+        # 完全冇 feature_scores = 呢個唔係一匹評過分嘅馬（合成 fixture／舊 Logic），
+        # 唔係「冇證據」。當 0，唔准觸發安全欄。第一版當咗 9 個預設，令
+        # test_clean_7d_decision_trace_is_explicit 紅 —— 個 test 係啱嘅。
+        return 0
+    n = 0
+    for key in THIN_EVIDENCE_SCORED_LEAVES:
+        val = fs.get(key)
+        if val is None:
+            continue          # 個別 leaf 缺 key 亦當「唔知」，唔算預設
+        try:
+            if abs(float(val) - 60.0) < 0.005:
+                n += 1
+        except (TypeError, ValueError):
+            continue
+    return n
+
 
 def ensure_verdict(logic_data: dict) -> dict:
     horses = logic_data.get("horses", {})
@@ -79,6 +115,37 @@ def ensure_verdict(logic_data: dict) -> dict:
         ),
     )
     pre_rank_order = [item["horse_number"] for item in ranked]
+    # ── 證據厚度安全欄（2026-08-23）──────────────────────────────────────────
+    # 首選有 ≥2 個**計分** leaf 停留喺預設 60（＝「唔知」而唔係「量到中性」）時，
+    # 同第 2 位對調。呢個係唯一一個要多因子**計數**才搵得到嘅缺陷 —— 任何單一
+    # leaf 嘅預設狀態都細到量唔到。
+    #
+    # 654 場乾淨語料實測，效應單調而且喺三個獨立分組都一致：
+    #   全部 runner   0 個預設 +3.26pp / 1 個 −1.91 / 2 個 −6.14 / 3 個 −6.71
+    #   top-3 推介     0 個 +1.70 / 1 個 −0.66 / 2 個 **−10.10**
+    #   首選           0 個 +0.44 / 1 個 +2.23 / 2 個 **−17.69**
+    # 首選 ≥2 個預設：19/44 上名 = 43.18% vs 基準 58.72%，二項單尾 **p = 0.027**。
+    # 對照組貼死基準（0 個 59.15%、1 個 60.94%），所以效應係 specific 而唔係漂移。
+    # 配對 bootstrap（654 場，6,000 次）：首選上名 **+1.70pp [+0.15, +3.36]**、
+    # 首選頭馬 **+1.39pp [+0.15, +2.75]** —— 兩個都排除零。
+    # walk-forward 三個未見過嘅窗口：+1.84 / +2.45 / +0.00，**從未負**。
+    #
+    # 為咩只對調 1↔2 而唔係降到第 4：對調唔改 top-3 同 top-4 成員，所以
+    # `t3prec` / `gold@4` / `pass2` 喺每個窗口都**剛好 +0.0000** —— 結構上
+    # 唔可能整壞已經捉對嘅嘢。降到第 4 實測 t3prec −0.111，冇好處。
+    #
+    # ⚠️ 呢個係**刻意**嘅後置調整，所以 `decision_trace` 會記名，唔會出無名警告。
+    thin_swap = None
+    if len(ranked) >= 2:
+        top_auto = horses[ranked[0]["horse_number"]].get("python_auto") or {}
+        n_default = _default_leaf_count(top_auto)
+        if n_default >= THIN_EVIDENCE_MIN_DEFAULTS:
+            ranked[0], ranked[1] = ranked[1], ranked[0]
+            thin_swap = {
+                "demoted": pre_rank_order[0],
+                "promoted": pre_rank_order[1],
+                "default_leaf_count": n_default,
+            }
     # Confidence tier from the top1-top3 ability spread (710-race archive
     # calibration, 2026-07-17): in tight races the top-2 catch >=2 placegetters
     # only 13% of the time while the top-5 catch 72%, so the betting radar must
@@ -122,7 +189,12 @@ def ensure_verdict(logic_data: dict) -> dict:
             "pre_rank_order": pre_rank_order,
             "post_rank_order": post_rank_order,
             "changed": pre_rank_order != post_rank_order,
+            "thin_evidence_swap": thin_swap,
             "reason": (
+                f"Top pick had {thin_swap['default_leaf_count']} scored leaves at the "
+                f"60.0 default (no evidence, not measured-neutral); swapped with #2 "
+                f"per the evidence-thickness rail. Top-3/top-4 membership unchanged."
+                if thin_swap else
                 "Official ranking equals the clean six-dimension ability score; "
                 "report-only evidence does not rerank horses."
             ),
@@ -313,6 +385,12 @@ def _decision_trace_text(verdict) -> str:
     trace = verdict.get("decision_trace")
     if not isinstance(trace, dict):
         return "未有 trace"
+    swap = trace.get("thin_evidence_swap")
+    if isinstance(swap, dict):
+        # 有名嘅刻意調整 —— 唔可以同「不明原因次序有變」混為一談。
+        return (f"證據厚度安全欄：首選 #{swap.get('demoted')} 有 "
+                f"{swap.get('default_leaf_count')} 個計分維度冇實測數據（停留預設 60），"
+                f"已同 #{swap.get('promoted')} 對調（top-3／top-4 成員不變）")
     if trace.get("changed"):
         return "⚠️ 排名前後次序有變，請查 decision trace"
     return "Clean 六維排名次序一致（冇後置 rerank）"

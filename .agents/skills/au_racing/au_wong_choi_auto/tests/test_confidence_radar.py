@@ -83,3 +83,62 @@ class ConfidenceRadarTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ThinEvidenceRailTests(unittest.TestCase):
+    """證據厚度安全欄：首選有 ≥2 個計分 leaf 停留預設 60 → 同第 2 位對調。
+
+    根據：654 場乾淨語料，首選 ≥2 個預設嘅 19/44 上名 = 43.18% vs 基準 58.72%
+    （二項 p = 0.027）；配對 bootstrap 首選上名 +1.70pp [+0.15, +3.36]。
+    """
+
+    SCORED = ("form_score", "performance_quality_score", "pace_figure_score",
+              "trial_score", "jockey_score", "trainer_score",
+              "jockey_horse_fit_score", "rating_score", "track_score")
+
+    def _logic(self, specs):
+        """specs = [(ability, n_default)] —— 第一個係場內最高分。"""
+        horses = {}
+        for i, (ability, n_def) in enumerate(specs, start=1):
+            fs = {k: 70.0 for k in self.SCORED}
+            for k in list(self.SCORED)[:n_def]:
+                fs[k] = 60.0
+            horses[str(i)] = {
+                "horse_name": f"H{i}",
+                "python_auto": {"ability_score": ability, "grade": "B",
+                                "feature_scores": fs},
+            }
+        return {"horses": horses}
+
+    def test_fires_when_top_pick_has_two_defaults(self):
+        v = ensure_verdict(self._logic([(70.0, 2), (69.0, 0), (68.0, 0), (60.0, 0)]))
+        self.assertEqual(v["ranking"][0]["horse_number"], "2")
+        self.assertEqual(v["ranking"][1]["horse_number"], "1")
+        swap = v["decision_trace"]["thin_evidence_swap"]
+        self.assertEqual(swap["demoted"], "1")
+        self.assertEqual(swap["promoted"], "2")
+        self.assertEqual(swap["default_leaf_count"], 2)
+
+    def test_does_not_fire_on_one_default(self):
+        # 1 個預設嗰批實測 **跑得好過**基準（+2.23pp），所以一定唔可以觸發。
+        v = ensure_verdict(self._logic([(70.0, 1), (69.0, 0), (68.0, 0), (60.0, 0)]))
+        self.assertEqual(v["ranking"][0]["horse_number"], "1")
+        self.assertIsNone(v["decision_trace"]["thin_evidence_swap"])
+        self.assertFalse(v["decision_trace"]["changed"])
+
+    def test_top3_and_top4_membership_never_changes(self):
+        """呢個係安全欄零成本嘅來源：只換 1↔2 次序，成員不變。"""
+        logic = self._logic([(70.0, 3), (69.0, 0), (68.0, 0), (67.0, 0), (50.0, 0)])
+        v = ensure_verdict(logic)
+        self.assertEqual({i["horse_number"] for i in v["ranking"][:3]}, {"1", "2", "3"})
+        self.assertEqual({i["horse_number"] for i in v["ranking"][:4]}, {"1", "2", "3", "4"})
+
+    def test_missing_feature_scores_is_not_no_evidence(self):
+        """冇 feature_scores = 唔係一匹評過分嘅馬，唔准當 9 個預設。"""
+        logic = {"horses": {
+            "1": {"horse_name": "A", "python_auto": {"ability_score": 66.0, "grade": "B"}},
+            "2": {"horse_name": "B", "python_auto": {"ability_score": 64.0, "grade": "B"}},
+        }}
+        v = ensure_verdict(logic)
+        self.assertEqual(v["ranking"][0]["horse_number"], "1")
+        self.assertFalse(v["decision_trace"]["changed"])
