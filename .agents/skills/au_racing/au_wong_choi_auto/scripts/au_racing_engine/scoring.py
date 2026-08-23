@@ -200,20 +200,47 @@ WET_FORM_MAX_ABS = 6.1818       # 5.49 ×1.1260；clamp the feature to a sane ±
 # 真乾淨 403 場好過唔調（pass +0.74→+1.24、winT3 +0.50→+0.99、mrr −0.18→+0.02）。
 
 
-def _parse_wet_record(going_stats_line):
-    """Career (soft+heavy) starts & places from the 軟地/重地 segments of going_stats_line."""
-    starts = places = 0
-    for label in ("軟地", "重地"):
-        match = re.search(rf"{label}:\s*([^|]+)", going_stats_line or "")
-        if not match:
-            continue
-        nums = [int(n) for n in re.findall(r"\d+", match.group(1))]
-        if len(nums) >= 4:
-            starts += nums[0]
-            places += nums[1] + nums[2] + nums[3]
-        elif nums:
-            starts += nums[0]
-    return starts, places
+def _parse_going_segment(going_stats_line, label):
+    """Career starts & places for ONE going bucket (軟地 or 重地)."""
+    match = re.search(rf"{label}:\s*([^|]+)", going_stats_line or "")
+    if not match:
+        return 0, 0
+    nums = [int(n) for n in re.findall(r"\d+", match.group(1))]
+    if len(nums) >= 4:
+        return nums[0], nums[1] + nums[2] + nums[3]
+    return (nums[0] if nums else 0), 0
+
+
+# 今日地況以外嗰個濕地 bucket 只算半份證據。
+# 2026-08-23：原本兩個 bucket **1:1 溝埋**，唔理今日實際跑咩地。實例
+# （Randwick R1，掛牌 Soft 6）：Clear Proof 軟地 7:2-2-0（4 上名 / 7 = 57%）
+# 本身係正數，但佢 2 場重地 0-0-0 把溝埋後嘅率拉到 4/9 → overlay **−0.571**；
+# Gunroom 軟地 4:1-2-0 + 重地 1:1-0-0 → 4/5 → **+2.475**。單靠呢一項就令
+# clean 分落後 1.88 分嘅 Gunroom 反超前。
+#
+# 為咩係 0.5 而唔係完全分開：Soft7+ 同 Heavy 日，**溝埋版本反而係最強預測**
+# （場內 AUC 0.6000 / 0.5784，高過任何單一 bucket）—— 即係軟地往績對重地係
+# 有效嘅部分證據。完全分開（只用對應地況）實測 t3prec **−0.67 ❌** 顯著蝕。
+#
+# 判決（653 場，contract `gold` ＝捕捉率，place preset）：
+#   Gold **+0.62 [+0.2, +1.2]** ✅   Pass +0.30   t3prec −0.01
+#   Good位 −0.31   首選上名 −0.47（兩者都唔顯著）
+#   walk-forward 3 個窗口：Gold 同 Pass **兩個都從未負**（各 +0.61 平均）
+#
+# ⚠️ 順帶量到（但唔改）：喺 Soft 5-6（佔 47% 場次），「好地往績」嘅場內 AUC
+# 0.5836 同「軟地往績」0.5821 一模一樣 —— 即係軟地往績喺嗰度冇**地況專屬**
+# 資訊，只係一般能力嘅另一個量度。但剷走佢實測係蝕（Good位 −1.06、
+# walk-forward 五個指標全負），因為佢仍然係正向訊號。冗餘，但唔有害。
+WET_OTHER_BUCKET_WEIGHT = 0.5
+
+
+def _parse_wet_record(going, going_stats_line):
+    """Wet starts & places, weighted by whether the bucket matches today's going."""
+    soft = _parse_going_segment(going_stats_line, "軟地")
+    heavy = _parse_going_segment(going_stats_line, "重地")
+    primary, secondary = (heavy, soft) if "heavy" in str(going or "").lower() else (soft, heavy)
+    w = WET_OTHER_BUCKET_WEIGHT
+    return primary[0] + w * secondary[0], primary[1] + w * secondary[1]
 
 
 def wet_form_feature(going, going_stats_line):
@@ -225,7 +252,7 @@ def wet_form_feature(going, going_stats_line):
     g = str(going or "").lower()
     if "soft" not in g and "heavy" not in g:
         return 0.0
-    starts, places = _parse_wet_record(going_stats_line)
+    starts, places = _parse_wet_record(going, going_stats_line)
     rate = (places + WET_FORM_SHRINK_A * WET_FORM_PRIOR) / (starts + WET_FORM_SHRINK_A)
     value = WET_FORM_FEATURE_SCALE * (rate - WET_FORM_PRIOR)
     return round(max(-WET_FORM_MAX_ABS, min(WET_FORM_MAX_ABS, value)), 4)

@@ -158,3 +158,35 @@ class ThinEvidenceRailTests(unittest.TestCase):
         self.assertAlmostEqual(v["top1_top2_gap"], 0.85, places=2)
         self.assertAlmostEqual(v["top1_top3_gap"], 1.17, places=2)
         self.assertFalse(v["top_pick_tied"])
+
+
+class WetOverlayGoingSpecificTests(unittest.TestCase):
+    """濕地 overlay：今日地況嗰個 bucket 算全份，另一個算半份。
+
+    2026-08-23：原本 1:1 溝埋，唔理今日跑咩地。Randwick R1（Soft 6）實例：
+    Clear Proof 軟地 7:2-2-0（4/7 = 57%）被 2 場重地 0-0-0 拉到 overlay −0.571。
+    """
+
+    def test_soft_day_halves_the_heavy_record(self):
+        from au_racing_engine.scoring import wet_form_feature
+        gsl = "11:1-1-1 | 軟地: 7:2-2-0 | 重地: 2:0-0-0"
+        # 軟地 7 場 4 上名 + 重地 (2 場 0 上名)×0.5 → (4+2)/(8+4) = 0.500 → 0.0
+        self.assertAlmostEqual(wet_form_feature("Soft 6", gsl), 0.0, places=3)
+
+    def test_heavy_day_halves_the_soft_record(self):
+        from au_racing_engine.scoring import wet_form_feature
+        gsl = "11:1-1-1 | 軟地: 7:2-2-0 | 重地: 2:0-0-0"
+        # 重地 2 場 0 上名 + 軟地 (7 場 4 上名)×0.5 → (2+2)/(5.5+4) = 0.421
+        self.assertLess(wet_form_feature("Heavy 9", gsl), 0.0)
+
+    def test_dry_going_still_returns_zero(self):
+        from au_racing_engine.scoring import wet_form_feature
+        gsl = "11:1-1-1 | 軟地: 7:2-2-0 | 重地: 2:0-0-0"
+        self.assertEqual(wet_form_feature("Good 4", gsl), 0.0)
+
+    def test_matching_bucket_dominates(self):
+        """同一份重地往績，喺重地日應該比喺軟地日影響更大。"""
+        from au_racing_engine.scoring import wet_form_feature
+        gsl = "0:0-0-0 | 軟地: 0:0-0-0 | 重地: 4:2-1-1"
+        self.assertGreater(wet_form_feature("Heavy 9", gsl),
+                           wet_form_feature("Soft 6", gsl))

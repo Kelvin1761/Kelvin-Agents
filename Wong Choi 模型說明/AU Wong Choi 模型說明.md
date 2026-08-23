@@ -166,9 +166,9 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-08-23 21:21 AEST`
-- Git commit：`153b74d6`
-- `scoring.py` 指紋：`10ac106f4786`
+- 生成時間：`2026-08-23 22:48 AEST`
+- Git commit：`db661e32`
+- `scoring.py` 指紋：`b47294cabbca`
 - `matrix_mapper.py` 指紋：`25c8d5d22b15`
 - `renderer.py` 指紋：`c8bae153df7b`
 - 實測樣本：**500 場、4950 匹馬**，由 `2026-08-12 Eagle Farm Race 1-8` 到 `2026-08-23 Wangaratta Race 1-8`（跳過 0 個舊格式檔案）
