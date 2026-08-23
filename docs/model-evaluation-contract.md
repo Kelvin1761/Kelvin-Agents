@@ -34,6 +34,7 @@
 | 主指標 | 頭 K=5 位配對場內 AUC | code |
 | bootstrap | 2000 次，**按場**重抽（同場配對唔獨立，按對重抽會低估區間）；`seed=7` 已固定 | `BOOT=2000`, `_boot_ci` |
 | 次要指標 | gold, gold_strict, good_positional, pass, champion, winner_in_top3/5, t3prec, mrr, ndcg5, blowout | `eval_metrics.py` |
+| **搜索目標（判決）** | **`place` = (gold, good_pos, pass, t3prec)** —— 2026-08-23 由 `balanced` 改。本 project KPI 係上名捕捉，`balanced` 會令搜索用 `champ`/`winT3`/`mrr` 買走 `pass`/`t3prec`。歷史紀錄（08-01/08-03/08-08 三次重 fit）係 `balanced` 出嘅，要對比要明確傳 `--obj balanced` | `au_matrix_refit.OBJ_PRESETS` |
 | **分層指標** | 場數指標按馬群大細分四桶（≤8 / 9-10 / 11-12 / 13+）—— **必報** | `au_eval.FIELD_BUCKETS` |
 | dev/holdout | 按**唯一日期**切，尾 15% 日期入 holdout；唔切開同一日 | `date_partitions()` |
 | fold | dev 內部 5 個時間 fold | `au_feature_ab` / `au_matrix_refit` |
@@ -50,6 +51,13 @@
 | **頭5位 AUC** | 0.6793 | 0.6871 | 0.6631 |
 | 全場 AUC | 0.6655 | 0.6725 | 0.6503 |
 | gold | 17.79% | 16.13% | 20.70% |
+
+> ⚠️ **`gold` 嘅定義好易讀錯。** 佢係「**實際前三全部落喺模型頭四揀之內**」
+> （捕捉率 —— 三隻上名馬有冇一隻走漏），**唔係**「頭馬喺模型頭四揀之內」。
+> 2026-08-23 有一次分析全程用錯後者並叫佢 `gold@4`，令幾個候選睇落有「gold 升」
+> 嘅好處，用正確定義重測之後嗰個好處**完全消失**（pace_perf 減權 Good位 −2.43 ❌、
+> 剷濕地 overlay Gold −0.17、PF×PI 降權 Good位 −1.08 ❌）。舊定義叫 `gold_strict`
+> （模型頭三揀全部上名）。三個數字唔可以混住講。
 | gold_strict | 6.24% | 6.01% | 6.64% |
 | good_positional | 23.53% | 21.47% | 27.15% |
 | pass | 46.99% | 43.72% | 52.73% |

@@ -70,7 +70,14 @@ OBJ_PRESETS = {
     # 只計贏馬
     "win": ("champ", "winT3", "mrr"),
 }
-OBJ_KEYS = OBJ_PRESETS["balanced"]
+# 2026-08-23：預設由 `balanced` 改為 `place`。
+# 理由（用戶決定，已記入 docs/model-evaluation-contract.md）：本 project 嘅 KPI
+# 係**上名捕捉**，唔係贏馬。`balanced` 會令搜索用 `champ` / `winT3` / `mrr`
+# 買 `pass` / `t3prec`，即係用一個我哋唔追嘅目標換走一個我哋追嘅目標。
+# `place` = (gold, good_pos, pass, t3prec) —— 四個全部係上名指標。
+# 要對回歷史紀錄（2026-08-01 / 08-03 / 08-08 三次重 fit 都係 balanced）就
+# 明確傳 `--obj balanced`。
+OBJ_KEYS = OBJ_PRESETS["place"]
 OBJ_SIGN = {}
 
 
@@ -440,7 +447,9 @@ def main():
     ap.add_argument("--n", type=int, default=3000)
     ap.add_argument("--min-folds", type=int, default=4)
     ap.add_argument("--seed", type=int, default=20260801)
-    ap.add_argument("--obj", choices=tuple(OBJ_PRESETS), default="balanced")
+    ap.add_argument("--obj", choices=tuple(OBJ_PRESETS), default="place",
+                    help="判決目標。預設 `place`（本 project KPI：上名捕捉）。"
+                         "歷史紀錄係 `balanced` 出嘅，要對比就明確傳 balanced。")
     ap.add_argument("--wf-start", type=int, default=250)
     ap.add_argument("--wf-window", type=int, default=92)
     ap.add_argument("--wet-scale", type=float, default=1.0)
