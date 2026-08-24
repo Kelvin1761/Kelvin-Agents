@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20260825-02](EXP-20260825-02-au-exact-class-pace-reliability.md) | 2026-08-25 | AU | Sportsbet 原始班次 transport 及低班次 race-level PacePerf 收縮可否修正 R2 | **Correctness KEEP／scoring REJECT**：保存 53,142 個原始班次 label 作 evidence；class_form dev/holdout 點估計正，但 holdout CI [-0.0043,+0.0082] 跨零，Lovecats仍第8、DDE/Zubba仍第2/3 |
 | [EXP-20260825-01](EXP-20260825-01-au-poor-trial-pace-wet-interaction.md) | 2026-08-25 | AU | 已觀察差試閘時，正面 PacePerf／wet 應否收縮，令 Clear Proof 入 R1 Top 2 | **REJECT**：PF-half、wet-half、兩者合用喺 dev 頭5 AUC 全部精確 0；三者雖都令 R1 排成 Isawyou／Clear Proof／Gunroom，但 holdout 不開、唔准用單場答案上線 |
 | [EXP-20260824-05](EXP-20260824-05-au-data-semantics-full-scan.md) | 2026-08-24 | AU | 全鏈掃描 Sportsbet→Facts→Logic→score→deploy 有冇語義錯、runner misalignment、leakage；Aeliana 試閘缺名次必修 | **Correctness KEEP／權重不變**：修 8 類問題；63,515 個完整 finish 100% 合法，active runner 5,239/5,239 對齊；trial 修正只改 12/1,411 場，Gold 不變、Gold Strict +0.071pp，holdout AUC 打和 |
 | [EXP-20260824-04](EXP-20260824-04-au-winner-margin-semantics.md) | 2026-08-24 | AU | Sportsbet 頭馬勝距被當輸距；修正後需否重 fit | **Correctness KEEP / refit REJECT**：R9 恢復 Autumn Glow／Sheza Alibi Top 2；整體 Good -0.28pp、Pass +0.14pp；refit holdout AUC -0.0025、CI [-0.0062,+0.0012] |

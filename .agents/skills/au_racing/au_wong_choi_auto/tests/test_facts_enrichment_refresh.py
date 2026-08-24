@@ -104,6 +104,20 @@ class BuilderEnricherParityTests(unittest.TestCase):
         self.assertEqual(rows[0]["finish_pos"], 5)
         self.assertEqual(rows[0]["pos_source"], "finish_token")
 
+    def test_sportsbet_exact_race_class_survives_formguide_parse(self) -> None:
+        formguide = "\n".join(
+            [
+                "[4] Example Star (12)",
+                "Randwick R5 2026-08-01 1400m cond:Good $100000 J Doe (4) 58kg "
+                "margin:1.2L starters:10 finish:3/10 RaceClass:[F&M CL3-SW]",
+                "1-Rival (2), 2-Other (3) 0.5L, 3-Example Star (4) 1.2L",
+            ]
+        )
+        rows = parse_formguide_for_horse(
+            formguide, 4, "Example Star", [3], as_of="2026-08-09"
+        )
+        self.assertEqual(rows[0]["source_race_class"], "F&M CL3-SW")
+
     def test_formguide_dossier_censors_target_and_future_runs(self) -> None:
         formguide = "\n".join(
             [
@@ -142,6 +156,21 @@ class BuilderEnricherParityTests(unittest.TestCase):
         rows = engine._record_entries()
         self.assertEqual(rows[0]["kind"], "HC106")
         self.assertEqual(rows[0]["historical_rating"], 106.0)
+
+    def test_engine_keeps_exact_class_as_report_only_evidence(self) -> None:
+        facts = "\n".join(
+            [
+                "| # | 類型 | 日期 | 場地 | 路程 | 地 | 檔 | 名次 | 班次 | 軌跡 | PI | 段速 | 早段 | L600 | 跑法 | 消耗 | 備註 | 寬恕 | 獎金 | Sportsbet原始班次 |",
+                "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+                "| 1 | 正式 | 2026-08-01 | Randwick R5 | 1400m | Good | 4 | 3/10 | = | S4→F3 | 1 | 一般 | - | - | 跟前 | 低 | - | - | 75000 | F&M CL3-SW |",
+            ]
+        )
+        engine = RacingEngine.__new__(RacingEngine)
+        engine.facts_section = facts
+        engine._record_entry_cache = None
+        row = engine._record_entries()[0]
+        self.assertEqual(row["source_race_class"], "F&M CL3-SW")
+        self.assertNotIn("class", row)
 
     def test_formguide_record_enrichment_keeps_complete_sportsbet_values(self) -> None:
         horse = {"num": 4}

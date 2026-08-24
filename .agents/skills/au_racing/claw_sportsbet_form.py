@@ -676,6 +676,17 @@ def run_line(run):
     # `starters:` 同一格對齊，亦令舊 formguide（冇呢個 token）有清晰 fallback。
     if run.get("pos") and run.get("field"):
         tail += f" finish:{run['pos']}/{run['field']}"
+    # Sportsbet historical headers already expose the exact race class (for
+    # example ``F&M CL3-SW`` / ``BM64`` / ``HIGHWAY-C2``).  This used to die
+    # here even though ``parse_race`` had parsed it successfully, leaving the
+    # Facts layer with prize money as its only class proxy.  Preserve the raw
+    # label as an explicitly delimited evidence token.  It is transport-only:
+    # the production scorer does not consume it until a candidate passes the
+    # model regression gate.
+    source_class = re.sub(r"\s+", " ", str(h.get("cls") or "")).strip()
+    if source_class:
+        source_class = source_class.replace("[", "(").replace("]", ")")
+        tail += f" RaceClass:[{source_class}]"
     # 呢個係同場 race-level winning time，唔係本駒 runner time。
     # 先完整 transport，交由 point-in-time 研究程式做 track/distance/going
     # normalization；絕對唔喺呢度直接當成個體速度加分。

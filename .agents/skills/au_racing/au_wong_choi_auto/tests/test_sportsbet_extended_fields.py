@@ -46,6 +46,7 @@ class InRunningCheckpointTest(unittest.TestCase):
         line, _ = run_line(run)
         self.assertIn("3rd@1200m 5th@800m 7th@400m 3rd@Settled", line)
         self.assertIn("WinningTime:2:05.790", line)
+        self.assertIn("RaceClass:[3Y BM72]", line)
 
     def test_a_400m_only_position_is_still_kept(self):
         run = parse_race(_history("400m 2nd"))["runs"][0]

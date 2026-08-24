@@ -2877,6 +2877,11 @@ class RacingEngine:
                 "field_size": _parse_field_size(cols[7]),
                 # 獎金（2026-07-31）：追加喺最後一欄，舊 Facts 冇 → None。
                 "prize": _parse_prize(cols[18]) if len(cols) > 18 else None,
+                # Sportsbet 原始往績班次（2026-08-25）：完整 transport 做 evidence，
+                # 暫時唔餵入 `entry['class']`／排名。固定 exact-class 候選雖然
+                # dev/holdout 點估計都正，但 holdout 95% CI 跨零；偷駁入舊
+                # class multiplier 會繞過 regression gate。
+                "source_race_class": cols[19] if len(cols) > 19 and cols[19] != "-" else "",
             })
         self._record_entry_cache = entries
         return entries

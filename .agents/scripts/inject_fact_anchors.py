@@ -478,6 +478,11 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
         # 5,066 場有真實馬群大細嘅 run 量到 21.5% base 評錯、11.0% 錯 ≥20 分。
         starters_match = re.search(r'starters:(\d+)', header_line)
         race_starters = int(starters_match.group(1)) if starters_match else None
+        source_class_match = re.search(r'RaceClass:\[([^\]]+)\]', header_line)
+        source_race_class = (
+            re.sub(r'\s+', ' ', source_class_match.group(1)).strip()
+            if source_class_match else ''
+        )
 
         # Extract PuntingForm advanced metrics from PF[...] block
         pf_match = re.search(r'PF\[(.+?)\]', header_line)
@@ -626,6 +631,7 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
             'race_time': race_time, 'last_flucs': last_flucs,
             'margin': race_margin, 'hc': race_hc,
             'starters': race_starters,
+            'source_race_class': source_race_class,
             'pos_1200': pos_1200, 'pos_800': pos_800,
             'pos_400': pos_400, 'settled': settled,
             'finish_pos': finish_pos, 'pos_source': pos_source,
@@ -2015,13 +2021,14 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         f"；共 {real_count} 正式 + {trial_count} 試閘，嚴禁修改數值):**"
     )
     # Table header
-    # 獎金（2026-07-31）追加做**最後一欄**：引擎同 renderer 全部用位置索引讀
-    # cols[1..17]，追加 cols[18] 唔會令任何欄位位移，舊 Facts 檔亦照樣 parse。
+    # 獎金（2026-07-31）同 Sportsbet 原始班次（2026-08-25）依次追加做**最後兩欄**：
+    # 引擎同 renderer 全部用位置索引讀 cols[1..17]，追加 cols[18..19] 唔會令任何
+    # 舊欄位位移，舊 Facts 檔亦照樣 parse。
     # 用途：`_form_score` 個 class_mult 一直係全場統一常數（entry["class"] 呢個 key
     # 由來冇存在過），即係近績分完全冇班次調整。賽績表個「班次」欄 85% 係 fallback
     # "Maiden/SW"，但獎金喺 Formguide 每行都有，85,010 個 run 100% 密度。
-    lines.append("| # | 類型／歷史HC | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | 走位跑法 | 走位消耗 | 備註 | 寬恕認定 | 獎金 |")
-    lines.append("|---|------|------|------|------|---------|------|------|------|---------|-----|------|---------|---------|---------|---------|------|----------|------|")
+    lines.append("| # | 類型／歷史HC | 日期 | 場地 | 路程 | 場地狀況 | 檔位 | 名次 | 班次 | 跑位軌跡 | PI | 段速 | 早段步速 | L600/RT | 走位跑法 | 走位消耗 | 備註 | 寬恕認定 | 獎金 | Sportsbet原始班次 |")
+    lines.append("|---|------|------|------|------|---------|------|------|------|---------|-----|------|---------|---------|---------|---------|------|----------|------|------------------|")
 
     for idx, entry in enumerate(display_entries):
         tag = _history_kind_label(entry)
@@ -2102,11 +2109,14 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
 
         # 獎金：`prize` 由 crawler 嘅 `$40,000` 抽出，做班次代理（見表頭註釋）
         prize_str = str(entry.get('prize') or '').strip() or '-'
+        source_race_class = (
+            str(entry.get('source_race_class') or '').strip().replace('|', '/') or '-'
+        )
 
         lines.append(
             f"| {idx+1} | {tag} | {entry['date']} | {venue_short} | "
             f"{entry['distance']} | {cond} | {entry.get('barrier') or '-'} | {finish_str} | {class_ch} | "
-            f"{pos_str} | {pi_str} | {sect_q} | {pf_erp} | {pf_l600_rt_str} | {run_style_text} | {consumption} | {notes} | [需判定] | {prize_str} |"
+            f"{pos_str} | {pi_str} | {sect_q} | {pf_erp} | {pf_l600_rt_str} | {run_style_text} | {consumption} | {notes} | [需判定] | {prize_str} | {source_race_class} |"
         )
 
     # Output is already complete, no omitted string needed here
