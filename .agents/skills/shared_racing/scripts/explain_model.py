@@ -90,6 +90,7 @@ def load_engine(engine_dir: Path):
         "ability_label": getattr(renderer, "ABILITY_LABEL", "綜合戰力分"),
         "feature_keys": tuple(getattr(scoring, "FEATURE_KEYS", ())),
         "report_only_keys": tuple(getattr(scoring, "REPORT_ONLY_FEATURE_KEYS", ()) or ()),
+        "ranking_overlays": tuple(getattr(scoring, "RANKING_OVERLAYS", ()) or ()),
         "contract_version": getattr(scoring, "SCORING_CONTRACT_VERSION", None),
         "bands": band_thresholds(scoring),
     }
@@ -234,6 +235,7 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
     labels = model["matrix_labels"]
     formulas = model["formulas"]
     gains = model["gains"]
+    overlays = model.get("ranking_overlays") or ()
     inf = influence(weights, stats["spread"]) if stats else {}
 
     # Display order: every dimension the reports show, heaviest ranking weight
@@ -256,8 +258,13 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
     A("")
     A(f"1. 由原始資料計出 **{len(model['feature_keys'])} 個基礎分**（近績、騎師、檔位…），每個都係 0–100，**60 分 = 中性／冇證據**")
     A(f"2. 啲基礎分按固定配方合成 **{len(weights)} 個維度分**")
-    A("3. 維度分按下面嘅權重加權相加 → 綜合戰力分")
-    A("4. 場內由高到低排名，就係最終推介次序")
+    if overlays:
+        A("3. 維度分按下面嘅權重加權相加 → 矩陣基礎分")
+        A("4. 加上下面逐項列明嘅場內 ranking overlay → 綜合戰力分")
+        A("5. 場內由高到低排名，就係最終推介次序")
+    else:
+        A("3. 維度分按下面嘅權重加權相加 → 綜合戰力分")
+        A("4. 場內由高到低排名，就係最終推介次序")
     A("")
     A("### 每個維度佔幾重")
     A("")
@@ -282,6 +289,18 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
         else:
             A(f"| {name} `{key}` | {weight * 100:.1f}% | {bar(weight)} |")
     A("")
+    if overlays:
+        A("### 額外場內 ranking overlay")
+        A("")
+        A("| Overlay | 公式 | 缺資料處理 |")
+        A("|---|---|---|")
+        for overlay in overlays:
+            A(
+                f"| {overlay.get('label', overlay.get('key', ''))} "
+                f"`{overlay.get('key', '')}` | {overlay.get('formula', '')} | "
+                f"{overlay.get('missing', '')} |"
+            )
+        A("")
     if inf:
         A("**「權重」同「實測影響力」有咩分別？**  權重係配方上寫死嘅數。實測影響力係")
         A("實際跑落去，呢個維度喺同一場馬入面真係拉開幾多分距離 —— 一個權重好高但成場馬")

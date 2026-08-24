@@ -75,10 +75,16 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
         expected_score = float(base_7d if base_7d is not None else ability)
         if abs(expected_score - expected) > 0.06:
             errors.append(f"SCORE-002 horse {horse_num} clean six-dimension mismatch: {expected_score:.2f} != {expected:.2f}")
-        # Legacy pure_7d field = six ranking dimensions; wet form is gated separately.
+        # Legacy pure_7d field = matrix dimensions; wet form and locked exact-
+        # class proof are explicit field-relative ranking overlays.
         wet_feat = float(auto.get("wet_form_feature", 0) or 0)
-        if abs(float(ability) - (expected + wet_feat)) > 0.06:
-            errors.append(f"SCORE-004 horse {horse_num} ability != clean six-dimension + wet_form: {float(ability):.2f} != {expected + wet_feat:.2f}")
+        class_feat = float(auto.get("proven_class_feature", 0) or 0)
+        if abs(float(ability) - (expected + wet_feat + class_feat)) > 0.06:
+            errors.append(
+                f"SCORE-004 horse {horse_num} ability != clean matrix + wet_form "
+                f"+ proven_class: {float(ability):.2f} != "
+                f"{expected + wet_feat + class_feat:.2f}"
+            )
         if auto.get("grade") != compute_grade(float(ability)):
             errors.append(f"SCORE-003 horse {horse_num} grade mismatch")
     if len(str(auto.get("core_logic", "")).strip()) < 40:

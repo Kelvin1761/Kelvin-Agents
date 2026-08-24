@@ -22,6 +22,7 @@ from au_racing_engine.engine_core import (
     backfill_pf_metrics,
     enrich_logic_from_facts,
     horse_prize_level,
+    horse_proven_class_level,
 )
 from au_racing_engine.io_utils import write_json_atomic as _write_json_atomic
 from au_racing_engine.io_utils import write_text_atomic as _atomic_write_text
@@ -267,6 +268,7 @@ def _build_field_summary(horses):
     weights = []
     ratings = []
     performance_quality = []
+    proven_class_levels = []
     # 班次代理（2026-07-31）：逐匹馬近仗獎金水平嘅場內中位數，供 `_form_score`
     # 做場內相對班次調整。同下面 pf_fields 嘅場內 mean/stdev 同一個 pattern。
     prize_levels = []
@@ -292,9 +294,21 @@ def _build_field_summary(horses):
             rating = None
         if rating is not None:
             ratings.append(rating)
-        level = horse_prize_level((horse.get("_data") or {}).get("facts_section"))
+        horse_data = horse.get("_data")
+        if not isinstance(horse_data, dict):
+            horse_data = {}
+            horse["_data"] = horse_data
+        facts_section = horse_data.get("facts_section")
+        level = horse_prize_level(facts_section)
         if level is not None:
             prize_levels.append(level)
+        proven_class = horse_proven_class_level(facts_section)
+        if isinstance(horse_data, dict):
+            # One parse before scoring; every per-horse engine then consumes
+            # the same raw value and the same whole-field mean/stdev.
+            horse_data["proven_class_raw"] = proven_class
+        if proven_class is not None:
+            proven_class_levels.append(proven_class)
         try:
             quality = float(
                 (horse.get("_data") or {}).get("performance_quality_raw")
@@ -376,6 +390,22 @@ def _build_field_summary(horses):
         )
         ** 0.5
         if len(performance_quality) >= 2
+        else 0.0
+    )
+    proven_class_mean = (
+        sum(proven_class_levels) / len(proven_class_levels)
+        if proven_class_levels
+        else 0.0
+    )
+    summary["proven_class_field_count"] = len(proven_class_levels)
+    summary["proven_class_field_mean"] = proven_class_mean
+    summary["proven_class_field_stdev"] = (
+        (
+            sum((value - proven_class_mean) ** 2 for value in proven_class_levels)
+            / len(proven_class_levels)
+        )
+        ** 0.5
+        if len(proven_class_levels) >= 3
         else 0.0
     )
     # 用中位數而唔係平均：獎金 log10 分佈有長尾（一匹跑過 Group 1 嘅馬會拉高平均，

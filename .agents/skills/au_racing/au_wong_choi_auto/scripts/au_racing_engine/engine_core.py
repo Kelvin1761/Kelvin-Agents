@@ -41,6 +41,8 @@ from .scoring import (
     TRACK_MICRO_WEIGHTS,
     PACE_MICRO_WEIGHTS,
     FIT_MICRO_WEIGHTS,
+    PROVEN_CLASS_DECAY,
+    PROVEN_CLASS_Z_WEIGHT,
     SPORTSBET_PQ_RECOVERY_ALPHA,
     clip_score,
     compute_grade,
@@ -618,7 +620,8 @@ class RacingEngine:
         # Soft/Heavy. base_7d_score stays pure 7D; 綜合戰力分 (ability_score) becomes
         # wet-aware on wet tracks. Walk-forward validated (Soft box-trifecta +2.2pp OOS).
         wet_form_feat = wet_form_feature(self._today_going(), self.data.get("going_stats_line"))
-        ability_score = round(pure_7d_score + wet_form_feat, 4)
+        class_proof_feat, class_proof_detail = self._proven_class_feature()
+        ability_score = round(pure_7d_score + wet_form_feat + class_proof_feat, 4)
         grade = compute_grade(ability_score)
 
         data_coverage = self._data_coverage()
@@ -628,7 +631,9 @@ class RacingEngine:
         core_logic = self._core_logic(feature_scores, matrix_scores, advantages, disadvantages)
         grade_transparency = self._au_grade_computation_transparency(
             matrix_scores, matrix, feature_scores, base_7d_score, ability_score, grade,
-            feature_notes=feature_notes)
+            feature_notes=feature_notes,
+            class_proof_feature=class_proof_feat,
+        )
 
         return {
             "version": "AU_AUTO_SCORE_V3",
@@ -638,6 +643,8 @@ class RacingEngine:
             "ability_score": ability_score,
             "rank_score": ability_score,
             "wet_form_feature": round(wet_form_feat, 4),
+            "proven_class_feature": round(class_proof_feat, 4),
+            "proven_class_detail": class_proof_detail,
             "grade": grade,
             "race_context": {
                 "going": self._today_going(),
@@ -686,6 +693,41 @@ class RacingEngine:
             "score_provenance": self.provenance,
             "feature_evidence_state": self.evidence_state,
         }
+
+    def _proven_class_feature(self) -> tuple[float, dict]:
+        """Locked field-relative exact-class overlay from EXP-20260825-03.
+
+        ``_build_field_summary`` calculates the runner raw values before any
+        horse is scored. Missing evidence is neutral; a field needs at least
+        three comparable runners and genuine spread before this can move a
+        ranking. This is the production form of the research-only
+        ``proven_class, k=0.5`` candidate.
+        """
+        raw = parse_float(self.data.get("proven_class_raw"))
+        summary = self.race_context.get("field_summary") or {}
+        count = int(summary.get("proven_class_field_count") or 0)
+        mean = parse_float(summary.get("proven_class_field_mean"))
+        stdev = parse_float(summary.get("proven_class_field_stdev"))
+        detail = {
+            "raw": round(raw, 4) if raw is not None else None,
+            "field_count": count,
+            "field_mean": round(mean, 4) if mean is not None else None,
+            "field_stdev": round(stdev, 4) if stdev is not None else None,
+            "z_score": None,
+            "weight": PROVEN_CLASS_Z_WEIGHT,
+            "adjustment": 0.0,
+            "state": "missing_neutral",
+        }
+        if raw is None or count < 3 or mean is None or stdev is None or stdev <= 0:
+            return 0.0, detail
+        z_score = (raw - mean) / stdev
+        adjustment = PROVEN_CLASS_Z_WEIGHT * z_score
+        detail.update({
+            "z_score": round(z_score, 4),
+            "adjustment": round(adjustment, 4),
+            "state": "observed_field_relative",
+        })
+        return adjustment, detail
 
     def _score_features(self):
         feature_scores = {}
@@ -2623,7 +2665,8 @@ class RacingEngine:
 
     def _au_grade_computation_transparency(self, matrix_scores, matrix_bands, feature_scores,
                                            base_7d_score, ability_score, grade,
-                                           feature_notes=None):
+                                           feature_notes=None,
+                                           class_proof_feature=0.0):
         """Generate the six-dimension ranking walkthrough.
 
         ``base_7d_score`` is retained as a legacy archive field name.  The live
@@ -2651,7 +2694,9 @@ class RacingEngine:
         ])
         summary = (
             f"{table}\n\n"
-            f"**→ 官方六維 clean ranking score = {base_7d_score:.2f} 分；綜合戰力分 = {ability_score:.2f} 分 → Grade = [{grade}]**"
+            f"**→ 官方六維 clean ranking score = {base_7d_score:.2f} 分；"
+            f"高班實績證明 {float(class_proof_feature):+.2f}；"
+            f"綜合戰力分 = {ability_score:.2f} 分 → Grade = [{grade}]**"
         )
         # 有計但唔直接入六維公式嘅分數 — 一併展示，唔收埋
         ref_bits = []
@@ -2877,10 +2922,9 @@ class RacingEngine:
                 "field_size": _parse_field_size(cols[7]),
                 # 獎金（2026-07-31）：追加喺最後一欄，舊 Facts 冇 → None。
                 "prize": _parse_prize(cols[18]) if len(cols) > 18 else None,
-                # Sportsbet 原始往績班次（2026-08-25）：完整 transport 做 evidence，
-                # 暫時唔餵入 `entry['class']`／排名。固定 exact-class 候選雖然
-                # dev/holdout 點估計都正，但 holdout 95% CI 跨零；偷駁入舊
-                # class multiplier 會繞過 regression gate。
+                # Sportsbet 原始往績班次（2026-08-25）：保留 raw label；正式排名
+                # 只經 locked `proven_class` field-relative overlay 使用，絕不駁入
+                # 舊 `entry['class']` multiplier，避免同獎金 proxy 重複計票。
                 "source_race_class": cols[19] if len(cols) > 19 and cols[19] != "-" else "",
             })
         self._record_entry_cache = entries
@@ -5682,6 +5726,75 @@ def _parse_prize(cell) -> int | None:
     value = int(digits)
     # 帶外＝上游污染。AU 最細鄉下賽約 $8k，最大 Group 1 約 $10M。
     return value if 1000 <= value <= 20_000_000 else None
+
+
+def exact_race_class_level(label) -> float | None:
+    """Ordered strength for exact Sportsbet historical race-class labels.
+
+    Maiden must be checked before generic handicap: ``MDN HCP`` is still a
+    maiden.  The numeric origin is immaterial because the final signal is
+    standardised within today's field; the ordering is locked to
+    EXP-20260825-03 and must not be retuned against its opened holdout.
+    """
+    text = re.sub(r"\s+", " ", str(label or "").upper()).strip()
+    if not text or any(token in text for token in ("BARRIER TRIAL", "JUMP OUT", "-BT")):
+        return None
+    if re.search(r"\b(?:GROUP\s*1|G1)\b", text):
+        return 100.0
+    if re.search(r"\b(?:GROUP\s*2|G2)\b", text):
+        return 92.0
+    if re.search(r"\b(?:GROUP\s*3|G3)\b", text):
+        return 86.0
+    if re.search(r"\b(?:LISTED|LR)\b", text):
+        return 82.0
+    if "MAIDEN" in text or re.search(r"\bMDN\b", text):
+        return 56.0
+    benchmark = re.search(r"\bBM\s*(\d{2,3})\b", text)
+    if benchmark:
+        return float(benchmark.group(1))
+    class_number = re.search(r"\b(?:CLASS|CL|C)\s*([1-6])\b", text)
+    if class_number:
+        return 60.0 + 2.0 * int(class_number.group(1))
+    if "OPEN" in text:
+        return 78.0
+    if "HCP" in text or "HANDICAP" in text:
+        return 72.0
+    return None
+
+
+def horse_proven_class_level(facts_section) -> float | None:
+    """Last-four exact-class strength weighted by achieved finish quality.
+
+    A high-class label is not rewarded by itself: it contributes only in
+    proportion to the horse's field-relative finish in that historical run.
+    Missing class, placing, or field size stays unknown rather than becoming a
+    low score.  This reproduces the locked research ``proven_class`` feature.
+    """
+    recent = []
+    for cols in _record_rows(facts_section or ""):
+        if "試閘" in cols[1]:
+            continue
+        source_class = cols[19] if len(cols) > 19 and cols[19] != "-" else ""
+        level = exact_race_class_level(source_class)
+        if level is None:
+            continue
+        placing = parse_placing(cols[7])
+        field_size = _parse_field_size(cols[7])
+        quality = None
+        if placing is not None and field_size is not None:
+            quality = 1.0 - (placing - 1.0) / (field_size - 1.0)
+        recent.append((level, quality))
+        if len(recent) >= 4:
+            break
+    if not recent:
+        return None
+    num = den = 0.0
+    for (level, quality), weight in zip(recent, PROVEN_CLASS_DECAY):
+        if quality is None:
+            continue
+        num += weight * (level - 56.0) * quality
+        den += weight
+    return (num / den) if den else None
 
 
 # 班次代理：獎金。`_form_score` 個 class_mult 一直係全場統一常數

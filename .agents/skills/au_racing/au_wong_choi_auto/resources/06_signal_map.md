@@ -9,12 +9,13 @@
 ```
 ability_score = Σ MATRIX_WEIGHTS[d] × mx[d]   (六個排名維度；form_line 只顯示)
               + wet_form_feature(今日場地, 地狀分拆線)
+              + proven_class_feature(高班次 × 當仗實際表現)
 排序 = ability_score 降序；同分先按馬號穩定排序
 ```
 
 ## 特徵分類（分離度 = 2026-07-17 修復後審計）
 
-### A. 直接影響矩陣排名（10 個 + 1 overlay）
+### A. 直接影響矩陣排名（10 個 + 2 overlays）
 
 | 維度（權重） | 輸入特徵（內部權重） | 分離度 |
 |---|---|---|
@@ -25,6 +26,7 @@ ability_score = Σ MATRIX_WEIGHTS[d] × mx[d]   (六個排名維度；form_line 
 | class_weight (0.12042) | rating 0.70；class／weight 只作 context | official rating 主軸 |
 | track (0.08037) | track_score 1.0 | 現役單葉 |
 | overlay | wet_form_feature（只喺濕地非零） | Heavy +4 g2 / Soft −3 gp |
+| overlay | proven_class_feature（最近四場有班次及完整名次正式賽） | `0.5 ×` 場內 raw proven-class z-score；不足 3 駒有效數據或個馬缺資料時中性 0 |
 
 `performance_quality` = 近四場可比較正式賽嘅 recency-weighted
 `-min(20, beaten_margin) + 4 × log10(prize / 50000)`，再做場內 z-score。
@@ -158,6 +160,14 @@ neutral ablation 後，停止再直接放入 `class_weight` 矩陣。結果：
 - 5/5 連續時間窗 NDCG 非負，winner top-5 無一窗倒退
 - terminal holdout 135 場：competitive recall@5 +0.19pp，其餘主閘持平
 - SP≥31 outsider top-3 capture@5 持平
+
+2026-08-25 新增單獨 `proven_class_feature`，它不是將舊 `class_score`
+重新放回矩陣。它只讀 Sportsbet 每仗原始班次，先以同仗實際名次／
+馬數轉成 finish quality，再對最近四場作 `1.0/0.8/0.6/0.4`
+衰減加權及場內標準化。只有「高班次且當仗表現好」才有明顯正分；
+高班次大敗不會直接當實績。這是用戶明確接受 holdout CI 跨零後的
+experimental production override，實驗證據及限制見
+`docs/experiments/EXP-20260825-03-au-proven-class-overlay.md`。
 
 矩陣計法係 `60 + Σ(weight × (leaf − 60))`；當內部權重總和為 1 時同舊
 weighted average 代數完全相同，亦容許退役 leaf 回到真正中性而唔移動分數尺度。

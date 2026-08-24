@@ -1,6 +1,6 @@
 {
   "platform": "au",
-  "engine_fingerprint": "a95a33c6ff8c",
+  "engine_fingerprint": "264eae16d329",
   "calibrated_from": {
     "races": 874,
     "horses": 8804,
@@ -11,8 +11,8 @@
   "fields": {
     "class_score": {
       "horses": 8804,
-      "neutral_rate": 0.3178,
-      "mean_within_race_spread": 2.0488,
+      "neutral_rate": 0.3201,
+      "mean_within_race_spread": 2.0441,
       "min": 53.21,
       "max": 67.52
     },
@@ -32,15 +32,15 @@
     },
     "distance_score": {
       "horses": 8804,
-      "neutral_rate": 0.0207,
-      "mean_within_race_spread": 4.5728,
+      "neutral_rate": 0.0208,
+      "mean_within_race_spread": 4.5753,
       "min": 49.0,
       "max": 66.0
     },
     "form_score": {
       "horses": 8804,
-      "neutral_rate": 0.0764,
-      "mean_within_race_spread": 6.5234,
+      "neutral_rate": 0.0766,
+      "mean_within_race_spread": 6.5631,
       "min": 39.44,
       "max": 100.0
     },
@@ -103,7 +103,7 @@
     "sectional_score": {
       "horses": 8804,
       "neutral_rate": 0.556,
-      "mean_within_race_spread": 7.4092,
+      "mean_within_race_spread": 7.4079,
       "min": 60.0,
       "max": 86.19
     },

@@ -103,6 +103,9 @@ def load_races(path):
                 **row,
                 "features": row.get("features", row.get("feature_scores", {})),
                 "wet": row.get("wet", row.get("wet_form_feature", 0.0)),
+                "proven_class": row.get(
+                    "proven_class", row.get("proven_class_feature", 0.0)
+                ),
                 "pos": row.get("pos", row.get("actual_pos")),
             })
         races.append({
@@ -114,9 +117,13 @@ def load_races(path):
 
 
 def default_scorer(row):
-    """現行引擎：ability = Σ 維度分 × 權重 + 濕地 overlay。"""
+    """現行引擎：ability = Σ 維度分 × 權重 + 所有已聲明 overlay。"""
     m = matrix_mapper.map_features_to_matrix_scores(row["features"])
-    return sum(m.get(k, 60.0) * w for k, w in MATRIX_WEIGHTS.items()) + row["wet"]
+    return (
+        sum(m.get(k, 60.0) * w for k, w in MATRIX_WEIGHTS.items())
+        + float(row["wet"] or 0.0)
+        + float(row.get("proven_class") or 0.0)
+    )
 
 
 def configured_scorer(*, weights=None, wet_scale=1.0, leaf_overrides=None):
@@ -163,6 +170,7 @@ def configured_scorer(*, weights=None, wet_scale=1.0, leaf_overrides=None):
             sum(matrices.get(key, 60.0) * weight
                 for key, weight in normalised.items())
             + float(row["wet"] or 0.0) * float(wet_scale)
+            + float(row.get("proven_class") or 0.0)
         )
 
     return scorer

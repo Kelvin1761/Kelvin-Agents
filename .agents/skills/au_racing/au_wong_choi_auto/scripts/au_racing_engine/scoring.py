@@ -154,6 +154,24 @@ SPORTSBET_PQ_RECOVERY_ALPHA = 0.10
 # 還原下面兩個 WET_FORM 常數。
 MATRIX_WEIGHTS = {"stability":0.38051,"pace_perf":0.12205,"jockey_trainer":0.26535,"class_weight":0.13919,"track":0.09290}
 
+# Sportsbet exact historical class proof (EXP-20260825-03).  The raw feature is
+# computed from the last four formal runs as (class strength above the maiden
+# floor) × field-relative finish quality, then standardised within today's
+# field.  Kelvin explicitly accepted the residual statistical uncertainty on
+# 2026-08-25: locked candidate top-5 AUC dev +0.00305 / holdout +0.00301, but
+# the 95% CI [-0.00066, +0.00680] crosses zero.  Keep the scale frozen; do not
+# tune it against that already-opened holdout.
+PROVEN_CLASS_Z_WEIGHT = 0.5
+PROVEN_CLASS_DECAY = (1.0, 0.8, 0.6, 0.4)
+RANKING_OVERLAYS = (
+    {
+        "key": "proven_class_feature",
+        "label": "高班實績證明",
+        "formula": "0.5 × 場內 proven-class z-score",
+        "missing": "缺資料或少於 3 匹可比較時 = 0（中性）",
+    },
+)
+
 # ── Wet-form 7D feature (gated to Soft/Heavy races) ──
 # A horse's career wet-going place record IS predictive of box-trifecta on wet
 # tracks, where the dry 7D score under-rates proven wet performers. This is a

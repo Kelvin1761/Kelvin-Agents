@@ -199,8 +199,8 @@ def ensure_verdict(logic_data: dict) -> dict:
                 f"60.0 default (no evidence, not measured-neutral); swapped with #2 "
                 f"per the evidence-thickness rail. Top-3/top-4 membership unchanged."
                 if thin_swap else
-                "Official ranking equals the clean six-dimension ability score; "
-                "report-only evidence does not rerank horses."
+                "Official ranking equals matrix score plus the declared wet-form and "
+                "proven-class overlays; report-only evidence does not rerank horses."
             ),
         },
     }
@@ -265,6 +265,7 @@ def render_race_csv(logic_data: dict) -> str:
         "final_rank_score",
         "ability_score",
         "wet_form_feature",
+        "proven_class_feature",
         "grade",
         "model_pick_status",
         "watchlist_level",
@@ -288,6 +289,7 @@ def render_race_csv(logic_data: dict) -> str:
             "final_rank_score": auto.get("final_rank_score", ""),
             "ability_score": auto.get("ability_score", ""),
             "wet_form_feature": auto.get("wet_form_feature", ""),
+            "proven_class_feature": auto.get("proven_class_feature", ""),
             "grade": auto.get("grade", ""),
             "model_pick_status": auto.get("model_pick_status", ""),
             "watchlist_level": auto.get("watchlist_level", ""),
@@ -397,7 +399,7 @@ def _decision_trace_text(verdict) -> str:
                 f"已同 #{swap.get('promoted')} 對調（top-3／top-4 成員不變）")
     if trace.get("changed"):
         return "⚠️ 排名前後次序有變，請查 decision trace"
-    return "Clean 六維排名次序一致（冇後置 rerank）"
+    return "矩陣＋已聲明 overlay 排名次序一致（冇隱藏後置 rerank）"
 
 
 def _panorama(race, verdict, horses):
@@ -935,7 +937,7 @@ def _render_verdict(verdict, horses, race=None):
         "## [第四部分] 分析盲區(緊隨第三部分)",
         "",
         "- ranking 以 `ability_score`（綜合戰力分）排序；`base_7d_score` 係兼容舊檔名，只作六維排名基礎分解釋。",
-        "- 單一評分：`綜合戰力分` = `ability_score` = `final_rank_score` = `pure_7d_score`（乾地）或 `pure_7d_score + wet_form_feature`（濕地）；已退役所有 report-only 微調。",
+        "- 單一評分：`綜合戰力分` = `ability_score` = `final_rank_score` = `pure_7d_score + wet_form_feature + proven_class_feature`；後兩項缺證據時都係中性 0。",
         "- Rank 4-6 danger watchlist 只係提醒候選，不會交換 Top3 或 Top4 排名。",
         "- 初出馬若正式賽績空白，會較依賴試閘、馬房、走位結構與路程投影，信心不會無上限放大。",
         "- 如 Facts / Logic 更新，應重新執行 AU Auto orchestrator。",

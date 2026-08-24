@@ -109,6 +109,9 @@ class Dataset:
             self.rows.extend(race["rows"])
         self.n = start
         self.wet = np.array([float(r["wet"] or 0.0) for r in self.rows])
+        self.proven_class = np.array(
+            [float(r.get("proven_class") or 0.0) for r in self.rows]
+        )
         self.engine_ability = np.array([float(r["ability"]) for r in self.rows])
         # raw[k] = clip(60 + Σ inner·(leaf−60))，即係食 gain 之前嘅維度分。
         # 佢淨係睇 leaf，同 gain / weight 完全無關，所以可以預先算死。
@@ -135,6 +138,9 @@ class Dataset:
                 "sp": row.get("sp", row.get("result_sp_label")),
                 "features": row.get("features", row.get("feature_scores", {})),
                 "wet": row.get("wet", row.get("wet_form_feature", 0.0)),
+                "proven_class": row.get(
+                    "proven_class", row.get("proven_class_feature", 0.0)
+                ),
                 "ability": row.get("ability", row.get("score")),
             })
         return {
@@ -155,7 +161,7 @@ class Dataset:
 
     def ability(self, mx, weights, wet_scale=1.0):
         w = np.array([float(weights.get(k, 0.0)) for k in DIMS])
-        return np.round(mx @ w, 4) + self.wet * wet_scale
+        return np.round(mx @ w, 4) + self.wet * wet_scale + self.proven_class
 
     def evaluate(self, ability, lo=0, hi=None):
         hi = len(self.slices) if hi is None else hi
@@ -209,7 +215,9 @@ def cmd_verify(ds, _args):
     # 對照組：真正行一次 map_features_to_matrix_scores（唔用 numpy 捷徑）
     slow = np.array([
         round(sum(map_features_to_matrix_scores(r["features"])[k] * MATRIX_WEIGHTS[k]
-                  for k in MATRIX_WEIGHTS), 4) + float(r["wet"] or 0.0)
+                  for k in MATRIX_WEIGHTS), 4)
+        + float(r["wet"] or 0.0)
+        + float(r.get("proven_class") or 0.0)
         for r in ds.rows])
     for label, ref in (("真引擎存檔 ability", ds.engine_ability),
                        ("map_features_to_matrix_scores", slow)):

@@ -132,6 +132,7 @@ def main():
                     "features": {k: round(float(60 if fs.get(k) is None else fs[k]), 4)
                                  for k in FEATURE_KEYS},
                     "wet": float(res.get("wet_form_feature") or 0.0),
+                    "proven_class": float(res.get("proven_class_feature") or 0.0),
                     "ability": float(res.get("ability_score") or 0.0),
                 })
             if len(out_rows) >= 4:

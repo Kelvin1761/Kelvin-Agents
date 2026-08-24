@@ -48,18 +48,22 @@ class SignalMapTests(unittest.TestCase):
     """Locks the ranking equation documented in resources/06_signal_map.md.
 
     If a future change sneaks a hidden adjustment into ability_score outside
-    the (matrix weights x matrix scores) + wet_form_feature equation, or
+    the (matrix weights x matrix scores) + declared overlay equation, or
     changes the live feature set feeding the matrix, these tests fail and the
     signal map must be updated in the same commit.
     """
 
-    def test_ability_equation_is_matrix_plus_wet_only(self) -> None:
+    def test_ability_equation_is_matrix_plus_declared_overlays(self) -> None:
         auto = _analyze()
         expected = sum(
             MATRIX_WEIGHTS[dim] * auto["matrix_scores"][dim] for dim in MATRIX_WEIGHTS
-        ) + auto["wet_form_feature"]
+        ) + auto["wet_form_feature"] + auto["proven_class_feature"]
         self.assertAlmostEqual(auto["ability_score"], clip_score(expected), places=3)
-        self.assertAlmostEqual(auto["pure_7d_score"], auto["ability_score"] - auto["wet_form_feature"], places=3)
+        self.assertAlmostEqual(
+            auto["pure_7d_score"],
+            auto["ability_score"] - auto["wet_form_feature"] - auto["proven_class_feature"],
+            places=3,
+        )
 
     def test_matrix_scores_follow_declared_formulas(self) -> None:
         auto = _analyze()
