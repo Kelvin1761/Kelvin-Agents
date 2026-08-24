@@ -548,9 +548,21 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
 
         # Assign finish position using Last 10 for non-trial races
         if is_trial:
-            # Trials: use result line if found, else None
-            finish_pos = finish_from_result
-            pos_source = 'result' if finish_from_result else 'trial'
+            # ⚠️ 試閘名次一定要照收 `finish:N/M`。原本只信上名行，而上名行按定義
+            # 唔會提到跑第 4 或以後嘅馬 —— 於是 `_trial_places` **結構上只裝得到
+            # 前三名**。實測 8,862 個入到 trial_places 嘅名次，**100.0% 係第 1/2/3**，
+            # 一個第 4 名都冇。試閘跑第 4+ 就同「從來冇試閘」一模一樣，
+            # `_trial_score` 走 `if not trial_places` 分支回中性 60。
+            # 呢個同 2026-08-22 修好嘅正式賽 PI 生存偏差係同一個病，只係留喺試閘層。
+            if finish_from_result is not None:
+                finish_pos = finish_from_result
+                pos_source = 'result'
+            elif finish_explicit is not None:
+                finish_pos = finish_explicit
+                pos_source = 'finish_token'
+            else:
+                finish_pos = None
+                pos_source = 'trial'
             pos_note = ''
         elif finish_explicit is not None:
             finish_pos = finish_explicit
@@ -580,6 +592,12 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
                 pos_note = ''
 
             non_trial_idx += 1
+
+        # 舊 Sportsbet Formguide 可能已經將 `Finished 1/N 5.75L` 寫成
+        # `margin:5.75L`。嗰個數係勝距，唔係 beaten margin；即使舊檔未重抓，
+        # 重建 Facts 時都唔可以再將佢寫成「1 (5.75L)」並誤觸 form_flattered。
+        if finish_pos == 1 and race_margin is not None:
+            race_margin = 0.0
 
         # Extract distance as integer
         dist_m = int(re.search(r'(\d+)', distance).group(1))

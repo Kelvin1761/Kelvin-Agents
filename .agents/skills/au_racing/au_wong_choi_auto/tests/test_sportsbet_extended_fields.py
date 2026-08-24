@@ -61,6 +61,34 @@ class InRunningCheckpointTest(unittest.TestCase):
         self.assertEqual(run["margin"], "0")
         self.assertIn("margin:0L", run_line(run)[0])
 
+    def test_a_displayed_winning_margin_is_not_a_beaten_margin(self):
+        html = _history("Settled 2nd, 800m 2nd, 400m 1st").replace(
+            "Finished 8/10 4.15L", "Finished 1/10 5.75L"
+        )
+        run = parse_race(html)["runs"][0]
+        self.assertEqual(run["margin"], "0")
+        self.assertIn("margin:0L", run_line(run)[0])
+
+    def test_archived_formguide_winner_margin_is_normalised(self):
+        section = (
+            "Randwick R2 2026-07-20 1400m cond:Good $150000 J Doe (2) 57kg "
+            "margin:5.75L starters:10 finish:1/10\n"
+            "1-Test Horse (57kg), 2-Rival (57kg) 5.75L\n"
+        )
+        entry = _parse_formguide_entries(section, "Test Horse")[0]
+        self.assertEqual(entry["finish_pos"], 1)
+        self.assertEqual(entry["margin"], 0.0)
+
+    def test_finish_token_keeps_non_top3_trial_position(self):
+        section = (
+            "Southside Cranbourne **(TRIAL)** R4 2026-07-20 1000m cond:Good "
+            "$0 J Doe (2) 57kg margin:4.2L starters:8 finish:5/8\n"
+            "1-Rival (57kg), 2-Other (57kg) 1.0L, 3-Third (57kg) 2.0L\n"
+        )
+        entry = _parse_formguide_entries(section, "Test Horse")[0]
+        self.assertTrue(entry["is_trial"])
+        self.assertEqual(entry["finish_pos"], 5)
+
 
 class RunnerProfileTest(unittest.TestCase):
     HTML = """

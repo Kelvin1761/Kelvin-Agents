@@ -4,6 +4,12 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20260825-01](EXP-20260825-01-au-poor-trial-pace-wet-interaction.md) | 2026-08-25 | AU | 已觀察差試閘時，正面 PacePerf／wet 應否收縮，令 Clear Proof 入 R1 Top 2 | **REJECT**：PF-half、wet-half、兩者合用喺 dev 頭5 AUC 全部精確 0；三者雖都令 R1 排成 Isawyou／Clear Proof／Gunroom，但 holdout 不開、唔准用單場答案上線 |
+| [EXP-20260824-05](EXP-20260824-05-au-data-semantics-full-scan.md) | 2026-08-24 | AU | 全鏈掃描 Sportsbet→Facts→Logic→score→deploy 有冇語義錯、runner misalignment、leakage；Aeliana 試閘缺名次必修 | **Correctness KEEP／權重不變**：修 8 類問題；63,515 個完整 finish 100% 合法，active runner 5,239/5,239 對齊；trial 修正只改 12/1,411 場，Gold 不變、Gold Strict +0.071pp，holdout AUC 打和 |
+| [EXP-20260824-04](EXP-20260824-04-au-winner-margin-semantics.md) | 2026-08-24 | AU | Sportsbet 頭馬勝距被當輸距；修正後需否重 fit | **Correctness KEEP / refit REJECT**：R9 恢復 Autumn Glow／Sheza Alibi Top 2；整體 Good -0.28pp、Pass +0.14pp；refit holdout AUC -0.0025、CI [-0.0062,+0.0012] |
+| [EXP-20260824-03](EXP-20260824-03-au-sportsbet-pace-attribution.md) | 2026-08-24 | AU | Sportsbet race-level L600 只計正式賽輸距 ≤3L，會否變成較可信嘅逐駒 PacePerf | **REJECT**：holdout 頭5 AUC +0.0035、CI [-0.0040,+0.0110]；Pass / winner@3 -1.37pp；Randwick R1 Gunroom 仍第1、Clear Proof 反跌第3 |
+| [EXP-20260824-02](EXP-20260824-02-au-prep-evidence-volatile-rail.md) | 2026-08-24 | AU | 休後狀態 × 證據厚度 × wet/pace 高波動支持可否只降 Gunroom 型首選 | **REJECT** — R1 可修成 Clear Proof／Isawyou／Gunroom，但三條件 dev 只觸發 1 場；較闊「休後＋高波動」holdout 頭五 AUC +0.0006，95% CI [−0.0003,+0.0016] 跨零 |
+| [EXP-20260824-01](EXP-20260824-01-au-post-spell-poor-return.md) | 2026-08-24 | AU | 長休後復出未上名、短期內再跑應扣分（Gunroom 個案） | **REJECT**（holdout 頭五 AUC +0.0011，95% CI [-0.0012,+0.0036] 跨零）；撤回不完整 archived Logic 得出嘅「第1→第4」說法；另修正 reflector 將部分賽果誤當完整名單嘅排名污染 |
 | [EXP-20260823-04](EXP-20260823-04-au-partnership-trainer-lookup.md) | 2026-08-23 | AU | 合夥練馬師名解析失敗（用戶提問觸發） | **KEEP** — 根因係 `&amp;` 冇 unescape 令 `amp` 留喺 key；合夥名成功率 **0% → 100%**，佔 runner 5.8% |
 | [EXP-20260823-03](EXP-20260823-03-au-l600-standard-table.md) | 2026-08-23 | AU | L600 標準表向上取整（33.1% pf_runs 中招）＋ 41 處非單調條目 | **KEEP**（Gold +1.06 ✅、walk-forward 3/3 從未負）；試閘按生涯仗數條件剔走 **REJECT**（越剔越蝕）|
 | [EXP-20260823-02](EXP-20260823-02-au-going-specific-overlay-and-pace-perf.md) | 2026-08-23 | AU | 濕地 overlay 按今日地況分離；pace_figure 多個明顯缺陷應該修得到 | 濕地分離 **KEEP**（Gold +0.62 ✅）；pace_figure 七個修法 + 三個分層 **全 REJECT**（佢係模型唯一正交輸入，ρ≤0.13）|

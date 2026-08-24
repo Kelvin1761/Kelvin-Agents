@@ -863,7 +863,10 @@ def _au_formline_table_lines(auto):
             continue
         if strength in {"-", "--", "N/A"}:
             strength = ""
-        m = re.search(r"出\s*\d+\s*次:\s*(\d+)\s*勝", next_result)
+        # Complete history says「出 N 次」; partial opponent-index history can
+        # only truthfully say「見前三 N 次」.  Both still provide an exact win
+        # count, so the renderer must follow the same contract as engine_core.
+        m = re.search(r"(?:出|見前三)\s*\d+\s*次:\s*(\d+)\s*勝", next_result)
         wins = int(m.group(1)) if m else 0
         if wins >= 1:
             validated += 1

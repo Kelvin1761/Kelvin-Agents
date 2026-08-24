@@ -1,12 +1,18 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import sys
 from collections import Counter, defaultdict
 from copy import deepcopy
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_archive_calibrator import ARCHIVE_ROOT, HISTORICAL_RESULTS_CSV, iter_logic_rows, load_historical_results, parse_float
 from au_zero_hit_race_audit import field_size_bucket, race_class_bucket
-from racing_engine.matrix_mapper import matrix_score
+from au_racing_engine.matrix_mapper import matrix_score
 from au_metric_contract import ranked_performance
 
 

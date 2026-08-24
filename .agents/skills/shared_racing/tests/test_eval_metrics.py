@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -210,6 +211,88 @@ class AuParityTests(unittest.TestCase):
             self.assertEqual(performance_label_from_rows(model_top4, actual_rows), expected)
             canonical = race_metrics([1, 2, 3, 4], actual, winner=actual[0])
             self.assertEqual(canonical["exclusive_label"], expected)
+
+    def test_partial_results_do_not_rewrite_prediction_ranks(self) -> None:
+        from unified_reflector_core import build_race_performances
+
+        predictions = [
+            {"horse_no": 7, "horse_name": "Gunroom", "derived_rank": 1},
+            {"horse_no": 4, "horse_name": "Clear Proof", "derived_rank": 2},
+            {"horse_no": 11, "horse_name": "Isawyou", "derived_rank": 3},
+            {"horse_no": 8, "horse_name": "Let's Go Again", "derived_rank": 4},
+        ]
+        partial_results = [
+            {"placing": 1, "horse_no": 4, "horse_name": "Clear Proof"},
+            {"placing": 2, "horse_no": 11, "horse_name": "Isawyou"},
+            {"placing": 3, "horse_no": 6, "horse_name": "Call Me Sassy"},
+        ]
+        performances = build_race_performances(
+            "au",
+            {"races": [{"race_num": 1, "top_picks": []}]},
+            {1: {"results": partial_results}},
+            {1: predictions},
+        )
+
+        self.assertEqual(
+            [row["horse_name"] for row in performances[0].model_top3],
+            ["Gunroom", "Clear Proof", "Isawyou"],
+        )
+        self.assertEqual(performances[0].label, "Pass")
+
+    def test_only_explicit_scratches_are_removed_and_reranked(self) -> None:
+        from unified_reflector_core import build_race_performances
+
+        predictions = [
+            {"horse_no": 7, "horse_name": "Gunroom", "derived_rank": 1},
+            {"horse_no": 4, "horse_name": "Clear Proof", "derived_rank": 2},
+            {"horse_no": 11, "horse_name": "Isawyou", "derived_rank": 3},
+            {"horse_no": 8, "horse_name": "Let's Go Again", "derived_rank": 4},
+        ]
+        results = [
+            {"placing": 1, "horse_no": 4, "horse_name": "Clear Proof"},
+            {"placing": 2, "horse_no": 11, "horse_name": "Isawyou"},
+            {"placing": 3, "horse_no": 8, "horse_name": "Let's Go Again"},
+        ]
+        performances = build_race_performances(
+            "au",
+            {"races": [{"race_num": 1, "top_picks": []}]},
+            {1: {"results": results, "scratched_horse_numbers": [7]}},
+            {1: predictions},
+        )
+
+        self.assertEqual(
+            [(row["rank"], row["horse_name"]) for row in performances[0].model_top3],
+            [(1, "Clear Proof"), (2, "Isawyou"), (3, "Let's Go Again")],
+        )
+
+    def test_au_results_loader_preserves_explicit_scratches(self) -> None:
+        from unified_reflector_core import load_structured_results
+
+        payload = {
+            "events": {"1": {"venue": "Randwick"}},
+            "results": {
+                "1": [
+                    {
+                        "finish_position": 1,
+                        "competitor_number": 4,
+                        "horse_name": "Clear Proof",
+                    },
+                    {
+                        "finish_position": 0,
+                        "competitor_number": 7,
+                        "horse_name": "Gunroom",
+                        "is_scratched": True,
+                    },
+                ]
+            },
+        }
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            results_path = Path(tmp_dir) / "results.json"
+            results_path.write_text(json.dumps(payload), encoding="utf-8")
+            loaded = load_structured_results("au", results_path)
+
+        self.assertEqual(loaded[1]["scratched_horse_numbers"], [7])
+        self.assertEqual([row["horse_no"] for row in loaded[1]["results"]], [4])
 
 
 class CompetitivenessTests(unittest.TestCase):

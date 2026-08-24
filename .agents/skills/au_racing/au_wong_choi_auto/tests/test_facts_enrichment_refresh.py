@@ -73,6 +73,37 @@ class FactsPathGlobTests(unittest.TestCase):
 
 
 class BuilderEnricherParityTests(unittest.TestCase):
+    def test_archived_winner_margin_is_zero_when_rebuilding_facts(self) -> None:
+        formguide = "\n".join(
+            [
+                "[4] Example Star (12)",
+                "Randwick R5 2026-08-01 1400m cond:Good $100000 J Doe (4) 58kg "
+                "margin:5.75L starters:10 finish:1/10",
+                "1-Example Star (4), 2-Rival (2) 5.75L",
+            ]
+        )
+        rows = parse_formguide_for_horse(
+            formguide, 4, "Example Star", [1], as_of="2026-08-09"
+        )
+        self.assertEqual(rows[0]["finish_pos"], 1)
+        self.assertEqual(rows[0]["margin"], 0.0)
+
+    def test_non_top3_trial_finish_token_is_not_treated_as_no_trial(self) -> None:
+        formguide = "\n".join(
+            [
+                "[4] Example Star (12)",
+                "Southside Cranbourne **(TRIAL)** R4 2026-08-01 1000m cond:Good "
+                "$0 J Doe (4) 58kg margin:4.18L starters:8 finish:5/8",
+                "1-Rival (2), 2-Other (3) 1.0L, 3-Third (1) 2.0L",
+            ]
+        )
+        rows = parse_formguide_for_horse(
+            formguide, 4, "Example Star", [], as_of="2026-08-09"
+        )
+        self.assertTrue(rows[0]["is_trial"])
+        self.assertEqual(rows[0]["finish_pos"], 5)
+        self.assertEqual(rows[0]["pos_source"], "finish_token")
+
     def test_formguide_dossier_censors_target_and_future_runs(self) -> None:
         formguide = "\n".join(
             [

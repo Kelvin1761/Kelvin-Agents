@@ -13,7 +13,12 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 AU_RACING = SCRIPT_DIR.parents[1]
 sys.path.insert(0, str(AU_RACING))
 
-from claw_sportsbet_form import parse_race, parse_runner_blocks, to_text  # noqa: E402
+from claw_sportsbet_form import (  # noqa: E402
+    parse_race,
+    parse_runner_blocks,
+    run_line,
+    to_text,
+)
 
 
 OLD_INRUN = re.compile(
@@ -89,6 +94,19 @@ def audit_cache(cache_dir: Path, *, limit: int | None = None) -> dict:
             continue
         runs = parsed["runs"]
         counts["parsed_runs"] += len(runs)
+        for run in runs:
+            position = run.get("pos")
+            field = run.get("field")
+            if position and field:
+                counts["parsed_finish"] += 1
+                if 1 <= int(position) <= int(field):
+                    counts["valid_finish"] += 1
+                if "finish:" in run_line(run)[0]:
+                    counts["finish_token_transport"] += 1
+                if run.get("is_trial") and int(position) > 3:
+                    counts["non_top3_trial_finish"] += 1
+            else:
+                counts["missing_finish"] += 1
         counts["new_any_in_running"] += sum(
             any(run.get(key) for key in ("settled", "p1200", "p800", "p400"))
             for run in runs
@@ -99,6 +117,27 @@ def audit_cache(cache_dir: Path, *, limit: int | None = None) -> dict:
             parsed["meta"].get("race_class")
         )
         counts["runner_blocks"] += len(blocks)
+        block_by_name = {
+            str(block.get("name") or "").strip().casefold(): block
+            for block in blocks
+            if str(block.get("name") or "").strip()
+        }
+        for overview in parsed.get("overview", {}).values():
+            if overview.get("scratched"):
+                counts["scratched_overview_runners"] += 1
+                continue
+            counts["active_overview_runners"] += 1
+            block = block_by_name.get(
+                str(overview.get("name") or "").strip().casefold()
+            )
+            if not block:
+                counts["active_runner_missing_block"] += 1
+                continue
+            counts["active_runner_block_matched"] += 1
+            counts["active_runner_barrier_present"] += block.get("barrier") is not None
+            counts["active_runner_weight_present"] += bool(
+                (block.get("stats") or {}).get("Weight")
+            )
         for key in ("foaled", "sire", "dam", "breeder", "colours", "gear_changes"):
             counts[f"profile_{key}"] += sum(
                 bool((block.get("profile") or {}).get(key)) for block in blocks
@@ -127,6 +166,21 @@ def audit_cache(cache_dir: Path, *, limit: int | None = None) -> dict:
         ),
         "race_class_page_rate": _pct(
             result.get("parsed_race_class_pages", 0), result.get("race_pages", 0),
+        ),
+        "finish_transport_rate": _pct(
+            result.get("finish_token_transport", 0), result.get("parsed_finish", 0),
+        ),
+        "active_runner_block_match_rate": _pct(
+            result.get("active_runner_block_matched", 0),
+            result.get("active_overview_runners", 0),
+        ),
+        "active_runner_barrier_rate": _pct(
+            result.get("active_runner_barrier_present", 0),
+            result.get("active_overview_runners", 0),
+        ),
+        "active_runner_weight_rate": _pct(
+            result.get("active_runner_weight_present", 0),
+            result.get("active_overview_runners", 0),
         ),
     }
     return result
@@ -162,6 +216,23 @@ def render_markdown(report: dict) -> str:
         f"| Gear changes | {report.get('raw_gear', 0)} | 0 | "
         f"{report.get('profile_gear_changes', 0)} | "
         f"{_pct(report.get('profile_gear_changes', 0), report.get('raw_gear', 0)):.2f}% |",
+        "",
+        "## Runner and finish alignment",
+        "",
+        f"- Active overview runners matched to a profile block: "
+        f"**{report.get('active_runner_block_matched', 0)} / "
+        f"{report.get('active_overview_runners', 0)}** "
+        f"({cov['active_runner_block_match_rate']:.2f}%)",
+        f"- Active runner barrier / weight coverage: "
+        f"**{cov['active_runner_barrier_rate']:.2f}% / "
+        f"{cov['active_runner_weight_rate']:.2f}%**",
+        f"- Parsed finish rows transported with `finish:N/M`: "
+        f"**{report.get('finish_token_transport', 0)} / "
+        f"{report.get('parsed_finish', 0)}** ({cov['finish_transport_rate']:.2f}%)",
+        f"- Valid finish bounds / missing finish rows: "
+        f"**{report.get('valid_finish', 0)} / {report.get('missing_finish', 0)}**",
+        f"- Non-top-3 trial placings now preserved: "
+        f"**{report.get('non_top3_trial_finish', 0)}**",
         "",
         "## Person-profile data present but not safe for historical backfill",
         "",

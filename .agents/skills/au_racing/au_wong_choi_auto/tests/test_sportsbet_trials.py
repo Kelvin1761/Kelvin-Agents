@@ -38,6 +38,12 @@ REAL = ("Dubbo ( Good ) 03/05/2026 Race 5 1100m BM82 "
         "Barrier 10, Weight 57.0kg 5.50 "
         "In running 800m 4th, 400m 5th Sectionals 600m 34.630s "
         "1st Wave Breaker (J Penza 57.0kg) Winning Time 1:02.180 ")
+MISSING_FIELD = (
+    "Randwick ( Soft ) 01/11/2025 Race 1 1308m OPEN-BT Barrier Trial "
+    "Finished 6/ 5.50L (of 0), Jockey Joao Moreira, Weight 58kg "
+    "1st Jimmysstar (Ethan Brown 59kg) 2nd Lady Shenandoah "
+    "(James McDonald 57kg) 2.75L 3rd Mazu (Rachel King 57kg) 3.05L"
+)
 
 
 def _runs(body):
@@ -94,6 +100,15 @@ class OptionalFieldsTest(unittest.TestCase):
     def test_a_real_run_still_reads_barrier_weight_and_sp(self):
         r = _runs(REAL)[0]
         self.assertEqual((r["barrier"], r["weight"], r["sp"]), ("10", "57.0", "5.50"))
+
+    def test_missing_field_size_does_not_consume_margin_as_field(self):
+        run = _runs(MISSING_FIELD)[0]
+        self.assertEqual(run["pos"], "6")
+        self.assertIsNone(run["field"])
+        self.assertEqual(run["margin"], "5.50")
+        line, _opponents = run_line(run)
+        self.assertNotIn("starters:", line)
+        self.assertNotIn("finish:", line)
 
 
 class ScanWindowTest(unittest.TestCase):

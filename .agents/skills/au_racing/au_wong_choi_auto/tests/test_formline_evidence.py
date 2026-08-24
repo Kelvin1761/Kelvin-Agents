@@ -27,6 +27,7 @@ sys.path.insert(0, str(SCRIPTS))
 import pytest  # noqa: E402
 
 from au_racing_engine.engine_core import RacingEngine  # noqa: E402
+from au_racing_engine.renderer import _au_formline_table_lines  # noqa: E402
 from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 CTX = {"race_class": "BM70, Handicap", "distance": "1400m",
@@ -108,3 +109,19 @@ class TestStillOutOfTheRanking:
         —— 因為 82.3% 嘅馬而家喺中性打平手，場內冇 gradient。
         真係想佢有用，要嘅係**更多對手線數據**，唔係再改分數映射。"""
         assert "form_line" not in MATRIX_WEIGHTS
+
+
+def test_renderer_counts_partial_history_wins_as_franking_evidence():
+    lines = _au_formline_table_lines({
+        "formline_rows": [{
+            "date": "2026-02-28",
+            "race": "Randwick R8",
+            "finish": "2",
+            "opponent": "Aeliana",
+            "next_class": "Metro",
+            "next_result": "見前三 3 次: 2 勝",
+            "strength": "強組",
+        }]
+    })
+    assert lines[0].startswith("賽績線兌現度: 1/1")
+    assert "有基本背書" in lines[0]

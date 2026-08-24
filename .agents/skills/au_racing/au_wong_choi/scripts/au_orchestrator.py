@@ -49,6 +49,14 @@ COMPLIANCE_SCAN = (
     / "scripts"
     / "race_compliance_scan.py"
 )
+DATA_HEALTH_SCAN = (
+    PROJECT_ROOT
+    / ".agents"
+    / "skills"
+    / "shared_racing"
+    / "scripts"
+    / "racing_data_health.py"
+)
 TEMP_ROOT = PROJECT_ROOT / "_temporary_files"
 TEMP_FILE_PATTERNS = (
     "latest_results.html",
@@ -89,6 +97,7 @@ def main():
                 cleanup_target = meeting_dir.parent
                 official_going = _resolve_official_going(meeting_dir.parent, args.going)
                 _run(_auto_command(meeting_dir, official_going))
+                _run_data_health_gate(meeting_dir.parent)
                 _run_compliance_gate(meeting_dir.parent)
                 run_post_success_cloudflare_deploy(
                     source="AU Wong Choi",
@@ -114,6 +123,7 @@ def main():
         _ensure_logic(meeting_dir, race_workers)
         official_going = _resolve_official_going(meeting_dir, args.going)
         _run(_auto_command(meeting_dir, official_going))
+        _run_data_health_gate(meeting_dir)
         _run_compliance_gate(meeting_dir)
         run_post_success_cloudflare_deploy(
             source="AU Wong Choi",
@@ -351,6 +361,20 @@ def _run_compliance_gate(meeting_dir: Path) -> None:
             str(meeting_dir),
             "--platform",
             "au",
+        ]
+    )
+
+
+def _run_data_health_gate(meeting_dir: Path) -> None:
+    """Block publish when pre-race source, Logic and rendered rows misalign."""
+    _run(
+        [
+            PYTHON,
+            str(DATA_HEALTH_SCAN),
+            "--platform",
+            "au",
+            "--meeting-dir",
+            str(meeting_dir),
         ]
     )
 

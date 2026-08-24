@@ -149,8 +149,13 @@ def to_text(html):
 # 呢個就係 `trial_score` 追唔到現有數據源嘅主因。
 # 冇檔位／負磅嘅時候留 None —— 現有源都係寫 `(None) Nonekg`，格式對得上。
 RE_RUN = re.compile(
-    r"Finished\s+(?P<pos>\d+)\s*/\s*(?P<field>\d+)"
-    r"(?:\s+(?P<margin>[\d.]+)L)?"
+    # Overseas / some trial rows omit field size: ``Finished 6/ 5.50L``.
+    # Without the decimal guard, ``5`` (the margin's integer part) becomes a
+    # fabricated field size and serialises as the impossible ``finish:6/5``.
+    # Keep the run, placing and margin, but leave field=None when it is absent.
+    r"Finished\s+(?P<pos>\d+)\s*/\s*(?:"
+    r"(?P<field>\d+)(?![\d.])(?:\s+(?P<margin>[\d.]+)L)?"
+    r"|(?P<margin_without_field>[\d.]+)L)"
     r".*?Jockey\s+(?P<jockey>[^,]+?)"
     r"(?:,\s*Barrier\s+(?P<barrier>\d+))?"
     # ⚠️ SP 後面唔可以跟字母。負磅冇數字嘅時候，下一個 token 係 `1st Kyle …`，
@@ -461,12 +466,13 @@ def parse_race(html):
         # 試閘獎金寫成 `(of 0)`，係第二個獨立訊號。
         cls_txt = (hdr or {}).get("cls") or ""
         is_trial = bool(RE_TRIAL.search(cls_txt)) or (pz and pz.group(1) == "0")
+        raw_margin = m.group("margin") or m.group("margin_without_field")
         runs.append({**m.groupdict(),
-                     # Sportsbet 頭馬嘅 `Finished 1/N` 寫法不會印 `0L`。
-                     # 但頭馬輸距就係 0；留 None 會令 complete-form
-                     # Performance Quality 反而丟掉所有贏馬往績。
-                     "margin": m.group("margin") or (
-                         "0" if m.group("pos") == "1" else None
+                     # `Finished 1/N 5.75L` 入面嘅 5.75L 係**勝距**，唔係
+                     # 呢匹頭馬嘅輸距。Performance Quality 食嘅欄位係 beaten
+                     # margin，所以頭馬無論頁面有冇印距離都一定要歸零。
+                     "margin": (
+                         "0" if m.group("pos") == "1" else raw_margin
                      ),
                      "header": hdr,
                      "is_trial": is_trial,

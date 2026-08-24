@@ -16,7 +16,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
+# scripts -> shared_racing -> skills -> .agents -> repository root
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import is_materialized_file
@@ -130,6 +131,15 @@ def _source_runner_numbers(
     if len(candidates) != 1:
         return set(), candidates
     text = candidates[0].read_text(encoding="utf-8", errors="replace")
+    # AU Racecard keeps withdrawals as numbered rows, for example
+    # ``5. Beiwacht - status:Scratched``.  Logic/Facts correctly omit those
+    # runners, so counting the raw numbered row creates a false alignment
+    # failure and blocks an otherwise healthy meeting.
+    if platform == "au":
+        text = "\n".join(
+            line for line in text.splitlines()
+            if "status:scratched" not in line.replace(" ", "").casefold()
+        )
     values = set(re.findall(r"馬號:\s*(\d+)\b", text))
     if not values:
         values.update(re.findall(r"^\s*\[?(\d{1,2})\]?\s*[.|)]\s+", text, re.M))
@@ -153,6 +163,7 @@ def _source_runner_names(path: Path | None) -> dict[str, str]:
     return {
         number: _strip_name_annotation(name)
         for number, name in re.findall(r"^\s*\[?(\d{1,2})\]?\s*[.)]\s*([^\n]+)", text, re.M)
+        if "status:scratched" not in name.replace(" ", "").casefold()
     }
 
 

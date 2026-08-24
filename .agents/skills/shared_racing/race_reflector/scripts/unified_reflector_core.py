@@ -333,14 +333,20 @@ def load_structured_results(platform: str, results_file: Path) -> dict[int, dict
                 except (TypeError, ValueError):
                     continue
                 normalized = []
+                scratched_horse_numbers = []
                 for row in rows:
                     placing = int(row.get("finish_position") or 99)
-                    if placing <= 0 or row.get("is_scratched"):
+                    horse_no = int(row.get("competitor_number") or 0)
+                    if row.get("is_scratched"):
+                        if horse_no > 0:
+                            scratched_horse_numbers.append(horse_no)
+                        continue
+                    if placing <= 0:
                         continue
                     normalized.append(
                         {
                             "placing": placing,
-                            "horse_no": int(row.get("competitor_number") or 0),
+                            "horse_no": horse_no,
                             "horse_name": str(row.get("horse_name") or "").strip(),
                             "margin": row.get("margin"),
                             "odds": row.get("starting_price"),
@@ -354,6 +360,7 @@ def load_structured_results(platform: str, results_file: Path) -> dict[int, dict
                     "meta": event_meta.get(str(race_num), {}),
                     "incident_report": "",
                     "results": normalized,
+                    "scratched_horse_numbers": scratched_horse_numbers,
                 }
             return results
 
@@ -677,12 +684,14 @@ def build_race_performances(
         actual_top3 = actual_rows[:3]
         prediction_list = prediction_rows.get(race_num, [])
         prediction_map = {row["horse_no"]: row for row in prediction_list}
-        if actual_rows and prediction_list:
-            final_starters = {row["horse_no"] for row in actual_rows}
+        scratched_horse_numbers = set(
+            structured_results.get(race_num, {}).get("scratched_horse_numbers", [])
+        )
+        if scratched_horse_numbers and prediction_list:
             prediction_list = [
                 dict(row)
                 for row in prediction_list
-                if row["horse_no"] in final_starters
+                if row["horse_no"] not in scratched_horse_numbers
             ]
             for idx, row in enumerate(prediction_list, start=1):
                 row["derived_rank"] = idx

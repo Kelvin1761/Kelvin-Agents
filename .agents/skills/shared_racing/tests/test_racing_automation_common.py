@@ -85,6 +85,20 @@ def test_health_blocks_bad_rank(tmp_path: Path) -> None:
     assert any(issue["code"] == "RANK_NOT_PERMUTATION" for issue in report["issues"])
 
 
+def test_au_health_ignores_scratched_racecard_rows(tmp_path: Path) -> None:
+    meeting = _meeting(tmp_path)
+    racecard = meeting / "Test Race 1 Racecard.md"
+    racecard.write_text(
+        "1. Alpha\n2. Beta\n3. Gamma - status:Scratched\n",
+        encoding="utf-8",
+    )
+    report = scan_meeting("au", meeting)
+    assert report["status"] == "ok"
+    assert not any(
+        issue["code"] == "SOURCE_LOGIC_MISMATCH" for issue in report["issues"]
+    )
+
+
 def test_hkjc_health_accepts_chinese_racecard_and_derives_coverage(tmp_path: Path) -> None:
     meeting = tmp_path / "2026-09-06_ShaTin"
     meeting.mkdir()

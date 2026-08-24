@@ -23,6 +23,7 @@ from au_orchestrator import (
     _facts_has_horses,
     _find_facts_file,
     _extract_meeting,
+    _run_data_health_gate,
     _resolve_official_going,
     _sportsbet_meeting_spec,
     _venue_from_meeting,
@@ -74,6 +75,16 @@ class MainOrchestratorTests(unittest.TestCase):
     def test_auto_command_passes_official_going(self) -> None:
         command = _auto_command(Path("/tmp/Race_1_Logic.json"), "Good 4")
         self.assertEqual(command[-2:], ["--going", "Good 4"])
+
+    def test_data_health_gate_uses_au_meeting_contract(self) -> None:
+        import au_orchestrator as O
+
+        meeting = Path("/tmp/2026-08-22 Randwick")
+        with patch.object(O, "_run") as run:
+            _run_data_health_gate(meeting)
+        command = run.call_args.args[0]
+        self.assertIn("racing_data_health.py", command[1])
+        self.assertEqual(command[-4:], ["--platform", "au", "--meeting-dir", str(meeting)])
 
     def test_sportsbet_url_resolves_complete_tracked_meeting(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

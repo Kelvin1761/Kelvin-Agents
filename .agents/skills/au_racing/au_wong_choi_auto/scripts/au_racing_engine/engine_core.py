@@ -146,6 +146,30 @@ def _distance_bin(dist_m: int) -> int:
     return 2600
 
 
+_FRONT_TOKENS = ("front runners", "前置", "前領偏差", "on-pace bias", "利放頭", "跟前")
+_NEGATORS = ("唔利", "不利", "唔到", "難以", "冇優勢", "not favour", "against")
+
+
+def _profile_front_bias(bias_text: str) -> bool:
+    """成個場地係唔係真係偏前置 —— 逐行判斷，唔係掃全文。
+
+    跳過兩類行：
+      * 條件式行（`rail out` / `rail position` / `+3` 之類）—— 引擎唔知今日 rail
+      * 否定式行（「唔利前置」）—— substring 掃描會當成正面訊號
+    """
+    for raw in str(bias_text or "").splitlines():
+        line = raw.strip().lower()
+        if not line:
+            continue
+        if "rail" in line or re.search(r"[+＋]\s*\d", line):
+            continue
+        if any(neg in line for neg in _NEGATORS):
+            continue
+        if any(tok in line for tok in _FRONT_TOKENS):
+            return True
+    return False
+
+
 def _normalize_track_name(name: str) -> str:
     n = str(name or '').strip()
     for old, new in TRACK_NAME_CLEANUP:
@@ -1009,6 +1033,12 @@ class RacingEngine:
             detail["note"] = "無試閘紀錄，按保守中性處理"
             return base, "試閘訊號有限，試閘分保守處理。", "trial_table"
         good = sum(1 for place in trial_places[:3] if place <= 3)
+        if good == 0:
+            # Observed poor trials must not be rendered as if the horse merely
+            # had no trial data.  The score already starts below neutral (56);
+            # this flag makes the evidence visible without adding a second
+            # numerical penalty for the same information.
+            self.risk_flags.append("trial_no_recent_top3")
         tw = TRIAL_MICRO_WEIGHTS
         score = tw.get("base", 56.0)
         detail["base"] = score
@@ -2665,6 +2695,7 @@ class RacingEngine:
             "distance_unproven": "路程仍未正式證明，末端續航力未可完全信任",
             "debut_form_neutral": "初出馬缺正式賽經驗，變數自然較大",
             "debut_distance_unproven": "初出馬未經路程實戰驗證",
+            "trial_no_recent_top3": "近三課有名次嘅試閘全部未入前三，備戰交代偏弱",
         }
         return mapping.get(flag, flag)
 
@@ -3269,7 +3300,20 @@ class RacingEngine:
             "straight_m": straight_m,
             "distance_band": distance_band,
             "distance_note": str(profile.get("distance_note") or "").strip(),
-            "front_bias": any(token in bias_text for token in ("front runners", "前置", "前領偏差", "On-pace bias", "利放頭", "跟前")),
+            # ⚠️ 呢個係**全份 profile 文件**嘅 substring 掃描，而場地偏差表係
+            # **按 rail position 分行**嘅。Randwick 個表：
+            #     True            中性偏公平（前領 ~31%、後追 ~29%）
+            #     Rail Out +3~+5  偏利前置
+            #     Rail Out +6m+   強烈利前置
+            # 引擎唔知今日 rail 喺邊，但掃到 Rail Out 幾行嘅「前置」就把
+            # front_bias 設成 True，於是**無論 rail 位置**都報「偏前置場地輪廓」——
+            # 同同一份檔案嘅幾何描述（「The Rise 上坡段…強後追型馬受益」）並存，
+            # 讀者會見到自相矛盾。2026-08-24 用戶喺 Randwick R1 直接踩到。
+            #
+            # 收窄做「只認明確講**成個場地**偏前置」嘅講法，並排除條件式行
+            # （含 "rail out" / "rail position" 嘅行）同否定式講法。
+            # ⚠️ 純顯示：`front_bias` 只餵 `_track_fit_brief`，唔入任何評分。
+            "front_bias": _profile_front_bias(bias_text),
             "inside_advantage": any(token in bias_text for token in ("內檔", "內疊", "省位", "箱位", "切線優勢")),
             "outside_penalty": any(token in bias_text for token in ("外檔", "外疊", "地獄排位", "白走", "難以從包尾大幅度追越")),
             "short_straight": 0 < straight_m <= 330,
@@ -6148,6 +6192,12 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
         finish_pos = None
         margin = None
         margin_source = ""
+        explicit_finish = re.search(r"\bfinish:(\d+)\s*/\s*(\d+)\b", header, re.I)
+        if explicit_finish:
+            parsed_finish = int(explicit_finish.group(1))
+            parsed_field = int(explicit_finish.group(2))
+            if parsed_field >= 2 and 1 <= parsed_finish <= parsed_field:
+                finish_pos = parsed_finish
         header_margin = re.search(r"\bmargin:([-+]?\d+(?:\.\d+)?)L?\b", header, re.I)
         if header_margin:
             margin = float(header_margin.group(1))
@@ -6156,11 +6206,18 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
             for pos_m in re.finditer(r"(\d+)-([^(]+)\s*\(([^)]+)\)(?:\s+(\d+\.?\d*)L)?", result_line):
                 name_in_result = pos_m.group(2).strip().lower()
                 if hn_clean[:6] in name_in_result or name_in_result[:6] in hn_clean:
-                    finish_pos = int(pos_m.group(1))
+                    result_finish = int(pos_m.group(1))
+                    if finish_pos is None:
+                        finish_pos = result_finish
                     if margin is None and pos_m.group(4):
                         margin = float(pos_m.group(4))
                         margin_source = "result_line"
                     break
+        # Defensive compatibility for archived Formguides produced before the
+        # extractor fix: a positive number beside the winner is winning margin,
+        # never the winner's beaten margin.
+        if finish_pos == 1 and margin is not None:
+            margin = 0.0
         note = _capture(block, r"^Note:\s*(.+)$")
         stewards = _capture(block, r"^Stewards:\s*(.+)$")
         video = _capture(block, r"^Video:\s*(.+)$")
