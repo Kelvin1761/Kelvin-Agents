@@ -1022,3 +1022,101 @@ def test_the_card_carries_the_start_time_so_the_window_is_visible(tmp_path):
     message = scheduler_module.daily_bet_message("2026-08-17", report)
     assert "開賽：08-17 01:00 悉尼時間" in message
     assert "仲有 42 分" in message
+
+
+# --------------------------------------------------------------------------- #
+# The gate must divide by Sportsbet's book, not by the whole tennis calendar
+# (2026-08-24: the US Open qualifying draw blocked a healthy card)
+# --------------------------------------------------------------------------- #
+def _two_scope_payload(*, fixtures, book_fixtures, priced):
+    return {
+        "matches_analysed": priced,
+        "valid_feature_snapshots": priced,
+        "odds_coverage": {
+            "fixtures": fixtures,
+            "book_fixtures": book_fixtures,
+            "priced_matches": priced,
+        },
+        "source_errors": [],
+    }
+
+
+def test_espn_only_fixtures_do_not_block_a_healthy_sportsbet_book():
+    """2026-08-24, reproduced from the database at 09:21 Sydney.
+
+    The ESPN fixture feed had loaded 64 US Open QUALIFYING matches that
+    Sportsbet has no market for. Against the full calendar that read 42/174 =
+    24% and the gate blocked the card; against Sportsbet's own listing it was
+    42/85 = 49%, an ordinary morning. The block held through the 09:00 pass and
+    both recovery attempts and the day ended on exit 75 with no card.
+    """
+    reasons = scheduler.analysis_retry_reasons(
+        _two_scope_payload(fixtures=174, book_fixtures=85, priced=42)
+    )
+    assert reasons == [], f"a 49% book is publishable; got {reasons}"
+
+
+def test_a_half_priced_sportsbet_book_still_blocks():
+    """Restricting the denominator must not turn the gate off. When Sportsbet
+    itself lists the matches and has not priced them, that is still a book that
+    has not opened."""
+    reasons = scheduler.analysis_retry_reasons(
+        _two_scope_payload(fixtures=174, book_fixtures=120, priced=30)
+    )
+    assert reasons and "not open yet" in reasons[0]
+
+
+def test_a_thin_sportsbet_listing_is_still_an_unopened_book():
+    """The failure the fill-rate cannot see. 2026-08-25 at the 18:00 pass:
+    Sportsbet listed 5 fixtures out of a calendar of 81 and priced all five, so
+    the fill rate was 100%. Without a listing-size check the run would call
+    itself `ok` and claim a complete board for a book that opens next morning."""
+    reasons = scheduler.analysis_retry_reasons(
+        _two_scope_payload(fixtures=81, book_fixtures=5, priced=5)
+    )
+    assert reasons and "not open yet" in reasons[0]
+    assert "5 of 81" in reasons[0]
+
+
+def test_a_genuinely_small_day_is_not_a_thin_listing():
+    """Few fixtures everywhere, nearly all priced, is a quiet Tuesday and not a
+    missing board -- the gate is about coverage, not volume."""
+    assert scheduler.analysis_retry_reasons(
+        _two_scope_payload(fixtures=9, book_fixtures=8, priced=8)
+    ) == []
+
+
+def test_payloads_without_book_scope_still_get_checked():
+    """A replayed run or an older snapshot has no `book_fixtures`. Falling back
+    to the calendar keeps the gate armed rather than silently skipping it."""
+    reasons = scheduler.analysis_retry_reasons(_payload(fixtures=102, priced=2))
+    assert reasons and "not open yet" in reasons[0]
+
+
+def test_health_line_shows_the_denominator_the_gate_used(monkeypatch):
+    """Kelvin reading `賽事 174 · 有價 60` computes 34% while the gate computed
+    68%. A person and a gate disagreeing in silence is how 2026-08-24 spent
+    three passes blocked on a number nothing printed."""
+    from scripts import tennis_daily_schedule as scheduler_module
+
+    monkeypatch.setattr(scheduler_module, "_prop_counts",
+                        lambda _d: {"props": 0, "value": 0, "pending_older": 0})
+    line = scheduler_module.daily_health_line("2026-08-24", {
+        "odds_coverage": {"fixtures": 174, "book_fixtures": 88, "priced_matches": 60},
+        "matches_analysed": 56,
+        "readiness": {"severity": "ok", "horizon": "same_day"},
+        "tracker_sync": {"clv": {}},
+        "cloudflare_deploy": {"attempted": True, "status": "deployed"},
+    })
+    assert "賽事 174 (盤面 88)" in line
+
+    # When the two scopes agree there is nothing to disambiguate, so the line
+    # stays as short as it has always been.
+    plain = scheduler_module.daily_health_line("2026-08-22", {
+        "odds_coverage": {"fixtures": 53, "book_fixtures": 53, "priced_matches": 52},
+        "matches_analysed": 44,
+        "readiness": {"severity": "ok", "horizon": "same_day"},
+        "tracker_sync": {"clv": {}},
+        "cloudflare_deploy": {"attempted": True, "status": "deployed"},
+    })
+    assert "賽事 53 ·" in plain and "盤面" not in plain

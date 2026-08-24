@@ -516,19 +516,56 @@ def build_sportsbet_feature_snapshots_for_date(
     return snapshots
 
 
-def odds_coverage_for_date(match_date: str) -> dict:
-    """How much of the day's fixture list Sportsbet has actually priced.
+# The two populations, and why the readiness gate may only see one of them.
+#
+# Fixtures arrive from two places that do not overlap. `matches.source_provider
+# = 'sportsbet'` is a row Sportsbet itself listed -- it is in the book by
+# definition. `'composite'` is the ESPN fixture feed, which publishes full draws
+# days ahead and covers tournaments Sportsbet never opens a market on at all
+# (ITF qualifying, UTR, college events).
+#
+# Dividing sportsbet-priced matches by the UNION of the two answers a question
+# nobody asked: "what share of every fixture on earth does Sportsbet price?"
+# On 2026-08-24 that number was 34% and blocked the card, twice, through both
+# recovery attempts -- because ESPN had loaded 64 US Open QUALIFYING fixtures
+# that Sportsbet had no market for. Sportsbet's own book that morning was
+# 53/81 = 65%, a perfectly ordinary day. Measured over 2026-07-28..08-25 the
+# union ratio dips under the 35% gate on four dates, three of which had a
+# healthy book; the book-scoped ratio is 52-100% on every date that had one.
+#
+# So `fixtures` stays the full calendar count -- the health line reports it and
+# it is the honest answer to "how much tennis is on today" -- and the gate
+# reads `book_fixtures`, which counts only what Sportsbet listed. A day where
+# Sportsbet lists nothing at all still lands on the zero-fixtures branch, which
+# is the outage the gate exists to catch.
+_BOOK_SCOPE_SQL = """
+                  AND (
+                        m.source_provider = 'sportsbet'
+                        OR EXISTS (
+                            SELECT 1 FROM odds_snapshots o
+                            WHERE o.match_id = m.id AND o.source_provider = 'sportsbet'
+                        )
+                  )
+"""
 
-    A run can look healthy while pricing almost nothing. The 20:00 scheduled job
-    analyses TOMORROW, and Sportsbet has not opened most of tomorrow's book at
-    that hour, so on 2026-07-29 the report was built from 2 priced matches out of
-    102 fixtures (2%) and still counted as a successful run -- the retry gate only
-    fired on "zero matches" or "all snapshots invalid". Exposing the ratio lets
-    the scheduler tell "quiet betting day" apart from "the book was not open yet".
+_PRICED_SCOPE_SQL = """
+                  AND EXISTS (
+                        SELECT 1 FROM odds_snapshots o
+                        WHERE o.match_id = m.id AND o.source_provider = 'sportsbet'
+                  )
+"""
+
+
+def _distinct_fixture_count(conn, match_date: str, extra_where: str = "") -> int:
+    """Fixtures on a date, deduplicated the one way the whole module dedupes.
+
+    Two providers describing the same match are one fixture, and a row whose
+    "players" are placeholders is not a fixture at all. Counting the numerator
+    with `COUNT(DISTINCT match_id)` while the denominator deduped by player pair
+    could put the ratio above 1.0; both go through here now.
     """
-    with get_connection() as conn:
-        fixtures = conn.execute(
-            """
+    return int(conn.execute(
+        f"""
             SELECT COUNT(*) FROM (
                 SELECT DISTINCT
                     m.tour,
@@ -544,18 +581,31 @@ def odds_coverage_for_date(match_date: str) -> dict:
                   AND m.player_a_id != m.player_b_id
                   AND lower(trim(pa.name)) NOT IN ('unknown player', 'unknown', 'tbd', 'none', 'null', '')
                   AND lower(trim(pb.name)) NOT IN ('unknown player', 'unknown', 'tbd', 'none', 'null', '')
+                  {extra_where}
             )
-            """,
-            (match_date,),
-        ).fetchone()[0]
-        priced = conn.execute(
-            """
-            SELECT COUNT(DISTINCT o.match_id) FROM odds_snapshots o
-            JOIN matches m ON m.id = o.match_id
-            WHERE m.match_date = ? AND o.source_provider = 'sportsbet'
-            """,
-            (match_date,),
-        ).fetchone()[0]
+        """,
+        (match_date,),
+    ).fetchone()[0] or 0)
+
+
+def odds_coverage_for_date(match_date: str) -> dict:
+    """How much of the day's fixture list Sportsbet has actually priced.
+
+    A run can look healthy while pricing almost nothing. The 20:00 scheduled job
+    analyses TOMORROW, and Sportsbet has not opened most of tomorrow's book at
+    that hour, so on 2026-07-29 the report was built from 2 priced matches out of
+    102 fixtures (2%) and still counted as a successful run -- the retry gate only
+    fired on "zero matches" or "all snapshots invalid". Exposing the ratio lets
+    the scheduler tell "quiet betting day" apart from "the book was not open yet".
+
+    Returns both scopes: `fixtures`/`priced_ratio` over the whole calendar for
+    display, and `book_fixtures`/`book_priced_ratio` over Sportsbet's own book
+    for the gate. See `_BOOK_SCOPE_SQL` for why they must not be the same number.
+    """
+    with get_connection() as conn:
+        fixtures = _distinct_fixture_count(conn, match_date)
+        book_fixtures = _distinct_fixture_count(conn, match_date, _BOOK_SCOPE_SQL)
+        priced = _distinct_fixture_count(conn, match_date, _PRICED_SCOPE_SQL)
         latest = conn.execute(
             """
             SELECT MAX(o.fetched_at) FROM odds_snapshots o
@@ -568,6 +618,10 @@ def odds_coverage_for_date(match_date: str) -> dict:
         "fixtures": int(fixtures or 0),
         "priced_matches": int(priced or 0),
         "priced_ratio": round((priced or 0) / fixtures, 4) if fixtures else None,
+        "book_fixtures": int(book_fixtures or 0),
+        "book_priced_ratio": (
+            round((priced or 0) / book_fixtures, 4) if book_fixtures else None
+        ),
         "latest_scrape": latest,
     }
 
