@@ -1120,3 +1120,37 @@ def test_health_line_shows_the_denominator_the_gate_used(monkeypatch):
         "cloudflare_deploy": {"attempted": True, "status": "deployed"},
     })
     assert "賽事 53 ·" in plain and "盤面" not in plain
+
+
+def test_health_line_reports_abandoned_settlements_when_there_are_any(monkeypatch):
+    """A sweep that clears props silently is the same defect one layer down.
+
+    The count going UP is the only outward sign that results ingestion has
+    stopped -- without the sweep the props just stay PENDING and 未結算 drifts
+    upward for weeks looking like a backlog rather than an outage.
+    """
+    from scripts import tennis_daily_schedule as scheduler_module
+
+    monkeypatch.setattr(scheduler_module, "_prop_counts", lambda _d: {
+        "props": 120, "value": 8, "pending_older": 3, "voided_today": 32})
+    line = scheduler_module.daily_health_line("2026-08-25", {
+        "odds_coverage": {"fixtures": 80, "book_fixtures": 70, "priced_matches": 60},
+        "matches_analysed": 58,
+        "readiness": {"severity": "ok", "horizon": "same_day"},
+        "tracker_sync": {"clv": {}},
+        "cloudflare_deploy": {"attempted": True, "status": "deployed"},
+    })
+    assert "棄結 32" in line
+
+    # An ordinary day says nothing about it, so the words appearing at all is
+    # itself the signal.
+    monkeypatch.setattr(scheduler_module, "_prop_counts", lambda _d: {
+        "props": 120, "value": 8, "pending_older": 3, "voided_today": 0})
+    quiet = scheduler_module.daily_health_line("2026-08-25", {
+        "odds_coverage": {"fixtures": 80, "book_fixtures": 70, "priced_matches": 60},
+        "matches_analysed": 58,
+        "readiness": {"severity": "ok", "horizon": "same_day"},
+        "tracker_sync": {"clv": {}},
+        "cloudflare_deploy": {"attempted": True, "status": "deployed"},
+    })
+    assert "棄結" not in quiet

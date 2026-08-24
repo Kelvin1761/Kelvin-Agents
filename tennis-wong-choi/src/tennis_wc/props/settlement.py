@@ -542,7 +542,63 @@ def _match_void_reason(conn, match_id: int) -> str | None:
     return None
 
 
-def settle_props(conn) -> dict:
+# How long a prop may sit PENDING before its match is treated as never having
+# produced a result.
+#
+# Measured, not chosen. Over the 771 matches since 2026-08-10 -- after the
+# TennisExplorer source was wired in, so the daily flow rather than a history
+# backfill -- the lag from match_date to the first result row is p50 6 days,
+# p99 10 days, longest observed 11. (The same measurement over 2026-06-01
+# onwards reads p90 32 days, which is the backfill's `created_at`, not how long
+# a result actually takes. Do not re-derive this threshold from that window.)
+#
+# 21 days is roughly twice the longest real arrival. It is deliberately loose:
+# the cost of waiting an extra week is a number on a health line, and the cost
+# of voiding a prop whose result was merely slow is a fabricated void in the
+# evidence base the family gate reads.
+#
+# This exists because there was no such rule. 28 value props from 2026-05-11,
+# 06-16, 06-23, 06-24 and 07-14 -- including ATP Halle and WTA Nottingham main
+# draw -- sat PENDING for up to 106 days against matches with no result row of
+# any kind, quietly inflating the daily "未結算" counter until it meant nothing
+# and could no longer show a real settlement backlog.
+ABANDONED_AFTER_DAYS = 21
+
+
+def _abandoned_reason(conn, match_id: int, today: str | None = None) -> str | None:
+    """A match old enough that no result is coming, and none ever arrived.
+
+    Deliberately narrow: it fires only when there is NO result row at all. A
+    match with a partial result is a settlement problem to be fixed, not an
+    abandonment -- that distinction is what separated these 28 props from the
+    30 that turned out to be readable all along.
+    """
+    import datetime
+
+    row = conn.execute(
+        "SELECT match_date FROM matches WHERE id = ?", (match_id,)
+    ).fetchone()
+    if not row or not row["match_date"]:
+        return None
+    try:
+        played = datetime.date.fromisoformat(str(row["match_date"])[:10])
+        reference = (
+            datetime.date.fromisoformat(str(today)[:10]) if today
+            else datetime.date.today()
+        )
+    except (TypeError, ValueError):
+        return None
+    age = (reference - played).days
+    if age < ABANDONED_AFTER_DAYS:
+        return None
+    if conn.execute(
+        "SELECT 1 FROM match_results WHERE match_id = ? LIMIT 1", (match_id,)
+    ).fetchone():
+        return None
+    return f"no result {age} days after the match"
+
+
+def settle_props(conn, today: str | None = None) -> dict:
     # Legacy label migration: prop_tracker used WIN/LOSS while every other
     # tracker uses WON/LOST. Converge idempotently so cross-table stats need
     # only one vocabulary (also fixes rows written by machines on old code).
@@ -565,8 +621,39 @@ def settle_props(conn) -> dict:
                 (utc_now(), utc_now(), row["id"]),
             )
             regraded += 1
+    # And the reverse, so an abandonment void is a judgement that can be taken
+    # back rather than a one-way door. A result arriving on day 25 for a prop
+    # voided on day 21 puts it back in the queue to be graded properly. Checked
+    # against the tracker before shipping: of 417 existing VOID props, zero have
+    # a result and no recognised void reason, so this resurrects nothing that
+    # was voided for a real reason.
+    revived = 0
+    for row in conn.execute(
+        "SELECT id, match_id FROM prop_tracker WHERE result_status = 'VOID'"
+    ).fetchall():
+        match_id = int(row["match_id"])
+        if _match_void_reason(conn, match_id):
+            continue
+        if not conn.execute(
+            "SELECT 1 FROM match_results WHERE match_id = ? LIMIT 1", (match_id,)
+        ).fetchone():
+            continue
+        conn.execute(
+            "UPDATE prop_tracker SET result_status='PENDING', settled_at=NULL, "
+            "updated_at=? WHERE id=?", (utc_now(), row["id"]),
+        )
+        revived += 1
+    if revived:
+        pending = conn.execute(
+            "SELECT * FROM prop_tracker WHERE result_status = 'PENDING'"
+        ).fetchall()
+    abandoned = 0
     for p in pending:
         void_reason = _match_void_reason(conn, int(p["match_id"]))
+        if not void_reason:
+            void_reason = _abandoned_reason(conn, int(p["match_id"]), today)
+            if void_reason:
+                abandoned += 1
         if void_reason:
             conn.execute(
                 "UPDATE prop_tracker SET result_status='VOID', actual_value=NULL, "
@@ -591,7 +678,12 @@ def settle_props(conn) -> dict:
     return {
         "graded": graded,
         "voided": voided,
+        # Broken out rather than folded into `voided`: a retirement void and a
+        # "no result ever arrived" void say different things about the pipeline,
+        # and only the second one is a number that should stay near zero.
+        "voided_abandoned": abandoned,
         "regraded_to_void": regraded,
+        "revived_from_void": revived,
         "still_pending": len(pending) - graded - voided,
     }
 

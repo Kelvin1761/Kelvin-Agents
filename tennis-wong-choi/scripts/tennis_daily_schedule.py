@@ -520,7 +520,9 @@ def daily_health_line(match_date: str, payload: dict) -> str:
         f" ({readiness.get('horizon') or '?'})\n"
         f"{fixtures_cell} · 有價 {priced} · 已分析 {payload.get('matches_analysed')}\n"
         f"prop {props['props']} · value {props['value']} · "
-        f"未結算 {props['pending_older']} (三日前)\n"
+        f"未結算 {props['pending_older']} (三日前)"
+        + (f" · 棄結 {props['voided_today']}" if props.get("voided_today") else "")
+        + "\n"
         f"CLV 同步 {trackers.get('synced', 0)} (prop {trackers.get('props_synced', 0)}, "
         f"無標識 {trackers.get('props_without_feed_identity', 0)}) · "
         f"已計 {trackers.get('clv_updated', 0)}\n"
@@ -546,11 +548,23 @@ def _prop_counts(match_date: str) -> dict:
             "SELECT COUNT(*) FROM prop_tracker WHERE result_status='PENDING' "
             "AND is_value=1 AND match_date <= date(?, '-3 day')", (match_date,)
         ).fetchone()
+        # Props the settlement sweep gave up on because no result ever arrived.
+        # Reported because the count going UP is the only outward sign that
+        # results ingestion has stopped: the props would simply stay PENDING,
+        # and "未結算" would drift upward for weeks looking like a backlog
+        # rather than an outage. It sat at 600 -- 32 of them real bets, the
+        # oldest 106 days -- before anything swept them.
+        abandoned = conn.execute(
+            "SELECT COUNT(*) FROM prop_tracker WHERE result_status='VOID' "
+            "AND is_value=1 AND settled_at >= ?", (f"{match_date}T00:00:00Z",)
+        ).fetchone()
         conn.close()
-        return {"props": row[0], "value": row[1], "pending_older": older[0]}
+        return {"props": row[0], "value": row[1], "pending_older": older[0],
+                "voided_today": abandoned[0]}
     except Exception as exc:  # noqa: BLE001 - a health line must not fail the run
         log(f"Health counts unavailable: {exc}")
-        return {"props": "?", "value": "?", "pending_older": "?"}
+        return {"props": "?", "value": "?", "pending_older": "?",
+                "voided_today": "?"}
 
 
 def notify_board_missing(detail: str) -> bool:

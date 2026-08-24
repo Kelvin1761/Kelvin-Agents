@@ -622,7 +622,10 @@ def test_prop_settlement_voids_retired_matches(tmp_path, monkeypatch):
     row = conn.execute(
         "SELECT result_status, profit_loss_units FROM prop_tracker"
     ).fetchone()
-    assert out == {"graded": 0, "voided": 1, "regraded_to_void": 0, "still_pending": 0}
+    assert out == {"graded": 0, "voided": 1, "voided_abandoned": 0,
+                   "regraded_to_void": 0, "revived_from_void": 0, "still_pending": 0}
+    # A retirement void is not an abandonment void: this match HAS a result.
+    assert out["voided_abandoned"] == 0
     assert row["result_status"] == "VOID"
     assert row["profit_loss_units"] == 0
 
@@ -2336,3 +2339,148 @@ def test_the_drawdown_limits_are_two_different_books():
     at_live_stake = recorded * strategy.MAX_EARLY_STAKE_UNITS / strategy.RESEARCH_STAKE_UNITS
     assert at_live_stake > strategy.LIVE_STOP_DRAWDOWN_UNITS
     assert round(at_live_stake, 2) == -9.13
+
+
+# --------------------------------------------------------------------------- #
+# A prop whose result never arrives must not sit PENDING forever
+# (2026-08-25: 28 value props, up to 106 days old, including ATP Halle main draw)
+# --------------------------------------------------------------------------- #
+def _pending_prop_on(conn, settlement, match_date, *, match_id=1):
+    _seed_player(conn, match_id * 10, f"A{match_id}")
+    _seed_player(conn, match_id * 10 + 1, f"B{match_id}")
+    _seed_match(conn, match_id, match_id * 10, match_id * 10 + 1, date=match_date)
+    settlement.record_prop(
+        conn, match_id=match_id, match_date=match_date, match_label="A vs B",
+        market_key="total_aces_in_the_match", line=7.5, selection="Over 7.5",
+        side="over", prop_scope="match", subject_player_id=None,
+        decimal_odds=1.9, model_prob=0.6, market_prob_fair=0.5, blended_prob=0.6,
+        model_prob_raw=0.6, temper_strength=0.0, edge=0.1, ev=0.14,
+        predicted_mean=8.0, stake_units=1.0, is_value=True)
+    conn.commit()
+
+
+def test_a_match_that_never_produced_a_result_is_voided(tmp_path, monkeypatch):
+    """The 2026-06-16 shape. No result row of any kind, 70 days on. Left alone
+    it inflates the daily 未結算 counter until that number stops meaning
+    anything, which is exactly what it did."""
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = get_connection()
+    _pending_prop_on(conn, settlement, "2026-06-16")
+
+    out = settlement.settle_props(conn, today="2026-08-25")
+    assert out["voided_abandoned"] == 1
+    row = conn.execute(
+        "SELECT result_status, profit_loss_units FROM prop_tracker").fetchone()
+    assert row["result_status"] == "VOID"
+    assert row["profit_loss_units"] == 0
+
+
+def test_a_prop_still_inside_the_arrival_window_is_left_alone(tmp_path, monkeypatch):
+    """Measured on 771 matches in the live daily flow, the longest a result has
+    ever taken is 11 days. Voiding at 9 would be inventing a loss where the
+    pipeline is merely slow -- and 2026-08-16's two props were exactly that
+    age when this was written."""
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = get_connection()
+    _pending_prop_on(conn, settlement, "2026-08-16")
+
+    out = settlement.settle_props(conn, today="2026-08-25")   # 9 days old
+    assert out["voided_abandoned"] == 0
+    assert conn.execute(
+        "SELECT result_status FROM prop_tracker").fetchone()["result_status"] == "PENDING"
+
+
+def test_a_partial_result_is_a_settlement_bug_not_an_abandonment(tmp_path, monkeypatch):
+    """The distinction that separated the 28 genuinely-orphaned props from the
+    30 that were readable all along. A match WITH a result row is never
+    abandoned, however old -- if it is not settling, something is misreading it
+    and voiding would bury that."""
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = get_connection()
+    _pending_prop_on(conn, settlement, "2026-05-11")
+    conn.execute(
+        "INSERT INTO match_results (match_id, winner_player_id, source_provider, "
+        "created_at, score_json) VALUES (1,10,'t','now',?)",
+        ('{"player_a_games": 6, "player_b_games": 4}',))
+    conn.commit()
+
+    out = settlement.settle_props(conn, today="2026-08-25")
+    assert out["voided_abandoned"] == 0
+    assert conn.execute(
+        "SELECT result_status FROM prop_tracker").fetchone()["result_status"] == "PENDING"
+
+
+def test_a_late_result_takes_the_abandonment_void_back(tmp_path, monkeypatch):
+    """The void is a judgement, so it has to be reversible. A result landing on
+    day 25 for a prop voided on day 21 puts it back in the queue rather than
+    leaving a fabricated void in the evidence base the family gate reads."""
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = get_connection()
+    _pending_prop_on(conn, settlement, "2026-06-16")
+    assert settlement.settle_props(conn, today="2026-08-25")["voided_abandoned"] == 1
+
+    conn.execute(
+        "INSERT INTO match_results (match_id, winner_player_id, source_provider, "
+        "created_at, score_json) VALUES (1,10,'t','now',?)",
+        ('{"player_a_aces": 5, "player_b_aces": 4}',))
+    conn.commit()
+
+    out = settlement.settle_props(conn, today="2026-08-25")
+    assert out["revived_from_void"] == 1
+    row = conn.execute(
+        "SELECT result_status, actual_value FROM prop_tracker").fetchone()
+    assert row["result_status"] == "WON"      # 5 + 4 = 9 over 7.5
+    assert row["actual_value"] == 9.0
+
+
+def test_a_retirement_void_is_never_revived(tmp_path, monkeypatch):
+    """The revive rule must not undo a void that has a real reason behind it."""
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = get_connection()
+    _pending_prop_on(conn, settlement, "2026-06-16")
+    conn.execute(
+        "INSERT INTO match_results (match_id, winner_player_id, source_provider, "
+        "created_at, score_json) VALUES (1,10,'t','now',?)",
+        ('{"player_a_aces": 5, "player_b_aces": 4, "retired": true}',))
+    conn.commit()
+
+    settlement.settle_props(conn, today="2026-08-25")
+    out = settlement.settle_props(conn, today="2026-08-25")
+    assert out["revived_from_void"] == 0
+    assert conn.execute(
+        "SELECT result_status FROM prop_tracker").fetchone()["result_status"] == "VOID"
