@@ -39,3 +39,28 @@ def _isolate_scheduler_log() -> None:
 
 
 _isolate_scheduler_log()
+
+
+def pytest_configure(config) -> None:
+    """Make the production database read-only for the whole test session.
+
+    `configure_test_db` is opt-in, and on 2026-08-25 exactly one test in
+    `test_daily_report.py` had been written without it. It called
+    `render_daily_report` with no fixture, so `DATABASE_URL` stayed at its
+    default and the report wrote straight into the live `tennis_wc.db` -- four
+    prop_tracker rows on 2026-05-10 took an `updated_at` bump on every full
+    run. Nothing failed and nothing printed; it was found only by watching the
+    file's mtime across a run.
+
+    The next such test will not be found that way. Pointing the default at a
+    throwaway file means a test that forgets to isolate itself gets an empty
+    database -- which is a loud, ordinary test failure -- instead of quietly
+    editing a real betting ledger. Tests that WANT the default still get their
+    own path per test via `configure_test_db`'s monkeypatch, which takes
+    precedence over this.
+    """
+    import tempfile
+
+    os.environ["DATABASE_URL"] = (
+        f"sqlite:///{tempfile.mkdtemp(prefix='tennis-test-db-')}/tennis_wc_test.db"
+    )

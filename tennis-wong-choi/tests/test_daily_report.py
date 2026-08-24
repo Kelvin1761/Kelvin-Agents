@@ -217,8 +217,20 @@ def _high_odds_value_row(
     }
 
 
-def test_render_daily_report_mobile_first_structure():
+def test_render_daily_report_mobile_first_structure(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+
+    # Isolate from the live DB. Without this the test was the ONE case in this
+    # file with no fixture, so `render_daily_report` opened the production
+    # tennis_wc.db and wrote to it -- measured 2026-08-25, four prop_tracker
+    # rows on 2026-05-10 (the date this test passes in) had their `updated_at`
+    # bumped by every full run of the suite. A test that mutates the live
+    # betting ledger is a test that can settle a real bet.
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
     from tennis_wc.reports.daily_report import render_daily_report
+
+    init_db()
 
     rows = [
         {

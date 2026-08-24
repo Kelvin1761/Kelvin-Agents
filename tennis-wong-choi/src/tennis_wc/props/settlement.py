@@ -27,14 +27,82 @@ from tennis_wc.features.common import utc_now
 # A match can carry more than one result row (an ordinary import plus a
 # resolver fallback), and the resolvers can only supply a winner when their
 # source has no scoreline.  Newest-wins would let such a winner-only row shadow
-# a complete one and silently un-settle games/sets props, so prefer any row
-# that actually has a scoreline and only then fall back to the newest.
-_BEST_SCORE_ROW_SQL = (
+# a complete one and silently un-settle games/sets props, so rows are ranked by
+# "has a scoreline" first and only then by newest.
+#
+# Ranking them was right; reading only the winner was not.  A single row is
+# wrong for any field that only some sources carry, and it was silently costing
+# settlements.
+#
+# No single source is complete.  ESPN linescores give games and sets with
+# `player_a_aces: null`; TennisExplorer gives games and sets and no ace field
+# at all; TennisMyLife gives aces, double faults and break points.  When all
+# three carry a scoreline they tie on the first sort key and `id DESC` decides
+# -- which on 2026-08-22 match 13466 handed the row to TennisExplorer, whose
+# ace count does not exist, while TennisMyLife's row two ids earlier held 1 and
+# 4.  `actual_total_aces` fell through to history, found nothing, and four
+# value props stayed PENDING against a fully known result.  Measured across the
+# tracker: 30 props over 10 matches were unsettleable purely because the wrong
+# complete-looking row won a tiebreak.
+_SCORE_ROWS_SQL = (
     "SELECT score_json FROM match_results WHERE match_id = ? "
     "ORDER BY (json_extract(score_json, '$.player_a_games') IS NOT NULL "
     "OR json_extract(score_json, '$.player_a_sets') IS NOT NULL) DESC, "
-    "id DESC LIMIT 1"
+    "id DESC"
 )
+
+_SCORELINE_KEYS = (
+    "player_a_games", "player_b_games", "player_a_sets", "player_b_sets",
+)
+
+
+def _scoreline_agrees(base: dict, other: dict) -> bool:
+    """Do two result rows describe the same match outcome?
+
+    Filling a gap from a source that disagrees about the scoreline would not be
+    completing a record, it would be blending two different claims about what
+    happened. Only fields both sources state are compared: a row that is merely
+    quieter is still a valid donor.
+    """
+    for key in _SCORELINE_KEYS:
+        a, b = base.get(key), other.get(key)
+        if a is None or b is None:
+            continue
+        try:
+            if float(a) != float(b):
+                return False
+        except (TypeError, ValueError):
+            return False
+    return True
+
+
+def _merged_score(conn, match_id: int) -> dict | None:
+    """One result view for a match, filled in from every agreeing source.
+
+    The highest-priority row is the base and never gets overwritten; later rows
+    only supply keys the base is missing, and only when their scoreline does not
+    contradict it. So games and sets still come from the row the old ordering
+    chose, and aces stop being lost to whichever source happened to win on id.
+    """
+    merged: dict | None = None
+    for row in conn.execute(_SCORE_ROWS_SQL, (match_id,)).fetchall():
+        if not row["score_json"]:
+            continue
+        try:
+            score = json.loads(row["score_json"])
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+        if not isinstance(score, dict):
+            continue
+        if merged is None:
+            merged = dict(score)
+            continue
+        if not _scoreline_agrees(merged, score):
+            continue
+        for key, value in score.items():
+            if value is not None and merged.get(key) is None:
+                merged[key] = value
+    return merged
 
 
 BOOTSTRAP_RESAMPLES = 2000
@@ -87,17 +155,13 @@ def running_drawdown(samples: list[tuple[float, float]]) -> float:
 
 
 def actual_total_aces(conn, match_id: int) -> float | None:
-    row = conn.execute(
-        _BEST_SCORE_ROW_SQL,
-        (match_id,),
-    ).fetchone()
-    if row and row["score_json"]:
+    s = _merged_score(conn, match_id)
+    if s:
         try:
-            s = json.loads(row["score_json"])
             aa, ab = s.get("player_a_aces"), s.get("player_b_aces")
             if aa is not None and ab is not None:
                 return float(aa) + float(ab)
-        except (TypeError, ValueError, json.JSONDecodeError):
+        except (TypeError, ValueError):
             pass
     meta = conn.execute(
         "SELECT player_a_id, player_b_id, match_date FROM matches WHERE id = ?", (match_id,)
@@ -115,18 +179,14 @@ def actual_player_aces(conn, match_id: int, player_id: int) -> float | None:
         "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
     ).fetchone()
     if meta:
-        row = conn.execute(
-            _BEST_SCORE_ROW_SQL,
-            (match_id,),
-        ).fetchone()
-        if row and row["score_json"]:
+        s = _merged_score(conn, match_id)
+        if s:
             try:
-                s = json.loads(row["score_json"])
                 if player_id == meta["player_a_id"] and s.get("player_a_aces") is not None:
                     return float(s["player_a_aces"])
                 if player_id == meta["player_b_id"] and s.get("player_b_aces") is not None:
                     return float(s["player_b_aces"])
-            except (TypeError, ValueError, json.JSONDecodeError):
+            except (TypeError, ValueError):
                 pass
     return _history_aces(conn, match_id, player_id)
 
@@ -192,14 +252,10 @@ def actual_player_first_set_win(conn, match_id: int, player_id: int) -> float | 
     meta = conn.execute(
         "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
     ).fetchone()
-    row = conn.execute(
-        _BEST_SCORE_ROW_SQL,
-        (match_id,),
-    ).fetchone()
-    if not meta or not row or not row["score_json"]:
+    score = _merged_score(conn, match_id)
+    if not meta or not score:
         return None
     try:
-        score = json.loads(row["score_json"])
         sets = score.get("sets")
         if not isinstance(sets, list) or not sets:
             return None
@@ -224,11 +280,11 @@ def actual_player_first_set_margin(
     meta = conn.execute(
         "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
     ).fetchone()
-    row = conn.execute(_BEST_SCORE_ROW_SQL, (match_id,)).fetchone()
-    if not meta or not row or not row["score_json"]:
+    score = _merged_score(conn, match_id)
+    if not meta or not score:
         return None
     try:
-        sets = json.loads(row["score_json"]).get("sets")
+        sets = score.get("sets")
         if not isinstance(sets, list) or not sets:
             return None
         a_games = sets[0].get("player_a_games")
@@ -279,14 +335,10 @@ def _actual_player_score_value(
     meta = conn.execute(
         "SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)
     ).fetchone()
-    row = conn.execute(
-        _BEST_SCORE_ROW_SQL,
-        (match_id,),
-    ).fetchone()
-    if not meta or not row or not row["score_json"]:
+    score = _merged_score(conn, match_id)
+    if not meta or not score:
         return None
     try:
-        score = json.loads(row["score_json"])
         if player_id == meta["player_a_id"]:
             value = score.get(f"player_a_{field}")
         elif player_id == meta["player_b_id"]:
@@ -300,17 +352,13 @@ def _actual_player_score_value(
 
 def actual_total_games(conn, match_id: int) -> float | None:
     """Actual total match games from match_results.score_json (a+b games)."""
-    row = conn.execute(
-        _BEST_SCORE_ROW_SQL,
-        (match_id,),
-    ).fetchone()
-    if row and row["score_json"]:
+    s = _merged_score(conn, match_id)
+    if s:
         try:
-            s = json.loads(row["score_json"])
             ga, gb = s.get("player_a_games"), s.get("player_b_games")
             if ga is not None and gb is not None:
                 return float(ga) + float(gb)
-        except (TypeError, ValueError, json.JSONDecodeError):
+        except (TypeError, ValueError):
             pass
     return None
 
