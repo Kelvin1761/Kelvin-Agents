@@ -72,11 +72,32 @@ def horizon_for(match_date: Any, today: Any = None) -> str:
     return HORIZON_SAME_DAY
 
 
+def book_fixture_count(coverage: dict[str, Any]) -> int:
+    """The denominator the ratio check is entitled to use.
+
+    `fixtures` is the whole tennis calendar, from both the Sportsbet listing and
+    the ESPN fixture feed. Only the first of those is a book that can be open or
+    shut, so only the first can answer "has the book opened?". Dividing by the
+    union asks whether Sportsbet prices all of tennis, and the answer to that is
+    always no: on 2026-08-24 the ESPN feed added 64 US Open qualifying fixtures
+    with no Sportsbet market, the union ratio read 34%, and this gate blocked a
+    card whose actual book was 53/81 = 65% -- through the 09:00 pass and both
+    recovery attempts, ending in exit 75.
+
+    Falls back to `fixtures` so that a payload written before `book_fixtures`
+    existed -- a replayed run, an older snapshot -- still gets checked rather
+    than silently skipping the gate.
+    """
+    book = _intish(coverage.get("book_fixtures"))
+    return book if book else _intish(coverage.get("fixtures"))
+
+
 def _coverage_reasons(payload: dict[str, Any]) -> list[str]:
     """Reasons that are about the BOOK being open, not about us being broken."""
     coverage = payload.get("odds_coverage") or {}
     fixtures = _intish(coverage.get("fixtures"))
     priced = _intish(coverage.get("priced_matches"))
+    book_fixtures = book_fixture_count(coverage)
     confirmed_empty = bool(payload.get("confirmed_empty_slate"))
     reasons: list[str] = []
     if fixtures == 0 and priced == 0 and not confirmed_empty:
@@ -84,12 +105,35 @@ def _coverage_reasons(payload: dict[str, Any]) -> list[str]:
     elif fixtures > 0 and priced == 0:
         reasons.append(f"zero Sportsbet-priced matches across {fixtures} fixtures")
     if (
+        book_fixtures >= MIN_FIXTURES_FOR_RATIO_CHECK
+        and priced / book_fixtures < MIN_PRICED_RATIO
+    ):
+        listed = (
+            f"{book_fixtures} listed" if book_fixtures != fixtures
+            else f"{book_fixtures} fixtures"
+        )
+        reasons.append(
+            f"only {priced}/{listed} Sportsbet fixtures priced "
+            f"({priced / book_fixtures:.0%} < {MIN_PRICED_RATIO:.0%}) -- book likely not open yet"
+        )
+    # The other half of "is the book open", and the half the fill-rate above is
+    # blind to. A book that has not opened does not show up as a listing full of
+    # unpriced matches -- it shows up as almost no LISTING at all, and its few
+    # rows are priced, so the fill rate reads 100%. That is the 18:00 next-day
+    # pass: on 2026-08-25 Sportsbet listed 5 fixtures against a calendar of 81
+    # and priced all 5. Without this the run would call itself `ok` and claim a
+    # complete board for a day whose book opens the following morning.
+    #
+    # MIN_FIXTURES_FOR_RATIO_CHECK is reused deliberately rather than inventing
+    # a second threshold: it already means "below this a coverage ratio carries
+    # no information", and a listing that small is the thing being detected.
+    elif (
         fixtures >= MIN_FIXTURES_FOR_RATIO_CHECK
-        and priced / fixtures < MIN_PRICED_RATIO
+        and book_fixtures < MIN_FIXTURES_FOR_RATIO_CHECK
     ):
         reasons.append(
-            f"only {priced}/{fixtures} fixtures priced "
-            f"({priced / fixtures:.0%} < {MIN_PRICED_RATIO:.0%}) -- book likely not open yet"
+            f"Sportsbet listed only {book_fixtures} of {fixtures} fixtures "
+            "-- book likely not open yet"
         )
     return reasons
 

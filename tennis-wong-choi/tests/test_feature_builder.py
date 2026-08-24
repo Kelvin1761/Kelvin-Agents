@@ -179,3 +179,147 @@ def test_odds_coverage_excludes_placeholder_and_duplicate_fixture_rows(tmp_path,
     assert coverage["fixtures"] == 1
     assert coverage["priced_matches"] == 1
     assert coverage["priced_ratio"] == 1.0
+
+
+def test_odds_coverage_reports_the_sportsbet_book_separately(tmp_path, monkeypatch):
+    """The 2026-08-24 shape, in miniature.
+
+    Two fixtures come from Sportsbet's own listing (one priced, one not) and
+    three come from the ESPN fixture feed for a tournament Sportsbet has no
+    market on -- a Grand Slam qualifying draw. The calendar ratio reads 1/5 and
+    would block the card; the book ratio reads 1/2, which is what "has the book
+    opened" actually asks. A composite fixture that Sportsbet HAS priced counts
+    in the book, because a market existing is the whole test.
+    """
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.features.feature_builder import odds_coverage_for_date
+
+    init_db()
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO tournaments (id,name,tour,external_id,source_provider,created_at,updated_at) "
+            "VALUES (1,'Open','ATP','T1','test','now','now')"
+        )
+        for pid in range(1, 13):
+            conn.execute(
+                "INSERT INTO players (id,name,tour,source_provider,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?)",
+                (pid, f"Player {pid}", "ATP", "test", "now", "now"),
+            )
+        rows = (
+            (1, 1, 2, "sportsbet"),   # listed and priced
+            (2, 3, 4, "sportsbet"),   # listed, not priced yet
+            (3, 5, 6, "composite"),   # ESPN-only: no Sportsbet market at all
+            (4, 7, 8, "composite"),   # ESPN-only
+            (5, 9, 10, "composite"),  # ESPN-only
+        )
+        for mid, a, b, provider in rows:
+            conn.execute(
+                """INSERT INTO matches
+                   (id,provider_match_id,tour,match_date,tournament_id,player_a_id,
+                    player_b_id,round,source_provider,created_at,updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                (mid, f"M{mid}", "ATP", "2026-08-24", 1, a, b, "R1", provider, "now", "now"),
+            )
+        conn.execute(
+            """INSERT INTO odds_snapshots
+               (event_id,match_id,bookmaker,market,player_a_odds,player_b_odds,
+                source_provider,raw_response_id,fetched_at,created_at)
+               VALUES ('E1',1,'Sportsbet','match_winner',1.8,2.0,'sportsbet',0,'now','now')"""
+        )
+        conn.commit()
+
+    coverage = odds_coverage_for_date("2026-08-24")
+    assert coverage["fixtures"] == 5
+    assert coverage["book_fixtures"] == 2
+    assert coverage["priced_matches"] == 1
+    assert coverage["priced_ratio"] == 0.2
+    assert coverage["book_priced_ratio"] == 0.5
+
+
+def test_book_fixtures_includes_a_composite_fixture_sportsbet_priced(tmp_path, monkeypatch):
+    """Provenance is not the test -- a market is. A fixture ESPN saw first and
+    Sportsbet later priced is in the book, and counting it only in the numerator
+    would put the ratio above 1.0."""
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.features.feature_builder import odds_coverage_for_date
+
+    init_db()
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO tournaments (id,name,tour,external_id,source_provider,created_at,updated_at) "
+            "VALUES (1,'Open','ATP','T1','test','now','now')"
+        )
+        for pid in (1, 2):
+            conn.execute(
+                "INSERT INTO players (id,name,tour,source_provider,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?)",
+                (pid, f"Player {pid}", "ATP", "test", "now", "now"),
+            )
+        conn.execute(
+            """INSERT INTO matches
+               (id,provider_match_id,tour,match_date,tournament_id,player_a_id,
+                player_b_id,round,source_provider,created_at,updated_at)
+               VALUES (1,'M1','ATP','2026-08-24',1,1,2,'R1','composite','now','now')"""
+        )
+        conn.execute(
+            """INSERT INTO odds_snapshots
+               (event_id,match_id,bookmaker,market,player_a_odds,player_b_odds,
+                source_provider,raw_response_id,fetched_at,created_at)
+               VALUES ('E1',1,'Sportsbet','match_winner',1.8,2.0,'sportsbet',0,'now','now')"""
+        )
+        conn.commit()
+
+    coverage = odds_coverage_for_date("2026-08-24")
+    assert coverage["book_fixtures"] == 1
+    assert coverage["priced_matches"] == 1
+    assert coverage["book_priced_ratio"] == 1.0
+
+
+def test_priced_matches_dedupes_the_same_way_fixtures_does(tmp_path, monkeypatch):
+    """Two providers describing one match is one fixture in the denominator, so
+    it has to be one in the numerator too. `COUNT(DISTINCT match_id)` counted it
+    twice, which could put the ratio above 1.0 and hide a thin book."""
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.features.feature_builder import odds_coverage_for_date
+
+    init_db()
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO tournaments (id,name,tour,external_id,source_provider,created_at,updated_at) "
+            "VALUES (1,'Open','ATP','T1','test','now','now')"
+        )
+        for pid, name in ((1, "Real A"), (2, "Real B"), (3, "Real A"), (4, "Real B")):
+            conn.execute(
+                "INSERT INTO players (id,name,tour,source_provider,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?)",
+                (pid, name, "ATP", "test", "now", "now"),
+            )
+        for mid, a, b in ((1, 1, 2), (2, 3, 4)):
+            conn.execute(
+                """INSERT INTO matches
+                   (id,provider_match_id,tour,match_date,tournament_id,player_a_id,
+                    player_b_id,round,source_provider,created_at,updated_at)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                (mid, f"M{mid}", "ATP", "2026-08-24", 1, a, b, "R1", "sportsbet", "now", "now"),
+            )
+            conn.execute(
+                """INSERT INTO odds_snapshots
+                   (event_id,match_id,bookmaker,market,player_a_odds,player_b_odds,
+                    source_provider,raw_response_id,fetched_at,created_at)
+                   VALUES (?,?,'Sportsbet','match_winner',1.8,2.0,'sportsbet',0,'now','now')""",
+                (f"E{mid}", mid),
+            )
+        conn.commit()
+
+    coverage = odds_coverage_for_date("2026-08-24")
+    assert coverage["fixtures"] == 1
+    assert coverage["priced_matches"] == 1
+    assert coverage["priced_ratio"] == 1.0
+    assert coverage["book_priced_ratio"] == 1.0

@@ -22,7 +22,7 @@ SRC_DIR = PROJECT_DIR / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-from tennis_wc.pipeline_readiness import analysis_retry_reasons
+from tennis_wc.pipeline_readiness import analysis_retry_reasons, book_fixture_count
 
 
 # Engine runs from local disk; analysis/archive folders stay on Google Drive
@@ -483,6 +483,13 @@ def notify_daily_bets(match_date: str, payload: dict, *, early: bool = False) ->
     return notify(message, audience="content")
 
 
+def _intish_or_zero(value) -> int:
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+
 def daily_health_line(match_date: str, payload: dict) -> str:
     """One line a person can read, every day, including days with no bet.
 
@@ -499,10 +506,19 @@ def daily_health_line(match_date: str, payload: dict) -> str:
     props = _prop_counts(match_date)
     fixtures = coverage.get("fixtures")
     priced = coverage.get("priced_matches")
+    # The gate divides by the BOOK, not by the calendar, so the health line has
+    # to show the book -- otherwise "賽事 176 · 有價 57" reads as 32% to a person
+    # while the gate is reading 65%, and the two disagreeing silently is exactly
+    # how 2026-08-24 spent three passes blocked on a number nobody could see.
+    book = book_fixture_count(coverage)
+    fixtures_cell = (
+        f"賽事 {fixtures}" if book == _intish_or_zero(fixtures)
+        else f"賽事 {fixtures} (盤面 {book})"
+    )
     return (
         f"🎾 {match_date} · {readiness.get('severity') or readiness.get('status') or '?'}"
         f" ({readiness.get('horizon') or '?'})\n"
-        f"賽事 {fixtures} · 有價 {priced} · 已分析 {payload.get('matches_analysed')}\n"
+        f"{fixtures_cell} · 有價 {priced} · 已分析 {payload.get('matches_analysed')}\n"
         f"prop {props['props']} · value {props['value']} · "
         f"未結算 {props['pending_older']} (三日前)\n"
         f"CLV 同步 {trackers.get('synced', 0)} (prop {trackers.get('props_synced', 0)}, "
