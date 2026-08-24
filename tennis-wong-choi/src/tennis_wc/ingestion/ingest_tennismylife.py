@@ -169,7 +169,16 @@ def _score_payload(row: dict, match: dict) -> dict:
             "player_b_bp_saved": _int_or_none(row.get("l_bpSaved" if winner_is_a else "w_bpSaved" if loser_is_a else "")),
             "player_a_bp_faced": _int_or_none(row.get("w_bpFaced" if winner_is_a else "l_bpFaced" if loser_is_a else "")),
             "player_b_bp_faced": _int_or_none(row.get("l_bpFaced" if winner_is_a else "w_bpFaced" if loser_is_a else "")),
-            "retired": _is_retired_score(row.get("score")),
+            # `or` and not a plain assignment: `_score_summary` has already
+            # set this True for a scoreline that cannot have happened (a
+            # completed match cannot end level on sets), and an unconditional
+            # overwrite here silently undid that guard two lines after it was
+            # written. Four rows reached the database reading sets 0-0 with
+            # `retired: false`, which is the exact state the summary exists to
+            # prevent -- they tripped the critical `impossible_scoreline` check
+            # and were saved from grading real bets only by the separate
+            # `incomplete_scoreline` flag, which happens not to be in this dict.
+            "retired": _is_retired_score(row.get("score")) or bool(payload.get("retired")),
             "source": PROVIDER_NAME,
         }
     )

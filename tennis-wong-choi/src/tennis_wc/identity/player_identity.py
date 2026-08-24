@@ -250,8 +250,19 @@ def plan_merges(conn) -> list[MergePlan]:
     Canonical = most history rows, ties broken by lowest id so the choice is
     stable across runs.
     """
+    # Self-sufficient: the planner now reads `canonical_player_id`, so it must
+    # not depend on a caller having created it first.
+    ensure_identity_schema(conn)
     groups: dict[str, list[tuple[int, str, str | None]]] = {}
-    for row in conn.execute("SELECT id, name, tour FROM players"):
+    # Skip ids that have already been folded into a canonical one. Without this
+    # the planner re-proposes every group it has ever merged, forever: the
+    # merged rows still carry their old name, so they still group with their
+    # canonical id. Harmless when this was run by hand and never twice; once
+    # `run-daily` calls it every morning it would re-apply 936 groups a day and
+    # grow `player_merge_log` and `player_aliases` without bound.
+    for row in conn.execute(
+        "SELECT id, name, tour FROM players WHERE canonical_player_id IS NULL"
+    ):
         if is_placeholder(row[1]):
             continue
         groups.setdefault(normalise_player_name(row[1]), []).append(

@@ -231,3 +231,94 @@ def test_the_highest_ranked_row_is_still_the_base(tmp_path, monkeypatch):
             (json.dumps({"player_a_games": 6, "player_b_games": 2}),))
         conn.commit()
         assert actual_total_games(conn, 777) == 8.0
+
+
+def test_an_unparseable_score_row_never_shadows_a_real_one(tmp_path, monkeypatch):
+    """TennisMyLife writes games 0-0 / sets 0-0 / no sets whenever it cannot
+    parse the score string -- 11 such rows exist. Being the newest, it won the
+    tiebreak, and `actual_total_games` answered 0.0 for three matches whose real
+    scoreline sat in the row right beside it.
+
+    Nothing was mis-graded only because those rows also carry
+    `incomplete_scoreline` and settlement voids on it. That is a second line of
+    defence covering for a failed first line, and it holds only while the zeroes
+    stay symmetric -- see the next test.
+    """
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props.settlement import actual_total_games, _merged_score
+
+    init_db()
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO tournaments (id,name,tour,external_id,source_provider,created_at,updated_at) "
+            "VALUES (1,'Open','WTA','T1','test','now','now')")
+        for pid in (1, 2):
+            conn.execute(
+                "INSERT INTO players (id,name,tour,source_provider,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?)", (pid, f"P{pid}", "WTA", "test", "now", "now"))
+        conn.execute(
+            """INSERT INTO matches (id,provider_match_id,tour,match_date,tournament_id,
+               player_a_id,player_b_id,round,source_provider,created_at,updated_at)
+               VALUES (1,'M1','WTA','2026-08-18',1,1,2,'R1','sportsbet','now','now')""")
+        conn.execute(
+            """INSERT INTO match_results (id,match_id,winner_player_id,source_provider,
+               raw_response_id,created_at,score_json) VALUES (10,1,1,'tennisexplorer',NULL,'now',?)""",
+            (json.dumps({"player_a_games": 12, "player_b_games": 7,
+                         "player_a_sets": 2, "player_b_sets": 0}),))
+        # Higher id, all zeroes, flagged. Under the old NOT NULL ordering this
+        # became the answer.
+        conn.execute(
+            """INSERT INTO match_results (id,match_id,winner_player_id,source_provider,
+               raw_response_id,created_at,score_json) VALUES (20,1,1,'tennismylife',NULL,'now',?)""",
+            (json.dumps({"player_a_games": 0, "player_b_games": 0,
+                         "player_a_sets": 0, "player_b_sets": 0, "sets": [],
+                         "retired": True, "incomplete_scoreline": True}),))
+        conn.commit()
+
+        assert actual_total_games(conn, 1) == 19.0, "must not answer 0.0"
+        assert (_merged_score(conn, 1) or {}).get("player_a_sets") == 2
+
+
+def test_an_asymmetric_empty_row_cannot_grade_a_bet_at_zero(tmp_path, monkeypatch):
+    """The case the void rule does NOT catch, and the reason ranking had to be
+    fixed rather than left to the safety net. Sets 1-0 does not trip
+    "a match cannot end level on sets", so an unflagged games 0-0 row would have
+    settled "Under 18.5 total games" a winner against no information at all."""
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props.settlement import actual_total_games
+
+    init_db()
+    with get_connection() as conn:
+        conn.execute(
+            "INSERT INTO tournaments (id,name,tour,external_id,source_provider,created_at,updated_at) "
+            "VALUES (1,'Open','WTA','T1','test','now','now')")
+        for pid in (1, 2):
+            conn.execute(
+                "INSERT INTO players (id,name,tour,source_provider,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?)", (pid, f"P{pid}", "WTA", "test", "now", "now"))
+        conn.execute(
+            """INSERT INTO matches (id,provider_match_id,tour,match_date,tournament_id,
+               player_a_id,player_b_id,round,source_provider,created_at,updated_at)
+               VALUES (1,'M1','WTA','2026-08-18',1,1,2,'R1','sportsbet','now','now')""")
+        conn.execute(
+            """INSERT INTO match_results (id,match_id,winner_player_id,source_provider,
+               raw_response_id,created_at,score_json) VALUES (10,1,1,'tennisexplorer',NULL,'now',?)""",
+            (json.dumps({"player_a_sets": 2, "player_b_sets": 0}),))
+        conn.execute(
+            """INSERT INTO match_results (id,match_id,winner_player_id,source_provider,
+               raw_response_id,created_at,score_json) VALUES (20,1,1,'tennismylife',NULL,'now',?)""",
+            (json.dumps({"player_a_games": 0, "player_b_games": 0,
+                         "player_a_sets": 1, "player_b_sets": 0, "sets": []}),))
+        conn.commit()
+
+        # No games were reported by anyone. "None" is the honest answer; 0.0
+        # would grade an Under bet a winner.
+        assert actual_total_games(conn, 1) is None

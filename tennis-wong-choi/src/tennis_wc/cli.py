@@ -642,6 +642,28 @@ def run_daily(args: argparse.Namespace) -> None:
         "run_daily_source_errors",
         args.date,
     )
+    # Fold split identities together BEFORE features are built, because features
+    # are what read a player's history and a split player has none to read.
+    #
+    # The machinery for this existed, fully written and fully tested, with
+    # safeguards that refuse to merge two ids that faced each other or whose
+    # records sit on different tours -- and nothing in the codebase called it.
+    # Measured 2026-08-25: 936 groups were waiting, and 76 players had a
+    # FIXTURE or a priced prop sitting on a brand-new id with zero history
+    # while a sibling id held 80 to 261 matches. Alexander Ritschard was priced
+    # as a player with no record at all against his own 261-match history.
+    #
+    # Idempotent, so running it daily costs nothing once the backlog is gone.
+    # Failure is non-fatal: a merge that cannot run is worth a source error,
+    # not a lost card.
+    try:
+        _run_timed_stage(
+            "identity_merge",
+            lambda: _merge_player_identities(),
+            stage_timings,
+        )
+    except Exception as exc:  # noqa: BLE001
+        source_errors.append({"source": "identity_merge", "error": str(exc)})
     snapshots = _run_timed_stage(
         "feature_snapshots",
         lambda: build_sportsbet_feature_snapshots_for_date(args.date),
@@ -712,6 +734,30 @@ def run_daily(args: argparse.Namespace) -> None:
         stage_timings,
     )
     _print_json(payload)
+
+
+def _merge_player_identities() -> dict:
+    """Apply every merge the identity planner is confident about.
+
+    The planner is the authority on what is safe: it refuses ids that played
+    each other and ids whose derived tours differ, and it picks the canonical id
+    by history depth so the richest record wins. This only executes what it
+    already decided.
+    """
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.identity.player_identity import (
+        apply_merges, ensure_identity_schema, plan_merges,
+    )
+
+    with get_connection() as conn:
+        ensure_identity_schema(conn)
+        plans = plan_merges(conn)
+        confident = [plan for plan in plans if plan.reason == "merge"]
+        if not confident:
+            return {"groups": 0, "refused": len(plans)}
+        summary = apply_merges(conn, confident)
+        summary["refused"] = len(plans) - len(confident)
+        return summary
 
 
 def _run_timed_stage(label: str, step, timings: list[dict], *, clock=time.perf_counter):

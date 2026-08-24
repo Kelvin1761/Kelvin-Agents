@@ -44,11 +44,32 @@ from tennis_wc.features.common import utc_now
 # value props stayed PENDING against a fully known result.  Measured across the
 # tracker: 30 props over 10 matches were unsettleable purely because the wrong
 # complete-looking row won a tiebreak.
+# "Has a scoreline" has to mean "carries information", not "the field is not
+# NULL". TennisMyLife writes a row with games 0-0, sets 0-0 and an empty set
+# list whenever it cannot parse the score string -- 11 such rows exist. Under a
+# NOT NULL test that row ranks as complete, and being the newest it won the
+# tiebreak and became the answer: `actual_total_games` returned 0.0 for three
+# matches whose real scoreline sat in the TennisExplorer row right beside it.
+#
+# Nothing was mis-graded, because those rows also carry `incomplete_scoreline`
+# and settlement voids on it. That is a second line of defence holding up a
+# first line that had failed, and it only holds while the zeroes stay
+# symmetric: a 0-0 games row with sets 1-0 does not trip the void rule and
+# would have graded "Under 18.5 total games" a winner on nothing at all.
+#
+# So rank on evidence: a row flagged incomplete sorts last, a row with actual
+# games, sets or a set list outranks one without, and only then does the newest
+# win. The winner-only resolver row this ordering was written for still loses to
+# a real scoreline, which was always the point.
 _SCORE_ROWS_SQL = (
     "SELECT score_json FROM match_results WHERE match_id = ? "
-    "ORDER BY (json_extract(score_json, '$.player_a_games') IS NOT NULL "
-    "OR json_extract(score_json, '$.player_a_sets') IS NOT NULL) DESC, "
-    "id DESC"
+    "ORDER BY (json_extract(score_json, '$.incomplete_scoreline') IS 1) ASC, "
+    "(COALESCE(json_extract(score_json, '$.player_a_games'), 0) > 0 "
+    " OR COALESCE(json_extract(score_json, '$.player_b_games'), 0) > 0 "
+    " OR COALESCE(json_extract(score_json, '$.player_a_sets'), 0) > 0 "
+    " OR COALESCE(json_extract(score_json, '$.player_b_sets'), 0) > 0 "
+    " OR json_array_length(COALESCE(json_extract(score_json, '$.sets'), '[]')) > 0"
+    ") DESC, id DESC"
 )
 
 _SCORELINE_KEYS = (
@@ -76,6 +97,28 @@ def _scoreline_agrees(base: dict, other: dict) -> bool:
     return True
 
 
+def _sanitise_score(score: dict) -> dict:
+    """Drop figures that cannot describe a match that was played.
+
+    A completed match has games in it. `player_a_games: 0` with
+    `player_b_games: 0` is not a 0-0 scoreline, it is a parser that had nothing
+    to say, and carrying it forward as a number is how "Under 18.5 total games"
+    becomes a winner on no information. Ranking alone does not catch this: a row
+    reading sets 1-0 and games 0-0 is not flagged incomplete, does not trip the
+    "cannot end level on sets" void, and still outranks a row with only set
+    counts.
+
+    Only games are treated this way. Zero aces and zero double faults are
+    ordinary things for a real match to contain, and blanking those would lose
+    genuine settlements.
+    """
+    if score.get("player_a_games") == 0 and score.get("player_b_games") == 0:
+        score = dict(score)
+        score["player_a_games"] = None
+        score["player_b_games"] = None
+    return score
+
+
 def _merged_score(conn, match_id: int) -> dict | None:
     """One result view for a match, filled in from every agreeing source.
 
@@ -94,6 +137,7 @@ def _merged_score(conn, match_id: int) -> dict | None:
             continue
         if not isinstance(score, dict):
             continue
+        score = _sanitise_score(score)
         if merged is None:
             merged = dict(score)
             continue

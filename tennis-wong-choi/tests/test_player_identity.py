@@ -166,3 +166,94 @@ def test_resolve_reads_the_alias_table_and_invents_nothing(tmp_path, monkeypatch
     # Unknown names return None rather than minting a rival row.
     assert player_identity.resolve_player_id(conn, "Someone Entirely New") is None
     assert player_identity.resolve_player_id(conn, "TBD") is None
+
+
+# --------------------------------------------------------------------------- #
+# The merge machinery had no caller (2026-08-25)
+# --------------------------------------------------------------------------- #
+def test_run_daily_merges_identities_before_building_features():
+    """`plan_merges`/`apply_merges` were written, tested, safeguarded -- and
+    called by nothing. 936 groups had accumulated, and 76 players had a fixture
+    or a priced prop on a brand-new id with zero history while a sibling id held
+    80 to 261 matches: Alexander Ritschard was priced as having no record at all
+    against his own 261-match history.
+
+    Order matters as much as presence. Features are what read a player's
+    history, so a merge that runs after them fixes nothing until the next day.
+    """
+    import inspect
+    from tennis_wc import cli
+
+    source = inspect.getsource(cli.run_daily)
+    assert "identity_merge" in source, "the merge stage has no caller again"
+    assert source.index("identity_merge") < source.index("feature_snapshots"), (
+        "identities must be folded together BEFORE features read their history"
+    )
+
+
+def test_the_identity_merge_stage_only_applies_confident_plans(tmp_path, monkeypatch):
+    """The planner refuses ids that faced each other and ids on different tours.
+    The stage must execute that judgement, never override it -- on the live data
+    those refusals were protecting Swiatek, Sabalenka, Osaka and Azarenka from
+    being merged with a same-named player on the other tour."""
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.identity.player_identity import ensure_identity_schema
+    from tennis_wc.cli import _merge_player_identities
+
+    init_db()
+    with get_connection() as conn:
+        ensure_identity_schema(conn)
+        for pid, name, tour in ((1, "Sam Twin", "ATP"), (2, "Sam Twin", "ATP"),
+                                (3, "Other Guy", "ATP")):
+            conn.execute(
+                "INSERT INTO players (id,name,tour,source_provider,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?)", (pid, name, tour, "test", "now", "now"))
+        # The two "Sam Twin" ids faced each other, so they are two people.
+        conn.execute(
+            "INSERT INTO tournaments (id,name,tour,external_id,source_provider,created_at,updated_at) "
+            "VALUES (1,'Open','ATP','T1','test','now','now')")
+        conn.execute(
+            """INSERT INTO matches (id,provider_match_id,tour,match_date,tournament_id,
+               player_a_id,player_b_id,round,source_provider,created_at,updated_at)
+               VALUES (1,'M1','ATP','2026-08-01',1,1,2,'R1','test','now','now')""")
+        conn.commit()
+
+    summary = _merge_player_identities()
+    assert summary["groups"] == 0, "a refused group must not be merged"
+    assert summary["refused"] >= 1
+
+    with get_connection() as conn:
+        still_two = conn.execute(
+            "SELECT COUNT(*) FROM players WHERE name='Sam Twin' "
+            "AND canonical_player_id IS NULL").fetchone()[0]
+    assert still_two == 2
+
+
+def test_the_merge_stage_is_idempotent(tmp_path, monkeypatch):
+    """It runs every day, so a second run on a clean database must be a no-op
+    rather than churning rows."""
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.identity.player_identity import ensure_identity_schema
+    from tennis_wc.cli import _merge_player_identities
+
+    init_db()
+    with get_connection() as conn:
+        ensure_identity_schema(conn)
+        for pid, name in ((1, "Dup Name"), (2, "Dup Name")):
+            conn.execute(
+                "INSERT INTO players (id,name,tour,source_provider,created_at,updated_at) "
+                "VALUES (?,?,?,?,?,?)", (pid, name, "ATP", "test", "now", "now"))
+        conn.commit()
+
+    first = _merge_player_identities()
+    assert first["groups"] == 1
+    second = _merge_player_identities()
+    assert second["groups"] == 0, "a settled database must not be re-merged"
