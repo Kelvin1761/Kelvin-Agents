@@ -167,7 +167,7 @@ neutral ablation 後，停止再直接放入 `class_weight` 矩陣。結果：
 衰減加權及場內標準化。只有「高班次且當仗表現好」才有明顯正分；
 高班次大敗不會直接當實績。這是用戶明確接受 holdout CI 跨零後的
 experimental production override，實驗證據及限制見
-`docs/experiments/EXP-20260825-03-au-proven-class-overlay.md`。
+`docs/experiments/EXP-20260825-04-au-proven-class-overlay.md`。
 
 矩陣計法係 `60 + Σ(weight × (leaf − 60))`；當內部權重總和為 1 時同舊
 weighted average 代數完全相同，亦容許退役 leaf 回到真正中性而唔移動分數尺度。

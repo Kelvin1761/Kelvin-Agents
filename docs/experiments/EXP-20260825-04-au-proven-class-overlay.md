@@ -1,4 +1,4 @@
-# EXP-20260825-03 高班次 × 當仗實際表現 overlay
+# EXP-20260825-04 高班次 × 當仗實際表現 overlay
 
 - **日期**：2026-08-25
 - **平台**：AU Wong Choi（Sportsbet-only）
@@ -72,4 +72,3 @@ engine dump 中 16,062 匹舊 runner 的 `proven_class` 都是中性 0。這是�
   少於三駒不啟動及 canonical evaluators 公式對齊。
 - AU golden 舊樣本預期全部不變，因為它們沒有 exact-class evidence；不重錄
   因 archive 新增會期而漂移的抽樣名單。
-
