@@ -7,7 +7,7 @@
 - [ ] 組合 3 標記為 💎 價值型小博大
 - [ ] 每個組合有組合賠率標記（Sportsbet 來源）
 - [ ] 每個組合有 📊 組合結算區塊
-- [ ] 報告顯示 `season_phase`（EARLY_SEASON / MID_SEASON / LATE_REGULAR / PLAY_IN / PLAYOFFS）
+- [ ] 報告顯示六階段 `season_phase`（OFF_SEASON / PRESEASON / EARLY_REGULAR / REGULAR_SEASON / LATE_REGULAR / POSTSEASON）；POSTSEASON 同時顯示 PLAY_IN / PLAYOFFS subtype
 - [ ] 報告顯示 `L10_ORDER: newest_first`
 - [ ] 報告顯示 `SPORTSBET_MILESTONE_OVER_ONLY`
 

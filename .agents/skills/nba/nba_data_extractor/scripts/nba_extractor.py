@@ -32,6 +32,12 @@ import math
 import argparse
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
+
+NBA_SKILL_DIR = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(NBA_SKILL_DIR))
+from nba_schedule import canonical_team_abbr, event_sydney_date
+from nba_season import classify_nba_season
 
 try:
     import requests
@@ -292,7 +298,7 @@ def parse_espn_events(events):
             entry = {
                 "id": info['id'],
                 "name": info.get('displayName', info.get('name')),
-                "abbreviation": info.get('abbreviation', ''),
+                "abbreviation": canonical_team_abbr(info.get('abbreviation', '')),
                 "home_away": c.get('homeAway', '')
             }
             if c.get('homeAway') == 'home':
@@ -314,76 +320,24 @@ def parse_espn_events(events):
     return games
 
 
-def detect_season_phase(date_str, game_info=None):
-    """Classify NBA context for downstream model prompts and MC variance.
-    V3.1: Config-driven — reads nba_season_config.json instead of hardcoded dates.
-    """
-    game_info = game_info or {}
-    meta_text = " ".join(str(game_info.get(k, "")) for k in (
-        "season_phase", "season_type", "game_type", "name", "short_name"))
-    meta_text += " " + str(game_info.get("season", ""))
-    meta_upper = meta_text.upper()
-    if "PLAYOFF" in meta_upper or "POSTSEASON" in meta_upper:
-        return "PLAYOFFS"
-    if "PLAY-IN" in meta_upper or "PLAY IN" in meta_upper:
-        return "PLAY_IN"
-    if "PRESEASON" in meta_upper:
-        return "EARLY_SEASON"
-
+def nba_season_for_date(date_value):
+    """Return nba_api season label for an event/analysis date."""
+    text = str(date_value or "")[:10]
     try:
-        d = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-    except Exception:
-        try:
-            d = datetime.strptime(date_str[:10], "%Y-%m-%d")
-        except Exception:
-            return "MID_SEASON"
-
-    # Config-driven season calendar
-    config = _load_season_config_extractor()
-    if config:
-        try:
-            def _parse(key):
-                return datetime.strptime(config[key], "%Y-%m-%d")
-            
-            if d.replace(tzinfo=None) <= _parse("early_season_end"):
-                return "EARLY_SEASON"
-            if d.replace(tzinfo=None) >= _parse("playoffs_start"):
-                return "PLAYOFFS"
-            if _parse("play_in_start") <= d.replace(tzinfo=None) <= _parse("play_in_end"):
-                return "PLAY_IN"
-            if _parse("late_regular_start") <= d.replace(tzinfo=None) <= _parse("late_regular_end"):
-                return "LATE_REGULAR"
-            return "MID_SEASON"
-        except (KeyError, ValueError):
-            pass  # Fall through to hardcoded fallback
-
-    # Hardcoded fallback (2025-26 season)
-    month, day = d.month, d.day
-    if d.year == 2025 and (month == 10 or (month == 11 and day <= 15)):
-        return "EARLY_SEASON"
-    if d.year == 2026 and ((month == 3 and day >= 25) or (month == 4 and day <= 13)):
-        return "LATE_REGULAR"
-    if d.year == 2026 and month == 4 and 14 <= day <= 18:
-        return "PLAY_IN"
-    if d.year == 2026 and ((month == 4 and day >= 19) or month in (5, 6)):
-        return "PLAYOFFS"
-    return "MID_SEASON"
+        parsed = datetime.strptime(text, "%Y-%m-%d")
+    except ValueError:
+        parsed = datetime.now()
+    start_year = parsed.year if parsed.month >= 7 else parsed.year - 1
+    return f"{start_year}-{str(start_year + 1)[-2:]}"
 
 
-def _load_season_config_extractor():
-    """Load NBA season config from nba_season_config.json."""
-    config_paths = [
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "nba_wong_choi", "resources", "nba_season_config.json"),
-        os.path.join(os.path.dirname(os.path.abspath(__file__)), "nba_season_config.json"),
-    ]
-    for p in config_paths:
-        if os.path.exists(p):
-            try:
-                with open(p, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except (json.JSONDecodeError, IOError):
-                pass
-    return None
+def previous_nba_season(season):
+    start_year = int(str(season).split("-", 1)[0]) - 1
+    return f"{start_year}-{str(start_year + 1)[-2:]}"
+
+
+def detect_season_phase(date_str, game_info=None):
+    return classify_nba_season(date_str, game_info)["season_phase"]
 
 
 def fetch_nba_news(team_abbr, limit=5):
@@ -411,7 +365,7 @@ def fetch_nba_news(team_abbr, limit=5):
 # ==========================================
 # 模塊 2：nba_api — 全員 L10 完整 Box Score
 # ==========================================
-def fetch_team_roster(team_nickname):
+def fetch_team_roster(team_nickname, season=None):
     """從 nba_api 獲取球隊完整陣容"""
     if not NBA_API_AVAILABLE:
         return []
@@ -422,7 +376,10 @@ def fetch_team_roster(team_nickname):
         return []
     team_id = match[0]['id']
     try:
-        roster = commonteamroster.CommonTeamRoster(team_id=team_id, season='2025-26')
+        roster = commonteamroster.CommonTeamRoster(
+            team_id=team_id,
+            season=season or nba_season_for_date(None),
+        )
         df = roster.get_data_frames()[0]
         time.sleep(API_SLEEP)
         result = []
@@ -567,14 +524,15 @@ def fetch_player_gamelog(player_id, player_name, n=10):
 # ==========================================
 # 模塊 2.5：nba_api — H2H 歷史對戰數據
 # ==========================================
-def fetch_player_h2h(player_id, player_name, opp_abbr):
+def fetch_player_h2h(player_id, player_name, opp_abbr, season=None):
     """提取球員對住特定球隊的歷史對戰數據 (當季 + 上季, RS + Playoffs)"""
     # V3: Re-enabled (was previously disabled)
     if not NBA_API_AVAILABLE:
         return None
     try:
         h2h_games = []
-        for season in ['2025-26', '2024-25']:
+        current_season = season or nba_season_for_date(None)
+        for season in [current_season, previous_nba_season(current_season)]:
             # Fetch both Regular Season and Playoffs for each season
             for season_type in ['Regular Season', 'Playoffs']:
                 try:
@@ -1087,6 +1045,8 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
     home_abbr = game_info['home']['abbreviation']
     away_name = game_info['away']['name']
     home_name = game_info['home']['name']
+    target_season = nba_season_for_date(game_info.get('date'))
+    season_context = classify_nba_season(game_info.get('date'), game_info)
 
     print(f"\n🏀 ========== 深度提取: {away_name} @ {home_name} ==========")
 
@@ -1094,7 +1054,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
         "meta": {
             "game": game_info['name'],
             "date": game_info['date'],
-            "season_phase": detect_season_phase(game_info['date'], game_info),
+            **season_context,
             "l10_order": "newest_first",
             "away": {"name": away_name, "abbr": away_abbr},
             "home": {"name": home_name, "abbr": home_abbr},
@@ -1144,10 +1104,10 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
     # 提取雙方陣容與數據
     for side, abbr, full_name in [("away", away_abbr, away_name), ("home", home_abbr, home_name)]:
         print(f"\n📋 [{abbr}] 提取 {full_name} 陣容...")
-        roster = fetch_team_roster(full_name)
+        roster = fetch_team_roster(full_name, target_season)
         if not roster:
             # 嘗試用縮寫
-            roster = fetch_team_roster(abbr)
+            roster = fetch_team_roster(abbr, target_season)
 
         print(f"  👥 陣容人數: {len(roster)}")
 
@@ -1196,7 +1156,9 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             h2h = None
             if adv.get('USG_PCT', 0) > 15:
                 opp_abbr_for_h2h = home_abbr if side == "away" else away_abbr
-                h2h = fetch_player_h2h(pid, pname, opp_abbr_for_h2h)
+                h2h = fetch_player_h2h(
+                    pid, pname, opp_abbr_for_h2h, target_season
+                )
                 if h2h:
                     print(f"    🎯 H2H vs {opp_abbr_for_h2h}: {h2h['total_games']} 場 | PTS AVG: {h2h['PTS_avg']}")
 
@@ -1367,7 +1329,12 @@ def main():
     seen_tags = set()
     for cd in candidate_dates:
         events = fetch_espn_scoreboard(cd)
-        found = parse_espn_events(events)
+        found = [
+            game
+            for event in events
+            if event_sydney_date(event) == aest_date.date()
+            for game in parse_espn_events([event])
+        ]
         for g in found:
             if g['tag'] not in seen_tags:
                 games.append(g)

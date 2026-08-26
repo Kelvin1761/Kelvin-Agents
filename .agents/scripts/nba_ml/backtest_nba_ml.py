@@ -38,7 +38,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
 from nba_ml_predictor import MLPropPredictor
 
 from pathlib import Path as _Path
-PROJECT_ROOT = _Path(__file__).resolve().parents[4]
+PROJECT_ROOT = _Path(__file__).resolve().parents[3]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import NBA_ANALYSIS, NBA_ML_DATASET
 ARCHIVE_DIR = str(NBA_ANALYSIS)
@@ -193,7 +193,7 @@ def evaluate_game(game_date, predictor):
                                     det_prob = li.get("hit_rate_L10", 0) / 100.0
                                     break
                         if det_prob == 0 and arr:
-                            hits = sum(1 for x in arr if x > line)
+                            hits = sum(1 for x in arr if x >= line)
                             det_prob = hits / len(arr)
 
                         # ML probability

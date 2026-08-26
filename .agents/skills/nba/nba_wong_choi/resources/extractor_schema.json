@@ -12,7 +12,11 @@
       "properties": {
         "game": { "type": "string", "minLength": 3, "description": "Game name e.g. 'Chicago Bulls at Washington Wizards'" },
         "date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}", "description": "ISO date string" },
-        "season_phase": { "type": "string", "enum": ["EARLY_SEASON", "MID_SEASON", "LATE_REGULAR", "PLAY_IN", "PLAYOFFS"] },
+        "season_phase": { "type": "string", "enum": ["OFF_SEASON", "PRESEASON", "EARLY_REGULAR", "REGULAR_SEASON", "LATE_REGULAR", "POSTSEASON", "EARLY_SEASON", "MID_SEASON", "PLAY_IN", "PLAYOFFS"] },
+        "postseason_type": { "type": ["string", "null"], "enum": ["PLAY_IN", "PLAYOFFS", null] },
+        "strategy_phase": { "type": ["string", "null"], "enum": ["EARLY_SEASON", "MID_SEASON", "LATE_REGULAR", "PLAY_IN", "PLAYOFFS", null] },
+        "automation_mode": { "type": "string", "enum": ["dormant", "shadow", "production"] },
+        "classification_source": { "type": "string", "enum": ["metadata", "season_config", "calendar_fallback"] },
         "l10_order": { "type": "string", "enum": ["newest_first"] },
         "away": {
           "type": "object",

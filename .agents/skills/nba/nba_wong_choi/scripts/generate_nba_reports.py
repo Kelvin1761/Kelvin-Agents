@@ -29,6 +29,10 @@ Engine: --engine hybrid|ml|legacy (default: hybrid / NBA_WC_ENGINE)
 import sys, io, os, json, math, argparse
 from datetime import datetime
 
+NBA_SKILL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, NBA_SKILL_DIR)
+from nba_season import classify_nba_season
+
 _ML_PREDICTOR = None  # lazy-loaded for hybrid/ml modes
 
 L10_ORDER = "newest_first"
@@ -46,79 +50,7 @@ if sys.stdout.encoding != 'utf-8':
 # ─── Season Phase Detection ──────────────────────────────────────────────
 
 def detect_season_phase(date_str=None, metadata=None):
-    """
-    Detect NBA season phase from date string.
-    Returns: EARLY_SEASON, MID_SEASON, LATE_REGULAR, PLAY_IN, PLAYOFFS
-    
-    V3.1: Config-driven — reads nba_season_config.json instead of hardcoded dates.
-    """
-    metadata = metadata or {}
-    meta_text = " ".join(str(metadata.get(k, "")) for k in (
-        "season_phase", "season_type", "game_type", "game_status", "competition_type",
-        "name", "shortName", "series", "event_type"))
-    meta_upper = meta_text.upper()
-    if "PLAYOFF" in meta_upper or "POSTSEASON" in meta_upper:
-        return "PLAYOFFS"
-    if "PLAY-IN" in meta_upper or "PLAY IN" in meta_upper:
-        return "PLAY_IN"
-    if "PRESEASON" in meta_upper:
-        return "EARLY_SEASON"
-    if metadata.get("season_phase") in {"EARLY_SEASON", "MID_SEASON", "LATE_REGULAR", "PLAY_IN", "PLAYOFFS"}:
-        return metadata["season_phase"]
-
-    if not date_str:
-        date_str = datetime.now().strftime("%Y-%m-%d")
-    
-    try:
-        # Handle various date formats
-        for fmt in ("%Y-%m-%dT%H:%MZ", "%Y-%m-%dT%H:%M:%SZ", "%Y-%m-%d"):
-            try:
-                d = datetime.strptime(date_str[:19], fmt)
-                break
-            except ValueError:
-                continue
-        else:
-            d = datetime.now()
-    except Exception:
-        d = datetime.now()
-    
-    # Config-driven season calendar
-    config = _load_season_config()
-    if config:
-        try:
-            def _parse(key):
-                return datetime.strptime(config[key], "%Y-%m-%d")
-            
-            if d <= _parse("early_season_end"):
-                return "EARLY_SEASON"
-            if d >= _parse("playoffs_start"):
-                return "PLAYOFFS"
-            if _parse("play_in_start") <= d <= _parse("play_in_end"):
-                return "PLAY_IN"
-            if _parse("late_regular_start") <= d <= _parse("late_regular_end"):
-                return "LATE_REGULAR"
-            return "MID_SEASON"
-        except (KeyError, ValueError):
-            pass  # Fall through to hardcoded fallback
-    
-    # Hardcoded fallback (2025-26 season)
-    month, day = d.month, d.day
-    if d.year == 2025 and month == 10:
-        return "EARLY_SEASON"
-    if d.year == 2025 and month == 11 and day <= 15:
-        return "EARLY_SEASON"
-    if d.year == 2026 and month == 3 and day >= 25:
-        return "LATE_REGULAR"
-    if d.year == 2026 and month == 4 and day <= 13:
-        return "LATE_REGULAR"
-    if d.year == 2026 and month == 4 and 14 <= day <= 18:
-        return "PLAY_IN"
-    if d.year == 2026 and month == 4 and day >= 19:
-        return "PLAYOFFS"
-    if d.year == 2026 and month in (5, 6):
-        return "PLAYOFFS"
-    
-    return "MID_SEASON"
+    return classify_nba_season(date_str, metadata)["season_phase"]
 
 
 def _load_season_config():
@@ -135,6 +67,25 @@ def _load_season_config():
             except (json.JSONDecodeError, IOError):
                 pass
     return None
+
+
+def season_label_for_date(date_str):
+    text = str(date_str or "")[:10]
+    try:
+        parsed = datetime.strptime(text, "%Y-%m-%d")
+    except ValueError:
+        parsed = datetime.now()
+    config = _load_season_config()
+    if config:
+        try:
+            start = datetime.strptime(config["preseason_start"], "%Y-%m-%d")
+            end = datetime.strptime(config["playoffs_end"], "%Y-%m-%d")
+            if start <= parsed <= end:
+                return str(config.get("season_label") or config.get("season"))
+        except (KeyError, TypeError, ValueError):
+            pass
+    start_year = parsed.year if parsed.month >= 7 else parsed.year - 1
+    return f"{start_year}-{str(start_year + 1)[-2:]}"
 
 # ─── Math Engine ─────────────────────────────────────────────────────────
 
@@ -1579,9 +1530,16 @@ def gen_meeting_intelligence(meta, odds, injuries, news, team_stats, season_phas
 
     lines.append(f"🎫 職業大戶 God Mode 單場分析 — {away_name} @ {home_name}")
     lines.append(f"")
-    phase_str = f" ({season_phase})" if season_phase != "MID_SEASON" else ""
-    lines.append(f"📅 數據鎖定: {meta.get('date', '?')} | NBA 賽季: 2025-26{phase_str}")
-    lines.append(f"🧭 season_phase: **{season_phase}** | L10_ORDER: **{L10_ORDER}**")
+    public_phase = meta.get("season_phase", season_phase)
+    postseason_type = meta.get("postseason_type")
+    phase_label = f"{public_phase}/{postseason_type}" if postseason_type else public_phase
+    phase_str = f" ({phase_label})"
+    season_label = season_label_for_date(meta.get('date'))
+    lines.append(f"📅 數據鎖定: {meta.get('date', '?')} | NBA 賽季: {season_label}{phase_str}")
+    lines.append(
+        f"🧭 season_phase: **{public_phase}** | postseason_type: **{postseason_type or 'N/A'}** "
+        f"| strategy_phase: **{season_phase}** | L10_ORDER: **{L10_ORDER}**"
+    )
     lines.append(f"🎯 盤口來源: **Sportsbet MCP Playwright 實時提取** (odds_source: SPORTSBET_LIVE)")
     lines.append(f"")
     lines.append(f"---")
@@ -1863,7 +1821,13 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
         "hybrid": "Hybrid V1 (ML shortlist + 10-Factor safety gates)",
     }.get(engine_mode, "Hybrid V1")
     sections.append(f"**odds_source**: SPORTSBET_LIVE ✅ | **引擎版本**: {engine_label} (EV Quant + Correlation Penalty)")
-    sections.append(f"**season_phase**: {season_phase} | **L10_ORDER**: {L10_ORDER} | **strategy**: SPORTSBET_MILESTONE_OVER_ONLY")
+    public_phase = meta.get("season_phase", season_phase)
+    postseason_type = meta.get("postseason_type") or "N/A"
+    sections.append(
+        f"**season_phase**: {public_phase} | **postseason_type**: {postseason_type} "
+        f"| **strategy_phase**: {season_phase} | **L10_ORDER**: {L10_ORDER} "
+        "| **strategy**: SPORTSBET_MILESTONE_OVER_ONLY"
+    )
     sections.append(f"")
 
     # ── Blowout / Tank Warning Banner ──
@@ -2092,8 +2056,12 @@ def main():
     home_abbr = meta.get("home", {}).get("abbr", "?")
     
     date_str = meta.get("date", "?")
-    season_phase = detect_season_phase(date_str, meta)
-    meta["season_phase"] = season_phase
+    season_context = classify_nba_season(date_str, meta)
+    meta.update(season_context)
+    if season_context["season_phase"] == "OFF_SEASON":
+        print("⛔ OFF_SEASON：唔可以生成正式 NBA 投注分析。")
+        sys.exit(1)
+    season_phase = season_context["strategy_phase"]
     meta["l10_order"] = L10_ORDER
 
     # ── Engine 初始化：Hybrid/ML use ML predictor; legacy stays deterministic ──

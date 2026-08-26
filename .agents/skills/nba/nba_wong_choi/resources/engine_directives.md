@@ -91,7 +91,7 @@
 
   <rule id="P44" name="Season Phase and L10 Order">
     <action>
-      1. 報告必須明確顯示 `season_phase`，可用值只限 EARLY_SEASON / MID_SEASON / LATE_REGULAR / PLAY_IN / PLAYOFFS。
+      1. 報告必須明確顯示六階段 `season_phase`：OFF_SEASON / PRESEASON / EARLY_REGULAR / REGULAR_SEASON / LATE_REGULAR / POSTSEASON。POSTSEASON 另以 `postseason_type=PLAY_IN|PLAYOFFS` 區分；`strategy_phase` 只供 Python scoring backward compatibility。
       2. 報告必須明確顯示 `L10_ORDER: newest_first`。
       3. L3 必須使用 L10 前 3 項，L5 必須使用 L10 前 5 項，嚴禁反向讀取近期走勢。
     </action>

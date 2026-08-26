@@ -21,7 +21,7 @@ warnings.filterwarnings('ignore')
 import numpy as np
 import pandas as pd
 from pathlib import Path as _Path
-PROJECT_ROOT = _Path(__file__).resolve().parents[4]
+PROJECT_ROOT = _Path(__file__).resolve().parents[3]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import NBA_ML_DATASET
 
@@ -167,11 +167,11 @@ class MLPropPredictor:
                     features["amc"] = li.get("AMC", 0)
                     break
         else:
-            hits = sum(1 for x in arr if x > line_value) if arr else 0
+            hits = sum(1 for x in arr if x >= line_value) if arr else 0
             features["hit_rate_l10"] = round(hits / len(arr) * 100, 0) if arr else 0
-            h5 = sum(1 for x in l5_arr if x > line_value) if l5_arr else 0
+            h5 = sum(1 for x in l5_arr if x >= line_value) if l5_arr else 0
             features["hit_rate_l5"] = round(h5 / len(l5_arr) * 100, 0) if l5_arr else 0
-            clr = [x - line_value for x in arr if x > line_value] if arr else []
+            clr = [x - line_value for x in arr if x >= line_value] if arr else []
             features["amc"] = round(sum(clr) / len(clr), 1) if clr else 0
 
         return features

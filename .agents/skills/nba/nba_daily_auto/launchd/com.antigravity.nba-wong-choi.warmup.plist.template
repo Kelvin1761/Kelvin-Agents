@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.antigravity.nba-wong-choi.warmup</string>
+  <key>ProgramArguments</key><array>
+    <string>__RUNNER__</string><string>pregame</string>
+    <string>--freshness-role</string><string>warmup</string>
+  </array>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
+  <key>ProcessType</key><string>Background</string>
+  <key>StandardOutPath</key><string>__LOG_DIR__/launchd-warmup.log</string>
+  <key>StandardErrorPath</key><string>__LOG_DIR__/launchd-warmup-error.log</string>
+</dict></plist>

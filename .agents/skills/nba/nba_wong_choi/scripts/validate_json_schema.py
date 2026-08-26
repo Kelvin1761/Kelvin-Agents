@@ -41,9 +41,11 @@ def _type_check(value, expected_type):
     }
     if isinstance(expected_type, list):
         return any(_type_check(value, t) for t in expected_type)
+    if expected_type in {"number", "integer"} and isinstance(value, bool):
+        return False
     py_type = type_map.get(expected_type)
     if py_type is None:
-        return True  # unknown type, pass
+        return False
     return isinstance(value, py_type)
 
 
@@ -92,8 +94,7 @@ def validate_against_schema(data, schema, path="$"):
             warnings.append(f"{path}: array length {len(data)} > maxItems {schema['maxItems']}")
         if "items" in schema:
             item_schema = schema["items"]
-            # Only validate first 5 items to keep it fast
-            for i, item in enumerate(data[:5]):
+            for i, item in enumerate(data):
                 e, w = validate_against_schema(item, item_schema, f"{path}[{i}]")
                 errors.extend(e)
                 warnings.extend(w)
@@ -176,9 +177,9 @@ def load_and_validate(json_path, schema_name):
     
     if not os.path.exists(schema_path):
         return {
-            "passed": True,
-            "errors": [],
-            "warnings": [f"Schema not found: {schema_path} — skipping validation"],
+            "passed": False,
+            "errors": [f"Schema not found: {schema_path}"],
+            "warnings": [],
             "file": json_path
         }
     
@@ -198,9 +199,9 @@ def load_and_validate(json_path, schema_name):
             schema = json.load(f)
     except json.JSONDecodeError as e:
         return {
-            "passed": True,
-            "errors": [],
-            "warnings": [f"Invalid schema JSON: {e}"],
+            "passed": False,
+            "errors": [f"Invalid schema JSON: {e}"],
+            "warnings": [],
             "file": json_path
         }
     

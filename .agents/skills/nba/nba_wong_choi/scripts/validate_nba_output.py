@@ -274,13 +274,18 @@ def check_fw08_odds_format(content: str) -> list:
 def check_fw09_strategy_metadata(content: str) -> list:
     """FW-09: Require current NBA strategy metadata."""
     issues = []
-    phase_match = re.search(r'season_phase\*\*:\s*(EARLY_SEASON|MID_SEASON|LATE_REGULAR|PLAY_IN|PLAYOFFS)', content)
+    allowed_phases = (
+        r'OFF_SEASON|PRESEASON|EARLY_REGULAR|REGULAR_SEASON|LATE_REGULAR|POSTSEASON|'
+        r'EARLY_SEASON|MID_SEASON|PLAY_IN|PLAYOFFS'
+    )
+    phase_match = re.search(rf'season_phase\*\*:\s*({allowed_phases})', content)
     if not phase_match:
-        phase_match = re.search(r'season_phase:\s*\*\*(EARLY_SEASON|MID_SEASON|LATE_REGULAR|PLAY_IN|PLAYOFFS)\*\*', content)
+        phase_match = re.search(rf'season_phase:\s*\*\*({allowed_phases})\*\*', content)
     if not phase_match:
         issues.append(
             "FW-09 ❌ BLOCK: 缺少 season_phase metadata "
-            "(EARLY_SEASON/MID_SEASON/LATE_REGULAR/PLAY_IN/PLAYOFFS)"
+            "(OFF_SEASON/PRESEASON/EARLY_REGULAR/REGULAR_SEASON/"
+            "LATE_REGULAR/POSTSEASON)"
         )
     if "L10_ORDER" not in content or "newest_first" not in content:
         issues.append("FW-09 ❌ BLOCK: 缺少 L10_ORDER:newest_first metadata")
