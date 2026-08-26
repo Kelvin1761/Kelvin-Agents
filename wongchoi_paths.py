@@ -109,7 +109,11 @@ DATA_ROOT: Path = _resolve_root("WONGCHOI_DATA_ROOT", ".wongchoi_data_root", PRO
 
 # --- Per-sport analysis homes (new naming) ----------------------------------
 HORSE_RACE_ANALYSIS: Path = DATA_ROOT / "Wong Choi Horse Race Analysis"
-NBA_ANALYSIS: Path = DATA_ROOT / "Wong Choi NBA Analysis"
+NBA_ANALYSIS: Path = _resolve_root(
+    "WONGCHOI_NBA_DATA_ROOT",
+    ".wongchoi_nba_data_root",
+    DATA_ROOT / "Wong Choi NBA Analysis",
+)
 TENNIS_ANALYSIS: Path = DATA_ROOT / "Wong Choi Tennis Analysis"
 
 # Internal sub-structure preserved from the old Archive_Race_Analysis layout.

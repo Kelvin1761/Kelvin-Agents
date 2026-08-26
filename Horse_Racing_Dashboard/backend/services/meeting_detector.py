@@ -44,6 +44,7 @@ def discover_meetings(root_dir: Optional[str] = None) -> list[Meeting]:
     
     meetings = []
     hkjc_groups = {}  # (date, venue) -> dict with kelvin_path, heison_path
+    hkjc_reflected_keys = set()
     
     items = []
     for root in roots:
@@ -72,6 +73,8 @@ def discover_meetings(root_dir: Optional[str] = None) -> list[Meeting]:
             actual_date = _extract_meeting_date_from_files(item, folder_date)
             
             key = (actual_date, venue)
+            if _has_hkjc_reflection(item):
+                hkjc_reflected_keys.add(key)
             if key not in hkjc_groups:
                 hkjc_groups[key] = {"kelvin_path": None, "heison_path": None}
             
@@ -115,6 +118,8 @@ def discover_meetings(root_dir: Optional[str] = None) -> list[Meeting]:
             venue = hkjc_match.group(2).replace('_', '')
             analyst_tag = hkjc_match.group(3)  # 'Kelvin', 'Heison', or None
             key = (date, venue)
+            if _has_hkjc_reflection(item):
+                hkjc_reflected_keys.add(key)
             
             if key not in hkjc_groups:
                 hkjc_groups[key] = {"kelvin_path": None, "heison_path": None}
@@ -135,6 +140,10 @@ def discover_meetings(root_dir: Optional[str] = None) -> list[Meeting]:
     
     # Build HKJC meetings
     for (date, venue), paths in sorted(hkjc_groups.items()):
+        # A materialized reflector report means the meeting is settled. Results
+        # stay in the corpus, but the pre-race dashboard must no longer show it.
+        if (date, venue) in hkjc_reflected_keys:
+            continue
         analysts = []
         folder_paths = {}
         
@@ -156,6 +165,14 @@ def discover_meetings(root_dir: Optional[str] = None) -> list[Meeting]:
             ))
     
     return sorted(meetings, key=lambda m: m.date, reverse=True)
+
+
+def _has_hkjc_reflection(folder: Path) -> bool:
+    report = folder / "HKJC_Reflection_Report.md"
+    try:
+        return report.is_file() and report.stat().st_size > 0
+    except OSError:
+        return False
 
 
 def _extract_meeting_date_from_files(folder: Path, fallback_date: str) -> str:

@@ -251,13 +251,44 @@ def _nba_stat(player: Dict[str, Any], stat: str) -> Optional[float]:
 
 
 def _find_nba_game(results: Dict[str, Any], event_name: str) -> Optional[Dict[str, Any]]:
-    teams = [part.strip().upper() for part in str(event_name).split("@")]
+    teams = [_canonical_nba_team(part) for part in str(event_name).split("@")]
     for game in results.get("games") or []:
-        away = str((game.get("away") or {}).get("team") or "").upper()
-        home = str((game.get("home") or {}).get("team") or "").upper()
+        away = _canonical_nba_team((game.get("away") or {}).get("team"))
+        home = _canonical_nba_team((game.get("home") or {}).get("team"))
         if len(teams) == 2 and teams == [away, home]:
             return game
     return None
+
+
+def _canonical_nba_team(value: Any) -> str:
+    aliases = {
+        "GS": "GSW",
+        "NO": "NOP",
+        "NY": "NYK",
+        "SA": "SAS",
+        "UTAH": "UTA",
+        "WSH": "WAS",
+    }
+    abbreviation = str(value or "").strip().upper()
+    return aliases.get(abbreviation, abbreviation)
+
+
+def _nba_minutes(value: Any) -> Optional[float]:
+    if value in (None, ""):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip().upper()
+    iso = re.fullmatch(r"PT(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?", text)
+    if iso:
+        return float(iso.group(1) or 0) + float(iso.group(2) or 0) / 60
+    clock = re.fullmatch(r"(\d+):(\d+(?:\.\d+)?)", text)
+    if clock:
+        return float(clock.group(1)) + float(clock.group(2)) / 60
+    try:
+        return float(text)
+    except ValueError:
+        return None
 
 
 def _settle_nba_leg(game: Dict[str, Any], leg: Dict[str, Any], results_name: str) -> Optional[Dict[str, Any]]:
@@ -275,6 +306,18 @@ def _settle_nba_leg(game: Dict[str, Any], leg: Dict[str, Any], results_name: str
     )
     if not player:
         return None
+    minutes = _nba_minutes(player.get("minutes"))
+    if minutes is not None and minutes <= 0:
+        return {
+            "selection": leg.get("selection") or "",
+            "market": leg.get("market") or f"Player {stat}",
+            "line": float(line),
+            "odds": leg.get("odds"),
+            "status": "void",
+            "result_value": None,
+            "settlement_source": "nba_reflector",
+            "settlement_ref": results_name,
+        }
     actual = _nba_stat(player, stat)
     if actual is None:
         return None
@@ -332,6 +375,9 @@ def export_nba_settlements(analysis_dir: Path) -> Dict[str, Any]:
                 warnings.append(f"nba_combo_leg_unresolved:{recommendation.get('id')}")
                 continue
             legs = [leg for leg in resolved if leg is not None]
+            if any(leg.get("status") == "void" for leg in legs):
+                warnings.append(f"nba_combo_contains_void_leg:{recommendation.get('id')}")
+                continue
             status = _derive_combo_status(legs)
         else:
             contract = recommendation.get("settlement_contract") or {}

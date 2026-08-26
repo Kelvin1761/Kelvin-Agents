@@ -20,9 +20,40 @@ from generate_static import (
 )
 from models.race import AnalystName, HorseAnalysis, Meeting, RaceAnalysis, Region
 from services.parser_au import parse_mc_results_json
+from services.meeting_detector import discover_meetings
+from services.settlement_exporter import _settle_nba_leg
 from bs4 import BeautifulSoup
 from extract_racecard import parse_english_name_map, parse_horse_profile_link
 from api import races as races_api
+
+
+def test_nba_dnp_player_prop_settles_as_void():
+    leg = _settle_nba_leg(
+        {
+            "players": [
+                {"name": "Player A", "minutes": "PT0M", "pts": 0}
+            ]
+        },
+        {"player": "Player A", "stat": "PTS", "line": 10, "odds": 1.7},
+        "Results_Brief_2026-10-21.json",
+    )
+    assert leg is not None
+    assert leg["status"] == "void"
+    assert leg["result_value"] is None
+
+
+def test_reflected_hkjc_meeting_is_removed_from_prerace_dashboard(tmp_path):
+    meeting = tmp_path / "2026-09-06_ShaTin"
+    meeting.mkdir()
+    (meeting / "Race_1_Auto_Analysis.md").write_text("analysis", encoding="utf-8")
+
+    discovered = discover_meetings(str(tmp_path))
+    assert [(row.date, row.venue) for row in discovered] == [
+        ("2026-09-06", "ShaTin")
+    ]
+
+    (meeting / "HKJC_Reflection_Report.md").write_text("settled", encoding="utf-8")
+    assert discover_meetings(str(tmp_path)) == []
 
 
 def test_old_numeric_mc_concordance_does_not_break_parser(tmp_path):

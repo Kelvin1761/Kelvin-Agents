@@ -14,7 +14,16 @@ export PYTHONDONTWRITEBYTECODE=1
 TG=0; [ "${1:-}" = "--tg" ] && TG=1
 
 OUT=$(mktemp)
-exec > >(tee "$OUT") 2>&1
+exec 3>&1
+exec >"$OUT" 2>&1
+cleanup_output(){
+  rc=$?
+  trap - EXIT
+  cat "$OUT" >&3 2>/dev/null || true
+  rm -f "$OUT"
+  exit "$rc"
+}
+trap cleanup_output EXIT
 
 hdr(){ printf '\n\033[1m── %s\033[0m\n' "$1"; }
 ok(){  printf '  \033[32m✅\033[0m %s\n' "$1"; }
@@ -44,18 +53,24 @@ for f in "$HOME"/Library/LaunchAgents/com.antigravity.*.plist; do
   [ -e "$f" ] || continue
   lbl=$(basename "$f" .plist)
   short=${lbl#com.antigravity.}
-  st=$(launchctl list 2>/dev/null | grep -w "$lbl" | awk '{print $2}')
-  case "${st:-missing}" in
-    0)       ok "$short" ;;
-    missing) note_bad "$short 冇載入 launchd" ;;
-    *)       warn "$short 上次退出碼 $st（睇下面詳情）" ;;
-  esac
+  detail=$(launchctl print "gui/$(id -u)/$lbl" 2>/dev/null || true)
+  if [ -z "$detail" ]; then
+    note_bad "$short 冇載入 launchd"
+  elif echo "$detail" | grep -q "(never exited)"; then
+    ok "${short}（已載入，未到首次執行時間）"
+  else
+    st=$(echo "$detail" | sed -n 's/^[[:space:]]*last exit code = //p' | head -1)
+    case "${st:-0}" in
+      0) ok "$short" ;;
+      *) warn "$short 上次退出碼 ${st}（睇下面詳情）" ;;
+    esac
+  fi
 done
 
 # ── 每個 Wong Choi 嘅資料時效 ─────────────────────────────────────────────
 hdr "資料時效"
 "$PY" - <<'PYEOF'
-import os, sys, glob, sqlite3, time
+import os, sys, glob, json, sqlite3, time
 from datetime import datetime, timedelta, timezone
 sys.path.insert(0, os.getcwd())
 
@@ -107,6 +122,45 @@ if db:
     print(f"  {mark} Tennis: DB {size:.2f}GB，{a:.1f} 日前寫過")
 else:
     print("  ⚠️  Tennis: 呢個 checkout 冇 tennis_wc.db（Tennis 只住喺主 repo）")
+
+# NBA off-season `dormant` is healthy. In season the immutable snapshot and
+# reflector ledger are separate liveness/evidence signals.
+nba_runs = []
+for root in (".agents/skills/nba/nba_daily_auto/logs",
+             "/Users/imac/Antigravity-repo/.agents/skills/nba/nba_daily_auto/logs"):
+    nba_runs.extend(glob.glob(os.path.join(root, "run-*.json")))
+if nba_runs:
+    latest = max(set(nba_runs), key=os.path.getmtime)
+    try:
+        payload = json.load(open(latest, encoding="utf-8"))
+        a = age_days(os.path.getmtime(latest))
+        status = payload.get("status") or "unknown"
+        target = payload.get("target_date") or "?"
+        healthy = status in {"complete", "dormant", "archived", "already_archived", "ok"}
+        mark = "✅" if healthy and a < 2 else "⚠️ "
+        print(f"  {mark} NBA: 最新排程 {target} / {status}（{a:.1f} 日前）")
+    except (OSError, ValueError) as exc:
+        print(f"  ⚠️  NBA: 最新 run log 讀唔到（{exc.__class__.__name__}）")
+else:
+    print("  ⚠️  NBA: 未有 daily automation run log")
+
+nba_db = next((candidate for candidate in (
+    "nba_reflector.db",
+    "/Users/imac/Antigravity-repo/nba_reflector.db",
+) if os.path.exists(candidate)), None)
+if nba_db:
+    try:
+        conn = sqlite3.connect(f"file:{nba_db}?mode=ro", uri=True)
+        settled = conn.execute(
+            "SELECT COUNT(*) FROM reflector_legs WHERE cleared IS NOT NULL"
+        ).fetchone()[0]
+        total = conn.execute("SELECT COUNT(*) FROM reflector_legs").fetchone()[0]
+        conn.close()
+        print(f"  ✅ NBA evidence ledger: {total} legs / {settled} settled")
+    except (sqlite3.Error, OSError) as exc:
+        print(f"  ⚠️  NBA evidence ledger 讀唔到（{exc.__class__.__name__}）")
+else:
+    print("  ⚠️  NBA evidence ledger 尚未建立（新季第一個 postgame 後產生）")
 PYEOF
 
 # ── 數據合約 ─────────────────────────────────────────────────────────────
@@ -123,23 +177,100 @@ done
 # ── 排程日誌有冇報錯 ─────────────────────────────────────────────────────
 hdr "排程日誌（近 3 日嘅錯）"
 found=0
-for L in /Users/imac/wongchoi-scheduler/.agents/skills/au_racing/au_daily_auto/logs \
-         .agents/skills/hkjc_racing/hkjc_daily_auto/logs \
-         tennis-wong-choi/data/logs; do
-  [ -d "$L" ] || continue
-  while IFS= read -r f; do
-    n=$(grep -icE "traceback|fatal|Operation not permitted|unbound variable|❌ \[" "$f" 2>/dev/null | head -1)
-    n=${n:-0}
-    if [ "$n" -gt 0 ]; then
-      warn "$(basename "$f"): $n 行錯誤"
-      grep -iE "traceback|fatal|Operation not permitted|unbound variable|❌ \[" "$f" 2>/dev/null | tail -2 | sed 's/^/        /'
-      found=1
-    fi
-    # Skip our own output: last week's report quotes last week's errors, which
-    # would resurface here forever as if they were new.
-  done < <(find "$L" \( -name "*.log" -o -name "*.err" -o -name "*.out" \) \
-             ! -name "health.out" ! -name "health.err" -mtime -3 2>/dev/null)
-done
+LOG_SCAN=$("$PY" - <<'PYEOF'
+import glob
+import json
+import os
+import re
+from datetime import datetime, timedelta
+from pathlib import Path
+
+roots = (
+    Path("/Users/imac/wongchoi-scheduler/.agents/skills/au_racing/au_daily_auto/logs"),
+    Path(".agents/skills/hkjc_racing/hkjc_daily_auto/logs"),
+    Path(".agents/skills/nba/nba_daily_auto/logs"),
+    Path("tennis-wong-choi/data/logs"),
+)
+cutoff = datetime.now() - timedelta(days=3)
+error_re = re.compile(
+    r"traceback|fatal|Operation not permitted|unbound variable|❌ \[", re.I
+)
+stamp_re = re.compile(r"\[?(20\d\d-\d\d-\d\d[T ][0-9:]+(?:[+-][0-9:]+)?)")
+
+# A successful newer mirror run resolves older best-effort File Provider noise.
+mirror_step = None
+run_files = sorted(
+    glob.glob(str(roots[0] / "run-*.json")),
+    key=os.path.getmtime,
+    reverse=True,
+)
+for name in run_files[:30]:
+    try:
+        payload = json.loads(Path(name).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        continue
+    mirror_step = next(
+        (step for step in reversed(payload.get("steps") or [])
+         if step.get("step") == "mirror" and step.get("status") != "start"),
+        None,
+    )
+    if mirror_step:
+        break
+mirror_ok = bool(mirror_step and mirror_step.get("status") == "ok")
+if mirror_ok:
+    print(
+        "RECOVERED\tAU Drive mirror 最新 run 正常："
+        f"copied {mirror_step.get('copied', 0)} / failed {mirror_step.get('failed', 0)}"
+    )
+
+for root in roots:
+    if not root.is_dir():
+        continue
+    files = []
+    for pattern in ("*.log", "*.err", "*.out"):
+        files.extend(root.glob(pattern))
+    for path in sorted(set(files)):
+        if path.name in {"health.out", "health.err"}:
+            continue
+        try:
+            if datetime.fromtimestamp(path.stat().st_mtime) < cutoff:
+                continue
+            lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            continue
+        current_time = None
+        errors = []
+        for line in lines:
+            match = stamp_re.search(line)
+            if match:
+                try:
+                    current_time = datetime.fromisoformat(match.group(1)).replace(tzinfo=None)
+                except ValueError:
+                    current_time = None
+            if not error_re.search(line):
+                continue
+            if current_time is not None and current_time < cutoff:
+                continue
+            lower = line.lower()
+            resolved_mirror_noise = mirror_ok and (
+                "[mirror]" in lower or "鏡像" in line or "mirror 最近狀態" in line
+            )
+            if resolved_mirror_noise:
+                continue
+            errors.append(line)
+        if errors:
+            print(f"WARN\t{path.name}\t{len(errors)}")
+            for line in errors[-2:]:
+                print("LINE\t" + line)
+PYEOF
+)
+while IFS=$'\t' read -r kind arg count; do
+  case "$kind" in
+    RECOVERED) ok "$arg" ;;
+    WARN) warn "$arg: $count 行錯誤"; found=1 ;;
+    LINE) printf '        %s\n' "$arg" ;;
+  esac
+done <<< "$LOG_SCAN"
 [ "$found" = "0" ] && ok "近 3 日嘅日誌冇 traceback / 權限錯誤 / 排程階段失敗"
 
 # ── 總結 ─────────────────────────────────────────────────────────────────
@@ -154,5 +285,4 @@ if [ "$TG" = "1" ]; then
   "$PY" .agents/skills/shared_racing/scripts/racing_telegram.py \
     --message-file "$OUT" >/dev/null 2>&1 && echo "已推去 Telegram"
 fi
-rm -f "$OUT"
 [ "$PROBLEMS" -gt 0 ] && exit 1 || exit 0
