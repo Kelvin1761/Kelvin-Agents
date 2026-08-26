@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20260826-09](EXP-20260826-09-tennis-corpus-and-tier-gate.md) | 2026-08-26 | Tennis | Tennis prop 帳面 +2.86% ROI 係真績效；match-winner 冇落注係因為冇機會 | **兩個都係假**：70% 語料係賽果出咗之後才評分（08-10 一個 run 寫咗三個月），證實賽前 291 注 ROI **−23.38%** CI [−33.92,−12.65]，而利潤全部喺「量唔到幾時寫」嗰 1,392 行（+11.74%）。修：`is_point_in_time` 三態 + upsert 守衛（排程一直喺開賽後 0.3–144 鐘覆蓋賽前價，45.7% 中招）。match-winner 加 tier allow-list（必須傳 level，26 個賽事「名」係外部 id）。短賠熱門 **NOT SHIPPED**（CI 跨零，抽水逐段一樣 ~1.072 所以唔係書商冇落力）。跨盤不一致 **結構性 REJECT**（中位分歧只係抽水 0.20×）。**08-27 續**：排名覆蓋率低唔係「ITF 冇排名」，係七個 500 上限（四個喺 parser 入面）＋ 合併掉咗 `current_rank`；ITF 21.0%→**49.2%**，順手關掉一條 19.0% 嘅前視路徑。順手：`feature_snapshots` 冇 retention，1.9GB→1.1GB |
 | [EXP-20260825-04](EXP-20260825-04-au-proven-class-overlay.md) | 2026-08-25 | AU | 高班次只有在當仗實際表現好時才應當成排名實績 | **USER-ACCEPTED EXPERIMENTAL KEEP**：dev +0.00305、4/5 folds 非負、holdout +0.00301，但 CI [-0.00066,+0.00680] 跨零；Gold +0.78pp、Good +0.23pp，用戶明確接受不確定性後啟用及向前監測 |
 | [EXP-20260825-03](EXP-20260825-03-au-exact-class-performance-proof.md) | 2026-08-25 | AU | Sportsbet 精確歷史班次應否按該仗實際表現轉成「高班證明」signal | **PROMISING／暫不 ship**：鎖定 proven-class 候選 dev/holdout AUC 均 +0.0030、Gold +0.78pp、Good +0.23pp，但 holdout CI [-0.0007,+0.0068] 跨零；R2 Lovecats仍第8、DDE/Zubba仍第2/3 |
 | [EXP-20260825-02](EXP-20260825-02-au-exact-class-pace-reliability.md) | 2026-08-25 | AU | Sportsbet 原始班次 transport 及低班次 race-level PacePerf 收縮可否修正 R2 | **Correctness KEEP／scoring REJECT**：保存 53,142 個原始班次 label 作 evidence；class_form dev/holdout 點估計正，但 holdout CI [-0.0043,+0.0082] 跨零，Lovecats仍第8、DDE/Zubba仍第2/3 |
@@ -35,3 +36,4 @@
 - [EXP-20260826-06](EXP-20260826-06-au-class-score-revival.md) — class_score 復活：乾淨語料七個測試 dev 全部正但 holdout 跨 0；全語料三個「過閘」係喺污染資料上 fit gain 嘅產物，REJECT + 登記重測
 - [EXP-20260826-07](EXP-20260826-07-au-gear-change-signal.md) — 配備變更：抽取層完全冇攞；OFF FIRST TIME −3.86pp 顯著，但同 form_score 重複（59.83 vs 62.10），排名唔過閘。建議抽落嚟出報告
 - [EXP-20260826-08](EXP-20260826-08-au-market-price.md) — 市場價：賽前 WinOdds AUC 0.7332 vs 模型 0.6665，加落去每個 k 都過閘（Pass +3.35pp）；但最佳混合 w=0.0，模型貢獻係零。等 methodology 決定
+- [EXP-20260826-09](EXP-20260826-09-tennis-corpus-and-tier-gate.md) — Tennis 績效係事後回填（證實賽前 ROI −23.38%）；排程喺開賽後覆蓋賽前價；match-winner 補 tier 閘；短賠熱門未夠 power；跨盤不一致結構性 REJECT；排名七個 500 上限已修（ITF 21%→49.2%）
