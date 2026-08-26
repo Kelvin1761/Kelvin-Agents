@@ -54,6 +54,21 @@ def _canonical_player_row(conn, name: str, tour: str, exclude_id: int | None = N
     ).fetchone()
 
 
+def _terminal_player_id(conn, player_id: int) -> int:
+    """Resolve through `players.canonical_player_id` before handing an id back.
+
+    2026-08-27: fixtures dated 08-25 still pointed at ids merged away on 08-24,
+    because this resolver reads `provider_entities` and same-name rows and never
+    consulted the merge pointer -- a merged row keeps its name, so it keeps
+    matching. 32 fixtures had landed that way, and the count grows every day the
+    scheduler runs: merges decayed as fast as they were applied, which is why
+    the merge machinery had "code and tests but no caller".
+    """
+    from tennis_wc.identity.player_identity import terminal_canonical_id
+
+    return int(terminal_canonical_id(conn, player_id) or player_id)
+
+
 def get_or_create_player(
     provider_name: str,
     provider_player_id: str,
@@ -129,7 +144,7 @@ def get_or_create_player(
                     player_id,
                 ),
             )
-            return player_id
+            return _terminal_player_id(conn, player_id)
 
         matched_player = _canonical_player_row(conn, name, tour)
         if matched_player:
@@ -167,7 +182,7 @@ def get_or_create_player(
                 """,
                 (provider_name, provider_player_id, player_id, name, now, now),
             )
-            return player_id
+            return _terminal_player_id(conn, player_id)
 
         cursor = conn.execute(
             """
@@ -200,7 +215,7 @@ def get_or_create_player(
             """,
             (provider_name, provider_player_id, player_id, name, now, now),
         )
-        return player_id
+        return _terminal_player_id(conn, player_id)
 
 
 def normalise_player_name(name: str) -> str:

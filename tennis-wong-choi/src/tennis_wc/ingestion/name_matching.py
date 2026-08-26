@@ -13,6 +13,13 @@ def normalise_player_name(name: str | None) -> str:
             raw = f"{parts[1]} {parts[0]}"
     ascii_name = unicodedata.normalize("NFKD", raw).encode("ascii", "ignore").decode("ascii")
     ascii_name = re.sub(r"[^a-z0-9\s.-]", " ", ascii_name)
+    # A hyphen is orthography, not identity: the feeds disagree with each other
+    # about `Parrizas-Diaz` / `Parrizas Diaz`, `Chan-Yeong Oh` / `Chan Yeong Oh`,
+    # `Garcia-Patron Canals` / `Garcia Patron Canals`, and each spelling created
+    # its own player row with its own (missing) ranking. Keeping it split the
+    # same person in two and the duplicate-name merge could never see them as
+    # duplicates.
+    ascii_name = ascii_name.replace("-", " ")
     ascii_name = ascii_name.replace(".", " ")
     ascii_name = re.sub(r"\s+", " ", ascii_name).strip()
     return _surname_initial_to_given_first(ascii_name)

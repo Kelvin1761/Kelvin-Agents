@@ -11,6 +11,7 @@ Two jobs:
 """
 from __future__ import annotations
 
+import sqlite3
 from dataclasses import dataclass, field
 
 from tennis_wc.ingestion.name_matching import normalise_player_name
@@ -91,6 +92,40 @@ def ensure_identity_schema(conn) -> None:
     )
 
 
+def terminal_canonical_id(conn, player_id: int | None) -> int | None:
+    """Follow `canonical_player_id` to the row that is not itself merged.
+
+    Merges chain across runs: id 20089 was folded into 18856 on one day and
+    18856 into 437 on another, so a single hop lands on a row nothing should
+    point at any more. Seven such chains existed on 2026-08-27.
+
+    The loop is bounded and returns the last id seen if a cycle is ever written,
+    because an identity resolver must not be able to hang the daily card.
+    """
+    if player_id is None:
+        return None
+    seen: set[int] = set()
+    current = int(player_id)
+    for _ in range(16):
+        if current in seen:
+            return current
+        seen.add(current)
+        try:
+            row = conn.execute(
+                "SELECT canonical_player_id FROM players WHERE id = ?", (current,)
+            ).fetchone()
+        except sqlite3.OperationalError:
+            # `canonical_player_id` comes from `ensure_identity_schema`, not
+            # `init_db`, so a database that has never been merged does not have
+            # it. Ingestion must still work there: an identity resolver that
+            # raises on a fresh database takes the whole pipeline with it.
+            return current
+        if row is None or row[0] is None:
+            return current
+        current = int(row[0])
+    return current
+
+
 def resolve_player_id(conn, name: str | None, tour: str | None = None) -> int | None:
     """Canonical id for ``name``, via the alias table, creating nothing.
 
@@ -104,7 +139,7 @@ def resolve_player_id(conn, name: str | None, tour: str | None = None) -> int | 
         "SELECT canonical_player_id FROM player_aliases WHERE alias_norm = ?", (alias,)
     ).fetchone()
     if row:
-        return int(row[0])
+        return terminal_canonical_id(conn, int(row[0]))
     row = conn.execute(
         """
         SELECT id, canonical_player_id FROM players
@@ -114,8 +149,10 @@ def resolve_player_id(conn, name: str | None, tour: str | None = None) -> int | 
         (name,),
     ).fetchone()
     if row:
-        return int(row[1] or row[0])
-    return _resolve_by_similarity(conn, name, tour)
+        # Terminal, not one hop: both the alias table and this row can point at
+        # an id that has since been merged again.
+        return terminal_canonical_id(conn, int(row[1] or row[0]))
+    return terminal_canonical_id(conn, _resolve_by_similarity(conn, name, tour))
 
 
 def _resolve_by_similarity(conn, name: str, tour: str | None) -> int | None:
@@ -244,6 +281,28 @@ def derived_tour(conn, player_id: int) -> str | None:
     return top if count / total >= 0.7 else None
 
 
+def ranking_tour(conn, player_id: int) -> str | None:
+    """The tour this id is RANKED on, or None.
+
+    Separate from `derived_tour` because the two carry very different weight. A
+    player appears in exactly one ranking system, so a ranking-derived tour is
+    authoritative. A match-history-derived one is not: `derived_tour`'s own
+    docstring records that "the history tour column is itself contaminated", and
+    it is only consulted as a fallback.
+    """
+    row = conn.execute(
+        """
+        SELECT tour, COUNT(*) k FROM rankings_history
+        WHERE player_id = ? AND tour IS NOT NULL
+        GROUP BY tour ORDER BY k DESC LIMIT 1
+        """,
+        (player_id,),
+    ).fetchone()
+    if row and int(row[1]) >= MIN_TOUR_EVIDENCE:
+        return str(row[0]).upper()
+    return None
+
+
 def plan_merges(conn) -> list[MergePlan]:
     """Group players by normalised name and choose one canonical id per group.
 
@@ -284,15 +343,56 @@ def plan_merges(conn) -> list[MergePlan]:
                 )
             )
             continue
-        derived = {pid: derived_tour(conn, pid) for pid in ids}
-        confident = {tour for tour in derived.values() if tour}
-        if {"ATP", "WTA"} <= confident:
+        # Two people can share a name across tours, and that is what this guard
+        # is for. But it must fire on RANKING evidence, not on a playing record.
+        #
+        # 2026-08-27: all 25 remaining ATP-vs-WTA refusals were women -- Swiatek,
+        # Sabalenka, Osaka, Jabeur, Azarenka, Keys, Svitolina, Vondrousova,
+        # Andreeva, Kostyuk... In every one of them the real row carried a full
+        # WTA ranking history (Swiatek: 115 entries) and the duplicate carried
+        # NO ranking history at all, only a match-history block ~90% labelled
+        # ATP. `derived_tour` prefers rankings and falls back to that block when
+        # there are none, so the duplicate "derived" as ATP and blocked the
+        # merge. Measured across those 25: ranking evidence on both sides in
+        # ZERO of them, and conflicting rankings in zero.
+        #
+        # This is the same defect the guard was hardened for once already -- the
+        # first version read `players.tour` and refused 97 groups, every one a
+        # mislabelled WTA player. Moving to `derived_tour` narrowed it; it did
+        # not close it, because the fallback re-admits the contaminated column.
+        #
+        # So: refuse only when at least two ids are RANKED and their rankings
+        # disagree. `_played_each_other` above remains the primary disproof and
+        # is unaffected.
+        # Ranking evidence outranks playing record, and only where it exists:
+        #
+        #   two ids ranked, rankings disagree -> refuse (genuinely two people)
+        #   exactly one id ranked            -> that tour stands; a contaminated
+        #                                       history block on the other side
+        #                                       must not veto it (the Swiatek case)
+        #   no id ranked                     -> fall back to `derived_tour`, which
+        #                                       is all the evidence there is
+        #
+        # The middle branch is the fix. Without it a WTA player whose duplicate
+        # row carries an ATP-labelled history block blocks her own merge -- and
+        # she does so silently, because a refusal looks like a safety win.
+        ranked_tours = {pid: ranking_tour(conn, pid) for pid in ids}
+        distinct_ranked = {tour for tour in ranked_tours.values() if tour}
+        refusal = None
+        if len(distinct_ranked) > 1:
+            refusal = "refused: they are ranked on different tours"
+        elif not distinct_ranked:
+            derived = {pid: derived_tour(conn, pid) for pid in ids}
+            confident = {tour for tour in derived.values() if tour}
+            if {"ATP", "WTA"} <= confident:
+                refusal = "refused: their playing records are on different tours"
+        if refusal:
             plans.append(
                 MergePlan(
                     canonical_id=min(ids),
                     canonical_name=members[0][1],
                     duplicate_ids=[],
-                    reason="refused: their playing records are on different tours",
+                    reason=refusal,
                 )
             )
             continue
@@ -305,6 +405,76 @@ def plan_merges(conn) -> list[MergePlan]:
                 duplicate_ids=duplicates,
                 history_rows_moved=sum(counts.get(pid, 0) for pid in duplicates),
                 reason="merge",
+            )
+        )
+    plans.extend(_plan_middle_name_merges(conn, groups, counts, plans))
+    return plans
+
+
+def _plan_middle_name_merges(conn, groups, counts, existing) -> list[MergePlan]:
+    """Same first and last name, one carrying extra given names.
+
+    `Ammar Faleh Alhogbani` / `Ammar Alhogbani`, `Astrid Wanja Brune Olsen` /
+    `Astrid Brune Olsen`, `Rebecca Munk Mortensen` / `Rebecca Mortensen`. The
+    feeds disagree about whether to print middle names, so each spelling built
+    its own player row and its own missing ranking.
+
+    Deliberately NOT surname-plus-first-initial, which was the obvious rule and
+    is unsafe: of its 101 candidates, 31 had genuinely different given names,
+    mixing real variants (`Pyotr`/`Petr Nesterov`, `Ilia`/`Ilya Snitari`) with
+    real siblings and namesakes (`Evan`/`Eunji Lee`, `Mio`/`Mao Mushika`,
+    `Rinko`/`Ryuki Matsuda`). No automated rule separates those, so the initial
+    is not enough -- the given name has to match in full, and one token set has
+    to contain the other.
+
+    A wrong merge is far more expensive than a missing rank: it fuses two
+    players' histories and everything built from them. Both disproofs therefore
+    still apply.
+    """
+    claimed = {pid for plan in existing
+               for pid in [plan.canonical_id, *plan.duplicate_ids]}
+    by_ends: dict[tuple[str, str], list[tuple[int, str, tuple[str, ...]]]] = {}
+    for alias, members in groups.items():
+        tokens = tuple(alias.split())
+        if len(tokens) < 2:
+            continue
+        # An initialised given name carries almost no identity: `a fuchs` is
+        # Alexander or Anna or Andrea. Worse, `normalise_player_name` rewrites a
+        # trailing initial to the front, so the doubles pair `Filin N. / Fuchs
+        # A.` becomes `a filin n fuchs` -- same first and last token as `a
+        # fuchs`, and nested. The first version of this rule proposed merging
+        # that PAIR into the singles player, along with `Zverev A.` into
+        # `Townsend / Zverev A.`. Require a real given name, and never a pair.
+        if len(tokens[0]) < 2:
+            continue
+        for pid, name, _tour in members:
+            if pid in claimed or "/" in (name or ""):
+                continue
+            by_ends.setdefault((tokens[0], tokens[-1]), []).append((pid, name, tokens))
+
+    plans: list[MergePlan] = []
+    for _ends, members in sorted(by_ends.items()):
+        if len(members) < 2:
+            continue
+        # Nested token sets only: {ammar, alhogbani} inside
+        # {ammar, faleh, alhogbani}. Two DIFFERENT middle names are two people.
+        sets = [set(t) for _pid, _n, t in members]
+        if not all(a <= b or b <= a for a in sets for b in sets):
+            continue
+        ids = [pid for pid, _n, _t in members]
+        if _played_each_other(conn, ids):
+            continue
+        if len({tour for tour in (ranking_tour(conn, pid) for pid in ids) if tour}) > 1:
+            continue
+        canonical = sorted(ids, key=lambda pid: (-counts.get(pid, 0), pid))[0]
+        duplicates = [pid for pid in ids if pid != canonical]
+        plans.append(
+            MergePlan(
+                canonical_id=canonical,
+                canonical_name=next(n for pid, n, _t in members if pid == canonical),
+                duplicate_ids=duplicates,
+                history_rows_moved=sum(counts.get(pid, 0) for pid in duplicates),
+                reason="merge: middle-name variant",
             )
         )
     return plans
@@ -433,6 +603,28 @@ def apply_merges(conn, plans: list[MergePlan]) -> dict:
             """
         )
 
+    # Correct the surviving row's tour from ranking evidence.
+    #
+    # Canonical is chosen by history volume, which usually but not always picks
+    # the correctly-labelled row: of the 25 WTA groups unblocked on 2026-08-27,
+    # 24 canonical rows already said WTA and one (Destanee Aiava) said ATP while
+    # ranked WTA. Leaving that stands a wrong label on the row everything else
+    # now points at -- and `tour` gates real behaviour downstream
+    # (`_aces_gradeable` is ATP-only, format detection reads it).
+    #
+    # Only where a ranking exists, and only when it disagrees: rankings are
+    # authoritative for tour, playing records are not.
+    for pid, in conn.execute(
+        "SELECT DISTINCT canonical_id FROM _player_merge_map"
+    ).fetchall():
+        tour = ranking_tour(conn, pid)
+        if tour:
+            conn.execute(
+                "UPDATE players SET tour = ?, updated_at = datetime('now') "
+                "WHERE id = ? AND tour != ?",
+                (tour, pid, tour),
+            )
+
     conn.execute(
         """
         UPDATE players
@@ -441,6 +633,25 @@ def apply_merges(conn, plans: list[MergePlan]) -> dict:
         WHERE id IN (SELECT duplicate_id FROM _player_merge_map)
         """
     )
+    # Collapse chains left by earlier runs, so a stored pointer is always
+    # terminal and one hop is always enough for anyone who reads it.
+    for _ in range(8):
+        changed = conn.execute(
+            """
+            UPDATE players
+            SET canonical_player_id = (
+                SELECT c.canonical_player_id FROM players c
+                WHERE c.id = players.canonical_player_id
+            )
+            WHERE canonical_player_id IS NOT NULL
+              AND canonical_player_id IN (
+                SELECT id FROM players WHERE canonical_player_id IS NOT NULL
+              )
+            """
+        ).rowcount
+        if not changed:
+            break
+
     # A merge can turn "A vs B" into "A vs A" if both sides were duplicates of
     # one player. Those are not fixtures; leave them detectable rather than
     # silently deleting rows that other tables may point at.

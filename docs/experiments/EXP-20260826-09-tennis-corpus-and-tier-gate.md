@@ -364,6 +364,82 @@ Elo 一直有 `missing_overall_elo` / `missing_surface_elo` warning 同硬閘
 **08-28** 開始。個閘要喺嗰日之前落，唔然第一個月嘅向前語料就會混住「冇意見」
 嘅 0.5。已落。
 
+## 發現 14（08-27，Phase 1.2）：三個令合併靜靜咁變弱嘅缺陷
+
+計劃估 614 個可配對身份。**實際只有 8 + 150** —— 467 個完全同名嗰批今日早前嘅
+447 組合併已經收咗。但揾到三個更根本嘅問題。
+
+### 14a. ATP-vs-WTA 守衛擋住 25 個真人，全部係女子
+
+Swiatek、Sabalenka、Osaka、Jabeur、Azarenka、Keys、Svitolina、Vondrousova、
+Andreeva、Kostyuk…… 每一個都係：真身有完整 WTA 排名歷史（Swiatek 115 條），
+重複行**完全冇排名歷史**，只有一段約 90% 標住 ATP 嘅比賽記錄。`derived_tour`
+優先用排名、冇排名就 fall back 去嗰段受污染嘅記錄，所以重複行「derive 成 ATP」
+並擋住自己嘅合併。
+
+實測 25 組：**雙邊都有排名證據嘅係 0 個，排名互相矛盾嘅係 0 個。**
+
+呢個守衛之前已經硬化過一次（第一版讀 `players.tour`，拒絕 97 組，全部係標錯嘅
+WTA 球員）。改用 `derived_tour` 收窄咗，但冇閂實 —— fallback 重新引入嗰個受污染
+嘅欄位。而家係三段規則：雙邊有排名且矛盾 → 拒絕；只有一邊有排名 → 該 tour 成立；
+兩邊都冇排名 → 才 fall back 去 `derived_tour`。
+
+順手：合併之後用排名證據修正 canonical row 嘅 `tour`（25 組有 1 組
+—— Destanee Aiava —— canonical 係 ATP 而實際 ranked WTA，而 `tour` 會 gate 真行為，
+ace props 係 ATP-only）。
+
+### 14b. 連字符當咗身份
+
+`normalise_player_name` 只將 `.` 換空格，保留 `-`。所以 `Chan-Yeong Oh` 同
+`Chan Yeong Oh`、`Nuria Parrizas-diaz` 同 `Nuria Parrizas Diaz`、
+`Ariadna Garcia-Patron Canals` 同 `Ariadna Garcia Patron Canals` 各自係兩個人，
+各自有自己（缺失嘅）排名。改成分隔符之後 `plan_merges` 由 25 → **58** 組。
+
+### 14c. 中間名規則第一版提議將雙打組合併入單打球員
+
+`Ammar Faleh Alhogbani` / `Ammar Alhogbani` 呢類要處理，但**唔可以用「姓＋首字母」**
+—— 101 個候選有 31 個名字根本唔同，而且混住真變體（`Pyotr`/`Petr Nesterov`、
+`Ilia`/`Ilya Snitari`）同真兄妹／同名者（`Evan`/`Eunji Lee`、`Mio`/`Mao Mushika`、
+`Rinko`/`Ryuki Matsuda`）。冇自動規則分得開。
+
+改用「首名完整相同 ＋ 尾姓相同 ＋ token 集合互相包含」。**第一版有致命 bug**：
+`normalise_player_name` 會將尾隨首字母搬到前面，所以雙打組合
+`Filin N. / Fuchs A.` 變成 `a filin n fuchs` —— 同 `a fuchs` 同首同尾而且嵌套，
+規則提議將**組合**併入單打球員（另有 `Zverev A.` 併入 `Townsend / Zverev A.`）。
+加兩條：首 token 至少兩個字母（`a fuchs` 可以係 Alexander、Anna 或 Andrea），
+同名字唔可以含 `/`。237 → **134** 組，零個涉及雙打。
+
+134 組之中 **116 個有一邊完全冇自己嘅歷史**（合併唔可能溶埋兩份記錄），
+18 個兩邊都有 —— 逐個檢視全部係中間名變體，而且細嗰邊都係殘根（194 vs 2、
+130 vs 4、98 vs 1）。**殘留風險已明文**：西班牙／葡萄牙雙姓收縮
+（`Alba Rey Garcia` / `Alba Garcia`）同中間名喺字面上分唔開。每次合併都寫入
+`player_merge_log`，可審計。
+
+### 14d. 合併每日衰減 —— 呢個係「有 code 有測試但冇人行」嘅真原因
+
+08-24 合併咗嘅 id，喺 **08-25** 嘅新場次上再次出現。`entity_mapping.get_or_create_player`
+**完全冇 canonical 意識**（一個已合併嘅行保留原名，所以繼續配得中），
+而 `resolve_player_id` 只跟**一跳**（遇到鏈就落喺已合併行 —— 07-27 有 7 條鏈，
+例如 `20089 → 18856 → 437`）。
+
+修：`terminal_canonical_id()` 跟到終端（有循環守衛同欄位守衛 ——
+`canonical_player_id` 由 `ensure_identity_schema` 加而唔係 `init_db`，
+一個喺新 DB 上會拋錯嘅身份解析器會拖低整條管道）；`get_or_create_player` 三個
+return point 全部經過佢；`apply_merges` 收尾時壓平所有鏈。
+一次性修復：597 行跨 15 個欄位 repoint，鏈 7 → **0**，落喺已合併 id 嘅場次 32 → **0**。
+
+### Phase 1.2 實測
+
+| 階段 | priced players | fixtures 雙方有排名 | ITF |
+|---|---|---|---|
+| 今日開工 | 42.4% | 42.1% | 21.0% |
+| 排名 cap ＋ 首輪合併 | 58.4% | 58.7% | 49.2% |
+| **Phase 1.2 完** | **60.5%** | **62.8%** | **56.0%** |
+
+192 組合併、194 個 id、9,936 行 repoint、**refused 0、self-match 0**
+（收手條件冇觸發）。備份
+`data/backups/pre_pit_migration/tennis_wc_pre_phase12_20260827.db`。
+
 ## 決定
 
 - **KEEP（correctness）**：`is_point_in_time` 三態分類 + 單一真源
@@ -382,6 +458,9 @@ Elo 一直有 `missing_overall_elo` / `missing_surface_elo` warning 同硬閘
 - **KEEP（08-27，Phase 2.1）**：`missing_current_rank` warning ＋ 硬閘；
   dashboard 進度指標改用 as-of ＋ 剔走雙打。今日改 0 個決定，係為咗令
   Phase 1.4 量得到。
+- **KEEP（08-27，Phase 1.2）**：tour 守衛三段規則、連字符做分隔符、
+  中間名變體合併（含雙打／首字母排除）、`terminal_canonical_id` 令合併唔再衰減。
+  ITF 排名覆蓋 49.2% → **56.0%**。
 - **NO-OP（Phase 1.1）**：雙打過濾器一直有效，8 月起零宗漏網。
 - **⚠️ 影響**：`family_reliability` 樣本大跌（例：`player_aces` 188→36 行，
   權重 0.0735→0.0000）。9 個 family 裡面 9 個而家 fit 到 0.0000，即「100% 市場、
