@@ -10,9 +10,10 @@
 
 呢度定死一次：
 
-┌─ 判決規則（PRIMARY）────────────────────────────────────────────────────┐
-│ **頭 K 位配對嘅場內 AUC，holdout 上 95% 配對 bootstrap 區間唔過 0。**    │
-│ dev 唔准係負（點估計）。就係咁多。                                       │
+┌─ Stage 4 v2 判決規則 ───────────────────────────────────────────────────┐
+│ PRIMARY：Gold／Good位優先；dev + terminal 改善，terminal paired CI > 0。 │
+│ RANKING：兩項預先登記排序指標改善，其中一項 terminal paired CI > 0，     │
+│          同時 Gold／Good位不可回歸。                                      │
 └────────────────────────────────────────────────────────────────────────┘
 
 點解係呢個，唔係場數指標：
@@ -28,8 +29,8 @@
   * **bootstrap 要按場重抽。** 同一場入面嘅配對唔獨立，按對重抽會低估區間。
   * **配對 bootstrap。** 同一批重抽場次餵兩個模型，令場次難易度抵消。
 
-場數指標（Gold / Good位 / t3prec…）**照報，做幅度參考**，但**唔做閘**。
-佢哋答「贏幾多」，AUC 答「係咪真係贏」。兩個問題唔同。
+頭五位 AUC 仍然係排序 path 嘅其中一把有功效尺，但唔再凌駕 Gold／Good位。
+舊 v1 AUC-only 規則只保留喺 `docs/model-evaluation-contract.md` 做歷史記錄。
 
 ⚠️ 有兩件事 AUC 一樣捉唔到，要另外做：
   1. **洩漏** —— 統計閘捉唔到。要逐個欄位做賽前檢查，最可靠係
@@ -63,6 +64,10 @@ sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing"))
 
 from au_racing_engine import matrix_mapper  # noqa: E402
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
+from model_evaluation_decision import (  # noqa: E402
+    build_evaluation_input,
+    evaluate_candidate,
+)
 from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
 
 # 場數指標（Gold / Good位 / Pass）係「入唔入實際前三」嘅二元判斷，**冇按馬群大細
@@ -295,6 +300,8 @@ class Verdict:
     all_hold: float = 0.0
     all_hold_ci: tuple = (0.0, 0.0)
     counts: dict = field(default_factory=dict)
+    stage4_verdict: str = "REJECT"
+    decision_detail: dict = field(default_factory=dict)
 
     def __str__(self):
         def band(d, ci):
@@ -314,7 +321,10 @@ class Verdict:
             lines.append("     " + " · ".join(
                 f"{k.replace('good_positional','Good位').replace('winner_in_top3','winT3')}"
                 f" {v:+.2f}" for k, v in self.counts.items()))
-        lines.append(f"  ➜ {'✅ 可以 ship' if self.ship else '❌ 唔 ship'}：{self.reason}")
+        lines.append(
+            f"  ➜ {'✅ 可以 ship' if self.ship else '❌ 唔 ship'} "
+            f"[{self.stage4_verdict}]：{self.reason}"
+        )
         return "\n".join(lines)
 
 
@@ -346,8 +356,8 @@ def baseline_report(races, holdout=HOLDOUT, scorer=None):
             ),
             "top_k": TOP_K,
             "promotion_rule": (
-                "top-k paired within-race AUC: development delta >= 0 and "
-                "terminal whole-race bootstrap 95% CI lower bound > 0"
+                "Stage4 v2: Gold/Good primary; ranking-only requires primary "
+                "non-regression, two predeclared gains and one positive terminal CI"
             ),
         },
         "auc": {
@@ -382,8 +392,40 @@ def baseline_report(races, holdout=HOLDOUT, scorer=None):
     }
 
 
+def _stage4_metric_rows(races, scorer):
+    pairs = _pairs(races, scorer, True)
+    rows = []
+    for race, pair in zip(races, pairs):
+        scored = sorted(
+            ((scorer(row), index, row["pos"]) for index, row in enumerate(race["rows"])),
+            key=lambda item: -item[0],
+        )
+        actual_pos = {index: position for _score, index, position in scored}
+        actual_top3 = {index for index, position in actual_pos.items() if position <= 3}
+        winner = next((index for index, position in actual_pos.items() if position == 1), None)
+        metrics = race_metrics(
+            [index for _score, index, _position in scored],
+            actual_top3,
+            winner=winner,
+            actual_pos=actual_pos,
+            field_size=_field_size(race),
+        )
+        rows.append(
+            {
+                "gold": metrics["gold"],
+                "good_positional": metrics["good_positional"],
+                "top3_capture_at5": metrics["top3_capture_at5"],
+                "mean_top3_model_rank": metrics["top3_mean_model_rank"],
+                "competitive_recall_at5": metrics["competitive_recall_at5"],
+                "ndcg_at5": metrics["ndcg_at5"],
+                "top5_pairwise_auc": pair[0] / pair[1] if pair[1] else None,
+            }
+        )
+    return rows
+
+
 def compare(races, base_scorer=None, cand_scorer=None, *, label="候選",
-            holdout=HOLDOUT, with_counts=True):
+            holdout=HOLDOUT, with_counts=True, leakage_audit_passed=False):
     """一個候選 vs 基準。→ `Verdict`。
 
     判決：頭 K 位 holdout 區間唔過 0，而且 dev 點估計唔係負。
@@ -401,20 +443,32 @@ def compare(races, base_scorer=None, cand_scorer=None, *, label="候選",
     ah = _auc_indices(ca, holdout_indices) - _auc_indices(ba, holdout_indices)
     aci = _boot_ci(ba, ca, holdout_indices)
 
-    if tci[0] > 0 and td >= 0:
-        ship, why = True, f"holdout 頭 {TOP_K} 位區間唔過 0，dev 唔係負"
-    elif tci[1] < 0:
-        ship, why = False, "holdout 區間全負 —— 呢個改動令排序變差"
-    elif td < 0:
-        ship, why = False, "dev 點估計係負"
-    else:
-        ship, why = False, "holdout 區間跨 0 —— 呢把尺分唔開，證明唔到有改善"
+    stage4_input = build_evaluation_input(
+        domain="au",
+        dates=[str(race.get("date") or f"undated-{index:06d}")
+               for index, race in enumerate(races)],
+        baseline_rows=_stage4_metric_rows(races, base_scorer),
+        candidate_rows=_stage4_metric_rows(races, cand_scorer),
+        leakage_audit_passed=leakage_audit_passed,
+        holdout_fraction=holdout,
+        ranking_metrics=(
+            "top3_capture_at5",
+            "ndcg_at5",
+            "top5_pairwise_auc",
+        ),
+    )
+    decision = evaluate_candidate(stage4_input)
+    ship = decision["verdict"] in {"PRIMARY_WIN", "RANKING_WIN"}
+    why = str(decision["reason"])
 
     counts = {}
     if with_counts:
         b, c = _counts(races, base_scorer), _counts(races, cand_scorer)
         counts = {k: c[k] - b[k] for k in c if k in b}
-    return Verdict(label, n, ship, why, td, th, tci, ad, ah, aci, counts)
+    return Verdict(
+        label, n, ship, why, td, th, tci, ad, ah, aci, counts,
+        decision["verdict"], decision.get("detail") or {},
+    )
 
 
 def main():
@@ -428,10 +482,15 @@ def main():
     ap.add_argument("--wet-scale", type=float,
                     help="Candidate multiplier for the existing wet overlay")
     ap.add_argument("--output-json", help="Write the canonical report/verdicts")
+    ap.add_argument(
+        "--leakage-audit-passed",
+        action="store_true",
+        help="Confirm the candidate's separate point-in-time leakage audit passed",
+    )
     args = ap.parse_args()
 
     races = load_races(args.data)
-    print(f"{len(races)} 場 · 判決 = 頭 {TOP_K} 位配對 AUC 嘅 holdout 區間\n")
+    print(f"{len(races)} 場 · Stage 4 v2 = Gold/Good primary + ranking evidence\n")
     report = {"baseline": baseline_report(races, args.holdout), "verdicts": []}
     has_candidate = bool(args.swap_leaf or args.matrix_weights or args.wet_scale is not None)
     if not has_candidate:
@@ -495,6 +554,7 @@ def main():
             configured_scorer(leaf_overrides={leaf: v}),
             label=f"{leaf} 設成常數 {v:g}",
             holdout=args.holdout,
+            leakage_audit_passed=args.leakage_audit_passed,
         )
         report["verdicts"].append(verdict_dict(verdict))
         print(verdict)
@@ -507,6 +567,7 @@ def main():
             configured_scorer(weights=weights),
             label=f"matrix weights: {Path(args.matrix_weights).name}",
             holdout=args.holdout,
+            leakage_audit_passed=args.leakage_audit_passed,
         )
         report["verdicts"].append(verdict_dict(verdict))
         print(verdict)
@@ -518,6 +579,7 @@ def main():
             configured_scorer(wet_scale=args.wet_scale),
             label=f"wet overlay ×{args.wet_scale:g}",
             holdout=args.holdout,
+            leakage_audit_passed=args.leakage_audit_passed,
         )
         report["verdicts"].append(verdict_dict(verdict))
         print(verdict)
