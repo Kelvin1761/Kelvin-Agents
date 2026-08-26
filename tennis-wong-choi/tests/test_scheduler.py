@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import subprocess
 
 from scripts import tennis_daily_schedule as scheduler
@@ -85,6 +86,37 @@ def test_main_returns_temporary_failure_code_before_workflow(monkeypatch, tmp_pa
     )
 
     assert scheduler.main(["--today", "2026-07-25"]) == 75
+
+
+def test_control_json_reports_temporary_card_failure(
+    monkeypatch, tmp_path, capsys
+):
+    monkeypatch.setattr(scheduler, "LOG_DIR", tmp_path)
+    monkeypatch.setattr(
+        scheduler, "disk_headroom", lambda: {"ok": True, "detail": "test"}
+    )
+    monkeypatch.setattr(scheduler, "ensure_live_network", lambda: None)
+    monkeypatch.setattr(scheduler, "run_cli", lambda *_args: "")
+    monkeypatch.setattr(
+        scheduler,
+        "analyse_next_day",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            scheduler.TemporaryDataUnavailable("odds not ready")
+        ),
+    )
+    code = scheduler.main(
+        [
+            "--today",
+            "2026-07-25",
+            "--refresh-today",
+            "--control-json",
+        ]
+    )
+    assert code == 75
+    payload = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert payload["status"] == "partial"
+    assert payload["mode"] == "card"
+    assert payload["target_date"] == "2026-07-25"
 
 
 # --------------------------------------------------------------------------- #
