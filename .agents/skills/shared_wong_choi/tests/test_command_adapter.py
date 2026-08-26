@@ -23,4 +23,3 @@ def test_last_json_object_accepts_pretty_json_after_logs() -> None:
 
 def test_last_json_object_rejects_trailing_non_json() -> None:
     assert last_json_object('{"status":"ok"}\ntrailing log\n') is None
-

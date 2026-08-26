@@ -29,4 +29,3 @@ def create_adapter(
 ) -> ManifestCommandAdapter:
     adapter_type = ADAPTER_TYPES[Domain(domain)]
     return adapter_type(repo_root, state_root, runner=runner)
-

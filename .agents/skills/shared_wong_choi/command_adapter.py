@@ -186,4 +186,3 @@ class ManifestCommandAdapter(ABC):
                 artifacts=(str(path),),
                 detail=detail,
             )
-

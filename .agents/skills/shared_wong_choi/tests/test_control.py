@@ -91,4 +91,3 @@ def test_single_run_lock_rejects_overlap_and_releases_afterward(tmp_path: Path) 
             assert second is False
     with single_run_lock(path) as third:
         assert third is True
-

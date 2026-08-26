@@ -70,4 +70,3 @@ def test_tennis_blocked_envelope_maps_to_blocked(tmp_path: Path) -> None:
 
     result = TennisAdapter(REPO_ROOT, tmp_path, runner=runner).execute(_request())
     assert result.state is RunState.BLOCKED
-

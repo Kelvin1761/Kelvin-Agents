@@ -135,4 +135,3 @@ ADAPTER_SPECS: dict[Domain, AdapterSpec] = {
 
 def adapter_spec(domain: Domain | str) -> AdapterSpec:
     return ADAPTER_SPECS[Domain(domain)]
-
