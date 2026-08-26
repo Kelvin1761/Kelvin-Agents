@@ -158,6 +158,7 @@ def test_code_release_pushes_branch_but_requires_approval_for_main(repo: Path) -
     assert result["policy"]["auto_merge"] is False
     assert result["rollback_target"] == base
     assert result["selected_scope"] == ["src/engine.py"]
+    assert result["activation_base"] == base
     assert git(repo.parent / "remote.git", "rev-parse", "main") == base
     assert git(repo.parent / "remote.git", "rev-parse", result["branch"]) == result["commit"]
 
@@ -189,3 +190,30 @@ def test_stacked_history_is_in_full_scope_and_uses_origin_main_rollback(
     assert set(result["scope"]) == {"src/engine.py", "docs/release.md"}
     assert result["policy"]["risk"] == "code"
     assert result["status"] == "pushed"
+
+
+def test_activation_base_excludes_already_deployed_manual_installer(repo: Path) -> None:
+    git(repo, "checkout", "-b", "deployed-stack")
+    installer = repo / "ops" / "install_macos_launchd.sh"
+    installer.parent.mkdir()
+    installer.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    git(repo, "add", str(installer.relative_to(repo)))
+    git(repo, "commit", "-m", "ops: already deployed installer")
+    deployed = git(repo, "rev-parse", "HEAD")
+    source = repo / "src" / "next.py"
+    source.parent.mkdir(exist_ok=True)
+    source.write_text("VALUE = 2\n", encoding="utf-8")
+
+    result = prepare_release(
+        repo,
+        paths=["src/next.py"],
+        message="feat: next release",
+        state_root=repo.parent / "state",
+        dry_run=True,
+        notify=False,
+        activation_base=deployed,
+    )
+
+    assert "ops/install_macos_launchd.sh" in result["scope"]
+    assert "ops/install_macos_launchd.sh" not in result["activation_scope"]
+    assert result["activation_plan"]["manual_required"] is False

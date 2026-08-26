@@ -69,6 +69,7 @@ def build_parser() -> argparse.ArgumentParser:
     release.add_argument("--message", required=True)
     release.add_argument("--dry-run", action="store_true")
     release.add_argument("--allow-unrelated", action="store_true")
+    release.add_argument("--activation-base")
     release.add_argument("--no-notify", action="store_true")
     release.add_argument("--json", action="store_true")
     approve = sub.add_parser("approve")
@@ -102,6 +103,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 dry_run=args.dry_run,
                 notify=not args.no_notify,
                 allow_unrelated=args.allow_unrelated,
+                activation_base=args.activation_base,
             )
         except ReleaseError as exc:
             result = {"status": "blocked", "error": str(exc)}

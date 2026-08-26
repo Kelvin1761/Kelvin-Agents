@@ -222,6 +222,7 @@ def prepare_release(
     dry_run: bool = False,
     notify: bool = True,
     allow_unrelated: bool = False,
+    activation_base: str | None = None,
 ) -> dict:
     repo = repo.resolve()
     selected = _scope_paths(repo, paths)
@@ -258,11 +259,31 @@ def prepare_release(
     )
     release_scope = tuple(dict.fromkeys((*stacked, *selected)))
     policy = classify_release(release_scope)
+    activation_target = _git(repo, "rev-parse", activation_base or rollback_target)
+    if (
+        _run(
+            repo,
+            "git",
+            "merge-base",
+            "--is-ancestor",
+            activation_target,
+            head,
+            check=False,
+        ).returncode
+        != 0
+    ):
+        raise ReleaseError("activation base is not an ancestor of the release branch")
+    activation_stacked = _nul_paths(
+        _git(repo, "diff", "--name-only", "-z", f"{activation_target}...HEAD")
+    )
+    activation_scope = tuple(dict.fromkeys((*activation_stacked, *selected)))
     plan = {
         "schema_version": RELEASE_SCHEMA,
         "status": "dry_run",
         "scope": list(release_scope),
         "selected_scope": list(selected),
+        "activation_base": activation_target,
+        "activation_scope": list(activation_scope),
         "unrelated_dirty": unrelated,
         "policy": {
             "risk": policy.risk.value,
@@ -272,7 +293,7 @@ def prepare_release(
             "auto_activate": policy.auto_activate,
             "reasons": list(policy.reasons),
         },
-        "activation_plan": activation_plan(release_scope),
+        "activation_plan": activation_plan(activation_scope),
     }
     if dry_run:
         return plan
@@ -358,6 +379,10 @@ def build_parser() -> argparse.ArgumentParser:
     release.add_argument("--dry-run", action="store_true")
     release.add_argument("--no-notify", action="store_true")
     release.add_argument("--allow-unrelated", action="store_true")
+    release.add_argument(
+        "--activation-base",
+        help="Already-deployed commit used only to derive the production activation delta",
+    )
     release.add_argument("--json", action="store_true")
     return parser
 
@@ -376,6 +401,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 dry_run=args.dry_run,
                 notify=not args.no_notify,
                 allow_unrelated=args.allow_unrelated,
+                activation_base=args.activation_base,
             )
     except ReleaseError as exc:
         result = {"status": "blocked", "error": str(exc)}
