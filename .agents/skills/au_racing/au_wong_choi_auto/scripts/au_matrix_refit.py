@@ -49,7 +49,7 @@ from eval_metrics import race_metrics, summarize_races  # noqa: E402
 from au_racing_engine.matrix_mapper import (  # noqa: E402
     MATRIX_DISPLAY_GAINS, MATRIX_DISPLAY_TARGET_SD, MATRIX_FORMULAS,
     map_features_to_matrix_scores)
-from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_ABILITY_SCALE, MATRIX_WEIGHTS  # noqa: E402
 
 HERE = Path.cwd()
 HOLDOUT = 0.15
@@ -161,7 +161,11 @@ class Dataset:
 
     def ability(self, mx, weights, wet_scale=1.0):
         w = np.array([float(weights.get(k, 0.0)) for k in DIMS])
-        return np.round(mx @ w, 4) + self.wet * wet_scale + self.proven_class
+        # 跟 `engine_core` 條 ability 公式（2026-08-26 加咗 MATRIX_ABILITY_SCALE）。
+        # 候選權重會自己歸一，所以同一個尺對 baseline 同候選都啱。
+        core = np.round(mx @ w, 4)
+        return (60.0 + (core - 60.0) / MATRIX_ABILITY_SCALE
+                + self.wet * wet_scale + self.proven_class)
 
     def evaluate(self, ability, lo=0, hi=None):
         hi = len(self.slices) if hi is None else hi
@@ -214,8 +218,9 @@ def cmd_verify(ds, _args):
     mine = ds.ability(ds.dim_matrix(MATRIX_DISPLAY_GAINS), MATRIX_WEIGHTS)
     # 對照組：真正行一次 map_features_to_matrix_scores（唔用 numpy 捷徑）
     slow = np.array([
-        round(sum(map_features_to_matrix_scores(r["features"])[k] * MATRIX_WEIGHTS[k]
-                  for k in MATRIX_WEIGHTS), 4)
+        60.0
+        + (round(sum(map_features_to_matrix_scores(r["features"])[k] * MATRIX_WEIGHTS[k]
+                     for k in MATRIX_WEIGHTS), 4) - 60.0) / MATRIX_ABILITY_SCALE
         + float(r["wet"] or 0.0)
         + float(r.get("proven_class") or 0.0)
         for r in ds.rows])

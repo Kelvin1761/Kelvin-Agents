@@ -44,7 +44,11 @@ MATRIX_LABELS = {
     "pace_perf": "速度考驗背景",
     "race_shape": "檔位形勢",
     "jockey_trainer": "騎練訊號",
-    "class_weight": "級數與負重",
+    # 2026-08-26：改名。呢個維度嘅 MATRIX_FORMULAS 係 `rating_score × 0.70` ——
+    # 得一個 leaf。`class_score` 2026-07-29 退出排名、`weight_score` 2026-07-30
+    # 退出，兩個而家淨係出報告。叫「級數與負重」會令人以為班次同負磅入咗分，
+    # 實情兩樣都冇。改叫「官方評分對位」，同實際計算對齊。
+    "class_weight": "官方評分對位",
     "track": "場地與地況適性",
     "form_line": "賽績線",
 }
@@ -670,7 +674,7 @@ def _track_dim_detail_lines(auto, name):
 
 
 def _class_weight_detail_lines(auto, name):
-    """級數與負重 sub 分嘅完整組件（人話）。"""
+    """官方評分對位 sub 分嘅完整組件（人話）。"""
     sd = auto.get("class_weight_detail")
     if not isinstance(sd, dict):
         return []
