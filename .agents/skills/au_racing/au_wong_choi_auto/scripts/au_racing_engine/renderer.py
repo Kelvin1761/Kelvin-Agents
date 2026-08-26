@@ -770,6 +770,21 @@ def _render_horse_section(horse_num, horse, auto):
         f"⭐ 最終評級: **{auto.get('grade', '')}** | {ABILITY_LABEL}: **{float(auto.get('ability_score', 0)):.1f}** | 排名: **{auto.get('rank', '')}**",
         "",
     ]
+    # 配備變更（2026-08-26）：**純敘述，唔入排名**。
+    # 實測 817 場 / 2,245 條（按馬匹數修正）：首次配戴 −2.15pp、再次配戴 −2.73pp、
+    # 除下 OFF FIRST TIME **−3.86pp [−6.94, −0.75]（顯著）**。
+    # 加落 ability 四個 k 全部跨 0，而且同 `form_score` 重複（有變更嘅馬 form
+    # 平均 59.83 vs 冇嘅 62.10）—— 所以只講唔計。見 EXP-20260826-07。
+    gear = horse.get("gear_change")
+    if gear:
+        drop = "OFF" in gear.upper()
+        lines += [
+            f"🔧 配備變更: {gear}　"
+            + ("（歷史上呢類**除下**配備嘅馬上名率低 3.9 個百分點；純參考，唔入評分）"
+               if drop else
+               "（歷史上有配備變更嘅馬上名率低約 2–3 個百分點；純參考，唔入評分）"),
+            "",
+        ]
     if grade_summary:
         lines.extend([
             "#### 🔢 評分總覽（六維排名加權 · Python Auto 引擎）",
