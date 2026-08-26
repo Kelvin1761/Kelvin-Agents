@@ -147,6 +147,21 @@ class RaceMetadataAndTimeTest(unittest.TestCase):
         self.assertEqual(meta["distance"], 2000)
         self.assertEqual(meta["race_class"], "FOUNDATION FEMALE MEMBER HANDICAP")
 
+    def test_event_title_attribute_beats_truncated_visible_label(self):
+        html = (
+            '<html><head><title>Randwick Race 2</title></head><body>'
+            '<div class="eventname">'
+            '<span title="BUY YOUR KOSCIUSZKO TICKETS AT TAB HIGHWAY HANDICAP">'
+            '1100m BUY YOUR KOSCIUSZKO TICKETS AT TAB HIGHWAY HA....'
+            '</span></div></body></html>'
+        )
+        meta = parse_race(html)["meta"]
+        self.assertEqual(meta["distance"], 1100)
+        self.assertEqual(
+            meta["race_class"],
+            "BUY YOUR KOSCIUSZKO TICKETS AT TAB HIGHWAY HANDICAP",
+        )
+
     def test_one_digit_minute_winning_time_is_valid(self):
         self.assertEqual(_parse_time_to_seconds("WinningTime:1:52.590"), 112.59)
         section = (

@@ -402,14 +402,26 @@ def parse_race(html):
     # `NNNNm` 安全（頁面同時有其他場次連結同大量歷史路程）。
     event = re.search(
         r'<div\s+class="eventname"[^>]*>.*?'
-        r'<span[^>]*(?:title="(?P<title>[^"]*)")?[^>]*>'
+        r'<span(?P<attrs>[^>]*)>'
         r'\s*(?P<distance>\d{3,4})m\s+(?P<label>.*?)</span>',
         html,
         re.I | re.S,
     )
     if event:
         meta["distance"] = int(event.group("distance"))
-        race_class = re.sub(r"<[^>]+>", " ", event.group("title") or event.group("label") or "")
+        # SportsbetForm truncates long visible labels (``HIGHWAY HA....``) but
+        # keeps the complete race title in the span's ``title`` attribute.
+        # The previous regex made that capture optional *after* a greedy
+        # ``[^>]*``; the greedy part swallowed the attribute and the optional
+        # group therefore stayed empty on every real page. Parse attributes
+        # separately so the full source title wins without guessing a CL/BM.
+        title_match = re.search(
+            r"\btitle\s*=\s*(['\"])(?P<title>.*?)\1",
+            event.group("attrs") or "",
+            re.I | re.S,
+        )
+        source_title = title_match.group("title") if title_match else event.group("label")
+        race_class = re.sub(r"<[^>]+>", " ", _html.unescape(source_title or ""))
         race_class = re.sub(r"\s+", " ", race_class).strip().rstrip(".")
         if race_class:
             meta["race_class"] = race_class
