@@ -21,6 +21,7 @@ import json
 import math
 import re
 
+from tennis_wc.evaluation.corpus import classify_point_in_time, point_in_time_clause
 from tennis_wc.features.common import utc_now
 
 
@@ -479,6 +480,15 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
     """
     prop_key = f"{match_id}|{market_key}|{selection}"
     now = utc_now()
+    # Stamped at write time, not re-derived later: `start_time_utc` gets
+    # backfilled and corrected, and re-deriving would silently reclassify rows
+    # that a decision had already been made on. See evaluation/corpus.py.
+    start_row = conn.execute(
+        "SELECT start_time_utc FROM matches WHERE id=?", (match_id,)
+    ).fetchone()
+    point_in_time = classify_point_in_time(
+        now, start_row["start_time_utc"] if start_row else None
+    )
     conn.execute(
         """
         INSERT INTO prop_tracker (
@@ -488,8 +498,9 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
             market_prob_fair, blended_prob, edge, ev, predicted_mean, stake_units,
             is_value, result_status, profit_loss_units, actual_value,
             recorded_at, updated_at, settled_at,
-            feed_market_key, feed_market_name, feed_selection_name, feed_line
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING', NULL, NULL, ?, ?, NULL, ?,?,?,?)
+            feed_market_key, feed_market_name, feed_selection_name, feed_line,
+            is_point_in_time
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING', NULL, NULL, ?, ?, NULL, ?,?,?,?,?)
         ON CONFLICT(prop_key) DO UPDATE SET
             decimal_odds=excluded.decimal_odds, model_prob=excluded.model_prob,
             model_prob_raw=excluded.model_prob_raw,
@@ -501,15 +512,34 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
             feed_market_key=COALESCE(excluded.feed_market_key, prop_tracker.feed_market_key),
             feed_market_name=COALESCE(excluded.feed_market_name, prop_tracker.feed_market_name),
             feed_selection_name=COALESCE(excluded.feed_selection_name, prop_tracker.feed_selection_name),
-            feed_line=COALESCE(excluded.feed_line, prop_tracker.feed_line)
+            feed_line=COALESCE(excluded.feed_line, prop_tracker.feed_line),
+            -- The prices in this row are the ones just written, so a re-record
+            -- after the start makes the whole row post-start. Downgrade only:
+            -- MIN over {0,1} keeps 0 sticky, and a NULL on either side means at
+            -- least one of the two writes cannot be vouched for.
+            is_point_in_time=CASE
+                WHEN excluded.is_point_in_time IS NULL
+                     OR prop_tracker.is_point_in_time IS NULL THEN NULL
+                ELSE MIN(excluded.is_point_in_time, prop_tracker.is_point_in_time)
+            END
         WHERE prop_tracker.result_status = 'PENDING'
+          -- Do not let a post-start write replace a pre-match price. The card
+          -- and the recovery job both re-record props that are still PENDING,
+          -- and a match that has already started is still PENDING -- so real
+          -- pre-match prices were being overwritten from 0.3 to 144 hours
+          -- after the first ball, on 1,824 of the last fortnight's 3,991 rows.
+          -- The row is then no longer a recommendation anybody could have
+          -- acted on, and the price it originally held is gone.
+          AND NOT (prop_tracker.is_point_in_time = 1
+                   AND excluded.is_point_in_time = 0)
         """,
         (prop_key, match_id, match_date, match_label, market_key, line, selection,
          side, prop_scope, subject_player_id, decimal_odds, model_prob,
          model_prob_raw, temper_strength,
          market_prob_fair, blended_prob, edge, ev, predicted_mean, stake_units,
          1 if is_value else 0, now, now,
-         feed_market_key, feed_market_name, feed_selection_name, feed_line),
+         feed_market_key, feed_market_name, feed_selection_name, feed_line,
+         point_in_time),
     )
 
 
@@ -737,7 +767,8 @@ def settle_props(conn, today: str | None = None) -> dict:
 # --------------------------------------------------------------------------- #
 def prop_roi_report(conn, value_only: bool = True,
                     as_of_date: str | None = None,
-                    since_date: str | None = None) -> dict:
+                    since_date: str | None = None,
+                    point_in_time_only: bool = True) -> dict:
     """Realised ROI over settled BET props, split into decision-useful segments.
 
     Besides market family and side, report odds, confidence, tour, surface and
@@ -748,8 +779,17 @@ def prop_roi_report(conn, value_only: bool = True,
     it carves out a window, which is what an out-of-sample check needs: a
     coefficient fitted on the earlier period has to be scored on the later one
     alone, or it is being graded on its own training data.
+
+    ``point_in_time_only`` defaults to True and is what makes the number a
+    record rather than a replay. On the full table this report read +2.86% ROI;
+    on provably pre-match rows alone, -15.45% (CI [-25.14, -5.04]). Pass False
+    only to inspect the backfill deliberately -- never to widen a sample.
     """
+    # `where` is interpolated as `WHERE p.{where}`, so the FIRST term must stay
+    # unqualified and every later one carries its own alias.
     where = "result_status IN ('WON','LOST') AND stake_units > 0"
+    if point_in_time_only:
+        where += f" AND {point_in_time_clause('p')}"
     if value_only:
         where += " AND is_value = 1"
     params: list = []
@@ -991,7 +1031,8 @@ def prop_roi_report(conn, value_only: bool = True,
 # --------------------------------------------------------------------------- #
 def model_vs_market_scorecard(conn, use_raw: bool = True,
                               as_of_date: str | None = None,
-                              since_date: str | None = None) -> dict:
+                              since_date: str | None = None,
+                              point_in_time_only: bool = True) -> dict:
     """On every settled prop, compare the MODEL's probability of the recorded
     side vs the MARKET's de-vigged probability, via Brier + log-loss. Lower is
     better. If the model beats the market, our edge is real; if the market wins,
@@ -1005,8 +1046,16 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
     since the temper strength is itself picked from this scorecard. Rows written
     before 2026-07-25 have no raw column and are reported separately rather than
     silently mixed in. Pass use_raw=False for the legacy tempered view.
+
+    ``point_in_time_only`` defaults to True. Pooled over the whole table this
+    scorecard reported model AUC 0.82 against a market AUC of 0.64 -- an
+    implausible result, and its source was the 2026-08-10 backfill, whose rows
+    were priced after the outcome. On provably pre-match rows the sample is far
+    smaller and, once stratified by market, has no power at all. Report the
+    smaller honest number; do not pass False to make it bigger.
     """
     column = "model_prob_raw" if use_raw else "model_prob"
+    pit_clause = f" AND {point_in_time_clause('p')}" if point_in_time_only else ""
     date_parts: list[str] = []
     params: list[str] = []
     if as_of_date:
@@ -1023,7 +1072,7 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
         f"WHERE p.result_status IN ('WON','LOST') AND p.{column} IS NOT NULL "
         "AND p.market_prob_fair IS NOT NULL AND p.side='over' "
         "AND (p.prop_scope!='player_first_set' "
-        "OR p.subject_player_id=m.player_a_id)" + date_clause,
+        "OR p.subject_player_id=m.player_a_id)" + pit_clause + date_clause,
         date_params,
     ).fetchall()
     legacy_only = conn.execute(
@@ -1031,7 +1080,7 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
         "WHERE p.result_status IN ('WON','LOST') "
         "AND p.model_prob_raw IS NULL AND p.model_prob IS NOT NULL "
         "AND p.side='over' AND (p.prop_scope!='player_first_set' "
-        "OR p.subject_player_id=m.player_a_id)" + date_clause,
+        "OR p.subject_player_id=m.player_a_id)" + pit_clause + date_clause,
         date_params,
     ).fetchone()[0]
     n = len(rows)

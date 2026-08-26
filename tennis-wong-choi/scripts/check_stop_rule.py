@@ -26,6 +26,8 @@ import sys
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR / "src"))
 
+from tennis_wc.evaluation.corpus import point_in_time_clause  # noqa: E402
+
 
 def _max_drawdown(values) -> float:
     peak = cumulative = 0.0
@@ -96,10 +98,14 @@ def main() -> int:
 
     conn = sqlite3.connect(f"file:{args.db}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
+    # Provably pre-match rows only. The 2026-08-10 backfill wrote three months
+    # of recommendations after the results were known, and counting those as
+    # "recommendations we made" is how a stop rule gets talked out of firing.
     recommendation_count = int(conn.execute(
-        """SELECT COUNT(*) FROM prop_tracker p
+        f"""SELECT COUNT(*) FROM prop_tracker p
            WHERE p.result_status IN ('WON','LOST') AND p.stake_units > 0
-             AND p.is_value = 1 AND p.match_date >= ?""",
+             AND p.is_value = 1 AND {point_in_time_clause('p')}
+             AND p.match_date >= ?""",
         (args.since,),
     ).fetchone()[0])
     recorded_live_bets = int(conn.execute(

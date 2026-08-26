@@ -596,3 +596,32 @@ def _ensure_compat_columns(conn) -> None:
     }.items():
         if prop_cols and name not in prop_cols:
             conn.execute(ddl)
+    if prop_cols and "is_point_in_time" not in prop_cols:
+        # 2026-08-26: the track record was not a track record. A single run on
+        # 2026-08-10 wrote 9,594 of the 13,658 rows, covering match dates from
+        # 2026-05-10 to 08-11 -- three months priced after the results were
+        # known. Split on it, the same corpus reads +6.05% ROI (backfill) and
+        # -15.45% (genuinely pre-match); pooled it published +2.86%.
+        #
+        # 1 = provably pre-match, 0 = provably post-start, NULL = no
+        # start_time_utc so unknowable. See evaluation/corpus.py for why the
+        # date is not usable as the test (335 rows look pre-match by date and
+        # were written after the start) and why NULL is excluded rather than
+        # assumed innocent.
+        conn.execute("ALTER TABLE prop_tracker ADD COLUMN is_point_in_time INTEGER")
+        conn.execute(
+            """
+            UPDATE prop_tracker SET is_point_in_time = (
+                SELECT CASE
+                    WHEN m.start_time_utc IS NULL OR m.start_time_utc = '' THEN NULL
+                    WHEN prop_tracker.recorded_at < m.start_time_utc THEN 1
+                    ELSE 0
+                END
+                FROM matches m WHERE m.id = prop_tracker.match_id
+            )
+            """
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_prop_tracker_point_in_time "
+            "ON prop_tracker(is_point_in_time, result_status)"
+        )

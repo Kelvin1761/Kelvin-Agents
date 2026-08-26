@@ -48,6 +48,7 @@ def main() -> int:
         JOIN latest_prediction prediction ON prediction.match_id=p.match_id
         WHERE p.match_date >= ?
           AND p.result_status IN ('WON','LOST')
+          AND p.is_point_in_time = 1
           AND p.model_prob_raw IS NOT NULL
           AND p.market_prob_fair IS NOT NULL
           AND p.prop_scope IN ('player_win_set','player_first_set',

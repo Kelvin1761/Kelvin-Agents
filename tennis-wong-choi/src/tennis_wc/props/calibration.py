@@ -26,6 +26,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from tennis_wc.evaluation.corpus import point_in_time_clause
 from tennis_wc.props.registry import family_for_market
 
 MIN_SETTLED = 120
@@ -79,7 +80,23 @@ def family_reliability(conn, family: str, as_of_date: str | None = None) -> Fami
     ``market + weight * (raw_model - market)``.  Only canonical, settled,
     quality-qualified rows strictly before ``as_of_date`` are eligible, so a
     historical replay never sees its own or future outcomes.
+
+    2026-08-26: `as_of_date` was never enough. It keeps a REPLAY honest about
+    match dates, and says nothing about when the row was written -- and 9,594 of
+    13,658 rows were written by one backfill run after their results were known.
+    Those rows had been supplying most of the evidence behind every learned
+    weight, so the weights were fitted on prices chosen with hindsight. Only
+    provably pre-match rows are eligible now (`evaluation/corpus.py`); expect
+    far smaller samples and more families sitting on DEFAULT_MODEL_WEIGHT, which
+    is the honest state rather than a regression.
     """
+    # MIN over EVERY snapshot ever written was the pattern `snapshot_quality`
+    # was created to replace, and this call site was missed: it graded a match
+    # on the worst quality it had ever had, so no rebuild could ever return a
+    # row to the sample. The weight fit is the one place where losing rows to a
+    # stale score is least visible.
+    from tennis_wc.features.snapshot_quality import LATEST_QUALITY_CTE
+
     try:
         params: list = []
         date_clause = ""
@@ -88,17 +105,16 @@ def family_reliability(conn, family: str, as_of_date: str | None = None) -> Fami
             params.append(as_of_date)
         rows = conn.execute(
             f"""
-            WITH quality AS (
-                SELECT match_id, MIN(data_quality_score) AS score
-                FROM feature_snapshots GROUP BY match_id
-            )
+            WITH quality AS ({LATEST_QUALITY_CTE})
             SELECT p.match_id, p.match_date, p.market_key, p.model_prob_raw,
-                   p.market_prob_fair, p.result_status, q.score AS data_quality,
+                   p.market_prob_fair, p.result_status,
+                   q.data_quality_score AS data_quality,
                    p.subject_player_id, m.player_a_id, m.player_b_id
             FROM prop_tracker p
             JOIN matches m ON m.id=p.match_id
             LEFT JOIN quality q ON q.match_id=p.match_id
             WHERE p.result_status IN ('WON','LOST')
+              AND {point_in_time_clause('p')}
               AND p.model_prob_raw IS NOT NULL
               AND p.market_prob_fair IS NOT NULL
               AND p.side='over'

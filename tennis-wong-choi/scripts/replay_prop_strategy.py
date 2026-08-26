@@ -6,6 +6,21 @@ in a temporary directory, its prop tracker is cleared, and every stored market
 date is priced and settled in chronological order.  Family calibration at each
 date can therefore see only earlier settled outcomes.
 
+WHAT THE OUTPUT IS, AND IS NOT
+
+It answers "what would today's model have said", which is legitimate evidence.
+It is NOT a track record: the prices are re-read now, for matches already
+played. `--rebuild-source-tracker` writes exactly that into the live table, and
+on 2026-08-10 one such run wrote 9,594 of the 13,658 rows -- three months of
+match dates from 2026-05-10 -- after which the tracker read +2.86% ROI while
+its provably pre-match rows read -23.38% (CI [-33.92, -12.65]).
+
+Every row this script writes is now stamped `is_point_in_time = 0` by
+`record_prop`, so the judgement surfaces exclude it automatically and the two
+kinds of row can no longer be confused. That is why the summary below asks for
+`point_in_time_only=False` explicitly: on its own output the gated reports are
+correctly empty, and a replay has to opt in to reading a replay.
+
 Usage:
   PYTHONPATH=src .venv/bin/python scripts/replay_prop_strategy.py \
       --source-db tennis_wc.db --through 2026-08-01
@@ -54,12 +69,41 @@ def main() -> int:
             "current model never produced."
         ),
     )
+    parser.add_argument(
+        "--discard-point-in-time-record",
+        action="store_true",
+        help=(
+            "Required alongside --rebuild-source-tracker when the live tracker "
+            "holds provably pre-match rows. Those rows are the only real "
+            "record and cannot be regenerated."
+        ),
+    )
     args = parser.parse_args()
     source = args.source_db.expanduser().resolve()
     if not source.is_file():
         parser.error(f"database not found: {source}")
 
     if args.rebuild_source_tracker:
+        # This DELETEs the live tracker. Rows that were provably written before
+        # their match are the only real record there is, they cannot be
+        # regenerated, and one unguarded run of this flag is what destroyed
+        # three months of them. Refuse unless the operator says so in as many
+        # words.
+        with sqlite3.connect(f"file:{source}?mode=ro", uri=True) as probe:
+            try:
+                at_risk = probe.execute(
+                    "SELECT COUNT(*) FROM prop_tracker WHERE is_point_in_time = 1"
+                ).fetchone()[0]
+            except sqlite3.Error:
+                at_risk = 0
+        if at_risk and not args.discard_point_in_time_record:
+            parser.error(
+                f"--rebuild-source-tracker would delete {at_risk} provably "
+                "pre-match rows, which are the only real record and cannot be "
+                "rebuilt. They are archived to prop_tracker_pre_rebuild, but "
+                "the live table is what every report reads. Re-run with "
+                "--discard-point-in-time-record if that is genuinely intended."
+            )
         return _run_replay(source, args.through, rebuild=True)
 
     with tempfile.TemporaryDirectory(prefix="tennis-prop-replay-") as tmp:
@@ -118,8 +162,11 @@ def _run_replay(database: Path, through, rebuild: bool, source_label=None) -> in
         price_ace_props_for_date(conn, match_date, log=True, earliest_odds=True)
         settle_props(conn)
 
-    scorecard = model_vs_market_scorecard(conn)
-    roi = prop_roi_report(conn)
+    # Explicitly ungated: every row above was just written for a match that has
+    # already been played, so the point-in-time corpus is empty by construction.
+    # A replay reading a replay is the one honest use of this flag.
+    scorecard = model_vs_market_scorecard(conn, point_in_time_only=False)
+    roi = prop_roi_report(conn, point_in_time_only=False)
     payload = {
         "source_db": str(source_label or database),
         "rebuilt_source_tracker": rebuild,

@@ -47,7 +47,10 @@ def main() -> int:
 
     conn = sqlite3.connect(f"file:{args.db}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
+    # Provably pre-match rows only -- see evaluation/corpus.py. 70% of this
+    # table was written after the results were known.
     where = ["p.prop_scope = 'player_games'", "p.result_status IN ('WON','LOST')",
+             "p.is_point_in_time = 1",
              "p.subject_player_id IS NOT NULL", "p.model_prob_raw IS NOT NULL"]
     params: list = []
     if args.split:

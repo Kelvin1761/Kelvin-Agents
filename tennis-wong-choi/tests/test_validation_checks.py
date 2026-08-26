@@ -121,24 +121,34 @@ def test_look_ahead_is_measured_on_the_data_not_the_timestamp(tmp_path, monkeypa
     from tennis_wc.validation import checks
 
     conn = _setup(tmp_path, monkeypatch)
-    for snapshot_id, payload in (
-        (1, '{"overall_elo": {"value": 1500, "provenance": {"warnings": []}}}'),
-        (2, '{"overall_elo": {"value": 1500, "provenance": {"warnings": ["elo_not_as_of"]}}}'),
-    ):
+    as_of = '{"overall_elo": {"value": 1500, "provenance": {"warnings": []}}}'
+    fell_back = ('{"overall_elo": {"value": 1500, "provenance": '
+                 '{"warnings": ["elo_not_as_of"]}}}')
+
+    def _snapshot(snapshot_id, player_id, payload):
         conn.execute(
             "INSERT INTO feature_snapshots (id, match_id, player_id, feature_set_version, "
             "features_json, provenance_json, data_quality_score, created_at) "
-            "VALUES (?,1,1,'v1',?,'{}',90,'now')",
-            (snapshot_id, payload),
+            "VALUES (?,1,?,'v1',?,'{}',90,'now')",
+            (snapshot_id, player_id, payload),
         )
+
+    # Two SUBJECTS, one of which fell back -- 50%, over the 20% ceiling.
+    # Distinct players on purpose: snapshots for the same (match, player) are
+    # rebuilds of one subject, and only the newest describes it.
+    _snapshot(1, 1, as_of)
+    _snapshot(2, 2, fell_back)
     conn.commit()
 
-    # One of two fell back -- 50%, over the 20% ceiling.
     result = checks.check_features_are_as_of(conn)
     assert not result.passed and result.severity == "critical"
     assert "50.0%" in result.detail
 
-    conn.execute("DELETE FROM feature_snapshots WHERE id = 2")
+    # A rebuild that fixed the fallback must clear the check, and the superseded
+    # row must not keep voting. Snapshots run 4.7 deep per pair in production
+    # and their bodies are blanked by retention, so counting every row made this
+    # share drift with a disk cleanup.
+    _snapshot(3, 2, as_of)
     conn.commit()
     assert checks.check_features_are_as_of(conn).passed
 

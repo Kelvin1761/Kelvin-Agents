@@ -26,6 +26,8 @@ import sys
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR / "src"))
 
+from tennis_wc.evaluation.corpus import point_in_time_clause  # noqa: E402
+
 
 def _margin_rows(conn, before: str | None = None, since: str | None = None):
     """(model probability, actual game margin) for settled, completed matches."""
@@ -131,8 +133,8 @@ def _window_composition(conn, split: str) -> dict:
         JOIN matches m ON m.id = p.match_id
         LEFT JOIN tournaments t ON t.id = m.tournament_id
         WHERE p.result_status IN ('WON','LOST') AND p.stake_units > 0
-          AND p.is_value = 1
-        """
+          AND p.is_value = 1 AND {pit}
+        """.format(pit=point_in_time_clause('p'))
     ).fetchall()
     out: dict = {}
     for label, keep in (("train", lambda d: d < split),

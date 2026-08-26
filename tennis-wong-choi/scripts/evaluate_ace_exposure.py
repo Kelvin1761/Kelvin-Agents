@@ -128,6 +128,7 @@ def main() -> int:
         WHERE p.prop_scope='player' AND p.side='over'
           AND p.market_key LIKE '%_aces_%'
           AND p.result_status IN ('WON','LOST')
+          AND p.is_point_in_time = 1
           AND p.model_prob_raw IS NOT NULL AND p.market_prob_fair IS NOT NULL
         ORDER BY p.match_date,p.id
         """,

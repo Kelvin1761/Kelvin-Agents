@@ -90,7 +90,10 @@ def test_stop_rule_script_accounts_for_source_join_and_allowlist_rows(tmp_path):
                 is_value INTEGER,
                 side TEXT,
                 feed_market_key TEXT,
-                feed_market_name TEXT
+                feed_market_name TEXT,
+                -- The stop rule counts only provably pre-match recommendations;
+                -- see evaluation/corpus.py.
+                is_point_in_time INTEGER
             );
             CREATE TABLE matches (
                 id INTEGER PRIMARY KEY, tournament_id INTEGER,
@@ -113,13 +116,13 @@ def test_stop_rule_script_accounts_for_source_join_and_allowlist_rows(tmp_path):
             INSERT INTO matches VALUES (2, 10, 'sportsbet');
             INSERT INTO prop_tracker VALUES
                 (1, 1, '2026-08-12', 'player_win_a_set_7', 1.0, 1.4,
-                 'WON', 1, 'over', 'winner_related', 'To Win a Set'),
+                 'WON', 1, 'over', 'winner_related', 'To Win a Set', 1),
                 (2, 2, '2026-08-12', 'player_game_handicap_8', 1.0, -1.0,
-                 'LOST', 1, 'player_b', 'game_handicap', 'Game Handicap'),
+                 'LOST', 1, 'player_b', 'game_handicap', 'Game Handicap', 1),
                 (3, 999, '2026-08-12', 'first_set_winner_9', 1.0, 0.8,
-                 'WON', 1, 'player_a', 'winner_related', 'Set 1 Winner'),
+                 'WON', 1, 'player_a', 'winner_related', 'Set 1 Winner', 1),
                 (4, 1, '2026-08-12', 'first_set_winner_10', 1.0, 0.9,
-                 'WON', 1, 'player_a', 'winner_related', 'Set 1 Winner');
+                 'WON', 1, 'player_a', 'winner_related', 'Set 1 Winner', 1);
             INSERT INTO clv_tracker VALUES
                 (1, 'PROP_RECOMMENDATION', 0.04),
                 (2, 'PROP_RECOMMENDATION', -0.02);

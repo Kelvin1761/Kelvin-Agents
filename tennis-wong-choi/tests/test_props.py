@@ -26,12 +26,23 @@ def _seed_player(conn, pid, name):
     )
 
 
-def _seed_match(conn, mid, a, b, date="2026-01-01"):
+# Fixtures represent props priced BEFORE the match, which is what every
+# settlement / ROI / scorecard test here is about. Since `record_prop` stamps
+# `is_point_in_time` by comparing its own clock against `start_time_utc`, a
+# fixture with no start time classifies as unverifiable and is (correctly)
+# excluded from the reports -- so the seed has to state that the match has not
+# started yet. See evaluation/corpus.py.
+_NOT_STARTED = "2099-01-01T00:00:00Z"
+
+
+def _seed_match(conn, mid, a, b, date="2026-01-01", start_time_utc=_NOT_STARTED):
     conn.execute(
         """INSERT INTO matches (id, provider_match_id, tour, match_date, tournament_id,
-               player_a_id, player_b_id, round, source_provider, created_at, updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-        (mid, f"M{mid}", "ATP", date, 1, a, b, "R1", "test", "now", "now"),
+               player_a_id, player_b_id, round, source_provider, created_at, updated_at,
+               start_time_utc)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (mid, f"M{mid}", "ATP", date, 1, a, b, "R1", "test", "now", "now",
+         start_time_utc),
     )
 
 
@@ -1829,13 +1840,17 @@ def test_roi_report_can_carve_out_a_holdout_window(tmp_path, monkeypatch):
     ):
         _seed_match(conn, index, 1, 2, date=day)
         conn.execute(
+            # `is_point_in_time` is stamped explicitly because this row is
+            # written straight to the table rather than through `record_prop`:
+            # these are pre-match recommendations, and the ROI report admits
+            # only those. See evaluation/corpus.py.
             "INSERT INTO prop_tracker (prop_key, match_id, match_date, match_label, "
             "market_key, line, selection, decimal_odds, model_prob, side, prop_scope, "
             "subject_player_id, stake_units, is_value, result_status, "
-            "profit_loss_units, recorded_at, updated_at) "
+            "profit_loss_units, recorded_at, updated_at, is_point_in_time) "
             f"VALUES ('k{index}', {index}, '{day}', 'x', 'total_a_aces_5_5', 5.5, "
             f"'over', 1.9, 0.6, 'over', 'player', 1, 1.0, 1, '{status}', {pnl}, "
-            "'now', 'now')"
+            "'now', 'now', 1)"
         )
     conn.commit()
 

@@ -21,6 +21,8 @@ import sys
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_DIR / "src"))
 
+from tennis_wc.evaluation.corpus import point_in_time_clause  # noqa: E402
+
 DEFAULT_EVIDENCE_PRIOR = 100.0
 
 
@@ -137,13 +139,14 @@ def _rows(conn) -> list[dict]:
         FROM prop_tracker p
         JOIN matches m ON m.id = p.match_id
         WHERE p.result_status IN ('WON','LOST')
+          AND {pit}
           AND p.model_prob_raw IS NOT NULL
           AND p.market_prob_fair IS NOT NULL
           AND p.side = 'over'
           AND (p.prop_scope != 'player_first_set'
                OR p.subject_player_id = m.player_a_id)
         ORDER BY p.match_date, p.id
-        """
+        """.format(pit=point_in_time_clause('p'))
     ).fetchall()
     return [
         {

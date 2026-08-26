@@ -46,14 +46,22 @@ def check_features_are_as_of(conn) -> CheckResult:
     read as-of, and the feature builder now records ``elo_not_as_of`` on the
     datapoint whenever it had to fall back to the mutable column.
     """
+    # Latest snapshot per (match, player) only. Snapshots accumulate 4.7 deep,
+    # so counting all of them measured a mixture of current and long-superseded
+    # builds -- and superseded BODIES are now blanked by retention, which would
+    # have silently walked this share down as a side effect of a disk cleanup.
+    latest = """
+        SELECT fs.id, fs.features_json FROM feature_snapshots fs
+        WHERE fs.id = (SELECT MAX(x.id) FROM feature_snapshots x
+                       WHERE x.match_id = fs.match_id
+                         AND x.player_id = fs.player_id
+                         AND x.feature_set_version = fs.feature_set_version)
+    """
     count = _count(
         conn,
-        """
-        SELECT COUNT(*) FROM feature_snapshots
-        WHERE features_json LIKE '%elo_not_as_of%'
-        """,
+        f"SELECT COUNT(*) FROM ({latest}) WHERE features_json LIKE '%elo_not_as_of%'",
     )
-    total = _count(conn, "SELECT COUNT(*) FROM feature_snapshots")
+    total = _count(conn, f"SELECT COUNT(*) FROM ({latest})")
     share = count / total if total else 0.0
     return CheckResult(
         "features_not_as_of", share < 0.20, "critical",
@@ -285,6 +293,51 @@ def check_model_probability_has_signal(conn) -> CheckResult:
     )
 
 
+# The day the `record_prop` guard landed. Rows written before it are history
+# this check cannot fix and does not judge; rows written after it are the
+# guard's own output, so an offender there is a regression.
+POST_START_GUARD_FROM = "2026-08-27"
+
+
+def check_new_props_are_recorded_before_the_match(conn) -> CheckResult:
+    """Every prop written from now on must be provably pre-match.
+
+    2026-08-26: 9,594 of 13,658 rows were written by ONE run on 2026-08-10 for
+    match dates going back to 2026-05-10. Nothing complained, and the published
+    ROI became the average of a real -23.38% and a +11.74% artefact. A row that
+    cannot be timed is not a mild data gap -- the unverifiable rows were the
+    ones carrying all the profit.
+
+    Judged on rows RECORDED from POST_START_GUARD_FROM onward, not on a rolling
+    match-date window. The 1,824 already-written offenders cannot be repaired --
+    their pre-match prices are gone -- so a rolling window would block
+    publication for a fortnight over history, and this is a critical check
+    because a NEW offender means the guard in `record_prop` has been defeated.
+    `start_time_utc` coverage has been 100% since 2026-08-17, so from here on
+    an untimeable row is a live regression rather than a data gap. The historic
+    rows are excluded from judgement by `evaluation.corpus`, not by this check.
+    """
+    total = _count(
+        conn,
+        "SELECT COUNT(*) FROM prop_tracker WHERE recorded_at >= ?",
+        (POST_START_GUARD_FROM,),
+    )
+    bad = _count(
+        conn,
+        "SELECT COUNT(*) FROM prop_tracker WHERE recorded_at >= ? "
+        "AND (is_point_in_time IS NULL OR is_point_in_time = 0)",
+        (POST_START_GUARD_FROM,),
+    )
+    share = bad / total if total else 0.0
+    return CheckResult(
+        "props_recorded_before_match", share < 0.05, "critical",
+        f"{bad} of {total} props recorded since {POST_START_GUARD_FROM[:10]} "
+        f"({share:.1%}) were written after their match started or cannot be "
+        "timed at all",
+        bad,
+    )
+
+
 ALL_CHECKS = (
     check_features_are_as_of,
     check_snapshot_before_match,
@@ -298,6 +351,7 @@ ALL_CHECKS = (
     check_settled_props_have_a_result,
     check_staked_props_are_gradeable,
     check_model_probability_has_signal,
+    check_new_props_are_recorded_before_the_match,
 )
 
 
