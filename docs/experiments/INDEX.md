@@ -32,3 +32,4 @@
 - [EXP-20260826-03](EXP-20260826-03-au-randwick-0822-review-fixes.md) — 0822 Randwick 十場覆核：pace_perf display gain 喺污染語料上 fit（已修，排名不變）、weight_score 降班 nudge 方向調轉（已修）；兩個我自己量錯嘅發現已撤回
 - [EXP-20260826-04](EXP-20260826-04-au-new-data-and-retired-dimensions.md) — WinningTime 速度評分（過 fold 閘、主裁判九個配置全部跨 0，覆蓋只 25%，已登記重測）；form_line / race_shape / sectional 三個退役維度復活全部失敗
 - [EXP-20260826-05](EXP-20260826-05-au-backfill-draw-unused-leaves-hkjc.md) — 補抓唔可行但揾到結果 CSV `Time` 欄死咗；檔位真但太細；18 個 leaf 得 9 個入排名，class_score 最接近過閘；同 HKJC 逐維度對照
+- [EXP-20260826-06](EXP-20260826-06-au-class-score-revival.md) — class_score 復活：乾淨語料七個測試 dev 全部正但 holdout 跨 0；全語料三個「過閘」係喺污染資料上 fit gain 嘅產物，REJECT + 登記重測
