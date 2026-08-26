@@ -1343,7 +1343,21 @@ function setOddsValue(date, venue, race, horse, val) {
 
 function lockOdds(date, venue, race, horse) {
   const s = getBetState(date,venue,race,horse);
-  if (!s.odds || s.odds < 1) { alert('請輸入有效賠率'); return; }
+  // 2026-08-26：個格會用 Sportsbet 賽前位賠預填。如果用戶冇改直接撳確認，
+  // `s.odds` 仍然係 null（預填只係 DOM 上嘅 value，未寫入 state），
+  // 舊 code 會彈「請輸入有效賠率」——明明格入面有數字。所以確認嗰陣
+  // 讀返個格嘅實際值做 fallback。
+  let odds = s.odds;
+  if (!odds || odds < 1) {
+    const el = document.querySelector(
+      `input.bh-odds-input[name="odds-${race}-${horse}"]`);
+    const typed = parseFloat(el?.value);
+    if (typed >= 1) {
+      odds = typed;
+      setBetState(date,venue,race,horse, { odds });
+    }
+  }
+  if (!odds || odds < 1) { alert('請輸入有效賠率'); return; }
   setBetState(date,venue,race,horse, { oddsConfirmed: true });
 }
 
@@ -2727,7 +2741,7 @@ function renderBetCard(c, m, raceNum) {
     const oddsLabelId = `odds-label-${raceNum}-${c.horse_number}`;
     h += `<div class="bh-step-label" id="${oddsLabelId}">\u2460 \u8f38\u5165\u8ce0\u7387</div>`;
     h += `<div class="bh-step-row">`;
-    h += `<input class="bh-odds-input" type="number" name="odds-${raceNum}-${c.horse_number}" inputmode="decimal" autocomplete="off" step="0.1" min="1" placeholder="例如 2.5…" aria-labelledby="${oddsLabelId}" value="${s.odds??''}" oninput="setOddsValue(${A},this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();lockOdds(${A})}">`;
+    h += `<input class="bh-odds-input" type="number" name="odds-${raceNum}-${c.horse_number}" inputmode="decimal" autocomplete="off" step="0.1" min="1" placeholder="例如 2.5…" aria-labelledby="${oddsLabelId}" value="${s.odds ?? c.market_place_odds ?? ''}" oninput="setOddsValue(${A},this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();lockOdds(${A})}">`;
     h += `<button type="button" class="bb bb-lock" onclick="lockOdds(${A})">\ud83d\udd12 \u78ba\u8a8d\u8ce0\u7387</button>`;
     h += `</div></div>`;
   }
