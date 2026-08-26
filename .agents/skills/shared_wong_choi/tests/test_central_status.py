@@ -1,0 +1,108 @@
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(PACKAGE_ROOT.parent))
+
+from shared_wong_choi.central_status import collect_status, render_telegram  # noqa: E402
+
+
+def git(repo: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args], cwd=repo, text=True, capture_output=True, check=True
+    )
+    return result.stdout.strip()
+
+
+def initialise_repo(root: Path) -> None:
+    remote = root.parent / "remote.git"
+    git(root.parent, "init", "--bare", str(remote))
+    git(root, "init")
+    git(root, "config", "user.name", "Central Status Test")
+    git(root, "config", "user.email", "wc@example.test")
+    (root / "README.md").write_text("base\n", encoding="utf-8")
+    git(root, "add", "README.md")
+    git(root, "commit", "-m", "base")
+    git(root, "branch", "-M", "main")
+    git(root, "remote", "add", "origin", str(remote))
+    git(root, "push", "-u", "origin", "main")
+    git(remote, "symbolic-ref", "HEAD", "refs/heads/main")
+
+
+def test_status_reports_git_runs_releases_and_evidence(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    initialise_repo(repo)
+    state = tmp_path / "state"
+    run_path = state / "runs" / "au" / "2026-08-26" / "evening" / "2200"
+    run_path.mkdir(parents=True)
+    (run_path / "attempt-1.json").write_text(
+        json.dumps(
+            {
+                "run_id": "wc:au:run:2026-08-26:evening:2200:attempt-1",
+                "state": "succeeded",
+                "mode": "evening",
+                "target_date": "2026-08-26",
+                "completed_at": "2026-08-26T12:00:00+00:00",
+                "warnings": [],
+                "errors": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    releases = state / "releases"
+    releases.mkdir(parents=True)
+    (releases / "pending.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "wong-choi-release/v1",
+                "release_id": "wc-release:abc",
+                "created_at": "2026-08-26T12:30:00+00:00",
+                "status": "pushed",
+                "policy": {"risk": "code"},
+                "commit": "abcdef123456",
+                "branch": "codex/example",
+                "activation": "not_started",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = collect_status(
+        repo,
+        state,
+        now=datetime(2026, 8, 26, 13, tzinfo=timezone.utc),
+    )
+
+    assert result["status"] == "attention"
+    assert result["domains"]["au"]["latest_run"]["state"] == "succeeded"
+    assert result["releases"]["pending_approval"][0]["commit"] == "abcdef123456"
+    assert result["evidence"]["status"] == "ok"
+    message = render_telegram(result)
+    assert "AU：succeeded" in message
+    assert "1 個待批准" in message
+
+
+def test_dirty_production_checkout_is_visible(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    initialise_repo(repo)
+    production = tmp_path / "production"
+    git(tmp_path, "clone", str(tmp_path / "remote.git"), str(production))
+    (production / "README.md").write_text("dirty\n", encoding="utf-8")
+
+    result = collect_status(
+        repo,
+        tmp_path / "state",
+        production_roots={"au": production},
+        now=datetime(2026, 8, 26, 13, tzinfo=timezone.utc),
+    )
+
+    assert "production_checkout_not_clean:au" in result["attention"]
+    assert result["git"]["production"]["au"]["dirty_paths"] == ("README.md",)

@@ -33,7 +33,14 @@ TIMEOUT = 25
 HELP = ("我識嘅嘢：\n"
         "/picks           今日邊幾個馬場\n"
         "/picks dubbo     嗰個馬場逐場頭三揀 + 賽前賠率\n"
-        "/status          最近幾個 run 點\n"
+        "/status          中央旺財：四線、Git、model、release\n"
+        "/git             commit／push／main／production 狀態\n"
+        "/models          四線 model release stage\n"
+        "/evidence        prediction／decision／settlement 完整性\n"
+        "/slo             四線30日可靠性／provenance\n"
+        "/release         待批准 release\n"
+        "/approve SHA     重新驗證後批准一個 immutable release\n"
+        "/au_status       AU 最近幾個 run 點\n"
         "/today           live dashboard 而家有乜\n"
         "/perf            最近一個賽日嘅 Gold／Good\n"
         "/week            近七日走勢\n"
@@ -71,7 +78,7 @@ def runs(n: int = 4) -> list[dict]:
     return out
 
 
-def cmd_status() -> str:
+def cmd_au_status() -> str:
     rs = runs()
     if not rs:
         return "仲未有任何 run 記錄"
@@ -87,6 +94,177 @@ def cmd_status() -> str:
             f"{d.get('status')} · {round((d.get('duration_seconds') or 0)/60)}分 "
             f"· 發佈{dep_s} · 錯誤{len(d.get('errors') or [])}")
     return "\n".join(lines)
+
+
+def _central_repo_root() -> Path:
+    configured = os.environ.get("WC_PRIMARY_REPO_ROOT")
+    return (
+        Path(configured).expanduser().resolve()
+        if configured
+        else HERE.parents[3]
+    )
+
+
+def _central_payload() -> dict:
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.central_status import collect_status  # noqa: PLC0415
+
+    state = Path(
+        os.environ.get(
+            "WONGCHOI_CONTROL_STATE_ROOT",
+            Path.home() / "WongChoiData" / "WongChoiControl",
+        )
+    )
+    production = _central_production_roots()
+    return collect_status(repo, state, production_roots=production)
+
+
+def _central_production_roots() -> dict[str, Path]:
+    production = {}
+    for domain in ("au", "hkjc", "tennis", "nba"):
+        value = os.environ.get(f"WC_{domain.upper()}_PRODUCTION_ROOT")
+        if value:
+            production[domain] = Path(value)
+    return production
+
+
+def cmd_status() -> str:
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.central_status import render_telegram  # noqa: PLC0415
+
+    return render_telegram(_central_payload())
+
+
+def cmd_git() -> str:
+    payload = _central_payload()["git"]
+    primary = payload["primary"]
+    lines = [
+        "🧾 Wong Choi Git",
+        f"primary：{primary.get('branch') or '?'} {(primary.get('head') or '?')[:12]}",
+        f"dirty {len(primary.get('dirty_paths') or [])} · "
+        f"pushed {'係' if primary.get('pushed') else '否'} · "
+        f"main {'係' if primary.get('merged_to_main') else '否'}",
+    ]
+    for name, item in payload.get("production", {}).items():
+        lines.append(
+            f"{name.upper()} production：{item.get('status')} · "
+            f"{(item.get('head') or '?')[:12]}"
+        )
+    return "\n".join(lines)
+
+
+def cmd_models() -> str:
+    lines = ["🧠 Wong Choi Models"]
+    for name, item in _central_payload()["domains"].items():
+        model = item.get("model_release") or {}
+        stage = model.get("release_stage") or "未登記"
+        commit = str(model.get("code_commit") or "?")[:12]
+        lines.append(f"{name.upper()}：{stage} · {commit}")
+    lines.append("NBA live evidence未齊時只會顯示pending，唔會扮production-ready。")
+    return "\n".join(lines)
+
+
+def cmd_evidence() -> str:
+    evidence = _central_payload()["evidence"]
+    counts = evidence.get("counts") or {}
+    lines = [
+        f"🔗 Evidence：{evidence.get('status')}",
+        f"model {counts.get('model_release', 0)} · prediction {counts.get('prediction', 0)}",
+        f"decision {counts.get('decision', 0)} · settlement {counts.get('settlement', 0)}",
+    ]
+    if evidence.get("errors"):
+        lines.append("錯誤：" + "；".join(evidence["errors"][:3]))
+    return "\n".join(lines)
+
+
+def cmd_slo() -> str:
+    reliability = _central_payload()["reliability"]
+    lines = [f"📈 Wong Choi 30日SLO：{reliability.get('status')}"]
+    for name, item in reliability.get("domains", {}).items():
+        ratio = item.get("availability")
+        shown = "no_data" if ratio is None else f"{ratio:.1%}"
+        lines.append(
+            f"{name.upper()}：{shown} · {item.get('slots', 0)} slots · "
+            f"retry救回 {item.get('recovered_by_retry', 0)}"
+        )
+    provenance = (
+        (reliability.get("evidence") or {}).get("production_provenance") or {}
+    )
+    ratio = provenance.get("ratio")
+    lines.append(
+        "Production provenance："
+        + ("no_data" if ratio is None else f"{ratio:.1%}")
+    )
+    return "\n".join(lines)
+
+
+def cmd_release() -> str:
+    pending = _central_payload()["releases"]["pending_approval"]
+    if not pending:
+        return "✅ 冇 release 等緊批准"
+    lines = [f"🟡 {len(pending)} 個 release 等緊批准"]
+    for item in pending[:8]:
+        lines.append(
+            f"· {(item.get('commit') or '?')[:12]} {item.get('risk')} "
+            f"{item.get('branch')}"
+        )
+    return "\n".join(lines)
+
+
+def cmd_approve(arg: str = "") -> str:
+    selector = arg.strip()
+    if not re.fullmatch(r"[0-9a-f]{12,64}", selector):
+        return "格式：/approve 12位或以上小寫 commit SHA"
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.release_approval import approve_release  # noqa: PLC0415
+    from shared_wong_choi.release_activation import activate_release  # noqa: PLC0415
+    from shared_wong_choi.release_manager import ReleaseError  # noqa: PLC0415
+
+    state = Path(
+        os.environ.get(
+            "WONGCHOI_CONTROL_STATE_ROOT",
+            Path.home() / "WongChoiData" / "WongChoiControl",
+        )
+    )
+    try:
+        result = approve_release(
+            repo,
+            state,
+            selector=selector,
+            actor="telegram:authorised-chat",
+            notify=True,
+        )
+    except ReleaseError as exc:
+        return f"⛔ 批准失敗：{exc}"
+    try:
+        activation = activate_release(
+            repo,
+            state,
+            selector=selector,
+            actor="telegram:authorised-chat",
+            production_roots=_central_production_roots(),
+            notify=True,
+        )
+    except ReleaseError as exc:
+        return (
+            f"🟡 {(result.get('commit') or selector)[:12]} 已merge，但未部署：{exc}\n"
+            "中央status會保持 activation pending/failed，唔會扮完成。"
+        )
+    if result["status"] == "already_merged" and activation["status"] == "already_active":
+        return f"✅ {(result.get('commit') or selector)[:12]} 已經merge及部署，冇重複副作用"
+    return (
+        f"✅ 已批准、merge及部署 {(result.get('commit') or selector)[:12]}\n"
+        "每一步都有immutable event；重覆指令冇副作用。"
+    )
 
 
 def cmd_today() -> str:
@@ -393,14 +571,18 @@ def cmd_week() -> str:
 
 PICKMARK = {1: "①", 2: "②", 3: "③"}
 
-COMMANDS = {"/status": cmd_status, "/today": cmd_today, "/perf": cmd_perf,
+COMMANDS = {"/status": cmd_status, "/git": cmd_git, "/models": cmd_models,
+            "/evidence": cmd_evidence, "/slo": cmd_slo,
+            "/release": cmd_release,
+            "/au_status": cmd_au_status,
+            "/today": cmd_today, "/perf": cmd_perf,
             "/health": cmd_health, "/week": cmd_week, "/diag": cmd_diag,
             "/retry": cmd_retry, "/hkjc": cmd_hkjc,
             "/hkjc_reflect": cmd_hkjc_reflect,
             "/help": lambda: HELP, "/start": lambda: HELP}
 # 收參數嘅指令要另外列 —— 白名單仍然係逐個字對，參數只當文字用嚟配對馬場名，
 # 永遠唔會變成路徑或者指令。
-COMMANDS_WITH_ARG = {"/picks": cmd_picks}
+COMMANDS_WITH_ARG = {"/picks": cmd_picks, "/approve": cmd_approve}
 
 
 def _record_unknown(chat: dict, text: str) -> None:

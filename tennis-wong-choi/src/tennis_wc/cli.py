@@ -65,6 +65,16 @@ SHARED_HOOK_DIR = REPO_ROOT / ".agents" / "skills" / "shared_racing" / "post_suc
 sys.path.insert(0, str(SHARED_HOOK_DIR))
 from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
 
+SHARED_SKILLS_DIR = REPO_ROOT / ".agents" / "skills"
+sys.path.insert(0, str(SHARED_SKILLS_DIR))
+from shared_wong_choi.contracts import Domain
+from shared_wong_choi.domain_evidence import (
+    record_prediction_decision_if_configured,
+    record_settlement_for_event,
+)
+from shared_wong_choi.evidence import DecisionState
+from shared_wong_choi.immutable_snapshot import create_immutable_snapshot
+
 
 def _print_json(payload: object) -> None:
     print(json.dumps(payload, indent=2, sort_keys=True))
@@ -349,7 +359,19 @@ def fetch_closing_odds(args: argparse.Namespace) -> None:
 
 
 def settle_bets(args: argparse.Namespace) -> None:
-    _print_json(settle_bets_for_date(args.date))
+    result = settle_bets_for_date(args.date)
+    result["prediction_evidence"] = record_settlement_for_event(
+        domain=Domain.TENNIS,
+        event_id=args.date,
+        evidence_root=Path(
+            os.environ.get(
+                "WC_EVIDENCE_ROOT",
+                "~/WongChoiData/WongChoiControl/evidence",
+            )
+        ).expanduser(),
+        summary=result,
+    )
+    _print_json(result)
 
 
 def settle_backlog(args: argparse.Namespace) -> None:
@@ -566,6 +588,48 @@ def _publish_daily_dashboard(args: argparse.Namespace, payload: dict) -> dict:
     return payload
 
 
+def _record_daily_evidence(
+    args: argparse.Namespace,
+    payload: dict,
+    report_path: Path,
+    predictions: list[dict],
+) -> dict:
+    """Freeze the priced card and link its decision before publication."""
+    output_dir = analysis_output_dir(args.date)
+    snapshot = create_immutable_snapshot(
+        output_dir,
+        domain=Domain.TENNIS.value,
+        event_id=args.date,
+        patterns=[Path(report_path).name],
+        recommendations=predictions,
+    )
+    evidence_root = Path(
+        os.environ.get(
+            "WC_EVIDENCE_ROOT",
+            "~/WongChoiData/WongChoiControl/evidence",
+        )
+    ).expanduser()
+    decision_state = (
+        DecisionState.RECOMMEND
+        if any(
+            str(item.get("final_decision") or "").upper() == "BET"
+            for item in predictions
+        )
+        else DecisionState.NO_BET
+    )
+    evidence = record_prediction_decision_if_configured(
+        domain=Domain.TENNIS,
+        event_id=args.date,
+        snapshot=snapshot,
+        evidence_root=evidence_root,
+        decision_state=decision_state,
+        recommendations=predictions,
+    )
+    payload["prediction_snapshot"] = str(snapshot)
+    payload["prediction_evidence"] = evidence
+    return evidence
+
+
 def run_daily(args: argparse.Namespace) -> None:
     provider_healthcheck(args)
     source_errors = []
@@ -728,6 +792,25 @@ def run_daily(args: argparse.Namespace) -> None:
         "stage": "7",
         "mode": "mvp_snapshot" if args.mvp_snapshot else "live_full",
     }
+    try:
+        _run_timed_stage(
+            "prediction_evidence",
+            lambda: _record_daily_evidence(
+                args, payload, Path(report_path), predictions
+            ),
+            stage_timings,
+        )
+    except Exception as exc:  # noqa: BLE001 - evidence failure must block publish
+        payload["prediction_evidence"] = {
+            "status": "failed",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+        source_errors.append(
+            {
+                "source": "prediction_evidence",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
+        )
     _run_timed_stage(
         "dashboard_publish",
         lambda: _publish_daily_dashboard(args, payload),

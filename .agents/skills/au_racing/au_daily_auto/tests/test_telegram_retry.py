@@ -104,6 +104,92 @@ class RetryGuardTests(unittest.TestCase):
         self.assertIn("/hkjc", B.COMMANDS)
         self.assertIn("/hkjc_reflect", B.COMMANDS)
 
+    def test_central_read_only_commands_are_on_the_whitelist(self):
+        for command in ("/status", "/git", "/models", "/evidence", "/release"):
+            self.assertIn(command, B.COMMANDS)
+        self.assertIn("/au_status", B.COMMANDS)
+        self.assertIn("/approve", B.COMMANDS_WITH_ARG)
+
+    def test_central_commands_render_machine_status_without_shell_input(self):
+        payload = {
+            "status": "attention",
+            "attention": ["release_pending_approval"],
+            "git": {
+                "primary": {
+                    "branch": "codex/test",
+                    "head": "abcdef1234567890",
+                    "dirty_paths": [],
+                    "pushed": True,
+                    "merged_to_main": False,
+                },
+                "production": {},
+            },
+            "releases": {
+                "pending_approval": [
+                    {
+                        "commit": "abcdef1234567890",
+                        "risk": "model",
+                        "branch": "codex/model",
+                    }
+                ]
+            },
+            "evidence": {
+                "status": "ok",
+                "counts": {
+                    "model_release": 4,
+                    "prediction": 10,
+                    "decision": 10,
+                    "settlement": 8,
+                },
+                "errors": [],
+            },
+            "domains": {
+                name: {
+                    "latest_run": None,
+                    "model_release": {
+                        "release_stage": "production",
+                        "code_commit": "abcdef1234567890",
+                    },
+                }
+                for name in ("au", "hkjc", "tennis", "nba")
+            },
+        }
+        with unittest.mock.patch.object(B, "_central_payload", return_value=payload):
+            self.assertIn("codex/test", B.cmd_git())
+            self.assertIn("AU：production", B.cmd_models())
+            self.assertIn("prediction 10", B.cmd_evidence())
+            self.assertIn("abcdef123456", B.cmd_release())
+
+    def test_approval_rejects_non_sha_without_calling_release_code(self):
+        self.assertIn("格式", B.cmd_approve("HEAD; rm -rf anything"))
+
+    def test_approval_calls_fixed_api_with_strict_commit_only(self):
+        result = {
+            "status": "merged",
+            "commit": "abcdef1234567890",
+        }
+        fake_module = unittest.mock.Mock()
+        fake_module.approve_release.return_value = result
+        activation_module = unittest.mock.Mock()
+        activation_module.activate_release.return_value = {"status": "activated"}
+        manager_module = unittest.mock.Mock()
+        manager_module.ReleaseError = RuntimeError
+        with unittest.mock.patch.dict(
+            sys.modules,
+            {
+                "shared_wong_choi.release_approval": fake_module,
+                "shared_wong_choi.release_activation": activation_module,
+                "shared_wong_choi.release_manager": manager_module,
+            },
+        ):
+            reply = B.cmd_approve("abcdef123456")
+        self.assertIn("已批准", reply)
+        kwargs = fake_module.approve_release.call_args.kwargs
+        self.assertEqual(kwargs["selector"], "abcdef123456")
+        self.assertEqual(kwargs["actor"], "telegram:authorised-chat")
+        activation_kwargs = activation_module.activate_release.call_args.kwargs
+        self.assertEqual(activation_kwargs["selector"], "abcdef123456")
+
 
 if __name__ == "__main__":
     unittest.main()

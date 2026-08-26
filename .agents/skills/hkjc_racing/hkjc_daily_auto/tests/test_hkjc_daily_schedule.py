@@ -206,6 +206,58 @@ def test_temporary_prerace_failure_arms_self_recovery(tmp_path: Path) -> None:
     notify.assert_called_once()
 
 
+def test_prerace_writes_evidence_before_dashboard_deploy(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    state = schedule.load_state(state_path)
+    meeting = {
+        "date": "2026-09-06",
+        "venue": "ShaTin",
+        "course": "ST",
+        "url": "fixture",
+    }
+    meeting_dir = tmp_path / "2026-09-06_ShaTin"
+    meeting_dir.mkdir()
+    snapshot = meeting_dir / "Prediction_Snapshots" / "one"
+    snapshot.mkdir(parents=True)
+    evidence_written = False
+
+    def evidence(**_kwargs):
+        nonlocal evidence_written
+        evidence_written = True
+        return {"prediction_id": "wc:hkjc:prediction:test"}
+
+    def run(command, **_kwargs):
+        if command == [str(schedule.DASHBOARD_DEPLOY)]:
+            assert evidence_written is True
+            return 0, "deployed"
+        assert "--skip-cloudflare-deploy" in command
+        return 0, "scored"
+
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(schedule, "HK_RACING", tmp_path),
+        mock.patch.object(schedule, "meeting_dir_for", return_value=meeting_dir),
+        mock.patch.object(schedule, "create_prediction_snapshot", return_value=snapshot),
+        mock.patch.object(
+            schedule, "record_prediction_decision_if_configured", side_effect=evidence
+        ),
+        mock.patch.object(schedule, "run_cmd", side_effect=run),
+        mock.patch.object(
+            schedule,
+            "mirror_meeting",
+            return_value={"status": "ok", "copied": 1, "failed": 0},
+        ),
+        mock.patch.object(schedule, "notify"),
+    ):
+        assert schedule.run_prerace(
+            state, state_path, meeting=meeting, force=True
+        ) == schedule.EXIT_OK
+    assert evidence_written is True
+    assert state["meetings"]["2026-09-06|ShaTin"]["latest_evidence"][
+        "prediction_id"
+    ].endswith(":test")
+
+
 def test_recovery_is_dormant_without_pending_state(tmp_path: Path) -> None:
     state_path = tmp_path / "state.json"
     state = schedule.load_state(state_path)

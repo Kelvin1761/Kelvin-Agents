@@ -174,6 +174,34 @@ for p in au hkjc; do
   else note_bad "$P 有欄位唔合格"; echo "$o" | sed -n '/唔合格/,/^$/p' | sed 's/^/      /'; fi
 done
 
+# ── 中央30日SLO／evidence provenance ──────────────────────────────────────
+hdr "中央旺財 30日 SLO"
+SLO_JSON=$("$PY" .agents/skills/central_wong_choi/scripts/central_wong_choi.py \
+  slo --json 2>/dev/null)
+SLO_RC=$?
+if [ "$SLO_RC" -eq 0 ]; then
+  ok "四線 run reliability 同 production provenance 達標（冇樣本會標 no_data）"
+else
+  note_bad "中央30日SLO未達標"
+fi
+"$PY" - "$SLO_JSON" <<'PYEOF'
+import json, sys
+try:
+    payload = json.loads(sys.argv[1])
+except (IndexError, ValueError):
+    print("      SLO JSON unavailable")
+    raise SystemExit
+for name, value in (payload.get("domains") or {}).items():
+    ratio = value.get("availability")
+    shown = "no_data" if ratio is None else f"{ratio:.1%}"
+    print(f"      {name.upper()}: {shown} · {value.get('slots', 0)} slots · {value.get('status')}")
+provenance = ((payload.get("evidence") or {}).get("production_provenance") or {})
+ratio = provenance.get("ratio")
+print("      production provenance: " +
+      ("no_data" if ratio is None else f"{ratio:.1%}") +
+      f" · {provenance.get('production_decisions', 0)} decisions")
+PYEOF
+
 # ── 排程日誌有冇報錯 ─────────────────────────────────────────────────────
 hdr "排程日誌（近 3 日嘅錯）"
 found=0

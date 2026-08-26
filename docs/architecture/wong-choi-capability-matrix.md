@@ -10,12 +10,14 @@
 | Validate / fail closed | ✅ data contract + dashboard verify | ✅ data health + snapshot gate | ✅ readiness + betting gate | ✅ official/book/report/manifest coverage gate |
 | Publish | ✅ Cloudflare + live verify | ✅ Cloudflare post-success | ✅ run-daily deploy | ✅ validated pregame/postgame deploy |
 | Settle / reflect | ✅ evening reflector/archive | ✅ postrace reflector/corpus | ✅ review-date + ledgers | ⏳ postgame archive；等首個完場日 smoke |
-| Health | ✅ standalone healthcheck | 🟡 embedded gates + global health | 🟡 `HEALTH_JSON` in text log | ✅ standalone health mode + global health |
+| Health | ✅ domain + canonical 30日SLO | ✅ global + canonical 30日SLO | ✅ readiness + canonical 30日SLO | ✅ standalone + canonical 30日SLO |
 | Telegram | ✅ operational/content/review | ✅ operational/content/review | ✅ health/card/performance | ✅ operational/card/performance + dedup |
 | Recovery | ✅ guarded morning/deploy recovery | ✅ pending recovery + startup | ✅ guarded card/dashboard recovery | 🟡 startup single-day；未授權 multi-day backlog |
 | Overlap lock | ✅ `flock` | ✅ `flock` | ✅ `flock` | ✅ `flock` |
 | Structured run record | ✅ domain JSON + canonical adapter manifest；live獨立checkout已部署 | ✅ canonical adapter manifest；daily wrapper已切換 | ✅ canonical adapter manifest；card/daily wrapper已切換 | ✅ domain JSON + canonical adapter manifest；role-specific launchd已切換 |
-| Immutable prediction manifest | 🟡 final output exists；未有 canonical immutable manifest | ✅ SHA-256 manifest | 🟡 DB prediction rows；未有 immutable run manifest | ✅ SHA-256 snapshot manifest |
+| Immutable prediction manifest | ✅ create-only SHA-256 snapshot | ✅ SHA-256 manifest | ✅ create-only daily report snapshot | ✅ SHA-256 snapshot manifest |
+| Central evidence chain | ✅ Prediction→Decision→Settlement→ModelRelease | ✅ Prediction→Decision→Settlement→ModelRelease | ✅ Prediction→Decision→Settlement→ModelRelease | ⏳ shadow chain ready；等 live settlement evidence |
+| Controlled model promotion | ✅ v2 Gold/Good + ranking path | ✅ v2 Gold/Good + ranking path | ✅ registry lifecycle；domain ruler獨立 | ⏳ shadow；live forward gate未到 |
 | Live acceptance | ✅ production | ✅ production；新季 forward gate另計 | ✅ production | ⏳ pipeline ready / production evidence pending |
 
 ## Confirmed Owners and Entrypoints

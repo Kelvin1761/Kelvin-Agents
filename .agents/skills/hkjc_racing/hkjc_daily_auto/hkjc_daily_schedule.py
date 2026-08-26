@@ -39,11 +39,18 @@ except ImportError:  # pragma: no cover
 HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parents[3]
 SHARED_RACING = PROJECT_ROOT / ".agents" / "skills" / "shared_racing" / "scripts"
-for item in (PROJECT_ROOT, SHARED_RACING):
+SHARED_WC = PROJECT_ROOT / ".agents" / "skills"
+for item in (PROJECT_ROOT, SHARED_RACING, SHARED_WC):
     if str(item) not in sys.path:
         sys.path.insert(0, str(item))
 
 from racing_telegram import send_message  # noqa: E402
+from shared_wong_choi.contracts import Domain  # noqa: E402
+from shared_wong_choi.domain_evidence import (  # noqa: E402
+    record_prediction_decision_if_configured,
+    record_settlement_for_event,
+)
+from shared_wong_choi.evidence import DecisionState  # noqa: E402
 from wongchoi_paths import HK_RACING, HK_RACING_MIRROR, is_materialized_file  # noqa: E402
 
 
@@ -459,6 +466,7 @@ def run_prerace(
             meeting["url"],
             "--auto",
             "--validate-engine",
+            "--skip-cloudflare-deploy",
         ]
     )
     if code != 0:
@@ -497,6 +505,29 @@ def run_prerace(
         notify(f"❌ HKJC scoring 完成但 prediction snapshot 失敗：{exc}")
         set_control_outcome("failed", reason="prediction_snapshot_failed")
         return EXIT_FAILED
+    try:
+        evidence = record_prediction_decision_if_configured(
+            domain=Domain.HKJC,
+            event_id=f"{meeting['date']}|{meeting['venue']}",
+            snapshot=snapshot,
+            evidence_root=Path(
+                os.environ.get(
+                    "WONGCHOI_CONTROL_STATE_ROOT",
+                    Path.home() / "WongChoiData" / "WongChoiControl",
+                )
+            )
+            / "evidence",
+            decision_state=DecisionState.RECOMMEND,
+        )
+    except Exception as exc:  # noqa: BLE001
+        notify(f"❌ HKJC prediction evidence 寫入失敗，Dashboard 已攔截：{exc}")
+        set_control_outcome("failed", reason="prediction_evidence_failed")
+        return EXIT_FAILED
+    deploy_code, deploy_output = run_cmd([str(DASHBOARD_DEPLOY)], timeout=1800)
+    if deploy_code != 0:
+        notify(f"⏳ HKJC evidence 已保存但 Dashboard deploy 失敗：{deploy_output[-1200:]}")
+        set_control_outcome("partial", reason="dashboard_deploy_failed")
+        return EXIT_TEMPORARY
     mirror = mirror_meeting(meeting_dir)
 
     key = f"{meeting['date']}|{meeting['venue']}"
@@ -508,6 +539,7 @@ def run_prerace(
             "meeting_dir": str(meeting_dir),
             "last_prerace_success": stamp(),
             "latest_snapshot": str(snapshot),
+            "latest_evidence": evidence,
             "last_mirror": mirror,
             "last_prerace_exit": 0,
             "failure_streak": 0,
@@ -531,6 +563,7 @@ def run_prerace(
         "succeeded",
         meeting=key,
         snapshot=str(snapshot),
+        evidence=evidence,
         recovered=recovered,
     )
     return EXIT_OK
@@ -604,6 +637,13 @@ def pending_postrace_meetings(*, today: date | None = None) -> list[Path]:
     return sorted(pending, key=lambda path: path.name)
 
 
+def venue_from_meeting_dir(path: Path) -> str:
+    for venue in ("ShaTin", "HappyValley"):
+        if venue in path.name:
+            return venue
+    raise ValueError(f"cannot infer HKJC venue from meeting folder: {path.name}")
+
+
 def refresh_dashboard_after_results(
     state: dict,
     state_path: Path,
@@ -658,8 +698,31 @@ def run_postrace(state: dict, state_path: Path) -> int:
             log(f"post-race pending {key}: exit={code}")
             overall = max(overall, EXIT_TEMPORARY)
             continue
+        report = meeting_dir / "HKJC_Reflection_Report.md"
+        try:
+            settlement = record_settlement_for_event(
+                domain=Domain.HKJC,
+                event_id=f"{meeting_date.isoformat()}|{venue_from_meeting_dir(meeting_dir)}",
+                evidence_root=Path(
+                    os.environ.get(
+                        "WONGCHOI_CONTROL_STATE_ROOT",
+                        Path.home() / "WongChoiData" / "WongChoiControl",
+                    )
+                )
+                / "evidence",
+                summary={"meeting": key, "reflector_exit": code},
+                artifacts=[report],
+            )
+        except Exception as exc:  # noqa: BLE001
+            log(f"settlement evidence pending {key}: {type(exc).__name__}: {exc}")
+            overall = max(overall, EXIT_TEMPORARY)
+            continue
         state["meetings"].setdefault(key, {}).update(
-            {"last_reflector_success": stamp(), "report": str(meeting_dir / "HKJC_Reflection_Report.md")}
+            {
+                "last_reflector_success": stamp(),
+                "report": str(report),
+                "settlement_evidence": settlement,
+            }
         )
         mirror = mirror_meeting(meeting_dir)
         state["meetings"][key]["last_mirror"] = mirror

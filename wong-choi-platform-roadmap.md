@@ -6,7 +6,7 @@
 
 ## Current Stage
 
-**Stage 2B／3B engineering及四線 production activation complete；Stage 4A reliability持續運行；下一個建設階段係 Stage 4B Evidence Core。** NBA狀態仍係 `pipeline ready / production evidence pending`，等2026-27首個真實有盤／完場日補 live evidence；呢個 deferred gate唔阻塞共用 evidence schema implementation。
+**Stage 2B／3B complete；Stage 4A／4B／4C engineering candidate已完成，等 full gate、scoped production activation同 evidence bootstrap cutover。** NBA狀態仍係 `pipeline ready / production evidence pending`，等2026-27首個真實有盤／完場日補 live evidence；中央旺財只做 control／evidence／release governance，唔係第五個預測模型。
 
 ## Stages and Exit Gates
 
@@ -30,11 +30,11 @@
 - [x] Stage 2B／3B production closure：capability matrix、ADRs、四線 adapters、canonical IDs、run states／manifest／lock／retry、schedule/freshness、wrapper、fault matrix同 AU production checkout activation全部完成。
 - [x] NBA odds freshness policy：21:00 warm-up、00:30 production、06:30只刷新未開賽場次並保留 snapshots；role-specific launchd已載入。
 - [ ] NBA deferred live gate：2026-27 第一個有盤日 pregame/postgame smoke、零漏場、零未核實 archive、30 個 forward settled recommendations。
-- [ ] Shared evidence schema：PredictionRecord、DecisionRecord、SettlementRecord、ModelRelease manifest。
+- [x] Shared evidence schema：append-only PredictionRecord、DecisionRecord、SettlementRecord、ModelRelease manifest；四線 writer 已接入 publication／settlement 前置閘。
 - [ ] Domain truth debt：AU point-in-time/draw audit；HKJC forward corpus；Tennis active-family revalidation；NBA settled ledger/bootstrap baseline。
-- [ ] Promotion registry：shadow/paper/limited gates、candidate PR、rollback manifest。
+- [x] Promotion registry：research→shadow→paper→limited→production→retired、forward evidence、human approval、rollback manifest。
 - [ ] Research runner：固定 dataset/ruler、ablation、walk-forward、leakage、experiment report。
-- [ ] Control tower：operational health、model health、portfolio risk、incidents、research queue。
+- [x] Control tower foundation：Git／release／deployment／四線 run health／model stage／evidence／30日 SLO／Telegram approval；portfolio risk同research queue留Stage 5。
 
 ## Stage Review Protocol
 
