@@ -203,7 +203,10 @@ def bootstrap_current_models(
     specs = {
         Domain.AU: ("au-matrix", "au-hkjc-v2", ReleaseStage.PRODUCTION),
         Domain.HKJC: ("hkjc-7d", "au-hkjc-v2", ReleaseStage.PRODUCTION),
-        Domain.TENNIS: ("tennis-pricing", "tennis-current", ReleaseStage.PRODUCTION),
+        # Automation is live, but the frozen 2026-08-21 audit has the rebuilt
+        # holdout at -6.61% ROI and raw-model Brier behind the market.  A
+        # running scheduler is not evidence that the model is production-fit.
+        Domain.TENNIS: ("tennis-pricing", "tennis-current", ReleaseStage.SHADOW),
         Domain.NBA: ("nba-hybrid-v1", "nba-hybrid-v1", ReleaseStage.SHADOW),
     }
     return {

@@ -105,7 +105,10 @@ class RetryGuardTests(unittest.TestCase):
         self.assertIn("/hkjc_reflect", B.COMMANDS)
 
     def test_central_read_only_commands_are_on_the_whitelist(self):
-        for command in ("/status", "/git", "/models", "/evidence", "/release"):
+        for command in (
+            "/status", "/git", "/models", "/evidence", "/release",
+            "/storage", "/dashboard",
+        ):
             self.assertIn(command, B.COMMANDS)
         self.assertIn("/au_status", B.COMMANDS)
         self.assertIn("/approve", B.COMMANDS_WITH_ARG)

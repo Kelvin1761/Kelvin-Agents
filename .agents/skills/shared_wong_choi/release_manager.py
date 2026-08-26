@@ -16,6 +16,7 @@ from urllib.parse import quote
 from uuid import uuid4
 
 from .release_policy import ReleasePolicy, activation_plan, classify_release
+from .release_events import ReleaseEventStore, effective_status
 
 
 RELEASE_SCHEMA = "wong-choi-release/v1"
@@ -173,6 +174,54 @@ def _write_manifest(state_root: Path, payload: dict) -> Path:
     finally:
         temporary.unlink(missing_ok=True)
     return path
+
+
+def _supersede_ancestor_releases(
+    repo: Path,
+    state_root: Path,
+    *,
+    release_id: str,
+    branch: str,
+    commit: str,
+) -> list[str]:
+    """Append status events for older pending candidates on the same history."""
+    events = ReleaseEventStore(state_root.parent / "release-events")
+    superseded: list[str] = []
+    for path in sorted(state_root.glob("*.json")) if state_root.exists() else ():
+        try:
+            prior = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        prior_id = str(prior.get("release_id") or "")
+        prior_commit = str(prior.get("commit") or "")
+        if (
+            prior.get("schema_version") != RELEASE_SCHEMA
+            or prior_id == release_id
+            or prior.get("branch") != branch
+            or effective_status(prior, events.list(prior_id))["status"] != "pushed"
+            or not prior_commit
+        ):
+            continue
+        ancestor = _run(
+            repo,
+            "git",
+            "merge-base",
+            "--is-ancestor",
+            prior_commit,
+            commit,
+            check=False,
+        )
+        if ancestor.returncode != 0:
+            continue
+        events.append(
+            release_id=prior_id,
+            commit=prior_commit,
+            event_type="release_superseded",
+            actor="central-release-manager",
+            detail={"superseded_by_release_id": release_id, "superseded_by_commit": commit},
+        )
+        superseded.append(prior_id)
+    return superseded
 
 
 def _notify(repo: Path, message: str, *, dry_run: bool) -> dict:
@@ -363,6 +412,13 @@ def prepare_release(
     payload["telegram"] = telegram
     manifest = _write_manifest(state_root.expanduser().resolve(), payload)
     payload["manifest"] = str(manifest)
+    payload["superseded_releases"] = _supersede_ancestor_releases(
+        repo,
+        state_root.expanduser().resolve(),
+        release_id=release_id,
+        branch=branch,
+        commit=commit,
+    )
     return payload
 
 

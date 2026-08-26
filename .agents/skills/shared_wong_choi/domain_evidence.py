@@ -17,6 +17,7 @@ from .evidence import (
     EvidenceRecord,
     EvidenceStore,
     RecordKind,
+    ReleaseStage,
     SettlementState,
 )
 
@@ -178,6 +179,17 @@ def record_prediction_decision(
         else datetime.fromisoformat(cutoff.replace("Z", "+00:00"))
     )
     release_id = model_release_id or latest_model_release(store, domain)
+    release = store.load(release_id)
+    release_stage = ReleaseStage(str((release.get("body") or {}).get("release_stage")))
+    requested_decision_state = decision_state
+    if release_stage in {
+        ReleaseStage.RESEARCH,
+        ReleaseStage.SHADOW,
+        ReleaseStage.PAPER,
+    } and decision_state is not DecisionState.BLOCKED:
+        decision_state = DecisionState.SHADOW
+    elif release_stage is ReleaseStage.RETIRED:
+        decision_state = DecisionState.BLOCKED
     selected = (
         [dict(item) for item in recommendations]
         if recommendations is not None
@@ -238,6 +250,9 @@ def record_prediction_decision(
         "model_release_id": release_id,
         "prediction_id": prediction_id,
         "decision_id": decision_id,
+        "release_stage": release_stage.value,
+        "requested_decision_state": requested_decision_state.value,
+        "decision_state": decision_state.value,
         "recommendation_count": len(selected),
     }
 

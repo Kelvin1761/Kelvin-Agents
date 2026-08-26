@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -17,6 +18,7 @@ from shared_wong_choi.release_manager import (  # noqa: E402
     git_status,
     prepare_release,
 )
+from shared_wong_choi.release_events import ReleaseEventStore, effective_status  # noqa: E402
 
 
 def git(repo: Path, *args: str) -> str:
@@ -217,3 +219,32 @@ def test_activation_base_excludes_already_deployed_manual_installer(repo: Path) 
     assert "ops/install_macos_launchd.sh" in result["scope"]
     assert "ops/install_macos_launchd.sh" not in result["activation_scope"]
     assert result["activation_plan"]["manual_required"] is False
+
+
+def test_new_candidate_supersedes_ancestor_pending_release(repo: Path) -> None:
+    state_root = repo.parent / "state" / "releases"
+    source = repo / "src" / "engine.py"
+    source.parent.mkdir()
+    source.write_text("VALUE = 1\n", encoding="utf-8")
+    first = prepare_release(
+        repo,
+        paths=["src/engine.py"],
+        message="feat: first candidate",
+        state_root=state_root,
+        notify=False,
+    )
+    source.write_text("VALUE = 2\n", encoding="utf-8")
+    second = prepare_release(
+        repo,
+        paths=["src/engine.py"],
+        message="fix: replace candidate",
+        state_root=state_root,
+        notify=False,
+    )
+
+    assert second["superseded_releases"] == [first["release_id"]]
+    old_manifest = json.loads(Path(first["manifest"]).read_text(encoding="utf-8"))
+    old_events = ReleaseEventStore(state_root.parent / "release-events").list(
+        first["release_id"]
+    )
+    assert effective_status(old_manifest, old_events)["status"] == "superseded"

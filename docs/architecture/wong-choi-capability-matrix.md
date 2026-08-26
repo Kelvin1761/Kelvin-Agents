@@ -1,6 +1,6 @@
 # Wong Choi Capability Matrix
 
-盤點日期：2026-08-26。`✅` 已有現役入口；`🟡` 有功能但未符合共用 contract；`⏳` engineering complete、等 live gate；`—` 不適用。
+盤點日期：2026-08-27。`✅` 已有現役入口；`🟡` 有功能但未符合共用 contract／model gate；`⏳` engineering complete、等 live gate；`—` 不適用。
 
 | Capability | AU | HKJC | Tennis | NBA |
 |---|---|---|---|---|
@@ -16,9 +16,11 @@
 | Overlap lock | ✅ `flock` | ✅ `flock` | ✅ `flock` | ✅ `flock` |
 | Structured run record | ✅ domain JSON + canonical adapter manifest；live獨立checkout已部署 | ✅ canonical adapter manifest；daily wrapper已切換 | ✅ canonical adapter manifest；card/daily wrapper已切換 | ✅ domain JSON + canonical adapter manifest；role-specific launchd已切換 |
 | Immutable prediction manifest | ✅ create-only SHA-256 snapshot | ✅ SHA-256 manifest | ✅ create-only daily report snapshot | ✅ SHA-256 snapshot manifest |
-| Central evidence chain | ✅ Prediction→Decision→Settlement→ModelRelease | ✅ Prediction→Decision→Settlement→ModelRelease | ✅ Prediction→Decision→Settlement→ModelRelease | ⏳ shadow chain ready；等 live settlement evidence |
-| Controlled model promotion | ✅ v2 Gold/Good + ranking path | ✅ v2 Gold/Good + ranking path | ✅ registry lifecycle；domain ruler獨立 | ⏳ shadow；live forward gate未到 |
-| Live acceptance | ✅ production | ✅ production；新季 forward gate另計 | ✅ production | ⏳ pipeline ready / production evidence pending |
+| Central evidence chain | ✅ Prediction→Decision→Settlement→ModelRelease | ✅ Prediction→Decision→Settlement→ModelRelease | ✅ shadow Prediction→Decision→Settlement→ModelRelease | ⏳ shadow chain ready；等 live settlement evidence |
+| Controlled model promotion | ✅ v2 Gold/Good + ranking path | ✅ v2 Gold/Good + ranking path | 🟡 registry shadow；holdout ROI/Brier未過 | ⏳ shadow；live forward gate未到 |
+| Live acceptance | ✅ production | ✅ production；新季 forward gate另計 | 🟡 automation live / model shadow | ⏳ pipeline ready / production evidence pending |
+
+中央能力：`Horse_Racing_Dashboard`係正式control-tower display，D1 `WC_LEDGER`保存實際投注；HOT／WARM／COLD狀態同verified archive catalog由中央旺財管理，兩者都不得改寫domain scoring。
 
 ## Confirmed Owners and Entrypoints
 

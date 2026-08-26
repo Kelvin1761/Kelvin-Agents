@@ -17,6 +17,7 @@ EVENT_TYPES = frozenset(
     {
         "approval_granted",
         "approval_rejected",
+        "release_superseded",
         "merged",
         "activation_started",
         "activation_succeeded",
@@ -113,6 +114,9 @@ def effective_status(manifest: Mapping[str, Any], events: list[Mapping[str, Any]
         elif kind == "approval_rejected":
             approved = False
             status = "rejected"
+        elif kind == "release_superseded":
+            approved = False
+            status = "superseded"
         elif kind == "merged":
             status = "merged"
         elif kind == "activation_started":

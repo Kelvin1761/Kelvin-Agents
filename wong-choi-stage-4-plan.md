@@ -14,10 +14,13 @@
 - [x] 6. 逐線接入evidence writer：AU first，再Tennis、HKJC、NBA；舊domain output保持不變。→ Verify：每個正式推介／no-bet／shadow可追到source、commit、model release同結果。
 - [x] 7. 建立中央Wong Choi CLI／Telegram：`status`、`git`、`models`、`evidence`、`release`、白名單approval。→ Verify：同一Telegram token只有一個poller；未授權chat零回覆；重複approval冇side effect。
 - [x] 8. 完成Stage 4C model registry／promotion：`research→shadow→paper→limited→production→retired`，PR可自動開但模型不可自動merge／加注。→ Verify：缺holdout、forward evidence、rollback或人手批准一律block。
-- [ ] 9. 完整exit review同production deployment。→ Verify：`./檢查.sh`、`./健康.sh`、fault matrix、release smoke、Telegram smoke全綠；100%新production decisions有provenance；roadmap更新。
+- [x] 9. 建立Stage 4D storage／Dashboard foundation：HOT／WARM／COLD policy、容量status、Telegram `/storage`；Dashboard正式歸中央control tower、D1 betting ledger同model evidence分權。→ Verify：ADR-005、storage/dashboard tests；Dashboard不可計prediction。
+- [ ] 10. 完成Stage 4D durability cutover：artifact catalog／verified archive executor、Tennis DB snapshot pilot、D1 ledger export／restore。→ Verify：外置碟offline只defer；hash／SQLite／D1 restore一致；刪本機前另有scoped approval。
+- [ ] 11. 完整exit review同production deployment。→ Verify：`./檢查.sh`、`./健康.sh`、fault matrix、release smoke、Telegram smoke全綠；100%新production decisions有provenance；roadmap更新。
 
 ## Done When
 
 - [ ] Kelvin唔需要估「有冇commit／push／deploy」：中央status同Telegram清楚列每個checkout、remote、automation同release狀態。
 - [ ] 中央Wong Choi只做control、evidence、risk、governance同display，唔係第五個預測模型。
+- [ ] AU／HKJC登記production；Tennis／NBA未過各自performance/live evidence gate前只登記shadow，automation live唔等於model production-ready。
 - [ ] NBA live evidence未齊時，平台只標記`engineering complete / NBA evidence pending`。

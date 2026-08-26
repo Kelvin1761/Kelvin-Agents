@@ -9,12 +9,14 @@ from pathlib import Path
 from typing import Any, Mapping
 
 from .contracts import CapabilityReadiness, Domain
+from .dashboard_status import collect_dashboard_status
 from .evidence import EvidenceStore, RecordKind
 from .registry import ADAPTER_SPECS
 from .release_activation import EXPECTED_MUTABLE_PATHS
 from .release_events import ReleaseEventStore, effective_status
 from .release_manager import GitStatus, ReleaseError, git_status
 from .reliability import collect_reliability
+from .storage_status import collect_storage_status
 
 
 STATUS_SCHEMA = "wong-choi-central-status/v1"
@@ -184,6 +186,8 @@ def collect_status(
     )
     primary = _git_payload(repo_root)
     reliability = collect_reliability(state_root, now=now)
+    dashboard = collect_dashboard_status(repo_root)
+    storage = collect_storage_status(repo_root, state_root)
 
     attention: list[str] = []
     if primary.get("status") not in {"clean", "clean_runtime_state"}:
@@ -196,6 +200,10 @@ def collect_status(
         attention.append("evidence_audit_failed")
     if reliability["status"] != "pass":
         attention.extend(reliability["failures"])
+    if dashboard["status"] != "configured":
+        attention.extend(dashboard["attention"])
+    if storage["status"] != "ok":
+        attention.extend(storage["attention"])
     for name, checkout in production.items():
         if checkout.get("status") not in {"clean", "clean_runtime_state"}:
             attention.append(f"production_checkout_not_clean:{name}")
@@ -212,6 +220,8 @@ def collect_status(
         "releases": releases,
         "evidence": evidence,
         "reliability": reliability,
+        "dashboard": dashboard,
+        "storage": storage,
         "domains": domains,
     }
 
@@ -240,6 +250,15 @@ def render_telegram(status: Mapping[str, Any]) -> str:
         f"30日SLO：{'✅' if reliability.get('status') == 'pass' else '❌'} "
         f"{reliability.get('status') or 'unknown'}"
     )
+    dashboard = status.get("dashboard") or {}
+    storage = status.get("storage") or {}
+    hot = ((storage.get("tiers") or {}).get("hot") or {})
+    free_gib = ((hot.get("disk") or {}).get("free_gib"))
+    lines.append(
+        f"Dashboard：{dashboard.get('status') or 'unknown'} · "
+        f"D1 {'係' if dashboard.get('betting_ledger_source') == 'cloudflare_d1_wc_ledger' else '否'}"
+    )
+    lines.append(f"Storage：HOT {hot.get('pressure') or 'unknown'} · free {free_gib if free_gib is not None else 'N/A'} GiB")
     icons = {
         "succeeded": "✅",
         "dormant": "💤",

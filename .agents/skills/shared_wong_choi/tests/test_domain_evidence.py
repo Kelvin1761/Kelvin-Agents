@@ -67,6 +67,8 @@ def test_scoring_snapshot_creates_prediction_and_decision_chain(tmp_path: Path) 
     )
     assert first["status"] == "created"
     assert first["recommendation_count"] == 2
+    assert first["requested_decision_state"] == "recommend"
+    assert first["decision_state"] == "shadow"
     assert second["status"] == "duplicate"
     assert EvidenceStore(evidence).audit()["counts"] == {
         "model_release": 1,
@@ -99,6 +101,7 @@ def test_nba_snapshot_can_be_recorded_as_shadow(tmp_path: Path) -> None:
         model_release_id=model,
     )
     assert result["recommendation_count"] == 1
+    assert result["decision_state"] == "shadow"
 
 
 def test_event_settlement_links_decision_and_retries_idempotently(
@@ -144,3 +147,5 @@ def test_event_settlement_links_decision_and_retries_idempotently(
     payload = EvidenceStore(evidence).load(first["settlement_id"])
     assert payload["body"]["settlement_state"] == "settled"
     assert payload["links"]["decision_id"] == prediction["decision_id"]
+    decision = EvidenceStore(evidence).load(prediction["decision_id"])
+    assert decision["body"]["decision_state"] == "shadow"

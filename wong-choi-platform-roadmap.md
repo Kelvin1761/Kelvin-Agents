@@ -6,7 +6,7 @@
 
 ## Current Stage
 
-**Stage 2B／3B complete；Stage 4A／4B／4C engineering candidate已完成，等 full gate、scoped production activation同 evidence bootstrap cutover。** NBA狀態仍係 `pipeline ready / production evidence pending`，等2026-27首個真實有盤／完場日補 live evidence；中央旺財只做 control／evidence／release governance，唔係第五個預測模型。
+**Stage 2B／3B complete；Stage 4A／4B／4C engineering candidate已完成；Stage 4D storage／Dashboard foundation已完成，durability cutover進行中。** AU／HKJC可登記production；Tennis因holdout ROI／Brier未過只可shadow，NBA因2026-27 live evidence未齊亦只可shadow。中央旺財擁有control tower／Dashboard，但唔係第五個預測模型。
 
 ## Stages and Exit Gates
 
@@ -20,6 +20,7 @@
 | 4A Production Alignment | 四條線同一套營運最低標準 | unattended run；off-season dormant；失敗不 deploy；immutable snapshot；post-event settlement/review；`健康.sh` 覆蓋四條線；quick/full checks 綠 |
 | 4B Evidence Core | 共用 prediction/event/result ledger、model/data version、point-in-time contract | 每個建議可由 prediction ID 追到 source snapshot、commit、odds、結果；各 domain 有固定 evaluation contract；歷史 replay 無未來資訊 |
 | 4C Controlled Production | research→shadow→paper→limited→production→retired promotion flow | champion/challenger registry；固定 holdout；risk/CLV/Brier/ROI/drawdown gate；自動 PR 但永不自動 merge／加注 |
+| 4D Data Durability + Central Dashboard | HOT／WARM／COLD lifecycle；Dashboard納入中央旺財，連接analysis、evidence同D1 betting ledger | archive copy/hash/restore/second-copy gate；SSD pressure可見；Dashboard不可重算prediction；D1可export/restore；offline cold corpus唔會靜靜縮細研究 |
 | 5 Automated Research Platform | 可重現實驗 runner、ablation、walk-forward、leakage scan、報告索引 | 同一命令可重跑 baseline/candidate；失敗實驗照記；跨 domain 共用工具但 domain ruler 分開 |
 | 6 Semi-autonomous Model Lab | Agent 提假設、跑實驗、淘汰候選、開 evidence-backed PR | Agent 無權改 ruler、holdout、production 或 bankroll；所有 promotion 有 human approval；完整 audit trail |
 | 7 Wong Choi Decision Platform | 一個 control tower 管四條 production + research loops | ≥99% scheduled-run reliability；100% production predictions 有 immutable provenance；零 stale/partial deploy；多個完整賽季 forward evidence；incident recovery、portfolio exposure、模型退役全部可視化 |
@@ -35,6 +36,9 @@
 - [x] Promotion registry：research→shadow→paper→limited→production→retired、forward evidence、human approval、rollback manifest。
 - [ ] Research runner：固定 dataset/ruler、ablation、walk-forward、leakage、experiment report。
 - [x] Control tower foundation：Git／release／deployment／四線 run health／model stage／evidence／30日 SLO／Telegram approval；portfolio risk同research queue留Stage 5。
+- [x] Central Dashboard ownership：四線analysis同中央health/evidence projection；D1 `WC_LEDGER`保存實際投注，Dashboard永不做第五個scoring engine。
+- [ ] Storage durability cutover：Tennis 2.9 GB migration snapshots pilot、multi-root artifact catalog、D1 export、WARM／COLD restore drill。
+- [ ] Tennis maturity workstream（Stage 5首個consumer）：維持shadow；用固定untouched forward gate逐family判斷，唔用完成平台stage當作model promotion。
 
 ## Stage Review Protocol
 
@@ -50,3 +54,4 @@
 | 2026-08-26 | Stage 2B／3B engineering review | 四線 manifest-backed adapters／wrapper code、schedule/freshness policy、fault matrix、NBA role-specific launchd；quick/full checks同health exit 0；NBA startup dormant manifest smoke | Engineering gate pass；Stage 4B只做 schema/design；AU獨立production checkout啟用並有runtime manifest後先開始implementation；NBA live evidence gate繼續 deferred |
 | 2026-08-26 | Stage 2B／3B → Stage 4B entry | Scoped branch已push；AU production checkout對齊 `40724a31`；14/14 deployment files aligned；wrapper dry-run、adapter/control smoke、launchd pointer同global health全部通過 | Stage 2B／3B production closure完成；開始 Stage 4B Evidence Core implementation；NBA live evidence gate維持 deferred |
 | 2026-08-27 | Stage 4 release candidate | Evaluation ruler獨立 commit；Stage 4 control/evidence/release platform；clean full gate全綠；實際 restore drill hash一致；30日SLO可計（少於20 slots明確標provisional） | Engineering exit pass；等 immutable release approval、production activation、model bootstrap同Telegram/runtime smoke後先關閉Stage 4 |
+| 2026-08-27 | Stage 4D scope review | SSD只剩約22 GiB；外置APFS有約888 GiB；Tennis DB snapshots約2.9 GB；Dashboard已有D1/KV betting ledger；Tennis holdout ROI -6.61%、Brier輸市場 | Stage 4加入data durability同Central Dashboard ownership；Tennis bootstrap由production降為shadow，Stage 5以Tennis做首個research-platform consumer |

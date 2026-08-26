@@ -38,14 +38,39 @@ echo "Wong Choi 健康檢查  $(date '+%Y-%m-%d %H:%M')"
 # ── 磁碟 ──────────────────────────────────────────────────────────────────
 hdr "磁碟"
 FREE_G=$(df -g / | tail -1 | awk '{print $4}')
-if   [ "$FREE_G" -lt 5 ];  then note_bad "內置碟只剩 ${FREE_G}GB —— 排程會因為空間不足而 skip"
-elif [ "$FREE_G" -lt 15 ]; then warn "內置碟剩 ${FREE_G}GB（偏低）"
+if   [ "$FREE_G" -lt 20 ]; then note_bad "內置碟只剩 ${FREE_G}GB —— 停止重型research/backfill，先做verified archive"
+elif [ "$FREE_G" -lt 30 ]; then warn "內置碟剩 ${FREE_G}GB（低過中央旺財30GB HOT floor）"
 else ok "內置碟剩 ${FREE_G}GB"; fi
 if df -g | grep -q "Kelvin Hardisk"; then
   ok "外置碟已掛載（$(df -h | grep 'Kelvin Hardisk' | awk '{print $4}') 可用）"
 else
   warn "外置碟未掛載 —— 封存／ML 資料攞唔到（唔影響每日流程）"
 fi
+STORAGE_JSON=$(WC_RESEARCH_REPO_ROOT="${WC_RESEARCH_REPO_ROOT:-/Users/imac/Antigravity-repo}" \
+  "$PY" .agents/skills/central_wong_choi/scripts/central_wong_choi.py \
+  storage --scan --json 2>/dev/null || true)
+"$PY" - "$STORAGE_JSON" <<'PYEOF'
+import json, sys
+try:
+    payload = json.loads(sys.argv[1])
+except (IndexError, ValueError):
+    print("  ⚠️  中央storage inventory unavailable")
+    raise SystemExit
+items = {item.get("name"): item for item in payload.get("inventory") or []}
+for name, label in (
+    ("tennis_db_backups", "Tennis DB snapshots"),
+    ("au_archive", "AU archive"),
+    ("hkjc_archive", "HKJC archive"),
+):
+    value = (items.get(name) or {}).get("gib")
+    if value is not None:
+        print(f"      {label}: {value:.2f} GiB")
+cold = ((payload.get("tiers") or {}).get("cold") or {})
+if not cold.get("configured"):
+    print("  ⚠️  COLD Drive root未設定；外置碟目前只係一份copy，未可以批准刪本機原件")
+elif cold.get("status") != "available":
+    print(f"  ⚠️  COLD Drive不可用：{cold.get('error') or 'unknown'}")
+PYEOF
 
 # ── 排程 ──────────────────────────────────────────────────────────────────
 hdr "自動化排程"

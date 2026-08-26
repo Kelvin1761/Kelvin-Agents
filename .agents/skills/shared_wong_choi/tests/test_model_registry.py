@@ -155,7 +155,7 @@ def test_registry_is_append_only_and_idempotent(tmp_path: Path) -> None:
     assert second["status"] == "duplicate"
 
 
-def test_explicit_baseline_migration_registers_three_production_and_nba_shadow(
+def test_explicit_baseline_migration_keeps_unproven_domains_in_shadow(
     tmp_path: Path,
 ) -> None:
     releases = bootstrap_current_models(
@@ -167,7 +167,7 @@ def test_explicit_baseline_migration_registers_three_production_and_nba_shadow(
     assert {name: item["stage"] for name, item in releases.items()} == {
         "au": "production",
         "hkjc": "production",
-        "tennis": "production",
+        "tennis": "shadow",
         "nba": "shadow",
     }
     retry = bootstrap_current_models(

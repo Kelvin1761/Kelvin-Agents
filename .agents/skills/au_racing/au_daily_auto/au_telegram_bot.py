@@ -38,6 +38,8 @@ HELP = ("我識嘅嘢：\n"
         "/models          四線 model release stage\n"
         "/evidence        prediction／decision／settlement 完整性\n"
         "/slo             四線30日可靠性／provenance\n"
+        "/storage         SSD／外置碟／Drive 分層狀態\n"
+        "/dashboard       中央 Dashboard／投注 ledger 狀態\n"
         "/release         待批准 release\n"
         "/approve SHA     重新驗證後批准一個 immutable release\n"
         "/au_status       AU 最近幾個 run 點\n"
@@ -202,6 +204,38 @@ def cmd_slo() -> str:
         + ("no_data" if ratio is None else f"{ratio:.1%}")
     )
     return "\n".join(lines)
+
+
+def cmd_storage() -> str:
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.storage_status import (  # noqa: PLC0415
+        collect_storage_status,
+        render_storage_telegram,
+    )
+
+    state = Path(
+        os.environ.get(
+            "WONGCHOI_CONTROL_STATE_ROOT",
+            Path.home() / "WongChoiData" / "WongChoiControl",
+        )
+    )
+    return render_storage_telegram(collect_storage_status(repo, state))
+
+
+def cmd_dashboard() -> str:
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.dashboard_status import (  # noqa: PLC0415
+        collect_dashboard_status,
+        render_dashboard_telegram,
+    )
+
+    return render_dashboard_telegram(collect_dashboard_status(repo))
 
 
 def cmd_release() -> str:
@@ -573,6 +607,7 @@ PICKMARK = {1: "①", 2: "②", 3: "③"}
 
 COMMANDS = {"/status": cmd_status, "/git": cmd_git, "/models": cmd_models,
             "/evidence": cmd_evidence, "/slo": cmd_slo,
+            "/storage": cmd_storage, "/dashboard": cmd_dashboard,
             "/release": cmd_release,
             "/au_status": cmd_au_status,
             "/today": cmd_today, "/perf": cmd_perf,
