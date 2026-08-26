@@ -211,15 +211,21 @@ def latest_step(step_name: str, *, log_dir: Path | None = None) -> dict | None:
 
 
 def _mirror_stat(path: Path):
-    """「唔准 stat」同「唔存在」一律當「唔知」。
+    """Return stat, ``None`` for absent, or sentinel for inaccessible.
 
-    ⚠️ 唔可以用 `Path.exists()`：pathlib 只吞 ENOENT/ENOTDIR/EBADF/ELOOP，EPERM
-    會照拋。launchd 底下 CloudStorage 就係會拋 EPERM。
+    Missing and TCC-denied are not the same fact.  Treating both as ``None``
+    made a current `.latest` fallback look absent whenever File Provider denied
+    stat, so healthcheck kept reporting a stale mirror after a successful run.
     """
     try:
         return path.stat()
-    except OSError:
+    except FileNotFoundError:
         return None
+    except OSError:
+        return _MIRROR_STAT_UNKNOWN
+
+
+_MIRROR_STAT_UNKNOWN = object()
 
 
 def mirror_behind(day: str, *, root: Path | None = None,
@@ -241,7 +247,8 @@ def mirror_behind(day: str, *, root: Path | None = None,
         from wongchoi_paths import AU_RACING
         root = Path(AU_RACING)
 
-    if _mirror_stat(mirror) is None:
+    mirror_stat = _mirror_stat(mirror)
+    if mirror_stat is None or mirror_stat is _MIRROR_STAT_UNKNOWN:
         return None
 
     # 鏡像名單只有一份真源，喺排程模組 —— 抄一份落嚟就一定有一日走樣。
@@ -253,21 +260,37 @@ def mirror_behind(day: str, *, root: Path | None = None,
             sources.extend(sorted(folder.rglob("*")))
 
     behind: list[str] = []
+    destination_unknown = False
     for src in sources:
         src_st = _mirror_stat(src)
-        if src_st is None or not src.is_file() or src.name == ".DS_Store":
+        if (
+            src_st is None
+            or src_st is _MIRROR_STAT_UNKNOWN
+            or not src.is_file()
+            or src.name == ".DS_Store"
+        ):
             continue
         rel = src.relative_to(root)
         canonical = mirror / rel
         # 個別檔寫唔入會退去 `.latest` 兄弟檔（睇 au_daily_schedule.atomic_copy2），
         # consumers 由 wongchoi_paths 取最新嗰份 —— 所以兩個名有一個夠新就算追到。
         latest = canonical.with_name(f"{canonical.stem}.latest{canonical.suffix}")
-        if any(st is not None and st.st_size == src_st.st_size
+        destination_stats = (_mirror_stat(canonical), _mirror_stat(latest))
+        if any(st is _MIRROR_STAT_UNKNOWN for st in destination_stats):
+            destination_unknown = True
+        if any(st is not None and st is not _MIRROR_STAT_UNKNOWN
+               and st.st_size == src_st.st_size
                and int(st.st_mtime) >= int(src_st.st_mtime)
-               for st in (_mirror_stat(canonical), _mirror_stat(latest))):
+               for st in destination_stats):
+            continue
+        if any(st is _MIRROR_STAT_UNKNOWN for st in destination_stats):
+            # We cannot prove absence or staleness. The latest run log remains
+            # the fallback source of truth for this best-effort mirror.
             continue
         behind.append(str(rel))
-    return behind
+    if behind:
+        return behind
+    return None if destination_unknown else []
 
 
 def mirror_issue(day: str | None = None, *, log_dir: Path | None = None) -> str | None:

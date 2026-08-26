@@ -2,7 +2,7 @@
 """HKJC Wong Choi unattended orchestration.
 
 This module only coordinates the existing production pipeline.  It never owns
-scoring logic and never merges a model candidate.  The four modes are designed
+scoring logic and never merges a model candidate.  The modes are designed
 for launchd/cron:
 
 * ``watch``: dormant off-season poll for the next materialized racecard.
@@ -57,6 +57,7 @@ REFLECTOR = (
     PROJECT_ROOT
     / ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py"
 )
+DASHBOARD_DEPLOY = PROJECT_ROOT / "deploy.sh"
 WEIGHT_REVIEW = (
     PROJECT_ROOT
     / ".agents/skills/hkjc_racing/hkjc_reflector/scripts/review_auto_weighting.py"
@@ -70,6 +71,36 @@ DEFAULT_FORWARD_START = date(2026, 9, 6)
 EXIT_OK = 0
 EXIT_TEMPORARY = 75
 EXIT_FAILED = 1
+
+_CONTROL_OUTCOME: dict[str, object] = {}
+
+
+def set_control_outcome(status: str, **detail: object) -> None:
+    """Record one machine-readable scheduler outcome for the shared adapter."""
+    _CONTROL_OUTCOME.clear()
+    _CONTROL_OUTCOME.update({"status": status, **detail})
+
+
+def emit_control_outcome(args: argparse.Namespace, code: int) -> int:
+    if not args.control_json:
+        return code
+    if not _CONTROL_OUTCOME:
+        fallback = "succeeded" if code == EXIT_OK else (
+            "partial" if code == EXIT_TEMPORARY else "failed"
+        )
+        set_control_outcome(fallback)
+    print(
+        json.dumps(
+            {
+                **_CONTROL_OUTCOME,
+                "mode": args.mode,
+                "exit_code": code,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+    return code
 
 
 def now_local() -> datetime:
@@ -374,9 +405,11 @@ def run_watch(state: dict, state_path: Path, *, meeting: dict | None = None) -> 
         meeting = meeting or discover_next_meeting()
     except Exception as exc:  # noqa: BLE001
         log(f"HKJC racecard poll temporary failure: {exc}")
+        set_control_outcome("partial", reason="racecard_discovery_failed")
         return EXIT_TEMPORARY
     if meeting is None:
         log("HKJC dormant: official site has no future racecard yet")
+        set_control_outcome("dormant", reason="no_future_racecard")
         return EXIT_OK
     key = f"{meeting['date']}|{meeting['venue']}"
     if state["notifications"].get("racecard_available") != key:
@@ -387,24 +420,36 @@ def run_watch(state: dict, state_path: Path, *, meeting: dict | None = None) -> 
         )
         state["notifications"]["racecard_available"] = key
         save_state(state_path, state)
+    set_control_outcome("succeeded", meeting=key)
     return EXIT_OK
 
 
-def run_prerace(state: dict, state_path: Path, *, meeting: dict | None = None) -> int:
+def run_prerace(
+    state: dict,
+    state_path: Path,
+    *,
+    meeting: dict | None = None,
+    force: bool = False,
+) -> int:
     try:
         meeting = meeting or discover_next_meeting()
     except Exception as exc:  # noqa: BLE001
         notify(f"⚠️ HKJC pre-race discovery 暫時失敗：{exc}")
+        set_control_outcome("partial", reason="racecard_discovery_failed")
         return EXIT_TEMPORARY
     if meeting is None:
         log("HKJC pre-race dormant: no racecard")
+        set_control_outcome("dormant", reason="no_future_racecard")
         return EXIT_OK
     meeting_date = date.fromisoformat(meeting["date"])
     today = now_local().date()
     lead_days = max(0, int(os.environ.get("WC_HKJC_ANALYSIS_LEAD_DAYS", "2")))
-    if meeting_date < today or (meeting_date - today).days > lead_days:
+    if meeting_date < today or ((meeting_date - today).days > lead_days and not force):
         log(f"HKJC pre-race not due: {meeting['date']} (lead={lead_days})")
+        set_control_outcome("dormant", reason="meeting_not_due", meeting=meeting["date"])
         return EXIT_OK
+    if force:
+        log(f"HKJC manual force requested for {meeting['date']} {meeting['venue']}")
 
     meeting_dir = meeting_dir_for(meeting, create=True)
     code, output = run_cmd(
@@ -441,11 +486,16 @@ def run_prerace(state: dict, state_path: Path, *, meeting: dict | None = None) -
                 f"{meeting['date']} {meeting['venue']}\n"
                 f"exit={code}｜第{streak}次｜{status}\n{output[-1200:]}"
             )
-        return EXIT_TEMPORARY if code in (75, 124) else EXIT_FAILED
+        if temporary:
+            set_control_outcome("partial", reason="prerace_source_incomplete", meeting=key)
+            return EXIT_TEMPORARY
+        set_control_outcome("failed", reason="prerace_pipeline_failed", meeting=key)
+        return EXIT_FAILED
     try:
         snapshot = create_prediction_snapshot(meeting_dir)
     except Exception as exc:  # noqa: BLE001
         notify(f"❌ HKJC scoring 完成但 prediction snapshot 失敗：{exc}")
+        set_control_outcome("failed", reason="prediction_snapshot_failed")
         return EXIT_FAILED
     mirror = mirror_meeting(meeting_dir)
 
@@ -477,6 +527,12 @@ def run_prerace(state: dict, state_path: Path, *, meeting: dict | None = None) -
         )
     else:
         log(f"HKJC unchanged rerun: reuse snapshot {snapshot.name}; Telegram skipped")
+    set_control_outcome(
+        "succeeded",
+        meeting=key,
+        snapshot=str(snapshot),
+        recovered=recovered,
+    )
     return EXIT_OK
 
 
@@ -518,6 +574,7 @@ def run_recovery(state: dict, state_path: Path) -> int:
         save_state(state_path, state)
     if not pending:
         log("HKJC recovery dormant: no pending temporary failure")
+        set_control_outcome("dormant", reason="no_pending_recovery")
         return EXIT_OK
     key, meeting = sorted(pending, key=lambda item: item[0])[0]
     log(f"HKJC self-recovery retry: {key}")
@@ -547,12 +604,40 @@ def pending_postrace_meetings(*, today: date | None = None) -> list[Path]:
     return sorted(pending, key=lambda path: path.name)
 
 
+def refresh_dashboard_after_results(
+    state: dict,
+    state_path: Path,
+    *,
+    meeting_dirs: list[Path],
+) -> bool:
+    """Rebuild/deploy after settlement so reflected HKJC meetings disappear."""
+    code, output = run_cmd([str(DASHBOARD_DEPLOY)], timeout=1800)
+    if code != 0:
+        state["pending_dashboard_refresh"] = {
+            "meeting_dirs": [str(path) for path in meeting_dirs],
+            "failed_at": stamp(),
+            "exit": code,
+            "error_excerpt": output[-1200:],
+        }
+        save_state(state_path, state)
+        log(f"HKJC post-race dashboard refresh pending: exit={code}")
+        return False
+    state.pop("pending_dashboard_refresh", None)
+    state["last_postrace_dashboard_refresh"] = stamp()
+    save_state(state_path, state)
+    return True
+
+
 def run_postrace(state: dict, state_path: Path) -> int:
     pending = pending_postrace_meetings()
-    if not pending:
+    retry_payload = state.get("pending_dashboard_refresh") or {}
+    retry_dirs = [Path(path) for path in retry_payload.get("meeting_dirs", [])]
+    if not pending and not retry_dirs:
         log("HKJC post-race: no pending analyzed meeting")
+        set_control_outcome("dormant", reason="no_pending_postrace")
         return EXIT_OK
     overall = EXIT_OK
+    completed: list[Path] = []
     for meeting_dir in pending:
         meeting_date = meeting_date_from_dir(meeting_dir)
         if meeting_date is None:
@@ -579,11 +664,56 @@ def run_postrace(state: dict, state_path: Path) -> int:
         mirror = mirror_meeting(meeting_dir)
         state["meetings"][key]["last_mirror"] = mirror
         save_state(state_path, state)
-        notify(
-            f"🏁 HKJC 覆盤完成｜{meeting_dir.name}\n"
-            "正式賽果已對齊 pre-race prediction，forward corpus／Matrix review 已更新。"
+        completed.append(meeting_dir)
+
+    dashboard_targets = sorted({*retry_dirs, *completed}, key=lambda path: str(path))
+    if dashboard_targets:
+        refreshed = refresh_dashboard_after_results(
+            state, state_path, meeting_dirs=dashboard_targets
+        )
+        if not refreshed:
+            notify(
+                "⚠️ HKJC 覆盤已完成，但 dashboard 更新失敗；"
+                "排程會自動重試。\n"
+                + "、".join(path.name for path in dashboard_targets)
+            )
+            set_control_outcome("partial", reason="dashboard_refresh_pending")
+            return max(overall, EXIT_TEMPORARY)
+        for meeting_dir in completed:
+            notify(
+                f"🏁 HKJC 覆盤完成｜{meeting_dir.name}\n"
+                "正式賽果已對齊 pre-race prediction，forward corpus／Matrix review 已更新；"
+                "已由 Wong Choi dashboard 移除已完成賽日。"
+            )
+    if overall == EXIT_TEMPORARY:
+        set_control_outcome("partial", reason="results_pending")
+    else:
+        set_control_outcome(
+            "succeeded",
+            meetings=[path.name for path in completed],
         )
     return overall
+
+
+def run_startup(state: dict, state_path: Path) -> int:
+    """Catch up pre-race and post-race work once after macOS user login."""
+    log("HKJC startup catch-up begins")
+    prerace = run_prerace(state, state_path)
+    prerace_status = str(_CONTROL_OUTCOME.get("status") or "")
+    postrace = run_postrace(state, state_path)
+    postrace_status = str(_CONTROL_OUTCOME.get("status") or "")
+    results = (prerace, postrace)
+    if EXIT_FAILED in results:
+        set_control_outcome("failed", reason="startup_subrun_failed")
+        return EXIT_FAILED
+    if EXIT_TEMPORARY in results:
+        set_control_outcome("partial", reason="startup_subrun_partial")
+        return EXIT_TEMPORARY
+    if "succeeded" in {prerace_status, postrace_status}:
+        set_control_outcome("succeeded", reason="startup_catchup_complete")
+    else:
+        set_control_outcome("dormant", reason="startup_nothing_due")
+    return EXIT_OK
 
 
 def _parse_forward_start() -> date:
@@ -772,12 +902,30 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="HKJC Wong Choi daily automation")
     parser.add_argument(
         "--mode",
-        choices=("watch", "prerace", "recovery", "postrace", "weekly", "monthly"),
+        choices=(
+            "watch",
+            "prerace",
+            "recovery",
+            "postrace",
+            "startup",
+            "weekly",
+            "monthly",
+        ),
         required=True,
     )
     parser.add_argument("--state-file", type=Path, default=DEFAULT_STATE)
     parser.add_argument("--candidate-gate", type=Path, default=DEFAULT_CANDIDATE_GATE)
     parser.add_argument("--meeting-url", help="Optional explicit HKJC racecard URL")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Run an available future meeting even outside the normal lead-day window",
+    )
+    parser.add_argument(
+        "--control-json",
+        action="store_true",
+        help="Emit one final machine-readable control-plane outcome.",
+    )
     return parser.parse_args(argv)
 
 
@@ -799,6 +947,7 @@ def _meeting_from_url(url: str) -> dict:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
+    _CONTROL_OUTCOME.clear()
     args.state_file.parent.mkdir(parents=True, exist_ok=True)
     lock_path = args.state_file.with_suffix(".lock")
     with lock_path.open("a", encoding="utf-8") as lock:
@@ -806,25 +955,33 @@ def main(argv: list[str] | None = None) -> int:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             log("HKJC scheduler already running; skip overlapping invocation")
-            return EXIT_OK
+            set_control_outcome("blocked", reason="scheduler_locked")
+            return emit_control_outcome(args, EXIT_OK)
         state = load_state(args.state_file)
         meeting = _meeting_from_url(args.meeting_url) if args.meeting_url else None
         try:
             if args.mode == "watch":
-                return run_watch(state, args.state_file, meeting=meeting)
-            if args.mode == "prerace":
-                return run_prerace(state, args.state_file, meeting=meeting)
-            if args.mode == "recovery":
-                return run_recovery(state, args.state_file)
-            if args.mode == "postrace":
-                return run_postrace(state, args.state_file)
-            if args.mode == "monthly":
-                return run_monthly_review_reminder(state, args.state_file)
-            return run_weekly(state, args.state_file, args.candidate_gate)
+                code = run_watch(state, args.state_file, meeting=meeting)
+            elif args.mode == "prerace":
+                code = run_prerace(
+                    state, args.state_file, meeting=meeting, force=args.force
+                )
+            elif args.mode == "recovery":
+                code = run_recovery(state, args.state_file)
+            elif args.mode == "postrace":
+                code = run_postrace(state, args.state_file)
+            elif args.mode == "startup":
+                code = run_startup(state, args.state_file)
+            elif args.mode == "monthly":
+                code = run_monthly_review_reminder(state, args.state_file)
+            else:
+                code = run_weekly(state, args.state_file, args.candidate_gate)
         except Exception as exc:  # noqa: BLE001
             log(f"HKJC {args.mode} failed: {type(exc).__name__}: {exc}")
             notify(f"❌ HKJC {args.mode} automation failed：{type(exc).__name__}: {exc}")
-            return EXIT_FAILED
+            set_control_outcome("failed", reason=f"{type(exc).__name__}: {exc}")
+            code = EXIT_FAILED
+        return emit_control_outcome(args, code)
 
 
 if __name__ == "__main__":

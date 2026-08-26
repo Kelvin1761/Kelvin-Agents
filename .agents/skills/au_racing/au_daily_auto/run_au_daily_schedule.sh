@@ -18,6 +18,7 @@ shift 2>/dev/null || true
 
 SCRIPT_DIR="${0:A:h}"
 PROJECT_ROOT="${SCRIPT_DIR:h:h:h:h}"
+CONTROL_PLANE="$PROJECT_ROOT/.agents/skills/shared_wong_choi/control_plane.py"
 
 : "${WONGCHOI_AU_DATA_ROOT:=$HOME/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing}"
 : "${WONGCHOI_AU_MIRROR_ROOT:=/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing}"
@@ -119,4 +120,4 @@ if [ -z "${WC_AU_NO_SELF_UPDATE:-}" ]; then
   print -r -- "▶ 版本 $(git rev-parse --short HEAD) ($(git rev-parse --abbrev-ref HEAD))"
 fi
 
-exec /usr/bin/python3 "$SCRIPT_DIR/au_daily_schedule.py" --mode "$MODE" "$@"
+exec /usr/bin/python3 "$CONTROL_PLANE" --domain au --mode "$MODE" "$@"

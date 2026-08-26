@@ -73,6 +73,37 @@ class RetryGuardTests(unittest.TestCase):
     def test_retry_is_on_the_whitelist(self):
         self.assertIn("/retry", B.COMMANDS)
 
+    def test_hkjc_commands_use_fixed_production_modes(self):
+        started = []
+
+        class _P:
+            def __init__(self, cmd, **kw):
+                started.append((cmd, kw))
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             unittest.mock.patch.object(
+                 B, "_hkjc_runner", return_value=Path(tmp) / "run.sh"
+             ), \
+             unittest.mock.patch("subprocess.Popen", _P):
+            runner = Path(tmp) / "run.sh"
+            runner.write_text("#!/bin/bash\n", encoding="utf-8")
+            with unittest.mock.patch.object(
+                B, "HKJC_ANALYSIS_LOG", Path(tmp) / "analysis.out"
+            ), unittest.mock.patch.object(
+                B, "HKJC_REFLECT_LOG", Path(tmp) / "reflect.out"
+            ):
+                self.assertIn("已開始", B.cmd_hkjc())
+                self.assertIn("已開始", B.cmd_hkjc_reflect())
+
+        self.assertEqual(started[0][0][-2:], ["prerace", "--force"])
+        self.assertEqual(started[1][0][-1], "postrace")
+        self.assertTrue(started[0][1].get("start_new_session"))
+        self.assertTrue(started[1][1].get("start_new_session"))
+
+    def test_hkjc_commands_are_on_the_whitelist(self):
+        self.assertIn("/hkjc", B.COMMANDS)
+        self.assertIn("/hkjc_reflect", B.COMMANDS)
+
 
 if __name__ == "__main__":
     unittest.main()
