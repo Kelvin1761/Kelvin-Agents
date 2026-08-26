@@ -310,10 +310,20 @@ def generate_report(args: argparse.Namespace) -> None:
 
 
 def prune_raw_responses(args: argparse.Namespace) -> None:
-    from tennis_wc.database.maintenance import prune_raw_response_bodies, vacuum
+    from tennis_wc.database.maintenance import (
+        prune_raw_response_bodies,
+        prune_superseded_feature_snapshots,
+        vacuum,
+    )
 
     with get_connection() as conn:
         result = prune_raw_response_bodies(
+            conn, keep_days=args.keep_days, dry_run=args.dry_run
+        )
+        # feature_snapshots was the larger half by 2026-08-26 (949MB against
+        # 437MB) and had no retention at all, so the command that exists to
+        # bound the database was bounding the smaller table.
+        result["feature_snapshots"] = prune_superseded_feature_snapshots(
             conn, keep_days=args.keep_days, dry_run=args.dry_run
         )
         if args.vacuum and not args.dry_run:

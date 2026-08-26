@@ -1,4 +1,4 @@
-"""Bounded growth for the two tables that have none.
+"""Bounded growth for the tables that have none.
 
 `tennis_wc.db` reached 2.6GB by 2026-08-16 -- 1.3GB of it `raw_api_responses`
 -- and the size became an operational failure, not merely untidy: the recovery
@@ -75,6 +75,59 @@ def prune_raw_response_bodies(
         return result
     conn.execute(
         f"UPDATE raw_api_responses SET response_json = '' WHERE {predicate}", params
+    )
+    conn.commit()
+    return result
+
+
+def prune_superseded_feature_snapshots(
+    conn: sqlite3.Connection,
+    keep_days: int = 7,
+    dry_run: bool = False,
+) -> dict:
+    """Blank superseded feature bodies, keeping every row.
+
+    2026-08-26: `feature_snapshots` was 949MB of a 1.9GB database and had no
+    retention at all -- this module was written for `raw_api_responses` and the
+    second unbounded table was never added. It holds 30,028 rows over 6,390
+    distinct (match, player, version) triples: 4.7 copies each, 716MB of which
+    is superseded, at ~32KB of JSON per row.
+
+    Same shape as the raw-response prune and safe for the same reason: the
+    newest row per (match_id, player_id, feature_set_version) is kept at any
+    age, so no reader can lose the row it actually reads. `snapshot_quality`
+    and `daily_report` already resolve quality through `MAX(id)` per pair, and
+    `data_quality_score` is a column rather than a JSON field, so blanking a
+    body costs nothing any reader observes.
+
+    Rows are kept rather than deleted because `player_identity` remaps
+    `feature_snapshots.player_id` during a merge and `checks.py` counts them;
+    deleting would quietly shrink both.
+    """
+    predicate = """
+        features_json != ''
+          AND created_at < date('now', ?)
+          AND id NOT IN (
+                SELECT MAX(id) FROM feature_snapshots
+                GROUP BY match_id, player_id, feature_set_version
+          )
+    """
+    params = (f"-{int(keep_days)} day",)
+    measured = conn.execute(
+        f"SELECT COUNT(*) AS rows, IFNULL(SUM(LENGTH(features_json)), 0) AS bytes "
+        f"FROM feature_snapshots WHERE {predicate}",
+        params,
+    ).fetchone()
+    result = {
+        "rows": int(measured["rows"]),
+        "bytes_freed": int(measured["bytes"]),
+        "keep_days": int(keep_days),
+        "dry_run": bool(dry_run),
+    }
+    if dry_run or not result["rows"]:
+        return result
+    conn.execute(
+        f"UPDATE feature_snapshots SET features_json = '' WHERE {predicate}", params
     )
     conn.commit()
     return result

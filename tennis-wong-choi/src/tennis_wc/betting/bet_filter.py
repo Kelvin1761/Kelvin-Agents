@@ -24,12 +24,53 @@ def classify_edge(edge: float | None) -> str:
     return "STRONG_BET"
 
 
+def _context_value(feature_snapshot: dict, key: str) -> str:
+    """One `match_context` field, unwrapped.
+
+    Every entry is a datapoint wrapper, so a plain `.get(key)` returns the
+    wrapper and any string test on it silently reads UNKNOWN.
+    """
+    context = feature_snapshot.get("match_context") or {}
+    entry = context.get(key)
+    if isinstance(entry, dict):
+        return str(entry.get("value") or "")
+    return str(entry or "")
+
+
 def apply_bet_filter(feature_snapshot: dict, pricing: dict) -> dict:
     quality = feature_snapshot.get("data_quality", {})
     errors = list(quality.get("errors", [])) + list(pricing.get("errors", []))
     warnings = list(quality.get("warnings", []))
     hard_no_bet_reasons: list[str] = []
     risk_adjustments: list[str] = []
+
+    # The props path refuses ITF and UTR outright, on 482 settled fixtures where
+    # our match probability scored Brier 0.2330 against the market's 0.1838
+    # (bootstrapped gap +0.0492, CI [+0.035, +0.063]). That evidence is about
+    # the match probability itself, and the match-winner path never got it: 165
+    # of 472 BET decisions in the record are ITF and 13 are UTR, together 38% of
+    # everything the filter passed.
+    #
+    # Justified on consistency with that decision, not on its own ROI. The
+    # match-winner ROI comparison is underpowered -- ITF BET decisions read
+    # -13.65% (CI [-32.74, +5.87]) and the surviving allow-listed subset +3.20%
+    # (CI [-15.66, +22.21]) on n=166 -- so it supports the direction and settles
+    # nothing by itself. Nothing is staked either way: `bet_ledger` and
+    # `prop_live_bets` are both empty.
+    # The structured level is passed, not just the name. 26 of the tournaments
+    # the filter passed carry a bare external id as their "name" (`421-2026`,
+    # `188-2026`) covering 390 BET decisions, and `tournament_levels.level`
+    # knows those are GRAND_SLAM, ATP_1000 and ATP_250 -- so a name-only test
+    # would refuse the best events on the board. Same defect `_tier_of` was
+    # given its `level` argument for; the props path passes it and this one has
+    # to as well.
+    from tennis_wc.props.daily import _tier_bettable, _tier_of
+
+    tournament = _context_value(feature_snapshot, "tournament")
+    level = _context_value(feature_snapshot, "level")
+    if not _tier_bettable(tournament, level):
+        tier = _tier_of(tournament, level).lower()
+        hard_no_bet_reasons.append(f"tier_not_bettable_{tier}")
 
     if quality.get("score", 0) < 65:
         hard_no_bet_reasons.append("data_quality_score_below_65")
