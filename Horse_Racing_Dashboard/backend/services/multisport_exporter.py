@@ -534,6 +534,60 @@ def _tennis_coverage(connection: sqlite3.Connection, analysis_date: str) -> Dict
         "latest_sportsbet_scrape": latest_scrape,
         "latest_run_started": latest_run_started,
         "latest_analysis": latest_analysis,
+        **_tennis_input_completeness(connection, analysis_date),
+    }
+
+
+def _tennis_input_completeness(connection: sqlite3.Connection,
+                               analysis_date: str) -> Dict[str, Any]:
+    """How many of today's priced fixtures have both players' real inputs.
+
+    "Modelled" says a probability was produced, not that it was produced from
+    anything. The model has 168 feature leaves and 164 of them are one signal
+    -- past results -- re-sliced; only Elo, surface Elo, rest days and rank
+    carry independent information, and 27% of predictions land within 0.05 of
+    0.5 because they were priced without them.
+
+    This is the number Phase 1 moves, so it belongs on the page rather than in
+    a notebook: on the 49.5% of fixtures where all three are present the model
+    draws level with the market (Delta log-loss +0.0161, CI [-0.0063, +0.0379]);
+    on the rest it loses by +0.0639.
+    """
+    # The exporter reads a database it does not own, so it must not assume the
+    # schema: a fixture or an older copy can carry `players` without these
+    # columns, and an OperationalError here is swallowed by the caller's
+    # `except sqlite3.Error` and turns the whole tennis panel into
+    # "unavailable" -- a diagnostic taking down the thing it describes.
+    if not _table_exists(connection, "players"):
+        return {}
+    player_columns = {
+        row["name"]
+        for row in connection.execute("PRAGMA table_info(players)").fetchall()
+    }
+    if not {"current_rank", "overall_elo"} <= player_columns:
+        return {}
+    row = connection.execute(
+        """
+        SELECT COUNT(*) AS n,
+               SUM(CASE WHEN pa.current_rank IS NOT NULL
+                         AND pb.current_rank IS NOT NULL THEN 1 ELSE 0 END) AS ranked,
+               SUM(CASE WHEN pa.overall_elo IS NOT NULL
+                         AND pb.overall_elo IS NOT NULL THEN 1 ELSE 0 END) AS elo
+        FROM matches m
+        JOIN players pa ON pa.id = m.player_a_id
+        JOIN players pb ON pb.id = m.player_b_id
+        WHERE m.match_date = ?
+        """,
+        (analysis_date,),
+    ).fetchone()
+    total = int(row["n"] or 0)
+    if not total:
+        return {}
+    return {
+        "both_players_ranked": int(row["ranked"] or 0),
+        "both_players_ranked_ratio": round((row["ranked"] or 0) / total, 4),
+        "both_players_elo": int(row["elo"] or 0),
+        "both_players_elo_ratio": round((row["elo"] or 0) / total, 4),
     }
 
 
@@ -1124,6 +1178,57 @@ def _export_tennis_combos(
     return recommendations
 
 
+def _tennis_verified_record(connection: sqlite3.Connection) -> Dict[str, Any]:
+    """The record on rows that were provably written before the match started.
+
+    The panel showed a family scorecard and four archived July props and no
+    overall figure at all, which reads as "quietly ticking along". It is not.
+    2026-08-26: 9,594 of 13,658 prop rows were written by one run on 08-10 for
+    match dates going back to 05-10, and the whole tracker then read +2.86% ROI
+    while the rows that can be shown to predate their match read -23.38%
+    (95% CI [-33.92, -12.65]). The profitable-looking half is the half that
+    cannot be timed.
+
+    So the page states the admissible sample and its result, and how much is
+    excluded. `is_point_in_time = 1` -- never `!= 0`, which would let the
+    untimeable rows back in through NULL. Returns {} on an older database
+    without the column rather than guessing.
+    """
+    if not _table_exists(connection, "prop_tracker"):
+        return {}
+    columns = {
+        row["name"]
+        for row in connection.execute("PRAGMA table_info(prop_tracker)").fetchall()
+    }
+    if "is_point_in_time" not in columns:
+        return {}
+    row = connection.execute(
+        """
+        SELECT
+          SUM(CASE WHEN is_point_in_time = 1 THEN 1 ELSE 0 END) AS graded,
+          SUM(CASE WHEN is_point_in_time = 1 THEN stake_units ELSE 0 END) AS staked,
+          SUM(CASE WHEN is_point_in_time = 1 THEN profit_loss_units ELSE 0 END) AS pnl,
+          SUM(CASE WHEN is_point_in_time = 1 AND result_status = 'WON'
+                   THEN 1 ELSE 0 END) AS won,
+          SUM(CASE WHEN is_point_in_time IS NOT 1 THEN 1 ELSE 0 END) AS excluded
+        FROM prop_tracker
+        WHERE result_status IN ('WON','LOST') AND is_value = 1 AND stake_units > 0
+        """
+    ).fetchone()
+    graded = int(row["graded"] or 0)
+    staked = float(row["staked"] or 0.0)
+    if not graded or staked <= 0:
+        return {}
+    return {
+        "point_in_time_settled": graded,
+        "point_in_time_won": int(row["won"] or 0),
+        "point_in_time_roi": round(float(row["pnl"] or 0.0) / staked, 4),
+        "excluded_from_judgement": int(row["excluded"] or 0),
+        "live_stakes_placed": 0 if not _table_exists(connection, "prop_live_bets")
+        else connection.execute("SELECT COUNT(*) FROM prop_live_bets").fetchone()[0],
+    }
+
+
 def export_tennis_snapshot(db_path: Path, target_date: Optional[str] = None) -> Dict[str, Any]:
     """Export only evidence-gated Tennis prop recommendations."""
     db_path = Path(db_path)
@@ -1156,6 +1261,7 @@ def export_tennis_snapshot(db_path: Path, target_date: Optional[str] = None) -> 
         recommendations = _export_tennis_singles(connection, analysis_date, strategy)
         recommendations.extend(_export_tennis_combos(connection, analysis_date, strategy))
         coverage = _tennis_coverage(connection, analysis_date)
+        verified_record = _tennis_verified_record(connection)
         connection.close()
     except sqlite3.Error as exc:
         return _empty_snapshot("tennis", run_id, "blocked", [f"tennis_database_error:{exc}"])
@@ -1172,6 +1278,7 @@ def export_tennis_snapshot(db_path: Path, target_date: Optional[str] = None) -> 
         "recommendations": recommendations,
         "strategy": strategy,
         "coverage": coverage,
+        "verified_record": verified_record,
         "source_files": [str(db_path)],
         "warnings": [] if recommendations else ["no_eligible_tennis_recommendations"],
     }

@@ -440,3 +440,106 @@ class MultiSportExporterTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TennisHonestPanelTests(unittest.TestCase):
+    """The panel showed a family scorecard and archived July props and no
+    overall figure, while the tracker's own provably pre-match rows read
+    -23.38% ROI. A page that omits that is misleading, not neutral.
+    """
+
+    def _db(self, tmp: str, *, with_columns: bool = True) -> Path:
+        db = Path(tmp) / "tennis-panel.db"
+        conn = sqlite3.connect(db)
+        rank_cols = ", current_rank INTEGER, overall_elo REAL" if with_columns else ""
+        conn.executescript(
+            f"""
+            CREATE TABLE players (id INTEGER PRIMARY KEY, name TEXT{rank_cols});
+            CREATE TABLE matches (id INTEGER PRIMARY KEY, match_date TEXT,
+                player_a_id INTEGER, player_b_id INTEGER, tournament_id INTEGER);
+            CREATE TABLE prop_tracker (
+                id INTEGER PRIMARY KEY, stake_units REAL, profit_loss_units REAL,
+                result_status TEXT, is_value INTEGER, is_point_in_time INTEGER);
+            CREATE TABLE prop_live_bets (prop_id INTEGER);
+            """
+        )
+        if with_columns:
+            conn.executescript(
+                """
+                INSERT INTO players VALUES (1,'A',10,1800.0),(2,'B',20,1750.0),
+                                           (3,'C',NULL,NULL),(4,'D',40,1700.0);
+                """
+            )
+        else:
+            conn.executescript("INSERT INTO players VALUES (1,'A'),(2,'B'),(3,'C'),(4,'D');")
+        conn.executescript(
+            """
+            INSERT INTO matches VALUES (1,'2026-08-27',1,2,1),(2,'2026-08-27',3,4,1);
+            -- two pre-match bets (one won, one lost) and one post-start winner
+            INSERT INTO prop_tracker VALUES
+                (1, 1.0,  0.9, 'WON',  1, 1),
+                (2, 1.0, -1.0, 'LOST', 1, 1),
+                (3, 1.0,  5.0, 'WON',  1, 0);
+            """
+        )
+        conn.commit()
+        conn.close()
+        return db
+
+    def test_the_record_counts_only_provably_pre_match_bets(self):
+        from backend.services.multisport_exporter import _tennis_verified_record
+
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = sqlite3.connect(self._db(tmp))
+            conn.row_factory = sqlite3.Row
+            record = _tennis_verified_record(conn)
+            conn.close()
+        self.assertEqual(record["point_in_time_settled"], 2)
+        self.assertEqual(record["point_in_time_won"], 1)
+        # (0.9 - 1.0) / 2.0 staked. The post-start +5.0 must not appear.
+        self.assertAlmostEqual(record["point_in_time_roi"], -0.05, places=4)
+        self.assertEqual(record["excluded_from_judgement"], 1)
+        self.assertEqual(record["live_stakes_placed"], 0)
+
+    def test_input_completeness_reports_both_sides_present(self):
+        from backend.services.multisport_exporter import _tennis_input_completeness
+
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = sqlite3.connect(self._db(tmp))
+            conn.row_factory = sqlite3.Row
+            cov = _tennis_input_completeness(conn, "2026-08-27")
+            conn.close()
+        # Fixture 1 has both ranked; fixture 2 has player C with no rank.
+        self.assertEqual(cov["both_players_ranked"], 1)
+        self.assertAlmostEqual(cov["both_players_ranked_ratio"], 0.5, places=4)
+        self.assertEqual(cov["both_players_elo"], 1)
+
+    def test_a_database_without_the_columns_degrades_quietly(self):
+        """An OperationalError here is swallowed upstream and turns the whole
+        tennis panel into "unavailable" -- a diagnostic taking down the thing
+        it describes."""
+        from backend.services.multisport_exporter import _tennis_input_completeness
+
+        with tempfile.TemporaryDirectory() as tmp:
+            conn = sqlite3.connect(self._db(tmp, with_columns=False))
+            conn.row_factory = sqlite3.Row
+            self.assertEqual(_tennis_input_completeness(conn, "2026-08-27"), {})
+            conn.close()
+
+    def test_a_tracker_without_the_point_in_time_column_reports_nothing(self):
+        """Better to show no record than to average a real loss with an
+        artefact, which is what the whole-table figure did (+2.86%)."""
+        from backend.services.multisport_exporter import _tennis_verified_record
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db = Path(tmp) / "old.db"
+            conn = sqlite3.connect(db)
+            conn.executescript(
+                "CREATE TABLE prop_tracker (id INTEGER PRIMARY KEY, stake_units REAL,"
+                " profit_loss_units REAL, result_status TEXT, is_value INTEGER);"
+                "INSERT INTO prop_tracker VALUES (1, 1.0, 0.9, 'WON', 1);"
+            )
+            conn.commit()
+            conn.row_factory = sqlite3.Row
+            self.assertEqual(_tennis_verified_record(conn), {})
+            conn.close()

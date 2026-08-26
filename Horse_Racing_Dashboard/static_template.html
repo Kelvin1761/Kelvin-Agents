@@ -1804,6 +1804,21 @@ function renderSportsHistory(sport) {
         Family 記分卡：${esc(familyProgress || '未有已結算樣本')}。
       </span></div>`
     : '';
+  // The record, on rows that can be shown to predate their match. Without it the
+  // panel showed a family scorecard and archived July props and no overall
+  // figure, which reads as "quietly ticking along" -- while the tracker's own
+  // pre-match rows read -23.38%. State it, or the page is misleading by omission.
+  const verified = sport === 'tennis' ? snapshot?.verified_record : null;
+  const verifiedNotice = verified && Number(verified.point_in_time_settled || 0) > 0
+    ? `<div class="sports-notice"><span>📐</span><span>
+        <strong>可核實戰績</strong>（只算證實喺開賽前寫入嘅注）：
+        ${Number(verified.point_in_time_settled)} 注已結算 ·
+        中 ${Number(verified.point_in_time_won || 0)} 注 ·
+        ROI <strong>${verified.point_in_time_roi == null ? '—' : pct(verified.point_in_time_roi)}</strong> ·
+        實際落注 ${Number(verified.live_stakes_placed || 0)} 注。<br>
+        另有 ${Number(verified.excluded_from_judgement || 0)} 注因為開賽後寫入或者量唔到寫入時間，<strong>唔計入判決</strong>。
+      </span></div>`
+    : '';
   const coverageNotice = coverage
     ? `<div class="sports-notice"><span>📡</span><span>
         今日賽程 ${Number(coverage.fixtures_found || 0)} 場 ·
@@ -1812,6 +1827,9 @@ function renderSportsHistory(sport) {
         已建模 ${Number(coverage.modelled_matches || 0)} 場 ·
         未入模型 ${Number(coverage.unmodelled_priced_matches || 0)} 場 ·
         覆蓋 ${coverage.priced_ratio == null ? '—' : pct(coverage.priced_ratio)}。<br>
+        雙方都有排名 ${coverage.both_players_ranked_ratio == null ? '—' : pct(coverage.both_players_ranked_ratio)} ·
+        雙方都有 Elo ${coverage.both_players_elo_ratio == null ? '—' : pct(coverage.both_players_elo_ratio)}
+        <span style="opacity:.75">（獨立輸入齊全度 — 唔齊嘅場次模型會出一個貼近 0.5 嘅數）</span><br>
         最後 Sportsbet 抓取：${esc(coverage.latest_sportsbet_scrape || '—')} ·
         最後分析：${esc(coverage.latest_analysis || snapshot?.generated_at || '—')}
       </span></div>`
@@ -1820,7 +1838,7 @@ function renderSportsHistory(sport) {
     const message = hasCurrentSportsFeed(sport)
       ? '今次分析已完成，但未有通過模型及風控門檻嘅建議。'
       : '未有可用歷史分析。';
-    return `${coverageNotice}${strategyNotice}<div class="sports-empty">${message}</div>`;
+    return `${verifiedNotice}${coverageNotice}${strategyNotice}<div class="sports-empty">${message}</div>`;
   }
   // Today's analysis ran and passed nothing, so the cards below are history. Say so
   // outright — otherwise old cases read as today's picks, which is the worst possible
@@ -1842,7 +1860,11 @@ function renderSportsHistory(sport) {
         ${coverageNotice}${strategyNotice}
       </details>`
     : '';
-  return `${gatedTodayNotice}${notice}${diagnostics}<div class="history-grid">${items.map(item => renderHistoryCard(item, sport)).join('')}</div>`;
+  // The verified record stays OUT of the collapsed diagnostics. Coverage and
+  // strategy state are diagnostics; "what happened when we actually did this"
+  // is the answer, and it matters most on exactly this path -- where the cards
+  // below are archived cases and the reader is deciding how much to trust them.
+  return `${gatedTodayNotice}${notice}${verifiedNotice}${diagnostics}<div class="history-grid">${items.map(item => renderHistoryCard(item, sport)).join('')}</div>`;
 }
 
 function sportsStatusLabel(status) {
