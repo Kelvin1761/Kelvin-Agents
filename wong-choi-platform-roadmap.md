@@ -6,7 +6,7 @@
 
 ## Current Stage
 
-**Stage 2B／3B engineering complete；Stage 3B production activation 3/4（AU獨立checkout待部署）；Stage 4A reliability繼續運行。** NBA狀態係 `pipeline ready / production evidence pending`。Stage 4B可以先做 schema/design；正式 implementation等 AU activation gate完成，維持原定「先完成 Stage 2／3」次序。
+**Stage 2B／3B engineering及四線 production activation complete；Stage 4A reliability持續運行；下一個建設階段係 Stage 4B Evidence Core。** NBA狀態仍係 `pipeline ready / production evidence pending`，等2026-27首個真實有盤／完場日補 live evidence；呢個 deferred gate唔阻塞共用 evidence schema implementation。
 
 ## Stages and Exit Gates
 
@@ -27,7 +27,7 @@
 ## Ordered Work
 
 - [x] NBA alignment code：daily scheduler、snapshot、reflector、archive、health、Telegram、launchd、fault tests。
-- [ ] Stage 2B／3B production closure：engineering items（capability matrix、ADRs、四線 adapters、canonical IDs、run states／manifest／lock／retry、schedule/freshness、wrapper code、fault matrix）已完成；餘下 AU production checkout部署同 runtime manifest smoke。
+- [x] Stage 2B／3B production closure：capability matrix、ADRs、四線 adapters、canonical IDs、run states／manifest／lock／retry、schedule/freshness、wrapper、fault matrix同 AU production checkout activation全部完成。
 - [x] NBA odds freshness policy：21:00 warm-up、00:30 production、06:30只刷新未開賽場次並保留 snapshots；role-specific launchd已載入。
 - [ ] NBA deferred live gate：2026-27 第一個有盤日 pregame/postgame smoke、零漏場、零未核實 archive、30 個 forward settled recommendations。
 - [ ] Shared evidence schema：PredictionRecord、DecisionRecord、SettlementRecord、ModelRelease manifest。
@@ -48,3 +48,4 @@
 | 2026-08-26 | Stage 4A readiness review | NBA full scan 修正日期、coverage、season、schema、ML fallback、settlement、release gates；fault tests 綠；未有 2026-27 live archive | 留喺 Stage 4A，第一個 live pre/postgame gate 過先進 Stage 4B |
 | 2026-08-26 | Roadmap normalization | 舊 stage 將 domain engines、統一平台、domain automation、production governance 混為同一層 | 先做 Stage 2B／3B engineering closure；維持 Stage 4A；NBA live gate deferred；之後開始 Stage 4B implementation |
 | 2026-08-26 | Stage 2B／3B engineering review | 四線 manifest-backed adapters／wrapper code、schedule/freshness policy、fault matrix、NBA role-specific launchd；quick/full checks同health exit 0；NBA startup dormant manifest smoke | Engineering gate pass；Stage 4B只做 schema/design；AU獨立production checkout啟用並有runtime manifest後先開始implementation；NBA live evidence gate繼續 deferred |
+| 2026-08-26 | Stage 2B／3B → Stage 4B entry | Scoped branch已push；AU production checkout對齊 `40724a31`；14/14 deployment files aligned；wrapper dry-run、adapter/control smoke、launchd pointer同global health全部通過 | Stage 2B／3B production closure完成；開始 Stage 4B Evidence Core implementation；NBA live evidence gate維持 deferred |

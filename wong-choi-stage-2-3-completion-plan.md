@@ -20,10 +20,10 @@
 - [x] 6. 為四個 adapter 補 integration fixtures，同時定案 NBA odds freshness：21:00 warm-up、00:30 production、06:30 只刷新未開賽場次並保留所有 snapshots。→ Verify：四線 fixture end-to-end 綠；NBA 已開賽資料不可改寫。
 - [x] 7. 跑 Stage 2B／3B engineering review，保存測試結果、health snapshot、未解風險同 rollback target。→ Verify：`./檢查.sh --quick`、`./檢查.sh`、`./健康.sh` 全部通過，roadmap transition record 已更新。
 - [ ] 8. 新球季執行 NBA deferred live gate：首個有盤日 coverage smoke、首個完場日 settlement smoke、其後累積 30 個 forward settled recommendations。→ Verify：零漏場、`unverified=0`；只喺足夠證據後建立 NBA bootstrap baseline。
-- [ ] 9. 啟用 AU production checkout control plane：scoped save／PR merge後 fast-forward獨立 checkout，deployment verifier必須由目前 `13 missing + 1 different`變成 `aligned`，再做 manifest／health smoke。
+- [x] 9. 啟用 AU production checkout control plane：scoped branch已push，獲批准後 fast-forward獨立 checkout到 `40724a31`；deployment verifier由 `13 missing + 1 different`變成14/14 `aligned`，adapter/control smoke、launchd pointer同health通過。
 
 ## Done When
 
-- [ ] 四個 domain production runtime都由同一 control contract管理；repo code已齊，HKJC／Tennis／NBA已啟用，AU獨立production checkout待部署。
-- [x] Stage 2B／3B engineering gates完成；Stage 4B可先完成 `PredictionRecord → DecisionRecord → SettlementRecord → ModelRelease` schema/design，implementation等AU activation gate。
+- [x] 四個 domain production runtime都由同一 control contract管理；AU獨立production checkout亦已啟用。
+- [x] Stage 2B／3B engineering及activation gates完成；Stage 4B可以開始 `PredictionRecord → DecisionRecord → SettlementRecord → ModelRelease` implementation。
 - [x] NBA live gate 未完成時清楚標示 `pipeline ready / production evidence pending`，唔會被當成已證明盈利。

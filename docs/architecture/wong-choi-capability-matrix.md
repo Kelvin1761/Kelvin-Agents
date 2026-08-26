@@ -14,7 +14,7 @@
 | Telegram | ✅ operational/content/review | ✅ operational/content/review | ✅ health/card/performance | ✅ operational/card/performance + dedup |
 | Recovery | ✅ guarded morning/deploy recovery | ✅ pending recovery + startup | ✅ guarded card/dashboard recovery | 🟡 startup single-day；未授權 multi-day backlog |
 | Overlap lock | ✅ `flock` | ✅ `flock` | ✅ `flock` | ✅ `flock` |
-| Structured run record | 🟡 domain JSON + canonical adapter manifest code；live獨立checkout待部署 | ✅ canonical adapter manifest；daily wrapper已切換 | ✅ canonical adapter manifest；card/daily wrapper已切換 | ✅ domain JSON + canonical adapter manifest；role-specific launchd已切換 |
+| Structured run record | ✅ domain JSON + canonical adapter manifest；live獨立checkout已部署 | ✅ canonical adapter manifest；daily wrapper已切換 | ✅ canonical adapter manifest；card/daily wrapper已切換 | ✅ domain JSON + canonical adapter manifest；role-specific launchd已切換 |
 | Immutable prediction manifest | 🟡 final output exists；未有 canonical immutable manifest | ✅ SHA-256 manifest | 🟡 DB prediction rows；未有 immutable run manifest | ✅ SHA-256 snapshot manifest |
 | Live acceptance | ✅ production | ✅ production；新季 forward gate另計 | ✅ production | ⏳ pipeline ready / production evidence pending |
 
@@ -38,4 +38,4 @@
 
 - 2026-08-26：四線全部已有 manifest-backed adapter；HKJC／Tennis scheduler新增 opt-in `--control-json`，原有 launchd/default output不變。
 - 四線共用 fault matrix驗證 success、exit 75、hard failure、missing status、duplicate attempt同新 retry attempt；未知／缺失 status一律 fail closed。
-- 2026-08-26：四線 daily wrapper code已接入共用 control plane；HKJC／Tennis／NBA runtime path已生效。NBA舊三合一 pregame launchd已拆成 warmup／production／final-refresh，startup off-season manifest smoke通過。AU live launchd使用獨立 production checkout，待已批准保存／部署後先啟用。
+- 2026-08-26：四線 daily wrapper已接入共用 control plane並喺 production runtime生效。NBA舊三合一 pregame launchd已拆成 warmup／production／final-refresh，startup off-season manifest smoke通過。AU獨立 production checkout已對齊 scoped commit `40724a31`；deployment verifier 14/14 aligned、wrapper／adapter／health smoke通過。
