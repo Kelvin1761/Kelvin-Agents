@@ -19,6 +19,7 @@ os.environ.setdefault('PYTHONUTF8', '1')
 import sys
 import json
 import tempfile
+from unittest import mock
 
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
@@ -29,9 +30,11 @@ FIXTURES_DIR = os.path.join(TEST_DIR, "fixtures")
 SCRIPTS_DIR = os.path.join(TEST_DIR, "..", "scripts")
 RESOURCES_DIR = os.path.join(TEST_DIR, "..", "resources")
 NBA_DIR = os.path.abspath(os.path.join(TEST_DIR, "..", ".."))
+ML_DIR = os.path.abspath(os.path.join(TEST_DIR, "..", "..", "..", "..", "scripts", "nba_ml"))
 
 sys.path.insert(0, SCRIPTS_DIR)
 sys.path.insert(0, NBA_DIR)
+sys.path.insert(0, ML_DIR)
 
 # ─── Test Framework ─────────────────────────────────────────────────────
 PASS = 0
@@ -122,6 +125,21 @@ def test_schema_validation():
     finally:
         os.remove(bad_json)
 
+    result = load_and_validate(
+        os.path.join(FIXTURES_DIR, "valid_sportsbet.json"),
+        "missing_schema.json",
+    )
+    test("missing schema fails closed", not result["passed"])
+
+    from validate_json_schema import validate_against_schema
+    array_errors, _ = validate_against_schema(
+        [1, 2, 3, 4, 5, "bad"],
+        {"type": "array", "items": {"type": "integer"}},
+    )
+    test("schema validates every array item", bool(array_errors))
+    bool_errors, _ = validate_against_schema(True, {"type": "number"})
+    test("JSON boolean is not accepted as number", bool(bool_errors))
+
 
 # ─── Test 2: Season Phase Detection ─────────────────────────────────────
 
@@ -131,17 +149,23 @@ def test_season_phase():
     from generate_nba_reports import detect_season_phase
     
     cases = [
-        ("2025-10-25", None, "EARLY_SEASON"),
-        ("2025-11-10", None, "EARLY_SEASON"),
-        ("2025-11-16", None, "MID_SEASON"),
-        ("2025-12-25", None, "MID_SEASON"),
-        ("2026-01-15", None, "MID_SEASON"),
+        ("2025-10-10", None, "PRESEASON"),
+        ("2025-10-25", None, "EARLY_REGULAR"),
+        ("2025-11-10", None, "EARLY_REGULAR"),
+        ("2025-11-16", None, "REGULAR_SEASON"),
+        ("2025-12-25", None, "REGULAR_SEASON"),
+        ("2026-01-15", None, "REGULAR_SEASON"),
         ("2026-03-25", None, "LATE_REGULAR"),
         ("2026-04-10", None, "LATE_REGULAR"),
-        ("2026-04-15", None, "PLAY_IN"),
-        ("2026-04-20", None, "PLAYOFFS"),
-        ("2026-05-15", None, "PLAYOFFS"),
-        ("2026-06-10", None, "PLAYOFFS"),
+        ("2026-04-15", None, "POSTSEASON"),
+        ("2026-04-20", None, "POSTSEASON"),
+        ("2026-05-15", None, "POSTSEASON"),
+        ("2026-06-10", None, "POSTSEASON"),
+        ("2026-08-26", None, "OFF_SEASON"),
+        ("2026-10-10", None, "PRESEASON"),
+        ("2026-10-21", None, "EARLY_REGULAR"),
+        ("2027-04-14", None, "POSTSEASON"),
+        ("2027-04-17", None, "POSTSEASON"),
     ]
     
     for date_str, meta, expected in cases:
@@ -152,11 +176,27 @@ def test_season_phase():
     # Test metadata override
     meta_playoff = {"season_phase": "PLAYOFFS"}
     result = detect_season_phase("2025-12-25", meta_playoff)
-    test("metadata override: PLAYOFFS", result == "PLAYOFFS")
+    test("legacy metadata PLAYOFFS maps to POSTSEASON", result == "POSTSEASON")
     
     meta_text = {"season_type": "Playoff Game"}
     result = detect_season_phase("2026-01-01", meta_text)
-    test("metadata text detection: PLAYOFFS", result == "PLAYOFFS")
+    test("metadata text detection: POSTSEASON", result == "POSTSEASON")
+
+    from nba_season import PUBLIC_PHASES, classify_nba_season
+    test("classifier exposes exactly six public phases", len(PUBLIC_PHASES) == 6)
+    preseason = classify_nba_season("2026-10-10")
+    test("preseason automation is shadow", preseason["automation_mode"] == "shadow")
+    test("preseason preserves early-season strategy", preseason["strategy_phase"] == "EARLY_SEASON")
+    play_in = classify_nba_season("2027-04-14")
+    test("postseason subtype detects PLAY_IN", play_in["postseason_type"] == "PLAY_IN")
+    playoffs = classify_nba_season("2027-04-17")
+    test("postseason subtype detects PLAYOFFS", playoffs["postseason_type"] == "PLAYOFFS")
+
+    from generate_nba_reports import season_label_for_date
+    test(
+        "2026-27 season label is derived from date",
+        season_label_for_date("2026-10-21") == "2026-27",
+    )
 
 
 # ─── Test 3: Math Engine ────────────────────────────────────────────────
@@ -196,6 +236,21 @@ def test_math_engine():
     pct, count, misses = compute_hit_rate([28, 31, 25, 33, 29], 28.0, True)
     test("hit_rate([28,31,25,33,29], 28) ≥ 60%",
          pct >= 60.0, f"got {pct}% ({count})")
+
+    from nba_ml_predictor import MLPropPredictor
+    predictor = MLPropPredictor.__new__(MLPropPredictor)
+    features = predictor.build_features(
+        {"gamelog": {"PTS": [10, 9], "PTS_stats": {}, "MIN": [30, 30]}},
+        stat="PTS",
+        line_value=10,
+        is_home=1,
+        opp_abbr="LAL",
+    )
+    test(
+        "ML fallback counts exact X+ result as hit",
+        features["hit_rate_l10"] == 50.0,
+        f"got {features['hit_rate_l10']}",
+    )
 
 
 # ─── Test 4: Monte Carlo ────────────────────────────────────────────────
@@ -298,7 +353,9 @@ def test_orchestrator_filters():
         filter_sportsbet_files_by_date,
         filter_sportsbet_files_for_target,
         sportsbet_json_matches_target,
+        validate_reports_for_release,
     )
+    from nba_schedule import canonical_game_tag, load_espn_schedule, tags_for_sydney_date
 
     with tempfile.TemporaryDirectory() as td:
         paths = [
@@ -355,6 +412,73 @@ def test_orchestrator_filters():
         test("strict target filter keeps only verified current-date files",
              [os.path.basename(p) for p in strict_filtered] == ["Sportsbet_Odds_OKC_DEN.json"],
              f"got {[os.path.basename(p) for p in strict_filtered]}")
+
+        conflicting_json = os.path.join(td, "Sportsbet_Odds_OKC_DEN_conflict.json")
+        with open(conflicting_json, "w", encoding="utf-8") as f:
+            json.dump({
+                "target_analysis_date": "2026-04-11",
+                "event_local_date": "2026-04-12",
+                "matchup": "OKC @ DEN",
+            }, f)
+        test(
+            "conflicting target/event dates are rejected",
+            not sportsbet_json_matches_target(
+                conflicting_json, "2026-04-11", {"OKC_DEN"}
+            ),
+        )
+
+    schedule_payload = {
+        "events": [
+            {
+                "date": "2026-04-14T23:00:00Z",
+                "competitions": [{"competitors": [
+                    {"homeAway": "away", "team": {"abbreviation": "CHI"}},
+                    {"homeAway": "home", "team": {"abbreviation": "WSH"}},
+                ]}],
+            },
+            {
+                "date": "2026-04-15T23:00:00Z",
+                "competitions": [{"competitors": [
+                    {"homeAway": "away", "team": {"abbreviation": "GS"}},
+                    {"homeAway": "home", "team": {"abbreviation": "LAC"}},
+                ]}],
+            },
+        ]
+    }
+    test(
+        "ESPN keeps exact Sydney date and canonical team tag",
+        tags_for_sydney_date(schedule_payload, "2026-04-15") == {"CHI_WAS"},
+    )
+    test("legacy WSH tag canonicalizes to WAS", canonical_game_tag("CHI_WSH") == "CHI_WAS")
+
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return json.dumps(schedule_payload).encode("utf-8")
+
+    seen_user_agents = []
+
+    def _fake_urlopen(req, timeout):
+        seen_user_agents.append(req.get_header("User-agent"))
+        return _Response()
+
+    with mock.patch("nba_schedule.request.urlopen", side_effect=_fake_urlopen):
+        loaded_tags, reachable = load_espn_schedule("2026-04-15")
+    test("ESPN schedule client is reachable under mocked transport", reachable)
+    test("ESPN schedule client uses accepted curl header", seen_user_agents == ["curl/8.7.1"] * 2)
+    test("ESPN schedule loader filters exact Sydney date", loaded_tags == {"CHI_WAS"})
+
+    with tempfile.TemporaryDirectory() as td:
+        test("compile release rejects empty report directory", not validate_reports_for_release(td))
+        report = os.path.join(td, "Game_BOS_LAL_Full_Analysis.md")
+        with open(report, "w", encoding="utf-8") as f:
+            f.write("[FILL]")
+        test("compile release rejects residual FILL", not validate_reports_for_release(td))
 
 
 # ─── Main ───────────────────────────────────────────────────────────────

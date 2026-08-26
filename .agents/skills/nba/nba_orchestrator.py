@@ -28,13 +28,11 @@ import argparse
 import datetime
 import glob
 import json
-import shutil
 import subprocess
 import sys
-from urllib import request
 
 # ─── Cross-Platform Python ──────────────────────────────────────────────
-PYTHON = "python3" if shutil.which("python3") else "python"
+PYTHON = sys.executable
 
 # ─── Path Constants ─────────────────────────────────────────────────────
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -53,13 +51,8 @@ SHARED_HOOK_DIR = os.path.join(
 sys.path.insert(0, SHARED_HOOK_DIR)
 from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
 
-ESPN_TO_STANDARD = {
-    "GS": "GSW",
-    "NO": "NOP",
-    "NY": "NYK",
-    "SA": "SAS",
-    "UTAH": "UTA",
-}
+sys.path.insert(0, SCRIPT_DIR)
+from nba_schedule import canonical_game_tag, load_espn_schedule
 
 
 # ─── Preflight ──────────────────────────────────────────────────────────
@@ -83,20 +76,32 @@ def preflight_check() -> bool:
 
 # ─── Utilities ──────────────────────────────────────────────────────────
 
-def get_target_dir(date_str: str) -> str:
+def get_target_dir(date_str: str, *, create: bool = True) -> str:
     target_dir = os.path.join(WORKSPACE_ROOT, f"{date_str} NBA Analysis")
-    os.makedirs(target_dir, exist_ok=True)
+    if create:
+        os.makedirs(target_dir, exist_ok=True)
     return target_dir
 
 
-def run_script(script_path: str, args_list: list, label: str = "Script") -> bool:
+def run_script(
+    script_path: str,
+    args_list: list,
+    label: str = "Script",
+    timeout: int = 1800,
+) -> bool:
     if not os.path.exists(script_path):
         print(f"❌ [{label}] 找不到腳本: {script_path}")
         return False
     cmd = [PYTHON, script_path] + args_list
     print(f"🔧 [{label}] 執行: {' '.join(cmd)}")
     try:
-        result = subprocess.run(cmd, check=True, capture_output=True, text=True)
+        result = subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
         if result.stdout:
             # Show last 500 chars to avoid flooding terminal
             output = result.stdout.strip()
@@ -110,6 +115,9 @@ def run_script(script_path: str, args_list: list, label: str = "Script") -> bool
         if e.stderr:
             print(f"   stderr: {e.stderr[:300]}")
         return False
+    except subprocess.TimeoutExpired:
+        print(f"⏱️ [{label}] 超過 {timeout} 秒，已停止並當作失敗。")
+        return False
 
 
 def discover_sportsbet_jsons(target_dir: str) -> list:
@@ -120,44 +128,14 @@ def discover_sportsbet_jsons(target_dir: str) -> list:
 
 def extract_game_tag(json_path: str) -> str:
     filename = os.path.basename(json_path)
-    return filename.replace("Sportsbet_Odds_", "").replace(".json", "")
+    return canonical_game_tag(
+        filename.replace("Sportsbet_Odds_", "").replace(".json", "")
+    )
 
 
 def _load_espn_tags(date_str: str) -> set[str]:
-    """Fetch ESPN tags for the target AEST date window."""
-    url = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
-    target = date_str.replace("-", "")
-    candidates = []
-    try:
-        dt = datetime.datetime.strptime(target, "%Y%m%d")
-        candidates.append((dt - datetime.timedelta(days=1)).strftime("%Y%m%d"))
-        candidates.append(target)
-    except Exception:
-        candidates.append(target)
-
-    tags: set[str] = set()
-    for cd in candidates:
-        try:
-            with request.urlopen(f"{url}?dates={cd}", timeout=10) as resp:
-                payload = json.loads(resp.read().decode("utf-8"))
-            for evt in payload.get("events", []):
-                comps = evt.get("competitions", [{}])[0]
-                competitors = comps.get("competitors", [])
-                away = home = None
-                for c in competitors:
-                    team = c.get("team", {})
-                    abbr = team.get("abbreviation", "")
-                    if c.get("homeAway") == "home":
-                        home = abbr
-                    else:
-                        away = abbr
-                if away and home:
-                    away = ESPN_TO_STANDARD.get(away, away)
-                    home = ESPN_TO_STANDARD.get(home, home)
-                    tags.add(f"{away}_{home}")
-        except Exception:
-            continue
-    return tags
+    """Backward-compatible tag-only wrapper used by the main pipeline."""
+    return load_espn_schedule(date_str)[0]
 
 
 def filter_sportsbet_files_by_date(files: list[str], target_tags: set[str]) -> list[str]:
@@ -181,12 +159,19 @@ def _load_sportsbet_json(path: str) -> dict:
 def sportsbet_json_matches_target(path: str, target_date: str, target_tags: set[str]) -> bool:
     payload = _load_sportsbet_json(path)
     inferred_tag = extract_game_tag(path)
-    payload_tag = payload.get("matchup", "").replace(" @ ", "_").strip()
+    payload_tag = canonical_game_tag(payload.get("matchup", ""))
     effective_tag = payload_tag or inferred_tag
 
-    explicit_date = payload.get("target_analysis_date") or payload.get("event_local_date")
-    if explicit_date:
-        if explicit_date != target_date:
+    explicit_dates = [
+        value
+        for value in (
+            payload.get("target_analysis_date"),
+            payload.get("event_local_date"),
+        )
+        if value
+    ]
+    if explicit_dates:
+        if any(value != target_date for value in explicit_dates):
             return False
         if target_tags and effective_tag not in target_tags:
             return False
@@ -245,6 +230,23 @@ def _count_fill_residuals(target_dir: str) -> int:
     return count
 
 
+def validate_reports_for_release(target_dir: str) -> bool:
+    reports = sorted(glob.glob(os.path.join(target_dir, "Game_*_Full_Analysis.md")))
+    if not reports:
+        print("⛔ 冇任何 Game_*_Full_Analysis.md 可供編譯。")
+        return False
+    if _count_fill_residuals(target_dir):
+        print("⛔ 報告仍有 [FILL]，唔可以編譯／發布。")
+        return False
+    if not os.path.exists(VALIDATE_OUTPUT):
+        print(f"⛔ 防火牆 validator 不存在: {VALIDATE_OUTPUT}")
+        return False
+    return all(
+        run_script(VALIDATE_OUTPUT, [report], label="Compile Release Validator")
+        for report in reports
+    )
+
+
 def _pipeline_release_action(
     *,
     passed: bool,
@@ -277,7 +279,12 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
     existing = check_skeleton_exists(target_dir, game_tag)
     if existing:
         print(f"✅ [{prefix}] 已存在合格報告: {os.path.basename(existing)} ({os.path.getsize(existing)} bytes)")
-        print(f"   跳過。如需重做，請刪除該文件後重跑。")
+        if os.path.exists(VALIDATE_OUTPUT):
+            validate_ok = run_script(VALIDATE_OUTPUT, [existing], label=f"{prefix} Existing Report Validator")
+            if not validate_ok:
+                print(f"⛔ [{prefix}] 現有報告防火牆未通過，唔可以當完成。")
+                return False
+        print(f"   驗證通過，安全重用。")
         return True
 
     # ── Phase 1A: nba_extractor.py (球員深度數據) ──
@@ -309,10 +316,12 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
         print(f"\n📋 [{prefix}] Phase 1A.5: JSON Schema 驗證...")
         schema_ok = run_script(VALIDATE_SCHEMA, [
             "--extractor", extractor_json,
-            "--sportsbet", sportsbet_json
+            "--sportsbet", sportsbet_json,
+            "--strict",
         ], label=f"{prefix} Schema Validator")
         if not schema_ok:
-            print(f"⚠️ [{prefix}] Schema 驗證未通過。繼續生成報告，但可能有數據品質問題。")
+            print(f"⛔ [{prefix}] Schema 驗證未通過，停止呢場分析。")
+            return False
 
     # ── Phase 1B: generate_nba_reports.py (Full Analysis) ──
     debug_prefix = "[DEBUG]_" if debug_skip_extractor else ""
@@ -342,7 +351,8 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
         print(f"\n🛡️ [{prefix}] Validation: 執行 validate_nba_output.py...")
         validate_ok = run_script(VALIDATE_OUTPUT, [analysis_md], label=f"{prefix} Validator")
         if not validate_ok:
-            print(f"⚠️ [{prefix}] 防火牆檢查未通過。請人工檢查報告。")
+            print(f"⛔ [{prefix}] 防火牆檢查未通過，唔可以發布。")
+            return False
 
     print(f"\n🎉 [{prefix}] {game_tag} Pipeline 完成！")
     return True
@@ -415,7 +425,7 @@ def main():
                         help="⚠️ DEBUG ONLY: 跳過 nba_extractor.py（用 Sportsbet fallback）。"
                              "生成嘅報告標記為 DEBUG_ONLY_DO_NOT_BET。")
     parser.add_argument("--legacy", action="store_true",
-                        help="使用舊版 10-Factor 引擎（預設為 ML RandomForest）")
+                        help="使用舊版 10-Factor 引擎（預設為 Hybrid）")
     parser.add_argument("--skip-cloudflare-deploy", action="store_true",
                         help="完成分析後唔更新 Cloudflare Dashboard。")
     args = parser.parse_args()
@@ -444,10 +454,39 @@ def main():
     if not preflight_check():
         sys.exit(1)
 
-    target_dir = get_target_dir(args.date)
+    target_dir = get_target_dir(
+        args.date,
+        create=not (args.status or args.compile_only),
+    )
     print(f"📁 目標目錄: {target_dir}\n")
 
-    expected_tags = _load_espn_tags(args.date)
+    # Compile-only is a local release operation. It must never crawl new odds,
+    # and every report must pass the publication firewall again after edits.
+    if args.compile_only:
+        if not validate_reports_for_release(target_dir):
+            sys.exit(1)
+        compile_ok = run_script(GENERATE_SGM, ["--dir", target_dir], label="SGM Master Report")
+        sgm_exists = os.path.exists(os.path.join(target_dir, "NBA_All_SGM_Report.txt"))
+        if not compile_ok or not sgm_exists:
+            print("⛔ Compile-only 失敗；Dashboard 唔會更新。")
+            sys.exit(1)
+        write_state(target_dir, [], "compile_complete")
+        run_post_success_cloudflare_deploy(
+            source="NBA Wong Choi",
+            target_dir=target_dir,
+            skip=args.skip_cloudflare_deploy,
+        )
+        sys.exit(0)
+
+    if args.status:
+        local_tags = [extract_game_tag(path) for path in discover_sportsbet_jsons(target_dir)]
+        print_status(target_dir, local_tags)
+        sys.exit(0)
+
+    expected_tags, schedule_reachable = load_espn_schedule(args.date)
+    if not schedule_reachable:
+        print("❌ [Fatal] ESPN 官方賽程來源不可用；為免錯日出牌，停止。")
+        sys.exit(1)
     # ── Phase 0: Sportsbet Odds Crawling ──
     json_files = discover_sportsbet_jsons(target_dir)
     if json_files:
@@ -479,44 +518,21 @@ def main():
     for i, g in enumerate(games, 1):
         print(f"   {i}. {g['tag']}")
 
+    if not args.game:
+        extracted_tags = {game["tag"] for game in games}
+        missing = sorted(expected_tags - extracted_tags)
+        unexpected = sorted(extracted_tags - expected_tags)
+        if missing or unexpected:
+            print(
+                "⛔ 官方賽程覆蓋閘失敗："
+                f"missing={missing or '[]'} unexpected={unexpected or '[]'}"
+            )
+            sys.exit(1)
+
     # ── --list mode ──
     if args.list:
         print(f"\n可用賽事 tags: {[g['tag'] for g in games]}")
         print("使用 --game <TAG> 來分析指定賽事。")
-        sys.exit(0)
-
-    # ── --status mode ──
-    if args.status:
-        print_status(target_dir, [g["tag"] for g in games])
-        sys.exit(0)
-
-    # ── --compile-only mode ──
-    if args.compile_only:
-        game_tags = [g["tag"] for g in games]
-        if os.path.exists(GENERATE_SGM):
-            compile_ok = run_script(GENERATE_SGM, ["--dir", target_dir], label="SGM Master Report")
-            release_action = _pipeline_release_action(
-                passed=compile_ok,
-                failed=not compile_ok,
-                fill_count=_count_fill_residuals(target_dir),
-                sgm_exists=os.path.exists(
-                    os.path.join(target_dir, "NBA_All_SGM_Report.txt")
-                ),
-            )
-            if release_action == "deploy":
-                write_state(target_dir, game_tags, "compile_complete")
-                run_post_success_cloudflare_deploy(
-                    source="NBA Wong Choi",
-                    target_dir=target_dir,
-                    skip=args.skip_cloudflare_deploy,
-                )
-            else:
-                print(
-                    f"⛔ Compile-only 未達發布條件（{release_action}），"
-                    "Cloudflare Dashboard 唔會更新。"
-                )
-        else:
-            print(f"❌ 找不到 SGM 報告生成器: {GENERATE_SGM}")
         sys.exit(0)
 
     # ── Filter to single game if --game specified ──
@@ -614,7 +630,7 @@ def main():
 
     print(f"\n🎯 [Orchestrator V3.1] Pipeline 完成！")
     print(f"所有報告位於: {target_dir}")
-    sys.exit(0)
+    sys.exit(1 if release_action == "blocked" else 0)
 
 
 if __name__ == "__main__":

@@ -40,8 +40,12 @@ run_suite() {
 run_suite "AU Wong Choi"        "$REPO_ROOT" .agents/skills/au_racing/au_wong_choi_auto/tests
 run_suite "HKJC Wong Choi"      "$REPO_ROOT" .agents/skills/hkjc_racing/hkjc_wong_choi_auto/tests
 run_suite "Shared racing"       "$REPO_ROOT" .agents/skills/shared_racing/tests
+run_suite "Shared Wong Choi"   "$REPO_ROOT" .agents/skills/shared_wong_choi/tests
 run_suite "Race compliance QA"  "$REPO_ROOT" .agents/skills/race_compliance_qa/tests
-run_suite "NBA Wong Choi"       "$REPO_ROOT" .agents/skills/nba/nba_wong_choi/tests
+run_suite "NBA Wong Choi"       "$REPO_ROOT" \
+  .agents/skills/nba/nba_wong_choi/tests \
+  .agents/skills/nba/nba_daily_auto/tests \
+  .agents/skills/nba/nba_reflector/tests
 run_suite "Agent scripts"       "$REPO_ROOT" .agents/scripts/tests
 run_suite "Dashboard (python)"  "$REPO_ROOT" Horse_Racing_Dashboard/tests Horse_Racing_Dashboard/backend/tests
 run_suite "Tennis Wong Choi"    "$REPO_ROOT/tennis-wong-choi" tests

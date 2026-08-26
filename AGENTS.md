@@ -346,6 +346,19 @@ Deploy wrapper：
 - `Game_{TAG}_Full_Analysis.md`
 - SGM / banker 匯總報告
 
+### Daily automation
+
+NBA unattended scheduler：
+
+- `.agents/skills/nba/nba_daily_auto/nba_daily_schedule.py`
+
+佢負責 Sydney-time pregame、off-season dormant、immutable prediction snapshot、
+post-game reflector、results-backed archive、health／Telegram 同 dashboard deploy。安裝入口：
+
+- `.agents/skills/nba/nba_daily_auto/install_macos_launchd.sh`
+
+Settlement 會先輸出本機 proposal；未獲明確批准前唔會自動 POST／apply 去外部 ledger。
+
 ### Current reality
 
 `NBA Wong Choi` 有實際可跑入口，但 repo 內仍保留一啲較舊嘅 skeleton / analyst wording。對新用戶嚟講，以 orchestrator 同實際輸出為準。

@@ -76,6 +76,26 @@ Orchestrator 會生成以下檔案：
 | `NBA_All_SGM_Report.txt` | 全日所有場次 SGM 組合完整分析 |
 | `NBA_Banker_Report.txt` | 穩膽報告 + 跨場 Parlay |
 
+## Unattended Automation
+
+每日排程唯一入口：
+
+```bash
+.agents/skills/nba/nba_daily_auto/install_macos_launchd.sh
+.agents/skills/nba/nba_daily_auto/install_macos_launchd.sh --status
+```
+
+Automation 只編排本 skill 嘅 orchestrator，唔另建 scoring。佢負責 season-aware
+pregame、immutable prediction snapshot、post-game reflector、results-backed archive、
+health、Telegram 同 dashboard deploy。Off-season 官方確認冇賽事會報 `dormant`；source
+讀唔到唔可以扮冇賽事。外部 dashboard settlement 只產生 proposal，唔會自動 apply。
+
+公開 lifecycle 只用六個 phase：`OFF_SEASON`、`PRESEASON`、`EARLY_REGULAR`、
+`REGULAR_SEASON`、`LATE_REGULAR`、`POSTSEASON`。`POSTSEASON` 另有
+`postseason_type=PLAY_IN|PLAYOFFS`。Preseason 只准 shadow snapshot，同一律強制
+`NO BET`；舊 `EARLY_SEASON/MID_SEASON/PLAY_IN/PLAYOFFS` 只係 Python scoring
+compatibility 嘅 `strategy_phase`，唔係公開 lifecycle。
+
 ## Anti-Bypass Guard（反繞過檢測）
 
 以下特徵係合法 Python skeleton 嘅簽名。如果輸出缺少任何標記，即表明跳過咗pipeline：

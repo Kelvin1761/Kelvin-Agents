@@ -1,14 +1,20 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "$id": "sportsbet_odds_v2",
+  "$id": "sportsbet_odds_v3",
   "title": "Sportsbet Odds JSON",
-  "description": "Schema for Sportsbet_Odds_*.json — the raw odds data from MCP Playwright extraction",
+  "description": "Live contract emitted by claw_sportsbet_odds.py",
   "type": "object",
-  "required": ["player_props"],
+  "required": ["source", "extraction_time", "target_analysis_date", "event_local_date", "matchup", "away_team", "home_team", "player_props"],
   "properties": {
-    "extraction_time": { "type": "string", "description": "Timestamp of odds extraction" },
-    "game_tag": { "type": "string", "pattern": "^[A-Z]{2,4}_[A-Z]{2,4}$" },
-    "source": { "type": "string" },
+    "source": { "type": "string", "minLength": 3 },
+    "extraction_time": { "type": "string", "minLength": 10 },
+    "target_analysis_date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "event_local_date": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "event_start_time": { "type": ["string", "null"] },
+    "sportsbet_event_id": { "type": ["string", "number", "null"] },
+    "matchup": { "type": "string", "pattern": "^[A-Z]{2,4} @ [A-Z]{2,4}$" },
+    "away_team": { "type": "string", "pattern": "^[A-Z]{2,4}$" },
+    "home_team": { "type": "string", "pattern": "^[A-Z]{2,4}$" },
     "game_lines": {
       "type": "object",
       "description": "Game-level markets (spread, total, h2h)",
@@ -16,38 +22,32 @@
         "spread_home": { "type": ["string", "number", "null"] },
         "spread_away": { "type": ["string", "number", "null"] },
         "total": { "type": ["string", "number", "null"] },
-        "h2h_home": { "type": ["number", "null"] },
-        "h2h_away": { "type": ["number", "null"] }
+        "ml_home": { "type": ["string", "number", "null"] },
+        "ml_away": { "type": ["string", "number", "null"] }
       }
     },
     "player_props": {
       "type": "object",
-      "description": "Player props keyed by category (PTS, REB, AST, etc.)",
+      "description": "Player props keyed by live extractor category",
       "minProperties": 1,
+      "required": ["points", "rebounds", "assists", "threes_made"],
       "patternProperties": {
-        ".*": {
+        "^(points|rebounds|assists|threes_made)$": {
           "type": "object",
           "description": "Players keyed by name",
           "minProperties": 1,
           "patternProperties": {
-            ".*": {
+            ".+": {
               "type": "object",
               "description": "Single player's bet data for a category",
-              "required": ["line", "odds"],
+              "required": ["lines"],
               "properties": {
-                "line": {
-                  "type": ["string", "number"],
-                  "description": "Sportsbet milestone line e.g. '10+' or 10"
-                },
-                "odds": {
-                  "type": "number",
-                  "exclusiveMinimum": 1.0,
-                  "description": "Decimal odds e.g. 1.72"
-                },
-                "direction": {
-                  "type": "string",
-                  "enum": ["Over", "Under", "over", "under"],
-                  "description": "Bet direction"
+                "lines": {
+                  "type": "object",
+                  "minProperties": 1,
+                  "patternProperties": {
+                    "^\\d+(?:\\.5)?$": { "type": "string", "pattern": "^\\d+(?:\\.\\d+)?$" }
+                  }
                 }
               }
             }

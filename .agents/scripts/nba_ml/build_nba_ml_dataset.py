@@ -38,7 +38,7 @@ if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 from pathlib import Path as _Path
-PROJECT_ROOT = _Path(__file__).resolve().parents[4]
+PROJECT_ROOT = _Path(__file__).resolve().parents[3]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import NBA_ANALYSIS, NBA_ML_DATASET
 ARCHIVE_DIR = str(NBA_ANALYSIS)
@@ -464,22 +464,22 @@ def extract_game_data(filepath):
                             row["hit_rate_l3"] = matched[0].get("hit_rate_L3", 0)
                             row["amc"] = matched[0].get("AMC", 0)
                         else:
-                            hits = sum(1 for x in arr if x > line) if arr else 0
+                            hits = sum(1 for x in arr if x >= line) if arr else 0
                             row["hit_rate_l10"] = round(hits / len(arr) * 100, 0) if arr else 0
-                            h5 = sum(1 for x in l5_arr if x > line) if l5_arr else 0
+                            h5 = sum(1 for x in l5_arr if x >= line) if l5_arr else 0
                             row["hit_rate_l5"] = round(h5 / len(l5_arr) * 100, 0) if l5_arr else 0
-                            h3 = sum(1 for x in l3_arr if x > line) if l3_arr else 0
+                            h3 = sum(1 for x in l3_arr if x >= line) if l3_arr else 0
                             row["hit_rate_l3"] = round(h3 / len(l3_arr) * 100, 0) if l3_arr else 0
-                            clr = [x - line for x in arr if x > line] if arr else []
+                            clr = [x - line for x in arr if x >= line] if arr else []
                             row["amc"] = round(sum(clr) / len(clr), 1) if clr else 0
                     else:
-                        hits = sum(1 for x in arr if x > line) if arr else 0
+                        hits = sum(1 for x in arr if x >= line) if arr else 0
                         row["hit_rate_l10"] = round(hits / len(arr) * 100, 0) if arr else 0
-                        h5 = sum(1 for x in l5_arr if x > line) if l5_arr else 0
+                        h5 = sum(1 for x in l5_arr if x >= line) if l5_arr else 0
                         row["hit_rate_l5"] = round(h5 / len(l5_arr) * 100, 0) if l5_arr else 0
-                        h3 = sum(1 for x in l3_arr if x > line) if l3_arr else 0
+                        h3 = sum(1 for x in l3_arr if x >= line) if l3_arr else 0
                         row["hit_rate_l3"] = round(h3 / len(l3_arr) * 100, 0) if l3_arr else 0
-                        clr = [x - line for x in arr if x > line] if arr else []
+                        clr = [x - line for x in arr if x >= line] if arr else []
                         row["amc"] = round(sum(clr) / len(clr), 1) if clr else 0
 
                     row["actual_value"] = None

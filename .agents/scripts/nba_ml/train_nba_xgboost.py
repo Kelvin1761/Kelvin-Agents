@@ -23,7 +23,7 @@ if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 from pathlib import Path as _Path
-PROJECT_ROOT = _Path(__file__).resolve().parents[4]
+PROJECT_ROOT = _Path(__file__).resolve().parents[3]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import NBA_ML_DATASET
 

@@ -24,6 +24,11 @@ import json
 import re
 import io
 import glob
+from pathlib import Path
+
+NBA_SKILL_DIR = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(NBA_SKILL_DIR))
+from nba_schedule import canonical_team_abbr
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -54,13 +59,37 @@ def normalize_stat(stat_str):
 def get_player_actual(players_list, player_name):
     """Find a player's actual stats from box score data."""
     name_lower = player_name.lower().strip()
-    for p in players_list:
-        if p['name'].lower().strip() == name_lower:
-            return p
-        # Partial match (last name)
-        if name_lower.split()[-1] in p['name'].lower():
-            return p
-    return None
+    exact = [
+        player for player in players_list
+        if str(player.get('name', '')).lower().strip() == name_lower
+    ]
+    if exact:
+        return exact[0]
+    last_name = name_lower.split()[-1] if name_lower else ""
+    surname_matches = [
+        player for player in players_list
+        if str(player.get('name', '')).lower().strip().split()[-1:] == [last_name]
+    ]
+    return surname_matches[0] if len(surname_matches) == 1 else None
+
+
+def parse_minutes(value):
+    """Parse NBA box-score minutes; zero means DNP/void for player props."""
+    if value in (None, "", "?"):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip().upper()
+    iso = re.fullmatch(r"PT(?:(\d+)M)?(?:(\d+(?:\.\d+)?)S)?", text)
+    if iso:
+        return float(iso.group(1) or 0) + float(iso.group(2) or 0) / 60
+    clock = re.fullmatch(r"(\d+):(\d+(?:\.\d+)?)", text)
+    if clock:
+        return float(clock.group(1)) + float(clock.group(2)) / 60
+    try:
+        return float(text)
+    except ValueError:
+        return None
 
 
 def compute_actual_value(player_stats, stat_key):
@@ -226,6 +255,17 @@ def verify_legs(legs, game_result):
             verified.append(result)
             continue
 
+        minutes = parse_minutes(player_stats.get('minutes'))
+        if minutes is not None and minutes <= 0:
+            result['status'] = '↩️ VOID_DNP'
+            result['actual'] = None
+            result['minutes'] = player_stats.get('minutes')
+            result['margin'] = None
+            result['cleared'] = None
+            result['outcome'] = 'void'
+            verified.append(result)
+            continue
+
         actual = compute_actual_value(player_stats, leg['stat'])
         if actual is None:
             result['status'] = '⚠️ STAT_NOT_FOUND'
@@ -251,12 +291,10 @@ def match_report_to_game(report_path, games):
     basename = os.path.basename(report_path).upper()
 
     for game in games:
-        home = game.get('home', {}).get('team', '').upper()
-        away = game.get('away', {}).get('team', '').upper()
-        if home and away and (home in basename and away in basename):
-            return game
-        # Also try reversed
-        if home and away and (away in basename and home in basename):
+        home = canonical_team_abbr(game.get('home', {}).get('team', ''))
+        away = canonical_team_abbr(game.get('away', {}).get('team', ''))
+        canonical_basename = basename.replace('WSH', 'WAS')
+        if home and away and home in canonical_basename and away in canonical_basename:
             return game
     return None
 
@@ -296,6 +334,7 @@ def main():
         'total_legs': 0,
         'hits': 0,
         'misses': 0,
+        'voids': 0,
         'unverified': 0,
         'by_combo': {},
         'by_stat': {},
@@ -320,6 +359,7 @@ def main():
                 all_verified.append({**leg, 'status': '⚠️ NO_GAME_MATCH',
                                      'actual': None, 'margin': None, 'cleared': None})
                 summary['unverified'] += 1
+                summary['total_legs'] += 1
             continue
 
         print(f"  🏀 配對到: {game.get('final_score', '?')}")
@@ -334,28 +374,34 @@ def main():
                 summary['hits'] += 1
             elif v['cleared'] is False:
                 summary['misses'] += 1
+            elif v.get('outcome') == 'void':
+                summary['voids'] += 1
             else:
                 summary['unverified'] += 1
 
             # By combo
             combo = v.get('combo_id', '?')
             if combo not in summary['by_combo']:
-                summary['by_combo'][combo] = {'hits': 0, 'misses': 0, 'total': 0}
+                summary['by_combo'][combo] = {'hits': 0, 'misses': 0, 'voids': 0, 'total': 0}
             summary['by_combo'][combo]['total'] += 1
             if v['cleared'] is True:
                 summary['by_combo'][combo]['hits'] += 1
             elif v['cleared'] is False:
                 summary['by_combo'][combo]['misses'] += 1
+            elif v.get('outcome') == 'void':
+                summary['by_combo'][combo]['voids'] += 1
 
             # By stat
             stat = v.get('stat_normalized', '?')
             if stat not in summary['by_stat']:
-                summary['by_stat'][stat] = {'hits': 0, 'misses': 0, 'total': 0}
+                summary['by_stat'][stat] = {'hits': 0, 'misses': 0, 'voids': 0, 'total': 0}
             summary['by_stat'][stat]['total'] += 1
             if v['cleared'] is True:
                 summary['by_stat'][stat]['hits'] += 1
             elif v['cleared'] is False:
                 summary['by_stat'][stat]['misses'] += 1
+            elif v.get('outcome') == 'void':
+                summary['by_stat'][stat]['voids'] += 1
 
             # Print each leg result
             if v['cleared'] is not None:
@@ -376,6 +422,7 @@ def main():
             'total_legs': summary['total_legs'],
             'hits': summary['hits'],
             'misses': summary['misses'],
+            'voids': summary['voids'],
             'unverified': summary['unverified'],
             'hit_rate_pct': round(hit_rate, 1),
             'by_combo': summary['by_combo'],
@@ -395,6 +442,7 @@ def main():
     print(f"   總 Legs: {summary['total_legs']}")
     print(f"   ✅ 命中: {summary['hits']}")
     print(f"   ❌ 失敗: {summary['misses']}")
+    print(f"   ↩️ DNP 作廢: {summary['voids']}")
     print(f"   ⚠️ 未驗證: {summary['unverified']}")
     print(f"   命中率: {hit_rate:.1f}%")
     print(f"\n   按組合:")

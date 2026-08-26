@@ -21,6 +21,7 @@ import json
 import urllib.request
 import re
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from zoneinfo import ZoneInfo
 try:
     from curl_cffi import requests
@@ -36,16 +37,12 @@ TEAM_NAMES = {
     "Milwaukee Bucks": "MIL", "Minnesota Timberwolves": "MIN", "New Orleans Pelicans": "NOP", "New York Knicks": "NYK",
     "Oklahoma City Thunder": "OKC", "Orlando Magic": "ORL", "Philadelphia 76ers": "PHI", "Phoenix Suns": "PHX",
     "Portland Trail Blazers": "POR", "Sacramento Kings": "SAC", "San Antonio Spurs": "SAS", "Toronto Raptors": "TOR",
-    "Utah Jazz": "UTA", "Washington Wizards": "WSH"
+    "Utah Jazz": "UTA", "Washington Wizards": "WAS"
 }
 
-ESPN_TO_STANDARD = {
-    "GS": "GSW",
-    "NO": "NOP",
-    "NY": "NYK",
-    "SA": "SAS",
-    "UTAH": "UTA",
-}
+NBA_SKILL_DIR = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(NBA_SKILL_DIR))
+from nba_schedule import load_espn_schedule
 
 AU_TZ = ZoneInfo("Australia/Sydney")
 
@@ -196,36 +193,7 @@ class SportsbetNBAExtractor:
     def _allowed_tags_from_espn(self):
         if not self.target_date:
             return set()
-        try:
-            dt = datetime.strptime(self.target_date, "%Y-%m-%d")
-        except Exception:
-            return set()
-        candidates = [(dt.date() - timedelta(days=1)).strftime("%Y%m%d"), dt.strftime("%Y%m%d")]
-        allowed = set()
-        for cd in candidates:
-            try:
-                url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates={cd}"
-                req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    data = json.loads(response.read().decode('utf-8'))
-                for event in data.get('events', []):
-                    comps = event.get('competitions', [{}])[0]
-                    competitors = comps.get('competitors', [])
-                    away = home = None
-                    for c in competitors:
-                        team = c.get('team', {})
-                        abbr = team.get('abbreviation', '')
-                        if c.get('homeAway') == 'home':
-                            home = abbr
-                        else:
-                            away = abbr
-                    if away and home:
-                        away = ESPN_TO_STANDARD.get(away, away)
-                        home = ESPN_TO_STANDARD.get(home, home)
-                        allowed.add(f"{away}_{home}")
-            except Exception:
-                continue
-        return allowed
+        return load_espn_schedule(self.target_date)[0]
 
     def _parse_markets(self, raw_data):
         structured = {}
