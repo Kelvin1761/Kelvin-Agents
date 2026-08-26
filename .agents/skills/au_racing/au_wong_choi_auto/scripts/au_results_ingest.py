@@ -205,6 +205,22 @@ def collect(archive_root: Path, min_finishers: int) -> tuple[list[dict], dict]:
                         # the string rather than the number.
                         "Margin": f"{f['margin']}L" if f["margin"] else "—",
                         "SP": f"${f['sp']}" if f["sp"] else "",
+                        # ⚠️ 2026-08-26：呢個硬寫嘅空字串殺死咗成條 `Time` 欄。
+                        # 舊行（2025-08 → 2026-06）由 `au_statistics_aggregator`
+                        # 寫入，係**逐匹馬個別時間**，覆蓋 99–100%。當呢個 ingest
+                        # 變成主路徑（約 2026-07），覆蓋跌到 2026-07 29%、
+                        # 2026-08 **0%**。
+                        #
+                        # 點解未修：呢度個來源係 reflector markdown，而
+                        # `parse_reflector` 只攞到 pos/num/horse/margin/sp ——
+                        # 賽果 markdown 本身冇時間。要真正補返就要由 Sportsbet
+                        # 賽果頁抽（`claw_sportsbet_form.parse_race` 個 run dict
+                        # 有 `winning_time`），再確認嗰個係頭馬時間定個別時間，
+                        # 然後經 `--sb-csv` 路徑帶入嚟。
+                        #
+                        # 影響：任何「絕對時間 / 速度評分」研究都冇咗 2026-07 之後
+                        # 嘅數據（見 EXP-20260826-05）。合併唔會蓋走舊行，所以
+                        # 歷史時間仲喺度。
                         "Time": "",
                     })
     return rows, stats

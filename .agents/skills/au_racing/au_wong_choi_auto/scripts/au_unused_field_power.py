@@ -19,6 +19,7 @@ import argparse
 import csv
 import json
 import re
+import statistics
 import sys
 import unicodedata
 from statistics import pstdev
@@ -44,6 +45,65 @@ def norm(name):
 def _num(txt):
     m = re.search(r"-?[\d,]+(?:\.\d+)?", txt or "")
     return float(m.group(0).replace(",", "")) if m else None
+
+
+# ── 速度評分：track×distance 標準時間（2026-08-26）────────────────────────
+# 同 `_STANDARD_600M` 一樣係一個**靜態參考尺**，唔係逐匹馬嘅結果資料 ——
+# 「Flemington 1200m 中位頭馬時間」唔會編碼今日邊隻贏。掃一次全部 Formguide
+# 就 cache 住。設 `AU_SPEED_STD_ROOT` 指去 scored root；冇設就淨係用距離基準。
+_SPEED_STD = None
+_SPEED_GOING = None
+
+
+def _speed_standards():
+    global _SPEED_STD, _SPEED_GOING
+    if _SPEED_STD is not None:
+        return _SPEED_STD, _SPEED_GOING
+    import os
+    import collections
+    _SPEED_STD, _SPEED_GOING = {}, {}
+    root = os.environ.get("AU_SPEED_STD_ROOT")
+    if not root or not Path(root).exists():
+        return _SPEED_STD, _SPEED_GOING
+    per = collections.defaultdict(list)
+    for fg in Path(root).rglob("*Formguide.md"):
+        for ln in fg.read_text(encoding="utf-8", errors="replace").splitlines():
+            if "WinningTime:" not in ln or "**(TRIAL)**" in ln:
+                continue
+            m = re.match(r"^(\S.*?)\sR\d+\s\d{4}-\d{2}-\d{2}\s+(\d+)m\s+cond:(\S+)", ln)
+            w = re.search(r"WinningTime:(?:(\d+):)?([\d.]+)", ln)
+            if not (m and w):
+                continue
+            sec = (int(w.group(1)) * 60 if w.group(1) else 0) + float(w.group(2))
+            if not (25.0 < sec < 260.0):
+                continue
+            per[(m.group(1).strip(), int(m.group(2)))].append((sec, m.group(3)))
+    _SPEED_STD = {k: statistics.median([s for s, _ in v])
+                  for k, v in per.items() if len(v) >= 10}
+    dev = collections.defaultdict(list)
+    for (tr, d), v in per.items():
+        base = _SPEED_STD.get((tr, d))
+        if base is None:
+            continue
+        for sec, cond in v:
+            dev[cond].append(sec - base)
+    _SPEED_GOING = {k: statistics.median(v) for k, v in dev.items() if len(v) >= 40}
+    return _SPEED_STD, _SPEED_GOING
+
+
+def _speed_figure(run):
+    """一條往績行 → 每公里快過標準幾多秒（越大越好）。攞唔到就 None。"""
+    if run.get("wt_sec") is None or not run.get("dist"):
+        return None
+    std, going = _speed_standards()
+    base = std.get((run.get("track"), run["dist"]))
+    if base is None:
+        return None
+    # 個體時間 = 頭馬時間 + 輸幾多長度 × 每長度秒數（1 長度 ≈ 2.4m）
+    spl = 2.4 / (run["dist"] / run["wt_sec"])
+    mine = run["wt_sec"] + (run.get("margin") or 0.0) * spl
+    adj = mine - base - going.get(run.get("cond"), 0.0)
+    return -adj / (run["dist"] / 1000.0)
 
 
 def runner_features(block, today_dist, horse_name="", today_jockey=""):
@@ -121,6 +181,21 @@ def runner_features(block, today_dist, horse_name="", today_jockey=""):
         if not m:
             continue
         l6 = re.search(r"PF\[L600 Delta:\s*(-?[\d.]+)\]", ln)
+        # ── 全程時間（2026-08-26 加）───────────────────────────────────
+        # `WinningTime:` 由 2026-08-09 起就寫喺每條往績行，但由頭到尾冇人讀
+        # （`inject_fact_anchors` 0 個引用、引擎 0 個引用）。即係成個模型冇
+        # 任何**絕對時間**速度評分 —— 唯一同時間有關嘅 `_STANDARD_600M`
+        # 係尾 600m 分段，唔係全程。
+        # 呢度由**已經censor 過嘅往績行**自己砌，同 `dist_place_rate` 一樣
+        # 構造上唔可能中毒（唔掂網站嗰啲會賽後刷新嘅總結欄位）。
+        _wt = re.search(r"WinningTime:(\d+):([\d.]+)|WinningTime:([\d.]+)", ln)
+        _mg = re.search(r"margin:(-?[\d.]+)L", ln)
+        _wtsec = None
+        if _wt:
+            if _wt.group(1):
+                _wtsec = int(_wt.group(1)) * 60 + float(_wt.group(2))
+            elif _wt.group(3):
+                _wtsec = float(_wt.group(3))
         opp = lines[i + 1] if i + 1 < len(lines) else ""
         placed = bool(re.match(r"^([123])-", opp) and
                       re.search(rf"[123]-{re.escape(horse_name)}\b", opp))
@@ -129,8 +204,56 @@ def runner_features(block, today_dist, horse_name="", today_jockey=""):
                      "l600": float(l6.group(1)) if l6 else None,
                      "trial": "**(TRIAL)**" in m.group(1),
                      "jockey": (jk.group(1) if jk else ""),
-                     "placed": placed})
+                     "placed": placed,
+                     "track": m.group(1).strip(),
+                     "cond": (re.search(r"cond:(\S+)", ln).group(1)
+                              if re.search(r"cond:(\S+)", ln) else None),
+                     "wt_sec": _wtsec,
+                     "margin": float(_mg.group(1)) if _mg else None})
     official = [r for r in runs if not r["trial"]]
+
+    # ── 近期窗口往績（2026-08-26）─────────────────────────────────────────
+    # 網站有 `12 Month:` / `Season:` / `3rd Up:` / `Turf:` 而引擎冇讀。但嗰啲
+    # 全部係**會賽後刷新嘅 career overview** 出品 —— 同已證實洩漏嘅 `J/H`
+    # （場內 AUC 0.850）同 `WinRange`（holdout +17.58pp）同一個 block。
+    # 2026-08-26 量過：未撞 10 行上限嘅 13,589 匹入面，`Career:` 數字大過我哋
+    # censor 後數到嘅有 56.7%，而「多出恰好 1 仗」只佔全體 4.2%（多出 2–6 仗
+    # 嘅一樣多）—— 即係大部分差異係頁面冇列晒，唔係今日嗰仗。分唔清，
+    # 所以照 `dist_place_rate` 嗰個做法：**由我哋自己 censor 過嘅往績行數**，
+    # 構造上就唔可能中毒。
+    if official:
+        recent = []
+        for r in official:
+            pass
+        # 12 個月窗口：由往績行日期自己數
+        import datetime as _dt
+        _dates = re.findall(r"\sR\d+\s(\d{4}-\d{2}-\d{2})\s", block)
+        if _dates and len(_dates) >= len(official):
+            newest = max(_dates)
+            y, mth = int(newest[:4]), int(newest[5:7])
+            in12 = []
+            for r, dstr in zip(official, _dates[:len(official)]):
+                gap = (y - int(dstr[:4])) * 12 + (mth - int(dstr[5:7]))
+                if gap < 12:
+                    in12.append(r)
+            if len(in12) >= 2:
+                out["pre12m_place_rate"] = sum(1 for r in in12 if r["placed"]) / len(in12)
+                out["pre12m_starts"] = float(len(in12))
+
+    # ── 絕對時間速度評分（2026-08-26）────────────────────────────────────
+    sf = [v for v in (_speed_figure(r) for r in official) if v is not None]
+    if sf:
+        out["speed_fig_best"] = max(sf)
+        out["speed_fig_mean"] = sum(sf) / len(sf)
+        out["speed_fig_recent"] = sf[0]                     # runs 已經係新→舊
+        if len(sf) >= 3:
+            out["speed_fig_best3"] = sum(sorted(sf)[-3:]) / 3.0
+    if today_dist:
+        sfd = [v for r in official
+               if abs(r["dist"] - today_dist) <= 200
+               and (v := _speed_figure(r)) is not None]
+        if sfd:
+            out["speed_fig_at_dist"] = max(sfd)
 
     if today_dist and official:
         near = [r for r in official if abs(r["dist"] - today_dist) <= 100]
