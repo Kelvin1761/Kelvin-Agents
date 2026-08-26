@@ -4,7 +4,19 @@ set -eu
 # Location-independent: works from the local repo (post 2026-07-14 migration)
 # and from any other checkout — the project dir is wherever this script lives.
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$PROJECT_DIR/.." && pwd)"
+CONTROL_PLANE="$REPO_ROOT/.agents/skills/shared_wong_choi/control_plane.py"
 cd "$PROJECT_DIR"
+
+# Backward compatible with the external launcher: historically it passed only
+# --refresh-today for the 09:00 card and no positional mode for the 18:00 run.
+MODE="daily"
+if [ "${1:-}" = "card" ] || [ "${1:-}" = "daily" ]; then
+  MODE="$1"
+  shift
+elif [[ " $* " = *" --refresh-today "* ]]; then
+  MODE="card"
+fi
 
 if [ -x ".venv/bin/python" ]; then
   PYTHON_BIN=".venv/bin/python"
@@ -32,4 +44,4 @@ else
   print -u2 -- "WARNING: live dashboard snapshot unavailable; analysis will continue and deploy may be retried later."
 fi
 
-exec "$PYTHON_BIN" "scripts/tennis_daily_schedule.py" "$@"
+exec "$PYTHON_BIN" "$CONTROL_PLANE" --domain tennis --mode "$MODE" "$@"

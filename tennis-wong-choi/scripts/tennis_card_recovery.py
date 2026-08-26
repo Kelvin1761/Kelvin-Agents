@@ -189,24 +189,47 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--today", help="Override Sydney date (YYYY-MM-DD).")
     parser.add_argument("--log", type=Path, default=SCHEDULE_LOG)
     parser.add_argument("--state", type=Path, default=STATE_PATH)
+    parser.add_argument(
+        "--control-json",
+        action="store_true",
+        help="Emit one final machine-readable control-plane outcome.",
+    )
     args = parser.parse_args(argv)
 
     day = args.today or local_today().isoformat()
+
+    def finish(code: int, status: str, reason: str) -> int:
+        if args.control_json:
+            print(
+                json.dumps(
+                    {
+                        "status": status,
+                        "mode": "recovery",
+                        "target_date": day,
+                        "exit_code": code,
+                        "reason": reason,
+                    },
+                    ensure_ascii=False,
+                    sort_keys=True,
+                )
+            )
+        return code
+
     state = load_state(args.state, day)
     card = successful_card_for_day(args.log, day)
     if card:
         live = live_tennis_status(day)
         if live and live["published"]:
             print(f"RECOVERY NOT NEEDED: {day} card and production dashboard are current.")
-            return 0
+            return finish(0, "dormant", "card_and_dashboard_current")
         if runner_active(LOCK_PATH):
             print("DASHBOARD RECOVERY DEFERRED: a Tennis scheduler run is already active.")
-            return 0
+            return finish(0, "blocked", "scheduler_locked")
         attempts = int(state.get("dashboard_attempts") or 0)
         if attempts >= MAX_DASHBOARD_ATTEMPTS:
             print(f"DASHBOARD RECOVERY EXHAUSTED: {attempts}/{MAX_DASHBOARD_ATTEMPTS} "
                   f"attempts used for {day}.")
-            return 1
+            return finish(1, "failed", "dashboard_recovery_exhausted")
         state["dashboard_attempts"] = attempts + 1
         state["dashboard_last_started_at"] = datetime.now().isoformat(timespec="seconds")
         save_state(args.state, state)
@@ -216,23 +239,23 @@ def main(argv: list[str] | None = None) -> int:
         if ok:
             notify(f"✅ Tennis Dashboard 自動復原完成：{day}\n{detail}")
             print(f"DASHBOARD RECOVERY COMPLETE: {detail}")
-            return 0
+            return finish(0, "succeeded", "dashboard_recovered")
         notify(
             f"🎾 Tennis Dashboard 自動復原未成功：{day}\n"
             f"attempt {state['dashboard_attempts']}/{MAX_DASHBOARD_ATTEMPTS}\n"
             f"{detail[-500:]}\n分析及投注咭仍然保留，下一個復原時段會再試。"
         )
         print(f"DASHBOARD RECOVERY FAILED: {detail}")
-        return 75
+        return finish(75, "partial", "dashboard_recovery_failed")
 
     if runner_active(LOCK_PATH):
         print("RECOVERY DEFERRED: a Tennis scheduler run is already active.")
-        return 0
+        return finish(0, "blocked", "scheduler_locked")
 
     attempts = int(state.get("analysis_attempts") or 0)
     if attempts >= MAX_ATTEMPTS:
         print(f"RECOVERY EXHAUSTED: {attempts}/{MAX_ATTEMPTS} attempts used for {day}.")
-        return 1
+        return finish(1, "failed", "analysis_recovery_exhausted")
 
     headroom = disk_headroom()
     if not headroom["ok"]:
@@ -245,7 +268,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             state["low_disk_alerted"] = True
             save_state(args.state, state)
-        return 75
+        return finish(75, "partial", "disk_headroom_low")
 
     state["analysis_attempts"] = attempts + 1
     state["last_started_at"] = date.today().isoformat()
@@ -266,18 +289,23 @@ def main(argv: list[str] | None = None) -> int:
         )
     except subprocess.TimeoutExpired:
         notify(f"🎾 Tennis 自動復原逾時：{day}（attempt {state['analysis_attempts']}）")
-        return 75
+        return finish(75, "partial", "analysis_recovery_timeout")
 
     if completed.returncode == 0 and successful_card_for_day(args.log, day):
         print(f"RECOVERY COMPLETE: {day} card restored.")
-        return 0
+        return finish(0, "succeeded", "card_recovered")
 
     notify(
         f"🎾 Tennis 自動復原未成功：{day}\n"
         f"exit={completed.returncode} · attempt {state['analysis_attempts']}/{MAX_ATTEMPTS}\n"
         "系統保留所有原始資料，下一個復原時段會再試；未知錯誤唔會自動改 code。"
     )
-    return completed.returncode or 1
+    code = completed.returncode or 1
+    return finish(
+        code,
+        "partial" if code in (75, 124) else "failed",
+        "analysis_recovery_failed",
+    )
 
 
 if __name__ == "__main__":

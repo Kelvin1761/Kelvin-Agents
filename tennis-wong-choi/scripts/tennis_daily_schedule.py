@@ -91,6 +91,29 @@ class AnalysisBoardMissing(RuntimeError):
     """
 
 
+def control_return(
+    args: argparse.Namespace,
+    *,
+    mode: str,
+    target_date: str,
+    code: int,
+    status: str,
+    reason: str | None = None,
+) -> int:
+    """Optionally emit one final scheduler envelope for the shared adapter."""
+    if args.control_json:
+        payload = {
+            "status": status,
+            "mode": mode,
+            "target_date": target_date,
+            "exit_code": code,
+        }
+        if reason:
+            payload["reason"] = reason
+        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
+    return code
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Daily Tennis Wong Choi scheduler runner.")
     parser.add_argument("--today", help="Override today's date in YYYY-MM-DD for testing.")
@@ -122,11 +145,20 @@ def main(argv: list[str] | None = None) -> int:
              "earliest_odds=True reads each selection's first snapshot, which for "
              "almost every date is this run.",
     )
+    parser.add_argument(
+        "--control-json",
+        action="store_true",
+        help="Emit one final machine-readable control-plane outcome.",
+    )
     args = parser.parse_args(argv)
 
     if args.notify_self_test:
         print(json.dumps(notify_self_test(), ensure_ascii=False, indent=2))
         return 0
+
+    today = date.fromisoformat(args.today) if args.today else local_today()
+    mode = "card" if args.refresh_today else "daily"
+    target_date = (today if args.refresh_today else today + timedelta(days=1)).isoformat()
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     for capture in ("launchd.card.stdout.log", "launchd.card.stderr.log",
@@ -140,21 +172,34 @@ def main(argv: list[str] | None = None) -> int:
         log(f"DISK HEADROOM TOO LOW: {headroom['detail']} -- refusing to start. "
             f"A run that cannot write looks exactly like a run that found "
             f"nothing.")
-        return 75
+        return control_return(
+            args,
+            mode=mode,
+            target_date=target_date,
+            code=75,
+            status="partial",
+            reason="disk_headroom_low",
+        )
     lock_path = LOG_DIR / "tennis_daily_schedule.lock"
     with lock_path.open("w") as lock_file:
         try:
             fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             log("Another Tennis Wong Choi daily run is already active; exiting.")
-            return 0
+            return control_return(
+                args,
+                mode=mode,
+                target_date=target_date,
+                code=0,
+                status="blocked",
+                reason="scheduler_locked",
+            )
 
         log(f"Reports will be written under {ANTIGRAVITY_DIR}"
             + ("" if _OUTPUT_ROOT_OVERRIDE and str(ANTIGRAVITY_DIR) == _OUTPUT_ROOT_OVERRIDE
                else f" (requested {_OUTPUT_ROOT_OVERRIDE or 'nothing'}; not writable "
                     "from this context)"))
 
-        today = date.fromisoformat(args.today) if args.today else local_today()
         yesterday = today - timedelta(days=1)
         tomorrow = today + timedelta(days=1)
 
@@ -167,19 +212,54 @@ def main(argv: list[str] | None = None) -> int:
                 analyse_next_day(today.isoformat(), today=today.isoformat())
             except subprocess.CalledProcessError as exc:
                 log(f"Command failed with exit code {exc.returncode}: {' '.join(exc.cmd)}")
-                return exc.returncode or 1
+                code = exc.returncode or 1
+                return control_return(
+                    args,
+                    mode=mode,
+                    target_date=target_date,
+                    code=code,
+                    status="partial" if code in (75, 124) else "failed",
+                    reason="domain_command_failed",
+                )
             except AnalysisBoardMissing as exc:
                 log(f"BOARD MISSING: {exc}")
                 notify_board_missing(str(exc))
-                return 70
+                return control_return(
+                    args,
+                    mode=mode,
+                    target_date=target_date,
+                    code=70,
+                    status="failed",
+                    reason="analysis_board_missing",
+                )
             except TemporaryDataUnavailable as exc:
                 log(f"TEMPORARY DATA FAILURE: {exc}")
-                return 75
+                return control_return(
+                    args,
+                    mode=mode,
+                    target_date=target_date,
+                    code=75,
+                    status="partial",
+                    reason="temporary_data_unavailable",
+                )
             except Exception as exc:  # noqa: BLE001
                 log(f"Same-day refresh failed: {exc}")
-                return 1
+                return control_return(
+                    args,
+                    mode=mode,
+                    target_date=target_date,
+                    code=1,
+                    status="failed",
+                    reason=f"{type(exc).__name__}: {exc}",
+                )
             log("Same-day refresh complete.")
-            return 0
+            return control_return(
+                args,
+                mode=mode,
+                target_date=target_date,
+                code=0,
+                status="succeeded",
+            )
 
         log(f"Starting scheduled workflow. today={today} review={yesterday} "
             f"analysis={tomorrow} run_source={args.source} mode=daily")
@@ -204,20 +284,55 @@ def main(argv: list[str] | None = None) -> int:
                     log(f"Weekly review skipped: {exc}")
         except subprocess.CalledProcessError as exc:
             log(f"Command failed with exit code {exc.returncode}: {' '.join(exc.cmd)}")
-            return exc.returncode or 1
+            code = exc.returncode or 1
+            return control_return(
+                args,
+                mode=mode,
+                target_date=target_date,
+                code=code,
+                status="partial" if code in (75, 124) else "failed",
+                reason="domain_command_failed",
+            )
         except AnalysisBoardMissing as exc:
             log(f"BOARD MISSING: {exc}")
             notify_board_missing(str(exc))
-            return 70
+            return control_return(
+                args,
+                mode=mode,
+                target_date=target_date,
+                code=70,
+                status="failed",
+                reason="analysis_board_missing",
+            )
         except TemporaryDataUnavailable as exc:
             log(f"TEMPORARY DATA FAILURE: {exc}")
-            return 75
+            return control_return(
+                args,
+                mode=mode,
+                target_date=target_date,
+                code=75,
+                status="partial",
+                reason="temporary_data_unavailable",
+            )
         except Exception as exc:
             log(f"Workflow failed: {exc}")
-            return 1
+            return control_return(
+                args,
+                mode=mode,
+                target_date=target_date,
+                code=1,
+                status="failed",
+                reason=f"{type(exc).__name__}: {exc}",
+            )
 
         log("Scheduled workflow complete.")
-        return 0
+        return control_return(
+            args,
+            mode=mode,
+            target_date=target_date,
+            code=0,
+            status="succeeded",
+        )
 
 
 def local_today() -> date:

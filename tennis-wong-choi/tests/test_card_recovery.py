@@ -106,7 +106,7 @@ def test_completed_card_with_stale_dashboard_recovers_publish_only(
     assert "Dashboard 自動復原完成" in sent[0]
 
 
-def test_completed_card_already_live_does_nothing(tmp_path, monkeypatch):
+def test_completed_card_already_live_does_nothing(tmp_path, monkeypatch, capsys):
     from scripts import tennis_card_recovery as recovery
 
     log = tmp_path / "schedule.log"
@@ -128,5 +128,8 @@ def test_completed_card_already_live_does_nothing(tmp_path, monkeypatch):
 
     assert recovery.main([
         "--today", "2026-08-13", "--log", str(log),
-        "--state", str(tmp_path / "state.json")
+        "--state", str(tmp_path / "state.json"), "--control-json"
     ]) == 0
+    payload = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert payload["status"] == "dormant"
+    assert payload["reason"] == "card_and_dashboard_current"
