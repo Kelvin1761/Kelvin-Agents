@@ -212,6 +212,34 @@ def runner_features(block, today_dist, horse_name="", today_jockey=""):
                      "margin": float(_mg.group(1)) if _mg else None})
     official = [r for r in runs if not r["trial"]]
 
+    # ── 近期窗口往績（2026-08-26）─────────────────────────────────────────
+    # 網站有 `12 Month:` / `Season:` / `3rd Up:` / `Turf:` 而引擎冇讀。但嗰啲
+    # 全部係**會賽後刷新嘅 career overview** 出品 —— 同已證實洩漏嘅 `J/H`
+    # （場內 AUC 0.850）同 `WinRange`（holdout +17.58pp）同一個 block。
+    # 2026-08-26 量過：未撞 10 行上限嘅 13,589 匹入面，`Career:` 數字大過我哋
+    # censor 後數到嘅有 56.7%，而「多出恰好 1 仗」只佔全體 4.2%（多出 2–6 仗
+    # 嘅一樣多）—— 即係大部分差異係頁面冇列晒，唔係今日嗰仗。分唔清，
+    # 所以照 `dist_place_rate` 嗰個做法：**由我哋自己 censor 過嘅往績行數**，
+    # 構造上就唔可能中毒。
+    if official:
+        recent = []
+        for r in official:
+            pass
+        # 12 個月窗口：由往績行日期自己數
+        import datetime as _dt
+        _dates = re.findall(r"\sR\d+\s(\d{4}-\d{2}-\d{2})\s", block)
+        if _dates and len(_dates) >= len(official):
+            newest = max(_dates)
+            y, mth = int(newest[:4]), int(newest[5:7])
+            in12 = []
+            for r, dstr in zip(official, _dates[:len(official)]):
+                gap = (y - int(dstr[:4])) * 12 + (mth - int(dstr[5:7]))
+                if gap < 12:
+                    in12.append(r)
+            if len(in12) >= 2:
+                out["pre12m_place_rate"] = sum(1 for r in in12 if r["placed"]) / len(in12)
+                out["pre12m_starts"] = float(len(in12))
+
     # ── 絕對時間速度評分（2026-08-26）────────────────────────────────────
     sf = [v for v in (_speed_figure(r) for r in official) if v is not None]
     if sf:

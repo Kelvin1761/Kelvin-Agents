@@ -43,14 +43,25 @@ def build_races(scored_root, min_depth=4.0):
 
     meeting_dirs = scored_meeting_index(scored_root)
     cj = Path(scored_root).parent / "source_compare.json"
-    depth = ({d["meeting"]: d.get("form_depth", 0)
-              for d in json.loads(cj.read_text())} if cj.exists() else {})
+    # ⚠️ 2026-08-26：`source_compare.json` 唔存在嗰陣，`depth` 係空 dict，於是
+    # 下面 `depth.get(name, 0) = 0 < min_depth(預設 4.0)` 對**每一個**場次都成立
+    # —— 成份語料被靜靜隔走，輸出「0 場」，然後喺 `delta()` 度爆一個
+    # 意義不明嘅 `TypeError: 'NoneType' object is not subscriptable`。
+    # 表面睇落似「呢個特徵冇數據」，實情係個閘門掃走晒所有嘢。
+    # 攞唔到深度資料就唔應該當「深度 = 0」，應該當「唔知」→ 唔篩。
+    if cj.exists():
+        depth = {d["meeting"]: d.get("form_depth", 0) for d in json.loads(cj.read_text())}
+    else:
+        depth = None
+        if min_depth:
+            print(f"⚠️  搵唔到 {cj.name}，冇 form depth 資料 → 唔做 --min-depth 篩選。",
+                  file=sys.stderr)
     out = []
     for name, meta in sorted(load_meeting_ids().items(), key=lambda kv: kv[1]["date"]):
         mdir = meeting_dirs.get(name)
         if mdir is None:
             continue
-        if min_depth and depth.get(name, 0) < min_depth:
+        if min_depth and depth is not None and depth.get(name, 0) < min_depth:
             continue
         res = results_for(meta)
         if not res:
@@ -143,6 +154,11 @@ def main():
 
     feats = [f.strip() for f in args.features.split(",") if f.strip()]
     races = build_races(args.scored, args.min_depth)
+    if not races:
+        raise SystemExit(
+            f"❌ 語料係空嘅（--scored {args.scored}，--min-depth {args.min_depth}）。\n"
+            "   常見成因：--min-depth 篩得太緊，或者 scored root 指錯。\n"
+            "   行落去只會喺 delta() 度爆一個意義不明嘅 TypeError，所以喺呢度停。")
     cut = int(len(races) * (1 - args.holdout))
     dev, hold = races[:cut], races[cut:]
     print(f"{len(races)} 場：dev {len(dev)} · holdout {len(hold)}（依時間排序）")
