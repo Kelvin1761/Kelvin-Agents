@@ -187,6 +187,7 @@ def test_temporary_prerace_failure_arms_self_recovery(tmp_path: Path) -> None:
         "url": "fixture",
     }
     with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
         mock.patch.object(schedule, "HK_RACING", tmp_path),
         mock.patch.object(
             schedule,
@@ -233,3 +234,125 @@ def test_recovery_retries_pending_meeting(tmp_path: Path) -> None:
     assert prerace.call_args.kwargs["meeting"]["url"].endswith(
         "racedate=2026/09/06&Racecourse=ST&RaceNo=1"
     )
+
+
+def test_manual_force_bypasses_only_the_lead_day_window(tmp_path: Path) -> None:
+    meeting = {
+        "date": "2026-09-06",
+        "venue": "ShaTin",
+        "course": "ST",
+        "url": "fixture",
+    }
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(schedule, "HK_RACING", tmp_path),
+        mock.patch.object(
+            schedule,
+            "now_local",
+            return_value=datetime(2026, 8, 25, 9, 0, tzinfo=timezone.utc),
+        ),
+        mock.patch.object(schedule, "run_cmd", return_value=(75, "not ready")) as run,
+        mock.patch.object(schedule, "notify"),
+    ):
+        state_path = tmp_path / "state.json"
+        state = schedule.load_state(state_path)
+        assert schedule.run_prerace(state, state_path, meeting=meeting) == 0
+        run.assert_not_called()
+        assert schedule.run_prerace(
+            state, state_path, meeting=meeting, force=True
+        ) == schedule.EXIT_TEMPORARY
+        run.assert_called_once()
+
+
+def test_dashboard_refresh_failure_is_persisted_and_retried(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    state = schedule.load_state(state_path)
+    meeting = tmp_path / "2026-09-06_ShaTin"
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(schedule, "run_cmd", return_value=(1, "deploy failed")),
+    ):
+        assert schedule.refresh_dashboard_after_results(
+            state, state_path, meeting_dirs=[meeting]
+        ) is False
+    assert state["pending_dashboard_refresh"]["meeting_dirs"] == [str(meeting)]
+
+    with mock.patch.object(schedule, "run_cmd", return_value=(0, "deployed")):
+        assert schedule.refresh_dashboard_after_results(
+            state, state_path, meeting_dirs=[meeting]
+        ) is True
+    assert "pending_dashboard_refresh" not in state
+    assert state["last_postrace_dashboard_refresh"]
+
+
+def test_startup_catches_up_both_sides(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    state = schedule.load_state(state_path)
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(schedule, "run_prerace", return_value=0) as prerace,
+        mock.patch.object(schedule, "run_postrace", return_value=0) as postrace,
+    ):
+        assert schedule.run_startup(state, state_path) == 0
+    prerace.assert_called_once_with(state, state_path)
+    postrace.assert_called_once_with(state, state_path)
+
+
+def test_cli_accepts_startup_and_force() -> None:
+    args = schedule.parse_args(["--mode", "startup", "--force"])
+    assert args.mode == "startup"
+    assert args.force is True
+
+
+def test_control_json_reports_dormant_without_future_racecard(
+    tmp_path: Path, capsys
+) -> None:
+    state_path = tmp_path / "state.json"
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(schedule, "discover_next_meeting", return_value=None),
+        mock.patch.object(schedule, "notify"),
+    ):
+        code = schedule.main(
+            [
+                "--mode",
+                "watch",
+                "--state-file",
+                str(state_path),
+                "--control-json",
+            ]
+        )
+    assert code == schedule.EXIT_OK
+    payload = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert payload == {
+        "exit_code": 0,
+        "mode": "watch",
+        "reason": "no_future_racecard",
+        "status": "dormant",
+    }
+
+
+def test_control_json_reports_temporary_discovery_failure(
+    tmp_path: Path, capsys
+) -> None:
+    state_path = tmp_path / "state.json"
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(
+            schedule, "discover_next_meeting", side_effect=RuntimeError("source down")
+        ),
+        mock.patch.object(schedule, "notify"),
+    ):
+        code = schedule.main(
+            [
+                "--mode",
+                "prerace",
+                "--state-file",
+                str(state_path),
+                "--control-json",
+            ]
+        )
+    assert code == schedule.EXIT_TEMPORARY
+    payload = json.loads(capsys.readouterr().out.splitlines()[-1])
+    assert payload["status"] == "partial"
+    assert payload["exit_code"] == schedule.EXIT_TEMPORARY

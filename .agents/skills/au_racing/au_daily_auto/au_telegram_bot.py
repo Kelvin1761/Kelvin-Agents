@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Telegram 指令 bot —— 只讀，只聽一個人。
+"""Telegram 指令 bot —— 白名單控制，只聽一個人。
 
 Kelvin 唔喺電腦前嗰陣想主動問「而家點？」，而唔係淨係等推送。
 
@@ -8,9 +8,8 @@ Kelvin 唔喺電腦前嗰陣想主動問「而家點？」，而唔係淨係等�
   * 只回應 `WC_NOTIFY_TELEGRAM_CHAT` 嗰個 chat id，其餘一律唔理（連錯誤都唔覆，
     唔好畀人試出隻 bot 存在）；
   * 指令係一張**白名單**，逐個字對，唔會把訊息內容當成路徑、參數或者指令去行；
-  * 全部指令都係讀，唔會改任何嘢、唔會觸發任何 run。要遙控觸發嘅話係另一個
-    決定，要 Kelvin 明確講先做 —— 遙距開一個會抽幾百版、會發佈上線嘅流程，
-    唔應該由一條「睇落似係佢」嘅訊息決定。
+  * 大部分指令只讀；有副作用嘅 `/retry`、`/hkjc`、`/hkjc_reflect` 都係 Kelvin
+    明確批准，並只會行現役正式 runner，唔接受訊息參數做 shell/path 輸入。
 
 跑法：launchd 每兩分鐘叫一次，唔使長駐 daemon（少一個會死嘅嘢）。
 """
@@ -28,6 +27,8 @@ HERE = Path(__file__).resolve().parent
 LOG_DIR = HERE / "logs"
 OFFSET_FILE = LOG_DIR / "telegram_offset.json"
 RETRY_LOG = LOG_DIR / "retry-from-telegram.out"
+HKJC_ANALYSIS_LOG = LOG_DIR / "hkjc-analysis-from-telegram.out"
+HKJC_REFLECT_LOG = LOG_DIR / "hkjc-reflector-from-telegram.out"
 TIMEOUT = 25
 HELP = ("我識嘅嘢：\n"
         "/picks           今日邊幾個馬場\n"
@@ -39,6 +40,8 @@ HELP = ("我識嘅嘢：\n"
         "/health          即刻做一次體檢\n"
         "/diag            最近一次失敗嘅診斷\n"
         "/retry           補跑抽取（抽唔齊嗰陣用）\n"
+        "/hkjc            強制分析最新 HKJC racecard\n"
+        "/hkjc_reflect    抽賽果、覆盤並更新 HKJC dashboard\n"
         "/help            呢個")
 
 
@@ -270,6 +273,69 @@ def cmd_retry() -> str:
             "想睇進度打 /status")
 
 
+def _hkjc_runner() -> Path:
+    configured = os.environ.get("WC_PRIMARY_REPO_ROOT")
+    primary = Path(configured).expanduser() if configured else Path.home() / "Antigravity-repo"
+    relative = Path(
+        ".agents/skills/hkjc_racing/hkjc_daily_auto/run_hkjc_daily_schedule.sh"
+    )
+    candidate = primary / relative
+    return candidate if candidate.exists() else HERE.parents[3] / relative
+
+
+def _start_hkjc(mode: str, *, log_path: Path, force: bool = False) -> str:
+    """Start a fixed HKJC production mode; Telegram text never reaches argv."""
+    import fcntl
+    import subprocess
+
+    runner = _hkjc_runner()
+    if not runner.exists():
+        return "搵唔到 HKJC runner"
+    lock_path = runner.parent / "state" / "hkjc_daily_state.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("a", encoding="utf-8") as lock:
+        try:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return "⏳ HKJC automation 而家有 run 跑緊，唔開第二個"
+
+    command = ["/bin/bash", str(runner), mode]
+    if force:
+        command.append("--force")
+    try:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        with log_path.open("w", encoding="utf-8") as handle:
+            subprocess.Popen(
+                command,
+                stdout=handle,
+                stderr=handle,
+                start_new_session=True,
+            )
+    except Exception as exc:  # noqa: BLE001
+        return f"開唔到 HKJC：{type(exc).__name__}: {exc}"
+    return "started"
+
+
+def cmd_hkjc() -> str:
+    result = _start_hkjc("prerace", log_path=HKJC_ANALYSIS_LOG, force=True)
+    if result != "started":
+        return result
+    return (
+        "▶️ 已開始 HKJC 最新賽日正式分析。\n"
+        "Racecard／formguide 未齊會保留 pending 並自動補跑；完成後會 Telegram 通知及更新 dashboard。"
+    )
+
+
+def cmd_hkjc_reflect() -> str:
+    result = _start_hkjc("postrace", log_path=HKJC_REFLECT_LOG)
+    if result != "started":
+        return result
+    return (
+        "▶️ 已開始 HKJC 賽後流程。\n"
+        "會抽正式賽果、對齊 prediction snapshot、跑 reflector，並移除 dashboard 已完成賽日。"
+    )
+
+
 def cmd_health() -> str:
     import subprocess
     try:
@@ -329,7 +395,8 @@ PICKMARK = {1: "①", 2: "②", 3: "③"}
 
 COMMANDS = {"/status": cmd_status, "/today": cmd_today, "/perf": cmd_perf,
             "/health": cmd_health, "/week": cmd_week, "/diag": cmd_diag,
-            "/retry": cmd_retry,
+            "/retry": cmd_retry, "/hkjc": cmd_hkjc,
+            "/hkjc_reflect": cmd_hkjc_reflect,
             "/help": lambda: HELP, "/start": lambda: HELP}
 # 收參數嘅指令要另外列 —— 白名單仍然係逐個字對，參數只當文字用嚟配對馬場名，
 # 永遠唔會變成路徑或者指令。

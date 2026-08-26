@@ -208,6 +208,35 @@ class DataQualityTests(unittest.TestCase):
             self.assertIsNone(H.mirror_behind(
                 "2026-08-21", root=root, mirror=Path(tmp) / "does-not-exist"))
 
+    def test_denied_destination_stat_is_unknown_not_behind(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root, mirror = self._tree(tmp)
+            real_stat = Path.stat
+
+            def stat(path, *args, **kwargs):
+                if str(path).startswith(str(mirror)) and path != mirror:
+                    raise PermissionError(1, "Operation not permitted", str(path))
+                return real_stat(path, *args, **kwargs)
+
+            with unittest.mock.patch.object(Path, "stat", stat):
+                self.assertIsNone(
+                    H.mirror_behind("2026-08-21", root=root, mirror=mirror)
+                )
+
+    def test_unknown_mirror_stat_defers_to_latest_successful_run(self):
+        import json
+
+        with tempfile.TemporaryDirectory() as tmp:
+            logs = Path(tmp)
+            (logs / "run-morning-test.json").write_text(
+                json.dumps({"steps": [
+                    {"step": "mirror", "status": "ok", "copied": 93, "failed": 0}
+                ]}),
+                encoding="utf-8",
+            )
+            with unittest.mock.patch.object(H, "mirror_behind", return_value=None):
+                self.assertIsNone(H.mirror_issue(DAY, log_dir=logs))
+
     def test_a_stale_failure_log_is_ignored_once_the_mirror_caught_up(self):
         """實物追到 = 唔嗌，就算最近一個 run log 仲寫住失敗。
 
