@@ -63,7 +63,7 @@ career overview**，同已證實洩漏嘅 `J/H`（場內 AUC 0.850）、`WinRang
 **分唔清 = 唔可以攞嚟 fit。** 照 `dist_place_rate` 嘅做法由 censor 過嘅往績行
 自己數（新增 `pre12m_place_rate` / `pre12m_starts`）。
 
-**結果：`pre12m_place_rate` 冇一個 k 過到 fold 閘。** 即係「近 12 個月上名率」
+**結果：`pre12m_place_rate`、`pre12m_starts` 同埋（順手一齊測嘅現有特徵）`up_index`，三個都冇一個 k 過到 fold 閘。** 即係「近 12 個月上名率」
 呢個訊號，`form_score`（AUC 0.5962）已經捉晒 —— 用一個更窄嘅窗口重數一次
 冇加到嘢。呢個係 [[au-cohort-gap-is-not-a-gain]] 嘅又一例：先問模型係咪已經
 另有路捉到同一件事。
