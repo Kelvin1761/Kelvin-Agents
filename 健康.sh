@@ -273,6 +273,23 @@ while IFS=$'\t' read -r kind arg count; do
 done <<< "$LOG_SCAN"
 [ "$found" = "0" ] && ok "近 3 日嘅日誌冇 traceback / 權限錯誤 / 排程階段失敗"
 
+# ── 預先登記嘅重測條件 ────────────────────────────────────────────────────
+# 2026-08-26：有幾個候選係「證據方向一致但功效唔夠」—— 唔係死咗，係語料未夠厚，
+# 每個都喺 docs/experiments/ 寫死咗重測門檻。冇人會記得返嚟睇，所以喺呢度自動報。
+# ⚠️ 佢淨係報「夠數喇」，唔會自己跑 A/B —— 自動改模型 = 冇人睇過 golden diff。
+printf '\n\033[1m── 預先登記重測 ──\033[0m\n'
+RETEST="$("$PY" .agents/skills/au_racing/au_wong_choi_auto/scripts/au_retest_watch.py 2>&1)"
+RETEST_RC=$?
+if [ "$RETEST_RC" = "10" ]; then
+  printf '%s\n' "$RETEST" | sed 's/^/  /'
+  warn "有候選夠數重測（見上）"
+elif [ "$RETEST_RC" = "0" ]; then
+  printf '%s\n' "$RETEST" | grep -E "乾淨|覆蓋|未夠" | sed 's/^/  /'
+  ok "冇候選到期"
+else
+  warn "重測監察跑唔到（rc=$RETEST_RC）"
+fi
+
 # ── 總結 ─────────────────────────────────────────────────────────────────
 printf '\n\033[1m════════ 總結 ════════\033[0m\n'
 if [ "$PROBLEMS" -gt 0 ]; then

@@ -34,3 +34,4 @@
 - [EXP-20260826-05](EXP-20260826-05-au-backfill-draw-unused-leaves-hkjc.md) — 補抓唔可行但揾到結果 CSV `Time` 欄死咗；檔位真但太細；18 個 leaf 得 9 個入排名，class_score 最接近過閘；同 HKJC 逐維度對照
 - [EXP-20260826-06](EXP-20260826-06-au-class-score-revival.md) — class_score 復活：乾淨語料七個測試 dev 全部正但 holdout 跨 0；全語料三個「過閘」係喺污染資料上 fit gain 嘅產物，REJECT + 登記重測
 - [EXP-20260826-07](EXP-20260826-07-au-gear-change-signal.md) — 配備變更：抽取層完全冇攞；OFF FIRST TIME −3.86pp 顯著，但同 form_score 重複（59.83 vs 62.10），排名唔過閘。建議抽落嚟出報告
+- [EXP-20260826-08](EXP-20260826-08-au-market-price.md) — 市場價：賽前 WinOdds AUC 0.7332 vs 模型 0.6665，加落去每個 k 都過閘（Pass +3.35pp）；但最佳混合 w=0.0，模型貢獻係零。等 methodology 決定
