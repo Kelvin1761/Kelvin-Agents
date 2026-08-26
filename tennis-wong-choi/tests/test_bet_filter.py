@@ -96,3 +96,65 @@ def test_context_fields_are_read_through_their_datapoint_wrapper():
     assert _context_value({"match_context": {"tournament": "WTA Berlin"}},
                           "tournament") == "WTA Berlin"
     assert _context_value({}, "tournament") == ""
+
+
+# --------------------------------------------------------------------------- #
+# Rank as a hard input requirement (added 2026-08-27)
+# --------------------------------------------------------------------------- #
+def test_a_missing_rank_is_signalled_by_the_model_at_all():
+    """`select_relevant_rank_bucket(None)` returns "UNKNOWN" and the component
+    reads that bucket's win rate, so a fixture with no rank produced a nudge as
+    though it had learned something -- with no warning anywhere. `current_rank`
+    is one of only four inputs that is not a re-slice of past results."""
+    from tennis_wc.modelling.probability_model import _component_probabilities
+
+    def _side(rank):
+        return {
+            "current_rank": {"value": rank},
+            "opponent_rank_buckets": {
+                b: {"shrinked_win_rate": {"value": 0.5}}
+                for b in ("UNKNOWN", "TOP_10", "TOP_25", "TOP_50", "TOP_100",
+                          "RANK_101_200", "RANK_201_PLUS")
+            },
+        }
+
+    both = _component_probabilities({"player_a": _side(30), "player_b": _side(40)})
+    warned = {w for c in both for w in c.warnings}
+    assert not any(w.startswith("missing_current_rank") for w in warned)
+
+    one = _component_probabilities({"player_a": _side(30), "player_b": _side(None)})
+    warned = {w for c in one for w in c.warnings}
+    assert "missing_current_rank_b" in warned
+
+
+def test_a_fixture_with_no_rank_cannot_become_a_bet():
+    """Gated for measurement before profit: on the 49.5% of fixtures where the
+    independent inputs are present the model draws level with the market
+    (Delta log-loss +0.0161, CI [-0.0063, +0.0379]); on the rest it loses by
+    +0.0639. One ROI over both makes that unanswerable."""
+    from tennis_wc.betting.bet_filter import apply_bet_filter
+
+    snapshot, pricing = _bettable_inputs("National Bank Open", "ATP_250")
+    assert apply_bet_filter(snapshot, pricing)["decision"] == "BET"
+
+    pricing = dict(pricing)
+    pricing["model"] = {"components": [
+        {"warnings": ["missing_current_rank_b"]},
+    ]}
+    result = apply_bet_filter(snapshot, pricing)
+    assert result["decision"] == "NO_BET"
+    assert "missing_rank_inputs" in result["hard_no_bet_reasons"]
+
+
+def test_missing_inputs_and_thin_inputs_are_named_separately():
+    """"We hold nothing to price this with" and "what we hold looks thin" call
+    for different fixes, and folding them together is how the rank gap stayed
+    invisible for months."""
+    from tennis_wc.betting.bet_filter import apply_bet_filter
+
+    snapshot, pricing = _bettable_inputs("National Bank Open", "ATP_250")
+    pricing = dict(pricing)
+    pricing["model"] = {"components": [{"warnings": ["missing_current_rank_a"]}]}
+    reasons = apply_bet_filter(snapshot, pricing)["hard_no_bet_reasons"]
+    assert "missing_rank_inputs" in reasons
+    assert "data_quality_score_below_65" not in reasons

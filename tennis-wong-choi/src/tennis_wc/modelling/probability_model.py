@@ -78,10 +78,16 @@ def _clamp(value: float, low: float = 0.05, high: float = 0.95) -> float:
     return max(low, min(high, value))
 
 
-def _rate_component(a_rate: float | None, b_rate: float | None, name: str, weight: float) -> Component:
+def _rate_component(a_rate: float | None, b_rate: float | None, name: str, weight: float,
+                    extra_warnings: tuple[str, ...] = ()) -> Component:
+    """`extra_warnings` records an input that was absent even when a rate was
+    still computable -- the rank buckets fall back to an UNKNOWN bucket rather
+    than to None, so without this the component looks fully informed."""
     if a_rate is None or b_rate is None:
-        return Component(name, 0.5, weight, f"{name}: missing rate, neutralised", ("missing_rate",))
-    return Component(name, _clamp(0.5 + (a_rate - b_rate) / 2), weight, f"{name}: compared shrinked rates")
+        return Component(name, 0.5, weight, f"{name}: missing rate, neutralised",
+                         tuple(sorted({"missing_rate", *extra_warnings})))
+    return Component(name, _clamp(0.5 + (a_rate - b_rate) / 2), weight,
+                     f"{name}: compared shrinked rates", tuple(sorted(extra_warnings)))
 
 
 def select_relevant_rank_bucket(opponent_rank: int | None) -> str:
@@ -175,12 +181,25 @@ def _component_probabilities(feature_snapshot: dict) -> list[Component]:
 
     a_rank = _value(a.get("current_rank"))
     b_rank = _value(b.get("current_rank"))
+    # A missing rank had no warning at all: `select_relevant_rank_bucket(None)`
+    # returns "UNKNOWN", the component reads that bucket's win rate and nudges
+    # the probability as though it had learned something. `current_rank` is one
+    # of only four inputs here that is not a re-slice of past results, and it is
+    # absent on 41.2% of as-of player-sides -- so the one place the model could
+    # say "I was not given this" said nothing, and the output was
+    # indistinguishable from an informed one.
+    rank_warnings = tuple(
+        sorted({name for name, rank in (("missing_current_rank_a", a_rank),
+                                        ("missing_current_rank_b", b_rank))
+                if rank is None})
+    )
     components.append(
         _rate_component(
             _bucket_rate(a, select_relevant_rank_bucket(b_rank)),
             _bucket_rate(b, select_relevant_rank_bucket(a_rank)),
             "opponent_rank_bucket_edge",
             WEIGHTS["opponent_rank_bucket_edge"],
+            extra_warnings=rank_warnings,
         )
     )
     components.append(

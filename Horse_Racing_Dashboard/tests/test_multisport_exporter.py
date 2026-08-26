@@ -461,20 +461,35 @@ class TennisHonestPanelTests(unittest.TestCase):
                 id INTEGER PRIMARY KEY, stake_units REAL, profit_loss_units REAL,
                 result_status TEXT, is_value INTEGER, is_point_in_time INTEGER);
             CREATE TABLE prop_live_bets (prop_id INTEGER);
+            CREATE TABLE tournaments (id INTEGER PRIMARY KEY, name TEXT);
+            CREATE TABLE rankings_history (player_id INTEGER, ranking_date TEXT, rank INTEGER);
+            -- As-of rows, published BEFORE the fixture date. Player C has none,
+            -- so fixture 2 is unranked exactly as the model sees it.
+            INSERT INTO rankings_history VALUES (1,'2026-08-01',10),(2,'2026-08-01',20),
+                                                (4,'2026-08-01',40);
+            INSERT INTO tournaments VALUES (1,'ATP Test'),(2,'ATP Test Doubles');
             """
         )
         if with_columns:
             conn.executescript(
                 """
                 INSERT INTO players VALUES (1,'A',10,1800.0),(2,'B',20,1750.0),
-                                           (3,'C',NULL,NULL),(4,'D',40,1700.0);
+                                           (3,'C',NULL,NULL),(4,'D',40,1700.0),
+                                           (5,'E/F',NULL,NULL),(6,'G/H',NULL,NULL);
                 """
             )
         else:
-            conn.executescript("INSERT INTO players VALUES (1,'A'),(2,'B'),(3,'C'),(4,'D');")
+            conn.executescript(
+                "INSERT INTO players VALUES (1,'A'),(2,'B'),(3,'C'),(4,'D'),"
+                "(5,'E/F'),(6,'G/H');"
+            )
         conn.executescript(
             """
             INSERT INTO matches VALUES (1,'2026-08-27',1,2,1),(2,'2026-08-27',3,4,1);
+            -- A doubles fixture must not count against input completeness: it
+            -- never enters the singles pipeline, and a pair label has no rank
+            -- by definition. 413 of the 1,636 unranked priced players are pairs.
+            INSERT INTO matches VALUES (3,'2026-08-27',5,6,2);
             -- two pre-match bets (one won, one lost) and one post-start winner
             INSERT INTO prop_tracker VALUES
                 (1, 1.0,  0.9, 'WON',  1, 1),
@@ -501,6 +516,25 @@ class TennisHonestPanelTests(unittest.TestCase):
         self.assertEqual(record["excluded_from_judgement"], 1)
         self.assertEqual(record["live_stakes_placed"], 0)
 
+    def test_rank_completeness_is_measured_as_of_not_from_the_mutable_column(self):
+        """`players.current_rank` has no date. Counting it overstated this
+        number -- 58.8% against the model's own 31.2% on the same fixtures --
+        and a progress indicator that flatters what it tracks is worse than
+        none. Here player 3 carries a `current_rank` but no as-of row."""
+        from backend.services.multisport_exporter import _tennis_input_completeness
+
+        with tempfile.TemporaryDirectory() as tmp:
+            db = self._db(tmp)
+            conn = sqlite3.connect(db)
+            conn.execute("UPDATE players SET current_rank = 900 WHERE id = 3")
+            conn.commit()
+            conn.row_factory = sqlite3.Row
+            cov = _tennis_input_completeness(conn, "2026-08-27")
+            conn.close()
+        # Fixture 2 must stay uncounted: player 3 has a rank today and had none
+        # before the match.
+        self.assertEqual(cov["both_players_ranked"], 1)
+
     def test_input_completeness_reports_both_sides_present(self):
         from backend.services.multisport_exporter import _tennis_input_completeness
 
@@ -509,9 +543,13 @@ class TennisHonestPanelTests(unittest.TestCase):
             conn.row_factory = sqlite3.Row
             cov = _tennis_input_completeness(conn, "2026-08-27")
             conn.close()
-        # Fixture 1 has both ranked; fixture 2 has player C with no rank.
+        # Fixture 1 has both ranked; fixture 2 has player C with no rank;
+        # fixture 3 is doubles and must be out of the denominator entirely --
+        # otherwise this number sits permanently low against fixtures the model
+        # is right to ignore.
         self.assertEqual(cov["both_players_ranked"], 1)
-        self.assertAlmostEqual(cov["both_players_ranked_ratio"], 0.5, places=4)
+        self.assertAlmostEqual(cov["both_players_ranked_ratio"], 0.5, places=4,
+                               msg="denominator must be 2 singles, not 3 fixtures")
         self.assertEqual(cov["both_players_elo"], 1)
 
     def test_a_database_without_the_columns_degrades_quietly(self):

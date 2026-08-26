@@ -566,17 +566,40 @@ def _tennis_input_completeness(connection: sqlite3.Connection,
     }
     if not {"current_rank", "overall_elo"} <= player_columns:
         return {}
+    # Rank is counted AS-OF, from `rankings_history`, because that is what the
+    # model reads (`feature_builder._rank_as_of`). `players.current_rank` is a
+    # mutable column with no date: counting it would overstate this number --
+    # measured 58.8% against the model's own 31.2% on the same fixtures -- and a
+    # progress indicator that flatters the thing it tracks is worse than none.
+    has_asof = _table_exists(connection, "rankings_history")
+    rank_expr = (
+        """SUM(CASE WHEN EXISTS(SELECT 1 FROM rankings_history r
+                     WHERE r.player_id = m.player_a_id AND r.ranking_date < m.match_date)
+                 AND EXISTS(SELECT 1 FROM rankings_history r
+                     WHERE r.player_id = m.player_b_id AND r.ranking_date < m.match_date)
+                THEN 1 ELSE 0 END)"""
+        if has_asof else
+        "SUM(CASE WHEN pa.current_rank IS NOT NULL AND pb.current_rank IS NOT NULL THEN 1 ELSE 0 END)"
+    )
     row = connection.execute(
-        """
+        f"""
         SELECT COUNT(*) AS n,
-               SUM(CASE WHEN pa.current_rank IS NOT NULL
-                         AND pb.current_rank IS NOT NULL THEN 1 ELSE 0 END) AS ranked,
+               {rank_expr} AS ranked,
                SUM(CASE WHEN pa.overall_elo IS NOT NULL
                          AND pb.overall_elo IS NOT NULL THEN 1 ELSE 0 END) AS elo
         FROM matches m
         JOIN players pa ON pa.id = m.player_a_id
         JOIN players pb ON pb.id = m.player_b_id
+        LEFT JOIN tournaments t ON t.id = m.tournament_id
         WHERE m.match_date = ?
+          -- Doubles never enter the singles pipeline (`feature_builder` drops
+          -- them), and a doubles "player" is a pair label with no ranking by
+          -- definition. Counting them here would hold this number permanently
+          -- down against fixtures the model is right to ignore -- 413 of the
+          -- 1,636 unranked priced players are pairs.
+          AND COALESCE(t.name, '') NOT LIKE '%Doubles%'
+          AND pa.name NOT LIKE '%/%'
+          AND pb.name NOT LIKE '%/%'
         """,
         (analysis_date,),
     ).fetchone()

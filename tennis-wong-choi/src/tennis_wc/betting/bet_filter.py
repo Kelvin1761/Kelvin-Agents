@@ -85,6 +85,27 @@ def apply_bet_filter(feature_snapshot: dict, pricing: dict) -> dict:
     model_warnings = _model_warnings(pricing)
     if "missing_surface_elo" in model_warnings or "missing_overall_elo" in model_warnings:
         hard_no_bet_reasons.append("missing_core_elo_inputs")
+    # Rank joins Elo as a hard input requirement.
+    #
+    # The model has 168 feature leaves and 164 of them are one signal -- past
+    # results -- re-sliced; only Elo, surface Elo, rest days and rank carry
+    # independent information. Without them it still emits a number, and 27% of
+    # predictions land within 0.05 of 0.5 (the market: 12.9%) because that
+    # number is the combiner declining to have a view. A no-opinion 0.5 is
+    # indistinguishable on the page from an informed 0.5.
+    #
+    # Gated for measurement before profit: on the 49.5% of fixtures where all
+    # the independent inputs are present the model draws level with the market
+    # (Delta log-loss +0.0161, CI [-0.0063, +0.0379]); on the rest it loses by
+    # +0.0639. Mixing the two into one ROI is what makes that question
+    # unanswerable, and the forward window this is meant to measure opens
+    # 2026-08-28.
+    #
+    # Named separately from `data_quality_score_below_65`: "we hold nothing to
+    # price this with" and "what we hold looks thin" call for different fixes,
+    # and folding them together is how the rank gap stayed invisible for months.
+    if any(w.startswith("missing_current_rank") for w in model_warnings):
+        hard_no_bet_reasons.append("missing_rank_inputs")
     if any("LLM" in error or "llm" in error for error in errors):
         hard_no_bet_reasons.append("llm_generated_stat_detected")
     if "odds_selection_mapping_failed" in errors:
