@@ -64,7 +64,10 @@ class VerdictRuleTests(unittest.TestCase):
         for r in races:
             for x in r["rows"]:
                 x["_c"] = x["_s"] + (1.2 if x["pos"] <= 3 else 0.0)
-        v = au_eval.compare(races, score, lambda r: r["_c"], label="真訊號")
+        v = au_eval.compare(
+            races, score, lambda r: r["_c"], label="真訊號",
+            leakage_audit_passed=True,
+        )
         self.assertTrue(v.ship, f"應該 ship：{v.reason}")
         self.assertGreater(v.top_hold_ci[0], 0)
 
@@ -73,9 +76,12 @@ class VerdictRuleTests(unittest.TestCase):
         for r in races:
             for x in r["rows"]:
                 x["_c"] = x["_s"] - (1.2 if x["pos"] <= 3 else 0.0)
-        v = au_eval.compare(races, score, lambda r: r["_c"], label="更差")
+        v = au_eval.compare(
+            races, score, lambda r: r["_c"], label="更差",
+            leakage_audit_passed=True,
+        )
         self.assertFalse(v.ship)
-        self.assertIn("全負", v.reason)
+        self.assertEqual(v.stage4_verdict, "REJECT")
 
     def test_a_neutral_change_is_not_shipped(self):
         """⚠️ 呢個係最重要嘅一條。純噪音擾動一定唔可以過 ——
@@ -86,7 +92,10 @@ class VerdictRuleTests(unittest.TestCase):
         for r in races:
             for x in r["rows"]:
                 x["_c"] = x["_s"] + rng.gauss(0, 0.05)
-        v = au_eval.compare(races, score, lambda r: r["_c"], label="中性擾動")
+        v = au_eval.compare(
+            races, score, lambda r: r["_c"], label="中性擾動",
+            leakage_audit_passed=True,
+        )
         self.assertFalse(v.ship, "中性改動唔可以過閘")
 
     def test_counts_are_reported_but_never_gate(self):
@@ -95,9 +104,12 @@ class VerdictRuleTests(unittest.TestCase):
         for r in races:
             for x in r["rows"]:
                 x["_c"] = x["_s"]
-        v = au_eval.compare(races, score, lambda r: r["_c"], label="完全一樣")
+        v = au_eval.compare(
+            races, score, lambda r: r["_c"], label="完全一樣",
+            leakage_audit_passed=True,
+        )
         self.assertFalse(v.ship)
-        self.assertIn("跨 0", v.reason)
+        self.assertEqual(v.reason, "ranking_evidence_too_weak")
         self.assertIsInstance(v.counts, dict)
 
     def test_counts_include_every_current_and_legacy_metric(self):
@@ -119,7 +131,9 @@ class VerdictRuleTests(unittest.TestCase):
         for r in races:
             for x in r["rows"]:
                 x["_c"] = x["_s"]
-        v = au_eval.compare(races, score, lambda r: r["_c"])
+        v = au_eval.compare(
+            races, score, lambda r: r["_c"], leakage_audit_passed=True
+        )
         self.assertEqual(au_eval.TOP_K, 5)
         self.assertIn(f"頭 {au_eval.TOP_K} 位", str(v))
 

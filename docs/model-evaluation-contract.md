@@ -1,5 +1,34 @@
 # 模型評估合約（AU / HKJC Wong Choi）
 
+## Stage 4 判決順序（v2，2026-08-26）
+
+呢次係**獨立改把尺**，冇包含任何候選 model／feature／weight 改動。舊 AU AUC-only
+同 HKJC all-archive no-regression 判決保留喺下面做 v1 歷史記錄；由 v2 開始，正式
+promotion 統一跟以下次序，但 AU 同 HKJC 仍然各自跑自己嘅 engine 同語料：
+
+1. **安全／樣本閘**：baseline 同 candidate 必須同 sample hash、同場數、同一個已鎖
+   dev／terminal split；leakage audit 通過；唔准用 holdout 調參或改尺救候選。
+2. **Primary KPI**：兩邊都用 canonical `gold`（實際前三全部喺 model Top 4）同
+   `good_positional`（model 第 1、2 揀都上名）。任何一項喺 dev 或 terminal 點估計
+   回歸即 REJECT。
+3. **`PRIMARY_WIN`**：Gold 或 Good 至少一項 dev、terminal 都改善，而且 terminal
+   paired race bootstrap 95% CI 下界 > 0；另一項保持無回歸。
+4. **`RANKING_WIN`**：Gold／Good 保持無回歸時，容許純排序改善。只可喺預先登記嘅
+   `top3_capture_at5`、`mean_top3_model_rank`（越低越好）、
+   `competitive_recall_at5`、`ndcg_at5`、`top5_pairwise_auc` 入面判斷；至少兩項 dev
+   同 terminal 都改善，至少一項 terminal paired CI 下界 > 0，而且冇 ranking metric
+   嘅 terminal CI 全負。
+5. **Cohort guardrail**：field-size／venue／going 等預先聲明 cohort 有實質 regression
+   一律 REJECT。多個 feature／weight 一齊郁仍然要 ablation。
+
+Machine-readable 判決器：
+`.agents/skills/shared_racing/model_evaluation_decision.py`。佢只接受已計好、已配對嘅
+evidence，唔會讀 holdout 幫候選揀參數，亦唔會改任何 domain score。
+
+> v2 嘅意思唔係「細數字都當真」。我哋接受 ranking-only 方向，但仍要同一語料、
+> out-of-sample、paired CI 同 primary 無回歸。證據未夠就係 REJECT／繼續 shadow，
+> 唔會因為進入 squeezing stage 就將 noise 叫做 improvement。
+
 **呢份係「一個候選好唔好」嘅唯一裁判規則。** 建立於 2026-08-21，由 code 反推
 （之前冇呢份文件，所以同一個候選喺唔同 harness 之下可以得出相反結論）。
 
@@ -12,7 +41,7 @@
 
 ---
 
-## AU
+## AU（v1 歷史記錄）
 
 ### 判決規則（PRIMARY）
 
@@ -131,7 +160,7 @@ holdout 268 場嘅 95% 門檻係 **±0.0058**。**14 個 leaf 入面 11 個，�
 
 ---
 
-## HKJC
+## HKJC（v1 歷史記錄）
 
 **用完全另一套閘門**，同 AU 嘅 AUC 判決規則**唔通用**。
 
