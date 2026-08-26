@@ -14,6 +14,24 @@ from tennis_wc.providers.tennis_provider_base import TennisProvider
 logger = logging.getLogger(__name__)
 
 
+# One runaway guard for every parse path, replacing four separate hard-coded
+# `if len(rows) >= 500: break` lines -- one in each of the ATP UTS, WTA API, WTA
+# PDF and WTA HTML parsers.
+#
+# Those four were the ones that mattered. Lifting the two REQUEST caps changed
+# nothing on its own: the ATP payload arrived with all 2,161 rows and the parser
+# still returned 500, which is why the truncation warning added alongside them
+# was worth more than the caps it was meant to watch. Seven stacked 500s in
+# total, counting the two request limits and `ingest_rankings`'
+# CACHED_RANKING_ROW_LIMIT.
+#
+# 5,000 is a guard against a malformed payload, not a view about how deep the
+# ladder goes: ATP holds 2,161 ranked players and WTA 1,572, so a real feed
+# never reaches it -- and if one ever does, the warning says so instead of the
+# rows quietly vanishing.
+MAX_RANKING_ROWS = 5000
+
+
 class OfficialRankingFetchError(RuntimeError):
     pass
 
@@ -45,10 +63,26 @@ class OfficialRankingProvider(TennisProvider):
             return self._fetch_atp_uts(date_str)
         raise OfficialRankingFetchError(f"Unsupported official ranking tour: {tour}")
 
+    # The whole ladder, not the first page of it. 2026-08-27: this asked for
+    # 500 rows while the endpoint held 2,161 (deepest rank 2,162), and the WTA
+    # path stopped at five pages of 100 while its feed ran to 1,517. Ranked
+    # players went 1,000 fetched against ~3,733 available.
+    #
+    # That cap was not cosmetic. `current_rank` is one of only four inputs in
+    # the feature set that is not a re-slice of past results, and ITF -- 85% of
+    # the board we price -- sits between rank 400 and 1,500. So the model was
+    # priced with no rank on 57% of players and no Elo on 35%, and on the 49.5%
+    # of fixtures where all its independent inputs ARE present it draws level
+    # with the market (Delta log-loss +0.0161, CI [-0.0063, +0.0379]) instead of
+    # losing by +0.0639. The cap was half the deficit.
+    ATP_ROW_COUNT = 4000
+    WTA_PAGE_SIZE = 100
+    WTA_MAX_PAGES = 40
+
     def _fetch_atp_uts(self, date_str: str | None) -> list[dict]:
         params = {
             "current": "1",
-            "rowCount": "500",
+            "rowCount": str(self.ATP_ROW_COUNT),
             "sort[rank]": "asc",
             "searchPhrase": "",
             "rankType": "RANK",
@@ -72,12 +106,27 @@ class OfficialRankingProvider(TennisProvider):
         rows = _parse_atp_uts_rankings(payload, date_str)
         if not rows:
             raise OfficialRankingFetchError("ATP UTS rankings endpoint returned no parseable rows")
+        # The endpoint reports its own total, so a truncated answer is
+        # detectable rather than something to discover eighteen months later in
+        # a coverage audit. Logged, not raised: a partial ladder is still worth
+        # far more than yesterday's.
+        available = _int_or_none((payload or {}).get("total"))
+        if available and len(rows) < available * 0.95:
+            logger.warning(
+                "ATP rankings truncated: parsed %d of %d available (rowCount=%d). "
+                "Raise ATP_ROW_COUNT or add paging.",
+                len(rows), available, self.ATP_ROW_COUNT,
+            )
         return rows
 
     def _fetch_wta_api(self, date_str: str | None) -> list[dict]:
         payload: list[dict] = []
-        page_size = 100
-        for page in range(5):
+        # Paged until the feed returns a short page. WTA_MAX_PAGES is a
+        # runaway guard, not the intended stop: the real feed ends at page 15
+        # (1,572 players, deepest rank 1,517), and a fixed range(5) silently
+        # threw away two thirds of it.
+        page_size = self.WTA_PAGE_SIZE
+        for page in range(self.WTA_MAX_PAGES):
             params = {
                 "page": str(page),
                 "pageSize": str(page_size),
@@ -110,6 +159,12 @@ class OfficialRankingProvider(TennisProvider):
             payload.extend(page_payload)
             if len(page_payload) < page_size:
                 break
+        else:
+            logger.warning(
+                "WTA rankings hit the %d-page guard with a full last page; the "
+                "feed is deeper than expected and is being truncated.",
+                self.WTA_MAX_PAGES,
+            )
         rows = _parse_wta_api_rankings(payload, date_str)
         if not rows:
             raise OfficialRankingFetchError("WTA ranked players API returned no parseable rows")
@@ -202,7 +257,10 @@ def _parse_wta_numeric_pdf_text(text: str, requested_date: str | None = None) ->
         row = _parse_wta_numeric_line(line, ranking_date)
         if row:
             rows.append(row)
-        if len(rows) >= 500:
+        if len(rows) >= MAX_RANKING_ROWS:
+            logger.warning(
+                "ranking parse hit the %d-row guard; the feed is deeper than "
+                "expected and is being truncated.", MAX_RANKING_ROWS)
             break
     return rows
 
@@ -234,7 +292,10 @@ def _parse_atp_uts_rankings(payload: dict, requested_date: str | None = None) ->
                 },
             }
         )
-        if len(rows) >= 500:
+        if len(rows) >= MAX_RANKING_ROWS:
+            logger.warning(
+                "ranking parse hit the %d-row guard; the feed is deeper than "
+                "expected and is being truncated.", MAX_RANKING_ROWS)
             break
     return rows
 
@@ -280,7 +341,10 @@ def _parse_wta_api_rankings(payload: list | dict, requested_date: str | None = N
                 },
             }
         )
-        if len(rows) >= 500:
+        if len(rows) >= MAX_RANKING_ROWS:
+            logger.warning(
+                "ranking parse hit the %d-row guard; the feed is deeper than "
+                "expected and is being truncated.", MAX_RANKING_ROWS)
             break
     return rows
 
@@ -335,7 +399,10 @@ def _parse_wta_rankings_html(text: str, requested_date: str | None = None) -> li
                 },
             }
         )
-        if len(rows) >= 500:
+        if len(rows) >= MAX_RANKING_ROWS:
+            logger.warning(
+                "ranking parse hit the %d-row guard; the feed is deeper than "
+                "expected and is being truncated.", MAX_RANKING_ROWS)
             break
     return rows
 

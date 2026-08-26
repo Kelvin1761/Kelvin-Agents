@@ -205,12 +205,31 @@ def _elo_as_of(conn, player_id: int, as_of_date, surface: str | None):
     return overall, (on_surface if on_surface is not None else overall), True
 
 
+# How stale a match may be and still accept `players.current_rank` as its
+# as-of rank. Two days covers a card built the night before, plus the timezone
+# spread between a tournament's local match date and a UTC ranking stamp.
+CURRENT_RANK_FALLBACK_DAYS = 2
+
+
 def _rank_as_of(conn, player_id: int, as_of_date, player) -> int | None:
     """Ranking published before the match, not the player's rank today.
 
     players.current_rank carries no as-of date at all, so every historical
     feature built from it used whatever the rank happened to be at build time.
     rankings_history has been populated all along (103,002 rows).
+
+    2026-08-27: the unconditional fallback to `players.current_rank` was a
+    look-ahead path, and lifting the ranking feed's 500-cap made it fire more
+    often rather than less. Measured over the 5,748 player-sides on priced
+    fixtures: 51.1% have a genuine as-of row, 29.9% have nothing, and **19.0%
+    were being handed today's rank for a match already played** -- and that
+    share grows with every improvement to `current_rank` coverage, which is the
+    opposite of what a coverage fix should do.
+
+    So the fallback now only applies to a match that has not meaningfully
+    happened yet. A live card still gets a rank when the morning ranking
+    refresh has not landed; a rebuilt historical snapshot gets None and says so,
+    which is the honest input and the one the model should be graded on.
     """
     stamp = as_of_date.isoformat() if hasattr(as_of_date, "isoformat") else str(as_of_date)
     row = conn.execute(
@@ -223,7 +242,20 @@ def _rank_as_of(conn, player_id: int, as_of_date, player) -> int | None:
     ).fetchone()
     if row:
         return int(row[0])
+    if not _is_effectively_now(stamp):
+        return None
     return player["current_rank"]
+
+
+def _is_effectively_now(stamp: str) -> bool:
+    """Is this as-of date close enough to today that today's rank IS the as-of
+    rank? Anything older is history, and history must not read a mutable
+    column."""
+    try:
+        as_of = date.fromisoformat(str(stamp)[:10])
+    except ValueError:
+        return False
+    return (date.today() - as_of).days <= CURRENT_RANK_FALLBACK_DAYS
 
 
 def _rest_days(player_id: int, as_of_date: date) -> int | None:

@@ -403,6 +403,36 @@ def apply_merges(conn, plans: list[MergePlan]) -> dict:
         )
         summary["rows_dropped_as_redundant"] += swept.rowcount or 0
 
+    # Carry the duplicate's player-level attributes onto the canonical row.
+    #
+    # 2026-08-27: the merge repointed every foreign key and recorded every
+    # alias, and left these three columns behind -- so it moved the history and
+    # abandoned the reason for moving it. Measured: 447 groups merged and
+    # `current_rank` coverage on priced players went 44.3% -> 44.3%, because the
+    # rank sat on the row that had just been superseded ("Aaron Funk" id 19836
+    # held rank 1342; canonical id 5928 held NULL). 395 of those groups had a
+    # ranked duplicate and an unranked canonical.
+    #
+    # COALESCE, so a canonical value is never overwritten -- the duplicate only
+    # fills a gap. MIN for the rank because the sharper (lower) number is the
+    # more recent publication when two disagree; the ranking ingest refreshes it
+    # daily afterwards either way.
+    for column, pick in (("current_rank", "MIN"), ("overall_elo", "MAX"),
+                         ("surface_elo_json", "MAX")):
+        conn.execute(
+            f"""
+            UPDATE players
+            SET {column} = COALESCE({column}, (
+                    SELECT {pick}(d.{column}) FROM players d
+                    JOIN _player_merge_map m ON m.duplicate_id = d.id
+                    WHERE m.canonical_id = players.id AND d.{column} IS NOT NULL
+                )),
+                updated_at = datetime('now')
+            WHERE {column} IS NULL
+              AND id IN (SELECT canonical_id FROM _player_merge_map)
+            """
+        )
+
     conn.execute(
         """
         UPDATE players

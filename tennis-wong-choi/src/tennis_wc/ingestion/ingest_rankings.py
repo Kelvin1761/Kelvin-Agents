@@ -133,6 +133,16 @@ def _rank_seed_elo(rank: int | None) -> float | None:
     return round(max(1400.0, min(2250.0, 2250.0 - 220.0 * math.log10(parsed))), 3)
 
 
+# The third of three stacked 500-caps, and the one that actually decided which
+# players carried a rank. Even with both feeds fetching the full ladder, this
+# query handed `_refresh_current_ranks_from_cached_rows` only the top 500, so
+# `players.current_rank` could never exceed 500 however deep the data went.
+#
+# There is no reason to bound it: one row per player per tour, and the whole
+# ATP+WTA ladder is under 4,000 rows.
+CACHED_RANKING_ROW_LIMIT = 10000
+
+
 def _latest_cached_rankings(tour: str, date: str | None = None) -> list[dict]:
     cutoff = _normalise_date(date)
     with get_connection() as conn:
@@ -163,9 +173,9 @@ def _latest_cached_rankings(tour: str, date: str | None = None) -> list[dict]:
              AND l.ranking_date = rh.ranking_date
             JOIN players p ON p.id = rh.player_id
             ORDER BY rh.rank ASC
-            LIMIT 500
+            LIMIT ?
             """,
-            params,
+            (*params, CACHED_RANKING_ROW_LIMIT),
         ).fetchall()
     return [
         {
