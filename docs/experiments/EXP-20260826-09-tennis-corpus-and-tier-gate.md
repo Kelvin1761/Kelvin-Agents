@@ -331,6 +331,39 @@ canonical row 用 `COALESCE` 由 duplicate 補 `current_rank`／`overall_elo`／
 `OperationalError` 會被上游 `except sqlite3.Error` 吞掉，令整個網球板變
 `unavailable`，即係診斷拖低佢要描述嘅嘢。
 
+## 發現 13（08-27）：Phase 2.1 輸入齊全閘 —— 排名一直冇 missing 訊號
+
+Elo 一直有 `missing_overall_elo` / `missing_surface_elo` warning 同硬閘
+（`missing_core_elo_inputs`）。**排名完全冇** —— `select_relevant_rank_bucket(None)`
+回 `"UNKNOWN"`，component 讀嗰個 bucket 嘅勝率然後照樣 nudge，好似學到嘢咁。
+即係模型唯一可以講「我冇收到呢個輸入」嘅地方，一句都冇講。
+
+已加 `missing_current_rank_a/b` warning ＋ `missing_rank_inputs` 硬閘，
+**同 `data_quality_score_below_65` 分開命名**。
+
+**實測 250 個真 snapshot：閘觸發 172 次（68.8%），但移除 0 個 BET** —— 今日全部
+本來已被 Elo／tier／數據質素攔住。同 tier 閘唔同（嗰個真係剷走 11/29）。留住嘅
+理由：Phase 1 改善 Elo 覆蓋之後，佢就係唯一擋住「有 Elo 冇排名」嘅嘢。
+
+### 一個我自己整出嚟嘅不一致（已修）
+
+我先寫嘅 dashboard 進度指標讀 `players.current_rank`（可變欄位），
+但**模型讀 `rankings_history` as-of**。同一批場次：dashboard 報 58.8%，
+模型自己係 31.2%。一個會奉承自己所追蹤嘅嘢嘅進度指標，衰過冇。已改成 as-of。
+同時將雙打剔出分母（1,636 個冇排名嘅已開盤球員裡面 413 個係組合）。
+
+### Phase 1.1 查證結果：no-op
+
+雙打有冇入單打定價？118 場有 prediction，但**全部係 5–7 月，8 月起零宗** ——
+`feature_builder` 個 `is_doubles_competition` 過濾器一直有效。呢步係 no-op，
+正如計劃入面預先寫低嘅收手條件。
+
+### 時序
+
+新排名 stamp 係 2026-08-27，而 as-of 用 `ranking_date < match_date`，所以測量窗由
+**08-28** 開始。個閘要喺嗰日之前落，唔然第一個月嘅向前語料就會混住「冇意見」
+嘅 0.5。已落。
+
 ## 決定
 
 - **KEEP（correctness）**：`is_point_in_time` 三態分類 + 單一真源
@@ -346,6 +379,10 @@ canonical row 用 `COALESCE` 由 duplicate 補 `current_rank`／`overall_elo`／
 - **KEEP（correctness，08-27）**：排名 feed 七個 500 上限、合併搬 player 欄位、
   關掉排名前視 fallback、dashboard 顯示可核實戰績同輸入齊全度。
   **分叉點答案：唔放棄。**
+- **KEEP（08-27，Phase 2.1）**：`missing_current_rank` warning ＋ 硬閘；
+  dashboard 進度指標改用 as-of ＋ 剔走雙打。今日改 0 個決定，係為咗令
+  Phase 1.4 量得到。
+- **NO-OP（Phase 1.1）**：雙打過濾器一直有效，8 月起零宗漏網。
 - **⚠️ 影響**：`family_reliability` 樣本大跌（例：`player_aces` 188→36 行，
   權重 0.0735→0.0000）。9 個 family 裡面 9 個而家 fit 到 0.0000，即「100% 市場、
   0% 模型」。呢個係老實狀態，唔係倒退 —— 之前嗰啲權重係喺事後價上 fit 嘅。
