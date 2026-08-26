@@ -14,6 +14,7 @@ from .evidence import EvidenceStore, RecordKind
 
 
 RUN_SLO_TARGET = 0.95
+RUN_SLO_MIN_SLOTS = 20
 PROVENANCE_SLO_TARGET = 1.0
 HEALTHY_STATES = frozenset({"succeeded", "dormant"})
 TERMINAL_STATES = frozenset({"succeeded", "dormant", "partial", "failed", "blocked"})
@@ -75,9 +76,12 @@ def _domain_reliability(root: Path, domain: Domain, cutoff: datetime) -> dict[st
         "recovered_by_retry": recovered,
         "availability": availability,
         "target": RUN_SLO_TARGET,
+        "minimum_slots": RUN_SLO_MIN_SLOTS,
         "status": (
             "no_data"
             if availability is None
+            else "provisional"
+            if len(terminal) < RUN_SLO_MIN_SLOTS
             else "pass"
             if availability >= RUN_SLO_TARGET
             else "fail"

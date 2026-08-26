@@ -43,9 +43,26 @@ def test_thirty_day_slo_uses_final_attempt_and_counts_recovery(tmp_path: Path):
         "recovered_by_retry": 1,
         "availability": 1.0,
         "target": 0.95,
-        "status": "pass",
+        "minimum_slots": 20,
+        "status": "provisional",
     }
     assert report["domains"]["nba"]["status"] == "no_data"
+
+
+def test_run_slo_enforces_target_after_minimum_sample(tmp_path: Path):
+    for index in range(20):
+        _run(
+            tmp_path,
+            "au",
+            f"slot-{index}",
+            1,
+            "failed" if index == 0 else "succeeded",
+        )
+    report = collect_reliability(
+        tmp_path, now=datetime(2026, 8, 26, tzinfo=timezone.utc)
+    )
+    assert report["domains"]["au"]["availability"] == 0.95
+    assert report["domains"]["au"]["status"] == "pass"
 
 
 def test_restore_drill_is_exact_and_refuses_overwrite(tmp_path: Path):
