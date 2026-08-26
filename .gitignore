@@ -103,6 +103,7 @@ NBA_ML_Dataset/
 .wongchoi_au_mirror_root
 .wongchoi_hk_data_root
 .wongchoi_hk_mirror_root
+.wongchoi_nba_data_root
 
 # stats rebuild backups
 **/comprehensive_stats/**/*.bak
@@ -121,6 +122,13 @@ Wong Choi Tennis Analysis/
 # HKJC 每日排程：runtime log、lock、notification state 同 candidate gate
 .agents/skills/hkjc_racing/hkjc_daily_auto/logs/
 .agents/skills/hkjc_racing/hkjc_daily_auto/state/
+
+# NBA 每日排程：runtime log、lock、state 同 immutable prediction copies
+.agents/skills/nba/nba_daily_auto/logs/
+.agents/skills/nba/nba_daily_auto/state/
+
+# Shared Wong Choi control-plane runtime manifests and locks
+.agents/skills/shared_wong_choi/state/
 
 # 排程 checkout 內可能係 symlink，尾斜線 pattern 配唔到 symlink。
 .agents/skills/au_racing/.sportsbet_cache
@@ -151,3 +159,13 @@ scratch/**/*.csv
 # com.apple.python。呢行只係為咗防 repo 內嘅 __pycache__。
 __pycache__/
 *.py[cod]
+
+# au_matrix_refit 會將共識／argmax 權重寫落 cwd —— 係跑出嚟嘅結果，唔係源碼。
+au_refit_*.json
+
+# tennis DB 快照備份（每個幾百 MB，可以由 tennis_wc.db 重造）
+tennis-wong-choi/data/backups/
+
+# scratch 實驗嘅 leaf dump：`au_dump_engine_leaves` 出品，單檔 148 MB，
+# 由 run_experiment.py 重跑就有。scratch 入面嘅**腳本同結論**照追蹤。
+scratch/**/output/*_leaves.json
