@@ -356,6 +356,15 @@ def _match_person(people, kind, name, min_len=6):
     return matches.pop() if len(matches) == 1 else None
 
 
+# 配備變更公告：`<a class="anchorlink" ...>馬名</a> Blinkers OFF FIRST TIME.`
+# 只認以 FIRST TIME / AGAIN 結尾嘅句子，避免掃到普通馬名連結。
+RE_GEAR = re.compile(
+    r'<a class="anchorlink"[^>]*>([^<]{2,40})</a>\s*'
+    r'([A-Za-z\'\- ]{0,40}?(?:FIRST TIME|AGAIN))',
+    re.I,
+)
+
+
 def parse_race(html):
     """由賽事頁 HTML 抽出 meta + 逐匹馬 + 逐場往績。"""
     txt = to_text(html)
@@ -498,6 +507,25 @@ def parse_race(html):
                          winning_time.group("time") if winning_time else None
                      ),
                      "opponents": opps})
+    # ── 配備變更（2026-08-26）─────────────────────────────────────────────
+    # 賽事頁有一段配備公告，例如
+    #   <a class="anchorlink" href="#02">Chef's Kiss</a> Blinkers OFF FIRST TIME.
+    # 由頭到尾冇人抽。實測（817 場 / 2,245 條，按馬匹數修正）三個類別都係負：
+    #   首次配戴 −2.15pp [−4.75,+0.34] ・ 再次配戴 −2.73pp [−7.21,+1.93]
+    #   **除下 OFF FIRST TIME −3.86pp [−6.94,−0.75] 顯著**
+    # 機制：會俾人搞配備嘅馬，就係馬房覺得要修嘅馬。
+    #
+    # ⚠️ 唔入排名。實測加落 ability 四個 k 全部跨 0，而且量到同 `form_score`
+    # 重複（有配備變更嘅馬 form 平均 59.83 vs 冇嘅 62.10）—— form 已經知。
+    # 抽佢係為咗出報告：一個顯著嘅負訊號，用戶睇分析嗰陣想知。
+    # 賽前公告，所以 point-in-time 安全，唔似 career overview 嗰批會賽後刷新。
+    gear = {}
+    for gm in RE_GEAR.finditer(html):
+        name = _html.unescape(gm.group(1)).strip()
+        note = re.sub(r"\s+", " ", gm.group(2)).strip().rstrip(".")
+        if name and note:
+            gear.setdefault(name, []).append(note)
+    meta["gear_changes"] = {k: "；".join(v) for k, v in gear.items()}
     return {"meta": meta, "overview": overview, "runs": runs, "text": txt}
 
 
@@ -883,6 +911,13 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
                            f"| Rating: {ov.get('rating','')}\n")
                 f_rc.write(f"Career: {ov.get('career','')} | Win: {ov.get('win_pct','')} "
                            f"| Place: {ov.get('place_pct','')}\n")
+                # 配備變更（2026-08-26）。同 `Silk:` 一樣擺喺 meta 區塊**之後** ——
+                # `build_au_logic` 讀 `lines[index+1]` 再 `index += 2`，插喺馬名同
+                # `Trainer:` 之間會令官方讓磅分靜靜消失（見下面 Silk 註）。
+                # 只出報告，唔入排名：實測同 `form_score` 重複（EXP-20260826-07）。
+                gc = (meta.get("gear_changes") or {}).get(name)
+                if gc:
+                    f_rc.write(f"Gear: {gc}\n")
                 # ⚠️ `Silk:` 一定要寫喺 meta 區塊**之後**。`build_au_logic` 用
                 # `lines[index+1]` 讀 meta 行然後 `index += 2` —— 插喺馬名同
                 # `Trainer:` 之間會令成個 meta 行 parse 唔到，官方讓磅分靜靜咁

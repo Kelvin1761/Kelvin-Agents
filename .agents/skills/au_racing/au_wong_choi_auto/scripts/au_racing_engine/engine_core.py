@@ -5517,6 +5517,9 @@ def enrich_logic_from_facts(
         # statistics while the analysis displayed ``騎師: - / 練馬師: -`` and
         # disabled name-dependent J/H checks.  Racecard identity is keyed by
         # horse name and is therefore the safe fallback for those archives.
+        # 配備變更：純顯示，唔會餵入任何 leaf。見 `_load_racecard_profiles` 註。
+        if racecard_profile.get("gear_change"):
+            horse["gear_change"] = racecard_profile["gear_change"]
         _merge_prefer_clean(horse, "jockey", racecard_profile.get("jockey"))
         _merge_prefer_clean(horse, "trainer", racecard_profile.get("trainer"))
         if racecard_profile.get("horse_rating") is not None:
@@ -6984,5 +6987,17 @@ def _load_racecard_profiles(facts_path: Path, race_number: int) -> dict[str, dic
                 "jockey": _clean_identity(meta_match.group("jockey")),
                 "trainer": _clean_identity(meta_match.group("trainer")),
             }
+            # 配備變更（2026-08-26）：由馬名行向下掃到下一匹馬為止。
+            # 只出報告，**唔入排名** —— 實測加落 ability 四個 k 全部跨 0，
+            # 而且同 `form_score` 重複（有配備變更嘅馬 form 平均 59.83 vs 62.10）。
+            # 但佢本身係顯著訊號（除下 OFF FIRST TIME −3.86pp [−6.94,−0.75]），
+            # 用戶睇分析嗰陣想知，所以照顯示。見 EXP-20260826-07。
+            look = index + 2
+            while look < len(lines) and not RACECARD_HORSE_RE.match(lines[look].strip()):
+                gm = re.match(r"Gear:\s*(.+)$", lines[look].strip())
+                if gm:
+                    profiles[_normalize_horse_name(horse_name)]["gear_change"] = gm.group(1).strip()
+                    break
+                look += 1
         index += 2
     return profiles

@@ -173,11 +173,11 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-08-26 12:37 AEST`
-- Git commit：`1dbc4b5e`
+- 生成時間：`2026-08-26 19:32 AEST`
+- Git commit：`a07d8100`
 - `scoring.py` 指紋：`ba0d9c5c0d48`
 - `matrix_mapper.py` 指紋：`118b799cde0c`
-- `renderer.py` 指紋：`3b4bc4e14a74`
+- `renderer.py` 指紋：`e9fc20c0e970`
 - 實測樣本：**500 場、4839 匹馬**，由 `2026-08-14 Ipswich Race 1-7` 到 `2026-08-26 Doomben Race 1-8`（跳過 0 個舊格式檔案）
 
 重新生成：
