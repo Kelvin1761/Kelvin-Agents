@@ -775,6 +775,19 @@ def _render_horse_section(horse_num, horse, auto):
     # 除下 OFF FIRST TIME **−3.86pp [−6.94, −0.75]（顯著）**。
     # 加落 ability 四個 k 全部跨 0，而且同 `form_score` 重複（有變更嘅馬 form
     # 平均 59.83 vs 冇嘅 62.10）—— 所以只講唔計。見 EXP-20260826-07。
+    # 市場盤（2026-08-26）：**純顯示，唔入排名**（EXP-20260826-08 —— 最佳混合
+    # 比重 w=0.0，即係加模型比重只會令 AUC 跌）。出呢行有兩個實際用途：
+    #   1) 讀者見到市場點睇，同模型分歧一目了然
+    #   2) dashboard 用 `位賠` 預填落注輸入格，唔使逐匹打
+    _d = horse.get("_data") or {}
+    _wo, _po = _d.get("win_odds"), _d.get("place_odds")
+    if _wo or _po:
+        bits = []
+        if _wo:
+            bits.append(f"贏 ${float(_wo):.2f}")
+        if _po:
+            bits.append(f"位 ${float(_po):.2f}")
+        lines += [f"💰 市場盤（賽前）: {' / '.join(bits)}　（唔入評分）", ""]
     gear = horse.get("gear_change")
     if gear:
         drop = "OFF" in gear.upper()

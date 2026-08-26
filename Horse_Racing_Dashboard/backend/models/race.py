@@ -73,6 +73,13 @@ class HorseAnalysis(BaseModel):
     rating_matrix: Optional[RatingMatrix] = None
     final_grade: Optional[str] = None  # A+, A, B+, etc.
     ability_score: Optional[float] = None
+    # 賽前**市場**盤（2026-08-26）。同下面 `predicted_place_odds` 唔同 ——
+    # 嗰個係模型推算嘅合理賠率，呢個係 Sportsbet 抓取嗰刻嘅實際市場價。
+    # **唔入任何評分。** 抽佢淨係為咗喺 dashboard 預填落注輸入格。
+    # 見 EXP-20260826-08：市場價加落排名雖然過閘，但最佳混合比重 w=0.0
+    # （純市場），即係模型貢獻為零，而排名等於市場排名就冇 edge。
+    market_win_odds: Optional[float] = None
+    market_place_odds: Optional[float] = None
     confidence_score: Optional[float] = None
     risk_score: Optional[float] = None
     model_pick_status: Optional[str] = None

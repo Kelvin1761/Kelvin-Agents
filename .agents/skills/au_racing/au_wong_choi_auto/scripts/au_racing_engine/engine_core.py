@@ -6109,11 +6109,34 @@ def _load_formguide_digests(facts_path: Path, race_number: int = 0) -> dict[str,
         start = match.start()
         end = sections[idx + 1].start() if idx + 1 < len(sections) else len(text)
         section = text[start:end]
-        output[match.group(1)] = _summarize_formguide_section(
+        digest = _summarize_formguide_section(
             section,
             match.group(2).strip(),
             meeting_date=meeting_date,
         )
+        # ── 市場盤（2026-08-26）────────────────────────────────────────────
+        # Formguide 每匹馬個 stats 區塊有 `WinOdds:` / `PlcOdds:`（91.6% 覆蓋），
+        # 係抓取嗰刻嘅賽前固定盤。以前只當佢做「呢個 Formguide 係 Sportsbet 出品」
+        # 嘅來源標記，個**數值**由頭到尾冇用過。
+        #
+        # ⚠️ **純顯示，唔入排名。** 2026-08-26 實測（EXP-20260826-08）：
+        # 賽前 WinOdds 場內 AUC 0.7332，高過現行模型 0.6665；加落 ability
+        # 六個 k 全部過閘。但掃混合比重之後最佳 w = **0.0（純市場）** ——
+        # 加任何模型比重都令 AUC 單調下跌，即係市場已經完全包含我哋啲訊號。
+        # 排名一旦等於市場排名就冇 edge，而 SP 抽水 19.8%。
+        # `AGENTS.md` 亦寫住市場價唔准做隱藏 proxy。所以抽咗淨係用嚟：
+        #   1) 報告顯示市場點睇
+        #   2) dashboard 預填位賠，落注時唔使逐匹打
+        for key, field in (("WinOdds", "win_odds"), ("PlcOdds", "place_odds")):
+            om = re.search(rf"\b{key}:\s*([\d.]+)", section)
+            if om:
+                try:
+                    value = float(om.group(1))
+                except ValueError:
+                    continue
+                if 1.0 < value < 1000.0:
+                    digest[field] = value
+        output[match.group(1)] = digest
     return output
 
 

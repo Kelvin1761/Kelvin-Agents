@@ -483,9 +483,30 @@ def parse_au_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAn
     # Engine type extraction from horse_profile or full block
     engine_type, engine_label, engine_summary = _extract_engine_type(block)
     
+    # 賽前市場盤：報告出「💰 市場盤（賽前）: 贏 $1.85 / 位 $1.25　（唔入評分）」。
+    # 只攞嚟預填 dashboard 個落注格，唔參與任何評分或排序。
+    _mw = _mp = None
+    _om = re.search(
+        r"市場盤（賽前）:\s*(?:贏\s*\$([\d.]+))?\s*/?\s*(?:位\s*\$([\d.]+))?", block)
+    if _om:
+        for _raw, _which in ((_om.group(1), "w"), (_om.group(2), "p")):
+            if not _raw:
+                continue
+            try:
+                _v = float(_raw)
+            except ValueError:
+                continue
+            if 1.0 < _v < 1000.0:
+                if _which == "w":
+                    _mw = _v
+                else:
+                    _mp = _v
+
     return HorseAnalysis(
         horse_number=horse_num,
         horse_name=horse_name,
+        market_win_odds=_mw,
+        market_place_odds=_mp,
         jockey=header_info.get('jockey'),
         trainer=header_info.get('trainer'),
         weight=header_info.get('weight'),
