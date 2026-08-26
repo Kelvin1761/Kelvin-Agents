@@ -33,3 +33,4 @@
 - [EXP-20260826-04](EXP-20260826-04-au-new-data-and-retired-dimensions.md) — WinningTime 速度評分（過 fold 閘、主裁判九個配置全部跨 0，覆蓋只 25%，已登記重測）；form_line / race_shape / sectional 三個退役維度復活全部失敗
 - [EXP-20260826-05](EXP-20260826-05-au-backfill-draw-unused-leaves-hkjc.md) — 補抓唔可行但揾到結果 CSV `Time` 欄死咗；檔位真但太細；18 個 leaf 得 9 個入排名，class_score 最接近過閘；同 HKJC 逐維度對照
 - [EXP-20260826-06](EXP-20260826-06-au-class-score-revival.md) — class_score 復活：乾淨語料七個測試 dev 全部正但 holdout 跨 0；全語料三個「過閘」係喺污染資料上 fit gain 嘅產物，REJECT + 登記重測
+- [EXP-20260826-07](EXP-20260826-07-au-gear-change-signal.md) — 配備變更：抽取層完全冇攞；OFF FIRST TIME −3.86pp 顯著，但同 form_score 重複（59.83 vs 62.10），排名唔過閘。建議抽落嚟出報告
