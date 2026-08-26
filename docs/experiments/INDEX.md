@@ -5,6 +5,7 @@
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
 | [EXP-20260825-04](EXP-20260825-04-au-proven-class-overlay.md) | 2026-08-25 | AU | 高班次只有在當仗實際表現好時才應當成排名實績 | **USER-ACCEPTED EXPERIMENTAL KEEP**：dev +0.00305、4/5 folds 非負、holdout +0.00301，但 CI [-0.00066,+0.00680] 跨零；Gold +0.78pp、Good +0.23pp，用戶明確接受不確定性後啟用及向前監測 |
+| [EXP-20260825-03](EXP-20260825-03-au-exact-class-performance-proof.md) | 2026-08-25 | AU | Sportsbet 精確歷史班次應否按該仗實際表現轉成「高班證明」signal | **PROMISING／暫不 ship**：鎖定 proven-class 候選 dev/holdout AUC 均 +0.0030、Gold +0.78pp、Good +0.23pp，但 holdout CI [-0.0007,+0.0068] 跨零；R2 Lovecats仍第8、DDE/Zubba仍第2/3 |
 | [EXP-20260825-02](EXP-20260825-02-au-exact-class-pace-reliability.md) | 2026-08-25 | AU | Sportsbet 原始班次 transport 及低班次 race-level PacePerf 收縮可否修正 R2 | **Correctness KEEP／scoring REJECT**：保存 53,142 個原始班次 label 作 evidence；class_form dev/holdout 點估計正，但 holdout CI [-0.0043,+0.0082] 跨零，Lovecats仍第8、DDE/Zubba仍第2/3 |
 | [EXP-20260825-01](EXP-20260825-01-au-poor-trial-pace-wet-interaction.md) | 2026-08-25 | AU | 已觀察差試閘時，正面 PacePerf／wet 應否收縮，令 Clear Proof 入 R1 Top 2 | **REJECT**：PF-half、wet-half、兩者合用喺 dev 頭5 AUC 全部精確 0；三者雖都令 R1 排成 Isawyou／Clear Proof／Gunroom，但 holdout 不開、唔准用單場答案上線 |
 | [EXP-20260824-05](EXP-20260824-05-au-data-semantics-full-scan.md) | 2026-08-24 | AU | 全鏈掃描 Sportsbet→Facts→Logic→score→deploy 有冇語義錯、runner misalignment、leakage；Aeliana 試閘缺名次必修 | **Correctness KEEP／權重不變**：修 8 類問題；63,515 個完整 finish 100% 合法，active runner 5,239/5,239 對齊；trial 修正只改 12/1,411 場，Gold 不變、Gold Strict +0.071pp，holdout AUC 打和 |
@@ -26,3 +27,6 @@
 | [EXP-20260821-03](EXP-20260821-03-au-pace-map-gradient.md) | 2026-08-21 | AU | `race_shape` 場內 SD 低係因為 `pace_map_score` 係 4 級階梯；階梯粒度啱，但修正幅度冇按馬匹數縮放 | 診斷完成（候選見 EXP-04 → REJECT） |
 | [EXP-20260821-02](EXP-20260821-02-au-gain-weight-joint-refit.md) | 2026-08-21 | AU | 重擬顯示尺 gain 並同步重 fit 權重，可令權重＝影響力並救活「啞」維度 | **REJECT（兩個候選）** |
 | [EXP-20260821-01](EXP-20260821-01-au-archive-corpus-blindspot.md) | 2026-08-21 | AU | `Archive/` 令 49.1% 已評分場次對所有評估工具隱形；stale-baseline 警告本身係假警報 | 待決定 |
+- [EXP-20260826-01](EXP-20260826-01-au-pace-perf-distance-crossover.md) — AU pace_perf：PF 同段速嘅判別力隨距離對調（>1600m 段速贏 +0.0589 ✅），但落到排名量唔到，NOT SHIPPED
+- [EXP-20260826-02](EXP-20260826-02-au-pace-perf-weight-reverification.md) — AU pace_perf 權重重新驗證：五種量法都唔支持調低，兩次重 fit 反而想調高，保持 0.12205（REJECT）
+- [EXP-20260826-03](EXP-20260826-03-au-randwick-0822-review-fixes.md) — 0822 Randwick 十場覆核：pace_perf display gain 喺污染語料上 fit（已修，排名不變）、weight_score 降班 nudge 方向調轉（已修）；兩個我自己量錯嘅發現已撤回

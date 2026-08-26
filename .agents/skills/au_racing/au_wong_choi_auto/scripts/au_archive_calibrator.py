@@ -53,7 +53,7 @@ MATRIX_LABELS = {
     "pace_perf": "段速表現",
     "race_shape": "檔位形勢",
     "jockey_trainer": "騎練訊號",
-    "class_weight": "級數與負重",
+    "class_weight": "官方評分對位",
     "track": "場地適性",
     "form_line": "賽績線",
 }

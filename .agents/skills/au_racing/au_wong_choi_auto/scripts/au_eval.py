@@ -63,7 +63,7 @@ sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing"))
 
 from au_racing_engine import matrix_mapper  # noqa: E402
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
-from au_racing_engine.scoring import MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import MATRIX_ABILITY_SCALE, MATRIX_WEIGHTS  # noqa: E402
 
 # 場數指標（Gold / Good位 / Pass）係「入唔入實際前三」嘅二元判斷，**冇按馬群大細
 # 正規化**：8 匹馬入前三係 3/8，14 匹馬係 3/14。2026-08-21 實測（dev 901 場，
@@ -119,8 +119,9 @@ def load_races(path):
 def default_scorer(row):
     """現行引擎：ability = Σ 維度分 × 權重 + 所有已聲明 overlay。"""
     m = matrix_mapper.map_features_to_matrix_scores(row["features"])
+    core = sum(m.get(k, 60.0) * w for k, w in MATRIX_WEIGHTS.items())
     return (
-        sum(m.get(k, 60.0) * w for k, w in MATRIX_WEIGHTS.items())
+        60.0 + (core - 60.0) / MATRIX_ABILITY_SCALE
         + float(row["wet"] or 0.0)
         + float(row.get("proven_class") or 0.0)
     )
@@ -166,9 +167,13 @@ def configured_scorer(*, weights=None, wet_scale=1.0, leaf_overrides=None):
         features = dict(row["features"])
         features.update(leaf_overrides)
         matrices = matrix_mapper.map_features_to_matrix_scores(features)
+        # 一定要跟 `engine_core` 嗰條 ability 公式（2026-08-26 加咗
+        # MATRIX_ABILITY_SCALE）。唔跟就會同真引擎差一個只影響 wet /
+        # proven_class 相對份量嘅偏差 —— `au_matrix_refit verify` 就係捉呢類嘢。
+        core = sum(matrices.get(key, 60.0) * weight
+                   for key, weight in normalised.items())
         return (
-            sum(matrices.get(key, 60.0) * weight
-                for key, weight in normalised.items())
+            60.0 + (core - 60.0) / MATRIX_ABILITY_SCALE
             + float(row["wet"] or 0.0) * float(wet_scale)
             + float(row.get("proven_class") or 0.0)
         )

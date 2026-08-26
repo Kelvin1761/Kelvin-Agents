@@ -7,11 +7,20 @@
 ## 排名方程（唯一真相）
 
 ```
-ability_score = Σ MATRIX_WEIGHTS[d] × mx[d]   (六個排名維度；form_line 只顯示)
+ability_score = 60 + (Σ MATRIX_WEIGHTS[d] × mx[d] − 60) / MATRIX_ABILITY_SCALE
+                (五個排名維度；form_line / race_shape 只顯示)
               + wet_form_feature(今日場地, 地狀分拆線)
               + proven_class_feature(高班次 × 當仗實際表現)
 排序 = ability_score 降序；同分先按馬號穩定排序
 ```
+
+`MATRIX_ABILITY_SCALE`（2026-08-26，EXP-20260826-03）**唔係新訊號**。修正
+`pace_perf` 個 display gain（0.9909 → 0.594 —— 舊值喺一個一半場次呢個維度
+係常數嘅語料上 fit，所以餵咗個假 SD）之後，`MATRIX_WEIGHTS["pace_perf"]` 要按
+0.9909/0.594 補償，五個權重再全體歸一（Σ 保持 1.0）。歸一會令 ability 偏差縮
+7.54%，呢個除法還原返個尺，令 grade、頭三分差、濕地 overlay 全部唔使郁。
+1,611 場實測：ability max|Δ| 0.0016（純 round(2) 噪音）、grade 改變 0、
+排名改變 2 場（0.002 級數嘅平手）。
 
 ## 特徵分類（分離度 = 2026-07-17 修復後審計）
 

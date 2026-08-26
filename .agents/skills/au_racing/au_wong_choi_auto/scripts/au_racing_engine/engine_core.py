@@ -33,6 +33,7 @@ from .source_alignment import (
 from .scoring import (
     ABILITY_FEATURE_KEYS,
     FEATURE_KEYS,
+    MATRIX_ABILITY_SCALE,
     MATRIX_WEIGHTS,
     CLASS_MICRO_WEIGHTS,
     CONSISTENCY_MICRO_WEIGHTS,
@@ -609,7 +610,14 @@ class RacingEngine:
 
         matrix_scores = map_features_to_matrix_scores(feature_scores)
         matrix = map_features_to_matrix(feature_scores)
-        pure_7d_score = round(sum(matrix_scores[key] * MATRIX_WEIGHTS[key] for key in MATRIX_WEIGHTS), 4)
+        # 除返 MATRIX_ABILITY_SCALE 係為咗令 2026-08-26 嗰次 gain 修正對 ability 軸
+        # 完全透明（grade / 頭三分差 / 濕地 overlay 全部唔使郁）。見 scoring.py 註釋。
+        pure_7d_score = round(
+            60.0
+            + (sum(matrix_scores[key] * MATRIX_WEIGHTS[key] for key in MATRIX_WEIGHTS) - 60.0)
+            / MATRIX_ABILITY_SCALE,
+            4,
+        )
         base_7d_score = pure_7d_score
         # Report-only post-7D modifiers (dynamic weights, soft-shape, diversity, barrier,
         # soft-wetproof, place-tightening, micro-rank, wet-condition) were retired
@@ -2626,7 +2634,7 @@ class RacingEngine:
             "jockey_trainer": "騎練訊號",
             "class_level": "級數門檻",
             "weight_pressure": "負磅壓力",
-            "class_weight": "級數與負重",
+            "class_weight": "官方評分對位",
             "track": "場地與地況適性",
             "form_line": "賽績線",
         }.get(key, key)
@@ -4147,10 +4155,29 @@ class RacingEngine:
                 score -= 4
                 notes.append("爛地孭重磅，體能消耗顯著")
 
-            # class-move weight relief is a real, rating-independent angle
+            # DIRECTION FIX 2026-08-26 (EXP-20260826-03).  This nudge used to be
+            # `+3` with the narrative "降班配輕磅，實際任務下降".  Measured on 16,253
+            # runners it is backwards, and significantly so: the cohort that trips it
+            # finishes top-3 **−5.64pp** below its field-size baseline
+            # (n=1050, 95% bootstrap [−8.21, −3.10]).
+            #
+            # Same root cause as the 2026-07-24 base-score audit directly above: the
+            # handicapper assigns weight BY ABILITY.  "Dropping in class AND still let
+            # in light" is the handicapper saying it rates the horse poorly — it is not
+            # an easier task, it is a worse horse.  The old narrative told the user the
+            # opposite of what the data says.
+            #
+            # Magnitude is NOT calibrated (this leaf is display-only since 2026-07-30,
+            # so it cannot move a ranking); only the sign is evidence-backed, and −3
+            # simply mirrors the old +3.
+            #
+            # The other two nudges in this method were measured at the same time and are
+            # NOT significantly directed either way — 升班兼高負磅 +2.50pp [−0.29, +5.39],
+            # 爛地孭重磅 +2.98pp [−0.40, +6.30].  They are left alone rather than
+            # "fixed" on a point estimate.
             if "降班" in class_move and weight <= 56.5:
-                score += 3
-                notes.append("降班配輕磅，實際任務下降")
+                score -= 3
+                notes.append("降班仍只獲輕磅，讓磅官對佢評價偏低")
             elif "升班" in class_move and weight >= 58.0:
                 score -= 3
                 notes.append("升班兼高負磅，雙重打擊")

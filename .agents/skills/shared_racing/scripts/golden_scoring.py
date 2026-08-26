@@ -72,7 +72,14 @@ def load(platform: str):
 def score_one(scoring, matrix_mapper, features: dict) -> dict:
     matrix = matrix_mapper.map_features_to_matrix_scores(features)
     weights = scoring.MATRIX_WEIGHTS
-    ability = sum(float(matrix.get(k, 60.0)) * w for k, w in weights.items())
+    core = sum(float(matrix.get(k, 60.0)) * w for k, w in weights.items())
+    # AU 2026-08-26 起 ability 軸多咗一個 `MATRIX_ABILITY_SCALE` 除法（抵銷
+    # pace_perf gain 修正之後嘅權重歸一，見 au_racing_engine/scoring.py）。
+    # HKJC 冇呢個常數，所以 getattr 預設 1.0 —— 兩個平台行同一段 code。
+    # ⚠️ ability 呢條式喺 repo 入面有幾份複本（engine_core、au_eval、
+    # au_matrix_refit、呢度）。改其中一份就要四份一齊改，否則 golden 同 A/B
+    # 會靜靜同真引擎分岔。
+    ability = 60.0 + (core - 60.0) / float(getattr(scoring, "MATRIX_ABILITY_SCALE", 1.0))
     return {
         "matrix": {k: round(float(v), 4) for k, v in sorted(matrix.items())},
         "ability": round(ability, 4),
