@@ -185,6 +185,45 @@ def test_backup_status_detects_warm_corruption(tmp_path: Path) -> None:
     assert "dashboard_d1_backup_warm_pending" in status["attention"]
 
 
+def test_backup_status_accepts_verified_google_drive_proof(tmp_path: Path) -> None:
+    from shared_wong_choi.artifact_archive import mirror_artifact, record_remote_mirror_proof
+
+    dashboard = _dashboard(tmp_path)
+    state = tmp_path / "state"
+    warm = tmp_path / "warm"
+    warm.mkdir()
+    clock = datetime(2026, 8, 28, 6, tzinfo=timezone.utc)
+    result = backup_d1_ledger(
+        dashboard,
+        state,
+        warm_root=warm,
+        runner=FakeRunner([1, 1]),
+        now=clock,
+    )
+    cold = tmp_path / "cold"
+    cold.mkdir()
+    local_mirror = mirror_artifact(Path(result["warm"]["manifest"]), cold_root=cold)
+    Path(local_mirror["destination"]).joinpath("wongchoi-ledger.sql").write_text(
+        "corrupt", encoding="utf-8"
+    )
+    record_remote_mirror_proof(
+        Path(result["warm"]["manifest"]),
+        provider="google_drive",
+        remote_id="folder-123",
+        remote_url="https://drive.google.com/drive/folders/folder-123",
+        digest=result["warm"]["destination_digest"],
+        verification_method="full_download_content_digest",
+        actor="codex:drive-connector",
+    )
+
+    status = collect_d1_backup_status(state, now=clock + timedelta(hours=1))
+
+    assert status["status"] == "ok"
+    assert status["cold_verified"] is True
+    assert status["cold_provider"] == "google_drive"
+    assert status["cold_destination"].endswith("folder-123")
+
+
 def test_remote_count_parser_accepts_single_scalar_row() -> None:
     payload = json.dumps([{
         "success": True,

@@ -394,6 +394,8 @@ def collect_d1_backup_status(
         warm_verified = False
     artifact_id = str((archive_record or {}).get("artifact_id") or "")
     cold_verified = False
+    cold_provider = None
+    cold_destination = None
     if artifact_id:
         for path in (state_root / "storage" / "catalog" / "events").glob("*.json"):
             try:
@@ -410,6 +412,21 @@ def collect_d1_backup_status(
                     cold_verified = artifact_digest(destination) == event.get("digest")
                 except OSError:
                     cold_verified = False
+                if cold_verified:
+                    cold_provider = "filesystem"
+                    cold_destination = str(destination)
+                    break
+            if (
+                event.get("schema_version") == "wong-choi-artifact-remote-mirror/v1"
+                and event.get("artifact_id") == artifact_id
+                and event.get("provider") == "google_drive"
+                and event.get("verification_method") == "full_download_content_digest"
+                and event.get("verification_status") == "pass"
+                and event.get("digest") == (archive_record or {}).get("destination_digest")
+            ):
+                cold_verified = True
+                cold_provider = "google_drive"
+                cold_destination = event.get("remote_url")
                 break
     attention: list[str] = []
     if age_hours > stale_after_hours:
@@ -432,5 +449,7 @@ def collect_d1_backup_status(
         "restore_verified": (manifest.get("restore") or {}).get("status") == "pass",
         "warm_verified": warm_verified,
         "cold_verified": cold_verified,
+        "cold_provider": cold_provider,
+        "cold_destination": cold_destination,
         "artifact_id": artifact_id or None,
     }

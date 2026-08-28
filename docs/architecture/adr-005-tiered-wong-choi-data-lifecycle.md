@@ -16,13 +16,22 @@ Accepted — Stage 4D, 2026-08-27.
 |---|---|---|---|
 | HOT | 內置SSD | live run、production checkout、mutable DB、最近分析、中央evidence/index | scheduler必須可用；少於30 GiB告警、少於20 GiB攔重型research/backfill |
 | WARM | `/Volumes/Kelvin Hardisk 1/WongChoi-Archive` | 已結算raw archive、DB snapshots、可重現experiment artifacts | full-history research前必須mount；日常prediction唔可依賴 |
-| COLD | `WC_COLD_MIRROR_ROOT`（Google Drive） | WARM嘅第二份verified disaster-recovery copy | 唔做live DB／scheduler source；容許延遲同步 |
+| COLD | `WC_COLD_MIRROR_ROOT` filesystem mirror，或owner-only Google Drive provider copy | WARM嘅第二份verified disaster-recovery copy | 唔做live DB／scheduler source；容許延遲同步 |
 
 任何本機原件只可以經以下閘移除：`copy to temp → content hash manifest → atomic publish → restore drill → second verified copy → scoped human approval → remove source`。外置碟單獨唔算backup；Google Drive單獨亦唔算runtime storage。
 
 中央旺財提供read-only `storage`／Telegram `/storage`。真正archive executor必須idempotent、冇`--delete` default、外置碟消失時只defer唔損毀資料。完整archive研究要經multi-root catalog，禁止用`rglob`靜靜漏咗offline corpus。
 
 Dashboard D1另有每日verified export：只讀remote、固定Wrangler版本、export前後row counts必須穩定，SQL要restore到全新SQLite並通過integrity／foreign-key／row-count gate，先可寫immutable snapshot同copy去WARM／COLD。Dashboard同Telegram只顯示呢份證據嘅freshness，唔會將backup狀態當prediction evidence。
+
+Provider-backed COLD唔依賴macOS File Provider folder。Connector完成全量download後，必須用同WARM catalog一樣嘅filename／bytes／content digest重算整個artifact；Central只接受exact match、canonical provider URL同append-only proof。分享權限未核實嘅Drive folder唔准放backup。
+
+## Implementation Status（2026-08-28）
+
+- Tennis三個migration DB snapshots共4,387,000,320 bytes已copy去WARM，digest一致並由全新temp restore做三個SQLite `integrity_check=ok`；HOT source仍保留。Tennis未有第二份verified COLD，故未達source removal gate。
+- Dashboard D1 snapshot `20260828T123834.213236Z`已通過stable row counts、SQLite restore、integrity／foreign-key同WARM hash gate；owner-only My Drive copy亦經full-download directory digest核對，Central status顯示`cold_provider=google_drive`。
+- Shared Drive試建hierarchy冇上載任何backup；正式COLD pilot只放喺Kelvin owner-only嘅`WongChoi Private Backup`。大檔Tennis upload要等有可靠resumable transfer及完整download hash先做。
+- HOT source removal仍未獲批准，亦未執行。Full-history reader未完成multi-root catalog前，WARM只係durability copy，唔會靜靜取代研究語料。
 
 ## Trade-offs
 

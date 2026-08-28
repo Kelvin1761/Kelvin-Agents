@@ -298,3 +298,91 @@ def mirror_artifact(
     }
     _write_exclusive_json(event_path, event)
     return {**event, "status": "copied_verified", "event": str(event_path)}
+
+
+def record_remote_mirror_proof(
+    manifest_path: Path,
+    *,
+    provider: str,
+    remote_id: str,
+    remote_url: str,
+    digest: dict[str, Any],
+    verification_method: str,
+    actor: str,
+    verified_at: str | None = None,
+) -> dict[str, Any]:
+    """Append proof for a provider-backed COLD copy verified by full download.
+
+    This function never uploads data.  It only accepts a digest exactly equal
+    to the current WARM artifact and records where that independently observed
+    copy lives.  Signed or bearer download URLs are deliberately rejected.
+    """
+    manifest_path = manifest_path.expanduser().resolve()
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    archived = Path(str(manifest.get("destination") or ""))
+    expected = manifest.get("destination_digest")
+    if not archived.exists() or artifact_digest(archived) != expected:
+        raise ArtifactArchiveError("warm artifact is missing or corrupt")
+    if provider != "google_drive":
+        raise ArtifactArchiveError("unsupported remote mirror provider")
+    remote_id = remote_id.strip()
+    actor = actor.strip()
+    if not remote_id or not actor:
+        raise ArtifactArchiveError("remote mirror proof requires id and actor")
+    allowed_prefixes = (
+        "https://drive.google.com/drive/folders/",
+        "https://drive.google.com/file/d/",
+    )
+    if not remote_url.startswith(allowed_prefixes) or "?" in remote_url:
+        raise ArtifactArchiveError("remote mirror URL must be a canonical Drive URL")
+    if verification_method != "full_download_content_digest":
+        raise ArtifactArchiveError("remote mirror must be verified by full content download")
+    if digest != expected:
+        raise ArtifactArchiveError("remote mirror digest does not match WARM artifact")
+    identity = "|".join(
+        (
+            str(manifest.get("artifact_id") or ""),
+            provider,
+            remote_id,
+            str(expected.get("sha256") or ""),
+        )
+    )
+    event_id = "wc-artifact-remote-mirror:" + hashlib.sha256(
+        identity.encode("utf-8")
+    ).hexdigest()[:24]
+    catalog_root = manifest_path.parent.parent
+    event_path = catalog_root / "events" / f"{quote(event_id, safe='._-')}.json"
+    event = {
+        "schema_version": "wong-choi-artifact-remote-mirror/v1",
+        "event_id": event_id,
+        "artifact_id": manifest.get("artifact_id"),
+        "verified_at": verified_at or datetime.now(timezone.utc).isoformat(),
+        "source_manifest": str(manifest_path),
+        "provider": provider,
+        "remote_id": remote_id,
+        "remote_url": remote_url,
+        "verification_method": verification_method,
+        "verification_status": "pass",
+        "digest": expected,
+        "actor": actor,
+    }
+    if event_path.exists():
+        existing = json.loads(event_path.read_text(encoding="utf-8"))
+        immutable_keys = (
+            "schema_version",
+            "event_id",
+            "artifact_id",
+            "source_manifest",
+            "provider",
+            "remote_id",
+            "remote_url",
+            "verification_method",
+            "verification_status",
+            "digest",
+            "actor",
+        )
+        if all(existing.get(key) == event.get(key) for key in immutable_keys):
+            return {**existing, "status": "duplicate", "event": str(event_path)}
+        raise ArtifactArchiveError("immutable remote mirror proof conflict")
+    _write_exclusive_json(event_path, event)
+    return {**event, "status": "verified", "event": str(event_path)}

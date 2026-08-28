@@ -1,6 +1,6 @@
 # Wong Choi Capability Matrix
 
-盤點日期：2026-08-27。`✅` 已有現役入口；`🟡` 有功能但未符合共用 contract／model gate；`⏳` engineering complete、等 live gate；`—` 不適用。
+盤點日期：2026-08-28。`✅` 已有現役入口；`🟡` 有功能但未符合共用 contract／model gate；`⏳` engineering complete、等 live gate；`—` 不適用。
 
 | Capability | AU | HKJC | Tennis | NBA |
 |---|---|---|---|---|
@@ -21,6 +21,8 @@
 | Live acceptance | ✅ production | ✅ production；新季 forward gate另計 | 🟡 automation live / model shadow | ⏳ pipeline ready / production evidence pending |
 
 中央能力：`Horse_Racing_Dashboard`係正式control-tower display，D1 `WC_LEDGER`保存實際投注；HOT／WARM／COLD狀態同verified archive catalog由中央旺財管理，兩者都不得改寫domain scoring。
+
+中央durability狀態：D1每日verified export、WARM archive同owner-only Google Drive COLD proof已完成工程及首個restore/digest pilot；Tennis migration snapshots已WARM verified但COLD未完成，唔可刪HOT source。Stage 4D下一閘係multi-root full-history reader、Tennis可靠大檔COLD transfer，同獨立source-retention approval。
 
 ## Confirmed Owners and Entrypoints
 

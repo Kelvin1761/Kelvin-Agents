@@ -14,6 +14,7 @@ from shared_wong_choi.artifact_archive import (  # noqa: E402
     archive_copy,
     artifact_digest,
     mirror_artifact,
+    record_remote_mirror_proof,
     restore_artifact,
 )
 
@@ -242,3 +243,65 @@ def test_cold_mirror_is_verified_idempotent_and_append_only(tmp_path: Path) -> N
     assert second["status"] == "duplicate"
     assert artifact_digest(Path(first["destination"])) == artifact_digest(source)
     assert source.exists()
+
+
+def test_remote_mirror_proof_requires_exact_digest_and_canonical_url(tmp_path: Path) -> None:
+    hot = tmp_path / "hot"
+    hot.mkdir()
+    source = hot / "snapshot.db"
+    source.write_bytes(b"sqlite-data")
+    warm = tmp_path / "warm"
+    warm.mkdir()
+    result = archive_copy(
+        source,
+        warm_root=warm,
+        catalog_root=tmp_path / "catalog",
+        domain="central",
+        artifact_class="d1-ledger-backup",
+        allowed_roots=[hot],
+    )
+    manifest = Path(result["manifest"])
+    expected = result["destination_digest"]
+
+    proof = record_remote_mirror_proof(
+        manifest,
+        provider="google_drive",
+        remote_id="folder-123",
+        remote_url="https://drive.google.com/drive/folders/folder-123",
+        digest=expected,
+        verification_method="full_download_content_digest",
+        actor="codex:drive-connector",
+        verified_at="2026-08-28T13:00:00+00:00",
+    )
+    duplicate = record_remote_mirror_proof(
+        manifest,
+        provider="google_drive",
+        remote_id="folder-123",
+        remote_url="https://drive.google.com/drive/folders/folder-123",
+        digest=expected,
+        verification_method="full_download_content_digest",
+        actor="codex:drive-connector",
+    )
+
+    assert proof["status"] == "verified"
+    assert duplicate["status"] == "duplicate"
+    with pytest.raises(ArtifactArchiveError, match="does not match"):
+        record_remote_mirror_proof(
+            manifest,
+            provider="google_drive",
+            remote_id="folder-456",
+            remote_url="https://drive.google.com/drive/folders/folder-456",
+            digest={**expected, "bytes": expected["bytes"] + 1},
+            verification_method="full_download_content_digest",
+            actor="codex:drive-connector",
+        )
+    with pytest.raises(ArtifactArchiveError, match="canonical"):
+        record_remote_mirror_proof(
+            manifest,
+            provider="google_drive",
+            remote_id="folder-456",
+            remote_url="https://example.test/signed?token=secret",
+            digest=expected,
+            verification_method="full_download_content_digest",
+            actor="codex:drive-connector",
+        )

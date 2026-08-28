@@ -21,6 +21,7 @@ from shared_wong_choi.artifact_archive import (  # noqa: E402
     ArtifactArchiveError,
     archive_copy,
     mirror_artifact,
+    record_remote_mirror_proof,
     restore_artifact,
 )
 from shared_wong_choi.dashboard_status import (  # noqa: E402
@@ -111,6 +112,16 @@ def build_parser() -> argparse.ArgumentParser:
     mirror.add_argument("--manifest", type=Path, required=True)
     mirror.add_argument("--cold-root", type=Path)
     mirror.add_argument("--json", action="store_true")
+    remote_proof = sub.add_parser("archive-remote-proof")
+    remote_proof.add_argument("--manifest", type=Path, required=True)
+    remote_proof.add_argument("--provider", choices=("google_drive",), required=True)
+    remote_proof.add_argument("--remote-id", required=True)
+    remote_proof.add_argument("--remote-url", required=True)
+    remote_proof.add_argument("--sha256", required=True)
+    remote_proof.add_argument("--bytes", type=int, required=True)
+    remote_proof.add_argument("--files", type=int, required=True)
+    remote_proof.add_argument("--actor", required=True)
+    remote_proof.add_argument("--json", action="store_true")
     release = sub.add_parser("release")
     release.add_argument("--path", action="append", required=True)
     release.add_argument("--message", required=True)
@@ -285,6 +296,25 @@ def main(argv: Sequence[str] | None = None) -> int:
             if not cold_setting:
                 raise ArtifactArchiveError("WC_COLD_MIRROR_ROOT is not configured")
             result = mirror_artifact(manifest, cold_root=Path(cold_setting))
+        except (ArtifactArchiveError, ValueError) as exc:
+            print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False))
+            return 1
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "archive-remote-proof":
+        manifest = args.manifest.expanduser().resolve()
+        catalog = (state_root / "storage" / "catalog" / "records").resolve()
+        try:
+            manifest.relative_to(catalog)
+            result = record_remote_mirror_proof(
+                manifest,
+                provider=args.provider,
+                remote_id=args.remote_id,
+                remote_url=args.remote_url,
+                digest={"sha256": args.sha256, "bytes": args.bytes, "files": args.files},
+                verification_method="full_download_content_digest",
+                actor=args.actor,
+            )
         except (ArtifactArchiveError, ValueError) as exc:
             print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False))
             return 1
