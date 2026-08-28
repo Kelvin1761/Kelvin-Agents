@@ -51,6 +51,8 @@ def test_archive_copy_is_verified_idempotent_and_keeps_source(tmp_path: Path) ->
     assert first["status"] == "copied_verified"
     assert second["status"] == "duplicate"
     assert source.is_dir()
+    assert Path(first["destination"]).name == source.name
+    assert Path(first["destination"]).parent.name == first["source_digest"]["sha256"][:12]
     assert artifact_digest(Path(first["destination"])) == artifact_digest(source)
     assert len(list((catalog / "records").glob("*.json"))) == 1
 

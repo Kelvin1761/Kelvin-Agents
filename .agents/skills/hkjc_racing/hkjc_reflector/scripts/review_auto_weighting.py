@@ -28,8 +28,11 @@ ENGINE_DIR = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi_auto"
 sys.path.insert(0, str(ENGINE_DIR.parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(ROOT))
+SHARED_SKILLS = ROOT / ".agents" / "skills"
+sys.path.insert(0, str(SHARED_SKILLS))
 
 from wongchoi_paths import is_materialized_file  # noqa: E402
+from shared_wong_choi.corpus_catalog import catalog_meeting_locations  # noqa: E402
 
 from hkjc_racing_engine.engine_core import RacingEngine  # noqa: E402
 from hkjc_racing_engine.features.draw import DrawScorer  # noqa: E402
@@ -1405,7 +1408,7 @@ def default_season_csvs() -> list[Path]:
 
 
 def hk_meeting_dirs(roots: list[Path]) -> list[Path]:
-    seen: set[Path] = set()
+    seen_names: set[str] = set()
     meetings: list[Path] = []
     for root in roots:
         if not root.exists():
@@ -1417,11 +1420,20 @@ def hk_meeting_dirs(roots: list[Path]) -> list[Path]:
             name = meeting_dir.name
             if "ShaTin" not in name and "HappyValley" not in name:
                 continue
-            if meeting_dir in seen:
+            if name in seen_names:
                 continue
-            seen.add(meeting_dir)
+            seen_names.add(name)
             meetings.append(meeting_dir)
-    return sorted(meetings)
+    for logical_name, meeting_dir in catalog_meeting_locations(domain="hkjc"):
+        if "ShaTin" not in logical_name and "HappyValley" not in logical_name:
+            continue
+        if logical_name in seen_names:
+            continue
+        if not any(is_materialized_file(path) for path in _safe_rglob(meeting_dir, "Race_*_Logic.json")):
+            continue
+        seen_names.add(logical_name)
+        meetings.append(meeting_dir)
+    return sorted(meetings, key=lambda path: path.name)
 
 
 def build_results_index(results_roots: list[Path]) -> dict[str, Path]:

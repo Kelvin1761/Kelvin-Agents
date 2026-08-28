@@ -24,6 +24,10 @@ from shared_wong_choi.artifact_archive import (  # noqa: E402
     record_remote_mirror_proof,
     restore_artifact,
 )
+from shared_wong_choi.corpus_catalog import (  # noqa: E402
+    CorpusCatalogError,
+    resolve_catalog_artifacts,
+)
 from shared_wong_choi.dashboard_status import (  # noqa: E402
     collect_dashboard_status,
     render_dashboard_telegram,
@@ -122,6 +126,12 @@ def build_parser() -> argparse.ArgumentParser:
     remote_proof.add_argument("--files", type=int, required=True)
     remote_proof.add_argument("--actor", required=True)
     remote_proof.add_argument("--json", action="store_true")
+    corpus_audit = sub.add_parser("corpus-audit")
+    corpus_audit.add_argument(
+        "--domain", choices=("au", "hkjc", "tennis", "nba"), required=True
+    )
+    corpus_audit.add_argument("--artifact-class", action="append")
+    corpus_audit.add_argument("--json", action="store_true")
     release = sub.add_parser("release")
     release.add_argument("--path", action="append", required=True)
     release.add_argument("--message", required=True)
@@ -316,6 +326,19 @@ def main(argv: Sequence[str] | None = None) -> int:
                 actor=args.actor,
             )
         except (ArtifactArchiveError, ValueError) as exc:
+            print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False))
+            return 1
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
+    if args.command == "corpus-audit":
+        try:
+            result = resolve_catalog_artifacts(
+                catalog_root=state_root / "storage" / "catalog",
+                domain=args.domain,
+                artifact_classes=args.artifact_class,
+                strict=True,
+            )
+        except CorpusCatalogError as exc:
             print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False))
             return 1
         print(json.dumps(result, ensure_ascii=False, indent=2))

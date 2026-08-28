@@ -114,24 +114,30 @@ def archive_copy(
     source_digest = artifact_digest(source)
     identity = "|".join((domain, artifact_class, str(source), source_digest["sha256"]))
     artifact_id = "wc-artifact:" + hashlib.sha256(identity.encode("utf-8")).hexdigest()[:24]
-    leaf = f"{source.name}--{source_digest['sha256'][:12]}"
-    destination = warm_root / quote(domain.lower(), safe="._-") / quote(
-        artifact_class.lower(), safe="._-"
-    ) / leaf
     record_path = catalog_root.expanduser().resolve() / "records" / f"{quote(artifact_id, safe='._-')}.json"
 
     if record_path.exists():
         existing = json.loads(record_path.read_text(encoding="utf-8"))
+        existing_destination = Path(str(existing.get("destination") or ""))
         if (
             existing.get("artifact_id") == artifact_id
             and existing.get("source_digest") == source_digest
-            and Path(str(existing.get("destination"))) == destination
-            and destination.exists()
-            and artifact_digest(destination) == source_digest
+            and existing_destination.exists()
+            and artifact_digest(existing_destination) == source_digest
         ):
             return {**existing, "status": "duplicate"}
         raise ArtifactArchiveError(f"immutable catalog conflict: {artifact_id}")
 
+    # Keep the source basename unchanged for domain readers that derive meeting
+    # date/venue from the directory name.  The content hash belongs in its own
+    # version directory, not as a suffix on the logical artifact name.
+    destination = (
+        warm_root
+        / quote(domain.lower(), safe="._-")
+        / quote(artifact_class.lower(), safe="._-")
+        / source_digest["sha256"][:12]
+        / source.name
+    )
     destination.parent.mkdir(parents=True, exist_ok=True)
     if destination.exists():
         if artifact_digest(destination) != source_digest:
@@ -252,6 +258,7 @@ def mirror_artifact(
         cold_root
         / quote(str(manifest.get("domain") or "unknown"), safe="._-")
         / quote(str(manifest.get("artifact_class") or "unknown"), safe="._-")
+        / str(expected["sha256"])[:12]
         / archived.name
     )
     catalog_root = manifest_path.parent.parent

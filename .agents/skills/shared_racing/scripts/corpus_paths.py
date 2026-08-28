@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import glob
 import re
+import sys
 from pathlib import Path
 
 # Directory names that hold finished meetings rather than a different corpus.
@@ -72,7 +73,13 @@ def logic_files(root: Path | str, pattern: str = "Race_*_Logic.json") -> list[st
 
 
 def meeting_dirs(root: Path | str) -> list[Path]:
-    """Every meeting folder under `root`, including archived ones."""
+    """Every meeting folder under HOT plus verified catalog-backed WARM.
+
+    AU is inferred from its canonical root name.  Once any settled meeting is
+    archived through Central, a missing/corrupt known copy raises instead of
+    returning a smaller corpus.  Domains with different storage shapes opt in
+    through their own reader rather than being guessed here.
+    """
     out: dict[str, Path] = {}
     for base in corpus_roots(root):
         try:
@@ -82,4 +89,14 @@ def meeting_dirs(root: Path | str) -> list[Path]:
         for entry in entries:
             if entry.is_dir() and MEETING_NAME.match(entry.name):
                 out.setdefault(entry.name, entry)
+    root_path = Path(root)
+    if root_path.name.lower() == "au_racing":
+        skills_root = Path(__file__).resolve().parents[2]
+        if str(skills_root) not in sys.path:
+            sys.path.insert(0, str(skills_root))
+        from shared_wong_choi.corpus_catalog import catalog_meeting_locations
+
+        for logical_name, path in catalog_meeting_locations(domain="au"):
+            if MEETING_NAME.match(logical_name):
+                out.setdefault(logical_name, path)
     return [out[k] for k in sorted(out, reverse=True)]
