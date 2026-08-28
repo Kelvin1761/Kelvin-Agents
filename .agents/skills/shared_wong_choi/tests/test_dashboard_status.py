@@ -23,10 +23,11 @@ def test_dashboard_is_central_display_with_d1_but_not_prediction_authority(
     (root / "functions" / "api" / "audit.js").write_text("", encoding="utf-8")
     (root / "migrations" / "0001_unified_bet_ledger.sql").write_text("", encoding="utf-8")
 
-    result = collect_dashboard_status(tmp_path)
+    result = collect_dashboard_status(tmp_path, tmp_path / "state")
 
     assert result["status"] == "configured"
     assert result["ownership"] == "central_wong_choi_control_tower"
     assert result["betting_ledger_source"] == "cloudflare_d1_wc_ledger"
     assert result["model_evidence_source"] == "central_append_only_evidence"
     assert result["recommendation_calculation_allowed"] is False
+    assert result["backup"]["status"] == "no_data"

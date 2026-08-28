@@ -186,7 +186,7 @@ def collect_status(
     )
     primary = _git_payload(repo_root)
     reliability = collect_reliability(state_root, now=now)
-    dashboard = collect_dashboard_status(repo_root)
+    dashboard = collect_dashboard_status(repo_root, state_root)
     storage = collect_storage_status(repo_root, state_root)
 
     attention: list[str] = []

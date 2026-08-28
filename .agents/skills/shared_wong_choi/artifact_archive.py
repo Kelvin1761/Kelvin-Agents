@@ -189,29 +189,40 @@ def restore_artifact(
     if destination.exists():
         raise ArtifactArchiveError("restore destination already exists")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    _copy(archived, destination)
-    restored = artifact_digest(destination)
-    if restored != expected:
-        raise ArtifactArchiveError("restored artifact hash mismatch")
-    stamp = restored_at or datetime.now(timezone.utc).isoformat()
-    event_identity = "|".join(
-        (str(manifest.get("artifact_id") or ""), str(destination), restored["sha256"])
-    )
-    event_id = "wc-artifact-restore:" + hashlib.sha256(
-        event_identity.encode("utf-8")
-    ).hexdigest()[:24]
-    catalog_root = manifest_path.expanduser().resolve().parent.parent
-    event_path = catalog_root / "events" / f"{quote(event_id, safe='._-')}.json"
-    event = {
-        "schema_version": "wong-choi-artifact-restore/v1",
-        "event_id": event_id,
-        "artifact_id": manifest.get("artifact_id"),
-        "restored_at": stamp,
-        "source_manifest": str(manifest_path.expanduser().resolve()),
-        "destination": str(destination),
-        "digest": restored,
-    }
-    _write_exclusive_json(event_path, event)
+    try:
+        _copy(archived, destination)
+        restored = artifact_digest(destination)
+        if restored != expected:
+            raise ArtifactArchiveError("restored artifact hash mismatch")
+        stamp = restored_at or datetime.now(timezone.utc).isoformat()
+        event_identity = "|".join(
+            (str(manifest.get("artifact_id") or ""), str(destination), restored["sha256"])
+        )
+        event_id = "wc-artifact-restore:" + hashlib.sha256(
+            event_identity.encode("utf-8")
+        ).hexdigest()[:24]
+        catalog_root = manifest_path.expanduser().resolve().parent.parent
+        event_path = catalog_root / "events" / f"{quote(event_id, safe='._-')}.json"
+        event = {
+            "schema_version": "wong-choi-artifact-restore/v1",
+            "event_id": event_id,
+            "artifact_id": manifest.get("artifact_id"),
+            "restored_at": stamp,
+            "source_manifest": str(manifest_path.expanduser().resolve()),
+            "destination": str(destination),
+            "digest": restored,
+        }
+        _write_exclusive_json(event_path, event)
+    except Exception as exc:
+        if destination.is_dir():
+            shutil.rmtree(destination, ignore_errors=True)
+        elif destination.exists():
+            destination.unlink(missing_ok=True)
+        if isinstance(exc, ArtifactArchiveError):
+            raise
+        raise ArtifactArchiveError(
+            f"restore transaction failed before event commit: {type(exc).__name__}: {exc}"
+        ) from exc
     return {
         "status": "pass",
         "artifact_id": manifest.get("artifact_id"),

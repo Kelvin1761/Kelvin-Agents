@@ -66,6 +66,13 @@ for name, label in (
     if value is not None:
         print(f"      {label}: {value:.2f} GiB")
 cold = ((payload.get("tiers") or {}).get("cold") or {})
+d1 = ((payload.get("backups") or {}).get("dashboard_d1") or {})
+if d1.get("status") == "no_data":
+    print("  ⚠️  Dashboard D1未有verified backup")
+elif d1.get("status") != "ok":
+    print(f"  ⚠️  Dashboard D1 backup：{d1.get('status')}，age={d1.get('age_hours', 'N/A')}h，WARM={d1.get('warm_verified')}")
+else:
+    print(f"  ✅ Dashboard D1 backup：age={d1.get('age_hours')}h，WARM verified")
 if not cold.get("configured"):
     print("  ⚠️  COLD Drive root未設定；外置碟目前只係一份copy，未可以批准刪本機原件")
 elif cold.get("status") != "available":

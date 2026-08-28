@@ -55,6 +55,12 @@ _DEPLOYMENT_MARKERS = (
     "cloudflare_deploy_hook.py",
 )
 
+_APPROVED_ACTIVATION_INSTALLERS = frozenset(
+    {
+        ".agents/skills/central_wong_choi/install_macos_launchd.sh",
+    }
+)
+
 
 def _normalise(path: str) -> str:
     raw = path.replace("\\", "/")
@@ -128,6 +134,7 @@ def activation_plan(paths: Iterable[str]) -> dict:
     domains: set[str] = set()
     dashboard = False
     manual_reasons: list[str] = []
+    installers: list[str] = []
     for path in normalised:
         lowered = path.lower()
         if ".agents/skills/au_racing/" in lowered:
@@ -150,11 +157,21 @@ def activation_plan(paths: Iterable[str]) -> dict:
             domains.add("au")
         if lowered.startswith("horse_racing_dashboard/") or lowered == "deploy.sh":
             dashboard = True
-        if "install_macos_launchd.sh" in lowered or lowered.endswith(".plist"):
-            manual_reasons.append(f"launchd_install:{path}")
+        if path in _APPROVED_ACTIVATION_INSTALLERS:
+            installers.append(path)
+        elif "install_macos_launchd.sh" in lowered or lowered.endswith(".plist"):
+            # A plist belonging to an allowlisted installer is data consumed by
+            # that installer, not a second manual action.
+            if not (
+                path.startswith(".agents/skills/central_wong_choi/launchd/")
+                and ".agents/skills/central_wong_choi/install_macos_launchd.sh"
+                in normalised
+            ):
+                manual_reasons.append(f"launchd_install:{path}")
     return {
         "production_sync_domains": sorted(domains),
         "dashboard_deploy": dashboard,
+        "installers": sorted(installers),
         "manual_required": bool(manual_reasons),
         "manual_reasons": manual_reasons,
     }

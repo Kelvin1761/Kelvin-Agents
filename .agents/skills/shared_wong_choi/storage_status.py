@@ -6,6 +6,8 @@ import os
 from pathlib import Path
 from typing import Any
 
+from .dashboard_backup import collect_d1_backup_status
+
 
 GIB = 1024 ** 3
 HOT_WARNING_FREE_BYTES = 30 * GIB
@@ -119,6 +121,7 @@ def collect_storage_status(
     hot = _tier("hot", hot_root, required=True)
     warm = _tier("warm", warm_root, required=True)
     cold = _tier("cold", cold_root, required=False)
+    d1_backup = collect_d1_backup_status(state_root)
     hot_disk = hot.get("disk") or {}
     free = hot_disk.get("free_bytes")
     if not isinstance(free, int):
@@ -163,11 +166,15 @@ def collect_storage_status(
         attention.append("warm_archive_unavailable")
     if cold["configured"] and cold["status"] != "available":
         attention.append("cold_mirror_unavailable")
+    attention.extend(d1_backup.get("attention") or [])
+    if cold["configured"] and not d1_backup.get("cold_verified"):
+        attention.append("dashboard_d1_backup_cold_pending")
     return {
         "schema_version": "wong-choi-storage-status/v1",
         "status": "attention" if attention else "ok",
         "attention": attention,
         "tiers": {"hot": hot, "warm": warm, "cold": cold},
+        "backups": {"dashboard_d1": d1_backup},
         "inventory": inventory,
         "inventory_repo": str(inventory_repo),
         "policy": {
@@ -184,12 +191,15 @@ def render_storage_telegram(payload: dict[str, Any]) -> str:
     hot = tiers.get("hot") or {}
     warm = tiers.get("warm") or {}
     cold = tiers.get("cold") or {}
+    d1 = ((payload.get("backups") or {}).get("dashboard_d1") or {})
     hot_disk = hot.get("disk") or {}
     lines = [
         f"💾 Wong Choi Storage：{payload.get('status')}",
         f"HOT SSD：{hot.get('pressure')} · free {hot_disk.get('free_gib', 'N/A')} GiB",
         f"WARM 外置碟：{warm.get('status')} · {warm.get('path', '未設定')}",
         f"COLD Drive：{cold.get('status')} · {cold.get('path', '未設定')}",
+        f"D1 backup：{d1.get('status')} · age {d1.get('age_hours', 'N/A')}h · "
+        f"WARM {'係' if d1.get('warm_verified') else '否'} · COLD {'係' if d1.get('cold_verified') else '否'}",
     ]
     if payload.get("attention"):
         lines.append("留意：" + "、".join(payload["attention"]))

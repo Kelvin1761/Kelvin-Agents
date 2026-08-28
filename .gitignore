@@ -125,6 +125,7 @@ Wong Choi Tennis Analysis/
 
 # NBA 每日排程：runtime log、lock、state 同 immutable prediction copies
 .agents/skills/nba/nba_daily_auto/logs/
+.agents/skills/central_wong_choi/scripts/logs/
 .agents/skills/nba/nba_daily_auto/state/
 
 # Shared Wong Choi control-plane runtime manifests and locks

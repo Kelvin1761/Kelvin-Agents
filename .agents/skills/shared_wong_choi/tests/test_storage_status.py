@@ -30,7 +30,8 @@ def test_storage_status_is_read_only_and_scans_known_large_paths(
 
     result = storage_status.collect_storage_status(repo, state, scan=True)
 
-    assert result["status"] == "ok"
+    assert result["status"] == "attention"
+    assert "dashboard_d1_backup_missing" in result["attention"]
     assert result["tiers"]["warm"]["status"] == "available"
     assert result["tiers"]["cold"]["status"] == "available"
     assert next(item for item in result["inventory"] if item["name"] == "tennis_db_backups")["bytes"] == 2048

@@ -158,6 +158,7 @@ def activate_release(
         "domains": domains,
         "targets": sorted(unique_targets),
         "dashboard_deploy": bool(plan.get("dashboard_deploy")),
+        "installers": list(plan.get("installers") or []),
     }
     if dry_run:
         return result
@@ -218,6 +219,38 @@ def activate_release(
                         "target_commit": check["target_commit"],
                     }
                 )
+        installer_results = []
+        for relative in plan.get("installers") or []:
+            installer_root = next(iter(unique_targets.values()), repo).expanduser().resolve()
+            installer = installer_root / relative
+            if not installer.is_file():
+                raise ReleaseError(f"approved activation installer missing: {relative}")
+            installed = _run(
+                installer_root,
+                "/bin/zsh",
+                str(installer),
+                check=False,
+                timeout=300,
+            )
+            if installed.returncode != 0:
+                raise ReleaseError(f"approved activation installer failed: {relative}")
+            checked = _run(
+                installer_root,
+                "/bin/zsh",
+                str(installer),
+                "--status",
+                check=False,
+                timeout=60,
+            )
+            if checked.returncode != 0:
+                raise ReleaseError(f"activation installer status failed: {relative}")
+            installer_results.append(
+                {
+                    "path": relative,
+                    "status": "installed_verified",
+                    "status_output": checked.stdout.strip()[-2000:],
+                }
+            )
         deploy = None
         if plan.get("dashboard_deploy"):
             deploy_root = next(iter(unique_targets.values()), repo)
@@ -251,13 +284,19 @@ def activate_release(
         commit=manifest["commit"],
         event_type="activation_succeeded",
         actor="central-wong-choi",
-        detail={"sync": sync_results, "verification": verification, "deploy": deploy},
+        detail={
+            "sync": sync_results,
+            "verification": verification,
+            "installers": installer_results,
+            "deploy": deploy,
+        },
     )
     result.update(
         {
             "status": "activated",
             "sync": sync_results,
             "verification": verification,
+            "installers": installer_results,
             "deploy": deploy,
             "activation_event": completed["path"],
         }

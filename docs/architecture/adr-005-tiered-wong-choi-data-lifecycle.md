@@ -6,7 +6,7 @@ Accepted — Stage 4D, 2026-08-27.
 
 ## Context
 
-內置SSD只有約228 GiB，2026-08-27已用90%、只剩約22 GiB；repo約8.6 GB，當中Tennis約4.8 GB（兩個migration DB snapshot已佔約2.9 GB），Wong Choi data約1.9 GB。外置APFS硬碟有約888 GiB可用，但未必長期mount；Google Drive喺launchd／Codex process亦會受File Provider TCC同placeholder影響。
+內置SSD只有約228 GiB，2026-08-27已用90%、只剩約22 GiB；repo約8.6 GB。到2026-08-28 Tennis有三個migration DB snapshots共4.387 GB（live DB另計），Wong Choi data約1.9 GB。外置APFS硬碟有約884 GiB可用，但未必長期mount；Google Drive喺launchd／Codex process亦會受File Provider TCC同placeholder影響。
 
 ## Decision
 
@@ -21,6 +21,8 @@ Accepted — Stage 4D, 2026-08-27.
 任何本機原件只可以經以下閘移除：`copy to temp → content hash manifest → atomic publish → restore drill → second verified copy → scoped human approval → remove source`。外置碟單獨唔算backup；Google Drive單獨亦唔算runtime storage。
 
 中央旺財提供read-only `storage`／Telegram `/storage`。真正archive executor必須idempotent、冇`--delete` default、外置碟消失時只defer唔損毀資料。完整archive研究要經multi-root catalog，禁止用`rglob`靜靜漏咗offline corpus。
+
+Dashboard D1另有每日verified export：只讀remote、固定Wrangler版本、export前後row counts必須穩定，SQL要restore到全新SQLite並通過integrity／foreign-key／row-count gate，先可寫immutable snapshot同copy去WARM／COLD。Dashboard同Telegram只顯示呢份證據嘅freshness，唔會將backup狀態當prediction evidence。
 
 ## Trade-offs
 

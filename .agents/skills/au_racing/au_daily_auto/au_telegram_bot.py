@@ -235,7 +235,13 @@ def cmd_dashboard() -> str:
         render_dashboard_telegram,
     )
 
-    return render_dashboard_telegram(collect_dashboard_status(repo))
+    state = Path(
+        os.environ.get(
+            "WONGCHOI_CONTROL_STATE_ROOT",
+            Path.home() / "WongChoiData" / "WongChoiControl",
+        )
+    )
+    return render_dashboard_telegram(collect_dashboard_status(repo, state))
 
 
 def cmd_release() -> str:

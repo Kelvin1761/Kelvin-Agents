@@ -80,3 +80,18 @@ def test_activation_plan_marks_dashboard_and_launchd_installer() -> None:
     assert plan["dashboard_deploy"] is True
     assert plan["manual_required"] is True
     assert plan["production_sync_domains"] == ["nba"]
+
+
+def test_activation_plan_allowlists_central_durability_installer() -> None:
+    plan = activation_plan(
+        [
+            ".agents/skills/central_wong_choi/install_macos_launchd.sh",
+            ".agents/skills/central_wong_choi/launchd/com.antigravity.central-wong-choi.durability.plist.template",
+        ]
+    )
+
+    assert plan["manual_required"] is False
+    assert plan["installers"] == [
+        ".agents/skills/central_wong_choi/install_macos_launchd.sh"
+    ]
+    assert plan["production_sync_domains"] == ["au"]

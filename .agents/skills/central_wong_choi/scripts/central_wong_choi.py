@@ -27,6 +27,11 @@ from shared_wong_choi.dashboard_status import (  # noqa: E402
     collect_dashboard_status,
     render_dashboard_telegram,
 )
+from shared_wong_choi.dashboard_backup import (  # noqa: E402
+    DashboardBackupError,
+    backup_d1_ledger,
+    collect_d1_backup_status,
+)
 from shared_wong_choi.release_approval import approve_release  # noqa: E402
 from shared_wong_choi.release_activation import activate_release  # noqa: E402
 from shared_wong_choi.release_manager import (  # noqa: E402
@@ -83,6 +88,14 @@ def build_parser() -> argparse.ArgumentParser:
     storage = sub.add_parser("storage")
     storage.add_argument("--scan", action="store_true")
     storage.add_argument("--json", action="store_true")
+    d1_backup = sub.add_parser("dashboard-backup")
+    d1_backup.add_argument("--dashboard-root", type=Path)
+    d1_backup.add_argument("--warm-root", type=Path)
+    d1_backup.add_argument("--cold-root", type=Path)
+    d1_backup.add_argument("--hot-only", action="store_true")
+    d1_backup.add_argument("--json", action="store_true")
+    d1_backup_status = sub.add_parser("dashboard-backup-status")
+    d1_backup_status.add_argument("--json", action="store_true")
     archive = sub.add_parser("archive-copy")
     archive.add_argument("--source", type=Path, required=True)
     archive.add_argument("--domain", choices=("au", "hkjc", "tennis", "nba"), required=True)
@@ -202,8 +215,31 @@ def main(argv: Sequence[str] | None = None) -> int:
             else render_storage_telegram(result)
         )
         return 0 if result["status"] == "ok" else 1
+    if args.command == "dashboard-backup":
+        dashboard_root = args.dashboard_root or repo / "Horse_Racing_Dashboard"
+        warm_root = None if args.hot_only else (
+            args.warm_root
+            or Path(os.environ.get("WC_WARM_ARCHIVE_ROOT", str(DEFAULT_WARM_ROOT)))
+        )
+        cold_setting = args.cold_root or os.environ.get("WC_COLD_MIRROR_ROOT", "")
+        try:
+            result = backup_d1_ledger(
+                dashboard_root,
+                state_root,
+                warm_root=warm_root,
+                cold_root=Path(cold_setting) if cold_setting else None,
+            )
+        except DashboardBackupError as exc:
+            print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False))
+            return 1
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["status"] in {"pass", "deferred"} else 1
+    if args.command == "dashboard-backup-status":
+        result = collect_d1_backup_status(state_root)
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["status"] == "ok" else 1
     if args.command == "dashboard":
-        result = collect_dashboard_status(repo)
+        result = collect_dashboard_status(repo, state_root)
         print(
             json.dumps(result, ensure_ascii=False, indent=2)
             if args.json

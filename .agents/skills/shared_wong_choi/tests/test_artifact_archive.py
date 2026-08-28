@@ -125,6 +125,39 @@ def test_restore_requires_new_destination_and_matches_manifest(tmp_path: Path) -
     assert json.loads(manifest.read_text(encoding="utf-8"))["source_removed"] is False
 
 
+def test_restore_event_failure_removes_destination_for_safe_retry(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import shared_wong_choi.artifact_archive as module
+
+    hot = tmp_path / "hot"
+    hot.mkdir()
+    source = hot / "snapshot.db"
+    source.write_bytes(b"sqlite-data")
+    warm = tmp_path / "warm"
+    warm.mkdir()
+    result = archive_copy(
+        source,
+        warm_root=warm,
+        catalog_root=tmp_path / "catalog",
+        domain="tennis",
+        artifact_class="db-snapshot",
+        allowed_roots=[hot],
+    )
+    manifest = Path(result["manifest"])
+    restored = tmp_path / "restore" / "snapshot.db"
+
+    def deny_event(_: Path, __: dict) -> None:
+        raise PermissionError("catalog is read-only")
+
+    monkeypatch.setattr(module, "_write_exclusive_json", deny_event)
+    with pytest.raises(ArtifactArchiveError, match="restore transaction failed"):
+        restore_artifact(manifest, restored)
+
+    assert not restored.exists()
+    assert source.read_bytes() == b"sqlite-data"
+
+
 def test_unavailable_warm_root_blocks_without_mutating_source(tmp_path: Path) -> None:
     hot = tmp_path / "hot"
     hot.mkdir()
