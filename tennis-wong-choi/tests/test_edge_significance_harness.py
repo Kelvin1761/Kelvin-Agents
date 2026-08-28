@@ -85,3 +85,35 @@ def test_a_losing_run_is_reported_as_crossing_zero_not_significant():
 def test_the_bootstrap_is_seeded():
     bets = _bets(300, 2.0, 0.55)
     assert harness.summarise(bets) == harness.summarise(bets)
+
+
+# --------------------------------------------------------------------------- #
+# The weekly page must carry it, and must survive it failing
+# --------------------------------------------------------------------------- #
+def test_the_weekly_review_survives_a_broken_harness(monkeypatch):
+    """A decision that depends on somebody remembering a monthly script does not
+    get made, so the number goes on the weekly page. But research code must
+    never take an operational report down with it -- the short-favourite wiring
+    learned that the hard way when only the inner try/except was in place."""
+    from tennis_wc.reports import weekly_review
+
+    def explode():
+        raise RuntimeError("harness is broken")
+
+    monkeypatch.setattr(weekly_review, "_edge_significance_progress", explode)
+    assert weekly_review._safe_edge_significance_progress() is None
+
+
+def test_the_weekly_review_reports_the_assumed_effect(monkeypatch):
+    """The wait is computed against an assumption, and the page has to say so --
+    otherwise `3,306 注` reads as a measurement."""
+    from tennis_wc.reports import weekly_review
+
+    monkeypatch.setattr(weekly_review, "_edge_significance_progress", lambda: {
+        "n": 686, "roi_pct": 6.12, "ci_low_pct": -5.12, "ci_high_pct": 16.87,
+        "significant": False, "need": 3306, "months": 9.4,
+        "capped_months": 6.6, "assumed_roi_pct": 5.0,
+    })
+    block = weekly_review._safe_edge_significance_progress()
+    assert block["assumed_roi_pct"] == 5.0
+    assert block["need"] == 3306

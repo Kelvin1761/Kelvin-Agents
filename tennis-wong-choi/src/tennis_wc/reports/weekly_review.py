@@ -153,6 +153,65 @@ def _short_favourite_progress() -> dict | None:
         return None
 
 
+def _edge_significance_progress() -> dict | None:
+    """How far the bettable edge is from being provable.
+
+    This is the whole remaining question. The model is level with the market on
+    the population a bet is chosen from, the price is not the constraint
+    (break-even commission is about 13% against Sportsbet's 7.5%), and the only
+    thing standing between +6.12% and a decision is sample size: about 3,300
+    bets against 686 today.
+
+    So it goes on the page that gets read, weekly, rather than in a script
+    somebody has to remember. A decision that depends on a monthly manual run is
+    a decision that does not get made.
+    """
+    script = (Path(__file__).resolve().parents[3]
+              / "scripts" / "measure_edge_significance.py")
+    if not script.is_file():
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location("_edge_sig", script)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        conn = get_connection()
+        bets = module.load(conn)
+        overall = module.summarise(bets)
+        capped = module.summarise([b for b in bets if b["odds"] <= 3.0])
+        rate = module.monthly_rate(bets)
+        last = list(rate.values())[-1] if rate else 0
+        if "roi_pct" not in overall:
+            return None
+
+        def months(block, share):
+            need = block.get("bets_still_needed") or 0
+            per_month = last * share
+            return round(need / per_month, 1) if per_month > 0 and need else 0.0
+
+        return {
+            "n": overall["n"],
+            "roi_pct": overall["roi_pct"],
+            "ci_low_pct": overall["ci_low_pct"],
+            "ci_high_pct": overall["ci_high_pct"],
+            "significant": overall["significant"],
+            "need": overall.get("required_n"),
+            "months": months(overall, 1.0),
+            "capped_months": months(
+                capped, (capped.get("n", 0) / overall["n"]) if overall["n"] else 0),
+            "assumed_roi_pct": overall.get("assumed_roi_pct"),
+        }
+    except Exception:
+        # A research harness must never take the weekly page down with it.
+        return None
+
+
+def _safe_edge_significance_progress() -> dict | None:
+    try:
+        return _edge_significance_progress()
+    except Exception:
+        return None
+
+
 def _safe_short_favourite_progress() -> dict | None:
     try:
         return _short_favourite_progress()
@@ -185,6 +244,7 @@ def weekly_review_data(as_of_date: str) -> dict:
         # itself failing. Research code must never be load-bearing for the
         # operational page.
         "short_favourites": _safe_short_favourite_progress(),
+        "edge_significance": _safe_edge_significance_progress(),
     }
 
 
@@ -256,6 +316,19 @@ def render_weekly_review(as_of_date: str) -> str:
             f"｜P={fav.get('probability')}"
         )
         lines.append(f"  - {fav['verdict']}")
+    sig = data.get("edge_significance")
+    if sig and sig.get("n"):
+        state = "已顯著 ✅" if sig["significant"] else "CI 仍然跨零"
+        lines.append(
+            f"- ⏳ 可落注優勢進度：{sig['n']}/{sig['need']} 注"
+            f"｜ROI {sig['roi_pct']:+.2f}%"
+            f"｜CI [{sig['ci_low_pct']:+.2f}, {sig['ci_high_pct']:+.2f}]｜{state}"
+        )
+        lines.append(
+            f"  - 仲要約 {sig['months']} 個月"
+            f"（只追賠率 ≤3.0 約 {sig['capped_months']} 個月）"
+            f"；需要注數按固定 {sig['assumed_roi_pct']:.0f}% 假設優勢計"
+        )
 
     # Scorecard
     lines += ["", "## 🎾 Prop 記分卡（模型 vs 市場，越低越準）", ""]
