@@ -510,6 +510,58 @@ ROI —— unknown 而家只剩 44 場，量唔到）；`get_surface_elo` 兩邊
 大小寫統一先行令兄弟不一致由 82 → 38，多回收 44 個。
 `tennisdata` index 有 162 個賽事但**零個 Challenger** —— 剩落 537 個要新來源。
 
+## 發現 16（08-29）：紅土候選 REJECT —— 而個候選係我自己一個洩漏 harness 造出嚟嘅
+
+紅土係唯一量得到嘅弱點。診斷：**係排序問題唔係校準問題** —— 溫度縮放只由
+0.6708 移到 0.6666（市場 0.6126），而 AUC 缺口紅土 0.053、硬地只 0.010。
+
+### 16a. 一個睇落好乾淨嘅候選
+
+用 `elo_history.rating_as_of` 重建 Elo backbone，將
+`logit(stored) − logit(backbone)` 當成「nudge」，然後乘 k：
+
+| k | clay logloss |
+|---|---|
+| 0.00 | 0.6447 |
+| 0.50 | 0.6541 |
+| 1.00（現狀） | 0.6754 |
+
+k=0 vs 現狀：**Δ−0.0307，CI [−0.0551, −0.0072]**，單調、機制講得通
+（nudge 為發球主導場地而設）、硬地草地結構上唔受影響。睇落係一個乾淨嘅
+surface-conditional 修法。
+
+### 16b. 但佢係洩漏
+
+倉庫規矩要 ablation（九個一齊郁唔准 ship）。改用**每場賽事嘅已存 feature
+snapshot** 重建 component（忠實度：median |重建 − 已存| = 0.0024，75% 喺 0.01 內），
+答案**符號相反**：
+
+| 紅土移除 | Δlogloss | 95% CI |
+|---|---|---|
+| `head_to_head_edge` | +0.0051 | [+0.0029, +0.0074] |
+| `serve_return_edge` | +0.0036 | [+0.0016, +0.0055] |
+| `opponent_rank_bucket_edge` | +0.0028 | [+0.0011, +0.0045] |
+| `tournament_level_edge` | +0.0018 | [+0.0005, +0.0031] |
+| **九個全部關** | **+0.0140** | **[+0.0081, +0.0201]** |
+
+**每一個 nudge 喺紅土都有貢獻，合計亦有。** 佢哋係令紅土冇咁差嘅唯一原因。
+
+**根因**：`player_elo_history` 係由 `player_match_history` 派生嘅，而後者已經長到
+361,200 行。所以「為 6 月某日重算」嘅 rating，係用埋當時未抽取到、但日期早過 6 月
+嘅比賽計出嚟 —— **每個日期過濾都通過，但資訊集比模型當時擁有嘅大**。
+k=0 唔係「移除 nudge」，係「將模型嘅 Elo 換成一個更有料嘅 Elo」。
+
+### 16c. 順手：我自己 harness 有個 no-op sentinel bug
+
+第一版用 `"__ALL__"` 做「全部關」嘅哨兵，但佢唔配對任何 nudge 名，
+所以**咩都冇 drop** —— 個 all-off 行係無效結果而外觀正常。
+我寫嘅 test（`combine(components, DROP_ALL)` 必須等於 Elo backbone）即刻捉到。
+同時個 test 亦捉到我第一個 fixture 太單薄（所有 nudge component 中性／inactive，
+所以「關掉」冇分別）。
+
+**決定：REJECT。** 紅土赤字真實但冇修法。重開之前必須用一個能重現已上線機率嘅
+harness（`scripts/ablate_surface_nudges.py`，有 test 鎖住忠實度）。
+
 ## 決定
 
 - **KEEP（correctness）**：`is_point_in_time` 三態分類 + 單一真源
@@ -535,7 +587,10 @@ ROI —— unknown 而家只剩 44 場，量唔到）；`get_surface_elo` 兩邊
   `repair_surface_casing`、`repair_missing_tournament_surface`（含通用名守衛）。
   可落注場次已知場地 74.9% → 93.3%。
 - **NOT DOING（原 Phase 1.3，ITF Elo）**：解鎖 0 場可落注場次（96% 被 tier 閘攔）。
-- **新線索**：紅土赤字 Δ+0.0318 CI [+0.0030, +0.0618]（n=302）。
+- **REJECT（08-29，紅土 nudge 候選）**：睇落 Δ−0.0307 CI 離開零且單調，
+  但係用今日重算嘅 Elo（事後補完）造成嘅假象。忠實 ablation 話九個 nudge 各自同
+  合計喺紅土都有貢獻（全部關 +0.0140 CI [+0.0081, +0.0201]）。
+- **未解**：紅土赤字真實（Δ+0.0318 CI [+0.0030, +0.0618]，n=302），排序問題，冇修法。
 - **NO-OP（Phase 1.1）**：雙打過濾器一直有效，8 月起零宗漏網。
 - **⚠️ 影響**：`family_reliability` 樣本大跌（例：`player_aces` 188→36 行，
   權重 0.0735→0.0000）。9 個 family 裡面 9 個而家 fit 到 0.0000，即「100% 市場、
