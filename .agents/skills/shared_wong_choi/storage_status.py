@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 from pathlib import Path
 from typing import Any
@@ -65,6 +66,11 @@ def _disk(path: Path) -> dict[str, Any]:
 def _tree_size(path: Path) -> int | None:
     if not path.exists():
         return None
+    if path.is_file():
+        try:
+            return path.stat().st_size
+        except OSError:
+            return None
     total = 0
     try:
         for root, _, files in os.walk(path):
@@ -102,6 +108,106 @@ def _tier(role: str, path: Path | None, *, required: bool) -> dict[str, Any]:
     return result
 
 
+def _catalog_cold_coverage(state_root: Path) -> dict[str, Any]:
+    """Summarise point-in-time COLD proofs for every catalogued artifact."""
+    catalog = state_root / "storage" / "catalog"
+    records_dir = catalog / "records"
+    events_dir = catalog / "events"
+    if not records_dir.is_dir():
+        return {
+            "status": "no_data",
+            "known_artifacts": 0,
+            "verified_artifacts": 0,
+            "unverified_artifacts": 0,
+            "providers": [],
+            "domains": {},
+            "artifacts": [],
+        }
+
+    records: dict[str, dict[str, Any]] = {}
+    invalid_records: list[str] = []
+    for path in sorted(records_dir.glob("*.json")):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            invalid_records.append(str(path))
+            continue
+        artifact_id = str(payload.get("artifact_id") or "")
+        if payload.get("schema_version") != "wong-choi-artifact/v1" or not artifact_id:
+            continue
+        records[artifact_id] = payload
+
+    proofs: dict[str, dict[str, Any]] = {}
+    if events_dir.is_dir():
+        for path in sorted(events_dir.glob("*.json")):
+            try:
+                event = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            artifact_id = str(event.get("artifact_id") or "")
+            record = records.get(artifact_id)
+            if not record or event.get("digest") != record.get("destination_digest"):
+                continue
+            schema = event.get("schema_version")
+            if (
+                schema == "wong-choi-artifact-remote-mirror/v1"
+                and event.get("provider") == "google_drive"
+                and event.get("verification_method") == "full_download_content_digest"
+                and event.get("verification_status") == "pass"
+            ):
+                proofs[artifact_id] = {
+                    "provider": "google_drive",
+                    "destination": event.get("remote_url"),
+                    "event_id": event.get("event_id"),
+                    "verified_at": event.get("verified_at"),
+                }
+            elif schema == "wong-choi-artifact-mirror/v1":
+                proofs.setdefault(
+                    artifact_id,
+                    {
+                        "provider": "filesystem",
+                        "destination": event.get("destination"),
+                        "event_id": event.get("event_id"),
+                        "verified_at": event.get("mirrored_at"),
+                    },
+                )
+
+    artifacts: list[dict[str, Any]] = []
+    domains: dict[str, dict[str, int]] = {}
+    providers: set[str] = set()
+    for artifact_id, record in sorted(records.items()):
+        domain = str(record.get("domain") or "unknown")
+        proof = proofs.get(artifact_id)
+        summary = domains.setdefault(domain, {"known": 0, "verified": 0})
+        summary["known"] += 1
+        if proof:
+            summary["verified"] += 1
+            providers.add(str(proof["provider"]))
+        artifacts.append(
+            {
+                "artifact_id": artifact_id,
+                "domain": domain,
+                "artifact_class": record.get("artifact_class"),
+                "cold_verified": bool(proof),
+                **(proof or {}),
+            }
+        )
+    known = len(artifacts)
+    verified = sum(1 for artifact in artifacts if artifact["cold_verified"])
+    missing = known - verified
+    status = "invalid" if invalid_records else "ok" if known and not missing else "attention" if known else "no_data"
+    return {
+        "status": status,
+        "known_artifacts": known,
+        "verified_artifacts": verified,
+        "unverified_artifacts": missing,
+        "providers": sorted(providers),
+        "domains": domains,
+        "artifacts": artifacts,
+        "invalid_records": invalid_records,
+    }
+
+
 def collect_storage_status(
     repo_root: Path,
     state_root: Path,
@@ -122,6 +228,7 @@ def collect_storage_status(
     warm = _tier("warm", warm_root, required=True)
     cold = _tier("cold", cold_root, required=False)
     d1_backup = collect_d1_backup_status(state_root)
+    catalog_cold = _catalog_cold_coverage(state_root)
     hot_disk = hot.get("disk") or {}
     free = hot_disk.get("free_bytes")
     if not isinstance(free, int):
@@ -169,12 +276,17 @@ def collect_storage_status(
     attention.extend(d1_backup.get("attention") or [])
     if cold["configured"] and not d1_backup.get("cold_verified"):
         attention.append("dashboard_d1_backup_cold_pending")
+    if catalog_cold["status"] in {"attention", "invalid"}:
+        attention.append("artifact_cold_backlog")
     return {
         "schema_version": "wong-choi-storage-status/v1",
         "status": "attention" if attention else "ok",
         "attention": attention,
         "tiers": {"hot": hot, "warm": warm, "cold": cold},
-        "backups": {"dashboard_d1": d1_backup},
+        "backups": {
+            "dashboard_d1": d1_backup,
+            "catalog_artifacts": catalog_cold,
+        },
         "inventory": inventory,
         "inventory_repo": str(inventory_repo),
         "policy": {
@@ -192,6 +304,7 @@ def render_storage_telegram(payload: dict[str, Any]) -> str:
     warm = tiers.get("warm") or {}
     cold = tiers.get("cold") or {}
     d1 = ((payload.get("backups") or {}).get("dashboard_d1") or {})
+    catalog_cold = ((payload.get("backups") or {}).get("catalog_artifacts") or {})
     hot_disk = hot.get("disk") or {}
     lines = [
         f"💾 Wong Choi Storage：{payload.get('status')}",
@@ -200,6 +313,9 @@ def render_storage_telegram(payload: dict[str, Any]) -> str:
         f"COLD Drive：{cold.get('status')} · {cold.get('path', '未設定')}",
         f"D1 backup：{d1.get('status')} · age {d1.get('age_hours', 'N/A')}h · "
         f"WARM {'係' if d1.get('warm_verified') else '否'} · COLD {'係' if d1.get('cold_verified') else '否'}",
+        f"Artifact COLD：{catalog_cold.get('verified_artifacts', 0)}/"
+        f"{catalog_cold.get('known_artifacts', 0)} · "
+        f"{','.join(catalog_cold.get('providers') or []) or '未有provider proof'}",
     ]
     if payload.get("attention"):
         lines.append("留意：" + "、".join(payload["attention"]))

@@ -67,15 +67,21 @@ for name, label in (
         print(f"      {label}: {value:.2f} GiB")
 cold = ((payload.get("tiers") or {}).get("cold") or {})
 d1 = ((payload.get("backups") or {}).get("dashboard_d1") or {})
+catalog_cold = ((payload.get("backups") or {}).get("catalog_artifacts") or {})
 if d1.get("status") == "no_data":
     print("  ⚠️  Dashboard D1未有verified backup")
 elif d1.get("status") != "ok":
     print(f"  ⚠️  Dashboard D1 backup：{d1.get('status')}，age={d1.get('age_hours', 'N/A')}h，WARM={d1.get('warm_verified')}")
 else:
     print(f"  ✅ Dashboard D1 backup：age={d1.get('age_hours')}h，WARM verified")
-if not cold.get("configured"):
+if catalog_cold.get("status") == "ok":
+    providers = ",".join(catalog_cold.get("providers") or []) or "unknown"
+    print(f"  ✅ Artifact COLD：{catalog_cold.get('verified_artifacts')}/{catalog_cold.get('known_artifacts')} verified via {providers}")
+elif catalog_cold.get("known_artifacts"):
+    print(f"  ⚠️  Artifact COLD：{catalog_cold.get('verified_artifacts')}/{catalog_cold.get('known_artifacts')} verified")
+if not cold.get("configured") and catalog_cold.get("status") != "ok":
     print("  ⚠️  COLD Drive root未設定；外置碟目前只係一份copy，未可以批准刪本機原件")
-elif cold.get("status") != "available":
+elif cold.get("configured") and cold.get("status") != "available":
     print(f"  ⚠️  COLD Drive不可用：{cold.get('error') or 'unknown'}")
 PYEOF
 

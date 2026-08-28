@@ -16,6 +16,7 @@ description: Use when the user asks for central Wong Choi status, git/release/de
 - 想驗證控制資料可復原：用 `restore-drill --destination <全新路徑>`；永不覆寫既有目的地。
 - 想安全歸檔低頻資料：先用`archive-copy`，只會copy＋hash＋append manifest，唔會刪source；用`archive-restore`去全新目的地驗證，再用`archive-mirror`建立COLD第二副本。
 - Connector-backed COLD copy完成full download directory digest後，用`archive-remote-proof`記append-only provider／remote ID／canonical URL；hash唔等於WARM catalog會block。
+- `storage`要分開filesystem COLD root同provider-backed catalog coverage；Google Drive proof完整時唔准因local COLD root未設定而報「只有一份copy」。
 - Full-history research前用`corpus-audit --domain <domain>`；任何catalog已知artifact喺HOT同WARM都missing／corrupt會exit non-zero，唔准用縮細語料出結論。Tennis另用`--active-sqlite <tennis_wc.db>`檢查live DB integrity同row-count watermarks；archived snapshot只讀，永不可代替live DB。
 - 想保存改動：先 dry-run `release`，只傳今次明確 scope；禁止 `git add -A`。
 - 想改任何 domain prediction/scoring：轉返該 domain skill，中央層只記錄 evidence 同 promotion decision。
