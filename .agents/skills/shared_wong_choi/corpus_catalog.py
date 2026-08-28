@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import sqlite3
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -184,14 +185,14 @@ def resolve_catalog_artifacts(
     return report
 
 
-def catalog_meeting_locations(
+def catalog_directory_locations(
     *,
     catalog_root: Path | None = None,
     domain: str,
     artifact_classes: Iterable[str] = MEETING_ARTIFACT_CLASSES,
     strict: bool = True,
 ) -> list[tuple[str, Path]]:
-    """Return logical meeting names and resolved directories from the catalog."""
+    """Return logical artifact names and resolved directories from the catalog."""
     report = resolve_catalog_artifacts(
         catalog_root=catalog_root,
         domain=domain,
@@ -207,3 +208,142 @@ def catalog_meeting_locations(
         if path.is_dir():
             meetings.append((str(item.get("logical_name") or path.name), path))
     return meetings
+
+
+def catalog_meeting_locations(
+    *,
+    catalog_root: Path | None = None,
+    domain: str,
+    artifact_classes: Iterable[str] = MEETING_ARTIFACT_CLASSES,
+    strict: bool = True,
+) -> list[tuple[str, Path]]:
+    """Compatibility name for meeting-shaped directory artifacts."""
+    return catalog_directory_locations(
+        catalog_root=catalog_root,
+        domain=domain,
+        artifact_classes=artifact_classes,
+        strict=strict,
+    )
+
+
+def merged_directory_corpus(
+    primary_root: Path,
+    *,
+    domain: str,
+    artifact_classes: Iterable[str],
+    catalog_root: Path | None = None,
+) -> list[tuple[str, Path]]:
+    """Merge direct HOT children with catalog-backed directories by logical name."""
+    primary_root = primary_root.expanduser().resolve()
+    merged: dict[str, Path] = {}
+    try:
+        for path in sorted(primary_root.iterdir(), key=lambda item: item.name):
+            if path.is_dir():
+                merged.setdefault(path.name, path)
+    except OSError as exc:
+        raise CorpusCatalogError(f"primary corpus root is unavailable: {primary_root}: {exc}") from exc
+    for logical_name, path in catalog_directory_locations(
+        catalog_root=catalog_root,
+        domain=domain,
+        artifact_classes=artifact_classes,
+        strict=True,
+    ):
+        merged.setdefault(logical_name, path)
+    return [(name, merged[name]) for name in sorted(merged)]
+
+
+def _sqlite_readonly(path: Path) -> sqlite3.Connection:
+    return sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)
+
+
+def _sqlite_health(path: Path, tables: Iterable[str]) -> dict[str, Any]:
+    if not path.is_file():
+        raise CorpusCatalogError(f"SQLite database is unavailable: {path}")
+    try:
+        with _sqlite_readonly(path) as connection:
+            connection.execute("PRAGMA query_only = ON")
+            quick = [str(row[0]) for row in connection.execute("PRAGMA quick_check")]
+            if quick != ["ok"]:
+                raise CorpusCatalogError(f"SQLite quick_check failed: {path}: {quick}")
+            existing = {
+                str(row[0])
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type='table'"
+                )
+            }
+            counts = {
+                table: int(connection.execute(f'SELECT COUNT(*) FROM "{table}"').fetchone()[0])
+                for table in tables
+                if table in existing
+            }
+    except sqlite3.Error as exc:
+        raise CorpusCatalogError(f"SQLite audit failed: {path}: {exc}") from exc
+    return {"path": str(path), "quick_check": "ok", "counts": counts}
+
+
+def audit_active_sqlite_corpus(
+    active_database: Path,
+    *,
+    catalog_root: Path | None = None,
+    domain: str = "tennis",
+    snapshot_classes: Iterable[str] = ("migration-db-snapshots", "db-snapshot"),
+    monotonic_tables: Iterable[str] = ("matches", "match_results", "odds_snapshots"),
+) -> dict[str, Any]:
+    """Audit a live SQLite corpus without ever attaching an archived snapshot.
+
+    Snapshot databases are recovery/evidence copies.  They are opened read-only
+    for integrity and row-watermark checks, but are never returned as the active
+    database and can never silently replace it.
+    """
+    active_database = active_database.expanduser().resolve()
+    tables = tuple(monotonic_tables)
+    active = _sqlite_health(active_database, tables)
+    catalog = resolve_catalog_artifacts(
+        catalog_root=catalog_root,
+        domain=domain,
+        artifact_classes=snapshot_classes,
+        strict=True,
+    )
+    snapshot_paths: dict[Path, None] = {}
+    for item in catalog["artifacts"]:
+        raw = item.get("resolved")
+        if not raw:
+            continue
+        resolved = Path(str(raw)).expanduser().resolve()
+        candidates = [resolved] if resolved.is_file() else sorted(resolved.rglob("*.db"))
+        for candidate in candidates:
+            candidate = candidate.resolve()
+            if candidate == active_database:
+                raise CorpusCatalogError(
+                    "active Tennis database resolves to an archived snapshot"
+                )
+            snapshot_paths.setdefault(candidate, None)
+
+    snapshots = [_sqlite_health(path, tables) for path in snapshot_paths]
+    watermarks = {
+        table: max(
+            (int(snapshot["counts"].get(table, 0)) for snapshot in snapshots),
+            default=0,
+        )
+        for table in tables
+    }
+    regressions = {
+        table: {"active": int(active["counts"].get(table, 0)), "snapshot_max": minimum}
+        for table, minimum in watermarks.items()
+        if int(active["counts"].get(table, 0)) < minimum
+    }
+    if regressions:
+        raise CorpusCatalogError(
+            f"active Tennis database is behind an archived snapshot: {regressions}"
+        )
+    return {
+        "schema_version": "wong-choi-sqlite-corpus-audit/v1",
+        "status": "ok",
+        "domain": domain,
+        "active": active,
+        "snapshot_count": len(snapshots),
+        "snapshots": snapshots,
+        "watermarks": watermarks,
+        "catalog_status": catalog["status"],
+        "runtime_snapshot_substitution_allowed": False,
+    }

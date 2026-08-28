@@ -37,7 +37,7 @@
 - [ ] Research runner：固定 dataset/ruler、ablation、walk-forward、leakage、experiment report。
 - [x] Control tower foundation：Git／release／deployment／四線 run health／model stage／evidence／30日 SLO／Telegram approval；portfolio risk同research queue留Stage 5。
 - [x] Central Dashboard ownership：四線analysis同中央health/evidence projection；D1 `WC_LEDGER`保存實際投注，Dashboard永不做第五個scoring engine。
-- [ ] Storage durability cutover：Tennis 4.387 GB snapshots WARM copy／restore已過；D1 108 bets／30 settlements／30 audit live export、空DB restore、WARM同owner-only Google Drive COLD已過；AU／HKJC meeting reader已catalog-aware。尚欠Tennis COLD、NBA／Tennis data-shape reader同nightly production activation。
+- [ ] Storage durability cutover：Tennis四份snapshots共5.634 GB WARM copy／restore／integrity已過；active DB同snapshot watermarks無回退；D1 108 bets／30 settlements／30 audit live export、空DB restore、WARM同owner-only Google Drive COLD已過；AU／HKJC meeting reader同NBA day-folder reader已catalog-aware。尚欠Tennis COLD同nightly production activation。
 - [ ] Tennis maturity workstream（Stage 5首個consumer）：維持shadow；用固定untouched forward gate逐family判斷，唔用完成平台stage當作model promotion。
 
 ## Stage Review Protocol
@@ -57,3 +57,4 @@
 | 2026-08-27 | Stage 4D scope review | SSD只剩約22 GiB；外置APFS有約888 GiB；Tennis DB snapshots約2.9 GB；Dashboard已有D1/KV betting ledger；Tennis holdout ROI -6.61%、Brier輸市場 | Stage 4加入data durability同Central Dashboard ownership；Tennis bootstrap由production降為shadow，Stage 5以Tennis做首個research-platform consumer |
 | 2026-08-28 | Stage 4D live durability proof | Tennis三個DB snapshots 4.387 GB copy/hash/restore/SQLite全過；live D1 108 bets／30 settlements／30 audit export、空DB restore、WARM hash全過；nightly scheduler idempotency smoke全過 | WARM同D1 gates完成；HOT原件不刪；等COLD設定、production activation同multi-root readers先關閉Stage 4D |
 | 2026-08-28 | Stage 4D provider／corpus review | D1 owner-only Drive copy經full-download directory digest同WARM完全一致；Tennis真實4.387 GB HOT/WARM content audit通過；AU／HKJC reader接入catalog resolver，雙副本失聯會fail closed | D1 COLD gate完成；Tennis COLD仍pending；NBA／Tennis按各自SQLite／day-folder shape接入後先關閉multi-root gate |
+| 2026-08-29 | Stage 4D domain-shape review | NBA ML reader合併HOT／catalog-verified WARM settled-day；Tennis active DB同4份snapshots全部`quick_check=ok`，4690／5552／9503 counts不低snapshot watermark，snapshot不可代替live DB | Multi-root／SQLite data-shape gate engineering complete；Tennis model繼續shadow，不阻Stage 4結構完成；尚欠Tennis COLD、activation同runtime evidence |

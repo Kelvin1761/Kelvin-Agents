@@ -26,6 +26,7 @@ from shared_wong_choi.artifact_archive import (  # noqa: E402
 )
 from shared_wong_choi.corpus_catalog import (  # noqa: E402
     CorpusCatalogError,
+    audit_active_sqlite_corpus,
     resolve_catalog_artifacts,
 )
 from shared_wong_choi.dashboard_status import (  # noqa: E402
@@ -131,6 +132,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--domain", choices=("au", "hkjc", "tennis", "nba"), required=True
     )
     corpus_audit.add_argument("--artifact-class", action="append")
+    corpus_audit.add_argument("--active-sqlite", type=Path)
     corpus_audit.add_argument("--json", action="store_true")
     release = sub.add_parser("release")
     release.add_argument("--path", action="append", required=True)
@@ -332,12 +334,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command == "corpus-audit":
         try:
-            result = resolve_catalog_artifacts(
-                catalog_root=state_root / "storage" / "catalog",
-                domain=args.domain,
-                artifact_classes=args.artifact_class,
-                strict=True,
-            )
+            if args.active_sqlite:
+                if args.domain != "tennis":
+                    raise CorpusCatalogError(
+                        "--active-sqlite is currently defined only for Tennis"
+                    )
+                result = audit_active_sqlite_corpus(
+                    args.active_sqlite,
+                    catalog_root=state_root / "storage" / "catalog",
+                )
+            else:
+                result = resolve_catalog_artifacts(
+                    catalog_root=state_root / "storage" / "catalog",
+                    domain=args.domain,
+                    artifact_classes=args.artifact_class,
+                    strict=True,
+                )
         except CorpusCatalogError as exc:
             print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False))
             return 1

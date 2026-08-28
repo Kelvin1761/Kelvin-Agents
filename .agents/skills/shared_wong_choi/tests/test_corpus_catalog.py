@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -11,7 +12,9 @@ sys.path.insert(0, str(PACKAGE_ROOT.parent))
 from shared_wong_choi.artifact_archive import archive_copy  # noqa: E402
 from shared_wong_choi.corpus_catalog import (  # noqa: E402
     CorpusCatalogError,
+    audit_active_sqlite_corpus,
     catalog_meeting_locations,
+    merged_directory_corpus,
     resolve_catalog_artifacts,
 )
 
@@ -150,3 +153,101 @@ def test_hkjc_full_history_reader_merges_catalog_without_duplicate_meetings(
     meetings = review.hk_meeting_dirs([hot])
 
     assert meetings == [warm_only, hot_meeting]
+
+
+def _tennis_db(path: Path, rows: int) -> None:
+    with sqlite3.connect(path) as connection:
+        for table in ("matches", "match_results", "odds_snapshots"):
+            connection.execute(f"CREATE TABLE {table} (id INTEGER PRIMARY KEY)")
+            connection.executemany(
+                f"INSERT INTO {table}(id) VALUES (?)",
+                [(value,) for value in range(1, rows + 1)],
+            )
+
+
+def test_sqlite_corpus_audit_keeps_snapshots_read_only_and_checks_watermarks(
+    tmp_path: Path,
+) -> None:
+    hot = tmp_path / "hot"
+    hot.mkdir()
+    snapshot = hot / "tennis_snapshot.db"
+    _tennis_db(snapshot, 2)
+    warm = tmp_path / "warm"
+    warm.mkdir()
+    archive_copy(
+        snapshot,
+        warm_root=warm,
+        catalog_root=tmp_path / "catalog",
+        domain="tennis",
+        artifact_class="db-snapshot",
+        allowed_roots=[hot],
+    )
+    active = tmp_path / "tennis_wc.db"
+    _tennis_db(active, 3)
+
+    report = audit_active_sqlite_corpus(
+        active, catalog_root=tmp_path / "catalog"
+    )
+
+    assert report["status"] == "ok"
+    assert report["active"]["counts"]["matches"] == 3
+    assert report["watermarks"]["matches"] == 2
+    assert report["runtime_snapshot_substitution_allowed"] is False
+
+
+def test_sqlite_corpus_audit_blocks_rollback_and_snapshot_substitution(
+    tmp_path: Path,
+) -> None:
+    hot = tmp_path / "hot"
+    hot.mkdir()
+    snapshot = hot / "tennis_snapshot.db"
+    _tennis_db(snapshot, 3)
+    warm = tmp_path / "warm"
+    warm.mkdir()
+    archive_copy(
+        snapshot,
+        warm_root=warm,
+        catalog_root=tmp_path / "catalog",
+        domain="tennis",
+        artifact_class="db-snapshot",
+        allowed_roots=[hot],
+    )
+    behind = tmp_path / "tennis_wc.db"
+    _tennis_db(behind, 2)
+
+    with pytest.raises(CorpusCatalogError, match="behind an archived snapshot"):
+        audit_active_sqlite_corpus(behind, catalog_root=tmp_path / "catalog")
+    with pytest.raises(CorpusCatalogError, match="archived snapshot"):
+        audit_active_sqlite_corpus(snapshot, catalog_root=tmp_path / "catalog")
+
+
+def test_nba_named_directory_reader_merges_hot_and_warm(tmp_path: Path) -> None:
+    hot = tmp_path / "nba"
+    current = hot / "2026-10-22 NBA Analysis"
+    current.mkdir(parents=True)
+    archived = hot / "2026-10-21 NBA Analysis"
+    archived.mkdir()
+    (archived / "nba_game_data_BOS_NYK.json").write_text("{}\n", encoding="utf-8")
+    warm = tmp_path / "warm"
+    warm.mkdir()
+    result = archive_copy(
+        archived,
+        warm_root=warm,
+        catalog_root=tmp_path / "catalog",
+        domain="nba",
+        artifact_class="settled-day",
+        allowed_roots=[hot],
+    )
+    archived.rename(tmp_path / "approved-removal-simulation")
+
+    folders = merged_directory_corpus(
+        hot,
+        domain="nba",
+        artifact_classes=("settled-day", "analysis-day"),
+        catalog_root=tmp_path / "catalog",
+    )
+
+    assert folders == [
+        ("2026-10-21 NBA Analysis", Path(result["destination"])),
+        ("2026-10-22 NBA Analysis", current),
+    ]

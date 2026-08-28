@@ -40,8 +40,8 @@ from nba_ml_predictor import MLPropPredictor
 from pathlib import Path as _Path
 PROJECT_ROOT = _Path(__file__).resolve().parents[3]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
-from wongchoi_paths import NBA_ANALYSIS, NBA_ML_DATASET
-ARCHIVE_DIR = str(NBA_ANALYSIS)
+from wongchoi_paths import NBA_ML_DATASET
+from nba_corpus import nba_archive_folders
 DATASET_DIR = str(NBA_ML_DATASET)
 RESULTS_DIR = str(NBA_ML_DATASET / "results_brief")
 OUTPUT_DIR = str(NBA_ML_DATASET / "backtest")
@@ -81,10 +81,8 @@ def load_results_for_date(game_date):
 def find_archive_dates():
     """Find archive dates that have both nba_game_data and Results_Brief."""
     dates = set()
-    for entry in sorted(os.listdir(ARCHIVE_DIR)):
-        path = os.path.join(ARCHIVE_DIR, entry)
-        if not os.path.isdir(path):
-            continue
+    for _entry, path_obj in nba_archive_folders():
+        path = str(path_obj)
         has_data = any(f.startswith("nba_game_data_") or ("_data.json" in f and f.startswith("Game_"))
                        for f in os.listdir(path))
         if not has_data:
@@ -112,10 +110,8 @@ def evaluate_game(game_date, predictor):
 
     # Find archive folder for this date
     folder_path = None
-    for entry in sorted(os.listdir(ARCHIVE_DIR)):
-        path = os.path.join(ARCHIVE_DIR, entry)
-        if not os.path.isdir(path):
-            continue
+    for _entry, path_obj in nba_archive_folders():
+        path = str(path_obj)
         ff = [f for f in os.listdir(path) if f.startswith("nba_game_data_") or ("_data.json" in f and f.startswith("Game_"))]
         for fname in ff:
             fp = os.path.join(path, fname)

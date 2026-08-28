@@ -16,7 +16,7 @@ description: Use when the user asks for central Wong Choi status, git/release/de
 - 想驗證控制資料可復原：用 `restore-drill --destination <全新路徑>`；永不覆寫既有目的地。
 - 想安全歸檔低頻資料：先用`archive-copy`，只會copy＋hash＋append manifest，唔會刪source；用`archive-restore`去全新目的地驗證，再用`archive-mirror`建立COLD第二副本。
 - Connector-backed COLD copy完成full download directory digest後，用`archive-remote-proof`記append-only provider／remote ID／canonical URL；hash唔等於WARM catalog會block。
-- Full-history research前用`corpus-audit --domain <domain>`；任何catalog已知artifact喺HOT同WARM都missing／corrupt會exit non-zero，唔准用縮細語料出結論。
+- Full-history research前用`corpus-audit --domain <domain>`；任何catalog已知artifact喺HOT同WARM都missing／corrupt會exit non-zero，唔准用縮細語料出結論。Tennis另用`--active-sqlite <tennis_wc.db>`檢查live DB integrity同row-count watermarks；archived snapshot只讀，永不可代替live DB。
 - 想保存改動：先 dry-run `release`，只傳今次明確 scope；禁止 `git add -A`。
 - 想改任何 domain prediction/scoring：轉返該 domain skill，中央層只記錄 evidence 同 promotion decision。
 - 想批准高風險 release：跟 `references/01_release_and_approval.md`；approval 必須綁 immutable commit。
@@ -33,6 +33,7 @@ description: Use when the user asks for central Wong Choi status, git/release/de
 7. Dashboard係中央control tower；D1係實際投注ledger，append-only Evidence係模型證據，Dashboard唔准重算prediction。
 8. WARM／COLD搬檔必須copy/hash/restore/second-copy先可另行批准刪本機；外置碟offline唔准靜靜縮細研究語料。
 9. D1 backup只准remote SELECT/export；export期間row count變動要重試，local restore／integrity／foreign key／row count未全過唔准寫成功manifest。
+10. NBA full-history ML只可使用HOT目錄加catalog-verified WARM settled-day corpus；已知archive offline必須fail closed。
 
 ## Output Contract
 

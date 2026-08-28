@@ -65,3 +65,41 @@ def test_corpus_audit_returns_nonzero_when_catalog_is_incomplete(tmp_path, monke
         ]
     )
     assert code == 1
+
+
+def test_tennis_active_sqlite_corpus_audit_uses_live_database(tmp_path, monkeypatch):
+    active = tmp_path / "tennis_wc.db"
+    active.touch()
+    captured = {}
+
+    def audit(database, **kwargs):
+        captured["database"] = database
+        captured.update(kwargs)
+        return {"status": "ok", "runtime_snapshot_substitution_allowed": False}
+
+    monkeypatch.setattr(cli, "audit_active_sqlite_corpus", audit)
+    code = cli.main(
+        [
+            "--repo", str(tmp_path),
+            "--state-root", str(tmp_path / "state"),
+            "corpus-audit", "--domain", "tennis",
+            "--active-sqlite", str(active), "--json",
+        ]
+    )
+
+    assert code == 0
+    assert captured["database"] == active
+    assert captured["catalog_root"] == tmp_path / "state" / "storage" / "catalog"
+
+
+def test_active_sqlite_is_rejected_for_non_tennis_domain(tmp_path):
+    code = cli.main(
+        [
+            "--repo", str(tmp_path),
+            "--state-root", str(tmp_path / "state"),
+            "corpus-audit", "--domain", "nba",
+            "--active-sqlite", str(tmp_path / "nba.db"), "--json",
+        ]
+    )
+
+    assert code == 1
