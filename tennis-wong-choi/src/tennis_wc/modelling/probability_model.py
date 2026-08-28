@@ -125,8 +125,39 @@ def _component_probabilities(feature_snapshot: dict) -> list[Component]:
     b_surface_elo = _value(b.get("surface_elo"))
     a_overall_elo = _value(a.get("overall_elo"))
     b_overall_elo = _value(b.get("overall_elo"))
+    # An unknown court is not a court. When `match_context.surface` is missing,
+    # `get_surface_elo` returns the OVERALL rating as its fallback and
+    # `_elo_as_of` does the same, so `surface_elo` silently equals
+    # `overall_elo`: the surface component keeps its full backbone weight while
+    # carrying no information the overall component does not already have, and
+    # nothing anywhere says so.
+    #
+    # Measured 2026-08-29 on the 866 graded, tier-bettable, complete-input
+    # fixtures -- the population a bet is actually chosen from -- after folding
+    # `tournament_levels.surface` to one case and recovering surfaces from
+    # sibling events:
+    #
+    #     hard      n=318  Delta logloss  +0.0157  [-0.0231, +0.0525]  level
+    #     clay      n=302                 +0.0318  [+0.0030, +0.0618]  MARKET WINS
+    #     grass     n=202                 -0.0172  [-0.0687, +0.0289]  level
+    #     unknown   n= 44                   too few to measure
+    #
+    # A first pass at this read the deficit as sitting entirely on unknown
+    # surface (+0.0667). It did not: the buckets had been split by string case
+    # and 153 of the 866 fixtures were mis-sorted. The remaining deficit is on
+    # CLAY, which is a modelling question and not a missing input.
+    #
+    # The warning is still warranted, on the mechanism: an unknown court makes
+    # `surface_elo` fall back to the overall rating, so this component keeps its
+    # backbone weight while duplicating one already in the blend.
+    surface = feature_snapshot.get("match_context", {}).get("surface")
+    if isinstance(surface, dict):
+        surface = surface.get("value")
+    surface_missing = not str(surface or "").strip()
     surface_elo_warnings = tuple(
-        sorted(set([*_provenance_warnings(a.get("surface_elo")), *_provenance_warnings(b.get("surface_elo"))]))
+        sorted(set([*_provenance_warnings(a.get("surface_elo")),
+                    *_provenance_warnings(b.get("surface_elo")),
+                    *(("missing_surface",) if surface_missing else ())]))
     )
     overall_elo_warnings = tuple(
         sorted(set([*_provenance_warnings(a.get("overall_elo")), *_provenance_warnings(b.get("overall_elo"))]))

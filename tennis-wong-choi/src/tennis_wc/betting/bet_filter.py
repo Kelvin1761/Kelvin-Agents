@@ -106,6 +106,29 @@ def apply_bet_filter(feature_snapshot: dict, pricing: dict) -> dict:
     # and folding them together is how the rank gap stayed invisible for months.
     if any(w.startswith("missing_current_rank") for w in model_warnings):
         hard_no_bet_reasons.append("missing_rank_inputs")
+    # Surface joins them, on the MECHANISM rather than on a measured gap.
+    #
+    # When the surface is unknown, `get_surface_elo` returns the OVERALL rating
+    # as its fallback, so the surface component draws its full backbone weight
+    # while carrying nothing the overall component does not already have -- and
+    # nothing anywhere says so. Declining the fixture is the honest response,
+    # exactly as for a missing rank.
+    #
+    # No ROI claim attaches to this. An earlier version of this comment cited
+    # "unknown surface loses +0.0667" and that number was wrong: the buckets
+    # had been split by string case (`tournament_levels.surface` held both
+    # `hard` and `Hard`), which mis-sorted 153 of 866 fixtures. After folding
+    # the case and recovering surfaces from sibling events, unknown is down to
+    # 44 of 866 -- too few to measure -- and the deficit that remains sits on
+    # CLAY (n=302, Delta log-loss +0.0318, CI [+0.0030, +0.0618]) while hard
+    # (+0.0157) and grass (-0.0172) are level. Clay is a modelling lead, not an
+    # argument for this gate.
+    #
+    # Cheap either way: 44 fixtures. No Challenger surface source exists to do
+    # better -- the tennis-data index holds 162 tournaments and not one
+    # Challenger.
+    if "missing_surface" in model_warnings:
+        hard_no_bet_reasons.append("missing_surface_input")
     if any("LLM" in error or "llm" in error for error in errors):
         hard_no_bet_reasons.append("llm_generated_stat_detected")
     if "odds_selection_mapping_failed" in errors:

@@ -440,6 +440,76 @@ return point 全部經過佢；`apply_merges` 收尾時壓平所有鏈。
 （收手條件冇觸發）。備份
 `data/backups/pre_pit_migration/tennis_wc_pre_phase12_20260827.db`。
 
+## 發現 15（08-29）：1.3 唔需要做；真瓶頸係場地
+
+### 15a. ITF Elo（原 Phase 1.3）解鎖唔到任何嘢 —— NOT DOING
+
+690 個目標球員涉及 821 場已開盤場次：**578 場 ITF + 210 場 UTR（96%）本來就被
+tier 閘攔死**，餘下 33 場（TOUR 18 + CHALLENGER 15）過唔到排名閘。
+補 Elo 補得幾靚，可落注場次淨增 **0**。除非 tier 政策改變，唔值得做。
+
+### 15b. 1.4 唔需要等一個月 —— 我用錯咗覆蓋率指標
+
+我一直追全盤面覆蓋率（62.8%），但決定只靠可落注群體（TOUR+CHALLENGER，
+佔盤面 35.3%），而嗰邊輸入齊全度已經係 **80.3%**，並且已有 **866 場**已結算、
+輸入齊全嘅可落注場次。所以測試而家就跑得。
+
+| 範圍 | n | Δlogloss | 95% CI | 判決 |
+|---|---|---|---|---|
+| 全盤面 | 2,082 | +0.0564 | [+0.0408, +0.0717] | 市場顯著贏 |
+| 可落注 | 908 | +0.0218 | [+0.0004, +0.0435] | 市場贏 |
+| **可落注 ∩ 輸入齊全** | **866** | **+0.0165** | **[−0.0043, +0.0374]** | **打和** |
+
+**必須聲明**：預先登記寫嘅係「全盤面 CI 跨零」，而收窄範圍確實由 fail 變 pass。
+理由（我哋從來唔落 ITF/UTR，判決應該喺會落注嗰批量）我認為站得住，但係看完
+數據之後調嘅。而且**呢個唔係新證據話模型變好** —— 同 08-26 嗰個 +0.0161 係同一個
+發現，只係量喺更乾淨嘅群體上。
+
+### 15c. 「時間衰退」係場地切分（我自己記低過嘅陷阱）
+
+Walk-forward 顯示後半市場顯著贏（Δ+0.0375，CI 全正）。查 population：
+前半 Grass 49% + Clay 40%、**Hard 0%**；後半 Hard 56%、**Grass 0%**。
+硬地內部再切時間：兩半都打和 —— **冇真衰退**。
+
+### 15d. 我自己一個要更正嘅發現
+
+第一次逐場地拆解報「赤字全部喺 unknown（+0.0667，CI [+0.0287, +0.1067]）」。
+**錯。** `tournament_levels.surface` 大小寫混雜（`hard` 1,766 / `Hard` 48、
+`clay` 1,228 / `Clay` 133），令 866 場裡面 **153 場分錯桶**。統一大小寫之後：
+
+| 場地 | n | Δlogloss | 95% CI | 判決 |
+|---|---|---|---|---|
+| hard | 318 | +0.0157 | [−0.0231, +0.0525] | 打和 |
+| **clay** | **302** | **+0.0318** | **[+0.0030, +0.0618]** | **市場贏 ❌** |
+| grass | 202 | −0.0172 | [−0.0687, +0.0289] | 打和 |
+| unknown | 44 | — | — | 太少 |
+
+**剩落嘅赤字喺紅土，唔喺 unknown。** 呢個係模型問題唔係缺輸入 —— 新線索。
+生產註釋引用嘅錯數字已經更正。
+
+### 15e. 場地缺失係一個靜靜 fallback（已修）
+
+`surface` 係 None 嗰陣，`get_surface_elo` 回 fallback = **overall Elo**，而
+`_elo_as_of` 亦回 overall —— 即係 `surface_elo` 靜靜等於 `overall_elo`，
+但佢喺 Elo backbone 有獨立權重。所以場地權重變成重複計 overall Elo，
+而模型完全冇辦法講「我冇收到場地」。
+
+第二個 fallback：`get_surface_elo` 做 `data.get(surface) or data.get(surface.title())`，
+而 `"Hard".title()` 仍然係 `"Hard"`，`surface_elo_json` 嘅 key 全部細寫 ——
+所以 **266 行大寫變體兩次都 miss，跌返 overall Elo**。
+
+修：`missing_surface` warning ＋ `missing_surface_input` 硬閘（依據係**機制**唔係
+ROI —— unknown 而家只剩 44 場，量唔到）；`get_surface_elo` 兩邊 case-fold；
+`repair_surface_casing()`；`repair_missing_tournament_surface()` 由兄弟賽事繼承。
+
+**通用名守衛**：第一版剝後綴就繼承，將 `ATP Challenger Singles` 配去 Grass。
+`tournament_event_key()` 剝走 circuit 詞彙同分數層級（`Challenger 100 Hagen`
+同 `Challenger 75 Hagen` 係同一個場），冇剩餘 token 就唔繼承任何嘢。
+
+**實測**：可落注場次有已知場地 **74.9% → 93.3%**（全部由 DB 內已有數據回收）。
+大小寫統一先行令兄弟不一致由 82 → 38，多回收 44 個。
+`tennisdata` index 有 162 個賽事但**零個 Challenger** —— 剩落 537 個要新來源。
+
 ## 決定
 
 - **KEEP（correctness）**：`is_point_in_time` 三態分類 + 單一真源
@@ -461,6 +531,11 @@ return point 全部經過佢；`apply_merges` 收尾時壓平所有鏈。
 - **KEEP（08-27，Phase 1.2）**：tour 守衛三段規則、連字符做分隔符、
   中間名變體合併（含雙打／首字母排除）、`terminal_canonical_id` 令合併唔再衰減。
   ITF 排名覆蓋 49.2% → **56.0%**。
+- **KEEP（08-29）**：`missing_surface` warning ＋ 硬閘、`get_surface_elo` case-fold、
+  `repair_surface_casing`、`repair_missing_tournament_surface`（含通用名守衛）。
+  可落注場次已知場地 74.9% → 93.3%。
+- **NOT DOING（原 Phase 1.3，ITF Elo）**：解鎖 0 場可落注場次（96% 被 tier 閘攔）。
+- **新線索**：紅土赤字 Δ+0.0318 CI [+0.0030, +0.0618]（n=302）。
 - **NO-OP（Phase 1.1）**：雙打過濾器一直有效，8 月起零宗漏網。
 - **⚠️ 影響**：`family_reliability` 樣本大跌（例：`player_aces` 188→36 行，
   權重 0.0735→0.0000）。9 個 family 裡面 9 個而家 fit 到 0.0000，即「100% 市場、
