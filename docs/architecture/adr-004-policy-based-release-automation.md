@@ -25,7 +25,13 @@ verifier／installer／deploy或unexpected exception失敗會逐個deduplicated 
 退回舊commit；`sb_archive_meeting_ids.json`做union而runtime值優先。Rollback前再查dirty
 paths，任何unrelated concurrent write會fail closed而唔reset，原錯誤同rollback結果一齊寫
 immutable event／Telegram。真git fast-forward→failure→rollback、mapping conflict同concurrent
-write三條測試已覆蓋；未經新release SHA批准前仍只係candidate，唔當production已生效。
+write三條測試已覆蓋。Activation而家亦會喺每個allowlisted installer前做外部狀態
+snapshot；後續installer／deploy／verifier失敗時，先用candidate版本installer restore launchd
+plist，再退回Git SHA。統一runtime installer只切HKJC、NBA、Tennis同Central；AU poller係
+approval caller所以保持loaded，並先驗證佢已指向同一production checkout。Tennis只切versioned
+code，現有SQLite／logs／Google Drive output唔搬唔刪。read-only verifier會逐個installed plist
+同loaded state核對，任何一條未aligned即rollback。未經取代`c595aa10b314`嘅新release SHA
+Telegram批准前，以上仍只係candidate，唔當production已生效。
 
 ## Trade-offs
 

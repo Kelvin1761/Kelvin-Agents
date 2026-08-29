@@ -12,12 +12,22 @@
 
   <key>ProgramArguments</key>
   <array>
-    <string>__PROJECT_DIR__/.venv/bin/python</string>
+    <string>/usr/bin/python3</string>
     <string>__PROJECT_DIR__/scripts/tennis_card_recovery.py</string>
   </array>
 
   <key>WorkingDirectory</key>
   <string>__PROJECT_DIR__</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>DATABASE_URL</key>
+    <string>__DATABASE_URL__</string>
+    <key>TENNIS_LOG_DIR</key>
+    <string>__TENNIS_LOG_DIR__</string>
+    <key>TENNIS_ANALYSIS_OUTPUT_ROOT</key>
+    <string>__TENNIS_ANALYSIS_OUTPUT_ROOT__</string>
+  </dict>
 
   <key>StartCalendarInterval</key>
   <array>

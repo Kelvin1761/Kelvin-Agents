@@ -337,3 +337,94 @@ def test_forward_sync_and_rollback_union_runtime_mapping(tmp_path: Path) -> None
         "candidate_only": 2,
         "runtime_only": 3,
     }
+
+
+def test_deploy_failure_restores_installer_state_before_git_rollback(
+    tmp_path: Path, monkeypatch
+) -> None:
+    remote = tmp_path / "remote.git"
+    repo = tmp_path / "repo"
+    production = tmp_path / "production"
+    external_state = tmp_path / "installed-runtime.txt"
+    state = tmp_path / "state"
+    git(tmp_path, "init", "--bare", str(remote))
+    git(tmp_path, "clone", str(remote), str(repo))
+    git(repo, "config", "user.name", "Installer Rollback Test")
+    git(repo, "config", "user.email", "wc@example.test")
+    gate = repo / "檢查.sh"
+    gate.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    deploy = repo / "deploy.sh"
+    deploy.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    os.chmod(gate, 0o755)
+    os.chmod(deploy, 0o755)
+    git(repo, "add", ".")
+    git(repo, "commit", "-m", "base")
+    git(repo, "branch", "-M", "main")
+    git(repo, "push", "-u", "origin", "main")
+    base = git(repo, "rev-parse", "HEAD")
+    git(tmp_path, "clone", str(remote), str(production))
+    external_state.write_text("old\n", encoding="utf-8")
+
+    installer = (
+        repo
+        / ".agents/skills/central_wong_choi/install_production_runtime.sh"
+    )
+    installer.parent.mkdir(parents=True)
+    installer.write_text(
+        "#!/bin/zsh\n"
+        "set -eu\n"
+        f"STATE='{external_state}'\n"
+        "case \"${1:-}\" in\n"
+        "  --snapshot) mkdir -p \"$2\"; cp \"$STATE\" \"$2/state\"; exit 0;;\n"
+        "  --restore) cp \"$2/state\" \"$STATE\"; exit 0;;\n"
+        "  --status) exit 0;;\n"
+        "esac\n"
+        "print -r -- 'candidate' > \"$STATE\"\n",
+        encoding="utf-8",
+    )
+    os.chmod(installer, 0o755)
+    deploy.write_text("#!/bin/sh\nexit 9\n", encoding="utf-8")
+    release = prepare_release(
+        repo,
+        paths=[
+            str(installer.relative_to(repo)),
+            "deploy.sh",
+        ],
+        message="feat: transactional runtime installer",
+        state_root=state / "releases",
+        notify=False,
+    )
+    approve_release(
+        repo,
+        state,
+        selector=release["commit"][:12],
+        actor="telegram:authorised-chat",
+        notify=False,
+    )
+    monkeypatch.setattr(
+        "shared_wong_choi.release_activation.verify_deployment", _verify
+    )
+
+    with pytest.raises(ReleaseError, match="rollback complete"):
+        activate_release(
+            repo,
+            state,
+            selector=release["commit"][:12],
+            actor="telegram:authorised-chat",
+            production_roots={
+                name: production for name in ("au", "hkjc", "nba", "tennis")
+            },
+            notify=False,
+        )
+
+    assert external_state.read_text(encoding="utf-8") == "old\n"
+    assert git(production, "rev-parse", "HEAD") == base
+    events = ReleaseEventStore(state / "release-events").list(release["release_id"])
+    failure = next(item for item in events if item["event_type"] == "activation_failed")
+    assert failure["detail"]["external_rollback"] == [
+        {
+            "path": ".agents/skills/central_wong_choi/install_production_runtime.sh",
+            "status": "restored",
+        }
+    ]
+    assert failure["detail"]["external_rollback_errors"] == []

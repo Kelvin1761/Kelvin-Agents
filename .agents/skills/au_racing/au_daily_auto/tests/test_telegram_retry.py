@@ -223,6 +223,18 @@ class RetryGuardTests(unittest.TestCase):
         bootstrap.assert_not_called()
         self.assertEqual([method for method, _params in calls], ["getUpdates"])
 
+    def test_handoff_can_share_production_telegram_offset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shared = Path(tmp) / "telegram-offset.json"
+            with unittest.mock.patch.dict(
+                B.os.environ,
+                {"WC_TELEGRAM_OFFSET_FILE": str(shared)},
+                clear=False,
+            ):
+                B.save_offset(88)
+                self.assertEqual(B.load_offset(), 88)
+            self.assertEqual(shared.read_text(encoding="utf-8"), '{"offset": 88}')
+
     def test_approval_calls_fixed_api_with_strict_commit_only(self):
         result = {
             "status": "merged",

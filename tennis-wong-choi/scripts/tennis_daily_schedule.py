@@ -62,7 +62,11 @@ ARCHIVE_DIR = ANTIGRAVITY_DIR / "Archieve Tennis Analysis"
 # interleaved with the real run history. A record that tests write into is not
 # a record you can diagnose from.
 LOG_DIR = Path(os.environ.get("TENNIS_LOG_DIR") or (PROJECT_DIR / "data" / "logs"))
-PYTHON = PROJECT_DIR / ".venv" / "bin" / "python"
+_VENV_PYTHON = PROJECT_DIR / ".venv" / "bin" / "python"
+PYTHON = Path(
+    os.environ.get("TENNIS_PYTHON_BIN")
+    or (_VENV_PYTHON if _VENV_PYTHON.exists() else sys.executable)
+)
 DASHBOARD_SETTLEMENT = (
     PROJECT_DIR.parent / "Horse_Racing_Dashboard" / "settle_dashboard_bets.py"
 )

@@ -10,6 +10,7 @@ from pathlib import Path
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE_ROOT.parent))
 
+from shared_wong_choi import central_status  # noqa: E402
 from shared_wong_choi.central_status import collect_status, render_telegram  # noqa: E402
 
 
@@ -90,13 +91,25 @@ def test_status_reports_git_runs_releases_and_evidence(tmp_path: Path) -> None:
     assert "待批准：1 個 · Telegram /approve abcdef123456" in message
 
 
-def test_dirty_production_checkout_is_visible(tmp_path: Path) -> None:
+def test_dirty_production_checkout_is_visible(tmp_path: Path, monkeypatch) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
     initialise_repo(repo)
     production = tmp_path / "production"
     git(tmp_path, "clone", str(tmp_path / "remote.git"), str(production))
     (production / "README.md").write_text("dirty\n", encoding="utf-8")
+    seen: dict[str, Path] = {}
+
+    def fake_runtime(_roots, *, control_root, **_kwargs):
+        seen["control_root"] = control_root
+        return {
+            "status": "attention",
+            "domains": {"au": {"status": "attention"}},
+            "central": {"status": "attention", "labels": []},
+            "attention": ["runtime_launchd_not_aligned:au"],
+        }
+
+    monkeypatch.setattr(central_status, "collect_runtime_alignment", fake_runtime)
 
     result = collect_status(
         repo,
@@ -107,4 +120,7 @@ def test_dirty_production_checkout_is_visible(tmp_path: Path) -> None:
 
     assert "production_checkout_not_clean:au" in result["attention"]
     assert result["git"]["production"]["au"]["dirty_paths"] == ("README.md",)
+    assert "runtime_launchd_not_aligned:au" in result["attention"]
+    assert seen["control_root"] == production.resolve()
     assert "Production：AU" in render_telegram(result)
+    assert "Automation：AU ❌" in render_telegram(result)

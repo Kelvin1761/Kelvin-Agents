@@ -82,7 +82,7 @@ def test_activation_plan_marks_dashboard_and_launchd_installer() -> None:
     assert plan["production_sync_domains"] == ["nba"]
 
 
-def test_activation_plan_allowlists_central_durability_installer() -> None:
+def test_central_durability_installer_alone_requires_manual_activation() -> None:
     plan = activation_plan(
         [
             ".agents/skills/central_wong_choi/install_macos_launchd.sh",
@@ -90,8 +90,40 @@ def test_activation_plan_allowlists_central_durability_installer() -> None:
         ]
     )
 
-    assert plan["manual_required"] is False
-    assert plan["installers"] == [
-        ".agents/skills/central_wong_choi/install_macos_launchd.sh"
-    ]
+    assert plan["manual_required"] is True
+    assert plan["installers"] == []
     assert plan["production_sync_domains"] == ["au"]
+
+
+def test_unified_runtime_installer_consumes_domain_launchd_cutover() -> None:
+    unified = ".agents/skills/central_wong_choi/install_production_runtime.sh"
+    plan = activation_plan(
+        [
+            unified,
+            ".agents/skills/central_wong_choi/install_macos_launchd.sh",
+            ".agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh",
+            ".agents/skills/nba/nba_daily_auto/install_macos_launchd.sh",
+            "tennis-wong-choi/scripts/install_macos_launchd.sh",
+            "tennis-wong-choi/launchd/com.antigravity.tennis-wong-choi.card.plist.template",
+        ]
+    )
+
+    assert plan["production_sync_domains"] == ["au", "hkjc", "nba", "tennis"]
+    assert plan["installers"] == [unified]
+    assert plan["manual_required"] is False
+
+
+def test_unified_runtime_installer_does_not_consume_au_or_unrelated_installer() -> None:
+    plan = activation_plan(
+        [
+            ".agents/skills/central_wong_choi/install_production_runtime.sh",
+            ".agents/skills/au_racing/au_daily_auto/install_macos_launchd.sh",
+            "ops/install_macos_launchd.sh",
+        ]
+    )
+
+    assert plan["manual_required"] is True
+    assert plan["manual_reasons"] == [
+        "launchd_install:.agents/skills/au_racing/au_daily_auto/install_macos_launchd.sh",
+        "launchd_install:ops/install_macos_launchd.sh",
+    ]

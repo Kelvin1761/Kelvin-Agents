@@ -26,7 +26,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 LOG_DIR = HERE / "logs"
-OFFSET_FILE = LOG_DIR / "telegram_offset.json"
+DEFAULT_OFFSET_FILE = LOG_DIR / "telegram_offset.json"
 RETRY_LOG = LOG_DIR / "retry-from-telegram.out"
 HKJC_ANALYSIS_LOG = LOG_DIR / "hkjc-analysis-from-telegram.out"
 HKJC_REFLECT_LOG = LOG_DIR / "hkjc-reflector-from-telegram.out"
@@ -762,15 +762,17 @@ def _record_unknown(chat: dict, text: str) -> None:
 
 
 def load_offset() -> int:
+    path = Path(os.environ.get("WC_TELEGRAM_OFFSET_FILE") or DEFAULT_OFFSET_FILE)
     try:
-        return int(json.loads(OFFSET_FILE.read_text(encoding="utf-8"))["offset"])
+        return int(json.loads(path.read_text(encoding="utf-8"))["offset"])
     except (OSError, ValueError, KeyError):
         return 0
 
 
 def save_offset(v: int) -> None:
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    OFFSET_FILE.write_text(json.dumps({"offset": v}), encoding="utf-8")
+    path = Path(os.environ.get("WC_TELEGRAM_OFFSET_FILE") or DEFAULT_OFFSET_FILE)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"offset": v}), encoding="utf-8")
 
 
 def main() -> int:

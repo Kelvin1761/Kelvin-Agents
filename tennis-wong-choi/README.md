@@ -105,6 +105,11 @@ The default provider is `mock`, so no paid API keys are required.
 
 ## Scheduled Telegram Messages
 
+macOS launchd可由任何approved code checkout安裝，而毋須外置launcher。安裝時用
+`WC_TENNIS_RUNTIME_ROOT`指向現有live data checkout；生成嘅plist會由approved checkout
+執行versioned scripts，但`DATABASE_URL`、logs同`TENNIS_ANALYSIS_OUTPUT_ROOT`仍留喺指定
+runtime／Google Drive位置。Installer只改scheduler設定，唔搬或刪除SQLite同data。
+
 The 09:00 Sydney same-day card sends two separate messages after a successful
 analysis:
 

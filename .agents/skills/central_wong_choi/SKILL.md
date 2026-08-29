@@ -13,6 +13,7 @@ description: Use when the user asks for central Wong Choi status, git/release/de
 - 想分開睇 git、models、evidence、30日可靠性、Dashboard或storage：用對應 `git`、`models`、`evidence`、`slo`、`dashboard`、`storage` subcommand。
 - 想立即做Dashboard D1 verified backup：用`dashboard-backup`；只讀remote D1，必須stable前後row counts、空SQLite restore、hash同WARM gate全過。用`dashboard-backup-status`睇freshness。
 - 想裝每晚Central durability：release activation只可自動執行allowlisted `install_macos_launchd.sh`；每日悉尼03:20，同日verified snapshot會idempotent skip。
+- 想將四線切去同一approved checkout：只可經allowlisted `install_production_runtime.sh`；佢會保留AU poller、transactional snapshot／restore HKJC、NBA、Tennis、Central plists，再以read-only verifier證明全部loaded及對齊。Tennis code切去production checkout，但live DB／logs／Google Drive output留喺原位。
 - 想驗證控制資料可復原：用 `restore-drill --destination <全新路徑>`；永不覆寫既有目的地。
 - 想安全歸檔低頻資料：先用`archive-copy`，只會copy＋hash＋append manifest，唔會刪source；用`archive-restore`去全新目的地驗證，再用`archive-mirror`建立COLD第二副本。
 - Connector-backed COLD copy完成full download directory digest後，用`archive-remote-proof`記append-only provider／remote ID／canonical URL；hash唔等於WARM catalog會block。
@@ -22,6 +23,7 @@ description: Use when the user asks for central Wong Choi status, git/release/de
 - 想改任何 domain prediction/scoring：轉返該 domain skill，中央層只記錄 evidence 同 promotion decision。
 - 想批准高風險 release：跟 `references/01_release_and_approval.md`；approval 必須綁 immutable commit。
 - Telegram governance writes只可由configured chat經authenticated dispatcher呼叫：`/approve SHA`做recheck／merge／activate；activation成功、四線同SHA、已入main、registry空白先可`/bootstrap_models SHA`做一次baseline migration。
+- 首次production bot未有`/approve`時，只可用`bootstrap_telegram_approval.sh SHA`暫停舊poller五分鐘，由candidate bot共用同一offset接收一次immutable approval；無論成功、失敗或timeout都要restore production poller。
 - 想判斷 model candidate：跟 `references/02_evidence_and_model_governance.md`，再讀該 domain evaluation contract。
 
 ## Hard Rules
@@ -37,6 +39,7 @@ description: Use when the user asks for central Wong Choi status, git/release/de
 9. WARM／COLD搬檔必須copy/hash/restore/second-copy先可另行批准刪本機；外置碟offline唔准靜靜縮細研究語料。
 10. D1 backup只准remote SELECT/export；export期間row count變動要重試，local restore／integrity／foreign key／row count未全過唔准寫成功manifest。
 11. NBA full-history ML只可使用HOT目錄加catalog-verified WARM settled-day corpus；已知archive offline必須fail closed。
+12. Runtime status必須讀已安裝launchd plist及loaded state，唔可以用repo入面template或「installer曾經成功」代替；legacy scheduler仍active、domain run進行中或Tennis SQLite quick-check失敗一律block cutover。
 
 ## Output Contract
 

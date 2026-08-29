@@ -55,9 +55,12 @@ _DEPLOYMENT_MARKERS = (
     "cloudflare_deploy_hook.py",
 )
 
+_PRODUCTION_RUNTIME_INSTALLER = (
+    ".agents/skills/central_wong_choi/install_production_runtime.sh"
+)
 _APPROVED_ACTIVATION_INSTALLERS = frozenset(
     {
-        ".agents/skills/central_wong_choi/install_macos_launchd.sh",
+        _PRODUCTION_RUNTIME_INSTALLER,
     }
 )
 
@@ -135,6 +138,7 @@ def activation_plan(paths: Iterable[str]) -> dict:
     dashboard = False
     manual_reasons: list[str] = []
     installers: list[str] = []
+    unified_runtime = _PRODUCTION_RUNTIME_INSTALLER in normalised
     for path in normalised:
         lowered = path.lower()
         if ".agents/skills/au_racing/" in lowered:
@@ -155,14 +159,25 @@ def activation_plan(paths: Iterable[str]) -> dict:
             domains.update(("au", "hkjc", "tennis", "nba"))
         if ".agents/skills/central_wong_choi/" in lowered:
             domains.add("au")
+        if path == _PRODUCTION_RUNTIME_INSTALLER:
+            domains.update(("au", "hkjc", "tennis", "nba"))
         if lowered.startswith("horse_racing_dashboard/") or lowered == "deploy.sh":
             dashboard = True
         if path in _APPROVED_ACTIVATION_INSTALLERS:
-            installers.append(path)
+            if not unified_runtime or path == _PRODUCTION_RUNTIME_INSTALLER:
+                installers.append(path)
         elif "install_macos_launchd.sh" in lowered or lowered.endswith(".plist"):
             # A plist belonging to an allowlisted installer is data consumed by
             # that installer, not a second manual action.
-            if not (
+            consumed_by_unified = unified_runtime and path.startswith(
+                (
+                    ".agents/skills/central_wong_choi/",
+                    ".agents/skills/hkjc_racing/hkjc_daily_auto/",
+                    ".agents/skills/nba/nba_daily_auto/",
+                    "tennis-wong-choi/",
+                )
+            )
+            if not consumed_by_unified and not (
                 path.startswith(".agents/skills/central_wong_choi/launchd/")
                 and ".agents/skills/central_wong_choi/install_macos_launchd.sh"
                 in normalised

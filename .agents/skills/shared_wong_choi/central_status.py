@@ -16,6 +16,7 @@ from .release_activation import EXPECTED_MUTABLE_PATHS
 from .release_events import ReleaseEventStore, effective_status
 from .release_manager import GitStatus, ReleaseError, git_status
 from .reliability import collect_reliability
+from .runtime_launchd import collect_runtime_alignment
 from .storage_status import collect_storage_status
 
 
@@ -166,6 +167,8 @@ def collect_status(
     *,
     production_roots: Mapping[str, Path] | None = None,
     now: datetime | None = None,
+    launch_agents_root: Path | None = None,
+    probe_launchd: bool = True,
 ) -> dict[str, Any]:
     """Collect status without changing git, model, scheduler or deployment state."""
     repo_root = repo_root.expanduser().resolve()
@@ -188,6 +191,25 @@ def collect_status(
     reliability = collect_reliability(state_root, now=now)
     dashboard = collect_dashboard_status(repo_root, state_root)
     storage = collect_storage_status(repo_root, state_root)
+    runtime_control_root = (
+        Path((production_roots or {}).get("au", repo_root)).expanduser().resolve()
+    )
+    runtime = (
+        collect_runtime_alignment(
+            production_roots or {},
+            control_root=runtime_control_root,
+            launch_agents_root=launch_agents_root,
+            probe_loaded=probe_launchd,
+        )
+        if production_roots
+        else {
+            "schema_version": "wong-choi-runtime-launchd/v1",
+            "status": "not_configured",
+            "domains": {},
+            "central": {"status": "not_configured", "labels": []},
+            "attention": [],
+        }
+    )
 
     attention: list[str] = []
     if primary.get("status") not in {"clean", "clean_runtime_state"}:
@@ -204,6 +226,7 @@ def collect_status(
         attention.extend(dashboard["attention"])
     if storage["status"] != "ok":
         attention.extend(storage["attention"])
+    attention.extend(runtime.get("attention") or [])
     for name, checkout in production.items():
         if checkout.get("status") not in {"clean", "clean_runtime_state"}:
             attention.append(f"production_checkout_not_clean:{name}")
@@ -222,6 +245,7 @@ def collect_status(
         "reliability": reliability,
         "dashboard": dashboard,
         "storage": storage,
+        "runtime": runtime,
         "domains": domains,
     }
 
@@ -271,6 +295,16 @@ def render_telegram(status: Mapping[str, Any]) -> str:
                 for commit, names in by_commit.items()
             )
         )
+    runtime = status.get("runtime") or {}
+    runtime_domains = runtime.get("domains") or {}
+    if runtime_domains:
+        markers = []
+        for name in ("au", "hkjc", "tennis", "nba"):
+            aligned = (runtime_domains.get(name) or {}).get("status") == "aligned"
+            markers.append(f"{name.upper()} {'✅' if aligned else '❌'}")
+        central_aligned = (runtime.get("central") or {}).get("status") == "aligned"
+        markers.append(f"CENTRAL {'✅' if central_aligned else '❌'}")
+        lines.append("Automation：" + " · ".join(markers))
     reliability = status.get("reliability") or {}
     lines.append(
         f"30日SLO：{'✅' if reliability.get('status') == 'pass' else '❌'} "

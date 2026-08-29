@@ -12,7 +12,7 @@
       2026-08-08 12:08  asking for 08-08  ->  list[45]
 
   Three things follow. The book is open by 09:00 and is not at 18:00. The
-  coverage is at its highest then -- 55 of the 62 that date finished with,
+  coverage is at its highest then — 55 of the 62 that date finished with,
   because by 12:08 matches have begun. And `earliest_odds=True`, which the
   replay prices from, takes each selection's FIRST snapshot, which for almost
   every date IS this run: the backtested ROI is a 09:00 price, so a card built
@@ -30,7 +30,8 @@
   <key>ProgramArguments</key>
   <array>
     <string>/bin/zsh</string>
-    <string>__LAUNCHER__</string>
+    <string>__PROJECT_DIR__/scripts/run_tennis_daily_schedule.sh</string>
+    <string>card</string>
     <string>--source</string>
     <string>launchd</string>
     <string>--refresh-today</string>
@@ -41,6 +42,12 @@
 
   <key>EnvironmentVariables</key>
   <dict>
+    <key>DATABASE_URL</key>
+    <string>__DATABASE_URL__</string>
+    <key>TENNIS_LOG_DIR</key>
+    <string>__TENNIS_LOG_DIR__</string>
+    <key>TENNIS_ANALYSIS_OUTPUT_ROOT</key>
+    <string>__TENNIS_ANALYSIS_OUTPUT_ROOT__</string>
     <!--
       The daily health line, pushed. Enabled 2026-08-11 on Kelvin's go-ahead.
       Sent on EVERY outcome including a day with no bet: an empty card is a

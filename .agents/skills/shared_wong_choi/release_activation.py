@@ -248,6 +248,9 @@ def activate_release(
         },
     )
     sync_results: list[dict[str, Any]] = []
+    installer_snapshots: list[dict[str, Any]] = []
+    snapshot_temp = tempfile.TemporaryDirectory(prefix="wc-installer-snapshots-")
+    snapshot_root = Path(snapshot_temp.name)
     try:
         for target in unique_targets.values():
             sync_results.append(_sync_checkout(target, manifest["commit"]))
@@ -296,11 +299,32 @@ def activate_release(
                     }
                 )
         installer_results = []
-        for relative in plan.get("installers") or []:
+        for index, relative in enumerate(plan.get("installers") or []):
             installer_root = next(iter(unique_targets.values()), repo).expanduser().resolve()
             installer = installer_root / relative
             if not installer.is_file():
                 raise ReleaseError(f"approved activation installer missing: {relative}")
+            snapshot = snapshot_root / f"installer-{index}"
+            snapshotted = _run(
+                installer_root,
+                "/bin/zsh",
+                str(installer),
+                "--snapshot",
+                str(snapshot),
+                check=False,
+                timeout=120,
+            )
+            if snapshotted.returncode != 0:
+                raise ReleaseError(
+                    f"activation installer snapshot failed: {relative}"
+                )
+            installer_snapshots.append(
+                {
+                    "path": relative,
+                    "root": str(installer_root),
+                    "snapshot": str(snapshot),
+                }
+            )
             installed = _run(
                 installer_root,
                 "/bin/zsh",
@@ -340,6 +364,30 @@ def activate_release(
                 raise ReleaseError("dashboard deployment failed")
             deploy = {"status": "succeeded", "exit_code": deployed.returncode}
     except Exception as exc:  # rollback must also cover unexpected verifier/installer errors
+        external_rollback_results: list[dict[str, Any]] = []
+        external_rollback_errors: list[str] = []
+        # Restore launchd/external installer state while the candidate installer
+        # still exists in the production checkout. The git rollback below may
+        # return to a commit from before that installer was introduced.
+        for item in reversed(installer_snapshots):
+            installer = Path(item["root"]) / item["path"]
+            restored = _run(
+                Path(item["root"]),
+                "/bin/zsh",
+                str(installer),
+                "--restore",
+                item["snapshot"],
+                check=False,
+                timeout=300,
+            )
+            if restored.returncode == 0:
+                external_rollback_results.append(
+                    {"path": item["path"], "status": "restored"}
+                )
+            else:
+                external_rollback_errors.append(
+                    f"{item['path']}: installer state restore exit {restored.returncode}"
+                )
         rollback_results: list[dict[str, Any]] = []
         rollback_errors: list[str] = []
         for raw_target, before in reversed(list(checkpoints.items())):
@@ -350,7 +398,8 @@ def activate_release(
                 rollback_errors.append(
                     f"{target}: {type(rollback_exc).__name__}: {rollback_exc}"
                 )
-        rollback_status = "succeeded" if not rollback_errors else "blocked"
+        all_rollback_errors = [*external_rollback_errors, *rollback_errors]
+        rollback_status = "succeeded" if not all_rollback_errors else "blocked"
         failed = events.append(
             release_id=manifest["release_id"],
             commit=manifest["commit"],
@@ -361,6 +410,8 @@ def activate_release(
                 "rollback_status": rollback_status,
                 "rollback": rollback_results,
                 "rollback_errors": rollback_errors,
+                "external_rollback": external_rollback_results,
+                "external_rollback_errors": external_rollback_errors,
             },
         )
         if notify:
@@ -369,20 +420,23 @@ def activate_release(
                 f"❌ 中央旺財 activation 失敗\n{manifest['commit'][:12]}\n{exc}\n"
                 + (
                     "✅ production 已退回 activation 前版本"
-                    if not rollback_errors
-                    else "⛔ rollback 被保護閘攔住：" + "；".join(rollback_errors)[:700]
+                    if not all_rollback_errors
+                    else "⛔ rollback 被保護閘攔住："
+                    + "；".join(all_rollback_errors)[:700]
                 ),
                 dry_run=False,
             )
         rollback_note = (
             "rollback complete"
-            if not rollback_errors
-            else "rollback incomplete: " + "; ".join(rollback_errors)
+            if not all_rollback_errors
+            else "rollback incomplete: " + "; ".join(all_rollback_errors)
         )
+        snapshot_temp.cleanup()
         raise ReleaseError(
             f"activation failed; {rollback_note}; event={failed['path']}: {exc}"
         ) from exc
 
+    snapshot_temp.cleanup()
     completed = events.append(
         release_id=manifest["release_id"],
         commit=manifest["commit"],
