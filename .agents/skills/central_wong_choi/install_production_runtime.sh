@@ -84,6 +84,9 @@ status_runtime() {
     args+=(--launch-agents-root "$AGENTS_DIR")
   fi
   [ "${WC_RUNTIME_NO_PROBE:-0}" != "1" ] || args+=(--no-probe)
+  if [ "${WC_ALLOW_AU_BOT_UNLOADED:-0}" = "1" ]; then
+    args+=(--allow-unloaded-label com.antigravity.au-wong-choi.bot)
+  fi
   /usr/bin/python3 "${args[@]}"
 }
 

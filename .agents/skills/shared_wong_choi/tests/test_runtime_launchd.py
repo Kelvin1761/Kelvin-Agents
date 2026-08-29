@@ -4,10 +4,10 @@ import plistlib
 import sys
 from pathlib import Path
 
-
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE_ROOT.parent))
 
+import shared_wong_choi.runtime_launchd as runtime_launchd  # noqa: E402
 from shared_wong_choi.runtime_launchd import (  # noqa: E402
     CENTRAL_LABELS,
     DOMAIN_LABELS,
@@ -112,3 +112,33 @@ def test_invalid_installed_plist_is_reported_instead_of_crashing(
     )
     assert entry["status"] == "invalid"
     assert entry["error"].startswith("ExpatError:")
+
+
+def test_only_explicit_handoff_bot_may_be_transiently_unloaded(
+    tmp_path: Path, monkeypatch
+) -> None:
+    root = tmp_path / "production"
+    agents = tmp_path / "LaunchAgents"
+    _aligned_fixture(agents, root)
+    bot = "com.antigravity.au-wong-choi.bot"
+    monkeypatch.setattr(runtime_launchd, "_loaded", lambda label: label != bot)
+
+    strict = collect_runtime_alignment(
+        {name: root for name in DOMAIN_LABELS},
+        control_root=root,
+        launch_agents_root=agents,
+    )
+    handoff = collect_runtime_alignment(
+        {name: root for name in DOMAIN_LABELS},
+        control_root=root,
+        launch_agents_root=agents,
+        allow_unloaded_labels=frozenset({bot}),
+    )
+
+    assert strict["status"] == "attention"
+    assert handoff["status"] == "aligned"
+    entry = next(
+        item for item in handoff["domains"]["au"]["labels"] if item["label"] == bot
+    )
+    assert entry["loaded"] is False
+    assert entry["unloaded_allowed"] is True

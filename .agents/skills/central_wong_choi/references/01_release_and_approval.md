@@ -28,6 +28,7 @@
 - 安裝前要過Sydney timezone、Tennis read-only SQLite quick-check、system Python dependency、legacy NBA plist同active-run preflight。
 - 安裝後read-only verifier要逐個plist比對exact path兼確認loaded；未全線aligned就自動restore舊plist。
 - 第一次由舊bot升級時，用`bootstrap_telegram_approval.sh SHA`開五分鐘authenticated handoff；timeout或任何錯誤必須restore舊production poller。
+- Handoff期間只可對`com.antigravity.au-wong-choi.bot`套用transient unloaded allowance；path仍要exact aligned，其他labels照常要求loaded。離開handoff後Central status一律恢復strict。
 
 ## Failure Policy
 

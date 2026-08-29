@@ -125,6 +125,7 @@ def _label_status(
     expected_root: Path,
     relative_paths: tuple[str, ...],
     probe_loaded: bool,
+    allow_unloaded: bool,
 ) -> dict[str, Any]:
     plist_path = launch_agents_root / f"{label}.plist"
     payload, error = _load_plist(plist_path)
@@ -145,7 +146,7 @@ def _label_status(
         "misaligned"
         if mismatches
         else "unloaded"
-        if probe_loaded and not is_loaded
+        if probe_loaded and not is_loaded and not allow_unloaded
         else "aligned"
     )
     return {
@@ -153,6 +154,7 @@ def _label_status(
         "status": status,
         "plist": str(plist_path),
         "loaded": is_loaded,
+        "unloaded_allowed": bool(probe_loaded and not is_loaded and allow_unloaded),
         "expected_paths": expected,
         "program_arguments": arguments,
         "working_directory": working or None,
@@ -166,6 +168,7 @@ def collect_runtime_alignment(
     control_root: Path,
     launch_agents_root: Path | None = None,
     probe_loaded: bool = True,
+    allow_unloaded_labels: frozenset[str] = frozenset(),
 ) -> dict[str, Any]:
     """Compare installed launchd code paths with configured production roots."""
     agents = (
@@ -189,6 +192,7 @@ def collect_runtime_alignment(
                 expected_root=expected_root,
                 relative_paths=relative,
                 probe_loaded=probe_loaded,
+                allow_unloaded=label in allow_unloaded_labels,
             )
             for label, relative in labels.items()
         ]
@@ -213,6 +217,7 @@ def collect_runtime_alignment(
             expected_root=control,
             relative_paths=relative,
             probe_loaded=probe_loaded,
+            allow_unloaded=label in allow_unloaded_labels,
         )
         for label, relative in CENTRAL_LABELS.items()
     ]
@@ -240,6 +245,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--production-root", type=Path)
     parser.add_argument("--launch-agents-root", type=Path)
     parser.add_argument("--no-probe", action="store_true")
+    parser.add_argument("--allow-unloaded-label", action="append", default=[])
     args = parser.parse_args(argv)
     root = (args.production_root or args.repo_root).expanduser().resolve()
     payload = collect_runtime_alignment(
@@ -247,8 +253,9 @@ def main(argv: list[str] | None = None) -> int:
         control_root=args.repo_root,
         launch_agents_root=args.launch_agents_root,
         probe_loaded=not args.no_probe,
+        allow_unloaded_labels=frozenset(args.allow_unloaded_label),
     )
-    print(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True))
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
     return 0 if payload["status"] == "aligned" else 1
 
 

@@ -21,9 +21,13 @@ EXPECTED_MUTABLE_PATHS = frozenset(
 def _command_failure(prefix: str, result) -> ReleaseError:
     details = []
     if result.stdout.strip():
-        details.append("stdout=" + result.stdout.strip()[-2000:])
+        output = result.stdout.strip()
+        bounded = output if len(output) <= 2000 else output[:1000] + "…" + output[-1000:]
+        details.append("stdout=" + bounded)
     if result.stderr.strip():
-        details.append("stderr=" + result.stderr.strip()[-2000:])
+        output = result.stderr.strip()
+        bounded = output if len(output) <= 2000 else output[:1000] + "…" + output[-1000:]
+        details.append("stderr=" + bounded)
     suffix = "; " + "; ".join(details) if details else ""
     return ReleaseError(f"{prefix} (exit {result.returncode}){suffix}")
 
