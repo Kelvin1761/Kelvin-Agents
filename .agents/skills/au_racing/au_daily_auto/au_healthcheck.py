@@ -346,9 +346,22 @@ def quality_issues(day: str) -> tuple[list[str], list[str]]:
 
 
 def heal() -> tuple[bool, str]:
-    """由本機重建再發佈。唔出網抽頁，所以安全、快、唔會同排程爭資源。"""
+    """由本機重建再發佈。唔出網抽頁，所以安全、快、唔會同排程爭資源。
+
+    ⚠️ `--slot` 唔可以慳。control plane 見到 `--mode morning` 就會將個 run 釘落
+    canonical slot `10:00`（`control_plane.FIXED_MODE_SLOTS`），**唔理實際幾點跑**。
+    2026-08-27 至 08-29 三日實測：02:30 體檢叫嘅 `heal()` 攞咗
+    `wc:au:run:<date>:morning:10:00` 呢條 idempotency key，於是同一次體檢跟住開
+    嘅真補跑、同埋之後 10:00 嗰程 launchd 早更，兩個都變 `duplicate_skipped` ——
+    即係當日唯一會補抽場次嘅兩條路都俾一次「重新發佈」封死咗。個補跑仲會 log
+    「已自動開始一次補跑」，所以連通知都係報喜。
+
+    每次體檢有自己嘅 slot（`heal-HH:MM`）：一日三次體檢各自有 manifest，互相唔
+    撞，亦永遠唔會食到排程嗰兩格。
+    """
+    slot = f"heal-{datetime.now().strftime('%H:%M')}"
     try:
-        r = subprocess.run([str(RUNNER), "morning", "--skip-refresh"],
+        r = subprocess.run([str(RUNNER), "morning", "--slot", slot, "--skip-refresh"],
                            capture_output=True, text=True, timeout=3600)
         return r.returncode in (0, 75), (r.stdout or "")[-400:]
     except Exception as exc:  # noqa: BLE001
@@ -375,8 +388,11 @@ def start_analysis_recovery(day: str) -> tuple[bool, str]:
         out.parent.mkdir(parents=True, exist_ok=True)
         _mark(key)  # 開 process 前先記；crash 都唔會變成每次 healthcheck 再開一個。
         with out.open("w") as fh:
+            # `--slot recovery`：同上面 `heal()` 一樣，唔可以佔住排程嗰格 10:00。
+            # 呢度用一個**固定**名（唔加時間）係有意嘅 —— 補跑一日只應該開一次，
+            # 個 manifest 就係 `autofix_attempted.json` 之外嘅第二道防線。
             subprocess.Popen(
-                [str(RUNNER), "morning", "--today", day,
+                [str(RUNNER), "morning", "--slot", "recovery", "--today", day,
                  "--rounds", "3", "--round-gap", "420"],
                 stdout=fh, stderr=fh, start_new_session=True)
     except Exception as exc:  # noqa: BLE001

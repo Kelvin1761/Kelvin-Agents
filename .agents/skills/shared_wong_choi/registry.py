@@ -46,6 +46,28 @@ ADAPTER_SPECS: dict[Domain, AdapterSpec] = {
             _binding(Operation.CALENDAR_STATE, AU_SCHEDULER, "evening"),
             _binding(Operation.RECOVER, AU_HEALTH, "healthcheck"),
         ),
+        # ⚠️ AU 晚更係**通宵** job，唔係一個兩個鐘嘅 batch。佢 22:00 開工，逐個
+        # 場次抽（實測每個 ~26 分鐘，`warm_people_pages` 食晒），中間仲要等
+        # Sportsbet 嘅冷卻窗；`au_daily_schedule.py` 自己個註解寫住「由 22:00 到
+        # 早更 10:00 有十二個鐘，等一陣再續係免費嘅」。
+        #
+        # 2026-08-26 至 08-28 三晚全部喺 7200 秒正中被 adapter 斬死（08-28 discover
+        # 到 8 個場次，做完 Cairns / Caulfield / Eagle Farm 就死，Rosehill 排字母
+        # 第七，由頭到尾冇機會）。場次係按 slug 字母順序做，所以呢個 timeout 唔係
+        # 「偶爾切走一個」，而係**穩定咁永遠切走排後面嗰批**。
+        #
+        # 11 個鐘 = 22:00 → 09:00，喺 10:00 早更之前留返一個鐘 headroom。歷史最長
+        # 一個成功晚更係 18,061 秒（08-21，10 個場次），所以 39,600 有足夠餘裕。
+        run_timeouts=(
+            ("evening", 11 * 3600),
+            # 早更平時得三十幾秒（淨係覆核＋合併），但佢同時係**晚更執唔晒之後
+            # 唯一會再出網補抽嘅地方**，而 `au_healthcheck` 嘅自動補跑亦都係借
+            # 呢個 mode 跑。一個大禮拜六追五個場次 = 5 × ~26 分鐘 ＋ 冷卻窗，
+            # 兩三個鐘唔夠用。6 個鐘由 10:00 計都喺 16:00 前收工，離 22:00 晚更
+            # 仲有大把距離。
+            ("morning", 6 * 3600),
+            ("healthcheck", 3600),
+        ),
     ),
     Domain.HKJC: AdapterSpec(
         domain=Domain.HKJC,
