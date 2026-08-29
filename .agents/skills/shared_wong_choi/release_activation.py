@@ -18,6 +18,16 @@ EXPECTED_MUTABLE_PATHS = frozenset(
 )
 
 
+def _command_failure(prefix: str, result) -> ReleaseError:
+    details = []
+    if result.stdout.strip():
+        details.append("stdout=" + result.stdout.strip()[-2000:])
+    if result.stderr.strip():
+        details.append("stderr=" + result.stderr.strip()[-2000:])
+    suffix = "; " + "; ".join(details) if details else ""
+    return ReleaseError(f"{prefix} (exit {result.returncode}){suffix}")
+
+
 def _dirty_paths(root: Path) -> list[str]:
     result = _run(root, "git", "status", "--porcelain", "-z", check=False)
     values = []
@@ -315,8 +325,8 @@ def activate_release(
                 timeout=120,
             )
             if snapshotted.returncode != 0:
-                raise ReleaseError(
-                    f"activation installer snapshot failed: {relative}"
+                raise _command_failure(
+                    f"activation installer snapshot failed: {relative}", snapshotted
                 )
             installer_snapshots.append(
                 {
@@ -333,7 +343,9 @@ def activate_release(
                 timeout=300,
             )
             if installed.returncode != 0:
-                raise ReleaseError(f"approved activation installer failed: {relative}")
+                raise _command_failure(
+                    f"approved activation installer failed: {relative}", installed
+                )
             checked = _run(
                 installer_root,
                 "/bin/zsh",
@@ -343,7 +355,9 @@ def activate_release(
                 timeout=60,
             )
             if checked.returncode != 0:
-                raise ReleaseError(f"activation installer status failed: {relative}")
+                raise _command_failure(
+                    f"activation installer status failed: {relative}", checked
+                )
             installer_results.append(
                 {
                     "path": relative,

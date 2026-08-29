@@ -11,6 +11,7 @@ LAUNCHCTL="${WC_LAUNCHCTL_BIN:-launchctl}"
 DOMAIN="gui/$(id -u)"
 RUNTIME_CHECK="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_launchd.py"
 TENNIS_RUNTIME_ROOT="${WC_TENNIS_RUNTIME_ROOT:-$HOME/Antigravity-repo/tennis-wong-choi}"
+TENNIS_PYTHON_BIN="${TENNIS_PYTHON_BIN:-$TENNIS_RUNTIME_ROOT/.venv/bin/python}"
 
 LABELS=(
   com.antigravity.hkjc-wong-choi.postrace
@@ -126,8 +127,12 @@ done
   print -u2 -- "legacy NBA pregame plist is still active; disable it before unified cutover"
   exit 1
 }
-/usr/bin/python3 -c 'import curl_cffi' || {
-  print -u2 -- "system Python is missing curl_cffi required by Tennis"
+[ -x "$TENNIS_PYTHON_BIN" ] || {
+  print -u2 -- "Tennis runtime interpreter is missing: $TENNIS_PYTHON_BIN"
+  exit 1
+}
+"$TENNIS_PYTHON_BIN" -c 'import curl_cffi' || {
+  print -u2 -- "Tennis runtime interpreter is missing curl_cffi: $TENNIS_PYTHON_BIN"
   exit 1
 }
 /usr/bin/python3 - "$TENNIS_RUNTIME_ROOT/tennis_wc.db" <<'PY'
@@ -151,8 +156,16 @@ for label in $AU_LABELS; do
   plist="$AGENTS_DIR/$label.plist"
   [ -f "$plist" ] || { print -u2 -- "missing AU runtime plist: $label"; exit 1; }
   /usr/bin/plutil -convert json -o - "$plist" \
-    | grep -F "$PROJECT_ROOT/.agents/skills/au_racing/au_daily_auto/" \
-      >/dev/null || {
+    | /usr/bin/python3 -c '
+import json, sys
+payload = json.load(sys.stdin)
+expected = sys.argv[1]
+values = [str(value) for value in payload.get("ProgramArguments") or []]
+working = payload.get("WorkingDirectory")
+if working:
+    values.append(str(working))
+raise SystemExit(0 if any(value.startswith(expected) for value in values) else 1)
+' "$PROJECT_ROOT/.agents/skills/au_racing/au_daily_auto/" || {
         print -u2 -- "AU runtime is not on the activation checkout: $label"
         exit 1
       }
@@ -179,6 +192,7 @@ trap 'exit 143' TERM
 /bin/bash "$PROJECT_ROOT/.agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh"
 /bin/bash "$PROJECT_ROOT/.agents/skills/nba/nba_daily_auto/install_macos_launchd.sh"
 WC_TENNIS_RUNTIME_ROOT="$TENNIS_RUNTIME_ROOT" \
+  TENNIS_PYTHON_BIN="$TENNIS_PYTHON_BIN" \
   TENNIS_LOG_DIR="$TENNIS_RUNTIME_ROOT/data/logs" \
   TENNIS_ANALYSIS_OUTPUT_ROOT="${TENNIS_ANALYSIS_OUTPUT_ROOT:-/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity}" \
   /bin/zsh "$PROJECT_ROOT/tennis-wong-choi/scripts/install_macos_launchd.sh"

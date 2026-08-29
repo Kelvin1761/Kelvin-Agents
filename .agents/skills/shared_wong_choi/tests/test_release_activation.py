@@ -13,6 +13,7 @@ PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PACKAGE_ROOT.parent))
 
 from shared_wong_choi.release_activation import (  # noqa: E402
+    _command_failure,
     _rollback_checkout,
     _sync_checkout,
     activate_release,
@@ -77,6 +78,14 @@ def _verify(_repo: Path, target: Path, domain: str) -> dict:
         "target_commit": git(target, "rev-parse", "HEAD"),
         "domain": domain,
     }
+
+
+def test_command_failure_preserves_bounded_installer_diagnostics() -> None:
+    result = subprocess.CompletedProcess(
+        args=["installer"], returncode=7, stdout="partial output\n", stderr="boom\n"
+    )
+    error = _command_failure("installer failed", result)
+    assert str(error) == "installer failed (exit 7); stdout=partial output; stderr=boom"
 
 
 def test_activation_fast_forwards_and_verifies_production(

@@ -33,6 +33,8 @@
   <dict>
     <key>DATABASE_URL</key>
     <string>__DATABASE_URL__</string>
+    <key>TENNIS_PYTHON_BIN</key>
+    <string>__TENNIS_PYTHON_BIN__</string>
     <key>TENNIS_LOG_DIR</key>
     <string>__TENNIS_LOG_DIR__</string>
     <key>TENNIS_ANALYSIS_OUTPUT_ROOT</key>

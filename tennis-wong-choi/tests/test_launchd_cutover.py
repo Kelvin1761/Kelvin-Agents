@@ -18,6 +18,10 @@ def test_rendered_launchd_uses_versioned_code_and_existing_runtime(
     (runtime / "tennis_wc.db").write_bytes(b"not opened during render")
     destination = tmp_path / "LaunchAgents"
     mirror = tmp_path / "mirror"
+    python_bin = runtime / ".venv" / "bin" / "python"
+    python_bin.parent.mkdir(parents=True)
+    python_bin.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    python_bin.chmod(0o755)
     env = os.environ.copy()
     env.update(
         {
@@ -50,6 +54,9 @@ def test_rendered_launchd_uses_versioned_code_and_existing_runtime(
     for payload in (card, daily, recovery):
         assert payload["WorkingDirectory"] == str(PROJECT_DIR)
         assert payload["EnvironmentVariables"]["DATABASE_URL"] == database_url
+        assert payload["EnvironmentVariables"]["TENNIS_PYTHON_BIN"] == str(
+            python_bin
+        )
         assert payload["EnvironmentVariables"]["TENNIS_LOG_DIR"] == str(
             runtime / "data" / "logs"
         )
@@ -59,6 +66,6 @@ def test_rendered_launchd_uses_versioned_code_and_existing_runtime(
     assert card["ProgramArguments"][:3] == ["/bin/zsh", runner, "card"]
     assert daily["ProgramArguments"][:2] == ["/bin/zsh", runner]
     assert recovery["ProgramArguments"] == [
-        "/usr/bin/python3",
+        str(python_bin),
         str(PROJECT_DIR / "scripts" / "tennis_card_recovery.py"),
     ]

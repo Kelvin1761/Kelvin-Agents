@@ -13,7 +13,7 @@ description: Use when the user asks for central Wong Choi status, git/release/de
 - 想分開睇 git、models、evidence、30日可靠性、Dashboard或storage：用對應 `git`、`models`、`evidence`、`slo`、`dashboard`、`storage` subcommand。
 - 想立即做Dashboard D1 verified backup：用`dashboard-backup`；只讀remote D1，必須stable前後row counts、空SQLite restore、hash同WARM gate全過。用`dashboard-backup-status`睇freshness。
 - 想裝每晚Central durability：release activation只可自動執行allowlisted `install_macos_launchd.sh`；每日悉尼03:20，同日verified snapshot會idempotent skip。
-- 想將四線切去同一approved checkout：只可經allowlisted `install_production_runtime.sh`；佢會保留AU poller、transactional snapshot／restore HKJC、NBA、Tennis、Central plists，再以read-only verifier證明全部loaded及對齊。Tennis code切去production checkout，但live DB／logs／Google Drive output留喺原位。
+- 想將四線切去同一approved checkout：只可經allowlisted `install_production_runtime.sh`；佢會保留AU poller、transactional snapshot／restore HKJC、NBA、Tennis、Central plists，再以read-only verifier證明全部loaded及對齊。Tennis code切去production checkout，但live DB／venv interpreter／logs／Google Drive output留喺原位。
 - 想驗證控制資料可復原：用 `restore-drill --destination <全新路徑>`；永不覆寫既有目的地。
 - 想安全歸檔低頻資料：先用`archive-copy`，只會copy＋hash＋append manifest，唔會刪source；用`archive-restore`去全新目的地驗證，再用`archive-mirror`建立COLD第二副本。
 - Connector-backed COLD copy完成full download directory digest後，用`archive-remote-proof`記append-only provider／remote ID／canonical URL；hash唔等於WARM catalog會block。

@@ -24,7 +24,7 @@
 
 - `install_production_runtime.sh`係唯一可自動切HKJC、NBA、Tennis同Central launchd嘅installer；AU bot係approval caller，所以activation期間唔bootout AU。
 - AU四個plist必須已經指向同一production checkout，否則fail closed。
-- Tennis只換versioned code path；`WC_TENNIS_RUNTIME_ROOT`內現有SQLite、logs同Google Drive output path不搬、不刪。
+- Tennis只換versioned code path；`WC_TENNIS_RUNTIME_ROOT`內現有SQLite、`.venv` interpreter、logs同Google Drive output path不搬、不刪，三個plist必須明文固定`TENNIS_PYTHON_BIN`。
 - 安裝前要過Sydney timezone、Tennis read-only SQLite quick-check、system Python dependency、legacy NBA plist同active-run preflight。
 - 安裝後read-only verifier要逐個plist比對exact path兼確認loaded；未全線aligned就自動restore舊plist。
 - 第一次由舊bot升級時，用`bootstrap_telegram_approval.sh SHA`開五分鐘authenticated handoff；timeout或任何錯誤必須restore舊production poller。

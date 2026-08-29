@@ -25,6 +25,7 @@ DEST_DIR="$HOME/Library/LaunchAgents"
 DOMAIN="gui/$(id -u)"
 TENNIS_RUNTIME_ROOT="${WC_TENNIS_RUNTIME_ROOT:-$PROJECT_DIR}"
 DATABASE_PATH="$TENNIS_RUNTIME_ROOT/tennis_wc.db"
+TENNIS_PYTHON_BIN="${TENNIS_PYTHON_BIN:-$TENNIS_RUNTIME_ROOT/.venv/bin/python}"
 TENNIS_LOG_DIR="${TENNIS_LOG_DIR:-$TENNIS_RUNTIME_ROOT/data/logs}"
 TENNIS_ANALYSIS_OUTPUT_ROOT="${TENNIS_ANALYSIS_OUTPUT_ROOT:-/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity}"
 LABELS=(
@@ -52,6 +53,10 @@ if [ ! -f "$DATABASE_PATH" ]; then
   echo "Set WC_TENNIS_RUNTIME_ROOT to the existing data checkout before cutover." >&2
   exit 1
 fi
+if [ ! -x "$TENNIS_PYTHON_BIN" ]; then
+  echo "ERROR: Tennis runtime interpreter not found at $TENNIS_PYTHON_BIN" >&2
+  exit 1
+fi
 
 mkdir -p "$DEST_DIR" "$TENNIS_LOG_DIR"
 chmod +x "$PROJECT_DIR/scripts/run_tennis_daily_schedule.sh" \
@@ -63,13 +68,15 @@ install_one() {
   local template="$PROJECT_DIR/launchd/$label.plist.template"
   local dest="$DEST_DIR/$label.plist"
   [ -f "$template" ] || { echo "ERROR: missing $template" >&2; exit 1; }
-  local project_escaped database_escaped logs_escaped output_escaped
+  local project_escaped database_escaped python_escaped logs_escaped output_escaped
   project_escaped="$(printf '%s' "$PROJECT_DIR" | sed 's/[&#]/\\&/g')"
   database_escaped="$(printf '%s' "sqlite:///$DATABASE_PATH" | sed 's/[&#]/\\&/g')"
+  python_escaped="$(printf '%s' "$TENNIS_PYTHON_BIN" | sed 's/[&#]/\\&/g')"
   logs_escaped="$(printf '%s' "$TENNIS_LOG_DIR" | sed 's/[&#]/\\&/g')"
   output_escaped="$(printf '%s' "$TENNIS_ANALYSIS_OUTPUT_ROOT" | sed 's/[&#]/\\&/g')"
   sed -e "s#__PROJECT_DIR__#$project_escaped#g" \
       -e "s#__DATABASE_URL__#$database_escaped#g" \
+      -e "s#__TENNIS_PYTHON_BIN__#$python_escaped#g" \
       -e "s#__TENNIS_LOG_DIR__#$logs_escaped#g" \
       -e "s#__TENNIS_ANALYSIS_OUTPUT_ROOT__#$output_escaped#g" "$template" > "$dest"
   chmod 644 "$dest"
@@ -85,6 +92,7 @@ install_one() {
 
 echo "Installing Tennis Wong Choi scheduled passes from $PROJECT_DIR"
 echo "Live database/runtime remains at $TENNIS_RUNTIME_ROOT"
+echo "Runtime interpreter remains at $TENNIS_PYTHON_BIN"
 echo "Analysis mirror remains at $TENNIS_ANALYSIS_OUTPUT_ROOT"
 for label in "${LABELS[@]}"; do
   install_one "$label"
