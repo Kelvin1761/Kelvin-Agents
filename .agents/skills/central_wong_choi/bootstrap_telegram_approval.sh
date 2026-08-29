@@ -23,7 +23,7 @@ NOTIFY_ENV="$HOME/.wongchoi_notify.env"
 
 [ -f "$BOT" ] || { print -u2 -- "candidate bot missing: $BOT"; exit 1; }
 [ -f "$PLIST" ] || { print -u2 -- "production bot plist missing: $PLIST"; exit 1; }
-[ -d "$PRODUCTION_ROOT/.git" ] || {
+[ -e "$PRODUCTION_ROOT/.git" ] || {
   print -u2 -- "production checkout missing: $PRODUCTION_ROOT"
   exit 1
 }
