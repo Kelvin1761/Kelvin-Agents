@@ -86,7 +86,8 @@ def test_status_reports_git_runs_releases_and_evidence(tmp_path: Path) -> None:
     assert result["evidence"]["status"] == "ok"
     message = render_telegram(result)
     assert "AU：succeeded" in message
-    assert "1 個待批准" in message
+    assert "Release：abcdef123456 · pushed · activate not_started" in message
+    assert "待批准：1 個 · Telegram /approve abcdef123456" in message
 
 
 def test_dirty_production_checkout_is_visible(tmp_path: Path) -> None:
@@ -106,3 +107,4 @@ def test_dirty_production_checkout_is_visible(tmp_path: Path) -> None:
 
     assert "production_checkout_not_clean:au" in result["attention"]
     assert result["git"]["production"]["au"]["dirty_paths"] == ("README.md",)
+    assert "Production：AU" in render_telegram(result)

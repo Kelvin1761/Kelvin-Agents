@@ -234,17 +234,43 @@ def render_telegram(status: Mapping[str, Any]) -> str:
     dirty = len(primary.get("dirty_paths") or [])
     releases = status.get("releases") or {}
     pending = len(releases.get("pending_approval") or [])
+    latest_releases = releases.get("latest") or []
+    latest_release = latest_releases[0] if latest_releases else {}
     evidence = status.get("evidence") or {}
     counts = evidence.get("counts") or {}
     lines = [
         f"🐶 中央旺財：{overall}",
         f"Git：{primary.get('branch') or '?'} {head} · dirty {dirty} · "
         f"pushed {'係' if primary.get('pushed') else '否'} · main {'係' if primary.get('merged_to_main') else '否'}",
-        f"Release：{pending} 個待批准",
+        (
+            "Release：未有記錄"
+            if not latest_release
+            else f"Release：{str(latest_release.get('commit') or '?')[:12]} · "
+            f"{latest_release.get('status') or 'unknown'} · "
+            f"activate {latest_release.get('activation') or 'unknown'}"
+        ),
         "Evidence："
         f"prediction {counts.get('prediction', 0)} · decision {counts.get('decision', 0)} · "
         f"settlement {counts.get('settlement', 0)}",
     ]
+    if pending:
+        pending_commit = str(
+            (releases.get("pending_approval") or [{}])[0].get("commit") or "?"
+        )[:12]
+        lines.append(f"待批准：{pending} 個 · Telegram /approve {pending_commit}")
+    production = (status.get("git") or {}).get("production") or {}
+    if production:
+        by_commit: dict[str, list[str]] = {}
+        for name, item in sorted(production.items()):
+            commit = str(item.get("head") or "?")[:12]
+            by_commit.setdefault(commit, []).append(name.upper())
+        lines.append(
+            "Production："
+            + " · ".join(
+                f"{'/'.join(names)} {commit}"
+                for commit, names in by_commit.items()
+            )
+        )
     reliability = status.get("reliability") or {}
     lines.append(
         f"30日SLO：{'✅' if reliability.get('status') == 'pass' else '❌'} "

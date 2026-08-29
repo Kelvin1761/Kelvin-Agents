@@ -22,7 +22,7 @@ Antigravity 係一個 prediction / analysis workspace，現時主線最重要嘅
 |---|---|---|
 | `./檢查.sh` | code 有冇壞：ruff、評分 golden、模型說明新鮮度、數據合約、單元測試。加 `--quick` 跳過單元測試。 | 改完 code、交嘢之前 |
 | `./健康.sh` | 營運有冇斷：磁碟、排程退出碼、資料時效、日誌報錯。加 `--tg` 推去 Telegram。 | 每週，或者覺得有嘢唔妥 |
-| `./保存.sh` | 檢查過先 commit + push，順便印個 PR 連結。企喺 `main` 會自動幫你開新分支。 | 想保存改動 |
+| `./保存.sh --path … "訊息"` | Central exact-scope release：自動 gate、commit、push、manifest、Telegram；高風險改動等 `/approve SHA` 先 merge／activate。 | 想安全保存改動 |
 | `./備份.sh` | 備份 repo + 賽果資料去外置碟。加 `--verify` 只核對唔複製。 | 每週，或者做大改動之前 |
 | `./整理.sh` | 列出可以安全刪嘅分支同工作副本（只刪已完全合併入 `main` 嘅）。加 `--做` 先會真係刪。 | 覺得分支太亂 |
 

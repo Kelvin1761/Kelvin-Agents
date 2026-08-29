@@ -22,7 +22,7 @@
 
 中央能力：`Horse_Racing_Dashboard`係正式control-tower display，D1 `WC_LEDGER`保存實際投注；HOT／WARM／COLD狀態同verified archive catalog由中央旺財管理，兩者都不得改寫domain scoring。
 
-中央durability狀態：D1每日verified export、WARM archive同owner-only Google Drive COLD proof已完成工程及首個restore/digest pilot；Tennis migration snapshots已WARM verified但COLD未完成，唔可刪HOT source。Stage 4D下一閘係multi-root full-history reader、Tennis可靠大檔COLD transfer，同獨立source-retention approval。
+中央durability狀態：D1每日verified export、WARM archive同owner-only Google Drive COLD proof已完成；catalog 3/3 artifacts verified，當中Tennis兩個migration artifacts已逐part full-download、digest、重組、extract同SQLite quick-check。HOT source仍未刪，下一閘係獨立source-retention approval、production nightly activation同runtime evidence。
 
 ## Confirmed Owners and Entrypoints
 

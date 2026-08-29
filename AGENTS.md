@@ -25,8 +25,10 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
 
 ### commit 同 push
 
-用 `./保存.sh` —— 佢會先跑檢查，企喺 `main` 會自動開新分支，然後 commit + push
-兼印個 PR 連結。
+用 `./保存.sh --path <今次scope> "commit message"`。佢會交畀 Central release
+manager 自動做 policy gate、exact-scope commit／push、immutable manifest 同 Telegram；
+code／model／automation／deployment 要 `/approve SHA` 先 merge／activate。禁止再用舊式
+「掃晒成個 worktree」保存。
 
 **多個 agent session 同時開工**：commit 之前先睇 `git status`。只 stage 你自己
 今次改嘅嘢，唔好 `git add -A` 連人哋未 commit 嘅工作一齊掃入去。
@@ -123,7 +125,9 @@ assert 緊兩個冇 merge 過嘅嘢 —— `rating_series` 只存在於
 - **有意義嘅實驗要記落 `docs/experiments/`。** 開始新假設之前先 grep 舊記錄。
 - **失敗實驗係有用資訊，要照記，唔准掩飾。** 記「點失敗」，唔係只寫「冇用」。
 - **失敗實驗嘅 model code 唔准自動 commit。** 記錄可以 commit，改動唔可以。
-- **唔准自動 push。** `./保存.sh` 由 Kelvin 叫先跑。
+- **唔准無條件背景 push。** 只有用戶明確要求保存／交付／release，先可由
+  `./保存.sh --path …` exact-scope 自動 push；高風險 release 仍要 immutable SHA 批准。
+  失敗實驗嘅 model code 永遠唔可以靠呢個授權自動 push。
 - **唔准喺冇可退回 baseline 嘅情況下覆蓋一個 known-good 模型。**
   `golden_scoring` 舊 snapshot 唔准同 code 一次過覆蓋。
 - **模型表現跌，先查數據管線，唔好即刻怪模型。** 呢個 repo 每個貴嘅 bug 都係
