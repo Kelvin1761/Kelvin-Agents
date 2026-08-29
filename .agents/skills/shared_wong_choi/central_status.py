@@ -78,6 +78,7 @@ def _git_payload(root: Path) -> dict[str, Any]:
 
 def _release_status(releases_root: Path, events_root: Path) -> dict[str, Any]:
     releases: list[dict[str, Any]] = []
+    merged_by_commit: dict[str, dict[str, Any]] = {}
     event_store = ReleaseEventStore(events_root)
     if releases_root.exists():
         for path in sorted(releases_root.glob("*.json")):
@@ -88,18 +89,24 @@ def _release_status(releases_root: Path, events_root: Path) -> dict[str, Any]:
                 item,
                 event_store.list(str(item.get("release_id") or "")),
             )
-            releases.append(
-                {
-                    "release_id": item.get("release_id"),
-                    "created_at": item.get("created_at"),
-                    "status": effective["status"],
-                    "risk": (item.get("policy") or {}).get("risk"),
-                    "commit": item.get("commit"),
-                    "branch": item.get("branch"),
-                    "activation": effective["activation"],
-                    "approved": effective["approved"],
-                }
-            )
+            summary = {
+                "release_id": item.get("release_id"),
+                "created_at": item.get("created_at"),
+                "status": effective["status"],
+                "risk": (item.get("policy") or {}).get("risk"),
+                "commit": item.get("commit"),
+                "branch": item.get("branch"),
+                "activation": effective["activation"],
+                "approved": effective["approved"],
+            }
+            releases.append(summary)
+            commit = str(summary.get("commit") or "")
+            if commit and summary["status"] == "merged":
+                previous = merged_by_commit.get(commit)
+                if previous is None or str(summary.get("created_at") or "") > str(
+                    previous.get("created_at") or ""
+                ):
+                    merged_by_commit[commit] = summary
     releases.sort(key=lambda item: str(item.get("created_at") or ""), reverse=True)
     pending = [item for item in releases if item["status"] == "pushed"]
     failed = [item for item in releases if item["status"] == "push_failed"]
@@ -107,6 +114,21 @@ def _release_status(releases_root: Path, events_root: Path) -> dict[str, Any]:
         "latest": releases[:10],
         "pending_approval": pending,
         "failed": failed,
+        "_merged_by_commit": merged_by_commit,
+    }
+
+
+def _release_tracking(
+    commit: Any,
+    merged_by_commit: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    value = str(commit or "")
+    release = merged_by_commit.get(value)
+    return {
+        "commit": value or None,
+        "tracked": release is not None,
+        "release_id": release.get("release_id") if release else None,
+        "activation": release.get("activation") if release else None,
     }
 
 
@@ -183,11 +205,20 @@ def collect_status(
         name: _git_payload(Path(path).expanduser().resolve())
         for name, path in sorted((production_roots or {}).items())
     }
+    primary = _git_payload(repo_root)
     releases = _release_status(
         state_root / "releases",
         state_root / "release-events",
     )
-    primary = _git_payload(repo_root)
+    merged_by_commit = releases.pop("_merged_by_commit")
+    releases["origin_main"] = _release_tracking(
+        primary.get("origin_main"), merged_by_commit
+    )
+    for checkout in production.values():
+        tracking = _release_tracking(checkout.get("head"), merged_by_commit)
+        checkout["release_tracked"] = tracking["tracked"]
+        checkout["release_id"] = tracking["release_id"]
+        checkout["release_activation"] = tracking["activation"]
     reliability = collect_reliability(state_root, now=now)
     dashboard = collect_dashboard_status(repo_root, state_root)
     storage = collect_storage_status(repo_root, state_root)
@@ -218,6 +249,9 @@ def collect_status(
         attention.append("release_pending_approval")
     if releases["failed"]:
         attention.append("release_failed")
+    origin_main = releases["origin_main"]
+    if origin_main["commit"] and not origin_main["tracked"]:
+        attention.append("origin_main_without_release_manifest")
     if evidence["status"] != "ok":
         attention.append("evidence_audit_failed")
     if reliability["status"] != "pass":
@@ -230,6 +264,8 @@ def collect_status(
     for name, checkout in production.items():
         if checkout.get("status") not in {"clean", "clean_runtime_state"}:
             attention.append(f"production_checkout_not_clean:{name}")
+        if checkout.get("head") and not checkout.get("release_tracked"):
+            attention.append(f"production_commit_without_release_manifest:{name}")
 
     clock = now or datetime.now(timezone.utc)
     if clock.tzinfo is None or clock.utcoffset() is None:
@@ -282,6 +318,16 @@ def render_telegram(status: Mapping[str, Any]) -> str:
             (releases.get("pending_approval") or [{}])[0].get("commit") or "?"
         )[:12]
         lines.append(f"待批准：{pending} 個 · Telegram /approve {pending_commit}")
+    origin_main = releases.get("origin_main") or {}
+    if origin_main.get("commit"):
+        lines.append(
+            "Main trail："
+            + (
+                f"✅ {str(origin_main.get('release_id') or '?').split(':')[1]}"
+                if origin_main.get("tracked")
+                else f"⛔ {str(origin_main.get('commit'))[:12]} 冇Central release manifest"
+            )
+        )
     production = (status.get("git") or {}).get("production") or {}
     if production:
         by_commit: dict[str, list[str]] = {}

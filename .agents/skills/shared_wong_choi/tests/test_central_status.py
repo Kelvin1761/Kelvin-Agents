@@ -84,11 +84,54 @@ def test_status_reports_git_runs_releases_and_evidence(tmp_path: Path) -> None:
     assert result["status"] == "attention"
     assert result["domains"]["au"]["latest_run"]["state"] == "succeeded"
     assert result["releases"]["pending_approval"][0]["commit"] == "abcdef123456"
+    assert result["releases"]["origin_main"]["tracked"] is False
+    assert "origin_main_without_release_manifest" in result["attention"]
     assert result["evidence"]["status"] == "ok"
     message = render_telegram(result)
     assert "AU：succeeded" in message
     assert "Release：abcdef123456 · pushed · activate not_started" in message
     assert "待批准：1 個 · Telegram /approve abcdef123456" in message
+    assert "Main trail：⛔" in message
+
+
+def test_origin_main_exact_release_manifest_is_tracked(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    initialise_repo(repo)
+    state = tmp_path / "state"
+    releases = state / "releases"
+    releases.mkdir(parents=True)
+    commit = git(repo, "rev-parse", "origin/main")
+    (releases / "merged.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "wong-choi-release/v1",
+                "release_id": "wc-release:tracked",
+                "created_at": "2026-08-26T12:30:00+00:00",
+                "status": "merged",
+                "policy": {"risk": "docs_tests"},
+                "commit": commit,
+                "branch": "codex/tracked",
+                "activation": "not_started",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    result = collect_status(
+        repo,
+        state,
+        now=datetime(2026, 8, 26, 13, tzinfo=timezone.utc),
+    )
+
+    assert result["releases"]["origin_main"] == {
+        "commit": commit,
+        "tracked": True,
+        "release_id": "wc-release:tracked",
+        "activation": "not_started",
+    }
+    assert "origin_main_without_release_manifest" not in result["attention"]
+    assert "Main trail：✅ tracked" in render_telegram(result)
 
 
 def test_dirty_production_checkout_is_visible(tmp_path: Path, monkeypatch) -> None:
@@ -120,6 +163,8 @@ def test_dirty_production_checkout_is_visible(tmp_path: Path, monkeypatch) -> No
 
     assert "production_checkout_not_clean:au" in result["attention"]
     assert result["git"]["production"]["au"]["dirty_paths"] == ("README.md",)
+    assert result["git"]["production"]["au"]["release_tracked"] is False
+    assert "production_commit_without_release_manifest:au" in result["attention"]
     assert "runtime_launchd_not_aligned:au" in result["attention"]
     assert seen["control_root"] == production.resolve()
     assert "Production：AU" in render_telegram(result)

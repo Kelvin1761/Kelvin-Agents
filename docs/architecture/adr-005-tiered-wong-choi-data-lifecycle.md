@@ -31,9 +31,9 @@ Provider-backed COLD唔依賴macOS File Provider folder。Connector完成全量d
 ## Implementation Status（2026-08-29）
 
 - Tennis四份snapshots共5,633,789,952 bytes已copy去WARM，digest一致並由全新temp restore做四個SQLite `quick_check=ok`。兩個artifact亦已上載去Kelvin owner-only Google Drive；因connector有512MB upload同64MB IPC frame限制，payload用tar+gzip後分32MiB ordered parts，每片完整download SHA-256一致、manifest SHA一致、重組後artifact digest一致，四個restored SQLite再次`quick_check=ok`。
-- Dashboard D1 snapshot `20260828T123834.213236Z`已通過stable row counts、SQLite restore、integrity／foreign-key同WARM hash gate；owner-only My Drive copy亦經full-download directory digest核對，Central status顯示`cold_provider=google_drive`。
+- Dashboard D1 nightly launchd已production activated；真實rerun exit 0，同日verified snapshot會idempotent skip。最新snapshot `20260829T131349.165633Z`已通過stable row counts、SQLite restore、integrity／foreign-key同WARM hash gate；owner-only My Drive copy亦經full-download directory digest核對，Central status顯示HOT restore、WARM同COLD全部verified。
 - Shared Drive試建hierarchy冇上載任何backup；正式COLD只放喺Kelvin owner-only嘅`WongChoi Private Backup`。Central `storage`／Telegram分開顯示filesystem COLD root同provider-backed catalog coverage，真實狀態係3/3 catalog artifacts有Google Drive proof。
-- HOT source removal仍未獲獨立批准，亦未執行。AU／HKJC／NBA directory readers同Tennis SQLite audit已catalog-aware；offline已知artifact會fail closed，唔會靜靜縮細研究語料。
+- Catalog目前4/4 artifacts有owner-only Google Drive proof。HOT source removal仍未獲獨立批准，亦未執行；內置SSD少於20 GiB會攔重型research／backfill。AU／HKJC／NBA directory readers同Tennis SQLite audit已catalog-aware；offline已知artifact會fail closed，唔會靜靜縮細研究語料。
 
 ## Trade-offs
 

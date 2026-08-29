@@ -15,12 +15,12 @@
 - [x] 7. 建立中央Wong Choi CLI／Telegram：`status`、`git`、`models`、`evidence`、`release`、白名單approval。→ Verify：同一Telegram token只有一個poller；未授權chat零回覆；重複approval冇side effect。
 - [x] 8. 完成Stage 4C model registry／promotion：`research→shadow→paper→limited→production→retired`，PR可自動開但模型不可自動merge／加注。→ Verify：缺holdout、forward evidence、rollback或人手批准一律block。
 - [x] 9. 建立Stage 4D storage／Dashboard foundation：HOT／WARM／COLD policy、容量status、Telegram `/storage`；Dashboard正式歸中央control tower、D1 betting ledger同model evidence分權。→ Verify：ADR-005、storage/dashboard tests；Dashboard不可計prediction。
-- [ ] 10. 完成Stage 4D durability cutover：artifact catalog／verified archive executor、D1同Tennis WARM＋owner-only Google Drive COLD、catalog fail-closed resolver、AU／HKJC meeting readers、NBA day-folder reader同Tennis live SQLite lineage audit已完成；provider-backed COLD coverage 3/3已可由Central／Telegram機讀。尚欠nightly launchd production activation同獨立retention cutover approval。→ Verify：外置碟offline只defer；hash／SQLite／D1 restore一致；刪本機前另有scoped approval。
-- [ ] 11. 完整exit review同production deployment。→ Verify：`./檢查.sh`、`./健康.sh`、fault matrix、release smoke、Telegram smoke全綠；100%新production decisions有provenance；roadmap更新。
+- [x] 10. 完成Stage 4D durability cutover：artifact catalog／verified archive executor、D1同Tennis WARM＋owner-only Google Drive COLD、catalog fail-closed resolver、AU／HKJC meeting readers、NBA day-folder reader同Tennis live SQLite lineage audit已完成；nightly launchd已喺production啟動，D1及全部catalog artifacts嘅provider-backed COLD coverage係4/4。→ Verify：真實launchd rerun exit 0；D1 stable row counts／SQLite restore／WARM digest／Google Drive full-download digest一致；外置碟offline只defer。HOT source保留，任何刪除仍要另一個scoped approval，唔係durability activation嘅隱含步驟。
+- [ ] 11. 完整exit review同production deployment。Production deployment已完成；exit仍待live evidence同容量閘。→ Verify：`./檢查.sh`、fault matrix、release／Telegram／rollback smoke已綠；`./健康.sh`目前因HOT少於20 GiB fail；production provenance仍係`no_data`（0 decisions）。見`docs/audits/WONG_CHOI_STAGE_4_EXIT_2026-08-29.md`。
 
 ## Done When
 
-- [ ] Kelvin唔需要估「有冇commit／push／deploy」：中央status同Telegram清楚列每個checkout、remote、automation同release狀態。
-- [ ] 中央Wong Choi只做control、evidence、risk、governance同display，唔係第五個預測模型。
-- [ ] AU／HKJC登記production；Tennis／NBA未過各自performance/live evidence gate前只登記shadow，automation live唔等於model production-ready。
-- [ ] NBA live evidence未齊時，平台只標記`engineering complete / NBA evidence pending`。
+- [x] Kelvin唔需要估「有冇commit／push／deploy」：中央status同Telegram清楚列每個checkout、remote、automation同release狀態。
+- [x] 中央Wong Choi只做control、evidence、risk、governance同display，唔係第五個預測模型。
+- [x] AU／HKJC登記production；Tennis／NBA未過各自performance/live evidence gate前只登記shadow，automation live唔等於model production-ready。
+- [x] NBA live evidence未齊時，平台只標記`engineering complete / NBA evidence pending`。

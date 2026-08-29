@@ -22,7 +22,7 @@
 
 中央能力：`Horse_Racing_Dashboard`係正式control-tower display，D1 `WC_LEDGER`保存實際投注；HOT／WARM／COLD狀態同verified archive catalog由中央旺財管理，兩者都不得改寫domain scoring。Telegram有read-only `/status`／`/git`／`/models`／`/evidence`／`/storage`／`/dashboard`，治理寫入只限authenticated `/approve SHA`同一次性`/bootstrap_models SHA`。
 
-中央durability狀態：D1每日verified export、WARM archive同owner-only Google Drive COLD proof已完成；catalog 3/3 artifacts verified，當中Tennis兩個migration artifacts已逐part full-download、digest、重組、extract同SQLite quick-check。HOT source仍未刪。2026-08-29 read-only runtime scan確認AU 4/4已指向獨立production checkout；HKJC 6/6、NBA 6/6同Tennis 3/3仍指primary checkout，Central durability尚未安裝。統一transactional cutover同rollback已成candidate，等新immutable SHA批准；source retention仍要另一次scoped approval。
+中央durability狀態：D1每日verified export、WARM archive同owner-only Google Drive COLD proof已完成；catalog 4/4 artifacts verified，當中Tennis migration artifacts已逐part full-download、digest、重組、extract同SQLite quick-check。2026-08-29 authenticated Telegram批准release `cb17d2f0860e`後，origin/main同production checkout一致；installed-plist verifier確認AU 4/4、HKJC 6/6、NBA 6/6、Tennis 3/3及Central 1/1全部loaded／aligned。Central nightly durability真實launchd rerun exit 0；最新D1 snapshot通過stable row counts、全新SQLite restore、WARM digest同Google Drive full-download directory digest。HOT source仍未刪，retention要另一次scoped approval。
 
 ## Confirmed Owners and Entrypoints
 
@@ -45,4 +45,4 @@
 - 2026-08-26：四線全部已有 manifest-backed adapter；HKJC／Tennis scheduler新增 opt-in `--control-json`，原有 launchd/default output不變。
 - 四線共用 fault matrix驗證 success、exit 75、hard failure、missing status、duplicate attempt同新 retry attempt；未知／缺失 status一律 fail closed。
 - 2026-08-26：四線daily wrapper已接入共用control-plane code。NBA舊三合一pregame launchd已拆成warmup／production／final-refresh，startup off-season manifest smoke通過。AU獨立production checkout已對齊scoped commit `40724a31`；當日deployment verifier 14/14 aligned、wrapper／adapter／health smoke通過。
-- 2026-08-29：新增installed-plist＋loaded-state runtime verifier，揭示HKJC／NBA／Tennis仍由primary checkout執行，並非同一approved production checkout；統一cutover candidate會保留Tennis live data原位並提供plist＋Git雙層rollback。
+- 2026-08-29：installed-plist＋loaded-state runtime verifier揭示舊runtime分裂後，已用transactional cutover將四線同Central對齊`/Users/imac/wongchoi-scheduler`；Tennis live SQLite／venv／logs／Google Drive output保留原位，plist＋Git rollback亦經真實失敗演練驗證。

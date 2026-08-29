@@ -18,9 +18,9 @@ Accepted — Stage 4, 2026-08-26.
 - production activation只准fast-forward；目標contract係先backup，後deploy verifier／health smoke，任何失敗退回舊production commit；現役差距見下節。
 - repo root `保存.sh`只係中央release manager wrapper；冇`--path`會fail closed，唔再提供`git add -A`或`--no-check`逃生門。
 
-## Transactional activation candidate
+## Transactional activation production status
 
-2026-08-29 engineering candidate已補captured pre-activation SHA同post-sync rollback：
+2026-08-29 production release已補captured pre-activation SHA同post-sync rollback：
 verifier／installer／deploy或unexpected exception失敗會逐個deduplicated production checkout
 退回舊commit；`sb_archive_meeting_ids.json`做union而runtime值優先。Rollback前再查dirty
 paths，任何unrelated concurrent write會fail closed而唔reset，原錯誤同rollback結果一齊寫
@@ -30,8 +30,17 @@ snapshot；後續installer／deploy／verifier失敗時，先用candidate版本i
 plist，再退回Git SHA。統一runtime installer只切HKJC、NBA、Tennis同Central；AU poller係
 approval caller所以保持loaded，並先驗證佢已指向同一production checkout。Tennis只切versioned
 code，現有SQLite／logs／Google Drive output唔搬唔刪。read-only verifier會逐個installed plist
-同loaded state核對，任何一條未aligned即rollback。未經取代`c595aa10b314`嘅新release SHA
-Telegram批准前，以上仍只係candidate，唔當production已生效。
+同loaded state核對，任何一條未aligned即rollback。authenticated Telegram已批准immutable
+release `cb17d2f0860e`；event chain係`approval_granted → merged → activation_started →
+activation_succeeded`，origin/main同production checkout一致，AU／HKJC／NBA／Tennis及Central
+installed launchd全部loaded／aligned。
+
+同日一個AU automation fix直接將`origin/main`同production推到`cfb3a9747cc3`，但冇Central
+release manifest；舊status因HEAD已push兼已入main而顯示正常。Central而家會對
+`origin/main`同每個production checkout嘅exact HEAD核對merged release manifest；缺trail會
+明確報`origin_main_without_release_manifest`／`production_commit_without_release_manifest`，
+Telegram亦顯示Main trail ⛔。呢個偵測唔會retroactively偽造approval，只會令治理繞過
+fail visible。
 
 ## Trade-offs
 
