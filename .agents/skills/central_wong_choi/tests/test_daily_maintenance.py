@@ -82,6 +82,61 @@ def test_daily_maintenance_skips_verified_same_sydney_day(tmp_path: Path) -> Non
     assert result["reason"] == "today_already_verified"
 
 
+def test_daily_maintenance_treats_external_tcc_as_deferred_not_failed(
+    tmp_path: Path,
+) -> None:
+    sent = []
+
+    def backup(*_args, **_kwargs):
+        return {
+            "status": "deferred",
+            "row_counts": {"bets": 3},
+            "warm": {"status": "deferred", "reason": "Operation not permitted"},
+            "cold": {"status": "deferred"},
+            "sql": {"sha256": "abc"},
+        }
+
+    result = run_maintenance(
+        tmp_path / "repo",
+        tmp_path / "state",
+        warm_root=tmp_path / "external",
+        cold_root=None,
+        clock=datetime(2026, 8, 28, 2, tzinfo=timezone.utc),
+        backup_fn=backup,
+        notify_fn=lambda message, **_kwargs: sent.append(message) or {"ok": True},
+    )
+
+    assert result["status"] == "deferred"
+    assert "本機驗證完成" in sent[0]
+    assert "Operation not permitted" in sent[0]
+
+
+def test_daily_maintenance_notification_failure_preserves_backup_result(
+    tmp_path: Path,
+) -> None:
+    result = run_maintenance(
+        tmp_path / "repo",
+        tmp_path / "state",
+        warm_root=tmp_path / "warm",
+        cold_root=None,
+        clock=datetime(2026, 8, 28, 3, tzinfo=timezone.utc),
+        backup_fn=lambda *_args, **_kwargs: {
+            "status": "pass",
+            "warm": {"status": "copied_verified"},
+            "cold": {"status": "deferred"},
+            "row_counts": {},
+            "sql": {"sha256": "abc"},
+        },
+        notify_fn=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            RuntimeError("telegram offline")
+        ),
+    )
+
+    assert result["status"] == "succeeded"
+    assert result["telegram"]["status"] == "failed"
+    assert "telegram offline" in result["telegram"]["error"]
+
+
 def test_launchd_template_is_daily_and_uses_production_wrapper() -> None:
     template = (PACKAGE_ROOT / "launchd" / "com.antigravity.central-wong-choi.durability.plist.template").read_text(encoding="utf-8")
     wrapper = (PACKAGE_ROOT / "scripts" / "run_central_daily_maintenance.sh").read_text(encoding="utf-8")

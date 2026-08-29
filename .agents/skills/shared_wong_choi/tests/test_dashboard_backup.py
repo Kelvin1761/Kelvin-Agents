@@ -130,6 +130,31 @@ def test_d1_backup_rejects_count_mismatch_and_cleans_partial(tmp_path: Path) -> 
     assert not list((state / "dashboard_d1" / "snapshots").glob("*.partial-*"))
 
 
+def test_d1_backup_defers_external_warm_permission_without_losing_snapshot(
+    tmp_path: Path, monkeypatch
+) -> None:
+    dashboard = _dashboard(tmp_path)
+    state = tmp_path / "state"
+
+    def denied(*_args, **_kwargs):
+        raise PermissionError("launchd cannot access removable volume")
+
+    monkeypatch.setattr(dashboard_backup, "archive_copy", denied)
+    result = backup_d1_ledger(
+        dashboard,
+        state,
+        warm_root=tmp_path / "external",
+        runner=FakeRunner([1, 1]),
+        now=datetime(2026, 8, 28, 3, 30, tzinfo=timezone.utc),
+    )
+
+    assert result["status"] == "deferred"
+    assert result["warm"]["status"] == "deferred"
+    assert "removable volume" in result["warm"]["reason"]
+    assert Path(result["snapshot"]).is_dir()
+    assert Path(result["manifest"]).is_file()
+
+
 def test_verify_export_requires_new_destination_and_valid_sql(tmp_path: Path) -> None:
     sql = tmp_path / "backup.sql"
     sql.write_text(_sql(), encoding="utf-8")

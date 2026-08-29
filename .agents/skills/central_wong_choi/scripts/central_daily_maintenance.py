@@ -52,7 +52,7 @@ def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def _already_complete(status: dict[str, Any], clock: datetime) -> bool:
-    if status.get("status") != "ok" or not status.get("warm_verified"):
+    if not status.get("restore_verified"):
         return False
     raw = status.get("snapshot_at")
     if not raw:
@@ -79,6 +79,15 @@ def _message(run: dict[str, Any]) -> str:
         )
     if run["status"] == "dormant":
         return "中央旺財 nightly durability：今日已完成，冇重複 export。"
+    if run["status"] == "deferred":
+        result = run.get("backup") or {}
+        return "\n".join(
+            (
+                "⚠️ 中央旺財 D1本機驗證完成；外置WARM deferred",
+                f"原因：{(result.get('warm') or {}).get('reason', 'external storage unavailable')}",
+                "原始D1冇改動；foreground ./備份.sh 可補外置second copy。",
+            )
+        )
     return "❌ 中央旺財 nightly durability 失敗\n" + str(run.get("error") or "unknown")[:1000]
 
 
@@ -116,9 +125,16 @@ def run_maintenance(
             cold_root=cold_root,
             now=now,
         )
+        backup_status = str(result.get("status") or "partial")
         run = {
             "schema_version": "wong-choi-central-maintenance-run/v1",
-            "status": "succeeded" if result.get("status") == "pass" else "partial",
+            "status": (
+                "succeeded"
+                if backup_status == "pass"
+                else "deferred"
+                if backup_status == "deferred"
+                else "partial"
+            ),
             "target_date": target_date,
             "started_at": now.isoformat(),
             "completed_at": datetime.now(timezone.utc).isoformat(),
@@ -138,7 +154,14 @@ def run_maintenance(
     _atomic_json(run_path, run)
     run["run_log"] = str(run_path)
     if notify:
-        run["telegram"] = notify_fn(_message(run), audience="primary")
+        try:
+            run["telegram"] = notify_fn(_message(run), audience="primary")
+        except Exception as exc:  # backup evidence must survive notification outages
+            run["telegram"] = {
+                "ok": False,
+                "status": "failed",
+                "error": f"{type(exc).__name__}: {exc}",
+            }
     return run
 
 
@@ -175,7 +198,7 @@ def main() -> int:
             notify=not args.no_notify,
         )
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result["status"] in {"succeeded", "dormant"} else 1
+    return 0 if result["status"] in {"succeeded", "dormant", "deferred"} else 1
 
 
 if __name__ == "__main__":

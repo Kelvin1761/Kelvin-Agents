@@ -325,7 +325,7 @@ def backup_d1_ledger(
             created_at=clock.astimezone(timezone.utc).isoformat(),
         )
         result["warm"] = archived
-    except ArtifactArchiveError as exc:
+    except (ArtifactArchiveError, OSError) as exc:
         result["status"] = "deferred"
         result["warm"] = {"status": "deferred", "reason": str(exc)}
         return result
@@ -336,7 +336,7 @@ def backup_d1_ledger(
                 cold_root=cold_root,
                 mirrored_at=clock.astimezone(timezone.utc).isoformat(),
             )
-        except ArtifactArchiveError as exc:
+        except (ArtifactArchiveError, OSError) as exc:
             result["status"] = "deferred"
             result["cold"] = {"status": "deferred", "reason": str(exc)}
     return result

@@ -24,6 +24,8 @@ Accepted — Stage 4D, 2026-08-27.
 
 Dashboard D1另有每日verified export：只讀remote、固定Wrangler版本、export前後row counts必須穩定，SQL要restore到全新SQLite並通過integrity／foreign-key／row-count gate，先可寫immutable snapshot同copy去WARM／COLD。Dashboard同Telegram只顯示呢份證據嘅freshness，唔會將backup狀態當prediction evidence。
 
+macOS launchd對removable volume／File Provider可能受TCC阻擋。每日job只要remote export同本機全新SQLite restore已通過，就保留immutable local snapshot；外置WARM copy要明確標`deferred`並exit 0，唔准以traceback抹走已完成證據，亦唔准假稱WARM verified。同一悉尼日唔重複export；有Terminal權限嘅foreground `./備份.sh`會mirror整個`WongChoiData`去外置碟補second-device copy。Central status仍會顯示WARM pending，直至catalog有真實hash proof。
+
 Provider-backed COLD唔依賴macOS File Provider folder。Connector完成全量download後，必須用同WARM catalog一樣嘅filename／bytes／content digest重算整個artifact；Central只接受exact match、canonical provider URL同append-only proof。分享權限未核實嘅Drive folder唔准放backup。
 
 ## Implementation Status（2026-08-29）
