@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import shutil
 import tempfile
 from pathlib import Path
@@ -47,6 +46,46 @@ def _is_ancestor(root: Path, older: str, newer: str) -> bool:
     )
 
 
+def _backup_mutable_paths(root: Path, backup_root: Path) -> dict[str, Path]:
+    backups: dict[str, Path] = {}
+    for relative in _dirty_paths(root):
+        if relative not in EXPECTED_MUTABLE_PATHS:
+            continue
+        source = root / relative
+        if not source.is_file():
+            continue
+        backup = backup_root / relative
+        backup.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, backup)
+        backups[relative] = backup
+    return backups
+
+
+def _restore_mutable_paths(root: Path, backups: Mapping[str, Path]) -> None:
+    """Union runtime state with the checked-out git version; runtime wins conflicts."""
+    for relative, backup in backups.items():
+        target = root / relative
+        merge_script = root / ".agents/skills/au_racing/au_daily_auto/merge_mapping.py"
+        if relative.endswith("sb_archive_meeting_ids.json") and merge_script.is_file():
+            # merge_mapping.py defines its first argument as the local/runtime
+            # copy and makes it win key conflicts.  Merge into the backup, then
+            # publish that union back to the tracked production path.
+            combined = _run(
+                root,
+                "/usr/bin/python3",
+                str(merge_script),
+                str(backup),
+                str(target),
+                check=False,
+            )
+            if combined.returncode != 0:
+                shutil.copy2(backup, target)
+                raise ReleaseError("production mapping union failed")
+            shutil.copy2(backup, target)
+        else:
+            shutil.copy2(backup, target)
+
+
 def _sync_checkout(root: Path, commit: str) -> dict[str, Any]:
     root = root.expanduser().resolve()
     if not (root / ".git").exists():
@@ -55,29 +94,24 @@ def _sync_checkout(root: Path, commit: str) -> dict[str, Any]:
     if fetched.returncode != 0:
         raise ReleaseError(f"production fetch failed: {root}")
     current = _run(root, "git", "rev-parse", "HEAD").stdout.strip()
-    if current == commit:
-        return {"root": str(root), "before": current, "after": current, "status": "already"}
-    if not _is_ancestor(root, current, commit):
-        raise ReleaseError(f"production checkout cannot fast-forward: {root}")
     dirty = _dirty_paths(root)
     unexpected = sorted(set(dirty).difference(EXPECTED_MUTABLE_PATHS))
     if unexpected:
         raise ReleaseError(f"production checkout has unrelated dirty paths: {unexpected}")
+    if current == commit:
+        return {"root": str(root), "before": current, "after": current, "status": "already"}
+    if not _is_ancestor(root, current, commit):
+        raise ReleaseError(f"production checkout cannot fast-forward: {root}")
 
-    backups: dict[str, Path] = {}
     with tempfile.TemporaryDirectory(prefix="wc-production-sync-") as raw:
         backup_root = Path(raw)
-        for relative in dirty:
-            source = root / relative
-            if source.is_file():
-                backup = backup_root / Path(relative).name
-                shutil.copy2(source, backup)
-                backups[relative] = backup
-                restored = _run(
-                    root, "git", "restore", "--worktree", "--", relative, check=False
-                )
-                if restored.returncode != 0:
-                    raise ReleaseError(f"cannot preserve runtime state before sync: {relative}")
+        backups = _backup_mutable_paths(root, backup_root)
+        for relative in backups:
+            restored = _run(
+                root, "git", "restore", "--worktree", "--", relative, check=False
+            )
+            if restored.returncode != 0:
+                raise ReleaseError(f"cannot preserve runtime state before sync: {relative}")
         merged = _run(
             root, "git", "merge", "--ff-only", commit, check=False, timeout=300
         )
@@ -85,30 +119,62 @@ def _sync_checkout(root: Path, commit: str) -> dict[str, Any]:
             for relative, backup in backups.items():
                 shutil.copy2(backup, root / relative)
             raise ReleaseError(f"production fast-forward failed: {root}")
-        for relative, backup in backups.items():
-            target = root / relative
-            merge_script = (
-                root / ".agents/skills/au_racing/au_daily_auto/merge_mapping.py"
-            )
-            if relative.endswith("sb_archive_meeting_ids.json") and merge_script.is_file():
-                combined = _run(
-                    root,
-                    "/usr/bin/python3",
-                    str(merge_script),
-                    str(target),
-                    str(backup),
-                    check=False,
-                )
-                if combined.returncode != 0:
-                    shutil.copy2(backup, target)
-                    raise ReleaseError("production mapping merge failed after fast-forward")
-            else:
-                shutil.copy2(backup, target)
+        _restore_mutable_paths(root, backups)
 
     after = _run(root, "git", "rev-parse", "HEAD").stdout.strip()
     if after != commit:
         raise ReleaseError(f"production checkout ended on wrong commit: {root}")
     return {"root": str(root), "before": current, "after": after, "status": "updated"}
+
+
+def _rollback_checkout(root: Path, commit: str) -> dict[str, Any]:
+    """Reset one dedicated production checkout to its captured pre-activation SHA."""
+    root = root.expanduser().resolve()
+    if not (root / ".git").exists():
+        raise ReleaseError(f"production checkout missing during rollback: {root}")
+    current = _run(root, "git", "rev-parse", "HEAD").stdout.strip()
+    if current == commit:
+        return {
+            "root": str(root),
+            "before": current,
+            "after": current,
+            "status": "already_rolled_back",
+        }
+    if not _is_ancestor(root, commit, current):
+        raise ReleaseError(
+            f"rollback target is not an ancestor of production HEAD: {root}"
+        )
+    dirty = _dirty_paths(root)
+    unexpected = sorted(set(dirty).difference(EXPECTED_MUTABLE_PATHS))
+    if unexpected:
+        raise ReleaseError(
+            f"rollback blocked by unrelated production writes: {unexpected}"
+        )
+
+    with tempfile.TemporaryDirectory(prefix="wc-production-rollback-") as raw:
+        backups = _backup_mutable_paths(root, Path(raw))
+        reset = _run(
+            root,
+            "git",
+            "reset",
+            "--hard",
+            commit,
+            check=False,
+            timeout=300,
+        )
+        if reset.returncode != 0:
+            raise ReleaseError(f"production rollback failed: {root}")
+        _restore_mutable_paths(root, backups)
+
+    after = _run(root, "git", "rev-parse", "HEAD").stdout.strip()
+    if after != commit:
+        raise ReleaseError(f"production rollback ended on wrong commit: {root}")
+    return {
+        "root": str(root),
+        "before": current,
+        "after": after,
+        "status": "rolled_back",
+    }
 
 
 def activate_release(
@@ -163,18 +229,28 @@ def activate_release(
     if dry_run:
         return result
 
+    checkpoints = {
+        str(target.expanduser().resolve()): _run(
+            target.expanduser().resolve(), "git", "rev-parse", "HEAD"
+        ).stdout.strip()
+        for target in unique_targets.values()
+    }
+
     events.append(
         release_id=manifest["release_id"],
         commit=manifest["commit"],
         event_type="activation_started",
         actor=actor,
-        detail={"domains": domains, "targets": sorted(unique_targets)},
+        detail={
+            "domains": domains,
+            "targets": sorted(unique_targets),
+            "checkpoints": checkpoints,
+        },
     )
+    sync_results: list[dict[str, Any]] = []
     try:
-        sync_results = [
-            _sync_checkout(target, manifest["commit"])
-            for target in unique_targets.values()
-        ]
+        for target in unique_targets.values():
+            sync_results.append(_sync_checkout(target, manifest["commit"]))
         verification = []
         # The Telegram bot can itself run from the production checkout.  A
         # verifier comparing that checkout to itself proves nothing, and a
@@ -263,21 +339,49 @@ def activate_release(
             if deployed.returncode != 0:
                 raise ReleaseError("dashboard deployment failed")
             deploy = {"status": "succeeded", "exit_code": deployed.returncode}
-    except (OSError, ReleaseError) as exc:
+    except Exception as exc:  # rollback must also cover unexpected verifier/installer errors
+        rollback_results: list[dict[str, Any]] = []
+        rollback_errors: list[str] = []
+        for raw_target, before in reversed(list(checkpoints.items())):
+            target = Path(raw_target)
+            try:
+                rollback_results.append(_rollback_checkout(target, before))
+            except Exception as rollback_exc:  # preserve and report concurrent writes
+                rollback_errors.append(
+                    f"{target}: {type(rollback_exc).__name__}: {rollback_exc}"
+                )
+        rollback_status = "succeeded" if not rollback_errors else "blocked"
         failed = events.append(
             release_id=manifest["release_id"],
             commit=manifest["commit"],
             event_type="activation_failed",
             actor="central-wong-choi",
-            detail={"error": f"{type(exc).__name__}: {exc}"},
+            detail={
+                "error": f"{type(exc).__name__}: {exc}",
+                "rollback_status": rollback_status,
+                "rollback": rollback_results,
+                "rollback_errors": rollback_errors,
+            },
         )
         if notify:
             _notify(
                 repo,
-                f"❌ 中央旺財 activation 失敗\n{manifest['commit'][:12]}\n{exc}",
+                f"❌ 中央旺財 activation 失敗\n{manifest['commit'][:12]}\n{exc}\n"
+                + (
+                    "✅ production 已退回 activation 前版本"
+                    if not rollback_errors
+                    else "⛔ rollback 被保護閘攔住：" + "；".join(rollback_errors)[:700]
+                ),
                 dry_run=False,
             )
-        raise ReleaseError(f"activation failed; event={failed['path']}: {exc}") from exc
+        rollback_note = (
+            "rollback complete"
+            if not rollback_errors
+            else "rollback incomplete: " + "; ".join(rollback_errors)
+        )
+        raise ReleaseError(
+            f"activation failed; {rollback_note}; event={failed['path']}: {exc}"
+        ) from exc
 
     completed = events.append(
         release_id=manifest["release_id"],

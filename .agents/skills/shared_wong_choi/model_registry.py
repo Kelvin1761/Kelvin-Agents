@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,6 +21,14 @@ PROMOTION_ORDER = (
     ReleaseStage.PRODUCTION,
 )
 PROMOTION_VERDICTS = frozenset({"PRIMARY_WIN", "RANKING_WIN"})
+CURRENT_MODEL_BASELINES = {
+    Domain.AU: ("au-matrix", "au-hkjc-v2", ReleaseStage.PRODUCTION),
+    Domain.HKJC: ("hkjc-7d", "au-hkjc-v2", ReleaseStage.PRODUCTION),
+    # Automation is live, but the frozen 2026-08-21 audit has the rebuilt
+    # holdout at -6.61% ROI and raw-model Brier behind the market.
+    Domain.TENNIS: ("tennis-pricing", "tennis-current", ReleaseStage.SHADOW),
+    Domain.NBA: ("nba-hybrid-v1", "nba-hybrid-v1", ReleaseStage.SHADOW),
+}
 
 
 class ModelPromotionError(RuntimeError):
@@ -200,15 +209,6 @@ def bootstrap_current_models(
 ) -> dict[str, dict[str, Any]]:
     """One-time, explicit registration of existing champions before new promotions."""
     registry = ModelRegistry(evidence_root)
-    specs = {
-        Domain.AU: ("au-matrix", "au-hkjc-v2", ReleaseStage.PRODUCTION),
-        Domain.HKJC: ("hkjc-7d", "au-hkjc-v2", ReleaseStage.PRODUCTION),
-        # Automation is live, but the frozen 2026-08-21 audit has the rebuilt
-        # holdout at -6.61% ROI and raw-model Brier behind the market.  A
-        # running scheduler is not evidence that the model is production-fit.
-        Domain.TENNIS: ("tennis-pricing", "tennis-current", ReleaseStage.SHADOW),
-        Domain.NBA: ("nba-hybrid-v1", "nba-hybrid-v1", ReleaseStage.SHADOW),
-    }
     return {
         domain.value: registry.register(
             ModelReleaseRequest(
@@ -223,5 +223,84 @@ def bootstrap_current_models(
                 baseline_migration=True,
             )
         )
-        for domain, (model_id, contract, stage) in specs.items()
+        for domain, (model_id, contract, stage) in CURRENT_MODEL_BASELINES.items()
     }
+
+
+def bootstrap_current_models_once(
+    evidence_root: Path,
+    *,
+    code_commit: str,
+    approval_id: str,
+    created_at: str | None = None,
+) -> dict[str, dict[str, Any]]:
+    """Create/resume exactly one approved baseline migration.
+
+    An interrupted run may have written a strict subset of the four records.
+    Retrying the same commit and approval is safe and idempotent.  Any other
+    model-release history means the registry is no longer blank baseline state
+    and blocks this one-time command.
+    """
+    evidence_root = Path(evidence_root).expanduser().resolve()
+    store = EvidenceStore(evidence_root)
+    audit = store.audit()
+    if audit["status"] != "ok":
+        raise ModelPromotionError(
+            "evidence audit failed before baseline migration: "
+            + "; ".join(audit.get("errors") or [])
+        )
+    folder = evidence_root / "records" / RecordKind.MODEL_RELEASE.value
+    existing: list[dict[str, Any]] = []
+    if folder.exists():
+        for path in sorted(folder.glob("*.json")):
+            try:
+                raw = json.loads(path.read_text(encoding="utf-8"))
+                record_id = str(raw["record_id"])
+                existing.append(store.load(record_id))
+            except (OSError, ValueError, KeyError) as exc:
+                raise ModelPromotionError(
+                    f"cannot validate existing model release {path}: {exc}"
+                ) from exc
+
+    expected_domains = {domain.value for domain in CURRENT_MODEL_BASELINES}
+    seen_domains: set[str] = set()
+    for record in existing:
+        domain_name = str(record.get("domain") or "")
+        try:
+            domain = Domain(domain_name)
+            model_id, contract, stage = CURRENT_MODEL_BASELINES[domain]
+        except (ValueError, KeyError) as exc:
+            raise ModelPromotionError(
+                f"unexpected domain in existing model registry: {domain_name!r}"
+            ) from exc
+        body = record.get("body") or {}
+        expected = {
+            "model_id": model_id,
+            "release_stage": stage.value,
+            "code_commit": code_commit,
+            "evaluation_contract_version": contract,
+            "evaluation_verdict": "BASELINE_MIGRATION",
+            "approval_id": approval_id,
+            "forward_evidence_observed": 0,
+            "forward_evidence_required": 0,
+            "baseline_migration": True,
+        }
+        if body != expected or record.get("links"):
+            raise ModelPromotionError(
+                "model registry already contains non-matching history; "
+                f"baseline migration blocked at {record.get('record_id')}"
+            )
+        if domain_name in seen_domains:
+            raise ModelPromotionError(
+                f"duplicate baseline domain blocks migration: {domain_name}"
+            )
+        seen_domains.add(domain_name)
+    if not seen_domains.issubset(expected_domains):
+        raise ModelPromotionError("model registry baseline domain set is invalid")
+
+    return bootstrap_current_models(
+        evidence_root,
+        code_commit=code_commit,
+        approval_id=approval_id,
+        created_at=created_at,
+    )

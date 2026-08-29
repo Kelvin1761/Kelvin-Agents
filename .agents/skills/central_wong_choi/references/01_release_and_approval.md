@@ -25,4 +25,6 @@
 - Push fail：保留 local commit，manifest 標記 `push_failed`。
 - Main 已變：approval expired，重新 rebase/release。
 - Production checkout dirty：block activation，唔還原用戶改動。
-- Deploy/health fail：保留 rollback target，發 critical Telegram；唔宣稱成功。
+- Post-sync verifier／installer／deploy fail：退回activation前captured SHA，expected runtime mapping union保留；發critical Telegram，唔宣稱成功。
+- Rollback期間有unrelated dirty path：fail closed，唔reset；failure event要同時記原錯誤、rollback blocked同精確paths。
+- Model registry首次遷移：只可由authenticated Telegram chat喺release `merged + activation_succeeded`、四線production同SHA、已入main、evidence audit ok兼registry空白時執行；重覆同版本只讀回覆。

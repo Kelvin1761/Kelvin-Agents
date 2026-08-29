@@ -18,12 +18,14 @@ Accepted — Stage 4, 2026-08-26.
 - production activation只准fast-forward；目標contract係先backup，後deploy verifier／health smoke，任何失敗退回舊production commit；現役差距見下節。
 - repo root `保存.sh`只係中央release manager wrapper；冇`--path`會fail closed，唔再提供`git add -A`或`--no-check`逃生門。
 
-## Known activation gap
+## Transactional activation candidate
 
-現役activation會喺任何post-sync失敗寫immutable failure event同Telegram，唔會扮成功；
-但跨checkout自動rollback仍未獲獨立高風險批准。因此上面「失敗即保留舊commit」係
-目標contract，未可當現役證據。完成transactional rollback前，post-sync verifier／
-installer失敗要按failure event做人手reconciliation。
+2026-08-29 engineering candidate已補captured pre-activation SHA同post-sync rollback：
+verifier／installer／deploy或unexpected exception失敗會逐個deduplicated production checkout
+退回舊commit；`sb_archive_meeting_ids.json`做union而runtime值優先。Rollback前再查dirty
+paths，任何unrelated concurrent write會fail closed而唔reset，原錯誤同rollback結果一齊寫
+immutable event／Telegram。真git fast-forward→failure→rollback、mapping conflict同concurrent
+write三條測試已覆蓋；未經新release SHA批准前仍只係candidate，唔當production已生效。
 
 ## Trade-offs
 

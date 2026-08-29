@@ -20,7 +20,7 @@
 | Controlled model promotion | ✅ v2 Gold/Good + ranking path | ✅ v2 Gold/Good + ranking path | 🟡 registry shadow；holdout ROI/Brier未過 | ⏳ shadow；live forward gate未到 |
 | Live acceptance | ✅ production | ✅ production；新季 forward gate另計 | 🟡 automation live / model shadow | ⏳ pipeline ready / production evidence pending |
 
-中央能力：`Horse_Racing_Dashboard`係正式control-tower display，D1 `WC_LEDGER`保存實際投注；HOT／WARM／COLD狀態同verified archive catalog由中央旺財管理，兩者都不得改寫domain scoring。
+中央能力：`Horse_Racing_Dashboard`係正式control-tower display，D1 `WC_LEDGER`保存實際投注；HOT／WARM／COLD狀態同verified archive catalog由中央旺財管理，兩者都不得改寫domain scoring。Telegram有read-only `/status`／`/git`／`/models`／`/evidence`／`/storage`／`/dashboard`，治理寫入只限authenticated `/approve SHA`同一次性`/bootstrap_models SHA`。
 
 中央durability狀態：D1每日verified export、WARM archive同owner-only Google Drive COLD proof已完成；catalog 3/3 artifacts verified，當中Tennis兩個migration artifacts已逐part full-download、digest、重組、extract同SQLite quick-check。HOT source仍未刪，下一閘係獨立source-retention approval、production nightly activation同runtime evidence。
 

@@ -45,7 +45,7 @@ from shared_wong_choi.release_manager import (  # noqa: E402
     ReleaseError,
     prepare_release,
 )
-from shared_wong_choi.model_registry import bootstrap_current_models  # noqa: E402
+from shared_wong_choi.model_registry import bootstrap_current_models_once  # noqa: E402
 from shared_wong_choi.reliability import collect_reliability, run_restore_drill  # noqa: E402
 from shared_wong_choi.storage_status import (  # noqa: E402
     DEFAULT_HOT_ROOT,
@@ -215,7 +215,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0
     if args.command == "bootstrap-models":
-        result = bootstrap_current_models(
+        result = bootstrap_current_models_once(
             state_root / "evidence",
             code_commit=args.commit,
             approval_id=args.actor,

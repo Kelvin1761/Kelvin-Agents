@@ -8,8 +8,9 @@ Kelvin 唔喺電腦前嗰陣想主動問「而家點？」，而唔係淨係等�
   * 只回應 `WC_NOTIFY_TELEGRAM_CHAT` 嗰個 chat id，其餘一律唔理（連錯誤都唔覆，
     唔好畀人試出隻 bot 存在）；
   * 指令係一張**白名單**，逐個字對，唔會把訊息內容當成路徑、參數或者指令去行；
-  * 大部分指令只讀；有副作用嘅 `/retry`、`/hkjc`、`/hkjc_reflect` 都係 Kelvin
-    明確批准，並只會行現役正式 runner，唔接受訊息參數做 shell/path 輸入。
+  * 大部分指令只讀；有副作用嘅 `/retry`、`/hkjc`、`/hkjc_reflect`、`/approve`
+    同 `/bootstrap_models` 都係 Kelvin明確批准。治理寫入要由authenticated dispatcher
+    mint固定actor，SHA只做嚴格hex selector，永遠唔會變成shell/path輸入。
 
 跑法：launchd 每兩分鐘叫一次，唔使長駐 daemon（少一個會死嘅嘢）。
 """
@@ -30,6 +31,7 @@ RETRY_LOG = LOG_DIR / "retry-from-telegram.out"
 HKJC_ANALYSIS_LOG = LOG_DIR / "hkjc-analysis-from-telegram.out"
 HKJC_REFLECT_LOG = LOG_DIR / "hkjc-reflector-from-telegram.out"
 TIMEOUT = 25
+AUTHORISED_TELEGRAM_ACTOR = "telegram:authorised-chat"
 HELP = ("我識嘅嘢：\n"
         "/picks           今日邊幾個馬場\n"
         "/picks dubbo     嗰個馬場逐場頭三揀 + 賽前賠率\n"
@@ -42,6 +44,7 @@ HELP = ("我識嘅嘢：\n"
         "/dashboard       中央 Dashboard／投注 ledger 狀態\n"
         "/release         待批准 release\n"
         "/approve SHA     重新驗證後批准一個 immutable release\n"
+        "/bootstrap_models SHA  production對齊後首次登記四線model\n"
         "/au_status       AU 最近幾個 run 點\n"
         "/today           live dashboard 而家有乜\n"
         "/perf            最近一個賽日嘅 Gold／Good\n"
@@ -131,6 +134,13 @@ def _central_production_roots() -> dict[str, Path]:
         if value:
             production[domain] = Path(value)
     return production
+
+
+def _authenticated_actor(chat_id: str, allowed_chat_id: str) -> str:
+    """Mint the fixed audit actor only after exact configured-chat equality."""
+    if not allowed_chat_id or str(chat_id) != str(allowed_chat_id):
+        raise PermissionError("Telegram chat is not authorised for governance writes")
+    return AUTHORISED_TELEGRAM_ACTOR
 
 
 def cmd_status() -> str:
@@ -257,7 +267,9 @@ def cmd_release() -> str:
     return "\n".join(lines)
 
 
-def cmd_approve(arg: str = "") -> str:
+def cmd_approve(arg: str = "", *, actor: str) -> str:
+    if actor != AUTHORISED_TELEGRAM_ACTOR:
+        raise PermissionError("authenticated Telegram actor is required")
     selector = arg.strip()
     if not re.fullmatch(r"[0-9a-f]{12,64}", selector):
         return "格式：/approve 12位或以上小寫 commit SHA"
@@ -280,7 +292,7 @@ def cmd_approve(arg: str = "") -> str:
             repo,
             state,
             selector=selector,
-            actor="telegram:authorised-chat",
+            actor=actor,
             notify=True,
         )
     except ReleaseError as exc:
@@ -290,7 +302,7 @@ def cmd_approve(arg: str = "") -> str:
             repo,
             state,
             selector=selector,
-            actor="telegram:authorised-chat",
+            actor=actor,
             production_roots=_central_production_roots(),
             notify=True,
         )
@@ -305,6 +317,102 @@ def cmd_approve(arg: str = "") -> str:
         f"✅ 已批准、merge及部署 {(result.get('commit') or selector)[:12]}\n"
         "每一步都有immutable event；重覆指令冇副作用。"
     )
+
+
+def cmd_bootstrap_models(arg: str = "", *, actor: str) -> str:
+    """One explicit, authenticated baseline migration after activation proof."""
+    if actor != AUTHORISED_TELEGRAM_ACTOR:
+        raise PermissionError("authenticated Telegram actor is required")
+    selector = arg.strip()
+    if not re.fullmatch(r"[0-9a-f]{12,64}", selector):
+        return "格式：/bootstrap_models 12位或以上小寫 production commit SHA"
+
+    payload = _central_payload()
+    evidence = payload.get("evidence") or {}
+    if evidence.get("status") != "ok":
+        return "⛔ Evidence audit 唔係 ok，禁止 bootstrap model registry"
+
+    production = (payload.get("git") or {}).get("production") or {}
+    expected_domains = {"au", "hkjc", "tennis", "nba"}
+    if set(production) != expected_domains:
+        missing = sorted(expected_domains.difference(production))
+        return "⛔ 四線 production root 未齊：" + "、".join(missing)
+    blocked = [
+        name
+        for name, item in production.items()
+        if item.get("status") not in {"clean", "clean_runtime_state"}
+    ]
+    if blocked:
+        return "⛔ Production checkout 唔乾淨：" + "、".join(sorted(blocked))
+    not_main = [
+        name for name, item in production.items() if not item.get("merged_to_main")
+    ]
+    if not_main:
+        return "⛔ Production commit 未證實已入 origin/main：" + "、".join(sorted(not_main))
+    heads = {str(item.get("head") or "") for item in production.values()}
+    if len(heads) != 1:
+        return "⛔ 四線 production SHA 不一致：" + "、".join(
+            sorted(head[:12] or "?" for head in heads)
+        )
+    commit = next(iter(heads))
+    if not commit.startswith(selector):
+        return f"⛔ Production 係 {commit[:12]}，唔係 {selector[:12]}"
+
+    matching_release = next(
+        (
+            item
+            for item in (payload.get("releases") or {}).get("latest") or []
+            if item.get("commit") == commit
+        ),
+        None,
+    )
+    if not matching_release or matching_release.get("status") != "merged" or (
+        matching_release.get("activation") != "succeeded"
+    ):
+        return "⛔ 呢個 SHA 未有 merged + activation_succeeded release evidence"
+
+    registered = int((evidence.get("counts") or {}).get("model_release") or 0)
+    if registered:
+        models = [
+            (payload.get("domains") or {}).get(name, {}).get("model_release") or {}
+            for name in sorted(expected_domains)
+        ]
+        if registered >= 4 and all(
+            str(model.get("code_commit") or "") == commit for model in models
+        ):
+            return f"✅ Model registry 已經登記 {commit[:12]}，冇重複寫入"
+        return (
+            f"⛔ Model registry 已有 {registered} 個不完整／不同版本 release；"
+            "首次 bootstrap 只准由完全空白開始。"
+        )
+
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.model_registry import (  # noqa: PLC0415
+        ModelPromotionError,
+        bootstrap_current_models_once,
+    )
+
+    state = Path(
+        os.environ.get(
+            "WONGCHOI_CONTROL_STATE_ROOT",
+            Path.home() / "WongChoiData" / "WongChoiControl",
+        )
+    )
+    try:
+        result = bootstrap_current_models_once(
+            state / "evidence",
+            code_commit=commit,
+            approval_id=actor,
+        )
+    except (ModelPromotionError, OSError, ValueError) as exc:
+        return f"⛔ Model registry bootstrap 失敗：{exc}"
+    stages = " · ".join(
+        f"{name.upper()} {item.get('stage')}" for name, item in sorted(result.items())
+    )
+    return f"✅ Model registry 已登記 {commit[:12]}\n{stages}"
 
 
 def cmd_today() -> str:
@@ -623,7 +731,11 @@ COMMANDS = {"/status": cmd_status, "/git": cmd_git, "/models": cmd_models,
             "/help": lambda: HELP, "/start": lambda: HELP}
 # 收參數嘅指令要另外列 —— 白名單仍然係逐個字對，參數只當文字用嚟配對馬場名，
 # 永遠唔會變成路徑或者指令。
-COMMANDS_WITH_ARG = {"/picks": cmd_picks, "/approve": cmd_approve}
+COMMANDS_WITH_ARG = {"/picks": cmd_picks}
+MUTATING_COMMANDS_WITH_ARG = {
+    "/approve": cmd_approve,
+    "/bootstrap_models": cmd_bootstrap_models,
+}
 
 
 def _record_unknown(chat: dict, text: str) -> None:
@@ -686,11 +798,17 @@ def main() -> int:
         head = parts[0].lower() if parts else ""
         fn = COMMANDS.get(head)
         fn_arg = COMMANDS_WITH_ARG.get(head)
+        mutating_fn = MUTATING_COMMANDS_WITH_ARG.get(head)
         try:
             if fn:
                 reply = fn()
             elif fn_arg:
-                reply = fn_arg(" ".join(parts[1:])[:40])
+                reply = fn_arg(" ".join(parts[1:])[:64])
+            elif mutating_fn:
+                reply = mutating_fn(
+                    " ".join(parts[1:])[:64],
+                    actor=_authenticated_actor(chat_id, allowed),
+                )
             else:
                 reply = f"唔識「{(msg.get('text') or '')[:30]}」\n\n{HELP}"
         except Exception as exc:  # noqa: BLE001

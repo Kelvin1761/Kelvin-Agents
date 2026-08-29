@@ -16,6 +16,7 @@ from shared_wong_choi.model_registry import (  # noqa: E402
     ModelRegistry,
     ModelReleaseRequest,
     bootstrap_current_models,
+    bootstrap_current_models_once,
 )
 
 
@@ -182,3 +183,46 @@ def test_explicit_baseline_migration_keeps_unproven_domains_in_shadow(
         "tennis": "duplicate",
         "nba": "duplicate",
     }
+
+
+def test_one_time_bootstrap_resumes_matching_partial_migration(tmp_path: Path) -> None:
+    registry = ModelRegistry(tmp_path)
+    registry.register(
+        ModelReleaseRequest(
+            domain=Domain.AU,
+            model_id="au-matrix",
+            code_commit=SHA,
+            evaluation_contract_version="au-hkjc-v2",
+            target_stage=ReleaseStage.PRODUCTION,
+            evaluation_verdict="BASELINE_MIGRATION",
+            approval_id="telegram:authorised-chat",
+            created_at="2026-08-26T10:00:00+00:00",
+            baseline_migration=True,
+        )
+    )
+
+    result = bootstrap_current_models_once(
+        tmp_path,
+        code_commit=SHA,
+        approval_id="telegram:authorised-chat",
+        created_at="2026-08-26T10:01:00+00:00",
+    )
+
+    assert result["au"]["status"] == "duplicate"
+    assert {result[name]["stage"] for name in ("tennis", "nba")} == {"shadow"}
+
+
+def test_one_time_bootstrap_rejects_other_registry_history(tmp_path: Path) -> None:
+    bootstrap_current_models(
+        tmp_path,
+        code_commit=SHA,
+        approval_id="telegram:first",
+        created_at="2026-08-26T10:00:00+00:00",
+    )
+
+    with pytest.raises(ModelPromotionError, match="non-matching history"):
+        bootstrap_current_models_once(
+            tmp_path,
+            code_commit="b" * 40,
+            approval_id="telegram:authorised-chat",
+        )

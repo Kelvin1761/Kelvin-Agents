@@ -21,6 +21,7 @@ description: Use when the user asks for central Wong Choi status, git/release/de
 - 想保存改動：先 dry-run `release`，只傳今次明確 scope；禁止 `git add -A`。
 - 想改任何 domain prediction/scoring：轉返該 domain skill，中央層只記錄 evidence 同 promotion decision。
 - 想批准高風險 release：跟 `references/01_release_and_approval.md`；approval 必須綁 immutable commit。
+- Telegram governance writes只可由configured chat經authenticated dispatcher呼叫：`/approve SHA`做recheck／merge／activate；activation成功、四線同SHA、已入main、registry空白先可`/bootstrap_models SHA`做一次baseline migration。
 - 想判斷 model candidate：跟 `references/02_evidence_and_model_governance.md`，再讀該 domain evaluation contract。
 
 ## Hard Rules
@@ -29,12 +30,13 @@ description: Use when the user asks for central Wong Choi status, git/release/de
 2. Canonical JSON evidence append-only；SQLite 只可做可重建 index。
 3. Docs/tests-only 可通過 gate 後自動 merge；code/model/evaluation/automation/deployment 要白名單 Telegram approval。
 4. Approval 前重新驗證 commit、origin/main、gate、scope 同 rollback target；任何一項變咗就 block。
-5. Gold/Good 係 AU/HKJC primary；ranking-only candidate 必須 primary 無回歸兼過預先定義 statistical gate。
-6. NBA live evidence 未齊，只可標 `engineering complete / live evidence pending`。
-7. Dashboard係中央control tower；D1係實際投注ledger，append-only Evidence係模型證據，Dashboard唔准重算prediction。
-8. WARM／COLD搬檔必須copy/hash/restore/second-copy先可另行批准刪本機；外置碟offline唔准靜靜縮細研究語料。
-9. D1 backup只准remote SELECT/export；export期間row count變動要重試，local restore／integrity／foreign key／row count未全過唔准寫成功manifest。
-10. NBA full-history ML只可使用HOT目錄加catalog-verified WARM settled-day corpus；已知archive offline必須fail closed。
+5. Post-sync verifier／installer／deploy任何失敗都要嘗試退回captured production SHA；runtime mapping做union且runtime值優先。見到unrelated concurrent write就停止rollback、記critical event，唔准抹走。
+6. Gold/Good 係 AU/HKJC primary；ranking-only candidate 必須 primary 無回歸兼過預先定義 statistical gate。
+7. NBA live evidence 未齊，只可標 `engineering complete / live evidence pending`。
+8. Dashboard係中央control tower；D1係實際投注ledger，append-only Evidence係模型證據，Dashboard唔准重算prediction。
+9. WARM／COLD搬檔必須copy/hash/restore/second-copy先可另行批准刪本機；外置碟offline唔准靜靜縮細研究語料。
+10. D1 backup只准remote SELECT/export；export期間row count變動要重試，local restore／integrity／foreign key／row count未全過唔准寫成功manifest。
+11. NBA full-history ML只可使用HOT目錄加catalog-verified WARM settled-day corpus；已知archive offline必須fail closed。
 
 ## Output Contract
 
