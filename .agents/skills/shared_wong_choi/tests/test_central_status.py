@@ -36,6 +36,26 @@ def initialise_repo(root: Path) -> None:
     git(remote, "symbolic-ref", "HEAD", "refs/heads/main")
 
 
+def write_au_running_manifest(state: Path, *, started_at: str) -> None:
+    run_path = state / "runs" / "au" / "2026-08-26" / "evening" / "2200"
+    run_path.mkdir(parents=True)
+    (run_path / "attempt-1.json").write_text(
+        json.dumps(
+            {
+                "run_id": "wc:au:run:2026-08-26:evening:2200:attempt-1",
+                "state": "running",
+                "mode": "evening",
+                "target_date": "2026-08-26",
+                "started_at": started_at,
+                "completed_at": None,
+                "warnings": [],
+                "errors": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
 def test_status_reports_git_runs_releases_and_evidence(tmp_path: Path) -> None:
     repo = tmp_path / "repo"
     repo.mkdir()
@@ -132,6 +152,52 @@ def test_origin_main_exact_release_manifest_is_tracked(tmp_path: Path) -> None:
     }
     assert "origin_main_without_release_manifest" not in result["attention"]
     assert "Main trail：✅ tracked" in render_telegram(result)
+
+
+def test_long_au_evening_run_is_visible_as_healthy_within_timeout(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    initialise_repo(repo)
+    state = tmp_path / "state"
+    write_au_running_manifest(state, started_at="2026-08-26T12:00:00+00:00")
+
+    result = collect_status(
+        repo,
+        state,
+        now=datetime(2026, 8, 26, 14, 30, tzinfo=timezone.utc),
+    )
+
+    run = result["domains"]["au"]["latest_run"]
+    assert run["lifecycle"] == "within_timeout"
+    assert run["elapsed_seconds"] == 2 * 3600 + 30 * 60
+    assert run["timeout_seconds"] == 11 * 3600
+    assert run["remaining_seconds"] == 8 * 3600 + 30 * 60
+    assert run["deadline_at"] == "2026-08-26T23:00:00+00:00"
+    assert "run_overdue:au" not in result["attention"]
+    assert "⏳ AU：running 2h30m / 11h00m · 仲有 8h30m" in render_telegram(result)
+
+
+def test_overdue_running_manifest_fails_visible(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    initialise_repo(repo)
+    state = tmp_path / "state"
+    write_au_running_manifest(state, started_at="2026-08-26T12:00:00+00:00")
+
+    result = collect_status(
+        repo,
+        state,
+        now=datetime(2026, 8, 27, 0, 30, tzinfo=timezone.utc),
+    )
+
+    run = result["domains"]["au"]["latest_run"]
+    assert run["lifecycle"] == "overdue"
+    assert run["elapsed_seconds"] == 12 * 3600 + 30 * 60
+    assert run["remaining_seconds"] == 0
+    assert "run_overdue:au" in result["attention"]
+    assert "🧯 AU：running OVERDUE · 12h30m / 11h00m" in render_telegram(result)
 
 
 def test_dirty_production_checkout_is_visible(tmp_path: Path, monkeypatch) -> None:

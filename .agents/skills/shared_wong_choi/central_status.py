@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -29,6 +29,31 @@ def _read_json(path: Path) -> dict[str, Any] | None:
     except (OSError, ValueError):
         return None
     return value if isinstance(value, dict) else None
+
+
+def _aware_datetime(value: Any) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        return None
+    return parsed
+
+
+def _duration_label(seconds: Any) -> str:
+    try:
+        value = max(0, int(float(seconds)))
+    except (TypeError, ValueError):
+        return "?"
+    hours, remainder = divmod(value, 3600)
+    minutes = remainder // 60
+    if hours:
+        return f"{hours}h{minutes:02d}m"
+    return f"{minutes}m"
 
 
 def _latest_json(folder: Path) -> tuple[Path, dict[str, Any]] | None:
@@ -153,7 +178,13 @@ def _latest_model_release(evidence_root: Path, domain: Domain) -> dict[str, Any]
     }
 
 
-def _domain_status(state_root: Path, evidence_root: Path, domain: Domain) -> dict[str, Any]:
+def _domain_status(
+    state_root: Path,
+    evidence_root: Path,
+    domain: Domain,
+    *,
+    now: datetime,
+) -> dict[str, Any]:
     spec = ADAPTER_SPECS[domain]
     latest = _latest_json(state_root / "runs" / domain.value)
     capabilities = {
@@ -170,13 +201,36 @@ def _domain_status(state_root: Path, evidence_root: Path, domain: Domain) -> dic
     }
     if latest is not None:
         path, payload = latest
+        state = payload.get("state")
+        mode = str(payload.get("mode") or "")
+        started_at = _aware_datetime(payload.get("started_at"))
+        timeout_seconds = spec.run_timeout_seconds(mode)
+        lifecycle = "completed"
+        elapsed_seconds = None
+        remaining_seconds = None
+        deadline_at = None
+        if state == "running":
+            if started_at is None:
+                lifecycle = "unknown_start"
+            else:
+                elapsed_seconds = max(0, int((now - started_at).total_seconds()))
+                deadline = started_at + timedelta(seconds=timeout_seconds)
+                deadline_at = deadline.isoformat()
+                remaining_seconds = max(0, int((deadline - now).total_seconds()))
+                lifecycle = "within_timeout" if now <= deadline else "overdue"
         result["latest_run"] = {
             "path": str(path),
             "run_id": payload.get("run_id"),
-            "state": payload.get("state"),
-            "mode": payload.get("mode"),
+            "state": state,
+            "mode": mode,
             "target_date": payload.get("target_date"),
+            "started_at": payload.get("started_at"),
             "completed_at": payload.get("completed_at"),
+            "lifecycle": lifecycle,
+            "elapsed_seconds": elapsed_seconds,
+            "timeout_seconds": timeout_seconds if state == "running" else None,
+            "remaining_seconds": remaining_seconds,
+            "deadline_at": deadline_at,
             "warnings": len(payload.get("warnings") or []),
             "errors": len(payload.get("errors") or []),
         }
@@ -195,10 +249,18 @@ def collect_status(
     """Collect status without changing git, model, scheduler or deployment state."""
     repo_root = repo_root.expanduser().resolve()
     state_root = state_root.expanduser().resolve()
+    clock = now or datetime.now(timezone.utc)
+    if clock.tzinfo is None or clock.utcoffset() is None:
+        raise ValueError("central status clock must be timezone-aware")
     evidence_root = state_root / "evidence"
     evidence = EvidenceStore(evidence_root).audit()
     domains = {
-        domain.value: _domain_status(state_root, evidence_root, domain)
+        domain.value: _domain_status(
+            state_root,
+            evidence_root,
+            domain,
+            now=clock,
+        )
         for domain in Domain
     }
     production = {
@@ -261,15 +323,18 @@ def collect_status(
     if storage["status"] != "ok":
         attention.extend(storage["attention"])
     attention.extend(runtime.get("attention") or [])
+    for name, domain in domains.items():
+        run = domain.get("latest_run") or {}
+        if run.get("state") == "running" and run.get("lifecycle") == "overdue":
+            attention.append(f"run_overdue:{name}")
+        if run.get("state") == "running" and run.get("lifecycle") == "unknown_start":
+            attention.append(f"run_started_at_invalid:{name}")
     for name, checkout in production.items():
         if checkout.get("status") not in {"clean", "clean_runtime_state"}:
             attention.append(f"production_checkout_not_clean:{name}")
         if checkout.get("head") and not checkout.get("release_tracked"):
             attention.append(f"production_commit_without_release_manifest:{name}")
 
-    clock = now or datetime.now(timezone.utc)
-    if clock.tzinfo is None or clock.utcoffset() is None:
-        raise ValueError("central status clock must be timezone-aware")
     return {
         "schema_version": STATUS_SCHEMA,
         "generated_at": clock.isoformat(),
@@ -379,7 +444,24 @@ def render_telegram(status: Mapping[str, Any]) -> str:
         state = run.get("state") or "未有中央記錄"
         model = domain.get("model_release") or {}
         model_state = model.get("release_stage") or "未登記"
-        lines.append(f"{icons.get(state, '•')} {name.upper()}：{state} · model {model_state}")
+        if state == "running":
+            lifecycle = run.get("lifecycle")
+            elapsed = _duration_label(run.get("elapsed_seconds"))
+            timeout = _duration_label(run.get("timeout_seconds"))
+            if lifecycle == "within_timeout":
+                remaining = _duration_label(run.get("remaining_seconds"))
+                run_label = f"running {elapsed} / {timeout} · 仲有 {remaining}"
+                icon = "⏳"
+            elif lifecycle == "overdue":
+                run_label = f"running OVERDUE · {elapsed} / {timeout}"
+                icon = "🧯"
+            else:
+                run_label = "running · started_at 無效"
+                icon = "❓"
+        else:
+            run_label = str(state)
+            icon = icons.get(state, "•")
+        lines.append(f"{icon} {name.upper()}：{run_label} · model {model_state}")
     if status.get("attention"):
         lines.append("留意：" + "、".join(status["attention"][:4]))
     return "\n".join(lines)
