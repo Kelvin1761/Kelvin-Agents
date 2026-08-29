@@ -57,6 +57,21 @@ def test_highest_risk_wins_for_mixed_scope() -> None:
     assert policy.risk is ReleaseRisk.DEPLOYMENT
 
 
+def test_nested_tests_do_not_inherit_runtime_risk_or_activation() -> None:
+    paths = [
+        ".agents/skills/nba/nba_daily_auto/tests/test_nba_daily_schedule.py",
+        "Horse_Racing_Dashboard/backend/tests/test_parsers.py",
+    ]
+
+    policy = classify_release(paths)
+    plan = activation_plan(paths)
+
+    assert policy.risk is ReleaseRisk.DOCS_TESTS
+    assert policy.check == "quick"
+    assert plan["production_sync_domains"] == []
+    assert plan["dashboard_deploy"] is False
+
+
 def test_empty_or_parent_scope_is_rejected() -> None:
     with pytest.raises(ValueError):
         classify_release([])

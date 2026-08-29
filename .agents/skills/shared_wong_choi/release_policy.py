@@ -97,7 +97,11 @@ def classify_release(paths: Iterable[str]) -> ReleasePolicy:
     matches: dict[ReleaseRisk, list[str]] = {risk: [] for risk in ReleaseRisk}
     for path in normalised:
         lowered = path.lower()
-        if any(marker in lowered for marker in _DEPLOYMENT_MARKERS):
+        if path == "docs/model-evaluation-contract.md":
+            matches[ReleaseRisk.EVALUATION].append(path)
+        elif _is_docs_or_tests(path):
+            matches[ReleaseRisk.DOCS_TESTS].append(path)
+        elif any(marker in lowered for marker in _DEPLOYMENT_MARKERS):
             matches[ReleaseRisk.DEPLOYMENT].append(path)
         elif any(marker in lowered for marker in _EVALUATION_MARKERS):
             matches[ReleaseRisk.EVALUATION].append(path)
@@ -105,8 +109,6 @@ def classify_release(paths: Iterable[str]) -> ReleasePolicy:
             matches[ReleaseRisk.AUTOMATION].append(path)
         elif any(marker in lowered for marker in _MODEL_MARKERS):
             matches[ReleaseRisk.MODEL].append(path)
-        elif _is_docs_or_tests(path):
-            matches[ReleaseRisk.DOCS_TESTS].append(path)
         else:
             matches[ReleaseRisk.CODE].append(path)
 
@@ -140,6 +142,8 @@ def activation_plan(paths: Iterable[str]) -> dict:
     installers: list[str] = []
     unified_runtime = _PRODUCTION_RUNTIME_INSTALLER in normalised
     for path in normalised:
+        if _is_docs_or_tests(path):
+            continue
         lowered = path.lower()
         if ".agents/skills/au_racing/" in lowered:
             domains.add("au")

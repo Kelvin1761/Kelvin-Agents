@@ -93,6 +93,8 @@ def test_hkjc_sha_tin_loader_normalizes_meeting_venue():
 def test_au_auto_parser_ballarat():
     """Test AU parser against current Ballarat auto analysis output."""
     path = config.AU_ANALYSIS_ROOT / "2026-05-24 Ballarat Race 1-8" / "Race_1_Auto_Analysis.md"
+    if not is_materialized_file(path):
+        pytest.skip("materialized AU parser fixture is not available on this machine")
     result = parse_au_analysis(str(path))
 
     assert result is not None, "Failed to parse AU Auto Ballarat Race 1"
@@ -140,6 +142,13 @@ def test_au_preview_groups_leaf_scores_under_their_matrix_category():
 
 def test_au_meeting_loader_ballarat():
     """Test meeting loader returns horse counts for AU meetings used by dashboard."""
+    fixture = (
+        config.AU_ANALYSIS_ROOT
+        / "2026-05-24 Ballarat Race 1-8"
+        / "Race_1_Auto_Analysis.md"
+    )
+    if not is_materialized_file(fixture):
+        pytest.skip("materialized AU meeting fixture is not available on this machine")
     meetings = discover_meetings()
     meeting = next(
         (m for m in meetings if m.region.value == "au" and m.date == "2026-05-24" and m.venue == "Ballarat"),
