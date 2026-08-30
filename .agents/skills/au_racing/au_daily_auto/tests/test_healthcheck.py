@@ -121,16 +121,46 @@ class HealthcheckTests(unittest.TestCase):
         self.assertEqual(result["advisories"], ["Drive 鏡像落後 2 個檔"])
         self.assertNotIn("issues", result)
 
+    def test_successful_republish_with_quality_warning_is_not_called_missing(self):
+        code, message = H.post_heal_result(
+            DAY,
+            {
+                "state": "degraded",
+                "live": ["Dubbo", "Kilcoy"],
+                "issues": ["Dubbo：官方 going 未有資料 R1"],
+            },
+        )
+
+        self.assertEqual(code, 1)
+        self.assertIn("已補發佈", message)
+        self.assertIn("資料品質仍未過", message)
+        self.assertNotIn("仲係缺", message)
+
+    def test_successful_republish_can_keep_best_effort_advisory(self):
+        code, message = H.post_heal_result(
+            DAY,
+            {
+                "state": "ok-with-advisories",
+                "live": ["Dubbo"],
+                "advisories": ["Drive 鏡像落後 1 個檔"],
+            },
+        )
+
+        self.assertEqual(code, 0)
+        self.assertIn("已補發佈", message)
+        self.assertIn("唔影響預測同發佈", message)
+
 
 class DataQualityTests(unittest.TestCase):
     def _meeting(self, root: Path, *, morning: bool = True,
-                 jt: tuple[int, int] = (18, 2), going_refresh: bool = True):
+                 jt: tuple[int, int] = (18, 2), going_refresh: bool = True,
+                 going: str = "Good 4"):
         import json
         folder = root / f"{DAY} Dubbo Race 1-1"
         folder.mkdir(parents=True)
         for label in ("Racecard", "Formguide", "Facts"):
             (folder / f"08-10 Race 1 {label}.md").write_text("ok")
-        logic = {"race_analysis": {"going": "Good 4"}}
+        logic = {"race_analysis": {"going": going}}
         if going_refresh:
             logic["race_analysis"]["going_refresh"] = {"official_going": "Good 4"}
         (folder / "Race_1_Logic.json").write_text(json.dumps(logic))
@@ -157,6 +187,14 @@ class DataQualityTests(unittest.TestCase):
         self.assertIn("morning odds", joined)
         self.assertIn("going_refresh", joined)
         self.assertIn("50.0%", joined)
+
+    def test_unavailable_official_going_is_not_misreported_as_missing_audit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._meeting(Path(tmp), going_refresh=False, going="")
+            issues = H.local_quality_issues(DAY, root=Path(tmp))
+        joined = "\n".join(issues)
+        self.assertIn("官方 going 未有資料", joined)
+        self.assertNotIn("going_refresh audit 缺", joined)
 
     def _tree(self, tmp, *, drive_has=True, drive_stale=False, latest=False):
         root, mirror = Path(tmp) / "local", Path(tmp) / "drive"

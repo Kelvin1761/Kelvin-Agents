@@ -31,6 +31,38 @@ def test_ensure_live_network_marks_sandbox_dns_as_temporary(monkeypatch):
         raise AssertionError("network failure must stop the scheduled workflow")
 
 
+def test_ensure_live_provider_config_accepts_real_providers(monkeypatch):
+    monkeypatch.setattr(
+        scheduler,
+        "run_cli_json",
+        lambda *args: {
+            "tennis_provider": "composite",
+            "odds_provider": "sportsbet",
+        },
+    )
+
+    scheduler.ensure_live_provider_config()
+
+
+def test_ensure_live_provider_config_rejects_mock(monkeypatch):
+    monkeypatch.setattr(
+        scheduler,
+        "run_cli_json",
+        lambda *args: {
+            "tennis_provider": "mock",
+            "odds_provider": "sportsbet",
+        },
+    )
+
+    try:
+        scheduler.ensure_live_provider_config()
+    except scheduler.AnalysisBoardMissing as exc:
+        assert "TENNIS_ENV_FILE" in str(exc)
+        assert "tennis_provider" in str(exc)
+    else:
+        raise AssertionError("mock providers must not produce a live card")
+
+
 def test_analysis_retry_reasons_reject_silent_empty_provider_responses():
     reasons = scheduler.analysis_retry_reasons(
         {
@@ -96,6 +128,7 @@ def test_control_json_reports_temporary_card_failure(
         scheduler, "disk_headroom", lambda: {"ok": True, "detail": "test"}
     )
     monkeypatch.setattr(scheduler, "ensure_live_network", lambda: None)
+    monkeypatch.setattr(scheduler, "ensure_live_provider_config", lambda: None)
     monkeypatch.setattr(scheduler, "run_cli", lambda *_args: "")
     monkeypatch.setattr(
         scheduler,
@@ -838,6 +871,7 @@ def _run_card_mode(monkeypatch, tmp_path, raiser):
     monkeypatch.setattr(sched, "disk_headroom",
                         lambda *_a, **_k: {"ok": True, "detail": "test"})
     monkeypatch.setattr(sched, "ensure_live_network", lambda: None)
+    monkeypatch.setattr(sched, "ensure_live_provider_config", lambda: None)
     monkeypatch.setattr(sched, "run_cli", lambda *_a, **_k: "")
     monkeypatch.setattr(sched, "analyse_next_day", raiser)
     code = sched.main(["--source", "launchd", "--refresh-today"])

@@ -119,6 +119,7 @@ def local_quality_issues(day: str, *, root: Path | None = None,
         missing_artifacts: list[str] = []
         stale_odds: list[int] = []
         missing_going_audit: list[int] = []
+        unavailable_official_going: list[int] = []
         for race in range(1, expected + 1):
             required = {
                 "Racecard": folder.glob(f"* Race {race} Racecard.md"),
@@ -141,11 +142,17 @@ def local_quality_issues(day: str, *, root: Path | None = None,
             logic = folder / f"Race_{race}_Logic.json"
             try:
                 payload = json.loads(logic.read_text(encoding="utf-8"))
-                refresh = (payload.get("race_analysis") or {}).get("going_refresh")
+                race_analysis = payload.get("race_analysis") or {}
+                refresh = race_analysis.get("going_refresh")
+                stored_going = str(race_analysis.get("going") or "").strip()
             except (OSError, ValueError, AttributeError):
                 refresh = None
+                stored_going = ""
             if logic.exists() and not refresh:
-                missing_going_audit.append(race)
+                if stored_going and stored_going.lower() != "unknown":
+                    missing_going_audit.append(race)
+                else:
+                    unavailable_official_going.append(race)
 
         if missing_artifacts:
             issues.append(f"{folder.name}：輸出唔齊（{', '.join(missing_artifacts[:8])}"
@@ -156,6 +163,9 @@ def local_quality_issues(day: str, *, root: Path | None = None,
         if missing_going_audit:
             issues.append(f"{folder.name}：going_refresh audit 缺 "
                           f"R{','.join(map(str, missing_going_audit))}")
+        if unavailable_official_going:
+            issues.append(f"{folder.name}：官方 going 未有資料 "
+                          f"R{','.join(map(str, unavailable_official_going))}")
 
         summary = folder / "Meeting_Summary.md"
         try:
@@ -501,12 +511,32 @@ def autofix_last_failure() -> str | None:
         return f"⚠️ 認得個模式但唔識執行補救「{remedy}」 —— 要人睇"
     ok, detail = heal()
     after = check(date.today().isoformat())
-    good = ok and after.get("state") in ("ok", "in-progress")
+    good = ok and after.get("state") in (
+        "ok", "ok-with-advisories", "degraded", "in-progress"
+    )
     head = "✅" if good else "❌"
     return (f"{head} 自動補救（{path.name}）\n"
             f"對上已知模式 → 重建並重新發佈\n"
             + ("今日場次已上線：" + "、".join(after.get("live") or [])
                if good else f"仲未修好：{detail[-200:]}"))
+
+
+def post_heal_result(day: str, after: dict) -> tuple[int, str] | None:
+    """Render a successful republish separately from remaining data quality."""
+    state = after.get("state")
+    if state not in ("ok", "ok-with-advisories", "degraded"):
+        return None
+    live = "、".join(after.get("live") or [])
+    message = f"✅ AU 體檢 {day}\n已補發佈，今日場次全部上線：{live}"
+    if state == "degraded":
+        message += ("\n⚠️ 發佈成功，但資料品質仍未過：\n- "
+                    + "\n- ".join(after.get("issues") or []))
+        return 1, message
+    advisories = after.get("advisories") or []
+    if advisories:
+        message += ("\nbest-effort 落後（唔影響預測同發佈）：\n- "
+                    + "\n- ".join(advisories))
+    return 0, message
 
 
 def check(day: str) -> dict:
@@ -593,9 +623,11 @@ def main() -> int:
            f"正在自動補發佈…")
     ok, detail = heal()
     after = check(day)
-    if after["state"] == "ok":
-        notify(f"✅ AU 體檢 {day}\n已補發佈，今日場次全部上線：{'、'.join(after['live'])}")
-        return 0
+    published = post_heal_result(day, after)
+    if published is not None:
+        code, message = published
+        notify(message)
+        return code
     if after["state"] == "unanalysed":
         started, reason = start_analysis_recovery(day)
         if started:

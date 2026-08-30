@@ -64,6 +64,10 @@ def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path) -> None
     runtime.mkdir()
     with sqlite3.connect(runtime / "tennis_wc.db") as connection:
         connection.execute("CREATE TABLE smoke (id INTEGER PRIMARY KEY)")
+    (runtime / ".env").write_text(
+        "TENNIS_PROVIDER=composite\nODDS_PROVIDER=sportsbet\n",
+        encoding="utf-8",
+    )
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     fake_launchctl = fake_bin / "launchctl"
@@ -120,3 +124,6 @@ def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path) -> None
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert "production runtime cutover verified" in result.stdout
+    assert (home / ".wongchoi_tennis_db").read_text(encoding="utf-8").strip() == str(
+        runtime / "tennis_wc.db"
+    )

@@ -10,7 +10,13 @@ def test_daily_evidence_is_frozen_before_publish(tmp_path, monkeypatch):
     report = tmp_path / "Daily.md"
     report.write_text("priced card\n", encoding="utf-8")
     calls = []
-    monkeypatch.setattr(cli, "analysis_output_dir", lambda _: tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "analysis_output_dir",
+        lambda _: (_ for _ in ()).throw(
+            AssertionError("prediction evidence must not read the Drive mirror")
+        ),
+    )
     monkeypatch.setenv("WC_EVIDENCE_ROOT", str(tmp_path / "evidence"))
 
     def fake_record(**kwargs):
@@ -40,7 +46,13 @@ def test_daily_evidence_uses_no_bet_without_final_bet(tmp_path, monkeypatch):
 
     report = tmp_path / "Daily.md"
     report.write_text("watchlist only\n", encoding="utf-8")
-    monkeypatch.setattr(cli, "analysis_output_dir", lambda _: tmp_path)
+    monkeypatch.setattr(
+        cli,
+        "analysis_output_dir",
+        lambda _: (_ for _ in ()).throw(
+            AssertionError("prediction evidence must not read the Drive mirror")
+        ),
+    )
     observed = {}
 
     def fake_record(**kwargs):

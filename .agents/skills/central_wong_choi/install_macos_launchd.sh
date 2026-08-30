@@ -37,4 +37,4 @@ chmod 644 "$DEST"
 launchctl bootout "gui/$UID_NUM" "$DEST" 2>/dev/null || true
 launchctl bootstrap "gui/$UID_NUM" "$DEST"
 launchctl enable "gui/$UID_NUM/$LABEL"
-print -r -- "已安裝 $LABEL：每日悉尼時間 03:20 D1 verified backup → WARM／COLD"
+print -r -- "已安裝 $LABEL：每日悉尼時間 03:20 D1 verified backup；失敗會喺 05:20 自動補跑"

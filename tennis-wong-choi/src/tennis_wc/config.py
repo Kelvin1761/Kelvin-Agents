@@ -19,7 +19,7 @@ def load_dotenv(path: str | Path = ".env") -> None:
         os.environ.setdefault(key, value)
 
 
-load_dotenv()
+load_dotenv(os.getenv("TENNIS_ENV_FILE", ".env"))
 
 
 def _bool_env(name: str, default: bool) -> bool:

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import json
 import os
 import plistlib
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -16,6 +18,10 @@ def test_rendered_launchd_uses_versioned_code_and_existing_runtime(
     runtime = tmp_path / "runtime"
     runtime.mkdir()
     (runtime / "tennis_wc.db").write_bytes(b"not opened during render")
+    (runtime / ".env").write_text(
+        "TENNIS_PROVIDER=composite\nODDS_PROVIDER=sportsbet\n",
+        encoding="utf-8",
+    )
     destination = tmp_path / "LaunchAgents"
     mirror = tmp_path / "mirror"
     python_bin = runtime / ".venv" / "bin" / "python"
@@ -54,6 +60,9 @@ def test_rendered_launchd_uses_versioned_code_and_existing_runtime(
     for payload in (card, daily, recovery):
         assert payload["WorkingDirectory"] == str(PROJECT_DIR)
         assert payload["EnvironmentVariables"]["DATABASE_URL"] == database_url
+        assert payload["EnvironmentVariables"]["TENNIS_ENV_FILE"] == str(
+            runtime / ".env"
+        )
         assert payload["EnvironmentVariables"]["TENNIS_PYTHON_BIN"] == str(
             python_bin
         )
@@ -69,3 +78,25 @@ def test_rendered_launchd_uses_versioned_code_and_existing_runtime(
         str(python_bin),
         str(PROJECT_DIR / "scripts" / "tennis_card_recovery.py"),
     ]
+
+    cli_env = os.environ.copy()
+    cli_env.pop("TENNIS_PROVIDER", None)
+    cli_env.pop("ODDS_PROVIDER", None)
+    cli_env.update(
+        {
+            "DATABASE_URL": database_url,
+            "PYTHONPATH": str(PROJECT_DIR / "src"),
+            "TENNIS_ENV_FILE": str(runtime / ".env"),
+        }
+    )
+    config = subprocess.run(
+        [sys.executable, "-m", "tennis_wc.cli", "config-check"],
+        cwd=PROJECT_DIR,
+        env=cli_env,
+        text=True,
+        capture_output=True,
+        check=True,
+    )
+    config_payload = json.loads(config.stdout)
+    assert config_payload["tennis_provider"] == "composite"
+    assert config_payload["odds_provider"] == "sportsbet"

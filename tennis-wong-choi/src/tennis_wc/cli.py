@@ -595,7 +595,12 @@ def _record_daily_evidence(
     predictions: list[dict],
 ) -> dict:
     """Freeze the priced card and link its decision before publication."""
-    output_dir = analysis_output_dir(args.date)
+    # The report path is the canonical local artifact returned by
+    # ``generate_daily_report``.  ``analysis_output_dir`` may point at the
+    # Google Drive mirror, whose FileProvider inode can raise EDEADLK during an
+    # immediate read-back even after the best-effort copy succeeded.  Evidence
+    # must therefore freeze the local source, never the mirror.
+    output_dir = report_path.expanduser().resolve().parent
     snapshot = create_immutable_snapshot(
         output_dir,
         domain=Domain.TENNIS.value,

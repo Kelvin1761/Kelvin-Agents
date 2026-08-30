@@ -212,6 +212,7 @@ def main(argv: list[str] | None = None) -> int:
                 f"(no review, no archive). run_source={args.source} mode=card")
             try:
                 ensure_live_network()
+                ensure_live_provider_config()
                 run_cli("init-db")
                 analyse_next_day(today.isoformat(), today=today.isoformat())
             except subprocess.CalledProcessError as exc:
@@ -270,6 +271,7 @@ def main(argv: list[str] | None = None) -> int:
 
         try:
             ensure_live_network()
+            ensure_live_provider_config()
             run_cli("init-db")
             if not args.skip_review:
                 review_payload = review_previous_day(yesterday.isoformat())
@@ -871,6 +873,27 @@ def ensure_live_network() -> None:
             "script with host network access"
         )
     log("Live network preflight passed.")
+
+
+def ensure_live_provider_config() -> None:
+    """Refuse unattended cards that silently fell back to mock providers."""
+    payload = run_cli_json("config-check")
+    mock_providers = [
+        name
+        for name in ("tennis_provider", "odds_provider")
+        if str(payload.get(name) or "mock").strip().lower() == "mock"
+    ]
+    if mock_providers:
+        joined = ", ".join(mock_providers)
+        raise AnalysisBoardMissing(
+            "live provider config invalid: "
+            f"{joined} resolved to mock; check TENNIS_ENV_FILE"
+        )
+    log(
+        "Live provider config passed. "
+        f"tennis={payload.get('tennis_provider')} "
+        f"odds={payload.get('odds_provider')}"
+    )
 
 
 def review_previous_day(match_date: str) -> dict:

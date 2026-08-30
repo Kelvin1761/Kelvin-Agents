@@ -12,6 +12,7 @@ DOMAIN="gui/$(id -u)"
 RUNTIME_CHECK="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_launchd.py"
 TENNIS_RUNTIME_ROOT="${WC_TENNIS_RUNTIME_ROOT:-$HOME/Antigravity-repo/tennis-wong-choi}"
 TENNIS_PYTHON_BIN="${TENNIS_PYTHON_BIN:-$TENNIS_RUNTIME_ROOT/.venv/bin/python}"
+TENNIS_DB_POINTER="${WC_TENNIS_DB_POINTER:-$HOME/.wongchoi_tennis_db}"
 
 LABELS=(
   com.antigravity.hkjc-wong-choi.postrace
@@ -145,6 +146,14 @@ with sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True) as conn:
 if not result or result[0] != "ok":
     raise SystemExit(f"Tennis SQLite quick_check failed: {result}")
 PY
+
+# Dashboard deploys may originate from AU/HKJC versioned checkouts, while the
+# live Tennis database remains in its stable runtime directory.  Publish one
+# machine-local pointer only after SQLite validation succeeds.
+POINTER_TMP="${TENNIS_DB_POINTER}.tmp.$$"
+print -r -- "$TENNIS_RUNTIME_ROOT/tennis_wc.db" >| "$POINTER_TMP"
+chmod 644 "$POINTER_TMP"
+mv -f "$POINTER_TMP" "$TENNIS_DB_POINTER"
 
 # Refuse to boot out a live domain run. The Telegram poller is intentionally
 # excluded because it is the caller and AU is not reinstalled.

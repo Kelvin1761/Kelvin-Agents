@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import plistlib
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -141,8 +142,8 @@ def test_launchd_template_is_daily_and_uses_production_wrapper() -> None:
     template = (PACKAGE_ROOT / "launchd" / "com.antigravity.central-wong-choi.durability.plist.template").read_text(encoding="utf-8")
     wrapper = (PACKAGE_ROOT / "scripts" / "run_central_daily_maintenance.sh").read_text(encoding="utf-8")
 
-    assert "<integer>3</integer>" in template
-    assert "<integer>20</integer>" in template
+    schedule = plistlib.loads(template.encode("utf-8"))["StartCalendarInterval"]
+    assert schedule == [{"Hour": 3, "Minute": 20}, {"Hour": 5, "Minute": 20}]
     assert "run_central_daily_maintenance.sh" in template
     assert "WC_PRIMARY_REPO_ROOT" in wrapper
     assert "WC_COLD_MIRROR_ROOT" in wrapper

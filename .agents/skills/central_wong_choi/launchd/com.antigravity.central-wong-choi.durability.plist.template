@@ -11,10 +11,17 @@
   <key>WorkingDirectory</key>
   <string>__PROJECT_ROOT__</string>
   <key>StartCalendarInterval</key>
-  <dict>
-    <key>Hour</key><integer>3</integer>
-    <key>Minute</key><integer>20</integer>
-  </dict>
+  <array>
+    <dict>
+      <key>Hour</key><integer>3</integer>
+      <key>Minute</key><integer>20</integer>
+    </dict>
+    <!-- Recovery slot: a successful 03:20 snapshot makes this run dormant. -->
+    <dict>
+      <key>Hour</key><integer>5</integer>
+      <key>Minute</key><integer>20</integer>
+    </dict>
+  </array>
   <key>StandardOutPath</key>
   <string>__SCRIPT_DIR__/logs/central-durability.out</string>
   <key>StandardErrorPath</key>

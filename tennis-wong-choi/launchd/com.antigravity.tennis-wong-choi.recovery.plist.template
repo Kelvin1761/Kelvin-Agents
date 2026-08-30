@@ -23,6 +23,8 @@
   <dict>
     <key>DATABASE_URL</key>
     <string>__DATABASE_URL__</string>
+    <key>TENNIS_ENV_FILE</key>
+    <string>__TENNIS_ENV_FILE__</string>
     <key>TENNIS_PYTHON_BIN</key>
     <string>__TENNIS_PYTHON_BIN__</string>
     <key>TENNIS_LOG_DIR</key>
