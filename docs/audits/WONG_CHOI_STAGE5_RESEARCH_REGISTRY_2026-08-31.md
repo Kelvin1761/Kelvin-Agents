@@ -2,7 +2,7 @@
 
 ## Verdict
 
-**Task 2 engineering checkpoint pass，等待獨立code release；Task 3 dataset resolver及Task 4 runner尚未開始。** 新registry只負責凍結研究身份、provenance同append-only evidence，唔會執行模型、計metric、改ruler、作promotion或接觸bankroll。
+**Task 2 release `9b2af3909547`已批准、merge及四domain activation；Task 3 dataset resolver已進入獨立engineering checkpoint。** 新registry只負責凍結研究身份、provenance同append-only evidence，唔會執行模型、計metric、改ruler、作promotion或接觸bankroll。
 
 ## Contracts
 
@@ -28,7 +28,6 @@
 
 ## Deliberately Deferred
 
-- HOT／WARM snapshot resolve、sample materialization、corpus shrink／future-row gate屬Task 3。
 - Queue、production preemption、single heavy worker、timeout、resource accounting同domain adapters屬Task 4。
 - Statistical decision、leakage／ablation、Dashboard／Telegram projection同pilots屬Task 5–9。
 - Task 2完成唔代表Tennis／NBA model成熟，亦唔產生任何candidate promotion權。
