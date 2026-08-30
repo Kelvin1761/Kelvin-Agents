@@ -1,0 +1,38 @@
+{
+  "schema_version": "wong-choi-evaluation-ruler/v1",
+  "ruler_id": "nba-v1",
+  "domain": "nba",
+  "status": "frozen",
+  "platform_baseline_commit": "6c1528c08585ba2185c1d5e04344db87095245a9",
+  "model_baseline_commit": "8b149c85aafa96d199eb838241d9a4958ec5d9b6",
+  "model_release_id": "wc:nba:model-release:nba-hybrid-v1:8b149c85aafa:shadow",
+  "model_stage": "shadow",
+  "authority": "docs/audits/NBA_READINESS_AUDIT_2026-08-26.md",
+  "decision_mode": "descriptive_only",
+  "promotion_allowed": false,
+  "point_in_time_required": true,
+  "family_specific": true,
+  "price_snapshot_policy": "immutable_role_specific_pre_game",
+  "metrics": [
+    {"name": "brier_gain_vs_market", "role": "primary", "direction": "maximize"},
+    {"name": "log_loss_gain_vs_market", "role": "primary", "direction": "maximize"},
+    {"name": "calibration_error", "role": "guardrail", "direction": "minimize"},
+    {"name": "clv", "role": "guardrail", "direction": "maximize"},
+    {"name": "roi", "role": "guardrail", "direction": "maximize"},
+    {"name": "drawdown", "role": "guardrail", "direction": "minimize"},
+    {"name": "coverage", "role": "guardrail", "direction": "maximize"},
+    {"name": "odds_freshness", "role": "guardrail", "direction": "maximize"},
+    {"name": "injury_freshness", "role": "guardrail", "direction": "maximize"},
+    {"name": "hit_rate", "role": "descriptive", "direction": "maximize"}
+  ],
+  "cohorts": ["season_phase", "market_family", "odds_bucket", "injury_freshness", "minutes_role", "blowout_risk"],
+  "holdout": {"strategy": "forward_live_after_baseline", "tuning_forbidden": true},
+  "bootstrap": {"unit": "game", "trials": 4000, "confidence": 0.95, "seed": 20260830},
+  "sample_policy": {"mode": "live_gate_then_power", "initial_live_gate": 30, "monitoring_increment_after_gate": 100, "promotion_floor": null, "power_required": true},
+  "review": {"weekly": {"weekday": "monday", "time": "09:00", "timezone": "Australia/Sydney"}, "monthly": {"ordinal_week": 1, "weekday": "monday"}, "ruler_review_days": 90, "incident_freezes_queue": true},
+  "fixture_cases": [
+    {"name": "future_live_supported_gain_after_independent_ruler_release", "expected": "win"},
+    {"name": "probability_or_freshness_regression", "expected": "regression"},
+    {"name": "historical_or_synthetic_only_or_underpowered", "expected": "noise"}
+  ]
+}

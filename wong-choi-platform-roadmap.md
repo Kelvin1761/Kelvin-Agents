@@ -6,7 +6,7 @@
 
 ## Current Stage
 
-**Stage 2B／3B complete；Stage 4A／4B／4C engineering candidate已完成；Stage 4D storage／Dashboard foundation已完成，durability cutover進行中。** AU／HKJC可登記production；Tennis因holdout ROI／Brier未過只可shadow，NBA因2026-27 live evidence未齊亦只可shadow。中央旺財擁有control tower／Dashboard，但唔係第五個預測模型。
+**Stage 4 complete；Stage 5 Task 1 metrics readiness full checkpoint已通過，等待受控evaluation release批准。** AU／HKJC維持production ruler；Tennis因holdout ROI／Brier未過保持shadow；NBA因2026-27 live evidence未齊保持shadow／descriptive-only。中央旺財擁有control tower／Dashboard／research visibility，但唔係第五個預測模型。
 
 ## Stages and Exit Gates
 
@@ -21,7 +21,7 @@
 | 4B Evidence Core | 共用 prediction/event/result ledger、model/data version、point-in-time contract | 每個建議可由 prediction ID 追到 source snapshot、commit、odds、結果；各 domain 有固定 evaluation contract；歷史 replay 無未來資訊 |
 | 4C Controlled Production | research→shadow→paper→limited→production→retired promotion flow | champion/challenger registry；固定 holdout；risk/CLV/Brier/ROI/drawdown gate；自動 PR 但永不自動 merge／加注 |
 | 4D Data Durability + Central Dashboard | HOT／WARM／COLD lifecycle；Dashboard納入中央旺財，連接analysis、evidence同D1 betting ledger | archive copy/hash/restore/second-copy gate；SSD pressure可見；Dashboard不可重算prediction；D1可export/restore；offline cold corpus唔會靜靜縮細研究 |
-| 5 Automated Research Platform | 可重現實驗 runner、ablation、walk-forward、leakage scan、報告索引 | 同一命令可重跑 baseline/candidate；失敗實驗照記；跨 domain 共用工具但 domain ruler 分開 |
+| 5 Automated Research Platform | Versioned rulers、可重現experiment runner、ablation、walk-forward、leakage scan、self-review、報告索引 | Ruler同candidate分開release；同一spec重跑同digest；失敗實驗照記；production可preempt research；跨domain共用工具但ruler／scoring分開 |
 | 6 Semi-autonomous Model Lab | Agent 提假設、跑實驗、淘汰候選、開 evidence-backed PR | Agent 無權改 ruler、holdout、production 或 bankroll；所有 promotion 有 human approval；完整 audit trail |
 | 7 Wong Choi Decision Platform | 一個 control tower 管四條 production + research loops | ≥99% scheduled-run reliability；100% production predictions 有 immutable provenance；零 stale/partial deploy；多個完整賽季 forward evidence；incident recovery、portfolio exposure、模型退役全部可視化 |
 
@@ -34,10 +34,11 @@
 - [x] Shared evidence schema：append-only PredictionRecord、DecisionRecord、SettlementRecord、ModelRelease manifest；四線 writer 已接入 publication／settlement 前置閘。
 - [ ] Domain truth debt：AU point-in-time/draw audit；HKJC forward corpus；Tennis active-family revalidation；NBA settled ledger/bootstrap baseline。
 - [x] Promotion registry：research→shadow→paper→limited→production→retired、forward evidence、human approval、rollback manifest。
+- [x] Stage 5 metrics readiness candidate：`au-v2`、`hkjc-v2`、`tennis-v1`、`nba-v1` machine-readable rulers、release separation gate、full repo gate同production health已通過；等受控evaluation release批准。
 - [ ] Research runner：固定 dataset/ruler、ablation、walk-forward、leakage、experiment report。
 - [x] Control tower foundation：Git／release／deployment／四線 run health／model stage／evidence／30日 SLO／Telegram approval；portfolio risk同research queue留Stage 5。
 - [x] Central Dashboard ownership：四線analysis同中央health/evidence projection；D1 `WC_LEDGER`保存實際投注，Dashboard永不做第五個scoring engine。
-- [ ] Storage durability cutover：Tennis四份snapshots共5.634 GB WARM／owner-only Google Drive COLD／restore／integrity全過；active DB同snapshot watermarks無回退；D1 108 bets／30 settlements／30 audit live export、空DB restore、WARM同owner-only Google Drive COLD已過；AU／HKJC meeting reader同NBA day-folder reader已catalog-aware；Central顯示artifact COLD 3/3。尚欠nightly production activation同獨立retention cutover approval。
+- [x] Storage durability cutover：nightly production已啟用；D1及Tennis snapshots通過restore／WARM／owner-only Google Drive full-download digest；AU／HKJC／NBA／Tennis readers已catalog-aware；artifact COLD coverage 5/5。HOT原件刪除仍需獨立scoped approval。
 - [ ] Tennis maturity workstream（Stage 5首個consumer）：維持shadow；用固定untouched forward gate逐family判斷，唔用完成平台stage當作model promotion。
 
 ## Stage Review Protocol
@@ -59,3 +60,4 @@
 | 2026-08-28 | Stage 4D provider／corpus review | D1 owner-only Drive copy經full-download directory digest同WARM完全一致；Tennis真實4.387 GB HOT/WARM content audit通過；AU／HKJC reader接入catalog resolver，雙副本失聯會fail closed | D1 COLD gate完成；Tennis COLD仍pending；NBA／Tennis按各自SQLite／day-folder shape接入後先關閉multi-root gate |
 | 2026-08-29 | Stage 4D domain-shape review | NBA ML reader合併HOT／catalog-verified WARM settled-day；Tennis active DB同4份snapshots全部`quick_check=ok`，4690／5552／9503 counts不低snapshot watermark，snapshot不可代替live DB | Multi-root／SQLite data-shape gate engineering complete；Tennis model繼續shadow，不阻Stage 4結構完成；尚欠Tennis COLD、activation同runtime evidence |
 | 2026-08-29 | Stage 4D Tennis COLD review | 5.634 GB／4 SQLite snapshots壓縮成32MiB ordered parts後上載Kelvin owner-only Drive；16 parts同2 manifests全部full-download SHA pass；重組artifact digest同4個SQLite `quick_check` pass；Central COLD coverage 3/3 | Tennis durability gate pass；HOT原件不自動刪。Stage 4D剩nightly activation、runtime evidence同獨立retention cutover approval |
+| 2026-08-30 | Stage 4 → Stage 5 entry | Stage 4 exit audit全PASS；production provenance 13/13；D1／catalog COLD 5/5；Kelvin批准Stage 5 plan | 開始Task 1 metrics readiness；先獨立freeze四線ruler，再建runner；Tennis／NBA model stage不變 |

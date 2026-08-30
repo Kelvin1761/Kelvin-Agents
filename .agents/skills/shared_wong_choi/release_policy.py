@@ -42,6 +42,7 @@ _EVALUATION_MARKERS = (
     "backtest",
     "golden_scoring",
     "data_contract.py",
+    "evaluation_ruler",
 )
 _AUTOMATION_MARKERS = (
     "/daily_auto/",
@@ -111,6 +112,11 @@ def classify_release(paths: Iterable[str]) -> ReleasePolicy:
             matches[ReleaseRisk.MODEL].append(path)
         else:
             matches[ReleaseRisk.CODE].append(path)
+
+    if matches[ReleaseRisk.EVALUATION] and matches[ReleaseRisk.MODEL]:
+        raise ValueError(
+            "evaluation ruler and candidate model must use a separate release"
+        )
 
     precedence = (
         ReleaseRisk.DEPLOYMENT,

@@ -34,6 +34,10 @@ def test_docs_only_can_auto_merge_after_quick_gate() -> None:
         ),
         ("docs/model-evaluation-contract.md", ReleaseRisk.EVALUATION),
         (
+            ".agents/skills/shared_wong_choi/resources/evaluation_rulers/tennis-v1.json",
+            ReleaseRisk.EVALUATION,
+        ),
+        (
             ".agents/skills/nba/nba_daily_auto/nba_daily_schedule.py",
             ReleaseRisk.AUTOMATION,
         ),
@@ -55,6 +59,16 @@ def test_highest_risk_wins_for_mixed_scope() -> None:
         ["docs/readme.md", "tests/test_x.py", "Horse_Racing_Dashboard/deploy.sh"]
     )
     assert policy.risk is ReleaseRisk.DEPLOYMENT
+
+
+def test_evaluation_ruler_and_candidate_model_require_separate_releases() -> None:
+    with pytest.raises(ValueError, match="separate release"):
+        classify_release(
+            [
+                ".agents/skills/shared_wong_choi/resources/evaluation_rulers/au-v2.json",
+                ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/scoring.py",
+            ]
+        )
 
 
 def test_nested_tests_do_not_inherit_runtime_risk_or_activation() -> None:
