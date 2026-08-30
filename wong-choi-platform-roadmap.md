@@ -6,7 +6,7 @@
 
 ## Current Stage
 
-**Stage 4 complete；Stage 5 Task 1 rulers已批准啟用，Task 2 append-only research registry engineering checkpoint已通過，等待獨立code release。** AU／HKJC維持production ruler；Tennis因holdout ROI／Brier未過保持shadow；NBA因2026-27 live evidence未齊保持shadow／descriptive-only。Task 3 dataset resolver未開始；中央旺財係control tower，唔係第五個預測模型。
+**Stage 4 complete；Stage 5 Task 1–4已分批commit／push／merge／activate，Task 5 ruler-locked evaluation已補齊absolute market／ROI、chronology同runner-artifact串接檢查，準備獨立scoped code release。** AU／HKJC維持production ruler；Tennis因holdout ROI／Brier未過保持shadow；NBA因2026-27 live evidence未齊保持shadow／descriptive-only。下一步係Task 6 research safety／power-readiness gate；中央旺財係control tower，唔係第五個預測模型。
 
 ## Stages and Exit Gates
 
@@ -35,8 +35,10 @@
 - [ ] Domain truth debt：AU point-in-time/draw audit；HKJC forward corpus；Tennis active-family revalidation；NBA settled ledger/bootstrap baseline。
 - [x] Promotion registry：research→shadow→paper→limited→production→retired、forward evidence、human approval、rollback manifest。
 - [x] Stage 5 metrics readiness：`au-v2`、`hkjc-v2`、`tennis-v1`、`nba-v1` machine-readable rulers、release separation gate、full repo gate同production health已通過；release `297a293e6e00`已批准、merge及四domain activation。
-- [x] Stage 5 research registry：四種typed append-only contract、canonical hash、idempotent duplicate、conflict／schema／parent／provenance fail-closed audit已通過；Task 3 resolver同Task 4 runner未開始。
-- [ ] Research runner：固定 dataset/ruler、ablation、walk-forward、leakage、experiment report。
+- [x] Stage 5 research registry：四種typed append-only contract、canonical hash、idempotent duplicate、conflict／schema／parent／provenance fail-closed audit已通過；release `9b2af3909547`已批准、merge及四domain activation。
+- [x] Stage 5 immutable dataset resolver：HOT digest、catalog-verified WARM、COLD restore-only、PIT availability、固定split、immutable snapshot、corpus floor及tamper gates已通過；release `98702c5249aa`已merge／activate，四線aligned。
+- [x] Stage 5 production-safe research runner：append-only local queue、四線pure-command adapter、baseline／candidate checkout及dataset lock、WARM scratch、single-heavy-worker、production preemption、capacity／timeout／cleanup同ExperimentRun evidence gates已通過；release `38059dbc3366`已merge／activate，四線aligned，heavy scheduler未啟用。
+- [x] Stage 5 research evaluation：凍結ruler metrics、paired bootstrap、cohort、walk-forward同append-only experiment decision report已通過；ablation／leakage留Task 6。
 - [x] Control tower foundation：Git／release／deployment／四線 run health／model stage／evidence／30日 SLO／Telegram approval；portfolio risk同research queue留Stage 5。
 - [x] Central Dashboard ownership：四線analysis同中央health/evidence projection；D1 `WC_LEDGER`保存實際投注，Dashboard永不做第五個scoring engine。
 - [x] Storage durability cutover：nightly production已啟用；D1及Tennis snapshots通過restore／WARM／owner-only Google Drive full-download digest；AU／HKJC／NBA／Tennis readers已catalog-aware；artifact COLD coverage 5/5。HOT原件刪除仍需獨立scoped approval。
@@ -63,3 +65,7 @@
 | 2026-08-29 | Stage 4D Tennis COLD review | 5.634 GB／4 SQLite snapshots壓縮成32MiB ordered parts後上載Kelvin owner-only Drive；16 parts同2 manifests全部full-download SHA pass；重組artifact digest同4個SQLite `quick_check` pass；Central COLD coverage 3/3 | Tennis durability gate pass；HOT原件不自動刪。Stage 4D剩nightly activation、runtime evidence同獨立retention cutover approval |
 | 2026-08-30 | Stage 4 → Stage 5 entry | Stage 4 exit audit全PASS；production provenance 13/13；D1／catalog COLD 5/5；Kelvin批准Stage 5 plan | 開始Task 1 metrics readiness；先獨立freeze四線ruler，再建runner；Tennis／NBA model stage不變 |
 | 2026-08-31 | Stage 5 Task 1 → Task 2 | Evaluation release `297a293e6e00`由authorized Telegram chat批准；origin/main、production checkout同AU／HKJC／Tennis／NBA verifier全部aligned；19個registry tests同45個focused compatibility tests通過 | Task 1正式完成；Task 2 engineering checkpoint pass並準備獨立code release；Task 3 resolver未開始，Tennis／NBA model stage不變 |
+| 2026-08-31 | Stage 5 Task 2 → Task 3 | Research registry release `9b2af3909547`已批准、merge及四domain activation；immutable resolver 18個tests連registry合共37個focused tests通過，quick gate全綠 | Task 2正式完成；Task 3 engineering checkpoint pass並準備獨立code release；Task 4 runner未開始，冇model／ruler／production scheduler改動 |
+| 2026-08-31 | Stage 5 Task 3 → Task 4 | Immutable resolver同runner／queue共69個focused tests通過；四線contract fixture、same-spec digest、production preemption、WARM／capacity／timeout／cleanup、code／data mutation同no-weight-import全部有fail-closed evidence；full gate 1,422 tests及health exit 0 | Task 3／4 engineering checkpoint pass並等待各自scoped release；開始Task 5 evaluation／statistics，四線model stage不變 |
+| 2026-08-31 | Stage 5 Task 4 → Task 5 | 四線frozen-ruler paired evaluation、walk-forward folds、terminal bootstrap、cohort regression、dataset lineage、single-metric non-promotion同append-only shadow proposal共15個專項tests；Task 2–5整合84個tests通過 | Task 5 engineering checkpoint pass並等待獨立scoped release；開始Task 6 research safety gate，冇model／ruler／scheduler／production stage改動 |
+| 2026-08-31 | Stage 5 scoped releases／Task 5 recheck | Task 3 `98702c5249aa`同Task 4 `38059dbc3366`經完整gate、六項standing-approval recheck、clean full gate同四線activation aligned；Task 5反例／真runner-artifact串接27個tests通過 | Task 3／4已啟用；Task 5修正仍輸市場誤判、時間／ruler錯配同retry conflict後先獨立release；Task 6安全／power gate未完成，唔開真實candidate promotion |
