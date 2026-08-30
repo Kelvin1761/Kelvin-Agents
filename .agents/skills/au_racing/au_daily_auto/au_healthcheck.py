@@ -20,6 +20,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.request
 from datetime import date, datetime
 from pathlib import Path
@@ -539,6 +540,41 @@ def post_heal_result(day: str, after: dict) -> tuple[int, str] | None:
     return 0, message
 
 
+def check_after_heal(day: str, *, heal_ok: bool, attempts: int = 6,
+                     delay_seconds: float = 3.0) -> dict:
+    """Recheck the public alias until Cloudflare edges converge after deploy.
+
+    The deploy pipeline already polls the production alias, but Pages edges are
+    not updated in lockstep: the next request can still land on an older edge.
+    A single immediate read therefore cannot overturn a successful deploy.  We
+    only retry states consistent with that propagation window; real data-quality
+    and unanalysed states return immediately.
+    """
+    after = check(day)
+    if not heal_ok:
+        return after
+    for _ in range(max(1, attempts) - 1):
+        if after.get("state") not in ("unpublished", "unknown"):
+            break
+        time.sleep(max(0.0, delay_seconds))
+        after = check(day)
+    return after
+
+
+def unresolved_post_heal_message(day: str, after: dict, *, heal_ok: bool,
+                                 detail: str) -> str:
+    """Render an unresolved post-heal state without leaking raw success JSON."""
+    missing = "、".join(after.get("missing", [])) or "未能讀取場次名單"
+    if heal_ok:
+        return (f"⚠️ AU 體檢 {day}\n"
+                "補發佈程序已成功收尾，但公開 dashboard 經多次查證仍未收斂。\n"
+                f"暫時未能確認：{missing}\n"
+                "系統會保留為驗證警告，唔會誤報成發佈失敗。")
+    compact = " ".join((detail or "冇錯誤詳情").split())[-200:]
+    return (f"❌ AU 體檢 {day}\n補發佈真正失敗，仍未上線：{missing}\n"
+            f"{compact}")
+
+
 def check(day: str) -> dict:
     if run_in_progress():
         return {"state": "in-progress",
@@ -622,7 +658,7 @@ def main() -> int:
     notify(f"⚠️ AU 體檢 {day}\n分析做咗但冇上 dashboard：{'、'.join(res['publishable'])}\n"
            f"正在自動補發佈…")
     ok, detail = heal()
-    after = check(day)
+    after = check_after_heal(day, heal_ok=ok)
     published = post_heal_result(day, after)
     if published is not None:
         code, message = published
@@ -635,8 +671,8 @@ def main() -> int:
                    f"{'、'.join(after.get('missing', []))}\n已自動開始一次補跑")
             return 0
         detail = f"{detail}\n自動補跑冇開：{reason}"
-    notify(f"❌ AU 體檢 {day}\n補發佈失敗，仲係缺：{'、'.join(after.get('missing', []))}\n"
-           f"{detail[-200:]}")
+    notify(unresolved_post_heal_message(
+        day, after, heal_ok=ok, detail=detail))
     return 1
 
 

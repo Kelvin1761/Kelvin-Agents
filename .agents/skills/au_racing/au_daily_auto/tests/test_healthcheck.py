@@ -150,6 +150,48 @@ class HealthcheckTests(unittest.TestCase):
         self.assertIn("已補發佈", message)
         self.assertIn("唔影響預測同發佈", message)
 
+    def test_post_heal_retries_a_stale_edge_then_reports_real_quality(self):
+        """2026-08-30：deploy 驗證成功後，下一個 Pages edge 仍回舊空 snapshot。"""
+        stale = {"state": "unpublished", "missing": ["Carnarvon"]}
+        converged = {
+            "state": "degraded",
+            "live": ["Carnarvon"],
+            "issues": ["Carnarvon：騎練資料覆蓋 48.4% 低過門檻 80%"],
+        }
+        with unittest.mock.patch.object(H, "check", side_effect=[stale, converged]) \
+                as mocked_check, \
+             unittest.mock.patch.object(H.time, "sleep") as mocked_sleep:
+            result = H.check_after_heal(DAY, heal_ok=True)
+
+        self.assertEqual(result, converged)
+        self.assertEqual(mocked_check.call_count, 2)
+        mocked_sleep.assert_called_once_with(3.0)
+
+    def test_failed_heal_does_not_wait_for_edge_convergence(self):
+        stale = {"state": "unpublished", "missing": ["Dubbo"]}
+        with unittest.mock.patch.object(H, "check", return_value=stale) as mocked_check, \
+             unittest.mock.patch.object(H.time, "sleep") as mocked_sleep:
+            result = H.check_after_heal(DAY, heal_ok=False)
+
+        self.assertEqual(result, stale)
+        mocked_check.assert_called_once_with(DAY)
+        mocked_sleep.assert_not_called()
+
+    def test_successful_heal_with_unsettled_edge_is_not_called_deploy_failure(self):
+        raw = ('{"operation":"predict","state":"succeeded",'
+               '"status":"ok","target_date":"2026-08-30"}')
+        message = H.unresolved_post_heal_message(
+            DAY,
+            {"state": "unpublished", "missing": ["Dubbo"]},
+            heal_ok=True,
+            detail=raw,
+        )
+
+        self.assertIn("補發佈程序已成功", message)
+        self.assertIn("仍未收斂", message)
+        self.assertNotIn("補發佈失敗", message)
+        self.assertNotIn('"operation"', message)
+
 
 class DataQualityTests(unittest.TestCase):
     def _meeting(self, root: Path, *, morning: bool = True,
