@@ -392,7 +392,10 @@ def test_deploy_failure_restores_installer_state_before_git_rollback(
         encoding="utf-8",
     )
     os.chmod(installer, 0o755)
-    deploy.write_text("#!/bin/sh\nexit 9\n", encoding="utf-8")
+    deploy.write_text(
+        "#!/bin/sh\necho 'dashboard too large'\necho 'asset gate' >&2\nexit 9\n",
+        encoding="utf-8",
+    )
     release = prepare_release(
         repo,
         paths=[
@@ -430,6 +433,10 @@ def test_deploy_failure_restores_installer_state_before_git_rollback(
     assert git(production, "rev-parse", "HEAD") == base
     events = ReleaseEventStore(state / "release-events").list(release["release_id"])
     failure = next(item for item in events if item["event_type"] == "activation_failed")
+    assert failure["detail"]["error"] == (
+        "ReleaseError: dashboard deployment failed (exit 9); "
+        "stdout=dashboard too large; stderr=asset gate"
+    )
     assert failure["detail"]["external_rollback"] == [
         {
             "path": ".agents/skills/central_wong_choi/install_production_runtime.sh",

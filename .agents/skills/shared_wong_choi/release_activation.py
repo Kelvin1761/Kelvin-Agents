@@ -379,7 +379,7 @@ def activate_release(
                 timeout=1800,
             )
             if deployed.returncode != 0:
-                raise ReleaseError("dashboard deployment failed")
+                raise _command_failure("dashboard deployment failed", deployed)
             deploy = {"status": "succeeded", "exit_code": deployed.returncode}
     except Exception as exc:  # rollback must also cover unexpected verifier/installer errors
         external_rollback_results: list[dict[str, Any]] = []
