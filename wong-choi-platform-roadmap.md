@@ -6,7 +6,7 @@
 
 ## Current Stage
 
-**Stage 4 complete；Stage 5 Task 1 metrics readiness full checkpoint已通過，等待受控evaluation release批准。** AU／HKJC維持production ruler；Tennis因holdout ROI／Brier未過保持shadow；NBA因2026-27 live evidence未齊保持shadow／descriptive-only。中央旺財擁有control tower／Dashboard／research visibility，但唔係第五個預測模型。
+**Stage 4 complete；Stage 5 Task 1 rulers已批准啟用，Task 2 append-only research registry engineering checkpoint已通過，等待獨立code release。** AU／HKJC維持production ruler；Tennis因holdout ROI／Brier未過保持shadow；NBA因2026-27 live evidence未齊保持shadow／descriptive-only。Task 3 dataset resolver未開始；中央旺財係control tower，唔係第五個預測模型。
 
 ## Stages and Exit Gates
 
@@ -34,7 +34,8 @@
 - [x] Shared evidence schema：append-only PredictionRecord、DecisionRecord、SettlementRecord、ModelRelease manifest；四線 writer 已接入 publication／settlement 前置閘。
 - [ ] Domain truth debt：AU point-in-time/draw audit；HKJC forward corpus；Tennis active-family revalidation；NBA settled ledger/bootstrap baseline。
 - [x] Promotion registry：research→shadow→paper→limited→production→retired、forward evidence、human approval、rollback manifest。
-- [x] Stage 5 metrics readiness candidate：`au-v2`、`hkjc-v2`、`tennis-v1`、`nba-v1` machine-readable rulers、release separation gate、full repo gate同production health已通過；等受控evaluation release批准。
+- [x] Stage 5 metrics readiness：`au-v2`、`hkjc-v2`、`tennis-v1`、`nba-v1` machine-readable rulers、release separation gate、full repo gate同production health已通過；release `297a293e6e00`已批准、merge及四domain activation。
+- [x] Stage 5 research registry：四種typed append-only contract、canonical hash、idempotent duplicate、conflict／schema／parent／provenance fail-closed audit已通過；Task 3 resolver同Task 4 runner未開始。
 - [ ] Research runner：固定 dataset/ruler、ablation、walk-forward、leakage、experiment report。
 - [x] Control tower foundation：Git／release／deployment／四線 run health／model stage／evidence／30日 SLO／Telegram approval；portfolio risk同research queue留Stage 5。
 - [x] Central Dashboard ownership：四線analysis同中央health/evidence projection；D1 `WC_LEDGER`保存實際投注，Dashboard永不做第五個scoring engine。
@@ -61,3 +62,4 @@
 | 2026-08-29 | Stage 4D domain-shape review | NBA ML reader合併HOT／catalog-verified WARM settled-day；Tennis active DB同4份snapshots全部`quick_check=ok`，4690／5552／9503 counts不低snapshot watermark，snapshot不可代替live DB | Multi-root／SQLite data-shape gate engineering complete；Tennis model繼續shadow，不阻Stage 4結構完成；尚欠Tennis COLD、activation同runtime evidence |
 | 2026-08-29 | Stage 4D Tennis COLD review | 5.634 GB／4 SQLite snapshots壓縮成32MiB ordered parts後上載Kelvin owner-only Drive；16 parts同2 manifests全部full-download SHA pass；重組artifact digest同4個SQLite `quick_check` pass；Central COLD coverage 3/3 | Tennis durability gate pass；HOT原件不自動刪。Stage 4D剩nightly activation、runtime evidence同獨立retention cutover approval |
 | 2026-08-30 | Stage 4 → Stage 5 entry | Stage 4 exit audit全PASS；production provenance 13/13；D1／catalog COLD 5/5；Kelvin批准Stage 5 plan | 開始Task 1 metrics readiness；先獨立freeze四線ruler，再建runner；Tennis／NBA model stage不變 |
+| 2026-08-31 | Stage 5 Task 1 → Task 2 | Evaluation release `297a293e6e00`由authorized Telegram chat批准；origin/main、production checkout同AU／HKJC／Tennis／NBA verifier全部aligned；19個registry tests同45個focused compatibility tests通過 | Task 1正式完成；Task 2 engineering checkpoint pass並準備獨立code release；Task 3 resolver未開始，Tennis／NBA model stage不變 |

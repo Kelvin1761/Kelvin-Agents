@@ -2,7 +2,7 @@
 
 ## Verdict
 
-**Task 1 ruler engineering checkpoint pass，等待evaluation-risk release人手批准；domain performance maturity保持原狀。** 四線已有獨立、versioned、machine-readable ruler；platform baseline固定於Stage 4 close commit `6c1528c08585ba2185c1d5e04344db87095245a9`，現役model release另行固定於`8b149c85aafa96d199eb838241d9a4958ec5d9b6`及各自canonical release ID／stage。呢個checkpoint冇candidate model、weight、holdout結果或promotion。
+**Task 1 ruler checkpoint已獨立批准、merge及activate；domain performance maturity保持原狀。** 四線已有獨立、versioned、machine-readable ruler；platform baseline固定於Stage 4 close commit `6c1528c08585ba2185c1d5e04344db87095245a9`，現役model release另行固定於`8b149c85aafa96d199eb838241d9a4958ec5d9b6`及各自canonical release ID／stage。呢個checkpoint冇candidate model、weight、holdout結果或promotion。
 
 ## Frozen Rulers
 
@@ -30,4 +30,4 @@
 - Targeted ruler／release-policy tests：22 passed。
 - Full repo gate：1,353個Python tests通過（另2 xfailed、4 skipped），Dashboard Node 69 checks通過；AU／HKJC golden各120匹一致。
 - Production `./健康.sh`：exit 0、冇嚴重問題；WARM 883 GiB、COLD 5/5。HOT約24 GiB係既有warning，所以heavy research未有production-safe queue前唔會啟動。
-- Task 1 engineering checkpoint已完成；scoped evaluation release只會push，獲人手批准merge後先可開始Task 2。
+- Task 1 release `wc-release:297a293e6e00:2026-08-30T115410.557003_0000`已由authorized Telegram chat批准；origin/main及production checkout對齊commit `297a293e6e00f6dab2ef17e59db13abd9a3b8526`，AU／HKJC／Tennis／NBA deployment verifier全部`aligned`，activation event為`succeeded`。
