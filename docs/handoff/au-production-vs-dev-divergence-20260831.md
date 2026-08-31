@@ -80,15 +80,30 @@ gold 18.65% / pass 45.39% / t3prec 47.02% —— **同修之前四位小數之�
 - `docs/experiments/INDEX.md`、`au_unused_field_power.py` —— union / 取新增側
 - 模型說明、`scoring_golden.json` —— 重新生成
 
-### 仲未對齊
+### 把尺已對齊（2026-08-31 同日，Kelvin 決定）
 
-**開發線缺嘅嘢一樣都未帶過去**（Stage 4 v2 評估閘、Stage 4/5 platform、
-research registry）。⚠️ 所以 **兩邊 `au_eval` 判決規則仍然唔同**：
-生產係「Stage 4 v2 = Gold/Good primary + ranking evidence」，
-開發線係「頭 5 位配對 AUC holdout 區間」。今日十個實驗全部用開發線嗰把尺判。
+`8664ea9b`（Stage 4 v2 判決器）已 cherry-pick 落開發線。**兩邊而家逐字一樣**：
 
-其餘未帶：配備變更抽取＋顯示、賽前市場盤預填落注格（綁住 dashboard
-`static_template` 8,714 行改動，要拆）。
+| 檔 | diff |
+|---|---:|
+| `au_eval.py` | **0 行** |
+| `model_evaluation_decision.py` | **0 行** |
+| `docs/model-evaluation-contract.md` | **0 行** |
+| `au_racing_engine/scoring.py` | **0 行** |
+| `au_racing_engine/matrix_mapper.py` | **0 行** |
+
+兩邊 `au_eval` 標題都係 `Stage 4 v2 = Gold/Good primary + ranking evidence`。
+
+十個候選已用新尺重判（`EXP-20260831-11`）：**冇一個 REJECT 被推翻**，
+而個體化 `pace_figure` 由「證明唔到」升級為 **`PRIMARY_WIN`**
+（`gold` holdout **+2.99pp** [+1.00, +5.19]）。
+
+### 仲未對齊（剩返嘅）
+
+- **開發線缺**：Stage 4/5 central governance plane、research registry
+  （純平台，唔掂評分）
+- **生產缺**：配備變更抽取＋顯示、賽前市場盤預填落注格 ——
+  兩個都綁住 dashboard `static_template` 8,714 行改動，要拆開先帶得
 
 ## 建議
 
