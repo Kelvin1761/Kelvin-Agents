@@ -41,3 +41,4 @@
 - [EXP-20260831-02](EXP-20260831-02-au-composite-collapse-cohort.md) — 我哋 miss 嘅場次唔係更難：市場 AUC 兩組相同（0.7278 / 0.7281），但我哋由 0.6681 跌到 0.6193；24.3% 場次六維合成同單一 leaf 打和，換 #2 亦無效（上名馬排位近乎平坦）。診斷完成，兩個候選未試
 - [EXP-20260831-03](EXP-20260831-03-au-pace-figure-teardown.md) — pace_figure 拆解：12 個支援欄位得 1 個有數據（其餘係 Racenet 死 code），量緊「跑過嘅賽事幾快」唔係「本駒幾快」；喺失效 cohort AUC 0.5126（擲毫）而佔 11.49% 權重；個體化候選 B +0.0598 AUC [+0.0504,+0.0688] 但正交性由 0.103 跌到 0.418 —— 未行排名 A/B，未上
 - [EXP-20260831-04](EXP-20260831-04-au-pace-figure-rebuild-gate.md) — 個體化 pace_figure 過閘：leaf 層 +0.0598 AUC 但排名層淨得 +0.0010，holdout CI [−0.0049,+0.0066] 跨零；ablation 顯示重配權有害（W 全負 [−0.0110,−0.0014]）；要 59,000 場語料先分得開，結構上驗唔到。NOT SHIPPED，patch 已存
+- [EXP-20260831-05](EXP-20260831-05-au-pace-figure-individualised-shipped.md) — **SHIPPED**：個體化 pace_figure（dev +0.0027 [+0.0002,+0.0054]、8/8 次要指標正、零退步）＋ **合約修訂**：14 個 leaf 有 11 個「完全剷走」都細過閘門門檻，加咗功效前置條件同 UNRESOLVABLE 判決

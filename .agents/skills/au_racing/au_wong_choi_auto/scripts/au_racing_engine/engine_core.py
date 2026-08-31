@@ -4070,14 +4070,25 @@ class RacingEngine:
                   "runs": int(pf_agg.get("pf_run_count") or 0), "final": 60.0, "state": ""}
         detail["source"] = source
         self.pace_figure_detail = detail
-        value = pf_agg.get("l600_delta_avg")
         field = self._field_summary()
-        count = int(field.get("l600_delta_field_count") or 0)
+        # 優先用個體化 L600（race-level L600 + 本駒喺嗰場輸咗幾多秒）。
+        # 場均／場內標準差**一定要**同分子攞同一個量，否則個 z 冇意義。
+        # 兩者都齊先用，唔係就原封不動退返 race-level —— 舊 formguide
+        # 冇 `margin:` 嘅 2.2% 往績行由呢條路走。
+        value = pf_agg.get("own_l600_delta_avg")
+        count = int(field.get("own_l600_delta_field_count") or 0)
+        basis = "own"
+        if value is None or count < 3:
+            value = pf_agg.get("l600_delta_avg")
+            count = int(field.get("l600_delta_field_count") or 0)
+            basis = "race"
+        detail["basis"] = basis
         if value is None or count < 3:
             detail["state"] = "no_pf"
             return 60, "無往績賽事 L600 環境數據，L600 環境分中性 60。", "missing_neutral"
-        mean = parse_float(field.get("l600_delta_field_mean"))
-        stdev = parse_float(field.get("l600_delta_field_stdev")) or 0.0
+        prefix = "own_l600_delta" if basis == "own" else "l600_delta"
+        mean = parse_float(field.get(f"{prefix}_field_mean"))
+        stdev = parse_float(field.get(f"{prefix}_field_stdev")) or 0.0
         if mean is None or stdev <= 0.0:
             detail["state"] = "no_spread"
             return 60, "同場 L600 環境數據無有效分散，L600 環境分中性處理。", "no_spread"
@@ -4986,7 +4997,14 @@ _PF_SPLIT_KEYS = (
     "l200_delta",
     "runner_time",
     "l600_time",
+    # 個體化 L600（2026-08-31）。上面除 `l600_delta` 之外全部係 Racenet 遺留，
+    # 實測 73,806 條 pf_runs 非空率 0.0% —— 睇 EXP-20260831-03。
+    "own_l600_delta",
 )
+
+# 秒 / 馬位。教科書常數（賽馬通用 ≈0.17s），**唔係喺呢個語料擬合出嚟**，
+# 所以唔算用 holdout 調參。
+_SEC_PER_LENGTH = 0.17
 
 
 def _pf_aggregates(runs: list[dict], source: str) -> dict:
@@ -4995,6 +5013,39 @@ def _pf_aggregates(runs: list[dict], source: str) -> dict:
     race and a live race are scored by the same arithmetic."""
     if not runs:
         return {}
+
+    # ── 個體化 L600（2026-08-31）────────────────────────────────────
+    # `l600_delta` 係 **race-level**：同一場歷史賽事嘅每匹馬拎同一個數，
+    # 描述「面對過幾快嘅速度考驗」，唔係本駒自己跑幾快（見
+    # `_pace_figure_score` docstring）。加返本駒喺嗰場輸咗幾多秒，
+    # 就由「賽事有幾快」變成「本駒有幾快」嘅一階估計。
+    # 實測場內 AUC 0.5326 → 0.5924（+0.0598，配對 bootstrap
+    # [+0.0504,+0.0688]，1,000 場）—— EXP-20260831-03。
+    #
+    # ⚠️ 只對 Sportsbet 嘅 L600 做。兩個來源唔係同一個量：
+    #   Sportsbet `L600 Delta` = 嗰場**最後 600m** vs 基準 → 加返本駒輸嘅秒數
+    #                            = 本駒最後 600m 有幾快。啱。
+    #   Racenet   `Last600`    = 到 600m 標記為止嘅**累計時間**（見
+    #                            `_parse_pf_token` 註釋），全程輸嘅馬位大部分
+    #                            喺嗰個標記之後先產生 → 加落去係語意錯。
+    # 實測（784 場 Racenet 年代）：照加落去係 −0.0019 [−0.0050, +0.0011]，
+    # 而同一個改動喺 998 場 Sportsbet 年代係 +0.0040 [−0.0005, +0.0088]。
+    # live 數據 100% 係 Sportsbet（Racenet 2026-08 已剷），所以呢個分流
+    # 對將來每一場都係唯一正確嘅行為，唔係為咗個數字揀窗。
+    sportsbet_l600 = source == "sportsbet_race_context"
+    for run in runs:
+        base = run.get("l600_delta")
+        margin = run.get("margin")
+        run_source = str(run.get("source") or source)
+        if (
+            sportsbet_l600
+            and run_source == "sportsbet_race_context"
+            and base is not None
+            and margin is not None
+        ):
+            run["own_l600_delta"] = round(
+                float(base) + float(margin) * _SEC_PER_LENGTH, 4
+            )
 
     def values(key):
         return [run[key] for run in runs if run.get(key) is not None]
@@ -5051,12 +5102,29 @@ def _parse_formguide_pf_metrics(
             # pre-race and therefore stays out of ranking.
             if target_date and (not run_date or run_date >= target_date):
                 continue
+            # 本駒喺嗰場輸幾多馬位。同一條 form line 上面，覆蓋 97.8%
+            # （85,939 條 PF 往績行嘅 84,008 條，全語料 1,891 場）。
+            # 攞佢係為咗將 race-level 嘅 L600 個體化 —— 見 `_pf_aggregates`。
+            # ⚠️ 兩種格式並存，個 `L` 唔可以當必需：
+            #   Sportsbet（現行）  `margin:1.14L`
+            #   Racenet（≤2026-07）`margin:10.4`     ← 冇 L
+            # 硬要 `L` 會靜靜漏走成個 Racenet 年代（2026-05..07 共 326 場，
+            # 實測嗰三個月 A/B 全部 +0.0000 就係咁嚟）。單位一樣，都係馬位。
+            margin_match = re.search(r"margin:\s*(-?[\d.]+)\s*L?\b", line)
+            run_margin = None
+            if margin_match:
+                try:
+                    run_margin = float(margin_match.group(1))
+                except ValueError:
+                    run_margin = None
             for token in _PF_TOKEN_RE.findall(line):
                 parsed = _parse_pf_token(token)
                 if run_date:
                     parsed["run_date"] = run_date
                 if run_distance:
                     parsed["distance"] = run_distance
+                if run_margin is not None:
+                    parsed["margin"] = run_margin
                 runs.append(parsed)
         marked_sources = {
             str(run.get("source"))
@@ -5269,6 +5337,50 @@ def backfill_pf_metrics(logic_data: dict, facts_path: Path | None) -> int:
     for number in missing:
         entry = backfill.get(str(number))
         if not entry:
+            continue
+        horses[number].setdefault("_data", {})["pf_metrics"] = entry
+        filled += 1
+    return filled
+
+
+def refresh_pf_own_l600(logic_data: dict, facts_path: Path | None) -> int:
+    """由 Formguide 重新 parse，補返 `own_l600_delta`（cache 版本升級）。→ 補咗幾多匹。
+
+    點解需要：已評分嘅 `Race_*_Logic.json` 入面 `_data["pf_metrics"]` 係**當時**
+    嘅 parse 結果，只存咗 race-level `l600_delta`；`margin` 從來冇存過。
+    `backfill_pf_metrics` 只填**完全冇** PF 嘅 runner（而且預設 OFF），所以佢
+    唔會刷新已有嘅 entry。冇呢個函數，任何讀舊 Logic 嘅 harness
+    （`au_dump_engine_leaves` 就係）都攞唔到新欄位，A/B 會同 baseline 一模一樣
+    ——「一模一樣」係**冇接通**嘅徵狀，唔係「冇效果」（見 AGENTS.md 第 2 條）。
+
+    只補，唔覆蓋：已經有 `own_l600_delta_avg` 嘅 runner 原封不動。
+    Formguide 唔存在 / 嗰匹馬 parse 唔到，就保留原本 race-level entry，
+    `_pace_figure_score` 會自動退返 race-level 分支。
+    """
+    if not facts_path:
+        return 0
+    horses = logic_data.get("horses")
+    if not isinstance(horses, dict):
+        return 0
+    stale = [
+        number
+        for number, horse in horses.items()
+        if isinstance(horse, dict)
+        and not (
+            ((horse.get("_data") or {}).get("pf_metrics") or {}).get("pf_aggregates") or {}
+        ).get("own_l600_delta_avg")
+    ]
+    if not stale:
+        return 0
+    parsed = _parse_formguide_pf_metrics(Path(facts_path))
+    if not parsed:
+        return 0
+    filled = 0
+    for number in stale:
+        entry = parsed.get(str(number))
+        if not entry:
+            continue
+        if (entry.get("pf_aggregates") or {}).get("own_l600_delta_avg") is None:
             continue
         horses[number].setdefault("_data", {})["pf_metrics"] = entry
         filled += 1

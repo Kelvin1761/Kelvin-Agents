@@ -279,6 +279,9 @@ def _build_field_summary(horses):
         "l400_delta": [],
         "l200_delta": [],
         "tempo_qrank": [],
+        # 個體化 L600（2026-08-31）。`_pace_figure_score` 個 z 要同分子同一個量，
+        # 所以場均／場內標準差一定要喺呢度一齊出。
+        "own_l600_delta": [],
     }
     complete_profiles = 0
     for horse in horses.values():

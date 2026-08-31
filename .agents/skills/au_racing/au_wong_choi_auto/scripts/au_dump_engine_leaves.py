@@ -59,10 +59,15 @@ def main():
         from au_racing_engine.engine_core import backfill_pf_metrics
     except ImportError:
         backfill_pf_metrics = None
+    try:
+        from au_racing_engine.engine_core import refresh_pf_own_l600
+    except ImportError:
+        refresh_pf_own_l600 = None
 
     results = load_historical_results(HISTORICAL_RESULTS_CSV)
     races_out = []
     pf_ok = runners = 0
+    refreshed_own_l600 = 0
 
     # `ARCHIVE_ROOT.iterdir()` only saw the top level, so every meeting the daily
     # schedule had already filed into `<root>/Archive/` was invisible here —
@@ -101,6 +106,16 @@ def main():
                     backfill_pf_metrics(logic, facts_path)
                 except Exception as exc:  # noqa: BLE001
                     print(f"   backfill 失敗 {meeting_dir.name} R{race_no}: {exc}")
+            # 舊 Logic 嘅 pf_metrics 只存咗 race-level `l600_delta`，冇 `margin`。
+            # 唔喺呢度重新 parse，個體化 L600 就永遠接唔通，A/B 會同 baseline
+            # 一模一樣 —— 而「一模一樣」係冇接通嘅徵狀。**一定要喺
+            # `_build_field_summary` 之前跑**：個分係場內 z-score，分子同
+            # 場均要嚟自同一個量。
+            if refresh_pf_own_l600 is not None:
+                try:
+                    refreshed_own_l600 += refresh_pf_own_l600(logic, facts_path)
+                except Exception as exc:  # noqa: BLE001
+                    print(f"   own-L600 refresh 失敗 {meeting_dir.name} R{race_no}: {exc}")
             ctx = dict(race_analysis)
             ctx["field_summary"] = _build_field_summary(horses)
             ctx["field_horse_names"] = [h.get("horse_name") for h in horses.values()
@@ -145,6 +160,7 @@ def main():
     dest.write_text(json.dumps({"races": races_out}), encoding="utf-8")
     print(f"races {len(races_out)}  runners {runners}")
     print(f"pace_figure state=ok: {pf_ok}/{runners} = {100*pf_ok/max(1,runners):.1f}%")
+    print(f"own-L600 refreshed runners: {refreshed_own_l600}")
     print(f"WC_PF_BACKFILL={os.environ.get('WC_PF_BACKFILL', '(unset)')}")
     print(f"→ {dest}")
 
