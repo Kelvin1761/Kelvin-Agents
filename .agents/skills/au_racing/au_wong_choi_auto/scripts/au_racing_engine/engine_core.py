@@ -1238,10 +1238,18 @@ class RacingEngine:
         # compet +0.94；dev 基本平（Gold −1）。受影響 7.0% 馬匹，平均 −13.17 分。
         pi_from_entries = []
         capped_runs = 0
+        proxy_runs = 0
         for entry in entries:
             pi_val = parse_float(entry.get("pi"))
             if pi_val is None:
-                continue
+                # 覆蓋解鎖（2026-09-01）：`pi` 欄空唔代表冇走位資料。Sportsbet 只喺
+                # 41.6% 往績印 `Settled`，但 800m 檢查點有 71.6%，而佢做代理
+                # 偏差 +0.044 / ρ 0.9688。詳見 `pi_from_trajectory`。
+                pi_val, mark = pi_from_trajectory(entry.get("trajectory"))
+                if pi_val is None:
+                    continue
+                if mark == "800m":
+                    proxy_runs += 1
             if pi_val > 0 and not self._run_was_competitive(entry):
                 pi_val = 0.0
                 capped_runs += 1
@@ -6587,6 +6595,60 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
             "video": video,
         })
     return entries
+
+
+_TRAJ_SETTLED_RE = re.compile(r"^S(\d+)$", re.I)
+_TRAJ_FINISH_RE = re.compile(r"^F(\d+)$", re.I)
+_TRAJ_MARK_RE = re.compile(r"^(\d+)(?:st|nd|rd|th)(\d+)$")
+
+
+def parse_trajectory(text) -> dict:
+    """`S5→8th5→4th4→F2` → `{"S": 5, 8: 5, 4: 4, "F": 2}`。
+
+    數字前綴係**標記點**（`8th5` = 800m 第 5 位），唔係序數詞。
+    """
+    out = {}
+    for part in str(text or "").split("→"):
+        part = part.strip()
+        match = _TRAJ_SETTLED_RE.match(part)
+        if match:
+            out["S"] = int(match.group(1))
+            continue
+        match = _TRAJ_FINISH_RE.match(part)
+        if match:
+            out["F"] = int(match.group(1))
+            continue
+        match = _TRAJ_MARK_RE.match(part)
+        if match:
+            out[int(match.group(1))] = int(match.group(2))
+    return out
+
+
+def pi_from_trajectory(text) -> tuple[float | None, str]:
+    """由走位軌跡算 PI（位置增益），回傳 (值, 用咗邊個標記點)。
+
+    2026-09-01 實測（5,240 條正式往績 + 4,129 條有齊兩個標記點嘅記錄）：
+
+    * `entry["pi"]` 就係 **落後位置 − 終點位置**，8,852 條 **100.0%** 吻合。
+      唔係名字暗示嘅 L400（`400m − F` 只對 42.5%）。
+    * 覆蓋瓶頸**唔係抽取層**：Sportsbet 頁面只喺 **41.6%** 往績印 `Settled`，
+      而我哋抽咗 5,142/5,152（缺口 10 條）。呢個係對方嘅結構限制。
+    * 但 `In running` 嘅 **800m** 檢查點覆蓋 71.6%，而佢做 `S` 嘅代理近乎完美：
+      偏差平均 **+0.044**（PI 本身 SD 3.751，即 1.2%）、中位 **0.0**、
+      **ρ = +0.9688**。所以唔做偏差修正 —— 校一個 0.044 嘅偏移係 fit 噪音。
+    * 400m 唔用：偏差 +0.277、SD 1.684，明顯差過 800m。
+
+    效果：正式往績 PI 覆蓋 **47.5% → 61.5%**（補 735 / 5,240 條）。
+    """
+    marks = parse_trajectory(text)
+    finish = marks.get("F")
+    if finish is None:
+        return None, ""
+    if "S" in marks:
+        return float(marks["S"] - finish), "settled"
+    if 8 in marks:
+        return float(marks[8] - finish), "800m"
+    return None, ""
 
 
 def _parse_running_position(header: str, marker: str) -> int | None:
