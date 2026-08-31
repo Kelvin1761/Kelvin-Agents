@@ -90,8 +90,13 @@ $9-21 +0.0069｜$21+ +0.0007
 
 ## 檢查
 - **leakage-audit**：PASS —— margin 嚟自**過往**賽事 form line
-- **golden**：120 匹一致 → 已 `--record`。⚠️ **golden 對呢類改動係盲嘅** ——
-  fixture 用凍結 Logic，繞過 formguide parse。已另行核實 live 路徑接通
+- **golden**：120 匹一致 → 已 `--record`。⚠️ **golden 對呢類改動冚唔到** ——
+  佢個 scope 係明文寫死嘅「features in, ability out，冇 scraper 冇 data root」，
+  fixture 係凍結 Logic 嘅 feature 向量，所以 formguide parse 呢層本來就唔喺
+  covered surface 之內。**唔係 golden 壞咗，係嗰層之前冇 regression 覆蓋。**
+  已補：`test_pace_figure_individualised.py`（8 條）＋
+  `test_pf_field_liveness.py`（4 條），另外喺 `golden_scoring.py` docstring
+  明文列出佢唔冚咩。已核實 live 路徑接通
   （`own_l600_delta_avg=1.865` vs `l600_delta_avg=1.008`）
 - **data_contract**：已 `--calibrate`（1,070 場 / 10,737 匹，指紋 740c8708d496）
 - **模型說明**：已重新生成
@@ -110,3 +115,20 @@ $9-21 +0.0069｜$21+ +0.0007
 
 **承諾**：2026-10-01 用 2026-09 之後嘅新語料（約 +1,000 場）重驗一次。
 如果 Sportsbet 年代嘅效應唔再係正，即刻回滾。
+
+## 追加：重配權唔需要（已量，有害）
+
+leaf 語意改咗之後喺**已上線版本**上重跑 `au_matrix_refit refit --n 3000`。
+共識權重想將 `pace_perf` 由 0.18825 → 0.23366（+24%），但落到主裁判：
+
+| | dev | holdout | CI |
+|---|---:|---:|---|
+| B（已上線，原權重） | +0.0027 | +0.0010 | [−0.0049, +0.0066] |
+| B ＋ 共識重配權 | +0.0023 | −0.0015 | [−0.0072, +0.0046] |
+| **只重配權（原 leaf）** | −0.0016 | **−0.0062** | **[−0.0110, −0.0014]** |
+
+⚠️ 注意：**最後嗰行嘅幅度 0.0062 > 閘門 MDE 0.0058**，所以呢一次個閘係
+**有功效**嘅 —— 判決係實實在在嘅 REJECT，唔係 UNRESOLVABLE。呢個正好示範
+新規則點用：唔係「跨零就搵後備規則」，係先睇部件預算夠唔夠大。
+
+**結論：`pace_perf` 重配權有害，唔好再試（第八個 REJECT）。**
