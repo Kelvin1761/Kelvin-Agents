@@ -38,3 +38,4 @@
 - [EXP-20260826-08](EXP-20260826-08-au-market-price.md) — 市場價：賽前 WinOdds AUC 0.7332 vs 模型 0.6665，加落去每個 k 都過閘（Pass +3.35pp）；但最佳混合 w=0.0，模型貢獻係零。等 methodology 決定
 - [EXP-20260826-09](EXP-20260826-09-tennis-corpus-and-tier-gate.md) — Tennis 績效係事後回填（證實賽前 ROI −23.38%）；排程喺開賽後覆蓋賽前價；match-winner 補 tier 閘；短賠熱門未夠 power；跨盤不一致結構性 REJECT；排名七個 500 上限已修（ITF 21%→49.2%）
 - [EXP-20260831-01](EXP-20260831-01-au-low-hit-race-filter.md) — 低命中場次識別得到（出馬數 AUC 0.6583，分桶 3.4%→24.7% 單調），但跳過佢哋令 ROI 由 −6.0% 變 −6.9%；完全 miss 率同 ROI 方向相反，真正蝕錢係中間帶 10-11 匹 / 大熱 $3-4.5（REJECT）
+- [EXP-20260831-02](EXP-20260831-02-au-composite-collapse-cohort.md) — 我哋 miss 嘅場次唔係更難：市場 AUC 兩組相同（0.7278 / 0.7281），但我哋由 0.6681 跌到 0.6193；24.3% 場次六維合成同單一 leaf 打和，換 #2 亦無效（上名馬排位近乎平坦）。診斷完成，兩個候選未試
