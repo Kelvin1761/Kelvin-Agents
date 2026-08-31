@@ -51,7 +51,6 @@ sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_archive_calibrator import ARCHIVE_ROOT, HISTORICAL_RESULTS_CSV  # noqa: E402
-from au_racing_engine.engine_core import normalise_field_barriers  # noqa: E402
 from au_racing_engine.source_alignment import normalize_horse_name  # noqa: E402
 
 FIELDNAMES = ["Date", "Track", "Race", "Distance", "Condition", "Pos", "Horse",
@@ -136,9 +135,9 @@ def runner_draw(meeting: Path) -> dict:
     `pace_map_score` 唯一嘅經驗基礎。個表最後成功建於 2026-08-22；今日重建
     會塌到只剩 backfill CSV 嘅 703 行。
 
-    同 `Time` 唔同，檔位係揾得返嘅 —— 場次資料夾自己嘅 Logic.json 就有。讀嗰刻
-    經 `normalise_field_barriers` 轉成**實際出閘檔位**（存檔嘅係退出前原始抽籤，
-    對真值只有 47.4%）。偏差表要嘅正正係實際出閘檔位。
+    同 `Time` 唔同，檔位係揾得返嘅 —— 場次資料夾自己嘅 Logic.json 就有。呢度帶
+    出去嘅係**原始抽籤**；轉成實際出閘檔位喺 `_densify_by_race` 做（分母一定要用
+    「實際有賽果嗰批」，唔係 Logic 名單）。
     """
     out = {}
     for path in sorted(meeting.glob("Race_*_Logic.json")):
@@ -149,7 +148,11 @@ def runner_draw(meeting: Path) -> dict:
         horses = data.get("horses")
         if not isinstance(horses, dict):
             continue
-        normalise_field_barriers(data)
+        # ⚠️ **唔喺呢度**做密集排位。`normalise_field_barriers` 係喺 Logic 嘅出賽
+        # 名單上面 densify，而 42.5% 場次嘅 Logic 名單仍然含已退出嘅幽靈馬 ——
+        # 實測咁樣只對 75.1%（`max(名次) == max(檔位)` 75.9%，而 aggregator 寫嘅
+        # 舊行係 97.8%）。真值要用「呢場實際有賽果嗰批」做分母，見
+        # `_densify_by_race`。呢度只帶原始抽籤出去。
         race_analysis = data.get("race_analysis") or {}
         distance = re.sub(r"[^0-9]", "", str(race_analysis.get("distance") or "").split(".")[0])
         condition = str(race_analysis.get("going") or "").strip()
@@ -309,6 +312,52 @@ def build_fill_map(archive_root: Path) -> dict:
     return out
 
 
+def _densify_by_race(rows: list[dict]) -> tuple[int, int]:
+    """把 `Barrier` 由原始抽籤改成**實際出閘檔位**，分母 = 呢場實際有賽果嘅馬。
+
+    2026-09-01：第一版喺 `normalise_field_barriers`（Logic 名單）度 densify，
+    實測 `max(名次) == max(檔位)` 只有 **75.9%**，而 aggregator 寫嘅舊行係
+    **97.8%** —— 因為 42.5% 場次嘅 Logic 名單仍然含已退出嘅幽靈馬。
+
+    CSV 一場嘅行**就係**出賽馬（佢哋有名次），所以呢度才係正確嘅分母。
+
+    ⚠️ 只喺全場齊行嘅時候做（`行數 >= max(名次)`）。reflector 路徑會剪短賽果，
+    喺一個被剪短嘅集合上 densify 會砌出一個**更錯**嘅檔位。
+    """
+    by_race: dict[tuple, list[dict]] = defaultdict(list)
+    for row in rows:
+        key = ((row.get("Date") or "").strip(), (row.get("Track") or "").strip(),
+               str(row.get("Race") or "").strip())
+        by_race[key].append(row)
+    changed = skipped = 0
+    for group in by_race.values():
+        vals = []
+        for row in group:
+            text = str(row.get("Barrier") or "").strip()
+            try:
+                vals.append((row, int(float(text))))
+            except ValueError:
+                vals = []
+                break
+        if len(vals) != len(group) or len({v for _, v in vals}) != len(vals):
+            skipped += len(group)
+            continue
+        positions = []
+        for row in group:
+            try:
+                positions.append(int(float(str(row.get("Pos") or "").strip())))
+            except ValueError:
+                pass
+        if positions and len(group) < max(positions):
+            skipped += len(group)   # 賽果被剪短 —— 分母唔可信
+            continue
+        for rank, (row, _) in enumerate(sorted(vals, key=lambda t: t[1]), start=1):
+            if str(row.get("Barrier") or "").strip() != str(rank):
+                row["Barrier"] = str(rank)
+                changed += 1
+    return changed, skipped
+
+
 def fill_missing(results_csv: Path, archive_root: Path, apply: bool) -> int:
     """填返現有行嘅空白 `Barrier` / `Weight`，**唔覆蓋**任何已有值。
 
@@ -368,14 +417,16 @@ def fill_missing(results_csv: Path, archive_root: Path, apply: bool) -> int:
                 filled[column] += 1
             else:
                 blank_no_source[column] += 1
+    dens_changed, dens_skipped = _densify_by_race(rows)
     for column in FILLABLE_COLUMNS:
         print(f"{column:<20} 填返 {filled[column]:>6}｜仍然空白 {blank_no_source[column]:>6}")
+    print(f"{'Barrier':<20} 實際出閘檔位修正 {dens_changed:>6}｜跳過（剪短／缺值）{dens_skipped:>6}")
     for column, count in sorted(renormalised.items()):
         print(f"{column:<20} 格式統一 {count:>6}（浮點寫法 → 純數字，數值不變）")
     if not apply:
         print("\ndry run — nothing written. re-run with --apply")
         return 0
-    if not sum(filled.values()) and not sum(renormalised.values()):
+    if not sum(filled.values()) and not sum(renormalised.values()) and not dens_changed:
         print("\nnothing to fill.")
         return 0
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
