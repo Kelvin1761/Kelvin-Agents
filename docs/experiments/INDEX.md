@@ -46,3 +46,4 @@
 - [EXP-20260826-06](EXP-20260826-06-au-class-score-revival.md) — class_score 復活：乾淨語料七個測試 dev 全部正但 holdout 跨 0；全語料三個「過閘」係喺污染資料上 fit gain 嘅產物，REJECT + 登記重測
 - [EXP-20260826-07](EXP-20260826-07-au-gear-change-signal.md) — 配備變更：抽取層完全冇攞；OFF FIRST TIME −3.86pp 顯著，但同 form_score 重複（59.83 vs 62.10），排名唔過閘。建議抽落嚟出報告
 - [EXP-20260826-08](EXP-20260826-08-au-market-price.md) — 市場價：賽前 WinOdds AUC 0.7332 vs 模型 0.6665，加落去每個 k 都過閘（Pass +3.35pp）；但最佳混合 w=0.0，模型貢獻係零。等 methodology 決定
+- [EXP-20260831-12](EXP-20260831-12-au-rejudge-past-candidates-and-trial-time.md) — 新尺重判 22 個過往候選：**冇一個翻案**（四個更清楚有害）；GBM 教科書級過擬合（gold dev +10.48pp / terminal −2.59pp）；重配權第四次 REJECT；**試閘名次贏時間**（0.5571 vs 0.5197／0.5496）—— 試閘唔盡全力跑，個體化救唔到
