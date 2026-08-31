@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """AU Wong Choi Auto scoring primitives."""
 from __future__ import annotations
+
 import re
 
 FEATURE_KEYS = (
@@ -209,7 +210,22 @@ RANKING_OVERLAYS = (
 WET_FORM_FEATURE_SCALE = 14.852  # 13.19 ×1.1260；見下面 MAX_ABS 嘅註釋
                                  # points of ability per (shrunk_wet_place_rate − prior)
 WET_FORM_SHRINK_A = 4.0         # pseudo-count for place-rate shrinkage toward prior
-WET_FORM_PRIOR = 0.5            # global career wet place-rate (~0.496 measured)
+# 2026-08-31：由 0.5 改做實測值。舊註釋寫「~0.496 measured」係錯嘅 ——
+# 全語料 19,922 匹馬 / 142,311 場濕地往績實測上名率係 **0.376**
+# （軟地 0.369 n=109,489；重地 0.398 n=32,822）。
+#
+# 錯個 prior 唔係一個無害嘅水平偏移：收縮式 `(places + A·prior)/(starts + A)`
+# 會將**冇濕地往績**嘅馬留喺 prior（overlay = 0 = 中性），而將**有濕地往績**
+# 嘅馬拉向佢自己嘅真實率。prior 高過真實率 0.124，即係一匹正正跑到群體平均
+# 嘅馬會被罰，而且濕地經驗越多罰得越重：
+#     0 場 → 0.00 ｜ 5 場 → −1.03 ｜ 20 場 → −1.54 ｜ 40 場 → −1.68
+# 2026-08-30 四個場次實測 overlay 中位數 −1.49，正正係呢個假象。
+# 四種計法冇一個接近舊註釋嗰個 0.496：匯總 0.3758（收縮公式要用呢個）、
+# 逐馬率未加權平均 0.3887、全部馬 0.3507、中位數 0.4000。
+#
+# 軟地 0.369 / 重地 0.398 分開做 prior 試過：**每一格都差過單一值**
+# （holdout +0.0010 vs +0.0018，只計濕地場次 +0.0016 vs +0.0020），所以唔拆。
+WET_FORM_PRIOR = 0.3758         # 匯總實測；唔好用逐馬平均或中位數
 WET_FORM_MAX_ABS = 6.1818       # 5.49 ×1.1260；clamp the feature to a sane ±range
 # 2026-08-22：`race_shape` 退出排名之後 ability 場內 SD 由 5.3960 升到 6.0759
 # （race_shape 本身低散開度，一直喺稀釋總分）。濕地 overlay 係按 ability spread

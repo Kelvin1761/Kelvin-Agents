@@ -173,9 +173,9 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-08-31 14:47 AEST`
-- Git commit：`321a664a`
-- `scoring.py` 指紋：`f4048b2c770c`
+- 生成時間：`2026-08-31 15:38 AEST`
+- Git commit：`a29845f2`
+- `scoring.py` 指紋：`17fea82ace11`
 - `matrix_mapper.py` 指紋：`25c8d5d22b15`
 - `renderer.py` 指紋：`a90301e78b0f`
 - 實測樣本：**500 場、4959 匹馬**，由 `2026-08-18 Albury Race 1-7` 到 `2026-08-31 Taree Race 1-8`（跳過 0 個舊格式檔案）
