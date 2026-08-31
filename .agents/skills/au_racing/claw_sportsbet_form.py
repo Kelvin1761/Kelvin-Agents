@@ -180,7 +180,15 @@ RE_INRUN_POS = re.compile(
     re.I,
 )
 RE_SECT = re.compile(r"Sectionals\s+600m\s+(?P<l600>[\d.]+)s")
-RE_WINNING_TIME = re.compile(r"Winning Time\s+(?P<time>\d{1,2}:\d{2}\.\d{3})", re.I)
+# ⚠️ 分鐘部分**唔可以**當必需。跑少過一分鐘嘅賽事寫成 `Winning Time 58.420`
+# （冇 `M:`），舊 regex 硬要 `M:SS.mmm`，所以**所有短途賽**（≈≤1000m）嘅
+# 冠軍時間靜靜咁被丟走。實測 60 個 cache 頁面 2,603 個 `Winning Time`：
+# 捉到 1,868、漏走 735 = **28.2%**，而漏走嘅每一個都係 <60 秒
+# （54.810 … 59.770）—— 唔係隨機丟失，係同距離相關嘅系統性偏差。
+# 同 `Settled` / `L600 Delta` / 試閘 header / finish 名次 / margin 的 `L`
+# 一模一樣嘅失敗模式，第七次。
+RE_WINNING_TIME = re.compile(
+    r"Winning Time\s+(?P<time>(?:\d{1,2}:)?\d{1,2}\.\d{2,3})", re.I)
 # ⚠️ 場地係寫成 "Flemington ( Soft ) 20/06/2026"（括號入面有空格），
 # 唔容許空格就成條 header 都 match 唔到（實測覆蓋率會由 92% 跌到 0%）。
 # ⚠️ 場地可以係**空**：試閘寫成 `Southside Cranbourne ( ) 13/04/2026 Race 2 800m
