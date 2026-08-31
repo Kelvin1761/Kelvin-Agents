@@ -174,5 +174,51 @@ class RaceMetadataAndTimeTest(unittest.TestCase):
         )
 
 
+class SubMinuteWinningTimeTests(unittest.TestCase):
+    """跑少過一分鐘嘅賽事寫 `Winning Time 58.420`（冇 `M:`）。
+
+    2026-08-31：舊 regex 硬要 `M:SS.mmm`，於是**所有短途賽**（≈≤1000m）嘅冠軍
+    時間靜靜咁被丟走。實測 60 個 cache 頁面 2,603 個 `Winning Time`：捉到
+    1,868、漏走 735 = **28.2%**，而漏走嘅每一個都係 <60 秒（54.810 … 59.770）
+    —— 唔係隨機丟失，係同距離相關嘅系統性偏差。修完 71.5% → 99.0%。
+
+    同 `Settled` / `L600 Delta` / 試閘 header / finish 名次 / `margin` 的 `L`
+    一模一樣嘅失敗模式，第七次。
+    """
+
+    def test_regex_accepts_both_shapes(self):
+        from claw_sportsbet_form import RE_WINNING_TIME
+        cases = {
+            "Winning Time 1:13.370": "1:13.370",   # 有分鐘
+            "Winning Time 58.420": "58.420",       # 冇分鐘 ← 舊 regex 漏走
+            "Winning Time 59.08": "59.08",         # 兩位小數
+            "Winning Time 2:05.150": "2:05.150",
+        }
+        for text, expected in cases.items():
+            with self.subTest(text=text):
+                m = RE_WINNING_TIME.search(text)
+                self.assertIsNotNone(m, f"{text} 應該 match")
+                self.assertEqual(m.group("time"), expected)
+
+    def test_regex_still_rejects_garbage(self):
+        from claw_sportsbet_form import RE_WINNING_TIME
+        for text in ("Winning Time abc", "Winning Time", "Winning Time 58"):
+            with self.subTest(text=text):
+                self.assertIsNone(RE_WINNING_TIME.search(text))
+
+    def test_sub_minute_time_survives_to_the_form_line(self):
+        """由 parse 到 form line 都唔可以掉。"""
+        from claw_sportsbet_form import RE_WINNING_TIME, run_line
+        m = RE_WINNING_TIME.search("Winning Time 58.420")
+        run = {"header": {"track": "Ballarat", "dist": "1000", "going": "Good",
+                          "race": "3", "cls": "MDN", "date": "01/08/2026"},
+               "jockey": "A Jockey", "barrier": "4", "weight": "57.0",
+               "pos": "2", "field": "9", "margin": "1.2",
+               "winning_time": m.group("time")}
+        # `run_line` 返 (往績行, 對手行) tuple，唔係 string。
+        line, _opponents = run_line(run)
+        self.assertIn("WinningTime:58.420", line)
+
+
 if __name__ == "__main__":
     unittest.main()
