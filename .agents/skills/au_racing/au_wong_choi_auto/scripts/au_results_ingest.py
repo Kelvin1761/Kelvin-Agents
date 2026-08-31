@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import re
 import shutil
 import sys
@@ -50,6 +51,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from au_archive_calibrator import ARCHIVE_ROOT, HISTORICAL_RESULTS_CSV  # noqa: E402
+from au_racing_engine.engine_core import normalise_field_barriers  # noqa: E402
 from au_racing_engine.source_alignment import normalize_horse_name  # noqa: E402
 
 FIELDNAMES = ["Date", "Track", "Race", "Distance", "Condition", "Pos", "Horse",
@@ -120,6 +122,57 @@ def runner_details(meeting: Path) -> dict:
     return out
 
 
+def runner_draw(meeting: Path) -> dict:
+    """{(race_no, horse_slug): {Barrier, Weight}} 由場次自己嘅 Logic.json 攞。
+
+    2026-08-31：`Barrier` 同 `Weight` 本來喺下面 reflector 路徑硬寫空字串，
+    同 2026-08-26 記錄嘅 `Time` 缺陷一模一樣，但當時冇一齊掃。實測後果：
+
+        2025-08 → 2026-06  檔位覆蓋 99–100%（舊行由 aggregator 寫）
+        2026-07            52.7%
+        2026-08            **0.0%**（9,809 行零檔位）
+
+    而 `au_draw_bias_calculator` 靠呢個 CSV 建逐場地／逐距離檔位偏差表，即係
+    `pace_map_score` 唯一嘅經驗基礎。個表最後成功建於 2026-08-22；今日重建
+    會塌到只剩 backfill CSV 嘅 703 行。
+
+    同 `Time` 唔同，檔位係揾得返嘅 —— 場次資料夾自己嘅 Logic.json 就有。讀嗰刻
+    經 `normalise_field_barriers` 轉成**實際出閘檔位**（存檔嘅係退出前原始抽籤，
+    對真值只有 47.4%）。偏差表要嘅正正係實際出閘檔位。
+    """
+    out = {}
+    for path in sorted(meeting.glob("Race_*_Logic.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        horses = data.get("horses")
+        if not isinstance(horses, dict):
+            continue
+        normalise_field_barriers(data)
+        race_analysis = data.get("race_analysis") or {}
+        distance = re.sub(r"[^0-9]", "", str(race_analysis.get("distance") or "").split(".")[0])
+        condition = str(race_analysis.get("going") or "").strip()
+        race_no = str(race_analysis.get("race_number") or "").strip()
+        if not race_no:
+            match = re.search(r"Race_(\d+)_Logic", path.name)
+            race_no = match.group(1) if match else ""
+        for horse in horses.values():
+            if not isinstance(horse, dict):
+                continue
+            key = (race_no, normalize_horse_name(horse.get("horse_name")))
+            barrier, weight = horse.get("barrier"), horse.get("weight")
+            out[key] = {
+                "Barrier": "" if barrier in (None, "") else str(int(float(barrier))),
+                "Weight": "" if weight in (None, "") else str(weight),
+                # 距離用純數字 —— 同 `au_draw_bias_calculator.canonical_distance`
+                # 同 `_pace_map_score` 嘅查表寫法一致。
+                "Distance": distance,
+                "Condition": condition,
+            }
+    return out
+
+
 def load_sb_csv(path: Path, stats: dict) -> list[dict]:
     """Rows from a `sb_results_csv.py` dump, normalised onto the canonical schema.
 
@@ -184,6 +237,7 @@ def collect(archive_root: Path, min_finishers: int) -> tuple[list[dict], dict]:
                 continue
             context = race_context(meeting)
             details = runner_details(meeting)
+            draw = runner_draw(meeting)
             for race_no, finishers in races.items():
                 positions = [f["pos"] for f in finishers]
                 if len(finishers) < min_finishers or 1 not in positions:
@@ -192,12 +246,17 @@ def collect(archive_root: Path, min_finishers: int) -> tuple[list[dict], dict]:
                 stats["races_ingested"] += 1
                 distance, condition = context.get(race_no, ("", ""))
                 for f in finishers:
-                    extra = details.get((race_no, normalize_horse_name(f["horse"])), {})
+                    slug = normalize_horse_name(f["horse"])
+                    extra = details.get((race_no, slug), {})
+                    drawn = draw.get((race_no, slug), {})
                     rows.append({
                         "Date": date, "Track": venue, "Race": race_no,
                         "Distance": distance, "Condition": condition,
                         "Pos": f["pos"], "Horse": f["horse"],
-                        "Barrier": "", "Weight": "",
+                        # 由 Logic.json 攞（見 `runner_draw`）。攞唔到就留空 ——
+                        # 空白比一個假檔位好，因為偏差表會照食。
+                        "Barrier": drawn.get("Barrier", ""),
+                        "Weight": drawn.get("Weight", ""),
                         "Jockey": extra.get("Jockey", ""), "Trainer": extra.get("Trainer", ""),
                         # Match the existing rows' conventions exactly ("1.25L",
                         # "$3.50", em dash for the winner). A second convention in
@@ -226,6 +285,112 @@ def collect(archive_root: Path, min_finishers: int) -> tuple[list[dict], dict]:
     return rows, stats
 
 
+FILLABLE_COLUMNS = ("Barrier", "Weight", "Distance", "Condition")
+
+
+def _meeting_date(meeting: Path) -> str:
+    """場次資料夾前綴嘅日期。reflector 缺失時嘅 fallback。"""
+    match = re.match(r"(\d{4}-\d{2}-\d{2})", meeting.name)
+    return match.group(1) if match else ""
+
+
+def build_fill_map(archive_root: Path) -> dict:
+    """{(Date, Race, horse_slug): {Barrier, Weight}} 橫跨所有場次資料夾。"""
+    out = {}
+    for meeting in sorted(archive_root.rglob("*")):
+        if not meeting.is_dir() or not any(meeting.glob("Race_*_Logic.json")):
+            continue
+        date = _meeting_date(meeting)
+        if not date:
+            continue
+        for (race_no, slug), values in runner_draw(meeting).items():
+            if race_no and slug:
+                out.setdefault((date, str(race_no), slug), values)
+    return out
+
+
+def fill_missing(results_csv: Path, archive_root: Path, apply: bool) -> int:
+    """填返現有行嘅空白 `Barrier` / `Weight`，**唔覆蓋**任何已有值。
+
+    點解要一個獨立模式：上面個合併係 add-only（`fresh` 只收 key 未見過嘅行），
+    所以已經寫入去嘅空白格永遠唔會自己好返。2026-08-31 實測缺口：
+
+        2026-07 檔位覆蓋 52.7% ・ 2026-08 **0.0%**（9,809 行）
+
+    只填空格係故意嘅 —— 舊行（2025-08 → 2026-06）由 `au_statistics_aggregator`
+    寫入，覆蓋 99–100%，冇理由用 Logic.json 去覆蓋一個已經對嘅值。
+    """
+    if not results_csv.exists():
+        print(f"❌ {results_csv} 唔存在")
+        return 1
+    with results_csv.open(encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    fill = build_fill_map(archive_root)
+    print(f"Logic.json 覆蓋      : {len(fill)} 個 (日期,場次,馬) 記錄")
+    print(f"CSV 行               : {len(rows)}")
+    filled = defaultdict(int)
+    blank_no_source = defaultdict(int)
+    renormalised = defaultdict(int)
+    # 保值格式正規化。`Barrier` / `Distance` 現有值係浮點寫法（`"2.0"` / `"1200.0"`），
+    # 新填嘅係純數字 —— 同一欄兩個慣例，正正係本檔上面警告過嘅嘢：
+    # 「A second convention in the same column silently breaks whichever consumer
+    # parses the string rather than the number.」`"2.0".isdigit()` 係 False 已經
+    # 令檔位偏差表讀到 0 行，而 `"1200.0"` 令逐距離 cell 引擎永遠查唔到。
+    # 呢一步唔改任何數值，只統一寫法。
+    for row in rows:
+        for column in ("Barrier", "Distance"):
+            text = str(row.get(column) or "").strip()
+            if not text:
+                continue
+            try:
+                number = float(text)
+            except ValueError:
+                continue
+            if number != int(number):
+                continue
+            canonical = str(int(number))
+            if canonical != text:
+                row[column] = canonical
+                renormalised[column] += 1
+    for row in rows:
+        key = (
+            (row.get("Date") or "").strip(),
+            str(row.get("Race") or "").strip(),
+            normalize_horse_name(row.get("Horse")),
+        )
+        source = fill.get(key)
+        for column in FILLABLE_COLUMNS:
+            if str(row.get(column) or "").strip():
+                continue
+            value = (source or {}).get(column, "")
+            if value:
+                row[column] = value
+                filled[column] += 1
+            else:
+                blank_no_source[column] += 1
+    for column in FILLABLE_COLUMNS:
+        print(f"{column:<20} 填返 {filled[column]:>6}｜仍然空白 {blank_no_source[column]:>6}")
+    for column, count in sorted(renormalised.items()):
+        print(f"{column:<20} 格式統一 {count:>6}（浮點寫法 → 純數字，數值不變）")
+    if not apply:
+        print("\ndry run — nothing written. re-run with --apply")
+        return 0
+    if not sum(filled.values()) and not sum(renormalised.values()):
+        print("\nnothing to fill.")
+        return 0
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    backup = results_csv.with_suffix(f".csv.bak_{stamp}")
+    shutil.copy2(results_csv, backup)
+    print(f"\nbackup: {backup.name}")
+    with results_csv.open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
+        writer.writeheader()
+        for row in rows:
+            writer.writerow({k: row.get(k, "") for k in FIELDNAMES})
+    print(f"✅ 寫入 {results_csv.name}")
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -241,7 +406,13 @@ def main() -> int:
                          "reflectors then fill only what it does not cover.")
     ap.add_argument("--apply", action="store_true", help="write; otherwise dry-run")
     ap.add_argument("--dry-run", action="store_true", help="explicit no-op (the default)")
+    ap.add_argument("--fill-missing", action="store_true",
+                    help="填返現有行嘅空白 Barrier / Weight（由 Logic.json），"
+                         "唔加新行、唔覆蓋任何已有值")
     args = ap.parse_args()
+
+    if args.fill_missing:
+        return fill_missing(args.results_csv, args.archive_root, args.apply)
 
     rows, stats = [], defaultdict(int)
     if args.sb_csv:

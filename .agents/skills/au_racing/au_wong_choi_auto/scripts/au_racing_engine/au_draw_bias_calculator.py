@@ -1,5 +1,6 @@
 import csv
 import json
+import sys
 import collections
 from pathlib import Path
 import re
@@ -51,6 +52,34 @@ def compute_rates(bucket_counts, bucket_wins, bucket_places):
             }
     return result
 
+def canonical_distance(value) -> str:
+    """距離鍵一定要同引擎查表嗰刻嘅寫法一致。
+
+    2026-08-31：`au_results_ingest` 寫嘅係 `"1200.0"`，而 `_pace_map_score` 查表
+    前做 `re.sub(r"[^0-9]", "", "1200m")` → `"1200"`。兩邊唔同鍵，即係逐距離
+    cell 全部查唔到，靜靜跌返 track 總體。同 2026-07-03 嗰個「'm' 後綴 vs 純數字」
+    BUGFIX 係同一個撞鍵，只係方向調轉。
+
+    ⚠️ 改呢個函數就等於改咗表嘅鍵 —— 一定要同 `_pace_map_score` 嗰行一齊睇。
+    """
+    digits = re.sub(r"[^0-9]", "", str(value or "").split(".")[0])
+    return digits
+
+
+def parse_barrier(value) -> "int | None":
+    """檔位可能係 `"7"`、`"7.0"`、`7` 或者空白。一律轉成 int，唔得就 None。"""
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        number = float(text)
+    except ValueError:
+        return None
+    if number != int(number):
+        return None
+    return int(number)
+
+
 def main():
     if not Path(CSV_PATH).exists():
         print(f"Error: {CSV_PATH} not found.")
@@ -68,14 +97,17 @@ def main():
             date = row.get("Date", "").strip()
             track = row.get("Track", "").strip().title()
             race_num = row.get("Race", "").strip()
-            distance = row.get("Distance", "").strip()
+            distance = canonical_distance(row.get("Distance"))
             barrier_str = row.get("Barrier", "").strip()
             pos_str = row.get("Pos", "").strip()
 
-            if not barrier_str.isdigit():
-                continue
-            barrier = int(barrier_str)
-            if barrier <= 0:
+            # 2026-08-31：`isdigit()` 太嚴。`au_results_ingest` 寫嘅係浮點格式
+            # （`"2.0"`），而 `"2.0".isdigit()` 係 **False** —— 18,564 行主 CSV
+            # 一行都讀唔到，成個表只靠 backfill 嗰 703 行。同一族缺陷嘅第八次
+            # （見 [[scraper-silent-drop-failure-mode]]）：一個嚴格 pattern
+            # 靜靜丟掉一整類數據，而唔會拋錯。
+            barrier = parse_barrier(barrier_str)
+            if barrier is None or barrier <= 0:
                 continue
 
             pos = parse_pos(pos_str)
@@ -114,7 +146,7 @@ def main():
 
         for r in runners:
             trk = r["track"]
-            dst = r["distance"]
+            dst = r["distance"]  # "" = CSV 冇距離，只計 track 總體同全域
             bkt = get_bucket(r["barrier"])
             pos = r["pos"]
 
@@ -131,7 +163,10 @@ def main():
             if is_win: track_wins[trk][bkt] += 1
             if is_place: track_places[trk][bkt] += 1
 
-            # Track + Distance Specific
+            # Track + Distance Specific（距離缺失就唔砌 "" cell —— 一個空鍵
+            # 會扮成一個真 cascade 層，而引擎永遠查唔到佢）
+            if not dst:
+                continue
             dist_counts[trk][dst][bkt] += 1
             if is_win: dist_wins[trk][dst][bkt] += 1
             if is_place: dist_places[trk][dst][bkt] += 1
@@ -157,11 +192,42 @@ def main():
 
     out_path = Path(OUTPUT_JSON)
     out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 退化守衛（2026-08-31）。呢個表係 `pace_map_score` 唯一嘅經驗基礎，而佢
+    # 靜靜塌過一次：`Barrier` 欄由 2026-08 起 0% 覆蓋 + `isdigit()` 太嚴，令主
+    # CSV 讀到 0 行。當時個表凍結喺 2026-08-22 冇人察覺 —— 因為重建成功、
+    # 輸出結構正常、零錯誤。一個「成功」但薄過現行版本嘅重建，唔可以覆蓋。
+    new_races = len(races)
+    if out_path.exists() and "--force" not in sys.argv:
+        try:
+            old = json.loads(out_path.read_text(encoding="utf-8"))
+            old_cells = sum(
+                1
+                for trk in (old.get("tracks") or {}).values()
+                for _ in (trk.get("distances") or {})
+            )
+            new_cells = sum(
+                1
+                for trk in matrix["tracks"].values()
+                for _ in trk["distances"]
+            )
+            if old_cells and new_cells < old_cells * 0.8:
+                print(
+                    f"❌ 唔寫入：新表得 {new_cells} 個距離 cell，現行有 {old_cells} 個"
+                    f"（跌 {1 - new_cells / old_cells:.0%}）。\n"
+                    f"   幾乎一定係上游 CSV 有欄位死咗 —— 查 `Barrier` 欄覆蓋率，"
+                    f"唔好用 --force 蓋過去。"
+                )
+                return 1
+        except (OSError, ValueError):
+            pass
+
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump(matrix, f, indent=4, ensure_ascii=False)
 
     print(f"✅ Successfully generated Draw Bias Matrix at {OUTPUT_JSON}")
-    print(f"Processed {len(races)} races across {len(track_counts)} tracks.")
+    print(f"Processed {new_races} races across {len(track_counts)} tracks.")
+    return 0
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)
