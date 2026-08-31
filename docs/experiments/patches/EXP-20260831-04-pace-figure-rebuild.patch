@@ -1,0 +1,207 @@
+diff --git a/.agents/skills/au_racing/au_wong_choi_auto/scripts/au_auto_orchestrator.py b/.agents/skills/au_racing/au_wong_choi_auto/scripts/au_auto_orchestrator.py
+index bbd50b33..9512f999 100644
+--- a/.agents/skills/au_racing/au_wong_choi_auto/scripts/au_auto_orchestrator.py
++++ b/.agents/skills/au_racing/au_wong_choi_auto/scripts/au_auto_orchestrator.py
+@@ -279,6 +279,9 @@ def _build_field_summary(horses):
+         "l400_delta": [],
+         "l200_delta": [],
+         "tempo_qrank": [],
++        # 個體化 L600（2026-08-31）。`_pace_figure_score` 個 z 要同分子同一個量，
++        # 所以場均／場內標準差一定要喺呢度一齊出。
++        "own_l600_delta": [],
+     }
+     complete_profiles = 0
+     for horse in horses.values():
+diff --git a/.agents/skills/au_racing/au_wong_choi_auto/scripts/au_dump_engine_leaves.py b/.agents/skills/au_racing/au_wong_choi_auto/scripts/au_dump_engine_leaves.py
+index 5a87ebb8..27bfac6d 100644
+--- a/.agents/skills/au_racing/au_wong_choi_auto/scripts/au_dump_engine_leaves.py
++++ b/.agents/skills/au_racing/au_wong_choi_auto/scripts/au_dump_engine_leaves.py
+@@ -59,10 +59,15 @@ def main():
+         from au_racing_engine.engine_core import backfill_pf_metrics
+     except ImportError:
+         backfill_pf_metrics = None
++    try:
++        from au_racing_engine.engine_core import refresh_pf_own_l600
++    except ImportError:
++        refresh_pf_own_l600 = None
+ 
+     results = load_historical_results(HISTORICAL_RESULTS_CSV)
+     races_out = []
+     pf_ok = runners = 0
++    refreshed_own_l600 = 0
+ 
+     # `ARCHIVE_ROOT.iterdir()` only saw the top level, so every meeting the daily
+     # schedule had already filed into `<root>/Archive/` was invisible here —
+@@ -101,6 +106,16 @@ def main():
+                     backfill_pf_metrics(logic, facts_path)
+                 except Exception as exc:  # noqa: BLE001
+                     print(f"   backfill 失敗 {meeting_dir.name} R{race_no}: {exc}")
++            # 舊 Logic 嘅 pf_metrics 只存咗 race-level `l600_delta`，冇 `margin`。
++            # 唔喺呢度重新 parse，個體化 L600 就永遠接唔通，A/B 會同 baseline
++            # 一模一樣 —— 而「一模一樣」係冇接通嘅徵狀。**一定要喺
++            # `_build_field_summary` 之前跑**：個分係場內 z-score，分子同
++            # 場均要嚟自同一個量。
++            if refresh_pf_own_l600 is not None:
++                try:
++                    refreshed_own_l600 += refresh_pf_own_l600(logic, facts_path)
++                except Exception as exc:  # noqa: BLE001
++                    print(f"   own-L600 refresh 失敗 {meeting_dir.name} R{race_no}: {exc}")
+             ctx = dict(race_analysis)
+             ctx["field_summary"] = _build_field_summary(horses)
+             ctx["field_horse_names"] = [h.get("horse_name") for h in horses.values()
+@@ -145,6 +160,7 @@ def main():
+     dest.write_text(json.dumps({"races": races_out}), encoding="utf-8")
+     print(f"races {len(races_out)}  runners {runners}")
+     print(f"pace_figure state=ok: {pf_ok}/{runners} = {100*pf_ok/max(1,runners):.1f}%")
++    print(f"own-L600 refreshed runners: {refreshed_own_l600}")
+     print(f"WC_PF_BACKFILL={os.environ.get('WC_PF_BACKFILL', '(unset)')}")
+     print(f"→ {dest}")
+ 
+diff --git a/.agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/engine_core.py b/.agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/engine_core.py
+index 8e7366db..543b701c 100644
+--- a/.agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/engine_core.py
++++ b/.agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/engine_core.py
+@@ -4070,14 +4070,25 @@ class RacingEngine:
+                   "runs": int(pf_agg.get("pf_run_count") or 0), "final": 60.0, "state": ""}
+         detail["source"] = source
+         self.pace_figure_detail = detail
+-        value = pf_agg.get("l600_delta_avg")
+         field = self._field_summary()
+-        count = int(field.get("l600_delta_field_count") or 0)
++        # 優先用個體化 L600（race-level L600 + 本駒喺嗰場輸咗幾多秒）。
++        # 場均／場內標準差**一定要**同分子攞同一個量，否則個 z 冇意義。
++        # 兩者都齊先用，唔係就原封不動退返 race-level —— 舊 formguide
++        # 冇 `margin:` 嘅 2.2% 往績行由呢條路走。
++        value = pf_agg.get("own_l600_delta_avg")
++        count = int(field.get("own_l600_delta_field_count") or 0)
++        basis = "own"
++        if value is None or count < 3:
++            value = pf_agg.get("l600_delta_avg")
++            count = int(field.get("l600_delta_field_count") or 0)
++            basis = "race"
++        detail["basis"] = basis
+         if value is None or count < 3:
+             detail["state"] = "no_pf"
+             return 60, "無往績賽事 L600 環境數據，L600 環境分中性 60。", "missing_neutral"
+-        mean = parse_float(field.get("l600_delta_field_mean"))
+-        stdev = parse_float(field.get("l600_delta_field_stdev")) or 0.0
++        prefix = "own_l600_delta" if basis == "own" else "l600_delta"
++        mean = parse_float(field.get(f"{prefix}_field_mean"))
++        stdev = parse_float(field.get(f"{prefix}_field_stdev")) or 0.0
+         if mean is None or stdev <= 0.0:
+             detail["state"] = "no_spread"
+             return 60, "同場 L600 環境數據無有效分散，L600 環境分中性處理。", "no_spread"
+@@ -4986,8 +4997,15 @@ _PF_SPLIT_KEYS = (
+     "l200_delta",
+     "runner_time",
+     "l600_time",
++    # 個體化 L600（2026-08-31）。上面除 `l600_delta` 之外全部係 Racenet 遺留，
++    # 實測 73,806 條 pf_runs 非空率 0.0% —— 睇 EXP-20260831-03。
++    "own_l600_delta",
+ )
+ 
++# 秒 / 馬位。教科書常數（賽馬通用 ≈0.17s），**唔係喺呢個語料擬合出嚟**，
++# 所以唔算用 holdout 調參。
++_SEC_PER_LENGTH = 0.17
++
+ 
+ def _pf_aggregates(runs: list[dict], source: str) -> dict:
+     """Field-relative PF/L600 inputs. One code path for every PF source
+@@ -4996,6 +5014,21 @@ def _pf_aggregates(runs: list[dict], source: str) -> dict:
+     if not runs:
+         return {}
+ 
++    # ── 個體化 L600（2026-08-31）────────────────────────────────────
++    # `l600_delta` 係 **race-level**：同一場歷史賽事嘅每匹馬拎同一個數，
++    # 描述「面對過幾快嘅速度考驗」，唔係本駒自己跑幾快（見
++    # `_pace_figure_score` docstring）。加返本駒喺嗰場輸咗幾多秒，
++    # 就由「賽事有幾快」變成「本駒有幾快」嘅一階估計。
++    # 實測場內 AUC 0.5326 → 0.5924（+0.0598，配對 bootstrap
++    # [+0.0504,+0.0688]，1,000 場）—— EXP-20260831-03。
++    for run in runs:
++        base = run.get("l600_delta")
++        margin = run.get("margin")
++        if base is not None and margin is not None:
++            run["own_l600_delta"] = round(
++                float(base) + float(margin) * _SEC_PER_LENGTH, 4
++            )
++
+     def values(key):
+         return [run[key] for run in runs if run.get(key) is not None]
+ 
+@@ -5051,12 +5084,24 @@ def _parse_formguide_pf_metrics(
+             # pre-race and therefore stays out of ranking.
+             if target_date and (not run_date or run_date >= target_date):
+                 continue
++            # 本駒喺嗰場輸幾多馬位。同一條 form line 上面，覆蓋 97.8%
++            # （85,939 條 PF 往績行嘅 84,008 條，全語料 1,891 場）。
++            # 攞佢係為咗將 race-level 嘅 L600 個體化 —— 見 `_pf_aggregates`。
++            margin_match = re.search(r"margin:\s*(-?[\d.]+)L", line)
++            run_margin = None
++            if margin_match:
++                try:
++                    run_margin = float(margin_match.group(1))
++                except ValueError:
++                    run_margin = None
+             for token in _PF_TOKEN_RE.findall(line):
+                 parsed = _parse_pf_token(token)
+                 if run_date:
+                     parsed["run_date"] = run_date
+                 if run_distance:
+                     parsed["distance"] = run_distance
++                if run_margin is not None:
++                    parsed["margin"] = run_margin
+                 runs.append(parsed)
+         marked_sources = {
+             str(run.get("source"))
+@@ -5275,6 +5320,50 @@ def backfill_pf_metrics(logic_data: dict, facts_path: Path | None) -> int:
+     return filled
+ 
+ 
++def refresh_pf_own_l600(logic_data: dict, facts_path: Path | None) -> int:
++    """由 Formguide 重新 parse，補返 `own_l600_delta`（cache 版本升級）。→ 補咗幾多匹。
++
++    點解需要：已評分嘅 `Race_*_Logic.json` 入面 `_data["pf_metrics"]` 係**當時**
++    嘅 parse 結果，只存咗 race-level `l600_delta`；`margin` 從來冇存過。
++    `backfill_pf_metrics` 只填**完全冇** PF 嘅 runner（而且預設 OFF），所以佢
++    唔會刷新已有嘅 entry。冇呢個函數，任何讀舊 Logic 嘅 harness
++    （`au_dump_engine_leaves` 就係）都攞唔到新欄位，A/B 會同 baseline 一模一樣
++    ——「一模一樣」係**冇接通**嘅徵狀，唔係「冇效果」（見 AGENTS.md 第 2 條）。
++
++    只補，唔覆蓋：已經有 `own_l600_delta_avg` 嘅 runner 原封不動。
++    Formguide 唔存在 / 嗰匹馬 parse 唔到，就保留原本 race-level entry，
++    `_pace_figure_score` 會自動退返 race-level 分支。
++    """
++    if not facts_path:
++        return 0
++    horses = logic_data.get("horses")
++    if not isinstance(horses, dict):
++        return 0
++    stale = [
++        number
++        for number, horse in horses.items()
++        if isinstance(horse, dict)
++        and not (
++            ((horse.get("_data") or {}).get("pf_metrics") or {}).get("pf_aggregates") or {}
++        ).get("own_l600_delta_avg")
++    ]
++    if not stale:
++        return 0
++    parsed = _parse_formguide_pf_metrics(Path(facts_path))
++    if not parsed:
++        return 0
++    filled = 0
++    for number in stale:
++        entry = parsed.get(str(number))
++        if not entry:
++            continue
++        if (entry.get("pf_aggregates") or {}).get("own_l600_delta_avg") is None:
++            continue
++        horses[number].setdefault("_data", {})["pf_metrics"] = entry
++        filled += 1
++    return filled
++
++
+ def _parse_formguide_jt_ly(
+     facts_path: Path,
+     *,
