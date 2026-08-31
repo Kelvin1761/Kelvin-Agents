@@ -17,6 +17,24 @@ It is deliberately confined to the pure, deterministic part of the engine —
 features in, ability out.  No scrapers, no data root, no network, so it runs in
 under a second and never flakes.
 
+⚠️ WHAT THIS DOES **NOT** COVER — read before treating a green run as proof.
+The fixtures are frozen feature vectors lifted out of already-scored Logic
+files.  Everything UPSTREAM of `feature_scores` is invisible here:
+
+  * Formguide / Racecard parsing (`_parse_formguide_pf_metrics`, PF tokens,
+    margin, in-running positions)
+  * anything that changes what a leaf CONSUMES rather than how it combines
+
+2026-08-31 worked example: `pace_figure_score` was changed to individualise a
+race-level L600 with the runner's own beaten margin.  Live scoring moved on
+half the field, and this file still reported "120 匹馬全部一致" — because the
+frozen Logic fixtures carry no `margin`, so the new code path never ran.
+Coverage for that layer lives in
+`au_wong_choi_auto/tests/test_pace_figure_individualised.py`.
+
+Rule of thumb: green here means "the combination maths did not move".  It does
+NOT mean "scoring did not move".
+
 Usage
 -----
     python golden_scoring.py --platform au --record    # after an INTENDED change
