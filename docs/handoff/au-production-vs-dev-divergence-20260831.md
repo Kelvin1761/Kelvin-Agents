@@ -60,6 +60,36 @@ commit、領先 0。**唔係進行中嘅工作。**
 - `origin/claude/au-pace-figure-rebuild`（新分支，PR 未開）
 - `origin/au-production`（`1ddf33e0..774c1355`，93 個 commit）
 
+## 已對齊（2026-08-31 同日）
+
+三個對生產有實質影響嘅已經 cherry-pick 落 `au-production` 並 push：
+
+| commit | 內容 | 驗證 |
+|---|---|---|
+| `8701b6d8` | **pace_perf 顯示尺** gain 0.9909 → 0.594 ＋ 權重補償 ＋ `MATRIX_ABILITY_SCALE` | 1,782 場 / 17,838 匹：`ability` max\|Δ\| **0.0017**、grade 改 **4/17,838 = 0.02%**；pace_perf 顯示 SD **18.26 → 9.31**、❌❌ 佔比 **14.3% → 3.3%**；七個維度全部落喺 7.94–12.94（目標 11）|
+| `61753932` | 場次名稱被截斷（貪婪 `[^>]*` 食咗 title 屬性）| 測試已帶埋 |
+| `1cff8a19` | `au_feature_ab --min-depth` 會靜靜清空語料（研究工具）| 測試全綠 |
+
+排名表現前後一致：頭 5 位 AUC **all 0.6828 · dev 0.6799 · holdout 0.6905**，
+gold 18.65% / pass 45.39% / t3prec 47.02% —— **同修之前四位小數之內一樣**，
+正如設計意圖。
+
+衝突解決方式：
+- `au_eval.py` —— **union**，保住生產嘅 Stage 4 v2（`model_evaluation_decision`）
+  再加 `MATRIX_ABILITY_SCALE` import
+- `docs/experiments/INDEX.md`、`au_unused_field_power.py` —— union / 取新增側
+- 模型說明、`scoring_golden.json` —— 重新生成
+
+### 仲未對齊
+
+**開發線缺嘅嘢一樣都未帶過去**（Stage 4 v2 評估閘、Stage 4/5 platform、
+research registry）。⚠️ 所以 **兩邊 `au_eval` 判決規則仍然唔同**：
+生產係「Stage 4 v2 = Gold/Good primary + ranking evidence」，
+開發線係「頭 5 位配對 AUC holdout 區間」。今日十個實驗全部用開發線嗰把尺判。
+
+其餘未帶：配備變更抽取＋顯示、賽前市場盤預填落注格（綁住 dashboard
+`static_template` 8,714 行改動，要拆）。
+
 ## 建議
 
 1. **唔急**（排名表現一樣），但**應該做** —— 主要為咗把 pace_perf 顯示尺修正
