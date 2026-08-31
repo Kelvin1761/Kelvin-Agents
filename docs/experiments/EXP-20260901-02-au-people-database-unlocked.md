@@ -1,0 +1,126 @@
+# EXP-20260901-02 騎練資料庫解鎖：2,255 人全部補返名字；騎師分有可量度嘅前視
+
+**狀態：名字擷取 SHIPPED（correctness）・as-of 替換測唔到（Monthly 只回溯 13 個月）**
+- **日期**：2026-09-01 ・ **平台**：AU
+- **起因**：Kelvin 提供 top-jockeys / top-trainers / track-stats 三個頁面，問「只有
+  top 50 係唔係應該跳過？」同「我記得有個 1000+ 名單」
+
+## 一、答 top-50：唔需要，我哋一直有 2,255 人
+
+`AU_Sportsbet_People_Cache.json` 有 **2,255 個人**（1,697 練馬師 + 558 騎師），
+每人**八張情境表**：
+
+| 表 | 分層 | as-of 可分解？ |
+|---|---|---|
+| Overall Stats | Career / 12 Months | ❌ |
+| **Yearly Breakdown** | 2021–2026 逐年 | ✅ |
+| **Monthly Breakdown** | 近 12 個月逐月 | ✅ |
+| Track Conditions | Career / 12 Months | ❌ |
+| Track Types | 同上 | ❌ |
+| Distance | 6 個距離帶 × Career/12M | ❌ |
+| Barrier | 6 個檔位帶 × Career/12M | ❌ |
+| Prize Money | 同上 | ❌ |
+
+所以 **top-50 頁面唔需要抓**，亦**唔應該**按「唔喺 top 50 就跳過場次」——
+我哋覆蓋率遠高於 50 人。
+
+## 二、名字全部係空 —— 一個 id-only 資料庫
+
+實測：**2,255 人同 4,374 行快照嘅 `name` 全部係空字串。**
+
+根因：`warm_people_backfill.py` 嘅 `people.append((kind, pid, ""))` —— 名字硬寫空。
+而個 `todo` 由 `href="/(Jockey|Trainer)/(\d+)/"` 抽，個 regex **只攞 kind 同 id**。
+
+而且**個人頁本身冇名字**：佢係純統計表片段
+（`<html><head></head><body><div class="facebox-fixed-container">` 加幾張表），
+冇 title / h1 / og:title。所以名字唯一來源係**賽事頁連結**。
+
+### 修法同驗證
+
+用 `title="{名} - Career Statistics"`，**唔用 anchor 文字**（anchor 截短成
+`Ben, Will & Jd ...`），並 `html.unescape`（合夥練馬師名含 `&`，
+見 [[au-html-entity-breaks-name-matching]]）。
+
+| | |
+|---|---:|
+| 補到名字 | **2,255 / 2,255（100%）** |
+| 獨立交叉驗證（LY 字串指紋推出 1,360 個）| **吻合 97.3%** |
+
+唔吻合嗰 37 個係（a）見習後綴（`Samantha Pointon` vs `Samantha Pointon A3`）同
+（b）我預測過嘅 LY 指紋撞名（77 個字串涉 248 人）—— **頁面版本才係權威**。
+
+### join 覆蓋（語料 20,371 個 runner 行）
+
+| | join 到 | 其中有 Monthly |
+|---|---:|---:|
+| 騎師 | **98.0%** | 92.8% |
+| 練馬師 | **99.7%** | 91.7% |
+
+加 `--backfill-names` 模式（零請求、自動備份），因為 `refresh()` 唔會重處理
+已落 cache 嘅頁面，所以既有 2,255 條無名記錄唔會自己好返。
+
+## 三、騎師分有可量度嘅前視（新發現）
+
+`jockey_score` / `trainer_score` 用嘅統一上名率，來源係 People_Cache 嘅**生涯**或
+**近 12 個月**率 —— 兩個都係 **2026-08 抓嘅**，覆蓋 93.1% runner（`(LY:)` token）。
+即係 2026-08 之前每一場，個率都包含該場之後嘅賽果。
+
+由 Monthly + Yearly Breakdown 砌 as-of 率（只用賽日之前嘅時段）再對比：
+
+| 賽事月 | 騎師 Δ（現行 − as-of）| 練馬師 Δ |
+|---|---:|---:|
+| 2025-09 | **+1.75pp** | +0.25pp |
+| 2025-12 | +1.02pp | +0.08pp |
+| 2026-02 | +1.34pp | +0.22pp |
+| 2026-03 | +0.94pp | −0.12pp |
+| 2026-04 | +0.36pp | −0.10pp |
+| 2026-05 → 2026-08 | **≈0.00pp** | ≈0.00pp |
+
+**教科書級前視簽名**：偏差隨賽日遠離抓取日單調上升，喺抓取日附近歸零；而且
+**單向偏高**。練馬師基本平（率穩定），騎師唔係。
+
+**好消息**：terminal holdout（切點 **2026-08-17**）完全落喺零偏差區
+（2026-05 起 ≈0.00pp）。**所以我哋公布嘅 holdout 數字冇被呢個前視抬高。**
+受影響嘅係 dev（舊場次），偏差約 +1pp 喺一個 36.5% 嘅率上（相對 ~3%）。
+
+### 為咩 A/B 唔到
+
+`Monthly Breakdown` 只回溯 **13 個月**（Aug 2025 → Aug 2026）。要做**同窗口**
+as-of 重建（例如「賽日前 12 個月」），2025-09 嘅場次只攞得到 1 個月。
+我改用「完整往年 + 同年較早月份」，但咁樣**窗口長度唔同**，量到嘅差異就
+混咗（a）前視同（b）窗口定義兩樣。107 場全員對得到嘅場次全部落喺 2026-08
+（前視 ≈0），所以更加測唔到。
+
+**唔可以用一個混淆嘅量測去判一個候選。** 記錄為 **UNRESOLVABLE**。
+
+### 但機制已經存在，只係唔夠時間
+
+`sb_people_stats.append_snapshot()` **已經**寫 `captured_at` 落
+`AU_Sportsbet_People_Snapshots.jsonl`（4,374 行）。問題只係全部都係 2026-08 ——
+即係**向前收集嘅基建已經有**，要嘅只係時間。而今次補返名字之後，將來嗰批快照
+才 join 得到（之前係 id-only）。
+
+**下一步**：等 2026-11 左右（3 個月快照）就有真 as-of 語料，屆時同窗口重建做得到。
+
+## 四、順帶答：標準時間同檔位表要唔要自己砌
+
+- **檔位**：**已經有自己嘅**，而且今日重建過 —— `au_draw_bias_matrix.json`
+  90 個場地 / 558 個距離 cell / 19,178 樣本（見 [[EXP-20260831-13]]）。唔需要外求。
+- **標準時間**：引擎已有 `_lookup_standard_l600()`；而 `WinningTime` 覆蓋今日修到
+  99.0%（[[au-defect-scan-20260831]]）。但 WinningTime 速度指數已測過 REJECT，
+  而且 PF 個體化之後同 pace_figure 嘅 ρ 由 0.005 升到 0.418
+  （[[retest-orthogonality-changes]]）—— 即係已經被吸收，唔需要另砌一個庫。
+
+## 五、外置碟
+
+`/Volumes/Kelvin Hardisk 1`：**883Gi free**（本機只剩 25Gi）、寫入 **82 MB/s**。
+而且 **launchd context 實測 stat / listdir / write / read 四步全 OK**（uid=501）——
+即係 [[external-disk-launchd-blocked]] 記錄嘅 TCC 阻塞**已經解決**。
+
+值得搬嘅：`.sportsbet_cache` 748M、`AU_Racing` 1.6G。細嘅匯總檔（偏差表、
+data_contract、tier CSV）應該留喺 repo —— 佢哋係版本化產物唔係大容量數據。
+
+## 檢查
+- **leakage-audit**：名字擷取本身零洩漏（只係識別）。**發現**咗騎師率嘅前視並量化
+- **golden / data_contract**：名字唔入分，golden 一致；`檢查.sh --quick` 全過
+- 7 個新測試
