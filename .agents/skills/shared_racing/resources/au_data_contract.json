@@ -93,6 +93,13 @@
       "min": 0.0,
       "max": 100.0
     },
+    "proven_class_feature": {
+      "horses": 2149,
+      "neutral_rate": 0.2061,
+      "mean_within_race_spread": 0.4056,
+      "min": -1.3335,
+      "max": 1.726
+    },
     "rating_score": {
       "horses": 10737,
       "neutral_rate": 0.0065,
@@ -134,6 +141,13 @@
       "mean_within_race_spread": 1.1361,
       "min": 53.0,
       "max": 63.0
+    },
+    "wet_form_feature": {
+      "horses": 7434,
+      "neutral_rate": 0.1676,
+      "mean_within_race_spread": 1.3391,
+      "min": -5.79,
+      "max": 4.4556
     }
   }
 }

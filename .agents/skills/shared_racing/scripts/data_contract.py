@@ -160,6 +160,15 @@ def logic_files(root: Path, limit: int | None = None, since: str | None = None) 
     return paths[:limit] if limit else paths
 
 
+# Leaf 中性 = 60（「冇證據」）。Overlay 中性 = 0（「冇調整」）。
+# 用錯中性點會令 overlay 嘅 neutral_rate 完全冇意義。
+OVERLAY_NEUTRAL = {"wet_form_feature": 0.0, "proven_class_feature": 0.0}
+
+
+def neutral_point(field: str) -> float:
+    return OVERLAY_NEUTRAL.get(field, 60.0)
+
+
 def observe(paths) -> tuple[dict, int, int, list]:
     """Collect per-field statistics from scored races."""
     fields: dict[str, Observation] = {}
@@ -174,11 +183,37 @@ def observe(paths) -> tuple[dict, int, int, list]:
         except Exception as exc:
             unreadable.append((path, f"{type(exc).__name__}: {exc}"))
             continue
+        horses = list((data.get("horses") or {}).values())
         rows = [
             h.get("python_auto", {}).get("feature_scores") or {}
-            for h in (data.get("horses") or {}).values()
+            for h in horses
         ]
         rows = [r for r in rows if r]
+        # ── Overlay（2026-08-31）───────────────────────────────────────────
+        # `wet_form_feature` / `proven_class_feature` 直接加落綜合戰力分，但
+        # 佢哋係 `python_auto` 嘅 sibling 而唔係 `feature_scores` 嘅 key，
+        # 所以呢個閘門由來睇唔到佢哋。後果：濕地 overlay 嘅 prior 校錯咗
+        # （0.5 vs 實測 0.3758），中位數 −1.49 咁多個月，而九個 suite 全綠、
+        # 發佈閘全綠 —— 冇任何閘門睇到。見 EXP-20260831-08。
+        #
+        # ⚠️ Overlay 嘅中性點係 **0.0** 唔係 60，而且有**適用性條件**：
+        # 乾地嗰日 `wet_form_feature` 全場 0.0 係**正確行為**，唔係死欄位。
+        # 所以只喺適用嘅場次觀察。
+        going = ""
+        for h in horses:
+            g = ((h.get("python_auto") or {}).get("race_context") or {}).get("going")
+            if g:
+                going = str(g)
+                break
+        wet_applicable = ("soft" in going.lower() or "heavy" in going.lower())
+        if rows:
+            for row, h in zip(rows, [h for h in horses
+                                     if (h.get("python_auto", {}).get("feature_scores"))]):
+                pa = h.get("python_auto") or {}
+                if wet_applicable and "wet_form_feature" in pa:
+                    row["wet_form_feature"] = pa["wet_form_feature"]
+                if "proven_class_feature" in pa:
+                    row["proven_class_feature"] = pa["proven_class_feature"]
         if len(rows) < 3:
             continue
         races += 1
@@ -195,7 +230,7 @@ def observe(paths) -> tuple[dict, int, int, list]:
                     continue
                 values.append(value)
                 obs.horses += 1
-                if abs(value - 60.0) < 1e-9:
+                if abs(value - neutral_point(key)) < 1e-9:
                     obs.neutral += 1
             if len(values) > 1:
                 obs.spreads.append(statistics.pstdev(values))
