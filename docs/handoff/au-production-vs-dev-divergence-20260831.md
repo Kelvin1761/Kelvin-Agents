@@ -98,12 +98,51 @@ gold 18.65% / pass 45.39% / t3prec 47.02% —— **同修之前四位小數之�
 而個體化 `pace_figure` 由「證明唔到」升級為 **`PRIMARY_WIN`**
 （`gold` holdout **+2.99pp** [+1.00, +5.19]）。
 
-### 仲未對齊（剩返嘅）
+### 全部 AU 相關嘅嘢已經對齊（2026-08-31 收尾）
+
+**九個檔而家逐字一樣：**
+
+| 檔 | diff |
+|---|---:|
+| `au_racing_engine/scoring.py` | **0 行** |
+| `au_racing_engine/matrix_mapper.py` | **0 行** |
+| `au_racing_engine/engine_core.py` | **0 行** |
+| `au_racing_engine/renderer.py` | **0 行** |
+| `au_racing_engine/validation.py` | **0 行** |
+| `au_eval.py` | **0 行** |
+| `model_evaluation_decision.py` | **0 行** |
+| `docs/model-evaluation-contract.md` | **0 行** |
+| `claw_sportsbet_form.py` | **0 行** |
+
+後續帶落生產嘅：
+
+| commit | 內容 |
+|---|---|
+| `ce577c4d` | 配備變更抽取＋顯示（刻意唔入排名）|
+| `f4227e99` | **`validation.py` 嘅 `MATRIX_ABILITY_SCALE`（我自己 cherry-pick 漏咗）** ＋ 賽前市場盤預填 |
+| `ed6ea5a0` | `au_retest_watch.py` —— 預先登記重測到期自動報 |
+
+> 🔴 **`f4227e99` 修嘅係我今日親手引入嘅 live bug。** cherry-pick 顯示尺修正
+> （`8701b6d8`）嗰陣冇帶埋 `validation.py` 嘅修正 —— ability 條式喺 repo 有
+> **七份複本**。後果：實跑一場七匹馬報 **12 個 `SCORE-002`/`SCORE-004`**。
+> **`run_tests.sh` 十個 suite 同 `檢查.sh` 全部綠** —— 因為兩者都唔會跑
+> orchestrator，而 `golden_scoring` 用自己嗰份 ability 式、唔會 call validator。
+> 已加 `test_validation_agrees_with_engine.py`（3 條，含七份複本清單），
+> **負面測試核實過**：抽走 validation 嘅 scale → 即刻紅。
+
+### 剩返嘅（唔掂 AU 模型）
 
 - **開發線缺**：Stage 4/5 central governance plane、research registry
-  （純平台，唔掂評分）
-- **生產缺**：配備變更抽取＋顯示、賽前市場盤預填落注格 ——
-  兩個都綁住 dashboard `static_template` 8,714 行改動，要拆開先帶得
+  （約 30 個 commit，純平台）
+- **生產缺**：`multisport_exporter.py` ＋ 佢個測試（271 行，dashboard 功能）。
+  ⚠️ **試過帶，四個 suite 即刻爆**（`Shared Wong Choi` / `NBA` /
+  `Dashboard (python)` / `Tennis`）—— 佢同生產嘅平台線唔兼容。已回退。
+- 另外幾個檔（`au_healthcheck.py` 12 行、`au_telegram_bot.py` 10 行、
+  `nba_ml/*` 16 行、`command_adapter.py` 5 行）係**兩邊各自演化過嘅同一個檔**，
+  唔係「缺功能」。逐個 cherry-pick 會重複上面嗰種爆法。
+
+**呢兩邊要真正合併，應該用一次正式 merge（唔係 cherry-pick），而且要有人
+決定平台線點收。唔急 —— 已經冇任何 AU 模型／把尺／抽取層嘅差異。**
 
 ## 建議
 
