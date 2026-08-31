@@ -1147,6 +1147,59 @@ class TestMarketDrift(unittest.TestCase):
         self.assertLess(body.index("market_drift("), body.index("diff_race_state("))
 
 
+class TestAnalysisOddsSnapshotIsChecked(unittest.TestCase):
+    """「今晚一個賠率都影唔到」唔可以係無聲嘅。
+
+    2026-08-30：七個場次入面 Casterton（23:50）同 Strathalbyn（01:10）嘅
+    Sportsbet 頁返嚟冇賠率，`record_odds_snapshot` 回 0，但回傳值被丟棄。
+    odds_history 連一個 `analysis` 快照都冇，run 照報 status=ok / errors=[]。
+    兩個場次要到第二朝 09:46 先有第一個價 —— 當朝價實測貴 8.7pp。
+    """
+
+    def _meeting(self, tmp, *, with_odds: bool, races: int = 2) -> Path:
+        d = Path(tmp)
+        for rno in range(1, races + 1):
+            price = ("SpeedPos:  -   WinOdds:   3.2   PlcOdds:   1.4\n"
+                     if with_odds else
+                     "SpeedPos:  -   WinOdds:   -     PlcOdds:   -\n")
+            (d / f"08-30 Race {rno} Formguide.md").write_text(
+                f"RACE {rno}\n[1] First Horse (3)\n{price}"
+                f"[7] Second Horse (5)\n{price}",
+                encoding="utf-8")
+        return d
+
+    def test_returns_zero_when_no_formguide_carries_a_price(self):
+        """呢個就係 Casterton / Strathalbyn 嗰晚嘅形狀。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = self._meeting(tmp, with_odds=False)
+            self.assertEqual(S.record_odds_snapshot(folder, "analysis"), 0)
+            self.assertFalse((folder / S.ODDS_HISTORY).exists())
+
+    def test_returns_race_count_when_prices_are_present(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = self._meeting(tmp, with_odds=True, races=3)
+            self.assertEqual(S.record_odds_snapshot(folder, "analysis"), 3)
+            hist = json.loads((folder / S.ODDS_HISTORY).read_text(encoding="utf-8"))
+            self.assertEqual(sorted(hist), ["1", "2", "3"])
+            self.assertTrue(all(k.endswith("|analysis") for r in hist.values() for k in r))
+
+    def test_the_analysis_call_site_uses_the_return_value(self):
+        """回傳值一定要接住 —— 光呼叫就係之前個 bug。"""
+        src = Path(S.__file__).read_text(encoding="utf-8")
+        body = src[src.index("def analyse_one_meeting"):]
+        body = body[:body.index("\n# ── 步驟 3")]
+        self.assertIn('= record_odds_snapshot(folder, "analysis")', body)
+        self.assertNotIn('\n    record_odds_snapshot(folder, "analysis")\n', body)
+
+    def test_the_analysis_call_site_warns_when_nothing_was_captured(self):
+        src = Path(S.__file__).read_text(encoding="utf-8")
+        body = src[src.index("def analyse_one_meeting"):]
+        body = body[:body.index("\n# ── 步驟 3")]
+        self.assertIn('runlog.step("odds-snapshot", "missing"', body)
+        self.assertIn('runlog.step("odds-snapshot", "partial"', body)
+        self.assertIn("runlog.warn(", body[body.index("odds_races ="):])
+
+
 class TestIndexSlugMatching(unittest.TestCase):
     """索引頁 slug 同場次夾名對唔上係常態，唔係例外。
 

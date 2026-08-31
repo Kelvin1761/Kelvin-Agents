@@ -69,13 +69,23 @@ def collect(meeting_key, ids):
     return (out, f"{missing} 場唔喺 cache" if missing else None)
 
 
+def ordinal(pos: int) -> str:
+    """1st / 2nd / 3rd / 4th ... 11th / 21st / 22nd / 23rd.
+
+    Used to render every finisher, not just the first six, so the teens
+    exception and the 21st/22nd/23rd cases actually come up now.
+    """
+    if 11 <= (pos % 100) <= 13:
+        return f"{pos}th"
+    return f"{pos}{ {1: 'st', 2: 'nd', 3: 'rd'}.get(pos % 10, 'th') }"
+
+
 def render(venue, date, races):
     lines = [f"# {venue} Race Results — {date}", ""]
-    ORD = {1: "1st", 2: "2nd", 3: "3rd"}
     for rno in sorted(races):
         lines.append(f"## Race {rno}")
         for pos, num, name, mgn, sp in races[rno]:
-            label = ORD.get(pos, f"{pos}th")
+            label = ordinal(pos)
             bits = [f"{label}:", f"#{num}" if num else "#?", name]
             if pos > 1 and mgn:
                 bits.append(f"({mgn}L)")
@@ -110,7 +120,12 @@ def main():
     ap = argparse.ArgumentParser(description="由 cache 生成覆盤賽果檔")
     ap.add_argument("--meeting", help="對應表嘅 key，例如「2026-08-01 Flemington Race 1-9」")
     ap.add_argument("--meeting-dir", help="寫落邊個目錄（預設用 --meeting 推）")
-    ap.add_argument("--top", type=int, default=6, help="每場寫頭幾名")
+    ap.add_argument(
+        "--top",
+        type=int,
+        default=0,
+        help="每場最多寫幾名（0 = 全部，預設）",
+    )
     args = ap.parse_args()
 
     from sb_backfill_archive import load_meeting_ids
@@ -130,8 +145,18 @@ def main():
     if not races:
         print("❌ cache 冇任何賽果 —— 呢個場次未抽過，或者仲未跑")
         return 1
-    for rno in races:
-        races[rno] = races[rno][:args.top]
+    # 預設寫齊全副出馬名單。以前呢度硬截頭 6 名 —— cache 本身有齊每匹馬
+    # （每個 runner 自己嗰條 form line 就係佢喺呢場嘅名次），所以嗰個 cap 係
+    # 淨蝕：2026-08-30 四個場次 270 行只寫低 174 行，丟失 35.6%。
+    #
+    # 兩個下游因此壞咗：
+    #   1. 任何用呢個檔嘅 SP 計 ROI 都有生存者偏差 —— 跑第 7 名之後嘅首選冇
+    #      SP，會被靜靜咁剔出分母。實測同一批注：截住計 +3.7%，寫齊計 -19.8%。
+    #   2. `form_score` 讀唔到嘅名次會當「未上名 → 中性 60」，等於將真嘅差績
+    #      洗白成冇資料。
+    if args.top > 0:
+        for rno in races:
+            races[rno] = races[rno][:args.top]
 
     meta = ids[key]
     venue = meta["slug"].replace("_", " ").title()

@@ -11,6 +11,9 @@ sys.path.insert(0, str(SCRIPT_DIR))
 
 from race_compliance_scan import (
     check_placeholders,
+    check_top4_drift,
+    is_frozen_path,
+    iter_live_files,
     parse_analysis_top4,
     parse_logic_top4,
     parse_result_json,
@@ -216,6 +219,143 @@ class RaceComplianceScanTests(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(check_placeholders(path), [])
+
+
+ANALYSIS_TEMPLATE = """
+**第1選**
+- **馬號及馬名:** [{a}] Alpha
+**第2選**
+- **馬號及馬名:** [{b}] Beta
+**第3選**
+- **馬號及馬名:** [{c}] Gamma
+**第4選**
+- **馬號及馬名:** [{d}] Delta
+"""
+
+
+def _logic(top4: list[str]) -> str:
+    import json
+
+    return json.dumps(
+        {
+            "horses": {n: {} for n in top4},
+            "python_auto_verdict": {
+                "ranking": [{"horse_number": n} for n in top4],
+                "top4": [{"horse_number": n} for n in top4],
+            },
+        }
+    )
+
+
+class FrozenSubtreeTests(unittest.TestCase):
+    """`_prediction_snapshots/` is frozen on purpose and must not be walked.
+
+    2026-08-30: all six AU meetings exited rc=1 from the morning refresh because
+    TOP4-001 compared a frozen snapshot's Analysis against the current Logic.
+    The scheduler still recorded `status: ok` / `errors: []`, so a real failure
+    would have looked identical.
+    """
+
+    def test_snapshot_analysis_does_not_trigger_drift(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            # live pair agrees
+            (root / "Race_2_Auto_Analysis.md").write_text(
+                ANALYSIS_TEMPLATE.format(a="8", b="4", c="10", d="9"), encoding="utf-8"
+            )
+            (root / "Race_2_Logic.json").write_text(
+                _logic(["8", "4", "10", "9"]), encoding="utf-8"
+            )
+            # frozen pre-refresh snapshot disagrees, exactly as it should
+            snap = root / "_prediction_snapshots" / "20260829T155931+0000-abc"
+            snap.mkdir(parents=True)
+            (snap / "Race_2_Auto_Analysis.md").write_text(
+                ANALYSIS_TEMPLATE.format(a="8", b="4", c="10", d="6"), encoding="utf-8"
+            )
+
+            self.assertEqual(check_top4_drift(root), [])
+
+    def test_real_live_drift_is_still_critical(self) -> None:
+        """Pruning snapshots must not turn the gate into a no-op."""
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "Race_2_Auto_Analysis.md").write_text(
+                ANALYSIS_TEMPLATE.format(a="8", b="4", c="10", d="9"), encoding="utf-8"
+            )
+            (root / "Race_2_Logic.json").write_text(
+                _logic(["8", "4", "10", "6"]), encoding="utf-8"
+            )
+
+            issues = check_top4_drift(root)
+            self.assertEqual([i.code for i in issues], ["TOP4-001"])
+            self.assertEqual(issues[0].severity, "CRITICAL")
+            # the LIVE file is named, not some snapshot copy
+            self.assertTrue(issues[0].path.endswith("Race_2_Auto_Analysis.md"))
+            self.assertNotIn("_prediction_snapshots", issues[0].path)
+
+    def test_snapshot_cannot_mask_a_live_drift(self) -> None:
+        """A snapshot that happens to match Logic must not overwrite the live entry.
+
+        `analyses` is keyed by race number, so before the fix the last file the
+        walk yielded won — which could be a stale snapshot that agreed with the
+        current Logic, hiding a genuine live mismatch.
+        """
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "Race_2_Auto_Analysis.md").write_text(
+                ANALYSIS_TEMPLATE.format(a="8", b="4", c="10", d="9"), encoding="utf-8"
+            )
+            (root / "Race_2_Logic.json").write_text(
+                _logic(["8", "4", "10", "6"]), encoding="utf-8"
+            )
+            snap = root / "_prediction_snapshots" / "20260830T000616+0000-def"
+            snap.mkdir(parents=True)
+            # snapshot agrees with Logic — the masking shape
+            (snap / "Race_2_Auto_Analysis.md").write_text(
+                ANALYSIS_TEMPLATE.format(a="8", b="4", c="10", d="6"), encoding="utf-8"
+            )
+
+            self.assertEqual([i.code for i in check_top4_drift(root)], ["TOP4-001"])
+
+    def test_frozen_dirnames_and_dot_dirs_are_pruned(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for sub in ("_prediction_snapshots", "_pre_v52_backup", "quarantine",
+                        ".hkjc_cache", ".runtime", ".backup_before_trackwork_fix"):
+                (root / sub).mkdir()
+                (root / sub / "Race_1_Auto_Analysis.md").write_text("x", encoding="utf-8")
+            (root / "Race_1_Auto_Analysis.md").write_text("x", encoding="utf-8")
+
+            live = iter_live_files(root, "*.md")
+            self.assertEqual([p.name for p in live], ["Race_1_Auto_Analysis.md"])
+            self.assertEqual(live[0].parent, root)
+
+    def test_live_files_are_shallowest_first(self) -> None:
+        from tempfile import TemporaryDirectory
+
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "nested").mkdir()
+            (root / "nested" / "Race_1_Logic.json").write_text("{}", encoding="utf-8")
+            (root / "Race_1_Logic.json").write_text("{}", encoding="utf-8")
+
+            self.assertEqual(
+                [p.parent for p in iter_live_files(root, "*.json")],
+                [root, root / "nested"],
+            )
+
+    def test_is_frozen_path_ignores_the_filename_itself(self) -> None:
+        root = Path("/meeting")
+        self.assertFalse(is_frozen_path(root / ".hidden_report.md", root))
+        self.assertTrue(is_frozen_path(root / "_prediction_snapshots" / "s" / "a.md", root))
 
 
 if __name__ == "__main__":

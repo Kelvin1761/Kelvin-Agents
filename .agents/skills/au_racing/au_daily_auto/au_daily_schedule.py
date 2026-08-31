@@ -1436,7 +1436,27 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
     complete = len(scored) >= expected and not partial
     # ⚠️ 呢個先係真正「分析時」嘅賠率 —— 一定要喺呢刻影，因為之後任何重建都會
     # 覆寫 Formguide。
-    record_odds_snapshot(folder, "analysis")
+    #
+    # ⚠️ 回傳值一定要睇。以前呢度係光呼叫唔理結果，於是「今晚攞唔到賠率」變成
+    # 一個完全無聲嘅失敗：2026-08-30 七個場次入面，Casterton（23:50）同
+    # Strathalbyn（01:10）嘅 Sportsbet 頁返嚟冇賠率，odds_history 連一個
+    # `analysis` 快照都冇，run 照報 status=ok / errors=[]。要到第二朝 09:46
+    # 先有第一個價 —— 即係嗰兩個場次淨係得當朝價，而當朝價實測貴 8.7pp。
+    # 攞唔到賠率唔算致命（評分本身唔讀賠率），但一定要嘈，唔可以靜。
+    odds_races = record_odds_snapshot(folder, "analysis")
+    if odds_races == 0:
+        runlog.step("odds-snapshot", "missing", meeting=folder.name,
+                    label="analysis", races=0, scored=len(scored))
+        runlog.warn(f"{folder.name}: 分析時一場賠率都影唔到（Sportsbet 頁冇賠率）"
+                    f"—— 呢個場次冇賽前價，只會剩返當朝價")
+    elif odds_races < len(scored):
+        runlog.step("odds-snapshot", "partial", meeting=folder.name,
+                    label="analysis", races=odds_races, scored=len(scored))
+        runlog.warn(f"{folder.name}: 分析時只影到 {odds_races}/{len(scored)} 場賠率"
+                    f"—— 差嗰幾場冇賽前價")
+    else:
+        runlog.step("odds-snapshot", "ok", meeting=folder.name,
+                    label="analysis", races=odds_races)
     runlog.meeting(folder.name, "analysed" if complete else "analysed_partial",
                    races=scored, expected=expected, going=plan["going"] or None)
     runlog.data["races_added"].append({"meeting": folder.name, "races": scored,
