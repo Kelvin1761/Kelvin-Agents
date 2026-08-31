@@ -5705,7 +5705,60 @@ def enrich_logic_from_facts(
                     data["current_jockey_history_line"] = f"{current_jockey} 暫未見正式賽或試閘合作紀錄"
                 else:
                     data["current_jockey_history_line"] = f"{current_jockey} 暫未見正式賽合作紀錄"
+    # 逐匹 loop 之後才做：實際出閘檔位要睇齊成個出賽名單（見
+    # `normalise_field_barriers` 嘅實測理由）。戰術敘述由佢一齊重建。
+    normalise_field_barriers(logic_data)
     return logic_data
+
+
+def normalise_field_barriers(logic_data: dict) -> int:
+    """把檔位由「原始抽籤號」改成「實際出閘檔位」。
+
+    退出馬之後閘位會重編：實際檔位 = 原始抽籤喺**實際出賽馬**之中嘅密集排位。
+    2026-08-31 實測（1,782 場語料 + 261 場 `Race_Results_*.json` 真值）：
+
+      * 現行存檔嘅檔位對真值只有 **47.4%**（2,840 條記錄）
+      * 密集排位對真值 **99.3%**
+      * **62.1%** 場次有馬嘅原始抽籤號大過今日馬匹數 —— 唔需要真值都證明有退出馬
+      * 分桶（`≤4` / `≤8` / `≤12`）錯 **18.0%** 行、影響 **56.5%** 場次，
+        而且**單向**：wide→mid 1,359、very_wide→wide 959、mid→inner 798。
+        即係引擎系統性地當馬排得比實際更外。
+
+    無條件密集排位係安全嘅（實測性質）：
+      * 冇退出馬嘅 676 場（max 檔位 == 馬匹數）—— 密集排位 **100% 係 no-op**
+      * 有退出馬嘅 1,106 場 —— 密集排位 **100% 有修正**
+
+    ⚠️ 呢個係場內**保序**變換，所以任何 rank-based 指標（場內 AUC 之類）一定
+    一模一樣。佢只經**絕對值**影響嘢：`_pace_map_score` 嘅分桶查表、逐場地檔位
+    偏差基準表、`_expected_position_label`（`≤3`）同用戶睇到嘅戰術敘述。
+    唔好因為「AUC 一樣」就以為冇接通。
+
+    檔位缺失或者有重複就唔動（冇辦法安全重編）。回傳改咗嘅馬匹數。
+    """
+    horses = logic_data.get("horses")
+    if not isinstance(horses, dict) or len(horses) < 2:
+        return 0
+    pairs = []
+    for num, horse in horses.items():
+        if not isinstance(horse, dict):
+            return 0
+        b = parse_float(horse.get("barrier"))
+        if b is None or b <= 0:
+            return 0
+        pairs.append((num, b))
+    if len({b for _, b in pairs}) != len(pairs):
+        return 0
+    changed = 0
+    for rank, (num, _) in enumerate(sorted(pairs, key=lambda t: t[1]), start=1):
+        horse = horses[num]
+        if parse_float(horse.get("barrier")) == float(rank):
+            continue
+        horse["barrier"] = rank
+        changed += 1
+        data = horse.get("_data")
+        block = data.get("facts_section", "") if isinstance(data, dict) else ""
+        horse["tactical_plan"] = _build_tactical_plan(rank, block)
+    return changed
 
 
 def _merge_if_missing(target, key, value):

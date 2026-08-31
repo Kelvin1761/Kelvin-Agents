@@ -493,6 +493,69 @@ def autofix_last_failure() -> str | None:
                if good else f"仲未修好：{detail[-200:]}"))
 
 
+# 語料 CSV 嘅欄位級健康。呢個 CSV 唔影響今日發佈，但係檔位偏差表同幾個
+# calibration 路徑嘅唯一輸入 —— 所以係 advisory，唔係 blocker。
+#
+# 呢一族缺陷已經中過兩次，兩次都係靜靜死：
+#   2026-08-26  `Time` 欄     99% → 0%（`au_results_ingest` 硬寫空字串）
+#   2026-08-31  `Barrier` 欄  99% → 0%（同一個硬寫，修 Time 時冇一齊掃）
+# 兩次都係「檔案仍在、行數仲加、零錯誤」。所以要逐欄睇覆蓋率，唔係睇檔案存在。
+CORPUS_COLUMNS = ("Barrier", "Distance", "SP", "Pos")
+CORPUS_COLUMN_FLOOR = 0.90
+
+
+def corpus_column_advisories(csv_path=None, *, recent_days: int = 60) -> list[str]:
+    """最近 `recent_days` 日內，語料 CSV 每條關鍵欄嘅覆蓋率。
+
+    只睇最近窗 —— 舊行由已退役嘅寫入路徑產生，覆蓋率天生唔同，混埋一齊算會
+    令一條剛剛死掉嘅欄被歷史數據稀釋到睇唔出。
+    """
+    import csv as _csv
+    from datetime import timedelta
+
+    if csv_path is None:
+        try:
+            sys.path.insert(0, str(HERE.parents[1] / "au_wong_choi_auto" / "scripts"))
+            from au_archive_calibrator import HISTORICAL_RESULTS_CSV as _csv_path
+            csv_path = _csv_path
+        except Exception:  # noqa: BLE001
+            return []
+    csv_path = Path(csv_path)
+    if not csv_path.exists():
+        return [f"語料 CSV 唔存在：{csv_path.name}"]
+    try:
+        with csv_path.open(encoding="utf-8-sig", newline="") as handle:
+            rows = list(_csv.DictReader(handle))
+    except OSError as exc:
+        return [f"語料 CSV 讀唔到（{exc.__class__.__name__}）：{csv_path.name}"]
+    if not rows:
+        return [f"語料 CSV 係空：{csv_path.name}"]
+    dates = sorted({(r.get("Date") or "").strip() for r in rows if (r.get("Date") or "").strip()})
+    if not dates:
+        return [f"語料 CSV 冇日期欄：{csv_path.name}"]
+    try:
+        cutoff = (date.fromisoformat(dates[-1]) - timedelta(days=recent_days)).isoformat()
+    except ValueError:
+        cutoff = dates[max(0, len(dates) - recent_days)]
+    recent = [r for r in rows if (r.get("Date") or "").strip() >= cutoff]
+    if not recent:
+        return []
+    out = []
+    for column in CORPUS_COLUMNS:
+        if column not in rows[0]:
+            out.append(f"語料 CSV 冇 `{column}` 欄")
+            continue
+        filled = sum(1 for r in recent if str(r.get(column) or "").strip())
+        rate = filled / len(recent)
+        if rate < CORPUS_COLUMN_FLOOR:
+            out.append(
+                f"語料 CSV `{column}` 欄最近 {recent_days} 日覆蓋 {rate:.0%}"
+                f"（{filled}/{len(recent)} 行，下限 {CORPUS_COLUMN_FLOOR:.0%}）"
+                f" —— 檔位偏差表同 calibration 會靜靜變薄"
+            )
+    return out
+
+
 def check(day: str) -> dict:
     if run_in_progress():
         return {"state": "in-progress",
@@ -509,6 +572,7 @@ def check(day: str) -> dict:
     missing_live = sorted(v for v in expect if v not in live_today)
     if not missing_live:
         issues, advisories = quality_issues(day)
+        advisories = list(advisories) + corpus_column_advisories()
         base = {"live": sorted(live_today), "expected": sorted(expect),
                 "advisories": advisories}
         if issues:

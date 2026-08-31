@@ -23,6 +23,7 @@ from au_racing_engine.engine_core import (
     enrich_logic_from_facts,
     horse_prize_level,
     horse_proven_class_level,
+    normalise_field_barriers,
 )
 from au_racing_engine.io_utils import write_json_atomic as _write_json_atomic
 from au_racing_engine.io_utils import write_text_atomic as _atomic_write_text
@@ -118,6 +119,9 @@ def process_logic_file(
     # Before the field summary: 段速實速 is field-relative, so PF has to be
     # complete for the whole race or not counted at all.
     backfill_pf_metrics(logic_data, facts_path)
+    # 防禦性：`enrich_logic_from_facts` 已經正規化過，但 facts 缺失時 enrich 唔跑，
+    # 而檔位分桶同馬群摘要都食絕對檔位。函數係 idempotent，乾淨場次係 no-op。
+    normalise_field_barriers(logic_data)
     race_context["field_summary"] = _build_field_summary(logic_data.get("horses", {}))
     # Today's runner names so the engine can flag 賽績線 head-to-head rematches.
     race_context["field_horse_names"] = [
