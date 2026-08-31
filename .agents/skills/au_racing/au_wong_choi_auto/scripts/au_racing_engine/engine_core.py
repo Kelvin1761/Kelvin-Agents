@@ -6590,6 +6590,25 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
 
 
 def _parse_running_position(header: str, marker: str) -> int | None:
+    """`Nth@400m` 式走位 token。
+
+    ⚠️ 2026-08-31 實測：**四個 marker 全部 0% 命中**（4,021 條往績記錄，
+    `settled_pos` / `pos_1200` / `pos_800` / `pos_400` 一條都冇值）。Formguide 個
+    record header 根本冇 `Nth@400m` 呢個寫法 —— `claw_sportsbet_form.parse_race`
+    係 parse 到 `p400` / `p800` / `p1200`，但傳唔到呢個 header 格式嚟。
+
+    後果**目前限於顯示層**：唯一消費者係 `_entry_shape_bucket` 同
+    `_summarize_recent_shape`，而 `_entry_shape_bucket` 有散文關鍵詞 fallback
+    （「led」/「midfield」/「rear」），所以 `recent_shape_*` 仍然有 ~70% 有值 ——
+    只不過係**關鍵詞推出嚟**，唔係數字位置。再往下只去到
+    `_matrix_anchor_lines`（報告）同 `_predicted_style`（餵零權重嘅
+    `_pace_map_score`），所以**排名冇受影響**。
+
+    要修就要令 Formguide 帶走位數字。但先睇 EXP-20260822-02：800m→終點嘅
+    末段跌位訊號（同一份資訊）已經量過同 REJECT，而 PI 本身係由 `entry["pi"]`
+    另一條路嚟（64.5% 覆蓋），唔靠呢四個欄位。即係填返佢哋**唔會**自動變成
+    排名收益。見 [[au-written-field-is-not-a-filled-field]]。
+    """
     match = re.search(rf"(\d+)(?:st|nd|rd|th)@{re.escape(marker)}", str(header or ""), re.I)
     return int(match.group(1)) if match else None
 
