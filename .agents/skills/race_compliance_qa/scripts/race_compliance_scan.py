@@ -43,6 +43,46 @@ ERROR_MARKERS = (
 )
 
 
+# Subtrees that hold FROZEN or BACKUP copies of pipeline artifacts, not live ones.
+#
+# `_prediction_snapshots/` is the immutable pre-race snapshot: it is SUPPOSED to
+# disagree with the current Logic once a meeting is re-scored.  Walking it made
+# TOP4-001 fire on every morning refresh — 2026-08-30 failed all six AU meetings
+# with rc=1 while the run still recorded `status: ok` / `errors: []`.  Worse, the
+# analyses map is keyed by race number, so a snapshot copy could overwrite the
+# live file and the check would compare the wrong pair — a real live drift could
+# be masked by a stale snapshot that happened to match.
+FROZEN_DIRNAMES = frozenset({
+    '_prediction_snapshots',
+    '_pre_v52_backup',
+    'quarantine',
+})
+
+
+def is_frozen_path(path: pathlib.Path, root: pathlib.Path) -> bool:
+    """True if `path` lives under a frozen/backup subtree of `root`."""
+    try:
+        parts = path.relative_to(root).parts
+    except ValueError:
+        parts = path.parts
+    # The final component is the file itself; only directories gate the walk.
+    for part in parts[:-1]:
+        if part in FROZEN_DIRNAMES or part.startswith('.') or 'backup' in part.lower():
+            return True
+    return False
+
+
+def iter_live_files(root: pathlib.Path, pattern: str = '*'):
+    """`root.rglob(pattern)` with frozen/backup subtrees pruned.
+
+    Sorted shallowest-first so the live artifact is always seen before any
+    same-named copy deeper in the tree.
+    """
+    paths = [p for p in root.rglob(pattern) if not is_frozen_path(p, root)]
+    paths.sort(key=lambda p: (len(p.parts), str(p)))
+    return paths
+
+
 class Issue:
     def __init__(self, severity: str, code: str, path: str, detail: str, race: int | None = None):
         self.severity = severity
@@ -268,16 +308,32 @@ def check_results_json(path: pathlib.Path) -> list[Issue]:
 def check_top4_drift(root: pathlib.Path) -> list[Issue]:
     issues = []
     analyses: dict[int, tuple[pathlib.Path, list[str]]] = {}
-    for path in root.rglob('*.md'):
+    for path in iter_live_files(root, '*.md'):
         if not ANALYSIS_RE.search(path.name):
             continue
         text = read_text(path)
         race_no = extract_race_no(path, text)
         top4 = parse_analysis_top4(text)
-        if race_no is not None and top4:
-            analyses[race_no] = (path, top4)
+        if race_no is None or not top4:
+            continue
+        if race_no in analyses:
+            # Two LIVE analyses for one race is itself a defect, but the first
+            # (shallowest) one stays canonical so the drift check keeps comparing
+            # the real pair instead of whichever file the walk happened to end on.
+            seen_path, seen_top4 = analyses[race_no]
+            if top4[:4] != seen_top4[:4]:
+                issues.append(Issue(
+                    'WARNING',
+                    'TOP4-003',
+                    str(path),
+                    f'duplicate live Analysis for race {race_no}; '
+                    f'keeping {seen_path.name} ({seen_top4[:4]}) over {top4[:4]}',
+                    race_no,
+                ))
+            continue
+        analyses[race_no] = (path, top4)
 
-    for path in root.rglob('*.json'):
+    for path in iter_live_files(root, '*.json'):
         if not LOGIC_RE.search(path.name):
             continue
         text = read_text(path)
@@ -322,7 +378,7 @@ def check_top4_drift(root: pathlib.Path) -> list[Issue]:
 
 def scan(root: pathlib.Path, min_size: int) -> list[Issue]:
     issues: list[Issue] = []
-    for path in root.rglob('*'):
+    for path in iter_live_files(root):
         if not path.is_file():
             continue
         issues.extend(check_raw_file(path, min_size))

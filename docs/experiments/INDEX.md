@@ -26,3 +26,4 @@
 | [EXP-20260821-03](EXP-20260821-03-au-pace-map-gradient.md) | 2026-08-21 | AU | `race_shape` 場內 SD 低係因為 `pace_map_score` 係 4 級階梯；階梯粒度啱，但修正幅度冇按馬匹數縮放 | 診斷完成（候選見 EXP-04 → REJECT） |
 | [EXP-20260821-02](EXP-20260821-02-au-gain-weight-joint-refit.md) | 2026-08-21 | AU | 重擬顯示尺 gain 並同步重 fit 權重，可令權重＝影響力並救活「啞」維度 | **REJECT（兩個候選）** |
 | [EXP-20260821-01](EXP-20260821-01-au-archive-corpus-blindspot.md) | 2026-08-21 | AU | `Archive/` 令 49.1% 已評分場次對所有評估工具隱形；stale-baseline 警告本身係假警報 | 待決定 |
+- [EXP-20260831-01](EXP-20260831-01-au-low-hit-race-filter.md) — 低命中場次識別得到（出馬數 AUC 0.6583，分桶 3.4%→24.7% 單調），但跳過佢哋令 ROI 由 −6.0% 變 −6.9%；完全 miss 率同 ROI 方向相反，真正蝕錢係中間帶 10-11 匹 / 大熱 $3-4.5（REJECT）
