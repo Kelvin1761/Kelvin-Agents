@@ -24,6 +24,14 @@ files.  Everything UPSTREAM of `feature_scores` is invisible here:
   * Formguide / Racecard parsing (`_parse_formguide_pf_metrics`, PF tokens,
     margin, in-running positions)
   * anything that changes what a leaf CONSUMES rather than how it combines
+  * **the overlays.** `ability` here is `60 + (core-60)/MATRIX_ABILITY_SCALE`
+    — the pure matrix score. The real engine's 綜合戰力分 is
+    `pure_7d + wet_form_feature + proven_class_feature`. Both overlays are
+    OUTSIDE this file. 2026-08-31: `WET_FORM_PRIOR` was corrected 0.5 → 0.3758
+    (the measured pooled wet place rate); 43.7% of runners' overlay moved and
+    this file still said "120 匹馬全部一致".
+    Coverage lives in `au_wong_choi_auto/tests/test_confidence_radar.py`
+    (`WetOverlayGoingSpecificTests`).
 
 2026-08-31 worked example: `pace_figure_score` was changed to individualise a
 race-level L600 with the runner's own beaten margin.  Live scoring moved on

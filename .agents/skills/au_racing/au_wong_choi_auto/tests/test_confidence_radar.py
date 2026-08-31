@@ -170,8 +170,38 @@ class WetOverlayGoingSpecificTests(unittest.TestCase):
     def test_soft_day_halves_the_heavy_record(self):
         from au_racing_engine.scoring import wet_form_feature
         gsl = "11:1-1-1 | 軟地: 7:2-2-0 | 重地: 2:0-0-0"
-        # 軟地 7 場 4 上名 + 重地 (2 場 0 上名)×0.5 → (4+2)/(8+4) = 0.500 → 0.0
-        self.assertAlmostEqual(wet_form_feature("Soft 6", gsl), 0.0, places=3)
+        # 軟地 7 場 4 上名 + 重地 (2 場 0 上名)×0.5 → (4+2)/(8+4) = 0.500
+        #
+        # 2026-08-31：呢條測試本來 assert 0.0，因為當時 prior 係 0.5。
+        # 但 0.5 唔係群體上名率 —— 實測匯總係 0.3758（142,311 場濕地往績）。
+        # 一匹跑 50% 上名率嘅馬**應該**攞正分，唔係中性。
+        self.assertGreater(wet_form_feature("Soft 6", gsl), 1.0)
+
+    def test_population_average_record_scores_neutral(self):
+        """呢條先係 prior 有冇校準嘅真測試。
+
+        舊 prior 0.5 之下，一匹**正正跑到群體平均率**嘅馬會攞到負分，
+        而且濕地經驗越多罰得越重（20 場 → −1.54，40 場 → −1.68）——
+        「冇濕地往績」反而中性。修正之後呢個假象應該消失。
+        """
+        from au_racing_engine.scoring import wet_form_feature, WET_FORM_PRIOR
+        for starts in (5, 10, 20, 40):
+            places = round(starts * WET_FORM_PRIOR)
+            gsl = f"11:1-1-1 | 軟地: {starts}:{places}-0-0 | 重地: 0:0-0-0"
+            with self.subTest(starts=starts):
+                self.assertAlmostEqual(
+                    wet_form_feature("Soft 6", gsl), 0.0, delta=0.35,
+                    msg="跑到群體平均率嘅馬唔應該因為濕地經驗多而被罰")
+
+    def test_prior_is_the_pooled_measured_rate(self):
+        """0.3758 = 匯總實測，唔係逐馬平均（0.3887）／中位數（0.4000）。
+
+        收縮公式 `(places + A·prior)/(starts + A)` 要嘅係匯總率 —— 佢係
+        「再多一場濕地賽，期望上名嘅機會」。用逐馬平均會高估（細樣本嘅馬
+        會有 0 或 1 呢啲極端率，未加權平均會拉高）。
+        """
+        from au_racing_engine.scoring import WET_FORM_PRIOR
+        self.assertAlmostEqual(WET_FORM_PRIOR, 0.3758, places=4)
 
     def test_heavy_day_halves_the_soft_record(self):
         from au_racing_engine.scoring import wet_form_feature

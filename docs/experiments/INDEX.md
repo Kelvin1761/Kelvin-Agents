@@ -44,3 +44,4 @@
 - [EXP-20260831-05](EXP-20260831-05-au-pace-figure-individualised-shipped.md) — **SHIPPED**：個體化 pace_figure（dev +0.0027 [+0.0002,+0.0054]、8/8 次要指標正、零退步）＋ **合約修訂**：14 個 leaf 有 11 個「完全剷走」都細過閘門門檻，加咗功效前置條件同 UNRESOLVABLE 判決
 - [EXP-20260831-06](EXP-20260831-06-au-handicap-weight-adjusted-rating.md) — 讓磅補償 **UNRESOLVABLE（已更正，原判 REJECT 係錯測試）**：場內 corr(rating,負磅) 0.884 但斜率只 0.389 kg/pt（慣例 0.5）＝補償不足，所以 raw rating AUC 0.6002 有料而「well in」殘差 0.4989 係擲毫；掃 λ 最佳 0.1 只贏 +0.0002
 - [EXP-20260831-07](EXP-20260831-07-au-winningtime-speed-index-retest.md) — WinningTime 速度指數重測：單獨 AUC 0.5872 有料，但加落排名 dev/holdout 對最佳 k 唔一致；根因係 pace_figure 個體化（同日上線）令 ρ 由 +0.271 升到 +0.418，重疊咗。NOT SHIPPED；示範「上一個改動會改變下一個改動嘅正交性」
+- [EXP-20260831-08](EXP-20260831-08-au-wet-overlay-prior.md) — 濕地 overlay prior 0.5 → **0.3758**（匯總實測；註釋嗰句「~0.496 measured」四種計法都重現唔到）。舊 prior 令跑到群體平均率嘅馬被罰，濕地經驗越多罰越重（40 場 −1.68）。作**正確性修正**上線（冇過表現閘，每刀 ≥0 或噪音級）。**拆軟地／重地 REJECT**（每格都差過單一值）。順帶揾到 golden 冚唔到兩個 overlay
