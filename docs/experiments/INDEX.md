@@ -47,3 +47,4 @@
 - [EXP-20260831-08](EXP-20260831-08-au-wet-overlay-prior.md) — 濕地 overlay prior 0.5 → **0.3758**（匯總實測；註釋嗰句「~0.496 measured」四種計法都重現唔到）。舊 prior 令跑到群體平均率嘅馬被罰，濕地經驗越多罰越重（40 場 −1.68）。作**正確性修正**上線（冇過表現閘，每刀 ≥0 或噪音級）。**拆軟地／重地 REJECT**（每格都差過單一值）。順帶揾到 golden 冚唔到兩個 overlay
 - [EXP-20260831-09](EXP-20260831-09-au-unused-leaves-retest-and-sportsbet-sectionals.md) — 九個未入排名 leaf 喺新配置下重測，全部 CI 跨零（NOT SHIPPED）；**另附一個已撤回嘅「發現」**：我report 過 `Sectionals 600m` 係逐駒值且冇 parse —— 兩樣都錯（分組鍵用 Winning Time 撞名；用 (場地,日期,場次) 重驗 276 場 0.0% 唔同；而且佢一直經 `_l600_delta` 餵緊 pace_figure）
 - [EXP-20260831-10](EXP-20260831-10-au-no-evidence-neutral-point.md) — 「冇證據」中性點 **REJECT**：三個 leaf 反推到 50.8/54.2/49.4（而家當 60），但落到排名冇收益、form_score 單獨做全語料 [−0.0020,−0.0001] 顯著負；原因係證據厚度安全欄已經喺排名層處理咗，改分值等於重複計
+- [EXP-20260831-11](EXP-20260831-11-au-adopt-stage4-v2-rejudge.md) — **採用 Stage 4 v2 判決規則**（Kelvin 決定）並重判今日十個候選：冇一個 REJECT 被推翻，而個體化 pace_figure 由「證明唔到」升級為 **PRIMARY_WIN**（gold holdout +2.99pp [+1.00,+5.19]）；合約加第 7 節「正確性修正」類別
