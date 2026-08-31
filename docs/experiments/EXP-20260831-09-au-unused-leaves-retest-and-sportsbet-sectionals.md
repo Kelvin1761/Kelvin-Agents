@@ -1,6 +1,6 @@
-# EXP-20260831-09 未入排名 leaf 重測（全部冇料）＋ **Sportsbet 有逐駒 600m 分段**
+# EXP-20260831-09 未入排名 leaf 重測（全部冇料）＋ **一個已撤回嘅「發現」**
 
-**狀態：重測 = 全部 NOT SHIPPED｜逐駒分段 = 未建，最高優先線索**
+**狀態：重測 = 全部 NOT SHIPPED｜「逐駒分段」= 🔴 已撤回，我量錯咗**
 - **日期**：2026-08-31 ・ **平台**：AU
 
 ## 一、未入排名嘅 leaf 重測
@@ -29,48 +29,43 @@
 ⚠️ 注意 `穩定性` 單獨 AUC 0.5755（九個入面最高）但加落去係負 —— 典型
 「訊號已經被其他 leaf 捉咗」。
 
-## 二、Sportsbet 頁面有**逐駒 600m 分段**，我哋從來冇 parse
+## 二、🔴 撤回：「Sportsbet 有逐駒 600m 分段」係錯嘅
 
-掃 60 個 cache 頁面 / 2,005 個往績段落：
+**我最初報告 `Sectionals 600m` 係逐駒個體值、而且從來冇 parse。兩樣都錯。**
 
-```
-In running 800m 9th, 400m 13th    Sectionals 600m 35.710s
-```
+### 錯喺邊
 
-| 欄位 | 覆蓋 |
+我用 **Winning Time 做分組鍵**去判斷「同一場歷史賽事嘅唔同馬有冇唔同分段」，
+量到 193/1,265 場「唔同」。但兩場唔同賽事可以有同一個冠軍時間（例如兩場
+1000m 都跑 59.370），所以嗰 193 個全部係**分組鍵撞名**造成嘅假陽性。
+
+用 `(場地, 日期, 場次, 距離)` 重新驗：
+
+| | |
 |---|---:|
-| **`Sectionals 600m`（本駒自己嘅最後 600m）** | **94.1%** |
-| `In running 800m / 400m` | 97.5% |
+| cache 內見到 **≥2 匹馬**跑過嘅歷史賽事 | 276 場 |
+| 當中 600m 值**唔同**嘅 | **0 場 = 0.0%** |
 
-**確認係逐駒個體值**：193/1,265 場歷史賽事（同一個 Winning Time）出現多個
-唔同嘅 600m 分段。例：同一場 1:09.570 之下，兩匹馬係 **33.490 vs 35.270**
-（差 1.78 秒）。
+**`Sectionals 600m` 係 race-level**，正如 `claw_sportsbet_form.py` 個註釋
+一直寫住：「Sportsbet `l600` 係嗰場賽事 race-level 末段 600 秒數；報告唔可以
+再話係本駒個體末段。」
 
-### 點解呢個重要
+### 而且佢一直有 parse、一直有用
 
-`pace_figure` 而家用嘅係 **race-level** `L600 Delta`（`EXP-20260831-03`），
-今日先用 `margin × 0.17` 做咗一階個體化（`EXP-20260831-05`）。
-**呢度有真正嘅逐駒分段，唔使近似。**
+- `RE_SECT = re.compile(r"Sectionals\s+600m\s+(?P<l600>[\d.]+)s")` → `run["l600"]`
+- `run_line()` 用 `_l600_delta(l600, track, dist)` 寫成 `L600 Delta:` token
+- `engine_core._parse_pf_token` 讀 `L600 Delta:` → `pace_figure_score`
 
-`claw_sportsbet_form.py` 目前只 parse `WinningTime` 同 `L600 Delta`，
-`Sectionals 600m` 同 `In running` 完全冇攞。
+即係話**現行 pace_figure 已經食緊呢個欄位**。冇未開發嘅逐駒分段。
 
-### 可以做正式 A/B
+`In running`（`p1200/p800/p400/settled`）同樣一直有 parse 同寫落 form line。
 
-cache 有 **5,075 個頁面 / 733 MB，2026-08-09 .. 08-31** —— 即係可以**由 cache
-回填**約 998 場（2026-08 語料）做 A/B，**零網絡請求**。
-呢個係少數唔受「抽取層修正 backfill 唔到」限制嘅情況
-（`au-cannot-backfill-measure-extraction-fixes` 講嘅係頁面封頂＋賽後 cache；
-呢度原始 HTML 仲喺度）。
+### 教訓
 
-### 建議實作次序
+呢個錯**同我今日一路喺 codebase 捉緊嗰種缺陷一模一樣** —— 一個唔夠 unique
+嘅分組鍵造出假訊號。分組之前要先問「呢條 key 真係 unique 嗎」，
+而唔係見到「有唔同值」就當證實。
 
-1. `claw_sportsbet_form.py` 加 parse：`Sectionals 600m` ＋ `In running 800m/400m`
-   （兩個一齊，因為個 regex 錨點相同）
-2. 寫落 form line（新 token，唔郁現有格式）
-3. 由 cache 回填 998 場 → dump → gate
-4. `_pace_figure_score` 改用逐駒分段，`margin × 0.17` 做 fallback
-   （舊場次冇分段時仍然要有嘢用）
+**仍然成立嘅**：`WinningTime` 寫咗落 form line 但引擎唔讀（`EXP-20260831-07`
+測過，被 pace_figure 個體化食走咗）。
 
-⚠️ 未做任何實作。呢個係線索，唔係結論 —— 逐駒分段一樣要過閘先算數，
-而且要**重新量正交性**（同今日已上線嗰個個體化版好可能高度相關）。
