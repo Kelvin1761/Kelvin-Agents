@@ -4287,7 +4287,20 @@ class RacingEngine:
             score += w.get("same_track_poor_pen2", -2.0)
             notes.append("有同場出賽紀錄但仍未交到成績")
 
-        if going_sample.get("starts", 0) > 0 and going_sample.get("places", 0) > 0:
+        # 去重實驗（2026-09-01，env-gated）：`track_score` 同濕地 overlay
+        # （`wet_form_feature`）嘅場內 z 相關 **ρ = +0.3066** —— 佢同任何嘢嘅相關
+        # 都冇咁高。下面兩個區塊（going 往績 + 濕地專項）同 overlay 量緊同一樣嘢。
+        # `WC_TRACK_NO_GOING=1` 只保留同場往績，把場地狀況判斷完全交俾 overlay。
+        #
+        # ⚠️ **實測 REJECT（2026-09-01，1,804 場）。** 去重確實有效
+        # （ρ 0.3067 → 0.1064），但 `track_score` 自己嘅 AUC **跌** 0.5434 → 0.5375，
+        # 而 gold terminal −0.0038（原 gain）／−0.0057（重算 gain）。即係 going 部分
+        # 雖然同 overlay 相關，但**帶真訊號**，唔係純重複。flag 保留只為將來重測
+        # （語料長大之後），**唔應該開**。
+        _skip_going = os.environ.get("WC_TRACK_NO_GOING") == "1"
+        if _skip_going:
+            pass
+        elif going_sample.get("starts", 0) > 0 and going_sample.get("places", 0) > 0:
             score += min(10, going_sample["places"] * w.get("going_place_bonus", 3.0))
             notes.append(f"{going_bucket} 樣本顯示對今場掛牌有基本適應")
             if going_sample.get("wins", 0) > 0 and going_bucket in {"軟地", "重地"}:
@@ -4300,7 +4313,7 @@ class RacingEngine:
             score += w.get("going_poor_pen2_wet", -4.0) if going_bucket in {"軟地", "重地"} else w.get("going_poor_pen2_dry", -3.0)
             notes.append(f"{going_bucket} 成績未見支持")
 
-        if wet_state in {"soft7plus", "heavy"}:
+        if not _skip_going and wet_state in {"soft7plus", "heavy"}:
             if not self._has_verified_wet_place():
                 score += w.get("wet_unverified_pen", -5.0)
                 notes.append("爛地實績未經驗證，轉場風險極高")
