@@ -15,6 +15,7 @@ BUILD_ONLY=0
 KEEP_DIST=0
 PAGES_PROJECT="${WC_CLOUDFLARE_PAGES_PROJECT:-wongchoi-dashboard}"
 DEPLOY_CWD="${WC_CLOUDFLARE_DEPLOY_CWD:-${TMPDIR:-/private/tmp}}"
+LIVE_SNAPSHOT_URL="${WC_DASHBOARD_LIVE_SNAPSHOT_URL:-https://wongchoi-dashboard.pages.dev/dashboard-data.json}"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -64,8 +65,26 @@ if [ -n "${WC_DASHBOARD_BASE_SNAPSHOT:-}" ] && [ -f "${WC_DASHBOARD_BASE_SNAPSHO
         --output-html "$HTML_OUT" \
         --output-json "$JSON_OUT" \
         --output-manifest "$MANIFEST_OUT"
-else
+elif [ "${WC_ALLOW_DASHBOARD_FULL_RESCAN:-0}" = "1" ]; then
+    echo "   ⚠️ 已明確允許 full corpus rescan；只應用於首次建站／人工重建"
     "$PYTHON_BIN" generate_static.py \
+        --output-html "$HTML_OUT" \
+        --output-json "$JSON_OUT" \
+        --output-manifest "$MANIFEST_OUT"
+else
+    # Code/release deploy must preserve the currently published race snapshot.
+    # A bare full scan follows HOT/WARM corpus roots and can accidentally inline
+    # hundreds of archived meetings.  2026-08-30 Central activation produced a
+    # 226 MiB HTML file this way and correctly tripped the 25 MiB Pages gate.
+    # Download + validate the live projection first; failure is safer than an
+    # empty, stale or oversized replacement.
+    LIVE_SNAPSHOT="$DIST_DIR/live-dashboard-data.json"
+    echo "   🌐 冇指定 scheduler snapshot；保留現時 live dashboard projection"
+    "$PYTHON_BIN" scripts/fetch_live_snapshot.py \
+        --url "$LIVE_SNAPSHOT_URL" \
+        --output "$LIVE_SNAPSHOT"
+    "$PYTHON_BIN" generate_static.py \
+        --from-snapshot "$LIVE_SNAPSHOT" \
         --output-html "$HTML_OUT" \
         --output-json "$JSON_OUT" \
         --output-manifest "$MANIFEST_OUT"

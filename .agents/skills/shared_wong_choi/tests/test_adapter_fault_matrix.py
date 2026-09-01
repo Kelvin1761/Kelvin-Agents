@@ -127,4 +127,3 @@ def test_all_adapters_treat_hard_exit_as_failed_even_if_payload_says_success(
         request(case)
     )
     assert result.state is RunState.FAILED
-

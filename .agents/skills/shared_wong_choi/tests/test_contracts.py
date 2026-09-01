@@ -80,4 +80,3 @@ def test_current_domain_statuses_normalize_explicitly(source: str, expected: Run
 def test_unknown_domain_status_does_not_default_to_success() -> None:
     with pytest.raises(ValueError, match="unknown Wong Choi run status"):
         normalize_run_state("probably-fine")
-

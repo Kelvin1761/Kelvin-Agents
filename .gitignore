@@ -125,6 +125,7 @@ Wong Choi Tennis Analysis/
 
 # NBA 每日排程：runtime log、lock、state 同 immutable prediction copies
 .agents/skills/nba/nba_daily_auto/logs/
+.agents/skills/central_wong_choi/scripts/logs/
 .agents/skills/nba/nba_daily_auto/state/
 
 # Shared Wong Choi control-plane runtime manifests and locks
@@ -160,12 +161,5 @@ scratch/**/*.csv
 __pycache__/
 *.py[cod]
 
-# au_matrix_refit 會將共識／argmax 權重寫落 cwd —— 係跑出嚟嘅結果，唔係源碼。
-au_refit_*.json
-
-# tennis DB 快照備份（每個幾百 MB，可以由 tennis_wc.db 重造）
+# 190MB × 2 嘅 DB 備份 —— 超過 GitHub 100MB 上限，唔應該入 git
 tennis-wong-choi/data/backups/
-
-# scratch 實驗嘅 leaf dump：`au_dump_engine_leaves` 出品，單檔 148 MB，
-# 由 run_experiment.py 重跑就有。scratch 入面嘅**腳本同結論**照追蹤。
-scratch/**/output/*_leaves.json

@@ -53,6 +53,18 @@ for _p in (str(PROJECT_ROOT), str(AU_SKILL)):
 
 from wongchoi_paths import AU_RACING, AU_RACING_MIRROR  # noqa: E402
 
+SHARED_WC = PROJECT_ROOT / ".agents" / "skills"
+if str(SHARED_WC) not in sys.path:
+    sys.path.insert(0, str(SHARED_WC))
+from shared_wong_choi.contracts import Domain  # noqa: E402
+from shared_wong_choi.domain_evidence import (  # noqa: E402
+    record_prediction_decision_if_configured,
+    record_settlement_for_event,
+    scoring_recommendations,
+)
+from shared_wong_choi.evidence import DecisionState  # noqa: E402
+from shared_wong_choi.immutable_snapshot import create_immutable_snapshot  # noqa: E402
+
 ARCHIVE_ROOT = AU_RACING / "Archive"
 # 兩個 CSV 係歸檔之後改嘅歷史庫；鏡像要連佢哋一齊，Drive 邊先算真副本。
 MIRRORED_ROOT_FILES = ("AU_Historical_Raw_Race_Results.csv",
@@ -816,6 +828,46 @@ def step_review_archive(runlog: RunLog, review_day: date, *,
     return archived
 
 
+def step_settlement_evidence(runlog: RunLog, archived: list[str]) -> bool:
+    """Link completed AU reflectors to their exact pre-race decisions."""
+    if not archived:
+        runlog.step("settlement-evidence", "no_changes")
+        return True
+    evidence_root = Path(
+        os.environ.get(
+            "WONGCHOI_CONTROL_STATE_ROOT",
+            Path.home() / "WongChoiData" / "WongChoiControl",
+        )
+    ) / "evidence"
+    written = []
+    for name in archived:
+        folder = ARCHIVE_ROOT / name
+        report = folder / f"{name}_Reflector_Report.md"
+        if not report.is_file():
+            runlog.step(
+                "settlement-evidence",
+                "skipped_unresolved",
+                meeting=name,
+            )
+            continue
+        try:
+            result = record_settlement_for_event(
+                domain=Domain.AU,
+                event_id=name,
+                evidence_root=evidence_root,
+                summary={"meeting": name, "archive_status": "archived"},
+                artifacts=[report],
+            )
+        except Exception as exc:  # noqa: BLE001
+            runlog.error(
+                "settlement-evidence", f"{name}: {type(exc).__name__}: {exc}"
+            )
+            return False
+        written.append({"meeting": name, **result})
+    runlog.step("settlement-evidence", "ok", meetings=written)
+    return True
+
+
 # 賽果最多等幾日。實測 Sportsbet 係當晚就把賽果寫入馬匹往績（08-05 五個場次
 # 22:24 已經齊），所以兩日係四倍緩衝。過咗就當「永遠唔會有」——取消／改期嘅場次
 # 冇呢個上限會每晚白抽一次賽果頁、永遠 pending_results、永遠霸住 dashboard。
@@ -1464,6 +1516,63 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
                                        "complete": complete,
                                        "going": plan["going"] or None})
     return folder, complete, len(got) > len(have)
+
+
+AU_EVIDENCE_PATTERNS = (
+    "Race_*_Logic.json",
+    "Race_*_Auto_Analysis.md",
+    "Race_*_Auto_Scoring.csv",
+    "Meeting_Auto_Scoring.csv",
+    "Data_Health.json",
+)
+
+
+def step_prediction_evidence(runlog: RunLog, meeting_dirs: list[Path]) -> bool:
+    """Freeze and register every meeting before its recommendations may publish."""
+    if not meeting_dirs:
+        runlog.step("prediction-evidence", "no_changes")
+        return True
+    evidence_root = Path(
+        os.environ.get(
+            "WONGCHOI_CONTROL_STATE_ROOT",
+            Path.home() / "WongChoiData" / "WongChoiControl",
+        )
+    ) / "evidence"
+    written = []
+    for folder in meeting_dirs:
+        try:
+            recommendations = scoring_recommendations(folder)
+            snapshot = create_immutable_snapshot(
+                folder,
+                domain="au",
+                event_id=folder.name,
+                patterns=AU_EVIDENCE_PATTERNS,
+                recommendations=recommendations,
+            )
+            record = record_prediction_decision_if_configured(
+                domain=Domain.AU,
+                event_id=folder.name,
+                snapshot=snapshot,
+                evidence_root=evidence_root,
+                decision_state=DecisionState.RECOMMEND,
+                recommendations=recommendations,
+            )
+        except Exception as exc:  # noqa: BLE001
+            runlog.error(
+                "prediction-evidence",
+                f"{folder.name}: {type(exc).__name__}: {exc}",
+            )
+            return False
+        written.append(
+            {
+                "meeting": folder.name,
+                "snapshot": str(snapshot),
+                "status": record.get("status"),
+                "prediction_id": record.get("prediction_id"),
+            }
+        )
+    runlog.step("prediction-evidence", "ok", meetings=written)
+    return True
 
 
 # ── 步驟 3（morning）：場地 / 退出馬 / 人馬變動 ─────────────────────────────
@@ -2896,6 +3005,8 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
             temporary = True
         if archived:
             push_reflection(runlog, archived)
+        if not step_settlement_evidence(runlog, archived):
+            temporary = True
     # After the reflectors exist, before anything that reads the corpus.
     if not args.skip_results_ingest:
         if not step_ingest_results(runlog, from_date=args.ingest_from_date):
@@ -2913,7 +3024,15 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
             runlog.error("analyse-next-day", f"暫時性：{exc}")
             temporary = True
 
-    ok = step_dashboard(runlog, analysed, archived, skip_deploy=args.skip_deploy)
+    evidence_ok = step_prediction_evidence(runlog, analysed)
+    if not evidence_ok:
+        temporary = True
+    ok = step_dashboard(
+        runlog,
+        analysed,
+        archived,
+        skip_deploy=args.skip_deploy or not evidence_ok,
+    )
     step_mirror_reports(runlog, analysed)
     push_run_summary(runlog, "evening")
     days = sorted({r["meeting"][:10] for r in runlog.data["races_added"]})
@@ -2978,7 +3097,15 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
             runlog.error("fill-today", f"{type(exc).__name__}: {exc}")
             temporary = True
 
-    ok = step_dashboard(runlog, updated, [], skip_deploy=args.skip_deploy)
+    evidence_ok = step_prediction_evidence(runlog, updated)
+    if not evidence_ok:
+        temporary = True
+    ok = step_dashboard(
+        runlog,
+        updated,
+        [],
+        skip_deploy=args.skip_deploy or not evidence_ok,
+    )
     step_mirror_reports(runlog, updated)
     push_run_summary(runlog, "morning")
     if updated:

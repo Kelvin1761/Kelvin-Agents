@@ -112,6 +112,57 @@ class GenerateStaticTests(unittest.TestCase):
         self.assertIn("nba:fresh", html)
         self.assertNotIn("nba:stale", html)
 
+    def test_generate_html_uses_explicit_live_tennis_database(self):
+        data = {"meetings": [], "races": {}, "consensus": {}, "roi": {}}
+        tennis_db = "/srv/wongchoi/live/tennis_wc.db"
+        fresh_feed = {
+            "schema_version": 2,
+            "validation_status": "valid",
+            "sports": {},
+        }
+
+        with patch.dict("os.environ", {"WC_TENNIS_DB_PATH": tennis_db}):
+            with patch.object(
+                generate_static,
+                "build_multisport_feed",
+                return_value=fresh_feed,
+            ) as build:
+                generate_static.generate_html(data)
+
+        self.assertEqual(
+            build.call_args.kwargs["tennis_db_path"],
+            Path(tennis_db),
+        )
+
+    def test_generate_html_uses_machine_local_tennis_database_pointer(self):
+        data = {"meetings": [], "races": {}, "consensus": {}, "roi": {}}
+        fresh_feed = {
+            "schema_version": 2,
+            "validation_status": "valid",
+            "sports": {},
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            tennis_db = home / "stable-runtime" / "tennis_wc.db"
+            (home / ".wongchoi_tennis_db").write_text(
+                f"{tennis_db}\n",
+                encoding="utf-8",
+            )
+            with patch.dict("os.environ", {"WC_TENNIS_DB_PATH": ""}):
+                with patch.object(Path, "home", return_value=home):
+                    with patch.object(
+                        generate_static,
+                        "build_multisport_feed",
+                        return_value=fresh_feed,
+                    ) as build:
+                        generate_static.generate_html(data)
+
+        self.assertEqual(
+            build.call_args.kwargs["tennis_db_path"],
+            tennis_db,
+        )
+
     def test_unavailable_local_tennis_cannot_erase_valid_live_feed(self):
         cached_tennis = {
             "analysis_run_id": "tennis:2026-08-13",

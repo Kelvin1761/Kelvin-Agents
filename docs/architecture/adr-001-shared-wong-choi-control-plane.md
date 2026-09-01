@@ -39,4 +39,3 @@ AU、HKJC、Tennis、NBA 已有獨立 production-oriented pipeline，但 schedul
 ## Revisit Trigger
 
 只有當多部 worker 同時執行、單機 lock 無法滿足，或者 job throughput／recovery latency 有量化瓶頸，先重新評估 queue 或分散式服務。
-

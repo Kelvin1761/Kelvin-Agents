@@ -56,15 +56,23 @@ class ManifestCommandAdapter(ABC):
     ) -> None:
         self.repo_root = repo_root.resolve()
         self.state_root = state_root.resolve()
-        self._runner = runner or self._run_subprocess
+        # ⚠️ 唔好寫成 `runner or self._run_subprocess`：真嗰個 runner 要知道
+        # timeout，而注入嘅測試 runner 唔使。留返 None 就分得開兩條路。
+        self._runner = runner
 
-    def _run_subprocess(self, command: list[str]) -> subprocess.CompletedProcess[str]:
+    def run_timeout_seconds(self, request: RunRequest) -> int:
+        """呢個 run 可以跑幾耐先俾斬。同 domain／mode 走，唔係一個全域常數。"""
+        return self.spec.run_timeout_seconds(request.identity.mode)
+
+    def _run_subprocess(
+        self, command: list[str], timeout: int
+    ) -> subprocess.CompletedProcess[str]:
         return subprocess.run(
             command,
             cwd=self.repo_root,
             text=True,
             capture_output=True,
-            timeout=7200,
+            timeout=timeout,
             check=False,
         )
 
@@ -137,8 +145,41 @@ class ManifestCommandAdapter(ABC):
 
             manifest = RunManifest.create(path, request.identity)
             manifest.transition(RunState.RUNNING)
+            timeout = self.run_timeout_seconds(request)
             try:
-                completed = self._runner(command)
+                if self._runner is not None:
+                    completed = self._runner(command)
+                else:
+                    completed = self._run_subprocess(command, timeout)
+            except subprocess.TimeoutExpired as exc:
+                # ⚠️ 專門捉 timeout，唔好俾佢混入下面嗰個 generic handler。
+                # 2026-08-26 起連續三晚嘅 AU 晚更就係咁死：警報淨係寫住
+                # `adapter_exception:TimeoutExpired`，睇落似個網絡問題，冇人
+                # 諗到係我哋自己個 timeout 太短、而且已經穩定咁切走一半場次。
+                # 個狀態名同 detail 要一眼睇得出「係我哋斬佢，唔係佢自己死」。
+                status = "adapter_timeout"
+                detail = {
+                    "error": str(exc),
+                    "timeout_seconds": timeout,
+                    "command": command,
+                    "hint": (
+                        f"{self.spec.domain.value} {request.identity.mode} 跑夠 "
+                        f"{timeout}s 俾 adapter 殺死 —— 手上嘅工作做咗一半就冇咗。"
+                        "如果呢個 mode 本身就要跑耐啲，喺 registry.py 個 "
+                        "`run_timeouts` 加返，唔好靠重試。"
+                    ),
+                }
+                manifest.record_operation(request.operation, status, detail=detail)
+                manifest.transition(
+                    RunState.FAILED,
+                    error=f"TimeoutExpired after {timeout}s: {exc}",
+                )
+                return OperationResult(
+                    state=RunState.FAILED,
+                    status=status,
+                    artifacts=(str(path),),
+                    detail=detail,
+                )
             except Exception as exc:  # durable failure record before returning control
                 status = f"adapter_exception:{type(exc).__name__}"
                 manifest.record_operation(
@@ -186,4 +227,3 @@ class ManifestCommandAdapter(ABC):
                 artifacts=(str(path),),
                 detail=detail,
             )
-

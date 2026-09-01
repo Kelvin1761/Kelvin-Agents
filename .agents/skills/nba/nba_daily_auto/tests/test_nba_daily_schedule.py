@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import plistlib
 import subprocess
 import sys
@@ -41,6 +42,19 @@ def _complete_analysis(folder: Path, target_date: str, tag: str = "BOS_LAL") -> 
 
 
 class NbaDailyScheduleTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.control_state = tempfile.TemporaryDirectory()
+        self.addCleanup(self.control_state.cleanup)
+        environment = mock.patch.dict(
+            os.environ,
+            {
+                "WONGCHOI_CONTROL_STATE_ROOT": self.control_state.name,
+                "WC_REQUIRE_EVIDENCE": "0",
+            },
+        )
+        environment.start()
+        self.addCleanup(environment.stop)
+
     def test_evening_targets_tomorrow_and_morning_targets_today(self) -> None:
         evening = datetime(2026, 10, 20, 21, 0, tzinfo=SYDNEY)
         morning = datetime(2026, 10, 21, 6, 30, tzinfo=SYDNEY)

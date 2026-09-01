@@ -8,8 +8,9 @@ Kelvin 唔喺電腦前嗰陣想主動問「而家點？」，而唔係淨係等�
   * 只回應 `WC_NOTIFY_TELEGRAM_CHAT` 嗰個 chat id，其餘一律唔理（連錯誤都唔覆，
     唔好畀人試出隻 bot 存在）；
   * 指令係一張**白名單**，逐個字對，唔會把訊息內容當成路徑、參數或者指令去行；
-  * 大部分指令只讀；有副作用嘅 `/retry`、`/hkjc`、`/hkjc_reflect` 都係 Kelvin
-    明確批准，並只會行現役正式 runner，唔接受訊息參數做 shell/path 輸入。
+  * 大部分指令只讀；有副作用嘅 `/retry`、`/hkjc`、`/hkjc_reflect`、`/approve`
+    同 `/bootstrap_models` 都係 Kelvin明確批准。治理寫入要由authenticated dispatcher
+    mint固定actor，SHA只做嚴格hex selector，永遠唔會變成shell/path輸入。
 
 跑法：launchd 每兩分鐘叫一次，唔使長駐 daemon（少一個會死嘅嘢）。
 """
@@ -25,15 +26,26 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 LOG_DIR = HERE / "logs"
-OFFSET_FILE = LOG_DIR / "telegram_offset.json"
+DEFAULT_OFFSET_FILE = LOG_DIR / "telegram_offset.json"
 RETRY_LOG = LOG_DIR / "retry-from-telegram.out"
 HKJC_ANALYSIS_LOG = LOG_DIR / "hkjc-analysis-from-telegram.out"
 HKJC_REFLECT_LOG = LOG_DIR / "hkjc-reflector-from-telegram.out"
 TIMEOUT = 25
+AUTHORISED_TELEGRAM_ACTOR = "telegram:authorised-chat"
 HELP = ("我識嘅嘢：\n"
         "/picks           今日邊幾個馬場\n"
         "/picks dubbo     嗰個馬場逐場頭三揀 + 賽前賠率\n"
-        "/status          最近幾個 run 點\n"
+        "/status          中央旺財：四線、Git、model、release\n"
+        "/git             commit／push／main／production 狀態\n"
+        "/models          四線 model release stage\n"
+        "/evidence        prediction／decision／settlement 完整性\n"
+        "/slo             四線30日可靠性／provenance\n"
+        "/storage         SSD／外置碟／Drive 分層狀態\n"
+        "/dashboard       中央 Dashboard／投注 ledger 狀態\n"
+        "/release         待批准 release\n"
+        "/approve SHA     重新驗證後批准一個 immutable release\n"
+        "/bootstrap_models SHA  production對齊後首次登記四線model\n"
+        "/au_status       AU 最近幾個 run 點\n"
         "/today           live dashboard 而家有乜\n"
         "/perf            最近一個賽日嘅 Gold／Good\n"
         "/week            近七日走勢\n"
@@ -71,7 +83,7 @@ def runs(n: int = 4) -> list[dict]:
     return out
 
 
-def cmd_status() -> str:
+def cmd_au_status() -> str:
     rs = runs()
     if not rs:
         return "仲未有任何 run 記錄"
@@ -87,6 +99,320 @@ def cmd_status() -> str:
             f"{d.get('status')} · {round((d.get('duration_seconds') or 0)/60)}分 "
             f"· 發佈{dep_s} · 錯誤{len(d.get('errors') or [])}")
     return "\n".join(lines)
+
+
+def _central_repo_root() -> Path:
+    configured = os.environ.get("WC_PRIMARY_REPO_ROOT")
+    return (
+        Path(configured).expanduser().resolve()
+        if configured
+        else HERE.parents[3]
+    )
+
+
+def _central_payload() -> dict:
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.central_status import collect_status  # noqa: PLC0415
+
+    state = Path(
+        os.environ.get(
+            "WONGCHOI_CONTROL_STATE_ROOT",
+            Path.home() / "WongChoiData" / "WongChoiControl",
+        )
+    )
+    production = _central_production_roots()
+    return collect_status(repo, state, production_roots=production)
+
+
+def _central_production_roots() -> dict[str, Path]:
+    production = {}
+    for domain in ("au", "hkjc", "tennis", "nba"):
+        value = os.environ.get(f"WC_{domain.upper()}_PRODUCTION_ROOT")
+        if value:
+            production[domain] = Path(value)
+    return production
+
+
+def _authenticated_actor(chat_id: str, allowed_chat_id: str) -> str:
+    """Mint the fixed audit actor only after exact configured-chat equality."""
+    if not allowed_chat_id or str(chat_id) != str(allowed_chat_id):
+        raise PermissionError("Telegram chat is not authorised for governance writes")
+    return AUTHORISED_TELEGRAM_ACTOR
+
+
+def cmd_status() -> str:
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.central_status import render_telegram  # noqa: PLC0415
+
+    return render_telegram(_central_payload())
+
+
+def cmd_git() -> str:
+    payload = _central_payload()["git"]
+    primary = payload["primary"]
+    lines = [
+        "🧾 Wong Choi Git",
+        f"primary：{primary.get('branch') or '?'} {(primary.get('head') or '?')[:12]}",
+        f"dirty {len(primary.get('dirty_paths') or [])} · "
+        f"pushed {'係' if primary.get('pushed') else '否'} · "
+        f"main {'係' if primary.get('merged_to_main') else '否'}",
+    ]
+    for name, item in payload.get("production", {}).items():
+        lines.append(
+            f"{name.upper()} production：{item.get('status')} · "
+            f"{(item.get('head') or '?')[:12]}"
+        )
+    return "\n".join(lines)
+
+
+def cmd_models() -> str:
+    lines = ["🧠 Wong Choi Models"]
+    for name, item in _central_payload()["domains"].items():
+        model = item.get("model_release") or {}
+        stage = model.get("release_stage") or "未登記"
+        commit = str(model.get("code_commit") or "?")[:12]
+        lines.append(f"{name.upper()}：{stage} · {commit}")
+    lines.append("NBA live evidence未齊時只會顯示pending，唔會扮production-ready。")
+    return "\n".join(lines)
+
+
+def cmd_evidence() -> str:
+    evidence = _central_payload()["evidence"]
+    counts = evidence.get("counts") or {}
+    lines = [
+        f"🔗 Evidence：{evidence.get('status')}",
+        f"model {counts.get('model_release', 0)} · prediction {counts.get('prediction', 0)}",
+        f"decision {counts.get('decision', 0)} · settlement {counts.get('settlement', 0)}",
+    ]
+    if evidence.get("errors"):
+        lines.append("錯誤：" + "；".join(evidence["errors"][:3]))
+    return "\n".join(lines)
+
+
+def cmd_slo() -> str:
+    reliability = _central_payload()["reliability"]
+    lines = [f"📈 Wong Choi 30日SLO：{reliability.get('status')}"]
+    for name, item in reliability.get("domains", {}).items():
+        ratio = item.get("availability")
+        shown = "no_data" if ratio is None else f"{ratio:.1%}"
+        lines.append(
+            f"{name.upper()}：{shown} · {item.get('slots', 0)} slots · "
+            f"retry救回 {item.get('recovered_by_retry', 0)}"
+        )
+    provenance = (
+        (reliability.get("evidence") or {}).get("production_provenance") or {}
+    )
+    ratio = provenance.get("ratio")
+    lines.append(
+        "Production provenance："
+        + ("no_data" if ratio is None else f"{ratio:.1%}")
+    )
+    return "\n".join(lines)
+
+
+def cmd_storage() -> str:
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.storage_status import (  # noqa: PLC0415
+        collect_storage_status,
+        render_storage_telegram,
+    )
+
+    state = Path(
+        os.environ.get(
+            "WONGCHOI_CONTROL_STATE_ROOT",
+            Path.home() / "WongChoiData" / "WongChoiControl",
+        )
+    )
+    return render_storage_telegram(collect_storage_status(repo, state))
+
+
+def cmd_dashboard() -> str:
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.dashboard_status import (  # noqa: PLC0415
+        collect_dashboard_status,
+        render_dashboard_telegram,
+    )
+
+    state = Path(
+        os.environ.get(
+            "WONGCHOI_CONTROL_STATE_ROOT",
+            Path.home() / "WongChoiData" / "WongChoiControl",
+        )
+    )
+    return render_dashboard_telegram(collect_dashboard_status(repo, state))
+
+
+def cmd_release() -> str:
+    pending = _central_payload()["releases"]["pending_approval"]
+    if not pending:
+        return "✅ 冇 release 等緊批准"
+    lines = [f"🟡 {len(pending)} 個 release 等緊批准"]
+    for item in pending[:8]:
+        lines.append(
+            f"· {(item.get('commit') or '?')[:12]} {item.get('risk')} "
+            f"{item.get('branch')}"
+        )
+    return "\n".join(lines)
+
+
+def cmd_approve(arg: str = "", *, actor: str) -> str:
+    if actor != AUTHORISED_TELEGRAM_ACTOR:
+        raise PermissionError("authenticated Telegram actor is required")
+    selector = arg.strip()
+    if not re.fullmatch(r"[0-9a-f]{12,64}", selector):
+        return "格式：/approve 12位或以上小寫 commit SHA"
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.release_approval import approve_release  # noqa: PLC0415
+    from shared_wong_choi.release_activation import activate_release  # noqa: PLC0415
+    from shared_wong_choi.release_manager import ReleaseError  # noqa: PLC0415
+
+    state = Path(
+        os.environ.get(
+            "WONGCHOI_CONTROL_STATE_ROOT",
+            Path.home() / "WongChoiData" / "WongChoiControl",
+        )
+    )
+    try:
+        result = approve_release(
+            repo,
+            state,
+            selector=selector,
+            actor=actor,
+            notify=True,
+        )
+    except ReleaseError as exc:
+        return f"⛔ 批准失敗：{exc}"
+    try:
+        activation = activate_release(
+            repo,
+            state,
+            selector=selector,
+            actor=actor,
+            production_roots=_central_production_roots(),
+            notify=True,
+        )
+    except ReleaseError as exc:
+        return (
+            f"🟡 {(result.get('commit') or selector)[:12]} 已merge，但未部署：{exc}\n"
+            "中央status會保持 activation pending/failed，唔會扮完成。"
+        )
+    if result["status"] == "already_merged" and activation["status"] == "already_active":
+        return f"✅ {(result.get('commit') or selector)[:12]} 已經merge及部署，冇重複副作用"
+    return (
+        f"✅ 已批准、merge及部署 {(result.get('commit') or selector)[:12]}\n"
+        "每一步都有immutable event；重覆指令冇副作用。"
+    )
+
+
+def cmd_bootstrap_models(arg: str = "", *, actor: str) -> str:
+    """One explicit, authenticated baseline migration after activation proof."""
+    if actor != AUTHORISED_TELEGRAM_ACTOR:
+        raise PermissionError("authenticated Telegram actor is required")
+    selector = arg.strip()
+    if not re.fullmatch(r"[0-9a-f]{12,64}", selector):
+        return "格式：/bootstrap_models 12位或以上小寫 production commit SHA"
+
+    payload = _central_payload()
+    evidence = payload.get("evidence") or {}
+    if evidence.get("status") != "ok":
+        return "⛔ Evidence audit 唔係 ok，禁止 bootstrap model registry"
+
+    production = (payload.get("git") or {}).get("production") or {}
+    expected_domains = {"au", "hkjc", "tennis", "nba"}
+    if set(production) != expected_domains:
+        missing = sorted(expected_domains.difference(production))
+        return "⛔ 四線 production root 未齊：" + "、".join(missing)
+    blocked = [
+        name
+        for name, item in production.items()
+        if item.get("status") not in {"clean", "clean_runtime_state"}
+    ]
+    if blocked:
+        return "⛔ Production checkout 唔乾淨：" + "、".join(sorted(blocked))
+    not_main = [
+        name for name, item in production.items() if not item.get("merged_to_main")
+    ]
+    if not_main:
+        return "⛔ Production commit 未證實已入 origin/main：" + "、".join(sorted(not_main))
+    heads = {str(item.get("head") or "") for item in production.values()}
+    if len(heads) != 1:
+        return "⛔ 四線 production SHA 不一致：" + "、".join(
+            sorted(head[:12] or "?" for head in heads)
+        )
+    commit = next(iter(heads))
+    if not commit.startswith(selector):
+        return f"⛔ Production 係 {commit[:12]}，唔係 {selector[:12]}"
+
+    matching_release = next(
+        (
+            item
+            for item in (payload.get("releases") or {}).get("latest") or []
+            if item.get("commit") == commit
+        ),
+        None,
+    )
+    if not matching_release or matching_release.get("status") != "merged" or (
+        matching_release.get("activation") != "succeeded"
+    ):
+        return "⛔ 呢個 SHA 未有 merged + activation_succeeded release evidence"
+
+    registered = int((evidence.get("counts") or {}).get("model_release") or 0)
+    if registered:
+        models = [
+            (payload.get("domains") or {}).get(name, {}).get("model_release") or {}
+            for name in sorted(expected_domains)
+        ]
+        if registered >= 4 and all(
+            str(model.get("code_commit") or "") == commit for model in models
+        ):
+            return f"✅ Model registry 已經登記 {commit[:12]}，冇重複寫入"
+        return (
+            f"⛔ Model registry 已有 {registered} 個不完整／不同版本 release；"
+            "首次 bootstrap 只准由完全空白開始。"
+        )
+
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.model_registry import (  # noqa: PLC0415
+        ModelPromotionError,
+        bootstrap_current_models_once,
+    )
+
+    state = Path(
+        os.environ.get(
+            "WONGCHOI_CONTROL_STATE_ROOT",
+            Path.home() / "WongChoiData" / "WongChoiControl",
+        )
+    )
+    try:
+        result = bootstrap_current_models_once(
+            state / "evidence",
+            code_commit=commit,
+            approval_id=actor,
+        )
+    except (ModelPromotionError, OSError, ValueError) as exc:
+        return f"⛔ Model registry bootstrap 失敗：{exc}"
+    stages = " · ".join(
+        f"{name.upper()} {item.get('stage')}" for name, item in sorted(result.items())
+    )
+    return f"✅ Model registry 已登記 {commit[:12]}\n{stages}"
 
 
 def cmd_today() -> str:
@@ -393,7 +719,12 @@ def cmd_week() -> str:
 
 PICKMARK = {1: "①", 2: "②", 3: "③"}
 
-COMMANDS = {"/status": cmd_status, "/today": cmd_today, "/perf": cmd_perf,
+COMMANDS = {"/status": cmd_status, "/git": cmd_git, "/models": cmd_models,
+            "/evidence": cmd_evidence, "/slo": cmd_slo,
+            "/storage": cmd_storage, "/dashboard": cmd_dashboard,
+            "/release": cmd_release,
+            "/au_status": cmd_au_status,
+            "/today": cmd_today, "/perf": cmd_perf,
             "/health": cmd_health, "/week": cmd_week, "/diag": cmd_diag,
             "/retry": cmd_retry, "/hkjc": cmd_hkjc,
             "/hkjc_reflect": cmd_hkjc_reflect,
@@ -401,6 +732,10 @@ COMMANDS = {"/status": cmd_status, "/today": cmd_today, "/perf": cmd_perf,
 # 收參數嘅指令要另外列 —— 白名單仍然係逐個字對，參數只當文字用嚟配對馬場名，
 # 永遠唔會變成路徑或者指令。
 COMMANDS_WITH_ARG = {"/picks": cmd_picks}
+MUTATING_COMMANDS_WITH_ARG = {
+    "/approve": cmd_approve,
+    "/bootstrap_models": cmd_bootstrap_models,
+}
 
 
 def _record_unknown(chat: dict, text: str) -> None:
@@ -427,15 +762,17 @@ def _record_unknown(chat: dict, text: str) -> None:
 
 
 def load_offset() -> int:
+    path = Path(os.environ.get("WC_TELEGRAM_OFFSET_FILE") or DEFAULT_OFFSET_FILE)
     try:
-        return int(json.loads(OFFSET_FILE.read_text(encoding="utf-8"))["offset"])
+        return int(json.loads(path.read_text(encoding="utf-8"))["offset"])
     except (OSError, ValueError, KeyError):
         return 0
 
 
 def save_offset(v: int) -> None:
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    OFFSET_FILE.write_text(json.dumps({"offset": v}), encoding="utf-8")
+    path = Path(os.environ.get("WC_TELEGRAM_OFFSET_FILE") or DEFAULT_OFFSET_FILE)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({"offset": v}), encoding="utf-8")
 
 
 def main() -> int:
@@ -463,11 +800,17 @@ def main() -> int:
         head = parts[0].lower() if parts else ""
         fn = COMMANDS.get(head)
         fn_arg = COMMANDS_WITH_ARG.get(head)
+        mutating_fn = MUTATING_COMMANDS_WITH_ARG.get(head)
         try:
             if fn:
                 reply = fn()
             elif fn_arg:
-                reply = fn_arg(" ".join(parts[1:])[:40])
+                reply = fn_arg(" ".join(parts[1:])[:64])
+            elif mutating_fn:
+                reply = mutating_fn(
+                    " ".join(parts[1:])[:64],
+                    actor=_authenticated_actor(chat_id, allowed),
+                )
             else:
                 reply = f"唔識「{(msg.get('text') or '')[:30]}」\n\n{HELP}"
         except Exception as exc:  # noqa: BLE001

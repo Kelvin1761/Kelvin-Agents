@@ -80,4 +80,3 @@ def test_nba_role_for_startup_clock_is_deterministic() -> None:
     assert nba_pregame_role(datetime(2026, 10, 20, 21, 0, tzinfo=SYDNEY)) is FreshnessRole.WARMUP
     assert nba_pregame_role(datetime(2026, 10, 21, 0, 30, tzinfo=SYDNEY)) is FreshnessRole.PRODUCTION
     assert nba_pregame_role(datetime(2026, 10, 21, 6, 30, tzinfo=SYDNEY)) is FreshnessRole.FINAL_REFRESH
-

@@ -1,85 +1,110 @@
 #!/usr/bin/env bash
-# 保存今日嘅改動 —— 一條命令搞掂 commit + push。
+# 安全保存入口：exact-scope check → commit → push → release manifest → Telegram。
 #
-#   ./保存.sh                 自動寫 commit 訊息
-#   ./保存.sh "修好場地狀況"   自己寫
-#   ./保存.sh --no-check      跳過檢查（唔建議）
+#   ./保存.sh --path docs/plan.md "docs: update plan"
+#   ./保存.sh --path src/a.py --path tests/test_a.py "fix: correct A"
+#   ./保存.sh --path src/a.py --dry-run "fix: preview A"
 #
-# 佢會：
-#   1. 先跑 ./檢查.sh --quick —— 唔過就唔准 commit（呢個先係重點）
-#   2. 如果你而家企喺 main，自動幫你開一條新分支（唔會直接改 main）
-#   3. commit + push
-#   4. 印返個 PR 連結俾你撳
+# 呢個 wrapper 刻意冇「自動掃晒所有 dirty files」。同一時間可能有多個 agent
+# worktree；只有 caller 知道邊啲檔案屬於今次工作。Central release manager 會按
+# exact scope 分類風險、跑 gate、commit、push、寫 immutable manifest 同通知 Telegram。
 set -uo pipefail
 cd "$(dirname "$0")"
 
-RUN_CHECK=1
+PY="${PYTHON_BIN:-python3}"
+CENTRAL=".agents/skills/central_wong_choi/scripts/central_wong_choi.py"
 MESSAGE=""
-for arg in "$@"; do
-  case "$arg" in
-    --no-check) RUN_CHECK=0 ;;
-    *) MESSAGE="$arg" ;;
+DRY_RUN=0
+ALLOW_UNRELATED=0
+NO_NOTIFY=0
+ACTIVATION_BASE=""
+PATHS=()
+
+usage() {
+  cat <<'EOF'
+用法：
+  ./保存.sh --path <今次改嘅檔案或目錄> [--path ...] "commit message"
+
+選項：
+  --path PATH          只保存呢個 scope；可以重覆
+  --dry-run            只顯示 risk／gate／activation plan，唔改 git
+  --allow-unrelated    容許 worktree 有其他未 stage 改動，但永遠唔會收埋佢哋
+  --activation-base SHA  用已部署 SHA 計算真正 activation delta
+  --no-notify          唔發 Telegram（一般唔建議）
+
+code/model/automation/deployment 只會 commit + push；Telegram /approve SHA 後先會
+重新驗證、merge 同 activate。docs/tests-only 通過 policy gate 後可以自動 merge。
+EOF
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --path)
+      [ "$#" -ge 2 ] || { echo "❌ --path 後面要有路徑"; exit 2; }
+      PATHS+=("$2")
+      shift 2
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    --allow-unrelated)
+      ALLOW_UNRELATED=1
+      shift
+      ;;
+    --activation-base)
+      [ "$#" -ge 2 ] || { echo "❌ --activation-base 後面要有 SHA"; exit 2; }
+      ACTIVATION_BASE="$2"
+      shift 2
+      ;;
+    --no-notify)
+      NO_NOTIFY=1
+      shift
+      ;;
+    --no-check)
+      echo "❌ Central release 唔接受跳過 gate；修好紅燈再保存。"
+      exit 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --*)
+      echo "❌ 未知選項：$1"
+      usage
+      exit 2
+      ;;
+    *)
+      if [ -n "$MESSAGE" ]; then
+        echo "❌ commit message 請用一個 quoted argument。"
+        exit 2
+      fi
+      MESSAGE="$1"
+      shift
+      ;;
   esac
 done
 
-bold() { printf '\033[1m%s\033[0m\n' "$1"; }
-red()  { printf '\033[31m%s\033[0m\n' "$1"; }
-green(){ printf '\033[32m%s\033[0m\n' "$1"; }
-
-# ── 有嘢改咗未？ ──────────────────────────────────────────────────────────
-if [ -z "$(git status --porcelain)" ]; then
-  green "冇嘢改過，唔使保存。"
-  exit 0
-fi
-
-bold "── 你改咗啲咩 ──"
-git status --short | head -40
-TOTAL=$(git status --porcelain | wc -l | tr -d ' ')
-[ "$TOTAL" -gt 40 ] && echo "   …仲有 $((TOTAL - 40)) 個檔案"
-echo
-git diff --stat HEAD | tail -1
-echo
-
-# ── 檢查 ─────────────────────────────────────────────────────────────────
-if [ "$RUN_CHECK" = "1" ]; then
-  bold "── 保存之前先檢查 ──"
-  if ! ./檢查.sh --quick; then
-    echo
-    red "檢查唔過，冇 commit。"
-    echo "上面印咗係邊一項、點解、點修。修好再跑一次 ./保存.sh 就得。"
-    echo "真係要照 commit（唔建議）：./保存.sh --no-check"
-    exit 1
-  fi
-fi
-
-# ── 唔好直接改 main ───────────────────────────────────────────────────────
-BRANCH="$(git branch --show-current)"
-if [ "$BRANCH" = "main" ] || [ -z "$BRANCH" ]; then
-  NEW="work/$(date +%Y-%m-%d-%H%M)"
-  bold "── 你企喺 main，開一條新分支：$NEW ──"
-  git checkout -b "$NEW" || exit 1
-  BRANCH="$NEW"
-fi
-
-# ── commit 訊息 ──────────────────────────────────────────────────────────
-if [ -z "$MESSAGE" ]; then
-  FILES=$(git status --porcelain | awk '{print $NF}' | head -3 | xargs -n1 basename 2>/dev/null | paste -sd, -)
-  MESSAGE="chore: 更新 $FILES（$TOTAL 個檔案）"
-fi
-
-git add -A
-git commit -q -m "$MESSAGE" || { red "commit 失敗"; exit 1; }
-green "✅ 已 commit：$MESSAGE"
-
-# ── push ─────────────────────────────────────────────────────────────────
-bold "── 推上 GitHub ──"
-if git push -u origin "$BRANCH" 2>&1 | tail -4; then
-  green "✅ 已推上 $BRANCH"
-  REMOTE=$(git remote get-url origin | sed 's/\.git$//' | sed 's#git@github.com:#https://github.com/#')
+if [ "${#PATHS[@]}" -eq 0 ]; then
+  echo "❌ 冇指定今次改動 scope；為免收埋其他 agent 嘅工作，唔會 git add -A。"
   echo
-  echo "開 PR（撳個連結）："
-  echo "  $REMOTE/compare/main...$BRANCH?expand=1"
-else
-  red "push 失敗。改動已經 commit 咗喺本機，唔會唔見。"
-  exit 1
+  git status --short | head -40
+  echo
+  usage
+  exit 2
 fi
+
+if [ -z "$MESSAGE" ]; then
+  MESSAGE="chore: 更新 ${PATHS[0]}"
+fi
+
+ARGS=(--repo "$PWD" release --message "$MESSAGE" --json)
+for path in "${PATHS[@]}"; do
+  ARGS+=(--path "$path")
+done
+[ "$DRY_RUN" -eq 1 ] && ARGS+=(--dry-run)
+[ "$ALLOW_UNRELATED" -eq 1 ] && ARGS+=(--allow-unrelated)
+[ "$NO_NOTIFY" -eq 1 ] && ARGS+=(--no-notify)
+[ -n "$ACTIVATION_BASE" ] && ARGS+=(--activation-base "$ACTIVATION_BASE")
+
+exec "$PY" "$CENTRAL" "${ARGS[@]}"

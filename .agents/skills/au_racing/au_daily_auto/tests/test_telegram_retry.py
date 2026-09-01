@@ -104,6 +104,266 @@ class RetryGuardTests(unittest.TestCase):
         self.assertIn("/hkjc", B.COMMANDS)
         self.assertIn("/hkjc_reflect", B.COMMANDS)
 
+    def test_central_read_only_commands_are_on_the_whitelist(self):
+        for command in (
+            "/status", "/git", "/models", "/evidence", "/release",
+            "/storage", "/dashboard",
+        ):
+            self.assertIn(command, B.COMMANDS)
+        self.assertIn("/au_status", B.COMMANDS)
+        self.assertIn("/approve", B.MUTATING_COMMANDS_WITH_ARG)
+        self.assertIn("/bootstrap_models", B.MUTATING_COMMANDS_WITH_ARG)
+
+    def test_central_commands_render_machine_status_without_shell_input(self):
+        payload = {
+            "status": "attention",
+            "attention": ["release_pending_approval"],
+            "git": {
+                "primary": {
+                    "branch": "codex/test",
+                    "head": "abcdef1234567890",
+                    "dirty_paths": [],
+                    "pushed": True,
+                    "merged_to_main": False,
+                },
+                "production": {},
+            },
+            "releases": {
+                "pending_approval": [
+                    {
+                        "commit": "abcdef1234567890",
+                        "risk": "model",
+                        "branch": "codex/model",
+                    }
+                ]
+            },
+            "evidence": {
+                "status": "ok",
+                "counts": {
+                    "model_release": 4,
+                    "prediction": 10,
+                    "decision": 10,
+                    "settlement": 8,
+                },
+                "errors": [],
+            },
+            "domains": {
+                name: {
+                    "latest_run": None,
+                    "model_release": {
+                        "release_stage": "production",
+                        "code_commit": "abcdef1234567890",
+                    },
+                }
+                for name in ("au", "hkjc", "tennis", "nba")
+            },
+        }
+        with unittest.mock.patch.object(B, "_central_payload", return_value=payload):
+            self.assertIn("codex/test", B.cmd_git())
+            self.assertIn("AU：production", B.cmd_models())
+            self.assertIn("prediction 10", B.cmd_evidence())
+            self.assertIn("abcdef123456", B.cmd_release())
+
+    def test_approval_rejects_non_sha_without_calling_release_code(self):
+        self.assertIn(
+            "格式",
+            B.cmd_approve(
+                "HEAD; rm -rf anything", actor=B.AUTHORISED_TELEGRAM_ACTOR
+            ),
+        )
+
+    def test_governance_actor_only_minted_for_configured_chat(self):
+        self.assertEqual(
+            B._authenticated_actor("123", "123"),
+            B.AUTHORISED_TELEGRAM_ACTOR,
+        )
+        with self.assertRaises(PermissionError):
+            B._authenticated_actor("attacker", "123")
+        with self.assertRaises(PermissionError):
+            B.cmd_approve("abcdef123456", actor="telegram:forged")
+        with self.assertRaises(PermissionError):
+            B.cmd_bootstrap_models("abcdef123456", actor="telegram:forged")
+
+    def test_unauthorised_chat_cannot_dispatch_governance_write(self):
+        updates = {
+            "ok": True,
+            "result": [
+                {
+                    "update_id": 7,
+                    "message": {
+                        "chat": {"id": "attacker"},
+                        "text": "/bootstrap_models abcdef123456",
+                    },
+                }
+            ],
+        }
+        calls = []
+
+        def fake_api(method, **params):
+            calls.append((method, params))
+            return updates if method == "getUpdates" else {"ok": True}
+
+        bootstrap = unittest.mock.Mock(return_value="must not run")
+        with unittest.mock.patch.dict(
+            B.os.environ,
+            {
+                "WC_NOTIFY_TELEGRAM_CHAT": "owner",
+                "WC_NOTIFY_TELEGRAM_TOKEN": "test-token",
+            },
+            clear=False,
+        ), unittest.mock.patch.object(B, "api", side_effect=fake_api), \
+             unittest.mock.patch.object(B, "save_offset"), \
+             unittest.mock.patch.object(B, "_record_unknown"), \
+             unittest.mock.patch.dict(
+                 B.MUTATING_COMMANDS_WITH_ARG,
+                 {"/bootstrap_models": bootstrap},
+             ):
+            self.assertEqual(B.main(), 0)
+
+        bootstrap.assert_not_called()
+        self.assertEqual([method for method, _params in calls], ["getUpdates"])
+
+    def test_handoff_can_share_production_telegram_offset(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            shared = Path(tmp) / "telegram-offset.json"
+            with unittest.mock.patch.dict(
+                B.os.environ,
+                {"WC_TELEGRAM_OFFSET_FILE": str(shared)},
+                clear=False,
+            ):
+                B.save_offset(88)
+                self.assertEqual(B.load_offset(), 88)
+            self.assertEqual(shared.read_text(encoding="utf-8"), '{"offset": 88}')
+
+    def test_approval_calls_fixed_api_with_strict_commit_only(self):
+        result = {
+            "status": "merged",
+            "commit": "abcdef1234567890",
+        }
+        fake_module = unittest.mock.Mock()
+        fake_module.approve_release.return_value = result
+        activation_module = unittest.mock.Mock()
+        activation_module.activate_release.return_value = {"status": "activated"}
+        manager_module = unittest.mock.Mock()
+        manager_module.ReleaseError = RuntimeError
+        with unittest.mock.patch.dict(
+            sys.modules,
+            {
+                "shared_wong_choi.release_approval": fake_module,
+                "shared_wong_choi.release_activation": activation_module,
+                "shared_wong_choi.release_manager": manager_module,
+            },
+        ):
+            reply = B.cmd_approve(
+                "abcdef123456", actor=B.AUTHORISED_TELEGRAM_ACTOR
+            )
+        self.assertIn("已批准", reply)
+        kwargs = fake_module.approve_release.call_args.kwargs
+        self.assertEqual(kwargs["selector"], "abcdef123456")
+        self.assertEqual(kwargs["actor"], "telegram:authorised-chat")
+        activation_kwargs = activation_module.activate_release.call_args.kwargs
+        self.assertEqual(activation_kwargs["selector"], "abcdef123456")
+
+    def test_model_bootstrap_requires_aligned_activated_main_and_empty_registry(self):
+        commit = "abcdef1234567890abcdef1234567890abcdef12"
+        payload = {
+            "evidence": {
+                "status": "ok",
+                "counts": {"model_release": 0},
+            },
+            "git": {
+                "production": {
+                    name: {
+                        "head": commit,
+                        "status": "clean_runtime_state",
+                        "merged_to_main": True,
+                    }
+                    for name in ("au", "hkjc", "tennis", "nba")
+                }
+            },
+            "releases": {
+                "latest": [
+                    {
+                        "commit": commit,
+                        "status": "merged",
+                        "activation": "succeeded",
+                    }
+                ]
+            },
+            "domains": {
+                name: {"model_release": None}
+                for name in ("au", "hkjc", "tennis", "nba")
+            },
+        }
+        registry_module = unittest.mock.Mock()
+        registry_module.ModelPromotionError = RuntimeError
+        registry_module.bootstrap_current_models_once.return_value = {
+            "au": {"stage": "production"},
+            "hkjc": {"stage": "production"},
+            "tennis": {"stage": "shadow"},
+            "nba": {"stage": "shadow"},
+        }
+        with unittest.mock.patch.object(B, "_central_payload", return_value=payload), \
+             unittest.mock.patch.dict(
+                 sys.modules,
+                 {"shared_wong_choi.model_registry": registry_module},
+             ):
+            reply = B.cmd_bootstrap_models(
+                commit[:12], actor=B.AUTHORISED_TELEGRAM_ACTOR
+            )
+        self.assertIn("已登記", reply)
+        kwargs = registry_module.bootstrap_current_models_once.call_args.kwargs
+        self.assertEqual(kwargs["code_commit"], commit)
+        self.assertEqual(kwargs["approval_id"], B.AUTHORISED_TELEGRAM_ACTOR)
+
+        payload["releases"]["latest"][0]["activation"] = "failed"
+        with unittest.mock.patch.object(B, "_central_payload", return_value=payload):
+            blocked = B.cmd_bootstrap_models(
+                commit[:12], actor=B.AUTHORISED_TELEGRAM_ACTOR
+            )
+        self.assertIn("activation_succeeded", blocked)
+
+    def test_model_bootstrap_repeat_is_read_only_and_mismatch_fails_closed(self):
+        commit = "abcdef1234567890abcdef1234567890abcdef12"
+        payload = {
+            "evidence": {"status": "ok", "counts": {"model_release": 4}},
+            "git": {
+                "production": {
+                    name: {
+                        "head": commit,
+                        "status": "clean",
+                        "merged_to_main": True,
+                    }
+                    for name in ("au", "hkjc", "tennis", "nba")
+                }
+            },
+            "releases": {
+                "latest": [
+                    {
+                        "commit": commit,
+                        "status": "merged",
+                        "activation": "succeeded",
+                    }
+                ]
+            },
+            "domains": {
+                name: {"model_release": {"code_commit": commit}}
+                for name in ("au", "hkjc", "tennis", "nba")
+            },
+        }
+        with unittest.mock.patch.object(B, "_central_payload", return_value=payload):
+            reply = B.cmd_bootstrap_models(
+                commit[:12], actor=B.AUTHORISED_TELEGRAM_ACTOR
+            )
+        self.assertIn("冇重複寫入", reply)
+
+        payload["git"]["production"]["nba"]["head"] = "f" * 40
+        with unittest.mock.patch.object(B, "_central_payload", return_value=payload):
+            blocked = B.cmd_bootstrap_models(
+                commit[:12], actor=B.AUTHORISED_TELEGRAM_ACTOR
+            )
+        self.assertIn("SHA 不一致", blocked)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -64,6 +64,12 @@ from shared_wong_choi.schedule_policy import (  # noqa: E402
     FreshnessRole,
     nba_pregame_role,
 )
+from shared_wong_choi.contracts import Domain  # noqa: E402
+from shared_wong_choi.domain_evidence import (  # noqa: E402
+    record_prediction_decision_if_configured,
+    record_settlement_for_event,
+)
+from shared_wong_choi.evidence import DecisionState  # noqa: E402
 
 CLAW_SPORTSBET = (
     NBA_SKILL / "nba_data_extractor" / "scripts" / "claw_sportsbet_odds.py"
@@ -703,6 +709,41 @@ def run_pregame(
                 refreshable_games=sorted(refreshable_tags),
             )
 
+    decision_state = (
+        DecisionState.SHADOW
+        if freshness_role is FreshnessRole.WARMUP
+        or season_context["automation_mode"] == "shadow"
+        else DecisionState.RECOMMEND
+    )
+    try:
+        evidence = record_prediction_decision_if_configured(
+            domain=Domain.NBA,
+            event_id=target_date,
+            snapshot=snapshot,
+            evidence_root=Path(
+                os.environ.get(
+                    "WONGCHOI_CONTROL_STATE_ROOT",
+                    Path.home() / "WongChoiData" / "WongChoiControl",
+                )
+            )
+            / "evidence",
+            decision_state=decision_state,
+        )
+    except Exception as exc:  # noqa: BLE001
+        evidence = {
+            "status": "failed",
+            "error": f"{type(exc).__name__}: {exc}",
+        }
+        log.payload["warnings"].append(
+            f"prediction evidence not recorded: {type(exc).__name__}: {exc}"
+        )
+    log.step(
+        "prediction_evidence",
+        str(evidence.get("status") or "unknown"),
+        prediction_id=evidence.get("prediction_id"),
+        decision_state=decision_state.value,
+    )
+
     if freshness_role is FreshnessRole.WARMUP:
         log.step("dashboard", "warmup_skipped")
         notify_once(
@@ -832,6 +873,29 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         return status
 
     archive = Path(str(summary.get("archive_path") or ""))
+    settlement_artifacts = sorted(archive.glob("*.json")) if archive.is_dir() else []
+    try:
+        settlement = record_settlement_for_event(
+            domain=Domain.NBA,
+            event_id=target_date,
+            evidence_root=Path(
+                os.environ.get(
+                    "WONGCHOI_CONTROL_STATE_ROOT",
+                    Path.home() / "WongChoiData" / "WongChoiControl",
+                )
+            )
+            / "evidence",
+            summary={"archive_status": status, "archive_path": str(archive)},
+            artifacts=settlement_artifacts,
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.step("settlement_evidence", "failed", error=f"{type(exc).__name__}: {exc}")
+        raise TemporaryFailure("settlement_evidence_failed") from exc
+    log.step(
+        "settlement_evidence",
+        str(settlement.get("status") or "unknown"),
+        settlement_id=settlement.get("settlement_id"),
+    )
     deploy_target = archive if archive.is_dir() else folder
     deploy = _deploy("NBA Wong Choi scheduled postgame", deploy_target)
     log.step("dashboard", deploy)

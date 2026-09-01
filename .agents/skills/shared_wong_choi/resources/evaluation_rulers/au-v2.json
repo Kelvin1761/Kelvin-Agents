@@ -1,0 +1,35 @@
+{
+  "schema_version": "wong-choi-evaluation-ruler/v1",
+  "ruler_id": "au-v2",
+  "domain": "au",
+  "status": "frozen",
+  "platform_baseline_commit": "6c1528c08585ba2185c1d5e04344db87095245a9",
+  "model_baseline_commit": "8b149c85aafa96d199eb838241d9a4958ec5d9b6",
+  "model_release_id": "wc:au:model-release:au-matrix:8b149c85aafa:production",
+  "model_stage": "production",
+  "authority": "docs/model-evaluation-contract.md",
+  "decision_mode": "promotion_gate",
+  "promotion_allowed": true,
+  "point_in_time_required": true,
+  "family_specific": false,
+  "price_snapshot_policy": null,
+  "metrics": [
+    {"name": "gold", "role": "primary", "direction": "maximize"},
+    {"name": "good_positional", "role": "primary", "direction": "maximize"},
+    {"name": "top3_capture_at5", "role": "ranking", "direction": "maximize"},
+    {"name": "mean_top3_model_rank", "role": "ranking", "direction": "minimize"},
+    {"name": "competitive_recall_at5", "role": "ranking", "direction": "maximize"},
+    {"name": "ndcg_at5", "role": "ranking", "direction": "maximize"},
+    {"name": "top5_pairwise_auc", "role": "ranking", "direction": "maximize"}
+  ],
+  "cohorts": ["field_size", "venue", "going"],
+  "holdout": {"strategy": "date_locked_dev_terminal", "tuning_forbidden": true},
+  "bootstrap": {"unit": "race", "trials": 2000, "confidence": 0.95, "seed": 7},
+  "sample_policy": {"mode": "predeclared_power", "monitoring_increment": 50, "promotion_floor": null, "power_required": true},
+  "review": {"weekly": {"weekday": "monday", "time": "09:00", "timezone": "Australia/Sydney"}, "monthly": {"ordinal_week": 1, "weekday": "monday"}, "ruler_review_days": 90, "incident_freezes_queue": true},
+  "fixture_cases": [
+    {"name": "supported_primary_or_ranking_gain", "expected": "win"},
+    {"name": "gold_or_good_negative", "expected": "regression"},
+    {"name": "confidence_interval_crosses_zero", "expected": "noise"}
+  ]
+}

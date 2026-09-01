@@ -113,6 +113,15 @@ def normalize_run_state(status: str) -> RunState:
         raise ValueError(f"unknown Wong Choi run status: {status!r}") from exc
 
 
+# 一個 run 俾 adapter 殺死之前可以跑幾耐。2026-08-26 之前呢個數字係
+# `command_adapter` 入面一個寫死嘅 7200，四條 domain 共用 —— 而 AU 晚更本身就係
+# 設計成通宵跑（22:00 開工，等冷卻窗，直到早更 10:00）。實測 08-20 至 08-25 五個
+# 晚更用 4,990–18,061 秒完成全部場次；control plane 接手之後連續三晚喺 7200 秒
+# 正中被斬，八個場次淨係做到三個，而 run log 永遠停喺 `status: running`。
+# 所以 timeout 一定要跟 domain／mode 走，唔可以一個數字打天下。
+DEFAULT_RUN_TIMEOUT_SECONDS = 7200
+
+
 def _component(value: str, *, field_name: str) -> str:
     clean = value.strip().lower()
     if not clean:
@@ -196,6 +205,10 @@ class AdapterSpec:
     owner: str
     orchestrator: str
     bindings: tuple[OperationBinding, ...]
+    # `(mode, seconds)` 對。用 tuple 唔用 dict 係因為 AdapterSpec 係 frozen
+    # dataclass，dict field 會令佢唔再 hashable。
+    run_timeouts: tuple[tuple[str, int], ...] = ()
+    default_run_timeout_seconds: int = DEFAULT_RUN_TIMEOUT_SECONDS
 
     def __post_init__(self) -> None:
         if not self.display_name.strip() or not self.owner.strip():
@@ -206,6 +219,30 @@ class AdapterSpec:
         operations = [binding.operation for binding in self.bindings]
         if len(operations) != len(set(operations)):
             raise ValueError(f"duplicate operation binding for {self.domain.value}")
+        if self.default_run_timeout_seconds <= 0:
+            raise ValueError("default_run_timeout_seconds must be positive")
+        modes = [mode for mode, _ in self.run_timeouts]
+        if len(modes) != len(set(modes)):
+            raise ValueError(f"duplicate run timeout mode for {self.domain.value}")
+        declared = {mode for binding in self.bindings for mode in binding.modes}
+        for mode, seconds in self.run_timeouts:
+            if seconds <= 0:
+                raise ValueError(
+                    f"{self.domain.value} run timeout for {mode!r} must be positive"
+                )
+            # 打錯 mode 名嘅 timeout 係最惡嘅一種：佢睇落已經修好咗，但實際上
+            # 個 run 仍然行緊 default。所以喺呢度即刻嗌，唔好等出事。
+            if mode not in declared:
+                raise ValueError(
+                    f"{self.domain.value} declares a run timeout for unknown mode {mode!r}"
+                )
+
+    def run_timeout_seconds(self, mode: str) -> int:
+        """呢個 mode 嘅 subprocess timeout（秒）。"""
+        for declared, seconds in self.run_timeouts:
+            if declared == mode:
+                return seconds
+        return self.default_run_timeout_seconds
 
     @property
     def capabilities(self) -> frozenset[Operation]:

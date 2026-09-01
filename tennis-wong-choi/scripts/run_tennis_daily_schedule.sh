@@ -18,7 +18,9 @@ elif [[ " $* " = *" --refresh-today "* ]]; then
   MODE="card"
 fi
 
-if [ -x ".venv/bin/python" ]; then
+if [ -n "${TENNIS_PYTHON_BIN:-}" ] && [ -x "$TENNIS_PYTHON_BIN" ]; then
+  PYTHON_BIN="$TENNIS_PYTHON_BIN"
+elif [ -x ".venv/bin/python" ]; then
   PYTHON_BIN=".venv/bin/python"
 else
   PYTHON_BIN="python3"

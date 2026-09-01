@@ -38,14 +38,52 @@ echo "Wong Choi 健康檢查  $(date '+%Y-%m-%d %H:%M')"
 # ── 磁碟 ──────────────────────────────────────────────────────────────────
 hdr "磁碟"
 FREE_G=$(df -g / | tail -1 | awk '{print $4}')
-if   [ "$FREE_G" -lt 5 ];  then note_bad "內置碟只剩 ${FREE_G}GB —— 排程會因為空間不足而 skip"
-elif [ "$FREE_G" -lt 15 ]; then warn "內置碟剩 ${FREE_G}GB（偏低）"
+if   [ "$FREE_G" -lt 20 ]; then note_bad "內置碟只剩 ${FREE_G}GB —— 停止重型research/backfill，先做verified archive"
+elif [ "$FREE_G" -lt 30 ]; then warn "內置碟剩 ${FREE_G}GB（低過中央旺財30GB HOT floor）"
 else ok "內置碟剩 ${FREE_G}GB"; fi
 if df -g | grep -q "Kelvin Hardisk"; then
   ok "外置碟已掛載（$(df -h | grep 'Kelvin Hardisk' | awk '{print $4}') 可用）"
 else
   warn "外置碟未掛載 —— 封存／ML 資料攞唔到（唔影響每日流程）"
 fi
+STORAGE_JSON=$(WC_RESEARCH_REPO_ROOT="${WC_RESEARCH_REPO_ROOT:-/Users/imac/Antigravity-repo}" \
+  "$PY" .agents/skills/central_wong_choi/scripts/central_wong_choi.py \
+  storage --scan --json 2>/dev/null || true)
+"$PY" - "$STORAGE_JSON" <<'PYEOF'
+import json, sys
+try:
+    payload = json.loads(sys.argv[1])
+except (IndexError, ValueError):
+    print("  ⚠️  中央storage inventory unavailable")
+    raise SystemExit
+items = {item.get("name"): item for item in payload.get("inventory") or []}
+for name, label in (
+    ("tennis_db_backups", "Tennis DB snapshots"),
+    ("au_archive", "AU archive"),
+    ("hkjc_archive", "HKJC archive"),
+):
+    value = (items.get(name) or {}).get("gib")
+    if value is not None:
+        print(f"      {label}: {value:.2f} GiB")
+cold = ((payload.get("tiers") or {}).get("cold") or {})
+d1 = ((payload.get("backups") or {}).get("dashboard_d1") or {})
+catalog_cold = ((payload.get("backups") or {}).get("catalog_artifacts") or {})
+if d1.get("status") == "no_data":
+    print("  ⚠️  Dashboard D1未有verified backup")
+elif d1.get("status") != "ok":
+    print(f"  ⚠️  Dashboard D1 backup：{d1.get('status')}，age={d1.get('age_hours', 'N/A')}h，WARM={d1.get('warm_verified')}")
+else:
+    print(f"  ✅ Dashboard D1 backup：age={d1.get('age_hours')}h，WARM verified")
+if catalog_cold.get("status") == "ok":
+    providers = ",".join(catalog_cold.get("providers") or []) or "unknown"
+    print(f"  ✅ Artifact COLD：{catalog_cold.get('verified_artifacts')}/{catalog_cold.get('known_artifacts')} verified via {providers}")
+elif catalog_cold.get("known_artifacts"):
+    print(f"  ⚠️  Artifact COLD：{catalog_cold.get('verified_artifacts')}/{catalog_cold.get('known_artifacts')} verified")
+if not cold.get("configured") and catalog_cold.get("status") != "ok":
+    print("  ⚠️  COLD Drive root未設定；外置碟目前只係一份copy，未可以批准刪本機原件")
+elif cold.get("configured") and cold.get("status") != "available":
+    print(f"  ⚠️  COLD Drive不可用：{cold.get('error') or 'unknown'}")
+PYEOF
 
 # ── 排程 ──────────────────────────────────────────────────────────────────
 hdr "自動化排程"
@@ -173,6 +211,34 @@ for p in au hkjc; do
   elif [ $s -eq 2 ]; then warn "$P 攞唔到語料庫（跳過）"
   else note_bad "$P 有欄位唔合格"; echo "$o" | sed -n '/唔合格/,/^$/p' | sed 's/^/      /'; fi
 done
+
+# ── 中央30日SLO／evidence provenance ──────────────────────────────────────
+hdr "中央旺財 30日 SLO"
+SLO_JSON=$("$PY" .agents/skills/central_wong_choi/scripts/central_wong_choi.py \
+  slo --json 2>/dev/null)
+SLO_RC=$?
+if [ "$SLO_RC" -eq 0 ]; then
+  ok "四線 run reliability 同 production provenance 達標（冇樣本會標 no_data）"
+else
+  note_bad "中央30日SLO未達標"
+fi
+"$PY" - "$SLO_JSON" <<'PYEOF'
+import json, sys
+try:
+    payload = json.loads(sys.argv[1])
+except (IndexError, ValueError):
+    print("      SLO JSON unavailable")
+    raise SystemExit
+for name, value in (payload.get("domains") or {}).items():
+    ratio = value.get("availability")
+    shown = "no_data" if ratio is None else f"{ratio:.1%}"
+    print(f"      {name.upper()}: {shown} · {value.get('slots', 0)} slots · {value.get('status')}")
+provenance = ((payload.get("evidence") or {}).get("production_provenance") or {})
+ratio = provenance.get("ratio")
+print("      production provenance: " +
+      ("no_data" if ratio is None else f"{ratio:.1%}") +
+      f" · {provenance.get('production_decisions', 0)} decisions")
+PYEOF
 
 # ── 排程日誌有冇報錯 ─────────────────────────────────────────────────────
 hdr "排程日誌（近 3 日嘅錯）"

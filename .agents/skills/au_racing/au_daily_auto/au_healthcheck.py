@@ -20,6 +20,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.request
 from datetime import date, datetime
 from pathlib import Path
@@ -119,6 +120,7 @@ def local_quality_issues(day: str, *, root: Path | None = None,
         missing_artifacts: list[str] = []
         stale_odds: list[int] = []
         missing_going_audit: list[int] = []
+        unavailable_official_going: list[int] = []
         for race in range(1, expected + 1):
             required = {
                 "Racecard": folder.glob(f"* Race {race} Racecard.md"),
@@ -141,11 +143,17 @@ def local_quality_issues(day: str, *, root: Path | None = None,
             logic = folder / f"Race_{race}_Logic.json"
             try:
                 payload = json.loads(logic.read_text(encoding="utf-8"))
-                refresh = (payload.get("race_analysis") or {}).get("going_refresh")
+                race_analysis = payload.get("race_analysis") or {}
+                refresh = race_analysis.get("going_refresh")
+                stored_going = str(race_analysis.get("going") or "").strip()
             except (OSError, ValueError, AttributeError):
                 refresh = None
+                stored_going = ""
             if logic.exists() and not refresh:
-                missing_going_audit.append(race)
+                if stored_going and stored_going.lower() != "unknown":
+                    missing_going_audit.append(race)
+                else:
+                    unavailable_official_going.append(race)
 
         if missing_artifacts:
             issues.append(f"{folder.name}：輸出唔齊（{', '.join(missing_artifacts[:8])}"
@@ -156,6 +164,9 @@ def local_quality_issues(day: str, *, root: Path | None = None,
         if missing_going_audit:
             issues.append(f"{folder.name}：going_refresh audit 缺 "
                           f"R{','.join(map(str, missing_going_audit))}")
+        if unavailable_official_going:
+            issues.append(f"{folder.name}：官方 going 未有資料 "
+                          f"R{','.join(map(str, unavailable_official_going))}")
 
         summary = folder / "Meeting_Summary.md"
         try:
@@ -346,9 +357,22 @@ def quality_issues(day: str) -> tuple[list[str], list[str]]:
 
 
 def heal() -> tuple[bool, str]:
-    """由本機重建再發佈。唔出網抽頁，所以安全、快、唔會同排程爭資源。"""
+    """由本機重建再發佈。唔出網抽頁，所以安全、快、唔會同排程爭資源。
+
+    ⚠️ `--slot` 唔可以慳。control plane 見到 `--mode morning` 就會將個 run 釘落
+    canonical slot `10:00`（`control_plane.FIXED_MODE_SLOTS`），**唔理實際幾點跑**。
+    2026-08-27 至 08-29 三日實測：02:30 體檢叫嘅 `heal()` 攞咗
+    `wc:au:run:<date>:morning:10:00` 呢條 idempotency key，於是同一次體檢跟住開
+    嘅真補跑、同埋之後 10:00 嗰程 launchd 早更，兩個都變 `duplicate_skipped` ——
+    即係當日唯一會補抽場次嘅兩條路都俾一次「重新發佈」封死咗。個補跑仲會 log
+    「已自動開始一次補跑」，所以連通知都係報喜。
+
+    每次體檢有自己嘅 slot（`heal-HH:MM`）：一日三次體檢各自有 manifest，互相唔
+    撞，亦永遠唔會食到排程嗰兩格。
+    """
+    slot = f"heal-{datetime.now().strftime('%H:%M')}"
     try:
-        r = subprocess.run([str(RUNNER), "morning", "--skip-refresh"],
+        r = subprocess.run([str(RUNNER), "morning", "--slot", slot, "--skip-refresh"],
                            capture_output=True, text=True, timeout=3600)
         return r.returncode in (0, 75), (r.stdout or "")[-400:]
     except Exception as exc:  # noqa: BLE001
@@ -375,8 +399,11 @@ def start_analysis_recovery(day: str) -> tuple[bool, str]:
         out.parent.mkdir(parents=True, exist_ok=True)
         _mark(key)  # 開 process 前先記；crash 都唔會變成每次 healthcheck 再開一個。
         with out.open("w") as fh:
+            # `--slot recovery`：同上面 `heal()` 一樣，唔可以佔住排程嗰格 10:00。
+            # 呢度用一個**固定**名（唔加時間）係有意嘅 —— 補跑一日只應該開一次，
+            # 個 manifest 就係 `autofix_attempted.json` 之外嘅第二道防線。
             subprocess.Popen(
-                [str(RUNNER), "morning", "--today", day,
+                [str(RUNNER), "morning", "--slot", "recovery", "--today", day,
                  "--rounds", "3", "--round-gap", "420"],
                 stdout=fh, stderr=fh, start_new_session=True)
     except Exception as exc:  # noqa: BLE001
@@ -485,12 +512,67 @@ def autofix_last_failure() -> str | None:
         return f"⚠️ 認得個模式但唔識執行補救「{remedy}」 —— 要人睇"
     ok, detail = heal()
     after = check(date.today().isoformat())
-    good = ok and after.get("state") in ("ok", "in-progress")
+    good = ok and after.get("state") in (
+        "ok", "ok-with-advisories", "degraded", "in-progress"
+    )
     head = "✅" if good else "❌"
     return (f"{head} 自動補救（{path.name}）\n"
             f"對上已知模式 → 重建並重新發佈\n"
             + ("今日場次已上線：" + "、".join(after.get("live") or [])
                if good else f"仲未修好：{detail[-200:]}"))
+
+
+def post_heal_result(day: str, after: dict) -> tuple[int, str] | None:
+    """Render a successful republish separately from remaining data quality."""
+    state = after.get("state")
+    if state not in ("ok", "ok-with-advisories", "degraded"):
+        return None
+    live = "、".join(after.get("live") or [])
+    message = f"✅ AU 體檢 {day}\n已補發佈，今日場次全部上線：{live}"
+    if state == "degraded":
+        message += ("\n⚠️ 發佈成功，但資料品質仍未過：\n- "
+                    + "\n- ".join(after.get("issues") or []))
+        return 1, message
+    advisories = after.get("advisories") or []
+    if advisories:
+        message += ("\nbest-effort 落後（唔影響預測同發佈）：\n- "
+                    + "\n- ".join(advisories))
+    return 0, message
+
+
+def check_after_heal(day: str, *, heal_ok: bool, attempts: int = 6,
+                     delay_seconds: float = 3.0) -> dict:
+    """Recheck the public alias until Cloudflare edges converge after deploy.
+
+    The deploy pipeline already polls the production alias, but Pages edges are
+    not updated in lockstep: the next request can still land on an older edge.
+    A single immediate read therefore cannot overturn a successful deploy.  We
+    only retry states consistent with that propagation window; real data-quality
+    and unanalysed states return immediately.
+    """
+    after = check(day)
+    if not heal_ok:
+        return after
+    for _ in range(max(1, attempts) - 1):
+        if after.get("state") not in ("unpublished", "unknown"):
+            break
+        time.sleep(max(0.0, delay_seconds))
+        after = check(day)
+    return after
+
+
+def unresolved_post_heal_message(day: str, after: dict, *, heal_ok: bool,
+                                 detail: str) -> str:
+    """Render an unresolved post-heal state without leaking raw success JSON."""
+    missing = "、".join(after.get("missing", [])) or "未能讀取場次名單"
+    if heal_ok:
+        return (f"⚠️ AU 體檢 {day}\n"
+                "補發佈程序已成功收尾，但公開 dashboard 經多次查證仍未收斂。\n"
+                f"暫時未能確認：{missing}\n"
+                "系統會保留為驗證警告，唔會誤報成發佈失敗。")
+    compact = " ".join((detail or "冇錯誤詳情").split())[-200:]
+    return (f"❌ AU 體檢 {day}\n補發佈真正失敗，仍未上線：{missing}\n"
+            f"{compact}")
 
 
 # 語料 CSV 嘅欄位級健康。呢個 CSV 唔影響今日發佈，但係檔位偏差表同幾個
@@ -640,10 +722,12 @@ def main() -> int:
     notify(f"⚠️ AU 體檢 {day}\n分析做咗但冇上 dashboard：{'、'.join(res['publishable'])}\n"
            f"正在自動補發佈…")
     ok, detail = heal()
-    after = check(day)
-    if after["state"] == "ok":
-        notify(f"✅ AU 體檢 {day}\n已補發佈，今日場次全部上線：{'、'.join(after['live'])}")
-        return 0
+    after = check_after_heal(day, heal_ok=ok)
+    published = post_heal_result(day, after)
+    if published is not None:
+        code, message = published
+        notify(message)
+        return code
     if after["state"] == "unanalysed":
         started, reason = start_analysis_recovery(day)
         if started:
@@ -651,8 +735,8 @@ def main() -> int:
                    f"{'、'.join(after.get('missing', []))}\n已自動開始一次補跑")
             return 0
         detail = f"{detail}\n自動補跑冇開：{reason}"
-    notify(f"❌ AU 體檢 {day}\n補發佈失敗，仲係缺：{'、'.join(after.get('missing', []))}\n"
-           f"{detail[-200:]}")
+    notify(unresolved_post_heal_message(
+        day, after, heal_ok=ok, detail=detail))
     return 1
 
 

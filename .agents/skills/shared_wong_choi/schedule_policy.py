@@ -338,4 +338,3 @@ def nba_pregame_role(now: datetime) -> FreshnessRole:
 
 def jobs_for(domain: Domain | str) -> Iterable[JobPolicy]:
     return DOMAIN_SCHEDULES[Domain(domain)].jobs
-

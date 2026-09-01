@@ -1,0 +1,36 @@
+{
+  "schema_version": "wong-choi-evaluation-ruler/v1",
+  "ruler_id": "tennis-v1",
+  "domain": "tennis",
+  "status": "frozen",
+  "platform_baseline_commit": "6c1528c08585ba2185c1d5e04344db87095245a9",
+  "model_baseline_commit": "8b149c85aafa96d199eb838241d9a4958ec5d9b6",
+  "model_release_id": "wc:tennis:model-release:tennis-pricing:8b149c85aafa:shadow",
+  "model_stage": "shadow",
+  "authority": "tennis-wong-choi/docs/performance-audit-2026-08-21.md",
+  "decision_mode": "promotion_gate",
+  "promotion_allowed": true,
+  "point_in_time_required": true,
+  "family_specific": true,
+  "price_snapshot_policy": "earliest_verifiable_pre_match",
+  "metrics": [
+    {"name": "brier_gain_vs_market", "role": "primary", "direction": "maximize"},
+    {"name": "log_loss_gain_vs_market", "role": "primary", "direction": "maximize"},
+    {"name": "calibration_error", "role": "guardrail", "direction": "minimize"},
+    {"name": "clv", "role": "guardrail", "direction": "maximize"},
+    {"name": "roi", "role": "guardrail", "direction": "maximize"},
+    {"name": "coverage", "role": "guardrail", "direction": "maximize"},
+    {"name": "auc", "role": "descriptive", "direction": "maximize"},
+    {"name": "drawdown", "role": "descriptive", "direction": "minimize"}
+  ],
+  "cohorts": ["family", "tour", "surface", "tournament_level", "odds_bucket"],
+  "holdout": {"strategy": "chronological_untouched_by_family", "tuning_forbidden": true},
+  "bootstrap": {"unit": "match", "trials": 4000, "confidence": 0.95, "seed": 20260826},
+  "sample_policy": {"mode": "family_floor_plus_power", "monitoring_increment": 200, "promotion_floor": 600, "power_required": true},
+  "review": {"weekly": {"weekday": "monday", "time": "09:00", "timezone": "Australia/Sydney"}, "monthly": {"ordinal_week": 1, "weekday": "monday"}, "ruler_review_days": 90, "incident_freezes_queue": true},
+  "fixture_cases": [
+    {"name": "market_beaten_with_calibration_and_roi_downside_pass", "expected": "win"},
+    {"name": "brier_or_log_loss_loses_to_market", "expected": "regression"},
+    {"name": "family_below_power_or_ci_crosses_zero", "expected": "noise"}
+  ]
+}

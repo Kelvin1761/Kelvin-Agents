@@ -62,4 +62,3 @@ def test_hkjc_dormant_control_envelope_maps_to_dormant(tmp_path: Path) -> None:
 
     result = HKJCAdapter(REPO_ROOT, tmp_path, runner=runner).execute(_request())
     assert result.state is RunState.DORMANT
-

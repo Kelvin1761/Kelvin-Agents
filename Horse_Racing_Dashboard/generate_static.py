@@ -45,6 +45,26 @@ DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".cache" / "meeting-snaps
 AU_MEETING_DIR_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\s+(.+?)(?:\s+Race\s+\d+-\d+)?$")
 
 
+def _resolve_tennis_db_path():
+    """Resolve the live Tennis DB without tying deploys to one checkout.
+
+    AU/HKJC deploys can run from a versioned release checkout while the live
+    Tennis SQLite database stays in its stable runtime directory.  The
+    production runtime installer writes the pointer after validating the DB.
+    An explicit environment override remains useful for one-off recovery runs.
+    """
+    explicit = os.environ.get("WC_TENNIS_DB_PATH", "").strip()
+    if explicit:
+        return Path(explicit).expanduser()
+
+    pointer = Path.home() / ".wongchoi_tennis_db"
+    try:
+        pointed = pointer.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return Path(pointed).expanduser() if pointed else None
+
+
 def _serialize_race(race):
     payload = race.model_dump()
     payload["horses"] = [h.model_dump() for h in race.horses]
@@ -476,7 +496,11 @@ def generate_html(data):
     # immediately and stale recommendations cannot survive a snapshot reuse.
     cached_feed = data.get("sports_feed")
     try:
-        fresh_feed = build_multisport_feed(Path(__file__).resolve().parent.parent)
+        tennis_db = _resolve_tennis_db_path()
+        fresh_feed = build_multisport_feed(
+            Path(__file__).resolve().parent.parent,
+            tennis_db_path=tennis_db,
+        )
         data["sports_feed"] = _merge_sports_feed(cached_feed, fresh_feed)
     except Exception as exc:
         print(f"   ⚠️ Live multi-sport feed not available: {exc}")

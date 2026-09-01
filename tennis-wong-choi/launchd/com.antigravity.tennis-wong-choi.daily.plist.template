@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
   The evening pass: settle and review yesterday, archive it, warm tomorrow's
-  fixtures. The main card still comes from the 09:00 .card pass -- Sportsbet
+  fixtures. The main card still comes from the 09:00 .card pass — Sportsbet
   has barely opened tomorrow's book at this hour (12 priced matches against
   47-56 same-day, measured 2026-08-16, and rescanning at 21:18 moved that to
   13).
@@ -31,6 +31,16 @@
 
   <key>EnvironmentVariables</key>
   <dict>
+    <key>DATABASE_URL</key>
+    <string>__DATABASE_URL__</string>
+    <key>TENNIS_ENV_FILE</key>
+    <string>__TENNIS_ENV_FILE__</string>
+    <key>TENNIS_PYTHON_BIN</key>
+    <string>__TENNIS_PYTHON_BIN__</string>
+    <key>TENNIS_LOG_DIR</key>
+    <string>__TENNIS_LOG_DIR__</string>
+    <key>TENNIS_ANALYSIS_OUTPUT_ROOT</key>
+    <string>__TENNIS_ANALYSIS_OUTPUT_ROOT__</string>
     <!--
       The daily health line, pushed. Enabled 2026-08-11 on Kelvin's go-ahead.
       Sent on EVERY outcome including a day with no bet: an empty card is a

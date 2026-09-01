@@ -178,4 +178,3 @@ def single_run_lock(path: Path) -> Iterator[bool]:
         finally:
             if acquired:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-

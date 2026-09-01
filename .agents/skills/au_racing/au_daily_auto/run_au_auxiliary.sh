@@ -9,6 +9,16 @@ TASK="${1:-}"
 SCRIPT_DIR="${0:A:h}"
 PROJECT_ROOT="${SCRIPT_DIR:h:h:h:h}"
 
+# 中央旺財同四條 scheduler 共用呢個 dedicated production checkout。明確 export
+# 令 Telegram approval/activation 唔使估 runtime 喺邊，亦唔會掂開發中嘅主 worktree。
+: "${WC_PRIMARY_REPO_ROOT:=$PROJECT_ROOT}"
+: "${WC_AU_PRODUCTION_ROOT:=$PROJECT_ROOT}"
+: "${WC_HKJC_PRODUCTION_ROOT:=$PROJECT_ROOT}"
+: "${WC_TENNIS_PRODUCTION_ROOT:=$PROJECT_ROOT}"
+: "${WC_NBA_PRODUCTION_ROOT:=$PROJECT_ROOT}"
+export WC_PRIMARY_REPO_ROOT WC_AU_PRODUCTION_ROOT WC_HKJC_PRODUCTION_ROOT
+export WC_TENNIS_PRODUCTION_ROOT WC_NBA_PRODUCTION_ROOT
+
 : "${WONGCHOI_AU_DATA_ROOT:=$HOME/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing}"
 : "${WONGCHOI_AU_MIRROR_ROOT:=/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing}"
 export WONGCHOI_AU_DATA_ROOT WONGCHOI_AU_MIRROR_ROOT

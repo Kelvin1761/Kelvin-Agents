@@ -40,8 +40,8 @@ if sys.stdout.encoding != 'utf-8':
 from pathlib import Path as _Path
 PROJECT_ROOT = _Path(__file__).resolve().parents[3]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
-from wongchoi_paths import NBA_ANALYSIS, NBA_ML_DATASET
-ARCHIVE_DIR = str(NBA_ANALYSIS)
+from wongchoi_paths import NBA_ML_DATASET
+from nba_corpus import nba_archive_folders
 DATASET_DIR = str(NBA_ML_DATASET)
 
 # Stat categories we care about
@@ -296,10 +296,8 @@ def fetch_results_for_date(game_date):
 def find_archive_folders():
     """Find all archive folders that contain nba_game_data_*.json or equivalent."""
     folders = []
-    for entry in sorted(os.listdir(ARCHIVE_DIR)):
-        path = os.path.join(ARCHIVE_DIR, entry)
-        if not os.path.isdir(path):
-            continue
+    for entry, path_obj in nba_archive_folders():
+        path = str(path_obj)
         feature_files = (
             [f for f in os.listdir(path) if f.startswith("nba_game_data_") and f.endswith(".json")]
             or [f for f in os.listdir(path) if "_data.json" in f and f.startswith("Game_")]

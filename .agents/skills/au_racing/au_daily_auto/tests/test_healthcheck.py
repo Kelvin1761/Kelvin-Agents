@@ -121,16 +121,88 @@ class HealthcheckTests(unittest.TestCase):
         self.assertEqual(result["advisories"], ["Drive 鏡像落後 2 個檔"])
         self.assertNotIn("issues", result)
 
+    def test_successful_republish_with_quality_warning_is_not_called_missing(self):
+        code, message = H.post_heal_result(
+            DAY,
+            {
+                "state": "degraded",
+                "live": ["Dubbo", "Kilcoy"],
+                "issues": ["Dubbo：官方 going 未有資料 R1"],
+            },
+        )
+
+        self.assertEqual(code, 1)
+        self.assertIn("已補發佈", message)
+        self.assertIn("資料品質仍未過", message)
+        self.assertNotIn("仲係缺", message)
+
+    def test_successful_republish_can_keep_best_effort_advisory(self):
+        code, message = H.post_heal_result(
+            DAY,
+            {
+                "state": "ok-with-advisories",
+                "live": ["Dubbo"],
+                "advisories": ["Drive 鏡像落後 1 個檔"],
+            },
+        )
+
+        self.assertEqual(code, 0)
+        self.assertIn("已補發佈", message)
+        self.assertIn("唔影響預測同發佈", message)
+
+    def test_post_heal_retries_a_stale_edge_then_reports_real_quality(self):
+        """2026-08-30：deploy 驗證成功後，下一個 Pages edge 仍回舊空 snapshot。"""
+        stale = {"state": "unpublished", "missing": ["Carnarvon"]}
+        converged = {
+            "state": "degraded",
+            "live": ["Carnarvon"],
+            "issues": ["Carnarvon：騎練資料覆蓋 48.4% 低過門檻 80%"],
+        }
+        with unittest.mock.patch.object(H, "check", side_effect=[stale, converged]) \
+                as mocked_check, \
+             unittest.mock.patch.object(H.time, "sleep") as mocked_sleep:
+            result = H.check_after_heal(DAY, heal_ok=True)
+
+        self.assertEqual(result, converged)
+        self.assertEqual(mocked_check.call_count, 2)
+        mocked_sleep.assert_called_once_with(3.0)
+
+    def test_failed_heal_does_not_wait_for_edge_convergence(self):
+        stale = {"state": "unpublished", "missing": ["Dubbo"]}
+        with unittest.mock.patch.object(H, "check", return_value=stale) as mocked_check, \
+             unittest.mock.patch.object(H.time, "sleep") as mocked_sleep:
+            result = H.check_after_heal(DAY, heal_ok=False)
+
+        self.assertEqual(result, stale)
+        mocked_check.assert_called_once_with(DAY)
+        mocked_sleep.assert_not_called()
+
+    def test_successful_heal_with_unsettled_edge_is_not_called_deploy_failure(self):
+        raw = ('{"operation":"predict","state":"succeeded",'
+               '"status":"ok","target_date":"2026-08-30"}')
+        message = H.unresolved_post_heal_message(
+            DAY,
+            {"state": "unpublished", "missing": ["Dubbo"]},
+            heal_ok=True,
+            detail=raw,
+        )
+
+        self.assertIn("補發佈程序已成功", message)
+        self.assertIn("仍未收斂", message)
+        self.assertNotIn("補發佈失敗", message)
+        self.assertNotIn('"operation"', message)
+
 
 class DataQualityTests(unittest.TestCase):
     def _meeting(self, root: Path, *, morning: bool = True,
-                 jt: tuple[int, int] = (18, 2), going_refresh: bool = True):
+                 jt: tuple[int, int] = (18, 2), going_refresh: bool = True,
+                 going: str = "Good 4"):
         import json
         folder = root / f"{DAY} Dubbo Race 1-1"
         folder.mkdir(parents=True)
         for label in ("Racecard", "Formguide", "Facts"):
             (folder / f"08-10 Race 1 {label}.md").write_text("ok")
-        logic = {"race_analysis": {"going": "Good 4"}}
+        logic = {"race_analysis": {"going": going}}
         if going_refresh:
             logic["race_analysis"]["going_refresh"] = {"official_going": "Good 4"}
         (folder / "Race_1_Logic.json").write_text(json.dumps(logic))
@@ -157,6 +229,14 @@ class DataQualityTests(unittest.TestCase):
         self.assertIn("morning odds", joined)
         self.assertIn("going_refresh", joined)
         self.assertIn("50.0%", joined)
+
+    def test_unavailable_official_going_is_not_misreported_as_missing_audit(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._meeting(Path(tmp), going_refresh=False, going="")
+            issues = H.local_quality_issues(DAY, root=Path(tmp))
+        joined = "\n".join(issues)
+        self.assertIn("官方 going 未有資料", joined)
+        self.assertNotIn("going_refresh audit 缺", joined)
 
     def _tree(self, tmp, *, drive_has=True, drive_stale=False, latest=False):
         root, mirror = Path(tmp) / "local", Path(tmp) / "drive"
@@ -422,8 +502,70 @@ class AnalysisRecoveryTests(unittest.TestCase):
 
         self.assertTrue(ok, detail)
         self.assertEqual(started["key"], f"auto-analysis-{DAY}")
-        self.assertEqual(started["cmd"][1:4], ["morning", "--today", DAY])
+        self.assertEqual(started["cmd"][1:], ["morning", "--slot", "recovery",
+                                              "--today", DAY,
+                                              "--rounds", "3", "--round-gap", "420"])
         self.assertTrue(started["kwargs"]["start_new_session"])
+
+
+class ScheduledSlotTests(unittest.TestCase):
+    """體檢開嘅 run 唔可以食到排程嗰格。
+
+    control plane 見到 `--mode morning` 就會將個 run 釘落 canonical slot
+    `10:00`，**唔理實際幾點跑**。2026-08-27 至 08-29 實測後果：02:30 體檢叫嘅
+    `heal()`（一個唔出網、三十幾秒嘅重新發佈）攞咗
+    `wc:au:run:<date>:morning:10:00`，於是同一次體檢跟住開嘅真補跑、同埋 10:00
+    嗰程 launchd 早更，兩個都變 `duplicate_skipped`。當日唯一兩條會補抽場次嘅
+    路，俾一次重新發佈封死；而通知仲報住「已自動開始一次補跑」。
+
+    三日內少咗八個場次（Wagga／Moruya／Naracoorte／Grafton／Kembla Grange／
+    Morphettville／Rosehill／Warracknabeal），冇一個 suite 轉紅。
+    """
+
+    CANONICAL_SLOTS = {"10:00", "22:00"}
+
+    def _cmd_of(self, fn):
+        seen = {}
+
+        class _P:
+            def __init__(self, cmd, **kwargs):
+                seen["cmd"] = cmd
+
+        def _run(cmd, **kwargs):
+            seen["cmd"] = cmd
+            return unittest.mock.Mock(returncode=0, stdout="", stderr="")
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             unittest.mock.patch.multiple(
+                 H, HERE=Path(tmp), RUNNER=Path(tmp) / "runner",
+                 run_in_progress=lambda: False, _attempted=lambda: set()), \
+             unittest.mock.patch.object(H, "_mark", lambda key: None), \
+             unittest.mock.patch.object(H.subprocess, "Popen", _P), \
+             unittest.mock.patch.object(H.subprocess, "run", _run):
+            H.RUNNER.write_text("#!/bin/zsh\n")
+            fn()
+        return seen["cmd"]
+
+    def _slot_of(self, cmd):
+        self.assertIn("--slot", cmd, f"冇 --slot 就會跌返 canonical slot：{cmd}")
+        return cmd[cmd.index("--slot") + 1]
+
+    def test_heal_does_not_occupy_a_scheduled_slot(self):
+        slot = self._slot_of(self._cmd_of(H.heal))
+        self.assertNotIn(slot, self.CANONICAL_SLOTS)
+        self.assertTrue(slot.startswith("heal-"), slot)
+
+    def test_recovery_does_not_occupy_a_scheduled_slot(self):
+        slot = self._slot_of(self._cmd_of(lambda: H.start_analysis_recovery(DAY)))
+        self.assertNotIn(slot, self.CANONICAL_SLOTS)
+
+    def test_heal_and_recovery_do_not_collide_with_each_other(self):
+        # 真實序列就係 heal() → check() → start_analysis_recovery()。兩者撞同一
+        # 條 key 嘅話，第二個一樣係 no-op。
+        heal_slot = self._slot_of(self._cmd_of(H.heal))
+        recovery_slot = self._slot_of(
+            self._cmd_of(lambda: H.start_analysis_recovery(DAY)))
+        self.assertNotEqual(heal_slot, recovery_slot)
 
     def test_same_day_is_never_started_twice(self):
         key = f"auto-analysis-{DAY}"
