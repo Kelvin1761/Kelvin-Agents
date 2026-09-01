@@ -507,8 +507,26 @@ FIT_MICRO_WEIGHTS = {
     "current_high_fit_bonus": 1.47,
     "current_trial_cap": 2.57,
     "current_trial_mult": 3.8,
-    "latest_downgrade_pen": -4.11,
-    "leave_proven_jockey_pen": -2.98,
+    # ── 退出計分（2026-09-01）——符號實測同方向相反 ─────────────────────────
+    # Rollback: "latest_downgrade_pen": -4.11, "leave_proven_jockey_pen": -2.98,
+    #           "signal_reunite_bonus": 2.0（見下面）。
+    #
+    # 條件化量度（1,820 場，控制「曾策騎此駒」次數）—— 倒退喺同一分層之內倖存：
+    #   離開上仗已證明配搭  0 次層  觸發 +4.09pp vs 冇觸發 −2.96pp  差 **+7.05pp**
+    #   未及上仗騎師       0 次層  觸發 +4.08pp vs 冇觸發 −0.59pp  差 **+4.67pp**
+    #   回配熟手騎師       每一層都錯（−3.55 / −1.19 / **−7.49pp**）
+    #
+    # 剷走三項：`jockey_horse_fit_score` 場內 AUC **0.5467 → 0.5668**，
+    # `gold` dev +0.0023 / terminal +0.0019。`good_positional` terminal −0.0057
+    # （≈3 場，噪音範圍）令 Stage 4 v2 判 REJECT；Kelvin 2026-09-01 裁定係修 bug
+    # （符號證明係反），按契約 §7 上線。
+    #
+    # ⚠️ 三個 key **要留喺呢度做文獻**，唔可以淨係刪 —— `engine_core` 原本用
+    # `FIT_MICRO_WEIGHTS.get(key, <default>)`，如果將來有人加返個 `.get()` 而 key
+    # 唔喺度，個 hard-coded default（−4.0 / −3.0 / 2.0）就會靜靜咁復活。
+    # 而家值係 0.0，所以就算駁返都係中性。
+    "latest_downgrade_pen": 0.0,
+    "leave_proven_jockey_pen": 0.0,
     # 2026-08-04 新增：上仗騎師同呢匹馬嘅往績，做**連續分級項**。
     #
     # 點解要新加一項而唔係改上面兩個。上面兩個係**單邊門檻**：
@@ -545,7 +563,7 @@ FIT_MICRO_WEIGHTS = {
     # 因為一個 ablation 掃唔到嘅魔術數字比一個調得太多嘅參數更難升級。
     "signal_same_jockey_bonus": 2.0,
     "signal_trial_rider_bonus": 2.0,
-    "signal_reunite_bonus": 2.0,
+    "signal_reunite_bonus": 0.0,   # 退出計分 2026-09-01，見上面 leave_proven 註釋
 }
 
 # 2026-08-01（較後）矩陣重新配權之後嘅實測分佈（7,547 匹）：

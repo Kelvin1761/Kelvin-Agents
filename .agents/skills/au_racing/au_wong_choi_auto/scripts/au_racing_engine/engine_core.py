@@ -2094,12 +2094,46 @@ class RacingEngine:
         if latest_official_jockey and latest_official_jockey != jockey and latest_official_rides > 0:
             # latest_upgrade_bonus 權重已被 ML 歸零 — 死支刪除（2026-07-11），
             # 免報告出現「有講冇分」嘅因子。
+            #
+            # ── 騎師連續性兩項退出計分（2026-09-01）────────────────────────────
+            # `leave_proven_jockey_pen` (−2.98) 同 `latest_downgrade_pen` (−4.11)
+            # 嘅符號**同實際方向相反**。2026-08-04 已經用 `au_adjustment_audit`
+            # 揾到，但當時四個修法失敗，正確診斷係「cohort 超額 ≠ 因果貢獻」——
+            # 「離開已證明配搭」嘅馬按定義冇「曾策騎此駒」加分，個罰分疊喺一個
+            # 本來已低嘅分上，所以要**條件化量度**才判得到。當時標住「未解決」。
+            #
+            # 2026-09-01 用 1,820 場（當時 718 場）控制「曾策騎此駒」次數：
+            #
+            #   離開上仗已證明配搭  0 次層   觸發 +4.09pp  vs 冇觸發 −2.96pp  差 **+7.05pp**
+            #   未及上仗騎師       0 次層   觸發 +4.08pp  vs 冇觸發 −0.59pp  差 **+4.67pp**
+            #   未及上仗騎師       3+ 次層  觸發 +0.35pp  vs 冇觸發 +3.18pp  差 −2.83pp
+            #
+            # **倒退喺同一分層之內倖存** → 唔係混淆造成，符號真係反。
+            #
+            # 剷走之後 `jockey_horse_fit_score` 場內 AUC **0.5467 → 0.5668**，
+            # 而 `gold` dev **+0.0023** / terminal **+0.0019**（兩邊正）。
+            # ⚠️ `good_positional` terminal −0.0057（512 場 ≈ 3 場，噪音範圍）——
+            # Stage 4 v2 會判 REJECT，Kelvin 2026-09-01 明確裁定呢個係**修 bug**
+            # （符號證明係反），按契約 §7 correctness 上線。
+            #
+            # ⚠️ **唔准重算 `MATRIX_DISPLAY_GAINS["jockey_trainer"]`。** 剷走噪音項令
+            # 維度 raw SD 由 6.87 跌到 5.20；實測把 gain 拉返「目標 SD 11」會令結果
+            # 變差（terminal −0.0095 vs 保持原 gain +0.0000）。清噪音之後應該讓維度
+            # 影響力**自然下降**，唔係重新充氣 —— 呢個係對
+            # [[au-dimension-scale-weight-lockstep]] 嘅補充：gain 同權重要一齊動
+            # 嘅前提係「離散度變化係真訊號」。
+            #
+            # 保留敘述（不入分），因為呢兩個情境對讀者有意義。
             if current_formal_rides == 0 and latest_official_place_rate >= 0.50:
-                add(FIT_MICRO_WEIGHTS.get("leave_proven_jockey_pen", -4.0), "今場離開上仗已證明配搭",
-                    f"上仗{latest_official_jockey}對此駒上名率{latest_official_place_rate * 100:.0f}%")
+                notes.append(
+                    f"今場離開上仗已證明配搭（上仗{latest_official_jockey}對此駒上名率"
+                    f"{latest_official_place_rate * 100:.0f}%，實測此群反而超額 +4.1pp，不入分）"
+                )
             elif current_formal_rides > 0 and latest_official_place_rate > current_place_rate + 0.20:
-                add(FIT_MICRO_WEIGHTS.get("latest_downgrade_pen", -3.0), "今場騎師對此駒往績未及上仗騎師",
-                    f"今場上名率{current_place_rate * 100:.0f}% vs 上仗{latest_official_jockey} {latest_official_place_rate * 100:.0f}%")
+                notes.append(
+                    f"今場騎師對此駒往績未及上仗騎師（今場上名率{current_place_rate * 100:.0f}%"
+                    f" vs 上仗{latest_official_jockey} {latest_official_place_rate * 100:.0f}%，不入分）"
+                )
         # 同場館騎練組合 family 2026-07-11 退出計分（display-only）：成族逐項 ablation
         # 全指標零變化（觸發率太低/幅度太細）— 統計照喺 note 同錨點交代，唔再入分。
         combo_evidence = (f"{jockey}×{trainer}同場館{int(combo_stats.get('runs', 0))}次，"
@@ -2124,8 +2158,11 @@ class RacingEngine:
                 add(FIT_MICRO_WEIGHTS.get("signal_trial_rider_bonus", 2.0),
                     "試閘手接手，備戰線完整", jockey_change_signal)
             elif "回配" in jockey_change_signal:
-                add(FIT_MICRO_WEIGHTS.get("signal_reunite_bonus", 2.0),
-                    "回配熟手騎師", jockey_change_signal)
+                # `signal_reunite_bonus` (+2.00) 退出計分（2026-09-01）：符號同實際
+                # 方向相反，而且**每一層都錯** —— 條件化量度（控制「曾策騎此駒」次數）
+                # 0 次層 −3.55pp、1-2 次層 −1.19pp、3+ 次層 **−7.49pp**。
+                # 同上面兩項一齊剷；詳見上面嗰段註釋。
+                notes.append(f"{jockey_change_signal}（實測此群反而低於同層 1.2–7.5pp，不入分）")
         # 雜項硬編碼調整 family 2026-07-11 退出計分（display-only）：成族 ablation
         # 全指標零變化。有意思嘅背景（減磅/週期/首仗二出往績）保留做 note。
         if status_cycle in {"First-up", "久休復出"} and stage_stats["first_up"]["places"] > 0:
