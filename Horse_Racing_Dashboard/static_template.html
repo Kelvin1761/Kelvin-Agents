@@ -3962,6 +3962,25 @@ function renderVerdictChips(horse) {
   const plus = split(cleanText(horse.advantage)).map(shortenVerdict);
   const minus = split(cleanText(horse.risk)).map(shortenVerdict);
 
+  // HKJC's newer report format prints no 主要優勢 / 主要風險 at all, so the
+  // chips were left with nothing but the jockey and trainer. Derive them the
+  // same way the strip does -- from each dimension's own impact -- rather than
+  // inventing prose: the dimensions that moved this horse most, named.
+  // The jockey/trainer chips are added below, so "plus is empty" is not the
+  // test -- the test is whether the report gave us any bullets at all. HKJC's
+  // newer format prints none, and the chips were left saying only who rides.
+  const hasSourceBullets = plus.length > 0 || minus.length > 0;   // read BEFORE the jockey/trainer chips are added
+  if (!hasSourceBullets) {
+    const ranked = (horse.dimension_details || [])
+      .filter(d => d.ranking_weighted && d.score != null && d.weight_pct != null)
+      .map(d => ({ name: d.name, impact: (d.score - 60) * d.weight_pct / 100 }))
+      .sort((a, b) => b.impact - a.impact);
+    ranked.filter(d => d.impact >= 0.5).slice(0, 3)
+      .forEach(d => plus.push(`${d.name} +${d.impact.toFixed(1)}`));
+    ranked.filter(d => d.impact <= -0.5).reverse().slice(0, 3)
+      .forEach(d => minus.push(`${d.name} ${d.impact.toFixed(1)}`));
+  }
+
   // The jockey/trainer names are facts; whether they count as a plus is the
   // engine's call, taken from the 騎練訊號 dimension's own impact rather than
   // asserted here.
@@ -4349,25 +4368,71 @@ function kvDropList(dimensionTitle) {
   return rules;
 }
 
+// Per-run records: "第1仗(24/06/2026 第五班): 3名 1-1/4" and
+// "第1仗(24/06/2026 跑馬地 2200): 沿途位=3-4-6-10-6-3, XW=…, 名次=3, 距離=1-1/4"
+const HK_RUN_RE = /^第(\d+)仗\s*[（(]([^）)]*)[）)]\s*[:：]\s*(.+)$/;
+
+function renderRunRecords(nodes) {
+  const rows = nodes.map(n => {
+    const m = HK_RUN_RE.exec(n.text);
+    if (!m) return null;
+    const fields = {};
+    m[3].split(/[,，]/).forEach(part => {
+      const kv = /^\s*([^=]+?)\s*=\s*(.+)$/.exec(part);
+      if (kv) fields[kv[1].trim()] = kv[2].trim();
+    });
+    return { no: m[1], when: m[2], rest: m[3], fields };
+  }).filter(Boolean);
+  if (!rows.length) return '';
+  const keys = [...new Set(rows.flatMap(r => Object.keys(r.fields)))];
+  if (!keys.length) {
+    // "3名 1-1/4" style: no key=value pairs, so show the line as-is.
+    return `<div class="runs"><table class="runs__table"><tbody>${rows.map(r =>
+      `<tr><td class="runs__no">第${esc(r.no)}仗</td><td class="runs__when">${esc(r.when)}</td>`
+      + `<td>${esc(r.rest)}</td></tr>`).join('')}</tbody></table></div>`;
+  }
+  return `<div class="runs"><table class="runs__table"><thead><tr><th>仗</th><th>賽事</th>${
+    keys.map(k => `<th>${esc(k)}</th>`).join('')}</tr></thead><tbody>${rows.map(r =>
+    `<tr><td class="runs__no">第${esc(r.no)}仗</td><td class="runs__when">${esc(r.when)}</td>${
+      keys.map(k => `<td>${esc(r.fields[k] || '—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+
 function renderKvGrid(nodes, dimensionTitle) {
   // Label above value, one pair per cell. Four columns of "label: value" on one
-  // row was unreadable -- the eye had to bind each label to a value across a
-  // gap. Two columns max, and the value gets its own line under its label.
+  // row was unreadable -- the eye had to bind each label to a value across a gap.
   const drops = kvDropList(dimensionTitle);
   const seen = new Set();
-  const rows = [];
+  const simple = [];
+  let groups = '';
   for (const n of nodes) {
-    const m = /^(.{1,20}?)\s*[:：]\s*(.+)$/s.exec(n.text);
-    const row = m ? { k: m[1].trim(), v: m[2].trim() } : { k: '', v: n.text.trim() };
-    if (drops.some(rule => rule.test(row.k))) continue;
-    // 上仗正式賽騎師 / 歷來最佳配搭 / 人馬歷史 often carry byte-identical values.
-    if (seen.has(row.v)) continue;
-    seen.add(row.v);
-    rows.push(row);
+    const m = /^(.{1,20}?)\s*[:：]\s*(.*)$/s.exec(n.text);
+    const key = m ? m[1].trim() : '';
+    const value = m ? m[2].trim() : n.text.trim();
+    if (drops.some(rule => rule.test(key))) continue;
+
+    // A row whose value is empty carries its content in its children. Rendering
+    // only the top level printed "近6場數據:" with nothing under it -- 22 source
+    // lines came out as 6 on 2026-07-12 ShaTin.
+    if (!value && n.children && n.children.length) {
+      const table = renderRunRecords(n.children);
+      const body = table || `<dl class="dim-kv dim-kv--nested">${n.children.map(c => {
+        const cm = /^(.{1,20}?)\s*[:：]\s*(.+)$/s.exec(c.text);
+        return `<div class="dim-kv__row">${cm ? `<dt>${esc(cm[1].trim())}</dt><dd>${esc(cm[2].trim())}</dd>`
+          : `<dd>${esc(c.text)}</dd>`}</div>`;
+      }).join('')}</dl>`;
+      groups += `<div class="kv-group"><div class="kv-group__title">${esc(key || n.text)}</div>${body}</div>`;
+      continue;
+    }
+    if (!value) continue;
+    if (seen.has(value)) continue;
+    seen.add(value);
+    simple.push({ k: key, v: value });
   }
-  if (!rows.length) return '';
-  return `<dl class="dim-kv">${rows.map(r => `<div class="dim-kv__row">${
-    r.k ? `<dt>${esc(r.k)}</dt>` : ''}<dd>${esc(r.v)}</dd></div>`).join('')}</dl>`;
+  const grid = simple.length
+    ? `<dl class="dim-kv">${simple.map(r => `<div class="dim-kv__row">${
+        r.k ? `<dt>${esc(r.k)}</dt>` : ''}<dd>${esc(r.v)}</dd></div>`).join('')}</dl>`
+    : '';
+  return grid + groups;
 }
 
 // Detail lines under a sub-score come in five measured shapes (3,312 lines
@@ -4567,6 +4632,40 @@ function renderL600Compare(source) {
   </div>`;
 }
 
+// "Tim Clark 去年官方 528 場、91 冠（勝率 17%，收縮後 17%，全國基準 13%）" —
+// the sentence buries the one comparison that decides the score. HKJC words it
+// differently ("希威森兩季917仗：勝率6%、上名率22%") and carries no benchmark,
+// so that half renders as plain figures.
+const RATE_VS_BENCH_RE = /勝率\s*([\d.]+)\s*%[^）)]*?全國基準\s*([\d.]+)\s*%/;
+const PLACE_VS_BENCH_RE = /(?:原始|上名率)\s*([\d.]+)\s*%[^）)]*?全國基準\s*([\d.]+)\s*%/;
+const RUNS_WINS_RE = /([\d,]+)\s*(?:場|仗)[、,]?\s*(?:([\d,]+)\s*冠)?/;
+const HK_RATE_RE = /勝率\s*([\d.]+)\s*%[、,]\s*上名率\s*([\d.]+)\s*%/;
+
+function renderPersonStats(source) {
+  const rate = RATE_VS_BENCH_RE.exec(source) || PLACE_VS_BENCH_RE.exec(source);
+  const runs = RUNS_WINS_RE.exec(source);
+  const hk = HK_RATE_RE.exec(source);
+  if (!rate && !hk) return '';
+
+  let bars = '';
+  if (rate) {
+    const own = parseFloat(rate[1]), bench = parseFloat(rate[2]);
+    const scale = Math.max(own, bench, 1) * 1.15;
+    const beats = own >= bench;
+    bars = `<div class="rate__row">
+        <span class="rate__label">${esc(RATE_VS_BENCH_RE.test(source) ? '勝率' : '上名率')}</span>
+        <span class="rate__track"><span class="rate__fill rate__fill--${beats ? 'good' : 'bad'}" style="width:${(own / scale) * 100}%"></span>
+        <span class="rate__mark" style="left:${(bench / scale) * 100}%"></span></span>
+        <span class="rate__val">${own}%</span>
+      </div>
+      <div class="rate__note">豎線 = 全國基準 ${bench}%　·　${beats ? '<b class="rate__good">高過基準</b>' : '<b class="rate__bad">低過基準</b>'}</div>`;
+  } else {
+    bars = `<div class="rate__pair"><span>勝率 <b>${hk[1]}%</b></span><span>上名率 <b>${hk[2]}%</b></span></div>`;
+  }
+  const volume = runs ? `<div class="rate__volume">${esc(runs[1])} 場${runs[2] ? `　${esc(runs[2])} 冠` : ''}</div>` : '';
+  return `<div class="rate">${volume}${bars}</div>`;
+}
+
 function renderSubScore(node, meta) {
   // "騎師分 46 ← Jason Whiting 去年官方 570 場…" — score is the headline, the
   // source is the caption, the nested lines are the arithmetic.
@@ -4587,7 +4686,9 @@ function renderSubScore(node, meta) {
   // the person's name is already the headline above (#3), and 近績分's caption
   // is "近績 <sequence>，<commentary>" whose sequence is the chip (#5).
   const chart = renderL600Compare(source);
+  const stats = person ? renderPersonStats(source) : '';
   let caption = chart ? '' : source;
+  if (stats) caption = '';
   if (caption && person) caption = caption.replace(person, '').replace(/^[\s，,、:：]+/, '');
   if (caption && /^近績分$/.test(name)) caption = '';
   const children = meta && meta.extras.length
@@ -4600,6 +4701,7 @@ function renderSubScore(node, meta) {
     </div>
     ${person ? `<div class="dim-sub__person">${esc(person)}</div>` : ''}
     ${chart}
+    ${stats}
     ${caption ? `<div class="dim-sub__source">${esc(caption)}</div>` : ''}
     ${children.length ? `<div class="dim-sub__detail">${renderSubScoreDetails(children, source)}</div>` : ''}
   </div>`;
@@ -4677,7 +4779,19 @@ function renderDimensionBody(content, dimensionTitle) {
   }
   const claimed = new Set([formula, verdict, data].filter(Boolean));
   const rest = blocks.filter(b => !claimed.has(b));
-  if (rest.length) h += renderKvGrid(rest, dimensionTitle);
+  // HKJC prints a whole 晨操分析 block (workload, who rode work, deployment
+  // flags) that AU has no equivalent for. It has no value of its own, only
+  // children, so the old top-level-only pass dropped all seven lines.
+  for (const block of rest) {
+    if (!block.children.length) continue;
+    h += `<div class="kv-group kv-group--wide"><div class="kv-group__title">${esc(block.label || block.text)}</div>`
+      + `<div class="kv-group__lines">${block.children.map(c =>
+          `<div class="kv-line">${esc(c.text)}</div>`
+          + (c.children.length ? c.children.map(g => `<div class="kv-line kv-line--sub">${esc(g.text)}</div>`).join('') : '')
+        ).join('')}</div></div>`;
+  }
+  const flat = rest.filter(b => !b.children.length);
+  if (flat.length) h += renderKvGrid(flat, dimensionTitle);
   return h;
 }
 

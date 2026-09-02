@@ -857,7 +857,7 @@ def test_duplicated_rows_are_dropped_by_rule_not_by_hand():
     ]:
         assert row in rules, f"{dimension} no longer drops {row}"
     assert "最近正式賽果" in text, "the global drop for 最近正式賽果 is gone"
-    assert "seen.has(row.v)" in text, \
+    assert "seen.has(value)" in text, \
         "identical values are no longer de-duplicated (上仗正式賽騎師 == 歷來最佳配搭)"
 
 
@@ -988,3 +988,40 @@ def test_hkjc_analyst_view_chapter_is_dropped():
     match = re.search(r'const ANALYSIS_SKIP_HEADING = /(.+?)/;', text)
     assert match and '最終判讀' in match.group(1), \
         "HKJC's 最終判讀 (Analyst View) chapter is back"
+
+
+# ── HKJC nested data ───────────────────────────────────────────────────────
+
+def test_nested_data_children_are_rendered():
+    """A data row whose value is empty carries its content in its children.
+    Rendering only the top level printed "近6場數據:" with nothing under it --
+    22 source lines came out as 6 on 2026-07-12 ShaTin, and the whole 晨操分析
+    block (workload, who rode work, deployment flags) never appeared at all."""
+    text = _template_text()
+    assert "if (!value && n.children && n.children.length)" in text, \
+        "nested data groups are collapsed again"
+    definitions, uses = _definition_and_call_counts(text, 'renderRunRecords')
+    assert definitions == 1 and uses >= 1, "per-run record tables are not wired"
+    assert "kv-group--wide" in text, "the 晨操分析 block is no longer surfaced"
+
+
+def test_hkjc_chips_fall_back_to_dimension_impacts():
+    """HKJC's newer report prints no 主要優勢 / 主要風險, so the chips said only
+    who rides. The flag has to be read BEFORE the jockey/trainer chips are
+    pushed, or those very chips make it look like the report had bullets."""
+    text = _template_text()
+    assert "const hasSourceBullets" in text, "the fallback flag is gone"
+    assert text.index("const hasSourceBullets") < text.index("const jt = (horse.dimension_details"), \
+        "hasSourceBullets is evaluated after the jockey/trainer chips are added"
+
+
+def test_person_strike_rate_is_charted_against_the_benchmark():
+    """"Tim Clark 去年官方 528 場、91 冠（勝率 17%，收縮後 17%，全國基準 13%）"
+    was the box's only description and buried the one comparison that matters."""
+    text = _template_text()
+    definitions, uses = _definition_and_call_counts(text, 'renderPersonStats')
+    assert definitions == 1 and uses >= 1, "the strike-rate chart is not wired"
+    assert _template_const('RATE_VS_BENCH_RE').search(
+        "去年官方 528 場、91 冠（勝率 17%，收縮後 17%，全國基準 13%）")
+    assert _template_const('HK_RATE_RE').search("希威森兩季917仗：勝率6%、上名率22%"), \
+        "HKJC's wording carries no benchmark and must still render its figures"
