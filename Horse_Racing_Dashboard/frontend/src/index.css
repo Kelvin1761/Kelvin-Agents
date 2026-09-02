@@ -3020,25 +3020,46 @@ a:hover {
 .counts-line__item--bad b { color: #b91c1c; }
 .counts-line__sep { margin: 0 7px; color: #cbd5e1; }
 
-/* Inputs a component is built from, with the share the 組合 line gives them. */
-.dim-parts { margin-top: 8px; display: grid; gap: 5px; }
+/* Inputs a component is built from, with the share the 組合 line gives them.
+   A flat row could not carry the evidence each input is scored on, so each one
+   is now the same box as every other scoring component. */
+.dim-parts { margin-top: 10px; display: grid; gap: 8px; }
 
 .dim-part {
-  display: grid;
-  grid-template-columns: minmax(72px, auto) 42px 40px;
-  align-items: baseline;
-  gap: 6px 8px;
-  padding: 6px 8px;
-  border-radius: 7px;
+  padding: 9px 11px;
+  border-radius: 9px;
   background: #f8fafc;
-  border: 1px solid #eef2f7;
-  font-size: 0.7rem;
+  border: 1px solid #e8eef6;
 }
 
-.dim-part__name { font-weight: 700; color: #334155; }
-.dim-part__share { font-size: 0.62rem; color: #64748b; font-weight: 700; text-align: right; }
-.dim-part__score { font-size: 0.85rem; font-weight: 800; color: #1e40af; text-align: right; font-variant-numeric: tabular-nums; }
-.dim-part__why { grid-column: 1 / -1; font-size: 0.64rem; color: #94a3b8; line-height: 1.6; }
+.dim-part__head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.dim-part__name { font-size: 0.74rem; font-weight: 800; color: #1e293b; }
+.dim-part__share { font-size: 0.6rem; color: #94a3b8; font-weight: 700; }
+
+.dim-part__score {
+  margin-left: auto;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #1e40af;
+  font-variant-numeric: tabular-nums;
+}
+
+.dim-part__bar {
+  margin-top: 6px;
+  height: 3px;
+  border-radius: 2px;
+  background: #e8eef6;
+  overflow: hidden;
+}
+
+.dim-part__bar span { display: block; height: 100%; background: #93a9d8; border-radius: 2px; }
+.dim-part__why { margin-top: 6px; font-size: 0.65rem; color: #64748b; line-height: 1.6; }
+.dim-part__detail { margin-top: 6px; }
 
 
 .kv-group--inbox { margin-top: 8px; background: #f8fafc; }
@@ -4420,3 +4441,63 @@ a:hover {
 }
 
 .kv-line__key { color: #475569; font-weight: 700; margin-right: 6px; }
+
+
+/* 一句長描述逐個小句斷行。 */
+.dim-sub__source--rows { display: grid; gap: 2px; }
+.dim-sub__source--rows span { display: block; }
+
+/* 晨操分析 冇自己個格,行數直接排喺操練趨勢分入面。 */
+.dim-sub__detail--lines { margin-top: 8px; }
+
+/* 近6場數據：五件事本來擠喺一個字串（「第1仗(24/06/2026 第五班): 3名 1-1/4」），
+   拆開逐欄之後日期擺前,年份剷走 —— 每行都一樣,佔咗三分一闊度。 */
+.runs__table--recent { width: 100%; border-collapse: collapse; font-size: 0.66rem; }
+
+.runs__table--recent thead th {
+  text-align: left;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  padding: 0 6px 5px;
+  border-bottom: 1px solid #e8eef6;
+  white-space: nowrap;
+}
+
+.runs__table--recent tbody td {
+  padding: 6px;
+  border-bottom: 1px dashed #f1f5f9;
+  color: #475569;
+  vertical-align: baseline;
+}
+
+.runs__table--recent tbody tr:last-child td { border-bottom: 0; }
+.runs__table--recent .runs__when { color: #1e293b; font-weight: 700; white-space: nowrap; }
+.runs__table--recent .runs__no { color: #94a3b8; white-space: nowrap; }
+.runs__table--recent .runs__grade { color: #64748b; }
+.runs__table--recent .runs__num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.runs__table--recent .runs__place { font-weight: 800; color: #1e293b; }
+.runs__table--recent .runs__row--latest td { background: #f8fafc; }
+
+.runs__tag {
+  margin-left: 5px;
+  font-size: 0.52rem;
+  font-weight: 700;
+  color: #64748b;
+  background: #eef2f7;
+  border-radius: 4px;
+  padding: 1px 4px;
+}
+
+/* Grid items default to min-width:auto, so one long unbroken line inside a
+   component box pushed the whole grid to 581px in a 375px viewport. */
+.dim-parts > .dim-part,
+.dim-subs > .dim-sub { min-width: 0; }
+
+.dim-part .kv-line,
+.dim-part .kv-group,
+.dim-sub .kv-line { min-width: 0; overflow-wrap: anywhere; }
+
+.dim-part .runs,
+.dim-sub .runs { overflow-x: auto; }
