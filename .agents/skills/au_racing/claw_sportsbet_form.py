@@ -76,6 +76,21 @@ class SportsbetFormFetcher:
     def _cache_path(self, url):
         return self.cache_dir / (hashlib.sha1(url.encode()).hexdigest() + ".html")
 
+    def get_cached(self, url):
+        """只讀 cache，**永遠唔會出網**。冇 cache 就返 None。
+
+        Speedmap 版係靠 `sb_browser_bridge.py` 用真瀏覽器餵落 cache 嘅
+        （curl_cffi 攞呢一版一定 403）。抽取流程唔應該因為想要佢而多打一個
+        請求 —— sportsbetform 一個冷卻窗大約只夠抽一個場次。
+        """
+        cp = self._cache_path(url)
+        if cp.exists():
+            try:
+                return cp.read_text(encoding="utf-8")
+            except OSError:
+                return None
+        return None
+
     def get(self, url):
         """回傳 HTML；失敗回 None（絕不 raise —— 一場攞唔到唔應該炸咗成個馬場）。"""
         cp = self._cache_path(url)
@@ -1078,23 +1093,28 @@ RE_SPEED = re.compile(r"^\s*(\d{1,2})\s*$")
 
 
 def parse_speedmap(html):
-    """`?view=Speedmap` → {馬號: 預測定位序}（**1 = 最前，貼欄／領放**）。
+    r"""`?view=Speedmap` → {馬號: 預測定位序}（**1 = 最前，貼欄／領放**）。
 
-    ⚠️ 佢**唔係圖** —— 零 SVG/canvas，純 DOM 文字。版面係：
+    ⚠️ 佢**唔係圖** —— 零 SVG/canvas，純 DOM 文字。`Finish post` 之後係一串
+    `<馬號>. <馬名>` 同 `<行號>` 交替出現，行號 N…1，1 = 最貼 finish post。
 
-        Finish post  13 3. Smokin' Romans  12 5. Freedom Rally  …  1 4. Brayden Star
-                     ^^ **行號**，由大到細列出
+    ⚠️⚠️ **版面有兩款，而舊版只識一款。**（2026-09-02 實測 836 個 cache 頁）
 
-    ⚠️⚠️ **行號唔等於出現次序，而呢度曾經搞錯咗。** 舊版用 `enumerate` 攞
-    出現次序，即係第一個列出（行號 13 = **最後**嗰個位置）被當成 1 = 最前。
-    整個映射反晒。實測（58 場）：用出現次序同實際 800m 走位嘅相關係
-    **ρ = −0.180**，方向係錯嘅。
+        數字先：  `13`  `3. Smokin' Romans`  `12`  `5. Freedom Rally` …
+        馬先：    `3. Depth Of Character`  `10`  `5. Port Lockroy`  `9` …
 
-    所以要讀行首嗰個數字。`Finish post` 之後每個 `<行號> <馬號>. <馬名>`，
-    行號細 = 貼近 finish post 嗰邊 = 前置。
+    舊版寫死「數字先」（`(\d+)\s+(\d+)\.\s`），撞正「馬先」嗰款就會將**上一匹馬
+    嘅行號**派畀下一匹，同時**靜靜丟咗第一匹**（即係預測跑最後嗰匹）。
+    實測 463 個頁面係「馬先」款，另外 373 個兩種讀法都砌得出合法排列 ——
+    全部 836 個頁面 parse 出嚟嘅 map 都同真值唔同。
 
-    ⚠️ 呢個係**預測**，唔係實際走位 —— 對過一場 10/10 匹都有 800m 走位嘅
-    賽事，Spearman ρ = +0.697（實際走位會係 1.000）。冇洩漏。
+    單元測試一直綠，因為 fixture 只寫咗「數字先」嗰款。
+
+    順帶一提：呢個 bug 其實唔會扭轉**次序**（每匹都平移一格，相對排序不變），
+    所以佢造成嘅唔係「方向錯」，而係「每場靜靜少咗最後嗰匹馬」。
+
+    而家兩款都讀，再用「行號一定要係 1..N 嘅排列」做驗證閘：驗唔過就返空 dict，
+    唔會交一個砌到似模似樣但係錯嘅 map 出去。
     """
     txt = to_text(html)
     i = txt.find("Finish post")
@@ -1105,12 +1125,47 @@ def parse_speedmap(html):
         j = seg.find(stop)
         if j >= 0:
             seg = seg[:j]
-    out = {}
-    # `<行號> <馬號>. <馬名>` —— 兩個數字之間可以有空白或者換行
-    for m in re.finditer(r"(?<![\d.])(\d{1,2})\s+(\d{1,2})\.\s", seg):
-        row, num = int(m.group(1)), int(m.group(2))
-        out.setdefault(num, row)
-    return out
+    tokens = [line.strip() for line in seg.split("\n") if line.strip()]
+    horse = re.compile(r"^(\d{1,2})\.\s")
+
+    def pair(number_first):
+        out = {}
+        for a, b in zip(tokens, tokens[1:]):
+            if number_first:
+                m = horse.match(b)
+                if a.isdigit() and m:
+                    out.setdefault(int(m.group(1)), int(a))
+            else:
+                m = horse.match(a)
+                if m and b.isdigit():
+                    out.setdefault(int(m.group(1)), int(b))
+        return out
+
+    listed = {int(m.group(1)) for m in (horse.match(t) for t in tokens) if m}
+
+    def score(candidate):
+        """揀邊個讀法：行號唔可以撞，而且**每一匹列出嘅馬都要有行號**。
+
+        唔硬性要求 1..N（完整頁面實測都係，但截斷嘅片段唔應該因此攞唔到嘢），
+        不過「有馬冇號」同「撞號」兩樣都代表讀錯咗版面，寧願返空。
+        """
+        if not candidate:
+            return None
+        rows = list(candidate.values())
+        if len(set(rows)) != len(rows):
+            return None            # 撞行號 = 一定讀錯咗
+        if len(candidate) != len(listed):
+            return None            # 有馬冇行號 = 讀錯咗，唔好交半份
+        is_permutation = sorted(rows) == list(range(1, len(candidate) + 1))
+        return (is_permutation, len(candidate))
+
+    best, best_score = {}, None
+    for number_first in (False, True):
+        candidate = pair(number_first)
+        rank = score(candidate)
+        if rank and (best_score is None or rank > best_score):
+            best, best_score = candidate, rank
+    return best
 
 
 def fetch_odds(fetcher, event_id):
@@ -1322,18 +1377,32 @@ def main():
         mid = re.search(r"/(\d+)/", args.meeting_url)
         mid = mid.group(1) if mid else args.meeting
         out = []
+        speedmaps = {}
         for i, rid in enumerate(args.races.split(","), 1):
-            html = f.get(f"{BASE}/{mid}/{rid.strip()}/")
+            base_url = f"{BASE}/{mid}/{rid.strip()}/"
+            html = f.get(base_url)
             if not html:
                 print(f"   ⚠️ R{i} 攞唔到，跳過")
                 continue
             pr = parse_race(html)
-            out.append((pr["meta"].get("race_number", i), pr, parse_runner_blocks(html)))
+            race_no = pr["meta"].get("race_number", i)
+            out.append((race_no, pr, parse_runner_blocks(html)))
+            # 官方預測定位序：**只由 cache 讀**，唔會多打請求。
+            # `write_meeting()` 由來冇收過 `speedmaps=`，所以 11,356 行
+            # `SpeedPos:` 全部係 `-`（2026-09-02 實測）。有 cache 就填返。
+            sm_html = f.get_cached(base_url + "?view=Speedmap")
+            if sm_html:
+                sm = parse_speedmap(sm_html)
+                if sm:
+                    speedmaps[race_no] = sm
         if not out:
             print("❌ 一場都攞唔到")
             return 1
+        if speedmaps:
+            print(f"   🗺️ 官方 Speedmap：{len(speedmaps)}/{len(out)} 場由 cache 攞到")
         write_meeting(out, args.out_dir, args.date or "2026-01-01",
-                      args.venue or (out[0][1]["meta"].get("venue") or "Unknown"))
+                      args.venue or (out[0][1]["meta"].get("venue") or "Unknown"),
+                      speedmaps=speedmaps)
         # 馬匹往績索引：抽取嘅副產品，賽績線靠佢查對手後續走勢。
         # 每個 runner block 已經帶埋成個往績清單，所以呢度**唔會多打一個請求**。
         try:

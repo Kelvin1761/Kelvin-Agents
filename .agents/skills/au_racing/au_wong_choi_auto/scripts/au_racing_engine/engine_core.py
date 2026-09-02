@@ -238,6 +238,52 @@ def _lookup_standard_l600(track: str, distance_m: int) -> float | None:
             frac = (distance_m - lo) / (hi - lo)
             return source[lo] + frac * (source[hi] - source[lo])
     return None
+PROVINCIAL_TRACK_FILE = "04b_track_provincial.md"
+
+# 賽道幾何（周長 / 直路 / 方向）由 `fetch_au_track_geometry.py` 生成，兩個來源交叉核對。
+# 以前呢啲數喺 `04b_track_*.md` 人手寫，實測 2026-09-02：85 個場地印緊合集檔第一節
+# 嘅數，而手寫嗰批本身都有錯（Morphettville 2000/350 → 真值 2339/334）。
+# markdown 而家淨係負責文字特性（key_traits / distance_note / going_note）。
+TRACK_GEOMETRY_PATH = Path(__file__).resolve().parents[2] / "resources" / "au_track_geometry.json"
+TRACK_GEOMETRY_CACHE: dict[str, dict] = {}
+
+# 場地名 → 幾何檔 key。**只准逐字對或者明寫 alias** —— 唔准「斬走尾巴再試」，
+# 咁做會令 `Ballarat Synthetic` 攞到草地跑道嘅數，即係我哋啱啱修好嗰種 bug。
+TRACK_GEOMETRY_ALIASES = {
+    "rosehill": "rosehill-gardens",
+    "canterbury-park": "canterbury",
+    "newcastle-broadmeadow": "newcastle",
+    "broadmeadow": "newcastle",
+    "sandown-hillside": "sandown",
+    "wagga-wagga": "wagga",
+    "belmont-park": "belmont",
+    "mount-isa": "mt-isa",
+    "mt-gambier": "mount-gambier",
+    "devonport-synthetic": "devonport",
+    "murray-bdge": "murray-bridge",
+    "pioneer-park": "alice-springs",
+}
+
+
+def _track_geometry_key(venue: str) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", str(venue or "").lower()).strip("-")
+    return TRACK_GEOMETRY_ALIASES.get(slug, slug)
+
+
+def _load_track_geometry(venue: str) -> dict:
+    if not TRACK_GEOMETRY_CACHE:
+        try:
+            payload = json.loads(TRACK_GEOMETRY_PATH.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            # 讀唔到就當冇幾何。呢度**唔准**靜靜 fall back 去 markdown 嘅數 ——
+            # 果批數就係我哋要換走嘅嘢。
+            TRACK_GEOMETRY_CACHE["__loaded__"] = {}
+            return {}
+        TRACK_GEOMETRY_CACHE.update(payload.get("venues") or {})
+        TRACK_GEOMETRY_CACHE["__loaded__"] = {}
+    row = TRACK_GEOMETRY_CACHE.get(_track_geometry_key(venue)) or {}
+    return row if row.get("circumference_m") else {}
+
 VENUE_TRACK_MAP = {
     "randwick": "04b_track_randwick.md",
     "rosehill": "04b_track_rosehill.md",
@@ -247,8 +293,6 @@ VENUE_TRACK_MAP = {
     "eagle farm": "04b_track_eagle_farm.md",
     "doomben": "04b_track_doomben.md",
     "warwick farm": "04b_track_warwick_farm.md",
-    "canterbury": "04b_track_provincial.md",
-    "provincial": "04b_track_provincial.md",
 }
 
 VENUE_STATE_MAP = {
@@ -2402,7 +2446,7 @@ class RacingEngine:
     def _describe_race_shape_matrix(self, score, feature_scores):
         """短而狠：檔位一句定調 → 場地紀錄一句 → 一句形勢結論。
         逐項計法喺評分構成 detail 攤開，判讀唔覆述。"""
-        style = self._running_style() or self._tactical_position_text() or ""
+        style = self._running_style()
         style_parts = [p.strip() for p in str(style).split("/")]
         if len(style_parts) > 1 and len(set(style_parts)) == 1:
             style = style_parts[0]
@@ -2903,20 +2947,26 @@ class RacingEngine:
             for token in ("Waller", "Maher", "Waterhouse", "Bott", "Pride", "Snowden", "Freedman", "Hawkes", "Charlton")
         )
 
+    # 跑法只有**一個**來源：Sportsbet 逐仗 video/settled 走位證據，經
+    # `weighted_au_running_style()` 加權，寫入 `running_style_line`。
+    # 2026-09-02 剷走另外三條路，因為佢哋都唔係觀察返嚟嘅跑法：
+    #   `race_shape_summary`     —— 舊 Racenet 場面摘要（Racenet 本身已剷走）
+    #   `facts_section` token 掃描 —— 由敘述文字撈字，會撈到對手嘅跑法
+    #   `tactical_plan.expected_position` —— 我哋自己**推**出嚟嘅（仲溝埋檔位）
+    # 多個來源嘅代價唔係「多啲覆蓋」，係「量嘅時候唔知量緊邊個」。
+    UNMEASURED_STYLES = ("未知", "多變")
+
     def _running_style(self):
-        text = str(self.data.get("running_style_line") or self.data.get("race_shape_summary") or "")
-        if text:
-            return text
-        for token in ("前領", "居中前", "中後", "後上", "前置", "中段"):
-            if token in self.facts_section:
-                return token
-        return ""
+        text = str(self.data.get("running_style_line") or "").strip()
+        if not text or any(token in text for token in self.UNMEASURED_STYLES):
+            return ""
+        return text
 
     def _predicted_style(self):
         """Tactical position read (前置／守好位／守中／後上) + the WHY, for the 數據判讀.
         Reference only — never enters the rating matrix. Uses the pre-computed
         running_style_line / tactical_plan; WHY comes from the race scenario."""
-        raw = self._running_style() or self._tactical_position_text()
+        raw = self._running_style()
         token = ""
         for cand in ("前領", "前置", "居中前", "跟前", "守好位", "中後", "後上",
                      "守中", "中段", "居中"):
@@ -3484,6 +3534,10 @@ class RacingEngine:
             traits.append(clean)
         if traits:
             parts.append(" / ".join(traits[:2]))
+        if len(parts) <= 1:
+            # 淨係得場地名 = 呢個場地冇任何幾何資料。報一個孤零零嘅名等於話
+            # 「有資料」，所以直接唔出呢行（`_anchor_lines` 會 drop 空字串）。
+            return ""
         return " | ".join(parts)
 
     def _track_distance_note_brief(self):
@@ -3491,7 +3545,7 @@ class RacingEngine:
 
     def _track_fit_brief(self):
         context = self._track_context()
-        style = self._running_style() or self._tactical_position_text()
+        style = self._running_style()
         barrier = parse_float(self.horse_data.get("barrier"))
         bits = []
         if context.get("front_bias"):
@@ -3525,7 +3579,7 @@ class RacingEngine:
         if ps and ps.get("label"):
             label, conf = ps["label"], (ps.get("conf") or "")
         else:
-            label = (self._running_style() or self._tactical_position_text() or "").strip()
+            label = self._running_style().strip()
             conf = re.sub(r"^.*?[:：]", "", self._style_confidence()).strip()
         if not label:
             return ""
@@ -4576,13 +4630,16 @@ class RacingEngine:
                     f"近2仗平均輸距較之前擴大 {abs(improvement):.1f}L")
                 notes.append("輸距趨勢惡化")
 
-        run_styles = [entry.get("run_style", "") for entry in self._official_entries()[:4] if entry.get("run_style") and entry.get("run_style") != "-"]
-        # 樣本閘：得 1 場有跑法記錄唔構成「連貫」，要 ≥2 場全一致先畀分
-        # （2026-07-10 A/B：全檔案 GGP +2、A窗 +1、B窗 +1、冠軍 +0.3pp，無指標倒退）
-        if len(run_styles) >= 2 and len(set(run_styles)) == 1:
-            add(w.get("run_style_bonus", 3.0), "跑法連貫獎勵",
-                f"近{len(run_styles)}場正式賽跑法全部一致")
-            notes.append("近期跑法連貫")
+        # 「跑法連貫獎勵」（2026-07-10 加，w=5.2）2026-09-02 剷走：**佢由來冇 fire 過**。
+        # 佢讀 Facts 往績表嘅「走位跑法」欄，而嗰欄嘅來源係逐仗**賽評文字**
+        # (`extract_run_profile_from_video`)。Racenet 落畫、轉去 Sportsbet 之後,
+        # sportsbetform 嘅表格頁根本冇賽評 —— 抽取層寫死 `Video: / Note: / Stewards:`
+        # 三個空欄（實測 60 個 cache 頁 0 個有 stewards/comment 字眼，唔係抽取漏,
+        # 係來源冇）。語料庫實測：**26,381 條往績行，走位跑法欄 100% 係 `-`**。
+        # 即係話呢個 +5.2 分嘅條件永遠 False。留住佢淨係令人以為「跑法有入分」。
+        # 真正嘅走位證據而家喺「跑位軌跡」欄嘅 `S<n>` 起步位（正式賽 56.5% 有），
+        # 由 `weighted_au_running_style()` 用；但佢做排名特徵已經過唔到閘
+        # （EXP-20260902-02：六個 k 冇一個 5/5 fold）。
 
         if "穩定" in self._sectional_trends().get("pi_trend", ""):
             add(w.get("pi_stable_bonus", 2.0), "PI 走勢穩定獎勵", "段速 PI 趨勢呈穩定")
@@ -5873,6 +5930,12 @@ def _parse_speed_map(text: str) -> dict:
         "on_pace": _parse_num_list(field("on_pace")),
         "mid_pack": _parse_num_list(field("mid_pack")),
         "closers": _parse_num_list(field("closers")),
+        "unclassified": _parse_num_list(field("unclassified")),
+        # 三條並排嘅預測起步位（`[馬號:值, ...]`）。EXP-20260902-03：官方 Speedmap
+        # 同我哋自己個圖 ρ 只有 +0.005，30/70 混合喺 holdout 贏 +0.063 ✅。
+        "official_settle": _parse_num_map(field("official_settle")),
+        "our_settle": _parse_num_map(field("our_settle"), as_float=True),
+        "blended_settle": _parse_num_map(field("blended_settle")),
         "style_evidence": field("style_evidence"),
         "track_bias": _normalize_speed_map_text(field("track_bias")),
         "tactical_nodes": _normalize_speed_map_text(field("tactical_nodes")),
@@ -5884,6 +5947,14 @@ def _parse_speed_map(text: str) -> dict:
 
 def _parse_num_list(text):
     return [int(x) for x in re.findall(r"\d+", str(text or ""))]
+
+
+def _parse_num_map(text, as_float=False):
+    """`[2:4, 4:1, 7:6.5]` → {2: 4, 4: 1, 7: 6.5}。"""
+    out = {}
+    for key, value in re.findall(r"(\d+)\s*:\s*([0-9.]+)", str(text or "")):
+        out[int(key)] = float(value) if as_float else int(float(value))
+    return out
 
 
 def _parse_horse_sections(text: str) -> dict:
@@ -6152,10 +6223,9 @@ def _extract_target_distance_line(block: str) -> str:
 def _build_tactical_plan(barrier: int, block: str) -> dict:
     style = _extract_running_style_line(block)
     latest_official = next((cols for cols in _record_rows(block) if "試閘" not in cols[1]), None)
-    latest_run_style = latest_official[14].strip() if latest_official and len(latest_official) > 14 else ""
     latest_consumption = latest_official[15].strip() if latest_official and len(latest_official) > 15 else ""
     latest_notes = latest_official[16].strip() if latest_official and len(latest_official) > 16 else ""
-    expected_position = _expected_position_label(style, latest_run_style, barrier)
+    expected_position = _expected_position_label(style)
     race_scenario = _tactical_scenario_text(expected_position, barrier, latest_consumption, latest_notes)
     return {
         "expected_position": expected_position,
@@ -6163,18 +6233,32 @@ def _build_tactical_plan(barrier: int, block: str) -> dict:
     }
 
 
-def _expected_position_label(style: str, latest_run_style: str, barrier: int) -> str:
-    text = f"{style} {latest_run_style}".strip()
+def _expected_position_label(style: str) -> str:
+    """由 Sportsbet 加權跑法直接對照。**唔准**自己造一個。
+
+    舊版收三個輸入（加權跑法 + 上仗跑法 + 檔位），冇跑法證據時就按檔位
+    寫「守中 / 內欄」或者「守中 / 居中」—— 即係由**檔位**編一個從來冇觀察過嘅
+    跑法出嚟，而呢個 label 之後又餵返落 `_running_style()` 做 fallback，
+    形成一個自己餵自己嘅圈。2026-09-02 拆咗：一個來源，冇證據就留空。
+    """
+    text = str(style or "")
     if any(token in text for token in ("前置", "跟前", "居中前", "前領", "領放")):
         return "前置 / 跟前"
     if any(token in text for token in ("後上", "中後", "後追")):
         return "中後 / 後上"
-    if barrier <= 3:
-        return "守中 / 內欄"
-    return "守中 / 居中"
+    if "守中" in text:
+        return "守中"
+    return ""
 
 
 def _tactical_scenario_text(expected_position: str, barrier: int, consumption: str, notes: str) -> str:
+    if not expected_position:
+        # 冇跑法證據 —— 只可以講檔位，唔可以講「預計點跑」。
+        if barrier <= 3:
+            return f"冇走位證據，跑法未定；{barrier}檔起碼有貼欄慳位嘅選擇。"
+        if barrier <= 8:
+            return "冇走位證據，跑法未定；中檔進退有位，睇出閘先定走位。"
+        return "冇走位證據，跑法未定；外檔出閘後要即刻定走位，否則走位成本會較高。"
     if "前置" in expected_position:
         if barrier <= 4:
             text = f"出閘後可憑{barrier}檔主動守住前列，首彎前以省位切入為先，入直路前保持走位主動權。"
@@ -7173,25 +7257,58 @@ def _load_track_profile(venue: str, distance_m: int = 0) -> dict:
         if key in venue_lower:
             track_file = TRACK_RESOURCE_DIR / filename
             break
-    if not track_file or not track_file.exists():
-        fallback = TRACK_RESOURCE_DIR / "04b_track_provincial.md"
+    dedicated = track_file is not None and track_file.exists()
+    if not dedicated:
+        fallback = TRACK_RESOURCE_DIR / PROVINCIAL_TRACK_FILE
         track_file = fallback if fallback.exists() else None
     if not track_file or not track_file.exists():
         return {}
     text = track_file.read_text(encoding="utf-8")
-    section = _track_venue_section(text, venue) or text
+    if dedicated:
+        # 單場地檔：成份檔案就係嗰個場地，唔好再切 section。個幾何表喺一級標題
+        # (`# Randwick 場地特性`) 之下、第一個 `##` 之上，切 section 就會漏咗成個表。
+        section = text
+    else:
+        # 合集檔（provincial）：一定要對到該場地嘅 `## <venue>` 段落先攞得幾何。
+        # 對唔到就唔好 fall back 去成份檔 —— 舊版咁做，令 85 個場地靜靜印住
+        # 合集第一個場地（Canterbury）嘅 1570m / 280m。冇數據要報冇數據。
+        section = _track_venue_section(text, venue)
+        if not section:
+            # 冇文字特性唔代表冇幾何 —— 84 個場地就係得幾何冇 markdown。
+            profile = {
+                "venue": venue,
+                "key_traits": [],
+                "distance_note": "",
+                "going_note": "",
+                "source_file": "",
+            }
+            profile.update(_geometry_fields(venue))
+            TRACK_PROFILE_CACHE[cache_key] = profile
+            return profile
+    going_heading = "## 🌧️ 天氣與場地互動 (Track Condition Bias)"
     profile = {
         "venue": venue,
-        "circumference_m": _track_table_int(section, "周長") or _extract_first_int(section, r"(?:賽道)?周長:\**\s*([0-9]+)m"),
-        "straight_m": _track_table_int(section, "直路") or _extract_first_int(section, r"直路(?:長度)?:\**\s*([0-9]+)m"),
-        "direction": _track_table_text(section, "方向") or _capture(section, r"賽道風向:\**\s*([^\n]+)"),
         "key_traits": _extract_track_traits(section),
-        "distance_note": _compact_text(_track_distance_note(section, distance_m) or _track_distance_note(text, distance_m)),
-        "going_note": _compact_text(_section_text(section, "## 🌧️ 天氣與場地互動 (Track Condition Bias)") or _section_text(text, "## 🌧️ 天氣與場地互動 (Track Condition Bias)")),
+        "distance_note": _compact_text(_track_distance_note(section, distance_m)),
+        "going_note": _compact_text(_section_text(section, going_heading)),
         "source_file": track_file.name,
     }
+    profile.update(_geometry_fields(venue))
     TRACK_PROFILE_CACHE[cache_key] = profile
     return profile
+
+
+def _geometry_fields(venue: str) -> dict:
+    """周長 / 直路 / 方向 一律由生成嘅幾何檔嚟，唔再由 markdown 讀。"""
+    geometry = _load_track_geometry(venue)
+    return {
+        "circumference_m": int(geometry.get("circumference_m") or 0),
+        "straight_m": int(geometry.get("straight_m") or 0),
+        "direction": str(geometry.get("direction") or ""),
+        "classification": str(geometry.get("classification") or ""),
+        "track_note": str(geometry.get("note") or ""),
+        "geometry_sources": list(geometry.get("sources") or []),
+    }
 
 
 def _track_venue_section(text: str, venue: str) -> str:
@@ -7199,8 +7316,14 @@ def _track_venue_section(text: str, venue: str) -> str:
     if not venue_words:
         return ""
     venue_pattern = r"\s+".join(venue_words)
-    match = re.search(rf"(^##\s+.*{venue_pattern}.*?\n.*?)(?=^##\s+|\Z)", text, re.I | re.M | re.S)
-    return match.group(1).strip() if match else ""
+    # 標題行唔可以跨行 —— 舊版用咗 re.S，令 `^##\s+.*<venue>` 個 `.*` 由檔案第一個
+    # `##` 一路食落去先撞到場地名，於是每個場地都攞返合集第一節嘅表。
+    match = re.search(
+        rf"(^\#{{1,3}}[ \t]+[^\n]*{venue_pattern}[^\n]*\n)(.*?)(?=^\#{{1,3}}[ \t]+|\Z)",
+        text,
+        re.I | re.M | re.S,
+    )
+    return (match.group(1) + match.group(2)).strip() if match else ""
 
 
 def _track_table_text(text: str, label: str) -> str:

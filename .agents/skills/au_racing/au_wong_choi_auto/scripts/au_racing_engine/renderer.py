@@ -428,7 +428,7 @@ def _panorama(race, verdict, horses):
         *_going_box_advisory(race),
         "**🏃 形勢推演**",
         "",
-        *_shape_overview_lines(speed_map),
+        *_shape_overview_lines(speed_map, horses),
         "",
         "**📊 全場綜合戰力排名**",
         "",
@@ -1341,13 +1341,59 @@ def _compact_fact_lines(*items: tuple[str, object, int]) -> list[str]:
     return lines
 
 
-def _shape_overview_lines(speed_map: dict) -> list[str]:
+def _settle_forecast_table(speed_map: dict, horses: dict) -> list[str]:
+    """預測起步位表：我哋 / 官方 Speedmap / 混合，三條並排。
+
+    兩個來源近乎正交（ρ +0.005，EXP-20260902-03），所以**佢哋唔同意本身就係
+    一個要睇嘅嘢** —— 表下面會點名分歧最大嗰匹。
+    """
+    blended = speed_map.get("blended_settle") or {}
+    if not blended:
+        return []
+    ours = speed_map.get("our_settle") or {}
+    official = speed_map.get("official_settle") or {}
+
+    def name_of(num):
+        horse = horses.get(str(num)) if isinstance(horses, dict) else None
+        return (horse or {}).get("horse_name") or f"#{num}"
+
+    rows = ["| 預測定位 | 馬號 | 馬名 | 我哋 | 官方 | 混合 |",
+            "|---:|---:|---|---:|---:|---:|"]
+    for num, rank in sorted(blended.items(), key=lambda kv: kv[1]):
+        our_v = ours.get(num)
+        off_v = official.get(num)
+        rows.append(f"| {rank} | {num} | {name_of(num)} | "
+                    f"{our_v if our_v is not None else '—'} | "
+                    f"{off_v if off_v is not None else '—'} | {rank} |")
+    rows.append("")
+    rows.append("> 「我哋」= 近仗起步位加權平均（越細 = 越前）；「官方」= Sportsbet Speedmap "
+                "預測定位序；「混合」= 30% 官方 + 70% 我哋（場內 z-score）。")
+
+    gaps = []
+    for num in blended:
+        our_v, off_v = ours.get(num), official.get(num)
+        if our_v is None or off_v is None:
+            continue
+        gaps.append((abs(float(our_v) - float(off_v)), num, float(our_v), float(off_v)))
+    if gaps:
+        gap, num, our_v, off_v = max(gaps)
+        if gap >= 2.0:
+            who = "官方睇佢搶前，我哋近仗證據話佢守後" if off_v < our_v \
+                else "我哋近仗證據話佢搶前，官方睇佢守後"
+            rows.append(f"- ⚠️ 兩個來源分歧最大：{num}. {name_of(num)}"
+                        f"（我哋 {our_v:g} / 官方 {off_v:g}）—— {who}。")
+    return rows
+
+
+def _shape_overview_lines(speed_map: dict, horses: dict | None = None) -> list[str]:
     leaders = len(speed_map.get("leaders") or [])
     pressers = len(speed_map.get("pressers") or [])
     on_pace = len(speed_map.get("on_pace") or [])
     mid_pack = len(speed_map.get("mid_pack") or [])
     closers = len(speed_map.get("closers") or [])
-    lines = ["- 形勢推演暫時以跑法分佈、檔位同戰術劇本為主，未納入步速預測。"]
+    lines = _settle_forecast_table(speed_map, horses or {})
+    if not lines:
+        lines = ["- 今場冇走位證據，落唔到預測定位；以下只按檔位同跑法分佈判讀。"]
     if leaders + pressers + on_pace <= 2:
         lines.append("- 前置馬唔多，邊匹願意主動搶位會直接影響前中段落位。")
     elif leaders + pressers + on_pace >= 5:

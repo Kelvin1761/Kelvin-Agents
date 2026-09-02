@@ -1564,3 +1564,268 @@ class TestResultsIngestStep(unittest.TestCase):
         ok, _calls, steps = self._run([(0, "ok"), (2, "traceback\n")])
         self.assertFalse(ok)
         self.assertEqual(steps[-1].get("status"), "failed")
+
+
+class _FakeHang:
+    """認得除咗 `hang` 之外嘅所有版；`hang` 嗰啲 timeout（個站冇拒絕）。
+
+    模仿修好之後嘅 `fetch_page` 合約：單版 timeout 回 None 但**唔**
+    trip circuit breaker。
+    """
+
+    def __init__(self, hang: set[str]):
+        self.hang = hang
+        self.requests: list[str] = []
+
+    def cache_path(self, url):
+        class _P:
+            def exists(self_inner):
+                return False
+        return _P()
+
+    def fetch_page(self, runlog, url, force=False, where=""):
+        if runlog.site_refusing:
+            return None
+        self.requests.append(url)
+        if any(url.endswith(f"/{r}/") for r in self.hang):
+            return None          # timeout：攞唔到，但個站冇拒絕
+        return "<html>"
+
+
+class TestOneHungPageDoesNotKillTheMeeting(unittest.TestCase):
+    """2026-09-01 晚更：Murray Bridge 第 7 場 hang 90 秒 → 成個 run 收工，
+    Sandown 同 Warwick Farm 一個請求都冇出過。一版 hang 唔可以有咁大殺傷力。"""
+
+    def _runlog(self):
+        import tempfile
+        from datetime import date as _date
+        tmp = Path(tempfile.mkdtemp()) / "run.json"
+        return S.RunLog("test", _date(2026, 9, 1), tmp)
+
+    @contextlib.contextmanager
+    def _patched(self, fake):
+        import sb_browser_fetch
+        real_fetch, real_cache = S.fetch_page, sb_browser_fetch.cache_path
+        S.fetch_page = fake.fetch_page
+        sb_browser_fetch.cache_path = fake.cache_path
+        try:
+            yield
+        finally:
+            S.fetch_page = real_fetch
+            sb_browser_fetch.cache_path = real_cache
+
+    def test_hung_race_is_skipped_and_later_races_still_fetched(self):
+        runlog = self._runlog()
+        fake = _FakeHang(hang={"7"})
+        with self._patched(fake):
+            ready = S.warm_race_pages(
+                runlog, "449031",
+                ["1", "2", "3", "4", "5", "6", "7", "8", "9"], "test")
+        # 第 7 場跳過，8 同 9 照攞 —— 舊 code 喺 7 度 break，只得 6 場。
+        self.assertEqual(ready, ["1", "2", "3", "4", "5", "6", "8", "9"])
+        self.assertEqual(len(fake.requests), 9)
+        self.assertFalse(runlog.site_refusing)
+
+    def test_a_real_refusal_still_stops_the_run(self):
+        """修 timeout 唔可以順手拆咗「真拒絕就收手」呢個閘。"""
+        runlog = self._runlog()
+        fake = _FakeAcquire(allow=2)
+        with self._patched(fake):
+            ready = S.warm_race_pages(runlog, "449031",
+                                      ["1", "2", "3", "4", "5"], "test")
+        self.assertEqual(ready, ["1", "2"])
+        self.assertEqual(len(fake.requests), 3)
+        self.assertTrue(runlog.site_refusing)
+
+
+class TestRoundRotation(unittest.TestCase):
+    """次序唔變嘅重試 = 卡住嗰個永遠食第一個請求，後面嗰啲餓死。"""
+
+    def test_head_moves_to_the_back(self):
+        self.assertEqual(
+            S.rotate_for_fairness(["MurrayBridge", "Sandown", "WarwickFarm"]),
+            ["Sandown", "WarwickFarm", "MurrayBridge"])
+
+    def test_short_lists_are_unchanged(self):
+        self.assertEqual(S.rotate_for_fairness([]), [])
+        self.assertEqual(S.rotate_for_fairness(["only"]), ["only"])
+
+    def test_every_meeting_leads_within_one_cycle(self):
+        """四輪之後每個場次都做過一次頭位 —— 冇人會整晚排唔到隊。"""
+        pending = ["a", "b", "c", "d"]
+        leaders = []
+        for _ in range(4):
+            leaders.append(pending[0])
+            pending = S.rotate_for_fairness(pending)
+        self.assertEqual(sorted(leaders), ["a", "b", "c", "d"])
+
+
+class TestTimeoutIsNotARefusal(unittest.TestCase):
+    """`page.goto` timeout ≠ 個站封鎖。個站根本冇回過一個 status。"""
+
+    def _fetcher(self):
+        import sb_browser_fetch
+        return sb_browser_fetch.BrowserFetcher(delay=0, origin_candidates=[],
+                                               log=lambda _m: None)
+
+    def test_plain_timeout_is_classified_as_a_page_problem(self):
+        import sb_browser_fetch
+        BF = sb_browser_fetch.BrowserFetcher
+        exc = TimeoutError("Page.goto: Timeout 90000ms exceeded.")
+        self.assertTrue(BF._is_plain_timeout(exc))
+        self.assertFalse(BF._is_network_blip(exc))
+        self.assertFalse(BF._is_browser_death(exc))
+
+    def test_network_and_browser_death_are_not_reclassified(self):
+        import sb_browser_fetch
+        BF = sb_browser_fetch.BrowserFetcher
+        # ⚠️ `ERR_CONNECTION_TIMED_OUT` 個字含住 "timed out" —— 佢係網絡層失敗，
+        # 唔可以俾新規則搶走，兩者嘅退避同跳掣門檻唔同。
+        self.assertFalse(BF._is_plain_timeout(
+            Exception("net::ERR_CONNECTION_TIMED_OUT")))
+        self.assertFalse(BF._is_plain_timeout(
+            Exception("TargetClosedError: Target crashed")))
+
+    def test_gate_only_trips_after_a_streak(self):
+        bf = self._fetcher()
+        self.assertEqual(bf.timeout_streak, 0)
+        self.assertIsNone(bf.stop_reason)
+        # 門檻要大過 1，唔然一版 hang 又會收咗成個 run 嘅工。
+        self.assertGreaterEqual(BF_STREAK := bf._TIMEOUT_GATE_STREAK, 2)
+        self.assertGreaterEqual(bf._TIMEOUT_RETRIES, 1)
+
+
+class TestGetSurvivesAHungPage(unittest.TestCase):
+    """直接測 `BrowserFetcher.get()`：呢度先係 2026-09-01 個 bug 住嘅地方。"""
+
+    def _fetcher(self, tmp):
+        import sb_browser_fetch
+        # ⚠️ cache 係 module-level（`CACHE_DIR`），唔係 instance 屬性。唔隔離
+        # 就會攞到生產 cache 入面已經有嘅版，個 test 靜靜咁測唔到嘢。
+        self._cache = unittest.mock.patch.object(
+            sb_browser_fetch, "cache_path",
+            lambda url: Path(tmp) / (__import__("hashlib")
+                                     .sha1(url.encode()).hexdigest() + ".html"))
+        self._cache.start()
+        self.addCleanup(self._cache.stop)
+        return sb_browser_fetch.BrowserFetcher(delay=0, origin_candidates=[],
+                                               log=lambda _m: None)
+
+    @contextlib.contextmanager
+    def _hanging_page(self, bf, fail_times: int):
+        """頭 `fail_times` 次 goto timeout，之後回一版正常 200。"""
+        calls = {"n": 0}
+
+        class _Resp:
+            status = 200
+
+        class _Page:
+            def goto(self_inner, url, **kw):
+                calls["n"] += 1
+                if calls["n"] <= fail_times:
+                    raise TimeoutError(
+                        "Page.goto: Timeout 90000ms exceeded.\n"
+                        f'  - navigating to "{url}"')
+                return _Resp()
+
+            def wait_for_timeout(self_inner, _ms):
+                return None
+
+            def content(self_inner):
+                return "<html>" + "x" * 200_000 + "</html>"
+
+        with unittest.mock.patch.object(type(bf), "_ensure_page",
+                                        lambda _s: _Page()), \
+                unittest.mock.patch.object(type(bf), "_pace", lambda _s: None), \
+                unittest.mock.patch.object(type(bf), "_TIMEOUT_BACKOFF", 0):
+            yield calls
+
+    def test_a_transient_hang_is_retried_and_succeeds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bf = self._fetcher(tmp)
+            with self._hanging_page(bf, fail_times=1) as calls:
+                html = bf.get("https://www.sportsbetform.com.au/449031/3416233/")
+            self.assertIsNotNone(html)
+            self.assertEqual(calls["n"], 2)      # 試多次先係修正嘅重點
+            self.assertIsNone(bf.stop_reason)
+            self.assertEqual(bf.timeout_streak, 0)
+
+    def test_one_dead_page_does_not_trip_the_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bf = self._fetcher(tmp)
+            with self._hanging_page(bf, fail_times=99):
+                html = bf.get("https://www.sportsbetform.com.au/449031/3416233/")
+            self.assertIsNone(html)
+            # ⚠️ 呢個 assert 就係成個修正：一版攞唔到 ≠ 個站拒絕。
+            self.assertIsNone(bf.stop_reason)
+            self.assertEqual(bf.timeout_streak, 1)
+
+    def test_a_streak_of_dead_pages_does_trip_the_gate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bf = self._fetcher(tmp)
+            with self._hanging_page(bf, fail_times=99):
+                for i in range(bf._TIMEOUT_GATE_STREAK):
+                    bf.get(f"https://www.sportsbetform.com.au/449031/34162{i}/")
+            self.assertIsNotNone(bf.stop_reason)
+            self.assertIn("timeout", bf.stop_reason.lower())
+
+    def test_a_success_clears_the_streak(self):
+        """整晚零散嘅單版 hang 唔應該慢慢累積到收工。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            bf = self._fetcher(tmp)
+            with self._hanging_page(bf, fail_times=99):
+                bf.get("https://www.sportsbetform.com.au/449031/3416233/")
+            self.assertEqual(bf.timeout_streak, 1)
+            with self._hanging_page(bf, fail_times=0):
+                bf.get("https://www.sportsbetform.com.au/449031/3416234/")
+            self.assertEqual(bf.timeout_streak, 0)
+            self.assertIsNone(bf.stop_reason)
+
+
+class SpeedmapWarmingTests(unittest.TestCase):
+    """官方 Speedmap 要落 cache，但唔可以影響抽取主線。
+
+    2026-09-02：`write_meeting()` 由來冇收過 `speedmaps=`，而 claw 跑
+    `WC_SB_CACHE_ONLY=1` 只讀 cache —— 所以語料庫 11,356 行 `SpeedPos:` 全部
+    係 `-`。而家日常抽取會順手暖 Speedmap 版嘅 cache。
+
+    守住三樣：已 cache 唔會重抽、個站拒絕即刻收手、單版失敗唔會炸咗成個 run。
+    """
+
+    def _runlog(self):
+        log = types.SimpleNamespace()
+        log.site_refusing = False
+        log.steps = []
+        log.step = lambda name, status, **d: log.steps.append((name, status, d))
+        log.warn = lambda message: None
+        return log
+
+    def test_已經有_cache_就唔會再攞(self):
+        import au_daily_schedule as sched
+        runlog = self._runlog()
+        calls = []
+        with unittest.mock.patch.object(sched, "fetch_page", lambda *a, **k: calls.append(a) or "html"), \
+             unittest.mock.patch("sb_browser_fetch.cache_path", lambda url: Path(__file__)):
+            got = sched.warm_speedmap_pages(runlog, "m1", ["r1", "r2"], "測試")
+        self.assertEqual(got, 2)
+        self.assertEqual(calls, [], "已 cache 嘅唔應該出網")
+
+    def test_個站拒絕就收手(self):
+        import au_daily_schedule as sched
+        runlog = self._runlog()
+        missing = Path("/nonexistent/never-here.html")
+
+        def refuse(rl, url, **kwargs):
+            rl.site_refusing = True
+            return None
+
+        with unittest.mock.patch.object(sched, "fetch_page", refuse), \
+             unittest.mock.patch("sb_browser_fetch.cache_path", lambda url: missing):
+            got = sched.warm_speedmap_pages(runlog, "m1", ["r1", "r2", "r3"], "測試")
+        self.assertEqual(got, 0)
+
+    def test_可以熄咗(self):
+        import au_daily_schedule as sched
+        runlog = self._runlog()
+        with unittest.mock.patch.dict(os.environ, {"WC_AU_SPEEDMAP": "0"}):
+            self.assertEqual(sched.warm_speedmap_pages(runlog, "m1", ["r1"], "測試"), 0)

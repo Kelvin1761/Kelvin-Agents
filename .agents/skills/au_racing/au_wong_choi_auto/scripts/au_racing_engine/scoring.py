@@ -350,7 +350,7 @@ CONSISTENCY_MICRO_WEIGHTS = {
     # 表達呢件事，所以拆開。改善側嘅實際數值由 A/B 決定，唔係由對稱決定。
     "margin_trend_up_bonus": 3.0,
     "margin_trend_down_pen": -3.0,
-    "run_style_bonus": 5.2,
+    # "run_style_bonus": 5.2 —— 2026-09-02 剷走，條件永遠 False（走位跑法欄 100% `-`）
     "pi_stable_bonus": 5.71,
     "repeat_bonus": 2.7,
     "no_repeat_pen": -2.0

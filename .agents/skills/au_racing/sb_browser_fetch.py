@@ -76,6 +76,9 @@ class BrowserFetcher:
         self.log = log or (lambda m: print(f"   {m}", flush=True))
         self.requests_made = 0
         self.stop_reason: str | None = None
+        # 單版失敗（唔 trip circuit breaker）同連續 timeout 計數。
+        self.last_page_error: str | None = None
+        self.timeout_streak = 0
         self._since_launch = 0
         self._pw = None
         self._ctx = None
@@ -168,6 +171,20 @@ class BrowserFetcher:
                        "err_proxy_connection_failed", "err_network_io_suspended")
     _NETWORK_RETRIES = 3
     _NETWORK_BACKOFF = 20  # 秒；網絡返嚟通常要幾秒到幾十秒
+    # `page.goto` 淨係 timeout（冇 net:: 錯誤碼、瀏覽器又冇死）。⚠️ 呢個**唔係**
+    # 個站拒絕 —— 真拒絕會回一個非 200 status 或者一版細過門檻嘅攔截頁，兩樣都
+    # 喺下面獨立捉。2026-09-01 晚更實測：Murray Bridge 頭六場連續 200（35–65 秒
+    # 一版），第 7 場 hang 足 90 秒 timeout，舊 code 零重試就 trip circuit
+    # breaker，於是 Sandown 同 Warwick Farm 由頭到尾**一個請求都冇出過**；四輪
+    # 冷卻之後每一輪嘅第一個請求又再餵返同一場，兩個馬場整晚 pending。事後即刻
+    # 手抽同一版：9.6 秒 200。即係一版 hang ≠ 個站封鎖。
+    # 呢個係第三次同一類誤判（08-08 `TargetClosedError`、08-11
+    # `ERR_NETWORK_CHANGED`）：本機／單頁故障扮成遠端封鎖。
+    _TIMEOUT_RETRIES = 2
+    _TIMEOUT_BACKOFF = 15  # 秒
+    # 連續幾多版 timeout 先當「真係唔通」而收手。單版 hang 當單版失敗（caller 跳
+    # 去下一個場次）；連續三版都 hang 就唔再係巧合，收手等下一輪冷卻。
+    _TIMEOUT_GATE_STREAK = 3
     # 抽夠幾多版就主動重開一次。⚠️ 呢個係預防，唔係反應。2026-08-08 實測：部機
     # 得 8 GB 實體記憶體、swap 7,168 MB 入面用咗 5,721 MB，而 Chrome 一個 crash
     # 報告都冇 —— 即係唔係佢自己炸，係喺記憶體壓力下個 target 俾系統收走。
@@ -187,6 +204,14 @@ class BrowserFetcher:
         """本機出唔到門，唔係個站唔畀入。"""
         blob = f"{type(exc).__name__} {exc}".lower()
         return any(sig in blob for sig in cls._NETWORK_ERRORS)
+
+    @classmethod
+    def _is_plain_timeout(cls, exc) -> bool:
+        """淨係 timeout：冇 net:: 錯誤碼、瀏覽器又冇死。單版問題，唔係封鎖。"""
+        if cls._is_network_blip(exc) or cls._is_browser_death(exc):
+            return False
+        blob = f"{type(exc).__name__} {exc}".lower()
+        return "timeout" in blob
 
     def _recycle(self) -> None:
         """冚咗個 page/context/playwright，令下次 `_ensure_page` 重開。"""
@@ -250,7 +275,7 @@ class BrowserFetcher:
             self.log(f"♻️ 抽咗 {self._since_launch} 版 —— 主動重開瀏覽器封頂記憶體")
             self._recycle()
 
-        attempt = net_attempt = 0
+        attempt = net_attempt = timeout_attempt = 0
         while True:
             try:
                 page = self._ensure_page()
@@ -283,8 +308,31 @@ class BrowserFetcher:
                     self._recycle()
                     time.sleep(5)
                     continue
-                # 重開之後仲死，或者根本唔係瀏覽器死亡（例如 timeout）。
-                if self._is_network_blip(exc):
+                if self._is_plain_timeout(exc) and timeout_attempt < self._TIMEOUT_RETRIES:
+                    timeout_attempt += 1
+                    wait = self._TIMEOUT_BACKOFF * timeout_attempt
+                    self.log(f"⏱️ 呢版 hang 咗 timeout —— 等 {wait} 秒再試 "
+                             f"{timeout_attempt}/{self._TIMEOUT_RETRIES}：{url}")
+                    time.sleep(wait)
+                    continue
+                # 重開之後仲死，或者根本唔係瀏覽器死亡。
+                if self._is_plain_timeout(exc):
+                    # ⚠️ 單版 timeout **唔可以** trip circuit breaker。個站冇回過
+                    # 一個非 200，我哋亦冇證據話佢封鎖 —— 只知道呢一版攞唔到。
+                    # 記做單版失敗，由 caller 決定跳去下一場／下一個馬場。連續
+                    # `_TIMEOUT_GATE_STREAK` 版都咁先當「真係唔通」收手。
+                    self.timeout_streak += 1
+                    self.last_page_error = (
+                        f"呢版 timeout 試咗 {timeout_attempt + 1} 次都攞唔到"
+                        f"（{type(exc).__name__}）")
+                    if self.timeout_streak < self._TIMEOUT_GATE_STREAK:
+                        self.log(f"⏱️ {self.last_page_error} —— 當單版失敗，"
+                                 f"circuit breaker 唔跳（連續第 "
+                                 f"{self.timeout_streak} 版）：{url}")
+                        return None
+                    kind = (f"連續 {self.timeout_streak} 版 timeout"
+                            f"（唔係非 200，係完全冇回應）")
+                elif self._is_network_blip(exc):
                     kind = f"網絡試咗 {net_attempt} 次都唔通（本機問題，唔係個站）"
                 else:
                     kind = ("瀏覽器重開 %d 次之後仲係死" % attempt if attempt
@@ -322,6 +370,9 @@ class BrowserFetcher:
             self.log(f"⛔ {self.stop_reason} —— 停低唔重試")
             return None
 
+        # 攞到一版就代表個站通 —— 清走連續 timeout 計數，唔好俾整晚零散嘅
+        # 單版 hang 慢慢累積到跳掣。
+        self.timeout_streak = 0
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(text, encoding="utf-8")
         if self.verbose:

@@ -139,6 +139,29 @@ root。直接跑 `.py` 都得（`.wongchoi_au_data_root` / `.wongchoi_au_mirror_
 任何一版。連續三輪**零增長**就當真封鎖收工（要數「真係多咗場次」，唔係「冇拋
 exception」—— 一個零增長嘅半份場次會令計數永遠歸零）。
 
+⚠️ **每一輪嘅次序會輪替（`rotate_for_fairness`）。** 2026-09-01 晚更：Murray Bridge
+第 7 場每一輪都喺 90 秒 timeout 停低，於是四輪冷卻嘅第一個請求全部餵咗俾佢，
+Sandown 同 Warwick Farm 由頭到尾**一個請求都冇出過**，兩個馬場整晚 pending。冷卻窗
+大約只夠抽一個場次，所以「邊個排頭位」實際上就係「邊個今晚抽得成」—— 次序唔變嘅
+重試會令一個卡住嘅場次永遠餓死排喺佢後面嘅所有場次。
+
+### 「攞唔到」同「個站拒絕」係兩件事
+
+`sb_browser_fetch` 只有喺**個站真係唔畀入**嗰陣先會 trip circuit breaker：
+
+| 症狀 | 判斷 | 做法 |
+| --- | --- | --- |
+| 非 200 status | 個站拒絕 | 即刻收手，唔重試 |
+| 版細過 `MIN_BYTES` | 攔截頁 | 即刻收手，唔重試 |
+| `net::ERR_*` | 本機出唔到門 | 退避重試三次（20/40/60 秒） |
+| `TargetClosedError` 之類 | Chrome 死咗 | 重開再試兩次 |
+| 淨係 `Timeout`（冇 `net::`、瀏覽器又冇死）| **呢一版** hang 咗 | 退避重試兩次（15/30 秒）；仲係唔得就當**單版失敗**，跳過呢一場繼續下一場，circuit breaker **唔跳**。連續三版都咁先當真係唔通收手 |
+
+⚠️ 呢個表存在嘅原因係同一類誤判出過三次，每次都係**本機／單頁故障扮成遠端封鎖**，
+而兩者嘅正確應對相反（真封鎖要收手，其餘要重試）：08-08 `TargetClosedError`、
+08-11 `ERR_NETWORK_CHANGED`、09-01 `Page.goto: Timeout 90000ms exceeded`。09-01 嗰次
+事後即刻手抽同一版：9.6 秒 200。個站由頭到尾冇回過一個非 200。
+
 節奏由 `WC_AU_FETCH_DELAY`（秒）控制，預設 25，**硬下限 12**（低過就會被拉返上去）。
 
 ## 睇狀態同 log
@@ -196,7 +219,7 @@ cache-only 重建補發。未知錯誤、模型／資料矛盾同重複失敗只
 | `archive_blocked_corpus` | 呢個賽日已入歷史賽果 CSV，搬走會由 backtest 語料庫消失 |
 | `archive_conflict` | `Archive/` 已經有同名 folder，唔覆蓋 |
 | `analysed` | 抽取 + 評分完成，已加入 dashboard |
-| `analysed_partial` | 只抽到部分場次（撞到拒絕）—— 已評分，但**仍然留喺待辦**，下一輪／下一次排程續抽 |
+| `analysed_partial` | 只抽到部分場次（撞到拒絕，或者個別版 hang 咗被跳過）—— 已評分，但**仍然留喺待辦**，下一輪／下一次排程續抽 |
 | `skipped_already_analysed` | 場數已到齊而且評齊（重跑安全，零請求） |
 | `skipped_already_archived` | folder 已經喺 `Archive/` |
 | `pending_extraction` | 一場都抽唔到（網站拒絕）—— 下一輪／下次排程再試 |

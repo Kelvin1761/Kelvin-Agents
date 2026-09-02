@@ -1,0 +1,1467 @@
+{
+ "generated_utc": "2026-09-02T02:28:31Z",
+ "sources": {
+  "racinglife": "https://www.racinglife.com.au/tracks/<slug>",
+  "justhorseracing": "https://www.justhorseracing.com.au/tracks/<slug>-racecourse"
+ },
+ "resolution_rule": "racinglife 做主；justhorseracing 補漏兼覆核；分歧記入 conflict 但採用 racinglife",
+ "venues_total": 96,
+ "venues_with_geometry": 85,
+ "venues": {
+  "albury": {
+   "venue": "Albury",
+   "circumference_m": 2100,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Fair for speedsters any draw from 1000m and 1600m starts. Slight uphill run home.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "alice-springs": {
+   "venue": "Alice Springs",
+   "circumference_m": 1690,
+   "straight_m": 270,
+   "direction": "anticlockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NT",
+   "note": "Dirt track.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": {
+    "racinglife": [
+     1690,
+     270
+    ],
+    "justhorseracing": [
+     1600,
+     360
+    ]
+   }
+  },
+  "ascot": {
+   "venue": "Ascot",
+   "circumference_m": 2022,
+   "straight_m": 294,
+   "direction": "anticlockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "WA",
+   "note": "Big track with short straight. Races throughout warmer months. Slight rise from 400m to post.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "ballarat": {
+   "venue": "Ballarat",
+   "circumference_m": 1900,
+   "straight_m": 450,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Spacious track with top facilities. Long straight run from 1200m shute. Undulating home straight.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "ballarat-synthetic": {
+   "venue": "Ballarat Synthetic",
+   "circumference_m": 1900,
+   "straight_m": 375,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "Racing Victoria 合成跑道規格（2026-09-02 查證）；草地跑道係 1900/450，唔好撈亂",
+   "sources": [
+    "manual"
+   ],
+   "conflict": null
+  },
+  "ballina": {
+   "venue": "Ballina",
+   "circumference_m": 1600,
+   "straight_m": 350,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Unusual shape with long straight run to turn at 900m.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "bathurst": {
+   "venue": "Bathurst",
+   "circumference_m": 1600,
+   "straight_m": 390,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Symetrical track with good run home. Downhill from 1400m to 800m.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "beaudesert": {
+   "venue": "Beaudesert",
+   "circumference_m": 1435,
+   "straight_m": 210,
+   "direction": "clockwise",
+   "classification": "",
+   "surface": "",
+   "state": "QLD",
+   "note": "Very tough out wide in races beyond 1400m",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "belmont": {
+   "venue": "Belmont",
+   "circumference_m": 1699,
+   "straight_m": 333,
+   "direction": "anticlockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "WA",
+   "note": "Turning track. Very wide. Raced throughout winter months.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "bendigo": {
+   "venue": "Bendigo",
+   "circumference_m": 1995,
+   "straight_m": 400,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Magnificent track with long straight runs from all starts. Top trainers favourite.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "broome": {
+   "venue": "Broome",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "undocumented": true
+  },
+  "bunbury": {
+   "venue": "Bunbury",
+   "circumference_m": 1796,
+   "straight_m": 348,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "",
+   "note": "",
+   "sources": [
+    "racinglife"
+   ],
+   "conflict": null
+  },
+  "cairns": {
+   "venue": "Cairns",
+   "circumference_m": 1800,
+   "straight_m": 320,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "QLD",
+   "note": "Good runs to most first turns",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "canberra": {
+   "venue": "Canberra",
+   "circumference_m": 1815,
+   "straight_m": 400,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "ACT",
+   "note": "Flat track with some tricks for those draw wides.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "canterbury": {
+   "venue": "Canterbury",
+   "circumference_m": 1567,
+   "straight_m": 308,
+   "direction": "clockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Tight track. Used for night racing. Long sweeping turn suits those against fence.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "carnarvon": {
+   "venue": "Carnarvon",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "undocumented": true
+  },
+  "casino": {
+   "venue": "Casino",
+   "circumference_m": 1600,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "",
+   "surface": "",
+   "state": "NSW",
+   "note": "Very tricky to be wide from the 1000m. Track falls away out wide.",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "casterton": {
+   "venue": "Casterton",
+   "circumference_m": 1640,
+   "straight_m": 350,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "VIC",
+   "note": "Fair starts from 1000m to 1400m in shute. Turns are well cambered.",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "caulfield": {
+   "venue": "Caulfield",
+   "circumference_m": 2080,
+   "straight_m": 367,
+   "direction": "anticlockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Well drained and now well banked track. Long straight run for sprints races tyo 1200m. Uphill for first 400m from 1400m gates. Mad rush to first turn from famous Caulfield Cup start (2400m).",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "caulfield-heath": {
+   "venue": "Caulfield Heath",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "undocumented": true
+  },
+  "coffs-harbour": {
+   "venue": "Coffs Harbour",
+   "circumference_m": 1700,
+   "straight_m": 420,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Good run home. Outside draws have a chance from 1400m and 1600m starts.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "corowa": {
+   "venue": "Corowa",
+   "circumference_m": 1900,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Suited inside barriers except for 1400m start which is fair.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "cranbourne": {
+   "venue": "Cranbourne",
+   "circumference_m": 1700,
+   "straight_m": 300,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Wide draws have hope from all sprint starts. Short run home.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "dalby": {
+   "venue": "Dalby",
+   "circumference_m": 1600,
+   "straight_m": 300,
+   "direction": "clockwise",
+   "classification": "",
+   "surface": "",
+   "state": "QLD",
+   "note": "Good runs to most first turns",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "devonport": {
+   "venue": "Devonport",
+   "circumference_m": 1500,
+   "straight_m": 350,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "TAS",
+   "note": "Good uphill run home for such a tight track.",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "doomben": {
+   "venue": "Doomben",
+   "circumference_m": 1715,
+   "straight_m": 350,
+   "direction": "clockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "QLD",
+   "note": "Turning track with shortish run home. Inside draws an advantage.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "dubbo": {
+   "venue": "Dubbo",
+   "circumference_m": 2000,
+   "straight_m": 410,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Downhill run from 1000m to turn allows for quick times.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "eagle-farm": {
+   "venue": "Eagle Farm",
+   "circumference_m": 2027,
+   "straight_m": 434,
+   "direction": "clockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "QLD",
+   "note": "Spacious track with long straights and sweeping turns.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "echuca": {
+   "venue": "Echuca",
+   "circumference_m": 1811,
+   "straight_m": 353,
+   "direction": "anticlockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Long turn to home. Tricky from wide from 1600m start.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "emerald": {
+   "venue": "Emerald",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "undocumented": true
+  },
+  "flemington": {
+   "venue": "Flemington",
+   "circumference_m": 2312,
+   "straight_m": 450,
+   "direction": "anticlockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Spacious wide track with long sweeping turns. Straight track racing for 1000-1200m racing. Home of the Melbourne Cup.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "geelong": {
+   "venue": "Geelong",
+   "circumference_m": 2043,
+   "straight_m": 400,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Spacious track with long straights and sweeping turns.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "gold-coast": {
+   "venue": "Gold Coast",
+   "circumference_m": 1885,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "QLD",
+   "note": "Short runs to first turn from 1000m and 1200m (Magic Millions start)",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "gosford": {
+   "venue": "Gosford",
+   "circumference_m": 1710,
+   "straight_m": 250,
+   "direction": "clockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Intriguing shape with long straight and very tight turns. Wide draws less disadvantaged by sprint starts.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "goulburn": {
+   "venue": "Goulburn",
+   "circumference_m": 1750,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Good runs to turns from most starts. Narrow 20m track.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "grafton": {
+   "venue": "Grafton",
+   "circumference_m": 1940,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Inside draw big help from 1000m start. Good run home.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "gunnedah": {
+   "venue": "Gunnedah",
+   "circumference_m": 1800,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Square shaped track. Sharp home turn.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "gympie": {
+   "venue": "Gympie",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "undocumented": true
+  },
+  "hawkesbury": {
+   "venue": "Hawkesbury",
+   "circumference_m": 2070,
+   "straight_m": 380,
+   "direction": "clockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Tight turns but long straight runs. Slight rise homew turn to post.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": {
+    "racinglife": [
+     2070,
+     null
+    ],
+    "justhorseracing": [
+     2070,
+     380
+    ]
+   }
+  },
+  "hobart": {
+   "venue": "Hobart",
+   "circumference_m": 1990,
+   "straight_m": 350,
+   "direction": "anticlockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "",
+   "note": "",
+   "sources": [
+    "racinglife"
+   ],
+   "conflict": null
+  },
+  "ipswich": {
+   "venue": "Ipswich",
+   "circumference_m": 1746,
+   "straight_m": 300,
+   "direction": "clockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "QLD",
+   "note": "Tricky odd shaped track. Huge turn from the 1000m. Inside draws a huge advantage",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "kalgoorlie": {
+   "venue": "Kalgoorlie",
+   "circumference_m": 1934,
+   "straight_m": 320,
+   "direction": "anticlockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "WA",
+   "note": "Big advantage to be draw inside. Long straight runs from the shutes.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "katherine": {
+   "venue": "Katherine",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "undocumented": true
+  },
+  "kembla-grange": {
+   "venue": "Kembla Grange",
+   "circumference_m": 2200,
+   "straight_m": 420,
+   "direction": "clockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Spacious track with wide, sweeping turns and long straights.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "kensington": {
+   "venue": "Kensington",
+   "circumference_m": 2088,
+   "straight_m": 401,
+   "direction": "clockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "",
+   "note": "",
+   "sources": [
+    "racinglife"
+   ],
+   "conflict": null
+  },
+  "kilcoy": {
+   "venue": "Kilcoy",
+   "circumference_m": 1270,
+   "straight_m": 143,
+   "direction": "clockwise",
+   "classification": "",
+   "surface": "",
+   "state": "QLD",
+   "note": "Very short straight, tight turns.",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "mackay": {
+   "venue": "Mackay",
+   "circumference_m": 1600,
+   "straight_m": 310,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "QLD",
+   "note": "Narrow 18m track. Always turning, tough away from the rails",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "mildura": {
+   "venue": "Mildura",
+   "circumference_m": 1765,
+   "straight_m": 390,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "VIC",
+   "note": "Tight turning track. Wide draws a worry.",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "moe": {
+   "venue": "Moe",
+   "circumference_m": 1732,
+   "straight_m": 300,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Undulating track with tight transitions. Hard to come from behind.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "moonee-valley": {
+   "venue": "Moonee Valley",
+   "circumference_m": 1805,
+   "straight_m": 173,
+   "direction": "anticlockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Tricky track with strathay all-weather surface. Track rises 5.5m from 800m to post. Home of the Cox Plate.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "moree": {
+   "venue": "Moree",
+   "circumference_m": 1975,
+   "straight_m": 364,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "",
+   "note": "",
+   "sources": [
+    "racinglife"
+   ],
+   "conflict": null
+  },
+  "morphettville": {
+   "venue": "Morphettville",
+   "circumference_m": 2339,
+   "straight_m": 334,
+   "direction": "anticlockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "SA",
+   "note": "Spacious track with long runs from most starts to 1800m.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "moruya": {
+   "venue": "Moruya",
+   "circumference_m": 1760,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Narrow track. Long sweeping home turn",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "mount-gambier": {
+   "venue": "Mount Gambier",
+   "circumference_m": 1850,
+   "straight_m": 400,
+   "direction": "anticlockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "",
+   "note": "",
+   "sources": [
+    "racinglife"
+   ],
+   "conflict": null
+  },
+  "mt-isa": {
+   "venue": "Mt Isa",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "undocumented": true
+  },
+  "mudgee": {
+   "venue": "Mudgee",
+   "circumference_m": 1800,
+   "straight_m": 450,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Tight turns. Fair run from 1400 shute.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "murray-bridge": {
+   "venue": "Murray Bridge",
+   "circumference_m": 1850,
+   "straight_m": 420,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "SA",
+   "note": "Good run home. Long straight run to sweeping home turn from 1600m start",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "murtoa": {
+   "venue": "Murtoa",
+   "circumference_m": 1605,
+   "straight_m": 280,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "VIC",
+   "note": "Turning track with short run home.",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "murwillumbah": {
+   "venue": "Murwillumbah",
+   "circumference_m": 1600,
+   "straight_m": 290,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Narrow 16m width. Good run home",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": {
+    "racinglife": [
+     1600,
+     290
+    ],
+    "justhorseracing": [
+     1600,
+     400
+    ]
+   }
+  },
+  "muswellbrook": {
+   "venue": "Muswellbrook",
+   "circumference_m": 2010,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Unusual shape. Must be drawn inside from 1250m start.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "narrandera": {
+   "venue": "Narrandera",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "undocumented": true
+  },
+  "narromine": {
+   "venue": "Narromine",
+   "circumference_m": 1667,
+   "straight_m": 313,
+   "direction": "clockwise",
+   "classification": "",
+   "surface": "",
+   "state": "NSW",
+   "note": "Square shape. Turns very tight.",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "newcastle": {
+   "venue": "Newcastle",
+   "circumference_m": 2000,
+   "straight_m": 415,
+   "direction": "clockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Spacious, flat track. Inside draws huge advantage from 1200m start.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "northam": {
+   "venue": "Northam",
+   "circumference_m": 2017,
+   "straight_m": 425,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "races.com.au / progroupracing 場地頁（2026-09-02 查證）",
+   "sources": [
+    "manual"
+   ],
+   "conflict": null
+  },
+  "nowra": {
+   "venue": "Nowra",
+   "circumference_m": 2019,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Heart shape track with good run home.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "pakenham": {
+   "venue": "Pakenham",
+   "circumference_m": 2400,
+   "straight_m": 480,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Maligned track with surface problems. Tough to be wide or back in the field.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": {
+    "racinglife": [
+     2400,
+     480
+    ],
+    "justhorseracing": [
+     1400,
+     300
+    ]
+   }
+  },
+  "pakenham-synthetic": {
+   "venue": "Pakenham Synthetic",
+   "circumference_m": 2000,
+   "straight_m": 0,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "2014 Tynong 新場公告：合成跑道周長 2000m，1400/1600m 有 chute；直路長度未見公佈",
+   "sources": [
+    "manual"
+   ],
+   "conflict": null
+  },
+  "pinjarra": {
+   "venue": "Pinjarra",
+   "circumference_m": 1837,
+   "straight_m": 336,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "",
+   "note": "",
+   "sources": [
+    "racinglife"
+   ],
+   "conflict": null
+  },
+  "pinjarra-scarpside": {
+   "venue": "Pinjarra Scarpside",
+   "circumference_m": 2039,
+   "straight_m": 456,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "",
+   "note": "",
+   "sources": [
+    "racinglife"
+   ],
+   "conflict": null
+  },
+  "port-augusta": {
+   "venue": "Port Augusta",
+   "circumference_m": 2100,
+   "straight_m": 270,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "SA",
+   "note": "Narrow dirt track with short run home",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "port-macquarie": {
+   "venue": "Port Macquarie",
+   "circumference_m": 1580,
+   "straight_m": 350,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "",
+   "note": "",
+   "sources": [
+    "racinglife"
+   ],
+   "conflict": null
+  },
+  "quirindi": {
+   "venue": "Quirindi",
+   "circumference_m": 1900,
+   "straight_m": 390,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Circlular shape with straight edges. 1400m start is the worst for wide draws.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "randwick": {
+   "venue": "Randwick",
+   "circumference_m": 2224,
+   "straight_m": 410,
+   "direction": "clockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Premier NSW track. Spacious track. Rises in straight from 300m to winning post.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "rockhampton": {
+   "venue": "Rockhampton",
+   "circumference_m": 2200,
+   "straight_m": 600,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "QLD",
+   "note": "Unique extended track used for races 1400-1600",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": {
+    "racinglife": [
+     2200,
+     600
+    ],
+    "justhorseracing": [
+     1600,
+     400
+    ]
+   }
+  },
+  "roma": {
+   "venue": "Roma",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "undocumented": true
+  },
+  "rosehill-gardens": {
+   "venue": "Rosehill Gardens",
+   "circumference_m": 2048,
+   "straight_m": 408,
+   "direction": "clockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Home of the Golden Slipper. Hectic to first turn most starts to 1900m.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "sale": {
+   "venue": "Sale",
+   "circumference_m": 2040,
+   "straight_m": 353,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Spacious track favoured for its dry surface in winter. Long straights suit fast finishers.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": {
+    "racinglife": [
+     2040,
+     353
+    ],
+    "justhorseracing": [
+     2020,
+     400
+    ]
+   }
+  },
+  "sandown": {
+   "venue": "Sandown",
+   "circumference_m": 2087,
+   "straight_m": 491,
+   "direction": "anticlockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "",
+   "note": "",
+   "sources": [
+    "racinglife"
+   ],
+   "conflict": null
+  },
+  "sandown-lakeside": {
+   "venue": "Sandown Lakeside",
+   "circumference_m": 1857,
+   "straight_m": 407,
+   "direction": "anticlockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "",
+   "note": "",
+   "sources": [
+    "racinglife"
+   ],
+   "conflict": null
+  },
+  "scone": {
+   "venue": "Scone",
+   "circumference_m": 1902,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Beautifully cambered, spacious track. Long runs to turns. Very fair.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "seymour": {
+   "venue": "Seymour",
+   "circumference_m": 1800,
+   "straight_m": 380,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Long straight runs from most starts. Tight turn out of straight.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "strathalbyn": {
+   "venue": "Strathalbyn",
+   "circumference_m": 1797,
+   "straight_m": 360,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "SA",
+   "note": "undulating track, running downhill from 800m. Good run home",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "sunshine-coast": {
+   "venue": "Sunshine Coast",
+   "circumference_m": 1967,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "QLD",
+   "note": "Spacious track races most Sundays. Sweeping turns, long straight runs.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "tamworth": {
+   "venue": "Tamworth",
+   "circumference_m": 1830,
+   "straight_m": 360,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Circular track. Big advantage to find the fence.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "taree": {
+   "venue": "Taree",
+   "circumference_m": 1530,
+   "straight_m": 350,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Triangle shape with tight turns.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "toowoomba": {
+   "venue": "Toowoomba",
+   "circumference_m": 1750,
+   "straight_m": 360,
+   "direction": "clockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "QLD",
+   "note": "Twilight/night racing Saturdays. Tight, turning track. Tough to be out wide",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "townsville": {
+   "venue": "Townsville",
+   "circumference_m": 1680,
+   "straight_m": 310,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "QLD",
+   "note": "Downhill run from the 1000m shute. Long sweeping home turn.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "tuncurry": {
+   "venue": "Tuncurry",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "undocumented": true
+  },
+  "wagga": {
+   "venue": "Wagga",
+   "circumference_m": 2200,
+   "straight_m": 420,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Long straights and tight turns. Bends are well cambered.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "wangaratta": {
+   "venue": "Wangaratta",
+   "circumference_m": 1730,
+   "straight_m": 350,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "VIC",
+   "note": "Undulating track. Drops steeply from 600m on 100m, then rises to finish.",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "warracknabeal": {
+   "venue": "Warracknabeal",
+   "circumference_m": 1660,
+   "straight_m": 210,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "VIC",
+   "note": "Straight runs from most starts",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "warrnambool": {
+   "venue": "Warrnambool",
+   "circumference_m": 2066,
+   "straight_m": 305,
+   "direction": "anticlockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "VIC",
+   "note": "Famous for its 3-day May carnival and testing off-course steeplechase track.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": {
+    "racinglife": [
+     2066,
+     305
+    ],
+    "justhorseracing": [
+     2100,
+     350
+    ]
+   }
+  },
+  "warwick-farm": {
+   "venue": "Warwick Farm",
+   "circumference_m": 1937,
+   "straight_m": 326,
+   "direction": "clockwise",
+   "classification": "Metropolitan",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Very tight track. Good straight runs from 1200m to 1400m starts.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "wellington": {
+   "venue": "Wellington",
+   "circumference_m": 1440,
+   "straight_m": 400,
+   "direction": "clockwise",
+   "classification": "Country",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Tight track with good run home. Long straight run from 1100m start.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "wodonga": {
+   "venue": "Wodonga",
+   "circumference_m": 1820,
+   "straight_m": 230,
+   "direction": "anticlockwise",
+   "classification": "",
+   "surface": "",
+   "state": "VIC",
+   "note": "Circular track. Wide is a real worry.",
+   "sources": [
+    "justhorseracing"
+   ],
+   "conflict": null
+  },
+  "wyong": {
+   "venue": "Wyong",
+   "circumference_m": 1790,
+   "straight_m": 275,
+   "direction": "clockwise",
+   "classification": "Provincial",
+   "surface": "Turf",
+   "state": "NSW",
+   "note": "Unusual shape with long straight run from 1350m shute. Short straight makes it tricky.",
+   "sources": [
+    "racinglife",
+    "justhorseracing"
+   ],
+   "conflict": null
+  }
+ }
+}

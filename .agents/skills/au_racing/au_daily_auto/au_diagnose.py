@@ -54,6 +54,15 @@ KNOWN = [
      "合併咗一個冇評分／已搬走嘅 folder",
      "多數係次序問題：合併名單喺歸檔之前影低",
      "republish"),
+    # ⚠️ timeout 要排喺「拒絕」前面。2026-09-01 晚更：一版 90 秒 timeout trip 咗
+    # circuit breaker，條 gate 訊息寫住「個站已經明確拒絕」，於是呢度配到下面條
+    # 「真係拒絕」規則，Telegram 叫 Kelvin 去查 Sportsbet 封鎖 —— 但個站由頭到尾
+    # 冇回過一個非 200，事後手抽同一版 9.6 秒就 200。查錯咗方向。
+    (r"Timeout \d+ms exceeded|TimeoutError|連續 \d+ 版 timeout",
+     "個別頁面 hang 咗（timeout），唔係個站拒絕 —— 個站冇回過非 200",
+     "單版 timeout 而家退避重試兩次（15/30 秒）當單版失敗，"
+     "連續三版先跳掣；場次之間亦會輪替，唔會再由同一場食晒每一輪",
+     None),
     (r"個站.*拒絕|HTTP 403|只有 \d+ bytes",
      "sportsbetform 真係拒絕（非 200 或者攔截頁）",
      "circuit breaker 會停手，下一次排程再試",

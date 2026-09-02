@@ -50,7 +50,9 @@ MAX_REAL_RACES_FOR_COMPUTE = 10
 _SCRIPT_DIR = Path(__file__).resolve().parent
 _TRACK_RESOURCE_DIR = _SCRIPT_DIR.parent / 'skills' / 'au_racing' / 'au_horse_analyst' / 'resources'
 
-# Venue → track filename mapping
+_PROVINCIAL_TRACK_FILE = '04b_track_provincial.md'
+
+# Venue → track filename mapping (單場地檔；其餘一律行 provincial 合集)
 VENUE_TRACK_MAP = {
     'randwick': '04b_track_randwick.md',
     'rosehill': '04b_track_rosehill.md',
@@ -60,9 +62,21 @@ VENUE_TRACK_MAP = {
     'eagle farm': '04b_track_eagle_farm.md',
     'doomben': '04b_track_doomben.md',
     'warwick farm': '04b_track_warwick_farm.md',
-    # Provincial fallback
-    'provincial': '04b_track_provincial.md',
 }
+
+
+def _venue_section(text: str, venue: str) -> str:
+    """由合集檔抽出該場地嘅一節（標題行 → 下一個標題行）。對唔到就返空。"""
+    words = [re.escape(part) for part in re.split(r'\s+', str(venue or '').strip()) if part]
+    if not words:
+        return ''
+    pattern = r'\s+'.join(words)
+    match = re.search(
+        rf'(^\#{{1,3}}[ \t]+[^\n]*{pattern}[^\n]*\n)(.*?)(?=^\#{{1,3}}[ \t]+|\Z)',
+        text,
+        re.I | re.M | re.S,
+    )
+    return (match.group(1) + match.group(2)).strip() if match else ''
 
 
 def load_track_profile(venue: str, distance: int = 0) -> dict:
@@ -93,15 +107,25 @@ def load_track_profile(venue: str, distance: int = 0) -> dict:
             break
     
     # Fallback to provincial
-    if not track_file or not track_file.exists():
-        fallback = _TRACK_RESOURCE_DIR / '04b_track_provincial.md'
+    dedicated = track_file is not None and track_file.exists()
+    if not dedicated:
+        fallback = _TRACK_RESOURCE_DIR / _PROVINCIAL_TRACK_FILE
         if fallback.exists():
             track_file = fallback
         else:
             return {'name': venue, 'raw_text': ''}
-    
+
     text = track_file.read_text(encoding='utf-8')
-    
+
+    # 合集檔（provincial）入面有幾個場地，下面啲 parser 係逐行掃**成份檔**再覆蓋，
+    # 所以未收窄之前，任何對唔到名嘅場地都會攞到「最後一個表」嘅尺寸（Ascot 1860m/350m）
+    # 加「第一節」嘅特性（Canterbury）—— 兩個唔同賽場砌出嚟嘅嵌合體。
+    # 對唔到 `## <venue>` 就當冇資料，唔好砌。
+    if not dedicated:
+        text = _venue_section(text, venue)
+        if not text:
+            return {'name': venue, 'raw_text': ''}
+
     result = {
         'name': venue,
         'circumference': '',
@@ -122,15 +146,27 @@ def load_track_profile(venue: str, distance: int = 0) -> dict:
         if len(parts) >= 3:
             key = parts[1].replace('**', '').strip()
             val = parts[2].replace('**', '').strip()
-            if '周長' in key:
+            # 要**逐字等於**，唔可以用 substring：Doomben 個表除咗
+            # `| **直路** | 350m |` 之外仲有 `| **前後直路** | 各 320m |`，
+            # 用 `'直路' in key` 就會被後者覆蓋成 320m。
+            if key == '周長':
                 result['circumference'] = val
-            elif '直路' in key:
+            elif key == '直路':
                 result['straight'] = val
-            elif '方向' in key:
+            elif key == '方向':
                 result['direction'] = val
-            elif '場地' in key and '偏差' not in key:
+            elif key == '場地':
                 result['surface'] = val
     
+    # 有啲檔（Warwick Farm）用 bullet 而唔係表：`- **賽道周長:** 1937m`。
+    # 淨係識睇表嘅話，個場地會靜靜咁冇尺寸。
+    for label, field in (('周長', 'circumference'), ('直路', 'straight'), ('方向', 'direction')):
+        if result[field]:
+            continue
+        match = re.search(rf'^\s*[-*]\s*\**(?:賽道)?{label}(?:長度)?:\**\s*([^\n]+)', text, re.M)
+        if match:
+            result[field] = match.group(1).strip()
+
     # Extract key traits (bullet points under 關鍵特性)
     in_key_section = False
     for line in text.split('\n'):
@@ -293,6 +329,7 @@ def parse_racecard(filepath: str) -> list[dict]:
             'good_stats': 'N/A', 'soft_stats': 'N/A', 'heavy_stats': 'N/A',
             'first_up': 'N/A', 'second_up': 'N/A',
             'dossier_entries': [],
+            'official_speed_pos': None,
         })
     return horses
 
@@ -359,6 +396,22 @@ def _enrich_last10_from_formguide(fg_text: str, horse: dict):
         return
     horse['last10_raw'] = raw
     horse['decoded'] = decoded
+
+
+def _enrich_speed_pos_from_formguide(fg_text: str, horse: dict):
+    """Sportsbet 官方 Speedmap 嘅預測起步位序（`SpeedPos:` 行）。
+
+    2026-09-02 之前呢一行永遠係 `-`（抽取層冇傳 `speedmaps=`），所以由來冇人讀過。
+    駁返之後佢係一個**同我哋自己個步速圖近乎正交**嘅第二意見：
+    353 場實測 ρ(官方, 實際起步位) = +0.241、ρ(我哋, 實際) = +0.443，
+    但 ρ(官方, 我哋) = **+0.005**。詳見 EXP-20260902-03。
+    """
+    header = _formguide_header(fg_text, horse['num'])
+    if header is None:
+        return
+    m = re.search(r'SpeedPos:\s*(\d+)\b', header)
+    if m:
+        horse['official_speed_pos'] = int(m.group(1))
 
 
 def _enrich_stats_from_formguide(fg_text: str, horse: dict):
@@ -517,6 +570,31 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
         pos_800 = int(pos_800_match.group(1)) if pos_800_match else None
         pos_400 = int(pos_400_match.group(1)) if pos_400_match else None
         settled = int(pos_settled_match.group(1)) if pos_settled_match else None
+        # ── Settled 早段位置：2025-12 起短途賽已經冇咗，要 fall back 落 800m ──
+        # Sportsbet 由 2025-11 開始逐步唔再出 `@Settled`，≤1200m 賽事實測：
+        #     2025-10  94.1%  →  2025-11  51.9%  →  2025-12  0.6%  →  之後 ~0%
+        # 同期 `@800m` 一直維持 91–98%。我哋淨係讀 `@Settled`，所以**九個月嚟
+        # 每一場短途往績嘅早段位置同 PI 都係空**（2026 ≤1200m：起步位 0.3%、
+        # PI 0.2%），而報告嘅「段速質素」欄仍然 100% 有值 —— 因為
+        # `compute_sectional_quality(None)` 會出一個中性字串。典型「欄位仲喺度、
+        # 值靜靜變空」。
+        #
+        # 800m 做代替嘅理由（80,523 條兩樣都有嘅往績實測）：
+        #     ≤1200m      平均差 -0.00 位，|差|≤1 佔 99.9%，跑法標籤一致 99.9%
+        #     1201-1600m  +0.01，89.6%，85.5%
+        #     1601-2000m  +0.00，84.1%，80.2%
+        #     2001m+      +0.04，80.9%，77.5%
+        # 短途（即係真正缺數嗰批）幾乎完全等同；長途一致性較低，但長途本身
+        # `@Settled` 覆蓋率仲有 76–91%，所以 fallback 好少 fire。
+        # `settled_source` 留低係邊個 checkpoint 出嚟，唔准當成同一回事。
+        settled_source = 'settled' if settled is not None else ''
+        if settled is None and pos_800 is not None:
+            settled, settled_source = pos_800, '800m'
+        else:
+            # 1000-1200m 嘅 400m 標記仍然喺前半段；再長就唔算早段，寧可留空。
+            _dm = re.search(r'(\d+)', distance or '')
+            if settled is None and pos_400 is not None and _dm and int(_dm.group(1)) <= 1200:
+                settled, settled_source = pos_400, '400m'
 
         # Extract field size from result line
         result_match = re.search(r'^(1-.+?)$', race_block, re.MULTILINE)
@@ -634,6 +712,7 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
             'source_race_class': source_race_class,
             'pos_1200': pos_1200, 'pos_800': pos_800,
             'pos_400': pos_400, 'settled': settled,
+            'settled_source': settled_source,
             'finish_pos': finish_pos, 'pos_source': pos_source,
             'pos_note': pos_note if not is_trial else '',
             'result_line': result_line,
@@ -1464,13 +1543,26 @@ def _au_style_from_entry(entry: dict) -> Tuple[Optional[str], str]:
 
 
 def weighted_au_running_style(entries: list[dict]) -> dict:
-    """V4: Weighted recent AU running style profile for pace maps."""
+    """V5: Weighted recent AU running style profile, Sportsbet video/settled only.
+
+    V4 將**兩種完全唔同**嘅情況都寫成「守中」：
+      (a) 完全冇 video/settled 走位證據 —— 我哋唔知佢點跑；
+      (b) 有證據但冇一種跑法佔優 —— 佢真係跑法多變。
+    兩者夾埋令「守中」佔咗 68.7% 嘅 runner，於是任何量跑法判別力嘅嘗試都會被
+    呢舊預設值溝淡：2026-09-02 實測，溝埋量場內 AUC 0.5149，剔走之後
+    **0.5489 [0.5241, 0.5781]**（EXP-20260902-01）。所以呢度改為三態分開：
+      unknown  —— 冇證據，落唔到任何跑法結論
+      mixed    —— 有證據，但跑法多變
+      <實測跑法> —— front / presser / mid_pack / closer
+
+    `mid_pack` 而家係一個**實測到**嘅跑法（近仗真係守中），唔再係 fallback。
+    """
     result = {
-        'style': 'mid_pack',
-        'style_cn': '守中',
-        'style_3way': '守中',
-        'confidence': '低',
-        'evidence': ['走位證據不足，預設守中但步速信心需降級'],
+        'style': 'unknown',
+        'style_cn': '未知',
+        'style_3way': '未知',
+        'confidence': '無',
+        'evidence': ['冇 video/settled 走位證據 —— 唔預設守中'],
         'valid_races': 0,
     }
     real_entries = [e for e in entries if not e.get('is_trial')][:MAX_REAL_RACES_FOR_COMPUTE]
@@ -1499,20 +1591,87 @@ def weighted_au_running_style(entries: list[dict]) -> dict:
     three_way_map = {'front': '前置', 'presser': '前置', 'mid_pack': '守中', 'closer': '後上'}
 
     result['valid_races'] = sum(counts.values())
-    result['style'] = dominant[0] if dominant_pct >= 0.45 and counts[dominant[0]] >= 2 else 'mid_pack'
-    result['style_cn'] = style_map[result['style']]
-    result['style_3way'] = three_way_map[result['style']]
-    if dominant_pct >= 0.65 and counts[dominant[0]] >= 3:
-        result['confidence'] = '高'
-    elif dominant_pct >= 0.45 and counts[dominant[0]] >= 2:
-        result['confidence'] = '中'
+    settled_enough = dominant_pct >= 0.45 and counts[dominant[0]] >= 2
+    if settled_enough:
+        result['style'] = dominant[0]
+        result['style_cn'] = style_map[dominant[0]]
+        result['style_3way'] = three_way_map[dominant[0]]
+        result['confidence'] = '高' if (dominant_pct >= 0.65 and counts[dominant[0]] >= 3) else '中'
     else:
+        # 有走位證據但冇一種跑法佔優。呢個係「跑法多變」，唔係「守中」——
+        # 寫成守中就係製造一個從來冇觀察過嘅跑法。
+        result['style'] = 'mixed'
+        result['style_cn'] = '多變'
+        result['style_3way'] = '多變'
         result['confidence'] = '低'
     result['evidence'] = [
         f"{style_map[dominant[0]]}加權佔{dominant_pct:.0%} ({counts[dominant[0]]}/{result['valid_races']}場)",
         '；'.join(notes) if notes else '無具體走位註記',
     ]
     return result
+
+
+# 官方 Speedmap 混合權重。EXP-20260902-03：353 場，w 只喺 dev（247 場，
+# 2025-08→2026-05）揀，曲線平滑峰喺 0.3；未碰過嘅 holdout（106 場）
+# 混合 ρ +0.433 vs 單用我哋 +0.370，差 +0.063 CI [+0.023, +0.102] ✅。
+OFFICIAL_SPEEDMAP_WEIGHT = 0.3
+
+
+def weighted_settle_estimate(entries: list[dict]) -> Optional[float]:
+    """近仗起步位嘅加權平均（越細 = 越前）。冇走位證據就返 None。
+
+    同 `weighted_au_running_style()` 食同一批證據、同一組權重 —— 分別係佢出
+    四個 bucket，呢個出一個連續值，可以同官方 Speedmap 嘅位序直接溝。
+    """
+    total = weight_sum = 0.0
+    index = 0
+    for entry in entries:
+        if entry.get('is_trial'):
+            continue
+        if index >= len(STYLE_WEIGHTS_RECENT):
+            break
+        settled = entry.get('settled')
+        index += 1
+        if settled is None:
+            continue
+        weight = STYLE_WEIGHTS_RECENT[index - 1]
+        total += weight * float(settled)
+        weight_sum += weight
+    return total / weight_sum if weight_sum > 0 else None
+
+
+def blend_settle_predictions(rows: list[dict]) -> dict:
+    """{馬號: 混合預測定位序}。場內 z-score 溝完再排名，1 = 最前。
+
+    兩個來源都有先溝；只得一個就用嗰個；兩個都冇就唔會出現喺結果度
+    （唔可以當佢「排最後」—— 冇證據唔係後上）。
+    """
+    def zs(values):
+        have = [v for v in values if v is not None]
+        if len(have) < 2:
+            return [0.0 if v is not None else None for v in values]
+        mean = sum(have) / len(have)
+        var = sum((v - mean) ** 2 for v in have) / len(have)
+        sd = var ** 0.5
+        if sd <= 0:
+            return [0.0 if v is not None else None for v in values]
+        return [None if v is None else (v - mean) / sd for v in values]
+
+    z_ours = zs([r.get('ours') for r in rows])
+    z_official = zs([r.get('official') for r in rows])
+    scored = []
+    for row, zo, zf in zip(rows, z_ours, z_official):
+        if zo is not None and zf is not None:
+            value = OFFICIAL_SPEEDMAP_WEIGHT * zf + (1 - OFFICIAL_SPEEDMAP_WEIGHT) * zo
+        elif zo is not None:
+            value = zo
+        elif zf is not None:
+            value = zf
+        else:
+            continue
+        scored.append((value, row['num']))
+    scored.sort()
+    return {num: rank for rank, (_v, num) in enumerate(scored, 1)}
 
 
 def _recent_au_running_style(entries: list[dict]) -> str:
@@ -1591,8 +1750,10 @@ def build_au_speed_map_block(horses: list[dict], today_dist_m: int = 0,
     Uses video/settled weighted run-style evidence, not finishing positions.
     """
     leaders, pressers, on_pace, mid_pack, closers = [], [], [], [], []
+    unclassified = []   # 冇走位證據／跑法多變：唔可以扮 mid_pack 去撐大守中組
     style_profiles = []
 
+    settle_rows = []
     for horse in horses:
         entries = horse.get('dossier_entries', [])
         engine = classify_engine_type(entries)
@@ -1602,6 +1763,11 @@ def build_au_speed_map_block(horses: list[dict], today_dist_m: int = 0,
         num = horse.get('num')
         if num:
             style_profiles.append({'num': num, **style_profile})
+            settle_rows.append({
+                'num': num,
+                'ours': weighted_settle_estimate(entries),
+                'official': horse.get('official_speed_pos'),
+            })
 
         # Style takes priority over engine type. Low-confidence engine-only front
         # signals route to presser, not leader, to avoid false fast maps in AU.
@@ -1618,10 +1784,14 @@ def build_au_speed_map_block(horses: list[dict], today_dist_m: int = 0,
             pressers.append({'num': num, 'barrier': barrier})
         elif engine.get('type') == 'C' and barrier and barrier <= 4:
             on_pace.append({'num': num, 'barrier': barrier})
-        else:
+        elif style == 'mid_pack':
             mid_pack.append({'num': num, 'barrier': barrier})
+        else:
+            # style 係 unknown / mixed 而引擎又冇話到 —— 呢啲馬我哋根本唔知點跑。
+            # 舊版掃入 mid_pack，令守中組睇落好厚，其實大部分係「唔知」。
+            unclassified.append({'num': num, 'barrier': barrier})
 
-    for group in (leaders, pressers, on_pace, mid_pack, closers):
+    for group in (leaders, pressers, on_pace, mid_pack, closers, unclassified):
         group.sort(key=lambda h: h['barrier'])
 
     field_size = len(horses)
@@ -1635,6 +1805,9 @@ def build_au_speed_map_block(horses: list[dict], today_dist_m: int = 0,
     def _nums(group):
         return [h['num'] for h in group if h.get('num')]
 
+    blended = blend_settle_predictions(settle_rows)
+    official_map = {r['num']: r['official'] for r in settle_rows if r.get('official')}
+    ours_map = {r['num']: round(r['ours'], 1) for r in settle_rows if r.get('ours') is not None}
     speed_map = {
         'predicted_pace': predicted_pace,
         'expected_pace': predicted_pace,   # backward-compatible alias
@@ -1646,6 +1819,15 @@ def build_au_speed_map_block(horses: list[dict], today_dist_m: int = 0,
         'on_pace': _nums(on_pace),
         'mid_pack': _nums(mid_pack),
         'closers': _nums(closers),
+        'unclassified': _nums(unclassified),
+        # 三條並排嘅預測起步位（越細 = 越前）：
+        #   official_settle —— Sportsbet 官方 Speedmap 原值
+        #   our_settle      —— 我哋近仗加權起步位
+        #   blended_settle  —— 30/70 混合之後嘅場內排序（EXP-20260902-03）
+        # 兩個來源近乎正交（ρ +0.005），所以佢哋唔同意本身就係一個訊號。
+        'official_settle': official_map,
+        'our_settle': ours_map,
+        'blended_settle': blended,
         'going': going,  # V3: pass going for MC engine
         'track_bias': (
             f"FACTS_SPEED_MODEL: {venue or 'Unknown venue'} {today_dist_m or '?'}m; "
@@ -1653,7 +1835,8 @@ def build_au_speed_map_block(horses: list[dict], today_dist_m: int = 0,
         ),
         'tactical_nodes': (
             f"FACTS_SPEED_MODEL: leaders={len(leaders)}, pressers={len(pressers)}, "
-            f"on_pace={len(on_pace)}, mid={len(mid_pack)}, closers={len(closers)}; "
+            f"on_pace={len(on_pace)}, mid={len(mid_pack)}, closers={len(closers)}, "
+            f"unclassified={len(unclassified)}; "
             f"predicted pace {predicted_pace}; pace_confidence={pace_confidence}."
         ),
         'collapse_point': (
@@ -1670,6 +1853,9 @@ def build_au_speed_map_block(horses: list[dict], today_dist_m: int = 0,
     def _fmt(nums):
         return '[' + ', '.join(str(n) for n in nums if n) + ']'
 
+    def _fmt_map(mapping):
+        return '[' + ', '.join(f"{k}:{v}" for k, v in sorted(mapping.items())) + ']'
+
     lines = [
         '### 🗺️ 自動步速圖 (Python Facts Model V4)',
         f"- **predicted_pace:** {speed_map['predicted_pace']}",
@@ -1680,6 +1866,10 @@ def build_au_speed_map_block(horses: list[dict], today_dist_m: int = 0,
         f"- **on_pace:** {_fmt(speed_map['on_pace'])}",
         f"- **mid_pack:** {_fmt(speed_map['mid_pack'])}",
         f"- **closers:** {_fmt(speed_map['closers'])}",
+        f"- **unclassified:** {_fmt(speed_map['unclassified'])}",
+        f"- **official_settle:** {_fmt_map(speed_map['official_settle'])}",
+        f"- **our_settle:** {_fmt_map(speed_map['our_settle'])}",
+        f"- **blended_settle:** {_fmt_map(speed_map['blended_settle'])}",
         f"- **style_evidence:** {'; '.join(speed_map['style_evidence'])}",
         f"- **going:** {going}",
         f"- **track_bias:** {speed_map['track_bias']}",
@@ -2284,6 +2474,7 @@ def main():
                     horse['dossier_entries'] = entries
                     fg_enriched += 1
                 _enrich_stats_from_formguide(fg_text, horse)
+                _enrich_speed_pos_from_formguide(fg_text, horse)
 
     # Generate output
     mode = f"Racecard+Formguide ({fg_enriched} 匹已豐富)" if formguide_path else "僅 Racecard"

@@ -427,7 +427,12 @@ def close_browser(runlog: RunLog) -> None:
 
 def fetch_page(runlog: RunLog, url: str, *, force: bool = False,
                where: str = "") -> str | None:
-    """經真 Chrome 攞一版 sportsbetform。拒絕就 trip circuit breaker。"""
+    """經真 Chrome 攞一版 sportsbetform。**拒絕**先 trip circuit breaker。
+
+    ⚠️ 「攞唔到」同「個站拒絕」係兩件事。回 None 而冇 `stop_reason` = 單版失敗
+    （多數係 timeout），caller 應該跳過呢一版繼續；有 `stop_reason` 先係個站真係
+    唔畀入（非 200／攔截頁／連續 timeout），嗰陣先收手。
+    """
     if runlog.site_refusing:
         return None
     session = browser(runlog)
@@ -1218,6 +1223,7 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
             dry_rounds = 0
             gap = round_gap
         remaining = still
+        remaining = rotate_for_fairness(remaining)
         if dry_rounds >= 3:
             runlog.warn(f"連續 {dry_rounds} 輪零進展 —— 當係真封鎖唔係冷卻，"
                         f"停止今晚嘅抽取，餘下交下一次排程")
@@ -1230,6 +1236,20 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
                 planned=len(planned), analysed=len(analysed),
                 pending=len(remaining))
     return analysed
+
+
+def rotate_for_fairness(pending: list) -> list:
+    """輪替下一輪嘅次序：上一輪排頭位嗰個擺去最後。
+
+    ⚠️ 冷卻窗大約只夠抽**一個**場次（2026-08-05 實測），所以「邊個排頭位」實際
+    上就係「邊個今晚抽得成」。2026-09-01 晚更實測後果：Murray Bridge 第 7 場每
+    一輪都喺 90 秒 timeout 停低，四輪冷卻嘅第一個請求全部餵咗俾佢，Sandown 同
+    Warwick Farm 由頭到尾**一個請求都冇出過**，兩個馬場整晚 pending。次序唔變
+    嘅重試 = 一個卡住嘅場次可以永遠餓死排喺佢後面嘅所有場次。
+    """
+    if len(pending) > 1:
+        return list(pending[1:]) + list(pending[:1])
+    return list(pending)
 
 
 def warm_race_pages(runlog: RunLog, meeting_id: str, race_ids: list[str],
@@ -1255,8 +1275,49 @@ def warm_race_pages(runlog: RunLog, meeting_id: str, race_ids: list[str],
         if fetch_page(runlog, url, where=f"{label} 第 {index} 場（raceId={race_id}）"):
             ready.append(race_id)
             continue
-        break
+        if runlog.site_refusing:
+            break
+        # 個站冇拒絕（冇非 200、冇攔截頁），淨係呢一版 hang 咗 —— 跳過佢繼續
+        # 下一場。⚠️ 舊 code 喺度 `break`，而上游一版 timeout 又會 trip circuit
+        # breaker，兩樣加埋令 2026-09-01 一版 hang 收咗成個 run 嘅工。連續三版
+        # timeout `sb_browser_fetch` 自己會跳掣，所以呢度唔會無限敲門。
+        runlog.warn(f"{label} 第 {index} 場（raceId={race_id}）攞唔到 —— "
+                    f"個站冇拒絕，跳過呢一場繼續，餘下等下一輪／下一次排程補")
     return ready
+
+
+def warm_speedmap_pages(runlog: RunLog, meeting_id: str, race_ids: list[str],
+                        label: str) -> int:
+    """把官方 Speedmap 版落 cache（`?view=Speedmap`）。回攞到幾多場。
+
+    Speedmap = Sportsbet 自己嘅「預測起步位序」，同我哋由往績砌嘅步速圖係兩個
+    獨立來源。`claw_sportsbet_form` 跑 `WC_SB_CACHE_ONLY=1`，只會由 cache 讀佢，
+    所以唔喺呢度暖 cache 就永遠係 `SpeedPos: -`（2026-09-02 實測：語料庫
+    11,356 行 `SpeedPos:`，**0 行有值**）。
+
+    ⚠️ 呢一步係**純粹加碼**：一場多一個請求。任何一場失敗都唔可以影響抽取 ——
+    賽事頁先係主線，Speedmap 冇咗只係少一個對照。所以：個站一拒絕即刻收手、
+    單版失敗就跳過、全程唔會 raise。`WC_AU_SPEEDMAP=0` 可以熄咗佢。
+    """
+    if os.environ.get("WC_AU_SPEEDMAP", "1") == "0":
+        return 0
+    from claw_sportsbet_form import BASE
+    from sb_browser_fetch import cache_path
+    got = 0
+    for index, race_id in enumerate(race_ids, 1):
+        url = f"{BASE}/{meeting_id}/{race_id}/?view=Speedmap"
+        if cache_path(url).exists():
+            got += 1
+            continue
+        if runlog.site_refusing:
+            break
+        if fetch_page(runlog, url, where=f"{label} 第 {index} 場 Speedmap"):
+            got += 1
+        elif runlog.site_refusing:
+            break
+    runlog.step("speedmap-warm", "ok" if got else "none",
+                meeting=label, cached=got, races=len(race_ids))
+    return got
 
 
 def warm_people_pages(runlog: RunLog, race_ids: list[str], meeting_id: str,
@@ -1444,6 +1505,13 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
         # 早更（10:00 → 最早一場 11:44）唔得，所以早更路徑唔會 force。
         warm_people_pages(runlog, ready, plan["meetingId"], f"{day} {venue}",
                           force=True)
+        # Speedmap 一定要喺 claw 之前落 cache（同個人頁一樣的理由）。
+        # 失敗唔會 raise —— 佢係對照資料，唔係主線。
+        try:
+            warm_speedmap_pages(runlog, plan["meetingId"], ready, f"{day} {venue}")
+        except Exception as exc:  # noqa: BLE001 — Speedmap 失敗唔可以炸咗抽取
+            runlog.warn(f"{day} {venue}: Speedmap 暖 cache 略過（"
+                        f"{type(exc).__name__}: {exc}）")
         rc, out = run_cmd([sys.executable, CLAW,
                            "--meeting-url", f"https://www.sportsbetform.com.au/"
                                             f"{plan['meetingId']}/{ready[0]}/",
@@ -1651,6 +1719,7 @@ def step_refresh_active(runlog: RunLog, today: date, *, max_meetings: int = 0,
             dry_rounds = 0
             gap = round_gap
         remaining = still
+        remaining = rotate_for_fairness(remaining)
         if dry_rounds >= 2:
             runlog.warn(f"連續 {dry_rounds} 輪覆核唔到 —— 停止覆核，"
                         f"現有分析保持不變（唔會用半份資料去改分）")

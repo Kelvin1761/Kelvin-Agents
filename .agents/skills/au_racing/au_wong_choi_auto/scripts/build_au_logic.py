@@ -250,56 +250,14 @@ def _extract_target_distance_line(block: str) -> str:
     return match.group(0).strip() if match else ""
 
 
-def _build_tactical_plan(barrier: int, block: str) -> dict:
-    style = _extract_running_style_line(block)
-    latest_official = next((cols for cols in _record_rows(block) if "試閘" not in cols[1]), None)
-    latest_run_style = latest_official[14].strip() if latest_official and len(latest_official) > 14 else ""
-    latest_consumption = latest_official[15].strip() if latest_official and len(latest_official) > 15 else ""
-    latest_notes = latest_official[16].strip() if latest_official and len(latest_official) > 16 else ""
-    expected_position = _expected_position_label(style, latest_run_style, barrier)
-    race_scenario = _tactical_scenario_text(expected_position, barrier, latest_consumption, latest_notes)
-    return {
-        "expected_position": expected_position,
-        "race_scenario": race_scenario,
-    }
-
-
-def _expected_position_label(style: str, latest_run_style: str, barrier: int) -> str:
-    text = f"{style} {latest_run_style}".strip()
-    if any(token in text for token in ("前置", "跟前", "居中前", "前領", "領放")):
-        return "前置 / 跟前"
-    if any(token in text for token in ("後上", "中後", "後追")):
-        return "中後 / 後上"
-    if barrier <= 3:
-        return "守中 / 內欄"
-    return "守中 / 居中"
-
-
-def _tactical_scenario_text(expected_position: str, barrier: int, consumption: str, notes: str) -> str:
-    if "前置" in expected_position:
-        if barrier <= 4:
-            text = f"出閘後可憑{barrier}檔主動守住前列，首彎前以省位切入為先，入直路前保持走位主動權。"
-        elif barrier <= 8:
-            text = f"出閘後宜先推前爭位，盡量喺首彎前切入前列，避免中段被迫走外疊。"
-        else:
-            text = f"外檔下若要保持前置，需要出閘後即時推前搶位；若未能順利切入，走位成本會較高。"
-    elif "中後" in expected_position or "後上" in expected_position:
-        if barrier <= 4:
-            text = f"可先靠{barrier}檔節省腳程守中後列，等待入直路前望空再逐步推進。"
-        elif barrier <= 8:
-            text = "預計先留居中後列搵遮擋，入直路前再逐步移出追勢。"
-        else:
-            text = "外檔下宜先收後搵遮擋，避免早段白白走外疊，入直路前再逐步移出追勢。"
-    else:
-        if barrier <= 3:
-            text = f"出閘後可先憑{barrier}檔貼欄守中，首彎前減少白走，入直路前再搵位發力。"
-        elif barrier <= 8:
-            text = "預計先守中列或中內疊，沿途以慳位為主，入直路前再視乎空位逐步推進。"
-        else:
-            text = "外檔下先求順利搵遮擋守中，避免長時間無遮擋走外疊，末段再逐步移出。"
-    if any(token in notes for token in ("Looking for run", "Crowded", "Steadied", "Across heels")):
-        text += " 入直路前亦要留意望空同移位時機。"
-    return text
+# 戰術劇本同預計走位一律用引擎入面嗰份實作。呢度以前有一份**分叉**嘅副本，
+# 而副本嗰個 `_expected_position_label(style, latest_run_style, barrier)` 仲收住
+# 檔位做輸入 —— 即係冇跑法證據時由檔位砌一個「守中」出嚟。單一真源，唔再抄。
+from au_racing_engine.engine_core import (  # noqa: E402
+    _build_tactical_plan,
+    _expected_position_label,
+    _tactical_scenario_text,
+)
 
 
 def _normalize_speed_map_text(text: str) -> str:

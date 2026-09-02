@@ -160,5 +160,37 @@ class SpeedmapRowNumberTests(unittest.TestCase):
         self.assertGreater(got[3], got[4],
                            "第一個列出（馬 3）喺後面，唔可以排喺馬 4 前面")
 
+    # 2026-09-02：上面個 fixture 只寫咗「數字先」嗰款版面，所以呢個 suite 一直綠，
+    # 而實測 836 個 cache 頁入面有 463 頁係「馬先」款 —— 嗰款會將上一匹馬嘅行號
+    # 派畀下一匹，同時靜靜丟咗第一匹（預測跑最尾嗰匹）。全部 836 頁 parse 出嚟
+    # 嘅 map 都同真值唔同。加返另一款版面同一個「一定要係 1..N 排列」嘅閘。
+    RAW_HORSE_FIRST = (
+        "<div>Speed Map</div><div>Predicted settling positions after start</div>"
+        "<div>Barriers</div><div>Finish post</div>"
+        "<div>3. Depth Of Character</div><div>4</div>"
+        "<div>5. Port Lockroy</div><div>3</div>"
+        "<div>2. Maison Louis (NZL)</div><div>2</div>"
+        "<div>1. Cristal Clear</div><div>1</div>"
+        "<div>Replay speed map</div><div>Weather</div>"
+    )
+
+    def test_horse_first_layout_keeps_every_runner(self):
+        got = C.parse_speedmap(self.RAW_HORSE_FIRST)
+        self.assertEqual(got, {3: 4, 5: 3, 2: 2, 1: 1})
+
+    def test_horse_first_layout_does_not_drop_the_backmarker(self):
+        """舊版會丟咗第一個列出嘅馬（行號最大 = 跑最後嗰匹）。"""
+        self.assertIn(3, C.parse_speedmap(self.RAW_HORSE_FIRST))
+
+    def test_rows_must_be_a_permutation_of_one_to_n(self):
+        """砌唔到合法排列就要返空，唔可以交一個似模似樣但係錯嘅 map。"""
+        broken = (
+            "<div>Finish post</div>"
+            "<div>3. A Horse</div><div>7</div>"
+            "<div>5. B Horse</div><div>7</div>"
+            "<div>Weather</div>"
+        )
+        self.assertEqual(C.parse_speedmap(broken), {})
+
     def test_a_page_without_the_map_yields_nothing(self):
         self.assertEqual(C.parse_speedmap("<div>Full Form</div>"), {})
