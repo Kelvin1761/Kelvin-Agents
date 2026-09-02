@@ -1142,6 +1142,10 @@ def test_stability_keeps_the_sentence_and_drops_the_counts():
     text = _template_text()
     assert "counts__cell" not in text and "counts-line" not in text, \
         "the stability counts came back"
+    # The stylesheet is inlined into the built page, so a dead rule there is
+    # shipped bytes, not a local leftover.
+    assert "counts-line" not in _stylesheet() and "counts__" not in _stylesheet(), \
+        "dead counts styling is still shipped"
     assert "renderCountStats" not in text, "the counts renderer is still wired"
     assert "CLAUSE_SPLIT_RE" in text and "dim-sub__source--rows" in text, \
         "the long caption is no longer split into rows"

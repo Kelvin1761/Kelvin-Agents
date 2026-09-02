@@ -3013,12 +3013,6 @@ a:hover {
 
 .gear__verdict--changed { background: #fffbeb; color: #b45309; }
 
-/* Counts pulled out of a prose caption (穩定性分), as one line. */
-.counts-line { margin-top: 5px; font-size: 0.7rem; color: #64748b; }
-.counts-line__item b { font-size: 0.82rem; font-weight: 800; }
-.counts-line__item--good b { color: #047857; }
-.counts-line__item--bad b { color: #b91c1c; }
-.counts-line__sep { margin: 0 7px; color: #cbd5e1; }
 
 /* Inputs a component is built from, with the share the 組合 line gives them.
    A flat row could not carry the evidence each input is scored on, so each one
