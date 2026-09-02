@@ -1092,7 +1092,7 @@ a:hover {
 @media (min-width: 1100px) {
   .analysis-detail {
     display: grid;
-    grid-template-columns: 216px minmax(0, 1fr);
+    grid-template-columns: 268px minmax(0, 1fr);
     grid-template-areas:
       'header header'
       'nav    doc';
@@ -2715,6 +2715,25 @@ a:hover {
   font-variant-numeric: tabular-nums;
 }
 
+.l600__axis {
+  display: grid;
+  grid-template-columns: 82px minmax(60px, 1fr) 52px;
+  gap: 8px;
+  font-size: 0.6rem;
+  color: #94a3b8;
+  margin-bottom: 3px;
+}
+
+.l600__axis span:nth-child(1) { grid-column: 2; text-align: left; }
+.l600__axis span:nth-child(2) { grid-column: 2; text-align: center; }
+.l600__axis span:nth-child(3) { grid-column: 2; text-align: right; }
+.l600__axis span:nth-child(2) { grid-row: 1; }
+
+.l600__fill--good { background: #059669; }
+.l600__fill--bad { background: #d97706; }
+.l600__good { color: #047857; }
+.l600__bad { color: #b45309; }
+
 .l600__note { margin-top: 3px; font-size: 0.62rem; color: #94a3b8; line-height: 1.6; }
 .l600__note b { color: #475569; }
 
@@ -2924,8 +2943,8 @@ a:hover {
 }
 
 .analysis-nav__chapter {
-  padding: 10px 11px;
-  font-size: 0.76rem;
+  padding: 12px 13px;
+  font-size: 0.8rem;
   font-weight: 700;
   color: #1e293b;
   background: #fff;
@@ -2949,8 +2968,8 @@ a:hover {
 }
 
 .analysis-nav__dim {
-  padding: 7px 11px 7px 26px;
-  font-size: 0.72rem;
+  padding: 9px 12px 9px 28px;
+  font-size: 0.76rem;
   font-weight: 600;
   color: #475569;
 }

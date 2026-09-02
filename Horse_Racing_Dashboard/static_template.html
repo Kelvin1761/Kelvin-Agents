@@ -3540,7 +3540,7 @@ function renderBattlefieldOverview(text, horses = [], geometry = null) {
 // out as a paragraph. All three were collapsed first and then removed outright
 // (2026-09-02) -- a collapsed chapter that nobody opens is still a row to scroll
 // past. The breakdown and the form file are what the document is for.
-const ANALYSIS_SKIP_HEADING = /^(?:🔢\s*)?評分總覽|^主要優勢$|^主要風險$|^數據判讀$|^近績解構$|^核心分析$/;
+const ANALYSIS_SKIP_HEADING = /^(?:🔢\s*)?評分總覽|^主要優勢$|^主要風險$|^數據判讀$|^近績解構$|^核心分析$|^最終判讀/;
 
 const ANALYSIS_ICONS = [
   [/數據判讀/, '📊', 'blue'],
@@ -4525,11 +4525,24 @@ function renderSubScoreDetails(children, captionText) {
     // follow-up "勝率差 → 檔位修正 +N 分" restates the adjustment beside it.
     if (/^檔位\s*\d+.*(?:統計|歷史)勝率/.test(text)) continue;
     if (/^勝率差\s*→\s*檔位修正/.test(text)) continue;
-    // Plain prose: skip it when every number in it is already in the caption
-    // above -- 21.9% of these lines simply restate it.
+    // Plain prose: skip it when the caption above already says it. Two ways:
+    //   every number in it is in the caption (21.9% of lines), or
+    //   the caption literally contains the sentence -- 同場／地況往績分 printed
+    //   "同場有實際上名支持" as its own line AND as the tail of its caption,
+    //   and the number test could not see it because it has no numbers.
     const own = new Set(text.match(/-?\d+\.?\d*/g) || []);
-    const restates = own.size > 0 && [...own].every(n => captionNumbers.has(n));
-    if (!restates) html += `<div class="dim-note">${esc(text)}</div>`;
+    const restatesNumbers = own.size > 0 && [...own].every(n => captionNumbers.has(n));
+    const restatesText = text.length >= 4 && (captionText || '').includes(text);
+    // Same facts, different wording: share most of the caption's numbers and
+    // open the same way. Measured on 騎練訊號, where the trainer's record is
+    // printed twice with the win count added the second time.
+    // A prefix test fails here: the caption still carries the person's name
+    // ("Gai Waterhouse & Adrian Bott 去年官方 788 場…") while the note starts at
+    // 去年官方. Three or more numbers with 60%+ of them already in the caption
+    // is a restatement on its own.
+    const shared = own.size ? [...own].filter(n => captionNumbers.has(n)).length / own.size : 0;
+    const restatesReworded = own.size >= 3 && shared >= 0.6;
+    if (!restatesNumbers && !restatesText && !restatesReworded) html += `<div class="dim-note">${esc(text)}</div>`;
   }
   if (runs.length) {
     html += `<div class="dim-runs">${runs.map(r =>
@@ -4551,12 +4564,16 @@ const L600_RE = /近\d+場所在賽事嘅 L600 平均(快|慢)過基準\s*([\d.]
 function renderL600Compare(source) {
   const m = L600_RE.exec(source || '');
   if (!m) return '';
-  // Signed seconds relative to the benchmark; negative means faster.
+  // Signed seconds against the benchmark; negative is faster.
   const ours = (m[1] === '快' ? -1 : 1) * parseFloat(m[2]);
   const field = (m[3] === '快' ? -1 : 1) * parseFloat(m[4]);
   const scale = Math.max(Math.abs(ours), Math.abs(field), 0.5);
+  const faster = ours < field;      // what actually matters: us vs today's field
   const bar = (value, label, tone) => {
     const pct = Math.min(Math.abs(value) / scale, 1) * 50;
+    // Right of the centre line is SLOWER. Bars used to grow right for a bigger
+    // "+", which reads as more/better; the axis now says which way is which and
+    // the horse's bar is coloured by whether it beat the field, not by sign.
     const side = value >= 0 ? `left:50%;width:${pct}%` : `right:50%;width:${pct}%`;
     return `<div class="l600__row">
       <span class="l600__label">${esc(label)}</span>
@@ -4564,12 +4581,11 @@ function renderL600Compare(source) {
       <span class="l600__val">${value >= 0 ? '+' : ''}${value.toFixed(2)}s</span>
     </div>`;
   };
-  const gap = field - ours;   // positive: this horse's環境 was the faster one
   return `<div class="l600">
-    ${bar(ours, '本駒往績環境', 'ours')}
+    <div class="l600__axis"><span>← 快過基準</span><span>基準</span><span>慢過基準 →</span></div>
+    ${bar(ours, '本駒往績環境', faster ? 'good' : 'bad')}
     ${bar(field, '今場對手平均', 'field')}
-    <div class="l600__note">中線 = 基準；負數 = 快過基準。本駒環境${
-      gap >= 0 ? '快過' : '慢過'}對手平均 <b>${Math.abs(gap).toFixed(2)}s</b></div>
+    <div class="l600__note">本駒往績所處嘅速度環境，${faster ? '<b class="l600__good">快過</b>' : '<b class="l600__bad">慢過</b>'}今場對手平均 <b>${Math.abs(field - ours).toFixed(2)}s</b></div>
   </div>`;
 }
 
@@ -4580,29 +4596,33 @@ function renderSubScore(node, meta) {
   const name = meta ? meta.name : (m ? m[1] : node.text.slice(0, 24));
   const score = meta ? meta.score : (m ? m[2] : null);
   const source = meta ? meta.source : (m ? m[3] : '');
-  // HKJC keeps a sub-score's adjustments as siblings, tagged with the box they
-  // belong to; they are routed here so they land in that box, not beside it.
-  const children = meta && meta.extras.length
-    ? [...flattenDetailNodes(node.children), ...flattenDetailNodes(meta.extras)]
-    : flattenDetailNodes(node.children);
-  // 近績分's caption carries the form sequence; surface it beside the name.
-  const form = /近績\s*([\dxX]+(?:-[\dxX]+)+)/.exec(source);
-  // 騎師分 / 練馬師分 open with the person's name; pull it out so you can see
-  // who is riding and who trains without reading the sentence.
+  const form = /近績\s*([\dxX]+(?:-[\dxX]+)*)(?=[，,。；;\s]|$)/.exec(source);
   let person = '';
   if (/^(?:騎師分|練馬師分)$/.test(name)) {
     // AU: "Jason Whiting 去年官方 570 場…"   HKJC: "希威森兩季917仗：勝率6%…"
-    const m = /^([^\d，,；;：:（(]+?)\s*(?:去年|兩季|上季|今季|近期|近|曾|喺|係|×)/.exec(source);
-    if (m && m[1].trim().length <= 28) person = m[1].trim();
+    const pm = /^([^\d，,；;：:（(]+?)\s*(?:去年|兩季|上季|今季|近期|近|曾|喺|係|×)/.exec(source);
+    if (pm && pm[1].trim().length <= 28) person = pm[1].trim();
   }
+  // HKJC keeps a sub-score's adjustments as siblings, tagged with the box they
+  // belong to; they are routed here so they land in that box, not beside it.
+  // The chart says what the sentence said, so drop the sentence (#6). Likewise
+  // the person's name is already the headline above (#3), and 近績分's caption
+  // is "近績 <sequence>，<commentary>" whose sequence is the chip (#5).
+  const chart = renderL600Compare(source);
+  let caption = chart ? '' : source;
+  if (caption && person) caption = caption.replace(person, '').replace(/^[\s，,、:：]+/, '');
+  if (caption && /^近績分$/.test(name)) caption = '';
+  const children = meta && meta.extras.length
+    ? [...flattenDetailNodes(node.children), ...flattenDetailNodes(meta.extras)]
+    : flattenDetailNodes(node.children);
   return `<div class="dim-sub">
     <div class="dim-sub__head">
       <span class="dim-sub__name">${esc(name)}${form ? `<span class="dim-sub__form">${esc(form[1])}</span>` : ''}</span>
       ${score !== null ? `<span class="dim-sub__score">${esc(score)}</span>` : ''}
     </div>
     ${person ? `<div class="dim-sub__person">${esc(person)}</div>` : ''}
-    ${renderL600Compare(source)}
-    ${source ? `<div class="dim-sub__source">${esc(source)}</div>` : ''}
+    ${chart}
+    ${caption ? `<div class="dim-sub__source">${esc(caption)}</div>` : ''}
     ${children.length ? `<div class="dim-sub__detail">${renderSubScoreDetails(children, source)}</div>` : ''}
   </div>`;
 }
