@@ -63,8 +63,21 @@
     .dim-strip__driver .down { color: #B91C1C; }
     .dim-row__meta { font-size: 0.66rem; color: #64748B; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .dim-row__meta b { color: #475569; font-weight: 700; }
+    /* Phone: the four-column row squeezed the track to nothing -- the bars,
+       the whole point of the strip, were invisible on the device this gets
+       read on. Give the bar its own line under the name. */
+    @media (max-width: 768px) {
+      .dim-row { grid-template-columns: 1fr auto; row-gap: 3px; padding: 6px 0; }
+      .dim-row__name { grid-column: 1; grid-row: 1; }
+      .dim-row__score { grid-column: 2; grid-row: 1; }
+      .dim-row__track { grid-column: 1; grid-row: 2; }
+      .dim-row__meta { grid-column: 2; grid-row: 2; text-align: right; }
+      .dim-strip__title-hint { display: none; }
+      .dim-strip__head { align-items: center; }
+    }
     .dim-ref { margin-top: 7px; padding-top: 7px; border-top: 1px dashed #CBD5E1; font-size: 0.66rem; color: #64748B; line-height: 1.7; }
     .dim-ref b { color: #475569; }
+    .dim-ref__item { white-space: nowrap; display: inline-block; }
 
     /* Market line — the model's rank next to the market's, and the gap between
        them. Both numbers already exist per horse; only the comparison is new. */
@@ -3311,7 +3324,15 @@ function renderBattlefieldOverview(text, horses = []) {
   if (overview.notes) html += `<div class="battlefield__notes battlefield__notes--refined">${formatRichSection(overview.notes)}</div>`;
   if (overview.ranking?.rows?.length) {
     html += `<div class="battlefield-ranking"><div class="battlefield-ranking__header"><div><span>📊</span><strong>全場綜合戰力排名</strong></div><span>${overview.ranking.rows.length} 匹馬</span></div>`;
-    html += `<div class="battlefield-ranking__scroll"><table class="battlefield-ranking__table"><thead><tr>${overview.ranking.headers.map(header => `<th>${esc(header)}</th>`).join('')}</tr></thead><tbody>`;
+    // Mobile keeps only the five columns that answer "who is rated where".
+    // Everything else (AU: 資料/定位, HKJC: 信心分/風險分/情境標記) is marked
+    // optional and hidden under 768px, so the table fits the screen instead of
+    // scrolling sideways. Driven by header NAME, because AU and HKJC print
+    // different extra columns.
+    const RANKING_CORE = ['排名', '馬號', '馬名', '綜合戰力分', 'Grade'];
+    const optionalCell = header => RANKING_CORE.some(c => c.toLowerCase() === String(header).toLowerCase())
+      ? '' : ' class="battlefield-ranking__cell--optional"';
+    html += `<div class="battlefield-ranking__scroll"><table class="battlefield-ranking__table"><thead><tr>${overview.ranking.headers.map(header => `<th${optionalCell(header)}>${esc(header)}</th>`).join('')}</tr></thead><tbody>`;
     overview.ranking.rows.forEach((row, index) => {
       const numberIndex = overview.ranking.headers.indexOf('馬號');
       const horse = horseLookup.get(String(row[numberIndex] || ''));
@@ -3320,18 +3341,18 @@ function renderBattlefieldOverview(text, horses = []) {
         const value = row[cellIndex] || '';
         if (header === '排名') {
           const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : esc(value || String(index + 1));
-          html += `<td><span class="battlefield-ranking__rank">${medal}</span></td>`;
+          html += `<td${optionalCell(header)}><span class="battlefield-ranking__rank">${medal}</span></td>`;
         } else if (header === '馬號') {
-          html += `<td><span class="battlefield-ranking__horse-number">${esc(value)}</span></td>`;
+          html += `<td${optionalCell(header)}><span class="battlefield-ranking__horse-number">${esc(value)}</span></td>`;
         } else if (header === '馬名') {
-          html += `<td><div class="battlefield-ranking__runner">${renderSilk(horse || {}, 'sm')}<div><strong class="battlefield-ranking__horse-name">${esc(value)}</strong>${horse?.horse_name_en ? `<span>${esc(horse.horse_name_en)}</span>` : ''}</div></div></td>`;
+          html += `<td${optionalCell(header)}><div class="battlefield-ranking__runner">${renderSilk(horse || {}, 'sm')}<div><strong class="battlefield-ranking__horse-name">${esc(value)}</strong>${horse?.horse_name_en ? `<span>${esc(horse.horse_name_en)}</span>` : ''}</div></div></td>`;
         } else if (header === '綜合戰力分') {
           const numericScore = Math.max(0, Math.min(100, Number(value) || 0));
-          html += `<td><div class="battlefield-ranking__score"><strong>${esc(value)}</strong><span aria-hidden="true"><i style="width:${numericScore}%"></i></span></div></td>`;
+          html += `<td${optionalCell(header)}><div class="battlefield-ranking__score"><strong>${esc(value)}</strong><span aria-hidden="true"><i style="width:${numericScore}%"></i></span></div></td>`;
         } else if (/^Grade$/i.test(header)) {
-          html += `<td>${ratingBadge(value)}</td>`;
+          html += `<td${optionalCell(header)}>${ratingBadge(value)}</td>`;
         } else {
-          html += `<td>${esc(value || '—')}</td>`;
+          html += `<td${optionalCell(header)}>${esc(value || '—')}</td>`;
         }
       });
       html += '</tr>';
@@ -3342,7 +3363,116 @@ function renderBattlefieldOverview(text, horses = []) {
   return html;
 }
 
+// ═══════════════════════════════════════════════
+// 完整分析 — structural split
+//
+// The old builder classified raw_text LINE BY LINE against loose patterns
+// (any line containing 風險 opened a 風險分析 chapter, and so on). Measured on
+// one AU horse: 核心分析 swallowed 5,244 of 8,048 characters because no later
+// pattern matched, the block's own `### 【No.1】…` header leaked in as a
+// chapter called 分析摘要, and chapters came out in priority order rather than
+// document order.
+//
+// The source does not need guessing: every horse block on BOTH platforms
+// carries a real markdown heading tree (#### sections, ##### subsections) --
+// 477/477 AU horses and 131/131 HKJC horses measured 2026-09-02. Split on that.
+// ═══════════════════════════════════════════════
+
+// Already shown on the preview card; repeating them is what made 完整分析 long.
+const ANALYSIS_SKIP_HEADING = /^(?:🔢\s*)?評分總覽|^主要優勢$|^主要風險$/;
+
+const ANALYSIS_ICONS = [
+  [/數據判讀/, '📊', 'blue'],
+  [/近績解構/, '⏱️', 'slate'],
+  [/完整賽績檔案|賽績檔案/, '📋', 'slate'],
+  [/核心分析/, '🧠', 'blue'],
+  [/排名矩陣|評分矩陣|評級矩陣|數值拆解/, '🧮', 'blue'],
+  [/結論|評語/, '💡', 'emerald'],
+  [/風險/, '⚠️', 'rose'],
+  [/晨操|Trackwork/i, '🏇', 'amber'],
+  [/Facts/i, '📋', 'slate'],
+  [/賽績線/, '🔗', 'slate'],
+  [/段速|速度/, '🔬', 'blue'],
+];
+
+// Headings arrive with their own emoji ("#### 📊 數據判讀"). Rendering the
+// mapped icon as well produced "📊📊 數據判讀", so the leading emoji is lifted
+// out of the title and used AS the icon; the map is the fallback for headings
+// that carry none (HKJC's "12 項分數", AU's dimension subsections).
+// 2300-23FF matters: ⏱️ (U+23F1) opens 近績解構 on both platforms and was
+// outside the first range, so that one heading still rendered "⏱️ ⏱️ 近績解構".
+const LEADING_EMOJI_RE = /^([\u{1F000}-\u{1FAFF}\u{2300}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]+)\s*/u;
+
+function analysisHeadingStyle(title, isSubsection) {
+  const emoji = LEADING_EMOJI_RE.exec(title);
+  let theme = 'slate';
+  for (const [pattern, , mappedTheme] of ANALYSIS_ICONS) {
+    if (pattern.test(title)) { theme = mappedTheme; break; }
+  }
+  if (emoji) return { icon: emoji[1], theme, title: title.replace(LEADING_EMOJI_RE, '').trim() };
+  // Dimension subsections already carry their own verdict symbol in the text
+  // ("狀態與穩定性：72.4 分　✅ 偏強"); adding a guessed icon beside it was
+  // noise, and the 📄 fallback said nothing at all.
+  if (isSubsection) return { icon: '', theme, title };
+  for (const [pattern, icon, mappedTheme] of ANALYSIS_ICONS) {
+    if (pattern.test(title)) return { icon, theme: mappedTheme, title };
+  }
+  return { icon: '', theme: 'slate', title };
+}
+
+function splitAnalysisByHeadings(raw) {
+  const lines = String(raw || '').split('\n');
+  const sections = [];
+  let section = null, child = null;
+
+  const push = line => {
+    if (child) child.content.push(line);
+    else if (section) section.content.push(line);
+  };
+
+  for (const line of lines) {
+    const m = /^(#{3,6})\s+(.+?)\s*$/.exec(line);
+    if (!m) { push(line); continue; }
+    const depth = m[1].length;
+    const title = m[2].replace(/\*+/g, '').trim();
+    if (depth <= 3) {
+      // The horse's own `### 【No.1】 name | jockey | …` header. Everything
+      // about it is already in the card header, and it used to surface as a
+      // bogus chapter of its own.
+      section = null; child = null;
+      continue;
+    }
+    if (depth === 4) {
+      child = null;
+      if (ANALYSIS_SKIP_HEADING.test(title)) { section = null; continue; }
+      section = { content: [], children: [], title, ...analysisHeadingStyle(title) };
+      sections.push(section);
+      continue;
+    }
+    // depth >= 5 — a subsection of the current section.
+    if (!section) continue;
+    child = { content: [], title, ...analysisHeadingStyle(title, true) };
+    section.children.push(child);
+  }
+
+  const tidy = node => { node.content = node.content.join('\n').trim(); return node; };
+  return sections
+    .map(sec => { tidy(sec); sec.children.forEach(tidy); return sec; })
+    .filter(sec => sec.content || sec.children.length);
+}
+
 function buildHorseAnalysisSections(horse) {
+  // Preferred path: split on the document's own headings.
+  if (horse.raw_text && /^#{4}\s+/m.test(horse.raw_text)) {
+    const structured = splitAnalysisByHeadings(horse.raw_text)
+      .filter(sec => sec.children.length || !isEmptySection(sec.content));
+    if (structured.length) {
+      const rows = Array.isArray(horse.data_readout) ? horse.data_readout.filter(Boolean) : [];
+      structured.forEach(sec => { if (/數據判讀/.test(sec.title)) sec.rows = rows; });
+      return structured;
+    }
+  }
+  // Fallback for older archived meetings written without a heading tree.
   let sections;
   if (horse.raw_text) {
     sections = parseRawTextSections(horse.raw_text).filter(section => !isEmptySection(section.content));
@@ -3357,9 +3487,11 @@ function buildHorseAnalysisSections(horse) {
       { icon:'💡', title:'結論', color:'#059669', bg:'#ECFDF5', content:horse.conclusion },
     ].filter(section => section.content && !isEmptySection(section.content));
   }
-  if (Array.isArray(horse.data_readout) && horse.data_readout.length) {
-    sections = sections.filter(section => section.title !== '數據判讀');
-  }
+  // The 數據判讀 chapter used to be dropped here because the preview card
+  // rendered the rows itself. The card no longer does, so dropping it would
+  // make the readout vanish completely on the fallback path (older archived
+  // meetings). Keep the chapter and hand it the structured rows instead.
+  const readoutRows = Array.isArray(horse.data_readout) ? horse.data_readout.filter(Boolean) : [];
   const merged = [];
   const mergedByTitle = new Map();
   sections.forEach((section, index) => {
@@ -3375,8 +3507,14 @@ function buildHorseAnalysisSections(horse) {
     if (content && !existing.content.includes(content)) existing.content += `\n\n${content}`;
   });
   const priority = { '結論': 0, '風險分析': 1, '核心分析': 2, '段速法醫': 3 };
-  return merged
+  const ordered = merged
     .sort((a, b) => (priority[a.title] ?? 20) - (priority[b.title] ?? 20) || a.sourceIndex - b.sourceIndex);
+  if (readoutRows.length) {
+    const existing = ordered.find(section => section.title === '數據判讀');
+    if (existing) existing.rows = readoutRows;
+    else ordered.push({ icon: '📊', title: '數據判讀', color: '#2563EB', bg: '#EFF6FF', content: '', rows: readoutRows });
+  }
+  return ordered;
 }
 
 function analysisSectionTheme(section) {
@@ -3387,13 +3525,121 @@ function analysisSectionTheme(section) {
   return 'slate';
 }
 
+// AU writes its form file as pipe-delimited records, one per bullet, with a
+// legend row in the SAME shape as the data ("- `正式` 日期 | 場地 | 路程 | …").
+// Rendered as bullets that legend read as a phantom first start, and the
+// records themselves wrapped into an unscannable paragraph. As a table the
+// columns line up and the legend becomes the header it already was.
+//
+// HKJC's equivalent sections are `- **label:** value` pairs, a different shape
+// entirely, so this returns null unless the records actually parse -- and the
+// caller falls back to normal rendering.
+const FORM_RECORD_RE = /^[-*]\s*`([^`]+)`\s*(.+)$/;
+const FORM_FIELD_PREFIX = /^(?:場地|檔位|名次|走勢)\s+/;
+
+function parseFormRecords(content) {
+  const rows = [];
+  for (const line of String(content || '').split('\n')) {
+    const m = FORM_RECORD_RE.exec(line.trim());
+    if (!m) continue;
+    const cells = m[2].split('|').map(c => c.trim().replace(FORM_FIELD_PREFIX, ''));
+    if (cells.length < 5) continue;
+    rows.push({ tag: m[1].trim(), cells });
+  }
+  if (rows.length < 2) return null;
+  // The legend row is the one whose date column is not a date.
+  const isLegend = row => !/\d{4}-\d{2}-\d{2}|\d{1,2}\/\d{1,2}/.test(row.cells[0]);
+  const body = rows.filter(r => !isLegend(r));
+  if (!body.length) return null;
+  return body;
+}
+
+const FORM_HEADERS = ['類別', '日期', '賽事', '路程', '地況', '檔位', '名次', '走勢'];
+// Phone keeps date / race / finish / running line -- what the record is read
+// for. 路程 and 檔位 stay on desktop.
+const FORM_OPTIONAL = new Set(['路程', '檔位']);
+
+function renderFormRecords(rows) {
+  let h = '<div class="form-records"><table class="form-records__table"><thead><tr>';
+  FORM_HEADERS.forEach(header => {
+    h += `<th${FORM_OPTIONAL.has(header) ? ' class="form-records__cell--optional"' : ''}>${esc(header)}</th>`;
+  });
+  h += '</tr></thead><tbody>';
+  rows.forEach(row => {
+    const cells = [row.tag, ...row.cells];
+    h += '<tr>';
+    FORM_HEADERS.forEach((header, i) => {
+      const optional = FORM_OPTIONAL.has(header) ? ' class="form-records__cell--optional"' : '';
+      const value = cells[i] == null ? '' : cells[i];
+      // data-label drives the phone layout, where the table collapses into one
+      // block per start and the header row is gone.
+      const label = ` data-label="${header}"`;
+      if (header === '類別') h += `<td${optional}${label}><span class="form-records__tag">${esc(value)}</span></td>`;
+      else h += `<td${optional}${label}>${esc(value) || '—'}</td>`;
+    });
+    h += '</tr>';
+  });
+  return h + '</tbody></table></div>';
+}
+
 function renderAnalysisDocumentSection(section, index, cardId) {
-  const theme = analysisSectionTheme(section);
+  const theme = section.theme || analysisSectionTheme(section);
   const chapter = String(index + 1).padStart(2, '0');
-  return `<section id="${cardId}-chapter-${index + 1}" class="analysis-document__section analysis-document__section--${theme}">
-    <div class="analysis-document__section-title"><span class="analysis-document__chapter">${chapter}</span><span aria-hidden="true">${section.icon}</span><span>${esc(section.title)}</span></div>
-    <div class="analysis-document__section-body">${formatRichSection(section.content)}</div>
+  const sectionId = `${cardId}-chapter-${index + 1}`;
+
+  let body = '';
+  // 數據判讀 has a purpose-built grid renderer; it was previously dumped as
+  // plain text here AND shown on the card. It now appears once, here -- and
+  // collapsed, because its first group (綜合戰力分 / 主要支柱 / 最弱環節 /
+  // 數據信心) restates the ranking strip line for line, so opening the
+  // document with it expanded reads as the same paragraph twice.
+  const isReadout = /數據判讀/.test(section.title);
+  if (isReadout && Array.isArray(section.rows) && section.rows.length) {
+    const readoutId = `${sectionId}-readout`;
+    body += `<div class="analysis-sub">
+      <button type="button" class="analysis-sub__toggle" aria-expanded="false" aria-controls="${readoutId}" onclick="toggleAnalysisSub('${readoutId}', this)">
+        <span class="analysis-sub__title">展開數據判讀</span>
+        <span class="analysis-sub__chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div id="${readoutId}" class="analysis-sub__body" hidden>${renderDataReadout(section.rows)}</div>
+    </div>`;
+  } else if (section.content) {
+    const records = parseFormRecords(section.content);
+    body += records ? renderFormRecords(records) : formatRichSection(section.content);
+  }
+
+  // Subsections (the seven per-dimension breakdowns) collapse individually.
+  // Left expanded they were the bulk of the document and made the phone view
+  // an endless scroll.
+  (section.children || []).forEach((child, childIndex) => {
+    const childId = `${sectionId}-sub-${childIndex + 1}`;
+    body += `<div class="analysis-sub">
+      <button type="button" class="analysis-sub__toggle" aria-expanded="false" aria-controls="${childId}" onclick="toggleAnalysisSub('${childId}', this)">
+        ${child.icon ? `<span class="analysis-sub__icon" aria-hidden="true">${child.icon}</span>` : ''}
+        <span class="analysis-sub__title">${esc(child.title)}</span>
+        <span class="analysis-sub__chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div id="${childId}" class="analysis-sub__body" hidden>${formatRichSection(child.content)}</div>
+    </div>`;
+  });
+
+  return `<section id="${sectionId}" class="analysis-document__section analysis-document__section--${theme}">
+    <div class="analysis-document__section-title"><span class="analysis-document__chapter">${chapter}</span>${section.icon ? `<span aria-hidden="true">${section.icon}</span>` : ''}<span class="analysis-document__section-name">${esc(section.title)}</span>${(section.children || []).length ? `<span class="analysis-document__section-count">${section.children.length} 項</span>` : ''}</div>
+    <div class="analysis-document__section-body">${body}</div>
   </section>`;
+}
+
+function toggleAnalysisSub(id, btn) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const open = !el.hidden;
+  el.hidden = open;
+  btn.setAttribute('aria-expanded', String(!open));
+  btn.classList.toggle('is-open', !open);
+  // The parent 完整分析 panel is height-animated; once a subsection changes
+  // height its max-height has to be released or the new content is clipped.
+  const panel = btn.closest('.expand-animate');
+  if (panel && !panel.classList.contains('expand-animate--collapsed')) panel.style.maxHeight = 'none';
 }
 
 // ═══════════════════════════════════════════════
@@ -3448,7 +3694,7 @@ function renderDimensionStrip(horse) {
 
   let h = '<div class="dim-strip">';
 
-  h += '<div class="dim-strip__head"><span class="dim-strip__title">六維排名矩陣 · 條長 = 對呢匹馬嘅實際影響</span>';
+  h += '<div class="dim-strip__head"><span class="dim-strip__title">六維排名矩陣<span class="dim-strip__title-hint"> · 條長 = 對呢匹馬嘅實際影響</span></span>';
   if (horse.evidence_dimensions != null && horse.evidence_dimensions_total) {
     const thin = horse.evidence_dimensions < horse.evidence_dimensions_total;
     h += `<span class="dim-strip__evidence${thin ? ' dim-strip__evidence--thin' : ''}">${thin ? '⚠️ ' : ''}${horse.evidence_dimensions}/${horse.evidence_dimensions_total} 維有實測</span>`;
@@ -3487,7 +3733,8 @@ function renderDimensionStrip(horse) {
     // the dashboard used to display 5 of the 7 dimensions in the file with
     // nothing saying the other two existed.
     h += '<div class="dim-ref">參考 · 不入排名：' + reference.map(d =>
-      `<b>${esc(d.name)}</b> ${d.score != null ? d.score.toFixed(1) : '—'} ${d.symbol || ''}`
+      // nowrap per item, else the trailing ✅ drops to a line of its own
+      `<span class="dim-ref__item"><b>${esc(d.name)}</b> ${d.score != null ? d.score.toFixed(1) : '—'} ${d.symbol || ''}</span>`
     ).join('　·　') + '</div>';
   }
   return h + '</div>';
@@ -3538,7 +3785,6 @@ function renderMarketLine(horse, marketRanks) {
 }
 
 function renderHorseCard(horse, topPickRank, marketRanks) {
-  const dataRows = Array.isArray(horse.data_readout) ? horse.data_readout.filter(Boolean) : [];
   const analysisSections = buildHorseAnalysisSections(horse);
   const topicCount = analysisSections.length;
   const hasAnalysis = topicCount > 0;
@@ -3595,8 +3841,10 @@ function renderHorseCard(horse, topPickRank, marketRanks) {
   const asList = t => esc(t).replace(/\n/g, '<br>· ');
   if (cleanAdv) html += `<div style="margin-top:8px">✅ <strong>優勢:</strong> ${cleanAdv.includes('\n') ? '<br>· ' + asList(cleanAdv) : esc(cleanAdv)}</div>`;
   if (cleanRisk) html += `<div style="margin-top:4px">⚠️ <strong>風險:</strong> ${cleanRisk.includes('\n') ? '<br>· ' + asList(cleanRisk) : esc(cleanRisk)}</div>`;
-  // Keep every signal and its reason visible; desktop uses two readable columns.
-  if (dataRows.length) html += renderDataReadout(dataRows);
+  // 數據判讀 used to live here. It restated what the ranking matrix now shows
+  // -- 主要支柱 / 最弱環節 / 數據信心 are the strip's top bar, bottom bar and
+  // evidence badge -- so on the preview card it was the same reading twice.
+  // The rows are still in raw_text and reachable from 完整分析.
   // 核心邏輯 removed from the preview card (user request) — 數據判讀 only.
   // Underhorse signal
   if (horse.underhorse_triggered) {
