@@ -939,6 +939,7 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
             
     # 3. Analyze Future form — Top-3 per race
     table_lines = []
+    evidence_rows = []
     strong_score = 0.0  # Float for fractional scoring
     total_valid = 0
     
@@ -958,13 +959,15 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
         # 淨計 partial 嘅話 future_places / future_runs 永遠 = 100%，
         # 於是每隻對手都變「中組」以上。
         #
-        # 所以：**勝出同上名次數兩種記錄都數**（我哋見到佢全部前三，冇漏），
-        # 但**上名率嘅分母只用完整記錄**。冇完整記錄就唔算率，改為只按勝出分層。
+        # 所以：已觀察勝出/上名次數兩種記錄都數，但**上名率分子同分母
+        # 都只用完整記錄**。partial 只係見過嘅上名，唔保證涵蓋所有出賽。
         future_wins = 0
-        future_places = 0        # Top-3 finishes（兩種記錄都算）
+        future_places = 0        # observed Top-3 finishes (may be partial)
+        future_places_complete = 0
         future_runs = 0          # 顯示用：見到嘅將來出賽（含 partial）
         future_runs_complete = 0 # 上名率分母：只計完整記錄
-        future_venues = set()
+        future_classes = set()
+        followups = []
 
         if 'runs' in opp_data:
             for r in opp_data['runs']:
@@ -972,26 +975,32 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
                     r_dt = datetime.strptime(r['date'], '%Y-%m-%d')
                     if not (q['date_dt'] and r_dt > q['date_dt']):
                         continue
+                    if _AS_OF and r['date'] >= _AS_OF:
+                        continue
+                    followups.append({k: r.get(k) for k in
+                                      ('date', 'finish', 'venue', 'class', 'partial')})
                     future_runs += 1
                     if not r.get('partial'):
                         future_runs_complete += 1
-                    if r.get('venue'):
-                        future_venues.add(r['venue'])
+                    if r.get('class') in {'Metro', '省賽'}:
+                        future_classes.add(r['class'])
                     finish = r.get('finish')
                     if finish == 1:
                         future_wins += 1
                     if finish is not None and 1 <= finish <= 3:
                         future_places += 1
+                        if not r.get('partial'):
+                            future_places_complete += 1
                 except Exception:
                     pass
         
         # Infer class from venues (AU-specific heuristic)
         class_str = '-'
-        if future_venues:
-            metro_venues = {'Randwick', 'Rosehill', 'Flemington', 'Caulfield', 'Moonee Valley',
-                           'Eagle Farm', 'Doomben', 'Sandown', 'Canterbury'}
-            has_metro = any(v in metro_venues for v in future_venues)
-            has_country = any(v not in metro_venues for v in future_venues)
+        if future_classes:
+            # The index owns venue classification. A second list here omitted
+            # Warwick Farm and disagreed on Sandown/Kensington variants.
+            has_metro = 'Metro' in future_classes
+            has_country = '省賽' in future_classes
             if has_metro and not has_country:
                 class_str = 'Metro'
             elif has_metro and has_country:
@@ -1011,10 +1020,12 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
             total_valid += 1
             # 只有 partial 記錄嗰陣「出 N 次」係錯嘅講法 —— 我哋只見到佢入前三
             # 嗰幾次。講真話，唔好講到似完整往績。
-            if future_runs_complete:
+            if future_runs_complete == future_runs:
                 perf_str = f"出 {future_runs} 次: {future_wins} 勝"
             else:
                 perf_str = f"見前三 {future_places} 次: {future_wins} 勝"
+                if future_runs_complete:
+                    perf_str += f"（另有完整出賽 {future_runs_complete} 次記錄）"
 
             if future_wins >= 2 or (future_wins >= 1 and class_str == 'Metro'):
                 strength_lbl = "✅✅ 超強組"
@@ -1024,7 +1035,9 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
                 strong_score += 1
             elif future_runs_complete:
                 # 有完整記錄先算得上名率
-                place_rate = future_places / future_runs_complete
+                # Numerator and denominator must describe the same sample.
+                # Partial top-3 sightings cannot inflate this complete-run rate.
+                place_rate = future_places_complete / future_runs_complete
                 if place_rate >= 0.4:
                     strength_lbl = "⚠️ 中組"
                     strong_score += 0.5
@@ -1044,6 +1057,13 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
                 total_valid -= 1
         
         # Build table row — show race details only on first opponent row per race
+        evidence_rows.append({
+            'source_race_date': q['date_dt'].strftime('%Y-%m-%d') if q['date_dt'] else '',
+            'venue': q['venue'], 'race_no': q['race_no'],
+            'own_finish': q['my_pos'], 'own_margin': q['margin'],
+            'opponent': q['opp_name'], 'opponent_finish': q['opp_pos'],
+            'followups': followups,
+        })
         is_first_opp = (q['race_idx'] != prev_race_idx)
         prev_race_idx = q['race_idx']
         
@@ -1089,6 +1109,8 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
         'table_lines': table_lines,
         'rating': rating,
         'stats': stats_str,
+        'evidence': {'schema': 'au/formline-evidence-v1', 'as_of': _AS_OF or '',
+                     'rows': evidence_rows},
     }
 
 
@@ -2351,6 +2373,10 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         lines.append(f"|---|------|------|----------|------|---------------|--------------|----------|")
         for tl in form_lines['table_lines']:
             lines.append(tl)
+        # Retain dated source evidence for future ML/proximity experiments.
+        # The visible summary alone cannot establish point-in-time safety.
+        lines.append('<!-- AU_FORMLINE_EVIDENCE:' +
+                     json.dumps(form_lines['evidence'], ensure_ascii=False, separators=(',', ':')) + ' -->')
 
     # ═══════════════════════════════════════════════════
     # 🔧 引擎與距離

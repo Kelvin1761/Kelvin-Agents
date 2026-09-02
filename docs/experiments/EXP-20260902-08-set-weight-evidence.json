@@ -1,0 +1,1507 @@
+{
+  "changed_races": [
+    {
+      "meeting": "2026-08-10 Dubbo Race 1-7",
+      "race": 2,
+      "class": "ELDERS DUBBO RURAL MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-10 Kilcoy Race 1-7",
+      "race": 5,
+      "class": "LADBROKES SWITCH Class 1 Handicap",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-10 Pakenham Synthetic Race 1-9",
+      "race": 1,
+      "class": "Ladbrokes Odds Surge 3YO Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-10 Pakenham Synthetic Race 1-9",
+      "race": 3,
+      "class": "Hygain Edge Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-10 Pakenham Synthetic Race 1-9",
+      "race": 4,
+      "class": "Happy 50th RO'Ket Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-10 Pakenham Synthetic Race 1-9",
+      "race": 5,
+      "class": "Designer Coolrooms Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-11 Ballarat Synthetic Race 1-10",
+      "race": 1,
+      "class": "Global Turf Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-11 Ballarat Synthetic Race 1-10",
+      "race": 2,
+      "class": "Manhari Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-11 Ballarat Synthetic Race 1-10",
+      "race": 4,
+      "class": "Hygain Edge Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-11 Ballina Race 1-8",
+      "race": 2,
+      "class": "TAB COUNTRY BOOSTED MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-11 Ballina Race 1-8",
+      "race": 5,
+      "class": "BALLINA FAIR MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-11 Dalby Race 1-8",
+      "race": 1,
+      "class": "RUGBY RACEDAY 31ST OCTOBER 2026 Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-11 Dalby Race 1-8",
+      "race": 2,
+      "class": "MITTYS RACING COLOURS Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-11 Hawkesbury Race 1-7",
+      "race": 2,
+      "class": "HRC MOTEL MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-11 Hawkesbury Race 1-7",
+      "race": 3,
+      "class": "CLARENDON TAVERN 4YO&amp;UP MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-12 Bendigo Race 1-8",
+      "race": 1,
+      "class": "CluBarham Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-12 Bendigo Race 1-8",
+      "race": 2,
+      "class": "Sandhurst Stockfeeds Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-12 Bendigo Race 1-8",
+      "race": 3,
+      "class": "Ladbrokes Owners Promotion Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-12 Bendigo Race 1-8",
+      "race": 4,
+      "class": "McDonald Electrical Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-12 Eagle Farm Race 1-8",
+      "race": 8,
+      "class": "LADBROKES SWITCH Class 6 Handicap",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-13 Bunbury Race 1-8",
+      "race": 5,
+      "class": "SWAN DRAUGHT MAIDEN",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-13 Moe Race 1-8",
+      "race": 1,
+      "class": "Cleaners World Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-13 Moe Race 1-8",
+      "race": 2,
+      "class": "Able Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-13 Moe Race 1-8",
+      "race": 3,
+      "class": "Ladbrokes Hosted Pots Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-13 Moe Race 1-8",
+      "race": 4,
+      "class": "Halls Plumbing Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-13 Newcastle Race 1-8",
+      "race": 2,
+      "class": "NSW JOCKEYS ASSOCIATION SUPER 3YO MAIDEN PLAT",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-14 Geelong Race 1-8",
+      "race": 1,
+      "class": "Ladbrokes Hosted Pots Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-14 Geelong Race 1-8",
+      "race": 2,
+      "class": "The Viatek and FUJIFILM Cup Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-14 Geelong Race 1-8",
+      "race": 3,
+      "class": "Oasis Turf Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-14 Geelong Race 1-8",
+      "race": 4,
+      "class": "Roderick Insurance Brokers Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-14 Gunnedah Race 1-8",
+      "race": 4,
+      "class": "DRIES ELECTRICAL SUPER MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-14 Ipswich Race 1-7",
+      "race": 1,
+      "class": "VALE BRIAN CHRISTENSEN Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-14 Ipswich Race 1-7",
+      "race": 2,
+      "class": "TAB Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-14 Taree Race 1-8",
+      "race": 1,
+      "class": "DDH1 DRILLING COUNTRY BOOSTED MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-14 Taree Race 1-8",
+      "race": 3,
+      "class": "MLW FENCING CLASS 1 &amp; MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-15 Kembla Grange Race 1-8",
+      "race": 5,
+      "class": "MARKEY SADDLERY MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-15 Morphettville Race 1-9",
+      "race": 2,
+      "class": "Sportsbet Blackbook Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-15 Narrandera Race 1-6",
+      "race": 3,
+      "class": "PCR BUILDING SERVICES PTY LTD - MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-15 Roma Race 1-6",
+      "race": 2,
+      "class": "HORNICKS CYPRESS QTIS Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-15 Warracknabeal Race 1-7",
+      "race": 1,
+      "class": "The Bentley Group Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-15 Warracknabeal Race 1-7",
+      "race": 2,
+      "class": "Marong Family Hotel Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-15 Warracknabeal Race 1-7",
+      "race": 3,
+      "class": "Emmetts Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-16 Moruya Race 1-8",
+      "race": 2,
+      "class": "MORUYA GOLF CLUB MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-16 Moruya Race 1-8",
+      "race": 5,
+      "class": "MORUYA BOWLING CLUB CLASS 1 &amp; MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-16 Pakenham Synthetic Race 1-7",
+      "race": 2,
+      "class": "Race Day Medical Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-16 Pakenham Synthetic Race 1-7",
+      "race": 3,
+      "class": "Ladbrokes Pakenham Cup On Sale Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-16 Sunshine Coast Race 1-8",
+      "race": 1,
+      "class": "VANTAGE BUILDING GROUP Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-16 Wyong Race 1-8",
+      "race": 4,
+      "class": "JET BLACK PAVEMENTS 3YO MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-17 Bathurst Race 1-7",
+      "race": 1,
+      "class": "NSW JOCKEYS ASSOCIATION HCP CG&amp;E MAIDEN HANDI",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-17 Emerald Race 1-7",
+      "race": 1,
+      "class": "FAIRBAIRN BAKERY Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-17 Scone Race 1-7",
+      "race": 1,
+      "class": "KIA ORA COUNTRY BOOSTED MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-17 Scone Race 1-7",
+      "race": 2,
+      "class": "PRYDE'S EASIFEED MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-17 Wodonga Race 1-8",
+      "race": 1,
+      "class": "Wiesners Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-17 Wodonga Race 1-8",
+      "race": 2,
+      "class": "Dyson Group Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-17 Wodonga Race 1-8",
+      "race": 3,
+      "class": "Crothers &amp; Associates Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-18 Albury Race 1-7",
+      "race": 2,
+      "class": "BUR REAL ESTATE - MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-18 Ballarat Synthetic Race 1-7",
+      "race": 1,
+      "class": "Sportsbet Fast Form Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-18 Ballarat Synthetic Race 1-7",
+      "race": 2,
+      "class": "Global Turf Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-18 Ballarat Synthetic Race 1-7",
+      "race": 3,
+      "class": "Brandt Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-18 Grafton Race 1-7",
+      "race": 3,
+      "class": "CONGRATULATIONS JETT NEWMAN MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-19 Hobart Race 1-10",
+      "race": 8,
+      "class": "Ladbrokes Switch Class 1 Hcp",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-19 Ipswich Race 1-7",
+      "race": 4,
+      "class": "RAY WHITE IPSWICH Maiden Handicap",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-19 Strathalbyn Race 1-7",
+      "race": 1,
+      "class": "Adelaide Galvanising Industries Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-19 Strathalbyn Race 1-7",
+      "race": 2,
+      "class": "Sportsbet Fast Form Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-19 Strathalbyn Race 1-7",
+      "race": 3,
+      "class": "Adelaide Hills Gas Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-20 Hawkesbury Race 1-8",
+      "race": 4,
+      "class": "HAPPY RETIREMENT ADAM CARNEY MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-20 Hawkesbury Race 1-8",
+      "race": 6,
+      "class": "PETER SMITH MEMORIAL SUPER MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-20 Mackay Race 1-6",
+      "race": 1,
+      "class": "LADBROKES SWITCH BM60 Handicap",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-20 Warrnambool Race 1-8",
+      "race": 1,
+      "class": "Conquest Pools Warrnambool Maiden Plate Highw",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-20 Warrnambool Race 1-8",
+      "race": 3,
+      "class": "The Victoria Hotel Port Fairy Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-20 Warrnambool Race 1-8",
+      "race": 4,
+      "class": "Flying Horse Bar &amp; Brewery Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-20 Warrnambool Race 1-8",
+      "race": 5,
+      "class": "Westcoast Wilcleen Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-21 Beaudesert Race 1-8",
+      "race": 2,
+      "class": "XXXX Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-21 Murtoa Race 1-8",
+      "race": 1,
+      "class": "bet365 Same Race Multi Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-21 Murtoa Race 1-8",
+      "race": 3,
+      "class": "Ultima Hotel Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-21 Murtoa Race 1-8",
+      "race": 4,
+      "class": "Footts Swan Hill Demolition Group Maiden Plat",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-21 Murtoa Race 1-8",
+      "race": 5,
+      "class": "Monix Swan Hill Horse of the Year 25/26 BM56",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-21 Murtoa Race 1-8",
+      "race": 6,
+      "class": "Nathan Hobson Swan Hill Trainer of the Year25",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-21 Murtoa Race 1-8",
+      "race": 7,
+      "class": "Harry Coffey Swan Hill Jockey of the Year 25/",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-21 Murtoa Race 1-8",
+      "race": 8,
+      "class": "Sarah Field Swan Hill Apprentice Jockey of th",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-21 Sale Race 1-9",
+      "race": 2,
+      "class": "Programmed Property Services Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-21 Sale Race 1-9",
+      "race": 3,
+      "class": "Cabinet Connections Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-21 Sale Race 1-9",
+      "race": 4,
+      "class": "Bennett Electrical Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-21 Sale Race 1-9",
+      "race": 9,
+      "class": "Ladbrokes Switch BM62 Handicap",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-22 Gympie Race 1-5",
+      "race": 2,
+      "class": "TONY &amp; DEBBIE NOLAN QTIS Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-22 Morphettville Race 1-9",
+      "race": 1,
+      "class": "Dominant Clean Sweep Handicap",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-22 Morphettville Race 1-9",
+      "race": 2,
+      "class": "M&amp;J Chickens Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-22 Newcastle Race 1-8",
+      "race": 1,
+      "class": "TOOHEYS MIDWAY MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-22 Newcastle Race 1-8",
+      "race": 4,
+      "class": "JENNINGS PRINT GROUP MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-22 Port Macquarie Race 1-5",
+      "race": 2,
+      "class": "VALE TOM HIGGINS MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-22 Sandown Race 1-9",
+      "race": 2,
+      "class": "Ladbrokes Switch Handicap",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-23 Kilcoy Race 1-9",
+      "race": 1,
+      "class": "ADF FAMILIES Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-23 Kilcoy Race 1-9",
+      "race": 2,
+      "class": "BRIBIE ISLAND RSL - RAAF Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-23 Kilcoy Race 1-9",
+      "race": 5,
+      "class": "ALEXANDER \"CHUCK\" BERRY MEMORIAL Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-23 Narromine Race 1-9",
+      "race": 2,
+      "class": "JR RICHARDS &amp; SONS CLASS 1 &amp; MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-23 Narromine Race 1-9",
+      "race": 5,
+      "class": "BUY YOUR KOSCIUSZKO TICKETS MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-23 Port Augusta Race 1-7",
+      "race": 1,
+      "class": "Career Co Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-23 Port Augusta Race 1-7",
+      "race": 2,
+      "class": "Inspirations Paint Port Augusta Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-23 Wangaratta Race 1-8",
+      "race": 1,
+      "class": "WTC Thanks Members Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-23 Wangaratta Race 1-8",
+      "race": 2,
+      "class": "John Wohlers Jewellers Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-23 Wangaratta Race 1-8",
+      "race": 4,
+      "class": "Afonso Building Solutions Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-24 Pakenham Synthetic Race 1-9",
+      "race": 1,
+      "class": "Ladbrokes Popular SRM Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-24 Pakenham Synthetic Race 1-9",
+      "race": 2,
+      "class": "Ultrasigns Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-24 Pakenham Synthetic Race 1-9",
+      "race": 3,
+      "class": "Hygain Edge Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-24 Pakenham Synthetic Race 1-9",
+      "race": 4,
+      "class": "Carlton Draught Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-24 Pakenham Synthetic Race 1-9",
+      "race": 5,
+      "class": "Dalton Consulting Engineers Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-24 Tuncurry Race 1-8",
+      "race": 1,
+      "class": "FORSTER BOWLING CLUB CLASS 1 &amp; MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-24 Tuncurry Race 1-8",
+      "race": 3,
+      "class": "BUY YOUR KOSCIUSZKO TICKETS MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-24 Tuncurry Race 1-8",
+      "race": 4,
+      "class": "LAKES AND OCEAN SUPER MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-25 Ballarat Synthetic Race 1-7",
+      "race": 1,
+      "class": "Global Turf Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-25 Ballarat Synthetic Race 1-7",
+      "race": 2,
+      "class": "Brandt Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-25 Ballarat Synthetic Race 1-7",
+      "race": 3,
+      "class": "Become A 2026/2027 BTC Member Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-25 Rockhampton Race 1-7",
+      "race": 2,
+      "class": "Regional Insurance Brokers QTIS Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-25 Tamworth Race 1-7",
+      "race": 3,
+      "class": "BUY YOUR KOSCIUSZKO TICKETS MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-25 Tamworth Race 1-7",
+      "race": 4,
+      "class": "CARLTON COUNTRY BOOSTED MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-26 Bendigo Race 1-8",
+      "race": 2,
+      "class": "Wild Plumbing Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-26 Bendigo Race 1-8",
+      "race": 3,
+      "class": "Ranbuild Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-26 Bendigo Race 1-8",
+      "race": 4,
+      "class": "Ladbrokes Hosted Pots Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-26 Doomben Race 1-8",
+      "race": 1,
+      "class": "BECOME A BRC MEMBER Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-26 Doomben Race 1-8",
+      "race": 2,
+      "class": "GALLOPERS SPORTS CLUB Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-27 Ipswich Race 1-8",
+      "race": 3,
+      "class": "IPSWICH PARTY HIRE Maiden Handicap",
+      "old_is_sw": true,
+      "new_is_sw": false
+    },
+    {
+      "meeting": "2026-08-27 Seymour Race 1-8",
+      "race": 1,
+      "class": "CUB Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-27 Seymour Race 1-8",
+      "race": 2,
+      "class": "GMCU Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-27 Seymour Race 1-8",
+      "race": 3,
+      "class": "W B Hunters Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-27 Seymour Race 1-8",
+      "race": 4,
+      "class": "bet365 Bet Boost Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-28 Cairns Race 1-8",
+      "race": 4,
+      "class": "CHANNEL 7 Maiden Plate (QTIS bonuses 3YO only",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-28 Geelong Race 1-9",
+      "race": 2,
+      "class": "Neon Legal Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-28 Geelong Race 1-9",
+      "race": 3,
+      "class": "Gary Coffee Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-28 Geelong Race 1-9",
+      "race": 4,
+      "class": "Prestige Jayco Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-28 Gosford Race 1-8",
+      "race": 2,
+      "class": "INTEGBUILD CG&amp;E MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-28 Gosford Race 1-8",
+      "race": 3,
+      "class": "CENTRAL COAST GRANITE F&amp;M MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-28 Gosford Race 1-8",
+      "race": 4,
+      "class": "NCIS SYDNEY 4YO&amp;UP MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Casterton Race 1-7",
+      "race": 1,
+      "class": "Phillips Farm Machinery Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Casterton Race 1-7",
+      "race": 2,
+      "class": "Helloworld Portland Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Casterton Race 1-7",
+      "race": 3,
+      "class": "AG Warehouse Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Echuca Race 1-8",
+      "race": 1,
+      "class": "Moama Bowling Club Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Echuca Race 1-8",
+      "race": 2,
+      "class": "Remembering Mikaela Claridge Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Echuca Race 1-8",
+      "race": 3,
+      "class": "Border Inn Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Echuca Race 1-8",
+      "race": 4,
+      "class": "Bourke Builders Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Mudgee Race 1-7",
+      "race": 3,
+      "class": "ORIENTAL HOTEL SUPER MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Strathalbyn Race 1-8",
+      "race": 1,
+      "class": "Sportsbet Fast Form Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Strathalbyn Race 1-8",
+      "race": 2,
+      "class": "The Times &amp; Fleurieu Sun Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Townsville Race 1-6",
+      "race": 1,
+      "class": "GREAT NORTHERN BREWING CO Maiden Plate (QTIS",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Wyong Race 1-8",
+      "race": 2,
+      "class": "SHARP DS CENTRAL COAST MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Wyong Race 1-8",
+      "race": 3,
+      "class": "BISHOP COLLINS AUDIT 3YO MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-30 Wyong Race 1-8",
+      "race": 4,
+      "class": "FIVE STAR DAY SPA 3YO MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-31 Ballarat Synthetic Race 1-9",
+      "race": 1,
+      "class": "Brandt 3YO Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-31 Ballarat Synthetic Race 1-9",
+      "race": 3,
+      "class": "Hertz Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-31 Ballarat Synthetic Race 1-9",
+      "race": 4,
+      "class": "Global Turf Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-31 Corowa Race 1-7",
+      "race": 2,
+      "class": "BALLDALE HOTEL CLASS 1 &amp; MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-31 Corowa Race 1-7",
+      "race": 3,
+      "class": "CAMPBELLS WINES, RUTHERGLEN MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-31 Taree Race 1-8",
+      "race": 3,
+      "class": "TAB VENUE MODE CLASS 1 &amp; MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-08-31 Taree Race 1-8",
+      "race": 4,
+      "class": "SKY INTERNATIONAL MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-09-01 Scone Race 1-8",
+      "race": 1,
+      "class": "DARLEY CLASS 1 & MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-09-01 Scone Race 1-8",
+      "race": 4,
+      "class": "YARRAMAN PARK CG&E MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-09-01 Scone Race 1-8",
+      "race": 6,
+      "class": "SCONE RSL F&M MAIDEN PLATE",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-09-01 Wodonga Race 1-8",
+      "race": 1,
+      "class": "Sleep Clinics Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-09-01 Wodonga Race 1-8",
+      "race": 2,
+      "class": "Naubro Kerb Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-09-01 Wodonga Race 1-8",
+      "race": 3,
+      "class": "Wodonga Jewellers Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    },
+    {
+      "meeting": "2026-09-01 Wodonga Race 1-8",
+      "race": 4,
+      "class": "DA Signs Maiden Plate",
+      "old_is_sw": false,
+      "new_is_sw": true
+    }
+  ],
+  "split": {
+    "dev": 1310,
+    "terminal": 512
+  },
+  "changed_runners": 1307,
+  "paired_evidence": {
+    "domain": "au",
+    "baseline_sample_hash": "5e972fad467f32f2e0ecb217bd611c815dfe6846dfdfb6ee474b416ccf3e5124",
+    "candidate_sample_hash": "5e972fad467f32f2e0ecb217bd611c815dfe6846dfdfb6ee474b416ccf3e5124",
+    "baseline_races": 1822,
+    "candidate_races": 1822,
+    "holdout_locked": true,
+    "leakage_audit_passed": true,
+    "primary": {
+      "gold": {
+        "development_delta": 0.0,
+        "terminal_delta": 0.00390625,
+        "terminal_ci_low": 0.0,
+        "terminal_ci_high": 0.009765625,
+        "higher_is_better": true
+      },
+      "good_positional": {
+        "development_delta": 0.0,
+        "terminal_delta": 0.0,
+        "terminal_ci_low": 0.0,
+        "terminal_ci_high": 0.0,
+        "higher_is_better": true
+      }
+    },
+    "ranking": {
+      "top3_capture_at5": {
+        "development_delta": -0.0007633587786259542,
+        "terminal_delta": 0.0019531249999999993,
+        "terminal_ci_low": -0.0019531250000000004,
+        "terminal_ci_high": 0.005859375,
+        "higher_is_better": true
+      },
+      "mean_top3_model_rank": {
+        "development_delta": 0.0020356234096692133,
+        "terminal_delta": -0.008463541666666671,
+        "terminal_ci_low": -0.019531249999999993,
+        "terminal_ci_high": 0.0013020833333333304,
+        "higher_is_better": false
+      },
+      "competitive_recall_at5": {
+        "development_delta": 0.00034351145038167945,
+        "terminal_delta": 0.002766927083333333,
+        "terminal_ci_low": -0.0006510416666666667,
+        "terminal_ci_high": 0.00634765625,
+        "higher_is_better": true
+      },
+      "ndcg_at5": {
+        "development_delta": -0.000976403608470682,
+        "terminal_delta": -0.00015268817016221526,
+        "terminal_ci_low": -0.00298369960058538,
+        "terminal_ci_high": 0.0021048336450961123,
+        "higher_is_better": true
+      },
+      "top5_pairwise_auc": {
+        "development_delta": -0.00042485851578210877,
+        "terminal_delta": 0.0010998274981561557,
+        "terminal_ci_low": -0.0011283583422225063,
+        "terminal_ci_high": 0.0033168761766018936,
+        "higher_is_better": true
+      }
+    },
+    "cohort_regressions": []
+  },
+  "performance_decision": {
+    "verdict": "REJECT",
+    "reason": "ranking_evidence_too_weak",
+    "detail": {
+      "positive_metrics": [
+        "competitive_recall_at5"
+      ],
+      "ci_supported_metrics": [],
+      "nonnegative_metrics": [
+        "competitive_recall_at5"
+      ]
+    }
+  },
+  "dev": {
+    "baseline": {
+      "gold": 17.201834862385322,
+      "gold_strict": 6.72782874617737,
+      "good_positional": 22.01834862385321,
+      "pass": 44.41896024464832,
+      "champion": 23.547400611620795,
+      "winner_in_top3": 54.89296636085627,
+      "winner_in_top5": 74.15902140672783,
+      "t3prec": 46.53414882772681
+    },
+    "candidate": {
+      "gold": 17.201834862385322,
+      "gold_strict": 6.72782874617737,
+      "good_positional": 22.01834862385321,
+      "pass": 44.571865443425075,
+      "champion": 23.394495412844037,
+      "winner_in_top3": 54.969418960244646,
+      "winner_in_top5": 74.00611620795107,
+      "t3prec": 46.58511722731906
+    },
+    "delta": {
+      "gold": 0.0,
+      "gold_strict": 0.0,
+      "good_positional": 0.0,
+      "pass": 0.15290519877675735,
+      "champion": -0.15290519877675735,
+      "winner_in_top3": 0.07645259938837512,
+      "winner_in_top5": -0.15290519877676445,
+      "t3prec": 0.05096839959225008
+    }
+  },
+  "terminal": {
+    "baseline": {
+      "gold": 24.21875,
+      "gold_strict": 7.03125,
+      "good_positional": 25.9765625,
+      "pass": 49.609375,
+      "champion": 26.5625,
+      "winner_in_top3": 60.9375,
+      "winner_in_top5": 80.46875,
+      "t3prec": 49.21875
+    },
+    "candidate": {
+      "gold": 24.609375,
+      "gold_strict": 6.8359375,
+      "good_positional": 25.9765625,
+      "pass": 49.609375,
+      "champion": 26.5625,
+      "winner_in_top3": 60.9375,
+      "winner_in_top5": 80.2734375,
+      "t3prec": 49.153645833333336
+    },
+    "delta": {
+      "gold": 0.390625,
+      "gold_strict": -0.1953125,
+      "good_positional": 0.0,
+      "pass": 0.0,
+      "champion": 0.0,
+      "winner_in_top3": 0.0,
+      "winner_in_top5": -0.1953125,
+      "t3prec": -0.0651041666666643
+    }
+  },
+  "cohorts": {
+    "field_≤8": {
+      "n": 163,
+      "gold": {
+        "delta": 0.006134969325153374,
+        "ci95": [
+          0.0,
+          0.018404907975460124
+        ]
+      },
+      "good_positional": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "field_9-10": {
+      "n": 181,
+      "gold": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "good_positional": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "field_11-12": {
+      "n": 133,
+      "gold": {
+        "delta": 0.007518796992481203,
+        "ci95": [
+          0.0,
+          0.022556390977443608
+        ]
+      },
+      "good_positional": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "field_13+": {
+      "n": 35,
+      "gold": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "good_positional": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "sp_lt3": {
+      "n": 182,
+      "gold": {
+        "delta": 0.005494505494505495,
+        "ci95": [
+          0.0,
+          0.016483516483516484
+        ]
+      },
+      "good_positional": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "sp_3to6": {
+      "n": 204,
+      "gold": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "good_positional": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "sp_6to10": {
+      "n": 80,
+      "gold": {
+        "delta": 0.0125,
+        "ci95": [
+          0.0,
+          0.0375
+        ]
+      },
+      "good_positional": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "sp_10to20": {
+      "n": 39,
+      "gold": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "good_positional": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "sp_20plus": {
+      "n": 7,
+      "gold": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "good_positional": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "changed_conditions": {
+      "n": 105,
+      "gold": {
+        "delta": 0.01904761904761905,
+        "ci95": [
+          0.0,
+          0.047619047619047616
+        ]
+      },
+      "good_positional": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      }
+    }
+  },
+  "case": [
+    {
+      "name": "Bacetti",
+      "old_rating": 62.68328157299975,
+      "new_rating": 60.0,
+      "old_ability": 67.99544816511614,
+      "new_ability": 67.27722776665584
+    },
+    {
+      "name": "Irreverent",
+      "old_rating": 62.68328157299975,
+      "new_rating": 60.0,
+      "old_ability": 74.83519670361152,
+      "new_ability": 74.11697630515118
+    },
+    {
+      "name": "Kobability",
+      "old_rating": 59.28828157299975,
+      "new_rating": 53.21,
+      "old_ability": 56.81442633192563,
+      "new_ability": 55.18590333541677
+    },
+    {
+      "name": "Little Miss Classy",
+      "old_rating": 62.68328157299975,
+      "new_rating": 60.0,
+      "old_ability": 57.93038969640824,
+      "new_ability": 57.21216929794792
+    },
+    {
+      "name": "Rocking Frocks",
+      "old_rating": 62.68328157299975,
+      "new_rating": 60.0,
+      "old_ability": 55.46744455639043,
+      "new_ability": 54.749224157930115
+    },
+    {
+      "name": "Aspen Gold",
+      "old_rating": 55.49589803375032,
+      "new_rating": 57.7,
+      "old_ability": 48.60403733005513,
+      "new_ability": 49.192811028792946
+    },
+    {
+      "name": "Oregon Coast",
+      "old_rating": 58.850898033750326,
+      "new_rating": 64.41,
+      "old_ability": 74.0408869469789,
+      "new_ability": 75.53021994378616
+    },
+    {
+      "name": "Stevie's Spirit",
+      "old_rating": 55.49589803375032,
+      "new_rating": 57.7,
+      "old_ability": 59.87320887096333,
+      "new_ability": 60.461982569701156
+    },
+    {
+      "name": "Pier Angel",
+      "old_rating": 56.235898033750324,
+      "new_rating": 59.18,
+      "old_ability": 46.51463781003752,
+      "new_ability": 47.30245320834865
+    }
+  ],
+  "correctness_gate": "PASS: independently provable conditions bug; no primary or predeclared cohort significant regression; no performance improvement claim"
+}

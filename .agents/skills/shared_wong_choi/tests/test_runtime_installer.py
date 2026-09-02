@@ -6,6 +6,8 @@ import sqlite3
 import subprocess
 from pathlib import Path
 
+import pytest
+
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 INSTALLER = (
@@ -56,7 +58,8 @@ def test_runtime_installer_snapshot_restore_is_exact_and_idempotent(
         assert not introduced.exists()
 
 
-def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path) -> None:
+@pytest.mark.parametrize("active_run", [False, True])
+def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path, active_run: bool) -> None:
     home = tmp_path / "home"
     agents = home / "Library" / "LaunchAgents"
     agents.mkdir(parents=True)
@@ -73,6 +76,11 @@ def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path) -> None
     fake_launchctl = fake_bin / "launchctl"
     fake_launchctl.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     fake_launchctl.chmod(0o755)
+    # Process discovery belongs to the fixture too: a real scheduled run on the
+    # host must neither break the isolated success case nor satisfy its guard test.
+    fake_pgrep = fake_bin / "pgrep"
+    fake_pgrep.write_text(f"#!/bin/sh\nexit {0 if active_run else 1}\n", encoding="utf-8")
+    fake_pgrep.chmod(0o755)
     fake_python = fake_bin / "tennis-python"
     fake_python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     fake_python.chmod(0o755)
@@ -122,6 +130,11 @@ def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path) -> None
         check=False,
     )
 
+    if active_run:
+        assert result.returncode != 0
+        assert "automation run is active; cutover deferred" in result.stderr
+        assert {p.stem for p in agents.glob("*.plist")} == set(au_labels)
+        return
     assert result.returncode == 0, result.stdout + result.stderr
     assert "production runtime cutover verified" in result.stdout
     assert (home / ".wongchoi_tennis_db").read_text(encoding="utf-8").strip() == str(

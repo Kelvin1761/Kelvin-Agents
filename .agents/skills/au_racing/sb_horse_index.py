@@ -45,7 +45,8 @@ DEFAULT_INDEX = Path(os.environ.get("WC_SB_HORSE_INDEX", "")) if os.environ.get(
 
 # 同 claw_profile_scraper.infer_class 一致 —— 賽績線嘅 Metro 判斷靠佢
 METRO_VENUES = ("randwick", "rosehill", "flemington", "caulfield", "moonee valley",
-                "eagle farm", "doomben", "sandown", "canterbury", "kensington")
+                "eagle farm", "doomben", "sandown", "canterbury", "kensington",
+                "warwick farm")
 
 
 def build_slug(name: str) -> str:
@@ -110,7 +111,8 @@ def _opponent_records(run):
 
     ⚠️ **呢啲記錄係有系統性偏差嘅** —— 我哋只會喺對手入到前三嗰陣見到佢。
     佢跑第八嗰次係隱形嘅。所以標記 `partial: True`：
-      * `future_wins` / `future_places` 用得，因為我哋見到佢**全部**前三。
+      * `future_wins` / `future_places` 只代表已觀察到嘅勝出／上名次數，
+        唔保證涵蓋全部出賽。
       * `future_runs`（做分母算上名率）**用唔得** —— 會永遠得出 100%。
     消費者要按 `partial` 分開處理，見 `inject_fact_anchors.compute_form_lines_via_api`。
     """
@@ -210,7 +212,10 @@ def lookup(names, path=DEFAULT_INDEX, as_of="") -> dict:
         runs = hit["runs"]
         if as_of:
             runs = [r for r in runs if r["date"] < as_of]
-        out[slug] = {"runs": runs}
+        # Reclassify cached venue labels without rewriting the history or
+        # changing the as-of boundary. Old indexes omitted Warwick Farm.
+        out[slug] = {"runs": [{**r, "class": infer_class(r.get("venue", ""))}
+                             for r in runs]}
     return out
 
 

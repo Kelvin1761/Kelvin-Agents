@@ -460,17 +460,20 @@ def _band_label(score):
 
 
 def _matrix_composition_line(key, auto):
-    """顯示維度分點計出嚟：sub分 × 權重 ＋ … ＝ 原始分 → 統一尺 ＝ 維度分。
+    """Separate the weighted evidence score from the model's scale conversion.
 
-    2026-08-01：維度分多咗一步「統一尺」（MATRIX_DISPLAY_GAINS）。呢一步一定要
-    寫出嚟 —— 否則會出現「形勢分 53 ×100% ＝ 32.6」呢種自己打自己嘅算式，比原本
-    嘅問題更差。gain = 1 嘅維度照舊唔顯示呢一步。
+    Retired leaves can leave weights summing below one: show the neutral
+    anchor explicitly, rather than the false equality `68 ×70% =65.6`.
     """
     comps = MATRIX_FORMULAS.get(key)
     if not comps:
         return ""
     fs = auto.get("feature_scores", {})
-    parts = [f"{_component_label(key, n)} {clip_score(fs.get(n, 60)):.0f} ×{w*100:.0f}%" for n, w in comps]
+    parts = [f"{_component_label(key, n)} {clip_score(fs.get(n, 60)):.2f} ×{w*100:g}%" for n, w in comps]
+    if abs(sum(w for _, w in comps) - 1.0) > 0.00001:
+        parts = [f"（{_component_label(key, n)} {clip_score(fs.get(n, 60)):.2f} −60）×{w*100:g}%"
+                 for n, w in comps]
+        parts.insert(0, "60")
     raw = 60.0 + sum(
         (clip_score(fs.get(n, 60)) - 60.0) * w for n, w in comps
     )
@@ -479,7 +482,8 @@ def _matrix_composition_line(key, auto):
     line = " ＋ ".join(parts) + f" ＝ {raw:.1f}"
     gain = MATRIX_DISPLAY_GAINS.get(key, 1.0)
     if abs(gain - 1.0) > 0.005:
-        line += (f" → 統一尺（60 為中性，偏離 ×{gain:.2f}）＝ {total:.1f}")
+        line += (f"；幅度換算後 {total:.1f}"
+                 f"（60 ＋〔{raw:.2f} −60〕×{gain:g}，限於 0–100）")
     elif abs(total - raw) > 0.05:
         line += f" ＝ {total:.1f}"
     return line
@@ -532,11 +536,12 @@ def _stability_detail_lines(auto, name):
         for r in rows:
             recency = "（最近）" if r.get("idx") == 1 else ""
             cls = f"（{r['cls']}）" if r.get("cls") else ""
+            field = f"／{r['field_size']}匹" if r.get("field_size") else ""
             contrib = r["base"] * r["mult"] * r["decay"]
             num_total += contrib
             wt_total += r["decay"]
             lines.append(
-                f"第{r['idx']}仗{recency}：第{r['place']}名{cls} → {r['base']}"
+                f"第{r['idx']}仗{recency}：第{r['place']}名{field}{cls} → {r['base']:.1f}"
                 f" ×班次係數 {r['mult']:.2f} ×近期權重 {r['decay']:.1f} ＝ {contrib:.1f}"
             )
         if rows and d.get("avg") is not None:
@@ -809,8 +814,8 @@ def _render_horse_section(horse_num, horse, auto):
         *_data_readout_lines(auto),
         "#### ⏱️ 近績解構",
         f"- **近績序列:** `{_display_text(data.get('recent_form') or horse.get('recent_form'))}`",
-        f"- **狀態週期:** `{_humanize_text(horse.get('status_cycle')) or '-'}`",
-        f"- **趨勢總評:** {_trend_summary(horse) or '-'}",
+        f"- **狀態週期:** `{_status_cycle_display(horse, auto) or '-'}`",
+        f"- **趨勢總評:** {_trend_summary(horse, auto) or '-'}",
         "",
         "#### 📋 完整賽績檔案",
         *_complete_record_lines(data),
@@ -1278,8 +1283,8 @@ def _matrix_fact_lines(key: str, horse: dict, auto: dict) -> list[str]:
     facts_section = str(data.get("facts_section") or "")
     if key == "stability":
         return _compact_fact_lines(
-            ("近況總覽", _recent_record_summary(horse, data, facts_section), 320),
-            ("狀態週期", _humanize_text(horse.get("status_cycle")), 120),
+            ("近況總覽", _recent_record_summary(horse, data, facts_section, auto), 320),
+            ("狀態週期", _status_cycle_display(horse, auto), 120),
             ("趨勢總評", _humanize_text(horse.get("trend_summary")), 140),
             ("最近正式賽果", _latest_formal_result(facts_section), 220),
             ("試閘交代", _trial_anchor(data, facts_section), 180),
@@ -1304,7 +1309,7 @@ def _matrix_fact_lines(key: str, horse: dict, auto: dict) -> list[str]:
         return _compact_fact_lines(
             ("騎師 / 練馬師", " / ".join(part for part in (_inline_text(horse.get("jockey")), _inline_text(horse.get("trainer"))) if part and part != "-"), 180),
             ("試閘交代", _trial_anchor(data, facts_section), 180),
-            ("狀態週期", _humanize_text(horse.get("status_cycle")), 120),
+            ("狀態週期", _status_cycle_display(horse, auto), 120),
             ("跑法摘要", _inline_text(data.get("running_style_line")), 120),
             ("戰術劇本", _humanize_text(_tactical_scenario(horse)), 260),
         )
@@ -1458,9 +1463,15 @@ def _track_summary(facts_section: str) -> str:
     return " | ".join(parts)
 
 
-def _trend_summary(horse: dict) -> str:
+def _status_cycle_display(horse: dict, auto: dict | None = None) -> str:
+    cycle = (auto or {}).get("preparation_cycle") or {}
+    return cycle.get("label") or _humanize_text(horse.get("status_cycle"))
+
+
+
+def _trend_summary(horse: dict, auto: dict | None = None) -> str:
     trend = _humanize_text(horse.get("trend_summary"))
-    status = _humanize_text(horse.get("status_cycle"))
+    status = _status_cycle_display(horse, auto)
     if not trend:
         return ""
     compact_trend = trend.replace("休後復出", "久休復出").replace("長休復出", "久休復出")
@@ -1504,9 +1515,9 @@ def _tactical_scenario(horse: dict) -> str:
     return ""
 
 
-def _recent_record_summary(horse: dict, data: dict, facts_section: str) -> str:
+def _recent_record_summary(horse: dict, data: dict, facts_section: str, auto: dict | None = None) -> str:
     recent = str(data.get("recent_form") or horse.get("recent_form") or "").strip()
-    status_cycle = _humanize_text(horse.get("status_cycle")) or "-"
+    status_cycle = _status_cycle_display(horse, auto) or "-"
     trend = _humanize_text(horse.get("trend_summary")) or "-"
     excerpt = _recent_record_excerpt(facts_section)
     if recent and recent not in {"-", "N/A"}:

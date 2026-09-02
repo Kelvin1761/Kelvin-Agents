@@ -1,0 +1,114 @@
+{
+  "dev": {
+    "gold": 0.07645259938837867,
+    "gold_strict": 0.07645259938837867,
+    "good_positional": 0.0,
+    "pass": 0.3822629969418969,
+    "champion": -0.07645259938837867,
+    "winner_in_top3": -0.15290519877676445,
+    "winner_in_top5": 0.0,
+    "t3prec": 0.17838939857288238
+  },
+  "terminal": {
+    "gold": 0.390625,
+    "gold_strict": -0.390625,
+    "good_positional": 0.390625,
+    "pass": 0.78125,
+    "champion": -0.390625,
+    "winner_in_top3": 0.5859375,
+    "winner_in_top5": 0.0,
+    "t3prec": 0.2604166666666643
+  },
+  "evidence": {
+    "domain": "au",
+    "baseline_sample_hash": "5e972fad467f32f2e0ecb217bd611c815dfe6846dfdfb6ee474b416ccf3e5124",
+    "candidate_sample_hash": "5e972fad467f32f2e0ecb217bd611c815dfe6846dfdfb6ee474b416ccf3e5124",
+    "baseline_races": 1822,
+    "candidate_races": 1822,
+    "holdout_locked": true,
+    "leakage_audit_passed": true,
+    "primary": {
+      "gold": {
+        "development_delta": 0.0007633587786259542,
+        "terminal_delta": 0.00390625,
+        "terminal_ci_low": -0.005859375,
+        "terminal_ci_high": 0.013671875,
+        "higher_is_better": true
+      },
+      "good_positional": {
+        "development_delta": 0.0,
+        "terminal_delta": 0.00390625,
+        "terminal_ci_low": -0.0078125,
+        "terminal_ci_high": 0.017578125,
+        "higher_is_better": true
+      }
+    },
+    "ranking": {
+      "mean_top3_model_rank": {
+        "development_delta": -0.008905852417302802,
+        "terminal_delta": -0.020019531249999986,
+        "terminal_ci_low": -0.03515625000000002,
+        "terminal_ci_high": -0.005045572916666657,
+        "higher_is_better": false
+      },
+      "competitive_recall_at5": {
+        "development_delta": 0.0014758269720101787,
+        "terminal_delta": 0.00439453125,
+        "terminal_ci_low": 0.0008789062499999999,
+        "terminal_ci_high": 0.00830078125,
+        "higher_is_better": true
+      },
+      "ndcg_at5": {
+        "development_delta": 0.0007285090563533939,
+        "terminal_delta": 0.001959208567937498,
+        "terminal_ci_low": -0.0021029346533805856,
+        "terminal_ci_high": 0.005772398301433095,
+        "higher_is_better": true
+      },
+      "top5_pairwise_auc": {
+        "development_delta": 0.0011445093117559387,
+        "terminal_delta": 0.004832580175509697,
+        "terminal_ci_low": 0.001799885743615553,
+        "terminal_ci_high": 0.00813116227270613,
+        "higher_is_better": true
+      }
+    },
+    "cohort_regressions": []
+  },
+  "decision": {
+    "verdict": "RANKING_WIN",
+    "reason": "primary_neutral_ranking_supported_gain",
+    "detail": {
+      "positive_metrics": [
+        "mean_top3_model_rank",
+        "competitive_recall_at5",
+        "ndcg_at5",
+        "top5_pairwise_auc"
+      ],
+      "ci_supported_metrics": [
+        "mean_top3_model_rank",
+        "competitive_recall_at5",
+        "top5_pairwise_auc"
+      ]
+    }
+  },
+  "fresh_main_revalidation": {
+    "engine_core.py": {
+      "parent_sha256": "a463fe99c07288405da2e331a3220bbf5709f8a3ace4a2833207e4bffbaed493",
+      "matches_fbf14998": true,
+      "candidate_sha256": "7d7c83a8d982b47121cb63b2c156ef79b02af3cab0547c3dfa06bd0dc49bec04"
+    },
+    "matrix_mapper.py": {
+      "parent_sha256": "118b799cde0c6728b5873dd2336f73430cfa1e90f06246f5f8529165a99bc090",
+      "matches_fbf14998": true,
+      "candidate_sha256": "54cebbccf650d06acab5eb0a62e1ea75fe759148b10e1fd8fab3b79b128052f8"
+    },
+    "scoring.py": {
+      "parent_sha256": "8afe1df70abafb255e6d75f55fd65f2a3a5716ed6614cab963a0edd781456fff",
+      "matches_fbf14998": true,
+      "candidate_sha256": "8afe1df70abafb255e6d75f55fd65f2a3a5716ed6614cab963a0edd781456fff"
+    },
+    "release_parent": "926eac54de7f67f78a8f6f7a5c3632a7d95b0cce",
+    "candidate_matches_tested_fbf_worktree": true
+  }
+}

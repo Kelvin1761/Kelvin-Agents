@@ -1,0 +1,115 @@
+{
+  "counts": {
+    "second_up": 2302,
+    "third_up": 2044,
+    "unknown": 6038,
+    "first_up": 2427,
+    "established_prep": 5405
+  },
+  "candidates": {
+    "F": {
+      "dev": {
+        "gold": -0.8409785932721725,
+        "gold_strict": 0.4587155963302747,
+        "good_positional": -0.15290519877675735,
+        "pass": 0.0,
+        "champion": 0.0,
+        "winner_in_top3": 0.07645259938837512,
+        "winner_in_top5": -0.15290519877676445,
+        "t3prec": 0.3822629969418969
+      },
+      "eligible": false
+    },
+    "Q": {
+      "dev": {
+        "gold": 0.15290519877675735,
+        "gold_strict": 0.0,
+        "good_positional": -0.3822629969418969,
+        "pass": -0.5351681957186543,
+        "champion": 0.3822629969418969,
+        "winner_in_top3": 0.3822629969418969,
+        "winner_in_top5": -0.22935779816513957,
+        "t3prec": -0.15290519877675735
+      },
+      "eligible": false
+    },
+    "FQ": {
+      "dev": {
+        "gold": -0.5351681957186543,
+        "gold_strict": 0.2293577981651378,
+        "good_positional": -0.4587155963302756,
+        "pass": -1.0703363914373085,
+        "champion": 0.4587155963302756,
+        "winner_in_top3": -0.07645259938838223,
+        "winner_in_top5": -0.15290519877676445,
+        "t3prec": -0.07645259938838223
+      },
+      "eligible": false
+    }
+  },
+  "split": {
+    "dev": 1310,
+    "terminal": 512,
+    "terminal_opened": false
+  },
+  "dataset": {
+    "path": "/tmp/au-matrix-feedback-after.json",
+    "sha256": "495b9d439a59981bf46813822d36406206d29712a96a2790300a0e340fe7f31a"
+  },
+  "decision": "REJECT_ALL_DEV_PRIMARY_REGRESSION",
+  "production_change": "Preparation chronology and explanations only; no reliability scoring adopted",
+  "case_cycles": {
+    "Gunroom": {
+      "as_of": "2026-08-22",
+      "stage": "second_up",
+      "label": "休後第二仗",
+      "days_since_last_run": 14,
+      "prior_spell_days": 239,
+      "completed_prep_runs": 1,
+      "prep_start_date": "2026-08-08",
+      "return_run_date": "2026-08-08",
+      "return_finish": null,
+      "return_margin": 1.5,
+      "evidence_dates": [
+        "2026-08-08",
+        "2025-12-12",
+        "2025-11-15",
+        "2025-10-18",
+        "2025-05-28",
+        "2025-05-07",
+        "2025-04-25",
+        "2025-04-05"
+      ],
+      "summary": "休後第二仗；本輪首仗前休 239 日，距上仗 14 日，本輪已跑 1 仗；休前往績需與復出後表現分開睇"
+    },
+    "Bacetti": {
+      "as_of": "2026-09-02",
+      "stage": "first_up",
+      "label": "久休復出",
+      "days_since_last_run": 154,
+      "prior_spell_days": 154,
+      "completed_prep_runs": 0,
+      "prep_start_date": "2026-09-02",
+      "return_run_date": null,
+      "return_finish": null,
+      "return_margin": null,
+      "evidence_dates": [
+        "2026-04-01",
+        "2026-03-11",
+        "2026-02-22",
+        "2026-02-06",
+        "2026-01-23",
+        "2025-07-12"
+      ],
+      "summary": "久休 154 日後首仗；本輪尚未有正式賽表現可驗證狀態"
+    }
+  },
+  "integration_golden_audit": {
+    "parent": "926eac54de7f67f78a8f6f7a5c3632a7d95b0cce",
+    "preserved_original": "docs/experiments/EXP-20260903-au-pre-feedback-golden.json",
+    "sha256": "37e87daeca2b9b84847a4a1b904873d3bcf5dd19628bdeec2b50f6b8c0f7dbda",
+    "identical_input_cases": 120,
+    "ability_and_grade_changes": 0,
+    "only_report_formline_changes": 115
+  }
+}

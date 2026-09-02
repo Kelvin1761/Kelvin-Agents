@@ -1,0 +1,320 @@
+{
+  "data_sha256": "495b9d439a59981bf46813822d36406206d29712a96a2790300a0e340fe7f31a",
+  "sample_hash": "16bc9a24be537b2e598862a181bc41fb870658e8d9257d8005e3e642f331c9f7",
+  "races": 1822,
+  "diagnostics": {
+    "neutral": {
+      "dev": {
+        "baseline": {
+          "gold": 17.201834862385322,
+          "gold_strict": 6.72782874617737,
+          "good_positional": 22.01834862385321,
+          "pass": 44.41896024464832,
+          "champion": 23.547400611620795,
+          "winner_in_top3": 54.89296636085627,
+          "winner_in_top5": 74.15902140672783,
+          "t3prec": 46.53414882772681
+        },
+        "candidate": {
+          "gold": 16.131498470948014,
+          "gold_strict": 6.345565749235474,
+          "good_positional": 21.10091743119266,
+          "pass": 44.95412844036697,
+          "champion": 23.394495412844037,
+          "winner_in_top3": 53.89908256880734,
+          "winner_in_top5": 72.78287461773701,
+          "t3prec": 46.61060142711519
+        },
+        "delta": {
+          "gold": -1.0703363914373085,
+          "gold_strict": -0.382262996941896,
+          "good_positional": -0.9174311926605512,
+          "pass": 0.5351681957186543,
+          "champion": -0.15290519877675735,
+          "winner_in_top3": -0.9938837920489334,
+          "winner_in_top5": -1.3761467889908232,
+          "t3prec": 0.07645259938838223
+        }
+      },
+      "terminal": {
+        "baseline": {
+          "gold": 24.21875,
+          "gold_strict": 7.03125,
+          "good_positional": 25.9765625,
+          "pass": 49.609375,
+          "champion": 26.5625,
+          "winner_in_top3": 60.9375,
+          "winner_in_top5": 80.46875,
+          "t3prec": 49.21875
+        },
+        "candidate": {
+          "gold": 21.875,
+          "gold_strict": 6.25,
+          "good_positional": 25.0,
+          "pass": 48.046875,
+          "champion": 27.734375,
+          "winner_in_top3": 59.9609375,
+          "winner_in_top5": 81.25,
+          "t3prec": 48.177083333333336
+        },
+        "delta": {
+          "gold": -2.34375,
+          "gold_strict": -0.78125,
+          "good_positional": -0.9765625,
+          "pass": -1.5625,
+          "champion": 1.171875,
+          "winner_in_top3": -0.9765625,
+          "winner_in_top5": 0.78125,
+          "t3prec": -1.0416666666666643
+        }
+      },
+      "evaluation": {
+        "label": "PQ diagnostic neutral",
+        "races": 1822,
+        "ship": false,
+        "reason": "primary_regression",
+        "top_dev": -0.011076472962066153,
+        "top_hold": -0.00937995579011286,
+        "top_hold_ci": [
+          -0.01723430599872311,
+          -0.0011550993314505265
+        ],
+        "all_dev": -0.00897736143637784,
+        "all_hold": -0.0070464470027788995,
+        "all_hold_ci": [
+          -0.013425549227013778,
+          0.0
+        ],
+        "counts": {
+          "gold": -1.428571428571427,
+          "gold_strict": -0.4945054945054945,
+          "good_positional": -0.9340659340659343,
+          "pass": -0.0549450549450512,
+          "champion": 0.21978021978022255,
+          "winner_in_top3": -0.9890109890109855,
+          "winner_in_top5": -0.7692307692307594,
+          "t3prec": -0.2380952380952408
+        },
+        "stage4_verdict": "REJECT",
+        "decision_detail": {
+          "metrics": [
+            "gold",
+            "good_positional"
+          ]
+        }
+      }
+    },
+    "half": {
+      "dev": {
+        "baseline": {
+          "gold": 17.201834862385322,
+          "gold_strict": 6.72782874617737,
+          "good_positional": 22.01834862385321,
+          "pass": 44.41896024464832,
+          "champion": 23.547400611620795,
+          "winner_in_top3": 54.89296636085627,
+          "winner_in_top5": 74.15902140672783,
+          "t3prec": 46.53414882772681
+        },
+        "candidate": {
+          "gold": 17.201834862385322,
+          "gold_strict": 6.651376146788991,
+          "good_positional": 21.788990825688074,
+          "pass": 43.730886850152906,
+          "champion": 24.159021406727827,
+          "winner_in_top3": 54.89296636085627,
+          "winner_in_top5": 73.5474006116208,
+          "t3prec": 46.45769622833843
+        },
+        "delta": {
+          "gold": 0.0,
+          "gold_strict": -0.07645259938837956,
+          "good_positional": -0.22935779816513602,
+          "pass": -0.6880733944954116,
+          "champion": 0.6116207951070329,
+          "winner_in_top3": 0.0,
+          "winner_in_top5": -0.6116207951070294,
+          "t3prec": -0.07645259938838223
+        }
+      },
+      "terminal": {
+        "baseline": {
+          "gold": 24.21875,
+          "gold_strict": 7.03125,
+          "good_positional": 25.9765625,
+          "pass": 49.609375,
+          "champion": 26.5625,
+          "winner_in_top3": 60.9375,
+          "winner_in_top5": 80.46875,
+          "t3prec": 49.21875
+        },
+        "candidate": {
+          "gold": 23.828125,
+          "gold_strict": 6.0546875,
+          "good_positional": 26.3671875,
+          "pass": 48.4375,
+          "champion": 26.5625,
+          "winner_in_top3": 60.15625,
+          "winner_in_top5": 80.6640625,
+          "t3prec": 48.372395833333336
+        },
+        "delta": {
+          "gold": -0.390625,
+          "gold_strict": -0.9765625,
+          "good_positional": 0.390625,
+          "pass": -1.171875,
+          "champion": 0.0,
+          "winner_in_top3": -0.78125,
+          "winner_in_top5": 0.1953125,
+          "t3prec": -0.8463541666666643
+        }
+      },
+      "evaluation": {
+        "label": "PQ diagnostic half",
+        "races": 1822,
+        "ship": false,
+        "reason": "primary_regression",
+        "top_dev": -0.0040464707437875,
+        "top_hold": -0.005228181330638626,
+        "top_hold_ci": [
+          -0.010356075229589368,
+          -0.0001299335118016831
+        ],
+        "all_dev": -0.003335462351855778,
+        "all_hold": -0.002381897578404124,
+        "all_hold_ci": [
+          -0.006002400960384069,
+          0.0013793103448275223
+        ],
+        "counts": {
+          "gold": -0.1098901098901095,
+          "gold_strict": -0.3296703296703294,
+          "good_positional": -0.05494505494505475,
+          "pass": -0.8241758241758177,
+          "champion": 0.43956043956044155,
+          "winner_in_top3": -0.219780219780219,
+          "winner_in_top5": -0.3846153846153726,
+          "t3prec": -0.2930402930402991
+        },
+        "stage4_verdict": "REJECT",
+        "decision_detail": {
+          "metrics": [
+            "gold",
+            "good_positional"
+          ]
+        }
+      }
+    },
+    "consistency": {
+      "dev": {
+        "baseline": {
+          "gold": 17.201834862385322,
+          "gold_strict": 6.72782874617737,
+          "good_positional": 22.01834862385321,
+          "pass": 44.41896024464832,
+          "champion": 23.547400611620795,
+          "winner_in_top3": 54.89296636085627,
+          "winner_in_top5": 74.15902140672783,
+          "t3prec": 46.53414882772681
+        },
+        "candidate": {
+          "gold": 16.896024464831804,
+          "gold_strict": 6.4984709480122325,
+          "good_positional": 20.795107033639145,
+          "pass": 43.730886850152906,
+          "champion": 23.394495412844037,
+          "winner_in_top3": 54.357798165137616,
+          "winner_in_top5": 73.47094801223241,
+          "t3prec": 46.330275229357795
+        },
+        "delta": {
+          "gold": -0.30581039755351824,
+          "gold_strict": -0.2293577981651378,
+          "good_positional": -1.2232415902140659,
+          "pass": -0.6880733944954116,
+          "champion": -0.15290519877675735,
+          "winner_in_top3": -0.5351681957186543,
+          "winner_in_top5": -0.6880733944954187,
+          "t3prec": -0.20387359836901453
+        }
+      },
+      "terminal": {
+        "baseline": {
+          "gold": 24.21875,
+          "gold_strict": 7.03125,
+          "good_positional": 25.9765625,
+          "pass": 49.609375,
+          "champion": 26.5625,
+          "winner_in_top3": 60.9375,
+          "winner_in_top5": 80.46875,
+          "t3prec": 49.21875
+        },
+        "candidate": {
+          "gold": 22.265625,
+          "gold_strict": 6.25,
+          "good_positional": 26.3671875,
+          "pass": 48.046875,
+          "champion": 26.3671875,
+          "winner_in_top3": 59.765625,
+          "winner_in_top5": 81.25,
+          "t3prec": 47.981770833333336
+        },
+        "delta": {
+          "gold": -1.953125,
+          "gold_strict": -0.78125,
+          "good_positional": 0.390625,
+          "pass": -1.5625,
+          "champion": -0.1953125,
+          "winner_in_top3": -1.171875,
+          "winner_in_top5": 0.78125,
+          "t3prec": -1.2369791666666643
+        }
+      },
+      "evaluation": {
+        "label": "PQ diagnostic consistency",
+        "races": 1822,
+        "ship": false,
+        "reason": "primary_regression",
+        "top_dev": -0.004582518085497922,
+        "top_hold": -0.007267218069918813,
+        "top_hold_ci": [
+          -0.015127991729473211,
+          0.0005178482526143613
+        ],
+        "all_dev": -0.004683840749414525,
+        "all_hold": -0.0065502183406113135,
+        "all_hold_ci": [
+          -0.012867105392397549,
+          0.0
+        ],
+        "counts": {
+          "gold": -0.76923076923077,
+          "gold_strict": -0.38461538461538414,
+          "good_positional": -0.76923076923077,
+          "pass": -0.9340659340659343,
+          "champion": -0.16483516483516425,
+          "winner_in_top3": -0.7142857142857153,
+          "winner_in_top5": -0.2747252747252702,
+          "t3prec": -0.4945054945054963
+        },
+        "stage4_verdict": "REJECT",
+        "decision_detail": {
+          "metrics": [
+            "gold",
+            "good_positional"
+          ]
+        }
+      }
+    }
+  },
+  "dev_replay_primary_changed": {
+    "gold": 0,
+    "good_positional": 0
+  },
+  "terminal_replay_primary_changed": {
+    "gold": 0,
+    "good_positional": 0
+  },
+  "max_replay_error": 0.009914845765734981,
+  "pq_equals_consistency_rows": 3873
+}

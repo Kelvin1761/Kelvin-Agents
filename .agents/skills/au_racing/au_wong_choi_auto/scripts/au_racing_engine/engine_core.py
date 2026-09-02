@@ -5,6 +5,7 @@ import json
 import math
 import os
 import re
+from .preparation_cycle import preparation_cycle
 import sys
 import unicodedata
 from collections import Counter
@@ -555,7 +556,10 @@ class RacingEngine:
             fd = getattr(self, "form_detail", None)
             if isinstance(fd, dict):
                 fd["bonus"].append({"delta": -4.0, "factor": "[環境] 級數偏弱收回",
-                                    "evidence": "近績分亢奮但級數分偏弱"})
+                                    "evidence": (
+                                        f"近績分 {feature_scores['form_score'] + 4:.1f} ≥72，"
+                                        f"級數分 {cs:.1f} <60：近績評分高，但班次證據偏弱"
+                                    )})
                 fd["final"] = round(clip_score(feature_scores["form_score"]), 2)
         if feature_scores.get("consistency_score", 60) >= 72 and ts < 60:
             feature_scores["consistency_score"] = feature_scores["consistency_score"] - 4
@@ -681,6 +685,10 @@ class RacingEngine:
         advantages = self._advantages(feature_scores, matrix_scores)
         disadvantages = self._disadvantages(feature_scores, matrix_scores)
         core_logic = self._core_logic(feature_scores, matrix_scores, advantages, disadvantages)
+        prep_context = self._preparation_cycle()
+        if prep_context['stage'] in {'first_up', 'second_up', 'third_up'}:
+            core_logic += ' ' + prep_context['summary'] + '。'
+            self.risk_flags.append(prep_context['summary'])
         grade_transparency = self._au_grade_computation_transparency(
             matrix_scores, matrix, feature_scores, base_7d_score, ability_score, grade,
             feature_notes=feature_notes,
@@ -710,6 +718,7 @@ class RacingEngine:
             "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
             "feature_notes": {key: feature_notes.get(key, "") for key in FEATURE_KEYS},
             "core_logic": core_logic,
+            "preparation_cycle": prep_context,
             "data_readout": self._data_readout(feature_scores, matrix_scores),
             "advantages": advantages,
             "disadvantages": disadvantages,
@@ -948,7 +957,13 @@ class RacingEngine:
             field_size = entry.get("field_size")
             if field_size and field_size >= 2 and place <= field_size:
                 pct = (place - 1) / (field_size - 1)
-                if pct <= 0.0: base_pts = 100
+                # A win over two rivals supplies less evidence than a win
+                # over thirteen. Shrink only the winner's positive deviation
+                # from 60 by (N-1)/(N+1); missing field sizes keep the legacy
+                # fallback. This is evidence weighting, not a win probability.
+                # EXP-20260902-06: fixed candidate, same-corpus RANKING_WIN;
+                # terminal Gold/Good +2 races each, primary CIs cross zero.
+                if pct <= 0.0: base_pts = 60 + 40 * (field_size - 1) / (field_size + 1)
                 elif pct <= 0.12: base_pts = 85
                 elif pct <= 0.25: base_pts = 75
                 elif pct <= 0.50: base_pts = 60
@@ -2872,6 +2887,9 @@ class RacingEngine:
         return str(self.horse_data.get("status_cycle") or "").strip()
 
     def _status_cycle_display(self):
+        inferred = self._preparation_cycle().get('label')
+        if inferred:
+            return inferred
         value = self._status_cycle_text()
         return {
             "First-up": "久休復出",
@@ -3639,6 +3657,17 @@ class RacingEngine:
             return 0
         return max(0, (meeting - latest).days)
 
+    def _preparation_cycle(self):
+        cached = getattr(self, '_preparation_cycle_cache', None)
+        if cached is None:
+            meeting = (self._meeting_intelligence().get('date')
+                       or self.race_context.get('date') or '')
+            cached = preparation_cycle(self._official_entries(), meeting,
+                                       career_starts=self.horse_data.get('career_race_starts'))
+            self._preparation_cycle_cache = cached
+        return cached
+
+
     def _trial_summary_text(self):
         trial_count = int(parse_float(self.data.get("trial_count")) or len(self._trial_places()))
         trial_top3 = int(parse_float(self.data.get("trial_top3_count")) or sum(1 for place in self._trial_places() if place <= 3))
@@ -4223,7 +4252,12 @@ class RacingEngine:
 
     def _is_wfa_or_sw_race(self):
         text = self._race_class_text().lower()
-        return "weight for age" in text or "wfa" in text or "set weights" in text or "sw" in text
+        # Providers often put only the race title in race_class. Maiden Plate
+        # is a set-weight condition even when the separate MDN-SW tag is lost.
+        # Match tokens so sponsors such as Ipswich/Swifts cannot imply SW.
+        return bool(re.search(
+            r"\b(?:wfa|sw)\b|\bweight[ -]+for[ -]+age\b|\bset[ -]+weights?\b"
+            r"|\b(?:maiden|mdn)\s+plate\b", text))
 
     def _weight_score(self):
         weight = parse_float(self.horse_data.get("weight"))
@@ -4792,7 +4826,9 @@ class RacingEngine:
         spell = self._spell_days()
         if 14 <= spell <= 45:
             score += 1.0
-            notes.append(f"休後 {spell} 日屬正常間隔")
+            cycle = self._preparation_cycle()
+            notes.append(cycle['summary'] if cycle['stage'] in {'second_up', 'third_up'}
+                         else f"距上仗 {spell} 日；單憑出賽間隔不能判定復出狀態")
         elif spell > 90:
             trial_speed = parse_float(self.data.get("timing_trial_600m_avg_speed"))
             if trial_speed:

@@ -97,8 +97,10 @@ MATRIX_FORMULAS = {
         ("track_score", 1.0),
     ),
     "form_line": (
-        ("formline_score", 0.78),
-        ("form_score", 0.22),
+        # Report-only opponent evidence: recent form already belongs to
+        # stability. Mixing it here made a horse's own placings look like
+        # independent evidence about its opponents (EXP-20260902-06).
+        ("formline_score", 1.0),
     ),
 }
 
@@ -163,7 +165,7 @@ MATRIX_DISPLAY_GAINS = {
     "jockey_trainer": 2.4973,
     "class_weight": 2.7489,
     "track": 1.5193,
-    "form_line": 1.0232,
+    "form_line": 1.0,
 }
 # 正規化之後每個維度都用同一把尺，所以敘事門檻唔再需要逐維度磨 magic number。
 MATRIX_ADVANTAGE_CUTOFF = 72.0
