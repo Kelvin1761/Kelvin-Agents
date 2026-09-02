@@ -40,6 +40,42 @@
     /* Keep horse card and expanded content within column */
     .comparison__column { max-width: 100% !important; overflow: hidden; box-sizing: border-box; min-width: 0; }
     .horse-card { width: 100%; max-width: 100%; min-width: 0; word-break: break-word; box-sizing: border-box; overflow: hidden; }
+    /* Ranking matrix strip — the dashboard used to show five ✅/➖ symbols with
+       equal visual weight, while the engine weights them 35.2% to 8.6%. Bar
+       width is the ranking weight, so the dimension actually driving the rank
+       looks like it. */
+    .dim-strip { margin-top: 10px; border: 1px solid #E2E8F0; border-radius: 8px; background: #F8FAFC; padding: 10px 12px; }
+    .dim-strip__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .dim-strip__title { font-size: 0.72rem; font-weight: 700; color: #475569; letter-spacing: .02em; }
+    .dim-strip__evidence { font-size: 0.68rem; font-weight: 600; color: #059669; }
+    .dim-strip__evidence--thin { color: #B45309; }
+    .dim-row { display: grid; grid-template-columns: minmax(84px, 1fr) 46px 1fr auto; align-items: center; gap: 8px; padding: 3px 0; font-size: 0.72rem; }
+    .dim-row__name { color: #334155; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .dim-row__score { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; color: #0F172A; }
+    /* Diverging track: the centre line is the neutral score, bars grow right
+       when the dimension pushed this horse up and left when it dragged. */
+    .dim-row__track { position: relative; height: 9px; border-radius: 3px; background: #EDF2F7; }
+    .dim-row__track::before { content: ''; position: absolute; left: 50%; top: -1px; bottom: -1px; width: 1px; background: #CBD5E1; }
+    .dim-row__fill { position: absolute; top: 1px; bottom: 1px; border-radius: 2px; min-width: 1px; }
+    .dim-strip__driver { margin-top: 8px; padding-top: 7px; border-top: 1px dashed #CBD5E1; font-size: 0.68rem; color: #475569; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+    .dim-strip__driver b { font-variant-numeric: tabular-nums; }
+    .dim-strip__driver .up { color: #047857; }
+    .dim-strip__driver .down { color: #B91C1C; }
+    .dim-row__meta { font-size: 0.66rem; color: #64748B; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .dim-row__meta b { color: #475569; font-weight: 700; }
+    .dim-ref { margin-top: 7px; padding-top: 7px; border-top: 1px dashed #CBD5E1; font-size: 0.66rem; color: #64748B; line-height: 1.7; }
+    .dim-ref b { color: #475569; }
+
+    /* Market line — the model's rank next to the market's, and the gap between
+       them. Both numbers already exist per horse; only the comparison is new. */
+    .mkt { margin-top: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 0.72rem; padding: 7px 10px; border-radius: 8px; background: #EFF6FF; border: 1px solid #DBEAFE; }
+    .mkt__odds { font-weight: 700; color: #1E40AF; font-variant-numeric: tabular-nums; }
+    .mkt__ranks { color: #475569; font-variant-numeric: tabular-nums; }
+    .mkt__gap { font-weight: 700; padding: 1px 7px; border-radius: 999px; font-size: 0.68rem; }
+    .mkt__gap--agree { background: #D1FAE5; color: #065F46; }
+    .mkt__gap--near { background: #E2E8F0; color: #475569; }
+    .mkt__gap--over { background: #FEE2E2; color: #991B1B; }
+    .mkt__gap--under { background: #FEF3C7; color: #92400E; }
     .horse-card__body { word-break: break-word; box-sizing: border-box; overflow: hidden; min-width: 0; }
     .horse-card__details { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
 
@@ -3360,7 +3396,148 @@ function renderAnalysisDocumentSection(section, index, cardId) {
   </section>`;
 }
 
-function renderHorseCard(horse, topPickRank) {
+// ═══════════════════════════════════════════════
+// Ranking matrix + market comparison
+//
+// Both read fields the engine has always written and the payload started
+// carrying on 2026-09-02 (dimension_details, market_win_odds). Nothing here
+// computes a score or reorders anything -- the model's rank is the model's.
+// ═══════════════════════════════════════════════
+
+const DIM_SYMBOL_COLOR = {
+  '✅✅': '#047857', '✅': '#059669', '➖': '#94A3B8', '❌': '#DC2626', '❌❌': '#991B1B',
+};
+
+function dimEvidenceLabel(detail) {
+  // Show the deepest single line of evidence behind the dimension. Absence is
+  // rendered as nothing at all rather than "0" -- 檔位形勢 is qualitative
+  // (跑法/賽道幾何) and has no sample size to report, which is not the same
+  // claim as "this judgement rests on no evidence".
+  const counts = detail.sample_counts || [];
+  if (!counts.length) return '';
+  let best = '', bestN = -1;
+  counts.forEach(token => {
+    const n = parseInt(token, 10);
+    if (Number.isFinite(n) && n > bestN) { bestN = n; best = token; }
+  });
+  return best;
+}
+
+function renderDimensionStrip(horse) {
+  const details = horse.dimension_details || [];
+  if (!details.length) return '';
+  const ranked = details.filter(d => d.ranking_weighted && d.weight_pct != null);
+  const reference = details.filter(d => !d.ranking_weighted);
+  if (!ranked.length) return '';
+
+  // Bar length used to be the ranking weight -- which is a property of the
+  // MODEL, not of this horse: measured across 477 horses on 2026-09-02 the
+  // between-horse SD of every dimension's weight is exactly 0.00, so every
+  // card drew an identical bar pattern and carried no information at all.
+  //
+  // What differs per horse is how far the dimension sat from neutral, times
+  // its weight -- i.e. how much this dimension actually moved THIS horse
+  // relative to a neutral one. Between-horse SD 4.30 / 3.55 / 2.03 / 1.49 /
+  // 0.87 by dimension. `contribution` carries the same variance but sits on a
+  // large constant pedestal (場地與地況適性 never leaves 3.76-8.50), which
+  // flattens the differences; subtracting neutral puts them back on screen and
+  // adds a sign.
+  const NEUTRAL_SCORE = 60;   // the engine's 統一尺: "60 為中性"
+  const IMPACT_SCALE = 11;    // ~max |impact| observed; bars clip beyond it
+  const impactOf = d => (d.score - NEUTRAL_SCORE) * d.weight_pct / 100;
+
+  let h = '<div class="dim-strip">';
+
+  h += '<div class="dim-strip__head"><span class="dim-strip__title">六維排名矩陣 · 條長 = 對呢匹馬嘅實際影響</span>';
+  if (horse.evidence_dimensions != null && horse.evidence_dimensions_total) {
+    const thin = horse.evidence_dimensions < horse.evidence_dimensions_total;
+    h += `<span class="dim-strip__evidence${thin ? ' dim-strip__evidence--thin' : ''}">${thin ? '⚠️ ' : ''}${horse.evidence_dimensions}/${horse.evidence_dimensions_total} 維有實測</span>`;
+  }
+  h += '</div>';
+
+  // Row order stays weight-descending for every horse so the rows can be
+  // compared down a column of cards; the bars carry the per-horse story.
+  const ordered = [...ranked].sort((a, b) => b.weight_pct - a.weight_pct);
+  ordered.forEach(d => {
+    const impact = impactOf(d);
+    const colour = impact >= 0 ? '#059669' : '#DC2626';
+    const half = Math.min(Math.abs(impact) / IMPACT_SCALE, 1) * 50;
+    const side = impact >= 0 ? `left:50%;width:${half}%` : `right:50%;width:${half}%`;
+    const evidence = dimEvidenceLabel(d);
+    h += '<div class="dim-row">';
+    h += `<span class="dim-row__name" title="${esc(d.name)}">${esc(d.name)}</span>`;
+    h += `<span class="dim-row__score" style="color:${DIM_SYMBOL_COLOR[d.symbol] || '#475569'}">${d.score != null ? d.score.toFixed(1) : '—'}</span>`;
+    h += `<span class="dim-row__track" title="${esc(d.name)} 對排名嘅影響 ${impact >= 0 ? '+' : ''}${impact.toFixed(1)} 分（${d.score.toFixed(1)} 分 vs 中性 60，乘 ${d.weight_pct.toFixed(1)}% 權重）"><span class="dim-row__fill" style="${side};background:${colour}"></span></span>`;
+    h += `<span class="dim-row__meta">${impact >= 0 ? '+' : ''}<b>${impact.toFixed(1)}</b> · ${d.weight_pct.toFixed(1)}%${evidence ? ' · ' + esc(evidence) : ''}</span>`;
+    h += '</div>';
+  });
+
+  // One line answering "what is actually driving this horse" -- the question
+  // the constant-weight bars could never answer.
+  const byImpact = [...ordered].sort((a, b) => impactOf(b) - impactOf(a));
+  const best = byImpact[0], worst = byImpact[byImpact.length - 1];
+  const drivers = [];
+  if (best && impactOf(best) > 0.5) drivers.push(`<span class="up">▲ 主要推力 <b>${esc(best.name)} +${impactOf(best).toFixed(1)}</b></span>`);
+  if (worst && impactOf(worst) < -0.5) drivers.push(`<span class="down">▼ 主要拖累 <b>${esc(worst.name)} ${impactOf(worst).toFixed(1)}</b></span>`);
+  if (!drivers.length) drivers.push('<span>六維都接近中性，冇單一維度主導</span>');
+  h += `<div class="dim-strip__driver">${drivers.join('')}</div>`;
+
+  if (reference.length) {
+    // Printed by the engine, explicitly 參考·不入排名. Shown rather than hidden:
+    // the dashboard used to display 5 of the 7 dimensions in the file with
+    // nothing saying the other two existed.
+    h += '<div class="dim-ref">參考 · 不入排名：' + reference.map(d =>
+      `<b>${esc(d.name)}</b> ${d.score != null ? d.score.toFixed(1) : '—'} ${d.symbol || ''}`
+    ).join('　·　') + '</div>';
+  }
+  return h + '</div>';
+}
+
+function marketRankMap(fieldHorses) {
+  // Rank by win odds, shortest first. Scratched/unpriced runners are left out
+  // rather than sorted to the end, where they would push every real runner's
+  // market rank down.
+  const priced = (fieldHorses || [])
+    .filter(h => typeof h.market_win_odds === 'number' && h.market_win_odds > 0)
+    .sort((a, b) => a.market_win_odds - b.market_win_odds);
+  const map = new Map();
+  priced.forEach((h, i) => map.set(h.horse_number, i + 1));
+  return map;
+}
+
+function renderMarketLine(horse, marketRanks) {
+  const win = horse.market_win_odds;
+  const place = horse.market_place_odds;
+  if (win == null && place == null) return '';
+
+  let h = '<div class="mkt">';
+  const bits = [];
+  if (win != null) bits.push(`贏 $${win.toFixed(2)}`);
+  if (place != null) bits.push(`位 $${place.toFixed(2)}`);
+  h += `<span class="mkt__odds">💰 ${bits.join(' / ')}</span>`;
+
+  const mRank = marketRanks ? marketRanks.get(horse.horse_number) : null;
+  const modelRank = horse.rank;
+  if (mRank && modelRank) {
+    h += `<span class="mkt__ranks">模型第 ${modelRank} · 市場第 ${mRank}</span>`;
+    const gap = mRank - modelRank;   // positive: we rate it higher than the market
+    // Green is reserved for actual agreement. A 1-2 place difference painted
+    // green while reading "差 2 位" says two different things at once.
+    // The ±3 cut is a display threshold, not a measured one -- it decides what
+    // gets highlighted, never what gets scored.
+    let cls, label;
+    if (gap >= 3) { cls = 'over'; label = `我哋高市場 ${gap} 位`; }
+    else if (gap <= -3) { cls = 'under'; label = `市場高我哋 ${-gap} 位`; }
+    else if (gap === 0) { cls = 'agree'; label = '同市場一致'; }
+    else { cls = 'near'; label = `差 ${Math.abs(gap)} 位`; }
+    h += `<span class="mkt__gap mkt__gap--${cls}">${label}</span>`;
+  } else if (mRank) {
+    h += `<span class="mkt__ranks">市場第 ${mRank}</span>`;
+  }
+  return h + '</div>';
+}
+
+function renderHorseCard(horse, topPickRank, marketRanks) {
   const dataRows = Array.isArray(horse.data_readout) ? horse.data_readout.filter(Boolean) : [];
   const analysisSections = buildHorseAnalysisSections(horse);
   const topicCount = analysisSections.length;
@@ -3410,10 +3587,14 @@ function renderHorseCard(horse, topPickRank) {
     if (horse.form_cycle) formLine += `狀態週期: ${esc(cleanText(horse.form_cycle))}`;
     if (cleanForm || horse.form_cycle) html += `<div>${formLine}</div>`;
   }
+  html += renderMarketLine(horse, marketRanks);
+  html += renderDimensionStrip(horse);
+  // advantage / risk are bullet lists in the source; keep the line breaks.
   const cleanAdv = cleanText(horse.advantage);
   const cleanRisk = cleanText(horse.risk);
-  if (cleanAdv) html += `<div style="margin-top:8px">✅ <strong>優勢:</strong> ${esc(cleanAdv)}</div>`;
-  if (cleanRisk) html += `<div>⚠️ <strong>風險:</strong> ${esc(cleanRisk)}</div>`;
+  const asList = t => esc(t).replace(/\n/g, '<br>· ');
+  if (cleanAdv) html += `<div style="margin-top:8px">✅ <strong>優勢:</strong> ${cleanAdv.includes('\n') ? '<br>· ' + asList(cleanAdv) : esc(cleanAdv)}</div>`;
+  if (cleanRisk) html += `<div style="margin-top:4px">⚠️ <strong>風險:</strong> ${cleanRisk.includes('\n') ? '<br>· ' + asList(cleanRisk) : esc(cleanRisk)}</div>`;
   // Keep every signal and its reason visible; desktop uses two readable columns.
   if (dataRows.length) html += renderDataReadout(dataRows);
   // 核心邏輯 removed from the preview card (user request) — 數據判讀 only.
@@ -3567,7 +3748,7 @@ function renderComparisonView(analyses, analysts) {
       if (bInPicks) return 1;
       return sortByGrade(a.final_grade, b.final_grade);
     });
-    return { sorted, picks };
+    return { sorted, picks, marketRanks: marketRankMap(sorted) };
   });
 
   const maxLen = Math.max(...sortedLists.map(s => s.sorted.length));
@@ -3584,7 +3765,7 @@ function renderComparisonView(analyses, analysts) {
       const col = i<4?'#fff':'#64748B';
       html += `<div class="rank-card-row">
         <div class="rank-badge" style="color:${col};background:${bg}">#${i+1}<span class="rank-analyst"> | ${esc(analystName)}</span></div>
-        <div class="rank-card-content">${renderHorseCard(horse, list.picks.find(p => p.horse_number === horse.horse_number)?.rank)}</div>
+        <div class="rank-card-content">${renderHorseCard(horse, list.picks.find(p => p.horse_number === horse.horse_number)?.rank, list.marketRanks)}</div>
       </div>`;
     });
     html += '</div>';
@@ -3764,12 +3945,13 @@ function renderSingleAnalystView(analysis, analystName) {
   // Horse cards
   html += `<h2 style="font-size:1rem;font-weight:700;margin-bottom:12px">📋 全場馬匹分析</h2>`;
   html += `<div class="comparison__column" style="max-width: 900px"><div class="comparison__header comparison__header--${isK?'kelvin':'heison'}">${esc(analystName||'Analyst')} · ${horses.length} 匹馬</div><div class="comparison__body"><div class="horse-grid" style="grid-template-columns:minmax(0, 1fr)">`;
+  const fieldMarketRanks = marketRankMap(horses);
   sortedHorses.forEach((horse, idx) => {
     const bg = idx===0?'#D97706':idx===1?'#9CA3AF':idx===2?'#B45309':idx===3?'#2563EB':'#F8FAFC';
     const col = idx<4?'#fff':'#64748B';
     html += `<div class="rank-card-row">
       <div class="rank-badge" style="color:${col};background:${bg}">#${idx+1}</div>
-      <div class="rank-card-content">${renderHorseCard(horse, picks.find(p => p.horse_number === horse.horse_number)?.rank)}</div>
+      <div class="rank-card-content">${renderHorseCard(horse, picks.find(p => p.horse_number === horse.horse_number)?.rank, fieldMarketRanks)}</div>
     </div>`;
   });
   html += '</div></div></div>';

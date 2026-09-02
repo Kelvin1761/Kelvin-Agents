@@ -394,6 +394,12 @@ AU_DIM_HEADING_RE = re.compile(
     re.M)
 # "9 場樣本", "共 1 次試閘", "近 4 場", "3 課"
 AU_SAMPLE_COUNT_RE = re.compile(r'(\d+)\s*(場|次|課|仗)')
+# Career/track records are written as starts:win-place-show -- "生涯背景: 15 : 1-4-3",
+# "場地/路線紀錄: 6:0-1-1 | 同程: 5:0-1-2". The leading number IS the sample size,
+# and without this two dimensions (官方評分對位, 場地與地況適性) came back with an
+# EMPTY sample_counts list -- which a UI would honestly but wrongly render as
+# "no evidence" when the horse in fact had 15 career starts behind the judgement.
+AU_RECORD_COUNT_RE = re.compile(r'(\d+)\s*:\s*\d+-\d+-\d+')
 
 
 def _parse_au_scoreline(block: str) -> tuple[Optional[float], Optional[int]]:
@@ -463,10 +469,29 @@ def _extract_sample_counts(text: str) -> list[str]:
     thinly-evidenced one.
     """
     seen: list[str] = []
-    for num, unit in AU_SAMPLE_COUNT_RE.findall(text):
+
+    def add(num: str, unit: str) -> None:
+        # "其中 0 次跑入前三" and "重地: 0:0-0-0" are outcomes and empty records,
+        # not evidence depth. Counting them would put a "0 次" badge under a
+        # judgement that actually rests on ten starts.
+        if int(num) <= 0:
+            return
         token = f'{num} {unit}'
         if token not in seen:
             seen.append(token)
+
+    for num, unit in AU_SAMPLE_COUNT_RE.findall(text):
+        add(num, unit)
+    for num in AU_RECORD_COUNT_RE.findall(text):
+        add(num, '戰')
+    # 狀態與穩定性 states its evidence as the form sequence itself ("近績序列:
+    # 4-5-6-6-2") with no counted noun, so it scored 1 次 off the trial line --
+    # understating five starts as one. The sequence length is the sample size.
+    form = re.search(r'近績序列[：:]\s*([\dxX\-]+)', text)
+    if form:
+        runs = [p for p in form.group(1).split('-') if p]
+        if runs:
+            add(str(len(runs)), '戰')
     return seen
 
 
