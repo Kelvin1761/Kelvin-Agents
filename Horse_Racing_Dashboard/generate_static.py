@@ -760,6 +760,18 @@ def main():
     )
     print(f"   Found {meeting_count} meetings, {race_count} race analyses")
     
+    # Slim BEFORE building the HTML, not only on the JSON write path.
+    # _slim_for_transport used to run inside _write_json alone, so the HTML --
+    # which inlines the same payload and is always the LARGER artifact -- kept
+    # every duplicated field. With the dimension breakdown added on 2026-09-02
+    # that gap became 16.88 MiB of HTML against 9.43 MiB of JSON, i.e. 68% of
+    # Cloudflare's 25 MiB per-file limit on a six-meeting card. A nine-meeting
+    # Saturday would have been rejected, which is the 2026-08-07 failure again.
+    # _write_json still calls it; on an already-slimmed payload it drops 0.
+    data, slimmed = _slim_for_transport(data)
+    if slimmed:
+        print(f"   Transport slim: dropped {slimmed} duplicated fields")
+
     print("   Building HTML...")
     html = generate_html(data)
     
