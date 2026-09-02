@@ -139,6 +139,8 @@ def _build_au_consensus_payload(meeting, race):
                     "jockey": horse.jockey if horse else None,
                     "trainer": horse.trainer if horse else None,
                     "silk_url": horse.silk_url if horse else None,
+                    "market_win_odds": horse.market_win_odds if horse else None,
+                    "market_place_odds": horse.market_place_odds if horse else None,
                     "scenario": label,
                     "consensus_type": f"{label} Top {pick.rank}",
                 })
@@ -157,6 +159,8 @@ def _build_au_consensus_payload(meeting, race):
                 "jockey": horse.jockey if horse else None,
                 "trainer": horse.trainer if horse else None,
                 "silk_url": horse.silk_url if horse else None,
+                "market_win_odds": horse.market_win_odds if horse else None,
+                "market_place_odds": horse.market_place_odds if horse else None,
                 "scenario": None,
                 "consensus_type": "Top 2 精選",
             })
@@ -184,6 +188,8 @@ def _build_au_consensus_payload(meeting, race):
                 "jockey": candidate.get("jockey"),
                 "trainer": candidate.get("trainer"),
                 "silk_url": candidate.get("silk_url"),
+                "market_win_odds": candidate.get("market_win_odds"),
+                "market_place_odds": candidate.get("market_place_odds"),
             }
             for candidate in candidates
         ],
