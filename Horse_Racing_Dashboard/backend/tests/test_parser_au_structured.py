@@ -291,3 +291,69 @@ def test_impact_decomposition_matches_the_engines_own_contribution_column(parsed
         f"impact bars drift {worst:.3f} from the engine's own contribution "
         f"column -- the decomposition no longer matches what the engine says"
     )
+
+
+# ── Transport slimming ─────────────────────────────────────────────────────
+
+GENERATOR = Path(__file__).resolve().parents[2] / "generate_static.py"
+
+
+def test_payload_is_slimmed_before_the_html_is_built():
+    """The HTML inlines the payload and is ALWAYS the larger artifact.
+
+    _slim_for_transport used to run only inside _write_json, so the JSON was
+    slimmed and the HTML was not. With the dimension breakdown added that read
+    16.88 MiB of HTML against 9.43 MiB of JSON -- 68% of Cloudflare's 25 MiB
+    per-file limit, where a nine-meeting Saturday would be rejected outright.
+    Slimming first brought the HTML to 9.95 MiB.
+    """
+    if not GENERATOR.exists():
+        pytest.skip("generate_static.py not present")
+    text = GENERATOR.read_text(encoding="utf-8")
+    slim = text.find("data, slimmed = _slim_for_transport(data)")
+    build = text.find("html = generate_html(data)")
+    assert slim != -1, "main() no longer slims the payload"
+    assert build != -1, "main() no longer builds HTML"
+    assert slim < build, \
+        "the payload is slimmed AFTER the HTML is built -- the HTML keeps every duplicate"
+
+
+def test_slimming_keeps_the_numbers_and_is_idempotent():
+    """Slimming may drop prose that raw_text already carries; it must never
+    drop the numbers the strip is drawn from."""
+    sys.path.insert(0, str(GENERATOR.parent))
+    from generate_static import _slim_for_transport
+
+    raw = "判讀：呢匹馬有料。\n數據：近績序列: 1-2-3"
+    payload = {"races": {"k": {"races_by_analyst": {"Kelvin": [{"horses": [{
+        "raw_text": raw,
+        "dimension_details": [{
+            "name": "狀態與穩定性", "score": 72.4, "weight_pct": 35.2,
+            "contribution": 25.46, "symbol": "✅", "ranking_weighted": True,
+            "sample_counts": ["5 戰"],
+            "verdict": "呢匹馬有料。", "evidence": ["近績序列: 1-2-3"],
+        }],
+    }]}]}}}}
+    payload, dropped = _slim_for_transport(payload)
+    detail = payload["races"]["k"]["races_by_analyst"]["Kelvin"][0]["horses"][0]["dimension_details"][0]
+    assert dropped == 2, f"expected verdict + evidence dropped, got {dropped}"
+    for key in ("name", "score", "weight_pct", "contribution", "symbol", "sample_counts"):
+        assert key in detail, f"slimming dropped {key}, which the strip needs"
+
+    _, again = _slim_for_transport(payload)
+    assert again == 0, "slimming an already-slimmed payload dropped more"
+
+
+def test_slimming_keeps_prose_that_raw_text_does_not_carry():
+    sys.path.insert(0, str(GENERATOR.parent))
+    from generate_static import _slim_for_transport
+
+    payload = {"races": {"k": {"races_by_analyst": {"Kelvin": [{"horses": [{
+        "raw_text": "something else entirely",
+        "dimension_details": [{"name": "d", "verdict": "not in raw", "evidence": ["nor this"]}],
+    }]}]}}}}
+    payload, dropped = _slim_for_transport(payload)
+    detail = payload["races"]["k"]["races_by_analyst"]["Kelvin"][0]["horses"][0]["dimension_details"][0]
+    assert dropped == 0
+    assert detail["verdict"] == "not in raw", "dropped prose the renderer cannot recover"
+    assert detail["evidence"] == ["nor this"]
