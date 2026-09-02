@@ -1,4 +1,5 @@
 """Discover HKJC and AU race meetings from the configured analysis folders."""
+import os
 import re
 from pathlib import Path
 from typing import Optional
@@ -138,11 +139,15 @@ def discover_meetings(root_dir: Optional[str] = None) -> list[Meeting]:
                     # It's a Kelvin folder without the (Kelvin) suffix
                     hkjc_groups[key]["kelvin_path"] = str(item)
     
+    drop_settled_keys = _hkjc_settled_keys_to_drop(hkjc_groups, hkjc_reflected_keys)
+
     # Build HKJC meetings
     for (date, venue), paths in sorted(hkjc_groups.items()):
-        # A materialized reflector report means the meeting is settled. Results
-        # stay in the corpus, but the pre-race dashboard must no longer show it.
-        if (date, venue) in hkjc_reflected_keys:
+        # A settled meeting (one with a materialized reflector report) is dropped
+        # only once the NEXT meeting's analysis is ready to replace it -- see
+        # _hkjc_keep_settled below. Dropping it the moment it settles left the
+        # HKJC board empty for days between meetings.
+        if (date, venue) in drop_settled_keys:
             continue
         analysts = []
         folder_paths = {}
@@ -165,6 +170,53 @@ def discover_meetings(root_dir: Optional[str] = None) -> list[Meeting]:
             ))
     
     return sorted(meetings, key=lambda m: m.date, reverse=True)
+
+
+def _hkjc_has_analysis(paths: dict) -> bool:
+    """Has this meeting actually been analysed, as opposed to merely extracted?
+
+    A folder can hold racecards and form (排位表 / 賽績) for days before the
+    analysis runs -- 2026-07-15 HappyValley was in exactly that state -- so the
+    presence of a folder is not the same as having something to show.
+    """
+    for key in ("kelvin_path", "heison_path"):
+        folder = paths.get(key)
+        if not folder:
+            continue
+        try:
+            if any(Path(folder).glob("*_Auto_Analysis.md")):
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def _hkjc_settled_keys_to_drop(hkjc_groups: dict, reflected_keys: set) -> set:
+    """Which settled HKJC meetings should leave the pre-race dashboard.
+
+    A settled meeting used to disappear the moment its reflector report landed,
+    which left the board empty until the next meeting was analysed -- days, and
+    the whole off-season. The rule instead is: keep showing the most recent
+    settled meeting until a NEWER meeting's analysis is ready to take its place.
+
+    Everything older than that most recent one still goes: the board shows the
+    latest card, not an archive.
+    """
+    analysed = {key for key, paths in hkjc_groups.items() if _hkjc_has_analysis(paths)}
+    # A folder with racecards but no analysis has nothing to render -- it showed
+    # up as an empty meeting. Measured 2026-09-02: 6 of the 7 HKJC folders
+    # reaching this point were in that state, including four from April.
+    unanalysed = set(hkjc_groups) - analysed
+
+    unsettled_ready = sorted(analysed - reflected_keys)
+    if unsettled_ready:
+        # A newer card is ready; every settled meeting can go.
+        return set(reflected_keys) | unanalysed
+    settled_ready = sorted(analysed & reflected_keys)
+    if not settled_ready:
+        return set(reflected_keys) | unanalysed
+    keep = settled_ready[-1]          # most recent by (date, venue)
+    return ({key for key in reflected_keys if key != keep}) | unanalysed
 
 
 def _has_hkjc_reflection(folder: Path) -> bool:

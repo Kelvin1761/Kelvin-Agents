@@ -1422,8 +1422,10 @@ test("預測起步位表唔會靜靜消失", () => {
   assert.equal(overview.speedmap.rows.length, 3);
   // 認得之後表就要由 notes 剷走，唔可以又出圖又出表
   assert.ok(!/\|\s*預測定位/.test(overview.notes));
-  // 敘述句照留
-  assert.match(overview.notes, /前置馬唔多/);
+  // 2026-09-02: 四句固定樣板（未納入步速預測 / 前置馬唔多 / 留後馬若入直路 /
+  // 「資料」=…）應 Kelvin 要求剷走。第一句尤其唔可以留 —— 佢寫住「未納入步速
+  // 預測」，而個圖就喺佢上面，兩者互相矛盾。
+  assert.doesNotMatch(overview.notes, /前置馬唔多|未納入步速預測|留後馬若入直路|評分建基於幾多真數據/);
 });
 
 test("預測起步位畫成圖，而且標返兩個來源嘅分歧", () => {
