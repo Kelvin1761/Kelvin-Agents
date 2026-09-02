@@ -89,7 +89,8 @@ def _parse_data_readout(block: str) -> Optional[list]:
     return rows or None
 
 from models.race import (
-    HorseAnalysis, RaceAnalysis, TopPick, MonteCarloPick, RatingDimension, RatingMatrix
+    HorseAnalysis, RaceAnalysis, TopPick, MonteCarloPick, RatingDimension,
+    RatingMatrix, DimensionDetail
 )
 
 
@@ -360,6 +361,192 @@ def _parse_au_final_grade(text: str) -> Optional[str]:
     return None
 
 
+# ──────────────────────────────────────────────
+# Structured score / evidence extraction
+#
+# Everything below reads numbers the AU engine already computes and writes into
+# Race_N_Auto_Analysis.md. Audited 2026-09-02 across 477 horses in 48 races:
+# rank, ability_score, confidence_score, advantage and risk were present in
+# 477/477 files and reached the dashboard payload 0% of the time -- two
+# separate causes. `rank` / `ability_score` were simply never read. `advantage`
+# / `risk` WERE read, but only in the inline `競爭優勢: xxx` shape; the
+# generator now writes them as `#### 主要優勢` headings, so the regex quietly
+# missed and the field became None without an error anywhere.
+#
+# tests/test_parser_au_structured.py counts file-has vs parsed so the next
+# format change fails loudly instead of silently emptying a column.
+# ──────────────────────────────────────────────
+
+# ⭐ 最終評級: **B-** | 綜合戰力分: **64.5** | 排名: **1**
+AU_SCORELINE_RE = re.compile(
+    r'綜合戰力分[：:]\s*\*{0,2}([\d.]+)\*{0,2}\s*\|\s*排名[：:]\s*\*{0,2}(\d+)\*{0,2}')
+# **📎 參考分（不直接入六維公式）：** 路程分 60.0、信心分 83.0、備戰 …
+AU_CONFIDENCE_RE = re.compile(r'信心分\s*([\d.]+)')
+# - 📶 **數據信心**：5/5 維度有實測數據
+AU_EVIDENCE_RE = re.compile(r'數據信心\*{0,2}[：:]\s*(\d+)\s*/\s*(\d+)')
+# | 狀態與穩定性 | 72.4 | 35.2% | 25.46 | ✅ |
+AU_DIM_TABLE_ROW_RE = re.compile(
+    r'^\|\s*([^|]+?)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)%\s*\|\s*([\d.]+)\s*\|\s*(\S+)\s*\|\s*$',
+    re.M)
+# ##### 狀態與穩定性：72.4 分　✅ 偏強　（參考·不入排名）
+AU_DIM_HEADING_RE = re.compile(
+    r'^#{4,6}\s*([^：:\n]+?)[：:]\s*([\d.]+)\s*分\s*(\S+)\s*([^\n（(]*)(（參考[^）]*）)?\s*$',
+    re.M)
+# "9 場樣本", "共 1 次試閘", "近 4 場", "3 課"
+AU_SAMPLE_COUNT_RE = re.compile(r'(\d+)\s*(場|次|課|仗)')
+
+
+def _parse_au_scoreline(block: str) -> tuple[Optional[float], Optional[int]]:
+    """Read 綜合戰力分 and 排名 off the horse's score line.
+
+    Returns (ability_score, rank). Both live on one line directly under the
+    horse heading, which is why neither was ever picked up by the section-based
+    extractors.
+    """
+    m = AU_SCORELINE_RE.search(block)
+    if not m:
+        return None, None
+    try:
+        return float(m.group(1)), int(m.group(2))
+    except ValueError:
+        return None, None
+
+
+def _parse_au_confidence_score(block: str) -> Optional[float]:
+    """信心分 from the 參考分 line. Explicitly NOT part of the six-dimension
+    formula -- the file says so -- so it is surfaced as context, not a score."""
+    m = AU_CONFIDENCE_RE.search(block)
+    if not m:
+        return None
+    try:
+        return float(m.group(1))
+    except ValueError:
+        return None
+
+
+def _parse_au_evidence_confidence(block: str) -> tuple[Optional[int], Optional[int]]:
+    """數據信心 X/Y -- how many dimensions have measured data."""
+    m = AU_EVIDENCE_RE.search(block)
+    if not m:
+        return None, None
+    try:
+        return int(m.group(1)), int(m.group(2))
+    except ValueError:
+        return None, None
+
+
+def _parse_au_heading_list(block: str, heading: str) -> Optional[str]:
+    """Collect the bullet list under a `#### <heading>` section.
+
+    The generator moved 優勢/風險 from inline `競爭優勢: xxx` to heading+bullets
+    at some point; both shapes are handled (the inline one by the caller) so an
+    older archived meeting still parses.
+    """
+    m = re.search(
+        r'^#{3,6}\s*' + re.escape(heading) + r'\s*$\n((?:\s*[-*]\s+.+\n?)+)',
+        block, re.M)
+    if not m:
+        return None
+    items = [re.sub(r'^\s*[-*]\s+', '', ln).strip()
+             for ln in m.group(1).strip().split('\n') if ln.strip()]
+    items = [i for i in items if i]
+    return '\n'.join(items) or None
+
+
+def _extract_sample_counts(text: str) -> list[str]:
+    """Pull the sample sizes a dimension's judgement rests on.
+
+    This is the evidence-thickness signal worth reading. The engine's own
+    數據信心 counter is near-constant (93.9% of horses read 5/5 on 2026-09-02),
+    but the per-dimension text says things like "L600 環境 9 場" and "共 1 次
+    試閘" -- which is what actually separates a well-evidenced 72.4 from a
+    thinly-evidenced one.
+    """
+    seen: list[str] = []
+    for num, unit in AU_SAMPLE_COUNT_RE.findall(text):
+        token = f'{num} {unit}'
+        if token not in seen:
+            seen.append(token)
+    return seen
+
+
+def _parse_au_dimension_details(block: str) -> Optional[list[DimensionDetail]]:
+    """Merge the weighted summary table with the per-dimension breakdown.
+
+    The table (`#### 🔢 評分總覽`) carries score/weight/contribution but only for
+    the dimensions that actually score. The breakdown (`##### <name>：72.4 分`)
+    covers those PLUS the two the engine marks 「參考·不入排名」. Dimensions are
+    keyed by name and merged so a reference dimension survives with
+    ranking_weighted=False rather than being dropped -- the dashboard used to
+    show 5 of the 7 the file prints, with nothing saying the other two exist.
+    """
+    table: dict[str, dict] = {}
+    for name, score, weight, contrib, symbol in AU_DIM_TABLE_ROW_RE.findall(block):
+        name = name.strip()
+        if name in ('維度', ':---') or not name:
+            continue
+        try:
+            table[name] = {
+                'score': float(score),
+                'weight_pct': float(weight),
+                'contribution': float(contrib),
+                'symbol': symbol.strip(),
+            }
+        except ValueError:
+            continue
+
+    details: list[DimensionDetail] = []
+    seen: set[str] = set()
+    headings = list(AU_DIM_HEADING_RE.finditer(block))
+    for i, m in enumerate(headings):
+        name = m.group(1).strip()
+        if name in seen:
+            continue
+        seen.add(name)
+        start = m.end()
+        end = headings[i + 1].start() if i + 1 < len(headings) else len(block)
+        body = block[start:end]
+        # Dimension headings are `#####`; the sections that follow the breakdown
+        # (`#### 主要優勢`, `#### 主要風險`) are shallower. Without this the LAST
+        # dimension in the block swallowed them -- 賽績線 came back with 16
+        # evidence lines, six of which were the advantage/risk bullets.
+        shallower = re.search(r'^#{1,4}\s', body, re.M)
+        if shallower:
+            body = body[:shallower.start()]
+
+        verdict_m = re.search(r'\*{0,2}判讀[：:]\*{0,2}\s*(.+?)(?=\n\s*[-*]\s*\*{0,2}(?:數據|判讀)|\n\s*\n|\Z)',
+                              body, re.S)
+        verdict = ' '.join(verdict_m.group(1).split()) if verdict_m else None
+
+        data_m = re.search(r'[-*]\s*\*{0,2}數據[：:]\*{0,2}\s*(.*?)(?=\n\s*[-*]\s*\*{0,2}(?:判讀|評分構成)|\Z)',
+                           body, re.S)
+        evidence: list[str] = []
+        if data_m:
+            for ln in data_m.group(1).strip().split('\n'):
+                ln = re.sub(r'^\s*[-*]\s*', '', ln).strip()
+                if ln:
+                    evidence.append(ln)
+
+        row = table.get(name, {})
+        try:
+            score = float(m.group(2))
+        except ValueError:
+            score = row.get('score')
+        details.append(DimensionDetail(
+            name=name,
+            score=score,
+            weight_pct=row.get('weight_pct'),
+            contribution=row.get('contribution'),
+            symbol=(m.group(3) or row.get('symbol') or '').strip() or None,
+            category=(m.group(4) or '').strip() or None,
+            verdict=verdict,
+            evidence=evidence,
+            sample_counts=_extract_sample_counts(' '.join(evidence) + ' ' + (verdict or '')),
+            ranking_weighted=not bool(m.group(5)) and name in table,
+        ))
+    return details or None
+
+
 def parse_au_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAnalysis:
     """Parse a single AU horse analysis block.
     Supports both:
@@ -433,6 +620,16 @@ def parse_au_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAn
         if risk_m:
             risk = risk_m.group(1).strip().rstrip('*').strip()
 
+    # The generator writes these as `#### 主要優勢` / `#### 主要風險` headings with
+    # a bullet list under them. The inline patterns above never matched that
+    # shape, so both fields were None for every AU horse (477/477 files had the
+    # sections; 0% reached the payload). Checked after the inline attempts so an
+    # older meeting that still uses the inline form keeps its existing value.
+    if not advantage:
+        advantage = _parse_au_heading_list(block, '主要優勢')
+    if not risk:
+        risk = _parse_au_heading_list(block, '主要風險')
+
     # Betting verdict from Block 4
     verdict_m = re.search(r'Betting Verdict:\s*(.+?)(?:\n|$)', block)
     if verdict_m:
@@ -502,11 +699,20 @@ def parse_au_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAn
                 else:
                     _mp = _v
 
+    ability_score, rank = _parse_au_scoreline(block)
+    evidence_dims, evidence_total = _parse_au_evidence_confidence(block)
+
     return HorseAnalysis(
         horse_number=horse_num,
         horse_name=horse_name,
         market_win_odds=_mw,
         market_place_odds=_mp,
+        ability_score=ability_score,
+        rank=rank,
+        confidence_score=_parse_au_confidence_score(block),
+        evidence_dimensions=evidence_dims,
+        evidence_dimensions_total=evidence_total,
+        dimension_details=_parse_au_dimension_details(block),
         jockey=header_info.get('jockey'),
         trainer=header_info.get('trainer'),
         weight=header_info.get('weight'),

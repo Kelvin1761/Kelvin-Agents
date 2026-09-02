@@ -40,7 +40,13 @@ from services.multisport_exporter import build_multisport_feed
 from models.race import AnalystName, Meeting, Region
 
 
-CACHE_VERSION = 3
+# Bump whenever the parsed per-horse shape changes. The cache keys on
+# (mtime, size) of the source markdown, so a parser that starts emitting new
+# fields over UNCHANGED files would otherwise keep serving the old shape
+# forever -- the fields would read as empty in production with nothing failing.
+# 4: AU structured fields (rank / ability_score / confidence_score /
+#    evidence_dimensions / dimension_details) added 2026-09-02.
+CACHE_VERSION = 4
 DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".cache" / "meeting-snapshot-cache.json"
 AU_MEETING_DIR_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\s+(.+?)(?:\s+Race\s+\d+-\d+)?$")
 
@@ -574,11 +580,45 @@ def _slim_for_transport(payload):
         for races in (entry.get("races_by_analyst") or {}).values():
             for race in races:
                 for horse in race.get("horses") or []:
+                    raw = horse.get("raw_text") or ""
                     core = (horse.get("core_analysis") or "").strip()
-                    if core and core in (horse.get("raw_text") or ""):
+                    if core and core in raw:
                         horse.pop("core_analysis")
                         dropped += 1
+                    dropped += _slim_dimension_prose(horse, raw)
     return payload, dropped
+
+
+def _slim_dimension_prose(horse, raw):
+    """Drop per-dimension prose that is already verbatim in `raw_text`.
+
+    `dimension_details` costs 5.8 KiB per horse if kept whole, and merging it
+    into the snapshot took one meeting from 1.50 MiB to 2.84 MiB (+89%) --
+    projected 16.7 MiB for six meetings, which a nine-meeting Saturday would
+    push past Cloudflare's 25 MiB per-file limit. That is the exact failure of
+    2026-08-07: three nights of deploys rejected and a full night of analysis
+    never reaching the dashboard.
+
+    Measured across the same meeting: 0 of 588 verdicts and 0 of 588 evidence
+    lines were absent from their horse's `raw_text`. They are pure duplication.
+    The numbers -- score, weight, contribution, symbol, sample_counts -- are
+    what the UI cannot reconstruct without re-parsing prose, and they cost only
+    1.13 KiB per horse, so those stay.
+
+    Membership is re-checked per string rather than assumed, so anything the
+    renderer could not otherwise recover is kept.
+    """
+    removed = 0
+    for detail in horse.get("dimension_details") or []:
+        verdict = (detail.get("verdict") or "").strip()
+        if verdict and verdict in raw:
+            detail.pop("verdict")
+            removed += 1
+        evidence = detail.get("evidence") or []
+        if evidence and all(line in raw for line in evidence):
+            detail.pop("evidence")
+            removed += 1
+    return removed
 
 
 # Cloudflare Pages rejects any SINGLE asset over 25 MiB. Warn well before that:
