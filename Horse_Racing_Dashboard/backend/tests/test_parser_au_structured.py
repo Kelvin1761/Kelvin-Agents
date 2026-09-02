@@ -508,3 +508,63 @@ def test_service_worker_keeps_analysis_available_offline():
     assert "/analysis/" in body, \
         "the worker no longer handles analysis bundles -- the one part of the app " \
         "that needs a network, in the basement this worker exists for"
+
+
+# ── 加分位 / 扣分位 shorthand ──────────────────────────────────────────────
+
+def _verdict_shorthand_patterns():
+    """Pull the JS lookup table's regexes out of the template."""
+    text = _template_text()
+    block = re.search(r'const VERDICT_SHORTHAND = \[(.+?)\n\];', text, re.S)
+    assert block, "VERDICT_SHORTHAND is gone"
+    return [re.compile(p.replace('\\\\', '\\'))
+            for p in re.findall(r'^\s*\[/(.+?)/,', block.group(1), re.M)]
+
+
+def test_shorthand_still_covers_every_phrasing_the_generator_writes(parsed_meeting):
+    """The chips are a lookup over the generator's own sentences, not a summary.
+
+    A new phrasing does not break the page -- shortenVerdict falls through to
+    the original sentence -- but it does put a full sentence back on the card,
+    which is exactly what the chips replaced. This fails when that starts
+    happening rather than letting it drift.
+    """
+    _, horses, _ = parsed_meeting
+    patterns = _verdict_shorthand_patterns()
+    unmatched = set()
+    total = 0
+    for horse in horses:
+        for field in ("advantage", "risk"):
+            for line in (getattr(horse, field) or "").split("\n"):
+                line = line.strip()
+                if not line:
+                    continue
+                total += 1
+                if not any(p.search(line) for p in patterns):
+                    unmatched.add(line)
+    assert total, "no advantage/risk bullets in this meeting"
+    assert not unmatched, (
+        f"{len(unmatched)} phrasing(s) have no shorthand and will render as full "
+        f"sentences: {sorted(unmatched)[:3]}"
+    )
+
+
+def test_verdict_chips_replaced_the_prose_block():
+    text = _template_text()
+    definitions, calls = _definition_and_call_counts(text, 'renderVerdictChips')
+    assert definitions == 1 and calls >= 1, "the chips renderer is not wired"
+    assert '加分位' in text and '扣分位' in text, "the chip labels were renamed away"
+    # Checked via the old helper rather than the markup string: the markup
+    # string also appears in the CSS comment that documents what it replaced,
+    # so asserting on it makes the test match its own documentation.
+    assert 'const asList = t =>' not in text, "the old <br>-joined prose block is back"
+
+
+def test_matrix_chapter_leads_the_document():
+    """The breakdown is the only chapter that explains the ranking; the others
+    restate the card. Pattern-matched so HKJC's 評分矩陣 (7D 數值拆解) sorts too."""
+    text = _template_text()
+    assert re.search(r'const rank = sec =>.*?矩陣\|拆解.*?賽績檔案\|Facts', text, re.S), \
+        "the chapter ordering rule changed; the matrix may no longer lead"
+    assert 'sec.collapsed = true' in text, \
+        "the covered chapters no longer start collapsed -- the document runs long again"

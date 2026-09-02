@@ -47,7 +47,7 @@
     /* Capped for the same reason the analysis body caps at 86ch: on a 1300px
        card the bar stretched to 907px, far past the resolution a ±11 point
        scale needs, and the row read as pulled apart rather than dense. */
-    .dim-strip { margin-top: 10px; border: 1px solid #E2E8F0; border-radius: 8px; background: #F8FAFC; padding: 10px 12px; max-width: 760px; }
+    .dim-strip { margin-top: 10px; border: 1px solid #E2E8F0; border-radius: 8px; background: #F8FAFC; padding: 12px 16px; max-width: 1040px; }
     .dim-strip__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
     .dim-strip__title { font-size: 0.72rem; font-weight: 700; color: #475569; letter-spacing: .02em; }
     .dim-strip__evidence { font-size: 0.68rem; font-weight: 600; color: #059669; }
@@ -79,6 +79,9 @@
          paid for by the padding trimmed off the containers. */
       .dim-strip { padding: 12px 10px; max-width: none; }
       .mkt { max-width: none; }
+      .verdicts { max-width: none; }
+      .verdict { grid-template-columns: 1fr; gap: 4px; font-size: 0.78rem; }
+      .verdict__label { padding-top: 0; }
       .dim-row { grid-template-columns: 1fr auto; row-gap: 6px; padding: 9px 0; font-size: 0.78rem; }
       .dim-row__name { grid-column: 1; grid-row: 1; }
       .dim-row__score { grid-column: 2; grid-row: 1; font-size: 0.84rem; }
@@ -98,9 +101,24 @@
     .dim-ref b { color: #475569; }
     .dim-ref__item { white-space: nowrap; display: inline-block; }
 
+    /* 加分位 / 扣分位.
+       These were `✅ <strong>優勢:</strong>` followed by <br>-joined sentences at
+       weight 400 — no structure, and visibly lighter than the ranking strip
+       right above it. They now use the strip's typography (600, same size,
+       same slate) so the card reads as one block. */
+    .verdicts { margin-top: 10px; max-width: 1040px; display: flex; flex-direction: column; gap: 6px; }
+    .verdict { display: grid; grid-template-columns: 78px minmax(0, 1fr); align-items: start; gap: 8px; font-size: 0.75rem; }
+    .verdict__label { font-weight: 700; white-space: nowrap; padding-top: 2px; }
+    .verdict--plus .verdict__label { color: #047857; }
+    .verdict--minus .verdict__label { color: #B45309; }
+    .verdict__items { display: flex; flex-wrap: wrap; gap: 5px; }
+    .verdict__chip { display: inline-block; padding: 3px 9px; border-radius: 999px; font-weight: 600; line-height: 1.5; color: #334155; background: #F1F5F9; border: 1px solid #E2E8F0; }
+    .verdict--plus .verdict__chip { background: #ECFDF5; border-color: #A7F3D0; color: #065F46; }
+    .verdict--minus .verdict__chip { background: #FFFBEB; border-color: #FDE68A; color: #92400E; }
+
     /* Market line — the model's rank next to the market's, and the gap between
        them. Both numbers already exist per horse; only the comparison is new. */
-    .mkt { margin-top: 8px; max-width: 760px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 0.72rem; padding: 7px 10px; border-radius: 8px; background: #EFF6FF; border: 1px solid #DBEAFE; }
+    .mkt { margin-top: 8px; max-width: 1040px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 0.72rem; padding: 7px 10px; border-radius: 8px; background: #EFF6FF; border: 1px solid #DBEAFE; }
     .mkt__odds { font-weight: 700; color: #1E40AF; font-variant-numeric: tabular-nums; }
     .mkt__ranks { color: #475569; font-variant-numeric: tabular-nums; }
     .mkt__gap { font-weight: 700; padding: 1px 7px; border-radius: 999px; font-size: 0.68rem; }
@@ -3475,9 +3493,23 @@ function splitAnalysisByHeadings(raw) {
   }
 
   const tidy = node => { node.content = node.content.join('\n').trim(); return node; };
-  return sections
+  const built = sections
     .map(sec => { tidy(sec); sec.children.forEach(tidy); return sec; })
     .filter(sec => sec.content || sec.children.length);
+
+  // The dimension breakdown is what the document is for -- it is the only part
+  // that explains the ranking -- so it leads. The form file is the other thing
+  // read on its own terms. The rest (數據判讀 restates the strip, 近績解構 is the
+  // 近六場 line already on the card, 核心分析 re-states the dimensions and the
+  // 加分位/扣分位 chips in prose) stay reachable but start collapsed, which is
+  // what stops the document running long. Matched by pattern so HKJC's
+  // differently-named chapters (評分矩陣 (7D 數值拆解), Facts 摘錄) sort too.
+  const rank = sec => (/矩陣|拆解/.test(sec.title) ? 0 : /賽績檔案|Facts/.test(sec.title) ? 1 : 2);
+  built.forEach(sec => { if (rank(sec) === 2) sec.collapsed = true; });
+  return built
+    .map((sec, index) => ({ sec, index }))
+    .sort((a, b) => rank(a.sec) - rank(b.sec) || a.index - b.index)
+    .map(x => x.sec);
 }
 
 function buildHorseAnalysisSections(horse) {
@@ -3613,7 +3645,16 @@ function renderAnalysisDocumentSection(section, index, cardId) {
   // 數據信心) restates the ranking strip line for line, so opening the
   // document with it expanded reads as the same paragraph twice.
   const isReadout = /數據判讀/.test(section.title);
-  if (isReadout && Array.isArray(section.rows) && section.rows.length) {
+  if (section.collapsed && !isReadout && section.content) {
+    const bodyId = `${sectionId}-body`;
+    body += `<div class="analysis-sub">
+      <button type="button" class="analysis-sub__toggle" aria-expanded="false" aria-controls="${bodyId}" onclick="toggleAnalysisSub('${bodyId}', this)">
+        <span class="analysis-sub__title">展開${esc(section.title)}</span>
+        <span class="analysis-sub__chevron" aria-hidden="true">⌄</span>
+      </button>
+      <div id="${bodyId}" class="analysis-sub__body" hidden>${formatRichSection(section.content)}</div>
+    </div>`;
+  } else if (isReadout && Array.isArray(section.rows) && section.rows.length) {
     const readoutId = `${sectionId}-readout`;
     body += `<div class="analysis-sub">
       <button type="button" class="analysis-sub__toggle" aria-expanded="false" aria-controls="${readoutId}" onclick="toggleAnalysisSub('${readoutId}', this)">
@@ -3668,6 +3709,75 @@ function toggleAnalysisSub(id, btn) {
 // carrying on 2026-09-02 (dimension_details, market_win_odds). Nothing here
 // computes a score or reorders anything -- the model's rank is the model's.
 // ═══════════════════════════════════════════════
+
+// 加分位 / 扣分位 — the generator's own bullets, shortened.
+//
+// The source writes full sentences ("Chris Waller 呢邊嘅部署訊號偏正面，人馬配搭
+// 有基本支持"), which read as padding on a card that already shows the trainer.
+// Measured across 477 horses on 2026-09-02: 560 risk bullets use just 8
+// phrasings and the advantage bullets use 9 templates (the trainer one embeds a
+// name, which is why it counts as 55 distinct strings). So this is a lookup,
+// not summarisation -- and an unrecognised phrasing falls through to the
+// original sentence rather than disappearing.
+// tests/test_parser_au_structured.py asserts the map still covers the corpus.
+const VERDICT_SHORTHAND = [
+  // 優勢
+  [/場地或場館適性有實際證據/, '場地適性有實績'],
+  [/對手後續升班仲交到貨/, '賽績線受驗證'],
+  [/近期交代密度夠/, '近況穩定'],
+  [/整體結構平均/, '結構平均 · 冇明顯弱項'],
+  [/往績速度考驗背景唔差/, '速度背景唔差'],
+  [/班次同負磅未見吃力/, '班次負磅唔吃力'],
+  [/檔位同場面節奏形勢配腳/, '檔位／節奏配腳'],
+  [/初出前備戰唔差/, '試閘交代清晰'],
+  [/^(.+?)\s*呢邊嘅部署訊號偏正面/, m => `練馬師 ${m[1].trim()}`],
+  // 風險
+  [/主要變數仍然係臨場節奏同對手反應/, '安全邊際一般'],
+  [/班次或負磅面前仍有壓力/, '班次／負磅有壓力'],
+  [/頂磅環境下要自己讓人/, '頂磅讓人'],
+  [/近況同穩定性都唔靚/, '近績差'],
+  [/段速實證偏弱/, '段速偏弱'],
+  [/初出馬正式實戰樣本仍然空白/, '初出馬 · 冇實戰樣本'],
+  [/場面節奏配腳未算理想/, '節奏配腳一般'],
+  [/場地適性仍未有清楚支持/, '場地適性未有支持'],
+];
+
+function shortenVerdict(line) {
+  const text = String(line || '').trim();
+  if (!text) return '';
+  for (const [pattern, replacement] of VERDICT_SHORTHAND) {
+    const m = pattern.exec(text);
+    if (m) return typeof replacement === 'function' ? replacement(m) : replacement;
+  }
+  return text;   // unknown phrasing: show it whole rather than dropping it
+}
+
+function renderVerdictChips(horse) {
+  const split = value => String(value || '').split('\n').map(x => x.trim()).filter(Boolean);
+  const plus = split(cleanText(horse.advantage)).map(shortenVerdict);
+  const minus = split(cleanText(horse.risk)).map(shortenVerdict);
+
+  // The jockey/trainer names are facts; whether they count as a plus is the
+  // engine's call, taken from the 騎練訊號 dimension's own impact rather than
+  // asserted here.
+  const jt = (horse.dimension_details || []).find(d => /騎練/.test(d.name));
+  if (jt && jt.score != null && jt.weight_pct != null) {
+    const impact = (jt.score - 60) * jt.weight_pct / 100;
+    const people = [horse.jockey && `騎師 ${horse.jockey}`, horse.trainer && `練馬師 ${horse.trainer}`].filter(Boolean);
+    const target = impact >= 0 ? plus : minus;
+    people.forEach(p => {
+      // the trainer may already be there via the 部署訊號 template
+      if (!target.some(x => horse.trainer && x.includes(horse.trainer) && p.includes(horse.trainer))) target.push(p);
+    });
+  }
+
+  if (!plus.length && !minus.length) return '';
+  const group = (label, cls, items) => items.length
+    ? `<div class="verdict verdict--${cls}"><span class="verdict__label">${label}</span><span class="verdict__items">${
+        items.map(i => `<span class="verdict__chip">${esc(i)}</span>`).join('')}</span></div>`
+    : '';
+  return `<div class="verdicts">${group('✅ 加分位', 'plus', plus)}${group('⚠️ 扣分位', 'minus', minus)}</div>`;
+}
 
 const DIM_SYMBOL_COLOR = {
   '✅✅': '#047857', '✅': '#059669', '➖': '#94A3B8', '❌': '#DC2626', '❌❌': '#991B1B',
@@ -3908,12 +4018,7 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
   }
   html += renderMarketLine(horse, marketRanks);
   html += renderDimensionStrip(horse);
-  // advantage / risk are bullet lists in the source; keep the line breaks.
-  const cleanAdv = cleanText(horse.advantage);
-  const cleanRisk = cleanText(horse.risk);
-  const asList = t => esc(t).replace(/\n/g, '<br>· ');
-  if (cleanAdv) html += `<div style="margin-top:8px">✅ <strong>優勢:</strong> ${cleanAdv.includes('\n') ? '<br>· ' + asList(cleanAdv) : esc(cleanAdv)}</div>`;
-  if (cleanRisk) html += `<div style="margin-top:4px">⚠️ <strong>風險:</strong> ${cleanRisk.includes('\n') ? '<br>· ' + asList(cleanRisk) : esc(cleanRisk)}</div>`;
+  html += renderVerdictChips(horse);
   // 數據判讀 used to live here. It restated what the ranking matrix now shows
   // -- 主要支柱 / 最弱環節 / 數據信心 are the strip's top bar, bottom bar and
   // evidence badge -- so on the preview card it was the same reading twice.
