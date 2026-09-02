@@ -568,3 +568,65 @@ def test_matrix_chapter_leads_the_document():
         "the chapter ordering rule changed; the matrix may no longer lead"
     assert 'sec.collapsed = true' in text, \
         "the covered chapters no longer start collapsed -- the document runs long again"
+
+
+# ── 完整分析 v3: chapters, dimension body, chapter rail ────────────────────
+
+def test_skip_list_is_matched_against_the_bare_heading():
+    """Headings arrive as "📊 數據判讀". The skip patterns are anchored (^…$) to
+    the bare name, so testing them against the raw title matches nothing and the
+    chapters silently stay -- which is exactly what happened first time."""
+    text = _template_text()
+    assert re.search(r'const bareTitle = title\.replace\(LEADING_EMOJI_RE', text), \
+        "the skip list is tested before the emoji is stripped; anchored patterns will never match"
+    match = re.search(r'const ANALYSIS_SKIP_HEADING = /(.+?)/;', text)
+    assert match
+    for heading in ("數據判讀", "近績解構", "核心分析"):
+        assert heading in match.group(1), f"{heading} is no longer removed from 完整分析"
+
+
+def test_dimension_body_rebases_the_first_line_indent():
+    """Section content is `.trim()`ed upstream, which strips the indent of the
+    FIRST line only. Without re-basing it, 評分構成 sits at column 0 while 判讀
+    and 數據 sit at 2 and become its children -- they rendered as sub-scores.
+    A plain min() over all lines returns 0 and fixes nothing, so this asserts
+    the min is taken over lines 1..n."""
+    text = _template_text()
+    assert 'const rest = lines.slice(1).map(indentOf);' in text, \
+        "the first-line indent is no longer re-based against the remaining lines"
+
+
+def test_dimension_body_renderer_is_wired():
+    text = _template_text()
+    for fn in ("renderDimensionBody", "parseIndentedBlocks", "renderKvGrid", "renderSubScore"):
+        definitions = len(re.findall(r'function\s+' + fn + r'\s*\(', text))
+        # Count USES, not calls: renderSubScore is passed by reference to
+        # `.map(renderSubScore)`, which a `name(` counter never sees.
+        uses = len(re.findall(re.escape(fn), text)) - definitions
+        assert definitions == 1, f"{fn} missing or duplicated ({definitions})"
+        assert uses >= 1, f"{fn} is defined but never used"
+    assert "formatRichSection(content)" in text, \
+        "the plain-text fallback is gone; an unrecognised shape would render empty"
+
+
+def test_chapter_rail_lists_dimensions_and_is_desktop_only():
+    text = _template_text()
+    css = _stylesheet()
+    assert 'analysis-nav__dim' in text, "the rail no longer lists individual dimensions"
+    definitions, calls = _definition_and_call_counts(text, 'jumpToAnalysis')
+    assert definitions == 1 and calls >= 1, "the rail's jump handler is not wired"
+    assert re.search(r'@media \(max-width: 1099px\) \{\s*\.analysis-document__nav \{ display: none', css), \
+        "the rail is no longer hidden on phones"
+
+
+def test_section_body_width_override_comes_after_its_base_rule():
+    """This stylesheet is ordered base-then-overrides, so a max-width override
+    declared earlier loses at equal specificity and does nothing. That has
+    silently happened twice: the ranking table's min-width and this one."""
+    css = _stylesheet()
+    base = css.find("max-width: 86ch;")
+    override = css.find(".analysis-document__section-body {\n    max-width: none;")
+    assert base != -1, "the 86ch reading measure is gone; this guard is stale"
+    assert override != -1, "the desktop full-width override was removed"
+    assert override > base, \
+        "the full-width override is declared before the 86ch rule and loses to it"

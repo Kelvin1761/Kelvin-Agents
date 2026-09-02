@@ -3438,7 +3438,12 @@ function renderBattlefieldOverview(text, horses = []) {
 // ═══════════════════════════════════════════════
 
 // Already shown on the preview card; repeating them is what made 完整分析 long.
-const ANALYSIS_SKIP_HEADING = /^(?:🔢\s*)?評分總覽|^主要優勢$|^主要風險$/;
+// 數據判讀 restates the ranking strip, 近績解構 is the 近六場 line already in the
+// card header, and 核心分析 is the dimensions plus the 加分位/扣分位 chips written
+// out as a paragraph. All three were collapsed first and then removed outright
+// (2026-09-02) -- a collapsed chapter that nobody opens is still a row to scroll
+// past. The breakdown and the form file are what the document is for.
+const ANALYSIS_SKIP_HEADING = /^(?:🔢\s*)?評分總覽|^主要優勢$|^主要風險$|^數據判讀$|^近績解構$|^核心分析$/;
 
 const ANALYSIS_ICONS = [
   [/數據判讀/, '📊', 'blue'],
@@ -3503,7 +3508,10 @@ function splitAnalysisByHeadings(raw) {
     }
     if (depth === 4) {
       child = null;
-      if (ANALYSIS_SKIP_HEADING.test(title)) { section = null; continue; }
+      // Headings arrive as "📊 數據判讀"; the skip patterns are anchored to the
+      // bare name, so strip the emoji BEFORE testing or nothing ever matches.
+      const bareTitle = title.replace(LEADING_EMOJI_RE, '').trim();
+      if (ANALYSIS_SKIP_HEADING.test(bareTitle)) { section = null; continue; }
       section = { content: [], children: [], title, ...analysisHeadingStyle(title) };
       sections.push(section);
       continue;
@@ -3695,13 +3703,13 @@ function renderAnalysisDocumentSection(section, index, cardId) {
   // an endless scroll.
   (section.children || []).forEach((child, childIndex) => {
     const childId = `${sectionId}-sub-${childIndex + 1}`;
-    body += `<div class="analysis-sub">
+    body += `<div class="analysis-sub" id="${childId}-anchor">
       <button type="button" class="analysis-sub__toggle" aria-expanded="false" aria-controls="${childId}" onclick="toggleAnalysisSub('${childId}', this)">
         ${child.icon ? `<span class="analysis-sub__icon" aria-hidden="true">${child.icon}</span>` : ''}
         <span class="analysis-sub__title">${esc(child.title)}</span>
         <span class="analysis-sub__chevron" aria-hidden="true">⌄</span>
       </button>
-      <div id="${childId}" class="analysis-sub__body" hidden>${formatRichSection(child.content)}</div>
+      <div id="${childId}" class="analysis-sub__body" hidden>${renderDimensionBody(child.content)}</div>
     </div>`;
   });
 
@@ -4086,13 +4094,169 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
   return html;
 }
 
+// A dimension breakdown is not free prose -- it has a fixed three-part shape on
+// both platforms:
+//   - **評分構成:**  the formula, with each sub-score and its derivation nested
+//   - **判讀:**      (HKJC: **Python 判讀:**) the verdict in words
+//   - **數據:**      (HKJC: **資料錨點:**) labelled facts
+// Rendered as bullets it read as a wall of text. Parsed into those parts it
+// becomes a formula strip, a callout and a key/value grid. Anything that does
+// not match this shape falls through to formatRichSection unchanged.
+
+function parseIndentedBlocks(content) {
+  const blocks = [];
+  // The section content was `.trim()`ed upstream, which strips the indent of
+  // the FIRST line only -- so 評分構成 arrived at indent 0 while 判讀 and 數據
+  // sat at 2 and became its children. Re-base every line on the smallest
+  // indent present instead of trusting the raw column.
+  const lines = String(content || '').split('\n').filter(l => l.trim());
+  const indentOf = l => l.length - l.replace(/^\s*/, '').length;
+  // Only the FIRST line lost its indent, so its true column is the smallest
+  // indent among the lines that kept theirs. Taking a plain minimum over all
+  // lines just returns 0 and changes nothing -- which is how 判讀 and 數據
+  // stayed nested under 評分構成 after the first attempt at this fix.
+  const rest = lines.slice(1).map(indentOf);
+  const base = rest.length ? Math.min(...rest) : 0;
+  const normalised = lines.map((l, i) => (i === 0 ? ' '.repeat(base) + l.trimStart() : l));
+  for (const raw of normalised) {
+    if (!raw.trim()) continue;
+    const indent = raw.length - raw.replace(/^\s*/, '').length;
+    const text = raw.replace(/^\s*[-*]\s*/, '').trim();
+    if (!text) continue;
+    const labelled = /^\*\*(.+?)[:：]\*\*\s*(.*)$/.exec(text);
+    const node = {
+      indent,
+      label: labelled ? labelled[1].trim() : null,
+      text: labelled ? labelled[2].trim() : text,
+      children: [],
+    };
+    // attach to the deepest open node with a smaller indent
+    let parent = null;
+    for (let i = blocks.length - 1; i >= 0; i--) {
+      const candidate = deepestOpen(blocks[i], indent);
+      if (candidate) { parent = candidate; break; }
+    }
+    if (parent) parent.children.push(node); else blocks.push(node);
+  }
+  return blocks;
+}
+
+function deepestOpen(node, indent) {
+  if (node.indent >= indent) return null;
+  for (let i = node.children.length - 1; i >= 0; i--) {
+    const deeper = deepestOpen(node.children[i], indent);
+    if (deeper) return deeper;
+  }
+  return node;
+}
+
+function renderKvGrid(nodes) {
+  const rows = nodes.map(n => {
+    const m = /^(.{1,18}?)\s*[:：]\s*(.+)$/s.exec(n.text);
+    return m ? { k: m[1], v: m[2] } : { k: '', v: n.text };
+  });
+  return `<dl class="dim-kv">${rows.map(r =>
+    `<div class="dim-kv__row"><dt>${esc(r.k)}</dt><dd>${esc(r.v)}</dd></div>`).join('')}</dl>`;
+}
+
+function renderSubScore(node) {
+  // "騎師分 46 ← Jason Whiting 去年官方 570 場…" — the score is the headline,
+  // the source is the caption, the nested lines are the arithmetic.
+  const m = /^(.+?分)\s*([\d.]+)\s*←\s*(.+)$/s.exec(node.text);
+  const name = m ? m[1] : node.text.slice(0, 24);
+  const score = m ? m[2] : null;
+  const source = m ? m[3] : '';
+  const detail = node.children.length
+    ? `<div class="dim-sub__detail">${node.children.map(c => `<div>${esc(c.text)}</div>`).join('')}</div>`
+    : '';
+  return `<div class="dim-sub">
+    <div class="dim-sub__head"><span class="dim-sub__name">${esc(name)}</span>${
+      score !== null ? `<span class="dim-sub__score">${esc(score)}</span>` : ''}</div>
+    ${source ? `<div class="dim-sub__source">${esc(source)}</div>` : ''}
+    ${detail}
+  </div>`;
+}
+
+function renderDimensionBody(content) {
+  const blocks = parseIndentedBlocks(content);
+  const labelled = blocks.filter(b => b.label);
+  if (!labelled.length) return formatRichSection(content);
+
+  let h = '';
+  const find = re => blocks.find(b => b.label && re.test(b.label));
+  const formula = find(/評分構成/);
+  const verdict = find(/判讀/);
+  const data = find(/數據|資料錨點/);
+
+  if (formula) {
+    h += `<div class="dim-formula"><span class="dim-formula__label">點計出嚟</span><span class="dim-formula__body">${esc(formula.text)}</span></div>`;
+    if (formula.children.length) {
+      h += `<div class="dim-subs">${formula.children.map(renderSubScore).join('')}</div>`;
+    }
+  }
+  if (verdict && verdict.text) {
+    h += `<div class="dim-verdict">${esc(verdict.text)}</div>`;
+  }
+  if (data) {
+    const rows = [data.text ? { indent: 0, text: data.text, children: [] } : null, ...data.children].filter(Boolean);
+    if (rows.length) h += renderKvGrid(rows);
+  }
+  // Anything the three known parts did not claim (HKJC prints extra bare lines).
+  const claimed = new Set([formula, verdict, data].filter(Boolean));
+  const rest = blocks.filter(b => !claimed.has(b));
+  if (rest.length) h += renderKvGrid(rest);
+  return h;
+}
+
 function renderAnalysisDetail(sections, cardId) {
-  const chapterLinks = sections.map((section, index) => `<a href="#${cardId}-chapter-${index + 1}"><span>${String(index + 1).padStart(2, '0')}</span>${esc(section.title)}</a>`).join('');
+  // The rail lists chapters AND each dimension inside the breakdown: the
+  // dimensions are what the reader actually jumps between, and they were
+  // reachable only by scrolling the chapter and hunting for the right toggle.
+  const links = sections.map((section, index) => {
+    const sectionId = `${cardId}-chapter-${index + 1}`;
+    let html = `<a class="analysis-nav__chapter" href="#${sectionId}" onclick="jumpToAnalysis(event, '${sectionId}')">`
+      + `<span class="analysis-nav__num">${String(index + 1).padStart(2, '0')}</span>`
+      + `<span class="analysis-nav__text">${esc(section.title)}</span></a>`;
+    (section.children || []).forEach((child, childIndex) => {
+      const childId = `${sectionId}-sub-${childIndex + 1}`;
+      // "狀態與穩定性：72.4 分　✅ 偏強" -> name + symbol, dropped the rest
+      const name = String(child.title).split(/[:：]/)[0].trim();
+      const symbol = (/([✅❌➖]+)/.exec(child.title) || [, ''])[1];
+      html += `<a class="analysis-nav__dim" href="#${childId}-anchor" onclick="jumpToAnalysis(event, '${childId}-anchor', true)">`
+        + `<span class="analysis-nav__text">${esc(name)}</span>`
+        + (symbol ? `<span class="analysis-nav__sym">${symbol}</span>` : '')
+        + `</a>`;
+    });
+    return html;
+  }).join('');
+
   return `<div class="analysis-detail">
         <div class="analysis-detail__header"><div class="analysis-detail__title">完整分析</div><div class="analysis-detail__hint">全部內容已展開 · 可用章節索引快速跳讀</div></div>
-        <nav class="analysis-document__nav" aria-label="完整分析章節"><span class="analysis-document__nav-label">章節</span>${chapterLinks}</nav>
+        <nav class="analysis-document__nav" aria-label="完整分析章節"><span class="analysis-document__nav-label">章節</span>${links}</nav>
         <div class="analysis-document">${sections.map((section, index) => renderAnalysisDocumentSection(section, index, cardId)).join('')}</div>
       </div>`;
+}
+
+function jumpToAnalysis(event, targetId, expand) {
+  event.preventDefault();
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  // A dimension link opens the block it points at -- jumping to a collapsed
+  // toggle and leaving it shut would look like the link did nothing.
+  if (expand) {
+    const body = el.querySelector('.analysis-sub__body');
+    const toggle = el.querySelector('.analysis-sub__toggle');
+    if (body && body.hidden && toggle) toggleAnalysisSub(body.id, toggle);
+  }
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el.classList.remove('analysis-flash');
+  void el.offsetWidth;              // restart the animation on a repeat click
+  el.classList.add('analysis-flash');
+  const nav = el.closest('.analysis-detail')?.querySelector('.analysis-document__nav');
+  if (nav) {
+    nav.querySelectorAll('.is-active').forEach(a => a.classList.remove('is-active'));
+    nav.querySelector(`a[href="#${targetId}"]`)?.classList.add('is-active');
+  }
 }
 
 async function fillLazyAnalysis(panel, btn, cardId) {
