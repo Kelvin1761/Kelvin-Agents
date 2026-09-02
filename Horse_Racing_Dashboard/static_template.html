@@ -4401,7 +4401,10 @@ function renderKvGrid(nodes, dimensionTitle) {
 // The space before the sign is optional: HKJC writes "（騎師分）+4.0 ← …" with
 // the sign glued to the bracket, which a required \s never matched. The
 // mandatory ← keeps this from firing on form sequences like 3-3-10-6-3-6.
-const DETAIL_ADJUST_RE = /^(.+?)\s*([+\-]\d[\d.]*)\s*←\s*(.+)$/;
+// A bare 0 is still a scoring component -- HKJC writes "騎師同程（騎師分）0 ←
+// …（樣本未夠80仗，不加不減）", i.e. the term was evaluated and came to nothing.
+// Requiring a sign dropped 310 of them into grey notes outside their box.
+const DETAIL_ADJUST_RE = /^(.+?)\s*([+\-]?\d[\d.]*)\s*←\s*(.+)$/;
 const DETAIL_BASE_RE = /^基礎分\s*([\d.]+)\s*(?:（(.+?)）)?$/;
 // "合計（0-100 封頂）＝ 64.2" and "同場／地況往績分 ＝ 71.9" are both totals;
 // matching only the 合計 form left the second rendering as a grey note, which
@@ -4505,9 +4508,10 @@ function renderSubScoreDetails(children, captionText) {
     }
     const adj = DETAIL_ADJUST_RE.exec(text);
     if (adj) {
-      const positive = !adj[2].startsWith('-');
-      html += `<div class="dim-adj dim-adj--${positive ? 'up' : 'down'}">`
-        + `<span class="dim-adj__num">${esc(adj[2])}</span>`
+      const value = parseFloat(adj[2]);
+      const tone = value > 0 ? 'up' : value < 0 ? 'down' : 'flat';
+      html += `<div class="dim-adj dim-adj--${tone}">`
+        + `<span class="dim-adj__num">${value > 0 && !adj[2].startsWith('+') ? '+' : ''}${esc(adj[2])}</span>`
         + `<span class="dim-adj__label">${esc(adj[1])}<span class="dim-adj__why">${esc(adj[3])}</span></span></div>`;
       continue;
     }
@@ -4587,7 +4591,8 @@ function renderSubScore(node, meta) {
   // who is riding and who trains without reading the sentence.
   let person = '';
   if (/^(?:騎師分|練馬師分)$/.test(name)) {
-    const m = /^([^\d，,；;（(]+?)\s*(?:去年|近|曾|喺|係)/.exec(source);
+    // AU: "Jason Whiting 去年官方 570 場…"   HKJC: "希威森兩季917仗：勝率6%…"
+    const m = /^([^\d，,；;：:（(]+?)\s*(?:去年|兩季|上季|今季|近期|近|曾|喺|係|×)/.exec(source);
     if (m && m[1].trim().length <= 28) person = m[1].trim();
   }
   return `<div class="dim-sub">

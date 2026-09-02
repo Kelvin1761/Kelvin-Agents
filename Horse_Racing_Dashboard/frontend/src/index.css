@@ -2758,6 +2758,8 @@ a:hover {
 .dim-adj--up .dim-adj__num { color: #047857; }
 .dim-adj--down .dim-adj__num { color: #b91c1c; }
 .dim-adj--anchor .dim-adj__num { color: #1e40af; }
+/* Evaluated and came to nothing -- shown, but not as a gain. */
+.dim-adj--flat .dim-adj__num { color: #94a3b8; }
 
 .dim-adj--anchor,
 .dim-adj--total { background: #f8fafc; border-radius: 6px; padding: 5px 6px; }
