@@ -23,6 +23,32 @@ class RatingDimension(BaseModel):
     rationale: str
 
 
+class DimensionDetail(BaseModel):
+    """One row of the AU engine's per-dimension breakdown.
+
+    The analysis markdown carries far more than the ✅/➖ symbol the dashboard
+    used to surface: the score, its ranking weight, the weighted contribution,
+    the engine's own verdict, and -- the part that matters for reading -- how
+    many starts/trials each judgement actually rests on. Measured 2026-09-02:
+    477 of 477 horses had all of it in the file and 0% reached the payload.
+
+    `ranking_weighted` is False for the two dimensions the engine prints but
+    explicitly marks 「參考·不入排名」(檔位形勢, 賽績線). They are kept rather
+    than dropped so the UI can show them as non-scoring instead of silently
+    hiding them.
+    """
+    name: str
+    score: Optional[float] = None
+    weight_pct: Optional[float] = None
+    contribution: Optional[float] = None
+    symbol: Optional[str] = None       # ✅✅ / ✅ / ➖ / ❌ / ❌❌
+    category: Optional[str] = None     # 偏強 / 中性 / 偏弱 / 很弱
+    verdict: Optional[str] = None      # 判讀
+    evidence: list[str] = []           # 數據 lines
+    sample_counts: list[str] = []      # "9 場", "1 次試閘" -- evidence thickness
+    ranking_weighted: bool = True
+
+
 class RatingMatrix(BaseModel):
     dimensions: list[RatingDimension]
     base_rating: Optional[str] = None
@@ -84,6 +110,16 @@ class HorseAnalysis(BaseModel):
     risk_score: Optional[float] = None
     model_pick_status: Optional[str] = None
     rank: Optional[int] = None
+
+    # Evidence thickness. The engine's own 數據信心 counts dimensions that have
+    # measured data (X of Y); it is near-constant in practice -- 93.9% of 477
+    # horses read 5/5 on 2026-09-02 -- so it separates almost nothing on its
+    # own. The per-dimension `sample_counts` in dimension_details are the
+    # signal worth reading; this pair is kept because it is cheap and does
+    # discriminate at the thin tail (29 horses below 5/5 that day).
+    evidence_dimensions: Optional[int] = None
+    evidence_dimensions_total: Optional[int] = None
+    dimension_details: Optional[list[DimensionDetail]] = None
     
     # Conclusion
     conclusion: Optional[str] = None  # 💡 結論
