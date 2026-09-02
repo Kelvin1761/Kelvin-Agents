@@ -158,3 +158,136 @@ def test_weights_sum_to_one_hundred(parsed_meeting):
             continue
         assert 99.0 <= sum(weights) <= 101.0, \
             f"{horse.horse_name}: ranking weights sum to {sum(weights):.1f}%"
+
+
+# ── Template wiring ────────────────────────────────────────────────────────
+# There is no JS test harness here, and the failure these guard against is the
+# one this repo keeps paying for: the code still exists, nothing errors, and the
+# feature silently stops reaching the page. The odds prefill shipped in db6874b3
+# and rendered empty for every horse until 2026-09-02 for exactly that reason.
+
+TEMPLATE = Path(__file__).resolve().parents[2] / "static_template.html"
+
+
+def _template_text():
+    if not TEMPLATE.exists():
+        pytest.skip("static_template.html not present")
+    return TEMPLATE.read_text(encoding="utf-8")
+
+
+def _definition_and_call_counts(text, fn):
+    """(definitions, calls) for `fn`.
+
+    Asserting that "renderDimensionStrip(horse)" merely appears in the file is
+    a test that cannot fail: the substring is inside `function
+    renderDimensionStrip(horse) {` itself, so deleting every call still passes.
+    Counting occurrences separates the definition from its call sites.
+    """
+    definitions = len(re.findall(r'function\s+' + fn + r'\s*\(', text))
+    total = len(re.findall(re.escape(fn) + r'\s*\(', text))
+    return definitions, total - definitions
+
+
+def test_dimension_strip_is_defined_and_called():
+    text = _template_text()
+    definitions, calls = _definition_and_call_counts(text, 'renderDimensionStrip')
+    assert definitions == 1, f"expected one definition, found {definitions}"
+    assert calls >= 1, \
+        "renderDimensionStrip is defined but never called -- the strip would vanish silently"
+
+
+def test_market_line_is_defined_and_called():
+    text = _template_text()
+    definitions, calls = _definition_and_call_counts(text, 'renderMarketLine')
+    assert definitions == 1, f"expected one definition, found {definitions}"
+    assert calls >= 1, "renderMarketLine is defined but never called"
+
+
+def test_market_ranks_are_passed_from_every_horse_card_call_site():
+    """renderHorseCard's third argument is what makes the market comparison
+    possible; a call site that forgets it degrades to odds with no rank."""
+    text = _template_text()
+    calls = _renderhorsecard_calls(text)
+    assert calls, "no renderHorseCard call sites found"
+    missing = [c for c in calls if _top_level_arg_count(c) < 3
+               or re.search(r',\s*(undefined|null)\s*\)$', c)]
+    assert not missing, f"call sites without a market-rank argument: {missing}"
+
+
+def _renderhorsecard_calls(text):
+    r"""Extract whole calls, balancing parens.
+
+    A naive `[^)]*\)` stops at the first `)` -- which is inside the
+    `picks.find(...)` argument -- and reports every call site as missing an
+    argument it actually has. The depth counter must also start AT the opening
+    paren of renderHorseCard itself, not after it: starting mid-argument makes
+    `find(`'s own closing paren look like the end of the call, which reproduces
+    the same false positive by a different route.
+    """
+    calls, needle = [], "renderHorseCard(horse,"
+    start = text.find(needle)
+    while start != -1:
+        depth, i = 0, start + len("renderHorseCard")
+        while i < len(text):
+            if text[i] == '(':
+                depth += 1
+            elif text[i] == ')':
+                depth -= 1
+                if depth == 0:
+                    calls.append(text[start:i + 1])
+                    break
+            i += 1
+        start = text.find(needle, start + 1)
+    return calls
+
+
+def _top_level_arg_count(call):
+    inner = call[call.index('(') + 1:-1]
+    depth, args = 0, 1
+    for ch in inner:
+        if ch in '([{':
+            depth += 1
+        elif ch in ')]}':
+            depth -= 1
+        elif ch == ',' and depth == 0:
+            args += 1
+    return args
+
+
+def test_odds_prefill_reads_the_horse_record():
+    """The prefill used to read `c.market_place_odds` off the consensus payload,
+    which never carried odds -- 14 of 14 inputs rendered empty in production."""
+    text = _template_text()
+    assert "getMarketOdds(c, m, raceNum).place" in text, \
+        "odds prefill no longer resolves through the horse-record lookup"
+
+
+def test_impact_decomposition_matches_the_engines_own_contribution_column(parsed_meeting):
+    """The dashboard's impact bars are (score - 60) x weight.
+
+    That is only honest if it reproduces the engine's own published 貢獻
+    column. It does, to within 0.05 across 477 horses. Both differ from the
+    engine's stated `clean ranking score` by ~0.5 because the published table
+    rounds scores and weights to one decimal -- so the bars are accurate to the
+    TABLE, which is what they are drawn from, and the UI shows one decimal
+    rather than implying more precision than that.
+    """
+    _, horses, _ = parsed_meeting
+    worst = 0.0
+    checked = 0
+    for horse in horses:
+        dims = [d for d in (horse.dimension_details or [])
+                if d.ranking_weighted and d.score is not None
+                and d.weight_pct is not None and d.contribution is not None]
+        if len(dims) < 2:
+            continue
+        checked += 1
+        rebuilt = 60 + sum((d.score - 60) * d.weight_pct / 100 for d in dims)
+        engine = sum(d.contribution for d in dims)
+        worst = max(worst, abs(rebuilt - engine))
+    if not checked:
+        pytest.skip("no horse carries a full weighted breakdown")
+    assert worst < 0.10, (
+        f"impact bars drift {worst:.3f} from the engine's own contribution "
+        f"column -- the decomposition no longer matches what the engine says"
+    )
