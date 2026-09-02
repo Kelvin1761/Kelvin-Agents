@@ -16,6 +16,9 @@
  *      snapshot exists. reloadSnapshot() in the page deletes the cached shell
  *      first, so that reload is a genuine network fetch — without that step
  *      cache-first would hand back the very copy the user is trying to replace.
+ *   2b. /analysis/*.json (the 完整分析 text, lifted out of the shell so it is
+ *      no longer 70% of the download) is network-first with a cache fallback:
+ *      fresh while online, still readable underground once seen.
  *   3. Same-origin static assets (icons, manifest), the Google Fonts CDN and the
  *      silk image CDN are cache-first — they are immutable enough that
  *      revalidating costs more than it saves, and the silks are what make an
@@ -27,7 +30,8 @@
  * manifest check handles that.
  */
 
-const CACHE_VERSION = "wongchoi-v2";
+// v3: added the /analysis/ runtime cache (rule 2b).
+const CACHE_VERSION = "wongchoi-v3";
 const PRECACHE = [
   "./",
   "./manifest.webmanifest",
@@ -96,6 +100,37 @@ self.addEventListener("fetch", (event) => {
             "<meta charset=utf-8><h1>離線</h1><p>未有已快取嘅 Dashboard，請連上網絡再開一次。</p>",
             { status: 503, headers: { "Content-Type": "text/html; charset=utf-8" } },
           );
+        }
+      })(),
+    );
+    return;
+  }
+
+  // Rule 2b — 完整分析 bundles: network first, cache as fallback.
+  //
+  // raw_text moved out of the shell on 2026-09-02 (HTML 9.97 -> 3.18 MiB), so
+  // without this the analysis text is the one part of the app that needs a
+  // network -- in a racecourse basement, which is the whole reason this worker
+  // exists. Network first rather than cache first because these files change
+  // with every deploy and a stale one would show yesterday's analysis under
+  // today's card; the cache is only reached when the network fails.
+  if (sameOrigin && /^\/analysis\/.+\.json$/.test(url.pathname)) {
+    event.respondWith(
+      (async () => {
+        const cache = await caches.open(CACHE_VERSION);
+        try {
+          const response = await fetch(request);
+          if (response.ok) cache.put(request, response.clone());
+          return response;
+        } catch {
+          const hit = await cache.match(request);
+          if (hit) return hit;
+          // A 504 lets the page show its own "載入唔到" message rather than
+          // hanging or rendering an empty document.
+          return new Response('{}', {
+            status: 504,
+            headers: { 'Content-Type': 'application/json' },
+          });
         }
       })(),
     );

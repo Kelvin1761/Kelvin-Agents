@@ -159,6 +159,20 @@ for pwa_file in "${REQUIRED_PWA_FILES[@]}"; do
     fi
 done
 
+# 完整分析 bundles：raw_text 由 2026-09-02 起唔再 inline（HTML 9.97 → 3.18 MiB），
+# 改為 analysis/<meeting-slug>.json 喺撳開嗰陣先抓。呢個同 PWA 資源一樣係「靜靜
+# 壞」嘅形狀 —— 檔案唔見咗，頁面照樣載入、排名照樣顯示，只係每張卡撳開都話
+# 「載入唔到」，而 log 一個錯都冇。所以一定要喺推之前喺呢度捉。
+if grep -q "data-analysis-lazy" "$HTML_OUT"; then
+    ANALYSIS_COUNT=$(find "$DIST_DIR/analysis" -name '*.json' 2>/dev/null | wc -l | tr -d ' ')
+    if [ "${ANALYSIS_COUNT:-0}" -eq 0 ]; then
+        echo "   ❌ HTML 用緊延遲載入完整分析，但 dist 冇 analysis/*.json —— 每張卡都會話載入唔到"
+        GUARD_FAIL=1
+    else
+        echo "   ✅ 完整分析 bundles：${ANALYSIS_COUNT} 個場次"
+    fi
+fi
+
 # 資料層：JSON 要真係帶到新欄位，唔淨係模板有 (報告要用新版 code 生成)
 for field in "rating_matrix" "data_readout"; do
     if ! grep -q "\"$field\"" "$JSON_OUT" 2>/dev/null; then

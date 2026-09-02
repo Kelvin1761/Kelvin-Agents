@@ -311,11 +311,19 @@ def test_payload_is_slimmed_before_the_html_is_built():
         pytest.skip("generate_static.py not present")
     text = GENERATOR.read_text(encoding="utf-8")
     slim = text.find("data, slimmed = _slim_for_transport(data)")
-    build = text.find("html = generate_html(data)")
+    build = text.find("html = generate_html(")
     assert slim != -1, "main() no longer slims the payload"
     assert build != -1, "main() no longer builds HTML"
     assert slim < build, \
         "the payload is slimmed AFTER the HTML is built -- the HTML keeps every duplicate"
+    # The HTML is built from a copy with raw_text lifted out; the snapshot JSON
+    # written afterwards must still be the complete payload, because it is the
+    # base snapshot the next incremental merge builds on.
+    extract = text.find("extract_analysis_bundles(html_payload)")
+    assert extract != -1, "the HTML payload no longer has raw_text lifted out"
+    assert slim < extract < build, "bundles must be extracted between slimming and the build"
+    assert "_write_json(json_path, data)" in text, \
+        "the snapshot JSON is no longer written from the complete payload"
 
 
 def test_slimming_keeps_the_numbers_and_is_idempotent():
@@ -424,3 +432,79 @@ def test_data_readout_is_not_rendered_twice():
     text = _template_text()
     _, calls = _definition_and_call_counts(text, 'renderDataReadout')
     assert calls == 1, f"expected exactly one renderDataReadout call site, found {calls}"
+
+
+# ── 完整分析 lazy loading ──────────────────────────────────────────────────
+# raw_text was 6.79 MiB of a 9.62 MiB snapshot (70.5%) and is only read when a
+# card is expanded, so it moved into analysis/<slug>.json. Everything here
+# guards the seam between the writer (Python) and the reader (JS): if the key
+# format or the slug rule drifts apart, every card silently says "載入唔到"
+# while the page still loads and nothing logs an error.
+
+def test_analysis_bundle_key_matches_between_writer_and_reader():
+    sys.path.insert(0, str(GENERATOR.parent))
+    from generate_static import extract_analysis_bundles, meeting_slug
+
+    payload = {"races": {"2026-09-02|Murray Bridge": {"races_by_analyst": {"Kelvin": [
+        {"race_number": 3, "horses": [{"horse_number": 7, "raw_text": "#### 核心分析\ntext"}]},
+    ]}}}}
+    stripped, bundles = extract_analysis_bundles(payload)
+
+    slug = meeting_slug("2026-09-02|Murray Bridge")
+    assert slug == "2026-09-02-murray-bridge", f"slug rule changed: {slug}"
+    assert list(bundles) == [slug]
+    assert list(bundles[slug]) == ["Kelvin|3|7"], \
+        "the bundle key no longer matches analysisRefFor()'s `analyst|race|horse`"
+
+    horse = stripped["races"]["2026-09-02|Murray Bridge"]["races_by_analyst"]["Kelvin"][0]["horses"][0]
+    assert "raw_text" not in horse, "raw_text was left in the inlined payload"
+
+
+def test_reader_builds_the_same_slug_as_the_writer():
+    """The JS slug rule is a separate implementation of the Python one; drift
+    between them makes every fetch 404."""
+    sys.path.insert(0, str(GENERATOR.parent))
+    from generate_static import meeting_slug
+
+    text = _template_text()
+    assert "function analysisSlug(meetingKey)" in text, "the reader-side slug helper is gone"
+    assert "replace(/[^A-Za-z0-9_-]+/g, '-')" in text, \
+        "the JS slug rule changed; it must still match meeting_slug()"
+    assert meeting_slug("2026-09-02|Happy Valley") == "2026-09-02-happy-valley"
+
+
+def test_lazy_analysis_is_wired_end_to_end():
+    text = _template_text()
+    for fn in ("loadAnalysisBundle", "fillLazyAnalysis", "renderAnalysisDetail", "analysisRefFor"):
+        definitions, calls = _definition_and_call_counts(text, fn)
+        assert definitions == 1, f"{fn} definition missing or duplicated ({definitions})"
+        assert calls >= 1, f"{fn} is defined but never called"
+    assert "data-analysis-lazy" in text, "the expand button no longer flags lazy cards"
+
+
+def test_lazy_failure_is_reported_not_silent():
+    """An empty document and a failed download look identical to the reader."""
+    text = _template_text()
+    assert "完整分析載入唔到" in text, \
+        "the lazy-load failure message is gone; a missing bundle would render as an empty document"
+
+
+def test_deploy_guards_that_the_bundles_shipped():
+    """Missing bundles produce no runtime error anywhere -- same failure shape
+    as the missing-PWA-asset case this guard sits beside."""
+    deploy = GENERATOR.parent / "deploy.sh"
+    if not deploy.exists():
+        pytest.skip("deploy.sh not present")
+    body = deploy.read_text(encoding="utf-8")
+    assert "data-analysis-lazy" in body and "analysis" in body, \
+        "deploy.sh no longer checks that the analysis bundles reached the dist"
+
+
+def test_service_worker_keeps_analysis_available_offline():
+    sw = GENERATOR.parent / "pwa" / "sw.js"
+    if not sw.exists():
+        pytest.skip("sw.js not present")
+    body = sw.read_text(encoding="utf-8")
+    assert "/analysis/" in body, \
+        "the worker no longer handles analysis bundles -- the one part of the app " \
+        "that needs a network, in the basement this worker exists for"

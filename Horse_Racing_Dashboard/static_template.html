@@ -3825,10 +3825,64 @@ function renderMarketLine(horse, marketRanks) {
   return h + '</div>';
 }
 
-function renderHorseCard(horse, topPickRank, marketRanks) {
-  const analysisSections = buildHorseAnalysisSections(horse);
+// ═══════════════════════════════════════════════
+// 完整分析 — lazy loaded per meeting
+//
+// raw_text was 6.79 MiB of a 9.62 MiB snapshot (70.5%), inlined into the HTML
+// so that every visitor downloaded six meetings of full analysis text in order
+// to read one race. It is only needed when a card is expanded, so it now lives
+// in analysis/<meeting-slug>.json and is fetched on first expand. The HTML
+// went from 9.97 MiB to 3.18 MiB.
+// ═══════════════════════════════════════════════
+
+// cardId -> {slug, key, rows}. A Map rather than data-* attributes so the
+// 數據判讀 rows travel as objects instead of JSON escaped into markup.
+const LAZY_ANALYSIS_CTX = new Map();
+const ANALYSIS_BUNDLES = new Map();   // slug -> {"analyst|race|horse": text}
+const ANALYSIS_PENDING = new Map();   // slug -> in-flight promise
+
+function analysisRefFor(analyst, raceNumber, horseNumber) {
+  // Key must match the one generate_static writes: "analyst|race|horse".
+  if (!selectedMeeting || !analyst || raceNumber == null || horseNumber == null) return null;
+  return {
+    slug: analysisSlug(getMeetingKey(selectedMeeting)),
+    key: `${analyst}|${raceNumber}|${horseNumber}`,
+  };
+}
+
+function analysisSlug(meetingKey) {
+  return String(meetingKey || '').replace(/[^A-Za-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').toLowerCase();
+}
+
+async function loadAnalysisBundle(slug) {
+  if (!slug) return null;
+  if (ANALYSIS_BUNDLES.has(slug)) return ANALYSIS_BUNDLES.get(slug);
+  if (ANALYSIS_PENDING.has(slug)) return ANALYSIS_PENDING.get(slug);
+  // file:// has no fetch; the double-clickable local copy simply has no
+  // 完整分析 rather than failing in a way that looks like missing data.
+  if (window.location.protocol === 'file:') return null;
+  const promise = fetch(`analysis/${slug}.json`, { cache: 'no-cache' })
+    .then(res => { if (!res.ok) throw new Error(`HTTP ${res.status}`); return res.json(); })
+    .then(bundle => { ANALYSIS_BUNDLES.set(slug, bundle); return bundle; })
+    .catch(err => { console.warn('analysis bundle failed', slug, err); return null; })
+    .finally(() => ANALYSIS_PENDING.delete(slug));
+  ANALYSIS_PENDING.set(slug, promise);
+  return promise;
+}
+
+function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
+  // With raw_text lifted into a side bundle the sections cannot be built yet;
+  // the button is offered on the promise of the bundle and the document is
+  // rendered on first expand. Cards that still carry raw_text (older archived
+  // snapshots, the local file:// copy) keep rendering eagerly.
+  // Gate on whether a lazy bundle is available, NOT on raw_text: a horse with
+  // data_readout but no raw_text and no bundle (fixtures, older archived
+  // snapshots) still has a 數據判讀 chapter to show, and gating on raw_text
+  // dropped it silently.
+  const lazyAnalysis = !horse.raw_text && !!(analysisRef && analysisRef.slug && analysisRef.key);
+  const analysisSections = lazyAnalysis ? [] : buildHorseAnalysisSections(horse);
   const topicCount = analysisSections.length;
-  const hasAnalysis = topicCount > 0;
+  const hasAnalysis = topicCount > 0 || lazyAnalysis;
   const officialHorseUrl = hkjcHorseProfileUrl(horse);
   const cardId = `horse-${horse.horse_number}-${Math.random().toString(36).slice(2,8)}`;
   const topClass = topPickRank ? ` horse-card--top-pick rank-${topPickRank}` : '';
@@ -3901,26 +3955,60 @@ function renderHorseCard(horse, topPickRank, marketRanks) {
 
   // Expand button — inside body, before expandable section
   if (hasAnalysis) {
-    html += `<button type="button" class="horse-card__expand-btn" aria-expanded="false" aria-controls="${cardId}-detail" onclick="toggleCard('${cardId}', this)">
+    if (lazyAnalysis) {
+      LAZY_ANALYSIS_CTX.set(cardId, {
+        slug: analysisRef.slug,
+        key: analysisRef.key,
+        rows: Array.isArray(horse.data_readout) ? horse.data_readout.filter(Boolean) : [],
+      });
+    }
+    const ref = lazyAnalysis ? ' data-analysis-lazy="1"' : '';
+    const meta = lazyAnalysis ? '' : `${topicCount} 個章節 `;
+    html += `<button type="button" class="horse-card__expand-btn" aria-expanded="false" aria-controls="${cardId}-detail"${ref} onclick="toggleCard('${cardId}', this)">
       <span class="horse-card__expand-label">完整分析</span>
-      <span class="horse-card__expand-meta">${topicCount} 個章節 <span class="horse-card__expand-chevron" aria-hidden="true">⌄</span></span>
+      <span class="horse-card__expand-meta">${meta}<span class="horse-card__expand-chevron" aria-hidden="true">⌄</span></span>
     </button>`;
   }
 
   // Only the outer control collapses; once opened, every chapter stays visible.
-  if (hasAnalysis) {
-    const chapterLinks = analysisSections.map((section, index) => `<a href="#${cardId}-chapter-${index + 1}"><span>${String(index + 1).padStart(2, '0')}</span>${esc(section.title)}</a>`).join('');
-    html += `<div id="${cardId}-detail" class="expand-animate expand-animate--collapsed" style="margin-top:0">
-      <div class="analysis-detail">
-        <div class="analysis-detail__header"><div class="analysis-detail__title">完整分析</div><div class="analysis-detail__hint">全部內容已展開 · 可用章節索引快速跳讀</div></div>
-        <nav class="analysis-document__nav" aria-label="完整分析章節"><span class="analysis-document__nav-label">章節</span>${chapterLinks}</nav>
-        <div class="analysis-document">${analysisSections.map((section, index) => renderAnalysisDocumentSection(section, index, cardId)).join('')}</div>
-      </div>
-    </div>`;
+  if (lazyAnalysis) {
+    html += `<div id="${cardId}-detail" class="expand-animate expand-animate--collapsed" style="margin-top:0"></div>`;
+  } else if (hasAnalysis) {
+    html += `<div id="${cardId}-detail" class="expand-animate expand-animate--collapsed" style="margin-top:0">${renderAnalysisDetail(analysisSections, cardId)}</div>`;
   }
   html += '</div>'; // closes horse-card__body
   html += '</div>'; // closes horse-card container
   return html;
+}
+
+function renderAnalysisDetail(sections, cardId) {
+  const chapterLinks = sections.map((section, index) => `<a href="#${cardId}-chapter-${index + 1}"><span>${String(index + 1).padStart(2, '0')}</span>${esc(section.title)}</a>`).join('');
+  return `<div class="analysis-detail">
+        <div class="analysis-detail__header"><div class="analysis-detail__title">完整分析</div><div class="analysis-detail__hint">全部內容已展開 · 可用章節索引快速跳讀</div></div>
+        <nav class="analysis-document__nav" aria-label="完整分析章節"><span class="analysis-document__nav-label">章節</span>${chapterLinks}</nav>
+        <div class="analysis-document">${sections.map((section, index) => renderAnalysisDocumentSection(section, index, cardId)).join('')}</div>
+      </div>`;
+}
+
+async function fillLazyAnalysis(panel, btn, cardId) {
+  const ctx = LAZY_ANALYSIS_CTX.get(cardId);
+  if (!ctx) return false;
+  const { slug, key } = ctx;
+  panel.innerHTML = '<div class="analysis-detail"><div class="analysis-detail__hint">載入緊完整分析…</div></div>';
+  const bundle = await loadAnalysisBundle(slug);
+  const raw = bundle ? bundle[key] : null;
+  if (!raw) {
+    // Say so rather than showing an empty document: "no chapters" and "the
+    // text did not load" look identical otherwise.
+    panel.innerHTML = '<div class="analysis-detail"><div class="analysis-detail__hint">完整分析載入唔到（可能離線，或者呢個檔案未發佈）。其餘資料唔受影響。</div></div>';
+    return false;
+  }
+  const sections = buildHorseAnalysisSections({ raw_text: raw, data_readout: ctx.rows });
+  panel.innerHTML = renderAnalysisDetail(sections, cardId);
+  const meta = btn.querySelector('.horse-card__expand-meta');
+  if (meta) meta.innerHTML = `${sections.length} 個章節 <span class="horse-card__expand-chevron" aria-hidden="true">⌄</span>`;
+  delete btn.dataset.analysisLazy;   // loaded once; keep the DOM
+  return true;
 }
 
 function toggleCard(id, btn) {
@@ -3928,6 +4016,11 @@ function toggleCard(id, btn) {
   if (!el) return;
   const isCollapsed = el.classList.contains('expand-animate--collapsed');
   const label = btn.querySelector('.horse-card__expand-label');
+  if (isCollapsed && btn.dataset.analysisLazy) {
+    // Fetch first, then re-enter so the height animation measures real content.
+    fillLazyAnalysis(el, btn, id).then(() => toggleCard(id, btn));
+    return;
+  }
   if (isCollapsed) {
     el.style.maxHeight = el.scrollHeight + 'px';
     el.classList.remove('expand-animate--collapsed');
@@ -4037,7 +4130,10 @@ function renderComparisonView(analyses, analysts) {
       if (bInPicks) return 1;
       return sortByGrade(a.final_grade, b.final_grade);
     });
-    return { sorted, picks, marketRanks: marketRankMap(sorted) };
+    return {
+      sorted, picks, marketRanks: marketRankMap(sorted), analyst,
+      raceNumber: analyses[analyst]?.race_number,
+    };
   });
 
   const maxLen = Math.max(...sortedLists.map(s => s.sorted.length));
@@ -4054,7 +4150,7 @@ function renderComparisonView(analyses, analysts) {
       const col = i<4?'#fff':'#64748B';
       html += `<div class="rank-card-row">
         <div class="rank-badge" style="color:${col};background:${bg}">#${i+1}<span class="rank-analyst"> | ${esc(analystName)}</span></div>
-        <div class="rank-card-content">${renderHorseCard(horse, list.picks.find(p => p.horse_number === horse.horse_number)?.rank, list.marketRanks)}</div>
+        <div class="rank-card-content">${renderHorseCard(horse, list.picks.find(p => p.horse_number === horse.horse_number)?.rank, list.marketRanks, analysisRefFor(list.analyst, list.raceNumber, horse.horse_number))}</div>
       </div>`;
     });
     html += '</div>';
@@ -4240,7 +4336,7 @@ function renderSingleAnalystView(analysis, analystName) {
     const col = idx<4?'#fff':'#64748B';
     html += `<div class="rank-card-row">
       <div class="rank-badge" style="color:${col};background:${bg}">#${idx+1}</div>
-      <div class="rank-card-content">${renderHorseCard(horse, picks.find(p => p.horse_number === horse.horse_number)?.rank, fieldMarketRanks)}</div>
+      <div class="rank-card-content">${renderHorseCard(horse, picks.find(p => p.horse_number === horse.horse_number)?.rank, fieldMarketRanks, analysisRefFor(analystName, analysis.race_number, horse.horse_number))}</div>
     </div>`;
   });
   html += '</div></div></div>';
