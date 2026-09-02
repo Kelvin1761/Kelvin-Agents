@@ -2889,6 +2889,94 @@ a:hover {
   background: #fcfdff;
 }
 
+/* Nested data groups (近6場數據, 走位窗口, 檔位-走位匹配度, 晨操分析). */
+.kv-group {
+  margin-top: 10px;
+  padding: 9px 11px;
+  border: 1px solid #eef2f7;
+  border-radius: 8px;
+  background: #fcfdff;
+}
+
+.kv-group__title {
+  font-size: 0.66rem;
+  font-weight: 800;
+  color: #475569;
+  letter-spacing: 0.02em;
+  margin-bottom: 5px;
+}
+
+.kv-group__lines { display: grid; gap: 3px; }
+.kv-line { font-size: 0.68rem; line-height: 1.65; color: #475569; }
+.kv-line--sub { padding-left: 12px; color: #94a3b8; font-size: 0.65rem; }
+.dim-kv--nested { margin-top: 0; padding-top: 0; border-top: 0; gap: 4px 16px; }
+
+/* Per-run record tables. */
+.runs { overflow-x: auto; }
+
+.runs__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.65rem;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+}
+
+.runs__table th,
+.runs__table td {
+  padding: 4px 7px;
+  border-bottom: 1px solid #f1f5f9;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.runs__table th { color: #94a3b8; font-size: 0.6rem; font-weight: 750; }
+.runs__table tbody tr:last-child td { border-bottom: 0; }
+.runs__no { font-weight: 700; color: #64748b; }
+.runs__when { color: #94a3b8; }
+
+/* Strike rate against the national benchmark. */
+.rate { margin-top: 6px; }
+.rate__volume { font-size: 0.66rem; color: #94a3b8; margin-bottom: 4px; }
+
+.rate__row {
+  display: grid;
+  grid-template-columns: 46px minmax(60px, 1fr) 44px;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.68rem;
+}
+
+.rate__label { color: #64748b; font-weight: 700; }
+
+.rate__track {
+  position: relative;
+  height: 9px;
+  border-radius: 3px;
+  background: #eef2f7;
+  overflow: visible;
+}
+
+.rate__fill { position: absolute; left: 0; top: 1px; bottom: 1px; border-radius: 2px; }
+.rate__fill--good { background: #059669; }
+.rate__fill--bad { background: #d97706; }
+
+.rate__mark {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: #475569;
+  border-radius: 1px;
+}
+
+.rate__val { text-align: right; font-weight: 800; color: #334155; font-variant-numeric: tabular-nums; }
+.rate__note { margin-top: 3px; font-size: 0.62rem; color: #94a3b8; }
+.rate__good { color: #047857; }
+.rate__bad { color: #b45309; }
+.rate__pair { display: flex; gap: 14px; font-size: 0.7rem; color: #475569; }
+.rate__pair b { color: #1e293b; font-size: 0.8rem; }
+
 .dim-verdict {
   margin-top: 10px;
   padding: 9px 12px;
