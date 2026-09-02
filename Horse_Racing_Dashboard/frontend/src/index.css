@@ -2859,6 +2859,15 @@ a:hover {
   .formline__table th, .formline__table td { padding: 6px 5px; }
 }
 
+/* Adjustments that name no sub-score: they apply to the dimension itself. */
+.dim-loose {
+  margin-top: 8px;
+  padding: 8px 11px;
+  border: 1px dashed #e2e8f0;
+  border-radius: 8px;
+  background: #fcfdff;
+}
+
 .dim-verdict {
   margin-top: 10px;
   padding: 9px 12px;
