@@ -852,7 +852,10 @@ function ratingBadge(grade, size) {
 
 function esc(s) {
   if (!s) return '';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  // The source is markdown, so a bolded run arrives as "**中性**". Escaped
+  // verbatim the asterisks show up on the page as asterisks.
+  return String(s).replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 function renderSilk(horse, size = 'md') {
@@ -3927,6 +3930,7 @@ const VERDICT_SHORTHAND = [
   [/近期交代密度夠/, '近況穩定'],
   [/整體結構平均/, '冇突出加分位'],          // fallback: nothing fired
   [/往績速度考驗背景唔差/, '速度背景唔差'],
+  [/段速底子唔差/, '段速底子唔差'],
   [/曾應付較快末段賽事環境/, '應付過快末段'],
   [/班次同負磅未見吃力/, '班次負磅唔吃力'],
   [/形勢配腳，走位有本錢/, '檔位／步速配腳'],
@@ -4405,7 +4409,7 @@ const DATA_ROUTES = [
   [/狀態與穩定性/, [[/近6場數據/, '近績分'], [/晨操分析/, '操練趨勢分']]],
   [/馬匹健康/, [[/休賽|體重趨勢|健康掃描|健康解讀/, '風險分']]],
   [/檔位與走位/, [[/走位窗口|檔位-走位匹配度|走位PI/, '走位匹配分'], [/檔位\s*\/\s*跑法/, '檔位分']]],
-  [/賽績線/, [[/賽績線明細|賽績線兌現度|賽績線強度|對手陣容強度|上仗結果/, '賽績線強度分']]],
+  [/賽績線/, [[/賽績線明細|賽績線強度/, '賽績線強度分']]],
   [/段速表現/, [[/引擎分佈|最佳路程|L400|能量趨勢|步速修正|完成時間/, '速度分']]],
   [/級數優勢/, [[/班次\s*\/\s*評分背景/, '班次分']]],
   [/騎練訊號/, [[/近6場騎師分佈/, '騎師分']]],
@@ -4413,7 +4417,12 @@ const DATA_ROUTES = [
 // Not a scoring input: the adjustment uses the rider's last three outings on
 // this horse, this row is the career record. Different windows, and only the
 // former is scored.
-const DATA_DROP = [[/騎練訊號/, /人馬組合統計/]];
+const DATA_DROP = [
+  [/騎練訊號/, /人馬組合統計/],
+  // The per-race table below already shows every opponent and what became of
+  // them, so these three restate it in aggregate.
+  [/賽績線/, /賽績線兌現度|對手陣容強度|上仗結果/],
+];
 
 function dataRouteFor(dimensionTitle, label) {
   for (const [dim, rules] of DATA_ROUTES) {
@@ -4540,6 +4549,23 @@ const ADJUST_LINE_RE = /^(.+?)\s*([+\-]\d[\d.]*)\s*(?:←\s*)?(.*)$/;
 const SIGNAL_LINE_RE = /^[·•]\s*(.+?)\s*([+\-]\d[\d.]*)\s*(.*)$/;
 const ADJUST_TARGET_RE = /[（(]([^）)]*?分)[^）)]*[）)]/;
 
+// "組合：沙田加權 檔位55%＋走位匹配25%＋近仗消耗20%" — 檔位與走位 has a single
+// weighted component (檔位走位情境分 x100%) and the other three lines are that
+// component's own inputs. Rendered flat they looked like four peers, and
+// 檔位分 appeared to be the dimension's score rather than 55% of one part of it.
+const COMPOSITION_RE = /^組合[：:]\s*(.+)$/;
+const COMPOSITION_PART_RE = /([^＋+\s]+?)\s*([\d.]+)%/g;
+
+function parseComposition(text) {
+  const m = COMPOSITION_RE.exec(text || '');
+  if (!m) return null;
+  const parts = {};
+  let hit;
+  COMPOSITION_PART_RE.lastIndex = 0;
+  while ((hit = COMPOSITION_PART_RE.exec(m[1]))) parts[hit[1]] = parseFloat(hit[2]);
+  return Object.keys(parts).length >= 2 ? parts : null;
+}
+
 function classifyFormulaChildren(children) {
   const subs = [];
   const loose = [];
@@ -4551,8 +4577,30 @@ function classifyFormulaChildren(children) {
       loose.push(child);
     }
   }
+  // Give each input the share the 組合 line assigns it, and nest them under the
+  // component they build.
+  const compositionNode = loose.find(c => parseComposition(c.text));
+  const composition = compositionNode ? parseComposition(compositionNode.text) : null;
+  if (composition && subs.length > 1) {
+    const parent = subs[0];
+    parent.components = [];
+    for (let i = subs.length - 1; i >= 1; i--) {
+      const key = Object.keys(composition).find(k => subs[i].name.startsWith(k) || k.startsWith(subs[i].name.replace(/分$/, '')));
+      if (!key) continue;
+      subs[i].share = composition[key];
+      parent.components.unshift(subs[i]);
+      subs.splice(i, 1);
+    }
+  }
   const unrouted = [];
+  const notes = [];
   for (const child of loose) {
+    // The 組合 line is now drawn as the parts list inside the parent box, so
+    // printing the sentence again is the same fact twice.
+    if (child === compositionNode && composition && subs.length) continue;
+    // A line that says outright it is not scored must not sit among the
+    // adjustments that are.
+    if (/未入評分|僅供參考/.test(child.text)) { notes.push(child); continue; }
     // Prefer the bracketed target -- "人馬歷史（騎師分）+4.0" says where it goes.
     const bracket = ADJUST_TARGET_RE.exec(child.text);
     let owner = bracket && subs.find(x => x.name === bracket[1]);
@@ -4561,7 +4609,7 @@ function classifyFormulaChildren(children) {
     if (!owner) owner = subs.find(x => child.text.startsWith(x.name));
     if (owner) owner.extras.push(child); else unrouted.push(child);
   }
-  return { subs, unrouted };
+  return { subs, unrouted, notes };
 }
 
 // A loose node can carry its own children (the `·` signal list). Flatten so
@@ -4605,6 +4653,14 @@ function renderSubScoreDetails(children, captionText) {
         + `<span class="dim-adj__label">${esc(signal[1])}`
         + (signal[3] ? `<span class="dim-adj__why">${esc(signal[3])}</span>` : '')
         + `</span></div>`;
+      continue;
+    }
+    const bare = /^(.+?)[：:]\s*.*?([+\-]\d[\d.]*)\s*$/.exec(text);
+    if (bare && !DETAIL_ADJUST_RE.test(text)) {
+      const v = parseFloat(bare[2]);
+      html += `<div class="dim-adj dim-adj--${v > 0 ? 'up' : v < 0 ? 'down' : 'flat'}">`
+        + `<span class="dim-adj__num">${v > 0 ? '+' : ''}${esc(bare[2])}</span>`
+        + `<span class="dim-adj__label">${esc(bare[1])}</span></div>`;
       continue;
     }
     const adj = DETAIL_ADJUST_RE.exec(text);
@@ -4734,6 +4790,8 @@ const STABILITY_COUNTS = [
   [/(\d+)仗明顯敗陣/, (m) => ({ label: '明顯敗陣', value: m[1], tone: 'bad' })],
 ];
 
+// Four number tiles were far too much furniture for a one-line summary; the
+// counts read fine as a short sentence, which is all this ever needed to be.
 function renderCountStats(source) {
   const stats = [];
   for (const [pattern, build] of STABILITY_COUNTS) {
@@ -4741,9 +4799,73 @@ function renderCountStats(source) {
     if (m) stats.push(build(m));
   }
   if (stats.length < 2) return '';
-  return `<div class="counts">${stats.map(x =>
-    `<div class="counts__cell counts__cell--${x.tone}"><span class="counts__num">${esc(x.value)}</span>`
-    + `<span class="counts__label">${esc(x.label)}</span></div>`).join('')}</div>`;
+  return `<div class="counts-line">${stats.map(x =>
+    `<span class="counts-line__item counts-line__item--${x.tone}"><b>${esc(x.value)}</b> ${esc(x.label)}</span>`
+  ).join('<span class="counts-line__sep">·</span>')}</div>`;
+}
+
+// 「騎師分」個格仔係讀得最順嗰個,所以全部計分項都用返佢。冇分嘅資料錨點
+// 用同一個殼但右上角標「數據」,唔會扮成分數。
+function renderBoxShell(name, badge, body, opts) {
+  const o = opts || {};
+  return `<div class="dim-sub${o.anchor ? ' dim-sub--anchor' : ''}">
+    <div class="dim-sub__head">
+      <span class="dim-sub__name">${esc(name)}</span>
+      ${badge !== null && badge !== undefined && badge !== ''
+        ? `<span class="dim-sub__score${o.anchor ? ' dim-sub__score--tag' : ''}${o.tone ? ' dim-sub__score--' + o.tone : ''}">${esc(badge)}</span>`
+        : ''}
+    </div>
+    ${body}
+  </div>`;
+}
+
+// 維度層嘅加減分（例如 sectional 嘅完成時間對標趨勢 −5、騎練訊號嘅除去配備 −3）
+// 唔屬於任何一個 sub分,之前散落喺格仔外面,睇落唔似計分項。
+function renderDimensionAdjustBox(children, captionText, groups) {
+  const body = renderSubScoreDetails(children, captionText);
+  if (!body.trim()) return '';
+  let net = 0;
+  for (const c of children) {
+    const m = /([+\-]\d[\d.]*)/.exec(String(c.text).replace(/\d+(?:\.\d+)?\s*分/g, ''));
+    if (m) net += parseFloat(m[1]);
+  }
+  const badge = net ? `${net > 0 ? '+' : ''}${Number(net.toFixed(1))}` : '';
+  return renderBoxShell('維度調整', badge,
+    `<div class="dim-sub__detail">${body}</div>${renderInboxGroups(groups)}`,
+    { tone: net > 0 ? 'up' : net < 0 ? 'down' : '' });
+}
+
+// 場地偏差、頭馬距離趨勢、配備變動 呢類係證據,唔係分數。
+function renderAnchorBox(label, nodes) {
+  const gear = /配備變動/.test(label) ? renderGearChange(nodes) : '';
+  const table = gear || renderRunRecords(nodes);
+  const body = table || `<div class="kv-group__lines">${nodes.map(c => {
+    const kv = /^(.{1,22}?)\s*[:：]\s*(.+)$/s.exec(c.text);
+    const line = kv
+      ? `<div class="kv-line"><b class="kv-line__key">${esc(kv[1].trim())}</b>${esc(kv[2].trim())}</div>`
+      : `<div class="kv-line">${esc(c.text)}</div>`;
+    return line + (c.children && c.children.length
+      ? c.children.map(g => `<div class="kv-line kv-line--sub">${esc(g.text)}</div>`).join('') : '');
+  }).join('')}</div>`;
+  return renderBoxShell(/^(?:數據|資料錨點?)$/.test(label) ? '數據錨點' : label, '參考', body, { anchor: true });
+}
+
+function renderInboxGroups(groups) {
+  return (groups || []).map(g => {
+    const gear = /配備變動/.test(g.label) ? renderGearChange(g.nodes) : '';
+    const formline = /賽績線明細/.test(g.label) && g.nodes.length >= 2
+      ? renderFormLineTable(g.nodes.map(n => ({ text: `賽績線明細: ${n.text}` }))) : '';
+    const table = gear || formline || renderRunRecords(g.nodes);
+    // The group's title already says what these lines are; each line repeating
+    // it ("近6場騎師分佈: 近6場騎師分佈: …") is the label twice.
+    const strip = new RegExp('^' + g.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*[:：]\\s*');
+    const body = table || `<div class="kv-group__lines">${g.nodes.map(c =>
+      `<div class="kv-line">${esc(String(c.text).replace(strip, ''))}</div>`).join('')}</div>`;
+    // A table already labels its own columns; repeating "賽績線明細" above it
+    // said the same thing twice.
+    const title = formline ? '' : `<div class="kv-group__title">${esc(g.label)}</div>`;
+    return `<div class="kv-group kv-group--inbox">${title}${body}</div>`;
+  }).join('');
 }
 
 function renderSubScore(node, meta, routedGroups) {
@@ -4766,7 +4888,8 @@ function renderSubScore(node, meta, routedGroups) {
   // the person's name is already the headline above (#3), and 近績分's caption
   // is "近績 <sequence>，<commentary>" whose sequence is the chip (#5).
   const chart = renderL600Compare(source);
-  const stats = person ? renderPersonStats(source) : renderCountStats(source);
+  const countLine = person ? '' : renderCountStats(source);
+  const stats = person ? renderPersonStats(source) : '';
   let caption = chart ? '' : source;
   if (stats) caption = '';
   if (caption && person) caption = caption.replace(person, '').replace(/^[\s，,、:：]+/, '');
@@ -4781,18 +4904,17 @@ function renderSubScore(node, meta, routedGroups) {
     </div>
     ${person ? `<div class="dim-sub__person">${esc(person)}</div>` : ''}
     ${chart}
-    ${stats}
+    ${stats}${countLine}
     ${caption ? `<div class="dim-sub__source">${esc(caption)}</div>` : ''}
     ${children.length ? `<div class="dim-sub__detail">${renderSubScoreDetails(children, source)}</div>` : ''}
-    ${(routedGroups || []).map(g => {
-      const gear = /配備變動/.test(g.label) ? renderGearChange(g.nodes) : '';
-      const formline = /賽績線明細/.test(g.label) && g.nodes.length >= 2
-        ? renderFormLineTable(g.nodes.map(n => ({ text: `賽績線明細: ${n.text}` }))) : '';
-      const table = gear || formline || renderRunRecords(g.nodes);
-      const body = table || `<div class="kv-group__lines">${g.nodes.map(c =>
-        `<div class="kv-line">${esc(c.text)}</div>`).join('')}</div>`;
-      return `<div class="kv-group kv-group--inbox"><div class="kv-group__title">${esc(g.label)}</div>${body}</div>`;
-    }).join('')}
+    ${(meta && meta.components && meta.components.length) ? `<div class="dim-parts">${
+      meta.components.map(c => `<div class="dim-part">
+        <span class="dim-part__name">${esc(c.name)}</span>
+        <span class="dim-part__share">${c.share != null ? c.share + '%' : ''}</span>
+        <span class="dim-part__score">${esc(c.score)}</span>
+        ${c.source ? `<span class="dim-part__why">${esc(c.source)}</span>` : ''}
+      </div>`).join('')}</div>` : ''}
+    ${renderInboxGroups(routedGroups)}
   </div>`;
 }
 
@@ -4868,14 +4990,20 @@ function renderDimensionBody(content, dimensionTitle) {
       + (finalScore ? `<span class="dim-formula__result">${esc(finalScore[1])}</span>` : '')
       + `<span class="dim-formula__body"><span class="dim-formula__label">點計出嚟</span>${esc(workings)}</span></div>`;
     if (formula.children.length) {
-      const { subs, unrouted } = classifyFormulaChildren(formula.children);
+      const { subs, unrouted, notes } = classifyFormulaChildren(formula.children);
       if (subs.length) {
+        subs.forEach(x => (x.components || []).forEach(c => { c.routed = routed.get(c.name); }));
         h += `<div class="dim-subs">${subs.map(x => renderSubScore(x.node, x, routed.get(x.name))).join('')}</div>`;
       }
-      // Anything that names no sub-score belongs to the dimension as a whole.
+      // Anything that names no sub-score is a dimension-level adjustment; it
+      // scores, so it gets the same box as every other scoring component.
       if (unrouted.length) {
-        const body = renderSubScoreDetails(flattenDetailNodes(unrouted), formula.text);
-        if (body.trim()) h += `<div class="dim-loose">${body}</div>`;
+        const box = renderDimensionAdjustBox(
+          flattenDetailNodes(unrouted), formula.text, routed.get('__dimension__'));
+        if (box) h += `<div class="dim-subs">${box}</div>`;
+      }
+      if (notes.length) {
+        h += notes.map(n => `<div class="dim-note">${esc(n.text)}</div>`).join('');
       }
     }
   }
@@ -4888,11 +5016,21 @@ function renderDimensionBody(content, dimensionTitle) {
     // five times. As key/value rows they were five wrapped paragraphs; the
     // fields are identical every time, so they belong in a table.
     const formLines = rows.filter(r => /^賽績線明細\s*[:：]/.test(r.text));
-    if (formLines.length >= 2) {
-      h += renderFormLineTable(formLines);
-      h += renderKvGrid(rows.filter(r => !formLines.includes(r)), dimensionTitle);
-    } else if (rows.length) {
-      h += renderKvGrid(rows, dimensionTitle);
+    const anchors = (formLines.length >= 2 ? rows.filter(r => !formLines.includes(r)) : rows)
+      .filter(r => r.text && r.text.trim());
+    if (formLines.length >= 2) h += renderFormLineTable(formLines);
+    if (anchors.length) {
+      // 場地偏差 / 頭馬距離趨勢 are evidence, not scores -- same shell, but the
+      // corner says 「數據」 instead of a number. One box per dimension, not one
+      // per row: a box around every single line is 35 boxes on an AU horse.
+      // The body still goes through renderKvGrid, which is what drops the rows
+      // already routed into a sub-score box and turns B/XB into Chinese.
+      const grid = renderKvGrid(anchors, dimensionTitle);
+      if (grid.trim()) {
+        h += `<div class="dim-subs">${
+          renderBoxShell(/^(?:數據|資料錨點?)$/.test(data.label || '') ? '數據錨點' : (data.label || '數據錨點'),
+                         '參考', grid, { anchor: true })}</div>`;
+      }
     }
   }
   const claimed = new Set([formula, verdict, data].filter(Boolean));
@@ -4904,11 +5042,7 @@ function renderDimensionBody(content, dimensionTitle) {
     if (consumed.has(block)) continue;
     const left = block.children.filter(c => !c.dropped);
     if (!left.length) continue;
-    h += `<div class="kv-group kv-group--wide"><div class="kv-group__title">${esc(block.label || block.text)}</div>`
-      + `<div class="kv-group__lines">${left.map(c =>
-          `<div class="kv-line">${esc(c.text)}</div>`
-          + (c.children.length ? c.children.map(g => `<div class="kv-line kv-line--sub">${esc(g.text)}</div>`).join('') : '')
-        ).join('')}</div></div>`;
+    h += `<div class="dim-subs">${renderAnchorBox(block.label || block.text, left)}</div>`;
   }
   const flat = rest.filter(b => !b.children.length);
   if (flat.length) h += renderKvGrid(flat, dimensionTitle);

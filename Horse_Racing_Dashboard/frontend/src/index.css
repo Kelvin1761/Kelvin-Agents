@@ -2907,7 +2907,15 @@ a:hover {
 }
 
 .kv-group__lines { display: grid; gap: 3px; }
-.kv-line { font-size: 0.68rem; line-height: 1.65; color: #475569; }
+.kv-line {
+  font-size: 0.68rem;
+  line-height: 1.7;
+  color: #475569;
+  padding: 4px 0;
+  border-bottom: 1px dashed #f1f5f9;
+}
+
+.kv-group__lines > .kv-line:last-child { border-bottom: 0; }
 .kv-line--sub { padding-left: 12px; color: #94a3b8; font-size: 0.65rem; }
 .dim-kv--nested { margin-top: 0; padding-top: 0; border-top: 0; gap: 4px 16px; }
 
@@ -3005,24 +3013,33 @@ a:hover {
 
 .gear__verdict--changed { background: #fffbeb; color: #b45309; }
 
-/* Counts pulled out of a prose caption (穩定性分). */
-.counts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+/* Counts pulled out of a prose caption (穩定性分), as one line. */
+.counts-line { margin-top: 5px; font-size: 0.7rem; color: #64748b; }
+.counts-line__item b { font-size: 0.82rem; font-weight: 800; }
+.counts-line__item--good b { color: #047857; }
+.counts-line__item--bad b { color: #b91c1c; }
+.counts-line__sep { margin: 0 7px; color: #cbd5e1; }
 
-.counts__cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 56px;
-  padding: 5px 9px;
-  border-radius: 8px;
+/* Inputs a component is built from, with the share the 組合 line gives them. */
+.dim-parts { margin-top: 8px; display: grid; gap: 5px; }
+
+.dim-part {
+  display: grid;
+  grid-template-columns: minmax(72px, auto) 42px 40px;
+  align-items: baseline;
+  gap: 6px 8px;
+  padding: 6px 8px;
+  border-radius: 7px;
   background: #f8fafc;
   border: 1px solid #eef2f7;
+  font-size: 0.7rem;
 }
 
-.counts__num { font-size: 1rem; font-weight: 800; line-height: 1.2; font-variant-numeric: tabular-nums; }
-.counts__cell--good .counts__num { color: #047857; }
-.counts__cell--bad .counts__num { color: #b91c1c; }
-.counts__label { font-size: 0.6rem; color: #64748b; font-weight: 700; }
+.dim-part__name { font-weight: 700; color: #334155; }
+.dim-part__share { font-size: 0.62rem; color: #64748b; font-weight: 700; text-align: right; }
+.dim-part__score { font-size: 0.85rem; font-weight: 800; color: #1e40af; text-align: right; font-variant-numeric: tabular-nums; }
+.dim-part__why { grid-column: 1 / -1; font-size: 0.64rem; color: #94a3b8; line-height: 1.6; }
+
 
 .kv-group--inbox { margin-top: 8px; background: #f8fafc; }
 
@@ -4374,3 +4391,32 @@ a:hover {
   padding: 12px;
   background: #f8fafc;
 }
+
+
+/* 資料錨點：同計分格一樣嘅殼,右上角標「數據」,唔會扮成分數。 */
+.dim-sub--anchor { background: #fcfdfe; }
+
+.dim-sub__score--tag {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #94a3b8;
+  background: #f1f5f9;
+  border-radius: 5px;
+  padding: 2px 7px;
+  letter-spacing: 0.04em;
+}
+
+.dim-sub__score--up { color: #047857; }
+.dim-sub__score--down { color: #b91c1c; }
+
+/* 明文話咗「未入評分」嘅嘢,唔可以擺喺計分項中間。 */
+.dim-note {
+  margin-top: 8px;
+  font-size: 0.64rem;
+  color: #94a3b8;
+  padding-left: 10px;
+  border-left: 2px solid #e2e8f0;
+  line-height: 1.6;
+}
+
+.kv-line__key { color: #475569; font-weight: 700; margin-right: 6px; }
