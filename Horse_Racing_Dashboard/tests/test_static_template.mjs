@@ -83,6 +83,9 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       renderDataReadoutItem,
       sanitizeBattlefieldOverviewText,
       renderBattlefieldOverview,
+      parseBattlefieldOverview,
+      speedMapSvgFromTable,
+      renderTrackGeometry,
       renderSportsWorkspace: typeof renderSportsWorkspace === "function" ? renderSportsWorkspace : null,
       renderHistoryCard: typeof renderHistoryCard === "function" ? renderHistoryCard : null,
       renderInlineBetDraft: typeof renderInlineBetDraft === "function" ? renderInlineBetDraft : null,
@@ -1377,4 +1380,124 @@ test("tennis workspace shows fixture, Sportsbet and model coverage timestamps", 
   assert.match(html, /Player Aces 15\/120/);
   assert.match(html, /Player Exact Set Score 8\/120/);
   assert.match(html, /分析已完成，但未有通過模型及風控門檻/);
+});
+
+
+// ── 形勢推演：預測起步位圖 ────────────────────────────────────────────────
+// 2026-09-02：`parseBattlefieldOverview` 會將**每一個** markdown 表由 notes 度
+// 剷走，只留返「項目/內容」同「排名/馬號」兩個佢認得嘅。所以新加嘅預測起步位表
+// 如果冇喺呢度認住，喺 dashboard 就會完全消失（表被剷、又冇人畫返出嚟）。
+const SPEEDMAP_OVERVIEW = `## [第一部分] 🗺️ 戰場全景
+
+| 項目 | 內容 |
+|:---|:---|
+| 賽事格局 | Race 3 / 1200m / TEST |
+| 出馬數 | 8 |
+
+**🏃 形勢推演**
+
+| 預測定位 | 馬號 | 馬名 | 我哋 | 官方 | 混合 |
+|---:|---:|---|---:|---:|---:|
+| 1 | 4 | African Daisy | 1.8 | 1 | 1 |
+| 2 | 2 | Regimental Colours | 4.5 | 4 | 2 |
+| 3 | 7 | Catahoula | 6.8 | 2 | 3 |
+
+> 「我哋」= 近仗起步位加權平均（越細 = 越前）；「官方」= Sportsbet Speedmap 預測定位序；「混合」= 30% 官方 + 70% 我哋（場內 z-score）。
+- 前置馬唔多，邊匹願意主動搶位會直接影響前中段落位。
+
+**📊 全場綜合戰力排名**
+
+| 排名 | 馬號 | 馬名 | 綜合戰力分 | Grade |
+|---:|---:|---|---:|---|
+| 1 | 4 | African Daisy | 79.9 | A- |
+`;
+
+test("預測起步位表唔會靜靜消失", () => {
+  const api = loadTemplateFunctions();
+  const overview = api.parseBattlefieldOverview(SPEEDMAP_OVERVIEW);
+  assert.ok(overview.speedmap, "要認得預測定位表");
+  // vm context 出嚟嘅 Array 唔同 realm，deepEqual 會因為 prototype 唔同而失敗
+  assert.equal(JSON.stringify(overview.speedmap.headers),
+               JSON.stringify(["預測定位", "馬號", "馬名", "我哋", "官方", "混合"]));
+  assert.equal(overview.speedmap.rows.length, 3);
+  // 認得之後表就要由 notes 剷走，唔可以又出圖又出表
+  assert.ok(!/\|\s*預測定位/.test(overview.notes));
+  // 敘述句照留
+  assert.match(overview.notes, /前置馬唔多/);
+});
+
+test("預測起步位畫成圖，而且標返兩個來源嘅分歧", () => {
+  const api = loadTemplateFunctions();
+  const overview = api.parseBattlefieldOverview(SPEEDMAP_OVERVIEW);
+  const svg = api.speedMapSvgFromTable(overview.speedmap);
+  assert.match(svg, /speedmap-forecast/);
+  assert.match(svg, /African Daisy/);
+  assert.match(svg, /官方 Speedmap/);
+  // Catahoula 我哋 6.8 / 官方 2 —— 分歧 4.8，一定要標出嚟
+  assert.match(svg, /分歧 4\.8/);
+});
+
+test("battlefield 整體出到個圖", () => {
+  const api = loadTemplateFunctions();
+  const html = api.renderBattlefieldOverview(SPEEDMAP_OVERVIEW, []);
+  assert.match(html, /speedmap-forecast/);
+  assert.match(html, /African Daisy/);
+  // 圖例已經講咗「混合 = 30% 官方」，唔好再喺 notes 出多次同一句
+  assert.equal((html.match(/近仗起步位加權平均/g) || []).length, 0);
+});
+
+test("冇預測起步位表嘅舊報告照樣行", () => {
+  const api = loadTemplateFunctions();
+  const overview = api.parseBattlefieldOverview(`## [第一部分] 🗺️ 戰場全景
+
+| 項目 | 內容 |
+|:---|:---|
+| 出馬數 | 8 |
+
+- 形勢推演暫時以跑法分佈為主。
+`);
+  assert.equal(overview.speedmap, null);
+  assert.equal(api.speedMapSvgFromTable(overview.speedmap || { headers: [], rows: [] }), "");
+});
+
+
+// ── 賽道幾何條 ────────────────────────────────────────────────────────────
+// 數據由 payload 嚟（`meeting.track_geometry`），唔係由報告文字 parse ——
+// 所以舊報告唔使重新渲染都有。96 個場地得 85 個有數，另外 11 個要留白唔好出空格。
+test("賽道幾何有數就顯示", () => {
+  const api = loadTemplateFunctions();
+  const html = api.renderTrackGeometry({
+    circumference_m: 2087, straight_m: 491, direction: "anticlockwise",
+    classification: "Metropolitan", surface: "Turf",
+  });
+  assert.match(html, /2087m/);
+  assert.match(html, /491m/);
+  assert.match(html, /逆時針/);
+  assert.match(html, /Metropolitan/);
+});
+
+test("賽道幾何冇數就唔出格，唔好出空欄", () => {
+  const api = loadTemplateFunctions();
+  assert.equal(api.renderTrackGeometry(null), "");
+  assert.equal(api.renderTrackGeometry({}), "");
+  // Broome 呢類：兩個來源加人手都查唔到
+  assert.equal(api.renderTrackGeometry({ circumference_m: 0, straight_m: 0 }), "");
+});
+
+test("只有周長冇直路都出得（Hawkesbury 呢類）", () => {
+  const api = loadTemplateFunctions();
+  const html = api.renderTrackGeometry({ circumference_m: 2070, straight_m: 0, direction: "clockwise" });
+  assert.match(html, /2070m/);
+  assert.match(html, /順時針/);
+  assert.ok(!/直路/.test(html), "冇直路數據就唔應該出「直路」");
+});
+
+test("battlefield 會將賽道幾何畫埋入去", () => {
+  const api = loadTemplateFunctions();
+  const html = api.renderBattlefieldOverview(SPEEDMAP_OVERVIEW, [],
+    { circumference_m: 1805, straight_m: 173, direction: "anticlockwise" });
+  assert.match(html, /1805m/);
+  assert.match(html, /173m/);
+  // 冇傳幾何嘅時候唔可以爆
+  assert.doesNotThrow(() => api.renderBattlefieldOverview(SPEEDMAP_OVERVIEW, []));
 });

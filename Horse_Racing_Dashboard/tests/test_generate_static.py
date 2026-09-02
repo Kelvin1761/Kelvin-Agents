@@ -276,3 +276,49 @@ class SlimForTransportTests(unittest.TestCase):
         self.assertNotIn("\n", body)        # 冇 indent 換行
         self.assertNotIn('": ', body)       # key 同 value 之間冇空格
         self.assertIn('"races":{', body)    # 緊湊分隔符
+
+
+class TrackGeometryPayloadTests(unittest.TestCase):
+    """AU 賽道幾何要入 meeting payload。
+
+    2026-09-02：`au_track_geometry.json` 96 個場地有 85 個有數，但
+    `static_template.html` **零次**提及周長或直路 —— 修好咗嘅數據冇人睇到。
+    由 payload 帶（唔係由報告文字 parse），舊報告先至唔使重新渲染都有。
+
+    ⚠️ 一定要喺**讀完 cache 之後**先貼。`_collect_meeting()` 嘅結果會入 cache，
+    喺嗰度貼就等於「已 cache 嘅場次永遠冇賽道資料」，而且 fingerprint 唔變
+    佢哋唔會重新 parse —— 靜靜咁一個場次都冇。
+    """
+
+    def test_au_venue_gets_geometry(self):
+        data = generate_static._attach_track_geometry({"venue": "Sandown", "region": "AU"})
+        geometry = data.get("track_geometry")
+        self.assertIsNotNone(geometry)
+        self.assertEqual(geometry["circumference_m"], 2087)
+        self.assertEqual(geometry["straight_m"], 491)
+        self.assertEqual(geometry["direction"], "anticlockwise")
+
+    def test_alias_venues_resolve(self):
+        # 呢啲名靠引擎嗰個 alias 表對；dashboard 唔可以自己抄一份
+        for venue, circumference in (("Rosehill Gardens", 2048), ("Ballarat Synthetic", 1900)):
+            with self.subTest(venue=venue):
+                data = generate_static._attach_track_geometry({"venue": venue, "region": "AU"})
+                self.assertEqual(data["track_geometry"]["circumference_m"], circumference)
+
+    def test_venue_without_geometry_gets_no_key(self):
+        # Broome：兩個來源加人手都查唔到。唔可以貼一個空 dict 落去。
+        data = generate_static._attach_track_geometry({"venue": "Broome", "region": "AU"})
+        self.assertNotIn("track_geometry", data)
+
+    def test_hk_meetings_are_untouched(self):
+        data = generate_static._attach_track_geometry({"venue": "Sha Tin", "region": "HK"})
+        self.assertNotIn("track_geometry", data)
+
+    def test_cached_meetings_also_get_geometry(self):
+        """貼嘅位要喺 cache 之後 —— 舊 cache entry 冇呢個 key 都要補返。"""
+        cached = {"venue": "Randwick", "region": "AU", "date": "2026-08-01"}
+        self.assertIn("track_geometry", generate_static._attach_track_geometry(cached))
+
+    def test_stale_geometry_is_cleared_not_kept(self):
+        stale = {"venue": "Broome", "region": "AU", "track_geometry": {"circumference_m": 9999}}
+        self.assertNotIn("track_geometry", generate_static._attach_track_geometry(stale))

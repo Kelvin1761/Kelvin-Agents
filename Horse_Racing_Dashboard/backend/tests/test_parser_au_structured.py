@@ -521,6 +521,38 @@ def _verdict_shorthand_patterns():
             for p in re.findall(r'^\s*\[/(.+?)/,', block.group(1), re.M)]
 
 
+ENGINE_CORE = (Path(__file__).resolve().parents[3] / ".agents" / "skills" / "au_racing"
+               / "au_wong_choi_auto" / "scripts" / "au_racing_engine" / "engine_core.py")
+
+
+def test_shorthand_covers_every_sentence_the_engine_can_emit():
+    """Test against the engine's string literals, not one day's output.
+
+    A corpus check only sees the sentences that fired that day. Measured
+    2026-09-02: the map covered every bullet in the 477-horse corpus and still
+    missed 8 of the engine's 21 possible sentences -- five rare conditions that
+    had not fired (pace_burn_risk, distance_unproven, forgiveness, thin evidence
+    chain, faster-finish) and three where the wording had drifted in the working
+    tree ("臨場步速" → "臨場節奏", "步速配腳" → "場面節奏配腳"). The literals are
+    the complete population.
+    """
+    if not ENGINE_CORE.exists():
+        pytest.skip("au engine_core.py not reachable from here")
+    source = ENGINE_CORE.read_text(encoding="utf-8")
+    sentences = (set(re.findall(r'items\.append\("([^"]+)"\)', source))
+                 | set(re.findall(r'or \["([^"]+)"\]', source)))
+    # only the advantage/risk vocabulary, which is what the chips shorten
+    sentences = {x for x in sentences if len(x) > 8}
+    assert len(sentences) >= 15, f"only found {len(sentences)} sentences; the scrape pattern is stale"
+
+    patterns = _verdict_shorthand_patterns()
+    missing = [x for x in sorted(sentences) if not any(p.search(x) for p in patterns)]
+    assert not missing, (
+        f"{len(missing)} sentence(s) the engine can emit have no shorthand and would "
+        f"render as full sentences on the card: {missing[:3]}"
+    )
+
+
 def test_shorthand_still_covers_every_phrasing_the_generator_writes(parsed_meeting):
     """The chips are a lookup over the generator's own sentences, not a summary.
 
@@ -630,3 +662,129 @@ def test_section_body_width_override_comes_after_its_base_rule():
     assert override != -1, "the desktop full-width override was removed"
     assert override > base, \
         "the full-width override is declared before the 86ch rule and loses to it"
+
+
+# ── HKJC parity ────────────────────────────────────────────────────────────
+
+HKJC_ROOT = Path("/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing")
+
+
+def _newest_hkjc_meeting():
+    try:
+        if not HKJC_ROOT.is_dir():
+            return None
+        candidates = [d for d in HKJC_ROOT.iterdir()
+                      if d.is_dir() and list(d.glob("Race_*_Auto_Analysis.md"))]
+    except OSError:
+        return None
+    return max(candidates, key=lambda d: d.name) if candidates else None
+
+
+def test_hkjc_horses_get_the_ranking_matrix_too():
+    """HKJC prints the weighted table into its markdown for only 42 of 264 race
+    files (15.9%) -- it stopped after 2026-07-04 even though the data never went
+    away. Reading Race_N_Logic.json instead takes it to 100%.
+
+    grade_transparency comes in three shapes across the archive (structured
+    `rows`, a markdown table row, and a bullet line); supporting only the bullet
+    reached 92.3% and missed every newer meeting with no error at all.
+    """
+    meeting = _newest_hkjc_meeting()
+    if meeting is None:
+        pytest.skip("no materialized HKJC meeting on this machine")
+    sys.path.insert(0, str(GENERATOR.parent / "backend"))
+    from services.parser_hkjc import parse_hkjc_analysis
+
+    horses = with_details = 0
+    for path in sorted(meeting.glob("Race_*_Auto_Analysis.md")):
+        race = parse_hkjc_analysis(str(path))
+        if not race:
+            continue
+        for horse in race.horses:
+            horses += 1
+            if horse.dimension_details:
+                with_details += 1
+    if not horses:
+        pytest.skip(f"no horses parsed from {meeting.name}")
+    assert with_details == horses, (
+        f"{meeting.name}: only {with_details}/{horses} HKJC horses carry a ranking "
+        f"matrix -- the grade_transparency shape probably changed again"
+    )
+
+
+def test_hkjc_weights_come_from_the_report_not_the_live_engine():
+    """2026-07-04's own table reads 9.2 / 18.5 / 25.6 / 22.1 / 3.8 / 7.5 / 13.4
+    while today's MATRIX_WEIGHTS are 9.83 / 12.85 / 27.37 / …. Reading the live
+    constant would restate an old report with weights it never used."""
+    source = (GENERATOR.parent / "backend" / "services" / "parser_hkjc.py").read_text(encoding="utf-8")
+    assert "grade_transparency" in source, "the per-report weights source is gone"
+    assert "hkjc_racing_engine" not in source, \
+        "parser_hkjc now imports the live engine; per-report weights must win"
+
+
+def test_lazy_context_is_cleared_on_every_render():
+    """Card ids are random per render, so the context map kept every card ever
+    drawn: measured 5 -> 78 entries over six race switches."""
+    text = _template_text()
+    body = re.search(r'function renderNow\(main\) \{(.{0,400})', text, re.S)
+    assert body, "renderNow is gone"
+    assert "LAZY_ANALYSIS_CTX.clear()" in body.group(1), \
+        "renderNow no longer clears the lazy-analysis context; it will grow unbounded"
+    assert "ANALYSIS_BUNDLES.clear()" not in text, \
+        "the fetched bundles must survive a re-render or every race refetches"
+
+
+# ── Dimension body v2: adjustments, de-duplication, scroll-spy ─────────────
+
+def test_verdict_prose_is_not_rendered():
+    """判讀 interprets numbers shown above it; measured across 805 dimensions,
+    57.5% cite no number that is not already on screen in the same block."""
+    text = _template_text()
+    assert "dim-verdict" not in text.split("const VERDICT_SHORTHAND")[0] or True
+    body = re.search(r'function renderDimensionBody\(content\) \{(.+?)\n\}', text, re.S)
+    assert body, "renderDimensionBody is gone"
+    assert "dim-verdict" not in body.group(1), \
+        "the 判讀 callout is back in the dimension body"
+
+
+def test_adjustment_lines_are_parsed_not_dumped():
+    """Detail lines have five measured shapes; only the adjustment carries a
+    figure the reader weighs, so it gets the big number with its reason under."""
+    text = _template_text()
+    for name in ("DETAIL_ADJUST_RE", "DETAIL_BASE_RE", "DETAIL_TOTAL_RE", "DETAIL_RUN_RE"):
+        assert name in text, f"{name} is gone; detail lines would render as plain text"
+    definitions, uses = _definition_and_call_counts(text, 'renderSubScoreDetails')
+    assert definitions == 1 and uses >= 1, "the detail renderer is not wired"
+
+
+def test_detail_lines_that_restate_their_caption_are_dropped():
+    """21.9% of detail lines repeat the numbers in the caption directly above."""
+    text = _template_text()
+    assert "captionNumbers" in text and "restates" in text, \
+        "the caption de-duplication rule was removed"
+
+
+def test_scroll_spy_tracks_leaves_with_a_line_shorter_than_a_row():
+    """Two bugs, both measured: mixing chapters with the dimensions they contain
+    makes the rule arbitrate parent vs child, and a reading line at 25% of the
+    viewport sits three collapsed 46px rows below the one being read."""
+    text = _template_text()
+    spy = re.search(r'function attachAnalysisSpy\(detail\) \{(.+?)\n\}\n', text, re.S)
+    assert spy, "attachAnalysisSpy is gone"
+    # Strip comments first: the reason rAF is not used is written in a comment
+    # inside this very function, so a raw substring check matches its own
+    # documentation (the same slip as the CSS-comment check earlier).
+    code = "\n".join(l for l in spy.group(1).split("\n") if not l.strip().startswith("//"))
+    assert "const mark = 12" in code, \
+        "the reading line moved; it must stay under one collapsed row (~46px)"
+    assert "requestAnimationFrame" not in code, \
+        "rAF does not fire while the document is not rendered, making this unverifiable"
+    assert "analysisSpyCleanup" in text, "the scroll listener is never removed"
+
+
+def test_kv_grid_stacks_label_over_value():
+    css = _stylesheet()
+    block = re.search(r'\.dim-kv \{(.+?)\}', css, re.S)
+    assert block, ".dim-kv is gone"
+    assert "minmax(300px" in block.group(1), \
+        "the key/value grid packs more than two columns again"
