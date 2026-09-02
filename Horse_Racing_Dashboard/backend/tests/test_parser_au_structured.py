@@ -887,3 +887,62 @@ def test_l600_comparison_replaces_the_sentence():
     pattern = _re.compile(match.group(1).replace('\\\\', '\\'))
     assert pattern.search("近9場所在賽事嘅 L600 平均慢過基準 0.92 秒；同場平均慢過基準 0.94 秒")
     assert pattern.search("近7場所在賽事嘅 L600 平均快過基準 0.13 秒；同場平均慢過基準 0.97 秒")
+
+
+# ── HKJC breakdown shape ───────────────────────────────────────────────────
+# HKJC nests its 7D breakdown differently from AU and an AU-shaped reader put
+# adjustments into sub-score boxes of their own. Measured on 2026-07-12 ShaTin:
+#
+#   AU    評分構成 → sub-score → its adjustments one level deeper
+#   HKJC  評分構成 → sub-scores AND adjustments at the SAME level, the
+#                    adjustment naming its target in brackets:
+#                      騎師分 62 ← 希威森兩季917仗…          sub-score
+#                      檔位分 65                              sub-score, no source
+#                      人馬歷史（騎師分）+4.0 ← …            adjusts 騎師分
+#                      · L400 絕對值（24.95s） -5.6　末段慢  signal-list item
+
+def _template_const(name):
+    text = _template_text()
+    match = re.search(r'const ' + name + r' = /(.+?)/;', text)
+    assert match, f"{name} is gone"
+    import re as _re
+    return _re.compile(match.group(1).replace('\\\\', '\\'))
+
+
+def test_subscore_is_recognised_by_shape_not_by_sign():
+    """近績分's own caption is a form sequence (近6仗名次 3-3-10-6-3-6) whose
+    hyphens read as negative numbers, and 操練趨勢分's ends in （活躍度+3.7）.
+    Classifying by "contains a signed number" put both in the wrong bucket."""
+    sub = _template_const('SUBSCORE_LINE_RE')
+    for line in [
+        "騎師分 62 ← 希威森兩季917仗：勝率6%、上名率22%",
+        "近績分 64 ← 近6仗名次 3-3-10-6-3-6；3次前三、1次八名以後",
+        "操練趨勢分 64 ← 操練節奏平穩，中性處理；操練量充足（活躍度+3.7）",
+        "檔位分 65",
+        "走位匹配分 55　走位 PI 衰退",
+    ]:
+        assert sub.match(line), f"sub-score not recognised: {line}"
+    for line in [
+        "人馬歷史（騎師分）+4.0 ← 希威森近期策騎此馬3次",
+        "完成時間對標趨勢退步：sub分加權後再-5.0",
+        "今場賽道 A（僅供參考，未入評分）",
+    ]:
+        assert not sub.match(line), f"not a sub-score, but matched: {line}"
+
+
+def test_adjustment_sign_may_touch_the_preceding_bracket():
+    """HKJC writes "（騎師分）+4.0 ← …" with no space before the sign; a required
+    \\s matched none of them and all four rendered as grey notes."""
+    adj = _template_const('DETAIL_ADJUST_RE')
+    assert adj.match("人馬歷史（騎師分）+4.0 ← 希威森近期策騎此馬3次：0勝")
+    assert adj.match("班次水平調整 +0.4 ← 近仗獎金水平 log10 4.54")
+    # the mandatory ← keeps it off form sequences
+    assert not adj.match("近6仗名次 3-3-10-6-3-6")
+
+
+def test_adjustments_are_routed_into_the_box_they_name():
+    text = _template_text()
+    assert "ADJUST_TARGET_RE" in text, "the bracketed routing target is gone"
+    assert "classifyFormulaChildren" in text, "the shape classifier is gone"
+    assert "flattenDetailNodes" in text, \
+        "nested signal lists (· lines under 速度分＝基準60…) would be dropped"

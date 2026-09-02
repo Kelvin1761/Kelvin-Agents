@@ -4376,13 +4376,78 @@ function renderKvGrid(nodes, dimensionTitle) {
 // (24.9%) and plain prose (41.1%). Only the adjustment carries a number the
 // reader is meant to weigh, so that is the one that gets the big figure with
 // its reason beneath.
-const DETAIL_ADJUST_RE = /^(.+?)\s([+\-]\d[\d.]*)\s*←\s*(.+)$/;
+// The space before the sign is optional: HKJC writes "（騎師分）+4.0 ← …" with
+// the sign glued to the bracket, which a required \s never matched. The
+// mandatory ← keeps this from firing on form sequences like 3-3-10-6-3-6.
+const DETAIL_ADJUST_RE = /^(.+?)\s*([+\-]\d[\d.]*)\s*←\s*(.+)$/;
 const DETAIL_BASE_RE = /^基礎分\s*([\d.]+)\s*(?:（(.+?)）)?$/;
 // "合計（0-100 封頂）＝ 64.2" and "同場／地況往績分 ＝ 71.9" are both totals;
 // matching only the 合計 form left the second rendering as a grey note, which
 // is how 同場／地況往績分 looked like it was missing its final figure.
 const DETAIL_TOTAL_RE = /^(?:合計.*?|.+?分)\s*＝\s*([\d.]+)$/;
 const DETAIL_RUN_RE = /^(第\d+仗[^：:]*)[：:]\s*(.+?)\s*＝\s*([\d.]+)$/;
+
+// HKJC nests its breakdown differently from AU, and assuming one shape put
+// adjustments into sub-score boxes of their own. Measured on 2026-07-12 ShaTin:
+//
+//   AU      評分構成 → sub-score → its own adjustments (one level deeper)
+//   HKJC    評分構成 → sub-scores AND adjustments at the SAME level, with the
+//                      adjustment naming its target in brackets:
+//                        騎師分 62 ← 希威森兩季917仗…            (sub-score)
+//                        檔位分 65                                (sub-score, no source)
+//                        人馬歷史（騎師分）+4.0 ← 希威森近期…    (adjusts 騎師分)
+//                        · L400 絕對值（24.95s） -5.6　末段慢    (signal list item)
+//
+// So classify each child, and route a bracketed adjustment into the box it
+// names -- which is what "displayed in the right place" means here.
+// A sub-score always reads "<name>分 <unsigned number>" with the number right
+// after the name. Everything else at this level is an adjustment or a note.
+//
+// Deciding by "does the line contain a signed number" instead put two real
+// sub-scores in the wrong bucket: 近績分's own caption is a form sequence
+// (近6仗名次 3-3-10-6-3-6) whose hyphens read as negative numbers, and
+// 操練趨勢分's caption ends in （活躍度+3.7）.
+const SUBSCORE_LINE_RE = /^(.{1,14}?分)[ \t]+([\d.]+)(?=$|[\s　←（(])\s*(?:←\s*)?(.*)$/;
+// The sign is glued to the closing bracket in HKJC -- "（騎師分）+4.0" -- so a
+// required space before it matched nothing.
+const ADJUST_LINE_RE = /^(.+?)\s*([+\-]\d[\d.]*)\s*(?:←\s*)?(.*)$/;
+const SIGNAL_LINE_RE = /^[·•]\s*(.+?)\s*([+\-]\d[\d.]*)\s*(.*)$/;
+const ADJUST_TARGET_RE = /[（(]([^）)]*?分)[^）)]*[）)]/;
+
+function classifyFormulaChildren(children) {
+  const subs = [];
+  const loose = [];
+  for (const child of children) {
+    const sub = SUBSCORE_LINE_RE.exec(child.text);
+    if (sub) {
+      subs.push({ name: sub[1], score: sub[2], source: (sub[3] || '').trim(), node: child, extras: [] });
+    } else {
+      loose.push(child);
+    }
+  }
+  const unrouted = [];
+  for (const child of loose) {
+    // Prefer the bracketed target -- "人馬歷史（騎師分）+4.0" says where it goes.
+    const bracket = ADJUST_TARGET_RE.exec(child.text);
+    let owner = bracket && subs.find(x => x.name === bracket[1]);
+    // Otherwise a header like "速度分＝基準60 + 以下逐項訊號：" owns the signal
+    // list nested under it; route it by the sub-score name it mentions.
+    if (!owner) owner = subs.find(x => child.text.startsWith(x.name));
+    if (owner) owner.extras.push(child); else unrouted.push(child);
+  }
+  return { subs, unrouted };
+}
+
+// A loose node can carry its own children (the `·` signal list). Flatten so
+// none of them are dropped.
+function flattenDetailNodes(nodes) {
+  const out = [];
+  for (const node of nodes) {
+    out.push(node);
+    if (node.children && node.children.length) out.push(...flattenDetailNodes(node.children));
+  }
+  return out;
+}
 
 function renderSubScoreDetails(children, captionText) {
   const captionNumbers = new Set((captionText || '').match(/-?\d+\.?\d*/g) || []);
@@ -4404,6 +4469,16 @@ function renderSubScoreDetails(children, captionText) {
     if (total) {
       html += `<div class="dim-adj dim-adj--anchor dim-adj--total"><span class="dim-adj__num">${esc(total[1])}</span>`
         + `<span class="dim-adj__label">合計</span></div>`;
+      continue;
+    }
+    const signal = SIGNAL_LINE_RE.exec(text);
+    if (signal) {
+      const positive = !signal[2].startsWith('-');
+      html += `<div class="dim-adj dim-adj--${positive ? 'up' : 'down'}">`
+        + `<span class="dim-adj__num">${esc(signal[2])}</span>`
+        + `<span class="dim-adj__label">${esc(signal[1])}`
+        + (signal[3] ? `<span class="dim-adj__why">${esc(signal[3])}</span>` : '')
+        + `</span></div>`;
       continue;
     }
     const adj = DETAIL_ADJUST_RE.exec(text);
@@ -4472,13 +4547,18 @@ function renderL600Compare(source) {
   </div>`;
 }
 
-function renderSubScore(node) {
+function renderSubScore(node, meta) {
   // "騎師分 46 ← Jason Whiting 去年官方 570 場…" — score is the headline, the
   // source is the caption, the nested lines are the arithmetic.
   const m = /^(.+?分)\s*([\d.]+)\s*←\s*(.+)$/s.exec(node.text);
-  const name = m ? m[1] : node.text.slice(0, 24);
-  const score = m ? m[2] : null;
-  const source = m ? m[3] : '';
+  const name = meta ? meta.name : (m ? m[1] : node.text.slice(0, 24));
+  const score = meta ? meta.score : (m ? m[2] : null);
+  const source = meta ? meta.source : (m ? m[3] : '');
+  // HKJC keeps a sub-score's adjustments as siblings, tagged with the box they
+  // belong to; they are routed here so they land in that box, not beside it.
+  const children = meta && meta.extras.length
+    ? [...flattenDetailNodes(node.children), ...flattenDetailNodes(meta.extras)]
+    : flattenDetailNodes(node.children);
   // 近績分's caption carries the form sequence; surface it beside the name.
   const form = /近績\s*([\dxX]+(?:-[\dxX]+)+)/.exec(source);
   // 騎師分 / 練馬師分 open with the person's name; pull it out so you can see
@@ -4496,7 +4576,7 @@ function renderSubScore(node) {
     ${person ? `<div class="dim-sub__person">${esc(person)}</div>` : ''}
     ${renderL600Compare(source)}
     ${source ? `<div class="dim-sub__source">${esc(source)}</div>` : ''}
-    ${node.children.length ? `<div class="dim-sub__detail">${renderSubScoreDetails(node.children, source)}</div>` : ''}
+    ${children.length ? `<div class="dim-sub__detail">${renderSubScoreDetails(children, source)}</div>` : ''}
   </div>`;
 }
 
@@ -4543,7 +4623,15 @@ function renderDimensionBody(content, dimensionTitle) {
       + (finalScore ? `<span class="dim-formula__result">${esc(finalScore[1])}</span>` : '')
       + `<span class="dim-formula__body"><span class="dim-formula__label">點計出嚟</span>${esc(workings)}</span></div>`;
     if (formula.children.length) {
-      h += `<div class="dim-subs">${formula.children.map(renderSubScore).join('')}</div>`;
+      const { subs, unrouted } = classifyFormulaChildren(formula.children);
+      if (subs.length) {
+        h += `<div class="dim-subs">${subs.map(x => renderSubScore(x.node, x)).join('')}</div>`;
+      }
+      // Anything that names no sub-score belongs to the dimension as a whole.
+      if (unrouted.length) {
+        const body = renderSubScoreDetails(flattenDetailNodes(unrouted), formula.text);
+        if (body.trim()) h += `<div class="dim-loose">${body}</div>`;
+      }
     }
   }
   // 判讀 is dropped on purpose: it interprets numbers shown above it, and in
