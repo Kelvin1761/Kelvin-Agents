@@ -5,11 +5,12 @@ Supports both Kelvin format (with CSV block) and Heison format (without CSV bloc
 import re
 import csv
 import io
+import json
 from pathlib import Path
 from typing import Optional
 
 from models.race import (
-    HorseAnalysis, RaceAnalysis, TopPick, MonteCarloPick, RatingDimension, RatingMatrix
+    HorseAnalysis, RaceAnalysis, TopPick, MonteCarloPick, RatingDimension, RatingMatrix, DimensionDetail
 )
 from services.parser_au import _parse_monte_carlo_table
 
@@ -36,7 +37,7 @@ HORSE_HEADER_HKJC_NO_RE = re.compile(
     re.MULTILINE
 )
 
-# Heison simple: **1 光年魅力** | 
+# Heison simple: **1 光年魅力** |
 HORSE_HEADER_HEISON_RE = re.compile(
     r'^\*\*(\d{1,2})\s+(.+?)\*\*\s*\|', re.MULTILINE
 )
@@ -69,24 +70,24 @@ def _split_into_horse_blocks(text: str) -> list[tuple[int, str, str]]:
         HORSE_HEADER_ALT_RE,
         HORSE_HEADER_RE,
     ]
-    
+
     matches = []
     for pattern in patterns:
         matches = list(pattern.finditer(text))
         if len(matches) >= 2:  # Need at least 2 horses to validate pattern
             break
-    
+
     if not matches:
         return []
-    
+
     blocks = []
     for i, match in enumerate(matches):
         horse_num = int(match.group(1))
         horse_name = match.group(2).strip().rstrip('*').strip()
-        
+
         start = match.start()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        
+
         # Stop at Part 3 (Verdict) if it appears
         verdict_markers = ['#### [第三部分]', '## [第三部分]', '🏆 Top 4', '🏆 Top 3']
         block_text = text[start:end]
@@ -95,9 +96,9 @@ def _split_into_horse_blocks(text: str) -> list[tuple[int, str, str]]:
             if idx > 0:
                 block_text = block_text[:idx]
                 break
-        
+
         blocks.append((horse_num, horse_name, block_text.strip()))
-    
+
     return blocks
 
 
@@ -123,11 +124,11 @@ AUTO_SCORELINE_RE = re.compile(
 
 def _extract_engine_type_hkjc(text: str) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """Extract engine type from HKJC horse analysis block.
-    
+
     Supports:
     1. New format (future): 引擎距離：Type A (前領均速型) | ...
     2. Current format: 路程場地適性 section mentioning 引擎/前領/後追 patterns
-    
+
     Returns: (engine_type, engine_type_label, engine_distance_summary)
     """
     # Try new explicit format first (for future analyses)
@@ -139,7 +140,7 @@ def _extract_engine_type_hkjc(text: str) -> tuple[Optional[str], Optional[str], 
         type_code = m.group(2).strip()
         desc = m.group(3)
         full_line = m.group(0).strip()
-        
+
         label = None
         if desc:
             cn_m = re.search(r'([\u4e00-\u9fff/]+型)', desc)
@@ -149,32 +150,32 @@ def _extract_engine_type_hkjc(text: str) -> tuple[Optional[str], Optional[str], 
                 label = desc.strip()
         if not label:
             label = ENGINE_LABELS.get(type_code, type_code)
-        
+
         engine_type = f'Type {type_code}'
         summary = full_line.replace('- **引擎距離：** ', '').replace('- **引擎距離：**', '').strip()
         return engine_type, label, summary
-    
+
     # Fallback: infer from existing 馬匹分析 or 馬匹特性 section
     # Look for running style keywords
     style_section = text[:3000]  # Check first part of analysis
-    
+
     # Pattern: 前領/居前/放頭 = Type A; 後上/後追/後段 = Type B
     front_keywords = ['前領型', '放頭馬', '居前型', '均速型', '前速型']
     back_keywords = ['後上型', '後追型', '爆發型', '後段追近', '末段爆發']
-    
+
     front_count = sum(1 for kw in front_keywords if kw in style_section)
     back_count = sum(1 for kw in back_keywords if kw in style_section)
-    
+
     if front_count > 0 and back_count == 0:
         return 'Type A', '前領均速型', None
     elif back_count > 0 and front_count == 0:
         return 'Type B', '末段爆發型', None
     elif front_count > 0 and back_count > 0:
         return 'Type A/B', '混合型', None
-    
+
     return None, None, None
 
-def _extract_section(text: str, start_markers: list[str], 
+def _extract_section(text: str, start_markers: list[str],
                      end_markers: Optional[list[str]] = None) -> Optional[str]:
     """Extract a section between start and end markers."""
     start_pos = -1
@@ -183,10 +184,10 @@ def _extract_section(text: str, start_markers: list[str],
         if pos >= 0:
             start_pos = pos
             break
-    
+
     if start_pos < 0:
         return None
-    
+
     # Find end
     if end_markers:
         end_pos = len(text)
@@ -195,7 +196,7 @@ def _extract_section(text: str, start_markers: list[str],
             if 0 < pos < end_pos:
                 end_pos = pos
         return text[start_pos:end_pos].strip()
-    
+
     return text[start_pos:].strip()
 
 
@@ -234,7 +235,7 @@ def _parse_jockey_trainer_weight_barrier(header_line: str) -> dict:
 
     raw_jockey = re.sub(r'\([^)]*\)', '', parts[1]).strip()  # strip (a-2) etc.
     result['jockey'] = _strip_label(raw_jockey)
-    
+
     idx = 2
     # If the next part is not numeric (e.g. not '135'), it must be the Trainer
     # Handle HV prefix: "練馬師:蔡約翰" → "蔡約翰"
@@ -243,7 +244,7 @@ def _parse_jockey_trainer_weight_barrier(header_line: str) -> dict:
     if idx < len(parts) and not part_stripped.isdigit() and not part_stripped.replace('.', '', 1).isdigit():
         result['trainer'] = re.sub(r'\([^)]*\)', '', raw_part).strip()  # strip (C Fownes) etc.
         idx += 1
-        
+
     if idx < len(parts):
         # Strip Chinese prefix + '磅' suffix: "負磅:135" → "135", "135磅" → "135"
         weight_raw = _strip_label(parts[idx])
@@ -252,7 +253,7 @@ def _parse_jockey_trainer_weight_barrier(header_line: str) -> dict:
         weight_val = re.sub(r'實際\s*', '', weight_val).strip()
         result['weight'] = weight_val
         idx += 1
-        
+
     if idx < len(parts):
         try:
             # Strip '檔位:' / '檔' prefix: "檔位:5" → "5", "檔5" → "5"
@@ -261,7 +262,7 @@ def _parse_jockey_trainer_weight_barrier(header_line: str) -> dict:
             result['barrier'] = int(barrier_str)
         except ValueError:
             pass
-            
+
     return result
 
 
@@ -308,13 +309,13 @@ def _parse_rating_matrix(text: str) -> Optional[RatingMatrix]:
     new_format = _parse_new_format_rating_matrix(text)
     if new_format:
         return new_format
-    section = _extract_section(text, 
+    section = _extract_section(text,
         ['**📊 評級矩陣', '📊 評級矩陣', '#### 📊 評級矩陣'],
         ['**14.2', '**💡', '💡 結論', '💡 評語', '⭐ 最終評級']
     )
     if not section:
         return None
-    
+
     dimensions = []
     # Match formats:
     # Kelvin:  - 穩定性 [核心]: ❌ | 理據: 0/4三甲全差
@@ -331,12 +332,12 @@ def _parse_rating_matrix(text: str) -> Optional[RatingMatrix]:
             value=m.group(3).strip(),
             rationale=m.group(4).strip()
         ))
-    
+
     # Extract base rating
     base_re = re.search(r'14\.2\s*基礎評級[：:]\s*\[?([A-DS][+\-]?)\]?', text)
     adj_re = re.search(r'14\.2B\s*微調[：:]\s*\[?(.*?)\]?\s*\|', text)
     ovr_re = re.search(r'14\.3\s*覆蓋[：:]\s*\[?(.*?)\]?(?:\n|$)', text)
-    
+
     return RatingMatrix(
         dimensions=dimensions,
         base_rating=base_re.group(1) if base_re else None,
@@ -368,15 +369,15 @@ def _parse_underhorse(text: str) -> tuple[bool, Optional[str], Optional[str], Op
     section = _extract_section(text, ['🐴⚡', '冷門馬訊號', '潛力馬訊號'])
     if not section:
         return False, None, None, None
-    
+
     if '未觸發' in section:
         return False, None, None, None
-    
+
     triggered = '觸發' in section
     condition = None
     reason = None
     level = None
-    
+
     # Detect 3-tier signal level
     if '強力觸發' in section or '🔴' in section:
         level = 'strong'
@@ -386,21 +387,21 @@ def _parse_underhorse(text: str) -> tuple[bool, Optional[str], Optional[str], Op
         level = 'light'
     elif triggered:
         level = 'light'  # Default to light if triggered but no level specified
-    
+
     cond_m = re.search(r'受惠條件[：:]\s*(.+)', section)
     if cond_m:
         condition = cond_m.group(1).strip()
-    
+
     reason_m = re.search(r'理由[：:]\s*(.+)', section)
     if reason_m:
         reason = reason_m.group(1).strip()
-    
+
     # Heison inline format: [觸發] | [reason text]
     if triggered and not reason:
         inline_m = re.search(r'\[觸發\]\s*\|\s*\[(.+?)\]', section)
         if inline_m:
             reason = inline_m.group(1).strip()
-    
+
     return triggered, condition, reason, level
 
 
@@ -444,26 +445,26 @@ def _parse_data_readout(block: str) -> Optional[list]:
 
 def parse_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAnalysis:
     """Parse a single horse analysis block into structured data."""
-    
+
     # Header info
     first_line = block.split('\n')[0]
     header_info = _parse_jockey_trainer_weight_barrier(first_line)
-    
+
     # Situation tag
     situation = _parse_situation_tag(block)
-    
+
     # Recent form
     form_m = re.search(r'近六場[：:]\s*\*?\*?`?(.+?)`?\*?\*?\s*(?:\*\*)?(?:\(|$|\n)', block)
     recent_form = form_m.group(1).strip() if form_m else None
-    
+
     # Form cycle
     cycle_m = re.search(r'狀態週期[：:]\s*`?(.+?)`?\s*(?:\n|$)', block)
     form_cycle = cycle_m.group(1).strip() if cycle_m else None
-    
+
     # Statistics
     stats_m = re.search(r'統計[：:]\s*(.+?)(?:\n|$)', block)
     statistics = stats_m.group(1).strip() if stats_m else None
-    
+
     # Key runs (逆境表現 + 際遇分析)
     key_runs = []
     adversity = _extract_section(block, ['逆境表現'], ['際遇分析', '馬匹分析', '🔬', '🐴'])
@@ -472,38 +473,38 @@ def parse_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAnaly
     experience = _extract_section(block, ['際遇分析'], ['馬匹分析', '🔬', '🐴', '📊'])
     if experience:
         key_runs.append(experience)
-    
+
     # Trend summary
     trend_m = re.search(r'趨勢總評[：:]\s*(.+?)(?:\n\n|\n(?=\*\*)|$)', block, re.DOTALL)
     trend_summary = trend_m.group(1).strip() if trend_m else None
-    
+
     # HKJC sections with emoji markers
     speed_forensics = _extract_section(block,
         ['🔬 段速法醫', '**🔬 段速法醫'],
         ['⚡ 形勢與走位', '**⚡ 形勢與走位', '⚡ EEM', '**⚡ EEM', '📋', '📊', '💡']
     )
-    
+
     positional_assessment = _extract_section(block,
         ['⚡ 形勢與走位', '**⚡ 形勢與走位', '⚡ EEM', '**⚡ EEM'],
         ['📋 寬恕', '**📋 寬恕', '🔗', '📊', '💡']
     )
-    
+
     forgiveness = _extract_section(block,
         ['📋 寬恕', '**📋 寬恕'],
         ['🔗 賽績', '**🔗 賽績', '📊', '💡']
     )
-    
+
     form_line = _extract_section(block,
         ['🔗 賽績線', '**🔗 賽績線'],
         ['📊 評級', '**📊 評級', '💡']
     )
-    
+
     # Rating matrix
     rating_matrix = _parse_rating_matrix(block)
-    
+
     # Final grade
     final_grade = _parse_final_grade(block)
-    
+
     ability_score = None
     confidence_score = None
     risk_score = None
@@ -515,13 +516,13 @@ def parse_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAnaly
             risk_score = float(scoreline_m.group(3))
         except ValueError:
             pass
-    
+
     # Conclusion
     conclusion_section = _extract_section(block,
         ['💡 結論', '💡 評語', '**💡 結論', '**💡 評語', '💡 優勢', '**💡 優勢'],
         ['⭐ 最終評級', '🐴⚡ 冷門馬', '🐴⚡ 潛力馬', '---']
     )
-    
+
     advantage = None
     risk = None
     core_logic = None
@@ -536,13 +537,13 @@ def parse_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAnaly
         risk_m = re.search(r'(?:最大)?(?:失敗|風險)(?:原因|風險)?[：:]\s*(.+?)(?:\n|$)', conclusion_section)
         if risk_m:
             risk = risk_m.group(1).strip()
-    
+
     # Underhorse signal
     uh_triggered, uh_condition, uh_reason, uh_level = _parse_underhorse(block)
-    
+
     # Engine type extraction
     engine_type, engine_label, engine_summary = _extract_engine_type_hkjc(block)
-    
+
     return HorseAnalysis(
         horse_number=horse_num,
         horse_name=horse_name,
@@ -594,18 +595,18 @@ def _parse_csv_block(text: str, race_number: int = 0) -> list[TopPick]:
     csv_match = re.search(r'```csv\s*\n(.+?)```', text, re.DOTALL)
     if not csv_match:
         return []
-    
+
     picks = []
     csv_text = csv_match.group(1).strip()
     lines = csv_text.strip().split('\n')
-    
+
     # Detect header and column layout
     first = lines[0]
     first_lower = first.lower()
-    has_header = ('race' in first_lower or 'horse' in first_lower or 
-                  'number' in first_lower or '馬號' in first or 
+    has_header = ('race' in first_lower or 'horse' in first_lower or
+                  'number' in first_lower or '馬號' in first or
                   '馬名' in first or 'Race' in first or 'Name' in first)
-    
+
     # Detect layout from header or first data line
     is_chinese_layout = '馬號' in first or '馬名' in first
     if not is_chinese_layout and has_header:
@@ -622,12 +623,12 @@ def _parse_csv_block(text: str, race_number: int = 0) -> list[TopPick]:
                     is_chinese_layout = True
             except ValueError:
                 pass
-    
+
     data_lines = lines[1:] if has_header else lines
-    
+
     # Limit to reasonable number of top picks (max 4)
     MAX_PICKS = 4
-    
+
     for rank, line in enumerate(data_lines, 1):
         if rank > MAX_PICKS:
             break
@@ -645,7 +646,7 @@ def _parse_csv_block(text: str, race_number: int = 0) -> list[TopPick]:
                 grade = parts[6].strip() if len(parts) > 6 else None
             else:
                 continue
-            
+
             picks.append(TopPick(
                 rank=rank,
                 horse_number=horse_num,
@@ -674,7 +675,7 @@ def _parse_verdict_top_picks(text: str) -> list[TopPick]:
         | 11 | 劍無情 | **S-** | reason |
     """
     picks = []
-    
+
     # --- Format B: Inline with em-dash
     # **🥇 第一選 — 11 劍無情 (S-)** or 🥇 第一選 — 11 劍無情 (S-)
     inline_re = re.compile(
@@ -682,7 +683,7 @@ def _parse_verdict_top_picks(text: str) -> list[TopPick]:
     )
     inline_matches = list(inline_re.finditer(text))
     rank_map = {'一': 1, '二': 2, '三': 3, '四': 4}
-    
+
     if inline_matches:
         for m in inline_matches:
             rank = rank_map.get(m.group(1), 0)
@@ -698,21 +699,21 @@ def _parse_verdict_top_picks(text: str) -> list[TopPick]:
                 ))
         if picks:
             return picks
-    
+
     # --- Format A: Block with 第X選 header + 馬號及馬名
     pick_headers = re.finditer(
         r'(?:🥇|🥈|🥉|🏅)\s*\*\*第([一二三四])選\*\*',
         text
     )
-    
+
     headers = list(pick_headers)
-    
+
     for i, hdr in enumerate(headers):
         rank = rank_map.get(hdr.group(1), 0)
         start = hdr.end()
         end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
         block = text[start:end]
-        
+
         # Extract horse number and name — handles: "3 皇龍飛將", "[3] 皇龍飛將"
         name_m = re.search(
             r'馬號及馬名[:：]\s*(?:\*\*)?\s*\[?(\d+)\]?\s+(.+?)(?:\*\*)?\s*$',
@@ -721,16 +722,16 @@ def _parse_verdict_top_picks(text: str) -> list[TopPick]:
         if not name_m:
             # Alternate: without bold, with optional brackets
             name_m = re.search(r'\[?(\d+)\]?\s+([\u4e00-\u9fff\w]+)', block)
-        
+
         # Extract grade — supports [A+] (brackets), `A+` (backticks), and bare A+ after 評級
         grade_m = re.search(r'(?:\[|`)([A-DS][+\-]?)(?:\]|`)', block)
         if not grade_m:
             # Fallback: bare grade after 評級 keyword, e.g. "評級與✅數量：** A+ | ✅"
             grade_m = re.search(r'評級[^:：]*[:：]\s*(?:\*\*)?\s*([A-DS][+\-]?)(?:\s|\|)', block)
-        
+
         # Extract checkmarks count
         check_m = re.search(r'✅\s*(\d+)', block)
-        
+
         if name_m:
             picks.append(TopPick(
                 rank=rank,
@@ -739,8 +740,117 @@ def _parse_verdict_top_picks(text: str) -> list[TopPick]:
                 grade=grade_m.group(1) if grade_m else None,
                 checkmarks=int(check_m.group(1)) if check_m else None,
             ))
-    
+
     return picks
+
+
+# The seven-dimension weighted table -- score × weight = contribution -- is what
+# the dashboard's ranking strip is drawn from. HKJC prints it into the markdown
+# only for meetings between 2026-06-24 and 2026-07-04 (42 of 264 race files,
+# 15.9%); it stopped after that even though the DATA never went away. Measured
+# 2026-09-02: Logic.json carries grade_transparency for 07-04, 07-08 and 07-12
+# alike, while only 07-04's markdown prints it. So read the sidecar, not the
+# report -- that is 100% coverage instead of 16%.
+#
+# The weights must come from the file that produced the report, never from the
+# live engine constant: 2026-07-04's own table reads 9.2 / 18.5 / 25.6 / 22.1 /
+# 3.8 / 7.5 / 13.4 while today's MATRIX_WEIGHTS are 9.83 / 12.85 / 27.37 /
+# 23.62 / 4.04 / 8.01 / 14.28. Using the constant would restate an old report
+# with weights it never used.
+#
+# grade_transparency comes in three shapes across the archive, so read them in
+# order of trustworthiness. Measured over 264 race files / 3,318 horses:
+#   `rows`         structured {key,label,score,weight,contribution,band} — newer
+#                  meetings (07-08 onward). Preferred: nothing to parse.
+#   detail_lines   "| 狀態與穩定性 | 67.3 | 9.8% | 6.61 | ➖ |"  (table form)
+#              or  "  - 狀態與穩定性 [半核心]: 85.4分 × 9.2% = 7.85 → ✅✅"
+# Supporting only the bullet form reached 92.3% and missed every meeting that
+# had switched to the table form — with no error, because a regex that matches
+# nothing returns an empty list.
+HKJC_MATRIX_BULLET_RE = re.compile(
+    r'^\s*-\s*(.+?)\s*(\[[^\]]+\])?\s*[:：]\s*([\d.]+)\s*分\s*[×x]\s*([\d.]+)%\s*=\s*([\d.]+)\s*(?:→\s*(\S+))?\s*$'
+)
+HKJC_MATRIX_ROW_RE = re.compile(
+    r'^\s*\|\s*([^|]+?)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)%\s*\|\s*([\d.]+)\s*\|\s*(\S+)?\s*\|\s*$'
+)
+
+
+def _matrix_detail_from_line(line):
+    text = str(line)
+    row = HKJC_MATRIX_ROW_RE.match(text)
+    if row:
+        name, score, weight, contribution, symbol = row.groups()
+        tier = None
+    else:
+        bullet = HKJC_MATRIX_BULLET_RE.match(text)
+        if not bullet:
+            return None
+        name, tier, score, weight, contribution, symbol = bullet.groups()
+    if name.strip() in ('維度', '---'):
+        return None
+    try:
+        return DimensionDetail(
+            name=name.strip(),
+            score=float(score),
+            weight_pct=float(weight),
+            contribution=float(contribution),
+            symbol=(symbol or '').strip() or None,
+            category=(tier or '').strip('[]') or None,
+            ranking_weighted=True,
+        )
+    except ValueError:
+        return None
+
+
+def _load_matrix_details(analysis_path: Path) -> dict[int, list]:
+    """Per-horse dimension breakdown from the meeting's Race_N_Logic.json."""
+    logic_path = analysis_path.with_name(
+        analysis_path.name.replace("_Auto_Analysis.md", "_Logic.json"))
+    if not logic_path.exists():
+        return {}
+    try:
+        payload = json.loads(logic_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    horses = payload.get("horses")
+    if not isinstance(horses, dict):
+        return {}
+
+    mapping: dict[int, list] = {}
+    for key, horse in horses.items():
+        try:
+            horse_num = int(key)
+        except (TypeError, ValueError):
+            continue
+        transparency = ((horse or {}).get("python_auto") or {}).get("grade_transparency") or {}
+        structured = transparency.get("rows")
+        if isinstance(structured, list) and structured:
+            details = []
+            for row in structured:
+                if not isinstance(row, dict):
+                    continue
+                try:
+                    details.append(DimensionDetail(
+                        name=str(row.get("label") or row.get("key") or "").strip(),
+                        score=float(row["score"]),
+                        # `weight` is a fraction here; weight_pct is a percentage.
+                        weight_pct=float(row["weight"]) * 100,
+                        contribution=float(row["contribution"]),
+                        symbol=(row.get("band") or "").strip() or None,
+                        ranking_weighted=True,
+                    ))
+                except (KeyError, TypeError, ValueError):
+                    continue
+            if details:
+                mapping[horse_num] = details
+                continue
+        lines = transparency.get("detail_lines")
+        if not isinstance(lines, list):
+            continue
+        details = [d for d in (_matrix_detail_from_line(line) for line in lines) if d]
+        if details:
+            mapping[horse_num] = details
+    return mapping
 
 
 def _load_auto_scoring_map(analysis_path: Path) -> dict[int, dict]:
@@ -814,27 +924,27 @@ def _parse_race_header(text: str) -> dict:
         if idx > 0:
             header_slice = text[:idx]
             break
-    
+
     # Race number
     race_m = re.search(r'第(\d+)場', header_slice)
     if race_m:
         info['race_number'] = int(race_m.group(1))
-    
-    # Distance  
+
+    # Distance
     dist_m = re.search(r'(\d{3,4})(?:米|m)', header_slice)
     if dist_m:
         info['distance'] = dist_m.group(1) + 'm'
-    
+
     # Class
     class_m = re.search(r'(第[一二三四五]班|[一二三四五]班)', header_slice)
     if class_m:
         info['race_class'] = class_m.group(1)
-    
+
     # Track
     track_m = re.search(r'(草地|全天候|泥地)\s*(?:-\s*)?[「"]?([A-C])[」"]?\s*賽道', header_slice)
     if track_m:
         info['track'] = f"{track_m.group(1)} {track_m.group(2)} 賽道"
-    
+
     # Race name — try explicit 賽事名稱 first
     name_m = re.search(r'賽事名稱[：:]\s*\*{0,2}(.+?)\*{0,2}\s*(?:\n|$)', header_slice)
     if name_m:
@@ -863,7 +973,7 @@ def _parse_race_header(text: str) -> dict:
         venue_m = re.search(r'(?:^|[|｜/\s])(沙田|跑馬地)(?:$|[|｜/\s])', header_slice, re.MULTILINE)
         if venue_m:
             info['venue'] = venue_m.group(1)
-    
+
     # Pace prediction — try backtick-delimited first, then generic
     pace_m = re.search(r'步速預測[：:]\s*\*{0,2}\s*`([^`]+)`', header_slice)
     if not pace_m:
@@ -872,13 +982,13 @@ def _parse_race_header(text: str) -> dict:
         val = pace_m.group(1).strip().strip('*').strip('`').strip()
         if val and val != '*':
             info['pace_prediction'] = val
-    
+
     return info
 
 
 def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
     """Parse a complete HKJC Analysis.txt file into structured data.
-    
+
     Supports:
     - Kelvin format (with CSV block, detailed 11-field analysis)
     - Heison format (without CSV block, variable depth)
@@ -886,7 +996,7 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
     path = Path(filepath)
     if not path.exists():
         return None
-    
+
     try:
         text = path.read_text(encoding='utf-8')
     except UnicodeDecodeError:
@@ -894,34 +1004,34 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
             text = path.read_text(encoding='utf-8-sig')
         except Exception:
             return None
-    
+
     # Extract race number from filename
     race_num_m = re.search(r'Race[_\s]+(\d+)', path.name)
     race_number = int(race_num_m.group(1)) if race_num_m else 0
-    
+
     # Parse Part 1 header
     header_info = _parse_race_header(text)
     if not race_number and 'race_number' in header_info:
         race_number = header_info['race_number']
-    
+
     # Extract Part 1 (battlefield overview)
-    part1 = _extract_section(text, 
+    part1 = _extract_section(text,
         ['[第一部分]', '## [第一部分]', '#### [第一部分]'],
         ['[第二部分]', '## [第二部分]', '#### [第二部分]']
     )
-    
+
     # Extract Part 3 (verdict) - Handle dynamic batch numbers (can be Part 3, 5, 7, etc.)
     part3 = _extract_section(text,
         ['最終結論 (The Verdict)', '最終結論', '賽事總結與預期崩潰點', '[第三部分]', '## [第三部分]', '#### [第三部分]'],
         ['分析盲區', '[第四部分]', '## [第四部分]', '#### [第四部分]', '```csv', '🔒 COMPLIANCE', '🐴⚡ 冷門馬總計']
     )
-    
+
     # Extract Part 4 (blind spots)
     part4 = _extract_section(text,
         ['分析盲區', '[第四部分]', '## [第四部分]', '#### [第四部分]'],
         ['```csv', '🔒 COMPLIANCE', '📂 分析檔案更新完成', '---']
     )
-    
+
     # Parse individual horses
     horse_blocks = _split_into_horse_blocks(text)
     horses = []
@@ -931,6 +1041,11 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
 
     is_auto = path.name.endswith("_Auto_Analysis.md")
     auto_scoring = _load_auto_scoring_map(path) if is_auto else {}
+    matrix_details = _load_matrix_details(path) if is_auto else {}
+    for horse in horses:
+        details = matrix_details.get(horse.horse_number)
+        if details:
+            horse.dimension_details = details
     if is_auto:
         for horse in horses:
             row = auto_scoring.get(horse.horse_number)
@@ -955,7 +1070,7 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
             horse.model_pick_status = row.get("model_pick_status") or None
             if row.get("grade"):
                 horse.final_grade = row.get("grade")
-    
+
     # Parse Top picks — try CSV block first, then verdict section, then full text fallback
     top_picks = _parse_auto_top_picks_from_table(text) if is_auto else _parse_csv_block(text, race_number)
     if not top_picks and part3:
@@ -963,21 +1078,21 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
     if not top_picks:
         # Fallback: parse full text (handles cases where part3 extraction is too narrow)
         top_picks = _parse_verdict_top_picks(text)
-    
+
     # Confidence
     conf_m = re.search(r'信心指數[：:]\s*\[?(.+?)\]?(?:\n|$)', text)
     confidence = conf_m.group(1).strip() if conf_m else None
-    
+
     # Key variable
     key_m = re.search(r'關鍵變數[：:]\s*(.+?)(?:\n|$)', text)
     key_variable = key_m.group(1).strip() if key_m else None
-    
+
     # Pace flip
     pace_flip = _extract_section(text,
         ['步速逆轉保險', '步速逆轉'],
         ['緊急煞車', '---', '[第四部分]']
     )
-    
+
     # Underhorse signals summary
     uh_summary = _extract_section(text,
         ['冷門馬總計', '潛力馬總計', 'Underhorse Signal Summary'],
@@ -985,12 +1100,12 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
     )
     uh_signals = None
     if uh_summary:
-        uh_signals = [line.strip() for line in uh_summary.split('\n') 
+        uh_signals = [line.strip() for line in uh_summary.split('\n')
                       if line.strip().startswith('- 🐴⚡')]
-    
+
     # Monte Carlo simulation table (HKJC format uses #### 📊 Monte Carlo 概率模擬)
     monte_carlo = _parse_monte_carlo_table(text)
-    
+
     return RaceAnalysis(
         race_number=race_number,
         distance=header_info.get('distance'),

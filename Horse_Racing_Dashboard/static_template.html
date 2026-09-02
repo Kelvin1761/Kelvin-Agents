@@ -649,7 +649,49 @@
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
     }
-  </style>
+
+/* ⚠️ 一定要行主題變數。第一版寫死咗深色（背景 rgba(15,23,42,.45)、字 #E2E8F0），
+   喺淺色主題度變成灰底白字，實測睇唔到。dashboard 兩個主題都要行得。 */
+.speedmap-forecast{margin:12px 0;padding:12px 14px;border-radius:12px;background:var(--color-surface-alt,#f1f5f9);border:1px solid var(--color-border,#e2e8f0)}
+.speedmap-forecast__title{font-size:.78rem;font-weight:700;color:var(--color-text-secondary,#475569);margin-bottom:8px}
+.speedmap-forecast__note{font-size:.7rem;color:var(--color-text-muted,#94a3b8);margin-top:8px;line-height:1.5}
+.speedmap-axis{display:flex;justify-content:space-between;font-size:.66rem;color:var(--color-text-muted,#94a3b8);margin-left:calc(var(--sm-name,124px) + 10px);margin-right:52px}
+.speedmap-rows{margin-top:4px;border-radius:8px;background:var(--color-surface,#fff);padding:6px 0;border:1px solid var(--color-border-light,#f1f5f9)}
+.speedmap-row{display:flex;align-items:center;gap:10px;padding:3px 8px}
+.speedmap-row__name{width:var(--sm-name,124px);flex:none;font-size:.74rem;color:var(--color-text,#0f172a);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 點係 10px 直徑、中心對齊個值，所以 0% 同 100% 嗰兩粒會各自凸出 5px。留返 5px margin 畀佢哋，唔好凸到馬名格或者卡片邊。 */
+.speedmap-row__track{position:relative;flex:1;margin:0 5px;height:16px;background:linear-gradient(90deg,var(--color-border,#e2e8f0) 1px,transparent 1px) 0 0/25% 100%}
+.speedmap-row__track::after{content:'';position:absolute;inset:50% 0 auto;height:1px;background:var(--color-border,#e2e8f0)}
+.speedmap-row__gap{width:44px;flex:none;text-align:right;font-size:.62rem;color:#d97706}
+.speedmap-link{position:absolute;top:50%;height:2px;margin-top:-1px;background:var(--color-border,#cbd5e1);border-radius:2px}
+.speedmap-link--wide{height:3px;margin-top:-1.5px;background:#d97706}
+.speedmap-dot{position:absolute;top:50%;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;opacity:0;animation:smDotIn .45s ease-out forwards}
+.speedmap-dot--ours{background:#7c3aed}
+.speedmap-dot--official{background:var(--color-surface,#fff);border:2px solid #0284c7;box-sizing:border-box}
+.speedmap-dot--static{position:static;margin:0 5px 0 0;opacity:1;animation:none;display:inline-block;vertical-align:-1px}
+.speedmap-legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:.66rem;color:var(--color-text-secondary,#475569)}
+.speedmap-legend__gap{color:#d97706}
+@keyframes smDotIn{from{opacity:0;transform:translateX(-10px)}to{opacity:1;transform:translateX(0)}}
+@media (prefers-reduced-motion:reduce){.speedmap-dot{animation:none;opacity:1}}
+@media (max-width:640px){
+  .speedmap-forecast{--sm-name:84px;padding:10px}
+  .speedmap-row{gap:6px;padding:3px 4px}
+  .speedmap-row__name{font-size:.68rem}
+  .speedmap-row__gap{width:0;overflow:hidden}
+  .speedmap-axis{margin-left:calc(var(--sm-name) + 6px);margin-right:0}
+}
+
+.battlefield__track{margin-top:6px;opacity:.92}
+/* 共用嘅 race-segment 冇喺 label 同 value 之間留位（「場次Race 3」咁）。
+   唔郁共用嗰個，淨係喺賽道呢條加返，避免影響其他地方。 */
+.battlefield__track .battlefield__race-segment{gap:6px}
+.battlefield__track .battlefield__race-segment span{color:#64748B}
+@media (max-width:640px){
+  /* 手機度五格會佔五行。周長／直路／方向係睇形勢真正用得着嗰三格，
+     級別同場地留返桌面。 */
+  .battlefield__track .battlefield__race-segment:nth-child(n+4){display:none}
+}
+</style>
 </head>
 <body>
 <div id="root">
@@ -2678,7 +2720,7 @@ function renderRaceDetail() {
   const analyses = {};
   const allMeetingRaces = [];
   const raceNums = new Set();
-  
+
   for (const [aName, races] of Object.entries(racesData.races_by_analyst)) {
     const race = races.find(r => r.race_number === raceNum);
     if (race) analyses[aName] = race;
@@ -2731,7 +2773,8 @@ function renderRaceDetail() {
 
   // 🗺️ 戰場全景 — simple inline card before consensus
   if (analysis.battlefield_overview) {
-    html += renderBattlefieldOverview(analysis.battlefield_overview, analysis.horses || []);
+    html += renderBattlefieldOverview(analysis.battlefield_overview, analysis.horses || [],
+      (selectedMeeting && selectedMeeting.track_geometry) || null);
   } else if (analysis.pace_prediction) {
     html += `<div class="card" style="margin-bottom:16px;padding:12px 16px"><span style="font-size:0.75rem;font-weight:700;color:#64748B">🏃 步速預測</span><div style="font-size:0.85rem;margin-top:4px;white-space:pre-wrap">${esc(analysis.pace_prediction)}</div></div>`;
   }
@@ -3322,17 +3365,24 @@ function parseBattlefieldOverview(text) {
   }));
   const factsTable = tables.find(table => table.parsed?.headers.includes('項目') && table.parsed?.headers.includes('內容'));
   const rankingTable = tables.find(table => table.parsed?.headers.includes('排名') && table.parsed?.headers.includes('馬號'));
+  // 形勢推演嘅預測起步位表。⚠️ 下面會將**每一個**表由 notes 度剷走，所以唔喺呢度
+  // 認住佢就等於喺 dashboard 完全消失（表照樣被剷，但冇人畫返出嚟）。
+  const speedTable = tables.find(table => table.parsed?.headers.includes('預測定位'));
   let notes = sanitized;
   tables.forEach(table => { notes = notes.replace(table.raw, '\n'); });
   notes = notes
     .replace(/^\s*(?:#{1,6}\s*)?(?:\[第一部分\]\s*)?(?:🗺️\s*)?戰場全景.*$/gmi, '')
     .replace(/^\s*\*{0,2}📊\s*全場綜合戰力排名\*{0,2}\s*$/gmi, '')
+    .replace(/^\s*\*{0,2}🏃\s*形勢推演\*{0,2}\s*$/gmi, '')
+    // 圖自己有圖例，唔使再出一次同一句
+    .replace(/^\s*>\s*「我哋」=.*$/gm, '')
     .replace(/^\s*---+\s*$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
   return {
     facts: factsTable?.parsed?.rows.map(row => ({ label: row[0], value: row[1] })) || [],
     ranking: rankingTable?.parsed || null,
+    speedmap: speedTable?.parsed || null,
     notes,
   };
 }
@@ -3348,7 +3398,43 @@ function splitBattlefieldRacePattern(value) {
   });
 }
 
-function renderBattlefieldOverview(text, horses = []) {
+
+function speedMapSvgFromTable(parsed) {
+  const idx = name => parsed.headers.findIndex(h => String(h).trim() === name);
+  const iNum = idx('馬號'), iName = idx('馬名'), iOurs = idx('我哋'), iOff = idx('官方'), iRank = idx('預測定位');
+  if (iNum < 0 || iName < 0) return '';
+  const rows = parsed.rows.map((r, i) => {
+    const ours = parseFloat(String(r[iOurs] ?? '').replace(/[^\d.]/g, ''));
+    const official = parseFloat(String(r[iOff] ?? '').replace(/[^\d.]/g, ''));
+    return {
+      rank: parseInt(String(r[iRank] ?? ''), 10) || i + 1,
+      num: cleanBattlefieldCell(r[iNum]),
+      name: cleanBattlefieldCell(r[iName]),
+      ours: isNaN(ours) ? null : ours,
+      official: isNaN(official) ? null : official,
+    };
+  }).filter(r => r.ours != null || r.official != null);
+  return rows.length >= 2 ? speedMapSvg(rows) : '';
+}
+
+// 賽道幾何條。⚠️ 數據由 payload 嘅 `meeting.track_geometry` 嚟（generate_static
+// 由 `au_track_geometry.json` 查），**唔係**由報告文字 parse —— 咁樣舊報告唔使
+// 重新渲染都即刻有。96 個場地入面 85 個有數，冇數嗰 11 個唔會出空格。
+function renderTrackGeometry(geometry) {
+  if (!geometry || !geometry.circumference_m) return '';
+  const dir = { clockwise: '順時針', anticlockwise: '逆時針' }[geometry.direction] || '';
+  const bits = [];
+  bits.push({ label: '周長', value: geometry.circumference_m + 'm' });
+  if (geometry.straight_m) bits.push({ label: '直路', value: geometry.straight_m + 'm' });
+  if (dir) bits.push({ label: '方向', value: dir });
+  if (geometry.classification) bits.push({ label: '級別', value: geometry.classification });
+  if (geometry.surface) bits.push({ label: '場地', value: geometry.surface });
+  return `<section class="battlefield__race-pattern battlefield__track" aria-label="賽道規格">${
+    bits.map((item, i) => `<div class="battlefield__race-segment"><span>${esc(item.label)}</span><strong>${esc(item.value)}</strong>${i < bits.length - 1 ? '<i aria-hidden="true"></i>' : ''}</div>`).join('')
+  }</section>`;
+}
+
+function renderBattlefieldOverview(text, horses = [], geometry = null) {
   const overview = parseBattlefieldOverview(text);
   const racePattern = splitBattlefieldRacePattern(overview.facts.find(fact => cleanBattlefieldCell(fact.label) === '賽事格局')?.value || '');
   const horseLookup = new Map(horses.map(horse => [String(horse.horse_number), horse]));
@@ -3358,6 +3444,8 @@ function renderBattlefieldOverview(text, horses = []) {
   if (racePattern.length) {
     html += `<section class="battlefield__race-pattern" aria-label="賽事格局">${racePattern.map((item, index) => `<div class="battlefield__race-segment"><span>${esc(item.label)}</span><strong>${esc(item.value)}</strong>${index < racePattern.length - 1 ? '<i aria-hidden="true"></i>' : ''}</div>`).join('')}</section>`;
   }
+  html += renderTrackGeometry(geometry);
+  if (overview.speedmap) html += speedMapSvgFromTable(overview.speedmap);
   if (overview.notes) html += `<div class="battlefield__notes battlefield__notes--refined">${formatRichSection(overview.notes)}</div>`;
   if (overview.ranking?.rows?.length) {
     html += `<div class="battlefield-ranking"><div class="battlefield-ranking__header"><div><span>📊</span><strong>全場綜合戰力排名</strong></div><span>${overview.ranking.rows.length} 匹馬</span></div>`;
@@ -3641,6 +3729,85 @@ function renderFormRecords(rows) {
   return h + '</tbody></table></div>';
 }
 
+
+// ── 形勢推演：預測起步位圖 ────────────────────────────────────────────────
+// 報告嗰個 markdown 表有三欄（我哋 / 官方 Sportsbet Speedmap / 混合）。表本身
+// 讀得好慢 —— 邊匹搶前、邊匹守後、兩個來源邊度唔同意，睇圖一眼就明。
+// 兩個來源近乎正交（ρ +0.005，EXP-20260902-03），所以分歧要畫得出嚟。
+function extractSpeedMapForecast(content) {
+  if (!content || content.indexOf('預測定位') < 0) return null;
+  const lines = String(content).split('\n');
+  const start = lines.findIndex(l => /\|\s*預測定位\s*\|/.test(l));
+  if (start < 0) return null;
+  let end = start + 2;
+  const rows = [];
+  while (end < lines.length && /^\s*\|/.test(lines[end])) {
+    const cells = lines[end].split('|').map(c => c.trim()).filter((c, i, a) => i > 0 && i < a.length - 1);
+    if (cells.length >= 6) {
+      const ours = parseFloat(cells[3]);
+      const official = parseFloat(cells[4]);
+      rows.push({
+        rank: parseInt(cells[0], 10) || rows.length + 1,
+        num: cells[1], name: cells[2],
+        ours: isNaN(ours) ? null : ours,
+        official: isNaN(official) ? null : official,
+      });
+    }
+    end += 1;
+  }
+  if (rows.length < 2) return null;
+  const rest = lines.slice(0, start).concat(lines.slice(end)).join('\n');
+  return { rows, rest, svg: speedMapSvg(rows) };
+}
+
+function speedMapSvg(rows) {
+  // ⚠️ 唔用 SVG `<text>`。第一版係 SVG，`viewBox="0 0 640 …"` 喺 375px 手機度
+  // 縮到 0.464×，12px 字變 **5.6px** —— 實測到，冇得睇。SVG 字會跟住 viewBox 縮，
+  // 而我哋要嘅係「圖跟寬度縮、字唔縮」。用 HTML + CSS 百分比就自然做到，
+  // 順便解決咗馬名同跑道撞埋（最長嗰個名 123 單位、跑道由 132 開始，得 9 單位淨）。
+  const values = [];
+  rows.forEach(r => { if (r.ours != null) values.push(r.ours); if (r.official != null) values.push(r.official); });
+  if (!values.length) return '';
+  const lo = Math.min(1, ...values);
+  const hi = Math.max(...values, lo + 1);
+  const pct = v => (((v - lo) / (hi - lo)) * 100).toFixed(2);
+
+  let body = '';
+  rows.forEach((r, i) => {
+    const gap = (r.ours != null && r.official != null) ? Math.abs(r.ours - r.official) : 0;
+    const wide = gap >= 2;
+    let marks = '';
+    if (r.ours != null && r.official != null) {
+      const a = Math.min(+pct(r.ours), +pct(r.official));
+      const b = Math.max(+pct(r.ours), +pct(r.official));
+      marks += `<i class="speedmap-link${wide ? ' speedmap-link--wide' : ''}" style="left:${a}%;width:${(b - a).toFixed(2)}%"></i>`;
+    }
+    if (r.official != null) marks += `<i class="speedmap-dot speedmap-dot--official" style="left:${pct(r.official)}%;animation-delay:${i * 60}ms"></i>`;
+    if (r.ours != null) marks += `<i class="speedmap-dot speedmap-dot--ours" style="left:${pct(r.ours)}%;animation-delay:${i * 60 + 30}ms"></i>`;
+    body += `<div class="speedmap-row">
+      <div class="speedmap-row__name" title="${esc(r.num + '. ' + r.name)}">${esc(r.num + '. ' + r.name)}</div>
+      <div class="speedmap-row__track">${marks}</div>
+      <div class="speedmap-row__gap">${wide ? '分歧 ' + gap.toFixed(1) : ''}</div>
+    </div>`;
+  });
+
+  return `<div class="speedmap-forecast">
+    <div class="speedmap-forecast__title">🏃 預測起步位（形勢推演）</div>
+    <div class="speedmap-axis"><span>← 搶前</span><span>守後 →</span></div>
+    <div class="speedmap-rows">${body}</div>
+    <div class="speedmap-legend">
+      <span><i class="speedmap-dot speedmap-dot--ours speedmap-dot--static"></i>我哋（近仗加權）</span>
+      <span><i class="speedmap-dot speedmap-dot--official speedmap-dot--static"></i>官方 Speedmap</span>
+      <span class="speedmap-legend__gap">橙線 = 兩個來源分歧 ≥2 位</span>
+    </div>
+    <div class="speedmap-forecast__note">混合 = 30% 官方 + 70% 我哋（場內 z-score）。兩個來源近乎正交，唔同意嘅地方值得留意。</div>
+  </div>`;
+}
+
+function escSvg(text) {
+  return String(text == null ? '' : text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
 function renderAnalysisDocumentSection(section, index, cardId) {
   const theme = section.theme || analysisSectionTheme(section);
   const chapter = String(index + 1).padStart(2, '0');
@@ -3672,8 +3839,16 @@ function renderAnalysisDocumentSection(section, index, cardId) {
       <div id="${readoutId}" class="analysis-sub__body" hidden>${renderDataReadout(section.rows)}</div>
     </div>`;
   } else if (section.content) {
-    const records = parseFormRecords(section.content);
-    body += records ? renderFormRecords(records) : formatRichSection(section.content);
+    // 形勢推演嗰個預測起步位表換成圖（表照走，只係唔再重覆出一次）。
+    const forecast = extractSpeedMapForecast(section.content);
+    if (forecast) {
+      body += forecast.svg;
+      const rest = forecast.rest.trim();
+      if (rest) body += formatRichSection(rest);
+    } else {
+      const records = parseFormRecords(section.content);
+      body += records ? renderFormRecords(records) : formatRichSection(section.content);
+    }
   }
 
   // Subsections (the seven per-dimension breakdowns) collapse individually.
@@ -3728,26 +3903,39 @@ function toggleAnalysisSub(id, btn) {
 // not summarisation -- and an unrecognised phrasing falls through to the
 // original sentence rather than disappearing.
 // tests/test_parser_au_structured.py asserts the map still covers the corpus.
+// Patterns anchor on the stable half of each sentence. The engine's wording
+// drifts -- "臨場步速" became "臨場節奏", "步速配腳" became "場面節奏配腳" --
+// and a pattern pinned to the whole sentence silently stops matching, putting
+// the long sentence back on the card with nothing failing.
+//
+// Both fallbacks are worth naming honestly: the engine emits them via
+// `return items[:3] or [...]`, i.e. when NO advantage/risk condition fired.
+// "安全邊際一般" read as a specific finding when it means the opposite.
 const VERDICT_SHORTHAND = [
   // 優勢
   [/場地或場館適性有實際證據/, '場地適性有實績'],
   [/對手後續升班仲交到貨/, '賽績線受驗證'],
   [/近期交代密度夠/, '近況穩定'],
-  [/整體結構平均/, '結構平均 · 冇明顯弱項'],
+  [/整體結構平均/, '冇突出加分位'],          // fallback: nothing fired
   [/往績速度考驗背景唔差/, '速度背景唔差'],
+  [/曾應付較快末段賽事環境/, '應付過快末段'],
   [/班次同負磅未見吃力/, '班次負磅唔吃力'],
-  [/檔位同場面節奏形勢配腳/, '檔位／節奏配腳'],
+  [/形勢配腳，走位有本錢/, '檔位／步速配腳'],
   [/初出前備戰唔差/, '試閘交代清晰'],
+  [/近仗至少有一兩場蝕位或受阻/, '近仗蝕位／受阻'],
   [/^(.+?)\s*呢邊嘅部署訊號偏正面/, m => `練馬師 ${m[1].trim()}`],
   // 風險
-  [/主要變數仍然係臨場節奏同對手反應/, '安全邊際一般'],
+  [/主要變數仍然係臨場/, '冇明顯扣分位'],     // fallback: nothing fired
   [/班次或負磅面前仍有壓力/, '班次／負磅有壓力'],
   [/頂磅環境下要自己讓人/, '頂磅讓人'],
   [/近況同穩定性都唔靚/, '近績差'],
   [/段速實證偏弱/, '段速偏弱'],
   [/初出馬正式實戰樣本仍然空白/, '初出馬 · 冇實戰樣本'],
-  [/場面節奏配腳未算理想/, '節奏配腳一般'],
+  [/配腳未算理想/, '走位配腳一般'],
   [/場地適性仍未有清楚支持/, '場地適性未有支持'],
+  [/可用證據鏈未算完整/, '證據鏈唔完整'],
+  [/若前段搶得太急/, '前段搶急有互燒風險'],
+  [/路程仍未正式證明/, '路程未證明'],
 ];
 
 function shortenVerdict(line) {
@@ -3773,10 +3961,9 @@ function renderVerdictChips(horse) {
     const impact = (jt.score - 60) * jt.weight_pct / 100;
     const people = [horse.jockey && `騎師 ${horse.jockey}`, horse.trainer && `練馬師 ${horse.trainer}`].filter(Boolean);
     const target = impact >= 0 ? plus : minus;
-    people.forEach(p => {
-      // the trainer may already be there via the 部署訊號 template
-      if (!target.some(x => horse.trainer && x.includes(horse.trainer) && p.includes(horse.trainer))) target.push(p);
-    });
+    // The trainer may already be listed via the 部署訊號 template, which
+    // shortens to "練馬師 <name>" -- the same chip this would add.
+    people.forEach(p => { if (!target.includes(p)) target.push(p); });
   }
 
   if (!plus.length && !minus.length) return '';
@@ -4129,29 +4316,89 @@ function deepestOpen(node, indent) {
 }
 
 function renderKvGrid(nodes) {
+  // Label above value, one pair per cell. Four columns of "label: value" on one
+  // row was unreadable -- the eye had to bind each label to a value across a
+  // gap. Two columns max, and the value gets its own line under its label.
   const rows = nodes.map(n => {
-    const m = /^(.{1,18}?)\s*[:：]\s*(.+)$/s.exec(n.text);
+    const m = /^(.{1,20}?)\s*[:：]\s*(.+)$/s.exec(n.text);
     return m ? { k: m[1], v: m[2] } : { k: '', v: n.text };
   });
-  return `<dl class="dim-kv">${rows.map(r =>
-    `<div class="dim-kv__row"><dt>${esc(r.k)}</dt><dd>${esc(r.v)}</dd></div>`).join('')}</dl>`;
+  return `<dl class="dim-kv">${rows.map(r => `<div class="dim-kv__row">${
+    r.k ? `<dt>${esc(r.k)}</dt>` : ''}<dd>${esc(r.v)}</dd></div>`).join('')}</dl>`;
+}
+
+// Detail lines under a sub-score come in five measured shapes (3,312 lines
+// sampled 2026-09-02): an adjustment "label +N ← reason" (13.3%), a base
+// "基礎分 N" (16.0%), a total "合計… ＝ N" (4.6%), a per-run "第1仗… ＝ N"
+// (24.9%) and plain prose (41.1%). Only the adjustment carries a number the
+// reader is meant to weigh, so that is the one that gets the big figure with
+// its reason beneath.
+const DETAIL_ADJUST_RE = /^(.+?)\s([+\-]\d[\d.]*)\s*←\s*(.+)$/;
+const DETAIL_BASE_RE = /^基礎分\s*([\d.]+)\s*(?:（(.+?)）)?$/;
+const DETAIL_TOTAL_RE = /^合計.*?＝\s*([\d.]+)$/;
+const DETAIL_RUN_RE = /^(第\d+仗[^：:]*)[：:]\s*(.+?)\s*＝\s*([\d.]+)$/;
+
+function renderSubScoreDetails(children, captionText) {
+  const captionNumbers = new Set((captionText || '').match(/-?\d+\.?\d*/g) || []);
+  let html = '';
+  const runs = [];
+  for (const child of children) {
+    const text = child.text;
+
+    const run = DETAIL_RUN_RE.exec(text);
+    if (run) { runs.push({ label: run[1], how: run[2], value: run[3] }); continue; }
+
+    const base = DETAIL_BASE_RE.exec(text);
+    if (base) {
+      html += `<div class="dim-adj dim-adj--anchor"><span class="dim-adj__num">${esc(base[1])}</span>`
+        + `<span class="dim-adj__label">起點${base[2] ? `<span class="dim-adj__why">${esc(base[2])}</span>` : ''}</span></div>`;
+      continue;
+    }
+    const total = DETAIL_TOTAL_RE.exec(text);
+    if (total) {
+      html += `<div class="dim-adj dim-adj--anchor dim-adj--total"><span class="dim-adj__num">${esc(total[1])}</span>`
+        + `<span class="dim-adj__label">合計</span></div>`;
+      continue;
+    }
+    const adj = DETAIL_ADJUST_RE.exec(text);
+    if (adj) {
+      const positive = !adj[2].startsWith('-');
+      html += `<div class="dim-adj dim-adj--${positive ? 'up' : 'down'}">`
+        + `<span class="dim-adj__num">${esc(adj[2])}</span>`
+        + `<span class="dim-adj__label">${esc(adj[1])}<span class="dim-adj__why">${esc(adj[3])}</span></span></div>`;
+      continue;
+    }
+    // Plain prose: skip it when every number in it is already in the caption
+    // above -- 21.9% of these lines simply restate it.
+    const own = new Set(text.match(/-?\d+\.?\d*/g) || []);
+    const restates = own.size > 0 && [...own].every(n => captionNumbers.has(n));
+    if (!restates) html += `<div class="dim-note">${esc(text)}</div>`;
+  }
+  if (runs.length) {
+    html += `<div class="dim-runs">${runs.map(r =>
+      `<div class="dim-runs__row"><span class="dim-runs__label">${esc(r.label)}</span>`
+      + `<span class="dim-runs__how">${esc(r.how)}</span>`
+      + `<span class="dim-runs__val">${esc(r.value)}</span></div>`).join('')}</div>`;
+  }
+  return html;
 }
 
 function renderSubScore(node) {
-  // "騎師分 46 ← Jason Whiting 去年官方 570 場…" — the score is the headline,
-  // the source is the caption, the nested lines are the arithmetic.
+  // "騎師分 46 ← Jason Whiting 去年官方 570 場…" — score is the headline, the
+  // source is the caption, the nested lines are the arithmetic.
   const m = /^(.+?分)\s*([\d.]+)\s*←\s*(.+)$/s.exec(node.text);
   const name = m ? m[1] : node.text.slice(0, 24);
   const score = m ? m[2] : null;
   const source = m ? m[3] : '';
-  const detail = node.children.length
-    ? `<div class="dim-sub__detail">${node.children.map(c => `<div>${esc(c.text)}</div>`).join('')}</div>`
-    : '';
+  // 近績分's caption carries the form sequence; surface it beside the name.
+  const form = /近績\s*([\dxX]+(?:-[\dxX]+)+)/.exec(source);
   return `<div class="dim-sub">
-    <div class="dim-sub__head"><span class="dim-sub__name">${esc(name)}</span>${
-      score !== null ? `<span class="dim-sub__score">${esc(score)}</span>` : ''}</div>
+    <div class="dim-sub__head">
+      <span class="dim-sub__name">${esc(name)}${form ? `<span class="dim-sub__form">${esc(form[1])}</span>` : ''}</span>
+      ${score !== null ? `<span class="dim-sub__score">${esc(score)}</span>` : ''}
+    </div>
     ${source ? `<div class="dim-sub__source">${esc(source)}</div>` : ''}
-    ${detail}
+    ${node.children.length ? `<div class="dim-sub__detail">${renderSubScoreDetails(node.children, source)}</div>` : ''}
   </div>`;
 }
 
@@ -4172,14 +4419,13 @@ function renderDimensionBody(content) {
       h += `<div class="dim-subs">${formula.children.map(renderSubScore).join('')}</div>`;
     }
   }
-  if (verdict && verdict.text) {
-    h += `<div class="dim-verdict">${esc(verdict.text)}</div>`;
-  }
+  // 判讀 is dropped on purpose: it interprets numbers shown above it, and in
+  // 57.5% of dimensions every number it cites already appears elsewhere in the
+  // same block. Removed 2026-09-02 at the reader's request.
   if (data) {
     const rows = [data.text ? { indent: 0, text: data.text, children: [] } : null, ...data.children].filter(Boolean);
     if (rows.length) h += renderKvGrid(rows);
   }
-  // Anything the three known parts did not claim (HKJC prints extra bare lines).
   const claimed = new Set([formula, verdict, data].filter(Boolean));
   const rest = blocks.filter(b => !claimed.has(b));
   if (rest.length) h += renderKvGrid(rest);
@@ -4200,7 +4446,9 @@ function renderAnalysisDetail(sections, cardId) {
       // "狀態與穩定性：72.4 分　✅ 偏強" -> name + symbol, dropped the rest
       const name = String(child.title).split(/[:：]/)[0].trim();
       const symbol = (/([✅❌➖]+)/.exec(child.title) || [, ''])[1];
-      html += `<a class="analysis-nav__dim" href="#${childId}-anchor" onclick="jumpToAnalysis(event, '${childId}-anchor', true)">`
+      const tone = /❌/.test(symbol) ? 'down' : /✅/.test(symbol) ? 'up' : 'flat';
+      html += `<a class="analysis-nav__dim analysis-nav__dim--${tone}" href="#${childId}-anchor" onclick="jumpToAnalysis(event, '${childId}-anchor', true)">`
+        + `<span class="analysis-nav__dot" aria-hidden="true"></span>`
         + `<span class="analysis-nav__text">${esc(name)}</span>`
         + (symbol ? `<span class="analysis-nav__sym">${symbol}</span>` : '')
         + `</a>`;
@@ -4213,6 +4461,60 @@ function renderAnalysisDetail(sections, cardId) {
         <nav class="analysis-document__nav" aria-label="完整分析章節"><span class="analysis-document__nav-label">章節</span>${links}</nav>
         <div class="analysis-document">${sections.map((section, index) => renderAnalysisDocumentSection(section, index, cardId)).join('')}</div>
       </div>`;
+}
+
+// Scroll-spy: a 1,200px document with a fixed rail gave no clue where you were.
+// Implemented on a scroll listener rather than IntersectionObserver because IO
+// reports nothing while the document is not being rendered, which made it
+// impossible to verify -- getBoundingClientRect works either way.
+let analysisSpyCleanup = null;
+
+function attachAnalysisSpy(detail) {
+  if (analysisSpyCleanup) { analysisSpyCleanup(); analysisSpyCleanup = null; }
+  const nav = detail.querySelector('.analysis-document__nav');
+  if (!nav) return;
+  // Leaves only. A chapter element contains its dimensions, so mixing the two
+  // makes the containing chapter match at the same time as the dimension inside
+  // it and the rule has to arbitrate between a parent and its child.
+  const targets = [...detail.querySelectorAll('.analysis-document__section')]
+    .flatMap(sec => {
+      const subs = [...sec.querySelectorAll('.analysis-sub')].filter(el => el.id);
+      return subs.length ? subs : (sec.id ? [sec] : []);
+    });
+  if (!targets.length) return;
+
+  // Throttled on a timestamp rather than requestAnimationFrame: rAF does not
+  // fire while the document is not being rendered, which makes the behaviour
+  // depend on visibility and impossible to verify off-screen.
+  let last = 0;
+  const update = () => {
+    last = Date.now();
+    if (!detail.isConnected) { if (analysisSpyCleanup) analysisSpyCleanup(); return; }
+    // The first block not yet scrolled past. A percentage-of-viewport line does
+    // not work here: collapsed rows are ~46px, so a line at 25% of an 812px
+    // viewport sits three or four rows below the one being read, and the rail
+    // pointed three items ahead of the reader.
+    // 12px, not 72: a collapsed row is ~46px tall, so a 72px line sits below a
+    // row whose top is at the viewport top and the rail pointed one item ahead.
+    const mark = 12;
+    let best = null;
+    for (const el of targets) {
+      if (el.getBoundingClientRect().bottom > mark) { best = el; break; }
+    }
+    if (!best) best = targets[targets.length - 1];
+    nav.querySelectorAll('.is-current').forEach(a => a.classList.remove('is-current'));
+    nav.querySelector(`a[href="#${best.id}"]`)?.classList.add('is-current');
+  };
+  const onScroll = () => { if (Date.now() - last >= 60) update(); };
+
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
+  analysisSpyCleanup = () => {
+    window.removeEventListener('scroll', onScroll);
+    window.removeEventListener('resize', onScroll);
+    analysisSpyCleanup = null;
+  };
+  update();
 }
 
 function jumpToAnalysis(event, targetId, expand) {
@@ -4252,6 +4554,7 @@ async function fillLazyAnalysis(panel, btn, cardId) {
   }
   const sections = buildHorseAnalysisSections({ raw_text: raw, data_readout: ctx.rows });
   panel.innerHTML = renderAnalysisDetail(sections, cardId);
+  attachAnalysisSpy(panel);
   const meta = btn.querySelector('.horse-card__expand-meta');
   if (meta) meta.innerHTML = `${sections.length} 個章節 <span class="horse-card__expand-chevron" aria-hidden="true">⌄</span>`;
   delete btn.dataset.analysisLazy;   // loaded once; keep the DOM
@@ -5049,6 +5352,13 @@ function render() {
 }
 
 function renderNow(main) {
+  // Card ids are random per render, so every re-render used to leave its
+  // entries behind: measured six race switches taking the map from 5 to 78.
+  // The DOM those ids refer to is about to be replaced, so drop them now.
+  // The fetched bundles (ANALYSIS_BUNDLES) are deliberately NOT cleared --
+  // they are keyed by meeting and are the point of the cache.
+  LAZY_ANALYSIS_CTX.clear();
+  if (analysisSpyCleanup) analysisSpyCleanup();
   ['horses', 'nba', 'tennis', 'portfolio'].forEach(sport => {
     const isActive = activeSport === sport;
     const button = document.getElementById(`sport-${sport}`);

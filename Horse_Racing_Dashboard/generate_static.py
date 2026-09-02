@@ -302,6 +302,65 @@ def _write_cache(cache_path, entries):
     temp_path.replace(cache_path)
 
 
+# ── AU 賽道幾何（周長 / 直路 / 方向）──────────────────────────────────────
+# 數據喺 `au_wong_choi_auto/resources/au_track_geometry.json`，兩個來源交叉核對，
+# 96 個場地入面 85 個有齊（EXP-20260902-01）。
+# ⚠️ **唔好喺呢度再抄一份場地名 alias 表** —— 抄咗就一定會有一日兩邊唔同步
+# （`Rosehill Gardens` / `Sandown Hillside` / `Ballarat Synthetic` 呢啲就係靠 alias
+# 對名）。一律行引擎嗰個 lookup。
+_TRACK_GEOMETRY_LOOKUP = None
+
+
+def _track_geometry_lookup():
+    global _TRACK_GEOMETRY_LOOKUP
+    if _TRACK_GEOMETRY_LOOKUP is None:
+        repo_root = Path(__file__).resolve().parent.parent
+        engine_scripts = repo_root / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"
+        if str(engine_scripts) not in sys.path:
+            sys.path.insert(0, str(engine_scripts))
+        try:
+            from au_racing_engine.engine_core import _load_track_geometry
+            _TRACK_GEOMETRY_LOOKUP = _load_track_geometry
+        except Exception as exc:  # noqa: BLE001
+            # ⚠️ 一定要出聲。靜靜返 None 就會變成「每個場次都冇賽道資料」，
+            # 而畫面上同「呢個場地本來就冇數據」一模一樣。
+            print(f"   ⚠️ 攞唔到賽道幾何（{type(exc).__name__}: {exc}）—— "
+                  f"戰場全景唔會有賽道格")
+            _TRACK_GEOMETRY_LOOKUP = False
+    return _TRACK_GEOMETRY_LOOKUP or None
+
+
+def _attach_track_geometry(meeting_data):
+    """喺 meeting payload 加 `track_geometry`。冇數據就唔加個 key。
+
+    ⚠️ 要喺**讀完 cache 之後**先叫 —— `_collect_meeting()` 嘅結果會入 cache，
+    喺嗰度加就等於「已 cache 嘅場次永遠冇賽道資料」，而且 fingerprint 唔變
+    佢哋唔會重新 parse。
+    """
+    if not isinstance(meeting_data, dict):
+        return meeting_data
+    if str(meeting_data.get("region") or "").upper() not in {"AU", "AUSTRALIA"}:
+        return meeting_data
+    lookup = _track_geometry_lookup()
+    if not lookup:
+        return meeting_data
+    try:
+        geometry = lookup(meeting_data.get("venue") or "")
+    except Exception:  # noqa: BLE001
+        return meeting_data
+    if geometry and geometry.get("circumference_m"):
+        meeting_data["track_geometry"] = {
+            "circumference_m": geometry.get("circumference_m"),
+            "straight_m": geometry.get("straight_m") or 0,
+            "direction": geometry.get("direction") or "",
+            "classification": geometry.get("classification") or "",
+            "surface": geometry.get("surface") or "",
+        }
+    else:
+        meeting_data.pop("track_geometry", None)
+    return meeting_data
+
+
 def _collect_meeting(meeting):
     meeting_data = {
         "date": meeting.date,
@@ -441,7 +500,7 @@ def collect_all_data(cache_path=DEFAULT_CACHE_PATH):
                 "consensus": consensus,
             }
         updated_entries[key] = entry
-        result["meetings"].append(entry["meeting"])
+        result["meetings"].append(_attach_track_geometry(entry["meeting"]))
         result["races"][entry["meeting_key"]] = entry["races_data"]
         result["consensus"].update(entry["consensus"])
 
