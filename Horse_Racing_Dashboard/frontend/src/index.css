@@ -1063,6 +1063,61 @@ a:hover {
   background: #fff;
 }
 
+/* Desktop 完整分析 layout.
+   The horse card runs ~1300px on a 1440px screen while the reading measure is
+   capped at 86ch (~694px), so every chapter had ~540px of dead space to its
+   right and the chapter nav was a horizontal strip that scrolled away. At
+   >=1100px the nav becomes a sticky rail in that space: the width gets used,
+   the measure stays capped, and a 1240px document becomes navigable. */
+@media (min-width: 1100px) {
+  .analysis-detail {
+    display: grid;
+    grid-template-columns: 216px minmax(0, 1fr);
+    grid-template-areas:
+      'header header'
+      'nav    doc';
+    gap: 0 18px;
+    align-items: start;
+  }
+  .analysis-detail__header { grid-area: header; }
+  .analysis-document__nav {
+    grid-area: nav;
+    position: sticky;
+    top: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 2px;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .analysis-document__nav a {
+    width: 100%;
+    justify-content: flex-start;
+  }
+  .analysis-document { grid-area: doc; }
+
+  /* Seven collapsed dimension toggles stacked in one column left the chapter
+     tall and the space beside it empty. */
+  .analysis-document__section-body {
+    max-width: none;
+  }
+  .analysis-document__section-body > .analysis-sub {
+    max-width: 86ch;
+  }
+  .analysis-document__section-body:has(> .analysis-sub + .analysis-sub) {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
+    align-items: start;
+  }
+  .analysis-document__section-body:has(> .analysis-sub + .analysis-sub) > .analysis-sub {
+    margin-top: 0;
+    max-width: none;
+  }
+}
+
 .analysis-detail__header {
   display: flex;
   align-items: baseline;
@@ -1556,6 +1611,19 @@ a:hover {
 
 .comparison__body {
   padding: var(--space-l);
+}
+
+/* Phone density.
+   Measured on a 375px screen: app-main 8 + comparison__body 16 + horse-card 8
+   + dim-strip 12, each side, left the ranking rows 269px of usable width --
+   28% of the screen spent on the padding of four nested boxes. Trimming the
+   two outer ones buys back ~20px, which goes to type size and row spacing
+   instead: the card read as cramped because the text was 10.5-11.5px and the
+   rows were 3px apart, not because it lacked padding. */
+@media (max-width: 768px) {
+  .comparison__body {
+    padding: var(--space-s);
+  }
 }
 
 /* ─── Race Selector Pills ─── */
