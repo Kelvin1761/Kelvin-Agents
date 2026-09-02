@@ -1011,6 +1011,33 @@ function formatRawAnalysis(text) {
 function getMeetingKey(m) { return `${m.date}|${m.venue}`; }
 function getRacesData(m) { return DASHBOARD_DATA.races[getMeetingKey(m)]; }
 function getConsensus(m, raceNum) { return DASHBOARD_DATA.consensus[`${getMeetingKey(m)}|${raceNum}`]; }
+
+// Betting-panel candidates come from the `consensus` payload, which historically
+// carried no odds -- so the odds box rendered empty even though every AU horse
+// record has market_win_odds / market_place_odds. Look the horse record up by
+// (race, horse number) so existing snapshots prefill too, not just ones rebuilt
+// after the payload fix.
+const _horseOddsIndex = new Map();
+function getHorseRecord(m, raceNum, horseNumber) {
+  const key = `${getMeetingKey(m)}|${raceNum}|${horseNumber}`;
+  if (_horseOddsIndex.has(key)) return _horseOddsIndex.get(key);
+  let found = null;
+  const racesData = getRacesData(m);
+  const byAnalyst = racesData?.races_by_analyst || {};
+  for (const races of Object.values(byAnalyst)) {
+    const race = (races || []).find(r => r.race_number === raceNum);
+    const horse = (race?.horses || []).find(h => h.horse_number === horseNumber);
+    if (horse) { found = horse; break; }
+  }
+  _horseOddsIndex.set(key, found);
+  return found;
+}
+function getMarketOdds(c, m, raceNum) {
+  const rec = getHorseRecord(m, raceNum, c.horse_number);
+  const win = c.market_win_odds ?? rec?.market_win_odds ?? null;
+  const place = c.market_place_odds ?? rec?.market_place_odds ?? null;
+  return { win, place };
+}
 function formatVenueDisplay(venue) {
   return ({ HappyValley: 'Happy Valley', ShaTin: 'Sha Tin' })[venue] || venue;
 }
@@ -2763,7 +2790,7 @@ function renderBetCard(c, m, raceNum) {
     const oddsLabelId = `odds-label-${raceNum}-${c.horse_number}`;
     h += `<div class="bh-step-label" id="${oddsLabelId}">\u2460 \u8f38\u5165\u8ce0\u7387</div>`;
     h += `<div class="bh-step-row">`;
-    h += `<input class="bh-odds-input" type="number" name="odds-${raceNum}-${c.horse_number}" inputmode="decimal" autocomplete="off" step="0.1" min="1" placeholder="例如 2.5…" aria-labelledby="${oddsLabelId}" value="${s.odds ?? c.market_place_odds ?? ''}" oninput="setOddsValue(${A},this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();lockOdds(${A})}">`;
+    h += `<input class="bh-odds-input" type="number" name="odds-${raceNum}-${c.horse_number}" inputmode="decimal" autocomplete="off" step="0.1" min="1" placeholder="例如 2.5…" aria-labelledby="${oddsLabelId}" value="${s.odds ?? getMarketOdds(c, m, raceNum).place ?? ''}" oninput="setOddsValue(${A},this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();lockOdds(${A})}">`;
     h += `<button type="button" class="bb bb-lock" onclick="lockOdds(${A})">\ud83d\udd12 \u78ba\u8a8d\u8ce0\u7387</button>`;
     h += `</div></div>`;
   }
