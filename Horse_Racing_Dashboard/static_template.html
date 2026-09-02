@@ -4412,10 +4412,40 @@ function renderRunRecords(nodes) {
   if (!rows.length) return '';
   const keys = [...new Set(rows.flatMap(r => Object.keys(r.fields)))];
   if (!keys.length) {
-    // "3名 1-1/4" style: no key=value pairs, so show the line as-is.
-    return `<div class="runs"><table class="runs__table"><tbody>${rows.map(r =>
-      `<tr><td class="runs__no">第${esc(r.no)}仗</td><td class="runs__when">${esc(r.when)}</td>`
-      + `<td>${esc(r.rest)}</td></tr>`).join('')}</tbody></table></div>`;
+    // "第1仗(24/06/2026 第五班): 3名 1-1/4" -- five separate facts crammed into
+    // one string. Split them into named columns, date first and shortened to
+    // DD/MM: the year is the same on every row and ate a third of the width.
+    //
+    // The source line carries no race number and no venue, so there is no 場次
+    // column to give: 仗次 is which of the six runs it was. AU additionally
+    // scores each run (「×班次係數 1.00 ×近期權重 1.0 ＝ 75.0」); HKJC publishes
+    // no such figure -- neither term exists anywhere in hkjc_racing -- so the
+    // last two columns are the placing and margin the engine actually reports.
+    const parsed = rows.map((r, i) => {
+      const when = /^\s*(\d{1,2}\/\d{1,2})(?:\/\d{2,4})?\s*(.*)$/.exec(r.when || '');
+      const place = /^\s*(\d+)\s*名\s*(.*)$/.exec(r.rest || '');
+      return {
+        no: r.no,
+        date: when ? when[1] : (r.when || ''),
+        grade: when ? when[2].trim() : '',
+        place: place ? place[1] : '',
+        margin: place ? place[2].trim() : (r.rest || ''),
+        latest: i === 0,
+      };
+    });
+    const hasGrade = parsed.some(x => x.grade);
+    const hasMargin = parsed.some(x => x.margin);
+    return `<div class="runs"><table class="runs__table runs__table--recent"><thead><tr>`
+      + `<th>日期</th><th>仗次</th>${hasGrade ? '<th>班次</th>' : ''}`
+      + `<th class="runs__num">名次</th>${hasMargin ? '<th class="runs__num">頭馬距離</th>' : ''}`
+      + `</tr></thead><tbody>${parsed.map(x =>
+        `<tr${x.latest ? ' class="runs__row--latest"' : ''}>`
+        + `<td class="runs__when">${esc(x.date)}</td>`
+        + `<td class="runs__no">第${esc(x.no)}仗${x.latest ? '<span class="runs__tag">最近</span>' : ''}</td>`
+        + (hasGrade ? `<td class="runs__grade">${esc(x.grade) || '—'}</td>` : '')
+        + `<td class="runs__num runs__place">${esc(x.place) || '—'}</td>`
+        + (hasMargin ? `<td class="runs__num">${esc(x.margin) || '—'}</td>` : '')
+        + `</tr>`).join('')}</tbody></table></div>`;
   }
   return `<div class="runs"><table class="runs__table"><thead><tr><th>仗</th><th>賽事</th>${
     keys.map(k => `<th>${esc(k)}</th>`).join('')}</tr></thead><tbody>${rows.map(r =>
@@ -4430,7 +4460,9 @@ function renderRunRecords(nodes) {
 const DATA_ROUTES = [
   [/狀態與穩定性/, [[/近6場數據/, '近績分'], [/晨操分析/, '操練趨勢分']]],
   [/馬匹健康/, [[/休賽|體重趨勢|健康掃描|健康解讀/, '風險分']]],
-  [/檔位與走位/, [[/走位窗口|檔位-走位匹配度|走位PI/, '走位匹配分'], [/檔位\s*\/\s*跑法/, '檔位分']]],
+  [/檔位與走位/, [[/走位窗口/, '近仗消耗分'],
+                  [/檔位-走位匹配度|走位PI/, '走位匹配分'],
+                  [/檔位\s*\/\s*跑法|場地偏差/, '檔位分']]],
   [/賽績線/, [[/賽績線明細|賽績線強度/, '賽績線強度分']]],
   [/段速表現/, [[/引擎分佈|最佳路程|L400|能量趨勢|步速修正|完成時間/, '速度分']]],
   [/級數優勢/, [[/班次\s*\/\s*評分背景/, '班次分']]],
@@ -4805,26 +4837,7 @@ function renderPersonStats(source) {
 // 穩定性分's caption is one long sentence carrying four counts:
 // "近6仗有3次前三、1次八名或以後。逐仗連輸距覆核：近6仗有3仗跑近前列、1仗明顯
 // 敗陣，穩定性分定為66.1". The numbers are the point; the prose buried them.
-const STABILITY_COUNTS = [
-  [/近(\d+)仗有(\d+)次前三/, (m) => ({ label: `近${m[1]}仗前三`, value: m[2], tone: 'good' })],
-  [/(\d+)次八名或以後/, (m) => ({ label: '八名以後', value: m[1], tone: 'bad' })],
-  [/有(\d+)仗跑近前列/, (m) => ({ label: '跑近前列', value: m[1], tone: 'good' })],
-  [/(\d+)仗明顯敗陣/, (m) => ({ label: '明顯敗陣', value: m[1], tone: 'bad' })],
-];
 
-// Four number tiles were far too much furniture for a one-line summary; the
-// counts read fine as a short sentence, which is all this ever needed to be.
-function renderCountStats(source) {
-  const stats = [];
-  for (const [pattern, build] of STABILITY_COUNTS) {
-    const m = pattern.exec(source || '');
-    if (m) stats.push(build(m));
-  }
-  if (stats.length < 2) return '';
-  return `<div class="counts-line">${stats.map(x =>
-    `<span class="counts-line__item counts-line__item--${x.tone}"><b>${esc(x.value)}</b> ${esc(x.label)}</span>`
-  ).join('<span class="counts-line__sep">·</span>')}</div>`;
-}
 
 // 「騎師分」個格仔係讀得最順嗰個,所以全部計分項都用返佢。冇分嘅資料錨點
 // 用同一個殼但右上角標「數據」,唔會扮成分數。
@@ -4872,8 +4885,25 @@ function renderAnchorBox(label, nodes) {
   return renderBoxShell(/^(?:數據|資料錨點?)$/.test(label) ? '數據錨點' : label, '參考', body, { anchor: true });
 }
 
+// 晨操分析 唔應該喺格入面再開一個格 —— 佢本身就係「操練趨勢分」嘅內容。
+const FLAT_INBOX_RE = /晨操分析/;
+
+// 「部署：賽日騎師有直接參與操練；操練者身份：…。操練配備：…；試閘…；備戰分60。
+// 部署正面旗標：…」全部逼喺一行。逐個小句斷行先讀得到。
+function renderTrackworkLine(text) {
+  const clean = String(text).trim();
+  const parts = clean.length > 40
+    ? clean.split(/(?<=[；。])/).map(x => x.trim()).filter(Boolean)
+    : [clean];
+  return parts.map(x => `<div class="kv-line">${esc(x)}</div>`).join('');
+}
+
 function renderInboxGroups(groups) {
   return (groups || []).map(g => {
+    if (FLAT_INBOX_RE.test(g.label)) {
+      return `<div class="dim-sub__detail dim-sub__detail--lines">${
+        g.nodes.map(c => renderTrackworkLine(c.text)).join('')}</div>`;
+    }
     const gear = /配備變動/.test(g.label) ? renderGearChange(g.nodes) : '';
     const formline = /賽績線明細/.test(g.label) && g.nodes.length >= 2
       ? renderFormLineTable(g.nodes.map(n => ({ text: `賽績線明細: ${n.text}` }))) : '';
@@ -4888,6 +4918,17 @@ function renderInboxGroups(groups) {
     const title = formline ? '' : `<div class="kv-group__title">${esc(g.label)}</div>`;
     return `<div class="kv-group kv-group--inbox">${title}${body}</div>`;
   }).join('');
+}
+
+// 一句 60 字嘅描述擠成一段好難搵到重點。夠長就逐個小句斷行,短嘅照舊一行。
+const CLAUSE_SPLIT_RE = /(?<=[、。；，：])/;
+function renderCaption(text) {
+  const clean = String(text).trim();
+  if (clean.length < 30) return `<div class="dim-sub__source">${esc(clean)}</div>`;
+  const parts = clean.split(CLAUSE_SPLIT_RE).map(x => x.trim()).filter(Boolean);
+  if (parts.length < 3) return `<div class="dim-sub__source">${esc(clean)}</div>`;
+  return `<div class="dim-sub__source dim-sub__source--rows">${
+    parts.map(x => `<span>${esc(x)}</span>`).join('')}</div>`;
 }
 
 function renderSubScore(node, meta, routedGroups) {
@@ -4910,7 +4951,6 @@ function renderSubScore(node, meta, routedGroups) {
   // the person's name is already the headline above (#3), and 近績分's caption
   // is "近績 <sequence>，<commentary>" whose sequence is the chip (#5).
   const chart = renderL600Compare(source);
-  const countLine = person ? '' : renderCountStats(source);
   const stats = person ? renderPersonStats(source) : '';
   let caption = chart ? '' : source;
   if (stats) caption = '';
@@ -4926,15 +4966,23 @@ function renderSubScore(node, meta, routedGroups) {
     </div>
     ${person ? `<div class="dim-sub__person">${esc(person)}</div>` : ''}
     ${chart}
-    ${stats}${countLine}
-    ${caption ? `<div class="dim-sub__source">${esc(caption)}</div>` : ''}
+    ${stats}
+    ${caption ? renderCaption(caption) : ''}
     ${children.length ? `<div class="dim-sub__detail">${renderSubScoreDetails(children, source)}</div>` : ''}
     ${(meta && meta.components && meta.components.length) ? `<div class="dim-parts">${
       meta.components.map(c => `<div class="dim-part">
-        <span class="dim-part__name">${esc(c.name)}</span>
-        <span class="dim-part__share">${c.share != null ? c.share + '%' : ''}</span>
-        <span class="dim-part__score">${esc(c.score)}</span>
-        ${c.source ? `<span class="dim-part__why">${esc(c.source)}</span>` : ''}
+        <div class="dim-part__head">
+          <span class="dim-part__name">${esc(c.name)}</span>
+          ${c.share != null ? `<span class="dim-part__share">佔 ${c.share}%</span>` : ''}
+          <span class="dim-part__score">${esc(c.score)}</span>
+        </div>
+        ${c.share != null ? `<div class="dim-part__bar"><span style="width:${
+          Math.max(2, Math.min(100, Number(c.share)))}%"></span></div>` : ''}
+        ${c.source ? `<div class="dim-part__why">${esc(c.source)}</div>` : ''}
+        ${c.node && c.node.children && c.node.children.length
+          ? `<div class="dim-part__detail">${
+              renderSubScoreDetails(flattenDetailNodes(c.node.children), c.source)}</div>` : ''}
+        ${renderInboxGroups(c.routed)}
       </div>`).join('')}</div>` : ''}
     ${renderInboxGroups(routedGroups)}
   </div>`;
@@ -5037,7 +5085,7 @@ function renderDimensionBody(content, dimensionTitle) {
     // 賽績線 repeats "賽績線明細: date；race；本駒名次 N；對手 …；對手其後 …"
     // five times. As key/value rows they were five wrapped paragraphs; the
     // fields are identical every time, so they belong in a table.
-    const formLines = rows.filter(r => /^賽績線明細\s*[:：]/.test(r.text));
+    const formLines = rows.filter(r => /^賽績線明細\s*[:：]/.test(r.text) && !r.dropped);
     const anchors = (formLines.length >= 2 ? rows.filter(r => !formLines.includes(r)) : rows)
       .filter(r => r.text && r.text.trim());
     if (formLines.length >= 2) h += renderFormLineTable(formLines);

@@ -1081,31 +1081,6 @@ def test_gear_codes_are_translated():
     assert definitions == 1 and uses >= 1, "the gear renderer is not wired"
 
 
-def test_stability_counts_are_pulled_out_of_the_prose():
-    """穩定性分's caption carries four counts inside one long sentence."""
-    text = _template_text()
-    assert "const STABILITY_COUNTS" in text, "the count extraction is gone"
-    definitions, uses = _definition_and_call_counts(text, 'renderCountStats')
-    assert definitions == 1 and uses >= 1, "the count stats are not wired"
-
-
-# --- 穩定性分／晨操／賽績線：睇落太重，改完之後唔好靜靜行返舊樣 -------------
-
-
-def test_stability_counts_render_as_one_line_not_tiles():
-    """四格數字牌換咗一行字。舊 class 一出現就代表改動被還原。"""
-    text = _template_text()
-    assert "counts-line__item" in text
-    assert "counts__cell" not in text
-    assert ".counts-line" in _stylesheet()
-
-
-def test_count_stats_are_not_fed_to_the_person_branch():
-    """renderPersonStats 同 renderCountStats 唔可以爭同一個位,
-    唔然騎練 box 會多咗一行同佢無關嘅穩定性數字。"""
-    assert "const countLine = person ? '' : renderCountStats(source);" in _template_text()
-
-
 def test_trackwork_lines_are_separated():
     """晨操逐行之間要有分隔,唔係一嚿過。"""
     css = _stylesheet()
@@ -1156,3 +1131,63 @@ def test_markdown_bold_does_not_reach_the_page():
     """來源係 markdown,「**中性**」原封不動 escape 出嚟就變咗一堆星號。"""
     text = _template_text()
     assert "replace(/\\*\\*(.+?)\\*\\*/g, '$1')" in text
+
+
+def test_stability_keeps_the_sentence_and_drops_the_counts():
+    """數字牌 → 一行字 → 全部剷走。留返嗰句描述,但逐個小句斷行。
+
+    穩定性分嗰句本身已經講晒「3次前三、1次八名或以後」,再抽多份數字出嚟
+    就係同一件事講兩次。
+    """
+    text = _template_text()
+    assert "counts__cell" not in text and "counts-line" not in text, \
+        "the stability counts came back"
+    assert "renderCountStats" not in text, "the counts renderer is still wired"
+    assert "CLAUSE_SPLIT_RE" in text and "dim-sub__source--rows" in text, \
+        "the long caption is no longer split into rows"
+    assert ".dim-sub__source--rows" in _stylesheet()
+
+
+def test_trackwork_has_no_box_of_its_own():
+    """晨操分析 係「操練趨勢分」嘅內容,唔應該喺格入面再開一個格。"""
+    text = _template_text()
+    assert "FLAT_INBOX_RE" in text and "renderTrackworkLine" in text
+    definitions, uses = _definition_and_call_counts(text, 'renderTrackworkLine')
+    assert definitions == 1 and uses >= 1
+
+
+def test_form_line_table_is_rendered_once():
+    """賽績線明細 routed 入 賽績線強度分 之後,維度層唔可以再畫多次同一個表。"""
+    text = _template_text()
+    assert "/^賽績線明細\\s*[:：]/.test(r.text) && !r.dropped" in text, \
+        "the dimension-level pass stopped checking `dropped` again"
+
+
+def test_draw_inputs_carry_their_own_evidence():
+    """檔位分／走位匹配分／近仗消耗分 各有各證據,唔可以全部堆去一個。"""
+    text = _template_text()
+    routes = text[text.index("const DATA_ROUTES") : text.index("const DATA_DROP")]
+    assert "'近仗消耗分'" in routes and "'走位匹配分'" in routes and "'檔位分'" in routes
+    assert "renderInboxGroups(c.routed)" in text, "component evidence is not rendered"
+    assert ".dim-part__bar" in _stylesheet()
+
+
+def test_recent_runs_have_named_columns():
+    """「第1仗(24/06/2026 第五班): 3名 1-1/4」係五件事逼成一個字串。
+
+    AU 逐仗仲有分(「×班次係數 1.00 ×近期權重 1.0 ＝ 75.0」),HKJC 冇 ——
+    `近期權重` 同 `班次係數` 喺成個 hkjc_racing 都唔存在,所以最後兩欄
+    擺嘅係引擎真係有印嘅名次同輸距,唔係砌一個分數出嚟。
+    """
+    text = _template_text()
+    assert 'runs__table--recent' in text
+    for header in ('日期', '仗次', '班次', '名次', '頭馬距離'):
+        assert f'>{header}</th>' in text, header
+    assert '.runs__table--recent thead th' in _stylesheet()
+
+
+def test_grid_children_can_shrink():
+    """Grid item 預設 min-width:auto —— 一條長行就令 375px 螢幕橫向滾。"""
+    css = _stylesheet()
+    assert '.dim-parts > .dim-part,' in css and 'min-width: 0;' in css
+    assert 'overflow-wrap: anywhere;' in css
