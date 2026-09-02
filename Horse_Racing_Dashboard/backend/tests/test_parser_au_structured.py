@@ -946,3 +946,45 @@ def test_adjustments_are_routed_into_the_box_they_name():
     assert "classifyFormulaChildren" in text, "the shape classifier is gone"
     assert "flattenDetailNodes" in text, \
         "nested signal lists (· lines under 速度分＝基準60…) would be dropped"
+
+
+# ── Reading direction and remaining duplication ────────────────────────────
+
+def test_l600_chart_says_which_way_is_faster():
+    """The bars grow right for a bigger "+", which reads as more/better -- but
+    + means SLOWER than the benchmark. The axis has to say so, and the horse's
+    bar is coloured by whether it beat the field rather than by sign."""
+    text = _template_text()
+    assert '← 快過基準' in text and '慢過基準 →' in text, \
+        "the L600 axis no longer states which direction is faster"
+    # The class is built as `l600__fill--${tone}`, so the literal only exists
+    # in the stylesheet -- asserting on the template matched nothing.
+    css = _stylesheet()
+    assert ".l600__fill--good" in css and ".l600__fill--bad" in css, \
+        "the beat-the-field / lost-to-the-field colours are gone"
+    assert "const faster = ours < field" in text, \
+        "the comparison that decides the colour is gone"
+
+
+def test_the_sentence_the_chart_replaces_is_dropped():
+    """Leaving both is the duplication the chart was meant to remove."""
+    text = _template_text()
+    assert "let caption = chart ? '' : source;" in text, \
+        "the L600 sentence is shown alongside the chart again"
+
+
+def test_reworded_restatements_are_dropped_too():
+    """騎練訊號 prints the trainer's record twice, the second time reworded and
+    with the win count added, so neither an exact-text nor a strict-number test
+    catches it. Three or more numbers with 60%+ already in the caption does."""
+    text = _template_text()
+    assert "restatesReworded" in text, "the reworded-restatement rule is gone"
+    assert "own.size >= 3 && shared >= 0.6" in text, \
+        "the overlap threshold changed; check it still drops the duplicate record"
+
+
+def test_hkjc_analyst_view_chapter_is_dropped():
+    text = _template_text()
+    match = re.search(r'const ANALYSIS_SKIP_HEADING = /(.+?)/;', text)
+    assert match and '最終判讀' in match.group(1), \
+        "HKJC's 最終判讀 (Analyst View) chapter is back"
