@@ -741,7 +741,7 @@ def test_verdict_prose_is_not_rendered():
     57.5% cite no number that is not already on screen in the same block."""
     text = _template_text()
     assert "dim-verdict" not in text.split("const VERDICT_SHORTHAND")[0] or True
-    body = re.search(r'function renderDimensionBody\(content\) \{(.+?)\n\}', text, re.S)
+    body = re.search(r'function renderDimensionBody\(content[^)]*\) \{(.+?)\n\}', text, re.S)
     assert body, "renderDimensionBody is gone"
     assert "dim-verdict" not in body.group(1), \
         "the 判讀 callout is back in the dimension body"
@@ -788,3 +788,102 @@ def test_kv_grid_stacks_label_over_value():
     assert block, ".dim-kv is gone"
     assert "minmax(300px" in block.group(1), \
         "the key/value grid packs more than two columns again"
+
+
+# ── HKJC board occupancy ───────────────────────────────────────────────────
+
+def _drop_rule():
+    sys.path.insert(0, str(GENERATOR.parent / "backend"))
+    from services.meeting_detector import _hkjc_settled_keys_to_drop
+    return _hkjc_settled_keys_to_drop
+
+
+def test_settled_hkjc_meeting_stays_until_a_newer_one_is_analysed():
+    """A settled meeting used to vanish the moment its reflector report landed,
+    which left the HKJC board empty for days between cards -- and for the whole
+    off-season. It now stays until a newer card's analysis is ready."""
+    drop = _drop_rule()
+    groups = {("2026-07-12", "ShaTin"): {"kelvin_path": "/has/analysis"}}
+    reflected = {("2026-07-12", "ShaTin")}
+    # patch the analysis probe: this meeting is analysed
+    import services.meeting_detector as md
+    original = md._hkjc_has_analysis
+    md._hkjc_has_analysis = lambda paths: True
+    try:
+        assert drop(groups, reflected) == set(), \
+            "the only analysed meeting was dropped, leaving the board empty"
+
+        groups[("2026-07-15", "HappyValley")] = {"kelvin_path": "/also/analysed"}
+        assert drop(groups, reflected) == reflected, \
+            "the settled meeting should go once a newer analysed card exists"
+    finally:
+        md._hkjc_has_analysis = original
+
+
+def test_hkjc_meetings_without_analysis_are_not_shown():
+    """A folder can hold racecards and form for days before the analysis runs;
+    it rendered as an empty meeting. 6 of 7 HKJC folders were in that state."""
+    drop = _drop_rule()
+    import services.meeting_detector as md
+    groups = {
+        ("2026-07-12", "ShaTin"): {"kelvin_path": "/analysed"},
+        ("2026-07-15", "HappyValley"): {"kelvin_path": "/racecards/only"},
+    }
+    original = md._hkjc_has_analysis
+    md._hkjc_has_analysis = lambda paths: paths.get("kelvin_path") == "/analysed"
+    try:
+        dropped = drop(groups, {("2026-07-12", "ShaTin")})
+        assert ("2026-07-15", "HappyValley") in dropped, \
+            "a meeting with no analysis would render as an empty card"
+        assert ("2026-07-12", "ShaTin") not in dropped, \
+            "the last analysed meeting must survive"
+    finally:
+        md._hkjc_has_analysis = original
+
+
+# ── Duplicate removal inside a dimension ───────────────────────────────────
+
+def test_duplicated_rows_are_dropped_by_rule_not_by_hand():
+    """最近正式賽果 appeared in FOUR dimensions and again in 完整賽績檔案;
+    試閘交代 in three, while 試閘分 is a scored box of its own."""
+    text = _template_text()
+    match = re.search(r'const KV_DROP_BY_DIMENSION = \[(.+?)\n\];', text, re.S)
+    assert match, "the per-dimension drop list is gone"
+    rules = match.group(1)
+    for dimension, row in [
+        ("狀態與穩定性", "近績序列"), ("狀態與穩定性", "試閘交代"),
+        ("速度考驗背景", "試閘交代"), ("騎練訊號", "Section內部權重"),
+        ("騎練訊號", "人馬歷史"), ("檔位形勢", "戰術劇本"),
+    ]:
+        assert row in rules, f"{dimension} no longer drops {row}"
+    assert "最近正式賽果" in text, "the global drop for 最近正式賽果 is gone"
+    assert "seen.has(row.v)" in text, \
+        "identical values are no longer de-duplicated (上仗正式賽騎師 == 歷來最佳配搭)"
+
+
+def test_total_row_matches_both_wordings():
+    """`合計（0-100 封頂）＝ 64.2` and `同場／地況往績分 ＝ 71.9` are both totals.
+    Matching only the 合計 form made the second render as a grey note, so the
+    dimension looked like it was missing its final figure."""
+    text = _template_text()
+    match = re.search(r'const DETAIL_TOTAL_RE = /(.+?)/;', text)
+    assert match, "DETAIL_TOTAL_RE is gone"
+    import re as _re
+    pattern = _re.compile(match.group(1).replace('\\\\', '\\'))
+    assert pattern.match("合計（0-100 封頂）＝ 64.2")
+    assert pattern.match("同場／地況往績分 ＝ 71.9")
+
+
+def test_l600_comparison_replaces_the_sentence():
+    """The caption states two numbers meant to be compared inside a 60-character
+    sentence. 908 of 908 captions in the 2026-09-02 corpus use one of the two
+    phrasings the pattern accepts."""
+    text = _template_text()
+    definitions, uses = _definition_and_call_counts(text, 'renderL600Compare')
+    assert definitions == 1 and uses >= 1, "the L600 comparison is not wired"
+    match = re.search(r'const L600_RE = /(.+?)/;', text)
+    assert match, "L600_RE is gone"
+    import re as _re
+    pattern = _re.compile(match.group(1).replace('\\\\', '\\'))
+    assert pattern.search("近9場所在賽事嘅 L600 平均慢過基準 0.92 秒；同場平均慢過基準 0.94 秒")
+    assert pattern.search("近7場所在賽事嘅 L600 平均快過基準 0.13 秒；同場平均慢過基準 0.97 秒")

@@ -52,8 +52,28 @@ def test_reflected_hkjc_meeting_is_removed_from_prerace_dashboard(tmp_path):
         ("2026-09-06", "ShaTin")
     ]
 
+    # 2026-09-02: a settled meeting no longer vanishes the instant its reflector
+    # report lands. It used to, which left the HKJC board empty for days between
+    # cards and for the entire off-season. It now holds the board until a NEWER
+    # meeting's analysis is ready to take over.
     (meeting / "HKJC_Reflection_Report.md").write_text("settled", encoding="utf-8")
-    assert discover_meetings(str(tmp_path)) == []
+    assert [(row.date, row.venue) for row in discover_meetings(str(tmp_path))] == [
+        ("2026-09-06", "ShaTin")
+    ], "the last analysed meeting must hold the board while nothing replaces it"
+
+    # A newer folder with racecards but no analysis is not a replacement.
+    nxt = tmp_path / "2026-09-10_HappyValley"
+    nxt.mkdir()
+    (nxt / "09-10 Race 1 排位表.md").write_text("racecard", encoding="utf-8")
+    assert [(row.date, row.venue) for row in discover_meetings(str(tmp_path))] == [
+        ("2026-09-06", "ShaTin")
+    ], "an unanalysed folder should neither show itself nor evict the settled card"
+
+    # Once its analysis lands it takes over, and the settled meeting goes.
+    (nxt / "Race_1_Auto_Analysis.md").write_text("analysis", encoding="utf-8")
+    assert [(row.date, row.venue) for row in discover_meetings(str(tmp_path))] == [
+        ("2026-09-10", "HappyValley")
+    ]
 
 
 def test_old_numeric_mc_concordance_does_not_break_parser(tmp_path):

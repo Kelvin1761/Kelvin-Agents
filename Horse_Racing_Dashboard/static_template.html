@@ -3376,6 +3376,15 @@ function parseBattlefieldOverview(text) {
     .replace(/^\s*\*{0,2}🏃\s*形勢推演\*{0,2}\s*$/gmi, '')
     // 圖自己有圖例，唔使再出一次同一句
     .replace(/^\s*>\s*「我哋」=.*$/gm, '')
+    // Boilerplate the reader asked to drop (2026-09-02). All four are fixed
+    // strings with no per-race content -- verified across today's 48 files:
+    // 48/48, 24/48, 42/48, 48/48. The first is a placeholder that says pace
+    // prediction is NOT included, which stopped being true once the speedmap
+    // was wired, so leaving it would actively contradict the chart above it.
+    .replace(/^\s*[-*>]?\s*形勢推演暫時以.*未納入步速預測。?\s*$/gm, '')
+    .replace(/^\s*[-*>]?\s*前置馬唔多，.*$/gm, '')
+    .replace(/^\s*[-*>]?\s*留後馬若入直路前.*$/gm, '')
+    .replace(/^\s*[-*>]?\s*「資料」\s*=\s*評分建基於.*$/gm, '')
     .replace(/^\s*---+\s*$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
@@ -3862,7 +3871,7 @@ function renderAnalysisDocumentSection(section, index, cardId) {
         <span class="analysis-sub__title">${esc(child.title)}</span>
         <span class="analysis-sub__chevron" aria-hidden="true">⌄</span>
       </button>
-      <div id="${childId}" class="analysis-sub__body" hidden>${renderDimensionBody(child.content)}</div>
+      <div id="${childId}" class="analysis-sub__body" hidden>${renderDimensionBody(child.content, child.title)}</div>
     </div>`;
   });
 
@@ -4315,14 +4324,48 @@ function deepestOpen(node, indent) {
   return node;
 }
 
-function renderKvGrid(nodes) {
+// Rows the reader asked to drop (2026-09-02), each because the same fact is
+// already on screen:
+//   最近正式賽果  repeated in FOUR dimensions and again in 完整賽績檔案
+//   近績序列 / Last 10   the 近績分 box states the sequence and scores it
+//   試閘交代 (狀態/騎練)  試閘分 is a scored box under 速度考驗背景
+//   Section內部權重      the formula line already shows every weight
+//   騎師 / 練馬師        the card header and the sub-score boxes name them
+//   人馬歷史             identical text to 歷來最佳配搭 in every sample checked
+//   戰術劇本 / 賽道幾何配套 / 近仗 Settled Pattern   narrative, not evidence
+const KV_DROP_ALWAYS = [/^最近正式賽果$/];
+const KV_DROP_BY_DIMENSION = [
+  [/狀態與穩定性/, [/^近績序列$/, /^Last 10/, /^試閘交代$/]],
+  [/速度考驗背景/, [/^試閘交代$/]],
+  [/騎練訊號/, [/^Section內部權重$/, /^人馬歷史$/, /^騎師\s*\/\s*練馬師$/, /^試閘交代$/]],
+  [/檔位形勢/, [/^戰術劇本/, /^賽道幾何配套$/, /^近仗 Settled Pattern$/]],
+];
+
+function kvDropList(dimensionTitle) {
+  const rules = [...KV_DROP_ALWAYS];
+  for (const [pattern, drops] of KV_DROP_BY_DIMENSION) {
+    if (pattern.test(dimensionTitle || '')) rules.push(...drops);
+  }
+  return rules;
+}
+
+function renderKvGrid(nodes, dimensionTitle) {
   // Label above value, one pair per cell. Four columns of "label: value" on one
   // row was unreadable -- the eye had to bind each label to a value across a
   // gap. Two columns max, and the value gets its own line under its label.
-  const rows = nodes.map(n => {
+  const drops = kvDropList(dimensionTitle);
+  const seen = new Set();
+  const rows = [];
+  for (const n of nodes) {
     const m = /^(.{1,20}?)\s*[:：]\s*(.+)$/s.exec(n.text);
-    return m ? { k: m[1], v: m[2] } : { k: '', v: n.text };
-  });
+    const row = m ? { k: m[1].trim(), v: m[2].trim() } : { k: '', v: n.text.trim() };
+    if (drops.some(rule => rule.test(row.k))) continue;
+    // 上仗正式賽騎師 / 歷來最佳配搭 / 人馬歷史 often carry byte-identical values.
+    if (seen.has(row.v)) continue;
+    seen.add(row.v);
+    rows.push(row);
+  }
+  if (!rows.length) return '';
   return `<dl class="dim-kv">${rows.map(r => `<div class="dim-kv__row">${
     r.k ? `<dt>${esc(r.k)}</dt>` : ''}<dd>${esc(r.v)}</dd></div>`).join('')}</dl>`;
 }
@@ -4335,7 +4378,10 @@ function renderKvGrid(nodes) {
 // its reason beneath.
 const DETAIL_ADJUST_RE = /^(.+?)\s([+\-]\d[\d.]*)\s*←\s*(.+)$/;
 const DETAIL_BASE_RE = /^基礎分\s*([\d.]+)\s*(?:（(.+?)）)?$/;
-const DETAIL_TOTAL_RE = /^合計.*?＝\s*([\d.]+)$/;
+// "合計（0-100 封頂）＝ 64.2" and "同場／地況往績分 ＝ 71.9" are both totals;
+// matching only the 合計 form left the second rendering as a grey note, which
+// is how 同場／地況往績分 looked like it was missing its final figure.
+const DETAIL_TOTAL_RE = /^(?:合計.*?|.+?分)\s*＝\s*([\d.]+)$/;
 const DETAIL_RUN_RE = /^(第\d+仗[^：:]*)[：:]\s*(.+?)\s*＝\s*([\d.]+)$/;
 
 function renderSubScoreDetails(children, captionText) {
@@ -4368,6 +4414,16 @@ function renderSubScoreDetails(children, captionText) {
         + `<span class="dim-adj__label">${esc(adj[1])}<span class="dim-adj__why">${esc(adj[3])}</span></span></div>`;
       continue;
     }
+    // Lines that only re-say the box's own headline score, dropped by request:
+    //   環境對比：… → 50.9 分（60 為中性…）        the box already shows 50.9
+    //   高過基準加分、低過扣分 → 57.3 分（60 為中性） likewise
+    //   檔位 15（大外檔）據 … 統計勝率 …            our own draw table, not evidence
+    if (/^環境對比[：:].*→\s*[\d.]+\s*分/.test(text)) continue;
+    if (/^高過基準加分、低過扣分\s*→/.test(text)) continue;
+    // The engine writes this two ways -- "統計勝率" and "歷史勝率" -- and the
+    // follow-up "勝率差 → 檔位修正 +N 分" restates the adjustment beside it.
+    if (/^檔位\s*\d+.*(?:統計|歷史)勝率/.test(text)) continue;
+    if (/^勝率差\s*→\s*檔位修正/.test(text)) continue;
     // Plain prose: skip it when every number in it is already in the caption
     // above -- 21.9% of these lines simply restate it.
     const own = new Set(text.match(/-?\d+\.?\d*/g) || []);
@@ -4383,6 +4439,39 @@ function renderSubScoreDetails(children, captionText) {
   return html;
 }
 
+// The L600 caption states two numbers the reader is meant to compare -- this
+// horse's past race environment against today's field average -- inside a
+// 60-character sentence that also explains what Sportsbet's figure is not.
+// Two bars off a shared baseline say it at a glance. 908 of 908 captions in
+// today's corpus use one of the two phrasings below; anything else falls
+// through and the sentence is shown as before.
+const L600_RE = /近\d+場所在賽事嘅 L600 平均(快|慢)過基準\s*([\d.]+)\s*秒；同場平均(快|慢)過基準\s*([\d.]+)\s*秒/;
+
+function renderL600Compare(source) {
+  const m = L600_RE.exec(source || '');
+  if (!m) return '';
+  // Signed seconds relative to the benchmark; negative means faster.
+  const ours = (m[1] === '快' ? -1 : 1) * parseFloat(m[2]);
+  const field = (m[3] === '快' ? -1 : 1) * parseFloat(m[4]);
+  const scale = Math.max(Math.abs(ours), Math.abs(field), 0.5);
+  const bar = (value, label, tone) => {
+    const pct = Math.min(Math.abs(value) / scale, 1) * 50;
+    const side = value >= 0 ? `left:50%;width:${pct}%` : `right:50%;width:${pct}%`;
+    return `<div class="l600__row">
+      <span class="l600__label">${esc(label)}</span>
+      <span class="l600__track"><span class="l600__fill l600__fill--${tone}" style="${side}"></span></span>
+      <span class="l600__val">${value >= 0 ? '+' : ''}${value.toFixed(2)}s</span>
+    </div>`;
+  };
+  const gap = field - ours;   // positive: this horse's環境 was the faster one
+  return `<div class="l600">
+    ${bar(ours, '本駒往績環境', 'ours')}
+    ${bar(field, '今場對手平均', 'field')}
+    <div class="l600__note">中線 = 基準；負數 = 快過基準。本駒環境${
+      gap >= 0 ? '快過' : '慢過'}對手平均 <b>${Math.abs(gap).toFixed(2)}s</b></div>
+  </div>`;
+}
+
 function renderSubScore(node) {
   // "騎師分 46 ← Jason Whiting 去年官方 570 場…" — score is the headline, the
   // source is the caption, the nested lines are the arithmetic.
@@ -4392,17 +4481,48 @@ function renderSubScore(node) {
   const source = m ? m[3] : '';
   // 近績分's caption carries the form sequence; surface it beside the name.
   const form = /近績\s*([\dxX]+(?:-[\dxX]+)+)/.exec(source);
+  // 騎師分 / 練馬師分 open with the person's name; pull it out so you can see
+  // who is riding and who trains without reading the sentence.
+  let person = '';
+  if (/^(?:騎師分|練馬師分)$/.test(name)) {
+    const m = /^([^\d，,；;（(]+?)\s*(?:去年|近|曾|喺|係)/.exec(source);
+    if (m && m[1].trim().length <= 28) person = m[1].trim();
+  }
   return `<div class="dim-sub">
     <div class="dim-sub__head">
       <span class="dim-sub__name">${esc(name)}${form ? `<span class="dim-sub__form">${esc(form[1])}</span>` : ''}</span>
       ${score !== null ? `<span class="dim-sub__score">${esc(score)}</span>` : ''}
     </div>
+    ${person ? `<div class="dim-sub__person">${esc(person)}</div>` : ''}
+    ${renderL600Compare(source)}
     ${source ? `<div class="dim-sub__source">${esc(source)}</div>` : ''}
     ${node.children.length ? `<div class="dim-sub__detail">${renderSubScoreDetails(node.children, source)}</div>` : ''}
   </div>`;
 }
 
-function renderDimensionBody(content) {
+function renderFormLineTable(nodes) {
+  const rows = nodes.map(n => {
+    const parts = n.text.replace(/^賽績線明細\s*[:：]\s*/, '').split('；').map(x => x.trim());
+    const [date, race, ...rest] = parts;
+    const grade = rest.find(x => /強組|中組|弱組/.test(x)) || '';
+    const own = rest.find(x => /^本駒名次/.test(x)) || '';
+    const rival = rest.find(x => /^對手\s*\[/.test(x)) || '';
+    const after = rest.find(x => /^對手其後/.test(x)) || '';
+    return { date, race, grade, own: own.replace(/^本駒名次\s*/, ''), rival: rival.replace(/^對手\s*/, ''), after: after.replace(/^對手其後\s*/, '') };
+  });
+  const head = ['日期', '賽事', '組別', '本駒名次', '同場對手', '對手其後'];
+  return `<div class="formline"><table class="formline__table"><thead><tr>${
+    head.map((h, i) => `<th${i >= 4 ? ' class="formline__cell--wide"' : ''}>${esc(h)}</th>`).join('')
+  }</tr></thead><tbody>${rows.map(r => `<tr>
+      <td>${esc(r.date)}</td><td>${esc(r.race)}</td>
+      <td>${r.grade ? `<span class="formline__grade">${esc(r.grade)}</span>` : '—'}</td>
+      <td class="formline__pos">${esc(r.own) || '—'}</td>
+      <td class="formline__cell--wide">${esc(r.rival) || '—'}</td>
+      <td class="formline__cell--wide">${esc(r.after) || '—'}</td>
+    </tr>`).join('')}</tbody></table></div>`;
+}
+
+function renderDimensionBody(content, dimensionTitle) {
   const blocks = parseIndentedBlocks(content);
   const labelled = blocks.filter(b => b.label);
   if (!labelled.length) return formatRichSection(content);
@@ -4414,7 +4534,14 @@ function renderDimensionBody(content) {
   const data = find(/數據|資料錨點/);
 
   if (formula) {
-    h += `<div class="dim-formula"><span class="dim-formula__label">點計出嚟</span><span class="dim-formula__body">${esc(formula.text)}</span></div>`;
+    // Lead with the result. The strip used to be one long run of arithmetic
+    // whose final "＝ 83.3" -- the number the box is actually about -- sat at
+    // the very end of the line.
+    const finalScore = /＝\s*([\d.]+)\s*$/.exec(formula.text);
+    const workings = finalScore ? formula.text.slice(0, finalScore.index).replace(/→\s*$/, '').trim() : formula.text;
+    h += `<div class="dim-formula">`
+      + (finalScore ? `<span class="dim-formula__result">${esc(finalScore[1])}</span>` : '')
+      + `<span class="dim-formula__body"><span class="dim-formula__label">點計出嚟</span>${esc(workings)}</span></div>`;
     if (formula.children.length) {
       h += `<div class="dim-subs">${formula.children.map(renderSubScore).join('')}</div>`;
     }
@@ -4424,11 +4551,20 @@ function renderDimensionBody(content) {
   // same block. Removed 2026-09-02 at the reader's request.
   if (data) {
     const rows = [data.text ? { indent: 0, text: data.text, children: [] } : null, ...data.children].filter(Boolean);
-    if (rows.length) h += renderKvGrid(rows);
+    // 賽績線 repeats "賽績線明細: date；race；本駒名次 N；對手 …；對手其後 …"
+    // five times. As key/value rows they were five wrapped paragraphs; the
+    // fields are identical every time, so they belong in a table.
+    const formLines = rows.filter(r => /^賽績線明細\s*[:：]/.test(r.text));
+    if (formLines.length >= 2) {
+      h += renderFormLineTable(formLines);
+      h += renderKvGrid(rows.filter(r => !formLines.includes(r)), dimensionTitle);
+    } else if (rows.length) {
+      h += renderKvGrid(rows, dimensionTitle);
+    }
   }
   const claimed = new Set([formula, verdict, data].filter(Boolean));
   const rest = blocks.filter(b => !claimed.has(b));
-  if (rest.length) h += renderKvGrid(rest);
+  if (rest.length) h += renderKvGrid(rest, dimensionTitle);
   return h;
 }
 
