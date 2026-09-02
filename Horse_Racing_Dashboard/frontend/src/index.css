@@ -2382,6 +2382,160 @@ a:hover {
   gap: 7px;
 }
 
+/* 完整分析 — collapsible subsections.
+   The per-dimension breakdown is seven blocks of arithmetic per horse. Left
+   expanded it dominated the document; collapsed it becomes a scannable index
+   the reader opens on demand. */
+.analysis-sub {
+  margin-top: 8px;
+  border: 1px solid #e5eaf2;
+  border-radius: 8px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.analysis-sub__toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 0;
+  background: #fbfcfe;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #334155;
+  min-height: 42px;
+}
+
+.analysis-sub__toggle:hover { background: #f4f7fc; }
+
+.analysis-sub__title { flex: 1; min-width: 0; }
+
+.analysis-sub__chevron {
+  color: #94a3b8;
+  transition: transform 0.18s ease;
+  flex-shrink: 0;
+}
+
+.analysis-sub__toggle.is-open .analysis-sub__chevron { transform: rotate(180deg); }
+
+.analysis-sub__body {
+  padding: 10px 12px 12px;
+  border-top: 1px solid #eef2f7;
+  font-size: 0.72rem;
+  line-height: 1.75;
+}
+
+/* AU form records rendered as a table (see parseFormRecords). */
+.form-records {
+  overflow-x: auto;
+  margin-top: 4px;
+}
+
+.form-records__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.7rem;
+  color: #334155;
+  font-variant-numeric: tabular-nums;
+}
+
+.form-records__table th,
+.form-records__table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #eef2f7;
+  text-align: left;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.form-records__table th {
+  color: #64748b;
+  font-size: 0.62rem;
+  font-weight: 750;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.form-records__table tbody tr:last-child td { border-bottom: 0; }
+.form-records__table tbody tr:nth-child(even) { background: #fafcff; }
+
+.form-records__tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.6rem;
+  font-weight: 700;
+}
+
+/* A six-column table does not fit a 375px screen: it kept scrolling sideways
+   and the wrapped 走勢 cell left tall empty gaps in every row. On phones each
+   start becomes one compact block instead, with the header row dropped and
+   the running line on its own second line. */
+@media (max-width: 768px) {
+  .form-records { overflow-x: visible; }
+  .form-records__table,
+  .form-records__table tbody { display: block; width: 100%; }
+  .form-records__table thead { display: none; }
+  .form-records__table tr {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 2px 8px;
+    padding: 8px 2px;
+    border-bottom: 1px solid #eef2f7;
+  }
+  .form-records__table tbody tr:last-child { border-bottom: 0; }
+  .form-records__table td {
+    display: inline-block;
+    border: 0;
+    padding: 0;
+    white-space: nowrap;
+    font-size: 0.68rem;
+  }
+  .form-records__table td.form-records__cell--optional { display: none; }
+  .form-records__table td[data-label='名次'] { font-weight: 700; }
+  .form-records__table td[data-label='走勢'] {
+    flex-basis: 100%;
+    white-space: normal;
+    color: #64748b;
+    font-size: 0.64rem;
+  }
+  .form-records__table td[data-label='走勢']::before {
+    content: '走勢 ';
+    color: #94a3b8;
+  }
+}
+
+/* The title span had no min-width, so a long chapter name ("六維排名矩陣＋參考
+   維度逐項拆解") ran under this badge and was clipped on a phone. */
+.analysis-document__section-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.analysis-document__section-count {
+  margin-left: auto;
+  flex-shrink: 0;
+  align-self: flex-start;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #64748b;
+  background: #eef2f7;
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+@media (max-width: 768px) {
+  .analysis-sub__toggle { padding: 11px 10px; min-height: 46px; }
+  .analysis-sub__body { padding: 10px; }
+}
+
 .battlefield-ranking__header > span {
   color: #64748b;
   font-size: 0.65rem;
@@ -2391,6 +2545,7 @@ a:hover {
 .battlefield-ranking__scroll {
   overflow-x: auto;
 }
+
 
 .battlefield-ranking__table {
   width: 100%;
@@ -2427,6 +2582,15 @@ a:hover {
 .battlefield-ranking__row--top {
   background: #f4f8ff !important;
 }
+/* On a phone the extra columns forced a 560px table into a sideways scroll.
+   The five core columns answer the question the table exists for; the rest
+   (AU: 資料/定位 · HKJC: 信心分/風險分/情境標記) stay on desktop only. */
+@media (max-width: 768px) {
+  .battlefield-ranking__cell--optional { display: none; }
+  .battlefield-ranking__scroll { overflow-x: visible; }
+  .battlefield-ranking__table { min-width: 0; }
+}
+
 
 .battlefield-ranking__rank {
   display: inline-flex;
@@ -2818,6 +2982,33 @@ a:hover {
   .battlefield-ranking__table th,
   .battlefield-ranking__table td {
     padding: 7px 9px;
+  }
+  .battlefield-ranking__table th,
+  .battlefield-ranking__table td {
+    padding: 7px 6px;
+  }
+  /* 馬名 and 綜合戰力分 carry hard min-widths for the desktop layout; on a
+     phone they are what is left pushing the table wider than the screen. */
+  .battlefield-ranking__runner {
+    min-width: 0;
+    gap: 6px;
+  }
+  .battlefield-ranking__horse-name {
+    white-space: normal;
+    /* break-word here chopped English names mid-word ("Gua/rant/or") and made
+       every row three lines tall. Wrap at spaces; only break a single word
+       that genuinely cannot fit. */
+    word-break: normal;
+    overflow-wrap: anywhere;
+  }
+  /* Dropping the score bar on mobile returns ~60px to the horse-name column,
+     which is what stops the names wrapping. The number and the Grade badge
+     both survive, and they are what the column is read for. */
+  .battlefield-ranking__score {
+    min-width: 0;
+  }
+  .battlefield-ranking__score > span {
+    display: none;
   }
   .battlefield__chips {
     gap: 6px;

@@ -366,13 +366,25 @@ test("long horse analysis shows every data row and every expanded section", () =
 
   const sections = buildHorseAnalysisSections(horse);
   assert.equal(sections[0].title, "結論");
-  assert.equal(sections.length, 4);
+  // 數據判讀 moved off the preview card and became a chapter of 完整分析
+  // (2026-09-02): the ranking-matrix strip now says what the card version said.
+  // It is kept as a chapter rather than dropped, or the readout would vanish
+  // entirely on this fallback path.
+  assert.equal(sections.length, 5);
   assert.equal(sections.filter((section) => section.title === "評級矩陣").length, 1);
-  assert.equal(sections.filter((section) => section.title === "數據判讀").length, 0);
+  const readoutSection = sections.find((section) => section.title === "數據判讀");
+  assert.ok(readoutSection, "數據判讀 should survive as a chapter");
+  assert.equal(readoutSection.rows.length, 6, "the chapter carries the structured rows");
   assert.match(sections.find((section) => section.title === "評級矩陣").content, /第一段評級。[\s\S]*第二段評級。/);
 
   const html = renderHorseCard(horse, 1);
+  // The rows still render through renderDataReadout -- inside the document now,
+  // collapsed behind its own toggle, rather than on the card.
   assert.match(html, /data-readout--complete/);
+  // Bound the check to the preview half of the card: a greedy [\s\S]* would
+  // match the readout inside 完整分析 further down and always "fail".
+  const previewHalf = html.split("horse-card__expand-btn")[0];
+  assert.doesNotMatch(previewHalf, /data-readout/);
   assert.equal((html.match(/data-readout__item/g) || []).length, 6);
   assert.doesNotMatch(html, /長理由六/);
   assert.equal((html.match(/data-readout__reason/g) || []).length, 5);
@@ -380,11 +392,11 @@ test("long horse analysis shows every data row and every expanded section", () =
   assert.match(html, /horse-silk horse-silk--sm/);
   assert.match(html, /https:\/\/example\.test\/G292\.gif/);
   assert.match(html, /horse-card__expand-btn" aria-expanded="false"/);
-  assert.match(html, /4 個章節/);
+  assert.match(html, /5 個章節/);
   assert.match(html, /analysis-document/);
   assert.match(html, /analysis-document__nav/);
   assert.match(html, /rich-heading rich-heading--5">細節標題/);
-  assert.equal((html.match(/analysis-document__section analysis-document__section--/g) || []).length, 4);
+  assert.equal((html.match(/analysis-document__section analysis-document__section--/g) || []).length, 5);
   assert.match(html, /全部內容已展開 · 可用章節索引快速跳讀/);
   assert.doesNotMatch(html, /<details|analysis-topic|syncAnalysisAccordion|數據明細|重複數據內容/);
 });

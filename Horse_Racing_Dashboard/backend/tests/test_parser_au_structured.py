@@ -357,3 +357,70 @@ def test_slimming_keeps_prose_that_raw_text_does_not_carry():
     assert dropped == 0
     assert detail["verdict"] == "not in raw", "dropped prose the renderer cannot recover"
     assert detail["evidence"] == ["nor this"]
+
+
+# ── 完整分析 / mobile layout ───────────────────────────────────────────────
+
+STYLESHEET = Path(__file__).resolve().parents[2] / "frontend" / "src" / "index.css"
+
+
+def _stylesheet():
+    if not STYLESHEET.exists():
+        pytest.skip("index.css not present")
+    return STYLESHEET.read_text(encoding="utf-8")
+
+
+def test_analysis_is_split_on_document_headings():
+    """完整分析 used to classify raw_text line by line against loose patterns.
+
+    Measured on one AU horse: 核心分析 absorbed 5,244 of 8,048 characters, the
+    block's own `### 【No.1】…` header surfaced as a chapter, and chapters came
+    out in priority order. Every horse block on both platforms carries a real
+    #### / ##### heading tree (477/477 AU, 131/131 HKJC), so the split is
+    structural now.
+    """
+    text = _template_text()
+    definitions, calls = _definition_and_call_counts(text, 'splitAnalysisByHeadings')
+    assert definitions == 1, "splitAnalysisByHeadings was removed"
+    assert calls >= 1, "the structural splitter is defined but never called"
+
+
+def test_sections_already_on_the_card_are_skipped_once():
+    """評分總覽 is the ranking strip, 主要優勢/主要風險 are card rows. Repeating
+    them inside 完整分析 is what made the document long."""
+    text = _template_text()
+    match = re.search(r'const ANALYSIS_SKIP_HEADING = /(.+?)/;', text)
+    assert match, "the skip list is gone -- 完整分析 will duplicate the card"
+    pattern = match.group(1)
+    for heading in ("評分總覽", "主要優勢", "主要風險"):
+        assert heading in pattern, f"{heading} is no longer skipped"
+
+
+def test_mobile_ranking_overrides_come_after_the_desktop_min_width():
+    """CSS order bug, hit for real: the mobile rules were inserted BEFORE
+    `.battlefield-ranking__table { min-width: 560px }`, so at equal specificity
+    the desktop rule won and the table still scrolled sideways on a phone even
+    with every optional column hidden."""
+    css = _stylesheet()
+    base = css.find("min-width: 560px")
+    override = css.find(".battlefield-ranking__table { min-width: 0; }")
+    assert base != -1, "the desktop min-width is gone; this guard is stale"
+    assert override != -1, "the mobile min-width override was removed"
+    assert override > base, \
+        "the mobile override is declared before the desktop rule and loses to it"
+
+
+def test_mobile_hides_only_the_non_core_ranking_columns():
+    text = _template_text()
+    match = re.search(r"const RANKING_CORE = \[([^\]]+)\]", text)
+    assert match, "the mobile ranking column list is gone"
+    for column in ("排名", "馬號", "馬名", "綜合戰力分", "Grade"):
+        assert column in match.group(1), f"{column} dropped from the mobile table"
+
+
+def test_data_readout_is_not_rendered_twice():
+    """It was on the preview card AND inside 完整分析. The card version is gone;
+    the 完整分析 one must stay reachable."""
+    text = _template_text()
+    _, calls = _definition_and_call_counts(text, 'renderDataReadout')
+    assert calls == 1, f"expected exactly one renderDataReadout call site, found {calls}"
