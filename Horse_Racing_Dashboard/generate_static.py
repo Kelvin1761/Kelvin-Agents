@@ -553,6 +553,42 @@ def generate_html(data):
     return html
 
 
+def meeting_slug(key):
+    """Filesystem-safe name for a "date|venue" meeting key."""
+    return re.sub(r"[^A-Za-z0-9_-]+", "-", key).strip("-").lower()
+
+
+def extract_analysis_bundles(payload):
+    """Pull `raw_text` out of the inlined payload into per-meeting side files.
+
+    Measured 2026-09-02 on a six-meeting card: raw_text is 6.79 MiB of a 9.62
+    MiB snapshot -- 70.5% -- and it is only read when the reader opens 完整分析
+    on one horse. Inlining it meant every visitor downloaded six meetings of
+    full analysis text to look at one race.
+
+    Returns (payload_without_raw_text, {slug: {"race|horse": text}}). The caller
+    writes the bundles beside the HTML; the page fetches one on first expand.
+
+    IMPORTANT: only the HTML-inlined copy is stripped. `dashboard-data.json`
+    stays complete, because it is the base snapshot that incremental merges
+    build on -- stripping it would permanently lose raw_text for every meeting
+    not re-parsed that day.
+    """
+    bundles = {}
+    for key, entry in (payload.get("races") or {}).items():
+        bundle = {}
+        for analyst, races in (entry.get("races_by_analyst") or {}).items():
+            for race in races:
+                for horse in race.get("horses") or []:
+                    raw = horse.pop("raw_text", None)
+                    if not raw:
+                        continue
+                    bundle[f"{analyst}|{race.get('race_number')}|{horse.get('horse_number')}"] = raw
+        if bundle:
+            bundles[meeting_slug(key)] = bundle
+    return payload, bundles
+
+
 def _slim_for_transport(payload):
     """Drop per-horse fields that are verbatim duplicates of another field.
 
@@ -654,6 +690,30 @@ def _check_upload_size(path: Path, label: str) -> None:
               f"而 2026-08-07 就係咁死咗三晚")
 
 
+def _write_analysis_bundles(directory: Path, bundles):
+    """Write one JSON file per meeting and remove files for meetings that left.
+
+    Stale files are deleted rather than left behind: a meeting dropped from the
+    snapshot whose analysis file survived would keep serving text for a card
+    that no longer exists.
+    """
+    if not bundles:
+        return []
+    directory.mkdir(parents=True, exist_ok=True)
+    written = []
+    expected = set()
+    for slug, bundle in bundles.items():
+        path = directory / f"{slug}.json"
+        expected.add(path.name)
+        path.write_text(json.dumps(bundle, ensure_ascii=False), encoding="utf-8")
+        _check_upload_size(path, f"Analysis bundle {slug}")
+        written.append(path)
+    for existing in directory.glob("*.json"):
+        if existing.name not in expected:
+            existing.unlink()
+    return written
+
+
 def _write_json(path: Path, payload):
     path.parent.mkdir(parents=True, exist_ok=True)
     payload, dropped = _slim_for_transport(payload)
@@ -708,6 +768,12 @@ def parse_args():
              "local meeting folders. The scheduler builds its snapshot first; "
              "rescanning would both discard that work and require reading HK "
              "meetings from Google Drive, which launchd cannot do.",
+    )
+    parser.add_argument(
+        "--output-analysis-dir",
+        default="",
+        help="Where to write the per-meeting 完整分析 bundles (default: an "
+             "`analysis/` directory beside the HTML).",
     )
     parser.add_argument(
         "--drop-meeting",
@@ -773,13 +839,29 @@ def main():
         print(f"   Transport slim: dropped {slimmed} duplicated fields")
 
     print("   Building HTML...")
-    html = generate_html(data)
+    # The HTML gets a copy with raw_text lifted out; `data` keeps it so the
+    # snapshot JSON written below stays a complete base for the next merge.
+    html_payload = copy.deepcopy(data)
+    html_payload, analysis_bundles = extract_analysis_bundles(html_payload)
+    html = generate_html(html_payload)
+    # generate_html rebuilds the live sports feed on the copy it is handed;
+    # carry that back so the snapshot JSON does not ship yesterday's feed.
+    for key in ("sports_feed", "sports_history", "meta"):
+        if key in html_payload:
+            data[key] = html_payload[key]
     
     output_path = Path(args.output_html)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
     # The HTML is the biggest artifact we upload — check it, not just the JSON.
     _check_upload_size(output_path, "Dashboard HTML")
+
+    analysis_dir = Path(args.output_analysis_dir or (output_path.parent / "analysis"))
+    written = _write_analysis_bundles(analysis_dir, analysis_bundles)
+    if written:
+        total = sum(path.stat().st_size for path in written)
+        print(f"   Analysis bundles: {len(written)} files, "
+              f"{total / 1024 / 1024:.2f} MiB lifted out of the HTML")
 
     if args.output_json:
         json_path = Path(args.output_json)

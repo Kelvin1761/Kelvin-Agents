@@ -247,7 +247,10 @@ test("cache-first navigation is paired with an eviction on manual reload", () =>
   assert.match(html, /content-type[\s\S]{0,40}includes\('text\/html'\)/);
   assert.doesNotMatch(html, /req\.mode === 'navigate'/);
   // And the version has to move, or activate() keeps the old strategy's cache.
-  assert.match(sw, /const CACHE_VERSION = "wongchoi-v2"/);
+  // Asserted as a pattern rather than a pinned literal: a pinned version fails
+  // on exactly the change it is asking for (bumping when the strategy changes),
+  // which is what happened when /analysis/ caching was added in v3.
+  assert.match(sw, /const CACHE_VERSION = "wongchoi-v\d+"/);
 });
 
 test("dashboard overview keeps an eleven-race meeting in the dense desktop layout", () => {
