@@ -2977,6 +2977,55 @@ a:hover {
 .rate__pair { display: flex; gap: 14px; font-size: 0.7rem; color: #475569; }
 .rate__pair b { color: #1e293b; font-size: 0.8rem; }
 
+/* Gear change: the codes mean nothing on their own, and the verdict used to
+   sit in a separate column far from the change it described. */
+.gear {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.7rem;
+}
+
+.gear__side { display: flex; flex-direction: column; gap: 1px; }
+.gear__when { font-size: 0.6rem; color: #94a3b8; font-weight: 700; }
+.gear__kit { color: #334155; font-weight: 700; }
+.gear__arrow { color: #cbd5e1; font-size: 0.9rem; }
+.gear__arrow--changed { color: #d97706; }
+
+.gear__verdict {
+  margin-left: auto;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #64748b;
+  font-size: 0.64rem;
+  font-weight: 700;
+}
+
+.gear__verdict--changed { background: #fffbeb; color: #b45309; }
+
+/* Counts pulled out of a prose caption (穩定性分). */
+.counts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+
+.counts__cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 56px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #eef2f7;
+}
+
+.counts__num { font-size: 1rem; font-weight: 800; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.counts__cell--good .counts__num { color: #047857; }
+.counts__cell--bad .counts__num { color: #b91c1c; }
+.counts__label { font-size: 0.6rem; color: #64748b; font-weight: 700; }
+
+.kv-group--inbox { margin-top: 8px; background: #f8fafc; }
+
 .dim-verdict {
   margin-top: 10px;
   padding: 9px 12px;

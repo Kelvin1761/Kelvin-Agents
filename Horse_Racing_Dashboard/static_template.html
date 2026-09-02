@@ -4419,6 +4419,63 @@ function renderRunRecords(nodes) {
       keys.map(k => `<td>${esc(r.fields[k] || '—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
+// Every data group belongs to the sub-score that consumed it -- the captions
+// say so themselves ("風險分 71 ← 醫療欄未見事故。已再綜合醫療紀錄、休賽日數同
+// 體重波幅"). Leaving them in a separate 數據 block below the boxes meant the
+// figures a score was built from sat away from the score.
+const DATA_ROUTES = [
+  [/狀態與穩定性/, [[/近6場數據/, '近績分'], [/晨操分析/, '操練趨勢分']]],
+  [/馬匹健康/, [[/休賽|體重趨勢|健康掃描|健康解讀/, '風險分']]],
+  [/檔位與走位/, [[/走位窗口|檔位-走位匹配度|走位PI/, '走位匹配分'], [/檔位\s*\/\s*跑法/, '檔位分']]],
+  [/賽績線/, [[/賽績線明細|賽績線兌現度|賽績線強度|對手陣容強度|上仗結果/, '賽績線強度分']]],
+  [/段速表現/, [[/引擎分佈|最佳路程|L400|能量趨勢|步速修正|完成時間/, '速度分']]],
+  [/級數優勢/, [[/班次\s*\/\s*評分背景/, '班次分']]],
+  [/騎練訊號/, [[/近6場騎師分佈/, '騎師分']]],
+];
+// Not a scoring input: the adjustment uses the rider's last three outings on
+// this horse, this row is the career record. Different windows, and only the
+// former is scored.
+const DATA_DROP = [[/騎練訊號/, /人馬組合統計/]];
+
+function dataRouteFor(dimensionTitle, label) {
+  for (const [dim, rules] of DATA_ROUTES) {
+    if (!dim.test(dimensionTitle || '')) continue;
+    for (const [pattern, target] of rules) if (pattern.test(label)) return target;
+  }
+  return null;
+}
+
+function dataIsDropped(dimensionTitle, label) {
+  return DATA_DROP.some(([dim, pattern]) => dim.test(dimensionTitle || '') && pattern.test(label));
+}
+
+// HKJC prints gear as codes. "上仗 B/XB → 今仗 B/XB" told you nothing unless you
+// already knew them, and "無變動" arrived as a separate row far to the right.
+const GEAR_NAMES = {
+  B: '眼罩', XB: '交叉鼻箍', H: '頭罩', P: '護耳', TT: '脷帶', CP: '羊毛面箍',
+  SR: '鼻箍', V: '半掩眼罩', E: '耳塞', BO: '單邊眼罩', SB: '陰影捲',
+  CO: '鼻箍(高)', PC: '頸圈', TS: '舌帶', Z: '嘴罩',
+};
+
+function translateGear(code) {
+  const parts = String(code).split('/').map(x => x.trim()).filter(Boolean);
+  if (!parts.length) return '';
+  return parts.map(x => GEAR_NAMES[x] ? `${GEAR_NAMES[x]}(${x})` : x).join('、');
+}
+
+function renderGearChange(nodes) {
+  const line = nodes.map(n => n.text).join(' ');
+  const m = /上仗\s*([^\s→]+)\s*→\s*今仗\s*([^\s，,]+)/.exec(line);
+  if (!m) return '';
+  const changed = !/無變動/.test(line) && m[1] !== m[2];
+  return `<div class="gear">
+    <div class="gear__side"><span class="gear__when">上仗</span><span class="gear__kit">${esc(translateGear(m[1]))}</span></div>
+    <span class="gear__arrow ${changed ? 'gear__arrow--changed' : ''}">→</span>
+    <div class="gear__side"><span class="gear__when">今仗</span><span class="gear__kit">${esc(translateGear(m[2]))}</span></div>
+    <span class="gear__verdict ${changed ? 'gear__verdict--changed' : ''}">${changed ? '有變動' : '無變動'}</span>
+  </div>`;
+}
+
 function renderKvGrid(nodes, dimensionTitle) {
   // Label above value, one pair per cell. Four columns of "label: value" on one
   // row was unreadable -- the eye had to bind each label to a value across a gap.
@@ -4430,13 +4487,14 @@ function renderKvGrid(nodes, dimensionTitle) {
     const m = /^(.{1,20}?)\s*[:：]\s*(.*)$/s.exec(n.text);
     const key = m ? m[1].trim() : '';
     const value = m ? m[2].trim() : n.text.trim();
+    if (n.dropped) continue;
     if (drops.some(rule => rule.test(key))) continue;
 
     // A row whose value is empty carries its content in its children. Rendering
     // only the top level printed "近6場數據:" with nothing under it -- 22 source
     // lines came out as 6 on 2026-07-12 ShaTin.
     if (!value && n.children && n.children.length) {
-      const table = renderRunRecords(n.children);
+      const table = (/配備變動/.test(key) ? renderGearChange(n.children) : '') || renderRunRecords(n.children);
       const body = table || `<dl class="dim-kv dim-kv--nested">${n.children.map(c => {
         const cm = /^(.{1,20}?)\s*[:：]\s*(.+)$/s.exec(c.text);
         return `<div class="dim-kv__row">${cm ? `<dt>${esc(cm[1].trim())}</dt><dd>${esc(cm[2].trim())}</dd>`
@@ -4688,7 +4746,29 @@ function renderPersonStats(source) {
   return `<div class="rate">${volume}${bars}</div>`;
 }
 
-function renderSubScore(node, meta) {
+// 穩定性分's caption is one long sentence carrying four counts:
+// "近6仗有3次前三、1次八名或以後。逐仗連輸距覆核：近6仗有3仗跑近前列、1仗明顯
+// 敗陣，穩定性分定為66.1". The numbers are the point; the prose buried them.
+const STABILITY_COUNTS = [
+  [/近(\d+)仗有(\d+)次前三/, (m) => ({ label: `近${m[1]}仗前三`, value: m[2], tone: 'good' })],
+  [/(\d+)次八名或以後/, (m) => ({ label: '八名以後', value: m[1], tone: 'bad' })],
+  [/有(\d+)仗跑近前列/, (m) => ({ label: '跑近前列', value: m[1], tone: 'good' })],
+  [/(\d+)仗明顯敗陣/, (m) => ({ label: '明顯敗陣', value: m[1], tone: 'bad' })],
+];
+
+function renderCountStats(source) {
+  const stats = [];
+  for (const [pattern, build] of STABILITY_COUNTS) {
+    const m = pattern.exec(source || '');
+    if (m) stats.push(build(m));
+  }
+  if (stats.length < 2) return '';
+  return `<div class="counts">${stats.map(x =>
+    `<div class="counts__cell counts__cell--${x.tone}"><span class="counts__num">${esc(x.value)}</span>`
+    + `<span class="counts__label">${esc(x.label)}</span></div>`).join('')}</div>`;
+}
+
+function renderSubScore(node, meta, routedGroups) {
   // "騎師分 46 ← Jason Whiting 去年官方 570 場…" — score is the headline, the
   // source is the caption, the nested lines are the arithmetic.
   const m = /^(.+?分)\s*([\d.]+)\s*←\s*(.+)$/s.exec(node.text);
@@ -4708,7 +4788,7 @@ function renderSubScore(node, meta) {
   // the person's name is already the headline above (#3), and 近績分's caption
   // is "近績 <sequence>，<commentary>" whose sequence is the chip (#5).
   const chart = renderL600Compare(source);
-  const stats = person ? renderPersonStats(source) : '';
+  const stats = person ? renderPersonStats(source) : renderCountStats(source);
   let caption = chart ? '' : source;
   if (stats) caption = '';
   if (caption && person) caption = caption.replace(person, '').replace(/^[\s，,、:：]+/, '');
@@ -4726,6 +4806,15 @@ function renderSubScore(node, meta) {
     ${stats}
     ${caption ? `<div class="dim-sub__source">${esc(caption)}</div>` : ''}
     ${children.length ? `<div class="dim-sub__detail">${renderSubScoreDetails(children, source)}</div>` : ''}
+    ${(routedGroups || []).map(g => {
+      const gear = /配備變動/.test(g.label) ? renderGearChange(g.nodes) : '';
+      const formline = /賽績線明細/.test(g.label) && g.nodes.length >= 2
+        ? renderFormLineTable(g.nodes.map(n => ({ text: `賽績線明細: ${n.text}` }))) : '';
+      const table = gear || formline || renderRunRecords(g.nodes);
+      const body = table || `<div class="kv-group__lines">${g.nodes.map(c =>
+        `<div class="kv-line">${esc(c.text)}</div>`).join('')}</div>`;
+      return `<div class="kv-group kv-group--inbox"><div class="kv-group__title">${esc(g.label)}</div>${body}</div>`;
+    }).join('')}
   </div>`;
 }
 
@@ -4762,6 +4851,35 @@ function renderDimensionBody(content, dimensionTitle) {
   const verdict = find(/判讀/);
   const data = find(/數據|資料錨點/);
 
+  // Pull the data groups each sub-score consumed out of 數據 / 健康解讀 /
+  // 晨操分析 so they render inside that box (see DATA_ROUTES).
+  const routed = new Map();
+  const consumed = new Set();
+  for (const block of blocks) {
+    if (block === formula || block === verdict) continue;
+    const label = block.label || '';
+    const target = dataRouteFor(dimensionTitle, label);
+    if (target && block.children.length) {
+      routed.set(target, [...(routed.get(target) || []), { label, nodes: block.children }]);
+      consumed.add(block);
+      continue;
+    }
+    for (const child of block.children) {
+      const childLabel = (/^(.{1,20}?)\s*[:：]/.exec(child.text) || [, ''])[1].trim();
+      if (dataIsDropped(dimensionTitle, childLabel)) { child.dropped = true; continue; }
+      const to = dataRouteFor(dimensionTitle, childLabel);
+      if (!to) continue;
+      const bucket = routed.get(to) || [];
+      // 賽績線明細 repeats five times; as five separate groups it was five
+      // one-line boxes instead of one table.
+      const existing = bucket.find(g => g.label === childLabel);
+      if (existing) existing.nodes.push(...(child.children.length ? child.children : [child]));
+      else bucket.push({ label: childLabel, nodes: child.children.length ? child.children : [child] });
+      routed.set(to, bucket);
+      child.dropped = true;
+    }
+  }
+
   if (formula) {
     // Lead with the result. The strip used to be one long run of arithmetic
     // whose final "＝ 83.3" -- the number the box is actually about -- sat at
@@ -4774,7 +4892,7 @@ function renderDimensionBody(content, dimensionTitle) {
     if (formula.children.length) {
       const { subs, unrouted } = classifyFormulaChildren(formula.children);
       if (subs.length) {
-        h += `<div class="dim-subs">${subs.map(x => renderSubScore(x.node, x)).join('')}</div>`;
+        h += `<div class="dim-subs">${subs.map(x => renderSubScore(x.node, x, routed.get(x.name))).join('')}</div>`;
       }
       // Anything that names no sub-score belongs to the dimension as a whole.
       if (unrouted.length) {
@@ -4805,9 +4923,11 @@ function renderDimensionBody(content, dimensionTitle) {
   // flags) that AU has no equivalent for. It has no value of its own, only
   // children, so the old top-level-only pass dropped all seven lines.
   for (const block of rest) {
-    if (!block.children.length) continue;
+    if (consumed.has(block)) continue;
+    const left = block.children.filter(c => !c.dropped);
+    if (!left.length) continue;
     h += `<div class="kv-group kv-group--wide"><div class="kv-group__title">${esc(block.label || block.text)}</div>`
-      + `<div class="kv-group__lines">${block.children.map(c =>
+      + `<div class="kv-group__lines">${left.map(c =>
           `<div class="kv-line">${esc(c.text)}</div>`
           + (c.children.length ? c.children.map(g => `<div class="kv-line kv-line--sub">${esc(g.text)}</div>`).join('') : '')
         ).join('')}</div></div>`;

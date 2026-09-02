@@ -1025,3 +1025,57 @@ def test_person_strike_rate_is_charted_against_the_benchmark():
         "去年官方 528 場、91 冠（勝率 17%，收縮後 17%，全國基準 13%）")
     assert _template_const('HK_RATE_RE').search("希威森兩季917仗：勝率6%、上名率22%"), \
         "HKJC's wording carries no benchmark and must still render its figures"
+
+
+# ── Data routed into the box that consumed it ──────────────────────────────
+
+def test_data_groups_are_routed_into_their_scoring_box():
+    """The captions say which sub-score consumed which data ("風險分 71 ←
+    醫療欄未見事故。已再綜合醫療紀錄、休賽日數同體重波幅"), but the figures sat
+    in a separate 數據 block below the boxes, away from the score they built."""
+    text = _template_text()
+    assert "const DATA_ROUTES" in text, "the routing table is gone"
+    match = re.search(r'const DATA_ROUTES = \[(.+?)\n\];', text, re.S)
+    assert match
+    routes = match.group(1)
+    for source, target in [
+        ("近6場數據", "近績分"), ("晨操分析", "操練趨勢分"),
+        ("健康掃描", "風險分"), ("走位窗口", "走位匹配分"),
+        ("班次", "班次分"), ("賽績線明細", "賽績線強度分"),
+    ]:
+        assert source in routes and target in routes, f"{source} no longer routes to {target}"
+
+
+def test_repeated_data_labels_merge_into_one_table():
+    """賽績線明細 appears five times; as five separate groups it rendered as
+    five one-line boxes instead of one table."""
+    text = _template_text()
+    assert "existing.nodes.push" in text, \
+        "repeated data labels are no longer merged"
+
+
+def test_career_combo_row_is_dropped_as_unscored():
+    """人馬歷史（騎師分）+4.0 uses the rider's last three outings on this horse;
+    人馬組合統計 is the career record and feeds no score."""
+    text = _template_text()
+    assert "const DATA_DROP" in text and "人馬組合統計" in text, \
+        "the unscored career-combo row is back"
+
+
+def test_gear_codes_are_translated():
+    """"上仗 B/XB → 今仗 B/XB" meant nothing without the code list, and the
+    verdict (無變動) arrived as a separate row far from the change."""
+    text = _template_text()
+    assert "const GEAR_NAMES" in text, "the gear glossary is gone"
+    for code, name in [("B", "眼罩"), ("XB", "交叉鼻箍"), ("TT", "脷帶")]:
+        assert f"{code}: '{name}'" in text, f"gear code {code} lost its Chinese name"
+    definitions, uses = _definition_and_call_counts(text, 'renderGearChange')
+    assert definitions == 1 and uses >= 1, "the gear renderer is not wired"
+
+
+def test_stability_counts_are_pulled_out_of_the_prose():
+    """穩定性分's caption carries four counts inside one long sentence."""
+    text = _template_text()
+    assert "const STABILITY_COUNTS" in text, "the count extraction is gone"
+    definitions, uses = _definition_and_call_counts(text, 'renderCountStats')
+    assert definitions == 1 and uses >= 1, "the count stats are not wired"
