@@ -44,12 +44,18 @@
        equal visual weight, while the engine weights them 35.2% to 8.6%. Bar
        width is the ranking weight, so the dimension actually driving the rank
        looks like it. */
-    .dim-strip { margin-top: 10px; border: 1px solid #E2E8F0; border-radius: 8px; background: #F8FAFC; padding: 10px 12px; }
+    /* Capped for the same reason the analysis body caps at 86ch: on a 1300px
+       card the bar stretched to 907px, far past the resolution a ±11 point
+       scale needs, and the row read as pulled apart rather than dense. */
+    .dim-strip { margin-top: 10px; border: 1px solid #E2E8F0; border-radius: 8px; background: #F8FAFC; padding: 10px 12px; max-width: 760px; }
     .dim-strip__head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
     .dim-strip__title { font-size: 0.72rem; font-weight: 700; color: #475569; letter-spacing: .02em; }
     .dim-strip__evidence { font-size: 0.68rem; font-weight: 600; color: #059669; }
     .dim-strip__evidence--thin { color: #B45309; }
-    .dim-row { display: grid; grid-template-columns: minmax(84px, 1fr) 46px 1fr auto; align-items: center; gap: 8px; padding: 3px 0; font-size: 0.72rem; }
+    /* The name column used to be 1fr, which stretched a six-character label to
+       457px on a wide card and squeezed the bar. Cap it and give the width to
+       the bar, which is the part that carries information. */
+    .dim-row { display: grid; grid-template-columns: minmax(84px, 168px) 46px minmax(120px, 1fr) auto; align-items: center; gap: 8px; padding: 3px 0; font-size: 0.72rem; }
     .dim-row__name { color: #334155; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .dim-row__score { font-variant-numeric: tabular-nums; font-weight: 700; text-align: right; color: #0F172A; }
     /* Diverging track: the centre line is the neutral score, bars grow right
@@ -67,13 +73,26 @@
        the whole point of the strip, were invisible on the device this gets
        read on. Give the bar its own line under the name. */
     @media (max-width: 768px) {
-      .dim-row { grid-template-columns: 1fr auto; row-gap: 3px; padding: 6px 0; }
+      /* Type sizes here were 11.5px for the row and 10.6px for the meta, with
+         3px between the two lines of each row -- legible but dense enough to
+         read as cramped on a phone. Bigger text and more room between rows,
+         paid for by the padding trimmed off the containers. */
+      .dim-strip { padding: 12px 10px; max-width: none; }
+      .mkt { max-width: none; }
+      .dim-row { grid-template-columns: 1fr auto; row-gap: 6px; padding: 9px 0; font-size: 0.78rem; }
       .dim-row__name { grid-column: 1; grid-row: 1; }
-      .dim-row__score { grid-column: 2; grid-row: 1; }
-      .dim-row__track { grid-column: 1; grid-row: 2; }
-      .dim-row__meta { grid-column: 2; grid-row: 2; text-align: right; }
+      .dim-row__score { grid-column: 2; grid-row: 1; font-size: 0.84rem; }
+      .dim-row__track { grid-column: 1; grid-row: 2; height: 10px; align-self: center; }
+      .dim-row__meta { grid-column: 2; grid-row: 2; text-align: right; font-size: 0.72rem; }
+      .dim-row + .dim-row { border-top: 1px solid #EEF2F7; }
       .dim-strip__title-hint { display: none; }
-      .dim-strip__head { align-items: center; }
+      .dim-strip__head { align-items: center; margin-bottom: 10px; }
+      .dim-strip__title { font-size: 0.76rem; }
+      .dim-strip__evidence { font-size: 0.72rem; }
+      .dim-strip__driver { font-size: 0.74rem; gap: 6px 14px; margin-top: 10px; padding-top: 9px; }
+      .dim-ref { font-size: 0.7rem; margin-top: 9px; padding-top: 9px; }
+      .mkt { font-size: 0.78rem; padding: 10px 12px; gap: 7px 12px; }
+      .mkt__gap { font-size: 0.72rem; padding: 2px 9px; }
     }
     .dim-ref { margin-top: 7px; padding-top: 7px; border-top: 1px dashed #CBD5E1; font-size: 0.66rem; color: #64748B; line-height: 1.7; }
     .dim-ref b { color: #475569; }
@@ -81,7 +100,7 @@
 
     /* Market line — the model's rank next to the market's, and the gap between
        them. Both numbers already exist per horse; only the comparison is new. */
-    .mkt { margin-top: 8px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 0.72rem; padding: 7px 10px; border-radius: 8px; background: #EFF6FF; border: 1px solid #DBEAFE; }
+    .mkt { margin-top: 8px; max-width: 760px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 0.72rem; padding: 7px 10px; border-radius: 8px; background: #EFF6FF; border: 1px solid #DBEAFE; }
     .mkt__odds { font-weight: 700; color: #1E40AF; font-variant-numeric: tabular-nums; }
     .mkt__ranks { color: #475569; font-variant-numeric: tabular-nums; }
     .mkt__gap { font-weight: 700; padding: 1px 7px; border-radius: 999px; font-size: 0.68rem; }
