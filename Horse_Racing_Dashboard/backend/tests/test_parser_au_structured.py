@@ -137,7 +137,11 @@ def test_reference_dimensions_are_kept_and_flagged(parsed_meeting):
                if not d.ranking_weighted]
     weighted = [d for h in horses for d in (h.dimension_details or [])
                 if d.ranking_weighted]
-    if not any('參考' in b for b in blocks):
+    # The guard has to key on the heading form this test is about. Bare 參考
+    # also matches the 「📎 參考分（不直接入7D公式）」 summary line, which every
+    # block carries -- so the test demanded flagged dimensions from meetings
+    # whose format never prints one.
+    if not any(re.search(r'^#{4,6}[^\n]*（參考', b, re.M) for b in blocks):
         pytest.skip("this meeting prints no reference dimensions")
     assert flagged, "reference dimensions were dropped instead of flagged"
     assert weighted, "no ranking dimensions survived"
@@ -1002,7 +1006,11 @@ def test_nested_data_children_are_rendered():
         "nested data groups are collapsed again"
     definitions, uses = _definition_and_call_counts(text, 'renderRunRecords')
     assert definitions == 1 and uses >= 1, "per-run record tables are not wired"
-    assert "kv-group--wide" in text, "the 晨操分析 block is no longer surfaced"
+    # 晨操分析 used to be its own wide group; it is now an anchor box so every
+    # block in a dimension reads in the same shell. What must not regress is
+    # that the block is still rendered at all.
+    definitions, uses = _definition_and_call_counts(text, 'renderAnchorBox')
+    assert definitions == 1 and uses >= 1, "the 晨操分析 block is no longer surfaced"
 
 
 def test_hkjc_chips_fall_back_to_dimension_impacts():
@@ -1079,3 +1087,72 @@ def test_stability_counts_are_pulled_out_of_the_prose():
     assert "const STABILITY_COUNTS" in text, "the count extraction is gone"
     definitions, uses = _definition_and_call_counts(text, 'renderCountStats')
     assert definitions == 1 and uses >= 1, "the count stats are not wired"
+
+
+# --- 穩定性分／晨操／賽績線：睇落太重，改完之後唔好靜靜行返舊樣 -------------
+
+
+def test_stability_counts_render_as_one_line_not_tiles():
+    """四格數字牌換咗一行字。舊 class 一出現就代表改動被還原。"""
+    text = _template_text()
+    assert "counts-line__item" in text
+    assert "counts__cell" not in text
+    assert ".counts-line" in _stylesheet()
+
+
+def test_count_stats_are_not_fed_to_the_person_branch():
+    """renderPersonStats 同 renderCountStats 唔可以爭同一個位,
+    唔然騎練 box 會多咗一行同佢無關嘅穩定性數字。"""
+    assert "const countLine = person ? '' : renderCountStats(source);" in _template_text()
+
+
+def test_trackwork_lines_are_separated():
+    """晨操逐行之間要有分隔,唔係一嚿過。"""
+    css = _stylesheet()
+    assert re.search(r"\.kv-line \{[^}]*border-bottom: 1px dashed", css)
+    assert ".kv-group__lines > .kv-line:last-child { border-bottom: 0; }" in css
+
+
+def test_formline_table_does_not_repeat_its_own_label():
+    """表本身已經有欄名,上面再寫多次「賽績線明細」就係重複。"""
+    assert "const title = formline ? '' : " in _template_text()
+
+
+def test_dropped_formline_rows_stay_dropped():
+    text = _template_text()
+    drop = text[text.index("const DATA_DROP") : text.index("const DATA_DROP") + 400]
+    for label in ("賽績線兌現度", "對手陣容強度", "上仗結果"):
+        assert label in drop, label
+
+
+def test_composition_line_nests_its_inputs():
+    """「組合:沙田加權 檔位55%+走位匹配25%+近仗消耗20%」證明呢三項
+    係 檔位走位情境分 嘅輸入,唔係同級兄弟。"""
+    text = _template_text()
+    assert "COMPOSITION_RE" in text
+    assert "parent.components" in text
+    assert "dim-part__share" in text
+    assert ".dim-part" in _stylesheet()
+
+
+def test_every_scoring_component_uses_the_same_box():
+    """騎師分 係讀得最順嗰個格,所以計分項一律用返佢個殼。
+
+    維度層嘅加減分(完成時間對標趨勢 −5、除去配備 −3)以前散落喺格仔外面嘅
+    dim-loose 度,睇落唔似計分項;數據錨點就用同一個殼但標「參考」。
+    """
+    text = _template_text()
+    shell_defs, shell_uses = _definition_and_call_counts(text, 'renderBoxShell')
+    assert shell_defs == 1 and shell_uses >= 2, "the shared box shell is not wired"
+    adj_defs, adj_uses = _definition_and_call_counts(text, 'renderDimensionAdjustBox')
+    assert adj_defs == 1 and adj_uses >= 1, "dimension-level adjustments left the box"
+    assert 'class="dim-loose"' not in text, \
+        "a scoring component is rendered outside the box again"
+    # 「未入評分」嘅嘢唔可以擺喺計分項中間。
+    assert 'dim-note' in text and '未入評分|僅供參考' in text
+
+
+def test_markdown_bold_does_not_reach_the_page():
+    """來源係 markdown,「**中性**」原封不動 escape 出嚟就變咗一堆星號。"""
+    text = _template_text()
+    assert "replace(/\\*\\*(.+?)\\*\\*/g, '$1')" in text
