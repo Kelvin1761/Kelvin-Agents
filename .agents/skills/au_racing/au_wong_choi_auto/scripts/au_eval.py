@@ -69,7 +69,7 @@ from model_evaluation_decision import (  # noqa: E402
     evaluate_candidate,
 )
 from au_racing_engine.scoring import (  # noqa: E402
-    MATRIX_ABILITY_SCALE,
+    compose_matrix_score,
     MATRIX_WEIGHTS,
 )
 
@@ -127,9 +127,8 @@ def load_races(path):
 def default_scorer(row):
     """現行引擎：ability = Σ 維度分 × 權重 + 所有已聲明 overlay。"""
     m = matrix_mapper.map_features_to_matrix_scores(row["features"])
-    core = sum(m.get(k, 60.0) * w for k, w in MATRIX_WEIGHTS.items())
     return (
-        60.0 + (core - 60.0) / MATRIX_ABILITY_SCALE
+        compose_matrix_score(m)
         + float(row["wet"] or 0.0)
         + float(row.get("proven_class") or 0.0)
     )
@@ -169,7 +168,10 @@ def configured_scorer(*, weights=None, wet_scale=1.0, leaf_overrides=None):
     total = sum(float(weights.get(key, 0.0)) for key in keys)
     if total <= 0:
         raise ValueError("Matrix weights must have a positive total.")
-    normalised = {key: float(weights.get(key, 0.0)) / total for key in keys}
+    # Search relative allocations at the live coefficient budget. Explicit
+    # coefficients can be evaluated with compose_matrix_score directly.
+    budget = sum(MATRIX_WEIGHTS.values())
+    normalised = {key: float(weights.get(key, 0.0)) * budget / total for key in keys}
 
     def scorer(row):
         features = dict(row["features"])
@@ -178,10 +180,8 @@ def configured_scorer(*, weights=None, wet_scale=1.0, leaf_overrides=None):
         # 一定要跟 `engine_core` 嗰條 ability 公式（2026-08-26 加咗
         # MATRIX_ABILITY_SCALE）。唔跟就會同真引擎差一個只影響 wet /
         # proven_class 相對份量嘅偏差 —— `au_matrix_refit verify` 就係捉呢類嘢。
-        core = sum(matrices.get(key, 60.0) * weight
-                   for key, weight in normalised.items())
         return (
-            60.0 + (core - 60.0) / MATRIX_ABILITY_SCALE
+            compose_matrix_score(matrices, normalised)
             + float(row["wet"] or 0.0) * float(wet_scale)
             + float(row.get("proven_class") or 0.0)
         )
