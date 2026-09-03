@@ -747,7 +747,18 @@ def refresh_dashboard_after_results(
     *,
     meeting_dirs: list[Path],
 ) -> bool:
-    """Rebuild/deploy after settlement so reflected HKJC meetings disappear."""
+    """Re-publish after settlement. It does NOT take the meeting off the board.
+
+    The docstring used to claim reflected meetings disappear here. They do not:
+    this calls `deploy.sh` with no `WC_DASHBOARD_BASE_SNAPSHOT`, so deploy takes
+    the "no scheduler snapshot" branch and republishes the live projection
+    unchanged. That is the behaviour Kelvin wants (2026-09-04) -- a settled card
+    should stay visible until the next one is analysed, not vanish the morning
+    after -- so the removal happens in the pre-race merge instead, where
+    `collect_incremental_au_data` drops superseded HKJC meetings.
+    ⚠️ Consequence worth knowing: reflector results do not reach the dashboard
+    through this path either.
+    """
     code, output = run_cmd([str(DASHBOARD_DEPLOY)], timeout=1800)
     if code != 0:
         state["pending_dashboard_refresh"] = {

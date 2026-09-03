@@ -470,6 +470,32 @@ def collect_incremental_au_data(base_snapshot_path, meeting_dir):
         for key, value in data.get("consensus", {}).items()
         if not key.startswith(f"{meeting_key}|")
     }
+    if meeting.region == Region.HKJC:
+        # HKJC runs one card at a time and the board shows the latest, not an
+        # archive. `meeting_detector` already keeps a settled meeting only until
+        # a newer analysis is ready to replace it, but the incremental path does
+        # not go through the detector -- it can only add or replace -- so
+        # without this the previous card stayed on the board for ever. Measured
+        # 2026-09-04: 2026-07-12 ShaTin was still live two months on.
+        # Only meetings that are NOT newer are dropped, so re-publishing an old
+        # meeting cannot wipe a newer card.
+        stale = {
+            f"{item['date']}|{item['venue']}"
+            for item in data.get("meetings", [])
+            if item.get("region") == Region.HKJC.value and item["date"] <= meeting.date
+        }
+        if stale:
+            data["meetings"] = [
+                item for item in data.get("meetings", [])
+                if f"{item['date']}|{item['venue']}" not in stale
+            ]
+            data["races"] = {k: v for k, v in data.get("races", {}).items()
+                             if k not in stale}
+            data["consensus"] = {
+                k: v for k, v in data.get("consensus", {}).items()
+                if k.split("|")[0] + "|" + k.split("|")[1] not in stale
+            }
+            print(f"   Superseded HKJC meetings dropped: {sorted(stale)}")
     data["meetings"].append(meeting_data)
     data["meetings"].sort(key=lambda item: item["date"], reverse=True)
     data["races"][meeting_key] = races_data
