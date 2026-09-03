@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import glob
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
 import sys
@@ -190,6 +191,15 @@ def extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix):
         return False, str(e)
 
 
+def _trackwork_file_ok(output_dir, race_no, suffix, min_bytes):
+    """True when a non-trivial 晨操 file for this race exists, whatever its
+    date prefix. Returns the largest match so a stale empty file next to a
+    good one cannot fail the check."""
+    pattern = os.path.join(output_dir, f"*Race {race_no} 晨操.{suffix}")
+    sizes = [os.path.getsize(p) for p in glob.glob(pattern) if os.path.isfile(p)]
+    return bool(sizes) and max(sizes) > min_bytes
+
+
 def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
     """Extract 晨操 (morning trackwork) for all races in one call.
     Uses --fail-soft so missing data doesn't abort the pipeline."""
@@ -206,11 +216,16 @@ def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
             encoding='utf-8', env=SUBPROCESS_ENV
         )
         for r in races:
-            json_path = os.path.join(output_dir, f"{date_prefix} Race {r} 晨操.json")
-            md_path = os.path.join(output_dir, f"{date_prefix} Race {r} 晨操.md")
+            # ⚠️ Match by suffix, not by `date_prefix`. This module builds
+            # `09-06` (MM-DD) while `extract_trackwork.py` writes
+            # `2026-09-06` (YYYY-MM-DD), so an exact-path check could never
+            # find the files it had just written: every run reported
+            # "晨操 0/N (fallback)" and stored `trackwork_ready: 0` while all
+            # N races were on disk and complete. Globbing keeps the check
+            # working if either side changes its prefix again.
             results['races'][r] = {
-                'json_ok': os.path.exists(json_path) and os.path.getsize(json_path) > 100,
-                'md_ok': os.path.exists(md_path) and os.path.getsize(md_path) > 50,
+                'json_ok': _trackwork_file_ok(output_dir, r, "json", 100),
+                'md_ok': _trackwork_file_ok(output_dir, r, "md", 50),
             }
         total_ok = sum(1 for v in results['races'].values() if v['json_ok'] and v['md_ok'])
         results['ok'] = total_ok > 0

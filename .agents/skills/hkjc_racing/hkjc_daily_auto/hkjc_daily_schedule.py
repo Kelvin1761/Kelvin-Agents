@@ -431,6 +431,40 @@ def run_watch(state: dict, state_path: Path, *, meeting: dict | None = None) -> 
     return EXIT_OK
 
 
+def readiness_digest(meeting_dir: Path) -> str:
+    """One compact line per fact from `Extraction_Readiness.json`.
+
+    The failure notice used to paste `output[-1200:]` -- 1,200 characters of raw
+    extractor stdout. Telegram clipped it, and what survived was the middle of a
+    per-race checklist with the header gone, so the one thing a reader needs
+    ("what is missing, and will it fix itself") was the part that got cut.
+    Returns "" when the file is absent or unreadable: a missing digest must not
+    stop the notice going out.
+    """
+    try:
+        data = json.loads((meeting_dir / "Extraction_Readiness.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    expected = data.get("expected_races") or 0
+    lines = [
+        f"排位表 {data.get('racecards_ready', 0)}/{expected}"
+        f" · 賽績 {data.get('formguides_ready', 0)}/{expected}"
+        f" · 晨操 {data.get('trackwork_ready', 0)}/{expected}"
+        f" · PDF {'✅' if data.get('starter_pdf_ready') else '❌'}"
+    ]
+    missing = []
+    for race in data.get("races") or []:
+        if not race.get("racecard_ok"):
+            missing.append(f"R{race.get('race')}排位")
+        if not race.get("formguide_ok"):
+            missing.append(f"R{race.get('race')}賽績")
+    if missing:
+        shown = "、".join(missing[:8])
+        more = f" 等 {len(missing)} 項" if len(missing) > 8 else ""
+        lines.append(f"未齊：{shown}{more}")
+    return "\n".join(lines)
+
+
 def run_prerace(
     state: dict,
     state_path: Path,
@@ -488,12 +522,22 @@ def run_prerace(
         # First failure is actionable; later retries stay quiet except for
         # periodic reminders so an unpublished formguide cannot flood Telegram.
         if not temporary or streak == 1 or streak % 6 == 0:
-            status = "資料未齊，會每30分鐘自動重試" if temporary else "需要人工檢查"
-            notify(
-                f"{'⏳' if temporary else '❌'} HKJC automation 未完成｜"
-                f"{meeting['date']} {meeting['venue']}\n"
-                f"exit={code}｜第{streak}次｜{status}\n{output[-1200:]}"
-            )
+            status = "資料未齊，30 分鐘後自動重試" if temporary else "需要人工檢查"
+            digest = readiness_digest(meeting_dir)
+            parts = [
+                f"{'⏳' if temporary else '❌'} HKJC 未完成｜"
+                f"{meeting['date']} {meeting['venue']}",
+                f"exit={code}｜第{streak}次｜{status}",
+            ]
+            if digest:
+                parts.append(digest)
+            if not temporary:
+                # A genuine failure still needs the extractor's own words, but
+                # 300 characters of tail is enough to name the exception.
+                parts.append(output[-300:].strip())
+            elif not digest:
+                parts.append(output[-300:].strip())
+            notify("\n".join(parts))
         if temporary:
             set_control_outcome("partial", reason="prerace_source_incomplete", meeting=key)
             return EXIT_TEMPORARY
