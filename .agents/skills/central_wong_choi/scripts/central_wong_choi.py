@@ -38,7 +38,11 @@ from shared_wong_choi.dashboard_backup import (  # noqa: E402
     backup_d1_ledger,
     collect_d1_backup_status,
 )
-from shared_wong_choi.release_approval import approve_release  # noqa: E402
+from shared_wong_choi.release_approval import (  # noqa: E402
+    approve_release,
+    reject_release,
+    resolve_pending_selector,
+)
 from shared_wong_choi.release_activation import activate_release  # noqa: E402
 from shared_wong_choi.release_manager import (  # noqa: E402
     DEFAULT_STATE_ROOT,
@@ -143,12 +147,20 @@ def build_parser() -> argparse.ArgumentParser:
     release.add_argument("--no-notify", action="store_true")
     release.add_argument("--json", action="store_true")
     approve = sub.add_parser("approve")
-    approve.add_argument("--commit", required=True)
+    approve.add_argument("--commit", default="")
     approve.add_argument("--actor", required=True)
     approve.add_argument("--dry-run", action="store_true")
     approve.add_argument("--no-notify", action="store_true")
     approve.add_argument("--activate", action="store_true")
     approve.add_argument("--json", action="store_true")
+
+    reject = sub.add_parser("reject")
+    reject.add_argument("--commit", default="")
+    reject.add_argument("--actor", required=True)
+    reject.add_argument("--reason", default="")
+    reject.add_argument("--dry-run", action="store_true")
+    reject.add_argument("--no-notify", action="store_true")
+    reject.add_argument("--json", action="store_true")
     bootstrap = sub.add_parser("bootstrap-models")
     bootstrap.add_argument("--commit", required=True)
     bootstrap.add_argument("--actor", required=True)
@@ -181,12 +193,36 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 1
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("status") != "push_failed" else 1
+    if args.command in {"approve", "reject"}:
+        try:
+            selector = resolve_pending_selector(state_root, args.commit, repo)
+        except ReleaseError as exc:
+            print(json.dumps({"status": "blocked", "error": str(exc)},
+                             ensure_ascii=False, indent=2))
+            return 1
+    if args.command == "reject":
+        try:
+            result = reject_release(
+                repo,
+                state_root,
+                selector=selector,
+                actor=args.actor,
+                reason=args.reason,
+                notify=not args.no_notify,
+                dry_run=args.dry_run,
+            )
+        except ReleaseError as exc:
+            result = {"status": "blocked", "error": str(exc)}
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 1
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
     if args.command == "approve":
         try:
             result = approve_release(
                 repo,
                 state_root,
-                selector=args.commit,
+                selector=selector,
                 actor=args.actor,
                 notify=not args.no_notify,
                 dry_run=args.dry_run,
@@ -200,7 +236,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 result["activation_result"] = activate_release(
                     repo,
                     state_root,
-                    selector=args.commit,
+                    selector=selector,
                     actor=args.actor,
                     production_roots=_production_roots(),
                     notify=not args.no_notify,

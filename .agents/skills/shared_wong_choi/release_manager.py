@@ -258,7 +258,10 @@ def _release_message(payload: dict) -> str:
         f"狀態：{payload['status']} · deploy：{payload['activation']}",
     ]
     if payload["status"] == "pushed":
-        lines.append("需要人手批准先merge／activate。")
+        lines.append(
+            "需要人手批准先merge／activate。\n"
+            "覆 /approve 批准，或 /notapprove 拒絕；淨得一個等緊就唔使打 SHA。"
+        )
     return "\n".join(lines)
 
 

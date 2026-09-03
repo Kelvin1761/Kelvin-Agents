@@ -43,7 +43,9 @@ HELP = ("我識嘅嘢：\n"
         "/storage         SSD／外置碟／Drive 分層狀態\n"
         "/dashboard       中央 Dashboard／投注 ledger 狀態\n"
         "/release         待批准 release\n"
-        "/approve SHA     重新驗證後批准一個 immutable release\n"
+        "/approve         批准等緊嗰個 release（唔使打 SHA）\n"
+        "/approve SHA     指定邊個 release（有多過一個等緊嗰陣）\n"
+        "/notapprove      拒絕等緊嗰個 release；main 唔會郁\n"
         "/bootstrap_models SHA  production對齊後首次登記四線model\n"
         "/au_status       AU 最近幾個 run 點\n"
         "/today           live dashboard 而家有乜\n"
@@ -267,28 +269,58 @@ def cmd_release() -> str:
     return "\n".join(lines)
 
 
-def cmd_approve(arg: str = "", *, actor: str) -> str:
-    if actor != AUTHORISED_TELEGRAM_ACTOR:
-        raise PermissionError("authenticated Telegram actor is required")
-    selector = arg.strip()
-    if not re.fullmatch(r"[0-9a-f]{12,64}", selector):
-        return "格式：/approve 12位或以上小寫 commit SHA"
-    repo = _central_repo_root()
-    skills = repo / ".agents" / "skills"
-    if str(skills) not in sys.path:
-        sys.path.insert(0, str(skills))
-    from shared_wong_choi.release_approval import approve_release  # noqa: PLC0415
-    from shared_wong_choi.release_activation import activate_release  # noqa: PLC0415
-    from shared_wong_choi.release_manager import ReleaseError  # noqa: PLC0415
-
-    state = Path(
+def _central_state_root() -> Path:
+    return Path(
         os.environ.get(
             "WONGCHOI_CONTROL_STATE_ROOT",
             Path.home() / "WongChoiData" / "WongChoiControl",
         )
     )
+
+
+def _load_approval_api():
+    """Import the governance entry points by their dotted module path.
+
+    ``from shared_wong_choi import release_approval`` would resolve to the
+    package attribute and silently ignore a patched ``sys.modules`` entry, so
+    tests could no longer isolate the bot from real Central state.
+    """
+    repo = _central_repo_root()
+    skills = repo / ".agents" / "skills"
+    if str(skills) not in sys.path:
+        sys.path.insert(0, str(skills))
+    from shared_wong_choi.release_approval import (  # noqa: PLC0415
+        approve_release,
+        reject_release,
+        resolve_pending_selector,
+    )
+    from shared_wong_choi.release_manager import ReleaseError  # noqa: PLC0415
+
+    return repo, approve_release, reject_release, resolve_pending_selector, ReleaseError
+
+
+def cmd_approve(arg: str = "", *, actor: str) -> str:
+    if actor != AUTHORISED_TELEGRAM_ACTOR:
+        raise PermissionError("authenticated Telegram actor is required")
+    given = arg.strip().lower()
+    # 逐個字對格式先，唔啱就即刻回，唔會 load 到任何 release code。
+    if given and not re.fullmatch(r"[0-9a-f]{12,64}", given):
+        return "格式：/approve（唔使參數）或 /approve 12位或以上小寫 commit SHA"
+    repo, approve, _reject, resolve, ReleaseError = _load_approval_api()
+    from shared_wong_choi.release_activation import activate_release  # noqa: PLC0415
+
+    state = _central_state_root()
+    # 冇參數就自己搵嗰個等緊嘅 release。多過一個就唔估，照列出嚟叫人指定 ——
+    # 批錯一個 release 唔係再打多次指令就補得返。
+    if given:
+        selector = given
+    else:
+        try:
+            selector = resolve(state, "", repo)
+        except ReleaseError as exc:
+            return f"⛔ {exc}"
     try:
-        result = approve_release(
+        result = approve(
             repo,
             state,
             selector=selector,
@@ -316,6 +348,46 @@ def cmd_approve(arg: str = "", *, actor: str) -> str:
     return (
         f"✅ 已批准、merge及部署 {(result.get('commit') or selector)[:12]}\n"
         "每一步都有immutable event；重覆指令冇副作用。"
+    )
+
+
+def cmd_notapprove(arg: str = "", *, actor: str) -> str:
+    """Record an explicit rejection. Nothing is merged, nothing is deleted."""
+    if actor != AUTHORISED_TELEGRAM_ACTOR:
+        raise PermissionError("authenticated Telegram actor is required")
+    # 第一個 token 係完整 SHA 先當佢係 selector；否則成句當原因文字，
+    # 只會寫入 event detail，永遠唔會變成路徑或者指令。
+    parts = arg.strip().split(maxsplit=1)
+    head = parts[0].lower() if parts else ""
+    if re.fullmatch(r"[0-9a-f]{12,64}", head):
+        given, reason = head, (parts[1] if len(parts) > 1 else "")
+    else:
+        given, reason = "", arg.strip()
+    repo, _approve, reject, resolve, ReleaseError = _load_approval_api()
+    state = _central_state_root()
+    if given:
+        selector = given
+    else:
+        try:
+            selector = resolve(state, "", repo)
+        except ReleaseError as exc:
+            return f"⛔ {exc}"
+    try:
+        result = reject(
+            repo,
+            state,
+            selector=selector,
+            actor=actor,
+            reason=reason,
+            notify=True,
+        )
+    except ReleaseError as exc:
+        return f"⛔ 拒絕失敗：{exc}"
+    if result["status"] == "already_rejected":
+        return f"✅ {(result.get('commit') or selector)[:12]} 之前已經拒絕咗，冇重複副作用"
+    return (
+        f"🚫 已拒絕 {(result.get('commit') or selector)[:12]}\n"
+        "main 冇郁、branch 同 commit 都仲喺度；要重開就再發佈一次。"
     )
 
 
@@ -734,6 +806,7 @@ COMMANDS = {"/status": cmd_status, "/git": cmd_git, "/models": cmd_models,
 COMMANDS_WITH_ARG = {"/picks": cmd_picks}
 MUTATING_COMMANDS_WITH_ARG = {
     "/approve": cmd_approve,
+    "/notapprove": cmd_notapprove,
     "/bootstrap_models": cmd_bootstrap_models,
 }
 

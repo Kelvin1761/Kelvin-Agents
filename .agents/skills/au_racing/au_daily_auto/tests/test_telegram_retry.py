@@ -172,6 +172,80 @@ class RetryGuardTests(unittest.TestCase):
             ),
         )
 
+    def test_bare_approve_resolves_the_single_pending_release(self):
+        """No SHA typed: the bot must ask Central, never assume."""
+        fake_module = unittest.mock.Mock()
+        fake_module.resolve_pending_selector.return_value = "abcdef123456789a"
+        fake_module.approve_release.return_value = {
+            "status": "merged", "commit": "abcdef123456789a"}
+        activation_module = unittest.mock.Mock()
+        activation_module.activate_release.return_value = {"status": "activated"}
+        manager_module = unittest.mock.Mock()
+        manager_module.ReleaseError = RuntimeError
+        with unittest.mock.patch.dict(
+            sys.modules,
+            {
+                "shared_wong_choi.release_approval": fake_module,
+                "shared_wong_choi.release_activation": activation_module,
+                "shared_wong_choi.release_manager": manager_module,
+            },
+        ):
+            reply = B.cmd_approve("", actor=B.AUTHORISED_TELEGRAM_ACTOR)
+        self.assertIn("已批准", reply)
+        self.assertEqual(
+            fake_module.approve_release.call_args.kwargs["selector"],
+            "abcdef123456789a",
+        )
+
+    def test_bare_approve_reports_when_central_refuses_to_guess(self):
+        fake_module = unittest.mock.Mock()
+        fake_module.resolve_pending_selector.side_effect = RuntimeError(
+            "2 releases are waiting; name one explicitly: aaaaaaaaaaaa, bbbbbbbbbbbb"
+        )
+        manager_module = unittest.mock.Mock()
+        manager_module.ReleaseError = RuntimeError
+        with unittest.mock.patch.dict(
+            sys.modules,
+            {
+                "shared_wong_choi.release_approval": fake_module,
+                "shared_wong_choi.release_activation": unittest.mock.Mock(),
+                "shared_wong_choi.release_manager": manager_module,
+            },
+        ):
+            reply = B.cmd_approve("", actor=B.AUTHORISED_TELEGRAM_ACTOR)
+        self.assertIn("aaaaaaaaaaaa", reply)
+        self.assertIn("bbbbbbbbbbbb", reply)
+        fake_module.approve_release.assert_not_called()
+
+    def test_notapprove_treats_free_text_as_reason_not_selector(self):
+        fake_module = unittest.mock.Mock()
+        fake_module.resolve_pending_selector.return_value = "abcdef123456789a"
+        fake_module.reject_release.return_value = {
+            "status": "rejected", "commit": "abcdef123456789a"}
+        manager_module = unittest.mock.Mock()
+        manager_module.ReleaseError = RuntimeError
+        with unittest.mock.patch.dict(
+            sys.modules,
+            {
+                "shared_wong_choi.release_approval": fake_module,
+                "shared_wong_choi.release_manager": manager_module,
+            },
+        ):
+            reply = B.cmd_notapprove(
+                "dev 回歸唔要", actor=B.AUTHORISED_TELEGRAM_ACTOR)
+        self.assertIn("已拒絕", reply)
+        kwargs = fake_module.reject_release.call_args.kwargs
+        self.assertEqual(kwargs["selector"], "abcdef123456789a")
+        self.assertEqual(kwargs["reason"], "dev 回歸唔要")
+        # Free text must never be smuggled in as the selector.
+        self.assertEqual(
+            fake_module.resolve_pending_selector.call_args.args[1], "")
+
+    def test_notapprove_is_registered_and_actor_gated(self):
+        self.assertIn("/notapprove", B.MUTATING_COMMANDS_WITH_ARG)
+        with self.assertRaises(PermissionError):
+            B.cmd_notapprove("", actor="telegram:forged")
+
     def test_governance_actor_only_minted_for_configured_chat(self):
         self.assertEqual(
             B._authenticated_actor("123", "123"),
