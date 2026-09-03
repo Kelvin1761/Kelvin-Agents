@@ -493,7 +493,10 @@ TRIAL_MICRO_WEIGHTS = {
     "latest_win_maiden_bonus": 2.0,
     "latest_top3_bonus": 2.0,
     "latest_top3_maiden_bonus": 1.0,
-    "density_bonus": 2.0,
+    # `density_bonus` removed 2026-09-03 (EXP-20260903-03): it duplicated
+    # preparation_score's 試閘交代密度足夠 on a strict subset of runners, and
+    # trial_score transmits 0.0070 of an ability point per point against
+    # preparation_score's 0.2524 -- +0.014 against +0.853 for the same evidence.
     "density_maiden_bonus": 3.0,
     "fast_trial_bonus": 4.0,
     "mid_trial_bonus": 2.0,
