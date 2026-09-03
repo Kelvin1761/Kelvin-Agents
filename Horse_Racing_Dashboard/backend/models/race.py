@@ -39,7 +39,13 @@ class DimensionDetail(BaseModel):
     """
     name: str
     score: Optional[float] = None
+    # 2026-09-03: the engine's summary table used to print a ranking weight as a
+    # percentage; EXP-20260902-07 replaced it with a raw composition coefficient
+    # (`0.3710`, no `%`) because the gains were folded into it. The two are not
+    # the same quantity, so a coefficient must never be rendered as a percent --
+    # exactly one of these is set per row.
     weight_pct: Optional[float] = None
+    coefficient: Optional[float] = None
     contribution: Optional[float] = None
     symbol: Optional[str] = None       # ✅✅ / ✅ / ➖ / ❌ / ❌❌
     category: Optional[str] = None     # 偏強 / 中性 / 偏弱 / 很弱

@@ -385,8 +385,17 @@ AU_CONFIDENCE_RE = re.compile(r'信心分\s*([\d.]+)')
 # - 📶 **數據信心**：5/5 維度有實測數據
 AU_EVIDENCE_RE = re.compile(r'數據信心\*{0,2}[：:]\s*(\d+)\s*/\s*(\d+)')
 # | 狀態與穩定性 | 72.4 | 35.2% | 25.46 | ✅ |
+# Two table shapes, both live in the archive:
+#   legacy  | 狀態與穩定性 | 60.1 | 35.2% | 0.03 | ➖ |     ranking weight, percent
+#   current | 狀態與穩定性 | 60.1 | 0.3710 | -0.76 | ➖ |    composition coefficient
+# EXP-20260902-07 folded the display gains into a single coefficient and dropped
+# the `%`; contributions can also be negative now. The old pattern demanded
+# `([\d.]+)%` and an unsigned contribution, so from that release on it matched
+# nothing, `table` came back empty, and every ranking dimension was flagged
+# 「參考·不入排名」 -- the dashboard showed zero scoring dimensions.
 AU_DIM_TABLE_ROW_RE = re.compile(
-    r'^\|\s*([^|]+?)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)%\s*\|\s*([\d.]+)\s*\|\s*(\S+)\s*\|\s*$',
+    r'^\|\s*([^|]+?)\s*\|\s*([-+]?[\d.]+)\s*\|\s*([-+]?[\d.]+)\s*(%?)\s*\|'
+    r'\s*([-+]?[\d.]+)\s*\|\s*(\S+)\s*\|\s*$',
     re.M)
 # ##### 狀態與穩定性：72.4 分　✅ 偏強　（參考·不入排名）
 AU_DIM_HEADING_RE = re.compile(
@@ -506,19 +515,22 @@ def _parse_au_dimension_details(block: str) -> Optional[list[DimensionDetail]]:
     show 5 of the 7 the file prints, with nothing saying the other two exist.
     """
     table: dict[str, dict] = {}
-    for name, score, weight, contrib, symbol in AU_DIM_TABLE_ROW_RE.findall(block):
+    for name, score, weight, pct, contrib, symbol in AU_DIM_TABLE_ROW_RE.findall(block):
         name = name.strip()
         if name in ('維度', ':---') or not name:
             continue
         try:
-            table[name] = {
+            row = {
                 'score': float(score),
-                'weight_pct': float(weight),
                 'contribution': float(contrib),
                 'symbol': symbol.strip(),
             }
+            # A coefficient is not a percentage; keeping them in one field would
+            # render 0.3710 as "0.37%".
+            row['weight_pct' if pct else 'coefficient'] = float(weight)
         except ValueError:
             continue
+        table[name] = row
 
     details: list[DimensionDetail] = []
     seen: set[str] = set()
@@ -553,6 +565,11 @@ def _parse_au_dimension_details(block: str) -> Optional[list[DimensionDetail]]:
                     evidence.append(ln)
 
         row = table.get(name, {})
+        # 「參考·不入排名」 wins over anything the summary table says. Legacy
+        # tables do list the reference dimensions with a weight, and loosening
+        # the row pattern to accept negative contributions let those rows in --
+        # a reference dimension must never carry a ranking weight.
+        reference = bool(m.group(5))
         try:
             score = float(m.group(2))
         except ValueError:
@@ -560,14 +577,15 @@ def _parse_au_dimension_details(block: str) -> Optional[list[DimensionDetail]]:
         details.append(DimensionDetail(
             name=name,
             score=score,
-            weight_pct=row.get('weight_pct'),
+            weight_pct=None if reference else row.get('weight_pct'),
+            coefficient=None if reference else row.get('coefficient'),
             contribution=row.get('contribution'),
             symbol=(m.group(3) or row.get('symbol') or '').strip() or None,
             category=(m.group(4) or '').strip() or None,
             verdict=verdict,
             evidence=evidence,
             sample_counts=_extract_sample_counts(' '.join(evidence) + ' ' + (verdict or '')),
-            ranking_weighted=not bool(m.group(5)) and name in table,
+            ranking_weighted=not reference and name in table,
         ))
     return details or None
 

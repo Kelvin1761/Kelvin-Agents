@@ -145,15 +145,25 @@ def test_reference_dimensions_are_kept_and_flagged(parsed_meeting):
         pytest.skip("this meeting prints no reference dimensions")
     assert flagged, "reference dimensions were dropped instead of flagged"
     assert weighted, "no ranking dimensions survived"
-    assert all(d.weight_pct is None for d in flagged), \
+    assert all(d.weight_pct is None and d.coefficient is None for d in flagged), \
         "a reference dimension was given a ranking weight"
-    assert all(d.weight_pct is not None for d in weighted), \
-        "a ranking dimension lost its weight"
+    # The engine used to print a percentage weight per ranking dimension.
+    # EXP-20260902-07 folded the display gains into a single composition
+    # coefficient and dropped the `%`, so a current report carries `coefficient`
+    # and a pre-2026-09 report carries `weight_pct`. A ranking dimension must
+    # still carry exactly one of them -- carrying neither is how the dashboard
+    # lost every scoring dimension when the table format changed.
+    assert all((d.weight_pct is None) != (d.coefficient is None) for d in weighted), \
+        "a ranking dimension carries neither a weight nor a coefficient"
 
 
 def test_weights_sum_to_one_hundred(parsed_meeting):
-    """The weighted table is the engine's own; if our merge mangles it the
-    total stops making sense."""
+    """Percentage weights must still total 100 in a legacy-format report.
+
+    Current reports print composition coefficients instead, and those are
+    regression coefficients that deliberately do NOT sum to one -- asserting a
+    total over them would be asserting something the model no longer claims.
+    """
     _, horses, _ = parsed_meeting
     for horse in horses:
         weights = [d.weight_pct for d in (horse.dimension_details or [])
