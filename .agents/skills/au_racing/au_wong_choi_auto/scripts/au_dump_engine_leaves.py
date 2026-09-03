@@ -53,6 +53,7 @@ def main():
         normalize_horse_name, parse_int)
     from au_auto_orchestrator import _build_field_summary  # noqa: E402
     from au_racing_engine.engine_core import RacingEngine  # noqa: E402
+    from au_racing_engine.engine_core import backfill_prize_column  # noqa: E402
     from au_racing_engine.scoring import FEATURE_KEYS  # noqa: E402
 
     try:
@@ -67,6 +68,7 @@ def main():
     results = load_historical_results(HISTORICAL_RESULTS_CSV)
     races_out = []
     pf_ok = runners = 0
+    prize_filled = 0
     refreshed_own_l600 = 0
 
     # `ARCHIVE_ROOT.iterdir()` only saw the top level, so every meeting the daily
@@ -116,6 +118,13 @@ def main():
                     refreshed_own_l600 += refresh_pf_own_l600(logic, facts_path)
                 except Exception as exc:  # noqa: BLE001
                     print(f"   own-L600 refresh 失敗 {meeting_dir.name} R{race_no}: {exc}")
+            # 班次水平調整（`horse_prize_level`）讀 Facts 第 19 欄，而個欄 2026-07-31
+            # 先開始寫。Live meeting 有（2026-09 實測 90-95%），但語料 14 個月入面
+            # 有 12 個月冇 —— 即係話 dev 窗一直**冇施加**呢個調整，而 production 有。
+            # 呢個唔係數據冇咗：Formguide 逐仗獎金 100% 仲喺度。
+            # ⚠️ 一定要喺 `_build_field_summary` 之前 —— 個調整係「本駒水平 −
+            # 場內中位」，兩邊要嚟自同一個量度，唔然就同 own-L600 一樣靜靜錯。
+            prize_filled += backfill_prize_column(logic, meeting_dir, race_no, date)
             ctx = dict(race_analysis)
             ctx["field_summary"] = _build_field_summary(horses)
             ctx["field_horse_names"] = [h.get("horse_name") for h in horses.values()
@@ -161,6 +170,7 @@ def main():
     print(f"races {len(races_out)}  runners {runners}")
     print(f"pace_figure state=ok: {pf_ok}/{runners} = {100*pf_ok/max(1,runners):.1f}%")
     print(f"own-L600 refreshed runners: {refreshed_own_l600}")
+    print(f"prize column rows backfilled: {prize_filled}")
     print(f"WC_PF_BACKFILL={os.environ.get('WC_PF_BACKFILL', '(unset)')}")
     print(f"→ {dest}")
 

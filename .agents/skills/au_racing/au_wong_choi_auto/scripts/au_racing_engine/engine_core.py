@@ -5463,6 +5463,112 @@ def _merge_pf_sources(formguide_pf: dict, backfill_pf: dict) -> dict:
     return merged
 
 
+PRIZE_COLUMN = 18
+_PRIZE_MIN_COLUMNS = 20
+_FORMGUIDE_HORSE_HEADER = re.compile(r"^\[(\d+)\]\s+(.+?)\s*\((\d+)\)\s*$", re.M)
+
+
+def _prize_map_from_formguide(text: str, meeting_date: str) -> dict[str, dict]:
+    """{runner number: {(run date, distance m): prize}} for one Formguide file.
+
+    Runs dated on or after the meeting are dropped. 62 rows in the corpus are
+    post-race contamination from an archive re-scrape, and a class proxy built
+    on those would be reading the future.
+    """
+    out: dict[str, dict] = {}
+    heads = list(_FORMGUIDE_HORSE_HEADER.finditer(text))
+    for index, head in enumerate(heads):
+        end = heads[index + 1].start() if index + 1 < len(heads) else len(text)
+        prizes: dict[tuple[str, int], int] = {}
+        for entry in _parse_formguide_entries(text[head.end():end], head.group(2)):
+            if entry["is_trial"] or not entry["prize"]:
+                continue
+            if not entry["date"] or (meeting_date and entry["date"] >= meeting_date):
+                continue
+            prizes[(entry["date"], int(entry["distance"]))] = int(entry["prize"])
+        out[head.group(1)] = prizes
+    return out
+
+
+def _fill_prize_column(facts: str, prizes: dict) -> tuple[str, int]:
+    if not prizes:
+        return facts, 0
+    filled = 0
+    lines = []
+    for line in facts.splitlines():
+        text = line.strip()
+        if not text.startswith("|") or "|---" in text:
+            lines.append(line)
+            continue
+        cols = [col.strip() for col in text.strip("|").split("|")]
+        if len(cols) < 10 or cols[0] == "#" or "試閘" in cols[1]:
+            lines.append(line)
+            continue
+        distance = re.match(r"(\d+)", cols[4] or "")
+        prize = prizes.get((cols[2], int(distance.group(1)))) if distance else None
+        if prize is None:
+            lines.append(line)
+            continue
+        while len(cols) < _PRIZE_MIN_COLUMNS:
+            cols.append("-")
+        if not cols[PRIZE_COLUMN] or cols[PRIZE_COLUMN] == "-":
+            cols[PRIZE_COLUMN] = str(prize)
+            filled += 1
+        lines.append("| " + " | ".join(cols) + " |")
+    return "\n".join(lines), filled
+
+
+def backfill_prize_column(logic_data: dict, meeting_dir: Path | None,
+                          race_number, meeting_date: str) -> int:
+    """Restore the Facts prize column from the meeting's own Formguide.
+
+    `horse_prize_level()` -- the 班次水平調整 -- reads Facts column 18, which the
+    fact writer only started emitting on 2026-07-31. Live meetings have it
+    (2026-09 measured 90-95%), but 12 of the corpus's 14 months do not, so any
+    harness that replays stored Logic scores the dev window with the adjustment
+    silently switched off while production runs with it on. That is a corpus
+    gap, not a data gap: the Formguide the Facts were generated from still
+    carries a per-run prize for 100% of rows in every month.
+
+    MUST run before the race's `field_summary` is built: the adjustment is own
+    level minus the field median, so both sides have to come from the same
+    measurement. Returns the number of Facts rows filled; a meeting whose Facts
+    already carry the column is left untouched.
+    """
+    if meeting_dir is None:
+        return 0
+    # ⚠️ 一定要**逐字**對死場次號。有啲 meeting 除咗逐場檔仲有一個合併檔
+    # （`03-28 Race 1-10 Formguide.md`），而 `Race\s*(\d+)` 喺佢度會攞到 `1`。
+    # 合併檔入面每一場嘅 `[N]` 編號都由 1 開始重新數，所以撞正揀咗佢，
+    # 第 1 場嘅 3 號馬就會靜靜攞到第 2 場 3 號馬嘅獎金。實測 3 場中招。
+    guide = None
+    for path in sorted(Path(meeting_dir).glob("*Formguide*.md")):
+        found = re.search(r"\bRace\s*(\d+)\s+Formguide\b", path.name)
+        if found and str(race_number) == found.group(1):
+            guide = path
+            break
+    if guide is None:
+        return 0
+    try:
+        prize_maps = _prize_map_from_formguide(
+            guide.read_text(encoding="utf-8", errors="replace"), str(meeting_date or ""))
+    except OSError:
+        return 0
+    filled = 0
+    for number, horse in (logic_data.get("horses") or {}).items():
+        if not isinstance(horse, dict):
+            continue
+        data = horse.get("_data")
+        if not isinstance(data, dict) or not data.get("facts_section"):
+            continue
+        updated, count = _fill_prize_column(
+            data["facts_section"], prize_maps.get(str(number), {}))
+        if count:
+            data["facts_section"] = updated
+            filled += count
+    return filled
+
+
 def backfill_pf_metrics(logic_data: dict, facts_path: Path | None) -> int:
     """Fill `_data["pf_metrics"]` from the historical PF cache where it is absent.
 
