@@ -39,6 +39,13 @@ run_suite() {
 
 run_suite "AU Wong Choi"        "$REPO_ROOT" .agents/skills/au_racing/au_wong_choi_auto/tests
 run_suite "HKJC Wong Choi"      "$REPO_ROOT" .agents/skills/hkjc_racing/hkjc_wong_choi_auto/tests
+# 2026-09-04: these three directories existed but were never in the gate, so a
+# broken `test_prerace_writes_evidence_before_dashboard_deploy` sat red on main
+# undetected and every test added for the daily automation, the extractor and
+# the reflector was running nowhere.
+run_suite "HKJC daily auto"     "$REPO_ROOT" .agents/skills/hkjc_racing/hkjc_daily_auto/tests
+run_suite "HKJC extractor"      "$REPO_ROOT" .agents/skills/hkjc_racing/hkjc_race_extractor/tests
+run_suite "HKJC reflector"      "$REPO_ROOT" .agents/skills/hkjc_racing/hkjc_reflector/tests
 run_suite "Shared racing"       "$REPO_ROOT" .agents/skills/shared_racing/tests
 run_suite "Shared Wong Choi"   "$REPO_ROOT" .agents/skills/shared_wong_choi/tests
 run_suite "Race compliance QA"  "$REPO_ROOT" .agents/skills/race_compliance_qa/tests

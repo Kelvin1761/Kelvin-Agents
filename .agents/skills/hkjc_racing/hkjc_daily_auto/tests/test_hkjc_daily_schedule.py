@@ -230,6 +230,18 @@ def test_prerace_writes_evidence_before_dashboard_deploy(tmp_path: Path) -> None
         if command == [str(schedule.DASHBOARD_DEPLOY)]:
             assert evidence_written is True
             return 0, "deployed"
+        # The scheduler now builds its own dashboard snapshot before deploying
+        # (fetch the live projection, then merge this meeting). Without that,
+        # `deploy.sh` republishes the live projection unchanged and no HKJC
+        # meeting ever reaches the board.
+        if any("fetch_live_snapshot.py" in str(part) for part in command):
+            Path(command[command.index("--output") + 1]).write_text(
+                "{}", encoding="utf-8")
+            return 0, "fetched"
+        if any("generate_static.py" in str(part) for part in command):
+            Path(command[command.index("--output-json") + 1]).write_text(
+                "{}", encoding="utf-8")
+            return 0, "merged"
         assert "--skip-cloudflare-deploy" in command
         return 0, "scored"
 

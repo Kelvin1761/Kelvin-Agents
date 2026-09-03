@@ -442,6 +442,77 @@ DASHBOARD_LIVE_URL = os.environ.get(
 )
 
 
+RESULTS_DB_SCRIPTS = PROJECT_ROOT / ".agents/skills/hkjc_racing/hkjc_reflector/scripts"
+COMPREHENSIVE_STATS_SCRIPT = PROJECT_ROOT / ".agents/scripts/build_comprehensive_stats.py"
+
+
+def store_meeting_results(meeting_dir: Path) -> dict:
+    """Put this meeting's results into the canonical database, then restat.
+
+    The reflector writes `<date>_<venue>_全日賽果.json` into the meeting folder
+    for every meeting that runs, but nothing copied it into
+    `HKJC_Race_Results_Database`; the only writer in the repo was a one-off
+    migration. Measured 2026-09-04: five meetings had results on disk and no
+    database row, including the most recent (2026-07-12), and the
+    `comprehensive_stats` that `live_priors` reads had not moved since
+    2026-07-14. Never raises: a settled meeting must still be recorded even if
+    the restat or the Drive mirror fails.
+    """
+    if str(RESULTS_DB_SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(RESULTS_DB_SCRIPTS))
+    outcome = {"stored": None, "stats": None, "mirror": None}
+    try:
+        from hkjc_results_db import get_results_database_root, sync_meeting_results
+        outcome["stored"] = sync_meeting_results(meeting_dir)
+    except Exception as exc:  # noqa: BLE001
+        outcome["stored"] = {"status": "failed", "error": f"{type(exc).__name__}: {exc}"}
+        log(f"results-db: 寫入失敗 {meeting_dir.name}：{exc}")
+        return outcome
+    if (outcome["stored"] or {}).get("copied"):
+        code, output = run_cmd([sys.executable, str(COMPREHENSIVE_STATS_SCRIPT), "--write"],
+                               timeout=1800)
+        outcome["stats"] = {"exit": code}
+        if code != 0:
+            log(f"results-db: 重建 comprehensive_stats 失敗（rc={code}）：{output[-300:]}")
+        try:
+            outcome["mirror"] = mirror_results_database(get_results_database_root())
+        except Exception as exc:  # noqa: BLE001
+            outcome["mirror"] = {"status": "failed", "error": str(exc)}
+    return outcome
+
+
+def mirror_results_database(db_root: Path) -> dict:
+    """Best-effort copy of the results database to the Drive mirror.
+
+    Meeting folders are already mirrored by `mirror_meeting`; the database sits
+    beside them and was never included, so the Drive copy held analyses but no
+    results history.
+    """
+    if HK_RACING_MIRROR is None or HK_RACING_MIRROR == HK_RACING:
+        return {"status": "not_configured", "copied": 0}
+    try:
+        relative = Path(db_root).resolve().relative_to(HK_RACING.resolve())
+    except ValueError:
+        return {"status": "outside_primary", "copied": 0}
+    destination_root = HK_RACING_MIRROR / relative
+    copied = 0
+    failures: list[str] = []
+    for source in sorted(path for path in Path(db_root).rglob("*") if path.is_file()):
+        target = destination_root / source.relative_to(db_root)
+        try:
+            if target.exists() and target.stat().st_size == source.stat().st_size:
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, target)
+            copied += 1
+        except OSError as exc:
+            failures.append(f"{source.name}: {type(exc).__name__}")
+            if len(failures) >= 8:
+                break
+    return {"status": "ok" if not failures else ("partial" if copied else "unavailable"),
+            "copied": copied, "failed": len(failures)}
+
+
 def build_dashboard_snapshot(*meeting_dirs: Path) -> Path | None:
     """Live projection + this meeting -> a snapshot for `deploy.sh` to publish.
 
@@ -849,6 +920,8 @@ def run_postrace(state: dict, state_path: Path) -> int:
             }
         )
         mirror = mirror_meeting(meeting_dir)
+        results = store_meeting_results(meeting_dir)
+        log(f"results-db {meeting_dir.name}: {results['stored']}")
         state["meetings"][key]["last_mirror"] = mirror
         save_state(state_path, state)
         completed.append(meeting_dir)
