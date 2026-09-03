@@ -254,9 +254,11 @@ def results_url(meeting_date: date) -> str:
     )
 
 
-def run_cmd(cmd: list[str], *, timeout: int = 7200) -> tuple[int, str]:
+def run_cmd(cmd: list[str], *, timeout: int = 7200,
+            env_overlay: dict | None = None) -> tuple[int, str]:
     log("$ " + " ".join(str(part) for part in cmd))
     env = os.environ.copy()
+    env.update(env_overlay or {})
     existing = env.get("PYTHONPATH", "")
     if str(PROJECT_ROOT) not in existing.split(os.pathsep):
         env["PYTHONPATH"] = (
@@ -431,6 +433,53 @@ def run_watch(state: dict, state_path: Path, *, meeting: dict | None = None) -> 
     return EXIT_OK
 
 
+DASHBOARD_DIR = PROJECT_ROOT / "Horse_Racing_Dashboard"
+DASHBOARD_GENERATOR = DASHBOARD_DIR / "generate_static.py"
+DASHBOARD_FETCH_LIVE = DASHBOARD_DIR / "scripts" / "fetch_live_snapshot.py"
+DASHBOARD_LIVE_URL = os.environ.get(
+    "WC_DASHBOARD_LIVE_SNAPSHOT_URL",
+    "https://wongchoi-dashboard.pages.dev/dashboard-data.json",
+)
+
+
+def build_dashboard_snapshot(meeting_dir: Path) -> Path | None:
+    """Live projection + this meeting -> a snapshot for `deploy.sh` to publish.
+
+    Without it `deploy.sh` falls through to its "no scheduler snapshot" branch,
+    which downloads the live projection and republishes it **unchanged**. AU
+    passes `WC_DASHBOARD_BASE_SNAPSHOT` (au_daily_schedule); HKJC never did, so
+    every prerace run reported a successful deploy while no HKJC meeting
+    analysed after 2026-07-12 ever reached the board.
+
+    Returns None on failure: the caller then deploys as before, which is no
+    worse than the old behaviour and never publishes a half-built snapshot.
+    """
+    work = meeting_dir / "Dashboard_Snapshot"
+    work.mkdir(parents=True, exist_ok=True)
+    live = work / "live-dashboard-data.json"
+    merged = work / "dashboard-data.json"
+    code, output = run_cmd(
+        [sys.executable, str(DASHBOARD_FETCH_LIVE),
+         "--url", DASHBOARD_LIVE_URL, "--output", str(live)],
+        timeout=600,
+    )
+    if code != 0 or not live.exists():
+        log(f"dashboard: 攞唔到 live snapshot（rc={code}）；交返 deploy.sh 自己處理")
+        return None
+    code, output = run_cmd(
+        [sys.executable, str(DASHBOARD_GENERATOR),
+         "--base-snapshot", str(live),
+         "--meeting-dir", str(meeting_dir),
+         "--output-json", str(merged),
+         "--output-html", str(work / "dashboard.html")],
+        timeout=1800,
+    )
+    if code != 0 or not merged.exists():
+        log(f"dashboard: 合併場次失敗（rc={code}）：{output[-300:]}")
+        return None
+    return merged
+
+
 def readiness_digest(meeting_dir: Path) -> str:
     """One compact line per fact from `Extraction_Readiness.json`.
 
@@ -567,7 +616,11 @@ def run_prerace(
         notify(f"❌ HKJC prediction evidence 寫入失敗，Dashboard 已攔截：{exc}")
         set_control_outcome("failed", reason="prediction_evidence_failed")
         return EXIT_FAILED
-    deploy_code, deploy_output = run_cmd([str(DASHBOARD_DEPLOY)], timeout=1800)
+    snapshot_for_deploy = build_dashboard_snapshot(meeting_dir)
+    deploy_env = ({"WC_DASHBOARD_BASE_SNAPSHOT": str(snapshot_for_deploy)}
+                  if snapshot_for_deploy else None)
+    deploy_code, deploy_output = run_cmd([str(DASHBOARD_DEPLOY)], timeout=1800,
+                                         env_overlay=deploy_env)
     if deploy_code != 0:
         notify(f"⏳ HKJC evidence 已保存但 Dashboard deploy 失敗：{deploy_output[-1200:]}")
         set_control_outcome("partial", reason="dashboard_deploy_failed")

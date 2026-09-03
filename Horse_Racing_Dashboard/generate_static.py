@@ -25,7 +25,11 @@ warnings.filterwarnings(
 BACKEND_DIR = Path(__file__).resolve().parent / "backend"
 sys.path.insert(0, str(BACKEND_DIR))
 
-from services.meeting_detector import discover_meetings, load_meeting_races
+from services.meeting_detector import (
+    HKJC_DATE_RE,
+    discover_meetings,
+    load_meeting_races,
+)
 from services.consensus import find_consensus_horses, find_rating_disagreements, get_betting_suggestions
 from services.summary_importer import get_summary_roi
 from services.race_display_metadata import (
@@ -412,11 +416,43 @@ def _au_meeting_from_directory(meeting_dir):
     )
 
 
+def _hkjc_meeting_from_directory(meeting_dir):
+    """Resolve a standard HKJC output folder (`2026-09-06_ShaTin`)."""
+    meeting_dir = Path(meeting_dir).resolve()
+    match = HKJC_DATE_RE.match(meeting_dir.name)
+    if not match:
+        raise ValueError(f"Unsupported HKJC meeting folder name: {meeting_dir.name}")
+    analyst = (match.group(3) or "Kelvin")
+    return Meeting(
+        date=match.group(1),
+        venue=match.group(2).replace("_", ""),
+        region=Region.HKJC,
+        analysts=[AnalystName.HEISON if analyst == "Heison" else AnalystName.KELVIN],
+        folder_paths={analyst if analyst == "Heison" else "Kelvin": str(meeting_dir)},
+    )
+
+
+def _meeting_from_directory(meeting_dir):
+    """One fresh meeting folder -> a dashboard meeting, either region.
+
+    The incremental path existed for AU only, and the HKJC scheduler never set
+    `WC_DASHBOARD_BASE_SNAPSHOT`, so `deploy.sh` fell through to "re-publish the
+    live projection unchanged" and no HKJC meeting analysed after 2026-07-12
+    ever reached the board while every run reported a successful deploy.
+    """
+    meeting_dir = Path(meeting_dir).resolve()
+    if AU_MEETING_DIR_RE.match(meeting_dir.name):
+        return _au_meeting_from_directory(meeting_dir)
+    if HKJC_DATE_RE.match(meeting_dir.name):
+        return _hkjc_meeting_from_directory(meeting_dir)
+    raise ValueError(f"Unsupported meeting folder name: {meeting_dir.name}")
+
+
 def collect_incremental_au_data(base_snapshot_path, meeting_dir):
-    """Merge one fresh AU meeting into an existing published snapshot."""
+    """Merge one fresh meeting (AU or HKJC) into a published snapshot."""
     base_snapshot_path = Path(base_snapshot_path)
     data = json.loads(base_snapshot_path.read_text(encoding="utf-8"))
-    meeting = _au_meeting_from_directory(meeting_dir)
+    meeting = _meeting_from_directory(meeting_dir)
     meeting_data, meeting_key, races_data, consensus = _collect_meeting(meeting)
 
     data["meetings"] = [
@@ -813,12 +849,16 @@ def parse_args():
     parser.add_argument(
         "--base-snapshot",
         default="",
-        help="Existing dashboard-data.json to preserve while incrementally updating one AU meeting.",
+        help="Existing dashboard-data.json to preserve while incrementally updating one meeting.",
     )
     parser.add_argument(
+        "--meeting-dir",
         "--au-meeting-dir",
+        dest="au_meeting_dir",
         default="",
-        help="AU meeting folder to merge into --base-snapshot.",
+        help="Meeting folder (AU `2026-09-04 Wyong ...` or HKJC "
+             "`2026-09-06_ShaTin`) to merge into --base-snapshot. The old "
+             "`--au-meeting-dir` spelling still works.",
     )
     parser.add_argument(
         "--from-snapshot",
