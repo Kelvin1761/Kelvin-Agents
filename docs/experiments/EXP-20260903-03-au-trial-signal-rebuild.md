@@ -167,3 +167,40 @@ for v in t1 t2 t3; do
     --baseline /private/tmp/au-trial-baseline.json --candidate /private/tmp/au-trial-$v.json --label $v --phase dev
 done
 ```
+
+
+## 追加（2026-09-04）：leaf 準確度 vs 傳導率
+
+Kelvin 問「使唔使做 ML test」。做之前先量咗現有 leaf 嘅場內 AUC
+（1,891 場、逐場配對、只計上名／唔上名唔同嘅對）：
+
+| leaf | 場內 AUC | 非中性場次 | 傳導率 |
+|---|---:|---:|---:|
+| `form_score` | 0.6205 | 99.4% | — |
+| `pace_figure_score` | 0.5714 | 74.5% | 0.1139 |
+| **`trial_score`** | **0.5587** | **98.6%** | **0.0070** |
+| `jockey_horse_fit_score` | 0.5507 | 100.0% | 0.2524 |
+| `preparation_score` | 0.5466 | 89.5% | 0.2524 |
+
+**試閘分唔係噪音 —— 佢準過兩個攞緊 36 倍權重嘅 leaf。**
+
+所以「試閘訊號抽取得唔夠好」呢個假設**唔成立**，ML test 唔係樽頸：
+問題係**配置**，唔係抽取。呢個亦推翻咗本輪開波時「重組抽取邏輯」嘅方向。
+
+⚠️ 但唔可以由此直接推「加大 `trial_score` 權重就贏」。
+`au-matrix-weights-tested-dont-change`、`au-only-half-the-leaves-score` 同
+EXP-20260901-04 已經記錄咗「硬加零權重 leaf」同「重配權重」兩類做法反覆失敗。
+呢度只係量到一個**有基礎嘅假設**，仲要行完整候選流程先算數。
+
+下一輪（T4）要測嘅係：把試閘證據由 `trial_score`（0.0070）搬入
+`preparation_score`（0.2524），或者調高 `trial_score` 喺 `pace_perf` 入面
+0.058256 嘅份額。兩者都要獨立測，唔准只測合併版。
+
+## 已上線（2026-09-04）
+
+T2（六個影片項）同 T3（密度雙計）已實作落引擎並發佈。
+合併重量：4,372 匹分數有變（= T3 4,370 + T2 2，兩者可加），
+dev 五個指標全部 **0.00000pp**。AU 評分 golden 120 匹**冇變**
+（該 fixture 用凍結 feature，本來就測唔到 `_trial_score`），
+所以新增 `tests/test_trial_signal_cleanup.py` 三條 regression 做唯一守衛。
+`./檢查.sh` 十項全綠。**呢個係正確性清理，唔係已證實嘅預測改善。**

@@ -48,46 +48,55 @@ ul, ol { padding-left:1.5rem; }
 <table><thead><tr>
 <th>維度</th>
 <th>權重</th>
+<th>實測影響力</th>
 <th>佔比圖</th>
 </tr></thead><tbody>
 <tr>
 <td>騎練訊號 <code>jockey_trainer</code></td>
 <td>0.6627</td>
-<td>███████·············</td>
+<td>23.5%</td>
+<td>█████···············</td>
 </tr>
 <tr>
 <td>官方評分對位 <code>class_weight</code></td>
 <td>0.3826</td>
-<td>████················</td>
+<td>12.9%</td>
+<td>███·················</td>
 </tr>
 <tr>
 <td>狀態與穩定性 <code>stability</code></td>
 <td>0.3710</td>
-<td>████················</td>
+<td>36.1%</td>
+<td>███████·············</td>
 </tr>
 <tr>
 <td>試閘備戰 <code>preparation</code></td>
 <td>0.2524</td>
-<td>███·················</td>
+<td>2.5%</td>
+<td>█···················</td>
 </tr>
 <tr>
 <td>場地與地況適性 <code>track</code></td>
 <td>0.1411</td>
+<td>5.5%</td>
 <td>█···················</td>
 </tr>
 <tr>
 <td>速度考驗背景 <code>pace_perf</code></td>
 <td>0.1209</td>
-<td>█···················</td>
+<td>19.3%</td>
+<td>████················</td>
 </tr>
 <tr>
 <td>賽績線 <code>form_line</code></td>
 <td><strong>0%（只顯示，唔入排名）</strong></td>
+<td>—</td>
 <td>····················</td>
 </tr>
 <tr>
 <td>檔位形勢 <code>race_shape</code></td>
 <td><strong>0%（只顯示，唔入排名）</strong></td>
+<td>—</td>
 <td>····················</td>
 </tr>
 </tbody></table>
@@ -103,6 +112,9 @@ ul, ol { padding-left:1.5rem; }
 <td>缺資料或少於 3 匹可比較時 = 0（中性）</td>
 </tr>
 </tbody></table>
+<p><strong>「權重」同「實測影響力」有咩分別？</strong>  權重係配方上寫死嘅數。實測影響力係</p>
+<p>實際跑落去，呢個維度喺同一場馬入面真係拉開幾多分距離 —— 一個權重好高但成場馬</p>
+<p>都畀差唔多分數嘅維度，其實冇乜影響力。兩者差得遠，就代表個維度「有名無實」。</p>
 <p>⚠️ <strong>檔位形勢、賽績線</strong> 喺報告見到，但權重係 0 —— 佢完全唔影響排名，純粹俾你睇。</p>
 <h2>2. 每個維度食緊咩</h2>
 <h3>騎練訊號　<code>jockey_trainer</code>　— 合成係數 0.6627</h3>
@@ -123,6 +135,7 @@ ul, ol { padding-left:1.5rem; }
 <td>38.1%</td>
 </tr>
 </tbody></table>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>4.05 分</strong>；<strong>0.4%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>官方評分對位　<code>class_weight</code>　— 合成係數 0.3826</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -133,6 +146,7 @@ ul, ol { padding-left:1.5rem; }
 <td>70.0%</td>
 </tr>
 </tbody></table>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.86 分</strong>；<strong>1.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>狀態與穩定性　<code>stability</code>　— 合成係數 0.3710</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -147,6 +161,7 @@ ul, ol { padding-left:1.5rem; }
 <td>40.0%</td>
 </tr>
 </tbody></table>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>11.11 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>試閘備戰　<code>preparation</code>　— 合成係數 0.2524</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -157,6 +172,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.14 分</strong>；<strong>62.6%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>場地與地況適性　<code>track</code>　— 合成係數 0.1411</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -167,6 +183,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>4.48 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>速度考驗背景　<code>pace_perf</code>　— 合成係數 0.1209</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -181,6 +198,7 @@ ul, ol { padding-left:1.5rem; }
 <td>5.8%</td>
 </tr>
 </tbody></table>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>18.22 分</strong>；<strong>0.8%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>賽績線　<code>form_line</code>　— 合成係數 0.0000（唔入排名）</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -191,6 +209,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>12.97 分</strong>；<strong>8.3%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>檔位形勢　<code>race_shape</code>　— 合成係數 0.0000（唔入排名）</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -201,6 +220,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>0.76 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h2>3. 個分點樣讀</h2>
 <p><strong>60 分永遠代表「中性 / 冇證據」</strong>，唔係「合格」。高過 60 = 有正面證據，低過 60 = 有負面證據。</p>
 <h3>報告入面嘅符號</h3>
@@ -304,13 +324,13 @@ ul, ol { padding-left:1.5rem; }
 <li>備戰完整度分 <code>health_score</code></li>
 <li>信心分 <code>confidence_score</code></li></ul>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-09-03 00:04 AEST</code></li>
-<li>Git commit：<code>926eac54</code></li>
+<ul><li>生成時間：<code>2026-09-04 00:10 AEST</code></li>
+<li>Git commit：<code>2106b065</code></li>
 <li>Scoring contract：<code>au/raw-matrix-preparation-v2</code></li>
-<li><code>scoring.py</code> 指紋：<code>6ab4cf80cd7e</code></li>
+<li><code>scoring.py</code> 指紋：<code>8394e7f427ff</code></li>
 <li><code>matrix_mapper.py</code> 指紋：<code>6d1ba6118511</code></li>
 <li><code>renderer.py</code> 指紋：<code>aff1d82fcdba</code></li>
-<li>實測樣本：<strong>冇</strong>（今次生成搵唔到已評分嘅語料庫，只列出配方上嘅權重）</li></ul>
+<li>實測樣本：<strong>23 場、265 匹馬</strong>，由 <code>2026-09-04 Birdsville Race 1-6</code> 到 <code>2026-09-04 Mornington Race 1-9</code>（跳過 1985 個舊格式檔案）</li></ul>
 <p>重新生成：</p>
 <pre><code>
 python3 .agents/skills/shared_racing/scripts/explain_model.py --platform au

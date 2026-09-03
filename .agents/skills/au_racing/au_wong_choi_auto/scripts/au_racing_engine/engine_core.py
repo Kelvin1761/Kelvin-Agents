@@ -1212,7 +1212,16 @@ class RacingEngine:
             if is_maiden:
                 add(tw.get("latest_top3_maiden_bonus", 1.0), "新馬賽加碼", "")
         if trial_count >= 4 and safe_ratio(good, max(1, min(3, trial_count))) >= 0.66:
-            add(tw.get("density_bonus", 2.0), "試閘密度高兼交代穩", f"共{trial_count}次試閘，前列比例高")
+            # 2026-09-03: the +2.0 density bonus that used to sit here was the
+            # same evidence `preparation_score` already scores as 試閘交代密度足夠.
+            # Measured over 20,882 runners: all 4,792 that fired here also fired
+            # there, and 0 fired only here -- a strict subset. The two are not
+            # equal in effect: trial_score transmits 0.0070 of a point to the
+            # ability score and preparation_score transmits 0.2524, so the copy
+            # here was worth +0.014 against the other's +0.853 (EXP-20260903-03).
+            # Removing it changed 4,370 runners' scores and 0.00000pp of gold,
+            # good_positional, pass, champion and top-3 precision on 1,384 dev
+            # races. Kept: the maiden-only extra below, which is not duplicated.
             if is_maiden and trial_count >= 6 and safe_ratio(good, trial_count) >= 0.6:
                 add(tw.get("density_maiden_bonus", 3.0), "新馬賽密集備戰加碼", "")
                 self.reason_codes.append("maiden_trial_density_boost")
@@ -1224,35 +1233,15 @@ class RacingEngine:
                 self.reason_codes.append("maiden_fast_trial_speed")
             elif tw_trial and tw_trial >= 17.0:
                 add(tw.get("mid_trial_bonus", 2.0), "試閘時間中上", f"試閘 L600 平均 {tw_trial:.2f} m/s")
-        # Trial video qualitative signals (from trial comments)
-        trial_signals = self.data.get("trial_video_signals") or {}
-        if trial_signals:
-            restrained = trial_signals.get("restrained", 0)
-            competitive = trial_signals.get("competitive", 0)
-            weakened = trial_signals.get("weakened", 0)
-            led = trial_signals.get("led", 0)
-            improving = trial_signals.get("improving", 0)
-            full_test = trial_signals.get("full_test", 0)
-            if restrained >= 1:
-                add(4 if starts == 0 or is_maiden else 2, "試閘被拑制", "留力行完，仲有貨賣")
-                self.reason_codes.append("trial_restrained_signal")
-            if competitive >= 2:
-                add(4, "試閘有爭勝", "多課試閘見爭勝心")
-            elif competitive >= 1:
-                add(2, "試閘有爭勝", "")
-            if led >= 2 and competitive >= 1:
-                add(3, "帶放兼有爭勝", "")
-                self.reason_codes.append("trial_led_competitive")
-            elif led >= 1 and competitive >= 1:
-                add(1, "帶放兼有爭勝", "")
-            if improving >= 1:
-                add(2, "試閘走勢改善", "")
-            if weakened >= 2:
-                add(-4, "試閘轉弱", "多課試閘尾段乏力")
-            elif weakened >= 1:
-                add(-2, "試閘轉弱", "")
-            if full_test >= 2 and competitive == 0:
-                add(-3, "盡試冇料", "多課全力試但未見競爭力")
+        # Trial video signals were scored here (被拑制／盡試冇料／有爭勝／轉弱／
+        # 帶放／走勢改善, ±2-4 points). They fired on 12 of 20,882 runners because
+        # this source does not publish trial comments at all: of 77,336 `Video:`
+        # lines inside a trial entry, 15 carry text (0.02%). Official runs do
+        # carry them (85,948 lines), which is why the terms looked reasonable.
+        # Removing them moved 2 runners and 0.00000pp of every headline metric
+        # (EXP-20260903-03). `trial_video_signals` is still parsed and stored for
+        # the report; if a future source starts publishing trial comments, the
+        # scoring has to be re-derived and A/B'd rather than silently waking up.
         detail["final"] = round(clip_score(score), 2)
         return score, f"近試閘前 3 名次 {trial_places[:3]}，有 {good} 次前列，並按最近一課/試閘密度修正，試閘分 {clip_score(score):.1f}。", "trial_table"
 
