@@ -52,11 +52,22 @@ ERROR_MARKERS = (
 # analyses map is keyed by race number, so a snapshot copy could overwrite the
 # live file and the check would compare the wrong pair — a real live drift could
 # be masked by a stale snapshot that happened to match.
+# ⚠️ Matched case-insensitively with a leading underscore stripped. AU writes
+# `_prediction_snapshots`; HKJC writes `Prediction_Snapshots`, and the exact
+# string match let the HKJC snapshot through. 2026-09-04 the 2026-09-06 ShaTin
+# morning refresh failed rc=1 on TOP4-001 because the snapshot's stale Logic
+# (top4 4,7,6,5) displaced the live one (4,5,7,6) in the race-keyed map -- the
+# live Analysis and live Logic agreed exactly, which is what the check exists
+# to confirm.
 FROZEN_DIRNAMES = frozenset({
-    '_prediction_snapshots',
-    '_pre_v52_backup',
+    'prediction_snapshots',
+    'pre_v52_backup',
     'quarantine',
 })
+
+
+def _frozen_key(part: str) -> str:
+    return part.lstrip('_').lower()
 
 
 def is_frozen_path(path: pathlib.Path, root: pathlib.Path) -> bool:
@@ -67,7 +78,10 @@ def is_frozen_path(path: pathlib.Path, root: pathlib.Path) -> bool:
         parts = path.parts
     # The final component is the file itself; only directories gate the walk.
     for part in parts[:-1]:
-        if part in FROZEN_DIRNAMES or part.startswith('.') or 'backup' in part.lower():
+        if (_frozen_key(part) in FROZEN_DIRNAMES
+                or part.startswith('.')
+                or 'backup' in part.lower()
+                or 'snapshot' in part.lower()):
             return True
     return False
 
