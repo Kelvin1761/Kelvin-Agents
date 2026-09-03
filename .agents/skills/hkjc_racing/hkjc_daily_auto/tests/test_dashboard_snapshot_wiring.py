@@ -69,3 +69,34 @@ def test_a_failed_merge_falls_back(monkeypatch, tmp_path):
         return 1, "merge failed"          # the merge step does not
     monkeypatch.setattr(sched, "run_cmd", fake_run_cmd)
     assert sched.build_dashboard_snapshot(tmp_path) is None
+
+
+def test_multiple_settled_meetings_chain_instead_of_overwriting(monkeypatch, tmp_path):
+    """Post-race can hand over two meetings; the second must build on the first.
+
+    Re-fetching the live projection per meeting would keep only the last merge.
+    """
+    a, b = tmp_path / "a", tmp_path / "b"
+    a.mkdir(), b.mkdir()
+    bases = []
+
+    def fake_run_cmd(cmd, **kwargs):
+        cmd = [str(c) for c in cmd]
+        for flag in ("--output", "--output-json"):
+            if flag in cmd:
+                Path(cmd[cmd.index(flag) + 1]).write_text("{}", encoding="utf-8")
+        if "--base-snapshot" in cmd:
+            bases.append(cmd[cmd.index("--base-snapshot") + 1])
+        return 0, ""
+
+    monkeypatch.setattr(sched, "run_cmd", fake_run_cmd)
+    out = sched.build_dashboard_snapshot(a, b)
+    assert out is not None
+    assert len(bases) == 2
+    # The second merge starts from the first merge's output, not from live.
+    assert bases[0].endswith("live-dashboard-data.json")
+    assert bases[1].endswith("dashboard-data-0.json")
+
+
+def test_no_meeting_dirs_is_a_no_op(tmp_path):
+    assert sched.build_dashboard_snapshot() is None

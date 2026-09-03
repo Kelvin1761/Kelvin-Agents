@@ -442,7 +442,7 @@ DASHBOARD_LIVE_URL = os.environ.get(
 )
 
 
-def build_dashboard_snapshot(meeting_dir: Path) -> Path | None:
+def build_dashboard_snapshot(*meeting_dirs: Path) -> Path | None:
     """Live projection + this meeting -> a snapshot for `deploy.sh` to publish.
 
     Without it `deploy.sh` falls through to its "no scheduler snapshot" branch,
@@ -454,10 +454,12 @@ def build_dashboard_snapshot(meeting_dir: Path) -> Path | None:
     Returns None on failure: the caller then deploys as before, which is no
     worse than the old behaviour and never publishes a half-built snapshot.
     """
-    work = meeting_dir / "Dashboard_Snapshot"
+    dirs = [Path(d) for d in meeting_dirs if d]
+    if not dirs:
+        return None
+    work = dirs[-1] / "Dashboard_Snapshot"
     work.mkdir(parents=True, exist_ok=True)
     live = work / "live-dashboard-data.json"
-    merged = work / "dashboard-data.json"
     code, output = run_cmd(
         [sys.executable, str(DASHBOARD_FETCH_LIVE),
          "--url", DASHBOARD_LIVE_URL, "--output", str(live)],
@@ -466,17 +468,24 @@ def build_dashboard_snapshot(meeting_dir: Path) -> Path | None:
     if code != 0 or not live.exists():
         log(f"dashboard: 攞唔到 live snapshot（rc={code}）；交返 deploy.sh 自己處理")
         return None
-    code, output = run_cmd(
-        [sys.executable, str(DASHBOARD_GENERATOR),
-         "--base-snapshot", str(live),
-         "--meeting-dir", str(meeting_dir),
-         "--output-json", str(merged),
-         "--output-html", str(work / "dashboard.html")],
-        timeout=1800,
-    )
-    if code != 0 or not merged.exists():
-        log(f"dashboard: 合併場次失敗（rc={code}）：{output[-300:]}")
-        return None
+    # Chain the merges: each meeting is folded into the result of the previous
+    # one. Re-fetching live per meeting would silently keep only the last.
+    base = live
+    merged = None
+    for index, meeting_dir in enumerate(dirs):
+        merged = work / f"dashboard-data-{index}.json"
+        code, output = run_cmd(
+            [sys.executable, str(DASHBOARD_GENERATOR),
+             "--base-snapshot", str(base),
+             "--meeting-dir", str(meeting_dir),
+             "--output-json", str(merged),
+             "--output-html", str(work / f"dashboard-{index}.html")],
+            timeout=1800,
+        )
+        if code != 0 or not merged.exists():
+            log(f"dashboard: 合併 {meeting_dir.name} 失敗（rc={code}）：{output[-300:]}")
+            return None
+        base = merged
     return merged
 
 
@@ -749,17 +758,24 @@ def refresh_dashboard_after_results(
 ) -> bool:
     """Re-publish after settlement. It does NOT take the meeting off the board.
 
-    The docstring used to claim reflected meetings disappear here. They do not:
-    this calls `deploy.sh` with no `WC_DASHBOARD_BASE_SNAPSHOT`, so deploy takes
-    the "no scheduler snapshot" branch and republishes the live projection
-    unchanged. That is the behaviour Kelvin wants (2026-09-04) -- a settled card
-    should stay visible until the next one is analysed, not vanish the morning
-    after -- so the removal happens in the pre-race merge instead, where
+    The docstring used to claim reflected meetings disappear here. They must
+    not: a settled card stays visible until the next one is analysed (Kelvin,
+    2026-09-04), and that removal happens in the pre-race merge instead, where
     `collect_incremental_au_data` drops superseded HKJC meetings.
-    ⚠️ Consequence worth knowing: reflector results do not reach the dashboard
-    through this path either.
+
+    What this step is for is the other half: re-merging the settled meeting so
+    its reflected result replaces the pre-race card in place. Passing no
+    snapshot made `deploy.sh` republish the live projection unchanged, so the
+    board kept showing the pre-race state until the next meeting pushed it off.
     """
-    code, output = run_cmd([str(DASHBOARD_DEPLOY)], timeout=1800)
+    # Merge each settled meeting again so its reflected result reaches the
+    # board. Without a snapshot `deploy.sh` republishes the live projection
+    # unchanged, so the card kept showing its pre-race state for ever.
+    snapshot_for_deploy = build_dashboard_snapshot(*meeting_dirs)
+    deploy_env = ({"WC_DASHBOARD_BASE_SNAPSHOT": str(snapshot_for_deploy)}
+                  if snapshot_for_deploy else None)
+    code, output = run_cmd([str(DASHBOARD_DEPLOY)], timeout=1800,
+                           env_overlay=deploy_env)
     if code != 0:
         state["pending_dashboard_refresh"] = {
             "meeting_dirs": [str(path) for path in meeting_dirs],
