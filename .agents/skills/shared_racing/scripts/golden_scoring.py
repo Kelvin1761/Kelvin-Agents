@@ -106,6 +106,8 @@ def score_one(scoring, matrix_mapper, features: dict) -> dict:
     # au_matrix_refit、呢度）。改其中一份就要四份一齊改，否則 golden 同 A/B
     # 會靜靜同真引擎分岔。
     ability = 60.0 + (core - 60.0) / float(getattr(scoring, "MATRIX_ABILITY_SCALE", 1.0))
+    if hasattr(scoring, "compose_matrix_score"):
+        ability = scoring.compose_matrix_score(matrix)
     return {
         "matrix": {k: round(float(v), 4) for k, v in sorted(matrix.items())},
         "ability": round(ability, 4),
