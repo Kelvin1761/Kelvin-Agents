@@ -817,7 +817,8 @@ def complete_audit(rows: list[dict], base: dict, runtime_path: Path) -> dict:
                     for key, components in MATRIX_FORMULAS.items()
                 },
                 "matrix_display_gains": MATRIX_DISPLAY_GAINS,
-                "ability_formula": "sum(matrix_score * matrix_weight) + wet_form_feature; rank descending; horse number breaks exact ties",
+                "ability_formula": "60 + sum((raw_matrix_score - 60) * coefficient) + wet_form_feature + proven_class_feature; no display gain; rank descending; horse number breaks ties",
+                "feature_schema": "au/raw-matrix-preparation-v2; preparation_score is separate from jockey_horse_fit_score",
                 "wet_form_overlay": {
                     "scope": "Soft/Heavy only; zero on Good/Firm/Synthetic",
                     "scale": WET_FORM_FEATURE_SCALE,

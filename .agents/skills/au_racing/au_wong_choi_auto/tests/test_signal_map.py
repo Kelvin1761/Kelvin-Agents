@@ -22,7 +22,7 @@ from au_racing_engine.matrix_mapper import (
 from au_racing_engine.scoring import (
     ABILITY_FEATURE_KEYS,
     FEATURE_KEYS,
-    MATRIX_ABILITY_SCALE,
+    compose_matrix_score,
     MATRIX_WEIGHTS,
     REPORT_ONLY_FEATURE_KEYS,
     clip_score,
@@ -56,17 +56,8 @@ class SignalMapTests(unittest.TestCase):
 
     def test_ability_equation_is_matrix_plus_declared_overlays(self) -> None:
         auto = _analyze()
-        # 2026-08-26：ability 軸多咗一個 `MATRIX_ABILITY_SCALE` 除法。佢**唔係**一個
-        # 隱藏調整項 —— 佢淨係抵銷「pace_perf gain 修正之後權重重新歸一」帶嚟嘅
-        # 7.54% 壓縮，令 grade / 頭三分差 / overlay 維持原本個尺。
-        # 呢條式仍然係「矩陣 + 已聲明 overlay」，冇加新訊號。
-        core = sum(
-            MATRIX_WEIGHTS[dim] * auto["matrix_scores"][dim] for dim in MATRIX_WEIGHTS
-        )
-        expected = (
-            60.0 + (core - 60.0) / MATRIX_ABILITY_SCALE
-            + auto["wet_form_feature"] + auto["proven_class_feature"]
-        )
+        expected = (compose_matrix_score(auto["matrix_scores"])
+                    + auto["wet_form_feature"] + auto["proven_class_feature"])
         self.assertAlmostEqual(auto["ability_score"], clip_score(expected), places=3)
         self.assertAlmostEqual(
             auto["pure_7d_score"],
@@ -93,6 +84,7 @@ class SignalMapTests(unittest.TestCase):
             "rating_score",  # weight_score retired 2026-08-01 (AUC 0.480)
             "track_score",
             "formline_score",  # form_line dim exists but its weight is 0.0
+            "preparation_score",
         }
         in_formulas = {name for comps in MATRIX_FORMULAS.values() for name, _w in comps}
         self.assertEqual(in_formulas, documented)

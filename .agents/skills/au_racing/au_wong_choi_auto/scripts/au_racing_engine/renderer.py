@@ -7,7 +7,7 @@ import re
 from pathlib import Path
 
 from .scoring import clip_score, score_band
-from .matrix_mapper import MATRIX_DISPLAY_GAINS, MATRIX_FORMULAS
+from .matrix_mapper import MATRIX_FORMULAS
 
 
 ABILITY_LABEL = "綜合戰力分"
@@ -36,6 +36,7 @@ FEATURE_LABELS = {
     "health_score": "備戰完整度分",
     "confidence_score": "信心分",
     "pace_figure_score": "L600 環境分",
+    "preparation_score": "試閘備戰分",
 }
 
 MATRIX_LABELS = {
@@ -51,6 +52,7 @@ MATRIX_LABELS = {
     "class_weight": "官方評分對位",
     "track": "場地與地況適性",
     "form_line": "賽績線",
+    "preparation": "試閘備戰",
 }
 
 # 2026-07-11：track_score 已去重，只喺「場地與地況適性」維度出現。「檔位形勢」而家係
@@ -460,7 +462,7 @@ def _band_label(score):
 
 
 def _matrix_composition_line(key, auto):
-    """Separate the weighted evidence score from the model's scale conversion.
+    """Show the component calculation directly; there is no trailing gain.
 
     Retired leaves can leave weights summing below one: show the neutral
     anchor explicitly, rather than the false equality `68 ×70% =65.6`.
@@ -480,12 +482,6 @@ def _matrix_composition_line(key, auto):
     raw = clip_score(raw)
     total = float(auto.get("matrix_scores", {}).get(key, 60))
     line = " ＋ ".join(parts) + f" ＝ {raw:.1f}"
-    gain = MATRIX_DISPLAY_GAINS.get(key, 1.0)
-    if abs(gain - 1.0) > 0.005:
-        line += (f"；幅度換算後 {total:.1f}"
-                 f"（60 ＋〔{raw:.2f} −60〕×{gain:g}，限於 0–100）")
-    elif abs(total - raw) > 0.05:
-        line += f" ＝ {total:.1f}"
     return line
 
 
@@ -530,6 +526,13 @@ def _stability_detail_lines(auto, name):
         lines = []
         if d.get("note"):
             lines.append(str(d["note"]))
+        if d.get("surface_transfer_note"):
+            lines.append(str(d["surface_transfer_note"]))
+        for source in d.get("source_context", []):
+            if source.get("source_race_class"):
+                prize = f"${source['prize']:,.0f}" if source.get("prize") else "獎金未有資料"
+                lines.append(f"來源：{source.get('date', '')} {source.get('venue', '')}，"
+                             f"{source['source_race_class']}／{source.get('going', '')}／{prize}")
         rows = d.get("rows") or []
         num_total = 0.0
         wt_total = 0.0
@@ -726,8 +729,8 @@ def _jt_detail_lines(auto, name):
         if d.get("adjustments") and d.get("final") is not None:
             lines.append(f"合計 ＝ {float(d['final']):.1f}")
         return lines
-    if name == "jockey_horse_fit_score":
-        d = auto.get("jt_fit_detail") or {}
+    if name in {"jockey_horse_fit_score", "preparation_score"}:
+        d = auto.get("preparation_detail" if name == "preparation_score" else "jt_fit_detail") or {}
         lines = []
         if d.get("base") is not None:
             lines.append(f"基礎分 {float(d['base']):.1f}")
@@ -1466,7 +1469,6 @@ def _track_summary(facts_section: str) -> str:
 def _status_cycle_display(horse: dict, auto: dict | None = None) -> str:
     cycle = (auto or {}).get("preparation_cycle") or {}
     return cycle.get("label") or _humanize_text(horse.get("status_cycle"))
-
 
 
 def _trend_summary(horse: dict, auto: dict | None = None) -> str:

@@ -5,7 +5,7 @@ from pathlib import Path
 from .matrix_mapper import MATRIX_KEYS
 from .scoring import (
     FEATURE_KEYS,
-    MATRIX_ABILITY_SCALE,
+    compose_matrix_score,
     MATRIX_WEIGHTS,
     compute_grade,
 )
@@ -76,17 +76,8 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
     if ability is None:
         errors.append(f"SCORE-001 horse {horse_num} missing ability score")
     else:
-        # ⚠️ 一定要跟 `engine_core` 條 ability 公式。2026-08-26 加咗
-        # `MATRIX_ABILITY_SCALE`（抵銷 pace_perf gain 修正之後嘅權重歸一），
-        # 而呢度係條式喺 repo 嘅**第六份複本** —— 當時漏咗改，於是每次跑
-        # orchestrator 都會逐匹馬報 SCORE-002 / SCORE-004。
-        # `檢查.sh` 唔會跑 orchestrator，所以 golden 同單元測試都捉唔到。
-        # 改任何一份就要六份一齊改：engine_core、au_eval ×2、au_matrix_refit ×2、
-        # golden_scoring、同呢度。
-        expected = 60.0 + (
-            sum(float(matrix_scores.get(key, 60)) * weight
-                for key, weight in MATRIX_WEIGHTS.items()) - 60.0
-        ) / MATRIX_ABILITY_SCALE
+        # Use the engine contract instead of another handwritten replica.
+        expected = compose_matrix_score(matrix_scores)
         expected_score = float(base_7d if base_7d is not None else ability)
         if abs(expected_score - expected) > 0.06:
             errors.append(f"SCORE-002 horse {horse_num} clean six-dimension mismatch: {expected_score:.2f} != {expected:.2f}")

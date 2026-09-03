@@ -1,0 +1,68 @@
+{
+  "races": 1822,
+  "runners": 18216,
+  "sample_hash": "16bc9a24be537b2e598862a181bc41fb870658e8d9257d8005e3e642f331c9f7",
+  "max_ability_delta": 2.3123999999999967,
+  "dev": {
+    "gold": 0.0,
+    "gold_strict": 0.0,
+    "good_positional": 0.0,
+    "pass": 0.0,
+    "champion": 0.0,
+    "winner_in_top3": 0.0,
+    "winner_in_top5": -0.07645259938837512,
+    "t3prec": 0.0
+  },
+  "dev_primary_changed_races": {
+    "gold": 0,
+    "good_positional": 0
+  },
+  "terminal": {
+    "gold": 0.0,
+    "gold_strict": 0.0,
+    "good_positional": 0.0,
+    "pass": 0.0,
+    "champion": 0.0,
+    "winner_in_top3": 0.0,
+    "winner_in_top5": 0.0,
+    "t3prec": 0.0
+  },
+  "terminal_primary_changed_races": {
+    "gold": 0,
+    "good_positional": 0
+  },
+  "verdict": {
+    "label": "structural refactor",
+    "races": 1822,
+    "ship": false,
+    "reason": "ranking_evidence_too_weak",
+    "top_dev": -0.00023322512523060723,
+    "top_hold": 0.0,
+    "top_hold_ci": [
+      0.0,
+      0.0
+    ],
+    "all_dev": -3.548364204097876e-05,
+    "all_hold": 0.0,
+    "all_hold_ci": [
+      0.0,
+      0.0
+    ],
+    "counts": {
+      "gold": 0.0,
+      "gold_strict": 0.0,
+      "good_positional": 0.0,
+      "pass": 0.0,
+      "champion": 0.0,
+      "winner_in_top3": 0.0,
+      "winner_in_top5": -0.0549450549450512,
+      "t3prec": 0.0
+    },
+    "stage4_verdict": "REJECT",
+    "decision_detail": {
+      "positive_metrics": [],
+      "ci_supported_metrics": [],
+      "nonnegative_metrics": []
+    }
+  }
+}

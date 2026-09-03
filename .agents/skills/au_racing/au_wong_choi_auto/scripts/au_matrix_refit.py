@@ -49,13 +49,13 @@ from eval_metrics import race_metrics, summarize_races  # noqa: E402
 from au_racing_engine.matrix_mapper import (  # noqa: E402
     MATRIX_DISPLAY_GAINS, MATRIX_DISPLAY_TARGET_SD, MATRIX_FORMULAS,
     map_features_to_matrix_scores)
-from au_racing_engine.scoring import MATRIX_ABILITY_SCALE, MATRIX_WEIGHTS  # noqa: E402
+from au_racing_engine.scoring import compose_matrix_score, MATRIX_WEIGHTS  # noqa: E402
 
 HERE = Path.cwd()
 HOLDOUT = 0.15
 FOLDS = 5
 # form_line 出廠權重 0（退役維度），搜索空間同另一條線一致，維持 6 個維度。
-DIMS = ("stability", "pace_perf", "race_shape", "jockey_trainer", "class_weight", "track")
+DIMS = ("stability", "pace_perf", "race_shape", "jockey_trainer", "class_weight", "track", "preparation")
 KEYS = ("gold", "good_pos", "pass", "champ", "winT3", "t3prec", "mrr",
         "blowout", "compet", "ndcg5")
 # 目標函數：九項 pp 指標嘅平均（blowout 反號）。刻意同時涵蓋
@@ -151,20 +151,14 @@ class Dataset:
             "rows": rows,
         }
 
-    def dim_matrix(self, gains):
-        """食完 gain、clip、2dp 之後嘅維度分 —— 只要 gain 唔變就可以重用。"""
-        cols = []
-        for key in DIMS:
-            g = float(gains.get(key, 1.0))
-            cols.append(np.round(np.clip(60.0 + (self.raw[key] - 60.0) * g, 0.0, 100.0), 2))
-        return np.column_stack(cols)
+    def dim_matrix(self, gains=None):
+        if gains and any(float(v) != 1.0 for v in gains.values()):
+            raise ValueError("AU no longer supports display gains; fit component weights.")
+        return np.column_stack([np.round(self.raw[key], 2) for key in DIMS])
 
     def ability(self, mx, weights, wet_scale=1.0):
         w = np.array([float(weights.get(k, 0.0)) for k in DIMS])
-        # 跟 `engine_core` 條 ability 公式（2026-08-26 加咗 MATRIX_ABILITY_SCALE）。
-        # 候選權重會自己歸一，所以同一個尺對 baseline 同候選都啱。
-        core = np.round(mx @ w, 4)
-        return (60.0 + (core - 60.0) / MATRIX_ABILITY_SCALE
+        return (np.round(60.0 + (mx - 60.0) @ w, 4)
                 + self.wet * wet_scale + self.proven_class)
 
     def evaluate(self, ability, lo=0, hi=None):
@@ -218,9 +212,7 @@ def cmd_verify(ds, _args):
     mine = ds.ability(ds.dim_matrix(MATRIX_DISPLAY_GAINS), MATRIX_WEIGHTS)
     # 對照組：真正行一次 map_features_to_matrix_scores（唔用 numpy 捷徑）
     slow = np.array([
-        60.0
-        + (round(sum(map_features_to_matrix_scores(r["features"])[k] * MATRIX_WEIGHTS[k]
-                     for k in MATRIX_WEIGHTS), 4) - 60.0) / MATRIX_ABILITY_SCALE
+        compose_matrix_score(map_features_to_matrix_scores(r["features"]))
         + float(r["wet"] or 0.0)
         + float(r.get("proven_class") or 0.0)
         for r in ds.rows])
@@ -232,49 +224,13 @@ def cmd_verify(ds, _args):
 
 
 def cmd_gains(ds, _args):
-    """按現行 leaf 分佈重新推導 display gain。
-
-    gain = min(TARGET_SD / 實測SD, 令實測極值仍然落喺 1..99 之內嘅最大 gain)
-    headroom 嗰半好緊要：唔封住就會一堆馬撞 0/100 造成假平手。
-    """
-    print(f"TARGET_SD = {MATRIX_DISPLAY_TARGET_SD}")
-    print(f"{'維度':16}{'SD':>8}{'min':>8}{'max':>8}{'SD gain':>10}"
-          f"{'headroom':>10}{'新 gain':>10}{'現行':>10}{'Δ%':>9}")
-    new = {}
-    for key in MATRIX_FORMULAS:
-        raw = ds.raw[key]
-        sd = float(raw.std(ddof=1))
-        lo, hi = float(raw.min()), float(raw.max())
-        g_sd = MATRIX_DISPLAY_TARGET_SD / sd if sd > 1e-9 else 1.0
-        caps = [g_sd]
-        if lo < 60.0:
-            caps.append(59.0 / (60.0 - lo))
-        if hi > 60.0:
-            caps.append(39.0 / (hi - 60.0))
-        g = min(caps)
-        new[key] = round(g, 4)
-        cur = MATRIX_DISPLAY_GAINS.get(key, 1.0)
-        head = min([c for c in caps[1:]] or [float("inf")])
-        print(f"{key:16}{sd:>8.2f}{lo:>8.1f}{hi:>8.1f}{g_sd:>10.4f}"
-              f"{head:>10.4f}{g:>10.4f}{cur:>10.4f}{100 * (g / cur - 1):>+8.1f}%")
-    print("\nMATRIX_DISPLAY_GAINS = " + json.dumps(new, indent=4))
-    (HERE / "au_refit_gains.json").write_text(json.dumps(new), encoding="utf-8")
-    print(f"→ {HERE / 'au_refit_gains.json'}")
-
-    # gain 一改，權重要同步除返個 gain，否則等於偷偷 re-weight。
-    equiv = {k: MATRIX_WEIGHTS[k] * MATRIX_DISPLAY_GAINS.get(k, 1.0) / new.get(k, 1.0)
-             for k in MATRIX_WEIGHTS}
-    total = sum(equiv.values())
-    equiv = {k: round(v / total, 5) for k, v in equiv.items()}
-    print("\n等價權重（新 gain 之下複製現行排名）：")
-    print("MATRIX_WEIGHTS = " + json.dumps(equiv))
-    (HERE / "au_refit_equiv_weights.json").write_text(json.dumps(equiv), encoding="utf-8")
+    raise ValueError("AU gains were retired; use weight fitting on raw matrix scores.")
 
 
 def dirichlet(rng, alpha):
     draw = [rng.gammavariate(a, 1.0) for a in alpha]
     total = sum(draw) or 1.0
-    return [d / total for d in draw]
+    return [d / total * sum(MATRIX_WEIGHTS.values()) for d in draw]
 
 
 def fit_consensus(ds, mx, base_w, train_end, seed, n, min_folds, quiet=True):
@@ -302,7 +258,7 @@ def fit_consensus(ds, mx, base_w, train_end, seed, n, min_folds, quiet=True):
         return None, 0
     cons = {k: statistics.median(v[i] for v in gated) for i, k in enumerate(DIMS)}
     total = sum(cons.values())
-    return {k: v / total for k, v in cons.items()}, len(gated)
+    return {k: v / total * sum(MATRIX_WEIGHTS.values()) for k, v in cons.items()}, len(gated)
 
 
 def cmd_walkforward(ds, args):
@@ -351,7 +307,7 @@ def cmd_walkforward(ds, args):
     print(f"\nOBJ 贏嘅窗口：{wins}/{len(rows)}")
     pooled = {k: statistics.median(r[3][k] for r in rows) for k in DIMS}
     total = sum(pooled.values())
-    pooled = {k: round(v / total, 5) for k, v in pooled.items()}
+    pooled = {k: round(v / total * sum(MATRIX_WEIGHTS.values()), 8) for k, v in pooled.items()}
     print("跨窗口共識（逐維度中位數）：" + json.dumps(pooled))
     (HERE / "au_refit_walkforward.json").write_text(json.dumps(pooled), encoding="utf-8")
 
@@ -403,7 +359,7 @@ def cmd_refit(ds, args):
 
     consensus = {k: statistics.median(v[i] for v, _ in gated) for i, k in enumerate(DIMS)}
     total = sum(consensus.values())
-    consensus = {k: round(v / total, 5) for k, v in consensus.items()}
+    consensus = {k: round(v / total * sum(MATRIX_WEIGHTS.values()), 8) for k, v in consensus.items()}
     print(f"\n共識權重（{len(gated)} 條過閘候選嘅逐維度中位數，睇 holdout 之前已經定死）：")
     print(json.dumps(consensus))
     (HERE / "au_refit_consensus.json").write_text(json.dumps(consensus), encoding="utf-8")

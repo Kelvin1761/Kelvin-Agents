@@ -144,7 +144,7 @@ def main():
                     # ⚠️ 唔可以寫 `fs.get(k, 60) or 60` —— 分數 **0.0** 係合法值
                     # （pace_figure 撞落地板），`or` 會靜靜雞當佢係中性 60。
                     # 實測 7,547 匹有 3 匹中招，replica 對唔到真引擎差 12.20 分。
-                    "features": {k: round(float(60 if fs.get(k) is None else fs[k]), 4)
+                    "features": {k: round(float(60 if fs.get(k) is None else fs[k]), 6)
                                  for k in FEATURE_KEYS},
                     "wet": float(res.get("wet_form_feature") or 0.0),
                     "proven_class": float(res.get("proven_class_feature") or 0.0),

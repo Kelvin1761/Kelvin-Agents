@@ -5,12 +5,13 @@ import json
 import math
 import os
 import re
-from .preparation_cycle import preparation_cycle
 import sys
 import unicodedata
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
+
+from .preparation_cycle import preparation_cycle
 
 from .matrix_mapper import (
     MATRIX_ADVANTAGE_CUTOFF,
@@ -34,7 +35,7 @@ from .source_alignment import (
 from .scoring import (
     ABILITY_FEATURE_KEYS,
     FEATURE_KEYS,
-    MATRIX_ABILITY_SCALE,
+    compose_matrix_score,
     MATRIX_WEIGHTS,
     CLASS_MICRO_WEIGHTS,
     CONSISTENCY_MICRO_WEIGHTS,
@@ -656,16 +657,33 @@ class RacingEngine:
                         feature_scores["formline_score"] = clip_score(fl_score - 2)
                         feature_notes["formline_score"] = feature_notes.get("formline_score", "") + "；[級數] 升班 × 弱賽績線 → 有保留"
 
+        # Reclassify the existing trial-density contribution after the legacy
+        # context adjustments, so those conditions keep their tested behaviour.
+        # The same contribution now has its own feature and matrix coefficient.
+        preparation = feature_scores.get("preparation_score", 60.0) - 60.0
+        if preparation:
+            feature_scores["jockey_horse_fit_score"] = clip_score(
+                feature_scores["jockey_horse_fit_score"] - preparation)
+            moved = [a for a in self.jt_fit_detail.get("adjustments", [])
+                     if a.get("factor") in self._PREPARATION_FACTORS]
+            self.preparation_detail = {"base": 60.0, "adjustments": moved,
+                                       "final": feature_scores["preparation_score"]}
+            self.jt_fit_detail["adjustments"] = [a for a in self.jt_fit_detail.get("adjustments", [])
+                                                 if a not in moved]
+            self.jt_fit_detail["final"] = feature_scores["jockey_horse_fit_score"]
+            note = feature_notes.get("jockey_horse_fit_score", "")
+            note = "；".join(part for part in note.split("；")
+                            if not any(f in part for f in self._PREPARATION_FACTORS))
+            feature_notes["jockey_horse_fit_score"] = re.sub(
+                r"人馬配搭分 \d+(?:\.\d+)?",
+                f"人馬配搭分 {feature_scores['jockey_horse_fit_score']:.1f}", note)
+
+        # Export the same precision consumed by the matrix. This makes a saved
+        # feature vector replayable by ML/refit without hidden rounding drift.
+        feature_scores = {key: round(value, 6) for key, value in feature_scores.items()}
         matrix_scores = map_features_to_matrix_scores(feature_scores)
         matrix = map_features_to_matrix(feature_scores)
-        # 除返 MATRIX_ABILITY_SCALE 係為咗令 2026-08-26 嗰次 gain 修正對 ability 軸
-        # 完全透明（grade / 頭三分差 / 濕地 overlay 全部唔使郁）。見 scoring.py 註釋。
-        pure_7d_score = round(
-            60.0
-            + (sum(matrix_scores[key] * MATRIX_WEIGHTS[key] for key in MATRIX_WEIGHTS) - 60.0)
-            / MATRIX_ABILITY_SCALE,
-            4,
-        )
+        pure_7d_score = round(compose_matrix_score(matrix_scores), 4)
         base_7d_score = pure_7d_score
         # Report-only post-7D modifiers (dynamic weights, soft-shape, diversity, barrier,
         # soft-wetproof, place-tightening, micro-rank, wet-condition) were retired
@@ -715,7 +733,7 @@ class RacingEngine:
             "matrix_scores": matrix_scores,
             "data_coverage": data_coverage,
             "matrix_reasoning": matrix_reasoning,
-            "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
+            "feature_scores": {key: feature_scores[key] for key in FEATURE_KEYS},
             "feature_notes": {key: feature_notes.get(key, "") for key in FEATURE_KEYS},
             "core_logic": core_logic,
             "preparation_cycle": prep_context,
@@ -724,6 +742,7 @@ class RacingEngine:
             "disadvantages": disadvantages,
             "grade_transparency": grade_transparency,
             "jt_fit_detail": self.jt_fit_detail,
+            "preparation_detail": getattr(self, "preparation_detail", None),
             "stability_detail": {
                 "form": getattr(self, "form_detail", {}) or {},
                 "consistency": getattr(self, "consistency_detail", {}) or {},
@@ -931,6 +950,22 @@ class RacingEngine:
             detail["note"] = "缺乏正式賽績（賽績表未有可用場次），按中性 60 分處理"
             detail["final"] = 60.0
             return 60, "缺乏正式賽績，近績分按 60 分處理。", "career_tag"
+
+        # Preserve the actual evidence separately from the prize proxy. A
+        # sponsor title / historical HC is never proof of a race's BM class.
+        detail["source_context"] = [
+            {k: entry.get(k) for k in ("date", "venue", "going", "source_race_class", "prize")}
+            for entry in entries[:4]
+        ]
+        today_surface = _surface_kind(self._today_going())
+        differing = [e for e in entries[:4] if today_surface and _surface_kind(e.get("going"))
+                     and _surface_kind(e.get("going")) != today_surface]
+        if differing:
+            detail["surface_transfer_note"] = (
+                f"近四仗有 {len(differing)} 仗來自另一種跑道；今場"
+                f"{'草地' if today_surface == 'turf' else '合成跑道'}。"
+                "跨跑道成績轉移未有可靠校準，來源高分不等於今場適性已獲證明。")
+            self.risk_flags.append("surface_transfer_unverified")
 
         today_class = self.race_context.get("race_class", "")
         today_tier = self._get_class_tier(today_class)
@@ -2060,6 +2095,15 @@ class RacingEngine:
     # 唔係中性 60 —— 嗰批馬實測前三率 21.7%，低過樣本平均 28.3%。
     _JT_FIT_NO_EVIDENCE = 58.0
 
+    _PREPARATION_FACTORS = frozenset({"試閘交代密度足夠", "備戰同騎練配置方向一致"})
+
+    def _preparation_score(self):
+        adjustments = (getattr(self, "jt_fit_detail", None) or {}).get("adjustments", [])
+        selected = [a for a in adjustments if a.get("factor") in self._PREPARATION_FACTORS]
+        delta = sum(float(a["delta"]) for a in selected)
+        note = "；".join(a.get("evidence") or a["factor"] for a in selected)
+        return 60.0 + delta, note or "未有額外試閘備戰證據", "trial_preparation"
+
     def _jockey_horse_fit_score(self):
         jockey = self._clean_identity(self.horse_data.get("jockey"))
         trainer = self._clean_identity(self.horse_data.get("trainer"))
@@ -2741,6 +2785,7 @@ class RacingEngine:
             "class_weight": "官方評分對位",
             "track": "場地與地況適性",
             "form_line": "賽績線",
+            "preparation": "試閘備戰",
         }.get(key, key)
 
     def _feature_label(self, key):
@@ -2793,20 +2838,20 @@ class RacingEngine:
         for key, label, weight in dims:
             raw_score = float(matrix_scores.get(key, 60))
             band = matrix_bands.get(key, "➖")
-            contribution = round(raw_score * weight, 2)
+            contribution = round((raw_score - 60.0) * weight, 2)
             weighted_sum += contribution
             rows.append({"key": key, "label": label, "score": round(raw_score, 2),
                          "weight": weight, "contribution": contribution, "band": band})
             # 拿走 [核心/半核心/輔助] 標籤：權重百分比已經表達咗重要性，標籤多餘。
-            lines.append(f"| {label} | {raw_score:.1f} | {weight * 100:.1f}% | {contribution:.2f} | {band} |")
+            lines.append(f"| {label} | {raw_score:.1f} | {weight:.4f} | {contribution:+.2f} | {band} |")
         table = "\n".join([
-            "| 維度 | 得分 | 權重 | 貢獻 | 判定 |",
+            "| 維度 | 得分 | 合成係數 | 相對60分的貢獻 | 判定 |",
             "|:---|---:|---:|---:|:---:|",
             *lines,
         ])
         summary = (
             f"{table}\n\n"
-            f"**→ 官方六維 clean ranking score = {base_7d_score:.2f} 分；"
+            f"**→ 60 ＋ 各項貢獻 = {base_7d_score:.2f} 分；"
             f"高班實績證明 {float(class_proof_feature):+.2f}；"
             f"綜合戰力分 = {ability_score:.2f} 分 → Grade = [{grade}]**"
         )
@@ -2853,6 +2898,7 @@ class RacingEngine:
             "debut_form_neutral": "初出馬缺正式賽經驗，變數自然較大",
             "debut_distance_unproven": "初出馬未經路程實戰驗證",
             "trial_no_recent_top3": "近三課有名次嘅試閘全部未入前三，備戰交代偏弱",
+            "surface_transfer_unverified": "近仗包含另一種跑道；草地與合成跑道成績不能直接等同",
         }
         return mapping.get(flag, flag)
 
@@ -3666,7 +3712,6 @@ class RacingEngine:
                                        career_starts=self.horse_data.get('career_race_starts'))
             self._preparation_cycle_cache = cached
         return cached
-
 
     def _trial_summary_text(self):
         trial_count = int(parse_float(self.data.get("trial_count")) or len(self._trial_places()))
@@ -5037,6 +5082,8 @@ class RacingEngine:
             sents.append("優勢在於" + "；".join(real_adv[:3]) + "。")
         if real_dis:
             sents.append("要留意" + "；".join(real_dis[:3]) + "。")
+        if "surface_transfer_unverified" in self.risk_flags:
+            sents.append(self.form_detail.get("surface_transfer_note", ""))
         if not real_adv and not real_dis:
             sents.append("整體結構平均，未見特別爆點亦無明顯穿崩，臨場步速與形勢將係關鍵。")
         if self._career_starts() == 0:
@@ -6597,6 +6644,9 @@ def _performance_quality_digest(
             "prize": round(float(prize), 2),
             "starters": int(starters),
             "distance": entry.get("distance"),
+            "going": entry.get("going", ""),
+            "race_class": entry.get("race_class", ""),
+            "venue": entry.get("venue", ""),
             "quality": round(quality, 6),
         })
         if len(evidence) == len(_PERFORMANCE_QUALITY_RECENCY_WEIGHTS):
@@ -6742,6 +6792,9 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
             l600_split = _parse_time_to_seconds(l600_match.group(1))
         entries.append({
             "date": match.group(3),
+            "venue": match.group(1),
+            "going": match.group(5),
+            "race_class": _capture(header, r"(?i)\bRaceClass:\[([^\]]+)\]"),
             "distance": int(match.group(4)[:-1]),
             "is_trial": is_trial,
             "prize": prize,
@@ -6819,6 +6872,15 @@ def pi_from_trajectory(text) -> tuple[float | None, str]:
     if 8 in marks:
         return float(marks[8] - finish), "800m"
     return None, ""
+
+
+def _surface_kind(value):
+    value = str(value or "").lower()
+    if any(token in value for token in ("synthetic", "polytrack", "tapeta")):
+        return "synthetic"
+    if any(token in value for token in ("good", "soft", "heavy", "firm", "turf")):
+        return "turf"
+    return ""
 
 
 def _parse_running_position(header: str, marker: str) -> int | None:

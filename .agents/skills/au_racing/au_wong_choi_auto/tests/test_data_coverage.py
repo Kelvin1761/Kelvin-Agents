@@ -24,8 +24,8 @@ class DataCoverageTests(unittest.TestCase):
         cov = auto["data_coverage"]
         # Ranking coverage contains the ten active ability leaves.  class_score
         # remains available in the report but no longer inflates this count.
-        self.assertEqual(cov["total"], 10)
-        self.assertEqual(cov["present"] + len(cov["missing_features"]), 10)
+        self.assertEqual(cov["total"], 11)
+        self.assertEqual(cov["present"] + len(cov["missing_features"]), cov["total"])
         self.assertIn(cov["confidence"], ("高", "中", "薄"))
         self.assertTrue(0 <= cov["coverage_pct"] <= 100)
 

@@ -79,6 +79,7 @@ def load_engine(engine_dir: Path):
     formulas = {k: list(v) for k, v in matrix_mapper.MATRIX_FORMULAS.items()}
     return {
         "weights": weights,
+        "coefficient_model": hasattr(scoring, "compose_matrix_score"),
         "debut_weights": dict(getattr(scoring, "DEBUT_MATRIX_WEIGHTS", {}) or {}),
         "formulas": formulas,
         # AU stretches each dimension onto one ruler; HKJC does not have gains.
@@ -268,6 +269,11 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
     A("")
     A("### 每個維度佔幾重")
     A("")
+    coefficients = model.get("coefficient_model", False)
+    if coefficients:
+        A("矩陣直接顯示分項分數，沒有尾段放大。合成式：**60 ＋ Σ〔（維度分 −60）× 合成係數〕**。")
+        A("下面的權重是合成係數，不是總和必須等於100%的百分比；ML／refit 直接擬合這一套係數。")
+        A("")
     if inf:
         A("| 維度 | 權重 | 實測影響力 | 佔比圖 |")
         A("|---|---:|---:|---|")
@@ -284,10 +290,11 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
             else:
                 A(f"| {name} `{key}` | {note} | {bar(0)} |")
             continue
+        display_weight = f"{weight:.4f}" if coefficients else f"{weight * 100:.1f}%"
         if inf:
-            A(f"| {name} `{key}` | {weight * 100:.1f}% | {inf.get(key, 0) * 100:.1f}% | {bar(inf.get(key, 0))} |")
+            A(f"| {name} `{key}` | {display_weight} | {inf.get(key, 0) * 100:.1f}% | {bar(inf.get(key, 0))} |")
         else:
-            A(f"| {name} `{key}` | {weight * 100:.1f}% | {bar(weight)} |")
+            A(f"| {name} `{key}` | {display_weight} | {bar(weight / sum(weights.values()) if coefficients else weight)} |")
     A("")
     if overlays:
         A("### 額外場內 ranking overlay")
@@ -306,7 +313,7 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
         A("實際跑落去，呢個維度喺同一場馬入面真係拉開幾多分距離 —— 一個權重好高但成場馬")
         A("都畀差唔多分數嘅維度，其實冇乜影響力。兩者差得遠，就代表個維度「有名無實」。")
         A("")
-    if inf:
+    if inf and not coefficients:
         drift = sorted(
             (
                 (abs(inf[k] - weights[k]) / weights[k], k)
@@ -339,7 +346,8 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
     for key in keys:
         name = labels.get(key, key)
         weight = weights.get(key, 0.0)
-        head = f"### {name}　`{key}`　— 權重 {weight * 100:.1f}%"
+        display_weight = f"合成係數 {weight:.4f}" if coefficients else f"權重 {weight * 100:.1f}%"
+        head = f"### {name}　`{key}`　— {display_weight}"
         if weight <= 0:
             head += "（唔入排名）"
         A(head)

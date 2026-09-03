@@ -63,15 +63,10 @@ class TestJockeyContinuityRemoved(unittest.TestCase):
             "三項都應該喺 notes 標明「不入分」",
         )
 
-    def test_display_gain_not_reinflated(self):
-        """⚠️ 剷走噪音項令 jockey_trainer raw SD 6.87 → 5.20。實測把 gain 拉返
-        「目標 SD 11」會令結果變差（terminal −0.0095 vs 保持原 gain +0.0000）。
-        清噪音之後應該讓維度影響力自然下降。"""
-        from au_racing_engine.matrix_mapper import MATRIX_DISPLAY_GAINS
-        self.assertAlmostEqual(
-            MATRIX_DISPLAY_GAINS["jockey_trainer"], 2.4973, places=3,
-            msg="jockey_trainer 個 gain 唔應該因為剷走噪音而重算",
-        )
+    def test_effective_jockey_weight_not_reinflated(self):
+        from au_racing_engine.scoring import MATRIX_WEIGHTS
+        self.assertAlmostEqual(MATRIX_WEIGHTS["jockey_trainer"],
+                               .245341972 * 2.4973 / .9245975952, places=10)
 
 
 if __name__ == "__main__":

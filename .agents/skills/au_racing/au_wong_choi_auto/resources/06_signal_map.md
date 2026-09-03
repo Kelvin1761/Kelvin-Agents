@@ -4,43 +4,36 @@
 > 呢張地圖由 `tests/test_signal_map.py` 鎖定 — ability 方程有任何隱藏改動
 > 都會令測試爆，逼令呢份文檔同步更新。
 
-## 排名方程（唯一真相）
+## 現役排名方程（2026-09-02）
 
 ```
-ability_score = 60 + (Σ MATRIX_WEIGHTS[d] × mx[d] − 60) / MATRIX_ABILITY_SCALE
-                (五個排名維度；form_line / race_shape 只顯示)
-              + wet_form_feature(今日場地, 地狀分拆線)
-              + proven_class_feature(高班次 × 當仗實際表現)
-排序 = ability_score 降序；同分先按馬號穩定排序
+ability = 60 + Σ[(raw_matrix_score − 60) × coefficient]
+          + wet_form_feature + proven_class_feature
 ```
 
-`MATRIX_ABILITY_SCALE`（2026-08-26，EXP-20260826-03）**唔係新訊號**。修正
-`pace_perf` 個 display gain（0.9909 → 0.594 —— 舊值喺一個一半場次呢個維度
-係常數嘅語料上 fit，所以餵咗個假 SD）之後，`MATRIX_WEIGHTS["pace_perf"]` 要按
-0.9909/0.594 補償，五個權重再全體歸一（Σ 保持 1.0）。歸一會令 ability 偏差縮
-7.54%，呢個除法還原返個尺，令 grade、頭三分差、濕地 overlay 全部唔使郁。
-1,611 場實測：ability max|Δ| 0.0016（純 round(2) 噪音）、grade 改變 0、
-排名改變 2 場（0.002 級數嘅平手）。
+唯一合成函數：`au_racing_engine.scoring.compose_matrix_score`。
+矩陣不再做 gain，綜合分亦不再除 ability scale。
+合成係數是直接回歸係數，總和不要求 1；報告不得假稱百分比分配。
+ML/refit 應使用新 engine dump，包含獨立 preparation_score；feature 保留六位小數，
+與引擎實際入矩陣的精度一致。EXP-20260902-07 是結構簡化，沒有宣稱命中率提升。
 
-## 特徵分類（分離度 = 2026-07-17 修復後審計）
+| 維度 | 輸入 | 合成係數 |
+|---|---|---:|
+| stability | form .60 + performance_quality .40 | .3709972501 |
+| pace_perf | pace_figure .941744 + trial .058256 | .1209393448 |
+| jockey_trainer | jockey .333333 + trainer .285714 + fit .380952 | .6626585553 |
+| class_weight | rating .70（其餘維持60） | .3826193902 |
+| track | track_score | .1411429707 |
+| preparation | preparation_score（原試閘密度／配置項獨立歸類） | .2524411020 |
+| race_shape / form_line | pace_map / 純 formline，不混近績 | 0（參考） |
 
-### A. 直接影響矩陣排名（10 個 + 2 overlays）
+同騎師試閘保留在人馬配搭；普通試閘密度不再屬人馬配搭分。
+近績 `>=72 && class<60` 的 −4 仍保留：獨立刪除測試 dev Good 下降，不能聲稱刪除改善。
+班次與跨跑道的替代評分候選未過，真實 class、going、venue 隨 PQ 證據保留，
+跨草地／合成跑道時另作清楚提示。賽績線新 Facts 保存逐對手後續賽日期、
+自身名次／輸距、partial 標記及 as_of，以便日後做真正無洩漏的 proximity 測試。
 
-| 維度（權重） | 輸入特徵（內部權重） | 分離度 |
-|---|---|---|
-| stability (0.32920) | form 0.60 / performance_quality 0.40 | 完整 margin＋prize＋starters 有數據先啟動；否則逐匹沿用 consistency |
-| pace_perf (0.10559；顯示：速度考驗背景) | L600 benchmark/context 0.941744 / trial 0.058256 | Racenet 係逐駒 benchmark；Sportsbet 係 race-level context；sectional 已退出排名 |
-| jockey_trainer (0.22957) | jockey 0.333333 / trainer 0.285714 / fit 0.380952 | 現役三葉 |
-| race_shape (0.13485) | pace_map 1.0（檔位 bias＋收縮） | 現役單葉 |
-| class_weight (0.12042) | rating 0.70；class／weight 只作 context | official rating 主軸 |
-| track (0.08037) | track_score 1.0 | 現役單葉 |
-| overlay | wet_form_feature（只喺濕地非零） | Heavy +4 g2 / Soft −3 gp |
-| overlay | proven_class_feature（最近四場有班次及完整名次正式賽） | `0.5 ×` 場內 raw proven-class z-score；不足 3 駒有效數據或個馬缺資料時中性 0 |
-
-`performance_quality` = 近四場可比較正式賽嘅 recency-weighted
-`-min(20, beaten_margin) + 4 × log10(prize / 50000)`，再做場內 z-score。
-最少兩場完整 run、全場最少三匹有完整數據先啟動；同日／未來 run 一律截斷。
-詳細驗證見 `15_performance_quality_matrix_upgrade_20260809.md`。
+## 歷史實驗記錄（以下日期及權重不是現役設定）
 
 ### A2. 顯示尺度（2026-08-01）—— 每個 leaf 嘅 60 必須真係中性
 

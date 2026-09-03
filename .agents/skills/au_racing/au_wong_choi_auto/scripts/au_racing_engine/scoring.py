@@ -9,12 +9,12 @@ FEATURE_KEYS = (
     "jockey_score", "trainer_score", "jockey_horse_fit_score", "class_score",
     "rating_score", "weight_score", "distance_score", "track_score",
     "formline_score", "consistency_score", "performance_quality_score",
-    "health_score", "confidence_score", "pace_figure_score",
+    "health_score", "confidence_score", "pace_figure_score", "preparation_score",
 )
 ABILITY_FEATURE_KEYS = (
     "form_score", "performance_quality_score", "pace_figure_score",
     "trial_score", "pace_map_score", "jockey_score", "trainer_score",
-    "jockey_horse_fit_score", "rating_score", "track_score",
+    "jockey_horse_fit_score", "rating_score", "track_score", "preparation_score",
 )
 REPORT_ONLY_FEATURE_KEYS = (
     "sectional_score", "class_score", "weight_score", "distance_score",
@@ -154,32 +154,33 @@ SPORTSBET_PQ_RECOVERY_ALPHA = 0.10
 # （含 metro）要用同一個 driver 重驗。Rollback：加返 "race_shape":0.13485 並
 # 還原下面兩個 WET_FORM 常數。
 #
-# 2026-08-26 **已經重驗，結論係照用**（EXP-20260826-02）。語料由 403 升到
-# 809 場乾淨 / 1,033 場「PF 可表達」/ 1,611 場全歸檔，五種量法冇一個支持郁：
-#   * 權重掃描（合約主裁判，三個語料）：調低一律 dev 負；調高到 0.18 / 0.22
-#     holdout 顯著負。現值坐喺最優點。
-#   * 兩次獨立完整重 fit（全語料、PF 語料）：共識**都想 pace_perf 升**
-#     （0.14952 / 0.14010），但兩個候選 holdout 都唔過 → 現行權重冇過期。
-#   * `--drop-dim pace_perf`：基準 dev OBJ 32.2803 → 31.2515，邊際貢獻係正。
-#   * 逐月剷走 pace_perf：十個窗唯一顯著結果係 2026-06 −0.0275 ❌，反對剷走。
-#
-# ⚠️ 量 pace_figure 嘅 leaf AUC **一定要先按場內覆蓋分層**。pooled 0.5392 係
-# 「2026-05 之前 480 場全場 60（AUC 啱好 0.5000，因為全部平手）」溝「2026-06
-# 之後 1,082 場 0.5558」嘅平均 —— 舊歸檔喺抽取層根本冇段速，唔係個 leaf 弱。
-# 2026-08-26（EXP-20260826-03）：五個權重同時重算，**排名冇變**。
-# `MATRIX_DISPLAY_GAINS["pace_perf"]` 由 0.9909 修正到 0.594（舊值餵咗個假 SD，
-# 見 matrix_mapper 註釋）。為咗令排名一模一樣，pace_perf 權重按 0.9909/0.594
-# 放大到 0.203602，再把五個權重全體歸一（Σ 仍然係 1.0，所有工具嘅假設不變）。
-# 歸一會令 ability 偏差縮 7.54%，所以 `MATRIX_ABILITY_SCALE` 喺 pure_7d 度
-# 除返出嚟，令 ability 軸／grade／頭三分差／濕地 overlay 全部維持原狀。
-# 舊值：stability .38051 pace_perf .12205 jockey_trainer .26535
-#       class_weight .13919 track .09290（gain 0.9909）
-MATRIX_WEIGHTS = {"stability":0.351818631,"pace_perf":0.188249541,"jockey_trainer":0.245341972,"class_weight":0.128694739,"track":0.085895117}
+# EXP-20260902-07 removes post-score gains. These coefficients are the old
+# weight × gain / scale, fixed algebraically without fitting on outcomes.
+# Earlier comments above document historical configurations, not this contract.
+MATRIX_WEIGHTS = {
+    "stability": 0.37099725005319806,
+    "pace_perf": 0.12093934478578448,
+    "jockey_trainer": 0.6626585553070451,
+    "class_weight": 0.3826193901797637,
+    "track": 0.14114297066700832,
+    "preparation": 0.25244110196132946,
+}
+SCORING_CONTRACT_VERSION = "au/raw-matrix-preparation-v2"
 
-# 上面歸一嘅倒數。`pure_7d_score` 用佢還原 ability 軸，令呢次 gain 修正對
-# ability / grade / 信心分層完全透明。如果將來再改 gain 或權重，呢個常數要
-# 一齊重算：MATRIX_ABILITY_SCALE = 1 / Σ(未歸一權重)。
-MATRIX_ABILITY_SCALE = 0.9245975952
+# EXP-20260902-07: the coefficients above absorb the former gain / scale.
+# They are regression coefficients, not percentages summing to one. There is
+# one set of fit parameters; matrix scores themselves are never magnified.
+# Retained for readers of legacy metadata only; live composition does not use it.
+MATRIX_ABILITY_SCALE = 1.0
+
+
+def compose_matrix_score(matrix_scores, weights=None):
+    """Single AU composition contract used by engine, validation and research."""
+    coefficients = MATRIX_WEIGHTS if weights is None else weights
+    return 60.0 + sum(
+        (float(matrix_scores.get(key, 60.0)) - 60.0) * float(coefficient)
+        for key, coefficient in coefficients.items()
+    )
 
 # Sportsbet exact historical class proof (EXP-20260825-03).  The raw feature is
 # computed from the last four formal runs as (class strength above the maiden

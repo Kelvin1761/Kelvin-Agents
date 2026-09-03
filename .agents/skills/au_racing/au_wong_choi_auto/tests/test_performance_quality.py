@@ -49,6 +49,7 @@ class PerformanceQualityTests(unittest.TestCase):
             [
                 {
                     "date": "2026-07-20",
+                    "venue": "Randwick", "going": "Good", "race_class": "",
                     "finish_pos": 2,
                     "margin": 2.0,
                     "prize": 150000.0,
@@ -58,6 +59,7 @@ class PerformanceQualityTests(unittest.TestCase):
                 },
                 {
                     "date": "2026-07-01",
+                    "venue": "Randwick", "going": "Good", "race_class": "",
                     "finish_pos": 2,
                     "margin": 1.0,
                     "prize": 50000.0,

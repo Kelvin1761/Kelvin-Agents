@@ -72,33 +72,26 @@ class ValidationAgreesWithEngineTests(unittest.TestCase):
             "檢查所有 MATRIX_ABILITY_SCALE 複本",
         )
 
-    def test_the_ability_scale_is_actually_used_by_the_validator(self) -> None:
-        """釘住 validator 真係讀 MATRIX_ABILITY_SCALE。
+    def test_validator_detects_a_corrupted_score(self):
+        logic = _scored_logic()
+        first = next(iter(logic["horses"].values()))["python_auto"]
+        first["ability_score"] += 3.0
+        self.assertTrue(any("SCORE-004" in error for error in validate_logic_data(logic)))
 
-        缺咗個除法一樣可以「冇 mismatch」——如果 scale 剛好係 1.0。
-        所以直接查來源。
-        """
-        src = (SCRIPTS / "au_racing_engine" / "validation.py").read_text(
-            encoding="utf-8")
-        self.assertIn("MATRIX_ABILITY_SCALE", src)
-
-    def test_every_known_copy_imports_the_scale(self) -> None:
-        """七份複本清單 —— 加新複本就要加落呢度。"""
-        copies = [
-            SCRIPTS / "au_racing_engine" / "scoring.py",
-            SCRIPTS / "au_racing_engine" / "engine_core.py",
-            SCRIPTS / "au_racing_engine" / "matrix_mapper.py",
-            SCRIPTS / "au_racing_engine" / "validation.py",
-            SCRIPTS / "au_eval.py",
-            SCRIPTS / "au_matrix_refit.py",
-            ROOT / ".agents" / "skills" / "shared_racing" / "scripts"
-                 / "golden_scoring.py",
-        ]
-        missing = [p.name for p in copies
-                   if p.exists()
-                   and "MATRIX_ABILITY_SCALE" not in p.read_text(encoding="utf-8")]
-        self.assertEqual(missing, [],
-                         f"呢幾份 ability 式複本冇 MATRIX_ABILITY_SCALE：{missing}")
+    def test_refit_and_engine_use_the_same_equation(self):
+        from au_racing_engine.scoring import compose_matrix_score, MATRIX_WEIGHTS
+        from au_matrix_refit import Dataset
+        from au_racing_engine.matrix_mapper import map_features_to_matrix_scores
+        import numpy as np
+        auto = next(iter(_scored_logic()["horses"].values()))["python_auto"]
+        rows = [{"n": i, "name": str(i), "pos": i, "sp": "3", "features": auto["feature_scores"],
+                 "wet": 0, "proven_class": 0, "ability": 60} for i in range(1,5)]
+        import json
+        from types import SimpleNamespace
+        payload = {"races": [{"date":"2026-08-30", "race":1, "field":4, "rows":rows}]}
+        ds = Dataset(SimpleNamespace(read_text=lambda **kw: json.dumps(payload)))
+        expected = compose_matrix_score(map_features_to_matrix_scores(auto["feature_scores"]))
+        self.assertTrue(np.allclose(ds.ability(ds.dim_matrix(), MATRIX_WEIGHTS), expected, atol=.0001))
 
 
 if __name__ == "__main__":

@@ -330,7 +330,7 @@ def _control_summary(items: list[dict]) -> dict:
     )
     ability_keys = tuple(key for key in MATRIX_KEYS if key != "race_shape")
     corroboration = Counter(
-        sum(item["matrix_deltas"][key] > 0 for key in ability_keys)
+        sum(item["matrix_deltas"].get(key, 0.0) > 0 for key in ability_keys)
         for item in items
     )
     by_formal_band = {}
@@ -338,13 +338,13 @@ def _control_summary(items: list[dict]) -> dict:
         members = [item for item in items if _formal_band(item["row"]) == band]
         if members:
             by_formal_band[band] = {
-                key: round(mean(item["matrix_deltas"][key] for item in members), 3)
+                key: round(mean(item["matrix_deltas"].get(key, 0.0) for item in members), 3)
                 for key in MATRIX_KEYS
             }
     return {
         "count": count,
         "matrix_field_delta_means": {
-            key: round(mean(item["matrix_deltas"][key] for item in items), 3)
+            key: round(mean(item["matrix_deltas"].get(key, 0.0) for item in items), 3)
             for key in MATRIX_KEYS
         },
         "feature_means": {

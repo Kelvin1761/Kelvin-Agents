@@ -113,16 +113,9 @@ class TestPaceMapNeutralBase:
         ceiling = PACE_MICRO_WEIGHTS["base"] + PACE_MICRO_WEIGHTS["modifier_cap_max"]
         assert ceiling > 60.0
 
-    def test_race_shape_dimension_is_the_leaf_stretched_by_its_display_gain(self):
-        """race_shape has one leaf, so the dimension IS pace_map on the shared ruler.
-
-        Not 1:1 any more — the display gain (2026-08-01) puts every dimension on
-        one scale so the bands mean the same thing across the matrix.
-        """
-        gain = MATRIX_DISPLAY_GAINS["race_shape"]
+    def test_race_shape_reports_its_actual_leaf_score(self):
         scores = map_features_to_matrix_scores({"pace_map_score": 64.0})
-        assert scores["race_shape"] == pytest.approx(60.0 + 4.0 * gain, abs=0.02)
-        assert scores["race_shape"] > 70.0, "a top draw must be able to read ✅"
+        assert scores["race_shape"] == 64.0
 
     def test_every_dimension_can_reach_both_positive_bands(self):
         """Before normalisation, race_shape / jockey_trainer / class_weight could
@@ -213,9 +206,10 @@ class TestDimensionScaleAndWeightsStayInLockstep:
         assert MATRIX_WEIGHTS["jockey_trainer"] > self.RANK_NEUTRAL_WEIGHTS["jockey_trainer"]
         assert MATRIX_WEIGHTS["stability"] < self.RANK_NEUTRAL_WEIGHTS["stability"]
 
-    def test_weights_sum_to_one(self):
-        """Σw ≠ 1 會令 ability 唔再係 0-100 尺（每個維度都 60-centred）。"""
-        assert sum(MATRIX_WEIGHTS.values()) == pytest.approx(1.0, abs=1e-4)
+    def test_neutral_features_produce_neutral_ability(self):
+        from au_racing_engine.scoring import compose_matrix_score
+        assert compose_matrix_score(map_features_to_matrix_scores({})) == 60.0
+
 
     def test_wet_overlay_tracks_the_ability_spread(self):
         """濕地 overlay 直接加落 ability 分，唔經矩陣 —— ability spread 一變，

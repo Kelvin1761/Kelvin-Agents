@@ -102,6 +102,7 @@ MATRIX_FORMULAS = {
         # independent evidence about its opponents (EXP-20260902-06).
         ("formline_score", 1.0),
     ),
+    "preparation": (("preparation_score", 1.0),),
 }
 
 MATRIX_KEYS = tuple(MATRIX_FORMULAS)
@@ -109,65 +110,10 @@ LEGACY_MATRIX_ALIASES = {
     "sectional": "pace_perf",
 }
 
-# ── 維度顯示尺正規化（2026-08-01）───────────────────────────────────────────
-# 每個維度嘅原生 spread 差得好遠，但報告用同一套 band 去畫（85 ✅✅ / 70 ✅ /
-# 55 ➖ / 40 ❌）。710 場實測，正規化之前：
-#
-#   stability       41.6–100.0   SD  9.96   四個 band 都到
-#   pace_perf       15.2– 98.9   SD 15.31   五個 band 都到
-#   race_shape      50.6– 64.0   SD  2.67   **只有 ➖(97%) 同 ❌(3%)** —— ✅ 到唔到
-#   jockey_trainer  51.1– 73.8   SD  3.20   ➖ 98%，✅ 2%，✅✅ 到唔到
-#   class_weight    50.9– 69.5   SD  4.00   ➖ 89%，❌ 11%，✅ 到唔到
-#   track           42.9– 85.7   SD  5.88   ✅✅ 幾乎到唔到
-#
-# 即係六個計分維度有三個，無論隻馬幾好都**永遠出唔到正面 band**。唔係噪音，
-# 係啞 —— 用戶睇到「一直 60」就係呢個。
-#
-# 修法：`mx' = clip(60 + (mx − 60) × gain)`，gain =
-#   min(TARGET_SD / 實測SD, 令實測極值仍然落喺 1..99 之內嘅最大 gain)
-# headroom 那一半好緊要：唔封住就會有一堆馬撞 0/100，製造假平手。
-#
-# ⚠️ gain 同權重係乘埋一齊影響排名（ranking 只食 weight × gain × deviation），
-# 所以呢個正規化本身就係一次 re-weighting。MATRIX_WEIGHTS 已經同步重 fit ——
-# 兩者必須一齊改，唔可以只改一邊。等價點 w/gain 可以完全複製舊模型，所以重 fit
-# 嘅搜索空間包含舊配置（搜索唔可能輸過舊模型）。
+# EXP-20260902-07: raw component scores, one set of ranking coefficients.
+# Legacy import compatibility only; no live gain or gain fitting remains.
 MATRIX_DISPLAY_TARGET_SD = 11.0
-MATRIX_DISPLAY_GAINS = {
-    "stability": 0.9750,
-    # 2026-08-26（EXP-20260826-03）：0.9909 → 0.594。
-    #
-    # 舊值係喺一個**一半場次入面呢個維度根本係常數**嘅語料上 fit 出嚟。2026-05
-    # 之前嘅歸檔冇段速抽取，`pace_figure_score` 成場都係 60，所以嗰 4,788 匹馬嘅
-    # raw SD 只有 **0.64**。溝落去令量到嘅 raw SD 由真實嘅 ~18.5 縮到 11.10，
-    # 而 11/11.10 = 0.991 —— 即係舊 gain 完全符合公式，只不過餵咗個假 SD。
-    #
-    #   語料                        raw SD    11/SD
-    #   2026-05 之前（PF 全部 60）      0.64      —
-    #   2026-08-05 之前（設 gain 嗰陣） 12.07    0.9115
-    #   2026-06+（PF 可表達）          18.43    0.5969
-    #   2026-08-05+（乾淨）            18.53    0.5937
-    #
-    # 後果：pace_perf 成品顯示 SD 喺 live 語料係 **18.26**，而其餘四個維度係
-    # 10.16–12.81。即係佢比設計意圖大聲 1.68 倍 —— 兩端 band 都爆：❌❌ 佔 14.3%
-    # 而 stability / track 只有 0.4%。用戶投訴「一隻唔對板嘅馬又衝上頭位」，
-    # 機制就係呢度。
-    #
-    # ⚠️ 排名**冇改變**。gain 降到 0.594 嘅同時，`MATRIX_WEIGHTS["pace_perf"]`
-    # 按 0.9909/0.594 放大再全體歸一，而 `MATRIX_ABILITY_SCALE` 把 ability 軸
-    # 還原 —— 1,611 場實測 ability max|Δ| 0.0016（純 round(2) 噪音）、grade 改變 0、
-    # 頭三分差 max|Δ| 0.0027、只有 2 場因為 0.002 級數嘅平手而換位。
-    #
-    # 點解唔順手減佢喺排名嘅份量：試過（gain 0.594 / 0.7161 / 0.85 × 三個語料，
-    # 共九格），**冇一格過閘** —— 主裁判全部跨 0，而場數指標係 gold +0.56~+0.97
-    # 但 pass −0.19~−1.45。冇量到改善就唔改排名。
-    "pace_perf": 0.594,
-    "race_shape": 4.1142,
-    "jockey_trainer": 2.4973,
-    "class_weight": 2.7489,
-    "track": 1.5193,
-    "form_line": 1.0,
-}
-# 正規化之後每個維度都用同一把尺，所以敘事門檻唔再需要逐維度磨 magic number。
+MATRIX_DISPLAY_GAINS = {}
 MATRIX_ADVANTAGE_CUTOFF = 72.0
 MATRIX_DISADVANTAGE_CUTOFF = 48.0
 
@@ -206,9 +152,6 @@ def map_features_to_matrix_scores(features):
             (clip_score(features.get(name, 60)) - 60.0) * weight
             for name, weight in components
         )
-        # Put every dimension on one ruler so the bands mean the same thing
-        # everywhere (see MATRIX_DISPLAY_GAINS).
-        score = 60.0 + (clip_score(score) - 60.0) * MATRIX_DISPLAY_GAINS.get(key, 1.0)
         matrix_scores[key] = round(clip_score(score), 2)
     return matrix_scores
 

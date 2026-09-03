@@ -32,6 +32,7 @@ from au_runtime_micro_ablation import (
     score_variant,
     select_indices,
 )
+from au_racing_engine.scoring import compose_matrix_score
 from au_racing_engine.io_utils import write_json_atomic, write_text_atomic
 from au_racing_engine.matrix_mapper import map_features_to_matrix_scores
 from au_racing_engine.scoring import MATRIX_WEIGHTS, clip_score
@@ -130,8 +131,9 @@ def recompose_row(
     )
     matrix = map_features_to_matrix_scores(features)
     output["score"] = round(
-        sum(matrix[key] * MATRIX_WEIGHTS[key] for key in MATRIX_WEIGHTS)
-        + float(row.get("wet_form_feature") or 0.0),
+        compose_matrix_score(matrix)
+        + float(row.get("wet_form_feature") or 0.0)
+        + float(row.get("proven_class_feature") or 0.0),
         4,
     )
     return output

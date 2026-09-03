@@ -103,3 +103,29 @@ def test_formline_retains_proximity_and_dates_and_censors_target_day(monkeypatch
     assert evidence['as_of'] == '2026-09-02'
     assert evidence['rows'][0]['own_finish'] == 2
     assert [r['date'] for r in evidence['rows'][0]['followups']] == ['2026-08-20']
+
+
+def test_preparation_is_separate_without_double_counting():
+    from au_racing_engine.scoring import compose_matrix_score
+    engine = RacingEngine({'horse_name':'Test', '_data': {'trial_count':2, 'trial_top3_count':2}},
+                          {'race_number':1}, facts_section='')
+    before = engine._jockey_horse_fit_score()[0]
+    auto = engine.analyze_horse()
+    features = auto['feature_scores']
+    assert features['preparation_score'] > 60
+    assert features['jockey_horse_fit_score'] + features['preparation_score'] - 60 == pytest.approx(before)
+    old = {**features, 'jockey_horse_fit_score': before, 'preparation_score':60}
+    assert compose_matrix_score(map_features_to_matrix_scores(features)) == pytest.approx(
+        compose_matrix_score(map_features_to_matrix_scores(old)), abs=.01)
+    assert not any(a['factor'] in engine._PREPARATION_FACTORS
+                   for a in auto['jt_fit_detail']['adjustments'])
+
+
+def test_quality_source_keeps_surface_and_true_class_separate_from_rating():
+    from au_racing_engine.engine_core import _parse_formguide_entries
+    rows = _parse_formguide_entries(
+        'Canberra Acton R5 2026-08-21 1900m cond:Synthetic $35000 Damon Budler (1) 55kg '
+        'margin:0L starters:9 finish:1/9 RaceClass:[OPEN BM79]\n', 'Sunburnt Country')
+    assert rows[0]['race_class'] == 'OPEN BM79'
+    assert rows[0]['going'] == 'Synthetic'
+    assert rows[0]['venue'] == 'Canberra Acton'
