@@ -46,14 +46,10 @@ def _meeting(tmp_path: Path, *, broken: bool = False) -> Path:
                 # 但 scan_meeting 對**真**AU 場次每匹馬都報 MISSING_FEATURES。
                 # 一個自己餵 input 嘅 test 睇唔到常數同現實脫節 —— 所以下面
                 # 加咗 test_au_expected_features_match_the_engine 去捉。
-                "feature_scores": {
-                    key: 60
-                    for key in (
-                        "form_score", "performance_quality_score", "pace_figure_score",
-                        "trial_score", "pace_map_score", "jockey_score", "trainer_score",
-                        "jockey_horse_fit_score", "rating_score", "track_score",
-                    )
-                },
+                # Take the keys from the gate itself, which now derives them
+                # from the engine. A third hand-written copy is how the set
+                # drifted twice already.
+                "feature_scores": {key: 60 for key in EXPECTED_FEATURES["au"]},
                 "data_coverage": {"coverage_pct": 88.0},
             },
         }
@@ -354,6 +350,11 @@ def test_au_expected_features_match_the_engine() -> None:
         from au_racing_engine.scoring import FEATURE_KEYS
     except ImportError as exc:                       # pragma: no cover
         pytest.skip(f"AU 引擎 import 唔到：{exc}")
+    # ⚠️ 呢條只查一個方向：閘門有冇引擎唔識嘅 key。**反方向**（引擎有個
+    # scoring leaf 而閘門冇監察）由 `test_expected_features_track_engine.py`
+    # 對 `ABILITY_FEATURE_KEYS` 查 —— 唔可以喺呢度用 `FEATURE_KEYS` 查反方向，
+    # 因為閘門刻意唔要嗰 7 個純顯示 key。2026-09-04：EXP-20260902-07 加咗
+    # `preparation_score` 落引擎，呢條測試照樣綠燈，閘門漏監察咗一個 leaf。
     unknown = sorted(set(EXPECTED_FEATURES["au"]) - set(FEATURE_KEYS))
     assert not unknown, (
         f"EXPECTED_FEATURES['au'] 有 {len(unknown)} 個引擎唔認識嘅 key：{unknown}。"
@@ -384,14 +385,10 @@ def _annotated_meeting(tmp_path: Path) -> Path:
             "python_auto": {
                 "ability_score": 70 - index,
                 "rank": index,
-                "feature_scores": {
-                    key: 60
-                    for key in (
-                        "form_score", "performance_quality_score", "pace_figure_score",
-                        "trial_score", "pace_map_score", "jockey_score", "trainer_score",
-                        "jockey_horse_fit_score", "rating_score", "track_score",
-                    )
-                },
+                # Take the keys from the gate itself, which now derives them
+                # from the engine. A third hand-written copy is how the set
+                # drifted twice already.
+                "feature_scores": {key: 60 for key in EXPECTED_FEATURES["au"]},
                 "data_coverage": {"coverage_pct": 88.0},
             },
         }

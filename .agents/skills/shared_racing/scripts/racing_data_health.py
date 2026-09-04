@@ -30,12 +30,28 @@ from wongchoi_paths import is_materialized_file
 #
 # AU 用 `ABILITY_FEATURE_KEYS`（真正入 ability 嘅十個）。唔用全部 18 個：另外 8 個
 # 係顯示／中間量，其中一個缺失唔代表評分壞咗，會製造噪音。
+def _au_ability_feature_keys() -> set[str]:
+    """The AU keys that actually enter `ability`, taken from the engine.
+
+    This used to be a hand-copied set. EXP-20260902-07 added `preparation_score`
+    to `ABILITY_FEATURE_KEYS` and the copy did not follow, so the gate checked 10
+    of the engine's 11 scoring leaves and a dead `preparation_score` would have
+    passed unnoticed -- the same failure this file's own header describes from
+    2026-08-21, one release later.
+    """
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / "au_racing" / "au_wong_choi_auto" / "scripts"
+        if (candidate / "au_racing_engine" / "scoring.py").exists():
+            if str(candidate) not in sys.path:
+                sys.path.insert(0, str(candidate))
+            from au_racing_engine.scoring import ABILITY_FEATURE_KEYS
+            return set(ABILITY_FEATURE_KEYS)
+    raise RuntimeError("cannot locate au_racing_engine.scoring for EXPECTED_FEATURES")
+
+
 EXPECTED_FEATURES = {
-    "au": {
-        "form_score", "performance_quality_score", "pace_figure_score",
-        "trial_score", "pace_map_score", "jockey_score", "trainer_score",
-        "jockey_horse_fit_score", "rating_score", "track_score",
-    },
+    "au": _au_ability_feature_keys(),
     "hkjc": {
         "form_score",
         "speed_score",
