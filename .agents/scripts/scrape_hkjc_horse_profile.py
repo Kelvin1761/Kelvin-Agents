@@ -355,30 +355,42 @@ def compute_weight_trend(entries: list[dict], today_weight: Optional[int] = None
     - Single race diff ≥20lb → 🔴急劇變化 (risk)
     """
     weights = [e['declared_weight'] for e in entries if e.get('declared_weight', 0) > 0]
-    if today_weight and today_weight > 0:
+    today_known = bool(today_weight and today_weight > 0)
+    if today_known:
         weights = [today_weight] + weights
     
     if len(weights) < 2:
-        return {'trend': '數據不足', 'signal': '中性', 'values': weights, 'detail': ''}
+        return {'trend': '數據不足', 'signal': '中性', 'values': weights,
+                'detail': '', 'today_weight_known': today_known}
     
     diffs = [weights[i] - weights[i+1] for i in range(min(len(weights)-1, 5))]
     
-    # Check for sudden change (today vs last)
-    if abs(diffs[0]) >= 20:
+    # ⚠️ `diffs[0]` is "today vs last start" ONLY when today's declared weight is
+    # published. HKJC releases it on raceday morning, so a pre-race run has
+    # `weights[0]` = the LAST start and `diffs[0]` = last vs the one before.
+    # Reporting that as 今仗較上仗 was wrong twice over: the label named the
+    # wrong pair, and `_candidate_health_risk_score` matched 急劇變化 /
+    # 顯著轉重轉輕 off it. Measured 2026-09-04 on 2026-09-06 ShaTin: 107 of 117
+    # runners with a trend took a health adjustment from that stale pair, one of
+    # them reading "🔴急劇變化 (今仗較上仗+2lb)". The multi-start trend below is
+    # unaffected -- it describes history and needs no today value.
+    if today_known and abs(diffs[0]) >= 20:
         return {
             'trend': '🔴急劇變化',
             'signal': '風險',
             'values': weights[:6],
-            'detail': f'今仗較上仗{diffs[0]:+d}lb'
+            'detail': f'今仗較上仗{diffs[0]:+d}lb',
+            'today_weight_known': today_known
         }
 
-    if abs(diffs[0]) >= 11:
+    if today_known and abs(diffs[0]) >= 11:
         direction = '轉重' if diffs[0] > 0 else '轉輕'
         return {
             'trend': f'🟠顯著{direction}',
             'signal': '觀察',
             'values': weights[:6],
-            'detail': f'今仗較上仗{diffs[0]:+d}lb'
+            'detail': f'今仗較上仗{diffs[0]:+d}lb',
+            'today_weight_known': today_known
         }
     
     # Check for consistent 3-race increase
@@ -387,7 +399,8 @@ def compute_weight_trend(entries: list[dict], today_weight: Optional[int] = None
             'trend': '📈持續增磅',
             'signal': '正面',
             'values': weights[:6],
-            'detail': f'近3仗每仗+{sum(diffs[:3])//3}lb'
+            'detail': f'近3仗每仗+{sum(diffs[:3])//3}lb',
+            'today_weight_known': today_known
         }
     
     # Check for consistent 3-race decrease
@@ -396,7 +409,8 @@ def compute_weight_trend(entries: list[dict], today_weight: Optional[int] = None
             'trend': '📉持續減磅',
             'signal': '警示',
             'values': weights[:6],
-            'detail': f'近3仗每仗{sum(diffs[:3])//3}lb'
+            'detail': f'近3仗每仗{sum(diffs[:3])//3}lb',
+            'today_weight_known': today_known
         }
     
     # Check overall fluctuation
@@ -406,7 +420,8 @@ def compute_weight_trend(entries: list[dict], today_weight: Optional[int] = None
             'trend': '📊穩定',
             'signal': '中性',
             'values': weights[:6],
-            'detail': f'波幅{w_range}lb'
+            'detail': f'波幅{w_range}lb',
+            'today_weight_known': today_known
         }
     
     # Mild trend
@@ -416,14 +431,16 @@ def compute_weight_trend(entries: list[dict], today_weight: Optional[int] = None
             'trend': '📈微增',
             'signal': '中性偏正',
             'values': weights[:6],
-            'detail': f'波幅{w_range}lb'
+            'detail': f'波幅{w_range}lb',
+            'today_weight_known': today_known
         }
     else:
         return {
             'trend': '📉微減',
             'signal': '中性偏負',
             'values': weights[:6],
-            'detail': f'波幅{w_range}lb'
+            'detail': f'波幅{w_range}lb',
+            'today_weight_known': today_known
         }
 
 
