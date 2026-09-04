@@ -25,6 +25,8 @@ from au_racing_engine.matrix_mapper import (
     matrix_score,
 )
 from au_racing_engine.scoring import MATRIX_WEIGHTS as LIVE_MATRIX_WEIGHTS
+from au_racing_engine.renderer import MATRIX_LABELS as ENGINE_MATRIX_LABELS
+from au_racing_engine.scoring import FEATURE_KEYS as ENGINE_FEATURE_KEYS
 def _corpus_meeting_dirs(root):
     """`root` AND `root/Archive`, oldest first. Scanning one level hid 49.1%
     of the scored AU corpus (751 of 1,530 races, incl. 16 of the 17 clean
@@ -48,36 +50,14 @@ OUTPUT_MD = ARCHIVE_ROOT / "AU_Auto_Archive_Calibration_Report.md"
 OUTPUT_CSV = ARCHIVE_ROOT / "AU_Auto_Section_Diagnostics.csv"
 OUTPUT_CONDITION_CSV = ARCHIVE_ROOT / "AU_Auto_Condition_Diagnostics.csv"
 
-MATRIX_LABELS = {
-    "stability": "狀態與穩定性",
-    "pace_perf": "段速表現",
-    "race_shape": "檔位形勢",
-    "jockey_trainer": "騎練訊號",
-    "class_weight": "官方評分對位",
-    "track": "場地適性",
-    "form_line": "賽績線",
-}
+# 2026-09-04：手抄版凍結咗喺 race_shape 退役之前，於是 `MATRIX_LABELS[key]`
+# 同 live `CURRENT_MATRIX_WEIGHTS[key]` 對唔上 —— 呢個工具由 2026-08-22 起
+# 一開就 `KeyError: 'race_shape'`。至少佢係大聲死；同一形狀嘅手抄清單
+# （下面 FEATURE_SCORE_KEYS）就係靜靜漏。兩個都改成由引擎攞。
+MATRIX_LABELS = dict(ENGINE_MATRIX_LABELS)
 
 CURRENT_MATRIX_WEIGHTS = dict(LIVE_MATRIX_WEIGHTS)
-FEATURE_SCORE_KEYS = (
-    "form_score",
-    "trial_score",
-    "sectional_score",
-    "pace_map_score",
-    "jockey_score",
-    "trainer_score",
-    "jockey_horse_fit_score",
-    "class_score",
-    "rating_score",
-    "weight_score",
-    "distance_score",
-    "track_score",
-    "formline_score",
-    "consistency_score",
-    "health_score",
-    "confidence_score",
-    "pace_figure_score",
-)
+FEATURE_SCORE_KEYS = tuple(ENGINE_FEATURE_KEYS)
 
 
 def slug(text: str) -> str:
@@ -599,7 +579,11 @@ def summarize_archive(archive_root: Path, historical_results):
         diagnostics.append({
             "key": key,
             "label": MATRIX_LABELS[key],
-            "current_weight": CURRENT_MATRIX_WEIGHTS[key],
+            # 已退役嘅維度（race_shape 2026-08-22、form_line）仲喺 MATRIX_FORMULAS
+            # 同標籤表度，但唔再喺 MATRIX_WEIGHTS。直接索引就係之前嗰個
+            # KeyError。用 0.0 顯示佢哋 —— 「量得到但唔入排名」係有用資訊，
+            # 靜靜隱藏就唔係。
+            "current_weight": CURRENT_MATRIX_WEIGHTS.get(key, 0.0),
             "winner_top1_rate": winner_top1_rate,
             "winner_top3_rate": winner_top3_rate,
             "top3_precision": top3_precision,

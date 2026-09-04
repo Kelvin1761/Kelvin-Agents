@@ -9,6 +9,7 @@ ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "
 sys.path.insert(0, str(ENGINE_DIR.parent))
 
 from au_racing_engine.renderer import _confidence_tier_text, ensure_verdict
+from au_racing_engine.renderer import THIN_EVIDENCE_SCORED_LEAVES
 
 
 def _logic(scores: list[float]) -> dict:
@@ -92,9 +93,9 @@ class ThinEvidenceRailTests(unittest.TestCase):
     （二項 p = 0.027）；配對 bootstrap 首選上名 +1.70pp [+0.15, +3.36]。
     """
 
-    SCORED = ("form_score", "performance_quality_score", "pace_figure_score",
-              "trial_score", "jockey_score", "trainer_score",
-              "jockey_horse_fit_score", "rating_score", "track_score")
+    # 呢個以前係手抄 `renderer.THIN_EVIDENCE_SCORED_LEAVES` 嘅。安全欄改咗
+    # 之後測試就會靜靜咁測緊另一組 leaf，仲要照樣綠。攞返同一份。
+    SCORED = tuple(THIN_EVIDENCE_SCORED_LEAVES)
 
     def _logic(self, specs):
         """specs = [(ability, n_default)] —— 第一個係場內最高分。"""
