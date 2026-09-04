@@ -583,6 +583,12 @@ def parse_all_draw_history(block):
             'barrier': barrier,
             'finish': finish,
             'xw': xw_str,
+            # 賽事身份要帶住 —— `compute_draw_position_fit` 之前只可以用
+            # barrier+finish+xw 做去重 key，而個表一直有日期／場地／距離。
+            # 兩場唔同賽事只要檔位、名次、疊數一樣就會被當成同一仗合併咗。
+            'date': cols[2] if len(cols) > 2 else '',
+            'venue': cols[3] if len(cols) > 3 else '',
+            'distance': cols[4] if len(cols) > 4 else '',
         })
     return results
 
@@ -1179,13 +1185,20 @@ def compute_draw_position_fit(position_detail: list, today_barrier: int = 0,
             if xw_str:
                 all_xw_sources.append(r)
 
-    # Deduplicate (position_detail races might overlap with full_draw_history)
+    # Deduplicate (position_detail races might overlap with full_draw_history).
+    # 去重 key 一定要係**賽事身份**。舊 key 係 `barrier_finish_xw`，所以兩場唔同
+    # 賽事只要檔位、名次同疊數一樣就會被當成重複 —— 一隻連勝嘅馬（名次永遠 1）
+    # 最容易中招。冇日期就退回舊 key（總好過唔去重），但唔會再當佢係身份。
     seen = set()
     for r in all_xw_sources:
         xw_str = r.get('xw', '')
         finish_str = str(r.get('finish', ''))
         barrier_str = str(r.get('barrier', ''))
-        key = f"{barrier_str}_{finish_str}_{xw_str}"
+        date_str = str(r.get('date', '')).strip()
+        if date_str:
+            key = f"{date_str}|{r.get('venue', '')}|{r.get('distance', '')}"
+        else:
+            key = f"{barrier_str}_{finish_str}_{xw_str}"
         if key in seen or not xw_str or not finish_str:
             continue
         seen.add(key)
@@ -1236,7 +1249,19 @@ def compute_draw_position_fit(position_detail: list, today_barrier: int = 0,
         top3_out = sum(1 for f in outer_finishes if f <= 3)
         parts.append(f"走外(3W+):{len(outer_finishes)}場 平均名次{avg_out:.1f} 上名{top3_out}次")
 
-    # Determine preference
+    # Determine preference.
+    # ⚠️ 兩個已量到但**未上線**嘅缺陷（等裁定，見
+    # docs/experiments/EXP-20260904-07）：
+    #  1. **樣本量**。一邊一仗都會判「明顯走內有利」——兩仗嘅平均名次差兩位
+    #     係擲毫。加門檻（兩邊各 ≥2 仗先講方向、≥3 仗先講「明顯」）會改 883 份
+    #     digest，實測 193 場 good 24.87→23.83、champion 25.91→25.39
+    #     （即 2 場同 1 場），gold 不變。
+    #  2. **差距 ≠ 水平**。個判定只睇 `avg_out - avg_in`，所以一隻兩邊都跑第一
+    #     嘅馬（diff = 0）同一隻兩邊都跑第十嘅馬得到同一個「內外均可」。
+    #     2026-09-06 R3 嘉應高昇：走內 4 場平均 1.0、走外 1 場平均 1.0、
+    #     歷史檔位內／中／外上名率 100%/100%/100%（16/16），判「無特別影響」。
+    #     實測 2,388 個有數據嘅 runner，56 個（2.3%）係「兩邊都好但判平手」，
+    #     合共 35.7% 落喺「內外均可／僅有一邊」→ 永遠拿唔到 ±12 匹配分。
     pref = 'neutral'  # inner / outer / neutral
     if inner_finishes and outer_finishes:
         avg_in = sum(inner_finishes) / len(inner_finishes)
