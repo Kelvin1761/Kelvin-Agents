@@ -108,8 +108,22 @@ def score_one(scoring, matrix_mapper, features: dict) -> dict:
     ability = 60.0 + (core - 60.0) / float(getattr(scoring, "MATRIX_ABILITY_SCALE", 1.0))
     if hasattr(scoring, "compose_matrix_score"):
         ability = scoring.compose_matrix_score(matrix)
+    # HKJC 2026-09-04 起 `ability_score` 同每個維度分都係顯示尺
+    # （`to_display_scale` / `to_dimension_display`）。金樣本一定要一齊行埋呢兩步，
+    # 唔然改 `DISPLAY_SCALE` 或者 `MATRIX_DISPLAY_*` 會令每份報告嘅數字同評級全部
+    # 變，而 golden 仍然報「全部一致」。原始值另外記做 `ability_raw` / `matrix`，
+    # 所以維度層同顯示層邊層變咗，diff 分得出。
+    ability_raw = ability
+    if hasattr(scoring, "to_display_scale"):
+        ability = scoring.to_display_scale(ability_raw)
+    matrix_display = {}
+    if hasattr(scoring, "to_dimension_display"):
+        matrix_display = {k: round(float(scoring.to_dimension_display(k, v)), 4)
+                          for k, v in sorted(matrix.items())}
     return {
         "matrix": {k: round(float(v), 4) for k, v in sorted(matrix.items())},
+        "matrix_display": matrix_display,
+        "ability_raw": round(ability_raw, 4),
         "ability": round(ability, 4),
         "grade": scoring.compute_grade(ability),
     }
@@ -195,8 +209,19 @@ def verify(platform: str, quiet: bool = False) -> tuple[int, list[str]]:
         for key in set(actual["matrix"]) - set(expected["matrix"]):
             deltas.append(f"{key}: 新維度")
             per_dimension[key] = per_dimension.get(key, 0) + 1
+        # 原始尺、維度顯示尺同綜合顯示尺分開報 —— 唔然「維度層變咗」同
+        # 「顯示尺變咗」讀落一樣，而兩者要嘅覆核完全唔同。
+        want_raw = expected.get("ability_raw", expected["ability"])
+        if abs(actual["ability_raw"] - want_raw) > TOLERANCE:
+            deltas.append(f"維度加權和 {want_raw:.2f}→{actual['ability_raw']:.2f} "
+                          f"({actual['ability_raw'] - want_raw:+.2f})")
+        for key, want in (expected.get("matrix_display") or {}).items():
+            got = (actual.get("matrix_display") or {}).get(key)
+            if got is not None and abs(got - want) > TOLERANCE:
+                deltas.append(f"{key}（顯示尺） {want:.2f}→{got:.2f} ({got - want:+.2f})")
+                per_dimension[key] = per_dimension.get(key, 0) + 1
         if abs(actual["ability"] - expected["ability"]) > TOLERANCE:
-            deltas.append(f"綜合戰力分 {expected['ability']:.2f}→{actual['ability']:.2f} "
+            deltas.append(f"綜合戰力分（顯示尺） {expected['ability']:.2f}→{actual['ability']:.2f} "
                           f"({actual['ability'] - expected['ability']:+.2f})")
         if actual["grade"] != expected["grade"]:
             deltas.append(f"Grade {expected['grade']}→{actual['grade']}")
