@@ -294,13 +294,16 @@ class RacingEngine:
         if weight is None:
             return 60, "負磅資料不足，負磅分60分。", "missing_neutral"
         score = scoring.WEIGHT_MICRO_WEIGHTS.get("base", 64.0)
-        note = f"今仗負磅{weight:.0f}磅，屬可處理範圍，負磅分64分。"
+        note = f"今仗負磅{weight:.0f}磅，屬中游負磅，讓磅官冇特別意見，負磅分{score:.0f}分。"
         if weight <= 120:
-            score = scoring.WEIGHT_MICRO_WEIGHTS.get("light_weight_base", 70.0)
-            note = f"今仗負磅{weight:.0f}磅較輕，負磅分70分。"
+            score = scoring.WEIGHT_MICRO_WEIGHTS.get("light_weight_base", 54.0)
+            note = (f"今仗負磅{weight:.0f}磅較輕 —— 負磅係讓磅官嘅評分，輕磅即係"
+                    f"官方評分低，負磅分{score:.0f}分。")
         elif weight >= 132:
-            score = scoring.WEIGHT_MICRO_WEIGHTS.get("heavy_weight_base", 54.0)
-            note = f"今仗負磅{weight:.0f}磅偏重，負磅分54分。"
+            score = scoring.WEIGHT_MICRO_WEIGHTS.get("heavy_weight_base", 70.0)
+            note = (f"今仗負磅{weight:.0f}磅屬頂磅 —— 讓磅官視佢為全場最好嘅馬，"
+                    f"而實測加磅加得唔夠狠（0.389 分/kg vs 慣例 0.5），"
+                    f"負磅分{score:.0f}分。")
         if "轉輕" in text:
             score += scoring.WEIGHT_MICRO_WEIGHTS.get("trend_lighter_bonus", 4.0)
             note += " 體重趨勢顯示轉輕，略加支持。"
@@ -2932,7 +2935,18 @@ class RacingEngine:
             weight_txt = f"；體重波幅{span:.0f}lb正常" if span <= 14 else f"；體重波幅{span:.0f}lb偏大"
         else:
             weight_txt = ""
-        return f"{medical_text}{freshness}{weight_txt}{self._score_close(score)}"
+        # 呢一格 38.9% 嘅份額係 `weight_score`（負磅），唔係健康。負磅方向喺
+        # 2026-09-04 調轉（EXP-20260904-09）之後，一隻醫療乾淨、間隔正常嘅輕磅馬
+        # 都會喺呢一格低分 —— 唔講清楚就會讀成「呢隻馬唔健康」。
+        # 顯示尺唔需要重 fit（原始 SD 3.465→3.439、顯示 SD 10.0→9.9），因為
+        # 21.9% 落／15.3% 升幾乎對沖；要修嘅係敘述，唔係尺。
+        weight_score = float((features or {}).get("weight_score", 60))
+        carried = ""
+        if abs(weight_score - 60.0) >= 4.0:
+            side = "拉高" if weight_score > 60 else "拉低"
+            carried = (f"；⚠️ 呢格 38.9% 份額係負磅（讓磅官評價），"
+                       f"今仗由負磅{side}，同健康無關")
+        return f"{medical_text}{freshness}{weight_txt}{carried}{self._score_close(score)}"
 
     def _describe_form_line_matrix(self, score, features, evidence):
         strength = self._formline_strength_signal()
@@ -2975,21 +2989,28 @@ class RacingEngine:
             class_text = "班次背景中性"
         weight_score = float(features.get("weight_score", 60))
         if weight_score >= 68:
-            weight = "；負磅友善"
+            weight = "；讓磅官高評（頂磅）"
         elif weight_score >= 60:
-            weight = "；負磅可控"
+            weight = "；讓磅官評價中游"
         else:
-            weight = "；負磅偏重"
+            weight = "；讓磅官評價偏低（輕磅）"
         # 講清楚呢個維度實際上係邊個 sub 分推動。`class_score` 場內幾乎冇變化
-        # （實測全日 120 匹只有 52.5–62.0），所以場內排位差不多完全由負磅決定 ——
-        # 場內 ρ(官方評分, weight_score) = −0.868，即係讓磅官評價越高，呢一格
-        # 反而越低。讀者見到一隻高評分馬個「級數優勢」排包尾，應該知道點解。
-        # ⚠️ 呢個係敘述，唔係修正：調轉／中性化／混入官方評分 12 個候選喺
-        # 2026-09-04（EXP-20260904-01）全部過唔到閘，所以計分維持原狀。
+        # （實測全日 120 匹只有 52.5–62.0），所以場內排位差不多完全由負磅決定。
+        #
+        # 2026-09-04 EXP-20260904-09 之後方向已經調轉：負磅係讓磅官對馬匹能力
+        # 嘅意見，所以場內 ρ(官方評分, weight_score) 而家係**正**嘅。頂磅馬呢一格
+        # 高分，係因為全場公認佢最好，而且讓磅官抹得唔夠（0.389 分/kg vs 慣例 0.5）。
+        #
+        # ⚠️ 「級數優勢」呢個名同呢一格實際量嘅嘢唔完全對得上，而呢點量過：
+        # 「本駒喺今仗班次或更高嘅上名率」場內 AUC 0.6337，但輸畀唔限班次嘅
+        # 0.6418，喺班次條件真係改到嘢嗰 12.3% 更加係 −0.0385；「跌級／升級」
+        # 四個分層上名率 29.0/31.6/30.4/32.4%、AUC 0.4662–0.5192。
+        # 即係香港班次制度嘅設計目的（抹平級數優勢）真係做到 —— 剩返嘅資訊
+        # 就係讓磅官抹得唔夠嗰個殘差，而嗰個已經由 weight_score 捉住。
         driver = ""
         if abs(weight_score - 60.0) >= 4.0:
             side = "拉高" if weight_score > 60 else "拉低"
-            driver = f"（呢格場內主要由負磅{side}，唔係班次）"
+            driver = f"（呢格場內主要由讓磅官負磅{side}，唔係班次底子）"
         return f"{move_txt}{class_text}{weight}{driver}{self._score_close(score)}"
 
     def _draw_verdict_signal(self):

@@ -1,6 +1,6 @@
 {
   "platform": "hkjc",
-  "engine_fingerprint": "9ff87a7174a0",
+  "engine_fingerprint": "3070d8f276ae",
   "calibrated_from": {
     "races": 150,
     "horses": 1893,
@@ -60,8 +60,8 @@
     },
     "risk_score": {
       "horses": 1893,
-      "neutral_rate": 0.0032,
-      "mean_within_race_spread": 3.7297,
+      "neutral_rate": 0.0042,
+      "mean_within_race_spread": 3.7733,
       "min": 50.0,
       "max": 76.5
     },
@@ -88,8 +88,8 @@
     },
     "weight_score": {
       "horses": 1893,
-      "neutral_rate": 0.0539,
-      "mean_within_race_spread": 5.0469,
+      "neutral_rate": 0.0549,
+      "mean_within_race_spread": 5.0613,
       "min": 50.0,
       "max": 74.0
     }
