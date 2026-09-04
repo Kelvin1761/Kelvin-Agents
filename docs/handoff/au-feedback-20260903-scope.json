@@ -1,0 +1,127 @@
+{
+  "worktree": "/tmp/au-feedback-ready-20260903",
+  "branch": "codex-au-feedback-ready-20260903",
+  "parent": "165f923a1aa43a34f9ae0c1e2a1df0e328b6090e",
+  "public_target": "Kelvin1761/Kelvin-Agents",
+  "status": "committed, pushed, merged and activated across AU/HKJC/NBA/Tennis",
+  "full_gate_log": "/tmp/au-feedback-ready-20260903-full.log",
+  "scope": [
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/engine_core.py",
+      "sha256": "84f802e8095831b50afaad0576c6639bc5ce7a2451b42ae11986f9b0e679bbe6"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/matrix_mapper.py",
+      "sha256": "54cebbccf650d06acab5eb0a62e1ea75fe759148b10e1fd8fab3b79b128052f8"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/renderer.py",
+      "sha256": "01e31a743d2a5de1c024d43dc816e8e583067358e79c189c9ea106418f1346e2"
+    },
+    {
+      "path": ".agents/scripts/inject_fact_anchors.py",
+      "sha256": "3069f9f7ad1ef8d6523c54acc4e6d92b25cf7f1d03d34ed77ca4293c28dea2ce"
+    },
+    {
+      "path": ".agents/skills/au_racing/sb_horse_index.py",
+      "sha256": "47694d24a6794bd9c5bd6fd1bd4b698a3e8499f27ff7af45abed20f284175bcd"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-06-au-matrix-feedback.md",
+      "sha256": "5a3c9aa5de9676281a7e04950fc943295d827b4fdbcbd703a7bed8074d3b385b"
+    },
+    {
+      "path": "scratch/au_matrix_feedback_20260902.py",
+      "sha256": "26b39341aa3ceb60b9ac19e7f5b3484c457e779a4b850359fdb5b5c371a2298a"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/tests/test_matrix_feedback.py",
+      "sha256": "4389f15a4fc4b747526b885aa6f0fdcbde8ad523c80a8e9c963b44ef76d23aa0"
+    },
+    {
+      "path": "docs/experiments/INDEX.md",
+      "sha256": "3fda8449451c2ebcacf7bd696af8043730c379946b821f825ba50806774becc1"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/tests/golden/scoring_golden.json",
+      "sha256": "3555cce0aaf82140156b0625e16ec0557f2347a2a47cb613818566e526d5e8fc"
+    },
+    {
+      "path": ".agents/skills/shared_racing/resources/au_data_contract.json",
+      "sha256": "eb15bda49477b83f4ba0e3f0117c0af772acfe8e6effde91ccac529222c93462"
+    },
+    {
+      "path": "Wong Choi 模型說明/AU Wong Choi 模型說明.md",
+      "sha256": "3268eb394b066517cca80c783dd1813db57a506921e63e7035081c428d5e2aa5"
+    },
+    {
+      "path": "Wong Choi 模型說明/AU Wong Choi 模型說明.html",
+      "sha256": "33356b8f1daa2369bf06301b53965d08981631f9e3131795d6fbd557deae7e1b"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-06-main-evidence.json",
+      "sha256": "e2cc554dfa4f8bb332c168cd104ee911d5de523947f97bcabc21ffcfc2189602"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/preparation_cycle.py",
+      "sha256": "221b8c3a3d90553a82d4177b1b2bd4014284e2e53c41a7bae45ffa01b56014a4"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/tests/test_preparation_cycle.py",
+      "sha256": "d2772e7971b48d078ea426f066fa28d004e87195ce792c71736c2622472709db"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/tests/test_race_weight_conditions.py",
+      "sha256": "438f85ec45453572f1e3c57fcac8d9b773b7b47350b85a04e4c78cbf183c2e5b"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-09-au-preparation-cycle.md",
+      "sha256": "6660c8971982a67bd52d67ec3674189bd31af1c028f8793b9fc941b13fae3270"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-09-evidence.json",
+      "sha256": "8015ba6c37e7de41d34353b235788e1716eb0c79f6bbc0badec5c1be666ea523"
+    },
+    {
+      "path": "scratch/au_preparation_cycle_20260902.py",
+      "sha256": "5b0cff209e0c9723625e79866785f3488b90b26bea170f8cb54100dc4761a30c"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-08-au-bacetti-performance-quality.md",
+      "sha256": "d88cb426c54502b3b524872da47b0087cc57f46bc2f9be479227ba1d5fa8b371"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-08-pq-evidence.json",
+      "sha256": "3b73fea897e80fea93a9784bc504099bc8c0ac06af263f4792ca358d01dd7deb"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-08-set-weight-evidence.json",
+      "sha256": "b0c5bc6e5a16d916fea12c96b55fa08c4d44d8727d210ac6245eb545a86b3cd0"
+    },
+    {
+      "path": "scratch/au_bacetti_quality_20260902.py",
+      "sha256": "f81ed4612d6de1ea27e12e9c52b220d859007630f6a4320fe4218fb0d254ddc6"
+    },
+    {
+      "path": "scratch/au_set_weights_20260902.py",
+      "sha256": "66aa09c5dbfa0230c0f8393f7682f02dcbad52981ac9b330336558c11c5f7434"
+    },
+    {
+      "path": "docs/experiments/EXP-20260903-au-pre-feedback-golden.json",
+      "sha256": "37e87daeca2b9b84847a4a1b904873d3bcf5dd19628bdeec2b50f6b8c0f7dbda"
+    },
+    {
+      "path": ".agents/skills/shared_wong_choi/tests/test_runtime_installer.py",
+      "sha256": "bbed374dfce331f3978127b80a0e87f512a4054446a87e6064c72b3c5c2338f8"
+    }
+  ],
+  "commit": "6b97eea1808cbdfff9be16403a957ef952006c74",
+  "release_id": "wc-release:6b97eea1808c:2026-09-02T230925.257675_0000",
+  "manifest": "/Users/imac/WongChoiData/WongChoiControl/releases/wc-release%3A6b97eea1808c%3A2026-09-02T230925.257675_0000.json",
+  "telegram_approval_at": "2026-09-02T23:53:26.761711+00:00",
+  "merged_at": "2026-09-02T23:53:28.863850+00:00",
+  "activation_failed_at": "2026-09-02T23:53:31.650926+00:00",
+  "production_head": "6b97eea1808cbdfff9be16403a957ef952006c74",
+  "production_branch": "codex-production-main-20260903",
+  "activation_succeeded_at": "2026-09-03T03:45:54+00:00"
+}

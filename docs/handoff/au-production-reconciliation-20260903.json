@@ -1,0 +1,708 @@
+{
+  "approved_commit": "6b97eea1808cbdfff9be16403a957ef952006c74",
+  "production_head": "dae33573ef18e1671f0a6d7c1bed11ceb9c902ba",
+  "file_counts": {
+    "shared": 5,
+    "au": 23,
+    "dashboard": 3,
+    "docs": 41,
+    "tennis": 43
+  },
+  "files": [
+    {
+      "path": ".agents/scripts/inject_fact_anchors.py",
+      "group": "shared",
+      "production_working_sha256": "3faddfc9aef7fce835f31717df81fb1097e80eabcd84740651dee57f108c7c25",
+      "approved_sha256": "3069f9f7ad1ef8d6523c54acc4e6d92b25cf7f1d03d34ed77ca4293c28dea2ce"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_daily_auto/README.md",
+      "group": "au",
+      "production_working_sha256": "c5493e9bdf959752e21cfaa0ed3e205a391189cbe176dfc381babc50d133f482",
+      "approved_sha256": "fe229683270fcd7088f9556023fddacfb69af00b6f28a13e9f6df9f6220e615f"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_daily_auto/au_daily_schedule.py",
+      "group": "au",
+      "production_working_sha256": "e2310f71b2573dcf6bf98161b7b8c3709d84e31f0c8445cccf4dd8b615136f47",
+      "approved_sha256": "4539068c367ee17832566a583919dfa8247c16d1e2a4481f7323df66b670ad59"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_daily_auto/au_diagnose.py",
+      "group": "au",
+      "production_working_sha256": "92faf84328e380ea381b3b510e33eab80fc20e81d00b15384a73c47f3ca579f9",
+      "approved_sha256": "92faf84328e380ea381b3b510e33eab80fc20e81d00b15384a73c47f3ca579f9"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_daily_auto/tests/test_au_daily_schedule.py",
+      "group": "au",
+      "production_working_sha256": "d68f561c4b5ef1d6de939b6c736c4dd06301020dd3b847d7f17072ad90194dd2",
+      "approved_sha256": "477e43c4e915fa7b3838b4807f9ab961594ba097e8f0f6756b9df314d343e46b"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/resources/au_track_geometry.json",
+      "group": "au",
+      "production_working_sha256": null,
+      "approved_sha256": "c138e2f71830683d7064917a40046eee73f08ec74841fc4c76fe813ad7ff9ac1"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/engine_core.py",
+      "group": "au",
+      "production_working_sha256": "805c8529acb1300811a58456d494291417153f0b354c3dc8f7069a4af934df39",
+      "approved_sha256": "84f802e8095831b50afaad0576c6639bc5ce7a2451b42ae11986f9b0e679bbe6"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/matrix_mapper.py",
+      "group": "au",
+      "production_working_sha256": "118b799cde0c6728b5873dd2336f73430cfa1e90f06246f5f8529165a99bc090",
+      "approved_sha256": "54cebbccf650d06acab5eb0a62e1ea75fe759148b10e1fd8fab3b79b128052f8"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/preparation_cycle.py",
+      "group": "au",
+      "production_working_sha256": null,
+      "approved_sha256": "221b8c3a3d90553a82d4177b1b2bd4014284e2e53c41a7bae45ffa01b56014a4"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/renderer.py",
+      "group": "au",
+      "production_working_sha256": "e4982bc237e22824c68017092bdce92895288416f1310d9ff25372761449e13f",
+      "approved_sha256": "01e31a743d2a5de1c024d43dc816e8e583067358e79c189c9ea106418f1346e2"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/scoring.py",
+      "group": "au",
+      "production_working_sha256": "e40db413bd64f81a931a1b6d091bfa2b41b674e74c66ccb9d8e65613189e6286",
+      "approved_sha256": "8afe1df70abafb255e6d75f55fd65f2a3a5716ed6614cab963a0edd781456fff"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/scripts/build_au_logic.py",
+      "group": "au",
+      "production_working_sha256": "4ab29c55361d3a18f30a2c12bf81afbd8d778f5da74002587ee88b5a3ed7fe62",
+      "approved_sha256": "38100e8fbbe8f6a889eda2db744382e88ef48be7803705a7d915e33e63bac765"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/scripts/fetch_au_track_geometry.py",
+      "group": "au",
+      "production_working_sha256": null,
+      "approved_sha256": "2adf47f3605f412275c85a254844da4d3772e7af074f71571273208fa9a65926"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/tests/golden/scoring_golden.json",
+      "group": "au",
+      "production_working_sha256": "6e45150e9f95f91f927b8a3af2b73ffde16ea042b20129465753b87420685f3e",
+      "approved_sha256": "3555cce0aaf82140156b0625e16ec0557f2347a2a47cb613818566e526d5e8fc"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/tests/test_matrix_feedback.py",
+      "group": "au",
+      "production_working_sha256": null,
+      "approved_sha256": "4389f15a4fc4b747526b885aa6f0fdcbde8ad523c80a8e9c963b44ef76d23aa0"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/tests/test_odds_capture.py",
+      "group": "au",
+      "production_working_sha256": "96356f720fcfb4524c1074df2f1919e2cbf72be426d1e819f33f88aa75d9e523",
+      "approved_sha256": "eb63806f8fcfc700cdf1ed2fb673d30e1438eecdbe102dd524c1c9f4a1f5edb6"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/tests/test_preparation_cycle.py",
+      "group": "au",
+      "production_working_sha256": null,
+      "approved_sha256": "d2772e7971b48d078ea426f066fa28d004e87195ce792c71736c2622472709db"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/tests/test_race_weight_conditions.py",
+      "group": "au",
+      "production_working_sha256": null,
+      "approved_sha256": "438f85ec45453572f1e3c57fcac8d9b773b7b47350b85a04e4c78cbf183c2e5b"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/tests/test_run_style_single_source.py",
+      "group": "au",
+      "production_working_sha256": null,
+      "approved_sha256": "14c4da132cc01d1168491b182302c4c8f9487ca68602b6a092e71b0c1e14871b"
+    },
+    {
+      "path": ".agents/skills/au_racing/au_wong_choi_auto/tests/test_track_profile_venue_scoping.py",
+      "group": "au",
+      "production_working_sha256": null,
+      "approved_sha256": "2d2c28270805e80af7fea94ce306dc1752ca6f948bea5304bb0944254b34d556"
+    },
+    {
+      "path": ".agents/skills/au_racing/claw_sportsbet_form.py",
+      "group": "au",
+      "production_working_sha256": "b503a3994a3a8b9fdbc0999d34bdb7a88ba6fec60b51edf736dc7cf23dfd0b6b",
+      "approved_sha256": "1d93d887dcc2ac1c199c04556ef82e64f7982da02ce309c46c62be4e68f88726"
+    },
+    {
+      "path": ".agents/skills/au_racing/data/sb_archive_meeting_ids.json",
+      "group": "au",
+      "production_working_sha256": "96c51772e1fa7083c1098db83a4354fede6be93edec6287fd7f472f550198ad3",
+      "approved_sha256": "16a67170f6c77f3a9c3488faf63becda7da8d4a6793f26b5f8e66b0414990f2b"
+    },
+    {
+      "path": ".agents/skills/au_racing/sb_browser_fetch.py",
+      "group": "au",
+      "production_working_sha256": "639c26c38b6077aa91f345e184bd40716773b2a50707523018201519c8e6dd80",
+      "approved_sha256": "639c26c38b6077aa91f345e184bd40716773b2a50707523018201519c8e6dd80"
+    },
+    {
+      "path": ".agents/skills/au_racing/sb_horse_index.py",
+      "group": "au",
+      "production_working_sha256": "841f85889784e4d6889ee5882b3859b051447bb1889f42c6d4f3d8dbc0c20923",
+      "approved_sha256": "47694d24a6794bd9c5bd6fd1bd4b698a3e8499f27ff7af45abed20f284175bcd"
+    },
+    {
+      "path": ".agents/skills/shared_racing/resources/au_data_contract.json",
+      "group": "shared",
+      "production_working_sha256": "3586729fa906de7725b0324e9b0e59a6de2e6d605367301f308206cb990b9482",
+      "approved_sha256": "eb15bda49477b83f4ba0e3f0117c0af772acfe8e6effde91ccac529222c93462"
+    },
+    {
+      "path": ".agents/skills/shared_wong_choi/tests/test_runtime_installer.py",
+      "group": "shared",
+      "production_working_sha256": "628dd4eadccd6cecf5a24d8f35102582eaa4f5594f9c3aeb4bae9919f8aa87dc",
+      "approved_sha256": "bbed374dfce331f3978127b80a0e87f512a4054446a87e6064c72b3c5c2338f8"
+    },
+    {
+      "path": ".gitignore",
+      "group": "shared",
+      "production_working_sha256": "3bc5d89cf2baef6d00f4dbc7413bbc05e74a060bdf67c1d75f6b0566be76b87b",
+      "approved_sha256": "1efc7f429d3d0506a626d222a6009341f09c7decac80647092e0d915adc95138"
+    },
+    {
+      "path": "Horse_Racing_Dashboard/backend/services/multisport_exporter.py",
+      "group": "dashboard",
+      "production_working_sha256": "9a3ad409eb31572344bf4d014c448cb40e0c5d14e812143db429cbe1cc564f6c",
+      "approved_sha256": "d8bd6c3399fdbd713e02a77411cd6442d0a48e818757a83f671c024fb4fceb94"
+    },
+    {
+      "path": "Horse_Racing_Dashboard/static_template.html",
+      "group": "dashboard",
+      "production_working_sha256": "b8baf87b40a3e067fe467110ce0385d7dfd20d3bc30d5e1421e8b0b8e4f71141",
+      "approved_sha256": "0069ca3cb9c9bce60b46593f3e381e6b3aa4b544de9969f09877ee398d4a8af5"
+    },
+    {
+      "path": "Horse_Racing_Dashboard/tests/test_multisport_exporter.py",
+      "group": "dashboard",
+      "production_working_sha256": "8f4df9873bcefe1f1dd52954cea579bf69bff958f1742e7fddaeb95087638f79",
+      "approved_sha256": "594b838a8f1db3054074b24fb444b0fef270a645c40fde71d817ea4b906a4aed"
+    },
+    {
+      "path": "Wong Choi 模型說明/AU Wong Choi 模型說明.html",
+      "group": "docs",
+      "production_working_sha256": "970cd8ed6392bbeaa8f9b793a8f0966a0ef12dfce5ddc448e70dcd9546a3a9a4",
+      "approved_sha256": "33356b8f1daa2369bf06301b53965d08981631f9e3131795d6fbd557deae7e1b"
+    },
+    {
+      "path": "Wong Choi 模型說明/AU Wong Choi 模型說明.md",
+      "group": "docs",
+      "production_working_sha256": "5e56c768ba601e3352723d4622bd74c85e02e91fc2831c0eac8246602db9cf92",
+      "approved_sha256": "3268eb394b066517cca80c783dd1813db57a506921e63e7035081c428d5e2aa5"
+    },
+    {
+      "path": "Wong Choi 模型說明/HKJC Wong Choi 模型說明.html",
+      "group": "docs",
+      "production_working_sha256": "6cb3589e5da1f17fcbacfcee2da8586115242ab23af52be98345632838c9521b",
+      "approved_sha256": "46ffb520c3a74dfd8ed0406aa1ea85a34299e25a58c6ee4166ab13ee3832dfa1"
+    },
+    {
+      "path": "Wong Choi 模型說明/HKJC Wong Choi 模型說明.md",
+      "group": "docs",
+      "production_working_sha256": "903406da9cc735c60eb0ccfb33a73f541a6c92af74d1aef91a1dd4fea50132b4",
+      "approved_sha256": "6c2d5f834bb0dd99f4c3be7c9bc7a8266933077416b2f08081724b9f837d3ef8"
+    },
+    {
+      "path": "docs/architecture/adr-003-central-wong-choi-governance-plane.md",
+      "group": "docs",
+      "production_working_sha256": "559623f99adf8b19ba4378a8429b5d07ac9f6ffb717c56c281f742e8d3ca8948",
+      "approved_sha256": "89581091b571ccc0b99400db62f54eabf83bd10fa54c0c000f32e8fdf7bfce86"
+    },
+    {
+      "path": "docs/au-data-source-options.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "ba393979acb9d98984a84012835eda9572ff85cabadfce9903299c76ae046dff"
+    },
+    {
+      "path": "docs/experiments/EXP-20260825-03-au-exact-class-performance-proof.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "283c213c08e3212f7a449749d5cebc055f3b1d71e09bd6330cc3f3d4fa265e26"
+    },
+    {
+      "path": "docs/experiments/EXP-20260826-01-au-pace-perf-distance-crossover.md",
+      "group": "docs",
+      "production_working_sha256": "4ddbfe0b10e2fb059906e396b15dd2b60c93f14d208f3cc7ce8e1e905ed40e3b",
+      "approved_sha256": "d2dfc81c70260c9470e695b4e90fa7a7f43dccdca537862a019e42e06afea1a3"
+    },
+    {
+      "path": "docs/experiments/EXP-20260826-04-au-new-data-and-retired-dimensions.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "91a00affc53283731964831b0fcc8becae782b8979a3bba60dfbc99cc7d48353"
+    },
+    {
+      "path": "docs/experiments/EXP-20260826-05-au-backfill-draw-unused-leaves-hkjc.md",
+      "group": "docs",
+      "production_working_sha256": "a78f88a4838b85e0defcc66ca7af44c95c17af7a659574ab5dc25e74545ff999",
+      "approved_sha256": "d25f0bc50c6af075ca553b8452e5529cf5c1921baafd1530326a44f5f0b1c85b"
+    },
+    {
+      "path": "docs/experiments/EXP-20260826-06-au-class-score-revival.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "01a0af0d9f269f31b0b6326d07b7bf2aca038c9142cdcb7393655d19da1fc6a1"
+    },
+    {
+      "path": "docs/experiments/EXP-20260826-07-au-gear-change-signal.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "ab6a8a95033dacee3f5ad610d57bd46b643e0249db5a16a6f6cd9d1dc000f8f1"
+    },
+    {
+      "path": "docs/experiments/EXP-20260826-09-tennis-corpus-and-tier-gate.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "e892ef45bb7d1dfa800a8dd9980b959c10c3476e4cfcf37e69c550e2128331ff"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-01-au-track-geometry-and-run-style.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "4a093990717f4fb915056bdeb733ad69576b16c46d81d5b49b78296b633db1ba"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-02-au-run-style-single-source.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "23ec3456b127cb3ca208e4d4eb2d1d44731866f3e0c29ee8452b371dec7ff276"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-03-au-official-speedmap-wired.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "7416325c71600af8ae13a9c380270c799170143ff35f7e075ebb2a849d256e0d"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-04-au-settled-position-cascade.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "ddbc25e77cf19dad0cedc56747fff33c231b0b64d94a948158ce9d9e89c1dc9c"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-05-au-settle-position-feature.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "5c08f25338551fc6fb962baf444629c52136fba5fbc4c0c39915fa0f3e1a02fb"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-06-au-matrix-feedback.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "5a3c9aa5de9676281a7e04950fc943295d827b4fdbcbd703a7bed8074d3b385b"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-06-main-evidence.json",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "e2cc554dfa4f8bb332c168cd104ee911d5de523947f97bcabc21ffcfc2189602"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-08-au-bacetti-performance-quality.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "d88cb426c54502b3b524872da47b0087cc57f46bc2f9be479227ba1d5fa8b371"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-08-pq-evidence.json",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "3b73fea897e80fea93a9784bc504099bc8c0ac06af263f4792ca358d01dd7deb"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-08-set-weight-evidence.json",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "b0c5bc6e5a16d916fea12c96b55fa08c4d44d8727d210ac6245eb545a86b3cd0"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-09-au-preparation-cycle.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "6660c8971982a67bd52d67ec3674189bd31af1c028f8793b9fc941b13fae3270"
+    },
+    {
+      "path": "docs/experiments/EXP-20260902-09-evidence.json",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "8015ba6c37e7de41d34353b235788e1716eb0c79f6bbc0badec5c1be666ea523"
+    },
+    {
+      "path": "docs/experiments/EXP-20260903-au-pre-feedback-golden.json",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "37e87daeca2b9b84847a4a1b904873d3bcf5dd19628bdeec2b50f6b8c0f7dbda"
+    },
+    {
+      "path": "docs/experiments/INDEX.md",
+      "group": "docs",
+      "production_working_sha256": "0cefe51ea70f928f5da5c2fcac651d67ec24502bb55c56408bb20e241c39e1e0",
+      "approved_sha256": "3fda8449451c2ebcacf7bd696af8043730c379946b821f825ba50806774becc1"
+    },
+    {
+      "path": "docs/plans/wong-choi-website-improvements.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "e461f2655d881cb289260357c92cbe41bc4cdc16d33ccfd2cd29585b1a59fd26"
+    },
+    {
+      "path": "scratch/au_bacetti_quality_20260902.py",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "f81ed4612d6de1ea27e12e9c52b220d859007630f6a4320fe4218fb0d254ddc6"
+    },
+    {
+      "path": "scratch/au_class_pace_eval_20260825.py",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "e82c5f63e082eaf74501474ec53b65fa3d6661f655ced2f45242eb31d500e090"
+    },
+    {
+      "path": "scratch/au_exact_class_quality_eval_20260825.py",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "1cf5641b79320b9019171a7cc431d4134c9f557e52b2a9bf487ceadd4af0e5a7"
+    },
+    {
+      "path": "scratch/au_gunroom_20260824/Randwick_20260822_Reflector_Corrected.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "04baf4c76a1bf8d975cdb5ecad69aef7920ffcff33d04e01e7c4dcb76f343c14"
+    },
+    {
+      "path": "scratch/au_gunroom_20260824/post_spell_experiment.py",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "c9c698a5bbe9bd5b75e2a608abe5c84ebf3eca44935745731ea260ea490a0dec"
+    },
+    {
+      "path": "scratch/au_gunroom_20260824/prep_evidence_overlay_experiment.py",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "112c06fd98cbfdf7d7dbd8c7a343004c35dbd0b790558f9587bfc04adc28fc99"
+    },
+    {
+      "path": "scratch/au_gunroom_20260824/sportsbet_pace_attribution_experiment.py",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "8661baa931c38ec9754870fabe9712e55e13dc12918d4f87005163f33b8927b5"
+    },
+    {
+      "path": "scratch/au_matrix_feedback_20260902.py",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "26b39341aa3ceb60b9ac19e7f5b3484c457e779a4b850359fdb5b5c371a2298a"
+    },
+    {
+      "path": "scratch/au_preparation_cycle_20260902.py",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "5b0cff209e0c9723625e79866785f3488b90b26bea170f8cb54100dc4761a30c"
+    },
+    {
+      "path": "scratch/au_r2_reflector_replay_20260825.md",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "26814e238110d6e3397648b07468b05393e6d7eaeeec56464c58cc18278e5884"
+    },
+    {
+      "path": "scratch/au_set_weights_20260902.py",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "66aa09c5dbfa0230c0f8393f7682f02dcbad52981ac9b330336558c11c5f7434"
+    },
+    {
+      "path": "scratch/au_trial_transport_eval_20260824.py",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "37ce0ec9bd41740b8c67c92578f0680cd47d537e28197388219a08f432ec7751"
+    },
+    {
+      "path": "scratch/au_winner_margin_20260824/run_experiment.py",
+      "group": "docs",
+      "production_working_sha256": null,
+      "approved_sha256": "687837de45b41685674ae7318415df64cd234bf03a2b85ed36664b21230fadc8"
+    },
+    {
+      "path": "tennis-wong-choi/scripts/ablate_surface_nudges.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "2823ea6f296f1eb548584f74f69dd996d27b53e77f962286132666a268f5c9cb"
+    },
+    {
+      "path": "tennis-wong-choi/scripts/check_stop_rule.py",
+      "group": "tennis",
+      "production_working_sha256": "b2ee15c8b2c28b615dee5debbc58d6d4c0651ba3da83d8ea16ae87a0cf33c22f",
+      "approved_sha256": "1e1ad6b8e81c0e9064a605e4e45e56b88c7d5717b00b070f98a231e7d08fb74d"
+    },
+    {
+      "path": "tennis-wong-choi/scripts/evaluate_ace_exposure.py",
+      "group": "tennis",
+      "production_working_sha256": "c3fc3572574e1b40154edeabdf3e12d0f5e2a543e4f67cc527e52a0e94926d06",
+      "approved_sha256": "222533cbae67b963af2998a8ddfa7555e7d9b38b27651b5946bf402b9123427c"
+    },
+    {
+      "path": "tennis-wong-choi/scripts/evaluate_game_handicap_joint.py",
+      "group": "tennis",
+      "production_working_sha256": "3eb1a6f8cfab663f781999db0d0999dc475a827012d9bf7398f661d1871a903b",
+      "approved_sha256": "bd2f63e6f4b4b36c7d00e10a00f938f4e667263ce9890e02b7c9c3c2cfe7375a"
+    },
+    {
+      "path": "tennis-wong-choi/scripts/evaluate_market_residual_props.py",
+      "group": "tennis",
+      "production_working_sha256": "f3006cff4d1ea84cf82f4647020ecd306ef5696fec7979ec527fb8eaf8111697",
+      "approved_sha256": "3ac8a079086502337372cdbe47cdcfe37fa0c2e546fb14f7bb68e4de29ea521e"
+    },
+    {
+      "path": "tennis-wong-choi/scripts/evaluate_serve_pricing.py",
+      "group": "tennis",
+      "production_working_sha256": "4bb836f1e4406c23f74755320a8c914d59bd09fd7ace800f8f59ef4eaf316c9d",
+      "approved_sha256": "73a8ae2c0cbc7c2223bba3f3ed19a7db7eb6d1d5adc96d845880c948efd6fc20"
+    },
+    {
+      "path": "tennis-wong-choi/scripts/evaluate_set_joint_distribution.py",
+      "group": "tennis",
+      "production_working_sha256": "b2014ff4d00777aeab07f25428e752ee10f7b60f2ca0499fad18aeaf9a7974e0",
+      "approved_sha256": "a20206d6e07d4666639758b1147d974be9ba839918a0a7d13713159eb24ef0e4"
+    },
+    {
+      "path": "tennis-wong-choi/scripts/holdout_validation.py",
+      "group": "tennis",
+      "production_working_sha256": "3dc7d79ba218c9eddb52e50ac93c9bc6853d0871317c09c5a7081a84ca5cf3e9",
+      "approved_sha256": "8388eb28b0e67ed9e13d72de14fdb82de742c75eb29c65e1f4434d53ecdb8044"
+    },
+    {
+      "path": "tennis-wong-choi/scripts/measure_edge_significance.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "14f4ca7c701c073205b8a50a2e2809f55c09c30a3dfa69a8c67c7c34238642f6"
+    },
+    {
+      "path": "tennis-wong-choi/scripts/measure_market_coherence.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "11e6325b7a1101c91f37a6b563f6bc86f25ca1ee3f809c5b1d27884321de44f4"
+    },
+    {
+      "path": "tennis-wong-choi/scripts/measure_short_favourites.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "3d83d84055c030db4e97cf5136fde72917b0cc2a31070b104670a2da8a460b0a"
+    },
+    {
+      "path": "tennis-wong-choi/scripts/replay_prop_strategy.py",
+      "group": "tennis",
+      "production_working_sha256": "d14d8e89a3e369b7b1a6cd49ec58c29634d27da0404fe6b97a18c69792c3884f",
+      "approved_sha256": "c48580a9057ba2167082c4c13e9be9a037f9d61a0b9419b0ec47c0668e4c4097"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/betting/bet_filter.py",
+      "group": "tennis",
+      "production_working_sha256": "2d399d1dd5332a455a09dad03d9f306eb713e40627a658640984fdffb9883d5c",
+      "approved_sha256": "e8533df50697e11f604ff08aedd9e58c832420accc7220482b8f763e2b453cfb"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/cli.py",
+      "group": "tennis",
+      "production_working_sha256": "d961d2757c36044b166df83cee1a8249864cbed8aed68238388f39bea3e78cb5",
+      "approved_sha256": "bad4e2887ee89b0bf6e9fab3456870496f1358672a58c91d3a3072aac57a0af2"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/database/maintenance.py",
+      "group": "tennis",
+      "production_working_sha256": "231d855c79a50c53bba895157fa403fbece77b7fb59850474690576801a792e5",
+      "approved_sha256": "d2571020cc885772161f9058faadd985a0a9f54883751e6ac4f3c3ab20d1d518"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/database/migrations.py",
+      "group": "tennis",
+      "production_working_sha256": "6362e2edc042c01ee719e1d0113618671e767a4a0314a10ff79cffa6784b3cab",
+      "approved_sha256": "14fa59c638058ed4665c14dcec33643ccc1d25dc0be8de867c7e3a0e61e3f7b6"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/evaluation/__init__.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "1aa9ff1e458a52d7a02e89af7b5cc951f5e4c44a0838b6a51663f7df271f4f93"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/evaluation/corpus.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "04759aeec5bcd0a27c0da5f2f4337fa88276e4283a1dd9d600753f2a4fdcdfc4"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/features/feature_builder.py",
+      "group": "tennis",
+      "production_working_sha256": "d4ff6e43963ddae9acbac72f7eb35e581d59e3ba18c5093a619efe41fdb4eabe",
+      "approved_sha256": "4806b0b54bb475a11516d57842e3af393bbe485d3fc2ee9e6a426dc5aa044676"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/features/surface_elo.py",
+      "group": "tennis",
+      "production_working_sha256": "6a6a0c1f69971f5ab0200652012a94bb6a979548b78b96599168e4edf79da869",
+      "approved_sha256": "db6ae52b9fed69d1720dce1922b2b12bb9369222f13732cca37d93b88f665991"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/identity/player_identity.py",
+      "group": "tennis",
+      "production_working_sha256": "4e6cba7d29adb5fa30901a499161cfd2f297f023ec4ac2903dad573b7f619f62",
+      "approved_sha256": "fcd7b358215bc92441f749b11f0d47b90da35a2b1ef3abbecdbcf9d73a26f65a"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/ingestion/entity_mapping.py",
+      "group": "tennis",
+      "production_working_sha256": "cff2e5d2f78e843774d072126ea8767534116178fc308998fbe68055aacca3e4",
+      "approved_sha256": "072b5e75e0851d171c1ae46c067bc2844940a5600878ac2714894d0e0ef7560d"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/ingestion/ingest_rankings.py",
+      "group": "tennis",
+      "production_working_sha256": "a8d98bc53bbc135b07327201e1fdf046a0530b018019d5e21ba7af1f06153a70",
+      "approved_sha256": "34b415b3a94d0c0d2859fb9a109ebf63b53edd4683a9e91a927d1ba506a883b2"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/ingestion/name_matching.py",
+      "group": "tennis",
+      "production_working_sha256": "a230bbcf74d116890c19f52a370bb6a2bc0800dd6439ca065afae3560795c0ef",
+      "approved_sha256": "6f8e5e6fc0a98e34914fd0ea2aae83f5afbad2bf7dd7e21bd228bcb454cf164d"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/modelling/probability_model.py",
+      "group": "tennis",
+      "production_working_sha256": "2a90c01b6fcdd83177fd381ce08683615a4ac237d874abec9579c58b2ce86b63",
+      "approved_sha256": "9d24fdc45ca741c6cf8a126596564e56d4425fc2cc4d93e4609f6c017f257e83"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/props/calibration.py",
+      "group": "tennis",
+      "production_working_sha256": "d62c4da2dd8238c6045a0563f4423ba8cedb47d2351db8a18110d3e3387b3083",
+      "approved_sha256": "0a13052dfb2a5ac8d3a6de4829671348ca3b5bbc6958b8a5ea4ec006b0eb33d8"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/props/settlement.py",
+      "group": "tennis",
+      "production_working_sha256": "2f226b2fcfa61aa42869be634c5d54dccdf7894d7b51d5cb52095ca0d0fe3f16",
+      "approved_sha256": "663bc99a87de7c9aa213d9ec256a7083c5d54a1cfa0e8b08d57e24332c05c28b"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/providers/official_ranking_provider.py",
+      "group": "tennis",
+      "production_working_sha256": "d3d3740f586c321527b0e3ceb5bcb2b0f03e2ad7031aa0835ed35ef522b37530",
+      "approved_sha256": "caa1b0569817f89acadb0f2200b1e1fce22bf4c3d2d884a06fffa9ce084cb619"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/reports/weekly_review.py",
+      "group": "tennis",
+      "production_working_sha256": "3b7232d317d700d6397001fc66fffa2b77b53c0cb0aaa8b7931b065ac3df1541",
+      "approved_sha256": "c100ed5bef2e7824324cc51c6e5746ffaec5f1e5b996b452e1aacfcb824ea369"
+    },
+    {
+      "path": "tennis-wong-choi/src/tennis_wc/validation/checks.py",
+      "group": "tennis",
+      "production_working_sha256": "c817b82d56d3491826901c166d3f1ddf71d5194b1729ca309abcfd549659a742",
+      "approved_sha256": "c8243a80a21d56d28f475dce32565565209e7477d8e7a823fcb1fb324223a8a5"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_bet_filter.py",
+      "group": "tennis",
+      "production_working_sha256": "29605cc20d16906d14b2d888dceadef31dbc31d553615c1a2d139bffa53bdfb2",
+      "approved_sha256": "3aee663f7b571ce56c3f1b6b721b11e0ba59d8e76310f12715bd7dd62e6e39f9"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_db_maintenance.py",
+      "group": "tennis",
+      "production_working_sha256": "67b6b8c5085a5f9056c21cedbf6e7953b9fa706ebc8f706624e1f6332b6e9f4c",
+      "approved_sha256": "23de21d2153663c919cb66b4eb8d444bc06fa7a57bbf7d7bd28b1c255fb633b1"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_edge_significance_harness.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "92cc3e207b031fa3f8745b03787d7f8812e897866aefbd9097f52ed0b4680418"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_evaluation_corpus.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "bfa7178138ad0a24cf746714e2675e5748700b3135e383880d9f6c8557cf4477"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_identity_merge_phase12.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "542e565a06bdbe8c7e0567c1b9b8e21665ac2a66bcc1af3a6c3ab6e530fc8542"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_market_coherence.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "f30c43ec7dec579c666a9186a83b19132c7a418682c467ebd8596f8deb0e8172"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_nudge_ablation_harness.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "2f873ccc88b71a6022bb433aad989111e90d63fbfdf59661eb4679c5b8ec7e6d"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_props.py",
+      "group": "tennis",
+      "production_working_sha256": "c3fedc68f5526e06544cff737f28eeae40539ba1775751a52c07fb457495be2b",
+      "approved_sha256": "43f373e565d2be725ffe2a15822f8c8fc17cb5c9813eae1fe3f644089c7328af"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_ranking_depth_and_merge_attributes.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "824c5e6dfdf227313502d60c11c534fae342eadfd7dee0ebf989856f9bdc5824"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_short_favourite_harness.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "5723f88cf516a836c79083f8ab0a34daa3907308b109a18dabaf672ef73b729b"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_stop_rule.py",
+      "group": "tennis",
+      "production_working_sha256": "8f2d5ced3541155f85fbc5f9c3dee51251451b5614777caa837c3c45c62c5435",
+      "approved_sha256": "fb7d0adb0c0453d44191306420ecb8c29e7b9eb98686171be6cf2a4aaf2997f3"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_surface_inputs.py",
+      "group": "tennis",
+      "production_working_sha256": null,
+      "approved_sha256": "716b8e1948f9bd155469409019c1eceec4355f53abc379d3a150f25776ac165b"
+    },
+    {
+      "path": "tennis-wong-choi/tests/test_validation_checks.py",
+      "group": "tennis",
+      "production_working_sha256": "9ad9465c19241444483d4f02e47b4f92d558a847bea1e22206390515a640a4c7",
+      "approved_sha256": "dfb3588c0144aa736f3e20e691296652225a53f0b713042d67e276a2c56a8815"
+    },
+    {
+      "path": "wong-choi-stage-4-plan.md",
+      "group": "shared",
+      "production_working_sha256": "97715734d88517d9bda72954b854c1e3b429874895cfddd18def415ceb6515d8",
+      "approved_sha256": "5186086ad8beae9afced8d9c0b9cb99c3983b391e7b12cebb334053d588fdb77"
+    }
+  ],
+  "dirty_test_content_preserved_as_prefix": true,
+  "approval_at": "2026-09-02T23:53:26.761711+00:00",
+  "merge_at": "2026-09-02T23:53:28.863850+00:00",
+  "activation": "failed_dirty_checkout",
+  "production_mutated": false
+}

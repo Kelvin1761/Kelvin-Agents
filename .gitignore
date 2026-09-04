@@ -163,3 +163,7 @@ __pycache__/
 
 # 190MB × 2 嘅 DB 備份 —— 超過 GitHub 100MB 上限，唔應該入 git
 tennis-wong-choi/data/backups/
+
+# 矩陣 refit 嘅輸出，寫落 repo root。
+au_refit_argmax.json
+au_refit_consensus.json

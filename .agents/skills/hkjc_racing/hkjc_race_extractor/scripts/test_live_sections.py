@@ -1,4 +1,5 @@
 import os
+import tempfile
 os.environ.setdefault('PYTHONUTF8', '1')
 import sys
 if hasattr(sys.stdout, 'reconfigure'):
@@ -19,7 +20,15 @@ with sync_playwright() as p:
     html_content = page.content()
     browser.close()
 
-with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "live_page.html"), "w", encoding="utf-8") as f:
+# Debug dumps go to a scratch dir, never into the repo. Writing them beside the
+# script kept `live_page.html` tracked-and-modified after every run, so
+# `git status` was permanently dirty and every release needed
+# `--allow-unrelated`. Nothing reads these files — they are eyeball artefacts.
+# 舊嘅 checked-in dump 冇刪（`git add` 加唔到一個已經 `git rm` 咗嘅路徑，
+# 而 `保存.sh` 就係用 `git add`）—— 但既然冇人再寫落去，佢就永遠唔會再變。
+out_dir = os.environ.get("WC_SCRATCH_DIR") or tempfile.gettempdir()
+out_path = os.path.join(out_dir, "live_page.html")
+with open(out_path, "w", encoding="utf-8") as f:
     f.write(html_content)
 
-print("Saved live HTML!")
+print(f"Saved live HTML! -> {out_path}")

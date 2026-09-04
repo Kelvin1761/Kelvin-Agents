@@ -44,6 +44,7 @@ from shared_wong_choi.release_approval import (  # noqa: E402
     resolve_pending_selector,
 )
 from shared_wong_choi.release_activation import activate_release  # noqa: E402
+from shared_wong_choi.release_refresh import refresh_release  # noqa: E402
 from shared_wong_choi.release_manager import (  # noqa: E402
     DEFAULT_STATE_ROOT,
     ReleaseError,
@@ -154,6 +155,18 @@ def build_parser() -> argparse.ArgumentParser:
     approve.add_argument("--activate", action="store_true")
     approve.add_argument("--json", action="store_true")
 
+    # 過期 release 嘅復原路徑。approve 係綁死喺當初 gate 過嗰個 main
+    # （rollback_target），所以第一個 merge 之後其餘全部過期。refresh 就係將舊
+    # commit 重播落最新 origin/main、重跑一次 gate、寫新 manifest，並將舊 manifest
+    # 記為 superseded。**冇 --all**：refresh N 個之後仍然要 N 次串行 merge，
+    # 批量準備只會即刻再過期 N-1 個。
+    refresh = sub.add_parser("refresh")
+    refresh.add_argument("--commit", default="")
+    refresh.add_argument("--actor", required=True)
+    refresh.add_argument("--dry-run", action="store_true")
+    refresh.add_argument("--no-notify", action="store_true")
+    refresh.add_argument("--json", action="store_true")
+
     reject = sub.add_parser("reject")
     reject.add_argument("--commit", default="")
     reject.add_argument("--actor", required=True)
@@ -193,13 +206,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             return 1
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result.get("status") != "push_failed" else 1
-    if args.command in {"approve", "reject"}:
+    if args.command in {"approve", "reject", "refresh"}:
         try:
             selector = resolve_pending_selector(state_root, args.commit, repo)
         except ReleaseError as exc:
             print(json.dumps({"status": "blocked", "error": str(exc)},
                              ensure_ascii=False, indent=2))
             return 1
+    if args.command == "refresh":
+        try:
+            result = refresh_release(
+                repo,
+                state_root,
+                selector=selector,
+                actor=args.actor,
+                notify=not args.no_notify,
+                dry_run=args.dry_run,
+            )
+        except ReleaseError as exc:
+            result = {"status": "blocked", "error": str(exc)}
+            print(json.dumps(result, ensure_ascii=False, indent=2))
+            return 1
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
     if args.command == "reject":
         try:
             result = reject_release(
