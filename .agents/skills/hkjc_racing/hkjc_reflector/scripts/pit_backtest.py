@@ -73,7 +73,12 @@ def load_all_rows() -> pd.DataFrame:
                for path in md.glob("*全日賽果.json")]
     for season in bcs.SEASONS.values():
         results.extend((bcs.DB_ROOT / season["results_dir"]).glob("*/full_day_results.json"))
-    return supplement_rows(df, results, paths)
+    # 排位表要由**所有**場次資料夾攞，唔可以只攞有 Logic 嗰啲 —— 冇 Logic 就係
+    # metadata 缺口嘅成因（2026-07-15 跑馬地 107 行距離／班次 100% 空白）。
+    from corpus_paths import meeting_dirs
+    racecards = [card for md in meeting_dirs(bcs.HK_RACING)
+                 for card in md.glob("*排位表.md")]
+    return supplement_rows(df, results, paths, racecards)
 
 
 def _eb_score(wins, starts, places, g_win, g_place, neg_scale, floor):

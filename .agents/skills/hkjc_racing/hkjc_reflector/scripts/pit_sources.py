@@ -34,12 +34,72 @@ def venue_key(value):
     return value
 
 
-def supplement_rows(base, result_paths, logic_paths):
+RACECARD_NAME = re.compile(r"Race\s*(\d+)\s*排位表\.md$", re.I)
+
+
+def racecard_contexts(racecard_paths, read):
+    """`(day, race, horse_no, name)` → metadata, from `* Race N 排位表.md`.
+
+    A meeting that was never scored has no `Race_*_Logic.json`, so the Logic
+    pass leaves its distance and class empty for every runner. 2026-07-15
+    (跑馬地, 107 rows) was exactly that: results present, metadata 100% absent
+    — and the results payload itself carries no distance
+    (`racedate/race_no/venue/results/sectional_times/...` only). The racecard
+    does carry it, is pre-race, and is already on disk.
+
+    Same discipline as the Logic pass: the race number in the filename must
+    agree with 場次, the venue must resolve, and nothing is invented — a field
+    the racecard does not state stays absent.
+    """
+    contexts = {}
+    for path in sorted(map(Path, racecard_paths)):
+        match = RACECARD_NAME.search(path.name)
+        if not match:
+            continue
+        day = path.parent.name[:10]
+        date.fromisoformat(day)
+        rn = int(match[1])
+        text = path.read_bytes()
+        read.setdefault(str(path), hashlib.sha256(text).hexdigest())
+        body = text.decode("utf-8", errors="replace")
+
+        stated = re.search(r"^場次:\s*第(\d+)場", body, re.M)
+        if stated and int(stated[1]) != rn:
+            raise ValueError(f"Conflicting racecard race: {path}")
+        venue = venue_key((re.search(r"^地點:\s*(.+)$", body, re.M) or [None, ""])[1].strip())
+        if venue not in ("沙田", "跑馬地"):
+            venue = venue_key(path.parent.name)
+        distance_text = re.search(r"^路程:\s*(\d{3,4})\s*米", body, re.M)
+        race_class = re.search(r"^班次:\s*(.+)$", body, re.M)
+        meta = dict(
+            Venue=venue,
+            Distance=int(distance_text[1]) if distance_text else None,
+            RaceNo=rn,
+            RaceClass=race_class[1].strip() if race_class else None,
+        )
+
+        # 每匹馬一段，`馬號:` 開頭。
+        for block in body.split("馬號: ")[1:]:
+            number = re.match(r"(\d+)", block.strip())
+            name_text = re.search(r"^馬名:\s*(.+)$", block, re.M)
+            if not number or not name_text:
+                continue
+            key = (day, rn, int(number[1]), horse_key(name_text[1]))
+            if key in contexts and contexts[key] != meta:
+                raise ValueError(f"Conflicting racecard metadata: {key}")
+            contexts[key] = meta
+    return contexts
+
+
+def supplement_rows(base, result_paths, logic_paths, racecard_paths=()):
     """Merge missing results and fill metadata only on verified identities.
 
     Existing settled outcomes are authoritative; contradictory copies fail
     closed. Logic supplies distance only after date/race/name/number alignment.
-    An absent Logic file leaves metadata absent, never fabricates a value.
+    An absent Logic file leaves metadata absent, never fabricates a value —
+    unless the meeting's racecard is on disk, which is the same pre-race fact
+    from a different file (see `racecard_contexts`). Logic stays authoritative
+    where both exist.
     """
     counts = Counter()
     sources = {}
@@ -84,6 +144,11 @@ def supplement_rows(base, result_paths, logic_paths):
             if key in contexts and contexts[key] != meta:
                 raise ValueError(f"Conflicting Logic metadata: {key}")
             contexts[key] = meta
+
+    for key, meta in racecard_contexts(racecard_paths, sources).items():
+        if key not in contexts:
+            contexts[key] = meta
+            counts["racecard_contexts"] += 1
 
     for path in sorted(set(map(Path, result_paths))):
         data = read(path)
