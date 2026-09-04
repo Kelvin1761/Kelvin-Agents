@@ -12,15 +12,17 @@
 攞（含 race_results 主表 + full_day_results.json 追加賽日，到 07-04）。
 連續評分數學／參數由 live_priors.JT_RATING_PARAMS 引入，同 production 一致。
 
-限制（已知、無 lookahead）：full_day_results.json 追加 rows 冇距離欄，所以
-「同程先驗」對 05-09 之後嘅賽日凍結喺 05-09（只會缺近期資料，唔會有未來資料）。
-master 評分 / 組合 / 換騎 先驗係完整 as-of 到賽日。
+PIT loader additionally verifies local result copies and supplements missing
+meeting dates / distance metadata with exact horse identity. Missing metadata
+stays missing. Historical derived features still require a provenance audit;
+PIT aggregate rebuilding alone does not prove a leakage-free model.
 
 用法：
   python3 pit_backtest.py <meeting_dir> [<meeting_dir> ...] [--json]
 """
 from __future__ import annotations
 import argparse
+from datetime import date
 import importlib.util
 import os
 import sys
@@ -41,9 +43,7 @@ sys.path.insert(0, str(_ENGINE.parent))
 sys.path.insert(0, str(_REPO))            # repo root (wongchoi_paths)
 
 import rescore_backtest as bt  # noqa: E402 (sibling module)
-import live_priors  # noqa: E402
-import engine_core  # noqa: E402
-from hkjc_racing_engine.engine_core import RacingEngine  # noqa: E402
+from hkjc_racing_engine import live_priors, engine_core  # noqa: E402
 from hkjc_racing_engine.live_priors import JT_RATING_PARAMS  # noqa: E402
 
 # import build_comprehensive_stats by path
@@ -55,7 +55,7 @@ _spec.loader.exec_module(bcs)
 
 
 def load_all_rows() -> pd.DataFrame:
-    """所有原始 rows（兩季 race_results + json 追加），帶 SeasonTag。"""
+    """兩季原始 rows + identity-checked local supplements，帶來源 manifest。"""
     frames = []
     for season in ("24_25", "25_26"):
         base = bcs.load_base_rows(season)
@@ -65,7 +65,15 @@ def load_all_rows() -> pd.DataFrame:
         frames.append(base)
     df = pd.concat(frames, ignore_index=True)
     df["Date"] = df["Date"].astype(str)
-    return df
+    from pit_sources import supplement_rows
+    sys.path.insert(0, str(_REPO / ".agents/skills/shared_racing/scripts"))
+    from corpus_paths import logic_files
+    paths = list(map(Path, logic_files(bcs.HK_RACING)))
+    results = [path for md in {p.parent for p in paths}
+               for path in md.glob("*全日賽果.json")]
+    for season in bcs.SEASONS.values():
+        results.extend((bcs.DB_ROOT / season["results_dir"]).glob("*/full_day_results.json"))
+    return supplement_rows(df, results, paths)
 
 
 def _eb_score(wins, starts, places, g_win, g_place, neg_scale, floor):
@@ -173,6 +181,12 @@ class _Priors:
 
 
 def inject_as_of(all_rows: pd.DataFrame, meeting_date: str):
+    # Missing/malformed cutoffs must not accidentally admit the full archive.
+    if date.fromisoformat(meeting_date).isoformat() != meeting_date:
+        raise ValueError("PIT cutoff must be an ISO meeting date")
+    parsed_dates = pd.to_datetime(all_rows["Date"], errors="raise")
+    if parsed_dates.isna().any():
+        raise ValueError("PIT source contains missing dates")
     sub = all_rows[all_rows["Date"] < meeting_date]
     live_priors._JT_RATINGS = _Ratings(
         build_ratings(sub, "jockey"),
@@ -199,10 +213,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="point-in-time HKJC Auto backtest")
     ap.add_argument("meeting_dirs", nargs="+")
     ap.add_argument("--json", action="store_true")
+    ap.add_argument("--include-legacy", action="store_true",
+                    help="Include sparse-schema races; report their limitations separately")
     args = ap.parse_args()
-
-    # 強制 combo 行 as-of（archive 有注入 jockey_trainer_combo_prior，會蓋過 as-of）
-    RacingEngine._jockey_trainer_prior = lambda self: None
 
     try:
         all_rows = load_all_rows()
@@ -217,7 +230,9 @@ def main() -> int:
         if not mdate:
             continue
         n_prior = inject_as_of(all_rows, mdate)
-        races, errs = bt.rescore_meeting(md)
+        # rescore_logic already strips embedded aggregate combo priors. Do not
+        # globally replace an engine method (that contaminates later callers).
+        races, errs = bt.rescore_meeting(md, include_legacy=args.include_legacy)
         all_races.extend(races)
         for e in errs:
             (skipped if e.startswith("SKIP ") else errors).append(e)

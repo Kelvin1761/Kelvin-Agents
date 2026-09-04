@@ -31,6 +31,7 @@ Usage:
 from __future__ import annotations
 import argparse
 import copy
+from datetime import date
 import json
 import os
 import re
@@ -146,6 +147,25 @@ def rescore_logic(logic: dict, *, keep_embedded_combo_prior: bool = False):
     return logic
 
 
+def resolve_meeting_context(logic: dict, md: Path) -> dict:
+    """Resolve missing archive identity, never route known Sha Tin as Unknown/HV."""
+    meeting_date = date.fromisoformat(md.name[:10]).isoformat()
+    context = logic.setdefault("race_analysis", {})
+    if context.get("race_date") and context["race_date"] != meeting_date:
+        raise ValueError("Logic race_date conflicts with meeting directory")
+    context["race_date"] = meeting_date
+    from pit_sources import venue_key
+    expected = venue_key(md.name)
+    actual = venue_key(context.get("venue"))
+    if expected not in ("沙田", "跑馬地"):
+        raise ValueError("Meeting directory has no recognized venue")
+    if actual in ("沙田", "跑馬地") and actual != expected:
+        raise ValueError("Logic venue conflicts with meeting directory")
+    if actual not in ("沙田", "跑馬地"):
+        context["venue"] = expected
+    return context
+
+
 def rescore_meeting(
     md: Path,
     include_legacy: bool = False,
@@ -172,6 +192,9 @@ def rescore_meeting(
             continue
         logic = json.loads(lp.read_text(encoding="utf-8"))
         try:
+            # Legacy Logic files omit this. The engine's historical guard must
+            # see the meeting cutoff, including when PIT priors are injected.
+            resolve_meeting_context(logic, md)
             rescored = rescore_logic(
                 logic,
                 keep_embedded_combo_prior=keep_embedded_combo_prior,

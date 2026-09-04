@@ -1,0 +1,6664 @@
+{
+  "baseline": {
+    "dev": {
+      "gold": 0.13333333333333333,
+      "gold_strict": 0.06666666666666667,
+      "good_positional": 0.2722222222222222,
+      "pass": 0.48333333333333334,
+      "zero_hit": 0.15555555555555556,
+      "one_hit": 0.3611111111111111,
+      "champion": 0.28888888888888886,
+      "winner_in_top3": 0.5666666666666667,
+      "top3_capture_at5": 0.6648148148148147,
+      "top3_mean_model_rank": 4.6462962962962955,
+      "competitive_recall_at5": 0.6046296296296296,
+      "ndcg_at5": 0.5562594101897401,
+      "top2_hits": 1.011111111111111
+    },
+    "terminal": {
+      "gold": 0.13095238095238096,
+      "gold_strict": 0.05952380952380952,
+      "good_positional": 0.21428571428571427,
+      "pass": 0.4166666666666667,
+      "zero_hit": 0.19047619047619047,
+      "one_hit": 0.39285714285714285,
+      "champion": 0.21428571428571427,
+      "winner_in_top3": 0.5357142857142857,
+      "top3_capture_at5": 0.6071428571428571,
+      "top3_mean_model_rank": 5.017857142857143,
+      "competitive_recall_at5": 0.5690476190476191,
+      "ndcg_at5": 0.5107532750451231,
+      "top2_hits": 0.9285714285714286
+    }
+  },
+  "decision": "REJECT_DEV: no candidate qualified; terminal not used to rescue candidates",
+  "sample_hash": "dc8a79318d558286c3f65e3aa6baab2cb33723cd0cc17e78ead656e6dbe708a9",
+  "commit": "165f923a1aa43a34f9ae0c1e2a1df0e328b6090e",
+  "dev_leaf_auc": {
+    "fit_st": {
+      "auc": 0.528322440087146,
+      "pairs": 918
+    },
+    "trip": {
+      "auc": 0.6278992710404241,
+      "pairs": 3018
+    }
+  },
+  "script_sha": "74a9d1d1f13d111fbaeb13a67d3fdc6ab67c23ee9e209b41259f9096aafc7fda",
+  "source_code": {
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_auto_orchestrator.py": "b24c756d2fdb43b8bc8275ac2885db4d397a829445634796ad0d5c0f25081d74",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/review_draw_weights.py": "60848c873ba0e20973c5d786cbc8251bb08fad746952f3773430827c617b8ba8",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/validate_trainer_health_candidates.py": "f03cf5c3cfb8e6a3312df85d3a889c05be7df9638fe920866cd8aea69be16996",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/create_all_skeletons.py": "e5a3600f1e7bb6d0a3faf1b88a6a499716b9c175a4fe9ddc1fae725edb722958",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/renderer.py": "0403ddcb81578f3d5c32d5fa87fd49e9fa57f1c26bce811cb96be26384018579",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/scoring.py": "1c6a7ce6c14ce1a65cac3a12308b316df9936db0cfd159a77e8cb6e3a6420ac5",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/__init__.py": "e00315857a0f838de968e1392c45ee29366690a34b18b0e6e86d8561c619322e",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/engine_core.py": "f885762ffe0aace7ef97542cc03162da2c7e8e2373b08a52b411e8c27ac1de73",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/live_priors.py": "e8c812cd6d4566ce28ddb49d7ce58a1f04c61f4938977fd8f4b2fc91248647d0",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/matrix_mapper.py": "c9df25fd184d3a1e07e48900da1897352e7204eedc569d7809e570954f53b195",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/validation.py": "637e5f4ab76277c779de82f590a259f567ebea9a36c43e08ca79303d0319fba2",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/features/tier_loader.py": "81b172aa70f87923202edc2209bc49bb5db1cc6cbba7289feb40949ab706b2b1",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/features/speed.py": "2e187ab0786adde9b805737b1b3c4fe56d573483779033b600e722b374d836e9",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/features/__init__.py": "5b7f6e4f9586e3505edb167a5a5a2b5980044924cc965232a5c1493caadedde2",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/features/jockey.py": "d7752a494de8500bde660295921ec74fe5b36b145b71fa919c4b153124912591",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/features/form.py": "7ced07ed6a693fb2dfa5bc743bad612d5d44d97ba58ad7a3304ac555aba44bd7",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/features/trainer.py": "922e9807e0b0bc0c92c2434eb6a13f1837da2b72dad22e735a6c1e977af9c2b1",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/features/draw.py": "a9b2cf3e07e35bea7adac74f3e5af64251c93461e37bf91c86f10d8649fa1467",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/migrate_legacy_results_db.py": "cc3e7a0286bb911452645f15a045f4ff0256fe2a75b078749602cdefe294cb16",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_no_regression_gate.py": "d579e2c685ca97518032811156aca927cb58d77edf162f044a5f47c98f1697a8",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/rescore_backtest.py": "bd0097e5ae8f31ed39f719f4cce704a23185d7edf2c9ad268adda6e1e3e58ed7",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/review_auto_weighting.py": "5aaad4078681c5d469a151eb16f5c95cd80442070d005ee2bef15e8254b6afb7",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_competitiveness_review.py": "d374d1fe26f3b11718fb7979887e19647dc35b5fee420bf5abf0c16fc12b53b1",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/search_hkjc_7d_ml_configs.py": "c3670c729a73a32942da5c53670527235db6d4def3353dab918485cca57afd09",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_build_anomaly_annotations.py": "49074e11c450569e7f1aae76fb67e26dada4d9c7430b389aedca7c76d52690e5",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_7d_shadow_diagnostics.py": "6e7f1c2fce087cacac682bc5bbbeac68a74cdc56c17f4abc438acff06a68d4a7",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_debut_matrix_simplification_gate.py": "686d05b25cdc42c3d79b62851b41ace20ed1c3733c05d924c6bec43aa1b9757f",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/build_hkjc_ranking_dataset.py": "ddb8554ba1529e93a65b07897a5b4eeede26bec69c7247c3d704c65ba141b762",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/reflector_auto_stats.py": "52e0d91324b5bb0cbd8d0c919c31e804e9e1fede2ee08ab0ec978137c8d3fd09",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/train_hkjc_ranking_model.py": "8e3ddc33a33e490a858586b8771fe6b8e76d991966d34d34b6e1afa14a83bb24",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/pit_sources.py": "68b671ce4ea4d1b02419815c26e67b7a1e7371705c2e8404ebfc744ff3868ae0",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_market_free_weight_search.py": "dbd8a38a7f38eebcfd651aeb0a1049dd04dfc1d10696af75a2badbeb842d21ad",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_results_db.py": "550a66e7333bf97239ba18acfba8bf71cc09b661e7bfa70f08ef91b308f9fc0d",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/pit_backtest.py": "0e8f33f0db44aa61c84669ab67ff8a7894db5f554507bad24dafff1516c6ac6b",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/train_hkjc_7d_ml_weights.py": "27929c37ec4b9b4384522c203c83266fbfe79081704dcb8d62a87021bd0c721b",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/sync_hkjc_results_database.py": "560927a1d4dc8f08a6a1bdbf1d1890e3db181528f1f274af06848d6de3a24667",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py": "76e42e191c984f1f925d11fb36344690677622db11e3ba74cb36068144cd8893",
+    ".agents/skills/hkjc_racing/hkjc_reflector/scripts/walk_forward_auto_backtest.py": "66d04d87c58f4fac222b553641794a03d70f5ffb07a32990786a832e2e834608"
+  },
+  "collection_script_sha": "eff40d0965bb523a676fa0f61c9fb8501f0d8b0eb4ef798725292c1edf10585d",
+  "artifact_hashes": {
+    "evidence.json": "446ee60e9e5bcaf3c899baa2353ac6658cfca7b013886d2a4f4a93a0b243b8ec",
+    "dated_signals.json": "a69fdfc4db65e44e1f2a86792a69f768967bca95a43b000c0486290cfa34d921",
+    "baseline.json": "2c2cc3b2958ed08a33dedd2bd58589e32a7d088a08dee05b63a8e3e862a38ded"
+  },
+  "raw_content_sha": "8d5edf509d37fe888e979aefa159c021408d17c80379013ec7b7446f6068a2f5",
+  "cutoff": "2026-06-13",
+  "source_repair": {
+    "counts": {
+      "duplicate_rows_verified": 22962,
+      "metadata_unmatched": 17714,
+      "filled_Distance": 2155,
+      "filled_RaceClass": 2155,
+      "non_finish_rows_excluded": 439,
+      "added_rows": 653
+    },
+    "added_dates": [
+      "2026-05-20",
+      "2026-06-21",
+      "2026-07-01",
+      "2026-07-08",
+      "2026-07-12"
+    ],
+    "distance_missing": 119
+  },
+  "signal_provenance": {
+    "counts": {
+      "context_venue_missing": 91,
+      "horses_with_matched_history": 2495,
+      "horses_fit_supported": 1515,
+      "older_than_365d": 20362,
+      "missing_structured_value": 8897,
+      "context_mismatch": 6748,
+      "invalid_finish_margin": 815,
+      "unknown_historical_surface": 1523
+    },
+    "problems": [],
+    "leakage_status": "FLAG: date/identity guarded; immutable archive capture not proven"
+  },
+  "counts": {
+    "races": 264,
+    "runners": 3318,
+    "dev": 180
+  },
+  "power": {
+    "top3_capture_at5": {
+      "component_budget": 0.007936507936507938,
+      "ci_halfwidth": 0.029761904761904767,
+      "informative": false
+    },
+    "top3_mean_model_rank": {
+      "component_budget": 0.07936507936507935,
+      "ci_halfwidth": 0.12103174603174603,
+      "informative": false
+    },
+    "competitive_recall_at5": {
+      "component_budget": 0.013492063492063491,
+      "ci_halfwidth": 0.023015873015873024,
+      "informative": false
+    },
+    "ndcg_at5": {
+      "component_budget": 0.003422436113972514,
+      "ci_halfwidth": 0.021362013734517682,
+      "informative": false
+    }
+  },
+  "candidates": {
+    "A": {
+      "dev": {
+        "gold": 0.13333333333333333,
+        "gold_strict": 0.06111111111111111,
+        "good_positional": 0.2611111111111111,
+        "pass": 0.4666666666666667,
+        "zero_hit": 0.14444444444444443,
+        "one_hit": 0.3888888888888889,
+        "champion": 0.2833333333333333,
+        "winner_in_top3": 0.5555555555555556,
+        "top3_capture_at5": 0.6629629629629629,
+        "top3_mean_model_rank": 4.640740740740741,
+        "competitive_recall_at5": 0.6040740740740741,
+        "ndcg_at5": 0.5530429217955901,
+        "top2_hits": 0.9944444444444445
+      },
+      "decision": "REJECT_DEV",
+      "terminal": "not evaluated",
+      "folds": [
+        {
+          "dates": [
+            "2026-04-22",
+            "2026-04-26",
+            "2026-04-29"
+          ],
+          "n": 29,
+          "baseline": {
+            "gold": 0.13793103448275862,
+            "gold_strict": 0.0,
+            "good_positional": 0.1724137931034483,
+            "pass": 0.5172413793103449,
+            "zero_hit": 0.1724137931034483,
+            "one_hit": 0.3103448275862069,
+            "champion": 0.3448275862068966,
+            "winner_in_top3": 0.5517241379310345,
+            "top3_capture_at5": 0.6896551724137931,
+            "top3_mean_model_rank": 4.64367816091954,
+            "competitive_recall_at5": 0.6454022988505748,
+            "ndcg_at5": 0.5676468900160182,
+            "top2_hits": 0.9310344827586207
+          },
+          "candidate": {
+            "gold": 0.13793103448275862,
+            "gold_strict": 0.0,
+            "good_positional": 0.1724137931034483,
+            "pass": 0.4827586206896552,
+            "zero_hit": 0.20689655172413793,
+            "one_hit": 0.3103448275862069,
+            "champion": 0.3448275862068966,
+            "winner_in_top3": 0.5517241379310345,
+            "top3_capture_at5": 0.6781609195402298,
+            "top3_mean_model_rank": 4.701149425287356,
+            "competitive_recall_at5": 0.6367816091954024,
+            "ndcg_at5": 0.5601097677561948,
+            "top2_hits": 0.896551724137931
+          }
+        },
+        {
+          "dates": [
+            "2026-05-03",
+            "2026-05-06",
+            "2026-05-09"
+          ],
+          "n": 31,
+          "baseline": {
+            "gold": 0.16129032258064516,
+            "gold_strict": 0.12903225806451613,
+            "good_positional": 0.41935483870967744,
+            "pass": 0.4838709677419355,
+            "zero_hit": 0.16129032258064516,
+            "one_hit": 0.3548387096774194,
+            "champion": 0.3225806451612903,
+            "winner_in_top3": 0.5483870967741935,
+            "top3_capture_at5": 0.6344086021505375,
+            "top3_mean_model_rank": 4.763440860215053,
+            "competitive_recall_at5": 0.5822580645161288,
+            "ndcg_at5": 0.5494541993296341,
+            "top2_hits": 1.1612903225806452
+          },
+          "candidate": {
+            "gold": 0.12903225806451613,
+            "gold_strict": 0.0967741935483871,
+            "good_positional": 0.3870967741935484,
+            "pass": 0.5161290322580645,
+            "zero_hit": 0.0967741935483871,
+            "one_hit": 0.3870967741935484,
+            "champion": 0.3225806451612903,
+            "winner_in_top3": 0.5483870967741935,
+            "top3_capture_at5": 0.6344086021505375,
+            "top3_mean_model_rank": 4.67741935483871,
+            "competitive_recall_at5": 0.5838709677419353,
+            "ndcg_at5": 0.5508405061893834,
+            "top2_hits": 1.1935483870967742
+          }
+        },
+        {
+          "dates": [
+            "2026-05-13",
+            "2026-05-17",
+            "2026-05-20"
+          ],
+          "n": 29,
+          "baseline": {
+            "gold": 0.13793103448275862,
+            "gold_strict": 0.10344827586206896,
+            "good_positional": 0.3103448275862069,
+            "pass": 0.4482758620689655,
+            "zero_hit": 0.20689655172413793,
+            "one_hit": 0.3448275862068966,
+            "champion": 0.3103448275862069,
+            "winner_in_top3": 0.6206896551724138,
+            "top3_capture_at5": 0.6666666666666666,
+            "top3_mean_model_rank": 4.413793103448277,
+            "competitive_recall_at5": 0.6155172413793104,
+            "ndcg_at5": 0.571869837532115,
+            "top2_hits": 1.0344827586206897
+          },
+          "candidate": {
+            "gold": 0.1724137931034483,
+            "gold_strict": 0.10344827586206896,
+            "good_positional": 0.3103448275862069,
+            "pass": 0.4482758620689655,
+            "zero_hit": 0.1724137931034483,
+            "one_hit": 0.3793103448275862,
+            "champion": 0.3103448275862069,
+            "winner_in_top3": 0.5862068965517241,
+            "top3_capture_at5": 0.6551724137931034,
+            "top3_mean_model_rank": 4.436781609195403,
+            "competitive_recall_at5": 0.5982758620689655,
+            "ndcg_at5": 0.5741292851630138,
+            "top2_hits": 1.0344827586206897
+          }
+        },
+        {
+          "dates": [
+            "2026-05-24",
+            "2026-05-27",
+            "2026-05-31"
+          ],
+          "n": 31,
+          "baseline": {
+            "gold": 0.0967741935483871,
+            "gold_strict": 0.03225806451612903,
+            "good_positional": 0.16129032258064516,
+            "pass": 0.41935483870967744,
+            "zero_hit": 0.16129032258064516,
+            "one_hit": 0.41935483870967744,
+            "champion": 0.2903225806451613,
+            "winner_in_top3": 0.6774193548387096,
+            "top3_capture_at5": 0.6236559139784947,
+            "top3_mean_model_rank": 5.032258064516129,
+            "competitive_recall_at5": 0.5451612903225806,
+            "ndcg_at5": 0.5592455262921672,
+            "top2_hits": 0.8709677419354839
+          },
+          "candidate": {
+            "gold": 0.0967741935483871,
+            "gold_strict": 0.03225806451612903,
+            "good_positional": 0.16129032258064516,
+            "pass": 0.3225806451612903,
+            "zero_hit": 0.22580645161290322,
+            "one_hit": 0.45161290322580644,
+            "champion": 0.25806451612903225,
+            "winner_in_top3": 0.5483870967741935,
+            "top3_capture_at5": 0.6344086021505376,
+            "top3_mean_model_rank": 5.053763440860216,
+            "competitive_recall_at5": 0.5516129032258065,
+            "ndcg_at5": 0.5451911968802324,
+            "top2_hits": 0.8387096774193549
+          }
+        },
+        {
+          "dates": [
+            "2026-06-03",
+            "2026-06-07",
+            "2026-06-10"
+          ],
+          "n": 29,
+          "baseline": {
+            "gold": 0.1724137931034483,
+            "gold_strict": 0.10344827586206896,
+            "good_positional": 0.27586206896551724,
+            "pass": 0.5517241379310345,
+            "zero_hit": 0.10344827586206896,
+            "one_hit": 0.3448275862068966,
+            "champion": 0.2413793103448276,
+            "winner_in_top3": 0.5517241379310345,
+            "top3_capture_at5": 0.6896551724137933,
+            "top3_mean_model_rank": 4.402298850574713,
+            "competitive_recall_at5": 0.6362068965517241,
+            "ndcg_at5": 0.5641669326256848,
+            "top2_hits": 1.0689655172413792
+          },
+          "candidate": {
+            "gold": 0.1724137931034483,
+            "gold_strict": 0.10344827586206896,
+            "good_positional": 0.2413793103448276,
+            "pass": 0.5517241379310345,
+            "zero_hit": 0.034482758620689655,
+            "one_hit": 0.41379310344827586,
+            "champion": 0.2413793103448276,
+            "winner_in_top3": 0.6551724137931034,
+            "top3_capture_at5": 0.6896551724137931,
+            "top3_mean_model_rank": 4.32183908045977,
+            "competitive_recall_at5": 0.65,
+            "ndcg_at5": 0.5648428411735725,
+            "top2_hits": 1.0
+          }
+        }
+      ],
+      "transitions": {
+        "top2_placed_gained": 5,
+        "top2_placed_dropped": 8,
+        "rank3_placed_promoted": 3,
+        "top2_placed_net": -3,
+        "weak_to_pass": 3,
+        "pass_to_weak": 6,
+        "zero_rescued": 5,
+        "new_zero": 3
+      },
+      "weak_baseline": {
+        "gold": 0.010752688172043012,
+        "gold_strict": 0.0,
+        "good_positional": 0.0,
+        "pass": 0.0,
+        "zero_hit": 0.3010752688172043,
+        "one_hit": 0.6989247311827957,
+        "champion": 0.16129032258064516,
+        "winner_in_top3": 0.3225806451612903,
+        "top3_capture_at5": 0.5376344086021505,
+        "top3_mean_model_rank": 5.802867383512545,
+        "competitive_recall_at5": 0.5154121863799282,
+        "ndcg_at5": 0.40150935616129246,
+        "top2_hits": 0.4946236559139785
+      },
+      "weak_candidate": {
+        "gold": 0.010752688172043012,
+        "gold_strict": 0.0,
+        "good_positional": 0.0,
+        "pass": 0.03225806451612903,
+        "zero_hit": 0.26881720430107525,
+        "one_hit": 0.6989247311827957,
+        "champion": 0.15053763440860216,
+        "winner_in_top3": 0.34408602150537637,
+        "top3_capture_at5": 0.5340501792114695,
+        "top3_mean_model_rank": 5.752688172043011,
+        "competitive_recall_at5": 0.5143369175627239,
+        "ndcg_at5": 0.4006434120303347,
+        "top2_hits": 0.5053763440860215
+      },
+      "cohorts": {
+        "venue:沙田": {
+          "n": 106,
+          "baseline": {
+            "gold": 0.1320754716981132,
+            "gold_strict": 0.05660377358490566,
+            "good_positional": 0.27358490566037735,
+            "pass": 0.5094339622641509,
+            "zero_hit": 0.14150943396226415,
+            "one_hit": 0.3490566037735849,
+            "champion": 0.2830188679245283,
+            "winner_in_top3": 0.5849056603773585,
+            "top3_capture_at5": 0.6823899371069182,
+            "top3_mean_model_rank": 4.622641509433962,
+            "competitive_recall_at5": 0.6102201257861636,
+            "ndcg_at5": 0.566274230674373,
+            "top2_hits": 1.028301886792453
+          },
+          "candidate": {
+            "gold": 0.1320754716981132,
+            "gold_strict": 0.04716981132075472,
+            "good_positional": 0.25471698113207547,
+            "pass": 0.49056603773584906,
+            "zero_hit": 0.1320754716981132,
+            "one_hit": 0.37735849056603776,
+            "champion": 0.27358490566037735,
+            "winner_in_top3": 0.5660377358490566,
+            "top3_capture_at5": 0.6823899371069182,
+            "top3_mean_model_rank": 4.622641509433962,
+            "competitive_recall_at5": 0.6121069182389938,
+            "ndcg_at5": 0.5597215469299465,
+            "top2_hits": 1.0
+          }
+        },
+        "size:<=8": {
+          "n": 4,
+          "baseline": {
+            "gold": 0.25,
+            "gold_strict": 0.25,
+            "good_positional": 0.5,
+            "pass": 0.75,
+            "zero_hit": 0.0,
+            "one_hit": 0.25,
+            "champion": 0.75,
+            "winner_in_top3": 1.0,
+            "top3_capture_at5": 0.9166666666666666,
+            "top3_mean_model_rank": 3.0,
+            "competitive_recall_at5": 0.9166666666666666,
+            "ndcg_at5": 0.8859824381973425,
+            "top2_hits": 1.5
+          },
+          "candidate": {
+            "gold": 0.25,
+            "gold_strict": 0.25,
+            "good_positional": 0.5,
+            "pass": 0.75,
+            "zero_hit": 0.0,
+            "one_hit": 0.25,
+            "champion": 0.75,
+            "winner_in_top3": 1.0,
+            "top3_capture_at5": 0.9166666666666666,
+            "top3_mean_model_rank": 3.0,
+            "competitive_recall_at5": 0.9166666666666666,
+            "ndcg_at5": 0.8859824381973425,
+            "top2_hits": 1.5
+          }
+        },
+        "sparse:True": {
+          "n": 71,
+          "baseline": {
+            "gold": 0.14084507042253522,
+            "gold_strict": 0.056338028169014086,
+            "good_positional": 0.2676056338028169,
+            "pass": 0.5070422535211268,
+            "zero_hit": 0.1267605633802817,
+            "one_hit": 0.36619718309859156,
+            "champion": 0.28169014084507044,
+            "winner_in_top3": 0.5352112676056338,
+            "top3_capture_at5": 0.6901408450704224,
+            "top3_mean_model_rank": 4.52112676056338,
+            "competitive_recall_at5": 0.6194835680751173,
+            "ndcg_at5": 0.561823758964972,
+            "top2_hits": 1.028169014084507
+          },
+          "candidate": {
+            "gold": 0.14084507042253522,
+            "gold_strict": 0.056338028169014086,
+            "good_positional": 0.2676056338028169,
+            "pass": 0.49295774647887325,
+            "zero_hit": 0.14084507042253522,
+            "one_hit": 0.36619718309859156,
+            "champion": 0.28169014084507044,
+            "winner_in_top3": 0.5352112676056338,
+            "top3_capture_at5": 0.6854460093896713,
+            "top3_mean_model_rank": 4.553990610328639,
+            "competitive_recall_at5": 0.6194835680751174,
+            "ndcg_at5": 0.5582566803443461,
+            "top2_hits": 1.0140845070422535
+          }
+        },
+        "size:11-12": {
+          "n": 101,
+          "baseline": {
+            "gold": 0.10891089108910891,
+            "gold_strict": 0.039603960396039604,
+            "good_positional": 0.2871287128712871,
+            "pass": 0.49504950495049505,
+            "zero_hit": 0.15841584158415842,
+            "one_hit": 0.3465346534653465,
+            "champion": 0.297029702970297,
+            "winner_in_top3": 0.5544554455445545,
+            "top3_capture_at5": 0.6501650165016503,
+            "top3_mean_model_rank": 4.63036303630363,
+            "competitive_recall_at5": 0.6204620462046204,
+            "ndcg_at5": 0.5523370391049695,
+            "top2_hits": 1.0396039603960396
+          },
+          "candidate": {
+            "gold": 0.10891089108910891,
+            "gold_strict": 0.039603960396039604,
+            "good_positional": 0.27722772277227725,
+            "pass": 0.49504950495049505,
+            "zero_hit": 0.13861386138613863,
+            "one_hit": 0.36633663366336633,
+            "champion": 0.297029702970297,
+            "winner_in_top3": 0.5544554455445545,
+            "top3_capture_at5": 0.6435643564356436,
+            "top3_mean_model_rank": 4.636963696369636,
+            "competitive_recall_at5": 0.6155115511551155,
+            "ndcg_at5": 0.551450795094117,
+            "top2_hits": 1.0297029702970297
+          }
+        },
+        "size:13+": {
+          "n": 67,
+          "baseline": {
+            "gold": 0.14925373134328357,
+            "gold_strict": 0.07462686567164178,
+            "good_positional": 0.23880597014925373,
+            "pass": 0.4626865671641791,
+            "zero_hit": 0.16417910447761194,
+            "one_hit": 0.373134328358209,
+            "champion": 0.22388059701492538,
+            "winner_in_top3": 0.5522388059701493,
+            "top3_capture_at5": 0.6616915422885573,
+            "top3_mean_model_rank": 4.825870646766169,
+            "competitive_recall_at5": 0.5485074626865671,
+            "ndcg_at5": 0.5300086136604385,
+            "top2_hits": 0.9402985074626866
+          },
+          "candidate": {
+            "gold": 0.14925373134328357,
+            "gold_strict": 0.05970149253731343,
+            "good_positional": 0.22388059701492538,
+            "pass": 0.417910447761194,
+            "zero_hit": 0.16417910447761194,
+            "one_hit": 0.417910447761194,
+            "champion": 0.208955223880597,
+            "winner_in_top3": 0.5223880597014925,
+            "top3_capture_at5": 0.6666666666666667,
+            "top3_mean_model_rank": 4.8059701492537314,
+            "competitive_recall_at5": 0.5544776119402985,
+            "ndcg_at5": 0.5227032813343055,
+            "top2_hits": 0.9104477611940298
+          }
+        },
+        "venue:跑馬地": {
+          "n": 72,
+          "baseline": {
+            "gold": 0.125,
+            "gold_strict": 0.08333333333333333,
+            "good_positional": 0.2777777777777778,
+            "pass": 0.4583333333333333,
+            "zero_hit": 0.18055555555555555,
+            "one_hit": 0.3611111111111111,
+            "champion": 0.3055555555555556,
+            "winner_in_top3": 0.5277777777777778,
+            "top3_capture_at5": 0.6388888888888888,
+            "top3_mean_model_rank": 4.675925925925926,
+            "competitive_recall_at5": 0.6006944444444444,
+            "ndcg_at5": 0.5446734223610772,
+            "top2_hits": 1.0138888888888888
+          },
+          "candidate": {
+            "gold": 0.125,
+            "gold_strict": 0.08333333333333333,
+            "good_positional": 0.2777777777777778,
+            "pass": 0.4444444444444444,
+            "zero_hit": 0.16666666666666666,
+            "one_hit": 0.3888888888888889,
+            "champion": 0.3055555555555556,
+            "winner_in_top3": 0.5277777777777778,
+            "top3_capture_at5": 0.6342592592592592,
+            "top3_mean_model_rank": 4.680555555555555,
+            "competitive_recall_at5": 0.59375,
+            "ndcg_at5": 0.5461614905879867,
+            "top2_hits": 1.0138888888888888
+          }
+        },
+        "size:9-10": {
+          "n": 8,
+          "baseline": {
+            "gold": 0.25,
+            "gold_strict": 0.25,
+            "good_positional": 0.25,
+            "pass": 0.375,
+            "zero_hit": 0.125,
+            "one_hit": 0.5,
+            "champion": 0.5,
+            "winner_in_top3": 0.625,
+            "top3_capture_at5": 0.75,
+            "top3_mean_model_rank": 4.166666666666667,
+            "competitive_recall_at5": 0.71875,
+            "ndcg_at5": 0.6607682520640707,
+            "top2_hits": 1.0
+          },
+          "candidate": {
+            "gold": 0.25,
+            "gold_strict": 0.25,
+            "good_positional": 0.25,
+            "pass": 0.375,
+            "zero_hit": 0.125,
+            "one_hit": 0.5,
+            "champion": 0.5,
+            "winner_in_top3": 0.625,
+            "top3_capture_at5": 0.75,
+            "top3_mean_model_rank": 4.125,
+            "competitive_recall_at5": 0.71875,
+            "ndcg_at5": 0.6607682520640707,
+            "top2_hits": 1.0
+          }
+        },
+        "sparse:False": {
+          "n": 109,
+          "baseline": {
+            "gold": 0.12844036697247707,
+            "gold_strict": 0.07339449541284404,
+            "good_positional": 0.27522935779816515,
+            "pass": 0.46788990825688076,
+            "zero_hit": 0.1743119266055046,
+            "one_hit": 0.3577981651376147,
+            "champion": 0.29357798165137616,
+            "winner_in_top3": 0.5871559633027523,
+            "top3_capture_at5": 0.6483180428134557,
+            "top3_mean_model_rank": 4.727828746177369,
+            "competitive_recall_at5": 0.5949541284403669,
+            "ndcg_at5": 0.5526349261251396,
+            "top2_hits": 1.0
+          },
+          "candidate": {
+            "gold": 0.12844036697247707,
+            "gold_strict": 0.06422018348623854,
+            "good_positional": 0.25688073394495414,
+            "pass": 0.44954128440366975,
+            "zero_hit": 0.14678899082568808,
+            "one_hit": 0.4036697247706422,
+            "champion": 0.28440366972477066,
+            "winner_in_top3": 0.5688073394495413,
+            "top3_capture_at5": 0.6483180428134557,
+            "top3_mean_model_rank": 4.697247706422019,
+            "competitive_recall_at5": 0.5940366972477065,
+            "ndcg_at5": 0.5496468038418134,
+            "top2_hits": 0.981651376146789
+          }
+        },
+        "venue:沙田AWT": {
+          "n": 2,
+          "baseline": {
+            "gold": 0.5,
+            "gold_strict": 0.0,
+            "good_positional": 0.0,
+            "pass": 0.0,
+            "zero_hit": 0.0,
+            "one_hit": 1.0,
+            "champion": 0.0,
+            "winner_in_top3": 1.0,
+            "top3_capture_at5": 0.6666666666666666,
+            "top3_mean_model_rank": 4.833333333333334,
+            "competitive_recall_at5": 0.45,
+            "ndcg_at5": 0.44256948633606785,
+            "top2_hits": 0.0
+          },
+          "candidate": {
+            "gold": 0.5,
+            "gold_strict": 0.0,
+            "good_positional": 0.0,
+            "pass": 0.0,
+            "zero_hit": 0.0,
+            "one_hit": 1.0,
+            "champion": 0.0,
+            "winner_in_top3": 1.0,
+            "top3_capture_at5": 0.6666666666666666,
+            "top3_mean_model_rank": 4.166666666666666,
+            "competitive_recall_at5": 0.55,
+            "ndcg_at5": 0.4468073131484307,
+            "top2_hits": 0.0
+          }
+        }
+      },
+      "changed_weak_races": [
+        {
+          "key": "2026-04-12_ShaTin/R4",
+          "baseline_top5": [
+            14,
+            7,
+            3,
+            2,
+            13
+          ],
+          "candidate_top5": [
+            14,
+            7,
+            3,
+            10,
+            2
+          ],
+          "actual_top3": [
+            2,
+            3,
+            5
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-04-19_ShaTin/R4",
+          "baseline_top5": [
+            7,
+            1,
+            13,
+            11,
+            4
+          ],
+          "candidate_top5": [
+            7,
+            1,
+            13,
+            4,
+            11
+          ],
+          "actual_top3": [
+            4,
+            10,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-04-22_HappyValley/R3",
+          "baseline_top5": [
+            9,
+            6,
+            1,
+            4,
+            8
+          ],
+          "candidate_top5": [
+            9,
+            6,
+            8,
+            4,
+            1
+          ],
+          "actual_top3": [
+            1,
+            5,
+            7
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-04-22_HappyValley/R9",
+          "baseline_top5": [
+            1,
+            12,
+            3,
+            10,
+            8
+          ],
+          "candidate_top5": [
+            1,
+            12,
+            10,
+            3,
+            8
+          ],
+          "actual_top3": [
+            1,
+            7,
+            9
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-04-29_HappyValley/R3",
+          "baseline_top5": [
+            9,
+            2,
+            6,
+            7,
+            5
+          ],
+          "candidate_top5": [
+            9,
+            2,
+            6,
+            7,
+            3
+          ],
+          "actual_top3": [
+            5,
+            8,
+            10
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-03_ShaTin/R3",
+          "baseline_top5": [
+            13,
+            4,
+            9,
+            3,
+            10
+          ],
+          "candidate_top5": [
+            13,
+            4,
+            9,
+            3,
+            12
+          ],
+          "actual_top3": [
+            2,
+            3,
+            4
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-06_ShaTin/R6",
+          "baseline_top5": [
+            6,
+            11,
+            5,
+            8,
+            3
+          ],
+          "candidate_top5": [
+            6,
+            11,
+            5,
+            8,
+            7
+          ],
+          "actual_top3": [
+            1,
+            2,
+            13
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-06_ShaTin/R7",
+          "baseline_top5": [
+            5,
+            2,
+            7,
+            4,
+            11
+          ],
+          "candidate_top5": [
+            5,
+            2,
+            4,
+            7,
+            11
+          ],
+          "actual_top3": [
+            1,
+            4,
+            5
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-09_ShaTin/R4",
+          "baseline_top5": [
+            1,
+            3,
+            6,
+            4,
+            14
+          ],
+          "candidate_top5": [
+            1,
+            3,
+            14,
+            6,
+            4
+          ],
+          "actual_top3": [
+            4,
+            10,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-09_ShaTin/R5",
+          "baseline_top5": [
+            9,
+            3,
+            1,
+            2,
+            7
+          ],
+          "candidate_top5": [
+            9,
+            3,
+            2,
+            1,
+            7
+          ],
+          "actual_top3": [
+            2,
+            4,
+            6
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-09_ShaTin/R7",
+          "baseline_top5": [
+            7,
+            9,
+            1,
+            8,
+            5
+          ],
+          "candidate_top5": [
+            7,
+            9,
+            1,
+            5,
+            8
+          ],
+          "actual_top3": [
+            8,
+            11,
+            13
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-09_ShaTin/R8",
+          "baseline_top5": [
+            4,
+            10,
+            11,
+            3,
+            9
+          ],
+          "candidate_top5": [
+            4,
+            3,
+            10,
+            11,
+            2
+          ],
+          "actual_top3": [
+            3,
+            7,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 1,
+          "affected": [
+            {
+              "hn": 3,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.659332287429129,
+                "confidence": 0.22224261329173128,
+                "matched": 3,
+                "inner_mass": 0.8572439828530728,
+                "outer_mass": 1.2787303931256924
+              },
+              "history": [
+                {
+                  "date": "2026-04-19",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 1.0,
+                  "margin": 0.0,
+                  "finish": 1,
+                  "weight": 0.8572439828530728
+                },
+                {
+                  "date": "2026-03-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 2.5,
+                  "margin": 0.0,
+                  "finish": 1,
+                  "weight": 0.690956439983888
+                },
+                {
+                  "date": "2026-03-01",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 2.5,
+                  "margin": 1.25,
+                  "finish": 3,
+                  "weight": 0.5877739531418044
+                }
+              ]
+            },
+            {
+              "hn": 10,
+              "evidence": {
+                "fit_st": -0.2906304623403662,
+                "fit_hv": -0.1453152311701831,
+                "trip": 1.2029195033861737,
+                "confidence": 0.04843841039006103,
+                "matched": 3,
+                "inner_mass": 0.15271237590595713,
+                "outer_mass": 1.5032088363401237
+              },
+              "history": [
+                {
+                  "date": "2026-04-12",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 3.0,
+                  "margin": 0.05,
+                  "finish": 2,
+                  "weight": 0.8122523963562356
+                },
+                {
+                  "date": "2026-03-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 3.5,
+                  "margin": 3.0,
+                  "finish": 7,
+                  "weight": 0.690956439983888
+                },
+                {
+                  "date": "2025-09-07",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 2.0,
+                  "margin": 0.0,
+                  "finish": 1,
+                  "weight": 0.15271237590595713
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-09_ShaTin/R9",
+          "baseline_top5": [
+            1,
+            11,
+            4,
+            10,
+            13
+          ],
+          "candidate_top5": [
+            1,
+            13,
+            4,
+            11,
+            10
+          ],
+          "actual_top3": [
+            7,
+            13,
+            14
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 1,
+          "affected": [
+            {
+              "hn": 11,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            },
+            {
+              "hn": 13,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -0.6552401401258586,
+                "confidence": 0.0,
+                "matched": 2,
+                "inner_mass": 1.277864820710193,
+                "outer_mass": 0
+              },
+              "history": [
+                {
+                  "date": "2026-04-26",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 2.5,
+                  "finish": 3,
+                  "weight": 0.9047277046327152
+                },
+                {
+                  "date": "2026-01-01",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 1.0,
+                  "margin": 7.0,
+                  "finish": 12,
+                  "weight": 0.37313711607747774
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-13_HappyValley/R1",
+          "baseline_top5": [
+            1,
+            11,
+            6,
+            9,
+            10
+          ],
+          "candidate_top5": [
+            1,
+            11,
+            9,
+            6,
+            10
+          ],
+          "actual_top3": [
+            1,
+            3,
+            12
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-13_HappyValley/R7",
+          "baseline_top5": [
+            10,
+            6,
+            8,
+            12,
+            3
+          ],
+          "candidate_top5": [
+            6,
+            10,
+            8,
+            12,
+            11
+          ],
+          "actual_top3": [
+            1,
+            3,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-17_ShaTin/R1",
+          "baseline_top5": [
+            8,
+            9,
+            3,
+            6,
+            5
+          ],
+          "candidate_top5": [
+            8,
+            9,
+            3,
+            5,
+            6
+          ],
+          "actual_top3": [
+            6,
+            7,
+            10
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-17_ShaTin/R3",
+          "baseline_top5": [
+            4,
+            7,
+            10,
+            11,
+            5
+          ],
+          "candidate_top5": [
+            4,
+            7,
+            10,
+            11,
+            1
+          ],
+          "actual_top3": [
+            3,
+            5,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-17_ShaTin/R7",
+          "baseline_top5": [
+            12,
+            10,
+            2,
+            4,
+            3
+          ],
+          "candidate_top5": [
+            12,
+            2,
+            10,
+            4,
+            3
+          ],
+          "actual_top3": [
+            1,
+            3,
+            4
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 2,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.6734834329974421,
+                "confidence": 0.2445760649132382,
+                "matched": 6,
+                "inner_mass": 0.9712800464224695,
+                "outer_mass": 1.8133054775323658
+              },
+              "history": [
+                {
+                  "date": "2026-04-12",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 2.5,
+                  "margin": 0.1,
+                  "finish": 2,
+                  "weight": 0.7637175654573216
+                },
+                {
+                  "date": "2026-03-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第四班",
+                  "wide": 3.0,
+                  "margin": 2.5,
+                  "finish": 6,
+                  "weight": 0.6496694531758791
+                },
+                {
+                  "date": "2026-01-25",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 1.5,
+                  "margin": 1.25,
+                  "finish": 3,
+                  "weight": 0.4220703983898457
+                },
+                {
+                  "date": "2026-01-18",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 5.0,
+                  "margin": 2.5,
+                  "finish": 11,
+                  "weight": 0.3999184588991651
+                },
+                {
+                  "date": "2025-12-07",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 3.5,
+                  "finish": 6,
+                  "weight": 0.2893948415246629
+                },
+                {
+                  "date": "2025-11-23",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第三班",
+                  "wide": 1.0,
+                  "margin": 2.25,
+                  "finish": 9,
+                  "weight": 0.25981480650796085
+                }
+              ]
+            },
+            {
+              "hn": 10,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -0.32036673379709213,
+                "confidence": 0.06525053704392358,
+                "matched": 3,
+                "inner_mass": 1.066816791677875,
+                "outer_mass": 0.209416125806289
+              },
+              "history": [
+                {
+                  "date": "2026-04-06",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 4.0,
+                  "finish": 4,
+                  "weight": 0.7292293051358275
+                },
+                {
+                  "date": "2025-12-27",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 2.0,
+                  "margin": 5.75,
+                  "finish": 7,
+                  "weight": 0.3375874865420475
+                },
+                {
+                  "date": "2025-10-26",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 3.5,
+                  "margin": 4.0,
+                  "finish": 8,
+                  "weight": 0.209416125806289
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-17_ShaTin/R9",
+          "baseline_top5": [
+            7,
+            12,
+            11,
+            14,
+            10
+          ],
+          "candidate_top5": [
+            7,
+            12,
+            11,
+            14,
+            8
+          ],
+          "actual_top3": [
+            5,
+            7,
+            13
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-20_HappyValley/R3",
+          "baseline_top5": [
+            4,
+            9,
+            6,
+            8,
+            5
+          ],
+          "candidate_top5": [
+            4,
+            9,
+            8,
+            6,
+            5
+          ],
+          "actual_top3": [
+            2,
+            4,
+            8
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-20_HappyValley/R9",
+          "baseline_top5": [
+            9,
+            10,
+            12,
+            7,
+            4
+          ],
+          "candidate_top5": [
+            9,
+            10,
+            7,
+            12,
+            4
+          ],
+          "actual_top3": [
+            1,
+            7,
+            8
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-24_ShaTin/R10",
+          "baseline_top5": [
+            9,
+            7,
+            5,
+            2,
+            12
+          ],
+          "candidate_top5": [
+            9,
+            7,
+            2,
+            5,
+            12
+          ],
+          "actual_top3": [
+            1,
+            5,
+            13
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-24_ShaTin/R4",
+          "baseline_top5": [
+            3,
+            8,
+            4,
+            14,
+            5
+          ],
+          "candidate_top5": [
+            8,
+            3,
+            4,
+            14,
+            5
+          ],
+          "actual_top3": [
+            3,
+            9,
+            11
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-27_HappyValley/R2",
+          "baseline_top5": [
+            1,
+            6,
+            12,
+            4,
+            7
+          ],
+          "candidate_top5": [
+            1,
+            6,
+            4,
+            12,
+            7
+          ],
+          "actual_top3": [
+            7,
+            8,
+            9
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-27_HappyValley/R3",
+          "baseline_top5": [
+            1,
+            10,
+            8,
+            3,
+            11
+          ],
+          "candidate_top5": [
+            1,
+            8,
+            10,
+            3,
+            11
+          ],
+          "actual_top3": [
+            1,
+            2,
+            3
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": [
+            {
+              "hn": 8,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.5869259790108896,
+                "confidence": 0.34340153204784596,
+                "matched": 6,
+                "inner_mass": 1.6988707216565517,
+                "outer_mass": 1.5690024366895239
+              },
+              "history": [
+                {
+                  "date": "2026-04-29",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 2.75,
+                  "finish": 6,
+                  "weight": 0.8060207523233376
+                },
+                {
+                  "date": "2026-04-15",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1800,
+                  "race_class": "第四班",
+                  "wide": 2.75,
+                  "margin": 0.5,
+                  "finish": 5,
+                  "weight": 0.7236346187201891
+                },
+                {
+                  "date": "2026-03-11",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第四班",
+                  "wide": 1.5,
+                  "margin": 1.5,
+                  "finish": 3,
+                  "weight": 0.55265246928962
+                },
+                {
+                  "date": "2026-02-11",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第三班",
+                  "wide": 3.0,
+                  "margin": 3.5,
+                  "finish": 9,
+                  "weight": 0.44544935907016964
+                },
+                {
+                  "date": "2026-01-28",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1800,
+                  "race_class": "第三班",
+                  "wide": 2.5,
+                  "margin": 5.75,
+                  "finish": 8,
+                  "weight": 0.3999184588991651
+                },
+                {
+                  "date": "2026-01-07",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第三班",
+                  "wide": 1.0,
+                  "margin": 7.0,
+                  "finish": 10,
+                  "weight": 0.3401975000435942
+                }
+              ]
+            },
+            {
+              "hn": 10,
+              "evidence": {
+                "fit_st": 2.490396664091443,
+                "fit_hv": 0.8301322213638143,
+                "trip": -0.113515448094095,
+                "confidence": 0.20753305534095356,
+                "matched": 5,
+                "inner_mass": 0.8234664498606505,
+                "outer_mass": 0.7856468591137639
+              },
+              "history": [
+                {
+                  "date": "2026-02-11",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第四班",
+                  "wide": 2.5,
+                  "margin": 7.75,
+                  "finish": 11,
+                  "weight": 0.44544935907016964
+                },
+                {
+                  "date": "2026-01-07",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第四班",
+                  "wide": 2.25,
+                  "margin": 1.75,
+                  "finish": 3,
+                  "weight": 0.3401975000435942
+                },
+                {
+                  "date": "2025-12-23",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 4.25,
+                  "finish": 9,
+                  "weight": 0.3030815167033861
+                },
+                {
+                  "date": "2025-12-10",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 2.75,
+                  "finish": 5,
+                  "weight": 0.2742062449236565
+                },
+                {
+                  "date": "2025-11-26",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 1.25,
+                  "finish": 3,
+                  "weight": 0.24617868823360783
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-27_HappyValley/R4",
+          "baseline_top5": [
+            5,
+            2,
+            1,
+            7,
+            3
+          ],
+          "candidate_top5": [
+            5,
+            2,
+            1,
+            7,
+            12
+          ],
+          "actual_top3": [
+            5,
+            9,
+            11
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-27_HappyValley/R7",
+          "baseline_top5": [
+            3,
+            11,
+            10,
+            2,
+            6
+          ],
+          "candidate_top5": [
+            11,
+            3,
+            2,
+            10,
+            6
+          ],
+          "actual_top3": [
+            6,
+            9,
+            12
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-31_ShaTin/R2",
+          "baseline_top5": [
+            5,
+            3,
+            8,
+            7,
+            13
+          ],
+          "candidate_top5": [
+            5,
+            3,
+            8,
+            13,
+            7
+          ],
+          "actual_top3": [
+            6,
+            8,
+            10
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-31_ShaTin/R8",
+          "baseline_top5": [
+            2,
+            12,
+            9,
+            6,
+            4
+          ],
+          "candidate_top5": [
+            2,
+            12,
+            9,
+            6,
+            14
+          ],
+          "actual_top3": [
+            6,
+            9,
+            14
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-06-03_HappyValley/R1",
+          "baseline_top5": [
+            3,
+            9,
+            1,
+            2,
+            4
+          ],
+          "candidate_top5": [
+            3,
+            9,
+            1,
+            4,
+            2
+          ],
+          "actual_top3": [
+            3,
+            6,
+            12
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-03_HappyValley/R3",
+          "baseline_top5": [
+            3,
+            9,
+            8,
+            7,
+            12
+          ],
+          "candidate_top5": [
+            3,
+            9,
+            7,
+            8,
+            12
+          ],
+          "actual_top3": [
+            4,
+            7,
+            12
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-06-03_HappyValley/R4",
+          "baseline_top5": [
+            10,
+            9,
+            8,
+            5,
+            11
+          ],
+          "candidate_top5": [
+            10,
+            9,
+            8,
+            6,
+            5
+          ],
+          "actual_top3": [
+            1,
+            5,
+            9
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-03_HappyValley/R8",
+          "baseline_top5": [
+            6,
+            7,
+            2,
+            9,
+            3
+          ],
+          "candidate_top5": [
+            6,
+            7,
+            9,
+            2,
+            3
+          ],
+          "actual_top3": [
+            4,
+            6,
+            11
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-03_HappyValley/R9",
+          "baseline_top5": [
+            1,
+            3,
+            2,
+            9,
+            6
+          ],
+          "candidate_top5": [
+            3,
+            1,
+            9,
+            6,
+            2
+          ],
+          "actual_top3": [
+            3,
+            4,
+            10
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-07_ShaTin/R1",
+          "baseline_top5": [
+            11,
+            4,
+            1,
+            8,
+            10
+          ],
+          "candidate_top5": [
+            4,
+            11,
+            1,
+            8,
+            3
+          ],
+          "actual_top3": [
+            1
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-06-07_ShaTin/R10",
+          "baseline_top5": [
+            6,
+            9,
+            3,
+            10,
+            8
+          ],
+          "candidate_top5": [
+            6,
+            3,
+            9,
+            10,
+            8
+          ],
+          "actual_top3": [
+            5,
+            8,
+            9
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 3,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            },
+            {
+              "hn": 9,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            }
+          ]
+        },
+        {
+          "key": "2026-06-07_ShaTin/R5",
+          "baseline_top5": [
+            9,
+            2,
+            14,
+            11,
+            4
+          ],
+          "candidate_top5": [
+            9,
+            2,
+            14,
+            11,
+            5
+          ],
+          "actual_top3": [
+            1,
+            3,
+            14
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-06-07_ShaTin/R6",
+          "baseline_top5": [
+            9,
+            6,
+            1,
+            7,
+            12
+          ],
+          "candidate_top5": [
+            6,
+            1,
+            7,
+            9,
+            12
+          ],
+          "actual_top3": [
+            5,
+            7,
+            10
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 1,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            },
+            {
+              "hn": 9,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            }
+          ]
+        },
+        {
+          "key": "2026-06-07_ShaTin/R8",
+          "baseline_top5": [
+            12,
+            13,
+            14,
+            7,
+            2
+          ],
+          "candidate_top5": [
+            12,
+            13,
+            2,
+            14,
+            7
+          ],
+          "actual_top3": [
+            2,
+            7,
+            12
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-10_HappyValley/R2",
+          "baseline_top5": [
+            11,
+            7,
+            4,
+            5,
+            1
+          ],
+          "candidate_top5": [
+            11,
+            7,
+            5,
+            4,
+            1
+          ],
+          "actual_top3": [
+            1,
+            6,
+            7
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-10_HappyValley/R3",
+          "baseline_top5": [
+            9,
+            7,
+            12,
+            8,
+            3
+          ],
+          "candidate_top5": [
+            9,
+            12,
+            7,
+            8,
+            3
+          ],
+          "actual_top3": [
+            5,
+            8,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 7,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            },
+            {
+              "hn": 12,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -1.1991935594555478,
+                "confidence": 0.0,
+                "matched": 1,
+                "inner_mass": 0.470123307043081,
+                "outer_mass": 0
+              },
+              "history": [
+                {
+                  "date": "2026-03-04",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 6.75,
+                  "finish": 10,
+                  "weight": 0.470123307043081
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "B": {
+      "dev": {
+        "gold": 0.14444444444444443,
+        "gold_strict": 0.05555555555555555,
+        "good_positional": 0.26666666666666666,
+        "pass": 0.4888888888888889,
+        "zero_hit": 0.16111111111111112,
+        "one_hit": 0.35,
+        "champion": 0.2833333333333333,
+        "winner_in_top3": 0.5555555555555556,
+        "top3_capture_at5": 0.6666666666666666,
+        "top3_mean_model_rank": 4.616666666666666,
+        "competitive_recall_at5": 0.6035185185185185,
+        "ndcg_at5": 0.5557330976863584,
+        "top2_hits": 1.011111111111111
+      },
+      "decision": "REJECT_DEV",
+      "terminal": "not evaluated",
+      "folds": [
+        {
+          "dates": [
+            "2026-04-22",
+            "2026-04-26",
+            "2026-04-29"
+          ],
+          "n": 29,
+          "baseline": {
+            "gold": 0.13793103448275862,
+            "gold_strict": 0.0,
+            "good_positional": 0.1724137931034483,
+            "pass": 0.5172413793103449,
+            "zero_hit": 0.1724137931034483,
+            "one_hit": 0.3103448275862069,
+            "champion": 0.3448275862068966,
+            "winner_in_top3": 0.5517241379310345,
+            "top3_capture_at5": 0.6896551724137931,
+            "top3_mean_model_rank": 4.64367816091954,
+            "competitive_recall_at5": 0.6454022988505748,
+            "ndcg_at5": 0.5676468900160182,
+            "top2_hits": 0.9310344827586207
+          },
+          "candidate": {
+            "gold": 0.13793103448275862,
+            "gold_strict": 0.0,
+            "good_positional": 0.1724137931034483,
+            "pass": 0.5172413793103449,
+            "zero_hit": 0.1724137931034483,
+            "one_hit": 0.3103448275862069,
+            "champion": 0.3448275862068966,
+            "winner_in_top3": 0.5517241379310345,
+            "top3_capture_at5": 0.6896551724137931,
+            "top3_mean_model_rank": 4.6321839080459775,
+            "competitive_recall_at5": 0.6454022988505748,
+            "ndcg_at5": 0.568483378062034,
+            "top2_hits": 0.9310344827586207
+          }
+        },
+        {
+          "dates": [
+            "2026-05-03",
+            "2026-05-06",
+            "2026-05-09"
+          ],
+          "n": 31,
+          "baseline": {
+            "gold": 0.16129032258064516,
+            "gold_strict": 0.12903225806451613,
+            "good_positional": 0.41935483870967744,
+            "pass": 0.4838709677419355,
+            "zero_hit": 0.16129032258064516,
+            "one_hit": 0.3548387096774194,
+            "champion": 0.3225806451612903,
+            "winner_in_top3": 0.5483870967741935,
+            "top3_capture_at5": 0.6344086021505375,
+            "top3_mean_model_rank": 4.763440860215053,
+            "competitive_recall_at5": 0.5822580645161288,
+            "ndcg_at5": 0.5494541993296341,
+            "top2_hits": 1.1612903225806452
+          },
+          "candidate": {
+            "gold": 0.16129032258064516,
+            "gold_strict": 0.0967741935483871,
+            "good_positional": 0.3870967741935484,
+            "pass": 0.4838709677419355,
+            "zero_hit": 0.16129032258064516,
+            "one_hit": 0.3548387096774194,
+            "champion": 0.25806451612903225,
+            "winner_in_top3": 0.5483870967741935,
+            "top3_capture_at5": 0.6344086021505375,
+            "top3_mean_model_rank": 4.774193548387097,
+            "competitive_recall_at5": 0.575806451612903,
+            "ndcg_at5": 0.535972462454698,
+            "top2_hits": 1.1290322580645162
+          }
+        },
+        {
+          "dates": [
+            "2026-05-13",
+            "2026-05-17",
+            "2026-05-20"
+          ],
+          "n": 29,
+          "baseline": {
+            "gold": 0.13793103448275862,
+            "gold_strict": 0.10344827586206896,
+            "good_positional": 0.3103448275862069,
+            "pass": 0.4482758620689655,
+            "zero_hit": 0.20689655172413793,
+            "one_hit": 0.3448275862068966,
+            "champion": 0.3103448275862069,
+            "winner_in_top3": 0.6206896551724138,
+            "top3_capture_at5": 0.6666666666666666,
+            "top3_mean_model_rank": 4.413793103448277,
+            "competitive_recall_at5": 0.6155172413793104,
+            "ndcg_at5": 0.571869837532115,
+            "top2_hits": 1.0344827586206897
+          },
+          "candidate": {
+            "gold": 0.1724137931034483,
+            "gold_strict": 0.10344827586206896,
+            "good_positional": 0.27586206896551724,
+            "pass": 0.5172413793103449,
+            "zero_hit": 0.20689655172413793,
+            "one_hit": 0.27586206896551724,
+            "champion": 0.3103448275862069,
+            "winner_in_top3": 0.6206896551724138,
+            "top3_capture_at5": 0.6781609195402298,
+            "top3_mean_model_rank": 4.379310344827586,
+            "competitive_recall_at5": 0.6155172413793104,
+            "ndcg_at5": 0.5779250399023831,
+            "top2_hits": 1.0
+          }
+        },
+        {
+          "dates": [
+            "2026-05-24",
+            "2026-05-27",
+            "2026-05-31"
+          ],
+          "n": 31,
+          "baseline": {
+            "gold": 0.0967741935483871,
+            "gold_strict": 0.03225806451612903,
+            "good_positional": 0.16129032258064516,
+            "pass": 0.41935483870967744,
+            "zero_hit": 0.16129032258064516,
+            "one_hit": 0.41935483870967744,
+            "champion": 0.2903225806451613,
+            "winner_in_top3": 0.6774193548387096,
+            "top3_capture_at5": 0.6236559139784947,
+            "top3_mean_model_rank": 5.032258064516129,
+            "competitive_recall_at5": 0.5451612903225806,
+            "ndcg_at5": 0.5592455262921672,
+            "top2_hits": 0.8709677419354839
+          },
+          "candidate": {
+            "gold": 0.0967741935483871,
+            "gold_strict": 0.0,
+            "good_positional": 0.16129032258064516,
+            "pass": 0.41935483870967744,
+            "zero_hit": 0.1935483870967742,
+            "one_hit": 0.3870967741935484,
+            "champion": 0.3225806451612903,
+            "winner_in_top3": 0.6451612903225806,
+            "top3_capture_at5": 0.6236559139784947,
+            "top3_mean_model_rank": 4.978494623655915,
+            "competitive_recall_at5": 0.5451612903225806,
+            "ndcg_at5": 0.5667743952893831,
+            "top2_hits": 0.9032258064516129
+          }
+        },
+        {
+          "dates": [
+            "2026-06-03",
+            "2026-06-07",
+            "2026-06-10"
+          ],
+          "n": 29,
+          "baseline": {
+            "gold": 0.1724137931034483,
+            "gold_strict": 0.10344827586206896,
+            "good_positional": 0.27586206896551724,
+            "pass": 0.5517241379310345,
+            "zero_hit": 0.10344827586206896,
+            "one_hit": 0.3448275862068966,
+            "champion": 0.2413793103448276,
+            "winner_in_top3": 0.5517241379310345,
+            "top3_capture_at5": 0.6896551724137933,
+            "top3_mean_model_rank": 4.402298850574713,
+            "competitive_recall_at5": 0.6362068965517241,
+            "ndcg_at5": 0.5641669326256848,
+            "top2_hits": 1.0689655172413792
+          },
+          "candidate": {
+            "gold": 0.20689655172413793,
+            "gold_strict": 0.10344827586206896,
+            "good_positional": 0.3103448275862069,
+            "pass": 0.5517241379310345,
+            "zero_hit": 0.10344827586206896,
+            "one_hit": 0.3448275862068966,
+            "champion": 0.2413793103448276,
+            "winner_in_top3": 0.5172413793103449,
+            "top3_capture_at5": 0.6896551724137933,
+            "top3_mean_model_rank": 4.2988505747126435,
+            "competitive_recall_at5": 0.6362068965517241,
+            "ndcg_at5": 0.5610437670551428,
+            "top2_hits": 1.103448275862069
+          }
+        }
+      ],
+      "transitions": {
+        "top2_placed_gained": 7,
+        "top2_placed_dropped": 7,
+        "rank3_placed_promoted": 6,
+        "top2_placed_net": 0,
+        "weak_to_pass": 4,
+        "pass_to_weak": 3,
+        "zero_rescued": 0,
+        "new_zero": 1
+      },
+      "weak_baseline": {
+        "gold": 0.010752688172043012,
+        "gold_strict": 0.0,
+        "good_positional": 0.0,
+        "pass": 0.0,
+        "zero_hit": 0.3010752688172043,
+        "one_hit": 0.6989247311827957,
+        "champion": 0.16129032258064516,
+        "winner_in_top3": 0.3225806451612903,
+        "top3_capture_at5": 0.5376344086021505,
+        "top3_mean_model_rank": 5.802867383512545,
+        "competitive_recall_at5": 0.5154121863799282,
+        "ndcg_at5": 0.40150935616129246,
+        "top2_hits": 0.4946236559139785
+      },
+      "weak_candidate": {
+        "gold": 0.010752688172043012,
+        "gold_strict": 0.0,
+        "good_positional": 0.0,
+        "pass": 0.043010752688172046,
+        "zero_hit": 0.3118279569892473,
+        "one_hit": 0.6451612903225806,
+        "champion": 0.17204301075268819,
+        "winner_in_top3": 0.3225806451612903,
+        "top3_capture_at5": 0.5412186379928315,
+        "top3_mean_model_rank": 5.756272401433693,
+        "competitive_recall_at5": 0.518100358422939,
+        "ndcg_at5": 0.4088634673455414,
+        "top2_hits": 0.5053763440860215
+      },
+      "cohorts": {
+        "venue:沙田": {
+          "n": 106,
+          "baseline": {
+            "gold": 0.1320754716981132,
+            "gold_strict": 0.05660377358490566,
+            "good_positional": 0.27358490566037735,
+            "pass": 0.5094339622641509,
+            "zero_hit": 0.14150943396226415,
+            "one_hit": 0.3490566037735849,
+            "champion": 0.2830188679245283,
+            "winner_in_top3": 0.5849056603773585,
+            "top3_capture_at5": 0.6823899371069182,
+            "top3_mean_model_rank": 4.622641509433962,
+            "competitive_recall_at5": 0.6102201257861636,
+            "ndcg_at5": 0.566274230674373,
+            "top2_hits": 1.028301886792453
+          },
+          "candidate": {
+            "gold": 0.1509433962264151,
+            "gold_strict": 0.03773584905660377,
+            "good_positional": 0.27358490566037735,
+            "pass": 0.5094339622641509,
+            "zero_hit": 0.1509433962264151,
+            "one_hit": 0.33962264150943394,
+            "champion": 0.2641509433962264,
+            "winner_in_top3": 0.5566037735849056,
+            "top3_capture_at5": 0.6855345911949686,
+            "top3_mean_model_rank": 4.59748427672956,
+            "competitive_recall_at5": 0.610691823899371,
+            "ndcg_at5": 0.5633436519433807,
+            "top2_hits": 1.0377358490566038
+          }
+        },
+        "size:<=8": {
+          "n": 4,
+          "baseline": {
+            "gold": 0.25,
+            "gold_strict": 0.25,
+            "good_positional": 0.5,
+            "pass": 0.75,
+            "zero_hit": 0.0,
+            "one_hit": 0.25,
+            "champion": 0.75,
+            "winner_in_top3": 1.0,
+            "top3_capture_at5": 0.9166666666666666,
+            "top3_mean_model_rank": 3.0,
+            "competitive_recall_at5": 0.9166666666666666,
+            "ndcg_at5": 0.8859824381973425,
+            "top2_hits": 1.5
+          },
+          "candidate": {
+            "gold": 0.25,
+            "gold_strict": 0.25,
+            "good_positional": 0.5,
+            "pass": 0.75,
+            "zero_hit": 0.0,
+            "one_hit": 0.25,
+            "champion": 0.75,
+            "winner_in_top3": 1.0,
+            "top3_capture_at5": 0.9166666666666666,
+            "top3_mean_model_rank": 3.0,
+            "competitive_recall_at5": 0.9166666666666666,
+            "ndcg_at5": 0.8859824381973425,
+            "top2_hits": 1.5
+          }
+        },
+        "sparse:True": {
+          "n": 71,
+          "baseline": {
+            "gold": 0.14084507042253522,
+            "gold_strict": 0.056338028169014086,
+            "good_positional": 0.2676056338028169,
+            "pass": 0.5070422535211268,
+            "zero_hit": 0.1267605633802817,
+            "one_hit": 0.36619718309859156,
+            "champion": 0.28169014084507044,
+            "winner_in_top3": 0.5352112676056338,
+            "top3_capture_at5": 0.6901408450704224,
+            "top3_mean_model_rank": 4.52112676056338,
+            "competitive_recall_at5": 0.6194835680751173,
+            "ndcg_at5": 0.561823758964972,
+            "top2_hits": 1.028169014084507
+          },
+          "candidate": {
+            "gold": 0.14084507042253522,
+            "gold_strict": 0.056338028169014086,
+            "good_positional": 0.2535211267605634,
+            "pass": 0.49295774647887325,
+            "zero_hit": 0.1267605633802817,
+            "one_hit": 0.38028169014084506,
+            "champion": 0.28169014084507044,
+            "winner_in_top3": 0.5352112676056338,
+            "top3_capture_at5": 0.6901408450704224,
+            "top3_mean_model_rank": 4.525821596244131,
+            "competitive_recall_at5": 0.6194835680751173,
+            "ndcg_at5": 0.5616318369475544,
+            "top2_hits": 1.0140845070422535
+          }
+        },
+        "size:11-12": {
+          "n": 101,
+          "baseline": {
+            "gold": 0.10891089108910891,
+            "gold_strict": 0.039603960396039604,
+            "good_positional": 0.2871287128712871,
+            "pass": 0.49504950495049505,
+            "zero_hit": 0.15841584158415842,
+            "one_hit": 0.3465346534653465,
+            "champion": 0.297029702970297,
+            "winner_in_top3": 0.5544554455445545,
+            "top3_capture_at5": 0.6501650165016503,
+            "top3_mean_model_rank": 4.63036303630363,
+            "competitive_recall_at5": 0.6204620462046204,
+            "ndcg_at5": 0.5523370391049695,
+            "top2_hits": 1.0396039603960396
+          },
+          "candidate": {
+            "gold": 0.1188118811881188,
+            "gold_strict": 0.039603960396039604,
+            "good_positional": 0.26732673267326734,
+            "pass": 0.504950495049505,
+            "zero_hit": 0.15841584158415842,
+            "one_hit": 0.33663366336633666,
+            "champion": 0.2871287128712871,
+            "winner_in_top3": 0.5544554455445545,
+            "top3_capture_at5": 0.6534653465346535,
+            "top3_mean_model_rank": 4.597359735973598,
+            "competitive_recall_at5": 0.6204620462046204,
+            "ndcg_at5": 0.5505585117884222,
+            "top2_hits": 1.0198019801980198
+          }
+        },
+        "size:13+": {
+          "n": 67,
+          "baseline": {
+            "gold": 0.14925373134328357,
+            "gold_strict": 0.07462686567164178,
+            "good_positional": 0.23880597014925373,
+            "pass": 0.4626865671641791,
+            "zero_hit": 0.16417910447761194,
+            "one_hit": 0.373134328358209,
+            "champion": 0.22388059701492538,
+            "winner_in_top3": 0.5522388059701493,
+            "top3_capture_at5": 0.6616915422885573,
+            "top3_mean_model_rank": 4.825870646766169,
+            "competitive_recall_at5": 0.5485074626865671,
+            "ndcg_at5": 0.5300086136604385,
+            "top2_hits": 0.9402985074626866
+          },
+          "candidate": {
+            "gold": 0.16417910447761194,
+            "gold_strict": 0.04477611940298507,
+            "good_positional": 0.2537313432835821,
+            "pass": 0.4626865671641791,
+            "zero_hit": 0.1791044776119403,
+            "one_hit": 0.3582089552238806,
+            "champion": 0.22388059701492538,
+            "winner_in_top3": 0.5223880597014925,
+            "top3_capture_at5": 0.6616915422885573,
+            "top3_mean_model_rank": 4.791044776119403,
+            "competitive_recall_at5": 0.5455223880597014,
+            "ndcg_at5": 0.5312757033374914,
+            "top2_hits": 0.9701492537313433
+          }
+        },
+        "venue:跑馬地": {
+          "n": 72,
+          "baseline": {
+            "gold": 0.125,
+            "gold_strict": 0.08333333333333333,
+            "good_positional": 0.2777777777777778,
+            "pass": 0.4583333333333333,
+            "zero_hit": 0.18055555555555555,
+            "one_hit": 0.3611111111111111,
+            "champion": 0.3055555555555556,
+            "winner_in_top3": 0.5277777777777778,
+            "top3_capture_at5": 0.6388888888888888,
+            "top3_mean_model_rank": 4.675925925925926,
+            "competitive_recall_at5": 0.6006944444444444,
+            "ndcg_at5": 0.5446734223610772,
+            "top2_hits": 1.0138888888888888
+          },
+          "candidate": {
+            "gold": 0.125,
+            "gold_strict": 0.08333333333333333,
+            "good_positional": 0.2638888888888889,
+            "pass": 0.4722222222222222,
+            "zero_hit": 0.18055555555555555,
+            "one_hit": 0.3472222222222222,
+            "champion": 0.3194444444444444,
+            "winner_in_top3": 0.5416666666666666,
+            "top3_capture_at5": 0.6388888888888888,
+            "top3_mean_model_rank": 4.643518518518519,
+            "competitive_recall_at5": 0.5972222222222222,
+            "ndcg_at5": 0.5476721042343615,
+            "top2_hits": 1.0
+          }
+        },
+        "size:9-10": {
+          "n": 8,
+          "baseline": {
+            "gold": 0.25,
+            "gold_strict": 0.25,
+            "good_positional": 0.25,
+            "pass": 0.375,
+            "zero_hit": 0.125,
+            "one_hit": 0.5,
+            "champion": 0.5,
+            "winner_in_top3": 0.625,
+            "top3_capture_at5": 0.75,
+            "top3_mean_model_rank": 4.166666666666667,
+            "competitive_recall_at5": 0.71875,
+            "ndcg_at5": 0.6607682520640707,
+            "top2_hits": 1.0
+          },
+          "candidate": {
+            "gold": 0.25,
+            "gold_strict": 0.25,
+            "good_positional": 0.25,
+            "pass": 0.375,
+            "zero_hit": 0.125,
+            "one_hit": 0.5,
+            "champion": 0.5,
+            "winner_in_top3": 0.625,
+            "top3_capture_at5": 0.75,
+            "top3_mean_model_rank": 4.208333333333333,
+            "competitive_recall_at5": 0.71875,
+            "ndcg_at5": 0.6607682520640707,
+            "top2_hits": 1.0
+          }
+        },
+        "sparse:False": {
+          "n": 109,
+          "baseline": {
+            "gold": 0.12844036697247707,
+            "gold_strict": 0.07339449541284404,
+            "good_positional": 0.27522935779816515,
+            "pass": 0.46788990825688076,
+            "zero_hit": 0.1743119266055046,
+            "one_hit": 0.3577981651376147,
+            "champion": 0.29357798165137616,
+            "winner_in_top3": 0.5871559633027523,
+            "top3_capture_at5": 0.6483180428134557,
+            "top3_mean_model_rank": 4.727828746177369,
+            "competitive_recall_at5": 0.5949541284403669,
+            "ndcg_at5": 0.5526349261251396,
+            "top2_hits": 1.0
+          },
+          "candidate": {
+            "gold": 0.14678899082568808,
+            "gold_strict": 0.05504587155963303,
+            "good_positional": 0.27522935779816515,
+            "pass": 0.48623853211009177,
+            "zero_hit": 0.1834862385321101,
+            "one_hit": 0.3302752293577982,
+            "champion": 0.28440366972477066,
+            "winner_in_top3": 0.5688073394495413,
+            "top3_capture_at5": 0.6513761467889909,
+            "top3_mean_model_rank": 4.675840978593272,
+            "competitive_recall_at5": 0.593119266055046,
+            "ndcg_at5": 0.5518907996354878,
+            "top2_hits": 1.0091743119266054
+          }
+        },
+        "venue:沙田AWT": {
+          "n": 2,
+          "baseline": {
+            "gold": 0.5,
+            "gold_strict": 0.0,
+            "good_positional": 0.0,
+            "pass": 0.0,
+            "zero_hit": 0.0,
+            "one_hit": 1.0,
+            "champion": 0.0,
+            "winner_in_top3": 1.0,
+            "top3_capture_at5": 0.6666666666666666,
+            "top3_mean_model_rank": 4.833333333333334,
+            "competitive_recall_at5": 0.45,
+            "ndcg_at5": 0.44256948633606785,
+            "top2_hits": 0.0
+          },
+          "candidate": {
+            "gold": 0.5,
+            "gold_strict": 0.0,
+            "good_positional": 0.0,
+            "pass": 0.0,
+            "zero_hit": 0.0,
+            "one_hit": 1.0,
+            "champion": 0.0,
+            "winner_in_top3": 1.0,
+            "top3_capture_at5": 0.6666666666666666,
+            "top3_mean_model_rank": 4.666666666666666,
+            "competitive_recall_at5": 0.45,
+            "ndcg_at5": 0.44256948633606785,
+            "top2_hits": 0.0
+          }
+        }
+      },
+      "changed_weak_races": [
+        {
+          "key": "2026-04-26_ShaTin/R7",
+          "baseline_top5": [
+            4,
+            10,
+            14,
+            11,
+            2
+          ],
+          "candidate_top5": [
+            10,
+            4,
+            14,
+            11,
+            2
+          ],
+          "actual_top3": [
+            3,
+            5,
+            9
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-06_ShaTin/R6",
+          "baseline_top5": [
+            6,
+            11,
+            5,
+            8,
+            3
+          ],
+          "candidate_top5": [
+            11,
+            6,
+            5,
+            8,
+            3
+          ],
+          "actual_top3": [
+            1,
+            2,
+            13
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-06_ShaTin/R8",
+          "baseline_top5": [
+            9,
+            1,
+            5,
+            11,
+            8
+          ],
+          "candidate_top5": [
+            9,
+            5,
+            1,
+            11,
+            8
+          ],
+          "actual_top3": [
+            7,
+            8,
+            9
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": [
+            {
+              "hn": 1,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.1094082027241694,
+                "confidence": 0.0,
+                "matched": 3,
+                "inner_mass": 0,
+                "outer_mass": 1.0833046925575902
+              },
+              "history": [
+                {
+                  "date": "2026-02-19",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第二班",
+                  "wide": 2.5,
+                  "margin": 5.0,
+                  "finish": 7,
+                  "weight": 0.5569252295784685
+                },
+                {
+                  "date": "2025-11-30",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第二班",
+                  "wide": 3.5,
+                  "margin": 3.25,
+                  "finish": 10,
+                  "weight": 0.2984488408395676
+                },
+                {
+                  "date": "2025-10-26",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第二班",
+                  "wide": 3.5,
+                  "margin": 2.5,
+                  "finish": 7,
+                  "weight": 0.2279306221395542
+                }
+              ]
+            },
+            {
+              "hn": 5,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            }
+          ]
+        },
+        {
+          "key": "2026-05-09_ShaTin/R9",
+          "baseline_top5": [
+            1,
+            11,
+            4,
+            10,
+            13
+          ],
+          "candidate_top5": [
+            1,
+            4,
+            11,
+            13,
+            10
+          ],
+          "actual_top3": [
+            7,
+            13,
+            14
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 4,
+              "evidence": {
+                "fit_st": 1.0631768200136111,
+                "fit_hv": 0.3543922733378704,
+                "trip": 0.0,
+                "confidence": 0.0885980683344676,
+                "matched": 2,
+                "inner_mass": 0.2916322598940292,
+                "outer_mass": 0.4030103761616688
+              },
+              "history": [
+                {
+                  "date": "2026-01-11",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.5,
+                  "margin": 5.25,
+                  "finish": 10,
+                  "weight": 0.4030103761616688
+                },
+                {
+                  "date": "2025-11-30",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 12.25,
+                  "finish": 12,
+                  "weight": 0.2916322598940292
+                }
+              ]
+            },
+            {
+              "hn": 11,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            }
+          ]
+        },
+        {
+          "key": "2026-05-13_HappyValley/R1",
+          "baseline_top5": [
+            1,
+            11,
+            6,
+            9,
+            10
+          ],
+          "candidate_top5": [
+            1,
+            11,
+            9,
+            6,
+            10
+          ],
+          "actual_top3": [
+            1,
+            3,
+            12
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-17_ShaTin/R2",
+          "baseline_top5": [
+            14,
+            1,
+            3,
+            4,
+            10
+          ],
+          "candidate_top5": [
+            14,
+            1,
+            4,
+            3,
+            10
+          ],
+          "actual_top3": [
+            4,
+            10,
+            14
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-17_ShaTin/R4",
+          "baseline_top5": [
+            10,
+            1,
+            4,
+            8,
+            2
+          ],
+          "candidate_top5": [
+            10,
+            1,
+            4,
+            8,
+            11
+          ],
+          "actual_top3": [
+            8,
+            10,
+            11
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-17_ShaTin/R6",
+          "baseline_top5": [
+            3,
+            10,
+            8,
+            2,
+            6
+          ],
+          "candidate_top5": [
+            3,
+            2,
+            10,
+            8,
+            6
+          ],
+          "actual_top3": [
+            2,
+            10,
+            11
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": [
+            {
+              "hn": 2,
+              "evidence": {
+                "fit_st": 3.3646741213312072,
+                "fit_hv": 1.1215580404437357,
+                "trip": 0.06411036995826298,
+                "confidence": 0.28038951011093394,
+                "matched": 5,
+                "inner_mass": 1.168921996207247,
+                "outer_mass": 1.4033196302404756
+              },
+              "history": [
+                {
+                  "date": "2026-04-26",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 4.0,
+                  "margin": 3.5,
+                  "finish": 6,
+                  "weight": 0.8506671609508557
+                },
+                {
+                  "date": "2026-03-01",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 3.0,
+                  "margin": 2.75,
+                  "finish": 4,
+                  "weight": 0.55265246928962
+                },
+                {
+                  "date": "2026-02-08",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 2.0,
+                  "finish": 4,
+                  "weight": 0.470123307043081
+                },
+                {
+                  "date": "2026-01-11",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 1.5,
+                  "margin": 0.75,
+                  "finish": 3,
+                  "weight": 0.37892914162759955
+                },
+                {
+                  "date": "2025-12-20",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 3.25,
+                  "finish": 6,
+                  "weight": 0.31986954753656643
+                }
+              ]
+            },
+            {
+              "hn": 10,
+              "evidence": {
+                "fit_st": -1.0215349131234608,
+                "fit_hv": -0.5107674565617304,
+                "trip": 0.0,
+                "confidence": 0.17025581885391014,
+                "matched": 3,
+                "inner_mass": 1.362354106949243,
+                "outer_mass": 0.6155722066724582
+              },
+              "history": [
+                {
+                  "date": "2026-04-26",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 1.25,
+                  "finish": 2,
+                  "weight": 0.8506671609508557
+                },
+                {
+                  "date": "2026-03-15",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.5,
+                  "margin": 3.75,
+                  "finish": 4,
+                  "weight": 0.6155722066724582
+                },
+                {
+                  "date": "2026-02-19",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 1.0,
+                  "margin": 2.5,
+                  "finish": 3,
+                  "weight": 0.5116869459983875
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-17_ShaTin/R7",
+          "baseline_top5": [
+            12,
+            10,
+            2,
+            4,
+            3
+          ],
+          "candidate_top5": [
+            12,
+            2,
+            10,
+            4,
+            3
+          ],
+          "actual_top3": [
+            1,
+            3,
+            4
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 2,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.6734834329974421,
+                "confidence": 0.2445760649132382,
+                "matched": 6,
+                "inner_mass": 0.9712800464224695,
+                "outer_mass": 1.8133054775323658
+              },
+              "history": [
+                {
+                  "date": "2026-04-12",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 2.5,
+                  "margin": 0.1,
+                  "finish": 2,
+                  "weight": 0.7637175654573216
+                },
+                {
+                  "date": "2026-03-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第四班",
+                  "wide": 3.0,
+                  "margin": 2.5,
+                  "finish": 6,
+                  "weight": 0.6496694531758791
+                },
+                {
+                  "date": "2026-01-25",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 1.5,
+                  "margin": 1.25,
+                  "finish": 3,
+                  "weight": 0.4220703983898457
+                },
+                {
+                  "date": "2026-01-18",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 5.0,
+                  "margin": 2.5,
+                  "finish": 11,
+                  "weight": 0.3999184588991651
+                },
+                {
+                  "date": "2025-12-07",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 3.5,
+                  "finish": 6,
+                  "weight": 0.2893948415246629
+                },
+                {
+                  "date": "2025-11-23",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第三班",
+                  "wide": 1.0,
+                  "margin": 2.25,
+                  "finish": 9,
+                  "weight": 0.25981480650796085
+                }
+              ]
+            },
+            {
+              "hn": 10,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -0.32036673379709213,
+                "confidence": 0.06525053704392358,
+                "matched": 3,
+                "inner_mass": 1.066816791677875,
+                "outer_mass": 0.209416125806289
+              },
+              "history": [
+                {
+                  "date": "2026-04-06",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 4.0,
+                  "finish": 4,
+                  "weight": 0.7292293051358275
+                },
+                {
+                  "date": "2025-12-27",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 2.0,
+                  "margin": 5.75,
+                  "finish": 7,
+                  "weight": 0.3375874865420475
+                },
+                {
+                  "date": "2025-10-26",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 3.5,
+                  "margin": 4.0,
+                  "finish": 8,
+                  "weight": 0.209416125806289
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-20_HappyValley/R5",
+          "baseline_top5": [
+            4,
+            10,
+            12,
+            7,
+            11
+          ],
+          "candidate_top5": [
+            10,
+            4,
+            12,
+            7,
+            11
+          ],
+          "actual_top3": [
+            2,
+            5,
+            7
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-20_HappyValley/R9",
+          "baseline_top5": [
+            9,
+            10,
+            12,
+            7,
+            4
+          ],
+          "candidate_top5": [
+            9,
+            12,
+            10,
+            4,
+            7
+          ],
+          "actual_top3": [
+            1,
+            7,
+            8
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 10,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            },
+            {
+              "hn": 12,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 1,
+                "inner_mass": 0.8506671609508557,
+                "outer_mass": 0
+              },
+              "history": [
+                {
+                  "date": "2026-04-29",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1000,
+                  "race_class": "第二班",
+                  "wide": 2.0,
+                  "margin": 0.75,
+                  "finish": 2,
+                  "weight": 0.8506671609508557
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-24_ShaTin/R10",
+          "baseline_top5": [
+            9,
+            7,
+            5,
+            2,
+            12
+          ],
+          "candidate_top5": [
+            9,
+            2,
+            7,
+            5,
+            12
+          ],
+          "actual_top3": [
+            1,
+            5,
+            13
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 2,
+              "evidence": {
+                "fit_st": -1.4123360736995627,
+                "fit_hv": -0.7061680368497814,
+                "trip": 0.8056550706642248,
+                "confidence": 0.23538934561659378,
+                "matched": 5,
+                "inner_mass": 0.9235655203094785,
+                "outer_mass": 1.3031046262659849
+              },
+              "history": [
+                {
+                  "date": "2026-03-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 3.0,
+                  "margin": 5.25,
+                  "finish": 7,
+                  "weight": 0.6155722066724582
+                },
+                {
+                  "date": "2026-03-01",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 1.0,
+                  "margin": 1.25,
+                  "finish": 2,
+                  "weight": 0.5236470614103134
+                },
+                {
+                  "date": "2026-02-14",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 3.5,
+                  "margin": 0.75,
+                  "finish": 2,
+                  "weight": 0.4665164957684037
+                },
+                {
+                  "date": "2026-01-25",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 3.5,
+                  "finish": 7,
+                  "weight": 0.3999184588991651
+                },
+                {
+                  "date": "2025-11-09",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第二班",
+                  "wide": 3.0,
+                  "margin": 4.0,
+                  "finish": 7,
+                  "weight": 0.221015923825123
+                }
+              ]
+            },
+            {
+              "hn": 7,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -0.2522448008376564,
+                "confidence": 0.10392813591564369,
+                "matched": 5,
+                "inner_mass": 1.151145736430729,
+                "outer_mass": 0.3479457622135312
+              },
+              "history": [
+                {
+                  "date": "2026-03-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 1.25,
+                  "finish": 3,
+                  "weight": 0.6155722066724582
+                },
+                {
+                  "date": "2025-12-14",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第三班",
+                  "wide": 1.5,
+                  "margin": 6.75,
+                  "finish": 10,
+                  "weight": 0.2893948415246629
+                },
+                {
+                  "date": "2025-11-23",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 1.0,
+                  "margin": 1.5,
+                  "finish": 4,
+                  "weight": 0.24617868823360783
+                },
+                {
+                  "date": "2025-10-19",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.5,
+                  "margin": 1.75,
+                  "finish": 4,
+                  "weight": 0.18801098844524797
+                },
+                {
+                  "date": "2025-09-28",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.5,
+                  "margin": 1.0,
+                  "finish": 2,
+                  "weight": 0.15993477376828322
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-24_ShaTin/R3",
+          "baseline_top5": [
+            4,
+            12,
+            14,
+            2,
+            5
+          ],
+          "candidate_top5": [
+            4,
+            12,
+            14,
+            5,
+            2
+          ],
+          "actual_top3": [
+            1,
+            2,
+            14
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-27_HappyValley/R2",
+          "baseline_top5": [
+            1,
+            6,
+            12,
+            4,
+            7
+          ],
+          "candidate_top5": [
+            1,
+            6,
+            12,
+            7,
+            4
+          ],
+          "actual_top3": [
+            7,
+            8,
+            9
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-27_HappyValley/R3",
+          "baseline_top5": [
+            1,
+            10,
+            8,
+            3,
+            11
+          ],
+          "candidate_top5": [
+            1,
+            10,
+            3,
+            8,
+            11
+          ],
+          "actual_top3": [
+            1,
+            2,
+            3
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-27_HappyValley/R6",
+          "baseline_top5": [
+            6,
+            9,
+            5,
+            8,
+            1
+          ],
+          "candidate_top5": [
+            9,
+            6,
+            5,
+            8,
+            1
+          ],
+          "actual_top3": [
+            7,
+            8,
+            9
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-27_HappyValley/R9",
+          "baseline_top5": [
+            9,
+            7,
+            11,
+            8,
+            5
+          ],
+          "candidate_top5": [
+            7,
+            9,
+            11,
+            8,
+            5
+          ],
+          "actual_top3": [
+            1,
+            5,
+            12
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-31_ShaTin/R11",
+          "baseline_top5": [
+            3,
+            1,
+            2,
+            9,
+            4
+          ],
+          "candidate_top5": [
+            3,
+            1,
+            9,
+            2,
+            4
+          ],
+          "actual_top3": [
+            1,
+            4,
+            9
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-31_ShaTin/R2",
+          "baseline_top5": [
+            5,
+            3,
+            8,
+            7,
+            13
+          ],
+          "candidate_top5": [
+            5,
+            8,
+            3,
+            7,
+            13
+          ],
+          "actual_top3": [
+            6,
+            8,
+            10
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 1,
+          "affected": [
+            {
+              "hn": 3,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -1.3388895193254675,
+                "confidence": 0.0,
+                "matched": 1,
+                "inner_mass": 0.8060207523233376,
+                "outer_mass": 0
+              },
+              "history": [
+                {
+                  "date": "2026-05-03",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 1.5,
+                  "margin": 18.0,
+                  "finish": 14,
+                  "weight": 0.8060207523233376
+                }
+              ]
+            },
+            {
+              "hn": 8,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            }
+          ]
+        },
+        {
+          "key": "2026-06-07_ShaTin/R1",
+          "baseline_top5": [
+            11,
+            4,
+            1,
+            8,
+            10
+          ],
+          "candidate_top5": [
+            11,
+            4,
+            1,
+            8,
+            3
+          ],
+          "actual_top3": [
+            1
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-06-07_ShaTin/R10",
+          "baseline_top5": [
+            6,
+            9,
+            3,
+            10,
+            8
+          ],
+          "candidate_top5": [
+            6,
+            9,
+            3,
+            8,
+            10
+          ],
+          "actual_top3": [
+            5,
+            8,
+            9
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-07_ShaTin/R8",
+          "baseline_top5": [
+            12,
+            13,
+            14,
+            7,
+            2
+          ],
+          "candidate_top5": [
+            12,
+            13,
+            14,
+            2,
+            7
+          ],
+          "actual_top3": [
+            2,
+            7,
+            12
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-10_HappyValley/R3",
+          "baseline_top5": [
+            9,
+            7,
+            12,
+            8,
+            3
+          ],
+          "candidate_top5": [
+            9,
+            12,
+            7,
+            8,
+            3
+          ],
+          "actual_top3": [
+            5,
+            8,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 7,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            },
+            {
+              "hn": 12,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -1.1991935594555478,
+                "confidence": 0.0,
+                "matched": 1,
+                "inner_mass": 0.470123307043081,
+                "outer_mass": 0
+              },
+              "history": [
+                {
+                  "date": "2026-03-04",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 6.75,
+                  "finish": 10,
+                  "weight": 0.470123307043081
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "AB": {
+      "dev": {
+        "gold": 0.1388888888888889,
+        "gold_strict": 0.05555555555555555,
+        "good_positional": 0.24444444444444444,
+        "pass": 0.4666666666666667,
+        "zero_hit": 0.1388888888888889,
+        "one_hit": 0.39444444444444443,
+        "champion": 0.2833333333333333,
+        "winner_in_top3": 0.5555555555555556,
+        "top3_capture_at5": 0.6666666666666666,
+        "top3_mean_model_rank": 4.601851851851851,
+        "competitive_recall_at5": 0.605462962962963,
+        "ndcg_at5": 0.5530934665653847,
+        "top2_hits": 0.9833333333333333
+      },
+      "decision": "REJECT_DEV",
+      "terminal": "not evaluated",
+      "folds": [
+        {
+          "dates": [
+            "2026-04-22",
+            "2026-04-26",
+            "2026-04-29"
+          ],
+          "n": 29,
+          "baseline": {
+            "gold": 0.13793103448275862,
+            "gold_strict": 0.0,
+            "good_positional": 0.1724137931034483,
+            "pass": 0.5172413793103449,
+            "zero_hit": 0.1724137931034483,
+            "one_hit": 0.3103448275862069,
+            "champion": 0.3448275862068966,
+            "winner_in_top3": 0.5517241379310345,
+            "top3_capture_at5": 0.6896551724137931,
+            "top3_mean_model_rank": 4.64367816091954,
+            "competitive_recall_at5": 0.6454022988505748,
+            "ndcg_at5": 0.5676468900160182,
+            "top2_hits": 0.9310344827586207
+          },
+          "candidate": {
+            "gold": 0.13793103448275862,
+            "gold_strict": 0.0,
+            "good_positional": 0.1724137931034483,
+            "pass": 0.4827586206896552,
+            "zero_hit": 0.20689655172413793,
+            "one_hit": 0.3103448275862069,
+            "champion": 0.3448275862068966,
+            "winner_in_top3": 0.5517241379310345,
+            "top3_capture_at5": 0.6781609195402298,
+            "top3_mean_model_rank": 4.689655172413793,
+            "competitive_recall_at5": 0.6367816091954024,
+            "ndcg_at5": 0.5609462558022106,
+            "top2_hits": 0.896551724137931
+          }
+        },
+        {
+          "dates": [
+            "2026-05-03",
+            "2026-05-06",
+            "2026-05-09"
+          ],
+          "n": 31,
+          "baseline": {
+            "gold": 0.16129032258064516,
+            "gold_strict": 0.12903225806451613,
+            "good_positional": 0.41935483870967744,
+            "pass": 0.4838709677419355,
+            "zero_hit": 0.16129032258064516,
+            "one_hit": 0.3548387096774194,
+            "champion": 0.3225806451612903,
+            "winner_in_top3": 0.5483870967741935,
+            "top3_capture_at5": 0.6344086021505375,
+            "top3_mean_model_rank": 4.763440860215053,
+            "competitive_recall_at5": 0.5822580645161288,
+            "ndcg_at5": 0.5494541993296341,
+            "top2_hits": 1.1612903225806452
+          },
+          "candidate": {
+            "gold": 0.16129032258064516,
+            "gold_strict": 0.0967741935483871,
+            "good_positional": 0.3225806451612903,
+            "pass": 0.5161290322580645,
+            "zero_hit": 0.0967741935483871,
+            "one_hit": 0.3870967741935484,
+            "champion": 0.25806451612903225,
+            "winner_in_top3": 0.5483870967741935,
+            "top3_capture_at5": 0.6344086021505375,
+            "top3_mean_model_rank": 4.655913978494623,
+            "competitive_recall_at5": 0.5838709677419353,
+            "ndcg_at5": 0.5338023953914149,
+            "top2_hits": 1.096774193548387
+          }
+        },
+        {
+          "dates": [
+            "2026-05-13",
+            "2026-05-17",
+            "2026-05-20"
+          ],
+          "n": 29,
+          "baseline": {
+            "gold": 0.13793103448275862,
+            "gold_strict": 0.10344827586206896,
+            "good_positional": 0.3103448275862069,
+            "pass": 0.4482758620689655,
+            "zero_hit": 0.20689655172413793,
+            "one_hit": 0.3448275862068966,
+            "champion": 0.3103448275862069,
+            "winner_in_top3": 0.6206896551724138,
+            "top3_capture_at5": 0.6666666666666666,
+            "top3_mean_model_rank": 4.413793103448277,
+            "competitive_recall_at5": 0.6155172413793104,
+            "ndcg_at5": 0.571869837532115,
+            "top2_hits": 1.0344827586206897
+          },
+          "candidate": {
+            "gold": 0.1724137931034483,
+            "gold_strict": 0.10344827586206896,
+            "good_positional": 0.2413793103448276,
+            "pass": 0.4827586206896552,
+            "zero_hit": 0.1724137931034483,
+            "one_hit": 0.3448275862068966,
+            "champion": 0.3103448275862069,
+            "winner_in_top3": 0.5517241379310345,
+            "top3_capture_at5": 0.6666666666666666,
+            "top3_mean_model_rank": 4.3678160919540225,
+            "competitive_recall_at5": 0.606896551724138,
+            "ndcg_at5": 0.5692747490213532,
+            "top2_hits": 1.0
+          }
+        },
+        {
+          "dates": [
+            "2026-05-24",
+            "2026-05-27",
+            "2026-05-31"
+          ],
+          "n": 31,
+          "baseline": {
+            "gold": 0.0967741935483871,
+            "gold_strict": 0.03225806451612903,
+            "good_positional": 0.16129032258064516,
+            "pass": 0.41935483870967744,
+            "zero_hit": 0.16129032258064516,
+            "one_hit": 0.41935483870967744,
+            "champion": 0.2903225806451613,
+            "winner_in_top3": 0.6774193548387096,
+            "top3_capture_at5": 0.6236559139784947,
+            "top3_mean_model_rank": 5.032258064516129,
+            "competitive_recall_at5": 0.5451612903225806,
+            "ndcg_at5": 0.5592455262921672,
+            "top2_hits": 0.8709677419354839
+          },
+          "candidate": {
+            "gold": 0.0967741935483871,
+            "gold_strict": 0.0,
+            "good_positional": 0.16129032258064516,
+            "pass": 0.3225806451612903,
+            "zero_hit": 0.1935483870967742,
+            "one_hit": 0.4838709677419355,
+            "champion": 0.2903225806451613,
+            "winner_in_top3": 0.5806451612903226,
+            "top3_capture_at5": 0.6344086021505376,
+            "top3_mean_model_rank": 5.021505376344088,
+            "competitive_recall_at5": 0.5516129032258065,
+            "ndcg_at5": 0.5541358767735918,
+            "top2_hits": 0.8387096774193549
+          }
+        },
+        {
+          "dates": [
+            "2026-06-03",
+            "2026-06-07",
+            "2026-06-10"
+          ],
+          "n": 29,
+          "baseline": {
+            "gold": 0.1724137931034483,
+            "gold_strict": 0.10344827586206896,
+            "good_positional": 0.27586206896551724,
+            "pass": 0.5517241379310345,
+            "zero_hit": 0.10344827586206896,
+            "one_hit": 0.3448275862068966,
+            "champion": 0.2413793103448276,
+            "winner_in_top3": 0.5517241379310345,
+            "top3_capture_at5": 0.6896551724137933,
+            "top3_mean_model_rank": 4.402298850574713,
+            "competitive_recall_at5": 0.6362068965517241,
+            "ndcg_at5": 0.5641669326256848,
+            "top2_hits": 1.0689655172413792
+          },
+          "candidate": {
+            "gold": 0.1724137931034483,
+            "gold_strict": 0.10344827586206896,
+            "good_positional": 0.27586206896551724,
+            "pass": 0.5517241379310345,
+            "zero_hit": 0.034482758620689655,
+            "one_hit": 0.41379310344827586,
+            "champion": 0.27586206896551724,
+            "winner_in_top3": 0.6551724137931034,
+            "top3_capture_at5": 0.7011494252873562,
+            "top3_mean_model_rank": 4.218390804597701,
+            "competitive_recall_at5": 0.65,
+            "ndcg_at5": 0.5784980955978998,
+            "top2_hits": 1.0689655172413792
+          }
+        }
+      ],
+      "transitions": {
+        "top2_placed_gained": 7,
+        "top2_placed_dropped": 12,
+        "rank3_placed_promoted": 5,
+        "top2_placed_net": -5,
+        "weak_to_pass": 5,
+        "pass_to_weak": 8,
+        "zero_rescued": 6,
+        "new_zero": 3
+      },
+      "weak_baseline": {
+        "gold": 0.010752688172043012,
+        "gold_strict": 0.0,
+        "good_positional": 0.0,
+        "pass": 0.0,
+        "zero_hit": 0.3010752688172043,
+        "one_hit": 0.6989247311827957,
+        "champion": 0.16129032258064516,
+        "winner_in_top3": 0.3225806451612903,
+        "top3_capture_at5": 0.5376344086021505,
+        "top3_mean_model_rank": 5.802867383512545,
+        "competitive_recall_at5": 0.5154121863799282,
+        "ndcg_at5": 0.40150935616129246,
+        "top2_hits": 0.4946236559139785
+      },
+      "weak_candidate": {
+        "gold": 0.010752688172043012,
+        "gold_strict": 0.0,
+        "good_positional": 0.0,
+        "pass": 0.053763440860215055,
+        "zero_hit": 0.25806451612903225,
+        "one_hit": 0.6881720430107527,
+        "champion": 0.17204301075268819,
+        "winner_in_top3": 0.3548387096774194,
+        "top3_capture_at5": 0.5376344086021505,
+        "top3_mean_model_rank": 5.698924731182796,
+        "competitive_recall_at5": 0.5143369175627239,
+        "ndcg_at5": 0.40844935802657756,
+        "top2_hits": 0.5161290322580645
+      },
+      "cohorts": {
+        "venue:沙田": {
+          "n": 106,
+          "baseline": {
+            "gold": 0.1320754716981132,
+            "gold_strict": 0.05660377358490566,
+            "good_positional": 0.27358490566037735,
+            "pass": 0.5094339622641509,
+            "zero_hit": 0.14150943396226415,
+            "one_hit": 0.3490566037735849,
+            "champion": 0.2830188679245283,
+            "winner_in_top3": 0.5849056603773585,
+            "top3_capture_at5": 0.6823899371069182,
+            "top3_mean_model_rank": 4.622641509433962,
+            "competitive_recall_at5": 0.6102201257861636,
+            "ndcg_at5": 0.566274230674373,
+            "top2_hits": 1.028301886792453
+          },
+          "candidate": {
+            "gold": 0.14150943396226415,
+            "gold_strict": 0.03773584905660377,
+            "good_positional": 0.24528301886792453,
+            "pass": 0.49056603773584906,
+            "zero_hit": 0.1320754716981132,
+            "one_hit": 0.37735849056603776,
+            "champion": 0.25471698113207547,
+            "winner_in_top3": 0.5566037735849056,
+            "top3_capture_at5": 0.6823899371069182,
+            "top3_mean_model_rank": 4.591194968553459,
+            "competitive_recall_at5": 0.6121069182389938,
+            "ndcg_at5": 0.553781430940983,
+            "top2_hits": 0.9811320754716981
+          }
+        },
+        "size:<=8": {
+          "n": 4,
+          "baseline": {
+            "gold": 0.25,
+            "gold_strict": 0.25,
+            "good_positional": 0.5,
+            "pass": 0.75,
+            "zero_hit": 0.0,
+            "one_hit": 0.25,
+            "champion": 0.75,
+            "winner_in_top3": 1.0,
+            "top3_capture_at5": 0.9166666666666666,
+            "top3_mean_model_rank": 3.0,
+            "competitive_recall_at5": 0.9166666666666666,
+            "ndcg_at5": 0.8859824381973425,
+            "top2_hits": 1.5
+          },
+          "candidate": {
+            "gold": 0.25,
+            "gold_strict": 0.25,
+            "good_positional": 0.5,
+            "pass": 0.75,
+            "zero_hit": 0.0,
+            "one_hit": 0.25,
+            "champion": 0.75,
+            "winner_in_top3": 1.0,
+            "top3_capture_at5": 0.9166666666666666,
+            "top3_mean_model_rank": 3.0,
+            "competitive_recall_at5": 0.9166666666666666,
+            "ndcg_at5": 0.8859824381973425,
+            "top2_hits": 1.5
+          }
+        },
+        "sparse:True": {
+          "n": 71,
+          "baseline": {
+            "gold": 0.14084507042253522,
+            "gold_strict": 0.056338028169014086,
+            "good_positional": 0.2676056338028169,
+            "pass": 0.5070422535211268,
+            "zero_hit": 0.1267605633802817,
+            "one_hit": 0.36619718309859156,
+            "champion": 0.28169014084507044,
+            "winner_in_top3": 0.5352112676056338,
+            "top3_capture_at5": 0.6901408450704224,
+            "top3_mean_model_rank": 4.52112676056338,
+            "competitive_recall_at5": 0.6194835680751173,
+            "ndcg_at5": 0.561823758964972,
+            "top2_hits": 1.028169014084507
+          },
+          "candidate": {
+            "gold": 0.14084507042253522,
+            "gold_strict": 0.056338028169014086,
+            "good_positional": 0.2535211267605634,
+            "pass": 0.4788732394366197,
+            "zero_hit": 0.14084507042253522,
+            "one_hit": 0.38028169014084506,
+            "champion": 0.28169014084507044,
+            "winner_in_top3": 0.5352112676056338,
+            "top3_capture_at5": 0.6854460093896713,
+            "top3_mean_model_rank": 4.553990610328639,
+            "competitive_recall_at5": 0.6194835680751174,
+            "ndcg_at5": 0.5580647583269279,
+            "top2_hits": 1.0
+          }
+        },
+        "size:11-12": {
+          "n": 101,
+          "baseline": {
+            "gold": 0.10891089108910891,
+            "gold_strict": 0.039603960396039604,
+            "good_positional": 0.2871287128712871,
+            "pass": 0.49504950495049505,
+            "zero_hit": 0.15841584158415842,
+            "one_hit": 0.3465346534653465,
+            "champion": 0.297029702970297,
+            "winner_in_top3": 0.5544554455445545,
+            "top3_capture_at5": 0.6501650165016503,
+            "top3_mean_model_rank": 4.63036303630363,
+            "competitive_recall_at5": 0.6204620462046204,
+            "ndcg_at5": 0.5523370391049695,
+            "top2_hits": 1.0396039603960396
+          },
+          "candidate": {
+            "gold": 0.10891089108910891,
+            "gold_strict": 0.039603960396039604,
+            "good_positional": 0.2376237623762376,
+            "pass": 0.48514851485148514,
+            "zero_hit": 0.12871287128712872,
+            "one_hit": 0.38613861386138615,
+            "champion": 0.297029702970297,
+            "winner_in_top3": 0.5643564356435643,
+            "top3_capture_at5": 0.6501650165016503,
+            "top3_mean_model_rank": 4.600660066006601,
+            "competitive_recall_at5": 0.6179867986798679,
+            "ndcg_at5": 0.5515526385619481,
+            "top2_hits": 1.00990099009901
+          }
+        },
+        "size:13+": {
+          "n": 67,
+          "baseline": {
+            "gold": 0.14925373134328357,
+            "gold_strict": 0.07462686567164178,
+            "good_positional": 0.23880597014925373,
+            "pass": 0.4626865671641791,
+            "zero_hit": 0.16417910447761194,
+            "one_hit": 0.373134328358209,
+            "champion": 0.22388059701492538,
+            "winner_in_top3": 0.5522388059701493,
+            "top3_capture_at5": 0.6616915422885573,
+            "top3_mean_model_rank": 4.825870646766169,
+            "competitive_recall_at5": 0.5485074626865671,
+            "ndcg_at5": 0.5300086136604385,
+            "top2_hits": 0.9402985074626866
+          },
+          "candidate": {
+            "gold": 0.16417910447761194,
+            "gold_strict": 0.04477611940298507,
+            "good_positional": 0.23880597014925373,
+            "pass": 0.43283582089552236,
+            "zero_hit": 0.16417910447761194,
+            "one_hit": 0.40298507462686567,
+            "champion": 0.208955223880597,
+            "winner_in_top3": 0.5074626865671642,
+            "top3_capture_at5": 0.6666666666666667,
+            "top3_mean_model_rank": 4.756218905472637,
+            "competitive_recall_at5": 0.5544776119402985,
+            "ndcg_at5": 0.5226855480255306,
+            "top2_hits": 0.9104477611940298
+          }
+        },
+        "venue:跑馬地": {
+          "n": 72,
+          "baseline": {
+            "gold": 0.125,
+            "gold_strict": 0.08333333333333333,
+            "good_positional": 0.2777777777777778,
+            "pass": 0.4583333333333333,
+            "zero_hit": 0.18055555555555555,
+            "one_hit": 0.3611111111111111,
+            "champion": 0.3055555555555556,
+            "winner_in_top3": 0.5277777777777778,
+            "top3_capture_at5": 0.6388888888888888,
+            "top3_mean_model_rank": 4.675925925925926,
+            "competitive_recall_at5": 0.6006944444444444,
+            "ndcg_at5": 0.5446734223610772,
+            "top2_hits": 1.0138888888888888
+          },
+          "candidate": {
+            "gold": 0.125,
+            "gold_strict": 0.08333333333333333,
+            "good_positional": 0.25,
+            "pass": 0.4444444444444444,
+            "zero_hit": 0.1527777777777778,
+            "one_hit": 0.4027777777777778,
+            "champion": 0.3333333333333333,
+            "winner_in_top3": 0.5416666666666666,
+            "top3_capture_at5": 0.6435185185185186,
+            "top3_mean_model_rank": 4.625,
+            "competitive_recall_at5": 0.5972222222222222,
+            "ndcg_at5": 0.5550330232740026,
+            "top2_hits": 1.0138888888888888
+          }
+        },
+        "size:9-10": {
+          "n": 8,
+          "baseline": {
+            "gold": 0.25,
+            "gold_strict": 0.25,
+            "good_positional": 0.25,
+            "pass": 0.375,
+            "zero_hit": 0.125,
+            "one_hit": 0.5,
+            "champion": 0.5,
+            "winner_in_top3": 0.625,
+            "top3_capture_at5": 0.75,
+            "top3_mean_model_rank": 4.166666666666667,
+            "competitive_recall_at5": 0.71875,
+            "ndcg_at5": 0.6607682520640707,
+            "top2_hits": 1.0
+          },
+          "candidate": {
+            "gold": 0.25,
+            "gold_strict": 0.25,
+            "good_positional": 0.25,
+            "pass": 0.375,
+            "zero_hit": 0.125,
+            "one_hit": 0.5,
+            "champion": 0.5,
+            "winner_in_top3": 0.625,
+            "top3_capture_at5": 0.75,
+            "top3_mean_model_rank": 4.125,
+            "competitive_recall_at5": 0.71875,
+            "ndcg_at5": 0.6607682520640707,
+            "top2_hits": 1.0
+          }
+        },
+        "sparse:False": {
+          "n": 109,
+          "baseline": {
+            "gold": 0.12844036697247707,
+            "gold_strict": 0.07339449541284404,
+            "good_positional": 0.27522935779816515,
+            "pass": 0.46788990825688076,
+            "zero_hit": 0.1743119266055046,
+            "one_hit": 0.3577981651376147,
+            "champion": 0.29357798165137616,
+            "winner_in_top3": 0.5871559633027523,
+            "top3_capture_at5": 0.6483180428134557,
+            "top3_mean_model_rank": 4.727828746177369,
+            "competitive_recall_at5": 0.5949541284403669,
+            "ndcg_at5": 0.5526349261251396,
+            "top2_hits": 1.0
+          },
+          "candidate": {
+            "gold": 0.13761467889908258,
+            "gold_strict": 0.05504587155963303,
+            "good_positional": 0.23853211009174313,
+            "pass": 0.45871559633027525,
+            "zero_hit": 0.13761467889908258,
+            "one_hit": 0.4036697247706422,
+            "champion": 0.28440366972477066,
+            "winner_in_top3": 0.5688073394495413,
+            "top3_capture_at5": 0.6544342507645261,
+            "top3_mean_model_rank": 4.63302752293578,
+            "competitive_recall_at5": 0.5963302752293578,
+            "ndcg_at5": 0.5498552856931866,
+            "top2_hits": 0.9724770642201835
+          }
+        },
+        "venue:沙田AWT": {
+          "n": 2,
+          "baseline": {
+            "gold": 0.5,
+            "gold_strict": 0.0,
+            "good_positional": 0.0,
+            "pass": 0.0,
+            "zero_hit": 0.0,
+            "one_hit": 1.0,
+            "champion": 0.0,
+            "winner_in_top3": 1.0,
+            "top3_capture_at5": 0.6666666666666666,
+            "top3_mean_model_rank": 4.833333333333334,
+            "competitive_recall_at5": 0.45,
+            "ndcg_at5": 0.44256948633606785,
+            "top2_hits": 0.0
+          },
+          "candidate": {
+            "gold": 0.5,
+            "gold_strict": 0.0,
+            "good_positional": 0.0,
+            "pass": 0.0,
+            "zero_hit": 0.0,
+            "one_hit": 1.0,
+            "champion": 0.0,
+            "winner_in_top3": 1.0,
+            "top3_capture_at5": 0.6666666666666666,
+            "top3_mean_model_rank": 4.333333333333334,
+            "competitive_recall_at5": 0.55,
+            "ndcg_at5": 0.4468073131484307,
+            "top2_hits": 0.0
+          }
+        }
+      },
+      "changed_weak_races": [
+        {
+          "key": "2026-04-12_ShaTin/R4",
+          "baseline_top5": [
+            14,
+            7,
+            3,
+            2,
+            13
+          ],
+          "candidate_top5": [
+            14,
+            7,
+            3,
+            10,
+            2
+          ],
+          "actual_top3": [
+            2,
+            3,
+            5
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-04-19_ShaTin/R4",
+          "baseline_top5": [
+            7,
+            1,
+            13,
+            11,
+            4
+          ],
+          "candidate_top5": [
+            7,
+            1,
+            13,
+            4,
+            11
+          ],
+          "actual_top3": [
+            4,
+            10,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-04-22_HappyValley/R3",
+          "baseline_top5": [
+            9,
+            6,
+            1,
+            4,
+            8
+          ],
+          "candidate_top5": [
+            9,
+            6,
+            8,
+            4,
+            1
+          ],
+          "actual_top3": [
+            1,
+            5,
+            7
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-04-22_HappyValley/R9",
+          "baseline_top5": [
+            1,
+            12,
+            3,
+            10,
+            8
+          ],
+          "candidate_top5": [
+            1,
+            12,
+            10,
+            3,
+            8
+          ],
+          "actual_top3": [
+            1,
+            7,
+            9
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-04-26_ShaTin/R7",
+          "baseline_top5": [
+            4,
+            10,
+            14,
+            11,
+            2
+          ],
+          "candidate_top5": [
+            10,
+            4,
+            14,
+            11,
+            2
+          ],
+          "actual_top3": [
+            3,
+            5,
+            9
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-04-29_HappyValley/R3",
+          "baseline_top5": [
+            9,
+            2,
+            6,
+            7,
+            5
+          ],
+          "candidate_top5": [
+            9,
+            2,
+            6,
+            7,
+            3
+          ],
+          "actual_top3": [
+            5,
+            8,
+            10
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-03_ShaTin/R3",
+          "baseline_top5": [
+            13,
+            4,
+            9,
+            3,
+            10
+          ],
+          "candidate_top5": [
+            13,
+            4,
+            9,
+            3,
+            12
+          ],
+          "actual_top3": [
+            2,
+            3,
+            4
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-06_ShaTin/R6",
+          "baseline_top5": [
+            6,
+            11,
+            5,
+            8,
+            3
+          ],
+          "candidate_top5": [
+            11,
+            6,
+            5,
+            8,
+            3
+          ],
+          "actual_top3": [
+            1,
+            2,
+            13
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-06_ShaTin/R7",
+          "baseline_top5": [
+            5,
+            2,
+            7,
+            4,
+            11
+          ],
+          "candidate_top5": [
+            5,
+            2,
+            4,
+            7,
+            11
+          ],
+          "actual_top3": [
+            1,
+            4,
+            5
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-09_ShaTin/R4",
+          "baseline_top5": [
+            1,
+            3,
+            6,
+            4,
+            14
+          ],
+          "candidate_top5": [
+            1,
+            3,
+            14,
+            6,
+            4
+          ],
+          "actual_top3": [
+            4,
+            10,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-09_ShaTin/R5",
+          "baseline_top5": [
+            9,
+            3,
+            1,
+            2,
+            7
+          ],
+          "candidate_top5": [
+            9,
+            3,
+            2,
+            1,
+            7
+          ],
+          "actual_top3": [
+            2,
+            4,
+            6
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-09_ShaTin/R7",
+          "baseline_top5": [
+            7,
+            9,
+            1,
+            8,
+            5
+          ],
+          "candidate_top5": [
+            7,
+            9,
+            5,
+            1,
+            8
+          ],
+          "actual_top3": [
+            8,
+            11,
+            13
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-09_ShaTin/R8",
+          "baseline_top5": [
+            4,
+            10,
+            11,
+            3,
+            9
+          ],
+          "candidate_top5": [
+            4,
+            3,
+            10,
+            11,
+            2
+          ],
+          "actual_top3": [
+            3,
+            7,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 1,
+          "affected": [
+            {
+              "hn": 3,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.659332287429129,
+                "confidence": 0.22224261329173128,
+                "matched": 3,
+                "inner_mass": 0.8572439828530728,
+                "outer_mass": 1.2787303931256924
+              },
+              "history": [
+                {
+                  "date": "2026-04-19",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 1.0,
+                  "margin": 0.0,
+                  "finish": 1,
+                  "weight": 0.8572439828530728
+                },
+                {
+                  "date": "2026-03-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 2.5,
+                  "margin": 0.0,
+                  "finish": 1,
+                  "weight": 0.690956439983888
+                },
+                {
+                  "date": "2026-03-01",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 2.5,
+                  "margin": 1.25,
+                  "finish": 3,
+                  "weight": 0.5877739531418044
+                }
+              ]
+            },
+            {
+              "hn": 10,
+              "evidence": {
+                "fit_st": -0.2906304623403662,
+                "fit_hv": -0.1453152311701831,
+                "trip": 1.2029195033861737,
+                "confidence": 0.04843841039006103,
+                "matched": 3,
+                "inner_mass": 0.15271237590595713,
+                "outer_mass": 1.5032088363401237
+              },
+              "history": [
+                {
+                  "date": "2026-04-12",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 3.0,
+                  "margin": 0.05,
+                  "finish": 2,
+                  "weight": 0.8122523963562356
+                },
+                {
+                  "date": "2026-03-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 3.5,
+                  "margin": 3.0,
+                  "finish": 7,
+                  "weight": 0.690956439983888
+                },
+                {
+                  "date": "2025-09-07",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 2.0,
+                  "margin": 0.0,
+                  "finish": 1,
+                  "weight": 0.15271237590595713
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-09_ShaTin/R9",
+          "baseline_top5": [
+            1,
+            11,
+            4,
+            10,
+            13
+          ],
+          "candidate_top5": [
+            1,
+            4,
+            13,
+            11,
+            10
+          ],
+          "actual_top3": [
+            7,
+            13,
+            14
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 4,
+              "evidence": {
+                "fit_st": 1.0631768200136111,
+                "fit_hv": 0.3543922733378704,
+                "trip": 0.0,
+                "confidence": 0.0885980683344676,
+                "matched": 2,
+                "inner_mass": 0.2916322598940292,
+                "outer_mass": 0.4030103761616688
+              },
+              "history": [
+                {
+                  "date": "2026-01-11",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.5,
+                  "margin": 5.25,
+                  "finish": 10,
+                  "weight": 0.4030103761616688
+                },
+                {
+                  "date": "2025-11-30",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 12.25,
+                  "finish": 12,
+                  "weight": 0.2916322598940292
+                }
+              ]
+            },
+            {
+              "hn": 11,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            }
+          ]
+        },
+        {
+          "key": "2026-05-13_HappyValley/R1",
+          "baseline_top5": [
+            1,
+            11,
+            6,
+            9,
+            10
+          ],
+          "candidate_top5": [
+            1,
+            11,
+            9,
+            10,
+            6
+          ],
+          "actual_top3": [
+            1,
+            3,
+            12
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-13_HappyValley/R4",
+          "baseline_top5": [
+            3,
+            5,
+            10,
+            2,
+            1
+          ],
+          "candidate_top5": [
+            3,
+            10,
+            5,
+            2,
+            1
+          ],
+          "actual_top3": [
+            4,
+            10,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 1,
+          "affected": [
+            {
+              "hn": 5,
+              "evidence": {
+                "fit_st": 2.971236480549765,
+                "fit_hv": 0.9904121601832551,
+                "trip": -0.3358763133704182,
+                "confidence": 0.24760304004581377,
+                "matched": 6,
+                "inner_mass": 2.2853677041420326,
+                "outer_mass": 0.9872569397179266
+              },
+              "history": [
+                {
+                  "date": "2026-04-15",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1800,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 0.5,
+                  "finish": 4,
+                  "weight": 0.8060207523233376
+                },
+                {
+                  "date": "2026-03-18",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1800,
+                  "race_class": "第四班",
+                  "wide": 3.75,
+                  "margin": 5.25,
+                  "finish": 9,
+                  "weight": 0.6496694531758791
+                },
+                {
+                  "date": "2026-03-04",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 4.75,
+                  "finish": 9,
+                  "weight": 0.5832645197880583
+                },
+                {
+                  "date": "2026-02-11",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 0.25,
+                  "finish": 2,
+                  "weight": 0.49616397313147176
+                },
+                {
+                  "date": "2026-01-14",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第四班",
+                  "wide": 1.5,
+                  "margin": 4.0,
+                  "finish": 6,
+                  "weight": 0.3999184588991651
+                },
+                {
+                  "date": "2025-12-23",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第四班",
+                  "wide": 3.0,
+                  "margin": 3.25,
+                  "finish": 5,
+                  "weight": 0.3375874865420475
+                }
+              ]
+            },
+            {
+              "hn": 10,
+              "evidence": {
+                "fit_st": 2.0430698262469216,
+                "fit_hv": 0.6810232754156406,
+                "trip": 0.0,
+                "confidence": 0.17025581885391014,
+                "matched": 2,
+                "inner_mass": 0.8977865850653692,
+                "outer_mass": 0.6155722066724582
+              },
+              "history": [
+                {
+                  "date": "2026-04-29",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1800,
+                  "race_class": "第五班",
+                  "wide": 1.0,
+                  "margin": 0.0,
+                  "finish": 1,
+                  "weight": 0.8977865850653692
+                },
+                {
+                  "date": "2026-03-11",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1650,
+                  "race_class": "第四班",
+                  "wide": 2.25,
+                  "margin": 4.75,
+                  "finish": 6,
+                  "weight": 0.6155722066724582
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-13_HappyValley/R7",
+          "baseline_top5": [
+            10,
+            6,
+            8,
+            12,
+            3
+          ],
+          "candidate_top5": [
+            6,
+            10,
+            8,
+            12,
+            3
+          ],
+          "actual_top3": [
+            1,
+            3,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-17_ShaTin/R2",
+          "baseline_top5": [
+            14,
+            1,
+            3,
+            4,
+            10
+          ],
+          "candidate_top5": [
+            14,
+            1,
+            4,
+            3,
+            10
+          ],
+          "actual_top3": [
+            4,
+            10,
+            14
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-17_ShaTin/R3",
+          "baseline_top5": [
+            4,
+            7,
+            10,
+            11,
+            5
+          ],
+          "candidate_top5": [
+            4,
+            7,
+            10,
+            11,
+            1
+          ],
+          "actual_top3": [
+            3,
+            5,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-17_ShaTin/R7",
+          "baseline_top5": [
+            12,
+            10,
+            2,
+            4,
+            3
+          ],
+          "candidate_top5": [
+            12,
+            2,
+            10,
+            4,
+            3
+          ],
+          "actual_top3": [
+            1,
+            3,
+            4
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 2,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.6734834329974421,
+                "confidence": 0.2445760649132382,
+                "matched": 6,
+                "inner_mass": 0.9712800464224695,
+                "outer_mass": 1.8133054775323658
+              },
+              "history": [
+                {
+                  "date": "2026-04-12",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 2.5,
+                  "margin": 0.1,
+                  "finish": 2,
+                  "weight": 0.7637175654573216
+                },
+                {
+                  "date": "2026-03-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第四班",
+                  "wide": 3.0,
+                  "margin": 2.5,
+                  "finish": 6,
+                  "weight": 0.6496694531758791
+                },
+                {
+                  "date": "2026-01-25",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 1.5,
+                  "margin": 1.25,
+                  "finish": 3,
+                  "weight": 0.4220703983898457
+                },
+                {
+                  "date": "2026-01-18",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 5.0,
+                  "margin": 2.5,
+                  "finish": 11,
+                  "weight": 0.3999184588991651
+                },
+                {
+                  "date": "2025-12-07",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 3.5,
+                  "finish": 6,
+                  "weight": 0.2893948415246629
+                },
+                {
+                  "date": "2025-11-23",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第三班",
+                  "wide": 1.0,
+                  "margin": 2.25,
+                  "finish": 9,
+                  "weight": 0.25981480650796085
+                }
+              ]
+            },
+            {
+              "hn": 10,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -0.32036673379709213,
+                "confidence": 0.06525053704392358,
+                "matched": 3,
+                "inner_mass": 1.066816791677875,
+                "outer_mass": 0.209416125806289
+              },
+              "history": [
+                {
+                  "date": "2026-04-06",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 4.0,
+                  "finish": 4,
+                  "weight": 0.7292293051358275
+                },
+                {
+                  "date": "2025-12-27",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 2.0,
+                  "margin": 5.75,
+                  "finish": 7,
+                  "weight": 0.3375874865420475
+                },
+                {
+                  "date": "2025-10-26",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 3.5,
+                  "margin": 4.0,
+                  "finish": 8,
+                  "weight": 0.209416125806289
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-17_ShaTin/R9",
+          "baseline_top5": [
+            7,
+            12,
+            11,
+            14,
+            10
+          ],
+          "candidate_top5": [
+            7,
+            12,
+            11,
+            14,
+            8
+          ],
+          "actual_top3": [
+            5,
+            7,
+            13
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-20_HappyValley/R3",
+          "baseline_top5": [
+            4,
+            9,
+            6,
+            8,
+            5
+          ],
+          "candidate_top5": [
+            4,
+            9,
+            8,
+            6,
+            5
+          ],
+          "actual_top3": [
+            2,
+            4,
+            8
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-20_HappyValley/R5",
+          "baseline_top5": [
+            4,
+            10,
+            12,
+            7,
+            11
+          ],
+          "candidate_top5": [
+            10,
+            4,
+            12,
+            7,
+            11
+          ],
+          "actual_top3": [
+            2,
+            5,
+            7
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-20_HappyValley/R9",
+          "baseline_top5": [
+            9,
+            10,
+            12,
+            7,
+            4
+          ],
+          "candidate_top5": [
+            9,
+            10,
+            7,
+            12,
+            4
+          ],
+          "actual_top3": [
+            1,
+            7,
+            8
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-24_ShaTin/R10",
+          "baseline_top5": [
+            9,
+            7,
+            5,
+            2,
+            12
+          ],
+          "candidate_top5": [
+            9,
+            2,
+            7,
+            5,
+            12
+          ],
+          "actual_top3": [
+            1,
+            5,
+            13
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 2,
+              "evidence": {
+                "fit_st": -1.4123360736995627,
+                "fit_hv": -0.7061680368497814,
+                "trip": 0.8056550706642248,
+                "confidence": 0.23538934561659378,
+                "matched": 5,
+                "inner_mass": 0.9235655203094785,
+                "outer_mass": 1.3031046262659849
+              },
+              "history": [
+                {
+                  "date": "2026-03-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 3.0,
+                  "margin": 5.25,
+                  "finish": 7,
+                  "weight": 0.6155722066724582
+                },
+                {
+                  "date": "2026-03-01",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 1.0,
+                  "margin": 1.25,
+                  "finish": 2,
+                  "weight": 0.5236470614103134
+                },
+                {
+                  "date": "2026-02-14",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 3.5,
+                  "margin": 0.75,
+                  "finish": 2,
+                  "weight": 0.4665164957684037
+                },
+                {
+                  "date": "2026-01-25",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 3.5,
+                  "finish": 7,
+                  "weight": 0.3999184588991651
+                },
+                {
+                  "date": "2025-11-09",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第二班",
+                  "wide": 3.0,
+                  "margin": 4.0,
+                  "finish": 7,
+                  "weight": 0.221015923825123
+                }
+              ]
+            },
+            {
+              "hn": 7,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -0.2522448008376564,
+                "confidence": 0.10392813591564369,
+                "matched": 5,
+                "inner_mass": 1.151145736430729,
+                "outer_mass": 0.3479457622135312
+              },
+              "history": [
+                {
+                  "date": "2026-03-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 1.25,
+                  "finish": 3,
+                  "weight": 0.6155722066724582
+                },
+                {
+                  "date": "2025-12-14",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第三班",
+                  "wide": 1.5,
+                  "margin": 6.75,
+                  "finish": 10,
+                  "weight": 0.2893948415246629
+                },
+                {
+                  "date": "2025-11-23",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 1.0,
+                  "margin": 1.5,
+                  "finish": 4,
+                  "weight": 0.24617868823360783
+                },
+                {
+                  "date": "2025-10-19",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.5,
+                  "margin": 1.75,
+                  "finish": 4,
+                  "weight": 0.18801098844524797
+                },
+                {
+                  "date": "2025-09-28",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.5,
+                  "margin": 1.0,
+                  "finish": 2,
+                  "weight": 0.15993477376828322
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-24_ShaTin/R3",
+          "baseline_top5": [
+            4,
+            12,
+            14,
+            2,
+            5
+          ],
+          "candidate_top5": [
+            4,
+            12,
+            14,
+            5,
+            2
+          ],
+          "actual_top3": [
+            1,
+            2,
+            14
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-24_ShaTin/R4",
+          "baseline_top5": [
+            3,
+            8,
+            4,
+            14,
+            5
+          ],
+          "candidate_top5": [
+            3,
+            8,
+            4,
+            14,
+            2
+          ],
+          "actual_top3": [
+            3,
+            9,
+            11
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-24_ShaTin/R5",
+          "baseline_top5": [
+            2,
+            7,
+            5,
+            1,
+            4
+          ],
+          "candidate_top5": [
+            2,
+            5,
+            7,
+            1,
+            4
+          ],
+          "actual_top3": [
+            2,
+            4,
+            13
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": [
+            {
+              "hn": 5,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.7149452680113083,
+                "confidence": 0.1004508193078092,
+                "matched": 6,
+                "inner_mass": 0.33500387126309317,
+                "outer_mass": 0.41492115936553237
+              },
+              "history": [
+                {
+                  "date": "2025-11-30",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 3.25,
+                  "finish": 6,
+                  "weight": 0.25981480650796085
+                },
+                {
+                  "date": "2025-10-26",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第四班",
+                  "wide": 3.5,
+                  "margin": 0.05,
+                  "finish": 2,
+                  "weight": 0.19842513149602492
+                },
+                {
+                  "date": "2025-07-13",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第四班",
+                  "wide": 2.5,
+                  "margin": 5.0,
+                  "finish": 10,
+                  "weight": 0.08838834764831845
+                },
+                {
+                  "date": "2025-06-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 5.0,
+                  "finish": 10,
+                  "weight": 0.07518906475513229
+                },
+                {
+                  "date": "2025-06-08",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第四班",
+                  "wide": 4.0,
+                  "margin": 5.25,
+                  "finish": 6,
+                  "weight": 0.06750373368076913
+                },
+                {
+                  "date": "2025-05-25",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第四班",
+                  "wide": 3.5,
+                  "margin": 7.75,
+                  "finish": 10,
+                  "weight": 0.06060394654041988
+                }
+              ]
+            },
+            {
+              "hn": 7,
+              "evidence": {
+                "fit_st": -3.21994061144399,
+                "fit_hv": -1.8399660636822799,
+                "trip": 0.0,
+                "confidence": 0.22999575796028499,
+                "matched": 4,
+                "inner_mass": 1.4215929589957956,
+                "outer_mass": 0.8960824320306369
+              },
+              "history": [
+                {
+                  "date": "2026-04-26",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1600,
+                  "race_class": "第四班",
+                  "wide": 2.0,
+                  "margin": 0.25,
+                  "finish": 2,
+                  "weight": 0.8060207523233376
+                },
+                {
+                  "date": "2026-03-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 0.25,
+                  "finish": 3,
+                  "weight": 0.6155722066724582
+                },
+                {
+                  "date": "2026-02-22",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 4.0,
+                  "margin": 4.0,
+                  "finish": 6,
+                  "weight": 0.49616397313147176
+                },
+                {
+                  "date": "2026-01-25",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1400,
+                  "race_class": "第四班",
+                  "wide": 2.5,
+                  "margin": 1.75,
+                  "finish": 5,
+                  "weight": 0.3999184588991651
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-27_HappyValley/R2",
+          "baseline_top5": [
+            1,
+            6,
+            12,
+            4,
+            7
+          ],
+          "candidate_top5": [
+            1,
+            6,
+            7,
+            4,
+            12
+          ],
+          "actual_top3": [
+            7,
+            8,
+            9
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-27_HappyValley/R4",
+          "baseline_top5": [
+            5,
+            2,
+            1,
+            7,
+            3
+          ],
+          "candidate_top5": [
+            5,
+            1,
+            2,
+            7,
+            3
+          ],
+          "actual_top3": [
+            5,
+            9,
+            11
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": [
+            {
+              "hn": 1,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 4,
+                "inner_mass": 2.1581414202649967,
+                "outer_mass": 0
+              },
+              "history": [
+                {
+                  "date": "2026-04-29",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 1.3333333333333333,
+                  "margin": 0.0,
+                  "finish": 1,
+                  "weight": 0.8060207523233376
+                },
+                {
+                  "date": "2026-04-08",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 1.3333333333333333,
+                  "margin": 2.0,
+                  "finish": 6,
+                  "weight": 0.6856553850463664
+                },
+                {
+                  "date": "2026-02-11",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 1.25,
+                  "finish": 4,
+                  "weight": 0.44544935907016964
+                },
+                {
+                  "date": "2025-11-12",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第三班",
+                  "wide": 2.0,
+                  "margin": 1.5,
+                  "finish": 5,
+                  "weight": 0.221015923825123
+                }
+              ]
+            },
+            {
+              "hn": 2,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -0.05244826274269456,
+                "confidence": 0.0,
+                "matched": 1,
+                "inner_mass": 0.07518906475513229,
+                "outer_mass": 0
+              },
+              "history": [
+                {
+                  "date": "2025-06-25",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 3.75,
+                  "finish": 7,
+                  "weight": 0.07518906475513229
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-05-27_HappyValley/R6",
+          "baseline_top5": [
+            6,
+            9,
+            5,
+            8,
+            1
+          ],
+          "candidate_top5": [
+            9,
+            6,
+            5,
+            8,
+            1
+          ],
+          "actual_top3": [
+            7,
+            8,
+            9
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-27_HappyValley/R7",
+          "baseline_top5": [
+            3,
+            11,
+            10,
+            2,
+            6
+          ],
+          "candidate_top5": [
+            3,
+            11,
+            2,
+            10,
+            6
+          ],
+          "actual_top3": [
+            6,
+            9,
+            12
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-05-31_ShaTin/R11",
+          "baseline_top5": [
+            3,
+            1,
+            2,
+            9,
+            4
+          ],
+          "candidate_top5": [
+            3,
+            1,
+            9,
+            2,
+            4
+          ],
+          "actual_top3": [
+            1,
+            4,
+            9
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-05-31_ShaTin/R2",
+          "baseline_top5": [
+            5,
+            3,
+            8,
+            7,
+            13
+          ],
+          "candidate_top5": [
+            5,
+            13,
+            8,
+            3,
+            7
+          ],
+          "actual_top3": [
+            6,
+            8,
+            10
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 3,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -1.3388895193254675,
+                "confidence": 0.0,
+                "matched": 1,
+                "inner_mass": 0.8060207523233376,
+                "outer_mass": 0
+              },
+              "history": [
+                {
+                  "date": "2026-05-03",
+                  "venue": "沙田",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 1.5,
+                  "margin": 18.0,
+                  "finish": 14,
+                  "weight": 0.8060207523233376
+                }
+              ]
+            },
+            {
+              "hn": 13,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            }
+          ]
+        },
+        {
+          "key": "2026-05-31_ShaTin/R8",
+          "baseline_top5": [
+            2,
+            12,
+            9,
+            6,
+            4
+          ],
+          "candidate_top5": [
+            2,
+            12,
+            9,
+            6,
+            14
+          ],
+          "actual_top3": [
+            6,
+            9,
+            14
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-06-03_HappyValley/R3",
+          "baseline_top5": [
+            3,
+            9,
+            8,
+            7,
+            12
+          ],
+          "candidate_top5": [
+            3,
+            7,
+            9,
+            8,
+            12
+          ],
+          "actual_top3": [
+            4,
+            7,
+            12
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 1,
+          "affected": [
+            {
+              "hn": 7,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 1.1469987889940592,
+                "confidence": 0.0,
+                "matched": 2,
+                "inner_mass": 0,
+                "outer_mass": 1.1733165145861926
+              },
+              "history": [
+                {
+                  "date": "2026-04-08",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 2.3333333333333335,
+                  "margin": 1.5,
+                  "finish": 4,
+                  "weight": 0.6496694531758791
+                },
+                {
+                  "date": "2026-03-11",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 3.0,
+                  "margin": 0.05,
+                  "finish": 2,
+                  "weight": 0.5236470614103134
+                }
+              ]
+            },
+            {
+              "hn": 9,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -0.25993405654890206,
+                "confidence": 0.0,
+                "matched": 4,
+                "inner_mass": 1.7844793060833548,
+                "outer_mass": 0
+              },
+              "history": [
+                {
+                  "date": "2026-04-08",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 2.0,
+                  "margin": 2.25,
+                  "finish": 8,
+                  "weight": 0.6496694531758791
+                },
+                {
+                  "date": "2026-03-18",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 3.75,
+                  "finish": 6,
+                  "weight": 0.55265246928962
+                },
+                {
+                  "date": "2026-01-07",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 1.6666666666666667,
+                  "margin": 5.25,
+                  "finish": 8,
+                  "weight": 0.3223425771098948
+                },
+                {
+                  "date": "2025-12-10",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 4.75,
+                  "finish": 8,
+                  "weight": 0.25981480650796085
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "key": "2026-06-03_HappyValley/R4",
+          "baseline_top5": [
+            10,
+            9,
+            8,
+            5,
+            11
+          ],
+          "candidate_top5": [
+            10,
+            9,
+            8,
+            6,
+            5
+          ],
+          "actual_top3": [
+            1,
+            5,
+            9
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-03_HappyValley/R8",
+          "baseline_top5": [
+            6,
+            7,
+            2,
+            9,
+            3
+          ],
+          "candidate_top5": [
+            6,
+            7,
+            9,
+            2,
+            3
+          ],
+          "actual_top3": [
+            4,
+            6,
+            11
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-03_HappyValley/R9",
+          "baseline_top5": [
+            1,
+            3,
+            2,
+            9,
+            6
+          ],
+          "candidate_top5": [
+            3,
+            1,
+            9,
+            6,
+            2
+          ],
+          "actual_top3": [
+            3,
+            4,
+            10
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-07_ShaTin/R1",
+          "baseline_top5": [
+            11,
+            4,
+            1,
+            8,
+            10
+          ],
+          "candidate_top5": [
+            4,
+            11,
+            1,
+            8,
+            3
+          ],
+          "actual_top3": [
+            1
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-06-07_ShaTin/R10",
+          "baseline_top5": [
+            6,
+            9,
+            3,
+            10,
+            8
+          ],
+          "candidate_top5": [
+            6,
+            3,
+            9,
+            10,
+            8
+          ],
+          "actual_top3": [
+            5,
+            8,
+            9
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 3,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            },
+            {
+              "hn": 9,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            }
+          ]
+        },
+        {
+          "key": "2026-06-07_ShaTin/R5",
+          "baseline_top5": [
+            9,
+            2,
+            14,
+            11,
+            4
+          ],
+          "candidate_top5": [
+            9,
+            2,
+            14,
+            11,
+            5
+          ],
+          "actual_top3": [
+            1,
+            3,
+            14
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": []
+        },
+        {
+          "key": "2026-06-07_ShaTin/R6",
+          "baseline_top5": [
+            9,
+            6,
+            1,
+            7,
+            12
+          ],
+          "candidate_top5": [
+            6,
+            1,
+            7,
+            9,
+            12
+          ],
+          "actual_top3": [
+            5,
+            7,
+            10
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 1,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            },
+            {
+              "hn": 9,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            }
+          ]
+        },
+        {
+          "key": "2026-06-07_ShaTin/R8",
+          "baseline_top5": [
+            12,
+            13,
+            14,
+            7,
+            2
+          ],
+          "candidate_top5": [
+            12,
+            13,
+            2,
+            14,
+            7
+          ],
+          "actual_top3": [
+            2,
+            7,
+            12
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-10_HappyValley/R2",
+          "baseline_top5": [
+            11,
+            7,
+            4,
+            5,
+            1
+          ],
+          "candidate_top5": [
+            11,
+            7,
+            5,
+            4,
+            1
+          ],
+          "actual_top3": [
+            1,
+            6,
+            7
+          ],
+          "before_top2_hits": 1,
+          "after_top2_hits": 1,
+          "affected": []
+        },
+        {
+          "key": "2026-06-10_HappyValley/R3",
+          "baseline_top5": [
+            9,
+            7,
+            12,
+            8,
+            3
+          ],
+          "candidate_top5": [
+            9,
+            12,
+            7,
+            8,
+            11
+          ],
+          "actual_top3": [
+            5,
+            8,
+            11
+          ],
+          "before_top2_hits": 0,
+          "after_top2_hits": 0,
+          "affected": [
+            {
+              "hn": 7,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": 0.0,
+                "confidence": 0.0,
+                "matched": 0,
+                "inner_mass": 0,
+                "outer_mass": 0
+              },
+              "history": []
+            },
+            {
+              "hn": 12,
+              "evidence": {
+                "fit_st": 0.0,
+                "fit_hv": 0.0,
+                "trip": -1.1991935594555478,
+                "confidence": 0.0,
+                "matched": 1,
+                "inner_mass": 0.470123307043081,
+                "outer_mass": 0
+              },
+              "history": [
+                {
+                  "date": "2026-03-04",
+                  "venue": "跑馬地",
+                  "surface": "Turf",
+                  "distance": 1200,
+                  "race_class": "第四班",
+                  "wide": 1.0,
+                  "margin": 6.75,
+                  "finish": 10,
+                  "weight": 0.470123307043081
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
