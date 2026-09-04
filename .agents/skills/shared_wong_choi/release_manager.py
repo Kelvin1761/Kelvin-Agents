@@ -359,7 +359,17 @@ def prepare_release(
 
     branch = _git(repo, "branch", "--show-current")
     if not branch or branch == "main":
-        branch = "codex/release-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+        # 用連字號，唔用斜線。git ref 唔可以同時存在 `refs/heads/codex` 同
+        # `refs/heads/codex/release-…` —— 2026-09-04 呢個 repo 就係咁：
+        # 一個已完全 merge 入 main 嘅 `codex` 分支封住咗成個 `codex/` 命名空間，
+        # 本地報 "fatal: 'refs/heads/codex' exists"，remote 報
+        # "remote rejected (directory file conflict)"。而 `git push --dry-run`
+        # **捉唔到** remote 邊 —— D/F 檢查喺 receive 嗰刻才做，所以 dry-run 報
+        # "[new branch]" 然後真 push 失敗。
+        #
+        # 呢個 repo 其餘 25 個分支全部用 `codex-…` 連字號，所以斜線本身就係
+        # 唯一嘅例外。改用連字號之後，任何一個叫 `codex` 嘅分支都封唔到我哋。
+        branch = "codex-release-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
         _git(repo, "checkout", "-b", branch)
 
     _git(repo, "add", "--", *selected)
