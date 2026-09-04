@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import json
+import importlib
 import re
 import subprocess
 import sys
@@ -101,28 +102,121 @@ DEFAULT_REPORT_NAMES = {
 }
 
 
-SCORE_LABELS = {
-    "form_score": "近況",
-    "trial_score": "試閘",
-    "sectional_score": "段速",
-    "pace_map_score": "步速形勢",
+# 呢個 dict 以前係手抄嘅，於是每次引擎加一個 leaf 就靜靜咁飄多一格。
+# 2026-09-04 實測 `2026-09-03 Warrnambool` 嘅生產報告：`pace_figure_score` 出現 5 次、
+# `performance_quality_score` 6 次、`rating_score` 2 次 —— 全部係原始英文 key 印咗
+# 落中文報告度（「短板 `performance_quality_score / 負磅`」）。`pace_figure_score`
+# 佔 11.49% 權重，正正係最值得睇嗰個。所以改成由兩邊引擎嘅 renderer 推導，
+# 手寫嗰份只留低引擎冇、但舊 CSV 仍然帶住嘅 legacy key。
+_LEGACY_SCORE_LABELS = {
     "speed_score": "速度",
-    "class_score": "班次",
-    "weight_score": "負磅",
-    "distance_score": "路程",
-    "track_score": "場地",
     "track_going_score": "場地狀況",
     "draw_score": "檔位",
-    "formline_score": "賽績線",
-    "consistency_score": "穩定性",
-    "health_score": "健康",
     "risk_score": "風險",
-    "confidence_score": "信心",
-    "trainer_score": "練馬師",
-    "jockey_score": "騎師",
-    "jockey_horse_fit_score": "人馬配搭",
     "speed_rating_score": "速度評級",
 }
+
+# 合成分唔係 factor。佢哋係模型自己嘅輸出，混入 factor_scores 之後會排喺
+# 前列，然後報告會寫「短板 final_rank_score」——「模型排佢低係因為模型排佢低」,
+# 一句冇資訊嘅循環論證。實測生產報告出現過一次。
+COMPOSITE_SCORE_KEYS = frozenset({
+    "ability_score",
+    "rank_score",
+    "pure_7d_score",
+    "base_7d_score",
+    "final_rank_score",
+    "composite_score",
+})
+
+
+def _strip_score_suffix(label: str) -> str:
+    # 引擎標籤帶「分」字尾（「近績分」），報告呢度想要短名（「近績」）。
+    return label[:-1].strip() if label.endswith("分") and len(label) > 1 else label
+
+
+def _engine_score_labels() -> dict[str, dict[str, str]]:
+    """Pull leaf labels from the AU and HKJC renderers instead of copying them.
+
+    Both engines are packages with colliding module names, so each import is
+    done with its own `scripts` dir on the path and popped straight after.
+    A missing engine is not fatal -- the reflector still runs for the other
+    domain, it just falls back to the legacy names.
+    """
+    labels: dict[str, dict[str, str]] = {}
+    engines = (
+        ("au", PROJECT_ROOT / ".agents/skills/au_racing/au_wong_choi_auto/scripts",
+         "au_racing_engine.renderer"),
+        ("hkjc", PROJECT_ROOT / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts",
+         "hkjc_racing_engine.renderer"),
+    )
+    for domain, scripts_dir, module_name in engines:
+        labels.setdefault(domain, {})
+        if not scripts_dir.exists():
+            continue
+        sys.path.insert(0, str(scripts_dir))
+        try:
+            module = importlib.import_module(module_name)
+            labels[domain].update({
+                key: _strip_score_suffix(value)
+                for key, value in (getattr(module, "FEATURE_LABELS", {}) or {}).items()
+            })
+        except Exception:
+            # Deliberately soft: a reflector that dies because a label lookup
+            # failed is worse than one that prints a raw key.
+            continue
+        finally:
+            if sys.path and sys.path[0] == str(scripts_dir):
+                sys.path.pop(0)
+    return labels
+
+
+_ENGINE_SCORE_LABELS = _engine_score_labels()
+
+# ⚠️ 兩個引擎有 2 個 key 同名唔同義 —— `class_score` AU 叫「級數」HKJC 叫「班次」，
+# `confidence_score` AU 叫「信心」HKJC 叫「資料完整度」。扁平合併會靜靜咁揀後
+# import 嗰個，令 AU 報告印 HKJC 嘅字。所以標籤要跟 domain 攞。
+def _merge_with_legacy(engine_table: dict[str, str]) -> dict[str, str]:
+    """Engine labels win; a legacy label that renders as the same word gets tagged.
+
+    AU renamed `draw_score` to `pace_map_score` on 2026-08-05 and both render
+    as 「檔位」, so an old CSV column and a live leaf would print identically and
+    「短板 檔位」 would not say which one was weak. Same concept, two names --
+    the recurring AU/HKJC divergence -- so mark the archival one rather than
+    dropping it, because old CSVs still carry it.
+    """
+    merged = dict(engine_table)
+    taken = set(engine_table.values())
+    for key, label in _LEGACY_SCORE_LABELS.items():
+        if key in merged:
+            continue
+        merged[key] = f"{label}（舊欄）" if label in taken else label
+    return merged
+
+
+SCORE_LABELS_BY_DOMAIN = {
+    domain: _merge_with_legacy(table)
+    for domain, table in _ENGINE_SCORE_LABELS.items()
+}
+
+# 冇 domain 嘅舊 caller 用得返，但撞名 key 就交返英文出去好過報錯字。
+# 一定要**用最終 per-domain 表**去計撞名，唔可以只比較兩個引擎 —— `track_going_score`
+# 就係只喺 HKJC 引擎有、AU 側跌返 legacy「場地狀況」而 HKJC 係「場地」，
+# 只比較引擎表嘅話捉唔到佢。
+_AMBIGUOUS_LABEL_KEYS = {
+    key
+    for key in set().union(*(set(t) for t in SCORE_LABELS_BY_DOMAIN.values()))
+    if len({t[key] for t in SCORE_LABELS_BY_DOMAIN.values() if key in t}) > 1
+}
+SCORE_LABELS = {
+    k: v
+    for t in SCORE_LABELS_BY_DOMAIN.values()
+    for k, v in t.items()
+    if k not in _AMBIGUOUS_LABEL_KEYS
+}
+
+
+def score_labels_for(domain: str | None) -> dict[str, str]:
+    return SCORE_LABELS_BY_DOMAIN.get((domain or "").lower(), SCORE_LABELS)
 
 
 SUGGESTION_DESCRIPTIONS = {
@@ -469,7 +563,7 @@ def load_prediction_rows(meeting_dir: Path, platform: str) -> dict[int, list[dic
                 factor_scores = {
                     key: _to_float(value)
                     for key, value in row.items()
-                    if key.endswith("_score") and key not in {"ability_score", "rank_score"}
+                    if key.endswith("_score") and key not in COMPOSITE_SCORE_KEYS
                 }
                 by_race[race_num].append(
                     {
@@ -512,13 +606,14 @@ def label_rank(label: str) -> int:
     return order.get(label, 0)
 
 
-def summarize_factors(row: dict[str, Any]) -> tuple[list[str], list[str]]:
+def summarize_factors(row: dict[str, Any], domain: str | None = None) -> tuple[list[str], list[str]]:
+    labels = score_labels_for(domain)
     factors = [(name, score) for name, score in row.get("factor_scores", {}).items() if score is not None]
     if not factors:
         return [], []
     factors.sort(key=lambda item: item[1], reverse=True)
-    strengths = [SCORE_LABELS.get(name, name) for name, _score in factors[:3]]
-    weaknesses = [SCORE_LABELS.get(name, name) for name, _score in sorted(factors, key=lambda item: item[1])[:3]]
+    strengths = [labels.get(name, name) for name, _score in factors[:3]]
+    weaknesses = [labels.get(name, name) for name, _score in sorted(factors, key=lambda item: item[1])[:3]]
     return strengths, weaknesses
 
 
@@ -530,15 +625,24 @@ def derive_improvement_theme(row: dict[str, Any]) -> tuple[str, str]:
         reverse=True,
     )
     keys = [name for name, _score in ranked[:4]]
-    if any(name in keys for name in ("class_score", "distance_score", "weight_score", "formline_score")):
+    if any(name in keys for name in ("class_score", "distance_score", "weight_score",
+                                     "formline_score", "rating_score")):
         return "class_distance", "加強班次 / 路程 / form line interpretation"
     if any(name in keys for name in ("draw_score", "pace_map_score", "track_score", "track_going_score")):
         return "draw_pace", "細化檔位 / 步速 / 場地偏差 context"
     if any(name in keys for name in ("trainer_score", "jockey_score", "jockey_horse_fit_score")):
         return "jockey_trainer", "加強騎師 / 練馬師 / 人馬配搭權重"
-    if any(name in keys for name in ("sectional_score", "speed_score", "trial_score", "speed_rating_score")):
+    # 2026-09-04：呢條梯本身都係手抄嘅，`pace_figure_score`（11.49% 權重）、
+    # `preparation_score`（試閘備戰維度）、`performance_quality_score`、
+    # `rating_score` 四個都冇喺任何一格，所以佢哋做主導 factor 嗰陣一律跌落
+    # "general"（「微調綜合戰力分矩陣權重」）—— 即係最無用嗰個建議。
+    if any(name in keys for name in ("sectional_score", "speed_score", "trial_score",
+                                     "speed_rating_score", "pace_figure_score",
+                                     "preparation_score")):
         return "sectional", "加強段速 / 試閘 / 速度訊號"
-    if any(name in keys for name in ("consistency_score", "form_score", "health_score", "risk_score")):
+    if any(name in keys for name in ("consistency_score", "form_score", "health_score",
+                                     "risk_score", "performance_quality_score",
+                                     "confidence_score")):
         return "stability", "改善近況 / 穩定性 / 風險寬恕"
     return "general", "微調綜合戰力分矩陣權重"
 
@@ -567,6 +671,7 @@ def analyse_missed_horse(
     actual_row: dict[str, Any],
     prediction_rows: list[dict[str, Any]],
     incident_text: str,
+    domain: str | None = None,
 ) -> dict[str, Any]:
     prediction_map = {row["horse_no"]: row for row in prediction_rows}
     candidate = prediction_map.get(actual_row["horse_no"])
@@ -581,7 +686,7 @@ def analyse_missed_horse(
             "suggestion_text": "先補齊 scoring / archive artifacts，再評估是否屬模型問題。",
         }
 
-    strengths, weaknesses = summarize_factors(candidate)
+    strengths, weaknesses = summarize_factors(candidate, domain)
     theme, theme_text = derive_improvement_theme(candidate)
     third_score = prediction_rows[2]["composite_score"] if len(prediction_rows) >= 3 else None
     gap = None if third_score is None else round(float(third_score) - float(candidate["composite_score"] or 0.0), 3)
@@ -752,7 +857,7 @@ def build_race_performances(
         incident_text = structured_results.get(race_num, {}).get("incident_report", "")
         incident_analysis = analyse_race_incidents(platform, model_top3, actual_top3_view, incident_text)
         missed_horses = [
-            analyse_missed_horse(row, prediction_list, incident_text)
+            analyse_missed_horse(row, prediction_list, incident_text, platform)
             for row in actual_top3
             if row["horse_no"] not in {pick["horse_no"] for pick in model_top3}
         ]
