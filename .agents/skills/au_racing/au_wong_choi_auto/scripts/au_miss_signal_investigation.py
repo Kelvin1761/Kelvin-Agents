@@ -14,28 +14,15 @@ from au_archive_calibrator import (
     load_historical_results,
 )
 from au_zero_hit_race_audit import field_size_bucket, race_class_bucket
+from au_racing_engine.renderer import FEATURE_LABELS as ENGINE_FEATURE_LABELS
 
 
 OUTPUT_MD = ARCHIVE_ROOT / "AU_Miss_Signal_Investigation.md"
 
-FEATURE_LABELS = {
-    "form_score": "近績",
-    "trial_score": "試閘",
-    "sectional_score": "段速",
-    "pace_map_score": "形勢",
-    "jockey_score": "騎師",
-    "trainer_score": "練馬師",
-    "jockey_horse_fit_score": "人馬配搭",
-    "class_score": "級數",
-    "rating_score": "Rating",
-    "weight_score": "負磅",
-    "distance_score": "路程",
-    "track_score": "場地",
-    "formline_score": "賽績線",
-    "consistency_score": "穩定",
-    "health_score": "備戰",
-    "confidence_score": "信心",
-}
+# 2026-09-04：呢個清單以前係手抄嘅，凍結咗喺 2026-08 之前嘅引擎（16 個 leaf / 7 個維度，仲有已退役嘅 race_shape 同 form_line）。
+# 由引擎攞，唔好再抄 —— 抄咗嘅版本唔會報錯，只會靜靜咁少計幾個 leaf，
+# 然後你會攞住個結論話「呢個維度冇貢獻」。
+FEATURE_LABELS = dict(ENGINE_FEATURE_LABELS)
 
 
 def avg(values: list[float]) -> float:

@@ -21,6 +21,7 @@ sys.path.append(str(AUTO_SCRIPT_DIR))
 
 from au_racing_engine.matrix_mapper import MATRIX_FORMULAS  # noqa: E402
 from au_racing_engine.scoring import MATRIX_WEIGHTS, clip_score  # noqa: E402
+from au_racing_engine.scoring import FEATURE_KEYS as ENGINE_FEATURE_KEYS  # noqa: E402
 from au_metric_contract import ranked_performance  # noqa: E402
 
 
@@ -53,24 +54,10 @@ RESULTS_CSV = au_historical_results_csv(ARCHIVE_ROOT)
 OUTPUT_MD = ARCHIVE_ROOT / "AU_ML_Matrix_Diagnostics.md"
 
 MATRIX_KEYS = tuple(MATRIX_FORMULAS.keys())
-FEATURE_KEYS = (
-    "form_score",
-    "trial_score",
-    "sectional_score",
-    "pace_map_score",
-    "jockey_score",
-    "trainer_score",
-    "jockey_horse_fit_score",
-    "class_score",
-    "rating_score",
-    "weight_score",
-    "distance_score",
-    "track_score",
-    "formline_score",
-    "consistency_score",
-    "health_score",
-    "confidence_score",
-)
+# 2026-09-04：呢個清單以前係手抄嘅，凍結咗喺 2026-08 之前嘅引擎（16 個 leaf / 7 個維度，仲有已退役嘅 race_shape 同 form_line）。
+# 由引擎攞，唔好再抄 —— 抄咗嘅版本唔會報錯，只會靜靜咁少計幾個 leaf，
+# 然後你會攞住個結論話「呢個維度冇貢獻」。
+FEATURE_KEYS = tuple(ENGINE_FEATURE_KEYS)
 BM_BUCKETS = {"BM58-70", "BM72-84", "BM88+"}
 RACECARD_HORSE_RE = re.compile(r"^\d+\.\s+(.+?)\s+\((\d+)\)$")
 RACECARD_META_RE = re.compile(

@@ -9,20 +9,20 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from statistics import mean
+PROJECT_ROOT = Path(__file__).resolve().parents[5]
+sys.path.insert(0, str(PROJECT_ROOT / ".agents/skills/au_racing/"
+                      "au_wong_choi_auto/scripts"))
+from au_racing_engine.scoring import MATRIX_WEIGHTS as ENGINE_MATRIX_WEIGHTS  # noqa: E402
 
 
-MATRIX_KEYS = (
-    "stability",
-    "pace_perf",
-    "race_shape",
-    "jockey_trainer",
-    "class_weight",
-    "track",
-    "form_line",
-)
+# 2026-09-04：呢個清單以前係手抄嘅，凍結咗喺 2026-08 之前嘅引擎（16 個 leaf / 7 個維度，仲有已退役嘅 race_shape 同 form_line）。
+# 由引擎攞，唔好再抄 —— 抄咗嘅版本唔會報錯，只會靜靜咁少計幾個 leaf，
+# 然後你會攞住個結論話「呢個維度冇貢獻」。
+MATRIX_KEYS = tuple(ENGINE_MATRIX_WEIGHTS)
 
 
 def _ranked(rows: list[dict]) -> list[dict]:
