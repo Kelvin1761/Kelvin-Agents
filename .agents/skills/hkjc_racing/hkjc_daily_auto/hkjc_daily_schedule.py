@@ -513,6 +513,40 @@ def mirror_results_database(db_root: Path) -> dict:
             "copied": copied, "failed": len(failures)}
 
 
+DATA_CONTRACT = (PROJECT_ROOT / ".agents" / "skills" / "shared_racing"
+                 / "scripts" / "data_contract.py")
+
+
+def check_data_contract(meeting_dir: Path) -> list[str]:
+    """Field-level contract for this meeting; returns blocking dead-field lines.
+
+    AU has run this before publishing since 2026-08-22, when ten meetings scored
+    with `pace_figure_score` flat at 60 -- 12.2% of the ranking weight silently
+    dead -- while extraction reported success, every suite was green and the logs
+    were clean. HKJC had no equivalent: `health_status()` is a Telegram string
+    that gates nothing. The contract already supports `--platform hkjc`; only
+    the wiring was missing.
+
+    ⚠️ Only DEAD fields block (nearly every runner neutral on a field the
+    baseline says normally carries values). Thin small-field data warns only --
+    a gate that blocks normal days is a gate someone eventually switches off.
+    """
+    if not DATA_CONTRACT.exists():
+        log("data_contract.py 唔見咗 —— 今次冇跑欄位級合約")
+        return []
+    if not list(meeting_dir.glob("Race_*_Logic.json")):
+        return []
+    rc, out = run_cmd([sys.executable, str(DATA_CONTRACT), "--platform", "hkjc",
+                       "--meeting", str(meeting_dir), "--gate"], timeout=300)
+    dead = [line.strip() for line in (out or "").splitlines() if "dead-field" in line]
+    if rc != 0:
+        return [f"{meeting_dir.name}: {line}" for line in (dead or [f"exit={rc}"])]
+    if dead:
+        # Gate passed but a dead line slipped through: surface, do not swallow.
+        log(f"{meeting_dir.name}: 合約有 dead-field 但閘放行：{dead[0]}")
+    return []
+
+
 def build_dashboard_snapshot(*meeting_dirs: Path) -> Path | None:
     """Live projection + this meeting -> a snapshot for `deploy.sh` to publish.
 
@@ -695,6 +729,13 @@ def run_prerace(
     except Exception as exc:  # noqa: BLE001
         notify(f"❌ HKJC prediction evidence 寫入失敗，Dashboard 已攔截：{exc}")
         set_control_outcome("failed", reason="prediction_evidence_failed")
+        return EXIT_FAILED
+    blocking = check_data_contract(meeting_dir)
+    if blocking:
+        notify("⛔ HKJC 發佈已攔｜"
+               f"{meeting['date']} {meeting['venue']}\n"
+               "欄位級合約發現死欄位，唔會上板：\n" + "\n".join(blocking[:4]))
+        set_control_outcome("failed", reason="data_contract_dead_field", meeting=key)
         return EXIT_FAILED
     snapshot_for_deploy = build_dashboard_snapshot(meeting_dir)
     deploy_env = ({"WC_DASHBOARD_BASE_SNAPSHOT": str(snapshot_for_deploy)}
