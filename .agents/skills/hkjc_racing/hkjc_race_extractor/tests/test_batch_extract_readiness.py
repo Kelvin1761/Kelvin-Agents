@@ -29,13 +29,16 @@ def test_failed_refresh_preserves_last_valid_artifact(tmp_path: Path) -> None:
     old = "馬號: 1\n馬名: 測試馬\n" + ("valid formguide " * 20)
     path.write_text(old, encoding="utf-8")
 
-    ok, error = batch._keep_valid_candidate(
+    ok, error, state = batch._keep_valid_candidate(
         str(path), "沒有賽績紀錄", "Formguide", 1, 0
     )
 
     assert ok is False
     assert "not published/ready" in error
     assert path.read_text(encoding="utf-8") == old
+    # 保留咗有效檔 ≠ 冇數據。呢個分別要傳到警報，見
+    # hkjc_daily_auto/tests/test_readiness_states.py。
+    assert state == "kept"
 
 
 def test_formguide_headers_without_runner_rows_are_not_ready() -> None:

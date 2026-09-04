@@ -83,13 +83,32 @@ def _content_error(content, label, race_no):
 
 
 def _keep_valid_candidate(path, content, label, race_no, returncode):
-    """Validate before replace; failed refreshes never destroy last good data."""
+    """Validate before replace; failed refreshes never destroy last good data.
+
+    Returns ``(fresh_ok, error, state)`` where ``state`` is what the artifact
+    actually is after this run:
+
+      ``fresh``    this run scraped valid content and wrote it
+      ``kept``     this run failed, but the file already on disk is still valid
+      ``missing``  there is no valid data for this race at all
+
+    `fresh_ok` (the publish gate) stays as strict as before: only ``fresh``
+    counts, because a formguide can change up to race day and analysing a
+    stale one silently is worse than waiting.  The three-way `state` exists so
+    the **alert** can stop conflating ``kept`` with ``missing`` — 2026-09-05
+    the 09-06 ShaTin notice read "未齊：R1賽績、R2賽績、R3賽績" when all three
+    files were on disk and complete (14.5 / 12.7 / 12.5 formline rows per
+    runner, the richest on the card); HKJC had merely returned no runner rows
+    for that one refresh.  Same shape on 09-04 (8/10).  A reader cannot act on
+    an alert that says the same thing whether the data is there or gone.
+    """
     error = _content_error(content, label, race_no)
     if returncode == 0 and error is None:
         _atomic_write_text(path, content)
-        return True, None
+        return True, None, 'fresh'
     if returncode != 0 and error is None:
         error = f"{label} R{race_no}: extractor exit={returncode}"
+    state = 'missing'
     # Remove only an already-invalid artifact left by an older non-atomic run.
     if os.path.exists(path):
         try:
@@ -97,9 +116,11 @@ def _keep_valid_candidate(path, content, label, race_no, returncode):
                 existing_error = _content_error(handle.read(), label, race_no)
             if existing_error:
                 os.unlink(path)
+            else:
+                state = 'kept'
         except OSError:
             pass
-    return False, error
+    return False, error, state
 
 
 
@@ -131,7 +152,8 @@ def derive_urls(base_url, race_no):
 def extract_single_race(race_no, base_url, output_dir, date_prefix):
     """Extract racecard + formguide for a single race."""
     racecard_url, formguide_url = derive_urls(base_url, race_no)
-    results = {'race': race_no, 'racecard_ok': False, 'formguide_ok': False, 'errors': []}
+    results = {'race': race_no, 'racecard_ok': False, 'formguide_ok': False,
+               'racecard_state': 'missing', 'formguide_state': 'missing', 'errors': []}
 
     # Racecard
     rc_file = os.path.join(output_dir, f"{date_prefix} Race {race_no} 排位表.md")
@@ -141,10 +163,11 @@ def extract_single_race(race_no, base_url, output_dir, date_prefix):
             capture_output=True, text=True, timeout=60,
             encoding='utf-8', env=SUBPROCESS_ENV
         )
-        ok, error = _keep_valid_candidate(
+        ok, error, state = _keep_valid_candidate(
             rc_file, rc_result.stdout or '', 'Racecard', race_no, rc_result.returncode
         )
         results['racecard_ok'] = ok
+        results['racecard_state'] = state
         if not ok:
             results['errors'].append(error or f"Racecard R{race_no}: {rc_result.stderr[:200]}")
     except Exception as e:
@@ -162,10 +185,11 @@ def extract_single_race(race_no, base_url, output_dir, date_prefix):
         lines = fg_result.stdout.splitlines(keepends=True)
         filtered = [l for l in lines if "Extracting form guide using Playwright" not in l]
         content = ''.join(filtered)
-        ok, error = _keep_valid_candidate(
+        ok, error, state = _keep_valid_candidate(
             fg_file, content, 'Formguide', race_no, fg_result.returncode
         )
         results['formguide_ok'] = ok
+        results['formguide_state'] = state
         if not ok:
             results['errors'].append(error or f"Formguide R{race_no}: {fg_result.stderr[:200]}")
     except Exception as e:
@@ -305,8 +329,10 @@ def main():
             result = future.result()
             all_results.append(result)
             race = result['race']
-            rc = "✅" if result['racecard_ok'] else "❌"
-            fg = "✅" if result['formguide_ok'] else "❌"
+            # ♻️ = 刷新失敗但碟上舊檔仍然有效；❌ = 真係冇有效數據。
+            marks = {'fresh': "✅", 'kept': "♻️", 'missing': "❌"}
+            rc = marks.get(result.get('racecard_state'), "❌")
+            fg = marks.get(result.get('formguide_state'), "❌")
             print(f"   Race {race}: Racecard {rc} | Formguide {fg}")
             for err in result['errors']:
                 print(f"      ⚠️ {err}")
@@ -315,8 +341,19 @@ def main():
     all_results.sort(key=lambda x: x['race'])
     total_rc = sum(1 for r in all_results if r['racecard_ok'])
     total_fg = sum(1 for r in all_results if r['formguide_ok'])
+    # `*_ok` counts a successful refresh; `*_valid` counts races that have
+    # usable data on disk afterwards (fresh + kept).  Both are needed: the gate
+    # wants the first, a human reading the alert wants the second.
+    def _valid(key):
+        return sum(1 for r in all_results
+                   if r.get(f'{key}_state', 'missing') in ('fresh', 'kept'))
+    valid_rc, valid_fg = _valid('racecard'), _valid('formguide')
     print()
-    print(f"📊 Summary: {total_rc}/{len(races)} racecards | {total_fg}/{len(races)} formguides")
+    print(f"📊 Summary: {total_rc}/{len(races)} racecards | {total_fg}/{len(races)} formguides"
+          f" (refreshed)")
+    if valid_rc != total_rc or valid_fg != total_fg:
+        print(f"   ↳ 碟上有效: {valid_rc}/{len(races)} racecards | {valid_fg}/{len(races)} formguides"
+              f" —— 差額係刷新失敗但保留咗上次有效檔，唔係冇數據")
     if pdf_ok:
         print(f"   ✅ Starter PDF: OK")
     if tw_results['ok']:
@@ -335,6 +372,8 @@ def main():
         "starter_pdf_ready": pdf_ok,
         "racecards_ready": total_rc,
         "formguides_ready": total_fg,
+        "racecards_valid": valid_rc,
+        "formguides_valid": valid_fg,
         "trackwork_ready": tw_ok_count,
         "races": all_results,
         "self_recovery": "automatic_retry" if not ready else "not_needed",

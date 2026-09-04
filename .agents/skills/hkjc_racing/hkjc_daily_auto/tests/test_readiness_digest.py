@@ -34,9 +34,11 @@ def _write(tmp_path, **overrides):
 
 def test_digest_names_the_short_races_in_two_lines(tmp_path):
     digest = readiness_digest(_write(tmp_path))
+    # 呢個 fixture 冇 `*_state`（即係舊格式 readiness 檔）—— 分唔到就保守
+    # 當「冇有效檔」，唔可以靜靜當成保留檔而唔嗌。
     assert digest.splitlines() == [
         "排位表 10/10 · 賽績 8/10 · 晨操 10/10 · PDF ✅",
-        "未齊：R4賽績、R5賽績",
+        "冇有效檔（要人睇）：R4賽績、R5賽績",
     ]
     # The whole point: it has to stay short enough to survive intact.
     assert len(digest) < 200

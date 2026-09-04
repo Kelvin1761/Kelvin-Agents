@@ -615,16 +615,32 @@ def readiness_digest(meeting_dir: Path) -> str:
         f" · 晨操 {data.get('trackwork_ready', 0)}/{expected}"
         f" · PDF {'✅' if data.get('starter_pdf_ready') else '❌'}"
     ]
-    missing = []
+    # 上面幾個數係「今次刷新成功幾多場」。佢哋唔等於「有幾多場有數據」——
+    # `_keep_valid_candidate` 刷新失敗時會保留上次有效檔。2026-09-05 09-06 沙田
+    # 就係咁：警報寫「未齊：R1賽績、R2賽績、R3賽績」，但三份檔都喺碟上而且完整
+    # （每匹 14.5 / 12.7 / 12.5 條賽績線，全日最高），只係 HKJC 嗰一次回空
+    # runner rows。09-04 同一形狀（8/10）。所以下面要分開兩種狀態講：
+    #   ♻️ 刷新失敗但有舊有效檔 —— 分析照跑得，等下次重試就得
+    #   ❌ 完全冇有效檔       —— 真係要人睇
+    # 發佈閘本身冇放寬（仍然要全部 fresh 才 ready），只係唔再兩種都印同一句。
+    stale, gone = [], []
     for race in data.get("races") or []:
-        if not race.get("racecard_ok"):
-            missing.append(f"R{race.get('race')}排位")
-        if not race.get("formguide_ok"):
-            missing.append(f"R{race.get('race')}賽績")
-    if missing:
-        shown = "、".join(missing[:8])
-        more = f" 等 {len(missing)} 項" if len(missing) > 8 else ""
-        lines.append(f"未齊：{shown}{more}")
+        num = race.get("race")
+        for ok_key, state_key, label in (("racecard_ok", "racecard_state", "排位"),
+                                         ("formguide_ok", "formguide_state", "賽績")):
+            if race.get(ok_key):
+                continue
+            # 舊 readiness 檔冇 `*_state`；當時分唔到，保守當「冇」。
+            (stale if race.get(state_key) == "kept" else gone).append(f"R{num}{label}")
+
+    def _fold(items, cap=8):
+        shown = "、".join(items[:cap])
+        return shown + (f" 等 {len(items)} 項" if len(items) > cap else "")
+
+    if gone:
+        lines.append(f"冇有效檔（要人睇）：{_fold(gone)}")
+    if stale:
+        lines.append(f"刷新失敗但有舊有效檔（照跑得）：{_fold(stale)}")
     return "\n".join(lines)
 
 
