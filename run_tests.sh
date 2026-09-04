@@ -38,6 +38,10 @@ run_suite() {
 }
 
 run_suite "AU Wong Choi"        "$REPO_ROOT" .agents/skills/au_racing/au_wong_choi_auto/tests
+# 2026-09-04: same gap as the HKJC side had -- 295 AU tests existed and none of
+# them ran in the gate.
+run_suite "AU daily auto"       "$REPO_ROOT" .agents/skills/au_racing/au_daily_auto/tests
+run_suite "AU racing"           "$REPO_ROOT" .agents/skills/au_racing/tests
 run_suite "HKJC Wong Choi"      "$REPO_ROOT" .agents/skills/hkjc_racing/hkjc_wong_choi_auto/tests
 # 2026-09-04: these three directories existed but were never in the gate, so a
 # broken `test_prerace_writes_evidence_before_dashboard_deploy` sat red on main
