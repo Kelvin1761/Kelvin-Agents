@@ -995,8 +995,18 @@ def parse_hkjc_formguide(filepath: str) -> dict:
     return {'race_info': race_info, 'horses': horses}
 
 
-def compute_stats(races: list, today_venue: str = '', today_dist: int = 0) -> dict:
-    """Compute 賽績統計 from race history."""
+def compute_stats(races: list, today_venue: str = '', today_dist: int = 0,
+                  race_date: str = '') -> dict:
+    """Compute 賽績統計 from race history.
+
+    `race_date` (YYYY-MM-DD, the meeting date) anchors two things that used to
+    be silently wrong:
+
+      1. 休後復出 —— see the days_since_last block below.
+      2. 季內 —— the season boundary used `datetime.now()`, so re-generating an
+         April meeting in September computed season_start=2026-09-01 and zeroed
+         every horse's season record. Live runs were fine; every replay was not.
+    """
     stats = {
         'recent_6': [],
         'days_since_last': 0,
@@ -1011,11 +1021,30 @@ def compute_stats(races: list, today_venue: str = '', today_dist: int = 0) -> di
     # Recent 6 finishing positions
     stats['recent_6'] = [r['finish'] for r in races[:6]]
     
-    # Days since last race
-    stats['days_since_last'] = races[0].get('days_since', 0)
-    
-    # Current season check (Sep-Jul)
-    today = datetime.now()
+    # Days since last race —— (今仗日期 − 上仗日期)。
+    #
+    # 曾經寫 `races[0].get('days_since')`，但賽績檔嗰個 `日數:` 係**該仗同上一
+    # 仗之間**嘅間隔（`[1] 26/04/2026 | 日數: 20` = 06/04→26/04 隔 20 日），
+    # 唔係距今日數。錯咗一整格。實測 3,438 個 runner 有 66.5% 個值係錯：賽季
+    # 中間中位只差 +3 日，但季初／休賽後差 +41 日（2026-09-06 嘉應高昇 20 vs
+    # 排位表 133），觸發引擎 `days_gt_75_pen` 嘅馬由 2 匹變 28 匹（117 匹）。
+    stats['days_since_last'] = 0
+    last_dt = races[0].get('date_dt')
+    anchor = None
+    if race_date:
+        try:
+            anchor = datetime.strptime(race_date, '%Y-%m-%d')
+        except ValueError:
+            anchor = None
+    if anchor is None:
+        anchor = datetime.now()
+    if last_dt:
+        delta = (anchor - last_dt).days
+        if delta >= 0:
+            stats['days_since_last'] = delta
+
+    # Current season check (Sep-Jul) —— anchored on the meeting date, not now().
+    today = anchor
     if today.month >= SEASON_START_MONTH:
         season_start = datetime(today.year, SEASON_START_MONTH, 1)
     else:
@@ -1617,7 +1646,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
                           today_dist: int = 0, race_class: str = 'C4',
                           profile_data: dict = None,
                           form_lines_data: dict = None,
-                          race_num: int = 0) -> str:
+                          race_num: int = 0, race_date: str = '') -> str:
     """Generate full fact anchor + forensic block for one horse.
     
     Args:
@@ -1663,7 +1692,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
         return '\n'.join(lines)
     
     # === 賽績總結 ===
-    stats = compute_stats(races, today_venue, today_dist)
+    stats = compute_stats(races, today_venue, today_dist, race_date)
     
     recent_str = '-'.join(str(p) for p in stats['recent_6'])
     season_str = f"({stats['season'][0]}-{stats['season'][1]}-{stats['season'][2]}-{stats['season'][3]})"
@@ -2437,7 +2466,7 @@ def main():
     for horse in data['horses']:
         profile = profiles.get(horse['num'])
         fl_data = form_lines_map.get(horse['num'])
-        block = generate_horse_block(horse, today_venue, today_dist, race_class, profile, fl_data, race_num=race_num)
+        block = generate_horse_block(horse, today_venue, today_dist, race_class, profile, fl_data, race_num=race_num, race_date=race_date)
         output_lines.append(block)
         output_lines.append(f"")
         output_lines.append(f"{'─' * 70}")

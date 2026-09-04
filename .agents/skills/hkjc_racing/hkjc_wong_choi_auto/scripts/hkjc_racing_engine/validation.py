@@ -5,11 +5,14 @@ from pathlib import Path
 from .matrix_mapper import matrix_formula_manifest
 from .scoring import (
     DEBUT_MATRIX_WEIGHTS,
+    DISPLAY_SCALE,
     FEATURE_KEYS,
     GRADE_THRESHOLDS,
     MATRIX_WEIGHTS,
     SCORING_CONTRACT_VERSION,
     compute_grade,
+    dimension_display_manifest,
+    to_display_scale,
 )
 
 
@@ -81,6 +84,10 @@ def validate_logic_data(logic_data: dict) -> list[str]:
         ]
         if contract.get("grade_thresholds") != expected_thresholds:
             errors.append("SCHEMA-010 run contract grade thresholds mismatch")
+        if contract.get("display_scale") != dict(DISPLAY_SCALE):
+            errors.append("SCHEMA-014 run contract display scale mismatch")
+        if contract.get("dimension_display_scale") != dimension_display_manifest():
+            errors.append("SCHEMA-015 run contract dimension display scale mismatch")
     horses = logic_data.get("horses", {})
     scored = []
     for horse_num, horse in horses.items():
@@ -127,8 +134,16 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
             errors.append(f"MATRIX-001 horse {horse_num} {key} missing narrative reasoning")
 
     ability = auto.get("ability_score")
+    # 維度公式核對一定要用**原始尺**。`ability_score` 由 2026-09-04 起係顯示尺
+    # （見 scoring.DISPLAY_SCALE），拿佢同維度加權和比就永遠唔對。舊 Logic 冇
+    # `ability_score_raw`，嗰陣 `ability_score` 本身就係原始尺，所以缺就退回佢。
+    ability_raw = auto.get("ability_score_raw")
+    if ability_raw is None:
+        ability_raw = ability
     if not _in_range(ability):
         errors.append(f"SCORE-003 horse {horse_num} ability outside 0-100: {ability}")
+    elif not _in_range(ability_raw):
+        errors.append(f"SCORE-003 horse {horse_num} raw ability outside 0-100: {ability_raw}")
     else:
         reason_codes = auto.get("reason_codes", [])
         is_debut = any("debut" in str(code).lower() for code in reason_codes)
@@ -138,14 +153,22 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
             for key, weight in weights.items()
         )
         try:
+            # SIP boost 亦係原始尺（見 hkjc_auto_orchestrator._apply_sip_enhancements）。
             expected += sum(
                 float(flag.get("boost", 0) or 0)
                 for flag in (auto.get("sip_flags") or [])
             )
         except (AttributeError, TypeError, ValueError):
             errors.append(f"SCORE-006 horse {horse_num} invalid SIP flags")
-        if abs(float(ability) - expected) > 0.05:
-            errors.append(f"SCORE-004 horse {horse_num} ability formula mismatch: {ability} != {expected:.2f}")
+        if abs(float(ability_raw) - expected) > 0.05:
+            errors.append(f"SCORE-004 horse {horse_num} ability formula mismatch: {ability_raw} != {expected:.2f}")
+        # 顯示尺一定要真係由原始尺換算返出嚟，唔准兩個數各行各路。
+        expected_display = to_display_scale(float(ability_raw))
+        if expected_display is not None and abs(float(ability) - expected_display) > 0.05:
+            errors.append(
+                f"SCORE-007 horse {horse_num} display scale mismatch: "
+                f"{ability} != {expected_display:.2f}"
+            )
     if _in_range(ability) and auto.get("grade") != compute_grade(float(ability)):
         errors.append(f"SCORE-005 horse {horse_num} grade mismatch")
 
@@ -279,11 +302,13 @@ def _validate_verdict(logic_data: dict, scored: list[tuple[str, dict]]) -> list[
     errors = []
     ranked = verdict.get("ranking", [])
     for item in ranked:
+        # rank_score 係**原始尺**（顯示尺 round 到 2dp 之後會撞同分，見
+        # renderer._raw_score）。冇 raw 嘅舊 verdict 就同 ability_score 比。
         rank_score = float(item.get("rank_score", item.get("ability_score", -1)))
-        ability_score = float(item.get("ability_score", -1))
-        if abs(rank_score - ability_score) > 0.0001:
+        reference = item.get("ability_score_raw", item.get("ability_score", -1))
+        if abs(rank_score - float(reference)) > 0.0001:
             errors.append(
-                f"VERDICT-004 horse {item.get('horse_number')} rank_score must equal ability_score"
+                f"VERDICT-004 horse {item.get('horse_number')} rank_score must equal raw ability score"
             )
     ordered_pairs = [
         (

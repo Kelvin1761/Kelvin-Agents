@@ -88,6 +88,13 @@ def load_engine(engine_dir: Path):
         "feature_labels": dict(getattr(renderer, "FEATURE_LABELS", {})),
         "matrix_roles": dict(getattr(renderer, "MATRIX_ROLES", {}) or {}),
         "grades": tuple(scoring.GRADE_THRESHOLDS),
+        # HKJC 有顯示尺（綜合分 + 逐維度）；AU 冇，所以 getattr 預設空。
+        "display_scale": dict(getattr(scoring, "DISPLAY_SCALE", {}) or {}),
+        "dimension_display": {
+            "centres": dict(getattr(scoring, "MATRIX_DISPLAY_CENTRES", {}) or {}),
+            "gains": dict(getattr(scoring, "MATRIX_DISPLAY_GAINS", {}) or {}),
+            "target_sd": getattr(scoring, "MATRIX_DISPLAY_TARGET_SD", None),
+        },
         "ability_label": getattr(renderer, "ABILITY_LABEL", "綜合戰力分"),
         "feature_keys": tuple(getattr(scoring, "FEATURE_KEYS", ())),
         "report_only_keys": tuple(getattr(scoring, "REPORT_ONLY_FEATURE_KEYS", ()) or ()),
@@ -397,6 +404,36 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
     A("")
     A("Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grade 而換位。")
     A("")
+    ds = model.get("display_scale") or {}
+    if ds:
+        slope = ds["target_sd"] / ds["observed_sd"]
+        A(f"### {model['ability_label']}同維度分都係顯示尺")
+        A("")
+        A("七個維度加權平均出嚟嘅係**原始分**，佢永遠困喺各維度自己嘅範圍之內 ——")
+        A(f"實測 {ds['sample']:,} 匹馬只佔 50–77 分，所以上面由 A 到 S+ 六級曾經係")
+        A("**數學上到唔到**（一隻六戰全勝、官方評分高過全場 33 分嘅馬只讀到「B+ 中上游」）。")
+        A("所以報告印出嚟嘅綜合分係一條仿射變換：")
+        A("")
+        A(f"    顯示分 = {ds['anchor']} + {slope:.4f} × (原始分 − {ds['centre']})")
+        A("")
+        dd = model.get("dimension_display") or {}
+        if dd.get("gains"):
+            A("**逐個維度亦有自己一把尺。** 七個維度嘅原始 SD 由 3.47 到 12.26（差 3.5 倍），")
+            A("但 band 門檻（✅✅ 85 / ✅ 70 / ➖ 55 / ❌ 40）係同一套 —— 所以五個維度永遠")
+            A("出唔到 ✅✅，「馬匹健康」連 ❌ 都出唔到，「賽績線」永遠出唔到 ❌。校正式：")
+            A("")
+            A(f"    維度顯示分 = 60 + gain × (維度原始分 − centre)　（目標 SD {dd['target_sd']}）")
+            A("")
+            A("| 維度 | centre（實測中位） | gain |")
+            A("|:---|---:|---:|")
+            labels = model.get("matrix_labels", {})
+            for key in sorted(dd["gains"], key=lambda k: -model["weights"].get(k, 0)):
+                A(f"| {labels.get(key, key)} | {dd['centres'][key]} | {dd['gains'][key]} |")
+            A("")
+        A("**兩把尺都唔加任何資訊，亦唔改任何排名** —— 斜率全部正數、全體同一條式，")
+        A("排名讀嘅係原始分（`ability_score_raw` / `matrix_scores`）。金樣本、單元測試")
+        A("同 run contract 三邊都守住呢一點。")
+        A("")
 
     # ── 4. debut / report-only ──
     if model["debut_weights"]:

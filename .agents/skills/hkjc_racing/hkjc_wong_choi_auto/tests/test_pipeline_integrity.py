@@ -27,6 +27,7 @@ import create_hkjc_logic_skeleton as skeleton
 import hkjc_auto_orchestrator as auto
 import hkjc_orchestrator as main
 from hkjc_racing_engine import engine_core
+from hkjc_racing_engine import scoring as auto_scoring
 from hkjc_racing_engine import live_priors
 import rescore_backtest
 import review_auto_weighting
@@ -473,15 +474,20 @@ class PipelineIntegrityTests(unittest.TestCase):
         )
 
     def test_validation_checks_ability_formula_even_with_sip_boost(self) -> None:
+        """SIP boost 係加落**原始尺**，顯示尺再由原始尺換算——同
+        `hkjc_auto_orchestrator._apply_sip_enhancements` 一樣。"""
         logic = _minimal_logic()
         horse_auto = RacingEngine(
             logic["horses"]["1"], logic["race_analysis"]
         ).analyze_horse()
-        base_score = horse_auto["ability_score"]
+        base_raw = horse_auto["ability_score_raw"]
         horse_auto["sip_flags"] = [
-            {"reason": "fixture", "boost": 1.0, "original_score": base_score}
+            {"reason": "fixture", "boost": 1.0, "original_score_raw": base_raw}
         ]
-        horse_auto["ability_score"] = round(base_score + 1.0, 2)
+        horse_auto["ability_score_raw"] = round(base_raw + 1.0, 2)
+        horse_auto["ability_score"] = round(
+            auto_scoring.to_display_scale(horse_auto["ability_score_raw"]), 2
+        )
         horse_auto["grade"] = auto.compute_grade(horse_auto["ability_score"])
         logic["horses"]["1"]["python_auto"] = horse_auto
         auto.ensure_verdict(logic)
@@ -491,11 +497,31 @@ class PipelineIntegrityTests(unittest.TestCase):
             " ".join(auto.validate_logic_data(logic)),
         )
 
-        horse_auto["ability_score"] = round(horse_auto["ability_score"] + 4.0, 2)
+        # 原始尺再偷加 4 分而 sip_flags 冇交代 → 公式核對要響。
+        horse_auto["ability_score_raw"] = round(horse_auto["ability_score_raw"] + 4.0, 2)
+        horse_auto["ability_score"] = round(
+            auto_scoring.to_display_scale(horse_auto["ability_score_raw"]), 2
+        )
         horse_auto["grade"] = auto.compute_grade(horse_auto["ability_score"])
         auto.ensure_verdict(logic)
         self.assertIn(
             "SCORE-004",
+            " ".join(auto.validate_logic_data(logic)),
+        )
+
+    def test_validation_catches_a_display_scale_that_does_not_match_the_raw(self) -> None:
+        """兩個尺各行各路 → SCORE-007。呢個係「顯示尺唔准變成第二個模型」嘅閘。"""
+        logic = _minimal_logic()
+        horse_auto = RacingEngine(
+            logic["horses"]["1"], logic["race_analysis"]
+        ).analyze_horse()
+        horse_auto["ability_score"] = round(horse_auto["ability_score"] + 6.0, 2)
+        horse_auto["grade"] = auto.compute_grade(horse_auto["ability_score"])
+        logic["horses"]["1"]["python_auto"] = horse_auto
+        auto.ensure_verdict(logic)
+        logic["python_auto_run_contract"] = auto.scoring_run_contract()
+        self.assertIn(
+            "SCORE-007",
             " ".join(auto.validate_logic_data(logic)),
         )
 

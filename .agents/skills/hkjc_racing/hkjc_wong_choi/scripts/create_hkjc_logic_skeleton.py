@@ -139,7 +139,7 @@ def parse_summary(block):
     m = re.search(r'\*\*統計:\*\*\s*(.+?)$', block, re.MULTILINE)
     if m:
         result['season_stats'] = m.group(1).strip()
-    
+
     # Extract wins/starts from career line: 生涯：N: W-P-S
     m = re.search(r'生涯：\s*(\d+)\s*[::∶]\s*(\d+)', block)
     if m:
@@ -180,12 +180,12 @@ def parse_summary(block):
             w, p, s, l = int(m_ss.group(1)), int(m_ss.group(2)), int(m_ss.group(3)), int(m_ss.group(4))
             result['starts'] = w + p + s + l
             result['wins'] = w
-    
+
     # Extract Last 10 recent form
     m = re.search(r'Last 10.*?[::∶]\s*`?([^`\n]+)`?', block)
     if m:
         result['recent_form'] = m.group(1).strip()
-    
+
     # Extract track/surface records
     m = re.search(r'好地[::∶]\s*([^\|\n]+)', block)
     if m:
@@ -273,39 +273,57 @@ def parse_trends(block):
 
 
 def parse_formline_table(block):
-    """Extract opponent performance from the formline table."""
+    """Extract opponent performance from the formline table.
+
+    個表係**一場一對手一行**：每場嘅第一個對手嗰行帶住 `#`／日期／賽事／我嘅名次，
+    第二、第三個對手（亞軍、季軍）嗰啲續行呢四欄係空白（見
+    `hkjc_profile_scraper.compute_form_lines` 點砌）。
+
+    舊 code 用 `int(cols[1])` 做「係唔係一行數據」嘅測試，所以**每一條續行都被
+    丟掉**：實測 37,265 條對手行只有 14,580 條（39.1%）入到 Logic，跌咗 60.9%。
+    而 `engine_core._formline_summary()` 個 docstring 寫住「EVERY notable past
+    opponent」，實際上係少於四成 —— 佢驅動 FL2 60 分封頂同賽績線敘述。
+
+    2026-09-06 R3 嘉應高昇就係典型：11 條對手行入到 Logic 只有 5 條，而被丟掉
+    嗰批正正係兩隻 ✅✅ 超強組（金鑽貴人、舉步生風），留低嘅係睇落最弱嘅亞軍。
+
+    續行改為承繼上一行嘅賽事欄位；一行只要有對手同強度評估就算數。
+    """
     results = []
     # Find the table under 🔗 **賽績線:**
     m = re.search(r'🔗 \*\*賽績線:\*\*.*?\n(\|[^\n]+\n\|[-| ]+\n)(.*?)(?=\n\n|\n💡|\Z)', block, re.DOTALL)
     if not m:
         return results
-    
+
     table_content = m.group(2).strip()
+    race_num = date = race_id = my_finish = ''
     for line in table_content.split('\n'):
         if not line.strip().startswith('|'):
             continue
         cols = [c.strip() for c in line.split('|')]
         # cols: ['', '#', '日期', '賽事', '我嘅名次', '對手', '後續比賽Class', '對手後續成績', '強度評估', '']
-        if len(cols) >= 9:
-            try:
-                int(cols[1]) # verify row num
-            except (ValueError, IndexError):
-                continue
-            
-            opponents = cols[5]
-            if "賽果查詢失敗" in opponents:
-                opponents = "未知"
-                
-            results.append({
-                'race_num': cols[1],
-                'date': cols[2],
-                'race_id': cols[3],
-                'my_finish': cols[4],
-                'opponents': opponents,
-                'next_class': cols[6],
-                'next_performance': cols[7],
-                'strength': cols[8]
-            })
+        if len(cols) < 9:
+            continue
+        if cols[1].isdigit():          # 新一場：更新賽事欄位
+            race_num, date, race_id, my_finish = cols[1], cols[2], cols[3], cols[4]
+        elif not race_num:             # 表頭／分隔線／未見過任何一場
+            continue
+        opponents = cols[5]
+        if not opponents or opponents == '對手':
+            continue
+        if "賽果查詢失敗" in opponents:
+            opponents = "未知"
+
+        results.append({
+            'race_num': race_num,
+            'date': date,
+            'race_id': race_id,
+            'my_finish': my_finish,
+            'opponents': opponents,
+            'next_class': cols[6],
+            'next_performance': cols[7],
+            'strength': cols[8]
+        })
     return results
 
 
@@ -316,7 +334,7 @@ def parse_overseas_races_table(block):
     m = re.search(r'🌍 \*\*海外賽績 \(來自 PDF\):\*\*.*?\n(\|[^\n]+\n\|[-| ]+\n)(.*?)(?=\n\n|\n💡|\n📊|\Z)', block, re.DOTALL)
     if not m:
         return results
-    
+
     table_content = m.group(2).strip()
     for line in table_content.split('\n'):
         if not line.strip().startswith('|'):
@@ -328,7 +346,7 @@ def parse_overseas_races_table(block):
                 int(cols[1]) # verify row num
             except (ValueError, IndexError):
                 continue
-            
+
             results.append({
                 'date': cols[2],
                 'track_dist': cols[3],
@@ -1682,7 +1700,7 @@ def build_skeleton(
             'formline_table': parse_formline_table(horse_block) if horse_block else [],
             'last_finish': last_finish,
             'last_margin': last_margin_val,
-            
+
             # ── 海外賽績 (來自 PDF) ──
             'pdf_overseas_races': parse_overseas_races_table(horse_block) if horse_block else [],
 
@@ -1726,7 +1744,7 @@ def build_skeleton(
         'disadvantages': '[FILL]',
         'evidence_step_0_14': '[FILL]',
         'underhorse': {'triggered': False, 'condition': '', 'reason': ''},
-        
+
         # ===== AUTO-ENRICHMENT (V3: auto-filled from Facts.md) =====
         'wins': wins,
         'starts': starts,

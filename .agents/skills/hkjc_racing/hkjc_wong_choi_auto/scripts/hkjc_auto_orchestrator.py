@@ -30,7 +30,7 @@ from hkjc_racing_engine.renderer import (
     render_meeting_csv,
     write_prepared_race_outputs,
 )
-from hkjc_racing_engine.scoring import compute_grade
+from hkjc_racing_engine.scoring import compute_grade, from_display_scale, to_display_scale
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -245,8 +245,12 @@ CLASS_RANK_MAP = {
 
 def _apply_sip_enhancements(horses):
     """
-    SIP-C: B- horse with light weight + good draw → +1.5 ability_score
-    SIP-A: C+/C/C- horse with ≥2 positive signals → +2.0 ability_score
+    SIP-C: B- horse with light weight + good draw → +1.0 (原始尺) ability_score
+
+    門檻同加幅一律用**原始加權總分**（`ability_score_raw`），唔用 grade 字串。
+    原本寫 `grade == "B-"`，所以 `GRADE_THRESHOLDS` 一改，SIP 觸發嘅係另一批馬
+    ——即係一個「純顯示」嘅改動會靜靜咁改排名。改用原始尺個窗（64 ≤ raw < 68，
+    等同舊 B- 帶）之後，SIP 對顯示尺完全免疫，實測 210 個觸發 bit-identical。
     """
     weights = []
     for h_obj in horses.values():
@@ -266,6 +270,11 @@ def _apply_sip_enhancements(horses):
             continue
         grade = auto.get("grade", "")
         ability_score = auto.get("ability_score", 0)
+        # 舊 Logic 冇 ability_score_raw，用逆函數還原（見 scoring.from_display_scale）。
+        raw = auto.get("ability_score_raw")
+        if raw is None:
+            raw = from_display_scale(ability_score)
+        raw = float(raw)
         weight = h_obj.get("weight")
         barrier = h_obj.get("barrier")
         try:
@@ -286,19 +295,24 @@ def _apply_sip_enhancements(horses):
         form = fs.get("form_score", 0)
         consist = fs.get("consistency_score", 0)
 
-        if grade == "B-" and is_light and is_good_draw:
+        # 64 ≤ raw < 68 = 舊 GRADE_THRESHOLDS 嘅 B- 帶，喺原始尺上面表達。
+        if 64.0 <= raw < 68.0 and is_light and is_good_draw:
             if speed >= 68 or (form >= 55 and consist >= 55):
                 boost = 1.0
                 reasons.append("輕磅+好檔+速度/穩定性(SIP-C)")
 
         if boost > 0:
-            new_score = round(ability_score + boost, 2)
+            new_raw = round(raw + boost, 4)
+            new_score = round(to_display_scale(new_raw), 2)
             auto["ability_score"] = new_score
+            auto["ability_score_raw"] = new_raw
             auto["grade"] = compute_grade(new_score)
             auto.setdefault("sip_flags", []).append({
                 "reason": "; ".join(reasons),
                 "boost": round(boost, 1),
+                "boost_scale": "raw",
                 "original_score": ability_score,
+                "original_score_raw": round(raw, 4),
                 "original_grade": grade,
             })
 

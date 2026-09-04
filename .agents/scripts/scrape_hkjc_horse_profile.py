@@ -548,18 +548,28 @@ def detect_gear_changes(entries: list[dict], today_gear: Optional[str] = None) -
 
 def compute_margin_trend(entries: list[dict]) -> dict:
     """Compute margin trend from numeric margins.
-    
-    - Decreasing margins → 📈收窄中 (getting closer to winner)
-    - Increasing margins → 📉擴大中 (falling further behind)
-    - Winner races (margin=0) counted as positive anchor
+
+    HKJC 個「頭馬距離」欄對**贏馬**印嘅係贏出距離（拉開亞軍幾多），對敗馬印嘅
+    係落後頭馬幾多。舊 code 唔理名次，一律當「落後距離」，所以贏得越大就被當
+    成輸得越多：2026-09-06 R3 嘉應高昇六戰六勝
+    （4-1/4→4-1/4→3-1/2→1-1/4→3-3/4→2-3/4）讀成「📉擴大中」拿 48 分，而同場
+    真正連敗嘅合夥奔馳（8/3/9/6/14/6）拿 76 分。
+
+    所以要**帶符號**：贏 = 負數（拉開對手），敗 = 正數（落後頭馬）。咁樣
+    delta < 0 才真正等於「進步中」。
+
+    註：`margin_trend_score` 2026-07-08 已剔出 7D 計分（同 stability 逐仗輸距
+    credit 重複），所以呢個修正只影響報告文字，唔改排名。
     """
     margins = []
     margin_strs = []
     for e in entries[:6]:
         m = e.get('margin_numeric')
         if m is not None:
-            margins.append(m)
-            margin_strs.append(e.get('margin_raw', ''))
+            won = e.get('placing') == 1
+            margins.append(-abs(m) if won else abs(m))
+            raw = e.get('margin_raw', '')
+            margin_strs.append(f"勝{raw}" if won and raw else raw)
     
     if len(margins) < 3:
         return {
@@ -595,6 +605,10 @@ def compute_margin_trend(entries: list[dict]) -> dict:
     else:
         trend = '📊波動'
         signal = '中性'
+    # 六仗全勝／近仗全勝：帶符號序列全負，講「收窄」係廢話，直接講贏幅。
+    if all(x < 0 for x in margins):
+        trend = '📈連勝中' if delta <= 0.5 else '📈連勝（贏幅收窄）'
+        signal = '正面'
     
     return {
         'trend': trend,

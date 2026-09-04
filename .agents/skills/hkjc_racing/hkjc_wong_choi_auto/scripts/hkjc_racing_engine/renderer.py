@@ -104,13 +104,17 @@ def ensure_verdict(logic_data: dict) -> dict:
                 "horse_number": str(num),
                 "horse_name": horse.get("horse_name", ""),
                 "ability_score": float(horse.get("python_auto", {}).get("ability_score", 0)),
+                "ability_score_raw": _raw_score(horse.get("python_auto", {})),
                 "grade": horse.get("python_auto", {}).get("grade", ""),
-                "rank_score": float(horse.get("python_auto", {}).get("ability_score", 0)),
+                # 排序一律用原始加權總分。顯示尺係仿射單調，本來唔會改次序，但
+                # 兩個數各自 round 到 2dp 之後，原始差 0.004 嘅兩匹馬可以喺顯示尺
+                # 撞成同分，跌落馬號 tiebreak —— 實測 274 場有 2 場中招。
+                "rank_score": _raw_score(horse.get("python_auto", {})),
             }
             for num, horse in horses.items()
             if isinstance(horse.get("python_auto"), dict)
         ],
-        key=lambda item: (-item["ability_score"], _horse_number_sort_key(item["horse_number"])),
+        key=lambda item: (-item["rank_score"], _horse_number_sort_key(item["horse_number"])),
     )
     # We no longer apply artificial tie-breakers or safety swaps.
     # The ML optimizer reached its 30.63% Good Rate peak by purely sorting the 綜合戰力分 (ability_score).
@@ -119,7 +123,7 @@ def ensure_verdict(logic_data: dict) -> dict:
         horse = horses[item["horse_number"]]
         auto = horse["python_auto"]
         auto["rank"] = idx
-        auto["rank_score"] = round(float(item.get("rank_score", auto.get("ability_score", 0))), 4)
+        auto["rank_score"] = round(float(item.get("rank_score", _raw_score(auto))), 4)
         auto["model_pick_status"] = _pick_status(idx, float(auto.get("ability_score", 0)), auto)
         auto["shadow_flags"] = _shadow_flag_candidates(horse, race_context, auto)
         item["rank"] = idx
@@ -371,6 +375,9 @@ def render_race_csv(logic_data: dict) -> str:
         *FEATURE_LABELS.keys(),
         *DERIVED_SCORE_KEYS,
         *(f"matrix_{key}" for key in MATRIX_LABELS),
+        # 原始尺 (matrix_*) 餵綜合分同權重工具；顯示尺 (matrixdisp_*) 係報告
+        # 同 band 讀嘅嗰把 —— 兩組都寫出嚟，唔好逼下游猜。
+        *(f"matrixdisp_{key}" for key in MATRIX_LABELS),
     ]
     writer = csv.DictWriter(output, fieldnames=fields)
     writer.writeheader()
@@ -399,6 +406,11 @@ def render_race_csv(logic_data: dict) -> str:
         row.update({
             f"matrix_{key}": value
             for key, value in (auto.get("matrix_scores") or {}).items()
+        })
+        # 顯示尺另開一組欄，唔覆蓋原始尺（權重／消融工具讀 matrix_* 嗰組）。
+        row.update({
+            f"matrixdisp_{key}": value
+            for key, value in (auto.get("matrix_scores_display") or {}).items()
         })
         writer.writerow(row)
     return output.getvalue()
@@ -476,7 +488,7 @@ def _render_horse_section(horse_num: str, horse: dict, auto: dict) -> list[str]:
         *_data_readout_lines(auto),
         "#### ⏱️ 近績解構",
         f"- **近六場:** {_fmt(horse.get('last_6_finishes'))} (左=剛戰 → 右=最舊)",
-        f"- **休後復出:** {_fmt(horse.get('days_since_last') or data.get('days_since_last'))} 日",
+        f"- **休後復出:** {_rest_days(horse, data) if _rest_days(horse, data) is not None else '—'} 日",
         f"- **統計:** {_fmt(horse.get('season_stats') or data.get('season_stats_line'))}",
         f"- **近績分 / 穩定性分:** {float(features.get('form_score', 60)):.1f} / {float(features.get('consistency_score', 60)):.1f}",
         "",
@@ -576,7 +588,9 @@ def _render_blind_spots() -> list[str]:
 
 def _matrix_lines(horse: dict, auto: dict) -> list[str]:
     matrix = auto.get("matrix", {})
-    matrix_scores = auto.get("matrix_scores", {})
+    # 標題同 band 用**顯示尺**（七個維度同一把尺，見 scoring.to_dimension_display）。
+    # 原始尺留喺「評分總覽」表 —— 嗰度係真正嘅加權算式，兩者刻意分開。
+    matrix_scores = auto.get("matrix_scores_display") or auto.get("matrix_scores", {})
     matrix_reasoning = auto.get("matrix_reasoning", {})
     lines = []
     for key, label in MATRIX_LABELS.items():
@@ -737,7 +751,20 @@ def _formline_table_lines(horse: dict) -> list[str]:
             frank = f"對手其後{next_perf}"
         else:
             frank = "對手後續未有資料"
-        bits = [b for b in (date, strength, f"本駒名次 {my_finish}" if my_finish else "", f"對手 {opponents}" if opponents else "", frank) if b]
+        # 「強度評估」呢欄實際上只答一條問題：**對手其後有冇再贏**。班次完全唔
+        # 入數，所以一隻其後去跑一級賽而贏唔到嘅對手同一隻跑第五班贏唔到嘅對手
+        # 得到同一個 ❌ 弱組。實測 494 條「對手其後跑過分級賽／第一班」嘅行有
+        # 59.7% 被評弱組／中組，其中 127 條只有一仗後續（0/1 = 擲毫）。
+        #
+        # 班次入分試過：2026-09-04 六個 arm（EXP-20260904-02），單獨落 class
+        # floor 令 good 24.87→23.32，配合行數修正之後亦只係 ΔAUC +0.0002，
+        # **REJECT**。所以計分照舊，只喺報告層講清楚個標籤讀嘅係咩 —— 唔可以
+        # 畀人以為「弱組」係講當日陣容淺。
+        strength_note = strength
+        if strength and "弱組" in strength and any(
+                g in str(next_class) for g in ("一級賽", "二級賽", "三級賽", "分級賽", "第一班")):
+            strength_note = f"{strength}（註：此欄只計對手其後有冇再贏；佢其後係跑{next_class}）"
+        bits = [b for b in (date, strength_note, f"本駒名次 {my_finish}" if my_finish else "", f"對手 {opponents}" if opponents else "", frank) if b]
         # 用「；」相連令每場保持一行（_expand_fact_lines 只會拆「 | 」或超長段落）
         lines.append("賽績線明細: " + "；".join(bits))
     if lines:
@@ -753,12 +780,28 @@ def _formline_table_lines(horse: dict) -> list[str]:
     return lines
 
 
+def _rest_days(horse: dict, data: dict):
+    """距今日數 —— 引擎重算嘅值優先（Logic 個原欄位帶住舊生成器嘅錯值，
+    見 engine_core._days_since_last）。"""
+    auto = horse.get("python_auto") if isinstance(horse.get("python_auto"), dict) else {}
+    for candidate in (auto.get("days_since_last"), horse.get("days_since_last"),
+                      data.get("days_since_last")):
+        if candidate not in (None, "", 0, "0"):
+            try:
+                return int(float(candidate))
+            except (TypeError, ValueError):
+                continue
+    return None
+
+
 def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
     data = horse.get("_data", {}) if isinstance(horse.get("_data"), dict) else {}
     if key == "stability":
         return _compact_fact_lines(
             ("近6場數據", data.get("recent_6_detail"), 320),
-            ("頭馬距離趨勢", data.get("margin_trend"), 180),
+            # 引擎重算嘅版本優先（舊 Logic 個字串將贏出距離當成落後距離）。
+            ("頭馬距離趨勢",
+             (horse.get("python_auto") or {}).get("margin_trend") or data.get("margin_trend"), 180),
         )
     if key == "sectional":
         finish_time = " | ".join(
@@ -794,7 +837,7 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
         )
     if key == "horse_health":
         rest_weight = _join_nonempty(
-            f"休賽: {horse.get('days_since_last') or data.get('days_since_last')}日" if (horse.get("days_since_last") or data.get("days_since_last")) else "",
+            f"休賽: {_rest_days(horse, data)}日" if _rest_days(horse, data) is not None else "",
             f"體重趨勢: {data.get('weight_trend')}" if data.get("weight_trend") else "",
             sep=", ",
         )
@@ -966,6 +1009,18 @@ def _horses_by_rank(horses: dict) -> list[tuple[str, dict]]:
             _horse_number_sort_key(item[0]),
         ),
     )
+
+
+def _raw_score(auto: dict) -> float:
+    """原始加權總分。舊 Logic 冇 `ability_score_raw`（顯示尺之前 `ability_score`
+    本身就係原始尺），所以缺就直接讀返 `ability_score`。"""
+    raw = auto.get("ability_score_raw")
+    if raw is None:
+        raw = auto.get("ability_score", 0)
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _horse_number_sort_key(value: object) -> int:

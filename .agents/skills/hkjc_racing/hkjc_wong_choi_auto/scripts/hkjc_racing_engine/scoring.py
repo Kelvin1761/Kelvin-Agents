@@ -90,6 +90,124 @@ RACE_SHAPE_CONTEXT_DELTA_WEIGHTS = {
     "recent_extreme_consumption_pen": -2.0,
 }
 
+# ── 顯示尺（DISPLAY SCALE）──────────────────────────────────────────────────
+# 加權總分係七個維度嘅**加權平均**，所以永遠困喺各維度自己嘅範圍之內。實測
+# 3,438 個 runner（27 個場次，2026-04-12→2026-09-06）：
+#     min 49.99 | p10 57.39 | 中位 63.16 | p90 68.85 | max 76.59 | SD 4.393
+# 即係 `GRADE_THRESHOLDS` 由 A(80) 一路到 S+(96) 六級**數學上到唔到** —— 27 個
+# 場次冇一匹馬過 80，只有四匹過 76。原因唔係「冇好馬」，係兩個最重維度自己封頂：
+# `race_shape` 27.4% 權重但觀測上限 73.8，`class_advantage` 14.3% 但上限 65.0，
+# 合共 41.7% 權重永久由每匹馬身上扣走約 12 分。
+#
+# 2026-09-06 沙田第3場：嘉應高昇（官方評分 142 vs 全場次高 109、近 6 仗
+# 1-1-1-1-1-1 全部一／二級賽）攞 75.1 分＝全日 120 匹最高分，但印出嚟係
+# 「B+ 中上游」。排名啱，個數字讀落唔啱。
+#
+# 呢個仿射變換**只係顯示尺**：slope > 0 而且全體同一條式，所以場內排序
+# bit-identical（由 tests/test_display_scale.py 守住），亦唔加任何資訊。
+#   anchor 64.0    = B-「中游，基本競爭力存在」，對正實測中位數
+#   target_sd 10.0 = 對正 4 分一級嘅階梯（±2.5 SD ≈ 48–96 全幅）
+# 原始加權總分保留喺 `ability_score_raw`，所以歷史數字、golden、SIP 門檻同
+# backtest 全部仍然可以喺同一把尺上面比較。
+DISPLAY_SCALE = {
+    "centre": 63.16,       # 實測中位
+    "observed_sd": 4.393,  # 實測 SD
+    "target_sd": 10.0,     # 目標 SD（階梯設計值）
+    "anchor": 64.0,        # 中位馬應該讀到嘅分
+    "sample": 3438,
+}
+DISPLAY_SLOPE = DISPLAY_SCALE["target_sd"] / DISPLAY_SCALE["observed_sd"]
+
+
+# ── 維度顯示尺（MATRIX_DISPLAY_*）────────────────────────────────────────────
+# 七個維度嘅原始分**唔係同一把尺**，但報告一路將佢哋並排印成 0–100，再用同一套
+# band 門檻（✅✅ 85 / ✅ 70 / ➖ 55 / ❌ 40）判定。實測 3,438 匹：
+#
+#   維度            權重    原始全距        SD     中位   永遠出唔到嘅 band
+#   檔位與走位      27.4%  39.1–82.0  10.15    63.0   ✅✅
+#   騎練訊號        23.6%  51.0–79.0   4.70    60.5   ✅✅ ❌❌
+#   級數優勢        14.3%  52.8–76.6   5.46    64.8   ✅✅ ❌❌
+#   段速表現        12.8%  33.6–85.5   8.98    60.0   （全部到得）
+#   狀態與穩定性     9.8%  37.2–96.0  10.63    57.0   （全部到得）
+#   賽績線           8.0%  58.0–96.0  12.26    80.0   ❌ ❌❌
+#   馬匹健康         4.0%  55.2–73.7   3.47    66.9   ✅✅ ❌ ❌❌
+#
+# 即係：**七個維度有五個永遠出唔到 ✅✅**；`馬匹健康` 整個詞彙只有 {✅, ➖}
+# ——連一匹真係有醫療問題嘅馬都印唔出 ❌；`賽績線` 反過來永遠出唔到 ❌。
+# 而「60 = 中性／冇證據」呢個合約喺 leaf 層本身就唔成立（`馬匹健康` 中位 66.9、
+# `賽績線` 中位 80.0），所以只做拉伸唔夠，要連中心一齊校返。
+#
+# 觸發呢次量度嘅個案（2026-09-06 R3 嘉應高昇）：
+#   級數優勢 60.0 → 全體第 21 百分位（真係低，原因見 EXP-20260904-01）
+#   馬匹健康 64.4 → 全體第 25 百分位（133 日長休 + 頂磅，唔係「中性」；
+#                  修好距今日數之後係 61.3 = 第 8 百分位）
+#   檔位與走位 69.4 → 全體第 **75** 百分位，但印住「➖ 中性」，差 0.6 分就 ✅
+#
+# 同 `DISPLAY_SCALE` 一樣，呢個只係**顯示尺**：`matrix_scores` 保持原始值餵綜合
+# 分同所有分析工具，顯示值另存 `matrix_scores_display`，排名 bit-identical
+# （由 tests/test_dimension_display_scale.py 守住）。
+MATRIX_DISPLAY_CENTRES = {          # 實測中位 → 讀者睇到嘅 60
+    "race_shape": 63.0,
+    "trainer_signal": 60.5,
+    "class_advantage": 64.8,
+    "sectional": 60.0,
+    "stability": 57.0,
+    "form_line": 80.0,
+    "horse_health": 66.9,
+}
+MATRIX_DISPLAY_GAINS = {            # 10.0 / 實測 SD → 七個維度同一個離散度
+    "race_shape": 0.9852,
+    "trainer_signal": 2.1261,
+    "class_advantage": 1.8311,
+    "sectional": 1.1137,
+    "stability": 0.9406,
+    "form_line": 0.8153,
+    "horse_health": 2.8841,
+}
+MATRIX_DISPLAY_TARGET_SD = 10.0
+MATRIX_DISPLAY_SAMPLE = 3438
+
+
+def to_dimension_display(dimension, raw):
+    """維度原始分 → 顯示分。單調遞增，所以唔改任何排序。"""
+    value = parse_float(raw)
+    if value is None:
+        return None
+    centre = MATRIX_DISPLAY_CENTRES.get(dimension)
+    gain = MATRIX_DISPLAY_GAINS.get(dimension)
+    if centre is None or gain is None:
+        return clip_score(value)
+    return clip_score(60.0 + gain * (value - centre))
+
+
+def dimension_display_manifest():
+    """JSON-safe，入 run contract —— 改咗個尺即係改咗每份報告嘅維度分同 band。"""
+    return {
+        "target_sd": MATRIX_DISPLAY_TARGET_SD,
+        "sample": MATRIX_DISPLAY_SAMPLE,
+        "dimensions": {
+            key: {"centre": MATRIX_DISPLAY_CENTRES[key], "gain": MATRIX_DISPLAY_GAINS[key]}
+            for key in sorted(MATRIX_DISPLAY_CENTRES)
+        },
+    }
+
+
+def to_display_scale(raw):
+    """原始加權總分 → 顯示分。單調遞增，所以唔改任何排序。"""
+    value = parse_float(raw)
+    if value is None:
+        return None
+    return clip_score(DISPLAY_SCALE["anchor"] + DISPLAY_SLOPE * (value - DISPLAY_SCALE["centre"]))
+
+
+def from_display_scale(display):
+    """顯示分 → 原始加權總分（`to_display_scale` 嘅逆函數，未 clip 之前）。"""
+    value = parse_float(display)
+    if value is None:
+        return None
+    return DISPLAY_SCALE["centre"] + (value - DISPLAY_SCALE["anchor"]) / DISPLAY_SLOPE
+
+
 GRADE_THRESHOLDS = (
     (96, "S+"),
     (92, "S"),
@@ -315,18 +433,31 @@ def parse_float(value):
 
 
 def parse_record(value):
+    """Parse an HKJC 「(a-b-c-d)」 record tuple.
+
+    The four numbers are **(冠-亞-季-其餘)** — `inject_hkjc_fact_anchors.compute_stats`
+    builds them with `pos = min(finish, 4)`, so slot 4 counts every finish worse
+    than third. `starts` is therefore the SUM, never the fourth number.
+
+    This used to read the tuple as `(wins, seconds, thirds, starts)`. A horse
+    that is six-for-six at the distance reads 同程 (6-0-0-0) → the old code saw
+    `starts=0`, so every "does this horse have a same-distance sample?" test
+    failed for exactly the horses with a perfect same-distance record
+    (2026-09-06 R3 嘉應高昇: 6 wins from 6 at 1200m → distance_score 66
+    「樣本有限」 instead of 72, same_distance_signal 60 instead of 72).
+    """
     if not value:
         return None
     text = str(value)
     match = re.search(r"\((\d+)-(\d+)-(\d+)-(\d+)\)", text)
     if not match:
         return None
-    wins, seconds, thirds, starts = (int(part) for part in match.groups())
+    wins, seconds, thirds, rest = (int(part) for part in match.groups())
     return {
         "wins": wins,
         "seconds": seconds,
         "thirds": thirds,
-        "starts": starts,
+        "starts": wins + seconds + thirds + rest,
         "places": wins + seconds + thirds,
     }
 

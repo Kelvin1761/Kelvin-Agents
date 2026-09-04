@@ -1,3 +1,4 @@
+import datetime as _dt
 import re
 import sys
 from pathlib import Path
@@ -23,7 +24,9 @@ from .matrix_mapper import (
     matrix_formula_manifest,
 )
 from . import scoring
-from .scoring import DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade, parse_float, parse_record, score_band
+from .scoring import (DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade,
+                      parse_float, parse_record, score_band, to_dimension_display,
+                      to_display_scale)
 
 _TRAINER_SIGNAL_PRIORS = None
 
@@ -40,6 +43,10 @@ def scoring_run_contract():
             {"minimum": minimum, "grade": grade}
             for minimum, grade in scoring.GRADE_THRESHOLDS
         ],
+        # 顯示尺入契約：改咗個 anchor／slope 就等於改咗每份報告嘅數字同評級，
+        # 唔可以靜靜改。validation.py 會對；golden 亦會逐匹馬印出分別。
+        "display_scale": dict(scoring.DISPLAY_SCALE),
+        "dimension_display_scale": scoring.dimension_display_manifest(),
         "prior_sources": prior_source_manifest(),
         "prior_temporal_contract": {
             "historical": "matching_point_in_time_required",
@@ -134,13 +141,22 @@ class RacingEngine:
         matrix_scores["trainer_signal"] = self._apply_trainer_signal_v3(matrix_scores["trainer_signal"])
         matrix_scores["horse_health"] = self._apply_health_only_v2(matrix_scores["horse_health"])
         matrix_scores["sectional"] = self._apply_finish_time_trend(matrix_scores["sectional"])
-        matrix = map_features_to_matrix(feature_scores)
-        matrix["trainer_signal"] = score_band(matrix_scores["trainer_signal"])
-        matrix["horse_health"] = score_band(matrix_scores["horse_health"])
-        matrix["sectional"] = score_band(matrix_scores["sectional"])
-        ability_score = round(self._ability_score(matrix_scores), 2)
+        # 維度 band 一律由**顯示尺**判。原始尺上面七個維度有五個永遠出唔到 ✅✅，
+        # `馬匹健康` 連 ❌ 都出唔到（原始全距只有 55.2–73.7），所以同一套門檻
+        # （✅✅ 85 / ✅ 70 / ➖ 55 / ❌ 40）套落七把唔同嘅尺 = 個符號冇意義。
+        # 見 scoring.MATRIX_DISPLAY_CENTRES / MATRIX_DISPLAY_GAINS。
+        matrix_scores_display = {
+            key: round(to_dimension_display(key, value), 2)
+            for key, value in matrix_scores.items()
+        }
+        matrix = {key: score_band(value) for key, value in matrix_scores_display.items()}
+        # 加權總分係原始尺（維度加權平均，實測全距 50–77）；`ability_score` 印出
+        # 嚟嘅係顯示尺。仿射、單調，所以排序 bit-identical——見 scoring.DISPLAY_SCALE。
+        ability_raw = round(self._ability_score(matrix_scores), 2)
+        ability_score = round(to_display_scale(ability_raw), 2)
         grade = compute_grade(ability_score)
-        matrix_reasoning = self._matrix_reasoning(matrix_scores, matrix, feature_scores, feature_notes)
+        matrix_reasoning = self._matrix_reasoning(matrix_scores, matrix, feature_scores, feature_notes,
+                                                  matrix_scores_display)
         score_breakdown = self._score_breakdown(feature_scores, feature_notes)
         grade_transparency = self._grade_computation_transparency(matrix_scores, ability_score, grade, feature_scores)
 
@@ -148,9 +164,13 @@ class RacingEngine:
             "version": "HKJC_AUTO_SCORE_V2",
             "scoring_contract_id": scoring.SCORING_CONTRACT_VERSION,
             "ability_score": ability_score,
+            "ability_score_raw": ability_raw,
             "grade": grade,
             "matrix": matrix,
+            # 原始尺 = 綜合分嘅輸入，同所有權重／消融工具讀嘅嘢，唔可以動。
             "matrix_scores": matrix_scores,
+            # 顯示尺 = 報告同 band 讀嘅嘢（見 scoring.to_dimension_display）。
+            "matrix_scores_display": matrix_scores_display,
             "matrix_reasoning": matrix_reasoning,
             "core_logic": self._core_logic(feature_scores, matrix_scores, matrix_reasoning),
             "data_readout": self._data_readout(feature_scores, matrix_scores),
@@ -161,6 +181,11 @@ class RacingEngine:
             "trackwork_read": self._trackwork_interpretation(),
             "overseas_form_read": self._overseas_form_interpretation(),
             "health_readout": self._health_readout(),
+            # 引擎重算嘅距今日數（見 _days_since_last）。Logic 個同名欄位帶住
+            # 舊生成器嘅錯值，renderer 一律要讀呢個，唔好讀原欄位。
+            "days_since_last": self._days_since_last(),
+            # 重算過嘅「頭馬距離趨勢」（舊 Logic 個字串符號錯，見 _margin_trend_display）
+            "margin_trend": self._margin_trend_display(),
             "feature_scores": {key: round(feature_scores[key], 2) for key in FEATURE_KEYS},
             # Persist the derived sub-features that feed form_line/stability so the
             # backtest harness can faithfully reproduce production scoring (these
@@ -219,7 +244,11 @@ class RacingEngine:
         best_distance = self._value("best_distance")
         distance = str(self.race_context.get("distance") or "")
         text = self._text("best_distance", "season_stats", "course_record")
-        record = parse_record(text)
+        # 同程往績一定要由「同程 (…)」讀。舊 code 用 parse_record(text) 掃第一個
+        # 四元組，而 season_stats 個字串係「季內 (…) | 同程 (…) | 同場同程 (…)」
+        # ——第一個係**季內**，所以路程分一路用緊季內成績做同程證據。09-06 全場
+        # 季內 (0-0-0-0)（新季），六匹馬全部跌落「樣本有限 66 分」。
+        record = self._same_distance_record()
         best_text = self._clean(best_distance or "")
         distance_token = distance.replace("m", "").strip()
         direct_match = best_text.startswith(f"{distance_token}m") or best_text.startswith(distance)
@@ -239,7 +268,7 @@ class RacingEngine:
         if self._is_debut():
             self.reason_codes.append("debut_distance_unproven")
             return scoring.DISTANCE_MICRO_WEIGHTS.get("debut_base", 58.0), "初出馬未經今仗路程實戰驗證，路程分保守58分。", "career_tag"
-        if "同程" in text and record and record["starts"] > 0 and record["places"] == 0:
+        if record and record["starts"] > 0 and record["places"] == 0:
             self.risk_flags.append("distance_record_weak")
             return scoring.DISTANCE_MICRO_WEIGHTS.get("same_dist_unplaced_base", 54.0), "同程有樣本但未見上名支持，路程分54分。", "season_stats"
         return scoring.DISTANCE_MICRO_WEIGHTS.get("neutral_base", 60.0), "路程證據不足，按中性60分。", "missing_neutral"
@@ -713,12 +742,14 @@ class RacingEngine:
         self.reason_codes = list(saved_reason_codes)
         matrix_scores["sectional"] = self._apply_finish_time_trend(matrix_scores["sectional"])
         self.reason_codes = saved_reason_codes
-        ability_score = round(self._ability_score(matrix_scores), 2)
+        ability_raw = round(self._ability_score(matrix_scores), 2)
+        ability_score = round(to_display_scale(ability_raw), 2)
         base_ability = float(auto.get("ability_score", ability_score))
         return {
             "profile": profile_name,
             "applied": applied,
             "ability_score": ability_score,
+            "ability_score_raw": ability_raw,
             "ability_delta": round(ability_score - base_ability, 2),
             "grade": compute_grade(ability_score),
             "consistency_score": round(float(shadow_features.get("consistency_score", 60.0)), 2),
@@ -958,7 +989,7 @@ class RacingEngine:
         score = scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["base"]
         medical = self._text("medical_flags")
         weight_trend = self._text("weight_trend")
-        days = parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
+        days = self._days_since_last()
         weight_span = self._weight_trend_span(weight_trend)
 
         if "✅ 無醫療事故記錄" in medical:
@@ -1024,12 +1055,50 @@ class RacingEngine:
 
     def _last_race_date(self):
         """由 recent_6_detail「第1仗(DD/MM/YYYY …)」抽最近一仗日期 → 中文。"""
-        detail = self._text("recent_6_detail")
-        m = re.search(r"第1仗\((\d{2})/(\d{2})/(\d{4})", detail)
+        iso = self._last_race_iso()
+        if not iso:
+            return None
+        y, mo, d = iso.split("-")
+        return f"{y}年{int(mo)}月{int(d)}日"
+
+    def _last_race_iso(self):
+        """最近一仗日期（ISO）。recent_6_detail 係「第1仗(DD/MM/YYYY …)」。"""
+        m = re.search(r"第1仗\((\d{2})/(\d{2})/(\d{4})", self._text("recent_6_detail"))
         if not m:
             return None
         d, mo, y = m.group(1), m.group(2), m.group(3)
-        return f"{y}年{int(mo)}月{int(d)}日"
+        try:
+            return _dt.date(int(y), int(mo), int(d)).isoformat()
+        except ValueError:
+            return None
+
+    def _days_since_last(self):
+        """距今日數 —— 一定要（今仗日期 − 上仗日期），唔可以信 Logic 個欄位。
+
+        `inject_hkjc_fact_anchors.compute_stats` 曾經寫 `races[0]['days_since']`
+        落 Facts「休後復出」，而賽績檔嗰個 `日數:` 係**該仗同上一仗之間**嘅間隔
+        （`[1] 26/04/2026 | 日數: 20` = 06/04→26/04 隔 20 日），唔係距今日數。
+        錯咗一整格。連 `health_readout` 都自我矛盾——同兩行印住「上次出賽：
+        2026年4月26日 / 距今：20日」。實測 3,438 個 runner 有 66.5% 個值係錯，
+        但賽季中間錯得細（中位 +3 日，因為連續出賽嘅馬「上仗前間隔」≈「距今」）；
+        季初／休賽後就錯得大：2026-09-06 一日中位 +41 日（嘉應高昇 20 vs 133），
+        觸發 `days_gt_75_pen` 嘅馬由 2 匹變 28 匹（117 匹之中）。
+
+        生成器已修，但 264 個歷史 Logic 仍然帶住舊值，所以引擎自己重算：
+        `race_analysis.race_date`（live 由 skeleton 寫入，replay 由
+        `rescore_backtest.resolve_meeting_context` 注入）減 recent_6_detail
+        第1仗日期。兩邊有一邊缺就退回舊欄位，唔靜靜當 0。
+        """
+        as_of = str((self.race_context or {}).get("race_date") or "").strip()
+        last = self._last_race_iso()
+        if as_of and last:
+            try:
+                delta = (_dt.date.fromisoformat(as_of) - _dt.date.fromisoformat(last)).days
+            except ValueError:
+                delta = None
+            if delta is not None and delta >= 0:
+                return float(delta)
+        return parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
 
     def _bodyweight_readout(self):
         """今仗排位體重 vs 上仗 → 白話（seq 新→舊，seq[0]=今仗）。
@@ -1074,7 +1143,7 @@ class RacingEngine:
         """馬匹健康白話判讀（display-only）：上次出賽日期＋休賽 band＋體重＋
         傷後/長休＋長休×晨操 context。回傳 {lines, verdict}。"""
         lines = []
-        days = parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
+        days = self._days_since_last()
         last_date = self._last_race_date()
         if last_date and days is not None:
             band = self._layoff_band(int(days))
@@ -1368,7 +1437,7 @@ class RacingEngine:
 
 
 
-    def _matrix_reasoning(self, matrix_scores, matrix, features, notes):
+    def _matrix_reasoning(self, matrix_scores, matrix, features, notes, matrix_scores_display=None):
         specs = {
             "stability": ("狀態與穩定性", ("form_score", "consistency_score", "trackwork_trend_score")),
             "sectional": ("段速表現", ("speed_score",)),
@@ -1381,7 +1450,11 @@ class RacingEngine:
         reasoning = {}
         for key, (label, feature_keys) in specs.items():
             evidence = self._best_evidence(feature_keys, notes)
-            score = matrix_scores[key]
+            # `score` = 顯示尺（讀者睇嘅、band 用嘅）；`score_raw` = 原始尺
+            # （sub 分加權真正加出嚟嘅數，同綜合分嘅輸入）。兩個都要寫出嚟，
+            # 唔然「評分構成」加極都對唔返 header 個分。
+            raw = matrix_scores[key]
+            score = (matrix_scores_display or {}).get(key, raw)
             components = [
                 {
                     "key": name,
@@ -1395,6 +1468,7 @@ class RacingEngine:
             reasoning[key] = {
                 "label": label,
                 "score": round(score, 2),
+                "score_raw": round(raw, 2),
                 "symbol": matrix[key],
                 "tone": self._matrix_score_tone(score),
                 "components": components,
@@ -1405,7 +1479,7 @@ class RacingEngine:
             # 唔寫出嚟嘅話「評分構成」加極都對唔返 header 個分 — 呢度補返一行。
             expected = clip_score(sum(clip_score(features.get(name, 60.0)) * weight
                                       for name, weight in MATRIX_FORMULAS[key]))
-            diff = round(float(score) - expected, 2)
+            diff = round(float(raw) - expected, 2)
             if abs(diff) >= 0.05:
                 if key == "sectional" and any(c.startswith("finish_time_trend") for c in self.reason_codes):
                     direction = "進步" if diff > 0 else "退步"
@@ -1462,9 +1536,18 @@ class RacingEngine:
         return "評分平穩"
 
     def _formline_summary(self):
-        """Concrete 賽績線: EVERY notable past opponent — my finish + margin that day,
-        whether the opponent went on to win (form validation) and at what class move.
-        Opponents that are also in today's field are flagged 同場對手."""
+        """Concrete 賽績線: every past opponent IN `formline_table` — my finish +
+        margin that day, whether the opponent went on to win (form validation)
+        and at what class move. Opponents also in today's field are flagged
+        同場對手.
+
+        ⚠️ 呢個 docstring 一直寫住「EVERY notable past opponent」，但實際上係
+        少於四成。`create_hkjc_logic_skeleton.parse_formline_table` 用
+        `int(cols[1])` 做「係唔係數據行」嘅測試，而個表每場只有第一個對手嗰行
+        帶 `#`，所以亞軍／季軍嘅續行全部被丟掉 —— 實測 37,265 條對手行只有
+        14,580 條（39.1%）入到 Logic。2026-09-06 R3 嘉應高昇 11 條剩 5 條，
+        而丟掉嗰批正正係兩隻 ✅✅ 超強組。已修（2026-09-04）；歷史 Logic 仍然
+        帶住殘缺嘅表，要重建先補得返。"""
         table = self._value("formline_table")
         if not isinstance(table, list) or not table:
             return None
@@ -1862,7 +1945,7 @@ class RacingEngine:
             add("評分走勢", value, cmove or delta_tag, band="➖", reason=reason)
         # (走位動量 row removed — low signal, per user feedback)
         # 休賽：上次出賽日期 + 距今日數 + band（數據門檻）
-        days = parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
+        days = self._days_since_last()
         if days is not None and days > 0:
             band = self._layoff_band(int(days))
             last_date = self._last_race_date()
@@ -2052,7 +2135,7 @@ class RacingEngine:
         ordered = sorted(matrix_scores.items(), key=lambda kv: kv[1], reverse=True)
         top_dim = self.DIM_LABELS.get(ordered[0][0], ordered[0][0])
         low_dim = self.DIM_LABELS.get(ordered[-1][0], ordered[-1][0])
-        ability = self._ability_score(matrix_scores)
+        ability = to_display_scale(self._ability_score(matrix_scores))
         sents = [f"{name}今仗七維綜合戰力 {ability:.1f} 分，當中以{top_dim}（{ordered[0][1]:.0f}）為最強一環、"
                  f"{low_dim}（{ordered[-1][1]:.0f}）相對最弱。"]
         if pos:
@@ -2569,16 +2652,17 @@ class RacingEngine:
         return parse_record(self.horse_data.get("season_stats") or self._value("season_stats_line"))
 
     def _same_distance_record(self):
+        """同程 (冠-亞-季-其餘) —— starts 係四項總和，唔係第四項（見 parse_record）。"""
         text = self._clean(self.horse_data.get("season_stats") or self._value("season_stats_line") or "")
         match = re.search(r"同程\s*\((\d+)-(\d+)-(\d+)-(\d+)\)", text)
         if not match:
             return None
-        wins, seconds, thirds, starts = (int(part) for part in match.groups())
+        wins, seconds, thirds, rest = (int(part) for part in match.groups())
         return {
             "wins": wins,
             "seconds": seconds,
             "thirds": thirds,
-            "starts": starts,
+            "starts": wins + seconds + thirds + rest,
             "places": wins + seconds + thirds,
         }
 
@@ -2594,8 +2678,56 @@ class RacingEngine:
             return "neutral"
         return "unknown"
 
+    _MARGIN_FRACTIONS = {"1/2": 0.5, "1/4": 0.25, "3/4": 0.75, "1/8": 0.125,
+                         "3/8": 0.375, "5/8": 0.625, "7/8": 0.875}
+
+    def _parse_margin_length(self, text):
+        """「4-1/4」「3/4」「2」→ 馬位。「-」「N/A」→ None。"""
+        raw = str(text or "").strip()
+        m = re.match(r"^(\d+)?\s*-?\s*(\d/\d)?$", raw)
+        if not m or (m.group(1) is None and m.group(2) is None):
+            return None
+        whole = float(m.group(1)) if m.group(1) else 0.0
+        return whole + self._MARGIN_FRACTIONS.get(m.group(2) or "", 0.0)
+
+    def _margin_trend_display(self):
+        """由 recent_6_detail 重算「頭馬距離趨勢」，帶符號。
+
+        Logic 個 `_data.margin_trend` 係抽取層寫落去嘅，而抽取層一直當每個距離
+        都係「落後頭馬幾多」——贏馬嗰欄其實係**贏出距離**。所以六戰六勝嘅
+        嘉應高昇印住「4-1/4→…→2-3/4 → 📉擴大中」，而同場真連敗嗰匹反而讀
+        「收窄中」。抽取層已修（`scrape_hkjc_horse_profile.compute_margin_trend`），
+        但**已經存喺 Logic 嘅字串補唔返**，所以呢度用 recent_6_detail（有名次
+        又有距離）自己重算，蓋過個舊字串。
+
+        `margin_trend_score` 2026-07-08 已剔出 7D 計分，所以呢個係報告層修正。
+        """
+        races = self._recent_races_detailed()
+        pairs = [(r["finish"], self._parse_margin_length(r["margin"])) for r in races]
+        pairs = [(f, m) for f, m in pairs if m is not None]
+        if len(pairs) < 3:
+            return None
+        seq = " → ".join(f"勝{r['margin']}" if r["finish"] == 1 else r["margin"]
+                         for r in races if self._parse_margin_length(r["margin"]) is not None)
+        signed = [(-m if f == 1 else m) for f, m in pairs]
+        if all(x < 0 for x in signed):
+            return f"{seq} → 📈連勝中"
+        recent = signed[:3]
+        older = signed[3:6]
+        delta = (sum(recent) / len(recent)) - (sum(older) / len(older)) if older else 0.0
+        if delta < -0.5:
+            return f"{seq} → 📈收窄中"
+        if delta > 0.5:
+            return f"{seq} → 📉擴大中"
+        return f"{seq} → 📊波動"
+
     def _margin_trend_signal(self):
-        text = self._clean(self._value("margin_trend") or "")
+        text = self._clean(self._margin_trend_display() or self._value("margin_trend") or "")
+        # 「連勝中」係 scrape_hkjc_horse_profile.compute_margin_trend 帶符號化之後
+        # 新增嘅標籤（贏馬個「頭馬距離」係贏幅，唔係落後距離）。冇呢一支嘅話，
+        # 六戰六勝會落去 flat，而舊 code 更加會當成「擴大中」扣分。
+        if "連勝" in text:
+            return "improving"
         if "收窄中" in text:
             return "improving"
         if "擴大中" in text:
@@ -2769,7 +2901,7 @@ class RacingEngine:
     def _describe_horse_health_matrix(self, score, features, evidence):
         # 晨操敘述已統一歸 stability（狀態與穩定性）獨家負責，健康維度只講醫療／休賽／體重。
         medical = self._text("medical_flags")
-        days = parse_float(self._value("days_since_last") or self.horse_data.get("days_since_last"))
+        days = self._days_since_last()
         wt = self._text("weight_trend")
         span = self._weight_trend_span(wt)
         medical_text = "醫療乾淨" if "無醫療事故" in medical else "醫療資料未齊，保守處理"
@@ -2826,13 +2958,24 @@ class RacingEngine:
             class_text = "班次底子未夠硬"
         else:
             class_text = "班次背景中性"
-        if features.get("weight_score", 60) >= 68:
+        weight_score = float(features.get("weight_score", 60))
+        if weight_score >= 68:
             weight = "；負磅友善"
-        elif features.get("weight_score", 60) >= 60:
+        elif weight_score >= 60:
             weight = "；負磅可控"
         else:
             weight = "；負磅偏重"
-        return f"{move_txt}{class_text}{weight}{self._score_close(score)}"
+        # 講清楚呢個維度實際上係邊個 sub 分推動。`class_score` 場內幾乎冇變化
+        # （實測全日 120 匹只有 52.5–62.0），所以場內排位差不多完全由負磅決定 ——
+        # 場內 ρ(官方評分, weight_score) = −0.868，即係讓磅官評價越高，呢一格
+        # 反而越低。讀者見到一隻高評分馬個「級數優勢」排包尾，應該知道點解。
+        # ⚠️ 呢個係敘述，唔係修正：調轉／中性化／混入官方評分 12 個候選喺
+        # 2026-09-04（EXP-20260904-01）全部過唔到閘，所以計分維持原狀。
+        driver = ""
+        if abs(weight_score - 60.0) >= 4.0:
+            side = "拉高" if weight_score > 60 else "拉低"
+            driver = f"（呢格場內主要由負磅{side}，唔係班次）"
+        return f"{move_txt}{class_text}{weight}{driver}{self._score_close(score)}"
 
     def _draw_verdict_signal(self):
         text = self._clean(self._value("draw_verdict") or "")
@@ -3065,28 +3208,39 @@ class RacingEngine:
         lines = []
         weighted_sum = 0.0
 
+        # 兩個尺一定要同時印。原始尺係真正嘅算式（分 × 權重 = 貢獻），顯示尺係
+        # 讀者同 band 用嘅。只印原始尺就會出現「69.4 ➖」同「76.7 ✅」並排咁
+        # 讀落好似亂判 —— 其實係兩個維度嘅原始尺根本唔同刻度。
         for key, label in dims:
             weight = active_weights.get(key, 0.0)
             raw_score = float(matrix_scores.get(key, 60))
-            band = score_band(raw_score)
+            disp_score = float(to_dimension_display(key, raw_score))
+            band = score_band(disp_score)
             contribution = round(raw_score * weight, 2)
             weighted_sum += contribution
-            rows.append({"key": key, "label": label, "score": round(raw_score, 2),
+            rows.append({"key": key, "label": label,
+                         "score": round(disp_score, 2),
+                         "score_raw": round(raw_score, 2),
                          "weight": weight, "contribution": contribution, "band": band})
             if weight == 0.0:
                 tag = "初出馬豁免" if is_debut else "0%（僅作參考）"
-                lines.append(f"| {label} | {raw_score:.1f} | {tag} | — | {band} |")
+                lines.append(f"| {label} | {disp_score:.1f} | {raw_score:.1f} | {tag} | — | {band} |")
             else:
-                lines.append(f"| {label} | {raw_score:.1f} | {weight * 100:.1f}% | {contribution:.2f} | {band} |")
+                lines.append(f"| {label} | {disp_score:.1f} | {raw_score:.1f} | "
+                             f"{weight * 100:.1f}% | {contribution:.2f} | {band} |")
 
         table = "\n".join([
-            "| 維度 | 得分 | 權重 | 貢獻 | 判定 |",
-            "|:---|---:|---:|---:|:---:|",
+            "| 維度 | 維度分（顯示尺） | 原始分 | 權重 | 貢獻 | 判定 |",
+            "|:---|---:|---:|---:|---:|:---:|",
             *lines,
         ])
+        # 表格逐行印嘅係維度加權貢獻，加起身係**原始**加權總分（實測全距 50–77）。
+        # `ability_score` 係顯示尺，所以兩個數字要一齊印，唔然讀者會以為表格加錯。
         summary = (
             f"{table}\n\n"
-            f"**→ 加權總分 = {weighted_sum:.2f} 分 → 評級 [{grade}]**"
+            f"**→ 維度加權總和 = {weighted_sum:.2f} 分"
+            f"（原始尺，實測全場分佈 50–77）**\n"
+            f"**→ 換算顯示尺 = {ability_score:.1f} 分 → 評級 [{grade}]**"
         )
 
         grade_explanation = self._grade_threshold_explanation(ability_score, grade)
@@ -3127,21 +3281,24 @@ class RacingEngine:
     
     def _grade_threshold_explanation(self, ability_score, grade):
         """Explain which grade threshold the score fell into."""
+        # 括號係實測百分位（3,438 個 runner / 274 場，2026-04-12→2026-09-06）。
+        # 加咗百分位係為咗個等級講得出「幾罕有」——之前 A 到 S+ 六級喺實際分佈
+        # 上面係空嘅，讀者冇辦法知道 B+ 其實已經係全場最高分。
         thresholds = {
-            "S+": "≥96分 — 壓倒性數據支持，全維度表現頂尖",
-            "S": "≥92分 — 極強數據基礎，多維度顯著優勢",
-            "S-": "≥88分 — 非常強勢，核心維度表現突出",
-            "A+": "≥84分 — 前列競爭力，基本面紮實",
-            "A": "≥80分 — 三甲競爭力，主要維度有支持",
-            "A-": "≥76分 — 位置圈內，有實質競爭條件",
-            "B+": "≥72分 — 中上游，具備實際爭位權",
-            "B": "≥68分 — 中游偏上，需要條件配合",
-            "B-": "≥64分 — 中游，基本競爭力存在",
+            "S+": "≥96分 — 壓倒性數據支持，全維度表現頂尖（實測 0.0%，兩季未出現過）",
+            "S": "≥92分 — 極強數據基礎，多維度顯著優勢（全體最高 0.2%）",
+            "S-": "≥88分 — 非常強勢，核心維度表現突出（全體最高 0.8%）",
+            "A+": "≥84分 — 前列競爭力，基本面紮實（全體最高 1.9%）",
+            "A": "≥80分 — 三甲競爭力，主要維度有支持（全體最高 5.3%）",
+            "A-": "≥76分 — 位置圈內，有實質競爭條件（全體最高 11.7%）",
+            "B+": "≥72分 — 中上游，具備實際爭位權（全體最高 21.1%）",
+            "B": "≥68分 — 中游偏上，需要條件配合（全體最高 34.4%）",
+            "B-": "≥64分 — 中游，基本競爭力存在（全體最高 50.0%，即中位馬）",
             "C+": "≥60分 — 中下游，容錯空間較窄",
             "C": "≥56分 — 下游，需大幅超水準發揮",
             "C-": "≥52分 — 邊線，驚喜空間有限",
-            "D": "≥48分 — 冷門，數據支持薄弱",
-            "E": "<48分 — 數據起步點極低，難以建立信心",
+            "D": "≥48分 — 冷門，數據支持薄弱（全體最低 12.6%）",
+            "E": "<48分 — 數據起步點極低，難以建立信心（全體最低 5.5%）",
         }
         explanation = thresholds.get(grade, "")
         if explanation:
