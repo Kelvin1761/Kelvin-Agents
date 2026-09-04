@@ -30,6 +30,29 @@ from wongchoi_paths import is_materialized_file
 #
 # AU 用 `ABILITY_FEATURE_KEYS`（真正入 ability 嘅十個）。唔用全部 18 個：另外 8 個
 # 係顯示／中間量，其中一個缺失唔代表評分壞咗，會製造噪音。
+def _engine_scripts_dir(platform_dir: str, auto_dir: str) -> Path:
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        candidate = parent / platform_dir / auto_dir / "scripts"
+        if candidate.is_dir():
+            return candidate
+    raise RuntimeError(f"cannot locate {platform_dir}/{auto_dir}/scripts")
+
+
+def _hkjc_feature_keys() -> set[str]:
+    """Every HKJC scoring leaf, taken from the engine.
+
+    HKJC has no display-only split: all of `FEATURE_KEYS` scores, so the gate
+    watches all of them. Derived rather than copied for the same reason as the
+    AU set below -- a hand-written duplicate has drifted twice.
+    """
+    scripts = _engine_scripts_dir("hkjc_racing", "hkjc_wong_choi_auto")
+    if str(scripts) not in sys.path:
+        sys.path.insert(0, str(scripts))
+    from hkjc_racing_engine.scoring import FEATURE_KEYS
+    return set(FEATURE_KEYS)
+
+
 def _au_ability_feature_keys() -> set[str]:
     """The AU keys that actually enter `ability`, taken from the engine.
 
@@ -52,20 +75,7 @@ def _au_ability_feature_keys() -> set[str]:
 
 EXPECTED_FEATURES = {
     "au": _au_ability_feature_keys(),
-    "hkjc": {
-        "form_score",
-        "speed_score",
-        "class_score",
-        "jockey_score",
-        "trainer_score",
-        "draw_score",
-        "distance_score",
-        "track_going_score",
-        "weight_score",
-        "consistency_score",
-        "risk_score",
-        "confidence_score",
-    },
+    "hkjc": _hkjc_feature_keys(),
 }
 
 

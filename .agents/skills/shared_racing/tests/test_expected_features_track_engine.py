@@ -15,7 +15,10 @@ ROOT = Path(__file__).resolve().parents[2]   # .agents/skills
 sys.path.insert(0, str(ROOT / "shared_racing" / "scripts"))
 sys.path.insert(0, str(ROOT / "au_racing" / "au_wong_choi_auto" / "scripts"))
 
+sys.path.insert(0, str(ROOT / "hkjc_racing" / "hkjc_wong_choi_auto" / "scripts"))
+
 from au_racing_engine.scoring import ABILITY_FEATURE_KEYS  # noqa: E402
+from hkjc_racing_engine.scoring import FEATURE_KEYS as HKJC_FEATURE_KEYS  # noqa: E402
 from racing_data_health import EXPECTED_FEATURES  # noqa: E402
 
 
@@ -28,6 +31,11 @@ def test_the_au_set_is_not_empty_and_covers_the_dimension_leaves():
     assert len(EXPECTED_FEATURES["au"]) >= 10
     for key in ("form_score", "pace_figure_score", "preparation_score"):
         assert key in EXPECTED_FEATURES["au"], key
+
+
+def test_hkjc_expected_features_are_exactly_the_engine_keys():
+    """HKJC has no display-only split: every FEATURE_KEY scores, so all are watched."""
+    assert EXPECTED_FEATURES["hkjc"] == set(HKJC_FEATURE_KEYS)
 
 
 def test_hkjc_set_is_independent_of_au():
