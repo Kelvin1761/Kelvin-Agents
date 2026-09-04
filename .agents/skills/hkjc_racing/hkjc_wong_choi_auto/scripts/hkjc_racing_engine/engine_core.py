@@ -1137,6 +1137,18 @@ class RacingEngine:
             elif erratic >= 15:
                 # 真・上落不定
                 word += f"；近{len(seq)}仗體重上落較大（波幅{span}磅），狀態欠穩定"
+        # 長休之後，「回來重咗」實測係**正面**訊號，唔係警號。
+        # 16,959 個有上仗體重嘅 runner-start：
+        #   長休 >75 日：重咗(>+5lb) − 輕咗(<-5lb) 上名率 **+7.9pp, 95% CI [+2.1, +13.7]**
+        #   短休 ≤75 日：同一個對比 −0.6pp, CI [-2.5, +1.2]（跨零＝冇訊號）
+        # 所以「明顯上升」加 ⚠️ 喺長休復出馬身上係講反話（2026-09-06 R3 嘉應高昇
+        # 休 133 日、回來 +29 磅，落喺實測最好嗰批，但報告寫「狀態欠穩定」）。
+        # ⚠️ 計分冇改 —— 剷／改嗰四個變幅項五個 arm 全部過唔到 primary
+        #    （EXP-20260904-08）。呢度只係唔再叫個讀者睇錯方向。
+        days = self._days_since_last()
+        if days is not None and days > 75 and delta >= 8:
+            word += (f"（註：長休{int(days)}日後回來體重增加，實測係正面訊號 "
+                     f"——長休組重咗嘅上名率高過輕咗嘅 +7.9pp）")
         return word
 
     def _health_readout(self):
@@ -1956,7 +1968,10 @@ class RacingEngine:
         # 體重狀態：整句白話（今仗vs上仗 ＋ 近仗走勢），唔拆開避免「相若／波幅大」讀落矛盾。
         bw = self._bodyweight_readout()
         if bw:
-            concerning = any(k in bw for k in ("明顯上升", "明顯下降", "上落較大", "狀態欠穩定"))
+            # 長休後回來重咗係正面訊號（見 _bodyweight_readout），所以嗰句
+            # 帶住「實測係正面訊號」嘅時候唔好再亮 ⚠️。
+            concerning = (any(k in bw for k in ("明顯上升", "明顯下降", "上落較大", "狀態欠穩定"))
+                          and "實測係正面訊號" not in bw)
             add("體重狀態", bw, "", band="⚠️" if concerning else "➖")
         eng = self._value("engine_type")
         if present(eng):
