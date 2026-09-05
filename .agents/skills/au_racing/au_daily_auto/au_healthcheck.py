@@ -22,7 +22,7 @@ import subprocess
 import sys
 import time
 import urllib.request
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -336,6 +336,74 @@ def mirror_issue(day: str | None = None, *, log_dir: Path | None = None) -> str 
     return f"Drive 鏡像今次冇更新到任何檔（{status}，失敗 {failed} 個）：{detail}"
 
 
+MORNING_TAGS = ("morning-refresh", "morning-rebuild")
+
+
+def morning_odds_gaps(day: str, *, root: Path | None = None) -> list[str]:
+    """指定日期有邊啲場次由頭到尾冇攞過早更賠率快照。
+
+    ⚠️ 同 `local_quality_issues` 嗰個 `stale_odds` 檢查**唔係重複**，分別喺三點，
+    而三點都係 2026-08-27 至 08-29 靜靜過咗嘅原因：
+
+      * **唔理時間。** `_require_morning_odds` 喺 `day == today` 而未夠 11:00 就
+        直接放行，所以 02:30 同 09:15 兩程體檢由設計上唔會睇。一日得 11:00 嗰程
+        一次機會。
+      * **搵埋 Archive。** 原檢查淨係行 live root，場次一入 Archive 就再查唔到，
+        即係事後永遠追唔返。
+      * **可以查尋日。** `main()` 一次只查一日；11:00 嗰程冇跑到、或者 `check()`
+        喺 in-progress／unknown／unpublished 早退，嗰日就冇任何嘢驗過賠率。
+
+    點解值得補：嗰三日 control plane 將 10:00 早更當 `duplicate_skipped` 跳過
+    （`heal()` 霸咗 canonical slot，已修），於是「落注單（當朝定價）」出嘅其實係
+    前一晚嘅價，而張單本身睇唔出。實測嗰三日 5.5% 注落咗喺冇出賽嘅馬，有早更嘅
+    日子只係 1.5%。呢個係「報成功但乜都冇做」嗰類故障 —— 一定要靠實物（快照個
+    tag）去驗，唔可以信 run 嘅 status。
+    """
+    if root is None:
+        from wongchoi_paths import AU_RACING  # noqa: PLC0415
+        root = Path(AU_RACING)
+    root = Path(root)
+    seen: dict[str, Path] = {}
+    for base in (root, root / "Archive"):
+        try:
+            folders = sorted(base.glob(f"{day} *"))
+        except OSError:
+            continue
+        for folder in folders:
+            if folder.is_dir():
+                seen.setdefault(folder.name, folder)
+
+    gaps: list[str] = []
+    for name, folder in sorted(seen.items()):
+        try:
+            odds = json.loads((folder / "odds_history.json")
+                              .read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(odds, dict) or not odds:
+            continue
+        tags = {key.partition("|")[2] for snaps in odds.values()
+                if isinstance(snaps, dict) for key in snaps}
+        if tags and not (tags & set(MORNING_TAGS)):
+            gaps.append(f"{name}：由頭到尾冇早更快照（"
+                        f"{'、'.join(sorted(t for t in tags if t))}）"
+                        " —— 嗰日張落注單用緊前一晚嘅價")
+    return gaps
+
+
+def yesterday_odds_advisories(day: str) -> list[str]:
+    """尋日嘅早更到底跑咗未 —— 補返「一日得一次機會」嗰個窿。
+
+    做 advisory 唔做 blocking 係刻意：嗰日已經完咗，補唔到，而 `degraded` 係
+    留返畀「今日仲救得到」嘅嘢。但一定要出聲，因為呢個係排程靜靜失效嘅唯一證據。
+    """
+    try:
+        prev = (date.fromisoformat(day) - timedelta(days=1)).isoformat()
+    except ValueError:
+        return []
+    return morning_odds_gaps(prev)
+
+
 def quality_issues(day: str) -> tuple[list[str], list[str]]:
     """`(阻塞, best-effort)`。
 
@@ -353,6 +421,9 @@ def quality_issues(day: str) -> tuple[list[str], list[str]]:
     issue = mirror_issue(day)
     if issue:
         advisories.append(issue)
+    # 尋日嘅早更 —— 做 advisory 唔做 blocking，因為嗰日完咗補唔到，而 `degraded`
+    # 要留返畀「今日仲救得到」嘅嘢。但一定要出聲：呢個係排程靜靜失效嘅唯一證據。
+    advisories.extend(yesterday_odds_advisories(day))
     return blocking, advisories
 
 

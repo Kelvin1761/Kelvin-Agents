@@ -580,3 +580,75 @@ class ScheduledSlotTests(unittest.TestCase):
             ok, detail = H.start_analysis_recovery(DAY)
         self.assertFalse(ok)
         self.assertIn("已有 AU run", detail)
+
+
+class MorningOddsGapTests(unittest.TestCase):
+    """事後追得返「嗰日早更到底跑咗未」。
+
+    `local_quality_issues` 嗰個 `stale_odds` 一日得一次機會：11:00 嗰程體檢，
+    而且要 `check()` 唔早退。2026-08-27 至 08-29 三日就係咁靜靜過咗 —— control
+    plane 將 10:00 早更當 `duplicate_skipped` 跳過（`heal()` 霸咗 canonical
+    slot，已修），落注單標住「當朝定價」但其實係前一晚嘅價，嗰三日 5.5% 注落咗
+    喺冇出賽嘅馬（有早更嘅日子 1.5%）。
+    """
+
+    def _meeting(self, root: Path, name: str, tags):
+        import json
+        folder = root / name
+        folder.mkdir(parents=True)
+        snaps = {f"2026-08-27T10:0{i}:00|{tag}": {}
+                 for i, tag in enumerate(tags)}
+        (folder / "odds_history.json").write_text(json.dumps({"1": snaps}))
+        return folder
+
+    def test_a_day_with_only_analysis_snapshots_is_reported(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._meeting(Path(tmp), "2026-08-27 Seymour Race 1-8", ["analysis"])
+            gaps = H.morning_odds_gaps("2026-08-27", root=Path(tmp))
+        self.assertEqual(len(gaps), 1)
+        self.assertIn("冇早更快照", gaps[0])
+        self.assertIn("前一晚嘅價", gaps[0])
+
+    def test_either_morning_tag_clears_it(self):
+        for tag in ("morning-refresh", "morning-rebuild"):
+            with tempfile.TemporaryDirectory() as tmp:
+                self._meeting(Path(tmp), "2026-08-27 Seymour Race 1-8",
+                              ["analysis", tag])
+                self.assertEqual(
+                    H.morning_odds_gaps("2026-08-27", root=Path(tmp)), [], tag)
+
+    def test_archived_meetings_are_still_reachable(self):
+        # ⚠️ 原檢查淨係行 live root，場次一入 Archive 就再查唔到 —— 事後永遠
+        # 追唔返。呢個係補返嗰半。
+        with tempfile.TemporaryDirectory() as tmp:
+            self._meeting(Path(tmp) / "Archive",
+                          "2026-08-27 Seymour Race 1-8", ["analysis"])
+            gaps = H.morning_odds_gaps("2026-08-27", root=Path(tmp))
+        self.assertEqual(len(gaps), 1)
+
+    def test_a_meeting_without_odds_history_is_not_a_false_alarm(self):
+        # 冇 odds_history 係另一個問題（`local_quality_issues` 嗰邊管），
+        # 喺呢度報就變咗兩條通知講同一件事。
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "2026-08-27 Seymour Race 1-8").mkdir(parents=True)
+            self.assertEqual(H.morning_odds_gaps("2026-08-27", root=Path(tmp)), [])
+
+    def test_the_advisory_looks_at_yesterday(self):
+        with unittest.mock.patch.object(
+                H, "morning_odds_gaps", lambda d: [f"gap:{d}"]):
+            self.assertEqual(H.yesterday_odds_advisories("2026-08-28"),
+                             ["gap:2026-08-27"])
+
+    def test_a_bad_date_does_not_raise(self):
+        self.assertEqual(H.yesterday_odds_advisories("not-a-date"), [])
+
+    def test_it_rides_as_an_advisory_never_as_a_blocker(self):
+        # 嗰日已經完咗，補唔到 —— 報做 blocking 就等於叫 ./健康.sh 永遠紅燈。
+        with unittest.mock.patch.multiple(
+                H, local_quality_issues=lambda day: [],
+                latest_step_issue=lambda step: None,
+                mirror_issue=lambda day: None,
+                yesterday_odds_advisories=lambda day: ["尋日冇早更"]):
+            blocking, advisories = H.quality_issues("2026-08-28")
+        self.assertEqual(blocking, [])
+        self.assertIn("尋日冇早更", advisories)

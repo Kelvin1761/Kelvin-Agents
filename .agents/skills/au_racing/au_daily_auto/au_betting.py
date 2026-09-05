@@ -103,8 +103,24 @@ def race_bets(folder: Path, race_no: int, which: str = "first"):
     return when, picks, decide(picks)
 
 
+# 一個 snapshot key 係 `2026-09-04T10:12:25|morning-rebuild`。個 tag 就係當日
+# 早更到底跑咗未嘅權威證據 —— 2026-08-27 至 08-29 三日，control plane 將 10:00
+# 嗰程當 `duplicate_skipped` 靜靜跳過（`heal()` 霸咗個 slot，已修），於是「落注單
+# （當朝定價）」出嘅其實係前一晚嘅價，而張單上面睇唔出。實測嗰三日 5.5% 注落咗
+# 喺冇出賽嘅馬（有早更嘅日子只係 1.5%）。
+MORNING_TAGS = ("morning-refresh", "morning-rebuild")
+
+
+def snapshot_tag(when: str) -> str:
+    return when.partition("|")[2] or "unknown"
+
+
+def is_morning(when: str) -> bool:
+    return snapshot_tag(when) in MORNING_TAGS
+
+
 def meeting_bets(folder: Path, which: str = "first"):
-    out, when_seen = [], set()
+    out, when_seen, tags = [], set(), set()
     races = sorted(int(m.group(1)) for m in
                    (re.search(r"Race_(\d+)_", f.name)
                     for f in folder.glob("Race_*_Auto_Analysis.md")) if m)
@@ -112,9 +128,10 @@ def meeting_bets(folder: Path, which: str = "first"):
         when, picks, bets = race_bets(folder, rno, which)
         if when:
             when_seen.add(when.split("|")[0][:16].replace("T", " "))
+            tags.add(snapshot_tag(when))
         out.append({"race": rno, "picks": picks, "bets": bets,
                     "watch": watch(picks)})
-    return out, sorted(when_seen)
+    return out, sorted(when_seen), sorted(tags)
 
 
 def _venue(name: str) -> str:
@@ -135,10 +152,11 @@ def _folders(day: str):
 
 def bet_list(day: str, which: str = "first") -> str | None:
     """落注單。`which='last'` = 早更更新版。"""
-    blocks, n_bets, n_watch, when_all = [], 0, 0, set()
+    blocks, n_bets, n_watch, when_all, tag_all = [], 0, 0, set(), set()
     for folder in _folders(day):
-        rows, whens = meeting_bets(folder, which)
+        rows, whens, tags = meeting_bets(folder, which)
         when_all.update(whens)
+        tag_all.update(tags)
         lines = []
         for r in rows:
             if not (r["bets"] or r["watch"]):
@@ -167,6 +185,11 @@ def bet_list(day: str, which: str = "first") -> str | None:
     # 前一晚落注等於喺唔知最終出賽名單之下鎖死價格，而退出馬會改變成場賽事嘅
     # 形勢。所以晚更嗰張要明確講「唔好落」，唔可以睇落似一張可以照抄嘅單。
     tag = "落注單（當朝定價）" if which == "last" else "觀察名單"
+    # 張單自己要講得出啲價幾時捕捉 —— 「當朝定價」呢個標題喺早更冇跑到嗰陣係
+    # 錯嘅，而張單上面本身睇唔出分別。
+    stale = sorted(x for x in tag_all if x not in MORNING_TAGS)
+    if which == "last" and stale:
+        tag = "落注單（⚠️ 用緊前一晚嘅價）"
     head = "\n".join([
         f"💰 {tag} {day}",
         f"{n_bets} 注 · 平注 · 只落{'贏' if MODE == 'win' else '位'}"
@@ -177,7 +200,10 @@ def bet_list(day: str, which: str = "first") -> str | None:
          if which == "first" else
          "⚠️ 實測 ROI 為負，建議先紙上追蹤"),
         f"👀 ＝ 位賠 {WATCH_LOW:g}–{MIN_ODDS:g}，浮上 {MIN_ODDS:g} 就變一注",
-    ] + ([f"賠率取自 {sorted(when_all)[0]}"] if when_all else []))
+    ] + ([f"賠率取自 {sorted(when_all)[0]}"] if when_all else [])
+      + ([f"⚠️ 早更未跑到（快照：{'、'.join(stale)}）—— 呢啲係前一晚嘅價，"
+          "退出名單未更新；實測嗰啲日子 5.5% 注落咗喺冇出賽嘅馬"]
+         if which == "last" and stale else []))
     return head + "\n\n" + "\n\n".join(blocks)
 
 
@@ -187,6 +213,7 @@ def settle(day: str) -> str | None:
 
     """結算：命中、ROI（全日同逐個馬場）。⚠️ 用賽果檔嘅 SP，所以係精確嘅。"""
     rows, tot_stake, tot_ret = [], 0.0, 0.0
+    refunds, unsettled, stale_tags = [], [], set()
     for folder in _folders(day):
         res = folder / "Race_Results_Reflector.md"
         if not res.exists():
@@ -202,14 +229,29 @@ def settle(day: str) -> str | None:
         m_stake = m_ret = 0.0
         hits, bets = [], []
         import au_reflect_notify as _R
-        for r in meeting_bets(folder, "last")[0]:
+        race_rows, _whens, tags = meeting_bets(folder, "last")
+        stale_tags |= {x for x in tags if x not in MORNING_TAGS}
+        for r in race_rows:
             pays = _R.places_paid(_R.field_size(folder, r["race"]))
+            placings = finish.get(r["race"]) or {}
             for num, name, odds in r["bets"]:
+                # ⚠️ 賽果檔冇呢隻馬 ≠ 佢跑輸咗。兩個成因要分開，因為一個要退錢，
+                # 另一個係我哋唔知結果：
+                #   * 場次有賽果、但個號碼唔喺入面 = **遲退出**（早更之後先退）。
+                #     Sportsbet 固定賠率遇退出係**退注**，唔可以當輸一個單位。
+                #   * 場次根本冇賽果 = 抽取未到／斷咗，呢注仲未結得。
+                # 2026-08-13→09-04 實測：452 注入面 11 注係退出馬，全部當咗輸，
+                # 令個 ROI 報衰咗 2.0pp（−19.5% 其實係 −17.5%）。
+                if not placings:
+                    unsettled.append((r["race"], name))
+                    continue
+                fin = placings.get(num)
+                if fin is None:
+                    refunds.append((r["race"], name))
+                    continue
                 m_stake += STAKE
                 bets.append((r["race"], name, odds))
-                fin = finish.get(r["race"], {}).get(num)
-                hit = (fin == 1) if MODE == "win" else (fin is not None
-                                                       and fin <= pays)
+                hit = (fin == 1) if MODE == "win" else fin <= pays
                 if hit:
                     # ⚠️ 派彩用**落注嗰刻捕捉嘅位賠**（固定賠率），唔係 SP。
                     got = sp.get(r["race"], {}).get(num, odds) if MODE == "win" \
@@ -230,7 +272,17 @@ def settle(day: str) -> str | None:
     out = [f"📊 落注結算 {day}",
            f"{int(tot_stake)} 注 · 中 {sum(len(r['hits']) for r in rows)} · "
            f"回收 {tot_ret:.2f} 單位",
-           f"全日 ROI {roi(tot_ret, tot_stake):+.1f}%", ""]
+           f"全日 ROI {roi(tot_ret, tot_stake):+.1f}%"]
+    if refunds:
+        out.append(f"↩️ {len(refunds)} 注退回（賽前退出，唔計入 ROI）："
+                   + "、".join(f"R{a} {b}" for a, b in refunds[:4])
+                   + ("…" if len(refunds) > 4 else ""))
+    if unsettled:
+        out.append(f"⏳ {len(unsettled)} 注仲未有賽果，未計入")
+    if stale_tags:
+        out.append(f"⚠️ 部分場次用緊非早更快照（{'、'.join(sorted(stale_tags))}）"
+                   " —— 即係話呢批注嘅價其實係前一晚嘅")
+    out.append("")
     for r in sorted(rows, key=lambda x: -roi(x["ret"], x["stake"])):
         out.append(f"━━ {r['venue']} ━━")
         out.append(f"{int(r['stake'])} 注 · 中 {len(r['hits'])} · "
