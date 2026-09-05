@@ -53,6 +53,10 @@ PRIMARY_OPERATIONS: dict[tuple[Domain, str], Operation] = {
     (Domain.AU, "healthcheck"): Operation.HEALTH,
     (Domain.HKJC, "watch"): Operation.DISCOVER,
     (Domain.HKJC, "prerace"): Operation.PREDICT,
+    # `lineup` 係賽日出賽名單掃描器 —— 同 `watch` 一樣係平價偵測器，
+    # 大部分時間乜都唔做；一旦見到退出／換馬先 in-process call `run_prerace`
+    # 重跑。同 `recovery`（RECOVER 之後 call prerace）同一形狀。
+    (Domain.HKJC, "lineup"): Operation.DISCOVER,
     (Domain.HKJC, "postrace"): Operation.SETTLE,
     (Domain.HKJC, "recovery"): Operation.RECOVER,
     (Domain.HKJC, "startup"): Operation.RECOVER,

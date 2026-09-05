@@ -75,7 +75,9 @@ ADAPTER_SPECS: dict[Domain, AdapterSpec] = {
         owner="hkjc_daily_auto",
         orchestrator=".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py",
         bindings=(
-            _binding(Operation.DISCOVER, HKJC_SCHEDULER, "watch", "prerace"),
+            # `lineup` = 賽日出賽名單掃描（退出馬／換馬）。同 `watch` 一樣係
+            # DISCOVER：平價偵測，見到變動先 in-process 重跑。
+            _binding(Operation.DISCOVER, HKJC_SCHEDULER, "watch", "prerace", "lineup"),
             _binding(Operation.PREDICT, HKJC_SCHEDULER, "prerace"),
             _binding(Operation.VALIDATE, HKJC_SCHEDULER, "prerace"),
             _binding(Operation.PUBLISH, HKJC_SCHEDULER, "prerace", "postrace"),

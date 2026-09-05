@@ -64,6 +64,9 @@ REFLECTOR = (
     PROJECT_ROOT
     / ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py"
 )
+EXTRACTOR_SCRIPTS = (
+    PROJECT_ROOT / ".agents/skills/hkjc_racing/hkjc_race_extractor/scripts"
+)
 DASHBOARD_DEPLOY = PROJECT_ROOT / "deploy.sh"
 WEIGHT_REVIEW = (
     PROJECT_ROOT
@@ -664,6 +667,108 @@ def readiness_digest(meeting_dir: Path) -> str:
     return "\n".join(lines)
 
 
+def run_lineup(
+    state: dict,
+    state_path: Path,
+    *,
+    meeting: dict | None = None,
+    force: bool = False,
+) -> int:
+    """賽日掃出賽名單；有變動就重跑成個場次。
+
+    `run_prerace` 排喺 21:30 / 23:30 / 00:30 / 08:00 / 11:00（悉尼）。香港頭場
+    大約 13:00 HK = 15:00 悉尼 —— **最後一次分析喺開賽前 4 個鐘，成個賽日
+    完全冇覆蓋**。香港退出馬好多喺賽日早上先公布，所以板上可以一路掛住一隻
+    已經退出嘅馬做首選。呢個 mode 補返嗰段窗。
+
+    ⚠️ 掃唔到 ≠ 名單變咗。抓取失敗只會寫入 log，唔會通知、唔會重跑 ——
+    否則一次 HKJC timeout 就會觸發一次冇必要嘅全場重跑。
+    """
+    if str(EXTRACTOR_SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(EXTRACTOR_SCRIPTS))
+    import scan_lineup
+    # 用抽取器嗰份 URL 推導，唔好喺呢度抄多份 —— 一抄就會有一日行開。
+    from batch_extract import derive_urls
+
+    try:
+        meeting = meeting or discover_next_meeting()
+    except Exception as exc:  # noqa: BLE001
+        log(f"HKJC lineup discovery 失敗：{exc}")
+        set_control_outcome("partial", reason="lineup_discovery_failed")
+        return EXIT_TEMPORARY
+    if meeting is None:
+        set_control_outcome("dormant", reason="no_future_racecard")
+        return EXIT_OK
+
+    meeting_date = date.fromisoformat(meeting["date"])
+    today = now_local().date()
+    # 只喺賽日同前一日掃。再早啲名單基本上唔會郁，掃只係嘥 HKJC 請求。
+    if not force and not (0 <= (meeting_date - today).days <= 1):
+        log(f"HKJC lineup not due: {meeting['date']}")
+        set_control_outcome("dormant", reason="lineup_not_due", meeting=meeting["date"])
+        return EXIT_OK
+
+    meeting_dir = meeting_dir_for(meeting)
+    logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"))
+    if not logic_files:
+        log(f"HKJC lineup skipped: {meeting_dir.name} 未分析過")
+        set_control_outcome("dormant", reason="not_analysed_yet", meeting=meeting["date"])
+        return EXIT_OK
+
+    changes: dict[int, dict] = {}
+    errors: dict[int, str] = {}
+    for path in logic_files:
+        try:
+            race = int(path.stem.split("_")[1])
+        except (IndexError, ValueError):
+            continue
+        racecard_url, _ = derive_urls(meeting["url"], race)
+        scan = scan_lineup.scan_race(racecard_url, path)
+        if scan["error"]:
+            errors[race] = scan["error"]
+        elif scan["changed"]:
+            changes[race] = scan
+
+    key = f"{meeting['date']}|{meeting['venue']}"
+    record = state["meetings"].setdefault(key, {})
+    record["last_lineup_scan"] = stamp()
+    if errors:
+        log(f"HKJC lineup 掃唔到 {len(errors)} 場：{sorted(errors)}")
+    if not changes:
+        record["last_lineup_scan_changes"] = 0
+        save_state(state_path, state)
+        log(f"HKJC lineup: {meeting_dir.name} 名單冇變（{len(logic_files)} 場）")
+        set_control_outcome("ok", reason="lineup_unchanged", meeting=meeting["date"])
+        return EXIT_OK
+
+    summary = scan_lineup.describe(changes)
+    # 同一批變動唔好重複通知同重複重跑 —— 重跑要 7 分鐘，賽日唔可以打圈。
+    if record.get("last_lineup_signature") == summary:
+        log(f"HKJC lineup: 同一批變動已經處理過，唔重複重跑\n{summary}")
+        set_control_outcome("ok", reason="lineup_already_applied", meeting=meeting["date"])
+        return EXIT_OK
+
+    notify(
+        f"🔄 HKJC 出賽名單有變｜{meeting['date']} {meeting['venue']}\n"
+        f"{summary}\n"
+        f"正在重跑受影響場次並更新板面。"
+    )
+    record["last_lineup_signature"] = summary
+    record["last_lineup_scan_changes"] = len(changes)
+    save_state(state_path, state)
+
+    code = run_prerace(state, state_path, meeting=meeting, force=True)
+    if code == EXIT_OK:
+        notify(
+            f"✅ HKJC 名單變動已反映｜{meeting['date']} {meeting['venue']}\n{summary}"
+        )
+    else:
+        # 重跑失敗就唔可以當處理咗，下次掃描要再試。
+        record.pop("last_lineup_signature", None)
+        save_state(state_path, state)
+    return code
+
+
 def run_prerace(
     state: dict,
     state_path: Path,
@@ -1242,6 +1347,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         choices=(
             "watch",
             "prerace",
+            "lineup",
             "recovery",
             "postrace",
             "startup",
@@ -1301,6 +1407,10 @@ def main(argv: list[str] | None = None) -> int:
                 code = run_watch(state, args.state_file, meeting=meeting)
             elif args.mode == "prerace":
                 code = run_prerace(
+                    state, args.state_file, meeting=meeting, force=args.force
+                )
+            elif args.mode == "lineup":
+                code = run_lineup(
                     state, args.state_file, meeting=meeting, force=args.force
                 )
             elif args.mode == "recovery":
