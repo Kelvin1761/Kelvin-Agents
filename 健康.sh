@@ -212,6 +212,28 @@ for p in au hkjc; do
   else note_bad "$P 有欄位唔合格"; echo "$o" | sed -n '/唔合格/,/^$/p' | sed 's/^/      /'; fi
 done
 
+# ── Drive 鏡像同本機一唔一致 ──────────────────────────────────────────────
+# 上面「排程日誌」嗰段只答「上次 mirror run 有冇 failed」—— 嗰個永遠答「冇」，
+# 因為每次 run 都成功鏡像咗**佢自己嗰批**。但 `step_mirror_reports` 只掃「今次
+# 動過嘅場次」，所以舊場次事後被重新評分就永遠唔會再推上 Drive。
+# 2026-09-05 實測 AU 有 2,299 個檔（14.2%）落後過正本，最耐 98 日，而當時
+# 所有警報都係綠嘅。呢一段係睇實物，唔係睇 log。
+hdr "Drive 鏡像 vs 本機正本"
+mo=$("$PY" .agents/scripts/mirror_consistency.py --check 2>&1)
+ms=$?
+echo "$mo" | while IFS=$'\t' read -r tag rest; do
+  case "$tag" in
+    OK)    ok "$rest" ;;
+    DRIFT) ok "$rest" ;;
+    SKIP)  warn "$rest" ;;
+    STALE) printf '      %s\n' "$rest" ;;
+    *)     [ -n "$tag" ] && printf '      %s %s\n' "$tag" "$rest" ;;
+  esac
+done
+if [ $ms -ne 0 ]; then
+  note_bad "Drive 鏡像有檔落後過本機正本 —— 補數：.agents/scripts/mirror_consistency.py --backfill"
+fi
+
 # ── 中央30日SLO／evidence provenance ──────────────────────────────────────
 hdr "中央旺財 30日 SLO"
 SLO_JSON=$("$PY" .agents/skills/central_wong_choi/scripts/central_wong_choi.py \
