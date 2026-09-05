@@ -13,6 +13,7 @@ import contextlib
 import json
 import os
 from datetime import date
+import subprocess
 import sys
 import tempfile
 import types
@@ -1829,3 +1830,112 @@ class SpeedmapWarmingTests(unittest.TestCase):
         runlog = self._runlog()
         with unittest.mock.patch.dict(os.environ, {"WC_AU_SPEEDMAP": "0"}):
             self.assertEqual(sched.warm_speedmap_pages(runlog, "m1", ["r1"], "測試"), 0)
+
+
+class TestMirrorStripsMaclOnDenial(unittest.TestCase):
+    """Drive 鏡像撞到 EPERM 時，除咗 `com.apple.macl` 再試一次。
+
+    2026-09-05：AU 鏡像每次 run 都有一個檔 replace 失敗（`PermissionError`），
+    而同一次 run 其餘 765 個檔全部 copy 得。實測 AU_Racing 鏡像目錄 54 個檔
+    **得 1 個**有 `com.apple.macl`（macOS 逐檔 TCC 綁定），而佢就係唯一失敗嗰個。
+
+    ⚠️ 機制未完全證實：喺有 Full Disk Access 嘅互動 shell 度，即使加返個 macl
+    都 replace 得，所以出事嘅似係 macl + Drive FileProvider + launchd 冇對應
+    授權三者夾埋，而嗰個 context 喺測試度複製唔到。所以呢個補救只喺 EPERM
+    **之後**先行，唔會無端端剝人哋個 xattr。
+    """
+
+    def test_a_denied_replace_retries_after_stripping_macl(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src, dst = root / "source.csv", root / "mirror.csv"
+            src.write_text("current")
+            dst.write_text("stale")
+            real_replace = os.replace
+            calls = {"replace": 0, "strip": 0}
+
+            def replace(source, target):
+                if Path(target) == dst:
+                    calls["replace"] += 1
+                    if calls["strip"] == 0:        # 未除 macl 之前一律拒絕
+                        raise PermissionError("FileProvider placeholder")
+                return real_replace(source, target)
+
+            def strip(path):
+                calls["strip"] += 1
+                return True
+
+            with (
+                unittest.mock.patch.object(S.os, "replace", side_effect=replace),
+                unittest.mock.patch.object(S, "_strip_macl", side_effect=strip),
+            ):
+                actual = S.atomic_copy2(src, dst)
+
+            self.assertEqual(actual, dst, "除完 macl 應該直接寫到本尊，唔使 fallback")
+            self.assertEqual(dst.read_text(), "current")
+            self.assertEqual(calls["strip"], 1)
+            self.assertEqual(calls["replace"], 2, "應該係「試一次、除、再試一次」")
+
+    def test_it_never_unlinks_the_destination(self):
+        """換新 inode 睇落吸引，但 unlink 成功而 replace 仍然失敗 =
+        舊鏡像冇咗、新嘅又寫唔入，比留住過期 copy 更差。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src, dst = root / "source.csv", root / "mirror.csv"
+            src.write_text("current")
+            dst.write_text("stale")
+            real_replace = os.replace
+            unlinked = []
+
+            def replace(source, target):
+                if Path(target) == dst:
+                    raise PermissionError("always denied")
+                return real_replace(source, target)
+
+            original_unlink = Path.unlink
+
+            def unlink(self, *a, **kw):
+                if self == dst:
+                    unlinked.append(self)
+                return original_unlink(self, *a, **kw)
+
+            with (
+                unittest.mock.patch.object(S.os, "replace", side_effect=replace),
+                unittest.mock.patch.object(S, "_strip_macl", return_value=True),
+                unittest.mock.patch.object(Path, "unlink", unlink),
+            ):
+                S.atomic_copy2(src, dst)
+
+            self.assertEqual(unlinked, [], "唔准 unlink 目標檔")
+            self.assertEqual(dst.read_text(), "stale", "原本嗰份要原封不動")
+
+    def test_a_latest_file_that_stays_denied_fails_loudly(self):
+        """`.latest` 冇 fallback 可以砌 —— 寫唔到就要嗌，唔好靜靜當成功。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src, dst = root / "source.csv", root / "mirror.latest.csv"
+            src.write_text("current")
+            dst.write_text("stale")
+
+            def replace(source, target):
+                raise PermissionError("always denied")
+
+            with (
+                unittest.mock.patch.object(S.os, "replace", side_effect=replace),
+                unittest.mock.patch.object(S, "_strip_macl", return_value=True),
+                self.assertRaises(PermissionError) as raised,
+            ):
+                S.atomic_copy2(src, dst)
+            self.assertIn("com.apple.macl", str(raised.exception),
+                          "錯誤訊息要講埋已經試過咩補救")
+
+    def test_strip_macl_treats_a_missing_xattr_as_success(self):
+        """本來就冇 macl ≠ 失敗 —— 我哋要嘅係「而家冇」。"""
+        completed = subprocess.CompletedProcess(
+            ["xattr"], 1, stdout="", stderr="xattr: No such xattr: com.apple.macl")
+        with unittest.mock.patch.object(S.subprocess, "run", return_value=completed):
+            self.assertTrue(S._strip_macl(Path("/tmp/whatever")))
+
+    def test_strip_macl_survives_a_missing_xattr_binary(self):
+        with unittest.mock.patch.object(S.subprocess, "run", side_effect=OSError):
+            self.assertFalse(S._strip_macl(Path("/tmp/whatever")))

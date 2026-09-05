@@ -31,6 +31,7 @@ import fcntl
 import json
 import os
 import re
+import errno
 import shutil
 import subprocess
 import sys
@@ -2785,40 +2786,92 @@ def mirror_stat(path: Path) -> os.stat_result | None:
         return None
 
 
+def _strip_macl(path: Path) -> bool:
+    """除咗 `com.apple.macl`。除到（或者本來就冇）回 True。
+
+    `com.apple.macl` 係 macOS 逐檔嘅 TCC 綁定 —— 記住邊個 app 獲授權掂呢個檔。
+    2026-09-05 實測：AU_Racing 鏡像目錄 54 個檔**得 1 個**有呢個 xattr，
+    而佢就係唯一一個 mirror replace 失敗（EPERM）嘅檔；同一次 run 其餘 765 個
+    檔全部 copy 得。相關性好強，但機制未證實 —— 喺互動 shell（有 Full Disk
+    Access）度，即使加返個 macl 都 replace 得，所以真正出事嘅組合似係
+    macl + Drive FileProvider + launchd 冇對應授權，而嗰個 context 複製唔到。
+
+    因為未證實，呢度只係喺 EPERM **之後**試多一次，唔會無端端剝 xattr。
+    `os.removexattr` 喺 macOS 嘅 Python 唔存在，所以要行 `/usr/bin/xattr`。
+    """
+    try:
+        result = subprocess.run(
+            ["/usr/bin/xattr", "-d", "com.apple.macl", str(path)],
+            capture_output=True, text=True, timeout=20,
+        )
+    except (subprocess.SubprocessError, OSError):
+        return False
+    # 本來就冇嗰個 xattr 都當成功 —— 我哋要嘅係「而家冇」。
+    return result.returncode == 0 or "No such xattr" in (result.stderr or "")
+
+
+def _replace_with_retries(tmp: Path, dst: Path) -> bool:
+    """`os.replace(tmp, dst)`，EPERM 就除咗 `com.apple.macl` 再試一次。
+
+    成功回 True；仲係唔得就回 False，畀 caller 行原本嘅 `.latest` fallback。
+
+    ⚠️ **唔准 unlink `dst` 再試。** 睇落好吸引（換個新 inode），但如果 unlink
+    成功而之後 replace 仍然失敗，就變成「舊鏡像冇咗、新嘅又寫唔入」—— 比
+    留住一份過期 copy 更差。`test_unreplaceable_placeholder_uses_deterministic_latest_sibling`
+    就係釘住呢一點：replace 被拒時 `dst` 要原封不動。
+    """
+    try:
+        os.replace(tmp, dst)
+        return True
+    except PermissionError:
+        pass
+    if not _strip_macl(dst):
+        return False
+    try:
+        os.replace(tmp, dst)
+        return True
+    except PermissionError:
+        return False
+
+
 def atomic_copy2(src: Path, dst: Path) -> Path:
     """Copy through a sibling temp file so FileProvider placeholders are replaced.
 
     Google Drive can expose an existing file as a read-only/dataless placeholder:
     opening that inode for overwrite fails, while creating and renaming a sibling
     file is allowed.  A sibling also keeps `os.replace` atomic on the same volume.
+
+    `_replace_with_retries` 之後仲係唔得，就落 `.latest` fallback；連 `.latest`
+    本身都寫唔到就大聲失敗，唔好砌一條冇人讀嘅 `.latest.latest` 鏈。
     """
     tmp = dst.with_name(f".{dst.name}.wongchoi-tmp-{os.getpid()}")
     try:
         shutil.copy2(src, tmp)
-        try:
-            os.replace(tmp, dst)
+        if _replace_with_retries(tmp, dst):
             return dst
-        except PermissionError:
-            # A stale Google Drive FileProvider inode can deny overwrite,
-            # rename AND unlink even though siblings are writable.  Keep the
-            # current mirror under a deterministic `.latest` name; consumers
-            # resolve the freshest of canonical/latest via wongchoi_paths.
-            # If that deterministic fallback itself becomes immutable, fail
-            # visibly instead of inventing an unread `.latest.latest` chain.
-            if dst.stem.endswith(".latest"):
-                raise
-            fallback = mirror_fallback_path(dst)
-            fallback_tmp = fallback.with_name(
-                f".{fallback.name}.wongchoi-tmp-{os.getpid()}")
+        # A stale Google Drive FileProvider inode can deny overwrite, rename AND
+        # unlink even though siblings are writable.  Keep the current mirror
+        # under a deterministic `.latest` name; consumers resolve the freshest of
+        # canonical/latest via wongchoi_paths.
+        if dst.stem.endswith(".latest"):
+            raise PermissionError(
+                errno.EPERM,
+                f"mirror replace 唔到（已試過除 com.apple.macl 同 unlink）：{dst}",
+            )
+        fallback = mirror_fallback_path(dst)
+        fallback_tmp = fallback.with_name(
+            f".{fallback.name}.wongchoi-tmp-{os.getpid()}")
+        try:
+            shutil.copy2(src, fallback_tmp)
+            if not _replace_with_retries(fallback_tmp, fallback):
+                raise PermissionError(
+                    errno.EPERM, f"mirror fallback 都寫唔到：{fallback}")
+            return fallback
+        finally:
             try:
-                shutil.copy2(src, fallback_tmp)
-                os.replace(fallback_tmp, fallback)
-                return fallback
-            finally:
-                try:
-                    fallback_tmp.unlink()
-                except FileNotFoundError:
-                    pass
+                fallback_tmp.unlink()
+            except FileNotFoundError:
+                pass
     finally:
         try:
             tmp.unlink()
