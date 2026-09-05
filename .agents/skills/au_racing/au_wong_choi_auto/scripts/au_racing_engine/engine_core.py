@@ -336,6 +336,21 @@ def _normalize_rating_identity(value) -> str:
     return text.lower()
 
 
+def _surname_token_match(name: str, tokens) -> bool:
+    """姓氏 token 比對 —— 要**整個字**，唔可以係 substring。
+
+    ⚠️ `token in name` 會令 `Clark` 中 `Sheridan Clarke`、`Bott` 中 `Shane Bottomley`。
+    實測 836 場入面單係 T1 閘就擦錯 189 個位（已改為 DB-only，見 `_is_top_jockey`）。
+    下面 `_jockey_rank_value` 嗰兩張名單係**純顯示**（`_jockey_change_signal` 嘅
+    「較強／較高級騎師」分支明文唔入分），呢個窗口冇擦錯人，但 `Parr`⊃`Parry`、
+    `Moore`⊃`Moorehouse` 呢啲隱患一樣存在，所以一併行呢個 helper。
+    """
+    if not name:
+        return False
+    return any(re.search(rf"(?<![A-Za-z]){re.escape(token)}(?![A-Za-z])", name)
+               for token in tokens)
+
+
 def _load_jockey_trainer_combo_stats():
     global JOCKEY_TRAINER_COMBO_CACHE, TRAINER_TRACK_CACHE
     if JOCKEY_TRAINER_COMBO_CACHE is not None and TRAINER_TRACK_CACHE is not None:
@@ -2982,23 +2997,34 @@ class RacingEngine:
     # 名單統一（2026-07-11，Bug B）：以 rating DB tier 為唯一真相，token 名單只做
     # DB 冇名時嘅 fallback。舊四套獨立名單互相矛盾（Craig Williams/Damian Lane 喺
     # DB 係 T1 但舊 _is_top_jockey 唔認）。
+    #
+    # 2026-09-05 收尾：**token fallback 全部剷走**。2026-07-11 已經宣佈咗「DB 係唯一
+    # 真相」，但兩張姓氏 token 名單留咗喺度，而佢哋係 substring 比對。實測 836 場
+    # 8,047 個騎手位（`docs/audits/AU_TRACK_JHF_DATA_QUALITY_2026-09-05.md`）：
+    #
+    #   * DB 只有 59 個騎師 / 56 個練馬師，配對率 20.6% / 16.3% ——
+    #     即係「fallback」先係主路徑（79.4% / 83.7%）。
+    #   * 190 個位由 token 判 T1，**189 個係錯**：
+    #       `Sheridan Clarke` 中 `Clark`（連姓都唔同）、`Shane Bottomley` 中 `Bott`、
+    #       `Brad`/`Campbell Rawiller`（真嗰個係 Nash）、`Lachlan`/`Brooke King`、
+    #       `Margaret Collett`（真嗰個係 Jason）、`Peter`/`Declan Maher`（真嗰個係 Ciaron）、
+    #       `Mitchell Freedman`、`Keith Dryden & Libby Snowden`。
+    #   * 而九個 token 入面，三個（McDonald/Rawiller/Berry）本身就同 DB 嘅 T1 重複，
+    #     另外六個（Clark/Hyeronimus/Schiller/Lloyd/King/Collett）指向嘅人 **DB 明文
+    #     評 T2** —— token 名單係喺度**推翻**佢自己聲明嘅真相來源。練馬師同款。
+    #   * 剩返嗰一個真 case（`Paul Snowden`，4 個位）係 DB 別名缺口，已經喺
+    #     `AU_Trainer_Ratings.csv` 補一行 alias → `Peter & Paul Snowden`（T1）。
+    #
+    # 呢個係評估合約第 7 節「正確性修正」：就算績效數字係相反方向，
+    # `Sheridan Clarke` 都唔應該因為個姓包住 `Clark` 而變頂級騎師。
+    # 唔喺 DB = 唔係 T1；要加人就加落 CSV（有 `canonical_name` 別名機制）。
     def _is_top_jockey(self, jockey: str) -> bool:
         rating = self._jockey_rating_profile(jockey)
-        if rating:
-            return str(rating.get("tier")) == "T1"
-        return any(
-            token in jockey
-            for token in ("McDonald", "Rawiller", "Berry", "Clark", "Hyeronimus", "Schiller", "Lloyd", "King", "Collett")
-        )
+        return bool(rating) and str(rating.get("tier")) == "T1"
 
     def _is_top_trainer(self, trainer: str) -> bool:
         rating = self._trainer_rating_profile(trainer)
-        if rating:
-            return str(rating.get("tier")) == "T1"
-        return any(
-            token in trainer
-            for token in ("Waller", "Maher", "Waterhouse", "Bott", "Pride", "Snowden", "Freedman", "Hawkes", "Charlton")
-        )
+        return bool(rating) and str(rating.get("tier")) == "T1"
 
     # 跑法只有**一個**來源：Sportsbet 逐仗 video/settled 走位證據，經
     # `weighted_au_running_style()` 加權，寫入 `running_style_line`。
@@ -3334,9 +3360,10 @@ class RacingEngine:
             return {"T1": 3, "T2": 2, "T3": 1}.get(str(rating.get("tier")), 0)
         if self._is_top_jockey(name):
             return 3
-        if any(token in name for token in ("McEvoy", "Layt", "Bayliss", "Moore", "Roper", "Costin", "Parr", "Dolan", "Schiller")):
+        if _surname_token_match(name, ("McEvoy", "Layt", "Bayliss", "Moore", "Roper",
+                                       "Costin", "Parr", "Dolan", "Schiller")):
             return 2
-        if "(a)" in name or any(token in name for token in ("Fitzgerald", "Panya")):
+        if "(a)" in name or _surname_token_match(name, ("Fitzgerald", "Panya")):
             return 1
         return 0
 
