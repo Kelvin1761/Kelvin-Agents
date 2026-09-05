@@ -103,9 +103,120 @@ class BettingMessageTests(unittest.TestCase):
                      "bets": [(7, "Lucky Horse", 3.5)],
                      "watch": [(12, "Watch Horse", 1.9)]}]
             with unittest.mock.patch.object(B, "_folders", lambda day: [folder]), \
-                 unittest.mock.patch.object(B, "meeting_bets",
-                                            lambda folder, which: (rows, [])):
+                 unittest.mock.patch.object(
+                     B, "meeting_bets",
+                     lambda folder, which: (rows, [], ["morning-rebuild"])):
                 text = B.bet_list("2026-08-13", "last")
 
         self.assertIn("R1 ①#7 Lucky Horse @3.5", text)
         self.assertIn("R1 👀②#12 Watch Horse @1.9", text)
+
+
+RESULTS = """# Warrnambool Race Results — 2026-09-03
+
+## Race 1
+1st: #2 Budjik Boy SP$4.00
+2nd: #4 Johnny Be Good (1.50L) SP$11.00
+3rd: #11 Spanish Snitzel (1.70L) SP$101.00
+4th: #9 Arizona Luck (3.45L) SP$5.50
+"""
+
+
+class SettlementTests(unittest.TestCase):
+    """退出馬要退注。
+
+    ⚠️ 「賽果檔冇呢隻馬」有兩個成因，一個要退錢、一個係我哋唔知結果，唔可以
+    兩個都當輸。實測 2026-08-13→09-04：452 注入面 11 注係遲退出（早更之後先
+    退），全部當咗輸一個單位，令個 ROI 報衰 2.0pp（−19.5% 其實係 −17.5%）。
+    報衰同報好一樣壞 —— 兩樣都會令人唔信條數。
+    """
+
+    def _settle(self, bets, *, results=RESULTS, tags=("morning-rebuild",)):
+        import au_reflect_notify as R  # noqa: PLC0415
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "2026-09-03 Warrnambool Race 1-2"
+            folder.mkdir()
+            (folder / "Race_Results_Reflector.md").write_text(results,
+                                                              encoding="utf-8")
+            rows = [{"race": race, "picks": [], "bets": picks, "watch": []}
+                    for race, picks in bets]
+            with unittest.mock.patch.object(B, "_folders", lambda day: [folder]), \
+                 unittest.mock.patch.object(
+                     B, "meeting_bets",
+                     lambda f, which: (rows, [], list(tags))), \
+                 unittest.mock.patch.object(R, "field_size", lambda f, r: 10):
+                return B.settle("2026-09-03")
+
+    def test_a_runner_missing_from_a_settled_race_is_refunded_not_lost(self):
+        text = self._settle([(1, [(4, "Johnny Be Good", 2.5),
+                                  (99, "Scratched Horse", 3.0)])])
+        self.assertIn("1 注退回", text)
+        self.assertIn("Scratched Horse", text)
+        self.assertIn("1 注 · 中 1", text)      # 分母淨返一注，唔係兩注
+        self.assertIn("ROI +150.0%", text)      # 2.5 回收 / 1 注
+
+    def test_a_race_with_no_results_at_all_is_unsettled_not_lost(self):
+        # 場次根本冇賽果 = 抽取未到，同「呢隻馬退出」係兩件事。
+        text = self._settle([(1, [(4, "Johnny Be Good", 2.5)]),
+                             (2, [(1, "No Results Yet", 4.0)])])
+        self.assertIn("1 注仲未有賽果", text)
+        self.assertIn("1 注 · 中 1", text)
+
+    def test_a_plain_loser_is_still_a_loser(self):
+        # 退注邏輯唔可以順手救埋跑輸嗰啲 —— #9 跑第 4，10 匹派三位。
+        text = self._settle([(1, [(9, "Arizona Luck", 2.5)])])
+        self.assertNotIn("注退回", text)
+        self.assertIn("ROI -100.0%", text)
+
+    def test_a_non_morning_snapshot_is_called_out(self):
+        text = self._settle([(1, [(4, "Johnny Be Good", 2.5)])],
+                            tags=("analysis",))
+        self.assertIn("非早更快照", text)
+        self.assertIn("analysis", text)
+
+    def test_a_morning_snapshot_says_nothing(self):
+        text = self._settle([(1, [(4, "Johnny Be Good", 2.5)])])
+        self.assertNotIn("非早更快照", text)
+
+
+class SnapshotTagTests(unittest.TestCase):
+    """早更到底跑咗未，權威證據係 snapshot 個 tag，唔係個時間。
+
+    2026-08-27 至 08-29 三日，control plane 將 10:00 嗰程當 `duplicate_skipped`
+    跳過（`heal()` 霸咗個 slot，已修），於是「落注單（當朝定價）」出嘅其實係前
+    一晚嘅價 —— 而張單上面完全睇唔出。嗰三日 5.5% 注落咗喺冇出賽嘅馬，有早更
+    嘅日子只係 1.5%。
+    """
+
+    def test_tags_are_read_off_the_snapshot_key(self):
+        self.assertEqual(B.snapshot_tag("2026-09-04T10:12:25|morning-rebuild"),
+                         "morning-rebuild")
+        self.assertEqual(B.snapshot_tag("2026-09-04T00:01:06"), "unknown")
+
+    def test_only_the_two_morning_tags_count(self):
+        self.assertTrue(B.is_morning("2026-09-04T10:12:25|morning-rebuild"))
+        self.assertTrue(B.is_morning("2026-09-04T10:12:25|morning-refresh"))
+        self.assertFalse(B.is_morning("2026-09-04T00:01:06|analysis"))
+        self.assertFalse(B.is_morning("2026-09-04T00:01:06|backfill-test"))
+
+    def test_the_bet_list_header_stops_claiming_morning_pricing(self):
+        rows = [{"race": 1, "picks": [(7, "A", 3.5)],
+                 "bets": [(7, "A", 3.5)], "watch": []}]
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "2026-08-27 Seymour Race 1-1"
+            folder.mkdir()
+            with unittest.mock.patch.object(B, "_folders", lambda day: [folder]), \
+                 unittest.mock.patch.object(
+                     B, "meeting_bets",
+                     lambda f, which: (rows, ["2026-08-26 23:06"], ["analysis"])):
+                stale = B.bet_list("2026-08-27", "last")
+            with unittest.mock.patch.object(B, "_folders", lambda day: [folder]), \
+                 unittest.mock.patch.object(
+                     B, "meeting_bets",
+                     lambda f, which: (rows, ["2026-08-27 10:04"],
+                                       ["morning-rebuild"])):
+                fresh = B.bet_list("2026-08-27", "last")
+        self.assertIn("用緊前一晚嘅價", stale)
+        self.assertIn("早更未跑到", stale)
+        self.assertIn("當朝定價", fresh)
+        self.assertNotIn("早更未跑到", fresh)
