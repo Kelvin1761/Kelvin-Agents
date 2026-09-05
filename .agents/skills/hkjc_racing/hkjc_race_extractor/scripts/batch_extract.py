@@ -82,6 +82,23 @@ def _content_error(content, label, race_no):
     return None
 
 
+def _artifact_state(path, label, race_no):
+    """`kept` when the file already on disk is usable, else `missing`.
+
+    Used on the paths where the refresh never produced content at all (the
+    extractor timed out or could not be launched).  Those paths must still be
+    able to say "we already have good data" — otherwise a transient failure
+    reads exactly like having nothing.
+    """
+    if not os.path.exists(path):
+        return 'missing'
+    try:
+        with open(path, 'r', encoding='utf-8') as handle:
+            return 'missing' if _content_error(handle.read(), label, race_no) else 'kept'
+    except OSError:
+        return 'missing'
+
+
 def _keep_valid_candidate(path, content, label, race_no, returncode):
     """Validate before replace; failed refreshes never destroy last good data.
 
@@ -199,7 +216,21 @@ def extract_single_race(race_no, base_url, output_dir, date_prefix):
 
 
 def extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix):
-    """Extract the starter PDF (once per meeting)."""
+    """Extract the starter PDF (once per meeting).
+
+    Returns ``(fresh_ok, error, state)`` — same three-way contract as
+    `_keep_valid_candidate`, because `starter_pdf_ready` is a **hard** term in
+    the publish gate (`ready = pdf_ok and racecards and formguides`), so a
+    transient PDF failure blocks the whole meeting on its own.
+
+    ⚠️ 2026-09-05: this function used to unpack two values here while
+    `_keep_valid_candidate` had been changed to return three.  The `ValueError`
+    was swallowed by a bare `except Exception` and reported as a *source*
+    failure, so the starter PDF failed **20 of 22 runs** for 2026-09-06 ShaTin
+    — 0/22 passed the gate — while the extractor itself took 11.2s and exited
+    0.  Nothing in the log or the readiness JSON named the reason.  That is why
+    the exception handling below is narrow and why the error is now recorded.
+    """
     pdf_file = os.path.join(output_dir, f"{date_prefix} 全日出賽馬匹資料 (PDF).md")
     try:
         result = subprocess.run(
@@ -207,12 +238,15 @@ def extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix):
             capture_output=True, text=True, timeout=90,
             encoding='utf-8', env=SUBPROCESS_ENV
         )
-        ok, error = _keep_valid_candidate(
-            pdf_file, result.stdout or '', 'Starter PDF', 0, result.returncode
-        )
-        return ok, "" if ok else (error or result.stderr[:200])
-    except Exception as e:
-        return False, str(e)
+    except (subprocess.SubprocessError, OSError) as exc:
+        # Only *running* the extractor is allowed to fail softly here.  A bug in
+        # our own code must not be laundered into "HKJC is not ready".
+        return False, f"Starter PDF: {type(exc).__name__}: {exc}", _artifact_state(
+            pdf_file, 'Starter PDF', 0)
+    ok, error, state = _keep_valid_candidate(
+        pdf_file, result.stdout or '', 'Starter PDF', 0, result.returncode
+    )
+    return ok, "" if ok else (error or result.stderr[:200]), state
 
 
 def _trackwork_file_ok(output_dir, race_no, suffix, min_bytes):
@@ -229,6 +263,7 @@ def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
     Uses --fail-soft so missing data doesn't abort the pipeline."""
     results = {'ok': False, 'races': {}, 'error': ''}
     race_list = ','.join(str(r) for r in races)
+    result = None
     try:
         result = subprocess.run(
             [VENV_PYTHON, TRACKWORK_SCRIPT,
@@ -239,24 +274,30 @@ def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
             capture_output=True, text=True, timeout=300,
             encoding='utf-8', env=SUBPROCESS_ENV
         )
-        for r in races:
-            # ⚠️ Match by suffix, not by `date_prefix`. This module builds
-            # `09-06` (MM-DD) while `extract_trackwork.py` writes
-            # `2026-09-06` (YYYY-MM-DD), so an exact-path check could never
-            # find the files it had just written: every run reported
-            # "晨操 0/N (fallback)" and stored `trackwork_ready: 0` while all
-            # N races were on disk and complete. Globbing keeps the check
-            # working if either side changes its prefix again.
-            results['races'][r] = {
-                'json_ok': _trackwork_file_ok(output_dir, r, "json", 100),
-                'md_ok': _trackwork_file_ok(output_dir, r, "md", 50),
-            }
-        total_ok = sum(1 for v in results['races'].values() if v['json_ok'] and v['md_ok'])
-        results['ok'] = total_ok > 0
-        if result.returncode != 0:
-            results['error'] = result.stderr[:200]
-    except Exception as e:
-        results['error'] = str(e)
+    except (subprocess.SubprocessError, OSError) as exc:
+        results['error'] = f"{type(exc).__name__}: {exc}"
+    # ⚠️ 呢個 loop 一定要喺 try **外面**。佢查嘅係碟上實物，唔係 subprocess
+    # 點收場 —— 而 `extract_trackwork.py` 係逐場寫檔嘅，所以 300 秒 timeout
+    # 殺咗個 subprocess 之後，已經寫好嗰批仍然完整。2026-09-05 呢個 loop
+    # 喺 try 入面：一 timeout 就整個跳過，`races` 留空 → 報「晨操 0/10
+    # (fallback)」，而 20 個檔（261 KB json / 50 KB md）全部喺碟上。
+    # 實測 22 次 run 有 9 次（41%）中招。
+    for r in races:
+        # ⚠️ Match by suffix, not by `date_prefix`. This module builds
+        # `09-06` (MM-DD) while `extract_trackwork.py` writes
+        # `2026-09-06` (YYYY-MM-DD), so an exact-path check could never
+        # find the files it had just written: every run reported
+        # "晨操 0/N (fallback)" and stored `trackwork_ready: 0` while all
+        # N races were on disk and complete. Globbing keeps the check
+        # working if either side changes its prefix again.
+        results['races'][r] = {
+            'json_ok': _trackwork_file_ok(output_dir, r, "json", 100),
+            'md_ok': _trackwork_file_ok(output_dir, r, "md", 50),
+        }
+    total_ok = sum(1 for v in results['races'].values() if v['json_ok'] and v['md_ok'])
+    results['ok'] = total_ok > 0
+    if result is not None and result.returncode != 0 and not results['error']:
+        results['error'] = result.stderr[:200]
     return results
 
 
@@ -297,11 +338,11 @@ def main():
 
     # Step 1: Extract starter PDF (once)
     print(f"📄 Extracting starter PDF...")
-    pdf_ok, pdf_err = extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix)
+    pdf_ok, pdf_err, pdf_state = extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix)
     if pdf_ok:
         print(f"   ✅ Starter PDF saved")
     else:
-        print(f"   ❌ Starter PDF failed: {pdf_err}")
+        print(f"   ❌ Starter PDF failed ({pdf_state}): {pdf_err}")
         print(f"   ⏳ PDF 未 ready；先完成其餘來源探測，整批會標記 WAITING_SOURCE。")
     print()
 
@@ -356,6 +397,9 @@ def main():
               f" —— 差額係刷新失敗但保留咗上次有效檔，唔係冇數據")
     if pdf_ok:
         print(f"   ✅ Starter PDF: OK")
+    else:
+        # 冇呢個 else，一個**硬阻塞**條件失敗喺 summary 度係完全睇唔到嘅。
+        print(f"   ❌ Starter PDF: {pdf_state} —— {pdf_err or '冇記錄原因'}")
     if tw_results['ok']:
         print(f"   ✅ 晨操 Trackwork: {tw_ok_count}/{len(races)} races")
     else:
@@ -370,6 +414,13 @@ def main():
         "meeting_date": date_raw,
         "expected_races": len(races),
         "starter_pdf_ready": pdf_ok,
+        # `starter_pdf_ready` 係 `ready` 嘅硬條件，所以佢失敗會單獨卡死成個場次。
+        # 之前 readiness 完全冇記低原因，`hkjc_daily_schedule.readiness_digest`
+        # 亦冇任何一行講 PDF —— 於是 2026-09-06 沙田連續 22 次 run 都過唔到閘，
+        # 而通知每次都指住幾場「賽績」，即係指錯地方。
+        "starter_pdf_state": pdf_state,
+        "starter_pdf_error": pdf_err or "",
+        "trackwork_error": tw_results.get('error', ''),
         "racecards_ready": total_rc,
         "formguides_ready": total_fg,
         "racecards_valid": valid_rc,

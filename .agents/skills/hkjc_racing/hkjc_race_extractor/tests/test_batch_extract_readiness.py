@@ -79,7 +79,11 @@ def test_partial_batch_writes_manifest_and_exits_temporary(tmp_path: Path, monke
         "errors": ["Formguide R1: source not published/ready"],
     }
     with (
-        mock.patch.object(batch, "extract_starter_pdf", return_value=(True, "")),
+        # ⚠️ 個 mock 一定要跟足真 signature。2026-09-05 呢一行係 `(True, "")`
+        # 兩個值，而 `extract_starter_pdf` 已經改成回三個 —— 呢個 mock 遮住咗
+        # 真嘅 arity，所以成個 suite 綠燈，而生產環境 PDF 100% 失敗。
+        # 真 caller 嘅測試喺 test_batch_extract_contracts.py。
+        mock.patch.object(batch, "extract_starter_pdf", return_value=(True, "", "fresh")),
         mock.patch.object(
             batch,
             "extract_trackwork_meeting",

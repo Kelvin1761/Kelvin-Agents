@@ -641,6 +641,26 @@ def readiness_digest(meeting_dir: Path) -> str:
         lines.append(f"冇有效檔（要人睇）：{_fold(gone)}")
     if stale:
         lines.append(f"刷新失敗但有舊有效檔（照跑得）：{_fold(stale)}")
+
+    # 發佈閘係 `ready = starter_pdf and 排位表齊 and 賽績齊` —— **晨操唔喺入面**。
+    # 所以 PDF 失敗會單獨卡死成個場次，而之前呢個 digest 一行都冇講過 PDF：
+    # 2026-09-06 沙田連續 22 次 run 過唔到閘（PDF 佔 20 次），而每次通知都
+    # 指住幾場「賽績」，讀者被引去查一個冇壞嘅嘢。真兇一定要出名。
+    if not data.get("starter_pdf_ready"):
+        state = data.get("starter_pdf_state")
+        reason = (data.get("starter_pdf_error") or "").strip()
+        if state == "kept":
+            head = "⚠️ PDF 刷新失敗但有舊有效檔"
+        elif state == "missing":
+            head = "⛔ PDF 冇有效檔 —— 呢個就係卡住成個場次嘅嘢"
+        else:
+            head = "⛔ PDF 未 ready —— 呢個就係卡住成個場次嘅嘢"
+        if reason:
+            head += f"：{reason[:120]}"
+        lines.append(head)
+    if not data.get("trackwork_ready") and (data.get("expected_races") or 0):
+        # 講明佢唔阻塞，唔好令人以為要處理。
+        lines.append("（晨操 0 —— 唔喺發佈閘條件內，唔會阻住上板）")
     return "\n".join(lines)
 
 
