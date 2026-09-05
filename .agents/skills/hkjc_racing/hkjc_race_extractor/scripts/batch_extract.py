@@ -235,7 +235,12 @@ def extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix):
     try:
         result = subprocess.run(
             [VENV_PYTHON, STARTER_PDF_SCRIPT, date_yyyymmdd],
-            capture_output=True, text=True, timeout=90,
+            # 90 秒訂得太緊。實測正常耗時 **11.2 秒**，但 2026-09-06 賽日
+            # 6 次 run 有 **2 次 TimeoutExpired（33%）** —— HKJC 間中會慢好多。
+            # 而 `starter_pdf_ready` 係發佈閘嘅硬條件，撞一次就卡住成個場次。
+            # 正常只用上限嘅 4%，所以放寬幾乎零成本：成功嗰陣一樣快，慢嗰陣
+            # 由「卡死等下次重試」變成「等耐啲但過到」。
+            capture_output=True, text=True, timeout=300,
             encoding='utf-8', env=SUBPROCESS_ENV
         )
     except (subprocess.SubprocessError, OSError) as exc:

@@ -17,6 +17,7 @@ call site 只改咗兩個。漏咗嗰個係 `extract_starter_pdf`，於是：
 from __future__ import annotations
 
 import ast
+import re
 import importlib.util
 import subprocess
 import sys
@@ -195,3 +196,18 @@ def test_the_default_is_strict():
 def test_the_gate_mode_is_recorded_in_the_manifest():
     """事後要查得返「呢次係用邊個閘過嘅」。"""
     assert '"gate_mode": gate_mode,' in _gate_source()
+
+
+def test_the_starter_pdf_timeout_has_headroom():
+    """PDF 係發佈閘嘅硬條件，timeout 唔可以訂到貼身。
+
+    實測正常耗時 11.2 秒。2026-09-06 賽日用 90 秒上限時，6 次 run 有 2 次
+    （33%）TimeoutExpired，每次都卡住成個場次。放寬到 300 秒：成功嗰陣
+    一樣快，慢嗰陣由「卡死」變成「過到」。
+    """
+    src = _gate_source()
+    start = src.index("def extract_starter_pdf")
+    end = src.index("\ndef ", start + 1)
+    block = src[start:end]
+    timeout = int(re.search(r"timeout=(\d+)", block).group(1))
+    assert timeout >= 240, f"PDF timeout {timeout}s 太貼身（實測正常 11.2s，但會慢到爆 90s）"
