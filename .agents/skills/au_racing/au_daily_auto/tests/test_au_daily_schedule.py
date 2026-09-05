@@ -1939,3 +1939,105 @@ class TestMirrorStripsMaclOnDenial(unittest.TestCase):
     def test_strip_macl_survives_a_missing_xattr_binary(self):
         with unittest.mock.patch.object(S.subprocess, "run", side_effect=OSError):
             self.assertFalse(S._strip_macl(Path("/tmp/whatever")))
+
+
+class TestErrorExcerpt(unittest.TestCase):
+    """失敗通知要報**真錯**，唔係 stdout 尾。
+
+    2026-09-06 AU 晚更死喺
+    `generate_static.py: error: --au-meeting-dir requires --base-snapshot`，
+    但通知報咗 `Scanning for meetings...`，於是診斷判成「對唔上任何已知模式 ——
+    呢個係新嘅，要人睇」。成因：stderr 無緩衝、stdout 唔係 tty 時整塊緩衝，
+    所以一個即刻死嘅 argparse 錯會排喺 stdout 尾**之前**。
+    成個排程有 12 處用緊 `out.splitlines()[-1]`，即係每一個失敗都報緊噪音。
+    """
+
+    ARGPARSE_TAIL = (
+        "usage: generate_static.py [-h] [--base-snapshot BASE_SNAPSHOT]\n"
+        "generate_static.py: error: --au-meeting-dir requires --base-snapshot\n"
+        "🏇 Generating static dashboard...\n"
+        "   Scanning for meetings...\n"
+    )
+
+    def test_it_picks_the_error_not_the_stdout_tail(self):
+        got = S.error_excerpt(self.ARGPARSE_TAIL, 2)
+        self.assertIn("requires --base-snapshot", got)
+        self.assertNotIn("Scanning for meetings", got)
+
+    def test_a_traceback_wins_over_later_chatter(self):
+        out = "Traceback (most recent call last):\nValueError: boom\ndone\n"
+        self.assertIn("ValueError", S.error_excerpt(out, 1))
+
+    def test_it_takes_the_last_error_when_there_are_several(self):
+        out = "error: first\nnoise\nerror: second\ntrailing\n"
+        self.assertEqual(S.error_excerpt(out, 1), "error: second")
+
+    def test_no_error_marker_falls_back_to_the_last_line(self):
+        self.assertEqual(S.error_excerpt("one\ntwo\nthree\n", 1), "three")
+
+    def test_empty_output_reports_the_return_code(self):
+        self.assertEqual(S.error_excerpt("", 7), "rc=7")
+        self.assertEqual(S.error_excerpt("   \n\n", 7), "rc=7")
+
+    def test_it_is_length_capped(self):
+        self.assertLessEqual(len(S.error_excerpt("error: " + "x" * 999, 1)), 220)
+
+    def test_the_scheduler_no_longer_uses_the_raw_tail(self):
+        """結構閘。用 AST，唔用字串比對 —— 註釋同 docstring 提到佢係啱嘅，
+        真正唔准嘅係仲有 code 咁樣攞尾行。"""
+        import ast
+        tree = ast.parse(Path(S.__file__).read_text(encoding="utf-8"))
+        bad = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Subscript):
+                continue
+            value = node.value
+            if not (isinstance(value, ast.Call)
+                    and isinstance(value.func, ast.Attribute)
+                    and value.func.attr == "splitlines"):
+                continue
+            # 只禁 `[-1]`。`[-40:]`（記 log 尾幾行）係正當嘅，唔好一竹篙打一船。
+            index = node.slice
+            if isinstance(index, ast.Index):          # py<3.9 相容
+                index = index.value
+            if (isinstance(index, ast.UnaryOp) and isinstance(index.op, ast.USub)
+                    and isinstance(index.operand, ast.Constant)
+                    and index.operand.value == 1):
+                bad.append(node.lineno)
+        self.assertEqual(bad, [], f"呢啲行仲攞緊 splitlines()[-1]：{bad}")
+
+
+class TestSnapshotNeedsABase(unittest.TestCase):
+    """冇 live snapshot 就唔准由零 build —— 嗰份只有今晚嘅場次，一發佈就
+    掃走板上其餘所有嘢（包括 HKJC）。
+
+    2026-09-06：三次 live-snapshot timeout 之後 `current` 係 None，而合併
+    路徑照砌 `--au-meeting-dir` 而唔加 `--base-snapshot`。argparse 拒絕咗，
+    **意外咁擋住咗一次破壞性發佈**。而嗰句 warning 仲寫住「build 會由
+    deploy.sh 自己下載」—— 假嘅，條 code 根本行唔到嗰步。
+    """
+
+    def test_no_base_snapshot_fails_fast_with_the_real_reason(self):
+        runlog = unittest.mock.MagicMock()
+        with tempfile.TemporaryDirectory() as tmp:
+            # 要真係存在 —— 合併前個 live_dirs 過濾器會剔走唔喺度嘅 folder，
+            # 咁就會行咗另一條 error path，測唔到呢個閘。
+            folder = Path(tmp) / "2026-09-06 Bendigo Race 1-10"
+            folder.mkdir()
+            with (
+                unittest.mock.patch.object(S, "download_live_snapshot",
+                                           return_value=None),
+                unittest.mock.patch.object(S, "run_cmd") as run_cmd,
+            ):
+                with self.assertRaises(S.TemporaryFailure) as raised:
+                    S.build_snapshot(runlog, [folder])
+        message = str(raised.exception)
+        self.assertIn("live snapshot", message)
+        self.assertIn("掃走", message, "要講明後果，唔係淨係話失敗")
+        run_cmd.assert_not_called(), "唔准砌一個實會失敗嘅命令出嚟"
+
+    def test_the_warning_no_longer_claims_deploy_will_handle_it(self):
+        src = Path(S.__file__).read_text(encoding="utf-8")
+        code = [ln for ln in src.splitlines()
+                if "deploy.sh 自己下載" in ln and not ln.strip().startswith("#")]
+        self.assertEqual(code, [], "嗰句係假嘅，唔可以留返做 runlog 訊息")

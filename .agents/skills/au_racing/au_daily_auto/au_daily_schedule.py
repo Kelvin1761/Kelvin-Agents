@@ -669,7 +669,7 @@ def build_results_file(runlog: RunLog, folder: Path, key: str) -> dict:
                        "--meeting-dir", str(folder)], timeout=1800)
     dest = folder / "Race_Results_Reflector.md"
     if rc != 0 or not dest.exists():
-        return {"ok": False, "detail": out.splitlines()[-1] if out else f"rc={rc}"}
+        return {"ok": False, "detail": error_excerpt(out, rc)}
     text = dest.read_text(encoding="utf-8")
     found = sorted(int(m.group(1)) for m in re.finditer(r"^## Race (\d+)", text, re.M))
     return {"ok": True, "races_with_results": found}
@@ -1036,7 +1036,7 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
                            "--skip-backtest"], timeout=3600)
         if rc != 0 or not report.exists():
             runlog.meeting(folder.name, "reflection_failed",
-                           detail=out.splitlines()[-1] if out else f"rc={rc}")
+                           detail=error_excerpt(out, rc))
             return {}
     else:
         runlog.step("reflection", "skipped-already-done", meeting=folder.name)
@@ -1087,13 +1087,13 @@ def step_ingest_results(runlog: RunLog, *, from_date: str) -> bool:
         # Not fatal: the reflector path still covers these meetings, just with
         # fewer finishers per race.  It is still a DEGRADED run: callers must
         # propagate False so launchd/healthcheck cannot report a false green.
-        detail = out.splitlines()[-1] if out else f"rc={rc}"
+        detail = error_excerpt(out, rc)
         runlog.warn("Sportsbet 全場賽果重建失敗，只用 reflector 補"
                     f"（每場跑手會少啲）：{detail}")
 
     rc, out = run_cmd(command, timeout=1800)
     if rc != 0:
-        detail = out.splitlines()[-1] if out else f"rc={rc}"
+        detail = error_excerpt(out, rc)
         runlog.warn(f"賽果摺返語料庫失敗：{detail}")
         runlog.step("ingest-results", "failed", detail=detail)
         return False
@@ -1523,7 +1523,7 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
                           cwd=AU_SKILL, timeout=7200)
         if rc != 0 or not (folder / "Meeting_Summary.md").exists():
             raise TemporaryFailure(
-                f"抽取未完成（rc={rc}）：{out.splitlines()[-1] if out else '冇輸出'}")
+                f"抽取未完成（rc={rc}）：{error_excerpt(out, rc)}")
         # 官方讓磅分：Sportsbet 冇，RA 有。一定要喺落 Facts/Logic 之前補。
         apply_ra_ratings(runlog, folder, day, venue)
 
@@ -1550,7 +1550,7 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
                     for p in folder.glob("Race_*_Auto_Analysis.md"))
     if rc != 0 and not scored:
         raise TemporaryFailure(
-            f"分析失敗（rc={rc}）：{out.splitlines()[-1] if out else '冇輸出'}")
+            f"分析失敗（rc={rc}）：{error_excerpt(out, rc)}")
     if rc != 0:
         runlog.warn(f"{folder.name}: orchestrator rc={rc} 但有 {len(scored)} 場出咗分，"
                     f"當部分成功處理")
@@ -1956,7 +1956,7 @@ def rebuild_meeting_from_cache(runlog: RunLog, folder: Path, key: str,
                       cwd=AU_SKILL, timeout=3600)
     if rc != 0:
         runlog.warn(f"{folder.name}: 重寫 Racecard 失敗（rc={rc}）："
-                    f"{out.splitlines()[-1] if out else '冇輸出'}")
+                    f"{error_excerpt(out, rc)}")
         return False
     # claw 重寫咗 Racecard，所以 RA 讓磅分要再補一次（唔補就會退回 fallback）。
     apply_ra_ratings(runlog, folder, meta["date"], venue)
@@ -1967,7 +1967,7 @@ def rebuild_meeting_from_cache(runlog: RunLog, folder: Path, key: str,
     rc, out = run_cmd(cmd, timeout=10800)
     if rc != 0:
         runlog.warn(f"{folder.name}: 重建分析 rc={rc}："
-                    f"{out.splitlines()[-1] if out else '冇輸出'}")
+                    f"{error_excerpt(out, rc)}")
     return True
 
 
@@ -2225,7 +2225,7 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
         rc, out = run_cmd(cmd, timeout=7200)
         if rc != 0:
             raise TemporaryFailure(
-                f"重新評分失敗（rc={rc}）：{out.splitlines()[-1] if out else '冇輸出'}")
+                f"重新評分失敗（rc={rc}）：{error_excerpt(out, rc)}")
         reason = "going change only"
 
     # 重建之後再影一次 —— 追加，唔覆寫，所以分析時嗰個價永遠留住。
@@ -2247,6 +2247,35 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
 
 
 # ── 步驟 4：dashboard 驗證 + 發佈 ──────────────────────────────────────────
+_ERROR_HINTS = (
+    "error:", "fatal", "traceback", "exception", "❌", "usage:",
+    "no such file", "permission denied", "timed out", "refused",
+)
+
+
+def error_excerpt(out: str, rc: int, *, limit: int = 220) -> str:
+    """由一個 subprocess 嘅混合輸出入面，抽最講得出事嘅一行。
+
+    ⚠️ 唔可以用 `out.splitlines()[-1]`。stderr 係無緩衝、stdout 唔係 tty 時
+    係整塊緩衝 —— 所以一個即刻死嘅 argparse 錯會**排喺 stdout 尾之前**，
+    而「最後一行」拎到嘅係之後先 flush 出嚟嗰段無關痛癢嘅正常輸出。
+
+    2026-09-06 實測：AU 晚更死喺
+    `generate_static.py: error: --au-meeting-dir requires --base-snapshot`，
+    但通知報出嚟嘅係 `Scanning for meetings...`，於是診斷判成
+    「對唔上任何已知模式 —— 呢個係新嘅，要人睇」。成個排程有 12 處用緊
+    同一個寫法，即係**每一個失敗都報緊噪音**。
+    """
+    lines = [line.strip() for line in (out or "").splitlines() if line.strip()]
+    if not lines:
+        return f"rc={rc}"
+    for line in reversed(lines):
+        low = line.lower()
+        if any(hint in low for hint in _ERROR_HINTS):
+            return line[:limit]
+    return lines[-1][:limit]
+
+
 def download_live_snapshot(runlog: RunLog, dest: Path) -> Path | None:
     """攞而家 live 嗰份 snapshot。**一定要繞開 CDN cache。**
 
@@ -2278,7 +2307,11 @@ def download_live_snapshot(runlog: RunLog, dest: Path) -> Path | None:
             request = urllib.request.Request(
                 f"{LIVE_SNAPSHOT_URL}?cb={int(time.time() * 1000)}",
                 headers=dict(request.headers))
-    runlog.warn("攞唔到 live snapshot；build 會由 deploy.sh 自己下載")
+    # ⚠️ 呢句以前寫住「build 會由 deploy.sh 自己下載」—— **假嘅**。`build_snapshot`
+    # 跟住就會用 `--au-meeting-dir` 而冇 `--base-snapshot` 去 call
+    # `generate_static.py`，argparse 即刻拒絕（rc=2），根本行唔到 deploy.sh 嗰步。
+    # 2026-09-06 晚更就係咁死（三次 live-snapshot timeout 之後）。
+    runlog.warn("攞唔到 live snapshot —— 冇 base 就唔可以做增量合併")
     return None
 
 
@@ -2429,7 +2462,7 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
         if rc != 0 or not pruned.exists():
             raise TemporaryFailure(
                 f"剪走已歸檔場次失敗（rc={rc}）："
-                f"{out.splitlines()[-1] if out else '冇輸出'}")
+                f"{error_excerpt(out, rc)}")
         current = pruned
         runlog.step("dashboard-prune", "ok", dropped=drop_keys)
     # ⚠️ 合併之前要重新確認每個 folder 仲喺度。2026-08-10 實測：早更喺覆盤之前
@@ -2448,19 +2481,30 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
         live_dirs.append(folder)
     meeting_dirs = live_dirs
 
+    # ⚠️ 冇 base snapshot 就**唔准**照 build。`generate_static.py` 冇 base 嘅時候
+    # 會由零掃出一份新 snapshot —— 而嗰份只會有今晚呢幾個場次，即係一發佈就
+    # 掃走板上其餘所有嘢（包括 HKJC）。2026-09-06 嗰次 argparse 拒絕咗個唔合法
+    # 嘅命令，意外咁擋住咗一次破壞性發佈。
+    #
+    # 所以呢度快速失敗，而且要講真原因 —— 唔好等 argparse 報一句同成因無關嘅嘢。
+    # 係 `TemporaryFailure`：live snapshot 下載超時係暫時性，下次 run 會再試。
+    if current is None and meeting_dirs:
+        raise TemporaryFailure(
+            "攞唔到 live snapshot，冇 base 可以合併 —— 由零 build 會掃走板上"
+            f"其餘所有場次，所以唔做。今次想合併：{[f.name for f in meeting_dirs]}")
+
     for i, folder in enumerate(meeting_dirs, 1):
         out_json = WORK_DIR / f"merge-{i:02d}.json"
         cmd = [sys.executable, GENERATE_STATIC,
                "--au-meeting-dir", str(folder),
+               "--base-snapshot", str(current),
                "--output-json", str(out_json),
                "--output-html", str(WORK_DIR / f"merge-{i:02d}.html")]
-        if current is not None:
-            cmd += ["--base-snapshot", str(current)]
         rc, out = run_cmd(cmd, cwd=DASHBOARD_DIR, timeout=3600)
         if rc != 0 or not out_json.exists():
             raise TemporaryFailure(
                 f"合併 {folder.name} 失敗（rc={rc}）："
-                f"{out.splitlines()[-1] if out else '冇輸出'}")
+                f"{error_excerpt(out, rc)}")
         current = out_json
         runlog.step("dashboard-merge", "ok", meeting=folder.name,
                     snapshot=out_json.name)
@@ -2638,7 +2682,7 @@ def deploy_dashboard(runlog: RunLog, snapshot: Path) -> dict:
                     "production_url": "https://wongchoi-dashboard.pages.dev",
                     "commit": commit.group(1) if commit else None,
                     "completed_at": stamp()}
-        last = out.splitlines()[-1] if out else f"rc={rc}"
+        last = error_excerpt(out, rc)
         runlog.retry("deploy", attempt, last)
         time.sleep(20 * attempt)
     return {"ok": False, "attempts": 3, "detail": last}
