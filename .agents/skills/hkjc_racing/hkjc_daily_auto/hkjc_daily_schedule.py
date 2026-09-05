@@ -722,11 +722,15 @@ def run_lineup(
             race = int(path.stem.split("_")[1])
         except (IndexError, ValueError):
             continue
-        racecard_url, _ = derive_urls(meeting["url"], race)
-        scan = scan_lineup.scan_race(racecard_url, path)
+        racecard_url, formguide_url = derive_urls(meeting["url"], race)
+        scan = scan_lineup.scan_race(racecard_url, path, formguide_url=formguide_url)
         if scan["error"]:
             errors[race] = scan["error"]
-        elif scan["changed"]:
+            continue
+        if scan.get("source_disagreement"):
+            log(f"HKJC lineup R{race} 兩個來源唔一致：{scan['source_disagreement']}")
+        if scan["changed"]:
+            scan["logic_path"] = path
             changes[race] = scan
 
     key = f"{meeting['date']}|{meeting['venue']}"
@@ -757,15 +761,39 @@ def run_lineup(
     record["last_lineup_scan_changes"] = len(changes)
     save_state(state_path, state)
 
-    code = run_prerace(state, state_path, meeting=meeting, force=True)
-    if code == EXIT_OK:
-        notify(
-            f"✅ HKJC 名單變動已反映｜{meeting['date']} {meeting['venue']}\n{summary}"
-        )
-    else:
+    # 名單變動嘅重跑要收窄嘅閘：PDF 只需 `valid`，排位表／賽績照樣要 fresh。
+    # 唔咁做嘅話，一次 PDF 失敗就可以令一隻已退出嘅馬留喺板上。
+    code = run_prerace(state, state_path, meeting=meeting, force=True,
+                       gate_mode="field_change")
+    if code != EXIT_OK:
         # 重跑失敗就唔可以當處理咗，下次掃描要再試。
         record.pop("last_lineup_signature", None)
         save_state(state_path, state)
+        return code
+
+    # ⚠️ 重跑回 0 只代表條 pipeline 行完，**唔代表改動真係入咗**。
+    # 一定要重讀 Logic 驗返。2026-09-05 呢個掃描器最初比對排位表，而重建鏈
+    # 食嘅係賽績 —— 咁樣會次次回 0、次次冇改到嘢，而 signature 去重會令佢
+    # 靜靜收檔，板上一直掛住隻已退出嘅馬。驗結果先擋得住呢種形狀。
+    unapplied = {race: reason for race, scan in changes.items()
+                 if (reason := scan_lineup.verify_applied(scan["logic_path"], scan))}
+    if unapplied:
+        record.pop("last_lineup_signature", None)
+        record["lineup_unapplied_streak"] = int(record.get("lineup_unapplied_streak") or 0) + 1
+        save_state(state_path, state)
+        detail = "\n".join(f"R{race}：{reason}" for race, reason in sorted(unapplied.items()))
+        notify(
+            f"⛔ HKJC 名單變動重跑咗但**冇反映到**｜{meeting['date']} {meeting['venue']}\n"
+            f"{detail}\n"
+            f"板上仲係掛住舊名單，要人手睇。（第 {record['lineup_unapplied_streak']} 次）"
+        )
+        set_control_outcome("failed", reason="lineup_change_not_applied",
+                            meeting=meeting["date"])
+        return EXIT_FAILED
+
+    record["lineup_unapplied_streak"] = 0
+    save_state(state_path, state)
+    notify(f"✅ HKJC 名單變動已反映｜{meeting['date']} {meeting['venue']}\n{summary}")
     return code
 
 
@@ -775,6 +803,7 @@ def run_prerace(
     *,
     meeting: dict | None = None,
     force: bool = False,
+    gate_mode: str = "strict",
 ) -> int:
     try:
         meeting = meeting or discover_next_meeting()
@@ -797,6 +826,8 @@ def run_prerace(
         log(f"HKJC manual force requested for {meeting['date']} {meeting['venue']}")
 
     meeting_dir = meeting_dir_for(meeting, create=True)
+    # `field_change` 只會由 `run_lineup` 傳入：見 batch_extract 個閘度嘅說明，
+    # 佢只鬆 starter PDF 一格（排位表同賽績照樣要 fresh）。
     code, output = run_cmd(
         [
             sys.executable,
@@ -805,7 +836,8 @@ def run_prerace(
             "--auto",
             "--validate-engine",
             "--skip-cloudflare-deploy",
-        ]
+        ],
+        env_overlay={"WC_HKJC_GATE": gate_mode},
     )
     if code != 0:
         key = f"{meeting['date']}|{meeting['venue']}"

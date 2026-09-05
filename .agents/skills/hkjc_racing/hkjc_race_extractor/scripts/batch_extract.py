@@ -406,7 +406,32 @@ def main():
         print(f"   ⚠️ 晨操 Trackwork: {tw_ok_count}/{len(races)} races (fallback)")
     print(f"   📁 All files saved to: {output_dir}")
 
-    ready = pdf_ok and total_rc == len(races) and total_fg == len(races)
+    # 發佈閘。預設（`strict`）要每個來源今次都刷新成功。
+    #
+    # `WC_HKJC_GATE=field_change` 係為「名單有變，要攞走退出馬」嗰種重跑而設，
+    # 只鬆**一格**：starter PDF 由 `fresh` 放寬到 `valid`（fresh 或 kept）。
+    # 排位表同賽績照樣要 fresh —— 佢哋決定名單（賽績尤其：Facts 個馬匹迴圈
+    # 食嘅就係佢），鬆咗就會由舊檔重建，隻退出馬返晒嚟。
+    #
+    # 點解 PDF 鬆得：佢係一份**賽前**文件，自己聲明咗截止時間。實測 2026-09-06
+    # 沙田嘅 `最終版本` 截止喺 09-05 上午 11:30 —— 即係定義上永遠早過賽事，
+    # 冇可能載到賽日嘅退出馬。而 `初版`→`最終版本` 2,347 行入面只有 3 行抬頭
+    # 唔同，2,344 行數據逐位元一樣。用一份 `kept` PDF 去做「攞走退出馬」嘅
+    # 重跑，資訊上同 `fresh` 冇分別。
+    #
+    # 支撐嘅唔對稱：板上掛住一隻唔跑嘅馬做首選係主動出錯；用一份今朝嘅 PDF
+    # 分析（數據同下午嗰份一樣）係良性。
+    gate_mode = os.environ.get("WC_HKJC_GATE", "strict").strip().lower()
+    if gate_mode == "field_change":
+        pdf_gate = pdf_state in ("fresh", "kept")
+    else:
+        if gate_mode != "strict":
+            print(f"   ⚠️ 唔認得嘅 WC_HKJC_GATE={gate_mode!r}，當 strict 處理")
+        pdf_gate = pdf_ok
+    ready = pdf_gate and total_rc == len(races) and total_fg == len(races)
+    if gate_mode == "field_change" and pdf_gate and not pdf_ok:
+        print(f"   ℹ️ 名單變動模式：PDF 用碟上有效檔（{pdf_state}）過閘 —— "
+              f"PDF 截止時間必定早過賽事，唔會載到賽日退出馬。")
     readiness = {
         "schema_version": 1,
         "generated_at": datetime.now().astimezone().isoformat(timespec='seconds'),
@@ -419,6 +444,7 @@ def main():
         # 亦冇任何一行講 PDF —— 於是 2026-09-06 沙田連續 22 次 run 都過唔到閘，
         # 而通知每次都指住幾場「賽績」，即係指錯地方。
         "starter_pdf_state": pdf_state,
+        "gate_mode": gate_mode,
         "starter_pdf_error": pdf_err or "",
         "trackwork_error": tw_results.get('error', ''),
         "racecards_ready": total_rc,

@@ -44,11 +44,12 @@ def meeting_dir(tmp_path):
     return tmp_path
 
 
-def _run(state_path, meeting, meeting_dir, scan_results, prerace_code=0):
+def _run(state_path, meeting, meeting_dir, scan_results, prerace_code=0,
+         verify_reason=""):
     state = {"meetings": {}, "notifications": {}}
     calls = {"notify": [], "prerace": 0}
 
-    def fake_scan(_url, logic_path):
+    def fake_scan(_card_url, logic_path, formguide_url=""):
         return scan_results[int(Path(logic_path).stem.split("_")[1])]
 
     def fake_prerace(*_a, **_k):
@@ -61,10 +62,10 @@ def _run(state_path, meeting, meeting_dir, scan_results, prerace_code=0):
         mock.patch.object(sched, "run_prerace", side_effect=fake_prerace),
         mock.patch.object(sched, "save_state"),
         mock.patch.object(sched, "set_control_outcome"),
+        mock.patch.object(scan_lineup, "scan_race", side_effect=fake_scan),
+        mock.patch.object(scan_lineup, "verify_applied", return_value=verify_reason),
     ):
-        import scan_lineup
-        with mock.patch.object(scan_lineup, "scan_race", side_effect=fake_scan):
-            code = sched.run_lineup(state, state_path, meeting=meeting)
+        code = sched.run_lineup(state, state_path, meeting=meeting)
     return code, calls, state
 
 
@@ -107,7 +108,7 @@ def test_the_same_change_is_not_rerun_twice(tmp_path, meeting, meeting_dir):
     state = {"meetings": {}, "notifications": {}}
     calls = {"prerace": 0}
 
-    def fake_scan(_url, logic_path):
+    def fake_scan(_card_url, logic_path, formguide_url=""):
         return SCRATCHED if int(Path(logic_path).stem.split("_")[1]) == 1 else CLEAN
 
     with (
@@ -145,6 +146,63 @@ def test_a_meeting_that_is_days_away_is_not_scanned(tmp_path, meeting_dir):
         code = sched.run_lineup({"meetings": {}}, tmp_path / "s.json", meeting=far)
     assert code == sched.EXIT_OK
     scan_race.assert_not_called()
+
+
+def test_a_rerun_that_did_not_apply_the_change_escalates(tmp_path, meeting, meeting_dir):
+    """`run_prerace` 回 0 唔代表隻退出馬真係走咗。
+
+    2026-09-05 呢個掃描器最初比對排位表，而重建鏈食嘅係賽績 —— 咁樣會次次
+    回 0、次次冇改到嘢，而 signature 去重會令佢靜靜收檔，板上一直掛住隻已
+    退出嘅馬。所以驗結果失敗一定要：唔標記已處理、大聲嗌、回 FAILED。
+    """
+    code, calls, state = _run(tmp_path / "s.json", meeting, meeting_dir,
+                              {1: SCRATCHED, 2: CLEAN},
+                              verify_reason="重跑後仍然喺 Logic 入面：3 錶之星河")
+    assert code == sched.EXIT_FAILED
+    assert any("冇反映到" in m for m in calls["notify"])
+    assert any("3 錶之星河" in m for m in calls["notify"])
+    key = f"{meeting['date']}|ShaTin"
+    assert "last_lineup_signature" not in state["meetings"][key], \
+        "冇反映到就唔可以當處理咗 —— 下次掃描要再試"
+    assert state["meetings"][key]["lineup_unapplied_streak"] == 1
+
+
+def test_the_rerun_uses_the_narrowed_field_change_gate(tmp_path, meeting, meeting_dir):
+    """名單變動嘅重跑要用 `field_change` 閘（只鬆 PDF 一格）。
+
+    用 strict 嘅話，一次 PDF 失敗就可以令一隻已退出嘅馬留喺板上 —— 而 PDF
+    嘅截止時間必定早過賽事，佢對「今日邊隻馬跑」零資訊。
+    """
+    seen = {}
+
+    def fake_prerace(*_a, **kw):
+        seen.update(kw)
+        return 0
+
+    with (
+        mock.patch.object(sched, "meeting_dir_for", return_value=meeting_dir),
+        mock.patch.object(sched, "notify"),
+        mock.patch.object(sched, "run_prerace", side_effect=fake_prerace),
+        mock.patch.object(sched, "save_state"),
+        mock.patch.object(sched, "set_control_outcome"),
+        mock.patch.object(scan_lineup, "scan_race",
+                          side_effect=lambda _c, lp, formguide_url="":
+                              SCRATCHED if int(Path(lp).stem.split("_")[1]) == 1 else CLEAN),
+        mock.patch.object(scan_lineup, "verify_applied", return_value=""),
+    ):
+        sched.run_lineup({"meetings": {}}, tmp_path / "s.json", meeting=meeting)
+    assert seen.get("gate_mode") == "field_change"
+    assert seen.get("force") is True
+
+
+def test_source_disagreement_is_logged_but_does_not_trigger(tmp_path, meeting, meeting_dir):
+    """排位表同賽績唔一致值得記低，但唔可以自己觸發重跑。"""
+    disagree = dict(CLEAN, source_disagreement="排位表已經冇：3 錶之星河")
+    code, calls, _ = _run(tmp_path / "s.json", meeting, meeting_dir,
+                          {1: disagree, 2: CLEAN})
+    assert code == sched.EXIT_OK
+    assert calls["prerace"] == 0
+    assert calls["notify"] == []
 
 
 def test_a_meeting_never_analysed_is_skipped(tmp_path, meeting):

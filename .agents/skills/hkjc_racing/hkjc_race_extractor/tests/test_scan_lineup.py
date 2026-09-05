@@ -4,6 +4,11 @@
 香港頭場約 15:00 悉尼 —— 開賽前 4 個鐘之後成個賽日冇覆蓋，而香港退出馬
 好多喺賽日早上先公布。
 
+**權威來源係賽績，唔係排位表** —— `inject_hkjc_fact_anchors.parse_hkjc_formguide()`
+個馬匹迴圈食嘅就係佢，成條鏈係 賽績 → Facts → Logic → 板面。呢個 module
+最初比對排位表，後果係：排位表出咗退出馬 → 偵測到 → 重跑 → 重跑由賽績砌名單
+→ 隻馬仲喺度 → 永遠唔收斂，而板上一直掛住隻已退出嘅馬。
+
 最關鍵嗰組測試係「失敗唔可以扮變動」。一個 timeout、一個半截頁、一個
 exit≠0，如果被讀成「啲馬唔見咗」，就會喺賽日觸發一次冇必要嘅全場重跑
 （7 分鐘）同一個假通知。2026-09-05 個 starter PDF 故障就係同一個形狀：
@@ -98,7 +103,7 @@ def test_a_fetch_timeout_is_an_error_not_a_change(tmp_path):
     logic = _logic(tmp_path, 1, FIELD)
     with mock.patch.object(scan.subprocess, "run",
                            side_effect=subprocess.TimeoutExpired("x", 60)):
-        out = scan.scan_race("http://x", logic)
+        out = scan.scan_race("http://card", logic, formguide_url="http://form")
     assert out["changed"] is False, "timeout 唔可以觸發重跑"
     assert "TimeoutExpired" in out["error"]
 
@@ -107,7 +112,7 @@ def test_a_nonzero_exit_is_an_error_not_a_change(tmp_path):
     logic = _logic(tmp_path, 1, FIELD)
     done = subprocess.CompletedProcess(["x"], 1, stdout="", stderr="boom")
     with mock.patch.object(scan.subprocess, "run", return_value=done):
-        out = scan.scan_race("http://x", logic)
+        out = scan.scan_race("http://card", logic, formguide_url="http://form")
     assert out["changed"] is False
     assert "exit=1" in out["error"]
 
@@ -117,7 +122,7 @@ def test_an_empty_page_is_an_error_not_a_full_field_scratching(tmp_path):
     logic = _logic(tmp_path, 1, FIELD)
     done = subprocess.CompletedProcess(["x"], 0, stdout="", stderr="")
     with mock.patch.object(scan.subprocess, "run", return_value=done):
-        out = scan.scan_race("http://x", logic)
+        out = scan.scan_race("http://card", logic, formguide_url="http://form")
     assert out["changed"] is False
     assert out["scratched"] == []
     assert "唔完整" in out["error"]
@@ -128,7 +133,7 @@ def test_a_truncated_page_is_an_error_not_a_partial_scratching(tmp_path):
     truncated = _card(FIELD[:2]) + "\n馬號: 3\n"      # 第三隻只得號碼
     done = subprocess.CompletedProcess(["x"], 0, stdout=truncated, stderr="")
     with mock.patch.object(scan.subprocess, "run", return_value=done):
-        out = scan.scan_race("http://x", logic)
+        out = scan.scan_race("http://card", logic, formguide_url="http://form")
     assert out["changed"] is False
     assert "唔完整" in out["error"]
 
@@ -144,7 +149,7 @@ def test_a_real_change_still_gets_through(tmp_path):
     logic = _logic(tmp_path, 1, FIELD)
     done = subprocess.CompletedProcess(["x"], 0, stdout=_card(FIELD[:2]), stderr="")
     with mock.patch.object(scan.subprocess, "run", return_value=done):
-        out = scan.scan_race("http://x", logic)
+        out = scan.scan_race("http://card", logic, formguide_url="http://form")
     assert out["changed"] is True
     assert out["scratched"] == [{"no": 3, "horse": "錶之星河"}]
 
@@ -163,3 +168,100 @@ def test_describe_names_every_kind_of_change():
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__]))
+
+
+# ────────────── 權威來源：賽績，唔係排位表 ──────────────
+
+def _two_sources(form_md, card_md, form_rc=0, card_rc=0):
+    """`_lineup_from` 用 script 路徑分辨邊個來源，所以 side_effect 按 argv 派。"""
+    def run(cmd, **_kw):
+        script = str(cmd[1])
+        if "formguide" in script:
+            return subprocess.CompletedProcess(cmd, form_rc, stdout=form_md, stderr="")
+        return subprocess.CompletedProcess(cmd, card_rc, stdout=card_md, stderr="")
+    return run
+
+
+def test_the_formguide_decides_not_the_racecard(tmp_path):
+    """排位表話退出咗，賽績仲有 —— 重建鏈食賽績，所以唔准報變動。
+
+    報咗就會觸發一個永遠唔收斂嘅重跑：重跑由賽績砌名單，隻馬照樣返嚟。
+    """
+    logic = _logic(tmp_path, 1, FIELD)
+    with mock.patch.object(scan.subprocess, "run",
+                           side_effect=_two_sources(_card(FIELD), _card(FIELD[:2]))):
+        out = scan.scan_race("http://card", logic, formguide_url="http://form")
+    assert out["changed"] is False
+    assert out["scratched"] == []
+    assert "排位表已經冇：3 錶之星河" in out["source_disagreement"]
+
+
+def test_a_change_in_the_formguide_is_reported(tmp_path):
+    """反過嚟：賽績先行，就係真變動 —— 即使排位表未跟上。"""
+    logic = _logic(tmp_path, 1, FIELD)
+    with mock.patch.object(scan.subprocess, "run",
+                           side_effect=_two_sources(_card(FIELD[:2]), _card(FIELD))):
+        out = scan.scan_race("http://card", logic, formguide_url="http://form")
+    assert out["changed"] is True
+    assert out["scratched"] == [{"no": 3, "horse": "錶之星河"}]
+    assert out["source_disagreement"]
+
+
+def test_agreeing_sources_report_no_disagreement(tmp_path):
+    logic = _logic(tmp_path, 1, FIELD)
+    with mock.patch.object(scan.subprocess, "run",
+                           side_effect=_two_sources(_card(FIELD), _card(FIELD))):
+        out = scan.scan_race("http://card", logic, formguide_url="http://form")
+    assert out["source_disagreement"] == ""
+
+
+def test_a_failed_racecard_does_not_block_the_formguide_verdict(tmp_path):
+    """第二意見抓唔到就算數，唔可以拖累權威來源。"""
+    logic = _logic(tmp_path, 1, FIELD)
+    with mock.patch.object(scan.subprocess, "run",
+                           side_effect=_two_sources(_card(FIELD[:2]), "", card_rc=1)):
+        out = scan.scan_race("http://card", logic, formguide_url="http://form")
+    assert out["changed"] is True
+    assert out["error"] == ""
+
+
+def test_no_formguide_url_refuses_to_guess(tmp_path):
+    """冇賽績就唔可以退而求其次用排位表。"""
+    logic = _logic(tmp_path, 1, FIELD)
+    out = scan.scan_race("http://card", logic)
+    assert out["changed"] is False
+    assert "冇賽績 URL" in out["error"]
+
+
+# ────────────── verify_applied：驗結果唔好信機制 ──────────────
+
+def test_verify_applied_passes_when_the_horse_is_gone(tmp_path):
+    logic = _logic(tmp_path, 1, FIELD[:2])
+    assert scan.verify_applied(logic, {"scratched": [{"no": 3, "horse": "錶之星河"}]}) == ""
+
+
+def test_verify_applied_catches_a_rerun_that_changed_nothing(tmp_path):
+    """`run_prerace` 回 0 唔代表改動入咗 —— 呢個係唯一擋得住嗰種形狀嘅嘢。"""
+    logic = _logic(tmp_path, 1, FIELD)          # 隻馬仲喺度
+    reason = scan.verify_applied(logic, {"scratched": [{"no": 3, "horse": "錶之星河"}]})
+    assert "仍然喺 Logic 入面" in reason
+    assert "3 錶之星河" in reason
+
+
+def test_verify_applied_catches_an_unswapped_substitution(tmp_path):
+    logic = _logic(tmp_path, 1, FIELD)
+    reason = scan.verify_applied(
+        logic, {"replaced": [{"no": 3, "was": "錶之星河", "now": "新馬"}]})
+    assert "仍然係舊馬" in reason
+
+
+def test_verify_applied_catches_a_missing_addition(tmp_path):
+    logic = _logic(tmp_path, 1, FIELD)
+    reason = scan.verify_applied(logic, {"added": [{"no": 9, "horse": "新馬"}]})
+    assert "新馬仲未入到" in reason
+
+
+def test_verify_applied_treats_an_unreadable_logic_as_unapplied(tmp_path):
+    reason = scan.verify_applied(tmp_path / "nope.json",
+                                 {"scratched": [{"no": 3, "horse": "X"}]})
+    assert reason

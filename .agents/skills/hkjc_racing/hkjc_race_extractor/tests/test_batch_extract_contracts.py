@@ -145,3 +145,53 @@ def test_trackwork_partial_write_is_counted_partially(tmp_path):
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__]))
+
+
+# ───────────────────── 發佈閘：field_change 模式 ─────────────────────
+#
+# `WC_HKJC_GATE=field_change` 只鬆 starter PDF 一格。排位表同賽績照樣要 fresh
+# —— 佢哋決定名單（賽績尤其：`inject_hkjc_fact_anchors` 個馬匹迴圈食嘅就係
+# 佢），鬆咗就會由舊檔重建，隻退出馬返晒嚟。
+#
+# 點解 PDF 鬆得：實測 2026-09-06 沙田嘅 `最終版本` 截止喺 09-05 上午 11:30
+# —— 定義上早過賽事，冇可能載到賽日退出馬；而 `初版`→`最終版本` 2,347 行
+# 只有 3 行抬頭唔同，2,344 行數據逐位元一樣。
+
+def _gate_source():
+    return SCRIPT.read_text(encoding="utf-8")
+
+
+def test_field_change_relaxes_only_the_pdf():
+    src = _gate_source()
+    block = src[src.index("gate_mode = os.environ.get"):src.index("ready = pdf_gate")]
+    assert 'pdf_state in ("fresh", "kept")' in block
+    # 個 ready 條式只可以有 PDF 呢一格會隨模式變。
+    ready = src[src.index("ready = pdf_gate"):].splitlines()[0]
+    assert ready.strip() == "ready = pdf_gate and total_rc == len(races) and total_fg == len(races)"
+
+
+def test_racecards_and_formguides_still_require_fresh():
+    """`total_rc` / `total_fg` 數嘅係 `*_ok`（今次刷新成功），唔係 `*_valid`。"""
+    src = _gate_source()
+    assert "total_rc = sum(1 for r in all_results if r['racecard_ok'])" in src
+    assert "total_fg = sum(1 for r in all_results if r['formguide_ok'])" in src
+
+
+def test_an_unknown_gate_mode_falls_back_to_strict():
+    """打錯字唔可以靜靜變成放寬 —— 一定要 fail closed。"""
+    src = _gate_source()
+    idx = src.index("gate_mode = os.environ.get")
+    block = src[idx:src.index("ready = pdf_gate")]
+    assert 'gate_mode != "strict"' in block
+    assert "當 strict 處理" in block
+    # else 分支用嘅係 pdf_ok（fresh only）
+    assert "pdf_gate = pdf_ok" in block
+
+
+def test_the_default_is_strict():
+    assert 'os.environ.get("WC_HKJC_GATE", "strict")' in _gate_source()
+
+
+def test_the_gate_mode_is_recorded_in_the_manifest():
+    """事後要查得返「呢次係用邊個閘過嘅」。"""
+    assert '"gate_mode": gate_mode,' in _gate_source()
