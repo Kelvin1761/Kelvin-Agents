@@ -25,6 +25,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.request
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -1420,18 +1421,141 @@ def _meeting_from_url(url: str) -> dict:
     }
 
 
+# 排程鎖。一個全域 `flock` 防止兩條 pipeline 同時寫同一個 meeting folder 同
+# state —— 呢個目的係啱嘅，所以個鎖要留。問題喺**攞唔到之後點做**。
+#
+# 2026-09-05：`prerace` 因為一個 starter PDF bug 每 30 分鐘重試一次、每次跑
+# 7 分鐘，幾乎長期霸住個鎖。`watch`（09:15）同 `postrace`（08:30）撞正就即刻
+# 放棄，成日一次都冇跑到 —— 而個訊息淨係「already running」，冇講邊個霸住，
+# 所以收到 `severity: critical` 都唔知去邊度查。
+#
+# 三個修正：
+#   1. **有界等待**：唔再一撞就走。`prerace` 大約 7 分鐘，等到就入到。
+#   2. **講得出邊個霸住**：holder 檔記低 mode / pid / 開始時間。
+#   3. **記低被擋次數**：連續被擋就係餓死訊號，要嗌。
+LOCK_WAIT_SECONDS = max(0, int(os.environ.get("WC_HKJC_LOCK_WAIT", "900")))
+LOCK_STARVE_ALERT_AFTER = max(1, int(os.environ.get("WC_HKJC_LOCK_STARVE_AFTER", "3")))
+
+
+def _holder_path(lock_path: Path) -> Path:
+    # 另開一個檔，唔好寫入 lock 檔本身 —— 等緊嘅人要讀得到，而
+    # 寫 lock 檔會同 flock 語意混埋一齊。
+    return lock_path.with_name(lock_path.name + ".holder")
+
+
+def _write_holder(lock_path: Path, mode: str) -> None:
+    try:
+        _holder_path(lock_path).write_text(json.dumps(
+            {"mode": mode, "pid": os.getpid(), "since": stamp()},
+            ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass          # 純診斷，唔可以因為佢而搞冧個 run
+
+
+def _clear_holder(lock_path: Path) -> None:
+    try:
+        _holder_path(lock_path).unlink()
+    except OSError:
+        pass
+
+
+def _describe_holder(lock_path: Path) -> str:
+    """「邊個霸住、霸咗幾耐」。攞唔到就照樣要回一句嘢。"""
+    try:
+        data = json.loads(_holder_path(lock_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return "唔知邊個 run 霸住（冇 holder 記錄）"
+    mode = data.get("mode") or "?"
+    since = str(data.get("since") or "")
+    held = ""
+    try:
+        started = datetime.fromisoformat(since)
+        held = f"，已經跑咗 {int((now_local() - started).total_seconds() // 60)} 分鐘"
+    except ValueError:
+        pass
+    return f"{mode}（pid {data.get('pid')}）霸住{held}"
+
+
+def _acquire_lock(lock, timeout: float) -> float | None:
+    """等到攞到為止，最多等 `timeout` 秒。回等咗幾耐；攞唔到回 None。"""
+    deadline = time.monotonic() + timeout
+    delay = 0.5
+    started = time.monotonic()
+    while True:
+        try:
+            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return time.monotonic() - started
+        except BlockingIOError:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return None
+            time.sleep(min(delay, remaining))
+            delay = min(delay * 2, 15.0)
+
+
+def _skips_path(lock_path: Path) -> Path:
+    return lock_path.with_name(lock_path.name + "-skips.json")
+
+
+def _load_skips(lock_path: Path) -> dict:
+    try:
+        return json.loads(_skips_path(lock_path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_skips(lock_path: Path, data: dict) -> None:
+    # 獨立細檔，唔用主 state —— 被擋嗰個 run 冇攞到鎖，唔應該寫主 state。
+    try:
+        _skips_path(lock_path).write_text(
+            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _record_skip(lock_path: Path, mode: str, holder: str) -> int:
+    data = _load_skips(lock_path)
+    entry = data.setdefault(mode, {"count": 0})
+    entry["count"] = int(entry.get("count") or 0) + 1
+    entry["last"] = stamp()
+    entry["holder"] = holder
+    _save_skips(lock_path, data)
+    return entry["count"]
+
+
+def _clear_skip(lock_path: Path, mode: str) -> None:
+    data = _load_skips(lock_path)
+    if data.pop(mode, None) is not None:
+        _save_skips(lock_path, data)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     _CONTROL_OUTCOME.clear()
     args.state_file.parent.mkdir(parents=True, exist_ok=True)
     lock_path = args.state_file.with_suffix(".lock")
     with lock_path.open("a", encoding="utf-8") as lock:
-        try:
-            fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            log("HKJC scheduler already running; skip overlapping invocation")
-            set_control_outcome("blocked", reason="scheduler_locked")
+        holder = _describe_holder(lock_path)
+        waited = _acquire_lock(lock, LOCK_WAIT_SECONDS)
+        if waited is None:
+            skips = _record_skip(lock_path, args.mode, holder)
+            log(f"HKJC {args.mode} 等咗 {LOCK_WAIT_SECONDS}s 都攞唔到鎖：{holder}"
+                f"（連續第 {skips} 次被擋）")
+            # 連續被擋就係餓死，唔係一次巧合。`watch` 一日得四格、`postrace`
+            # 一日一格 —— 靜靜跳過幾次就等於嗰個 mode 實質停咗。
+            if skips >= LOCK_STARVE_ALERT_AFTER:
+                notify(
+                    f"⚠️ HKJC `{args.mode}` 連續 {skips} 次攞唔到排程鎖\n"
+                    f"霸住嘅係：{holder}\n"
+                    f"呢個 mode 實質停咗，要睇下係咪有 run 卡住。"
+                )
+            set_control_outcome("blocked", reason="scheduler_locked", holder=holder,
+                                consecutive_skips=skips)
             return emit_control_outcome(args, EXIT_OK)
+        if waited > 1.0:
+            log(f"HKJC {args.mode} 等咗 {waited:.0f}s 攞到鎖（之前：{holder}）")
+        _write_holder(lock_path, args.mode)
+        _clear_skip(lock_path, args.mode)
         state = load_state(args.state_file)
         meeting = _meeting_from_url(args.meeting_url) if args.meeting_url else None
         try:
@@ -1460,6 +1584,10 @@ def main(argv: list[str] | None = None) -> int:
             notify(f"❌ HKJC {args.mode} automation failed：{type(exc).__name__}: {exc}")
             set_control_outcome("failed", reason=f"{type(exc).__name__}: {exc}")
             code = EXIT_FAILED
+        finally:
+            # flock 本身會喺 process 死嗰陣自動放，所以呢度唔使處理殘留鎖；
+            # 要清嘅係 holder 記錄，唔然下一個等緊嘅人會讀到過咗期嘅資料。
+            _clear_holder(lock_path)
         return emit_control_outcome(args, code)
 
 
