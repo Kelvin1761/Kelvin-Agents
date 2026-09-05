@@ -4343,7 +4343,6 @@ class RacingEngine:
         score = 60
         wdetail["weight"] = round(float(weight), 1)
         notes = []
-        wet_state = self._wet_state()
         class_move = self._class_move_display()
         is_wfa_or_sw = self._is_wfa_or_sw_race()
 
@@ -4355,10 +4354,24 @@ class RacingEngine:
                 self.risk_flags.append("top_weight")
                 notes.append("頂磅：讓磅官評為本場能力最高之列")
 
-            # genuine physics burden: heavy weight in wet/heavy going is a real drag
-            if wet_state in {"soft7plus", "heavy"} and weight >= 59.0:
-                score -= 4
-                notes.append("爛地孭重磅，體能消耗顯著")
+            # DIRECTION FIX 2026-09-05 (EXP-20260905-04)：**剷走**。呢個 −4 建基於
+            # 「爛地孭重磅 = 體能消耗」嘅物理直覺，但實測係反嘅 —— 同上面兩次
+            # 方向修正一樣，讓磅官係**按能力**派磅，所以爛地嘅高磅馬一樣係嗰場
+            # 較好嗰批。
+            #
+            # 2026-08-13→09-04、7,851 匹有出賽、入位率按當場派彩位數／馬匹數校正：
+            #     冇中任何分支（60 分）  n=6,072  超額 +0.5pp [−0.6, +1.7]
+            #     中呢個分支（56 分）    n=  671  超額 **+3.5pp [+0.1, +6.9]**
+            # 即係被罰嗰批跑贏基準 3.0pp，CI 過零。
+            #
+            # ⚠️ 呢個唔係新發現：舊註釋寫住當時量到 +2.98pp [−0.40, +6.30]，
+            # 判斷「唔夠顯著所以唔郁」。今次獨立重量，同號同幅度、樣本更大、
+            # CI 收窄到過零 —— 所以由「未夠證據」變成「有證據，而且係反嘅」。
+            #
+            # 排名影響 = 0：`weight_score` 2026-07-30 已經退出 MATRIX_FORMULAS
+            # （`class_weight` 而家只有 `rating_score × 0.70`）。呢個純粹係
+            # **敘述真確性**修正 —— 報告唔可以一路講「體能消耗顯著」一路扣分，
+            # 而嗰批馬實際跑贏。合乎評估合約第 7 節。
 
             # DIRECTION FIX 2026-08-26 (EXP-20260826-03).  This nudge used to be
             # `+3` with the narrative "降班配輕磅，實際任務下降".  Measured on 16,253
@@ -4376,10 +4389,9 @@ class RacingEngine:
             # so it cannot move a ranking); only the sign is evidence-backed, and −3
             # simply mirrors the old +3.
             #
-            # The other two nudges in this method were measured at the same time and are
-            # NOT significantly directed either way — 升班兼高負磅 +2.50pp [−0.29, +5.39],
-            # 爛地孭重磅 +2.98pp [−0.40, +6.30].  They are left alone rather than
-            # "fixed" on a point estimate.
+            # 同期量過嘅另外兩項：升班兼高負磅 +2.50pp [−0.29, +5.39]（仍然唔顯著，
+            # 保留）；爛地孭重磅 +2.98pp [−0.40, +6.30] —— 嗰個 2026-09-05 重量到
+            # +3.5pp [+0.1, +6.9]（n=671，CI 過零）之後**已經剷走**，見上面。
             if "降班" in class_move and weight <= 56.5:
                 score -= 3
                 notes.append("降班仍只獲輕磅，讓磅官對佢評價偏低")
