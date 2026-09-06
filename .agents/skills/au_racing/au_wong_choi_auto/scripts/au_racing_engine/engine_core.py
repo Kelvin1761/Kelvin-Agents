@@ -4911,18 +4911,18 @@ class RacingEngine:
                 score -= 1.0
                 notes.append(f"久休 {spell} 日而缺少試閘時間支撐")
 
-        gear_line = str(self.data.get("gear_line") or "")
-        if gear_line:
-            if "Blinkers: Yes" in gear_line:
-                score += 0.4
-                notes.append("配戴 blinkers")
-            changes = str(self.data.get("gear_changes") or "")
-            if changes and changes.lower() != "none":
-                score += 0.3
-                notes.append("有 gear change 訊號")
-
+        # 2026-09-07：**配備變更唔入分**，兩個分支剷走。
+        #
+        # 佢哋由來冇 fire 過（`gear_line` 因為 regex 落差全語料 0% 有值，
+        # 而 `Blinkers: Yes` 呢個格式根本唔存在），所以剷走係**零分數變化**。
+        # 而家 regex 修好咗，如果留住佢哋就會由「一直死」突然變成「配備入分」——
+        # 而 EXP-20260826-07 已經明確 REJECT 咗配備做評分輸入：訊號真
+        # （除下配備 −3.86pp [−6.94, −0.75]）但同 `form_score` 重複
+        # （有變更嘅馬 form 平均 59.83 vs 62.10），四個扣分幅度冇一個過閘。
+        #
+        # 配備而家淨係出報告（見 renderer 嘅「配備變更」行）。
         note = "；".join(notes) if notes else "未見明確健康或備戰扣分訊號"
-        return score, f"{note}。備戰完整度分 {clip_score(score):.1f}。", "warnings+spell+gear"
+        return score, f"{note}。備戰完整度分 {clip_score(score):.1f}。", "warnings+spell"
 
     def _advantages(self, feature_scores, matrix_scores):
         # 2026-08-01：門檻統一到 MATRIX_ADVANTAGE_CUTOFF。維度尺正規化之前，
@@ -5962,7 +5962,20 @@ def enrich_logic_from_facts(
         # disabled name-dependent J/H checks.  Racecard identity is keyed by
         # horse name and is therefore the safe fallback for those archives.
         # 配備變更：純顯示，唔會餵入任何 leaf。見 `_load_racecard_profiles` 註。
-        if racecard_profile.get("gear_change"):
+        #
+        # 2026-09-07：**Formguide 行先，Racecard 做 fallback。** 兩個來源逐匹對過
+        # （2,366 個 runner 位，2026-09-01→09-04）：
+        #     兩邊都有 434｜只有 Formguide **94**｜只有 Racecard **0**｜都冇 1,838
+        # 即係 Racecard 係 Formguide 嘅子集，而且喺兩邊都有嗰 434 匹入面
+        # **140 匹（32%）Racecard 截短咗**，只印第一項：
+        #     Racecard  `Blinkers FIRST TIME`
+        #     Formguide `Blinkers FIRST TIME, Cross-over Nose Band FIRST TIME`
+        # 揀長嗰個唔安全（文字長度唔等於完整），所以直接定優先次序：
+        # Formguide 有就用 Formguide。報告覆蓋 18.3% → 22.3%。
+        _fg_gear = str((horse.get("_data") or {}).get("gear_line") or "").strip()
+        if _fg_gear:
+            horse["gear_change"] = _fg_gear
+        elif racecard_profile.get("gear_change"):
             horse["gear_change"] = racecard_profile["gear_change"]
         _merge_prefer_clean(horse, "jockey", racecard_profile.get("jockey"))
         _merge_prefer_clean(horse, "trainer", racecard_profile.get("trainer"))
@@ -6197,6 +6210,10 @@ def _parse_horse_sections(text: str) -> dict:
             "stage_stats_line": _capture(block, r"初出: ([^\n]+)"),
             "last_finish_line": _capture(block, r"上仗結果\(Racecard\): ([^\n]+)"),
             "warning_line": _capture(block, r"⚠️ 警告: ([^\n]+)"),
+            # 2026-09-07：配備變更由 Facts 帶落嚟（`inject_fact_anchors` 由
+            # Formguide 嘅 `SportsbetGear:` 行抽）。**純報告欄位，唔入評分** ——
+            # EXP-20260826-07 測過同 `form_score` 重複，四個幅度冇一個過閘。
+            "gear_changes": _capture(block, r"配備變更: ([^\n]+)"),
             "engine_line": _capture_multiline(block, r"- \*\*🔧 引擎與距離:\*\*(.*?)(?=\n### |\Z)"),
             "formline_line": _capture(block, r"\*\*綜合評估:\*\* ([^\n]+)"),
             "consumption_summary": _capture_multiline(block, r"- \*\*⚡ 走位消耗摘要:\*\*(.*?)(?=\n- \*\*🔗|\n- \*\*🔧|\n### |\Z)"),
@@ -6596,8 +6613,16 @@ def _summarize_formguide_section(
     sire_line = _capture(section, r"Sire:\s*([^|]+)")
     current_market_line = _capture(section, r"^Flucs:\s*(.+)$")
     current_market_values = _parse_fluc_values(current_market_line)
-    gear_line = _capture(section, r"^Gear:\s*(.+)$")
-    gear_changes = _capture(gear_line, r"Changes:\s*(.+)$") if gear_line else ""
+    # 2026-09-07 修：`^Gear:` 由來對唔上。`claw_sportsbet_form` 寫落 Formguide
+    # 嘅係 **`SportsbetGear: Changes: ...`**，而 `^` 錨定行頭，所以
+    # `SportsbetGear:` 永遠唔會 match `^Gear:` —— `gear_line` 全語料 **0% 有值**
+    # （8,224 匹，key 100% 存在）。存檔實測：85.9% Formguide 有呢一行、
+    # 21.5% runner 有變更文字，即係數據一直喺度，只係一個 token 落差食咗佢。
+    # 見 `docs/audits/AU_TRACK_JHF_DATA_QUALITY_2026-09-05.md`。
+    #
+    # 兩種前綴都收：Racecard 寫 `Gear:`、Formguide 寫 `SportsbetGear:`。
+    gear_line = _capture(section, r"^(?:Sportsbet)?Gear:\s*(?:Changes:)?\s*(.+)$")
+    gear_changes = _capture(gear_line, r"Changes:\s*(.+)$") or gear_line
     entries = _parse_formguide_entries(section, horse_name)
     # Apply one point-in-time boundary to every digest consumer. Previously
     # only Performance Quality censored post-target rows, while jockey history,
@@ -6662,7 +6687,12 @@ def _summarize_formguide_section(
         "current_market_low": min(current_market_values) if current_market_values else "",
         "current_market_trend": _market_trend_label(current_market_values),
         "gear_line": gear_line,
-        "has_blinkers": "Blinkers: Yes" in gear_line,
+        # 2026-09-07 修：`Blinkers: Yes` 呢個格式**全語料唔存在**。真實文字係
+        # `Blinkers FIRST TIME` / `Blinkers AGAIN` / `Blinkers OFF`。
+        # 「而家戴住」＝ 有 Blinkers 而且唔係 OFF。
+        "has_blinkers": bool(
+            re.search(r"\bBlinkers\b(?!\s+OFF)", gear_line, re.IGNORECASE)
+        ),
         "gear_changes": gear_changes,
         "latest_official_date": latest_official.get("date") or "",
         "latest_official_jockey": _clean_identity(latest_official.get("jockey")),
