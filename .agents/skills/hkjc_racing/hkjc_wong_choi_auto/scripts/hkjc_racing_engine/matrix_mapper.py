@@ -39,6 +39,20 @@ MATRIX_FORMULAS = {
 }
 
 
+def formula_share(dimension, feature):
+    """Weight `feature` carries inside `dimension`, 0.0 if it is not a component.
+
+    Read from MATRIX_FORMULAS rather than duplicated as a constant: a reporting
+    decomposition that hard-codes 0.55/0.45 silently goes wrong the day the
+    formula changes, and the report would keep printing a sum that no longer
+    adds up to the dimension score.
+    """
+    for name, weight in MATRIX_FORMULAS.get(dimension, ()):
+        if name == feature:
+            return weight
+    return 0.0
+
+
 def matrix_formula_manifest():
     """JSON-safe representation shared by run metadata and validation."""
     return {
