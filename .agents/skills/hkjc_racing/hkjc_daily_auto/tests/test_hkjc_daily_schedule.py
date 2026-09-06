@@ -209,13 +209,19 @@ def test_temporary_prerace_failure_arms_self_recovery(tmp_path: Path) -> None:
 def test_prerace_writes_evidence_before_dashboard_deploy(tmp_path: Path) -> None:
     state_path = tmp_path / "state.json"
     state = schedule.load_state(state_path)
+    # 日期要跟住真實時鐘行。`run_prerace` 有一句 `meeting_date < today` 係
+    # **`force=True` 都繞唔過**（過咗嘅場次唔准重跑），所以一個寫死日期嘅
+    # fixture 就係一個計時炸彈：2026-09-06 嗰日綠，2026-09-07 一到就變
+    # 「not due」→ 提早 return EXIT_OK → 個 assert 由「有冇寫證據」變成
+    # 「有冇跳過」。今日嘅日期永遠 due（0 <= 0 <= lead）。
+    meeting_day = schedule.now_local().date().isoformat()
     meeting = {
-        "date": "2026-09-06",
+        "date": meeting_day,
         "venue": "ShaTin",
         "course": "ST",
         "url": "fixture",
     }
-    meeting_dir = tmp_path / "2026-09-06_ShaTin"
+    meeting_dir = tmp_path / f"{meeting_day}_ShaTin"
     meeting_dir.mkdir()
     snapshot = meeting_dir / "Prediction_Snapshots" / "one"
     snapshot.mkdir(parents=True)
@@ -265,7 +271,7 @@ def test_prerace_writes_evidence_before_dashboard_deploy(tmp_path: Path) -> None
             state, state_path, meeting=meeting, force=True
         ) == schedule.EXIT_OK
     assert evidence_written is True
-    assert state["meetings"]["2026-09-06|ShaTin"]["latest_evidence"][
+    assert state["meetings"][f"{meeting_day}|ShaTin"]["latest_evidence"][
         "prediction_id"
     ].endswith(":test")
 
