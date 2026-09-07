@@ -3694,17 +3694,6 @@ class RacingEngine:
             parts.append(stats["summary_line"])
         return "；".join(parts)
 
-    def _has_last10_warning(self):
-        # ⚠️ **`warning_line` 個 key 由來唔存在於 `_data`** —— 呢個 helper 永遠回
-        # `False`。2026-09-07 實測：Sportsbet 嘅 `Stewards:` / `Note:` 三個欄各
-        # 21,127 行、**0.0% 有內容**，所以上游本身冇嘢可以填。
-        #
-        # `_health_score` 嗰邊已經因為呢個原因剷走咗相關分支。仲有一個 caller：
-        # `_confidence_score` 嘅 `-4`，同樣永遠唔會 fire —— **未處理**，
-        # 因為佢屬另一個 leaf，要獨立一個改動同 golden 對照。見
-        # `docs/experiments/EXP-20260907-02-au-health-score-has-no-source.md`。
-        return bool(str(self.data.get("warning_line") or "").strip())
-
     def _spell_days(self):
         explicit = parse_float(self.data.get("spell_days"))
         if explicit is not None and explicit > 0:
@@ -4848,11 +4837,15 @@ class RacingEngine:
             self._clean_identity(self.horse_data.get("jockey")),
             self._tactical_scenario_text(),
             self._meeting_bias_brief(),
-            self._latest_l600_rt_brief(),
             self._current_jockey_history_brief(),
         ):
             if value and str(value).strip() not in {"N/A", "Unknown"}:
                 anchors += 1
+        # 2026-09-07：錨點由 14 個減到 13 —— `_latest_l600_rt_brief()` 剷走。
+        # 佢讀 Facts 往績表嘅 `L600/RT` 欄，而嗰欄喺 **73,452 行入面 0.0% 有值**
+        # （836 份 Facts，2026-08-13→09-04）。即係呢個錨點永遠計唔到，
+        # 令分母 14 由頭到尾達唔到。同一個 helper 喺下面 `+1` 都係同樣情況。
+        # 見 `docs/experiments/EXP-20260907-03-au-confidence-dead-branches.md`。
         score = 30 + anchors * 4
         if self._career_starts() == 0:
             score -= 4
@@ -4868,14 +4861,20 @@ class RacingEngine:
             score += 1
         if self._current_jockey_formal_rides() > 0 or self._current_jockey_trial_rides() > 0:
             score += 2
-        if self._latest_l600_rt_brief():
-            score += 1
-        if self._has_last10_warning():
-            score -= 4
+        # `_latest_l600_rt_brief() +1` 同 `_has_last10_warning() -4` 一齊剷走 ——
+        # 兩個都**由來冇 fire 過**（`L600/RT` 欄 0.0%、`warning_line` 個 key
+        # 由來唔存在），所以呢個改動係**零分數變化**。
+        #
+        # ⚠️ 下面 `unresolved_forgiveness -1` **冇動，但佢係壞嘅**：Facts 嘅
+        # 「寬恕認定」欄 **73,452 行 100% 都係 `[需判定]`**，所以呢個「條件式」
+        # 扣分其實**每匹馬都中** —— 即係一個常數 −1，冇任何區分力。
+        # 冇喺呢度剷係因為剷走會令**每個顯示嘅信心分 +1**（用戶可見），
+        # 而正確做法多數係令「寬恕認定」真係會被判定，唔係刪個罰分。
+        # 要獨立一個改動處理。
         unresolved_forgiveness = sum(1 for entry in self._official_entries()[:4] if entry.get("forgiveness") == "[需判定]")
         if unresolved_forgiveness:
             score -= 1
-        return score, f"可用分析錨點 {anchors}/14，並按 style confidence、正式樣本、jockey history、source 同 warnings 校正後，信心分 {clip_score(score):.1f}。", "data_coverage+style_meta+warnings+formline+jockey_history"
+        return score, f"可用分析錨點 {anchors}/13，並按 style confidence、正式樣本、jockey history 同 source 校正後，信心分 {clip_score(score):.1f}。", "data_coverage+style_meta+formline+jockey_history"
 
     def _health_score(self):
         if os.environ.get("WC_DISABLE_AU_HEALTH_SCORE") == "1":
