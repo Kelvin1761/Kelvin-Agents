@@ -3092,7 +3092,10 @@ class RacingEngine:
                 "trajectory": cols[9],
                 "pi": cols[10] if len(cols) > 10 else "",
                 "sectional_quality": cols[11] if len(cols) > 11 else "",
-                "early_pace": cols[12] if len(cols) > 12 else "",
+                # `early_pace`（Facts `cols[12]` = 早段步速）2026-09-07 剷走：
+                # 嗰欄 73,452 行 0.0% 有值（PF payload 換咗，`Early Runner Pace`
+                # 冇咗），而且**零 consumer** —— 全 repo 冇一處讀過呢個 key。
+                # 欄位本身留喺 Facts 表，因為下游係位置解析。
                 "l600_rt": cols[13] if len(cols) > 13 else "",
                 "run_style": cols[14] if len(cols) > 14 else "",
                 "consumption": cols[15] if len(cols) > 15 else "",

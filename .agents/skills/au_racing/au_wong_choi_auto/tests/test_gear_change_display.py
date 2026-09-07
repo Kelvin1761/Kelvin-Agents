@@ -233,3 +233,53 @@ class HealthScoreIsSpellOnlyTests(unittest.TestCase):
         self.assertEqual(source, "spell_only")
         self.assertIn("出賽間隔分", text)
         self.assertNotIn("健康", text)
+
+
+class VideoNoteStewardsNewlineTests(unittest.TestCase):
+    """空欄位唔准跳去捕捉下一行。
+
+    2026-09-07：原本用 `^Video:\\s*(.+?)$`，而 `\\s` **包括換行**。Sportsbet
+    三個欄實測 21,127 行 **0.0% 有內容**，於是空欄位captures 下一行：
+        Video → `'Note:'`、Note → `'Stewards:'`、
+        Stewards → `'====…'` 甚至 `'Belmont **(TRIAL)** R10 '`（下一場標題）
+    呢個就係 Facts「備註」欄 73,452 行 100% 都係 `Note:; Stewards:` 嘅成因 ——
+    一個常數扮成「100% 有數據」。而 `stewards` 會餵入走位／跑法 token 掃描，
+    所以污染係活嘅。實測 73,452 個 block：修前修後冇一個 token 命中改變。
+    """
+
+    PATS = ("Video", "Note", "Stewards")
+
+    def _extract(self, block: str) -> dict:
+        out = {}
+        for k in self.PATS:
+            m = re.search(rf"^{k}:[^\S\n]*(.+?)$", block, re.MULTILINE)
+            out[k] = m.group(1).strip() if m else ""
+        return out
+
+    def test_empty_fields_stay_empty(self) -> None:
+        got = self._extract("Video: \nNote: \nStewards: \n")
+        self.assertEqual(got, {"Video": "", "Note": "", "Stewards": ""})
+
+    def test_an_empty_field_does_not_capture_the_next_label(self) -> None:
+        got = self._extract("Video: \nNote: \nStewards: \n")
+        self.assertNotEqual(got["Video"], "Note:")
+        self.assertNotEqual(got["Note"], "Stewards:")
+
+    def test_an_empty_stewards_does_not_capture_the_next_race(self) -> None:
+        block = ("Video: \nNote: \nStewards: \n\n"
+                 "============================================================\n\n"
+                 "Belmont **(TRIAL)** R10 2025-11-19 800m\n")
+        self.assertEqual(self._extract(block)["Stewards"], "")
+
+    def test_real_content_is_still_captured(self) -> None:
+        block = ("Video: settled midfield, ran on well\n"
+                 "Note: gelding operation since last start\n"
+                 "Stewards: rider reported the gelding felt indifferent\n")
+        got = self._extract(block)
+        self.assertEqual(got["Video"], "settled midfield, ran on well")
+        self.assertEqual(got["Note"], "gelding operation since last start")
+        self.assertIn("indifferent", got["Stewards"])
+
+    def test_leading_spaces_on_the_same_line_are_stripped(self) -> None:
+        self.assertEqual(self._extract("Video:     led all the way\n")["Video"],
+                         "led all the way")

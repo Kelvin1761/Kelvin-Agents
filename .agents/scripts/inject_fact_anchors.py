@@ -538,6 +538,30 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
         )
 
         # Extract PuntingForm advanced metrics from PF[...] block
+        #
+        # ⚠️ **2026-09-07：呢六條 regex 全部係死嘅，而且修唔到。** `PF[...]` 個
+        # 容器仍然存在（實測 56,384 個區塊），但 payload 喺 Racenet→Sportsbet
+        # 搬遷之後**完全換咗**：
+        #     舊（PuntingForm）：`Last 600: … Runner Time: … Early Runner Pace: …`
+        #     新（Sportsbet）  ：`Source: sportsbet_race_context L600 Delta: 1.76`
+        # 新 payload 只有 **兩個 key**（`Source`、`L600 Delta`），所以下面
+        # `Last 600` / `Runner Time` / `Race Time` / `Early Runner Pace` /
+        # `Early Race Pace` / `RT Rating` 六條**命中率全部 0.0%**。
+        #
+        # 後果：Facts 兩條欄 `早段步速` 同 `L600/RT` 喺 **73,452 行入面 0.0% 有值**。
+        # `早段步速` 冇對應嘅新來源 → **修唔到**（唔似配備變更係 regex 落差）。
+        #
+        # ✅ 但 **L600 資訊冇丟** —— 佢經另一條路到引擎：`backfill_pf_metrics()`
+        # 由 Facts 讀 `L600 Delta` 砌出 `pf_aggregates`，實測 555/579 匹（95.9%）
+        # 有 `l600_delta_avg` / `own_l600_delta_avg`，`pace_figure` 正常食到。
+        # 而 `latest_early_runner_pace` 永遠 `null`，只有 `au_ml_dataset` 讀佢
+        # 做一個永遠 null 嘅特徵。
+        #
+        # ⚠️ **唔好「修」呢六條 regex** —— 唔係 pattern 寫錯，係欄位冇咗。
+        # 亦唔好用 `L600 Delta` 去填 `L600/RT`：Delta 係場級差值，舊嗰個係
+        # 逐駒絕對時間／評分，混埋就係 `au-race-level-l600-outweighs-own-sectional`
+        # 警告嗰種混淆。兩條欄留住（下游用 `cols[12]`/`cols[13]` 位置解析）。
+        # 見 `docs/experiments/EXP-20260907-04-au-pf-payload-drift.md`。
         pf_match = re.search(r'PF\[(.+?)\]', header_line)
         pf_last600 = None
         pf_runner_time = None
@@ -601,9 +625,26 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
         result_line = result_match.group(1).strip() if result_match else ''
 
         # Video, Note, Stewards
-        video_match = re.search(r'^Video:\s*(.+?)$', race_block, re.MULTILINE)
-        note_match = re.search(r'^Note:\s*(.+?)$', race_block, re.MULTILINE)
-        stewards_match = re.search(r'^Stewards:\s*(.+?)$', race_block, re.MULTILINE)
+        #
+        # ⚠️ 2026-09-07 修：原本用 `\s*`，而 `\s` **包括換行**，所以一個空欄位
+        # 會跳去捕捉下一行。Sportsbet 三個欄成日係空嘅（實測 21,127 行
+        # **0.0% 有內容**），於是：
+        #     Video    → `'Note:'`                     （188/915 block）
+        #     Note     → `'Stewards:'`                 （188/915）
+        #     Stewards → `'========================'`  （70/915）
+        #                甚至 `'Belmont **(TRIAL)** R10 '` —— **下一場賽事嘅標題**
+        # 呢個就係 Facts 「備註」欄 **73,452 行 100% 都係 `Note:; Stewards:`** 嘅成因
+        # —— 一個常數扮成「100% 有數據」，會騙過任何覆蓋率審計（我自己都中過）。
+        #
+        # 而 `entry['stewards']` 會餵入 `_recent_shape_*` 同走位推斷嘅 token 掃描
+        # （engine_core 7088 / 7109），所以污染係一條**活嘅**路，唔止係顯示問題。
+        # 實測 73,452 個 block：修前修後**冇一個 token 命中狀態改變**，所以呢個
+        # 改動行為不變 —— 但條路要封。
+        #
+        # `[^\S\n]*` = 只食同一行嘅空白，唔跨行。
+        video_match = re.search(r'^Video:[^\S\n]*(.+?)$', race_block, re.MULTILINE)
+        note_match = re.search(r'^Note:[^\S\n]*(.+?)$', race_block, re.MULTILINE)
+        stewards_match = re.search(r'^Stewards:[^\S\n]*(.+?)$', race_block, re.MULTILINE)
 
         video = video_match.group(1).strip() if video_match else ''
         note = note_match.group(1).strip() if note_match else ''
