@@ -215,6 +215,66 @@ def extract_single_race(race_no, base_url, output_dir, date_prefix):
     return results
 
 
+def _verify_kept_formguides(results, output_dir, date_prefix):
+    """碟上嘅賽績同**今次新鮮抽到**嘅排位表對得上，就當佢仍然當前。
+
+    個閘本來問「今次刷新成功咗嗎」。呢個問題唔啱：HKJC 間歇會回空頁
+    （`no runner rows`），而 `_keep_valid_candidate` 保留咗上次嘅好副本 ——
+    於是一份完全正確、幾個鐘前抽嘅賽績會被當成唔可用。2026-09-09 快活谷
+    實測：同一場次 42 次 run 攞到 8/8、26 次唔齊（62% 成功），而唔齊嗰啲
+    每次都要等下一次重試。
+
+    正確嘅問題係「碟上嗰份係唔係最新」。呢度用一個**獨立而且今次真係刷新
+    成功**嘅來源去答：排位表。兩邊嘅 `(馬號, 馬名)` 完全一致，就係證據話
+    嗰份賽績反映當前名單 —— 唔止係「格式有效」。
+
+    ⚠️ 三條唔可以鬆嘅前提：
+      1. **排位表本身一定要 fresh。** 一份 kept 排位表冇資格幫 kept 賽績作證。
+      2. **要完全一致。** 一隻退出馬只喺排位表出現（賽績未跟上）就必須攔住 ——
+         嗰個正正係「賽績過期」嘅樣，而放過佢會令分析用舊名單。
+      3. **解析有任何唔穩陣就唔准放行**（半截頁、零匹馬）。
+         `lineup_looks_complete` 守呢一條。
+
+    改動 `results` 入面嘅 `formguide_state`：核實得到就寫 `verified`。
+    """
+    sys.path.insert(0, SKILL_DIR)
+    try:
+        from scan_lineup import lineup_looks_complete, parse_lineup
+    except ImportError:
+        return          # 核實係加分項，唔可以因為佢而搞冧抽取
+
+    for result in results:
+        if result.get('formguide_ok') or result.get('formguide_state') != 'kept':
+            continue
+        # 前提 1：排位表要係今次新鮮抽到嘅。
+        if result.get('racecard_state') != 'fresh':
+            continue
+        race_no = result['race']
+        rc_file = os.path.join(output_dir, f"{date_prefix} Race {race_no} 排位表.md")
+        fg_file = os.path.join(output_dir, f"{date_prefix} Race {race_no} 賽績.md")
+        try:
+            with open(rc_file, 'r', encoding='utf-8') as handle:
+                rc_text = handle.read()
+            with open(fg_file, 'r', encoding='utf-8') as handle:
+                fg_text = handle.read()
+        except OSError:
+            continue
+        card, form = parse_lineup(rc_text), parse_lineup(fg_text)
+        # 前提 3：兩邊都要完整。
+        if not lineup_looks_complete(rc_text, card):
+            continue
+        if not lineup_looks_complete(fg_text, form):
+            continue
+        # 前提 2：完全一致（馬號同馬名都要）。
+        if card and card == form:
+            result['formguide_state'] = 'verified'
+            result['errors'] = [
+                err for err in (result.get('errors') or [])
+                if 'Formguide' not in err
+            ] + [f"Formguide R{race_no}: 刷新回空頁，但碟上嗰份同新鮮排位表"
+                 f"名單一致（{len(form)} 匹），當仍然當前"]
+
+
 def extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix):
     """Extract the starter PDF (once per meeting).
 
@@ -376,17 +436,33 @@ def main():
             all_results.append(result)
             race = result['race']
             # ♻️ = 刷新失敗但碟上舊檔仍然有效；❌ = 真係冇有效數據。
-            marks = {'fresh': "✅", 'kept': "♻️", 'missing': "❌"}
+            marks = {'fresh': "✅", 'verified': "🔎", 'kept': "♻️", 'missing': "❌"}
             rc = marks.get(result.get('racecard_state'), "❌")
             fg = marks.get(result.get('formguide_state'), "❌")
             print(f"   Race {race}: Racecard {rc} | Formguide {fg}")
             for err in result['errors']:
                 print(f"      ⚠️ {err}")
 
+    # 碟上賽績同新鮮排位表對得上 → 標記 `verified`，個閘會認。
+    # ⚠️ 上面逐場嗰行標記喺核實之前就印咗（佢喺完成迴圈裡面，而核實要等齊所有
+    # 結果），所以嗰啲場次會顯示 ♻️。呢度補一行講清楚邊幾場升級咗做 🔎。
+    _verify_kept_formguides(all_results, output_dir, date_prefix)
+    upgraded = [r['race'] for r in all_results
+                if r.get('formguide_state') == 'verified']
+    if upgraded:
+        print(f"   🔎 賽績刷新回空頁但經新鮮排位表核實名單一致："
+              f"R{'、R'.join(str(n) for n in sorted(upgraded))}")
+
     # Summary
     all_results.sort(key=lambda x: x['race'])
     total_rc = sum(1 for r in all_results if r['racecard_ok'])
-    total_fg = sum(1 for r in all_results if r['formguide_ok'])
+    # `formguide_ok` 只係「今次刷新成功」。`verified` 係「碟上嗰份經新鮮排位表
+    # 核實過仍然當前」—— 兩者都足以放行，因為個閘真正要答嘅係「數據當前冇」。
+    total_fg = sum(1 for r in all_results
+                   if r['formguide_ok'] or r.get('formguide_state') == 'verified')
+    fresh_fg = sum(1 for r in all_results if r['formguide_ok'])
+    verified_fg = sum(1 for r in all_results
+                      if not r['formguide_ok'] and r.get('formguide_state') == 'verified')
     # `*_ok` counts a successful refresh; `*_valid` counts races that have
     # usable data on disk afterwards (fresh + kept).  Both are needed: the gate
     # wants the first, a human reading the alert wants the second.
@@ -395,8 +471,9 @@ def main():
                    if r.get(f'{key}_state', 'missing') in ('fresh', 'kept'))
     valid_rc, valid_fg = _valid('racecard'), _valid('formguide')
     print()
-    print(f"📊 Summary: {total_rc}/{len(races)} racecards | {total_fg}/{len(races)} formguides"
-          f" (refreshed)")
+    extra = f" + {verified_fg} 經排位表核實" if verified_fg else ""
+    print(f"📊 Summary: {total_rc}/{len(races)} racecards | "
+          f"{fresh_fg}/{len(races)} formguides 刷新成功{extra}")
     if valid_rc != total_rc or valid_fg != total_fg:
         print(f"   ↳ 碟上有效: {valid_rc}/{len(races)} racecards | {valid_fg}/{len(races)} formguides"
               f" —— 差額係刷新失敗但保留咗上次有效檔，唔係冇數據")
@@ -456,6 +533,7 @@ def main():
         "formguides_ready": total_fg,
         "racecards_valid": valid_rc,
         "formguides_valid": valid_fg,
+        "formguides_verified": verified_fg,
         "trackwork_ready": tw_ok_count,
         "races": all_results,
         "self_recovery": "automatic_retry" if not ready else "not_needed",

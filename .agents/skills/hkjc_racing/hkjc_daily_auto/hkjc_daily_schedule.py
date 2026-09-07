@@ -627,15 +627,23 @@ def readiness_digest(meeting_dir: Path) -> str:
     #   ♻️ 刷新失敗但有舊有效檔 —— 分析照跑得，等下次重試就得
     #   ❌ 完全冇有效檔       —— 真係要人睇
     # 發佈閘本身冇放寬（仍然要全部 fresh 才 ready），只係唔再兩種都印同一句。
-    stale, gone = [], []
+    stale, verified, gone = [], [], []
     for race in data.get("races") or []:
         num = race.get("race")
         for ok_key, state_key, label in (("racecard_ok", "racecard_state", "排位"),
                                          ("formguide_ok", "formguide_state", "賽績")):
             if race.get(ok_key):
                 continue
-            # 舊 readiness 檔冇 `*_state`；當時分唔到，保守當「冇」。
-            (stale if race.get(state_key) == "kept" else gone).append(f"R{num}{label}")
+            state = race.get(state_key)
+            if state == "verified":
+                # 刷新回空頁，但碟上嗰份經**今次新鮮抽到嘅排位表**核實過名單
+                # 一致 —— 已經足以放行，唔算問題。
+                verified.append(f"R{num}{label}")
+            elif state == "kept":
+                stale.append(f"R{num}{label}")
+            else:
+                # 舊 readiness 檔冇 `*_state`；當時分唔到，保守當「冇」。
+                gone.append(f"R{num}{label}")
 
     def _fold(items, cap=8):
         shown = "、".join(items[:cap])
@@ -645,6 +653,8 @@ def readiness_digest(meeting_dir: Path) -> str:
         lines.append(f"冇有效檔（要人睇）：{_fold(gone)}")
     if stale:
         lines.append(f"刷新失敗但有舊有效檔（照跑得）：{_fold(stale)}")
+    if verified:
+        lines.append(f"刷新回空頁但經新鮮排位表核實名單一致（已放行）：{_fold(verified)}")
 
     # 發佈閘係 `ready = starter_pdf and 排位表齊 and 賽績齊` —— **晨操唔喺入面**。
     # 所以 PDF 失敗會單獨卡死成個場次，而之前呢個 digest 一行都冇講過 PDF：

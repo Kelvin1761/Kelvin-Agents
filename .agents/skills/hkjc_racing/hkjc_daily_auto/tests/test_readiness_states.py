@@ -106,3 +106,53 @@ class ReadinessDigestStates(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReadinessDigestVerified(unittest.TestCase):
+    """`verified` 唔可以被當成「冇有效檔」。
+
+    2026-09-09 加入 `verified`（碟上賽績經新鮮排位表核實名單一致）之後，
+    原本個 digest 只認 `kept`，其餘一律歸「冇有效檔（要人睇）」—— 即係一加
+    新狀態就會製造一個新嘅假警報。呢組測試釘住三態各歸各位。
+    """
+
+    def setUp(self):
+        import tempfile
+        self.tmp = Path(tempfile.mkdtemp())
+
+    def _digest(self, races, **top):
+        return sched.readiness_digest(_write(self.tmp, races, **top))
+
+    def test_verified_is_reported_as_released_not_missing(self):
+        races = [{"race": n, "racecard_ok": True, "racecard_state": "fresh",
+                  "formguide_ok": n == 5,
+                  "formguide_state": "fresh" if n == 5 else "verified"}
+                 for n in range(1, 9)]
+        out = self._digest(races)
+        self.assertIn("核實名單一致", out)
+        self.assertIn("已放行", out)
+        self.assertNotIn("冇有效檔", out)
+        self.assertNotIn("刷新失敗但有舊有效檔", out)
+
+    def test_the_three_states_are_split(self):
+        races = [
+            {"race": 1, "racecard_ok": True, "racecard_state": "fresh",
+             "formguide_ok": False, "formguide_state": "verified"},
+            {"race": 2, "racecard_ok": True, "racecard_state": "fresh",
+             "formguide_ok": False, "formguide_state": "kept"},
+            {"race": 3, "racecard_ok": True, "racecard_state": "fresh",
+             "formguide_ok": False, "formguide_state": "missing"},
+        ]
+        out = self._digest(races)
+        gone = [l for l in out.splitlines() if l.startswith("冇有效檔")][0]
+        stale = [l for l in out.splitlines() if l.startswith("刷新失敗")][0]
+        ok = [l for l in out.splitlines() if l.startswith("刷新回空頁")][0]
+        self.assertIn("R3賽績", gone)
+        self.assertIn("R2賽績", stale)
+        self.assertIn("R1賽績", ok)
+        for line, absent in ((gone, "R1賽績"), (stale, "R1賽績"), (ok, "R3賽績")):
+            self.assertNotIn(absent, line)
+
+    def test_a_legacy_file_is_still_conservatively_missing(self):
+        races = [{"race": 1, "racecard_ok": True, "formguide_ok": False}]
+        self.assertIn("冇有效檔（要人睇）", self._digest(races))
