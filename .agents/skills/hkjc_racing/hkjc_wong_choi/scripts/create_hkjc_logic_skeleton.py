@@ -1031,16 +1031,36 @@ def _build_core_logic_scaffold(data):
     return scaffold
 
 
+_MEETING_DRAW_STATS_PATH = None
+
+
+def set_meeting_draw_stats_path(path) -> None:
+    """Prefer this meeting's own draw table over the shared global file.
+
+    全域 hkjc_draw_stats.json 只反映最後一次抽嘅賽日，所以重跑舊場次讀佢一定
+    對唔上。`run_prerace_pipeline.snapshot_draw_stats` 會喺 meeting folder 留
+    一份 Draw_Stats.json，呢個就係嗰份。
+    """
+    global _MEETING_DRAW_STATS_PATH
+    _MEETING_DRAW_STATS_PATH = Path(path) if path else None
+
+
 def _load_draw_stats_json():
-    """Load and cache draw stats JSON."""
-    try:
-        json_path = Path(__file__).parent.parent.parent.parent.parent / 'scripts' / 'hkjc_draw_stats.json'
-        json_path = json_path.resolve()
-        if json_path.exists():
-            with open(json_path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception:
-        pass
+    """Load draw stats JSON — this meeting's copy first, then the shared file."""
+    candidates = []
+    if _MEETING_DRAW_STATS_PATH:
+        candidates.append(_MEETING_DRAW_STATS_PATH)
+    candidates.append(
+        (Path(__file__).parent.parent.parent.parent.parent / 'scripts' / 'hkjc_draw_stats.json')
+    )
+    for candidate in candidates:
+        try:
+            json_path = Path(candidate).resolve()
+            if json_path.exists():
+                with open(json_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception:
+            continue
     return {}
 
 
@@ -1424,6 +1444,11 @@ def build_skeleton(
         date_match = re.search(r'(20\d{2}-\d{2}-\d{2})', str(Path(facts_path).parent))
         if date_match:
             expected_date = date_match.group(1)
+    if facts_path:
+        meeting_draw_stats = Path(facts_path).parent / 'Draw_Stats.json'
+        set_meeting_draw_stats_path(
+            meeting_draw_stats if meeting_draw_stats.exists() else None
+        )
     expected_distance = 0
     distance_text = race_header.get('distance', '')
     distance_match = re.search(r'(\d+)', distance_text)
