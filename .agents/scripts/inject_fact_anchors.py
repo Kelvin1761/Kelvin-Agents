@@ -2345,6 +2345,30 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         # Escape pipes in notes
         notes = notes.replace('|', '/')
 
+        # 「寬恕認定」欄由 `[需判定]` 改做 `[-]`（2026-09-08，EXP-20260908-01）。
+        #
+        # `[需判定]` 係 LLM 年代嘅 placeholder（見 `generate_skeleton.py` 嘅
+        # `[FILL: 基準/寬恕/不可饒恕/-]`）。AU 轉全 Python 之後**冇人接手判定**，
+        # 所以佢喺 73,452 行入面 **100% 都係 `[需判定]`** —— 一個「待判定」講咗
+        # 一年都冇人判。後果：`_confidence_score` 嗰個「條件式」`-1`
+        # **每匹馬都中**，變咗常數。
+        #
+        # 試過真係判：由 `跑位軌跡`（80% 正式賽有完整 S→8th→4th→F）推三個規則，
+        # 再驗證「被寬恕嘅馬下仗係咪跑贏佢上仗名次所暗示嘅水平」。
+        # 7,658 個上仗大敗（名次 ≥4）嘅樣本，今仗入位率按馬匹數校正：
+        #     （無寬恕）n=7,233  +0.4pp ±1.1
+        #     尾段執位   n=  176  −2.3pp ±6.4
+        #     全程守後   n=  126  **−11.1pp ±6.9**
+        #     搶前消耗   n=  122  −6.8pp ±7.3
+        # **三個都係負，方向同「寬恕」相反。** 走位形態量緊嘅係能力唔係運氣，
+        # 而能力 `form_score` 已經捉咗。
+        #
+        # 真正嘅寬恕證據（受阻、被夾、大外無遮擋、慢步速）住喺 stewards／notes，
+        # 而嗰三個欄實測 **21,127 行 0.0% 有內容**。即係**唔係我哋唔判，係冇嘢可判**。
+        #
+        # ⚠️ 一定要寫 `[-]` 唔可以寫 `-`：`_forgiveness_count()` 嘅排除集係
+        # `{"[-]", "[需判定]"}`，寫 `-` 會令**每一場**都算成「有寬恕」，
+        # 反手㨂着 `sectional_score` 嗰個 7.46 分 bonus。
         venue_short = f"{entry['venue']} R{entry['race_no']}"
 
         # PuntingForm advanced metrics
@@ -2369,7 +2393,7 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
         lines.append(
             f"| {idx+1} | {tag} | {entry['date']} | {venue_short} | "
             f"{entry['distance']} | {cond} | {entry.get('barrier') or '-'} | {finish_str} | {class_ch} | "
-            f"{pos_str} | {pi_str} | {sect_q} | {pf_erp} | {pf_l600_rt_str} | {run_style_text} | {consumption} | {notes} | [需判定] | {prize_str} | {source_race_class} |"
+            f"{pos_str} | {pi_str} | {sect_q} | {pf_erp} | {pf_l600_rt_str} | {run_style_text} | {consumption} | {notes} | [-] | {prize_str} | {source_race_class} |"
         )
 
     # Output is already complete, no omitted string needed here

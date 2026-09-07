@@ -283,3 +283,48 @@ class VideoNoteStewardsNewlineTests(unittest.TestCase):
     def test_leading_spaces_on_the_same_line_are_stripped(self) -> None:
         self.assertEqual(self._extract("Video:     led all the way\n")["Video"],
                          "led all the way")
+
+
+class ForgivenessPlaceholderTests(unittest.TestCase):
+    """「寬恕認定」寫 `[-]`，唔再寫 `[需判定]`。
+
+    `[需判定]` 係 LLM 年代嘅 placeholder；轉全 Python 之後冇人接手，所以
+    73,452 行 100% 都係佢 —— 一個「待判定」講咗成年冇人判，而
+    `_confidence_score` 個「條件式」`-1` 因此每匹馬都中，變咗常數。
+
+    試過真係判（EXP-20260908-01）：由走位軌跡推三個規則，7,658 個上仗大敗嘅
+    樣本，今仗入位率按馬匹數校正 —— 尾段執位 −2.3pp、全程守後 **−11.1pp**、
+    搶前消耗 −6.8pp。**三個都同「寬恕」方向相反**：走位形態量緊能力唔係運氣。
+    真證據（受阻／被夾／大外無遮擋）住喺 stewards，而嗰欄 0.0% 有內容。
+    """
+
+    def test_the_writer_emits_the_no_forgiveness_token(self) -> None:
+        repo = Path(__file__).resolve().parents[5]
+        src = (repo / ".agents" / "scripts" / "inject_fact_anchors.py").read_text(
+            encoding="utf-8")
+        self.assertIn("{consumption} | {notes} | [-] |", src)
+        self.assertNotIn("{consumption} | {notes} | [需判定] |", src)
+
+    def test_the_token_must_stay_bracketed(self) -> None:
+        # ⚠️ `_forgiveness_count()` 嘅排除集係 {"[-]", "[需判定]"}。寫成 `-`
+        # 會令每一場都算「有寬恕」，反手㨂着 sectional 嗰個 7.46 分 bonus。
+        from au_racing_engine.engine_core import RacingEngine
+        eng = RacingEngine(
+            {"horse_name": "T", "horse_number": "1", "jockey": "J",
+             "trainer": "Tr", "_data": {}},
+            {"distance": "1400m", "field_summary": {"count": 10},
+             "meeting_intelligence": {"venue": "Randwick", "going": "Good 4"}})
+        eng._official_entry_cache = [
+            {"forgiveness": "[-]", "notes": "-"} for _ in range(4)]
+        self.assertEqual(eng._forgiveness_count(), 0)
+        eng._official_entry_cache = [
+            {"forgiveness": "-", "notes": "-"} for _ in range(4)]
+        self.assertEqual(eng._forgiveness_count(), 4,
+                         "裸 `-` 會被當成有寬恕 —— 所以 writer 一定要寫 `[-]`")
+
+    def test_confidence_no_longer_carries_the_constant_penalty(self) -> None:
+        import inspect
+        from au_racing_engine.engine_core import RacingEngine
+        src = inspect.getsource(RacingEngine._confidence_score)
+        self.assertNotIn("unresolved_forgiveness", src.split("#")[0] + "".join(
+            ln for ln in src.splitlines() if not ln.strip().startswith("#")))

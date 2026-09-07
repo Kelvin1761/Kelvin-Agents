@@ -4874,9 +4874,11 @@ class RacingEngine:
         # 冇喺呢度剷係因為剷走會令**每個顯示嘅信心分 +1**（用戶可見），
         # 而正確做法多數係令「寬恕認定」真係會被判定，唔係刪個罰分。
         # 要獨立一個改動處理。
-        unresolved_forgiveness = sum(1 for entry in self._official_entries()[:4] if entry.get("forgiveness") == "[需判定]")
-        if unresolved_forgiveness:
-            score -= 1
+        # `unresolved_forgiveness -1` 2026-09-08 剷走。「寬恕認定」欄之前
+        # **73,452 行 100% 都係 `[需判定]`**（writer 硬寫死），所以呢個「條件式」
+        # 扣分每匹馬都中 = 常數 −1、零區分力。Writer 已改寫 `[-]`，而寬恕本身
+        # 判唔到（EXP-20260908-01：三個由走位推導嘅規則方向全部相反）。
+        # 呢個改動令每個顯示嘅信心分 +1 —— 係常數偏移，唔改相對次序。
         return score, f"可用分析錨點 {anchors}/13，並按 style confidence、正式樣本、jockey history 同 source 校正後，信心分 {clip_score(score):.1f}。", "data_coverage+style_meta+formline+jockey_history"
 
     def _health_score(self):
