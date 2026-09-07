@@ -136,6 +136,95 @@ def test_hkjc_health_accepts_chinese_racecard_and_derives_coverage(tmp_path: Pat
     assert report["summary"]["average_coverage_pct"] == 100.0
 
 
+def _hkjc_healthy_meeting(tmp_path: Path) -> Path:
+    meeting = tmp_path / "2026-09-06_ShaTin"
+    meeting.mkdir()
+    (meeting / "09-06 Race 1 Facts.md").write_text(
+        "### 馬號 1 — 測試甲\n", encoding="utf-8"
+    )
+    (meeting / "09-06 Race 1 排位表.md").write_text(
+        "馬號: 1\n馬名: 測試甲\n", encoding="utf-8"
+    )
+    logic = {
+        "horses": {
+            "1": {
+                "horse_name": "測試甲",
+                "python_auto": {
+                    "ability_score": 68.0,
+                    "rank": 1,
+                    "feature_scores": {key: 60.0 for key in EXPECTED_FEATURES["hkjc"]},
+                    "score_provenance": {key: "fixture" for key in EXPECTED_FEATURES["hkjc"]},
+                },
+            }
+        }
+    }
+    (meeting / "Race_1_Logic.json").write_text(
+        json.dumps(logic, ensure_ascii=False), encoding="utf-8"
+    )
+    (meeting / "Race_1_Auto_Analysis.md").write_text("ok", encoding="utf-8")
+    with (meeting / "Race_1_Auto_Scoring.csv").open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["horse_number"])
+        writer.writeheader()
+        writer.writerow({"horse_number": "1"})
+    return meeting
+
+
+def test_hkjc_health_warns_on_stale_reference_data(tmp_path: Path) -> None:
+    """檔位統計由 2026-05-31 凍到 2026-09-06，三個 launchd log 一行都冇。
+
+    Warning only：檔位統計係顯示層（`features/draw.py` 用位置先驗，官方數據
+    唔入分），所以唔應該攔 deploy，但一定要講得出。
+    """
+    meeting = _hkjc_healthy_meeting(tmp_path)
+    (meeting / "pipeline_summary.json").write_text(
+        json.dumps(
+            {
+                "freshness": {
+                    "draw_stats": {
+                        "status": "STALE",
+                        "meeting": "沙田 31/05/2026",
+                        "scraped_at": "2026-05-31 12:45:21",
+                        "expected": "沙田 06/09/2026",
+                    },
+                    "standard_times": {
+                        "status": "STALE",
+                        "scraped_at": "2026-05-31 12:45:21",
+                        "age_days": 98,
+                        "entries": 120,
+                    },
+                }
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    report = scan_meeting("hkjc", meeting)
+    codes = [item["code"] for item in report["issues"]]
+    assert "STALE_DRAW_STATS" in codes
+    assert "STALE_STANDARD_TIMES" in codes
+    assert report["status"] == "warning"
+    assert report["deploy_allowed"] is True
+
+
+def test_hkjc_health_stays_ok_when_reference_data_is_fresh(tmp_path: Path) -> None:
+    meeting = _hkjc_healthy_meeting(tmp_path)
+    (meeting / "pipeline_summary.json").write_text(
+        json.dumps(
+            {
+                "freshness": {
+                    "draw_stats": {"status": "FRESH", "meeting": "沙田 06/09/2026"},
+                    "standard_times": {"status": "FRESH", "age_days": 2},
+                }
+            },
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    report = scan_meeting("hkjc", meeting)
+    assert report["status"] == "ok"
+
+
 def test_hkjc_health_blocks_missing_score_provenance(tmp_path: Path) -> None:
     meeting = tmp_path / "2026-09-06_ShaTin"
     meeting.mkdir()

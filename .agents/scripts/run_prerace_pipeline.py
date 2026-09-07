@@ -24,6 +24,7 @@ import subprocess
 import argparse
 from pathlib import Path
 from datetime import datetime, timedelta
+from typing import Optional
 
 from subprocess_pool import bounded_workers, run_labeled_commands
 
@@ -88,8 +89,16 @@ def step1_sync_standard_times() -> dict:
 
 
 def step2_scrape_draw_stats() -> dict:
-    """Scrape draw stats (always refresh — data changes per meeting)."""
-    return run_script("scrape_draw_stats.py", label="Step 2: Draw Stats Scrape")
+    """Scrape draw stats (always refresh — data changes per meeting).
+
+    Exit code 3 係 scrape_draw_stats.py 講「今次 0 場，舊檔留返」，唔算失敗。
+    """
+    result = run_script("scrape_draw_stats.py", label="Step 2: Draw Stats Scrape")
+    if result.get("returncode") == 3:
+        result["status"] = "NO_DATA_KEPT_PREVIOUS"
+        result["error"] = None
+        result["reason"] = "檔位頁 0 場（休季／未出檔）；保留上一份檔案"
+    return result
 
 
 def step2c_rebuild_stats() -> dict:
@@ -150,7 +159,12 @@ def check_draw_stats_freshness(meeting_dir: Path) -> dict:
     venue_ok = (not exp_venue) or (exp_venue in meeting_str)
     if date_ok and venue_ok:
         print(f"   ✅ 檔位統計匹配本賽日: {meeting_str} (scraped {scraped_at})")
-        return {"status": "FRESH", "meeting": meeting_str}
+        return {
+            "status": "FRESH",
+            "meeting": meeting_str,
+            "scraped_at": scraped_at,
+            "expected": f"{exp_venue} {exp_date}".strip(),
+        }
 
     print("\n" + "!" * 60)
     print("   ⚠️⚠️  檔位統計不匹配本賽日 — 報告會用到錯/舊賽日數據！")
@@ -159,7 +173,45 @@ def check_draw_stats_freshness(meeting_dir: Path) -> dict:
     print("       → 檔位統計會 resolve 失敗顯示「數據不可用」、評分 fallback 位置先驗。")
     print("       → 請確認本賽日已出檔（今日 scrape 是否 0 場）再重跑，切勿用錯賽日數據出報告。")
     print("!" * 60)
-    return {"status": "STALE", "meeting": meeting_str, "expected": f"{exp_venue} {exp_date}".strip()}
+    return {
+        "status": "STALE",
+        "meeting": meeting_str,
+        "scraped_at": scraped_at,
+        "expected": f"{exp_venue} {exp_date}".strip(),
+    }
+
+
+MEETING_DRAW_STATS_NAME = "Draw_Stats.json"
+
+
+def snapshot_draw_stats(meeting_dir: Path, freshness: dict) -> Optional[Path]:
+    """Keep this meeting's own copy of the draw table beside its artifacts.
+
+    一份全域 hkjc_draw_stats.json 服侍唔到兩個賽日：下一個賽日一抽，上一個賽日
+    就再攞唔返自己嗰張表，重跑舊場次永遠冇檔位判讀。所以匹配得上就即刻影一份
+    落 meeting folder，之後 Facts 注入優先讀佢。
+    """
+    if (freshness or {}).get("status") != "FRESH":
+        return None
+    try:
+        payload = DRAW_STATS_JSON.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        print(f"   ⚠️ 檔位統計影唔到本場副本: {exc}")
+        return None
+    target = meeting_dir / MEETING_DRAW_STATS_NAME
+    try:
+        target.write_text(payload, encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        print(f"   ⚠️ 檔位統計副本寫唔入 {target.name}: {exc}")
+        return None
+    print(f"   💾 檔位統計已影一份落本場: {target.name}")
+    return target
+
+
+def resolve_meeting_draw_stats(meeting_dir: Path) -> Optional[Path]:
+    """This meeting's own draw table, if a previous run snapshotted one."""
+    candidate = meeting_dir / MEETING_DRAW_STATS_NAME
+    return candidate if candidate.exists() else None
 
 
 def step3_inject_facts(meeting_dir: Path, workers: int = 1) -> list:
@@ -187,6 +239,8 @@ def step3_inject_facts(meeting_dir: Path, workers: int = 1) -> list:
     if meeting_date_match:
         meeting_date = meeting_date_match.group(1)
 
+    meeting_draw_stats = resolve_meeting_draw_stats(meeting_dir)
+
     tasks = []
     for fg in formguides:
         # Extract race number from filename
@@ -201,6 +255,8 @@ def step3_inject_facts(meeting_dir: Path, workers: int = 1) -> list:
 
         # Build inject command args
         inject_args = [str(fg), "--output", str(out_path)]
+        if meeting_draw_stats:
+            inject_args.extend(["--draw-stats", str(meeting_draw_stats)])
         if meeting_date:
             inject_args.extend(["--race-date", meeting_date])
         if race_num > 0:
@@ -235,7 +291,49 @@ def step3_inject_facts(meeting_dir: Path, workers: int = 1) -> list:
     return results
 
 
-def generate_summary(meeting_dir: Path, step1: dict, step2: dict, step3: list, step2c: dict = None) -> dict:
+def _standard_times_freshness() -> dict:
+    """Age of hkjc_standard_times.json, recorded so staleness is visible in artifacts.
+
+    ⚠️ 刷新標準時間 **會改分**（`inject_hkjc_fact_anchors.get_standard_time` 餵
+    `ft_deviations` / `adj_deviations`，再入段速維度），所以呢度只報告唔自動刷 ——
+    要刷就當一個獨立、要過 model gate 嘅改動做。
+    """
+    if not STANDARD_TIMES_JSON.exists():
+        return {"status": "MISSING"}
+    try:
+        with open(STANDARD_TIMES_JSON, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+    except (OSError, UnicodeError, ValueError) as exc:
+        return {"status": "UNREADABLE", "error": str(exc)}
+    scraped_at = str(data.get("meta", {}).get("scraped_at", ""))
+    entries = len(data.get("standard_times", {}) or {})
+    age_days = None
+    try:
+        age_days = (datetime.now() - datetime.strptime(scraped_at, "%Y-%m-%d %H:%M:%S")).days
+    except ValueError:
+        pass
+    status = "FRESH"
+    if age_days is None:
+        status = "UNKNOWN_AGE"
+    elif age_days >= STD_TIMES_MAX_AGE_DAYS:
+        status = "STALE"
+    return {
+        "status": status,
+        "scraped_at": scraped_at,
+        "age_days": age_days,
+        "entries": entries,
+        "refresh_is_a_scoring_change": True,
+    }
+
+
+def generate_summary(
+    meeting_dir: Path,
+    step1: dict,
+    step2: dict,
+    step3: list,
+    step2c: dict = None,
+    draw_freshness: dict = None,
+) -> dict:
     """Generate pipeline_summary.json."""
     summary = {
         "meta": {
@@ -248,6 +346,13 @@ def generate_summary(meeting_dir: Path, step1: dict, step2: dict, step3: list, s
             "draw_stats": step2,
             "jockey_trainer_stats": step2c or {"status": "SKIPPED"},
             "facts_injection": step3,
+        },
+        # 逐個賽日嘅新舊判決寫落 artifact。之前呢個判決只 print 出 stdout，
+        # 而排程只留 control-plane JSON，所以由 2026-06 起「檔位統計不匹配本賽日」
+        # 嗌咗三個月、三個 launchd log 一行都冇。報警要睇實物，唔好睇 log。
+        "freshness": {
+            "draw_stats": draw_freshness or {"status": "UNKNOWN"},
+            "standard_times": _standard_times_freshness(),
         },
         "stats": {
             "total_races": len(step3),
@@ -294,6 +399,7 @@ def main():
 
     # Step 2b: verify the (possibly kept) draw stats actually match THIS meeting
     draw_freshness = check_draw_stats_freshness(meeting_dir)
+    snapshot_draw_stats(meeting_dir, draw_freshness)
 
     # Step 2c: rebuild jockey/trainer stats so ratings/priors are current
     step2c = {"status": "SKIPPED"} if args.skip_stats else step2c_rebuild_stats()
@@ -303,7 +409,9 @@ def main():
     step3 = [] if args.skip_inject else step3_inject_facts(meeting_dir, workers=inject_workers)
 
     # Generate summary
-    summary = generate_summary(meeting_dir, step1, step2, step3, step2c)
+    summary = generate_summary(
+        meeting_dir, step1, step2, step3, step2c, draw_freshness=draw_freshness
+    )
 
     # Final report
     print(f"\n{'='*60}")

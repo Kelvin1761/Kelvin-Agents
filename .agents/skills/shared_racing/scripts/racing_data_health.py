@@ -216,6 +216,54 @@ def _csv_runner_count(path: Path) -> int | None:
         return None
 
 
+def _pipeline_freshness_issues(meeting_dir: Path) -> list[dict]:
+    """Surface stale pre-race reference data recorded in pipeline_summary.json.
+
+    呢個判決一直存在（run_prerace_pipeline.check_draw_stats_freshness），但只
+    print 出 stdout，而排程只留 control-plane JSON，所以由 2026-06 起「檔位統計
+    不匹配本賽日」嗌咗三個月、三個 launchd log 一行都冇，2026-09-06 每份 Facts.md
+    照印 2026-05-31 沙田 "B" 賽道嘅檔位表。
+
+    Warning only, never an error：檔位統計係**顯示層**（`features/draw.py` 用
+    位置先驗，官方數據唔入分），所以唔應該攔 deploy，只要講得出就夠。
+    """
+    summary_path = meeting_dir / "pipeline_summary.json"
+    if not is_materialized_file(summary_path):
+        return []
+    try:
+        freshness = json.loads(summary_path.read_text(encoding="utf-8")).get("freshness") or {}
+    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
+        return [{
+            "severity": "warning",
+            "code": "INVALID_PIPELINE_SUMMARY",
+            "message": f"{summary_path.name}: {exc}",
+        }]
+    issues: list[dict] = []
+    draw = freshness.get("draw_stats") or {}
+    if draw.get("status") not in (None, "FRESH"):
+        issues.append({
+            "severity": "warning",
+            "code": "STALE_DRAW_STATS",
+            "message": (
+                f"檔位統計 {draw.get('status')}：檔案 {draw.get('meeting') or '（空）'}"
+                f"（scraped {draw.get('scraped_at') or '?'}）vs 本賽日 "
+                f"{draw.get('expected') or meeting_dir.name} — 報告嘅檔位判讀會略過注入"
+            ),
+        })
+    std = freshness.get("standard_times") or {}
+    if std.get("status") not in (None, "FRESH"):
+        issues.append({
+            "severity": "warning",
+            "code": "STALE_STANDARD_TIMES",
+            "message": (
+                f"標準時間 {std.get('status')}：scraped {std.get('scraped_at') or '?'}"
+                f"（{std.get('age_days')} 日前，{std.get('entries')} 條）"
+                " — 刷新會改段速分，要當一個獨立改動去過 model gate"
+            ),
+        })
+    return issues
+
+
 def scan_meeting(platform: str, meeting_dir: Path) -> dict:
     platform = platform.lower()
     if platform not in EXPECTED_FEATURES:
@@ -246,6 +294,8 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
                 "code": "INVALID_EXTRACTION_READINESS",
                 "message": str(exc),
             })
+    if platform == "hkjc":
+        issues.extend(_pipeline_freshness_issues(meeting_dir))
     logic_paths = sorted(
         (
             path

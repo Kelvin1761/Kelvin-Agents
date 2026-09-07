@@ -220,12 +220,26 @@ STANDARD_TIMES = {
 # Draw Stats Loader
 # ========================================================================
 _DRAW_STATS = None
+_DRAW_STATS_PATH_OVERRIDE = None
+
+
+def set_draw_stats_path(path) -> None:
+    """Point the loader at this meeting's own draw table (`--draw-stats`).
+
+    全域 hkjc_draw_stats.json 只反映最後一次抽嘅賽日，所以重跑舊場次一定要
+    讀本場副本，唔係讀全域嗰份。
+    """
+    global _DRAW_STATS, _DRAW_STATS_PATH_OVERRIDE
+    _DRAW_STATS_PATH_OVERRIDE = Path(path) if path else None
+    _DRAW_STATS = None
+
+
 def load_draw_stats() -> dict:
-    """Load draw stats from hkjc_draw_stats.json (cached)."""
+    """Load draw stats from this meeting's copy, else hkjc_draw_stats.json (cached)."""
     global _DRAW_STATS
     if _DRAW_STATS is not None:
         return _DRAW_STATS
-    json_path = Path(__file__).parent / 'hkjc_draw_stats.json'
+    json_path = _DRAW_STATS_PATH_OVERRIDE or (Path(__file__).parent / 'hkjc_draw_stats.json')
     if json_path.exists():
         try:
             with open(json_path, 'r', encoding='utf-8') as f:
@@ -235,6 +249,36 @@ def load_draw_stats() -> dict:
             pass
     _DRAW_STATS = {}
     return _DRAW_STATS
+
+
+# 今場嘅賽日同賽道，由 main() 設定一次。檔位統計係**逐個賽日**嘅頁面
+# （racing.hkjc.com 檔位頁），所以「同場地同距離同跑道」唔代表同一日 ——
+# 2026-09-06 沙田（"A" 賽道）就係咁攞咗 2026-05-31 沙田（"B" 賽道）嘅表，
+# 每份 Facts.md 印住「數據來源: HKJC 檔位統計 沙田 31/05/2026」印咗三個月。
+# Logic 層（create_hkjc_logic_skeleton._resolve_draw_stats_race）一直有賽日守衛，
+# 只有 Facts 層冇，所以評分冇事、報告一直講錯數。
+_EXPECTED_DRAW_MEETING = {"date": "", "course": ""}
+_DRAW_STATS_REJECT_REASON = ""
+
+
+def set_expected_draw_meeting(race_date: str = "", course: str = "") -> None:
+    """Record today's meeting so draw stats from another meeting can never resolve."""
+    _EXPECTED_DRAW_MEETING["date"] = str(race_date or "").strip()
+    _EXPECTED_DRAW_MEETING["course"] = str(course or "").strip().upper()
+
+
+def draw_stats_reject_reason() -> str:
+    """Why the last _resolve_draw_stats_race() call refused to serve draw stats."""
+    return _DRAW_STATS_REJECT_REASON
+
+
+def _normalize_draw_stats_meeting_date(value: str) -> str:
+    text = str(value or '').strip()
+    match = re.search(r'(\d{2})/(\d{2})/(20\d{2})', text)
+    if match:
+        return f"{match.group(3)}-{match.group(2)}-{match.group(1)}"
+    match = re.search(r'(20\d{2})-(\d{2})-(\d{2})', text)
+    return match.group(0) if match else ''
 
 
 def _normalize_draw_stats_meeting_venue(value: str) -> str:
@@ -269,27 +313,56 @@ def _resolve_draw_stats_race(
     expected_venue: str = '',
     expected_distance: int = 0,
     expected_surface: str = '',
+    expected_date: str = '',
+    expected_course: str = '',
 ) -> dict:
+    """Return today's draw stats race, or {} when the file is not today's meeting.
+
+    賽日同賽道兩個守衛係關鍵：檔位頁逐個賽日出，場地／距離／跑道全部對得上
+    都可能係另一個賽日嘅表。`expected_date` / `expected_course` 留空就會用
+    `set_expected_draw_meeting()` 記落嘅今場資料。
+    """
+    global _DRAW_STATS_REJECT_REASON
+    _DRAW_STATS_REJECT_REASON = ""
     ds = load_draw_stats()
     if not ds or 'races' not in ds:
+        _DRAW_STATS_REJECT_REASON = "no_draw_stats_file"
         return {}
     race = next((item for item in ds.get('races', []) if item.get('race') == race_num), None)
     if not race:
+        _DRAW_STATS_REJECT_REASON = f"race_{race_num}_not_in_draw_stats"
         return {}
 
-    meeting_venue = _normalize_draw_stats_meeting_venue(ds.get('meta', {}).get('meeting', ''))
+    meeting_text = ds.get('meta', {}).get('meeting', '')
+    meeting_venue = _normalize_draw_stats_meeting_venue(meeting_text)
+    meeting_date = _normalize_draw_stats_meeting_date(meeting_text)
     venue_norm = _normalize_expected_draw_venue(expected_venue)
     surface_norm = expected_surface or _expected_draw_surface(expected_venue)
+    date_norm = str(expected_date or _EXPECTED_DRAW_MEETING['date'] or '').strip()
+    course_norm = str(expected_course or _EXPECTED_DRAW_MEETING['course'] or '').strip().upper()
 
     if venue_norm and meeting_venue != venue_norm:
+        _DRAW_STATS_REJECT_REASON = f"venue {meeting_venue or '?'} != {venue_norm}"
+        return {}
+    if date_norm and meeting_date != date_norm:
+        _DRAW_STATS_REJECT_REASON = f"meeting {meeting_date or '?'} != {date_norm}"
         return {}
     if expected_distance:
         try:
             if int(race.get('distance') or 0) != int(expected_distance):
+                _DRAW_STATS_REJECT_REASON = (
+                    f"distance {race.get('distance')} != {expected_distance}"
+                )
                 return {}
         except (TypeError, ValueError):
+            _DRAW_STATS_REJECT_REASON = "distance unparseable"
             return {}
     if surface_norm and str(race.get('surface') or '').strip() != surface_norm:
+        _DRAW_STATS_REJECT_REASON = f"surface {race.get('surface')} != {surface_norm}"
+        return {}
+    race_course = str(race.get('course') or '').strip().upper()
+    if course_norm and race_course and race_course != course_norm:
+        _DRAW_STATS_REJECT_REASON = f"course {race_course} != {course_norm}"
         return {}
 
     return race
@@ -2293,7 +2366,7 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python3 inject_hkjc_fact_anchors.py <Formguide.txt> "
               "[--venue ST|HV] [--distance 1200] [--class 4] "
-              "[--race-date YYYY-MM-DD] "
+              "[--race-date YYYY-MM-DD] [--draw-stats Draw_Stats.json] "
               "[--horse-ids 'HK_2024_K416,...'] [--output Facts.md]")
         sys.exit(1)
     
@@ -2338,6 +2411,9 @@ def main():
         elif args[i] == '--race-date' and i + 1 < len(args):
             race_date = args[i + 1].strip()
             i += 2
+        elif args[i] == '--draw-stats' and i + 1 < len(args):
+            set_draw_stats_path(args[i + 1].strip())
+            i += 2
         elif args[i] == '--form-lines':
             enable_form_lines = True
             i += 1
@@ -2363,6 +2439,13 @@ def main():
     today_course = ctx.get('course') or 'Unknown'
     today_dist = dist_override or ctx['distance']
     race_class = class_override or ctx['class']
+
+    # 鎖住今場賽日／賽道，令另一個賽日嘅檔位表永遠 resolve 唔到（見
+    # _resolve_draw_stats_race）。冇 --race-date 就只剩賽道守衛。
+    set_expected_draw_meeting(
+        race_date,
+        '' if today_course in ('', 'Unknown') else today_course,
+    )
     
     # Parse horse IDs for scraper enrichment
     horse_id_list = [h.strip() for h in horse_ids_str.split(',') if h.strip()] if horse_ids_str else []
@@ -2451,7 +2534,11 @@ def main():
             print(f"   🎯 檔位判讀: Race {race_num} 已注入", file=sys.stderr)
         elif load_draw_stats().get('races'):
             print(
-                f"   ⚠️ 檔位統計與今場不匹配，已略過注入 (Race {race_num}: {today_venue} {today_dist}m)",
+                "   ⚠️ 檔位統計與今場不匹配，已略過注入 "
+                f"(Race {race_num}: {today_venue} {today_dist}m \"{today_course}\" 賽道"
+                f"{(' ' + race_date) if race_date else ''}) — "
+                f"原因: {draw_stats_reject_reason() or 'unknown'}；"
+                f"檔案: {load_draw_stats().get('meta', {}).get('meeting', '（空）')}",
                 file=sys.stderr,
             )
 
