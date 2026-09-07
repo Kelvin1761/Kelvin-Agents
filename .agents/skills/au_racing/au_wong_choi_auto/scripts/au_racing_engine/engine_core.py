@@ -3695,11 +3695,15 @@ class RacingEngine:
         return "；".join(parts)
 
     def _has_last10_warning(self):
+        # ⚠️ **`warning_line` 個 key 由來唔存在於 `_data`** —— 呢個 helper 永遠回
+        # `False`。2026-09-07 實測：Sportsbet 嘅 `Stewards:` / `Note:` 三個欄各
+        # 21,127 行、**0.0% 有內容**，所以上游本身冇嘢可以填。
+        #
+        # `_health_score` 嗰邊已經因為呢個原因剷走咗相關分支。仲有一個 caller：
+        # `_confidence_score` 嘅 `-4`，同樣永遠唔會 fire —— **未處理**，
+        # 因為佢屬另一個 leaf，要獨立一個改動同 golden 對照。見
+        # `docs/experiments/EXP-20260907-02-au-health-score-has-no-source.md`。
         return bool(str(self.data.get("warning_line") or "").strip())
-
-    def _latest_official_text(self):
-        latest = self._official_entries()[0] if self._official_entries() else {}
-        return " ".join(str(latest.get(key) or "") for key in ("notes", "forgiveness", "trajectory"))
 
     def _spell_days(self):
         explicit = parse_float(self.data.get("spell_days"))
@@ -4876,25 +4880,31 @@ class RacingEngine:
     def _health_score(self):
         if os.environ.get("WC_DISABLE_AU_HEALTH_SCORE") == "1":
             return 60.0, "健康/備戰分以 validation flag 暫作中性 60。", "disabled_neutral"
+        # ⚠️ **呢個 leaf 唯一活住嘅輸入係「距上仗日數」。** 個名同標籤講「健康」，
+        # 但 2026-09-07 實測 8,224 匹：分數只有 59 / 60 / 61 三個值，而每一個
+        # 都嚟自下面嗰個 spell 分支 —— 冇一個健康分支中過。原因唔係我哋解析失敗，
+        # 係**來源根本冇呢啲資料**（`docs/experiments/EXP-20260907-02-...`）：
+        #
+        #   * `Stewards:` / `Note:` / `Video:` 三個欄各 **21,127 行，0.0% 有內容**
+        #     —— Sportsbet 出標籤但唔出內文。
+        #   * `warning_line` 個 key **由來唔存在**於 `_data`。
+        #   * 獸醫字眼掃描：全語料每一個命中都係**假陽性** —— 馬名同父母名，
+        #     例如 `Heart Of Vienna`、`Heartoni`、`Vetoed`、母系 `Cardiac`、
+        #     `Lamerican`。真正嘅獸醫記錄係 **0** 條。
+        #   * `timing_trial_600m_avg_speed` 100% 有 key、**0% 有值**；Formguide
+        #     入面 5,513 條試閘行**冇一條**有 L600/RT 數字。
+        #
+        # 所以三個警告／獸醫分支同「久休但有試閘時間」嗰條 rescue **全部剷走**：
+        # 佢哋由來冇 fire 過，剷走係**零分數變化**（golden bit-identical）。
+        #
+        # 而且唔剷有實質風險：`warning_text` 原本包住 `gear_line`，而配備抽取
+        # 2026-09-07 啱啱由 0% 修到 22.3%（590 種唔同文字）。今日冇一個撞到
+        # 獸醫 token（實測 2,351 匹全部乾淨），但將來一個配備名含 `vet` 或
+        # `heart` 就會靜靜扣 1.5–2.0 分 —— substring 比對加上活數據 = 地雷。
+        #
+        # 要重新做一個真嘅健康分，前提係**先有健康數據來源**，唔係改公式。
         score = 60.0
         notes = []
-        warning_text = " ".join(
-            str(value or "")
-            for value in (
-                self.data.get("warning_line"),
-                self.data.get("gear_line"),
-                self._latest_official_text(),
-            )
-        ).lower()
-        if self._has_last10_warning():
-            score -= 1.5
-            notes.append("Last10/警告存在")
-        if any(token in warning_text for token in ("lame", "cardiac", "bleed", "poor recovery", "vet", "vetted", "examined by vet")):
-            score -= 2.0
-            notes.append("近績有獸醫/健康疑點")
-        if any(token in warning_text for token in ("slow recovery", "respiratory", "heart", "eased down")):
-            score -= 1.5
-            notes.append("恢復或呼吸/心肺訊號需保守")
 
         spell = self._spell_days()
         if 14 <= spell <= 45:
@@ -4903,13 +4913,8 @@ class RacingEngine:
             notes.append(cycle['summary'] if cycle['stage'] in {'second_up', 'third_up'}
                          else f"距上仗 {spell} 日；單憑出賽間隔不能判定復出狀態")
         elif spell > 90:
-            trial_speed = parse_float(self.data.get("timing_trial_600m_avg_speed"))
-            if trial_speed:
-                score += 0.5
-                notes.append(f"久休 {spell} 日但有試閘時間支撐")
-            else:
-                score -= 1.0
-                notes.append(f"久休 {spell} 日而缺少試閘時間支撐")
+            score -= 1.0
+            notes.append(f"久休 {spell} 日")
 
         # 2026-09-07：**配備變更唔入分**，兩個分支剷走。
         #
@@ -4921,8 +4926,9 @@ class RacingEngine:
         # （有變更嘅馬 form 平均 59.83 vs 62.10），四個扣分幅度冇一個過閘。
         #
         # 配備而家淨係出報告（見 renderer 嘅「配備變更」行）。
-        note = "；".join(notes) if notes else "未見明確健康或備戰扣分訊號"
-        return score, f"{note}。備戰完整度分 {clip_score(score):.1f}。", "warnings+spell"
+        # 講返佢真正量嘅嘢 —— 唔好再暗示我哋查過健康。
+        note = "；".join(notes) if notes else "出賽間隔喺常規範圍"
+        return score, f"{note}。出賽間隔分 {clip_score(score):.1f}。", "spell_only"
 
     def _advantages(self, feature_scores, matrix_scores):
         # 2026-08-01：門檻統一到 MATRIX_ADVANTAGE_CUTOFF。維度尺正規化之前，

@@ -168,3 +168,68 @@ class GearStaysOutOfScoringTests(unittest.TestCase):
             "meeting_intelligence": {"venue": "Randwick", "going": "Good 4"},
         })._health_score()
         self.assertNotIn("gear", source)
+
+
+class HealthScoreIsSpellOnlyTests(unittest.TestCase):
+    """`health_score` 唯一活住嘅輸入係「距上仗日數」—— 呢個 test 講明實情。
+
+    2026-09-07 實測 8,224 匹：分數只有 59 / 60 / 61，全部嚟自 spell 分支。
+    三個警告／獸醫分支同「久休但有試閘時間」rescue 剷走咗，因為**來源冇資料**：
+      * `Stewards:` / `Note:` / `Video:` 各 21,127 行、**0.0% 有內容**
+      * `warning_line` 個 key 由來唔存在
+      * 獸醫字眼掃描 100% 假陽性（馬名／父母名：`Heart Of Vienna`、`Vetoed`、
+        母系 `Cardiac`、`Lamerican`）
+      * `timing_trial_600m_avg_speed` 0% 有值；5,513 條試閘行冇一條有 L600 數字
+
+    順帶封住一個地雷：舊 `warning_text` 包住 `gear_line`，而配備抽取
+    2026-09-07 由 0% 修到 22.3%（590 種文字）。今日冇撞（2,351 匹實測乾淨），
+    但 substring 比對 + 活數據 = 將來一個配備名含 `vet`／`heart` 就靜靜扣分。
+    """
+
+    def _engine(self, data: dict, *, day: str = "2026-09-04"):
+        from au_racing_engine.engine_core import RacingEngine
+        horse = {"horse_name": "T", "horse_number": "1",
+                 "jockey": "J", "trainer": "Tr", "_data": data}
+        return RacingEngine(horse, {
+            "distance": "1400m", "field_summary": {"count": 10},
+            "meeting_intelligence": {"venue": "Randwick", "going": "Good 4", "date": day},
+            "date": day,
+        })
+
+    def test_only_the_spell_gap_moves_the_score(self) -> None:
+        # 場次日期 = 2026-09-04
+        for last_run, expected, why in (
+            ("2026-08-31", 60.0, "4 日 —— 太密，唔喺 14-45"),
+            ("2026-08-25", 60.0, "10 日 —— 仍然唔夠 14"),
+            ("2026-08-21", 61.0, "14 日 —— 區間下界，+1.0"),
+            ("2026-08-15", 61.0, "20 日 —— 區間中間"),
+            ("2026-07-21", 61.0, "45 日 —— 區間上界"),
+            ("2026-07-20", 60.0, "46 日 —— 過咗界，中性"),
+            ("2026-06-06", 60.0, "90 日 —— 啱啱唔扣（門檻係 >90）"),
+            ("2026-06-05", 59.0, "91 日 —— 過咗門檻，−1.0"),
+            ("2026-05-01", 59.0, "126 日 —— 久休 −1.0"),
+        ):
+            got = self._engine({"latest_official_date": last_run})._health_score()[0]
+            self.assertEqual(got, expected, f"{last_run}（{why}）")
+
+    def test_a_gear_name_containing_a_vet_token_cannot_dock_the_score(self) -> None:
+        # 呢個就係剷走 substring 掃描要防嘅嘢。
+        for gear in ("Velvet Nose Roll FIRST TIME", "Heart Monitor FIRST TIME",
+                     "Lame Duck Bit FIRST TIME"):
+            self.assertEqual(
+                self._engine({"latest_official_date": "2026-08-31",
+                              "gear_line": gear, "gear_changes": gear})._health_score()[0],
+                60.0, gear)
+
+    def test_a_warning_line_no_longer_docks_the_score(self) -> None:
+        # 欄位由來唔存在；就算有人將來填佢，都唔應該由呢個 leaf 靜靜扣分。
+        self.assertEqual(
+            self._engine({"latest_official_date": "2026-08-31",
+                          "warning_line": "vet examined, lame"})._health_score()[0], 60.0)
+
+    def test_the_source_tag_says_what_it_measures(self) -> None:
+        _s, text, source = self._engine(
+            {"latest_official_date": "2026-08-31"})._health_score()
+        self.assertEqual(source, "spell_only")
+        self.assertIn("出賽間隔分", text)
+        self.assertNotIn("健康", text)
