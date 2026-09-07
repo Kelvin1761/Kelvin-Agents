@@ -171,11 +171,24 @@ def test_field_change_relaxes_only_the_pdf():
     assert ready.strip() == "ready = pdf_gate and total_rc == len(races) and total_fg == len(races)"
 
 
-def test_racecards_and_formguides_still_require_fresh():
-    """`total_rc` / `total_fg` 數嘅係 `*_ok`（今次刷新成功），唔係 `*_valid`。"""
+def test_the_gate_never_accepts_bare_valid():
+    """個閘唔准鬆到 `*_valid`（碟上有檔就算）。
+
+    `valid` = 「碟上有份格式正確嘅檔」—— 佢完全冇話你嗰份係唔係**當前**。
+    2026-09-09 加入嘅 `verified` 係另一回事：碟上嗰份嘅名單同**今次真係刷新
+    成功**嘅排位表逐個馬號馬名對得上，即係有獨立證據話佢反映當前名單。
+    一隻只喺排位表退出嘅馬會令核實失敗，所以 `verified` 嚴過 `valid`。
+
+    呢個測試釘住嘅係「`valid` 永遠唔可以入個閘」。
+    """
     src = _gate_source()
+    gate = src[src.index("gate_mode = os.environ.get"):]
+    gate = gate[:gate.index("readiness = {")]
+    counts = src[src.index("total_rc = sum("):src.index("print()", src.index("total_rc = sum("))]
+    assert "racecards_valid" not in counts.replace("valid_rc", "")
+    for token in ("valid_rc", "valid_fg"):
+        assert token not in gate, f"{token} 唔准出現喺個閘度（佢只係「碟上有檔」）"
     assert "total_rc = sum(1 for r in all_results if r['racecard_ok'])" in src
-    assert "total_fg = sum(1 for r in all_results if r['formguide_ok'])" in src
 
 
 def test_an_unknown_gate_mode_falls_back_to_strict():
@@ -211,3 +224,128 @@ def test_the_starter_pdf_timeout_has_headroom():
     block = src[start:end]
     timeout = int(re.search(r"timeout=(\d+)", block).group(1))
     assert timeout >= 240, f"PDF timeout {timeout}s 太貼身（實測正常 11.2s，但會慢到爆 90s）"
+
+
+# ══════════ 賽績核實：碟上嗰份同新鮮排位表對得上就當當前 ══════════
+#
+# 個閘本來問「今次刷新成功咗嗎」。HKJC 間歇回空頁（`no runner rows`），而
+# `_keep_valid_candidate` 保留咗上次嘅好副本 —— 於是一份完全正確、幾個鐘前抽嘅
+# 賽績會被當唔可用。2026-09-09 快活谷實測：同一場次 42 次 run 攞到 8/8、
+# 26 次唔齊（62% 成功）。你收到嗰個警報係「賽績 1/8」，但碟上 8 份全部有效
+# 而且逐個馬號馬名同新鮮排位表對得上。
+#
+# 正確嘅問題係「碟上嗰份係唔係最新」。用一個**今次真係刷新成功**嘅獨立來源
+# （排位表）去答。以下守三條唔可以鬆嘅前提。
+
+_CARD = "馬號: 1\n馬名: 甲\n負磅: 126\n\n馬號: 2\n馬名: 乙\n負磅: 120\n"
+
+
+def _write_pair(tmp_path, race, card_text, form_text, prefix="09-09"):
+    (tmp_path / f"{prefix} Race {race} 排位表.md").write_text(card_text, encoding="utf-8")
+    (tmp_path / f"{prefix} Race {race} 賽績.md").write_text(form_text, encoding="utf-8")
+
+
+def _result(race=1, *, racecard_state="fresh", formguide_state="kept"):
+    return {"race": race, "racecard_ok": racecard_state == "fresh",
+            "racecard_state": racecard_state, "formguide_ok": False,
+            "formguide_state": formguide_state, "errors": []}
+
+
+def test_a_kept_formguide_matching_a_fresh_racecard_is_verified(tmp_path):
+    _write_pair(tmp_path, 1, _CARD, _CARD)
+    results = [_result()]
+    batch._verify_kept_formguides(results, str(tmp_path), "09-09")
+    assert results[0]["formguide_state"] == "verified"
+    assert any("名單一致" in e for e in results[0]["errors"])
+
+
+def test_a_scratching_only_on_the_racecard_still_blocks(tmp_path):
+    """呢個係最重要嗰條。一隻馬喺排位表冇咗但賽績仲有 = 賽績過期，
+    放過佢就會用舊名單做分析。"""
+    card_without_2 = "馬號: 1\n馬名: 甲\n負磅: 126\n"
+    _write_pair(tmp_path, 1, card_without_2, _CARD)
+    results = [_result()]
+    batch._verify_kept_formguides(results, str(tmp_path), "09-09")
+    assert results[0]["formguide_state"] == "kept", "唔一致就唔准放行"
+
+
+def test_a_substitution_still_blocks(tmp_path):
+    """同號唔同馬 —— 只數馬匹數目係捉唔到嘅。"""
+    swapped = _CARD.replace("馬名: 乙", "馬名: 另一隻")
+    _write_pair(tmp_path, 1, swapped, _CARD)
+    results = [_result()]
+    batch._verify_kept_formguides(results, str(tmp_path), "09-09")
+    assert results[0]["formguide_state"] == "kept"
+
+
+def test_a_kept_racecard_cannot_vouch_for_anything(tmp_path):
+    """前提 1：作證嘅來源本身要係今次新鮮抽到。一份 kept 排位表可能同 kept
+    賽績一樣過期 —— 兩份舊嘢對得上證明唔到任何嘢。"""
+    _write_pair(tmp_path, 1, _CARD, _CARD)
+    results = [_result(racecard_state="kept")]
+    batch._verify_kept_formguides(results, str(tmp_path), "09-09")
+    assert results[0]["formguide_state"] == "kept"
+
+
+def test_a_truncated_racecard_does_not_verify(tmp_path):
+    """前提 3：半截頁唔准作證。"""
+    truncated = _CARD + "馬號: 3\n"        # 有號冇名
+    _write_pair(tmp_path, 1, truncated, _CARD)
+    results = [_result()]
+    batch._verify_kept_formguides(results, str(tmp_path), "09-09")
+    assert results[0]["formguide_state"] == "kept"
+
+
+def test_a_truncated_formguide_does_not_verify(tmp_path):
+    _write_pair(tmp_path, 1, _CARD, _CARD + "馬號: 3\n")
+    results = [_result()]
+    batch._verify_kept_formguides(results, str(tmp_path), "09-09")
+    assert results[0]["formguide_state"] == "kept"
+
+
+def test_two_empty_lineups_do_not_verify_each_other(tmp_path):
+    """兩邊都解析唔到嘢 ≠ 一致。`card and card == form` 守呢一條。"""
+    _write_pair(tmp_path, 1, "冇馬匹\n", "冇馬匹\n")
+    results = [_result()]
+    batch._verify_kept_formguides(results, str(tmp_path), "09-09")
+    assert results[0]["formguide_state"] == "kept"
+
+
+def test_a_fresh_formguide_is_left_alone(tmp_path):
+    _write_pair(tmp_path, 1, _CARD, _CARD)
+    results = [_result(formguide_state="fresh")]
+    results[0]["formguide_ok"] = True
+    batch._verify_kept_formguides(results, str(tmp_path), "09-09")
+    assert results[0]["formguide_state"] == "fresh"
+
+
+def test_a_missing_formguide_is_never_verified(tmp_path):
+    """完全冇檔就冇嘢可以核實 —— 唔可以由 missing 跳去 verified。"""
+    (tmp_path / "09-09 Race 1 排位表.md").write_text(_CARD, encoding="utf-8")
+    results = [_result(formguide_state="missing")]
+    batch._verify_kept_formguides(results, str(tmp_path), "09-09")
+    assert results[0]["formguide_state"] == "missing"
+
+
+def test_verification_never_raises_on_unreadable_files(tmp_path):
+    """核實係加分項 —— 唔可以因為佢而搞冧成個抽取。"""
+    results = [_result()]
+    batch._verify_kept_formguides(results, str(tmp_path), "09-09")   # 兩個檔都唔存在
+    assert results[0]["formguide_state"] == "kept"
+
+
+def test_the_gate_counts_verified_alongside_fresh():
+    """結構閘：`total_fg` 一定要同時數 fresh 同 verified，唔然核實白做。"""
+    src = _gate_source()
+    line_start = src.index("total_fg = sum(")
+    block = src[line_start:line_start + 260]
+    assert "formguide_ok" in block
+    assert "'verified'" in block or '"verified"' in block
+
+
+def test_racecards_are_still_fresh_only():
+    """排位表冇獨立來源可以幫佢作證，所以佢照樣要 fresh。"""
+    src = _gate_source()
+    line = [ln for ln in src.splitlines() if ln.strip().startswith("total_rc = sum(")][0]
+    assert "racecard_ok" in line
+    assert "verified" not in line
