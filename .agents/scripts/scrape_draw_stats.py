@@ -187,11 +187,26 @@ def main():
     script_dir = Path(__file__).parent
     out_path = Path(args.output) if args.output else script_dir / "hkjc_draw_stats.json"
 
+    n_races = len(result["races"])
+    meeting = result["meta"].get("meeting", "N/A")
+
+    # 休季／未出檔嗰陣個頁面係空嘅。空 scrape 覆蓋一份好檔案 = 靜靜咁毀掉
+    # 唯一一份數據，所以寧願保留舊檔，用 exit code 3 講清楚「今次冇數據，
+    # 舊檔留返」。下游（run_prerace_pipeline）會逐個賽日再驗一次新舊。
+    if n_races == 0 and out_path.exists():
+        try:
+            with open(out_path, 'r', encoding='utf-8') as f:
+                kept = json.load(f)
+        except (OSError, UnicodeError, ValueError):
+            kept = {}
+        if kept.get("races"):
+            kept_meeting = kept.get("meta", {}).get("meeting", "N/A")
+            print(f"[NO DATA] 檔位頁 0 場（休季／未出檔）— 保留舊檔 {kept_meeting}，唔覆蓋 {out_path.name}")
+            return 3
+
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump(result, f, ensure_ascii=False, indent=2)
 
-    n_races = len(result["races"])
-    meeting = result["meta"].get("meeting", "N/A")
     print(f"[DONE] {meeting} — {n_races} races extracted → {out_path.name}")
     for r in result["races"][:3]:
         best = max(r["draws"], key=lambda d: d["win_pct"])
@@ -199,7 +214,8 @@ def main():
         print(f"  Race {r['race']} ({r.get('distance','')}m): "
               f"Best=Draw {best['draw']} ({best['win_pct']}%), "
               f"Worst=Draw {worst['draw']} ({worst['win_pct']}%)")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main() or 0)

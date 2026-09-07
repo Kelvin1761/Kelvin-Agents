@@ -96,12 +96,17 @@ def _maybe_extract(url: str | None, target_dir: Path, skip_extract: bool) -> Non
 def _generate_facts(target_dir: Path, skip_facts: bool, workers: int = 1) -> None:
     if skip_facts:
         return
+    # 檔位統計逐個賽日出，一定要重抽：`--skip-draw` 硬寫死咗之後，
+    # hkjc_draw_stats.json 由 2026-05-31 一路凍到 2026-09-06，每份 Facts.md
+    # 印住另一個賽日、另一條賽道嘅檔位表。空 scrape 唔會覆蓋舊檔（exit 3）。
+    #
+    # `--skip-std-times` 照留：標準時間入段速分，刷新 = 改分，要當一個獨立
+    # 改動去過 model gate。而家喺 pipeline_summary.json 報告佢幾舊。
     cmd = [
         PYTHON,
         str(SHARED_SCRIPTS / "run_prerace_pipeline.py"),
         str(target_dir),
         "--skip-std-times",
-        "--skip-draw",
         "--inject-workers",
         str(workers),
     ]
