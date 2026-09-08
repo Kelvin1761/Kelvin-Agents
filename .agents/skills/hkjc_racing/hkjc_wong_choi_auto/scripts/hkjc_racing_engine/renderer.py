@@ -622,6 +622,8 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
             lines.append(f"    - {adjustment}")
         if key == "trainer_signal":
             lines.extend(_trainer_signal_adjustment_lines(auto))
+            lines.extend(_combo_section_lines(auto))
+            lines.extend(_trainer_venue_lines(auto))
         if key == "sectional":
             lines.extend(_speed_detail_lines(auto))
         if key == "race_shape":
@@ -689,6 +691,83 @@ def _speed_detail_lines(auto: dict) -> list[str]:
         val_part = f"（{val}）" if val else ""
         lines.append(f"      · {d.get('factor', '訊號')}{val_part} {dtxt}　{why}")
     return lines
+
+
+def _combo_section_lines(auto: dict) -> list[str]:
+    """騎練組合獨立一節。
+
+    佢喺計分上面係攤入騎師分（55%）同練馬師分（45%），跟住維度公式又係
+    0.55·騎師 + 0.45·練馬師，所以對維度分嘅淨貢獻係 0.55²+0.45² = 50.5%。
+    以前份報告淨係印「騎師分 X x 55%、練馬師分 Y x 45%」，讀者見唔到組合出咗幾多力。
+    呢一節將佢反解出嚟獨立列 —— **恆等變換，一分都冇改**（由
+    tests/test_combo_section.py 守住）。
+    """
+    detail = auto.get("trainer_signal_detail")
+    if not isinstance(detail, dict):
+        return []
+    split = detail.get("combo_split")
+    if not isinstance(split, dict):
+        return []
+    adj = float(split.get("adj", 0) or 0)
+    evidence = ""
+    for item in detail.get("adjustments") or []:
+        if item.get("factor") == "騎練組合":
+            evidence = str(item.get("evidence") or "")
+            break
+    if not adj and not evidence:
+        return []
+    lines = ["  - **騎練組合（獨立一節）:**"]
+    if evidence:
+        lines.append(f"    - 拍檔往績 ← {evidence}")
+    if adj:
+        net = float(split.get("net_dimension_points", 0) or 0)
+        lines.append(
+            f"    - 計分路徑: {adj:+.1f} 分 → 騎師分 {float(split.get('jockey_share', 0)):+.2f}"
+            f"／練馬師分 {float(split.get('trainer_share', 0)):+.2f}"
+            f" → 維度淨 **{net:+.2f} 分**（0.55²+0.45² = 50.5% 傳導）"
+        )
+        lines.append(
+            f"    - 扣返組合之後: 騎師分 {float(split.get('jockey_ex_combo', 60)):.1f}"
+            f"、練馬師分 {float(split.get('trainer_ex_combo', 60)):.1f}"
+        )
+        if split.get("clipped"):
+            lines.append("    - ⚠️ 騎師分／練馬師分撞到 0–100 邊界，上面嘅拆解只列名義值")
+    else:
+        lines.append("    - 計分路徑: 未達加減分門檻，維度淨 +0.00 分")
+    lines.append(
+        "    - 註：50.5% 唔係損耗 —— 組合同騎師分 ρ=+0.79、同練馬師分 ρ=+0.60，"
+        "攤分係防止同一份證據數兩次（EXP-20260905-03）"
+    )
+    return lines
+
+
+def _trainer_venue_lines(auto: dict) -> list[str]:
+    """練馬師場地往績（沙田／跑馬地）。**唔入分**，係一條證據。
+
+    量度見 EXP-20260905-03：控制咗場內綜合分之後，頭2揀每 1 SD 場地優勢
+    值 +6.8pp 上名率（CI 不跨零）；但擺落排名層傳導只有場內 SD 嘅 1.0%，
+    五個 arm 全部唔過閘。所以印出嚟畀人睇，唔郁個分。
+    """
+    detail = auto.get("trainer_signal_detail")
+    if not isinstance(detail, dict):
+        return []
+    read = detail.get("trainer_venue")
+    if not isinstance(read, dict):
+        return []
+    delta = float(read.get("delta", 0) or 0)
+    if delta >= 3.0:
+        tone = "偏好呢個場地"
+    elif delta <= -3.0:
+        tone = "呢個場地表現偏弱"
+    else:
+        tone = "同自己平均差唔多"
+    return [
+        "  - **練馬師場地往績（唔入分）:**",
+        f"    - {read.get('venue', '')}{read.get('starts', 0)}仗上名率 {read.get('place_rate', 0):.1f}%"
+        f"，自己整體 {read.get('overall_place_rate', 0):.1f}% → {delta:+.1f}pp，{tone}",
+        "    - 未入排名：實測傳導到綜合分只有場內 SD 嘅 1.0%，五個排名候選全部唔過閘"
+        "（EXP-20260905-03）；呢條係畀人判斷用嘅證據",
+    ]
 
 
 def _trainer_signal_adjustment_lines(auto: dict) -> list[str]:

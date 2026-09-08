@@ -55,6 +55,7 @@ class EmptyTrainerSignalPriors:
         self.jockey_distance = {}
         self.trainer_distance = {}
         self.jockey_change = {}
+        self.trainer_venue = {}
 
 
 _EMPTY_RATINGS = EmptyRatings()
@@ -85,6 +86,15 @@ GENERAL_PRIOR_FILES = {
     "jockey_draw": [
         STATS_ROOT / "24_25" / "jockey_draw_performance.csv",
         STATS_ROOT / "25_26" / "jockey_draw_performance.csv",
+    ],
+    # 練馬師 × 場地（沙田／跑馬地）。**報告用，唔入分。**
+    # 兩季 18,795 行實測：場地偏好 73% 方差係真訊號、拆半重測 r=+0.639、
+    # 跨季 r=+0.504、覆蓋 97.3%，而且控制咗綜合分之後仲有效（頭2揀 +6.8pp / 1SD）。
+    # 但傳導到綜合分只有場內 SD 嘅 1.0%，五個排名 arm 全部唔過閘（EXP-20260905-03），
+    # 所以佢住喺報告層 —— 睇報告嘅人用得到，排名唔郁。
+    "trainer_venue": [
+        STATS_ROOT / "24_25" / "trainer_venue_stats.csv",
+        STATS_ROOT / "25_26" / "trainer_venue_stats.csv",
     ],
 }
 
@@ -264,6 +274,9 @@ class TrainerSignalPriors:
         self.jockey_distance = self._load_grouped(GENERAL_PRIOR_FILES["jockey_distance"], ["Jockey", "Distance"])
         self.trainer_distance = self._load_grouped(GENERAL_PRIOR_FILES["trainer_distance"], ["Trainer", "Distance"])
         self.jockey_change = self._load_jockey_change()
+        # 個檔可能仲未生成（build_comprehensive_stats --write 之後先有）。
+        # 缺檔 = 報告少一行，唔可以令評分失敗。
+        self.trainer_venue = self._load_grouped(GENERAL_PRIOR_FILES["trainer_venue"], ["Trainer", "Venue"])
 
     def _load_grouped(self, paths: list[Path], keys: list[str]) -> dict[tuple[str, ...], dict]:
         required = tuple(keys) + ("Wins", "Starts", "Places")

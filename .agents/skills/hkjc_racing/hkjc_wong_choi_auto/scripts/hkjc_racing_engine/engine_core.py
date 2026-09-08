@@ -21,6 +21,7 @@ from .matrix_mapper import (
     MATRIX_FORMULAS,
     map_features_to_matrix,
     map_features_to_matrix_scores,
+    formula_share,
     matrix_formula_manifest,
 )
 from . import scoring
@@ -844,9 +845,11 @@ class RacingEngine:
         if prior is None and jockey and trainer:
             prior = prior_stack.combo.get((jockey, trainer))
         combo_adj = self._trainer_combo_adjustment(prior)
+        combo_j_share = combo_t_share = 0.0
         if combo_adj:
             j_share = combo_adj * scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["combo_jockey_share"]
             t_share = combo_adj * scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["combo_trainer_share"]
+            combo_j_share, combo_t_share = j_share, t_share
             jockey_adj += j_share
             trainer_adj += t_share
             triggers.append("騎練組合")
@@ -934,18 +937,82 @@ class RacingEngine:
         if trainer_adj:
             updated["trainer_score"] = clip_score(updated.get("trainer_score", 60.0) + trainer_adj)
 
+        # 騎練組合喺計分上面係攤入騎師分／練馬師分（0.55／0.45），跟住維度公式
+        # 又係 0.55·騎師 + 0.45·練馬師 —— 所以佢對維度分嘅**淨**貢獻係
+        # 0.55² + 0.45² = 0.505 倍。呢個唔係損耗：組合本身同騎師分 ρ=+0.79、
+        # 同練馬師分 ρ=+0.60（2,438 runner 實測，EXP-20260905-03），攤分正正
+        # 係喺度防止同一份證據數兩次。實測放大呢個係數會令 gold 跌
+        # （×1.98 → −2.08pp，×2 幅度 → −2.60pp）。
+        #
+        # 下面嗰個拆解**只係報告用**：將組合由騎師分／練馬師分入面反解出嚟，
+        # 等「評分構成」可以將佢列做獨立一項而唔改任何分。恆等式：
+        #   0.55·騎師 + 0.45·練馬師 ≡ 0.55·(騎師−j份) + 0.45·(練馬師−t份) + 淨貢獻
+        # 剪裁（clip）之後可能對唔返，所以用**實際生效**嘅份額，唔用名義值。
+        self.trainer_venue_read = self._trainer_venue_read(prior_stack, trainer)
+        jockey_final = clip_score(updated.get("jockey_score", 60.0))
+        trainer_final = clip_score(updated.get("trainer_score", 60.0))
+        applied_j = combo_j_share if abs((jockey_base + jockey_adj) - jockey_final) < 1e-9 else 0.0
+        applied_t = combo_t_share if abs((trainer_base + trainer_adj) - trainer_final) < 1e-9 else 0.0
+        combo_net = (applied_j * formula_share("trainer_signal", "jockey_score")
+                     + applied_t * formula_share("trainer_signal", "trainer_score"))
         self.trainer_signal_detail = {
             "jockey_base": round(jockey_base, 2),
-            "jockey_final": round(clip_score(updated.get("jockey_score", 60.0)), 2),
+            "jockey_final": round(jockey_final, 2),
             "trainer_base": round(trainer_base, 2),
-            "trainer_final": round(clip_score(updated.get("trainer_score", 60.0)), 2),
+            "trainer_final": round(trainer_final, 2),
             "adjustments": adjustments,
+            "trainer_venue": self.trainer_venue_read,
+            "combo_split": {
+                "adj": round(combo_adj, 2),
+                "jockey_share": round(applied_j, 3),
+                "trainer_share": round(applied_t, 3),
+                "net_dimension_points": round(combo_net, 3),
+                "jockey_ex_combo": round(jockey_final - applied_j, 2),
+                "trainer_ex_combo": round(trainer_final - applied_t, 2),
+                "clipped": bool((applied_j == 0.0 and combo_j_share) or (applied_t == 0.0 and combo_t_share)),
+            },
         }
 
         if not triggers:
             return updated, ""
         note = "已再參考" + "、".join(dict.fromkeys(triggers)) + "調整騎練分。"
         return updated, note
+
+    def _trainer_venue_read(self, prior_stack, trainer):
+        """練馬師今日呢個場地嘅往績 vs 佢自己整體 —— **報告用，唔入分**。
+
+        點解唔入分（EXP-20260905-03，193 場 / 2,438 runner）：
+          * 訊號係真嘅：73% 方差係真、拆半重測 r=+0.639、跨季 r=+0.504、覆蓋 97.3%
+          * 而且同現行兩個分正交：ρ(場地 delta, trainer_score) = −0.08
+          * 控制咗場內綜合分之後仲有效：頭2揀 +6.8pp / 1SD（CI 不跨零）
+          * **但**傳導到綜合分只有場內 SD 嘅 1.0%（0.102 分 vs 9.95 分）——
+            五個排名 arm 全部唔過閘，放大到郁得郁排名嗰個（×2）gold −2.04pp CI 全負
+        所以佢嘅價值喺「話畀睇報告嘅人知」，唔喺排序。
+        """
+        rows = getattr(prior_stack, "trainer_venue", None)
+        if not rows or not trainer:
+            return None
+        venue = "沙田" if self._is_sha_tin_context() else "跑馬地"
+        here = rows.get((trainer, venue))
+        if not here or float(here.get("starts", 0) or 0) < 50:
+            return None
+        starts = float(here["starts"])
+        here_rate = float(here.get("place_rate", 0) or 0)
+        total_starts = total_places = 0.0
+        for (name, _venue), row in rows.items():
+            if name == trainer:
+                total_starts += float(row.get("starts", 0) or 0)
+                total_places += float(row.get("places", 0) or 0)
+        if total_starts <= 0:
+            return None
+        overall_rate = total_places / total_starts * 100.0
+        return {
+            "venue": venue,
+            "starts": int(starts),
+            "place_rate": round(here_rate, 1),
+            "overall_place_rate": round(overall_rate, 1),
+            "delta": round(here_rate - overall_rate, 1),
+        }
 
     def _apply_health_only_v2(self, base_score):
         return round(clip_score(base_score), 2)

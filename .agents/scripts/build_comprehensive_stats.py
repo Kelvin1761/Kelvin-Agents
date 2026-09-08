@@ -11,6 +11,7 @@
   jockey_master_stats.csv / trainer_master_stats.csv      ← 連續實績評分用
   jockey_distance_stats.csv / trainer_distance_stats.csv  ← 同程調整用
   jockey_venue_track_stats.csv                            ← 場地統計（顯示/實驗）
+  trainer_venue_stats.csv                                 ← 練馬師場地往績（報告用，唔入分）
   general_pre_race_priors/jockey_trainer_combo_priors.csv ← 騎練組合用
   general_pre_race_priors/jockey_change_priors.csv        ← 換騎先驗用
 
@@ -43,6 +44,22 @@ SEASONS = {
     "24_25": {"csv": "race_results_24_25.csv", "results_dir": "hkjc results 2024 25"},
     "25_26": {"csv": "race_results_25_26.csv", "results_dir": "hkjc results 2025 26"},
 }
+
+# 2026-09-06：`jockey_venue_track_stats.csv` 入面同時出現「沙田」同「HappyValley」
+# —— 舊表只有「Happy Valley」（有空格），冇空格嗰個 spelling 就跌返做原文，
+# 令同一個場地分裂成兩個 group（memory: grouping-key-collisions-fake-signal）。
+# 統一先去空格再對照。
+_VENUE_ALIASES = {
+    "ST": "沙田", "SHATIN": "沙田", "SHA TIN": "沙田", "沙田": "沙田",
+    "HV": "跑馬地", "HAPPYVALLEY": "跑馬地", "HAPPY VALLEY": "跑馬地", "跑馬地": "跑馬地",
+}
+
+
+def normalise_venue(value) -> str:
+    """任何拼法 → 沙田／跑馬地。認唔到就原文返，唔好靜靜吞咗。"""
+    text = str(value or "").strip()
+    return _VENUE_ALIASES.get(text.upper().replace(" ", ""), text)
+
 
 VENUE_NORM = {"ST": "沙田", "HV": "跑馬地", "Sha Tin": "沙田", "Happy Valley": "跑馬地"}
 
@@ -86,7 +103,7 @@ def append_new_meetings(season_key: str, base: pd.DataFrame) -> tuple[pd.DataFra
         for race_key, race in data.items():
             if not isinstance(race, dict):
                 continue
-            venue = VENUE_NORM.get(str(race.get("venue", "")).strip(), str(race.get("venue", "")).strip())
+            venue = normalise_venue(race.get("venue", ""))
             for row in race.get("results", []):
                 pos = _num(re.sub(r"\D", "", str(row.get("pos", ""))) or None)
                 if pos is None or pos <= 0:
@@ -159,8 +176,15 @@ def build_all(season_key: str, extend: bool = True):
     out["jockey_distance_stats.csv"] = jd[["Jockey", "Distance", "Wins", "Starts", "Places", "WinRate"]]
     td = agg(dist_rows, ["Trainer", "Distance"])
     out["trainer_distance_stats.csv"] = td[["Trainer", "Distance", "Wins", "Starts", "Places", "WinRate"]]
+    base = base.copy()
+    base["Venue"] = base["Venue"].map(normalise_venue)
     vt = agg(base, ["Jockey", "Venue", "Track"], with_profit=True)
     out["jockey_venue_track_stats.csv"] = vt[["Jockey", "Venue", "Track", "Wins", "Starts", "Places", "Profit", "WinRate", "ROI"]]
+    # 練馬師 × 場地：兩季 18,795 行實測，場地偏好 73% 方差係真訊號、
+    # 拆半重測 r=+0.639、跨季 r=+0.504（EXP-20260905-03）。**唔入分**（實測傳導到
+    # 綜合分只有場內 SD 嘅 1.0%，五個排名 arm 全部唔過閘），只做報告證據。
+    tv = agg(base, ["Trainer", "Venue"], with_profit=True)
+    out["trainer_venue_stats.csv"] = tv[["Trainer", "Venue", "Wins", "Starts", "Places", "Profit", "WinRate", "PlaceRate", "ROI"]]
     combo = agg(base, ["Jockey", "Trainer"])
     out["general_pre_race_priors/jockey_trainer_combo_priors.csv"] = combo[["Jockey", "Trainer", "Wins", "Starts", "Places", "WinRate", "PlaceRate"]]
     out["general_pre_race_priors/jockey_change_priors.csv"] = build_change_priors(base)
