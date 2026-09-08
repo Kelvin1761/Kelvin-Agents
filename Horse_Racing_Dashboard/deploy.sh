@@ -37,15 +37,52 @@ done
 echo "🔄 第一步：產生最新版本嘅 Dashboard / Race Analysis Snapshot..."
 cd "$SCRIPT_DIR"
 
+# ⚠️ 揀 python 一定要**驗過佢真係 import 得起 `generate_static.py`**，唔可以見到
+# 一個叫 python3 嘅檔就用。原本呢度係 `command -v python3` 就當數 ——
+# 2026-09-07 22:07 homebrew 裝咗 python@3.14（做另一個 formula 嘅依賴），
+# 而 AU launchd wrapper 個 PATH 係
+#     /usr/local/bin:/opt/homebrew/bin:…:/usr/bin:…
+# 即 `/opt/homebrew/bin/python3` 排喺 `/usr/bin/python3` 前面。個新 python 冇裝
+# 過 pydantic，於是由嗰刻起每一次 AU 發佈都死喺第一步：
+#     generate_static.py → services.meeting_detector → models.race
+#     → ModuleNotFoundError: No module named 'pydantic'
+# 後果：09-08 四個場次（Moe / Muswellbrook / Queanbeyan / Townsville）分析、
+# 剪走、合併、驗證全部過，晚更 + 兩個 heal slot 一共試咗九次，一張都冇上線。
+# HKJC 冇中招純粹因為佢個 wrapper 唔改 PATH，launchd 預設 PATH 冇 homebrew。
+#
+# 探測方法用 `generate_static.py --help`：argparse 喺**所有 module 層 import
+# 之後**才行，所以 `--help` 行得通 = 成條 import chain（pydantic 同將來任何新
+# 依賴）都齊，而且零副作用。單獨試 `import pydantic` 係打地鼠 —— 下一個缺嘅
+# 依賴又會喺發佈中途才浮出嚟。
 PYTHON_BIN=""
-if command -v python3 >/dev/null 2>&1; then
-    PYTHON_BIN="python3"
-elif command -v python >/dev/null 2>&1; then
-    PYTHON_BIN="python"
-else
-    echo "❌ 錯誤：搵唔到 python3 / python"
+PY_PROBE_LOG=""
+PY_TRIED=""
+for candidate in "${WC_DASHBOARD_PYTHON:-}" python3 /usr/bin/python3 python; do
+    [ -n "$candidate" ] || continue
+    resolved="$(command -v "$candidate" 2>/dev/null || true)"
+    [ -n "$resolved" ] || continue
+    case " $PY_TRIED " in
+        *" $resolved "*) continue ;;
+    esac
+    PY_TRIED="$PY_TRIED $resolved"
+    if probe_out="$("$resolved" generate_static.py --help 2>&1 >/dev/null)"; then
+        PYTHON_BIN="$resolved"
+        break
+    fi
+    PY_PROBE_LOG="${PY_PROBE_LOG}
+   ⚠️ ${resolved} 用唔到：$(printf '%s' "$probe_out" | tail -1)"
+done
+
+if [ -z "$PYTHON_BIN" ]; then
+    echo "❌ 錯誤：搵唔到一個 import 得起 generate_static.py 嘅 python"
+    [ -n "$PY_PROBE_LOG" ] && printf '%s\n' "$PY_PROBE_LOG"
+    echo "   試過：${PY_TRIED:- （一個都搵唔到）}"
+    echo "   修法：裝返缺嘅依賴（pip install -r requirements.txt），或者用"
+    echo "         WC_DASHBOARD_PYTHON=/usr/bin/python3 明確指定一個裝好嘅 python。"
     exit 1
 fi
+[ -n "$PY_PROBE_LOG" ] && printf '%s\n' "${PY_PROBE_LOG#$'\n'}"
+echo "   🐍 Python: $PYTHON_BIN（已驗過 import 得起 generate_static.py）"
 
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"

@@ -14,6 +14,7 @@ import re
 import shutil
 import sqlite3
 import subprocess
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -42,6 +43,15 @@ D1_TABLES = (
 
 class DashboardBackupError(RuntimeError):
     """D1 export, restore or consistency verification failed."""
+
+
+class D1TransientError(DashboardBackupError):
+    """A wrangler/Cloudflare API call failed in a way that is worth retrying.
+
+    ⚠️ 只可以喺「未讀到嘢」嗰啲失敗用。核實層嘅失敗（integrity_check、
+    foreign_key_check、row count 對唔上）唔准當暫時性 —— 嗰啲代表匯出真係壞，
+    重試只會用一個壞 snapshot 蓋過一個誠實嘅失敗。
+    """
 
 
 Runner = Callable[[list[str], Path], subprocess.CompletedProcess[str]]
@@ -151,7 +161,7 @@ def _remote_counts(
     result = runner(command, root)
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "unknown error").strip()[-1000:]
-        raise DashboardBackupError(f"D1 row-count query failed: {detail}")
+        raise D1TransientError(f"D1 row-count query failed: {detail}")
     return _parse_counts(result.stdout)
 
 
@@ -173,9 +183,9 @@ def _export_remote(
     result = runner(command, root)
     if result.returncode != 0:
         detail = (result.stderr or result.stdout or "unknown error").strip()[-1000:]
-        raise DashboardBackupError(f"D1 export failed: {detail}")
+        raise D1TransientError(f"D1 export failed: {detail}")
     if not destination.is_file() or destination.stat().st_size == 0:
-        raise DashboardBackupError("D1 export produced no SQL file")
+        raise D1TransientError("D1 export produced no SQL file")
 
 
 def _sha256(path: Path) -> str:
@@ -238,6 +248,7 @@ def backup_d1_ledger(
     runner: Runner = _run,
     now: datetime | None = None,
     max_attempts: int = 3,
+    sleep: Callable[[float], None] = time.sleep,
 ) -> dict[str, Any]:
     """Export, restore-verify and archive the live ledger without mutating D1."""
     dashboard_root = dashboard_root.expanduser().resolve()
@@ -292,8 +303,21 @@ def backup_d1_ledger(
         except Exception as exc:
             last_error = str(exc)
             shutil.rmtree(partial, ignore_errors=True)
-            if "changed during export" in last_error and attempt < max_attempts:
-                continue
+            # ⚠️ `max_attempts` 曾經淨係對「changed during export」有效 —— 其餘
+            # 每一個 DashboardBackupError 都即刻 re-raise，所以對 API 失敗嚟講
+            # 呢個 loop 實際上只行一次。而 wrangler 打 D1 會間歇性回
+            # `[code: 7403] The given account is not valid or is not authorized`
+            # （OAuth access token 到期／refresh 撞車嗰陣），一秒後再打就過。
+            # 實測 2026-08-29 → 09-08 十一晚，03:20 個 slot 五晚死喺呢個 7403，
+            # 其中 09-03、09-04 兩晚連 05:20 recovery slot 都死埋 = 嗰兩晚完全
+            # 冇 ledger 備份。所以暫時性失敗一定要喺 run 內部重試。
+            if attempt < max_attempts:
+                if isinstance(exc, D1TransientError):
+                    # 等一等先再打；即刻重試好可能撞返同一個到期 token。
+                    sleep(10 * attempt)
+                    continue
+                if "changed during export" in last_error:
+                    continue
             if isinstance(exc, DashboardBackupError):
                 raise
             raise DashboardBackupError(
