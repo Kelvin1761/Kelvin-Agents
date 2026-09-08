@@ -114,6 +114,103 @@ def test_d1_backup_retries_if_remote_changes_during_export(tmp_path: Path) -> No
     assert manifest["attempt"] == 2
 
 
+class FlakyRunner(FakeRunner):
+    """頭 `fail_queries` 個 count query 回 Cloudflare 7403，之後正常。
+
+    呢個係實測形狀：`wrangler d1 execute --remote` rc != 0，stderr 係一段 JSON
+    APIError，第一句 count query 就死，所以連 export 都行唔到。
+    """
+
+    API_ERROR = json.dumps({
+        "error": {
+            "text": "A request to the Cloudflare API (/accounts/xxx/d1/database/yyy/query) failed.",
+            "notes": [{"text": "The given account is not valid or is not authorized"
+                               " to access this service [code: 7403]"}],
+            "kind": "error",
+            "name": "APIError",
+            "code": 7403,
+        }
+    })
+
+    def __init__(self, counts: list[int], fail_queries: int, sql_rows: int = 1) -> None:
+        super().__init__(counts, sql_rows=sql_rows)
+        self.fail_queries = fail_queries
+        self.failed = 0
+
+    def __call__(self, command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        if "execute" in command and self.failed < self.fail_queries:
+            self.failed += 1
+            return subprocess.CompletedProcess(command, 1, "", self.API_ERROR)
+        return super().__call__(command, cwd)
+
+
+def test_d1_backup_retries_transient_api_failure(tmp_path: Path) -> None:
+    """7403 一次唔可以殺死成晚備份。
+
+    以前 `max_attempts` 淨係對「changed during export」有效，其餘 API 失敗即刻
+    re-raise —— 實測十一晚有五晚 03:20 就係咁死。
+    """
+    dashboard = _dashboard(tmp_path)
+    runner = FlakyRunner([1, 1], fail_queries=1)
+    slept: list[float] = []
+
+    result = backup_d1_ledger(
+        dashboard,
+        tmp_path / "state",
+        warm_root=None,
+        runner=runner,
+        now=datetime(2026, 8, 28, 2, 30, tzinfo=timezone.utc),
+        sleep=slept.append,
+    )
+
+    assert result["status"] == "pass"
+    assert runner.failed == 1
+    assert slept == [10]
+    manifest = json.loads(Path(result["manifest"]).read_text(encoding="utf-8"))
+    assert manifest["attempt"] == 2
+
+
+def test_d1_backup_gives_up_after_persistent_api_failure(tmp_path: Path) -> None:
+    dashboard = _dashboard(tmp_path)
+    state = tmp_path / "state"
+    runner = FlakyRunner([1, 1], fail_queries=99)
+    slept: list[float] = []
+
+    with pytest.raises(DashboardBackupError, match="7403"):
+        backup_d1_ledger(
+            dashboard,
+            state,
+            warm_root=None,
+            runner=runner,
+            now=datetime(2026, 8, 28, 2, 45, tzinfo=timezone.utc),
+            sleep=slept.append,
+        )
+
+    assert runner.failed == 3
+    assert slept == [10, 20]
+    assert not list((state / "dashboard_d1" / "snapshots").glob("*.partial-*"))
+
+
+def test_d1_backup_does_not_retry_verification_failure(tmp_path: Path) -> None:
+    """核實層失敗唔准當暫時性 —— 重試只會用壞 snapshot 蓋過一個誠實嘅失敗。"""
+    dashboard = _dashboard(tmp_path)
+    runner = FakeRunner([2, 2], sql_rows=1)
+    slept: list[float] = []
+
+    with pytest.raises(DashboardBackupError, match="row counts"):
+        backup_d1_ledger(
+            dashboard,
+            tmp_path / "state",
+            warm_root=None,
+            runner=runner,
+            now=datetime(2026, 8, 28, 2, 50, tzinfo=timezone.utc),
+            sleep=slept.append,
+        )
+
+    assert runner.exports == 1
+    assert slept == []
+
+
 def test_d1_backup_rejects_count_mismatch_and_cleans_partial(tmp_path: Path) -> None:
     dashboard = _dashboard(tmp_path)
     state = tmp_path / "state"
