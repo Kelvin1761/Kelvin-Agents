@@ -24,7 +24,7 @@ esac
 
 TZ_NAME="$(readlink /etc/localtime | sed 's#.*/zoneinfo/##')"
 if [ "$TZ_NAME" != "Australia/Sydney" ]; then
-  print -r -- "本機時區係 $TZ_NAME，唔係 Australia/Sydney；拒絕安裝。" >&2
+  print -r -- "本機時區係 ${TZ_NAME}，唔係 Australia/Sydney；拒絕安裝。" >&2
   exit 1
 fi
 
@@ -37,4 +37,4 @@ chmod 644 "$DEST"
 launchctl bootout "gui/$UID_NUM" "$DEST" 2>/dev/null || true
 launchctl bootstrap "gui/$UID_NUM" "$DEST"
 launchctl enable "gui/$UID_NUM/$LABEL"
-print -r -- "已安裝 $LABEL：每日悉尼時間 03:20 D1 verified backup；失敗會喺 05:20 自動補跑"
+print -r -- "已安裝 ${LABEL}：每日悉尼時間 03:20 D1 verified backup；失敗會喺 05:20 自動補跑"

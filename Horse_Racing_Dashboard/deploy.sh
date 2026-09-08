@@ -54,6 +54,14 @@ cd "$SCRIPT_DIR"
 # 之後**才行，所以 `--help` 行得通 = 成條 import chain（pydantic 同將來任何新
 # 依賴）都齊，而且零副作用。單獨試 `import pydantic` 係打地鼠 —— 下一個缺嘅
 # 依賴又會喺發佈中途才浮出嚟。
+# ⚠️ 唔可以靠 launchd 個 locale。`generate_static.py` 由頭到尾印緊 emoji 同
+# 中文，喺單位元組 locale（`LANG=en_US.ISO8859-1`）一開波就
+# `UnicodeEncodeError: 'latin-1' codec can't encode character '\U0001f3c7'`。
+# 而家 production 啱啱好係 UTF-8，所以呢個未炸過 —— 但成個 pipeline 已經俾
+# 「喺我 shell 行得，喺 launchd 行唔到」咬過太多次，一行釘死佢好過等佢出事。
+# 順帶令上面個探測唔會因為印唔到 help 而否決一個完全正常嘅 interpreter。
+export PYTHONIOENCODING=utf-8
+
 PYTHON_BIN=""
 PY_PROBE_LOG=""
 PY_TRIED=""
@@ -82,7 +90,7 @@ if [ -z "$PYTHON_BIN" ]; then
     exit 1
 fi
 [ -n "$PY_PROBE_LOG" ] && printf '%s\n' "${PY_PROBE_LOG#$'\n'}"
-echo "   🐍 Python: $PYTHON_BIN（已驗過 import 得起 generate_static.py）"
+echo "   🐍 Python: ${PYTHON_BIN}（已驗過 import 得起 generate_static.py）"
 
 rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"

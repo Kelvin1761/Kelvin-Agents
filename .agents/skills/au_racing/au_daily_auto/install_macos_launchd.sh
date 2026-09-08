@@ -42,7 +42,7 @@ fi
 # 本機時區必須係 Australia/Sydney，否則 plist 嘅 22:00/10:00 唔係悉尼時間。
 TZ_NAME="$(readlink /etc/localtime | sed 's#.*/zoneinfo/##')"
 if [ "$TZ_NAME" != "Australia/Sydney" ]; then
-  echo "⚠️  本機時區係 $TZ_NAME，唔係 Australia/Sydney。"
+  echo "⚠️  本機時區係 ${TZ_NAME}，唔係 Australia/Sydney。"
   echo "    launchd 用本機 wall clock，所以 22:00/10:00 唔會等於悉尼時間。"
   echo "    改機時區（系統設定 → 一般 → 日期與時間）之後再裝。"
   exit 1

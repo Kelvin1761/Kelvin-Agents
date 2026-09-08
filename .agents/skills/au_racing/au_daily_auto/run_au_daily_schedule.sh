@@ -83,7 +83,7 @@ if [ -z "${WC_AU_NO_SELF_UPDATE:-}" ]; then
     if [ "$BEHIND" -eq 0 ] 2>/dev/null; then
       : # 已包含 origin/main；local commits 可以照留。
     elif [ "$AHEAD" -gt 0 ] 2>/dev/null; then
-      WC_AU_CODE_UPDATE_WARNING="production branch 已分叉（ahead $AHEAD / behind $BEHIND），無法自動 fast-forward；今次用現有版本，要人手合併 origin/main"
+      WC_AU_CODE_UPDATE_WARNING="production branch 已分叉（ahead ${AHEAD} / behind ${BEHIND}），無法自動 fast-forward；今次用現有版本，要人手合併 origin/main"
     else
       MAP_BAK="$(mktemp -t wc_mapping)"
       cp "$MAPPING" "$MAP_BAK" 2>/dev/null || true

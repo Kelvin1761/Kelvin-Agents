@@ -375,7 +375,7 @@ elif [ "$RETEST_RC" = "0" ]; then
   printf '%s\n' "$RETEST" | grep -E "乾淨|覆蓋|未夠" | sed 's/^/  /'
   ok "冇候選到期"
 else
-  warn "重測監察跑唔到（rc=$RETEST_RC）"
+  warn "重測監察跑唔到（rc=${RETEST_RC}）"
 fi
 
 # ── 總結 ─────────────────────────────────────────────────────────────────
