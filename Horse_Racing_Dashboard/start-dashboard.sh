@@ -1,13 +1,13 @@
 #!/bin/bash
 # ──────────────────────────────────────────────
 # Horse Racing Dashboard — Cross-Platform Start Script
-# 
+#
 # macOS: Double-click or run from Terminal
 # Windows: Use start-dashboard.bat instead
 #
 # Why not LaunchAgent?
-#   macOS blocks LaunchAgents from accessing Google Drive 
-#   (Files & Folders privacy restriction). 
+#   macOS blocks LaunchAgents from accessing Google Drive
+#   (Files & Folders privacy restriction).
 #   Scripts must be launched from a user-interactive context
 #   (Terminal, Login Items via AppleScript, etc.)
 # ──────────────────────────────────────────────
@@ -45,14 +45,14 @@ if [ -f /tmp/cloudflared ]; then
     pkill -f cloudflared 2>/dev/null
     > "$LOG_DIR/tunnel.log"
     nohup /tmp/cloudflared tunnel --url http://localhost:8000 >> "$LOG_DIR/tunnel.log" 2>&1 &
-    
+
     URL_FILE="$DASHBOARD_DIR/CURRENT_URL.txt"
     for i in $(seq 1 15); do
         TUNNEL_URL=$(grep -o 'https://[a-z\-]*\.trycloudflare\.com' "$LOG_DIR/tunnel.log" 2>/dev/null | head -1)
         [ -n "$TUNNEL_URL" ] && break
         sleep 1
     done
-    
+
     if [ -n "$TUNNEL_URL" ]; then
         echo "$TUNNEL_URL" > "$URL_FILE"
         echo "$TUNNEL_URL" | pbcopy 2>/dev/null
