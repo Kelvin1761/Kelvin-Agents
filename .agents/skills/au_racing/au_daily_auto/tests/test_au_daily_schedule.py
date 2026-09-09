@@ -896,7 +896,12 @@ class TestReflectionPush(unittest.TestCase):
     """
 
     def _push(self, archived, build=lambda day: f"摘要 {day}"):
+        # `push_reflection` 讀 `runlog.data["races_archived"]` —— 即係今次 run
+        # **真係歸檔咗**嘅場次，唔係 `step_review_archive` 個回傳值（嗰個仲包住
+        # `already_archived`，係服務 dashboard 剪走用嘅）。
         runlog = unittest.mock.MagicMock()
+        runlog.data = {"races_archived": [{"meeting": name, "races": []}
+                                          for name in archived]}
         pushed = []
         fake_notify = unittest.mock.MagicMock()
         fake_notify.push = lambda text, **kw: (
@@ -911,7 +916,7 @@ class TestReflectionPush(unittest.TestCase):
         with unittest.mock.patch.dict(sys.modules, {"au_notify": fake_notify,
                                                     "au_reflect_notify": fake_reflect,
                                                     "au_betting": fake_bet}):
-            S.push_reflection(runlog, archived)
+            S.push_reflection(runlog)
         return pushed, runlog
 
     def test_pushes_once_per_race_day_that_was_archived(self):
@@ -926,6 +931,57 @@ class TestReflectionPush(unittest.TestCase):
                                 "2026-08-09 Wagga Race 1-7"])
         self.assertEqual([p[0] for p in pushed],
                          ["摘要 2026-08-08", "摘要 2026-08-09"])
+
+    def test_already_archived_feeds_the_dashboard_but_not_the_notification(self):
+        """守住兩個 list 嘅分工 —— 呢個就係 bug 本身。
+
+        `step_review_archive` 個回傳值一定要包住 `already_archived`（早就喺
+        `Archive/` 但仲掛喺板上嘅場次），`step_dashboard` 靠佢先計得出
+        `expect_absent` 去剪走。但 `runlog.data["races_archived"]` 只可以有今次
+        run **真係新歸檔**嘅場次，因為覆盤通知讀嗰個。
+
+        兩個變成同一個 list 嘅時候：dashboard 一凍結，已歸檔嘅場次就會日日重新
+        classify 做 `already_archived`，然後日日重推同一份覆盤。
+        """
+        with tempfile.TemporaryDirectory() as tmp:
+            runlog = S.RunLog("evening", S.date(2026, 9, 8),
+                              Path(tmp) / "r.json", notify=False)
+            on_board = [{"key": "2026-09-07|Dubbo", "date": "2026-09-07",
+                         "venue": "Dubbo"},
+                        {"key": "2026-09-07|Grafton", "date": "2026-09-07",
+                         "venue": "Grafton"}]
+            folders = {"Dubbo": S.ARCHIVE_ROOT / "2026-09-07 Dubbo Race 1-7",
+                       "Grafton": S.ARCHIVE_ROOT / "2026-09-07 Grafton Race 1-7"}
+            with unittest.mock.patch.object(S, "dashboard_au_meetings",
+                                            lambda rl: on_board), \
+                 unittest.mock.patch.object(S, "unreviewed_local_meetings",
+                                            lambda day: []), \
+                 unittest.mock.patch.object(S, "corpus_meeting_days",
+                                            lambda: set()), \
+                 unittest.mock.patch.object(
+                     S, "find_meeting_dir",
+                     lambda d, venue: folders[venue]), \
+                 unittest.mock.patch.object(S, "log", lambda message: None):
+                returned = S.step_review_archive(runlog, S.date(2026, 9, 8))
+
+        # dashboard 要見到佢哋（先剪得走）
+        self.assertEqual(sorted(returned),
+                         ["2026-09-07 Dubbo Race 1-7",
+                          "2026-09-07 Grafton Race 1-7"])
+        # 但今次 run 一個都冇新歸檔 —— 所以通知一定要靜
+        self.assertEqual(runlog.data["races_archived"], [])
+
+    def test_meetings_already_in_archive_do_not_get_re_pushed(self):
+        """凍結咗嘅 dashboard 唔可以令同一份覆盤日日重推。
+
+        2026-09-07 22:07 起發佈斷咗兩日，dashboard 凍結喺 09-07。嗰三個場次早就
+        歸檔咗，但因為仲掛喺板上，之後每個 run（22:00、02:30、09:15、10:00）都
+        再撞到佢哋、classify 做 `already_archived`，然後推多一次同一份 09-07
+        覆盤。run log 裏面 `races_archived: []` 而 `step_review_archive` 回傳三個
+        —— 兩個 list 唔同意思，而通知揀錯咗嗰個。
+        """
+        pushed, _ = self._push([])
+        self.assertEqual(pushed, [])
 
     def test_nothing_archived_sends_nothing(self):
         pushed, _ = self._push([])
@@ -1280,7 +1336,9 @@ class TestNoNotify(unittest.TestCase):
                                           {"au_notify": fake_n,
                                            "au_reflect_notify": fake_r,
                                            "au_run_summary": fake_r}):
-                S.push_reflection(rl, ["2026-08-12 X Race 1-7"])
+                rl.data["races_archived"] = [
+                    {"meeting": "2026-08-12 X Race 1-7", "races": []}]
+                S.push_reflection(rl)
                 S.push_run_summary(rl, "morning")
         self.assertEqual(pushed, [])
 

@@ -3067,9 +3067,7 @@ def finish_run(runlog: RunLog, dashboard_ok: bool, hard_temporary: bool) -> int:
     return EXIT_OK
 
 
-def push_reflection(runlog: RunLog, archived: list[str]) -> None:
-    if not getattr(runlog, "notify_enabled", True):
-        return
+def push_reflection(runlog: RunLog) -> None:
     """今次 run 有覆盤過嘅賽日，推一段逐個馬場嘅表現去手機。
 
     ⚠️ 只喺**今次真係歸檔過嘢**先推。唔係嘅話每晚都會重推同一份舊摘要，跟住你
@@ -3077,7 +3075,24 @@ def push_reflection(runlog: RunLog, archived: list[str]) -> None:
 
     賽日由歸檔到嘅 folder 名推導，唔用 `review_day`：補漏覆盤可以一次過執返幾日
     前嘅場次，嗰陣 review_day 唔等於嗰批場次嘅賽日。
+
+    ⚠️ 呢度一定要讀 `runlog.data["races_archived"]`，**唔可以**用
+    `step_review_archive` 個回傳值。嗰個 list 係服務 dashboard 嘅：佢要包埋
+    `already_archived`（早就喺 `Archive/` 但仲掛喺板上嘅場次），先計得出
+    `expect_absent` 去剪走佢哋。用同一個 list 嚟決定推唔推通知，上面條「只喺今次
+    真係歸檔過嘢先推」嘅規矩就直接失效。
+
+    2026-09-07 22:07 起發佈斷咗成兩日，dashboard 凍結喺 09-07。09-07 三個場次
+    早就歸檔咗，但因為佢哋仲掛喺凍結咗嘅板上，每個 run（22:00、02:30、09:15、
+    10:00…）都會再撞到佢哋、classify 做 `already_archived`、再推一次同一份
+    09-07 覆盤 —— run log 入面 `races_archived: []` 而回傳 list 有 3 個，正正就係
+    呢個分歧。而真正未覆盤嘅 09-08 反而係靠 `unreviewed_local_meetings` 執返嚟，
+    一次都冇重推。
     """
+    if not getattr(runlog, "notify_enabled", True):
+        return
+    archived = [str(entry.get("meeting") or "")
+                for entry in runlog.data.get("races_archived") or []]
     days = sorted({name[:10] for name in archived if re.match(r"^\d{4}-\d{2}-\d{2}", name)})
     if not days:
         return
@@ -3169,8 +3184,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         except TemporaryFailure as exc:
             runlog.error("review-archive", f"暫時性：{exc}")
             temporary = True
-        if archived:
-            push_reflection(runlog, archived)
+        push_reflection(runlog)
         if not step_settlement_evidence(runlog, archived):
             temporary = True
     # After the reflectors exist, before anything that reads the corpus.
@@ -3215,9 +3229,8 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
     # 影低，跟住合併一啲已經搬走嘅 folder，把空殼加返上 dashboard。
     if not args.skip_review:
         try:
-            done = step_review_archive(runlog, today - timedelta(days=1))
-            if done:
-                push_reflection(runlog, done)
+            step_review_archive(runlog, today - timedelta(days=1))
+            push_reflection(runlog)
         except TemporaryFailure as exc:
             runlog.step("morning-review", "deferred", detail=str(exc))
         except Exception as exc:  # noqa: BLE001
