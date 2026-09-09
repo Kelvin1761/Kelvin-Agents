@@ -17,6 +17,7 @@ from .contracts import (
     normalize_run_state,
 )
 from .control import RunManifest, manifest_path, single_run_lock
+from .process_runner import run_bounded
 
 
 Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
@@ -76,15 +77,7 @@ class ManifestCommandAdapter(ABC):
         # 提都冇提過係邊條命令、真正壞咗嘅係咩。AU 個 runner 2026-08-13
         # 已經因為同一件事修好咗 —— 但呢個教訓冇搬過嚟。
         # subprocess 輸出係俾人睇嘅 log，永遠唔應該有能力令 run 死。
-        return subprocess.run(
-            command,
-            cwd=self.repo_root,
-            encoding="utf-8",
-            errors="replace",
-            capture_output=True,
-            timeout=timeout,
-            check=False,
-        )
+        return run_bounded(command, cwd=self.repo_root, timeout=timeout)
 
     def entrypoint(self, request: RunRequest) -> Path:
         identity = request.identity

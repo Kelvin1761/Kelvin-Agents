@@ -51,6 +51,9 @@ class RetryGuardTests(unittest.TestCase):
         # bot 每兩分鐘就退出，所以一定要 detach，否則個 run 會跟住死。
         self.assertTrue(started["kw"].get("start_new_session"))
         self.assertIn("--skip-review", started["cmd"])
+        slot = started["cmd"][started["cmd"].index("--slot") + 1]
+        self.assertTrue(slot.startswith("telegram-retry-"))
+        self.assertNotEqual(slot, "22:00")
 
     def test_it_is_the_same_path_the_scheduler_uses(self):
         # 唔會行一條特別嘅捷徑 —— 同排程一樣嘅 runner，所以驗證同發佈照做。
@@ -437,6 +440,79 @@ class RetryGuardTests(unittest.TestCase):
                 commit[:12], actor=B.AUTHORISED_TELEGRAM_ACTOR
             )
         self.assertIn("SHA 不一致", blocked)
+
+class RecoveryCommandTests(unittest.TestCase):
+    def test_rejects_unauthenticated_actor(self):
+        with self.assertRaises(PermissionError):
+            B.cmd_recover("tennis", actor="untrusted")
+
+    def test_user_text_cannot_become_a_command(self):
+        with unittest.mock.patch("subprocess.run") as run:
+            reply = B.cmd_recover(
+                "tennis; reboot", actor=B.AUTHORISED_TELEGRAM_ACTOR
+            )
+        run.assert_not_called()
+        self.assertIn("用法", reply)
+
+    def test_au_uses_morning_fill_today_instead_of_deploy_only_healthcheck(self):
+        with unittest.mock.patch.object(
+                B, "_start_au_recovery", return_value="started") as recover, \
+             unittest.mock.patch("subprocess.run") as run:
+            reply = B.cmd_recover("au", actor=B.AUTHORISED_TELEGRAM_ACTOR)
+        self.assertEqual(reply, "started")
+        recover.assert_called_once_with()
+        run.assert_not_called()
+
+    def test_au_recovery_uses_unique_morning_slot_and_detaches(self):
+        import au_healthcheck
+
+        started = {}
+
+        class _P:
+            def __init__(self, cmd, **kwargs):
+                started["cmd"] = cmd
+                started["kwargs"] = kwargs
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             unittest.mock.patch.object(B, "RETRY_LOG", Path(tmp) / "recover.out"), \
+             unittest.mock.patch.object(
+                 au_healthcheck, "run_in_progress", return_value=False
+             ), \
+             unittest.mock.patch("subprocess.Popen", _P):
+            reply = B._start_au_recovery()
+        self.assertIn("補今日場次", reply)
+        self.assertIn("morning", started["cmd"])
+        self.assertIn("--skip-review", started["cmd"])
+        slot = started["cmd"][started["cmd"].index("--slot") + 1]
+        self.assertTrue(slot.startswith("telegram-recover-"))
+        self.assertTrue(started["kwargs"].get("start_new_session"))
+
+    def test_kickstart_uses_fixed_job_without_killing_active_work(self):
+        import subprocess
+
+        completed = subprocess.CompletedProcess([], 0, "", "")
+        with unittest.mock.patch("subprocess.run", return_value=completed) as run:
+            reply = B.cmd_recover(
+                "tennis", actor=B.AUTHORISED_TELEGRAM_ACTOR
+            )
+        command = run.call_args.args[0]
+        self.assertEqual(command[:2], ["/bin/launchctl", "kickstart"])
+        self.assertTrue(
+            command[2].endswith("/com.antigravity.tennis-wong-choi.recovery")
+        )
+        self.assertNotIn("-k", command)
+        self.assertIn("啟動確認", reply)
+
+    def test_launchd_failure_is_not_reported_as_recovery(self):
+        import subprocess
+
+        completed = subprocess.CompletedProcess([], 3, "", "No such process")
+        with unittest.mock.patch("subprocess.run", return_value=completed):
+            reply = B.cmd_recover(
+                "hkjc", actor=B.AUTHORISED_TELEGRAM_ACTOR
+            )
+        self.assertIn("未能啟動", reply)
+        self.assertIn("/recover", B.MUTATING_COMMANDS_WITH_ARG)
 
 
 if __name__ == "__main__":

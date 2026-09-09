@@ -1230,6 +1230,54 @@ class TestMarketDrift(unittest.TestCase):
         self.assertLess(body.index("market_drift("), body.index("diff_race_state("))
 
 
+class TestFillTodayOddsRefresh(unittest.TestCase):
+    def _history(self, folder: Path, stamp: str, races: int = 2) -> None:
+        folder.mkdir(parents=True)
+        for race in range(1, races + 1):
+            (folder / f"Race_{race}_Logic.json").write_text("{}", encoding="utf-8")
+        payload = {str(race): {f"{stamp}|analysis": {}}
+                   for race in range(1, races + 1)}
+        (folder / S.ODDS_HISTORY).write_text(json.dumps(payload), encoding="utf-8")
+
+    def test_previous_evening_analysis_needs_race_day_refresh(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "2026-09-09 Belmont Race 1-2"
+            self._history(folder, "2026-09-08T22:30:00")
+            self.assertEqual(S.missing_race_day_odds(folder, "2026-09-09"), [1, 2])
+
+    def test_same_day_initial_analysis_is_already_current(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "2026-09-09 Belmont Race 1-2"
+            self._history(folder, "2026-09-09T10:30:00")
+            self.assertEqual(S.missing_race_day_odds(folder, "2026-09-09"), [])
+
+    def test_only_stale_fill_today_meetings_are_refreshed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            old = Path(tmp) / "2026-09-09 Belmont Race 1-2"
+            fresh = Path(tmp) / "2026-09-09 Ipswich Race 1-2"
+            self._history(old, "2026-09-08T22:30:00")
+            self._history(fresh, "2026-09-09T10:30:00")
+            refreshed = []
+            runlog = unittest.mock.MagicMock()
+            with unittest.mock.patch.object(S, "api_next_events", return_value=[]), \
+                 unittest.mock.patch.object(
+                     S, "events_by_day", return_value={"2026-09-09": {"Belmont": {}}}
+                 ), \
+                 unittest.mock.patch.object(
+                     S, "refresh_one_meeting",
+                     side_effect=lambda _log, folder, _api: refreshed.append(folder),
+                 ):
+                self.assertTrue(S.refresh_fill_today_odds(
+                    runlog, [old, fresh], S.date(2026, 9, 9)))
+        self.assertEqual(refreshed, [old])
+
+    def test_morning_orchestrator_runs_refresh_after_fill_today(self):
+        src = Path(S.__file__).read_text(encoding="utf-8")
+        body = src[src.index("def run_morning"):src.index("# ── 入口", src.index("def run_morning"))]
+        self.assertLess(body.index("step_analyse_next_day"),
+                        body.index("refresh_fill_today_odds"))
+
+
 class TestAnalysisOddsSnapshotIsChecked(unittest.TestCase):
     """「今晚一個賠率都影唔到」唔可以係無聲嘅。
 

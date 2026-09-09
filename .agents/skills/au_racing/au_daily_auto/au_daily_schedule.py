@@ -2161,6 +2161,67 @@ def earliest_odds(folder: Path, race_no: int) -> tuple[str, dict] | None:
     return when, snaps[when]
 
 
+def missing_race_day_odds(folder: Path, day: str) -> list[int]:
+    """Races that have no odds snapshot timestamped on their own race day."""
+    expected = race_numbers(folder)
+    try:
+        hist = json.loads((folder / ODDS_HISTORY).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return expected
+    missing: list[int] = []
+    for race_no in expected:
+        snapshots = hist.get(str(race_no)) or {}
+        current = False
+        for key in snapshots:
+            raw_stamp = str(key).partition("|")[0]
+            try:
+                current = datetime.fromisoformat(raw_stamp).date().isoformat() == day
+            except ValueError:
+                current = False
+            if current:
+                break
+        if not current:
+            missing.append(race_no)
+    return missing
+
+
+def refresh_fill_today_odds(runlog: RunLog, folders: list[Path], today: date) -> bool:
+    """Refresh completed overnight meetings skipped by the fill-today analyser.
+
+    The morning run first refreshes meetings already on the live dashboard and
+    only then discovers today's meetings. A meeting completed overnight but not
+    yet published is therefore skipped as complete during discovery without
+    receiving a race-day odds snapshot. Refresh only those stale folders.
+    """
+    day = today.isoformat()
+    stale = [(folder, missing_race_day_odds(folder, day)) for folder in folders]
+    stale = [(folder, races) for folder, races in stale if races]
+    if not stale:
+        return True
+    runlog.step(
+        "fill-today-odds",
+        "start",
+        meetings=[{"meeting": folder.name, "missing_races": races}
+                  for folder, races in stale],
+    )
+    api = events_by_day(api_next_events(runlog))
+    if not api.get(day):
+        runlog.step("fill-today-odds", "failed", detail="NextEvents API 冇今日資料")
+        return False
+    ok = True
+    for folder, _races in stale:
+        try:
+            refresh_one_meeting(runlog, folder, api)
+        except TemporaryFailure as exc:
+            ok = False
+            runlog.meeting(folder.name, "refresh_deferred", detail=str(exc))
+        except Exception as exc:  # noqa: BLE001
+            ok = False
+            runlog.error("fill-today-odds", f"{folder.name}: {type(exc).__name__}: {exc}")
+    runlog.step("fill-today-odds", "ok" if ok else "partial")
+    return ok
+
+
 def market_odds_from_formguide(folder: Path, race_no: int) -> dict[int, str]:
     """{馬號: 分析時嘅贏賠}，由 Formguide 讀（即係我哋落分嗰刻嘅市場價）。"""
     fg = next(iter(folder.glob(f"*Race {race_no} Formguide.md")), None)
@@ -3293,6 +3354,8 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
             for folder in filled:
                 if folder not in updated:
                     updated.append(folder)
+            if not refresh_fill_today_odds(runlog, filled, today):
+                temporary = True
         except TemporaryFailure as exc:
             # 今日冇賽事、索引頁攞唔到 —— 都唔應該令早更失敗。
             runlog.step("fill-today", "skipped", detail=str(exc))

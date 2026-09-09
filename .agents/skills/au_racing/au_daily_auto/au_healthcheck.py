@@ -93,6 +93,30 @@ def _require_morning_odds(day: str, now: datetime | None = None) -> bool:
     return day < today or (day == today and now.hour >= MORNING_ODDS_READY_HOUR)
 
 
+MORNING_TAGS = ("morning-refresh", "morning-rebuild")
+
+
+def is_current_day_odds_snapshot(key: str, day: str) -> bool:
+    """Whether an odds key proves a price was captured on the race day.
+
+    A meeting first discovered by the 10:00 catch-up path is labelled
+    ``analysis`` because it is a full initial build. Its timestamp is still a
+    race-day price and must not be reported as last night's price. An overnight
+    ``analysis`` timestamp remains invalid for this check.
+    """
+    raw_stamp, separator, tag = str(key).partition("|")
+    if not separator:
+        return False
+    if tag in MORNING_TAGS:
+        return True
+    if tag != "analysis":
+        return False
+    try:
+        return datetime.fromisoformat(raw_stamp).date().isoformat() == day
+    except ValueError:
+        return False
+
+
 def local_quality_issues(day: str, *, root: Path | None = None,
                          require_morning: bool | None = None) -> list[str]:
     """Verify real per-race artifacts, provenance and time-appropriate odds freshness."""
@@ -136,7 +160,7 @@ def local_quality_issues(day: str, *, root: Path | None = None,
 
             if require_morning:
                 snapshots = (odds.get(str(race)) or {}) if isinstance(odds, dict) else {}
-                if not any("morning" in key.partition("|")[2].lower()
+                if not any(is_current_day_odds_snapshot(key, day)
                            for key in snapshots):
                     stale_odds.append(race)
 
@@ -336,9 +360,6 @@ def mirror_issue(day: str | None = None, *, log_dir: Path | None = None) -> str 
     return f"Drive 鏡像今次冇更新到任何檔（{status}，失敗 {failed} 個）：{detail}"
 
 
-MORNING_TAGS = ("morning-refresh", "morning-rebuild")
-
-
 def morning_odds_gaps(day: str, *, root: Path | None = None) -> list[str]:
     """指定日期有邊啲場次由頭到尾冇攞過早更賠率快照。
 
@@ -382,9 +403,10 @@ def morning_odds_gaps(day: str, *, root: Path | None = None) -> list[str]:
             continue
         if not isinstance(odds, dict) or not odds:
             continue
-        tags = {key.partition("|")[2] for snaps in odds.values()
+        keys = {key for snaps in odds.values()
                 if isinstance(snaps, dict) for key in snaps}
-        if tags and not (tags & set(MORNING_TAGS)):
+        tags = {key.partition("|")[2] for key in keys}
+        if tags and not any(is_current_day_odds_snapshot(key, day) for key in keys):
             gaps.append(f"{name}：由頭到尾冇早更快照（"
                         f"{'、'.join(sorted(t for t in tags if t))}）"
                         " —— 嗰日張落注單用緊前一晚嘅價")

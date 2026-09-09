@@ -221,6 +221,21 @@ class DataQualityTests(unittest.TestCase):
             self.assertEqual(H.local_quality_issues(
                 DAY, root=Path(tmp), require_morning=True), [])
 
+    def test_same_day_initial_analysis_counts_as_current_day_odds(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = self._meeting(Path(tmp), morning=False)
+            history = folder / "odds_history.json"
+            history.write_text(
+                '{"1":{"2026-08-10T10:05:00|analysis":{}}}',
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                H.local_quality_issues(
+                    DAY, root=Path(tmp), require_morning=True
+                ),
+                [],
+            )
+
     def test_stale_odds_missing_going_and_thin_people_are_reported(self):
         with tempfile.TemporaryDirectory() as tmp:
             self._meeting(Path(tmp), morning=False, jt=(6, 6), going_refresh=False)
@@ -592,22 +607,33 @@ class MorningOddsGapTests(unittest.TestCase):
     喺冇出賽嘅馬（有早更嘅日子 1.5%）。
     """
 
-    def _meeting(self, root: Path, name: str, tags):
+    def _meeting(self, root: Path, name: str, tags, *, stamp_day="2026-08-27"):
         import json
         folder = root / name
         folder.mkdir(parents=True)
-        snaps = {f"2026-08-27T10:0{i}:00|{tag}": {}
+        snaps = {f"{stamp_day}T10:0{i}:00|{tag}": {}
                  for i, tag in enumerate(tags)}
         (folder / "odds_history.json").write_text(json.dumps({"1": snaps}))
         return folder
 
-    def test_a_day_with_only_analysis_snapshots_is_reported(self):
+    def test_a_day_with_only_previous_evening_analysis_is_reported(self):
         with tempfile.TemporaryDirectory() as tmp:
-            self._meeting(Path(tmp), "2026-08-27 Seymour Race 1-8", ["analysis"])
+            self._meeting(
+                Path(tmp),
+                "2026-08-27 Seymour Race 1-8",
+                ["analysis"],
+                stamp_day="2026-08-26",
+            )
             gaps = H.morning_odds_gaps("2026-08-27", root=Path(tmp))
         self.assertEqual(len(gaps), 1)
         self.assertIn("冇早更快照", gaps[0])
         self.assertIn("前一晚嘅價", gaps[0])
+
+    def test_same_day_initial_analysis_is_a_valid_race_day_price(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._meeting(Path(tmp), "2026-08-27 Seymour Race 1-8", ["analysis"])
+            gaps = H.morning_odds_gaps("2026-08-27", root=Path(tmp))
+        self.assertEqual(gaps, [])
 
     def test_either_morning_tag_clears_it(self):
         for tag in ("morning-refresh", "morning-rebuild"):
@@ -622,7 +648,8 @@ class MorningOddsGapTests(unittest.TestCase):
         # 追唔返。呢個係補返嗰半。
         with tempfile.TemporaryDirectory() as tmp:
             self._meeting(Path(tmp) / "Archive",
-                          "2026-08-27 Seymour Race 1-8", ["analysis"])
+                          "2026-08-27 Seymour Race 1-8", ["analysis"],
+                          stamp_day="2026-08-26")
             gaps = H.morning_odds_gaps("2026-08-27", root=Path(tmp))
         self.assertEqual(len(gaps), 1)
 

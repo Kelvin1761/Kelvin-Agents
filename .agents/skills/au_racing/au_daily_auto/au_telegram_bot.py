@@ -54,6 +54,7 @@ HELP = ("我識嘅嘢：\n"
         "/health          即刻做一次體檢\n"
         "/diag            最近一次失敗嘅診斷\n"
         "/retry           補跑抽取（抽唔齊嗰陣用）\n"
+        "/recover au|hkjc|tennis  由已安裝排程執行有保護嘅復原\n"
         "/hkjc            強制分析最新 HKJC racecard\n"
         "/hkjc_reflect    抽賽果、覆盤並更新 HKJC dashboard\n"
         "/help            呢個")
@@ -662,6 +663,7 @@ def cmd_retry() -> str:
         with out.open("w") as fh:
             subprocess.Popen(
                 ["/bin/zsh", str(runner), "evening", "--skip-review",
+                 "--slot", f"telegram-retry-{datetime.now():%H:%M:%S}",
                  "--rounds", "3", "--round-gap", "420"],
                 stdout=fh, stderr=fh, start_new_session=True)
     except Exception as exc:  # noqa: BLE001
@@ -731,6 +733,89 @@ def cmd_hkjc_reflect() -> str:
     return (
         "▶️ 已開始 HKJC 賽後流程。\n"
         "會抽正式賽果、對齊 prediction snapshot、跑 reflector，並移除 dashboard 已完成賽日。"
+    )
+
+
+RECOVERY_LABELS = {
+    "hkjc": "com.antigravity.hkjc-wong-choi.recovery",
+    "tennis": "com.antigravity.tennis-wong-choi.recovery",
+}
+
+
+def _start_au_recovery() -> str:
+    """Run the morning path so a missing current-day meeting can be filled."""
+    import subprocess
+
+    sys.path.insert(0, str(HERE))
+    import au_healthcheck
+
+    if au_healthcheck.run_in_progress():
+        return "⏳ 而家有 run 跑緊 —— 唔開第二個（會同佢爭同一批資料）"
+    runner = HERE / "run_au_daily_schedule.sh"
+    if not runner.exists():
+        return "搵唔到 runner"
+    try:
+        RETRY_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with RETRY_LOG.open("w") as fh:
+            subprocess.Popen(
+                [
+                    "/bin/zsh",
+                    str(runner),
+                    "morning",
+                    "--skip-review",
+                    "--slot",
+                    f"telegram-recover-{datetime.now():%H:%M:%S}",
+                    "--rounds",
+                    "3",
+                    "--round-gap",
+                    "420",
+                ],
+                stdout=fh,
+                stderr=fh,
+                start_new_session=True,
+            )
+    except Exception as exc:  # noqa: BLE001
+        return f"開唔到：{type(exc).__name__}: {exc}"
+    return (
+        "▶️ 已交畀 AU morning 復原流程補今日場次。\n"
+        "會先更新現有場次，再補漏、驗證及發佈；想睇進度打 /status"
+    )
+
+
+def cmd_recover(arg: str = "", *, actor: str) -> str:
+    """Kick a fixed recovery job through the authenticated Telegram dispatcher."""
+    import subprocess
+
+    if actor != AUTHORISED_TELEGRAM_ACTOR:
+        raise PermissionError("Recovery requires the authenticated Telegram dispatcher")
+    domain = arg.strip().lower()
+    # AU healthcheck only repairs deployment from files already scored. A
+    # missing current-day analysis needs the morning path, whose fill-today
+    # stage handles the gap after it refreshes existing meetings.
+    if domain == "au":
+        return _start_au_recovery()
+    label = RECOVERY_LABELS.get(domain)
+    if label is None:
+        return "用法：/recover au 或 /recover hkjc 或 /recover tennis"
+    target = f"gui/{os.getuid()}/{label}"
+    # Omit -k so an active run is never killed. launchd retains the job after
+    # this short-lived Telegram polling process exits.
+    result = subprocess.run(
+        ["/bin/launchctl", "kickstart", target],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        timeout=15,
+        check=False,
+    )
+    if result.returncode:
+        detail = (result.stderr or result.stdout or "unknown error").strip()[-500:]
+        return f"復原未能啟動（可能已運行或排程未載入）：{detail}"
+    return (
+        f"▶️ 已交畀 {arg.strip().upper()} 已安裝排程做復原。\n"
+        "沿用鎖、每日重試上限同資料驗證；已有工作或次數用盡會跳過。\n"
+        "呢個只係啟動確認，完成狀態請用 /status 查看。"
     )
 
 
@@ -805,6 +890,7 @@ COMMANDS = {"/status": cmd_status, "/git": cmd_git, "/models": cmd_models,
 # 永遠唔會變成路徑或者指令。
 COMMANDS_WITH_ARG = {"/picks": cmd_picks}
 MUTATING_COMMANDS_WITH_ARG = {
+    "/recover": cmd_recover,
     "/approve": cmd_approve,
     "/notapprove": cmd_notapprove,
     "/bootstrap_models": cmd_bootstrap_models,

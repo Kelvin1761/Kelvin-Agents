@@ -130,7 +130,7 @@ def test_adapter_passes_the_per_mode_timeout_to_subprocess(
         seen.update(kwargs)
         return subprocess.CompletedProcess(command, 0, stdout='{"status": "ok"}', stderr="")
 
-    monkeypatch.setattr(subprocess, "run", fake_run)
+    monkeypatch.setattr("shared_wong_choi.command_adapter.run_bounded", fake_run)
     AUAdapter(REPO_ROOT, tmp_path).execute(_request("evening"))
     assert seen["timeout"] == adapter_spec(Domain.AU).run_timeout_seconds("evening")
 
