@@ -2846,7 +2846,7 @@ def _strip_macl(path: Path) -> bool:
     try:
         result = subprocess.run(
             ["/usr/bin/xattr", "-d", "com.apple.macl", str(path)],
-            capture_output=True, text=True, timeout=20,
+            capture_output=True, encoding="utf-8", errors="replace", timeout=20,
         )
     except (subprocess.SubprocessError, OSError):
         return False
@@ -3371,8 +3371,12 @@ def code_version() -> dict:
 
     def git(*args):
         try:
+            # ⚠️ `git status --porcelain` 印嘅係**檔名**，而檔名唔保證係
+            # 合法 UTF-8。嚴格 decode 一 raise 就係 preflight 死，成個 run
+            # 未開始就完 —— 見 `run_cmd` 同 test_subprocess_output_decoding。
             out = subprocess.run(["git", *args], cwd=str(PROJECT_ROOT), timeout=30,
-                                 capture_output=True, text=True)
+                                 capture_output=True,
+                                 encoding="utf-8", errors="replace")
             return out.stdout.strip() if out.returncode == 0 else None
         except Exception:  # noqa: BLE001
             return None

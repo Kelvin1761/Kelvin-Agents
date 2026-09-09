@@ -925,10 +925,13 @@ def sync_dashboard_settlements(match_date: str) -> bool:
         "--date", match_date, "--apply",
     ]
     try:
+        # ⚠️ 一定要 encoding="utf-8", errors="replace" —— 見 `run_cmd` 嘅完整說明。
+        # subprocess 輸出係俾人睇嘅 log，永遠唔應該有能力令 run 死。
         result = subprocess.run(
             command,
             cwd=str(PROJECT_DIR.parent),
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             timeout=90,
@@ -1169,11 +1172,14 @@ def run_cli(*args: str) -> str:
     env["PYTHONPATH"] = "src"
     cmd = [str(python), "-m", "tennis_wc.cli", *args]
     log(f"$ {' '.join(cmd)}")
+    # ⚠️ 一定要 encoding="utf-8", errors="replace" —— 見 `run_cmd` 嘅完整說明。
+    # subprocess 輸出係俾人睇嘅 log，永遠唔應該有能力令 run 死。
     completed = subprocess.run(
         cmd,
         cwd=PROJECT_DIR,
         env=env,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         check=False,

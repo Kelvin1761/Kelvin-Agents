@@ -269,11 +269,21 @@ def run_cmd(cmd: list[str], *, timeout: int = 7200,
             f"{PROJECT_ROOT}{os.pathsep}{existing}" if existing else str(PROJECT_ROOT)
         )
     try:
+        # ⚠️ 一定要 encoding="utf-8", errors="replace"。`text=True` 係嚴格
+        # UTF-8 而且喺 launchd 嘅 POSIX locale 會退去 ASCII；`stderr=STDOUT`
+        # 更加會把兩條 stream 交錯切開一個多位元組字元。2026-09-09 實測：
+        # `deploy.sh` 一句 `PYTHON_BIN\xef: unbound variable` 入面嗰個孤立
+        # 0xef，令 HKJC prerace 同 Tennis card 兩個 run 一齊死喺
+        # `UnicodeDecodeError: ... byte 0xef in position 161`，而個訊息
+        # 提都冇提過係邊條命令、真正壞咗嘅係咩。AU 個 runner 2026-08-13
+        # 已經因為同一件事修好咗 —— 但呢個教訓冇搬過嚟。
+        # subprocess 輸出係俾人睇嘅 log，永遠唔應該有能力令 run 死。
         completed = subprocess.run(
             [str(part) for part in cmd],
             cwd=PROJECT_ROOT,
             env=env,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             timeout=timeout,

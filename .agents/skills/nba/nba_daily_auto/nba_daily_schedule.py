@@ -140,10 +140,16 @@ def archived_dirs(target_date: str) -> list[Path]:
 
 
 def _run(command: list[str], *, timeout: int = 3600) -> subprocess.CompletedProcess[str]:
+    # ⚠️ 一定要 encoding="utf-8", errors="replace"。`text=True` 係嚴格 UTF-8，
+    # 而 launchd 底下 locale 可能係 POSIX（會退去 ASCII）。2026-09-09 實測：
+    # 一個 shell 錯誤訊息入面嘅孤立 0xef 就令 HKJC prerace 同 Tennis card
+    # 兩個 run 死喺 UnicodeDecodeError，而個訊息連係邊條命令都冇講。
+    # subprocess 輸出係俾人睇嘅 log，永遠唔應該有能力令 run 死。
     return subprocess.run(
         command,
         cwd=PROJECT_ROOT,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         timeout=timeout,
         env=os.environ.copy(),
