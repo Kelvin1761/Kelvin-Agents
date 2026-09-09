@@ -312,6 +312,17 @@ def match_venue(slug: str, api_venues: list[str]) -> str | None:
         token = [v for v in api_venues if v.split()[0].lower() == head]
         if len(token) == 1:
             return token[0]
+    # 第四步：逐個「部件」比。API 會用複合名（`Randwick-Kensington`），而索引頁
+    # 只出其中一半（`kensington`）。前三步全部靠成串比或者第一個 token 比，所以
+    # 兩者都配唔到 —— 2026-09-09 實測，Randwick-Kensington（悉尼市區）就係咁被
+    # 當「海外場次」剔走，而個 run 照樣報 `ok` / `pending: 0`。
+    # ⚠️ 仍然要求**全個名單只得一個**候選 —— 配錯馬場比冇數據差（會拉錯一個
+    # 馬場嘅場地狀況入去評分）。所以呢步只可以解決歧義嘅情況，唔可以靠猜。
+    if len(want) >= 5:
+        component = [v for v in api_venues
+                     if want in [_venue_key(part) for part in re.split(r"[^A-Za-z0-9]+", v) if part]]
+        if len(component) == 1:
+            return component[0]
     return None
 
 
@@ -1165,6 +1176,19 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
     if excluded:
         runlog.step("discover", "non-au-excluded", meetings=excluded,
                     reason="API 澳洲名單冇呢啲馬場")
+    # ⚠️ 逆向檢查。上面條 loop 由**索引頁**行落嚟，所以一個配唔到嘅 slug 只會
+    # 靜靜跌入 `excluded`，而個 reason 寫住「API 澳洲名單冇呢啲馬場」——
+    # 完全誤導：API 明明有，只係個名配唔到。2026-09-09 索引頁出 `kensington`、
+    # API 出 `Randwick-Kensington`，於是悉尼市區一個賽日就咁冇咗，而個 run
+    # 報 `ok` / `pending: 0`。2026-08-06 `mount_isa` vs `Mt Isa` 係同一件事。
+    # 由 API 嗰邊反查先捉得到：API 話今日有，我哋一個都冇認領 = 靜靜跌咗。
+    unclaimed = sorted(set(api_venues) - {p["venue"] for p in planned})
+    if unclaimed:
+        runlog.warn(f"API 話今日有呢啲澳洲場次，但索引頁一個 slug 都配唔到 —— "
+                    f"佢哋唔會有分析：{unclaimed}"
+                    f"（索引頁剩低配唔到嘅 slug：{excluded}）")
+        runlog.step("discover", "unclaimed-au-venues", venues=unclaimed,
+                    unmatched_slugs=excluded)
     if not planned:
         raise TemporaryFailure(f"{target} 索引頁一個澳洲場次都配唔到")
     if max_meetings and len(planned) > max_meetings:

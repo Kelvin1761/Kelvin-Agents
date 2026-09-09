@@ -82,6 +82,32 @@ class TestVenueMatch(unittest.TestCase):
                      "sligo", "vaal", "yarmouth"):
             self.assertIsNone(S.match_venue(slug, self.AU), slug)
 
+    def test_a_compound_api_name_matches_on_one_component(self):
+        # 2026-09-09 實測：索引頁出 `kensington`，API 出 `Randwick-Kensington`。
+        # 相等／前綴／第一個 token 三步全部唔中（`"Randwick-Kensington".split()[0]`
+        # 係成串連號嘅名，唔係 `Randwick`），於是**悉尼市區一個賽日**俾當海外
+        # 場次剔走，而個 run 照樣報 `ok` / `pending: 0`。
+        api = ["Belmont", "Devonport", "Ipswich", "Murray Bridge",
+               "Randwick-Kensington", "Sandown"]
+        self.assertEqual(S.match_venue("kensington", api), "Randwick-Kensington")
+        self.assertEqual(S.match_venue("randwick", api), "Randwick-Kensington")
+        # 之前配得中嘅唔可以退步。
+        self.assertEqual(S.match_venue("belmont", api), "Belmont")
+        self.assertEqual(S.match_venue("murray_bdge", api), "Murray Bridge")
+
+    def test_a_component_match_still_refuses_to_guess(self):
+        """配錯馬場比冇數據差 —— 會拉錯一個馬場嘅場地狀況入去評分。"""
+        # 兩個 API 場次都有 `kensington` 呢個部件 → 唔准揀。
+        # ⚠️ 兩個都唔可以用「第一個 token」配到，唔係嘅話會喺上一步就中咗，
+        # 呢個 test 就唔係測緊部件步。
+        self.assertIsNone(S.match_venue(
+            "kensington", ["Randwick-Kensington", "Moonee-Kensington"]))
+        # 部件太短唔算數，唔好靠 `pk` / `st` 之類撞岩。
+        self.assertIsNone(S.match_venue("pk", ["Kensington Park"]))
+        # 海外場次照樣要剔走。
+        for slug in ("lingfield", "kempton", "sligo", "vaal"):
+            self.assertIsNone(S.match_venue(slug, self.AU), slug)
+
     def test_ambiguous_prefix_is_not_guessed(self):
         self.assertIsNone(S.match_venue("rand", ["Randwick", "Randwick Kensington"]))
 
