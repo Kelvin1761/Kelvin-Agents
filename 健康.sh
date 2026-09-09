@@ -87,6 +87,35 @@ PYEOF
 
 # ── 排程 ──────────────────────────────────────────────────────────────────
 hdr "自動化排程"
+CONTROL_STATE_ROOT="${WONGCHOI_CONTROL_STATE_ROOT:-$HOME/WongChoiData/WongChoiControl}"
+# launchd only keeps one exit code.  A later authenticated control-plane
+# recovery does not rewrite that historical value, so treating it as the
+# current state produces a false alarm after the system has already healed.
+# Resolve today's latest terminal attempt for each Tennis mode once, then use
+# it only when launchd's own last exit was non-zero.
+TENNIS_RECOVERED_MODES=$("$PY" - "$CONTROL_STATE_ROOT" "$(date '+%Y-%m-%d')" <<'PYEOF'
+import json
+import sys
+from datetime import datetime
+from pathlib import Path
+
+root = Path(sys.argv[1]) / "runs" / "tennis" / sys.argv[2]
+for mode in ("card", "daily"):
+    latest = None
+    for path in (root / mode).glob("*/attempt-*.json"):
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+            completed = datetime.fromisoformat(
+                str(payload.get("completed_at") or "").replace("Z", "+00:00")
+            )
+        except (OSError, ValueError, TypeError):
+            continue
+        if latest is None or completed > latest[0]:
+            latest = (completed, str(payload.get("state") or ""))
+    if latest and latest[1] in {"succeeded", "dormant"}:
+        print(mode)
+PYEOF
+)
 for f in "$HOME"/Library/LaunchAgents/com.antigravity.*.plist; do
   [ -e "$f" ] || continue
   lbl=$(basename "$f" .plist)
@@ -100,7 +129,19 @@ for f in "$HOME"/Library/LaunchAgents/com.antigravity.*.plist; do
     st=$(echo "$detail" | sed -n 's/^[[:space:]]*last exit code = //p' | head -1)
     case "${st:-0}" in
       0) ok "$short" ;;
-      *) warn "$short 上次退出碼 ${st}（睇下面詳情）" ;;
+      *)
+        repaired_mode=""
+        case "$short" in
+          tennis-wong-choi.card|tennis-wong-choi.recovery) repaired_mode="card" ;;
+          tennis-wong-choi.daily) repaired_mode="daily" ;;
+        esac
+        if [ -n "$repaired_mode" ] \
+          && printf '%s\n' "$TENNIS_RECOVERED_MODES" | grep -qx "$repaired_mode"; then
+          ok "${short}（較新 control-plane 復原已成功；舊退出碼 ${st} 已解除）"
+        else
+          warn "$short 上次退出碼 ${st}（睇下面詳情）"
+        fi
+        ;;
     esac
   fi
 done

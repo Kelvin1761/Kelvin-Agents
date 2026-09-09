@@ -1095,13 +1095,25 @@ def archive_previous_day(match_date: str, review_payload: dict) -> None:
         log(f"Review did not confirm result extraction for {match_date}; archive skipped.")
         return
 
-    ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
-    final_destination = destination
-    if final_destination.exists():
-        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-        final_destination = ARCHIVE_DIR / f"{source.name} rerun {stamp}"
+    try:
+        ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+        final_destination = destination
+        if final_destination.exists():
+            stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+            final_destination = ARCHIVE_DIR / f"{source.name} rerun {stamp}"
 
-    shutil.move(str(source), str(final_destination))
+        shutil.move(str(source), str(final_destination))
+    except OSError as exc:
+        # CloudStorage can allow report writes but deny the directory rename
+        # used for archival (macOS TCC did exactly that on 2026-09-09).  Archive
+        # organisation is housekeeping: failing it must not skip tomorrow's
+        # analysis or turn an otherwise complete daily workflow red.  Leave the
+        # source in place so a later run or an operator can retry safely.
+        log(
+            f"Archive deferred for {source.name}: {type(exc).__name__}: {exc}. "
+            "Source remains in place; daily analysis will continue."
+        )
+        return
     log(f"Archived {source.name} -> {final_destination}")
 
 

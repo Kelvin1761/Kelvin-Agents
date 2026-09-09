@@ -6,6 +6,33 @@ import subprocess
 from scripts import tennis_daily_schedule as scheduler
 
 
+def test_archive_permission_failure_is_deferred_without_losing_source(
+    monkeypatch, tmp_path
+):
+    analysis_root = tmp_path / "analysis"
+    source = analysis_root / "2026-09-08 Tennis Analysis"
+    source.mkdir(parents=True)
+    (source / "report.txt").write_text("ready", encoding="utf-8")
+    logs = []
+
+    monkeypatch.setattr(scheduler, "ANTIGRAVITY_DIR", analysis_root)
+    monkeypatch.setattr(scheduler, "ARCHIVE_DIR", analysis_root / "archive")
+    monkeypatch.setattr(scheduler, "can_archive", lambda _payload: True)
+    monkeypatch.setattr(scheduler, "log", logs.append)
+    monkeypatch.setattr(
+        scheduler.shutil,
+        "move",
+        lambda *_args: (_ for _ in ()).throw(PermissionError("TCC denied rename")),
+    )
+
+    scheduler.archive_previous_day("2026-09-08", {})
+
+    assert source.is_dir()
+    assert (source / "report.txt").read_text(encoding="utf-8") == "ready"
+    assert any("Archive deferred" in line for line in logs)
+    assert any("daily analysis will continue" in line for line in logs)
+
+
 def test_ensure_live_network_accepts_ready(monkeypatch):
     monkeypatch.setattr(
         scheduler,
