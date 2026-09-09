@@ -493,15 +493,60 @@ class RecoveryCommandTests(unittest.TestCase):
         completed = subprocess.CompletedProcess([], 0, "", "")
         with unittest.mock.patch("subprocess.run", return_value=completed) as run:
             reply = B.cmd_recover(
-                "tennis", actor=B.AUTHORISED_TELEGRAM_ACTOR
+                "hkjc", actor=B.AUTHORISED_TELEGRAM_ACTOR
             )
         command = run.call_args.args[0]
         self.assertEqual(command[:2], ["/bin/launchctl", "kickstart"])
         self.assertTrue(
-            command[2].endswith("/com.antigravity.tennis-wong-choi.recovery")
+            command[2].endswith("/com.antigravity.hkjc-wong-choi.recovery")
         )
         self.assertNotIn("-k", command)
         self.assertIn("啟動確認", reply)
+
+    def test_tennis_uses_installed_job_environment_for_manual_attempt(self):
+        import plistlib
+        import sys
+
+        started = {}
+
+        class _P:
+            def __init__(self, cmd, **kwargs):
+                started["cmd"] = cmd
+                started["kwargs"] = kwargs
+
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp) / "home"
+            repo = Path(tmp) / "production"
+            script = repo / "tennis-wong-choi/scripts/tennis_card_recovery.py"
+            script.parent.mkdir(parents=True)
+            script.write_text("# recovery\n")
+            plist = home / "Library/LaunchAgents" / (
+                f"{B.TENNIS_RECOVERY_LABEL}.plist"
+            )
+            plist.parent.mkdir(parents=True)
+            plist.write_bytes(plistlib.dumps({
+                "ProgramArguments": [sys.executable, str(script)],
+                "WorkingDirectory": str(script.parent.parent),
+                "EnvironmentVariables": {"TENNIS_PYTHON_BIN": "/fixed/venv/python"},
+            }))
+            with unittest.mock.patch.object(B.Path, "home", return_value=home), \
+                 unittest.mock.patch.object(B, "_central_repo_root", return_value=repo), \
+                 unittest.mock.patch.object(
+                     B, "TENNIS_RECOVERY_LOG", Path(tmp) / "tennis-recovery.out"
+                 ), unittest.mock.patch("subprocess.Popen", _P):
+                reply = B.cmd_recover(
+                    "tennis", actor=B.AUTHORISED_TELEGRAM_ACTOR
+                )
+
+        self.assertIn("manual recovery", reply)
+        self.assertEqual(
+            started["cmd"],
+            [str(Path(sys.executable).resolve()), str(script.resolve()), "--manual"],
+        )
+        self.assertEqual(
+            started["kwargs"]["env"]["TENNIS_PYTHON_BIN"], "/fixed/venv/python"
+        )
+        self.assertTrue(started["kwargs"]["start_new_session"])
 
     def test_launchd_failure_is_not_reported_as_recovery(self):
         import subprocess

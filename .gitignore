@@ -130,6 +130,7 @@ Wong Choi Tennis Analysis/
 
 # Shared Wong Choi control-plane runtime manifests and locks
 .agents/skills/shared_wong_choi/state/
+.wongchoi_code_update.lock
 
 # 排程 checkout 內可能係 symlink，尾斜線 pattern 配唔到 symlink。
 .agents/skills/au_racing/.sportsbet_cache

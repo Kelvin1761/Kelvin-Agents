@@ -14,7 +14,10 @@ from .release_manager import ReleaseError, _notify, _run
 
 
 EXPECTED_MUTABLE_PATHS = frozenset(
-    {".agents/skills/au_racing/data/sb_archive_meeting_ids.json"}
+    {
+        ".agents/scripts/hkjc_draw_stats.json",
+        ".agents/skills/au_racing/data/sb_archive_meeting_ids.json",
+    }
 )
 
 

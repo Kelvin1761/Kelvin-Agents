@@ -189,3 +189,39 @@ def test_a_blocked_recovery_does_not_consume_an_attempt(tmp_path, monkeypatch):
     assert "--force" in seen["cmd"]
     assert json.loads(state.read_text())["analysis_attempts"] == 0
     assert sent and "control plane" in sent[0]
+
+
+def test_manual_recovery_bypasses_exhausted_schedule_budget(tmp_path, monkeypatch):
+    """Authenticated Telegram recovery must still work after 10:30/12:30 fail."""
+    from scripts import tennis_card_recovery as recovery
+    import subprocess
+
+    log = tmp_path / "schedule.log"
+    state = tmp_path / "state.json"
+    state.write_text(json.dumps({
+        "day": "2026-09-09",
+        "analysis_attempts": 2,
+        "dashboard_attempts": 0,
+        "low_disk_alerted": False,
+    }))
+    monkeypatch.setattr(recovery, "runner_active", lambda _: False)
+    monkeypatch.setattr(recovery, "disk_headroom", lambda: {"ok": True, "detail": ""})
+    cards = iter([None, {"health": {"priced": 42}}])
+    monkeypatch.setattr(recovery, "successful_card_for_day", lambda *_: next(cards))
+    monkeypatch.setattr(recovery, "notify", lambda _message: None)
+    seen = {}
+
+    def fake_run(cmd, **kwargs):
+        seen["cmd"] = list(cmd)
+        return subprocess.CompletedProcess(cmd, 0, "card complete\n", "")
+
+    monkeypatch.setattr(recovery.subprocess, "run", fake_run)
+
+    assert recovery.main([
+        "--manual", "--today", "2026-09-09", "--log", str(log),
+        "--state", str(state),
+    ]) == 0
+    saved = json.loads(state.read_text())
+    assert saved["analysis_attempts"] == 2
+    assert saved["manual_analysis_attempts"] == 1
+    assert "--force" in seen["cmd"]

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import os
+import plistlib
 import re
 import sys
 import urllib.request
@@ -30,6 +31,7 @@ DEFAULT_OFFSET_FILE = LOG_DIR / "telegram_offset.json"
 RETRY_LOG = LOG_DIR / "retry-from-telegram.out"
 HKJC_ANALYSIS_LOG = LOG_DIR / "hkjc-analysis-from-telegram.out"
 HKJC_REFLECT_LOG = LOG_DIR / "hkjc-reflector-from-telegram.out"
+TENNIS_RECOVERY_LOG = LOG_DIR / "tennis-recovery-from-telegram.out"
 TIMEOUT = 25
 AUTHORISED_TELEGRAM_ACTOR = "telegram:authorised-chat"
 HELP = ("我識嘅嘢：\n"
@@ -738,8 +740,8 @@ def cmd_hkjc_reflect() -> str:
 
 RECOVERY_LABELS = {
     "hkjc": "com.antigravity.hkjc-wong-choi.recovery",
-    "tennis": "com.antigravity.tennis-wong-choi.recovery",
 }
+TENNIS_RECOVERY_LABEL = "com.antigravity.tennis-wong-choi.recovery"
 
 
 def _start_au_recovery() -> str:
@@ -782,6 +784,49 @@ def _start_au_recovery() -> str:
     )
 
 
+def _start_tennis_recovery() -> str:
+    """Start an authenticated manual attempt from the installed recovery job."""
+    import subprocess
+
+    plist = Path.home() / "Library/LaunchAgents" / f"{TENNIS_RECOVERY_LABEL}.plist"
+    expected_script = (
+        _central_repo_root() / "tennis-wong-choi/scripts/tennis_card_recovery.py"
+    ).resolve()
+    try:
+        payload = plistlib.loads(plist.read_bytes())
+        installed = [str(value) for value in payload.get("ProgramArguments") or []]
+        if len(installed) != 2 or Path(installed[1]).resolve() != expected_script:
+            return "Tennis 復原排程路徑同 production 不一致，已停止；請用 /status 檢查"
+        interpreter = Path(installed[0]).expanduser().resolve()
+        if not interpreter.is_file() or not expected_script.is_file():
+            return "Tennis 復原 interpreter 或 script 不存在，已停止"
+        environment = os.environ.copy()
+        environment.update({
+            str(key): str(value)
+            for key, value in (payload.get("EnvironmentVariables") or {}).items()
+        })
+        working = Path(
+            payload.get("WorkingDirectory") or expected_script.parent.parent
+        ).expanduser().resolve()
+        TENNIS_RECOVERY_LOG.parent.mkdir(parents=True, exist_ok=True)
+        with TENNIS_RECOVERY_LOG.open("w", encoding="utf-8") as handle:
+            subprocess.Popen(
+                [str(interpreter), str(expected_script), "--manual"],
+                cwd=working,
+                env=environment,
+                stdout=handle,
+                stderr=handle,
+                start_new_session=True,
+            )
+    except Exception as exc:  # noqa: BLE001
+        return f"開唔到 Tennis 復原：{type(exc).__name__}: {exc}"
+    return (
+        "▶️ 已開始 Tennis manual recovery attempt。\n"
+        "唔會消耗或重設每日自動重試額；沿用 scheduler lock、磁碟同資料驗證。\n"
+        "完成狀態請用 /status 查看。"
+    )
+
+
 def cmd_recover(arg: str = "", *, actor: str) -> str:
     """Kick a fixed recovery job through the authenticated Telegram dispatcher."""
     import subprocess
@@ -794,6 +839,8 @@ def cmd_recover(arg: str = "", *, actor: str) -> str:
     # stage handles the gap after it refreshes existing meetings.
     if domain == "au":
         return _start_au_recovery()
+    if domain == "tennis":
+        return _start_tennis_recovery()
     label = RECOVERY_LABELS.get(domain)
     if label is None:
         return "用法：/recover au 或 /recover hkjc 或 /recover tennis"

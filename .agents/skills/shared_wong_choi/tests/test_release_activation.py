@@ -296,6 +296,9 @@ def test_forward_sync_and_rollback_union_runtime_mapping(tmp_path: Path) -> None
     mapping = source / ".agents/skills/au_racing/data/sb_archive_meeting_ids.json"
     mapping.parent.mkdir(parents=True)
     mapping.write_text('{"shared": "base", "base_only": 1}\n', encoding="utf-8")
+    draw_stats = source / ".agents/scripts/hkjc_draw_stats.json"
+    draw_stats.parent.mkdir(parents=True)
+    draw_stats.write_text('{"meeting": "base"}\n', encoding="utf-8")
     merger = source / ".agents/skills/au_racing/au_daily_auto/merge_mapping.py"
     merger.parent.mkdir(parents=True)
     merger.write_text(
@@ -328,6 +331,8 @@ def test_forward_sync_and_rollback_union_runtime_mapping(tmp_path: Path) -> None
         '{"shared": "runtime", "base_only": 1, "runtime_only": 3}\n',
         encoding="utf-8",
     )
+    runtime_draw_stats = production / draw_stats.relative_to(source)
+    runtime_draw_stats.write_text('{"meeting": "today"}\n', encoding="utf-8")
     synced = _sync_checkout(production, candidate)
     assert synced["status"] == "updated"
     assert json.loads(runtime_mapping.read_text(encoding="utf-8")) == {
@@ -336,6 +341,7 @@ def test_forward_sync_and_rollback_union_runtime_mapping(tmp_path: Path) -> None
         "candidate_only": 2,
         "runtime_only": 3,
     }
+    assert runtime_draw_stats.read_text(encoding="utf-8") == '{"meeting": "today"}\n'
 
     rolled_back = _rollback_checkout(production, base)
     assert rolled_back["status"] == "rolled_back"
@@ -346,6 +352,7 @@ def test_forward_sync_and_rollback_union_runtime_mapping(tmp_path: Path) -> None
         "candidate_only": 2,
         "runtime_only": 3,
     }
+    assert runtime_draw_stats.read_text(encoding="utf-8") == '{"meeting": "today"}\n'
 
 
 def test_deploy_failure_restores_installer_state_before_git_rollback(

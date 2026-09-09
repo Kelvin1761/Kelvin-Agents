@@ -210,6 +210,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--log", type=Path, default=SCHEDULE_LOG)
     parser.add_argument("--state", type=Path, default=STATE_PATH)
     parser.add_argument(
+        "--manual",
+        action="store_true",
+        help=("Authenticated operator recovery. Keep the scheduled retry budget "
+              "unchanged and record a separate manual attempt."),
+    )
+    parser.add_argument(
         "--control-json",
         action="store_true",
         help="Emit one final machine-readable control-plane outcome.",
@@ -245,16 +251,22 @@ def main(argv: list[str] | None = None) -> int:
         if runner_active(LOCK_PATH):
             print("DASHBOARD RECOVERY DEFERRED: a Tennis scheduler run is already active.")
             return finish(0, "blocked", "scheduler_locked")
-        attempts = int(state.get("dashboard_attempts") or 0)
-        if attempts >= MAX_DASHBOARD_ATTEMPTS:
+        counter = "manual_dashboard_attempts" if args.manual else "dashboard_attempts"
+        attempts = int(state.get(counter) or 0)
+        if not args.manual and attempts >= MAX_DASHBOARD_ATTEMPTS:
             print(f"DASHBOARD RECOVERY EXHAUSTED: {attempts}/{MAX_DASHBOARD_ATTEMPTS} "
                   f"attempts used for {day}.")
             return finish(1, "failed", "dashboard_recovery_exhausted")
-        state["dashboard_attempts"] = attempts + 1
+        state[counter] = attempts + 1
         state["dashboard_last_started_at"] = datetime.now().isoformat(timespec="seconds")
         save_state(args.state, state)
-        print(f"DASHBOARD RECOVERY STARTED: attempt {state['dashboard_attempts']}/"
-              f"{MAX_DASHBOARD_ATTEMPTS} for {day}; analysis will not be rerun.")
+        attempt_label = (
+            f"manual attempt {state[counter]}"
+            if args.manual
+            else f"attempt {state[counter]}/{MAX_DASHBOARD_ATTEMPTS}"
+        )
+        print(f"DASHBOARD RECOVERY STARTED: {attempt_label} for {day}; "
+              "analysis will not be rerun.")
         ok, detail = recover_dashboard(day)
         if ok:
             notify(f"✅ Tennis Dashboard 自動復原完成：{day}\n{detail}")
@@ -262,7 +274,7 @@ def main(argv: list[str] | None = None) -> int:
             return finish(0, "succeeded", "dashboard_recovered")
         notify(
             f"🎾 Tennis Dashboard 自動復原未成功：{day}\n"
-            f"attempt {state['dashboard_attempts']}/{MAX_DASHBOARD_ATTEMPTS}\n"
+            f"{attempt_label}\n"
             f"{detail[-500:]}\n分析及投注咭仍然保留，下一個復原時段會再試。"
         )
         print(f"DASHBOARD RECOVERY FAILED: {detail}")
@@ -272,8 +284,9 @@ def main(argv: list[str] | None = None) -> int:
         print("RECOVERY DEFERRED: a Tennis scheduler run is already active.")
         return finish(0, "blocked", "scheduler_locked")
 
-    attempts = int(state.get("analysis_attempts") or 0)
-    if attempts >= MAX_ATTEMPTS:
+    counter = "manual_analysis_attempts" if args.manual else "analysis_attempts"
+    attempts = int(state.get(counter) or 0)
+    if not args.manual and attempts >= MAX_ATTEMPTS:
         print(f"RECOVERY EXHAUSTED: {attempts}/{MAX_ATTEMPTS} attempts used for {day}.")
         return finish(1, "failed", "analysis_recovery_exhausted")
 
@@ -290,10 +303,15 @@ def main(argv: list[str] | None = None) -> int:
             save_state(args.state, state)
         return finish(75, "partial", "disk_headroom_low")
 
-    state["analysis_attempts"] = attempts + 1
+    state[counter] = attempts + 1
     state["last_started_at"] = date.today().isoformat()
     save_state(args.state, state)
-    print(f"RECOVERY STARTED: attempt {state['analysis_attempts']}/{MAX_ATTEMPTS} for {day}.")
+    attempt_label = (
+        f"manual attempt {state[counter]}"
+        if args.manual
+        else f"attempt {state[counter]}/{MAX_ATTEMPTS}"
+    )
+    print(f"RECOVERY STARTED: {attempt_label} for {day}.")
     env = os.environ.copy()
     env["TENNIS_NOTIFY_HEALTH"] = "1"
     # A recovered card is still the day's completed card. Send the same formal
@@ -322,7 +340,7 @@ def main(argv: list[str] | None = None) -> int:
             errors="replace",
         )
     except subprocess.TimeoutExpired:
-        notify(f"🎾 Tennis 自動復原逾時：{day}（attempt {state['analysis_attempts']}）")
+        notify(f"🎾 Tennis 自動復原逾時：{day}（{attempt_label}）")
         return finish(75, "partial", "analysis_recovery_timeout")
 
     output = completed.stdout or ""
@@ -334,7 +352,7 @@ def main(argv: list[str] | None = None) -> int:
     if skipped:
         # 呢個 attempt 乜都冇做過 —— 唔可以當用咗一次，唔係嘅話兩個復原時段
         # 會喺完全冇試過嘅情況下耗盡，再報一個「未知錯誤」。
-        state["analysis_attempts"] = attempts
+        state[counter] = attempts
         save_state(args.state, state)
         print(f"RECOVERY BLOCKED: control plane 回 {skipped} —— 冇行過，唔計 attempt。")
         notify(
@@ -351,7 +369,7 @@ def main(argv: list[str] | None = None) -> int:
 
     notify(
         f"🎾 Tennis 自動復原未成功：{day}\n"
-        f"exit={completed.returncode} · attempt {state['analysis_attempts']}/{MAX_ATTEMPTS}\n"
+        f"exit={completed.returncode} · {attempt_label}\n"
         "系統保留所有原始資料，下一個復原時段會再試；未知錯誤唔會自動改 code。"
     )
     code = completed.returncode or 1
