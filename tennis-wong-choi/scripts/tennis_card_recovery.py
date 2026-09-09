@@ -184,6 +184,26 @@ def recover_dashboard(day: str) -> tuple[bool, str]:
                    f"{last['run_id']} / {last['status']}")
 
 
+def _control_plane_duplicate(output: str) -> str | None:
+    """control plane 有冇因為 manifest 已存在而乜都冇做？回個 status，冇就回 None。
+
+    佢會印一行 `wong-choi-control-result/v1` JSON。`duplicate_skipped` 同
+    `duplicate_active` 都代表「一步都冇行過」—— 對復原嚟講呢個唔算試過。
+    """
+    for line in output.splitlines():
+        line = line.strip()
+        if not line.startswith("{") or "wong-choi-control-result" not in line:
+            continue
+        try:
+            payload = json.loads(line)
+        except ValueError:
+            continue
+        status = str(payload.get("status") or "")
+        if status.startswith("duplicate"):
+            return status
+    return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Recover a missed Tennis betting card.")
     parser.add_argument("--today", help="Override Sydney date (YYYY-MM-DD).")
@@ -280,16 +300,50 @@ def main(argv: list[str] | None = None) -> int:
     # recommendation content as the 09:00 pass, to both configured recipients.
     env["TENNIS_NOTIFY_BETS"] = "1"
     try:
+        # ⚠️ `--force` 唔可以慳。control plane 嘅自動重試**只認 `PARTIAL`**，
+        # 一個 `failed` 嘅 manifest 會令佢用返同一個 identity，然後
+        # `command_adapter` 見到 manifest 已存在就即刻回 `duplicate_skipped`，
+        # 一步都唔行。而復原 job 存在嘅唯一目的就係重試一個失敗咗嘅 run。
+        # 2026-09-09 實測：09:00 網球咭 `failed`（UnicodeDecodeError），10:30 同
+        # 12:30 兩個復原時段全部 `duplicate_skipped`，兩個 attempt 燒晒喺空跑，
+        # 當日冇咭 —— 而個通知仲寫住「下一個復原時段會再試」。
+        # `--force` 只係話「呢個係明確嘅復原調用，開一個新 attempt」，
+        # 排程嘅自動重試政策一個字都冇改。
         completed = subprocess.run(
-            [str(RUNNER), "--source", "recovery", "--refresh-today", "--today", day],
+            [str(RUNNER), "--source", "recovery", "--refresh-today",
+             "--today", day, "--force"],
             cwd=PROJECT_DIR,
             env=env,
             timeout=7200,
             check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            encoding="utf-8",
+            errors="replace",
         )
     except subprocess.TimeoutExpired:
         notify(f"🎾 Tennis 自動復原逾時：{day}（attempt {state['analysis_attempts']}）")
         return finish(75, "partial", "analysis_recovery_timeout")
+
+    output = completed.stdout or ""
+    # 個 runner 嘅輸出本來直出 launchd log；而家要讀返佢嚟判斷，所以要原樣印返。
+    if output:
+        print(output, end="" if output.endswith("\n") else "\n")
+
+    skipped = _control_plane_duplicate(output)
+    if skipped:
+        # 呢個 attempt 乜都冇做過 —— 唔可以當用咗一次，唔係嘅話兩個復原時段
+        # 會喺完全冇試過嘅情況下耗盡，再報一個「未知錯誤」。
+        state["analysis_attempts"] = attempts
+        save_state(args.state, state)
+        print(f"RECOVERY BLOCKED: control plane 回 {skipped} —— 冇行過，唔計 attempt。")
+        notify(
+            f"🎾 Tennis 復原俾 control plane 擋住：{day}\n"
+            f"status={skipped} —— 上一個 run 嘅 manifest 已經終局，"
+            f"而今次調用開唔到新 attempt。\n"
+            "冇試過任何嘢，所以呢次唔計入復原次數。"
+        )
+        return finish(75, "partial", "analysis_recovery_duplicate_skipped")
 
     if completed.returncode == 0 and successful_card_for_day(args.log, day):
         print(f"RECOVERY COMPLETE: {day} card restored.")

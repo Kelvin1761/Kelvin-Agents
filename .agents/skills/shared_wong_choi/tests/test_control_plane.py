@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+from dataclasses import replace
 from datetime import date, datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -120,3 +121,62 @@ def test_scheduler_specific_options_are_forwarded_after_control_options(
         "--round-gap",
         "420",
     ]
+
+
+def _write_manifest(state_root: Path, identity: RunIdentity, state: RunState,
+                    *, exit_code: int | None = None) -> Path:
+    from shared_wong_choi.control import RunManifest, manifest_path
+
+    path = manifest_path(state_root / "runs", identity)
+    manifest = RunManifest.create(path, identity)
+    manifest.transition(RunState.RUNNING)
+    if exit_code is not None:
+        # `_next_request` 嘅 PARTIAL 分支要讀到 exit code 先肯前進 —— 唔記錄
+        # 就係測緊另一件事。
+        manifest.record_operation(
+            operation=Operation.PREDICT,
+            status="temporary_failure",
+            detail={"exit_code": exit_code},
+        )
+    manifest.transition(state)
+    return path
+
+
+def test_a_failed_manifest_blocks_the_next_run_unless_forced(tmp_path: Path) -> None:
+    """復原 job 存在嘅唯一目的就係重試一個失敗咗嘅 run。
+
+    2026-09-09：09:00 網球咭 `failed`，10:30 同 12:30 兩個復原時段全部攞返同一個
+    identity → `duplicate_skipped`，一步都冇行過，兩個 attempt 燒晒，當日冇咭。
+    自動重試只認 `PARTIAL` 係刻意嘅（唔好無限重試一個真 bug），所以修法係俾
+    明確嘅復原調用一個 `--force` 出口，唔係放寬自動政策。
+    """
+    identity = RunIdentity(Domain.TENNIS, "card", date(2026, 9, 9), "09:00")
+    _write_manifest(tmp_path, identity, RunState.FAILED)
+    request = RunRequest(identity, Operation.PREDICT)
+    retry = RetryPolicy(max_attempts=3)
+
+    # 預設：政策不變 —— 唔跳，之後就會撞返 duplicate_skipped。
+    assert M._next_request(request, tmp_path, retry).identity.attempt == 1
+    # 明確復原：開一個新 attempt，有自己嘅 manifest，真係行得到。
+    assert M._next_request(request, tmp_path, retry, force=True).identity.attempt == 2
+
+
+def test_force_walks_past_every_terminal_attempt_and_is_bounded(tmp_path: Path) -> None:
+    identity = RunIdentity(Domain.TENNIS, "card", date(2026, 9, 9), "09:00")
+    for attempt, state in ((1, RunState.FAILED), (2, RunState.SUCCEEDED),
+                           (3, RunState.PARTIAL)):
+        _write_manifest(tmp_path, replace(identity, attempt=attempt), state)
+    request = RunRequest(identity, Operation.PREDICT)
+    forced = M._next_request(request, tmp_path, RetryPolicy(max_attempts=3), force=True)
+    assert forced.identity.attempt == 4
+    assert M.FORCE_ATTEMPT_CEILING >= 2  # 有上限，唔會無限行落去
+
+
+def test_force_does_not_disturb_the_partial_retry_path(tmp_path: Path) -> None:
+    """暫時性失敗照舊自己前進 —— `--force` 唔可以改到呢條路。"""
+    identity = RunIdentity(Domain.NBA, "pregame", date(2026, 10, 21), "00:30")
+    _write_manifest(tmp_path, identity, RunState.PARTIAL, exit_code=75)
+    request = RunRequest(identity, Operation.PREDICT)
+    retry = RetryPolicy(max_attempts=3)
+    assert M._next_request(request, tmp_path, retry).identity.attempt == 2
+    assert M._next_request(request, tmp_path, retry, force=True).identity.attempt == 2

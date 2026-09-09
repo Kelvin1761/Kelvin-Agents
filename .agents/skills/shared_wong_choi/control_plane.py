@@ -21,6 +21,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
     from shared_wong_choi.adapters import create_adapter
     from shared_wong_choi.contracts import (
+        TERMINAL_STATES,
         Domain,
         Operation,
         OperationResult,
@@ -33,6 +34,7 @@ if __package__ in (None, ""):
 else:
     from .adapters import create_adapter
     from .contracts import (
+        TERMINAL_STATES,
         Domain,
         Operation,
         OperationResult,
@@ -136,12 +138,33 @@ def _last_exit_code(manifest: RunManifest) -> int | None:
     return value if isinstance(value, int) else None
 
 
+#: `--force` 最多可以行到第幾個 attempt。純粹係防止一個爛狀態令我哋無限
+#: 行落去；正常一日唔會用到幾個。
+FORCE_ATTEMPT_CEILING = 20
+
+
 def _next_request(
     request: RunRequest,
     state_root: Path,
     retry: RetryPolicy,
+    *,
+    force: bool = False,
 ) -> RunRequest:
-    """Resume at the first unused retry attempt when earlier attempts were temporary."""
+    """Resume at the first unused retry attempt when earlier attempts were temporary.
+
+    `force=True` 額外容許跳過一個**已經終局**嘅 manifest（`failed` 包括在內），
+    行到第一個未用過嘅 attempt。
+
+    ⚠️ 點解要有呢個：自動重試**只認 `PARTIAL`**（暫時性失敗），呢個係刻意嘅 ——
+    唔好無限重試一個真 bug。但復原 job（例如 `tennis_card_recovery.py`）存在嘅
+    唯一目的就係重試一個**失敗咗**嘅 run，而佢原本會攞返同一個 identity，
+    `command_adapter` 見到 manifest 已經存在就即刻回 `duplicate_skipped`，一步
+    都唔行。2026-09-09 實測：09:00 網球咭 `failed`，10:30 同 12:30 兩個復原時段
+    都係 `duplicate_skipped`，兩個 attempt 燒晒喺空跑度，當日冇咭。
+
+    所以：**排程自動重試嘅政策一個字都冇改**，只係俾一個明確嘅人手／復原調用
+    有辦法開一個新 attempt。`--max-attempts` 同 `FORCE_ATTEMPT_CEILING` 照封頂。
+    """
     candidate = request
     while True:
         path = manifest_path(state_root / "runs", candidate.identity)
@@ -156,6 +179,19 @@ def _next_request(
                 exit_code=exit_code,
                 attempt=candidate.identity.attempt,
             )
+        ):
+            candidate = replace(
+                candidate,
+                identity=replace(
+                    candidate.identity,
+                    attempt=candidate.identity.attempt + 1,
+                ),
+            )
+            continue
+        if (
+            force
+            and existing.state in TERMINAL_STATES
+            and candidate.identity.attempt < FORCE_ATTEMPT_CEILING
         ):
             candidate = replace(
                 candidate,
@@ -206,7 +242,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--attempt", type=int, default=1)
     parser.add_argument("--max-attempts", type=int, default=3)
     parser.add_argument("--meeting-url")
-    parser.add_argument("--force", action="store_true")
+    parser.add_argument(
+        "--force", action="store_true",
+        help="明確人手／復原調用：容許跳過一個已經終局（包括 failed）嘅 "
+             "manifest，開一個新 attempt。唔會改變排程嘅自動重試政策。")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
@@ -261,7 +300,7 @@ def main(
     state_root = args.state_root.expanduser().resolve()
     retry = RetryPolicy(max_attempts=args.max_attempts)
     if not args.dry_run:
-        request = _next_request(request, state_root, retry)
+        request = _next_request(request, state_root, retry, force=args.force)
 
     root = repo_root or Path(__file__).resolve().parents[3]
     adapter = create_adapter(domain, root, state_root)

@@ -133,3 +133,59 @@ def test_completed_card_already_live_does_nothing(tmp_path, monkeypatch, capsys)
     payload = json.loads(capsys.readouterr().out.splitlines()[-1])
     assert payload["status"] == "dormant"
     assert payload["reason"] == "card_and_dashboard_current"
+
+
+CONTROL_DUPLICATE = json.dumps({
+    "artifacts": ["/x/runs/tennis/2026-09-09/card/09%3A00/attempt-1.json"],
+    "detail": {"run_id": "wc:tennis:run:2026-09-09:card:09%3A00:attempt-1"},
+    "domain": "tennis", "mode": "card", "operation": "predict",
+    "scheduled_slot": "09:00", "schema_version": "wong-choi-control-result/v1",
+    "severity": "critical", "state": "failed", "status": "duplicate_skipped",
+    "target_date": "2026-09-09",
+}, sort_keys=True)
+
+
+def test_control_plane_duplicate_is_recognised():
+    from scripts import tennis_card_recovery as recovery
+
+    assert recovery._control_plane_duplicate(
+        "RECOVERY STARTED\n" + CONTROL_DUPLICATE + "\ntrailing\n") == "duplicate_skipped"
+    # 真係行過嘅 run 唔可以當成冇行過。
+    ran = CONTROL_DUPLICATE.replace('"duplicate_skipped"', '"complete"')
+    assert recovery._control_plane_duplicate(ran) is None
+    assert recovery._control_plane_duplicate("") is None
+    assert recovery._control_plane_duplicate("{not json}") is None
+
+
+def test_a_blocked_recovery_does_not_consume_an_attempt(tmp_path, monkeypatch):
+    """2026-09-09：兩個復原時段 `duplicate_skipped`，一步都冇行過，attempt 燒晒。
+
+    冇行過就唔可以計數 —— 唔係嘅話兩個時段會喺完全冇試過嘅情況下耗盡，
+    然後報一個「未知錯誤，下一個復原時段會再試」，而其實冇下一次。
+    """
+    from scripts import tennis_card_recovery as recovery
+    import subprocess
+
+    log = tmp_path / "schedule.log"
+    state = tmp_path / "state.json"
+    monkeypatch.setattr(recovery, "LOCK_PATH", tmp_path / "lock")
+    monkeypatch.setattr(recovery, "runner_active", lambda _: False)
+    monkeypatch.setattr(recovery, "disk_headroom", lambda: {"ok": True, "detail": ""})
+    sent = []
+    monkeypatch.setattr(recovery, "notify", lambda message: sent.append(message))
+
+    seen = {}
+
+    def fake_run(cmd, **kwargs):
+        seen["cmd"] = list(cmd)
+        return subprocess.CompletedProcess(cmd, 1, CONTROL_DUPLICATE, "")
+
+    monkeypatch.setattr(recovery.subprocess, "run", fake_run)
+
+    assert recovery.main([
+        "--today", "2026-09-09", "--log", str(log), "--state", str(state)
+    ]) == 75
+    # 復原一定要傳 `--force`，唔係嘅話 control plane 永遠當佢係重複。
+    assert "--force" in seen["cmd"]
+    assert json.loads(state.read_text())["analysis_attempts"] == 0
+    assert sent and "control plane" in sent[0]
