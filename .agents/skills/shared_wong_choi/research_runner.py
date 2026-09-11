@@ -12,6 +12,7 @@ import shlex
 import shutil
 import signal
 import subprocess
+import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -31,6 +32,7 @@ from .research_registry import (
     ExperimentRunState,
     ExperimentSpec,
     ResearchConflictError,
+    _record_from_payload,
 )
 
 
@@ -219,10 +221,13 @@ class ResearchQueue:
     """Create-only local job queue; claims and outcomes are separate records."""
 
     def __init__(
-        self, root: Path, *, clock: Callable[[], datetime] | None = None
+        self, root: Path, *, clock: Callable[[], datetime] | None = None,
+        runtime: ResearchRuntime | None = None, registry: ExperimentRegistry | None = None,
     ) -> None:
         self.root = root.expanduser().resolve()
         self.clock = clock or (lambda: datetime.now(timezone.utc))
+        self.runtime, self.registry = runtime, registry
+        self.last_blocked: dict[str, str] = {}
 
     def _name(self, job_id: str) -> str:
         return quote(job_id, safe="._-") + ".json"
@@ -238,6 +243,10 @@ class ResearchQueue:
     def claim_next(self, worker_id: str) -> QueueClaim | None:
         if not worker_id.strip():
             raise ValueError("worker_id is required")
+        if self.runtime is None or self.registry is None:
+            raise QueueConflictError("research review runtime and registry required to claim")
+        from .research_guard import research_gate_status
+        self.last_blocked = {}
         jobs_root = self.root / "jobs"
         for path in sorted(jobs_root.glob("*.json")) if jobs_root.exists() else ():
             raw = _load_hashed_json(path, schema_version=QUEUE_SCHEMA_VERSION)
@@ -245,6 +254,14 @@ class ResearchQueue:
             claim_path = self.root / "claims" / path.name
             outcome_path = self.root / "outcomes" / path.name
             if claim_path.exists() or outcome_path.exists():
+                continue
+            spec = _record_from_payload(self.registry.load(job.spec_id))
+            if not isinstance(spec, ExperimentSpec) or spec.domain is not job.domain:
+                raise QueueConflictError("queue spec domain mismatch")
+            reason = research_gate_status(self.runtime, self.registry, job.domain,
+                                          spec.evaluation_ruler_digest, queue_root=self.root)
+            if reason:
+                self.last_blocked[job.job_id] = reason
                 continue
             payload = {
                 "schema_version": QUEUE_CLAIM_SCHEMA_VERSION,
@@ -417,7 +434,11 @@ class CommandExecution:
     wall_seconds: float
     user_seconds: float
     system_seconds: float
-    max_rss_kb: int
+    max_rss_kb: int | None  # Legacy field name; normalized KiB, not decimal KB.
+    usage_scope: str = "executor_reported_unverified"
+    usage_platform: str | None = None
+    max_rss_native: int | None = None
+    max_rss_native_unit: str | None = None
 
 
 class ResearchExecutor(Protocol):
@@ -438,6 +459,39 @@ class SubprocessResearchExecutor:
             raise ValueError("executor polling and grace periods must be positive")
         self.poll_seconds = poll_seconds
         self.terminate_grace = terminate_grace
+
+    def _spawn(self, invocation: CommandInvocation) -> subprocess.Popen[str]:
+        return subprocess.Popen(
+            list(invocation.argv), cwd=invocation.cwd,
+            env={**os.environ, **dict(invocation.env)}, text=True,
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True,
+        )
+
+    def _cleanup_group(self, process: subprocess.Popen[str]) -> None:
+        # This PGID was created by _spawn. Even a successful leader may have
+        # left descendants with detached stdio; they must not outlive the run.
+        try:
+            os.killpg(process.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except PermissionError:
+            # Darwin may briefly retain a group containing only exiting/zombie
+            # members and return EPERM. Do not equate that with successful
+            # cleanup, retry killing, or bypass a real permission denial.
+            # With the leader reaped, observe only (signal 0), for <=250ms.
+            # Only ESRCH proves the entire owned group has disappeared.
+            if process.poll() is None:
+                raise
+            for attempt in range(10):
+                try:
+                    os.killpg(process.pid, 0)
+                except ProcessLookupError:
+                    return
+                except PermissionError:
+                    pass
+                if attempt < 9:
+                    time.sleep(min(self.terminate_grace, 0.25) / 10)
+            raise
 
     def _terminate(self, process: subprocess.Popen[str]) -> tuple[str, str]:
         if process.poll() is None:
@@ -463,40 +517,46 @@ class SubprocessResearchExecutor:
     ) -> CommandExecution:
         before = resource.getrusage(resource.RUSAGE_CHILDREN)
         started = time.monotonic()
-        process = subprocess.Popen(
-            list(invocation.argv),
-            cwd=invocation.cwd,
-            env={**os.environ, **dict(invocation.env)},
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            start_new_session=True,
-        )
+        process = self._spawn(invocation)
         state = CommandState.SUCCEEDED
-        while True:
-            elapsed = time.monotonic() - started
-            try:
-                should_preempt = production_active()
-            except Exception:
-                should_preempt = True
-            if should_preempt:
-                state = CommandState.PREEMPTED
-                stdout, stderr = self._terminate(process)
-                break
-            if elapsed >= timeout_seconds:
-                state = CommandState.TIMED_OUT
-                stdout, stderr = self._terminate(process)
-                break
-            try:
-                stdout, stderr = process.communicate(
-                    timeout=min(self.poll_seconds, timeout_seconds - elapsed)
-                )
-                if process.returncode != 0:
-                    state = CommandState.FAILED
-                break
-            except subprocess.TimeoutExpired:
-                continue
+        try:
+            while True:
+                elapsed = time.monotonic() - started
+                try:
+                    should_preempt = production_active()
+                except Exception:
+                    should_preempt = True
+                if should_preempt:
+                    state = CommandState.PREEMPTED
+                    stdout, stderr = self._terminate(process)
+                    break
+                if elapsed >= timeout_seconds:
+                    state = CommandState.TIMED_OUT
+                    stdout, stderr = self._terminate(process)
+                    break
+                try:
+                    stdout, stderr = process.communicate(
+                        timeout=min(self.poll_seconds, timeout_seconds - elapsed)
+                    )
+                    if process.returncode != 0:
+                        state = CommandState.FAILED
+                    break
+                except subprocess.TimeoutExpired:
+                    continue
+        finally:
+            self._cleanup_group(process)
+            if process.poll() is None:
+                process.kill()
+                process.communicate()
         after = resource.getrusage(resource.RUSAGE_CHILDREN)
+        native_peak = max(0, int(after.ru_maxrss))
+        # CHILDREN is a supervisor-wide high-water mark, not this command's
+        # peak or the sum of concurrent process-tree RSS. Never subtract peaks.
+        peak_kib, native_unit = None, "unknown"
+        if sys.platform == "darwin":
+            peak_kib, native_unit = (native_peak + 1023) // 1024, "bytes"
+        elif sys.platform == "linux":
+            peak_kib, native_unit = native_peak, "KiB"
         return CommandExecution(
             state=state,
             returncode=process.returncode,
@@ -505,7 +565,11 @@ class SubprocessResearchExecutor:
             wall_seconds=time.monotonic() - started,
             user_seconds=max(0.0, after.ru_utime - before.ru_utime),
             system_seconds=max(0.0, after.ru_stime - before.ru_stime),
-            max_rss_kb=max(0, int(after.ru_maxrss)),
+            max_rss_kb=peak_kib,
+            usage_scope="supervisor_terminated_children_cpu_delta_and_peak_highwater",
+            usage_platform=sys.platform,
+            max_rss_native=native_peak,
+            max_rss_native_unit=native_unit,
         )
 
 
@@ -547,6 +611,9 @@ class ResearchRuntime:
     free_space_probe: Callable[[Path], int] = _free_space
     executor: ResearchExecutor = SubprocessResearchExecutor()
     clock: Callable[[], datetime] = lambda: datetime.now(timezone.utc)
+    # Inner supervised scoring writes into its workspace, but review evidence
+    # remains pinned to the outer WARM root. This is not a guard opt-out.
+    review_warm_root: Path | None = None
 
     def __post_init__(self) -> None:
         if self.reserve_bytes < 0:
@@ -585,7 +652,10 @@ class ResearchRunner:
             try:
                 with path.open("a", encoding="utf-8") as handle:
                     try:
-                        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        # Production owners (central/domain single_run_lock)
+                        # use LOCK_EX. Observers must share LOCK_SH, otherwise
+                        # parent and worker probes impersonate production.
+                        fcntl.flock(handle.fileno(), fcntl.LOCK_SH | fcntl.LOCK_NB)
                     except BlockingIOError:
                         return True
                     finally:
@@ -596,6 +666,10 @@ class ResearchRunner:
             except OSError:
                 return True
         return False
+
+    def _review_status(self, spec: ExperimentSpec) -> str | None:
+        from .research_guard import research_gate_status
+        return research_gate_status(self.runtime, self.registry, spec.domain, spec.evaluation_ruler_digest)
 
     def _preflight(
         self,
@@ -746,9 +820,6 @@ class ResearchRunner:
         spec: ExperimentSpec,
         adapter: ResearchDomainAdapter,
     ) -> ResearchRunResult:
-        preflight = self._preflight(job, spec, adapter)
-        if preflight is not None:
-            return preflight
         heavy_lock = (
             self.runtime.state_root.expanduser().resolve()
             / "locks"
@@ -759,6 +830,12 @@ class ResearchRunner:
                 return self._result(
                     job, ResearchDisposition.DEFERRED, "heavy_worker_busy"
                 )
+            preflight = self._preflight(job, spec, adapter)
+            if preflight is not None:
+                return preflight
+            review_status = self._review_status(spec)
+            if review_status:
+                return self._result(job, ResearchDisposition.BLOCKED, review_status)
             if self._production_active():
                 return self._result(
                     job, ResearchDisposition.DEFERRED, "production_active"
@@ -854,6 +931,13 @@ class ResearchRunner:
             failure_status: str | None = None
             failure_disposition = ResearchDisposition.FAILED
             deadline = time.monotonic() + job.timeout_seconds
+            review_interruption = None
+
+            def interrupted() -> bool:
+                nonlocal review_interruption
+                review_interruption = self._review_status(spec)
+                return review_interruption is not None or self._production_active()
+
             try:
                 for role, checkout in (
                     ("baseline", job.baseline_checkout),
@@ -868,6 +952,10 @@ class ResearchRunner:
                         output_dir=role_output,
                     )
                     for invocation in invocations:
+                        if interrupted():
+                            failure_status = review_interruption or "production_preempted"
+                            failure_disposition = ResearchDisposition.PREEMPTED
+                            break
                         invocation.output_dir.mkdir(parents=True)
                         remaining = deadline - time.monotonic()
                         if remaining <= 0:
@@ -878,7 +966,7 @@ class ResearchRunner:
                             execution = self.runtime.executor.run(
                                 invocation,
                                 timeout_seconds=remaining,
-                                production_active=self._production_active,
+                                production_active=interrupted,
                             )
                         except Exception as exc:
                             execution_log.append(
@@ -895,6 +983,7 @@ class ResearchRunner:
                                         "user_seconds": 0.0,
                                         "system_seconds": 0.0,
                                         "max_rss_kb": 0,
+                                        "usage_scope": "unavailable_executor_exception",
                                     },
                                 }
                             )
@@ -913,6 +1002,10 @@ class ResearchRunner:
                                 "user_seconds": execution.user_seconds,
                                 "system_seconds": execution.system_seconds,
                                 "max_rss_kb": execution.max_rss_kb,
+                                "usage_scope": execution.usage_scope,
+                                "usage_platform": execution.usage_platform,
+                                "max_rss_native": execution.max_rss_native,
+                                "max_rss_native_unit": execution.max_rss_native_unit,
                             },
                         }
                         execution_log.append(item)
@@ -921,7 +1014,7 @@ class ResearchRunner:
                             failure_disposition = ResearchDisposition.TIMED_OUT
                             break
                         if execution.state is CommandState.PREEMPTED:
-                            failure_status = "production_preempted"
+                            failure_status = review_interruption or "production_preempted"
                             failure_disposition = ResearchDisposition.PREEMPTED
                             break
                         if (
@@ -930,8 +1023,8 @@ class ResearchRunner:
                         ):
                             failure_status = "command_failed"
                             break
-                        if self._production_active():
-                            failure_status = "production_preempted"
+                        if interrupted():
+                            failure_status = review_interruption or "production_preempted"
                             failure_disposition = ResearchDisposition.PREEMPTED
                             break
                         if invocation.metrics_path.is_symlink() or any(
@@ -1074,6 +1167,9 @@ class ResearchRunner:
                     + "\n",
                     encoding="utf-8",
                 )
+                if interrupted():
+                    return self._result(job, ResearchDisposition.PREEMPTED,
+                                        review_interruption or "production_preempted", artifact_path=partial)
                 partial.rename(final)
                 completed_at = _timestamp(self.runtime.clock)
                 run_id = self._register_run(

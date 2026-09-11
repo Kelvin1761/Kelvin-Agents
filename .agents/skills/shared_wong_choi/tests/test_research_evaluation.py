@@ -35,7 +35,7 @@ from shared_wong_choi.research_evaluation import (
     EvaluationObservation,
     EvaluationVerdict,
     ObservationSeries,
-    evaluate_research_candidate,
+    _evaluate_research_candidate as evaluate_research_candidate,
     publish_evaluation_decision,
 )
 from shared_wong_choi.research_registry import (
@@ -557,7 +557,7 @@ def test_subgroup_harm_is_a_cohort_regression_and_bootstrap_is_reproducible() ->
     assert first.to_payload() == second.to_payload()
 
 
-def test_machine_decision_report_is_append_only_shadow_proposal(
+def test_unverified_metric_report_cannot_be_published_as_shadow_proposal(
     tmp_path: Path,
 ) -> None:
     domain = Domain.AU
@@ -597,26 +597,14 @@ def test_machine_decision_report_is_append_only_shadow_proposal(
             decided_at="2026-08-31T01:00:00+00:00",
         )
 
-    first = publish_evaluation_decision(
-        report,
-        registry=registry,
-        run_id=run.record_id,
-        report_root=tmp_path / "reports",
-        decided_at="2026-08-31T01:00:00+00:00",
-    )
-    second = publish_evaluation_decision(
-        report,
-        registry=registry,
-        run_id=run.record_id,
-        report_root=tmp_path / "reports",
-        decided_at="2026-08-31T02:00:00+00:00",
-    )
-
-    assert first.status == "created"
-    assert second.status == "duplicate"
-    decision = registry.load(first.decision_id)
-    assert decision["state"] == "shadow_review_proposal"
-    assert decision["links"]["run_id"] == run.record_id
+    with pytest.raises(EvaluationError, match="verification"):
+        publish_evaluation_decision(
+            report,
+            registry=registry,
+            run_id=run.record_id,
+            report_root=tmp_path / "reports",
+            decided_at="2026-08-31T01:00:00+00:00",
+        )
 
 
 def runner_evidence(tmp_path, domain, *, forged_row=False):
@@ -702,6 +690,8 @@ def runner_evidence(tmp_path, domain, *, forged_row=False):
         1024,
         30,
     )
+    from research_test_support import pin_review
+    pin_review(runtime, registry, frozen)
     result = ResearchRunner(runtime, registry).run(job, frozen, create_research_adapter(domain))
     assert result.status == "succeeded"
     return frozen, snapshot, result, registry
@@ -716,15 +706,16 @@ def test_real_runner_artifact_to_evaluation_and_decision(tmp_path, domain):
         run_artifact=run.artifact_path,
         run_id=run.experiment_run_id,
         registry=registry,
-        safety_passed=True,
     )
     assert report.input_metrics_digest == run.reproducibility_digest
+    assert report.verdict is EvaluationVerdict.BLOCKED
     published = publish_evaluation_decision(
         report,
         registry=registry,
         run_id=run.experiment_run_id,
         report_root=tmp_path / "reports",
         decided_at="2026-08-31T01:00:00+00:00",
+        verification=evaluation_module.EvaluationVerification(frozen, snapshot.path, run.artifact_path),
     )
     assert published.status == "created"
 
@@ -741,5 +732,18 @@ def test_runner_evaluation_rejects_tampering_and_paired_row_forgery(tmp_path, mu
             run_artifact=run.artifact_path,
             run_id=run.experiment_run_id,
             registry=registry,
-            safety_passed=True,
         )
+
+
+def test_verified_observations_can_be_loaded_without_claiming_safety(tmp_path):
+    frozen, snapshot, run, registry = runner_evidence(tmp_path, Domain.AU)
+    verified = evaluation_module.load_run_observations(
+        frozen,
+        dataset_snapshot=snapshot.path,
+        run_artifact=run.artifact_path,
+        run_id=run.experiment_run_id,
+        registry=registry,
+    )
+    assert verified.run["record_id"] == run.experiment_run_id
+    assert verified.dataset == snapshot.manifest
+    assert verified.baseline.observations[0].row_id == verified.candidate.observations[0].row_id

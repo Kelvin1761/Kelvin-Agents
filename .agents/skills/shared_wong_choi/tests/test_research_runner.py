@@ -30,6 +30,7 @@ from shared_wong_choi.research_registry import (
 )
 from shared_wong_choi.research_runner import (
     CommandExecution,
+    CommandInvocation,
     CommandState,
     QueueConflictError,
     ResearchDisposition,
@@ -41,6 +42,61 @@ from shared_wong_choi.research_runner import (
     SubprocessResearchExecutor,
     create_research_adapter,
 )
+
+
+def test_executor_cleans_descendant_even_when_leader_exits_successfully(tmp_path):
+    import subprocess
+    import time
+
+    marker = tmp_path / "orphan-wrote"
+    descendant = f"import time; from pathlib import Path; time.sleep(.4); Path({str(marker)!r}).touch()"
+    leader = (
+        f"import subprocess,sys; subprocess.Popen([sys.executable, '-c', {descendant!r}], "
+        "stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)"
+    )
+    invocation = CommandInvocation("baseline", 0, (sys.executable, "-c", leader), tmp_path, {}, tmp_path, tmp_path / "metrics.json")
+    result = SubprocessResearchExecutor(poll_seconds=.02, terminate_grace=.05).run(
+        invocation, timeout_seconds=3, production_active=lambda: False
+    )
+    assert result.state is CommandState.SUCCEEDED
+    time.sleep(.5)
+    assert not marker.exists(), "orphan command outlived the owned process group"
+
+
+@pytest.mark.parametrize("platform,raw,expected,unit", [
+    ("darwin", 39370752, 38448, "bytes"),
+    ("darwin", 1025, 2, "bytes"),
+    ("linux", 38448, 38448, "KiB"),
+    ("unknown-os", 38448, None, "unknown"),
+])
+def test_executor_rss_units_and_scope_are_explicit(tmp_path, monkeypatch, platform, raw, expected, unit):
+    from types import SimpleNamespace
+    import shared_wong_choi.research_runner as module
+
+    # A historical high-water mark cannot be subtracted to infer this command's peak.
+    readings = iter([
+        SimpleNamespace(ru_utime=10, ru_stime=5, ru_maxrss=raw),
+        SimpleNamespace(ru_utime=10.2, ru_stime=5.1, ru_maxrss=raw),
+    ])
+    monkeypatch.setattr(module.resource, "getrusage", lambda _: next(readings))
+    monkeypatch.setattr(sys, "platform", platform)
+    invocation = CommandInvocation("baseline", 0, (sys.executable, "-c", "pass"), tmp_path, {}, tmp_path, tmp_path / "metrics.json")
+    result = SubprocessResearchExecutor(poll_seconds=.02, terminate_grace=.05).run(
+        invocation, timeout_seconds=3, production_active=lambda: False
+    )
+    assert result.max_rss_kb == expected
+    assert result.max_rss_native == raw and result.max_rss_native_unit == unit
+    assert result.usage_platform == platform
+    assert result.usage_scope == "supervisor_terminated_children_cpu_delta_and_peak_highwater"
+    assert result.user_seconds == pytest.approx(.2)
+
+
+def test_runner_persists_unverified_executor_scope_instead_of_claiming_per_command_peak(tmp_path):
+    data = snapshot(tmp_path)
+    run_runtime = runtime(tmp_path)
+    result = registered_runner(tmp_path, run_runtime).run(job(tmp_path, data.path), spec(), create_research_adapter("au"))
+    payload = json.loads((result.artifact_path / "runtime.json").read_text())
+    assert all(item["resources"]["usage_scope"] == "executor_reported_unverified" for item in payload)
 
 
 BASELINE = "a" * 40
@@ -263,14 +319,26 @@ def registered_runner(
 ) -> ResearchRunner:
     registry = ExperimentRegistry(tmp_path / "registry")
     registry.append(spec(domain))
+    from research_test_support import pin_review
+    pin_review(run_runtime, registry, spec(domain))
     return ResearchRunner(run_runtime, registry)
+
+
+def configured_queue(tmp_path, *, clock=None, current_spec=None, registry=None):
+    from research_test_support import pin_review
+    current = runtime(tmp_path)
+    registry = registry or ExperimentRegistry(tmp_path / 'registry')
+    current_spec = current_spec or spec()
+    registry.append(current_spec)
+    pin_review(current, registry, current_spec, queue_root=tmp_path / 'queue')
+    return ResearchQueue(tmp_path / 'queue', clock=clock, runtime=current, registry=registry)
 
 
 def test_queue_is_append_only_idempotent_and_claims_in_order(tmp_path: Path) -> None:
     data = snapshot(tmp_path)
     first = job(tmp_path, data.path)
     second = replace(first, job_id="wc:au:research-job:fixture-002")
-    queue = ResearchQueue(tmp_path / "queue")
+    queue = configured_queue(tmp_path)
 
     assert queue.enqueue(second).status == "created"
     assert queue.enqueue(first).status == "created"
@@ -285,7 +353,7 @@ def test_queue_is_append_only_idempotent_and_claims_in_order(tmp_path: Path) -> 
 def test_queue_rejects_same_id_with_different_payload(tmp_path: Path) -> None:
     data = snapshot(tmp_path)
     queued = job(tmp_path, data.path)
-    queue = ResearchQueue(tmp_path / "queue")
+    queue = configured_queue(tmp_path)
     queue.enqueue(queued)
 
     with pytest.raises(QueueConflictError, match="immutable queue conflict"):
@@ -323,7 +391,7 @@ def test_queue_finish_verifies_claim_and_is_idempotent(tmp_path: Path) -> None:
             datetime(2026, 8, 31, 0, 2, tzinfo=timezone.utc),
         )
     )
-    queue = ResearchQueue(tmp_path / "queue", clock=lambda: next(stamps))
+    queue = configured_queue(tmp_path, clock=lambda: next(stamps))
     queue.enqueue(queued)
     claim = queue.claim_next("worker-1")
     result = ResearchRunResult(

@@ -11,7 +11,7 @@ from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any, Callable, Mapping, TYPE_CHECKING
 from uuid import uuid4
 
 from shared_racing.model_evaluation_decision import (
@@ -39,8 +39,12 @@ from .research_registry import (
 )
 
 
+if TYPE_CHECKING:
+    from .research_postflight import SafetyEvidence
+
+
 OBSERVATION_SCHEMA_VERSION = "wong-choi-evaluation-observations/v1"
-REPORT_SCHEMA_VERSION = "wong-choi-research-evaluation/v1"
+REPORT_SCHEMA_VERSION = "wong-choi-research-evaluation/v2"
 
 
 class EvaluationError(RuntimeError):
@@ -198,6 +202,7 @@ class EvaluationReport:
     promotion_proposal_allowed: bool
     safety_passed: bool
     scopes: tuple[ScopeEvaluation, ...]
+    safety_report: Mapping[str, Any] | None = None
 
     def to_payload(self) -> dict[str, Any]:
         payload = {
@@ -214,6 +219,7 @@ class EvaluationReport:
             "promotion_proposal_allowed": self.promotion_proposal_allowed,
             "safety_passed": self.safety_passed,
             "scopes": [scope.to_payload() for scope in self.scopes],
+            "safety_report": dict(self.safety_report) if self.safety_report is not None else None,
         }
         payload["content_hash"] = _digest(payload)
         return payload
@@ -654,7 +660,7 @@ def _family_scope(
     )
 
 
-def evaluate_research_candidate(
+def _evaluate_research_candidate(
     spec: ExperimentSpec,
     dataset: DatasetManifest,
     baseline: ObservationSeries,
@@ -833,15 +839,22 @@ def _strict_json(raw: str) -> Any:
         raise EvaluationError("invalid evaluation JSON") from exc
 
 
-def evaluate_run_artifact(
+@dataclass(frozen=True)
+class VerifiedRunObservations:
+    dataset: DatasetManifest
+    run: Mapping[str, Any]
+    baseline: ObservationSeries
+    candidate: ObservationSeries
+
+
+def load_run_observations(
     spec: ExperimentSpec,
     *,
     dataset_snapshot: Path,
     run_artifact: Path,
     run_id: str,
     registry: ExperimentRegistry,
-    safety_passed: bool,
-) -> EvaluationReport:
+) -> VerifiedRunObservations:
     """Verify Task 4 output bytes and Task 3 row identity before evaluation.
 
     Multi-command specs may partition observations, but no command output can
@@ -867,7 +880,7 @@ def evaluate_run_artifact(
     ):
         raise EvaluationError("run artifact provenance conflicts with registered spec")
     if (
-        run_artifact.is_symlink()
+        any(path.is_symlink() for path in (run_artifact, *run_artifact.parents))
         or not run_artifact.is_dir()
         or any(path.is_symlink() for path in run_artifact.rglob("*"))
     ):
@@ -923,19 +936,77 @@ def evaluate_run_artifact(
             dataset.record_id,
             dataset.artifact_digest,
         )
-    report = evaluate_research_candidate(
-        spec, dataset, series["baseline"], series["candidate"], safety_passed=safety_passed
-    )
+    ruler, digest = _ruler_and_digest(spec.domain, ruler_root=None)
+    _validate_inputs(spec, dataset, series["baseline"], series["candidate"], ruler, digest)
     if (
         artifact_digest(run_artifact)["sha256"] != run["artifact_digest"]
         or load_dataset_snapshot(snapshot.path).manifest.to_payload() != dataset.to_payload()
     ):
         raise EvaluationError("evaluation artifact changed during analysis")
-    return replace(report, input_metrics_digest=run["metrics_digest"])
+    return VerifiedRunObservations(dataset, run, series["baseline"], series["candidate"])
 
 
-def _write_report(path: Path, payload: Mapping[str, Any]) -> str:
-    path.parent.mkdir(parents=True, exist_ok=True)
+def evaluate_run_artifact(
+    spec: ExperimentSpec,
+    *,
+    dataset_snapshot: Path,
+    run_artifact: Path,
+    run_id: str,
+    registry: ExperimentRegistry,
+    evidence: SafetyEvidence | None = None,
+) -> EvaluationReport:
+    verified = load_run_observations(
+        spec,
+        dataset_snapshot=dataset_snapshot,
+        run_artifact=run_artifact,
+        run_id=run_id,
+        registry=registry,
+    )
+    safety = None
+    if evidence is not None:
+        from .research_postflight import verify_research_safety
+
+        safety = verify_research_safety(
+            spec,
+            dataset_snapshot=dataset_snapshot,
+            run_artifact=run_artifact,
+            run_id=run_id,
+            registry=registry,
+            evidence=evidence,
+        )
+    report = _evaluate_research_candidate(
+        spec,
+        verified.dataset,
+        verified.baseline,
+        verified.candidate,
+        safety_passed=safety is not None and safety.passed,
+    )
+    if (
+        artifact_digest(run_artifact)["sha256"] != verified.run["artifact_digest"]
+        or load_dataset_snapshot(dataset_snapshot).manifest != verified.dataset
+    ):
+        raise EvaluationError("evaluation artifact changed during analysis")
+    return replace(
+        report,
+        input_metrics_digest=verified.run["metrics_digest"],
+        safety_report=safety.to_payload() if safety else None,
+    )
+
+
+@dataclass(frozen=True)
+class EvaluationVerification:
+    spec: ExperimentSpec
+    dataset_snapshot: Path
+    run_artifact: Path
+    safety_evidence: SafetyEvidence | None = None
+
+
+def _write_report(
+    path: Path, payload: Mapping[str, Any], *, resource_checkpoint: Callable[[], None] | None = None,
+    create_parents: bool = True,
+) -> str:
+    if create_parents:
+        path.parent.mkdir(parents=True, exist_ok=True)
     encoded = (json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
     temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
     try:
@@ -944,6 +1015,8 @@ def _write_report(path: Path, payload: Mapping[str, Any]) -> str:
             handle.write(encoded)
             handle.flush()
             os.fsync(handle.fileno())
+        if resource_checkpoint is not None:
+            resource_checkpoint()
         try:
             os.link(temporary, path)
         except FileExistsError:
@@ -955,6 +1028,32 @@ def _write_report(path: Path, payload: Mapping[str, Any]) -> str:
     return "created"
 
 
+def _decision_for_evaluation(report, run_id, artifact_digest, decided_at):
+    """Single identity/state mapping for publication and read-only reconciliation."""
+    payload = report.to_payload()
+    state = {
+        EvaluationVerdict.PRIMARY_WIN: ExperimentDecisionState.SHADOW_REVIEW_PROPOSAL,
+        EvaluationVerdict.RANKING_WIN: ExperimentDecisionState.SHADOW_REVIEW_PROPOSAL,
+        EvaluationVerdict.SHADOW_CANDIDATE: ExperimentDecisionState.SHADOW_REVIEW_PROPOSAL,
+        EvaluationVerdict.REJECT: ExperimentDecisionState.REJECT,
+        EvaluationVerdict.INCONCLUSIVE: ExperimentDecisionState.INCONCLUSIVE,
+        EvaluationVerdict.DESCRIPTIVE_ONLY: ExperimentDecisionState.INCONCLUSIVE,
+        EvaluationVerdict.BLOCKED: ExperimentDecisionState.BLOCKED,
+    }[report.verdict]
+    identity = _digest({"run_id": run_id, "report_hash": payload["content_hash"], "state": state.value})[:24]
+    return ExperimentDecision(
+        record_id=f"wc:{report.domain.value}:experiment-decision:{identity}",
+        domain=report.domain,
+        created_at=decided_at,
+        run_id=run_id,
+        decided_at=decided_at,
+        state=state,
+        rationale=f"{report.verdict.value}: {report.reason}",
+        metrics_digest=report.input_metrics_digest,
+        artifact_digest=artifact_digest,
+    )
+
+
 def publish_evaluation_decision(
     report: EvaluationReport,
     *,
@@ -962,6 +1061,8 @@ def publish_evaluation_decision(
     run_id: str,
     report_root: Path,
     decided_at: str,
+    verification: EvaluationVerification | None = None,
+    resource_checkpoint: Callable[[], None] | None = None,
 ) -> PublishedEvaluationDecision:
     _aware(decided_at, "decided_at")
     try:
@@ -979,37 +1080,33 @@ def publish_evaluation_decision(
         or run.get("state") != "succeeded"
     ):
         raise EvaluationError("evaluation report conflicts with frozen experiment run")
+    if not isinstance(verification, EvaluationVerification):
+        raise EvaluationError("current artifact verification references are required for publication")
+    recomputed = evaluate_run_artifact(
+        verification.spec,
+        dataset_snapshot=verification.dataset_snapshot,
+        run_artifact=verification.run_artifact,
+        run_id=run_id,
+        registry=registry,
+        evidence=verification.safety_evidence,
+    )
+    if recomputed.to_payload() != report.to_payload():
+        raise EvaluationError("evaluation report differs from recomputed artifact evidence")
+    if resource_checkpoint is not None:
+        resource_checkpoint()
     payload = report.to_payload()
     report_path = (
         report_root.expanduser().resolve() / report.domain.value / str(payload["content_hash"]) / "report.json"
     )
-    report_status = _write_report(report_path, payload)
+    report_status = _write_report(report_path, payload, resource_checkpoint=resource_checkpoint)
     artifact_digest = hashlib.sha256(report_path.read_bytes()).hexdigest()
-    state = {
-        EvaluationVerdict.PRIMARY_WIN: ExperimentDecisionState.SHADOW_REVIEW_PROPOSAL,
-        EvaluationVerdict.RANKING_WIN: ExperimentDecisionState.SHADOW_REVIEW_PROPOSAL,
-        EvaluationVerdict.SHADOW_CANDIDATE: ExperimentDecisionState.SHADOW_REVIEW_PROPOSAL,
-        EvaluationVerdict.REJECT: ExperimentDecisionState.REJECT,
-        EvaluationVerdict.INCONCLUSIVE: ExperimentDecisionState.INCONCLUSIVE,
-        EvaluationVerdict.DESCRIPTIVE_ONLY: ExperimentDecisionState.INCONCLUSIVE,
-        EvaluationVerdict.BLOCKED: ExperimentDecisionState.BLOCKED,
-    }[report.verdict]
-    identity = _digest({"run_id": run_id, "report_hash": payload["content_hash"], "state": state.value})[:24]
-    decision_id = f"wc:{report.domain.value}:experiment-decision:{identity}"
-    if registry.find(decision_id) is not None:
-        prior = registry.load(decision_id)
+    decision = _decision_for_evaluation(report, run_id, artifact_digest, decided_at)
+    if registry.find(decision.record_id) is not None:
+        prior = registry.load(decision.record_id)
         decided_at = prior["decided_at"]
-    decision = ExperimentDecision(
-        record_id=decision_id,
-        domain=report.domain,
-        created_at=decided_at,
-        run_id=run_id,
-        decided_at=decided_at,
-        state=state,
-        rationale=f"{report.verdict.value}: {report.reason}",
-        metrics_digest=report.input_metrics_digest,
-        artifact_digest=artifact_digest,
-    )
+        decision = _decision_for_evaluation(report, run_id, artifact_digest, decided_at)
+    if resource_checkpoint is not None:
+        resource_checkpoint()
     appended = registry.append(decision)
     status = "created" if report_status == "created" and appended.status == "created" else "duplicate"
     return PublishedEvaluationDecision(status, decision.record_id, report_path)

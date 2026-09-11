@@ -1,0 +1,282 @@
+"""Read-only HKJC feature/source provenance inventory."""
+from __future__ import annotations
+
+import json
+import re
+from datetime import datetime
+from pathlib import Path
+from typing import Callable
+
+from .contracts import Domain
+from .research_index import _at, _encoded, _hash, _hashed, _safe
+from .research_prediction_artifacts import _Blobs, inspect_prediction_artifacts
+from .research_review_clock import _digest
+
+
+SCHEMA = "wong-choi-hkjc-feature-provenance/v1"
+MAX_RECORDS = 10000
+MAX_FEATURES = 1000000
+OUTPUT_NAME = re.compile(
+    r"(?:Data_Health\.(?:json|md)|HKJC_Auto_Scoring\.csv|"
+    r"Race_\d+_(?:Logic\.json|Auto_Analysis\.md|Auto_Scoring\.csv))"
+)
+LOGIC_NAME = re.compile(r"Race_\d+_Logic\.json")
+BLOCKER_ORDER = (
+    "prediction_bundle_unverified", "input_artifacts_missing",
+    "feature_provenance_missing", "legacy_feature_provenance",
+    "feature_contract_invalid", "feature_source_missing",
+    "feature_source_is_prediction_output", "feature_source_digest_mismatch",
+    "feature_source_after_cutoff",
+)
+SOURCE_FAILURES = frozenset(BLOCKER_ORDER[5:])
+
+
+def _source_valid(source: object, *, files: dict[str, str], cutoff: datetime,
+                  blockers: set[str]) -> bool:
+    if (not isinstance(source, dict)
+            or set(source) != {"artifact", "sha256", "available_at", "field"}
+            or not isinstance(source.get("artifact"), str)
+            or Path(source["artifact"]).name != source["artifact"]
+            or not isinstance(source.get("field"), str) or not source["field"].strip()):
+        blockers.add("feature_contract_invalid")
+        return False
+    artifact = source["artifact"]
+    try:
+        _digest(source["sha256"])
+        available = _at(source["available_at"])
+    except (ValueError, RuntimeError, TypeError):
+        blockers.add("feature_contract_invalid")
+        return False
+    if artifact not in files:
+        blockers.add("feature_source_missing")
+        return False
+    if OUTPUT_NAME.fullmatch(artifact):
+        blockers.add("feature_source_is_prediction_output")
+        return False
+    if source["sha256"] != files[artifact]:
+        blockers.add("feature_source_digest_mismatch")
+        return False
+    if available > cutoff:
+        blockers.add("feature_source_after_cutoff")
+        return False
+    return True
+
+
+def _feature_valid(value: object, *, files: dict[str, str], cutoff: datetime,
+                   blockers: set[str]) -> tuple[bool, str]:
+    if isinstance(value, str):
+        blockers.add("legacy_feature_provenance")
+        return False, "legacy"
+    if (not isinstance(value, dict) or set(value) != {"derivation", "sources"}
+            or not isinstance(value.get("derivation"), str) or not value["derivation"].strip()
+            or not isinstance(value.get("sources"), list) or not value["sources"]):
+        blockers.add("feature_contract_invalid")
+        return False, "invalid"
+    valid = all(_source_valid(item, files=files, cutoff=cutoff, blockers=blockers)
+                for item in value["sources"])
+    return valid, "structured"
+
+
+def inspect_hkjc_feature_provenance(*, root: Path, as_of: datetime,
+                                    relocation_roots: tuple[Path, ...] = (),
+                                    checkpoint: Callable[[], None] = lambda: None) -> dict:
+    """Inspect canonical HKJC prediction bundles without sample authority."""
+    if not isinstance(relocation_roots, tuple):
+        raise ValueError("tuple relocation roots required")
+    root, end = _safe(root), _at(as_of)
+    roots = tuple(_safe(Path(item)) for item in relocation_roots)
+    prediction_report = inspect_prediction_artifacts(
+        root=root, domain=Domain.HKJC, as_of=end, relocation_roots=roots,
+        checkpoint=checkpoint,
+    )
+    blobs, records = _Blobs(checkpoint), []
+    for prediction in prediction_report["records"]:
+        blockers: set[str] = set()
+        bundle = prediction["snapshot_bundle_verified"]
+        totals = {
+            "input_artifacts": 0, "logic_files": 0, "horses": 0,
+            "feature_entries": 0, "structured_feature_entries": 0,
+            "legacy_feature_entries": 0, "invalid_feature_entries": 0,
+            "verified_feature_entries": 0,
+        }
+        snapshot_root = prediction["resolved_snapshot_root"]
+        if not bundle or snapshot_root is None:
+            blockers.add("prediction_bundle_unverified")
+        else:
+            snapshot = _safe(Path(snapshot_root))
+            manifest_raw, _manifest_digest, _manifest_size = blobs.read(snapshot / "manifest.json")
+            try:
+                manifest = json.loads(manifest_raw)
+            except (ValueError, UnicodeError) as exc:
+                raise ValueError("invalid HKJC prediction manifest JSON") from exc
+            files = {
+                item["name"]: item["sha256"] for item in manifest.get("files", [])
+                if isinstance(item, dict) and set(item) == {"name", "bytes", "sha256"}
+            }
+            if len(files) != len(manifest.get("files", [])):
+                raise ValueError("invalid HKJC prediction manifest file projection")
+            totals["input_artifacts"] = sum(not OUTPUT_NAME.fullmatch(name) for name in files)
+            if totals["input_artifacts"] == 0:
+                blockers.add("input_artifacts_missing")
+            cutoff = _at(prediction["source_cutoff_at"])
+            logic_names = sorted(name for name in files if LOGIC_NAME.fullmatch(name))
+            totals["logic_files"] = len(logic_names)
+            for name in logic_names:
+                raw, digest, _size = blobs.read(snapshot / name)
+                if digest != files[name]:
+                    raise ValueError("HKJC Logic digest differs from verified manifest")
+                try:
+                    logic = json.loads(raw)
+                except (ValueError, UnicodeError) as exc:
+                    raise ValueError("invalid HKJC Logic JSON") from exc
+                horses = logic.get("horses") if isinstance(logic, dict) else None
+                if not isinstance(horses, dict):
+                    raise ValueError("HKJC Logic horses must be a mapping")
+                totals["horses"] += len(horses)
+                for horse in horses.values():
+                    provenance = ((horse.get("python_auto") or {}).get("score_provenance")
+                                  if isinstance(horse, dict) else None)
+                    if not isinstance(provenance, dict) or not provenance:
+                        blockers.add("feature_provenance_missing")
+                        continue
+                    for feature, value in provenance.items():
+                        totals["feature_entries"] += 1
+                        if not isinstance(feature, str) or not feature.endswith("_score"):
+                            blockers.add("feature_contract_invalid")
+                            totals["invalid_feature_entries"] += 1
+                            continue
+                        valid, kind = _feature_valid(
+                            value, files=files, cutoff=cutoff, blockers=blockers,
+                        )
+                        totals[f"{kind}_feature_entries"] += 1
+                        totals["verified_feature_entries"] += int(valid)
+            if totals["feature_entries"] == 0:
+                blockers.add("feature_provenance_missing")
+        ordered = [code for code in BLOCKER_ORDER if code in blockers]
+        ready = (bundle and totals["input_artifacts"] > 0 and totals["feature_entries"] > 0
+                 and totals["verified_feature_entries"] == totals["feature_entries"]
+                 and not ordered)
+        records.append({
+            "record_id": prediction["record_id"], "event_id": prediction["event_id"],
+            "source_cutoff_at": prediction["source_cutoff_at"],
+            "snapshot_root": snapshot_root, "bundle_verified": bundle,
+            **totals, "feature_availability_verified": ready, "blockers": ordered,
+        })
+    blobs.recheck()
+    count_fields = (
+        "input_artifacts", "logic_files", "horses", "feature_entries",
+        "structured_feature_entries", "legacy_feature_entries", "invalid_feature_entries",
+        "verified_feature_entries",
+    )
+    report = {
+        "schema_version": SCHEMA, "domain": Domain.HKJC.value, "root": str(root),
+        "as_of": end.isoformat(), "relocation_roots": [str(item) for item in roots],
+        "prediction_report_hash": prediction_report["content_hash"],
+        "records_seen": len(records),
+        "verified_bundles": sum(item["bundle_verified"] for item in records),
+        **{key: sum(item[key] for item in records) for key in count_fields},
+        "records": records,
+        "feature_availability_verified": bool(records) and all(
+            item["feature_availability_verified"] for item in records),
+        "source_coverage_complete": False, "verified_monitoring_samples": None,
+        "model_promotion_allowed": False,
+    }
+    report["content_hash"] = _hash(report)
+    verify_hkjc_feature_provenance_report(
+        report, root=root, as_of=end, relocation_roots=roots,
+    )
+    return report
+
+
+def verify_hkjc_feature_provenance_report(report: dict, *, root: Path,
+                                           as_of: datetime,
+                                           relocation_roots: tuple[Path, ...]) -> None:
+    _hashed(report, SCHEMA)
+    count_fields = (
+        "input_artifacts", "logic_files", "horses", "feature_entries",
+        "structured_feature_entries", "legacy_feature_entries", "invalid_feature_entries",
+        "verified_feature_entries",
+    )
+    expected = {
+        "schema_version", "domain", "root", "as_of", "relocation_roots",
+        "prediction_report_hash", "records_seen", "verified_bundles", *count_fields,
+        "records", "feature_availability_verified", "source_coverage_complete",
+        "verified_monitoring_samples", "model_promotion_allowed", "content_hash",
+    }
+    roots = tuple(_safe(Path(item)) for item in relocation_roots)
+    if (set(report) != expected or report["domain"] != Domain.HKJC.value
+            or report["root"] != str(_safe(root))
+            or report["as_of"] != _at(as_of).isoformat()
+            or report["relocation_roots"] != [str(item) for item in roots]
+            or len(_encoded(report)) > 262144):
+        raise ValueError("HKJC feature provenance report scope mismatch")
+    _digest(report["prediction_report_hash"])
+    if (report["source_coverage_complete"] is not False
+            or report["verified_monitoring_samples"] is not None
+            or report["model_promotion_allowed"] is not False
+            or type(report["feature_availability_verified"]) is not bool):
+        raise ValueError("HKJC feature inventory cannot grant sample authority")
+    for key in ("records_seen", "verified_bundles", *count_fields):
+        limit = MAX_FEATURES if "feature" in key else MAX_RECORDS
+        if type(report[key]) is not int or not 0 <= report[key] <= limit:
+            raise ValueError("invalid HKJC feature aggregate")
+    if not isinstance(report["records"], list) or len(report["records"]) > MAX_RECORDS:
+        raise ValueError("invalid HKJC feature records")
+    fields = {
+        "record_id", "event_id", "source_cutoff_at", "snapshot_root",
+        "bundle_verified", *count_fields, "feature_availability_verified", "blockers",
+    }
+    identities = set()
+    for item in report["records"]:
+        if (not isinstance(item, dict) or set(item) != fields
+                or item["record_id"] in identities
+                or not item["record_id"].startswith("wc:hkjc:prediction:")
+                or not isinstance(item["event_id"], str) or not item["event_id"]
+                or _at(item["source_cutoff_at"]) > _at(as_of)
+                or type(item["bundle_verified"]) is not bool
+                or type(item["feature_availability_verified"]) is not bool):
+            raise ValueError("invalid HKJC feature projection")
+        for key in count_fields:
+            if type(item[key]) is not int or not 0 <= item[key] <= MAX_FEATURES:
+                raise ValueError("invalid HKJC feature count")
+        if (item["feature_entries"] != item["structured_feature_entries"]
+                + item["legacy_feature_entries"] + item["invalid_feature_entries"]
+                or item["verified_feature_entries"] > item["structured_feature_entries"]):
+            raise ValueError("HKJC feature count mismatch")
+        if item["snapshot_root"] is not None:
+            _safe(Path(item["snapshot_root"]))
+        if (not isinstance(item["blockers"], list)
+                or item["blockers"] != [code for code in BLOCKER_ORDER if code in item["blockers"]]
+                or len(item["blockers"]) != len(set(item["blockers"]))):
+            raise ValueError("invalid HKJC feature blockers")
+        blockers = set(item["blockers"])
+        if (not item["bundle_verified"]) != ("prediction_bundle_unverified" in blockers):
+            raise ValueError("HKJC bundle blocker mismatch")
+        if (item["bundle_verified"] and item["input_artifacts"] == 0) != (
+                "input_artifacts_missing" in blockers):
+            raise ValueError("HKJC input blocker mismatch")
+        if (item["bundle_verified"] and item["feature_entries"] == 0) != (
+                "feature_provenance_missing" in blockers):
+            raise ValueError("HKJC missing provenance blocker mismatch")
+        if (item["legacy_feature_entries"] > 0) != ("legacy_feature_provenance" in blockers):
+            raise ValueError("HKJC legacy blocker mismatch")
+        if (item["invalid_feature_entries"] > 0) != ("feature_contract_invalid" in blockers):
+            raise ValueError("HKJC contract blocker mismatch")
+        if (item["structured_feature_entries"] > item["verified_feature_entries"]
+                and not blockers.intersection(SOURCE_FAILURES | {"feature_contract_invalid"})):
+            raise ValueError("HKJC unverified provenance lacks blocker")
+        ready = (item["bundle_verified"] and item["input_artifacts"] > 0
+                 and item["feature_entries"] > 0
+                 and item["verified_feature_entries"] == item["feature_entries"]
+                 and not item["blockers"])
+        if item["feature_availability_verified"] is not ready:
+            raise ValueError("HKJC feature readiness mismatch")
+        identities.add(item["record_id"])
+    if (report["records_seen"] != len(report["records"])
+            or report["verified_bundles"] != sum(item["bundle_verified"] for item in report["records"])
+            or any(report[key] != sum(item[key] for item in report["records"])
+                   for key in count_fields)
+            or report["feature_availability_verified"] is not (
+                bool(report["records"])
+                and all(item["feature_availability_verified"] for item in report["records"]))):
+        raise ValueError("HKJC feature aggregates mismatch")
