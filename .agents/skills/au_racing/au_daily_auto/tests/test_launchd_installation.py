@@ -32,6 +32,15 @@ class LaunchdInstallationTests(unittest.TestCase):
             self.assertTrue(args[1].endswith("/run_au_auxiliary.sh"))
             self.assertEqual(args[2], task)
 
+    def test_scheduled_runner_waits_for_remote_dns_before_self_update(self):
+        runner = (HERE / "run_au_daily_schedule.sh").read_text(encoding="utf-8")
+        gate = runner.index('"$NETWORK_READINESS"')
+        update = runner.index("git fetch --quiet origin")
+        self.assertLess(gate, update)
+        for host in ("github.com", "wongchoi-dashboard.pages.dev",
+                     "www.sportsbet.com.au"):
+            self.assertIn(f"--host {host}", runner)
+
 
 if __name__ == "__main__":
     unittest.main()

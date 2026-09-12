@@ -2492,7 +2492,7 @@ def unpublished_local_meetings(payload: dict, already: list[Path],
 
 
 def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
-                   drop_keys: list[str] | None = None) -> tuple[Path, list[str]]:
+                   drop_keys: list[str] | None = None) -> tuple[Path, list[str], list[Path]]:
     """由 live snapshot 剪走已歸檔場次，再串連合併每個場次 → 最終 JSON。
 
     ⚠️ `generate_static.py` 一次只食一個 `--au-meeting-dir`，所以第二個場次嘅
@@ -2595,7 +2595,10 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
                     snapshot=out_json.name)
     if current is None:
         raise TemporaryFailure("冇 base snapshot 又冇場次可以合併")
-    return current, drop_keys
+    # Return the exact set that was merged.  Callers must gate this list rather
+    # than the originally requested list: this function deliberately discovers
+    # analysed-but-unpublished meetings as a recovery path.
+    return current, drop_keys, meeting_dirs
 
 
 # Cloudflare Pages 硬性拒收超過 25 MiB 嘅單一檔案。喺 24 就收手，留一格緩衝。
@@ -2833,14 +2836,17 @@ def step_dashboard(runlog: RunLog, meeting_dirs: list[Path],
                 archived=len(archived_names))
     expect_absent = [archive_dashboard_key(name) for name in archived_names]
 
-    # 欄位級合約先行 —— snapshot 結構對唔代表欄位有值。2026-08-22 個 snapshot
-    # 結構完全正常，但入面 12.2% 排名權重係死嘅。
-    contract_problems = check_data_contract(runlog, meeting_dirs)
+    # `build_snapshot` 會主動補入本機已分析但未發佈嘅場次，所以 gate 一定要食佢
+    # 最終實際合併嘅名單。以前 skip-refresh 傳入 []，gate 就檢查 0 個場次並通過，
+    # builder 隨後先補入 10 個未發佈場次，變成真正嘅 gate bypass。
+    snapshot, expect_absent, merged_meeting_dirs = build_snapshot(
+        runlog, meeting_dirs, expect_absent)
+    # 欄位級合約仍然喺任何驗證／deploy 之前 —— 建好本機暫存 snapshot 唔會改 live。
+    contract_problems = check_data_contract(runlog, merged_meeting_dirs)
     if contract_problems:
         runlog.error("dashboard", f"數據合約有 {len(contract_problems)} 個死欄位 —— 唔發佈")
         return False
 
-    snapshot, expect_absent = build_snapshot(runlog, meeting_dirs, expect_absent)
     snapshot = shrink_to_fit(runlog, snapshot, date.today())
     validation = validate_snapshot(runlog, snapshot, expect_absent)
     if not validation["ok"]:

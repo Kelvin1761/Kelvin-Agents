@@ -104,6 +104,15 @@ DEAD_NEUTRAL_RATE = 0.99    # ~every runner has no evidence
 DEAD_BASELINE_MAX = 0.20    # ...on a field that is normally populated
 DEAD_SPREAD = 0.01          # within-race spread indistinguishable from constant
 
+# Retained in reports/debug payloads but deliberately excluded from ranking.
+# An all-neutral value can be the intended result, so these still warn but must
+# not block publication.  Keep the list explicit and covered by signal-map
+# tests so a live ranking field can never be downgraded accidentally.
+ADVISORY_DEAD_FIELDS = {
+    "au": {"weight_score"},
+    "hkjc": set(),
+}
+
 
 @dataclass
 class Violation:
@@ -290,6 +299,9 @@ def check(baseline: dict, paths, platform: str) -> tuple[list, dict]:
             violations.append(Violation(name, "presence", "欄位完全消失（改名？抽取失敗？）"))
             continue
         actual = obs.summarise()
+        dead_severity = "warning" if name in ADVISORY_DEAD_FIELDS[platform] else "error"
+        dead_suffix = (" —— 呢個係已退出排名嘅展示欄位，只提示、唔攔發佈"
+                       if dead_severity == "warning" else "")
 
         want_neutral = expected.get("neutral_rate")
         got_neutral = actual["neutral_rate"]
@@ -298,8 +310,8 @@ def check(baseline: dict, paths, platform: str) -> tuple[list, dict]:
                 violations.append(Violation(
                     name, "dead-field",
                     f"整個場次 {got_neutral:.1%} 冇證據，而基準只有 {want_neutral:.1%}"
-                    f" —— 呢個欄位死咗，唔係稀疏",
-                    "error",
+                    f" —— 呢個欄位死咗，唔係稀疏{dead_suffix}",
+                    dead_severity,
                 ))
             elif got_neutral > want_neutral + NEUTRAL_SLACK:
                 violations.append(Violation(
@@ -315,8 +327,8 @@ def check(baseline: dict, paths, platform: str) -> tuple[list, dict]:
             violations.append(Violation(
                 name, "dead-field",
                 f"場內分數散開度 {got_spread:.2f}（基準 {want_spread:.2f}）"
-                f" —— 逐匹馬完全同分，個欄位死咗",
-                "error",
+                f" —— 逐匹馬完全同分，個欄位死咗{dead_suffix}",
+                dead_severity,
             ))
         elif want_spread > 1.0 and got_spread < want_spread * SPREAD_FLOOR_RATIO:
             violations.append(Violation(

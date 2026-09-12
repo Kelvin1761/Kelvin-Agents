@@ -127,17 +127,21 @@ def diagnose(run: dict, history: list[dict]) -> str:
     first = errs[0] if errs else {}
     msg = str(first.get("message") or "")
 
-    # ⚠️ 唔可以只睇 errors。`partial` 嘅 run errors 係空嘅，真線索喺 warnings ——
+    # ⚠️ 有 errors 時一定要以 errors 為準。best-effort warning（例如 Drive mirror）
+    # 唔可以蓋過真正令 run failed 嘅 data-contract error。只有 errors 為空嘅
+    # `partial` run，先由 warnings／場次 detail 補線索。
+    # ⚠️ 唔可以永遠只睇 errors。`partial` 嘅 run errors 係空嘅，真線索喺 warnings ——
     # 2026-08-11 嗰次 `ERR_NETWORK_CHANGED` 只出現喺 warning，於是診斷報「對唔上
     # 任何已知模式」，而其實係一個認得出嘅網絡問題。
     # ⚠️ 三次教訓：搜索範圍太窄。第一次只搜 errors（`partial` 嘅 run errors 係
     # 空嘅）；第二次加咗 warnings，但「對應表冇呢個場次」原來寫喺**場次狀態嘅
     # detail** 度。真線索會出現喺三個地方任何一個，所以三個都要搜。
-    haystack = "\n".join(
-        [msg]
-        + [str(w.get("message") or "") for w in (run.get("warnings") or [])]
+    error_haystack = "\n".join(str(e.get("message") or "") for e in errs)
+    fallback_haystack = "\n".join(
+        [str(w.get("message") or "") for w in (run.get("warnings") or [])]
         + [f"{m.get('status')} {m.get('detail') or ''} {m.get('reason') or ''}"
            for m in (run.get("meetings_processed") or [])])
+    haystack = error_haystack if errs else fallback_haystack
     matched = [(cause, fix, rem) for pat, cause, fix, rem in KNOWN
                if re.search(pat, haystack)]
     same = [r for r in history

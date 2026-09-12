@@ -510,7 +510,7 @@ class TestStaleArchivedPrune(unittest.TestCase):
                                 ("live_meeting_dirs", lambda: []),
                                 ("download_live_snapshot", lambda *a, **k: base)):
                 stack.enter_context(unittest.mock.patch.object(S, name, value))
-            _, drops = S.build_snapshot(runlog, [], list(passed_drops))
+            _, drops, _ = S.build_snapshot(runlog, [], list(passed_drops))
         return drops, calls
 
     def test_archived_meeting_is_dropped_even_when_the_run_archived_nothing(self):

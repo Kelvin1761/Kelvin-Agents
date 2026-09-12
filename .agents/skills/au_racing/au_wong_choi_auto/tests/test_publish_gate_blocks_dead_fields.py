@@ -64,6 +64,16 @@ def test_a_dead_field_blocks_publication(tmp_path):
     assert "pace_figure_score" in result.stdout
 
 
+def test_retired_display_only_weight_field_warns_but_does_not_block(tmp_path):
+    """All-neutral weight is valid because it has no ranking weight since 2026-08-01."""
+    folder = _fake_meeting(tmp_path, {"weight_score": 60.0})
+    result = _gate(folder)
+    assert result.returncode == 0, result.stdout[-600:]
+    assert "dead-field" in result.stdout
+    assert "weight_score" in result.stdout
+    assert "已退出排名" in result.stdout
+
+
 def test_thin_country_card_does_not_block(tmp_path):
     """A sparse-but-not-dead field warns and publishes.
 
@@ -97,6 +107,9 @@ def test_the_schedule_actually_calls_the_gate():
     assert "def check_data_contract(" in sched
     body = sched.split("def step_dashboard(", 1)[1].split("\ndef ", 1)[0]
     assert "check_data_contract(" in body, "step_dashboard 冇叫發佈閘"
+    build_at = body.index("build_snapshot(")
     gate_at = body.index("check_data_contract(")
     validate_at = body.index("validate_snapshot(")
+    assert build_at < gate_at, "要先知道 recovery 實際補入咗邊啲場次先可以過閘"
+    assert "check_data_contract(runlog, merged_meeting_dirs)" in body
     assert gate_at < validate_at, "欄位閘要喺 snapshot 驗證之前跑"

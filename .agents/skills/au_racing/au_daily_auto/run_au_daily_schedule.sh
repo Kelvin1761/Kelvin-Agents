@@ -19,6 +19,7 @@ shift 2>/dev/null || true
 SCRIPT_DIR="${0:A:h}"
 PROJECT_ROOT="${SCRIPT_DIR:h:h:h:h}"
 CONTROL_PLANE="$PROJECT_ROOT/.agents/skills/shared_wong_choi/control_plane.py"
+NETWORK_READINESS="$PROJECT_ROOT/.agents/skills/shared_wong_choi/network_readiness.py"
 
 : "${WONGCHOI_AU_DATA_ROOT:=$HOME/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing}"
 : "${WONGCHOI_AU_MIRROR_ROOT:=/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity/Wong Choi Horse Race Analysis/AU_Racing}"
@@ -49,6 +50,19 @@ NOTIFY_ENV="$HOME/.wongchoi_notify.env"
 [ -f "$NOTIFY_ENV" ] && source "$NOTIFY_ENV"
 
 cd "$PROJECT_ROOT" || exit 1
+
+# launchd 會喺 Mac 剛睡醒、Wi-Fi/DNS 仲未 ready 嗰刻準時開 job。2026-09-11
+# 22:00 實測：GitHub、Cloudflare dashboard 同 Sportsbet 三個獨立 host 一齊
+# `Could not resolve host`，五分鐘後全部正常。直接開 pipeline 會變成一條假嘅
+# review failure 加一條假嘅 discovery failure，仲會先推 partial 警報。先用 DNS
+# readiness gate 等最多 5 分 45 秒；超時仍然照開工，保留原本 fail-closed 行為同
+# control-plane retry。每段 sleep 最長 60 秒，唔會一鋪不可觀測咁瞓幾分鐘。
+if ! /usr/bin/python3 "$NETWORK_READINESS" \
+    --host github.com \
+    --host wongchoi-dashboard.pages.dev \
+    --host www.sportsbet.com.au; then
+  print -r -- "⚠️ 網絡 readiness 等候完仍未齊；照開工，遠端步驟會按原有安全規則重試／fail closed" >&2
+fi
 
 # ── 追上最新模型 ────────────────────────────────────────────────────────────
 # ⚠️ 呢個 checkout 專屬排程，冇人喺度改嘢，所以 fast-forward 係安全嘅。

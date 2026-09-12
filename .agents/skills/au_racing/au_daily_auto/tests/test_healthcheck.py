@@ -496,6 +496,29 @@ class AutofixTests(unittest.TestCase):
             D.main(["--help"])
         self.assertEqual(raised.exception.code, 0)
 
+    def test_diagnosis_does_not_blame_drive_when_primary_error_is_data_contract(self):
+        import au_diagnose as D
+        run = {
+            "status": "failed", "mode": "morning", "started_at": DAY,
+            "errors": [{"step": "data-contract", "message": "weight_score dead-field"}],
+            "warnings": [{"message": "PermissionError: x CloudStorage x"}],
+            "steps": [],
+        }
+        report = D.diagnose(run, [run])
+        self.assertNotIn("launchd 冇 Google Drive 權限", report)
+        self.assertIn("對唔上任何已知模式", report)
+
+    def test_partial_without_errors_can_still_diagnose_warning(self):
+        import au_diagnose as D
+        run = {
+            "status": "partial", "mode": "evening", "started_at": DAY,
+            "errors": [],
+            "warnings": [{"message": "ERR_NETWORK_CHANGED"}],
+            "steps": [],
+        }
+        report = D.diagnose(run, [run])
+        self.assertIn("本機網絡斷咗", report)
+
 
 class AnalysisRecoveryTests(unittest.TestCase):
     def test_unanalysed_day_starts_the_normal_morning_pipeline_once(self):

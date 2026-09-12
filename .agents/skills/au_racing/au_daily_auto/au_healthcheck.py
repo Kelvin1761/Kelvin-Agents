@@ -435,9 +435,10 @@ def quality_issues(day: str) -> tuple[list[str], list[str]]:
     都會令人開始唔信呢條通知。
     """
     blocking = local_quality_issues(day)
-    issue = latest_step_issue("ingest-results")
-    if issue:
-        blocking.append(issue)
+    for critical_step in ("data-contract", "ingest-results"):
+        issue = latest_step_issue(critical_step)
+        if issue:
+            blocking.append(issue)
 
     advisories: list[str] = []
     issue = mirror_issue(day)
