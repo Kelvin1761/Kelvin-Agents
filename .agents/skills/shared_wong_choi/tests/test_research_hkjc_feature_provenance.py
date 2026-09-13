@@ -48,7 +48,8 @@ def fixture(tmp_path, mode="valid"):
         "available_at": CUTOFF,
         "field": "horses.7.last_6_finishes",
     }
-    if mode == "legacy":
+    projection_mode = mode.startswith("projection")
+    if mode == "legacy" or projection_mode:
         provenance = "last_6_finishes"
     else:
         if mode == "future":
@@ -65,8 +66,34 @@ def fixture(tmp_path, mode="valid"):
             "score_provenance": {"form_score": provenance},
         }}},
     }, ensure_ascii=False) + "\n", encoding="utf-8")
+    paths = [source, scoring, logic]
+    if projection_mode:
+        projected_source = dict(source_ref)
+        if mode == "projection_future_source":
+            projected_source["available_at"] = "2026-08-31T23:00:01+00:00"
+        logic_digest = digest(logic)
+        if mode == "projection_bad_logic_digest":
+            logic_digest = "f" * 64
+        projection = snapshot / "HKJC_Research_Feature_Provenance.json"
+        projection.write_text(json.dumps({
+            "schema_version": "wong-choi-hkjc-research-feature-provenance/v1",
+            "domain": "hkjc",
+            "event_id": EVENT,
+            "captured_at": CUTOFF,
+            "append_only": True,
+            "logic_files": [{
+                "name": logic.name,
+                "sha256": logic_digest,
+                "horses": {"7": {"form_score": {
+                    "derivation": "last_6_finishes",
+                    "sources": [projected_source],
+                }}},
+            }],
+            "model_promotion_allowed": False,
+        }, sort_keys=True) + "\n", encoding="utf-8")
+        paths.append(projection)
     files = [{"name": path.name, "bytes": path.stat().st_size, "sha256": digest(path)}
-             for path in (source, scoring, logic)]
+             for path in paths]
     manifest = snapshot / "manifest.json"
     manifest.write_text(json.dumps({
         "schema_version": "wong-choi-prediction-snapshot/v1",
@@ -99,6 +126,26 @@ def test_legacy_hkjc_source_key_is_inventory_only(tmp_path):
     report = inspect(fixture(tmp_path, "legacy")[0])
     assert report["legacy_feature_entries"] == 1
     assert report["records"][0]["blockers"] == ["legacy_feature_provenance"]
+    assert report["feature_availability_verified"] is False
+
+
+def test_hash_bound_hkjc_projection_upgrades_legacy_logic_without_mutation(tmp_path):
+    report = inspect(fixture(tmp_path, "projection")[0])
+    assert report["input_artifacts"] == 1
+    assert report["structured_feature_entries"] == 1
+    assert report["legacy_feature_entries"] == 0
+    assert report["verified_feature_entries"] == 1
+    assert report["feature_availability_verified"] is True
+
+
+def test_hkjc_projection_rejects_forged_logic_binding(tmp_path):
+    with pytest.raises(ValueError, match="logic binding"):
+        inspect(fixture(tmp_path, "projection_bad_logic_digest")[0])
+
+
+def test_hkjc_projection_future_source_remains_blocked(tmp_path):
+    report = inspect(fixture(tmp_path, "projection_future_source")[0])
+    assert report["records"][0]["blockers"] == ["feature_source_after_cutoff"]
     assert report["feature_availability_verified"] is False
 
 
