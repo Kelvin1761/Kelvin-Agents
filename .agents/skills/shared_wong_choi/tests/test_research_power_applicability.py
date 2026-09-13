@@ -16,6 +16,7 @@ from shared_wong_choi.research_power_applicability import (
 
 
 RULER_ROOT = Path(__file__).resolve().parents[1] / "resources" / "evaluation_rulers"
+AUTHORITY_BODY = b"# Independent power profile review\n\nDecision: approved\n"
 
 
 def ruler_digest(domain):
@@ -41,13 +42,14 @@ def profile(domain="au", *, fault=None):
     version = "2" if domain in {"au", "hkjc"} else "1"
     unit = {"au": "race", "hkjc": "race", "tennis": "match", "nba": "game"}[domain]
     payload = {
-        "schema_version": "wong-choi-power-profile/v1",
+        "schema_version": "wong-choi-power-profile/v2",
         "profile_id": f"wc:{domain}:power-profile:test-v1",
         "domain": domain,
         "status": "frozen",
         "ruler_id": f"{domain}-v{version}",
         "ruler_sha256": ruler_digest(domain),
         "authority": "docs/audits/POWER_PROFILE_REVIEW.md",
+        "authority_sha256": hashlib.sha256(AUTHORITY_BODY).hexdigest(),
         "method": "paired_t_design",
         "target": 0.8,
         "min_dev_units": 50,
@@ -76,16 +78,29 @@ def profile(domain="au", *, fault=None):
         payload["metrics"]["gold"]["analysis_family"] = "paired_loss_difference"
     elif fault == "assumption":
         payload["assumptions"]["independent_units"] = False
+    elif fault == "authority_hash":
+        payload["authority_sha256"] = "f" * 64
+    elif fault == "authority_escape":
+        payload["authority"] = "../POWER_PROFILE_REVIEW.md"
+    elif fault == "legacy_schema":
+        payload["schema_version"] = "wong-choi-power-profile/v1"
     return payload
 
 
-def write_profile(root, payload):
+def write_profile(root, payload, *, authority_root, authority_body=AUTHORITY_BODY):
     root.mkdir(parents=True, exist_ok=True)
+    authority = authority_root / "docs" / "audits" / "POWER_PROFILE_REVIEW.md"
+    authority.parent.mkdir(parents=True, exist_ok=True)
+    authority.write_bytes(authority_body)
     (root / f"{payload['domain']}-power-v1.json").write_text(json.dumps(payload) + "\n")
 
 
 def test_missing_profiles_fail_closed_for_all_frozen_rulers(tmp_path):
-    report = inspect_power_applicability(ruler_root=RULER_ROOT, profile_root=tmp_path)
+    report = inspect_power_applicability(
+        ruler_root=RULER_ROOT,
+        profile_root=tmp_path / "profiles",
+        authority_root=tmp_path,
+    )
     assert report["domains_seen"] == 4
     assert report["profiles_verified"] == 0
     assert report["power_applicability_verified"] is False
@@ -96,8 +111,13 @@ def test_missing_profiles_fail_closed_for_all_frozen_rulers(tmp_path):
 
 @pytest.mark.parametrize("domain", [item.value for item in Domain])
 def test_hash_bound_profile_can_verify_one_domain_without_granting_promotion(tmp_path, domain):
-    write_profile(tmp_path, profile(domain))
-    report = inspect_power_applicability(ruler_root=RULER_ROOT, profile_root=tmp_path)
+    profile_root = tmp_path / "profiles"
+    write_profile(profile_root, profile(domain), authority_root=tmp_path)
+    report = inspect_power_applicability(
+        ruler_root=RULER_ROOT,
+        profile_root=profile_root,
+        authority_root=tmp_path,
+    )
     selected = next(row for row in report["records"] if row["domain"] == domain)
     assert selected["power_profile_verified"] is True
     assert selected["eligible_metrics"] == (7 if domain in {"au", "hkjc"} else 2)
@@ -114,19 +134,54 @@ def test_hash_bound_profile_can_verify_one_domain_without_granting_promotion(tmp
         ("metric_set", "power_profile_metric_mismatch"),
         ("family", "power_profile_family_incompatible"),
         ("assumption", "power_profile_assumptions_unverified"),
+        ("authority_hash", "power_profile_authority_invalid"),
+        ("authority_escape", "power_profile_authority_invalid"),
+        ("legacy_schema", "power_profile_invalid"),
     ],
 )
 def test_invalid_profile_is_inventory_not_power_authority(tmp_path, fault, blocker):
-    write_profile(tmp_path, profile(fault=fault))
-    report = inspect_power_applicability(ruler_root=RULER_ROOT, profile_root=tmp_path)
+    profile_root = tmp_path / "profiles"
+    write_profile(profile_root, profile(fault=fault), authority_root=tmp_path)
+    report = inspect_power_applicability(
+        ruler_root=RULER_ROOT,
+        profile_root=profile_root,
+        authority_root=tmp_path,
+    )
     au = next(row for row in report["records"] if row["domain"] == "au")
     assert au["power_profile_verified"] is False
     assert blocker in au["blockers"]
 
 
 def test_verifier_rejects_forged_power_authority(tmp_path):
-    report = inspect_power_applicability(ruler_root=RULER_ROOT, profile_root=tmp_path)
+    report = inspect_power_applicability(
+        ruler_root=RULER_ROOT,
+        profile_root=tmp_path / "profiles",
+        authority_root=tmp_path,
+    )
     report["power_applicability_verified"] = True
     report["content_hash"] = _hash({key: value for key, value in report.items() if key != "content_hash"})
     with pytest.raises((ValueError, RuntimeError)):
-        verify_power_applicability_report(report, ruler_root=RULER_ROOT, profile_root=tmp_path)
+        verify_power_applicability_report(
+            report,
+            ruler_root=RULER_ROOT,
+            profile_root=tmp_path / "profiles",
+            authority_root=tmp_path,
+        )
+
+
+def test_verifier_rechecks_review_document_bytes(tmp_path):
+    profile_root = tmp_path / "profiles"
+    write_profile(profile_root, profile(), authority_root=tmp_path)
+    report = inspect_power_applicability(
+        ruler_root=RULER_ROOT,
+        profile_root=profile_root,
+        authority_root=tmp_path,
+    )
+    (tmp_path / "docs" / "audits" / "POWER_PROFILE_REVIEW.md").write_text("changed\n")
+    with pytest.raises(ValueError, match="current frozen evidence"):
+        verify_power_applicability_report(
+            report,
+            ruler_root=RULER_ROOT,
+            profile_root=profile_root,
+            authority_root=tmp_path,
+        )
