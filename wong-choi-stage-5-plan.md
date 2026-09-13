@@ -36,6 +36,14 @@
 - [ ] 9. 擴展至AU／HKJC ranking squeeze同NBA season research：先查舊實驗，逐個假設測Gold／Good保護下嘅Top-5 capture、competitive recall、NDCG同cohort；NBA按season／market／odds／injury freshness做歷史描述性baseline並保留新季live gate。→ Verify：至少一個AU或HKJC候選完整走完ranking gate（通過或拒絕都算平台證據）；NBA hit rate唔會被當盈利證據，synthetic／歷史結果唔會冒充forward live acceptance或產生promotion proposal。
 - [ ] 10. 完成四個stage checkpoint同Stage 5 research-platform production activation（唔等於任何model promotion）：Task 1後做metrics readiness review、Task 6後做platform safety review、Task 9後做domain pilot review，最後做exit review。→ Verify：每個checkpoint都有immutable decision／風險／rollback；`./檢查.sh`、`./健康.sh`、reproducibility／fault／leakage／resource-isolation matrix全綠；至少兩個domain完成end-to-end pilot、failed experiment可檢索、Stage 4 bypass測試全拒絕；更新roadmap同Stage 6 entry decision。
 
+## Current Checkpoint — 2026-09-13
+
+- Release A `44c9df55ca72`以89個exact paths交付Task 5 evaluation修正、Task 6 safety／postflight／power fail-closed contracts及Task 7共用review primitives；完整release gate通過並merge。其後`cf98f9580d58`將包含Release A嘅production checkout同步，四個domain verifier全部aligned；現役production `84d20f25acae`仍包含同一ancestor。
+- Task 6 focused recheck共297 tests通過：148個safety／postflight／guard／power tests，149個四線feature／settlement／earliest-source provenance tests。故意結果洩漏、future feature、走地／遲價、constant／neutral field、bundled change、偽造boolean safety同missing／mismatched power evidence全部fail closed。
+- 呢啲證據只證明共用工程核心已active。Task 6保持未勾選，因真實domain compact producer／callback、獨立reviewed power applicability同Task 10 platform safety checkpoint未完成；不可用「missing evidence會block」冒充「real evidence已存在」。
+- Task 7共用index／clock／receipt／notification primitives已active，但production metadata producers、Central scheduler、authorized Telegram acceptance同private Dashboard feed仍未啟用。下一個production sequence固定分拆為D-AU、D-HKJC、D-Tennis、D-NBA、E scheduler、F Telegram、C Dashboard，每項獨立scope／gate／approval／rollback。
+- 2026-09-13 `./健康.sh`仍exit 1：Drive mirror落後、Artifact COLD 6/8、AU／Tennis 30日SLO未達標；最新AU／HKJC／Tennis run健康，NBA按休季dormant。營運紅項唔會用改ruler、改holdout或放寬checkpoint解決。
+
 ## Done When
 
 - [ ] AU／HKJC、Tennis同NBA全部有獨立versioned ruler；metric／window／holdout改動同candidate model永遠分開release，任何runner不可繞過。

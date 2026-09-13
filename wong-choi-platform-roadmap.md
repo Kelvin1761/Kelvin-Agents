@@ -6,7 +6,7 @@
 
 ## Current Stage
 
-**Stage 4 complete；Stage 5 Task 1–4已分批commit／push／merge／activate，Task 5 ruler-locked evaluation已補齊absolute market／ROI、chronology同runner-artifact串接檢查，準備獨立scoped code release。** AU／HKJC維持production ruler；Tennis因holdout ROI／Brier未過保持shadow；NBA因2026-27 live evidence未齊保持shadow／descriptive-only。下一步係Task 6 research safety／power-readiness gate；中央旺財係control tower，唔係第五個預測模型。
+**Stage 4 complete；Stage 5 Task 1–5已merge／activate，Release A shared research safety／review core亦已進入main及production。** Task 6嘅fail-closed engineering fixtures已通過，但真實domain compact producer／callback、reviewed power applicability同platform safety checkpoint仍未完成；Task 7只完成共用本機runtime，production metadata producer、Central review scheduler、Telegram acceptance同Dashboard private feed仍未啟用。AU／HKJC維持production ruler；Tennis保持shadow；NBA保持shadow／descriptive-only並等待2026-27 live evidence。下一步係Task 6真實來源驗收同Task 7第一個獨立production producer；中央旺財係control tower，唔係第五個預測模型。
 
 ## Stages and Exit Gates
 
@@ -39,6 +39,9 @@
 - [x] Stage 5 immutable dataset resolver：HOT digest、catalog-verified WARM、COLD restore-only、PIT availability、固定split、immutable snapshot、corpus floor及tamper gates已通過；release `98702c5249aa`已merge／activate，四線aligned。
 - [x] Stage 5 production-safe research runner：append-only local queue、四線pure-command adapter、baseline／candidate checkout及dataset lock、WARM scratch、single-heavy-worker、production preemption、capacity／timeout／cleanup同ExperimentRun evidence gates已通過；release `38059dbc3366`已merge／activate，四線aligned，heavy scheduler未啟用。
 - [x] Stage 5 research evaluation：凍結ruler metrics、paired bootstrap、cohort、walk-forward同append-only experiment decision report已通過；ablation／leakage留Task 6。
+- [x] Stage 5 Release A shared core：Task 5 evaluation修正、Task 6 safety／postflight／power fail-closed contracts同Task 7 review primitives共89個exact paths，release `44c9df55ca72`完整gate通過並merge；其後production release `cf98f9580d58`將包含該ancestor嘅checkout同步，AU／HKJC／NBA／Tennis四線aligned。呢項只代表共用工程核心已啟用，唔代表Task 6／7完成。
+- [ ] Stage 5 Task 6 safety checkpoint：故意洩漏／future／late odds／constant field／bundled change／missing或mismatched power evidence已fail closed；仍欠真實domain producer／callback證據、獨立power applicability決定同全局健康閘。
+- [ ] Stage 5 Task 7 production activation：按D-AU、D-HKJC、D-Tennis、D-NBA metadata producer、E Central review scheduler、F Telegram acceptance、C private Dashboard feed分開release／rollback；任何一項未批唔可將Task 7標完成。
 - [x] Control tower foundation：Git／release／deployment／四線 run health／model stage／evidence／30日 SLO／Telegram approval；portfolio risk同research queue留Stage 5。
 - [x] Central Dashboard ownership：四線analysis同中央health/evidence projection；D1 `WC_LEDGER`保存實際投注，Dashboard永不做第五個scoring engine。
 - [x] Storage durability cutover：nightly production已啟用；D1及Tennis snapshots通過restore／WARM／owner-only Google Drive full-download digest；AU／HKJC／NBA／Tennis readers已catalog-aware；artifact COLD coverage 5/5。HOT原件刪除仍需獨立scoped approval。
@@ -69,3 +72,4 @@
 | 2026-08-31 | Stage 5 Task 3 → Task 4 | Immutable resolver同runner／queue共69個focused tests通過；四線contract fixture、same-spec digest、production preemption、WARM／capacity／timeout／cleanup、code／data mutation同no-weight-import全部有fail-closed evidence；full gate 1,422 tests及health exit 0 | Task 3／4 engineering checkpoint pass並等待各自scoped release；開始Task 5 evaluation／statistics，四線model stage不變 |
 | 2026-08-31 | Stage 5 Task 4 → Task 5 | 四線frozen-ruler paired evaluation、walk-forward folds、terminal bootstrap、cohort regression、dataset lineage、single-metric non-promotion同append-only shadow proposal共15個專項tests；Task 2–5整合84個tests通過 | Task 5 engineering checkpoint pass並等待獨立scoped release；開始Task 6 research safety gate，冇model／ruler／scheduler／production stage改動 |
 | 2026-08-31 | Stage 5 scoped releases／Task 5 recheck | Task 3 `98702c5249aa`同Task 4 `38059dbc3366`經完整gate、六項standing-approval recheck、clean full gate同四線activation aligned；Task 5反例／真runner-artifact串接27個tests通過 | Task 3／4已啟用；Task 5修正仍輸市場誤判、時間／ruler錯配同retry conflict後先獨立release；Task 6安全／power gate未完成，唔開真實candidate promotion |
+| 2026-09-13 | Stage 5 Release A activation／Task 6 recheck | `44c9df55ca72` 89-path shared research release完整gate通過並merge；`cf98f9580d58` activation evidence證明AU／HKJC／NBA／Tennis四線aligned，現役production已前進至`84d20f25acae`並包含Release A。Safety／postflight／power及四線provenance專項297 tests通過 | Task 5正式active；Task 6 engineering core active但checkpoint仍NOT READY。真實compact producers、callback／power applicability、Task 7 scheduler／Telegram／Dashboard production acceptance同`健康.sh`紅項未完成，唔改ruler、model stage或promotion authority |
