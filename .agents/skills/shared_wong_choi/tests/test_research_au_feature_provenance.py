@@ -44,7 +44,8 @@ def fixture(tmp_path, mode="valid"):
         "available_at": CUTOFF,
         "field": "horses.7.recent_form",
     }
-    if mode == "legacy":
+    projection_mode = mode.startswith("projection")
+    if mode == "legacy" or projection_mode:
         provenance = "recent_form+class_weighted"
     else:
         if mode == "future":
@@ -62,8 +63,46 @@ def fixture(tmp_path, mode="valid"):
             "score_provenance": {"form_score": provenance},
         }}},
     }) + "\n")
+    paths = [source, scoring, logic]
+    if projection_mode:
+        odds = snapshot / "odds_history.json"
+        odds.write_text('{"1":{"2026-08-30T10:00:00+00:00|analysis":{"7":["4.0","1.8"]}}}\n')
+        projection = snapshot / "AU_Research_Feature_Provenance.json"
+        market_digest = digest(odds)
+        market_time = "2026-08-30T10:00:00+00:00"
+        if mode == "projection_bad_market_digest":
+            market_digest = "f" * 64
+        elif mode == "projection_future_market":
+            market_time = "2026-08-31T00:00:01+00:00"
+        projection.write_text(json.dumps({
+            "schema_version": "wong-choi-au-research-feature-provenance/v1",
+            "domain": "au",
+            "event_id": EVENT,
+            "captured_at": CUTOFF,
+            "append_only": True,
+            "logic_files": [{
+                "name": logic.name,
+                "sha256": digest(logic),
+                "horses": {"7": {"form_score": {
+                    "derivation": "recent_form+class_weighted",
+                    "sources": [source_ref],
+                }}},
+            }],
+            "market": {
+                "status": "complete",
+                "artifact": odds.name,
+                "sha256": market_digest,
+                "earliest_analysis": {"1": {
+                    "snapshot_key": "2026-08-30T10:00:00+00:00|analysis",
+                    "captured_at": market_time,
+                    "prices": {"7": ["4.0", "1.8"]},
+                }},
+            },
+            "model_promotion_allowed": False,
+        }, sort_keys=True) + "\n", encoding="utf-8")
+        paths.extend((odds, projection))
     files = [{"name": path.name, "bytes": path.stat().st_size, "sha256": digest(path)}
-             for path in (source, scoring, logic)]
+             for path in paths]
     manifest = snapshot / "manifest.json"
     manifest.write_text(json.dumps({
         "schema_version": "wong-choi-prediction-snapshot/v1",
@@ -103,6 +142,20 @@ def test_legacy_string_provenance_is_inventory_only(tmp_path):
     assert report["verified_feature_entries"] == 0
     assert report["records"][0]["blockers"] == ["legacy_feature_provenance"]
     assert report["feature_availability_verified"] is False
+
+
+def test_hash_bound_producer_projection_can_upgrade_legacy_logic_without_mutating_it(tmp_path):
+    report = inspect(fixture(tmp_path, "projection"))
+    assert report["structured_feature_entries"] == 1
+    assert report["legacy_feature_entries"] == 0
+    assert report["verified_feature_entries"] == 1
+    assert report["feature_availability_verified"] is True
+
+
+@pytest.mark.parametrize("mode", ["projection_bad_market_digest", "projection_future_market"])
+def test_producer_projection_market_binding_is_reverified(tmp_path, mode):
+    with pytest.raises(ValueError):
+        inspect(fixture(tmp_path, mode))
 
 
 @pytest.mark.parametrize(

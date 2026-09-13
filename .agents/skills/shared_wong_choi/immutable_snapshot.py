@@ -25,6 +25,7 @@ def create_immutable_snapshot(
     event_id: str,
     patterns: Iterable[str],
     recommendations: Iterable[Mapping[str, Any]] = (),
+    additional_files: Mapping[str, bytes] | None = None,
     root_name: str = "_prediction_snapshots",
     at: datetime | None = None,
 ) -> Path:
@@ -40,6 +41,18 @@ def create_immutable_snapshot(
     if not files:
         raise RuntimeError(f"no prediction artifacts in {source_dir}")
     selected = [dict(item) for item in recommendations]
+    generated: dict[str, bytes] = {}
+    for raw_name, raw_payload in (additional_files or {}).items():
+        name = str(raw_name)
+        path = Path(name)
+        if (not name or path.name != name or name == "manifest.json"
+                or not isinstance(raw_payload, bytes) or not raw_payload):
+            raise ValueError("additional snapshot files require a safe basename and non-empty bytes")
+        generated[name] = raw_payload
+    source_names = {path.name for path in files}
+    collision = source_names.intersection(generated)
+    if collision:
+        raise ValueError(f"additional snapshot file collides with source: {sorted(collision)}")
     file_manifest = [
         {
             "name": path.name,
@@ -48,6 +61,15 @@ def create_immutable_snapshot(
         }
         for path in files
     ]
+    file_manifest.extend(
+        {
+            "name": name,
+            "bytes": len(payload),
+            "sha256": hashlib.sha256(payload).hexdigest(),
+        }
+        for name, payload in generated.items()
+    )
+    file_manifest.sort(key=lambda item: item["name"])
     signature = hashlib.sha256(
         json.dumps(
             {"files": file_manifest, "recommendations": selected},
@@ -79,6 +101,8 @@ def create_immutable_snapshot(
     try:
         for source in files:
             shutil.copy2(source, temporary / source.name)
+        for name, payload in sorted(generated.items()):
+            (temporary / name).write_bytes(payload)
         manifest = {
             "schema_version": "wong-choi-prediction-snapshot/v1",
             "domain": domain,

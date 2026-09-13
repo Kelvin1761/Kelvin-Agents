@@ -12,6 +12,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
+from zoneinfo import ZoneInfo
 
 from .contracts import Domain
 from .research_index import _at, _encoded, _hash, _hashed, _safe
@@ -24,9 +25,13 @@ MAX_RECORDS = 10000
 MAX_FEATURES = 1000000
 OUTPUT_NAME = re.compile(
     r"(?:Data_Health\.json|Meeting_Auto_Scoring\.csv|"
+    r"AU_Research_Feature_Provenance\.json|"
     r"Race_\d+_(?:Logic\.json|Auto_Analysis\.md|Auto_Scoring\.csv))"
 )
 LOGIC_NAME = re.compile(r"Race_\d+_Logic\.json")
+PROJECTION_NAME = "AU_Research_Feature_Provenance.json"
+PROJECTION_SCHEMA = "wong-choi-au-research-feature-provenance/v1"
+SYDNEY = ZoneInfo("Australia/Sydney")
 BLOCKER_ORDER = (
     "prediction_bundle_unverified",
     "input_artifacts_missing",
@@ -91,6 +96,81 @@ def _feature_valid(value: object, *, files: dict[str, str], cutoff: datetime,
     return valid, "structured"
 
 
+def _projection(raw: bytes, *, digest: str, expected_digest: str,
+                event_id: str, cutoff: datetime, files: dict[str, str]) -> dict[str, dict]:
+    if digest != expected_digest:
+        raise ValueError("AU feature projection digest differs from verified manifest")
+    try:
+        value = json.loads(raw)
+    except (ValueError, UnicodeError) as exc:
+        raise ValueError("invalid AU feature projection JSON") from exc
+    expected = {
+        "schema_version", "domain", "event_id", "captured_at", "append_only",
+        "logic_files", "market", "model_promotion_allowed",
+    }
+    if (not isinstance(value, dict) or set(value) != expected
+            or value["schema_version"] != PROJECTION_SCHEMA or value["domain"] != "au"
+            or value["event_id"] != event_id or _at(value["captured_at"]) != cutoff
+            or value["append_only"] is not True or value["model_promotion_allowed"] is not False
+            or not isinstance(value["logic_files"], list)):
+        raise ValueError("invalid AU feature projection contract")
+    logic_files = {name: digest for name, digest in files.items() if LOGIC_NAME.fullmatch(name)}
+    mapped = {}
+    for item in value["logic_files"]:
+        if (not isinstance(item, dict) or set(item) != {"name", "sha256", "horses"}
+                or item["name"] in mapped or item["name"] not in logic_files
+                or item["sha256"] != logic_files[item["name"]]
+                or not isinstance(item["horses"], dict)):
+            raise ValueError("invalid AU feature projection logic binding")
+        mapped[item["name"]] = item["horses"]
+    if set(mapped) != set(logic_files):
+        raise ValueError("AU feature projection logic set mismatch")
+    market = value["market"]
+    if (not isinstance(market, dict)
+            or set(market) != {"status", "artifact", "sha256", "earliest_analysis"}
+            or market["status"] not in {"complete", "missing_history", "missing_analysis"}
+            or not isinstance(market["earliest_analysis"], dict)):
+        raise ValueError("invalid AU market projection")
+    if market["status"] == "missing_history":
+        if (market["artifact"] is not None or market["sha256"] is not None
+                or market["earliest_analysis"]):
+            raise ValueError("AU missing market history cannot carry evidence")
+        return mapped
+    if (market["artifact"] != "odds_history.json"
+            or market["artifact"] not in files or market["sha256"] != files[market["artifact"]]):
+        raise ValueError("AU market source digest mismatch")
+    market_races = set()
+    for raw_race, item in market["earliest_analysis"].items():
+        if (not isinstance(raw_race, str) or not raw_race.isdigit() or int(raw_race) <= 0
+                or not isinstance(item, dict)
+                or set(item) != {"snapshot_key", "captured_at", "prices"}
+                or not isinstance(item["snapshot_key"], str)
+                or not item["snapshot_key"].endswith("|analysis")
+                or not isinstance(item["prices"], dict) or not item["prices"]):
+            raise ValueError("invalid AU earliest market evidence")
+        captured = _at(item["captured_at"])
+        raw_key = item["snapshot_key"].rsplit("|", 1)[0]
+        try:
+            key_at = datetime.fromisoformat(raw_key)
+        except ValueError as exc:
+            raise ValueError("invalid AU market snapshot time") from exc
+        if key_at.tzinfo is None:
+            key_at = key_at.replace(tzinfo=SYDNEY)
+        if (_at(key_at) != captured or captured > cutoff
+                or any(not isinstance(horse, str) or not horse.isdigit()
+                       or not isinstance(prices, list) or len(prices) != 2
+                       or any(not isinstance(price, str) for price in prices)
+                       for horse, prices in item["prices"].items())):
+            raise ValueError("AU market chronology or price contract mismatch")
+        market_races.add(int(raw_race))
+    logic_races = {int(LOGIC_NAME.fullmatch(name).group(0).split("_")[1])
+                   for name in logic_files}
+    if ((market["status"] == "complete") != (market_races == logic_races)
+            or not market_races.issubset(logic_races)):
+        raise ValueError("AU market completeness mismatch")
+    return mapped
+
+
 def inspect_au_feature_provenance(*, root: Path, as_of: datetime,
                                   relocation_roots: tuple[Path, ...] = (),
                                   checkpoint: Callable[[], None] = lambda: None) -> dict:
@@ -134,6 +214,14 @@ def inspect_au_feature_provenance(*, root: Path, as_of: datetime,
             cutoff = _at(prediction["source_cutoff_at"])
             logic_names = sorted(name for name in files if LOGIC_NAME.fullmatch(name))
             totals["logic_files"] = len(logic_names)
+            projected = None
+            if PROJECTION_NAME in files:
+                raw, digest, _size = blobs.read(snapshot / PROJECTION_NAME)
+                projected = _projection(
+                    raw, digest=digest, expected_digest=files[PROJECTION_NAME],
+                    event_id=prediction["event_id"], cutoff=cutoff,
+                    files=files,
+                )
             for name in logic_names:
                 raw, digest, _size = blobs.read(snapshot / name)
                 if digest != files[name]:
@@ -146,9 +234,12 @@ def inspect_au_feature_provenance(*, root: Path, as_of: datetime,
                 if not isinstance(horses, dict):
                     raise ValueError("AU Logic horses must be a mapping")
                 totals["horses"] += len(horses)
-                for horse in horses.values():
-                    provenance = ((horse.get("python_auto") or {}).get("score_provenance")
-                                  if isinstance(horse, dict) else None)
+                if projected is not None and set(projected[name]) != set(map(str, horses)):
+                    raise ValueError("AU feature projection horse set mismatch")
+                for horse_id, horse in horses.items():
+                    provenance = (projected[name].get(str(horse_id)) if projected is not None
+                                  else ((horse.get("python_auto") or {}).get("score_provenance")
+                                        if isinstance(horse, dict) else None))
                     if not isinstance(provenance, dict) or not provenance:
                         _add(blockers, "feature_provenance_missing")
                         continue

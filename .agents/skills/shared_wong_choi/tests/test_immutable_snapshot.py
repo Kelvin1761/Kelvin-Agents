@@ -55,3 +55,50 @@ def test_material_change_creates_new_snapshot(tmp_path: Path) -> None:
     )
     assert first != second
     assert (first / "report.md").read_text(encoding="utf-8") == "first\n"
+
+
+def test_generated_additional_file_is_hash_pinned_without_mutating_source(tmp_path: Path) -> None:
+    source = tmp_path / "report.md"
+    source.write_text("prediction\n", encoding="utf-8")
+    payload = b'{"schema_version":"test/v1"}\n'
+
+    first = create_immutable_snapshot(
+        tmp_path,
+        domain="au",
+        event_id="2026-09-13 Test Race 1-1",
+        patterns=["report.md"],
+        additional_files={"AU_Research_Feature_Provenance.json": payload},
+    )
+    second = create_immutable_snapshot(
+        tmp_path,
+        domain="au",
+        event_id="2026-09-13 Test Race 1-1",
+        patterns=["report.md"],
+        additional_files={"AU_Research_Feature_Provenance.json": payload},
+    )
+
+    assert first == second
+    assert not (tmp_path / "AU_Research_Feature_Provenance.json").exists()
+    assert (first / "AU_Research_Feature_Provenance.json").read_bytes() == payload
+    manifest = json.loads((first / "manifest.json").read_text(encoding="utf-8"))
+    assert [item["name"] for item in manifest["files"]] == [
+        "AU_Research_Feature_Provenance.json",
+        "report.md",
+    ]
+
+
+def test_additional_file_rejects_collision_or_unsafe_name(tmp_path: Path) -> None:
+    (tmp_path / "report.md").write_text("prediction\n", encoding="utf-8")
+    for name in ("report.md", "../escape.json", "nested/file.json"):
+        try:
+            create_immutable_snapshot(
+                tmp_path,
+                domain="au",
+                event_id="2026-09-13 Test Race 1-1",
+                patterns=["report.md"],
+                additional_files={name: b"{}\n"},
+            )
+        except ValueError:
+            pass
+        else:  # pragma: no cover - assertion message is clearer than parametrising here.
+            raise AssertionError(f"unsafe additional file accepted: {name}")
