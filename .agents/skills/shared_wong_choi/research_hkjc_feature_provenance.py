@@ -18,9 +18,12 @@ MAX_RECORDS = 10000
 MAX_FEATURES = 1000000
 OUTPUT_NAME = re.compile(
     r"(?:Data_Health\.(?:json|md)|HKJC_Auto_Scoring\.csv|"
+    r"HKJC_Research_Feature_Provenance\.json|"
     r"Race_\d+_(?:Logic\.json|Auto_Analysis\.md|Auto_Scoring\.csv))"
 )
 LOGIC_NAME = re.compile(r"Race_\d+_Logic\.json")
+PROJECTION_NAME = "HKJC_Research_Feature_Provenance.json"
+PROJECTION_SCHEMA = "wong-choi-hkjc-research-feature-provenance/v1"
 BLOCKER_ORDER = (
     "prediction_bundle_unverified", "input_artifacts_missing",
     "feature_provenance_missing", "legacy_feature_provenance",
@@ -77,6 +80,59 @@ def _feature_valid(value: object, *, files: dict[str, str], cutoff: datetime,
     return valid, "structured"
 
 
+def _projection(
+    raw: bytes,
+    *,
+    digest: str,
+    expected_digest: str,
+    event_id: str,
+    cutoff: datetime,
+    files: dict[str, str],
+) -> dict[str, dict]:
+    if digest != expected_digest:
+        raise ValueError("HKJC feature projection digest differs from verified manifest")
+    try:
+        value = json.loads(raw)
+    except (ValueError, UnicodeError) as exc:
+        raise ValueError("invalid HKJC feature projection JSON") from exc
+    expected = {
+        "schema_version", "domain", "event_id", "captured_at", "append_only",
+        "logic_files", "model_promotion_allowed",
+    }
+    if (
+        not isinstance(value, dict)
+        or set(value) != expected
+        or value["schema_version"] != PROJECTION_SCHEMA
+        or value["domain"] != "hkjc"
+        or value["event_id"] != event_id
+        or _at(value["captured_at"]) != cutoff
+        or value["append_only"] is not True
+        or value["model_promotion_allowed"] is not False
+        or not isinstance(value["logic_files"], list)
+    ):
+        raise ValueError("invalid HKJC feature projection contract")
+    logic_files = {
+        name: file_digest
+        for name, file_digest in files.items()
+        if LOGIC_NAME.fullmatch(name)
+    }
+    mapped = {}
+    for item in value["logic_files"]:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"name", "sha256", "horses"}
+            or item["name"] in mapped
+            or item["name"] not in logic_files
+            or item["sha256"] != logic_files[item["name"]]
+            or not isinstance(item["horses"], dict)
+        ):
+            raise ValueError("invalid HKJC feature projection logic binding")
+        mapped[item["name"]] = item["horses"]
+    if set(mapped) != set(logic_files):
+        raise ValueError("HKJC feature projection logic set mismatch")
+    return mapped
+
+
 def inspect_hkjc_feature_provenance(*, root: Path, as_of: datetime,
                                     relocation_roots: tuple[Path, ...] = (),
                                     checkpoint: Callable[[], None] = lambda: None) -> dict:
@@ -121,6 +177,17 @@ def inspect_hkjc_feature_provenance(*, root: Path, as_of: datetime,
             cutoff = _at(prediction["source_cutoff_at"])
             logic_names = sorted(name for name in files if LOGIC_NAME.fullmatch(name))
             totals["logic_files"] = len(logic_names)
+            projected = None
+            if PROJECTION_NAME in files:
+                raw, digest, _size = blobs.read(snapshot / PROJECTION_NAME)
+                projected = _projection(
+                    raw,
+                    digest=digest,
+                    expected_digest=files[PROJECTION_NAME],
+                    event_id=prediction["event_id"],
+                    cutoff=cutoff,
+                    files=files,
+                )
             for name in logic_names:
                 raw, digest, _size = blobs.read(snapshot / name)
                 if digest != files[name]:
@@ -133,9 +200,15 @@ def inspect_hkjc_feature_provenance(*, root: Path, as_of: datetime,
                 if not isinstance(horses, dict):
                     raise ValueError("HKJC Logic horses must be a mapping")
                 totals["horses"] += len(horses)
-                for horse in horses.values():
-                    provenance = ((horse.get("python_auto") or {}).get("score_provenance")
-                                  if isinstance(horse, dict) else None)
+                if projected is not None and set(projected[name]) != set(map(str, horses)):
+                    raise ValueError("HKJC feature projection horse set mismatch")
+                for horse_id, horse in horses.items():
+                    provenance = (
+                        projected[name].get(str(horse_id))
+                        if projected is not None
+                        else ((horse.get("python_auto") or {}).get("score_provenance")
+                              if isinstance(horse, dict) else None)
+                    )
                     if not isinstance(provenance, dict) or not provenance:
                         blockers.add("feature_provenance_missing")
                         continue
