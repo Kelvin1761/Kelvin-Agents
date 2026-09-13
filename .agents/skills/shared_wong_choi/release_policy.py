@@ -65,6 +65,18 @@ _APPROVED_ACTIVATION_INSTALLERS = frozenset(
     }
 )
 
+# HKJC's pre-race facts pipeline predates the domain package layout and still
+# owns a small set of production inputs under the repo-level `.agents/scripts`
+# directory.  Keep this allow-list exact: treating every root script as HKJC
+# would route unrelated shared tooling to the wrong production domain.
+_HKJC_ROOT_RUNTIME_PATHS = frozenset(
+    {
+        ".agents/scripts/inject_hkjc_fact_anchors.py",
+        ".agents/scripts/hkjc_standard_times.json",
+        ".agents/scripts/hkjc_reference_sectionals.json",
+    }
+)
+
 
 def _normalise(path: str) -> str:
     raw = path.replace("\\", "/")
@@ -154,6 +166,8 @@ def activation_plan(paths: Iterable[str]) -> dict:
         if ".agents/skills/au_racing/" in lowered:
             domains.add("au")
         if ".agents/skills/hkjc_racing/" in lowered:
+            domains.add("hkjc")
+        if lowered in _HKJC_ROOT_RUNTIME_PATHS:
             domains.add("hkjc")
         if lowered.startswith("tennis-wong-choi/"):
             domains.add("tennis")

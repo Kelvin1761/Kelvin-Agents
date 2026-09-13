@@ -18,6 +18,7 @@ from inject_hkjc_fact_anchors import (
     extract_race_context,
     filter_profile_as_of,
     get_reference_sections,
+    get_standard_time,
 )
 
 spec = importlib.util.spec_from_file_location("hkjc_logic_skeleton_for_test", SKELETON_PATH)
@@ -66,6 +67,30 @@ class HighQualityFeatureTests(unittest.TestCase):
     def test_reference_sectional_never_falls_back_to_wrong_class(self) -> None:
         self.assertTrue(get_reference_sections("跑馬地", 1200, "Class 4"))
         self.assertEqual(get_reference_sections("跑馬地", 1200, "不明班次"), {})
+
+    def test_standard_time_normalises_chinese_numbered_classes(self) -> None:
+        for chinese, compact in (
+            ("第一班", "C1"),
+            ("第二班", "C2"),
+            ("第三班", "C3"),
+            ("第四班", "C4"),
+            ("第五班", "C5"),
+        ):
+            with self.subTest(race_class=chinese):
+                self.assertEqual(
+                    get_standard_time("跑馬地", 1200, chinese),
+                    get_standard_time("跑馬地", 1200, compact),
+                )
+
+    def test_standard_time_normalises_embedded_chinese_class_label(self) -> None:
+        self.assertEqual(
+            get_standard_time("跑馬地", 1200, "第三班（評分 60-40）"),
+            get_standard_time("跑馬地", 1200, "C3"),
+        )
+        self.assertEqual(
+            get_standard_time("跑馬地", 1200, "第 3 班"),
+            get_standard_time("跑馬地", 1200, "C3"),
+        )
 
     # 同上，由 2026-08-03 起一直紅。`rating_series` 只存在於
     # `scratch/hkjc_high_quality_dimension_gate.py`（一個未 merge 嘅原型），

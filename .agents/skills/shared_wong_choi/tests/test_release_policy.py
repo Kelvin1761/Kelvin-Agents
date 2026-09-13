@@ -99,6 +99,27 @@ def test_activation_plan_routes_shared_code_to_four_domains() -> None:
     assert plan["dashboard_deploy"] is False
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".agents/scripts/inject_hkjc_fact_anchors.py",
+        ".agents/scripts/hkjc_standard_times.json",
+        ".agents/scripts/hkjc_reference_sectionals.json",
+    ],
+)
+def test_activation_plan_routes_hkjc_root_runtime_files(path: str) -> None:
+    plan = activation_plan([path])
+
+    assert plan["production_sync_domains"] == ["hkjc"]
+    assert plan["dashboard_deploy"] is False
+
+
+def test_activation_plan_does_not_guess_for_unlisted_root_script() -> None:
+    plan = activation_plan([".agents/scripts/unrelated_utility.py"])
+
+    assert plan["production_sync_domains"] == []
+
+
 def test_activation_plan_marks_dashboard_and_launchd_installer() -> None:
     plan = activation_plan(
         [

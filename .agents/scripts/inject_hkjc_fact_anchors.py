@@ -126,6 +126,43 @@ def load_reference_sectionals() -> dict:
     _REF_SECTIONALS = {}
     return _REF_SECTIONALS
 
+def _normalise_race_class_key(race_class: object) -> str:
+    """Return the standard-time key for HKJC class labels.
+
+    Facts and racecards use both Chinese labels (for example ``第三班``) and
+    compact machine labels (``C3``). Keep unknown labels unchanged so callers can
+    retain their existing missing-reference/fallback policy.
+    """
+    raw_class = str(race_class or '').strip()
+    direct = {
+        '第一班': 'C1', '第二班': 'C2', '第三班': 'C3',
+        '第四班': 'C4', '第五班': 'C5',
+        '一級賽': 'G', '二級賽': 'G', '三級賽': 'G', '分級賽': 'G',
+        '新馬賽': 'GR', '新馬': 'GR',
+        'C1': 'C1', 'C2': 'C2', 'C3': 'C3', 'C4': 'C4', 'C5': 'C5',
+        'G': 'G', 'GR': 'GR',
+    }
+    upper_class = raw_class.upper()
+    if upper_class in direct:
+        return direct[upper_class]
+
+    chinese_class = re.search(r'第?\s*([一二三四五1-5])\s*班', raw_class)
+    if chinese_class:
+        value = chinese_class.group(1)
+        number = value if value.isdigit() else str('一二三四五'.index(value) + 1)
+        return f'C{number}'
+    class_match = re.search(r'(?:CLASS|C)\s*([1-5])', raw_class, re.I)
+    if class_match:
+        return f'C{class_match.group(1)}'
+    if re.fullmatch(r'[1-5]', raw_class):
+        return f'C{raw_class}'
+    if re.search(r'(?:GROUP|GRADE|G)\s*[123]', raw_class, re.I):
+        return 'G'
+    if re.search(r'(?:GRIFFIN|新馬)', raw_class, re.I):
+        return 'GR'
+    return raw_class
+
+
 def get_reference_sections(venue: str, distance: int, race_class: str) -> dict:
     """Get reference sectional times for a venue/distance/class.
     Returns dict with 'sections', 'labels' or empty dict."""
@@ -150,25 +187,7 @@ def get_reference_sections(venue: str, distance: int, race_class: str) -> dict:
         return {}
     classes = dists[dkey]
     # Map class
-    raw_class = str(race_class or '').strip()
-    cmap = {'第一班': 'C1', '第二班': 'C2', '第三班': 'C3', '第四班': 'C4',
-            '第五班': 'C5', '一級賽': 'G', '二級賽': 'G', '三級賽': 'G',
-            '分級賽': 'G', '新馬賽': 'GR', '新馬': 'GR',
-            'C1': 'C1', 'C2': 'C2', 'C3': 'C3', 'C4': 'C4', 'C5': 'C5',
-            'G': 'G', 'GR': 'GR'}
-    ckey = cmap.get(raw_class)
-    if ckey is None:
-        class_match = re.search(r'(?:CLASS|C)\s*([1-5])', raw_class, re.I)
-        group_match = re.search(r'(?:GROUP|GRADE|G)\s*[123]', raw_class, re.I)
-        digit_match = re.fullmatch(r'[1-5]', raw_class)
-        if class_match:
-            ckey = f'C{class_match.group(1)}'
-        elif group_match:
-            ckey = 'G'
-        elif digit_match:
-            ckey = f'C{raw_class}'
-        else:
-            ckey = raw_class
+    ckey = _normalise_race_class_key(race_class)
     # Do not silently borrow another class's par. Missing reference evidence
     # is safer than a falsely precise normalized split.
     if ckey not in classes:
@@ -487,10 +506,12 @@ def get_standard_time(venue: str, distance: int, race_class: str) -> Optional[fl
     elif '跑馬地' in venue:
         v = '跑馬地'
     
+    class_key = _normalise_race_class_key(race_class)
+
     # Try scraped JSON first
     scraped = _load_scraped_standard_times()
     if scraped:
-        flat_key = f"{v}_{distance}_{race_class}"
+        flat_key = f"{v}_{distance}_{class_key}"
         if flat_key in scraped:
             return scraped[flat_key]
         # Fallback within scraped
@@ -504,8 +525,8 @@ def get_standard_time(venue: str, distance: int, race_class: str) -> Optional[fl
     if key not in STANDARD_TIMES:
         return None
     class_map = STANDARD_TIMES[key]
-    if race_class in class_map:
-        return class_map[race_class]
+    if class_key in class_map:
+        return class_map[class_key]
     for fallback in ['C4', 'C3', 'C5', 'C2', 'C1', 'G']:
         if fallback in class_map:
             return class_map[fallback]
