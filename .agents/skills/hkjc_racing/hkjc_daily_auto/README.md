@@ -68,7 +68,10 @@ cp .agents/.env.example .agents/.env
 
 可用
 `WC_HKJC_ANALYSIS_LEAD_DAYS` 改 pre-race 提前日數；forward 正式起點預設
-`2026-09-06`，可用 `WC_HKJC_FORWARD_START` 覆蓋。
+`2026-09-06`，可用 `WC_HKJC_FORWARD_START` 覆蓋。預設提前兩日嗰個最早合資格日，
+要到 Sydney 21:30 先會真正啟動 pipeline，等 Starter PDF 正常發佈；之前嘅排程會
+回報 dormant，亦唔會啟動每 30 分鐘 recovery。之後一日同賽日則全日合資格，
+手動 `--force` 仍可繞過呢個最早時間閘。
 
 Runtime state/log 會寫入 `state/` 同 `logs/`，唔應 commit。候選 gate 由研究／
 evaluation workflow 寫入 `state/HKJC_Candidate_Gate.json`；必須包含 paired

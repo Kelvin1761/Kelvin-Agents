@@ -206,6 +206,84 @@ def test_temporary_prerace_failure_arms_self_recovery(tmp_path: Path) -> None:
     notify.assert_called_once()
 
 
+def test_prerace_waits_until_2130_on_earliest_lead_day(tmp_path: Path) -> None:
+    meeting = {
+        "date": "2026-09-16",
+        "venue": "HappyValley",
+        "course": "HV",
+        "url": "fixture",
+    }
+    state_path = tmp_path / "state.json"
+    state = schedule.load_state(state_path)
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(
+            schedule,
+            "now_local",
+            return_value=datetime(2026, 9, 14, 21, 29, tzinfo=timezone.utc),
+        ),
+        mock.patch.object(schedule, "run_cmd") as run,
+        mock.patch.object(schedule, "notify") as notify,
+    ):
+        assert schedule.run_prerace(state, state_path, meeting=meeting) == 0
+    run.assert_not_called()
+    notify.assert_not_called()
+    assert state["meetings"] == {}
+    assert schedule._CONTROL_OUTCOME["reason"] == "meeting_not_due"
+    assert schedule._CONTROL_OUTCOME["not_before"] == (
+        "2026-09-14T21:30:00[Australia/Sydney]"
+    )
+
+
+def test_prerace_starts_at_2130_on_earliest_lead_day(tmp_path: Path) -> None:
+    meeting = {
+        "date": "2026-09-16",
+        "venue": "HappyValley",
+        "course": "HV",
+        "url": "fixture",
+    }
+    state_path = tmp_path / "state.json"
+    state = schedule.load_state(state_path)
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(schedule, "HK_RACING", tmp_path),
+        mock.patch.object(
+            schedule,
+            "now_local",
+            return_value=datetime(2026, 9, 14, 21, 30, tzinfo=timezone.utc),
+        ),
+        mock.patch.object(schedule, "run_cmd", return_value=(75, "PDF not ready")) as run,
+        mock.patch.object(schedule, "notify"),
+    ):
+        assert schedule.run_prerace(state, state_path, meeting=meeting) == 75
+    run.assert_called_once()
+    assert state["meetings"]["2026-09-16|HappyValley"]["failure_streak"] == 1
+
+
+def test_prerace_is_due_all_day_after_earliest_lead_day(tmp_path: Path) -> None:
+    meeting = {
+        "date": "2026-09-16",
+        "venue": "HappyValley",
+        "course": "HV",
+        "url": "fixture",
+    }
+    state_path = tmp_path / "state.json"
+    state = schedule.load_state(state_path)
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(schedule, "HK_RACING", tmp_path),
+        mock.patch.object(
+            schedule,
+            "now_local",
+            return_value=datetime(2026, 9, 15, 8, 0, tzinfo=timezone.utc),
+        ),
+        mock.patch.object(schedule, "run_cmd", return_value=(75, "PDF not ready")) as run,
+        mock.patch.object(schedule, "notify"),
+    ):
+        assert schedule.run_prerace(state, state_path, meeting=meeting) == 75
+    run.assert_called_once()
+
+
 def test_prerace_writes_evidence_before_dashboard_deploy(tmp_path: Path) -> None:
     state_path = tmp_path / "state.json"
     state = schedule.load_state(state_path)
@@ -304,6 +382,59 @@ def test_recovery_retries_pending_meeting(tmp_path: Path) -> None:
     assert prerace.call_args.kwargs["meeting"]["url"].endswith(
         "racedate=2026/09/06&Racecourse=ST&RaceNo=1"
     )
+
+
+def test_recovery_clears_premature_pending_without_retry(tmp_path: Path) -> None:
+    state_path = tmp_path / "state.json"
+    state = schedule.load_state(state_path)
+    state["meetings"]["2026-09-16|HappyValley"] = {
+        "recovery_pending": True,
+        "failure_streak": 12,
+        "last_failure_excerpt": "Starter PDF R0: extractor exit=1",
+    }
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(
+            schedule,
+            "now_local",
+            return_value=datetime(2026, 9, 14, 12, 0, tzinfo=timezone.utc),
+        ),
+        mock.patch.object(schedule, "run_prerace") as prerace,
+    ):
+        assert schedule.run_recovery(state, state_path) == 0
+    prerace.assert_not_called()
+    record = state["meetings"]["2026-09-16|HappyValley"]
+    assert record["recovery_pending"] is False
+    assert record["failure_streak"] == 0
+    assert record["last_failure_excerpt"] == ""
+    assert record["premature_recovery_cleared_at"]
+    assert schedule._CONTROL_OUTCOME["reason"] == "recovery_before_prerace_window"
+
+
+def test_manual_force_bypasses_earliest_time_boundary(tmp_path: Path) -> None:
+    meeting = {
+        "date": "2026-09-16",
+        "venue": "HappyValley",
+        "course": "HV",
+        "url": "fixture",
+    }
+    with (
+        mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
+        mock.patch.object(schedule, "HK_RACING", tmp_path),
+        mock.patch.object(
+            schedule,
+            "now_local",
+            return_value=datetime(2026, 9, 14, 11, 0, tzinfo=timezone.utc),
+        ),
+        mock.patch.object(schedule, "run_cmd", return_value=(75, "not ready")) as run,
+        mock.patch.object(schedule, "notify"),
+    ):
+        state_path = tmp_path / "state.json"
+        state = schedule.load_state(state_path)
+        assert schedule.run_prerace(
+            state, state_path, meeting=meeting, force=True
+        ) == schedule.EXIT_TEMPORARY
+    run.assert_called_once()
 
 
 def test_manual_force_bypasses_only_the_lead_day_window(tmp_path: Path) -> None:

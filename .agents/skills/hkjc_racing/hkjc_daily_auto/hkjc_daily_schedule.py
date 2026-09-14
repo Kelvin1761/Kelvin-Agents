@@ -78,6 +78,8 @@ LOG_DIR = HERE / "logs"
 DEFAULT_STATE = STATE_DIR / "hkjc_daily_state.json"
 DEFAULT_CANDIDATE_GATE = STATE_DIR / "HKJC_Candidate_Gate.json"
 DEFAULT_FORWARD_START = date(2026, 9, 6)
+PRERACE_EARLIEST_HOUR = 21
+PRERACE_EARLIEST_MINUTE = 30
 
 EXIT_OK = 0
 EXIT_TEMPORARY = 75
@@ -122,6 +124,38 @@ def now_local() -> datetime:
 
 def stamp() -> str:
     return now_local().isoformat(timespec="seconds")
+
+
+def prerace_window_is_open(
+    meeting_date: date,
+    *,
+    current: datetime,
+    lead_days: int,
+) -> bool:
+    """Return whether an unattended pre-race run may start.
+
+    The starter PDF normally materializes around 21:30 Sydney time.  On the
+    earliest eligible lead day, starting before then only creates predictable
+    extraction failures and arms the 30-minute recovery loop unnecessarily.
+    Once that boundary has passed, later lead days remain eligible all day.
+    """
+    days_until_meeting = (meeting_date - current.date()).days
+    if days_until_meeting < 0 or days_until_meeting > lead_days:
+        return False
+    if days_until_meeting < lead_days:
+        return True
+    return (current.hour, current.minute) >= (
+        PRERACE_EARLIEST_HOUR,
+        PRERACE_EARLIEST_MINUTE,
+    )
+
+
+def prerace_window_opens_at(meeting_date: date, lead_days: int) -> str:
+    first_day = meeting_date - timedelta(days=lead_days)
+    return (
+        f"{first_day.isoformat()}T{PRERACE_EARLIEST_HOUR:02d}:"
+        f"{PRERACE_EARLIEST_MINUTE:02d}:00[{TIMEZONE}]"
+    )
 
 
 def log(message: str) -> None:
@@ -837,11 +871,26 @@ def run_prerace(
         set_control_outcome("dormant", reason="no_future_racecard")
         return EXIT_OK
     meeting_date = date.fromisoformat(meeting["date"])
-    today = now_local().date()
+    current = now_local()
+    today = current.date()
     lead_days = max(0, int(os.environ.get("WC_HKJC_ANALYSIS_LEAD_DAYS", "2")))
-    if meeting_date < today or ((meeting_date - today).days > lead_days and not force):
-        log(f"HKJC pre-race not due: {meeting['date']} (lead={lead_days})")
-        set_control_outcome("dormant", reason="meeting_not_due", meeting=meeting["date"])
+    window_open = prerace_window_is_open(
+        meeting_date,
+        current=current,
+        lead_days=lead_days,
+    )
+    if meeting_date < today or (not window_open and not force):
+        opens_at = prerace_window_opens_at(meeting_date, lead_days)
+        log(
+            f"HKJC pre-race not due: {meeting['date']} "
+            f"(lead={lead_days}; opens={opens_at})"
+        )
+        set_control_outcome(
+            "dormant",
+            reason="meeting_not_due",
+            meeting=meeting["date"],
+            not_before=opens_at,
+        )
         return EXIT_OK
     if force:
         log(f"HKJC manual force requested for {meeting['date']} {meeting['venue']}")
@@ -1003,9 +1052,12 @@ def _meeting_from_state_key(key: str) -> dict | None:
 
 def run_recovery(state: dict, state_path: Path) -> int:
     """Retry only a due meeting previously classified as temporary/incomplete."""
-    today = now_local().date()
+    current = now_local()
+    today = current.date()
+    lead_days = max(0, int(os.environ.get("WC_HKJC_ANALYSIS_LEAD_DAYS", "2")))
     pending: list[tuple[str, dict]] = []
     changed = False
+    premature_cleared: list[str] = []
     for key, record in state.get("meetings", {}).items():
         if not isinstance(record, dict) or not record.get("recovery_pending"):
             continue
@@ -1014,12 +1066,43 @@ def run_recovery(state: dict, state_path: Path) -> int:
             record["recovery_pending"] = False
             changed = True
             continue
+        meeting_date = date.fromisoformat(meeting["date"])
+        if not prerace_window_is_open(
+            meeting_date,
+            current=current,
+            lead_days=lead_days,
+        ):
+            # Migrate pending state created by the old date-only gate.  The
+            # regular 21:30 prerace slot will start a fresh attempt once the
+            # starter PDF is expected to exist.
+            record.update(
+                {
+                    "recovery_pending": False,
+                    "failure_streak": 0,
+                    "last_failure_excerpt": "",
+                    "premature_recovery_cleared_at": stamp(),
+                }
+            )
+            premature_cleared.append(key)
+            changed = True
+            continue
         pending.append((key, meeting))
     if changed:
         save_state(state_path, state)
     if not pending:
-        log("HKJC recovery dormant: no pending temporary failure")
-        set_control_outcome("dormant", reason="no_pending_recovery")
+        if premature_cleared:
+            log(
+                "HKJC recovery dormant: cleared premature pending state for "
+                + ", ".join(premature_cleared)
+            )
+            set_control_outcome(
+                "dormant",
+                reason="recovery_before_prerace_window",
+                meetings=premature_cleared,
+            )
+        else:
+            log("HKJC recovery dormant: no pending temporary failure")
+            set_control_outcome("dormant", reason="no_pending_recovery")
         return EXIT_OK
     key, meeting = sorted(pending, key=lambda item: item[0])[0]
     log(f"HKJC self-recovery retry: {key}")
