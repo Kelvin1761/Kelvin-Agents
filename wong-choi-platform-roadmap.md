@@ -6,7 +6,7 @@
 
 ## Current Stage
 
-**Stage 4 complete；Stage 5 Task 1–5已merge／activate，Release A shared research safety／review core亦已進入main及production。** Task 6嘅fail-closed engineering fixtures已通過，但真實domain compact producer／callback、reviewed power applicability同platform safety checkpoint仍未完成；Task 7只完成共用本機runtime，production metadata producer、Central review scheduler、Telegram acceptance同Dashboard private feed仍未啟用。AU／HKJC維持production ruler；Tennis保持shadow；NBA保持shadow／descriptive-only並等待2026-27 live evidence。下一步係Task 6真實來源驗收同Task 7第一個獨立production producer；中央旺財係control tower，唔係第五個預測模型。
+**Stage 4 complete；Stage 5 Task 1–5已merge／activate，Release A shared research safety／review core亦已進入main及production。** Task 6嘅fail-closed engineering fixtures已通過；2026-09-14獨立power review確認production仍為0/4 profiles，並發現review authority未hash-bind，修正已喺隔離scope準備但未release。真實domain compact producer／callback、reviewed numeric applicability同platform safety checkpoint仍未完成；Task 7只完成共用本機runtime，production metadata producer、Central review scheduler、Telegram acceptance同Dashboard private feed仍未啟用。AU／HKJC維持production ruler；Tennis保持shadow；NBA保持shadow／descriptive-only並等待2026-27 live evidence。下一步係順序activate四個D producer，同時先收緊power review binding，再做真實來源驗收；中央旺財係control tower，唔係第五個預測模型。
 
 ## Stages and Exit Gates
 
@@ -40,7 +40,7 @@
 - [x] Stage 5 production-safe research runner：append-only local queue、四線pure-command adapter、baseline／candidate checkout及dataset lock、WARM scratch、single-heavy-worker、production preemption、capacity／timeout／cleanup同ExperimentRun evidence gates已通過；release `38059dbc3366`已merge／activate，四線aligned，heavy scheduler未啟用。
 - [x] Stage 5 research evaluation：凍結ruler metrics、paired bootstrap、cohort、walk-forward同append-only experiment decision report已通過；ablation／leakage留Task 6。
 - [x] Stage 5 Release A shared core：Task 5 evaluation修正、Task 6 safety／postflight／power fail-closed contracts同Task 7 review primitives共89個exact paths，release `44c9df55ca72`完整gate通過並merge；其後production release `cf98f9580d58`將包含該ancestor嘅checkout同步，AU／HKJC／NBA／Tennis四線aligned。呢項只代表共用工程核心已啟用，唔代表Task 6／7完成。
-- [ ] Stage 5 Task 6 safety checkpoint：故意洩漏／future／late odds／constant field／bundled change／missing或mismatched power evidence已fail closed；仍欠真實domain producer／callback證據、獨立power applicability決定同全局健康閘。
+- [ ] Stage 5 Task 6 safety checkpoint：故意洩漏／future／late odds／constant field／bundled change／missing或mismatched power evidence已fail closed；獨立review確認0/4 profile並準備authority hash-binding修正，仍欠修正release、真實domain producer／callback證據、dev-only／forward numeric profile approval同全局健康閘。
 - [ ] Stage 5 Task 7 production activation：按D-AU、D-HKJC、D-Tennis、D-NBA metadata producer、E Central review scheduler、F Telegram acceptance、C private Dashboard feed分開release／rollback；任何一項未批唔可將Task 7標完成。
 - [x] Control tower foundation：Git／release／deployment／四線 run health／model stage／evidence／30日 SLO／Telegram approval；portfolio risk同research queue留Stage 5。
 - [x] Central Dashboard ownership：四線analysis同中央health/evidence projection；D1 `WC_LEDGER`保存實際投注，Dashboard永不做第五個scoring engine。

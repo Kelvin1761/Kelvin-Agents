@@ -21,14 +21,16 @@ from .research_index import _encoded, _hash, _hashed, _safe
 
 
 SCHEMA = "wong-choi-power-applicability/v1"
-PROFILE_SCHEMA = "wong-choi-power-profile/v1"
+PROFILE_SCHEMA = "wong-choi-power-profile/v2"
 DEFAULT_PROFILE_ROOT = Path(__file__).resolve().parent / "resources" / "power_profiles"
+DEFAULT_AUTHORITY_ROOT = Path(__file__).resolve().parents[3]
 MAX_PROFILE_BYTES = 262144
 BLOCKER_ORDER = (
     "ruler_power_not_required",
     "power_profile_missing",
     "multiple_power_profiles",
     "power_profile_invalid",
+    "power_profile_authority_invalid",
     "power_profile_ruler_mismatch",
     "power_profile_metric_mismatch",
     "power_profile_method_incompatible",
@@ -72,17 +74,58 @@ def _expected_family(ruler: EvaluationRuler, metric: dict) -> str | None:
     return None
 
 
+def _authority_verified(payload: dict, *, authority_root: Path) -> bool:
+    authority = payload.get("authority")
+    expected_sha256 = payload.get("authority_sha256")
+    if (
+        not isinstance(authority, str)
+        or not authority.strip()
+        or not isinstance(expected_sha256, str)
+        or re.fullmatch(r"[0-9a-f]{64}", expected_sha256) is None
+    ):
+        return False
+    relative = Path(authority)
+    if (
+        relative.is_absolute()
+        or len(relative.parts) < 3
+        or relative.parts[:2] != ("docs", "audits")
+        or any(part in {"", ".", ".."} for part in relative.parts)
+    ):
+        return False
+    root = authority_root.resolve()
+    candidate = root / relative
+    try:
+        resolved = candidate.resolve(strict=True)
+        resolved.relative_to(root)
+    except (OSError, RuntimeError, ValueError):
+        return False
+    current = root
+    for part in relative.parts:
+        current = current / part
+        if current.is_symlink():
+            return False
+    try:
+        return (
+            resolved.is_file()
+            and 0 < resolved.stat().st_size <= MAX_PROFILE_BYTES
+            and _digest(resolved) == expected_sha256
+        )
+    except OSError:
+        return False
+
+
 def _profile_blockers(
     payload: object,
     *,
     domain: Domain,
     ruler: EvaluationRuler,
     ruler_sha256: str,
+    authority_root: Path,
 ) -> list[str]:
     blockers: set[str] = set()
     required = {
         "schema_version", "profile_id", "domain", "status", "ruler_id",
-        "ruler_sha256", "authority", "method", "target", "min_dev_units",
+        "ruler_sha256", "authority", "authority_sha256", "method", "target", "min_dev_units",
         "unit", "assumptions", "metrics",
     }
     if not isinstance(payload, dict) or set(payload) != required:
@@ -97,6 +140,8 @@ def _profile_blockers(
         or not payload["authority"].strip()
     ):
         blockers.add("power_profile_invalid")
+    if not _authority_verified(payload, authority_root=authority_root):
+        blockers.add("power_profile_authority_invalid")
     if payload["ruler_id"] != ruler.ruler_id or payload["ruler_sha256"] != ruler_sha256:
         blockers.add("power_profile_ruler_mismatch")
     if payload["method"] != "paired_t_design" or payload["unit"] != ruler.bootstrap["unit"]:
@@ -143,8 +188,12 @@ def _profile_blockers(
     return [code for code in BLOCKER_ORDER if code in blockers]
 
 
-def _build(*, ruler_root: Path, profile_root: Path) -> dict:
-    ruler_root, profile_root = _safe(ruler_root), _safe(profile_root)
+def _build(*, ruler_root: Path, profile_root: Path, authority_root: Path) -> dict:
+    ruler_root, profile_root, authority_root = (
+        _safe(ruler_root),
+        _safe(profile_root),
+        _safe(authority_root),
+    )
     records = []
     for domain in Domain:
         ruler = load_evaluation_ruler(domain, root=ruler_root)
@@ -174,7 +223,11 @@ def _build(*, ruler_root: Path, profile_root: Path) -> dict:
                 blockers.append("power_profile_invalid")
             else:
                 blockers.extend(_profile_blockers(
-                    payload, domain=domain, ruler=ruler, ruler_sha256=ruler_sha256,
+                    payload,
+                    domain=domain,
+                    ruler=ruler,
+                    ruler_sha256=ruler_sha256,
+                    authority_root=authority_root,
                 ))
         blockers = [code for code in BLOCKER_ORDER if code in set(blockers)]
         records.append({
@@ -212,11 +265,19 @@ def inspect_power_applicability(
     *,
     ruler_root: Path = DEFAULT_RULER_ROOT,
     profile_root: Path = DEFAULT_PROFILE_ROOT,
+    authority_root: Path = DEFAULT_AUTHORITY_ROOT,
 ) -> dict:
     """Inventory four frozen rulers and separately reviewed power profiles."""
-    report = _build(ruler_root=Path(ruler_root), profile_root=Path(profile_root))
+    report = _build(
+        ruler_root=Path(ruler_root),
+        profile_root=Path(profile_root),
+        authority_root=Path(authority_root),
+    )
     verify_power_applicability_report(
-        report, ruler_root=Path(ruler_root), profile_root=Path(profile_root),
+        report,
+        ruler_root=Path(ruler_root),
+        profile_root=Path(profile_root),
+        authority_root=Path(authority_root),
     )
     return report
 
@@ -226,10 +287,15 @@ def verify_power_applicability_report(
     *,
     ruler_root: Path = DEFAULT_RULER_ROOT,
     profile_root: Path = DEFAULT_PROFILE_ROOT,
+    authority_root: Path = DEFAULT_AUTHORITY_ROOT,
 ) -> None:
     """Recompute static evidence so a rehashed report cannot grant authority."""
     _hashed(report, SCHEMA)
-    expected = _build(ruler_root=Path(ruler_root), profile_root=Path(profile_root))
+    expected = _build(
+        ruler_root=Path(ruler_root),
+        profile_root=Path(profile_root),
+        authority_root=Path(authority_root),
+    )
     if _encoded(report) != _encoded(expected):
         raise ValueError("power applicability report differs from current frozen evidence")
     if report["verified_monitoring_samples"] is not None or report["model_promotion_allowed"] is not False:

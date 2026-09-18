@@ -40,6 +40,7 @@
 
 - Release A `44c9df55ca72`以89個exact paths交付Task 5 evaluation修正、Task 6 safety／postflight／power fail-closed contracts及Task 7共用review primitives；完整release gate通過並merge。其後`cf98f9580d58`將包含Release A嘅production checkout同步，四個domain verifier全部aligned；現役production `84d20f25acae`仍包含同一ancestor。
 - Task 6 focused recheck共297 tests通過：148個safety／postflight／guard／power tests，149個四線feature／settlement／earliest-source provenance tests。故意結果洩漏、future feature、走地／遲價、constant／neutral field、bundled change、偽造boolean safety同missing／mismatched power evidence全部fail closed。
+- 2026-09-14獨立power applicability review重算為0/4 profiles，四線均`power_profile_missing`；同時發現profile嘅`authority`只驗非空文字、未hash-bind review文件。安全修正同13個專項tests已喺隔離scope準備，假hash、path escape同review bytes改寫會fail closed；冇填任何fixture／估算數值，Task 6仍保持NOT READY。證據見`docs/audits/WONG_CHOI_STAGE5_POWER_APPLICABILITY_REVIEW_2026-09-14.md`。
 - 呢啲證據只證明共用工程核心已active。Task 6保持未勾選，因真實domain compact producer／callback、獨立reviewed power applicability同Task 10 platform safety checkpoint未完成；不可用「missing evidence會block」冒充「real evidence已存在」。
 - Task 7共用index／clock／receipt／notification primitives已active，但production metadata producers、Central scheduler、authorized Telegram acceptance同private Dashboard feed仍未啟用。下一個production sequence固定分拆為D-AU、D-HKJC、D-Tennis、D-NBA、E scheduler、F Telegram、C Dashboard，每項獨立scope／gate／approval／rollback。
 - 2026-09-13 `./健康.sh`仍exit 1：Drive mirror落後、Artifact COLD 6/8、AU／Tennis 30日SLO未達標；最新AU／HKJC／Tennis run健康，NBA按休季dormant。營運紅項唔會用改ruler、改holdout或放寬checkpoint解決。
