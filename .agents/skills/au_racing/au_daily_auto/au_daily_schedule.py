@@ -65,6 +65,11 @@ from shared_wong_choi.domain_evidence import (  # noqa: E402
 )
 from shared_wong_choi.evidence import DecisionState  # noqa: E402
 from shared_wong_choi.immutable_snapshot import create_immutable_snapshot  # noqa: E402
+from au_research_evidence import (  # noqa: E402
+    PROJECTION_NAME,
+    build_feature_projection,
+    settlement_artifacts,
+)
 
 ARCHIVE_ROOT = AU_RACING / "Archive"
 # 兩個 CSV 係歸檔之後改嘅歷史庫；鏡像要連佢哋一齊，Drive 邊先算真副本。
@@ -859,21 +864,14 @@ def step_settlement_evidence(runlog: RunLog, archived: list[str]) -> bool:
     written = []
     for name in archived:
         folder = ARCHIVE_ROOT / name
-        report = folder / f"{name}_Reflector_Report.md"
-        if not report.is_file():
-            runlog.step(
-                "settlement-evidence",
-                "skipped_unresolved",
-                meeting=name,
-            )
-            continue
         try:
+            artifacts = list(settlement_artifacts(folder, event_id=name))
             result = record_settlement_for_event(
                 domain=Domain.AU,
                 event_id=name,
                 evidence_root=evidence_root,
                 summary={"meeting": name, "archive_status": "archived"},
-                artifacts=[report],
+                artifacts=artifacts,
             )
         except Exception as exc:  # noqa: BLE001
             runlog.error(
@@ -1612,11 +1610,15 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
 
 
 AU_EVIDENCE_PATTERNS = (
+    "* Race * Racecard.md",
+    "* Race * Formguide.md",
+    "* Race * Facts.md",
     "Race_*_Logic.json",
     "Race_*_Auto_Analysis.md",
     "Race_*_Auto_Scoring.csv",
     "Meeting_Auto_Scoring.csv",
     "Data_Health.json",
+    "odds_history.json",
 )
 
 
@@ -1635,12 +1637,20 @@ def step_prediction_evidence(runlog: RunLog, meeting_dirs: list[Path]) -> bool:
     for folder in meeting_dirs:
         try:
             recommendations = scoring_recommendations(folder)
+            captured_at = (
+                datetime.now(ZoneInfo(TIMEZONE))
+                if ZoneInfo is not None
+                else datetime.now().astimezone()
+            )
+            projection = build_feature_projection(folder, captured_at=captured_at)
             snapshot = create_immutable_snapshot(
                 folder,
                 domain="au",
                 event_id=folder.name,
                 patterns=AU_EVIDENCE_PATTERNS,
                 recommendations=recommendations,
+                additional_files={PROJECTION_NAME: projection},
+                at=captured_at,
             )
             record = record_prediction_decision_if_configured(
                 domain=Domain.AU,
@@ -3315,13 +3325,16 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
 def run_morning(runlog: RunLog, args, today: date) -> int:
     temporary = False
     updated: list[Path] = []
+    archived: list[str] = []
 
     # ⚠️ 收拾尋日一定要行喺**計合併名單之前**。倒轉嘅話名單會喺覆盤歸檔之前
     # 影低，跟住合併一啲已經搬走嘅 folder，把空殼加返上 dashboard。
     if not args.skip_review:
         try:
-            step_review_archive(runlog, today - timedelta(days=1))
+            archived = step_review_archive(runlog, today - timedelta(days=1))
             push_reflection(runlog)
+            if not step_settlement_evidence(runlog, archived):
+                temporary = True
         except TemporaryFailure as exc:
             runlog.step("morning-review", "deferred", detail=str(exc))
         except Exception as exc:  # noqa: BLE001
