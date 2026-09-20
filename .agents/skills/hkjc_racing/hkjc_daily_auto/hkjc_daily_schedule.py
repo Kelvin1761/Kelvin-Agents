@@ -50,9 +50,16 @@ from shared_wong_choi.contracts import Domain  # noqa: E402
 from shared_wong_choi.domain_evidence import (  # noqa: E402
     record_prediction_decision_if_configured,
     record_settlement_for_event,
+    scoring_recommendations,
 )
 from shared_wong_choi.evidence import DecisionState  # noqa: E402
+from shared_wong_choi.immutable_snapshot import create_immutable_snapshot  # noqa: E402
 from wongchoi_paths import HK_RACING, HK_RACING_MIRROR, is_materialized_file  # noqa: E402
+from hkjc_research_evidence import (  # noqa: E402
+    PROJECTION_NAME,
+    build_feature_projection,
+    settlement_artifacts,
+)
 
 
 TIMEZONE = "Australia/Sydney"
@@ -437,6 +444,41 @@ def create_prediction_snapshot(meeting_dir: Path, *, at: datetime | None = None)
     }
     _atomic_json(destination / "manifest.json", manifest)
     return destination
+
+
+def create_stage5_prediction_snapshot(
+    meeting_dir: Path,
+    *,
+    event_id: str,
+    at: datetime | None = None,
+) -> tuple[Path, list[dict[str, Any]]]:
+    """Create the canonical Stage 5 bundle without rewriting legacy snapshots."""
+    captured_at = at or now_local()
+    canonical_scoring = meeting_dir / "HKJC_Auto_Scoring.csv"
+    if not is_materialized_file(canonical_scoring):
+        raise ValueError("canonical HKJC scoring is missing")
+    recommendations = [
+        item
+        for item in scoring_recommendations(meeting_dir)
+        if item.get("source") == canonical_scoring.name
+    ]
+    if not recommendations:
+        raise ValueError("canonical HKJC scoring has no ranked recommendations")
+    projection = build_feature_projection(
+        meeting_dir,
+        event_id=event_id,
+        captured_at=captured_at,
+    )
+    snapshot = create_immutable_snapshot(
+        meeting_dir,
+        domain="hkjc",
+        event_id=event_id,
+        patterns=SNAPSHOT_PATTERNS,
+        recommendations=recommendations,
+        additional_files={PROJECTION_NAME: projection},
+        at=captured_at,
+    )
+    return snapshot, recommendations
 
 
 def health_status(meeting_dir: Path) -> str:
@@ -949,8 +991,12 @@ def run_prerace(
             return EXIT_TEMPORARY
         set_control_outcome("failed", reason="prerace_pipeline_failed", meeting=key)
         return EXIT_FAILED
+    event_id = f"{meeting['date']}|{meeting['venue']}"
     try:
-        snapshot = create_prediction_snapshot(meeting_dir)
+        snapshot, recommendations = create_stage5_prediction_snapshot(
+            meeting_dir,
+            event_id=event_id,
+        )
     except Exception as exc:  # noqa: BLE001
         notify(f"❌ HKJC scoring 完成但 prediction snapshot 失敗：{exc}")
         set_control_outcome("failed", reason="prediction_snapshot_failed")
@@ -958,7 +1004,7 @@ def run_prerace(
     try:
         evidence = record_prediction_decision_if_configured(
             domain=Domain.HKJC,
-            event_id=f"{meeting['date']}|{meeting['venue']}",
+            event_id=event_id,
             snapshot=snapshot,
             evidence_root=Path(
                 os.environ.get(
@@ -968,6 +1014,7 @@ def run_prerace(
             )
             / "evidence",
             decision_state=DecisionState.RECOMMEND,
+            recommendations=recommendations,
         )
     except Exception as exc:  # noqa: BLE001
         notify(f"❌ HKJC prediction evidence 寫入失敗，Dashboard 已攔截：{exc}")
@@ -1211,11 +1258,14 @@ def run_postrace(state: dict, state_path: Path) -> int:
             log(f"post-race pending {key}: exit={code}")
             overall = max(overall, EXIT_TEMPORARY)
             continue
-        report = meeting_dir / "HKJC_Reflection_Report.md"
+        event_id = (
+            f"{meeting_date.isoformat()}|{venue_from_meeting_dir(meeting_dir)}"
+        )
         try:
+            artifacts = list(settlement_artifacts(meeting_dir, event_id=event_id))
             settlement = record_settlement_for_event(
                 domain=Domain.HKJC,
-                event_id=f"{meeting_date.isoformat()}|{venue_from_meeting_dir(meeting_dir)}",
+                event_id=event_id,
                 evidence_root=Path(
                     os.environ.get(
                         "WONGCHOI_CONTROL_STATE_ROOT",
@@ -1224,12 +1274,13 @@ def run_postrace(state: dict, state_path: Path) -> int:
                 )
                 / "evidence",
                 summary={"meeting": key, "reflector_exit": code},
-                artifacts=[report],
+                artifacts=artifacts,
             )
         except Exception as exc:  # noqa: BLE001
             log(f"settlement evidence pending {key}: {type(exc).__name__}: {exc}")
             overall = max(overall, EXIT_TEMPORARY)
             continue
+        report = meeting_dir / "HKJC_Reflection_Report.md"
         state["meetings"].setdefault(key, {}).update(
             {
                 "last_reflector_success": stamp(),

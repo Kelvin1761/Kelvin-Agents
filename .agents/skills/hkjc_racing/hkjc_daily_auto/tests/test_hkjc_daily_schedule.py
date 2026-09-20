@@ -333,7 +333,11 @@ def test_prerace_writes_evidence_before_dashboard_deploy(tmp_path: Path) -> None
         mock.patch.dict(os.environ, {"WC_HKJC_SCHED_LOG_DIR": str(tmp_path)}),
         mock.patch.object(schedule, "HK_RACING", tmp_path),
         mock.patch.object(schedule, "meeting_dir_for", return_value=meeting_dir),
-        mock.patch.object(schedule, "create_prediction_snapshot", return_value=snapshot),
+        mock.patch.object(
+            schedule,
+            "create_stage5_prediction_snapshot",
+            return_value=(snapshot, []),
+        ),
         mock.patch.object(
             schedule, "record_prediction_decision_if_configured", side_effect=evidence
         ),
