@@ -1,0 +1,39 @@
+{
+  "schema_version": "wong-choi-central-research-review-runtime/v1",
+  "evaluation_release_id": "wc-release:297a293e6e00:2026-08-30T115410.557003_0000",
+  "evaluation_release_commit": "297a293e6e00f6dab2ef17e59db13abd9a3b8526",
+  "ruler_released_at": "2026-08-30T11:56:52.796047+00:00",
+  "initial_window_start": "2026-08-30T11:56:52.796047+00:00",
+  "estimated_bytes": 67108864,
+  "timeout_seconds_per_domain": 900,
+  "max_reviews_per_domain": 50,
+  "reserve_bytes": 2147483648,
+  "model_promotion_allowed": false,
+  "telegram_delivery_confirmed": false,
+  "domains": {
+    "au": {
+      "ruler_id": "au-v2",
+      "ruler_digest": "ad17d45036c735c5b58bdf9912ebdab77538b2b7ee5129bbce386cd062a92ba6",
+      "model_release_id": "wc:au:model-release:au-matrix:8b149c85aafa:production",
+      "model_stage": "production"
+    },
+    "hkjc": {
+      "ruler_id": "hkjc-v2",
+      "ruler_digest": "8b542d5dd02a1f7fd0e29539a327bf65375c67ff12596b1da620a0eef66140e0",
+      "model_release_id": "wc:hkjc:model-release:hkjc-7d:8b149c85aafa:production",
+      "model_stage": "production"
+    },
+    "tennis": {
+      "ruler_id": "tennis-v1",
+      "ruler_digest": "3dc8575351716ec7fea68b3c9bab6c4031f9dfe9731ed18e41f8295078a19788",
+      "model_release_id": "wc:tennis:model-release:tennis-pricing:8b149c85aafa:shadow",
+      "model_stage": "shadow"
+    },
+    "nba": {
+      "ruler_id": "nba-v1",
+      "ruler_digest": "a5a9fac0906d29bb2608dfa50ae064fc335db65d2598a6203c7570e3611d6536",
+      "model_release_id": "wc:nba:model-release:nba-hybrid-v1:8b149c85aafa:shadow",
+      "model_stage": "shadow"
+    }
+  }
+}
