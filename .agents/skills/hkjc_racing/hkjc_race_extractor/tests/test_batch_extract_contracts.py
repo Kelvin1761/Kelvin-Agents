@@ -32,6 +32,8 @@ batch = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(batch)
 
 VALID_PDF = "=== HKJC 全日出賽馬匹資料 (20260906) ===\n" + ("馬匹資料 " * 40)
+VALID_CARD = "馬號: 1\n馬名: 測試馬\n" + ("有效排位 " * 30)
+VALID_FORMGUIDE = "馬號: 1\n馬名: 測試馬\n" + ("有效賽績 " * 30)
 
 
 def _completed(stdout, returncode=0):
@@ -106,6 +108,78 @@ def test_a_bug_in_our_own_code_is_not_swallowed_as_a_source_failure(tmp_path):
             batch.extract_starter_pdf("20260906", str(tmp_path), "09-06")
 
 
+# ─────────────────────── extract_single_race ───────────────────────
+
+def test_racecard_timeout_reports_existing_valid_file_as_kept(tmp_path):
+    path = tmp_path / "09-23 Race 3 排位表.md"
+    path.write_text(VALID_CARD, encoding="utf-8")
+    with mock.patch.object(
+        batch.subprocess,
+        "run",
+        side_effect=[
+            subprocess.TimeoutExpired("racecard", 60),
+            _completed(VALID_FORMGUIDE),
+        ],
+    ):
+        result = batch.extract_single_race(3, "https://x.test?racedate=2026/09/23&Racecourse=HV", str(tmp_path), "09-23")
+    assert result["racecard_ok"] is False
+    assert result["racecard_state"] == "kept"
+    assert path.read_text(encoding="utf-8") == VALID_CARD
+
+
+def test_formguide_timeout_reports_existing_valid_file_as_kept(tmp_path):
+    path = tmp_path / "09-23 Race 3 賽績.md"
+    path.write_text(VALID_FORMGUIDE, encoding="utf-8")
+    with mock.patch.object(
+        batch.subprocess,
+        "run",
+        side_effect=[
+            _completed(VALID_CARD),
+            subprocess.TimeoutExpired("formguide", 120),
+        ],
+    ):
+        result = batch.extract_single_race(3, "https://x.test?racedate=2026/09/23&Racecourse=HV", str(tmp_path), "09-23")
+    assert result["formguide_ok"] is False
+    assert result["formguide_state"] == "kept"
+    assert path.read_text(encoding="utf-8") == VALID_FORMGUIDE
+
+
+def test_serial_retry_only_refetches_the_failed_source(tmp_path):
+    results = [{
+        "race": 3,
+        "racecard_ok": False,
+        "racecard_state": "missing",
+        "formguide_ok": True,
+        "formguide_state": "fresh",
+        "errors": ["Racecard R3: timeout"],
+    }]
+    recovered = {
+        "race": 3,
+        "racecard_ok": True,
+        "racecard_state": "fresh",
+        "formguide_ok": False,
+        "formguide_state": "missing",
+        "errors": [],
+    }
+    with mock.patch.object(batch, "extract_single_race", return_value=recovered) as extract:
+        batch.retry_incomplete_races(
+            results,
+            "https://x.test?racedate=2026/09/23&Racecourse=HV",
+            str(tmp_path),
+            "09-23",
+        )
+    assert results[0]["racecard_ok"] is True
+    assert results[0]["formguide_ok"] is True
+    extract.assert_called_once_with(
+        3,
+        "https://x.test?racedate=2026/09/23&Racecourse=HV",
+        str(tmp_path),
+        "09-23",
+        refresh_racecard=True,
+        refresh_formguide=False,
+    )
+
+
 # ────────────────────── extract_trackwork_meeting ──────────────────────
 
 def _write_trackwork(tmp_path, races):
@@ -142,6 +216,28 @@ def test_trackwork_partial_write_is_counted_partially(tmp_path):
         out = batch.extract_trackwork_meeting("http://x", list(range(1, 11)),
                                               str(tmp_path), "09-06")
     assert sum(1 for v in out["races"].values() if v["json_ok"] and v["md_ok"]) == 3
+
+
+def test_trackwork_fail_soft_stderr_is_not_hidden(tmp_path):
+    failed = subprocess.CompletedProcess(
+        args=["trackwork"],
+        returncode=0,
+        stdout="",
+        stderr="⚠️ Trackwork extraction failed: fetch timed out",
+    )
+    with mock.patch.object(batch.subprocess, "run", return_value=failed):
+        out = batch.extract_trackwork_meeting("http://x", [1], str(tmp_path), "09-23")
+    assert "fetch timed out" in out["error"]
+
+
+def test_trackwork_is_skipped_until_required_sources_are_ready(tmp_path):
+    with mock.patch.object(batch, "extract_trackwork_meeting") as extract:
+        out = batch.extract_trackwork_after_core(
+            "http://x", [1, 2], str(tmp_path), "09-23", core_ready=False
+        )
+    extract.assert_not_called()
+    assert out["ok"] is False
+    assert "skipped" in out["error"]
 
 
 if __name__ == "__main__":

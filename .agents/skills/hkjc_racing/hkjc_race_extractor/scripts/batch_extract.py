@@ -166,52 +166,100 @@ def derive_urls(base_url, race_no):
     return racecard_url, formguide_url
 
 
-def extract_single_race(race_no, base_url, output_dir, date_prefix):
-    """Extract racecard + formguide for a single race."""
+def extract_single_race(
+    race_no, base_url, output_dir, date_prefix, *,
+    refresh_racecard=True, refresh_formguide=True,
+):
+    """Extract selected required sources for a single race."""
     racecard_url, formguide_url = derive_urls(base_url, race_no)
     results = {'race': race_no, 'racecard_ok': False, 'formguide_ok': False,
                'racecard_state': 'missing', 'formguide_state': 'missing', 'errors': []}
 
-    # Racecard
     rc_file = os.path.join(output_dir, f"{date_prefix} Race {race_no} 排位表.md")
-    try:
-        rc_result = subprocess.run(
-            [VENV_PYTHON, RACECARD_SCRIPT, racecard_url],
-            capture_output=True, text=True, timeout=60,
-            encoding='utf-8', env=SUBPROCESS_ENV
-        )
-        ok, error, state = _keep_valid_candidate(
-            rc_file, rc_result.stdout or '', 'Racecard', race_no, rc_result.returncode
-        )
-        results['racecard_ok'] = ok
-        results['racecard_state'] = state
-        if not ok:
-            results['errors'].append(error or f"Racecard R{race_no}: {rc_result.stderr[:200]}")
-    except Exception as e:
-        results['errors'].append(f"Racecard R{race_no}: {str(e)}")
+    if refresh_racecard:
+        try:
+            rc_result = subprocess.run(
+                [VENV_PYTHON, RACECARD_SCRIPT, racecard_url],
+                capture_output=True, text=True, timeout=60,
+                encoding='utf-8', env=SUBPROCESS_ENV
+            )
+            ok, error, state = _keep_valid_candidate(
+                rc_file, rc_result.stdout or '', 'Racecard', race_no, rc_result.returncode
+            )
+            results['racecard_ok'] = ok
+            results['racecard_state'] = state
+            if not ok:
+                results['errors'].append(error or f"Racecard R{race_no}: {rc_result.stderr[:200]}")
+        except Exception as e:
+            results['racecard_state'] = _artifact_state(rc_file, 'Racecard', race_no)
+            results['errors'].append(f"Racecard R{race_no}: {str(e)}")
 
-    # Formguide
     fg_file = os.path.join(output_dir, f"{date_prefix} Race {race_no} 賽績.md")
-    try:
-        fg_result = subprocess.run(
-            [VENV_PYTHON, FORMGUIDE_SCRIPT, formguide_url],
-            capture_output=True, text=True, timeout=120,
-            encoding='utf-8', env=SUBPROCESS_ENV
-        )
-        # Filter out the "Extracting form guide" log line
-        lines = fg_result.stdout.splitlines(keepends=True)
-        filtered = [l for l in lines if "Extracting form guide using Playwright" not in l]
-        content = ''.join(filtered)
-        ok, error, state = _keep_valid_candidate(
-            fg_file, content, 'Formguide', race_no, fg_result.returncode
-        )
-        results['formguide_ok'] = ok
-        results['formguide_state'] = state
-        if not ok:
-            results['errors'].append(error or f"Formguide R{race_no}: {fg_result.stderr[:200]}")
-    except Exception as e:
-        results['errors'].append(f"Formguide R{race_no}: {str(e)}")
+    if refresh_formguide:
+        try:
+            fg_result = subprocess.run(
+                [VENV_PYTHON, FORMGUIDE_SCRIPT, formguide_url],
+                capture_output=True, text=True, timeout=120,
+                encoding='utf-8', env=SUBPROCESS_ENV
+            )
+            # Filter out the "Extracting form guide" log line
+            lines = fg_result.stdout.splitlines(keepends=True)
+            filtered = [l for l in lines if "Extracting form guide using Playwright" not in l]
+            content = ''.join(filtered)
+            ok, error, state = _keep_valid_candidate(
+                fg_file, content, 'Formguide', race_no, fg_result.returncode
+            )
+            results['formguide_ok'] = ok
+            results['formguide_state'] = state
+            if not ok:
+                results['errors'].append(error or f"Formguide R{race_no}: {fg_result.stderr[:200]}")
+        except Exception as e:
+            results['formguide_state'] = _artifact_state(fg_file, 'Formguide', race_no)
+            results['errors'].append(f"Formguide R{race_no}: {str(e)}")
 
+    return results
+
+
+def retry_incomplete_races(
+    results, base_url, output_dir, date_prefix, max_retries=2,
+):
+    """Serially retry only the required source that failed concurrently.
+
+    HKJC intermittently stalls individual requests. A small serial retry avoids
+    repeating successful Playwright work and reduces pressure on the source.
+    """
+    for retry_no in range(1, max_retries + 1):
+        incomplete = [
+            result for result in sorted(results, key=lambda item: item['race'])
+            if not result.get('racecard_ok') or not result.get('formguide_ok')
+        ]
+        if not incomplete:
+            break
+        print(f"   ↻ Serial recovery {retry_no}/{max_retries}: "
+              f"R{'、R'.join(str(item['race']) for item in incomplete)}")
+        for result in incomplete:
+            need_racecard = not result.get('racecard_ok')
+            need_formguide = not result.get('formguide_ok')
+            recovered = extract_single_race(
+                result['race'], base_url, output_dir, date_prefix,
+                refresh_racecard=need_racecard,
+                refresh_formguide=need_formguide,
+            )
+            for source, needed in (
+                ('racecard', need_racecard), ('formguide', need_formguide),
+            ):
+                if not needed:
+                    continue
+                result[f'{source}_ok'] = recovered[f'{source}_ok']
+                result[f'{source}_state'] = recovered.get(
+                    f'{source}_state', result.get(f'{source}_state', 'missing')
+                )
+                label = 'Racecard' if source == 'racecard' else 'Formguide'
+                result['errors'] = [
+                    error for error in result.get('errors', [])
+                    if not error.startswith(f'{label} R{result["race"]}:')
+                ]
+            result['errors'].extend(recovered.get('errors', []))
     return results
 
 
@@ -361,9 +409,22 @@ def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
         }
     total_ok = sum(1 for v in results['races'].values() if v['json_ok'] and v['md_ok'])
     results['ok'] = total_ok > 0
-    if result is not None and result.returncode != 0 and not results['error']:
-        results['error'] = result.stderr[:200]
+    if result is not None and result.stderr.strip() and not results['error']:
+        results['error'] = result.stderr.strip()[:200]
     return results
+
+
+def extract_trackwork_after_core(
+    base_url, races, output_dir, date_prefix, *, core_ready,
+):
+    """Do not spend the recovery window on best-effort data before core is ready."""
+    if not core_ready:
+        return {
+            'ok': False,
+            'races': {race: {'json_ok': False, 'md_ok': False} for race in races},
+            'error': 'skipped until required sources are ready',
+        }
+    return extract_trackwork_meeting(base_url, races, output_dir, date_prefix)
 
 
 def main():
@@ -411,19 +472,7 @@ def main():
         print(f"   ⏳ PDF 未 ready；先完成其餘來源探測，整批會標記 WAITING_SOURCE。")
     print()
 
-    # Step 2: Extract 晨操 (trackwork) — all races in one shot, fail-soft
-    print(f"🏇 Extracting 晨操 (trackwork) for {len(races)} races...")
-    tw_results = extract_trackwork_meeting(args.base_url, races, output_dir, date_prefix)
-    tw_ok_count = sum(1 for v in tw_results['races'].values() if v['json_ok'] and v['md_ok'])
-    if tw_results['ok']:
-        print(f"   ✅ 晨操: {tw_ok_count}/{len(races)} races")
-    else:
-        print(f"   ⚠️ 晨操: {tw_ok_count}/{len(races)} races (下游將使用 fallback)")
-        if tw_results['error']:
-            print(f"      {tw_results['error']}")
-    print()
-
-    # Step 3: Extract racecard + formguide concurrently
+    # Step 2: Extract required racecard + formguide sources concurrently.
     print(f"🔄 Extracting {len(races)} races (max {args.max_workers} concurrent)...")
     all_results = []
     with ThreadPoolExecutor(max_workers=args.max_workers) as executor:
@@ -442,6 +491,13 @@ def main():
             print(f"   Race {race}: Racecard {rc} | Formguide {fg}")
             for err in result['errors']:
                 print(f"      ⚠️ {err}")
+
+    # HKJC occasionally stalls isolated HTTP requests. Retry only failed
+    # sources, serially, so successful Playwright work is not repeated and the
+    # recovery attempt does not create another concurrent burst.
+    retry_incomplete_races(
+        all_results, args.base_url, output_dir, date_prefix,
+    )
 
     # 碟上賽績同新鮮排位表對得上 → 標記 `verified`，個閘會認。
     # ⚠️ 上面逐場嗰行標記喺核實之前就印咗（佢喺完成迴圈裡面，而核實要等齊所有
@@ -470,6 +526,29 @@ def main():
         return sum(1 for r in all_results
                    if r.get(f'{key}_state', 'missing') in ('fresh', 'kept'))
     valid_rc, valid_fg = _valid('racecard'), _valid('formguide')
+
+    # Step 3: 晨操 is best-effort and must not delay recovery of required
+    # sources. Run it only after the strict core source counts are complete.
+    core_ready = total_rc == len(races) and total_fg == len(races)
+    print()
+    if core_ready:
+        print(f"🏇 Extracting 晨操 (trackwork) for {len(races)} races...")
+    else:
+        print("⏭️ Required sources 未齊；今輪跳過晨操，集中 recovery。")
+    tw_results = extract_trackwork_after_core(
+        args.base_url, races, output_dir, date_prefix, core_ready=core_ready,
+    )
+    tw_ok_count = sum(
+        1 for value in tw_results['races'].values()
+        if value['json_ok'] and value['md_ok']
+    )
+    if core_ready and tw_results['ok']:
+        print(f"   ✅ 晨操: {tw_ok_count}/{len(races)} races")
+    elif core_ready:
+        print(f"   ⚠️ 晨操: {tw_ok_count}/{len(races)} races (下游將使用 fallback)")
+        if tw_results['error']:
+            print(f"      {tw_results['error']}")
+
     print()
     extra = f" + {verified_fg} 經排位表核實" if verified_fg else ""
     print(f"📊 Summary: {total_rc}/{len(races)} racecards | "

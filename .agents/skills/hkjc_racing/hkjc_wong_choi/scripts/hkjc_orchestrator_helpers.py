@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
+import time
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -71,11 +74,24 @@ def get_target_dir(venue: str, formatted_date: str, auto_create: bool = False) -
     return str(new_dir)
 
 
+def _fetch_text_with_retry(url: str, *, timeout: int = 8, attempts: int = 3) -> str:
+    last_error: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                return response.read().decode("utf-8")
+        except Exception as exc:
+            last_error = exc
+            if attempt < attempts:
+                time.sleep(attempt)
+    assert last_error is not None
+    raise last_error
+
+
 def detect_total_races_from_url(url: str) -> int | None:
     try:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=15) as response:
-            html = response.read().decode("utf-8")
+        html = _fetch_text_with_retry(url)
         race_nos = {int(match) for match in re.findall(r"RaceNo=(\d+)", html)}
         if race_nos:
             max_race = max(race_nos)
@@ -88,6 +104,28 @@ def detect_total_races_from_url(url: str) -> int | None:
     return None
 
 
+def cached_expected_races(target_dir: str | Path, url: str) -> int | None:
+    """Return a previously official-confirmed count for this exact meeting.
+
+    This is deliberately not inferred from files on disk. The readiness
+    manifest is written only after a run has received an explicit race range,
+    and its date must match the current official URL before it can be reused.
+    """
+    query = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+    racedate = query.get("racedate", [""])[0]
+    if not racedate:
+        return None
+    manifest_path = Path(target_dir) / "Extraction_Readiness.json"
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+        expected = int(payload.get("expected_races"))
+    except (OSError, ValueError, TypeError, json.JSONDecodeError):
+        return None
+    if payload.get("meeting_date") != racedate or not 1 <= expected <= 14:
+        return None
+    return expected
+
+
 def trigger_extractor(url: str, target_dir: str) -> None:
     print("🚀 [Orchestrator] 啟動 HKJC Race Extractor 提取全日數據...")
     script_path = ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_race_extractor" / "scripts" / "batch_extract.py"
@@ -96,9 +134,15 @@ def trigger_extractor(url: str, target_dir: str) -> None:
         raise SystemExit(1)
     total = detect_total_races_from_url(url)
     if total is None:
-        # Exit 75 tells the unattended scheduler this is a source-readiness
-        # condition, not a permanent code failure.  The recovery job will retry.
-        raise SystemExit(75)
+        total = cached_expected_races(target_dir, url)
+        if total is None:
+            # Exit 75 tells the unattended scheduler this is a source-readiness
+            # condition, not a permanent code failure. The recovery job retries.
+            raise SystemExit(75)
+        print(
+            "♻️ [Auto-Detection] Live 場數探測暫時失敗；沿用同一 meeting "
+            f"readiness 已確認嘅 {total} 場。"
+        )
     race_range = f"1-{total}"
     print(f"📋 [Orchestrator] 提取場次範圍: {race_range}")
     try:

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 from unittest import mock
@@ -53,6 +54,68 @@ def test_formguide_headers_without_runner_rows_are_not_ready() -> None:
 def test_unknown_race_count_never_falls_back_to_a_guessed_total() -> None:
     with mock.patch.object(helpers.urllib.request, "urlopen", side_effect=TimeoutError):
         assert helpers.detect_total_races_from_url("https://example.test?Racecourse=ST") is None
+
+
+class _Response:
+    def __init__(self, body: str):
+        self.body = body.encode("utf-8")
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def read(self):
+        return self.body
+
+
+def test_race_count_detection_retries_a_transient_timeout() -> None:
+    html = '<a href="?RaceNo=1">1</a><a href="?RaceNo=9">9</a>'
+    with (
+        mock.patch.object(
+            helpers.urllib.request,
+            "urlopen",
+            side_effect=[TimeoutError("slow"), _Response(html)],
+        ) as urlopen,
+        mock.patch.object(helpers.time, "sleep") as sleep,
+    ):
+        assert helpers.detect_total_races_from_url("https://example.test") == 9
+    assert urlopen.call_count == 2
+    sleep.assert_called_once()
+
+
+def test_cached_official_race_count_is_used_for_the_same_meeting(tmp_path: Path) -> None:
+    (tmp_path / "Extraction_Readiness.json").write_text(
+        json.dumps({"meeting_date": "2026/09/23", "expected_races": 9}),
+        encoding="utf-8",
+    )
+    url = "https://example.test?racedate=2026/09/23&Racecourse=HV&RaceNo=1"
+    assert helpers.cached_expected_races(tmp_path, url) == 9
+
+
+def test_cached_race_count_from_another_meeting_is_rejected(tmp_path: Path) -> None:
+    (tmp_path / "Extraction_Readiness.json").write_text(
+        json.dumps({"meeting_date": "2026/09/16", "expected_races": 8}),
+        encoding="utf-8",
+    )
+    url = "https://example.test?racedate=2026/09/23&Racecourse=HV&RaceNo=1"
+    assert helpers.cached_expected_races(tmp_path, url) is None
+
+
+def test_trigger_extractor_uses_cached_official_count_after_live_timeout(tmp_path: Path) -> None:
+    (tmp_path / "Extraction_Readiness.json").write_text(
+        json.dumps({"meeting_date": "2026/09/23", "expected_races": 9}),
+        encoding="utf-8",
+    )
+    url = "https://example.test?racedate=2026/09/23&Racecourse=HV&RaceNo=1"
+    with (
+        mock.patch.object(helpers, "detect_total_races_from_url", return_value=None),
+        mock.patch.object(helpers.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run,
+    ):
+        helpers.trigger_extractor(url, str(tmp_path))
+    command = run.call_args.args[0]
+    assert command[command.index("--races") + 1] == "1-9"
 
 
 def test_partial_batch_writes_manifest_and_exits_temporary(tmp_path: Path, monkeypatch) -> None:

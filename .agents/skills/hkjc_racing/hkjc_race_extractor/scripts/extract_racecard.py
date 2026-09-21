@@ -6,6 +6,7 @@ import ssl
 from bs4 import BeautifulSoup
 import sys
 import re
+import time
 
 # Force UTF-8 stdout regardless of OS locale (prevents garbled Chinese on Windows)
 if hasattr(sys.stdout, 'reconfigure'):
@@ -13,6 +14,24 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 def clean_text(s):
     return re.sub(r'\s+', ' ', s).strip()
+
+
+def fetch_html(url, *, timeout, attempts, backoff_seconds=1.0):
+    """Fetch one HKJC page with a bounded wait and short transient retries."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    last_error = None
+    for attempt in range(1, max(1, attempts) + 1):
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+            with urllib.request.urlopen(req, context=ctx, timeout=timeout) as response:
+                return response.read().decode('utf-8')
+        except Exception as exc:
+            last_error = exc
+            if attempt < attempts:
+                time.sleep(backoff_seconds * attempt)
+    raise last_error
 
 
 def parse_english_name_map(html):
@@ -61,25 +80,22 @@ def parse_horse_profile_link(row):
     return {}
 
 def extract_racecard(url):
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
-
-    req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
     try:
+        # The Chinese page is the required source. Fetch it first so an optional
+        # English-name lookup can never consume the request budget before the
+        # actual racecard. HKJC occasionally accepts a connection but then
+        # stalls before sending a status line, hence the explicit socket timeout.
+        html = fetch_html(url, timeout=8, attempts=3)
         english_names = {}
         english_url = re.sub(r'/zh-hk/', '/en-us/', url, flags=re.IGNORECASE)
         if english_url != url:
             try:
-                english_req = urllib.request.Request(english_url, headers={'User-Agent': 'Mozilla/5.0'})
-                with urllib.request.urlopen(english_req, context=ctx) as english_response:
-                    english_html = english_response.read().decode('utf-8')
+                english_html = fetch_html(english_url, timeout=5, attempts=1)
                 english_names = parse_english_name_map(english_html)
             except Exception as english_error:
                 print(f"Warning: English horse names unavailable: {english_error}", file=sys.stderr)
 
-        with urllib.request.urlopen(req, context=ctx) as response:
-            html = response.read().decode('utf-8')
+        if html:
             soup = BeautifulSoup(html, 'html.parser')
 
             # --- Header Extraction ---
