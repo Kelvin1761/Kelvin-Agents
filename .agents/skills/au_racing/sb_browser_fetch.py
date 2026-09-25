@@ -76,6 +76,9 @@ class BrowserFetcher:
         self.log = log or (lambda m: print(f"   {m}", flush=True))
         self.requests_made = 0
         self.stop_reason: str | None = None
+        # 本機 DNS／Wi-Fi 故障同遠端拒絕係兩種狀態。兩者都會暫停今輪請求，
+        # 但診斷、通知同下一輪恢復策略唔可以混埋一齊。
+        self.network_reason: str | None = None
         # 單版失敗（唔 trip circuit breaker）同連續 timeout 計數。
         self.last_page_error: str | None = None
         self.timeout_streak = 0
@@ -229,6 +232,13 @@ class BrowserFetcher:
         self._page = self._ctx = self._pw = None
         self._since_launch = 0
 
+    def reset_gate(self) -> None:
+        """冷卻窗完結後容許一次真正重試，而唔係沿用上一輪嘅 sticky gate。"""
+        self.stop_reason = None
+        self.network_reason = None
+        self.last_page_error = None
+        self.timeout_streak = 0
+
     def _ensure_page(self):
         """開瀏覽器。⚠️ 唔再需要「同源起始頁」—— `goto` 唔受同源限制。"""
         if self._page is not None:
@@ -266,7 +276,7 @@ class BrowserFetcher:
             if self.verbose:
                 self.log(f"（cache）{url}")
             return target.read_text(encoding="utf-8")
-        if self.stop_reason:
+        if self.stop_reason or self.network_reason:
             return None
         if not url.startswith(BASE):
             raise ValueError(f"只可以攞 {BASE} 嘅頁：{url}")
@@ -334,6 +344,11 @@ class BrowserFetcher:
                             f"（唔係非 200，係完全冇回應）")
                 elif self._is_network_blip(exc):
                     kind = f"網絡試咗 {net_attempt} 次都唔通（本機問題，唔係個站）"
+                    self.network_reason = (
+                        f"{kind}（{type(exc).__name__}: {exc}）"
+                    )
+                    self.log(f"📡 {self.network_reason}")
+                    return None
                 else:
                     kind = ("瀏覽器重開 %d 次之後仲係死" % attempt if attempt
                             else "page.goto 失敗")

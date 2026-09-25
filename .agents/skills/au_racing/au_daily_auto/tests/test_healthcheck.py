@@ -245,6 +245,17 @@ class DataQualityTests(unittest.TestCase):
         self.assertIn("going_refresh", joined)
         self.assertIn("50.0%", joined)
 
+    def test_going_refresh_is_not_required_before_the_morning_deadline(self):
+        """晚更輸出未經早更刷新係正常狀態，11:00 前唔應該報資料品質失敗。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            self._meeting(Path(tmp), morning=False, going_refresh=False)
+            issues = H.local_quality_issues(
+                DAY, root=Path(tmp), require_morning=False
+            )
+        joined = "\n".join(issues)
+        self.assertNotIn("going_refresh", joined)
+        self.assertNotIn("官方 going 未有資料", joined)
+
     def test_unavailable_official_going_is_not_misreported_as_missing_audit(self):
         with tempfile.TemporaryDirectory() as tmp:
             self._meeting(Path(tmp), going_refresh=False, going="")
@@ -518,6 +529,47 @@ class AutofixTests(unittest.TestCase):
         }
         report = D.diagnose(run, [run])
         self.assertIn("本機網絡斷咗", report)
+
+    def test_partial_diagnosis_reports_one_primary_cause_and_unfinished_work(self):
+        import au_diagnose as D
+        run = {
+            "status": "partial", "mode": "evening",
+            "review_day": "2026-09-24", "started_at": "2026-09-24T22:00:03",
+            "errors": [],
+            "warnings": [
+                {"message": "PermissionError: x CloudStorage x"},
+                {"message": "Page.goto: net::ERR_NAME_NOT_RESOLVED"},
+            ],
+            "steps": [{"step": "analyse-next-day", "status": "still-pending",
+                       "meetings": ["Ewan", "Lismore", "Scone"]}],
+            "meetings_processed": [
+                {"meeting": "2026-09-25 Ewan", "status": "pending_extraction",
+                 "detail": "本機網絡未恢復"},
+            ],
+        }
+        report = D.diagnose(run, [run])
+        self.assertIn("本機網絡斷咗", report)
+        self.assertNotIn("sportsbetform 真係拒絕", report)
+        self.assertNotIn("launchd 冇 Google Drive 權限", report)
+        self.assertIn("## 未完成", report)
+        self.assertIn("Ewan、Lismore、Scone", report)
+
+    def test_diagnosis_recognises_a_later_successful_control_retry(self):
+        import au_diagnose as D
+        run = {
+            "status": "partial", "mode": "evening",
+            "review_day": "2026-09-24", "started_at": "2026-09-24T22:00:03",
+            "errors": [], "warnings": [{"message": "ERR_NAME_NOT_RESOLVED"}],
+            "steps": [],
+        }
+        retry = {
+            "status": "ok", "mode": "evening", "review_day": "2026-09-24",
+            "started_at": "2026-09-25T00:35:22", "completed_at": "2026-09-25T02:08:01",
+            "errors": [], "warnings": [], "steps": [],
+        }
+        report = D.diagnose(run, [retry, run])
+        self.assertIn("## 自動補救", report)
+        self.assertIn("後續 retry 已成功", report)
 
 
 class AnalysisRecoveryTests(unittest.TestCase):

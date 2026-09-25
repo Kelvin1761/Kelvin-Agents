@@ -173,7 +173,9 @@ def local_quality_issues(day: str, *, root: Path | None = None,
             except (OSError, ValueError, AttributeError):
                 refresh = None
                 stored_going = ""
-            if logic.exists() and not refresh:
+            # going_refresh 係 10:00 早更用最新官方 going 重評分時先寫入。
+            # 晚更完成至 11:00 deadline 之前冇 audit 係正常生命週期，唔係資料壞。
+            if require_morning and logic.exists() and not refresh:
                 if stored_going and stored_going.lower() != "unknown":
                     missing_going_audit.append(race)
                 else:

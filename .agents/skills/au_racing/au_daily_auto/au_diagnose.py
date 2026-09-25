@@ -70,7 +70,8 @@ KNOWN = [
     (r"ERR_NETWORK_CHANGED|ERR_INTERNET_DISCONNECTED|ERR_CONNECTION_"
      r"|ERR_NAME_NOT_RESOLVED|ERR_ADDRESS_UNREACHABLE",
      "本機網絡斷咗（WiFi 變／重連），唔係個站拒絕",
-     "網絡錯誤而家會退避重試三次（20/40/60 秒），唔再 trip circuit breaker",
+     "網絡錯誤會退避重試三次（20/40/60 秒），用獨立 network gate 暫停今輪；"
+     "冷卻後會清 browser gate 再真正重試",
      None),
     (r"對應表冇呢個場次",
      "meeting ID 對應表缺失（曾經俾自動更新嘅 git checkout 抹走）",
@@ -93,6 +94,56 @@ KNOWN = [
      "腰斷偵測睇馬匹往績有冇當日出賽；兩日上限兜底",
      None),
 ]
+
+
+def primary_known_match(haystack: str) -> tuple[str, str, str | None] | None:
+    """揀一個真正令 run partial/failed 嘅主因，唔將 advisory 堆成多個根因。"""
+    hits = [(pat, cause, fix, remedy) for pat, cause, fix, remedy in KNOWN
+            if re.search(pat, haystack)]
+    if not hits:
+        return None
+
+    # 本機網絡訊號係確切分類；舊 log 同一時間會帶住一條誤導性「個站拒絕」
+    # detail，所以必須優先於遠端拒絕 wording。
+    network = next((hit for hit in hits if hit[1].startswith("本機網絡斷咗")), None)
+    if network:
+        return network[1:]
+
+    # partial run 可能順手記埋 Drive best-effort 警告。只要有另一個 operational
+    # failure，Drive 就唔係今次未完成嘅成因。
+    operational = [hit for hit in hits
+                   if "Google Drive 權限" not in hit[1]
+                   and "Google Drive 檔案系統" not in hit[1]]
+    chosen = (operational or hits)[0]
+    return chosen[1:]
+
+
+def unfinished_meetings(run: dict) -> list[str]:
+    """由結構化狀態搵今次 run 收工時仍未完成嘅場次。"""
+    for step in reversed(run.get("steps") or []):
+        if step.get("status") == "still-pending" and step.get("meetings"):
+            return [str(name) for name in step["meetings"]]
+
+    latest: dict[str, str] = {}
+    for meeting in run.get("meetings_processed") or []:
+        name = str(meeting.get("meeting") or "").strip()
+        if name:
+            latest[name] = str(meeting.get("status") or "")
+    pending_states = {"pending_extraction", "refresh_deferred", "pending"}
+    return [name for name, status in latest.items() if status in pending_states]
+
+
+def successful_followup(run: dict, history: list[dict]) -> dict | None:
+    """同一 control slot 之後有冇成功 retry；有就唔再講「冇自動補救」。"""
+    started = str(run.get("started_at") or "")
+    candidates = [item for item in history
+                  if item is not run
+                  and item.get("mode") == run.get("mode")
+                  and item.get("review_day") == run.get("review_day")
+                  and item.get("status") == "ok"
+                  and str(item.get("started_at") or "") > started]
+    return min(candidates, key=lambda item: str(item.get("started_at") or ""),
+               default=None)
 
 
 def runs(n: int = 12) -> list[dict]:
@@ -142,11 +193,14 @@ def diagnose(run: dict, history: list[dict]) -> str:
         + [f"{m.get('status')} {m.get('detail') or ''} {m.get('reason') or ''}"
            for m in (run.get("meetings_processed") or [])])
     haystack = error_haystack if errs else fallback_haystack
-    matched = [(cause, fix, rem) for pat, cause, fix, rem in KNOWN
-               if re.search(pat, haystack)]
+    matched = primary_known_match(haystack)
+    same_needle = msg[:40]
     same = [r for r in history
-            if r is not run and any(msg[:40] in str(e.get("message") or "")
-                                    for e in (r.get("errors") or []))]
+            if r is not run and same_needle
+            and any(same_needle in str(e.get("message") or "")
+                    for e in (r.get("errors") or []))]
+    pending = unfinished_meetings(run)
+    followup = successful_followup(run, history)
 
     # ⚠️ `partial` 而且 errors 係空嘅時候唔可以講「死喺 X」。2026-08-11 晚更就係
     # 咁：冇 error、正常做完晒每一步、只係有場次未抽到，而診斷報「死喺 outcome」
@@ -167,14 +221,27 @@ def diagnose(run: dict, history: list[dict]) -> str:
     if errs:
         out += ["## 錯誤"] + [f"- `{e.get('step')}`：{str(e.get('message'))[:300]}"
                               for e in errs[:4]] + [""]
+    if pending:
+        out += ["## 未完成", "- " + "、".join(pending), ""]
     if matched:
         out += ["## 已知模式"]
-        for cause, fix, rem in matched:
-            out += [f"- **成因**：{cause}", f"  **已有處理**：{fix}",
-                    f"  **自動補救**：{rem or '冇（要人睇／下次排程接住）'}"]
+        cause, fix, rem = matched
+        automatic = (rem or
+                     ("control plane retry（已成功）" if followup else
+                      "由 control plane 按同一 slot 重試"
+                      if run.get("status") == "partial" else
+                      "冇（要人睇／下次排程接住）"))
+        out += [f"- **成因**：{cause}", f"  **已有處理**：{fix}",
+                f"  **自動補救**：{automatic}"]
         out += [""]
     else:
         out += ["## 已知模式", "- 對唔上任何已知模式 —— 呢個係新嘅，要人睇", ""]
+    if followup:
+        out += ["## 自動補救",
+                f"- 後續 retry 已成功：{followup.get('started_at', '')[:16]} 開始，"
+                f"{followup.get('completed_at', '')[:16] or '其後'} 完成", ""]
+    elif run.get("status") == "partial":
+        out += ["## 自動補救", "- control plane 後續 retry 尚未見成功記錄", ""]
     if same:
         out += [f"## 重複性", f"- 最近 {len(history)} 個 run 入面，同一個錯出現咗 "
                 f"{len(same)} 次：" + "、".join(r.get("started_at", "")[:16]

@@ -123,6 +123,8 @@ class RunLog:
         # 而且會令封鎖延長。2026-08-05 實測：Canterbury 7 場全 403 之後，原本
         # 仲會去敲 Cranbourne / Doomben / Hobart / Murray Bridge 共 33 場。
         self.site_refusing = False
+        self.outbound_gate_kind: str | None = None
+        self.network_unavailable_reason: str | None = None
         self.data: dict = {
             "task_name": f"au-wong-choi-{mode}",
             "mode": mode,
@@ -175,12 +177,27 @@ class RunLog:
         if self.site_refusing:
             return
         self.site_refusing = True
+        self.outbound_gate_kind = "site"
+        self.network_unavailable_reason = None
         # ⚠️ 唔可以講死「非 200」。呢個閘接受任何 `stop_reason`，而 2026-08-08
         # 嗰次係我哋自己個 Chrome 死咗 —— 個站由頭到尾冇回過一個非 200，但條
         # 訊息叫我（同 Kelvin）去查 Sportsbet 嘅封鎖，查錯咗方向。理由照抄。
         self.warn(f"攞唔到頁，喺 {where} 停低 —— 今次 run 唔再出網攞頁，"
                   f"餘下嘅場次記做 pending，下一次排程再試")
         self.data["steps"].append({"step": "site-gate", "status": "tripped",
+                                   "at": stamp(), "where": where})
+        self.flush()
+
+    def trip_network_gate(self, where: str) -> None:
+        if self.site_refusing:
+            return
+        # `site_refusing` 暫時保留做「今輪唔再出網」兼容旗標；真正分類由 kind 決定。
+        self.site_refusing = True
+        self.outbound_gate_kind = "network"
+        self.network_unavailable_reason = where
+        self.warn(f"本機網絡喺 {where} 重試後仍未恢復 —— 今輪暫停出網，"
+                  f"冷卻後會重新連線；唔會當成 sportsbetform 拒絕")
+        self.data["steps"].append({"step": "network-gate", "status": "tripped",
                                    "at": stamp(), "where": where})
         self.flush()
 
@@ -437,7 +454,8 @@ def close_browser(runlog: RunLog) -> None:
     if session is None:
         return
     runlog.step("browser", "closed", requests_made=session.requests_made,
-                stop_reason=session.stop_reason)
+                stop_reason=session.stop_reason,
+                network_reason=getattr(session, "network_reason", None))
     session.close()
     runlog.browser_session = None
 
@@ -454,9 +472,28 @@ def fetch_page(runlog: RunLog, url: str, *, force: bool = False,
         return None
     session = browser(runlog)
     html = session.get(url, force=force)
-    if html is None and session.stop_reason:
+    if html is None and getattr(session, "network_reason", None):
+        runlog.trip_network_gate(
+            f"{where or url}（{session.network_reason}）"
+        )
+    elif html is None and session.stop_reason:
         runlog.trip_site_gate(f"{where or url}（{session.stop_reason}）")
     return html
+
+
+def reset_outbound_gate(runlog: RunLog) -> None:
+    """冷卻輪之間清走 run + browser 兩層 gate，確保下一輪真係會重試。"""
+    runlog.site_refusing = False
+    runlog.outbound_gate_kind = None
+    runlog.network_unavailable_reason = None
+    session = getattr(runlog, "browser_session", None)
+    if session is not None and hasattr(session, "reset_gate"):
+        session.reset_gate()
+
+
+def outbound_gate_message(runlog: RunLog, site: str, network: str) -> str:
+    """所有用戶可見錯誤都按 typed gate 講真實原因。"""
+    return network if getattr(runlog, "outbound_gate_kind", None) == "network" else site
 
 
 def api_next_events(runlog: RunLog) -> list[dict]:
@@ -532,9 +569,13 @@ def fetch_date_index(runlog: RunLog, day: str) -> dict:
     from claw_sportsbet_form import BASE, parse_date_index
     html = fetch_page(runlog, f"{BASE}/{day}/", where=f"{day} 索引頁")
     if not html:
-        raise TemporaryFailure(
+        raise TemporaryFailure(outbound_gate_message(
+            runlog,
             f"攞唔到 {day} 嘅場次索引頁（真 Chrome 開唔到或者個站拒絕）——"
-            " 呢個係暫時性，下一個排程會再試")
+            " 呢個係暫時性，下一個排程會再試",
+            f"攞唔到 {day} 嘅場次索引頁（本機網絡未恢復，唔係個站拒絕）——"
+            " 冷卻後／下一個排程會再試",
+        ))
     index = parse_date_index(html)
     # 索引頁淨係列當日，但 parse 出嚟嘅 date 係 YYYYMMDD，順手核對一次。
     wanted = day.replace("-", "")
@@ -665,7 +706,11 @@ def refresh_result_pages(runlog: RunLog, key: str) -> dict:
     if not meta:
         return {"refreshed": 0, "failed": 0, "reason": "對應表冇呢個場次"}
     if runlog.site_refusing:
-        return {"refreshed": 0, "failed": 0, "reason": "個站今次 run 已經拒絕，唔敲門"}
+        return {"refreshed": 0, "failed": 0, "reason": outbound_gate_message(
+            runlog,
+            "個站今次 run 已經拒絕，唔敲門",
+            "本機網絡今輪未恢復，冷卻後再試",
+        )}
     refreshed = failed = 0
     for race_id in meta["races"]:
         # 逐場一版，`force=True` 覆蓋賽前嗰版。`fetch_page` 撞到拒絕會 trip gate。
@@ -1211,7 +1256,7 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
                         sleep_seconds=gap, dry_rounds=dry_rounds,
                         waiting_for=[p["venue"] for p in remaining])
             time.sleep(gap)
-            runlog.site_refusing = False
+            reset_outbound_gate(runlog)
         still: list[dict] = []
         progress = False
         for plan in remaining:
@@ -1510,14 +1555,22 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
         # 頁都齊，只係未評分 —— 評分係純本機，唔使出網，照做。
         folder = existing
     elif runlog.site_refusing:
-        raise TemporaryFailure("個站今次 run 已經明確拒絕，唔再敲門")
+        raise TemporaryFailure(outbound_gate_message(
+            runlog,
+            "個站今次 run 已經明確拒絕，唔再敲門",
+            "本機網絡今輪未恢復，冷卻後再試",
+        ))
     else:
         folder = existing if existing is not None \
             else AU_RACING / meeting_key(day, venue, expected)
         ready = warm_race_pages(runlog, plan["meetingId"], races,
                                 f"{day} {venue}")
         if not ready:
-            raise TemporaryFailure("一場賽事頁都攞唔到（個站拒絕）")
+            raise TemporaryFailure(outbound_gate_message(
+                runlog,
+                "一場賽事頁都攞唔到（個站拒絕）",
+                "一場賽事頁都攞唔到（本機網絡未恢復，唔係個站拒絕）",
+            ))
         if len(ready) < expected:
             runlog.warn(f"{day} {venue}: 攞到 {len(ready)}/{expected} 場就停手，"
                         f"照分析攞到嗰啲，餘下等下一輪／下一次排程補")
@@ -1730,7 +1783,7 @@ def step_refresh_active(runlog: RunLog, today: date, *, max_meetings: int = 0,
                         sleep_seconds=gap,
                         waiting_for=[f.name for f in remaining])
             time.sleep(gap)
-            runlog.site_refusing = False
+            reset_outbound_gate(runlog)
         still: list[Path] = []
         for folder in remaining:
             try:
@@ -1832,7 +1885,11 @@ def live_race_state(runlog: RunLog, folder: Path) -> tuple[dict[int, dict], str]
                 f"對應表冇呢個場次，索引頁亦搵唔到對應馬場"
                 f"（索引有：{sorted(index)[:8]}）")
     if runlog.site_refusing:
-        raise TemporaryFailure("個站今次 run 已經拒絕，唔再敲門攞最新頁面")
+        raise TemporaryFailure(outbound_gate_message(
+            runlog,
+            "個站今次 run 已經拒絕，唔再敲門攞最新頁面",
+            "本機網絡今輪未恢復，冷卻後再攞最新頁面",
+        ))
     meta = load_mapping()[key]
     state: dict[int, dict] = {}
     going_seen = ""

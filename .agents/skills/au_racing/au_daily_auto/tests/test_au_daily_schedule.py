@@ -1915,6 +1915,66 @@ class TestGetSurvivesAHungPage(unittest.TestCase):
             self.assertIsNone(bf.stop_reason)
 
 
+class TestLocalNetworkGate(unittest.TestCase):
+    """DNS／Wi-Fi 故障要同遠端拒絕分開，冷卻後亦要真係重新出網。"""
+
+    def _fetcher(self, tmp):
+        import sb_browser_fetch
+        cache_patch = unittest.mock.patch.object(
+            sb_browser_fetch, "cache_path",
+            lambda url: Path(tmp) / (__import__("hashlib")
+                                     .sha1(url.encode()).hexdigest() + ".html"))
+        cache_patch.start()
+        self.addCleanup(cache_patch.stop)
+        return sb_browser_fetch.BrowserFetcher(
+            delay=0, origin_candidates=[], log=lambda _m: None
+        )
+
+    def test_dns_exhaustion_is_network_not_site_refusal(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bf = self._fetcher(tmp)
+
+            class _Page:
+                def goto(self, _url, **_kwargs):
+                    raise RuntimeError("Page.goto: net::ERR_NAME_NOT_RESOLVED")
+
+            with unittest.mock.patch.object(type(bf), "_ensure_page",
+                                            lambda _s: _Page()), \
+                    unittest.mock.patch.object(type(bf), "_pace", lambda _s: None), \
+                    unittest.mock.patch.object(type(bf), "_NETWORK_BACKOFF", 0):
+                self.assertIsNone(bf.get(
+                    "https://www.sportsbetform.com.au/449031/3416233/"))
+            self.assertIsNone(bf.stop_reason)
+            self.assertIn("本機問題", bf.network_reason)
+
+    def test_fetch_page_records_a_network_gate(self):
+        runlog = S.RunLog("test", date(2026, 9, 24),
+                          Path(tempfile.mkdtemp()) / "run.json")
+        runlog.browser_session = types.SimpleNamespace(
+            get=lambda *_a, **_k: None,
+            stop_reason=None,
+            network_reason="DNS 未恢復（本機問題）",
+        )
+        self.assertIsNone(S.fetch_page(runlog, "https://example.invalid/x",
+                                       where="Darwin R4"))
+        self.assertEqual(runlog.outbound_gate_kind, "network")
+        self.assertEqual(runlog.data["steps"][-1]["step"], "network-gate")
+
+    def test_round_reset_clears_fetcher_gate_before_retry(self):
+        session = types.SimpleNamespace(reset_gate=unittest.mock.Mock())
+        runlog = types.SimpleNamespace(
+            site_refusing=True,
+            outbound_gate_kind="network",
+            network_unavailable_reason="DNS 未恢復",
+            browser_session=session,
+        )
+        S.reset_outbound_gate(runlog)
+        self.assertFalse(runlog.site_refusing)
+        self.assertIsNone(runlog.outbound_gate_kind)
+        self.assertIsNone(runlog.network_unavailable_reason)
+        session.reset_gate.assert_called_once_with()
+
+
 class SpeedmapWarmingTests(unittest.TestCase):
     """官方 Speedmap 要落 cache，但唔可以影響抽取主線。
 
