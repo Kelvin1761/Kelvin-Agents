@@ -52,6 +52,18 @@ def test_a_complete_meeting_reports_no_missing_line(tmp_path):
     assert digest.splitlines() == ["排位表 10/10 · 賽績 10/10 · 晨操 10/10 · PDF ✅"]
 
 
+def test_trackwork_gate_names_every_missing_race(tmp_path):
+    digest = readiness_digest(_write(
+        tmp_path,
+        trackwork_ready=2,
+        trackwork_missing=list(range(3, 11)),
+        formguides_ready=10,
+        races=[{"race": n, "racecard_ok": True, "formguide_ok": True}
+               for n in range(1, 11)],
+    ))
+    assert "晨操缺（會阻住 prediction snapshot）：R3-R10" in digest
+
+
 def test_a_long_missing_list_is_capped(tmp_path):
     digest = readiness_digest(_write(
         tmp_path, racecards_ready=0, formguides_ready=0,

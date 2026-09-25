@@ -218,6 +218,22 @@ def test_trackwork_partial_write_is_counted_partially(tmp_path):
     assert sum(1 for v in out["races"].values() if v["json_ok"] and v["md_ok"]) == 3
 
 
+def test_trackwork_resume_only_requests_missing_races_and_scales_timeout(tmp_path):
+    """2/11 timeout 後唔可以每次由 R1 重做，否則永遠只完成頭兩場。"""
+    _write_trackwork(tmp_path, [1, 2])
+    completed = subprocess.CompletedProcess(
+        args=["trackwork"], returncode=0, stdout="", stderr=""
+    )
+    with mock.patch.object(batch.subprocess, "run", return_value=completed) as run:
+        batch.extract_trackwork_meeting(
+            "http://x", list(range(1, 12)), str(tmp_path), "09-27"
+        )
+
+    command = run.call_args.args[0]
+    assert command[command.index("--races") + 1] == "3,4,5,6,7,8,9,10,11"
+    assert run.call_args.kwargs["timeout"] >= 9 * 180
+
+
 def test_trackwork_fail_soft_stderr_is_not_hidden(tmp_path):
     failed = subprocess.CompletedProcess(
         args=["trackwork"],

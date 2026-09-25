@@ -73,6 +73,19 @@ def _event_matches(folder: Path, event_id: str) -> bool:
     )
 
 
+def _race_ranges(races: list[int]) -> str:
+    groups: list[list[int]] = []
+    for race in sorted(set(races)):
+        if not groups or race != groups[-1][-1] + 1:
+            groups.append([race])
+        else:
+            groups[-1].append(race)
+    return ",".join(
+        f"R{group[0]}" if len(group) == 1 else f"R{group[0]}-R{group[-1]}"
+        for group in groups
+    )
+
+
 def _inputs(folder: Path) -> dict[int, dict[str, Path]]:
     found: dict[int, dict[str, Path]] = {}
     for path in folder.iterdir():
@@ -116,7 +129,30 @@ def build_feature_projection(
     inputs = _inputs(folder)
     races: set[int] = set()
     logic_files = []
-    for path in sorted(folder.glob("Race_*_Logic.json")):
+    logic_paths = sorted(
+        folder.glob("Race_*_Logic.json"),
+        key=lambda path: int(_LOGIC.fullmatch(path.name).group(1))
+        if _LOGIC.fullmatch(path.name) else 10**9,
+    )
+    logic_races = [
+        int(match.group(1))
+        for path in logic_paths
+        if (match := _LOGIC.fullmatch(path.name)) is not None
+        and path.is_file() and path.stat().st_size > 0
+    ]
+    missing_inputs = {
+        kind: [race for race in logic_races if kind not in inputs.get(race, {})]
+        for kind in _INPUTS
+    }
+    missing_inputs = {kind: values for kind, values in missing_inputs.items() if values}
+    if missing_inputs:
+        detail = "; ".join(
+            f"{kind} {_race_ranges(values)}"
+            for kind, values in missing_inputs.items()
+        )
+        raise ValueError(f"missing HKJC feature inputs: {detail}")
+
+    for path in logic_paths:
         match = _LOGIC.fullmatch(path.name)
         if match is None or not path.is_file() or path.stat().st_size <= 0:
             continue

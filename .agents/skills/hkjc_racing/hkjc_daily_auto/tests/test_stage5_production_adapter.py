@@ -99,6 +99,41 @@ def test_prediction_adapter_fails_closed_when_feature_input_is_missing(tmp_path:
     assert not (folder / "_prediction_snapshots").exists()
 
 
+def test_prediction_adapter_reports_all_missing_trackwork_races_numerically(
+    tmp_path: Path,
+) -> None:
+    folder = _prediction_meeting(tmp_path)
+    for race in range(2, 12):
+        (folder / f"09-19 Race {race} Facts.md").write_text("# Facts\n", encoding="utf-8")
+        (folder / f"09-19 Race {race} 排位表.md").write_text("# Racecard\n", encoding="utf-8")
+        (folder / f"Race_{race}_Logic.json").write_text(
+            json.dumps({
+                "race_analysis": {"race_number": race},
+                "horses": {"7": {"horse_name": "Fast Horse", "python_auto": {
+                    "score_provenance": {
+                        "form_score": "last_6_finishes",
+                        "draw_score": "barrier",
+                        "trackwork_trend_score": "trackwork_digest",
+                    },
+                }}},
+            }) + "\n",
+            encoding="utf-8",
+        )
+    for race in (1, 2):
+        path = folder / f"2026-09-19 Race {race} 晨操.json"
+        path.write_text('{}\n', encoding="utf-8")
+
+    with pytest.raises(ValueError) as raised:
+        schedule.create_stage5_prediction_snapshot(
+            folder,
+            event_id=EVENT,
+            at=datetime(2026, 9, 18, 13, 30, tzinfo=timezone.utc),
+        )
+    message = str(raised.value)
+    assert "Trackwork R3-R11" in message
+    assert "Race 10" not in message
+
+
 def test_prediction_adapter_requires_canonical_meeting_scoring(tmp_path: Path) -> None:
     folder = _prediction_meeting(tmp_path)
     (folder / "HKJC_Auto_Scoring.csv").unlink()

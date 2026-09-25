@@ -328,7 +328,7 @@ def extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix):
 
     Returns ``(fresh_ok, error, state)`` — same three-way contract as
     `_keep_valid_candidate`, because `starter_pdf_ready` is a **hard** term in
-    the publish gate (`ready = pdf_ok and racecards and formguides`), so a
+    the publish gate (`ready = pdf_ok and racecards and formguides and trackwork`), so a
     transient PDF failure blocks the whole meeting on its own.
 
     ⚠️ 2026-09-05: this function used to unpack two values here while
@@ -373,9 +373,25 @@ def _trackwork_file_ok(output_dir, race_no, suffix, min_bytes):
 
 def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
     """Extract 晨操 (morning trackwork) for all races in one call.
-    Uses --fail-soft so missing data doesn't abort the pipeline."""
+    Uses --fail-soft so missing data doesn't abort the subprocess.
+
+    A timed-out run writes each completed race before it dies.  When only part
+    of the meeting is cached, resume from the missing races instead of starting
+    at Race 1 again; otherwise a fixed process timeout can make a long card
+    permanently stick at the first two races.
+    """
     results = {'ok': False, 'races': {}, 'error': ''}
-    race_list = ','.join(str(r) for r in races)
+    complete_before = [
+        race for race in races
+        if _trackwork_file_ok(output_dir, race, "json", 100)
+        and _trackwork_file_ok(output_dir, race, "md", 50)
+    ]
+    missing_before = [race for race in races if race not in complete_before]
+    # Once all races exist, a later scheduled run refreshes the full meeting.
+    # While recovery is partial, every second must go to the missing tail.
+    requested_races = missing_before or list(races)
+    race_list = ','.join(str(r) for r in requested_races)
+    timeout_seconds = min(1800, max(300, 180 * len(requested_races)))
     result = None
     try:
         result = subprocess.run(
@@ -384,7 +400,7 @@ def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
              '--races', race_list,
              '--output_dir', output_dir,
              '--fail-soft'],
-            capture_output=True, text=True, timeout=300,
+            capture_output=True, text=True, timeout=timeout_seconds,
             encoding='utf-8', env=SUBPROCESS_ENV
         )
     except (subprocess.SubprocessError, OSError) as exc:
@@ -409,6 +425,7 @@ def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
         }
     total_ok = sum(1 for v in results['races'].values() if v['json_ok'] and v['md_ok'])
     results['ok'] = total_ok > 0
+    results['requested_races'] = requested_races
     if result is not None and result.stderr.strip() and not results['error']:
         results['error'] = result.stderr.strip()[:200]
     return results
@@ -417,7 +434,7 @@ def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
 def extract_trackwork_after_core(
     base_url, races, output_dir, date_prefix, *, core_ready,
 ):
-    """Do not spend the recovery window on best-effort data before core is ready."""
+    """Do not spend the recovery window on trackwork before core is ready."""
     if not core_ready:
         return {
             'ok': False,
@@ -527,8 +544,9 @@ def main():
                    if r.get(f'{key}_state', 'missing') in ('fresh', 'kept'))
     valid_rc, valid_fg = _valid('racecard'), _valid('formguide')
 
-    # Step 3: 晨操 is best-effort and must not delay recovery of required
-    # sources. Run it only after the strict core source counts are complete.
+    # Step 3: 晨操 is required by the immutable feature-evidence snapshot, but
+    # must not delay recovery of the earlier core sources. Run it only after
+    # the strict racecard/formguide counts are complete.
     core_ready = total_rc == len(races) and total_fg == len(races)
     print()
     if core_ready:
@@ -542,10 +560,16 @@ def main():
         1 for value in tw_results['races'].values()
         if value['json_ok'] and value['md_ok']
     )
-    if core_ready and tw_results['ok']:
+    trackwork_complete = tw_ok_count == len(races)
+    trackwork_missing = sorted(
+        race for race, value in tw_results['races'].items()
+        if not (value['json_ok'] and value['md_ok'])
+    )
+    if core_ready and trackwork_complete:
         print(f"   ✅ 晨操: {tw_ok_count}/{len(races)} races")
     elif core_ready:
-        print(f"   ⚠️ 晨操: {tw_ok_count}/{len(races)} races (下游將使用 fallback)")
+        print(f"   ⚠️ 晨操: {tw_ok_count}/{len(races)} races "
+              f"(缺 R{',R'.join(map(str, trackwork_missing))}；等 scheduler 續抽)")
         if tw_results['error']:
             print(f"      {tw_results['error']}")
 
@@ -561,10 +585,11 @@ def main():
     else:
         # 冇呢個 else，一個**硬阻塞**條件失敗喺 summary 度係完全睇唔到嘅。
         print(f"   ❌ Starter PDF: {pdf_state} —— {pdf_err or '冇記錄原因'}")
-    if tw_results['ok']:
+    if trackwork_complete:
         print(f"   ✅ 晨操 Trackwork: {tw_ok_count}/{len(races)} races")
     else:
-        print(f"   ⚠️ 晨操 Trackwork: {tw_ok_count}/{len(races)} races (fallback)")
+        print(f"   ⚠️ 晨操 Trackwork: {tw_ok_count}/{len(races)} races "
+              f"(缺 R{',R'.join(map(str, trackwork_missing))})")
     print(f"   📁 All files saved to: {output_dir}")
 
     # 發佈閘。預設（`strict`）要每個來源今次都刷新成功。
@@ -589,7 +614,11 @@ def main():
         if gate_mode != "strict":
             print(f"   ⚠️ 唔認得嘅 WC_HKJC_GATE={gate_mode!r}，當 strict 處理")
         pdf_gate = pdf_ok
+    # Stage 5 snapshot pins the exact source bytes for every scored feature.
+    # `trackwork_trend_score` therefore makes complete trackwork a real gate;
+    # allowing scoring here only moves the same failure twenty minutes later.
     ready = pdf_gate and total_rc == len(races) and total_fg == len(races)
+    ready = ready and trackwork_complete
     if gate_mode == "field_change" and pdf_gate and not pdf_ok:
         print(f"   ℹ️ 名單變動模式：PDF 用碟上有效檔（{pdf_state}）過閘 —— "
               f"PDF 截止時間必定早過賽事，唔會載到賽日退出馬。")
@@ -614,6 +643,7 @@ def main():
         "formguides_valid": valid_fg,
         "formguides_verified": verified_fg,
         "trackwork_ready": tw_ok_count,
+        "trackwork_missing": trackwork_missing,
         "races": all_results,
         "self_recovery": "automatic_retry" if not ready else "not_needed",
     }

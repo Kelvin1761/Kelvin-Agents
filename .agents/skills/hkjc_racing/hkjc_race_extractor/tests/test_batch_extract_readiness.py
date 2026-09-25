@@ -162,3 +162,54 @@ def test_partial_batch_writes_manifest_and_exits_temporary(tmp_path: Path, monke
     assert readiness["status"] == "waiting_source"
     assert readiness["formguides_ready"] == 0
     assert readiness["self_recovery"] == "automatic_retry"
+
+
+def test_complete_core_with_partial_trackwork_waits_before_scoring(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Snapshot 要晨操證據，就唔准 readiness 先報 ready 再喺 scoring 後失敗。"""
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            str(SCRIPT),
+            "--base_url",
+            "https://racing.hkjc.com/zh-hk/local/information/racecard"
+            "?racedate=2026/09/27&Racecourse=ST&RaceNo=1",
+            "--races",
+            "1,2,3",
+            "--output_dir",
+            str(tmp_path),
+            "--max_workers",
+            "1",
+        ],
+    )
+    complete = {
+        "race": 1,
+        "racecard_ok": True,
+        "formguide_ok": True,
+        "racecard_state": "fresh",
+        "formguide_state": "fresh",
+        "errors": [],
+    }
+    trackwork = {
+        "ok": True,
+        "races": {
+            1: {"json_ok": True, "md_ok": True},
+            2: {"json_ok": False, "md_ok": False},
+            3: {"json_ok": False, "md_ok": False},
+        },
+        "error": "TimeoutExpired",
+    }
+    with (
+        mock.patch.object(batch, "extract_starter_pdf", return_value=(True, "", "fresh")),
+        mock.patch.object(batch, "extract_trackwork_meeting", return_value=trackwork),
+        mock.patch.object(batch, "extract_single_race", side_effect=lambda race, *_a, **_k: complete | {"race": race}),
+        pytest.raises(SystemExit) as raised,
+    ):
+        batch.main()
+
+    assert raised.value.code == 75
+    readiness = json.loads((tmp_path / "Extraction_Readiness.json").read_text())
+    assert readiness["status"] == "waiting_source"
+    assert readiness["trackwork_missing"] == [2, 3]

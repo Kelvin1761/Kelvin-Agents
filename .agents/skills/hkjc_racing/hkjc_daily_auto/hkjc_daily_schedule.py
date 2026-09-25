@@ -735,6 +735,19 @@ def readiness_digest(meeting_dir: Path) -> str:
         shown = "、".join(items[:cap])
         return shown + (f" 等 {len(items)} 項" if len(items) > cap else "")
 
+    def _ranges(numbers):
+        values = sorted({int(number) for number in numbers})
+        groups = []
+        for number in values:
+            if not groups or number != groups[-1][-1] + 1:
+                groups.append([number])
+            else:
+                groups[-1].append(number)
+        return "、".join(
+            f"R{group[0]}" if len(group) == 1 else f"R{group[0]}-R{group[-1]}"
+            for group in groups
+        )
+
     if gone:
         lines.append(f"冇有效檔（要人睇）：{_fold(gone)}")
     if stale:
@@ -742,8 +755,13 @@ def readiness_digest(meeting_dir: Path) -> str:
     if verified:
         lines.append(f"刷新回空頁但經新鮮排位表核實名單一致（已放行）：{_fold(verified)}")
 
-    # 發佈閘係 `ready = starter_pdf and 排位表齊 and 賽績齊` —— **晨操唔喺入面**。
-    # 所以 PDF 失敗會單獨卡死成個場次，而之前呢個 digest 一行都冇講過 PDF：
+    missing_trackwork = data.get("trackwork_missing") or []
+    if missing_trackwork:
+        lines.append("晨操缺（會阻住 prediction snapshot）：" +
+                     _ranges(missing_trackwork))
+
+    # 發佈閘要 starter PDF、排位表、賽績同晨操齊全。PDF 失敗會單獨卡死
+    # 成個場次，而之前呢個 digest 一行都冇講過 PDF：
     # 2026-09-06 沙田連續 22 次 run 過唔到閘（PDF 佔 20 次），而每次通知都
     # 指住幾場「賽績」，讀者被引去查一個冇壞嘅嘢。真兇一定要出名。
     if not data.get("starter_pdf_ready"):
@@ -758,9 +776,6 @@ def readiness_digest(meeting_dir: Path) -> str:
         if reason:
             head += f"：{reason[:120]}"
         lines.append(head)
-    if not data.get("trackwork_ready") and (data.get("expected_races") or 0):
-        # 講明佢唔阻塞，唔好令人以為要處理。
-        lines.append("（晨操 0 —— 唔喺發佈閘條件內，唔會阻住上板）")
     return "\n".join(lines)
 
 
