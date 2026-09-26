@@ -71,6 +71,20 @@ for src in "${SOURCES[@]}"; do
 done
 
 date '+%Y-%m-%d %H:%M:%S %Z' > "$DEST/.last_backup"
+
+# launchd can verify the D1 export locally but macOS TCC may deny removable
+# volume access. A foreground backup has that access, so complete the latest
+# immutable snapshot's canonical WARM copy and catalog record here. This does
+# not query or mutate the remote D1 database.
+echo ""
+echo "── 中央旺財 D1 WARM ──"
+if python3 .agents/skills/central_wong_choi/scripts/central_wong_choi.py \
+  dashboard-backup-warm --warm-root "$DISK/WongChoi-Archive" --json; then
+  echo "  ✅ D1 WARM second copy 已驗證"
+else
+  echo "  ❌ D1 WARM second copy 失敗"; STATUS=1
+fi
+
 echo ""
 echo "備份時間記錄喺 $DEST/.last_backup"
 [ "$STATUS" -eq 0 ] && echo "✅ 完成" || echo "❌ 有部分失敗"

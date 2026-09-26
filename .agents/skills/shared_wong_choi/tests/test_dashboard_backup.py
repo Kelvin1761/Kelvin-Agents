@@ -14,6 +14,7 @@ sys.path.insert(0, str(PACKAGE_ROOT.parent))
 from shared_wong_choi.dashboard_backup import (  # noqa: E402
     D1_TABLES,
     DashboardBackupError,
+    backfill_latest_d1_warm,
     backup_d1_ledger,
     collect_d1_backup_status,
     verify_d1_export,
@@ -250,6 +251,56 @@ def test_d1_backup_defers_external_warm_permission_without_losing_snapshot(
     assert "removable volume" in result["warm"]["reason"]
     assert Path(result["snapshot"]).is_dir()
     assert Path(result["manifest"]).is_file()
+
+
+def test_foreground_warm_backfill_reuses_verified_local_snapshot(tmp_path: Path) -> None:
+    dashboard = _dashboard(tmp_path)
+    state = tmp_path / "state"
+    warm = tmp_path / "warm"
+    warm.mkdir()
+    clock = datetime(2026, 8, 28, 3, 45, tzinfo=timezone.utc)
+    local = backup_d1_ledger(
+        dashboard,
+        state,
+        warm_root=None,
+        runner=FakeRunner([1, 1]),
+        now=clock,
+    )
+
+    first = backfill_latest_d1_warm(state, warm_root=warm)
+    second = backfill_latest_d1_warm(state, warm_root=warm)
+    status = collect_d1_backup_status(state, now=clock + timedelta(hours=1))
+
+    assert first["status"] == "pass"
+    assert first["snapshot"] == local["snapshot"]
+    assert first["remote_queried"] is False
+    assert first["remote_mutated"] is False
+    assert first["warm"]["status"] == "copied_verified"
+    assert second["warm"]["status"] == "duplicate"
+    assert status["status"] == "ok"
+    assert status["warm_verified"] is True
+
+
+def test_foreground_warm_backfill_rejects_tampered_snapshot(tmp_path: Path) -> None:
+    dashboard = _dashboard(tmp_path)
+    state = tmp_path / "state"
+    warm = tmp_path / "warm"
+    warm.mkdir()
+    local = backup_d1_ledger(
+        dashboard,
+        state,
+        warm_root=None,
+        runner=FakeRunner([1, 1]),
+        now=datetime(2026, 8, 28, 3, 50, tzinfo=timezone.utc),
+    )
+    Path(local["snapshot"]).joinpath("wongchoi-ledger.sql").write_text(
+        "tampered", encoding="utf-8"
+    )
+
+    with pytest.raises(DashboardBackupError, match="size does not match"):
+        backfill_latest_d1_warm(state, warm_root=warm)
+
+    assert not list(warm.rglob("wongchoi-ledger.sql"))
 
 
 def test_verify_export_requires_new_destination_and_valid_sql(tmp_path: Path) -> None:

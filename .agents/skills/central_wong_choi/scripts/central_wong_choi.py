@@ -35,6 +35,7 @@ from shared_wong_choi.dashboard_status import (  # noqa: E402
 )
 from shared_wong_choi.dashboard_backup import (  # noqa: E402
     DashboardBackupError,
+    backfill_latest_d1_warm,
     backup_d1_ledger,
     collect_d1_backup_status,
 )
@@ -107,6 +108,9 @@ def build_parser() -> argparse.ArgumentParser:
     d1_backup.add_argument("--json", action="store_true")
     d1_backup_status = sub.add_parser("dashboard-backup-status")
     d1_backup_status.add_argument("--json", action="store_true")
+    d1_backup_warm = sub.add_parser("dashboard-backup-warm")
+    d1_backup_warm.add_argument("--warm-root", type=Path)
+    d1_backup_warm.add_argument("--json", action="store_true")
     archive = sub.add_parser("archive-copy")
     archive.add_argument("--source", type=Path, required=True)
     archive.add_argument("--domain", choices=("au", "hkjc", "tennis", "nba"), required=True)
@@ -326,6 +330,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         result = collect_d1_backup_status(state_root)
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 0 if result["status"] == "ok" else 1
+    if args.command == "dashboard-backup-warm":
+        warm_root = args.warm_root or Path(
+            os.environ.get("WC_WARM_ARCHIVE_ROOT", str(DEFAULT_WARM_ROOT))
+        )
+        try:
+            result = backfill_latest_d1_warm(state_root, warm_root=warm_root)
+        except DashboardBackupError as exc:
+            print(json.dumps({"status": "blocked", "error": str(exc)}, ensure_ascii=False))
+            return 1
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0
     if args.command == "dashboard":
         result = collect_dashboard_status(repo, state_root)
         print(

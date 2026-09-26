@@ -14,6 +14,7 @@ import re
 import shutil
 import sqlite3
 import subprocess
+import tempfile
 import time
 import uuid
 from datetime import datetime, timezone
@@ -364,6 +365,88 @@ def backup_d1_ledger(
             result["status"] = "deferred"
             result["cold"] = {"status": "deferred", "reason": str(exc)}
     return result
+
+
+def backfill_latest_d1_warm(
+    state_root: Path,
+    *,
+    warm_root: Path,
+) -> dict[str, Any]:
+    """Verify and archive the newest local D1 snapshot without querying D1.
+
+    This is the foreground recovery path for macOS launchd jobs that can create
+    and verify the local snapshot but cannot access a removable volume because
+    of TCC. Re-running it is safe because ``archive_copy`` is content-addressed.
+    """
+    state_root = state_root.expanduser().resolve()
+    manifests = sorted((state_root / "dashboard_d1" / "snapshots").glob("*/manifest.json"))
+    if not manifests:
+        raise DashboardBackupError("no local D1 snapshot is available for WARM backfill")
+
+    manifest_path = manifests[-1]
+    snapshot = manifest_path.parent.resolve()
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        restore = manifest["restore"]
+        sql_meta = manifest["sql"]
+        snapshot_at = datetime.fromisoformat(
+            str(manifest["snapshot_at"]).replace("Z", "+00:00")
+        )
+        sql_path = snapshot / str(sql_meta["filename"])
+        sql_path.resolve().relative_to(snapshot)
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise DashboardBackupError(f"latest D1 snapshot manifest is invalid: {exc}") from exc
+
+    if manifest.get("schema_version") != BACKUP_SCHEMA:
+        raise DashboardBackupError("latest D1 snapshot has an unsupported schema")
+    if not isinstance(restore, dict) or not isinstance(sql_meta, dict):
+        raise DashboardBackupError("latest D1 snapshot manifest has invalid evidence fields")
+    if snapshot_at.tzinfo is None or snapshot_at.utcoffset() is None:
+        raise DashboardBackupError("latest D1 snapshot timestamp must be timezone-aware")
+    if restore.get("status") != "pass":
+        raise DashboardBackupError("latest D1 snapshot has no successful restore evidence")
+    if not sql_path.is_file():
+        raise DashboardBackupError("latest D1 snapshot SQL file is missing")
+    if sql_path.stat().st_size != int(sql_meta.get("bytes") or -1):
+        raise DashboardBackupError("latest D1 snapshot SQL size does not match manifest")
+    if _sha256(sql_path) != str(sql_meta.get("sha256") or ""):
+        raise DashboardBackupError("latest D1 snapshot SQL hash does not match manifest")
+
+    verification_root = state_root / "dashboard_d1" / "verification"
+    verification_root.mkdir(parents=True, exist_ok=True)
+    try:
+        with tempfile.TemporaryDirectory(prefix=".warm-backfill-", dir=verification_root) as raw:
+            restored = verify_d1_export(sql_path, Path(raw) / "restore.sqlite")
+    except (OSError, DashboardBackupError) as exc:
+        if isinstance(exc, DashboardBackupError):
+            raise
+        raise DashboardBackupError(f"D1 WARM backfill verification failed: {exc}") from exc
+    if restored["row_counts"] != restore.get("row_counts"):
+        raise DashboardBackupError("latest D1 snapshot restore counts do not match manifest")
+
+    try:
+        archived = archive_copy(
+            snapshot,
+            warm_root=warm_root,
+            catalog_root=state_root / "storage" / "catalog",
+            domain="central",
+            artifact_class="d1-ledger-backup",
+            allowed_roots=[state_root],
+            created_at=snapshot_at.astimezone(timezone.utc).isoformat(),
+        )
+    except (ArtifactArchiveError, OSError) as exc:
+        raise DashboardBackupError(f"D1 WARM backfill failed: {exc}") from exc
+    return {
+        "status": "pass",
+        "snapshot": str(snapshot),
+        "manifest": str(manifest_path),
+        "database": manifest.get("database"),
+        "row_counts": restored["row_counts"],
+        "sql": sql_meta,
+        "remote_queried": False,
+        "remote_mutated": False,
+        "warm": archived,
+    }
 
 
 def collect_d1_backup_status(
