@@ -182,7 +182,7 @@ def _two_sources(form_md, card_md, form_rc=0, card_rc=0):
     return run
 
 
-def test_the_formguide_decides_not_the_racecard(tmp_path):
+def test_the_racecard_decides_not_the_formguide(tmp_path):
     """排位表話退出咗，賽績仲有 —— 重建鏈食賽績，所以唔准報變動。
 
     報咗就會觸發一個永遠唔收斂嘅重跑：重跑由賽績砌名單，隻馬照樣返嚟。
@@ -191,19 +191,19 @@ def test_the_formguide_decides_not_the_racecard(tmp_path):
     with mock.patch.object(scan.subprocess, "run",
                            side_effect=_two_sources(_card(FIELD), _card(FIELD[:2]))):
         out = scan.scan_race("http://card", logic, formguide_url="http://form")
-    assert out["changed"] is False
-    assert out["scratched"] == []
-    assert "排位表已經冇：3 錶之星河" in out["source_disagreement"]
+    assert out["changed"] is True
+    assert [item["no"] for item in out["scratched"]] == [3]
+    assert out["source_disagreement"]
 
 
-def test_a_change_in_the_formguide_is_reported(tmp_path):
+def test_a_change_only_in_the_formguide_is_not_reported(tmp_path):
     """反過嚟：賽績先行，就係真變動 —— 即使排位表未跟上。"""
     logic = _logic(tmp_path, 1, FIELD)
     with mock.patch.object(scan.subprocess, "run",
                            side_effect=_two_sources(_card(FIELD[:2]), _card(FIELD))):
         out = scan.scan_race("http://card", logic, formguide_url="http://form")
-    assert out["changed"] is True
-    assert out["scratched"] == [{"no": 3, "horse": "錶之星河"}]
+    assert out["changed"] is False
+    assert out["scratched"] == []
     assert out["source_disagreement"]
 
 
@@ -215,22 +215,34 @@ def test_agreeing_sources_report_no_disagreement(tmp_path):
     assert out["source_disagreement"] == ""
 
 
-def test_a_failed_racecard_does_not_block_the_formguide_verdict(tmp_path):
+def test_speedpro_standby_with_same_number_does_not_trigger_rerun(tmp_path):
+    logic = _logic(tmp_path, 1, [(1, "十分愛"), (2, "狼來了")])
+    card = _card([(1, "十分愛"), (2, "狼來了")])
+    form = _card([(1, "十分愛"), (2, "御登")])
+    with mock.patch.object(scan.subprocess, "run", side_effect=_two_sources(form, card)):
+        out = scan.scan_race("http://card", logic, formguide_url="http://form")
+    assert out["changed"] is False
+    assert "排位表=狼來了/賽績=御登" in out["source_disagreement"]
+
+
+def test_a_failed_formguide_does_not_block_the_racecard_verdict(tmp_path):
     """第二意見抓唔到就算數，唔可以拖累權威來源。"""
     logic = _logic(tmp_path, 1, FIELD)
     with mock.patch.object(scan.subprocess, "run",
-                           side_effect=_two_sources(_card(FIELD[:2]), "", card_rc=1)):
+                           side_effect=_two_sources("", _card(FIELD[:2]), form_rc=1)):
         out = scan.scan_race("http://card", logic, formguide_url="http://form")
     assert out["changed"] is True
     assert out["error"] == ""
 
 
-def test_no_formguide_url_refuses_to_guess(tmp_path):
+def test_no_formguide_url_still_uses_the_racecard(tmp_path):
     """冇賽績就唔可以退而求其次用排位表。"""
     logic = _logic(tmp_path, 1, FIELD)
-    out = scan.scan_race("http://card", logic)
+    done = subprocess.CompletedProcess(["x"], 0, stdout=_card(FIELD), stderr="")
+    with mock.patch.object(scan.subprocess, "run", return_value=done):
+        out = scan.scan_race("http://card", logic)
     assert out["changed"] is False
-    assert "冇賽績 URL" in out["error"]
+    assert out["error"] == ""
 
 
 # ────────────── verify_applied：驗結果唔好信機制 ──────────────

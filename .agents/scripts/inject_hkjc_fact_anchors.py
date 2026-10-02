@@ -865,11 +865,12 @@ def parse_hkjc_formguide(filepath: str) -> dict:
         ]
     }
     """
-    def load_brand_mapping(fp):
+    def load_racecard(fp):
         rc_path = str(fp).replace('賽績.md', '排位表.md').replace('Formguide.txt', '排位表.md')
         mapping = {}
         gear_map = {}
         trainer_map = {}
+        runners = {}
         if os.path.exists(rc_path):
             text = Path(rc_path).read_text(encoding='utf-8')
             for match in re.finditer(r'馬名:\s*(.*?)\n.*?烙號:\s*([A-Za-z0-9_]+)', text, re.DOTALL):
@@ -889,9 +890,33 @@ def parse_hkjc_formguide(filepath: str) -> dict:
                     trainer_val = tm.group(1).strip()
                     if trainer_val:
                         trainer_map[nm.group(1).strip()] = trainer_val
-        return mapping, gear_map, trainer_map
-    
-    brand_mapping, gear_mapping, trainer_mapping = load_brand_mapping(filepath)
+            for block in re.split(r'(?m)(?=^馬號:\s*\d+\s*$)', text):
+                number_match = re.search(r'(?m)^馬號:\s*(\d+)\s*$', block)
+                name_match = re.search(r'(?m)^馬名:\s*(.+?)\s*$', block)
+                if not number_match or not name_match:
+                    continue
+
+                def field(label):
+                    match = re.search(rf'(?m)^{re.escape(label)}:\s*(.*?)\s*$', block)
+                    return match.group(1).strip() if match else ''
+
+                number = int(number_match.group(1))
+                runners[number] = {
+                    'num': number,
+                    'name': name_match.group(1).strip(),
+                    'brand_no': field('HKJC馬匹ID') or field('烙號'),
+                    'barrier': int(field('檔位')) if field('檔位').isdigit() else 0,
+                    'jockey': field('騎師'),
+                    'trainer': field('練馬師'),
+                    'weight': int(field('負磅')) if field('負磅').isdigit() else 0,
+                    'body_weight': int(field('排位體重')) if field('排位體重').isdigit() else 0,
+                    'today_gear': field('配備'),
+                    'races': [],
+                    'pdf_overseas_races': [],
+                }
+        return mapping, gear_map, trainer_map, runners
+
+    brand_mapping, gear_mapping, trainer_mapping, racecard_runners = load_racecard(filepath)
     pdf_path = get_pdf_path(filepath)
 
     text = Path(filepath).read_text(encoding='utf-8')
@@ -1085,8 +1110,119 @@ def parse_hkjc_formguide(filepath: str) -> dict:
             'races': races,  # No limit — keep all for trend computation
             'pdf_overseas_races': pdf_overseas_races,
         })
+
+    # SpeedPRO enriches declared runners; it must never define the field.
+    # On 2026-10-04 R2 it returned stand-by runner 2 御登 while the official
+    # racecard's declared runner 2 was 狼來了. Relabelling that block would attach
+    # the wrong horse's history, so retain SpeedPRO history only when both the
+    # number and name match the adjacent official racecard.
+    source_reconciliations = []
+    if racecard_runners:
+        formguide_by_number = {horse['num']: horse for horse in horses}
+
+        def comparable_name(value):
+            return re.sub(r'\s*\([A-Z]\d{3}\)\s*$', '', value or '').strip().casefold()
+
+        aligned = []
+        for number in sorted(racecard_runners):
+            canonical = dict(racecard_runners[number])
+            candidate = formguide_by_number.get(number)
+            if candidate and comparable_name(candidate.get('name')) == comparable_name(canonical['name']):
+                merged = dict(candidate)
+                for key in (
+                    'barrier', 'jockey', 'trainer', 'weight', 'body_weight',
+                    'today_gear', 'brand_no',
+                ):
+                    if not merged.get(key):
+                        merged[key] = canonical.get(key)
+                aligned.append(merged)
+                continue
+
+            source_name = candidate.get('name', '') if candidate else ''
+            source_reconciliations.append({
+                'horse_num': number,
+                'racecard_name': canonical['name'],
+                'formguide_name': source_name,
+            })
+            # The canonical HKJC horse id lets the profile scraper refill safe
+            # historical evidence for the correct horse. The other horse's
+            # SpeedPRO history is deliberately discarded.
+            aligned.append(canonical)
+        horses = aligned
     
-    return {'race_info': race_info, 'horses': horses}
+    return {
+        'race_info': race_info,
+        'horses': horses,
+        'source_reconciliations': source_reconciliations,
+    }
+
+
+def profile_ids_by_number(horses: list[dict], override: str = '') -> dict[int, str]:
+    """Return profile ids keyed by the actual horse number.
+
+    Filtering empty ids into a list and then using ``enumerate`` shifts every
+    later profile onto the preceding runner. A single missing SpeedPRO identity
+    in 2026-10-04 R2 therefore risked contaminating horses 2-13. Preserve the
+    positional gaps for CLI overrides and use parsed horse numbers otherwise.
+    """
+    if override:
+        return {
+            index: horse_id.strip()
+            for index, horse_id in enumerate(override.split(','), 1)
+            if horse_id.strip() and horse_id.strip() != '-'
+        }
+    return {
+        int(horse['num']): str(horse.get('brand_no') or '').strip()
+        for horse in horses
+        if str(horse.get('brand_no') or '').strip()
+        and str(horse.get('brand_no') or '').strip() != '-'
+    }
+
+
+def profile_entries_as_races(entries: list[dict]) -> list[dict]:
+    """Adapt official profile history when SpeedPRO has the wrong identity."""
+    races = []
+    for index, entry in enumerate(entries, 1):
+        raw_date = str(entry.get('date') or '').strip()
+        date_dt = None
+        for date_format in ('%d/%m/%y', '%d/%m/%Y'):
+            try:
+                date_dt = datetime.strptime(raw_date, date_format)
+                break
+            except ValueError:
+                continue
+        date_text = date_dt.strftime('%d/%m/%Y') if date_dt else raw_date
+        venue_track = str(entry.get('venue_track') or '')
+        venue = '沙田' if venue_track.startswith('沙田') else (
+            '跑馬地' if venue_track.startswith('跑馬地') else venue_track
+        )
+        rail_match = re.search(r'["\u201c](.+?)["\u201d]', venue_track)
+        positions = list(entry.get('running_positions') or [])
+        races.append({
+            'idx': index,
+            'date': date_text,
+            'date_dt': date_dt,
+            'days_since': 0,
+            'venue': venue,
+            'rail': rail_match.group(1) if rail_match else '',
+            'distance': int(entry.get('distance') or 0),
+            'going': str(entry.get('going') or ''),
+            'barrier': int(entry.get('barrier') or 0),
+            'body_weight': int(entry.get('declared_weight') or 0),
+            'weight': int(entry.get('weight_carried') or 0),
+            'jockey': str(entry.get('jockey') or ''),
+            'finish': int(entry.get('placing') or 0),
+            'field_size': int(entry.get('field_size') or 0),
+            'energy': 0,
+            'splits': [],
+            'splits_raw': '',
+            'comment': '',
+            'positions': positions,
+            'sectionals': {},
+            'wide_info': {},
+            'pace': '',
+        })
+    return races
 
 
 def compute_stats(races: list, today_venue: str = '', today_dist: int = 0,
@@ -2450,6 +2586,14 @@ def main():
     if not data['horses']:
         print("❌ No horses found in Formguide", file=sys.stderr)
         sys.exit(1)
+    for item in data.get('source_reconciliations') or []:
+        supplied = item['formguide_name'] or '缺行'
+        print(
+            f"   ⚠️ 馬號 {item['horse_num']} 來源不一致："
+            f"排位表={item['racecard_name']} / SpeedPRO={supplied}；"
+            "已用排位表身份並丟棄錯馬往績",
+            file=sys.stderr,
+        )
     
     # Auto-detect race context
     text = Path(fg_path).read_text(encoding='utf-8')
@@ -2469,10 +2613,7 @@ def main():
     )
     
     # Parse horse IDs for scraper enrichment
-    horse_id_list = [h.strip() for h in horse_ids_str.split(',') if h.strip()] if horse_ids_str else []
-    if not horse_id_list:
-        # Re-enabled automatic extraction
-        horse_id_list = [h['brand_no'] for h in data['horses'] if h.get('brand_no')]
+    horse_ids = profile_ids_by_number(data['horses'], horse_ids_str)
     
     print(f"📌 V2 HKJC 完整賽績檔案 — {len(data['horses'])} 匹馬", file=sys.stderr)
     print(
@@ -2480,8 +2621,8 @@ def main():
         f"距離: {today_dist}m | 班次: {race_class}",
         file=sys.stderr,
     )
-    if horse_id_list:
-        print(f"   馬匹頁面: {len(horse_id_list)} 匹 (SSR enrichment)", file=sys.stderr)
+    if horse_ids:
+        print(f"   馬匹頁面: {len(horse_ids)} 匹 (SSR enrichment)", file=sys.stderr)
     elif HAS_SCRAPER:
         print(f"   ⚠️ 未提供 --horse-ids，馬匹頁面數據不可用", file=sys.stderr)
     if not HAS_SCRAPER:
@@ -2498,12 +2639,10 @@ def main():
     # Scrape horse profiles if IDs provided
     profiles = {}  # {horse_num: profile_data}
     form_lines_map = {}  # {horse_num: form_lines_data}
-    if HAS_SCRAPER and horse_id_list:
+    if HAS_SCRAPER and horse_ids:
         import time
-        for idx, hid in enumerate(horse_id_list):
-            if not hid or hid == '-':
-                continue
-            horse_num = idx + 1  # horse_ids are in order of horse number
+        profile_items = sorted(horse_ids.items())
+        for item_index, (horse_num, hid) in enumerate(profile_items):
             print(f"   Scraping {hid}...", file=sys.stderr)
             try:
                 profile = scrape_horse_profile(hid)
@@ -2526,8 +2665,21 @@ def main():
                     print(f"     ❌ {hid}: {profile['error']}", file=sys.stderr)
             except Exception as e:
                 print(f"     ❌ {hid}: {e}", file=sys.stderr)
-            if idx < len(horse_id_list) - 1:
+            if item_index < len(profile_items) - 1:
                 time.sleep(0.5)  # Rate limiting
+
+    # A reconciled runner deliberately has no SpeedPRO races: those rows belong
+    # to a different horse. Refill the standard race shape from the correct
+    # official profile before speed-map and career classification run.
+    reconciled_numbers = {
+        int(item['horse_num']) for item in data.get('source_reconciliations') or []
+    }
+    for horse in data['horses']:
+        if horse['num'] not in reconciled_numbers or horse.get('races'):
+            continue
+        profile = profiles.get(horse['num'])
+        if profile and profile.get('entries'):
+            horse['races'] = profile_entries_as_races(profile['entries'])
     
     # Generate output
     output_lines = []
@@ -2540,6 +2692,9 @@ def main():
         output_lines.append(f"馬匹頁面數據: {len(profiles)} 匹已豐富 (頭馬距離/體重/配備/評分/走位)")
     if form_lines_map:
         output_lines.append(f"賽績線: {len(form_lines_map)} 匹已查冊")
+    if data.get('source_reconciliations'):
+        numbers = ','.join(str(item['horse_num']) for item in data['source_reconciliations'])
+        output_lines.append(f"來源對齊: 馬號 {numbers} 已以官方排位表身份修復")
     output_lines.append(f"")
     
     # Inject draw verdict block if race_num provided
