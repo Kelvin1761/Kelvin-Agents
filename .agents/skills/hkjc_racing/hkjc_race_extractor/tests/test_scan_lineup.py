@@ -4,10 +4,10 @@
 香港頭場約 15:00 悉尼 —— 開賽前 4 個鐘之後成個賽日冇覆蓋，而香港退出馬
 好多喺賽日早上先公布。
 
-**權威來源係賽績，唔係排位表** —— `inject_hkjc_fact_anchors.parse_hkjc_formguide()`
-個馬匹迴圈食嘅就係佢，成條鏈係 賽績 → Facts → Logic → 板面。呢個 module
-最初比對排位表，後果係：排位表出咗退出馬 → 偵測到 → 重跑 → 重跑由賽績砌名單
-→ 隻馬仲喺度 → 永遠唔收斂，而板上一直掛住隻已退出嘅馬。
+**權威來源係官方排位表**；賽績只補往績。排位表會保留退出馬個 block，但馬名
+加上「(退出)」、負磅同檔位變 0，所以 scanner 同 Facts builder 必須用同一條規則
+將佢由 active field 排除。否則會將退出誤報成換馬，再喺 Logic schema 因 0 值失敗，
+每 30 分鐘重試一次而永遠唔收斂。
 
 最關鍵嗰組測試係「失敗唔可以扮變動」。一個 timeout、一個半截頁、一個
 exit≠0，如果被讀成「啲馬唔見咗」，就會喺賽日觸發一次冇必要嘅全場重跑
@@ -53,6 +53,18 @@ FIELD = [(1, "嘉應高昇"), (2, "合夥奔馳"), (3, "錶之星河")]
 
 def test_parse_lineup_reads_number_and_name():
     assert scan.parse_lineup(_card(FIELD)) == {1: "嘉應高昇", 2: "合夥奔馳", 3: "錶之星河"}
+
+
+def test_parse_lineup_excludes_withdrawn_runner_but_page_stays_complete():
+    card = _card(FIELD[:2] + [(3, "錶之星河 (退出)")])
+    lineup = scan.parse_lineup(card)
+    assert lineup == {1: "嘉應高昇", 2: "合夥奔馳"}
+    assert scan.lineup_looks_complete(card, lineup) is True
+
+
+def test_parse_lineup_accepts_fullwidth_withdrawal_marker():
+    card = _card(FIELD[:2] + [(3, "錶之星河（退出）")])
+    assert scan.parse_lineup(card) == {1: "嘉應高昇", 2: "合夥奔馳"}
 
 
 def test_a_page_with_a_number_but_no_name_is_incomplete():
@@ -154,6 +166,17 @@ def test_a_real_change_still_gets_through(tmp_path):
     assert out["scratched"] == [{"no": 3, "horse": "錶之星河"}]
 
 
+def test_withdrawal_marker_is_a_scratching_not_a_replacement(tmp_path):
+    logic = _logic(tmp_path, 1, FIELD)
+    withdrawn_card = _card(FIELD[:2] + [(3, "錶之星河 (退出)")])
+    done = subprocess.CompletedProcess(["x"], 0, stdout=withdrawn_card, stderr="")
+    with mock.patch.object(scan.subprocess, "run", return_value=done):
+        out = scan.scan_race("http://card", logic)
+    assert out["changed"] is True
+    assert out["scratched"] == [{"no": 3, "horse": "錶之星河"}]
+    assert out["replaced"] == []
+
+
 # ───────────────────────── 摘要 ─────────────────────────
 
 def test_describe_names_every_kind_of_change():
@@ -183,10 +206,7 @@ def _two_sources(form_md, card_md, form_rc=0, card_rc=0):
 
 
 def test_the_racecard_decides_not_the_formguide(tmp_path):
-    """排位表話退出咗，賽績仲有 —— 重建鏈食賽績，所以唔准報變動。
-
-    報咗就會觸發一個永遠唔收斂嘅重跑：重跑由賽績砌名單，隻馬照樣返嚟。
-    """
+    """排位表話退出咗、賽績仲有：以排位表 active field 為準。"""
     logic = _logic(tmp_path, 1, FIELD)
     with mock.patch.object(scan.subprocess, "run",
                            side_effect=_two_sources(_card(FIELD), _card(FIELD[:2]))):
@@ -197,7 +217,7 @@ def test_the_racecard_decides_not_the_formguide(tmp_path):
 
 
 def test_a_change_only_in_the_formguide_is_not_reported(tmp_path):
-    """反過嚟：賽績先行，就係真變動 —— 即使排位表未跟上。"""
+    """反過嚟：只有賽績少咗一匹，唔可以蓋過官方排位表。"""
     logic = _logic(tmp_path, 1, FIELD)
     with mock.patch.object(scan.subprocess, "run",
                            side_effect=_two_sources(_card(FIELD[:2]), _card(FIELD))):
@@ -236,7 +256,7 @@ def test_a_failed_formguide_does_not_block_the_racecard_verdict(tmp_path):
 
 
 def test_no_formguide_url_still_uses_the_racecard(tmp_path):
-    """冇賽績就唔可以退而求其次用排位表。"""
+    """冇賽績第二意見，仍然可以用官方排位表判斷。"""
     logic = _logic(tmp_path, 1, FIELD)
     done = subprocess.CompletedProcess(["x"], 0, stdout=_card(FIELD), stderr="")
     with mock.patch.object(scan.subprocess, "run", return_value=done):

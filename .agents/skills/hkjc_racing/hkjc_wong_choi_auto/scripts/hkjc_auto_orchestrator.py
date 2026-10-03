@@ -436,6 +436,12 @@ def _parse_racecard_meta(text):
         number = re.search(r"^馬號:\s*(\d+)", block, re.M)
         rt = re.search(r"^評分:\s*(\d+)", block, re.M)
         if nm:
+            horse_name = nm.group(1).strip()
+            # HKJC keeps withdrawn horses in 排位表.md but marks their name
+            # ``(退出)`` and zeros the race-day fields.  They are not part of
+            # the active runner set used by Facts/Logic/scoring.
+            if re.search(r"\s*[（(]\s*退出\s*[）)]\s*$", horse_name):
+                continue
             ch = re.search(r"^評分\+/-:\s*(-?\d+)", block, re.M)
             jockey = re.search(r"^騎師:\s*(.+)", block, re.M)
             trainer = re.search(r"^練馬師:\s*(.+)", block, re.M)
@@ -453,7 +459,7 @@ def _parse_racecard_meta(text):
                 else None
             )
             entry = {
-                "horse_name": nm.group(1).strip(),
+                "horse_name": horse_name,
                 "jockey": re.sub(r"\s*\(\s*-\d+\s*\)\s*$", "", jockey_text).strip(),
                 "trainer": trainer.group(1).strip() if trainer else None,
                 "weight": effective_weight,
@@ -465,7 +471,7 @@ def _parse_racecard_meta(text):
                 "hkjc_horse_id": horse_id.group(1).upper() if horse_id else None,
                 "horse_profile_url": profile_url.group(1).strip() if profile_url else None,
             }
-            info[nm.group(1).strip()] = entry
+            info[horse_name] = entry
             if number:
                 info[number.group(1)] = entry
     return race_class, info

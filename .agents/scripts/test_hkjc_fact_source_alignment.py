@@ -22,6 +22,17 @@ def _runner(number: int, name: str, horse_id: str) -> str:
     )
 
 
+def _withdrawn_runner(number: int, name: str, horse_id: str) -> str:
+    return (
+        f"馬號: {number}\n"
+        f"馬名: {name} (退出)\n"
+        f"烙號: {horse_id.rsplit('_', 1)[-1]}\n"
+        f"HKJC馬匹ID: {horse_id}\n"
+        "負磅: 0\n騎師: -\n檔位: 0\n"
+        "練馬師: 沈集成\n排位體重: 0\n配備: TT\n"
+    )
+
+
 def _form_runner(number: int, name: str) -> str:
     return (
         f"馬號: {number}\n馬名: {name}\n檔位: {number}\n"
@@ -54,6 +65,25 @@ def test_standby_runner_cannot_replace_declared_runner(tmp_path: Path) -> None:
         "racecard_name": "狼來了",
         "formguide_name": "御登",
     }]
+
+
+def test_withdrawn_racecard_runner_is_not_emitted_to_facts_field(tmp_path: Path) -> None:
+    form = tmp_path / "10-04 Race 9 賽績.md"
+    card = tmp_path / "10-04 Race 9 排位表.md"
+    card.write_text(
+        _runner(1, "皇龍飛將", "HK_2022_H111")
+        + "\n" + _withdrawn_runner(3, "堅有利", "HK_2021_G462"),
+        encoding="utf-8",
+    )
+    form.write_text(
+        _form_runner(1, "皇龍飛將") + "\n" + _form_runner(3, "堅有利"),
+        encoding="utf-8",
+    )
+
+    data = inject.parse_hkjc_formguide(str(form))
+
+    assert [horse["num"] for horse in data["horses"]] == [1]
+    assert all(horse["name"] != "堅有利" for horse in data["horses"])
 
 
 def test_missing_profile_id_does_not_shift_later_horses() -> None:

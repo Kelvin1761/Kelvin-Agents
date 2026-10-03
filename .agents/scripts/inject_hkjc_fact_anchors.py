@@ -896,6 +896,15 @@ def parse_hkjc_formguide(filepath: str) -> dict:
                 if not number_match or not name_match:
                     continue
 
+                # HKJC keeps a withdrawn horse on the official card as
+                # ``馬名 (退出)`` with barrier/weight zero.  It is not an active
+                # runner and must not reach Facts/Logic: the Logic schema quite
+                # correctly rejects those zero race-day values.  The lineup
+                # watcher uses the same rule, so a withdrawal converges after
+                # one rebuild instead of forcing a failing rerun every 30 min.
+                if re.search(r'\s*[（(]\s*退出\s*[）)]\s*$', name_match.group(1)):
+                    continue
+
                 def field(label):
                     match = re.search(rf'(?m)^{re.escape(label)}:\s*(.*?)\s*$', block)
                     return match.group(1).strip() if match else ''

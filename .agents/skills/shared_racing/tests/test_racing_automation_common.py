@@ -136,6 +136,23 @@ def test_hkjc_health_accepts_chinese_racecard_and_derives_coverage(tmp_path: Pat
     assert report["summary"]["average_coverage_pct"] == 100.0
 
 
+def test_hkjc_health_ignores_withdrawn_racecard_block(tmp_path: Path) -> None:
+    meeting = _hkjc_healthy_meeting(tmp_path)
+    racecard = meeting / "09-06 Race 1 排位表.md"
+    racecard.write_text(
+        "馬號: 1\n馬名: 測試甲\n負磅: 126\n檔位: 2\n"
+        "馬號: 3\n馬名: 退出馬 (退出)\n負磅: 0\n檔位: 0\n",
+        encoding="utf-8",
+    )
+    report = scan_meeting("hkjc", meeting)
+    assert report["status"] == "ok"
+    assert report["deploy_allowed"] is True
+    assert not any(
+        issue["code"] in {"SOURCE_LOGIC_MISMATCH", "SOURCE_NAME_MISMATCH"}
+        for issue in report["issues"]
+    )
+
+
 def _hkjc_healthy_meeting(tmp_path: Path) -> Path:
     meeting = tmp_path / "2026-09-06_ShaTin"
     meeting.mkdir()

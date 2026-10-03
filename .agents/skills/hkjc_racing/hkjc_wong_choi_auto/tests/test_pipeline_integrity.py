@@ -435,6 +435,15 @@ class PipelineIntegrityTests(unittest.TestCase):
         self.assertEqual(metadata["3"]["weight"], 124)
         self.assertEqual(metadata["3"]["barrier"], 7)
 
+    def test_racecard_metadata_excludes_withdrawn_runner(self) -> None:
+        _, metadata = auto._parse_racecard_meta(
+            "馬號: 1\n馬名: 現役馬\n負磅: 126\n騎師: 潘頓\n檔位: 2\n"
+            "馬號: 3\n馬名: 退出馬 (退出)\n負磅: 0\n騎師: -\n檔位: 0\n"
+        )
+        self.assertIn("1", metadata)
+        self.assertNotIn("3", metadata)
+        self.assertNotIn("退出馬 (退出)", metadata)
+
     def test_facts_header_does_not_inject_second_combo_prior_source(self) -> None:
         horse = _minimal_logic()["horses"]["1"]
         auto._enrich_horse_headers(
@@ -516,6 +525,22 @@ class PipelineIntegrityTests(unittest.TestCase):
                 auto._align_runner_headers(
                     logic_path, logic["race_analysis"], logic["horses"]
                 )
+
+    def test_alignment_accepts_logic_without_withdrawn_racecard_block(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            logic_path = folder / "Race_1_Logic.json"
+            (folder / "07-15 Race 1 排位表.md").write_text(
+                "馬號: 1\n馬名: 測試甲\n負磅: 126\n騎師: 潘頓\n檔位: 2\n"
+                "馬號: 3\n馬名: 退出馬 (退出)\n負磅: 0\n騎師: -\n檔位: 0\n",
+                encoding="utf-8",
+            )
+            logic = _minimal_logic()
+            auto._align_runner_headers(
+                logic_path, logic["race_analysis"], logic["horses"]
+            )
+            self.assertEqual(set(logic["horses"]), {"1"})
+            self.assertEqual(logic["race_analysis"]["field_horse_names"], ["測試甲"])
 
     def test_weight_review_uses_live_race_shape_context_feature(self) -> None:
         logic = _minimal_logic()

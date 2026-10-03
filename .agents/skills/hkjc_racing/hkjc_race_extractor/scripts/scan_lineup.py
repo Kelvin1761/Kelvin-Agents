@@ -48,6 +48,17 @@ FORMGUIDE_SCRIPT = SKILL_DIR / "extract_formguide_playwright.py"
 
 _NUM = re.compile(r"^馬號:\s*(\d+)\s*$", re.M)
 _HORSE_BLOCK = re.compile(r"^馬號:\s*(\d+)\s*$\n^馬名:\s*(.+?)\s*$", re.M)
+_WITHDRAWN = re.compile(r"\s*[（(]\s*退出\s*[）)]\s*$")
+
+
+def is_withdrawn_name(name: str) -> bool:
+    """HKJC leaves withdrawn runners on the card with zero weight/draw.
+
+    They are not members of the active field.  Treating ``馬名 (退出)`` as a
+    replacement runner makes the watcher retry forever and later makes the
+    Logic builder reject the official zero values.
+    """
+    return bool(_WITHDRAWN.search(str(name or "")))
 
 
 def parse_lineup(markdown: str) -> dict[int, str]:
@@ -56,7 +67,11 @@ def parse_lineup(markdown: str) -> dict[int, str]:
     要拎名唔淨係拎號，因為「換馬」（同一個馬號換咗另一隻馬）同「退出」一樣
     需要重跑，但只比對號碼係睇唔到嘅。
     """
-    return {int(num): name for num, name in _HORSE_BLOCK.findall(markdown or "")}
+    return {
+        int(num): name
+        for num, name in _HORSE_BLOCK.findall(markdown or "")
+        if not is_withdrawn_name(name)
+    }
 
 
 def lineup_looks_complete(markdown: str, lineup: dict[int, str]) -> bool:
@@ -64,7 +79,10 @@ def lineup_looks_complete(markdown: str, lineup: dict[int, str]) -> bool:
 
     防嘅係一個半截／殘缺嘅頁被讀成「有幾隻馬唔見咗」。
     """
-    return bool(lineup) and len(_NUM.findall(markdown or "")) == len(lineup)
+    # Withdrawn blocks deliberately do not appear in ``lineup``.  Completeness
+    # is about every horse number having a name, not active-runner count.
+    parsed_blocks = _HORSE_BLOCK.findall(markdown or "")
+    return bool(parsed_blocks) and len(_NUM.findall(markdown or "")) == len(parsed_blocks)
 
 
 def logic_lineup(logic_path: Path) -> dict[int, str]:
