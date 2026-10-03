@@ -63,12 +63,14 @@ from shared_wong_choi.domain_evidence import (  # noqa: E402
     record_settlement_for_event,
     scoring_recommendations,
 )
-from shared_wong_choi.evidence import DecisionState  # noqa: E402
+from shared_wong_choi.evidence import DecisionState, SettlementState  # noqa: E402
 from shared_wong_choi.immutable_snapshot import create_immutable_snapshot  # noqa: E402
 from au_research_evidence import (  # noqa: E402
     PROJECTION_NAME,
+    SETTLEMENT_STATUS_NAME,
+    SETTLEMENT_STATUS_SCHEMA,
     build_feature_projection,
-    settlement_artifacts,
+    resolve_settlement_evidence,
 )
 
 ARCHIVE_ROOT = AU_RACING / "Archive"
@@ -895,9 +897,33 @@ def step_review_archive(runlog: RunLog, review_day: date, *,
     return archived
 
 
+def recent_archived_settlement_candidates(review_day: date) -> list[str]:
+    """Return the bounded retry window for settlement evidence repair."""
+    candidates = []
+    if not ARCHIVE_ROOT.is_dir():
+        return candidates
+    for folder in ARCHIVE_ROOT.iterdir():
+        if not folder.is_dir():
+            continue
+        try:
+            event_day = datetime.strptime(folder.name[:10], "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        age = (review_day - event_day).days
+        if 0 <= age <= REVIEW_BACKFILL_DAYS:
+            candidates.append(folder.name)
+    return sorted(candidates)
+
+
 def step_settlement_evidence(runlog: RunLog, archived: list[str]) -> bool:
-    """Link completed AU reflectors to their exact pre-race decisions."""
-    if not archived:
+    """Link AU outcomes to decisions, including bounded retry/backfill debt."""
+    try:
+        review_day = date.fromisoformat(str(runlog.data["review_day"]))
+    except (KeyError, TypeError, ValueError):
+        review_day = date.today()
+    backlog = recent_archived_settlement_candidates(review_day)
+    meetings = list(dict.fromkeys([*archived, *backlog]))
+    if not meetings:
         runlog.step("settlement-evidence", "no_changes")
         return True
     evidence_root = Path(
@@ -907,16 +933,17 @@ def step_settlement_evidence(runlog: RunLog, archived: list[str]) -> bool:
         )
     ) / "evidence"
     written = []
-    for name in archived:
+    for name in meetings:
         folder = ARCHIVE_ROOT / name
         try:
-            artifacts = list(settlement_artifacts(folder, event_id=name))
+            evidence = resolve_settlement_evidence(folder, event_id=name)
             result = record_settlement_for_event(
                 domain=Domain.AU,
                 event_id=name,
                 evidence_root=evidence_root,
-                summary={"meeting": name, "archive_status": "archived"},
-                artifacts=artifacts,
+                summary=evidence["summary"],
+                artifacts=list(evidence["artifacts"]),
+                settlement_state=SettlementState(evidence["settlement_state"]),
             )
         except Exception as exc:  # noqa: BLE001
             runlog.error(
@@ -924,7 +951,8 @@ def step_settlement_evidence(runlog: RunLog, archived: list[str]) -> bool:
             )
             return False
         written.append({"meeting": name, **result})
-    runlog.step("settlement-evidence", "ok", meetings=written)
+    runlog.step("settlement-evidence", "ok", meetings=written,
+                backfill_candidates=backlog)
     return True
 
 
@@ -985,6 +1013,39 @@ def archive_meeting(runlog: RunLog, folder: Path, races: list) -> dict:
     return {"archived": True, "races": races}
 
 
+def write_non_result_settlement(
+    folder: Path,
+    *,
+    settlement_state: SettlementState,
+    reason: str,
+    expected_races: list[int],
+    races_with_results: list[int],
+) -> Path:
+    """Persist why an archived meeting has no canonical reflector outputs."""
+    if settlement_state not in {SettlementState.VOID, SettlementState.UNVERIFIED}:
+        raise ValueError("non-result settlement must be void or unverified")
+    marker = folder / SETTLEMENT_STATUS_NAME
+    payload = {
+        "schema_version": SETTLEMENT_STATUS_SCHEMA,
+        "event_id": folder.name,
+        "settlement_state": settlement_state.value,
+        "reason": reason,
+        "recorded_at": stamp(),
+        "expected_races": sorted(int(race) for race in expected_races),
+        "races_with_results": sorted(int(race) for race in races_with_results),
+    }
+    if marker.exists():
+        existing = resolve_settlement_evidence(folder, event_id=folder.name)
+        if existing["settlement_state"] != settlement_state.value:
+            raise ValueError("existing AU settlement status conflicts with new state")
+        return marker
+    tmp = marker.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+                   encoding="utf-8")
+    tmp.replace(marker)
+    return marker
+
+
 def review_one_meeting(runlog: RunLog, folder: Path, *,
                        no_archive: bool = False,
                        today: date | None = None) -> dict:
@@ -1039,6 +1100,13 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
                            expected_races=len(expected))
             if no_archive:
                 return {"races": expected}
+            write_non_result_settlement(
+                folder,
+                settlement_state=SettlementState.VOID,
+                reason="meeting_abandoned",
+                expected_races=expected,
+                races_with_results=[],
+            )
             return archive_meeting(runlog, folder, expected)
         if not built.get("ok"):
             if overdue is not None:
@@ -1050,6 +1118,13 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
                                days_overdue=overdue, expected_races=len(expected))
                 if no_archive:
                     return {"races": expected}
+                write_non_result_settlement(
+                    folder,
+                    settlement_state=SettlementState.UNVERIFIED,
+                    reason="results_overdue_no_results",
+                    expected_races=expected,
+                    races_with_results=[],
+                )
                 return archive_meeting(runlog, folder, expected)
             runlog.meeting(folder.name, "pending_results",
                            reason=built.get("detail", "賽果生成失敗"),
@@ -1081,6 +1156,13 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
                                missing=sorted(set(expected) - set(found)))
                 if no_archive:
                     return {"races": expected}
+                write_non_result_settlement(
+                    folder,
+                    settlement_state=SettlementState.UNVERIFIED,
+                    reason="results_overdue_partial",
+                    expected_races=expected,
+                    races_with_results=found,
+                )
                 return archive_meeting(runlog, folder, expected)
             runlog.meeting(folder.name, "partial_results",
                            expected_races=expected, races_with_results=found,

@@ -17,6 +17,8 @@ from zoneinfo import ZoneInfo
 
 SCHEMA = "wong-choi-au-research-feature-provenance/v1"
 PROJECTION_NAME = "AU_Research_Feature_Provenance.json"
+SETTLEMENT_STATUS_SCHEMA = "wong-choi-au-settlement-status/v1"
+SETTLEMENT_STATUS_NAME = "AU_Settlement_Status.json"
 SYDNEY = ZoneInfo("Australia/Sydney")
 _LOGIC = re.compile(r"Race_(\d+)_Logic\.json")
 _INPUT = re.compile(r".+ Race (\d+) (Racecard|Formguide|Facts)\.md")
@@ -192,3 +194,46 @@ def settlement_artifacts(folder: Path, *, event_id: str) -> tuple[Path, Path]:
     if missing:
         raise ValueError(f"canonical settlement artifact missing: {', '.join(missing)}")
     return result, report
+
+
+def resolve_settlement_evidence(folder: Path, *, event_id: str) -> dict:
+    """Resolve a completed reflector or a durable non-result status marker."""
+    folder = Path(folder).resolve()
+    if folder.name != event_id or not event_id:
+        raise ValueError("AU settlement event/folder mismatch")
+    try:
+        artifacts = settlement_artifacts(folder, event_id=event_id)
+    except ValueError as canonical_error:
+        marker = folder / SETTLEMENT_STATUS_NAME
+        if not marker.is_file() or marker.stat().st_size <= 0:
+            raise canonical_error
+        try:
+            payload = json.loads(marker.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, ValueError) as exc:
+            raise ValueError("invalid AU settlement status marker") from exc
+        if payload.get("schema_version") != SETTLEMENT_STATUS_SCHEMA:
+            raise ValueError("invalid AU settlement status schema")
+        if payload.get("event_id") != event_id:
+            raise ValueError("AU settlement event/folder mismatch")
+        state = payload.get("settlement_state")
+        if state not in {"void", "unverified"}:
+            raise ValueError("invalid AU non-result settlement state")
+        required = ("reason", "recorded_at", "expected_races", "races_with_results")
+        if any(key not in payload for key in required):
+            raise ValueError("incomplete AU settlement status marker")
+        return {
+            "settlement_state": state,
+            "artifacts": (marker,),
+            "summary": {
+                "meeting": event_id,
+                "archive_status": state,
+                "reason": payload["reason"],
+                "expected_races": payload["expected_races"],
+                "races_with_results": payload["races_with_results"],
+            },
+        }
+    return {
+        "settlement_state": "settled",
+        "artifacts": artifacts,
+        "summary": {"meeting": event_id, "archive_status": "archived"},
+    }

@@ -13,7 +13,12 @@ from shared_wong_choi.domain_evidence import (  # noqa: E402
     record_prediction_decision,
     record_settlement_for_event,
 )
-from shared_wong_choi.evidence import DecisionState, EvidenceStore, ReleaseStage  # noqa: E402
+from shared_wong_choi.evidence import (  # noqa: E402
+    DecisionState,
+    EvidenceStore,
+    ReleaseStage,
+    SettlementState,
+)
 from shared_wong_choi.model_registry import (  # noqa: E402
     ModelRegistry,
     ModelReleaseRequest,
@@ -149,3 +154,36 @@ def test_event_settlement_links_decision_and_retries_idempotently(
     assert payload["links"]["decision_id"] == prediction["decision_id"]
     decision = EvidenceStore(evidence).load(prediction["decision_id"])
     assert decision["body"]["decision_state"] == "shadow"
+
+
+def test_event_settlement_can_record_void(tmp_path: Path) -> None:
+    evidence = tmp_path / "evidence"
+    model = register_model(evidence, Domain.AU)
+    snapshot = tmp_path / "snapshot"
+    snapshot.mkdir()
+    (snapshot / "manifest.json").write_text(
+        json.dumps({"created_at": "2026-10-03T03:00:00+10:00"}),
+        encoding="utf-8",
+    )
+    record_prediction_decision(
+        domain=Domain.AU,
+        event_id="2026-10-03 Test Race 1-8",
+        snapshot=snapshot,
+        evidence_root=evidence,
+        decision_state=DecisionState.RECOMMEND,
+        model_release_id=model,
+    )
+    marker = tmp_path / "AU_Settlement_Status.json"
+    marker.write_text('{"settlement_state":"void"}\n', encoding="utf-8")
+
+    result = record_settlement_for_event(
+        domain=Domain.AU,
+        event_id="2026-10-03 Test Race 1-8",
+        evidence_root=evidence,
+        summary={"meeting": "2026-10-03 Test Race 1-8"},
+        artifacts=[marker],
+        settlement_state=SettlementState.VOID,
+    )
+
+    payload = EvidenceStore(evidence).load(result["settlement_id"])
+    assert payload["body"]["settlement_state"] == "void"

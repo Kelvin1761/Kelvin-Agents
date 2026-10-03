@@ -318,6 +318,7 @@ def record_settlement_for_event(
     summary: Mapping[str, Any],
     artifacts: Iterable[Path] = (),
     settled_at: datetime | None = None,
+    settlement_state: SettlementState = SettlementState.SETTLED,
     required: bool | None = None,
 ) -> dict[str, Any]:
     """Append an aggregate event settlement linked to its latest decision."""
@@ -336,6 +337,7 @@ def record_settlement_for_event(
     clock = settled_at or datetime.now(timezone.utc)
     if clock.tzinfo is None or clock.utcoffset() is None:
         raise ValueError("settlement clock must be timezone-aware")
+    state = SettlementState(settlement_state)
     selected_artifacts = [Path(path).expanduser().resolve() for path in artifacts]
     for path in selected_artifacts:
         if not path.is_file():
@@ -349,6 +351,11 @@ def record_settlement_for_event(
             for path in selected_artifacts
         ],
     }
+    # Preserve the historical ID recipe for ordinary settled events so a retry
+    # after this release still finds the existing immutable record.  Non-result
+    # outcomes need the state in the signature to stay distinct.
+    if state is not SettlementState.SETTLED:
+        stable["settlement_state"] = state.value
     signature = hashlib.sha256(
         json.dumps(stable, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
             "utf-8"
@@ -378,7 +385,7 @@ def record_settlement_for_event(
             created_at=clock.isoformat(),
             body={
                 "event_id": event_id,
-                "settlement_state": SettlementState.SETTLED.value,
+                "settlement_state": state.value,
                 "settled_at": clock.isoformat(),
                 "summary": dict(summary),
             },

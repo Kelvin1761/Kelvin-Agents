@@ -1113,6 +1113,10 @@ class TestWholeMeetingAbandoned(unittest.TestCase):
                     S, "ARCHIVE_ROOT", root / "Archive"))
                 self.assertFalse(S.date_has_results_elsewhere("2026-08-09", target))
 
+    def test_a_different_day_is_not_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertFalse(self._ask(tmp, {"2026-08-08 Randwick Race 1-10": True}))
+
     def test_an_empty_results_file_is_not_evidence(self):
         # 生成咗但入面乜都冇嘅賽果檔唔算收到賽果。
         with tempfile.TemporaryDirectory() as tmp:
@@ -1126,10 +1130,64 @@ class TestWholeMeetingAbandoned(unittest.TestCase):
                     S, "ARCHIVE_ROOT", root / "Archive"))
                 self.assertFalse(S.date_has_results_elsewhere("2026-08-09", target))
 
-    def test_a_different_day_is_not_evidence(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            self.assertFalse(self._ask(tmp, {"2026-08-08 Randwick Race 1-10": True}))
 
+class TestSettlementEvidenceRecovery(unittest.TestCase):
+    def test_non_result_archive_writes_durable_void_marker(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "2026-10-03 Gunbower Race 1-8"
+            folder.mkdir()
+            marker = S.write_non_result_settlement(
+                folder,
+                settlement_state=S.SettlementState.VOID,
+                reason="meeting_abandoned",
+                expected_races=list(range(1, 9)),
+                races_with_results=[],
+            )
+            payload = json.loads(marker.read_text(encoding="utf-8"))
+
+        self.assertEqual(payload["settlement_state"], "void")
+        self.assertEqual(payload["reason"], "meeting_abandoned")
+        self.assertEqual(payload["expected_races"], list(range(1, 9)))
+
+    def test_retry_backfills_recent_archived_void_meeting(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "Archive"
+            folder = root / "2026-10-03 Gunbower Race 1-8"
+            folder.mkdir(parents=True)
+            S.write_non_result_settlement(
+                folder,
+                settlement_state=S.SettlementState.VOID,
+                reason="meeting_abandoned",
+                expected_races=list(range(1, 9)),
+                races_with_results=[],
+            )
+            runlog = unittest.mock.MagicMock()
+            runlog.data = {"review_day": "2026-10-04"}
+            recorded = []
+
+            def record(**kwargs):
+                recorded.append(kwargs)
+                return {"status": "created"}
+
+            with contextlib.ExitStack() as stack:
+                stack.enter_context(unittest.mock.patch.object(S, "ARCHIVE_ROOT", root))
+                stack.enter_context(unittest.mock.patch.object(
+                    S, "record_settlement_for_event", record))
+                self.assertTrue(S.step_settlement_evidence(runlog, []))
+
+        self.assertEqual(len(recorded), 1)
+        self.assertEqual(recorded[0]["settlement_state"], S.SettlementState.VOID)
+        self.assertEqual(recorded[0]["event_id"], folder.name)
+
+    def test_retry_does_not_hide_recent_archive_without_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "Archive"
+            (root / "2026-10-03 Broken Race 1-8").mkdir(parents=True)
+            runlog = unittest.mock.MagicMock()
+            runlog.data = {"review_day": "2026-10-04"}
+            with unittest.mock.patch.object(S, "ARCHIVE_ROOT", root):
+                self.assertFalse(S.step_settlement_evidence(runlog, []))
+        runlog.error.assert_called_once()
 
 class TestMergeSkipsArchivedFolders(unittest.TestCase):
     """合併一個已經歸檔嘅場次無論點都係錯。

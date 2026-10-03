@@ -12,7 +12,12 @@ import pytest
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 
-from au_research_evidence import build_feature_projection, settlement_artifacts  # noqa: E402
+from au_research_evidence import (  # noqa: E402
+    SETTLEMENT_STATUS_NAME,
+    build_feature_projection,
+    resolve_settlement_evidence,
+    settlement_artifacts,
+)
 
 
 CUTOFF = datetime(2026, 9, 13, 0, 30, tzinfo=timezone.utc)
@@ -130,3 +135,39 @@ def test_settlement_artifacts_fail_closed_when_canonical_result_is_missing(tmp_p
 
     with pytest.raises(ValueError, match="Race_Results_Reflector.md"):
         settlement_artifacts(folder, event_id=event)
+
+
+def test_void_marker_is_a_canonical_non_result_settlement(tmp_path: Path) -> None:
+    event = "2026-10-03 Test Race 1-8"
+    folder = tmp_path / event
+    folder.mkdir(parents=True)
+    marker = folder / SETTLEMENT_STATUS_NAME
+    marker.write_text(json.dumps({
+        "schema_version": "wong-choi-au-settlement-status/v1",
+        "event_id": event,
+        "settlement_state": "void",
+        "reason": "meeting_abandoned",
+        "recorded_at": "2026-10-03T22:18:00+10:00",
+        "expected_races": list(range(1, 9)),
+        "races_with_results": [],
+    }) + "\n", encoding="utf-8")
+
+    resolved = resolve_settlement_evidence(folder, event_id=event)
+
+    assert resolved["settlement_state"] == "void"
+    assert resolved["artifacts"] == (marker,)
+    assert resolved["summary"]["reason"] == "meeting_abandoned"
+
+
+def test_invalid_void_marker_fails_closed(tmp_path: Path) -> None:
+    event = "2026-10-03 Test Race 1-8"
+    folder = tmp_path / event
+    folder.mkdir(parents=True)
+    (folder / SETTLEMENT_STATUS_NAME).write_text(json.dumps({
+        "schema_version": "wong-choi-au-settlement-status/v1",
+        "event_id": "wrong-event",
+        "settlement_state": "void",
+    }), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="event/folder mismatch"):
+        resolve_settlement_evidence(folder, event_id=event)
