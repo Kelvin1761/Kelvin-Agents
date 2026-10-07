@@ -1,6 +1,6 @@
 {
   "platform": "hkjc",
-  "engine_fingerprint": "5aa88b73dc19",
+  "engine_fingerprint": "a8a123e10379",
   "calibrated_from": {
     "races": 351,
     "horses": 4408,
@@ -11,8 +11,8 @@
   "fields": {
     "class_score": {
       "horses": 4408,
-      "neutral_rate": 0.0805,
-      "mean_within_race_spread": 5.096,
+      "neutral_rate": 0.0842,
+      "mean_within_race_spread": 5.0556,
       "min": 52.45,
       "max": 77.51
     },
@@ -40,7 +40,7 @@
     "draw_score": {
       "horses": 4408,
       "neutral_rate": 0.0,
-      "mean_within_race_spread": 8.0835,
+      "mean_within_race_spread": 8.1085,
       "min": 49.06,
       "max": 77.45
     },
@@ -53,8 +53,8 @@
     },
     "jockey_score": {
       "horses": 4408,
-      "neutral_rate": 0.0787,
-      "mean_within_race_spread": 8.4915,
+      "neutral_rate": 0.0842,
+      "mean_within_race_spread": 8.5161,
       "min": 48.18,
       "max": 94.2
     },
@@ -81,8 +81,8 @@
     },
     "trainer_score": {
       "horses": 4408,
-      "neutral_rate": 0.123,
-      "mean_within_race_spread": 5.8946,
+      "neutral_rate": 0.1289,
+      "mean_within_race_spread": 6.0241,
       "min": 56.3,
       "max": 87.0
     },

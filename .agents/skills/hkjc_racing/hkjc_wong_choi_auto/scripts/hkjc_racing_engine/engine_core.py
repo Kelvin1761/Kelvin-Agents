@@ -377,6 +377,16 @@ class RacingEngine:
         best_text = self._clean(best_distance or "")
         distance_token = distance.replace("m", "").strip()
         direct_match = best_text.startswith(f"{distance_token}m") or best_text.startswith(distance)
+        # `season_stats` is now rebuilt from complete point-in-time history.
+        # It must outrank the legacy `best_distance` sentence, which can still
+        # say "未跑過" when the older six-run summary omitted earlier starts.
+        if record and record["starts"] > 0:
+            if record["places"] > 0:
+                return scoring.DISTANCE_MICRO_WEIGHTS.get("direct_match_place_base", 72.0), \
+                    "完整歷史顯示同程已有上名紀錄，路程適性評為72分。", "season_stats"
+            self.risk_flags.append("distance_record_weak")
+            return scoring.DISTANCE_MICRO_WEIGHTS.get("same_dist_unplaced_base", 54.0), \
+                "完整歷史顯示同程有樣本但未見上名支持，路程分54分。", "season_stats"
         if "未跑過" in best_text:
             if "相近上名經驗" in best_text:
                 return scoring.DISTANCE_MICRO_WEIGHTS.get("similar_place_base", 62.0), "今場路程未有直接實績，但相近路程有上名旁證，路程分62分。", "best_distance"
@@ -393,9 +403,6 @@ class RacingEngine:
         if self._is_debut():
             self.reason_codes.append("debut_distance_unproven")
             return scoring.DISTANCE_MICRO_WEIGHTS.get("debut_base", 58.0), "初出馬未經今仗路程實戰驗證，路程分保守58分。", "career_tag"
-        if record and record["starts"] > 0 and record["places"] == 0:
-            self.risk_flags.append("distance_record_weak")
-            return scoring.DISTANCE_MICRO_WEIGHTS.get("same_dist_unplaced_base", 54.0), "同程有樣本但未見上名支持，路程分54分。", "season_stats"
         return scoring.DISTANCE_MICRO_WEIGHTS.get("neutral_base", 60.0), "路程證據不足，按中性60分。", "missing_neutral"
 
     def _track_going_score(self, _features):
@@ -411,7 +418,7 @@ class RacingEngine:
         #  只作壓縮（回測最佳），唔再引入方向盲扣分。
         return scoring.TRACK_MICRO_WEIGHTS.get("neutral_base", 60.0), \
             "HKJC 未有可靠場地適性數據；檔位／場地偏差已於「檔位與走位」維度計算，此處不重複扣分，中性60分。", \
-            "missing_neutral"
+            "policy_neutral"
 
     def _weight_score(self, _features):
         weight = parse_float(self._value("weight_carried") or self._value("weight"))
@@ -564,8 +571,14 @@ class RacingEngine:
             notes.append("檔位分偏低")
         if features.get("distance_score", 60) < 58:
             score += scoring.RISK_MICRO_WEIGHTS.get("distance_unproven_pen", -4.0)
-            self.risk_flags.append("distance_unproven")
-            notes.append("路程證明不足")
+            record = self._same_distance_record()
+            if record and record["starts"] > 0:
+                if "distance_record_weak" not in self.risk_flags:
+                    self.risk_flags.append("distance_record_weak")
+                notes.append("同程紀錄未見上名")
+            else:
+                self.risk_flags.append("distance_unproven")
+                notes.append("路程證明不足")
         return clip_score(score), "、".join(notes) + f"，風險分{clip_score(score):.1f}。", "medical_flags"
 
     def _confidence_score(self, features):

@@ -358,6 +358,7 @@ class AutoOutputTests(unittest.TestCase):
         result = RacingEngine(horse, {"distance": "1200m"}).analyze_horse()
 
         self.assertEqual(result["feature_scores"]["track_going_score"], 60.0)
+        self.assertEqual(result["score_provenance"]["track_going_score"], "policy_neutral")
 
     def test_foreign_runner_not_penalised_for_missing_hk_data(self) -> None:
         # A visiting international runner: real overseas form, no HKJC form/medical.

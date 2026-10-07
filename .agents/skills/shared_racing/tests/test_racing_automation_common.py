@@ -12,7 +12,13 @@ SHARED_SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SHARED_SCRIPTS))
 
 import racing_telegram  # noqa: E402
-from racing_data_health import EXPECTED_FEATURES, scan_meeting, status_line, write_report  # noqa: E402
+from racing_data_health import (  # noqa: E402
+    EXPECTED_FEATURES,
+    _hkjc_coverage,
+    scan_meeting,
+    status_line,
+    write_report,
+)
 from racing_telegram import (  # noqa: E402
     _chunks,
     _multipart_document,
@@ -136,6 +142,54 @@ def test_hkjc_health_accepts_chinese_racecard_and_derives_coverage(tmp_path: Pat
     assert report["summary"]["average_coverage_pct"] == 100.0
 
 
+def test_hkjc_policy_neutral_leaf_is_excluded_from_evidence_coverage() -> None:
+    provenance = {key: "fixture" for key in EXPECTED_FEATURES["hkjc"]}
+    provenance["track_going_score"] = "policy_neutral"
+
+    assert _hkjc_coverage({"score_provenance": provenance}) == 100.0
+
+    provenance["distance_score"] = "missing_neutral"
+    expected = round(
+        (len(EXPECTED_FEATURES["hkjc"]) - 2)
+        / (len(EXPECTED_FEATURES["hkjc"]) - 1)
+        * 100,
+        2,
+    )
+    assert _hkjc_coverage({"score_provenance": provenance}) == expected
+
+
+def test_hkjc_health_labels_policy_neutral_separately(tmp_path: Path) -> None:
+    meeting = tmp_path / "2026-10-07_HappyValley"
+    meeting.mkdir()
+    (meeting / "10-07 Race 1 Facts.md").write_text("### 馬號 1 — 測試甲\n", encoding="utf-8")
+    (meeting / "10-07 Race 1 排位表.md").write_text("馬號: 1\n馬名: 測試甲\n", encoding="utf-8")
+    provenance = {key: "fixture" for key in EXPECTED_FEATURES["hkjc"]}
+    provenance["track_going_score"] = "policy_neutral"
+    auto = {
+        "ability_score": 68.0,
+        "rank": 1,
+        "feature_scores": {key: 60.0 for key in EXPECTED_FEATURES["hkjc"]},
+        "score_provenance": provenance,
+    }
+    (meeting / "Race_1_Logic.json").write_text(
+        json.dumps({"horses": {"1": {"horse_name": "測試甲", "python_auto": auto}}}, ensure_ascii=False),
+        encoding="utf-8",
+    )
+    (meeting / "Race_1_Auto_Analysis.md").write_text("ok", encoding="utf-8")
+    with (meeting / "Race_1_Auto_Scoring.csv").open("w", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=["horse_number"])
+        writer.writeheader()
+        writer.writerow({"horse_number": "1"})
+
+    report = scan_meeting("hkjc", meeting)
+
+    assert report["summary"]["average_coverage_pct"] == 100.0
+    assert report["summary"]["coverage_metric"] == "applicable_pre_race_evidence"
+    assert report["summary"]["policy_neutral_features"] == ["track_going_score"]
+    assert "evidence coverage 100.0%" in status_line(report)
+    assert "policy-neutral 場地適性" in status_line(report)
+
+
 def test_hkjc_health_names_withdrawn_runner_explicitly(tmp_path: Path) -> None:
     meeting = tmp_path / "2026-09-23_HappyValley"
     meeting.mkdir()
@@ -171,6 +225,46 @@ def test_hkjc_health_names_withdrawn_runner_explicitly(tmp_path: Path) -> None:
     assert "WITHDRAWN_RUNNER_PRESENT" in codes
     assert "FACTS_NAME_MISMATCH" not in codes
     assert "SOURCE_NAME_MISMATCH" not in codes
+
+
+def test_hkjc_health_excludes_withdrawn_racecard_row_from_alignment(tmp_path: Path) -> None:
+    meeting = tmp_path / "2026-10-04_ShaTin"
+    meeting.mkdir()
+    (meeting / "10-04 Race 1 Facts.md").write_text(
+        "### 馬號 1 — 測試甲\n", encoding="utf-8"
+    )
+    (meeting / "10-04 Race 1 排位表.md").write_text(
+        "馬號: 1\n馬名: 測試甲\n英文馬名: ALPHA\n\n"
+        "馬號: 2\n馬名: 測試乙 (退出)\n英文馬名: BETA (Scratched)\n",
+        encoding="utf-8",
+    )
+    auto = {
+        "ability_score": 68.0,
+        "rank": 1,
+        "feature_scores": {key: 60.0 for key in EXPECTED_FEATURES["hkjc"]},
+        "score_provenance": {key: "fixture" for key in EXPECTED_FEATURES["hkjc"]},
+    }
+    (meeting / "Race_1_Logic.json").write_text(
+        json.dumps(
+            {"horses": {"1": {"horse_name": "測試甲", "python_auto": auto}}},
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    (meeting / "Race_1_Auto_Analysis.md").write_text("ok", encoding="utf-8")
+    with (meeting / "Race_1_Auto_Scoring.csv").open(
+        "w", encoding="utf-8", newline=""
+    ) as handle:
+        writer = csv.DictWriter(handle, fieldnames=["horse_number"])
+        writer.writeheader()
+        writer.writerow({"horse_number": "1"})
+
+    report = scan_meeting("hkjc", meeting)
+
+    assert report["status"] == "ok"
+    assert not any(
+        issue["code"] == "SOURCE_LOGIC_MISMATCH" for issue in report["issues"]
+    )
 
 
 def test_hkjc_health_blocks_missing_score_provenance(tmp_path: Path) -> None:

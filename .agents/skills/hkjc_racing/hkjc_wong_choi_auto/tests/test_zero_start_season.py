@@ -146,6 +146,45 @@ class ZeroStartSeasonTests(unittest.TestCase):
         self.assertGreater(result["distance_suitability_adjustment"]["raw_adjustment"], 0)
         self.assertNotIn("同程", result["score_breakdown"]["class_score"]["note"])
 
+    def test_full_history_overrides_stale_unproven_distance_summary(self):
+        horse = {
+            "career_tag": "ESTABLISHED",
+            "career_race_starts": 7,
+            "is_debut": False,
+            "season_stats": "季內 (0-0-0-0) | 同程 (2-0-0-4) | 同場同程 (2-0-0-4)",
+            "_data": {
+                "best_distance": "1200m | 今仗 1650m = 未跑過且無相近近績 (±100m) ⚠️",
+                "medical_flags": "✅ 無醫療事故記錄",
+            },
+        }
+
+        result = RacingEngine(horse, {"distance": "1650"}).analyze_horse()
+
+        self.assertEqual(result["feature_scores"]["distance_score"], 72.0)
+        self.assertEqual(result["score_provenance"]["distance_score"], "season_stats")
+        self.assertNotIn("distance_unproven", result["risk_flags"])
+        self.assertNotIn("路程證明不足", result["score_breakdown"]["risk_score"]["note"])
+
+    def test_full_history_unplaced_record_is_weak_not_unproven(self):
+        horse = {
+            "career_tag": "ESTABLISHED",
+            "career_race_starts": 7,
+            "is_debut": False,
+            "season_stats": "季內 (0-0-0-0) | 同程 (0-0-0-3) | 同場同程 (0-0-0-2)",
+            "_data": {
+                "best_distance": "1400m | 今仗 1800m = 未跑過且無相近近績 (±100m) ⚠️",
+                "medical_flags": "✅ 無醫療事故記錄",
+            },
+        }
+
+        result = RacingEngine(horse, {"distance": "1800"}).analyze_horse()
+
+        self.assertEqual(result["feature_scores"]["distance_score"], 54.0)
+        self.assertIn("distance_record_weak", result["risk_flags"])
+        self.assertNotIn("distance_unproven", result["risk_flags"])
+        self.assertIn("同程紀錄未見上名", result["score_breakdown"]["risk_score"]["note"])
+        self.assertNotIn("路程證明不足", result["score_breakdown"]["risk_score"]["note"])
+
 
 class MedicalContextReadoutTests(unittest.TestCase):
     def test_latest_incident_qualifies_speed_interpretation(self):

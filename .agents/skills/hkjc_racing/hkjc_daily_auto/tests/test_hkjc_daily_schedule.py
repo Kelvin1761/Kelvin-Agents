@@ -14,6 +14,45 @@ sys.path.insert(0, str(HERE.parent))
 import hkjc_daily_schedule as schedule  # noqa: E402
 
 
+def test_health_status_distinguishes_evidence_from_policy_neutral(tmp_path: Path) -> None:
+    report = {
+        "platform": "hkjc",
+        "status": "ok",
+        "summary": {
+            "races": 9,
+            "horses": 108,
+            "errors": 0,
+            "warnings": 0,
+            "average_coverage_pct": 98.65,
+            "coverage_metric": "applicable_pre_race_evidence",
+            "policy_neutral_features": ["track_going_score"],
+        },
+    }
+    (tmp_path / "Data_Health.json").write_text(json.dumps(report), encoding="utf-8")
+
+    line = schedule.health_status(tmp_path)
+
+    assert "evidence coverage 98.7%" in line
+    assert "policy-neutral 場地適性" in line
+
+
+def test_health_status_marks_old_report_as_legacy_coverage(tmp_path: Path) -> None:
+    report = {
+        "platform": "hkjc",
+        "status": "ok",
+        "summary": {
+            "races": 9,
+            "horses": 108,
+            "errors": 0,
+            "warnings": 0,
+            "average_coverage_pct": 90.43,
+        },
+    }
+    (tmp_path / "Data_Health.json").write_text(json.dumps(report), encoding="utf-8")
+
+    assert "legacy coverage 90.4%" in schedule.health_status(tmp_path)
+
+
 def test_discovery_deduplicates_and_ignores_past_meetings() -> None:
     page = """
     <a href="?racedate=2026/08/19&amp;Racecourse=HV&amp;RaceNo=1">past</a>

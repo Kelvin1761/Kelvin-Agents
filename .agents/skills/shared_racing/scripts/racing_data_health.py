@@ -78,6 +78,11 @@ EXPECTED_FEATURES = {
     "hkjc": _hkjc_feature_keys(),
 }
 
+HKJC_POLICY_NEUTRAL_PROVENANCE = {"policy_neutral"}
+HKJC_POLICY_NEUTRAL_LABELS = {
+    "track_going_score": "場地適性",
+}
+
 
 def _race_number(path: Path) -> int | None:
     match = re.search(r"Race[_ ](\d+)", path.name, re.I)
@@ -180,6 +185,16 @@ def _source_runner_numbers(
     values = set(re.findall(r"馬號:\s*(\d+)\b", text))
     if not values:
         values.update(re.findall(r"^\s*\[?(\d{1,2})\]?\s*[.|)]\s+", text, re.M))
+    if platform == "hkjc" and values:
+        withdrawn: set[str] = set()
+        for match in re.finditer(
+            r"^馬號:\s*(\d+).*?(?=^馬號:\s*\d+|\Z)", text, re.M | re.S
+        ):
+            block = match.group(0)
+            names = re.findall(r"^(?:馬名|英文馬名):\s*([^\n]+)", block, re.M)
+            if any(_is_withdrawn_name(name) for name in names):
+                withdrawn.add(match.group(1))
+        values.difference_update(withdrawn)
     return values, candidates
 
 
@@ -204,17 +219,37 @@ def _source_runner_names(path: Path | None) -> dict[str, str]:
     }
 
 
-def _hkjc_coverage(auto: dict) -> float | None:
-    """Measure how many public HKJC features have a real pre-race source."""
+def _hkjc_coverage_detail(auto: dict) -> tuple[float | None, set[str]]:
+    """Return applicable-evidence coverage and intentionally neutral leaves.
+
+    A policy-neutral leaf is deliberately disabled because no reliable input
+    exists; it is neither evidence nor missing data. Counting it as missing
+    used to cap every HKJC meeting below 91.7%, making Telegram's generic
+    ``coverage`` line look like an extraction failure on healthy runs.
+    """
     provenance = auto.get("score_provenance")
     if not isinstance(provenance, dict):
-        return None
+        return None, set()
+    policy_neutral = {
+        key
+        for key in EXPECTED_FEATURES["hkjc"]
+        if str(provenance.get(key) or "").strip() in HKJC_POLICY_NEUTRAL_PROVENANCE
+    }
+    applicable = EXPECTED_FEATURES["hkjc"] - policy_neutral
+    if not applicable:
+        return None, policy_neutral
     covered = sum(
         1
-        for key in EXPECTED_FEATURES["hkjc"]
+        for key in applicable
         if str(provenance.get(key) or "").strip() not in {"", "missing_neutral"}
     )
-    return round(covered / len(EXPECTED_FEATURES["hkjc"]) * 100.0, 2)
+    return round(covered / len(applicable) * 100.0, 2), policy_neutral
+
+
+def _hkjc_coverage(auto: dict) -> float | None:
+    """Compatibility wrapper returning applicable pre-race evidence coverage."""
+    coverage, _ = _hkjc_coverage_detail(auto)
+    return coverage
 
 
 def _csv_runner_count(path: Path) -> int | None:
@@ -276,6 +311,7 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
 
     seen_races: set[int] = set()
     coverage_values: list[float] = []
+    policy_neutral_features: set[str] = set()
     total_horses = 0
     for logic_path in logic_paths:
         race_number = _race_number(logic_path)
@@ -404,7 +440,8 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
             elif platform == "au":
                 race_issues.append({"severity": "warning", "code": "NO_COVERAGE", "horse": number, "message": "冇 data_coverage.coverage_pct"})
             else:
-                derived_coverage = _hkjc_coverage(auto)
+                derived_coverage, neutral_features = _hkjc_coverage_detail(auto)
+                policy_neutral_features.update(neutral_features)
                 if derived_coverage is None:
                     race_issues.append({
                         "severity": "error",
@@ -462,6 +499,16 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
             "errors": errors,
             "warnings": warnings,
             "average_coverage_pct": round(sum(coverage_values) / len(coverage_values), 2) if coverage_values else None,
+            "coverage_metric": (
+                "applicable_pre_race_evidence"
+                if platform == "hkjc" and policy_neutral_features
+                else (
+                    "legacy_provenance_coverage"
+                    if platform == "hkjc"
+                    else "reported_data_coverage"
+                )
+            ),
+            "policy_neutral_features": sorted(policy_neutral_features),
         },
         "races": race_reports,
         "issues": issues,
@@ -472,10 +519,21 @@ def status_line(report: dict) -> str:
     icon = {"ok": "✅", "warning": "⚠️", "error": "❌"}[report["status"]]
     summary = report["summary"]
     coverage = summary.get("average_coverage_pct")
-    coverage_text = f"｜coverage {coverage:.1f}%" if coverage is not None else ""
+    metric = summary.get("coverage_metric")
+    coverage_label = (
+        "evidence coverage"
+        if metric == "applicable_pre_race_evidence"
+        else ("legacy coverage" if report.get("platform") == "hkjc" else "coverage")
+    )
+    coverage_text = f"｜{coverage_label} {coverage:.1f}%" if coverage is not None else ""
+    policy_features = summary.get("policy_neutral_features") or []
+    policy_text = ""
+    if policy_features:
+        labels = [HKJC_POLICY_NEUTRAL_LABELS.get(key, key) for key in policy_features]
+        policy_text = f"｜policy-neutral {','.join(labels)}"
     return (
         f"{icon} Data health {report['meeting']}：{summary['races']}場／{summary['horses']}匹"
-        f"｜{summary['errors']} errors／{summary['warnings']} warnings{coverage_text}"
+        f"｜{summary['errors']} errors／{summary['warnings']} warnings{coverage_text}{policy_text}"
     )
 
 

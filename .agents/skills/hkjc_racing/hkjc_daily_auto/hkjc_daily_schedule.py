@@ -420,10 +420,21 @@ def health_status(meeting_dir: Path) -> str:
         return "❌ Data health report invalid"
     coverage = summary.get("average_coverage_pct")
     coverage_text = "—" if coverage is None else f"{float(coverage):.1f}%"
+    policy_features = summary.get("policy_neutral_features") or []
+    policy_labels = {"track_going_score": "場地適性"}
+    policy_text = ""
+    if policy_features:
+        labels = [policy_labels.get(key, key) for key in policy_features]
+        policy_text = f"｜policy-neutral {','.join(labels)}"
+    coverage_label = (
+        "evidence coverage"
+        if summary.get("coverage_metric") == "applicable_pre_race_evidence"
+        else "legacy coverage"
+    )
     return (
         f"{report.get('status', 'unknown').upper()}｜{summary.get('races', 0)}場／"
         f"{summary.get('horses', 0)}匹｜{summary.get('errors', 0)} errors／"
-        f"{summary.get('warnings', 0)} warnings｜coverage {coverage_text}"
+        f"{summary.get('warnings', 0)} warnings｜{coverage_label} {coverage_text}{policy_text}"
     )
 
 
