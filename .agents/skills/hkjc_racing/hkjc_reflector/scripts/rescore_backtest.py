@@ -81,7 +81,11 @@ def load_results(path: Path):
         rr = {}
         for row in race_data.get("results", []):
             try:
-                rr[int(row["horse_no"])] = int(row["pos"])
+                # Official results annotate ties, e.g. "3 平頭馬". They are
+                # finishers too; dropping them changes capture and field size.
+                position = re.fullmatch(r"(\d+)(?:\s+平頭馬)?", str(row["pos"]).strip())
+                if position and int(position.group(1)) > 0:
+                    rr[int(row["horse_no"])] = int(position.group(1))
             except (KeyError, TypeError, ValueError):
                 continue
         if rr:

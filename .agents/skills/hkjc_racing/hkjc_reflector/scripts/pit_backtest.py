@@ -55,9 +55,9 @@ _spec.loader.exec_module(bcs)
 
 
 def load_all_rows() -> pd.DataFrame:
-    """兩季原始 rows + identity-checked local supplements，帶來源 manifest。"""
+    """所有已發現季度 rows + identity-checked local supplements，帶來源 manifest。"""
     frames = []
-    for season in ("24_25", "25_26"):
+    for season in bcs.SEASONS:
         base = bcs.load_base_rows(season)
         base, _ = bcs.append_new_meetings(season, base)
         base = base.copy()
