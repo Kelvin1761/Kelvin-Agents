@@ -7,6 +7,7 @@ for launchd/cron:
 
 * ``watch``: dormant off-season poll for the next materialized racecard.
 * ``prerace``: run extraction -> Facts -> Logic -> scoring -> data-health -> deploy.
+* ``intraday``: collect partial results into a prospective reverse-bias shadow only.
 * ``postrace``: extract results and run the unified reflector once results exist.
 * ``recovery``: retry only meetings whose required sources were temporarily unavailable.
 * ``weekly``: send the current performance/review state and create a non-draft
@@ -50,16 +51,9 @@ from shared_wong_choi.contracts import Domain  # noqa: E402
 from shared_wong_choi.domain_evidence import (  # noqa: E402
     record_prediction_decision_if_configured,
     record_settlement_for_event,
-    scoring_recommendations,
 )
 from shared_wong_choi.evidence import DecisionState  # noqa: E402
-from shared_wong_choi.immutable_snapshot import create_immutable_snapshot  # noqa: E402
 from wongchoi_paths import HK_RACING, HK_RACING_MIRROR, is_materialized_file  # noqa: E402
-from hkjc_research_evidence import (  # noqa: E402
-    PROJECTION_NAME,
-    build_feature_projection,
-    settlement_artifacts,
-)
 
 
 TIMEZONE = "Australia/Sydney"
@@ -80,13 +74,23 @@ WEIGHT_REVIEW = (
     PROJECT_ROOT
     / ".agents/skills/hkjc_racing/hkjc_reflector/scripts/review_auto_weighting.py"
 )
+SHADOW_MONITOR = (
+    PROJECT_ROOT
+    / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_shadow_monitor.py"
+)
+REVERSE_BIAS_SHADOW = (
+    PROJECT_ROOT
+    / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_reverse_bias_shadow.py"
+)
+RAIL_DRAW_REFRESH = PROJECT_ROOT / ".agents/scripts/build_rail_draw_dataset.py"
+FAST_RESULTS = EXTRACTOR_SCRIPTS / "fast_extract_results.py"
 STATE_DIR = HERE / "state"
 LOG_DIR = HERE / "logs"
 DEFAULT_STATE = STATE_DIR / "hkjc_daily_state.json"
 DEFAULT_CANDIDATE_GATE = STATE_DIR / "HKJC_Candidate_Gate.json"
+DEFAULT_SHADOW_LEDGER_NAME = "HKJC_Weight_RaceShape_V3_Prospective.json"
+DEFAULT_REVERSE_BIAS_LEDGER_NAME = "HKJC_Reverse_Bias_Prospective.json"
 DEFAULT_FORWARD_START = date(2026, 9, 6)
-PRERACE_EARLIEST_HOUR = 21
-PRERACE_EARLIEST_MINUTE = 30
 
 EXIT_OK = 0
 EXIT_TEMPORARY = 75
@@ -131,38 +135,6 @@ def now_local() -> datetime:
 
 def stamp() -> str:
     return now_local().isoformat(timespec="seconds")
-
-
-def prerace_window_is_open(
-    meeting_date: date,
-    *,
-    current: datetime,
-    lead_days: int,
-) -> bool:
-    """Return whether an unattended pre-race run may start.
-
-    The starter PDF normally materializes around 21:30 Sydney time.  On the
-    earliest eligible lead day, starting before then only creates predictable
-    extraction failures and arms the 30-minute recovery loop unnecessarily.
-    Once that boundary has passed, later lead days remain eligible all day.
-    """
-    days_until_meeting = (meeting_date - current.date()).days
-    if days_until_meeting < 0 or days_until_meeting > lead_days:
-        return False
-    if days_until_meeting < lead_days:
-        return True
-    return (current.hour, current.minute) >= (
-        PRERACE_EARLIEST_HOUR,
-        PRERACE_EARLIEST_MINUTE,
-    )
-
-
-def prerace_window_opens_at(meeting_date: date, lead_days: int) -> str:
-    first_day = meeting_date - timedelta(days=lead_days)
-    return (
-        f"{first_day.isoformat()}T{PRERACE_EARLIEST_HOUR:02d}:"
-        f"{PRERACE_EARLIEST_MINUTE:02d}:00[{TIMEZONE}]"
-    )
 
 
 def log(message: str) -> None:
@@ -310,15 +282,6 @@ def run_cmd(cmd: list[str], *, timeout: int = 7200,
             f"{PROJECT_ROOT}{os.pathsep}{existing}" if existing else str(PROJECT_ROOT)
         )
     try:
-        # ⚠️ 一定要 encoding="utf-8", errors="replace"。`text=True` 係嚴格
-        # UTF-8 而且喺 launchd 嘅 POSIX locale 會退去 ASCII；`stderr=STDOUT`
-        # 更加會把兩條 stream 交錯切開一個多位元組字元。2026-09-09 實測：
-        # `deploy.sh` 一句 `PYTHON_BIN\xef: unbound variable` 入面嗰個孤立
-        # 0xef，令 HKJC prerace 同 Tennis card 兩個 run 一齊死喺
-        # `UnicodeDecodeError: ... byte 0xef in position 161`，而個訊息
-        # 提都冇提過係邊條命令、真正壞咗嘅係咩。AU 個 runner 2026-08-13
-        # 已經因為同一件事修好咗 —— 但呢個教訓冇搬過嚟。
-        # subprocess 輸出係俾人睇嘅 log，永遠唔應該有能力令 run 死。
         completed = subprocess.run(
             [str(part) for part in cmd],
             cwd=PROJECT_ROOT,
@@ -444,41 +407,6 @@ def create_prediction_snapshot(meeting_dir: Path, *, at: datetime | None = None)
     }
     _atomic_json(destination / "manifest.json", manifest)
     return destination
-
-
-def create_stage5_prediction_snapshot(
-    meeting_dir: Path,
-    *,
-    event_id: str,
-    at: datetime | None = None,
-) -> tuple[Path, list[dict[str, Any]]]:
-    """Create the canonical Stage 5 bundle without rewriting legacy snapshots."""
-    captured_at = at or now_local()
-    canonical_scoring = meeting_dir / "HKJC_Auto_Scoring.csv"
-    if not is_materialized_file(canonical_scoring):
-        raise ValueError("canonical HKJC scoring is missing")
-    recommendations = [
-        item
-        for item in scoring_recommendations(meeting_dir)
-        if item.get("source") == canonical_scoring.name
-    ]
-    if not recommendations:
-        raise ValueError("canonical HKJC scoring has no ranked recommendations")
-    projection = build_feature_projection(
-        meeting_dir,
-        event_id=event_id,
-        captured_at=captured_at,
-    )
-    snapshot = create_immutable_snapshot(
-        meeting_dir,
-        domain="hkjc",
-        event_id=event_id,
-        patterns=SNAPSHOT_PATTERNS,
-        recommendations=recommendations,
-        additional_files={PROJECTION_NAME: projection},
-        at=captured_at,
-    )
-    return snapshot, recommendations
 
 
 def health_status(meeting_dir: Path) -> str:
@@ -713,55 +641,27 @@ def readiness_digest(meeting_dir: Path) -> str:
     #   ♻️ 刷新失敗但有舊有效檔 —— 分析照跑得，等下次重試就得
     #   ❌ 完全冇有效檔       —— 真係要人睇
     # 發佈閘本身冇放寬（仍然要全部 fresh 才 ready），只係唔再兩種都印同一句。
-    stale, verified, gone = [], [], []
+    stale, gone = [], []
     for race in data.get("races") or []:
         num = race.get("race")
         for ok_key, state_key, label in (("racecard_ok", "racecard_state", "排位"),
                                          ("formguide_ok", "formguide_state", "賽績")):
             if race.get(ok_key):
                 continue
-            state = race.get(state_key)
-            if state == "verified":
-                # 刷新回空頁，但碟上嗰份經**今次新鮮抽到嘅排位表**核實過名單
-                # 一致 —— 已經足以放行，唔算問題。
-                verified.append(f"R{num}{label}")
-            elif state == "kept":
-                stale.append(f"R{num}{label}")
-            else:
-                # 舊 readiness 檔冇 `*_state`；當時分唔到，保守當「冇」。
-                gone.append(f"R{num}{label}")
+            # 舊 readiness 檔冇 `*_state`；當時分唔到，保守當「冇」。
+            (stale if race.get(state_key) == "kept" else gone).append(f"R{num}{label}")
 
     def _fold(items, cap=8):
         shown = "、".join(items[:cap])
         return shown + (f" 等 {len(items)} 項" if len(items) > cap else "")
 
-    def _ranges(numbers):
-        values = sorted({int(number) for number in numbers})
-        groups = []
-        for number in values:
-            if not groups or number != groups[-1][-1] + 1:
-                groups.append([number])
-            else:
-                groups[-1].append(number)
-        return "、".join(
-            f"R{group[0]}" if len(group) == 1 else f"R{group[0]}-R{group[-1]}"
-            for group in groups
-        )
-
     if gone:
         lines.append(f"冇有效檔（要人睇）：{_fold(gone)}")
     if stale:
         lines.append(f"刷新失敗但有舊有效檔（照跑得）：{_fold(stale)}")
-    if verified:
-        lines.append(f"刷新回空頁但經新鮮排位表核實名單一致（已放行）：{_fold(verified)}")
 
-    missing_trackwork = data.get("trackwork_missing") or []
-    if missing_trackwork:
-        lines.append("晨操缺（會阻住 prediction snapshot）：" +
-                     _ranges(missing_trackwork))
-
-    # 發佈閘要 starter PDF、排位表、賽績同晨操齊全。PDF 失敗會單獨卡死
-    # 成個場次，而之前呢個 digest 一行都冇講過 PDF：
+    # 發佈閘係 `ready = starter_pdf and 排位表齊 and 賽績齊` —— **晨操唔喺入面**。
+    # 所以 PDF 失敗會單獨卡死成個場次，而之前呢個 digest 一行都冇講過 PDF：
     # 2026-09-06 沙田連續 22 次 run 過唔到閘（PDF 佔 20 次），而每次通知都
     # 指住幾場「賽績」，讀者被引去查一個冇壞嘅嘢。真兇一定要出名。
     if not data.get("starter_pdf_ready"):
@@ -776,6 +676,9 @@ def readiness_digest(meeting_dir: Path) -> str:
         if reason:
             head += f"：{reason[:120]}"
         lines.append(head)
+    if not data.get("trackwork_ready") and (data.get("expected_races") or 0):
+        # 講明佢唔阻塞，唔好令人以為要處理。
+        lines.append("（晨操 0 —— 唔喺發佈閘條件內，唔會阻住上板）")
     return "\n".join(lines)
 
 
@@ -846,7 +749,7 @@ def run_lineup(
             changes[race] = scan
 
     key = f"{meeting['date']}|{meeting['venue']}"
-    record = state["meetings"].setdefault(key, {})
+    record = state.setdefault("meetings", {}).setdefault(key, {})
     record["last_lineup_scan"] = stamp()
     if errors:
         log(f"HKJC lineup 掃唔到 {len(errors)} 場：{sorted(errors)}")
@@ -928,26 +831,11 @@ def run_prerace(
         set_control_outcome("dormant", reason="no_future_racecard")
         return EXIT_OK
     meeting_date = date.fromisoformat(meeting["date"])
-    current = now_local()
-    today = current.date()
+    today = now_local().date()
     lead_days = max(0, int(os.environ.get("WC_HKJC_ANALYSIS_LEAD_DAYS", "2")))
-    window_open = prerace_window_is_open(
-        meeting_date,
-        current=current,
-        lead_days=lead_days,
-    )
-    if meeting_date < today or (not window_open and not force):
-        opens_at = prerace_window_opens_at(meeting_date, lead_days)
-        log(
-            f"HKJC pre-race not due: {meeting['date']} "
-            f"(lead={lead_days}; opens={opens_at})"
-        )
-        set_control_outcome(
-            "dormant",
-            reason="meeting_not_due",
-            meeting=meeting["date"],
-            not_before=opens_at,
-        )
+    if meeting_date < today or ((meeting_date - today).days > lead_days and not force):
+        log(f"HKJC pre-race not due: {meeting['date']} (lead={lead_days})")
+        set_control_outcome("dormant", reason="meeting_not_due", meeting=meeting["date"])
         return EXIT_OK
     if force:
         log(f"HKJC manual force requested for {meeting['date']} {meeting['venue']}")
@@ -1006,12 +894,8 @@ def run_prerace(
             return EXIT_TEMPORARY
         set_control_outcome("failed", reason="prerace_pipeline_failed", meeting=key)
         return EXIT_FAILED
-    event_id = f"{meeting['date']}|{meeting['venue']}"
     try:
-        snapshot, recommendations = create_stage5_prediction_snapshot(
-            meeting_dir,
-            event_id=event_id,
-        )
+        snapshot = create_prediction_snapshot(meeting_dir)
     except Exception as exc:  # noqa: BLE001
         notify(f"❌ HKJC scoring 完成但 prediction snapshot 失敗：{exc}")
         set_control_outcome("failed", reason="prediction_snapshot_failed")
@@ -1019,7 +903,7 @@ def run_prerace(
     try:
         evidence = record_prediction_decision_if_configured(
             domain=Domain.HKJC,
-            event_id=event_id,
+            event_id=f"{meeting['date']}|{meeting['venue']}",
             snapshot=snapshot,
             evidence_root=Path(
                 os.environ.get(
@@ -1029,7 +913,6 @@ def run_prerace(
             )
             / "evidence",
             decision_state=DecisionState.RECOMMEND,
-            recommendations=recommendations,
         )
     except Exception as exc:  # noqa: BLE001
         notify(f"❌ HKJC prediction evidence 寫入失敗，Dashboard 已攔截：{exc}")
@@ -1054,7 +937,7 @@ def run_prerace(
     mirror = mirror_meeting(meeting_dir)
 
     key = f"{meeting['date']}|{meeting['venue']}"
-    record = state["meetings"].setdefault(key, {})
+    record = state.setdefault("meetings", {}).setdefault(key, {})
     previous_snapshot = record.get("latest_snapshot")
     recovered = bool(record.get("failure_streak"))
     record.update(
@@ -1114,12 +997,9 @@ def _meeting_from_state_key(key: str) -> dict | None:
 
 def run_recovery(state: dict, state_path: Path) -> int:
     """Retry only a due meeting previously classified as temporary/incomplete."""
-    current = now_local()
-    today = current.date()
-    lead_days = max(0, int(os.environ.get("WC_HKJC_ANALYSIS_LEAD_DAYS", "2")))
+    today = now_local().date()
     pending: list[tuple[str, dict]] = []
     changed = False
-    premature_cleared: list[str] = []
     for key, record in state.get("meetings", {}).items():
         if not isinstance(record, dict) or not record.get("recovery_pending"):
             continue
@@ -1128,47 +1008,157 @@ def run_recovery(state: dict, state_path: Path) -> int:
             record["recovery_pending"] = False
             changed = True
             continue
-        meeting_date = date.fromisoformat(meeting["date"])
-        if not prerace_window_is_open(
-            meeting_date,
-            current=current,
-            lead_days=lead_days,
-        ):
-            # Migrate pending state created by the old date-only gate.  The
-            # regular 21:30 prerace slot will start a fresh attempt once the
-            # starter PDF is expected to exist.
-            record.update(
-                {
-                    "recovery_pending": False,
-                    "failure_streak": 0,
-                    "last_failure_excerpt": "",
-                    "premature_recovery_cleared_at": stamp(),
-                }
-            )
-            premature_cleared.append(key)
-            changed = True
-            continue
         pending.append((key, meeting))
     if changed:
         save_state(state_path, state)
     if not pending:
-        if premature_cleared:
-            log(
-                "HKJC recovery dormant: cleared premature pending state for "
-                + ", ".join(premature_cleared)
-            )
-            set_control_outcome(
-                "dormant",
-                reason="recovery_before_prerace_window",
-                meetings=premature_cleared,
-            )
-        else:
-            log("HKJC recovery dormant: no pending temporary failure")
-            set_control_outcome("dormant", reason="no_pending_recovery")
+        log("HKJC recovery dormant: no pending temporary failure")
+        set_control_outcome("dormant", reason="no_pending_recovery")
         return EXIT_OK
     key, meeting = sorted(pending, key=lambda item: item[0])[0]
     log(f"HKJC self-recovery retry: {key}")
     return run_prerace(state, state_path, meeting=meeting)
+
+
+def intraday_meeting_dirs(*, today: date | None = None) -> list[Path]:
+    """Return analysed meetings that can still produce same-day evidence."""
+    today = today or now_local().date()
+    if not HK_RACING.exists():
+        return []
+    candidates = []
+    for path in HK_RACING.iterdir():
+        meeting_date = meeting_date_from_dir(path) if path.is_dir() else None
+        if meeting_date not in {today, today - timedelta(days=1)}:
+            continue
+        if not list(path.glob("Race_*_Logic.json")):
+            continue
+        if is_materialized_file(path / "HKJC_Reflection_Report.md"):
+            continue
+        try:
+            venue_from_meeting_dir(path)
+        except ValueError:
+            continue
+        candidates.append(path)
+    return sorted(candidates, key=lambda path: path.name)
+
+
+def intraday_window(meeting_dir: Path, *, at: datetime | None = None) -> bool:
+    """Use broad venue windows; a missing published result remains a cheap no-op."""
+    at = at or now_local()
+    meeting_date = meeting_date_from_dir(meeting_dir)
+    if meeting_date is None:
+        return False
+    minutes = at.hour * 60 + at.minute
+    venue = venue_from_meeting_dir(meeting_dir)
+    if meeting_date == at.date():
+        if venue == "ShaTin":
+            return 12 * 60 <= minutes <= 22 * 60
+        return 18 * 60 + 15 <= minutes
+    return (
+        venue == "HappyValley"
+        and meeting_date == at.date() - timedelta(days=1)
+        and minutes <= 2 * 60
+    )
+
+
+def run_intraday(
+    state: dict,
+    state_path: Path,
+    *,
+    meeting: dict | None = None,
+    at: datetime | None = None,
+) -> int:
+    """Freeze point-in-time reverse-bias scenarios without changing live ranks."""
+    at = at or now_local()
+    if meeting is not None:
+        meeting_dir = meeting_dir_for(meeting)
+        candidates = [meeting_dir] if meeting_dir.exists() else []
+    else:
+        candidates = intraday_meeting_dirs(today=at.date())
+    active = [path for path in candidates if intraday_window(path, at=at)]
+    if not active:
+        log("HKJC intraday shadow dormant: no analysed meeting in race window")
+        set_control_outcome("dormant", reason="no_intraday_meeting")
+        return EXIT_OK
+
+    meeting_dir = active[-1]
+    meeting_date = meeting_date_from_dir(meeting_dir)
+    if meeting_date is None:
+        set_control_outcome("dormant", reason="invalid_meeting_date")
+        return EXIT_OK
+    venue = venue_from_meeting_dir(meeting_dir)
+    venue_zh = "沙田" if venue == "ShaTin" else "跑馬地"
+    with tempfile.TemporaryDirectory(prefix="hkjc-reverse-bias-") as temp_dir:
+        results_path = Path(temp_dir) / "partial_results.json"
+        code, output = run_cmd(
+            [
+                sys.executable,
+                str(FAST_RESULTS),
+                meeting_date.isoformat(),
+                str(results_path),
+                venue_zh,
+            ],
+            timeout=600,
+        )
+        if code != 0:
+            log(f"HKJC intraday result extraction pending: {output[-600:]}")
+            set_control_outcome("partial", reason="partial_results_unavailable")
+            return EXIT_TEMPORARY
+        if not is_materialized_file(results_path):
+            log("HKJC intraday shadow dormant: no completed race published")
+            set_control_outcome("dormant", reason="no_completed_race")
+            return EXIT_OK
+        shadow_code, shadow_output = run_cmd(
+            [
+                sys.executable,
+                str(REVERSE_BIAS_SHADOW),
+                str(meeting_dir),
+                "--results-file",
+                str(results_path),
+                "--snapshot-dir",
+                str(meeting_dir / "Prediction_Snapshots" / "Reverse_Bias"),
+            ],
+            timeout=300,
+        )
+    if shadow_code != 0:
+        log(f"HKJC intraday reverse-bias shadow failed: {shadow_output[-600:]}")
+        set_control_outcome("partial", reason="reverse_bias_shadow_failed")
+        return EXIT_TEMPORARY
+    try:
+        payload = json.loads(shadow_output)
+    except json.JSONDecodeError:
+        log("HKJC intraday reverse-bias shadow returned invalid JSON")
+        set_control_outcome("partial", reason="reverse_bias_shadow_invalid_json")
+        return EXIT_TEMPORARY
+
+    key = meeting_dir.name
+    record = state["meetings"].setdefault(key, {})
+    record["reverse_bias_shadow"] = {
+        "status": payload.get("status"),
+        "snapshot": payload.get("snapshot"),
+        "completed_prefix": payload.get("completed_prefix") or [],
+        "reverse_bias_targets": payload.get("reverse_bias_targets") or [],
+        "candidate_applied_races": payload.get("candidate_applied_races") or [],
+        "live_score_changed": False,
+        "updated_at": stamp(),
+    }
+    save_state(state_path, state)
+    risk_targets = payload.get("reverse_bias_targets") or []
+    if payload.get("status") == "snapshot_created" and risk_targets:
+        notify(
+            f"🧪 HKJC reverse-bias shadow｜{key}\n"
+            f"R{', R'.join(str(value) for value in risk_targets)} 出現偏後追＋外檔情境；"
+            "只保存 shadow Top4 作前瞻驗證，正式排名冇改。"
+        )
+    set_control_outcome(
+        "succeeded" if payload.get("snapshot") else "dormant",
+        reason=str(payload.get("status") or "unknown"),
+        meeting=key,
+        completed_prefix=payload.get("completed_prefix") or [],
+        reverse_bias_targets=risk_targets,
+        live_score_changed=False,
+    )
+    return EXIT_OK
 
 
 def pending_postrace_meetings(*, today: date | None = None) -> list[Path]:
@@ -1273,14 +1263,79 @@ def run_postrace(state: dict, state_path: Path) -> int:
             log(f"post-race pending {key}: exit={code}")
             overall = max(overall, EXIT_TEMPORARY)
             continue
-        event_id = (
-            f"{meeting_date.isoformat()}|{venue_from_meeting_dir(meeting_dir)}"
+        rail_code, rail_output = run_cmd(
+            [sys.executable, str(RAIL_DRAW_REFRESH)]
         )
+        if rail_code != 0:
+            log(f"rail-draw history refresh pending {key}: {rail_output[-600:]}")
+            overall = max(overall, EXIT_TEMPORARY)
+            state["meetings"].setdefault(key, {})["rail_draw_history"] = {
+                "status": "pending",
+                "updated_at": stamp(),
+            }
+        else:
+            state["meetings"].setdefault(key, {})["rail_draw_history"] = {
+                "status": "refreshed",
+                "updated_at": stamp(),
+            }
+        report = meeting_dir / "HKJC_Reflection_Report.md"
+        shadow_ledger = state_path.parent / DEFAULT_SHADOW_LEDGER_NAME
+        shadow_code, shadow_output = run_cmd(
+            [
+                sys.executable,
+                str(SHADOW_MONITOR),
+                str(meeting_dir),
+                "--ledger",
+                str(shadow_ledger),
+            ]
+        )
+        if shadow_code != 0:
+            log(f"prospective shadow settlement pending {key}: {shadow_output[-600:]}")
+            overall = max(overall, EXIT_TEMPORARY)
+            state["meetings"].setdefault(key, {})["shadow_monitor"] = {
+                "status": "pending",
+                "updated_at": stamp(),
+            }
+        else:
+            state["meetings"].setdefault(key, {})["shadow_monitor"] = {
+                "status": "settled",
+                "ledger": str(shadow_ledger),
+                "updated_at": stamp(),
+            }
+        reverse_bias_ledger = state_path.parent / DEFAULT_REVERSE_BIAS_LEDGER_NAME
+        reverse_code, reverse_output = run_cmd(
+            [
+                sys.executable,
+                str(REVERSE_BIAS_SHADOW),
+                str(meeting_dir),
+                "--settle",
+                "--ledger",
+                str(reverse_bias_ledger),
+            ]
+        )
+        if reverse_code != 0:
+            log(f"reverse-bias shadow settlement pending {key}: {reverse_output[-600:]}")
+            overall = max(overall, EXIT_TEMPORARY)
+            state["meetings"].setdefault(key, {})["reverse_bias_shadow"] = {
+                "status": "settlement_pending",
+                "updated_at": stamp(),
+            }
+        else:
+            state["meetings"].setdefault(key, {})["reverse_bias_shadow"] = {
+                "status": "settled",
+                "ledger": str(reverse_bias_ledger),
+                "live_score_changed": False,
+                "updated_at": stamp(),
+            }
         try:
-            artifacts = list(settlement_artifacts(meeting_dir, event_id=event_id))
+            settlement_artifacts = [report]
+            if is_materialized_file(shadow_ledger):
+                settlement_artifacts.append(shadow_ledger)
+            if is_materialized_file(reverse_bias_ledger):
+                settlement_artifacts.append(reverse_bias_ledger)
             settlement = record_settlement_for_event(
                 domain=Domain.HKJC,
-                event_id=event_id,
+                event_id=f"{meeting_date.isoformat()}|{venue_from_meeting_dir(meeting_dir)}",
                 evidence_root=Path(
                     os.environ.get(
                         "WONGCHOI_CONTROL_STATE_ROOT",
@@ -1289,13 +1344,12 @@ def run_postrace(state: dict, state_path: Path) -> int:
                 )
                 / "evidence",
                 summary={"meeting": key, "reflector_exit": code},
-                artifacts=artifacts,
+                artifacts=settlement_artifacts,
             )
         except Exception as exc:  # noqa: BLE001
             log(f"settlement evidence pending {key}: {type(exc).__name__}: {exc}")
             overall = max(overall, EXIT_TEMPORARY)
             continue
-        report = meeting_dir / "HKJC_Reflection_Report.md"
         state["meetings"].setdefault(key, {}).update(
             {
                 "last_reflector_success": stamp(),
@@ -1550,6 +1604,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             "watch",
             "prerace",
             "lineup",
+            "intraday",
             "recovery",
             "postrace",
             "startup",
@@ -1738,6 +1793,8 @@ def main(argv: list[str] | None = None) -> int:
                 code = run_lineup(
                     state, args.state_file, meeting=meeting, force=args.force
                 )
+            elif args.mode == "intraday":
+                code = run_intraday(state, args.state_file, meeting=meeting)
             elif args.mode == "recovery":
                 code = run_recovery(state, args.state_file)
             elif args.mode == "postrace":

@@ -4,13 +4,47 @@ racing_engine/scoring.py — Core Scoring Framework
 """
 
 from abc import ABC, abstractmethod
+import os
 import re
 
 
 # Bump whenever a production matrix/formula change is intentionally promoted.
 # Persisted with every scored race so forward results can be attributed to the
 # exact model that made the pre-race prediction.
-SCORING_CONTRACT_VERSION = "HKJC_7D_CONTRACT_2026_08_13_CURRENT_MATRIX"
+SCORING_CONTRACT_VERSION = "HKJC_7D_CONTRACT_2026_10_07_PIT_RAIL_DRAW_V2_FULL_HISTORY_DISTANCE_V1"
+
+
+HAPPY_VALLEY_RACE_SHAPE_V3_SURFACE_GAIN = 0.45
+
+
+def active_happy_valley_race_shape_profile():
+    """Return the live HV formula, with an explicit emergency rollback.
+
+    The default is the user-accepted experimental V3 formula.  Operations can
+    restore the prior V2 formula without editing a prediction artifact by
+    setting ``WC_HKJC_HV_RACE_SHAPE_PROFILE=legacy_v2`` before the run.  The
+    selected value is persisted in the scoring run contract.
+    """
+    value = os.environ.get("WC_HKJC_HV_RACE_SHAPE_PROFILE", "v3_surface").strip().lower()
+    return "legacy_v2" if value == "legacy_v2" else "v3_surface"
+
+
+def race_shape_contract_manifest():
+    return {
+        "sha_tin": "legacy_55_draw_25_historical_fit_20_trip",
+        "happy_valley": active_happy_valley_race_shape_profile(),
+        "happy_valley_v3_formula": "draw+0.45*(pit_surface-60)",
+        "happy_valley_surface_gain": HAPPY_VALLEY_RACE_SHAPE_V3_SURFACE_GAIN,
+        "happy_valley_fit_weight": 0.0,
+        "happy_valley_trip_weight": 0.0,
+        "field_tempo": "withheld_insufficient_reliability",
+        "debut": "locked_legacy_formula",
+        "draw_context": "pit_venue_rail_distance_band_draw_group_relative_cap4",
+        "draw_context_venue_partition": "sha_tin_and_happy_valley_never_pool",
+        "draw_context_minimums": {"runners": 100, "races": 20, "shrink_runners": 60},
+        "rollback_env": "WC_HKJC_HV_RACE_SHAPE_PROFILE=legacy_v2",
+        "evidence_status": "user_accepted_experimental_live",
+    }
 
 
 FEATURE_KEYS = (

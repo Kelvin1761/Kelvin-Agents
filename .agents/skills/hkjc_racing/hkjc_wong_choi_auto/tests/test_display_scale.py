@@ -170,6 +170,30 @@ class SipStaysOnTheRawScale(unittest.TestCase):
         self.assertTrue(horses["1"]["python_auto"].get("sip_flags"))
         self.assertAlmostEqual(horses["1"]["python_auto"]["ability_score_raw"], 67.0, places=4)
 
+    def test_same_sip_boost_is_applied_to_shadow_counterfactuals(self):
+        horses = {"1": self._sip_horse(66.0), "2": self._sip_horse(66.0)}
+        horses["2"]["weight"] = 133
+        shadow_raw = 65.5
+        horses["1"]["python_auto"]["shadow_profiles"] = {
+            "weight_refit_t02": {
+                "ability_score_raw": shadow_raw,
+                "ability_score": round(to_display_scale(shadow_raw), 2),
+                "ability_delta": round(to_display_scale(shadow_raw) - to_display_scale(66.0), 2),
+                "grade": compute_grade(to_display_scale(shadow_raw)),
+            }
+        }
+
+        _apply_sip_enhancements(horses)
+
+        shadow = horses["1"]["python_auto"]["shadow_profiles"]["weight_refit_t02"]
+        self.assertAlmostEqual(shadow["ability_score_raw"], 66.5, places=4)
+        self.assertAlmostEqual(
+            shadow["ability_delta"],
+            shadow["ability_score"] - horses["1"]["python_auto"]["ability_score"],
+            places=2,
+        )
+        self.assertEqual(shadow["sip_flags"], horses["1"]["python_auto"]["sip_flags"])
+
     def test_does_not_fire_outside_it(self):
         for raw in (63.9, 68.1):
             horses = {"1": self._sip_horse(raw), "2": self._sip_horse(raw)}

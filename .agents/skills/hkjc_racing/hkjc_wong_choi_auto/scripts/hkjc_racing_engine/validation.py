@@ -12,6 +12,7 @@ from .scoring import (
     SCORING_CONTRACT_VERSION,
     compute_grade,
     dimension_display_manifest,
+    race_shape_contract_manifest,
     to_display_scale,
 )
 
@@ -69,6 +70,8 @@ def validate_logic_data(logic_data: dict) -> list[str]:
             errors.append("SCHEMA-007 run contract debut weights mismatch")
         if contract.get("matrix_formulas") != matrix_formula_manifest():
             errors.append("SCHEMA-009 run contract matrix formulas mismatch")
+        if contract.get("race_shape_formula") != race_shape_contract_manifest():
+            errors.append("SCHEMA-016 run contract race-shape formula mismatch")
         expected_blends = {}
         if contract.get("dimension_evidence_blends") != expected_blends:
             errors.append("SCHEMA-011 run contract evidence blends mismatch")
@@ -195,6 +198,100 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
     legacy_shadow = ((auto.get("shadow_profiles") or {}).get("legacy_health_slot") or {})
     if legacy_shadow:
         errors.extend(_validate_legacy_health_shadow(horse_num, auto, legacy_shadow))
+    for profile_name in (
+        "weight_refit_t02",
+        "race_shape_v3_hv",
+        "race_shape_v3_hv_t02",
+        "race_shape_v2_legacy_hv",
+        "race_shape_st_draw70",
+        "pre_race_draw_context_v1_generic",
+    ):
+        candidate = ((auto.get("shadow_profiles") or {}).get(profile_name) or {})
+        if candidate:
+            errors.extend(_validate_weight_race_shape_shadow(horse_num, auto, candidate))
+    return errors
+
+
+def _validate_weight_race_shape_shadow(horse_num: str, auto: dict, shadow: dict) -> list[str]:
+    errors = []
+    profile = str(shadow.get("profile") or "")
+    matrix_scores = shadow.get("matrix_scores", {})
+    weights = shadow.get("weights", {})
+    if sorted(matrix_scores) != sorted(MATRIX_KEYS):
+        return [f"SHADOW-020 horse {horse_num} {profile} matrix keys mismatch"]
+    if not isinstance(weights, dict) or not weights:
+        return [f"SHADOW-021 horse {horse_num} {profile} missing weights"]
+    for key in MATRIX_KEYS:
+        if not _in_range(matrix_scores.get(key)):
+            errors.append(f"SHADOW-022 horse {horse_num} {profile} matrix {key} outside 0-100")
+    try:
+        weight_sum = sum(float(value) for value in weights.values())
+        if abs(weight_sum - 1.0) > 0.0001:
+            errors.append(f"SHADOW-023 horse {horse_num} {profile} weights do not sum to one")
+        expected_raw = sum(
+            float(matrix_scores.get(key, 60.0)) * float(weight)
+            for key, weight in weights.items()
+        )
+        expected_raw += sum(
+            float(item.get("boost", 0.0) or 0.0)
+            for item in (shadow.get("sip_flags") or [])
+        )
+        ability_raw = float(shadow.get("ability_score_raw"))
+        ability = float(shadow.get("ability_score"))
+        if abs(ability_raw - expected_raw) > 0.05:
+            errors.append(f"SHADOW-024 horse {horse_num} {profile} raw ability mismatch")
+        expected_display = to_display_scale(ability_raw)
+        if expected_display is None or abs(ability - expected_display) > 0.05:
+            errors.append(f"SHADOW-025 horse {horse_num} {profile} display ability mismatch")
+        if shadow.get("grade") != compute_grade(ability):
+            errors.append(f"SHADOW-026 horse {horse_num} {profile} grade mismatch")
+        expected_delta = ability - float(auto.get("ability_score"))
+        if abs(float(shadow.get("ability_delta")) - expected_delta) > 0.05:
+            errors.append(f"SHADOW-027 horse {horse_num} {profile} ability delta mismatch")
+    except (TypeError, ValueError):
+        errors.append(f"SHADOW-028 horse {horse_num} {profile} invalid numeric payload")
+
+    components = shadow.get("race_shape_components")
+    if profile in {"race_shape_v3_hv", "race_shape_v3_hv_t02"}:
+        if not isinstance(components, dict):
+            errors.append(f"SHADOW-029 horse {horse_num} {profile} missing V3 components")
+        elif components.get("venue") == "HV":
+            try:
+                draw = float(components.get("draw"))
+                surface = float((components.get("surface_performance") or {}).get("score"))
+                expected_shape = max(0.0, min(100.0, draw + 0.45 * (surface - 60.0)))
+                if abs(float(matrix_scores.get("race_shape")) - expected_shape) > 0.05:
+                    errors.append(f"SHADOW-030 horse {horse_num} {profile} V3 shape formula mismatch")
+                tempo = components.get("field_tempo") or {}
+                if tempo.get("status") != "withheld_insufficient_reliability" or float(tempo.get("score_weight", -1)) != 0.0:
+                    errors.append(f"SHADOW-031 horse {horse_num} {profile} unreliable tempo was not withheld")
+            except (TypeError, ValueError):
+                errors.append(f"SHADOW-032 horse {horse_num} {profile} invalid V3 component payload")
+    if profile == "pre_race_draw_context_v1_generic":
+        try:
+            source = (components or {}).get("point_in_time_source") or {}
+            adjustment = float((components or {}).get("draw_adjustment", 0.0))
+            shape_gain = float((components or {}).get("shape_gain"))
+            base_shape = float((components or {}).get("base_race_shape"))
+            if abs(adjustment) > 4.0001:
+                errors.append(f"SHADOW-034 horse {horse_num} {profile} draw adjustment exceeds cap")
+            candidate_shape = float((components or {}).get("candidate_race_shape"))
+            if abs(float(matrix_scores.get("race_shape")) - candidate_shape) > 0.05:
+                errors.append(f"SHADOW-035 horse {horse_num} {profile} rollback shape mismatch")
+            if source.get("applied") and (
+                int(source.get("cell_runners", 0)) < 100
+                or int(source.get("cell_races", 0)) < 20
+            ):
+                errors.append(f"SHADOW-036 horse {horse_num} {profile} unstable PIT cell applied")
+        except (TypeError, ValueError):
+            errors.append(f"SHADOW-037 horse {horse_num} {profile} invalid rail context payload")
+    expected_status = (
+        "experimental_live_rollback_shadow"
+        if profile == "race_shape_v2_legacy_hv"
+        else "prospective_shadow_only"
+    )
+    if shadow.get("evidence_status") != expected_status:
+        errors.append(f"SHADOW-033 horse {horse_num} {profile} invalid evidence status")
     return errors
 
 

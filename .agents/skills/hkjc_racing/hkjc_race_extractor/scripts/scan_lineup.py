@@ -28,12 +28,6 @@ SKILL_DIR = Path(__file__).resolve().parent
 RACECARD_SCRIPT = SKILL_DIR / "extract_racecard.py"
 FORMGUIDE_SCRIPT = SKILL_DIR / "extract_formguide_playwright.py"
 
-# Current contract (2026-10-04): the official racecard defines runner
-# identity. SpeedPRO is a second-opinion enrichment source because it can emit
-# a stand-by runner under the same number as a declared runner. The historical
-# commentary and legacy helper immediately below are kept to document why the
-# scanner and the Facts rebuild chain must always use the same authority.
-
 # ⚠️ 邊個來源話事：**賽績（formguide）**，唔係排位表。
 # `inject_hkjc_fact_anchors.parse_hkjc_formguide()` 個馬匹迴圈食嘅係
 # `* Race N 賽績.md`，排程亦係咁 call；排位表淨係補父系／見習騎師減磅。
@@ -48,17 +42,6 @@ FORMGUIDE_SCRIPT = SKILL_DIR / "extract_formguide_playwright.py"
 
 _NUM = re.compile(r"^馬號:\s*(\d+)\s*$", re.M)
 _HORSE_BLOCK = re.compile(r"^馬號:\s*(\d+)\s*$\n^馬名:\s*(.+?)\s*$", re.M)
-_WITHDRAWN = re.compile(r"\s*[（(]\s*退出\s*[）)]\s*$")
-
-
-def is_withdrawn_name(name: str) -> bool:
-    """HKJC leaves withdrawn runners on the card with zero weight/draw.
-
-    They are not members of the active field.  Treating ``馬名 (退出)`` as a
-    replacement runner makes the watcher retry forever and later makes the
-    Logic builder reject the official zero values.
-    """
-    return bool(_WITHDRAWN.search(str(name or "")))
 
 
 def parse_lineup(markdown: str) -> dict[int, str]:
@@ -67,11 +50,7 @@ def parse_lineup(markdown: str) -> dict[int, str]:
     要拎名唔淨係拎號，因為「換馬」（同一個馬號換咗另一隻馬）同「退出」一樣
     需要重跑，但只比對號碼係睇唔到嘅。
     """
-    return {
-        int(num): name
-        for num, name in _HORSE_BLOCK.findall(markdown or "")
-        if not is_withdrawn_name(name)
-    }
+    return {int(num): name for num, name in _HORSE_BLOCK.findall(markdown or "")}
 
 
 def lineup_looks_complete(markdown: str, lineup: dict[int, str]) -> bool:
@@ -79,10 +58,7 @@ def lineup_looks_complete(markdown: str, lineup: dict[int, str]) -> bool:
 
     防嘅係一個半截／殘缺嘅頁被讀成「有幾隻馬唔見咗」。
     """
-    # Withdrawn blocks deliberately do not appear in ``lineup``.  Completeness
-    # is about every horse number having a name, not active-runner count.
-    parsed_blocks = _HORSE_BLOCK.findall(markdown or "")
-    return bool(parsed_blocks) and len(_NUM.findall(markdown or "")) == len(parsed_blocks)
+    return bool(lineup) and len(_NUM.findall(markdown or "")) == len(lineup)
 
 
 def logic_lineup(logic_path: Path) -> dict[int, str]:
@@ -140,9 +116,7 @@ def _lineup_from(script: Path, url: str, label: str, timeout: int) -> tuple[dict
     return lineup, ""
 
 
-def _scan_race_formguide_authority_legacy(
-    racecard_url: str, logic_path: Path, formguide_url: str = "",
-) -> dict:
+def scan_race(racecard_url: str, logic_path: Path, formguide_url: str = "") -> dict:
     """一場嘅掃描結果。`changed` 只會喺真係比對得成功嗰陣先為 True。
 
     權威來源係**賽績**（見 module 開頭）。排位表只做第二意見：兩邊唔一致
@@ -190,61 +164,6 @@ def _scan_race_formguide_authority_legacy(
                 bits.append("排位表多咗：" + "、".join(
                     f"{n} {card[n]}" for n in only_form))
             out["source_disagreement"] = "；".join(bits) or "兩個來源馬名唔一致"
-    return out
-
-
-def scan_race(racecard_url: str, logic_path: Path, formguide_url: str = "") -> dict:
-    """Compare the analysed field with the official declared racecard.
-
-    SpeedPRO is historical enrichment only.  It can contain a stand-by runner
-    under the same number as a declared runner, so it is recorded as a second
-    opinion but never drives a lineup rerun.
-    """
-    out = {"changed": False, "error": "", "scratched": [], "added": [],
-           "replaced": [], "source_disagreement": ""}
-    if not Path(logic_path).exists():
-        out["error"] = "未有 Logic，未分析過"
-        return out
-    try:
-        analysed = logic_lineup(Path(logic_path))
-    except (OSError, ValueError) as exc:
-        out["error"] = f"Logic 讀唔到：{type(exc).__name__}"
-        return out
-    if not analysed:
-        out["error"] = "Logic 冇馬匹紀錄"
-        return out
-    if not racecard_url:
-        out["error"] = "冇排位表 URL，唔可以判斷"
-        return out
-
-    current, error = _lineup_from(RACECARD_SCRIPT, racecard_url, "排位表", 60)
-    if error:
-        out["error"] = error
-        return out
-    out.update(diff_lineup(current, analysed))
-    out.setdefault("source_disagreement", "")
-
-    if formguide_url:
-        form, form_error = _lineup_from(FORMGUIDE_SCRIPT, formguide_url, "賽績", 120)
-        if not form_error and form != current:
-            only_card = sorted(set(current) - set(form))
-            only_form = sorted(set(form) - set(current))
-            replaced = sorted(
-                number for number in set(current) & set(form)
-                if current[number] != form[number]
-            )
-            bits = []
-            if only_card:
-                bits.append("賽績冇：" + "、".join(
-                    f"{number} {current[number]}" for number in only_card))
-            if only_form:
-                bits.append("賽績多左：" + "、".join(
-                    f"{number} {form[number]}" for number in only_form))
-            if replaced:
-                bits.append("馬名不一致：" + "、".join(
-                    f"{number} 排位表={current[number]}/賽績={form[number]}"
-                    for number in replaced))
-            out["source_disagreement"] = "；".join(bits)
     return out
 
 

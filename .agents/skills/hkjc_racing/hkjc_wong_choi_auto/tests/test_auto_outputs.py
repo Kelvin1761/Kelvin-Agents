@@ -7,7 +7,9 @@ import sys
 import tempfile
 import unittest
 import io
+import os
 from pathlib import Path
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[5]
@@ -124,6 +126,28 @@ class AutoOutputTests(unittest.TestCase):
             self.assertEqual(horse["barrier"], "2")
             self.assertEqual(horse["_data"]["trainer_name"], "蔡約翰")
             self.assertEqual(horse["_data"]["jockey_name"], "潘頓")
+            self.assertEqual(
+                {
+                    "incident_reliability",
+                    "weight_refit_t02",
+                    "race_shape_v2_legacy_hv",
+                    "race_shape_st_draw70",
+                    "trainer_recency_st_early90",
+                    "pre_race_draw_context_v1_generic",
+                },
+                set(horse["python_auto"]["shadow_profiles"]),
+            )
+            self.assertEqual(
+                {
+                    "incident_reliability",
+                    "weight_refit_t02",
+                    "race_shape_v2_legacy_hv",
+                    "race_shape_st_draw70",
+                    "trainer_recency_st_early90",
+                    "pre_race_draw_context_v1_generic",
+                },
+                set(updated["python_auto_shadow_verdicts"]),
+            )
 
     def test_orchestrator_backfills_missing_trainer_from_trackwork_when_facts_is_incomplete(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -173,6 +197,124 @@ class AutoOutputTests(unittest.TestCase):
                 "form_line": 0.0801,
             },
         )
+
+    def test_weight_refit_shadow_moves_two_points_without_touching_mainline(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["1"]
+        engine = RacingEngine(horse, {"venue": "沙田", "distance": "1650"})
+        baseline = engine.analyze_horse()
+        shadow = engine.build_shadow_profile("weight_refit_t02", base_auto=baseline)
+
+        self.assertTrue(shadow["applied"])
+        self.assertEqual(shadow["matrix_scores"], baseline["matrix_scores"])
+        self.assertEqual(shadow["weights"]["race_shape"], 0.2537)
+        self.assertEqual(shadow["weights"]["stability"], 0.1183)
+        self.assertEqual(baseline["matrix_scores"], engine.analyze_horse()["matrix_scores"])
+        self.assertEqual(shadow["evidence_status"], "prospective_shadow_only")
+
+    def test_happy_valley_v3_uses_draw_and_pit_surface_but_withholds_tempo(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["1"]
+        horse["_data"]["surface_performance_shadow"] = (
+            "今場=跑馬地草地 70.0分 | 沙田草地 59.0分(有效樣本2.0/原始3) | "
+            "跑馬地草地 70.0分(有效樣本3.0/原始4) | 沙田AWT 60.0分"
+            "(有效樣本0.0/原始0) | 採用來源=local_history | 規則=賽前"
+        )
+        engine = RacingEngine(horse, {"venue": "跑馬地", "distance": "1650"})
+        baseline = engine.analyze_horse()
+        shadow = engine.build_shadow_profile("race_shape_v3_hv", base_auto=baseline)
+        components = shadow["race_shape_components"]
+        expected_shape = components["draw"] + 0.45 * (components["surface_performance"]["score"] - 60.0)
+
+        self.assertEqual(baseline["race_shape_detail"]["live_profile"], "v3_surface")
+        self.assertAlmostEqual(baseline["matrix_scores"]["race_shape"], expected_shape, places=2)
+        self.assertTrue(shadow["applied"])
+        self.assertAlmostEqual(shadow["matrix_scores"]["race_shape"], expected_shape, places=2)
+        self.assertEqual(components["fit_weight"], 0.0)
+        self.assertEqual(components["trip_weight"], 0.0)
+        self.assertEqual(components["field_tempo"]["status"], "withheld_insufficient_reliability")
+        self.assertEqual(components["field_tempo"]["score_weight"], 0.0)
+        self.assertEqual(baseline["matrix_scores"], engine.analyze_horse()["matrix_scores"])
+
+    def test_happy_valley_v3_has_explicit_legacy_rollback_shadow(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["1"]
+        horse["_data"]["surface_performance_shadow"] = (
+            "今場=跑馬地草地 70.0分(有效樣本3.0/原始4) | 採用來源=local_history"
+        )
+        engine = RacingEngine(horse, {"venue": "跑馬地", "distance": "1650"})
+        live = engine.analyze_horse()
+        rollback = engine.build_shadow_profile("race_shape_v2_legacy_hv", base_auto=live)
+
+        self.assertTrue(rollback["applied"])
+        self.assertEqual(
+            rollback["matrix_scores"]["race_shape"],
+            live["race_shape_detail"]["legacy_score"],
+        )
+        self.assertEqual(rollback["evidence_status"], "experimental_live_rollback_shadow")
+
+    def test_happy_valley_v3_can_be_rolled_back_by_environment(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["1"]
+        horse["_data"]["surface_performance_shadow"] = (
+            "今場=跑馬地草地 70.0分(有效樣本3.0/原始4) | 採用來源=local_history"
+        )
+        with patch.dict(os.environ, {"WC_HKJC_HV_RACE_SHAPE_PROFILE": "legacy_v2"}):
+            result = RacingEngine(horse, {"venue": "跑馬地", "distance": "1650"}).analyze_horse()
+
+        self.assertEqual(result["race_shape_detail"]["live_profile"], "legacy_v2")
+        self.assertEqual(
+            result["matrix_scores"]["race_shape"],
+            result["race_shape_detail"]["legacy_score"],
+        )
+
+    def test_race_shape_v3_is_noop_outside_happy_valley(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["1"]
+        engine = RacingEngine(horse, {"venue": "沙田", "distance": "1650"})
+        baseline = engine.analyze_horse()
+        shadow = engine.build_shadow_profile("race_shape_v3_hv", base_auto=baseline)
+
+        self.assertFalse(shadow["applied"])
+        self.assertEqual(shadow["matrix_scores"], baseline["matrix_scores"])
+        self.assertEqual(shadow["ability_score"], baseline["ability_score"])
+
+    def test_sha_tin_draw70_shadow_is_turf_only_and_keeps_live_unchanged(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["1"]
+        turf_engine = RacingEngine(horse, {"venue": "沙田", "track": "草地", "distance": "1650"})
+        baseline = turf_engine.analyze_horse()
+        shadow = turf_engine.build_shadow_profile("race_shape_st_draw70", base_auto=baseline)
+        components = shadow["race_shape_components"]
+        expected = (
+            0.70 * components["draw"]
+            + 0.15 * components["historical_lane_fit"]
+            + 0.15 * components["historical_trip_consumption"]
+        )
+
+        self.assertTrue(shadow["applied"])
+        self.assertAlmostEqual(shadow["matrix_scores"]["race_shape"], expected, places=2)
+        self.assertEqual(baseline["matrix_scores"], turf_engine.analyze_horse()["matrix_scores"])
+
+        awt_engine = RacingEngine(horse, {"venue": "沙田", "track": "全天候跑道", "distance": "1650"})
+        awt_baseline = awt_engine.analyze_horse()
+        awt_shadow = awt_engine.build_shadow_profile("race_shape_st_draw70", base_auto=awt_baseline)
+        self.assertFalse(awt_shadow["applied"])
+        self.assertEqual(awt_shadow["matrix_scores"], awt_baseline["matrix_scores"])
+
+    def test_combined_shadow_keeps_v3_and_weight_refit_separable(self) -> None:
+        logic = _logic()
+        horse = logic["horses"]["1"]
+        horse["_data"]["surface_performance_shadow"] = "今場=跑馬地草地 68.0分 | 採用來源=local_history"
+        engine = RacingEngine(horse, {"venue": "跑馬地", "distance": "1650"})
+        baseline = engine.analyze_horse()
+        shape_only = engine.build_shadow_profile("race_shape_v3_hv", base_auto=baseline)
+        combined = engine.build_shadow_profile("race_shape_v3_hv_t02", base_auto=baseline)
+
+        self.assertEqual(combined["matrix_scores"], shape_only["matrix_scores"])
+        self.assertEqual(combined["weights"]["race_shape"], 0.2537)
+        self.assertEqual(combined["weights"]["stability"], 0.1183)
+        self.assertNotEqual(combined["weights"], shape_only["weights"])
 
     def test_chinese_jockey_and_trainer_names_are_scored(self) -> None:
         # 主要來源＝兩季 master stats 連續實績評分（2026-07-08 ML 驗證上線）

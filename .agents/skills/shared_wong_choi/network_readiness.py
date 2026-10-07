@@ -2,7 +2,7 @@
 """Bounded DNS readiness gate for launchd-started schedulers.
 
 macOS can fire a calendar job before networking and DNS have recovered after
-wake. Starting the real workflow in that window produces several unrelated
+wake.  Starting the real workflow in that window produces several unrelated
 looking failures at once, so wait here before any remote dependency is used.
 """
 

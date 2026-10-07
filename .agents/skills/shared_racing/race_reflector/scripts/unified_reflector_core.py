@@ -622,8 +622,10 @@ def derive_improvement_theme(row: dict[str, Any]) -> tuple[str, str]:
     ranked = sorted(
         ((name, score) for name, score in factors.items() if score is not None),
         key=lambda item: item[1],
-        reverse=True,
     )
+    # Improvement themes must come from the weakest leaves.  The old
+    # descending sort selected the horse's strengths and then described those
+    # strengths as the reason it was missed.
     keys = [name for name, _score in ranked[:4]]
     if any(name in keys for name in ("class_score", "distance_score", "weight_score",
                                      "formline_score", "rating_score")):
@@ -656,12 +658,36 @@ def extract_incident_signals(text: str) -> list[str]:
     return hits
 
 
-def incident_excerpt(text: str, horse_name: str) -> str:
+def _incident_segments(text: str) -> dict[int, str]:
+    """Split a HKJC incident report on ``placing horse_no`` markers."""
+    compact = re.sub(r"\s+", " ", str(text or "")).strip()
+    if not compact:
+        return {}
+    markers = list(re.finditer(r"(?<!\S)(\d{1,2})\s+(\d{1,2})\s+", compact))
+    segments: dict[int, str] = {}
+    for index, marker in enumerate(markers):
+        horse_no = int(marker.group(2))
+        end = markers[index + 1].start() if index + 1 < len(markers) else len(compact)
+        segments[horse_no] = compact[marker.start():end].strip()
+    return segments
+
+
+def incident_excerpt(text: str, horse_name: str, horse_no: int | None = None) -> str:
     if not text:
         return ""
-    match = re.search(re.escape(horse_name), text, re.IGNORECASE)
+    segments = _incident_segments(text)
+    base_name = re.sub(r"\s*[（(][A-Z]\d+[)）]\s*$", "", str(horse_name or "")).strip()
+    if horse_no is not None and horse_no in segments:
+        segment = segments[horse_no]
+        if not base_name or base_name in segment:
+            return segment
+    for segment in segments.values():
+        if base_name and base_name in segment:
+            return segment
+    match = re.search(re.escape(base_name), text, re.IGNORECASE) if base_name else None
     if not match:
-        return text[:180].strip()
+        # Never borrow the first horse's incident for an unmatched runner.
+        return ""
     start = max(0, match.start() - 60)
     end = min(len(text), match.end() + 120)
     return text[start:end].strip()
@@ -690,7 +716,7 @@ def analyse_missed_horse(
     theme, theme_text = derive_improvement_theme(candidate)
     third_score = prediction_rows[2]["composite_score"] if len(prediction_rows) >= 3 else None
     gap = None if third_score is None else round(float(third_score) - float(candidate["composite_score"] or 0.0), 3)
-    incident = incident_excerpt(incident_text, actual_row["horse_name"])
+    incident = incident_excerpt(incident_text, actual_row["horse_name"], actual_row["horse_no"])
     incident_signals = extract_incident_signals(incident)
 
     if incident_signals:
@@ -746,7 +772,12 @@ def analyse_race_incidents(
         }
 
     relevant_names = [row["horse_name"] for row in model_top3 + actual_top3]
-    matched_excerpts = [incident_excerpt(incident_text, name) for name in relevant_names if name and name in incident_text]
+    matched_excerpts = [
+        incident_excerpt(incident_text, row["horse_name"], row.get("horse_no"))
+        for row in model_top3 + actual_top3
+        if row.get("horse_name")
+    ]
+    matched_excerpts = [excerpt for excerpt in matched_excerpts if excerpt]
     signal_counter = Counter(extract_incident_signals(" ".join(matched_excerpts) or incident_text))
     if not signal_counter:
         return {

@@ -81,3 +81,11 @@ def test_deploy_defaults_to_live_projection_and_full_scan_is_opt_in():
     assert "scripts/fetch_live_snapshot.py" in deploy
     assert 'WC_ALLOW_DASHBOARD_FULL_RESCAN:-0' in deploy
     assert '--from-snapshot "$LIVE_SNAPSHOT"' in deploy
+
+
+def test_deploy_selects_a_python_with_dashboard_runtime_dependencies():
+    deploy = (DASHBOARD_ROOT / "deploy.sh").read_text(encoding="utf-8")
+
+    assert 'WC_PYTHON_BIN' in deploy
+    assert '-c "import pydantic"' in deploy
+    assert 'for candidate in python3 python /usr/bin/python3' in deploy

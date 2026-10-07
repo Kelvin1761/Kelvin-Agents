@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from pathlib import Path
+import re
 
 import pandas as pd
 
@@ -9,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[6]
 import sys as _sys; _sys.path.insert(0, str(ROOT))
 from wongchoi_paths import HK_RACING, is_materialized_file
 STATS_ROOT = HK_RACING / "HKJC_Race_Results_Database" / "comprehensive_stats"
+TRAINER_RECENCY_PATH = STATS_ROOT / "experimental" / "trainer_recency_90d_stats.csv"
 
 
 def _parse_as_of_date(value) -> date | None:
@@ -55,7 +57,6 @@ class EmptyTrainerSignalPriors:
         self.jockey_distance = {}
         self.trainer_distance = {}
         self.jockey_change = {}
-        self.trainer_venue = {}
 
 
 _EMPTY_RATINGS = EmptyRatings()
@@ -66,40 +67,43 @@ def empty_trainer_signal_priors() -> EmptyTrainerSignalPriors:
     """Return the shared neutral object used by the historical-date guard."""
     return _EMPTY_TRAINER_SIGNAL_PRIORS
 
+_SEASON_STATS_RE = re.compile(r"^\d{2}_\d{2}$")
+_FALLBACK_SEASONS = ("24_25", "25_26")
+
+
+def _season_stats_dirs(root: Path = STATS_ROOT) -> list[Path]:
+    """Return every materialized stats season instead of freezing at 25/26.
+
+    The two historical seasons remain the safe fallback when a cloud-backed
+    directory cannot be listed.  Newly generated seasons are picked up by the
+    next scoring process without changing model weights.
+    """
+    try:
+        found = sorted(
+            path for path in root.iterdir()
+            if path.is_dir() and _SEASON_STATS_RE.fullmatch(path.name)
+        )
+    except OSError:
+        found = []
+    if found:
+        return found
+    return [root / season for season in _FALLBACK_SEASONS]
+
+
+def _general_prior_paths(relative_path: str) -> list[Path]:
+    return [season_dir / relative_path for season_dir in _season_stats_dirs()]
+
+
 GENERAL_PRIOR_FILES = {
-    "combo": [
-        STATS_ROOT / "24_25" / "general_pre_race_priors" / "jockey_trainer_combo_priors.csv",
-        STATS_ROOT / "25_26" / "general_pre_race_priors" / "jockey_trainer_combo_priors.csv",
-    ],
-    "jockey_distance": [
-        STATS_ROOT / "24_25" / "jockey_distance_stats.csv",
-        STATS_ROOT / "25_26" / "jockey_distance_stats.csv",
-    ],
-    "trainer_distance": [
-        STATS_ROOT / "24_25" / "trainer_distance_stats.csv",
-        STATS_ROOT / "25_26" / "trainer_distance_stats.csv",
-    ],
-    "jockey_change": [
-        STATS_ROOT / "24_25" / "general_pre_race_priors" / "jockey_change_priors.csv",
-        STATS_ROOT / "25_26" / "general_pre_race_priors" / "jockey_change_priors.csv",
-    ],
-    "jockey_draw": [
-        STATS_ROOT / "24_25" / "jockey_draw_performance.csv",
-        STATS_ROOT / "25_26" / "jockey_draw_performance.csv",
-    ],
-    # 練馬師 × 場地（沙田／跑馬地）。**報告用，唔入分。**
-    # 兩季 18,795 行實測：場地偏好 73% 方差係真訊號、拆半重測 r=+0.639、
-    # 跨季 r=+0.504、覆蓋 97.3%，而且控制咗綜合分之後仲有效（頭2揀 +6.8pp / 1SD）。
-    # 但傳導到綜合分只有場內 SD 嘅 1.0%，五個排名 arm 全部唔過閘（EXP-20260905-03），
-    # 所以佢住喺報告層 —— 睇報告嘅人用得到，排名唔郁。
-    "trainer_venue": [
-        STATS_ROOT / "24_25" / "trainer_venue_stats.csv",
-        STATS_ROOT / "25_26" / "trainer_venue_stats.csv",
-    ],
+    "combo": _general_prior_paths("general_pre_race_priors/jockey_trainer_combo_priors.csv"),
+    "jockey_distance": _general_prior_paths("jockey_distance_stats.csv"),
+    "trainer_distance": _general_prior_paths("trainer_distance_stats.csv"),
+    "jockey_change": _general_prior_paths("general_pre_race_priors/jockey_change_priors.csv"),
+    "jockey_draw": _general_prior_paths("jockey_draw_performance.csv"),
 }
 
 
-# 兩季 master stats → 逐個騎師/練馬師連續實績評分（取代舊人手層級表做主要來源）。
+# 所有已生成賽季 master stats → 逐個騎師/練馬師連續實績評分（取代舊人手層級表做主要來源）。
 # ML 驗證（2026-07-08，15賽日/153場 10/5 train-test）：以下參數（A7 組合）
 # FULL gold 3.9→6.5 / good 22.9→27.5 / champ 24.8→27.5 / t3c 54.2→55.6 / min 持平，
 # 代價 single 87.6→84.3。負面縮放（騎師×0.5、練馬師×0.25＋floor 58）係保 single
@@ -124,11 +128,19 @@ JT_RATING_PARAMS = {
     "blend_k": 100.0,
 }
 
+def _master_stats_paths(group: str) -> list[tuple[Path, str | None]]:
+    return [
+        (
+            season_dir / f"{group}_master_stats.csv",
+            f"{group}_w24" if season_dir.name == "24_25" else None,
+        )
+        for season_dir in _season_stats_dirs()
+    ]
+
+
 MASTER_STATS_FILES = {
-    "jockey": [(STATS_ROOT / "24_25" / "jockey_master_stats.csv", "jockey_w24"),
-               (STATS_ROOT / "25_26" / "jockey_master_stats.csv", None)],
-    "trainer": [(STATS_ROOT / "24_25" / "trainer_master_stats.csv", "trainer_w24"),
-                (STATS_ROOT / "25_26" / "trainer_master_stats.csv", None)],
+    "jockey": _master_stats_paths("jockey"),
+    "trainer": _master_stats_paths("trainer"),
 }
 
 
@@ -255,6 +267,7 @@ class JockeyTrainerRatings:
 
 
 _JT_RATINGS: JockeyTrainerRatings | None = None
+_RECENCY_TRAINER_RATINGS = None
 
 
 def get_jt_ratings(as_of_date=None):
@@ -266,6 +279,83 @@ def get_jt_ratings(as_of_date=None):
     return _JT_RATINGS
 
 
+class RecencyTrainerRatings:
+    """Shadow-only 90-day date-decayed trainer master ratings."""
+
+    temporal_mode = "latest_recency_snapshot"
+
+    def __init__(self) -> None:
+        self.as_of_date = None
+        self.latest_result_date = None
+        self.half_life_days = None
+        self.trainer = self._build()
+
+    def _build(self) -> dict[str, dict]:
+        required = (
+            "Trainer", "Wins", "Starts", "Places", "AsOfDate",
+            "LatestResultDate", "HalfLifeDays",
+        )
+        frame = _read_prior_csv(TRAINER_RECENCY_PATH, required)
+        if frame is None or frame.empty:
+            return {}
+        self.as_of_date = str(frame["AsOfDate"].iloc[0])
+        self.latest_result_date = str(frame["LatestResultDate"].iloc[0])
+        self.half_life_days = int(float(frame["HalfLifeDays"].iloc[0]))
+        for column in ("Wins", "Starts", "Places"):
+            frame[column] = pd.to_numeric(frame[column], errors="coerce").fillna(0.0)
+        total = float(frame["Starts"].sum()) or 1.0
+        global_win = float(frame["Wins"].sum()) / total
+        global_place = float(frame["Places"].sum()) / total
+        params = JT_RATING_PARAMS
+        output = {}
+        for row in frame.to_dict("records"):
+            starts = float(row["Starts"] or 0.0)
+            if starts <= 0:
+                continue
+            win_shrunk = (float(row["Wins"]) + params["k"] * global_win) / (starts + params["k"])
+            place_shrunk = (float(row["Places"]) + params["k"] * global_place) / (starts + params["k"])
+            delta = (
+                params["b_win"] * (win_shrunk - global_win) * 100.0
+                + params["a_place"] * (place_shrunk - global_place) * 100.0
+            )
+            if delta < 0:
+                delta *= params["trainer_neg_scale"]
+            score = max(float(params["trainer_floor"]), 60.0 + delta)
+            output[str(row["Trainer"]).strip()] = {
+                "score": max(0.0, min(100.0, score)),
+                "starts": starts,
+                "win_rate": float(row["Wins"]) / starts * 100.0,
+                "place_rate": float(row["Places"]) / starts * 100.0,
+                "as_of_date": self.as_of_date,
+                "latest_result_date": self.latest_result_date,
+                "half_life_days": self.half_life_days,
+            }
+        return output
+
+    def lookup(self, raw_name: str) -> dict | None:
+        name = str(raw_name or "").strip()
+        if not name:
+            return None
+        hit = self.trainer.get(name)
+        if hit is not None:
+            return hit
+        for key, value in self.trainer.items():
+            if key and (key in name or name in key):
+                return value
+        return None
+
+
+def get_recency_trainer_rating(raw_name: str, *, as_of_date=None) -> dict | None:
+    """Return the registered shadow rating; historical latest-file use is blocked."""
+    global _RECENCY_TRAINER_RATINGS
+    if _RECENCY_TRAINER_RATINGS is None:
+        _RECENCY_TRAINER_RATINGS = RecencyTrainerRatings()
+    source = _RECENCY_TRAINER_RATINGS
+    if not temporal_source_is_safe(source, as_of_date):
+        return None
+    return source.lookup(raw_name)
+
+
 class TrainerSignalPriors:
     def __init__(self) -> None:
         self.temporal_mode = "latest_season_snapshot"
@@ -274,9 +364,6 @@ class TrainerSignalPriors:
         self.jockey_distance = self._load_grouped(GENERAL_PRIOR_FILES["jockey_distance"], ["Jockey", "Distance"])
         self.trainer_distance = self._load_grouped(GENERAL_PRIOR_FILES["trainer_distance"], ["Trainer", "Distance"])
         self.jockey_change = self._load_jockey_change()
-        # 個檔可能仲未生成（build_comprehensive_stats --write 之後先有）。
-        # 缺檔 = 報告少一行，唔可以令評分失敗。
-        self.trainer_venue = self._load_grouped(GENERAL_PRIOR_FILES["trainer_venue"], ["Trainer", "Venue"])
 
     def _load_grouped(self, paths: list[Path], keys: list[str]) -> dict[tuple[str, ...], dict]:
         required = tuple(keys) + ("Wins", "Starts", "Places")

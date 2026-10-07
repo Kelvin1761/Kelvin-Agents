@@ -17,6 +17,7 @@ from build_hkjc_ranking_dataset import (
     _place_cutoff,
     _race_class_label,
     _race_class_number,
+    _season_stat_features,
 )
 
 
@@ -51,6 +52,17 @@ class RankingDatasetAlignmentTests(unittest.TestCase):
         self.assertEqual(_place_cutoff(6), 2)
         self.assertEqual(_place_cutoff(4), 2)
         self.assertEqual(_place_cutoff(3), 0)
+
+    def test_hkjc_record_tuple_is_wins_seconds_thirds_rest(self) -> None:
+        stats = _season_stat_features(
+            "季內 (2-1-3-4) 同程 (1-2-0-5) 同場同程 (0-1-1-6)"
+        )
+        self.assertEqual(stats["season_starts"], 10.0)
+        self.assertEqual(stats["season_wins"], 2.0)
+        self.assertEqual(stats["season_seconds"], 1.0)
+        self.assertEqual(stats["season_thirds"], 3.0)
+        self.assertEqual(stats["same_distance_starts"], 8.0)
+        self.assertEqual(stats["same_venue_distance_starts"], 8.0)
 
 
 if __name__ == "__main__":
