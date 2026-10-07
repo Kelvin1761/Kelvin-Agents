@@ -39,7 +39,8 @@ ul, ol { padding-left:1.5rem; }
 <p>隻馬最後得到嘅係一個「綜合戰力分」。個分係咁計出嚟：</p>
 <ol><li>由原始資料計出 <strong>12 個基礎分</strong>（近績、騎師、檔位…），每個都係 0–100，<strong>60 分 = 中性／冇證據</strong></li>
 <li>啲基礎分按固定配方合成 <strong>7 個維度分</strong></li>
-<li>維度分按下面嘅權重加權相加 → 綜合戰力分</li>
+<li>維度分按下面嘅權重加權相加 → 矩陣基礎分</li>
+<li>加上下面逐項列明嘅 ranking adjustment → 綜合戰力分</li>
 <li>場內由高到低排名，就係最終推介次序</li></ol>
 <h3>每個維度佔幾重</h3>
 <table><thead><tr>
@@ -75,7 +76,7 @@ ul, ol { padding-left:1.5rem; }
 <tr>
 <td>狀態與穩定性 <code>stability</code></td>
 <td>9.8%</td>
-<td>14.9%</td>
+<td>14.8%</td>
 <td>███·················</td>
 </tr>
 <tr>
@@ -91,13 +92,31 @@ ul, ol { padding-left:1.5rem; }
 <td>····················</td>
 </tr>
 </tbody></table>
+<h3>額外 ranking adjustment</h3>
+<table><thead><tr>
+<th>Adjustment</th>
+<th>公式</th>
+<th>缺資料處理</th>
+</tr></thead><tbody>
+<tr>
+<td>同程性能修正 <code>distance_suitability_adjustment</code></td>
+<td>同程曾入位 +0.43；有同程紀錄但未入位約 -0.17（raw 分）</td>
+<td>冇 point-in-time 同程紀錄 = 0；不影響 class_score</td>
+</tr>
+</tbody></table>
+<table><thead><tr>
+<th>Overlay</th>
+<th>公式</th>
+<th>缺資料處理</th>
+</tr></thead><tbody>
+</tbody></table>
 <p><strong>「權重」同「實測影響力」有咩分別？</strong>  權重係配方上寫死嘅數。實測影響力係</p>
 <p>實際跑落去，呢個維度喺同一場馬入面真係拉開幾多分距離 —— 一個權重好高但成場馬</p>
 <p>都畀差唔多分數嘅維度，其實冇乜影響力。兩者差得遠，就代表個維度「有名無實」。</p>
 <p><strong>⚠️ 配方同實際唔夾嘅維度：</strong></p>
 <ul><li><strong>馬匹健康 / 新鮮感</strong> — 帳面 4.0%，實際 1.8%（細過帳面 56%）</li>
-<li><strong>狀態與穩定性</strong> — 帳面 9.8%，實際 14.9%（大過帳面 51%）</li>
-<li><strong>級數優勢</strong> — 帳面 14.3%，實際 8.9%（細過帳面 38%）</li></ul>
+<li><strong>狀態與穩定性</strong> — 帳面 9.8%，實際 14.8%（大過帳面 51%）</li>
+<li><strong>級數優勢</strong> — 帳面 14.3%，實際 8.9%（細過帳面 37%）</li></ul>
 <p>呢個唔一定係錯，但值得查：通常代表某個維度嘅分數散開程度同當初調校時唔同咗</p>
 <p>（例如換咗數據源、或者有 leaf 退役），權重就冇再對應返佢真正嘅話事權。</p>
 <h2>2. 每個維度食緊咩</h2>
@@ -111,7 +130,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>7.35 分</strong>；<strong>0.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>7.36 分</strong>；<strong>0.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>騎練訊號　<code>trainer_signal</code>　— 權重 23.6%</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -141,7 +160,7 @@ ul, ol { padding-left:1.5rem; }
 <td>25.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.91 分</strong>；<strong>2.3%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.94 分</strong>；<strong>2.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>段速表現　<code>sectional</code>　— 權重 12.8%</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -171,7 +190,7 @@ ul, ol { padding-left:1.5rem; }
 <td>10.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>9.53 分</strong>；<strong>2.7%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>9.52 分</strong>；<strong>2.7%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>賽績線　<code>form_line</code>　— 權重 8.0%</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -371,10 +390,10 @@ ul, ol { padding-left:1.5rem; }
 </tr>
 </tbody></table>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-10-07 03:08 AEDT</code></li>
-<li>Git commit：<code>0116c740</code></li>
-<li>Scoring contract：<code>HKJC_7D_CONTRACT_2026_10_07_PIT_RAIL_DRAW_V2_FULL_HISTORY_DISTANCE_V1</code></li>
-<li><code>scoring.py</code> 指紋：<code>3f7429886016</code></li>
+<ul><li>生成時間：<code>2026-10-07 16:15 AEDT</code></li>
+<li>Git commit：<code>51dd52bf</code></li>
+<li>Scoring contract：<code>HKJC_7D_CONTRACT_2026_10_07_PIT_RAIL_DRAW_V2_FULL_HISTORY_DISTANCE_COMPONENT_V1</code></li>
+<li><code>scoring.py</code> 指紋：<code>7dea4a6df513</code></li>
 <li><code>matrix_mapper.py</code> 指紋：<code>c9df25fd184d</code></li>
 <li><code>renderer.py</code> 指紋：<code>fef088756da5</code></li>
 <li>實測樣本：<strong>351 場、4408 匹馬</strong>，由 <code>2026-04-12_ShaTin</code> 到 <code>2026-10-07_HappyValley</code>（跳過 0 個舊格式檔案）</li></ul>

@@ -137,8 +137,15 @@ class RankingIsUntouched(unittest.TestCase):
             auto = h["python_auto"]
             self.assertIn("matrix_scores", auto)
             self.assertIn("matrix_scores_display", auto)
-            # 綜合分一定要由原始尺加出嚟
-            expected = sum(auto["matrix_scores"][k] * w for k, w in MATRIX_WEIGHTS.items())
+            # 7D subtotal 一定要由原始尺加出嚟；同程修正保持獨立可見。
+            matrix_subtotal = sum(
+                auto["matrix_scores"][k] * w for k, w in MATRIX_WEIGHTS.items()
+            )
+            self.assertIn("distance_suitability_adjustment", auto)
+            expected = (
+                matrix_subtotal
+                + auto["distance_suitability_adjustment"]["raw_adjustment"]
+            )
             self.assertAlmostEqual(auto["ability_score_raw"], expected, delta=0.02)
 
     def test_display_scores_are_the_transform_of_the_raw_ones(self):

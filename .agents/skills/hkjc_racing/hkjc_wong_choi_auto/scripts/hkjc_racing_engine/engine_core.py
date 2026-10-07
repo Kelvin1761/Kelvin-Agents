@@ -59,6 +59,7 @@ def scoring_run_contract():
         "debut_matrix_weights": dict(DEBUT_MATRIX_WEIGHTS),
         "matrix_formulas": matrix_formula_manifest(),
         "race_shape_formula": scoring.race_shape_contract_manifest(),
+        "distance_suitability": scoring.distance_suitability_contract_manifest(),
         "dimension_evidence_blends": {},
         "grade_thresholds": [
             {"minimum": minimum, "grade": grade}
@@ -173,7 +174,12 @@ class RacingEngine:
         matrix = {key: score_band(value) for key, value in matrix_scores_display.items()}
         # 加權總分係原始尺（維度加權平均，實測全距 50–77）；`ability_score` 印出
         # 嚟嘅係顯示尺。仿射、單調，所以排序 bit-identical——見 scoring.DISPLAY_SCALE。
-        ability_raw = round(self._ability_score(matrix_scores), 2)
+        distance_suitability = self._distance_suitability_adjustment(feature_scores, matrix_scores)
+        self.distance_suitability_adjustment = distance_suitability
+        ability_raw = round(
+            self._ability_score(matrix_scores) + float(distance_suitability["raw_adjustment"]),
+            2,
+        )
         ability_score = round(to_display_scale(ability_raw), 2)
         grade = compute_grade(ability_score)
         matrix_reasoning = self._matrix_reasoning(matrix_scores, matrix, feature_scores, feature_notes,
@@ -199,6 +205,7 @@ class RacingEngine:
             "trainer_signal_detail": self.trainer_signal_detail,
             "speed_detail": getattr(self, "speed_detail", None),
             "race_shape_detail": getattr(self, "race_shape_detail", None),
+            "distance_suitability_adjustment": distance_suitability,
             "trackwork_read": self._trackwork_interpretation(),
             "overseas_form_read": self._overseas_form_interpretation(),
             "health_readout": self._health_readout(),
@@ -231,7 +238,6 @@ class RacingEngine:
         notes = []
         starts = parse_float(self._value("career_race_starts") or self.horse_data.get("career_race_starts"))
         season = self._season_record()
-        same_distance = self._same_distance_record()
         career_tag = self._clean(self._value("career_tag") or self.horse_data.get("career_tag") or "")
         if career_tag == "ESTABLISHED":
             score += scoring.CLASS_MICRO_WEIGHTS.get("established_bonus", 4.0)
@@ -252,15 +258,57 @@ class RacingEngine:
                 score += scoring.CLASS_MICRO_WEIGHTS.get("season_place_0_pen", -4.0)
                 self.risk_flags.append("class_edge_unproven")
                 notes.append("季內未上名")
-        if same_distance and same_distance["places"] > 0:
-            score += scoring.CLASS_MICRO_WEIGHTS.get("same_dist_place_bonus", 4.0)
-            notes.append("同程有實績")
-        elif same_distance and same_distance["starts"] > 0 and same_distance["places"] == 0:
-            score += scoring.CLASS_MICRO_WEIGHTS.get("same_dist_unplaced_pen", -2.0)
-            notes.append("同程未上名")
         # 短而準：分數行頭，訊號做 tag；無訊號＝各項中性
-        note = f"班次分{clip_score(score):.0f}：" + ("、".join(notes) if notes else "經驗／季內／同程均中性")
+        note = f"班次分{clip_score(score):.0f}：" + ("、".join(notes) if notes else "經驗／季內均中性")
         return clip_score(score), note, "career_context"
+
+    def _distance_suitability_adjustment(self, features, matrix_scores):
+        """Move same-distance evidence out of class without changing ranking.
+
+        The old formula changed ``class_score`` before the 75/25 class/weight
+        blend.  Reconstructing only that rounded contribution here makes the
+        semantic route explicit while remaining bit-for-bit score equivalent.
+        """
+        neutral = {
+            "raw_adjustment": 0.0,
+            "signal": "neutral",
+            "same_distance_starts": 0,
+            "same_distance_places": 0,
+            "note": "同程未有可入分實績，路程適性調整為0。",
+        }
+        if self._is_debut():
+            neutral["signal"] = "debut_neutral"
+            neutral["note"] = "初出馬未有同程正式賽績，路程適性調整為0。"
+            return neutral
+        record = self._same_distance_record()
+        if not record or record["starts"] <= 0:
+            return neutral
+        if record["places"] > 0:
+            micro = scoring.DISTANCE_SUITABILITY_MICRO_WEIGHTS["same_dist_place_bonus"]
+            signal = "same_distance_placed"
+            note = "同程有上名實績，獨立路程適性調整為正面。"
+        else:
+            micro = scoring.DISTANCE_SUITABILITY_MICRO_WEIGHTS["same_dist_unplaced_pen"]
+            signal = "same_distance_unplaced"
+            note = "同程已有樣本但未上名，獨立路程適性調整為負面。"
+
+        clean_class = float(features.get("class_score", 60.0))
+        weight_score = float(features.get("weight_score", 60.0))
+        clean_dimension = float(matrix_scores.get("class_advantage", 60.0))
+        legacy_class = clip_score(clean_class + micro)
+        legacy_dimension = round(clip_score(legacy_class * 0.75 + weight_score * 0.25), 2)
+        raw_adjustment = round(
+            (legacy_dimension - clean_dimension) * MATRIX_WEIGHTS["class_advantage"],
+            6,
+        )
+        return {
+            "raw_adjustment": raw_adjustment,
+            "signal": signal,
+            "same_distance_starts": int(record["starts"]),
+            "same_distance_places": int(record["places"]),
+            "micro_signal": micro,
+            "note": note,
+        }
 
     def _distance_score(self, _features):
         best_distance = self._value("best_distance")
@@ -3778,10 +3826,18 @@ class RacingEngine:
         ])
         # 表格逐行印嘅係維度加權貢獻，加起身係**原始**加權總分（實測全距 50–77）。
         # `ability_score` 係顯示尺，所以兩個數字要一齊印，唔然讀者會以為表格加錯。
+        matrix_weighted_sum = weighted_sum
+        distance_adjustment = getattr(self, "distance_suitability_adjustment", {})
+        distance_raw = float(distance_adjustment.get("raw_adjustment", 0.0) or 0.0)
+        weighted_sum += distance_raw
+        distance_note = self._clean(distance_adjustment.get("note", ""))
         summary = (
             f"{table}\n\n"
-            f"**→ 維度加權總和 = {weighted_sum:.2f} 分"
+            f"**→ 7D 維度加權總和 = {matrix_weighted_sum:.2f} 分"
             f"（原始尺，實測全場分佈 50–77）**\n"
+            f"**→ 獨立路程適性調整 = {distance_raw:+.2f} 分**"
+            + (f"（{distance_note}）\n" if distance_note else "\n")
+            + f"**→ 原始總分 = {weighted_sum:.2f} 分**\n"
             f"**→ 換算顯示尺 = {ability_score:.1f} 分 → 評級 [{grade}]**"
         )
 
@@ -3789,13 +3845,14 @@ class RacingEngine:
         if grade_explanation:
             summary += f"\n{grade_explanation}"
 
-        # Reference scores that exist but do NOT enter the 7D weighted formula —
-        # shown so nothing that was computed is hidden from the report.
+        # Reference scores that do not enter the 7D weighted matrix.  The
+        # same-distance record now enters only through the explicitly displayed
+        # capped adjustment above; distance_score remains a diagnostic scale.
         if feature_scores:
             ref_bits = []
             dist = feature_scores.get("distance_score")
             if isinstance(dist, (int, float)):
-                ref_bits.append(f"路程分 {float(dist):.1f}")
+                ref_bits.append(f"路程分 {float(dist):.1f}（診斷參考；同程實績另經獨立調整入分）")
             draw = feature_scores.get("draw_score")
             if isinstance(draw, (int, float)):
                 ref_bits.append(f"檔位分 {float(draw):.1f}（經檔位走位情境入分）")
@@ -3817,6 +3874,8 @@ class RacingEngine:
         return {
             "detail_lines": lines,
             "rows": rows,
+            "matrix_weighted_sum": round(matrix_weighted_sum, 2),
+            "distance_suitability_adjustment": round(distance_raw, 2),
             "weighted_sum": round(weighted_sum, 2),
             "summary": summary,
         }

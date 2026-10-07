@@ -5,12 +5,17 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[5]
 DEPLOY_SCRIPT = PROJECT_ROOT / "deploy.sh"
+DASHBOARD_ROOT = PROJECT_ROOT / "Horse_Racing_Dashboard"
+DASHBOARD_FETCH_LIVE = DASHBOARD_ROOT / "scripts" / "fetch_live_snapshot.py"
+DASHBOARD_GENERATOR = DASHBOARD_ROOT / "generate_static.py"
+DASHBOARD_LIVE_URL = "https://wongchoi-dashboard.pages.dev/dashboard-data.json"
 DISABLE_ENV = "WC_DISABLE_POST_SUCCESS_DEPLOY"
 BATCH_MODE_ENV = "WC_POST_SUCCESS_DEPLOY_MODE"
 TIMEOUT_ENV = "WC_POST_SUCCESS_DEPLOY_TIMEOUT_SEC"
@@ -102,12 +107,28 @@ def _run_deploy(
     print(f"☁️ Post-Success Cloudflare Deploy — {source}{target_hint}")
     print("=" * 68)
 
+    deploy_env = os.environ.copy()
+    snapshot = _build_target_snapshot(target_dir)
+    if _is_scored_meeting(target_dir) and snapshot is None:
+        message = (
+            "⚠️ Fresh meeting snapshot could not be built; refusing to "
+            "report a successful stale Dashboard deploy"
+        )
+        if allow_failure:
+            print(message)
+            return False
+        raise RuntimeError(message)
+    if snapshot is not None:
+        deploy_env["WC_DASHBOARD_BASE_SNAPSHOT"] = str(snapshot)
+        print(f"📦 Merged fresh meeting into deploy snapshot: {snapshot}")
+
     try:
         result = subprocess.run(
             [str(DEPLOY_SCRIPT)],
             cwd=PROJECT_ROOT,
             text=True,
             timeout=timeout_sec,
+            env=deploy_env,
         )
     except subprocess.TimeoutExpired:
         message = f"⚠️ Cloudflare deploy timed out after {timeout_sec}s"
@@ -127,6 +148,64 @@ def _run_deploy(
         print(message)
         return False
     raise SystemExit(result.returncode)
+
+
+def _is_scored_meeting(target_dir: Path | None) -> bool:
+    if target_dir is None:
+        return False
+    meeting = Path(target_dir)
+    return meeting.is_dir() and any(meeting.glob("Race_*_Auto_Analysis.md"))
+
+
+def _build_target_snapshot(target_dir: Path | None) -> Path | None:
+    """Merge a freshly scored meeting into live before invoking deploy.sh.
+
+    ``deploy.sh`` intentionally preserves the live projection when no scheduler
+    snapshot is supplied.  A direct orchestrator run used to pass ``target_dir``
+    only as a log hint, so it could report a successful Cloudflare deploy while
+    republishing the old card unchanged.  Build the same incremental snapshot
+    used by the daily scheduler whenever the target is a scored meeting.
+    """
+    if not _is_scored_meeting(target_dir):
+        return None
+    meeting = Path(target_dir)
+    if not DASHBOARD_FETCH_LIVE.exists() or not DASHBOARD_GENERATOR.exists():
+        print("⚠️ Dashboard snapshot tools missing; deploy will preserve live projection")
+        return None
+
+    work = meeting / "Dashboard_Snapshot"
+    work.mkdir(parents=True, exist_ok=True)
+    live = work / "live-dashboard-data.json"
+    merged = work / "post-success-dashboard-data.json"
+    preview = work / "post-success-dashboard.html"
+    try:
+        fetch = subprocess.run(
+            [sys.executable, str(DASHBOARD_FETCH_LIVE),
+             "--url", DASHBOARD_LIVE_URL, "--output", str(live)],
+            cwd=PROJECT_ROOT,
+            text=True,
+            timeout=600,
+        )
+        if fetch.returncode != 0 or not live.exists():
+            print(f"⚠️ Could not fetch live snapshot (exit {fetch.returncode}); preserving live projection")
+            return None
+        merge = subprocess.run(
+            [sys.executable, str(DASHBOARD_GENERATOR),
+             "--base-snapshot", str(live),
+             "--meeting-dir", str(meeting),
+             "--output-json", str(merged),
+             "--output-html", str(preview)],
+            cwd=DASHBOARD_ROOT,
+            text=True,
+            timeout=1800,
+        )
+        if merge.returncode != 0 or not merged.exists():
+            print(f"⚠️ Could not merge meeting snapshot (exit {merge.returncode}); preserving live projection")
+            return None
+        return merged
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        print(f"⚠️ Could not build meeting snapshot ({exc}); preserving live projection")
+        return None
 
 
 def _read_queue() -> list[dict[str, str]]:

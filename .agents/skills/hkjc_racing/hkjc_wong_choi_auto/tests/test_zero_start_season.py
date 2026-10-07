@@ -6,6 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from hkjc_racing_engine.engine_core import RacingEngine
 from hkjc_racing_engine import scoring
+from hkjc_racing_engine.matrix_mapper import map_features_to_matrix_scores
 
 
 def evaluate(record):
@@ -40,7 +41,24 @@ class ZeroStartSeasonTests(unittest.TestCase):
     def test_distance_record_cannot_supply_season_evidence(self):
         with_distance = evaluate("季內 (0-0-0-0) | 同程 (1-0-0-1)")
         self.assertNotIn("季內未上名", with_distance[1])
-        self.assertIn("同程有實績", with_distance[1])
+        self.assertNotIn("同程", with_distance[1])
+
+    def test_distance_record_is_an_independent_visible_adjustment(self):
+        horse = {
+            "career_tag": "ESTABLISHED",
+            "career_race_starts": 15,
+            "is_debut": False,
+            "season_stats": "季內 (0-0-0-0) | 同程 (1-0-0-1)",
+        }
+        engine = RacingEngine(horse, {"distance": "1200"})
+        class_score, _, _ = engine._class_score({})
+        features = {"class_score": class_score, "weight_score": 60.0}
+        matrix = map_features_to_matrix_scores(features)
+        adjustment = engine._distance_suitability_adjustment(features, matrix)
+
+        self.assertEqual(adjustment["signal"], "same_distance_placed")
+        self.assertAlmostEqual(adjustment["raw_adjustment"], 0.4284, places=6)
+        self.assertEqual(class_score, evaluate("季內 (0-0-0-0)")[0])
 
     def test_two_wins_from_six_is_proven_distance_and_not_a_risk(self):
         horse = {
@@ -59,6 +77,12 @@ class ZeroStartSeasonTests(unittest.TestCase):
         self.assertEqual(result["feature_scores"]["distance_score"], 72.0)
         self.assertNotIn("distance_unproven", result["risk_flags"])
         self.assertNotIn("路程證明不足", result["score_breakdown"]["risk_score"]["note"])
+        self.assertEqual(
+            result["distance_suitability_adjustment"]["signal"],
+            "same_distance_placed",
+        )
+        self.assertGreater(result["distance_suitability_adjustment"]["raw_adjustment"], 0)
+        self.assertNotIn("同程", result["score_breakdown"]["class_score"]["note"])
 
 
 class MedicalContextReadoutTests(unittest.TestCase):

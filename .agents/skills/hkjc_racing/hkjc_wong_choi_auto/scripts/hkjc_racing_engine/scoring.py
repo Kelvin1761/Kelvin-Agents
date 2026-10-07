@@ -11,7 +11,10 @@ import re
 # Bump whenever a production matrix/formula change is intentionally promoted.
 # Persisted with every scored race so forward results can be attributed to the
 # exact model that made the pre-race prediction.
-SCORING_CONTRACT_VERSION = "HKJC_7D_CONTRACT_2026_10_07_PIT_RAIL_DRAW_V2_FULL_HISTORY_DISTANCE_V1"
+SCORING_CONTRACT_VERSION = (
+    "HKJC_7D_CONTRACT_2026_10_07_PIT_RAIL_DRAW_V2_"
+    "FULL_HISTORY_DISTANCE_COMPONENT_V1"
+)
 
 
 HAPPY_VALLEY_RACE_SHAPE_V3_SURFACE_GAIN = 0.45
@@ -75,6 +78,39 @@ MATRIX_WEIGHTS = {
     "horse_health": 0.0404,
     "form_line": 0.0801,
 }
+
+# Same-distance evidence is a distance-suitability signal, not evidence that a
+# horse has a class edge.  These micro values deliberately preserve the former
+# production contribution while the signal is moved out of class_score.  The
+# resulting raw-score adjustment is independently displayed and capped by the
+# two signal values (roughly +0.43 / -0.17 after the class dimension blend).
+DISTANCE_SUITABILITY_MICRO_WEIGHTS = {
+    "same_dist_place_bonus": 4.0,
+    "same_dist_unplaced_pen": -1.55,
+}
+
+
+def distance_suitability_contract_manifest():
+    return {
+        "source": "point_in_time_same_distance_record",
+        "route": "independent_visible_adjustment_outside_class_score",
+        "signal_micro": dict(DISTANCE_SUITABILITY_MICRO_WEIGHTS),
+        "legacy_equivalent_class_component_weight": 0.75,
+        "legacy_equivalent_outer_weight": MATRIX_WEIGHTS["class_advantage"],
+        "ranking_policy": "exact_migration_no_intended_ranking_change",
+    }
+
+
+# Machine-readable metadata for the generated model explanation.  The actual
+# calculation remains in engine_core so this cannot become a second formula.
+RANKING_ADJUSTMENTS = (
+    {
+        "key": "distance_suitability_adjustment",
+        "label": "同程性能修正",
+        "formula": "同程曾入位 +0.43；有同程紀錄但未入位約 -0.17（raw 分）",
+        "missing": "冇 point-in-time 同程紀錄 = 0；不影響 class_score",
+    },
+)
 
 DEBUT_MATRIX_WEIGHTS = {
     "trainer_signal": 0.30,
@@ -265,8 +301,6 @@ CLASS_MICRO_WEIGHTS = {
     "starts_8_pen": -2.0,
     "season_place_3_bonus": 4.39,
     "season_place_0_pen": -4.0,
-    "same_dist_place_bonus": 4.0,
-    "same_dist_unplaced_pen": -1.55
 }
 
 DISTANCE_MICRO_WEIGHTS = {

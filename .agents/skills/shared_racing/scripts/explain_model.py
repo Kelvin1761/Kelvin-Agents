@@ -99,6 +99,9 @@ def load_engine(engine_dir: Path):
         "feature_keys": tuple(getattr(scoring, "FEATURE_KEYS", ())),
         "report_only_keys": tuple(getattr(scoring, "REPORT_ONLY_FEATURE_KEYS", ()) or ()),
         "ranking_overlays": tuple(getattr(scoring, "RANKING_OVERLAYS", ()) or ()),
+        "ranking_adjustments": tuple(
+            getattr(scoring, "RANKING_ADJUSTMENTS", ()) or ()
+        ),
         "contract_version": getattr(scoring, "SCORING_CONTRACT_VERSION", None),
         "bands": band_thresholds(scoring),
     }
@@ -244,6 +247,7 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
     formulas = model["formulas"]
     gains = model["gains"]
     overlays = model.get("ranking_overlays") or ()
+    adjustments = model.get("ranking_adjustments") or ()
     inf = influence(weights, stats["spread"]) if stats else {}
 
     # Display order: every dimension the reports show, heaviest ranking weight
@@ -266,9 +270,9 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
     A("")
     A(f"1. 由原始資料計出 **{len(model['feature_keys'])} 個基礎分**（近績、騎師、檔位…），每個都係 0–100，**60 分 = 中性／冇證據**")
     A(f"2. 啲基礎分按固定配方合成 **{len(weights)} 個維度分**")
-    if overlays:
+    if overlays or adjustments:
         A("3. 維度分按下面嘅權重加權相加 → 矩陣基礎分")
-        A("4. 加上下面逐項列明嘅場內 ranking overlay → 綜合戰力分")
+        A("4. 加上下面逐項列明嘅 ranking adjustment → 綜合戰力分")
         A("5. 場內由高到低排名，就係最終推介次序")
     else:
         A("3. 維度分按下面嘅權重加權相加 → 綜合戰力分")
@@ -305,6 +309,19 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
     A("")
     if overlays:
         A("### 額外場內 ranking overlay")
+        A("")
+    if adjustments:
+        A("### 額外 ranking adjustment")
+        A("")
+        A("| Adjustment | 公式 | 缺資料處理 |")
+        A("|---|---|---|")
+        for adjustment in adjustments:
+            A(
+                f"| {adjustment.get('label', adjustment.get('key', ''))} "
+                f"`{adjustment.get('key', '')}` | "
+                f"{adjustment.get('formula', '')} | "
+                f"{adjustment.get('missing', '')} |"
+            )
         A("")
         A("| Overlay | 公式 | 缺資料處理 |")
         A("|---|---|---|")

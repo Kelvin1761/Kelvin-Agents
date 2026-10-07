@@ -6,40 +6,40 @@
     {
       "id": "2026-10-07_HappyValley/Race_8_Logic/#8",
       "features": {
-        "class_score": 58.0,
+        "class_score": 60.0,
         "confidence_score": 83.0,
         "consistency_score": 58.1,
         "distance_score": 56.0,
         "draw_score": 64.92,
         "form_score": 55.24,
-        "jockey_score": 55.67,
+        "jockey_score": 55.71,
         "risk_score": 73.5,
         "speed_score": 66.75,
         "track_going_score": 60.0,
-        "trainer_score": 59.26,
+        "trainer_score": 59.36,
         "weight_score": 54.0
       },
       "expected": {
         "matrix": {
-          "class_advantage": 57.0,
+          "class_advantage": 58.5,
           "form_line": 60.0,
           "horse_health": 65.91,
           "race_shape": 64.92,
           "sectional": 66.75,
           "stability": 56.86,
-          "trainer_signal": 57.29
+          "trainer_signal": 57.35
         },
         "matrix_display": {
-          "class_advantage": 45.7174,
+          "class_advantage": 48.4641,
           "form_line": 43.694,
           "horse_health": 57.1447,
           "race_shape": 61.8916,
           "sectional": 67.5175,
           "stability": 59.8683,
-          "trainer_signal": 53.1752
+          "trainer_signal": 53.3028
         },
-        "ability_raw": 61.0756,
-        "ability": 59.2551,
+        "ability_raw": 61.304,
+        "ability": 59.775,
         "grade": "C"
       }
     },
@@ -251,12 +251,12 @@
         "consistency_score": 53.1,
         "distance_score": 66.0,
         "draw_score": 72.57,
-        "form_score": 40.0,
-        "jockey_score": 59.29,
+        "form_score": 42.72,
+        "jockey_score": 59.32,
         "risk_score": 76.0,
         "speed_score": 47.32,
         "track_going_score": 60.0,
-        "trainer_score": 62.97,
+        "trainer_score": 62.99,
         "weight_score": 64.0
       },
       "expected": {
@@ -266,8 +266,8 @@
           "horse_health": 71.33,
           "race_shape": 72.57,
           "sectional": 47.32,
-          "stability": 47.24,
-          "trainer_signal": 60.95
+          "stability": 48.6,
+          "trainer_signal": 60.97
         },
         "matrix_display": {
           "class_advantage": 48.1711,
@@ -275,11 +275,11 @@
           "horse_health": 72.7766,
           "race_shape": 69.4284,
           "sectional": 45.8783,
-          "stability": 50.8197,
-          "trainer_signal": 60.9567
+          "stability": 52.099,
+          "trainer_signal": 60.9993
         },
-        "ability_raw": 61.0018,
-        "ability": 59.0872,
+        "ability_raw": 61.1402,
+        "ability": 59.4022,
         "grade": "C"
       }
     },
@@ -326,40 +326,40 @@
     {
       "id": "2026-10-07_HappyValley/Race_3_Logic/#6",
       "features": {
-        "class_score": 62.0,
+        "class_score": 64.0,
         "confidence_score": 83.0,
         "consistency_score": 61.08,
-        "distance_score": 72.0,
+        "distance_score": 60.0,
         "draw_score": 72.57,
         "form_score": 59.18,
-        "jockey_score": 59.95,
+        "jockey_score": 59.94,
         "risk_score": 69.0,
         "speed_score": 56.68,
         "track_going_score": 60.0,
-        "trainer_score": 64.34,
+        "trainer_score": 64.27,
         "weight_score": 64.0
       },
       "expected": {
         "matrix": {
-          "class_advantage": 62.5,
+          "class_advantage": 64.0,
           "form_line": 60.0,
           "horse_health": 67.06,
           "race_shape": 72.57,
           "sectional": 56.68,
           "stability": 60.02,
-          "trainer_signal": 61.93
+          "trainer_signal": 61.89
         },
         "matrix_display": {
-          "class_advantage": 55.7885,
+          "class_advantage": 58.5351,
           "form_line": 43.694,
           "horse_health": 60.4615,
           "race_shape": 69.4284,
           "sectional": 56.3025,
           "stability": 62.8406,
-          "trainer_signal": 63.0403
+          "trainer_signal": 62.9553
         },
-        "ability_raw": 64.1138,
-        "ability": 66.1713,
+        "ability_raw": 64.3186,
+        "ability": 66.6374,
         "grade": "B-"
       }
     },
@@ -846,40 +846,40 @@
     {
       "id": "2026-10-07_HappyValley/Race_5_Logic/#4",
       "features": {
-        "class_score": 66.0,
+        "class_score": 68.0,
         "confidence_score": 83.0,
         "consistency_score": 73.43,
-        "distance_score": 72.0,
+        "distance_score": 60.0,
         "draw_score": 74.63,
         "form_score": 72.24,
-        "jockey_score": 79.71,
+        "jockey_score": 79.7,
         "risk_score": 72.0,
         "speed_score": 79.85,
         "track_going_score": 60.0,
-        "trainer_score": 66.04,
+        "trainer_score": 65.93,
         "weight_score": 64.0
       },
       "expected": {
         "matrix": {
-          "class_advantage": 65.5,
+          "class_advantage": 67.0,
           "form_line": 60.0,
           "horse_health": 68.89,
           "race_shape": 74.63,
           "sectional": 79.85,
           "stability": 71.49,
-          "trainer_signal": 73.56
+          "trainer_signal": 73.5
         },
         "matrix_display": {
-          "class_advantage": 61.2818,
+          "class_advantage": 64.0284,
           "form_line": 43.694,
           "horse_health": 65.7394,
           "race_shape": 71.4579,
           "sectional": 82.1069,
           "stability": 73.6293,
-          "trainer_signal": 87.7669
+          "trainer_signal": 87.6393
         },
-        "ability_raw": 72.0319,
-        "ability": 84.1954,
+        "ability_raw": 72.2319,
+        "ability": 84.6508,
         "grade": "A+"
       }
     },
@@ -1126,7 +1126,7 @@
     {
       "id": "2026-10-07_HappyValley/Race_4_Logic/#2",
       "features": {
-        "class_score": 62.0,
+        "class_score": 64.0,
         "confidence_score": 83.0,
         "consistency_score": 66.08,
         "distance_score": 60.0,
@@ -1136,30 +1136,30 @@
         "risk_score": 66.0,
         "speed_score": 53.56,
         "track_going_score": 60.0,
-        "trainer_score": 64.34,
+        "trainer_score": 64.27,
         "weight_score": 64.0
       },
       "expected": {
         "matrix": {
-          "class_advantage": 62.5,
+          "class_advantage": 64.0,
           "form_line": 60.0,
           "horse_health": 65.22,
           "race_shape": 72.57,
           "sectional": 53.56,
           "stability": 66.8,
-          "trainer_signal": 62.36
+          "trainer_signal": 62.33
         },
         "matrix_display": {
-          "class_advantage": 55.7885,
+          "class_advantage": 58.5351,
           "form_line": 43.694,
           "horse_health": 55.1547,
           "race_shape": 69.4284,
           "sectional": 52.8278,
           "stability": 69.2179,
-          "trainer_signal": 63.9545
+          "trainer_signal": 63.8908
         },
-        "ability_raw": 64.4066,
-        "ability": 66.8378,
+        "ability_raw": 64.6137,
+        "ability": 67.3092,
         "grade": "B-"
       }
     },
@@ -1246,7 +1246,7 @@
     {
       "id": "2026-10-07_HappyValley/Race_6_Logic/#12",
       "features": {
-        "class_score": 62.0,
+        "class_score": 69.12,
         "confidence_score": 83.0,
         "consistency_score": 56.99,
         "distance_score": 72.0,
@@ -1256,12 +1256,12 @@
         "risk_score": 71.0,
         "speed_score": 59.82,
         "track_going_score": 60.0,
-        "trainer_score": 59.89,
+        "trainer_score": 59.88,
         "weight_score": 54.0
       },
       "expected": {
         "matrix": {
-          "class_advantage": 60.0,
+          "class_advantage": 65.34,
           "form_line": 60.0,
           "horse_health": 64.39,
           "race_shape": 49.9,
@@ -1270,7 +1270,7 @@
           "trainer_signal": 59.58
         },
         "matrix_display": {
-          "class_advantage": 51.2107,
+          "class_advantage": 60.9888,
           "form_line": 43.694,
           "horse_health": 52.7609,
           "race_shape": 47.0939,
@@ -1278,8 +1278,8 @@
           "stability": 60.4139,
           "trainer_signal": 58.044
         },
-        "ability_raw": 57.039,
-        "ability": 50.0665,
+        "ability_raw": 57.8016,
+        "ability": 51.8023,
         "grade": "D"
       }
     },
@@ -1291,12 +1291,12 @@
         "consistency_score": 62.33,
         "distance_score": 66.0,
         "draw_score": 74.63,
-        "form_score": 54.55,
-        "jockey_score": 57.45,
+        "form_score": 59.12,
+        "jockey_score": 57.43,
         "risk_score": 71.0,
         "speed_score": 67.76,
         "track_going_score": 60.0,
-        "trainer_score": 59.1,
+        "trainer_score": 59.08,
         "weight_score": 54.0
       },
       "expected": {
@@ -1306,8 +1306,8 @@
           "horse_health": 64.39,
           "race_shape": 74.63,
           "sectional": 67.76,
-          "stability": 58.21,
-          "trainer_signal": 58.19
+          "stability": 60.49,
+          "trainer_signal": 58.17
         },
         "matrix_display": {
           "class_advantage": 43.5933,
@@ -1315,11 +1315,11 @@
           "horse_health": 52.7609,
           "race_shape": 71.4579,
           "sectional": 68.6423,
-          "stability": 61.1381,
-          "trainer_signal": 55.0887
+          "stability": 63.2827,
+          "trainer_signal": 55.0462
         },
-        "ability_raw": 63.9812,
-        "ability": 65.8694,
+        "ability_raw": 64.2006,
+        "ability": 66.3688,
         "grade": "B-"
       }
     },
@@ -1846,7 +1846,7 @@
     {
       "id": "2026-10-07_HappyValley/Race_2_Logic/#9",
       "features": {
-        "class_score": 56.45,
+        "class_score": 58.45,
         "confidence_score": 83.0,
         "consistency_score": 53.82,
         "distance_score": 66.0,
@@ -1856,30 +1856,30 @@
         "risk_score": 69.0,
         "speed_score": 58.58,
         "track_going_score": 60.0,
-        "trainer_score": 58.69,
+        "trainer_score": 58.7,
         "weight_score": 58.0
       },
       "expected": {
         "matrix": {
-          "class_advantage": 56.84,
+          "class_advantage": 58.34,
           "form_line": 60.0,
           "horse_health": 64.72,
           "race_shape": 49.9,
           "sectional": 58.58,
           "stability": 47.53,
-          "trainer_signal": 54.2
+          "trainer_signal": 54.21
         },
         "matrix_display": {
-          "class_advantage": 45.4244,
+          "class_advantage": 48.1711,
           "form_line": 43.694,
           "horse_health": 53.7127,
           "race_shape": 47.0939,
           "sectional": 58.4185,
           "stability": 51.0925,
-          "trainer_signal": 46.6056
+          "trainer_signal": 46.6268
         },
-        "ability_raw": 54.1968,
-        "ability": 43.5967,
+        "ability_raw": 54.4134,
+        "ability": 44.0897,
         "grade": "E"
       }
     },
@@ -3132,11 +3132,11 @@
         "distance_score": 54.0,
         "draw_score": 64.92,
         "form_score": 44.08,
-        "jockey_score": 54.79,
+        "jockey_score": 54.85,
         "risk_score": 52.0,
         "speed_score": 43.32,
         "track_going_score": 60.0,
-        "trainer_score": 59.97,
+        "trainer_score": 60.05,
         "weight_score": 54.0
       },
       "expected": {
@@ -3147,7 +3147,7 @@
           "race_shape": 64.92,
           "sectional": 43.32,
           "stability": 48.4,
-          "trainer_signal": 57.12
+          "trainer_signal": 57.19
         },
         "matrix_display": {
           "class_advantage": 49.0866,
@@ -3156,10 +3156,10 @@
           "race_shape": 61.8916,
           "sectional": 41.4235,
           "stability": 51.9108,
-          "trainer_signal": 52.8138
+          "trainer_signal": 52.9626
         },
-        "ability_raw": 56.9254,
-        "ability": 49.8078,
+        "ability_raw": 56.9419,
+        "ability": 49.8454,
         "grade": "D"
       }
     },
@@ -4372,11 +4372,11 @@
         "distance_score": 72.0,
         "draw_score": 51.66,
         "form_score": 51.9,
-        "jockey_score": 63.54,
+        "jockey_score": 63.56,
         "risk_score": 63.0,
         "speed_score": 60.65,
         "track_going_score": 60.0,
-        "trainer_score": 62.55,
+        "trainer_score": 62.6,
         "weight_score": 64.0
       },
       "expected": {
@@ -4387,7 +4387,7 @@
           "race_shape": 51.66,
           "sectional": 60.65,
           "stability": 55.7,
-          "trainer_signal": 63.09
+          "trainer_signal": 63.13
         },
         "matrix_display": {
           "class_advantage": 55.7885,
@@ -4396,10 +4396,10 @@
           "race_shape": 48.8278,
           "sectional": 60.7239,
           "stability": 58.7772,
-          "trainer_signal": 65.5066
+          "trainer_signal": 65.5916
         },
-        "ability_raw": 58.602,
-        "ability": 53.6244,
+        "ability_raw": 58.6114,
+        "ability": 53.6459,
         "grade": "C-"
       }
     },
@@ -4446,40 +4446,40 @@
     {
       "id": "2026-10-07_HappyValley/Race_7_Logic/#9",
       "features": {
-        "class_score": 66.0,
+        "class_score": 73.12,
         "confidence_score": 83.0,
         "consistency_score": 70.6,
         "distance_score": 72.0,
         "draw_score": 74.63,
         "form_score": 77.69,
-        "jockey_score": 63.43,
+        "jockey_score": 63.4,
         "risk_score": 71.0,
         "speed_score": 75.86,
         "track_going_score": 60.0,
-        "trainer_score": 60.75,
+        "trainer_score": 60.8,
         "weight_score": 54.0
       },
       "expected": {
         "matrix": {
-          "class_advantage": 63.0,
+          "class_advantage": 68.34,
           "form_line": 60.0,
           "horse_health": 64.39,
           "race_shape": 74.63,
           "sectional": 75.86,
           "stability": 73.08,
-          "trainer_signal": 62.22
+          "trainer_signal": 62.23
         },
         "matrix_display": {
-          "class_advantage": 56.704,
+          "class_advantage": 66.4821,
           "form_line": 43.694,
           "horse_health": 52.7609,
           "race_shape": 71.4579,
           "sectional": 77.6633,
           "stability": 75.1248,
-          "trainer_signal": 63.6569
+          "trainer_signal": 63.6782
         },
-        "ability_raw": 68.4581,
-        "ability": 76.0604,
+        "ability_raw": 69.223,
+        "ability": 77.8016,
         "grade": "A-"
       }
     },
