@@ -519,6 +519,29 @@ class PipelineIntegrityTests(unittest.TestCase):
             " ".join(auto.validate_logic_data(logic)),
         )
 
+    def test_validation_includes_live_distance_suitability_adjustment(self) -> None:
+        """正式 V1 路程修正喺 7D 外入分，validator 要核對同一條公式。"""
+        logic = _minimal_logic()
+        horse_auto = RacingEngine(
+            logic["horses"]["1"], logic["race_analysis"]
+        ).analyze_horse()
+        adjustment = 0.4284
+        horse_auto["distance_suitability_adjustment"]["raw_adjustment"] = adjustment
+        horse_auto["ability_score_raw"] = round(
+            horse_auto["ability_score_raw"] + adjustment, 2
+        )
+        horse_auto["ability_score"] = round(
+            auto_scoring.to_display_scale(horse_auto["ability_score_raw"]), 2
+        )
+        horse_auto["grade"] = auto.compute_grade(horse_auto["ability_score"])
+        logic["horses"]["1"]["python_auto"] = horse_auto
+        auto.ensure_verdict(logic)
+        logic["python_auto_run_contract"] = auto.scoring_run_contract()
+
+        errors = auto.validate_logic_data(logic)
+        self.assertNotIn("SCORE-004", " ".join(errors))
+        self.assertNotIn("SCORE-008", " ".join(errors))
+
     def test_validation_catches_a_display_scale_that_does_not_match_the_raw(self) -> None:
         """兩個尺各行各路 → SCORE-007。呢個係「顯示尺唔准變成第二個模型」嘅閘。"""
         logic = _minimal_logic()

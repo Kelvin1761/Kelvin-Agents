@@ -156,6 +156,20 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
             for key, weight in weights.items()
         )
         try:
+            # 路程適性 V1 由 7D 之外獨立加落原始總分（見
+            # RacingEngine.analyze_horse）。完整歷史修正後，大部分有同程
+            # 紀錄嘅馬都會有非零值；validator 必須核對同一條正式公式。
+            expected += float(
+                (auto.get("distance_suitability_adjustment") or {}).get(
+                    "raw_adjustment", 0.0
+                )
+                or 0.0
+            )
+        except (AttributeError, TypeError, ValueError):
+            errors.append(
+                f"SCORE-008 horse {horse_num} invalid distance suitability adjustment"
+            )
+        try:
             # SIP boost 亦係原始尺（見 hkjc_auto_orchestrator._apply_sip_enhancements）。
             expected += sum(
                 float(flag.get("boost", 0) or 0)
