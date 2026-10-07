@@ -31,6 +31,7 @@ Usage:
 """
 import re
 import json
+import math
 import tempfile
 from typing import Optional, Tuple
 from datetime import datetime, timedelta
@@ -1067,6 +1068,16 @@ def _surface_performance_key(value: str) -> str:
     return ''
 
 
+def _history_surface_key(race: dict) -> str:
+    """Return a surface key without losing Sha Tin AWT hidden in the rail field."""
+    venue = str(race.get('venue') or race.get('venue_track') or '')
+    rail = str(race.get('rail') or '')
+    if any(token in (venue + rail).lower().replace(' ', '')
+           for token in ('awt', '全天候', '泥地', 'dirt')):
+        return '沙田AWT'
+    return _surface_performance_key(venue)
+
+
 def compute_surface_performance_shadow(races: list, today_venue: str = '',
                                        today_dist: int = 0,
                                        race_date: str = '',
@@ -1089,7 +1100,7 @@ def compute_surface_performance_shadow(races: list, today_venue: str = '',
         for label in SURFACE_PERFORMANCE_LABELS
     }
     for race in races or []:
-        key = _surface_performance_key(race.get('venue', ''))
+        key = _history_surface_key(race)
         dt = race.get('date_dt')
         try:
             distance = int(race.get('distance') or 0)
@@ -1168,6 +1179,180 @@ def compute_surface_performance_shadow(races: list, today_venue: str = '',
     }
 
 
+DISTANCE_SUITABILITY_V2_PROFILES = {
+    '跑馬地草地': {'weight': 0.08, 'cap': 6.0, 'variant': 'exact_blend'},
+    '沙田草地': {'weight': 0.02, 'cap': 4.0, 'variant': 'exact_blend'},
+    # Historical AWT rows cannot yet be identified consistently in archived
+    # Facts, so this remains evidence-only until prospective coverage settles.
+    '沙田AWT': {'weight': 0.0, 'cap': 4.0, 'variant': 'exact_blend'},
+}
+
+
+def _distance_v2_place_utility(finish: int) -> float:
+    ladder = {1: 1.0, 2: 0.78, 3: 0.64, 4: 0.50, 5: 0.40, 6: 0.32,
+              7: 0.25, 8: 0.18, 9: 0.12}
+    return ladder.get(int(finish), 0.08)
+
+
+def _distance_v2_parse_margin(value: object) -> Optional[float]:
+    text = str(value or '').strip()
+    direct = {'---': 0.0, '-': 0.0, '鼻': 0.05, '短頭': 0.1,
+              '頭': 0.2, '一頭': 0.2, '頸': 0.25, '半': 0.5}
+    if text in direct:
+        return direct[text]
+    match = re.match(r'^(\d+)-(\d+)/(\d+)$', text)
+    if match:
+        return int(match.group(1)) + int(match.group(2)) / int(match.group(3))
+    match = re.match(r'^(\d+)/(\d+)$', text)
+    if match:
+        return int(match.group(1)) / int(match.group(2))
+    match = re.match(r'^(\d+(?:\.\d+)?)$', text)
+    return float(match.group(1)) if match else None
+
+
+def _distance_v2_utility(race: dict, variant: str) -> float:
+    place = _distance_v2_place_utility(int(race.get('finish') or 0))
+    if variant in {'kernel_place'}:
+        return place
+    margin = race.get('margin_numeric')
+    if margin is None:
+        margin = _distance_v2_parse_margin(race.get('margin') or race.get('margin_raw'))
+    if margin is None:
+        return place
+    signed = -abs(float(margin)) if int(race.get('finish') or 0) == 1 else abs(float(margin))
+    margin_utility = 1.0 / (1.0 + math.exp(max(-20.0, min(20.0, signed / 2.5))))
+    if variant == 'kernel_margin':
+        return margin_utility
+    return 0.65 * place + 0.35 * margin_utility
+
+
+def _distance_v2_kernel(delta: int, variant: str) -> float:
+    if delta == 0:
+        return 1.0
+    if variant == 'exact_blend':
+        return 0.0
+    if delta <= 100:
+        return 0.50
+    if delta <= 200:
+        return 0.25
+    return 0.0
+
+
+def compute_distance_suitability_v2(races: list, today_venue: str = '',
+                                    today_dist: int = 0, race_date: str = '',
+                                    overseas_races: Optional[list] = None) -> dict:
+    """PIT within-horse distance residual, separated by racing surface.
+
+    This deliberately compares the target-distance posterior with the same
+    horse's all-distance posterior on the same surface.  General ability is
+    therefore subtracted instead of being rewarded again as distance aptitude.
+    """
+    target_key = _surface_performance_key(today_venue)
+    try:
+        anchor = datetime.strptime(race_date, '%Y-%m-%d') if race_date else None
+    except ValueError:
+        anchor = None
+    profile = DISTANCE_SUITABILITY_V2_PROFILES.get(
+        target_key, {'weight': 0.0, 'cap': 4.0, 'variant': 'kernel_place'}
+    )
+    variant = str(profile['variant'])
+    target_sum = target_n = surface_sum = surface_n = 0.0
+    target_runs = surface_runs = 0
+    for race in races or []:
+        if _history_surface_key(race) != target_key:
+            continue
+        dt = race.get('date_dt') or parse_date(race.get('date', ''))
+        try:
+            distance = int(race.get('distance') or 0)
+            finish = int(race.get('finish') or 0)
+        except (TypeError, ValueError):
+            continue
+        if not anchor or not dt or dt >= anchor or distance <= 0 or finish <= 0:
+            continue
+        age = (anchor - dt).days
+        if age <= 0 or age > 1095:
+            continue
+        recency = 2.0 ** (-age / 365.0)
+        utility = _distance_v2_utility(race, variant)
+        surface_sum += recency * utility
+        surface_n += recency
+        surface_runs += 1
+        kernel = _distance_v2_kernel(abs(distance - int(today_dist or 0)), variant)
+        if kernel > 0:
+            target_sum += recency * kernel * utility
+            target_n += recency * kernel
+            target_runs += 1
+
+    source = 'local_history' if target_n > 0 else 'neutral'
+    # AWT-only fallback: overseas dirt/synthetic is useful evidence, but stays
+    # display-only while the production AWT profile has weight zero.
+    if target_key == '沙田AWT' and target_n <= 0:
+        for race in overseas_races or []:
+            if str(race.get('Surface') or '').upper() not in {'DIRT', 'SYNTHETIC'}:
+                continue
+            dt = parse_date(race.get('Date', ''))
+            try:
+                distance = int(race.get('Distance') or 0)
+                finish = int(race.get('Placing') or 0)
+            except (TypeError, ValueError):
+                continue
+            if not anchor or not dt or dt >= anchor or distance <= 0 or finish <= 0:
+                continue
+            age = (anchor - dt).days
+            if age <= 0 or age > 1095:
+                continue
+            recency = 2.0 ** (-age / 365.0)
+            overseas_row = {
+                'finish': finish,
+                'margin': race.get('Margin') or race.get('margin'),
+            }
+            utility = _distance_v2_utility(overseas_row, variant)
+            surface_sum += recency * utility
+            surface_n += recency
+            surface_runs += 1
+            kernel = _distance_v2_kernel(abs(distance - int(today_dist or 0)), variant)
+            if kernel > 0:
+                target_sum += recency * kernel * utility
+                target_n += recency * kernel
+                target_runs += 1
+        if target_n > 0:
+            source = 'foreign_dirt_synthetic'
+
+    target_post = (target_sum + 2.0) / (target_n + 4.0)
+    surface_post = (surface_sum + 2.0) / (surface_n + 4.0)
+    # No target-distance evidence means neutral, not a negative inference from
+    # the horse's other-distance record.
+    residual = 0.0 if target_n <= 0 else target_post - surface_post
+    score = max(40.0, min(80.0, 60.0 + 40.0 * residual))
+    return {
+        'target': target_key or '未知',
+        'score': round(score, 2),
+        'residual': round(residual, 6),
+        'target_effective_n': round(target_n, 2),
+        'surface_effective_n': round(surface_n, 2),
+        'target_runs': target_runs,
+        'surface_runs': surface_runs,
+        'source': source,
+        'profile': dict(profile),
+        'status': 'live_hv_st_turf_awt_shadow',
+    }
+
+
+def format_distance_suitability_v2(payload: dict) -> str:
+    profile = payload.get('profile') or {}
+    return (
+        f"今場={payload.get('target', '未知')} {float(payload.get('score', 60.0)):.2f}分"
+        f" | 目標有效樣本={float(payload.get('target_effective_n', 0.0)):.1f}"
+        f"(原始{int(payload.get('target_runs', 0))})"
+        f" | 場地基準有效樣本={float(payload.get('surface_effective_n', 0.0)):.1f}"
+        f"(原始{int(payload.get('surface_runs', 0))})"
+        f" | residual={float(payload.get('residual', 0.0)):+.3f}"
+        f" | 採用來源={payload.get('source', 'neutral')}"
+        f" | profile={profile.get('variant', 'neutral')}/w{float(profile.get('weight', 0.0)):.2f}/cap{float(profile.get('cap', 4.0)):.0f}"
+        " | 規則=同馬同場地目標路程後驗減全路程後驗、365日半衰、4場中性收縮"
+    )
+
+
 def format_surface_performance_shadow(payload: dict) -> str:
     surfaces = payload.get('surfaces') or {}
     parts = []
@@ -1214,6 +1399,18 @@ def _merge_profile_history_for_stats(races: list, profile_entries: Optional[list
             seen_dates.add(dt.date().isoformat())
         merged.append(row)
 
+    profile_by_date = {}
+    for entry in profile_entries or []:
+        dt = _profile_entry_datetime(entry)
+        if dt is not None:
+            profile_by_date[dt.date().isoformat()] = entry
+    for row in merged:
+        dt = row.get('date_dt')
+        entry = profile_by_date.get(dt.date().isoformat()) if dt else None
+        if entry:
+            row.setdefault('margin_numeric', entry.get('margin_numeric'))
+            row.setdefault('venue_track', entry.get('venue_track'))
+
     for entry in profile_entries or []:
         dt = _profile_entry_datetime(entry)
         if dt is None:
@@ -1232,6 +1429,9 @@ def _merge_profile_history_for_stats(races: list, profile_entries: Optional[list
             'finish': finish,
             'distance': distance,
             'venue': entry.get('venue_track') or entry.get('racecourse') or '',
+            'venue_track': entry.get('venue_track') or '',
+            'margin_numeric': entry.get('margin_numeric'),
+            'rail': entry.get('rail') or '',
         })
         seen_dates.add(date_key)
 
@@ -1260,6 +1460,10 @@ def compute_stats(races: list, today_venue: str = '', today_dist: int = 0,
         'same_dist': [0, 0, 0, 0],
         'same_venue_dist': [0, 0, 0, 0],
         'surface_performance_shadow': compute_surface_performance_shadow(
+            races, today_venue=today_venue, today_dist=today_dist, race_date=race_date,
+            overseas_races=overseas_races,
+        ),
+        'distance_suitability_v2': compute_distance_suitability_v2(
             races, today_venue=today_venue, today_dist=today_dist, race_date=race_date,
             overseas_races=overseas_races,
         ),
@@ -1979,6 +2183,10 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     lines.append(
         "- **個別場地性能 (Shadow):** "
         + format_surface_performance_shadow(stats['surface_performance_shadow'])
+    )
+    lines.append(
+        "- **路程適性 V2:** "
+        + format_distance_suitability_v2(stats['distance_suitability_v2'])
     )
     
     # === 完整賽績檔案 Markdown Table ===

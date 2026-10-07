@@ -89,15 +89,26 @@ DISTANCE_SUITABILITY_MICRO_WEIGHTS = {
     "same_dist_unplaced_pen": -1.55,
 }
 
+# EXP-20261007-05.  The component is a within-horse residual rather than a raw
+# same-distance place rate, so general ability is not counted a second time.
+# Sha Tin AWT stays shadow-only because archived AWT surface labels do not yet
+# provide enough point-in-time coverage for a defensible live weight.
+DISTANCE_SUITABILITY_V2_PROFILES = {
+    "HV_TURF": {"weight": 0.08, "cap": 6.0, "variant": "exact_blend"},
+    "ST_TURF": {"weight": 0.02, "cap": 4.0, "variant": "exact_blend"},
+    "ST_AWT": {"weight": 0.0, "cap": 4.0, "variant": "exact_blend"},
+}
+
 
 def distance_suitability_contract_manifest():
     return {
         "source": "point_in_time_same_distance_record",
         "route": "independent_visible_adjustment_outside_class_score",
         "signal_micro": dict(DISTANCE_SUITABILITY_MICRO_WEIGHTS),
+        "v2_shadow_profiles": {key: dict(value) for key, value in DISTANCE_SUITABILITY_V2_PROFILES.items()},
         "legacy_equivalent_class_component_weight": 0.75,
         "legacy_equivalent_outer_weight": MATRIX_WEIGHTS["class_advantage"],
-        "ranking_policy": "exact_migration_no_intended_ranking_change",
+        "ranking_policy": "v1_live_v2_prospective_shadow_pending_primary_gate",
     }
 
 
@@ -107,8 +118,8 @@ RANKING_ADJUSTMENTS = (
     {
         "key": "distance_suitability_adjustment",
         "label": "同程性能修正",
-        "formula": "同程曾入位 +0.43；有同程紀錄但未入位約 -0.17（raw 分）",
-        "missing": "冇 point-in-time 同程紀錄 = 0；不影響 class_score",
+        "formula": "正式V1：同程曾入位 +0.43；有同程紀錄但未入位約 -0.17（raw 分）",
+        "missing": "冇 point-in-time 同程紀錄 = 0；V2 residual 另作 prospective shadow",
     },
 )
 

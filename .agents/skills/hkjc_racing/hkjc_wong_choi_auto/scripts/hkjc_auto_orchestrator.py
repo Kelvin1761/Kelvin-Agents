@@ -725,6 +725,7 @@ DEFAULT_SHADOW_PROFILES = (
     "race_shape_st_draw70",
     "pre_race_draw_context_v1_generic",
     "trainer_recency_st_early90",
+    "distance_suitability_v2",
 )
 
 
@@ -1025,6 +1026,7 @@ class HKJCAutoOrchestrator:
             "race_shape_st_draw70",
             "pre_race_draw_context_v1_generic",
             "trainer_recency_st_early90",
+            "distance_suitability_v2",
         }
         shadows = []
         for profile_name in self.shadow_profiles:
@@ -1048,6 +1050,7 @@ class HKJCAutoOrchestrator:
             "race_shape_st_draw70",
             "pre_race_draw_context_v1_generic",
             "trainer_recency_st_early90",
+            "distance_suitability_v2",
         }
         for profile_name in self.shadow_profiles:
             if profile_name in allowed:
@@ -1071,6 +1074,8 @@ class HKJCAutoOrchestrator:
                     "reason": shadow.get("reason", ""),
                 }
             )
+        if not ranked:
+            return
         ranked.sort(key=lambda item: (-item["ability_score"], int(item["horse_number"]) if item["horse_number"].isdigit() else 999))
         promoted = []
         for idx, item in enumerate(ranked, start=1):

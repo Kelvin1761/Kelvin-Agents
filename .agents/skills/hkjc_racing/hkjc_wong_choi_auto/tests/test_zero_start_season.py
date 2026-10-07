@@ -60,6 +60,68 @@ class ZeroStartSeasonTests(unittest.TestCase):
         self.assertAlmostEqual(adjustment["raw_adjustment"], 0.4284, places=6)
         self.assertEqual(class_score, evaluate("季內 (0-0-0-0)")[0])
 
+    def test_distance_v2_is_recorded_as_shadow_without_replacing_live_v1(self):
+        horse = {
+            "career_tag": "ESTABLISHED",
+            "career_race_starts": 15,
+            "is_debut": False,
+            "season_stats": "季內 (0-0-0-0) | 同程 (1-0-0-1)",
+            "distance_suitability_v2": (
+                "今場=跑馬地草地 66.0分 | 目標有效樣本=2.0(原始3) | "
+                "場地基準有效樣本=4.0(原始6) | 採用來源=local_history"
+            ),
+        }
+        engine = RacingEngine(horse, {"venue": "跑馬地", "distance": "1200"})
+        features = {"class_score": 60.0, "weight_score": 60.0}
+        matrix = map_features_to_matrix_scores(features)
+        adjustment = engine._distance_suitability_adjustment(features, matrix)
+
+        self.assertEqual(adjustment["signal"], "same_distance_placed")
+        self.assertGreater(adjustment["raw_adjustment"], 0.0)
+        self.assertEqual(adjustment["v2_shadow"]["profile"]["weight"], 0.08)
+        self.assertEqual(adjustment["v2_shadow"]["component_score"], 66.0)
+        self.assertEqual(
+            adjustment["v2_shadow"]["status"],
+            "prospective_shadow_pending_primary_gate",
+        )
+
+    def test_distance_v2_awt_is_visible_but_not_ranked(self):
+        horse = {
+            "career_tag": "ESTABLISHED", "career_race_starts": 5,
+            "distance_suitability_v2": (
+                "今場=沙田AWT 68.0分 | 目標有效樣本=1.0(原始1) | "
+                "場地基準有效樣本=2.0(原始2) | 採用來源=foreign_dirt_synthetic"
+            ),
+        }
+        engine = RacingEngine(horse, {"venue": "沙田", "surface": "AWT", "distance": "1200"})
+        features = {"class_score": 60.0, "weight_score": 60.0}
+        matrix = map_features_to_matrix_scores(features)
+        adjustment = engine._distance_suitability_adjustment(features, matrix)
+
+        self.assertEqual(adjustment["signal"], "neutral")
+        self.assertEqual(adjustment["raw_adjustment"], 0.0)
+        self.assertEqual(adjustment["v2_shadow"]["profile"]["weight"], 0.0)
+        self.assertEqual(adjustment["v2_shadow"]["candidate_raw_adjustment"], 0.0)
+
+    def test_distance_v2_standard_shadow_replaces_v1_only_inside_candidate(self):
+        horse = {
+            "career_tag": "ESTABLISHED", "career_race_starts": 10,
+            "season_stats": "季內 (0-0-0-0) | 同程 (1-0-0-2)",
+            "distance_suitability_v2": (
+                "今場=跑馬地草地 65.0分 | 目標有效樣本=2.0(原始2) | "
+                "場地基準有效樣本=3.0(原始4) | 採用來源=local_history"
+            ),
+        }
+        engine = RacingEngine(horse, {"venue": "跑馬地", "distance": "1200"})
+        baseline = engine.analyze_horse()
+        shadow = engine.build_shadow_profile("distance_suitability_v2", base_auto=baseline)
+
+        self.assertTrue(shadow["applied"])
+        self.assertEqual(shadow["profile"], "distance_suitability_v2")
+        self.assertEqual(shadow["surface"], "HV_TURF")
+        self.assertEqual(shadow["candidate_profile"]["weight"], 0.08)
+        self.assertEqual(shadow["evidence_status"], "prospective_shadow_pending_primary_gate")
+
     def test_two_wins_from_six_is_proven_distance_and_not_a_risk(self):
         horse = {
             "career_tag": "ESTABLISHED",

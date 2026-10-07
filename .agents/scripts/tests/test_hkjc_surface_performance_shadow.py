@@ -53,6 +53,57 @@ def test_surface_shadow_separates_st_turf_hv_and_awt() -> None:
     assert payload["surfaces"]["沙田AWT"]["score"] > 60.0
 
 
+def test_awt_hidden_in_rail_is_not_misclassified_as_sha_tin_turf() -> None:
+    row = _race("2026-05-15", "沙田", 1200, 2)
+    row["rail"] = "AWT"
+    payload = facts.compute_surface_performance_shadow(
+        [row], today_venue="沙田AWT", today_dist=1200, race_date="2026-06-01"
+    )
+    assert payload["surfaces"]["沙田AWT"]["runs"] == 1
+    assert payload["surfaces"]["沙田草地"]["runs"] == 0
+
+
+def test_distance_v2_is_within_horse_residual_not_raw_ability() -> None:
+    # Equally strong at 1200 and 1400: no route-specialist reward.
+    balanced = facts.compute_distance_suitability_v2(
+        [
+            _race("2026-05-01", "跑馬地", 1200, 1),
+            _race("2026-04-01", "跑馬地", 1400, 1),
+        ],
+        today_venue="跑馬地", today_dist=1200, race_date="2026-06-01",
+    )
+    # Better at the target than at the horse's same-surface baseline.
+    specialist = facts.compute_distance_suitability_v2(
+        [
+            _race("2026-05-01", "跑馬地", 1200, 1),
+            _race("2026-04-01", "跑馬地", 1400, 9),
+        ],
+        today_venue="跑馬地", today_dist=1200, race_date="2026-06-01",
+    )
+    assert specialist["score"] > balanced["score"]
+    assert specialist["target_runs"] == 1
+    assert specialist["surface_runs"] == 2
+
+
+def test_distance_v2_missing_target_evidence_is_strictly_neutral() -> None:
+    payload = facts.compute_distance_suitability_v2(
+        [_race("2026-05-01", "沙田", 1400, 1)],
+        today_venue="沙田", today_dist=1200, race_date="2026-06-01",
+    )
+    assert payload["target_runs"] == 0
+    assert payload["score"] == 60.0
+    assert payload["residual"] == 0.0
+
+
+def test_distance_v2_round_trips_from_facts_summary() -> None:
+    line = (
+        "- **路程適性 V2:** 今場=跑馬地草地 63.2分 | "
+        "目標有效樣本=2.0(原始3) | 場地基準有效樣本=4.0(原始6)"
+    )
+    parsed = logic.parse_summary(line)
+    assert parsed["distance_suitability_v2"].startswith("今場=跑馬地草地 63.2分")
+
+
 def test_surface_shadow_is_strictly_point_in_time_and_distance_matched() -> None:
     payload = facts.compute_surface_performance_shadow(
         [

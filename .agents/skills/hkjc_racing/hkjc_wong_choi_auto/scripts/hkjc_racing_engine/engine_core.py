@@ -49,6 +49,7 @@ _WEIGHT_SHADOW_PROFILES = {
     "pre_race_draw_context_v1_generic",
 }
 _TRAINER_RECENCY_SHADOW_PROFILE = "trainer_recency_st_early90"
+_DISTANCE_SUITABILITY_V2_SHADOW_PROFILE = "distance_suitability_v2"
 
 
 def scoring_run_contract():
@@ -263,11 +264,13 @@ class RacingEngine:
         return clip_score(score), note, "career_context"
 
     def _distance_suitability_adjustment(self, features, matrix_scores):
-        """Move same-distance evidence out of class without changing ranking.
+        """Keep V1 live and calculate surface-specific V2 as a shadow.
 
-        The old formula changed ``class_score`` before the 75/25 class/weight
-        blend.  Reconstructing only that rounded contribution here makes the
-        semantic route explicit while remaining bit-for-bit score equivalent.
+        New Logic carries a PIT within-horse residual: target-distance form
+        minus the same horse's all-distance form on the same surface.  Older
+        Logic has no V2 payload and therefore exposes no shadow.  The official
+        adjustment remains the exact V1 migration, preserving reproducibility
+        while new meetings collect genuinely unseen V2 outcomes.
         """
         neutral = {
             "raw_adjustment": 0.0,
@@ -280,8 +283,34 @@ class RacingEngine:
             neutral["signal"] = "debut_neutral"
             neutral["note"] = "初出馬未有同程正式賽績，路程適性調整為0。"
             return neutral
+
+        v2 = self._distance_suitability_v2_component()
+        v2_shadow = None
+        if v2["available"]:
+            profile = scoring.DISTANCE_SUITABILITY_V2_PROFILES[v2["surface"]]
+            weight = float(profile["weight"])
+            cap = float(profile["cap"])
+            component = 60.0 + max(-cap, min(cap, float(v2["score"]) - 60.0))
+            base_raw = float(self._ability_score(matrix_scores))
+            candidate_raw = (1.0 - weight) * base_raw + weight * component
+            adjustment = round(candidate_raw - base_raw, 6)
+            v2_shadow = {
+                "candidate_raw_adjustment": adjustment,
+                "status": "prospective_shadow_pending_primary_gate",
+                "score": round(float(v2["score"]), 2),
+                "surface": v2["surface"],
+                "source": v2["source"],
+                "target_effective_n": v2["target_effective_n"],
+                "surface_effective_n": v2["surface_effective_n"],
+                "profile": dict(profile),
+                "component_score": round(component, 2),
+            }
+
+        # V1 remains official until the prospective V2 primary gate passes.
         record = self._same_distance_record()
         if not record or record["starts"] <= 0:
+            if v2_shadow is not None:
+                neutral["v2_shadow"] = v2_shadow
             return neutral
         if record["places"] > 0:
             micro = scoring.DISTANCE_SUITABILITY_MICRO_WEIGHTS["same_dist_place_bonus"]
@@ -301,13 +330,39 @@ class RacingEngine:
             (legacy_dimension - clean_dimension) * MATRIX_WEIGHTS["class_advantage"],
             6,
         )
-        return {
+        output = {
             "raw_adjustment": raw_adjustment,
             "signal": signal,
             "same_distance_starts": int(record["starts"]),
             "same_distance_places": int(record["places"]),
             "micro_signal": micro,
             "note": note,
+        }
+        if v2_shadow is not None:
+            output["v2_shadow"] = v2_shadow
+        return output
+
+    def _distance_suitability_v2_component(self):
+        """Parse the deterministic V2 payload transported by Facts to Logic."""
+        text = self._clean(self._value("distance_suitability_v2") or "")
+        score_match = re.search(r"今場=.*?\s(\d+(?:\.\d+)?)分", text)
+        target_match = re.search(r"目標有效樣本=(\d+(?:\.\d+)?)", text)
+        surface_n_match = re.search(r"場地基準有效樣本=(\d+(?:\.\d+)?)", text)
+        source_match = re.search(r"採用來源=([^|]+)", text)
+        if self._is_happy_valley_context():
+            surface = "HV_TURF"
+        elif self._is_sha_tin_turf_context():
+            surface = "ST_TURF"
+        else:
+            surface = "ST_AWT"
+        score = parse_float(score_match.group(1)) if score_match else None
+        return {
+            "available": score is not None,
+            "score": round(clip_score(score if score is not None else 60.0), 2),
+            "surface": surface,
+            "target_effective_n": round(float(parse_float(target_match.group(1)) or 0.0), 2) if target_match else 0.0,
+            "surface_effective_n": round(float(parse_float(surface_n_match.group(1)) or 0.0), 2) if surface_n_match else 0.0,
+            "source": source_match.group(1).strip() if source_match else "missing_neutral",
         }
 
     def _distance_score(self, _features):
@@ -849,6 +904,8 @@ class RacingEngine:
             return self._build_weight_race_shape_shadow(profile_name, base_auto=base_auto)
         if profile_name == _TRAINER_RECENCY_SHADOW_PROFILE:
             return self._build_trainer_recency_shadow(base_auto=base_auto)
+        if profile_name == _DISTANCE_SUITABILITY_V2_SHADOW_PROFILE:
+            return self._build_distance_suitability_v2_shadow(base_auto=base_auto)
         if profile_name != "consistency_context":
             return None
         auto = base_auto or self.analyze_horse()
@@ -885,6 +942,52 @@ class RacingEngine:
             "consistency_delta": round(float(shadow_features.get("consistency_score", 60.0)) - float(base_features.get("consistency_score", 60.0)), 2),
             "matrix_scores": matrix_scores,
             "reason": reason,
+        }
+
+    def _build_distance_suitability_v2_shadow(self, base_auto=None):
+        """Return the frozen EXP-20261007-05 candidate without live effect."""
+        auto = base_auto or self.analyze_horse()
+        matrix_scores = auto.get("matrix_scores", {}) if isinstance(auto, dict) else {}
+        if not isinstance(matrix_scores, dict) or not matrix_scores:
+            return None
+        v2 = self._distance_suitability_v2_component()
+        if not v2["available"]:
+            return None
+        profile = scoring.DISTANCE_SUITABILITY_V2_PROFILES[v2["surface"]]
+        weight = float(profile["weight"])
+        cap = float(profile["cap"])
+        component = 60.0 + max(-cap, min(cap, float(v2["score"]) - 60.0))
+        clean_raw = float(self._ability_score(matrix_scores))
+        candidate_raw = round((1.0 - weight) * clean_raw + weight * component, 2)
+        candidate_score = round(to_display_scale(candidate_raw), 2)
+        base_score = float(auto.get("ability_score", candidate_score))
+        applied = bool(weight > 0)
+        if v2["surface"] == "ST_AWT":
+            reason = "AWT 完整表歷史 surface 覆蓋不足；只記錄證據，不改 shadow 排名。"
+        elif v2["target_effective_n"] <= 0:
+            reason = "冇目標路程 PIT 證據；候選以中性60作獨立 component。"
+        else:
+            reason = (
+                f"同馬同場地目標路程後驗減全路程後驗；{v2['surface']} "
+                f"weight={weight:.2f}, cap={cap:.0f}。"
+            )
+        return {
+            "profile": _DISTANCE_SUITABILITY_V2_SHADOW_PROFILE,
+            "applied": applied,
+            "ability_score": candidate_score if applied else base_score,
+            "ability_score_raw": candidate_raw if applied else float(auto.get("ability_score_raw", clean_raw)),
+            "ability_delta": round((candidate_score if applied else base_score) - base_score, 2),
+            "grade": compute_grade(candidate_score if applied else base_score),
+            "matrix_scores": dict(matrix_scores),
+            "distance_score": round(float(v2["score"]), 2),
+            "component_score": round(component, 2),
+            "surface": v2["surface"],
+            "source": v2["source"],
+            "target_effective_n": v2["target_effective_n"],
+            "surface_effective_n": v2["surface_effective_n"],
+            "candidate_profile": dict(profile),
+            "reason": reason,
+            "evidence_status": "prospective_shadow_pending_primary_gate",
         }
 
     def _is_early_season_context(self):

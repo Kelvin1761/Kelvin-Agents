@@ -144,6 +144,10 @@ def parse_summary(block):
     if m:
         result['surface_performance_shadow'] = m.group(1).strip()
 
+    m = re.search(r'\*\*路程適性 V2:\*\*\s*(.+?)$', block, re.MULTILINE)
+    if m:
+        result['distance_suitability_v2'] = m.group(1).strip()
+
     # Extract wins/starts from career line: 生涯：N: W-P-S
     m = re.search(r'生涯：\s*(\d+)\s*[::∶]\s*(\d+)', block)
     if m:
@@ -1417,6 +1421,7 @@ def build_skeleton(
     days_since = data.get('days_since_last', 0)
     season_stats = data.get('season_stats', 'N/A')
     surface_performance_shadow = data.get('surface_performance_shadow', 'N/A')
+    distance_suitability_v2 = data.get('distance_suitability_v2', 'N/A')
     margin_trend = data.get('margin_trend', 'N/A')
     weight_trend = data.get('weight_trend', 'N/A')
     gear = data.get('gear', 'N/A')
@@ -1699,6 +1704,7 @@ def build_skeleton(
         'days_since_last': days_since,
         'season_stats': season_stats,
         'surface_performance_shadow': surface_performance_shadow,
+        'distance_suitability_v2': distance_suitability_v2,
         'trackwork': raw_trackwork,
         'career_tag': career_tag,
         'career_race_starts': hk_starts,
@@ -1720,6 +1726,7 @@ def build_skeleton(
             'recent_6_detail': r6_str,
             'season_stats_line': season_stats,
             'surface_performance_shadow': surface_performance_shadow,
+            'distance_suitability_v2': distance_suitability_v2,
             'pedigree_profile': {
                 'status': pedigree_profile.get('status', 'missing'),
                 'sire': pedigree_profile.get('sire', ''),
