@@ -14,6 +14,7 @@ from trainer import TrainerScorer
 from .live_priors import (
     TrainerSignalPriors,
     empty_trainer_signal_priors,
+    get_recency_trainer_rating,
     prior_source_manifest,
     temporal_source_is_safe,
 )
@@ -21,15 +22,33 @@ from .matrix_mapper import (
     MATRIX_FORMULAS,
     map_features_to_matrix,
     map_features_to_matrix_scores,
-    formula_share,
     matrix_formula_manifest,
 )
 from . import scoring
+from .rail_draw_context import rail_draw_context_adjustment
 from .scoring import (DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade,
                       parse_float, parse_record, score_band, to_dimension_display,
                       to_display_scale)
 
 _TRAINER_SIGNAL_PRIORS = None
+
+# Frozen prospective candidates from EXP-20260928-09.  These weights never
+# replace MATRIX_WEIGHTS: they live only inside `shadow_profiles`, so the
+# official ranking and run contract remain bit-for-bit mainline.
+_WEIGHT_REFIT_T02 = {
+    **MATRIX_WEIGHTS,
+    "stability": 0.1183,
+    "race_shape": 0.2537,
+}
+_WEIGHT_SHADOW_PROFILES = {
+    "weight_refit_t02",
+    "race_shape_v3_hv",
+    "race_shape_v3_hv_t02",
+    "race_shape_v2_legacy_hv",
+    "race_shape_st_draw70",
+    "pre_race_draw_context_v1_generic",
+}
+_TRAINER_RECENCY_SHADOW_PROFILE = "trainer_recency_st_early90"
 
 
 def scoring_run_contract():
@@ -39,6 +58,7 @@ def scoring_run_contract():
         "standard_matrix_weights": dict(MATRIX_WEIGHTS),
         "debut_matrix_weights": dict(DEBUT_MATRIX_WEIGHTS),
         "matrix_formulas": matrix_formula_manifest(),
+        "race_shape_formula": scoring.race_shape_contract_manifest(),
         "dimension_evidence_blends": {},
         "grade_thresholds": [
             {"minimum": minimum, "grade": grade}
@@ -223,7 +243,8 @@ class RacingEngine:
             elif starts <= 8:
                 score += scoring.CLASS_MICRO_WEIGHTS.get("starts_8_pen", -2.0)
                 notes.append("樣本薄")
-        if season:
+        # A new season's 0-0-0-0 is no evidence, not an unsuccessful campaign.
+        if season and season["starts"] > 0:
             if season["places"] >= 3:
                 score += scoring.CLASS_MICRO_WEIGHTS.get("season_place_3_bonus", 4.0)
                 notes.append("季內有交代")
@@ -608,7 +629,8 @@ class RacingEngine:
         fit_why = fit_note.replace("匹配面：", "").rstrip("。")
         trip_why = trip_note.rstrip("。")
         rail = self._rail_label()
-        if self._is_sha_tin_context():
+        is_sha_tin = self._is_sha_tin_context()
+        if is_sha_tin:
             w = scoring.RACE_SHAPE_CONTEXT_WEIGHTS
             score = clip_score(draw * w["sha_tin_draw"] + fit_score * w["sha_tin_draw_position_fit"] + trip_score * w["sha_tin_trip_consumption"])
             combine = "沙田加權 檔位55%＋走位匹配25%＋近仗消耗20%"
@@ -616,12 +638,42 @@ class RacingEngine:
             delta, _items = self._race_shape_context_delta()
             score = clip_score(draw + delta)
             combine = f"跑馬地以檔位為主，走位情境微調 {delta:+.0f}"
+        legacy_score = score
+        surface = None
+        live_profile = "sha_tin_legacy" if is_sha_tin else "legacy_v2"
+        if (
+            self._is_happy_valley_context()
+            and not self._is_debut()
+            and scoring.active_happy_valley_race_shape_profile() == "v3_surface"
+        ):
+            surface = self._surface_performance_shadow_component()
+            gain = scoring.HAPPY_VALLEY_RACE_SHAPE_V3_SURFACE_GAIN
+            score = clip_score(draw + gain * (float(surface["score"]) - 60.0))
+            live_profile = "v3_surface"
+            combine = "跑馬地實驗主線：檔位＋個別谷草性能；歷史匹配／近仗消耗不入分"
         self.race_shape_detail = {
             "draw": round(draw, 1), "fit": round(fit_score, 1), "trip": round(trip_score, 1),
             "fit_why": fit_why, "trip_why": trip_why, "combine": combine, "rail": rail,
+            "live_profile": live_profile,
+            "legacy_score": round(float(legacy_score), 2),
+            "surface_performance": surface,
+            "field_tempo": "withheld_insufficient_reliability" if live_profile == "v3_surface" else None,
+            "rail_draw_context": self._live_rail_draw_context(),
         }
         note = f"排{barrier}檔　{score:.0f}分" + (f"（{rail}賽道）" if rail else "")
         return score, note, "race_shape_context"
+
+    def _live_rail_draw_context(self):
+        source = rail_draw_context_adjustment(
+            self.race_context or {},
+            self.horse_data.get("barrier") or self.horse_data.get("draw"),
+        )
+        if self._is_debut():
+            source = dict(source)
+            source["applied"] = False
+            source["adjustment"] = 0.0
+            source["reason"] = "debut_formula_locked"
+        return source
 
     def _rail_label(self):
         """今場賽道（A/B/C/C+3 等），顯示用。由 race_context 讀（賽前 pipeline 注入）；
@@ -632,18 +684,30 @@ class RacingEngine:
                 return v
         return None
 
+    def _is_happy_valley_context(self):
+        text = str(
+            self.race_context.get("venue")
+            or self.race_context.get("course")
+            or self.race_context.get("racecourse")
+            or ""
+        )
+        return any(token in text for token in ("HV", "Happy Valley", "HappyValley", "跑馬地"))
+
     def _draw_position_fit_score(self):
-        text = self._text("draw_position_fit", "position_pi", "running_style")
+        # `running_style` was a next-race positional forecast.  Recent HV
+        # validation was only ~44-46% accurate, so it must not influence the
+        # score.  Keep only observed historical lane/draw fit and position PI.
+        text = self._text("draw_position_fit", "position_pi")
         weights = scoring.RACE_SHAPE_FIT_WEIGHTS
         score = weights["base"]
         details = []
         if "✅匹配" in text:
             score += weights["match_bonus"]
-            details.append("檔位與跑法匹配")
+            details.append("檔位與歷史走位匹配")
         if "❌錯配" in text or "錯配!" in text:
             score += weights["mismatch_pen"]
             self.risk_flags.append("draw_position_mismatch")
-            details.append("檔位與跑法有錯配")
+            details.append("檔位與歷史走位有錯配")
         if "⚠️需主動切入" in text:
             score += weights["active_slot_pen"]
             self.risk_flags.append("needs_active_slotting")
@@ -660,8 +724,8 @@ class RacingEngine:
         elif "微跌" in text:
             score += weights["pi_micro_down_pen"]
             details.append("走位 PI 微跌")
-        detail = "；".join(details) if details else "檔位跑法匹配未見鮮明偏差"
-        return clip_score(score), f"匹配面：{detail}。"
+        detail = "；".join(details) if details else "歷史檔位走位未見鮮明偏差"
+        return clip_score(score), f"歷史匹配面：{detail}。"
 
     def _trip_consumption_score(self):
         text = self._clean(self._value("position_window") or "")
@@ -682,7 +746,9 @@ class RacingEngine:
         return clip_score(score), f"近{len(scores)}仗走位消耗以{'、'.join(labels)}為主。"
 
     def _race_shape_context_delta(self):
-        text = self._text("draw_position_fit", "position_pi", "position_window", "running_style")
+        # Do not use the low-accuracy next-race running-style forecast.  The
+        # remaining inputs are all observations from completed prior races.
+        text = self._text("draw_position_fit", "position_pi")
         weights = scoring.RACE_SHAPE_CONTEXT_DELTA_WEIGHTS
         delta = 0.0
         items = []  # 逐項 {factor, delta, why}
@@ -691,10 +757,10 @@ class RacingEngine:
             delta += d
             items.append({"factor": factor, "delta": round(d, 2), "why": why})
         if "✅匹配" in text:
-            add("走位匹配", weights["match_bonus"], "檔位跑法匹配")
+            add("歷史走位匹配", weights["match_bonus"], "檔位與歷史走位匹配")
         if "❌錯配" in text or "錯配!" in text:
             self.risk_flags.append("draw_position_mismatch")
-            add("走位匹配", weights["mismatch_pen"], "檔位跑法錯配")
+            add("歷史走位匹配", weights["mismatch_pen"], "檔位與歷史走位錯配")
         if "⚠️需主動切入" in text:
             self.risk_flags.append("needs_active_slotting")
             add("走位匹配", weights["active_slot_pen"], "需要主動切入")
@@ -702,10 +768,6 @@ class RacingEngine:
             add("走位PI", weights["pi_up_bonus"], "走位 PI 上升")
         elif "衰退中" in text:
             add("走位PI", weights["pi_down_pen"], "走位 PI 衰退")
-        if "信心: 高" in text:
-            add("位置窗信心", weights["high_conf_bonus"], "位置窗信心較高")
-        elif "信心: 低" in text:
-            add("位置窗信心", weights["low_conf_pen"], "位置窗信心較低")
         recent = self._clean(self._value("position_window") or "").split("|")[0]
         if "低消耗" in recent:
             add("近仗消耗", weights["recent_low_consumption_bonus"], "最近走位低消耗")
@@ -724,6 +786,21 @@ class RacingEngine:
             return sum(matrix_scores[key] * weight for key, weight in MATRIX_WEIGHTS.items())
 
     def build_shadow_profile(self, profile_name, base_auto=None):
+        incident_modes = {
+            "incident_reliability_m": "median",
+            "incident_reliability_r": "reliability",
+            "incident_reliability": "combined",
+        }
+        if profile_name in incident_modes:
+            return self._build_incident_reliability_shadow(
+                profile_name,
+                incident_modes[profile_name],
+                base_auto=base_auto,
+            )
+        if profile_name in _WEIGHT_SHADOW_PROFILES:
+            return self._build_weight_race_shape_shadow(profile_name, base_auto=base_auto)
+        if profile_name == _TRAINER_RECENCY_SHADOW_PROFILE:
+            return self._build_trainer_recency_shadow(base_auto=base_auto)
         if profile_name != "consistency_context":
             return None
         auto = base_auto or self.analyze_horse()
@@ -760,6 +837,424 @@ class RacingEngine:
             "consistency_delta": round(float(shadow_features.get("consistency_score", 60.0)) - float(base_features.get("consistency_score", 60.0)), 2),
             "matrix_scores": matrix_scores,
             "reason": reason,
+        }
+
+    def _is_early_season_context(self):
+        """Frozen shadow phase: September through December, no live effect."""
+        raw = str((self.race_context or {}).get("race_date") or "")[:10]
+        try:
+            return _dt.date.fromisoformat(raw).month in {9, 10, 11, 12}
+        except ValueError:
+            return False
+
+    def _build_trainer_recency_shadow(self, base_auto=None):
+        """Forward-only ST early-season trainer-recency candidate.
+
+        Only the trainer master-rating base changes.  Existing combo/distance/
+        change context is preserved through the observed base→final delta.
+        """
+        auto = base_auto or self.analyze_horse()
+        base_features = auto.get("feature_scores", {}) if isinstance(auto, dict) else {}
+        base_matrix = auto.get("matrix_scores", {}) if isinstance(auto, dict) else {}
+        if not isinstance(base_features, dict) or not isinstance(base_matrix, dict):
+            return None
+        eligible = (
+            self._is_sha_tin_turf_context()
+            and self._is_early_season_context()
+            and not self._is_debut()
+        )
+        trainer = self._clean(self.horse_data.get("trainer"))
+        recency = get_recency_trainer_rating(
+            trainer,
+            as_of_date=(self.race_context or {}).get("race_date"),
+        ) if eligible and trainer else None
+        matrix_scores = {
+            key: round(float(base_matrix.get(key, 60.0)), 2)
+            for key in MATRIX_WEIGHTS
+        }
+        base_trainer = float(base_features.get("trainer_score", 60.0) or 60.0)
+        candidate_trainer = base_trainer
+        context_delta = 0.0
+        detail = auto.get("trainer_signal_detail") or self.trainer_signal_detail or {}
+        if isinstance(detail, dict):
+            try:
+                context_delta = float(detail.get("trainer_final", base_trainer)) - float(
+                    detail.get("trainer_base", base_trainer)
+                )
+            except (TypeError, ValueError):
+                context_delta = 0.0
+        applied = recency is not None
+        if applied:
+            candidate_trainer = clip_score(float(recency["score"]) + context_delta)
+            trainer_delta = candidate_trainer - base_trainer
+            matrix_scores["trainer_signal"] = round(
+                clip_score(float(matrix_scores["trainer_signal"]) + 0.45 * trainer_delta),
+                2,
+            )
+        ability_raw = round(self._ability_score(matrix_scores), 2)
+        ability_score = round(to_display_scale(ability_raw), 2)
+        base_ability = float(auto.get("ability_score", ability_score))
+        if not eligible:
+            reason = "只限9至12月沙田草地非初出馬；今場沿用production。"
+        elif recency is None:
+            reason = "90日trainer recency來源不可用；沿用production。"
+        else:
+            reason = (
+                f"季初沙田前瞻shadow：練馬師90日半衰實績"
+                f"（有效{float(recency['starts']):.1f}仗）取代master base；"
+                "騎師、騎練組合、同程及其他維度不變。"
+            )
+        return {
+            "profile": _TRAINER_RECENCY_SHADOW_PROFILE,
+            "applied": applied,
+            "ability_score": ability_score,
+            "ability_score_raw": ability_raw,
+            "ability_delta": round(ability_score - base_ability, 2),
+            "grade": compute_grade(ability_score),
+            "matrix_scores": matrix_scores,
+            "trainer_base_score": round(base_trainer, 2),
+            "trainer_candidate_score": round(candidate_trainer, 2),
+            "trainer_context_delta": round(context_delta, 2),
+            "recency_source": dict(recency) if recency else None,
+            "reason": reason,
+            "evidence_status": "prospective_shadow_only_posthoc_season_phase",
+        }
+
+    def _surface_performance_shadow_component(self):
+        """Read the deterministic PIT surface score transported by Facts→Logic.
+
+        The source string is produced by `compute_surface_performance_shadow` and
+        carries the target score, effective prior-only sample and provenance.  A
+        missing/malformed value is neutral rather than guessed.
+        """
+        text = self._clean(self._value("surface_performance_shadow") or "")
+        score_match = re.search(r"今場=.*?\s(\d+(?:\.\d+)?)分", text)
+        sample_match = re.search(r"今場=.*?有效樣本(\d+(?:\.\d+)?)", text)
+        source_match = re.search(r"採用來源=([^|]+)", text)
+        score = parse_float(score_match.group(1)) if score_match else None
+        effective_n = parse_float(sample_match.group(1)) if sample_match else None
+        return {
+            "score": round(clip_score(score if score is not None else 60.0), 2),
+            "effective_n": round(float(effective_n or 0.0), 2),
+            "source": source_match.group(1).strip() if source_match else "missing_neutral",
+            "available": score is not None,
+        }
+
+    def _race_shape_v3_hv_score(self, auto):
+        """Frozen HV-only V3 component candidate from EXP-20260928-03.
+
+        Sha Tin stays on the production race-shape score.  Happy Valley uses
+        draw plus prior-only individual surface performance.  Historical lane
+        fit and trip consumption remain visible for ablation diagnostics but
+        have zero candidate weight.  The field-tempo component is explicitly
+        withheld until a reliable pre-race source exists; the removed next-race
+        positional forecast must not leak back through a renamed feature.
+        """
+        base_matrix = auto.get("matrix_scores", {}) if isinstance(auto, dict) else {}
+        base_shape = float(base_matrix.get("race_shape", 60.0))
+        detail = auto.get("race_shape_detail", {}) if isinstance(auto, dict) else {}
+        detail = detail if isinstance(detail, dict) else {}
+        draw = float(detail.get("draw", 60.0) or 60.0)
+        fit = float(detail.get("fit", 60.0) or 60.0)
+        trip = float(detail.get("trip", 60.0) or 60.0)
+        surface = self._surface_performance_shadow_component()
+        is_hv = self._is_happy_valley_context()
+        candidate = base_shape
+        if is_hv:
+            candidate = clip_score(
+                draw
+                + scoring.HAPPY_VALLEY_RACE_SHAPE_V3_SURFACE_GAIN
+                * (float(surface["score"]) - 60.0)
+            )
+        components = {
+            "venue": "HV" if is_hv else "ST_OR_OTHER",
+            "draw": round(draw, 2),
+            "historical_lane_fit": round(fit, 2),
+            "historical_trip_consumption": round(trip, 2),
+            "surface_performance": surface,
+            "field_tempo": {
+                "status": "withheld_insufficient_reliability",
+                "score_weight": 0.0,
+                "reason": "未有可靠賽前來源；不使用今仗位置預測。",
+            },
+            "formula": "HV=draw+0.45*(surface-60); ST=production",
+            "fit_weight": 0.0 if is_hv else None,
+            "trip_weight": 0.0 if is_hv else None,
+        }
+        return round(float(candidate), 2), components, is_hv
+
+    def _race_shape_v2_legacy_hv_score(self, auto):
+        """Return the frozen pre-V3 HV score for rollback surveillance."""
+        base_matrix = auto.get("matrix_scores", {}) if isinstance(auto, dict) else {}
+        base_shape = float(base_matrix.get("race_shape", 60.0))
+        detail = auto.get("race_shape_detail", {}) if isinstance(auto, dict) else {}
+        detail = detail if isinstance(detail, dict) else {}
+        is_hv = self._is_happy_valley_context() and not self._is_debut()
+        legacy = float(detail.get("legacy_score", base_shape) or base_shape)
+        score = clip_score(legacy) if is_hv else base_shape
+        return round(float(score), 2), {
+            "venue": "HV" if is_hv else "ST_OR_OTHER",
+            "formula": "HV=legacy_v2; ST=production",
+            "live_shape": round(base_shape, 2),
+            "legacy_shape": round(float(score), 2),
+            "field_tempo": {
+                "status": "withheld_insufficient_reliability",
+                "score_weight": 0.0,
+                "reason": "rollback comparator does not restore predicted running style",
+            },
+        }, is_hv
+
+    def _race_shape_st_draw70_score(self, auto):
+        """Frozen Sha Tin turf-only forward candidate from EXP-20260929-02."""
+        base_matrix = auto.get("matrix_scores", {}) if isinstance(auto, dict) else {}
+        base_shape = float(base_matrix.get("race_shape", 60.0))
+        detail = auto.get("race_shape_detail", {}) if isinstance(auto, dict) else {}
+        detail = detail if isinstance(detail, dict) else {}
+        draw = float(detail.get("draw", 60.0) or 60.0)
+        fit = float(detail.get("fit", 60.0) or 60.0)
+        trip = float(detail.get("trip", 60.0) or 60.0)
+        applied = self._is_sha_tin_turf_context() and not self._is_debut()
+        candidate = clip_score(0.70 * draw + 0.15 * fit + 0.15 * trip) if applied else base_shape
+        return round(float(candidate), 2), {
+            "venue": "ST_TURF" if applied else "OTHER",
+            "draw": round(draw, 2),
+            "historical_lane_fit": round(fit, 2),
+            "historical_trip_consumption": round(trip, 2),
+            "formula": "ST_TURF=0.70*draw+0.15*fit+0.15*trip; other=production",
+        }, applied
+
+    def _build_weight_race_shape_shadow(self, profile_name, base_auto=None):
+        auto = base_auto or self.analyze_horse()
+        base_matrix = auto.get("matrix_scores", {}) if isinstance(auto, dict) else {}
+        if not isinstance(base_matrix, dict) or sorted(base_matrix) != sorted(MATRIX_WEIGHTS):
+            return None
+
+        matrix_scores = {key: round(float(base_matrix.get(key, 60.0)), 2) for key in MATRIX_WEIGHTS}
+        components = None
+        v3_applied = False
+        if profile_name in {"race_shape_v3_hv", "race_shape_v3_hv_t02"}:
+            shape_score, components, v3_applied = self._race_shape_v3_hv_score(auto)
+            matrix_scores["race_shape"] = shape_score
+        elif profile_name == "race_shape_v2_legacy_hv":
+            shape_score, components, v3_applied = self._race_shape_v2_legacy_hv_score(auto)
+            matrix_scores["race_shape"] = shape_score
+        elif profile_name == "race_shape_st_draw70":
+            shape_score, components, v3_applied = self._race_shape_st_draw70_score(auto)
+            matrix_scores["race_shape"] = shape_score
+        elif profile_name == "pre_race_draw_context_v1_generic":
+            shape_score, components, v3_applied = self._pre_race_draw_context_v1_generic_score(auto)
+            matrix_scores["race_shape"] = shape_score
+
+        uses_refit = profile_name in {"weight_refit_t02", "race_shape_v3_hv_t02"}
+        # The registered weight refit locked the debut formula.  Persist a
+        # no-op shadow row for debutants so prospective coverage is auditable.
+        weights = _WEIGHT_REFIT_T02 if uses_refit and not self._is_debut() else MATRIX_WEIGHTS
+        if self._is_debut():
+            weights = DEBUT_MATRIX_WEIGHTS
+            matrix_scores = {key: round(float(base_matrix.get(key, 60.0)), 2) for key in MATRIX_WEIGHTS}
+            v3_applied = False
+
+        ability_raw = round(sum(float(matrix_scores.get(key, 60.0)) * weight for key, weight in weights.items()), 2)
+        ability_score = round(to_display_scale(ability_raw), 2)
+        base_ability = float(auto.get("ability_score", ability_score))
+        applied = (uses_refit and not self._is_debut()) or v3_applied
+        reasons = []
+        if uses_refit and not self._is_debut():
+            reasons.append("固定將2pp由race-shape轉至stability")
+        if v3_applied:
+            if profile_name == "race_shape_v2_legacy_hv":
+                reasons.append("跑馬地回退對照：使用V3上線前shape")
+            elif profile_name == "race_shape_st_draw70":
+                reasons.append("沙田草地前瞻候選：draw 70%、fit 15%、trip 15%")
+            elif profile_name == "pre_race_draw_context_v1_generic":
+                adjustment = float((components or {}).get("draw_adjustment", 0.0))
+                reasons.append(f"rail/draw V2回退對照：移除正式修正 {adjustment:+.2f}分")
+            else:
+                reasons.append("跑馬地以draw＋PIT個別場地性能重建shape")
+        if self._is_debut():
+            reasons.append("初出馬公式鎖定，候選不套用")
+        elif profile_name.startswith("race_shape_v3") and not v3_applied:
+            reasons.append("非跑馬地，Race Shape V3沿用production")
+
+        return {
+            "profile": profile_name,
+            "applied": applied,
+            "ability_score": ability_score,
+            "ability_score_raw": ability_raw,
+            "ability_delta": round(ability_score - base_ability, 2),
+            "grade": compute_grade(ability_score),
+            "matrix_scores": matrix_scores,
+            "weights": {key: round(float(value), 4) for key, value in weights.items()},
+            "race_shape_components": components,
+            "reason": "；".join(reasons) + "。",
+            "evidence_status": (
+                "experimental_live_rollback_shadow"
+                if profile_name == "race_shape_v2_legacy_hv"
+                else "prospective_shadow_only"
+            ),
+        }
+
+    def _pre_race_draw_context_v1_generic_score(self, auto):
+        """Reconstruct the pre-promotion generic draw formula as a rollback shadow."""
+        base_matrix = auto.get("matrix_scores", {}) if isinstance(auto, dict) else {}
+        base_shape = float(base_matrix.get("race_shape", 60.0))
+        detail = auto.get("race_shape_detail", {}) if isinstance(auto, dict) else {}
+        detail = detail if isinstance(detail, dict) else {}
+        base_draw = float(detail.get("draw", 60.0) or 60.0)
+        source = self._live_rail_draw_context()
+        eligible = not self._is_debut() and bool(source.get("applied"))
+        draw_adjustment = float(source.get("adjustment", 0.0)) if eligible else 0.0
+        generic_draw = clip_score(base_draw - draw_adjustment)
+        shape_gain = 1.0 if self._is_happy_valley_context() else 0.55
+        candidate = clip_score(base_shape - shape_gain * draw_adjustment)
+        components = {
+            "venue": "HV_TURF" if self._is_happy_valley_context() else "ST_TURF_OR_OTHER",
+            "base_draw": round(base_draw, 2),
+            "candidate_draw": round(generic_draw, 2),
+            "draw_adjustment": round(draw_adjustment, 4),
+            "shape_gain": shape_gain,
+            "base_race_shape": round(base_shape, 2),
+            "candidate_race_shape": round(float(candidate), 2),
+            "point_in_time_source": source,
+            "formula": "rollback=live formula with PIT rail adjustment removed",
+        }
+        return round(float(candidate), 2), components, eligible
+
+    def _latest_run_has_medical_incident(self):
+        medical = self._text("medical_flags")
+        return bool(re.search(r"(?:^|[;；]\s*)第1仗\s*[:：]\s*⚠️", medical))
+
+    def _prior_l400_median(self):
+        """Return a chronology-checked pre-incident L400 median.
+
+        Older Logic files stored the sequence newest-to-oldest while current
+        files explicitly store oldest-to-newest.  `raw_l400` is the independent
+        latest-run anchor, so only accept a sequence when it matches one end.
+        """
+        raw_l400 = parse_float(self._value("raw_l400"))
+        trend = self._clean(self._value("l400_trend") or "")
+        if raw_l400 is None or not trend or trend == "N/A":
+            return None
+        sequence = trend.split("趨勢", 1)[0]
+        values = [
+            float(value)
+            for value in re.findall(r"(?<!\d)(\d{2}(?:\.\d+)?)(?!\d)", sequence)
+            if 18.0 <= float(value) <= 35.0
+        ]
+        if len(values) < 3:
+            return None
+        tolerance = 0.03
+        if "最舊" in sequence and "最新" in sequence:
+            if abs(values[-1] - raw_l400) > tolerance:
+                return None
+            prior = values[:-1]
+            direction = "oldest_to_latest"
+        elif abs(values[0] - raw_l400) <= tolerance:
+            prior = values[1:]
+            direction = "latest_to_oldest"
+        elif abs(values[-1] - raw_l400) <= tolerance:
+            prior = values[:-1]
+            direction = "oldest_to_latest_inferred"
+        else:
+            return None
+        ordered = sorted(prior)
+        middle = len(ordered) // 2
+        median = ordered[middle] if len(ordered) % 2 else (ordered[middle - 1] + ordered[middle]) / 2.0
+        return {
+            "raw_l400": round(raw_l400, 2),
+            "prior_median": round(median, 2),
+            "prior_runs": len(prior),
+            "sequence_direction": direction,
+        }
+
+    def _build_incident_reliability_shadow(self, profile_name, mode, base_auto=None):
+        auto = base_auto or self.analyze_horse()
+        base_features = auto.get("feature_scores", {}) if isinstance(auto, dict) else {}
+        base_matrix = auto.get("matrix_scores", {}) if isinstance(auto, dict) else {}
+        if not isinstance(base_features, dict) or not base_features or not isinstance(base_matrix, dict):
+            return None
+
+        latest_incident = self._latest_run_has_medical_incident()
+        adjustments = []
+        adjusted_horse = dict(self.horse_data)
+        adjusted_data = dict(self.data)
+        adjusted_horse["_data"] = adjusted_data
+        l400_context = self._prior_l400_median()
+
+        if latest_incident and mode in {"median", "combined"} and l400_context:
+            adjusted_data["raw_l400"] = f"{l400_context['prior_median']:.2f}"
+            adjustments.append({
+                "factor": "raw_l400",
+                "from": l400_context["raw_l400"],
+                "to": l400_context["prior_median"],
+                "why": f"最近一仗有醫療異常；改用之前{l400_context['prior_runs']}仗中位數",
+            })
+
+        suppress_finish_trend = False
+        if latest_incident and mode in {"reliability", "combined"}:
+            l400_trend = self._clean(adjusted_data.get("l400_trend") or "")
+            if "衰退中" in l400_trend:
+                adjusted_data["l400_trend"] = "異常仗可靠度調整：中性"
+                adjustments.append({"factor": "l400_trend", "from": "衰退中", "to": "中性", "why": "負面趨勢包含醫療異常仗"})
+            energy_trend = self._clean(adjusted_data.get("energy_trend") or "")
+            if "下降" in energy_trend and "⚠️" in energy_trend:
+                adjusted_data["energy_trend"] = "異常仗可靠度調整：中性"
+                adjustments.append({"factor": "energy_trend", "from": "下降", "to": "中性", "why": "負面趨勢包含醫療異常仗"})
+            finish_time = self._clean(adjusted_data.get("finish_time_block") or "")
+            if "退步" in finish_time:
+                suppress_finish_trend = True
+                adjustments.append({"factor": "finish_time_trend", "from": "退步", "to": "中性", "why": "負面趨勢包含醫療異常仗"})
+
+        applied = bool(adjustments)
+        if not applied:
+            ability_raw = float(auto.get("ability_score_raw", self._ability_score(base_matrix)))
+            ability_score = float(auto.get("ability_score", to_display_scale(ability_raw)))
+            return {
+                "profile": profile_name,
+                "applied": False,
+                "ability_score": round(ability_score, 2),
+                "ability_score_raw": round(ability_raw, 2),
+                "ability_delta": 0.0,
+                "grade": auto.get("grade", compute_grade(ability_score)),
+                "sectional_score": round(float(base_matrix.get("sectional", 60.0)), 2),
+                "sectional_delta": 0.0,
+                "matrix_scores": dict(base_matrix),
+                "adjustments": [],
+                "l400_context": l400_context,
+                "reason": "最近一仗未有可安全辨認的醫療異常負面訊號，沿用主線評分。",
+            }
+
+        shadow_features = dict(base_features)
+        speed_scorer = SpeedScorer(adjusted_horse, self.race_context)
+        speed_score, _speed_note = speed_scorer.compute()
+        shadow_features["speed_score"] = clip_score(speed_score)
+        recalculated = map_features_to_matrix_scores(shadow_features)
+        sectional = recalculated["sectional"]
+        if not suppress_finish_trend:
+            saved_reason_codes = self.reason_codes
+            self.reason_codes = list(saved_reason_codes)
+            sectional = self._apply_finish_time_trend(sectional)
+            self.reason_codes = saved_reason_codes
+
+        matrix_scores = dict(base_matrix)
+        matrix_scores["sectional"] = round(clip_score(sectional), 2)
+        ability_raw = round(self._ability_score(matrix_scores), 2)
+        ability_score = round(to_display_scale(ability_raw), 2)
+        base_ability = float(auto.get("ability_score", ability_score))
+        return {
+            "profile": profile_name,
+            "applied": True,
+            "ability_score": ability_score,
+            "ability_score_raw": ability_raw,
+            "ability_delta": round(ability_score - base_ability, 2),
+            "grade": compute_grade(ability_score),
+            "sectional_score": matrix_scores["sectional"],
+            "sectional_delta": round(matrix_scores["sectional"] - float(base_matrix.get("sectional", 60.0)), 2),
+            "speed_score": round(float(shadow_features["speed_score"]), 2),
+            "adjustments": adjustments,
+            "l400_context": l400_context,
+            "matrix_scores": matrix_scores,
+            "reason": "最近一仗有明確醫療異常；影子評分降低該仗對相關負面速度訊號的影響。",
         }
 
     def _apply_mainline_context(self, feature_scores, feature_notes):
@@ -845,11 +1340,9 @@ class RacingEngine:
         if prior is None and jockey and trainer:
             prior = prior_stack.combo.get((jockey, trainer))
         combo_adj = self._trainer_combo_adjustment(prior)
-        combo_j_share = combo_t_share = 0.0
         if combo_adj:
             j_share = combo_adj * scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["combo_jockey_share"]
             t_share = combo_adj * scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["combo_trainer_share"]
-            combo_j_share, combo_t_share = j_share, t_share
             jockey_adj += j_share
             trainer_adj += t_share
             triggers.append("騎練組合")
@@ -937,82 +1430,18 @@ class RacingEngine:
         if trainer_adj:
             updated["trainer_score"] = clip_score(updated.get("trainer_score", 60.0) + trainer_adj)
 
-        # 騎練組合喺計分上面係攤入騎師分／練馬師分（0.55／0.45），跟住維度公式
-        # 又係 0.55·騎師 + 0.45·練馬師 —— 所以佢對維度分嘅**淨**貢獻係
-        # 0.55² + 0.45² = 0.505 倍。呢個唔係損耗：組合本身同騎師分 ρ=+0.79、
-        # 同練馬師分 ρ=+0.60（2,438 runner 實測，EXP-20260905-03），攤分正正
-        # 係喺度防止同一份證據數兩次。實測放大呢個係數會令 gold 跌
-        # （×1.98 → −2.08pp，×2 幅度 → −2.60pp）。
-        #
-        # 下面嗰個拆解**只係報告用**：將組合由騎師分／練馬師分入面反解出嚟，
-        # 等「評分構成」可以將佢列做獨立一項而唔改任何分。恆等式：
-        #   0.55·騎師 + 0.45·練馬師 ≡ 0.55·(騎師−j份) + 0.45·(練馬師−t份) + 淨貢獻
-        # 剪裁（clip）之後可能對唔返，所以用**實際生效**嘅份額，唔用名義值。
-        self.trainer_venue_read = self._trainer_venue_read(prior_stack, trainer)
-        jockey_final = clip_score(updated.get("jockey_score", 60.0))
-        trainer_final = clip_score(updated.get("trainer_score", 60.0))
-        applied_j = combo_j_share if abs((jockey_base + jockey_adj) - jockey_final) < 1e-9 else 0.0
-        applied_t = combo_t_share if abs((trainer_base + trainer_adj) - trainer_final) < 1e-9 else 0.0
-        combo_net = (applied_j * formula_share("trainer_signal", "jockey_score")
-                     + applied_t * formula_share("trainer_signal", "trainer_score"))
         self.trainer_signal_detail = {
             "jockey_base": round(jockey_base, 2),
-            "jockey_final": round(jockey_final, 2),
+            "jockey_final": round(clip_score(updated.get("jockey_score", 60.0)), 2),
             "trainer_base": round(trainer_base, 2),
-            "trainer_final": round(trainer_final, 2),
+            "trainer_final": round(clip_score(updated.get("trainer_score", 60.0)), 2),
             "adjustments": adjustments,
-            "trainer_venue": self.trainer_venue_read,
-            "combo_split": {
-                "adj": round(combo_adj, 2),
-                "jockey_share": round(applied_j, 3),
-                "trainer_share": round(applied_t, 3),
-                "net_dimension_points": round(combo_net, 3),
-                "jockey_ex_combo": round(jockey_final - applied_j, 2),
-                "trainer_ex_combo": round(trainer_final - applied_t, 2),
-                "clipped": bool((applied_j == 0.0 and combo_j_share) or (applied_t == 0.0 and combo_t_share)),
-            },
         }
 
         if not triggers:
             return updated, ""
         note = "已再參考" + "、".join(dict.fromkeys(triggers)) + "調整騎練分。"
         return updated, note
-
-    def _trainer_venue_read(self, prior_stack, trainer):
-        """練馬師今日呢個場地嘅往績 vs 佢自己整體 —— **報告用，唔入分**。
-
-        點解唔入分（EXP-20260905-03，193 場 / 2,438 runner）：
-          * 訊號係真嘅：73% 方差係真、拆半重測 r=+0.639、跨季 r=+0.504、覆蓋 97.3%
-          * 而且同現行兩個分正交：ρ(場地 delta, trainer_score) = −0.08
-          * 控制咗場內綜合分之後仲有效：頭2揀 +6.8pp / 1SD（CI 不跨零）
-          * **但**傳導到綜合分只有場內 SD 嘅 1.0%（0.102 分 vs 9.95 分）——
-            五個排名 arm 全部唔過閘，放大到郁得郁排名嗰個（×2）gold −2.04pp CI 全負
-        所以佢嘅價值喺「話畀睇報告嘅人知」，唔喺排序。
-        """
-        rows = getattr(prior_stack, "trainer_venue", None)
-        if not rows or not trainer:
-            return None
-        venue = "沙田" if self._is_sha_tin_context() else "跑馬地"
-        here = rows.get((trainer, venue))
-        if not here or float(here.get("starts", 0) or 0) < 50:
-            return None
-        starts = float(here["starts"])
-        here_rate = float(here.get("place_rate", 0) or 0)
-        total_starts = total_places = 0.0
-        for (name, _venue), row in rows.items():
-            if name == trainer:
-                total_starts += float(row.get("starts", 0) or 0)
-                total_places += float(row.get("places", 0) or 0)
-        if total_starts <= 0:
-            return None
-        overall_rate = total_places / total_starts * 100.0
-        return {
-            "venue": venue,
-            "starts": int(starts),
-            "place_rate": round(here_rate, 1),
-            "overall_place_rate": round(overall_rate, 1),
-            "delta": round(here_rate - overall_rate, 1),
-        }
 
     def _apply_health_only_v2(self, base_score):
         return round(clip_score(base_score), 2)
@@ -2077,21 +2506,8 @@ class RacingEngine:
         draw = self._value("barrier") or self._value("draw")
         if present(draw):
             add("檔位", f"{str(draw).strip()}檔", "", reason=self._draw_stats_note(draw))
-        # 預測跑法 — tactical position read (前置／守好位／守中／後上). Reference only:
-        # explicitly NOT in the rating matrix; explains the WHY (recent runs, jockey change).
-        ps = self._predicted_style()
-        if ps:
-            why = []
-            if ps["basis"]:
-                why.append(ps["basis"])
-            # Jockey-change note is authoritative (set only on a REAL change vs last
-            # start, with the new rider's prior style on this horse). No note ⇒ no change.
-            jcn = self._value("jockey_change_note")
-            if jcn:
-                why.append(str(jcn))
-            add("預測跑法", ps["label"],
-                f"信心{ps['conf']}" if ps["conf"] else "",
-                band="➖", reason="；".join(why))
+        # 預測跑法已移除：近兩次跑馬地驗證只有約 44-46% 命中，唔再將
+        # 「前置／守中／後上」包裝成今仗預測。歷史實際走位仍保留喺 race-shape 證據。
         # 騎練 + 晨操 use matrix bands / digests already computed
         ts = matrix_scores.get("trainer_signal", 60)
         jc = self._jockey_combo_detail()
@@ -2565,6 +2981,15 @@ class RacingEngine:
         text = str(value)
         return text in {"ST", "Sha Tin", "ShaTin", "沙田"} or "沙田" in text or "ShaTin" in text or "Sha Tin" in text
 
+    def _is_sha_tin_turf_context(self):
+        if not self._is_sha_tin_context():
+            return False
+        surface = " ".join(
+            str(self.race_context.get(key) or "")
+            for key in ("venue", "course", "track", "surface", "track_type")
+        ).upper()
+        return not any(token in surface for token in ("AWT", "ALL WEATHER", "全天候", "泥地"))
+
     def _clean(self, value):
         text = str(value or "").strip()
         return "資料未完成，中性處理" if "[FILL" in text.upper() else text
@@ -2938,19 +3363,28 @@ class RacingEngine:
         v = self._speed_verdict(features, sectional_score=score)
         l400 = self._seq_endpoints(self._value("l400_trend"), "s")
         l400_txt = f"L400 {l400}；" if l400 else ""
-        return f"{l400_txt}段速{v['label']}：{v['why']}{self._score_close(score)}"
+        # Display context only: one medically abnormal run can drive several
+        # correlated speed penalties. Do not silently erase it from scoring.
+        medical = self._text("medical_flags")
+        latest_incident = re.search(r"第1仗\s*[:：]\s*(⚠️[^;；\n]+)", medical)
+        context = ""
+        if latest_incident:
+            context = (
+                f"；上仗有醫療異常紀錄（{latest_incident.group(1).strip()}）。"
+                "該仗段速與趨勢可能同受一次異常影響，不能視作多次獨立能力下滑；"
+                "復出風險須另看醫療與覆檢資料"
+            )
+        return f"{l400_txt}段速{v['label']}：{v['why']}{self._score_close(score)}{context}"
 
     def _describe_race_shape_matrix(self, score, features, evidence):
         barrier = self.horse_data.get("barrier") or self.horse_data.get("draw") or "N/A"
         draw_verdict = self._draw_verdict_signal()
-        ps = self._predicted_style()
-        style_txt = f"，預計{ps['label']}" if ps else ""
         if features.get("draw_score", 60) >= 72:
-            draw = f"排{barrier}檔{style_txt}：著數位，有得揀位"
+            draw = f"排{barrier}檔：著數位，有得揀位"
         elif features.get("draw_score", 60) >= 60:
-            draw = f"排{barrier}檔{style_txt}：檔位中性，睇出閘搶位"
+            draw = f"排{barrier}檔：檔位中性，睇出閘搶位"
         else:
-            draw = f"排{barrier}檔{style_txt}：檔位受壓，走位容錯低"
+            draw = f"排{barrier}檔：檔位受壓，走位容錯低"
         if draw_verdict:
             draw += draw_verdict
         return f"{draw}{self._score_close(score)}"
@@ -2989,7 +3423,12 @@ class RacingEngine:
         days = self._days_since_last()
         wt = self._text("weight_trend")
         span = self._weight_trend_span(wt)
-        medical_text = "醫療乾淨" if "無醫療事故" in medical else "醫療資料未齊，保守處理"
+        if "無醫療事故" in medical:
+            medical_text = "醫療乾淨"
+        elif medical and medical != "N/A":
+            medical_text = "有歷史醫療異常紀錄，須核對復原及覆檢情況；紀錄本身不代表目前仍患病"
+        else:
+            medical_text = "醫療資料未齊，保守處理"
         if days is None:
             freshness = "；休賽間隔不明"
         elif days <= 14:

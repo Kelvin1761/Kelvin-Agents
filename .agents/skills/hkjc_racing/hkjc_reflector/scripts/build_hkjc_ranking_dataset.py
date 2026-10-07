@@ -530,11 +530,13 @@ def _parse_triplet_stats(text: object, label: str, prefix: str) -> dict[str, flo
             f"{prefix}_seconds": None,
             f"{prefix}_thirds": None,
         }
+    # HKJC displays W-S-P-rest, not starts-wins-seconds-thirds.
+    wins, seconds, thirds, rest = (float(value) for value in match.groups())
     return {
-        f"{prefix}_starts": float(match.group(1)),
-        f"{prefix}_wins": float(match.group(2)),
-        f"{prefix}_seconds": float(match.group(3)),
-        f"{prefix}_thirds": float(match.group(4)),
+        f"{prefix}_starts": wins + seconds + thirds + rest,
+        f"{prefix}_wins": wins,
+        f"{prefix}_seconds": seconds,
+        f"{prefix}_thirds": thirds,
     }
 
 

@@ -14,6 +14,17 @@ import pandas as pd
 from hkjc_racing_engine import engine_core, live_priors
 
 
+class ResultPositionTests(unittest.TestCase):
+    def test_dead_heats_are_finishers_but_withdrawals_are_not(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "results.json"
+            rows = [{"horse_no": no, "pos": pos} for no, pos in
+                    [(1, "1"), (2, "3 平頭馬"), (3, "3 平頭馬"),
+                     (4, "6 平頭馬"), (5, ""), (6, "退出"), (7, "0")]]
+            path.write_text(json.dumps({"1": {"results": rows}}), encoding="utf-8")
+            self.assertEqual(bt.load_results(path), {1: {1: 1, 2: 3, 3: 3, 4: 6}})
+
+
 class PointInTimeTests(unittest.TestCase):
     def setUp(self):
         self.old_ratings = live_priors._JT_RATINGS

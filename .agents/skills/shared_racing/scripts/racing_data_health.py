@@ -118,8 +118,19 @@ def _facts_numbers(path: Path | None) -> set[str]:
     return values
 
 
+_WITHDRAWN_NAME_RE = re.compile(
+    r"(?:\s*[（(]\s*(?:退出|退賽|已退出|SCRATCHED|WITHDRAWN)\s*[)）]\s*|\s+(?:退出|退賽|已退出|SCRATCHED|WITHDRAWN)\s*)$",
+    re.I,
+)
+
+
+def _is_withdrawn_name(value: Any) -> bool:
+    return bool(_WITHDRAWN_NAME_RE.search(str(value or "").strip()))
+
+
 def _normalize_horse_name(value: Any) -> str:
-    text = re.sub(r"\s*[（(][A-Z]\d+[)）]\s*$", "", str(value or "").strip())
+    text = _WITHDRAWN_NAME_RE.sub("", str(value or "").strip())
+    text = re.sub(r"\s*[（(][A-Z]\d+[)）]\s*$", "", text)
     return re.sub(r"[^\w\u3400-\u9fff]", "", text, flags=re.UNICODE).casefold()
 
 
@@ -128,29 +139,10 @@ def _normalize_horse_name(value: Any) -> str:
 # 就係 2026-08-21 見到嘅 FACTS_NAME_MISMATCH / SOURCE_NAME_MISMATCH 全中。
 # 只剝走睇落係註解嘅括號（內含數字或者「檔位」），唔會誤剝真係名字一部分嘅括號。
 _NAME_ANNOTATION = re.compile(r"[（(]\s*(?:檔位\s*)?\d+\s*[)）]\s*$")
-_HKJC_WITHDRAWN_NAME = re.compile(r"\s*[（(]\s*退出\s*[）)]\s*$")
 
 
 def _strip_name_annotation(value: str) -> str:
     return _NAME_ANNOTATION.sub("", str(value or "")).strip()
-
-
-def _strip_hkjc_withdrawn_blocks(text: str) -> str:
-    """Remove official racecard blocks that are present only as withdrawals."""
-    kept: list[str] = []
-    matches = list(
-        re.finditer(r"^馬號:\s*\d+.*?(?=^馬號:\s*\d+|\Z)", text, re.M | re.S)
-    )
-    if not matches:
-        return text
-    prefix = text[:matches[0].start()]
-    for match in matches:
-        block = match.group(0)
-        name_match = re.search(r"^馬名:\s*([^\n]+)", block, re.M)
-        if name_match and _HKJC_WITHDRAWN_NAME.search(name_match.group(1)):
-            continue
-        kept.append(block)
-    return prefix + "".join(kept)
 
 
 def _facts_runner_names(path: Path | None) -> dict[str, str]:
@@ -185,8 +177,6 @@ def _source_runner_numbers(
             line for line in text.splitlines()
             if "status:scratched" not in line.replace(" ", "").casefold()
         )
-    elif platform == "hkjc":
-        text = _strip_hkjc_withdrawn_blocks(text)
     values = set(re.findall(r"馬號:\s*(\d+)\b", text))
     if not values:
         values.update(re.findall(r"^\s*\[?(\d{1,2})\]?\s*[.|)]\s+", text, re.M))
@@ -196,9 +186,7 @@ def _source_runner_numbers(
 def _source_runner_names(path: Path | None) -> dict[str, str]:
     if not path or not is_materialized_file(path):
         return {}
-    text = _strip_hkjc_withdrawn_blocks(
-        path.read_text(encoding="utf-8", errors="replace")
-    )
+    text = path.read_text(encoding="utf-8", errors="replace")
     blocks = re.findall(r"^馬號:\s*(\d+).*?(?=^馬號:\s*\d+|\Z)", text, re.M | re.S)
     names: dict[str, str] = {}
     if blocks:
@@ -239,54 +227,6 @@ def _csv_runner_count(path: Path) -> int | None:
         return None
 
 
-def _pipeline_freshness_issues(meeting_dir: Path) -> list[dict]:
-    """Surface stale pre-race reference data recorded in pipeline_summary.json.
-
-    呢個判決一直存在（run_prerace_pipeline.check_draw_stats_freshness），但只
-    print 出 stdout，而排程只留 control-plane JSON，所以由 2026-06 起「檔位統計
-    不匹配本賽日」嗌咗三個月、三個 launchd log 一行都冇，2026-09-06 每份 Facts.md
-    照印 2026-05-31 沙田 "B" 賽道嘅檔位表。
-
-    Warning only, never an error：檔位統計係**顯示層**（`features/draw.py` 用
-    位置先驗，官方數據唔入分），所以唔應該攔 deploy，只要講得出就夠。
-    """
-    summary_path = meeting_dir / "pipeline_summary.json"
-    if not is_materialized_file(summary_path):
-        return []
-    try:
-        freshness = json.loads(summary_path.read_text(encoding="utf-8")).get("freshness") or {}
-    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
-        return [{
-            "severity": "warning",
-            "code": "INVALID_PIPELINE_SUMMARY",
-            "message": f"{summary_path.name}: {exc}",
-        }]
-    issues: list[dict] = []
-    draw = freshness.get("draw_stats") or {}
-    if draw.get("status") not in (None, "FRESH"):
-        issues.append({
-            "severity": "warning",
-            "code": "STALE_DRAW_STATS",
-            "message": (
-                f"檔位統計 {draw.get('status')}：檔案 {draw.get('meeting') or '（空）'}"
-                f"（scraped {draw.get('scraped_at') or '?'}）vs 本賽日 "
-                f"{draw.get('expected') or meeting_dir.name} — 報告嘅檔位判讀會略過注入"
-            ),
-        })
-    std = freshness.get("standard_times") or {}
-    if std.get("status") not in (None, "FRESH"):
-        issues.append({
-            "severity": "warning",
-            "code": "STALE_STANDARD_TIMES",
-            "message": (
-                f"標準時間 {std.get('status')}：scraped {std.get('scraped_at') or '?'}"
-                f"（{std.get('age_days')} 日前，{std.get('entries')} 條）"
-                " — 刷新會改段速分，要當一個獨立改動去過 model gate"
-            ),
-        })
-    return issues
-
-
 def scan_meeting(platform: str, meeting_dir: Path) -> dict:
     platform = platform.lower()
     if platform not in EXPECTED_FEATURES:
@@ -317,8 +257,6 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
                 "code": "INVALID_EXTRACTION_READINESS",
                 "message": str(exc),
             })
-    if platform == "hkjc":
-        issues.extend(_pipeline_freshness_issues(meeting_dir))
     logic_paths = sorted(
         (
             path
@@ -414,6 +352,13 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
             name = str(horse.get("horse_name") or horse.get("name") or "").strip()
             if not name:
                 race_issues.append({"severity": "error", "code": "MISSING_NAME", "horse": number, "message": "冇馬名"})
+            elif _is_withdrawn_name(name):
+                race_issues.append({
+                    "severity": "error",
+                    "code": "WITHDRAWN_RUNNER_PRESENT",
+                    "horse": number,
+                    "message": f"{name} 仍留喺 Logic／排名；要先套用賽日退出名單再重新排名",
+                })
             elif name.casefold() in names:
                 race_issues.append({"severity": "error", "code": "DUPLICATE_NAME", "horse": number, "message": name})
             names.append(name.casefold())

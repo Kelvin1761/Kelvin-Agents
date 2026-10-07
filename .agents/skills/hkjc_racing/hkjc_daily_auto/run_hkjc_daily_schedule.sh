@@ -9,9 +9,9 @@ MODE="${1:-watch}"
 
 cd "$REPO_ROOT" || exit 1
 
-# 追上 origin/main。⚠️ 五個排程共用同一個 worktree，而 2026-09-09 之前**只有 AU
-# 個 wrapper 會 ff** —— 其餘四個更新 code 全靠 AU 啱啱好有開工帶挈。AU 一停，
-# 佢哋就無限期跑舊 code 而冇任何嘢會投訴。失敗唔會阻開工（見個 script 頭）。
+# Pull the shared scheduler worktree forward before starting.  Failure is
+# deliberately non-fatal: the run can continue on the currently checked-out
+# version and the helper emits the operational warning.
 /usr/bin/python3 "$REPO_ROOT/.agents/scripts/wongchoi_self_update.py" "$REPO_ROOT" || true
 
 # Reuse AU Wong Choi's existing bot/chat without copying credentials into the repo.
@@ -22,7 +22,9 @@ export PYTHONPATH="$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
 
 # Weekly is a model-promotion review gate, not a normal event lifecycle run.
 # Keep it outside the prediction control contract.
-if [ "$MODE" = "weekly" ]; then
+# Weekly is a release review and intraday is a read-only prospective evidence
+# collector; neither is a new event prediction lifecycle run.
+if [ "$MODE" = "weekly" ] || [ "$MODE" = "intraday" ]; then
   exec /usr/bin/python3 "$SCRIPT_DIR/hkjc_daily_schedule.py" --mode "$MODE" "$@"
 fi
 exec /usr/bin/python3 "$CONTROL_PLANE" --domain hkjc --mode "$MODE" "$@"

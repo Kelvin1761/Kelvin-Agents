@@ -126,40 +126,32 @@ def load_reference_sectionals() -> dict:
     _REF_SECTIONALS = {}
     return _REF_SECTIONALS
 
-def _normalise_race_class_key(race_class: object) -> str:
-    """Return the standard-time key for HKJC class labels.
-
-    Facts and racecards use both Chinese labels (for example ``第三班``) and
-    compact machine labels (``C3``). Keep unknown labels unchanged so callers can
-    retain their existing missing-reference/fallback policy.
-    """
+def normalize_race_class_code(race_class: str) -> str:
+    """Normalize HKJC Chinese/English class labels to the par-table key."""
     raw_class = str(race_class or '').strip()
-    direct = {
-        '第一班': 'C1', '第二班': 'C2', '第三班': 'C3',
-        '第四班': 'C4', '第五班': 'C5',
-        '一級賽': 'G', '二級賽': 'G', '三級賽': 'G', '分級賽': 'G',
-        '新馬賽': 'GR', '新馬': 'GR',
-        'C1': 'C1', 'C2': 'C2', 'C3': 'C3', 'C4': 'C4', 'C5': 'C5',
-        'G': 'G', 'GR': 'GR',
-    }
-    upper_class = raw_class.upper()
-    if upper_class in direct:
-        return direct[upper_class]
-
-    chinese_class = re.search(r'第?\s*([一二三四五1-5])\s*班', raw_class)
-    if chinese_class:
-        value = chinese_class.group(1)
-        number = value if value.isdigit() else str('一二三四五'.index(value) + 1)
-        return f'C{number}'
+    compact_class = re.sub(r'\s+', '', raw_class)
+    cmap = {'第一班': 'C1', '第二班': 'C2', '第三班': 'C3', '第四班': 'C4',
+            '第五班': 'C5', '一級賽': 'G', '二級賽': 'G', '三級賽': 'G',
+            '分級賽': 'G', '新馬賽': 'GR', '新馬': 'GR',
+            'C1': 'C1', 'C2': 'C2', 'C3': 'C3', 'C4': 'C4', 'C5': 'C5',
+            'G': 'G', 'GR': 'GR'}
+    if compact_class in cmap:
+        return cmap[compact_class]
+    for label, code in cmap.items():
+        if label in compact_class and len(label) > 1:
+            return code
+    chinese_digit_match = re.search(r'第([1-5])班', compact_class)
     class_match = re.search(r'(?:CLASS|C)\s*([1-5])', raw_class, re.I)
+    group_match = re.search(r'(?:GROUP|GRADE|G)\s*[123]', raw_class, re.I)
+    digit_match = re.fullmatch(r'[1-5]', raw_class)
+    if chinese_digit_match:
+        return f'C{chinese_digit_match.group(1)}'
     if class_match:
         return f'C{class_match.group(1)}'
-    if re.fullmatch(r'[1-5]', raw_class):
-        return f'C{raw_class}'
-    if re.search(r'(?:GROUP|GRADE|G)\s*[123]', raw_class, re.I):
+    if group_match:
         return 'G'
-    if re.search(r'(?:GRIFFIN|新馬)', raw_class, re.I):
-        return 'GR'
+    if digit_match:
+        return f'C{raw_class}'
     return raw_class
 
 
@@ -187,7 +179,7 @@ def get_reference_sections(venue: str, distance: int, race_class: str) -> dict:
         return {}
     classes = dists[dkey]
     # Map class
-    ckey = _normalise_race_class_key(race_class)
+    ckey = normalize_race_class_code(race_class)
     # Do not silently borrow another class's par. Missing reference evidence
     # is safer than a falsely precise normalized split.
     if ckey not in classes:
@@ -239,26 +231,12 @@ STANDARD_TIMES = {
 # Draw Stats Loader
 # ========================================================================
 _DRAW_STATS = None
-_DRAW_STATS_PATH_OVERRIDE = None
-
-
-def set_draw_stats_path(path) -> None:
-    """Point the loader at this meeting's own draw table (`--draw-stats`).
-
-    全域 hkjc_draw_stats.json 只反映最後一次抽嘅賽日，所以重跑舊場次一定要
-    讀本場副本，唔係讀全域嗰份。
-    """
-    global _DRAW_STATS, _DRAW_STATS_PATH_OVERRIDE
-    _DRAW_STATS_PATH_OVERRIDE = Path(path) if path else None
-    _DRAW_STATS = None
-
-
 def load_draw_stats() -> dict:
-    """Load draw stats from this meeting's copy, else hkjc_draw_stats.json (cached)."""
+    """Load draw stats from hkjc_draw_stats.json (cached)."""
     global _DRAW_STATS
     if _DRAW_STATS is not None:
         return _DRAW_STATS
-    json_path = _DRAW_STATS_PATH_OVERRIDE or (Path(__file__).parent / 'hkjc_draw_stats.json')
+    json_path = Path(__file__).parent / 'hkjc_draw_stats.json'
     if json_path.exists():
         try:
             with open(json_path, 'r', encoding='utf-8') as f:
@@ -268,36 +246,6 @@ def load_draw_stats() -> dict:
             pass
     _DRAW_STATS = {}
     return _DRAW_STATS
-
-
-# 今場嘅賽日同賽道，由 main() 設定一次。檔位統計係**逐個賽日**嘅頁面
-# （racing.hkjc.com 檔位頁），所以「同場地同距離同跑道」唔代表同一日 ——
-# 2026-09-06 沙田（"A" 賽道）就係咁攞咗 2026-05-31 沙田（"B" 賽道）嘅表，
-# 每份 Facts.md 印住「數據來源: HKJC 檔位統計 沙田 31/05/2026」印咗三個月。
-# Logic 層（create_hkjc_logic_skeleton._resolve_draw_stats_race）一直有賽日守衛，
-# 只有 Facts 層冇，所以評分冇事、報告一直講錯數。
-_EXPECTED_DRAW_MEETING = {"date": "", "course": ""}
-_DRAW_STATS_REJECT_REASON = ""
-
-
-def set_expected_draw_meeting(race_date: str = "", course: str = "") -> None:
-    """Record today's meeting so draw stats from another meeting can never resolve."""
-    _EXPECTED_DRAW_MEETING["date"] = str(race_date or "").strip()
-    _EXPECTED_DRAW_MEETING["course"] = str(course or "").strip().upper()
-
-
-def draw_stats_reject_reason() -> str:
-    """Why the last _resolve_draw_stats_race() call refused to serve draw stats."""
-    return _DRAW_STATS_REJECT_REASON
-
-
-def _normalize_draw_stats_meeting_date(value: str) -> str:
-    text = str(value or '').strip()
-    match = re.search(r'(\d{2})/(\d{2})/(20\d{2})', text)
-    if match:
-        return f"{match.group(3)}-{match.group(2)}-{match.group(1)}"
-    match = re.search(r'(20\d{2})-(\d{2})-(\d{2})', text)
-    return match.group(0) if match else ''
 
 
 def _normalize_draw_stats_meeting_venue(value: str) -> str:
@@ -332,56 +280,27 @@ def _resolve_draw_stats_race(
     expected_venue: str = '',
     expected_distance: int = 0,
     expected_surface: str = '',
-    expected_date: str = '',
-    expected_course: str = '',
 ) -> dict:
-    """Return today's draw stats race, or {} when the file is not today's meeting.
-
-    賽日同賽道兩個守衛係關鍵：檔位頁逐個賽日出，場地／距離／跑道全部對得上
-    都可能係另一個賽日嘅表。`expected_date` / `expected_course` 留空就會用
-    `set_expected_draw_meeting()` 記落嘅今場資料。
-    """
-    global _DRAW_STATS_REJECT_REASON
-    _DRAW_STATS_REJECT_REASON = ""
     ds = load_draw_stats()
     if not ds or 'races' not in ds:
-        _DRAW_STATS_REJECT_REASON = "no_draw_stats_file"
         return {}
     race = next((item for item in ds.get('races', []) if item.get('race') == race_num), None)
     if not race:
-        _DRAW_STATS_REJECT_REASON = f"race_{race_num}_not_in_draw_stats"
         return {}
 
-    meeting_text = ds.get('meta', {}).get('meeting', '')
-    meeting_venue = _normalize_draw_stats_meeting_venue(meeting_text)
-    meeting_date = _normalize_draw_stats_meeting_date(meeting_text)
+    meeting_venue = _normalize_draw_stats_meeting_venue(ds.get('meta', {}).get('meeting', ''))
     venue_norm = _normalize_expected_draw_venue(expected_venue)
     surface_norm = expected_surface or _expected_draw_surface(expected_venue)
-    date_norm = str(expected_date or _EXPECTED_DRAW_MEETING['date'] or '').strip()
-    course_norm = str(expected_course or _EXPECTED_DRAW_MEETING['course'] or '').strip().upper()
 
     if venue_norm and meeting_venue != venue_norm:
-        _DRAW_STATS_REJECT_REASON = f"venue {meeting_venue or '?'} != {venue_norm}"
-        return {}
-    if date_norm and meeting_date != date_norm:
-        _DRAW_STATS_REJECT_REASON = f"meeting {meeting_date or '?'} != {date_norm}"
         return {}
     if expected_distance:
         try:
             if int(race.get('distance') or 0) != int(expected_distance):
-                _DRAW_STATS_REJECT_REASON = (
-                    f"distance {race.get('distance')} != {expected_distance}"
-                )
                 return {}
         except (TypeError, ValueError):
-            _DRAW_STATS_REJECT_REASON = "distance unparseable"
             return {}
     if surface_norm and str(race.get('surface') or '').strip() != surface_norm:
-        _DRAW_STATS_REJECT_REASON = f"surface {race.get('surface')} != {surface_norm}"
-        return {}
-    race_course = str(race.get('course') or '').strip().upper()
-    if course_norm and race_course and race_course != course_norm:
-        _DRAW_STATS_REJECT_REASON = f"course {race_course} != {course_norm}"
         return {}
 
     return race
@@ -506,12 +425,12 @@ def get_standard_time(venue: str, distance: int, race_class: str) -> Optional[fl
     elif '跑馬地' in venue:
         v = '跑馬地'
     
-    class_key = _normalise_race_class_key(race_class)
+    class_code = normalize_race_class_code(race_class)
 
     # Try scraped JSON first
     scraped = _load_scraped_standard_times()
     if scraped:
-        flat_key = f"{v}_{distance}_{class_key}"
+        flat_key = f"{v}_{distance}_{class_code}"
         if flat_key in scraped:
             return scraped[flat_key]
         # Fallback within scraped
@@ -525,8 +444,8 @@ def get_standard_time(venue: str, distance: int, race_class: str) -> Optional[fl
     if key not in STANDARD_TIMES:
         return None
     class_map = STANDARD_TIMES[key]
-    if class_key in class_map:
-        return class_map[class_key]
+    if class_code in class_map:
+        return class_map[class_code]
     for fallback in ['C4', 'C3', 'C5', 'C2', 'C1', 'G']:
         if fallback in class_map:
             return class_map[fallback]
@@ -742,11 +661,17 @@ def auto_determine_forgiveness(comment: str) -> str:
 
 
 def parse_date(date_str: str) -> Optional[datetime]:
-    """Parse HKJC date format (DD/MM/YYYY)."""
+    """Parse the long and short date formats used by HKJC form sources."""
     try:
-        return datetime.strptime(date_str.strip(), '%d/%m/%Y')
-    except (ValueError, AttributeError):
+        text = date_str.strip()
+    except AttributeError:
         return None
+    for fmt in ('%d/%m/%Y', '%d/%m/%y', '%Y/%m/%d', '%Y-%m-%d'):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    return None
 
 
 def get_pdf_path(formguide_path: str) -> Optional[Path]:
@@ -764,7 +689,13 @@ def get_pdf_path(formguide_path: str) -> Optional[Path]:
 
 
 def parse_pdf_overseas_races(pdf_path: Path, brand_no: str, horse_name: str) -> list:
-    """Parse overseas race records from the full PDF dump."""
+    """Parse the official PDF's dedicated Overseas Form section.
+
+    Older code searched from the first occurrence of a brand number.  That is
+    normally the local HK form page, so ordinary HK rows were silently tagged
+    as overseas and the actual racecourse/going fields were discarded.  Only
+    rows below the explicit bilingual Overseas Form heading are eligible here.
+    """
     if not pdf_path or not pdf_path.exists():
         return []
         
@@ -775,15 +706,33 @@ def parse_pdf_overseas_races(pdf_path: Path, brand_no: str, horse_name: str) -> 
         print(f"Error reading PDF text: {e}")
         return []
         
-    lines = text.split('\n')
+    marker = re.search(
+        r'Overseas\s+Form\s+of\s+\d{2}/\d{2}',
+        text,
+        re.IGNORECASE,
+    )
+    if not marker:
+        return []
+    lines = text[marker.start():].split('\n')
     start_idx = -1
+
+    def _brand_key(value: str) -> str:
+        match = re.search(r'([A-Z])0*(\d+)', str(value or '').upper())
+        return f"{match.group(1)}{int(match.group(2))}" if match else ''
+
+    wanted_brand = _brand_key(brand_no)
+
+    def _header_brand(line: str) -> str:
+        # Horse header example: 錶之極光 AURORA PATCH (AUS) K97 6 br g ...
+        match = re.search(r'\([A-Z]{2,3}\)\s+([A-Z]0*\d+)\b.*?\b\d+\s+starts?\b', line, re.I)
+        return _brand_key(match.group(1)) if match else ''
     
-    # 1. Find horse section
+    # 1. Find horse header inside the dedicated overseas section.
     for i, line in enumerate(lines):
-        # Match standard HKJC horse (e.g. "3 浪漫勇士 E486") or foreign horse (e.g. "2 大怪奇 池江泰壽")
-        # Match format: start with index, then horse name
-        if (brand_no and brand_no != 'UNKNOWN' and brand_no in line) or \
-           re.search(rf'^\s*(?:S?\d+)\s+{re.escape(horse_name)}', line):
+        line_brand = _header_brand(line)
+        if (wanted_brand and line_brand == wanted_brand) or (
+            horse_name and horse_name in line and line_brand
+        ):
             start_idx = i
             break
             
@@ -792,63 +741,59 @@ def parse_pdf_overseas_races(pdf_path: Path, brand_no: str, horse_name: str) -> 
         
     extracted_races = []
     
-    # 2. Extract race rows
+    # 2. Extract race rows until the next horse header.
     for line in lines[start_idx+1:]:
-        # Break if we hit the next horse header
-        if re.match(r'^\s*(?:S?\d+)\s+([^\x00-\x7F]+)', line) and horse_name not in line:
-            # basic check to ensure it's actually a header (not just a race record)
-            if len(line.split()) >= 3 and not '/' in line.split()[0]:
-                break
-                
-        # Match a race row e.g. "1/8 16/3/25 3歲 ..." or "4/14 559 29/3/26 4 ..."
-        m = re.match(r'^\s*([0-9a-zA-Z]+)/(\d+)\s+(.+)$', line)
-        if m:
-            placing_str = m.group(1)
-            field_size = int(m.group(2))
-            rest = m.group(3)
-            
-            date_m = re.search(r'\b(\d{1,2}/\d{1,2}/\d{2})\b', rest)
-            if not date_m:
-                continue
-            date_str = date_m.group(1)
-            
-            # Format to dd/mm/yyyy
-            parts = date_str.split('/')
-            if len(parts) == 3:
-                # Assuming PDF uses dd/mm/yy
-                year = f"20{parts[2]}" if len(parts[2]) == 2 else parts[2]
-                formatted_date = f"{parts[0].zfill(2)}/{parts[1].zfill(2)}/{year}"
-            else:
-                formatted_date = date_str
-            
-            dist_m = re.search(r'\b([1-4]\d00|1650)\b', rest)
-            distance = int(dist_m.group(1)) if dist_m else 0
-            
-            placing = 0
-            if placing_str.isdigit():
-                placing = int(placing_str)
-            elif placing_str in ['W', 'UR', 'F', 'T', 'PU', 'DISQ']:
-                placing = 99
-                
-            time_m = re.findall(r'\b(\d{1,2}\.\d{2}\.\d{2})\b', rest)
-            finish_time = time_m[-1] if time_m else '-'
-            if finish_time == '-':
-                 short_times = re.findall(r'\b(\d{2}\.\d{2})\b', rest)
-                 finish_time = short_times[-1] if short_times else '-'
-                 
-            # Is this an overseas race? Often missing HKJC numeric index before the date.
-            # E.g. "1/8 16/3/25" vs "10/12 518 15/3/26"
-            # We'll tag it based on distance or context if needed, but for now just extract.
-            
-            extracted_races.append({
-                'Date': formatted_date,
-                'Distance': distance,
-                'Placing': placing,
-                'Field_Size': field_size,
-                'Finish_Time_Raw': finish_time,
-                'Is_PDF_Overseas': True,
-                'Raw_Line': line
-            })
+        if _header_brand(line):
+            break
+        tokens = line.strip().split()
+        if len(tokens) < 10 or not re.fullmatch(r'\d{1,2}/\d{1,2}/\d{4}', tokens[0]):
+            continue
+        direction_idx = next(
+            (idx for idx, token in enumerate(tokens[2:], start=2) if token in {'RH', 'LH', 'St'}),
+            None,
+        )
+        if direction_idx is None or direction_idx + 3 >= len(tokens):
+            continue
+        time_idx = next(
+            (idx for idx, token in enumerate(tokens) if re.fullmatch(r'\d{1,2}\.\d{2}\.\d{2}', token)),
+            None,
+        )
+        if time_idx is None or time_idx < direction_idx + 5 or time_idx + 1 >= len(tokens):
+            continue
+        placing_m = re.fullmatch(r'(\d+)/(\d+)', tokens[direction_idx + 3])
+        if not placing_m:
+            continue
+        try:
+            distance = int(tokens[direction_idx + 1])
+            weight = int(tokens[time_idx - 1])
+        except ValueError:
+            continue
+        going = tokens[direction_idx + 2]
+        going_upper = going.upper()
+        if going_upper == 'DIRT':
+            surface = 'DIRT'
+        elif going_upper in {'SYNTHETIC', 'POLYTRACK', 'TAPETA', 'AWT'}:
+            surface = 'SYNTHETIC'
+        else:
+            surface = 'TURF'
+        extracted_races.append({
+            'Date': tokens[0],
+            'Region': tokens[1],
+            'Racecourse': ' '.join(tokens[2:direction_idx]),
+            'Direction': tokens[direction_idx],
+            'Distance': distance,
+            'Going': going,
+            'Surface': surface,
+            'Placing': int(placing_m.group(1)),
+            'Field_Size': int(placing_m.group(2)),
+            'Race_Type': ' '.join(tokens[direction_idx + 4:time_idx - 1]),
+            'Weight': weight,
+            'Finish_Time_Raw': tokens[time_idx],
+            'Margin': tokens[time_idx + 1],
+            'Gear': ' '.join(tokens[time_idx + 2:]),
+            'Is_PDF_Overseas': True,
+            'Raw_Line': line,
+        })
             
     return extracted_races
 
@@ -865,12 +810,11 @@ def parse_hkjc_formguide(filepath: str) -> dict:
         ]
     }
     """
-    def load_racecard(fp):
+    def load_brand_mapping(fp):
         rc_path = str(fp).replace('賽績.md', '排位表.md').replace('Formguide.txt', '排位表.md')
         mapping = {}
         gear_map = {}
         trainer_map = {}
-        runners = {}
         if os.path.exists(rc_path):
             text = Path(rc_path).read_text(encoding='utf-8')
             for match in re.finditer(r'馬名:\s*(.*?)\n.*?烙號:\s*([A-Za-z0-9_]+)', text, re.DOTALL):
@@ -890,42 +834,9 @@ def parse_hkjc_formguide(filepath: str) -> dict:
                     trainer_val = tm.group(1).strip()
                     if trainer_val:
                         trainer_map[nm.group(1).strip()] = trainer_val
-            for block in re.split(r'(?m)(?=^馬號:\s*\d+\s*$)', text):
-                number_match = re.search(r'(?m)^馬號:\s*(\d+)\s*$', block)
-                name_match = re.search(r'(?m)^馬名:\s*(.+?)\s*$', block)
-                if not number_match or not name_match:
-                    continue
+        return mapping, gear_map, trainer_map
 
-                # HKJC keeps a withdrawn horse on the official card as
-                # ``馬名 (退出)`` with barrier/weight zero.  It is not an active
-                # runner and must not reach Facts/Logic: the Logic schema quite
-                # correctly rejects those zero race-day values.  The lineup
-                # watcher uses the same rule, so a withdrawal converges after
-                # one rebuild instead of forcing a failing rerun every 30 min.
-                if re.search(r'\s*[（(]\s*退出\s*[）)]\s*$', name_match.group(1)):
-                    continue
-
-                def field(label):
-                    match = re.search(rf'(?m)^{re.escape(label)}:\s*(.*?)\s*$', block)
-                    return match.group(1).strip() if match else ''
-
-                number = int(number_match.group(1))
-                runners[number] = {
-                    'num': number,
-                    'name': name_match.group(1).strip(),
-                    'brand_no': field('HKJC馬匹ID') or field('烙號'),
-                    'barrier': int(field('檔位')) if field('檔位').isdigit() else 0,
-                    'jockey': field('騎師'),
-                    'trainer': field('練馬師'),
-                    'weight': int(field('負磅')) if field('負磅').isdigit() else 0,
-                    'body_weight': int(field('排位體重')) if field('排位體重').isdigit() else 0,
-                    'today_gear': field('配備'),
-                    'races': [],
-                    'pdf_overseas_races': [],
-                }
-        return mapping, gear_map, trainer_map, runners
-
-    brand_mapping, gear_mapping, trainer_mapping, racecard_runners = load_racecard(filepath)
+    brand_mapping, gear_mapping, trainer_mapping = load_brand_mapping(filepath)
     pdf_path = get_pdf_path(filepath)
 
     text = Path(filepath).read_text(encoding='utf-8')
@@ -1120,122 +1031,217 @@ def parse_hkjc_formguide(filepath: str) -> dict:
             'pdf_overseas_races': pdf_overseas_races,
         })
 
-    # SpeedPRO enriches declared runners; it must never define the field.
-    # On 2026-10-04 R2 it returned stand-by runner 2 御登 while the official
-    # racecard's declared runner 2 was 狼來了. Relabelling that block would attach
-    # the wrong horse's history, so retain SpeedPRO history only when both the
-    # number and name match the adjacent official racecard.
-    source_reconciliations = []
-    if racecard_runners:
-        formguide_by_number = {horse['num']: horse for horse in horses}
-
-        def comparable_name(value):
-            return re.sub(r'\s*\([A-Z]\d{3}\)\s*$', '', value or '').strip().casefold()
-
-        aligned = []
-        for number in sorted(racecard_runners):
-            canonical = dict(racecard_runners[number])
-            candidate = formguide_by_number.get(number)
-            if candidate and comparable_name(candidate.get('name')) == comparable_name(canonical['name']):
-                merged = dict(candidate)
-                for key in (
-                    'barrier', 'jockey', 'trainer', 'weight', 'body_weight',
-                    'today_gear', 'brand_no',
-                ):
-                    if not merged.get(key):
-                        merged[key] = canonical.get(key)
-                aligned.append(merged)
-                continue
-
-            source_name = candidate.get('name', '') if candidate else ''
-            source_reconciliations.append({
-                'horse_num': number,
-                'racecard_name': canonical['name'],
-                'formguide_name': source_name,
-            })
-            # The canonical HKJC horse id lets the profile scraper refill safe
-            # historical evidence for the correct horse. The other horse's
-            # SpeedPRO history is deliberately discarded.
-            aligned.append(canonical)
-        horses = aligned
-    
-    return {
-        'race_info': race_info,
-        'horses': horses,
-        'source_reconciliations': source_reconciliations,
-    }
+    return {'race_info': race_info, 'horses': horses}
 
 
-def profile_ids_by_number(horses: list[dict], override: str = '') -> dict[int, str]:
-    """Return profile ids keyed by the actual horse number.
+def normalize_venue_surface(value: str) -> str:
+    """Canonical venue+surface key used by same-course records.
 
-    Filtering empty ids into a list and then using ``enumerate`` shifts every
-    later profile onto the preceding runner. A single missing SpeedPRO identity
-    in 2026-10-04 R2 therefore risked contaminating horses 2-13. Preserve the
-    positional gaps for CLI overrides and use parsed horse numbers otherwise.
+    Historical form rows use several AWT spellings (全天候／泥地／AWT), while
+    today's header uses ``沙田AWT``.  Exact string comparison therefore zeroed
+    every AWT same-venue-distance record.
     """
-    if override:
-        return {
-            index: horse_id.strip()
-            for index, horse_id in enumerate(override.split(','), 1)
-            if horse_id.strip() and horse_id.strip() != '-'
+    text = str(value or '').strip()
+    compact = text.lower().replace(' ', '')
+    if any(token in compact for token in ('awt', '全天候', '泥地', 'dirt')):
+        return '沙田AWT'
+    if '跑馬地' in text or 'happyvalley' in compact or compact == 'hv':
+        return '跑馬地'
+    if '沙田' in text or 'shatin' in compact or compact == 'st':
+        return '沙田'
+    return text
+
+
+SURFACE_PERFORMANCE_LABELS = ('沙田草地', '跑馬地草地', '沙田AWT')
+
+
+def _surface_performance_key(value: str) -> str:
+    """Map historical venue text to the three HKJC racing surfaces."""
+    normalized = normalize_venue_surface(value)
+    if normalized == '沙田AWT':
+        return '沙田AWT'
+    if normalized == '跑馬地':
+        return '跑馬地草地'
+    if normalized == '沙田':
+        return '沙田草地'
+    return ''
+
+
+def compute_surface_performance_shadow(races: list, today_venue: str = '',
+                                       today_dist: int = 0,
+                                       race_date: str = '',
+                                       overseas_races: Optional[list] = None) -> dict:
+    """Strictly pre-race, shrunken horse performance on each HKJC surface.
+
+    Finish position is converted to a field-size-normalized percentile (winner
+    1.0, last 0.0).  Only target-distance +/-200m rows are used, recent runs
+    receive a 365-day half-life, and four neutral pseudo-runs shrink thin
+    samples toward 0.5.  The score is research/shadow evidence only; it is not
+    consumed by the live 7D matrix.
+    """
+    target_key = _surface_performance_key(today_venue)
+    try:
+        anchor = datetime.strptime(race_date, '%Y-%m-%d') if race_date else None
+    except ValueError:
+        anchor = None
+    buckets = {
+        label: {'weighted_perf': 0.0, 'effective_n': 0.0, 'runs': 0}
+        for label in SURFACE_PERFORMANCE_LABELS
+    }
+    for race in races or []:
+        key = _surface_performance_key(race.get('venue', ''))
+        dt = race.get('date_dt')
+        try:
+            distance = int(race.get('distance') or 0)
+            finish = int(race.get('finish') or 0)
+            field_size = int(race.get('field_size') or 0)
+        except (TypeError, ValueError):
+            continue
+        if key not in buckets or not dt or not anchor or dt >= anchor:
+            continue
+        age = (anchor - dt).days
+        if age <= 0 or age > 730 or field_size < 4 or finish <= 0 or finish > field_size:
+            continue
+        if today_dist > 0 and (distance <= 0 or abs(distance - today_dist) > 200):
+            continue
+        weight = 2.0 ** (-age / 365.0)
+        performance = 1.0 - (finish - 1.0) / max(field_size - 1.0, 1.0)
+        buckets[key]['weighted_perf'] += weight * performance
+        buckets[key]['effective_n'] += weight
+        buckets[key]['runs'] += 1
+
+    rows = {}
+    for key, bucket in buckets.items():
+        effective_n = float(bucket['effective_n'])
+        posterior = (float(bucket['weighted_perf']) + 2.0) / (effective_n + 4.0)
+        score = max(40.0, min(80.0, 60.0 + (posterior - 0.5) * 40.0))
+        rows[key] = {
+            'score': round(score, 2),
+            'effective_n': round(effective_n, 2),
+            'runs': int(bucket['runs']),
         }
+    target = rows.get(target_key, {'score': 60.0, 'effective_n': 0.0, 'runs': 0})
+    foreign_awt = {'weighted_perf': 0.0, 'effective_n': 0.0, 'runs': 0}
+    for race in overseas_races or []:
+        if str(race.get('Surface') or '').upper() not in {'DIRT', 'SYNTHETIC'}:
+            continue
+        try:
+            distance = int(race.get('Distance') or 0)
+            finish = int(race.get('Placing') or 0)
+            field_size = int(race.get('Field_Size') or 0)
+        except (TypeError, ValueError):
+            continue
+        dt = parse_date(race.get('Date', ''))
+        if not anchor or not dt or dt >= anchor or field_size < 4 or not (1 <= finish <= field_size):
+            continue
+        if today_dist > 0 and abs(distance - today_dist) > 200:
+            continue
+        age = (anchor - dt).days
+        if age <= 0 or age > 1095:
+            continue
+        weight = 2.0 ** (-age / 365.0)
+        performance = 1.0 - (finish - 1.0) / max(field_size - 1.0, 1.0)
+        foreign_awt['weighted_perf'] += weight * performance
+        foreign_awt['effective_n'] += weight
+        foreign_awt['runs'] += 1
+    foreign_n = float(foreign_awt['effective_n'])
+    foreign_posterior = (float(foreign_awt['weighted_perf']) + 2.0) / (foreign_n + 4.0)
+    foreign_score = max(40.0, min(80.0, 60.0 + (foreign_posterior - 0.5) * 40.0))
+    fallback_source = 'local_history' if float(target.get('effective_n', 0.0)) > 0 else 'neutral'
+    target_score = float(target['score'])
+    if target_key == '沙田AWT' and float(target.get('effective_n', 0.0)) <= 0 and foreign_n > 0:
+        target_score = foreign_score
+        fallback_source = 'foreign_dirt_synthetic'
     return {
-        int(horse['num']): str(horse.get('brand_no') or '').strip()
-        for horse in horses
-        if str(horse.get('brand_no') or '').strip()
-        and str(horse.get('brand_no') or '').strip() != '-'
+        'target': target_key or '未知',
+        'target_score': round(target_score, 2),
+        'target_effective_n': target['effective_n'],
+        'target_runs': target['runs'],
+        'surfaces': rows,
+        'foreign_awt': {
+            'score': round(foreign_score, 2),
+            'effective_n': round(foreign_n, 2),
+            'runs': int(foreign_awt['runs']),
+        },
+        'fallback_source': fallback_source,
+        'status': 'shadow_only',
     }
 
 
-def profile_entries_as_races(entries: list[dict]) -> list[dict]:
-    """Adapt official profile history when SpeedPRO has the wrong identity."""
-    races = []
-    for index, entry in enumerate(entries, 1):
-        raw_date = str(entry.get('date') or '').strip()
-        date_dt = None
-        for date_format in ('%d/%m/%y', '%d/%m/%Y'):
-            try:
-                date_dt = datetime.strptime(raw_date, date_format)
-                break
-            except ValueError:
-                continue
-        date_text = date_dt.strftime('%d/%m/%Y') if date_dt else raw_date
-        venue_track = str(entry.get('venue_track') or '')
-        venue = '沙田' if venue_track.startswith('沙田') else (
-            '跑馬地' if venue_track.startswith('跑馬地') else venue_track
+def format_surface_performance_shadow(payload: dict) -> str:
+    surfaces = payload.get('surfaces') or {}
+    parts = []
+    for label in SURFACE_PERFORMANCE_LABELS:
+        row = surfaces.get(label) or {'score': 60.0, 'effective_n': 0.0, 'runs': 0}
+        parts.append(
+            f"{label} {float(row['score']):.1f}分"
+            f"(有效樣本{float(row['effective_n']):.1f}/原始{int(row['runs'])})"
         )
-        rail_match = re.search(r'["\u201c](.+?)["\u201d]', venue_track)
-        positions = list(entry.get('running_positions') or [])
-        races.append({
-            'idx': index,
-            'date': date_text,
-            'date_dt': date_dt,
-            'days_since': 0,
-            'venue': venue,
-            'rail': rail_match.group(1) if rail_match else '',
-            'distance': int(entry.get('distance') or 0),
-            'going': str(entry.get('going') or ''),
-            'barrier': int(entry.get('barrier') or 0),
-            'body_weight': int(entry.get('declared_weight') or 0),
-            'weight': int(entry.get('weight_carried') or 0),
-            'jockey': str(entry.get('jockey') or ''),
-            'finish': int(entry.get('placing') or 0),
-            'field_size': int(entry.get('field_size') or 0),
-            'energy': 0,
-            'splits': [],
-            'splits_raw': '',
-            'comment': '',
-            'positions': positions,
-            'sectionals': {},
-            'wide_info': {},
-            'pace': '',
+    foreign = payload.get('foreign_awt') or {'score': 60.0, 'effective_n': 0.0, 'runs': 0}
+    source = payload.get('fallback_source', 'neutral')
+    return (
+        f"今場={payload.get('target', '未知')} {float(payload.get('target_score', 60.0)):.1f}分 | "
+        + ' | '.join(parts)
+        + f" | 外地泥/Synthetic {float(foreign.get('score', 60.0)):.1f}分"
+          f"(有效樣本{float(foreign.get('effective_n', 0.0)):.1f}/原始{int(foreign.get('runs', 0))})"
+        + f" | 採用來源={source}"
+        + ' | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分'
+    )
+
+
+def _merge_profile_history_for_stats(races: list, profile_entries: Optional[list] = None) -> list:
+    """Return complete, de-duplicated local history in newest-first order.
+
+    Formguide rows carry the rich recent-run fields used by the model, but are
+    normally capped at roughly six or seven starts. The official horse-profile
+    rows carry the older local history. Facts rendered both tables, yet the old
+    summary statistics only counted the formguide rows, so an older
+    same-distance win could be visible on screen while ``同程`` and the risk
+    flag still said the distance was unproven.
+
+    A horse cannot run twice on one date, so the normalized date is the safest
+    cross-source identity. Recent formguide rows win de-duplication because
+    they contain sectionals and comments unavailable in the profile table.
+    """
+    merged = []
+    seen_dates = set()
+
+    for race in races or []:
+        row = dict(race)
+        dt = row.get('date_dt') or parse_date(row.get('date', ''))
+        if dt:
+            row['date_dt'] = dt
+            seen_dates.add(dt.date().isoformat())
+        merged.append(row)
+
+    for entry in profile_entries or []:
+        dt = _profile_entry_datetime(entry)
+        if dt is None:
+            continue
+        date_key = dt.date().isoformat()
+        if date_key in seen_dates:
+            continue
+        try:
+            finish = int(entry.get('placing') or 0)
+            distance = int(entry.get('distance') or 0)
+        except (TypeError, ValueError):
+            continue
+        merged.append({
+            'date': entry.get('date') or entry.get('race_date_full') or '',
+            'date_dt': dt,
+            'finish': finish,
+            'distance': distance,
+            'venue': entry.get('venue_track') or entry.get('racecourse') or '',
         })
-    return races
+        seen_dates.add(date_key)
+
+    merged.sort(key=lambda row: row.get('date_dt') or datetime.min, reverse=True)
+    return merged
 
 
 def compute_stats(races: list, today_venue: str = '', today_dist: int = 0,
-                  race_date: str = '') -> dict:
+                  race_date: str = '', overseas_races: Optional[list] = None,
+                  profile_entries: Optional[list] = None) -> dict:
     """Compute 賽績統計 from race history.
 
     `race_date` (YYYY-MM-DD, the meeting date) anchors two things that used to
@@ -1246,12 +1252,17 @@ def compute_stats(races: list, today_venue: str = '', today_dist: int = 0,
          April meeting in September computed season_start=2026-09-01 and zeroed
          every horse's season record. Live runs were fine; every replay was not.
     """
+    races = _merge_profile_history_for_stats(races, profile_entries)
     stats = {
         'recent_6': [],
         'days_since_last': 0,
         'season': [0, 0, 0, 0],      # W-2-3-L
         'same_dist': [0, 0, 0, 0],
         'same_venue_dist': [0, 0, 0, 0],
+        'surface_performance_shadow': compute_surface_performance_shadow(
+            races, today_venue=today_venue, today_dist=today_dist, race_date=race_date,
+            overseas_races=overseas_races,
+        ),
     }
     
     if not races:
@@ -1293,7 +1304,7 @@ def compute_stats(races: list, today_venue: str = '', today_dist: int = 0,
         dt = r.get('date_dt')
         finish = r.get('finish', 0)
         dist = r.get('distance', 0)
-        venue = r.get('venue', '')
+        venue = normalize_venue_surface(r.get('venue', ''))
         
         if finish <= 0:
             continue
@@ -1310,7 +1321,7 @@ def compute_stats(races: list, today_venue: str = '', today_dist: int = 0,
             stats['same_dist'][idx] += 1
         
         # Same venue + distance
-        if today_venue and today_dist > 0 and venue == today_venue and dist == today_dist:
+        if today_venue and today_dist > 0 and venue == normalize_venue_surface(today_venue) and dist == today_dist:
             stats['same_venue_dist'][idx] += 1
     
     return stats
@@ -1896,6 +1907,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     lines = []
     races = horse['races']
     p_entries = profile_data.get('entries', []) if profile_data else []
+    full_history = _merge_profile_history_for_stats(races, p_entries)
     
     # Prefer SSR trainer, but keep the formguide trainer as a fallback for
     # debutants or runners without profile enrichment.
@@ -1926,12 +1938,19 @@ def generate_horse_block(horse: dict, today_venue: str = '',
                          f"入Q率: {draw_detail.get('quinella_pct', '?')}% | "
                          f"上名率: {draw_detail.get('place_pct', '?')}%)")
     
-    if not races and not p_entries:
+    overseas_races = horse.get('pdf_overseas_races') or []
+    if not races and not p_entries and not overseas_races:
         lines.append("  (無往績記錄)")
         return '\n'.join(lines)
     
     # === 賽績總結 ===
-    stats = compute_stats(races, today_venue, today_dist, race_date)
+    stats = compute_stats(
+        full_history,
+        today_venue,
+        today_dist,
+        race_date,
+        overseas_races=overseas_races,
+    )
     
     recent_str = '-'.join(str(p) for p in stats['recent_6'])
     season_str = f"({stats['season'][0]}-{stats['season'][1]}-{stats['season'][2]}-{stats['season'][3]})"
@@ -1944,7 +1963,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     # Career tag classification (V2.2)
     # Only horses with zero formal race records use debut templates.
     # Any horse that has run uses the standard template.
-    total_races = len(races)
+    total_races = len(full_history)
     # Check for imported horse (has profile entries but no/few formguide races)
     has_overseas = False
     if profile_data and profile_data.get('origin', '') not in ('', 'HK', '本地'):
@@ -1957,6 +1976,10 @@ def generate_horse_block(horse: dict, today_venue: str = '',
         _hk_ctag = 'ESTABLISHED'
     lines.append(f"- **生涯標記:** `{_hk_ctag}` (香港出賽 {total_races} 場)")
     lines.append(f"- **統計:** 季內 {season_str} | 同程 {dist_str} | 同場同程 {vd_str}")
+    lines.append(
+        "- **個別場地性能 (Shadow):** "
+        + format_surface_performance_shadow(stats['surface_performance_shadow'])
+    )
     
     # === 完整賽績檔案 Markdown Table ===
     display_races = min(len(races), MAX_DISPLAY_RACES)
@@ -2065,28 +2088,32 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     lines.append(f"")
     
     # === 海外賽績 (來自 PDF) ===
-    if horse.get('pdf_overseas_races'):
+    if overseas_races:
         lines.append(f"🌍 **海外賽績 (來自 PDF):**")
-        lines.append(f"| # | 日期 | 場地/路程 | 班次 | 名次/馬匹數 | 騎師 | 負磅 | 締速 | 勝負距離 |")
-        lines.append(f"|---|------|-----------|------|-------------|------|------|------|----------|")
-        for i, ovr in enumerate(horse['pdf_overseas_races']):
-            # parse_pdf_overseas_races 出嘅 key 係 Date/Distance/Placing/Field_Size/
-            # Finish_Time_Raw（大寫）；舊寫法讀 date/track_dist/... 全部 miss 晒，
-            # 成個表變 '-'，下游 real_overseas_rows 就會當無海外賽績。
+        lines.append(f"| # | 日期 | 地區 | 馬場 | 表面 | 路程 | 場地 | 賽事 | 名次/馬匹數 | 負磅 | 締速 | 勝負距離 |")
+        lines.append(f"|---|------|------|------|------|------|------|------|-------------|------|------|----------|")
+        for i, ovr in enumerate(overseas_races):
             ovr_date = ovr.get('Date', ovr.get('date', '-')) or '-'
-            ovr_track = ovr.get('Distance', ovr.get('track_dist', '-')) or '-'
-            ovr_class = ovr.get('class_level', '-') or '-'
+            ovr_region = ovr.get('Region', '-') or '-'
+            ovr_course = ovr.get('Racecourse', '-') or '-'
+            ovr_surface = ovr.get('Surface', '-') or '-'
+            ovr_distance = ovr.get('Distance', ovr.get('track_dist', '-')) or '-'
+            ovr_going = ovr.get('Going', '-') or '-'
+            ovr_class = ovr.get('Race_Type', ovr.get('class_level', '-')) or '-'
             placing = ovr.get('Placing')
             field_size = ovr.get('Field_Size')
             if placing:
                 ovr_rank = f"{placing}/{field_size}" if field_size else str(placing)
             else:
                 ovr_rank = ovr.get('rank', '-') or '-'
-            ovr_jockey = ovr.get('jockey', '-') or '-'
-            ovr_weight = ovr.get('weight', '-') or '-'
+            ovr_weight = ovr.get('Weight', ovr.get('weight', '-')) or '-'
             ovr_time = ovr.get('Finish_Time_Raw', ovr.get('time', '-')) or '-'
-            ovr_margin = ovr.get('margin', '-') or '-'
-            lines.append(f"| {i+1} | {ovr_date} | {ovr_track} | {ovr_class} | {ovr_rank} | {ovr_jockey} | {ovr_weight} | {ovr_time} | {ovr_margin} |")
+            ovr_margin = ovr.get('Margin', ovr.get('margin', '-')) or '-'
+            lines.append(
+                f"| {i+1} | {ovr_date} | {ovr_region} | {ovr_course} | {ovr_surface} | "
+                f"{ovr_distance} | {ovr_going} | {ovr_class} | {ovr_rank} | "
+                f"{ovr_weight} | {ovr_time} | {ovr_margin} |"
+            )
         lines.append(f"")
     
     # === 段速/能量趨勢 ===
@@ -2377,10 +2404,9 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     
 
     
-    # === V5: 引擎 (速度分佈) + 跑法 (位置偏好) ===
+    # === 引擎 (速度分佈) ===
     engine = classify_engine_type(races)
-    run_style = classify_running_style(races)
-    dist_apt = compute_distance_aptitude(races, today_dist)
+    dist_apt = compute_distance_aptitude(full_history, today_dist)
     
     today_rec = dist_apt['today_record']
     today_total = sum(today_rec)
@@ -2391,11 +2417,6 @@ def generate_horse_block(horse: dict, today_venue: str = '',
                  f"信心: {engine['confidence']} | "
                  f"依據: {'; '.join(engine['evidence']) if engine['evidence'] else '數據不足'}"
                  f"{low_sample_tag}")
-    lines.append(f"🏇 **跑法 (位置偏好):**")
-    lines.append(f"  跑法: {run_style['style_cn']} | "
-                 f"信心: {run_style['confidence']} | "
-                 f"依據: {'; '.join(run_style['evidence']) if run_style['evidence'] else '數據不足'}")
-                 
     if dist_apt['dist_lines']:
         lines.append(f"  距離分佈: {' | '.join(dist_apt['dist_lines'])}")
         
@@ -2532,7 +2553,7 @@ def main():
     if len(sys.argv) < 2:
         print("Usage: python3 inject_hkjc_fact_anchors.py <Formguide.txt> "
               "[--venue ST|HV] [--distance 1200] [--class 4] "
-              "[--race-date YYYY-MM-DD] [--draw-stats Draw_Stats.json] "
+              "[--race-date YYYY-MM-DD] "
               "[--horse-ids 'HK_2024_K416,...'] [--output Facts.md]")
         sys.exit(1)
     
@@ -2577,9 +2598,6 @@ def main():
         elif args[i] == '--race-date' and i + 1 < len(args):
             race_date = args[i + 1].strip()
             i += 2
-        elif args[i] == '--draw-stats' and i + 1 < len(args):
-            set_draw_stats_path(args[i + 1].strip())
-            i += 2
         elif args[i] == '--form-lines':
             enable_form_lines = True
             i += 1
@@ -2595,14 +2613,6 @@ def main():
     if not data['horses']:
         print("❌ No horses found in Formguide", file=sys.stderr)
         sys.exit(1)
-    for item in data.get('source_reconciliations') or []:
-        supplied = item['formguide_name'] or '缺行'
-        print(
-            f"   ⚠️ 馬號 {item['horse_num']} 來源不一致："
-            f"排位表={item['racecard_name']} / SpeedPRO={supplied}；"
-            "已用排位表身份並丟棄錯馬往績",
-            file=sys.stderr,
-        )
     
     # Auto-detect race context
     text = Path(fg_path).read_text(encoding='utf-8')
@@ -2613,16 +2623,12 @@ def main():
     today_course = ctx.get('course') or 'Unknown'
     today_dist = dist_override or ctx['distance']
     race_class = class_override or ctx['class']
-
-    # 鎖住今場賽日／賽道，令另一個賽日嘅檔位表永遠 resolve 唔到（見
-    # _resolve_draw_stats_race）。冇 --race-date 就只剩賽道守衛。
-    set_expected_draw_meeting(
-        race_date,
-        '' if today_course in ('', 'Unknown') else today_course,
-    )
     
     # Parse horse IDs for scraper enrichment
-    horse_ids = profile_ids_by_number(data['horses'], horse_ids_str)
+    horse_id_list = [h.strip() for h in horse_ids_str.split(',') if h.strip()] if horse_ids_str else []
+    if not horse_id_list:
+        # Re-enabled automatic extraction
+        horse_id_list = [h['brand_no'] for h in data['horses'] if h.get('brand_no')]
     
     print(f"📌 V2 HKJC 完整賽績檔案 — {len(data['horses'])} 匹馬", file=sys.stderr)
     print(
@@ -2630,8 +2636,8 @@ def main():
         f"距離: {today_dist}m | 班次: {race_class}",
         file=sys.stderr,
     )
-    if horse_ids:
-        print(f"   馬匹頁面: {len(horse_ids)} 匹 (SSR enrichment)", file=sys.stderr)
+    if horse_id_list:
+        print(f"   馬匹頁面: {len(horse_id_list)} 匹 (SSR enrichment)", file=sys.stderr)
     elif HAS_SCRAPER:
         print(f"   ⚠️ 未提供 --horse-ids，馬匹頁面數據不可用", file=sys.stderr)
     if not HAS_SCRAPER:
@@ -2648,10 +2654,12 @@ def main():
     # Scrape horse profiles if IDs provided
     profiles = {}  # {horse_num: profile_data}
     form_lines_map = {}  # {horse_num: form_lines_data}
-    if HAS_SCRAPER and horse_ids:
+    if HAS_SCRAPER and horse_id_list:
         import time
-        profile_items = sorted(horse_ids.items())
-        for item_index, (horse_num, hid) in enumerate(profile_items):
+        for idx, hid in enumerate(horse_id_list):
+            if not hid or hid == '-':
+                continue
+            horse_num = idx + 1  # horse_ids are in order of horse number
             print(f"   Scraping {hid}...", file=sys.stderr)
             try:
                 profile = scrape_horse_profile(hid)
@@ -2674,21 +2682,8 @@ def main():
                     print(f"     ❌ {hid}: {profile['error']}", file=sys.stderr)
             except Exception as e:
                 print(f"     ❌ {hid}: {e}", file=sys.stderr)
-            if item_index < len(profile_items) - 1:
+            if idx < len(horse_id_list) - 1:
                 time.sleep(0.5)  # Rate limiting
-
-    # A reconciled runner deliberately has no SpeedPRO races: those rows belong
-    # to a different horse. Refill the standard race shape from the correct
-    # official profile before speed-map and career classification run.
-    reconciled_numbers = {
-        int(item['horse_num']) for item in data.get('source_reconciliations') or []
-    }
-    for horse in data['horses']:
-        if horse['num'] not in reconciled_numbers or horse.get('races'):
-            continue
-        profile = profiles.get(horse['num'])
-        if profile and profile.get('entries'):
-            horse['races'] = profile_entries_as_races(profile['entries'])
     
     # Generate output
     output_lines = []
@@ -2701,9 +2696,6 @@ def main():
         output_lines.append(f"馬匹頁面數據: {len(profiles)} 匹已豐富 (頭馬距離/體重/配備/評分/走位)")
     if form_lines_map:
         output_lines.append(f"賽績線: {len(form_lines_map)} 匹已查冊")
-    if data.get('source_reconciliations'):
-        numbers = ','.join(str(item['horse_num']) for item in data['source_reconciliations'])
-        output_lines.append(f"來源對齊: 馬號 {numbers} 已以官方排位表身份修復")
     output_lines.append(f"")
     
     # Inject draw verdict block if race_num provided
@@ -2719,18 +2711,13 @@ def main():
             print(f"   🎯 檔位判讀: Race {race_num} 已注入", file=sys.stderr)
         elif load_draw_stats().get('races'):
             print(
-                "   ⚠️ 檔位統計與今場不匹配，已略過注入 "
-                f"(Race {race_num}: {today_venue} {today_dist}m \"{today_course}\" 賽道"
-                f"{(' ' + race_date) if race_date else ''}) — "
-                f"原因: {draw_stats_reject_reason() or 'unknown'}；"
-                f"檔案: {load_draw_stats().get('meta', {}).get('meeting', '（空）')}",
+                f"   ⚠️ 檔位統計與今場不匹配，已略過注入 (Race {race_num}: {today_venue} {today_dist}m)",
                 file=sys.stderr,
             )
 
-    speed_map_block, _speed_map = build_race_speed_map_block(data, today_venue, today_dist, race_class)
-    output_lines.append(speed_map_block)
-    output_lines.append(f"")
-    print(f"   🗺️ 自動步速圖: { _speed_map['predicted_pace'] } ({_speed_map['source']})", file=sys.stderr)
+    # 自動跑法／步速圖已停用：最近兩次跑馬地逐馬跑法只有約 44-46% 命中。
+    # 保留 completed-race 走位窗口、PI 同內外疊消耗作歷史證據，但唔再輸出
+    # 「今仗前置／守中／後上」或由佢推演嘅步速預測。
     
     output_lines.append(f"{'=' * 70}")
     output_lines.append(f"")

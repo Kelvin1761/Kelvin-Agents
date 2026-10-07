@@ -1,5 +1,6 @@
 import re
 from hkjc_racing_engine import scoring
+from hkjc_racing_engine.rail_draw_context import rail_draw_context_adjustment
 from hkjc_racing_engine.scoring import BaseScorer
 
 # 檔位評分 = 位置先驗公式（1-4檔好 / 直路8+好）。
@@ -43,7 +44,18 @@ class DrawScorer(BaseScorer):
             p_low = scoring.DRAW_MICRO_WEIGHTS.get("turn_draw_9_plus", 50.0)
             prior_score = p_high if draw_num <= 4 else (p_mid if draw_num <= 8 else p_low)
 
-        self.score = prior_score
-        self.reason = "Prior formula"
+        is_debut = bool(
+            self.horse_data.get("is_debut")
+            or self.horse_data.get("debut_runner")
+            or self.horse_data.get("career_tag") == "DEBUT"
+        )
+        context = rail_draw_context_adjustment(self.race_context, draw_num)
+        adjustment = float(context.get("adjustment", 0.0)) if not is_debut else 0.0
+        self.score = scoring.clip_score(prior_score + adjustment)
+        self.reason = (
+            f"Prior formula + PIT venue/rail adjustment {adjustment:+.2f}"
+            if context.get("applied") and not is_debut
+            else "Prior formula"
+        )
 
         return self.score, self.reason

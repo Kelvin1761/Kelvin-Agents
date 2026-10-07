@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import importlib.util
 import json
-import subprocess
 import sys
 from pathlib import Path
 from unittest import mock
@@ -56,68 +55,6 @@ def test_unknown_race_count_never_falls_back_to_a_guessed_total() -> None:
         assert helpers.detect_total_races_from_url("https://example.test?Racecourse=ST") is None
 
 
-class _Response:
-    def __init__(self, body: str):
-        self.body = body.encode("utf-8")
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *_args):
-        return False
-
-    def read(self):
-        return self.body
-
-
-def test_race_count_detection_retries_a_transient_timeout() -> None:
-    html = '<a href="?RaceNo=1">1</a><a href="?RaceNo=9">9</a>'
-    with (
-        mock.patch.object(
-            helpers.urllib.request,
-            "urlopen",
-            side_effect=[TimeoutError("slow"), _Response(html)],
-        ) as urlopen,
-        mock.patch.object(helpers.time, "sleep") as sleep,
-    ):
-        assert helpers.detect_total_races_from_url("https://example.test") == 9
-    assert urlopen.call_count == 2
-    sleep.assert_called_once()
-
-
-def test_cached_official_race_count_is_used_for_the_same_meeting(tmp_path: Path) -> None:
-    (tmp_path / "Extraction_Readiness.json").write_text(
-        json.dumps({"meeting_date": "2026/09/23", "expected_races": 9}),
-        encoding="utf-8",
-    )
-    url = "https://example.test?racedate=2026/09/23&Racecourse=HV&RaceNo=1"
-    assert helpers.cached_expected_races(tmp_path, url) == 9
-
-
-def test_cached_race_count_from_another_meeting_is_rejected(tmp_path: Path) -> None:
-    (tmp_path / "Extraction_Readiness.json").write_text(
-        json.dumps({"meeting_date": "2026/09/16", "expected_races": 8}),
-        encoding="utf-8",
-    )
-    url = "https://example.test?racedate=2026/09/23&Racecourse=HV&RaceNo=1"
-    assert helpers.cached_expected_races(tmp_path, url) is None
-
-
-def test_trigger_extractor_uses_cached_official_count_after_live_timeout(tmp_path: Path) -> None:
-    (tmp_path / "Extraction_Readiness.json").write_text(
-        json.dumps({"meeting_date": "2026/09/23", "expected_races": 9}),
-        encoding="utf-8",
-    )
-    url = "https://example.test?racedate=2026/09/23&Racecourse=HV&RaceNo=1"
-    with (
-        mock.patch.object(helpers, "detect_total_races_from_url", return_value=None),
-        mock.patch.object(helpers.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run,
-    ):
-        helpers.trigger_extractor(url, str(tmp_path))
-    command = run.call_args.args[0]
-    assert command[command.index("--races") + 1] == "1-9"
-
-
 def test_partial_batch_writes_manifest_and_exits_temporary(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(
         sys,
@@ -162,54 +99,3 @@ def test_partial_batch_writes_manifest_and_exits_temporary(tmp_path: Path, monke
     assert readiness["status"] == "waiting_source"
     assert readiness["formguides_ready"] == 0
     assert readiness["self_recovery"] == "automatic_retry"
-
-
-def test_complete_core_with_partial_trackwork_waits_before_scoring(
-    tmp_path: Path, monkeypatch
-) -> None:
-    """Snapshot 要晨操證據，就唔准 readiness 先報 ready 再喺 scoring 後失敗。"""
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            str(SCRIPT),
-            "--base_url",
-            "https://racing.hkjc.com/zh-hk/local/information/racecard"
-            "?racedate=2026/09/27&Racecourse=ST&RaceNo=1",
-            "--races",
-            "1,2,3",
-            "--output_dir",
-            str(tmp_path),
-            "--max_workers",
-            "1",
-        ],
-    )
-    complete = {
-        "race": 1,
-        "racecard_ok": True,
-        "formguide_ok": True,
-        "racecard_state": "fresh",
-        "formguide_state": "fresh",
-        "errors": [],
-    }
-    trackwork = {
-        "ok": True,
-        "races": {
-            1: {"json_ok": True, "md_ok": True},
-            2: {"json_ok": False, "md_ok": False},
-            3: {"json_ok": False, "md_ok": False},
-        },
-        "error": "TimeoutExpired",
-    }
-    with (
-        mock.patch.object(batch, "extract_starter_pdf", return_value=(True, "", "fresh")),
-        mock.patch.object(batch, "extract_trackwork_meeting", return_value=trackwork),
-        mock.patch.object(batch, "extract_single_race", side_effect=lambda race, *_a, **_k: complete | {"race": race}),
-        pytest.raises(SystemExit) as raised,
-    ):
-        batch.main()
-
-    assert raised.value.code == 75
-    readiness = json.loads((tmp_path / "Extraction_Readiness.json").read_text())
-    assert readiness["status"] == "waiting_source"
-    assert readiness["trackwork_missing"] == [2, 3]

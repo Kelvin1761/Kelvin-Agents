@@ -166,161 +166,53 @@ def derive_urls(base_url, race_no):
     return racecard_url, formguide_url
 
 
-def extract_single_race(
-    race_no, base_url, output_dir, date_prefix, *,
-    refresh_racecard=True, refresh_formguide=True,
-):
-    """Extract selected required sources for a single race."""
+def extract_single_race(race_no, base_url, output_dir, date_prefix):
+    """Extract racecard + formguide for a single race."""
     racecard_url, formguide_url = derive_urls(base_url, race_no)
     results = {'race': race_no, 'racecard_ok': False, 'formguide_ok': False,
                'racecard_state': 'missing', 'formguide_state': 'missing', 'errors': []}
 
+    # Racecard
     rc_file = os.path.join(output_dir, f"{date_prefix} Race {race_no} 排位表.md")
-    if refresh_racecard:
-        try:
-            rc_result = subprocess.run(
-                [VENV_PYTHON, RACECARD_SCRIPT, racecard_url],
-                capture_output=True, text=True, timeout=60,
-                encoding='utf-8', env=SUBPROCESS_ENV
-            )
-            ok, error, state = _keep_valid_candidate(
-                rc_file, rc_result.stdout or '', 'Racecard', race_no, rc_result.returncode
-            )
-            results['racecard_ok'] = ok
-            results['racecard_state'] = state
-            if not ok:
-                results['errors'].append(error or f"Racecard R{race_no}: {rc_result.stderr[:200]}")
-        except Exception as e:
-            results['racecard_state'] = _artifact_state(rc_file, 'Racecard', race_no)
-            results['errors'].append(f"Racecard R{race_no}: {str(e)}")
-
-    fg_file = os.path.join(output_dir, f"{date_prefix} Race {race_no} 賽績.md")
-    if refresh_formguide:
-        try:
-            fg_result = subprocess.run(
-                [VENV_PYTHON, FORMGUIDE_SCRIPT, formguide_url],
-                capture_output=True, text=True, timeout=120,
-                encoding='utf-8', env=SUBPROCESS_ENV
-            )
-            # Filter out the "Extracting form guide" log line
-            lines = fg_result.stdout.splitlines(keepends=True)
-            filtered = [l for l in lines if "Extracting form guide using Playwright" not in l]
-            content = ''.join(filtered)
-            ok, error, state = _keep_valid_candidate(
-                fg_file, content, 'Formguide', race_no, fg_result.returncode
-            )
-            results['formguide_ok'] = ok
-            results['formguide_state'] = state
-            if not ok:
-                results['errors'].append(error or f"Formguide R{race_no}: {fg_result.stderr[:200]}")
-        except Exception as e:
-            results['formguide_state'] = _artifact_state(fg_file, 'Formguide', race_no)
-            results['errors'].append(f"Formguide R{race_no}: {str(e)}")
-
-    return results
-
-
-def retry_incomplete_races(
-    results, base_url, output_dir, date_prefix, max_retries=2,
-):
-    """Serially retry only the required source that failed concurrently.
-
-    HKJC intermittently stalls individual requests. A small serial retry avoids
-    repeating successful Playwright work and reduces pressure on the source.
-    """
-    for retry_no in range(1, max_retries + 1):
-        incomplete = [
-            result for result in sorted(results, key=lambda item: item['race'])
-            if not result.get('racecard_ok') or not result.get('formguide_ok')
-        ]
-        if not incomplete:
-            break
-        print(f"   ↻ Serial recovery {retry_no}/{max_retries}: "
-              f"R{'、R'.join(str(item['race']) for item in incomplete)}")
-        for result in incomplete:
-            need_racecard = not result.get('racecard_ok')
-            need_formguide = not result.get('formguide_ok')
-            recovered = extract_single_race(
-                result['race'], base_url, output_dir, date_prefix,
-                refresh_racecard=need_racecard,
-                refresh_formguide=need_formguide,
-            )
-            for source, needed in (
-                ('racecard', need_racecard), ('formguide', need_formguide),
-            ):
-                if not needed:
-                    continue
-                result[f'{source}_ok'] = recovered[f'{source}_ok']
-                result[f'{source}_state'] = recovered.get(
-                    f'{source}_state', result.get(f'{source}_state', 'missing')
-                )
-                label = 'Racecard' if source == 'racecard' else 'Formguide'
-                result['errors'] = [
-                    error for error in result.get('errors', [])
-                    if not error.startswith(f'{label} R{result["race"]}:')
-                ]
-            result['errors'].extend(recovered.get('errors', []))
-    return results
-
-
-def _verify_kept_formguides(results, output_dir, date_prefix):
-    """碟上嘅賽績同**今次新鮮抽到**嘅排位表對得上，就當佢仍然當前。
-
-    個閘本來問「今次刷新成功咗嗎」。呢個問題唔啱：HKJC 間歇會回空頁
-    （`no runner rows`），而 `_keep_valid_candidate` 保留咗上次嘅好副本 ——
-    於是一份完全正確、幾個鐘前抽嘅賽績會被當成唔可用。2026-09-09 快活谷
-    實測：同一場次 42 次 run 攞到 8/8、26 次唔齊（62% 成功），而唔齊嗰啲
-    每次都要等下一次重試。
-
-    正確嘅問題係「碟上嗰份係唔係最新」。呢度用一個**獨立而且今次真係刷新
-    成功**嘅來源去答：排位表。兩邊嘅 `(馬號, 馬名)` 完全一致，就係證據話
-    嗰份賽績反映當前名單 —— 唔止係「格式有效」。
-
-    ⚠️ 三條唔可以鬆嘅前提：
-      1. **排位表本身一定要 fresh。** 一份 kept 排位表冇資格幫 kept 賽績作證。
-      2. **要完全一致。** 一隻退出馬只喺排位表出現（賽績未跟上）就必須攔住 ——
-         嗰個正正係「賽績過期」嘅樣，而放過佢會令分析用舊名單。
-      3. **解析有任何唔穩陣就唔准放行**（半截頁、零匹馬）。
-         `lineup_looks_complete` 守呢一條。
-
-    改動 `results` 入面嘅 `formguide_state`：核實得到就寫 `verified`。
-    """
-    sys.path.insert(0, SKILL_DIR)
     try:
-        from scan_lineup import lineup_looks_complete, parse_lineup
-    except ImportError:
-        return          # 核實係加分項，唔可以因為佢而搞冧抽取
+        rc_result = subprocess.run(
+            [VENV_PYTHON, RACECARD_SCRIPT, racecard_url],
+            capture_output=True, text=True, timeout=60,
+            encoding='utf-8', env=SUBPROCESS_ENV
+        )
+        ok, error, state = _keep_valid_candidate(
+            rc_file, rc_result.stdout or '', 'Racecard', race_no, rc_result.returncode
+        )
+        results['racecard_ok'] = ok
+        results['racecard_state'] = state
+        if not ok:
+            results['errors'].append(error or f"Racecard R{race_no}: {rc_result.stderr[:200]}")
+    except Exception as e:
+        results['errors'].append(f"Racecard R{race_no}: {str(e)}")
 
-    for result in results:
-        if result.get('formguide_ok') or result.get('formguide_state') != 'kept':
-            continue
-        # 前提 1：排位表要係今次新鮮抽到嘅。
-        if result.get('racecard_state') != 'fresh':
-            continue
-        race_no = result['race']
-        rc_file = os.path.join(output_dir, f"{date_prefix} Race {race_no} 排位表.md")
-        fg_file = os.path.join(output_dir, f"{date_prefix} Race {race_no} 賽績.md")
-        try:
-            with open(rc_file, 'r', encoding='utf-8') as handle:
-                rc_text = handle.read()
-            with open(fg_file, 'r', encoding='utf-8') as handle:
-                fg_text = handle.read()
-        except OSError:
-            continue
-        card, form = parse_lineup(rc_text), parse_lineup(fg_text)
-        # 前提 3：兩邊都要完整。
-        if not lineup_looks_complete(rc_text, card):
-            continue
-        if not lineup_looks_complete(fg_text, form):
-            continue
-        # 前提 2：完全一致（馬號同馬名都要）。
-        if card and card == form:
-            result['formguide_state'] = 'verified'
-            result['errors'] = [
-                err for err in (result.get('errors') or [])
-                if 'Formguide' not in err
-            ] + [f"Formguide R{race_no}: 刷新回空頁，但碟上嗰份同新鮮排位表"
-                 f"名單一致（{len(form)} 匹），當仍然當前"]
+    # Formguide
+    fg_file = os.path.join(output_dir, f"{date_prefix} Race {race_no} 賽績.md")
+    try:
+        fg_result = subprocess.run(
+            [VENV_PYTHON, FORMGUIDE_SCRIPT, formguide_url],
+            capture_output=True, text=True, timeout=120,
+            encoding='utf-8', env=SUBPROCESS_ENV
+        )
+        # Filter out the "Extracting form guide" log line
+        lines = fg_result.stdout.splitlines(keepends=True)
+        filtered = [l for l in lines if "Extracting form guide using Playwright" not in l]
+        content = ''.join(filtered)
+        ok, error, state = _keep_valid_candidate(
+            fg_file, content, 'Formguide', race_no, fg_result.returncode
+        )
+        results['formguide_ok'] = ok
+        results['formguide_state'] = state
+        if not ok:
+            results['errors'].append(error or f"Formguide R{race_no}: {fg_result.stderr[:200]}")
+    except Exception as e:
+        results['errors'].append(f"Formguide R{race_no}: {str(e)}")
+
+    return results
 
 
 def extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix):
@@ -328,7 +220,7 @@ def extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix):
 
     Returns ``(fresh_ok, error, state)`` — same three-way contract as
     `_keep_valid_candidate`, because `starter_pdf_ready` is a **hard** term in
-    the publish gate (`ready = pdf_ok and racecards and formguides and trackwork`), so a
+    the publish gate (`ready = pdf_ok and racecards and formguides`), so a
     transient PDF failure blocks the whole meeting on its own.
 
     ⚠️ 2026-09-05: this function used to unpack two values here while
@@ -343,12 +235,7 @@ def extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix):
     try:
         result = subprocess.run(
             [VENV_PYTHON, STARTER_PDF_SCRIPT, date_yyyymmdd],
-            # 90 秒訂得太緊。實測正常耗時 **11.2 秒**，但 2026-09-06 賽日
-            # 6 次 run 有 **2 次 TimeoutExpired（33%）** —— HKJC 間中會慢好多。
-            # 而 `starter_pdf_ready` 係發佈閘嘅硬條件，撞一次就卡住成個場次。
-            # 正常只用上限嘅 4%，所以放寬幾乎零成本：成功嗰陣一樣快，慢嗰陣
-            # 由「卡死等下次重試」變成「等耐啲但過到」。
-            capture_output=True, text=True, timeout=300,
+            capture_output=True, text=True, timeout=90,
             encoding='utf-8', env=SUBPROCESS_ENV
         )
     except (subprocess.SubprocessError, OSError) as exc:
@@ -373,25 +260,9 @@ def _trackwork_file_ok(output_dir, race_no, suffix, min_bytes):
 
 def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
     """Extract 晨操 (morning trackwork) for all races in one call.
-    Uses --fail-soft so missing data doesn't abort the subprocess.
-
-    A timed-out run writes each completed race before it dies.  When only part
-    of the meeting is cached, resume from the missing races instead of starting
-    at Race 1 again; otherwise a fixed process timeout can make a long card
-    permanently stick at the first two races.
-    """
+    Uses --fail-soft so missing data doesn't abort the pipeline."""
     results = {'ok': False, 'races': {}, 'error': ''}
-    complete_before = [
-        race for race in races
-        if _trackwork_file_ok(output_dir, race, "json", 100)
-        and _trackwork_file_ok(output_dir, race, "md", 50)
-    ]
-    missing_before = [race for race in races if race not in complete_before]
-    # Once all races exist, a later scheduled run refreshes the full meeting.
-    # While recovery is partial, every second must go to the missing tail.
-    requested_races = missing_before or list(races)
-    race_list = ','.join(str(r) for r in requested_races)
-    timeout_seconds = min(1800, max(300, 180 * len(requested_races)))
+    race_list = ','.join(str(r) for r in races)
     result = None
     try:
         result = subprocess.run(
@@ -400,7 +271,7 @@ def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
              '--races', race_list,
              '--output_dir', output_dir,
              '--fail-soft'],
-            capture_output=True, text=True, timeout=timeout_seconds,
+            capture_output=True, text=True, timeout=300,
             encoding='utf-8', env=SUBPROCESS_ENV
         )
     except (subprocess.SubprocessError, OSError) as exc:
@@ -425,23 +296,9 @@ def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
         }
     total_ok = sum(1 for v in results['races'].values() if v['json_ok'] and v['md_ok'])
     results['ok'] = total_ok > 0
-    results['requested_races'] = requested_races
-    if result is not None and result.stderr.strip() and not results['error']:
-        results['error'] = result.stderr.strip()[:200]
+    if result is not None and result.returncode != 0 and not results['error']:
+        results['error'] = result.stderr[:200]
     return results
-
-
-def extract_trackwork_after_core(
-    base_url, races, output_dir, date_prefix, *, core_ready,
-):
-    """Do not spend the recovery window on trackwork before core is ready."""
-    if not core_ready:
-        return {
-            'ok': False,
-            'races': {race: {'json_ok': False, 'md_ok': False} for race in races},
-            'error': 'skipped until required sources are ready',
-        }
-    return extract_trackwork_meeting(base_url, races, output_dir, date_prefix)
 
 
 def main():
@@ -489,7 +346,19 @@ def main():
         print(f"   ⏳ PDF 未 ready；先完成其餘來源探測，整批會標記 WAITING_SOURCE。")
     print()
 
-    # Step 2: Extract required racecard + formguide sources concurrently.
+    # Step 2: Extract 晨操 (trackwork) — all races in one shot, fail-soft
+    print(f"🏇 Extracting 晨操 (trackwork) for {len(races)} races...")
+    tw_results = extract_trackwork_meeting(args.base_url, races, output_dir, date_prefix)
+    tw_ok_count = sum(1 for v in tw_results['races'].values() if v['json_ok'] and v['md_ok'])
+    if tw_results['ok']:
+        print(f"   ✅ 晨操: {tw_ok_count}/{len(races)} races")
+    else:
+        print(f"   ⚠️ 晨操: {tw_ok_count}/{len(races)} races (下游將使用 fallback)")
+        if tw_results['error']:
+            print(f"      {tw_results['error']}")
+    print()
+
+    # Step 3: Extract racecard + formguide concurrently
     print(f"🔄 Extracting {len(races)} races (max {args.max_workers} concurrent)...")
     all_results = []
     with ThreadPoolExecutor(max_workers=args.max_workers) as executor:
@@ -502,40 +371,17 @@ def main():
             all_results.append(result)
             race = result['race']
             # ♻️ = 刷新失敗但碟上舊檔仍然有效；❌ = 真係冇有效數據。
-            marks = {'fresh': "✅", 'verified': "🔎", 'kept': "♻️", 'missing': "❌"}
+            marks = {'fresh': "✅", 'kept': "♻️", 'missing': "❌"}
             rc = marks.get(result.get('racecard_state'), "❌")
             fg = marks.get(result.get('formguide_state'), "❌")
             print(f"   Race {race}: Racecard {rc} | Formguide {fg}")
             for err in result['errors']:
                 print(f"      ⚠️ {err}")
 
-    # HKJC occasionally stalls isolated HTTP requests. Retry only failed
-    # sources, serially, so successful Playwright work is not repeated and the
-    # recovery attempt does not create another concurrent burst.
-    retry_incomplete_races(
-        all_results, args.base_url, output_dir, date_prefix,
-    )
-
-    # 碟上賽績同新鮮排位表對得上 → 標記 `verified`，個閘會認。
-    # ⚠️ 上面逐場嗰行標記喺核實之前就印咗（佢喺完成迴圈裡面，而核實要等齊所有
-    # 結果），所以嗰啲場次會顯示 ♻️。呢度補一行講清楚邊幾場升級咗做 🔎。
-    _verify_kept_formguides(all_results, output_dir, date_prefix)
-    upgraded = [r['race'] for r in all_results
-                if r.get('formguide_state') == 'verified']
-    if upgraded:
-        print(f"   🔎 賽績刷新回空頁但經新鮮排位表核實名單一致："
-              f"R{'、R'.join(str(n) for n in sorted(upgraded))}")
-
     # Summary
     all_results.sort(key=lambda x: x['race'])
     total_rc = sum(1 for r in all_results if r['racecard_ok'])
-    # `formguide_ok` 只係「今次刷新成功」。`verified` 係「碟上嗰份經新鮮排位表
-    # 核實過仍然當前」—— 兩者都足以放行，因為個閘真正要答嘅係「數據當前冇」。
-    total_fg = sum(1 for r in all_results
-                   if r['formguide_ok'] or r.get('formguide_state') == 'verified')
-    fresh_fg = sum(1 for r in all_results if r['formguide_ok'])
-    verified_fg = sum(1 for r in all_results
-                      if not r['formguide_ok'] and r.get('formguide_state') == 'verified')
+    total_fg = sum(1 for r in all_results if r['formguide_ok'])
     # `*_ok` counts a successful refresh; `*_valid` counts races that have
     # usable data on disk afterwards (fresh + kept).  Both are needed: the gate
     # wants the first, a human reading the alert wants the second.
@@ -543,40 +389,9 @@ def main():
         return sum(1 for r in all_results
                    if r.get(f'{key}_state', 'missing') in ('fresh', 'kept'))
     valid_rc, valid_fg = _valid('racecard'), _valid('formguide')
-
-    # Step 3: 晨操 is required by the immutable feature-evidence snapshot, but
-    # must not delay recovery of the earlier core sources. Run it only after
-    # the strict racecard/formguide counts are complete.
-    core_ready = total_rc == len(races) and total_fg == len(races)
     print()
-    if core_ready:
-        print(f"🏇 Extracting 晨操 (trackwork) for {len(races)} races...")
-    else:
-        print("⏭️ Required sources 未齊；今輪跳過晨操，集中 recovery。")
-    tw_results = extract_trackwork_after_core(
-        args.base_url, races, output_dir, date_prefix, core_ready=core_ready,
-    )
-    tw_ok_count = sum(
-        1 for value in tw_results['races'].values()
-        if value['json_ok'] and value['md_ok']
-    )
-    trackwork_complete = tw_ok_count == len(races)
-    trackwork_missing = sorted(
-        race for race, value in tw_results['races'].items()
-        if not (value['json_ok'] and value['md_ok'])
-    )
-    if core_ready and trackwork_complete:
-        print(f"   ✅ 晨操: {tw_ok_count}/{len(races)} races")
-    elif core_ready:
-        print(f"   ⚠️ 晨操: {tw_ok_count}/{len(races)} races "
-              f"(缺 R{',R'.join(map(str, trackwork_missing))}；等 scheduler 續抽)")
-        if tw_results['error']:
-            print(f"      {tw_results['error']}")
-
-    print()
-    extra = f" + {verified_fg} 經排位表核實" if verified_fg else ""
-    print(f"📊 Summary: {total_rc}/{len(races)} racecards | "
-          f"{fresh_fg}/{len(races)} formguides 刷新成功{extra}")
+    print(f"📊 Summary: {total_rc}/{len(races)} racecards | {total_fg}/{len(races)} formguides"
+          f" (refreshed)")
     if valid_rc != total_rc or valid_fg != total_fg:
         print(f"   ↳ 碟上有效: {valid_rc}/{len(races)} racecards | {valid_fg}/{len(races)} formguides"
               f" —— 差額係刷新失敗但保留咗上次有效檔，唔係冇數據")
@@ -585,11 +400,10 @@ def main():
     else:
         # 冇呢個 else，一個**硬阻塞**條件失敗喺 summary 度係完全睇唔到嘅。
         print(f"   ❌ Starter PDF: {pdf_state} —— {pdf_err or '冇記錄原因'}")
-    if trackwork_complete:
+    if tw_results['ok']:
         print(f"   ✅ 晨操 Trackwork: {tw_ok_count}/{len(races)} races")
     else:
-        print(f"   ⚠️ 晨操 Trackwork: {tw_ok_count}/{len(races)} races "
-              f"(缺 R{',R'.join(map(str, trackwork_missing))})")
+        print(f"   ⚠️ 晨操 Trackwork: {tw_ok_count}/{len(races)} races (fallback)")
     print(f"   📁 All files saved to: {output_dir}")
 
     # 發佈閘。預設（`strict`）要每個來源今次都刷新成功。
@@ -614,11 +428,7 @@ def main():
         if gate_mode != "strict":
             print(f"   ⚠️ 唔認得嘅 WC_HKJC_GATE={gate_mode!r}，當 strict 處理")
         pdf_gate = pdf_ok
-    # Stage 5 snapshot pins the exact source bytes for every scored feature.
-    # `trackwork_trend_score` therefore makes complete trackwork a real gate;
-    # allowing scoring here only moves the same failure twenty minutes later.
     ready = pdf_gate and total_rc == len(races) and total_fg == len(races)
-    ready = ready and trackwork_complete
     if gate_mode == "field_change" and pdf_gate and not pdf_ok:
         print(f"   ℹ️ 名單變動模式：PDF 用碟上有效檔（{pdf_state}）過閘 —— "
               f"PDF 截止時間必定早過賽事，唔會載到賽日退出馬。")
@@ -641,9 +451,7 @@ def main():
         "formguides_ready": total_fg,
         "racecards_valid": valid_rc,
         "formguides_valid": valid_fg,
-        "formguides_verified": verified_fg,
         "trackwork_ready": tw_ok_count,
-        "trackwork_missing": trackwork_missing,
         "races": all_results,
         "self_recovery": "automatic_retry" if not ready else "not_needed",
     }

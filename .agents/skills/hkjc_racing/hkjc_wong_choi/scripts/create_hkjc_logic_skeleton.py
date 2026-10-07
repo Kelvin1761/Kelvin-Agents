@@ -140,6 +140,10 @@ def parse_summary(block):
     if m:
         result['season_stats'] = m.group(1).strip()
 
+    m = re.search(r'\*\*個別場地性能 \(Shadow\):\*\*\s*(.+?)$', block, re.MULTILINE)
+    if m:
+        result['surface_performance_shadow'] = m.group(1).strip()
+
     # Extract wins/starts from career line: 生涯：N: W-P-S
     m = re.search(r'生涯：\s*(\d+)\s*[::∶]\s*(\d+)', block)
     if m:
@@ -340,13 +344,34 @@ def parse_overseas_races_table(block):
         if not line.strip().startswith('|'):
             continue
         cols = [c.strip() for c in line.split('|')]
-        # cols: ['', '#', '日期', '場地/路程', '班次', '名次/馬匹數', '騎師', '負磅', '締速', '勝負距離', '']
-        if len(cols) >= 10:
+        # New format preserves official overseas region/racecourse/surface.
+        # Keep the old compact table readable for archived Facts files.
+        if len(cols) >= 13:
             try:
                 int(cols[1]) # verify row num
             except (ValueError, IndexError):
                 continue
-
+            rank_parts = cols[9].split('/', 1)
+            results.append({
+                'date': cols[2],
+                'region': cols[3],
+                'racecourse': cols[4],
+                'surface': cols[5],
+                'distance': cols[6],
+                'going': cols[7],
+                'class_level': cols[8],
+                'rank': cols[9],
+                'placing': rank_parts[0],
+                'field_size': rank_parts[1] if len(rank_parts) > 1 else '',
+                'weight': cols[10],
+                'time': cols[11],
+                'margin': cols[12],
+            })
+        elif len(cols) >= 10:
+            try:
+                int(cols[1])
+            except (ValueError, IndexError):
+                continue
             results.append({
                 'date': cols[2],
                 'track_dist': cols[3],
@@ -355,7 +380,7 @@ def parse_overseas_races_table(block):
                 'jockey': cols[6],
                 'weight': cols[7],
                 'time': cols[8],
-                'margin': cols[9]
+                'margin': cols[9],
             })
     return results
 
@@ -1031,36 +1056,16 @@ def _build_core_logic_scaffold(data):
     return scaffold
 
 
-_MEETING_DRAW_STATS_PATH = None
-
-
-def set_meeting_draw_stats_path(path) -> None:
-    """Prefer this meeting's own draw table over the shared global file.
-
-    全域 hkjc_draw_stats.json 只反映最後一次抽嘅賽日，所以重跑舊場次讀佢一定
-    對唔上。`run_prerace_pipeline.snapshot_draw_stats` 會喺 meeting folder 留
-    一份 Draw_Stats.json，呢個就係嗰份。
-    """
-    global _MEETING_DRAW_STATS_PATH
-    _MEETING_DRAW_STATS_PATH = Path(path) if path else None
-
-
 def _load_draw_stats_json():
-    """Load draw stats JSON — this meeting's copy first, then the shared file."""
-    candidates = []
-    if _MEETING_DRAW_STATS_PATH:
-        candidates.append(_MEETING_DRAW_STATS_PATH)
-    candidates.append(
-        (Path(__file__).parent.parent.parent.parent.parent / 'scripts' / 'hkjc_draw_stats.json')
-    )
-    for candidate in candidates:
-        try:
-            json_path = Path(candidate).resolve()
-            if json_path.exists():
-                with open(json_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-        except Exception:
-            continue
+    """Load and cache draw stats JSON."""
+    try:
+        json_path = Path(__file__).parent.parent.parent.parent.parent / 'scripts' / 'hkjc_draw_stats.json'
+        json_path = json_path.resolve()
+        if json_path.exists():
+            with open(json_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+    except Exception:
+        pass
     return {}
 
 
@@ -1411,6 +1416,7 @@ def build_skeleton(
     last_6 = data.get('last_6', 'N/A')
     days_since = data.get('days_since_last', 0)
     season_stats = data.get('season_stats', 'N/A')
+    surface_performance_shadow = data.get('surface_performance_shadow', 'N/A')
     margin_trend = data.get('margin_trend', 'N/A')
     weight_trend = data.get('weight_trend', 'N/A')
     gear = data.get('gear', 'N/A')
@@ -1444,11 +1450,6 @@ def build_skeleton(
         date_match = re.search(r'(20\d{2}-\d{2}-\d{2})', str(Path(facts_path).parent))
         if date_match:
             expected_date = date_match.group(1)
-    if facts_path:
-        meeting_draw_stats = Path(facts_path).parent / 'Draw_Stats.json'
-        set_meeting_draw_stats_path(
-            meeting_draw_stats if meeting_draw_stats.exists() else None
-        )
     expected_distance = 0
     distance_text = race_header.get('distance', '')
     distance_match = re.search(r'(\d+)', distance_text)
@@ -1502,7 +1503,8 @@ def build_skeleton(
     # ── Debut/Import detection ──
     # V9.1 FIX: Only tag DEBUT if horse has 0 actual starts.
     # '新馬' can appear as race class name (e.g. 第五班新馬), NOT horse status.
-    is_import = '自購馬' in horse_block or '海外賠馬' in horse_block
+    overseas_rows = parse_overseas_races_table(horse_block) if horse_block else []
+    is_import = bool(overseas_rows) or '自購馬' in horse_block or '海外賽馬' in horse_block
     # inject 寫出嚟嘅格式係「生涯標記: `TAG` (香港出賽 N 場)」；舊 regex 港賽N 永遠 match 唔到
     hk_starts_m = re.search(r'香港出賽\s*(\d+)\s*場', horse_block) or re.search(r'港賽\s*(\d+)', horse_block)
     hk_starts = int(hk_starts_m.group(1)) if hk_starts_m else starts
@@ -1567,7 +1569,12 @@ def build_skeleton(
     if facts_path:
         racecard_block = load_racecard_horse_block(facts_path, race_num, data.get('num', 0))
     jockey_allowance, is_apprentice = parse_apprentice_allowance(racecard_block)
-    debut_sire_profile = parse_debut_sire_profile(horse_block, expected_distance or None, racecard_block=racecard_block) if is_debut else {}
+    pedigree_profile = parse_debut_sire_profile(
+        horse_block,
+        expected_distance or None,
+        racecard_block=racecard_block,
+    )
+    debut_sire_profile = pedigree_profile if is_debut else {}
     debut_trial_profile = build_debut_trial_profile(raw_trackwork) if is_debut else {}
     debut_readiness_flags = build_debut_readiness_flags(raw_trackwork) if is_debut else []
     debut_sire_line = f"[初出 Sire profile: {json.dumps(debut_sire_profile, ensure_ascii=False)}]\n" if is_debut else ""
@@ -1691,11 +1698,17 @@ def build_skeleton(
         'last_6_finishes': last_6,
         'days_since_last': days_since,
         'season_stats': season_stats,
+        'surface_performance_shadow': surface_performance_shadow,
         'trackwork': raw_trackwork,
         'career_tag': career_tag,
         'career_race_starts': hk_starts,
         'career_stage_label': career_stage_label,
         'debut_sire_profile': debut_sire_profile,
+        'pedigree_profile': {
+            'status': pedigree_profile.get('status', 'missing'),
+            'sire': pedigree_profile.get('sire', ''),
+            'dam': pedigree_profile.get('dam', ''),
+        },
         'debut_trial_profile': debut_trial_profile,
         'debut_readiness_flags': debut_readiness_flags,
 
@@ -1706,6 +1719,12 @@ def build_skeleton(
             # ── 狀態與穩定性 (stability) ──
             'recent_6_detail': r6_str,
             'season_stats_line': season_stats,
+            'surface_performance_shadow': surface_performance_shadow,
+            'pedigree_profile': {
+                'status': pedigree_profile.get('status', 'missing'),
+                'sire': pedigree_profile.get('sire', ''),
+                'dam': pedigree_profile.get('dam', ''),
+            },
             'margin_trend': margin_trend,
             'career_tag': career_tag,
             'career_stage_label': career_stage_label or '標準馬',
@@ -1752,7 +1771,7 @@ def build_skeleton(
             'last_margin': last_margin_val,
 
             # ── 海外賽績 (來自 PDF) ──
-            'pdf_overseas_races': parse_overseas_races_table(horse_block) if horse_block else [],
+            'pdf_overseas_races': overseas_rows,
 
             # ── 級數優勢 (class_advantage) ──
             'total_starts': starts,
