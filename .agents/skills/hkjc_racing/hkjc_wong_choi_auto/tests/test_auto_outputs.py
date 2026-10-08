@@ -134,7 +134,6 @@ class AutoOutputTests(unittest.TestCase):
                     "race_shape_v2_legacy_hv",
                     "race_shape_st_draw70",
                     "race_shape_legacy_unbounded",
-                    "complete_strength_legacy_ability_only",
                     "trainer_recency_st_early90",
                     "pre_race_draw_context_v1_generic",
                 },
@@ -147,7 +146,6 @@ class AutoOutputTests(unittest.TestCase):
                     "race_shape_v2_legacy_hv",
                     "race_shape_st_draw70",
                     "race_shape_legacy_unbounded",
-                    "complete_strength_legacy_ability_only",
                     "trainer_recency_st_early90",
                     "pre_race_draw_context_v1_generic",
                 },
@@ -348,51 +346,28 @@ class AutoOutputTests(unittest.TestCase):
             horses["3"]["python_auto"]["shadow_profiles"]["race_shape_legacy_unbounded"]["ability_score"],
         )
 
-    def test_complete_strength_applies_to_whole_field_without_top_rank_lock(self) -> None:
+    def test_pure_7d_is_the_only_official_ranking_signal(self) -> None:
         horses = {}
         for number in range(1, 13):
-            standout = number == 2
-            feature_value = 100.0 if standout else 60.0
             horses[str(number)] = {
                 "horse_name": f"Horse {number}",
-                "last_6_finishes": "1-1-1-1-1-1" if standout else "6-6-6-6-6-6",
-                "season_stats": "季內 (0-0-0-1) | 同程 (0-0-0-1) | 同場同程 (0-0-0-1)",
-                "_data": {
-                    "current_rating": 100 if standout else 60,
-                    "rating_change": 10 if standout else 0,
-                    "last_margin": 0 if standout else 6,
-                    "total_starts": 10,
-                    "total_wins": 3 if standout else 0,
-                },
                 "python_auto": {
                     "ability_score": 90.0 - number,
                     "ability_score_raw": 75.0 - number,
                     "grade": "A",
-                    "feature_scores": {
-                        "speed_score": feature_value,
-                        "class_score": feature_value,
-                        "form_score": feature_value,
-                        "consistency_score": feature_value,
-                        "distance_score": feature_value,
-                    },
-                    "derived_feature_scores": {"formline_strength_score": feature_value},
                     "matrix_scores": {key: 60.0 for key in MATRIX_WEIGHTS},
                     "shadow_profiles": {},
                 },
             }
 
-        auto_orchestrator.HKJCAutoOrchestrator._apply_complete_strength_ranking(horses)
+        auto_orchestrator.HKJCAutoOrchestrator._apply_7d_official_ranking(horses)
         logic = {"race_analysis": {}, "horses": horses}
         auto_orchestrator.ensure_verdict(logic)
 
-        self.assertEqual(logic["python_auto_verdict"]["ranking"][0]["horse_number"], "2")
-        legacy = [
-            (number, horse["python_auto"]["shadow_profiles"]["complete_strength_legacy_ability_only"])
-            for number, horse in horses.items()
-        ]
-        legacy.sort(key=lambda item: (-item[1]["official_ranking_score"], int(item[0])))
-        self.assertEqual(legacy[0][0], "1")
-        self.assertFalse(horses["2"]["python_auto"]["complete_strength"]["rank_locks"])
+        self.assertEqual(logic["python_auto_verdict"]["ranking"][0]["horse_number"], "1")
+        self.assertEqual(horses["1"]["python_auto"]["official_ranking_score"], 89.0)
+        self.assertEqual(horses["1"]["python_auto"]["ability_percentile"], 100.0)
+        self.assertNotIn("complete_strength", horses["1"]["python_auto"])
 
     def test_combined_shadow_keeps_v3_and_weight_refit_separable(self) -> None:
         logic = _logic()

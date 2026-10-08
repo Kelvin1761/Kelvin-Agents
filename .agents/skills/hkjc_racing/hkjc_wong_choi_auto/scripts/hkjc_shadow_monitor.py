@@ -33,7 +33,6 @@ PROFILE_MINIMUMS = {
     "race_shape_v2_legacy_hv": 20,
     "race_shape_st_draw70": 80,
     "race_shape_legacy_unbounded": 80,
-    "complete_strength_legacy_ability_only": 80,
     "trainer_recency_st_early90": 80,
     "pre_race_draw_context_v2": 80,
     "pre_race_draw_context_v1_generic": 20,
@@ -243,7 +242,6 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         rollback_gate = None
         if profile in {
             "race_shape_legacy_unbounded",
-            "complete_strength_legacy_ability_only",
         }:
             gold_net = sum(float(row["delta"]["gold"]) for row in active_rows)
             good_net = sum(float(row["delta"]["good"]) for row in active_rows)
@@ -277,8 +275,6 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 else "sha_tin_forward_candidate" if profile == "race_shape_st_draw70"
                 else "whole_field_robustness_rollback_comparator"
                 if profile == "race_shape_legacy_unbounded"
-                else "complete_strength_rollback_comparator"
-                if profile == "complete_strength_legacy_ability_only"
                 else "sha_tin_early_season_trainer_candidate"
                 if profile == "trainer_recency_st_early90"
                 else "all_turf_pre_race_draw_candidate"

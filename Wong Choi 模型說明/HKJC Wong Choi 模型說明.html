@@ -99,11 +99,6 @@ ul, ol { padding-left:1.5rem; }
 <th>缺資料處理</th>
 </tr></thead><tbody>
 <tr>
-<td>完整戰力全場排序 <code>complete_strength_ranking</code></td>
-<td>正式：85% robust 7D全場百分位 + 15% 連續完整戰力百分位；全場同式、不鎖名次</td>
-<td>個別欄位缺值用同場中位；整體可用 WC_HKJC_COMPLETE_STRENGTH=legacy_ability_only 回退</td>
-</tr>
-<tr>
 <td>全場 race-shape 極端值修正 <code>race_shape_robustness</code></td>
 <td>同場中位數 + clip（race-shape − 同場中位數，−10，+10）；全場同式、不鎖名次</td>
 <td>整場冇有效 race-shape = 不套用；可用 WC_HKJC_RACE_SHAPE_ROBUSTNESS=legacy_unbounded 回退</td>
@@ -369,9 +364,9 @@ ul, ol { padding-left:1.5rem; }
 <td>2.8841</td>
 </tr>
 </tbody></table>
-<p><strong>兩把顯示尺本身都唔加資訊。</strong> <code>ability_score_raw</code> 仍然係可審計嘅 7D 基礎戰力；</p>
-<p>正式排名再按上面列出嘅全場 complete-strength adjustment 合成，而唔係由 Grade 或</p>
-<p>顯示尺改次序。金樣本、單元測試同 run contract 三邊都守住呢點。</p>
+<p><strong>兩把尺都唔加任何資訊，亦唔改任何排名</strong> —— 斜率全部正數、全體同一條式，</p>
+<p>排名讀嘅係原始分（<code>ability_score_raw</code> / <code>matrix_scores</code>）。金樣本、單元測試</p>
+<p>同 run contract 三邊都守住呢一點。</p>
 <h2>4. 首次出賽嘅馬用另一套權重</h2>
 <p>初出馬冇往績，所以換一套只食得到嘅證據嘅權重：</p>
 <table><thead><tr>
@@ -400,12 +395,12 @@ ul, ol { padding-left:1.5rem; }
 </tr>
 </tbody></table>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-10-08 03:24 AEDT</code></li>
-<li>Git commit：<code>c89a2f09</code></li>
-<li>Scoring contract：<code>HKJC_7D_CONTRACT_2026_10_08_COMPLETE_STRENGTH15_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1</code></li>
-<li><code>scoring.py</code> 指紋：<code>e1b2aa831851</code></li>
+<ul><li>生成時間：<code>2026-10-08 14:32 AEDT</code></li>
+<li>Git commit：<code>25b22090</code></li>
+<li>Scoring contract：<code>HKJC_7D_CONTRACT_2026_10_08_PURE_7D_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1</code></li>
+<li><code>scoring.py</code> 指紋：<code>40356ba72cb0</code></li>
 <li><code>matrix_mapper.py</code> 指紋：<code>c9df25fd184d</code></li>
-<li><code>renderer.py</code> 指紋：<code>d79678651e15</code></li>
+<li><code>renderer.py</code> 指紋：<code>5d983bd3a4db</code></li>
 <li>實測樣本：<strong>351 場、4408 匹馬</strong>，由 <code>2026-04-12_ShaTin</code> 到 <code>2026-10-07_HappyValley</code>（跳過 0 個舊格式檔案）</li></ul>
 <p>重新生成：</p>
 <pre><code>

@@ -61,7 +61,6 @@ def scoring_run_contract():
         "debut_matrix_weights": dict(DEBUT_MATRIX_WEIGHTS),
         "matrix_formulas": matrix_formula_manifest(),
         "race_shape_formula": scoring.race_shape_contract_manifest(),
-        "complete_strength_ranking": scoring.complete_strength_contract_manifest(),
         "distance_suitability": scoring.distance_suitability_contract_manifest(),
         "dimension_evidence_blends": {},
         "grade_thresholds": [

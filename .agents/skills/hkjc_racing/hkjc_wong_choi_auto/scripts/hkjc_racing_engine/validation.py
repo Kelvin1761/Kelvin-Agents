@@ -10,7 +10,6 @@ from .scoring import (
     GRADE_THRESHOLDS,
     MATRIX_WEIGHTS,
     SCORING_CONTRACT_VERSION,
-    complete_strength_contract_manifest,
     compute_grade,
     dimension_display_manifest,
     race_shape_contract_manifest,
@@ -73,8 +72,6 @@ def validate_logic_data(logic_data: dict) -> list[str]:
             errors.append("SCHEMA-009 run contract matrix formulas mismatch")
         if contract.get("race_shape_formula") != race_shape_contract_manifest():
             errors.append("SCHEMA-016 run contract race-shape formula mismatch")
-        if contract.get("complete_strength_ranking") != complete_strength_contract_manifest():
-            errors.append("SCHEMA-017 run contract complete-strength formula mismatch")
         expected_blends = {}
         if contract.get("dimension_evidence_blends") != expected_blends:
             errors.append("SCHEMA-011 run contract evidence blends mismatch")
@@ -227,14 +224,6 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
         candidate = ((auto.get("shadow_profiles") or {}).get(profile_name) or {})
         if candidate:
             errors.extend(_validate_weight_race_shape_shadow(horse_num, auto, candidate))
-    strength_shadow = ((auto.get("shadow_profiles") or {}).get(
-        "complete_strength_legacy_ability_only"
-    ) or {})
-    if strength_shadow:
-        if strength_shadow.get("evidence_status") != "experimental_live_rollback_shadow":
-            errors.append(f"SHADOW-040 horse {horse_num} complete-strength rollback status mismatch")
-        if abs(float(strength_shadow.get("ability_score", -1)) - float(auto.get("ability_score", -2))) > 0.01:
-            errors.append(f"SHADOW-041 horse {horse_num} complete-strength rollback changed ability")
     return errors
 
 

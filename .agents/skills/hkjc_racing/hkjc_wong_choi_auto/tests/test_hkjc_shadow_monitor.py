@@ -86,7 +86,6 @@ def test_monitor_uses_immutable_snapshot_and_upserts_idempotently(tmp_path: Path
     assert second["summary"]["race_shape_v2_legacy_hv"]["decision_role"] == "rollback_comparator"
     assert second["summary"]["race_shape_st_draw70"]["decision_role"] == "sha_tin_forward_candidate"
     assert second["summary"]["race_shape_legacy_unbounded"]["decision_role"] == "whole_field_robustness_rollback_comparator"
-    assert second["summary"]["complete_strength_legacy_ability_only"]["decision_role"] == "complete_strength_rollback_comparator"
     assert second["summary"]["trainer_recency_st_early90"]["decision_role"] == "sha_tin_early_season_trainer_candidate"
     assert second["summary"]["pre_race_draw_context_v2"]["decision_role"] == "all_turf_pre_race_draw_candidate"
     assert second["summary"]["pre_race_draw_context_v1_generic"]["decision_role"] == "rail_draw_v1_rollback_comparator"

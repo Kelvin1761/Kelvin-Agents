@@ -129,7 +129,7 @@ def ensure_verdict(logic_data: dict) -> dict:
         ),
     )
     # No horse-specific swaps or protected ranks: every runner uses the same
-    # 85/15 whole-field formula, then raw ability and horse number break ties.
+    # robust 7D score, then raw ability and horse number break exact ties.
     for idx, item in enumerate(ranked, start=1):
         horse = horses[item["horse_number"]]
         auto = horse["python_auto"]
@@ -376,7 +376,11 @@ def render_race_csv(logic_data: dict) -> str:
         "rank",
         "ability_score",
         "official_ranking_score",
-        "complete_strength_percentile",
+        "ability_percentile",
+        "distance_suitability_adjustment",
+        "distance_suitability_signal",
+        "same_distance_starts",
+        "same_distance_places",
         "grade",
         "model_pick_status",
         "shadow_flag_labels",
@@ -397,6 +401,8 @@ def render_race_csv(logic_data: dict) -> str:
     race_number = logic_data.get("race_analysis", {}).get("race_number", "")
     for horse_num, horse in _sorted_horses(logic_data.get("horses", {})):
         auto = horse.get("python_auto", {})
+        distance = auto.get("distance_suitability_adjustment") or {}
+        official_ranking = auto.get("official_ranking_score", "")
         row = {
             "race_number": race_number,
             "horse_number": horse_num,
@@ -405,8 +411,12 @@ def render_race_csv(logic_data: dict) -> str:
             "trainer": horse.get("trainer", ""),
             "rank": auto.get("rank", ""),
             "ability_score": auto.get("ability_score", ""),
-            "official_ranking_score": auto.get("official_ranking_score", ""),
-            "complete_strength_percentile": (auto.get("complete_strength") or {}).get("strength_percentile", ""),
+            "official_ranking_score": official_ranking,
+            "ability_percentile": auto.get("ability_percentile", ""),
+            "distance_suitability_adjustment": distance.get("raw_adjustment", ""),
+            "distance_suitability_signal": distance.get("signal", ""),
+            "same_distance_starts": distance.get("same_distance_starts", ""),
+            "same_distance_places": distance.get("same_distance_places", ""),
             "grade": auto.get("grade", ""),
             "model_pick_status": auto.get("model_pick_status", ""),
             "shadow_flag_labels": _shadow_flag_labels(auto),
@@ -474,8 +484,8 @@ def _render_panorama(race: dict, verdict: dict, horses: dict, shadow_verdicts: d
         "",
         "**📊 全場綜合戰力排名**",
         "",
-        f"| 排名 | 馬號 | 馬名 | {ABILITY_LABEL} | Grade | 資料完整度 | 風險分 | 情境標記 |",
-        "|---:|---:|---|---:|---|---:|---:|---|",
+        f"| 排名 | 馬號 | 馬名 | 7D正式分 | 7D全場百分位 | Grade | 資料完整度 | 風險分 | 情境標記 |",
+        "|---:|---:|---|---:|---:|---|---:|---:|---|",
         *[_ranking_row(item, horses) for item in verdict.get("ranking", [])],
     ]
 
@@ -538,7 +548,7 @@ def _render_verdict(verdict: dict, horses: dict, shadow_verdicts: dict | None = 
         lines.extend([
             f"**第{idx}選**",
             f"- **馬號及馬名:** [{item['horse_number']}] {item['horse_name']}",
-            f"- **評級與{ABILITY_LABEL}:** `[{auto.get('grade', '')}]` | {ABILITY_LABEL} {float(auto.get('ability_score', 0)):.1f}",
+            f"- **評級與排名:** `[{auto.get('grade', '')}]` | 7D正式分 {float(auto.get('ability_score', 0)):.1f}",
             *_verdict_pick_line(auto),
             f"- **核心理據:** {_short(_core_logic(auto, horses[str(item['horse_number'])]), 420)}",
             f"- **最大風險:** {_risk_text(auto)}",
@@ -594,7 +604,7 @@ def _render_blind_spots() -> list[str]:
         "",
         "**1. 資料完整度:** 缺失欄位以中性 60 處理，並以資料完整度指標反映不確定性（不再計入評分）。",
         "**2. 段速含金量:** 段速由本地已抽取資料與矩陣綜合，未以單一數字直接定勝負。",
-        f"**3. 排名邏輯:** 只按{ABILITY_LABEL}由高至低排序；檔位、健康、騎練、段速等訊號已在 7D 矩陣內反映，不再另設排序 tie-break。Grade 只作閱讀標籤。",
+        "**3. 排名邏輯:** 只按robust 7D綜合戰力分由高至低排序；冇第二層overlay。Grade只按7D顯示分作閱讀標籤。",
         "**4. 騎練樣本:** 人馬、騎練或海外騎師資料不足時，不會單靠名氣加分。",
         "**5. 重跑條件:** 任何本地來源更新後，應重新執行 Python Auto pipeline。",
         "",
@@ -984,12 +994,21 @@ def _table_cols(line: str) -> list[str]:
 def _ranking_row(item: dict, horses: dict) -> str:
     auto = horses[str(item["horse_number"])]["python_auto"]
     features = auto.get("feature_scores", {})
+    ability_percentile = auto.get("ability_percentile")
+    ability_text = f"{float(ability_percentile):.1f}" if isinstance(ability_percentile, (int, float)) else "—"
     return (
         f"| {auto.get('rank', '')} | {item['horse_number']} | {item['horse_name']} | "
-        f"{float(auto.get('ability_score', 0)):.1f} | {auto.get('grade', '')} | "
+        f"{float(auto.get('ability_score', 0)):.1f} | {ability_text} | {auto.get('grade', '')} | "
         f"{float(features.get('confidence_score', 60)):.1f} | {float(features.get('risk_score', 60)):.1f} | "
         f"{_context_tags_display(auto)} |"
     )
+
+
+def _official_ranking_score(auto: dict) -> float:
+    value = auto.get("official_ranking_score")
+    if isinstance(value, (int, float)):
+        return float(value)
+    return float(auto.get("ability_score", 0) or 0)
 
 
 def _pick_status(rank: int, ability: float, auto: dict) -> str:
@@ -1273,7 +1292,7 @@ def _context_tags_display(auto: dict) -> str:
 def _summary_banner(auto: dict, features: dict) -> str:
     """The ONE core-score line: total / grade / rank / confidence / risk (+tags)."""
     parts = [
-        f"**📌 {ABILITY_LABEL} `{float(auto.get('ability_score', 0)):.1f}` → 評級 `{auto.get('grade', '')}`**",
+        f"**📌 7D正式{ABILITY_LABEL} `{float(auto.get('ability_score', 0)):.1f}` → 評級 `{auto.get('grade', '')}`**",
     ]
     rank = auto.get("rank")
     if rank not in (None, ""):

@@ -30,7 +30,6 @@
 
 | Adjustment | 公式 | 缺資料處理 |
 |---|---|---|
-| 完整戰力全場排序 `complete_strength_ranking` | 正式：85% robust 7D全場百分位 + 15% 連續完整戰力百分位；全場同式、不鎖名次 | 個別欄位缺值用同場中位；整體可用 WC_HKJC_COMPLETE_STRENGTH=legacy_ability_only 回退 |
 | 全場 race-shape 極端值修正 `race_shape_robustness` | 同場中位數 + clip（race-shape − 同場中位數，−10，+10）；全場同式、不鎖名次 | 整場冇有效 race-shape = 不套用；可用 WC_HKJC_RACE_SHAPE_ROBUSTNESS=legacy_unbounded 回退 |
 | 同程性能修正 `distance_suitability_adjustment` | 正式V1：同程曾入位 +0.43；有同程紀錄但未入位約 -0.17（raw 分） | 冇 point-in-time 同程紀錄 = 0；V2 residual 另作 prospective shadow |
 
@@ -173,9 +172,9 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 | 賽績線 | 80.0 | 0.8153 |
 | 馬匹健康 / 新鮮感 | 66.9 | 2.8841 |
 
-**兩把顯示尺本身都唔加資訊。** `ability_score_raw` 仍然係可審計嘅 7D 基礎戰力；
-正式排名再按上面列出嘅全場 complete-strength adjustment 合成，而唔係由 Grade 或
-顯示尺改次序。金樣本、單元測試同 run contract 三邊都守住呢點。
+**兩把尺都唔加任何資訊，亦唔改任何排名** —— 斜率全部正數、全體同一條式，
+排名讀嘅係原始分（`ability_score_raw` / `matrix_scores`）。金樣本、單元測試
+同 run contract 三邊都守住呢一點。
 
 ## 4. 首次出賽嘅馬用另一套權重
 
@@ -191,12 +190,12 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-10-08 03:24 AEDT`
-- Git commit：`c89a2f09`
-- Scoring contract：`HKJC_7D_CONTRACT_2026_10_08_COMPLETE_STRENGTH15_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1`
-- `scoring.py` 指紋：`e1b2aa831851`
+- 生成時間：`2026-10-08 14:32 AEDT`
+- Git commit：`25b22090`
+- Scoring contract：`HKJC_7D_CONTRACT_2026_10_08_PURE_7D_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1`
+- `scoring.py` 指紋：`40356ba72cb0`
 - `matrix_mapper.py` 指紋：`c9df25fd184d`
-- `renderer.py` 指紋：`d79678651e15`
+- `renderer.py` 指紋：`5d983bd3a4db`
 - 實測樣本：**351 場、4408 匹馬**，由 `2026-04-12_ShaTin` 到 `2026-10-07_HappyValley`（跳過 0 個舊格式檔案）
 
 重新生成：

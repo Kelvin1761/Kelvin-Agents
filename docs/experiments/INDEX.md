@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261008-05](EXP-20261008-05-hkjc-pure-7d-official-ranking.md) | 2026-10-08 | HKJC | complete-strength同7D訊號大量重疊，正式排名回復純7D；原15%公式從runtime、shadow同Dashboard完整移除 | **USER-SELECTED ARCHITECTURE ROLLBACK／NOT A PERFORMANCE WIN**：同EXP-04 locked evidence倒號，terminal Gold 0、Good −1.67pp、Capture −2.22pp；用戶接受歷史回測取捨以降低重複計分／overfit風險。歷史實驗保留審計，現役模型只有純7D。 |
 | [EXP-20261008-04](EXP-20261008-04-hkjc-complete-strength-objective.md) | 2026-10-08 | HKJC | 以全場連續名次強度取代純入位目標，測 horse-level complete-strength overlay | **PROMOTE／Stage-4 RANKING_WIN**：global 15% 全340場 vs winsor10 Gold/Good 各 +0.59pp、Capture +0.49pp、NDCG +0.00315、meeting Top-5 hits SD −6.9%；terminal Gold 0、Good +1.67pp、三個 ranking metrics 全升。場地分開 arm 較弱，正式用全場85/15同式、無rank lock，保留ability-only rollback shadow。 |
 | [EXP-20261008-03](EXP-20261008-03-hkjc-holistic-shape-robustness.md) | 2026-10-08 | HKJC | 全場 race-shape 減權及極端 deviation robustification，改善逐日一兩匹高估／低估 | **USER-ACCEPTED EXPERIMENTAL LIVE**：340場；`shape_winsor10` 全樣本 Gold/Good 0、Champion +0.59pp、Capture +0.98pp、NDCG +0.00645、meeting Top-5 hits SD −3.6%；terminal 少1場 Gold令 Stage 4 原判 REJECT，但用戶明確接受噪音 trade-off。全場同式上線、保留 env rollback＋legacy immutable shadow；≥80 forward races rollback gate。 |
 | [EXP-20261008-02](EXP-20261008-02-hkjc-top2-locked-reranker.md) | 2026-10-08 | HKJC | 鎖首兩名、ML重排第3–8位修正 Top-5 邊界 | **REJECT／ARCHITECTURE WITHDRAWN**：dev/terminal ranking 弱正、Top-5 hits SD −4.2%，但 Stage 4 證據不足；Top-2 lock 結構上保護 Good／Champion，唔代表整體變準，用戶拒絕 overfit 做法，零 live／shadow 改動。 |
