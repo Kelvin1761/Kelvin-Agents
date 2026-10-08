@@ -76,6 +76,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       setLocalStorageForTest: (key, value) => { localStorage.setItem(key, JSON.stringify(value)); },
       getFilteredROI,
       renderHorseCard,
+      renderScoreLedger,
       buildHorseAnalysisSections,
       parseChronologySeries,
       renderChronologySeries,
@@ -111,6 +112,27 @@ test("raw template explains that a generated dashboard must be opened", () => {
   const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
   assert.match(html, /呢個係 Dashboard 原始模板/);
   assert.match(html, /Open Dashboard\.html/);
+});
+
+test("HKJC score ledger exposes every active 7D and distance score", () => {
+  const { renderScoreLedger } = loadTemplateFunctions();
+  const html = renderScoreLedger({
+    ability_score: 72.4,
+    ability_percentile: 80,
+    distance_score: 72,
+    distance_suitability_adjustment: 0.43,
+    scoring_breakdown: {
+      ranking: { rank: 2, ability_score: 72.4 },
+      feature_scores: { form_score: 68, distance_score: 72 },
+      matrix_display: { stability: 70 },
+      distance_suitability: { raw_adjustment: 0.43, same_distance_starts: 6, same_distance_places: 2 },
+    },
+  });
+  assert.match(html, /7D正式分/);
+  assert.match(html, /正式同程調整/);
+  assert.match(html, /查看全部評分/);
+  assert.match(html, /同程場數/);
+  assert.doesNotMatch(html, /完整戰力/);
 });
 
 test("template ships the head tags iOS needs to install it as a standalone app", () => {

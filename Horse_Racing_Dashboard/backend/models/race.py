@@ -105,6 +105,19 @@ class HorseAnalysis(BaseModel):
     rating_matrix: Optional[RatingMatrix] = None
     final_grade: Optional[str] = None  # A+, A, B+, etc.
     ability_score: Optional[float] = None
+    # HKJC official ranking is pure 7D.  The percentile is display-only and is
+    # derived from the same score, never a second-stage ranking layer.
+    official_ranking_score: Optional[float] = None
+    ability_percentile: Optional[float] = None
+    distance_score: Optional[float] = None
+    distance_suitability_adjustment: Optional[float] = None
+    distance_suitability_signal: Optional[str] = None
+    same_distance_starts: Optional[int] = None
+    same_distance_places: Optional[int] = None
+    # Full machine-readable score ledger.  It is intentionally grouped rather
+    # than flattened so the dashboard can expose every engine score without
+    # confusing raw matrix values, display-scale values and ranking layers.
+    scoring_breakdown: Optional[dict] = None
     # 賽前**市場**盤（2026-08-26）。同下面 `predicted_place_odds` 唔同 ——
     # 嗰個係模型推算嘅合理賠率，呢個係 Sportsbet 抓取嗰刻嘅實際市場價。
     # **唔入任何評分。** 抽佢淨係為咗喺 dashboard 預填落注輸入格。
