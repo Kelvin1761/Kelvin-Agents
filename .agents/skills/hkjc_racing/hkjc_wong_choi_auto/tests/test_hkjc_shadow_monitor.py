@@ -77,14 +77,16 @@ def test_monitor_uses_immutable_snapshot_and_upserts_idempotently(tmp_path: Path
     first = monitor.update_ledger(meeting, ledger)
     second = monitor.update_ledger(meeting, ledger)
 
-    assert len(first["rows"]) == 8
-    assert len(second["rows"]) == 8
+    assert len(first["rows"]) == len(monitor.PROFILE_MINIMUMS)
+    assert len(second["rows"]) == len(monitor.PROFILE_MINIMUMS)
     assert all(row["delta"]["gold"] == 1.0 for row in second["rows"])
     assert second["summary"]["weight_refit_t02"]["active_races"] == 1
     assert second["summary"]["weight_refit_t02"]["status"] == "collecting"
     assert second["summary"]["weight_refit_t02"]["promotion_blocked"] is True
     assert second["summary"]["race_shape_v2_legacy_hv"]["decision_role"] == "rollback_comparator"
     assert second["summary"]["race_shape_st_draw70"]["decision_role"] == "sha_tin_forward_candidate"
+    assert second["summary"]["race_shape_legacy_unbounded"]["decision_role"] == "whole_field_robustness_rollback_comparator"
+    assert second["summary"]["complete_strength_legacy_ability_only"]["decision_role"] == "complete_strength_rollback_comparator"
     assert second["summary"]["trainer_recency_st_early90"]["decision_role"] == "sha_tin_early_season_trainer_candidate"
     assert second["summary"]["pre_race_draw_context_v2"]["decision_role"] == "all_turf_pre_race_draw_candidate"
     assert second["summary"]["pre_race_draw_context_v1_generic"]["decision_role"] == "rail_draw_v1_rollback_comparator"
@@ -97,3 +99,32 @@ def test_monitor_rejects_snapshot_tampering(tmp_path: Path) -> None:
 
     with pytest.raises(RuntimeError, match="snapshot hash mismatch"):
         monitor.update_ledger(meeting, tmp_path / "ledger.json")
+
+
+def test_whole_field_rollback_gate_requires_80_races_and_two_primary_wins() -> None:
+    def row(*, gold: float, good: float) -> dict:
+        return {
+            "profile": "race_shape_legacy_unbounded",
+            "profile_applied": True,
+            "venue": "沙田",
+            "surface": "草地",
+            "baseline": {metric: 0.0 for metric in monitor.METRICS},
+            "candidate": {metric: 0.0 for metric in monitor.METRICS},
+            "delta": {
+                **{metric: 0.0 for metric in monitor.METRICS},
+                "gold": gold,
+                "good": good,
+            },
+        }
+
+    collecting = monitor.summarize([row(gold=1.0, good=0.0) for _ in range(79)])
+    assert collecting["race_shape_legacy_unbounded"]["rollback_gate"]["status"] == "retain_experimental_live"
+
+    ready = monitor.summarize(
+        [row(gold=1.0, good=0.0), row(gold=1.0, good=0.0)]
+        + [row(gold=0.0, good=0.0) for _ in range(78)]
+    )
+    profile = ready["race_shape_legacy_unbounded"]
+    assert profile["status"] == "ready_for_locked_review"
+    assert profile["rollback_gate"]["status"] == "recommend_rollback"
+    assert profile["rollback_gate"]["automatic_activation"] is False

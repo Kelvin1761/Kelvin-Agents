@@ -32,6 +32,8 @@ PROFILE_MINIMUMS = {
     "race_shape_v3_hv_t02": 80,
     "race_shape_v2_legacy_hv": 20,
     "race_shape_st_draw70": 80,
+    "race_shape_legacy_unbounded": 80,
+    "complete_strength_legacy_ability_only": 80,
     "trainer_recency_st_early90": 80,
     "pre_race_draw_context_v2": 80,
     "pre_race_draw_context_v1_generic": 20,
@@ -238,6 +240,29 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 "candidate": round(candidate, 8),
                 "delta": round(candidate - baseline, 8),
             }
+        rollback_gate = None
+        if profile in {
+            "race_shape_legacy_unbounded",
+            "complete_strength_legacy_ability_only",
+        }:
+            gold_net = sum(float(row["delta"]["gold"]) for row in active_rows)
+            good_net = sum(float(row["delta"]["good"]) for row in active_rows)
+            trigger = (
+                len(active_rows) >= minimum
+                and gold_net >= 2.0
+                and good_net >= 0.0
+            ) or (
+                len(active_rows) >= minimum
+                and good_net >= 2.0
+                and gold_net >= 0.0
+            )
+            rollback_gate = {
+                "status": "recommend_rollback" if trigger else "retain_experimental_live",
+                "gold_net_races_legacy_minus_live": round(gold_net, 4),
+                "good_net_races_legacy_minus_live": round(good_net, 4),
+                "rule": "at least 80 active races; legacy gains >=2 Gold or Good with the other primary nonnegative",
+                "automatic_activation": False,
+            }
         summary[profile] = {
             "races": len(profile_rows),
             "active_races": len(active_rows),
@@ -250,6 +275,10 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 "rollback_comparator"
                 if profile == "race_shape_v2_legacy_hv"
                 else "sha_tin_forward_candidate" if profile == "race_shape_st_draw70"
+                else "whole_field_robustness_rollback_comparator"
+                if profile == "race_shape_legacy_unbounded"
+                else "complete_strength_rollback_comparator"
+                if profile == "complete_strength_legacy_ability_only"
                 else "sha_tin_early_season_trainer_candidate"
                 if profile == "trainer_recency_st_early90"
                 else "all_turf_pre_race_draw_candidate"
@@ -263,6 +292,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 "sha_tin_awt": _metric_summary([row for row in active_rows if _is_sha_tin_awt(row)]),
                 "happy_valley": _metric_summary([row for row in active_rows if _is_happy_valley(row)]),
             },
+            "rollback_gate": rollback_gate,
         }
     return summary
 

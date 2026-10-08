@@ -46,6 +46,7 @@ _WEIGHT_SHADOW_PROFILES = {
     "race_shape_v3_hv_t02",
     "race_shape_v2_legacy_hv",
     "race_shape_st_draw70",
+    "race_shape_legacy_unbounded",
     "pre_race_draw_context_v1_generic",
 }
 _TRAINER_RECENCY_SHADOW_PROFILE = "trainer_recency_st_early90"
@@ -60,6 +61,7 @@ def scoring_run_contract():
         "debut_matrix_weights": dict(DEBUT_MATRIX_WEIGHTS),
         "matrix_formulas": matrix_formula_manifest(),
         "race_shape_formula": scoring.race_shape_contract_manifest(),
+        "complete_strength_ranking": scoring.complete_strength_contract_manifest(),
         "distance_suitability": scoring.distance_suitability_contract_manifest(),
         "dimension_evidence_blends": {},
         "grade_thresholds": [
@@ -1205,6 +1207,12 @@ class RacingEngine:
         elif profile_name == "race_shape_st_draw70":
             shape_score, components, v3_applied = self._race_shape_st_draw70_score(auto)
             matrix_scores["race_shape"] = shape_score
+        elif profile_name == "race_shape_legacy_unbounded":
+            components = {
+                "formula": "rollback=unbounded production race-shape",
+                "base_race_shape": round(float(matrix_scores["race_shape"]), 2),
+                "status": "experimental_live_rollback_comparator",
+            }
         elif profile_name == "pre_race_draw_context_v1_generic":
             shape_score, components, v3_applied = self._pre_race_draw_context_v1_generic_score(auto)
             matrix_scores["race_shape"] = shape_score
@@ -1218,7 +1226,16 @@ class RacingEngine:
             matrix_scores = {key: round(float(base_matrix.get(key, 60.0)), 2) for key in MATRIX_WEIGHTS}
             v3_applied = False
 
-        ability_raw = round(sum(float(matrix_scores.get(key, 60.0)) * weight for key, weight in weights.items()), 2)
+        base_weights = DEBUT_MATRIX_WEIGHTS if self._is_debut() else MATRIX_WEIGHTS
+        base_matrix_raw = sum(
+            float(base_matrix.get(key, 60.0)) * weight for key, weight in base_weights.items()
+        )
+        fixed_raw_adjustment = float(auto.get("ability_score_raw", base_matrix_raw)) - base_matrix_raw
+        ability_raw = round(
+            sum(float(matrix_scores.get(key, 60.0)) * weight for key, weight in weights.items())
+            + fixed_raw_adjustment,
+            2,
+        )
         ability_score = round(to_display_scale(ability_raw), 2)
         base_ability = float(auto.get("ability_score", ability_score))
         applied = (uses_refit and not self._is_debut()) or v3_applied
@@ -1235,6 +1252,8 @@ class RacingEngine:
                 reasons.append(f"rail/draw V2回退對照：移除正式修正 {adjustment:+.2f}分")
             else:
                 reasons.append("跑馬地以draw＋PIT個別場地性能重建shape")
+        if profile_name == "race_shape_legacy_unbounded":
+            reasons.append("正式robust formula回退對照：保留未封頂race-shape")
         if self._is_debut():
             reasons.append("初出馬公式鎖定，候選不套用")
         elif profile_name.startswith("race_shape_v3") and not v3_applied:
@@ -1245,6 +1264,7 @@ class RacingEngine:
             "applied": applied,
             "ability_score": ability_score,
             "ability_score_raw": ability_raw,
+            "fixed_raw_adjustment": round(fixed_raw_adjustment, 4),
             "ability_delta": round(ability_score - base_ability, 2),
             "grade": compute_grade(ability_score),
             "matrix_scores": matrix_scores,
@@ -1253,7 +1273,7 @@ class RacingEngine:
             "reason": "；".join(reasons) + "。",
             "evidence_status": (
                 "experimental_live_rollback_shadow"
-                if profile_name == "race_shape_v2_legacy_hv"
+                if profile_name in {"race_shape_v2_legacy_hv", "race_shape_legacy_unbounded"}
                 else "prospective_shadow_only"
             ),
         }

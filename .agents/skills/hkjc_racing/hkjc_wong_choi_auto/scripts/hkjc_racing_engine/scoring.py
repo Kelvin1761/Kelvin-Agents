@@ -12,12 +12,58 @@ import re
 # Persisted with every scored race so forward results can be attributed to the
 # exact model that made the pre-race prediction.
 SCORING_CONTRACT_VERSION = (
-    "HKJC_7D_CONTRACT_2026_10_07_PIT_RAIL_DRAW_V2_"
-    "FULL_HISTORY_DISTANCE_COMPONENT_V1"
+    "HKJC_7D_CONTRACT_2026_10_08_COMPLETE_STRENGTH15_"
+    "RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1"
 )
 
 
 HAPPY_VALLEY_RACE_SHAPE_V3_SURFACE_GAIN = 0.45
+RACE_SHAPE_ROBUST_DEVIATION_CAP = 10.0
+COMPLETE_STRENGTH_SHARE = 0.15
+COMPLETE_STRENGTH_COEFFICIENTS = {
+    "strength_speed": 0.05004925,
+    "strength_class": 0.04162046,
+    "strength_form": 0.05645261,
+    "strength_consistency": 0.00179236,
+    "strength_formline": 0.05246334,
+    "strength_distance": 0.05088923,
+    "strength_rating": 0.01124555,
+    "strength_rating_change": 0.03682379,
+    "strength_recent_finish": 0.22224402,
+    "strength_recent_top3_rate": 0.0,
+    "strength_last_margin": 0.07269977,
+    "strength_total_win_rate": 0.0,
+    "strength_same_distance": 0.0,
+    "strength_same_venue_distance": 0.0,
+}
+
+
+def active_race_shape_robustness_profile():
+    """Return the whole-field shape robustness policy with emergency rollback."""
+    value = os.environ.get("WC_HKJC_RACE_SHAPE_ROBUSTNESS", "winsor10").strip().lower()
+    return "legacy_unbounded" if value in {"legacy", "legacy_unbounded", "off"} else "winsor10"
+
+
+def active_complete_strength_profile():
+    """Return the whole-field final-ranking policy with emergency rollback."""
+    value = os.environ.get("WC_HKJC_COMPLETE_STRENGTH", "strength15").strip().lower()
+    return "legacy_ability_only" if value in {"legacy", "legacy_ability_only", "off"} else "strength15"
+
+
+def complete_strength_contract_manifest():
+    return {
+        "profile": active_complete_strength_profile(),
+        "formula": "0.85*whole_field_ability_percentile+0.15*continuous_strength_percentile",
+        "share": COMPLETE_STRENGTH_SHARE,
+        "target": "continuous_whole_field_finish_strength",
+        "learner": "positive_ridge_alpha4_frozen_on_development",
+        "coefficients": dict(COMPLETE_STRENGTH_COEFFICIENTS),
+        "rank_locks": False,
+        "venue_formula": "global; venue-specific arm tested but not selected",
+        "rollback_env": "WC_HKJC_COMPLETE_STRENGTH=legacy_ability_only",
+        "rollback_shadow": "complete_strength_legacy_ability_only",
+        "evidence_status": "stage4_ranking_win",
+    }
 
 
 def active_happy_valley_race_shape_profile():
@@ -46,6 +92,11 @@ def race_shape_contract_manifest():
         "draw_context_venue_partition": "sha_tin_and_happy_valley_never_pool",
         "draw_context_minimums": {"runners": 100, "races": 20, "shrink_runners": 60},
         "rollback_env": "WC_HKJC_HV_RACE_SHAPE_PROFILE=legacy_v2",
+        "whole_field_robustness": active_race_shape_robustness_profile(),
+        "whole_field_robust_formula": "meeting_median+clip(shape-meeting_median,-10,+10)",
+        "whole_field_robust_cap": RACE_SHAPE_ROBUST_DEVIATION_CAP,
+        "whole_field_rollback_env": "WC_HKJC_RACE_SHAPE_ROBUSTNESS=legacy_unbounded",
+        "whole_field_evidence_status": "user_accepted_experimental_live",
         "evidence_status": "user_accepted_experimental_live",
     }
 
@@ -115,6 +166,18 @@ def distance_suitability_contract_manifest():
 # Machine-readable metadata for the generated model explanation.  The actual
 # calculation remains in engine_core so this cannot become a second formula.
 RANKING_ADJUSTMENTS = (
+    {
+        "key": "complete_strength_ranking",
+        "label": "完整戰力全場排序",
+        "formula": "正式：85% robust 7D全場百分位 + 15% 連續完整戰力百分位；全場同式、不鎖名次",
+        "missing": "個別欄位缺值用同場中位；整體可用 WC_HKJC_COMPLETE_STRENGTH=legacy_ability_only 回退",
+    },
+    {
+        "key": "race_shape_robustness",
+        "label": "全場 race-shape 極端值修正",
+        "formula": "同場中位數 + clip（race-shape − 同場中位數，−10，+10）；全場同式、不鎖名次",
+        "missing": "整場冇有效 race-shape = 不套用；可用 WC_HKJC_RACE_SHAPE_ROBUSTNESS=legacy_unbounded 回退",
+    },
     {
         "key": "distance_suitability_adjustment",
         "label": "同程性能修正",

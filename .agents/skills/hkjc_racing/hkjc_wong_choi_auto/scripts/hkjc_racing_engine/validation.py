@@ -10,6 +10,7 @@ from .scoring import (
     GRADE_THRESHOLDS,
     MATRIX_WEIGHTS,
     SCORING_CONTRACT_VERSION,
+    complete_strength_contract_manifest,
     compute_grade,
     dimension_display_manifest,
     race_shape_contract_manifest,
@@ -72,6 +73,8 @@ def validate_logic_data(logic_data: dict) -> list[str]:
             errors.append("SCHEMA-009 run contract matrix formulas mismatch")
         if contract.get("race_shape_formula") != race_shape_contract_manifest():
             errors.append("SCHEMA-016 run contract race-shape formula mismatch")
+        if contract.get("complete_strength_ranking") != complete_strength_contract_manifest():
+            errors.append("SCHEMA-017 run contract complete-strength formula mismatch")
         expected_blends = {}
         if contract.get("dimension_evidence_blends") != expected_blends:
             errors.append("SCHEMA-011 run contract evidence blends mismatch")
@@ -218,11 +221,20 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
         "race_shape_v3_hv_t02",
         "race_shape_v2_legacy_hv",
         "race_shape_st_draw70",
+        "race_shape_legacy_unbounded",
         "pre_race_draw_context_v1_generic",
     ):
         candidate = ((auto.get("shadow_profiles") or {}).get(profile_name) or {})
         if candidate:
             errors.extend(_validate_weight_race_shape_shadow(horse_num, auto, candidate))
+    strength_shadow = ((auto.get("shadow_profiles") or {}).get(
+        "complete_strength_legacy_ability_only"
+    ) or {})
+    if strength_shadow:
+        if strength_shadow.get("evidence_status") != "experimental_live_rollback_shadow":
+            errors.append(f"SHADOW-040 horse {horse_num} complete-strength rollback status mismatch")
+        if abs(float(strength_shadow.get("ability_score", -1)) - float(auto.get("ability_score", -2))) > 0.01:
+            errors.append(f"SHADOW-041 horse {horse_num} complete-strength rollback changed ability")
     return errors
 
 
@@ -246,6 +258,7 @@ def _validate_weight_race_shape_shadow(horse_num: str, auto: dict, shadow: dict)
             float(matrix_scores.get(key, 60.0)) * float(weight)
             for key, weight in weights.items()
         )
+        expected_raw += float(shadow.get("fixed_raw_adjustment", 0.0) or 0.0)
         expected_raw += sum(
             float(item.get("boost", 0.0) or 0.0)
             for item in (shadow.get("sip_flags") or [])
@@ -299,9 +312,20 @@ def _validate_weight_race_shape_shadow(horse_num: str, auto: dict, shadow: dict)
                 errors.append(f"SHADOW-036 horse {horse_num} {profile} unstable PIT cell applied")
         except (TypeError, ValueError):
             errors.append(f"SHADOW-037 horse {horse_num} {profile} invalid rail context payload")
+    if profile == "race_shape_legacy_unbounded":
+        try:
+            cap = float((components or {}).get("cap"))
+            legacy = float((components or {}).get("legacy_race_shape"))
+            live = float((components or {}).get("live_race_shape"))
+            median = float((components or {}).get("meeting_median"))
+            expected_live = median + max(-cap, min(cap, legacy - median))
+            if abs(live - expected_live) > 0.05:
+                errors.append(f"SHADOW-038 horse {horse_num} {profile} rollback shape mismatch")
+        except (TypeError, ValueError):
+            errors.append(f"SHADOW-039 horse {horse_num} {profile} invalid robust rollback payload")
     expected_status = (
         "experimental_live_rollback_shadow"
-        if profile == "race_shape_v2_legacy_hv"
+        if profile in {"race_shape_v2_legacy_hv", "race_shape_legacy_unbounded"}
         else "prospective_shadow_only"
     )
     if shadow.get("evidence_status") != expected_status:
@@ -411,15 +435,18 @@ def _validate_verdict(logic_data: dict, scored: list[tuple[str, dict]]) -> list[
     if not isinstance(verdict, dict):
         return ["VERDICT-001 missing python_auto_verdict"]
     errors = []
+    auto_by_number = dict(scored)
     ranked = verdict.get("ranking", [])
     for item in ranked:
-        # rank_score 係**原始尺**（顯示尺 round 到 2dp 之後會撞同分，見
-        # renderer._raw_score）。冇 raw 嘅舊 verdict 就同 ability_score 比。
         rank_score = float(item.get("rank_score", item.get("ability_score", -1)))
-        reference = item.get("ability_score_raw", item.get("ability_score", -1))
+        auto = auto_by_number.get(str(item.get("horse_number")), {})
+        reference = auto.get(
+            "official_ranking_score",
+            item.get("ability_score_raw", item.get("ability_score", -1)),
+        )
         if abs(rank_score - float(reference)) > 0.0001:
             errors.append(
-                f"VERDICT-004 horse {item.get('horse_number')} rank_score must equal raw ability score"
+                f"VERDICT-004 horse {item.get('horse_number')} rank_score must equal official ranking score"
             )
     ordered_pairs = [
         (

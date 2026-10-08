@@ -105,20 +105,31 @@ def ensure_verdict(logic_data: dict) -> dict:
                 "horse_name": horse.get("horse_name", ""),
                 "ability_score": float(horse.get("python_auto", {}).get("ability_score", 0)),
                 "ability_score_raw": _raw_score(horse.get("python_auto", {})),
+                "official_ranking_score": float(
+                    horse.get("python_auto", {}).get(
+                        "official_ranking_score", _raw_score(horse.get("python_auto", {}))
+                    )
+                ),
                 "grade": horse.get("python_auto", {}).get("grade", ""),
-                # 排序一律用原始加權總分。顯示尺係仿射單調，本來唔會改次序，但
-                # 兩個數各自 round 到 2dp 之後，原始差 0.004 嘅兩匹馬可以喺顯示尺
-                # 撞成同分，跌落馬號 tiebreak —— 實測 274 場有 2 場中招。
-                "rank_score": _raw_score(horse.get("python_auto", {})),
+                # 正式排序優先用 whole-field ranking score；回退模式冇呢個欄位時
+                # 才用原始 7D 分。ability_score_raw 永遠保留做同分次序及 audit。
+                "rank_score": float(
+                    horse.get("python_auto", {}).get(
+                        "official_ranking_score", _raw_score(horse.get("python_auto", {}))
+                    )
+                ),
             }
             for num, horse in horses.items()
             if isinstance(horse.get("python_auto"), dict)
         ],
-        key=lambda item: (-item["rank_score"], _horse_number_sort_key(item["horse_number"])),
+        key=lambda item: (
+            -item["rank_score"],
+            -item["ability_score_raw"],
+            _horse_number_sort_key(item["horse_number"]),
+        ),
     )
-    # We no longer apply artificial tie-breakers or safety swaps.
-    # The ML optimizer reached its 30.63% Good Rate peak by purely sorting the 綜合戰力分 (ability_score).
-    # Any manual overrides here would corrupt the mathematically proven weights.
+    # No horse-specific swaps or protected ranks: every runner uses the same
+    # 85/15 whole-field formula, then raw ability and horse number break ties.
     for idx, item in enumerate(ranked, start=1):
         horse = horses[item["horse_number"]]
         auto = horse["python_auto"]
@@ -364,6 +375,8 @@ def render_race_csv(logic_data: dict) -> str:
         "trainer",
         "rank",
         "ability_score",
+        "official_ranking_score",
+        "complete_strength_percentile",
         "grade",
         "model_pick_status",
         "shadow_flag_labels",
@@ -392,6 +405,8 @@ def render_race_csv(logic_data: dict) -> str:
             "trainer": horse.get("trainer", ""),
             "rank": auto.get("rank", ""),
             "ability_score": auto.get("ability_score", ""),
+            "official_ranking_score": auto.get("official_ranking_score", ""),
+            "complete_strength_percentile": (auto.get("complete_strength") or {}).get("strength_percentile", ""),
             "grade": auto.get("grade", ""),
             "model_pick_status": auto.get("model_pick_status", ""),
             "shadow_flag_labels": _shadow_flag_labels(auto),

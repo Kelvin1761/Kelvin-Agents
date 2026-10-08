@@ -30,7 +30,17 @@ from hkjc_racing_engine.renderer import (
     render_meeting_csv,
     write_prepared_race_outputs,
 )
-from hkjc_racing_engine.scoring import compute_grade, from_display_scale, to_display_scale
+from hkjc_racing_engine.scoring import (
+    COMPLETE_STRENGTH_COEFFICIENTS,
+    COMPLETE_STRENGTH_SHARE,
+    MATRIX_WEIGHTS,
+    RACE_SHAPE_ROBUST_DEVIATION_CAP,
+    active_complete_strength_profile,
+    active_race_shape_robustness_profile,
+    compute_grade,
+    from_display_scale,
+    to_display_scale,
+)
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -330,6 +340,83 @@ def _apply_sip_enhancements(horses):
                 shadow["ability_delta"] = round(shadow_score - new_score, 2)
                 shadow["grade"] = compute_grade(shadow_score)
                 shadow.setdefault("sip_flags", []).append(dict(sip_flag))
+
+
+def _coerce_strength_number(value):
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    match = re.search(r"-?\d+(?:\.\d+)?", str(value).replace(",", ""))
+    return float(match.group(0)) if match else None
+
+
+def _strength_percentiles(values):
+    """Pandas-compatible average percentile ranks with race-median imputation."""
+    valid = sorted(float(value) for value in values.values() if value is not None)
+    if valid:
+        middle = len(valid) // 2
+        median = valid[middle] if len(valid) % 2 else (valid[middle - 1] + valid[middle]) / 2.0
+    else:
+        median = 0.0
+    filled = {key: median if value is None else float(value) for key, value in values.items()}
+    ordered = sorted(filled.values())
+    count = len(ordered) or 1
+    result = {}
+    for key, value in filled.items():
+        first = ordered.index(value) + 1
+        last = count - ordered[::-1].index(value)
+        result[key] = ((first + last) / 2.0) / count
+    return result, median
+
+
+def _strength_triplet(text, label):
+    match = re.search(rf"{re.escape(label)}\s*\((\d+)-(\d+)-(\d+)-(\d+)\)", str(text or ""))
+    if not match:
+        return 0.0, 0.0, 0.0, 0.0
+    wins, seconds, thirds, rest = (float(value) for value in match.groups())
+    return wins + seconds + thirds + rest, wins, seconds, thirds
+
+
+def _complete_strength_inputs(horse, auto):
+    features = auto.get("feature_scores") or {}
+    derived = auto.get("derived_feature_scores") or {}
+    data = horse.get("_data") or {}
+    finishes = [
+        int(token) for token in re.findall(r"\d+", str(horse.get("last_6_finishes") or ""))[:6]
+        if 1 <= int(token) <= 99
+    ]
+    recent_mean = sum(finishes) / len(finishes) if finishes else None
+    recent_top3 = sum(1 for value in finishes if value <= 3)
+    recent_rate = (recent_top3 + 1.0) / (len(finishes) + 3.0)
+    total_starts = _coerce_strength_number(data.get("total_starts")) or 0.0
+    total_wins = _coerce_strength_number(data.get("total_wins")) or 0.0
+    total_win_rate = (total_wins + 1.0) / (total_starts + 5.0)
+    season_stats = horse.get("season_stats") or data.get("season_stats_line")
+    ds, dw, d2, d3 = _strength_triplet(season_stats, "同程")
+    vs, vw, v2, v3 = _strength_triplet(season_stats, "同場同程")
+    return {
+        "strength_speed": _coerce_strength_number(features.get("speed_score")),
+        "strength_class": _coerce_strength_number(features.get("class_score")),
+        "strength_form": _coerce_strength_number(features.get("form_score")),
+        "strength_consistency": _coerce_strength_number(features.get("consistency_score")),
+        "strength_formline": _coerce_strength_number(derived.get("formline_strength_score")),
+        "strength_distance": _coerce_strength_number(features.get("distance_score")),
+        "strength_rating": _coerce_strength_number(
+            data.get("current_rating") or horse.get("base_rating") or horse.get("final_rating")
+        ),
+        "strength_rating_change": _coerce_strength_number(data.get("rating_change")),
+        "strength_recent_finish": -recent_mean if recent_mean is not None else None,
+        "strength_recent_top3_rate": recent_rate,
+        "strength_last_margin": (
+            -_coerce_strength_number(data.get("last_margin"))
+            if _coerce_strength_number(data.get("last_margin")) is not None
+            else None
+        ),
+        "strength_total_win_rate": total_win_rate,
+        "strength_same_distance": (3.0 * dw + 2.0 * d2 + d3 + 1.0) / (3.0 * ds + 12.0),
+        "strength_same_venue_distance": (3.0 * vw + 2.0 * v2 + v3 + 1.0) / (3.0 * vs + 12.0),
+    }
 
 
 def _class_rank(text):
@@ -723,6 +810,8 @@ DEFAULT_SHADOW_PROFILES = (
     "weight_refit_t02",
     "race_shape_v2_legacy_hv",
     "race_shape_st_draw70",
+    "race_shape_legacy_unbounded",
+    "complete_strength_legacy_ability_only",
     "pre_race_draw_context_v1_generic",
     "trainer_recency_st_early90",
     "distance_suitability_v2",
@@ -881,6 +970,8 @@ class HKJCAutoOrchestrator:
             # h_obj["matrix"] = result["matrix"]
             
         _apply_sip_enhancements(horses)
+        self._apply_mainline_shape_robustness(horses)
+        self._apply_complete_strength_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including
         # the horse-number exact-tie key.
         ensure_verdict(logic_data)
@@ -1024,6 +1115,8 @@ class HKJCAutoOrchestrator:
             "race_shape_v3_hv_t02",
             "race_shape_v2_legacy_hv",
             "race_shape_st_draw70",
+            "race_shape_legacy_unbounded",
+            "complete_strength_legacy_ability_only",
             "pre_race_draw_context_v1_generic",
             "trainer_recency_st_early90",
             "distance_suitability_v2",
@@ -1048,6 +1141,8 @@ class HKJCAutoOrchestrator:
             "race_shape_v3_hv_t02",
             "race_shape_v2_legacy_hv",
             "race_shape_st_draw70",
+            "race_shape_legacy_unbounded",
+            "complete_strength_legacy_ability_only",
             "pre_race_draw_context_v1_generic",
             "trainer_recency_st_early90",
             "distance_suitability_v2",
@@ -1069,6 +1164,9 @@ class HKJCAutoOrchestrator:
                     "horse_number": str(horse_num),
                     "horse_name": horse.get("horse_name", ""),
                     "ability_score": float(shadow.get("ability_score", auto.get("ability_score", 0.0))),
+                    "official_ranking_score": float(
+                        shadow.get("official_ranking_score", shadow.get("ability_score", auto.get("ability_score", 0.0)))
+                    ),
                     "grade": shadow.get("grade", ""),
                     "applied": bool(shadow.get("applied")),
                     "reason": shadow.get("reason", ""),
@@ -1076,7 +1174,13 @@ class HKJCAutoOrchestrator:
             )
         if not ranked:
             return
-        ranked.sort(key=lambda item: (-item["ability_score"], int(item["horse_number"]) if item["horse_number"].isdigit() else 999))
+        ranked.sort(
+            key=lambda item: (
+                -item["official_ranking_score"],
+                -item["ability_score"],
+                int(item["horse_number"]) if item["horse_number"].isdigit() else 999,
+            )
+        )
         promoted = []
         for idx, item in enumerate(ranked, start=1):
             horse = horses[item["horse_number"]]
@@ -1096,6 +1200,187 @@ class HKJCAutoOrchestrator:
             "top4": ranked[:4],
             "promoted": promoted,
         }
+
+    @staticmethod
+    def _apply_complete_strength_ranking(horses):
+        """Blend whole-field robust ability with a continuous horse-strength rank."""
+        if active_complete_strength_profile() == "legacy_ability_only":
+            return
+        horse_objects = {
+            str(number): horse
+            for number, horse in horses.items()
+            if isinstance(horse.get("python_auto"), dict)
+        }
+        autos = {number: horse.get("python_auto", {}) for number, horse in horse_objects.items()}
+        if not autos:
+            return
+
+        feature_values = {
+            number: _complete_strength_inputs(horse_objects[number], auto)
+            for number, auto in autos.items()
+        }
+        feature_percentiles = {number: {} for number in autos}
+        feature_medians = {}
+        for feature in COMPLETE_STRENGTH_COEFFICIENTS:
+            ranks, median = _strength_percentiles({
+                number: values.get(feature) for number, values in feature_values.items()
+            })
+            feature_medians[feature] = round(float(median), 6)
+            for number, value in ranks.items():
+                feature_percentiles[number][feature] = value
+
+        strength_linear = {
+            number: sum(
+                feature_percentiles[number][feature] * coefficient
+                for feature, coefficient in COMPLETE_STRENGTH_COEFFICIENTS.items()
+            )
+            for number in autos
+        }
+        strength_rank, _ = _strength_percentiles(strength_linear)
+        ability_rank, _ = _strength_percentiles({
+            number: _coerce_strength_number(auto.get("ability_score"))
+            for number, auto in autos.items()
+        })
+
+        share = COMPLETE_STRENGTH_SHARE
+        rollback_profile = "complete_strength_legacy_ability_only"
+        for number, auto in autos.items():
+            official = 100.0 * (
+                (1.0 - share) * ability_rank[number] + share * strength_rank[number]
+            )
+            auto["official_ranking_score"] = round(official, 6)
+            auto["complete_strength"] = {
+                "profile": "strength_global15",
+                "ability_share": round(1.0 - share, 4),
+                "strength_share": round(share, 4),
+                "ability_percentile": round(100.0 * ability_rank[number], 4),
+                "strength_percentile": round(100.0 * strength_rank[number], 4),
+                "strength_linear_score": round(strength_linear[number], 8),
+                "official_ranking_score": round(official, 6),
+                "source_values": {
+                    key: (None if value is None else round(float(value), 6))
+                    for key, value in feature_values[number].items()
+                },
+                "source_percentiles": {
+                    key: round(100.0 * value, 4)
+                    for key, value in feature_percentiles[number].items()
+                },
+                "field_medians": dict(feature_medians),
+                "target": "continuous_whole_field_finish_strength",
+                "rank_locks": False,
+                "evidence_status": "stage4_ranking_win",
+            }
+            legacy = {
+                "profile": rollback_profile,
+                "applied": abs(strength_rank[number] - ability_rank[number]) > 1e-12,
+                "ability_score": float(auto.get("ability_score", 0.0)),
+                "ability_score_raw": float(auto.get("ability_score_raw", 0.0)),
+                "ability_delta": 0.0,
+                "grade": auto.get("grade", ""),
+                "matrix_scores": dict(auto.get("matrix_scores") or {}),
+                "official_ranking_score": round(100.0 * ability_rank[number], 6),
+                "reason": "回退對照：只按robust 7D綜合戰力分排序，不套用15%完整戰力層。",
+                "evidence_status": "experimental_live_rollback_shadow",
+            }
+            auto.setdefault("shadow_profiles", {})[rollback_profile] = legacy
+
+        # Every existing counterfactual keeps the same horse-strength evidence;
+        # only its own ability percentile changes. This isolates the profile it
+        # was designed to test instead of accidentally disabling the live layer.
+        profile_names = {
+            profile
+            for auto in autos.values()
+            for profile in (auto.get("shadow_profiles") or {})
+            if profile != rollback_profile
+        }
+        for profile in profile_names:
+            shadow_rank, _ = _strength_percentiles({
+                number: _coerce_strength_number(
+                    ((auto.get("shadow_profiles") or {}).get(profile) or {}).get("ability_score")
+                )
+                for number, auto in autos.items()
+            })
+            for number, auto in autos.items():
+                shadow = ((auto.get("shadow_profiles") or {}).get(profile) or {})
+                if not shadow:
+                    continue
+                shadow["official_ranking_score"] = round(
+                    100.0 * ((1.0 - share) * shadow_rank[number] + share * strength_rank[number]),
+                    6,
+                )
+
+    @staticmethod
+    def _apply_mainline_shape_robustness(horses):
+        """Winsorize extreme whole-field shape deviations before official ranking."""
+        if active_race_shape_robustness_profile() == "legacy_unbounded":
+            return
+        profile_name = "race_shape_legacy_unbounded"
+        eligible = []
+        for horse_num, horse in horses.items():
+            auto = horse.get("python_auto", {})
+            shadow = ((auto.get("shadow_profiles") or {}).get(profile_name) or {})
+            matrix = auto.get("matrix_scores") or {}
+            try:
+                shape = float(matrix.get("race_shape"))
+            except (TypeError, ValueError):
+                continue
+            eligible.append((str(horse_num), auto, shadow, shape))
+        if not eligible:
+            return
+        ordered = sorted(item[3] for item in eligible)
+        middle = len(ordered) // 2
+        median = (
+            ordered[middle]
+            if len(ordered) % 2
+            else (ordered[middle - 1] + ordered[middle]) / 2.0
+        )
+        for _horse_num, auto, shadow, shape in eligible:
+            cap = RACE_SHAPE_ROBUST_DEVIATION_CAP
+            adjusted_shape = median + max(-cap, min(cap, shape - median))
+            matrix_scores = dict(auto.get("matrix_scores") or {})
+            matrix_scores["race_shape"] = round(adjusted_shape, 2)
+            raw_delta = MATRIX_WEIGHTS["race_shape"] * (adjusted_shape - shape)
+            ability_raw = round(float(auto.get("ability_score_raw", 60.0)) + raw_delta, 4)
+            ability_score = round(to_display_scale(ability_raw), 2)
+            applied = abs(adjusted_shape - shape) > 1e-9
+            auto["matrix_scores"] = matrix_scores
+            auto["ability_score_raw"] = ability_raw
+            auto["ability_score"] = ability_score
+            auto["grade"] = compute_grade(ability_score)
+            auto["race_shape_robustness"] = {
+                "profile": "winsor10",
+                "applied": applied,
+                "meeting_median": round(median, 2),
+                "base_race_shape": round(shape, 2),
+                "candidate_race_shape": round(adjusted_shape, 2),
+                "raw_adjustment": round(raw_delta, 4),
+                "cap": cap,
+                "evidence_status": "user_accepted_experimental_live",
+            }
+            for candidate in (auto.get("shadow_profiles") or {}).values():
+                try:
+                    candidate["ability_delta"] = round(
+                        float(candidate.get("ability_score", ability_score)) - ability_score,
+                        2,
+                    )
+                except (TypeError, ValueError):
+                    continue
+            if shadow:
+                shadow["applied"] = applied
+                shadow["race_shape_components"] = {
+                    "formula": "rollback=unbounded production race-shape",
+                    "meeting_median": round(median, 2),
+                    "legacy_race_shape": round(shape, 2),
+                    "live_race_shape": round(adjusted_shape, 2),
+                    "cap": cap,
+                    "status": "experimental_live_rollback_comparator",
+                }
+                shadow["reason"] = (
+                    "回退對照：保留未封頂race-shape。"
+                    if applied
+                    else "回退對照：本駒race-shape在同場中位±10內，兩式相同。"
+                )
+                shadow["evidence_status"] = "experimental_live_rollback_shadow"
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="HKJC Wong Choi Auto Orchestrator")

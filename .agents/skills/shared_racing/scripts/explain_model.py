@@ -447,9 +447,17 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
             for key in sorted(dd["gains"], key=lambda k: -model["weights"].get(k, 0)):
                 A(f"| {labels.get(key, key)} | {dd['centres'][key]} | {dd['gains'][key]} |")
             A("")
-        A("**兩把尺都唔加任何資訊，亦唔改任何排名** —— 斜率全部正數、全體同一條式，")
-        A("排名讀嘅係原始分（`ability_score_raw` / `matrix_scores`）。金樣本、單元測試")
-        A("同 run contract 三邊都守住呢一點。")
+        if any(
+            item.get("key") == "complete_strength_ranking"
+            for item in model.get("ranking_adjustments", ())
+        ):
+            A("**兩把顯示尺本身都唔加資訊。** `ability_score_raw` 仍然係可審計嘅 7D 基礎戰力；")
+            A("正式排名再按上面列出嘅全場 complete-strength adjustment 合成，而唔係由 Grade 或")
+            A("顯示尺改次序。金樣本、單元測試同 run contract 三邊都守住呢點。")
+        else:
+            A("**兩把尺都唔加任何資訊，亦唔改任何排名** —— 斜率全部正數、全體同一條式，")
+            A("排名讀嘅係原始分（`ability_score_raw` / `matrix_scores`）。金樣本、單元測試")
+            A("同 run contract 三邊都守住呢一點。")
         A("")
 
     # ── 4. debut / report-only ──

@@ -42,6 +42,14 @@ Debut runners use this separate locked formula:
   restore Happy Valley V2 with
   `WC_HKJC_HV_RACE_SHAPE_PROFILE=legacy_v2`; the selected profile is persisted
   in `python_auto_run_contract`.
+- Before official whole-field ranking, every runner uses the same robust
+  race-shape rule: retain the 27.37% outer weight, but cap each runner's
+  `race_shape` deviation from the same-race median at +/-10 points. This is a
+  symmetric whole-field correction: it does not lock Top 2, protect any rank,
+  or target named horses. It is persisted as `race_shape_robustness=winsor10`.
+  Operations can restore the unbounded formula with
+  `WC_HKJC_RACE_SHAPE_ROBUSTNESS=legacy_unbounded`; every prediction also
+  persists `race_shape_legacy_unbounded` as an immutable rollback shadow.
 - The live `draw_score` first applies the generic positional prior, then the
   promoted `pre_race_draw_context_v2` correction for non-debut turf runners.
   The correction is strict point-in-time and keyed by
@@ -89,7 +97,29 @@ without expanding the 12-score public feature list.
 - `D`: 48-51.99
 - `E`: below 48
 
-Grade is display-only. Ranking and Top 4 use numeric `ability_score`.
+Grade is display-only. Ranking and Top 4 use the numeric whole-field score below.
+
+## Official Whole-Field Ranking
+
+The displayed 7D `ability_score` remains the auditable base ability. Official
+rank and Top 4 use one symmetric whole-field formula:
+
+`85% × robust-7D within-race percentile + 15% × complete-strength percentile`
+
+The complete-strength component is the frozen development fit from
+EXP-20261008-04. Its continuous target uses every finishing position rather
+than a binary placing label. Inputs are pre-race horse-level speed, class,
+form, consistency, form-line, distance, official rating/change, recent finish
+quality, last margin and historical record fields. Missing individual inputs
+use the same-race median. The same formula applies to every runner; there are
+no Top-2 locks, protected ranks or horse-specific swaps. The official score is
+persisted as `official_ranking_score`, while `ability_score` and all 7D
+components remain unchanged and visible.
+
+The selected global 15% arm beat the venue-specific arm, so this final layer is
+not split by Sha Tin/Happy Valley. Venue, rail and surface formulas underneath
+it remain partitioned as documented above. Emergency rollback is
+`WC_HKJC_COMPLETE_STRENGTH=legacy_ability_only`.
 
 ## Pick Status
 
@@ -131,6 +161,18 @@ Frozen 2026-09-28 profiles:
 - `pre_race_draw_context_v1_generic`: rollback comparator created at V2
   promotion. It removes the live PIT rail correction and reconstructs the old
   generic draw formula without changing any other dimension.
+- `race_shape_legacy_unbounded`: whole-field rollback comparator created when
+  the symmetric winsor10 rule became user-accepted experimental live on
+  2026-10-08. It preserves the uncapped race-shape score while keeping every
+  other live adjustment fixed. After at least 80 active races, the monitor
+  recommends (but never automatically activates) rollback only if legacy gains
+  at least two Gold or two Good races and the other primary metric is
+  non-negative.
+- `complete_strength_legacy_ability_only`: rollback comparator for the official
+  85/15 complete-strength ranking. It keeps the robust 7D score and every
+  upstream adjustment fixed, then ranks by ability alone. After at least 80
+  active races the monitor may recommend, but never automatically activate,
+  rollback under the same two-race primary-metric rule.
 - `reverse_bias_intraday_v1`: separate meeting-level prospective shadow. For
   target race N it may read only completed races `< N` from the same surface,
   and needs at least two such races. Only when shrunk early-position and draw
