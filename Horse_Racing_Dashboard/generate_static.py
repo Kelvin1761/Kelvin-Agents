@@ -50,7 +50,8 @@ from models.race import AnalystName, Meeting, Region
 # forever -- the fields would read as empty in production with nothing failing.
 # 4: AU structured fields (rank / ability_score / confidence_score /
 #    evidence_dimensions / dimension_details) added 2026-09-02.
-CACHE_VERSION = 4
+# 5: HKJC full score ledger + official-vs-shadow ranking fields added 2026-10-08.
+CACHE_VERSION = 5
 DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".cache" / "meeting-snapshot-cache.json"
 AU_MEETING_DIR_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\s+(.+?)(?:\s+Race\s+\d+-\d+)?$")
 

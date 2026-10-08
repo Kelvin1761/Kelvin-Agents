@@ -874,6 +874,114 @@ def _load_auto_scoring_map(analysis_path: Path) -> dict[int, dict]:
     return mapping
 
 
+HKJC_FEATURE_SCORE_KEYS = (
+    "form_score", "speed_score", "class_score", "jockey_score",
+    "trainer_score", "draw_score", "distance_score", "track_going_score",
+    "weight_score", "consistency_score", "risk_score", "confidence_score",
+)
+HKJC_DERIVED_SCORE_KEYS = (
+    "formline_strength_score", "margin_trend_score", "same_distance_signal_score",
+    "trackwork_trend_score", "race_shape_context_score",
+)
+
+
+def _number_or_none(value):
+    if value in (None, ""):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _int_or_none(value):
+    number = _number_or_none(value)
+    return int(number) if number is not None else None
+
+
+def _numeric_map(source: dict, keys) -> dict:
+    output = {}
+    for key in keys:
+        value = _number_or_none(source.get(key))
+        if value is not None:
+            output[key] = value
+    return output
+
+
+def _csv_scoring_payload(row: dict) -> dict:
+    """Group every numeric HKJC scoring column without mixing score scales."""
+    ranking = _numeric_map(row, (
+        "rank", "ability_score", "official_ranking_score", "ability_percentile",
+    ))
+    features = _numeric_map(row, HKJC_FEATURE_SCORE_KEYS)
+    derived = _numeric_map(row, HKJC_DERIVED_SCORE_KEYS)
+    matrix_raw = {
+        key.removeprefix("matrix_"): value
+        for key, raw in row.items()
+        if key.startswith("matrix_") and (value := _number_or_none(raw)) is not None
+    }
+    matrix_display = {
+        key.removeprefix("matrixdisp_"): value
+        for key, raw in row.items()
+        if key.startswith("matrixdisp_") and (value := _number_or_none(raw)) is not None
+    }
+    distance = {
+        "raw_adjustment": _number_or_none(row.get("distance_suitability_adjustment")),
+        "signal": row.get("distance_suitability_signal") or None,
+        "same_distance_starts": _int_or_none(row.get("same_distance_starts")),
+        "same_distance_places": _int_or_none(row.get("same_distance_places")),
+    }
+    distance = {key: value for key, value in distance.items() if value is not None}
+    payload = {
+        "ranking": ranking,
+        "feature_scores": features,
+        "derived_scores": derived,
+        "matrix_raw": matrix_raw,
+        "matrix_display": matrix_display,
+        "distance_suitability": distance,
+    }
+    return {key: value for key, value in payload.items() if value}
+
+
+def _load_logic_scoring_map(analysis_path: Path) -> dict[int, dict]:
+    """Read the canonical engine score objects for the dashboard score ledger."""
+    logic_path = analysis_path.with_name(
+        analysis_path.name.replace("_Auto_Analysis.md", "_Logic.json"))
+    if not logic_path.exists():
+        return {}
+    try:
+        payload = json.loads(logic_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    mapping = {}
+    for raw_number, horse in (payload.get("horses") or {}).items():
+        try:
+            horse_number = int(raw_number)
+        except (TypeError, ValueError):
+            continue
+        auto = (horse or {}).get("python_auto") or {}
+        if not auto:
+            continue
+        distance = dict(auto.get("distance_suitability_adjustment") or {})
+        ranking = {
+            "rank": _number_or_none(auto.get("rank")),
+            "ability_score": _number_or_none(auto.get("ability_score")),
+            "ability_score_raw": _number_or_none(auto.get("ability_score_raw")),
+            "official_ranking_score": _number_or_none(auto.get("official_ranking_score")),
+            "ability_percentile": _number_or_none(auto.get("ability_percentile")),
+        }
+        ranking = {key: value for key, value in ranking.items() if value is not None}
+        mapping[horse_number] = {
+            "ranking": ranking,
+            "feature_scores": dict(auto.get("feature_scores") or {}),
+            "derived_scores": dict(auto.get("derived_feature_scores") or {}),
+            "matrix_raw": dict(auto.get("matrix_scores") or {}),
+            "matrix_display": dict(auto.get("matrix_scores_display") or {}),
+            "distance_suitability": distance,
+        }
+    return mapping
+
+
 def _parse_auto_top_picks_from_table(text: str) -> list[TopPick]:
     lines = text.splitlines()
     picks = []
@@ -1041,6 +1149,7 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
 
     is_auto = path.name.endswith("_Auto_Analysis.md")
     auto_scoring = _load_auto_scoring_map(path) if is_auto else {}
+    logic_scoring = _load_logic_scoring_map(path) if is_auto else {}
     matrix_details = _load_matrix_details(path) if is_auto else {}
     for horse in horses:
         details = matrix_details.get(horse.horse_number)
@@ -1067,6 +1176,32 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
                 horse.risk_score = float(row.get("risk_score") or 0) or horse.risk_score
             except ValueError:
                 pass
+            csv_payload = _csv_scoring_payload(row)
+            score_payload = logic_scoring.get(horse.horse_number) or csv_payload
+            # Logic JSON is canonical and richer, but a newly-added CSV field
+            # can exist before old Logic fixtures are regenerated.  Fill only
+            # missing groups from CSV; never overwrite canonical engine data.
+            if score_payload is not csv_payload:
+                for group, values in csv_payload.items():
+                    if group not in score_payload:
+                        score_payload[group] = values
+                    elif isinstance(values, dict) and isinstance(score_payload.get(group), dict):
+                        for key, value in values.items():
+                            score_payload[group].setdefault(key, value)
+            ranking = score_payload.get("ranking") or {}
+            distance = score_payload.get("distance_suitability") or {}
+            horse.official_ranking_score = _number_or_none(ranking.get("official_ranking_score"))
+            horse.ability_percentile = _number_or_none(
+                ranking.get("ability_percentile")
+            )
+            horse.distance_score = _number_or_none(
+                (score_payload.get("feature_scores") or {}).get("distance_score")
+            )
+            horse.distance_suitability_adjustment = _number_or_none(distance.get("raw_adjustment"))
+            horse.distance_suitability_signal = distance.get("signal") or None
+            horse.same_distance_starts = _int_or_none(distance.get("same_distance_starts"))
+            horse.same_distance_places = _int_or_none(distance.get("same_distance_places"))
+            horse.scoring_breakdown = score_payload or None
             horse.model_pick_status = row.get("model_pick_status") or None
             if row.get("grade"):
                 horse.final_grade = row.get("grade")
