@@ -80,6 +80,40 @@ class TemporaryFailure(RuntimeError):
     """A retryable source/deploy/results failure."""
 
 
+class PlayerMarketsWaiting(TemporaryFailure):
+    """Verified source waiting, distinct from a broken extraction or analysis."""
+
+    def __init__(self, games: list[str]) -> None:
+        self.games = sorted(set(games))
+        super().__init__("player_markets_not_open:" + ",".join(self.games))
+
+
+def waiting_player_games(result: subprocess.CompletedProcess[str]) -> list[str]:
+    if result.returncode != TEMPORARY_FAILURE:
+        return []
+    prefix = "NBA_PIPELINE_RESULT: "
+    for line in reversed(result.stdout.splitlines()):
+        if not line.startswith(prefix):
+            continue
+        try:
+            payload = json.loads(line[len(prefix):])
+        except ValueError:
+            return []
+        if not isinstance(payload, dict):
+            return []
+        games = payload.get("waiting_games")
+        if (
+            payload.get("status") == "waiting_player_markets"
+            and payload.get("reason") == "player_markets_not_open"
+            and isinstance(games, list)
+            and games
+            and all(isinstance(tag, str) and tag for tag in games)
+        ):
+            return sorted(set(games))
+        return []
+    return []
+
+
 class RunLog:
     def __init__(self, mode: str, target_date: str) -> None:
         now = datetime.now(SYDNEY)
@@ -581,14 +615,17 @@ def _run_orchestrator_refresh(
     for command in commands:
         result = _run(command)
         tag = command[-1] if "--game" in command else "all"
+        waiting_games = waiting_player_games(result)
         log.step(
             "orchestrator",
-            "ok" if result.returncode == 0 else "failed",
+            "waiting" if waiting_games else "ok" if result.returncode == 0 else "failed",
             game=tag,
             exit_code=result.returncode,
             stdout_tail=result.stdout[-2000:],
             stderr_tail=result.stderr[-2000:],
         )
+        if waiting_games:
+            raise PlayerMarketsWaiting(waiting_games)
         if result.returncode != 0:
             raise TemporaryFailure(f"orchestrator_exit_{result.returncode}:{tag}")
 
@@ -660,13 +697,14 @@ def run_pregame(
         protected_tags = schedule_tags - refreshable_tags
         protected_before = _artifact_hashes(folder, protected_tags)
         material_before = _artifact_hashes(folder, refreshable_tags)
-        if freshness_role is not FreshnessRole.WARMUP:
-            refresh_sportsbet_odds(
-                folder,
-                target_date,
-                protected_tags=protected_tags,
-                log=log,
-            )
+        # Every incomplete attempt needs a fresh source read, including warmup.
+        # A cached moneyline-only file must not hide newly opened player markets.
+        refresh_sportsbet_odds(
+            folder,
+            target_date,
+            protected_tags=protected_tags,
+            log=log,
+        )
         _run_orchestrator_refresh(
             target_date,
             folder,
@@ -1066,6 +1104,26 @@ def main() -> int:
             log.finish(status)
             print(json.dumps({"status": status, "mode": args.mode, "target_date": target_date}))
             return 0
+        except PlayerMarketsWaiting as exc:
+            log.step("player_markets", "waiting", games=exc.games)
+            log.finish("partial", reason="player_markets_not_open", waiting_games=exc.games)
+            notify_once(
+                f"waiting-player-markets:{target_date}",
+                (
+                    f"⏳ NBA Wong Choi 等待球員盤口｜{target_date}\n"
+                    f"賽事：{', '.join(exc.games)}\n"
+                    "Sportsbet 未開球員盤口；下次排程會重新抓取。\n"
+                    "完整分析同 prediction snapshot 尚未完成。"
+                ),
+                audience="primary",
+            )
+            print(json.dumps({
+                "status": "partial",
+                "reason": "player_markets_not_open",
+                "waiting_games": exc.games,
+                "target_date": target_date,
+            }))
+            return TEMPORARY_FAILURE
         except TemporaryFailure as exc:
             message = str(exc)
             log.payload["errors"].append(message)

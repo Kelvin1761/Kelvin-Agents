@@ -665,7 +665,14 @@ def main():
     print(f"\n🎯 [Orchestrator V3.1] Pipeline {completion}！")
     print(f"所有報告位於: {target_dir}")
     if release_action == "blocked":
-        sys.exit(75 if results["waiting"] and set(results["waiting"]) == set(results["failed"]) else 1)
+        waiting_only = bool(results["waiting"]) and set(results["waiting"]) == set(results["failed"])
+        if waiting_only:
+            print("NBA_PIPELINE_RESULT: " + json.dumps({
+                "status": "waiting_player_markets",
+                "reason": "player_markets_not_open",
+                "waiting_games": sorted(results["waiting"]),
+            }, ensure_ascii=False))
+        sys.exit(75 if waiting_only else 1)
     sys.exit(0)
 
 
