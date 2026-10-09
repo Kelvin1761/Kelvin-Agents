@@ -47,3 +47,40 @@ Scheduler 會沿用共用 `~/.wongchoi_notify.env` 設定：
 - 每類成功送達嘅訊息都有 durable key；launchd 重試唔會重複洗版。Telegram 發送失敗／部分失敗會留喺 run log，下次仍可重試，亦唔會將分析誤判為失敗。
 
 內容收件人由 `WC_NOTIFY_TELEGRAM_EXTRA` 控制；primary 永遠都會收到 content 訊息。可用 `WC_TELEGRAM_DISABLE=1` 暫停發送而唔影響 pipeline。
+
+## Preseason and regular-season opener data
+
+The extractor keeps the target season's actual roster. Preseason shadow analysis
+uses completed previous-season statistics, with explicit `roster_season`,
+`statistics_season`, `history_mode`, and historical cutoff metadata. Early
+regular-season L10 can include the previous season until ten current-season
+games are available; every L10 row records its source season. Current API
+failures are not treated as an empty season. The entire US game day and future results are
+excluded, and regular-season/playoff rows are ordered by parsed game dates.
+
+All preseason game, SGM, and Banker reports carry `NO BET — PRESEASON SHADOW
+ONLY`. Shadow validation requires analysis for every priced player with
+verifiable history; unavailable rookie/roster matches are disclosed, never
+invented. Production retains its minimum player coverage gate. Full-name
+matching normalizes accents and punctuation, preserves Jr./Sr. identities, and
+rejects ambiguous matches.
+
+Only Sportsbet's full-game `Match Betting`, `Line`, and `Line Betting` markets
+supply game context. Quarter/half moneylines and `Pick Your Own Line` cannot
+overwrite them. Moneyline-only data is not a complete player-prop analysis:
+`player_markets_not_open` exits 75 and produces no report or snapshot. Scheduled
+pregame refreshes retry live extraction; missing markets are not fabricated.
+
+## Local ML model cache
+
+`NBA_WC_MODEL_DIR` explicitly selects the existing ML model directory. The
+launchd runner prefers `$HOME/WongChoiData/NBA_ML_Dataset/models/v3` when both
+`model.pkl` and `feature_names.json` are present, avoiding CloudStorage hydration
+stalls. An explicit override takes precedence; absent cache preserves the
+configured dataset path and the existing fallback behavior.
+
+The cache is a verified copy of the approved existing model, not a retrained
+candidate. `drive_provenance.json` records source file IDs, modification times,
+byte counts, and hashes. Approved future model replacements must refresh this
+cache together with their model release; do not leave an older local v3 copy
+active after updating the source artifacts.

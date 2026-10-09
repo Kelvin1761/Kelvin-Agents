@@ -131,6 +131,8 @@ def generate_all_sgm_report(games_data, analysis_date):
     lines = []
     lines.append(f'# 🏀 NBA Wong Choi 全日 SGM 完整分析報告 (V5 Short-Leg)')
     lines.append(f'# 📅 日期: {analysis_date} | 總場次: {len(games_data)}')
+    if any(game.get('shadow') for game in games_data):
+        lines.append('# ⛔ NO BET — PRESEASON SHADOW ONLY：歷史參考組合，禁止投注。')
     lines.append(f'# 📋 此報告包含每個 Leg 嘊完整數理引擎 + 邏輯引擎分析')
     lines.append('')
 
@@ -179,6 +181,8 @@ def generate_banker_report(games_data, analysis_date):
     lines = []
     lines.append(f'# 🛡️ NBA Wong Choi 全日穩膽 Banker 完整分析報告 (V5 Short-Leg)')
     lines.append(f'# 📅 日期: {analysis_date} | 總場次: {len(games_data)}')
+    if any(game.get('shadow') for game in games_data):
+        lines.append('# ⛔ NO BET — PRESEASON SHADOW ONLY：歷史參考組合，禁止投注。')
     lines.append(f'# 策略: 收錄每場組合 1 (穩膽 SGM 2-3 Legs) 嘊完整 Leg 分析')
     lines.append('')
 
@@ -289,6 +293,7 @@ def main():
 
         games_data.append({
             'tag': tag,
+            'shadow': '**season_phase**: PRESEASON' in content,
             'combos': combos,
             'value_bomb': value_bomb,
             'summary': summary,

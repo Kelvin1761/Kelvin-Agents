@@ -36,6 +36,10 @@ import json
 import glob
 import argparse
 import collections
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from nba_identity import player_name_key
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -207,39 +211,46 @@ def check_fw05_required_sections(content: str) -> list:
 
 
 def check_fw06_real_players(content: str, odds_json_path: str = None) -> list:
-    """FW-06: Verify real player names exist (cross-check with odds JSON if provided)."""
-    issues = []
-
-    if odds_json_path and os.path.exists(odds_json_path):
-        try:
-            with open(odds_json_path, 'r', encoding='utf-8') as f:
-                odds_data = json.load(f)
-
-            # Extract all player names from odds JSON
-            real_players = set()
-            props = odds_data.get("player_props", {})
-            for category in props.values():
-                if isinstance(category, dict):
-                    for player_name in category.keys():
-                        real_players.add(player_name)
-
-            if real_players:
-                found_players = 0
-                for player in real_players:
-                    # Check last name match (more tolerant)
-                    last_name = player.split()[-1]
-                    if last_name in content:
-                        found_players += 1
-
-                if found_players < 3:
-                    issues.append(
-                        f"FW-06 ❌ BLOCK: 只搵到 {found_players} 個真實球員名 "
-                        f"(要求 ≥3，odds JSON 有 {len(real_players)} 個球員)"
-                    )
-        except (json.JSONDecodeError, KeyError):
-            pass
-
-    return issues
+    """Cross-check full player identities; shadow reports must cover actual available history."""
+    if not odds_json_path or not os.path.exists(odds_json_path):
+        return []
+    try:
+        with open(odds_json_path, 'r', encoding='utf-8') as f:
+            odds_data = json.load(f)
+        real_players = {
+            name for category in odds_data.get("player_props", {}).values()
+            if isinstance(category, dict) for name in category
+        }
+        if not real_players:
+            return ["FW-06 ❌ BLOCK: 冇真實球員盤口，唔可以當完整球員分析。"]
+        # Injury/news mentions are not player analysis. Require a rendered card.
+        headings = [player_name_key(name) for name in re.findall(r"^#### (.+?) \(#", content, re.MULTILINE)]
+        eligible = {player_name_key(name) for name in real_players}
+        required = 3
+        extractor_path = Path(odds_json_path).with_name(Path(odds_json_path).name.replace('Sportsbet_Odds_', 'nba_game_data_'))
+        if extractor_path.is_file():
+            data = json.loads(extractor_path.read_text(encoding='utf-8'))
+            meta = data.get('meta') or {}
+            if meta.get('season_phase') == 'PRESEASON' and meta.get('automation_mode') == 'shadow':
+                if 'NO BET — PRESEASON SHADOW ONLY' not in content:
+                    return ["FW-06 ❌ BLOCK: preseason 報告缺少強制 shadow NO BET 標示。"]
+                available = {
+                    player_name_key(p.get('name', ''))
+                    for players in data.get('players', {}).values() for p in players
+                    if (p.get('gamelog') or {}).get('PTS')
+                }
+                eligible &= available
+                if not eligible:
+                    return ["FW-06 ❌ BLOCK: shadow 冇任何可驗證球員歷史，唔可以當完成。"]
+                # All available priced players must be analyzed. Missing rookie
+                # history is an explicit exclusion, never a fabricated L10.
+                required = len(eligible)
+        found = len(eligible & set(headings))
+        if found < required:
+            return [f"FW-06 ❌ BLOCK: 只搵到 {found} 個有盤口嘅真實球員分析 (要求 ≥{required})"]
+        return []
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        return [f"FW-06 ❌ BLOCK: 球員資料無法驗證: {exc}"]
 
 
 def check_fw07_file_size(content: str, filepath: str) -> list:

@@ -100,6 +100,8 @@ def run_script(
             check=True,
             capture_output=True,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             timeout=timeout,
         )
         if result.stdout:
@@ -112,8 +114,10 @@ def run_script(
         return True
     except subprocess.CalledProcessError as e:
         print(f"⚠️ [{label}] 執行失敗 (exit code: {e.returncode})")
+        if e.stdout:
+            print(f"   stdout: {e.stdout[-4000:]}")
         if e.stderr:
-            print(f"   stderr: {e.stderr[:300]}")
+            print(f"   stderr: {e.stderr[-2000:]}")
         return False
     except subprocess.TimeoutExpired:
         print(f"⏱️ [{label}] 超過 {timeout} 秒，已停止並當作失敗。")
@@ -151,9 +155,32 @@ def filter_sportsbet_files_by_date(files: list[str], target_tags: set[str]) -> l
 def _load_sportsbet_json(path: str) -> dict:
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            payload = json.load(f)
+            return payload if isinstance(payload, dict) else {}
     except Exception:
         return {}
+
+
+def player_milestone_markets_available(payload: dict) -> bool:
+    """Require at least one priced, supported player milestone; game lines alone are insufficient."""
+    props = payload.get("player_props") or {}
+    if not isinstance(props, dict):
+        return False
+    for category in ("points", "rebounds", "assists", "threes_made"):
+        players = props.get(category) or {}
+        if not isinstance(players, dict):
+            continue
+        for player in players.values():
+            if not isinstance(player, dict) or not isinstance(player.get("lines"), dict):
+                continue
+            for line, price in player["lines"].items():
+                try:
+                    threshold, odds = float(line), float(price)
+                    if threshold > 0 and threshold.is_integer() and 1 < odds < float("inf"):
+                        return True
+                except (TypeError, ValueError):
+                    continue
+    return False
 
 
 def sportsbet_json_matches_target(path: str, target_date: str, target_tags: set[str]) -> bool:
@@ -274,6 +301,10 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
     print(f"\n{'='*60}")
     print(f"🏀 [{prefix}] {game_tag} — 開始 Pipeline")
     print(f"{'='*60}")
+
+    if not player_milestone_markets_available(_load_sportsbet_json(sportsbet_json)):
+        print(f"⏳ [{prefix}] player_markets_not_open：未有可分析球員里程碑盤口，保留重試，唔生成分析或 snapshot。")
+        return False
 
     # ── Check if already completed ──
     existing = check_skeleton_exists(target_dir, game_tag)
@@ -547,7 +578,7 @@ def main():
         print(f"\n🎯 已過濾至 {len(games)} 場: {[g['tag'] for g in games]}")
 
     # ── Per-Game Pipeline ──
-    results = {"passed": [], "failed": []}
+    results = {"passed": [], "failed": [], "waiting": []}
 
     for idx, game in enumerate(games, 1):
         tag = game["tag"]
@@ -561,6 +592,8 @@ def main():
             results["passed"].append(tag)
         else:
             results["failed"].append(tag)
+            if not player_milestone_markets_available(_load_sportsbet_json(sb_json)):
+                results["waiting"].append(tag)
 
     # ── Summary ──
     print(f"\n{'='*60}")
@@ -628,9 +661,12 @@ def main():
             skip=args.skip_cloudflare_deploy,
         )
 
-    print(f"\n🎯 [Orchestrator V3.1] Pipeline 完成！")
+    completion = "未完成" if release_action == "blocked" else "完成"
+    print(f"\n🎯 [Orchestrator V3.1] Pipeline {completion}！")
     print(f"所有報告位於: {target_dir}")
-    sys.exit(1 if release_action == "blocked" else 0)
+    if release_action == "blocked":
+        sys.exit(75 if results["waiting"] and set(results["waiting"]) == set(results["failed"]) else 1)
+    sys.exit(0)
 
 
 if __name__ == "__main__":

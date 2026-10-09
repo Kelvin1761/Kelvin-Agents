@@ -32,12 +32,14 @@ import math
 import argparse
 import time
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 NBA_SKILL_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA_SKILL_DIR))
-from nba_schedule import canonical_team_abbr, event_sydney_date
+from nba_schedule import canonical_team_abbr, canonical_game_tag, event_sydney_date
 from nba_season import classify_nba_season
+from nba_identity import player_name_key
 
 try:
     import requests
@@ -336,6 +338,29 @@ def previous_nba_season(season):
     return f"{start_year}-{str(start_year + 1)[-2:]}"
 
 
+def statistics_season_for_game(date_value, game_info=None):
+    """Use completed prior-season history for preseason shadow analysis only."""
+    season = nba_season_for_date(date_value)
+    context = classify_nba_season(date_value, game_info)
+    return previous_nba_season(season) if context["season_phase"] == "PRESEASON" else season
+
+
+def history_cutoff_day(date_value):
+    """NBA game logs use US game dates. Exclude the entire event's US day."""
+    text = str(date_value)
+    parsed = datetime.fromisoformat(text.replace('Z', '+00:00'))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=ZoneInfo('Australia/Sydney'))
+    return parsed.astimezone(ZoneInfo('America/New_York')).date()
+
+
+def history_date_to(date_value):
+    """Last completed US game day; date-only Sydney inputs are conservative."""
+    if not date_value:
+        return ""
+    return (history_cutoff_day(date_value) - timedelta(days=1)).strftime("%m/%d/%Y")
+
+
 def detect_season_phase(date_str, game_info=None):
     return classify_nba_season(date_str, game_info)["season_phase"]
 
@@ -420,45 +445,52 @@ def fetch_team_injuries(team_abbr):
         return {}
 
 
-def fetch_player_gamelog(player_id, player_name, n=10):
+def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, include_previous=False):
     """為單一球員提取 L10 完整 Box Score（Season-Agnostic: RS + Playoffs 合併）
     
-    永遠 fetch Regular Season + Playoffs 兩種 season type，合併後按日期排序取最新 N 場。
-    - Regular Season 期間：Playoffs 返空，結果等同舊版
-    - Playoff 期間：自動包含 playoff games
-    - 下季自動生效，零配置
+    Explicit season/date queries keep historical shadow data distinct from current-season data.
+    Merge completed RS + playoff games chronologically; never include event-day results.
     """
     if not NBA_API_AVAILABLE:
         return None
     try:
         import pandas as pd
         all_dfs = []
-        playoff_game_count = 0
+        history_season = season or nba_season_for_date(as_of)
+        date_to = history_date_to(as_of)
 
-        # 1. 永遠先拉 Playoffs（如果有就排前面）
+        # 1. Fetch playoff history from the explicitly selected season.
         try:
             log_po = playergamelog.PlayerGameLog(
                 player_id=player_id,
+                season=history_season, date_to_nullable=date_to,
                 season_type_all_star='Playoffs'
             )
             df_po = log_po.get_data_frames()[0]
             time.sleep(API_SLEEP)
             if not df_po.empty:
+                df_po = df_po.copy()
+                df_po["_season_type"] = "Playoffs"
+                df_po["_season"] = history_season
                 all_dfs.append(df_po)
-                playoff_game_count = len(df_po)
         except Exception as e:
             print(f"    ⚠️ Playoff gamelog 失敗 (non-critical): {e}")
 
-        # 2. 再拉 Regular Season（默認）— with retry
+        # 2. Fetch the same season's regular-season history, with retry.
         rs_success = False
         for attempt in range(2):
             try:
-                log_rs = playergamelog.PlayerGameLog(player_id=player_id)
+                log_rs = playergamelog.PlayerGameLog(
+                    player_id=player_id, season=history_season, date_to_nullable=date_to,
+                )
                 df_rs = log_rs.get_data_frames()[0]
                 time.sleep(API_SLEEP)
                 if not df_rs.empty:
+                    df_rs = df_rs.copy()
+                    df_rs["_season_type"] = "Regular Season"
+                    df_rs["_season"] = history_season
                     all_dfs.append(df_rs)
-                    rs_success = True
+                rs_success = True
                 break
             except Exception as e:
                 if attempt == 0:
@@ -467,25 +499,59 @@ def fetch_player_gamelog(player_id, player_name, n=10):
                 else:
                     print(f"    ❌ RS gamelog 失敗 ({player_name}): {e}")
 
+        if not rs_success:
+            return None
+        # Early regular season needs completed prior-season history until this
+        # season has N games. Empty data is different from a failed current API.
+        count = 0
+        for frame in all_dfs:
+            dates = pd.to_datetime(frame["GAME_DATE"], errors="coerce")
+            count += int((dates < pd.Timestamp(history_cutoff_day(as_of))).sum()) if as_of else len(frame)
+        if include_previous and count < n:
+            prior = previous_nba_season(history_season)
+            for kind in ["Playoffs", "Regular Season"]:
+                try:
+                    endpoint = playergamelog.PlayerGameLog(
+                        player_id=player_id, season=prior, date_to_nullable=date_to,
+                        season_type_all_star=kind,
+                    )
+                    frame = endpoint.get_data_frames()[0]
+                    time.sleep(API_SLEEP)
+                    if not frame.empty:
+                        frame = frame.copy()
+                        frame["_season_type"] = kind
+                        frame["_season"] = prior
+                        all_dfs.append(frame)
+                except Exception as exc:
+                    print(f"    ⚠️ Previous-season history unavailable ({player_name}, {kind}): {exc}")
         if not all_dfs:
             return None
 
-        # 3. 合併 + 去重（by GAME_DATE + MATCHUP）+ 取 top N
-        #    nba_api 已按日期 newest-first 排序，concat 保持 Playoffs 在前
+        # Parse actual dates instead of relying on endpoint/concat ordering.
         df = pd.concat(all_dfs, ignore_index=True)
+        df["_played_at"] = pd.to_datetime(df["GAME_DATE"], errors="coerce")
+        df = df.dropna(subset=["_played_at"])
+        if as_of:
+            cutoff = pd.Timestamp(history_cutoff_day(as_of))
+            df = df[df["_played_at"] < cutoff]
         df = df.drop_duplicates(subset=['GAME_DATE', 'MATCHUP'], keep='first')
-        
+        df = df.sort_values("_played_at", ascending=False, kind="stable")
+        if df.empty:
+            return None
         total_games = len(df)
         df_l10 = df.head(n)
-        
-        # Count how many of the actual L10 are playoff games
         actual_l10_count = len(df_l10)
-        playoff_in_l10 = min(playoff_game_count, actual_l10_count)
+        playoff_in_l10 = int((df_l10["_season_type"] == "Playoffs").sum())
         rs_in_l10 = actual_l10_count - playoff_in_l10
 
         record = {
             "name": player_name,
             "games_played": total_games,
+            "history_season": history_season,
+            "history_seasons": list(dict.fromkeys(df_l10["_season"].tolist())),
+            "l10_seasons": df_l10["_season"].tolist(),
+            "history_date_to": date_to,
+            "l10_season_types": df_l10["_season_type"].tolist(),
             "playoff_games_in_l10": playoff_in_l10,
             "l10_dates": df_l10['GAME_DATE'].tolist(),
             "l10_matchups": df_l10['MATCHUP'].tolist(),
@@ -524,12 +590,13 @@ def fetch_player_gamelog(player_id, player_name, n=10):
 # ==========================================
 # 模塊 2.5：nba_api — H2H 歷史對戰數據
 # ==========================================
-def fetch_player_h2h(player_id, player_name, opp_abbr, season=None):
+def fetch_player_h2h(player_id, player_name, opp_abbr, season=None, as_of=None):
     """提取球員對住特定球隊的歷史對戰數據 (當季 + 上季, RS + Playoffs)"""
     # V3: Re-enabled (was previously disabled)
     if not NBA_API_AVAILABLE:
         return None
     try:
+        import pandas as pd
         h2h_games = []
         current_season = season or nba_season_for_date(None)
         for season in [current_season, previous_nba_season(current_season)]:
@@ -538,10 +605,14 @@ def fetch_player_h2h(player_id, player_name, opp_abbr, season=None):
                 try:
                     log = playergamelog.PlayerGameLog(
                         player_id=player_id, season=season,
+                        date_to_nullable=history_date_to(as_of),
                         season_type_all_star=season_type
                     )
                     df = log.get_data_frames()[0]
                     time.sleep(API_SLEEP)
+                    if as_of:
+                        dates = pd.to_datetime(df['GAME_DATE'], errors='coerce')
+                        df = df[dates < pd.Timestamp(history_cutoff_day(as_of))]
                     vs_opp = df[df['MATCHUP'].str.contains(opp_abbr)]
                     for _, row in vs_opp.iterrows():
                         h2h_games.append({
@@ -591,7 +662,7 @@ def fetch_player_h2h(player_id, player_name, opp_abbr, season=None):
 # ==========================================
 # 模塊 3：nba_api — 進階球員數據
 # ==========================================
-def fetch_all_player_advanced_stats():
+def fetch_all_player_advanced_stats(season=None, as_of=None):
     """提取全聯盟球員進階數據 (USG%, TS%, DEF_RTG 等)"""
     if not NBA_API_AVAILABLE:
         return {}
@@ -599,7 +670,9 @@ def fetch_all_player_advanced_stats():
     try:
         stats = leaguedashplayerstats.LeagueDashPlayerStats(
             measure_type_detailed_defense='Advanced',
-            per_mode_detailed='PerGame'
+            per_mode_detailed='PerGame',
+            season=season or nba_season_for_date(as_of),
+            date_to_nullable=history_date_to(as_of),
         )
         df = stats.get_data_frames()[0]
         time.sleep(API_SLEEP)
@@ -627,12 +700,15 @@ def fetch_all_player_advanced_stats():
 # ==========================================
 # 模塊 4：nba_api — Home/Away & Rest Day Splits
 # ==========================================
-def fetch_player_splits(player_id, player_name):
+def fetch_player_splits(player_id, player_name, season=None, as_of=None):
     """提取球員 Home/Away 及 Rest Day Splits"""
     if not NBA_API_AVAILABLE:
         return None
     try:
-        splits = playerdashboardbygeneralsplits.PlayerDashboardByGeneralSplits(player_id=player_id)
+        splits = playerdashboardbygeneralsplits.PlayerDashboardByGeneralSplits(
+            player_id=player_id, season=season or nba_season_for_date(as_of),
+            date_to_nullable=history_date_to(as_of),
+        )
         dfs = splits.get_data_frames()
         time.sleep(API_SLEEP)
 
@@ -670,7 +746,7 @@ def fetch_player_splits(player_id, player_name):
 # ==========================================
 # 模塊 5：nba_api — 防守影響力
 # ==========================================
-def fetch_defender_impact():
+def fetch_defender_impact(season=None, as_of=None):
     """全聯盟球員級別防守壓制力 (D_FG%, PCT_PLUSMINUS)"""
     if not NBA_API_AVAILABLE:
         return {}
@@ -678,7 +754,9 @@ def fetch_defender_impact():
     try:
         dvp = leaguedashptdefend.LeagueDashPtDefend(
             defense_category='Overall',
-            per_mode_simple='PerGame'
+            per_mode_simple='PerGame',
+            season=season or nba_season_for_date(as_of),
+            date_to_nullable=history_date_to(as_of),
         )
         df = dvp.get_data_frames()[0]
         time.sleep(API_SLEEP)
@@ -702,7 +780,7 @@ def fetch_defender_impact():
         return {}
 
 
-def fetch_team_defense_vs_position():
+def fetch_team_defense_vs_position(season=None, as_of=None):
     """球隊級別 DvP"""
     if not NBA_API_AVAILABLE:
         return {}
@@ -710,7 +788,9 @@ def fetch_team_defense_vs_position():
     try:
         tdvp = leaguedashptteamdefend.LeagueDashPtTeamDefend(
             defense_category='Overall',
-            per_mode_simple='PerGame'
+            per_mode_simple='PerGame',
+            season=season or nba_season_for_date(as_of),
+            date_to_nullable=history_date_to(as_of),
         )
         df = tdvp.get_data_frames()[0]
         time.sleep(API_SLEEP)
@@ -735,7 +815,7 @@ def fetch_team_defense_vs_position():
 # ==========================================
 # 模塊 6：球隊進階數據 (DEF_RTG, OFF_RTG, PACE)
 # ==========================================
-def fetch_team_advanced_stats():
+def fetch_team_advanced_stats(season=None, as_of=None):
     """全聯盟球隊進階數據"""
     if not NBA_API_AVAILABLE:
         return {}
@@ -743,7 +823,9 @@ def fetch_team_advanced_stats():
     try:
         stats = leaguedashteamstats.LeagueDashTeamStats(
             measure_type_detailed_defense='Advanced',
-            per_mode_detailed='PerGame'
+            per_mode_detailed='PerGame',
+            season=season or nba_season_for_date(as_of),
+            date_to_nullable=history_date_to(as_of),
         )
         df = stats.get_data_frames()[0]
         time.sleep(API_SLEEP)
@@ -1047,6 +1129,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
     home_name = game_info['home']['name']
     target_season = nba_season_for_date(game_info.get('date'))
     season_context = classify_nba_season(game_info.get('date'), game_info)
+    statistics_season = statistics_season_for_game(game_info.get('date'), game_info)
 
     print(f"\n🏀 ========== 深度提取: {away_name} @ {home_name} ==========")
 
@@ -1056,6 +1139,14 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             "date": game_info['date'],
             **season_context,
             "l10_order": "newest_first",
+            "roster_season": target_season,
+            "statistics_season": statistics_season,
+            "history_mode": (
+                "previous_season_reference" if statistics_season != target_season
+                else "current_season_with_previous_history" if season_context["season_phase"] == "EARLY_REGULAR"
+                else "current_season"
+            ),
+            "history_date_to": history_date_to(game_info.get('date')),
             "away": {"name": away_name, "abbr": away_abbr},
             "home": {"name": home_name, "abbr": home_abbr},
             "extracted_at": datetime.now().isoformat(),
@@ -1129,14 +1220,16 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
 
         # 如果篩選太少，放寬條件
         if len(core_players) < 5:
-            core_players = roster[:15]  # 最多取 15 人
+            core_players = roster  # Do not drop priced starters by roster row order.
 
         print(f"  🎯 核心球員: {len(core_players)}")
 
         for p in core_players:
             pid = p['player_id']
             pname = p['name']
-            p_status = injury_map.get(pname, 'Active')
+            statuses = [status for name, status in injury_map.items()
+                        if player_name_key(name) == player_name_key(pname)]
+            p_status = statuses[0] if len(statuses) == 1 else 'Active'
             p['status'] = p_status
             
             # 若為 Out 或明顯傷兵，標註並在某些場合可以略過，但這裡仍然提取以備不時之需（使用率重新分配）
@@ -1144,10 +1237,15 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             print(f"  📊 提取 {pname} {status_tag}...")
 
             # L10 Game Log
-            gamelog = fetch_player_gamelog(pid, pname)
+            gamelog = fetch_player_gamelog(
+                pid, pname, season=statistics_season, as_of=game_info.get('date'),
+                include_previous=season_context["season_phase"] == "EARLY_REGULAR",
+            )
 
             # Home/Away & Rest Splits
-            splits = fetch_player_splits(pid, pname)
+            splits = fetch_player_splits(
+                pid, pname, season=statistics_season, as_of=game_info.get('date'),
+            )
 
             # 進階數據
             adv = adv_stats.get(pid, {})
@@ -1157,13 +1255,14 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             if adv.get('USG_PCT', 0) > 15:
                 opp_abbr_for_h2h = home_abbr if side == "away" else away_abbr
                 h2h = fetch_player_h2h(
-                    pid, pname, opp_abbr_for_h2h, target_season
+                    pid, pname, opp_abbr_for_h2h, target_season, as_of=game_info.get('date')
                 )
                 if h2h:
                     print(f"    🎯 H2H vs {opp_abbr_for_h2h}: {h2h['total_games']} 場 | PTS AVG: {h2h['PTS_avg']}")
 
             player_entry = {
                 "name": pname,
+                "player_id": int(pid),
                 "position": p.get('position', ''),
                 "age": p.get('age', ''),
                 "advanced": adv,
@@ -1348,10 +1447,17 @@ def main():
     print()
 
     # ── Step 2: 全聯盟預載 (nba_api — 只拉一次) ──
-    team_stats = fetch_team_advanced_stats()
-    adv_stats = fetch_all_player_advanced_stats()
-    defender_data = fetch_defender_impact()
-    team_dvp = fetch_team_defense_vs_position()
+    analysis_game = next(
+        (game for game in games if args.game and canonical_game_tag(game['tag']) == canonical_game_tag(args.game)),
+        min(games, key=lambda game: game['date']) if games else None,
+    )
+    stats_date = analysis_game['date'] if analysis_game else formatted_date
+    statistics_season = statistics_season_for_game(stats_date, analysis_game)
+    print(f"📚 歷史數據球季: {statistics_season} | 截止: {history_date_to(stats_date)}")
+    team_stats = fetch_team_advanced_stats(statistics_season, stats_date)
+    adv_stats = fetch_all_player_advanced_stats(statistics_season, stats_date)
+    defender_data = fetch_defender_impact(statistics_season, stats_date)
+    team_dvp = fetch_team_defense_vs_position(statistics_season, stats_date)
 
     # ── Step 3: 賠率 (Claw Code 主動提取) ──
     odds_data = fetch_action_network_odds(formatted_date)
@@ -1389,16 +1495,9 @@ def main():
             if target_game:
                 break
 
-        # 如果 ESPN 搵唔到 → 用 nba_api 直接建構 game_info（繞過 ESPN schedule）
         if not target_game:
-            print(f"\n⚠️ ESPN 賽程搵唔到: {game_tag_input}")
-            print(f"   ESPN 可用: {[g['tag'] for g in games]}")
-            print(f"   → 嘗試 nba_api 直接建構（繞過 ESPN schedule）...")
-            target_game = build_game_info_from_tag(game_tag_input)
-            if not target_game:
-                print(f"❌ nba_api 亦無法建構 {game_tag_input}，放棄。")
-                sys.exit(1)
-            print(f"✅ 成功建構: {target_game['name']}")
+            print(f"❌ official_game_not_found: {game_tag_input}，唔會以 synthetic game/date 代替官方賽程。")
+            sys.exit(1)
 
         package = extract_single_game(target_game, adv_stats, defender_data, team_dvp, team_stats, odds_data)
 

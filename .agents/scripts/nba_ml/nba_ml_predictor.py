@@ -25,7 +25,7 @@ PROJECT_ROOT = _Path(__file__).resolve().parents[3]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import NBA_ML_DATASET
 
-MODEL_DIR = str(NBA_ML_DATASET / "models" / "v3")
+MODEL_DIR = os.environ.get("NBA_WC_MODEL_DIR") or str(NBA_ML_DATASET / "models" / "v3")
 
 
 class MLPropPredictor:
