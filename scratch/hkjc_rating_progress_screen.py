@@ -1,6 +1,6 @@
-"""Rating-progress candidate (EXP-20261009-02): backfill + offline screen.
+"""Rating-progress candidate (EXP-20261009-12): backfill + offline screen.
 
-Pre-registration is in docs/experiments/EXP-20261009-02-hkjc-rating-progress.md.
+Pre-registration is in docs/experiments/EXP-20261009-12-hkjc-rating-progress.md.
 Reads a scored corpus produced by hkjc_history_alignment_corpus.py (its candidate arm).
 
 usage (from the repo root, cwd = directory holding corpus-replay/):

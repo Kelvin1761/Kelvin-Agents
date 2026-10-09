@@ -43,7 +43,7 @@ Debut runners use this separate locked formula:
   `WC_HKJC_HV_RACE_SHAPE_PROFILE=legacy_v2`; the selected profile is persisted
   in `python_auto_run_contract`.
 - Before official whole-field ranking, every runner uses the same robust
-  race-shape rule: retain the live outer weight (24.17% since EXP-20261009-04), but cap each runner's
+  race-shape rule: retain the live outer weight (24.17% since EXP-20261009-14), but cap each runner's
   `race_shape` deviation from the same-race median at +/-10 points. This is a
   symmetric whole-field correction: it does not lock Top 2, protect any rank,
   or target named horses. It is persisted as `race_shape_robustness=winsor10`.

@@ -1,12 +1,12 @@
-# EXP-20261009-04 — 七月外層權重上線（user-accepted）＋ race_shape 前瞻 arms
+# EXP-20261009-14 — 七月外層權重上線（user-accepted）＋ race_shape 前瞻 arms
 
 - 日期：2026-10-09；平台：HKJC
 - 狀態：**USER-ACCEPTED LIVE／未通過 Stage-4 閘**＋前瞻觀察
-- 上游：EXP-20261009-03（同一個候選，Stage-4 判 REJECT: good_positional）
+- 上游：EXP-20261009-13（同一個候選，Stage-4 判 REJECT: good_positional）
 
 ## 決定
 
-Kelvin 2026-10-09 睇咗 EXP-20261009-03 嘅結果（Gold／capture@5／平均排名方向啱、dev Good
+Kelvin 2026-10-09 睇咗 EXP-20261009-13 嘅結果（Gold／capture@5／平均排名方向啱、dev Good
 −1.09pp ≈ 3 場、全部 CI 跨零），明確接受呢個 trade-off，要求上線並繼續向「減 race_shape」
 方向搵最好嘅值。**呢個冇通過表現閘，唔係一個已證實嘅改善。** 先例：EXP-20261007-01。
 
@@ -22,6 +22,9 @@ Contract：`HKJC_7D_CONTRACT_2026_10_09_PURE_7D_CORE_BALANCE_RESTORED_...`。初
 冇一個證明到幅度。所以搵最好嘅值改喺**新場次**做。
 
 ## 前瞻 arms（任何前瞻場次之前登記，絕對值，唔准之後改）
+
+> 2026-10-09 更正（EXP-20261009-15）：純權重 arm 而家同 live 一樣經 race_shape 封頂同檔位×前速，
+> 只差權重。之前 arm 用未封頂 shape，比較會混埋封頂效果。改喺任何前瞻場之前（t02 除外：10-07 嘅 9 場係舊算法）。
 
 | Arm | race_shape | 用途 |
 |---|---:|---|

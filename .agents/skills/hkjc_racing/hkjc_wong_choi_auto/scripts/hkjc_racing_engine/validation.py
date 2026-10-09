@@ -170,6 +170,13 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
                 f"SCORE-008 horse {horse_num} invalid distance suitability adjustment"
             )
         try:
+            # 檔位×習慣前速（EXP-20261009-15）係場內層面加落原始總分。
+            expected += float(
+                (auto.get("early_draw_adjustment") or {}).get("raw_adjustment", 0.0) or 0.0
+            )
+        except (AttributeError, TypeError, ValueError):
+            errors.append(f"SCORE-009 horse {horse_num} invalid early/draw adjustment")
+        try:
             # SIP boost 亦係原始尺（見 hkjc_auto_orchestrator._apply_sip_enhancements）。
             expected += sum(
                 float(flag.get("boost", 0) or 0)
@@ -444,7 +451,9 @@ def _validate_verdict(logic_data: dict, scored: list[tuple[str, dict]]) -> list[
     ordered_pairs = [
         (
             float(item.get("rank_score", item.get("ability_score", -1))),
-            float(item.get("ability_score", -1)),
+            # Ties break on the raw score, exactly as ensure_verdict does; the
+            # 2-dp display score ties far more often than raw.
+            float(item.get("ability_score_raw", item.get("ability_score", -1))),
             str(item.get("horse_number", "")),
         )
         for item in ranked
@@ -457,7 +466,7 @@ def _validate_verdict(logic_data: dict, scored: list[tuple[str, dict]]) -> list[
             scored,
             key=lambda item: (
                 -float(item[1].get("rank_score", item[1].get("ability_score", 0))),
-                -float(item[1].get("ability_score", 0)),
+                -float(item[1].get("ability_score_raw", item[1].get("ability_score", 0))),
                 _horse_number_sort_key(item[0]),
             ),
         )[:4]

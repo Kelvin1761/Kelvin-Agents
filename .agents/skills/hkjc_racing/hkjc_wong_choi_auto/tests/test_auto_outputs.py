@@ -134,6 +134,7 @@ class AutoOutputTests(unittest.TestCase):
                     "weight_rollback_0809",
                     "race_shape_w200",
                     "race_shape_w170",
+                    "early_draw_rollback",
                     "race_shape_v2_legacy_hv",
                     "race_shape_st_draw70",
                     "race_shape_legacy_unbounded",
@@ -149,6 +150,7 @@ class AutoOutputTests(unittest.TestCase):
                     "weight_rollback_0809",
                     "race_shape_w200",
                     "race_shape_w170",
+                    "early_draw_rollback",
                     "race_shape_v2_legacy_hv",
                     "race_shape_st_draw70",
                     "race_shape_legacy_unbounded",
@@ -197,7 +199,7 @@ class AutoOutputTests(unittest.TestCase):
         self.assertEqual(
             MATRIX_WEIGHTS,
             {
-                # EXP-20261009-04: CORE_BALANCE restored (user-accepted).
+                # EXP-20261009-14: CORE_BALANCE restored (user-accepted).
                 "sectional": 0.1285,
                 "trainer_signal": 0.2469,
                 "stability": 0.1090,

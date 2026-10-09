@@ -31,8 +31,10 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / '.agents/scripts'))
 sys.path.insert(0, str(ROOT / '.agents/skills/hkjc_racing/hkjc_wong_choi/scripts'))
 sys.path.insert(0, str(ROOT / '.agents/skills/shared_racing'))
+sys.path.insert(0, str(ROOT / '.agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts'))
 import inject_hkjc_fact_anchors as candidate  # noqa: E402
 import create_hkjc_logic_skeleton as skeleton  # noqa: E402
+import hkjc_auto_orchestrator as orch  # noqa: E402
 from eval_metrics import race_metrics  # noqa: E402
 from model_evaluation_decision import build_evaluation_input, evaluate_candidate  # noqa: E402
 
@@ -77,6 +79,29 @@ def future_dates(value, race_date):
     return found
 
 
+_CACHE_INDEX = None
+
+
+def earlier_cache_profile(keys, meeting_date):
+    """Latest profile for any of `keys` from a meeting cache dated strictly before
+    `meeting_date` (fetched before this meeting, so entries are filtered as-of anyway)."""
+    global _CACHE_INDEX
+    if _CACHE_INDEX is None:
+        _CACHE_INDEX = []
+        for path in sorted(DATA_ROOT.glob('20*_*/.hkjc_cache/profile_cache.json')):
+            try:
+                _CACHE_INDEX.append((path.parent.parent.name[:10], json.loads(path.read_text())))
+            except (OSError, ValueError):
+                continue
+    for date, cache in reversed(_CACHE_INDEX):
+        if date >= meeting_date:
+            continue
+        for key in keys:
+            if key and (cache.get(key) or cache.get(str(key).rsplit('_', 1)[-1])):
+                return cache.get(key) or cache.get(str(key).rsplit('_', 1)[-1])
+    return None
+
+
 def build_candidate_meeting(meeting, out_dir, base):
     race_date = meeting.name[:10]
     cache = json.loads((meeting / '.hkjc_cache/profile_cache.json').read_text())
@@ -98,14 +123,30 @@ def build_candidate_meeting(meeting, out_dir, base):
             (out_dir / path.name).write_text(json.dumps(logic, ensure_ascii=False))
             continue
         by_number = {str(h['num']): h for h in parsed['horses']}
+        card = next(meeting.glob(f'* Race {number} 排位表.md'), None)
+        card_info = orch._parse_racecard_meta(card.read_text(encoding='utf-8'))[1] if card else {}
         header = skeleton.extract_race_header(facts.read_text())
         venue = context.get('venue') or ('跑馬地' if 'HappyValley' in meeting.name else '沙田')
         distance = int(re.sub(r'\D', '', str(context.get('distance') or 0)) or 0)
         for no, h in logic['horses'].items():
             row = {'race': number, 'horse': no, 'name': h.get('horse_name')}
             form = by_number.get(no)
-            hid = h.get('hkjc_horse_id', '') or (form or {}).get('brand_no', '')
-            cached = cache.get(hid) or cache.get(hid.rsplit('_', 1)[-1]) if hid else None
+            # Identity: archived Logic mostly lacks hkjc_horse_id; the racecard has it.
+            # The cached profile must still carry the same name.
+            card_row = card_info.get(no) or {}
+            cached = None
+            for hid in (card_row.get('hkjc_horse_id'), card_row.get('horse_code'),
+                        h.get('hkjc_horse_id'), (form or {}).get('brand_no')):
+                if hid and (cache.get(hid) or cache.get(str(hid).rsplit('_', 1)[-1])):
+                    cached = cache.get(hid) or cache.get(str(hid).rsplit('_', 1)[-1])
+                    break
+            if (not cached or cached['data'].get('name') != h.get('horse_name')):
+                fallback = earlier_cache_profile(
+                    (card_row.get('hkjc_horse_id'), card_row.get('horse_code'), h.get('hkjc_horse_id')),
+                    race_date)
+                if fallback and fallback['data'].get('name') == h.get('horse_name'):
+                    cached = fallback
+                    row['profile_source'] = 'earlier_meeting_cache'
             if not form or form['name'] != h.get('horse_name'):
                 row['abstain'] = 'formguide identity'
             elif not cached or cached['data'].get('name') != h.get('horse_name'):

@@ -1,7 +1,7 @@
-# EXP-20261009-03 — HKJC 還原被 merge 食咗嘅七月外層權重
+# EXP-20261009-13 — HKJC 還原被 merge 食咗嘅七月外層權重
 
 - 日期：2026-10-09；平台：HKJC；狀態：**REJECT（primary_regression: good_positional）**
-- 跟進：Kelvin 明確接受 trade-off，**user-accepted 上線**，見 EXP-20261009-04。
+- 跟進：Kelvin 明確接受 trade-off，**user-accepted 上線**，見 EXP-20261009-14。
 - 起因：Kelvin 問「race_shape 係咪佔太多權重」。
 - 背景：live `race_shape` 0.2737 唔係任何一次 fit 嘅結果，係 2026-08-09 merge `f7d35de5`
   揀咗 parent 1；parent 2 帶住 2026-07-30 驗證過嘅 CORE_BALANCE。四次獨立 fit 都指向
@@ -55,4 +55,4 @@ Cohorts（全語料 Δ）：HV 119 場 Gold +0.84pp／Good −1.68pp；ST 213 �
 - 前瞻：`weight_refit_t02`（shape −2pp → stability）已經喺 immutable snapshot 量緊，
   10-07 起 9/120 場。七月值亦可以用 `scratch/hkjc_weight_restore_ab.py` 喺 10-09 之後
   嘅賽日前瞻再量一次（同一個 arm，唔改值）。
-- 做呢個 A/B 時發現 `weight_refit_t02` 凍結 arm 會跟 live 權重漂移，已修（見 EXP-20261009-01）。
+- 做呢個 A/B 時發現 `weight_refit_t02` 凍結 arm 會跟 live 權重漂移，已修（見 EXP-20261009-11）。

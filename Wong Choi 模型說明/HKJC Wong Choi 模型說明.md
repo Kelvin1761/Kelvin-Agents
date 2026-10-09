@@ -31,7 +31,8 @@
 | Adjustment | 公式 | 缺資料處理 |
 |---|---|---|
 | 全場 race-shape 極端值修正 `race_shape_robustness` | 同場中位數 + clip（race-shape − 同場中位數，−10，+10）；全場同式、不鎖名次 | 整場冇有效 race-shape = 不套用；可用 WC_HKJC_RACE_SHAPE_ROBUSTNESS=legacy_unbounded 回退 |
-| 同程性能修正 `distance_suitability_adjustment` | 正式V1：同程曾入位 +0.43；有同程紀錄但未入位約 -0.17（raw 分） | 冇 point-in-time 同程紀錄 = 0；V2 residual 另作 prospective shadow |
+| 同程性能修正 `distance_suitability_adjustment` | 正式V1：同程曾入位 +0.46；有同程紀錄但未入位約 -0.18（raw 分，隨級數優勢權重縮放） | 冇 point-in-time 同程紀錄 = 0；V2 residual 另作 prospective shadow |
+| 檔位 × 習慣前速 `early_draw_adjustment` | I = max(0, −檔位z) × 前速z（同場標準化；前速＝近6仗首段位置百分位）；綜合分 + 0.5 × I 嘅同場z（顯示分）。大外檔慣性前置馬唔再同慣性後上馬一樣被扣 | 少過2仗有效走位 = 前速0；同場有習慣前速嘅馬少過4匹 = 整場不套用；回退對照 shadow `early_draw_rollback` |
 
 | Overlay | 公式 | 缺資料處理 |
 |---|---|---|
@@ -190,10 +191,10 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-10-09 17:58 AEDT`
-- Git commit：`a5fb4a56`
-- Scoring contract：`HKJC_7D_CONTRACT_2026_10_09_PURE_7D_CORE_BALANCE_RESTORED_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1`
-- `scoring.py` 指紋：`1983caf6eae0`
+- 生成時間：`2026-10-09 20:12 AEDT`
+- Git commit：`e2f26fea`
+- Scoring contract：`HKJC_7D_CONTRACT_2026_10_09_PURE_7D_CORE_BALANCE_RESTORED_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1_EARLY_DRAW_X05`
+- `scoring.py` 指紋：`99a28175e09a`
 - `matrix_mapper.py` 指紋：`c9df25fd184d`
 - `renderer.py` 指紋：`5d983bd3a4db`
 - 實測樣本：**362 場、4546 匹馬**，由 `2026-04-12_ShaTin` 到 `2026-10-11_ShaTin`（跳過 0 個舊格式檔案）

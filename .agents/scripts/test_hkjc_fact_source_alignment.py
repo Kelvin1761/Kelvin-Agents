@@ -246,3 +246,15 @@ def test_unverified_replacement_is_flagged_not_rendered_as_debut() -> None:
     block = inject.generate_horse_block(horse, '跑馬地', 1650, race_date='2026-10-07')
     assert '`HISTORY_UNVERIFIED`' in block
     assert '無往績記錄' not in block
+
+
+def test_habitual_early_position_is_pre_race_and_needs_two_runs(monkeypatch) -> None:
+    monkeypatch.setattr(inject, "_PAST_FIELD_SIZES", {("2026-09-01", 3): 11})
+    entries = [
+        {"date": "08/10/26", "race_no": 1, "running_positions": [1, 1, 1]},   # race day: excluded
+        {"date": "01/09/26", "race_no": 3, "running_positions": [6, 5, 4]},   # field 11 → 0.5
+        {"date": "15/08/26", "race_no": 2, "running_positions": [12, 12]},    # fallback 12 → 1.0
+        {"date": "01/08/26", "race_no": 2, "running_positions": []},          # unusable
+    ]
+    assert inject.habitual_early_position(entries, "2026-10-08") == (0.75, 2)
+    assert inject.habitual_early_position(entries[:2], "2026-10-08") == (None, 1)

@@ -105,8 +105,13 @@ ul, ol { padding-left:1.5rem; }
 </tr>
 <tr>
 <td>同程性能修正 <code>distance_suitability_adjustment</code></td>
-<td>正式V1：同程曾入位 +0.43；有同程紀錄但未入位約 -0.17（raw 分）</td>
+<td>正式V1：同程曾入位 +0.46；有同程紀錄但未入位約 -0.18（raw 分，隨級數優勢權重縮放）</td>
 <td>冇 point-in-time 同程紀錄 = 0；V2 residual 另作 prospective shadow</td>
+</tr>
+<tr>
+<td>檔位 × 習慣前速 <code>early_draw_adjustment</code></td>
+<td>I = max(0, −檔位z) × 前速z（同場標準化；前速＝近6仗首段位置百分位）；綜合分 + 0.5 × I 嘅同場z（顯示分）。大外檔慣性前置馬唔再同慣性後上馬一樣被扣</td>
+<td>少過2仗有效走位 = 前速0；同場有習慣前速嘅馬少過4匹 = 整場不套用；回退對照 shadow <code>early_draw_rollback</code></td>
 </tr>
 </tbody></table>
 <table><thead><tr>
@@ -395,10 +400,10 @@ ul, ol { padding-left:1.5rem; }
 </tr>
 </tbody></table>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-10-09 17:58 AEDT</code></li>
-<li>Git commit：<code>a5fb4a56</code></li>
-<li>Scoring contract：<code>HKJC_7D_CONTRACT_2026_10_09_PURE_7D_CORE_BALANCE_RESTORED_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1</code></li>
-<li><code>scoring.py</code> 指紋：<code>1983caf6eae0</code></li>
+<ul><li>生成時間：<code>2026-10-09 20:12 AEDT</code></li>
+<li>Git commit：<code>e2f26fea</code></li>
+<li>Scoring contract：<code>HKJC_7D_CONTRACT_2026_10_09_PURE_7D_CORE_BALANCE_RESTORED_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1_EARLY_DRAW_X05</code></li>
+<li><code>scoring.py</code> 指紋：<code>99a28175e09a</code></li>
 <li><code>matrix_mapper.py</code> 指紋：<code>c9df25fd184d</code></li>
 <li><code>renderer.py</code> 指紋：<code>5d983bd3a4db</code></li>
 <li>實測樣本：<strong>362 場、4546 匹馬</strong>，由 <code>2026-04-12_ShaTin</code> 到 <code>2026-10-11_ShaTin</code>（跳過 0 個舊格式檔案）</li></ul>

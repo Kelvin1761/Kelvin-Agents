@@ -16,7 +16,7 @@
 - `horse_health`: 0.0404
 - `form_line`: 0.0801
 
-（2026-10-09 EXP-20261009-04：還原 2026-07-30 CORE_BALANCE；2026-08-09 至 10-09 期間
+（2026-10-09 EXP-20261009-14：還原 2026-07-30 CORE_BALANCE；2026-08-09 至 10-09 期間
 live 係 merge 意外留低嘅 race_shape 0.2737，而家係 rollback shadow `weight_rollback_0809`。）
 
 現役 Matrix mapping 係：sectional=純 `speed_score`；race_shape=純

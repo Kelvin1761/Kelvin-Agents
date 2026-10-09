@@ -1,4 +1,4 @@
-"""EXP-20261009-03: baseline vs restored July outer weights, real engine, identical Logic.
+"""EXP-20261009-13: baseline vs restored July outer weights, real engine, identical Logic.
 
 usage: hkjc_weight_restore_ab.py  (cwd holds corpus-replay/, hkjc-history-fix/ = baseline
 checkout and shape-wt/ = checkout with the candidate MATRIX_WEIGHTS)

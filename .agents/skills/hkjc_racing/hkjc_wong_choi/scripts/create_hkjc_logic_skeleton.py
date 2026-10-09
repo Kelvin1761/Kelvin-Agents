@@ -1518,6 +1518,9 @@ def build_skeleton(
     is_debut = text_hints_debut and hk_starts == 0 and starts == 0
     # Facts could not verify a replacement runner's history: missing history
     # is unknown, not a debut.
+    early_match = re.search(r'習慣前速:\*\*\s*([0-9]+(?:\.[0-9]+)?)\s*\(近(\d+)仗', horse_block or '')
+    habitual_early = float(early_match.group(1)) if early_match else None
+    habitual_early_runs = int(early_match.group(2)) if early_match else 0
     history_unverified = '`HISTORY_UNVERIFIED`' in horse_block
     if history_unverified:
         is_debut = False
@@ -1766,6 +1769,10 @@ def build_skeleton(
             'draw_position_fit': draw_pos_fit,
             'track_bias': track_bias,
             'full_draw_table': full_draw_table,
+            # EXP-20261009-15: habitual early position (0 = led) for the
+            # draw × early-speed race-level adjustment; None when <2 usable runs.
+            'habitual_early_position': habitual_early,
+            'habitual_early_runs': habitual_early_runs,
 
             # ── 騎練訊號 (trainer_signal) ──
             'jockey_name': jockey,

@@ -1,7 +1,7 @@
-# EXP-20261009-02 — HKJC 今季評分升幅
+# EXP-20261009-12 — HKJC 今季評分升幅
 
 - 日期：2026-10-09；平台：HKJC；狀態：**REJECT_DEV／terminal 未開／前瞻觀察**
-- 上游：EXP-20261009-01。Baseline：release `7aa8cda` corpus（333 場）。
+- 上游：EXP-20261009-11。Baseline：release `7aa8cda` corpus（333 場）。
 - 呢個係**失敗實驗**；冇改 model code。
 
 ## 預先登記（跑結果之前寫低，原文）
@@ -63,7 +63,7 @@ no results, odds or in-running fields used. Odds are not used at any stage.
 | 2.0 | +0.0036 | −0.0073 | +0.0170 | +0.0052 | +0.0098 | 3/5 | 116 |
 
 **判決：REJECT_DEV**。Good 喺每個 w 都係負，冇一個 w 合資格；terminal 冇開。
-形狀：排序指標隨 w 升，但「頭兩揀都入位」跌，同 EXP-20261009-03 一樣。
+形狀：排序指標隨 w 升，但「頭兩揀都入位」跌，同 EXP-20261009-13 一樣。
 
 ## 前瞻觀察（Kelvin：「at least continue to observe」）
 

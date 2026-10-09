@@ -33,6 +33,10 @@ from hkjc_racing_engine.renderer import (
 from hkjc_racing_engine.scoring import (
     MATRIX_WEIGHTS,
     RACE_SHAPE_ROBUST_DEVIATION_CAP,
+    EARLY_DRAW_DISPLAY_WEIGHT,
+    EARLY_DRAW_MIN_RUNNERS,
+    PURE_WEIGHT_ARMS,
+    DISPLAY_SLOPE,
     active_race_shape_robustness_profile,
     compute_grade,
     from_display_scale,
@@ -744,6 +748,7 @@ DEFAULT_SHADOW_PROFILES = (
     "weight_rollback_0809",
     "race_shape_w200",
     "race_shape_w170",
+    "early_draw_rollback",
     "race_shape_v2_legacy_hv",
     "race_shape_st_draw70",
     "race_shape_legacy_unbounded",
@@ -906,6 +911,7 @@ class HKJCAutoOrchestrator:
             
         _apply_sip_enhancements(horses)
         self._apply_mainline_shape_robustness(horses)
+        self._apply_early_draw_interaction(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including
         # the horse-number exact-tie key.
@@ -1049,6 +1055,7 @@ class HKJCAutoOrchestrator:
             "weight_rollback_0809",
             "race_shape_w200",
             "race_shape_w170",
+            "early_draw_rollback",
             "race_shape_v3_hv",
             "race_shape_v3_hv_t02",
             "race_shape_v2_legacy_hv",
@@ -1077,6 +1084,7 @@ class HKJCAutoOrchestrator:
             "weight_rollback_0809",
             "race_shape_w200",
             "race_shape_w170",
+            "early_draw_rollback",
             "race_shape_v3_hv",
             "race_shape_v3_hv_t02",
             "race_shape_v2_legacy_hv",
@@ -1173,6 +1181,99 @@ class HKJCAutoOrchestrator:
                 shadow["official_ranking_score"] = round(float(shadow.get("ability_score", 0.0)), 6)
 
     @staticmethod
+    def _apply_early_draw_interaction(horses):
+        """EXP-20261009-15: wide draws cost habitual front-runners less than back-markers.
+
+        I = max(0, −d) × e, with d = within-race z of draw (inner positive) and
+        e = within-race z of habitual early speed (forward positive, 0 if unknown).
+        Added to the raw score as EARLY_DRAW_DISPLAY_WEIGHT display points per
+        within-race SD of I. Mainline and the pure weight arms get the same delta;
+        `early_draw_rollback` keeps the pre-adjustment score.
+        """
+        rows = []
+        for horse_num, horse in horses.items():
+            auto = horse.get("python_auto")
+            if not isinstance(auto, dict):
+                continue
+            data = horse.get("_data") or {}
+            try:
+                barrier = int(str(horse.get("barrier", "")).strip())
+            except (TypeError, ValueError):
+                barrier = None
+            early = data.get("habitual_early_position")
+            try:
+                early = None if early is None else -float(early)
+            except (TypeError, ValueError):
+                early = None
+            rows.append({"auto": auto, "barrier": barrier, "early": early})
+
+        def zscores(values):
+            known = [v for v in values if v is not None]
+            if len(known) < 2:
+                return [0.0 for _ in values]
+            mean = sum(known) / len(known)
+            sd = (sum((v - mean) ** 2 for v in known) / len(known)) ** 0.5
+            return [0.0 if v is None or sd <= 0 else (v - mean) / sd for v in values]
+
+        active = (
+            sum(row["early"] is not None for row in rows) >= EARLY_DRAW_MIN_RUNNERS
+            and sum(row["barrier"] is not None for row in rows) >= EARLY_DRAW_MIN_RUNNERS
+        )
+        if active:
+            draw_z = [-z for z in zscores([row["barrier"] for row in rows])]
+            early_z = zscores([row["early"] for row in rows])
+            terms = zscores([max(0.0, -d) * e for d, e in zip(draw_z, early_z)])
+        else:
+            terms = [0.0 for _ in rows]
+        for row, term in zip(rows, terms):
+            auto = row["auto"]
+            base_raw = float(auto.get("ability_score_raw", 60.0))
+            base_display = float(auto.get("ability_score", to_display_scale(base_raw)))
+            raw_delta = round(EARLY_DRAW_DISPLAY_WEIGHT * term / DISPLAY_SLOPE, 4)
+            rollback = {
+                "profile": "early_draw_rollback",
+                "applied": abs(raw_delta) > 1e-9,
+                "ability_score": round(base_display, 2),
+                "ability_score_raw": round(base_raw, 4),
+                "grade": compute_grade(base_display),
+                "reason": "回退對照：唔計檔位×習慣前速調整。",
+                "evidence_status": "experimental_live_rollback_shadow",
+            }
+            auto.setdefault("shadow_profiles", {})["early_draw_rollback"] = rollback
+            ability_raw = round(base_raw + raw_delta, 4)
+            auto["ability_score_raw"] = ability_raw
+            auto["ability_score"] = round(to_display_scale(ability_raw), 2)
+            auto["grade"] = compute_grade(auto["ability_score"])
+            auto["early_draw_adjustment"] = {
+                "raw_adjustment": raw_delta,
+                "interaction_z": round(term, 4),
+                "habitual_early_position": None if row["early"] is None else round(-row["early"], 4),
+                "barrier": row["barrier"],
+                "active": active,
+                "display_weight": EARLY_DRAW_DISPLAY_WEIGHT,
+                "evidence_status": "user_accepted_experimental_live",
+            }
+            for arm in PURE_WEIGHT_ARMS:
+                arm_shadow = (auto.get("shadow_profiles") or {}).get(arm)
+                if not arm_shadow:
+                    continue
+                arm_raw = round(float(arm_shadow.get("ability_score_raw", base_raw)) + raw_delta, 4)
+                arm_shadow["ability_score_raw"] = arm_raw
+                arm_shadow["ability_score"] = round(to_display_scale(arm_raw), 2)
+                arm_shadow["grade"] = compute_grade(arm_shadow["ability_score"])
+                arm_shadow["fixed_raw_adjustment"] = round(
+                    float(arm_shadow.get("fixed_raw_adjustment", 0.0) or 0.0) + raw_delta, 4
+                )
+            for candidate in (auto.get("shadow_profiles") or {}).values():
+                try:
+                    candidate["ability_delta"] = round(
+                        float(candidate.get("ability_score", auto["ability_score"])) - auto["ability_score"],
+                        2,
+                    )
+                except (TypeError, ValueError):
+                    continue
+
+    @staticmethod
     def _apply_mainline_shape_robustness(horses):
         """Winsorize extreme whole-field shape deviations before official ranking."""
         if active_race_shape_robustness_profile() == "legacy_unbounded":
@@ -1210,6 +1311,33 @@ class HKJCAutoOrchestrator:
             auto["ability_score_raw"] = ability_raw
             auto["ability_score"] = ability_score
             auto["grade"] = compute_grade(ability_score)
+            for arm in PURE_WEIGHT_ARMS:
+                arm_shadow = (auto.get("shadow_profiles") or {}).get(arm)
+                if not arm_shadow:
+                    continue
+                if not arm_shadow.get("applied"):
+                    # Debut no-op row: mirror mainline exactly, cap included.
+                    row_weights = arm_shadow.get("weights") or {}
+                    row_matrix = arm_shadow.get("matrix_scores") or {}
+                    arm_shadow["ability_score_raw"] = ability_raw
+                    arm_shadow["ability_score"] = ability_score
+                    arm_shadow["grade"] = compute_grade(ability_score)
+                    sip_boost = sum(float(flag.get("boost", 0.0) or 0.0)
+                                    for flag in (arm_shadow.get("sip_flags") or []))
+                    arm_shadow["fixed_raw_adjustment"] = round(
+                        ability_raw - sip_boost - sum(float(row_matrix.get(k, 60.0)) * float(w)
+                                                      for k, w in row_weights.items()), 4)
+                    continue
+                arm_matrix = dict(arm_shadow.get("matrix_scores") or {})
+                arm_shape = float(arm_matrix.get("race_shape", shape))
+                arm_matrix["race_shape"] = round(adjusted_shape, 2)
+                arm_raw = float(arm_shadow.get("ability_score_raw", 60.0)) + float(
+                    (arm_shadow.get("weights") or {}).get("race_shape", 0.0)
+                ) * (adjusted_shape - arm_shape)
+                arm_shadow["matrix_scores"] = arm_matrix
+                arm_shadow["ability_score_raw"] = round(arm_raw, 4)
+                arm_shadow["ability_score"] = round(to_display_scale(arm_raw), 2)
+                arm_shadow["grade"] = compute_grade(arm_shadow["ability_score"])
             auto["race_shape_robustness"] = {
                 "profile": "winsor10",
                 "applied": applied,

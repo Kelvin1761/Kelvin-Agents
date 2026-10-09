@@ -13,11 +13,24 @@ import re
 # exact model that made the pre-race prediction.
 SCORING_CONTRACT_VERSION = (
     "HKJC_7D_CONTRACT_2026_10_09_PURE_7D_CORE_BALANCE_RESTORED_"
-    "RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1"
+    "RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1_"
+    "EARLY_DRAW_X05"
 )
 
 
 HAPPY_VALLEY_RACE_SHAPE_V3_SURFACE_GAIN = 0.45
+
+# EXP-20261009-15: draw × habitual-early-speed interaction. Draw barely matters
+# for horses that habitually go forward (draw AUC 0.519, 1,436 independent races)
+# and matters for back-markers (0.582); race_shape scored both the same.
+# Display points per within-race SD of the interaction term (pre-registered grid
+# 0.5/1/2, dev-selected 0.5). Races with fewer than 4 runners carrying a habit: no-op.
+EARLY_DRAW_DISPLAY_WEIGHT = 0.5
+EARLY_DRAW_MIN_RUNNERS = 4
+# Shadow arms that differ from mainline ONLY in outer weights: they must receive
+# every race-level step mainline receives (shape cap, early×draw), or the forward
+# comparison measures the step as well as the weights.
+PURE_WEIGHT_ARMS = ("weight_refit_t02", "weight_rollback_0809", "race_shape_w200", "race_shape_w170")
 RACE_SHAPE_ROBUST_DEVIATION_CAP = 10.0
 def active_race_shape_robustness_profile():
     """Return the whole-field shape robustness policy with emergency rollback."""
@@ -78,7 +91,7 @@ FEATURE_KEYS = (
 # 下調至 0.65×0.1849（保留原速度影響力），其餘維度按比例放大令總和＝1。
 # 排名等效於「段速=速度×0.65 + 場地60×0.35」舊結構（場地嗰 0.35 只乘 constant，
 # 對排名零貢獻）。pit_backtest：gold/min/champ 不變、single/t3c 微升。
-# 2026-10-09（EXP-20261009-04，user-accepted，未通過 Stage-4 閘）：還原 2026-07-30
+# 2026-10-09（EXP-20261009-14，user-accepted，未通過 Stage-4 閘）：還原 2026-07-30
 # CORE_BALANCE fit —— 佢喺 2026-08-09 merge f7d35de5 被靜靜揀走，之後 race_shape
 # 0.2737 只係 merge 意外。用 repo 自己嘅 renormalise（段速 0.65×0.1849，其餘
 # ×1/0.935285）換算到現行七維，4 位小數 largest-remainder 令總和＝1。
@@ -138,8 +151,16 @@ RANKING_ADJUSTMENTS = (
     {
         "key": "distance_suitability_adjustment",
         "label": "同程性能修正",
-        "formula": "正式V1：同程曾入位 +0.43；有同程紀錄但未入位約 -0.17（raw 分）",
+        "formula": "正式V1：同程曾入位 +0.46；有同程紀錄但未入位約 -0.18（raw 分，隨級數優勢權重縮放）",
         "missing": "冇 point-in-time 同程紀錄 = 0；V2 residual 另作 prospective shadow",
+    },
+    {
+        "key": "early_draw_adjustment",
+        "label": "檔位 × 習慣前速",
+        "formula": "I = max(0, −檔位z) × 前速z（同場標準化；前速＝近6仗首段位置百分位）；"
+                   "綜合分 + 0.5 × I 嘅同場z（顯示分）。大外檔慣性前置馬唔再同慣性後上馬一樣被扣",
+        "missing": "少過2仗有效走位 = 前速0；同場有習慣前速嘅馬少過4匹 = 整場不套用；"
+                   "回退對照 shadow `early_draw_rollback`",
     },
 )
 

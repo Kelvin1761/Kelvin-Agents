@@ -48,7 +48,7 @@ _WEIGHT_REFIT_T02 = {
     "horse_health": 0.0404,
     "form_line": 0.0801,
 }
-# Forward arms for EXP-20261009-04, registered before any forward race. Absolute
+# Forward arms for EXP-20261009-14, registered before any forward race. Absolute
 # vectors for the same reason as t02. w200/w170 scale the non-shape weights of
 # the new live vector proportionally (largest-remainder to 4 dp).
 _WEIGHT_ROLLBACK_0809 = {

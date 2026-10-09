@@ -1522,6 +1522,63 @@ def classify_finish_status(finish, status_raw: str = '') -> str:
     return 'unknown'
 
 
+_PAST_FIELD_SIZES = None
+
+
+def _past_field_sizes() -> dict:
+    """{(YYYY-MM-DD, race_no): field size} from rail_draw_results.csv; {} if unavailable."""
+    global _PAST_FIELD_SIZES
+    if _PAST_FIELD_SIZES is None:
+        _PAST_FIELD_SIZES = {}
+        try:
+            import csv
+            root = Path(__file__).resolve().parents[2]
+            if str(root) not in sys.path:
+                sys.path.insert(0, str(root))
+            from wongchoi_paths import HK_RACING
+            path = (HK_RACING / 'HKJC_Race_Results_Database' / 'comprehensive_stats'
+                    / 'rail_draw_results.csv')
+            with open(path, encoding='utf-8-sig') as handle:
+                for row in csv.DictReader(handle):
+                    try:
+                        _PAST_FIELD_SIZES[(row['Date'], int(row['RaceNo']))] = int(row['FieldSize'])
+                    except (KeyError, TypeError, ValueError):
+                        continue
+        except Exception:
+            _PAST_FIELD_SIZES = {}
+    return _PAST_FIELD_SIZES
+
+
+def habitual_early_position(entries: list, race_date: str) -> tuple:
+    """Mean first-call percentile over the last ≤6 HK runs before race_date (EXP-20261009-15).
+
+    0 = led, 1 = last. Field size from rail_draw_results for that race, else 12.
+    Fewer than two usable runs → (None, n): too little to call a habit.
+    """
+    cutoff = _require_race_date(race_date)
+    sizes = _past_field_sizes()
+    values = []
+    for entry in entries or []:
+        dt = _profile_entry_datetime(entry)
+        if dt is None or dt >= cutoff:
+            continue
+        positions = entry.get('running_positions') or []
+        first = positions[0] if positions else None
+        if not isinstance(first, int) or first <= 0:
+            continue
+        try:
+            race_no = int(entry.get('race_no') or 0)
+        except (TypeError, ValueError):
+            race_no = 0
+        field = sizes.get((dt.strftime('%Y-%m-%d'), race_no)) or 12
+        values.append((first - 1) / max(1, field - 1))
+        if len(values) >= 6:
+            break
+    if len(values) < 2:
+        return None, len(values)
+    return round(sum(values) / len(values), 4), len(values)
+
+
 def _require_race_date(race_date: str) -> datetime:
     if not race_date:
         raise ValueError('race_date (YYYY-MM-DD) is required; history cutoffs depend on it')
@@ -2372,6 +2429,11 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     else:
         _hk_ctag = 'ESTABLISHED'
     lines.append(f"- **生涯標記:** `{_hk_ctag}` (香港出賽 {total_races} 場)")
+    early, early_runs = habitual_early_position(p_entries, race_date)
+    if early is None:
+        lines.append(f"- **習慣前速:** 未有 (有效場數 {early_runs})")
+    else:
+        lines.append(f"- **習慣前速:** {early:.4f} (近{early_runs}仗首段位置百分位；0=領放、1=包尾)")
     lines.append(f"- **統計:** 季內 {season_str} | 同程 {dist_str} | 同場同程 {vd_str}")
     lines.append(
         "- **個別場地性能 (Shadow):** "
