@@ -451,7 +451,7 @@ def test_local_history_resolver_backfills_pending_match_result(tmp_path, monkeyp
 
 
 def test_market_validation_blocks_promotion_when_settlement_coverage_is_low(tmp_path, monkeypatch):
-    from conftest import configure_test_db
+    from conftest import configure_test_db, mark_tracker_pre_match
 
     configure_test_db(tmp_path, monkeypatch)
     from tennis_wc.database.db import get_connection
@@ -480,6 +480,7 @@ def test_market_validation_blocks_promotion_when_settlement_coverage_is_low(tmp_
                 """,
                 (idx + 1, status, profit),
             )
+        mark_tracker_pre_match(conn)
 
     row = market_validation_summary(min_samples=3)["by_market"][0]
     assert row["settled"] == 3

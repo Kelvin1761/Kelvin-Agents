@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.evaluation.corpus import tracker_point_in_time_clause
+
+# Gates and track records read only legs written before their match started;
+# see evaluation.corpus.tracker_point_in_time_clause.
+_PIT_CLV = tracker_point_in_time_clause()
 
 
 BUCKETS = (
@@ -97,10 +102,11 @@ def _settled_tracker_rows() -> list[dict]:
         return [
             dict(row)
             for row in conn.execute(
-                """
+                f"""
                 SELECT tier, model_probability, result_status
                 FROM clv_tracker
-                WHERE result_status IN ('WON', 'LOST')
+                WHERE {_PIT_CLV}
+                  AND result_status IN ('WON', 'LOST')
                   AND model_probability IS NOT NULL
                 """
             ).fetchall()

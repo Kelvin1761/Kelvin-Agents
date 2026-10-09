@@ -659,3 +659,71 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src .venv/bin/python \
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src .venv/bin/python \
   -m tennis_wc.cli prune-raw-responses --dry-run
 ```
+
+---
+
+## Addendum 2026-10-09 —— 發現 5 同 Phase 4 判決嘅數字都受污染
+
+**觸發：** Kelvin 見到報表「大幅改善」，問可唔可以開始落注。用唯讀 DB 重算，只計
+`created_at`／`recorded_at` < `matches.start_time_utc`（NULL 剔走），賠率取最早快照。
+
+### 1. 「BET + tier allow-list +10.76%（277 注）」重現唔到
+
+| 計法 | n | ROI |
+|---|---|---|
+| 唔過濾開賽時間 | 392 | +10.95% |
+| 賽前 或 冇開賽時間 | 321 | +3.99% |
+| **只計賽前（全期）** | **199** | **−10.34%** CI [−26.15, +6.20] |
+| 只計賽前，2026-09-09 → 10-09 | 62 | −7.93% CI [−36.79, +23.40] |
+
+發現 5 嗰個數係喺未有 point-in-time 過濾嘅 predictions 上量嘅。**tier 閘本身嘅
+理由（ITF Brier 差 +0.049）唔受影響，但「閘令 BET 子集賺錢」呢句唔成立。**
+
+### 2. Phase 4 判決（`measure_edge_significance.py`）由頭到尾冇賽前過濾
+
+佢攞每個 (match, selection) 最新嗰行 prediction，而 recovery／後段 run 會喺開賽後
+繼續重新定價。2026-10-09 拆開佢自己 1,194 注：
+
+| | n | ROI | 95% CI |
+|---|---|---|---|
+| 開賽前寫 | 530 | −22.28% | [−34.1, −10.2] |
+| 冇開賽時間 | 296 | +20.14% | [+2.7, +39.2] |
+| 開賽後寫 | 368 | +1.60% | |
+
+修正（先過濾、後揀最新）：**EV>0 n=713 ROI −17.12% CI [−27.41, −6.67]（顯著蝕）**；
+`decision='BET'` n=174 −11.96% CI [−29.54, +5.96]。即係 Phase 3「綁住嘅係時間唔係價錢」
+嘅前提（+6.12% 只差樣本量）唔成立 —— 冇一個需要等嘅優勢。
+
+### 3. 衍生市場畢業閘同 banker tier 閘讀緊開賽後嘅腳
+
+`clv_tracker` 冇 `is_point_in_time` 欄，`_market_validation_history`、
+`_clv_history_allows_core`、`_stable_value_history_allows`、`_tier_downgrade_reason`
+（daily_report 同 ledger 兩份）、`market_validation_report._market_rows`、
+`calibration_report._settled_tracker_rows` 全部冇過濾。
+
+| 盤口 | 全部行 | 只計賽前 | 修正後 tier |
+|---|---|---|---|
+| winner_related | 153 注 +1.2% ✅ | 69 注 −16.1% | MARKET_REVIEW |
+| total_sets | 21 注 +18.4% ✅ | 2 注 | MARKET_TRIAL |
+| both_players_to_win_a_set | 20 注 +18.2% ✅ | 5 注 | MARKET_TRIAL |
+| set_betting | 379 注 −8.2% | 210 注 −15.5% | MARKET_REVIEW（不變） |
+
+新 helper `evaluation.corpus.tracker_point_in_time_clause()`，同 `point_in_time_clause`
+同一個三態規則。Dashboard `_tennis_strategy_state` 亦補返 `is_point_in_time = 1`
+（pipeline 嘅閘本來已過濾，鏡像冇）。
+
+### 4. 模型 vs 市場：差距擴大，唔係收窄
+
+| 窗口 | n | ΔLogloss（+ = 市場贏） | 模型 LL | 市場 LL |
+|---|---|---|---|---|
+| 8 月 | 1,068 | +0.0817 [+0.058, +0.104] | 0.6664 | 0.5848 |
+| 09-09 → 10-09 | 1,147 | +0.1173 [+0.095, +0.138] | 0.6575 | 0.5403 |
+
+模型 LL 冇變，市場 LL 好咗 —— 群體組成要查（下一步：數據管線審計）。
+
+### 仍然可信嘅數字
+
+`prop_roi_report`（預設只計賽前）、每週 props 線（−23.1% → −17.7%）、
+`_tennis_verified_record`。Props 賽前 value bets：8 月 n=299 −22.49%，
+最近 30 日 n=281 −6.28% CI [−18.85, +6.39] —— 真改善但仍負，而且大半係
+`player_game_handicap` 注數由 114 跌到 13。

@@ -447,11 +447,49 @@ def assemble_match_feature_snapshot(match_id: int) -> tuple[dict, dict]:
     }
     quality = validate_data_freshness(snapshot)
     snapshot["data_quality"] = quality
+    # Plain numbers, not datapoints: the shadow must not move data quality,
+    # warnings or any gate. Computed after `validate_data_freshness` for the
+    # same reason.
+    snapshot["shadow_backbone"] = _shadow_backbone(
+        match["player_a_id"], match["player_b_id"], context, as_of_date)
     snapshot["provenance"] = {
         "match_raw_response_id": match["raw_response_id"],
         "tournament_raw_response_id": tournament_level["raw_response_id"],
     }
     return snapshot, dict(tournament_level)
+
+
+def _shadow_backbone(player_a_id: int, player_b_id: int, context: dict, as_of_date) -> dict | None:
+    """Start-of-day Elo from `player_elo_history_v2`, for the SHADOW backbone only.
+
+    EXP-20261009-01: production reads every rating one match late. This is the
+    corrected read, priced beside production so the two can be compared on the
+    same matches going forward. Any failure returns None -- a shadow must never
+    stop a card.
+    """
+    try:
+        from tennis_wc.history import elo_history
+
+        surface = context.get("surface", {})
+        if isinstance(surface, dict):
+            surface = surface.get("value")
+        surface = (str(surface or "").strip().lower()) or None
+        stamp = as_of_date.isoformat()
+        with get_connection() as conn:
+            exists = conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='player_elo_history_v2'"
+            ).fetchone()
+            if not exists:
+                return None
+            ratings = {}
+            for side, pid in (("player_a", player_a_id), ("player_b", player_b_id)):
+                overall = elo_history.start_of_day_rating(conn, pid, stamp)
+                on_surface = (elo_history.start_of_day_rating(conn, pid, stamp, surface)
+                              if surface else overall)
+                ratings[side] = {"overall": overall, "surface": on_surface}
+        return {"surface": surface, **ratings}
+    except Exception:
+        return None
 
 
 def build_match_feature_snapshot(match_id: int) -> dict:

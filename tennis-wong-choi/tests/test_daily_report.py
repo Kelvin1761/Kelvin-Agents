@@ -562,7 +562,7 @@ def test_opened_markets_produce_trial_combos(tmp_path, monkeypatch):
 
 
 def test_stable_value_history_requires_sample_hit_rate_roi_and_clv(tmp_path, monkeypatch):
-    from conftest import configure_test_db
+    from conftest import configure_test_db, mark_tracker_pre_match
 
     configure_test_db(tmp_path, monkeypatch)
     from tennis_wc.database.migrations import init_db
@@ -588,12 +588,13 @@ def test_stable_value_history_requires_sample_hit_rate_roi_and_clv(tmp_path, mon
                 """,
                 (idx + 1, status, profit),
             )
+        mark_tracker_pre_match(conn)
 
     assert _stable_value_history_allows("MODELLED", "match_winner") is True
 
 
 def test_tier_downgrade_when_value_roi_is_negative(tmp_path, monkeypatch):
-    from conftest import configure_test_db
+    from conftest import configure_test_db, mark_tracker_pre_match
 
     configure_test_db(tmp_path, monkeypatch)
     from tennis_wc.database.migrations import init_db
@@ -617,12 +618,13 @@ def test_tier_downgrade_when_value_roi_is_negative(tmp_path, monkeypatch):
                 """,
                 (idx + 1,),
             )
+        mark_tracker_pre_match(conn)
 
     assert _tier_downgrade_reason("VALUE_BANKER", "MODELLED", "match_winner", 0.60) == "tier_downgraded_negative_roi"
 
 
 def test_calibration_safety_margin_for_overconfident_bucket(tmp_path, monkeypatch):
-    from conftest import configure_test_db
+    from conftest import configure_test_db, mark_tracker_pre_match
 
     configure_test_db(tmp_path, monkeypatch)
     from tennis_wc.database.migrations import init_db
@@ -647,6 +649,7 @@ def test_calibration_safety_margin_for_overconfident_bucket(tmp_path, monkeypatc
                 """,
                 (idx + 1, status),
             )
+        mark_tracker_pre_match(conn)
 
     assert banker_probability_safety_margin(0.68) > 0
 
@@ -668,6 +671,8 @@ def _seed_tracker(conn, prob, wins, losses, tier="VALUE_BANKER"):
                 ("prediction", n, n, "2026-07-01", f"P{n}", "match_winner",
                  "Match Betting", tier, prob, 2.0, status, "now", "now"),
             )
+    from conftest import mark_tracker_pre_match
+    mark_tracker_pre_match(conn)
     conn.commit()
 
 
@@ -770,3 +775,66 @@ def test_unwritable_drive_mirror_never_fails_the_run(tmp_path, monkeypatch):
 
     assert daily_report.mirror_reports_to_drive("2026-08-16", local) is None
     assert (local / "Tennis_Daily_Report.txt").read_text(encoding="utf-8") == "card"
+
+
+# --------------------------------------------------------------------------- #
+# A market must not graduate on legs written after its match started (2026-10-09)
+# --------------------------------------------------------------------------- #
+def test_post_start_legs_cannot_graduate_a_derived_market(tmp_path, monkeypatch):
+    """`winner_related` read "graduated" at +1.9% on 149 legs while the legs
+    written before the start ran -16.1%. The profit came from legs recorded after
+    the start or on matches with no start time. Only pre-match legs may count."""
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.reports.daily_report import _market_upgrade_gate, _market_validation_history
+
+    init_db()
+
+    def leg(conn, source_id, match_id, status, profit, recorded_at):
+        conn.execute(
+            """
+            INSERT INTO clv_tracker (
+                recommendation_type, source_id, match_id, match_date, selection_name,
+                selection_side, market_key, market_name, market_line, tier,
+                model_probability, edge, confidence, odds_taken, result_status,
+                profit_loss_units, recorded_at, updated_at
+            )
+            VALUES ('MARKET_LEG', ?, ?, '2026-09-20', 'Player A', 'player_a',
+                    'winner_related', 'Winner Related', NULL, 'MARKET_TRIAL',
+                    0.6, 0.05, 70, 2.0, ?, ?, ?, '2026-09-21T00:00:00Z')
+            """,
+            (source_id, match_id, status, profit, recorded_at),
+        )
+
+    def match(conn, match_id, start):
+        conn.execute(
+            """INSERT INTO matches (id, provider_match_id, tour, match_date, tournament_id,
+                   player_a_id, player_b_id, round, source_provider, created_at, updated_at,
+                   start_time_utc)
+               VALUES (?, ?, 'ATP', '2026-09-20', 1, 1, 2, 'R1', 'test', 'x', 'x', ?)""",
+            (match_id, f"m{match_id}", start),
+        )
+
+    with get_connection() as conn:
+        match(conn, 1, "2026-09-20T10:00:00Z")   # timed
+        match(conn, 2, None)                     # no start time
+        sid = 0
+        for i in range(25):                      # pre-match: losing
+            sid += 1
+            leg(conn, sid, 1, "WON" if i < 10 else "LOST", 1.0 if i < 10 else -1.0,
+                "2026-09-20T08:00:00Z")
+        for _ in range(40):                      # after the start: all winners
+            sid += 1
+            leg(conn, sid, 1, "WON", 1.0, "2026-09-20T12:00:00Z")
+        for _ in range(40):                      # unverifiable: all winners
+            sid += 1
+            leg(conn, sid, 2, "WON", 1.0, "2026-09-20T08:00:00Z")
+
+    history = _market_validation_history("winner_related")
+    assert history["settled"] == 25
+    assert history["roi"] < 0
+    gate = _market_upgrade_gate("winner_related", "DERIVED_MODEL")
+    assert gate["tier"] != "VALIDATED_DERIVED_MARKET"

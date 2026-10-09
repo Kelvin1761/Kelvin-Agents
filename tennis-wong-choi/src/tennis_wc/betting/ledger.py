@@ -10,6 +10,11 @@ from tennis_wc.database.db import get_connection
 from tennis_wc.features.common import utc_now
 from tennis_wc.ingestion.name_matching import match_pair_score, same_player_name
 from tennis_wc.providers import get_tennis_provider
+from tennis_wc.evaluation.corpus import tracker_point_in_time_clause
+
+# Gates and track records read only legs written before their match started;
+# see evaluation.corpus.tracker_point_in_time_clause.
+_PIT_CLV = tracker_point_in_time_clause()
 
 
 def record_bet(prediction_id: int, odds: float, stake: float) -> int:
@@ -768,7 +773,7 @@ def clv_tracker_summary() -> dict:
     _ensure_tracking_schema()
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT
                    CASE
                        WHEN recommendation_type = 'MARKET_LEG' AND tier = 'VALUE_BANKER' THEN 'MARKET_TRIAL'
@@ -779,7 +784,8 @@ def clv_tracker_summary() -> dict:
                    AVG(clv) AS avg_clv,
                    SUM(COALESCE(profit_loss_units, 0)) AS profit
             FROM clv_tracker
-            WHERE NOT (
+            WHERE {_PIT_CLV}
+              AND NOT (
                 recommendation_type = 'MARKET_LEG'
                 AND tier IN ('MARKET_TRIAL', 'PROP_MODEL_REVIEW')
                 AND COALESCE(edge, 0) <= 0
@@ -827,7 +833,7 @@ def tier_roi_summary() -> dict:
             """
         ).fetchall()
         tracker_rows = conn.execute(
-            """
+            f"""
             SELECT
                    CASE
                        WHEN recommendation_type = 'MARKET_LEG' AND tier = 'VALUE_BANKER' THEN 'MARKET_TRIAL'
@@ -838,7 +844,8 @@ def tier_roi_summary() -> dict:
                    SUM(COALESCE(profit_loss_units, 0)) AS profit,
                    AVG(clv) AS avg_clv
             FROM clv_tracker
-            WHERE NOT (
+            WHERE {_PIT_CLV}
+              AND NOT (
                 recommendation_type = 'MARKET_LEG'
                 AND tier IN ('MARKET_TRIAL', 'PROP_MODEL_REVIEW')
                 AND COALESCE(edge, 0) <= 0
@@ -961,7 +968,7 @@ def _tier_action_rows() -> list[dict]:
         return [
             dict(row)
             for row in conn.execute(
-                """
+                f"""
                 SELECT
                        CASE
                            WHEN recommendation_type = 'MARKET_LEG' AND tier = 'VALUE_BANKER' THEN 'MARKET_TRIAL'
@@ -974,7 +981,8 @@ def _tier_action_rows() -> list[dict]:
                        AVG(clv) AS avg_clv,
                        SUM(COALESCE(profit_loss_units, 0)) AS profit
                 FROM clv_tracker
-                WHERE NOT (
+                WHERE {_PIT_CLV}
+                  AND NOT (
                     recommendation_type = 'MARKET_LEG'
                     AND tier IN ('MARKET_TRIAL', 'PROP_MODEL_REVIEW')
                     AND COALESCE(edge, 0) <= 0
@@ -1431,10 +1439,11 @@ def _clv_history_allows_core(recommendation_type: str) -> bool:
     try:
         with get_connection() as conn:
             row = conn.execute(
-                """
+                f"""
                 SELECT COUNT(clv) AS samples, AVG(clv) AS avg_clv
                 FROM clv_tracker
-                WHERE tier = 'CORE_BANKER'
+                WHERE {_PIT_CLV}
+                  AND tier = 'CORE_BANKER'
                   AND recommendation_type = ?
                   AND clv IS NOT NULL
                 """,
@@ -1452,13 +1461,14 @@ def _stable_value_history_allows(recommendation_type: str, market_key: str) -> b
     try:
         with get_connection() as conn:
             row = conn.execute(
-                """
+                f"""
                 SELECT SUM(CASE WHEN result_status IN ('WON', 'LOST') THEN 1 ELSE 0 END) AS settled,
                        SUM(CASE WHEN result_status = 'WON' THEN 1 ELSE 0 END) AS wins,
                        AVG(clv) AS avg_clv,
                        SUM(COALESCE(profit_loss_units, 0)) AS profit
                 FROM clv_tracker
-                WHERE tier = 'VALUE_BANKER'
+                WHERE {_PIT_CLV}
+                  AND tier = 'VALUE_BANKER'
                   AND recommendation_type = ?
                   AND market_key = ?
                   AND COALESCE(edge, 0) > 0

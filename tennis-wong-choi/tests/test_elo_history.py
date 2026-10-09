@@ -239,3 +239,146 @@ def test_feature_snapshot_prefers_as_of_elo_over_the_mutable_column(tmp_path, mo
     conn.commit()
     overall, _surface, as_of = feature_builder._elo_as_of(conn, 2, "2026-06-01", None)
     assert overall is None and as_of is False
+
+
+# --------------------------------------------------------------------------- #
+# Shadow v2 (EXP-20261009-01): the start-of-day read production should make
+# --------------------------------------------------------------------------- #
+def test_v2_reads_the_rating_after_the_previous_match(tmp_path, monkeypatch):
+    """The production table above is one match late: on 01-02 it still reads the
+    rating from before the 01-01 win. v2 stores post-match ratings, so the same
+    read sees the win."""
+    from tennis_wc.history import elo_history
+
+    conn = _setup(tmp_path, monkeypatch)
+    elo_history.replace_post_match(conn, [
+        (1, "2026-01-01", "", 1530.0, 1),
+        (1, "2026-01-05", "", 1555.0, 2),
+    ])
+    conn.commit()
+    assert elo_history.start_of_day_rating(conn, 1, "2026-01-02") == 1530.0
+    # Strictly before: a match on 01-05 does not see its own result.
+    assert elo_history.start_of_day_rating(conn, 1, "2026-01-05") == 1530.0
+    assert elo_history.start_of_day_rating(conn, 1, "2026-01-06") == 1555.0
+    assert elo_history.start_of_day_rating(conn, 1, "2026-01-01") is None
+
+
+def test_v2_last_match_of_a_day_wins(tmp_path, monkeypatch):
+    """Two matches on one date: the next day starts from the rating after both."""
+    from tennis_wc.history import elo_history
+
+    conn = _setup(tmp_path, monkeypatch)
+    elo_history.replace_post_match(conn, [
+        (1, "2026-01-05", "", 1520.0, 1),
+        (1, "2026-01-05", "", 1541.0, 2),
+    ])
+    conn.commit()
+    assert elo_history.start_of_day_rating(conn, 1, "2026-01-06") == 1541.0
+
+
+def test_v2_is_rebuilt_not_accumulated(tmp_path, monkeypatch):
+    """The production table keeps the first row it ever saw for a key, so it is a
+    mixture of builds. v2 is cleared on every build."""
+    from tennis_wc.history import elo_history
+
+    conn = _setup(tmp_path, monkeypatch)
+    elo_history.replace_post_match(conn, [(1, "2026-01-05", "", 1600.0, 1)])
+    elo_history.replace_post_match(conn, [(1, "2026-01-05", "", 1520.0, 1)])
+    conn.commit()
+    assert elo_history.start_of_day_rating(conn, 1, "2026-01-06") == 1520.0
+    assert conn.execute("SELECT COUNT(*) FROM player_elo_history_v2").fetchone()[0] == 1
+
+
+def test_v2_surface_falls_back_to_overall(tmp_path, monkeypatch):
+    from tennis_wc.history import elo_history
+
+    conn = _setup(tmp_path, monkeypatch)
+    elo_history.replace_post_match(conn, [
+        (1, "2026-01-01", "", 1530.0, 1),
+        (1, "2026-01-01", "clay", 1525.0, 1),
+    ])
+    conn.commit()
+    assert elo_history.start_of_day_rating(conn, 1, "2026-02-01", surface="clay") == 1525.0
+    assert elo_history.start_of_day_rating(conn, 1, "2026-02-01", surface="grass") == 1530.0
+
+
+def test_elo_builder_writes_v2_ending_on_the_final_rating(tmp_path, monkeypatch):
+    """After the last match, v2's start-of-day read equals the rating the build
+    wrote to `players.overall_elo` -- the property `tune_elo_backbone verify`
+    relies on."""
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.ingestion.ingest_sackmann import HISTORY_PROVIDERS
+    from tennis_wc.modelling.elo_builder import build_sackmann_elo
+    from tennis_wc.history import elo_history
+
+    init_db()
+    conn = get_connection()
+    for pid, name in ((1, "A"), (2, "B")):
+        conn.execute(
+            "INSERT INTO players (id, name, tour, source_provider, created_at, updated_at) "
+            "VALUES (?,?,?,?,?,?)", (pid, name, "ATP", "test", "now", "now"))
+    provider = HISTORY_PROVIDERS[0]
+    for i, (winner, loser, day) in enumerate(((1, 2, "2026-01-01"), (1, 2, "2026-02-01"))):
+        for role, (a, b) in (("winner", (winner, loser)), ("loser", (loser, winner))):
+            conn.execute(
+                """INSERT INTO player_match_history
+                   (provider_match_id, player_id, opponent_id, tour, match_date,
+                    tournament_external_id, tournament_level, round, format, won,
+                    source_provider, raw_response_id, created_at, surface)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (f"M{i}-{role}", a, b, "ATP", day, "T1", "ATP250", "R1", "BO3",
+                 1 if role == "winner" else 0, provider, 0, "now", "hard"))
+    conn.commit()
+
+    summary = build_sackmann_elo()
+    assert summary["elo_history_v2_rows"] == 8   # 2 matches x 2 players x (overall, hard)
+
+    conn = get_connection()
+    final = conn.execute("SELECT overall_elo FROM players WHERE id = 1").fetchone()[0]
+    assert abs(elo_history.start_of_day_rating(conn, 1, "2026-02-02") - final) < 0.01
+    # The day after the FIRST win, v2 already sees it; production does not.
+    assert elo_history.start_of_day_rating(conn, 1, "2026-01-02") > 1500.0
+    assert elo_history.rating_as_of(conn, 1, "2026-01-02") == 1500.0
+
+
+def test_a_failing_shadow_write_never_costs_production_its_elo(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.ingestion.ingest_sackmann import HISTORY_PROVIDERS
+    from tennis_wc.modelling.elo_builder import build_sackmann_elo
+    from tennis_wc.history import elo_history
+
+    init_db()
+    conn = get_connection()
+    for pid, name in ((1, "A"), (2, "B")):
+        conn.execute(
+            "INSERT INTO players (id, name, tour, source_provider, created_at, updated_at) "
+            "VALUES (?,?,?,?,?,?)", (pid, name, "ATP", "test", "now", "now"))
+    for role, (a, b) in (("winner", (1, 2)), ("loser", (2, 1))):
+        conn.execute(
+            """INSERT INTO player_match_history
+               (provider_match_id, player_id, opponent_id, tour, match_date,
+                tournament_external_id, tournament_level, round, format, won,
+                source_provider, raw_response_id, created_at, surface)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (f"M0-{role}", a, b, "ATP", "2026-01-01", "T1", "ATP250", "R1", "BO3",
+             1 if role == "winner" else 0, HISTORY_PROVIDERS[0], 0, "now", "hard"))
+    conn.commit()
+
+    def boom(conn, rows):
+        conn.execute("DELETE FROM player_elo_history_v2")
+        raise RuntimeError("shadow broke")
+
+    monkeypatch.setattr(elo_history, "replace_post_match", boom)
+    summary = build_sackmann_elo()
+    assert summary["elo_history_v2_rows"] == 0
+    conn = get_connection()
+    assert conn.execute("SELECT overall_elo FROM players WHERE id = 1").fetchone()[0] > 1500
+    assert elo_history.rating_as_of(conn, 1, "2026-01-02") == 1500.0
