@@ -11,6 +11,11 @@
 
 Off-season／官方確認冇賽事會記為 `dormant` 並 exit 0。官方 schedule 讀唔到、盤口未齊、賽果未齊、deploy 失敗會 exit 75，保留現場等下一次安全重試。
 
+Sportsbet discovery 同時讀常規賽 `6927` 同季前賽 `3079`，再按 Sydney 日期同
+ESPN 賽程過濾。抽唔到任何盤口會 exit 75，唔會回報成功。賽前失敗留下嘅空
+analysis folder，postgame／startup 會記 `dormant: no_prediction_artifacts`；
+有任何檔案但冇 snapshot 仍會報錯，保留資料查證，唔會事後補造賽前 snapshot。
+
 Season classifier 使用六個公開階段：`OFF_SEASON`、`PRESEASON`、
 `EARLY_REGULAR`、`REGULAR_SEASON`、`LATE_REGULAR`、`POSTSEASON`。
 `POSTSEASON` 再以 `postseason_type=PLAY_IN|PLAYOFFS` 分開。Preseason 會照跑

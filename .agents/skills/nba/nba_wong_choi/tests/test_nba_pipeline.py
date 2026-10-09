@@ -30,10 +30,12 @@ FIXTURES_DIR = os.path.join(TEST_DIR, "fixtures")
 SCRIPTS_DIR = os.path.join(TEST_DIR, "..", "scripts")
 RESOURCES_DIR = os.path.join(TEST_DIR, "..", "resources")
 NBA_DIR = os.path.abspath(os.path.join(TEST_DIR, "..", ".."))
+NBA_DATA_EXTRACTOR_SCRIPTS = os.path.join(NBA_DIR, "nba_data_extractor", "scripts")
 ML_DIR = os.path.abspath(os.path.join(TEST_DIR, "..", "..", "..", "..", "scripts", "nba_ml"))
 
 sys.path.insert(0, SCRIPTS_DIR)
 sys.path.insert(0, NBA_DIR)
+sys.path.insert(0, NBA_DATA_EXTRACTOR_SCRIPTS)
 sys.path.insert(0, ML_DIR)
 
 # ─── Test Framework ─────────────────────────────────────────────────────
@@ -481,6 +483,64 @@ def test_orchestrator_filters():
         test("compile release rejects residual FILL", not validate_reports_for_release(td))
 
 
+def test_sportsbet_competition_discovery():
+    section("Sportsbet Regular + Preseason Discovery")
+
+    import claw_sportsbet_odds
+    from claw_sportsbet_odds import SportsbetNBAExtractor
+
+    regular_payload = {
+        "events": [{
+            "id": 10809360,
+            "name": "Boston Celtics At Detroit Pistons",
+            "startTime": 1792522800,
+        }]
+    }
+    preseason_payload = {
+        "events": [{
+            "id": 10998445,
+            "name": "Miami Heat At Toronto Raptors",
+            "startTime": 1791069000,
+        }]
+    }
+    seen_urls = []
+
+    class _Response:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return json.dumps(self.payload).encode("utf-8")
+
+    def _fake_urlopen(req, timeout):
+        url = req.full_url
+        seen_urls.append(url)
+        payload = preseason_payload if url.endswith("/3079") else regular_payload
+        return _Response(payload)
+
+    extractor = SportsbetNBAExtractor(target_date="2026-10-04")
+    with mock.patch(
+        "claw_sportsbet_odds.urllib.request.urlopen",
+        side_effect=_fake_urlopen,
+    ):
+        matches = extractor.fetch_daily_matches()
+
+    test("regular and preseason competition endpoints are both queried", len(seen_urls) == 2)
+    test("target Sydney date keeps only preseason game", len(matches) == 1)
+    test("preseason game tag is canonical", matches[0]["tag"] == "MIA_TOR")
+    test(
+        "preseason event URL uses Sportsbet competition slug",
+        "/nba-preseason-matches/" in matches[0]["url"],
+        matches[0]["url"],
+    )
+
+
 # ─── Main ───────────────────────────────────────────────────────────────
 
 def main():
@@ -494,6 +554,7 @@ def main():
     test_monte_carlo()
     test_fixture_integrity()
     test_orchestrator_filters()
+    test_sportsbet_competition_discovery()
     
     print(f"\n{'='*60}")
     print(f"📊 RESULTS: {PASS} passed, {FAIL} failed ({PASS+FAIL} total)")
