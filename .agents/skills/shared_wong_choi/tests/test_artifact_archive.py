@@ -161,16 +161,35 @@ def test_restore_event_failure_removes_destination_for_safe_retry(
     assert source.read_bytes() == b"sqlite-data"
 
 
-def test_unavailable_warm_root_blocks_without_mutating_source(tmp_path: Path) -> None:
+def test_unavailable_warm_root_blocks_without_mutating_source(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import shared_wong_choi.artifact_archive as module
+
     hot = tmp_path / "hot"
     hot.mkdir()
     source = hot / "snapshot.db"
     source.write_bytes(b"keep-me")
 
+    # TMPDIR may itself live on a mounted external volume. A missing child
+    # directory there is not an offline disk: archive_copy may create it.
+    # Model the unavailable volume explicitly without touching host mounts.
+    offline_volume = Path("/Volumes/WongChoi-Unmounted-Test-Volume")
+    original_is_dir = module.Path.is_dir
+    checked_mounts = []
+
+    def is_dir(path: Path) -> bool:
+        if path == offline_volume:
+            checked_mounts.append(path)
+            return False
+        return original_is_dir(path)
+
+    monkeypatch.setattr(module.Path, "is_dir", is_dir)
+
     with pytest.raises(ArtifactArchiveError, match="not mounted"):
         archive_copy(
             source,
-            warm_root=tmp_path / "not-mounted",
+            warm_root=offline_volume / "archive",
             catalog_root=tmp_path / "catalog",
             domain="tennis",
             artifact_class="db-snapshot",
@@ -178,6 +197,7 @@ def test_unavailable_warm_root_blocks_without_mutating_source(tmp_path: Path) ->
         )
 
     assert source.read_bytes() == b"keep-me"
+    assert checked_mounts == [offline_volume]
     assert not (tmp_path / "catalog").exists()
 
 

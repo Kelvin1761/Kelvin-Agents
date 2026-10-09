@@ -47,8 +47,19 @@ def test_storage_status_flags_unmounted_warm_and_hot_pressure(
 ) -> None:
     hot = tmp_path / "hot"
     hot.mkdir()
+    offline_volume = Path("/Volumes/WongChoi-Unmounted-Test-Volume")
+    original_is_dir = storage_status.Path.is_dir
+
+    def is_dir(path: Path) -> bool:
+        if path == offline_volume:
+            return False
+        return original_is_dir(path)
+
+    # A nonexistent child of a mounted /Volumes disk is still available.
+    # Inject an unavailable mount, independent of where pytest stores fixtures.
+    monkeypatch.setattr(storage_status.Path, "is_dir", is_dir)
     monkeypatch.setenv("WC_HOT_DATA_ROOT", str(hot))
-    monkeypatch.setenv("WC_WARM_ARCHIVE_ROOT", str(tmp_path / "missing"))
+    monkeypatch.setenv("WC_WARM_ARCHIVE_ROOT", str(offline_volume / "archive"))
     monkeypatch.delenv("WC_COLD_MIRROR_ROOT", raising=False)
     monkeypatch.setattr(storage_status, "HOT_WARNING_FREE_BYTES", 10**30)
     monkeypatch.setattr(storage_status, "HOT_CRITICAL_FREE_BYTES", 10**29)
@@ -58,6 +69,7 @@ def test_storage_status_flags_unmounted_warm_and_hot_pressure(
     assert result["status"] == "attention"
     assert "hot_storage_critical" in result["attention"]
     assert "warm_archive_unavailable" in result["attention"]
+    assert result["tiers"]["warm"]["error"] == "not_mounted"
     assert result["tiers"]["cold"]["status"] == "unconfigured"
 
 

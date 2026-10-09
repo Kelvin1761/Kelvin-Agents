@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import sys
+import uuid
 from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
@@ -460,7 +461,7 @@ def test_supervised_review_rejects_liveness_after_process_identity_changes(
     assert result.report_path is None
 
 
-def test_supervised_review_rejects_storage_report_after_source_changes(
+def test_supervised_review_rejects_storage_report_after_source_configuration_changes(
         tmp_path, monkeypatch):
     runtime, registry = setup(tmp_path)
     repo, storage_state = tmp_path / "repo", tmp_path / "storage-state"
@@ -474,7 +475,15 @@ def test_supervised_review_rejects_storage_report_after_source_changes(
         domain=Domain.AU, repo_root=repo, storage_state_root=storage_state,
         as_of=clock["now"], estimated_bytes=1048576, timeout_seconds=15,
     )
-    warm.rmdir()
+    assert storage.disposition is ResearchDisposition.SUCCEEDED
+    # Removing an archive child directory does not unmount an external volume.
+    # A different archive on the same volume also has the same storage-health
+    # projection. Change to a genuinely absent volume; the inherited env makes
+    # the unavailable source visible to both worker and parent without mounting,
+    # unmounting or writing anything outside the fixture directory.
+    offline_volume = Path("/Volumes") / ("wongchoi-unmounted-test-" + uuid.uuid4().hex)
+    assert not offline_volume.exists()
+    monkeypatch.setenv("WC_WARM_ARCHIVE_ROOT", str(offline_volume / "archive"))
 
     result = run_review(
         runtime, registry,
