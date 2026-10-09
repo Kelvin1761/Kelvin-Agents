@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import os
 import sys
+import sqlite3
 import time
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from tennis_wc.database.db import get_connection
@@ -59,6 +61,7 @@ from tennis_wc.reports.market_validation_report import aces_prop_sanity_for_date
 from tennis_wc.reports.performance_report import prediction_summary
 from tennis_wc.config import get_settings
 from tennis_wc.pipeline_readiness import analysis_retry_reasons
+from tennis_wc.research_evidence import build_prediction_artifacts
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SHARED_HOOK_DIR = REPO_ROOT / ".agents" / "skills" / "shared_racing" / "post_success_hooks" / "scripts"
@@ -70,7 +73,6 @@ sys.path.insert(0, str(SHARED_SKILLS_DIR))
 from shared_wong_choi.contracts import Domain
 from shared_wong_choi.domain_evidence import (
     record_prediction_decision_if_configured,
-    record_settlement_for_event,
 )
 from shared_wong_choi.evidence import DecisionState
 from shared_wong_choi.immutable_snapshot import create_immutable_snapshot
@@ -370,23 +372,13 @@ def fetch_closing_odds(args: argparse.Namespace) -> None:
 
 def settle_bets(args: argparse.Namespace) -> None:
     result = settle_bets_for_date(args.date)
-    result["prediction_evidence"] = record_settlement_for_event(
-        domain=Domain.TENNIS,
-        event_id=args.date,
-        evidence_root=Path(
-            os.environ.get(
-                "WC_EVIDENCE_ROOT",
-                "~/WongChoiData/WongChoiControl/evidence",
-            )
-        ).expanduser(),
-        summary=result,
-    )
+    result["prediction_evidence"] = _record_research_settlement_for_date(args.date)
     _print_json(result)
 
 
 def settle_backlog(args: argparse.Namespace) -> None:
     _print_json(
-        settle_pending_backlog(
+        _settle_backlog_with_research(
             args.date, lookback_days=args.lookback_days, max_dates=args.max_dates
         )
     )
@@ -484,7 +476,44 @@ def train_ml(_: argparse.Namespace) -> None:
 
 
 def review_date(args: argparse.Namespace) -> None:
-    _print_json(review_date_entry(args.date))
+    result = review_date_entry(args.date)
+    result["prediction_evidence"] = _record_research_settlement_for_date(args.date)
+    _print_json(result)
+
+
+def _research_evidence_root() -> Path:
+    return Path(os.environ.get("WC_EVIDENCE_ROOT", "~/WongChoiData/WongChoiControl/evidence")).expanduser()
+
+
+def _record_research_settlement_for_date(match_date: str) -> dict:
+    from tennis_wc.research_adapter import record_research_settlement
+    root = _research_evidence_root()
+    try:
+        conn = get_connection()
+        try:
+            conn.execute("PRAGMA query_only=ON")
+            return record_research_settlement(conn, evidence_root=root,
+                capture_root=root.parent / "research_artifacts" / "tennis",
+                event_id=match_date, at=datetime.now(timezone.utc))
+        finally:
+            conn.close()
+    except Exception as exc:  # noqa: BLE001 - preserve native settlement, expose observer failure
+        return {"status": "failed", "reason": f"{type(exc).__name__}: {exc}", "live_acceptance": "pending"}
+
+
+def _settle_backlog_with_research(before_date: str, lookback_days: int = 30, max_dates: int = 10) -> dict:
+    from tennis_wc.research_adapter import research_retry_batch
+    result = settle_pending_backlog(before_date, lookback_days=lookback_days, max_dates=max_dates)
+    try:
+        batch = research_retry_batch(evidence_root=_research_evidence_root(), before_date=before_date)
+        # Native attempted days also observe evidence, but never settle a second time.
+        dates = sorted(set(batch["dates"]) | set(result.get("dates", {})))
+        result["research_retry"] = {**batch, "results": {
+            day: _record_research_settlement_for_date(day) for day in dates
+        }}
+    except Exception as exc:  # noqa: BLE001 - an evidence failure must not erase native counters
+        result["research_retry"] = {"status": "failed", "reason": f"{type(exc).__name__}: {exc}"}
+    return result
 
 
 def backtest(args: argparse.Namespace) -> None:
@@ -598,11 +627,59 @@ def _publish_daily_dashboard(args: argparse.Namespace, payload: dict) -> dict:
     return payload
 
 
+def _research_raw_responses(observations: list[dict]) -> dict[int, dict]:
+    """Read only the immutable raw rows referenced by this run's memory inputs."""
+    ids: set[int] = set()
+
+    def visit(value):
+        if isinstance(value, dict):
+            raw_id = value.get("raw_response_id")
+            if type(raw_id) is int and raw_id > 0:
+                ids.add(raw_id)
+            for item in value.values():
+                visit(item)
+        elif isinstance(value, list):
+            for item in value:
+                visit(item)
+
+    for observation in observations:
+        visit(observation["snapshot"])
+    rows = {}
+    ordered = sorted(ids)
+    with get_connection() as conn:
+        for offset in range(0, len(ordered), 500):
+            batch = ordered[offset:offset + 500]
+            placeholders = ",".join("?" for _ in batch)
+            for row in conn.execute(
+                f"SELECT id, provider_name, endpoint, response_json, fetched_at, created_at "
+                f"FROM raw_api_responses WHERE id IN ({placeholders})", batch,
+            ).fetchall():
+                rows[int(row["id"])] = dict(row)
+    return rows
+
+
+def _capture_research_observation(prediction_id: int, snapshot: dict, pricing: dict) -> dict:
+    """Bind the exact memory input/output to its persisted prediction clock."""
+    with get_connection() as conn:
+        row = conn.execute(
+            "SELECT created_at FROM predictions WHERE id = ?", (prediction_id,),
+        ).fetchone()
+    if row is None:
+        raise ValueError("Tennis research prediction row missing")
+    return {
+        "prediction_id": prediction_id,
+        "prediction_created_at": row["created_at"],
+        "snapshot": copy.deepcopy(snapshot),
+        "pricing": copy.deepcopy(pricing),
+    }
+
+
 def _record_daily_evidence(
     args: argparse.Namespace,
     payload: dict,
     report_path: Path,
     predictions: list[dict],
+    observations: list[dict] | None = None,
 ) -> dict:
     """Freeze the priced card and link its decision before publication."""
     # The report path is the canonical local artifact returned by
@@ -611,12 +688,35 @@ def _record_daily_evidence(
     # immediate read-back even after the best-effort copy succeeded.  Evidence
     # must therefore freeze the local source, never the mirror.
     output_dir = report_path.expanduser().resolve().parent
+    cutoff = datetime.now(timezone.utc)
+    research = {"status": "blocked", "reason": "exact_pricing_observations_missing"}
+    additional_files = {}
+    if observations is not None:
+        try:
+            expected = [item["id"] for item in predictions]
+            observed = [item["prediction_id"] for item in observations]
+            if not expected or len(expected) != len(set(expected)) or sorted(expected) != sorted(observed):
+                raise ValueError("Tennis research observation coverage incomplete")
+            additional_files = build_prediction_artifacts(
+                event_id=args.date, captured_at=cutoff, observations=observations,
+                raw_responses=_research_raw_responses(observations),
+            )
+        except (ValueError, KeyError, TypeError, sqlite3.Error) as exc:
+            research = {"status": "blocked", "reason": f"{type(exc).__name__}: {exc}"}
+        else:
+            research = {"status": "pregame_provenance_captured", "live_acceptance": "pending"}
+    additional_files[f"Tennis_Research_Status_{args.date}.json"] = (
+        json.dumps({"event_id": args.date, "generated_at": cutoff.isoformat(), **research},
+                   ensure_ascii=False, sort_keys=True, allow_nan=False) + "\n"
+    ).encode("utf-8")
     snapshot = create_immutable_snapshot(
         output_dir,
         domain=Domain.TENNIS.value,
         event_id=args.date,
         patterns=[Path(report_path).name],
         recommendations=predictions,
+        additional_files=additional_files,
+        at=cutoff,
     )
     evidence_root = Path(
         os.environ.get(
@@ -642,6 +742,7 @@ def _record_daily_evidence(
     )
     payload["prediction_snapshot"] = str(snapshot)
     payload["prediction_evidence"] = evidence
+    payload["research_evidence"] = research
     return evidence
 
 
@@ -658,7 +759,7 @@ def run_daily(args: argparse.Namespace) -> None:
     try:
         settlement_backlog = _run_timed_stage(
             "settlement_backlog",
-            lambda: settle_pending_backlog(args.date),
+            lambda: _settle_backlog_with_research(args.date),
             stage_timings,
         )
     except Exception as exc:  # noqa: BLE001
@@ -749,6 +850,8 @@ def run_daily(args: argparse.Namespace) -> None:
         stage_timings,
     )
     valid = [snapshot for snapshot in snapshots if snapshot["data_quality"]["is_valid"]]
+    research_observations: list[dict] = []
+    research_capture_errors: list[str] = []
 
     def price_and_review() -> list[dict]:
         output = []
@@ -759,6 +862,12 @@ def run_daily(args: argparse.Namespace) -> None:
                 snapshot["match_id"]["value"], snapshot["feature_set_version"],
                 pricing, filter_result,
             )
+            try:
+                research_observations.append(
+                    _capture_research_observation(prediction_id, snapshot, pricing)
+                )
+            except (ValueError, sqlite3.Error) as exc:
+                research_capture_errors.append(f"{type(exc).__name__}: {exc}")
             agent_output = run_agent_reviews(snapshot, pricing, filter_result)
             output.append(
                 {
@@ -806,12 +915,13 @@ def run_daily(args: argparse.Namespace) -> None:
         "stage_timings": stage_timings,
         "stage": "7",
         "mode": "mvp_snapshot" if args.mvp_snapshot else "live_full",
+        "research_capture_errors": research_capture_errors,
     }
     try:
         _run_timed_stage(
             "prediction_evidence",
             lambda: _record_daily_evidence(
-                args, payload, Path(report_path), predictions
+                args, payload, Path(report_path), predictions, research_observations
             ),
             stage_timings,
         )
