@@ -44,6 +44,35 @@ the edge sooner is not the same as earning more -- the odds<=3.0 band's own ROI
 (+4.80%) is below the unrestricted figure -- and nothing here justifies changing
 what the card offers. Track both; change behaviour only for a measured gain.
 
+CORRECTION 2026-10-09: EVERY NUMBER ABOVE WAS CONTAMINATED
+
+`load` took the latest prediction per (match, selection) and never asked when it
+was written. `predictions` is append-only and the recovery and later passes keep
+re-pricing matches that have already started, so the "latest" row was often
+written with the ball in the air -- or on a match with no start time at all.
+The old loader's own 1,194 bets, split by `corpus.classify_point_in_time`
+(2026-10-09):
+
+    written before the start                 n=530  ROI -22.28%  [-34.1, -10.2]
+    no start time (unverifiable)             n=296  ROI +20.14%  [ +2.7, +39.2]
+    written after the start                  n=368  ROI  +1.60%
+    all pooled (what this script printed)    n=1194 ROI  -4.40%  [-12.6,  +4.2]
+
+The +6.12% of 2026-08-29 and the weekly "可落注優勢進度" line were the same mix,
+and every bit of the profit sat in the rows that could not have been bet.
+
+`load` now filters BEFORE picking the latest row, so a match re-priced after the
+start still contributes its last pre-match prediction. Same day, fixed loader:
+
+    pre-match only, EV>0                     n=713  ROI -17.12%  [-27.4,  -6.7]
+    pre-match only, decision = 'BET'         n=174  ROI -11.96%  [-29.5,  +6.0]
+
+The excluded counts are printed so a shrinking corpus cannot hide.
+
+It also reports the production card's own subset (`decision = 'BET'`) beside
+the EV>0 population, because "the model's EV>0 picks" is not what the filter
+actually passes.
+
 Usage:
     PYTHONPATH=src .venv/bin/python scripts/measure_edge_significance.py
     PYTHONPATH=src .venv/bin/python scripts/measure_edge_significance.py --json
@@ -62,6 +91,7 @@ sys.path.insert(0, str(PROJECT_DIR / "src"))
 
 import sqlite3  # noqa: E402
 
+from tennis_wc.evaluation.corpus import POINT_IN_TIME, classify_point_in_time  # noqa: E402
 from tennis_wc.props.daily import _tier_bettable  # noqa: E402
 
 BOOTSTRAP_SEED = 20260829
@@ -77,10 +107,11 @@ WITH first_odds AS (
     SELECT match_id, MIN(id) AS snapshot_id
     FROM odds_snapshots
     WHERE match_id IS NOT NULL AND market = 'match_winner'
+      AND source_provider != 'mock'
     GROUP BY match_id
 )
 SELECT p.id AS prediction_id, p.match_id, p.selection_player_id, p.model_probability,
-       m.match_date, m.player_a_id, m.player_b_id, r.winner_player_id,
+       p.decision, p.created_at, m.start_time_utc, m.match_date, m.player_a_id, m.player_b_id, r.winner_player_id,
        o.player_a_odds, o.player_b_odds, t.name AS tournament_name,
        (SELECT tl.level FROM tournament_levels tl
          WHERE tl.tournament_id = m.tournament_id
@@ -96,10 +127,21 @@ ORDER BY p.id
 """
 
 
-def load(conn) -> list[dict]:
-    """One bet per (match, selection): the model's EV>0 picks at the open."""
+def load(conn, excluded: dict[str, int] | None = None) -> list[dict]:
+    """One bet per (match, selection): the model's EV>0 picks at the open.
+
+    Only predictions provably written before the match started are admitted;
+    the latest such row wins. `excluded`, if given, receives how many
+    predictions were dropped as post-start or unverifiable.
+    """
     latest: dict[tuple[int, int], sqlite3.Row] = {}
     for row in conn.execute(_SQL).fetchall():
+        cls = classify_point_in_time(row["created_at"], row["start_time_utc"])
+        if cls != POINT_IN_TIME:
+            if excluded is not None:
+                key = "post_start" if cls is not None else "unverifiable"
+                excluded[key] = excluded.get(key, 0) + 1
+            continue
         latest[(row["match_id"], row["selection_player_id"])] = row
     bets = []
     for row in latest.values():
@@ -120,6 +162,7 @@ def load(conn) -> list[dict]:
             "date": row["match_date"],
             "odds": float(odds),
             "pnl": (float(odds) - 1) if row["winner_player_id"] == selection else -1.0,
+            "decision": row["decision"],
         })
     bets.sort(key=lambda b: b["date"])
     return bets
@@ -174,6 +217,14 @@ def summarise(bets: list[dict], assumed_roi: float = ASSUMED_ROI) -> dict:
     }
 
 
+def _verdict(block: dict) -> str:
+    if block["significant"]:
+        return "SIGNIFICANT"
+    if block["ci_high_pct"] < 0:
+        return "SIGNIFICANTLY NEGATIVE"
+    return "crosses zero"
+
+
 def monthly_rate(bets: list[dict]) -> dict[str, int]:
     counts: dict[str, int] = {}
     for b in bets:
@@ -189,14 +240,17 @@ def main() -> int:
 
     conn = sqlite3.connect(f"file:{args.db}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
-    bets = load(conn)
+    excluded: dict[str, int] = {}
+    bets = load(conn, excluded)
     conn.close()
 
     rate = monthly_rate(bets)
     latest_rate = list(rate.values())[-1] if rate else 0
     report = {
         "monthly_bets": rate,
+        "excluded_predictions": excluded,
         "all": summarise(bets),
+        "production_bet": summarise([b for b in bets if b["decision"] == "BET"]),
         "by_odds_ceiling": {},
     }
     # Variance, not edge, is what sets the wait. A shorter-odds subset bets less
@@ -211,11 +265,22 @@ def main() -> int:
         return 0
 
     a = report["all"]
-    print(f"tier-bettable, model EV>0, earliest price: n={a['n']}")
+    if "roi_pct" not in a:
+        print(f"tier-bettable, model EV>0, pre-match only: n={a['n']} -- too few to judge")
+        return 0
+    print(f"tier-bettable, model EV>0, earliest price, pre-match only: n={a['n']}")
+    print(f"  excluded predictions: {excluded.get('post_start', 0):,} written after the start, "
+          f"{excluded.get('unverifiable', 0):,} with no start time")
     print(f"  ROI {a['roi_pct']:+.2f}%  95% CI [{a['ci_low_pct']:+.2f}, "
-          f"{a['ci_high_pct']:+.2f}]  {'SIGNIFICANT' if a['significant'] else 'crosses zero'}")
+          f"{a['ci_high_pct']:+.2f}]  {_verdict(a)}")
     print(f"  per-bet SD {a['per_bet_sd']}  mean odds {a['mean_odds']}")
     print(f"  monthly: " + "  ".join(f"{k} {v}" for k, v in rate.items()))
+    b = report["production_bet"]
+    if "roi_pct" in b:
+        print(f"  production card (decision=BET): n={b['n']}  ROI {b['roi_pct']:+.2f}%  "
+              f"95% CI [{b['ci_low_pct']:+.2f}, {b['ci_high_pct']:+.2f}]")
+    else:
+        print(f"  production card (decision=BET): n={b['n']} -- too few to judge")
     print()
     print(f"  restricting the odds trades bet volume for variance."
           f"  `need n` assumes a fixed {ASSUMED_ROI:.0%} edge in every band,")

@@ -216,6 +216,36 @@ class MultiSportExporterTests(unittest.TestCase):
                 "scorecard_settled"
             ] == 120
 
+    def test_tennis_strategy_state_ignores_rows_written_after_the_start(self):
+        """The mirror must read the same corpus as the gate it mirrors: only
+        rows written before the match started (`is_point_in_time = 1`)."""
+        def state(pit_value):
+            with tempfile.TemporaryDirectory() as tmp:
+                db_path = Path(tmp) / "tennis.db"
+                self._create_tennis_database(db_path)
+                connection = sqlite3.connect(db_path)
+                connection.execute(
+                    "ALTER TABLE prop_tracker ADD COLUMN is_point_in_time INTEGER"
+                )
+                connection.execute(
+                    "UPDATE prop_tracker SET is_point_in_time = ?", (pit_value,)
+                )
+                connection.commit()
+                connection.close()
+                return export_tennis_snapshot(db_path, target_date="2026-07-25")["strategy"]
+
+        pre_match = state(1)
+        post_start = state(0)
+        unverifiable = state(None)
+        self.assertGreater(
+            pre_match["families"]["player_aces"]["scorecard_settled"], 0
+        )
+        for strategy in (post_start, unverifiable):
+            self.assertEqual(
+                strategy["families"]["player_aces"]["scorecard_settled"], 0
+            )
+            self.assertEqual(strategy["enabled_families"], [])
+
     def test_tennis_dashboard_promotes_early_main_with_half_unit_cap(self):
         with tempfile.TemporaryDirectory() as tmp:
             db_path = Path(tmp) / "tennis.db"

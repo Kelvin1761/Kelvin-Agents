@@ -117,3 +117,73 @@ def test_the_weekly_review_reports_the_assumed_effect(monkeypatch):
     block = weekly_review._safe_edge_significance_progress()
     assert block["assumed_roi_pct"] == 5.0
     assert block["need"] == 3306
+
+
+# --------------------------------------------------------------------------- #
+# Only predictions written before the start may count
+# --------------------------------------------------------------------------- #
+import sqlite3  # noqa: E402
+
+_SCHEMA = """
+CREATE TABLE matches (id INTEGER PRIMARY KEY, tournament_id INTEGER, match_date TEXT,
+    start_time_utc TEXT, player_a_id INTEGER, player_b_id INTEGER);
+CREATE TABLE tournaments (id INTEGER PRIMARY KEY, name TEXT);
+CREATE TABLE tournament_levels (id INTEGER PRIMARY KEY, tournament_id INTEGER, level TEXT);
+CREATE TABLE match_results (id INTEGER PRIMARY KEY, match_id INTEGER, winner_player_id INTEGER);
+CREATE TABLE odds_snapshots (id INTEGER PRIMARY KEY, match_id INTEGER, market TEXT,
+    player_a_odds REAL, player_b_odds REAL, source_provider TEXT);
+CREATE TABLE predictions (id INTEGER PRIMARY KEY, match_id INTEGER, selection_player_id INTEGER,
+    model_probability REAL, decision TEXT, created_at TEXT);
+"""
+
+
+def _db(predictions, start="2026-09-20T10:00:00Z", winner=1):
+    """One ATP 250 match, player 1 vs 2 at 2.50 / 1.55, with the given predictions."""
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.executescript(_SCHEMA)
+    conn.execute("INSERT INTO tournaments VALUES (1, 'ATP Test')")
+    conn.execute("INSERT INTO tournament_levels VALUES (1, 1, 'ATP_250')")
+    conn.execute("INSERT INTO matches VALUES (1, 1, '2026-09-20', ?, 1, 2)", (start,))
+    conn.execute("INSERT INTO match_results VALUES (1, 1, ?)", (winner,))
+    conn.execute("INSERT INTO odds_snapshots VALUES (1, 1, 'match_winner', 2.5, 1.55, 'sportsbet')")
+    for i, (created_at, prob) in enumerate(predictions, start=1):
+        conn.execute("INSERT INTO predictions VALUES (?, 1, 1, ?, 'BET', ?)", (i, prob, created_at))
+    return conn
+
+
+def test_a_prediction_written_after_the_start_never_counts():
+    """The 2026-10-09 finding: the latest row per selection was often written with
+    the ball in the air, and all of the harness's profit lived in those rows."""
+    excluded = {}
+    bets = harness.load(_db([("2026-09-20T11:00:00Z", 0.60)]), excluded)
+    assert bets == []
+    assert excluded == {"post_start": 1}
+
+
+def test_a_match_with_no_start_time_never_counts():
+    excluded = {}
+    bets = harness.load(_db([("2026-09-19T22:00:00Z", 0.60)], start=None), excluded)
+    assert bets == []
+    assert excluded == {"unverifiable": 1}
+
+
+def test_a_late_reprice_does_not_hide_the_pre_match_prediction():
+    """Filter first, then take the latest: a match re-priced after the start still
+    contributes the last prediction that could actually have been bet."""
+    bets = harness.load(_db([
+        ("2026-09-19T22:00:00Z", 0.60),   # pre-match, EV>0 at 2.50
+        ("2026-09-20T11:00:00Z", 0.10),   # after the start, EV<0 -- must be ignored
+    ]))
+    assert len(bets) == 1
+    assert bets[0]["pnl"] == 1.5
+    assert bets[0]["decision"] == "BET"
+
+
+def test_mock_book_prices_are_never_the_earliest_price():
+    conn = _db([("2026-09-19T22:00:00Z", 0.60)])
+    conn.execute("DELETE FROM odds_snapshots")
+    conn.execute("INSERT INTO odds_snapshots VALUES (1, 1, 'match_winner', 9.0, 1.05, 'mock')")
+    conn.execute("INSERT INTO odds_snapshots VALUES (2, 1, 'match_winner', 2.5, 1.55, 'sportsbet')")
+    bets = harness.load(conn)
+    assert [b["odds"] for b in bets] == [2.5]

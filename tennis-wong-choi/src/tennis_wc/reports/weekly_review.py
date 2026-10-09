@@ -156,11 +156,11 @@ def _short_favourite_progress() -> dict | None:
 def _edge_significance_progress() -> dict | None:
     """How far the bettable edge is from being provable.
 
-    This is the whole remaining question. The model is level with the market on
-    the population a bet is chosen from, the price is not the constraint
-    (break-even commission is about 13% against Sportsbet's 7.5%), and the only
-    thing standing between +6.12% and a decision is sample size: about 3,300
-    bets against 686 today.
+    On 2026-08-29 this read +6.12% on 686 bets and the remaining question looked
+    like sample size. That number mixed in predictions written after the match
+    started or with no start time; restricted to pre-match rows (2026-10-09) the
+    fixed harness reads -17.12% on 713, CI entirely below zero. The loader now
+    admits pre-match rows only, so this block reports what could have been bet.
 
     So it goes on the page that gets read, weekly, rather than in a script
     somebody has to remember. A decision that depends on a monthly manual run is
@@ -318,17 +318,26 @@ def render_weekly_review(as_of_date: str) -> str:
         lines.append(f"  - {fav['verdict']}")
     sig = data.get("edge_significance")
     if sig and sig.get("n"):
-        state = "已顯著 ✅" if sig["significant"] else "CI 仍然跨零"
+        if sig["significant"]:
+            state = "已顯著 ✅"
+        elif sig["ci_high_pct"] < 0:
+            state = "顯著蝕 ❌"
+        else:
+            state = "CI 仍然跨零"
         lines.append(
-            f"- ⏳ 可落注優勢進度：{sig['n']}/{sig['need']} 注"
+            f"- ⏳ 可落注優勢進度（只計開賽前寫入）：{sig['n']}/{sig['need']} 注"
             f"｜ROI {sig['roi_pct']:+.2f}%"
             f"｜CI [{sig['ci_low_pct']:+.2f}, {sig['ci_high_pct']:+.2f}]｜{state}"
         )
-        lines.append(
-            f"  - 仲要約 {sig['months']} 個月"
-            f"（只追賠率 ≤3.0 約 {sig['capped_months']} 個月）"
-            f"；需要注數按固定 {sig['assumed_roi_pct']:.0f}% 假設優勢計"
-        )
+        if sig["roi_pct"] > 0:
+            lines.append(
+                f"  - 仲要約 {sig['months']} 個月"
+                f"（只追賠率 ≤3.0 約 {sig['capped_months']} 個月）"
+                f"；需要注數按固定 {sig['assumed_roi_pct']:.0f}% 假設優勢計"
+            )
+        else:
+            # A wait only means something if the edge is there to be proven.
+            lines.append("  - ROI 係負數：等更多注數證明唔到一個唔存在嘅優勢")
 
     # Scorecard
     lines += ["", "## 🎾 Prop 記分卡（模型 vs 市場，越低越準）", ""]
