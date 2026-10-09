@@ -92,7 +92,11 @@ class NbaDailyScheduleTests(unittest.TestCase):
             self.assertEqual(manifest["season_context"]["season_phase"], "EARLY_REGULAR")
             self.assertEqual(manifest["snapshot_role"], "production")
             self.assertTrue(manifest["append_only"])
-            self.assertEqual(len(manifest["files"]["Game_BOS_LAL_Full_Analysis.md"]["sha256"]), 64)
+            files = {item["name"]: item for item in manifest["files"]}
+            self.assertEqual(len(files["Game_BOS_LAL_Full_Analysis.md"]["sha256"]), 64)
+            self.assertEqual(manifest["domain"], "nba")
+            self.assertEqual(manifest["event_id"], "2026-10-21")
+            self.assertEqual(manifest["research_evidence"]["status"], "blocked")
             self.assertEqual(
                 (snapshot / "Game_BOS_LAL_Full_Analysis.md").read_text(encoding="utf-8"),
                 "A" * 2500,
@@ -472,14 +476,45 @@ class NbaDailyScheduleTests(unittest.TestCase):
                 stdout='{"status":"archived","archive_path":"/archive/day"}\n',
                 stderr="",
             )
+            log = _Log()
             with mock.patch.object(schedule, "live_dir", return_value=folder), mock.patch.object(
                 schedule, "latest_snapshot", return_value=folder / "snapshot"
             ), mock.patch.object(schedule, "_run", return_value=result), mock.patch.object(
                 schedule, "_deploy", return_value="ok"
-            ) as deploy, mock.patch.object(schedule, "notify_once"):
-                status = schedule.run_postgame("2026-10-21", _Log())
+            ) as deploy, mock.patch.object(schedule, "notify_once"), mock.patch.object(
+                schedule, "record_settlement_for_event"
+            ) as writer:
+                status = schedule.run_postgame("2026-10-21", log)
             self.assertEqual(status, "archived")
             deploy.assert_called_once()
+            writer.assert_not_called()
+            self.assertIn("blocked", [state for name, state, _ in log.steps if name == "settlement_evidence"])
+
+    def test_archived_day_retries_exact_frozen_settlement_without_deploy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            missing_live = Path(tmp) / "missing"
+            archive = Path(tmp) / "2026-10-21 NBA Analysis"
+            frozen = tuple(archive / name for name in ("one.json", "two.json", "three.json"))
+            log = _Log()
+            with mock.patch.object(schedule, "live_dir", return_value=missing_live), mock.patch.object(
+                schedule, "archived_dirs", return_value=[archive]
+            ), mock.patch.object(schedule, "freeze_settlement_artifacts", return_value=frozen), mock.patch.object(
+                schedule, "record_settlement_for_event", return_value={"status": "duplicate"}
+            ) as writer, mock.patch.object(schedule, "_deploy") as deploy:
+                self.assertEqual(schedule.run_postgame("2026-10-21", log), "already_archived")
+            self.assertEqual(writer.call_args.kwargs["artifacts"], frozen)
+            deploy.assert_not_called()
+            self.assertIn(("postgame", "already_archived", {}), log.steps)
+
+    def test_multiple_archive_candidates_block_research_without_selecting_one(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            log = _Log()
+            with mock.patch.object(schedule, "live_dir", return_value=Path(tmp) / "missing"), mock.patch.object(
+                schedule, "archived_dirs", return_value=[Path(tmp) / "first", Path(tmp) / "second"]
+            ), mock.patch.object(schedule, "freeze_settlement_artifacts") as capture:
+                self.assertEqual(schedule.run_postgame("2026-10-21", log), "already_archived")
+            capture.assert_not_called()
+            self.assertIn(("settlement_evidence", "blocked", {"reason": "ambiguous_archive_paths"}), log.steps)
 
     def test_betting_message_uses_only_validated_export_values(self) -> None:
         snapshot = {

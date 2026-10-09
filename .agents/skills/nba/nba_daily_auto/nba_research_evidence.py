@@ -10,13 +10,16 @@ import hashlib
 import json
 import math
 import re
+import tempfile
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
+from zoneinfo import ZoneInfo
 
 
 FEATURE_SCHEMA = "wong-choi-nba-feature-evidence/v1"
 FEATURE_CONTRACT = "nba-pregame-feature-v1"
+RECOMMENDATION_SCHEMA = "wong-choi-nba-recommendation-evidence/v1"
 GAME_TAG = re.compile(r"[A-Z0-9]{2,4}_[A-Z0-9]{2,4}")
 
 
@@ -82,6 +85,8 @@ def build_feature_projection(
     event_id: str,
     game_tags: Sequence[str],
     source_cutoff_at: datetime,
+    source_folder: Path | None = None,
+    event_starts: Mapping[str, datetime] | None = None,
 ) -> bytes:
     """Return a central-contract NBA feature projection without file writes."""
     try:
@@ -91,6 +96,10 @@ def build_feature_projection(
     root, cutoff = Path(folder).expanduser().resolve(), _at(source_cutoff_at)
     if not root.is_dir() or not root.name.startswith(f"{event_id} NBA Analysis"):
         raise ValueError("NBA evidence folder/event mismatch")
+    # Scheduler callers project only the captured bytes, not mutable live files.
+    source_root = root if source_folder is None else Path(source_folder).resolve()
+    if not source_root.is_dir():
+        raise ValueError("NBA captured source directory missing")
     if (
         not isinstance(game_tags, Sequence)
         or isinstance(game_tags, (str, bytes))
@@ -102,8 +111,8 @@ def build_feature_projection(
 
     rows = []
     for tag in sorted(game_tags):
-        odds_path, odds_raw, odds = _read(root, f"Sportsbet_Odds_{tag}.json")
-        game_path, game_raw, game = _read(root, f"nba_game_data_{tag}.json")
+        odds_path, odds_raw, odds = _read(source_root, f"Sportsbet_Odds_{tag}.json")
+        game_path, game_raw, game = _read(source_root, f"nba_game_data_{tag}.json")
         if (
             str(odds.get("source") or "").casefold()
             not in {"sportsbet", "sportsbet_extractor"}
@@ -128,6 +137,23 @@ def build_feature_projection(
             or not all(str(meta[side].get("name") or "").strip() for side in ("away", "home"))
         ):
             raise ValueError("NBA schedule-context source is incomplete")
+        if event_starts is not None:
+            from nba_schedule import canonical_game_tag
+
+            if tag not in event_starts:
+                raise ValueError("NBA official schedule missing game")
+            start = _at(event_starts[tag])
+            source_tag = canonical_game_tag(
+                f"{meta['away'].get('abbr', '')}_{meta['home'].get('abbr', '')}"
+            )
+            if (
+                source_tag != tag
+                or _at(meta["date"]) != start
+                or start.astimezone(ZoneInfo("Australia/Sydney")).date().isoformat() != event_id
+            ):
+                raise ValueError("NBA official schedule/source mismatch")
+            if cutoff >= start:
+                raise ValueError("NBA source cutoff is not pregame")
         players = game.get("players")
         if (
             not isinstance(players, dict)
@@ -198,6 +224,52 @@ def build_feature_projection(
 
 def _number(value: object) -> bool:
     return type(value) in {int, float} and math.isfinite(float(value))
+
+
+def build_recommendation_projection(
+    *, source_folder: Path, event_id: str, game_tags: Sequence[str],
+    source_cutoff_at: datetime,
+) -> bytes:
+    """Observe native report legs; never create or re-score a betting selection."""
+    from nba_reflector.scripts.verify_props_hits import extract_legs_from_report
+
+    date.fromisoformat(event_id)
+    cutoff = _at(source_cutoff_at)
+    if (
+        not game_tags or isinstance(game_tags, (str, bytes))
+        or len(game_tags) != len(set(game_tags))
+        or any(not isinstance(tag, str) or not GAME_TAG.fullmatch(tag) for tag in game_tags)
+    ):
+        raise ValueError("canonical unique NBA game tags required")
+    rows, seen = [], {}
+    for tag in sorted(game_tags):
+        report = Path(source_folder) / f"Game_{tag}_Full_Analysis.md"
+        if not report.is_file():
+            raise ValueError("NBA recommendation source report missing")
+        legs = extract_legs_from_report(report)
+        if not legs:
+            raise ValueError("NBA native report has no verified recommendation legs")
+        for leg in legs:
+            player, stat = str(leg.get("player") or "").strip(), str(leg.get("stat") or "").strip()
+            if not player or not stat or not _number(leg.get("line")):
+                raise ValueError("NBA native recommendation leg invalid")
+            key = (player, str(leg.get("stat_normalized") or stat), float(leg["line"]))
+            identity = {
+                "game_tag": tag, "player": player, "stat": stat,
+                "line": float(leg["line"]), "side": "over",
+            }
+            if key in seen:
+                if seen[key] != identity:
+                    raise ValueError("NBA recommendation identity is ambiguous")
+                # Repeated use in another combo is one forward monitoring unit.
+                continue
+            seen[key] = identity
+            identifier = hashlib.sha256(_encoded({"event_id": event_id, **identity})).hexdigest()
+            rows.append({"recommendation_id": f"nba-{identifier}", **identity})
+    return _encoded({
+        "schema_version": RECOMMENDATION_SCHEMA, "event_id": event_id,
+        "generated_at": cutoff.isoformat(), "recommendations": rows,
+    }) + b"\n"
 
 
 def _verification_complete(value: dict) -> bool:
@@ -278,3 +350,51 @@ def settlement_artifacts(*, folder: Path, event_id: str) -> tuple[Path, ...]:
     ):
         raise ValueError("incomplete NBA settlement result chain")
     return tuple(sorted(paths, key=lambda path: path.name))
+
+
+def freeze_settlement_artifacts(*, folder: Path, event_id: str) -> tuple[Path, ...]:
+    """Capture the exact native chain and publish without overwriting any bytes.
+
+    Revalidate the captured chain before publishing: the live archive can change
+    between selection and capture. Retry uses the same content-addressed paths.
+    """
+    selected = settlement_artifacts(folder=folder, event_id=event_id)
+    captured = {}
+    for path in selected:
+        if path.is_symlink():
+            raise ValueError("NBA settlement source symlink refused")
+        captured[path.name] = path.read_bytes()
+    identity = [
+        {"name": name, "sha256": hashlib.sha256(raw).hexdigest(), "bytes": len(raw)}
+        for name, raw in sorted(captured.items())
+    ]
+    digest = hashlib.sha256(_encoded(identity)).hexdigest()
+    root = Path(folder).resolve() / "_research_settlements"
+    if root.is_symlink():
+        raise ValueError("NBA settlement capture root symlink refused")
+    root.mkdir(exist_ok=True)
+    final = root / digest
+    with tempfile.TemporaryDirectory(prefix=".capture-", dir=root) as temporary:
+        staging = Path(temporary)
+        analysis = staging / f"{event_id} NBA Analysis"
+        analysis.mkdir()
+        for name, raw in captured.items():
+            with (analysis / name).open("xb") as handle:
+                handle.write(raw)
+        settlement_artifacts(folder=analysis, event_id=event_id)
+        if not final.exists() and not final.is_symlink():
+            try:
+                staging.rename(final)
+            except OSError:
+                if not final.is_dir():
+                    raise
+        frozen = final / analysis.name
+        if final.is_symlink() or frozen.is_symlink() or not frozen.is_dir():
+            raise ValueError("NBA immutable settlement capture invalid")
+        if {path.name for path in frozen.iterdir()} != set(captured):
+            raise ValueError("NBA immutable settlement file set differs")
+        for name, raw in captured.items():
+            path = frozen / name
+            if path.is_symlink() or not path.is_file() or path.read_bytes() != raw:
+                raise ValueError("NBA immutable settlement bytes differ")
+        return tuple(frozen / name for name in sorted(captured))
