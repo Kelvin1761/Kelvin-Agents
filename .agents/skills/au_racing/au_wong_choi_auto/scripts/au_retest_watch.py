@@ -30,25 +30,24 @@ sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing" / "scripts"))
 sys.path.insert(0, str(SCRIPT_DIR.parents[4]))
 
 # ── 預先登記嘅門檻。改呢度 = 改判決條件，要當一個獨立改動論證。────────────
-REGISTERED = [
+REGISTERED = []
+
+# 已到期並由人手處理嘅登記。留喺 code 入面做 audit trail，但唔再反覆令
+# 健康檢查退出 10。詳細證據喺 resolution_exp；呢度唔重寫判決。
+RESOLVED = [
     {
         "id": "class_score",
         "exp": "EXP-20260826-06",
-        "what": "class_score 加返 class_weight 維度（rating .70 + class .60）",
-        "metric": "clean_races",
-        "threshold": 2000,
-        "why": "七個獨立測試 dev 全部正（+0.0023~+0.0030），但 holdout 227 場跨 0。",
-        "cmd": "python3 scratchpad/class_revival.py v2_pf   # gain 喺 dev 重 fit",
+        "resolution_exp": "EXP-20260927-01",
+        "outcome": "OBSOLETE / NOT SHIPPED",
+        "why": "舊候選依賴已退役 display gain，而且登記嘅 scratch harness 從未入 git。",
     },
     {
         "id": "speed_figure",
         "exp": "EXP-20260826-04",
-        "what": "WinningTime 速度評分（speed_fig_best3）",
-        "metric": "speedfig_coverage_pct",
-        "threshold": 45.0,
-        "why": "過 dev 5-fold 閘，但主裁判九個配置全部跨 0；runner 覆蓋只有 25–30%。",
-        "cmd": "AU_SPEED_STD_ROOT=<data root> python3 au_feature_ab.py "
-               "--scored <data root> --features speed_fig_best3 --min-depth 0",
+        "resolution_exp": "EXP-20260927-01",
+        "outcome": "REJECT / NOT SHIPPED",
+        "why": "2,090 場完整賽日重測；terminal Good、winner@3、t3prec 回歸。",
     },
 ]
 
@@ -137,7 +136,8 @@ def main() -> int:
         (due if now >= item["threshold"] else waiting).append(row)
 
     if args.json:
-        print(json.dumps({"stats": stats, "due": due, "waiting": waiting},
+        print(json.dumps({"stats": stats, "due": due, "waiting": waiting,
+                          "resolved": RESOLVED},
                          ensure_ascii=False, indent=2))
     else:
         print(f"乾淨 point-in-time 場次（{CLEAN_FROM} 起）: {stats['clean_races']}")

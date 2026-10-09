@@ -25,6 +25,7 @@ from au_racing_engine.scoring import (
     compose_matrix_score,
     MATRIX_WEIGHTS,
     REPORT_ONLY_FEATURE_KEYS,
+    CLASS_SCORE_LIVE,
     clip_score,
 )
 
@@ -85,18 +86,23 @@ class SignalMapTests(unittest.TestCase):
             "track_score",
             "formline_score",  # form_line dim exists but its weight is 0.0
             "preparation_score",
-        }
+        } | ({"class_score"} if CLASS_SCORE_LIVE else set())  # EXP-20261009-04
         in_formulas = {name for comps in MATRIX_FORMULAS.values() for name, _w in comps}
         self.assertEqual(in_formulas, documented)
 
-    def test_class_score_is_context_only_not_a_direct_matrix_leaf(self) -> None:
+    def test_class_score_matrix_role_follows_experimental_switch(self) -> None:
+        # EXP-20261009-04：USER-ACCEPTED EXPERIMENTAL LIVE，0.15 入 class_weight；
+        # WC_AU_CLASS_SCORE_LIVE=0 回退做純 context。
         low = map_features_to_matrix_scores(
             {"class_score": 20, "rating_score": 70, "weight_score": 55}
         )
         high = map_features_to_matrix_scores(
             {"class_score": 95, "rating_score": 70, "weight_score": 55}
         )
-        self.assertEqual(low["class_weight"], high["class_weight"])
+        if CLASS_SCORE_LIVE:
+            self.assertAlmostEqual(high["class_weight"] - low["class_weight"], 0.15 * 75, places=1)
+        else:
+            self.assertEqual(low["class_weight"], high["class_weight"])
 
     def test_weight_score_is_context_only_not_a_direct_matrix_leaf(self) -> None:
         # Retired from ranking 2026-08-01: 84.9% of runners scored exactly 60,
@@ -165,19 +171,17 @@ class SignalMapTests(unittest.TestCase):
             set(ABILITY_FEATURE_KEYS) | set(REPORT_ONLY_FEATURE_KEYS),
         )
         self.assertFalse(set(ABILITY_FEATURE_KEYS) & set(REPORT_ONLY_FEATURE_KEYS))
-        self.assertEqual(
-            set(REPORT_ONLY_FEATURE_KEYS),
-            {
-                "sectional_score",
-                "class_score",
-                "weight_score",
-                "distance_score",
-                "formline_score",
-                "consistency_score",
-                "health_score",
-                "confidence_score",
-            },
-        )
+        expected_report_only = {
+            "sectional_score",
+            "class_score",
+            "weight_score",
+            "distance_score",
+            "formline_score",
+            "consistency_score",
+            "health_score",
+            "confidence_score",
+        }
+        self.assertEqual(set(REPORT_ONLY_FEATURE_KEYS), expected_report_only)
 
     def test_dry_going_has_zero_wet_overlay(self) -> None:
         auto = _analyze("Good 4")

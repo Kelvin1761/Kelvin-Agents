@@ -19,6 +19,8 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
+import re
 import statistics
 import sys
 from pathlib import Path
@@ -35,9 +37,67 @@ from au_unused_field_power import (RE_HDR_DIST, RE_RUNNER,  # noqa: E402
 from eval_metrics import race_metrics, summarize_races  # noqa: E402
 
 KEYS = ("gold", "good_positional", "pass", "champion", "winner_in_top3")
+MEETING_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\s+(.+?)\s+Race\s")
 
 
-def build_races(scored_root, min_depth=4.0):
+def _meeting_races(meeting_dir, date, results):
+    """Build evaluable races for one scored meeting against known results."""
+    by_race = {}
+    try:
+        with open(meeting_dir / "Meeting_Auto_Scoring.csv", encoding="utf-8-sig") as fh:
+            for row in csv.DictReader(fh):
+                by_race.setdefault(int(row["race_number"]), {})[
+                    norm(row["horse_name"])] = row
+    except FileNotFoundError:
+        return []
+
+    out = []
+    for fg in sorted(meeting_dir.glob("*Formguide.md")):
+        text = fg.read_text(encoding="utf-8", errors="replace")
+        hm = RE_HDR_DIST.search(text)
+        if not hm:
+            continue
+        rno, dist = int(hm.group(1)), int(hm.group(2))
+        actual, rows = results.get(rno), by_race.get(rno)
+        if not actual or not rows:
+            continue
+        starts = [m.start() for m in RE_RUNNER.finditer(text)]
+        runners = []
+        for i, match in enumerate(RE_RUNNER.finditer(text)):
+            end = starts[i + 1] if i + 1 < len(starts) else len(text)
+            key = norm(match.group(2))
+            row, pos = rows.get(key), actual.get(key)
+            if not row or pos is None:
+                continue
+            runners.append((key, float(row["final_rank_score"]),
+                            runner_features(text[match.start():end], dist,
+                                            match.group(2)), pos))
+        if len(runners) >= 4:
+            out.append((date, runners))
+    return out
+
+
+def _historical_results(scored_root):
+    """Point-in-time result index keyed by (date, normalised venue)."""
+    path = Path(scored_root) / "AU_Historical_Raw_Race_Results.csv"
+    if not path.exists():
+        raise SystemExit(f"❌ 搵唔到歷史賽果：{path}")
+    indexed = {}
+    with open(path, encoding="utf-8-sig") as fh:
+        for row in csv.DictReader(fh):
+            date = row.get("﻿Date") or row.get("Date")
+            try:
+                race_no = int(float(row["Race"]))
+                pos = int(float(row["Pos"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+            key = (date, norm(row.get("Track", "")))
+            indexed.setdefault(key, {}).setdefault(race_no, {})[
+                norm(row.get("Horse", ""))] = pos
+    return indexed
+
+
+def build_races(scored_root, min_depth=4.0, clean_from=None):
     """→ [(date, [(name, base_score, feats, placed, pos)], field_size)]，按日期排。"""
     from sb_backfill_archive import load_meeting_ids, scored_meeting_index
 
@@ -57,6 +117,23 @@ def build_races(scored_root, min_depth=4.0):
             print(f"⚠️  搵唔到 {cj.name}，冇 form depth 資料 → 唔做 --min-depth 篩選。",
                   file=sys.stderr)
     out = []
+    if clean_from:
+        # 重測門檻數緊 `AU_Historical_Raw_Race_Results.csv` 對到嘅完整乾淨語料；
+        # 如果 A/B 仲係只迭代 2026-08-21 截止嘅 meeting-ID cache，就算 watch
+        # 報「夠數」都永遠只會重跑同一份舊語料。用同一份結果 CSV 對齊兩邊。
+        historical = _historical_results(scored_root)
+        for name, meeting_dir in sorted(meeting_dirs.items()):
+            match = MEETING_RE.match(name)
+            if not match or match.group(1) < clean_from:
+                continue
+            if min_depth and depth is not None and depth.get(name, 0) < min_depth:
+                continue
+            date, venue = match.group(1), norm(match.group(2))
+            results = historical.get((date, venue))
+            if results:
+                out.extend(_meeting_races(meeting_dir, date, results))
+        return sorted(out, key=lambda race: race[0])
+
     for name, meta in sorted(load_meeting_ids().items(), key=lambda kv: kv[1]["date"]):
         mdir = meeting_dirs.get(name)
         if mdir is None:
@@ -66,33 +143,28 @@ def build_races(scored_root, min_depth=4.0):
         res = results_for(meta)
         if not res:
             continue
-        by_race = {}
-        with open(mdir / "Meeting_Auto_Scoring.csv", encoding="utf-8-sig") as fh:
-            for row in csv.DictReader(fh):
-                by_race.setdefault(int(row["race_number"]), {})[
-                    norm(row["horse_name"])] = row
-        for fg in sorted(mdir.glob("*Formguide.md")):
-            text = fg.read_text(encoding="utf-8", errors="replace")
-            hm = RE_HDR_DIST.search(text)
-            if not hm:
-                continue
-            rno, dist = int(hm.group(1)), int(hm.group(2))
-            actual, rows = res.get(rno), by_race.get(rno)
-            if not actual or not rows:
-                continue
-            starts = [m.start() for m in RE_RUNNER.finditer(text)]
-            runners = []
-            for i, m in enumerate(RE_RUNNER.finditer(text)):
-                end = starts[i + 1] if i + 1 < len(starts) else len(text)
-                key = norm(m.group(2))
-                row, pos = rows.get(key), actual.get(key)
-                if not row or pos is None:
-                    continue
-                runners.append((key, float(row["final_rank_score"]),
-                                runner_features(text[m.start():end], dist, m.group(2)), pos))
-            if len(runners) >= 4:
-                out.append((meta["date"], runners))
+        out.extend(_meeting_races(mdir, meta["date"], res))
     return out
+
+
+def date_partitions(races, holdout, folds):
+    """Whole-date terminal and fold partitions; a race day is indivisible."""
+    dates = sorted({race[0] for race in races})
+    if len(dates) < 2:
+        return races, [], [races]
+    holdout_date_count = max(1, math.ceil(len(dates) * holdout))
+    holdout_dates = set(dates[-holdout_date_count:])
+    dev_dates = dates[:-holdout_date_count]
+    dev = [race for race in races if race[0] not in holdout_dates]
+    terminal = [race for race in races if race[0] in holdout_dates]
+    edges = [round(len(dev_dates) * index / folds) for index in range(folds + 1)]
+    fold_races = []
+    for index in range(folds):
+        bucket = set(dev_dates[edges[index]:edges[index + 1]])
+        segment = [race for race in dev if race[0] in bucket]
+        if segment:
+            fold_races.append(segment)
+    return dev, terminal, fold_races
 
 
 def _zs(vals):
@@ -150,37 +222,39 @@ def main():
     ap.add_argument("--holdout", type=float, default=0.15)
     ap.add_argument("--folds", type=int, default=5)
     ap.add_argument("--ks", default="0.25,0.5,1,1.5,2,3")
+    ap.add_argument("--clean-from",
+                    help="只用呢日或之後嘅 point-in-time 場次（YYYY-MM-DD）；"
+                         "同 AU_Historical_Raw_Race_Results.csv 對賽果")
     args = ap.parse_args()
 
     feats = [f.strip() for f in args.features.split(",") if f.strip()]
-    races = build_races(args.scored, args.min_depth)
+    races = build_races(args.scored, args.min_depth, args.clean_from)
     if not races:
         raise SystemExit(
             f"❌ 語料係空嘅（--scored {args.scored}，--min-depth {args.min_depth}）。\n"
             "   常見成因：--min-depth 篩得太緊，或者 scored root 指錯。\n"
             "   行落去只會喺 delta() 度爆一個意義不明嘅 TypeError，所以喺呢度停。")
-    cut = int(len(races) * (1 - args.holdout))
-    dev, hold = races[:cut], races[cut:]
-    print(f"{len(races)} 場：dev {len(dev)} · holdout {len(hold)}（依時間排序）")
+    dev, hold, fold_races = date_partitions(races, args.holdout, args.folds)
+    print(f"{len(races)} 場：dev {len(dev)} · holdout {len(hold)}（完整賽日切分）")
+    terminal_start = hold[0][0] if hold else "（冇 terminal）"
+    print(f"日期：{races[0][0]} → {races[-1][0]}；terminal 由 {terminal_start} 起")
     print(f"特徵：{', '.join(feats)}\n")
 
     base_dev, base_hold = evaluate(dev, feats, 0.0), evaluate(hold, feats, 0.0)
-    fold = len(dev) // args.folds
     best = None
     print(f"{'k':>6}{'dev t3prec':>12}{'dev winT3':>11}{'dev champ':>11}{'過閘 fold':>10}")
     for k in [float(x) for x in args.ks.split(",")]:
         d = delta(evaluate(dev, feats, k), base_dev)
         passed = 0
-        for i in range(args.folds):
-            seg = dev[i * fold:(i + 1) * fold] if i < args.folds - 1 else dev[i * fold:]
+        for seg in fold_races:
             b, c = evaluate(seg, feats, 0.0), evaluate(seg, feats, k)
             # 一個 fold 要「唔輸」先算過 —— 兩個主指標都唔可以跌
             if b and c and delta(c, b)["t3prec"] >= -0.01 \
                     and delta(c, b)["winner_in_top3"] >= -0.01:
                 passed += 1
         print(f"{k:>6}{d['t3prec']:>+12.2f}{d['winner_in_top3']:>+11.2f}"
-              f"{d['champion']:>+11.2f}{passed:>8}/{args.folds}")
-        if passed >= args.folds - 1 and d["t3prec"] > 0 and (
+              f"{d['champion']:>+11.2f}{passed:>8}/{len(fold_races)}")
+        if passed >= len(fold_races) - 1 and d["t3prec"] > 0 and (
                 best is None or d["t3prec"] > best[1]["t3prec"]):
             best = (k, d)
 

@@ -34,6 +34,8 @@ from .source_alignment import (
 )
 from .scoring import (
     ABILITY_FEATURE_KEYS,
+    CLASS_SCORE_LIVE,
+    CLASS_SCORE_LIVE_WEIGHT,
     FEATURE_KEYS,
     compose_matrix_score,
     MATRIX_WEIGHTS,
@@ -751,6 +753,12 @@ class RacingEngine:
             "rank_score": ability_score,
             "wet_form_feature": round(wet_form_feat, 4),
             "proven_class_feature": round(class_proof_feat, 4),
+            # EXP-20261009-04 回退影子：class_score 入 class_weight 對綜合分嘅貢獻。
+            # 舊公式分數 = 綜合分 − 呢個數（矩陣冇 clip 嗰陣逐位一樣）。
+            "class_score_live_delta": round(
+                MATRIX_WEIGHTS["class_weight"] * CLASS_SCORE_LIVE_WEIGHT
+                * (clip_score(feature_scores.get("class_score", 60)) - 60.0), 4)
+            if CLASS_SCORE_LIVE else 0.0,
             "proven_class_detail": class_proof_detail,
             "grade": grade,
             "race_context": {

@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -90,6 +91,10 @@ REFLECTOR = AU_SKILL / "au_reflector" / "scripts" / "au_reflector_orchestrator.p
 SB_RESULTS_CSV = AU_SKILL / "sb_results_csv.py"
 RESULTS_INGEST = (AU_SKILL / "au_wong_choi_auto" / "scripts"
                   / "au_results_ingest.py")
+SPEED_SHADOW_MONITOR = (AU_SKILL / "au_wong_choi_auto" / "scripts"
+                        / "au_speed_shadow_monitor.py")
+SPEED_RECENCY_SHADOW = (AU_SKILL / "au_wong_choi_auto" / "scripts"
+                        / "au_speed_recency_shadow.py")
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
 DEPLOY_SH = DASHBOARD_DIR / "deploy.sh"
 
@@ -1243,6 +1248,143 @@ def step_ingest_results(runlog: RunLog, *, from_date: str) -> bool:
                 rows_added=added, full_field=full_field_ok,
                 detail=None if full_field_ok else "reflector fallback only")
     return full_field_ok
+
+
+def step_speed_recency_shadow(runlog: RunLog) -> bool:
+    """EXP-20261009-05 第二盲測組：同 EXP-20260927-02 共用 terminal 同 2,000 場門檻。
+    未夠數只記場數；揭盲之後記判決。研究用，失敗唔阻 live 分析。"""
+    status_path = WORK_DIR / "au-speed-recency-shadow-status.json"
+    rc, out = run_cmd([sys.executable, str(SPEED_RECENCY_SHADOW), "--data-root", str(AU_RACING),
+                       "--output", str(status_path)], timeout=1800)
+    if rc != 0 or not status_path.exists():
+        detail = error_excerpt(out, rc)
+        runlog.warn(f"速度第二盲測組更新失敗（唔影響 live 排名）：{detail}")
+        runlog.step("speed-recency-shadow", "failed", detail=detail)
+        return False
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        runlog.step("speed-recency-shadow", "failed", detail=str(exc))
+        return False
+    evaluation = status.get("evaluation") or {}
+    runlog.step("speed-recency-shadow", status.get("state", "unknown"),
+                races=status.get("races_collected", 0),
+                outcomes_visible=bool(status.get("outcomes_visible")),
+                verdict=evaluation.get("verdict", ""))
+    if status.get("outcomes_visible"):
+        runlog.warn(f"速度第二盲測組（EXP-20261009-05）已揭盲：{evaluation.get('verdict')} "
+                    f"（{evaluation.get('reason')}）；live 唔會自動改，要 /approve SHA。")
+    return True
+
+
+def step_speed_shadow(runlog: RunLog) -> bool:
+    """Advance the blind EXP-20260927-02 terminal without changing live ranks.
+
+    The monitor seals all outcome metrics until the locked sample reaches 2,000
+    races.  A failure is visible in the run log but cannot block race analysis
+    or dashboard publication because this is research-only shadow evidence.
+    """
+    status_path = WORK_DIR / "au-speed-shadow-status.json"
+    runlog.step("speed-shadow", "start", status_path=str(status_path))
+    rc, out = run_cmd([
+        sys.executable,
+        str(SPEED_SHADOW_MONITOR),
+        "--data-root",
+        str(AU_RACING),
+        "--output",
+        str(status_path),
+    ], timeout=1800)
+    if rc != 0 or not status_path.exists():
+        detail = error_excerpt(out, rc)
+        runlog.warn(f"速度 shadow 更新失敗（唔影響 live 排名）：{detail}")
+        runlog.step("speed-shadow", "failed", detail=detail)
+        return False
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        runlog.warn(f"速度 shadow 狀態讀唔到（唔影響 live 排名）：{exc}")
+        runlog.step("speed-shadow", "failed", detail=str(exc))
+        return False
+    runlog.step(
+        "speed-shadow",
+        status.get("state", "unknown"),
+        races=status.get("races_collected", 0),
+        target=(status.get("config") or {}).get("target_races", 2000),
+        race_days=status.get("race_days", 0),
+        runner_coverage_pct=status.get("runner_coverage_pct", 0.0),
+        outcomes_visible=bool(status.get("outcomes_visible")),
+    )
+    if status.get("outcomes_visible"):
+        decision = status.get("stage4_decision") or {}
+        proposal = decision.get("release_proposal") or {}
+        gate_path = WORK_DIR / "AU_Speed_Candidate_Gate.json"
+        gate_core = {
+            "schema_version": 1,
+            "experiment_id": (status.get("config") or {}).get("experiment_id"),
+            "status": proposal.get("status", "rejected"),
+            "verdict": decision.get("verdict", "REJECT"),
+            "reason": decision.get("reason", "missing_stage4_decision"),
+            "sample_sha256": status.get("sample_sha256"),
+            "config_sha256": (status.get("config") or {}).get("config_sha256"),
+            "proposal_sha256": proposal.get("proposal_sha256"),
+            "candidate": proposal.get("candidate"),
+            "stage4_evidence": {
+                "development": decision.get("development_evidence"),
+                "terminal_primary": decision.get("terminal_primary"),
+                "guardrails": decision.get("guardrails"),
+            },
+            "production_changed": False,
+            "approval_required": True,
+            "approval_command": "/approve SHA",
+            "automatic_merge": False,
+            "automatic_activation": False,
+        }
+        encoded = json.dumps(gate_core, sort_keys=True, separators=(",", ":"))
+        gate_core["gate_sha256"] = hashlib.sha256(encoded.encode()).hexdigest()
+        previous = None
+        if gate_path.exists():
+            try:
+                previous = json.loads(gate_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as exc:
+                runlog.warn(f"速度候選 gate 舊檔讀唔到：{exc}")
+                runlog.step("speed-stage4-gate", "failed", detail=str(exc))
+                return False
+        if previous and previous.get("gate_sha256") != gate_core["gate_sha256"]:
+            detail = "existing immutable speed gate does not match locked proposal"
+            runlog.warn(f"速度候選 gate 衝突：{detail}")
+            runlog.step("speed-stage4-gate", "failed", detail=detail)
+            return False
+        created = previous is None
+        if created:
+            gate_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary = gate_path.with_name(f".{gate_path.name}.tmp")
+            temporary.write_text(
+                json.dumps(gate_core, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+            os.replace(temporary, gate_path)
+        gate_status = str(gate_core["status"])
+        runlog.step(
+            "speed-stage4-gate",
+            "created" if created else "existing",
+            verdict=gate_core["verdict"],
+            candidate_status=gate_status,
+            sample_sha256=str(gate_core["sample_sha256"] or "")[:12],
+            proposal_sha256=str(gate_core["proposal_sha256"] or "")[:12],
+            gate_path=str(gate_path),
+        )
+        if created and gate_status == "passed":
+            runlog.warn(
+                "速度 shadow Stage 4 已通過；immutable model candidate gate 已建立。"
+                "系統可自動準備候選 release，但 live activation 必須 /approve SHA。"
+            )
+        elif created:
+            runlog.warn(
+                f"速度 shadow Stage 4 未通過（{gate_core['reason']}）；保持 live model。"
+            )
+    return True
+
+
 
 
 # ── 步驟 2：分析下一個賽日 ─────────────────────────────────────────────────
@@ -3434,6 +3576,9 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
             # the full-field corpus is incomplete.  Mark the run retryable so
             # launchd, /diag and the independent healthcheck all see it.
             temporary = True
+    if not getattr(args, "skip_speed_shadow", False):
+        step_speed_shadow(runlog)
+        step_speed_recency_shadow(runlog)
     if not args.skip_analysis:
         try:
             analysed = step_analyse_next_day(runlog, review_day,
@@ -3707,6 +3852,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="evening：唔分析下一個賽日")
     parser.add_argument("--skip-results-ingest", action="store_true",
                         help="evening：唔將新賽果摺返 AU_Historical_Raw_Race_Results.csv")
+    parser.add_argument("--skip-speed-shadow", action="store_true",
+                        help="evening：唔更新 EXP-20260927-02 盲測狀態（唔影響 live 評分）")
     parser.add_argument("--ingest-from-date", default="2026-07-01",
                         help="賽果摺返時由邊日開始重建 Sportsbet 全場賽果"
                              "（早過呢個日子嘅場次靠 reflector 補；預設 2026-07-01）")
