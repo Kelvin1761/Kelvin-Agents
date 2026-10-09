@@ -578,9 +578,109 @@ def run_review_pass(
     return _write_run(run_path, payload)
 
 
+def review_runtime_status(
+    *,
+    repo_root: Path,
+    state_root: Path,
+    warm_root: Path,
+    production_lock_paths: tuple[Path, ...],
+    receipt_path: Path | None = None,
+    now: datetime | None = None,
+    contract_path: Path = CONTRACT_PATH,
+    ruler_root: Path = DEFAULT_RULER_ROOT,
+) -> dict[str, Any]:
+    """Inspect existing cursors and one explicitly selected receipt without writes."""
+    contract = load_runtime_contract(contract_path, ruler_root=ruler_root)
+    context = _context(
+        repo_root=repo_root, state_root=state_root, warm_root=warm_root,
+        production_lock_paths=production_lock_paths, contract=contract,
+    )
+    clock = now or datetime.now(timezone.utc)
+    if clock.tzinfo is None or clock.utcoffset() is None:
+        raise ValueError("status clock must be timezone-aware")
+    result: dict[str, Any] = {
+        "status": "verified", "domains": {}, "receipt": None,
+        "model_promotion_allowed": False, "telegram_delivery_confirmed": False,
+    }
+    for binding in contract.domains.values():
+        path = context.state_root / "research-review-cursors" / f"{binding.domain.value}.sqlite3"
+        try:
+            configs = _expected_configs(context, contract, binding)
+            if path.is_symlink() or any(parent.is_symlink() for parent in path.parents):
+                raise ValueError("cursor symlink")
+            if _inspect_cursor(path, configs):
+                raise ValueError("incomplete cursor tables")
+            status = "verified"
+        except Exception as exc:
+            status = f"blocked:{type(exc).__name__}:{exc}"
+            result["status"] = "blocked"
+        result["domains"][binding.domain.value] = {"status": status, "path": str(path)}
+    if receipt_path is None:
+        return result
+    try:
+        path = Path(os.path.abspath(receipt_path))
+        root = context.state_root / "runs" / "central"
+        path.relative_to(root)
+        # Reject symlink parents as well as the final component. Never read a
+        # caller-selected external file through a receipt directory alias.
+        if any(parent.is_symlink() for parent in (path, *path.parents)):
+            raise ValueError("receipt symlink")
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        with os.fdopen(descriptor, "rb") as handle:
+            metadata = os.fstat(handle.fileno())
+            if not stat.S_ISREG(metadata.st_mode) or metadata.st_size > 1024 * 1024:
+                raise ValueError("receipt must be a bounded regular file")
+            raw = handle.read(1024 * 1024 + 1)
+        if len(raw) > 1024 * 1024:
+            raise ValueError("receipt too large")
+        payload = _strict_json(raw.decode("utf-8"))
+        if not isinstance(payload, dict):
+            raise ValueError("receipt must be an object")
+        body = {key: value for key, value in payload.items() if key != "content_hash"}
+        if payload.get("content_hash") != _hash(body):
+            raise ValueError("receipt hash mismatch")
+        if payload.get("schema_version") != RUN_SCHEMA:
+            raise ValueError("receipt schema mismatch")
+        if (payload.get("evaluation_release_id") != contract.evaluation_release_id
+                or payload.get("evaluation_release_commit") != contract.evaluation_release_commit):
+            raise ValueError("receipt evaluation release mismatch")
+        if payload.get("run_log") != str(path):
+            raise ValueError("receipt path mismatch")
+        started = _aware(payload.get("started_at"), "started_at")
+        if started > clock:
+            raise ValueError("receipt timestamp is in the future")
+        domains = payload.get("domains")
+        if not isinstance(domains, dict) or set(domains) != set(contract.domains):
+            raise ValueError("receipt requires exactly four domains")
+        for entry in (payload, *domains.values()):
+            if (not isinstance(entry, dict)
+                    or entry.get("model_promotion_allowed") is not False
+                    or entry.get("telegram_delivery_confirmed") is not False):
+                raise ValueError("receipt authority mismatch")
+        for entry in domains.values():
+            ResearchDisposition(entry.get("disposition"))
+            if not isinstance(entry.get("status"), str) or not entry["status"]:
+                raise ValueError("receipt domain status missing")
+        if payload.get("status") != _overall_status(domains):
+            raise ValueError("receipt overall status mismatch")
+        result["receipt"] = payload
+        result["receipt_age_seconds"] = (clock - started).total_seconds()
+        if result["receipt_age_seconds"] > 36 * 3600:
+            result["receipt_stale"] = True
+            result["status"] = "blocked"
+        if payload["status"] != "succeeded":
+            result["status"] = "blocked"
+    except Exception as exc:
+        result["status"] = "blocked"
+        result["receipt_error"] = f"{type(exc).__name__}:{exc}"
+    return result
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--initialize", action="store_true")
+    parser.add_argument("--status", action="store_true", help="read-only cursor/receipt inspection")
+    parser.add_argument("--receipt", type=Path, help="explicit receipt to verify with --status")
     parser.add_argument(
         "--repo",
         type=Path,
@@ -610,6 +710,10 @@ def main() -> int:
     )
     parser.add_argument("--contract", type=Path, default=CONTRACT_PATH)
     args = parser.parse_args()
+    if args.status and args.initialize:
+        parser.error("--status and --initialize are mutually exclusive")
+    if args.receipt is not None and not args.status:
+        parser.error("--receipt requires --status")
     options = {
         "repo_root": args.repo,
         "state_root": args.state_root,
@@ -618,7 +722,9 @@ def main() -> int:
         "contract_path": args.contract,
     }
     result = (
-        initialize_review_state(**options)
+        review_runtime_status(**options, receipt_path=args.receipt)
+        if args.status
+        else initialize_review_state(**options)
         if args.initialize
         else run_review_pass(**options)
     )

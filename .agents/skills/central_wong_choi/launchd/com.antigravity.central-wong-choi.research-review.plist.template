@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.antigravity.central-wong-choi.research-review</string>
+  <key>ProgramArguments</key>
+  <array><string>/bin/zsh</string><string>__SCRIPT_DIR__/run_central_research_review.sh</string></array>
+  <key>WorkingDirectory</key><string>__PROJECT_ROOT__</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>WC_PRIMARY_REPO_ROOT</key><string>__PROJECT_ROOT__</string>
+    <key>WC_TENNIS_RUNTIME_ROOT</key><string>__TENNIS_RUNTIME_ROOT__</string>
+    <key>TENNIS_LOG_DIR</key><string>__TENNIS_LOG_DIR__</string>
+  </dict>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>7</integer><key>Minute</key><integer>10</integer></dict>
+  <key>StandardOutPath</key><string>__SCRIPT_DIR__/logs/central-research-review.out</string>
+  <key>StandardErrorPath</key><string>__SCRIPT_DIR__/logs/central-research-review.err</string>
+</dict>
+</plist>

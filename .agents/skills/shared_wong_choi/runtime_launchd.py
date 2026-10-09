@@ -34,6 +34,8 @@ DOMAIN_LABELS: dict[str, dict[str, tuple[str, ...]]] = {
             "run_hkjc_daily_schedule.sh",
         )
         for label in (
+            "com.antigravity.hkjc-wong-choi.intraday",
+            "com.antigravity.hkjc-wong-choi.lineup",
             "com.antigravity.hkjc-wong-choi.postrace",
             "com.antigravity.hkjc-wong-choi.prerace",
             "com.antigravity.hkjc-wong-choi.recovery",
@@ -68,6 +70,9 @@ DOMAIN_LABELS: dict[str, dict[str, tuple[str, ...]]] = {
     },
 }
 CENTRAL_LABELS = {
+    "com.antigravity.central-wong-choi.research-review": (
+        ".agents/skills/central_wong_choi/scripts/run_central_research_review.sh",
+    ),
     "com.antigravity.central-wong-choi.durability": (
         ".agents/skills/central_wong_choi/scripts/"
         "run_central_daily_maintenance.sh",
