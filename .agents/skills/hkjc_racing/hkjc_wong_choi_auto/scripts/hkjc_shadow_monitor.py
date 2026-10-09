@@ -28,6 +28,9 @@ from eval_metrics import race_metrics  # noqa: E402
 
 PROFILE_MINIMUMS = {
     "weight_refit_t02": 120,
+    "weight_rollback_0809": 120,
+    "race_shape_w200": 120,
+    "race_shape_w170": 120,
     "race_shape_v3_hv": 80,
     "race_shape_v3_hv_t02": 80,
     "race_shape_v2_legacy_hv": 20,
@@ -242,6 +245,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         rollback_gate = None
         if profile in {
             "race_shape_legacy_unbounded",
+            "weight_rollback_0809",
         }:
             gold_net = sum(float(row["delta"]["gold"]) for row in active_rows)
             good_net = sum(float(row["delta"]["good"]) for row in active_rows)
@@ -258,7 +262,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 "status": "recommend_rollback" if trigger else "retain_experimental_live",
                 "gold_net_races_legacy_minus_live": round(gold_net, 4),
                 "good_net_races_legacy_minus_live": round(good_net, 4),
-                "rule": "at least 80 active races; legacy gains >=2 Gold or Good with the other primary nonnegative",
+                "rule": f"at least {minimum} active races; legacy gains >=2 Gold or Good with the other primary nonnegative",
                 "automatic_activation": False,
             }
         summary[profile] = {
@@ -275,6 +279,8 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
                 else "sha_tin_forward_candidate" if profile == "race_shape_st_draw70"
                 else "whole_field_robustness_rollback_comparator"
                 if profile == "race_shape_legacy_unbounded"
+                else "outer_weight_rollback_comparator"
+                if profile == "weight_rollback_0809"
                 else "sha_tin_early_season_trainer_candidate"
                 if profile == "trainer_recency_st_early90"
                 else "all_turf_pre_race_draw_candidate"

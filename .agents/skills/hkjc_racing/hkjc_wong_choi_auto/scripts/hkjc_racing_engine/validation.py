@@ -214,6 +214,9 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
         errors.extend(_validate_legacy_health_shadow(horse_num, auto, legacy_shadow))
     for profile_name in (
         "weight_refit_t02",
+        "weight_rollback_0809",
+        "race_shape_w200",
+        "race_shape_w170",
         "race_shape_v3_hv",
         "race_shape_v3_hv_t02",
         "race_shape_v2_legacy_hv",
@@ -314,7 +317,8 @@ def _validate_weight_race_shape_shadow(horse_num: str, auto: dict, shadow: dict)
             errors.append(f"SHADOW-039 horse {horse_num} {profile} invalid robust rollback payload")
     expected_status = (
         "experimental_live_rollback_shadow"
-        if profile in {"race_shape_v2_legacy_hv", "race_shape_legacy_unbounded"}
+        if profile in {"race_shape_v2_legacy_hv", "race_shape_legacy_unbounded",
+                       "weight_rollback_0809"}
         else "prospective_shadow_only"
     )
     if shadow.get("evidence_status") != expected_status:

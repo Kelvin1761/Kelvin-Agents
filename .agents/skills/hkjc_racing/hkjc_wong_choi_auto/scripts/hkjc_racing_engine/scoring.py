@@ -12,7 +12,7 @@ import re
 # Persisted with every scored race so forward results can be attributed to the
 # exact model that made the pre-race prediction.
 SCORING_CONTRACT_VERSION = (
-    "HKJC_7D_CONTRACT_2026_10_08_PURE_7D_"
+    "HKJC_7D_CONTRACT_2026_10_09_PURE_7D_CORE_BALANCE_RESTORED_"
     "RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1"
 )
 
@@ -78,12 +78,17 @@ FEATURE_KEYS = (
 # 下調至 0.65×0.1849（保留原速度影響力），其餘維度按比例放大令總和＝1。
 # 排名等效於「段速=速度×0.65 + 場地60×0.35」舊結構（場地嗰 0.35 只乘 constant，
 # 對排名零貢獻）。pit_backtest：gold/min/champ 不變、single/t3c 微升。
+# 2026-10-09（EXP-20261009-04，user-accepted，未通過 Stage-4 閘）：還原 2026-07-30
+# CORE_BALANCE fit —— 佢喺 2026-08-09 merge f7d35de5 被靜靜揀走，之後 race_shape
+# 0.2737 只係 merge 意外。用 repo 自己嘅 renormalise（段速 0.65×0.1849，其餘
+# ×1/0.935285）換算到現行七維，4 位小數 largest-remainder 令總和＝1。
+# 舊值留做 rollback shadow `weight_rollback_0809`。
 MATRIX_WEIGHTS = {
     "sectional": 0.1285,
-    "trainer_signal": 0.2362,
-    "stability": 0.0983,
-    "race_shape": 0.2737,
-    "class_advantage": 0.1428,
+    "trainer_signal": 0.2469,
+    "stability": 0.1090,
+    "race_shape": 0.2417,
+    "class_advantage": 0.1534,
     "horse_health": 0.0404,
     "form_line": 0.0801,
 }

@@ -131,6 +131,9 @@ class AutoOutputTests(unittest.TestCase):
                 {
                     "incident_reliability",
                     "weight_refit_t02",
+                    "weight_rollback_0809",
+                    "race_shape_w200",
+                    "race_shape_w170",
                     "race_shape_v2_legacy_hv",
                     "race_shape_st_draw70",
                     "race_shape_legacy_unbounded",
@@ -143,6 +146,9 @@ class AutoOutputTests(unittest.TestCase):
                 {
                     "incident_reliability",
                     "weight_refit_t02",
+                    "weight_rollback_0809",
+                    "race_shape_w200",
+                    "race_shape_w170",
                     "race_shape_v2_legacy_hv",
                     "race_shape_st_draw70",
                     "race_shape_legacy_unbounded",
@@ -191,11 +197,12 @@ class AutoOutputTests(unittest.TestCase):
         self.assertEqual(
             MATRIX_WEIGHTS,
             {
+                # EXP-20261009-04: CORE_BALANCE restored (user-accepted).
                 "sectional": 0.1285,
-                "trainer_signal": 0.2362,
-                "stability": 0.0983,
-                "race_shape": 0.2737,
-                "class_advantage": 0.1428,
+                "trainer_signal": 0.2469,
+                "stability": 0.1090,
+                "race_shape": 0.2417,
+                "class_advantage": 0.1534,
                 "horse_health": 0.0404,
                 "form_line": 0.0801,
             },

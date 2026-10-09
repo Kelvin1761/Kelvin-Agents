@@ -13,6 +13,8 @@
 - [x] 只保留通過 gate 的改動並跑回歸測試 → Verify: 67 Auto + 18 shared evaluator + 4 reflector pytest、12/12 template flow、Auto orchestrator、Reflector 及單 meeting replay 全部通過。
 - [x] 重建五個主要弱項並做 full-field matrix gate → Verify: 25 meetings、245 races、3,054 runners；唯一通過候選為 `shape_to_core_equal`。
 - [x] 將通過候選上線 → Verify: production contract `HKJC_7D_CONTRACT_2026_07_30_CORE_BALANCE`，並由測試鎖定七維權重。
+  - ⚠️ 2026-08-09 merge `f7d35de5` 靜靜還原咗舊權重（race_shape 0.2737），測試鎖住嘅係 merge 揀返嘅值；
+    2026-10-09 EXP-20261009-04 先換算返現行七維重新上線（race_shape 0.2417）。
 - [x] 最終回歸驗證 → Verify: 89 pytest、67 Auto unittest、12/12 template flow 全部通過；7 月 15 日 Top-2／Top-5 capture 無退步。
 
 ## Done When

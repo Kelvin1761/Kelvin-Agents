@@ -57,7 +57,9 @@ class ZeroStartSeasonTests(unittest.TestCase):
         adjustment = engine._distance_suitability_adjustment(features, matrix)
 
         self.assertEqual(adjustment["signal"], "same_distance_placed")
-        self.assertAlmostEqual(adjustment["raw_adjustment"], 0.4284, places=6)
+        # Scales with MATRIX_WEIGHTS["class_advantage"]: 0.4284 × 0.1534/0.1428
+        # after EXP-20261009-04 restored CORE_BALANCE.
+        self.assertAlmostEqual(adjustment["raw_adjustment"], 0.4602, places=6)
         self.assertEqual(class_score, evaluate("季內 (0-0-0-0)")[0])
 
     def test_distance_v2_is_recorded_as_shadow_without_replacing_live_v1(self):

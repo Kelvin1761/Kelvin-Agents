@@ -9,10 +9,10 @@ sets; both are persisted in `python_auto_run_contract`.
 | Key | Display | Weight |
 |---|---:|---:|
 | `sectional` | 段速 | 0.1285 |
-| `trainer_signal` | 騎練訊號 | 0.2362 |
-| `stability` | 狀態與穩定性 | 0.0983 |
-| `race_shape` | 檔位與走位（不含步速） | 0.2737 |
-| `class_advantage` | 級數優勢 | 0.1428 |
+| `trainer_signal` | 騎練訊號 | 0.2469 |
+| `stability` | 狀態與穩定性 | 0.1090 |
+| `race_shape` | 檔位與走位（不含步速） | 0.2417 |
+| `class_advantage` | 級數優勢 | 0.1534 |
 | `horse_health` | 馬匹健康 / 新鮮感 | 0.0404 |
 | `form_line` | 賽績線 | 0.0801 |
 
@@ -43,7 +43,7 @@ Debut runners use this separate locked formula:
   `WC_HKJC_HV_RACE_SHAPE_PROFILE=legacy_v2`; the selected profile is persisted
   in `python_auto_run_contract`.
 - Before official whole-field ranking, every runner uses the same robust
-  race-shape rule: retain the 27.37% outer weight, but cap each runner's
+  race-shape rule: retain the live outer weight (24.17% since EXP-20261009-04), but cap each runner's
   `race_shape` deviation from the same-race median at +/-10 points. This is a
   symmetric whole-field correction: it does not lock Top 2, protect any rank,
   or target named horses. It is persisted as `race_shape_robustness=winsor10`.

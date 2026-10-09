@@ -48,8 +48,43 @@ _WEIGHT_REFIT_T02 = {
     "horse_health": 0.0404,
     "form_line": 0.0801,
 }
+# Forward arms for EXP-20261009-04, registered before any forward race. Absolute
+# vectors for the same reason as t02. w200/w170 scale the non-shape weights of
+# the new live vector proportionally (largest-remainder to 4 dp).
+_WEIGHT_ROLLBACK_0809 = {
+    "sectional": 0.1285, "trainer_signal": 0.2362, "stability": 0.0983,
+    "race_shape": 0.2737, "class_advantage": 0.1428, "horse_health": 0.0404,
+    "form_line": 0.0801,
+}
+_WEIGHT_RACE_SHAPE_W200 = {
+    "sectional": 0.1356, "trainer_signal": 0.2605, "stability": 0.1150,
+    "race_shape": 0.2000, "class_advantage": 0.1618, "horse_health": 0.0426,
+    "form_line": 0.0845,
+}
+_WEIGHT_RACE_SHAPE_W170 = {
+    "sectional": 0.1407, "trainer_signal": 0.2702, "stability": 0.1193,
+    "race_shape": 0.1700, "class_advantage": 0.1679, "horse_health": 0.0442,
+    "form_line": 0.0877,
+}
+_WEIGHT_ARMS = {
+    "weight_refit_t02": _WEIGHT_REFIT_T02,
+    "race_shape_v3_hv_t02": _WEIGHT_REFIT_T02,
+    "weight_rollback_0809": _WEIGHT_ROLLBACK_0809,
+    "race_shape_w200": _WEIGHT_RACE_SHAPE_W200,
+    "race_shape_w170": _WEIGHT_RACE_SHAPE_W170,
+}
+_WEIGHT_ARM_REASONS = {
+    "weight_refit_t02": "固定將2pp由race-shape轉至stability",
+    "race_shape_v3_hv_t02": "固定將2pp由race-shape轉至stability",
+    "weight_rollback_0809": "回退對照：2026-08-09至10-09嘅外層權重（race_shape 27.37%）",
+    "race_shape_w200": "前瞻候選：race_shape 20%，其餘按比例",
+    "race_shape_w170": "前瞻候選：race_shape 17%，其餘按比例",
+}
 _WEIGHT_SHADOW_PROFILES = {
     "weight_refit_t02",
+    "weight_rollback_0809",
+    "race_shape_w200",
+    "race_shape_w170",
     "race_shape_v3_hv",
     "race_shape_v3_hv_t02",
     "race_shape_v2_legacy_hv",
@@ -1229,10 +1264,10 @@ class RacingEngine:
             shape_score, components, v3_applied = self._pre_race_draw_context_v1_generic_score(auto)
             matrix_scores["race_shape"] = shape_score
 
-        uses_refit = profile_name in {"weight_refit_t02", "race_shape_v3_hv_t02"}
-        # The registered weight refit locked the debut formula.  Persist a
+        uses_refit = profile_name in _WEIGHT_ARMS
+        # The registered weight arms lock the debut formula.  Persist a
         # no-op shadow row for debutants so prospective coverage is auditable.
-        weights = _WEIGHT_REFIT_T02 if uses_refit and not self._is_debut() else MATRIX_WEIGHTS
+        weights = _WEIGHT_ARMS[profile_name] if uses_refit and not self._is_debut() else MATRIX_WEIGHTS
         if self._is_debut():
             weights = DEBUT_MATRIX_WEIGHTS
             matrix_scores = {key: round(float(base_matrix.get(key, 60.0)), 2) for key in MATRIX_WEIGHTS}
@@ -1253,7 +1288,7 @@ class RacingEngine:
         applied = (uses_refit and not self._is_debut()) or v3_applied
         reasons = []
         if uses_refit and not self._is_debut():
-            reasons.append("固定將2pp由race-shape轉至stability")
+            reasons.append(_WEIGHT_ARM_REASONS[profile_name])
         if v3_applied:
             if profile_name == "race_shape_v2_legacy_hv":
                 reasons.append("跑馬地回退對照：使用V3上線前shape")
@@ -1285,7 +1320,8 @@ class RacingEngine:
             "reason": "；".join(reasons) + "。",
             "evidence_status": (
                 "experimental_live_rollback_shadow"
-                if profile_name in {"race_shape_v2_legacy_hv", "race_shape_legacy_unbounded"}
+                if profile_name in {"race_shape_v2_legacy_hv", "race_shape_legacy_unbounded",
+                                    "weight_rollback_0809"}
                 else "prospective_shadow_only"
             ),
         }

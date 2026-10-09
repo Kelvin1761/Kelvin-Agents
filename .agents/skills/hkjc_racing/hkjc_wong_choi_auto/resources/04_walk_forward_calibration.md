@@ -9,12 +9,15 @@
 現役 standard 7D outer weights：
 
 - `sectional`: 0.1285
-- `trainer_signal`: 0.2362
-- `stability`: 0.0983
-- `race_shape`: 0.2737
-- `class_advantage`: 0.1428
+- `trainer_signal`: 0.2469
+- `stability`: 0.1090
+- `race_shape`: 0.2417
+- `class_advantage`: 0.1534
 - `horse_health`: 0.0404
 - `form_line`: 0.0801
+
+（2026-10-09 EXP-20261009-04：還原 2026-07-30 CORE_BALANCE；2026-08-09 至 10-09 期間
+live 係 merge 意外留低嘅 race_shape 0.2737，而家係 rollback shadow `weight_rollback_0809`。）
 
 現役 Matrix mapping 係：sectional=純 `speed_score`；race_shape=純
 `race_shape_context_score`；trainer=55/45 jockey/trainer；health=61.1/38.9
