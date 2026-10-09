@@ -319,7 +319,7 @@ class SportsbetNBAExtractor:
         for m_id, m_data in markets.items():
             name = m_data.get("name", "")
             if not any(x in name for x in ['Point', 'Rebound', 'Assist', 'Match Betting',
-                                            'Line', 'Threes', 'Three']):
+                                            'Line', 'Handicap', 'Threes', 'Three']):
                 continue
 
             sels = {}
@@ -389,7 +389,7 @@ class SportsbetNBAExtractor:
         # half moneylines and alternate handicaps are different contracts.
         if m_name == "Match Betting":
             return "match_betting"
-        if m_name in {"Line", "Line Betting"}:
+        if m_name in {"Line", "Line Betting", "Handicap Betting"}:
             return "line"
 
         # ── Skip junk / game-level / quarter / half markets ──────────
