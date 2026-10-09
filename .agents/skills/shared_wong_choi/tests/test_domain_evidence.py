@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import sys
+import pytest
 from pathlib import Path
 
 
@@ -38,6 +40,51 @@ def register_model(root: Path, domain: Domain) -> str:
         )
     )
     return result["record_id"]
+
+
+@pytest.mark.parametrize("guard", [{}, {"/wrong": "a" * 64}, {"actual": "invalid"}, {"actual": "a" * 64}])
+def test_artifact_guard_requires_exact_paths_and_bytes(tmp_path, guard):
+    root, snapshot = tmp_path / "evidence", tmp_path / "snapshot"
+    snapshot.mkdir()
+    (snapshot / "manifest.json").write_text(json.dumps({"created_at": "2026-08-26T10:00:00+00:00"}))
+    register_model(root, Domain.NBA)
+    record_prediction_decision(domain=Domain.NBA, event_id="2026-08-26", snapshot=snapshot,
+                               evidence_root=root, decision_state=DecisionState.SHADOW)
+    artifact = tmp_path / "Result.json"
+    artifact.write_bytes(b"original")
+    pins = {str(artifact): value for key, value in guard.items() if key == "actual"}
+    pins.update({key: value for key, value in guard.items() if key != "actual"})
+    with pytest.raises((ValueError, RuntimeError), match="artifact"):
+        record_settlement_for_event(domain=Domain.NBA, event_id="2026-08-26", evidence_root=root,
+                                    summary={}, artifacts=[artifact], expected_artifact_hashes=pins)
+    assert EvidenceStore(root).audit()["counts"].get("settlement", 0) == 0
+    result = record_settlement_for_event(domain=Domain.NBA, event_id="2026-08-26", evidence_root=root,
+        summary={}, artifacts=[artifact], expected_artifact_hashes={str(artifact): hashlib.sha256(b"original").hexdigest()})
+    assert result["status"] == "created"
+
+
+def test_settlement_expected_parent_guard_refuses_changed_decision(tmp_path: Path) -> None:
+    root, snapshot = tmp_path / "evidence", tmp_path / "snapshot"
+    snapshot.mkdir()
+    (snapshot / "manifest.json").write_text(json.dumps({
+        "created_at": "2026-08-26T10:00:00+00:00", "game_tags": ["BOS_LAL"],
+    }))
+    model = register_model(root, Domain.NBA)
+    prediction = record_prediction_decision(
+        domain=Domain.NBA, event_id="2026-08-26", snapshot=snapshot,
+        evidence_root=root, decision_state=DecisionState.SHADOW, model_release_id=model,
+    )
+    with pytest.raises(RuntimeError, match="decision changed since source capture"):
+        record_settlement_for_event(
+            domain=Domain.NBA, event_id="2026-08-26", evidence_root=root, summary={},
+            expected_decision_id="wc:nba:decision:not-the-captured-parent",
+        )
+    assert EvidenceStore(root).audit()["counts"]["settlement"] == 0
+    result = record_settlement_for_event(
+        domain=Domain.NBA, event_id="2026-08-26", evidence_root=root, summary={},
+        expected_decision_id=prediction["decision_id"],
+    )
+    assert result["decision_id"] == prediction["decision_id"]
 
 
 def test_scoring_snapshot_creates_prediction_and_decision_chain(tmp_path: Path) -> None:
