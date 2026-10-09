@@ -383,6 +383,86 @@ class NbaDailyScheduleTests(unittest.TestCase):
                     schedule.run_postgame("2026-10-21", _Log())
             self.assertTrue(folder.is_dir())
 
+    def test_postgame_skips_empty_failed_pregame_without_review(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            log = _Log()
+            with mock.patch.object(schedule, "live_dir", return_value=folder), mock.patch.object(
+                schedule, "_run"
+            ) as run, mock.patch.object(schedule, "_deploy") as deploy, mock.patch.object(
+                schedule, "notify_once"
+            ) as notify:
+                status = schedule.run_postgame("2026-10-08", log)
+            self.assertEqual(status, "dormant")
+            self.assertEqual(log.steps[-1], (
+                "postgame", "dormant", {"reason": "no_prediction_artifacts"}
+            ))
+            self.assertTrue(folder.is_dir())
+            self.assertEqual(list(folder.iterdir()), [])
+            run.assert_not_called()
+            deploy.assert_not_called()
+            notify.assert_not_called()
+
+    def test_odds_refresh_failure_restores_existing_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            odds = folder / "Sportsbet_Odds_BOS_LAL.json"
+            odds.write_bytes(b'{"original":true}')
+            extra = folder / "Sportsbet_Odds_NYK_MIA.json"
+
+            def failed_refresh(*args, **kwargs):
+                odds.write_bytes(b'{"partial":true}')
+                extra.write_bytes(b"{}")
+                return subprocess.CompletedProcess(args=[], returncode=75, stdout="no odds", stderr="")
+
+            with mock.patch.object(schedule, "_run", side_effect=failed_refresh):
+                with self.assertRaisesRegex(schedule.TemporaryFailure, "sportsbet_refresh_exit_75"):
+                    schedule.refresh_sportsbet_odds(
+                        folder, "2026-10-08", protected_tags={"BOS_LAL"}, log=_Log()
+                    )
+            self.assertEqual(odds.read_bytes(), b'{"original":true}')
+            self.assertFalse(extra.exists())
+
+    def test_postgame_still_blocks_partial_analysis_without_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            (folder / "Sportsbet_Odds_BOS_LAL.json").write_text("{}", encoding="utf-8")
+            with mock.patch.object(schedule, "live_dir", return_value=folder), mock.patch.object(
+                schedule, "_run"
+            ) as run:
+                with self.assertRaisesRegex(
+                    schedule.TemporaryFailure, "live_analysis_has_no_prediction_snapshot"
+                ):
+                    schedule.run_postgame("2026-10-08", _Log())
+            run.assert_not_called()
+
+    def test_postgame_still_blocks_complete_analysis_without_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            _complete_analysis(folder, "2026-10-08")
+            with mock.patch.object(schedule, "live_dir", return_value=folder), mock.patch.object(
+                schedule, "create_prediction_snapshot"
+            ) as create:
+                with self.assertRaises(schedule.TemporaryFailure):
+                    schedule.run_postgame("2026-10-08", _Log())
+            create.assert_not_called()
+
+    def test_startup_continues_pregame_without_empty_folder_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            log = _Log()
+            log.payload = {"warnings": []}
+            now = datetime(2026, 10, 9, 9, 0, tzinfo=SYDNEY)
+            with mock.patch.object(schedule, "live_dir", return_value=Path(tmp)), mock.patch.object(
+                schedule, "now_sydney", return_value=now
+            ), mock.patch.object(schedule, "run_pregame", return_value="shadow_complete") as pregame, mock.patch.object(
+                schedule, "load_espn_events", return_value=[]
+            ), mock.patch.object(schedule, "notify_once") as notify:
+                status = schedule.run_startup(log)
+            self.assertEqual(status, "shadow_complete")
+            self.assertEqual(log.payload["warnings"], [])
+            self.assertEqual(pregame.call_args.args[0], "2026-10-09")
+            notify.assert_not_called()
+
     def test_postgame_deploys_only_after_archive(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)

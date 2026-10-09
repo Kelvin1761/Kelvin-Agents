@@ -45,11 +45,16 @@ sys.path.insert(0, str(NBA_SKILL_DIR))
 from nba_schedule import load_espn_schedule
 
 AU_TZ = ZoneInfo("Australia/Sydney")
+SPORTSBET_COMPETITIONS = (
+    {"id": 6927, "slug": "nba"},
+    {"id": 3079, "slug": "nba-preseason-matches"},
+)
 
 class SportsbetNBAExtractor:
     def __init__(self, outdir=".", target_date=None):
-        self.competition_url = "https://www.sportsbet.com.au/apigw/sportsbook-sports/Sportsbook/Sports/Competitions/6927"
-        self.base_event_url = "https://www.sportsbet.com.au/betting/basketball-us/nba"
+        self.competition_api = "https://www.sportsbet.com.au/apigw/sportsbook-sports/Sportsbook/Sports/Competitions"
+        self.base_event_url = "https://www.sportsbet.com.au/betting/basketball-us"
+        self.competitions = SPORTSBET_COMPETITIONS
         self.outdir = outdir
         self.target_date = target_date
         self.session = requests.Session(impersonate="chrome120")
@@ -146,19 +151,25 @@ class SportsbetNBAExtractor:
 
     def fetch_daily_matches(self):
         print(f"[{datetime.now().strftime('%H:%M:%S')}] 🔍 正在探索 Sportsbet 當日 NBA 賽事...")
-        try:
-            req = urllib.request.Request(self.competition_url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req, timeout=10) as response:
-                data = json.loads(response.read().decode('utf-8'))
+        urls = []
+        seen_event_ids = set()
+        exact_date_hits = 0
+        unresolved_date = 0
+        reachable_sources = 0
+        for competition in self.competitions:
+            competition_id = competition["id"]
+            competition_url = f"{self.competition_api}/{competition_id}"
+            try:
+                req = urllib.request.Request(competition_url, headers={'User-Agent': 'Mozilla/5.0'})
+                with urllib.request.urlopen(req, timeout=10) as response:
+                    data = json.loads(response.read().decode('utf-8'))
+                reachable_sources += 1
                 events = data.get('events', [])
-                
-                urls = []
-                exact_date_hits = 0
-                unresolved_date = 0
+                competition_slug = competition["slug"]
                 for event in events:
                     raw_name = event.get('name', '')
                     event_id = event.get('id', '')
-                    if not raw_name or not event_id:
+                    if not raw_name or not event_id or event_id in seen_event_ids:
                         continue
                     event_local_date, event_start_time = self._extract_event_local_date(event)
                     if self.target_date and event_local_date and event_local_date != self.target_date:
@@ -168,7 +179,8 @@ class SportsbetNBAExtractor:
                     elif self.target_date and not event_local_date:
                         unresolved_date += 1
                     slug = re.sub(r'[^a-z0-9]+', '-', raw_name.lower()).strip('-')
-                    full_url = f"{self.base_event_url}/{slug}-{event_id}"
+                    full_url = f"{self.base_event_url}/{competition_slug}/{slug}-{event_id}"
+                    seen_event_ids.add(event_id)
                     urls.append({
                         "game_name": raw_name,
                         "url": full_url,
@@ -177,18 +189,20 @@ class SportsbetNBAExtractor:
                         "event_start_time": event_start_time,
                         "tag": self._parse_matchup_tag(raw_name),
                     })
-                
-                print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ 成功發現 {len(urls)} 場候選 NBA 賽程！")
-                if self.target_date:
-                    print(
-                        f"[{datetime.now().strftime('%H:%M:%S')}] 📅 日期檢查: "
-                        f"{exact_date_hits} 場明確屬於 {self.target_date}"
-                        + (f" | {unresolved_date} 場缺少開賽時間 metadata" if unresolved_date else "")
-                    )
-                return urls
-        except Exception as e:
-            print(f"❌ 獲取賽事名單失敗: {e}")
+            except Exception as e:
+                print(f"⚠️ Sportsbet competition {competition_id} 讀取失敗: {e}")
+
+        if not reachable_sources:
+            print("❌ 所有 Sportsbet NBA competition 來源都讀取失敗。")
             return []
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] ✅ 成功發現 {len(urls)} 場候選 NBA 賽程！")
+        if self.target_date:
+            print(
+                f"[{datetime.now().strftime('%H:%M:%S')}] 📅 日期檢查: "
+                f"{exact_date_hits} 場明確屬於 {self.target_date}"
+                + (f" | {unresolved_date} 場缺少開賽時間 metadata" if unresolved_date else "")
+            )
+        return urls
 
     def _allowed_tags_from_espn(self):
         if not self.target_date:
@@ -536,11 +550,11 @@ class SportsbetNBAExtractor:
         formatted["player_props"] = pp
         return formatted
 
-    def run(self):
+    def run(self) -> int:
         matches = self.fetch_daily_matches()
         if not matches:
             print("❌ 沒有發現任何 NBA 賽事，程式終止。")
-            return
+            return 75
 
         allowed_tags = self._allowed_tags_from_espn()
         if allowed_tags:
@@ -559,7 +573,7 @@ class SportsbetNBAExtractor:
                     print("❌ 找到候選賽事，但 Sportsbet event 缺少可用日期 metadata，且 ESPN 白名單為空。為避免跨日誤抓，已停止。")
                 else:
                     print(f"❌ Sportsbet 未返回任何屬於 {self.target_date} 嘅 NBA 賽事。")
-                return
+                return 75
 
         print(f"\n--- 開始逐場萃取 Player Props ---")
         odds_data = self.traverse_and_extract(matches)
@@ -570,7 +584,10 @@ class SportsbetNBAExtractor:
             print(f"📅 日期過濾完成: 保留 {len(odds_data)} 場，排除 {skipped} 場非目標日期賽事")
             if not odds_data:
                 print("❌ Sportsbet 有盤但冇任何賽事符合目標日期白名單。")
-                return
+                return 75
+        if not odds_data:
+            print("❌ 沒有成功萃取任何 NBA 賠率，保留重試。")
+            return 75
         
         try:
             # Write individual files
@@ -585,6 +602,8 @@ class SportsbetNBAExtractor:
             print(f"   總共捕獲: {count} 場賽事數據")
         except Exception as e:
             print(f"\n❌ 儲存 JSON 失敗: {e}")
+            return 75
+        return 0
 
 
 if __name__ == "__main__":
@@ -595,4 +614,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     extractor = SportsbetNBAExtractor(outdir=args.outdir, target_date=args.date)
-    extractor.run()
+    raise SystemExit(extractor.run())

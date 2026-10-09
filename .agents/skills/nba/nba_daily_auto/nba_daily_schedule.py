@@ -859,6 +859,12 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         return "dormant"
 
     if latest_snapshot(folder) is None:
+        # Pregame creates the directory before odds discovery. A failed first
+        # extraction can leave it empty; there is no prediction to review.
+        # Keep the guard for partial analyses and lost snapshots.
+        if not any(folder.iterdir()):
+            log.step("postgame", "dormant", reason="no_prediction_artifacts")
+            return "dormant"
         raise TemporaryFailure("live_analysis_has_no_prediction_snapshot")
     result = _run([sys.executable, str(REVIEW_ARCHIVE), "--date", target_date], timeout=3600)
     summary = _last_json_line(result.stdout) or {}
