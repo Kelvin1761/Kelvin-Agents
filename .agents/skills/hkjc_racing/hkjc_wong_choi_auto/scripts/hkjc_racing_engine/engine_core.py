@@ -35,10 +35,18 @@ _TRAINER_SIGNAL_PRIORS = None
 # Frozen prospective candidates from EXP-20260928-09.  These weights never
 # replace MATRIX_WEIGHTS: they live only inside `shadow_profiles`, so the
 # official ranking and run contract remain bit-for-bit mainline.
+# Absolute values, not `{**MATRIX_WEIGHTS, ...}`: a frozen arm must not move when
+# live weights do. Spread from MATRIX_WEIGHTS, any live-weight change silently
+# altered this arm and (weights no longer summing to 1) failed every race with
+# SHADOW-023 — found 2026-10-09 while A/B-ing a live-weight candidate.
 _WEIGHT_REFIT_T02 = {
-    **MATRIX_WEIGHTS,
+    "sectional": 0.1285,
+    "trainer_signal": 0.2362,
     "stability": 0.1183,
     "race_shape": 0.2537,
+    "class_advantage": 0.1428,
+    "horse_health": 0.0404,
+    "form_line": 0.0801,
 }
 _WEIGHT_SHADOW_PROFILES = {
     "weight_refit_t02",
