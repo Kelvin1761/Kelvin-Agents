@@ -264,7 +264,8 @@ class TestWeightLeafRetired:
         by_key = {component["key"]: component for component in components}
         assert by_key["rating_score"]["in_ranking"] is True
         assert by_key["weight_score"]["in_ranking"] is False
-        assert by_key["class_score"]["in_ranking"] is False
+        from au_racing_engine.scoring import CLASS_SCORE_LIVE
+        assert by_key["class_score"]["in_ranking"] is CLASS_SCORE_LIVE  # EXP-20261009-04
 
 
 class TestHandicapWeightProxy:

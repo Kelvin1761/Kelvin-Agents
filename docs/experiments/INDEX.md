@@ -4,6 +4,8 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261009-05](EXP-20261009-05-au-speed-recency-orth.md) | 2026-10-09 | AU | 速度評分重新開發：近期加權（最少 2 仗）＋同 pace_figure 去重疊，k=0.5 | **PRE-REGISTERED／BLIND SHADOW**：dev（<09-27，2,078 場）36 組合全正，揀中 Gold +0.63pp [+0.14,+1.11]、Good +0.67pp [+0.14,+1.20]、5/5 fold，但有揀選偏差；同 EXP-20260927-02 共用 terminal（09-27 起 2,000 場），未揭盲（457 場）。 |
+| [EXP-20261009-04](EXP-20261009-04-au-class-score-prospective.md) | 2026-10-09 | AU | class_score 加入 class_weight（現行無 gain 架構，預先登記，k 只喺 09-09 前 dev 揀） | **dev REJECT → USER-ACCEPTED EXPERIMENTAL LIVE**：2,087 場 k=0.15 Gold −0.10pp、Good +0.19 [+0.05,+0.38]、NDCG@5 +0.13 [+0.02,+0.25]，9 指標 7 正；Kelvin 接受 2 場 Gold 噪音。`WC_AU_CLASS_SCORE_LIVE=0` 回退、`class_score_live_delta` 影子、≥600 場前瞻回退閘。**唔係已證實改善**。 |
 | [EXP-20261009-03](EXP-20261009-03-au-first-up-and-debut.md) | 2026-10-09 | AU | 預先登記：休後≥180日舊績打折（H1a/b）、初出馬近績用試閘分（H2a/b） | **REJECT（四臂）**：只用發現窗口前 2,087 場判；H1a Gold −0.19pp、H2a Good +0.58 [+0.05,+1.10] 但 Gold −0.14。H1 喺發現窗口 Gold +0.42（CI>0）而之前係負 —— 發現窗口幻覺。 |
 | [EXP-20261009-02](EXP-20261009-02-au-class-move-off-by-one.md) | 2026-10-09 | AU | 「今場降班」讀咗上一仗行嘅班次欄（上上仗→上一仗），錯位一場；今場獎金自 Sportsbet 起冇來源 | **KEEP（§7 正確性修正）**：3,264場重評分 Gold/Good 冇顯著退步（terminal Good −0.13 [−0.38, 0.00]）、9 cohort 冇 CI 全負；今場獎金改由 RA Acceptances 補。**唔係已證實改善**。 |
 | [EXP-20261009-01](EXP-20261009-01-au-month-review.md) | 2026-10-09 | AU | 09-09→10-08 用儲存咗嘅賽前排名逐 cohort 對比按馬匹數預期同市場差距，搵做得差嘅場同原因 | **NEEDS MORE TESTING／診斷**：1,200場 Gold 19.1% vs SP 31.9%，差距平均分佈；唯一顯著差格係 Stakes 賽（相對市場再輸 10.7pp，8月冇重現）。休後≥180日模型揀馬上名 33.6% vs 46.6%（8月 n=27 冇重現）、初出馬被低估 0.63 名次（兩月一致）。找到 class_move 錯位一場、今場獎金死咗、「極慢」= 冇領放證據（53% 場次）三個 bug。冇改模型。 |

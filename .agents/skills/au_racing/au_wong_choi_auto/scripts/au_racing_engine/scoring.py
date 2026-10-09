@@ -2,7 +2,18 @@
 """AU Wong Choi Auto scoring primitives."""
 from __future__ import annotations
 
+import os
 import re
+
+# EXP-20261009-04 —— USER-ACCEPTED EXPERIMENTAL LIVE（2026-10-09）。
+# class_score 以 0.15 入 `class_weight` 維度。預先登記嘅 dev 門檻（Gold、Good 都 ≥0）
+# **冇過**：dev 2,087 場 Gold −0.10pp [−0.34,+0.14]、Good +0.19pp [+0.05,+0.38]、
+# NDCG@5 +0.13 [+0.02,+0.25]，9 個指標 7 個正。Kelvin 明確接受少 2 場 Gold 嘅噪音換
+# 其他指標 —— **唔係已證實改善**。即時回退：`WC_AU_CLASS_SCORE_LIVE=0`。
+# 每匹馬 `class_score_live_delta` 係回退影子；forward ≥600 場由 2026-11-09 排程
+# 檢討，舊公式淨贏 ≥2 場 Gold 或 Good 而另一項非負 → 建議回退（唔會自動改 production）。
+CLASS_SCORE_LIVE = os.environ.get("WC_AU_CLASS_SCORE_LIVE", "1") != "0"
+CLASS_SCORE_LIVE_WEIGHT = 0.15
 
 FEATURE_KEYS = (
     "form_score", "trial_score", "sectional_score", "pace_map_score",
@@ -16,6 +27,8 @@ ABILITY_FEATURE_KEYS = (
     "trial_score", "pace_map_score", "jockey_score", "trainer_score",
     "jockey_horse_fit_score", "rating_score", "track_score", "preparation_score",
 )
+# ⚠️ class_score 留喺 REPORT_ONLY：佢經 matrix 配方入排名（CLASS_SCORE_LIVE），但
+# 資料覆蓋率／證據厚度安全欄嘅 leaf 計數唔郁 —— EXP-20261009-04 量嘅只係配方改動。
 REPORT_ONLY_FEATURE_KEYS = (
     "sectional_score", "class_score", "weight_score", "distance_score",
     "formline_score", "consistency_score", "health_score", "confidence_score",

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .scoring import clip_score, score_band
+from .scoring import CLASS_SCORE_LIVE, CLASS_SCORE_LIVE_WEIGHT, clip_score, score_band
 
 
 MATRIX_FORMULAS = {
@@ -90,9 +90,10 @@ MATRIX_FORMULAS = {
     # 全部 = 或 ±0.14（＝1 場，噪音級），dev/holdout 皆無實質變化。
     # 負磅仍然係報告內容（頂磅標記、爛地孭重磅、降班配輕磅），只係唔再入排名。
     # Rollback: 加返 ("weight_score", 0.141)。
+    # EXP-20261009-04 experimental live：class_score 0.15（見 scoring.CLASS_SCORE_LIVE）。
     "class_weight": (
         ("rating_score", 0.70),
-    ),
+    ) + ((("class_score", CLASS_SCORE_LIVE_WEIGHT),) if CLASS_SCORE_LIVE else ()),
     "track": (
         ("track_score", 1.0),
     ),
