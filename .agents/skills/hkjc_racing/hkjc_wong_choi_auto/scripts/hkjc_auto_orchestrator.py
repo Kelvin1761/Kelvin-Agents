@@ -446,6 +446,17 @@ def _parse_rail(text):
     return m2.group(1).replace(" ", "") if m2 else None
 
 
+# Same pattern as racing_data_health._WITHDRAWN_NAME_RE.
+_WITHDRAWN_RUNNER_RE = re.compile(
+    r"(?:\s*[（(]\s*(?:退出|退賽|已退出|SCRATCHED|WITHDRAWN)\s*[)）]\s*|\s+(?:退出|退賽|已退出|SCRATCHED|WITHDRAWN)\s*)$",
+    re.I,
+)
+
+
+def _is_withdrawn_runner(entry) -> bool:
+    return bool(_WITHDRAWN_RUNNER_RE.search(str((entry or {}).get("horse_name") or "")))
+
+
 def _parse_racecard_meta(text):
     """Read the authoritative race class + each runner's CURRENT official rating
     and the official rating CHANGE since last start (評分+/-) from the racecard
@@ -682,7 +693,13 @@ def _align_runner_headers(logic_path, race_context, horses):
         rail = _parse_rail(rc_text)
         if rail:
             race_context["rail"] = rail
-        official_numbers = {key for key in rc_info if str(key).isdigit()}
+        # A runner scratched after the first build stays on the racecard as
+        # 「馬名 (退出)」; Logic correctly drops it. Counting it here failed the
+        # whole race (2026-10-11 R4: #3 三軍勇將 scratched 21:33, race unscored).
+        official_numbers = {
+            key for key, entry in rc_info.items()
+            if str(key).isdigit() and not _is_withdrawn_runner(entry)
+        }
         logic_numbers = {str(key) for key in horses}
         if official_numbers and official_numbers != logic_numbers:
             raise ValueError(
