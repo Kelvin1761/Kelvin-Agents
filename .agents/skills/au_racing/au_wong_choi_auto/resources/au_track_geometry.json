@@ -5,7 +5,7 @@
   "justhorseracing": "https://www.justhorseracing.com.au/tracks/<slug>-racecourse"
  },
  "resolution_rule": "racinglife 做主；justhorseracing 補漏兼覆核；分歧記入 conflict 但採用 racinglife",
- "venues_total": 96,
+ "venues_total": 133,
  "venues_with_geometry": 85,
  "venues": {
   "albury": {
@@ -47,6 +47,19 @@
     ]
    }
   },
+  "armidale": {
+   "venue": "Armidale",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
   "ascot": {
    "venue": "Ascot",
    "circumference_m": 2022,
@@ -61,6 +74,32 @@
     "justhorseracing"
    ],
    "conflict": null
+  },
+  "bairnsdale": {
+   "venue": "Bairnsdale",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
+  },
+  "balaklava": {
+   "venue": "Balaklava",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Provincial",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Provincial 2"
   },
   "ballarat": {
    "venue": "Ballarat",
@@ -126,14 +165,15 @@
    "circumference_m": 1435,
    "straight_m": 210,
    "direction": "clockwise",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "QLD",
    "note": "Very tough out wide in races beyond 1400m",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
   "belmont": {
    "venue": "Belmont",
@@ -165,18 +205,71 @@
    ],
    "conflict": null
   },
-  "broome": {
-   "venue": "Broome",
+  "birdsville": {
+   "venue": "Birdsville",
    "circumference_m": 0,
    "straight_m": 0,
    "direction": "",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
    "sources": [],
    "conflict": null,
-   "undocumented": true
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
+  },
+  "bordertown": {
+   "venue": "Bordertown",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
+  "bowen": {
+   "venue": "Bowen",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
+  "bowraville": {
+   "venue": "Bowraville",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
+  "broome": {
+   "venue": "Broome",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "undocumented": true,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "bunbury": {
    "venue": "Bunbury",
@@ -242,41 +335,44 @@
    "circumference_m": 0,
    "straight_m": 0,
    "direction": "",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
    "sources": [],
    "conflict": null,
-   "undocumented": true
+   "undocumented": true,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "casino": {
    "venue": "Casino",
    "circumference_m": 1600,
    "straight_m": 400,
    "direction": "clockwise",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "NSW",
    "note": "Very tricky to be wide from the 1000m. Track falls away out wide.",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "casterton": {
    "venue": "Casterton",
    "circumference_m": 1640,
    "straight_m": 350,
    "direction": "anticlockwise",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "VIC",
    "note": "Fair starts from 1000m to 1400m in shute. Turns are well cambered.",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
   "caulfield": {
    "venue": "Caulfield",
@@ -306,6 +402,19 @@
    "conflict": null,
    "undocumented": true
   },
+  "cloncurry": {
+   "venue": "Cloncurry",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
   "coffs-harbour": {
    "venue": "Coffs Harbour",
    "circumference_m": 1700,
@@ -320,6 +429,32 @@
     "justhorseracing"
    ],
    "conflict": null
+  },
+  "coleraine": {
+   "venue": "Coleraine",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
+  "cootamundra": {
+   "venue": "Cootamundra",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "corowa": {
    "venue": "Corowa",
@@ -356,28 +491,43 @@
    "circumference_m": 1600,
    "straight_m": 300,
    "direction": "clockwise",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "QLD",
    "note": "Good runs to most first turns",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
   "devonport": {
    "venue": "Devonport",
    "circumference_m": 1500,
    "straight_m": 350,
    "direction": "anticlockwise",
-   "classification": "",
+   "classification": "Metropolitan",
    "surface": "",
    "state": "TAS",
    "note": "Good uphill run home for such a tight track.",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Metropolitan 4"
+  },
+  "donald": {
+   "venue": "Donald",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "doomben": {
    "venue": "Doomben",
@@ -444,13 +594,27 @@
    "circumference_m": 0,
    "straight_m": 0,
    "direction": "",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
    "sources": [],
    "conflict": null,
-   "undocumented": true
+   "undocumented": true,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
+  },
+  "ewan": {
+   "venue": "Ewan",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "flemington": {
    "venue": "Flemington",
@@ -467,6 +631,32 @@
    ],
    "conflict": null
   },
+  "gatton": {
+   "venue": "Gatton",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
+  "gawler": {
+   "venue": "Gawler",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Provincial",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Provincial 2"
+  },
   "geelong": {
    "venue": "Geelong",
    "circumference_m": 2043,
@@ -481,6 +671,19 @@
     "justhorseracing"
    ],
    "conflict": null
+  },
+  "geraldton": {
+   "venue": "Geraldton",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Provincial",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Provincial 1"
   },
   "gold-coast": {
    "venue": "Gold Coast",
@@ -542,6 +745,45 @@
    ],
    "conflict": null
   },
+  "griffith": {
+   "venue": "Griffith",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
+  "gunbower": {
+   "venue": "Gunbower",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
+  "gundagai": {
+   "venue": "Gundagai",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
   "gunnedah": {
    "venue": "Gunnedah",
    "circumference_m": 1800,
@@ -562,13 +804,27 @@
    "circumference_m": 0,
    "straight_m": 0,
    "direction": "",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
    "sources": [],
    "conflict": null,
-   "undocumented": true
+   "undocumented": true,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
+  "hamilton": {
+   "venue": "Hamilton",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
   "hawkesbury": {
    "venue": "Hawkesbury",
@@ -666,6 +922,19 @@
    ],
    "conflict": null
   },
+  "kempsey": {
+   "venue": "Kempsey",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
   "kensington": {
    "venue": "Kensington",
    "circumference_m": 2088,
@@ -685,14 +954,93 @@
    "circumference_m": 1270,
    "straight_m": 143,
    "direction": "clockwise",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "QLD",
    "note": "Very short straight, tight turns.",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 3"
+  },
+  "kilmore": {
+   "venue": "Kilmore",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 3"
+  },
+  "kyneton": {
+   "venue": "Kyneton",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
+  "launceston": {
+   "venue": "Launceston",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Metropolitan",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Metropolitan 1"
+  },
+  "leeton": {
+   "venue": "Leeton",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
+  "lismore": {
+   "venue": "Lismore",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
+  },
+  "longreach": {
+   "venue": "Longreach",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "mackay": {
    "venue": "Mackay",
@@ -714,14 +1062,15 @@
    "circumference_m": 1765,
    "straight_m": 390,
    "direction": "anticlockwise",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "VIC",
    "note": "Tight turning track. Wide draws a worry.",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 3"
   },
   "moe": {
    "venue": "Moe",
@@ -767,6 +1116,19 @@
    ],
    "conflict": null
   },
+  "mornington": {
+   "venue": "Mornington",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2, Metropolitan 1"
+  },
   "morphettville": {
    "venue": "Morphettville",
    "circumference_m": 2339,
@@ -781,6 +1143,19 @@
     "justhorseracing"
    ],
    "conflict": null
+  },
+  "morphettville-parks": {
+   "venue": "Morphettville Parks",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Metropolitan",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Metropolitan 3"
   },
   "moruya": {
    "venue": "Moruya",
@@ -844,28 +1219,30 @@
    "circumference_m": 1850,
    "straight_m": 420,
    "direction": "anticlockwise",
-   "classification": "",
+   "classification": "Provincial",
    "surface": "",
    "state": "SA",
    "note": "Good run home. Long straight run to sweeping home turn from 1600m start",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Provincial 4, Metropolitan 2"
   },
   "murtoa": {
    "venue": "Murtoa",
    "circumference_m": 1605,
    "straight_m": 280,
    "direction": "anticlockwise",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "VIC",
    "note": "Turning track with short run home.",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
   "murwillumbah": {
    "venue": "Murwillumbah",
@@ -924,14 +1301,15 @@
    "circumference_m": 1667,
    "straight_m": 313,
    "direction": "clockwise",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "NSW",
    "note": "Square shape. Turns very tight.",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
   "newcastle": {
    "venue": "Newcastle",
@@ -953,14 +1331,15 @@
    "circumference_m": 2017,
    "straight_m": 425,
    "direction": "anticlockwise",
-   "classification": "",
+   "classification": "Provincial",
    "surface": "",
    "state": "",
    "note": "races.com.au / progroupracing 場地頁（2026-09-02 查證）",
    "sources": [
     "manual"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Provincial 5"
   },
   "nowra": {
    "venue": "Nowra",
@@ -976,6 +1355,19 @@
     "justhorseracing"
    ],
    "conflict": null
+  },
+  "orange": {
+   "venue": "Orange",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "pakenham": {
    "venue": "Pakenham",
@@ -1048,14 +1440,28 @@
    "circumference_m": 2100,
    "straight_m": 270,
    "direction": "anticlockwise",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "SA",
    "note": "Narrow dirt track with short run home",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
+  "port-lincoln": {
+   "venue": "Port Lincoln",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "port-macquarie": {
    "venue": "Port Macquarie",
@@ -1070,6 +1476,19 @@
     "racinglife"
    ],
    "conflict": null
+  },
+  "queanbeyan": {
+   "venue": "Queanbeyan",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "quirindi": {
    "venue": "Quirindi",
@@ -1240,14 +1659,15 @@
    "circumference_m": 1797,
    "straight_m": 360,
    "direction": "anticlockwise",
-   "classification": "",
+   "classification": "Provincial",
    "surface": "",
    "state": "SA",
    "note": "undulating track, running downhill from 800m. Good run home",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Provincial 3"
   },
   "sunshine-coast": {
    "venue": "Sunshine Coast",
@@ -1263,6 +1683,19 @@
     "justhorseracing"
    ],
    "conflict": null
+  },
+  "swan-hill": {
+   "venue": "Swan Hill",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "tamworth": {
    "venue": "Tamworth",
@@ -1293,6 +1726,45 @@
     "justhorseracing"
    ],
    "conflict": null
+  },
+  "tatura": {
+   "venue": "Tatura",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
+  },
+  "thangool": {
+   "venue": "Thangool",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
+  },
+  "toodyay": {
+   "venue": "Toodyay",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "toowoomba": {
    "venue": "Toowoomba",
@@ -1329,13 +1801,14 @@
    "circumference_m": 0,
    "straight_m": 0,
    "direction": "",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "",
    "note": "",
    "sources": [],
    "conflict": null,
-   "undocumented": true
+   "undocumented": true,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
   },
   "wagga": {
    "venue": "Wagga",
@@ -1357,14 +1830,15 @@
    "circumference_m": 1730,
    "straight_m": 350,
    "direction": "anticlockwise",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "VIC",
    "note": "Undulating track. Drops steeply from 600m on 100m, then rises to finish.",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 1"
   },
   "warracknabeal": {
    "venue": "Warracknabeal",
@@ -1404,6 +1878,19 @@
     ]
    }
   },
+  "warwick": {
+   "venue": "Warwick",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Country",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 2"
+  },
   "warwick-farm": {
    "venue": "Warwick Farm",
    "circumference_m": 1937,
@@ -1439,14 +1926,15 @@
    "circumference_m": 1820,
    "straight_m": 230,
    "direction": "anticlockwise",
-   "classification": "",
+   "classification": "Country",
    "surface": "",
    "state": "VIC",
    "note": "Circular track. Wide is a real worry.",
    "sources": [
     "justhorseracing"
    ],
-   "conflict": null
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Country 3"
   },
   "wyong": {
    "venue": "Wyong",
@@ -1462,6 +1950,19 @@
     "justhorseracing"
    ],
    "conflict": null
+  },
+  "york": {
+   "venue": "York",
+   "circumference_m": 0,
+   "straight_m": 0,
+   "direction": "",
+   "classification": "Provincial",
+   "surface": "",
+   "state": "",
+   "note": "",
+   "sources": [],
+   "conflict": null,
+   "classification_source": "racingaustralia Acceptances `Meeting Type`（多數）：Provincial 1"
   }
  }
 }

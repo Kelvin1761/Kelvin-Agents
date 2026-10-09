@@ -197,6 +197,16 @@ def acceptances(key: str, fetcher: Fetcher | None = None,
                 race_name = re.sub(r"\s+", " ", m.group(2)).strip()
                 out.setdefault(race_no, {"name": race_name, "runners": []})
                 continue
+            # 標題下一行（`race-info`）：`Of $55,000.1st $30,250, …` + 賽事條件。
+            # Sportsbet 嘅賽事頁同 API 都冇今場總獎金，呢度係唯一來源；冇咗佢，
+            # 「上一仗 → 今場」嘅升降班冇得計（見 engine `_class_move_today`）。
+            if race_no and "prize" not in out.get(race_no, {}):
+                pm = re.search(r"\bOf\s+\$\s*([\d,]+)", joined)
+                if pm:
+                    out[race_no]["prize"] = int(pm.group(1).replace(",", ""))
+                    gm = re.search(r"\b(Group\s*[123]|Listed)\b", joined, re.I)
+                    out[race_no]["grade"] = gm.group(1).title().replace("  ", " ") if gm else ""
+                    continue
             if "Hcp Rating" in joined:
                 header = cells
                 continue
@@ -304,10 +314,17 @@ def apply_to_meeting(folder: Path, day: str, ra_venue_hint: str,
                 rating_by_horse[norm(r["horse"])] = r["hcp_rating"]
 
     filled = blank = already = 0
+    prize_stamped = prize_unmatched = 0
     touched = []
     for card in sorted(folder.glob("* Racecard.md")):
         lines = card.read_text(encoding="utf-8").splitlines()
         changed = False
+        stamped = stamp_race_prize(lines, races, norm)
+        if stamped is True:
+            prize_stamped += 1
+            changed = True
+        elif stamped is False:
+            prize_unmatched += 1
         for i, line in enumerate(lines):
             if "| Rating:" not in line:
                 continue
@@ -332,7 +349,38 @@ def apply_to_meeting(folder: Path, day: str, ra_venue_hint: str,
             touched.append(card.name)
     return {"ok": True, "ra_venue": match["venue"], "ra_key": match["key"],
             "filled": filled, "no_official_rating": blank, "already_had": already,
+            "prize_stamped": prize_stamped, "prize_unmatched": prize_unmatched,
             "racecards_touched": len(touched)}
+
+
+def stamp_race_prize(lines: list, races: dict, norm) -> "bool | None":
+    """喺 Racecard 標題加今場總獎金：`RACE 3 — 1100m | Cap D'Antibes Stakes | $55,000`。
+
+    `build_au_logic._extract_race_meta` 本來就識喺標題讀 `$…`（Racenet 年代有），
+    Sportsbet 嘅標題冇，所以 `race_analysis.prize` 自 2026-08 起 1,242 場得 1 場有值。
+
+    ⚠️ 唔靠場次號對：用馬名重疊揀 RA 場次，至少一半（同埋 ≥2 匹）對得上先寫，
+    寧願唔寫都唔好寫錯場。→ True 寫咗；False 有獎金但對唔上；None 唔使做。
+    """
+    if not lines or "$" in lines[0]:
+        return None
+    card = {norm(m.group("horse")) for line in lines
+            if (m := re.match(r"\s*\d+\.\s*(?P<horse>[^(]+)", line))}
+    if not card:
+        return None
+    best, overlap = None, 0
+    for info in races.values():
+        if not info.get("prize"):
+            continue
+        hit = len(card & {norm(r["horse"]) for r in info["runners"]})
+        if hit > overlap:
+            best, overlap = info, hit
+    if best is None:
+        return None
+    if overlap < max(2, len(card) / 2):
+        return False
+    lines[0] = f"{lines[0]} | ${best['prize']:,}"
+    return True
 
 
 def main() -> int:

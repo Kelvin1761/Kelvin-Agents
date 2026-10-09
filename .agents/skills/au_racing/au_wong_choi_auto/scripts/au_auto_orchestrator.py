@@ -198,7 +198,22 @@ def _prepare_logic_data(
     if facts_path and facts_path.exists():
         logic_data = enrich_logic_from_facts(logic_data, facts_path)
     audit = apply_going_refresh(logic_data, going_override) if going_override else None
+    _normalise_synthetic_going(logic_data)
     return logic_data, audit
+
+
+def _normalise_synthetic_going(logic_data: dict) -> None:
+    """Logic／報告層同引擎 `_today_going()` 一致：合成跑道唔顯示草地掛牌。"""
+    from au_racing_engine.engine_core import normalise_synthetic_going
+
+    race = logic_data.get("race_analysis")
+    if not isinstance(race, dict):
+        return
+    intel = race.get("meeting_intelligence") if isinstance(race.get("meeting_intelligence"), dict) else {}
+    venue = intel.get("venue") or (race.get("track_profile") or {}).get("venue") or ""
+    for holder in (race, intel):
+        if "going" in holder:
+            holder["going"] = normalise_synthetic_going(venue, holder.get("going"))
 
 
 def _report_going_refresh(logic_path: Path, audit: dict) -> None:

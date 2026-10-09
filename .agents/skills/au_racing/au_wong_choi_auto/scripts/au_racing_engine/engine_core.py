@@ -264,6 +264,20 @@ TRACK_GEOMETRY_ALIASES = {
     "devonport-synthetic": "devonport",
     "murray-bdge": "murray-bridge",
     "pioneer-park": "alice-springs",
+    # 同一條跑道改咗名／Sportsbet 用另一個名（2026-10-09 月度檢討：呢三個令
+    # 32 場冇場地級別）。Kembla Grange 2024 年改名 Illawarra Grange。
+    "illawarra-grange": "kembla-grange",
+    "randwick-kensington": "kensington",
+    "wagga-riverside": "wagga",
+}
+
+# 副跑道（合成跑道／內場跑道）幾何同主場唔同，所以**唔可以**做 alias 借幾何；
+# 但同一個會場，賽事級別（Metropolitan / Provincial / Country）係同一個。
+CLASSIFICATION_PARENT = {
+    "ballarat-synthetic": "ballarat",
+    "pakenham-synthetic": "pakenham",
+    "caulfield-heath": "caulfield",
+    "sandown-lakeside": "sandown",
 }
 
 
@@ -873,7 +887,7 @@ class RacingEngine:
         if name == "class_score":
             has_class_evidence = bool(
                 self._official_entries()
-                or str(self.data.get("class_move") or "").strip()
+                or self._class_move_today()
             )
             return "derived" if has_class_evidence else "fallback"
         if name == "rating_score":
@@ -3478,12 +3492,15 @@ class RacingEngine:
         return data if isinstance(data, dict) else {}
 
     def _today_going(self):
-        return str(
+        going = str(
             self._meeting_intelligence().get("going")
             or self._speed_map_field("going", "track_condition")
             or self.race_context.get("going")
             or ""
         ).strip()
+        venue = (self._meeting_intelligence().get("venue")
+                 or self._track_profile().get("venue") or "")
+        return normalise_synthetic_going(venue, going)
 
     def _wet_state(self):
         going = self._today_going()
@@ -3732,8 +3749,23 @@ class RacingEngine:
             return ""
         return f"共 {trial_count} 次試閘，其中 {trial_top3} 次跑入前三"
 
+    def _class_move_today(self):
+        """上一仗 → **今場** 嘅班次變動；今場或者上一仗冇獎金就係 ""（未知）。
+
+        ⚠️ 唔可以讀 `horse_data["class_move"]`：Facts 賽績表「班次」欄量嘅係
+        「上上仗 → 該仗」，`_extract_latest_class_move` 攞最新一行，即係
+        「上上仗 → 上一仗」—— 錯位一場。2026-09-09→10-08 實測 1,870 匹（15%）
+        因此被寫成「降班」（例：Sir Rupert Clarke Stakes（一級賽）入面上仗跑
+        Memsie 嘅馬），其中冇官方評分嗰 366 匹經 rating proxy 食咗 +6。
+        今場獎金自 2026-08 轉 Sportsbet 之後冇來源（Racecard 冇獎金行），所以
+        live 會一律係未知 —— 寧願講唔知，都唔好講錯。
+        """
+        entries = self._official_entries()
+        latest_prize = entries[0].get("prize") if entries else None
+        return today_class_move(self.race_context.get("prize"), latest_prize)
+
     def _class_move_display(self):
-        class_move = str(self.horse_data.get("class_move") or self.data.get("class_move") or "").strip()
+        class_move = self._class_move_today()
         if class_move == "=":
             return "班次維持不變"
         return class_move or "班次資料未明"
@@ -4054,7 +4086,7 @@ class RacingEngine:
 
     def _class_score(self):
         career_starts = self._career_starts()
-        class_move = str(self.horse_data.get("class_move") or self.data.get("class_move") or "")
+        class_move = self._class_move_today()
         official_entries = self._official_entries()
         race_class = self._race_class_text()
         race_bucket = self._race_class_bucket()
@@ -5035,7 +5067,7 @@ class RacingEngine:
             band = "✅" if "✅" in m.group(0) else ("⚠️" if "⚠️" in m.group(0) else "➖")
             seg = re.sub(r"[✅⚠️]", "", seg).strip()
             add("今仗路程", seg, "", band=band)
-        cm = d.get("class_move")
+        cm = self._class_move_today()
         if present(cm):
             cm_s = str(cm).strip()
             cband = "✅" if "降班" in cm_s else ("➖" if "升班" in cm_s else "➖")
@@ -6296,6 +6328,27 @@ def _parse_prize(cell) -> int | None:
     return value if 1000 <= value <= 20_000_000 else None
 
 
+def today_class_move(race_prize, latest_run_prize) -> str:
+    """上一仗 → 今場 班次變動，同 `inject_fact_anchors.compute_class_change` 同一把尺。
+
+    任何一邊冇獎金 → ""（未知），唔估。
+    """
+    today = _parse_prize(race_prize)
+    last = _parse_prize(latest_run_prize)
+    if not today or not last:
+        return ""
+    ratio = today / last
+    if ratio >= 2.5:
+        return "↑↑大幅升班"
+    if ratio >= 1.3:
+        return "↑升班"
+    if ratio <= 0.4:
+        return "↓↓大幅降班"
+    if ratio <= 0.7:
+        return "↓降班"
+    return "="
+
+
 def exact_race_class_level(label) -> float | None:
     """Ordered strength for exact Sportsbet historical race-class labels.
 
@@ -6421,10 +6474,10 @@ def _count_trial_top3(block: str) -> int:
 
 
 def _extract_latest_class_move(block: str) -> str:
-    for cols in _record_rows(block):
-        if "試閘" in cols[1]:
-            continue
-        return cols[8]
+    """一律回 ""：賽績表「班次」欄係「上上仗 → 該仗」，最新一行即係
+    「上上仗 → 上一仗」，唔係今場嘅升降班（錯位一場）。今場班次變動由引擎
+    `RacingEngine._class_move_today()` 用今場獎金 vs 上一仗獎金計。
+    保留個 key 只係為咗舊 reader 唔炸。"""
     return ""
 
 
@@ -7577,10 +7630,43 @@ def _geometry_fields(venue: str) -> dict:
         "circumference_m": int(geometry.get("circumference_m") or 0),
         "straight_m": int(geometry.get("straight_m") or 0),
         "direction": str(geometry.get("direction") or ""),
-        "classification": str(geometry.get("classification") or ""),
+        "classification": _track_classification(venue),
         "track_note": str(geometry.get("note") or ""),
         "geometry_sources": list(geometry.get("sources") or []),
     }
+
+
+# 全場只有合成跑道嘅場地（名入面冇寫 Synthetic 嘅要明列）。Devonport 係 Tapeta。
+SYNTHETIC_ONLY_VENUES = {"devonport", "devonport-synthetic"}
+
+
+def normalise_synthetic_going(venue, going) -> str:
+    """合成跑道賽事唔准報草地掛牌。
+
+    Sportsbet 對 Devonport／Pakenham Synthetic 寫 `Track: Good 3`，賽果寫 `Synthetic`
+    （2026-09-09→10-08：18 場）。後果係報告「今場掛牌 Good 3」、`_surface_kind` 當草地，
+    跨跑道風險標記貼錯馬。只改 Good/Firm/空白：濕地判斷（soft/heavy）同評分完全唔變。
+    """
+    text = str(going or "").strip()
+    slug = re.sub(r"[^a-z0-9]+", "-", str(venue or "").lower()).strip("-")
+    synthetic = (any(t in slug for t in ("synthetic", "tapeta", "polytrack"))
+                 or slug in SYNTHETIC_ONLY_VENUES)
+    if not synthetic or _surface_kind(text) == "synthetic":
+        return text
+    if text and not re.match(r"(?i)(good|firm)\b", text):
+        return text
+    return "Synthetic"
+
+
+def _track_classification(venue: str) -> str:
+    """場地級別。唔要求有周長（Caulfield Heath 冇幾何但級別確定），副跑道承繼主場。"""
+    _load_track_geometry(venue)  # 確保 cache 已載入
+    key = _track_geometry_key(venue)
+    for candidate in (key, CLASSIFICATION_PARENT.get(key)):
+        row = TRACK_GEOMETRY_CACHE.get(candidate or "") or {}
+        if row.get("classification"):
+            return str(row["classification"])
+    return ""
 
 
 def _track_venue_section(text: str, venue: str) -> str:
