@@ -771,7 +771,7 @@ HKJC_MATRIX_BULLET_RE = re.compile(
     r'^\s*-\s*(.+?)\s*(\[[^\]]+\])?\s*[:：]\s*([\d.]+)\s*分\s*[×x]\s*([\d.]+)%\s*=\s*([\d.]+)\s*(?:→\s*(\S+))?\s*$'
 )
 HKJC_MATRIX_ROW_RE = re.compile(
-    r'^\s*\|\s*([^|]+?)\s*\|\s*([\d.]+)\s*\|\s*([\d.]+)%\s*\|\s*([\d.]+)\s*\|\s*(\S+)?\s*\|\s*$'
+    r'^\s*\|\s*([^|]+?)\s*\|\s*(?:([\d.]+)\s*\|\s*)?([\d.]+)\s*\|\s*([\d.]+)%\s*\|\s*([\d.]+)\s*\|\s*(\S+)?\s*\|\s*$'
 )
 
 
@@ -779,7 +779,9 @@ def _matrix_detail_from_line(line):
     text = str(line)
     row = HKJC_MATRIX_ROW_RE.match(text)
     if row:
-        name, score, weight, contribution, symbol = row.groups()
+        # Six-column reports print display score BEFORE raw score. The raw
+        # score is the one multiplied by the ranking weight, as in the sidecar.
+        name, _display_score, score, weight, contribution, symbol = row.groups()
         tier = None
     else:
         bullet = HKJC_MATRIX_BULLET_RE.match(text)
@@ -1153,6 +1155,13 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
     matrix_details = _load_matrix_details(path) if is_auto else {}
     for horse in horses:
         details = matrix_details.get(horse.horse_number)
+        if not details and is_auto:
+            # Extraction can replace Logic before scoring finishes while the
+            # prior report still contains its own complete ranking table.
+            # Read that report's values; never substitute live engine weights.
+            details = [d for d in (
+                _matrix_detail_from_line(line) for line in horse.raw_text.splitlines()
+            ) if d]
         if details:
             horse.dimension_details = details
     if is_auto:

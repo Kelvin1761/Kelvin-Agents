@@ -320,6 +320,8 @@ def record_settlement_for_event(
     settled_at: datetime | None = None,
     settlement_state: SettlementState = SettlementState.SETTLED,
     required: bool | None = None,
+    expected_decision_id: str | None = None,
+    expected_artifact_hashes: Mapping[str, str] | None = None,
 ) -> dict[str, Any]:
     """Append an aggregate event settlement linked to its latest decision."""
     store = EvidenceStore(evidence_root)
@@ -330,6 +332,8 @@ def record_settlement_for_event(
         in {"1", "true", "yes", "on"}
     )
     decision_id = _latest_decision_for_event(store, domain, event_id)
+    if expected_decision_id is not None and decision_id != expected_decision_id:
+        raise RuntimeError("settlement decision changed since source capture")
     if decision_id is None:
         if must_write:
             raise RuntimeError(f"no decision evidence for {domain.value}:{event_id}")
@@ -342,12 +346,22 @@ def record_settlement_for_event(
     for path in selected_artifacts:
         if not path.is_file():
             raise FileNotFoundError(f"settlement artifact missing: {path}")
+    artifact_hashes = {str(path): _sha256(path) for path in selected_artifacts}
+    if expected_artifact_hashes is not None:
+        if (len(selected_artifacts) != len(artifact_hashes)
+                or set(expected_artifact_hashes) != set(artifact_hashes)
+                or any(not isinstance(value, str) or len(value) != 64
+                       or any(char not in "0123456789abcdef" for char in value)
+                       for value in expected_artifact_hashes.values())):
+            raise ValueError("settlement artifact hash guard scope differs")
+        if dict(expected_artifact_hashes) != artifact_hashes:
+            raise RuntimeError("settlement artifact changed since source capture")
     stable = {
         "decision_id": decision_id,
         "event_id": event_id,
         "summary": dict(summary),
         "artifacts": [
-            {"path": str(path), "sha256": _sha256(path)}
+            {"path": str(path), "sha256": artifact_hashes[str(path)]}
             for path in selected_artifacts
         ],
     }
@@ -371,7 +385,7 @@ def record_settlement_for_event(
     refs = tuple(
         ArtifactRef(
             path=str(path),
-            sha256=_sha256(path),
+            sha256=artifact_hashes[str(path)],
             captured_at=clock.isoformat(),
             source=f"{domain.value}_settlement",
         )
