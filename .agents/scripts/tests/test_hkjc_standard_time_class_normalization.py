@@ -31,9 +31,9 @@ def test_english_and_group_labels_are_normalized() -> None:
 
 def test_awt_same_venue_distance_uses_surface_normalization() -> None:
     races = [
-        {"finish": 1, "distance": 1650, "venue": "沙田 全天候跑道", "date_dt": None},
-        {"finish": 3, "distance": 1650, "venue": "沙田泥地", "date_dt": None},
-        {"finish": 8, "distance": 1650, "venue": "沙田草地", "date_dt": None},
+        {"finish": 1, "distance": 1650, "venue": "沙田 全天候跑道", "date": "01/09/2026"},
+        {"finish": 3, "distance": 1650, "venue": "沙田泥地", "date": "01/08/2026"},
+        {"finish": 8, "distance": 1650, "venue": "沙田草地", "date": "01/07/2026"},
     ]
 
     stats = facts.compute_stats(races, today_venue="沙田AWT", today_dist=1650,

@@ -71,8 +71,12 @@ def _profile_entry_datetime(entry: dict) -> Optional[datetime]:
 
 def filter_profile_as_of(profile: dict, race_date: str) -> dict:
     """Return a copy containing only information available before race_date."""
-    if not profile or not race_date:
+    if not profile:
         return profile
+    if not race_date:
+        # An unfiltered profile carries every later run, including the race
+        # being predicted. Refuse rather than leak it into a replay.
+        raise ValueError('filter_profile_as_of needs race_date (YYYY-MM-DD)')
     try:
         cutoff = datetime.strptime(race_date, '%Y-%m-%d')
     except ValueError as exc:
@@ -800,6 +804,123 @@ def parse_pdf_overseas_races(pdf_path: Path, brand_no: str, horse_name: str) -> 
 
 
 
+def profile_ids_by_number(horses: list, override: str = '') -> dict:
+    """Never compact missing IDs: the key is the declared horse number.
+
+    ``--horse-ids`` takes ``num:ID`` pairs. A bare positional list is only
+    accepted when it has exactly one slot per declared runner, mapped in
+    horse-number order; with a scratching, "the 5th ID" is not horse 5.
+    """
+    if not override:
+        return {h['num']: h['brand_no'] for h in horses if h.get('brand_no')}
+    values = [v.strip() for v in override.split(',')]
+    if all(':' in v for v in values if v):
+        mapping = {}
+        for value in filter(None, values):
+            num, hid = value.split(':', 1)
+            mapping[int(num)] = hid.strip()
+    else:
+        numbers = sorted(h['num'] for h in horses)
+        if len(values) != len(numbers):
+            raise ValueError(
+                f'--horse-ids has {len(values)} positional IDs for {len(numbers)} declared runners; '
+                'use num:ID pairs')
+        mapping = dict(zip(numbers, values))
+    declared = {h['num']: h for h in horses}
+    for num, hid in mapping.items():
+        brand = (declared.get(num) or {}).get('brand_no', '')
+        if brand and hid not in ('', '-') and brand.rsplit('_', 1)[-1] != hid.rsplit('_', 1)[-1]:
+            raise ValueError(f'--horse-ids gives {hid} for horse {num}, formguide says {brand}')
+    return {num: hid for num, hid in mapping.items() if hid not in ('', '-')}
+
+
+def profile_entries_as_races(entries: list) -> list:
+    """Profile-only evidence stays explicitly sparse; no invented sectionals."""
+    rows = []
+    for entry in entries:
+        dt = _profile_entry_datetime(entry)
+        if not dt or int(entry.get('placing') or 0) <= 0:
+            continue
+        surface = normalize_venue_surface(entry.get('venue_track', ''))
+        rows.append({
+            'date': dt.strftime('%d/%m/%Y'), 'date_dt': dt,
+            'venue': '沙田' if surface == '沙田AWT' else surface,
+            'venue_track': entry.get('venue_track', ''),
+            'distance': entry.get('distance', 0), 'finish': entry['placing'],
+            'positions': entry.get('running_positions', []),
+            'barrier': entry.get('barrier', 0), 'jockey': entry.get('jockey', ''),
+            'weight': entry.get('weight_carried', 0),
+            'body_weight': entry.get('declared_weight', 0),
+            'sectionals': {}, 'energy': 0, 'wide_info': {}, 'comment': '',
+            'source': 'profile_only',
+        })
+    return sorted(rows, key=lambda r: r['date_dt'], reverse=True)
+
+
+def _reconcile_racecard(filepath: str, horses: list) -> tuple:
+    card = Path(str(filepath).replace('賽績.md', '排位表.md').replace('Formguide.txt', '排位表.md'))
+    if card == Path(filepath) or not card.exists():
+        return horses, []
+    text = card.read_text(encoding='utf-8')
+    blocks = list(re.finditer(r'^馬號:[ \t]*(\d+)[ \t]*$', text, re.MULTILINE))
+    if not blocks:
+        raise ValueError(f'Cannot identify runners in racecard: {card}')
+    form_by_number = {h['num']: h for h in horses}
+    if len(form_by_number) != len(horses):
+        raise ValueError('Duplicate horse number in formguide')
+    runners, changes, seen = [], [], set()
+    for i, match in enumerate(blocks):
+        number = int(match.group(1))
+        if number in seen:
+            raise ValueError('Duplicate horse number in racecard')
+        seen.add(number)
+        block = text[match.end():blocks[i + 1].start() if i + 1 < len(blocks) else len(text)]
+        def field(label):
+            found = re.search(r'^' + re.escape(label) + r':[ \t]*(.*)$', block, re.MULTILINE)
+            return found.group(1).strip() if found else ''
+        name = field('馬名')
+        if not name:
+            raise ValueError(f'Missing racecard name: {number}')
+        if '退出' in name:
+            continue
+        old = form_by_number.get(number)
+        card_id = field('HKJC馬匹ID') or field('烙號')
+        if old and old['name'] == name and old.get('brand_no') and card_id:
+            if old['brand_no'].rsplit('_', 1)[-1] != card_id.rsplit('_', 1)[-1]:
+                raise ValueError(f'Conflicting identity for horse {number}: {name}')
+        if old and old['name'] == name:
+            runner = dict(old)
+        else:
+            runner = {'num': number, 'name': name, 'races': [], 'pdf_overseas_races': []}
+            changes.append({'horse_num': number, 'racecard_name': name,
+                            'formguide_name': old['name'] if old else ''})
+        runner['brand_no'] = field('HKJC馬匹ID') or field('烙號') or runner.get('brand_no', '')
+        for label, key in [('檔位', 'barrier'), ('負磅', 'weight'), ('排位體重', 'body_weight')]:
+            value = field(label)
+            if value.isdigit():
+                runner[key] = int(value)
+            else:
+                runner.setdefault(key, 0)
+        for label, key in [('騎師', 'jockey'), ('練馬師', 'trainer'), ('配備', 'today_gear')]:
+            runner[key] = field(label) or runner.get(key, '')
+        runners.append(runner)
+    return runners, changes
+
+
+def mark_unverified_reconciled_runners(data: dict, profiles: dict) -> list:
+    """A replacement with missing history is not evidence of a debut.
+
+    Fail closed per runner, not per race: one profile fetch failing used to
+    abort the whole race's Facts, which the publish gate then blocked.
+    """
+    missing = [row['horse_num'] for row in data.get('source_reconciliations', [])
+               if row['horse_num'] not in profiles]
+    for horse in data['horses']:
+        if horse['num'] in missing:
+            horse['history_unverified'] = True
+    return missing
+
+
 def parse_hkjc_formguide(filepath: str) -> dict:
     """Parse the HKJC extracted formguide text file.
     
@@ -1032,7 +1153,9 @@ def parse_hkjc_formguide(filepath: str) -> dict:
             'pdf_overseas_races': pdf_overseas_races,
         })
 
-    return {'race_info': race_info, 'horses': horses}
+    horses, reconciliations = _reconcile_racecard(filepath, horses)
+    return {'race_info': race_info, 'horses': horses,
+            'source_reconciliations': reconciliations}
 
 
 def normalize_venue_surface(value: str) -> str:
@@ -1374,6 +1497,49 @@ def format_surface_performance_shadow(payload: dict) -> str:
     )
 
 
+# HKJC profile placing codes that mean the horse never jumped versus ones
+# where it started but has no finishing position.
+_WITHDRAWN_CODES = {'WV', 'WV-A', 'WX', 'WX-A', 'WXNR', 'TNP', 'VOID'}
+_STARTED_NO_FINISH_CODES = {'PU', 'UR', 'FE', 'DNF', 'DISQ', 'DQ', 'BD', 'SU', 'LR'}
+
+
+def classify_finish_status(finish, status_raw: str = '') -> str:
+    """finished | started_no_finish | withdrawn | unknown.
+
+    Old profile caches never stored the raw placing, so a 0 there stays
+    ``unknown``: neither a finish nor a start, and reported as an exclusion.
+    """
+    try:
+        if int(finish or 0) > 0:
+            return 'finished'
+    except (TypeError, ValueError):
+        pass
+    code = str(status_raw or '').strip().upper()
+    if code in _WITHDRAWN_CODES:
+        return 'withdrawn'
+    if code in _STARTED_NO_FINISH_CODES:
+        return 'started_no_finish'
+    return 'unknown'
+
+
+def _require_race_date(race_date: str) -> datetime:
+    if not race_date:
+        raise ValueError('race_date (YYYY-MM-DD) is required; history cutoffs depend on it')
+    try:
+        return datetime.strptime(race_date, '%Y-%m-%d')
+    except ValueError as exc:
+        raise ValueError(f'Invalid race_date {race_date!r}; expected YYYY-MM-DD') from exc
+
+
+def _profile_for_race(race: dict, entries: list) -> dict:
+    """Join within one horse by date, never by row offset; ambiguous dates fail closed."""
+    dt = race.get('date_dt') or parse_date(race.get('date', ''))
+    if not dt:
+        return {}
+    matches = [e for e in entries if _profile_entry_datetime(e) == dt]
+    return matches[0] if len(matches) == 1 else {}
+
+
 def _merge_profile_history_for_stats(races: list, profile_entries: Optional[list] = None) -> list:
     """Return complete, de-duplicated local history in newest-first order.
 
@@ -1427,6 +1593,7 @@ def _merge_profile_history_for_stats(races: list, profile_entries: Optional[list
             'date': entry.get('date') or entry.get('race_date_full') or '',
             'date_dt': dt,
             'finish': finish,
+            'finish_status_raw': entry.get('placing_raw', ''),
             'distance': distance,
             'venue': entry.get('venue_track') or entry.get('racecourse') or '',
             'venue_track': entry.get('venue_track') or '',
@@ -1472,7 +1639,29 @@ def compute_stats(races: list, today_venue: str = '', today_dist: int = 0,
     if not races:
         return stats
     
-    # Recent 6 finishing positions
+    # Every cutoff below (pre-race rows, 休後復出, 季內) hangs off the meeting
+    # date. A now() fallback silently let later runs into every replay.
+    anchor = _require_race_date(race_date)
+
+    # Unknown/withdrawn placings are not finishes. Keep the exclusions visible;
+    # do not invent a last place for a zero whose original status was lost.
+    pre_race = [r for r in races if r.get('date_dt') and r['date_dt'] < anchor]
+    stats['history_exclusions'] = [
+        {'date': r.get('date'), 'finish': r.get('finish'),
+         'status_raw': r.get('finish_status_raw', ''),
+         'reason': 'undated_or_not_prerace' if not r.get('date_dt') or r['date_dt'] >= anchor
+         else f"{classify_finish_status(r.get('finish'), r.get('finish_status_raw', ''))}_not_a_finish"}
+        for r in races
+        if r not in pre_race or int(r.get('finish') or 0) <= 0
+    ]
+    # A DNF/pulled-up run is still a start: it ends a layoff even though it
+    # has no finishing position. Withdrawals and unknown statuses do not.
+    starts = [r for r in pre_race
+              if classify_finish_status(r.get('finish'), r.get('finish_status_raw', ''))
+              in ('finished', 'started_no_finish')]
+    races = [r for r in pre_race if int(r.get('finish') or 0) > 0]
+    if not races and not starts:
+        return stats
     stats['recent_6'] = [r['finish'] for r in races[:6]]
     
     # Days since last race —— (今仗日期 − 上仗日期)。
@@ -1483,15 +1672,7 @@ def compute_stats(races: list, today_venue: str = '', today_dist: int = 0,
     # 中間中位只差 +3 日，但季初／休賽後差 +41 日（2026-09-06 嘉應高昇 20 vs
     # 排位表 133），觸發引擎 `days_gt_75_pen` 嘅馬由 2 匹變 28 匹（117 匹）。
     stats['days_since_last'] = 0
-    last_dt = races[0].get('date_dt')
-    anchor = None
-    if race_date:
-        try:
-            anchor = datetime.strptime(race_date, '%Y-%m-%d')
-        except ValueError:
-            anchor = None
-    if anchor is None:
-        anchor = datetime.now()
+    last_dt = (starts or races)[0].get('date_dt')
     if last_dt:
         delta = (anchor - last_dt).days
         if delta >= 0:
@@ -2112,6 +2293,8 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     races = horse['races']
     p_entries = profile_data.get('entries', []) if profile_data else []
     full_history = _merge_profile_history_for_stats(races, p_entries)
+    unmatched_dates = [r.get('date', '') for r in races
+                       if p_entries and not _profile_for_race(r, p_entries)]
     
     # Prefer SSR trainer, but keep the formguide trainer as a fallback for
     # debutants or runners without profile enrichment.
@@ -2142,6 +2325,12 @@ def generate_horse_block(horse: dict, today_venue: str = '',
                          f"入Q率: {draw_detail.get('quinella_pct', '?')}% | "
                          f"上名率: {draw_detail.get('place_pct', '?')}%)")
     
+    if horse.get('history_unverified'):
+        lines.append("- **生涯標記:** `HISTORY_UNVERIFIED` (香港出賽 未核實)")
+        lines.append("- **歷史資料警告:** 排位表換咗馬，但未能攞到核實過嘅 profile；"
+                     "歷史缺失唔代表初出馬。")
+        return '\n'.join(lines)
+
     overseas_races = horse.get('pdf_overseas_races') or []
     if not races and not p_entries and not overseas_races:
         lines.append("  (無往績記錄)")
@@ -2162,7 +2351,11 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     vd_str = f"({stats['same_venue_dist'][0]}-{stats['same_venue_dist'][1]}-{stats['same_venue_dist'][2]}-{stats['same_venue_dist'][3]})"
     
     lines.append(f"📌 **賽績總結:**")
+    if unmatched_dates:
+        lines.append(f"- **歷史對齊警告:** {unmatched_dates} 無唯一同日 profile；不按行號借用其他賽事資料。")
     lines.append(f"- **近六場:** {recent_str} (左=剛戰 → 右=最舊)")
+    if stats.get('history_exclusions'):
+        lines.append(f"- **歷史資料警告:** {stats['history_exclusions']}；非有效名次不當作入位，近績及休賽日數只計有效完賽紀錄。")
     lines.append(f"- **休後復出:** {stats['days_since_last']} 日")
     # Career tag classification (V2.2)
     # Only horses with zero formal race records use debut templates.
@@ -2191,7 +2384,11 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     
     # === 完整賽績檔案 Markdown Table ===
     display_races = min(len(races), MAX_DISPLAY_RACES)
-    total_races = max(len(races), len(p_entries))
+    paired_history = [(r, _profile_for_race(r, p_entries)) for r in races]
+    rich_dates = {r.get('date_dt') or parse_date(r.get('date', '')) for r in races}
+    paired_history.extend(({}, p) for p in p_entries
+                          if _profile_entry_datetime(p) not in rich_dates)
+    total_races = len(paired_history)
     
     lines.append(f"")
     lines.append(f"📋 **完整賽績檔案 (近 {display_races} 場,嚴禁修改數值):**")
@@ -2201,7 +2398,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     
     for i in range(display_races):
         r = races[i] if i < len(races) else {}
-        p = p_entries[i] if i < len(p_entries) else {}
+        p = _profile_for_race(r, p_entries)
         date = r.get('date', p.get('date', ''))
         venue = r.get('venue', p.get('venue_track', ''))[:4]
         distance = r.get('distance', p.get('distance', 0))
@@ -2250,8 +2447,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
         lines.append(f"| # | 日期 | 場地 | 距離 | 班次 | 檔位 | 騎師 | 負磅 | 名次 | 頭馬距離 | 能量 | L400 | 走位(XW) | 消耗 | 沿途位 | 完成時間 | 標準差 | 體重 | 配備 | 賽事短評 | 寬恕認定 |")
         lines.append(f"|---|------|------|------|------|------|------|------|------|--------|------|------|----------|------|--------|----------|--------|------|------|----------|---------|")
         for i in range(display_races, total_races):
-            r = races[i] if i < len(races) else {}
-            p = p_entries[i] if i < len(p_entries) else {}
+            r, p = paired_history[i]
             date = r.get('date', p.get('date', ''))
             venue = r.get('venue', p.get('venue_track', ''))[:4]
             distance = r.get('distance', p.get('distance', 0))
@@ -2345,7 +2541,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
     pace_labels = []     # V5.1: Per-race pace label
     for i in range(min(len(races), 6)):
         r = races[i]
-        p = p_entries[i] if i < len(p_entries) else {}
+        p = _profile_for_race(r, p_entries)
         ftime = p.get('finish_time_raw', '-')
         if ftime and ftime != '-':
             ftime_sec = parse_time_to_seconds(ftime)
@@ -2553,8 +2749,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
             r_venue = r.get('venue', '')
             r_dist = r.get('distance', 0)
             r_class = ''
-            if p_entries and i < len(p_entries):
-                r_class = p_entries[i].get('class_grade', '')
+            r_class = _profile_for_race(r, p_entries).get('class_grade', '')
             # Get reference sections
             ref = get_reference_sections(r_venue, r_dist, r_class)
             ref_sects = ref.get('sections', [])
@@ -2815,6 +3010,15 @@ def main():
         else:
             i += 1
     
+    if not race_date:
+        found = re.search(r'(\d{4}-\d{2}-\d{2})_', str(Path(fg_path).resolve()))
+        race_date = found.group(1) if found else ''
+    if not race_date:
+        print("❌ 需要 --race-date YYYY-MM-DD（或者 YYYY-MM-DD_ 開頭嘅賽日資料夾）："
+              "冇日期就冇辦法剔走賽後歷史", file=sys.stderr)
+        sys.exit(2)
+    _require_race_date(race_date)
+
     # Parse formguide
     data = parse_hkjc_formguide(fg_path)
     
@@ -2833,10 +3037,7 @@ def main():
     race_class = class_override or ctx['class']
     
     # Parse horse IDs for scraper enrichment
-    horse_id_list = [h.strip() for h in horse_ids_str.split(',') if h.strip()] if horse_ids_str else []
-    if not horse_id_list:
-        # Re-enabled automatic extraction
-        horse_id_list = [h['brand_no'] for h in data['horses'] if h.get('brand_no')]
+    horse_id_map = profile_ids_by_number(data['horses'], horse_ids_str)
     
     print(f"📌 V2 HKJC 完整賽績檔案 — {len(data['horses'])} 匹馬", file=sys.stderr)
     print(
@@ -2844,8 +3045,8 @@ def main():
         f"距離: {today_dist}m | 班次: {race_class}",
         file=sys.stderr,
     )
-    if horse_id_list:
-        print(f"   馬匹頁面: {len(horse_id_list)} 匹 (SSR enrichment)", file=sys.stderr)
+    if horse_id_map:
+        print(f"   馬匹頁面: {len(horse_id_map)} 匹 (SSR enrichment)", file=sys.stderr)
     elif HAS_SCRAPER:
         print(f"   ⚠️ 未提供 --horse-ids，馬匹頁面數據不可用", file=sys.stderr)
     if not HAS_SCRAPER:
@@ -2862,18 +3063,24 @@ def main():
     # Scrape horse profiles if IDs provided
     profiles = {}  # {horse_num: profile_data}
     form_lines_map = {}  # {horse_num: form_lines_data}
-    if HAS_SCRAPER and horse_id_list:
+    if HAS_SCRAPER and horse_id_map:
         import time
-        for idx, hid in enumerate(horse_id_list):
+        declared = {h['num']: h for h in data['horses']}
+        for idx, (horse_num, hid) in enumerate(horse_id_map.items()):
             if not hid or hid == '-':
                 continue
-            horse_num = idx + 1  # horse_ids are in order of horse number
+            if horse_num not in declared:
+                continue
             print(f"   Scraping {hid}...", file=sys.stderr)
             try:
                 profile = scrape_horse_profile(hid)
                 if not profile.get('error'):
+                    if profile.get('name') != declared[horse_num]['name']:
+                        raise ValueError(f'Profile identity mismatch for horse {horse_num}: {hid}')
                     profile = filter_profile_as_of(profile, race_date)
                     profiles[horse_num] = profile
+                    if not declared[horse_num]['races']:
+                        declared[horse_num]['races'] = profile_entries_as_races(profile['entries'])
                     print(f"     ✅ {profile['name']}: {len(profile['entries'])} entries", file=sys.stderr)
                     
                     # Compute form lines if enabled
@@ -2890,7 +3097,7 @@ def main():
                     print(f"     ❌ {hid}: {profile['error']}", file=sys.stderr)
             except Exception as e:
                 print(f"     ❌ {hid}: {e}", file=sys.stderr)
-            if idx < len(horse_id_list) - 1:
+            if idx < len(horse_id_map) - 1:
                 time.sleep(0.5)  # Rate limiting
     
     # Generate output
@@ -2930,6 +3137,10 @@ def main():
     output_lines.append(f"{'=' * 70}")
     output_lines.append(f"")
     
+    unverified = mark_unverified_reconciled_runners(data, profiles)
+    if unverified:
+        print(f"   ⚠️ 換馬後未能核實歷史: 馬號 {unverified}（標記 HISTORY_UNVERIFIED，唔當初出馬）",
+              file=sys.stderr)
     for horse in data['horses']:
         profile = profiles.get(horse['num'])
         fl_data = form_lines_map.get(horse['num'])

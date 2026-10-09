@@ -87,6 +87,19 @@ def test_health_blocks_bad_rank(tmp_path: Path) -> None:
     assert any(issue["code"] == "RANK_NOT_PERMUTATION" for issue in report["issues"])
 
 
+def test_unverified_history_warns_without_blocking_deploy(tmp_path: Path) -> None:
+    meeting = _meeting(tmp_path)
+    logic_path = meeting / "Race_1_Logic.json"
+    logic = json.loads(logic_path.read_text(encoding="utf-8"))
+    logic["horses"]["2"]["career_tag"] = "HISTORY_UNVERIFIED"
+    logic_path.write_text(json.dumps(logic), encoding="utf-8")
+    report = scan_meeting("au", meeting)
+    assert report["status"] == "warning"
+    assert report["deploy_allowed"] is True
+    assert any(issue["code"] == "HISTORY_UNVERIFIED" and issue["horse"] == "2"
+               for issue in report["issues"])
+
+
 def test_au_health_ignores_scratched_racecard_rows(tmp_path: Path) -> None:
     meeting = _meeting(tmp_path)
     racecard = meeting / "Test Race 1 Racecard.md"

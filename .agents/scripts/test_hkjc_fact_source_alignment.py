@@ -11,6 +11,56 @@ inject = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(inject)
 
 
+def test_profile_join_uses_date_not_position():
+    entries = [
+        {'date': '20/05/26', 'placing': 0, 'finish_time_raw': '--'},
+        {'date': '15/04/26', 'placing': 6, 'finish_time_raw': '1.40.00'},
+        {'date': '25/03/26', 'placing': 7, 'finish_time_raw': '1.41.00'},
+    ]
+    assert inject._profile_for_race({'date': '15/04/2026'}, entries) == entries[1]
+    assert inject._profile_for_race({'date': '01/01/2026'}, entries) == {}
+    assert inject._profile_for_race({'date': '15/04/2026'}, entries + [entries[1]]) == {}
+
+
+def test_stats_exclude_unknown_zero_and_future_with_audit():
+    entries = [
+        {'date': '08/10/26', 'placing': 1, 'distance': 1650},
+        {'date': '07/10/26', 'placing': 1, 'distance': 1650},
+        {'date': '20/05/26', 'placing': 0, 'distance': 1650},
+        {'date': '15/04/26', 'placing': 6, 'distance': 1650},
+    ]
+    stats = inject.compute_stats([], '跑馬地', 1650, '2026-10-07', profile_entries=entries)
+    assert stats['recent_6'] == [6]
+    assert stats['days_since_last'] == 175
+    assert len(stats['history_exclusions']) == 3
+
+
+def test_non_finish_status_is_retained_not_invented_as_last_place():
+    entries = [
+        {'date': '20/05/26', 'placing': 0, 'placing_raw': 'DNF', 'distance': 1650},
+        {'date': '15/04/26', 'placing': 6, 'distance': 1650},
+    ]
+    stats = inject.compute_stats([], '跑馬地', 1650, '2026-10-07', profile_entries=entries)
+    assert stats['recent_6'] == [6]
+    assert stats['history_exclusions'][0]['status_raw'] == 'DNF'
+
+
+def test_rendered_history_does_not_shift_after_non_finish():
+    horse = {'num': 2, 'name': 'test', 'jockey': 'j', 'weight': 130,
+             'barrier': 6, 'races': [{'date': '15/04/2026', 'distance': 1650,
+                                     'venue': '跑馬地', 'finish': 6,
+                                     'sectionals': {}, 'energy': 0}]}
+    profile = {'entries': [
+        {'date': '20/05/26', 'placing': 0, 'distance': 1650},
+        {'date': '15/04/26', 'placing': 6, 'distance': 1650,
+         'running_positions': [3, 3, 4, 6], 'margin_raw': '4-1/2'},
+    ]}
+    block = inject.generate_horse_block(horse, '跑馬地', 1650,
+                                        profile_data=profile, race_date='2026-10-07')
+    row = next(line for line in block.splitlines() if line.startswith('| 1 |'))
+    assert '15/04/2026' in row and '3-3-4-6' in row and '4-1/2' in row
+
+
 def _runner(number: int, name: str, horse_id: str) -> str:
     return (
         f"馬號: {number}\n"
@@ -99,10 +149,34 @@ def test_missing_profile_id_does_not_shift_later_horses() -> None:
 
 
 def test_cli_profile_override_preserves_empty_position() -> None:
-    assert inject.profile_ids_by_number([], "HK_2024_K111,,HK_2024_K333") == {
+    # Explicit num:ID pairs are the unambiguous form.
+    assert inject.profile_ids_by_number([], "1:HK_2024_K111,3:HK_2024_K333") == {
         1: "HK_2024_K111",
         3: "HK_2024_K333",
     }
+    # A positional list maps onto the declared numbers, in order; an empty
+    # slot stays empty instead of shifting the next ID forward.
+    declared = [{"num": 1, "name": "a"}, {"num": 2, "name": "b"}, {"num": 4, "name": "c"}]
+    assert inject.profile_ids_by_number(declared, "HK_2024_K111,,HK_2024_K444") == {
+        1: "HK_2024_K111",
+        4: "HK_2024_K444",
+    }
+
+
+def test_cli_positional_ids_that_do_not_line_up_are_rejected() -> None:
+    import pytest
+    declared = [{"num": 1, "name": "a"}, {"num": 2, "name": "b"}, {"num": 4, "name": "c"}]
+    # Old convention: slot 3 left blank for scratched horse 3 -> four slots,
+    # three runners. Ambiguous, so refuse instead of guessing.
+    with pytest.raises(ValueError, match="positional IDs"):
+        inject.profile_ids_by_number(declared, "K111,K222,,K444")
+
+
+def test_cli_ids_conflicting_with_formguide_brand_are_rejected() -> None:
+    import pytest
+    declared = [{"num": 1, "name": "a", "brand_no": "K111"}]
+    with pytest.raises(ValueError, match="formguide says"):
+        inject.profile_ids_by_number(declared, "1:HK_2024_K999")
 
 
 def test_profile_history_adapter_prevents_false_debut() -> None:
@@ -125,3 +199,50 @@ def test_profile_history_adapter_prevents_false_debut() -> None:
     stats = inject.compute_stats(races, "沙田", 1200, "2026-10-04")
     assert stats["recent_6"] == [6]
     assert stats["days_since_last"] == 186
+
+
+def test_status_classification() -> None:
+    assert inject.classify_finish_status(3) == "finished"
+    assert inject.classify_finish_status(0, "PU") == "started_no_finish"
+    assert inject.classify_finish_status(0, "wv-a") == "withdrawn"
+    assert inject.classify_finish_status(0, "") == "unknown"
+
+
+def test_dnf_ends_a_layoff_but_withdrawal_and_unknown_do_not() -> None:
+    base = {'date': '15/04/26', 'placing': 6, 'distance': 1650}
+    def days(raw):
+        entries = [{'date': '20/05/26', 'placing': 0, 'placing_raw': raw, 'distance': 1650}, base]
+        return inject.compute_stats([], '跑馬地', 1650, '2026-10-07', profile_entries=entries)
+    pulled_up = days('PU')
+    assert pulled_up['days_since_last'] == 140
+    assert pulled_up['recent_6'] == [6]
+    assert pulled_up['history_exclusions'][0]['reason'] == 'started_no_finish_not_a_finish'
+    assert days('WV')['days_since_last'] == 175
+    unknown = days('')
+    assert unknown['days_since_last'] == 175
+    assert unknown['history_exclusions'][0]['reason'] == 'unknown_not_a_finish'
+
+
+def test_missing_race_date_refuses_instead_of_leaking_later_runs() -> None:
+    import pytest
+    entries = [{'date': '15/04/26', 'placing': 6, 'distance': 1650}]
+    with pytest.raises(ValueError, match="race_date"):
+        inject.compute_stats([], '跑馬地', 1650, '', profile_entries=entries)
+    with pytest.raises(ValueError, match="race_date"):
+        inject.filter_profile_as_of({'entries': entries}, '')
+
+
+def test_unverified_replacement_is_flagged_not_rendered_as_debut() -> None:
+    data = {'source_reconciliations': [{'horse_num': 2}],
+            'horses': [{'num': 1, 'name': 'a', 'races': []},
+                       {'num': 2, 'name': 'b', 'races': []}]}
+    assert inject.mark_unverified_reconciled_runners(data, {1: {'entries': []}}) == [2]
+    assert data['horses'][1]['history_unverified'] is True
+    assert 'history_unverified' not in data['horses'][0]
+    assert inject.mark_unverified_reconciled_runners(data | {'horses': [{'num': 2}]},
+                                                     {2: {'entries': []}}) == []
+    horse = {'num': 2, 'name': 'b', 'jockey': 'j', 'weight': 130, 'barrier': 6,
+             'races': [], 'history_unverified': True}
+    block = inject.generate_horse_block(horse, '跑馬地', 1650, race_date='2026-10-07')
+    assert '`HISTORY_UNVERIFIED`' in block
+    assert '無往績記錄' not in block

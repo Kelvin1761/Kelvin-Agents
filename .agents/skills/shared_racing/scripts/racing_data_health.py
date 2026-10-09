@@ -413,6 +413,13 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
                     "horse": number,
                     "message": f"Racecard={source_names[number]} Logic={name}",
                 })
+            if horse.get("career_tag") == "HISTORY_UNVERIFIED":
+                race_issues.append({
+                    "severity": "warning",
+                    "code": "HISTORY_UNVERIFIED",
+                    "horse": number,
+                    "message": f"{name} 換馬後未能核實歷史；評分當歷史未知，唔係初出馬",
+                })
             auto = horse.get("python_auto")
             if not isinstance(auto, dict):
                 race_issues.append({"severity": "error", "code": "MISSING_AUTO", "horse": number, "message": "冇 python_auto"})
