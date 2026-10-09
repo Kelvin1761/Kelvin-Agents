@@ -31,6 +31,7 @@ from hkjc_racing_engine.renderer import (
     write_prepared_race_outputs,
 )
 from hkjc_racing_engine.scoring import (
+    DEBUT_MATRIX_WEIGHTS,
     MATRIX_WEIGHTS,
     RACE_SHAPE_ROBUST_DEVIATION_CAP,
     EARLY_DRAW_DISPLAY_WEIGHT,
@@ -1303,7 +1304,13 @@ class HKJCAutoOrchestrator:
             adjusted_shape = median + max(-cap, min(cap, shape - median))
             matrix_scores = dict(auto.get("matrix_scores") or {})
             matrix_scores["race_shape"] = round(adjusted_shape, 2)
-            raw_delta = MATRIX_WEIGHTS["race_shape"] * (adjusted_shape - shape)
+            # Debutants are scored on DEBUT_MATRIX_WEIGHTS; using the live weight
+            # here inflated their capped score and made the validator refuse the
+            # whole race (SCORE-004, 18 archived races, gap = Δweight × cap).
+            # Same debut rule as validation.py.
+            is_debut = any("debut" in str(code).lower() for code in (auto.get("reason_codes") or []))
+            shape_weight = (DEBUT_MATRIX_WEIGHTS if is_debut else MATRIX_WEIGHTS)["race_shape"]
+            raw_delta = shape_weight * (adjusted_shape - shape)
             ability_raw = round(float(auto.get("ability_score_raw", 60.0)) + raw_delta, 4)
             ability_score = round(to_display_scale(ability_raw), 2)
             applied = abs(adjusted_shape - shape) > 1e-9

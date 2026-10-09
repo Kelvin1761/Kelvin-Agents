@@ -89,3 +89,20 @@ def test_weight_arm_gets_the_mainline_shape_cap(monkeypatch):
     assert capped["matrix_scores"]["race_shape"] < 95.0
     assert arm["matrix_scores"]["race_shape"] == capped["matrix_scores"]["race_shape"]
     assert abs(arm["ability_score_raw"] - capped["ability_score_raw"]) < 1e-3
+
+
+def test_debut_shape_cap_uses_debut_weight(monkeypatch):
+    from hkjc_racing_engine.scoring import DEBUT_MATRIX_WEIGHTS
+    from hkjc_racing_engine.validation import validate_logic_data  # noqa: F401
+    monkeypatch.setattr(orch, "active_race_shape_robustness_profile", lambda: "winsor10")
+    horses = {}
+    for number, shape in enumerate((65.0, 65.0, 65.0, 49.06), start=1):
+        horses[str(number)] = {"python_auto": {
+            "ability_score_raw": 60.0, "ability_score": round(to_display_scale(60.0), 2),
+            "matrix_scores": {**{k: 60.0 for k in MATRIX_WEIGHTS}, "race_shape": shape},
+            "reason_codes": ["debut_class_unknown"] if number == 4 else [],
+            "shadow_profiles": {}}}
+    orch.HKJCAutoOrchestrator._apply_mainline_shape_robustness(horses)
+    debut = horses["4"]["python_auto"]
+    moved = debut["matrix_scores"]["race_shape"] - 49.06
+    assert abs(debut["race_shape_robustness"]["raw_adjustment"] - DEBUT_MATRIX_WEIGHTS["race_shape"] * moved) < 1e-3

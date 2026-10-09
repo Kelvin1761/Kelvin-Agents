@@ -94,3 +94,12 @@ def test_inline_result_header_handles_multi_digit_rail_offset(tmp_path: Path) ->
 def test_dates_are_normalized_before_sorting_or_deduplication() -> None:
     assert rail.normalise_date("2026/05/13") == "2026-05-13"
     assert rail.normalise_date("meeting 2026-09-23 Happy Valley") == "2026-09-23"
+
+
+def test_first_call_rejects_concatenated_positions():
+    assert rail.first_call_position("4 5 5 1", 12) == 4
+    assert rail.first_call_position("332", 14) == 0          # 3-3-2 or 33-2: refuse
+    assert rail.first_call_position("101010093", 14) == 0
+    assert rail.first_call_position("9", 12) == 9             # single short call is fine
+    assert rail.first_call_position("15 14", 14) == 0         # beyond HK max field
+    assert rail.first_call_position("", 12) == 0

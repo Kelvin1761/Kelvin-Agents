@@ -196,6 +196,17 @@ def positive_int(value: Any) -> int:
     return int(match.group()) if match else 0
 
 
+def first_call_position(running_positions: Any, field_size: int = 0) -> int:
+    """First whitespace-separated call. A separator-less string ("332",
+    "101010093" on 2026-05-03) cannot be split unambiguously, and HKJC fields
+    never exceed 14: both → 0 (unknown) instead of a garbage position."""
+    tokens = str(running_positions or "").split()
+    if not tokens or (len(tokens) == 1 and len(tokens[0]) > 2):
+        return 0
+    first = positive_int(tokens[0])
+    return first if 0 < first <= 14 else 0
+
+
 def position_group(position: int) -> str:
     if position <= 0:
         return "unknown"
@@ -236,7 +247,7 @@ def collect(files: Iterable[Path] | None = None):
                 if pos <= 0 or draw <= 0:
                     continue
                 horse_no = str(row.get("horse_no", "")).strip()
-                first_call = positive_int(row.get("running_positions"))
+                first_call = first_call_position(row.get("running_positions"), field_size)
                 key = (str(metadata.get("date") or ""), str(metadata.get("venue") or ""), rno, horse_no)
                 rows[key] = {
                     "Date": metadata.get("date") or "", "RaceNo": rno, "HorseNo": horse_no,

@@ -45,6 +45,9 @@ SKIP_KEYS = {'_validation_nonce', 'python_auto', 'matrix', 'core_logic',
              'interaction_matrix', 'base_rating', 'fine_tune', 'override',
              'final_rating', 'advantages', 'disadvantages', 'underhorse',
              'race_forgiveness', 'evidence_step_0_14'}
+# Fields an archived Logic predates entirely: transfer from the candidate generator
+# even when baseline generates the same value (both arms then carry them).
+ALWAYS_TRANSFER = set(filter(None, os.environ.get('WC_REPLAY_ALWAYS_TRANSFER', '').split(',')))
 DATE_RE = re.compile(r'\b(\d{2})/(\d{2})/(\d{4})\b')
 
 
@@ -169,7 +172,7 @@ def build_candidate_meeting(meeting, out_dir, base):
                 if key == '_data':
                     for field, new in value.items():
                         old = generated[0].get(key, {}).get(field)
-                        if old != new:
+                        if old != new or field in ALWAYS_TRANSFER:
                             changes[f'_data.{field}'] = {'old': old, 'new': new}
                             h.setdefault('_data', {})[field] = new
                 elif generated[0].get(key) != value:

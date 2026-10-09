@@ -128,7 +128,35 @@ Terminal 窗口今日已開過三次（EXP-20261008-07、-03、本實驗），�
   t02 頭 9 場（10-07）係舊算法；rollback_0809／w200／w170 未收過任何前瞻場。
 - **Validator 同排名嘅同分次序唔一致**：`ensure_verdict` 同分用 raw，`VERDICT-002/003` 用 2 位小數顯示分。
   已統一用 raw。
-- **初出馬 `SCORE-004`**：所有被拒馬都係初出馬，差距差唔多固定 0.436 —— 交畀 SCORE-004 跟進任務。
-- **`rail_draw_results.csv` 2026-05-03 FirstCall 壞咗**（沿途位黏埋，例如 101010093）；builder 用
-  `positive_int(running_positions)`。Live 唔讀呢欄；已另開任務，本實驗當缺失處理。
+- **初出馬 `SCORE-004`（已修，live bug）**：race_shape 封頂對初出馬用咗 live 權重
+  （`MATRIX_WEIGHTS["race_shape"]`），但初出馬用 `DEBUT_MATRIX_WEIGHTS`（0.20）計分 →
+  分數多咗 Δ權重 × 封頂幅度，validator 拒絕**成場**。舊語料 18 場就係咁冇咗；封頂 10-07/08
+  先上線，所以 live 未中過，但下一個有初出馬被封頂嘅場次就會冇咗成場。改用 validator 同一條
+  初出馬規則揀權重＋測試。
+- **`rail_draw_results.csv` 2026-05-03 FirstCall 壞咗（已修）**：沿途位黏埋（例如 101010093），
+  builder 用 `positive_int(running_positions)`。改為只取第一個以空格分隔嘅位置；冇分隔又多過兩位
+  ＝分唔清 → 空白；大過 14（香港最大馬匹數）→ 空白。重建後 05-03 嘅 278 行變空白（唔係垃圾值）。
+  Live 排名唔讀呢欄；`hkjc_rail_position_shadow.py` 讀。
 - 模型說明「同程性能修正」嘅數字（+0.43／−0.17）跟權重變咗做 +0.46／−0.18，已更新。
+
+## 8. 最終全語料驗證（修好初出馬之後，351 場，0 場被拒）
+
+Baseline = 同一份 code 但 `EARLY_DRAW_DISPLAY_WEIGHT = 0`（兩邊都有初出馬修正），只差 E3。
+
+| 指標 | Dev Δ | Terminal Δ | Terminal CI |
+|---|---:|---:|---|
+| gold | +0.0068 | +0.0169 | [0.0000, +0.0508] |
+| good_positional | +0.0034 | 0.0000 | [0, 0] |
+| top3_capture_at5 | +0.0103 | 0.0000 | [−0.0169, +0.0169] |
+| ndcg_at5 | +0.0036 | −0.0069 | [−0.0178, +0.0035] |
+| competitive_recall_at5 | +0.0038 | +0.0034 | [0.0000, +0.0102] |
+
+Cohorts：HV Gold +0.81pp；ST Gold +0.88pp／Good +0.44pp；≤10 匹 Gold −3.45pp（29 場入面一場）。
+賽日穩定性：Good 賽日 SD 0.155 → 0.150。判決不變：REJECT（ranking_evidence_too_weak），零 primary 退步。
+
+## 9. 「完全優化」嘅界線（誠實版）
+
+用現有 351 場可以做嘅已經做晒：每個方向都有預先登記嘅判決，最好嘅候選（E3）冇任何 primary
+退步，機制喺獨立歷史證實。冇做到嘅係**證明**改善 —— 語料一場 Good＝0.29pp，E3 嘅效應
+細過 CI 解像度。呢個唔係再試幾個 w 可以解決（嗰樣叫用 holdout 調參），要靠 10-09 之後
+嘅前瞻賽日。所有 arm 已經喺 immutable snapshot 量緊，120 場（約 6 星期）出判決。
