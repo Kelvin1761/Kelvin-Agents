@@ -80,6 +80,26 @@ def point_in_time_clause(alias: str = "p") -> str:
     return f"{alias}.is_point_in_time = 1"
 
 
+def tracker_point_in_time_clause(table: str = "clv_tracker") -> str:
+    """The same rule for tables without a stored `is_point_in_time` column.
+
+    `clv_tracker` carries `recorded_at` and `match_id` but no class column, and
+    every gate that graduates a market or keeps a banker tier read it unfiltered.
+    2026-10-09: `winner_related` read "graduated" at +1.9% on 149 settled legs;
+    the legs written before the start ran -16.1% (n=69), and the profit came
+    from legs written after the start (+13.4%) or on matches with no start time
+    (+24.3%). Same three states as above, same exclusion of UNVERIFIABLE.
+
+    A correlated EXISTS rather than a JOIN, so the readers' unqualified column
+    names (`match_date`, `updated_at`) stay unambiguous.
+    """
+    return (
+        f"EXISTS (SELECT 1 FROM matches pit_m WHERE pit_m.id = {table}.match_id "
+        f"AND pit_m.start_time_utc IS NOT NULL AND pit_m.start_time_utc != '' "
+        f"AND {table}.recorded_at < pit_m.start_time_utc)"
+    )
+
+
 def classify_point_in_time(recorded_at: str | None,
                            start_time_utc: str | None) -> int | None:
     """Classify one row. Returns POINT_IN_TIME / POST_START / UNVERIFIABLE.

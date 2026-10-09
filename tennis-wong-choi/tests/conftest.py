@@ -22,6 +22,31 @@ def configure_test_db(tmp_path, monkeypatch) -> Path:
     return db_path
 
 
+def mark_tracker_pre_match(conn, recorded_at: str = "2026-01-01T00:00:00Z",
+                           start_time_utc: str = "2099-01-01T00:00:00Z") -> None:
+    """Make every `clv_tracker` row provably pre-match.
+
+    Gates read only legs written before their match started
+    (`evaluation.corpus.tracker_point_in_time_clause`), so a fixture that wants
+    its rows counted must give them a match with a later start time.
+    """
+    for row in conn.execute("SELECT DISTINCT match_id FROM clv_tracker").fetchall():
+        match_id = row[0]
+        conn.execute(
+            """INSERT OR IGNORE INTO matches (id, provider_match_id, tour, match_date, tournament_id,
+                   player_a_id, player_b_id, round, source_provider, created_at, updated_at,
+                   start_time_utc)
+               VALUES (?, ?, 'ATP', '2026-06-01', 1, 1, 2, 'R1', 'pit-fixture', ?, ?, ?)""",
+            (match_id, f"pit-{match_id}", recorded_at, recorded_at, start_time_utc),
+        )
+        conn.execute(
+            "UPDATE matches SET start_time_utc = ? WHERE id = ? "
+            "AND (start_time_utc IS NULL OR start_time_utc = '')",
+            (start_time_utc, match_id),
+        )
+    conn.execute("UPDATE clv_tracker SET recorded_at = ?", (recorded_at,))
+
+
 def _isolate_scheduler_log() -> None:
     """Keep the test suite out of the log the live scheduler reads.
 

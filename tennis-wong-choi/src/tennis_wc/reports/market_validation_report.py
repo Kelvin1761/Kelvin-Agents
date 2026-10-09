@@ -1,6 +1,11 @@
 from __future__ import annotations
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.evaluation.corpus import tracker_point_in_time_clause
+
+# Gates and track records read only legs written before their match started;
+# see evaluation.corpus.tracker_point_in_time_clause.
+_PIT_CLV = tracker_point_in_time_clause()
 
 
 MIN_SETTLEMENT_COVERAGE = 0.80
@@ -60,14 +65,15 @@ def _market_rows() -> list[dict]:
         return [
             dict(row)
             for row in conn.execute(
-                """
+                f"""
                 SELECT market_key, tier, COUNT(*) AS tracked,
                        SUM(CASE WHEN result_status IN ('WON', 'LOST') THEN 1 ELSE 0 END) AS settled,
                        SUM(CASE WHEN result_status = 'WON' THEN 1 ELSE 0 END) AS wins,
                        AVG(clv) AS avg_clv,
                        SUM(COALESCE(profit_loss_units, 0)) AS profit
                 FROM clv_tracker
-                WHERE recommendation_type = 'MARKET_LEG'
+                WHERE {_PIT_CLV}
+                  AND recommendation_type = 'MARKET_LEG'
                   AND COALESCE(edge, 0) > 0
                 GROUP BY market_key, tier
                 ORDER BY settled DESC, tracked DESC, market_key

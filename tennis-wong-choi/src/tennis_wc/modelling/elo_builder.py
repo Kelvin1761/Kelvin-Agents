@@ -77,6 +77,7 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
         # makes an as-of lookup possible at all; without it the only rating
         # anyone can read is the final one, which contains every later result.
         history_rows: list[tuple] = []
+        post_rows: list[tuple] = []   # shadow: post-match ratings for v2
         opponent_updates: list[tuple[str, str, float]] = []
         for row in rows:
             winner_id = int(row["player_id"])
@@ -97,6 +98,10 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
             k_loser = k_for(matches_by_player[loser_id])
             overall[winner_id] = winner_pre + k_winner * (1 - winner_expected)
             overall[loser_id] = loser_pre + k_loser * (0 - (1 - winner_expected))
+            post_rows.append((winner_id, match_date, "", overall[winner_id],
+                              matches_by_player[winner_id] + 1))
+            post_rows.append((loser_id, match_date, "", overall[loser_id],
+                              matches_by_player[loser_id] + 1))
 
             winner_surface_pre = None
             loser_surface_pre = None
@@ -117,6 +122,12 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
                 )
                 surface_ratings[winner_id][surface] = winner_surface_pre + ks_winner * (1 - surface_expected)
                 surface_ratings[loser_id][surface] = loser_surface_pre + ks_loser * (0 - (1 - surface_expected))
+                post_rows.append((winner_id, match_date, surface,
+                                  surface_ratings[winner_id][surface],
+                                  surface_matches[winner_id][surface] + 1))
+                post_rows.append((loser_id, match_date, surface,
+                                  surface_ratings[loser_id][surface],
+                                  surface_matches[loser_id][surface] + 1))
                 surface_matches[winner_id][surface] += 1
                 surface_matches[loser_id][surface] += 1
 
@@ -188,10 +199,21 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
             )
 
         history_written = elo_history.record(conn, history_rows)
+        # Shadow only (EXP-20261009-01). Inside a savepoint so a failure here
+        # rolls back v2 alone and can never cost production its daily Elo.
+        try:
+            conn.execute("SAVEPOINT elo_shadow_v2")
+            shadow_written = elo_history.replace_post_match(conn, post_rows)
+            conn.execute("RELEASE SAVEPOINT elo_shadow_v2")
+        except Exception:
+            conn.execute("ROLLBACK TO SAVEPOINT elo_shadow_v2")
+            conn.execute("RELEASE SAVEPOINT elo_shadow_v2")
+            shadow_written = 0
 
     return {
         "players_rated": len(overall),
         "elo_history_rows": history_written,
+        "elo_history_v2_rows": shadow_written,
         "winner_rows_processed": len(rows),
         "surfaces": sorted(surfaces_seen),
         "raw_response_id": raw_id,

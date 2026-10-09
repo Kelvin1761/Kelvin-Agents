@@ -23,8 +23,75 @@ CREATE INDEX IF NOT EXISTS idx_elo_history_lookup
 """
 
 
+# SHADOW (2026-10-09, EXP-20261009-01). The table above stamps each PRE-match
+# rating with the match date, and `rating_as_of` reads the latest row strictly
+# before a date -- so every read is the rating from before the player's previous
+# match: today's R1 result is invisible to tomorrow's R2 price. It also keeps the
+# first row it ever saw for a key (INSERT OR IGNORE), so it is a mixture of
+# builds and cannot be reproduced: only 47.9% of the overall-Elo components
+# stored with live predictions since 2026-08-28 re-derive from today's corpus.
+#
+# v2 stores the POST-match rating (the last of the day wins) and is cleared on
+# every build, so "latest row strictly before D" is the rating at the start of D.
+# It feeds the shadow backbone only; production still reads the table above.
+SCHEMA_V2 = """
+CREATE TABLE IF NOT EXISTS player_elo_history_v2 (
+    player_id INTEGER NOT NULL,
+    as_of_date TEXT NOT NULL,
+    surface TEXT NOT NULL DEFAULT '',
+    rating REAL NOT NULL,
+    matches_played INTEGER,
+    PRIMARY KEY (player_id, as_of_date, surface)
+);
+CREATE INDEX IF NOT EXISTS idx_elo_history_v2_lookup
+    ON player_elo_history_v2(player_id, surface, as_of_date);
+"""
+
+
 def ensure_schema(conn) -> None:
     conn.executescript(SCHEMA)
+    conn.executescript(SCHEMA_V2)
+
+
+def replace_post_match(conn, rows) -> int:
+    """Rewrite v2 from scratch with post-match ratings.
+
+    ``rows`` is chronological (player_id, date, surface, rating, matches_played)
+    taken AFTER each update, so a later row for the same key -- a second match
+    the same day -- correctly replaces the earlier one.
+    """
+    prepared = [
+        (int(player_id), str(as_of_date), str(surface or ""),
+         float(rating), matches_played)
+        for player_id, as_of_date, surface, rating, matches_played in rows
+        if player_id is not None and as_of_date and rating is not None
+    ]
+    conn.execute("DELETE FROM player_elo_history_v2")
+    conn.executemany(
+        "INSERT OR REPLACE INTO player_elo_history_v2 "
+        "(player_id, as_of_date, surface, rating, matches_played) "
+        "VALUES (?, ?, ?, ?, ?)",
+        prepared,
+    )
+    return len(prepared)
+
+
+def start_of_day_rating(conn, player_id: int, as_of_date: str,
+                        surface: str | None = None) -> float | None:
+    """Rating at the start of ``as_of_date`` from v2: every result before that
+    day counted, none from that day. Surface falls back to overall, as
+    `rating_as_of` does."""
+    row = conn.execute(
+        """
+        SELECT rating FROM player_elo_history_v2
+        WHERE player_id = ? AND surface = ? AND as_of_date < ?
+        ORDER BY as_of_date DESC LIMIT 1
+        """,
+        (int(player_id), str(surface or ""), str(as_of_date)),
+    ).fetchone()
+    if row is None and surface:
+        return start_of_day_rating(conn, player_id, as_of_date, surface=None)
+    return float(row[0]) if row else None
 
 
 def record(conn, rows) -> int:

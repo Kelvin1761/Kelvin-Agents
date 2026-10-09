@@ -39,6 +39,15 @@ NUDGE_GAINS = {
 # while its real gain is 0.45; removed 2026-07-12.)
 WEIGHTS = {**ELO_BACKBONE_WEIGHTS, **NUDGE_GAINS}
 
+# SHADOW backbone (EXP-20261009-01): start-of-day Elo from
+# `player_elo_history_v2` and a 0.35 surface share. Over 2019-2025 walk-forward
+# it beats production's backbone on every fold (confirm fold 2024-25 Delta
+# log-loss -0.0052 [-0.0062, -0.0042]). It is priced and stored beside the
+# production probability and decides NOTHING until a forward comparison on
+# live pre-match predictions says otherwise.
+SHADOW_BACKBONE_VERSION = "elo-v2-start-of-day.surface-0.35"
+SHADOW_SURFACE_WEIGHT = 0.35
+
 # Cap the total nudge so secondary signals cannot fully override the Elo base.
 _MAX_TOTAL_NUDGE = 1.20
 
@@ -353,6 +362,7 @@ def predict_match_probability(feature_snapshot: dict) -> dict:
     probability_a, base_logit, total_nudge = _combine_components(components)
     total_weight = sum(component.weight for component in active_components)
     return {
+        "shadow": _shadow_prediction(feature_snapshot, total_nudge),
         "player_a_probability": probability_a,
         "player_b_probability": 1 - probability_a,
         "active_weight": total_weight,
@@ -370,6 +380,33 @@ def predict_match_probability(feature_snapshot: dict) -> dict:
             for component in components
         ],
     }
+
+
+def _shadow_prediction(feature_snapshot: dict, total_nudge: float) -> dict | None:
+    """The same nudges on the shadow backbone. None when either player has no
+    start-of-day rating -- production prices those on nudges alone, and a
+    comparison is only meaningful where both backbones exist."""
+    try:
+        shadow = feature_snapshot.get("shadow_backbone")
+        if not shadow:
+            return None
+        a, b = shadow["player_a"], shadow["player_b"]
+        if a.get("overall") is None or b.get("overall") is None:
+            return None
+        p_overall = elo_probability(float(a["overall"]), float(b["overall"]))
+        a_surface = a.get("surface") if a.get("surface") is not None else a["overall"]
+        b_surface = b.get("surface") if b.get("surface") is not None else b["overall"]
+        p_surface = elo_probability(float(a_surface), float(b_surface))
+        base = (SHADOW_SURFACE_WEIGHT * _logit(p_surface)
+                + (1 - SHADOW_SURFACE_WEIGHT) * _logit(p_overall))
+        probability_a = _clamp(_sigmoid(base + total_nudge), 0.02, 0.98)
+        return {
+            "version": SHADOW_BACKBONE_VERSION,
+            "elo_base_logit": round(base, 6),
+            "player_a_probability": round(probability_a, 6),
+        }
+    except Exception:
+        return None
 
 
 def _is_active_component(component: Component) -> bool:

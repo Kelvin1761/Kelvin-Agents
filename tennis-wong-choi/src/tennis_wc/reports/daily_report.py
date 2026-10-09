@@ -20,6 +20,11 @@ from tennis_wc.modelling import market_models
 from tennis_wc.modelling import set_distribution
 from tennis_wc.ingestion.sportsbet_fixture_mapping import sportsbet_competition_meta
 from tennis_wc.props.strategy import LIVE_UNIT_VALUE_AUD, live_stake_aud
+from tennis_wc.evaluation.corpus import tracker_point_in_time_clause
+
+# Gates and track records read only legs written before their match started;
+# see evaluation.corpus.tracker_point_in_time_clause.
+_PIT_CLV = tracker_point_in_time_clause()
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
@@ -1144,13 +1149,14 @@ def _market_validation_history(market_key: str) -> dict:
     try:
         with get_connection() as conn:
             row = conn.execute(
-                """
+                f"""
                 SELECT COUNT(*) AS tracked,
                        SUM(CASE WHEN result_status IN ('WON', 'LOST') THEN 1 ELSE 0 END) AS settled,
                        AVG(clv) AS avg_clv,
                        SUM(COALESCE(profit_loss_units, 0)) AS profit
                 FROM clv_tracker
-                WHERE recommendation_type = 'MARKET_LEG'
+                WHERE {_PIT_CLV}
+                  AND recommendation_type = 'MARKET_LEG'
                   AND market_key = ?
                   AND COALESCE(edge, 0) > 0
                 """,
@@ -1174,10 +1180,11 @@ def _clv_history_allows_core(model_status: str) -> bool:
     try:
         with get_connection() as conn:
             row = conn.execute(
-                """
+                f"""
                 SELECT COUNT(clv) AS samples, AVG(clv) AS avg_clv
                 FROM clv_tracker
-                WHERE tier = ?
+                WHERE {_PIT_CLV}
+                  AND tier = ?
                   AND recommendation_type = ?
                   AND clv IS NOT NULL
                 """,
@@ -1197,14 +1204,15 @@ def _stable_value_history_allows(model_status: str, market_key: str) -> bool:
     try:
         with get_connection() as conn:
             row = conn.execute(
-                """
+                f"""
                 SELECT COUNT(*) AS tracked,
                        SUM(CASE WHEN result_status IN ('WON', 'LOST') THEN 1 ELSE 0 END) AS settled,
                        SUM(CASE WHEN result_status = 'WON' THEN 1 ELSE 0 END) AS wins,
                        AVG(clv) AS avg_clv,
                        SUM(COALESCE(profit_loss_units, 0)) AS profit
                 FROM clv_tracker
-                WHERE tier = 'VALUE_BANKER'
+                WHERE {_PIT_CLV}
+                  AND tier = 'VALUE_BANKER'
                   AND recommendation_type = ?
                   AND market_key = ?
                   AND COALESCE(edge, 0) > 0
@@ -1230,12 +1238,13 @@ def _tier_downgrade_reason(tier: str, model_status: str, market_key: str, probab
     try:
         with get_connection() as conn:
             row = conn.execute(
-                """
+                f"""
                 SELECT SUM(CASE WHEN result_status IN ('WON', 'LOST') THEN 1 ELSE 0 END) AS settled,
                        AVG(clv) AS avg_clv,
                        SUM(COALESCE(profit_loss_units, 0)) AS profit
                 FROM clv_tracker
-                WHERE tier = ?
+                WHERE {_PIT_CLV}
+                  AND tier = ?
                   AND recommendation_type = ?
                   AND market_key = ?
                   AND COALESCE(edge, 0) > 0

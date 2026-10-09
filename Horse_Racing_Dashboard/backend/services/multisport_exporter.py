@@ -784,6 +784,14 @@ def _tennis_strategy_state(
         row["name"] for row in connection.execute("PRAGMA table_info(prop_tracker)").fetchall()
     }
     canonical_clause = "AND p.side='over'" if "side" in prop_columns else ""
+    # The pipeline's gate is fed by `model_vs_market_scorecard` and
+    # `prop_roi_report`, both restricted to rows written before the match
+    # started. This mirror read every row, so the page showed a better family
+    # record than the gate it claims to mirror. `= 1`, never `!= 0`.
+    pit_score_clause = pit_family_clause = ""
+    if "is_point_in_time" in prop_columns:
+        pit_score_clause = "AND p.is_point_in_time = 1"
+        pit_family_clause = "AND prop_tracker.is_point_in_time = 1"
     if {"prop_scope", "subject_player_id"} <= prop_columns:
         canonical_clause += (
             " AND (p.prop_scope!='player_first_set' "
@@ -799,6 +807,7 @@ def _tennis_strategy_state(
           AND p.model_prob_raw IS NOT NULL
           AND p.market_prob_fair IS NOT NULL
           {canonical_clause}
+          {pit_score_clause}
           {score_date_clause}
         """,
         score_params,
@@ -828,6 +837,7 @@ def _tennis_strategy_state(
           AND decimal_odds BETWEEN 1.30 AND 2.25
           AND edge > 0
           AND ev > 0
+          {pit_family_clause}
           {family_date_clause}
         """,
         family_params,
