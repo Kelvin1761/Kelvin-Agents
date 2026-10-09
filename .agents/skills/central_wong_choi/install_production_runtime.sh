@@ -15,6 +15,8 @@ TENNIS_PYTHON_BIN="${TENNIS_PYTHON_BIN:-$TENNIS_RUNTIME_ROOT/.venv/bin/python}"
 TENNIS_DB_POINTER="${WC_TENNIS_DB_POINTER:-$HOME/.wongchoi_tennis_db}"
 
 LABELS=(
+  com.antigravity.hkjc-wong-choi.intraday
+  com.antigravity.hkjc-wong-choi.lineup
   com.antigravity.hkjc-wong-choi.postrace
   com.antigravity.hkjc-wong-choi.prerace
   com.antigravity.hkjc-wong-choi.recovery
@@ -31,6 +33,7 @@ LABELS=(
   com.antigravity.tennis-wong-choi.daily
   com.antigravity.tennis-wong-choi.recovery
   com.antigravity.central-wong-choi.durability
+  com.antigravity.central-wong-choi.research-review
 )
 AU_LABELS=(
   com.antigravity.au-wong-choi.bot
@@ -208,7 +211,9 @@ WC_TENNIS_RUNTIME_ROOT="$TENNIS_RUNTIME_ROOT" \
   TENNIS_LOG_DIR="$TENNIS_RUNTIME_ROOT/data/logs" \
   TENNIS_ANALYSIS_OUTPUT_ROOT="${TENNIS_ANALYSIS_OUTPUT_ROOT:-/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity}" \
   /bin/zsh "$PROJECT_ROOT/tennis-wong-choi/scripts/install_macos_launchd.sh"
-/bin/zsh "$PROJECT_ROOT/.agents/skills/central_wong_choi/install_macos_launchd.sh"
+WC_INSTALL_RESEARCH_REVIEW=1 \
+  WC_LAUNCH_AGENTS_DIR="$AGENTS_DIR" WC_LAUNCHCTL_BIN="$LAUNCHCTL" \
+  /bin/zsh "$PROJECT_ROOT/.agents/skills/central_wong_choi/install_macos_launchd.sh"
 status_runtime
 
 COMPLETED=1

@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import plistlib
 import sys
+import subprocess
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -147,3 +149,41 @@ def test_launchd_template_is_daily_and_uses_production_wrapper() -> None:
     assert "run_central_daily_maintenance.sh" in template
     assert "WC_PRIMARY_REPO_ROOT" in wrapper
     assert "WC_COLD_MIRROR_ROOT" in wrapper
+
+
+def test_research_review_wrapper_binds_actual_four_locks(tmp_path: Path) -> None:
+    capture = tmp_path / "capture.py"
+    capture.write_text("import json,sys; print(json.dumps(sys.argv[1:]))")
+    # Use a tiny interpreter stand-in, so the wrapper is executed without
+    # initialization, touching production state or needing WARM mounted.
+    interpreter = tmp_path / "python-stub"
+    interpreter.write_text(f'#!/bin/sh\nexec "{sys.executable}" "{capture}" "$@"\n')
+    interpreter.chmod(0o700)
+    repo = tmp_path / "repo with space"
+    repo.mkdir()
+    env = dict(os.environ, WC_PRIMARY_REPO_ROOT=str(repo),
+               WC_RESEARCH_PYTHON_BIN=str(interpreter),
+               WONGCHOI_AU_DATA_ROOT=str(tmp_path / "au"),
+               TENNIS_LOG_DIR=str(tmp_path / "tennis logs"))
+    completed = subprocess.run(
+        ["/bin/zsh", str(SCRIPTS / "run_central_research_review.sh"), "--status"],
+        env=env, capture_output=True, text=True, check=True,
+    )
+    args = json.loads(completed.stdout)
+    locks = [args[index + 1] for index, arg in enumerate(args) if arg == "--production-lock"]
+    assert locks == [
+        str(tmp_path / "au" / ".au_daily_schedule.lock"),
+        str(repo / ".agents/skills/hkjc_racing/hkjc_daily_auto/state/hkjc_daily_state.lock"),
+        str(repo / ".agents/skills/nba/nba_daily_auto/state/nba_daily_schedule.lock"),
+        str(tmp_path / "tennis logs" / "tennis_daily_schedule.lock"),
+    ]
+    assert args[-1] == "--status"
+
+
+def test_research_review_template_has_daily_schedule_and_fixed_tennis_paths() -> None:
+    path = PACKAGE_ROOT / "launchd" / "com.antigravity.central-wong-choi.research-review.plist.template"
+    payload = plistlib.loads(path.read_bytes())
+    assert payload["StartCalendarInterval"] == {"Hour": 7, "Minute": 10}
+    assert payload["EnvironmentVariables"]["TENNIS_LOG_DIR"] == "__TENNIS_LOG_DIR__"
+    assert payload["ProgramArguments"][0] == "/bin/zsh"
+    assert "RunAtLoad" not in payload

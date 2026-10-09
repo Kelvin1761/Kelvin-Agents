@@ -24,6 +24,7 @@ from central_research_review import (  # noqa: E402
     initialize_review_state,
     load_runtime_contract,
     run_review_pass,
+    review_runtime_status,
 )
 from shared_wong_choi.contracts import Domain  # noqa: E402
 from shared_wong_choi.research_runner import ResearchDisposition  # noqa: E402
@@ -130,6 +131,122 @@ def test_ordinary_pass_never_initializes_missing_cursors(tmp_path: Path) -> None
     assert Path(result["run_log"]).is_file()
     assert result["model_promotion_allowed"] is False
     assert result["telegram_delivery_confirmed"] is False
+
+
+def test_status_does_not_create_missing_state(tmp_path: Path) -> None:
+    roots = _roots(tmp_path)
+    result = review_runtime_status(**roots, now=NOW)
+    assert result["status"] == "blocked"
+    assert set(result["domains"]) == {"au", "hkjc", "tennis", "nba"}
+    assert not roots["state_root"].exists()
+
+
+def test_status_verifies_initialized_cursors_without_modification(tmp_path: Path) -> None:
+    roots = _roots(tmp_path)
+    initialize_review_state(**roots)
+    files = list(roots["state_root"].rglob("*"))
+    before = {str(path): path.read_bytes() for path in files if path.is_file()}
+    assert review_runtime_status(**roots, now=NOW)["status"] == "verified"
+    after = {str(path): path.read_bytes() for path in roots["state_root"].rglob("*") if path.is_file()}
+    assert after == before
+
+
+def _status_receipt(roots: dict, *, mutation=None) -> Path:
+    contract = load_runtime_contract()
+    path = roots["state_root"] / "runs" / "central" / "2026-09-19" / "research-review" / "pass.json"
+    payload = {
+        "schema_version": review_module.RUN_SCHEMA, "status": "succeeded",
+        "started_at": NOW.isoformat(), "run_log": str(path),
+        "evaluation_release_id": contract.evaluation_release_id,
+        "evaluation_release_commit": contract.evaluation_release_commit,
+        "model_promotion_allowed": False, "telegram_delivery_confirmed": False,
+        "domains": {domain: {
+            "disposition": "succeeded", "status": "ok",
+            "model_promotion_allowed": False, "telegram_delivery_confirmed": False,
+        } for domain in contract.domains},
+    }
+    if mutation:
+        mutation(payload)
+    _write_run(path, payload)
+    return path
+
+
+def test_status_accepts_bound_success_receipt(tmp_path: Path) -> None:
+    roots = _roots(tmp_path)
+    initialize_review_state(**roots)
+    path = _status_receipt(roots)
+    result = review_runtime_status(**roots, now=NOW, receipt_path=path)
+    assert result["status"] == "verified"
+    assert result["receipt"]["status"] == "succeeded"
+
+
+@pytest.mark.parametrize("mutation", [
+    lambda p: p.update(evaluation_release_commit="0" * 40),
+    lambda p: p.update(model_promotion_allowed=True),
+    lambda p: p.update(started_at="2027-01-01T00:00:00+00:00"),
+    lambda p: p["domains"].pop("nba"),
+    lambda p: p["domains"]["nba"].update(disposition="blocked"),
+    lambda p: p["domains"]["nba"].update(telegram_delivery_confirmed=True),
+])
+def test_status_rejects_invalid_even_rehashed_receipts(tmp_path: Path, mutation) -> None:
+    roots = _roots(tmp_path)
+    initialize_review_state(**roots)
+    path = _status_receipt(roots, mutation=mutation)
+    result = review_runtime_status(**roots, now=NOW, receipt_path=path)
+    assert result["status"] == "blocked"
+    assert "receipt_error" in result
+
+
+def test_status_preserves_blocked_review_result(tmp_path: Path) -> None:
+    roots = _roots(tmp_path)
+    initialize_review_state(**roots)
+    def mutation(payload):
+        payload["status"] = "failed"
+        for entry in payload["domains"].values():
+            entry.update(disposition="blocked", status="missing_source")
+    path = _status_receipt(roots, mutation=mutation)
+    result = review_runtime_status(**roots, now=NOW, receipt_path=path)
+    assert result["status"] == "blocked"
+    assert result["receipt"]["status"] == "failed"
+    assert "receipt_error" not in result
+
+
+def test_status_rejects_symlink_and_oversized_receipts(tmp_path: Path) -> None:
+    roots = _roots(tmp_path)
+    initialize_review_state(**roots)
+    path = _status_receipt(roots)
+    link = path.with_name("link.json")
+    link.symlink_to(path)
+    assert "symlink" in review_runtime_status(**roots, now=NOW, receipt_path=link)["receipt_error"]
+    path.write_bytes(b"x" * (1024 * 1024 + 1))
+    assert "bounded" in review_runtime_status(**roots, now=NOW, receipt_path=path)["receipt_error"]
+
+
+def test_status_rejects_missing_cursor_tables(tmp_path: Path) -> None:
+    roots = _roots(tmp_path)
+    initialize_review_state(**roots)
+    path = roots["state_root"] / "research-review-cursors" / "au.sqlite3"
+    with sqlite3.connect(path) as db:
+        db.execute("DROP TABLE storage_evidence_state")
+    result = review_runtime_status(**roots, now=NOW)
+    assert result["status"] == "blocked"
+    assert "incomplete" in result["domains"]["au"]["status"]
+
+
+def test_status_marks_old_success_stale_and_rejects_tampered_bytes(tmp_path: Path) -> None:
+    roots = _roots(tmp_path)
+    initialize_review_state(**roots)
+    path = _status_receipt(roots)
+    result = review_runtime_status(
+        **roots, now=datetime(2026, 9, 22, tzinfo=timezone.utc), receipt_path=path,
+    )
+    assert result["status"] == "blocked"
+    assert result["receipt_stale"] is True
+    assert result["receipt"]["status"] == "succeeded"
+    body = json.loads(path.read_text())
+    body["started_at"] = "2026-09-18T00:00:00+00:00"
+    path.write_text(json.dumps(body))
+    assert "hash mismatch" in review_runtime_status(**roots, now=NOW, receipt_path=path)["receipt_error"]
 
 
 @dataclass(frozen=True)

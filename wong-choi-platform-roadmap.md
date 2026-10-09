@@ -6,6 +6,8 @@
 
 ## Current Stage
 
+2026-10-09 recovery update: Stage 5 remains active. Verified main and production are `2b692cff1ef3eff253b8dc4b65206b82e4d8e9ef`, containing four evidence producers, AU/HKJC production adapters, reviewed power-authority binding and E1. Missing historical D-Tennis/D-NBA/E2 payloads have been reconstructed in three isolated recovery worktrees, without pruning/deletion. Tennis/NBA/E2 latest-base full gates pass; E2 interruption/partial-copy rollback fixes are included in its refreshed gate `24490` (15 suites, terminal exit 0). All recovery payloads remain uncommitted, unpushed and unactivated. Existing four-domain runtime is aligned, but research-review installation/live acceptance, reviewed power profiles, Telegram/Dashboard acceptance and pilots remain open. See the current checkpoint in `wong-choi-stage-5-plan.md`; historical status does not supersede this update.
+
 **Stage 4 complete；Stage 5 Task 1–5已merge／activate，Release A shared research safety／review core亦已進入main及production。** Task 6嘅fail-closed engineering fixtures已通過；2026-09-14獨立power review確認production仍為0/4 profiles，並發現review authority未hash-bind，修正已喺隔離scope準備但未release。真實domain compact producer／callback、reviewed numeric applicability同platform safety checkpoint仍未完成；Task 7只完成共用本機runtime，production metadata producer、Central review scheduler、Telegram acceptance同Dashboard private feed仍未啟用。AU／HKJC維持production ruler；Tennis保持shadow；NBA保持shadow／descriptive-only並等待2026-27 live evidence。下一步係順序activate四個D producer，同時先收緊power review binding，再做真實來源驗收；中央旺財係control tower，唔係第五個預測模型。
 
 ## Stages and Exit Gates

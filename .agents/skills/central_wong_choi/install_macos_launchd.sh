@@ -38,3 +38,8 @@ launchctl bootout "gui/$UID_NUM" "$DEST" 2>/dev/null || true
 launchctl bootstrap "gui/$UID_NUM" "$DEST"
 launchctl enable "gui/$UID_NUM/$LABEL"
 print -r -- "已安裝 ${LABEL}：每日悉尼時間 03:20 D1 verified backup；失敗會喺 05:20 自動補跑"
+# Unified cutover owns the snapshot/rollback for both Central labels. Ordinary
+# durability installation must not implicitly initialize research state.
+if [ "${WC_INSTALL_RESEARCH_REVIEW:-0}" = "1" ]; then
+  /bin/zsh "$SKILL_DIR/install_research_review.sh"
+fi
