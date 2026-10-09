@@ -39,6 +39,11 @@ sys.path.insert(0, str(NBA_SKILL))
 from nba_schedule import canonical_game_tag, load_espn_events, load_espn_schedule  # noqa: E402
 from nba_season import classify_nba_season  # noqa: E402
 from wongchoi_paths import NBA_ANALYSIS  # noqa: E402
+from nba_research_evidence import (  # noqa: E402
+    build_feature_projection,
+    build_recommendation_projection,
+    freeze_settlement_artifacts,
+)
 
 HOOK_DIR = (
     PROJECT_ROOT
@@ -449,6 +454,7 @@ def create_prediction_snapshot(
     *,
     role: FreshnessRole = FreshnessRole.PRODUCTION,
     refreshable_tags: list[str] | None = None,
+    event_starts: dict[str, datetime] | None = None,
 ) -> Path:
     problems = validate_analysis(folder, target_date, tags)
     if problems:
@@ -479,19 +485,58 @@ def create_prediction_snapshot(
         shutil.copy2(source, destination)
         copied[name] = {"sha256": _sha256(destination), "bytes": destination.stat().st_size}
 
+    cutoff = datetime.now(SYDNEY)
+    research_status: dict[str, str] = {"status": "blocked"}
+    try:
+        if event_starts is None:
+            raise ValueError("NBA official schedule unavailable for research")
+        projection = build_feature_projection(
+            folder=folder,
+            source_folder=temp,
+            event_id=target_date,
+            game_tags=tags,
+            source_cutoff_at=cutoff,
+            event_starts=event_starts,
+        )
+    except ValueError as exc:
+        research_status["reason"] = str(exc)
+    else:
+        name = f"NBA_Feature_Evidence_{target_date}.json"
+        destination = temp / name
+        destination.write_bytes(projection)
+        copied[name] = {"sha256": _sha256(destination), "bytes": len(projection)}
+        research_status = {"status": "feature_verified", "monitoring_status": "pending"}
+        try:
+            recommendations = build_recommendation_projection(
+                source_folder=temp, event_id=target_date, game_tags=tags,
+                source_cutoff_at=cutoff,
+            )
+        except ValueError as exc:
+            research_status["monitoring_status"] = "blocked"
+            research_status["reason"] = str(exc)
+        else:
+            name = f"NBA_Recommendation_Evidence_{target_date}.json"
+            destination = temp / name
+            destination.write_bytes(recommendations)
+            copied[name] = {"sha256": _sha256(destination), "bytes": len(recommendations)}
+            research_status = {"status": "pregame_verified", "monitoring_status": "settlement_pending"}
+
     commit = _run(["git", "rev-parse", "HEAD"], timeout=30)
     manifest = {
         "schema_version": 1,
         "sport": "nba",
+        "domain": "nba",
+        "event_id": target_date,
         "target_date": target_date,
-        "created_at": datetime.now(SYDNEY).isoformat(),
+        "created_at": cutoff.isoformat(),
         "model_commit": commit.stdout.strip() if commit.returncode == 0 else "unknown",
         "game_tags": sorted(tags),
         "season_context": classify_nba_season(target_date),
         "snapshot_role": role.value,
         "refreshable_game_tags": sorted(refreshable_tags or tags),
         "append_only": True,
-        "files": copied,
+        "files": [{"name": name, **copied[name]} for name in sorted(copied)],
+        "research_evidence": research_status,
     }
     (temp / "manifest.json").write_text(
         json.dumps(manifest, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -743,6 +788,7 @@ def run_pregame(
                 tags,
                 role=freshness_role,
                 refreshable_tags=sorted(refreshable_tags),
+                event_starts=event_starts if schedule_events is not None else None,
             )
             log.step(
                 "prediction_snapshot",
@@ -887,10 +933,49 @@ def _last_json_line(output: str) -> dict[str, Any] | None:
     return None
 
 
+def _record_settlement_evidence(archive: Path, target_date: str, log: RunLog) -> None:
+    try:
+        artifacts = freeze_settlement_artifacts(folder=archive, event_id=target_date)
+    except ValueError as exc:
+        # Missing research provenance cannot undo a completed ordinary archive.
+        settlement = {"status": "blocked", "reason": str(exc)}
+    except OSError as exc:
+        log.step("settlement_evidence", "failed", error=f"{type(exc).__name__}: {exc}")
+        raise TemporaryFailure("settlement_capture_failed") from exc
+    else:
+        try:
+            settlement = record_settlement_for_event(
+                domain=Domain.NBA,
+                event_id=target_date,
+                evidence_root=Path(
+                    os.environ.get(
+                        "WONGCHOI_CONTROL_STATE_ROOT",
+                        Path.home() / "WongChoiData" / "WongChoiControl",
+                    )
+                ) / "evidence",
+                summary={"archive_status": "archived", "archive_path": str(archive)},
+                artifacts=artifacts,
+            )
+        except Exception as exc:  # noqa: BLE001
+            log.step("settlement_evidence", "failed", error=f"{type(exc).__name__}: {exc}")
+            raise TemporaryFailure("settlement_evidence_failed") from exc
+    log.step(
+        "settlement_evidence",
+        str(settlement.get("status") or "unknown"),
+        settlement_id=settlement.get("settlement_id"),
+        reason=settlement.get("reason"),
+    )
+
+
 def run_postgame(target_date: str, log: RunLog) -> str:
     folder = live_dir(target_date)
     if not folder.is_dir():
-        if archived_dirs(target_date):
+        archives = archived_dirs(target_date)
+        if archives:
+            if len(archives) == 1:
+                _record_settlement_evidence(archives[0], target_date, log)
+            else:
+                log.step("settlement_evidence", "blocked", reason="ambiguous_archive_paths")
             log.step("postgame", "already_archived")
             return "already_archived"
         log.step("postgame", "dormant", reason="no_live_analysis")
@@ -923,29 +1008,7 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         return status
 
     archive = Path(str(summary.get("archive_path") or ""))
-    settlement_artifacts = sorted(archive.glob("*.json")) if archive.is_dir() else []
-    try:
-        settlement = record_settlement_for_event(
-            domain=Domain.NBA,
-            event_id=target_date,
-            evidence_root=Path(
-                os.environ.get(
-                    "WONGCHOI_CONTROL_STATE_ROOT",
-                    Path.home() / "WongChoiData" / "WongChoiControl",
-                )
-            )
-            / "evidence",
-            summary={"archive_status": status, "archive_path": str(archive)},
-            artifacts=settlement_artifacts,
-        )
-    except Exception as exc:  # noqa: BLE001
-        log.step("settlement_evidence", "failed", error=f"{type(exc).__name__}: {exc}")
-        raise TemporaryFailure("settlement_evidence_failed") from exc
-    log.step(
-        "settlement_evidence",
-        str(settlement.get("status") or "unknown"),
-        settlement_id=settlement.get("settlement_id"),
-    )
+    _record_settlement_evidence(archive, target_date, log)
     deploy_target = archive if archive.is_dir() else folder
     deploy = _deploy("NBA Wong Choi scheduled postgame", deploy_target)
     log.step("dashboard", deploy)
