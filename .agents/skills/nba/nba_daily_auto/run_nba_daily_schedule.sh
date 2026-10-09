@@ -19,6 +19,13 @@ NOTIFY_ENV="${WC_NOTIFY_ENV_FILE:-$HOME/.wongchoi_notify.env}"
 # Keep launchd away from Google Drive File Provider. The analysis card remains
 # in the repo root while live; completed days move to this local archive.
 export WONGCHOI_NBA_DATA_ROOT="${WONGCHOI_NBA_DATA_ROOT:-$HOME/WongChoiData/Wong Choi NBA Analysis}"
+# Prefer a hydrated local copy of the existing model for unattended runs.
+# An explicit model directory remains authoritative; missing cache preserves
+# the configured dataset path and the engine's existing fallback behaviour.
+NBA_LOCAL_MODEL_DIR="$HOME/WongChoiData/NBA_ML_Dataset/models/v3"
+if [[ -z "${NBA_WC_MODEL_DIR:-}" && -s "$NBA_LOCAL_MODEL_DIR/model.pkl" && -s "$NBA_LOCAL_MODEL_DIR/feature_names.json" ]]; then
+  export NBA_WC_MODEL_DIR="$NBA_LOCAL_MODEL_DIR"
+fi
 export PYTHONDONTWRITEBYTECODE=1
 export PYTHONPATH="$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
 mkdir -p "$WONGCHOI_NBA_DATA_ROOT"

@@ -385,9 +385,11 @@ class SportsbetNBAExtractor:
                          'match_betting', 'line', or None (skip).
         """
         # ── Game-level markets ───────────────────────────────────────
-        if "Match Betting" in m_name:
+        # Only the named full-game markets may supply game context. Quarter/
+        # half moneylines and alternate handicaps are different contracts.
+        if m_name == "Match Betting":
             return "match_betting"
-        if "Line" in m_name and not self._is_excluded(m_name):
+        if m_name in {"Line", "Line Betting"}:
             return "line"
 
         # ── Skip junk / game-level / quarter / half markets ──────────
@@ -486,8 +488,8 @@ class SportsbetNBAExtractor:
             line_keys = list(gl["Line"].keys())
             if line_keys:
                 for k in line_keys:
-                    match = re.search(r"([+-]\d+\.5)", k)
-                    if match:
+                    match = re.search(r"\s([+-]\d+(?:\.\d+)?)$", k)
+                    if match and TEAM_NAMES.get(k[:match.start()].strip()) == away_abbr:
                         formatted["game_lines"]["spread_away"] = match.group(1)
                         break
         if "Match Betting" in gl:

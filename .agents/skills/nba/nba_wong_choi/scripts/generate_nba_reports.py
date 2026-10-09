@@ -32,6 +32,7 @@ from datetime import datetime
 NBA_SKILL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 sys.path.insert(0, NBA_SKILL_DIR)
 from nba_season import classify_nba_season
+from nba_identity import player_name_key
 
 _ML_PREDICTOR = None  # lazy-loaded for hybrid/ml modes
 
@@ -492,12 +493,10 @@ def format_adjustment_line(base_rate, breakdown):
     return " → ".join([parts[0]]) + " | " + " | ".join(parts[1:]) + f" | = {adjusted}%"
 
 def find_player_in_extractor(ext_players, name, team_abbr):
-    """Exact full name match only. No surname fallback to prevent Jr./Sr. collisions."""
-    if team_abbr in ext_players:
-        for p in ext_players[team_abbr]:
-            if p.get("name", "").lower() == name.lower():
-                return p
-    return None
+    """Normalize the full name across providers, rejecting ambiguous identities."""
+    key = player_name_key(name)
+    matches = [p for p in ext_players.get(team_abbr, []) if player_name_key(p.get("name", "")) == key]
+    return matches[0] if len(matches) == 1 else None
 
 
 def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, category,
@@ -520,7 +519,7 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
     stat_key = cat_map.get(category, "PTS")
 
     if ext_player:
-        gl = ext_player.get("gamelog", {})
+        gl = ext_player.get("gamelog") or {}
         adv = ext_player.get("advanced") or {}
         splits = ext_player.get("splits") or {}
         fatigue = ext_player.get("fatigue") or {}
@@ -1828,7 +1827,22 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
         f"| **strategy_phase**: {season_phase} | **L10_ORDER**: {L10_ORDER} "
         "| **strategy**: SPORTSBET_MILESTONE_OVER_ONLY"
     )
+    if public_phase == "PRESEASON":
+        sections.append("⛔ **NO BET — PRESEASON SHADOW ONLY**：以下係歷史參考分析，所有組合只供 shadow 記錄，禁止作投注建議。")
+    if meta.get("statistics_season"):
+        sections.append(
+            f"**history_mode**: {meta.get('history_mode', 'current_season')} "
+            f"| **statistics_season**: {meta['statistics_season']} "
+            f"| **roster_season**: {meta.get('roster_season', '?')} "
+            f"| **history_date_to**: {meta.get('history_date_to', '?')}"
+        )
     sections.append(f"")
+
+    if meta.get("excluded_player_markets"):
+        sections.append("### 未納入分析嘅球員盤口（DATA UNAVAILABLE）")
+        for player, reason in meta["excluded_player_markets"].items():
+            sections.append(f"- {player}: {reason}；無法驗證真實資料，唔會生成球員預測。")
+        sections.append("")
 
     # ── Blowout / Tank Warning Banner ──
     spread_val = odds.get("spread_away", None)
@@ -2043,7 +2057,7 @@ def main():
     sb_game_lines = sportsbet.get("game_lines", {})
     if sb_game_lines:
         for k, v in sb_game_lines.items():
-            if v and (not ex_odds.get(k) or ex_odds.get(k) == "?"):
+            if v:
                 ex_odds[k] = v
     sportsbet_time = sportsbet.get("extraction_time", datetime.now().strftime("%Y-%m-%d %H:%M"))
 
@@ -2108,6 +2122,7 @@ def main():
 
     # Build all player cards
     all_cards = []
+    meta["excluded_player_markets"] = {}
     player_props = sportsbet.get("player_props", {})
 
     for category, players in player_props.items():
@@ -2120,7 +2135,13 @@ def main():
                 team = home_abbr
             if ext_p is None:
                 print(f"Skipping {player_name} - not in {away_abbr} or {home_abbr}")
+                meta["excluded_player_markets"][player_name] = "unmatched_current_roster"
                 continue  # V7 Fix: Block cross-contamination from unified JSON
+
+            if not (ext_p.get("gamelog") or {}).get("PTS"):
+                print(f"Skipping {player_name} - no real historical gamelog")
+                meta["excluded_player_markets"][player_name] = "no_real_historical_gamelog"
+                continue
 
             # V3: Determine context for this player
             opponent = home_abbr if team == away_abbr else away_abbr
