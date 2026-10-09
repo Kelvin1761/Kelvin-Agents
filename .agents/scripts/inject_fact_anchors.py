@@ -1747,11 +1747,20 @@ def _classify_pace_v2(n_leaders: int, n_on_pace: int, field_size: int,
                        n_pressers: int = 0) -> str:
     """V3: Multi-factor pace classification.
 
-    Returns Chinese labels: 極慢 / 慢 / 正常 / 快 / 極快
+    Returns Chinese labels: 未明 / 極慢 / 慢 / 正常 / 快 / 極快
     Factors: leader count, front pressure ratio, distance, going.
     """
     if field_size == 0:
         return '正常'
+
+    # ⚠️ 冇認出任何領放馬 = 「冇證據」，唔係「冇步速」。
+    # `leaders` 只收跑法判定為 front 嘅馬（好嚴格），舊版喺呢度照計落去：
+    # 0×2.5 + pressers×0.3 永遠 < 1.5 → 一律「極慢」。2026-09-09→10-08 實測
+    # 653/653 場「極慢」都係 leaders=0，佔全部 53% 場次 —— 一半報告寫住極慢步速，
+    # 其實係我哋唔知邊匹會帶。純報告欄位：race_shape 冇排名權重，
+    # pace bias 修正預設關閉（WC_PACE_BIAS），所以唔郁排名。
+    if n_leaders == 0:
+        return '未明'
 
     # Base score from leader/presser pressure
     # V3: Pressers only contribute pace when leaders are present

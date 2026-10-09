@@ -207,10 +207,10 @@ def _count_trial_top3(block: str) -> int:
 
 
 def _extract_latest_class_move(block: str) -> str:
-    for cols in _record_rows(block):
-        if "試閘" in cols[1]:
-            continue
-        return cols[8]
+    """一律回 ""：賽績表「班次」欄係「上上仗 → 該仗」，最新一行即係
+    「上上仗 → 上一仗」，唔係今場嘅升降班（錯位一場）。今場班次變動由引擎
+    `RacingEngine._class_move_today()` 用今場獎金 vs 上一仗獎金計。
+    保留個 key 只係為咗舊 reader 唔炸。"""
     return ""
 
 

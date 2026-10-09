@@ -69,9 +69,24 @@ def test_retired_display_only_weight_field_warns_but_does_not_block(tmp_path):
     folder = _fake_meeting(tmp_path, {"weight_score": 60.0})
     result = _gate(folder)
     assert result.returncode == 0, result.stdout[-600:]
-    assert "dead-field" in result.stdout
-    assert "weight_score" in result.stdout
-    assert "已退出排名" in result.stdout
+
+    # The advisory *message* only fires when the baseline says the field is
+    # normally spread.  The live baseline drifts with each --calibrate
+    # (2026-10-09: weight spread 1.11 → 0.81, i.e. it is now ~85% neutral
+    # anyway), so pin that precondition here instead of depending on it.
+    sys.path.insert(0, str(CONTRACT.parent))
+    import data_contract
+
+    baseline = json.loads(BASELINE.read_text(encoding="utf-8"))
+    baseline["fields"]["weight_score"].update(
+        {"neutral_rate": 0.10, "mean_within_race_spread": 1.5})
+    violations, _ = data_contract.check(
+        baseline, sorted(folder.glob("Race_*_Logic.json")), "au")
+    weight = [v for v in violations
+              if v.field_name == "weight_score" and v.check == "dead-field"]
+    assert weight, [vars(v) for v in violations]
+    assert all(v.severity == "warning" for v in weight)
+    assert all("已退出排名" in v.detail for v in weight)
 
 
 def test_thin_country_card_does_not_block(tmp_path):

@@ -158,6 +158,10 @@ def main():
                     "wet": float(res.get("wet_form_feature") or 0.0),
                     "proven_class": float(res.get("proven_class_feature") or 0.0),
                     "ability": float(res.get("ability_score") or 0.0),
+                    # 分層用（唔入分）：初出／休後實驗要喺同一份 dump 切 cohort。
+                    "career_starts": hd.get("career_race_starts"),
+                    "prep_stage": (res.get("preparation_cycle") or {}).get("stage"),
+                    "days_since_last": (res.get("preparation_cycle") or {}).get("days_since_last_run"),
                 })
             if len(out_rows) >= 4:
                 races_out.append({"meeting": meeting_dir.name, "date": date,

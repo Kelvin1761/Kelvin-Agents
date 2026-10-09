@@ -25,6 +25,16 @@ class LaunchdInstallationTests(unittest.TestCase):
             self.assertEqual(self._plist(label)["Label"], label)
             self.assertIn(label, installer)
 
+    def test_midday_refresh_only_refreshes_and_owns_its_slot(self):
+        # 用獨立 slot：唔傳 --slot 會食咗 10:00 morning 嗰格（control plane 按 mode 推 slot）。
+        args = self._plist("com.antigravity.au-wong-choi.midday")["ProgramArguments"]
+        self.assertTrue(args[1].endswith("/run_au_daily_schedule.sh"))
+        self.assertEqual(args[2], "morning")
+        slot = args[args.index("--slot") + 1]
+        self.assertNotEqual(slot, "10:00")
+        self.assertIn("--skip-review", args)
+        self.assertIn("--skip-analysis", args)
+
     def test_auxiliary_jobs_use_the_environment_wrapper(self):
         for label, task in (("com.antigravity.au-wong-choi.healthcheck", "healthcheck"),
                             ("com.antigravity.au-wong-choi.bot", "bot")):

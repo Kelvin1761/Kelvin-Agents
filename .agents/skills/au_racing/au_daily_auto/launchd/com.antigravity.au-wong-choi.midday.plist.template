@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.antigravity.au-wong-choi.midday</string>
+
+  <!-- 12:00 悉尼：只做退出馬／場地覆核（step_refresh_active）→ 需要時重評分 → 發佈。
+       點解要有：2026-09-09→10-08 實測 145/1,200 場（12%）喺 10:00 早更之後先有馬退出，
+       58 次係模型頭四；165 匹全部係早更之後先退出（唔係重建 bug），dashboard 一直掛住佢哋。
+       同場升級（Soft 5 → Good 4）亦有 229 場喺早更之後先發生。
+       ⚠️ 唔喺 install_macos_launchd.sh 預設 LABELS —— 要人手批准先裝：
+         sed -e "s#__SCRIPT_DIR__#…#g" -e "s#__PROJECT_ROOT__#…#g" 呢個檔 > ~/Library/LaunchAgents/…plist
+       用獨立 slot（12:00），唔會食咗 10:00 morning 嗰格。同 morning/evening 共用一把 flock。 -->
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>12</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>__SCRIPT_DIR__/run_au_daily_schedule.sh</string>
+    <string>morning</string>
+    <string>--slot</string>
+    <string>12:00</string>
+    <string>--skip-review</string>
+    <string>--skip-analysis</string>
+    <string>--rounds</string>
+    <string>2</string>
+    <string>--round-gap</string>
+    <string>300</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__PROJECT_ROOT__</string>
+
+  <key>StandardOutPath</key>
+  <string>__SCRIPT_DIR__/logs/launchd.midday.stdout.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>__SCRIPT_DIR__/logs/launchd.midday.stderr.log</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>
