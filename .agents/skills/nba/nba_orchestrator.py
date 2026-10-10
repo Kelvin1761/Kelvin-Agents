@@ -581,6 +581,14 @@ def main():
                 "⛔ 官方賽程覆蓋閘失敗："
                 f"missing={missing or '[]'} unexpected={unexpected or '[]'}"
             )
+            if missing and not unexpected:
+                print("NBA_PIPELINE_RESULT: " + json.dumps({
+                    "status": "waiting_game_markets",
+                    "reason": "sportsbet_game_data_missing",
+                    "waiting_games": missing,
+                    "target_date": args.date,
+                }, ensure_ascii=False))
+                sys.exit(75)
             sys.exit(1)
 
     # ── --list mode ──

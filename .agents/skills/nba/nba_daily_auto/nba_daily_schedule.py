@@ -88,12 +88,26 @@ class TemporaryFailure(RuntimeError):
 class PlayerMarketsWaiting(TemporaryFailure):
     """Verified source waiting, distinct from a broken extraction or analysis."""
 
+    reason = "player_markets_not_open"
+    step = "player_markets"
+    notification_key = "waiting-player-markets"
+    title = "等待球員盤口"
+    source_note = "Sportsbet 未開球員盤口；下次排程會重新抓取。"
+
     def __init__(self, games: list[str]) -> None:
         self.games = sorted(set(games))
-        super().__init__("player_markets_not_open:" + ",".join(self.games))
+        super().__init__(self.reason + ":" + ",".join(self.games))
 
 
-def waiting_player_games(result: subprocess.CompletedProcess[str]) -> list[str]:
+class GameMarketsWaiting(PlayerMarketsWaiting):
+    reason = "sportsbet_game_data_missing"
+    step = "game_markets"
+    notification_key = "waiting-game-markets"
+    title = "等待賽事盤口資料"
+    source_note = "Sportsbet 賽事資料未齊；下次排程會重新抓取。"
+
+
+def _waiting_market_games(result: subprocess.CompletedProcess[str], status: str, reason: str) -> list[str]:
     if result.returncode != TEMPORARY_FAILURE:
         return []
     prefix = "NBA_PIPELINE_RESULT: "
@@ -108,8 +122,8 @@ def waiting_player_games(result: subprocess.CompletedProcess[str]) -> list[str]:
             return []
         games = payload.get("waiting_games")
         if (
-            payload.get("status") == "waiting_player_markets"
-            and payload.get("reason") == "player_markets_not_open"
+            payload.get("status") == status
+            and payload.get("reason") == reason
             and isinstance(games, list)
             and games
             and all(isinstance(tag, str) and tag for tag in games)
@@ -117,6 +131,14 @@ def waiting_player_games(result: subprocess.CompletedProcess[str]) -> list[str]:
             return sorted(set(games))
         return []
     return []
+
+
+def waiting_player_games(result: subprocess.CompletedProcess[str]) -> list[str]:
+    return _waiting_market_games(result, "waiting_player_markets", "player_markets_not_open")
+
+
+def waiting_game_markets(result: subprocess.CompletedProcess[str]) -> list[str]:
+    return _waiting_market_games(result, "waiting_game_markets", "sportsbet_game_data_missing")
 
 
 class RunLog:
@@ -660,7 +682,8 @@ def _run_orchestrator_refresh(
     for command in commands:
         result = _run(command)
         tag = command[-1] if "--game" in command else "all"
-        waiting_games = waiting_player_games(result)
+        game_markets = waiting_game_markets(result)
+        waiting_games = game_markets or waiting_player_games(result)
         log.step(
             "orchestrator",
             "waiting" if waiting_games else "ok" if result.returncode == 0 else "failed",
@@ -669,6 +692,8 @@ def _run_orchestrator_refresh(
             stdout_tail=result.stdout[-2000:],
             stderr_tail=result.stderr[-2000:],
         )
+        if game_markets:
+            raise GameMarketsWaiting(game_markets)
         if waiting_games:
             raise PlayerMarketsWaiting(waiting_games)
         if result.returncode != 0:
@@ -1168,21 +1193,21 @@ def main() -> int:
             print(json.dumps({"status": status, "mode": args.mode, "target_date": target_date}))
             return 0
         except PlayerMarketsWaiting as exc:
-            log.step("player_markets", "waiting", games=exc.games)
-            log.finish("partial", reason="player_markets_not_open", waiting_games=exc.games)
+            log.step(exc.step, "waiting", games=exc.games)
+            log.finish("partial", reason=exc.reason, waiting_games=exc.games)
             notify_once(
-                f"waiting-player-markets:{target_date}",
+                f"{exc.notification_key}:{target_date}",
                 (
-                    f"⏳ NBA Wong Choi 等待球員盤口｜{target_date}\n"
+                    f"⏳ NBA Wong Choi {exc.title}｜{target_date}\n"
                     f"賽事：{', '.join(exc.games)}\n"
-                    "Sportsbet 未開球員盤口；下次排程會重新抓取。\n"
+                    f"{exc.source_note}\n"
                     "完整分析同 prediction snapshot 尚未完成。"
                 ),
                 audience="primary",
             )
             print(json.dumps({
                 "status": "partial",
-                "reason": "player_markets_not_open",
+                "reason": exc.reason,
                 "waiting_games": exc.games,
                 "target_date": target_date,
             }))
