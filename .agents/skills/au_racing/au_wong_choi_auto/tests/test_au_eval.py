@@ -71,6 +71,23 @@ class VerdictRuleTests(unittest.TestCase):
         self.assertTrue(v.ship, f"應該 ship：{v.reason}")
         self.assertGreater(v.top_hold_ci[0], 0)
 
+    def test_stage4_v3_full_record_modes(self):
+        """v3：真訊號用全紀錄判到；同一個 scorer（A/A）唔可以過；fit 咗冇 walk-forward 一律拒絕。"""
+        races = _races(sep=0.0)
+        for r in races:
+            for x in r["rows"]:
+                x["_c"] = x["_s"] + (1.2 if x["pos"] <= 3 else 0.0)
+        good = au_eval.compare(races, score, lambda r: r["_c"], label="真訊號 v3",
+                               leakage_audit_passed=True, stage4_mode="fixed_rule")
+        self.assertTrue(good.ship, good.reason)
+        same = au_eval.compare(races, score, score, label="A/A v3",
+                               leakage_audit_passed=True, stage4_mode="fixed_rule")
+        self.assertFalse(same.ship)
+        refused = au_eval.compare(races, score, lambda r: r["_c"], label="in-sample fit",
+                                  leakage_audit_passed=True, stage4_mode="in_sample")
+        self.assertFalse(refused.ship)
+        self.assertEqual(refused.reason, "fitted_candidate_needs_walk_forward_predictions")
+
     def test_a_worse_candidate_is_rejected_with_the_right_reason(self):
         races = _races(sep=1.2)
         for r in races:

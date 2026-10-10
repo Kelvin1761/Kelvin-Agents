@@ -34,7 +34,8 @@ def test_compare_produces_verdict_and_excludes_dead_meetings(tmp_path, capsys):
     _rows(base, good_flip=False, dead_first=True)
     _rows(cand, good_flip=False, dead_first=True)
     out = tmp_path / "r.json"
-    assert harness.main(["compare", str(base), str(cand), "--leakage-audit-passed", "--out", str(out)]) == 0
+    assert harness.main(["compare", str(base), str(cand), "--leakage-audit-passed",
+                         "--stage4", "fixed_rule", "--out", str(out)]) == 0
     report = json.loads(out.read_text(encoding="utf-8"))
     assert report["races"] == 27            # first meeting (3 races) dropped: dead speed_score
     assert report["races_with_ranking_change"] == 0

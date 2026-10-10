@@ -287,3 +287,190 @@ def evaluate_candidate(candidate: EvaluationInput) -> dict:
             "nonnegative_metrics": nonnegative,
         },
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Stage 4 v3 (2026-10-10): judge on the full record, not on a 15% tail.
+#
+# v2 judged every candidate on one locked terminal tail (~50–60 HKJC races).
+# That wasted 85% of the evidence, the tail had been opened many times, and a
+# chronological tail is also a season/condition split. v3 separates two kinds of
+# candidate:
+#
+#   fixed_rule        nothing was learned from the data (correctness fixes,
+#                     pre-registered constants, restoring a documented design).
+#                     There is no in-sample optimism, so every race counts.
+#   walk_forward_oos  values were fitted from data; the producer MUST supply
+#                     predictions where each meeting was scored by a fit that
+#                     only saw earlier meetings. Then every race is out of sample.
+#
+# Anything fitted without walk-forward predictions is refused outright — judging
+# a fitted change on the data it was fitted to is the bias v3 exists to prevent.
+# Inference resamples whole meeting days (races on one day share going, bias and
+# the same scheduled run), and every primary metric must hold in most of K
+# contiguous time blocks so one hot season cannot carry a verdict.
+# ═══════════════════════════════════════════════════════════════════════════
+
+V3_MODES = ("fixed_rule", "walk_forward_oos")
+
+
+@dataclass(frozen=True)
+class FullRecordEvidence:
+    delta: float
+    ci_low: float
+    ci_high: float
+    p_value: float
+    block_deltas: tuple[float, ...]
+    higher_is_better: bool = True
+
+    def favourable(self) -> "FullRecordEvidence":
+        if self.higher_is_better:
+            return self
+        return FullRecordEvidence(
+            delta=-self.delta,
+            ci_low=-self.ci_high,
+            ci_high=-self.ci_low,
+            p_value=self.p_value,
+            block_deltas=tuple(-value for value in self.block_deltas),
+            higher_is_better=True,
+        )
+
+    def blocks_nonnegative(self) -> int:
+        return sum(1 for value in self.favourable().block_deltas if value >= 0)
+
+
+def _full_record_metric(
+    baseline: list[float | None],
+    candidate: list[float | None],
+    dates: list[str],
+    *,
+    higher_is_better: bool,
+    blocks: int,
+    bootstrap: int,
+    seed: int,
+) -> FullRecordEvidence:
+    by_day: dict[str, list[float]] = {}
+    for base, cand, day in zip(baseline, candidate, dates):
+        if base is None or cand is None:
+            continue
+        by_day.setdefault(day, []).append(float(cand) - float(base))
+    days = sorted(by_day)
+    all_deltas = [value for day in days for value in by_day[day]]
+    delta = _mean(all_deltas)
+    if not all_deltas or all(value == 0 for value in all_deltas):
+        ci_low = ci_high = delta
+        p_value = 1.0
+    else:
+        rng = random.Random(seed)
+        samples = []
+        for _ in range(bootstrap):
+            picked = [by_day[days[rng.randrange(len(days))]] for _ in days]
+            flat = [value for day in picked for value in day]
+            samples.append(_mean(flat))
+        samples.sort()
+        ci_low = samples[max(0, math.floor(bootstrap * 0.025))]
+        ci_high = samples[min(bootstrap - 1, math.ceil(bootstrap * 0.975) - 1)]
+        below = sum(1 for value in samples if value <= 0) / bootstrap
+        above = sum(1 for value in samples if value >= 0) / bootstrap
+        p_value = min(1.0, 2 * min(below, above))
+    size = max(1, math.ceil(len(days) / blocks))
+    block_deltas = tuple(
+        _mean([value for day in days[start:start + size] for value in by_day[day]])
+        for start in range(0, len(days), size)
+    )
+    return FullRecordEvidence(delta, ci_low, ci_high, p_value, block_deltas, higher_is_better)
+
+
+def evaluate_full_record(
+    *,
+    domain: str,
+    mode: str,
+    dates: list[str],
+    baseline_rows: list[Mapping[str, float | bool | None]],
+    candidate_rows: list[Mapping[str, float | bool | None]],
+    leakage_audit_passed: bool,
+    ranking_metrics: tuple[str, ...] = (
+        "top3_capture_at5",
+        "ndcg_at5",
+        "competitive_recall_at5",
+        "mean_top3_model_rank",
+    ),
+    blocks: int = 6,
+    min_blocks_fraction: float = 2 / 3,
+    bootstrap: int = 2000,
+    seed: int = 7,
+) -> dict:
+    """Stage 4 v3 verdict on the full paired record (see module note above)."""
+    domain = domain.strip().lower()
+    if domain not in PRIMARY_KEYS:
+        return _fail("unsupported_domain", detail={"domain": domain})
+    if mode not in V3_MODES:
+        return _fail("fitted_candidate_needs_walk_forward_predictions", detail={"mode": mode})
+    if not (len(dates) == len(baseline_rows) == len(candidate_rows)):
+        return _fail("race_count_changed")
+    if not leakage_audit_passed:
+        return _fail("leakage_audit_failed")
+    unknown = sorted(set(ranking_metrics).difference(RANKING_KEYS))
+    if unknown:
+        return _fail("unregistered_ranking_metric", detail={"metrics": unknown})
+
+    def evidence(name: str) -> FullRecordEvidence:
+        return _full_record_metric(
+            [row.get(name) for row in baseline_rows],
+            [row.get(name) for row in candidate_rows],
+            dates,
+            higher_is_better=METRIC_DIRECTIONS[name],
+            blocks=blocks,
+            bootstrap=bootstrap,
+            seed=seed,
+        )
+
+    primary = {name: evidence(name) for name in PRIMARY_KEYS[domain]}
+    ranking = {name: evidence(name) for name in ranking_metrics}
+    need = math.ceil(len(next(iter(primary.values())).block_deltas) * min_blocks_fraction)
+    detail = {
+        "mode": mode,
+        "races": len(dates),
+        "meeting_days": len(set(dates)),
+        "blocks_required_nonnegative": need,
+        "primary": {k: vars(v) for k, v in primary.items()},
+        "ranking": {k: vars(v) for k, v in ranking.items()},
+    }
+    fav_primary = {k: v.favourable() for k, v in primary.items()}
+    regressions = [
+        key for key, item in fav_primary.items()
+        if item.delta < 0 or item.blocks_nonnegative() < need
+    ]
+    if regressions:
+        return {"verdict": CandidateVerdict.REJECT.value, "reason": "primary_regression",
+                "detail": {**detail, "metrics": regressions}}
+    winners = [key for key, item in fav_primary.items() if item.ci_low > 0]
+    if winners:
+        return {"verdict": CandidateVerdict.PRIMARY_WIN.value, "reason": "gold_or_good_supported_gain",
+                "detail": {**detail, "winning_metrics": winners}}
+    fav_ranking = {k: v.favourable() for k, v in ranking.items()}
+    harmful = [key for key, item in fav_ranking.items() if item.ci_high < 0]
+    if harmful:
+        return {"verdict": CandidateVerdict.REJECT.value, "reason": "ranking_metric_harm",
+                "detail": {**detail, "metrics": harmful}}
+    positive = [key for key, item in fav_ranking.items()
+                if item.delta > 0 and item.blocks_nonnegative() >= need]
+    supported = [key for key in positive if fav_ranking[key].ci_low > 0]
+    if len(positive) >= 2 and supported:
+        return {"verdict": CandidateVerdict.RANKING_WIN.value,
+                "reason": "primary_neutral_ranking_supported_gain",
+                "detail": {**detail, "positive_metrics": positive, "ci_supported_metrics": supported}}
+    return {"verdict": CandidateVerdict.REJECT.value, "reason": "ranking_evidence_too_weak",
+            "detail": {**detail, "positive_metrics": positive, "ci_supported_metrics": supported}}
+
+
+def holm_adjust(p_values: Mapping[str, float]) -> dict[str, float]:
+    """Holm step-down adjusted p-values for one registered candidate family."""
+    ordered = sorted(p_values.items(), key=lambda item: item[1])
+    m = len(ordered)
+    adjusted: dict[str, float] = {}
+    running = 0.0
+    for rank, (name, p) in enumerate(ordered):
+        running = max(running, min(1.0, (m - rank) * p))
+        adjusted[name] = running
+    return adjusted
