@@ -27,6 +27,7 @@ Version: 3.1.0
 import argparse
 import datetime
 import glob
+import hashlib
 import json
 import subprocess
 import sys
@@ -314,6 +315,46 @@ def extractor_cache_current(path: str) -> bool:
         return False
 
 
+def _file_digest(path: str) -> str:
+    with open(path, "rb") as source:
+        return hashlib.sha256(source.read()).hexdigest()
+
+
+def report_inputs(sportsbet_json: str, extractor_json: str, legacy: bool) -> dict:
+    inputs = {
+        "schema_version": 1,
+        "sportsbet": _file_digest(sportsbet_json),
+        "extractor": _file_digest(extractor_json),
+        "renderer": _file_digest(GENERATE_REPORTS),
+        "legacy": legacy,
+    }
+    revision = subprocess.run(
+        ["git", "-C", WORKSPACE_ROOT, "rev-parse", "HEAD"],
+        capture_output=True, text=True, check=False,
+    )
+    inputs["code_revision"] = revision.stdout.strip() if revision.returncode == 0 else None
+    sys.path.insert(0, WORKSPACE_ROOT)
+    from wongchoi_paths import NBA_ML_DATASET
+    model_dir = os.environ.get("NBA_WC_MODEL_DIR") or str(NBA_ML_DATASET / "models" / "v3")
+    if not legacy:
+        inputs["model"] = {
+            name: _file_digest(os.path.join(model_dir, name))
+            if os.path.isfile(os.path.join(model_dir, name)) else None
+            for name in ("model.pkl", "feature_names.json")
+        }
+    return inputs
+
+
+def report_cache_current(report: str, sportsbet_json: str, extractor_json: str, legacy: bool) -> bool:
+    try:
+        with open(report + ".inputs.json", encoding="utf-8") as source:
+            cached = json.load(source)
+        return (cached.get("inputs") == report_inputs(sportsbet_json, extractor_json, legacy)
+                and cached.get("report") == _file_digest(report))
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
                         date_str: str, game_num: int | None = None,
                         debug_skip_extractor: bool = False,
@@ -329,8 +370,11 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
 
     # ── Check if already completed ──
     existing = check_skeleton_exists(target_dir, game_tag)
-    if existing and extractor_cache_current(
+    if existing and not debug_skip_extractor and extractor_cache_current(
         os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
+    ) and report_cache_current(
+        existing, sportsbet_json,
+        os.path.join(target_dir, f"nba_game_data_{game_tag}.json"), legacy,
     ):
         print(f"✅ [{prefix}] 已存在合格報告: {os.path.basename(existing)} ({os.path.getsize(existing)} bytes)")
         if os.path.exists(VALIDATE_OUTPUT):
@@ -388,6 +432,11 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
     ]
     if legacy:
         _report_args.append("--legacy")
+    try:
+        inputs_before = report_inputs(sportsbet_json, extractor_json, legacy)
+    except OSError as exc:
+        print(f"⛔ [{prefix}] 無法核對報告輸入：{exc}")
+        return False
     report_ok = run_script(GENERATE_REPORTS, _report_args, label=f"{prefix} Report Generator")
 
     if not report_ok or not os.path.exists(analysis_md):
@@ -407,6 +456,19 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
         if not validate_ok:
             print(f"⛔ [{prefix}] 防火牆檢查未通過，唔可以發布。")
             return False
+
+    try:
+        if report_inputs(sportsbet_json, extractor_json, legacy) != inputs_before:
+            print(f"⛔ [{prefix}] 報告生成期間輸入已改變，保留重試，唔發布。")
+            return False
+        cache_path = analysis_md + ".inputs.json"
+        temporary = cache_path + ".tmp"
+        with open(temporary, "w", encoding="utf-8") as cache:
+            json.dump({"inputs": inputs_before, "report": _file_digest(analysis_md)}, cache)
+        os.replace(temporary, cache_path)
+    except OSError as exc:
+        print(f"⛔ [{prefix}] 無法保存報告輸入核對：{exc}")
+        return False
 
     print(f"\n🎉 [{prefix}] {game_tag} Pipeline 完成！")
     return True
@@ -581,6 +643,14 @@ def main():
                 "⛔ 官方賽程覆蓋閘失敗："
                 f"missing={missing or '[]'} unexpected={unexpected or '[]'}"
             )
+            if missing and not unexpected:
+                print("NBA_PIPELINE_RESULT: " + json.dumps({
+                    "status": "waiting_game_markets",
+                    "reason": "sportsbet_game_data_missing",
+                    "waiting_games": missing,
+                    "target_date": args.date,
+                }, ensure_ascii=False))
+                sys.exit(75)
             sys.exit(1)
 
     # ── --list mode ──
