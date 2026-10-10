@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import pytest
 import sys
 from dataclasses import replace
 from datetime import date, datetime
@@ -138,7 +139,8 @@ def _write_manifest(state_root: Path, identity: RunIdentity, state: RunState,
             status="temporary_failure",
             detail={"exit_code": exit_code},
         )
-    manifest.transition(state)
+    if state is not RunState.RUNNING:
+        manifest.transition(state)
     return path
 
 
@@ -180,3 +182,30 @@ def test_force_does_not_disturb_the_partial_retry_path(tmp_path: Path) -> None:
     retry = RetryPolicy(max_attempts=3)
     assert M._next_request(request, tmp_path, retry).identity.attempt == 2
     assert M._next_request(request, tmp_path, retry, force=True).identity.attempt == 2
+
+
+
+def test_later_nba_warmup_resumes_after_exhausted_temporary_batch(tmp_path: Path) -> None:
+    identity = RunIdentity(Domain.NBA, "pregame", date(2026, 10, 11), "21:00")
+    paths = [_write_manifest(tmp_path, replace(identity, attempt=a), RunState.PARTIAL, exit_code=75) for a in range(1, 4)]
+    before = [p.read_bytes() for p in paths]
+    request = RunRequest(identity, Operation.PREDICT)
+    assert M._next_request(request, tmp_path, RetryPolicy(max_attempts=3)).identity.attempt == 4
+    assert [p.read_bytes() for p in paths] == before
+
+
+@pytest.mark.parametrize("state,code", [(RunState.SUCCEEDED, 0), (RunState.FAILED, 1), (RunState.RUNNING, None)])
+def test_nba_warmup_preserves_success_failure_and_active_identity(tmp_path: Path, state, code) -> None:
+    identity = RunIdentity(Domain.NBA, "pregame", date(2026, 10, 11), "21:00")
+    _write_manifest(tmp_path, identity, state, exit_code=code)
+    assert M._next_request(RunRequest(identity, Operation.PREDICT), tmp_path, RetryPolicy(max_attempts=3)).identity.attempt == 1
+
+
+def test_nba_warmup_recovery_is_bounded_and_other_slots_keep_policy(tmp_path: Path) -> None:
+    for slot in ["21:00", "00:30"]:
+        identity = RunIdentity(Domain.NBA, "pregame", date(2026, 10, 11), slot)
+        count = M.FORCE_ATTEMPT_CEILING if slot == "21:00" else 3
+        for attempt in range(1, count + 1):
+            _write_manifest(tmp_path, replace(identity, attempt=attempt), RunState.PARTIAL, exit_code=75)
+        selected=M._next_request(RunRequest(identity, Operation.PREDICT), tmp_path, RetryPolicy(max_attempts=3))
+        assert selected.identity.attempt == count

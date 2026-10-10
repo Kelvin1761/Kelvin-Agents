@@ -162,7 +162,7 @@ def _next_request(
     都唔行。2026-09-09 實測：09:00 網球咭 `failed`，10:30 同 12:30 兩個復原時段
     都係 `duplicate_skipped`，兩個 attempt 燒晒喺空跑度，當日冇咭。
 
-    所以：**排程自動重試嘅政策一個字都冇改**，只係俾一個明確嘅人手／復原調用
+    NBA warmup 另容許暫時失敗後嘅後續調用讀取新市場；其他排程政策保持不變。明確人手／復原調用
     有辦法開一個新 attempt。`--max-attempts` 同 `FORCE_ATTEMPT_CEILING` 照封頂。
     """
     candidate = request
@@ -186,6 +186,23 @@ def _next_request(
                     candidate.identity,
                     attempt=candidate.identity.attempt + 1,
                 ),
+            )
+            continue
+        # A later NBA warmup must read newly opened markets after an earlier
+        # bounded batch exhausted its retries. Preserve old manifests, success
+        # idempotency, permanent failures and every other domain's policy.
+        if (
+            candidate.identity.domain is Domain.NBA
+            and candidate.identity.mode == "pregame"
+            and candidate.identity.scheduled_slot == "21:00"
+            and existing.state is RunState.PARTIAL
+            and exit_code is not None
+            and retry.should_retry(exit_code=exit_code, attempt=1)
+            and candidate.identity.attempt < FORCE_ATTEMPT_CEILING
+        ):
+            candidate = replace(
+                candidate,
+                identity=replace(candidate.identity, attempt=candidate.identity.attempt + 1),
             )
             continue
         if (
