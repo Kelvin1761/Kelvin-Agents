@@ -30,7 +30,7 @@ description: Use when the user asks for central Wong Choi status, git/release/de
 
 1. 中央層不得重算分數、改 rank、共用四線 weights 或製造跨 domain 信心分。
 2. Canonical JSON evidence append-only；SQLite 只可做可重建 index。
-3. Docs/tests-only 可通過 gate 後自動 merge；code/model/evaluation/automation/deployment 要白名單 Telegram approval。
+3. 2026-10-10 用戶授權自動批准：`resources/release_automation.json` enabled=true 時，code/model/evaluation/automation/deployment 通過 gate 及 immutable SHA recheck 後自動 merge／activate，Telegram 只通知改動、預期結果及成敗。enabled=false 恢復白名單 Telegram approval。
 4. Approval 前重新驗證 commit、origin/main、gate、scope 同 rollback target；任何一項變咗就 block。
 5. Post-sync verifier／installer／deploy任何失敗都要嘗試退回captured production SHA；runtime mapping做union且runtime值優先。見到unrelated concurrent write就停止rollback、記critical event，唔准抹走。
 6. Gold/Good 係 AU/HKJC primary；ranking-only candidate 必須 primary 無回歸兼過預先定義 statistical gate。

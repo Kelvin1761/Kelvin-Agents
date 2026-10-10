@@ -1,5 +1,12 @@
 # Release and Approval
 
+2026-10-10 用戶授權自動批准，設定見 `../resources/release_automation.json`。
+enabled=true 時，下文嘅批准步驟由 `user-delegated:auto-release` 自動執行，
+唔等 Telegram `/approve`；immutable SHA、clean checkout recheck、scope、
+domain evidence 同 rollback 防線繼續生效。enabled=false 恢復人手批准。
+`./保存.sh --path ... --expected-result "預期影響" "commit message"`
+會通知預期影響及最終 merge／activation 狀態。預期結果唔等於已量度改善。
+
 ## Classification
 
 - `docs_tests`: quick gate；可自動 push 同 fast-forward main；永不自動 activate。

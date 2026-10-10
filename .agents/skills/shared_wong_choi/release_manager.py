@@ -7,7 +7,7 @@ import json
 import os
 import subprocess
 import sys
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from datetime import datetime, timezone
 from pathlib import Path
 from pathlib import PurePosixPath
@@ -17,10 +17,13 @@ from uuid import uuid4
 
 from .release_policy import ReleasePolicy, activation_plan, classify_release
 from .release_events import ReleaseEventStore, effective_status
+from .release_automation import release_automation_config
 
 
 RELEASE_SCHEMA = "wong-choi-release/v1"
-DEFAULT_STATE_ROOT = Path.home() / "WongChoiData" / "WongChoiControl" / "releases"
+DEFAULT_STATE_ROOT = Path(os.environ.get(
+    "WONGCHOI_CONTROL_STATE_ROOT", Path.home() / "WongChoiData" / "WongChoiControl"
+)) / "releases"
 
 
 class ReleaseError(RuntimeError):
@@ -228,17 +231,20 @@ def _notify(repo: Path, message: str, *, dry_run: bool) -> dict:
     script = repo / ".agents/skills/shared_racing/scripts/racing_telegram.py"
     if not script.is_file():
         return {"ok": False, "status": "telegram_script_missing"}
-    completed = _run(
-        repo,
-        sys.executable,
-        str(script),
-        "--message",
-        message,
-        "--json",
-        *(["--dry-run"] if dry_run else []),
-        check=False,
-        timeout=30,
-    )
+    try:
+        completed = _run(
+            repo,
+            sys.executable,
+            str(script),
+            "--message",
+            message,
+            "--json",
+            *(["--dry-run"] if dry_run else []),
+            check=False,
+            timeout=30,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        return {"ok": False, "status": "telegram_failed", "error": str(exc)}
     try:
         return json.loads(completed.stdout)
     except json.JSONDecodeError:
@@ -256,6 +262,10 @@ def _release_message(payload: dict) -> str:
         f"風險：{payload['policy']['risk']} · gate：{payload['policy']['check']}",
         f"commit：{payload['commit'][:12]} · branch：{payload['branch']}",
         f"狀態：{payload['status']} · deploy：{payload['activation']}",
+        f"改動：{payload.get('message') or '未提供'}",
+        "預期結果（非已量度改善）：\n" + "\n".join(payload.get("expected_results") or [
+            "Expected impact was not supplied; no measured improvement is claimed."
+        ]),
     ]
     if payload["status"] == "pushed":
         lines.append(
@@ -275,6 +285,7 @@ def prepare_release(
     notify: bool = True,
     allow_unrelated: bool = False,
     activation_base: str | None = None,
+    expected_results: Sequence[str] = (),
 ) -> dict:
     repo = repo.resolve()
     selected = _scope_paths(repo, paths)
@@ -311,6 +322,10 @@ def prepare_release(
     )
     release_scope = tuple(dict.fromkeys((*stacked, *selected)))
     policy = classify_release(release_scope)
+    automation = release_automation_config(repo)
+    automatic = automation["enabled"] and policy.risk.value != "docs_tests"
+    if automatic:
+        policy = replace(policy, auto_merge=True, auto_activate=True)
     activation_target = _git(repo, "rev-parse", activation_base or rollback_target)
     if (
         _run(
@@ -337,6 +352,10 @@ def prepare_release(
         "activation_base": activation_target,
         "activation_scope": list(activation_scope),
         "unrelated_dirty": unrelated,
+        "message": message,
+        "expected_results": [value.strip() for value in expected_results if value.strip()],
+        "approval_mode": "automatic" if automation["enabled"] else "telegram",
+        "authorization": automation.get("authorization"),
         "policy": {
             "risk": policy.risk.value,
             "check": policy.check,
@@ -385,7 +404,7 @@ def prepare_release(
     push_ok = pushed.returncode == 0
 
     merged = False
-    if push_ok and policy.auto_merge:
+    if push_ok and policy.auto_merge and not automatic:
         diff_paths = _nul_paths(
             _git(repo, "diff", "--name-only", "-z", "origin/main...HEAD")
         )
@@ -418,7 +437,7 @@ def prepare_release(
         "push_exit_code": pushed.returncode,
         "activation": "not_started",
     }
-    telegram = _notify(repo, _release_message(payload), dry_run=False) if notify else {
+    telegram = _notify(repo, _release_message(payload), dry_run=False) if notify and not automatic else {
         "ok": True,
         "status": "skipped",
     }
@@ -432,6 +451,13 @@ def prepare_release(
         branch=branch,
         commit=commit,
     )
+    if push_ok and automatic:
+        from .release_automation import auto_approve_release
+
+        result = auto_approve_release(
+            repo, state_root.expanduser().resolve().parent, selector=commit, notify=notify
+        )
+        payload.update(result)
     return payload
 
 
@@ -444,6 +470,7 @@ def build_parser() -> argparse.ArgumentParser:
     release = sub.add_parser("release")
     release.add_argument("--path", action="append", required=True)
     release.add_argument("--message", required=True)
+    release.add_argument("--expected-result", action="append", default=[])
     release.add_argument("--state-root", type=Path, default=DEFAULT_STATE_ROOT)
     release.add_argument("--dry-run", action="store_true")
     release.add_argument("--no-notify", action="store_true")
@@ -471,13 +498,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 notify=not args.no_notify,
                 allow_unrelated=args.allow_unrelated,
                 activation_base=args.activation_base,
+                expected_results=args.expected_result,
             )
     except ReleaseError as exc:
         result = {"status": "blocked", "error": str(exc)}
         print(json.dumps(result, ensure_ascii=False, indent=2))
         return 1
     print(json.dumps(result, ensure_ascii=False, indent=2))
-    return 0 if result.get("status") not in {"blocked", "push_failed"} else 1
+    return 0 if result.get("status") not in {"blocked", "push_failed"} and result.get("automation_status") != "blocked" else 1
 
 
 if __name__ == "__main__":

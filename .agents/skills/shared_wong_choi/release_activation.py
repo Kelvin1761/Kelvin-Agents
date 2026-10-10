@@ -15,8 +15,9 @@ from .release_manager import ReleaseError, _notify, _run
 
 EXPECTED_MUTABLE_PATHS = frozenset(
     {
-        ".agents/scripts/hkjc_draw_stats.json",
         ".agents/skills/au_racing/data/sb_archive_meeting_ids.json",
+        # scrape_draw_stats.py refreshes this meeting cache during pre-race.
+        ".agents/scripts/hkjc_draw_stats.json",
     }
 )
 

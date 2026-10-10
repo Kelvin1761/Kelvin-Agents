@@ -27,7 +27,11 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
 
 用 `./保存.sh --path <今次scope> "commit message"`。佢會交畀 Central release
 manager 自動做 policy gate、exact-scope commit／push、immutable manifest 同 Telegram；
-code／model／automation／deployment 要 `/approve SHA` 先 merge／activate。禁止再用舊式
+2026-10-10 用戶已授權自動批准 code／model／automation／deployment；通過原有 gate
+及 immutable SHA recheck 後自動 merge／activate，Telegram 只通知改動、預期結果及成敗。
+每次保存改善都要用 `--expected-result TEXT` 提供預期影響（可重覆）；未評估唔准聲稱改善。
+將 `.agents/skills/central_wong_choi/resources/release_automation.json` 嘅 `enabled`
+改為 `false` 就恢復 Telegram 人手批准。禁止再用舊式
 「掃晒成個 worktree」保存。
 
 **多個 agent session 同時開工**：commit 之前先睇 `git status`。只 stage 你自己
@@ -126,7 +130,8 @@ assert 緊兩個冇 merge 過嘅嘢 —— `rating_series` 只存在於
 - **失敗實驗係有用資訊，要照記，唔准掩飾。** 記「點失敗」，唔係只寫「冇用」。
 - **失敗實驗嘅 model code 唔准自動 commit。** 記錄可以 commit，改動唔可以。
 - **唔准無條件背景 push。** 只有用戶明確要求保存／交付／release，先可由
-  `./保存.sh --path …` exact-scope 自動 push；高風險 release 仍要 immutable SHA 批准。
+  `./保存.sh --path …` exact-scope 自動 push；2026-10-10 起 immutable SHA 批准已獲
+  用戶預先授權自動執行，gate／evidence／rollback 要求照常。
   失敗實驗嘅 model code 永遠唔可以靠呢個授權自動 push。
 - **唔准喺冇可退回 baseline 嘅情況下覆蓋一個 known-good 模型。**
   `golden_scoring` 舊 snapshot 唔准同 code 一次過覆蓋。

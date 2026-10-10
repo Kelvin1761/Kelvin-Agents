@@ -171,6 +171,7 @@ def refresh_release(
         state_root=state_root / "releases",
         notify=notify,
         allow_unrelated=True,
+        expected_results=manifest.get("expected_results") or (),
     )
     if prepared.get("status") == "blocked":
         raise ReleaseError(f"replay gate failed: {prepared.get('error')}")

@@ -73,6 +73,7 @@ def approve_release(
     actor: str,
     notify: bool = True,
     dry_run: bool = False,
+    authorization: str | None = None,
 ) -> dict[str, Any]:
     """Approve and fast-forward main; activation remains a separate recorded step."""
     repo = repo.expanduser().resolve()
@@ -121,7 +122,8 @@ def approve_release(
         commit=manifest["commit"],
         event_type="approval_granted",
         actor=actor,
-        detail={"selector": selector, "rollback_target": manifest["rollback_target"]},
+        detail={"selector": selector, "rollback_target": manifest["rollback_target"],
+                **({"authorization": authorization} if authorization else {})},
     )
     pushed = _run(
         repo,

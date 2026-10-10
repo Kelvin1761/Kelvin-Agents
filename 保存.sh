@@ -12,13 +12,14 @@ set -uo pipefail
 cd "$(dirname "$0")"
 
 PY="${PYTHON_BIN:-python3}"
-CENTRAL=".agents/skills/central_wong_choi/scripts/central_wong_choi.py"
+CENTRAL=".agents/skills/central_wong_choi/scripts/scoped_release.py"
 MESSAGE=""
 DRY_RUN=0
 ALLOW_UNRELATED=0
 NO_NOTIFY=0
 ACTIVATION_BASE=""
 PATHS=()
+EXPECTED_RESULTS=()
 
 usage() {
   cat <<'EOF'
@@ -31,9 +32,10 @@ usage() {
   --allow-unrelated    容許 worktree 有其他未 stage 改動，但永遠唔會收埋佢哋
   --activation-base SHA  用已部署 SHA 計算真正 activation delta
   --no-notify          唔發 Telegram（一般唔建議）
+  --expected-result TEXT  呢個改動嘅預期結果；可重覆，會隨 Telegram 通知發出
 
-code/model/automation/deployment 只會 commit + push；Telegram /approve SHA 後先會
-重新驗證、merge 同 activate。docs/tests-only 通過 policy gate 後可以自動 merge。
+已按用戶授權啟用自動批准：通過 gate 後重新驗證、merge 同 activate，Telegram
+只通知結果同預期影響。resources/release_automation.json enabled=false 可恢復人手批准。
 EOF
 }
 
@@ -60,6 +62,11 @@ while [ "$#" -gt 0 ]; do
     --no-notify)
       NO_NOTIFY=1
       shift
+      ;;
+    --expected-result)
+      [ "$#" -ge 2 ] || { echo "❌ --expected-result 後面要有預期結果"; exit 2; }
+      EXPECTED_RESULTS+=("$2")
+      shift 2
       ;;
     --no-check)
       echo "❌ Central release 唔接受跳過 gate；修好紅燈再保存。"
@@ -101,6 +108,9 @@ fi
 ARGS=(--repo "$PWD" release --message "$MESSAGE" --json)
 for path in "${PATHS[@]}"; do
   ARGS+=(--path "$path")
+done
+for expected in "${EXPECTED_RESULTS[@]}"; do
+  ARGS+=(--expected-result "$expected")
 done
 [ "$DRY_RUN" -eq 1 ] && ARGS+=(--dry-run)
 [ "$ALLOW_UNRELATED" -eq 1 ] && ARGS+=(--allow-unrelated)

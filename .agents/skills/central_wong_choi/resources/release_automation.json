@@ -1,0 +1,5 @@
+{
+  "enabled": true,
+  "authorization": "User instruction on 2026-10-10: auto approve releases and continue without Telegram approval; notify with expected results of each improvement.",
+  "mode": "until_user_disables"
+}
