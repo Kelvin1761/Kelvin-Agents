@@ -94,14 +94,37 @@ def _eb_score(wins, starts, places, g_win, g_place, neg_scale, floor):
     return max(0.0, min(100.0, score))
 
 
-def build_ratings(sub: pd.DataFrame, group: str) -> dict:
+def _season_tag(day: str) -> str:
+    year, month = int(day[:4]), int(day[5:7])
+    start = year if month >= 8 else year - 1
+    return f"{start % 100:02d}_{(start + 1) % 100:02d}"
+
+
+def _season_weight_fn(group: str, current_tag: str):
+    """Mirror production's J/T season weighting exactly.
+
+    Production weights seasons by age (EXP-20261010-01) once
+    ``live_priors.season_weight`` exists; before that release it used the
+    hard-coded "24_25" label. The replay follows whichever production has, so
+    the ruler never runs ahead of the model.
+    """
+    weigh = getattr(live_priors, "season_weight", None)
+    if weigh is not None:
+        return lambda tag: weigh(group, tag, current_tag)
+    legacy = JT_RATING_PARAMS.get(f"{group}_w24", 1.0)
+    return lambda tag: legacy if tag == "24_25" else 1.0
+
+
+def build_ratings(sub: pd.DataFrame, group: str, current_tag: str | None = None) -> dict:
     p = JT_RATING_PARAMS
     col = "Jockey" if group == "jockey" else "Trainer"
     neg = p["jockey_neg_scale"] if group == "jockey" else p["trainer_neg_scale"]
     floor = 0.0 if group == "jockey" else p["trainer_floor"]
-    w24 = p.get("jockey_w24", 1.0) if group == "jockey" else p.get("trainer_w24", 1.0)
+    if current_tag is None:
+        current_tag = _season_tag(str(pd.to_datetime(sub["Date"]).max().date()))
     d = sub[[col, "SeasonTag", "Win", "Place"]].copy()
-    d["w"] = d["SeasonTag"].map(lambda s: w24 if s == "24_25" else 1.0)
+    d["w"] = d["SeasonTag"].map(_season_weight_fn(group, current_tag))
+    d = d[d["w"] > 0]
     d["Wins"] = d["Win"] * d["w"]
     d["Starts"] = d["w"]
     d["Places"] = d["Place"] * d["w"]
@@ -194,8 +217,8 @@ def inject_as_of(all_rows: pd.DataFrame, meeting_date: str):
         raise ValueError("PIT source contains missing dates")
     sub = all_rows[all_rows["Date"] < meeting_date]
     live_priors._JT_RATINGS = _Ratings(
-        build_ratings(sub, "jockey"),
-        build_ratings(sub, "trainer"),
+        build_ratings(sub, "jockey", _season_tag(meeting_date)),
+        build_ratings(sub, "trainer", _season_tag(meeting_date)),
         meeting_date,
     )
     engine_core._TRAINER_SIGNAL_PRIORS = _Priors(
