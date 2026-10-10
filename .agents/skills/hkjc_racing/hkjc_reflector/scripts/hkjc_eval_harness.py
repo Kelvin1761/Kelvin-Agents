@@ -211,7 +211,7 @@ def _excluded(row: dict, exclude_dead: set[str]) -> bool:
 
 
 def compare(args) -> int:
-    from model_evaluation_decision import build_evaluation_input, evaluate_candidate
+    from model_evaluation_decision import build_evaluation_input, evaluate_candidate, evaluate_full_record
 
     base, cand = _read(args.baseline), _read(args.candidate)
     exclude = set(args.exclude_dead or ())
@@ -231,7 +231,16 @@ def compare(args) -> int:
         leakage_audit_passed=args.leakage_audit_passed,
         ranking_metrics=RANKING_METRICS,
     )
-    verdict = evaluate_candidate(evaluation)
+    if args.stage4 == "v2":
+        verdict = evaluate_candidate(evaluation)
+    else:
+        # Stage 4 v3 (docs/model-evaluation-contract.md): full record.
+        verdict = evaluate_full_record(
+            domain="hkjc", mode=args.stage4, dates=dates,
+            baseline_rows=b_rows, candidate_rows=c_rows,
+            leakage_audit_passed=args.leakage_audit_passed,
+            ranking_metrics=RANKING_METRICS,
+        )
 
     def rate(rows, key):
         values = [bool(r[key]) for r in rows if r.get(key) is not None]
@@ -296,6 +305,10 @@ def main(argv=None) -> int:
     c.add_argument("baseline")
     c.add_argument("candidate")
     c.add_argument("--leakage-audit-passed", action="store_true")
+    c.add_argument("--stage4", choices=("fixed_rule", "walk_forward_oos", "v2"), required=True,
+                   help="v3 fixed_rule = nothing learned from this data (full record); "
+                        "walk_forward_oos = fitted candidate scored from walk-forward predictions; "
+                        "v2 = legacy 15%% terminal tail")
     c.add_argument("--exclude-dead", action="append", default=["speed_score"],
                    help="Drop meetings where this leaf is dead (default: speed_score)")
     c.add_argument("--out")

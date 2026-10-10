@@ -1,5 +1,52 @@
 # 模型評估合約（AU / HKJC Wong Choi）
 
+## Stage 4 判決順序（v3，2026-10-10）—— 全紀錄判決
+
+> v2（下面）保留做歷史；**2026-10-10 之後嘅新候選一律用 v3**。之前用 v2 判咗嘅記錄
+> 唔追溯改判決。判決器：`model_evaluation_decision.evaluate_full_record`。
+
+### 點解換
+
+v2 用最後 15% 日期做 terminal（HKJC 約 50–60 場）：85% 證據唔參與判決、terminal
+被重複開過好多次、時間尾段又啱啱係新季（條件切分）。實測：HKJC 騎練季節加權候選喺
+v2 terminal「實際前三平均名次改善，CI 唔跨零」，喺 v3 全紀錄變成 Δ −0.0000
+CI [−0.0085, +0.0078] —— 嗰個 terminal「改善」係 50 場嘅噪音。
+
+### 兩類候選，兩種模式（`mode` 必須聲明）
+
+| mode | 適用 | 點解冇偏差 |
+|---|---|---|
+| `fixed_rule` | 冇由數據學嘢：正確性修正、預先登記嘅固定值、還原寫明嘅設計 | 冇調參 → 冇 in-sample 樂觀；**全部紀錄都用** |
+| `walk_forward_oos` | 由數據 fit 數值（權重、門檻、gain、幅度） | 製造者要交 walk-forward 預測：每個賽日只用之前嘅賽日 fit。全部歷史每場都係 out-of-sample |
+
+**fit 咗但冇 walk-forward 預測 → 直接 REJECT**（`fitted_candidate_needs_walk_forward_predictions`）。
+
+### 判決次序
+
+1. 安全：同場數、leakage audit PASS、ranking metric 已登記。
+2. **Primary**（Gold、Good 位置）：全紀錄點估計 < 0，或者 K=6 個連續時間塊入面
+   少過 ⌈K×2/3⌉ 塊 ≥ 0 → `REJECT / primary_regression`。
+3. **PRIMARY_WIN**：任一 primary 嘅 95% CI 下界 > 0（同埋第 2 步已過）。
+4. Ranking metric 任何一個 CI 上界 < 0 → `REJECT / ranking_metric_harm`。
+5. **RANKING_WIN**：≥ 2 個 ranking metric 點估計 > 0 而且時間塊達標，其中 ≥ 1 個
+   CI 下界 > 0。
+6. 否則 `REJECT / ranking_evidence_too_weak`。
+
+**推論**：bootstrap 以**賽日**做單位（同日賽事共用場地、偏差、同一次排程 run，
+逐場 bootstrap 會高估信心），2000 次。
+
+### 其他規則
+
+- **多重比較**：同一候選家族（同一假設嘅唔同 arm）要登記，用 `holm_adjust` 調整 p 值；
+  只有調整後仍然顯著先可以報 WIN。
+- **Forward holdout**：v3 判 WIN 之後，最終確認用之後未睇過嘅賽日（HKJC 由 2026-10-11 起），
+  一個候選家族只開一次。
+- **§6 功效前置**、**§7 正確性修正**、**leakage audit** 照舊適用。
+- **語料**：HKJC 用 `hkjc_eval_harness.py`（真 production 計分路徑 + PIT priors，
+  自動剔走欄位死咗嘅賽日）；AU 用自己語料，**fit 類候選只可以用 2026-08-05 之後
+  乾淨 point-in-time 段做 walk-forward**（之前存檔係賽後重評，有前視）。
+- **驗證把尺**：A/A（候選 = baseline）必須 REJECT；已知結果嘅舊候選重判要判得啱。
+
 ## Stage 4 判決順序（v2，2026-08-26）
 
 呢次係**獨立改把尺**，冇包含任何候選 model／feature／weight 改動。舊 AU AUC-only

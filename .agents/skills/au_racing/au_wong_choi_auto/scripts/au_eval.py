@@ -67,6 +67,7 @@ from eval_metrics import race_metrics, summarize_races  # noqa: E402
 from model_evaluation_decision import (  # noqa: E402
     build_evaluation_input,
     evaluate_candidate,
+    evaluate_full_record,
 )
 from au_racing_engine.scoring import (  # noqa: E402
     compose_matrix_score,
@@ -433,7 +434,8 @@ def _stage4_metric_rows(races, scorer):
 
 
 def compare(races, base_scorer=None, cand_scorer=None, *, label="候選",
-            holdout=HOLDOUT, with_counts=True, leakage_audit_passed=False):
+            holdout=HOLDOUT, with_counts=True, leakage_audit_passed=False,
+            stage4_mode="v2"):
     """一個候選 vs 基準。→ `Verdict`。
 
     判決：頭 K 位 holdout 區間唔過 0，而且 dev 點估計唔係負。
@@ -465,7 +467,22 @@ def compare(races, base_scorer=None, cand_scorer=None, *, label="候選",
             "top5_pairwise_auc",
         ),
     )
-    decision = evaluate_candidate(stage4_input)
+    if stage4_mode == "v2":
+        decision = evaluate_candidate(stage4_input)
+    else:
+        # Stage 4 v3 (2026-10-10): full-record verdict. `fixed_rule` only for
+        # candidates that learned nothing from this data; fitted candidates must
+        # be scored from walk-forward predictions (`walk_forward_oos`).
+        decision = evaluate_full_record(
+            domain="au",
+            mode=stage4_mode,
+            dates=[str(race.get("date") or f"undated-{index:06d}")
+                   for index, race in enumerate(races)],
+            baseline_rows=_stage4_metric_rows(races, base_scorer),
+            candidate_rows=_stage4_metric_rows(races, cand_scorer),
+            leakage_audit_passed=leakage_audit_passed,
+            ranking_metrics=("top3_capture_at5", "ndcg_at5", "top5_pairwise_auc"),
+        )
     ship = decision["verdict"] in {"PRIMARY_WIN", "RANKING_WIN"}
     why = str(decision["reason"])
 
@@ -495,7 +512,18 @@ def main():
         action="store_true",
         help="Confirm the candidate's separate point-in-time leakage audit passed",
     )
+    ap.add_argument(
+        "--stage4-mode",
+        choices=("v2", "fixed_rule", "walk_forward_oos"),
+        default="v2",
+        help=("Stage 4 v3 (2026-10-10): fixed_rule = nothing learned from this data, judged "
+              "on the full record; walk_forward_oos = fitted values scored from walk-forward "
+              "predictions. v2 = legacy 15%% terminal tail."),
+    )
     args = ap.parse_args()
+    if args.stage4_mode == "v2" and (args.swap_leaf or args.matrix_weights or args.wet_scale is not None):
+        print("⚠️ Stage 4 v2 已被 v3 取代（docs/model-evaluation-contract.md）："
+              "新候選請用 --stage4-mode fixed_rule 或 walk_forward_oos\n")
 
     races = load_races(args.data)
     print(f"{len(races)} 場 · Stage 4 v2 = Gold/Good primary + ranking evidence\n")
@@ -563,6 +591,7 @@ def main():
             label=f"{leaf} 設成常數 {v:g}",
             holdout=args.holdout,
             leakage_audit_passed=args.leakage_audit_passed,
+            stage4_mode=args.stage4_mode,
         )
         report["verdicts"].append(verdict_dict(verdict))
         print(verdict)
@@ -576,6 +605,7 @@ def main():
             label=f"matrix weights: {Path(args.matrix_weights).name}",
             holdout=args.holdout,
             leakage_audit_passed=args.leakage_audit_passed,
+            stage4_mode=args.stage4_mode,
         )
         report["verdicts"].append(verdict_dict(verdict))
         print(verdict)
@@ -588,6 +618,7 @@ def main():
             label=f"wet overlay ×{args.wet_scale:g}",
             holdout=args.holdout,
             leakage_audit_passed=args.leakage_audit_passed,
+            stage4_mode=args.stage4_mode,
         )
         report["verdicts"].append(verdict_dict(verdict))
         print(verdict)
