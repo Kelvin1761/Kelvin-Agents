@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
+from datetime import datetime, timedelta, timezone
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[5]
@@ -127,6 +128,48 @@ COMPOSITE_SCORE_KEYS = frozenset({
     "final_rank_score",
     "composite_score",
 })
+
+
+# ── 賽前版本（2026-10-10）────────────────────────────────────────────────────
+# 覆盤要評「開跑之前」嗰個版本。meeting 目錄入面嘅 CSV／Logic 會喺開跑後被重新
+# 評分覆蓋（10-07 跑馬地就評咗 21:05 HKT 嘅版本，第一場 18:35 開跑），而
+# `Prediction_Snapshots/` 嗰份標住 immutable 嘅快照亦係開跑後先寫。所以由兩套
+# 快照目錄揀「最後一個 created_at 早過第一場開跑時間」嘅版本。
+HKT = timezone(timedelta(hours=8))
+SNAPSHOT_DIRS = ("Prediction_Snapshots", "_prediction_snapshots")
+
+
+def first_post_time(meeting_dir: Path) -> datetime | None:
+    day = meeting_dir.name[:10]
+    times = []
+    for card in meeting_dir.glob("*排位表.md"):
+        try:
+            text = card.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        match = re.search(r"時間[:：]\s*(\d{1,2}):(\d{2})", text)
+        if match:
+            times.append(datetime.fromisoformat(f"{day}T{int(match.group(1)):02d}:{match.group(2)}:00").replace(tzinfo=HKT))
+    return min(times) if times else None
+
+
+def select_prerace_snapshot(meeting_dir: Path) -> tuple[Path | None, datetime | None, datetime | None]:
+    """→ (snapshot dir, its created_at, first post time). None when none qualifies."""
+    post = first_post_time(meeting_dir)
+    best = None
+    for name in SNAPSHOT_DIRS:
+        for manifest in (meeting_dir / name).glob("*/manifest.json"):
+            try:
+                created = datetime.fromisoformat(json.loads(manifest.read_text(encoding="utf-8"))["created_at"])
+            except (OSError, ValueError, KeyError, TypeError):
+                continue
+            if post is not None and created >= post:
+                continue
+            if not list(manifest.parent.glob("Race_*_Auto_Scoring.csv")):
+                continue
+            if best is None or created > best[1]:
+                best = (manifest.parent, created)
+    return (best[0], best[1], post) if best else (None, None, post)
 
 
 def _strip_score_suffix(label: str) -> str:
@@ -1111,6 +1154,14 @@ def run_au_backtests(meeting_dir: Path) -> list[dict[str, Any]]:
 
 
 def run_hkjc_backtests(meeting_dir: Path) -> list[dict[str, Any]]:
+    """Retired 2026-10-10. The archive review replays through a path with known
+    lookahead (no race_date on old Logic), scores on the v1 metrics and returned
+    the same hard-coded draw-tiebreak candidates every day. Suggestions now come
+    from `hkjc_eval_harness.py` + Stage 4 v3 via the hypothesis queue."""
+    return []
+
+
+def _legacy_run_hkjc_backtests(meeting_dir: Path) -> list[dict[str, Any]]:
     hkjc = _import_hkjc_review()
     review = hkjc["run_review"](
         [hkjc["get_analysis_archive_root"]()],
@@ -1198,6 +1249,7 @@ def render_markdown_report(
     results_file: Path,
     race_performances: list[RacePerformance],
     backtests: list[dict[str, Any]],
+    evaluated_version: str | None = None,
 ) -> str:
     distribution = summarize_label_distribution(race_performances)
     shortlist = summarize_shortlist_metrics(race_performances)
@@ -1208,6 +1260,7 @@ def render_markdown_report(
         "## Workflow Summary",
         f"- Domain: `{DOMAIN_LABELS[platform]}`",
         f"- Meeting: `{meeting_dir.name}`",
+        f"- 評估版本: {evaluated_version or '目錄現行版本（未揀賽前快照）'}",
         f"- Reflected races: `{reflected_races}`",
         f"- Results file: `{results_file.name}`",
         f"- Approval gate: **任何 improvement suggestion 只供審批，不會自動改 code / matrix。**",
@@ -1281,7 +1334,11 @@ def render_markdown_report(
         )
 
     lines.extend(["", "## Backtested Improvement Suggestions"])
-    if not backtests:
+    if not backtests and platform == "hkjc":
+        lines.append("- 舊式「全庫 backtest 建議」已停用（2026-10-10）：佢經有前視嘅回放、用 v1 指標，"
+                     "而且每日都出同一批寫死嘅候選。改善建議改由 `hkjc_eval_harness.py` + Stage 4 v3 "
+                     "判決，失誤先累積入假設佇列，夠樣本先開實驗。")
+    elif not backtests:
         lines.append("- 今次未有可用 backtest candidate。")
     else:
         for candidate in backtests:
@@ -1382,13 +1439,27 @@ def run_unified_reflector(
     print(f"✅ Using meeting dir: {resolved_meeting_dir}")
     print(f"✅ Using results file: {resolved_results_file}")
 
+    analysis_dir = resolved_meeting_dir
+    evaluated_version = None
+    if platform == "hkjc":
+        snapshot, created, post = select_prerace_snapshot(resolved_meeting_dir)
+        if snapshot is not None:
+            analysis_dir = snapshot
+            evaluated_version = (f"賽前快照 `{snapshot.parent.name}/{snapshot.name}`（建立 "
+                                 f"{created.astimezone(HKT):%m-%d %H:%M} HKT；第一場 "
+                                 f"{post.astimezone(HKT):%H:%M} HKT）" if post else f"賽前快照 `{snapshot.name}`")
+        else:
+            evaluated_version = ("⚠️ 搵唔到開跑前嘅快照 —— 評緊目錄現行版本，可能係開跑後重評，"
+                                 "唔可以當賽前表現")
+        print(f"✅ Evaluated version: {evaluated_version}")
+
     run_stats = _import_reflector_auto_stats()
-    meeting_stats = run_stats(str(resolved_meeting_dir), str(resolved_results_file))
+    meeting_stats = run_stats(str(analysis_dir), str(resolved_results_file))
     if meeting_stats.get("error"):
         raise SystemExit(f"❌ reflector_auto_stats 失敗: {meeting_stats['error']}")
 
     structured_results = load_structured_results(platform, resolved_results_file)
-    prediction_rows = load_prediction_rows(resolved_meeting_dir, platform)
+    prediction_rows = load_prediction_rows(analysis_dir, platform)
     race_filter = set(target_races) if target_races else None
     races = build_race_performances(
         platform,
@@ -1402,7 +1473,8 @@ def run_unified_reflector(
     final_report_path = Path(report_path).resolve() if report_path else default_report_path(platform, resolved_meeting_dir)
     final_report_path.parent.mkdir(parents=True, exist_ok=True)
     final_report_path.write_text(
-        render_markdown_report(platform, resolved_meeting_dir, resolved_results_file, races, backtests),
+        render_markdown_report(platform, resolved_meeting_dir, resolved_results_file, races, backtests,
+                               evaluated_version=evaluated_version),
         encoding="utf-8",
     )
     print(f"✅ Unified reflector report written: {final_report_path}")
