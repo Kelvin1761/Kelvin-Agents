@@ -44,3 +44,13 @@ def test_no_prerace_snapshot_is_reported_not_guessed(tmp_path):
 
 def test_retired_hkjc_backtest_returns_nothing(tmp_path):
     assert core.run_hkjc_backtests(tmp_path) == []
+
+
+def test_au_uses_1130_sydney_cutoff(tmp_path):
+    meeting = tmp_path / "2026-09-02 Sandown Race 1-8"
+    meeting.mkdir()
+    pre = _snapshot(meeting, "_prediction_snapshots", "a", "2026-09-02T00:25:50+00:00")    # 10:25 Sydney
+    _snapshot(meeting, "_prediction_snapshots", "b", "2026-09-02T06:33:00+00:00")          # 16:33 Sydney, after start
+    snapshot, created, cutoff = core.select_prerace_snapshot(meeting, "au")
+    assert snapshot == pre
+    assert (cutoff.hour, cutoff.minute) == (11, 30) and created < cutoff

@@ -153,9 +153,25 @@ def first_post_time(meeting_dir: Path) -> datetime | None:
     return min(times) if times else None
 
 
-def select_prerace_snapshot(meeting_dir: Path) -> tuple[Path | None, datetime | None, datetime | None]:
-    """→ (snapshot dir, its created_at, first post time). None when none qualifies."""
-    post = first_post_time(meeting_dir)
+# AU 排位卡冇開跑時間。悉尼時間 11:30 早過幾乎所有 AU 第一場（東岸約 12:00 起，西澳更遲），
+# 所以用佢做保守截止：寧願評早少少嘅快照，都唔好評開跑後重評（2026-10-10 實測
+# 222 個 AU 場次有 17 個喺比賽日 12:00 後重寫過評分檔）。
+AU_PRERACE_CUTOFF = (11, 30)
+
+
+def au_prerace_cutoff(meeting_dir: Path) -> datetime | None:
+    from zoneinfo import ZoneInfo
+
+    try:
+        day = datetime.fromisoformat(meeting_dir.name[:10])
+    except ValueError:
+        return None
+    return day.replace(hour=AU_PRERACE_CUTOFF[0], minute=AU_PRERACE_CUTOFF[1], tzinfo=ZoneInfo("Australia/Sydney"))
+
+
+def select_prerace_snapshot(meeting_dir: Path, platform: str = "hkjc") -> tuple[Path | None, datetime | None, datetime | None]:
+    """→ (snapshot dir, its created_at, first post time / cutoff). None when none qualifies."""
+    post = first_post_time(meeting_dir) if platform == "hkjc" else au_prerace_cutoff(meeting_dir)
     best = None
     for name in SNAPSHOT_DIRS:
         for manifest in (meeting_dir / name).glob("*/manifest.json"):
@@ -1434,6 +1450,17 @@ def _hkjc_dimension_attribution(meeting_dir: Path, analysis_dir: Path,
         return ["", "## 逐維度歸因（邊個維度令模型錯）", f"- ⚠️ 歸因失敗：{type(exc).__name__}: {exc}"]
 
 
+def _hkjc_record_rail_bias(meeting_dir: Path) -> None:
+    """賽道配置 → 當日偏差 ledger（EXP-20261010-14）。失敗只印警告。"""
+    try:
+        sys.path.insert(0, str(HKJC_REFLECTOR_SCRIPTS))
+        import hkjc_rail_bias_ledger as rail_ledger
+
+        print(f"✅ Rail-bias ledger: {rail_ledger.record(meeting_dir)} races")
+    except Exception as exc:  # noqa: BLE001
+        print(f"⚠️ Rail-bias ledger 失敗：{type(exc).__name__}: {exc}")
+
+
 def run_unified_reflector(
     platform: str,
     meeting_ref: str | None = None,
@@ -1461,13 +1488,17 @@ def run_unified_reflector(
 
     analysis_dir = resolved_meeting_dir
     evaluated_version = None
-    if platform == "hkjc":
-        snapshot, created, post = select_prerace_snapshot(resolved_meeting_dir)
+    if platform in {"hkjc", "au"}:
+        snapshot, created, post = select_prerace_snapshot(resolved_meeting_dir, platform)
         if snapshot is not None:
             analysis_dir = snapshot
-            evaluated_version = (f"賽前快照 `{snapshot.parent.name}/{snapshot.name}`（建立 "
-                                 f"{created.astimezone(HKT):%m-%d %H:%M} HKT；第一場 "
-                                 f"{post.astimezone(HKT):%H:%M} HKT）" if post else f"賽前快照 `{snapshot.name}`")
+            if platform == "au":
+                evaluated_version = (f"賽前快照 `{snapshot.parent.name}/{snapshot.name}`（建立 "
+                                     f"{created.astimezone(post.tzinfo):%m-%d %H:%M} 悉尼；截止 11:30 悉尼）")
+            else:
+                evaluated_version = (f"賽前快照 `{snapshot.parent.name}/{snapshot.name}`（建立 "
+                                     f"{created.astimezone(HKT):%m-%d %H:%M} HKT；第一場 "
+                                     f"{post.astimezone(HKT):%H:%M} HKT）" if post else f"賽前快照 `{snapshot.name}`")
         else:
             evaluated_version = ("⚠️ 搵唔到開跑前嘅快照 —— 評緊目錄現行版本，可能係開跑後重評，"
                                  "唔可以當賽前表現")
@@ -1492,6 +1523,7 @@ def run_unified_reflector(
     if platform == "hkjc":
         attribution_lines = _hkjc_dimension_attribution(resolved_meeting_dir, analysis_dir, structured_results,
                                                         race_filter)
+        _hkjc_record_rail_bias(resolved_meeting_dir)
     backtests = [] if skip_backtest else (run_au_backtests(resolved_meeting_dir) if platform == "au" else run_hkjc_backtests(resolved_meeting_dir))
 
     final_report_path = Path(report_path).resolve() if report_path else default_report_path(platform, resolved_meeting_dir)

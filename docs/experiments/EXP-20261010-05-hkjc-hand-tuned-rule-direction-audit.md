@@ -25,3 +25,18 @@
 
 配備 −3 剷走係 RANKING_WIN，要用**未睇過嘅 forward 賽日**（2026-10-11 沙田起）做一次性最終確認：
 同一個 arm、同一個 harness，攢夠約 60 場先開。確認前唔改 live。
+
+## Forward 確認：預先登記（2026-10-10 補充，未開）
+
+- **窗口**：2026-10-11 起，有賽果嘅 HKJC 賽日；累積到 ≥ 60 場（大約 6 個賽日）先開，**只開一次**。
+- **命令**（同一個 harness、同一個 arm，唔准改）：
+  ```bash
+  export PYTHONDONTWRITEBYTECODE=1
+  H=.agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_eval_harness.py
+  python3 $H run --since 2026-10-11 --out fwd_base.jsonl
+  python3 $H run --since 2026-10-11 --arm docs/experiments/patches/hkjc_arm_no_gear_removed.py --out fwd_gear.jsonl
+  python3 $H compare fwd_base.jsonl fwd_gear.jsonl --stage4 fixed_rule --leakage-audit-passed
+  ```
+- **判決規則**（預先寫死）：Gold 同 Good 嘅 Δ 都 ≥ 0，同埋 NDCG@5 Δ ≥ 0 → 剷走 `GEAR_SIGNAL_WEIGHTS["gear_removed_pen"]`。
+  任何一項 < 0 → 維持 −3，記錄 forward 失敗。唔准換指標、換窗口或者重開。
+- 每週 Telegram review 會報 forward 進度，夠數就提示。

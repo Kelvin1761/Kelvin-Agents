@@ -463,3 +463,31 @@ def test_control_json_reports_temporary_discovery_failure(
     payload = json.loads(capsys.readouterr().out.splitlines()[-1])
     assert payload["status"] == "partial"
     assert payload["exit_code"] == schedule.EXIT_TEMPORARY
+
+
+def test_weekly_learning_lines_report_queue_and_rail_progress(tmp_path):
+    import json as _json
+
+    (tmp_path / "HKJC_Attribution_Ledger.jsonl").write_text(
+        _json.dumps({"meeting": "2026-10-07_HappyValley", "kind": "missed", "main": ["race_shape"]}) + "\n",
+        encoding="utf-8")
+    (tmp_path / "HKJC_Rail_Bias_Ledger.jsonl").write_text(
+        _json.dumps({"meeting": "2026-10-07_HappyValley", "venue": "跑馬地", "rail": "C+3",
+                     "inside_bias": -0.1, "front_bias": None}) + "\n", encoding="utf-8")
+    lines = schedule.learning_lines(tmp_path)
+    assert any("漏馬主因" in line and "1 匹" in line for line in lines)
+    assert any("跑馬地 1/60" in line for line in lines)
+
+
+def test_weekly_learning_lines_without_ledgers_only_reports_gear_forward(tmp_path):
+    assert schedule.learning_lines(tmp_path) == ["配備「除去」−3 forward：0/60 場（累積中）"]
+
+
+def test_gear_forward_counts_only_meetings_from_start_date(tmp_path):
+    import json as _json
+
+    for name, races in (("2026-10-07_HappyValley", 9), ("2026-10-11_ShaTin", 10)):
+        m = tmp_path / name
+        m.mkdir()
+        (m / f"{name}_全日賽果.json").write_text(_json.dumps({str(i): {} for i in range(races)}), encoding="utf-8")
+    assert "10/60" in schedule.learning_lines(tmp_path)[-1]

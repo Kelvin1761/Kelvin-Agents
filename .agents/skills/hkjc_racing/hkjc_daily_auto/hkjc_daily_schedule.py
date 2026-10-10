@@ -1511,6 +1511,50 @@ def process_candidate_gate(path: Path) -> tuple[str, str | None]:
     return "created", payload["pr_url"]
 
 
+GEAR_FORWARD_START = "2026-10-11"   # EXP-20261010-05 預先登記
+GEAR_FORWARD_RACES = 60
+
+
+def learning_lines(root: Path | None = None) -> list[str]:
+    """覆盤累積緊乜：歸因假設佇列頭三項 + 賽道偏差 ledger 進度。失敗就唔出，唔影響 review。"""
+    root = root or HK_RACING
+    lines: list[str] = []
+    try:
+        sys.path.insert(0, str(PROJECT_ROOT / ".agents/skills/shared_racing/race_reflector/scripts"))
+        import dimension_attribution as attribution
+
+        queue = attribution.queue_summary(root / attribution.LEDGER_NAME)[:3]
+        if queue:
+            lines.append("歸因佇列（同一維度累積 %d 匹先開實驗）：" % attribution.QUEUE_THRESHOLD)
+            lines.extend(
+                f"・{'漏馬' if q['kind'] == 'missed' else '高估'}主因 {q['label']} {q['horses']} 匹／{q['meetings']} 日"
+                for q in queue)
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        sys.path.insert(0, str(PROJECT_ROOT / ".agents/skills/hkjc_racing/hkjc_reflector/scripts"))
+        import hkjc_rail_bias_ledger as rail_ledger
+
+        summary = rail_ledger.meeting_summary(root / rail_ledger.LEDGER_NAME)
+        if summary:
+            per_venue = {}
+            for row in summary:
+                per_venue.setdefault(row["venue"], set()).add(row["meeting"])
+            progress = "、".join(f"{v} {len(m)}/{rail_ledger.READY_MEETINGS}" for v, m in sorted(per_venue.items()))
+            lines.append(f"賽道偏差 ledger：{progress} 個賽日（夠數先測賽道配置能否預測偏差）")
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        forward = [m for m in root.glob("20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]_*")
+                   if m.is_dir() and m.name[:10] >= GEAR_FORWARD_START and list(m.glob("*全日賽果.json"))]
+        races = sum(len(json.loads(next(m.glob("*全日賽果.json")).read_text(encoding="utf-8"))) for m in forward)
+        status = "✅ 夠數，可以開一次性確認（EXP-20261010-05）" if races >= GEAR_FORWARD_RACES else "累積中"
+        lines.append(f"配備「除去」−3 forward：{races}/{GEAR_FORWARD_RACES} 場（{status}）")
+    except Exception:  # noqa: BLE001
+        pass
+    return lines
+
+
 def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     code, output = run_cmd([sys.executable, str(WEIGHT_REVIEW), "--json"])
     if code != 0:
@@ -1539,6 +1583,8 @@ def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
         f"Reference：{_review_summary(review)}\n"
         f"Candidate：{gate_text}"
     )
+    for line in learning_lines():
+        message += f"\n{line}"
     if is_materialized_file(candidate_gate):
         try:
             gate_payload = json.loads(candidate_gate.read_text(encoding="utf-8"))
