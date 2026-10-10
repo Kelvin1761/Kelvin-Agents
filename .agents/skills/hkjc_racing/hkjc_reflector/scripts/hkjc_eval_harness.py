@@ -172,6 +172,23 @@ def run(args) -> int:
                     for key, value in (auto.get(block) or {}).items():
                         if isinstance(value, (int, float)):
                             leaf_values[key].append(float(value))
+            dump = None
+            if args.dump_matrix:
+                dump = []
+                for number, horse in (logic.get("horses") or {}).items():
+                    auto = horse.get("python_auto") if isinstance(horse, dict) else None
+                    if not isinstance(auto, dict) or not isinstance(auto.get("matrix_scores"), dict):
+                        continue
+                    try:
+                        dump.append({
+                            "n": int(number),
+                            "pos": positions.get(int(number)),
+                            "raw": float(auto.get("ability_score_raw")),
+                            "debut": any("debut" in str(c).lower() for c in auto.get("reason_codes") or []),
+                            "m": {k: float(v) for k, v in auto["matrix_scores"].items()},
+                        })
+                    except (TypeError, ValueError):
+                        continue
             row = {
                 "arm": arm_name,
                 "date": day,
@@ -183,6 +200,8 @@ def run(args) -> int:
                 **{k: metrics.get(k) for k in ("gold", "gold_strict", "good_positional", "champion", *RANKING_METRICS)},
                 "_leaf_values": leaf_values,
             }
+            if dump is not None:
+                row["horses"] = dump
             meeting_rows.append(row)
         dead = _meeting_dead_fields([r for r in meeting_rows if "error" not in r])
         for row in meeting_rows:
@@ -299,6 +318,8 @@ def main(argv=None) -> int:
     r.add_argument("--since")
     r.add_argument("--until")
     r.add_argument("--out", required=True)
+    r.add_argument("--dump-matrix", action="store_true",
+                   help="Also write every horse's raw matrix scores (for offline weight studies)")
     r.add_argument("--no-pit", action="store_true",
                    help="Use live priors (faithfulness check only — has lookahead)")
     c = sub.add_parser("compare")
