@@ -26,7 +26,8 @@ from .matrix_mapper import (
 )
 from . import scoring
 from .rail_draw_context import rail_draw_context_adjustment
-from .scoring import (DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_WEIGHTS, clip_score, compute_grade,
+from . import dimensions
+from .scoring import (CENTRED_MATRIX_WEIGHTS, DEBUT_MATRIX_WEIGHTS, FEATURE_KEYS, MATRIX_KEYS_ALL, MATRIX_WEIGHTS, clip_score, compute_grade,
                       parse_float, parse_record, score_band, to_dimension_display,
                       to_display_scale)
 
@@ -35,9 +36,14 @@ _TRAINER_SIGNAL_PRIORS = None
 # Frozen prospective candidates from EXP-20260928-09.  These weights never
 # replace MATRIX_WEIGHTS: they live only inside `shadow_profiles`, so the
 # official ranking and run contract remain bit-for-bit mainline.
+_CN_COUNT = {7: "七", 8: "八", 9: "九", 10: "十", 11: "十一", 12: "十二"}
+
 _WEIGHT_REFIT_T02 = {
     **MATRIX_WEIGHTS,
-    "stability": 0.1183,
+    # Frozen 7D candidate (stability 0.1183) split the same way as the 9D
+    # mainline: trackwork keeps its 10% share of the old stability weight.
+    "stability": 0.1183 * 0.9,
+    "trackwork": 0.1183 * 0.1,
     "race_shape": 0.2537,
 }
 _WEIGHT_SHADOW_PROFILES = {
@@ -165,6 +171,15 @@ class RacingEngine:
         matrix_scores["trainer_signal"] = self._apply_trainer_signal_v3(matrix_scores["trainer_signal"])
         matrix_scores["horse_health"] = self._apply_health_only_v2(matrix_scores["horse_health"])
         matrix_scores["sectional"] = self._apply_finish_time_trend(matrix_scores["sectional"])
+        # 同程表現（9D，2026-10-10）：之前係 7D 以外嘅獨立 raw 調整，而家係一個
+        # centred 維度。leaf = 60 + 調整 ÷ 權重，所以 權重 × (leaf − 60) 等於原本嘅調整。
+        distance_suitability = self._distance_suitability_adjustment(feature_scores, matrix_scores)
+        self.distance_suitability_adjustment = distance_suitability
+        distance_weight = CENTRED_MATRIX_WEIGHTS.get("distance_fit")
+        if distance_weight:
+            distance_leaf = 60.0 + float(distance_suitability["raw_adjustment"]) / distance_weight
+            feature_scores["distance_fit_score"] = distance_leaf
+            matrix_scores["distance_fit"] = round(distance_leaf, 4)
         # 維度 band 一律由**顯示尺**判。原始尺上面七個維度有五個永遠出唔到 ✅✅，
         # `馬匹健康` 連 ❌ 都出唔到（原始全距只有 55.2–73.7），所以同一套門檻
         # （✅✅ 85 / ✅ 70 / ➖ 55 / ❌ 40）套落七把唔同嘅尺 = 個符號冇意義。
@@ -176,12 +191,7 @@ class RacingEngine:
         matrix = {key: score_band(value) for key, value in matrix_scores_display.items()}
         # 加權總分係原始尺（維度加權平均，實測全距 50–77）；`ability_score` 印出
         # 嚟嘅係顯示尺。仿射、單調，所以排序 bit-identical——見 scoring.DISPLAY_SCALE。
-        distance_suitability = self._distance_suitability_adjustment(feature_scores, matrix_scores)
-        self.distance_suitability_adjustment = distance_suitability
-        ability_raw = round(
-            self._ability_score(matrix_scores) + float(distance_suitability["raw_adjustment"]),
-            2,
-        )
+        ability_raw = round(self._ability_score(matrix_scores), 2)
         ability_score = round(to_display_scale(ability_raw), 2)
         grade = compute_grade(ability_score)
         matrix_reasoning = self._matrix_reasoning(matrix_scores, matrix, feature_scores, feature_notes,
@@ -898,9 +908,15 @@ class RacingEngine:
 
     def _ability_score(self, matrix_scores):
         if self._is_debut():
-            return sum(matrix_scores.get(key, 60.0) * weight for key, weight in DEBUT_MATRIX_WEIGHTS.items())
+            base = sum(matrix_scores.get(key, 60.0) * weight for key, weight in DEBUT_MATRIX_WEIGHTS.items())
         else:
-            return sum(matrix_scores[key] * weight for key, weight in MATRIX_WEIGHTS.items())
+            base = sum(matrix_scores[key] * weight for key, weight in MATRIX_WEIGHTS.items())
+        # Centred dimensions (同程表現) add weight × (score − 60); debut runners
+        # have no same-distance record so their term is 0 by construction.
+        return base + sum(
+            weight * (float(matrix_scores.get(key, 60.0)) - 60.0)
+            for key, weight in CENTRED_MATRIX_WEIGHTS.items()
+        )
 
     def build_shadow_profile(self, profile_name, base_auto=None):
         incident_modes = {
@@ -1034,7 +1050,7 @@ class RacingEngine:
             as_of_date=(self.race_context or {}).get("race_date"),
         ) if eligible and trainer else None
         matrix_scores = {
-            key: round(float(base_matrix.get(key, 60.0)), 2)
+            key: round(float(base_matrix.get(key, 60.0)), 6)
             for key in MATRIX_WEIGHTS
         }
         base_trainer = float(base_features.get("trainer_score", 60.0) or 60.0)
@@ -1196,10 +1212,10 @@ class RacingEngine:
     def _build_weight_race_shape_shadow(self, profile_name, base_auto=None):
         auto = base_auto or self.analyze_horse()
         base_matrix = auto.get("matrix_scores", {}) if isinstance(auto, dict) else {}
-        if not isinstance(base_matrix, dict) or sorted(base_matrix) != sorted(MATRIX_WEIGHTS):
+        if not isinstance(base_matrix, dict) or sorted(base_matrix) != sorted(MATRIX_KEYS_ALL):
             return None
 
-        matrix_scores = {key: round(float(base_matrix.get(key, 60.0)), 2) for key in MATRIX_WEIGHTS}
+        matrix_scores = {key: round(float(base_matrix.get(key, 60.0)), 6) for key in MATRIX_KEYS_ALL}
         components = None
         v3_applied = False
         if profile_name in {"race_shape_v3_hv", "race_shape_v3_hv_t02"}:
@@ -1227,7 +1243,7 @@ class RacingEngine:
         weights = _WEIGHT_REFIT_T02 if uses_refit and not self._is_debut() else MATRIX_WEIGHTS
         if self._is_debut():
             weights = DEBUT_MATRIX_WEIGHTS
-            matrix_scores = {key: round(float(base_matrix.get(key, 60.0)), 2) for key in MATRIX_WEIGHTS}
+            matrix_scores = {key: round(float(base_matrix.get(key, 60.0)), 6) for key in MATRIX_KEYS_ALL}
             v3_applied = False
 
         base_weights = DEBUT_MATRIX_WEIGHTS if self._is_debut() else MATRIX_WEIGHTS
@@ -2137,14 +2153,12 @@ class RacingEngine:
 
 
     def _matrix_reasoning(self, matrix_scores, matrix, features, notes, matrix_scores_display=None):
+        # Keys, order and leaves come from dimensions.py; only the wording of
+        # this section's headings differs from the registry label.
+        heading = {"race_shape": "檔位與走位情境（不含步速）"}
         specs = {
-            "stability": ("狀態與穩定性", ("form_score", "consistency_score", "trackwork_trend_score")),
-            "sectional": ("段速表現", ("speed_score",)),
-            "race_shape": ("檔位與走位情境（不含步速）", ("race_shape_context_score",)),
-            "trainer_signal": ("騎練訊號", ("jockey_score", "trainer_score")),
-            "horse_health": ("馬匹健康 / 新鮮感", ("risk_score", "weight_score")),
-            "form_line": ("賽績線", ("formline_strength_score",)),
-            "class_advantage": ("級數優勢", ("class_score", "weight_score")),
+            key: (heading.get(key, spec.label), tuple(name for name, _w in MATRIX_FORMULAS[key]))
+            for key, spec in ((spec.key, spec) for spec in dimensions.DIMENSIONS)
         }
         reasoning = {}
         for key, (label, feature_keys) in specs.items():
@@ -2797,11 +2811,7 @@ class RacingEngine:
                 band=tw_pattern["band"], reason=tw_pattern["reason"])
         return rows
 
-    DIM_LABELS = {
-        "stability": "穩定性", "sectional": "段速", "race_shape": "形勢檔位",
-        "trainer_signal": "騎練訊號", "horse_health": "健康新鮮", "form_line": "賽績線",
-        "class_advantage": "班次優勢",
-    }
+    DIM_LABELS = dimensions.short_labels()
 
     def _core_logic(self, features, matrix_scores, matrix_reasoning):
         """Reason-giving verdict. Each strong/weak factor is explained with its
@@ -2825,7 +2835,7 @@ class RacingEngine:
         top_dim = self.DIM_LABELS.get(ordered[0][0], ordered[0][0])
         low_dim = self.DIM_LABELS.get(ordered[-1][0], ordered[-1][0])
         ability = to_display_scale(self._ability_score(matrix_scores))
-        sents = [f"{name}今仗七維綜合戰力 {ability:.1f} 分，當中以{top_dim}（{ordered[0][1]:.0f}）為最強一環、"
+        sents = [f"{name}今仗{_CN_COUNT.get(len(dimensions.DIMENSIONS), len(dimensions.DIMENSIONS))}維綜合戰力 {ability:.1f} 分，當中以{top_dim}（{ordered[0][1]:.0f}）為最強一環、"
                  f"{low_dim}（{ordered[-1][1]:.0f}）相對最弱。"]
         if pos:
             sents.append("優勢在於" + "；".join(describe(r) for r in pos[:3]) + "。")
@@ -3203,6 +3213,7 @@ class RacingEngine:
             "formline_strength_score": "賽績線強度分",
             "margin_trend_score": "輸距走勢分",
             "same_distance_signal_score": "同程證據分",
+            "distance_fit_score": "同程表現分",
         }[key]
 
     def _matrix_score_tone(self, score):
@@ -3217,6 +3228,23 @@ class RacingEngine:
             return "偏弱"
         return "明顯偏弱"
 
+    def _describe_trackwork_matrix(self, score, features, evidence):
+        """晨操（9D 獨立維度）：沿用晨操分嘅判讀；冇料就明講中性。"""
+        text = self._clean(evidence) if evidence else ""
+        if len(text) >= 12:
+            return text
+        return f"近 21 日晨操資料有限，晨操分 {float(features.get('trackwork_trend_score', 60.0)):.0f}，按中性處理。"
+
+    def _describe_distance_fit_matrix(self, score, features, evidence):
+        """同程表現（9D centred 維度）：今仗路程有冇上名實績。"""
+        detail = getattr(self, "distance_suitability_adjustment", {}) or {}
+        starts = int(detail.get("same_distance_starts", 0) or 0)
+        places = int(detail.get("same_distance_places", 0) or 0)
+        note = self._clean(detail.get("note", ""))
+        if starts:
+            return f"今仗路程 {starts} 戰 {places} 次上名：{note or '按同程實績調整。'}"
+        return note if len(note) >= 12 else "今仗路程未有正式往績，同程表現按中性 60 處理。"
+
     def _matrix_summary_text(self, key, label, score, features, evidence):
         builders = {
             "stability": self._describe_stability_matrix,
@@ -3226,6 +3254,8 @@ class RacingEngine:
             "horse_health": self._describe_horse_health_matrix,
             "form_line": self._describe_form_line_matrix,
             "class_advantage": self._describe_class_advantage_matrix,
+            "trackwork": self._describe_trackwork_matrix,
+            "distance_fit": self._describe_distance_fit_matrix,
         }
         builder = builders.get(key, self._describe_generic_matrix)
         text = builder(score, features, evidence).strip()
@@ -3916,7 +3946,7 @@ class RacingEngine:
 
 
     def _grade_computation_transparency(self, matrix_scores, ability_score, grade, feature_scores=None):
-        """The ONE scoring-summary block: a 7D contribution table (score × weight
+        """The ONE scoring-summary block: the matrix contribution table (score × weight
         = contribution), the weighted total + grade, reference scores that sit
         outside the 7D formula, and triggered risk flags. Weights are pulled live
         from the active weight set (debut vs standard) so the displayed 加權總分
@@ -3924,15 +3954,8 @@ class RacingEngine:
         is_debut = self._is_debut()
         active_weights = DEBUT_MATRIX_WEIGHTS if is_debut else MATRIX_WEIGHTS
 
-        dims = [
-            ("stability", "狀態與穩定性"),
-            ("trainer_signal", "騎練訊號"),
-            ("sectional", "段速表現"),
-            ("race_shape", "檔位與走位"),
-            ("horse_health", "馬匹健康 / 新鮮感"),
-            ("form_line", "賽績線"),
-            ("class_advantage", "級數優勢"),
-        ]
+        table_label = {"race_shape": "檔位與走位"}
+        dims = [(spec.key, table_label.get(spec.key, spec.label)) for spec in dimensions.DIMENSIONS]
 
         rows = []
         lines = []
@@ -3942,17 +3965,22 @@ class RacingEngine:
         # 讀者同 band 用嘅。只印原始尺就會出現「69.4 ➖」同「76.7 ✅」並排咁
         # 讀落好似亂判 —— 其實係兩個維度嘅原始尺根本唔同刻度。
         for key, label in dims:
-            weight = active_weights.get(key, 0.0)
+            centred = key in CENTRED_MATRIX_WEIGHTS and not is_debut
+            weight = CENTRED_MATRIX_WEIGHTS[key] if centred else active_weights.get(key, 0.0)
             raw_score = float(matrix_scores.get(key, 60))
             disp_score = float(to_dimension_display(key, raw_score))
             band = score_band(disp_score)
-            contribution = round(raw_score * weight, 2)
+            # Centred dimensions add weight × (score − 60) on top (see dimensions.py).
+            contribution = round(weight * (raw_score - 60.0) if centred else raw_score * weight, 2)
             weighted_sum += contribution
             rows.append({"key": key, "label": label,
                          "score": round(disp_score, 2),
                          "score_raw": round(raw_score, 2),
                          "weight": weight, "contribution": contribution, "band": band})
-            if weight == 0.0:
+            if centred:
+                lines.append(f"| {label} | {disp_score:.1f} | {raw_score:.1f} | "
+                             f"{weight * 100:.1f}%（以 60 為中心） | {contribution:+.2f} | {band} |")
+            elif weight == 0.0:
                 tag = "初出馬豁免" if is_debut else "0%（僅作參考）"
                 lines.append(f"| {label} | {disp_score:.1f} | {raw_score:.1f} | {tag} | — | {band} |")
             else:
@@ -3967,17 +3995,13 @@ class RacingEngine:
         # 表格逐行印嘅係維度加權貢獻，加起身係**原始**加權總分（實測全距 50–77）。
         # `ability_score` 係顯示尺，所以兩個數字要一齊印，唔然讀者會以為表格加錯。
         matrix_weighted_sum = weighted_sum
+        # 同程表現已經係表入面一行（centred 維度），唔再另外加一次。
         distance_adjustment = getattr(self, "distance_suitability_adjustment", {})
         distance_raw = float(distance_adjustment.get("raw_adjustment", 0.0) or 0.0)
-        weighted_sum += distance_raw
-        distance_note = self._clean(distance_adjustment.get("note", ""))
         summary = (
             f"{table}\n\n"
-            f"**→ 7D 維度加權總和 = {matrix_weighted_sum:.2f} 分"
+            f"**→ {len(dimensions.DIMENSIONS)}D 維度加權總和（原始總分）= {weighted_sum:.2f} 分"
             f"（原始尺，實測全場分佈 50–77）**\n"
-            f"**→ 獨立路程適性調整 = {distance_raw:+.2f} 分**"
-            + (f"（{distance_note}）\n" if distance_note else "\n")
-            + f"**→ 原始總分 = {weighted_sum:.2f} 分**\n"
             f"**→ 換算顯示尺 = {ability_score:.1f} 分 → 評級 [{grade}]**"
         )
 
@@ -3997,7 +4021,7 @@ class RacingEngine:
             if isinstance(draw, (int, float)):
                 ref_bits.append(f"檔位分 {float(draw):.1f}（經檔位走位情境入分）")
             if ref_bits:
-                summary += "\n**📎 參考分（不直接入7D公式）：** " + "、".join(ref_bits)
+                summary += f"\n**📎 參考分（不直接入{len(dimensions.DIMENSIONS)}D公式）：** " + "、".join(ref_bits)
             coverage_text = self._data_coverage_summary(feature_scores)
             if coverage_text:
                 summary += f"\n**📋 {coverage_text}**"

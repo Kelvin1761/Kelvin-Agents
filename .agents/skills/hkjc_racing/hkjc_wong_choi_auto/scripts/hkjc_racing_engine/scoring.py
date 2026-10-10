@@ -3,6 +3,7 @@
 racing_engine/scoring.py — Core Scoring Framework
 """
 
+from . import dimensions
 from abc import ABC, abstractmethod
 import os
 import re
@@ -12,7 +13,7 @@ import re
 # Persisted with every scored race so forward results can be attributed to the
 # exact model that made the pre-race prediction.
 SCORING_CONTRACT_VERSION = (
-    "HKJC_7D_CONTRACT_2026_10_08_PURE_7D_"
+    "HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_"
     "RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1"
 )
 
@@ -78,15 +79,10 @@ FEATURE_KEYS = (
 # 下調至 0.65×0.1849（保留原速度影響力），其餘維度按比例放大令總和＝1。
 # 排名等效於「段速=速度×0.65 + 場地60×0.35」舊結構（場地嗰 0.35 只乘 constant，
 # 對排名零貢獻）。pit_backtest：gold/min/champ 不變、single/t3c 微升。
-MATRIX_WEIGHTS = {
-    "sectional": 0.1285,
-    "trainer_signal": 0.2362,
-    "stability": 0.0983,
-    "race_shape": 0.2737,
-    "class_advantage": 0.1428,
-    "horse_health": 0.0404,
-    "form_line": 0.0801,
-}
+MATRIX_WEIGHTS = dimensions.weights()
+# Centred dimensions: composite += weight × (score − 60). See dimensions.py.
+CENTRED_MATRIX_WEIGHTS = dimensions.centred_weights()
+MATRIX_KEYS_ALL = dimensions.all_keys()
 
 # Same-distance evidence is a distance-suitability signal, not evidence that a
 # horse has a class edge.  These micro values deliberately preserve the former
@@ -130,21 +126,9 @@ RANKING_ADJUSTMENTS = (
         "formula": "同場中位數 + clip（race-shape − 同場中位數，−10，+10）；全場同式、不鎖名次",
         "missing": "整場冇有效 race-shape = 不套用；可用 WC_HKJC_RACE_SHAPE_ROBUSTNESS=legacy_unbounded 回退",
     },
-    {
-        "key": "distance_suitability_adjustment",
-        "label": "同程性能修正",
-        "formula": "正式V1：同程曾入位 +0.43；有同程紀錄但未入位約 -0.17（raw 分）",
-        "missing": "冇 point-in-time 同程紀錄 = 0；V2 residual 另作 prospective shadow",
-    },
 )
 
-DEBUT_MATRIX_WEIGHTS = {
-    "trainer_signal": 0.30,
-    "horse_health": 0.30,
-    "race_shape": 0.20,
-    "stability": 0.15,
-    "class_advantage": 0.05,
-}
+DEBUT_MATRIX_WEIGHTS = dimensions.debut_weights()
 
 RACE_SHAPE_CONTEXT_WEIGHTS = {
     "sha_tin_draw": 0.55,
@@ -242,24 +226,8 @@ DISPLAY_SLOPE = DISPLAY_SCALE["target_sd"] / DISPLAY_SCALE["observed_sd"]
 # 同 `DISPLAY_SCALE` 一樣，呢個只係**顯示尺**：`matrix_scores` 保持原始值餵綜合
 # 分同所有分析工具，顯示值另存 `matrix_scores_display`，排名 bit-identical
 # （由 tests/test_dimension_display_scale.py 守住）。
-MATRIX_DISPLAY_CENTRES = {          # 實測中位 → 讀者睇到嘅 60
-    "race_shape": 63.0,
-    "trainer_signal": 60.5,
-    "class_advantage": 64.8,
-    "sectional": 60.0,
-    "stability": 57.0,
-    "form_line": 80.0,
-    "horse_health": 66.9,
-}
-MATRIX_DISPLAY_GAINS = {            # 10.0 / 實測 SD → 七個維度同一個離散度
-    "race_shape": 0.9852,
-    "trainer_signal": 2.1261,
-    "class_advantage": 1.8311,
-    "sectional": 1.1137,
-    "stability": 0.9406,
-    "form_line": 0.8153,
-    "horse_health": 2.8841,
-}
+MATRIX_DISPLAY_CENTRES = dimensions.display_centres()  # 實測中位 → 讀者睇到嘅 60
+MATRIX_DISPLAY_GAINS = dimensions.display_gains()  # 10.0 / 實測 SD → 每個維度同一個離散度
 MATRIX_DISPLAY_TARGET_SD = 10.0
 MATRIX_DISPLAY_SAMPLE = 3438
 

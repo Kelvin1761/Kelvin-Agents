@@ -7,6 +7,7 @@ import re
 from collections import Counter
 from pathlib import Path
 
+from . import dimensions
 from .scoring import clip_score
 
 ABILITY_LABEL = "綜合戰力分"
@@ -35,25 +36,10 @@ DERIVED_SCORE_KEYS = (
 )
 
 # 次序＝報告顯示次序（用戶要求：騎練訊號緊跟狀態與穩定性）
-MATRIX_LABELS = {
-    "stability": "狀態與穩定性",
-    "trainer_signal": "騎練訊號",
-    "sectional": "段速表現",
-    "race_shape": "檔位與走位（不含步速）",
-    "horse_health": "馬匹健康 / 新鮮感",
-    "form_line": "賽績線",
-    "class_advantage": "級數優勢",
-}
+MATRIX_LABELS = dimensions.labels()
+DIM_TAG = f"{len(dimensions.DIMENSIONS)}D"   # "9D" — never hard-code the count
 
-MATRIX_ROLES = {
-    "stability": "半核心",
-    "sectional": "核心",
-    "race_shape": "半核心",
-    "trainer_signal": "核心",
-    "horse_health": "輔助",
-    "form_line": "輔助",
-    "class_advantage": "輔助",
-}
+MATRIX_ROLES = dimensions.roles()
 
 
 BAND_LABELS = {
@@ -470,9 +456,9 @@ def _render_panorama(race: dict, verdict: dict, horses: dict, shadow_verdicts: d
         "| 項目 | 內容 |",
         "|:---|:---|",
         f"| 賽事格局 | {race_class} / {distance}m / HKJC |",
-        "| **賽事類型** | **`[HKJC Wong Choi Auto Python 7D]`** |",
+        f"| **賽事類型** | **`[HKJC Wong Choi Auto Python {DIM_TAG}]`** |",
         "| 天氣 / 場地 | 以本地已抽取資料為準；缺資料以中性分處理 |",
-        "| 分析邊界 | 12項分數 + 7D；不使用即場市場資料、主觀補寫或外部模型 |",
+        f"| 分析邊界 | 12項分數 + {DIM_TAG}；不使用即場市場資料、主觀補寫或外部模型 |",
         "",
         "**📍 Auto 走位與檔位摘要（不含節奏預測）:**",
         f"- 場次: 第 {race_number} 場",
@@ -484,8 +470,9 @@ def _render_panorama(race: dict, verdict: dict, horses: dict, shadow_verdicts: d
         "",
         "**📊 全場綜合戰力排名**",
         "",
-        f"| 排名 | 馬號 | 馬名 | 7D正式分 | 7D全場百分位 | Grade | 資料完整度 | 風險分 | 情境標記 |",
-        "|---:|---:|---|---:|---:|---|---:|---:|---|",
+        # 「全場百分位」已剷（Kelvin 2026-10-10）：佢只係排名嘅另一個寫法，冇新資訊。
+        f"| 排名 | 馬號 | 馬名 | {DIM_TAG}正式分 | Grade | 資料完整度 | 風險分 | 情境標記 |",
+        "|---:|---:|---|---:|---|---:|---:|---|",
         *[_ranking_row(item, horses) for item in verdict.get("ranking", [])],
     ]
 
@@ -517,7 +504,7 @@ def _render_horse_section(horse_num: str, horse: dict, auto: dict) -> list[str]:
         f"- **統計:** {_fmt(horse.get('season_stats') or data.get('season_stats_line'))}",
         f"- **近績分 / 穩定性分:** {float(features.get('form_score', 60)):.1f} / {float(features.get('consistency_score', 60)):.1f}",
         "",
-        "#### 🧮 7D 評分矩陣逐項拆解",
+        f"#### 🧮 {DIM_TAG} 評分矩陣逐項拆解",
         "> 每個維度：**評分構成**（sub分 × 權重點砌出嚟）→ 每個 sub分嘅來源 → **實證調整** → **判讀** → **數據**。",
         "",
         *_matrix_lines(horse, auto),
@@ -548,7 +535,7 @@ def _render_verdict(verdict: dict, horses: dict, shadow_verdicts: dict | None = 
         lines.extend([
             f"**第{idx}選**",
             f"- **馬號及馬名:** [{item['horse_number']}] {item['horse_name']}",
-            f"- **評級與排名:** `[{auto.get('grade', '')}]` | 7D正式分 {float(auto.get('ability_score', 0)):.1f}",
+            f"- **評級與排名:** `[{auto.get('grade', '')}]` | {DIM_TAG}正式分 {float(auto.get('ability_score', 0)):.1f}",
             *_verdict_pick_line(auto),
             f"- **核心理據:** {_short(_core_logic(auto, horses[str(item['horse_number'])]), 420)}",
             f"- **最大風險:** {_risk_text(auto)}",
@@ -604,7 +591,7 @@ def _render_blind_spots() -> list[str]:
         "",
         "**1. 資料完整度:** 缺失欄位以中性 60 處理，並以資料完整度指標反映不確定性（不再計入評分）。",
         "**2. 段速含金量:** 段速由本地已抽取資料與矩陣綜合，未以單一數字直接定勝負。",
-        "**3. 排名邏輯:** 只按robust 7D綜合戰力分由高至低排序；冇第二層overlay。Grade只按7D顯示分作閱讀標籤。",
+        f"**3. 排名邏輯:** 只按robust {DIM_TAG}綜合戰力分由高至低排序；冇第二層overlay。Grade只按{DIM_TAG}顯示分作閱讀標籤。",
         "**4. 騎練樣本:** 人馬、騎練或海外騎師資料不足時，不會單靠名氣加分。",
         "**5. 重跑條件:** 任何本地來源更新後，應重新執行 Python Auto pipeline。",
         "",
@@ -652,13 +639,22 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
         if key == "race_shape":
             lines.extend(_race_shape_detail_lines(auto))
         lines.append(f"  - **判讀:** {_sanitize_text(text)}")
-        if key == "stability":
-            # 晨操分析＋海外往績直接住喺狀態與穩定性維度入面（用戶要求，唔另開 section）
+        if key == "trackwork":
+            # 9D（2026-10-10）：晨操由狀態與穩定性搬出嚟做獨立維度。
             data = horse.get("_data", {}) if isinstance(horse.get("_data"), dict) else {}
             tw_lines = _trackwork_lines(auto, data)
             if tw_lines:
                 lines.append("  - **晨操分析:**")
                 lines.extend(f"    {item}" for item in tw_lines)
+        if key == "distance_fit":
+            detail = auto.get("distance_suitability_adjustment") or {}
+            if detail:
+                lines.append(
+                    f"  - **同程紀錄:** {int(detail.get('same_distance_starts', 0) or 0)} 戰 "
+                    f"{int(detail.get('same_distance_places', 0) or 0)} 次上名；"
+                    f"原始分貢獻 {float(detail.get('raw_adjustment', 0.0) or 0.0):+.2f}"
+                )
+        if key == "stability":
             overseas = auto.get("overseas_form_read")
             if isinstance(overseas, dict):
                 lines.append("  - **海外往績:**")
@@ -994,11 +990,9 @@ def _table_cols(line: str) -> list[str]:
 def _ranking_row(item: dict, horses: dict) -> str:
     auto = horses[str(item["horse_number"])]["python_auto"]
     features = auto.get("feature_scores", {})
-    ability_percentile = auto.get("ability_percentile")
-    ability_text = f"{float(ability_percentile):.1f}" if isinstance(ability_percentile, (int, float)) else "—"
     return (
         f"| {auto.get('rank', '')} | {item['horse_number']} | {item['horse_name']} | "
-        f"{float(auto.get('ability_score', 0)):.1f} | {ability_text} | {auto.get('grade', '')} | "
+        f"{float(auto.get('ability_score', 0)):.1f} | {auto.get('grade', '')} | "
         f"{float(features.get('confidence_score', 60)):.1f} | {float(features.get('risk_score', 60)):.1f} | "
         f"{_context_tags_display(auto)} |"
     )
@@ -1079,7 +1073,7 @@ def _core_logic(auto: dict, horse: dict) -> str:
     text = str(auto.get("core_logic") or "").strip()
     if text:
         return _sanitize_text(text)
-    return f"{horse.get('horse_name', '')} 目前{ABILITY_LABEL} {float(auto.get('ability_score', 0)):.1f}，由 12 項分數及 7D 矩陣產生。"
+    return f"{horse.get('horse_name', '')} 目前{ABILITY_LABEL} {float(auto.get('ability_score', 0)):.1f}，由 12 項分數及 {DIM_TAG} 矩陣產生。"
 
 
 
@@ -1292,7 +1286,7 @@ def _context_tags_display(auto: dict) -> str:
 def _summary_banner(auto: dict, features: dict) -> str:
     """The ONE core-score line: total / grade / rank / confidence / risk (+tags)."""
     parts = [
-        f"**📌 7D正式{ABILITY_LABEL} `{float(auto.get('ability_score', 0)):.1f}` → 評級 `{auto.get('grade', '')}`**",
+        f"**📌 {DIM_TAG}正式{ABILITY_LABEL} `{float(auto.get('ability_score', 0)):.1f}` → 評級 `{auto.get('grade', '')}`**",
     ]
     rank = auto.get("rank")
     if rank not in (None, ""):
@@ -1397,7 +1391,7 @@ def _matrix_grade_section(auto: dict, features: dict) -> str:
 
     grade_trans = auto.get("grade_transparency", {})
     if isinstance(grade_trans, dict) and grade_trans.get("summary"):
-        parts.append("#### 🔢 評分總覽（7D 加權計算 · Python Auto 引擎）")
+        parts.append(f"#### 🔢 評分總覽（{DIM_TAG} 加權計算 · Python Auto 引擎）")
         parts.append("")
         parts.append(grade_trans["summary"])
 

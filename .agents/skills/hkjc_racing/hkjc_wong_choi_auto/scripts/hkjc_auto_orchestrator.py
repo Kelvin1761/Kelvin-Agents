@@ -31,12 +31,14 @@ from hkjc_racing_engine.renderer import (
     write_prepared_race_outputs,
 )
 from hkjc_racing_engine.scoring import (
+    CENTRED_MATRIX_WEIGHTS,
     DEBUT_MATRIX_WEIGHTS,
     MATRIX_WEIGHTS,
     RACE_SHAPE_ROBUST_DEVIATION_CAP,
     active_race_shape_robustness_profile,
     compute_grade,
     from_display_scale,
+    to_dimension_display,
     to_display_scale,
 )
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
@@ -250,6 +252,42 @@ CLASS_RANK_MAP = {
     "C4": 6,
     "C5": 7,
 }
+
+def _refresh_grade_transparency(horses):
+    """Make the per-dimension rows add up to the FINAL raw score.
+
+    The engine builds `grade_transparency.rows` before the orchestrator applies
+    the whole-field race_shape cap and SIP boosts, so the dashboard strip used
+    to explain a score the horse no longer had. After both steps: refresh every
+    row's raw score / contribution from the final matrix and list the non-matrix
+    adjustments, so 60 + Σ weight·(raw − 60) + Σ adjustments == ability_score_raw.
+    """
+    for horse in horses.values():
+        auto = horse.get("python_auto") if isinstance(horse, dict) else None
+        if not isinstance(auto, dict):
+            continue
+        transparency = auto.get("grade_transparency")
+        matrix = auto.get("matrix_scores") or {}
+        if not isinstance(transparency, dict) or not isinstance(transparency.get("rows"), list):
+            continue
+        for row in transparency["rows"]:
+            key = row.get("key")
+            if key not in matrix:
+                continue
+            raw = float(matrix[key])
+            weight = float(row.get("weight") or 0.0)
+            centred = key in CENTRED_MATRIX_WEIGHTS
+            row["score_raw"] = round(raw, 2)
+            row["score"] = round(float(to_dimension_display(key, raw)), 2)
+            row["contribution"] = round(weight * (raw - 60.0) if centred else raw * weight, 2)
+            row["impact"] = round(weight * (raw - 60.0), 4)
+        adjustments = []
+        boost = sum(float(flag.get("boost", 0) or 0) for flag in auto.get("sip_flags") or [])
+        if boost:
+            adjustments.append({"key": "sip_boost", "label": "SIP 輕磅好檔修正", "raw": round(boost, 2)})
+        transparency["adjustments"] = adjustments
+        transparency["ability_score_raw"] = auto.get("ability_score_raw")
+
 
 def _apply_sip_enhancements(horses):
     """
@@ -921,6 +959,7 @@ class HKJCAutoOrchestrator:
             
         _apply_sip_enhancements(horses)
         self._apply_mainline_shape_robustness(horses)
+        _refresh_grade_transparency(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including
         # the horse-number exact-tie key.

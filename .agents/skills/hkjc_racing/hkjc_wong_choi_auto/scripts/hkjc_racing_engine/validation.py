@@ -9,6 +9,8 @@ from .scoring import (
     FEATURE_KEYS,
     GRADE_THRESHOLDS,
     MATRIX_WEIGHTS,
+    MATRIX_KEYS_ALL,
+    CENTRED_MATRIX_WEIGHTS,
     SCORING_CONTRACT_VERSION,
     compute_grade,
     dimension_display_manifest,
@@ -41,7 +43,7 @@ GENERIC_REPORT_PHRASES = (
     "Middle Draw",
 )
 
-MATRIX_KEYS = tuple(MATRIX_WEIGHTS.keys())
+MATRIX_KEYS = MATRIX_KEYS_ALL
 
 
 def validate_engine_scripts(script_root: Path) -> list[str]:
@@ -156,15 +158,20 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
             for key, weight in weights.items()
         )
         try:
-            # 路程適性 V1 由 7D 之外獨立加落原始總分（見
-            # RacingEngine.analyze_horse）。完整歷史修正後，大部分有同程
-            # 紀錄嘅馬都會有非零值；validator 必須核對同一條正式公式。
-            expected += float(
-                (auto.get("distance_suitability_adjustment") or {}).get(
-                    "raw_adjustment", 0.0
-                )
-                or 0.0
+            # 同程表現（9D）係 centred 維度：權重 × (分 − 60)，唔佔加埋等於 1 嘅預算。
+            # 佢嘅分 = 60 + 舊路程適性調整 ÷ 權重，所以兩者必須對得返。
+            expected += sum(
+                weight * (float(matrix_scores.get(key, 60)) - 60.0)
+                for key, weight in CENTRED_MATRIX_WEIGHTS.items()
             )
+            adjustment = float(
+                (auto.get("distance_suitability_adjustment") or {}).get("raw_adjustment", 0.0) or 0.0
+            )
+            weight = CENTRED_MATRIX_WEIGHTS.get("distance_fit")
+            if weight and abs(weight * (float(matrix_scores.get("distance_fit", 60)) - 60.0) - adjustment) > 0.0005:
+                errors.append(
+                    f"SCORE-008 horse {horse_num} distance_fit does not match the distance adjustment"
+                )
         except (AttributeError, TypeError, ValueError):
             errors.append(
                 f"SCORE-008 horse {horse_num} invalid distance suitability adjustment"

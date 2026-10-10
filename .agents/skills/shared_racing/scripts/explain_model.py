@@ -79,6 +79,8 @@ def load_engine(engine_dir: Path):
     formulas = {k: list(v) for k, v in matrix_mapper.MATRIX_FORMULAS.items()}
     return {
         "weights": weights,
+        # HKJC 9D：centred 維度（同程表現）唔佔加埋等於 1 嘅預算，貢獻 = 權重 ×（分 − 60）。
+        "centred_weights": dict(getattr(scoring, "CENTRED_MATRIX_WEIGHTS", {}) or {}),
         "coefficient_model": hasattr(scoring, "compose_matrix_score"),
         "debut_weights": dict(getattr(scoring, "DEBUT_MATRIX_WEIGHTS", {}) or {}),
         "formulas": formulas,
@@ -242,7 +244,8 @@ def bar(fraction: float, width: int = 20) -> str:
 
 def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: Path) -> str:
     title = PLATFORMS[platform]["title"]
-    weights = model["weights"]
+    centred = model.get("centred_weights") or {}
+    weights = {**model["weights"], **centred}
     labels = model["matrix_labels"]
     formulas = model["formulas"]
     gains = model["gains"]
@@ -269,7 +272,7 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
     A(f"隻馬最後得到嘅係一個「{model['ability_label']}」。個分係咁計出嚟：")
     A("")
     A(f"1. 由原始資料計出 **{len(model['feature_keys'])} 個基礎分**（近績、騎師、檔位…），每個都係 0–100，**60 分 = 中性／冇證據**")
-    A(f"2. 啲基礎分按固定配方合成 **{len(weights)} 個維度分**")
+    A(f"2. 啲基礎分按固定配方合成 **{len(labels)} 個維度分**")
     if overlays or adjustments:
         A("3. 維度分按下面嘅權重加權相加 → 矩陣基礎分")
         A("4. 加上下面逐項列明嘅 ranking adjustment → 綜合戰力分")
@@ -302,6 +305,8 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
                 A(f"| {name} `{key}` | {note} | {bar(0)} |")
             continue
         display_weight = f"{weight:.4f}" if coefficients else f"{weight * 100:.1f}%"
+        if key in centred:
+            display_weight += "（以 60 為中心）"
         if inf:
             A(f"| {name} `{key}` | {display_weight} | {inf.get(key, 0) * 100:.1f}% | {bar(inf.get(key, 0))} |")
         else:
@@ -359,6 +364,10 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
             A("（例如換咗數據源、或者有 leaf 退役），權重就冇再對應返佢真正嘅話事權。")
             A("")
 
+    if centred:
+        names = "、".join(labels.get(k, k) for k in centred)
+        A(f"ℹ️ **{names}** 係「以 60 為中心」嘅維度：貢獻 = 權重 ×（分 − 60），唔佔加埋等於 100% 嘅份額。")
+        A("")
     if any(weights.get(k, 0.0) <= 0 for k in labels):
         dead = [labels.get(k, k) for k in labels if weights.get(k, 0.0) <= 0]
         A(f"⚠️ **{'、'.join(dead)}** 喺報告見到，但權重係 0 —— 佢完全唔影響排名，純粹俾你睇。")

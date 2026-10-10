@@ -193,11 +193,12 @@ class AutoOutputTests(unittest.TestCase):
             {
                 "sectional": 0.1285,
                 "trainer_signal": 0.2362,
-                "stability": 0.0983,
+                "stability": 0.08847,
                 "race_shape": 0.2737,
                 "class_advantage": 0.1428,
                 "horse_health": 0.0404,
                 "form_line": 0.0801,
+                "trackwork": 0.00983,
             },
         )
 
@@ -211,7 +212,9 @@ class AutoOutputTests(unittest.TestCase):
         self.assertTrue(shadow["applied"])
         self.assertEqual(shadow["matrix_scores"], baseline["matrix_scores"])
         self.assertEqual(shadow["weights"]["race_shape"], 0.2537)
-        self.assertEqual(shadow["weights"]["stability"], 0.1183)
+        # 9D split of the frozen 0.1183: 90% stability, 10% trackwork.
+        self.assertAlmostEqual(shadow["weights"]["stability"], 0.1183 * 0.9, places=4)
+        self.assertAlmostEqual(shadow["weights"]["trackwork"], 0.1183 * 0.1, places=4)
         self.assertEqual(baseline["matrix_scores"], engine.analyze_horse()["matrix_scores"])
         self.assertEqual(shadow["evidence_status"], "prospective_shadow_only")
 
@@ -410,7 +413,7 @@ class AutoOutputTests(unittest.TestCase):
 
         self.assertEqual(combined["matrix_scores"], shape_only["matrix_scores"])
         self.assertEqual(combined["weights"]["race_shape"], 0.2537)
-        self.assertEqual(combined["weights"]["stability"], 0.1183)
+        self.assertAlmostEqual(combined["weights"]["stability"], 0.1183 * 0.9, places=4)
         self.assertNotEqual(combined["weights"], shape_only["weights"])
 
     def test_chinese_jockey_and_trainer_names_are_scored(self) -> None:
@@ -548,7 +551,9 @@ class AutoOutputTests(unittest.TestCase):
         stronger_trackwork_scores = map_features_to_matrix_scores(stronger_trackwork)
 
         self.assertEqual(base_scores["stability"], high_confidence_scores["stability"])
-        self.assertGreater(stronger_trackwork_scores["stability"], base_scores["stability"])
+        # 9D (2026-10-10): trackwork is its own dimension; stability no longer moves.
+        self.assertGreater(stronger_trackwork_scores["trackwork"], base_scores["trackwork"])
+        self.assertEqual(stronger_trackwork_scores["stability"], base_scores["stability"])
 
     def test_form_line_uses_formline_strength_and_margin_trend(self) -> None:
         weak_line = {
@@ -857,7 +862,9 @@ class AutoOutputTests(unittest.TestCase):
             self.assertNotIn("近績欄顯示近跑為", auto["core_logic"])
             self.assertNotIn("近21日快操", auto["core_logic"])
             self.assertIn("狀態", auto["matrix_reasoning"]["stability"]["text"])
-            self.assertEqual(auto["matrix_reasoning"]["stability"]["components"][2]["key"], "trackwork_trend_score")
+            # 9D: trackwork is its own dimension, no longer a stability component.
+            self.assertEqual(auto["matrix_reasoning"]["trackwork"]["components"][0]["key"], "trackwork_trend_score")
+            self.assertEqual(len(auto["matrix_reasoning"]["stability"]["components"]), 2)
             report = (folder / "Race_1_Auto_Analysis.md").read_text(encoding="utf-8")
             self.assertIn("## [第一部分] 🗺️ 戰場全景", report)
             self.assertIn("#### [第二部分] 全場馬匹深度分析", report)
