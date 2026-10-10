@@ -127,6 +127,14 @@ class HighQualityFeatureTests(unittest.TestCase):
         self.assertEqual(header["track"], "Turf")
         self.assertEqual(header["course"], "C+3")
 
+    def test_unverified_history_is_not_tagged_as_debut(self) -> None:
+        logic = skeleton.build_skeleton(
+            {"name": "b"}, race_num=1,
+            horse_block="### 馬號 2 — b\n- **生涯標記:** `HISTORY_UNVERIFIED` (香港出賽 未核實)\n",
+        )
+        self.assertEqual(logic["career_tag"], "HISTORY_UNVERIFIED")
+        self.assertEqual(logic["career_stage_label"], "歷史未核實")
+
 
 if __name__ == "__main__":
     unittest.main()

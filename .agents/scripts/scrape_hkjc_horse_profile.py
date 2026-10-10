@@ -264,7 +264,11 @@ def scrape_horse_profile(horse_id: str, timeout: int = 15) -> dict:
             
             # [1] 名次
             placing_text = cells[1].get_text(strip=True)
-            entry['placing'] = int(placing_text) if placing_text.isdigit() else 0
+            entry['placing_raw'] = placing_text
+            # Dead heats carry a suffix ("3 DH"); isdigit() used to turn them
+            # into 0, the same value as a withdrawal.
+            placing_m = re.match(r'(\d+)', placing_text)
+            entry['placing'] = int(placing_m.group(1)) if placing_m else 0
             
             # [2] 日期
             entry['date'] = cells[2].get_text(strip=True)

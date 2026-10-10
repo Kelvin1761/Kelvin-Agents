@@ -454,7 +454,7 @@ class RacingEngine:
             note = f"初出馬以晨操備戰穩定性代替正式近績，備戰分{prep:.0f}，穩定性分{score:.1f}。"
             return score, note, "trackwork_digest"
         if len(finishes) >= 3:
-            places = sum(1 for rank in finishes if rank <= 3)
+            places = sum(1 for rank in finishes if 1 <= rank <= 3)
             poor = sum(1 for rank in finishes if rank >= 8)
             score = scoring.CONSISTENCY_MICRO_WEIGHTS.get("base", 58.0) + places * scoring.CONSISTENCY_MICRO_WEIGHTS.get("place_mult", 7.0) - poor * scoring.CONSISTENCY_MICRO_WEIGHTS.get("poor_mult", 5.0)
             note = f"近{len(finishes)}仗有{places}次前三、{poor}次八名或以後，穩定性分{clip_score(score):.1f}。"
@@ -1094,7 +1094,12 @@ class RacingEngine:
         """
         text = self._clean(self._value("surface_performance_shadow") or "")
         score_match = re.search(r"今場=.*?\s(\d+(?:\.\d+)?)分", text)
-        sample_match = re.search(r"今場=.*?有效樣本(\d+(?:\.\d+)?)", text)
+        target_match = re.search(r"今場=([^|]+?)\s+\d+(?:\.\d+)?分", text)
+        target = target_match.group(1).strip() if target_match else ""
+        sample_match = re.search(
+            r"(?:^|\|)\s*" + re.escape(target) + r"\s+\d+(?:\.\d+)?分\(有效樣本(\d+(?:\.\d+)?)",
+            text,
+        ) if target else None
         source_match = re.search(r"採用來源=([^|]+)", text)
         score = parse_float(score_match.group(1)) if score_match else None
         effective_n = parse_float(sample_match.group(1)) if sample_match else None
@@ -1906,14 +1911,14 @@ class RacingEngine:
             rank = run["rank"]
             margin = run["margin"]
 
-            if rank <= 3:
+            if 1 <= rank <= 3:
                 close_credit += weight
                 close_runs += 1
                 continue
-            if rank <= 5 and margin is not None and margin <= 3.0:
+            if 1 <= rank <= 5 and margin is not None and margin <= 3.0:
                 close_credit += weight * 0.75
                 close_runs += 1
-            elif rank <= 7 and margin is not None and margin <= 2.5:
+            elif 1 <= rank <= 7 and margin is not None and margin <= 2.5:
                 close_credit += weight * 0.40
                 close_runs += 1
 
@@ -2011,7 +2016,7 @@ class RacingEngine:
 
     def _has_recovery_evidence(self):
         finishes = [int(item) for item in re.findall(r"\b\d+\b", str(self.horse_data.get("last_6_finishes") or ""))[:3]]
-        if any(rank <= 3 for rank in finishes):
+        if any(1 <= rank <= 3 for rank in finishes):
             return True
         finish_time_level = self._text("finish_time_adj_level")
         if "仍具競爭力" in finish_time_level or "持續快於標準" in finish_time_level:
@@ -3444,8 +3449,8 @@ class RacingEngine:
             return "warming"
         if recent_avg > older_avg + 1.0:
             return "cooling"
-        recent_places = sum(1 for rank in recent if rank <= 3)
-        older_places = sum(1 for rank in older if rank <= 3)
+        recent_places = sum(1 for rank in recent if 1 <= rank <= 3)
+        older_places = sum(1 for rank in older if 1 <= rank <= 3)
         if recent_places >= older_places:
             return "holding"
         return "mixed"

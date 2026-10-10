@@ -18,6 +18,8 @@ class FormScorer(BaseScorer):
                         rank = int(p.split("/")[0])
                     else:
                         rank = int(p)
+                    if rank <= 0:
+                        continue
                     ranks.append(rank)
                     if rank == 1: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_1", 100))
                     elif rank == 2: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_2", 85))
@@ -41,6 +43,8 @@ class FormScorer(BaseScorer):
                 rank_str = str(r.get("rank", ""))
                 try:
                     rank = int(rank_str.split("/")[0]) if "/" in rank_str else int(rank_str)
+                    if rank <= 0:
+                        continue
                     if rank == 1: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_1", 100))
                     elif rank == 2: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_2", 85))
                     elif rank == 3: scores.append(scoring.FORM_MICRO_WEIGHTS.get("rank_3", 75))

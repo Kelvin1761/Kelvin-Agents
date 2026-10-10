@@ -1516,7 +1516,13 @@ def build_skeleton(
     text_hints_debut = '新馬' in horse_block or '首出' in horse_block or '(無往績記錄)' in horse_block
     # Hard guard: a horse with actual starts > 0 is NEVER a debut
     is_debut = text_hints_debut and hk_starts == 0 and starts == 0
-    if is_debut and is_import:
+    # Facts could not verify a replacement runner's history: missing history
+    # is unknown, not a debut.
+    history_unverified = '`HISTORY_UNVERIFIED`' in horse_block
+    if history_unverified:
+        is_debut = False
+        career_tag = 'HISTORY_UNVERIFIED'
+    elif is_debut and is_import:
         career_tag = 'IMPORTED_DEBUT'
     elif is_debut:
         career_tag = 'DEBUT'
@@ -1525,6 +1531,8 @@ def build_skeleton(
     else:
         career_tag = 'ESTABLISHED'
     career_stage_label = '初出馬' if is_debut else (f'香港第{hk_starts + 1}場' if hk_starts <= 5 else '')
+    if history_unverified:
+        career_stage_label = '歷史未核實'
     debut_stability_note = (
         "[初出馬模板: 必讀 05b_debut_guide.md；stability 預設 ➖，但可按備戰穩定性評分。"
         "✅ 必須引用操練連貫、試閘次數、readiness、體重/健康等 evidence；"

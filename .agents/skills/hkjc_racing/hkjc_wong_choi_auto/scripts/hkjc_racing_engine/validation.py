@@ -437,10 +437,15 @@ def _validate_verdict(logic_data: dict, scored: list[tuple[str, dict]]) -> list[
             errors.append(
                 f"VERDICT-004 horse {item.get('horse_number')} rank_score must equal official ranking score"
             )
+    # Same tie-break as renderer.ensure_verdict: rank_score, then RAW ability,
+    # then horse number. rank_score is the 2-dp display score, so two horses can
+    # tie on it while their raw scores differ; breaking that tie on the display
+    # score (as this check used to) refused whole races (VERDICT-002) that were
+    # correctly ordered. Found 2026-10-10 (2026-10-07 HV R5 in a replay).
     ordered_pairs = [
         (
             float(item.get("rank_score", item.get("ability_score", -1))),
-            float(item.get("ability_score", -1)),
+            float(item.get("ability_score_raw", item.get("ability_score", -1))),
             str(item.get("horse_number", "")),
         )
         for item in ranked

@@ -346,6 +346,36 @@ class AutoOutputTests(unittest.TestCase):
             horses["3"]["python_auto"]["shadow_profiles"]["race_shape_legacy_unbounded"]["ability_score"],
         )
 
+    def test_debut_shape_cap_keeps_ability_consistent_with_debut_weights(self) -> None:
+        """初出馬用 DEBUT_MATRIX_WEIGHTS 計分；封頂用錯 live 權重會令
+        ability 同矩陣對唔上，validator SCORE-004 成場拒絕（存檔 18 場）。"""
+        from hkjc_racing_engine.scoring import DEBUT_MATRIX_WEIGHTS
+
+        horses = {}
+        for number, shape in enumerate((40.0, 60.0, 60.0, 90.0), start=1):
+            debut = number == 4
+            weights = DEBUT_MATRIX_WEIGHTS if debut else MATRIX_WEIGHTS
+            matrix = {key: 60.0 for key in MATRIX_WEIGHTS}
+            matrix["race_shape"] = shape
+            raw = sum(matrix[key] * weight for key, weight in weights.items())
+            score = auto_orchestrator.to_display_scale(raw)
+            horses[str(number)] = {"python_auto": {
+                "matrix_scores": matrix,
+                "ability_score_raw": raw,
+                "ability_score": score,
+                "grade": compute_grade(score),
+                "reason_codes": ["debut_runner"] if debut else [],
+                "shadow_profiles": {},
+            }}
+
+        auto_orchestrator.HKJCAutoOrchestrator._apply_mainline_shape_robustness(horses)
+
+        for number, weights in (("1", MATRIX_WEIGHTS), ("4", DEBUT_MATRIX_WEIGHTS)):
+            auto = horses[number]["python_auto"]
+            self.assertTrue(auto["race_shape_robustness"]["applied"])
+            expected = sum(auto["matrix_scores"][key] * w for key, w in weights.items())
+            self.assertAlmostEqual(auto["ability_score_raw"], expected, places=3)
+
     def test_pure_7d_is_the_only_official_ranking_signal(self) -> None:
         horses = {}
         for number in range(1, 13):
