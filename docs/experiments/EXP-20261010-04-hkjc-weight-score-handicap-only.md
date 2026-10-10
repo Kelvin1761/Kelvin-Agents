@@ -1,7 +1,7 @@
 # EXP-20261010-04 — 負磅分只計讓磅（剷體重重複計、用實際負磅）
 
 - **日期**：2026-10-10；平台：HKJC
-- **狀態**：**CORRECTNESS PROMOTE（§7），待上線**；Stage 4 v3 `fixed_rule` 表現判決 REJECT（冇改善）。
+- **狀態**：**CORRECTNESS PROMOTE（§7），已上線**；Stage 4 v3 `fixed_rule` 表現判決 REJECT（冇改善）。
 - **Arm**：`docs/experiments/patches/hkjc_arm_weight_score_handicap_only.py`
 - **搜索過嘅舊記錄**：EXP-20260904-09（負磅方向調轉）、[[hkjc-bodyweight-after-spell-is-inverted]]、
   Kelvin 2026-10-10「班次分 64、負磅分 60，總數 53 唔對數」
@@ -36,3 +36,10 @@
 「如果績效數字相反，我仍然會改佢嗎？」—— 會：同一個體重資訊計兩次而且方向相反，同埋用錯負磅，
 兩樣都係可獨立證明嘅錯。primary 冇顯著退步（Good CI 上界 0，1 場），leakage PASS（只用賽前欄位）。
 → 按 §7 上線，**唔聲稱表現改善**。剩低 1 場 Good 差距屬噪音水平，記錄喺度。
+
+## 重量（9D main `13999e13`，包括騎練季節加權修正）
+
+286 場、100 場排名變：Gold −0.35pp（1 場，CI [−2.08, +1.03]）、Good −0.35pp（1 場，CI [−1.07, 0]）、
+competitive_recall@5 +0.0023 [0, +0.0050]、NDCG −0.0006 [−0.0038, +0.0025]。兩個 primary 點估計各
+蝕 1 場但都唔顯著。按 §7 上線（錯誤可獨立證明、冇顯著退步），**明確唔聲稱改善**；之後 forward
+賽日照常監察。

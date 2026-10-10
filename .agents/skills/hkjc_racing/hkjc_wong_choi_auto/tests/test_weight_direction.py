@@ -73,15 +73,27 @@ class WeightDirection(unittest.TestCase):
             score, note, _ = _score(weight)
             self.assertIn(f"{score:.0f}分", note)
 
-    def test_bodyweight_trend_terms_are_untouched(self):
-        """`weight_trend` 讀嘅係排位體重，唔係負磅 —— 呢個類別混淆未測過，
-        W 冇動佢。改咗呢兩項就唔再係量過嗰個候選。"""
-        self.assertEqual(scoring.WEIGHT_MICRO_WEIGHTS["trend_lighter_bonus"], 4.0)
-        self.assertEqual(scoring.WEIGHT_MICRO_WEIGHTS["trend_heavier_pen"], -4.0)
+    def test_body_weight_trend_no_longer_moves_the_handicap_score(self):
+        """EXP-20261010-04：馬匹體重係健康訊號（risk_score 已計），負磅分只計讓磅。"""
+        self.assertNotIn("trend_lighter_bonus", scoring.WEIGHT_MICRO_WEIGHTS)
+        self.assertNotIn("trend_heavier_pen", scoring.WEIGHT_MICRO_WEIGHTS)
         base = scoring.WEIGHT_MICRO_WEIGHTS["base"]
-        self.assertEqual(_score(126, "轉輕")[0], base + 4.0)
-        self.assertEqual(_score(126, "轉重")[0], base - 4.0)
+        self.assertEqual(_score(126, "轉輕")[0], base)
+        self.assertEqual(_score(126, "轉重")[0], base)
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ApprenticeAllowance(unittest.TestCase):
+    def test_bands_use_weight_actually_carried(self):
+        """負磅 123 減見習 3 = 實際 120 → 輕磅帶（EXP-20261010-04）。"""
+        engine = RacingEngine.__new__(RacingEngine)
+        engine.horse_data = {"weight_carried": 123}
+        engine.data = {"jockey_allowance": 3}
+        engine.provenance = {}
+        engine.race_analysis = {}
+        score, note, _ = engine._weight_score({})
+        self.assertEqual(score, scoring.WEIGHT_MICRO_WEIGHTS["light_weight_base"])
+        self.assertIn("減見習 3", note)

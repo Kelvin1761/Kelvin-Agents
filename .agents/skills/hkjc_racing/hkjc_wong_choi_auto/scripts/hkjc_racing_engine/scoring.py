@@ -324,15 +324,13 @@ TRACK_MICRO_WEIGHTS = {
 # 95% CI [+3.1, +14.3]（n=254 vs 2246）；排名 1-3 嗰批 −2.4pp、CI 跨零
 # —— 即係呢個訊號嘅價值喺「執返模型自己睇低嘅好馬」，唔係加強首選。
 #
-# 提醒：`trend_lighter_bonus` / `trend_heavier_pen` 兩項讀嘅係 `weight_trend`，
-# 嗰個係**排位體重**趨勢，唔係負磅。呢個係 leaf 內嘅類別混淆，未測過，
-# 所以呢次唔動；要改就要獨立量度。
+# 2026-10-10（EXP-20261010-04）：以前呢度仲有 `trend_lighter_bonus` +4／`trend_heavier_pen` −4，
+# 讀嘅係**馬匹體重**趨勢唔係負磅，而 risk_score 已經計體重（方向相反）。量過之後剷走：
+# 負磅分只計讓磅，分界用實際負磅（負磅 − 見習減磅）。
 WEIGHT_MICRO_WEIGHTS = {
     "base": 64.0,
     "light_weight_base": 54.0,   # ≤120 磅：讓磅官睇低佢
     "heavy_weight_base": 70.0,   # ≥132 磅：讓磅官睇好佢，而且抹得唔夠
-    "trend_lighter_bonus": 4.0,
-    "trend_heavier_pen": -4.0
 }
 
 CONSISTENCY_MICRO_WEIGHTS = {

@@ -180,10 +180,10 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-10-10 22:01 AEDT`
-- Git commit：`f7aa5a74`
+- 生成時間：`2026-10-10 22:15 AEDT`
+- Git commit：`13999e13`
 - Scoring contract：`HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1`
-- `scoring.py` 指紋：`7ba9fd5ac7b2`
+- `scoring.py` 指紋：`46b2198223d0`
 - `matrix_mapper.py` 指紋：`1da521a47df6`
 - `renderer.py` 指紋：`2f658c846a36`
 - 實測樣本：**冇**（今次生成搵唔到已評分嘅語料庫，只列出配方上嘅權重）

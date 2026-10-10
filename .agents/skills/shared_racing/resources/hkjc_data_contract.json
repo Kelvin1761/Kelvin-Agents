@@ -1,6 +1,6 @@
 {
   "platform": "hkjc",
-  "engine_fingerprint": "61634d34e2c8",
+  "engine_fingerprint": "fbfe476c4338",
   "calibrated_from": {
     "races": 362,
     "horses": 4545,
@@ -11,29 +11,29 @@
   "fields": {
     "class_score": {
       "horses": 4545,
-      "neutral_rate": 0.0887,
-      "mean_within_race_spread": 5.0086,
+      "neutral_rate": 0.0882,
+      "mean_within_race_spread": 5.0111,
       "min": 52.45,
       "max": 77.51
     },
     "confidence_score": {
       "horses": 4545,
       "neutral_rate": 0.0007,
-      "mean_within_race_spread": 1.9379,
+      "mean_within_race_spread": 1.9474,
       "min": 46.23,
       "max": 83.0
     },
     "consistency_score": {
       "horses": 4545,
-      "neutral_rate": 0.0486,
-      "mean_within_race_spread": 10.2416,
+      "neutral_rate": 0.0488,
+      "mean_within_race_spread": 10.2435,
       "min": 27.0,
       "max": 100.0
     },
     "distance_score": {
       "horses": 4545,
       "neutral_rate": 0.1927,
-      "mean_within_race_spread": 6.0042,
+      "mean_within_race_spread": 6.0057,
       "min": 54.0,
       "max": 72.0
     },
@@ -47,42 +47,42 @@
     "form_score": {
       "horses": 4545,
       "neutral_rate": 0.0704,
-      "mean_within_race_spread": 11.7384,
+      "mean_within_race_spread": 11.7349,
       "min": 40.0,
       "max": 100.0
     },
     "formline_strength_score": {
       "horses": 2019,
-      "neutral_rate": 0.1308,
-      "mean_within_race_spread": 9.1414,
+      "neutral_rate": 0.1303,
+      "mean_within_race_spread": 9.1302,
       "min": 60.0,
       "max": 96.0
     },
     "jockey_score": {
       "horses": 4545,
       "neutral_rate": 0.0816,
-      "mean_within_race_spread": 8.436,
+      "mean_within_race_spread": 8.4275,
       "min": 48.18,
       "max": 94.2
     },
     "race_shape_context_score": {
       "horses": 1227,
       "neutral_rate": 0.0041,
-      "mean_within_race_spread": 8.6774,
+      "mean_within_race_spread": 8.6708,
       "min": 39.06,
       "max": 82.0
     },
     "risk_score": {
       "horses": 4545,
       "neutral_rate": 0.0099,
-      "mean_within_race_spread": 3.4711,
+      "mean_within_race_spread": 3.4661,
       "min": 48.0,
       "max": 76.5
     },
     "speed_score": {
       "horses": 4545,
       "neutral_rate": 0.2242,
-      "mean_within_race_spread": 6.7254,
+      "mean_within_race_spread": 6.7229,
       "min": 38.62,
       "max": 85.45
     },
@@ -95,22 +95,22 @@
     },
     "trackwork_trend_score": {
       "horses": 2019,
-      "neutral_rate": 0.0144,
-      "mean_within_race_spread": 9.6233,
+      "neutral_rate": 0.0134,
+      "mean_within_race_spread": 9.6236,
       "min": 48.24,
       "max": 77.1
     },
     "trainer_score": {
       "horses": 4545,
       "neutral_rate": 0.125,
-      "mean_within_race_spread": 5.9034,
+      "mean_within_race_spread": 5.891,
       "min": 56.3,
       "max": 87.0
     },
     "weight_score": {
       "horses": 4545,
-      "neutral_rate": 0.0528,
-      "mean_within_race_spread": 5.0327,
+      "neutral_rate": 0.053,
+      "mean_within_race_spread": 5.0337,
       "min": 50.0,
       "max": 74.0
     }

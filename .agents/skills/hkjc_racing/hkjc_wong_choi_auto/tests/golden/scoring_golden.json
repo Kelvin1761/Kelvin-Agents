@@ -12,11 +12,11 @@
         "distance_score": 54.0,
         "draw_score": 74.78,
         "form_score": 54.55,
-        "jockey_score": 60.96,
+        "jockey_score": 59.67,
         "risk_score": 65.0,
         "speed_score": 73.23,
         "track_going_score": 60.0,
-        "trainer_score": 60.92,
+        "trainer_score": 60.86,
         "weight_score": 60.0
       },
       "expected": {
@@ -29,7 +29,7 @@
           "sectional": 73.23,
           "stability": 60.0889,
           "trackwork": 60.0,
-          "trainer_signal": 60.94
+          "trainer_signal": 60.21
         },
         "matrix_display": {
           "class_advantage": 48.4641,
@@ -40,10 +40,10 @@
           "sectional": 74.7343,
           "stability": 63.1966,
           "trackwork": 56.1416,
-          "trainer_signal": 60.9355
+          "trainer_signal": 59.3834
         },
-        "ability_raw": 65.8843,
-        "ability": 70.2013,
+        "ability_raw": 65.7118,
+        "ability": 69.8088,
         "grade": "B"
       }
     },
@@ -276,11 +276,11 @@
         "distance_score": 72.0,
         "draw_score": 73.28,
         "form_score": 52.86,
-        "jockey_score": 58.91,
+        "jockey_score": 59.44,
         "risk_score": 66.0,
         "speed_score": 67.0,
         "track_going_score": 60.0,
-        "trainer_score": 64.92,
+        "trainer_score": 64.1,
         "weight_score": 64.0
       },
       "expected": {
@@ -293,7 +293,7 @@
           "sectional": 67.0,
           "stability": 56.7889,
           "trackwork": 60.0,
-          "trainer_signal": 61.61
+          "trainer_signal": 61.54
         },
         "matrix_display": {
           "class_advantage": 55.7885,
@@ -304,10 +304,10 @@
           "sectional": 67.7959,
           "stability": 60.3447,
           "trackwork": 56.1416,
-          "trainer_signal": 62.36
+          "trainer_signal": 62.2111
         },
-        "ability_raw": 65.1983,
-        "ability": 68.6399,
+        "ability_raw": 65.1818,
+        "ability": 68.6023,
         "grade": "B"
       }
     },
@@ -364,11 +364,11 @@
         "distance_score": 58.0,
         "draw_score": 49.06,
         "form_score": 60.0,
-        "jockey_score": 65.17,
+        "jockey_score": 65.27,
         "risk_score": 69.0,
         "speed_score": 60.0,
         "track_going_score": 60.0,
-        "trainer_score": 63.91,
+        "trainer_score": 62.82,
         "weight_score": 64.0
       },
       "expected": {
@@ -381,7 +381,7 @@
           "sectional": 60.0,
           "stability": 63.7778,
           "trackwork": 60.0,
-          "trainer_signal": 64.6
+          "trainer_signal": 64.17
         },
         "matrix_display": {
           "class_advantage": 53.0418,
@@ -392,10 +392,10 @@
           "sectional": 60.0,
           "stability": 66.3845,
           "trackwork": 56.1416,
-          "trainer_signal": 68.717
+          "trainer_signal": 67.8028
         },
-        "ability_raw": 58.8545,
-        "ability": 54.1991,
+        "ability_raw": 58.7529,
+        "ability": 53.9679,
         "grade": "C-"
       }
     },
@@ -408,11 +408,11 @@
         "distance_score": 72.0,
         "draw_score": 64.49,
         "form_score": 49.83,
-        "jockey_score": 57.82,
+        "jockey_score": 58.08,
         "risk_score": 66.0,
         "speed_score": 59.82,
         "track_going_score": 60.0,
-        "trainer_score": 64.02,
+        "trainer_score": 63.2,
         "weight_score": 64.0
       },
       "expected": {
@@ -425,7 +425,7 @@
           "sectional": 59.82,
           "stability": 51.4556,
           "trackwork": 60.0,
-          "trainer_signal": 60.61
+          "trainer_signal": 60.38
         },
         "matrix_display": {
           "class_advantage": 65.5665,
@@ -436,10 +436,10 @@
           "sectional": 59.7995,
           "stability": 55.7357,
           "trackwork": 56.1416,
-          "trainer_signal": 60.2339
+          "trainer_signal": 59.7449
         },
-        "ability_raw": 61.9244,
-        "ability": 61.1873,
+        "ability_raw": 61.8701,
+        "ability": 61.0636,
         "grade": "C+"
       }
     },
@@ -936,11 +936,11 @@
         "distance_score": 54.0,
         "draw_score": 64.49,
         "form_score": 58.16,
-        "jockey_score": 57.3,
+        "jockey_score": 57.01,
         "risk_score": 69.0,
         "speed_score": 74.82,
         "track_going_score": 60.0,
-        "trainer_score": 60.02,
+        "trainer_score": 59.96,
         "weight_score": 54.0
       },
       "expected": {
@@ -953,7 +953,7 @@
           "sectional": 74.82,
           "stability": 59.6444,
           "trackwork": 60.0,
-          "trainer_signal": 58.52
+          "trainer_signal": 58.34
         },
         "matrix_display": {
           "class_advantage": 53.9574,
@@ -964,10 +964,10 @@
           "sectional": 76.505,
           "stability": 62.8125,
           "trackwork": 56.1416,
-          "trainer_signal": 55.7903
+          "trainer_signal": 55.4076
         },
-        "ability_raw": 63.0941,
-        "ability": 63.85,
+        "ability_raw": 63.0516,
+        "ability": 63.7532,
         "grade": "C+"
       }
     },
@@ -1244,11 +1244,11 @@
         "distance_score": 54.0,
         "draw_score": 65.0,
         "form_score": 40.0,
-        "jockey_score": 50.92,
+        "jockey_score": 51.41,
         "risk_score": 74.5,
         "speed_score": 59.81,
         "track_going_score": 60.0,
-        "trainer_score": 58.21,
+        "trainer_score": 58.29,
         "weight_score": 54.0
       },
       "expected": {
@@ -1261,7 +1261,7 @@
           "sectional": 59.81,
           "stability": 41.0667,
           "trackwork": 60.0,
-          "trainer_signal": 54.2
+          "trainer_signal": 54.51
         },
         "matrix_display": {
           "class_advantage": 48.4641,
@@ -1272,10 +1272,10 @@
           "sectional": 59.7884,
           "stability": 46.7576,
           "trackwork": 56.1416,
-          "trainer_signal": 46.6056
+          "trainer_signal": 47.2647
         },
-        "ability_raw": 58.3487,
-        "ability": 53.0478,
+        "ability_raw": 58.4219,
+        "ability": 53.2145,
         "grade": "C-"
       }
     },
@@ -1332,11 +1332,11 @@
         "distance_score": 72.0,
         "draw_score": 50.87,
         "form_score": 60.0,
-        "jockey_score": 62.33,
+        "jockey_score": 62.45,
         "risk_score": 69.5,
         "speed_score": 76.56,
         "track_going_score": 60.0,
-        "trainer_score": 59.63,
+        "trainer_score": 59.6,
         "weight_score": 54.0
       },
       "expected": {
@@ -1349,7 +1349,7 @@
           "sectional": 76.56,
           "stability": 63.7222,
           "trackwork": 60.0,
-          "trainer_signal": 61.12
+          "trainer_signal": 61.17
         },
         "matrix_display": {
           "class_advantage": 60.9888,
@@ -1360,10 +1360,10 @@
           "sectional": 78.4429,
           "stability": 66.3365,
           "trackwork": 56.1416,
-          "trainer_signal": 61.3182
+          "trainer_signal": 61.4245
         },
-        "ability_raw": 61.1257,
-        "ability": 59.3692,
+        "ability_raw": 61.1375,
+        "ability": 59.396,
         "grade": "C"
       }
     },
@@ -1376,11 +1376,11 @@
         "distance_score": 54.0,
         "draw_score": 64.49,
         "form_score": 40.0,
-        "jockey_score": 52.02,
+        "jockey_score": 52.51,
         "risk_score": 75.0,
         "speed_score": 60.51,
         "track_going_score": 60.0,
-        "trainer_score": 59.46,
+        "trainer_score": 59.37,
         "weight_score": 64.0
       },
       "expected": {
@@ -1393,7 +1393,7 @@
           "sectional": 60.51,
           "stability": 45.0667,
           "trackwork": 60.0,
-          "trainer_signal": 55.37
+          "trainer_signal": 55.6
         },
         "matrix_display": {
           "class_advantage": 44.8019,
@@ -1404,10 +1404,10 @@
           "sectional": 60.568,
           "stability": 50.2144,
           "trackwork": 56.1416,
-          "trainer_signal": 49.0931
+          "trainer_signal": 49.5821
         },
-        "ability_raw": 58.813,
-        "ability": 54.1047,
+        "ability_raw": 58.8673,
+        "ability": 54.2283,
         "grade": "C-"
       }
     },
@@ -1420,11 +1420,11 @@
         "distance_score": 54.0,
         "draw_score": 50.34,
         "form_score": 44.35,
-        "jockey_score": 54.05,
+        "jockey_score": 53.33,
         "risk_score": 71.0,
         "speed_score": 38.62,
         "track_going_score": 60.0,
-        "trainer_score": 61.41,
+        "trainer_score": 61.95,
         "weight_score": 64.0
       },
       "expected": {
@@ -1437,7 +1437,7 @@
           "sectional": 38.62,
           "stability": 48.7889,
           "trackwork": 60.0,
-          "trainer_signal": 57.36
+          "trainer_signal": 57.21
         },
         "matrix_display": {
           "class_advantage": 50.2952,
@@ -1448,10 +1448,10 @@
           "sectional": 36.1891,
           "stability": 53.4311,
           "trackwork": 56.1416,
-          "trainer_signal": 53.324
+          "trainer_signal": 53.0051
         },
-        "ability_raw": 53.2564,
-        "ability": 41.456,
+        "ability_raw": 53.221,
+        "ability": 41.3754,
         "grade": "E"
       }
     },
@@ -2036,11 +2036,11 @@
         "distance_score": 54.0,
         "draw_score": 79.26,
         "form_score": 49.52,
-        "jockey_score": 59.86,
+        "jockey_score": 58.57,
         "risk_score": 66.0,
         "speed_score": 58.23,
         "track_going_score": 60.0,
-        "trainer_score": 58.64,
+        "trainer_score": 58.75,
         "weight_score": 64.0
       },
       "expected": {
@@ -2053,7 +2053,7 @@
           "sectional": 58.23,
           "stability": 49.3444,
           "trackwork": 60.0,
-          "trainer_signal": 59.31
+          "trainer_signal": 58.65
         },
         "matrix_display": {
           "class_advantage": 53.0418,
@@ -2064,10 +2064,10 @@
           "sectional": 58.0288,
           "stability": 53.9112,
           "trackwork": 56.1416,
-          "trainer_signal": 57.4699
+          "trainer_signal": 56.0667
         },
-        "ability_raw": 64.292,
-        "ability": 66.5769,
+        "ability_raw": 64.1361,
+        "ability": 66.222,
         "grade": "B-"
       }
     },
@@ -2608,11 +2608,11 @@
         "distance_score": 72.0,
         "draw_score": 50.34,
         "form_score": 49.12,
-        "jockey_score": 58.36,
+        "jockey_score": 57.07,
         "risk_score": 69.5,
         "speed_score": 42.62,
         "track_going_score": 60.0,
-        "trainer_score": 60.04,
+        "trainer_score": 59.92,
         "weight_score": 64.0
       },
       "expected": {
@@ -2625,7 +2625,7 @@
           "sectional": 42.62,
           "stability": 51.1222,
           "trackwork": 60.0,
-          "trainer_signal": 59.12
+          "trainer_signal": 58.35
         },
         "matrix_display": {
           "class_advantage": 58.5351,
@@ -2636,10 +2636,10 @@
           "sectional": 40.6439,
           "stability": 55.4476,
           "trackwork": 56.1416,
-          "trainer_signal": 57.066
+          "trainer_signal": 55.4289
         },
-        "ability_raw": 54.998,
-        "ability": 45.4204,
+        "ability_raw": 54.8161,
+        "ability": 45.0064,
         "grade": "E"
       }
     },
@@ -3444,11 +3444,11 @@
         "distance_score": 72.0,
         "draw_score": 50.87,
         "form_score": 46.12,
-        "jockey_score": 59.21,
+        "jockey_score": 60.15,
         "risk_score": 71.0,
         "speed_score": 59.88,
         "track_going_score": 60.0,
-        "trainer_score": 63.8,
+        "trainer_score": 62.21,
         "weight_score": 54.0
       },
       "expected": {
@@ -3461,7 +3461,7 @@
           "sectional": 59.88,
           "stability": 50.1667,
           "trackwork": 60.0,
-          "trainer_signal": 61.28
+          "trainer_signal": 61.08
         },
         "matrix_display": {
           "class_advantage": 45.7174,
@@ -3472,10 +3472,10 @@
           "sectional": 59.8664,
           "stability": 54.6218,
           "trackwork": 56.1416,
-          "trainer_signal": 61.6584
+          "trainer_signal": 61.2331
         },
-        "ability_raw": 56.667,
-        "ability": 49.2197,
+        "ability_raw": 56.6198,
+        "ability": 49.1122,
         "grade": "D"
       }
     },
@@ -4764,11 +4764,11 @@
         "distance_score": 56.0,
         "draw_score": 63.44,
         "form_score": 63.4,
-        "jockey_score": 55.92,
+        "jockey_score": 55.79,
         "risk_score": 70.0,
         "speed_score": 58.77,
         "track_going_score": 60.0,
-        "trainer_score": 59.08,
+        "trainer_score": 59.01,
         "weight_score": 64.0
       },
       "expected": {
@@ -4781,7 +4781,7 @@
           "sectional": 58.77,
           "stability": 56.6444,
           "trackwork": 60.0,
-          "trainer_signal": 57.34
+          "trainer_signal": 57.24
         },
         "matrix_display": {
           "class_advantage": 50.2952,
@@ -4792,10 +4792,10 @@
           "sectional": 58.6301,
           "stability": 60.2199,
           "trackwork": 56.1416,
-          "trainer_signal": 53.2815
+          "trainer_signal": 53.0689
         },
-        "ability_raw": 60.0968,
-        "ability": 57.027,
+        "ability_raw": 60.0732,
+        "ability": 56.9733,
         "grade": "C"
       }
     },
@@ -4808,11 +4808,11 @@
         "distance_score": 54.0,
         "draw_score": 63.44,
         "form_score": 40.0,
-        "jockey_score": 58.81,
+        "jockey_score": 58.23,
         "risk_score": 61.0,
         "speed_score": 56.51,
         "track_going_score": 60.0,
-        "trainer_score": 61.41,
+        "trainer_score": 61.95,
         "weight_score": 64.0
       },
       "expected": {
@@ -4825,7 +4825,7 @@
           "sectional": 56.51,
           "stability": 45.4556,
           "trackwork": 60.0,
-          "trainer_signal": 59.98
+          "trainer_signal": 59.9
         },
         "matrix_display": {
           "class_advantage": 53.0418,
@@ -4836,10 +4836,10 @@
           "sectional": 56.1132,
           "stability": 50.5505,
           "trackwork": 56.1416,
-          "trainer_signal": 58.8944
+          "trainer_signal": 58.7243
         },
-        "ability_raw": 59.4321,
-        "ability": 55.5139,
+        "ability_raw": 59.4132,
+        "ability": 55.4709,
         "grade": "C-"
       }
     },
@@ -4895,12 +4895,12 @@
         "consistency_score": 46.49,
         "distance_score": 54.0,
         "draw_score": 50.34,
-        "form_score": 43.67,
-        "jockey_score": 57.82,
+        "form_score": 42.19,
+        "jockey_score": 58.08,
         "risk_score": 69.0,
         "speed_score": 65.9,
         "track_going_score": 60.0,
-        "trainer_score": 63.57,
+        "trainer_score": 62.96,
         "weight_score": 58.0
       },
       "expected": {
@@ -4911,9 +4911,9 @@
           "horse_health": 64.72,
           "race_shape": 50.34,
           "sectional": 65.9,
-          "stability": 44.9222,
+          "stability": 44.1,
           "trackwork": 60.0,
-          "trainer_signal": 60.41
+          "trainer_signal": 60.28
         },
         "matrix_display": {
           "class_advantage": 47.5485,
@@ -4922,12 +4922,12 @@
           "horse_health": 53.7127,
           "race_shape": 47.5274,
           "sectional": 66.5708,
-          "stability": 50.0895,
+          "stability": 49.379,
           "trackwork": 56.1416,
-          "trainer_signal": 59.8087
+          "trainer_signal": 59.5323
         },
-        "ability_raw": 56.7822,
-        "ability": 49.4819,
+        "ability_raw": 56.6788,
+        "ability": 49.2464,
         "grade": "D"
       }
     },
@@ -5028,11 +5028,11 @@
         "distance_score": 72.0,
         "draw_score": 64.49,
         "form_score": 48.16,
-        "jockey_score": 62.57,
+        "jockey_score": 62.67,
         "risk_score": 71.0,
         "speed_score": 72.28,
         "track_going_score": 60.0,
-        "trainer_score": 60.02,
+        "trainer_score": 59.96,
         "weight_score": 64.0
       },
       "expected": {
@@ -5045,7 +5045,7 @@
           "sectional": 72.28,
           "stability": 53.5667,
           "trackwork": 60.0,
-          "trainer_signal": 61.42
+          "trainer_signal": 61.45
         },
         "matrix_display": {
           "class_advantage": 60.0732,
@@ -5056,10 +5056,10 @@
           "sectional": 73.6762,
           "stability": 57.5601,
           "trackwork": 56.1416,
-          "trainer_signal": 61.956
+          "trainer_signal": 62.0198
         },
-        "ability_raw": 63.5988,
-        "ability": 64.9989,
+        "ability_raw": 63.6059,
+        "ability": 65.015,
         "grade": "B-"
       }
     },
