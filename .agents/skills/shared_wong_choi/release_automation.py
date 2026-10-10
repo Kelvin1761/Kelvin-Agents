@@ -41,7 +41,12 @@ def production_roots() -> dict[str, Path]:
             continue
         found = set()
         for label, scripts in labels.items():
-            plist, _error = _load_plist(agents / f"{label}.plist")
+            path = agents / f"{label}.plist"
+            # Root discovery is separate from runtime health verification.
+            # A newly introduced/optional job may not be installed yet.
+            if not path.exists():
+                continue
+            plist, _error = _load_plist(path)
             if plist is None:
                 break
             arguments = plist.get("ProgramArguments") or []

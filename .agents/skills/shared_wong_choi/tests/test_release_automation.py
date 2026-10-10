@@ -134,6 +134,7 @@ def test_disabling_setting_restores_manual_approval(repo):
 
 def test_roots_are_derived_from_installed_scripts_without_working_directory(monkeypatch):
     monkeypatch.setattr(release_automation, "DOMAIN_LABELS", {"nba": {"job": ("nba/run.sh",)}})
+    monkeypatch.setattr(Path, "exists", lambda path: True)
     monkeypatch.delenv("WC_NBA_PRODUCTION_ROOT", raising=False)
     monkeypatch.setattr(release_automation, "_load_plist", lambda path: (
         {"ProgramArguments": ["/bin/zsh", "/tmp/runtime/nba/run.sh"]}, None))
@@ -144,9 +145,20 @@ def test_conflicting_installed_roots_are_not_guessed(monkeypatch):
     monkeypatch.setattr(release_automation, "DOMAIN_LABELS", {
         "nba": {"one": ("nba/run.sh",), "two": ("nba/run.sh",)}})
     monkeypatch.delenv("WC_NBA_PRODUCTION_ROOT", raising=False)
+    monkeypatch.setattr(Path, "exists", lambda path: True)
     monkeypatch.setattr(release_automation, "_load_plist", lambda path: (
         {"ProgramArguments": [f"/tmp/{path.stem}/nba/run.sh"]}, None))
     assert release_automation.production_roots() == {}
+
+
+def test_missing_optional_job_does_not_hide_existing_production_root(monkeypatch):
+    monkeypatch.setattr(release_automation, "DOMAIN_LABELS", {
+        "hkjc": {"intraday": ("hk/run.sh",), "prerace": ("hk/run.sh",)}})
+    monkeypatch.delenv("WC_HKJC_PRODUCTION_ROOT", raising=False)
+    monkeypatch.setattr(Path, "exists", lambda path: path.stem != "intraday")
+    monkeypatch.setattr(release_automation, "_load_plist", lambda path: (
+        {"ProgramArguments": ["/tmp/production/hk/run.sh"]}, None))
+    assert release_automation.production_roots() == {"hkjc": Path("/tmp/production").resolve()}
 
 
 def test_generated_hkjc_cache_survives_sync_and_rollback(repo):
