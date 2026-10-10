@@ -1250,6 +1250,7 @@ def render_markdown_report(
     race_performances: list[RacePerformance],
     backtests: list[dict[str, Any]],
     evaluated_version: str | None = None,
+    attribution_lines: list[str] | None = None,
 ) -> str:
     distribution = summarize_label_distribution(race_performances)
     shortlist = summarize_shortlist_metrics(race_performances)
@@ -1333,6 +1334,7 @@ def render_markdown_report(
             f"- Race verdict: {'偏向 clean model failure' if race_clean_fail and race.label in {'Miss', '1 Hit'} else '帶有可寬恕元素或非純模型錯誤'}"
         )
 
+    lines.extend(attribution_lines or [])
     lines.extend(["", "## Backtested Improvement Suggestions"])
     if not backtests and platform == "hkjc":
         lines.append("- 舊式「全庫 backtest 建議」已停用（2026-10-10）：佢經有前視嘅回放、用 v1 指標，"
@@ -1414,6 +1416,24 @@ def build_json_summary(
     }
 
 
+def _hkjc_dimension_attribution(meeting_dir: Path, analysis_dir: Path,
+                                structured_results: dict[int, dict[str, Any]],
+                                race_filter: set[int] | None) -> list[str]:
+    """逐維度歸因 + 寫入跨賽日假設佇列。失敗只會少咗一節，唔會令覆盤失敗。"""
+    try:
+        sys.path.insert(0, str(SHARED_ROOT))
+        import dimension_attribution as attribution
+
+        placings = {race: {row["horse_no"]: row["placing"] for row in data.get("results") or []}
+                    for race, data in structured_results.items() if not race_filter or race in race_filter}
+        rows = attribution.attribute_meeting(analysis_dir, placings)
+        ledger = meeting_dir.parent / attribution.LEDGER_NAME
+        attribution.write_ledger(ledger, meeting_dir.name, rows)
+        return attribution.render_markdown(rows, attribution.queue_summary(ledger))
+    except Exception as exc:  # noqa: BLE001 — report must still be written
+        return ["", "## 逐維度歸因（邊個維度令模型錯）", f"- ⚠️ 歸因失敗：{type(exc).__name__}: {exc}"]
+
+
 def run_unified_reflector(
     platform: str,
     meeting_ref: str | None = None,
@@ -1468,13 +1488,17 @@ def run_unified_reflector(
         prediction_rows,
         target_races=race_filter,
     )
+    attribution_lines = None
+    if platform == "hkjc":
+        attribution_lines = _hkjc_dimension_attribution(resolved_meeting_dir, analysis_dir, structured_results,
+                                                        race_filter)
     backtests = [] if skip_backtest else (run_au_backtests(resolved_meeting_dir) if platform == "au" else run_hkjc_backtests(resolved_meeting_dir))
 
     final_report_path = Path(report_path).resolve() if report_path else default_report_path(platform, resolved_meeting_dir)
     final_report_path.parent.mkdir(parents=True, exist_ok=True)
     final_report_path.write_text(
         render_markdown_report(platform, resolved_meeting_dir, resolved_results_file, races, backtests,
-                               evaluated_version=evaluated_version),
+                               evaluated_version=evaluated_version, attribution_lines=attribution_lines),
         encoding="utf-8",
     )
     print(f"✅ Unified reflector report written: {final_report_path}")
