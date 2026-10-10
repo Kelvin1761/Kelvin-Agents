@@ -715,12 +715,13 @@
              .app-header__logo, which index.css pins with !important at mobile
              widths. "Dashboard" is dropped below 520px — it is filler once the
              app is installed and the home screen icon already says 旺財. -->
-        <a href="#" class="app-header__logo" onclick="showSport('horses'); return false;">
+        <a href="#" class="app-header__logo" onclick="showSport('hkjc'); return false;">
           <span class="app-header__logo-mark" aria-hidden="true">🏇</span><span class="app-header__logo-name">旺財<span class="app-header__logo-suffix"> Dashboard</span></span>
         </a>
       </div>
       <div class="sport-switcher" role="tablist" aria-label="運動切換">
-        <button type="button" id="sport-horses" class="sport-switch sport-switch--active" onclick="showSport('horses')">🏇 Horses</button>
+        <button type="button" id="sport-hkjc" class="sport-switch sport-switch--active" onclick="showSport('hkjc')">🇭🇰 香港</button>
+        <button type="button" id="sport-au" class="sport-switch" onclick="showSport('au')">🇦🇺 澳洲</button>
         <button type="button" id="sport-nba" class="sport-switch" onclick="showSport('nba')">🏀 NBA</button>
         <button type="button" id="sport-tennis" class="sport-switch" onclick="showSport('tennis')">🎾 Tennis</button>
         <button type="button" id="sport-portfolio" class="sport-switch" onclick="showSport('portfolio')">📈 Portfolio</button>
@@ -751,8 +752,11 @@
      at. aria-label is explicit because the visible label sits in a nested span
      next to an aria-hidden icon. -->
 <nav class="app-bottom-nav" id="app-bottom-nav" aria-label="運動切換">
-  <button type="button" id="tabbar-horses" class="tabbar-btn tabbar-btn--active" aria-label="賽馬" aria-current="page" onclick="showSport('horses')">
-    <span class="tabbar-btn__icon" aria-hidden="true">🏇</span><span class="tabbar-btn__label">Horses</span>
+  <button type="button" id="tabbar-hkjc" class="tabbar-btn tabbar-btn--active" aria-label="香港賽馬" aria-current="page" onclick="showSport('hkjc')">
+    <span class="tabbar-btn__icon" aria-hidden="true">🇭🇰</span><span class="tabbar-btn__label">香港</span>
+  </button>
+  <button type="button" id="tabbar-au" class="tabbar-btn" aria-label="澳洲賽馬" onclick="showSport('au')">
+    <span class="tabbar-btn__icon" aria-hidden="true">🇦🇺</span><span class="tabbar-btn__label">澳洲</span>
   </button>
   <button type="button" id="tabbar-nba" class="tabbar-btn" aria-label="NBA" onclick="showSport('nba')">
     <span class="tabbar-btn__icon" aria-hidden="true">🏀</span><span class="tabbar-btn__label">NBA</span>
@@ -812,7 +816,30 @@ let activeSport = 'horses';
 let activeSportsTab = 'history'; // 'history' | 'bets' | 'roi'
 let currentRace = null;
 let activeAnalyst = null; // null = comparison mode
-let roiRegionFilter = null; // null = all, 'hkjc', 'au'
+let roiRegionFilter = 'hkjc'; // follows the active racing tab ('hkjc' | 'au')
+// Racing is split into two top-level tabs (2026-10-10). Internally both are still
+// activeSport === 'horses'; activeRegion says which one. 'horses' in old links /
+// ?sport=horses keeps working and opens the HKJC tab.
+let activeRegion = 'hkjc';
+const TOP_LEVEL_TABS = ['hkjc', 'au', 'nba', 'tennis', 'portfolio'];
+function normaliseSportKey(value) {
+  const key = String(value || '').toLowerCase();
+  if (key === 'horses') return 'hkjc';
+  return TOP_LEVEL_TABS.includes(key) ? key : 'hkjc';
+}
+function activeTopLevelTab() {
+  return activeSport === 'horses' ? activeRegion : activeSport;
+}
+function regionMeetings(region = activeRegion) {
+  return (DASHBOARD_DATA.meetings || []).filter(m => (m.region === 'hkjc' ? 'hkjc' : 'au') === region);
+}
+function setActiveRegion(region) {
+  activeRegion = region === 'au' ? 'au' : 'hkjc';
+  roiRegionFilter = activeRegion;
+  const meetings = regionMeetings();
+  const stillThere = selectedMeeting && meetings.some(m => m.date === selectedMeeting.date && m.venue === selectedMeeting.venue);
+  if (!stillThere) selectedMeeting = meetings[0] || null;
+}
 let expandedSession = null;
 let expandedBetRaces = new Set();
 let sportsBetLedger = [];
@@ -825,14 +852,14 @@ let sportsLedgerMode = SPORTS_BET_ENDPOINT ? 'cloud' : 'local';
 function getInitialSportFromUrl() {
   const match = String(window.location?.search || '').match(/[?&]sport=([^&]+)/);
   const value = match ? String(match[1]).toLowerCase() : '';
-  return ['horses', 'nba', 'tennis', 'portfolio'].includes(value) ? value : 'horses';
+  return normaliseSportKey(value);
 }
 
 function syncSportUrl(sport) {
   if (!window.history?.replaceState) return;
   try {
     const url = new URL(window.location.href || 'https://dashboard.local/');
-    if (sport === 'horses') url.searchParams.delete('sport');
+    if (sport === 'hkjc' || sport === 'horses') url.searchParams.delete('sport');
     else url.searchParams.set('sport', sport);
     window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
   } catch (e) {}
@@ -1680,14 +1707,19 @@ function exportBetsJSON() {
 // NBA / Tennis workspace
 // ═══════════════════════════════════════════════
 function showSport(sport) {
-  if (!['horses', 'nba', 'tennis', 'portfolio'].includes(sport)) return;
-  activeSport = sport;
+  if (!TOP_LEVEL_TABS.includes(sport) && sport !== 'horses') return;
+  sport = normaliseSportKey(sport);
   syncSportUrl(sport);
-  if (sport === 'horses') {
+  if (sport === 'hkjc' || sport === 'au') {
+    activeSport = 'horses';
+    setActiveRegion(sport);
     currentView = 'dashboard';
-    selectedMeeting = selectedMeeting || DASHBOARD_DATA.meetings[0] || null;
     render();
-  } else if (sport === 'portfolio') {
+    window.scrollTo(0, 0);
+    return;
+  }
+  activeSport = sport;
+  if (sport === 'portfolio') {
     currentView = 'portfolio';
     render();
     Promise.all([loadSportsBetLedger(), loadPortfolio()]).then(() => {
@@ -2161,14 +2193,27 @@ function renderPortfolioWorkspace() {
     </section>`;
   }
   const total = data.total || {};
-  const sports = [
-    ['horses', '🏇 Horses'],
-    ['nba', '🏀 NBA'],
-    ['tennis', '🎾 Tennis'],
-  ];
+  // Horses split into HKJC / AU rows when the endpoint provides horses_by_region;
+  // an older endpoint without it falls back to the single Horses row.
+  const byRegion = data.horses_by_region;
+  const sports = byRegion
+    ? [
+        ['horses:hkjc', '🇭🇰 香港賽馬'],
+        ['horses:au', '🇦🇺 澳洲賽馬'],
+        ...(Number(byRegion.unknown?.bets || 0) ? [['horses:unknown', '🏇 賽馬（未分地區）']] : []),
+        ['nba', '🏀 NBA'],
+        ['tennis', '🎾 Tennis'],
+      ]
+    : [
+        ['horses', '🏇 Horses'],
+        ['nba', '🏀 NBA'],
+        ['tennis', '🎾 Tennis'],
+      ];
   const profitColor = Number(total.profit || 0) >= 0 ? '#047857' : '#B91C1C';
   const rows = sports.map(([key, label]) => {
-    const item = data.by_sport?.[key] || {};
+    const item = key.startsWith('horses:')
+      ? (byRegion?.[key.slice(7)] || {})
+      : (data.by_sport?.[key] || {});
     const color = Number(item.profit || 0) >= 0 ? '#047857' : '#B91C1C';
     const roi = item.roi == null ? '—' : `${(Number(item.roi) * 100).toFixed(1)}%`;
     return `<tr><td><strong>${label}</strong></td><td>${Number(item.bets || 0)}</td><td>${Number(item.settled || 0)}</td><td>${Number(item.pending || 0)}</td><td>${Number(item.pending_exposure || 0).toFixed(2)}u</td><td style="color:${color};font-weight:850">${Number(item.profit || 0) > 0 ? '+' : ''}${Number(item.profit || 0).toFixed(2)}u</td><td style="color:${color};font-weight:850">${roi}</td></tr>`;
@@ -2657,16 +2702,19 @@ async function openBetAudit(encodedId) {
 function showDashboard() {
   activeSport = 'horses';
   currentView = 'dashboard';
-  selectedMeeting = selectedMeeting || DASHBOARD_DATA.meetings[0] || null;
+  setActiveRegion(activeRegion);
   render();
 }
 
 function renderDashboard() {
-  const meetings = DASHBOARD_DATA.meetings;
-  if (!meetings.length) return '<div class="empty-state"><div class="empty-state__icon">🏇</div><div class="empty-state__text">暫無賽事數據</div></div>';
+  const allMeetings = DASHBOARD_DATA.meetings || [];
+  const meetings = regionMeetings();
+  const regionLabel = activeRegion === 'hkjc' ? '香港' : '澳洲';
+  if (!meetings.length) return `<div class="empty-state"><div class="empty-state__icon">🏇</div><div class="empty-state__text">暫無${regionLabel}賽事數據</div></div>`;
 
   let html = '<div class="meeting-selector">';
-  meetings.forEach((m, i) => {
+  meetings.forEach(m => {
+    const i = allMeetings.indexOf(m);
     const sel = selectedMeeting && m.date === selectedMeeting.date && m.venue === selectedMeeting.venue ? 'selected' : '';
     const meetingRaceCount = getMergedRaces(getRacesData(m)).length;
     const isHkjc = m.region === 'hkjc';
@@ -3291,7 +3339,7 @@ function renderDataReadoutItem(row) {
 
 function dataReadoutGroup(row) {
   const label = String(row?.label || '');
-  if (/六維排名綜合|主要支柱|最弱環節|數據信心/.test(label)) return '模型摘要';
+  if (/[六七八九十]+維(?:排名)?綜合|主要支柱|最弱環節|數據信心/.test(label)) return '模型摘要';
   if (/騎練|騎師|練馬師|人馬配搭/.test(label)) return '騎練';
   if (/狀態|穩定|近績|賽績線|試閘|備戰|健康|信心/.test(label)) return '狀態與賽績';
   if (/場地|地況|L600|速度考驗|段速/.test(label)) return '場地與環境';
@@ -4136,7 +4184,7 @@ function renderDimensionStrip(horse) {
   const drivers = [];
   if (best && impactOf(best) > 0.5) drivers.push(`<span class="up">▲ 主要推力 <b>${esc(best.name)} +${impactOf(best).toFixed(1)}</b></span>`);
   if (worst && impactOf(worst) < -0.5) drivers.push(`<span class="down">▼ 主要拖累 <b>${esc(worst.name)} ${impactOf(worst).toFixed(1)}</b></span>`);
-  if (!drivers.length) drivers.push('<span>六維都接近中性，冇單一維度主導</span>');
+  if (!drivers.length) drivers.push(`<span>${ranked.length}維都接近中性，冇單一維度主導</span>`);
   h += `<div class="dim-strip__driver">${drivers.join('')}</div>`;
 
   if (reference.length) {
@@ -4162,6 +4210,7 @@ const HKJC_SCORE_LABELS = {
   trackwork_trend_score:'晨操趨勢分', race_shape_context_score:'檔位走位情境分',
   stability:'狀態與穩定性', trainer_signal:'騎練訊號', sectional:'段速表現',
   race_shape:'檔位與走位', horse_health:'馬匹健康', form_line:'賽績線', class_advantage:'級數優勢',
+  trackwork:'晨操狀態', distance_fit:'同程表現', distance_fit_score:'同程表現分',
   raw_adjustment:'正式同程調整',
   same_distance_starts:'同程場數', same_distance_places:'同程上名', signal:'同程訊號',
 };
@@ -4540,6 +4589,10 @@ function renderRunRecords(nodes) {
 // 體重波幅"). Leaving them in a separate 數據 block below the boxes meant the
 // figures a score was built from sat away from the score.
 const DATA_ROUTES = [
+  // 9D (2026-10-10): 晨操 and 同程 are their own dimensions. The stability
+  // route for 晨操分析 stays so older 7D meetings still render.
+  [/晨操狀態/, [[/晨操分析/, '操練趨勢分']]],
+  [/同程表現/, [[/同程紀錄/, '同程表現分']]],
   [/狀態與穩定性/, [[/近6場數據/, '近績分'], [/晨操分析/, '操練趨勢分']]],
   [/馬匹健康/, [[/休賽|體重趨勢|健康掃描|健康解讀/, '風險分']]],
   [/檔位與走位/, [[/走位窗口/, '近仗消耗分'],
@@ -5667,14 +5720,13 @@ function renderSingleAnalystView(analysis, analystName) {
 // ═══════════════════════════════════════════════
 function showROI() {
   activeSport = 'horses';
+  roiRegionFilter = activeRegion;
   currentView = 'roi';
   render();
   window.scrollTo(0, 0);
   // Refresh the permanent ledger from the shared DB, then re-render with it.
   loadRoiLedger().then(() => { if (currentView === 'roi') render(); });
 }
-
-function setRoiRegion(r) { roiRegionFilter = r; render(); }
 
 function toggleSession(key) {
   expandedSession = expandedSession === key ? null : key;
@@ -5736,19 +5788,22 @@ function renderROI() {
   const roi = getFilteredROI();
   if (!roi || !roi.total_bets) {
     return `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-      <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em">📊 ROI 分析</h1>
-      ${renderRegionTabs()}
+      <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em">📊 ${activeRegion === 'hkjc' ? '🇭🇰 香港' : '🇦🇺 澳洲'} ROI 分析</h1>
     </div>
     <div class="empty-state" style="margin-top:40px"><div class="empty-state__icon">📊</div><div class="empty-state__text">暫無投注數據</div></div>`;
   }
   let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-    <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em">📊 ROI 分析</h1>
-    ${renderRegionTabs()}
+    <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em">📊 ${activeRegion === 'hkjc' ? '🇭🇰 香港' : '🇦🇺 澳洲'} ROI 分析</h1>
   </div>`;
   html += renderRoiScopeNote(roi);
   html += renderStatsCards(roi);
   if (roi.running_profit?.length > 0) html += renderProfitChart(roi.running_profit);
-  if (roi.side_roi && !roiRegionFilter) html += renderSideBreakdowns(roi.side_roi);
+  // Side breakdowns are computed per region by generate_static (side_roi_by_region);
+  // the combined side_roi only applies when no region filter is set.
+  const sideRoi = roiRegionFilter
+    ? (DASHBOARD_DATA.roi?.side_roi_by_region || {})[roiRegionFilter]
+    : roi.side_roi;
+  if (sideRoi) html += renderSideBreakdowns(sideRoi);
   if (roi.daily_breakdown?.length > 0) html += renderMonthlyBreakdown(roi.daily_breakdown, roi.bets || []);
   return html;
 }
@@ -5771,12 +5826,6 @@ function renderRoiScopeNote(roi) {
   </div>`;
 }
 
-function renderRegionTabs() {
-  const tabs = [{val:null,label:'全部'},{val:'hkjc',label:'🇭🇰 HKJC'},{val:'au',label:'🇦🇺 AU'}];
-  return `<div style="display:flex;gap:4px;background:#F1F5F9;border-radius:8px;padding:3px">${tabs.map(t =>
-    `<button class="${roiRegionFilter===t.val?'btn btn--primary btn--sm':'btn btn--ghost btn--sm'}" onclick="setRoiRegion(${t.val===null?'null':"'"+t.val+"'"})">` + esc(t.label) + '</button>'
-  ).join('')}</div>`;
-}
 
 function renderStatsCards(roi) {
   const p = roi.total_profit||0;
@@ -6128,8 +6177,9 @@ function renderNow(main) {
   // they are keyed by meeting and are the point of the cache.
   LAZY_ANALYSIS_CTX.clear();
   if (analysisSpyCleanup) analysisSpyCleanup();
-  ['horses', 'nba', 'tennis', 'portfolio'].forEach(sport => {
-    const isActive = activeSport === sport;
+  const activeTab = activeTopLevelTab();
+  TOP_LEVEL_TABS.forEach(sport => {
+    const isActive = activeTab === sport;
     const button = document.getElementById(`sport-${sport}`);
     if (button) button.className = `sport-switch${isActive ? ' sport-switch--active' : ''}`;
     // Mobile bottom tab bar mirrors the same active sport.
@@ -6307,8 +6357,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadRoiLedger().then(() => { if (currentView === 'roi') render(); });
   loadSportsBetLedger();
   const initialSport = getInitialSportFromUrl();
-  if (initialSport === 'horses') showDashboard();
-  else showSport(initialSport);
+  showSport(initialSport);
   renderSnapshotStamp();
   // Also check on first load, not just on foreground: a cold launch can be served
   // out of the service worker cache when the network is slow or absent.

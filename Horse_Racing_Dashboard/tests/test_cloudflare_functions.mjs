@@ -429,6 +429,20 @@ test("D1 migration defines the unified ledger, leg, settlement and audit contrac
   assert.match(schema, /idempotency_key TEXT NOT NULL UNIQUE/);
 });
 
+test("portfolio splits horse bets into HKJC and AU rows", async () => {
+  const portfolio = await loadModule("../functions/api/portfolio.js");
+  const summary = portfolio.buildPortfolio({
+    hk: { sport: "horses", status: "won", stake: 1, profit: 2, analysis_snapshot: { region: "hkjc" } },
+    au: { sport: "horses", status: "lost", stake: 1, profit: -1, analysis_snapshot: '{"region":"au"}' },
+    old: { sport: "horses", status: "lost", stake: 1, profit: -1 },
+    nba: { sport: "nba", status: "won", stake: 1, profit: 1 },
+  });
+  assert.equal(summary.horses_by_region.hkjc.profit, 2);
+  assert.equal(summary.horses_by_region.au.profit, -1);
+  assert.equal(summary.horses_by_region.unknown.bets, 1);
+  assert.equal(summary.by_sport.horses.bets, 3);
+});
+
 test("portfolio summary separates realised ROI from pending exposure by sport", async () => {
   const portfolio = await loadModule("../functions/api/portfolio.js");
   const summary = portfolio.buildPortfolio({

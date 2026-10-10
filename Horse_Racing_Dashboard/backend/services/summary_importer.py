@@ -287,6 +287,42 @@ def _parse_roi_sheet(sheet, region: str) -> List[Dict]:
 
 
 
+def compute_side_roi(all_bets: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Side breakdowns (venue / distance / class / track / jockey / trainer).
+
+    Shared by get_summary_roi and the static generator, which recomputes them per
+    region (HKJC / AU tabs) from the snapshot's bets in every build mode.
+    """
+    TRACK_RENAMES = {'泥地': '全天候賽道'}
+    VENUE_RENAMES = {
+        'ShaTin': 'Sha Tin',
+        'Sha TIn': 'Sha Tin',
+        'Rose Hill': 'Rosehill Gardens',
+        'Caulfield Health': 'Caulfield',
+    }
+    CLASS_RENAMES = {
+        '三級賽': 'Group 3',
+        '二級賽': 'Group 2',
+        '一級賽': 'Group 1',
+        'Groupo 3': 'Group 3',
+        'Featured': 'Feature',
+        'LR': 'Listed',
+        'RI': 'Listed',
+        'C1': '第一班',
+        'C3': '第三班',
+        '第三班（條件限制）': '第三班',
+        'Hcp 66': 'BM66',
+    }
+    return {
+        "by_venue": _compute_breakdown(all_bets, "venue", renames=VENUE_RENAMES),
+        "by_distance": _compute_breakdown(all_bets, "distance"),
+        "by_class": _compute_breakdown(all_bets, "race_class", renames=CLASS_RENAMES),
+        "by_track": _compute_breakdown(all_bets, "track_type", renames=TRACK_RENAMES),
+        "by_jockey": _compute_breakdown(all_bets, "jockey"),
+        "by_trainer": _compute_breakdown(all_bets, "trainer"),
+    }
+
+
 def get_summary_roi(region: Optional[str] = None) -> Dict[str, Any]:
     """
     Get ROI data from the Numbers summary files.
@@ -344,36 +380,8 @@ def get_summary_roi(region: Optional[str] = None) -> Dict[str, Any]:
     win_rate = round(float(wins / total_bets * 100), 1) if total_bets > 0 else 0
     roi_pct = round(float(total_profit / total_stake * 100), 1) if total_stake > 0 else 0
     
-    # Compute side breakdowns from individual bets
-    TRACK_RENAMES = {'泥地': '全天候賽道'}
-    VENUE_RENAMES = {
-        'ShaTin': 'Sha Tin',
-        'Sha TIn': 'Sha Tin',
-        'Rose Hill': 'Rosehill Gardens',
-        'Caulfield Health': 'Caulfield',
-    }
-    CLASS_RENAMES = {
-        '三級賽': 'Group 3',
-        '二級賽': 'Group 2',
-        '一級賽': 'Group 1',
-        'Groupo 3': 'Group 3',
-        'Featured': 'Feature',
-        'LR': 'Listed',
-        'RI': 'Listed',
-        'C1': '第一班',
-        'C3': '第三班',
-        '第三班（條件限制）': '第三班',
-        'Hcp 66': 'BM66',
-    }
-    side_roi = {
-        "by_venue": _compute_breakdown(all_bets, "venue", renames=VENUE_RENAMES),
-        "by_distance": _compute_breakdown(all_bets, "distance"),
-        "by_class": _compute_breakdown(all_bets, "race_class", renames=CLASS_RENAMES),
-        "by_track": _compute_breakdown(all_bets, "track_type", renames=TRACK_RENAMES),
-        "by_jockey": _compute_breakdown(all_bets, "jockey"),
-        "by_trainer": _compute_breakdown(all_bets, "trainer"),
-    }
-    
+    side_roi = compute_side_roi(all_bets)
+
     # Build running profit (cumulative P&L)
     running_profit = []
     cumulative = 0.0

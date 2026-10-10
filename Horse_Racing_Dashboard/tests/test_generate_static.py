@@ -220,8 +220,6 @@ class GenerateStaticTests(unittest.TestCase):
         )
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class SlimForTransportTests(unittest.TestCase):
@@ -322,3 +320,32 @@ class TrackGeometryPayloadTests(unittest.TestCase):
     def test_stale_geometry_is_cleared_not_kept(self):
         stale = {"venue": "Broome", "region": "AU", "track_geometry": {"circumference_m": 9999}}
         self.assertNotIn("track_geometry", generate_static._attach_track_geometry(stale))
+
+
+class RegionRoiTests(unittest.TestCase):
+    """HKJC and AU are separate tabs; each needs its own side breakdowns,
+    in every build mode (incremental merges never re-read the workbooks)."""
+
+    def test_side_roi_is_recomputed_per_region_from_bets(self):
+        def bet(region, venue, profit):
+            return {"region": region, "venue": venue, "distance": "1200", "race_class": "C4",
+                    "track_type": "草地", "jockey": "J", "trainer": "T",
+                    "status": "won" if profit > 0 else "lost", "stake": 1.0,
+                    "payout": 1.0 + profit if profit > 0 else 0.0, "net_profit": profit}
+        data = {"roi": {"bets": [bet("hkjc", "Sha Tin", 2.0), bet("au", "Randwick", -1.0),
+                                 bet("hkjc", "Happy Valley", -1.0)]}}
+        generate_static._ensure_region_side_roi(data)
+        by_region = data["roi"]["side_roi_by_region"]
+        hk_venues = json.dumps(by_region["hkjc"]["by_venue"], ensure_ascii=False)
+        au_venues = json.dumps(by_region["au"]["by_venue"], ensure_ascii=False)
+        self.assertIn("Sha Tin", hk_venues)
+        self.assertNotIn("Randwick", hk_venues)
+        self.assertIn("Randwick", au_venues)
+        self.assertNotIn("Sha Tin", au_venues)
+
+    def test_missing_roi_is_left_alone(self):
+        self.assertEqual(generate_static._ensure_region_side_roi({"roi": {}})["roi"]["side_roi_by_region"]["hkjc"]["by_venue"], [])
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -73,6 +73,9 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       setSelectedMeetingForTest: (meeting) => { selectedMeeting = meeting; },
       setRoiLedgerForTest: (records) => { roiLedger = records; },
       setRoiRegionForTest: (region) => { roiRegionFilter = region; },
+      setActiveRegionForTest: (region) => { activeRegion = region; roiRegionFilter = region; },
+      regionMeetings: typeof regionMeetings === "function" ? regionMeetings : null,
+      normaliseSportKey: typeof normaliseSportKey === "function" ? normaliseSportKey : null,
       setLocalStorageForTest: (key, value) => { localStorage.setItem(key, JSON.stringify(value)); },
       getFilteredROI,
       renderHorseCard,
@@ -157,7 +160,7 @@ test("template ships the head tags iOS needs to install it as a standalone app",
 
 test("mobile bottom tab bar carries every sport and stacks above the betting bar", () => {
   const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
-  for (const sport of ["horses", "nba", "tennis", "portfolio"]) {
+  for (const sport of ["hkjc", "au", "nba", "tennis", "portfolio"]) {
     assert.match(html, new RegExp(`id="tabbar-${sport}"[^>]*onclick="showSport\\('${sport}'\\)"`));
   }
   // render() has to drive both navs off the same active sport.
@@ -932,7 +935,7 @@ test("multi-sport workspace has a single-column mobile contract", () => {
   assert.match(template, /@media \(max-width: 520px\)[\s\S]*?\.sports-modal__grid \{ grid-template-columns:1fr; \}/);
 });
 
-test("sport URL state accepts horses NBA tennis and portfolio", () => {
+test("sport URL state accepts HKJC AU NBA tennis and portfolio", () => {
   const { getInitialSportFromUrl, setLocationSearchForTest } = loadTemplateFunctions();
   setLocationSearchForTest("?sport=tennis");
   assert.equal(getInitialSportFromUrl(), "tennis");
@@ -940,8 +943,33 @@ test("sport URL state accepts horses NBA tennis and portfolio", () => {
   assert.equal(getInitialSportFromUrl(), "nba");
   setLocationSearchForTest("?sport=portfolio");
   assert.equal(getInitialSportFromUrl(), "portfolio");
+  setLocationSearchForTest("?sport=au");
+  assert.equal(getInitialSportFromUrl(), "au");
+  // Old links (?sport=horses) and unknown values open the HKJC tab.
+  setLocationSearchForTest("?sport=horses");
+  assert.equal(getInitialSportFromUrl(), "hkjc");
   setLocationSearchForTest("?sport=football");
-  assert.equal(getInitialSportFromUrl(), "horses");
+  assert.equal(getInitialSportFromUrl(), "hkjc");
+});
+
+test("HKJC and AU racing tabs each list only their own meetings", () => {
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    meetings: [
+      { date: "2026-10-11", venue: "ShaTin", region: "hkjc", analysts: ["Kelvin"] },
+      { date: "2026-10-11", venue: "Randwick", region: "au", analysts: ["Kelvin"] },
+      { date: "2026-10-07", venue: "HappyValley", region: "hkjc", analysts: ["Kelvin"] },
+    ],
+  };
+  const { regionMeetings, setActiveRegionForTest, renderDashboard } = loadTemplateFunctions(data);
+  assert.equal(JSON.stringify(regionMeetings("hkjc").map(m => m.venue)), '["ShaTin","HappyValley"]');
+  assert.equal(JSON.stringify(regionMeetings("au").map(m => m.venue)), '["Randwick"]');
+  setActiveRegionForTest("au");
+  const html = renderDashboard();
+  assert.match(html, /Randwick/);
+  assert.doesNotMatch(html, /ShaTin|HappyValley/);
+  // selectMeeting(i) indexes the full meetings array, so the AU card must keep index 1.
+  assert.match(html, /selectMeeting\(1\)/);
 });
 
 test("portfolio workspace is backed by the D1 portfolio endpoint", () => {

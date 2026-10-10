@@ -31,7 +31,7 @@ from services.meeting_detector import (
     load_meeting_races,
 )
 from services.consensus import find_consensus_horses, find_rating_disagreements, get_betting_suggestions
-from services.summary_importer import get_summary_roi
+from services.summary_importer import compute_side_roi, get_summary_roi
 from services.race_display_metadata import (
     enrich_au_display_metadata as _enrich_au_silks,
     enrich_hkjc_display_metadata as _enrich_hkjc_silks,
@@ -538,6 +538,22 @@ def drop_au_meetings(base_snapshot_path, keys):
     return data
 
 
+def _ensure_region_side_roi(data: dict) -> dict:
+    """HKJC and AU are separate tabs (2026-10-10); each needs its own side
+    breakdowns. Recomputed from the snapshot's own bets so every build mode
+    (full rescan, incremental merge, --from-snapshot) carries them — the
+    incremental paths never re-read the ROI workbooks."""
+    roi = data.get("roi")
+    if not isinstance(roi, dict):
+        return data
+    bets = [b for b in roi.get("bets") or [] if isinstance(b, dict)]
+    roi["side_roi_by_region"] = {
+        region: compute_side_roi([b for b in bets if b.get("region") == region])
+        for region in ("hkjc", "au")
+    }
+    return data
+
+
 def collect_all_data(cache_path=DEFAULT_CACHE_PATH):
     """Collect all meetings, reusing parsed entries when their source files are unchanged."""
     meetings = discover_meetings()
@@ -944,6 +960,7 @@ def main():
     else:
         data = collect_all_data(args.cache_path)
     
+    _ensure_region_side_roi(data)
     meeting_count = len(data["meetings"])
     race_count = sum(
         len(races) 

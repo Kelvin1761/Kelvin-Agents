@@ -65,24 +65,39 @@ function finishBucket(bucket) {
   return bucket;
 }
 
+export function horseRegion(record) {
+  let snapshot = record?.analysis_snapshot || {};
+  if (typeof snapshot === "string") {
+    try { snapshot = JSON.parse(snapshot); } catch { snapshot = {}; }
+  }
+  const region = String(snapshot?.region || "").trim().toLowerCase();
+  return region === "hkjc" || region === "au" ? region : "unknown";
+}
+
 export function buildPortfolio(records) {
   const bySport = {
     horses: emptyBucket(),
     nba: emptyBucket(),
     tennis: emptyBucket(),
   };
+  // HKJC and AU are separate dashboard tabs (2026-10-10). D1 has no region
+  // column; horse bets carry it inside analysis_snapshot.
+  const horsesByRegion = { hkjc: emptyBucket(), au: emptyBucket(), unknown: emptyBucket() };
   const total = emptyBucket();
   for (const record of Object.values(records || {})) {
     if (!record || record._deleted || !bySport[record.sport]) continue;
     addRecord(bySport[record.sport], record);
     addRecord(total, record);
+    if (record.sport === "horses") addRecord(horsesByRegion[horseRegion(record)], record);
   }
   for (const bucket of Object.values(bySport)) finishBucket(bucket);
+  for (const bucket of Object.values(horsesByRegion)) finishBucket(bucket);
   finishBucket(total);
   return {
     generated_at: new Date().toISOString(),
     total,
     by_sport: bySport,
+    horses_by_region: horsesByRegion,
   };
 }
 
