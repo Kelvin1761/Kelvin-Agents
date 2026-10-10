@@ -79,7 +79,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       setLocalStorageForTest: (key, value) => { localStorage.setItem(key, JSON.stringify(value)); },
       getFilteredROI,
       renderHorseCard,
-      renderScoreLedger,
+      renderDimensionStrip: typeof renderDimensionStrip === "function" ? renderDimensionStrip : null,
       buildHorseAnalysisSections,
       parseChronologySeries,
       renderChronologySeries,
@@ -117,25 +117,23 @@ test("raw template explains that a generated dashboard must be opened", () => {
   assert.match(html, /Open Dashboard\.html/);
 });
 
-test("HKJC score ledger exposes every active 7D and distance score", () => {
-  const { renderScoreLedger } = loadTemplateFunctions();
-  const html = renderScoreLedger({
-    ability_score: 72.4,
-    ability_percentile: 80,
-    distance_score: 72,
-    distance_suitability_adjustment: 0.43,
-    scoring_breakdown: {
-      ranking: { rank: 2, ability_score: 72.4 },
-      feature_scores: { form_score: 68, distance_score: 72 },
-      matrix_display: { stability: 70 },
-      distance_suitability: { raw_adjustment: 0.43, same_distance_starts: 6, same_distance_places: 2 },
-    },
+test("dimension strip reconciles to the raw score; score ledger is gone", () => {
+  const { renderDimensionStrip } = loadTemplateFunctions();
+  const html = renderDimensionStrip({
+    score_raw_total: 66.50,
+    score_adjustments: [{ key: "sip_boost", label: "SIP 輕磅好檔修正", raw: 1.0 }],
+    dimension_details: [
+      { name: "檔位與走位", score: 70, weight_pct: 50, impact: 3.0, ranking_weighted: true },
+      { name: "騎練訊號", score: 66, weight_pct: 50, impact: 2.5, ranking_weighted: true },
+    ],
   });
-  assert.match(html, /7D正式分/);
-  assert.match(html, /正式同程調整/);
-  assert.match(html, /查看全部評分/);
-  assert.match(html, /同程場數/);
-  assert.doesNotMatch(html, /完整戰力/);
+  assert.match(html, /原始總分 <b>66\.50<\/b>/);
+  assert.match(html, /各維度影響 5\.50/);
+  assert.match(html, /SIP 輕磅好檔修正 \+1\.0/);
+  // impact comes from the engine (raw ruler), not display score × weight
+  assert.match(html, /\+<b>3\.0<\/b>/);
+  const template = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
+  assert.doesNotMatch(template, /renderScoreLedger|查看全部評分|場內百分位/);
 });
 
 test("template ships the head tags iOS needs to install it as a standalone app", () => {

@@ -804,6 +804,21 @@ def _matrix_detail_from_line(line):
         return None
 
 
+_MATRIX_EXTRAS: dict[tuple[str, int], dict] = {}
+
+
+def _optional_float(value):
+    try:
+        return None if value is None or value == "" else float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def matrix_extras(analysis_path: Path, horse_num: int) -> dict:
+    logic_path = analysis_path.with_name(analysis_path.name.replace("_Auto_Analysis.md", "_Logic.json"))
+    return _MATRIX_EXTRAS.get((str(logic_path), horse_num), {})
+
+
 def _load_matrix_details(analysis_path: Path) -> dict[int, list]:
     """Per-horse dimension breakdown from the meeting's Race_N_Logic.json."""
     logic_path = analysis_path.with_name(
@@ -838,6 +853,8 @@ def _load_matrix_details(analysis_path: Path) -> dict[int, list]:
                         # `weight` is a fraction here; weight_pct is a percentage.
                         weight_pct=float(row["weight"]) * 100,
                         contribution=float(row["contribution"]),
+                        score_raw=_optional_float(row.get("score_raw")),
+                        impact=_optional_float(row.get("impact")),
                         symbol=(row.get("band") or "").strip() or None,
                         ranking_weighted=True,
                     ))
@@ -845,6 +862,10 @@ def _load_matrix_details(analysis_path: Path) -> dict[int, list]:
                     continue
             if details:
                 mapping[horse_num] = details
+                _MATRIX_EXTRAS[(str(logic_path), horse_num)] = {
+                    "adjustments": [a for a in transparency.get("adjustments") or [] if isinstance(a, dict)],
+                    "raw_total": _optional_float(transparency.get("ability_score_raw")),
+                }
                 continue
         lines = transparency.get("detail_lines")
         if not isinstance(lines, list):
@@ -1164,6 +1185,10 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
             ) if d]
         if details:
             horse.dimension_details = details
+            extras = matrix_extras(path, horse.horse_number)
+            if extras:
+                horse.score_adjustments = extras.get("adjustments") or None
+                horse.score_raw_total = extras.get("raw_total")
     if is_auto:
         for horse in horses:
             row = auto_scoring.get(horse.horse_number)

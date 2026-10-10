@@ -47,6 +47,10 @@ class DimensionDetail(BaseModel):
     weight_pct: Optional[float] = None
     coefficient: Optional[float] = None
     contribution: Optional[float] = None
+    # HKJC (2026-10-10): raw-ruler score and weight × (raw − 60). The strip used to
+    # multiply the DISPLAY score, so its bars did not add up to the real score.
+    score_raw: Optional[float] = None
+    impact: Optional[float] = None
     symbol: Optional[str] = None       # ✅✅ / ✅ / ➖ / ❌ / ❌❌
     category: Optional[str] = None     # 偏強 / 中性 / 偏弱 / 很弱
     verdict: Optional[str] = None      # 判讀
@@ -139,6 +143,10 @@ class HorseAnalysis(BaseModel):
     evidence_dimensions: Optional[int] = None
     evidence_dimensions_total: Optional[int] = None
     dimension_details: Optional[list[DimensionDetail]] = None
+    # HKJC: non-matrix adjustments applied after the dimensions (e.g. SIP) and the
+    # final raw composite, so the strip can show 60 + Σ impact + adjustments = total.
+    score_adjustments: Optional[list[dict]] = None
+    score_raw_total: Optional[float] = None
     
     # Conclusion
     conclusion: Optional[str] = None  # 💡 結論

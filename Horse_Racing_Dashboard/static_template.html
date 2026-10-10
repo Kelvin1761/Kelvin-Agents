@@ -63,6 +63,8 @@
     .dim-row__track { position: relative; height: 9px; border-radius: 3px; background: #EDF2F7; }
     .dim-row__track::before { content: ''; position: absolute; left: 50%; top: -1px; bottom: -1px; width: 1px; background: #CBD5E1; }
     .dim-row__fill { position: absolute; top: 1px; bottom: 1px; border-radius: 2px; min-width: 1px; }
+    .dim-strip__total { margin-top: 6px; font-size: 0.68rem; color: #334155; font-variant-numeric: tabular-nums; }
+    .dim-strip__total b { color: #0F172A; }
     .dim-strip__driver { margin-top: 8px; padding-top: 7px; border-top: 1px dashed #CBD5E1; font-size: 0.68rem; color: #475569; display: flex; flex-wrap: wrap; gap: 4px 14px; }
     .dim-strip__driver b { font-variant-numeric: tabular-nums; }
     .dim-strip__driver .up { color: #047857; }
@@ -128,19 +130,6 @@
     .mkt__gap--under { background: #FEF3C7; color: #92400E; }
     .horse-card__body { word-break: break-word; box-sizing: border-box; overflow: hidden; min-width: 0; }
     .horse-card__details { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
-    .score-ledger { margin-top: 10px; max-width: 1040px; border: 1px solid #CBD5E1; border-radius: 10px; background: #F8FAFC; overflow: hidden; }
-    .score-ledger__headline { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 9px 11px; font-size: .73rem; color: #334155; font-variant-numeric: tabular-nums; }
-    .score-ledger__headline b { color: #0F172A; }
-    .score-ledger details { border-top: 1px solid #E2E8F0; }
-    .score-ledger summary { cursor: pointer; list-style: none; padding: 8px 11px; font-size: .72rem; font-weight: 750; color: #1D4ED8; background: #EFF6FF; }
-    .score-ledger summary::-webkit-details-marker { display: none; }
-    .score-ledger summary::after { content: '⌄'; float: right; }
-    .score-ledger details[open] summary::after { transform: rotate(180deg); }
-    .score-ledger__body { padding: 10px; display: grid; gap: 10px; }
-    .score-ledger__group h5 { margin: 0 0 5px; font-size: .68rem; color: #64748B; text-transform: uppercase; letter-spacing: .04em; }
-    .score-ledger__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 5px; }
-    .score-ledger__cell { display: flex; justify-content: space-between; gap: 8px; padding: 5px 7px; border-radius: 6px; background: white; border: 1px solid #E2E8F0; font-size: .69rem; color: #475569; }
-    .score-ledger__cell b { color: #0F172A; font-variant-numeric: tabular-nums; }
 
     /* ─── Mobile: Rank on top, single column comparison ─── */
     @media (max-width: 768px) {
@@ -4149,7 +4138,10 @@ function renderDimensionStrip(horse) {
   // adds a sign.
   const NEUTRAL_SCORE = 60;   // the engine's 統一尺: "60 為中性"
   const IMPACT_SCALE = 11;    // ~max |impact| observed; bars clip beyond it
-  const impactOf = d => (d.score - NEUTRAL_SCORE) * dimFactor(d);
+  // HKJC rows carry the engine's own impact = weight × (RAW score − 60). The
+  // display score is a per-dimension ruler, so multiplying it did not add up to
+  // the horse's real score (2026-10-10). Older reports without `impact` fall back.
+  const impactOf = d => (d.impact != null ? d.impact : (d.score - NEUTRAL_SCORE) * dimFactor(d));
 
   let h = '<div class="dim-strip">';
 
@@ -4187,6 +4179,15 @@ function renderDimensionStrip(horse) {
   if (!drivers.length) drivers.push(`<span>${ranked.length}維都接近中性，冇單一維度主導</span>`);
   h += `<div class="dim-strip__driver">${drivers.join('')}</div>`;
 
+  // The whole score, reconciled: 60 + every dimension's impact + any
+  // post-matrix adjustment (e.g. SIP) = the raw score the ranking used.
+  if (horse.score_raw_total != null && ranked.every(d => d.impact != null)) {
+    const sum = ranked.reduce((acc, d) => acc + d.impact, 0);
+    const adjustments = horse.score_adjustments || [];
+    const adjText = adjustments.map(a => `${esc(a.label || a.key)} ${a.raw >= 0 ? '+' : ''}${Number(a.raw).toFixed(1)}`).join('、');
+    h += `<div class="dim-strip__total">原始總分 <b>${Number(horse.score_raw_total).toFixed(2)}</b> ＝ 中性 60 ${sum >= 0 ? '+' : '−'} 各維度影響 ${Math.abs(sum).toFixed(2)}${adjText ? '　＋　' + adjText : ''}</div>`;
+  }
+
   if (reference.length) {
     // Printed by the engine, explicitly 參考·不入排名. Shown rather than hidden:
     // the dashboard used to display 5 of the 7 dimensions in the file with
@@ -4199,54 +4200,6 @@ function renderDimensionStrip(horse) {
   return h + '</div>';
 }
 
-const HKJC_SCORE_LABELS = {
-  ability_score:'7D正式分', ability_score_raw:'7D原始分', official_ranking_score:'正式排序值',
-  ability_percentile:'7D全場百分位', rank:'正式排名',
-  form_score:'近績分', speed_score:'速度分', class_score:'班次分', jockey_score:'騎師分',
-  trainer_score:'練馬師分', draw_score:'檔位分', distance_score:'路程診斷分',
-  track_going_score:'場地分', weight_score:'負磅分', consistency_score:'穩定性分',
-  risk_score:'風險分', confidence_score:'資料完整度', formline_strength_score:'賽績線分',
-  margin_trend_score:'負距趨勢分', same_distance_signal_score:'同程訊號分',
-  trackwork_trend_score:'晨操趨勢分', race_shape_context_score:'檔位走位情境分',
-  stability:'狀態與穩定性', trainer_signal:'騎練訊號', sectional:'段速表現',
-  race_shape:'檔位與走位', horse_health:'馬匹健康', form_line:'賽績線', class_advantage:'級數優勢',
-  trackwork:'晨操狀態', distance_fit:'同程表現', distance_fit_score:'同程表現分',
-  raw_adjustment:'正式同程調整',
-  same_distance_starts:'同程場數', same_distance_places:'同程上名', signal:'同程訊號',
-};
-
-function scoreLedgerGroup(title, values, suffix='') {
-  const rows = Object.entries(values || {}).filter(([, value]) => value !== null && value !== undefined && value !== '');
-  if (!rows.length) return '';
-  return `<section class="score-ledger__group"><h5>${esc(title)}</h5><div class="score-ledger__grid">${rows.map(([key, value]) => {
-    const label = HKJC_SCORE_LABELS[key] || key.replaceAll('_', ' ');
-    const shown = typeof value === 'number' ? value.toFixed(2).replace(/\.00$/, '') : String(value);
-    return `<span class="score-ledger__cell"><span>${esc(label)}</span><b>${esc(shown)}${suffix}</b></span>`;
-  }).join('')}</div></section>`;
-}
-
-function renderScoreLedger(horse) {
-  const scores = horse.scoring_breakdown || {};
-  if (!Object.keys(scores).length && horse.ability_score == null) return '';
-  const ranking = scores.ranking || {};
-  const distance = scores.distance_suitability || {};
-  const abilityPct = horse.ability_percentile ?? ranking.ability_percentile;
-  const headline = [];
-  if (horse.ability_score != null) headline.push(`<span>7D正式分 <b>${Number(horse.ability_score).toFixed(1)}</b></span>`);
-  if (abilityPct != null) headline.push(`<span>7D場內百分位 <b>${Number(abilityPct).toFixed(1)}</b></span>`);
-  if (horse.distance_score != null) headline.push(`<span>路程診斷 <b>${Number(horse.distance_score).toFixed(1)}</b></span>`);
-  if (horse.distance_suitability_adjustment != null) headline.push(`<span>正式同程調整 <b>${Number(horse.distance_suitability_adjustment) >= 0 ? '+' : ''}${Number(horse.distance_suitability_adjustment).toFixed(2)}</b></span>`);
-
-  let body = '';
-  body += scoreLedgerGroup('排名層', ranking);
-  body += scoreLedgerGroup('12項基礎／參考分', scores.feature_scores);
-  body += scoreLedgerGroup('衍生訊號', scores.derived_scores);
-  body += scoreLedgerGroup('7D顯示尺', scores.matrix_display);
-  body += scoreLedgerGroup('7D原始尺', scores.matrix_raw);
-  body += scoreLedgerGroup('路程性能', distance);
-  if (!body) return `<div class="score-ledger"><div class="score-ledger__headline">${headline.join('')}</div></div>`;
-  return `<div class="score-ledger"><div class="score-ledger__headline">${headline.join('')}</div><details><summary>查看全部評分</summary><div class="score-ledger__body">${body}</div></details></div>`;
-}
 
 function marketRankMap(fieldHorses) {
   // Rank by win odds, shortest first. Scratched/unpriced runners are left out
@@ -4396,7 +4349,6 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
     if (cleanForm || horse.form_cycle) html += `<div>${formLine}</div>`;
   }
   html += renderMarketLine(horse, marketRanks);
-  html += renderScoreLedger(horse);
   html += renderDimensionStrip(horse);
   html += renderVerdictChips(horse);
   // 數據判讀 used to live here. It restated what the ranking matrix now shows
