@@ -80,6 +80,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       getFilteredROI,
       renderHorseCard,
       renderDimensionStrip: typeof renderDimensionStrip === "function" ? renderDimensionStrip : null,
+      renderTrackworkTimeline: typeof renderTrackworkTimeline === "function" ? renderTrackworkTimeline : null,
       buildHorseAnalysisSections,
       parseChronologySeries,
       renderChronologySeries,
@@ -1550,4 +1551,19 @@ test("battlefield 會將賽道幾何畫埋入去", () => {
   assert.match(html, /173m/);
   // 冇傳幾何嘅時候唔可以爆
   assert.doesNotThrow(() => api.renderBattlefieldOverview(SPEEDMAP_OVERVIEW, []));
+});
+
+
+test("trackwork timeline lists gallops and trials with times and the 從化 stay", () => {
+  const { renderTrackworkTimeline } = loadTemplateFunctions();
+  const html = renderTrackworkTimeline({ trackwork_timeline: {
+    window_days: 21, gallops: 3, trials: 1, trotting: 18, swimming: 18, gallop_trend: "放緩",
+    race_jockey_involved: true, readiness: 95,
+    conghua_stay: { from: "2026-09-20", to: "2026-10-08", days: 19 },
+    work: [{ date: "2026-09-28", type: "試閘", location: "從化 草地", time: 56.9, sectionals: [21.3, 22.3], rider: "潘明輝", gear: "" }],
+  }});
+  assert.match(html, /晨操時間線/);
+  assert.match(html, /從化 2026-09-20 → 2026-10-08（19 日/);
+  assert.match(html, /試閘<\/td><td>從化 草地<\/td><td>56\.9<\/td><td>21\.3 \/ 22\.3/);
+  assert.equal(renderTrackworkTimeline({}), "");
 });

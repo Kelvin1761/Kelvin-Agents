@@ -862,9 +862,11 @@ def _load_matrix_details(analysis_path: Path) -> dict[int, list]:
                     continue
             if details:
                 mapping[horse_num] = details
+                timeline = ((horse or {}).get("python_auto") or {}).get("trackwork_timeline")
                 _MATRIX_EXTRAS[(str(logic_path), horse_num)] = {
                     "adjustments": [a for a in transparency.get("adjustments") or [] if isinstance(a, dict)],
                     "raw_total": _optional_float(transparency.get("ability_score_raw")),
+                    "trackwork_timeline": timeline if isinstance(timeline, dict) else None,
                 }
                 continue
         lines = transparency.get("detail_lines")
@@ -1189,6 +1191,7 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
             if extras:
                 horse.score_adjustments = extras.get("adjustments") or None
                 horse.score_raw_total = extras.get("raw_total")
+                horse.trackwork_timeline = extras.get("trackwork_timeline")
     if is_auto:
         for horse in horses:
             row = auto_scoring.get(horse.horse_number)

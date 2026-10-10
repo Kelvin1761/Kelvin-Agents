@@ -63,6 +63,14 @@
     .dim-row__track { position: relative; height: 9px; border-radius: 3px; background: #EDF2F7; }
     .dim-row__track::before { content: ''; position: absolute; left: 50%; top: -1px; bottom: -1px; width: 1px; background: #CBD5E1; }
     .dim-row__fill { position: absolute; top: 1px; bottom: 1px; border-radius: 2px; min-width: 1px; }
+    .tw-box { margin-top: 8px; max-width: 1040px; border: 1px solid #E2E8F0; border-radius: 10px; background: #FFFFFF; }
+    .tw-box summary { cursor: pointer; padding: 8px 11px; font-size: .72rem; color: #334155; }
+    .tw-box summary b { color: #0F172A; }
+    .tw-stay { padding: 4px 11px; font-size: .7rem; color: #0F766E; }
+    .tw-table { width: 100%; border-collapse: collapse; font-size: .7rem; font-variant-numeric: tabular-nums; }
+    .tw-table th, .tw-table td { padding: 4px 8px; border-top: 1px solid #F1F5F9; text-align: left; }
+    .tw-table th { color: #64748B; font-weight: 650; }
+    .tw-empty { padding: 6px 11px; font-size: .7rem; color: #94A3B8; }
     .dim-strip__total { margin-top: 6px; font-size: 0.68rem; color: #334155; font-variant-numeric: tabular-nums; }
     .dim-strip__total b { color: #0F172A; }
     .dim-strip__driver { margin-top: 8px; padding-top: 7px; border-top: 1px dashed #CBD5E1; font-size: 0.68rem; color: #475569; display: flex; flex-wrap: wrap; gap: 4px 14px; }
@@ -4117,6 +4125,31 @@ function dimFactorLabel(d) {
   return '';
 }
 
+// Kelvin 2026-10-10: show trackwork in detail. Every fast gallop and barrier
+// trial in the last 21 days with time, splits and rider; easy work summarised;
+// a stay at 從化 shown as one line. Display only — scoring lives in 晨操狀態.
+function renderTrackworkTimeline(horse) {
+  const t = horse.trackwork_timeline;
+  if (!t) return '';
+  const chips = [
+    `快操 <b>${Number(t.gallops || 0)}</b>`, `試閘 <b>${Number(t.trials || 0)}</b>`,
+    `踱步 ${Number(t.trotting || 0)}`, `游水 ${Number(t.swimming || 0)}`,
+  ];
+  if (t.gallop_trend) chips.push(`快操趨勢 <b>${esc(t.gallop_trend)}</b>`);
+  if (t.race_jockey_involved) chips.push('賽日騎師有參與');
+  if (t.readiness != null) chips.push(`備戰 ${Number(t.readiness).toFixed(0)}`);
+  const stay = t.conghua_stay
+    ? `<div class="tw-stay">🏔️ 從化 ${esc(t.conghua_stay.from)} → ${esc(t.conghua_stay.to)}（${Number(t.conghua_stay.days)} 日有操練紀錄）</div>`
+    : '';
+  const rows = (t.work || []).map(w => `<tr><td>${esc(String(w.date || '').slice(5))}</td><td>${esc(w.type)}</td>`
+    + `<td>${esc(w.location)}</td><td>${w.time != null ? Number(w.time).toFixed(1) : '—'}</td>`
+    + `<td>${esc((w.sectionals || []).join(' / '))}</td><td>${esc(w.rider)}</td><td>${esc(w.gear)}</td></tr>`).join('');
+  const table = rows
+    ? `<table class="tw-table"><thead><tr><th>日期</th><th>類型</th><th>地點</th><th>時間</th><th>分段</th><th>策騎</th><th>配備</th></tr></thead><tbody>${rows}</tbody></table>`
+    : '<div class="tw-empty">近 21 日冇快操或試閘紀錄</div>';
+  return `<details class="tw-box"><summary>🏇 晨操時間線（近 ${Number(t.window_days || 21)} 日）　${chips.join(' · ')}</summary>${stay}${table}</details>`;
+}
+
 function renderDimensionStrip(horse) {
   const details = horse.dimension_details || [];
   if (!details.length) return '';
@@ -4350,6 +4383,7 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
   }
   html += renderMarketLine(horse, marketRanks);
   html += renderDimensionStrip(horse);
+  html += renderTrackworkTimeline(horse);
   html += renderVerdictChips(horse);
   // 數據判讀 used to live here. It restated what the ranking matrix now shows
   // -- 主要支柱 / 最弱環節 / 數據信心 are the strip's top bar, bottom bar and

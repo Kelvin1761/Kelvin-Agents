@@ -147,6 +147,8 @@ class HorseAnalysis(BaseModel):
     # final raw composite, so the strip can show 60 + Σ impact + adjustments = total.
     score_adjustments: Optional[list[dict]] = None
     score_raw_total: Optional[float] = None
+    # HKJC 21-day trackwork (gallops / trials with times, 從化 stay, load, trend).
+    trackwork_timeline: Optional[dict] = None
     
     # Conclusion
     conclusion: Optional[str] = None  # 💡 結論

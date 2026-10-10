@@ -219,6 +219,7 @@ class RacingEngine:
             "race_shape_detail": getattr(self, "race_shape_detail", None),
             "distance_suitability_adjustment": distance_suitability,
             "trackwork_read": self._trackwork_interpretation(),
+            "trackwork_timeline": self._trackwork_timeline(),
             "overseas_form_read": self._overseas_form_interpretation(),
             "health_readout": self._health_readout(),
             # 引擎重算嘅距今日數（見 _days_since_last）。Logic 個同名欄位帶住
@@ -3192,6 +3193,54 @@ class RacingEngine:
         return "資料未完成，中性處理" if "[FILL" in text.upper() else text
 
 
+
+    _TIMELINE_TYPES = {"gallop": "快操", "trial": "試閘"}
+
+    def _trackwork_timeline(self):
+        """Structured 21-day trackwork for the dashboard (display only, not scored).
+
+        Kelvin 2026-10-10: show trackwork in detail. Every gallop and barrier trial
+        is listed with time, splits, rider and gear; easy work (trotting,
+        swimming) is summarised; consecutive days at 從化 collapse into one stay.
+        """
+        trackwork = self.horse_data.get("trackwork")
+        if not isinstance(trackwork, dict):
+            return None
+        entries = [e for e in trackwork.get("entries") or [] if isinstance(e, dict)]
+        summary = trackwork.get("summary") or {}
+        digest = trackwork.get("stability_digest") or {}
+        rows = []
+        for entry in sorted(entries, key=lambda e: str(e.get("date") or ""), reverse=True):
+            kind = self._TIMELINE_TYPES.get(str(entry.get("type") or ""))
+            if not kind:
+                continue
+            rows.append({
+                "date": str(entry.get("date") or ""),
+                "type": kind,
+                "location": str(entry.get("location") or ""),
+                "time": entry.get("final_time"),
+                "sectionals": list(entry.get("sectionals") or []),
+                "rider": str(entry.get("rider_role") or entry.get("rider") or ""),
+                "gear": str(entry.get("gear") or ""),
+                "detail": str(entry.get("details") or ""),
+            })
+        conghua = sorted({str(e.get("date") or "") for e in entries if "從化" in str(e.get("location") or "")})
+        stay = {"from": conghua[0], "to": conghua[-1], "days": len(conghua)} if conghua else None
+        trend = {"improving": "轉快", "easing": "放緩", "steady": "平穩"}.get(
+            str(summary.get("gallop_time_trend") or ""), str(summary.get("gallop_time_trend") or ""))
+        return {
+            "window_days": summary.get("window_days", 21),
+            "gallops": summary.get("gallops_21d", 0),
+            "trials": summary.get("trials_21d", 0),
+            "trotting": summary.get("trotting_21d", 0),
+            "swimming": summary.get("swimming_21d", 0),
+            "gallop_trend": trend,
+            "race_jockey_involved": bool(summary.get("race_jockey_involved")),
+            "readiness": digest.get("readiness_score"),
+            "maintenance": digest.get("maintenance_score"),
+            "conghua_stay": stay,
+            "work": rows[:12],
+        }
 
     def _feature_score_label(self, key):
         return {
