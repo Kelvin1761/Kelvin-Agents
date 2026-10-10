@@ -526,6 +526,9 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
 
         l10 = gl.get(stat_key, [])
         card["l10"] = l10
+        card["history_seasons"] = gl.get("history_seasons", [])
+        card["history_season_types"] = list(dict.fromkeys(gl.get("l10_season_types", [])))
+        card["history_date_to"] = gl.get("history_date_to", "")
         card["position"] = ext_player.get("position", "?")
 
         avg, med, sd, cov = compute_stats(l10)
@@ -1591,6 +1594,11 @@ def gen_player_card(card):
     l10_str = str(card.get("l10", []))
 
     lines.append(f"#### {card['name']} (#{card['jersey']}, {card['team']}) — {cl}")
+    if card.get("history_season_types"):
+        seasons = ", ".join(card.get("history_seasons", []))
+        kinds = ", ".join(card["history_season_types"])
+        count = len(card.get("l10", []))
+        lines.append(f"資料來源：{seasons} / {kinds}；真實樣本 {count} 場；截止 {card.get('history_date_to', '?')}。")
     lines.append(f"| 🔢 數理引擎 | 🧠 邏輯引擎 |")
     lines.append(f"|:---|:---|")
     l5_data = card.get('l10', [])[:5] if len(card.get('l10', [])) >= 5 else card.get('last5_sportsbet', card.get('l10', []))
@@ -1801,6 +1809,17 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     return "\n".join(lines)
 
 
+def preseason_sample_note(all_cards):
+    samples = {}
+    for card in all_cards:
+        if "Pre Season" in card.get("history_season_types", []):
+            samples[card["name"]] = len(card.get("l10", []))
+    if not samples:
+        return ""
+    counts = "、".join(f"{name} {count} 場" for name, count in sorted(samples.items()))
+    return f"⛔ NO BET：新人季前賽小樣本（{counts}），只供 shadow 記錄，唔代表完整 L10。"
+
+
 def gen_full_report(meta, odds, injuries, news, team_stats,
                     all_cards, sportsbet_time, season_phase="MID_SEASON",
                     engine_mode="hybrid"):
@@ -1829,6 +1848,9 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     )
     if public_phase == "PRESEASON":
         sections.append("⛔ **NO BET — PRESEASON SHADOW ONLY**：以下係歷史參考分析，所有組合只供 shadow 記錄，禁止作投注建議。")
+    sample_note = preseason_sample_note(all_cards)
+    if sample_note:
+        sections.append(sample_note)
     if meta.get("statistics_season"):
         sections.append(
             f"**history_mode**: {meta.get('history_mode', 'current_season')} "

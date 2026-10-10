@@ -412,9 +412,10 @@ def fetch_team_roster(team_nickname, season=None):
             result.append({
                 "player_id": row['PLAYER_ID'],
                 "name": row['PLAYER'],
-                "position": row.get('POSITION', ''),
+                "position": row.get('POSITION') or '',
                 "age": row.get('AGE', ''),
                 "num": row.get('NUM', ''),
+                "experience": str(row.get('EXP', '')).strip(),
             })
         return result
     except Exception as e:
@@ -445,7 +446,7 @@ def fetch_team_injuries(team_abbr):
         return {}
 
 
-def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, include_previous=False):
+def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, include_previous=False, season_type="Regular Season"):
     """為單一球員提取 L10 完整 Box Score（Season-Agnostic: RS + Playoffs 合併）
     
     Explicit season/date queries keep historical shadow data distinct from current-season data.
@@ -459,22 +460,23 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
         history_season = season or nba_season_for_date(as_of)
         date_to = history_date_to(as_of)
 
-        # 1. Fetch playoff history from the explicitly selected season.
-        try:
-            log_po = playergamelog.PlayerGameLog(
-                player_id=player_id,
-                season=history_season, date_to_nullable=date_to,
-                season_type_all_star='Playoffs'
-            )
-            df_po = log_po.get_data_frames()[0]
-            time.sleep(API_SLEEP)
-            if not df_po.empty:
-                df_po = df_po.copy()
-                df_po["_season_type"] = "Playoffs"
-                df_po["_season"] = history_season
-                all_dfs.append(df_po)
-        except Exception as e:
-            print(f"    ⚠️ Playoff gamelog 失敗 (non-critical): {e}")
+        if season_type == "Regular Season":
+            # 1. Fetch playoff history from the explicitly selected season.
+            try:
+                log_po = playergamelog.PlayerGameLog(
+                    player_id=player_id,
+                    season=history_season, date_to_nullable=date_to,
+                    season_type_all_star='Playoffs'
+                )
+                df_po = log_po.get_data_frames()[0]
+                time.sleep(API_SLEEP)
+                if not df_po.empty:
+                    df_po = df_po.copy()
+                    df_po["_season_type"] = "Playoffs"
+                    df_po["_season"] = history_season
+                    all_dfs.append(df_po)
+            except Exception as e:
+                print(f"    ⚠️ Playoff gamelog 失敗 (non-critical): {e}")
 
         # 2. Fetch the same season's regular-season history, with retry.
         rs_success = False
@@ -482,12 +484,13 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
             try:
                 log_rs = playergamelog.PlayerGameLog(
                     player_id=player_id, season=history_season, date_to_nullable=date_to,
+                    season_type_all_star=season_type,
                 )
                 df_rs = log_rs.get_data_frames()[0]
                 time.sleep(API_SLEEP)
                 if not df_rs.empty:
                     df_rs = df_rs.copy()
-                    df_rs["_season_type"] = "Regular Season"
+                    df_rs["_season_type"] = season_type
                     df_rs["_season"] = history_season
                     all_dfs.append(df_rs)
                 rs_success = True
@@ -507,7 +510,7 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
         for frame in all_dfs:
             dates = pd.to_datetime(frame["GAME_DATE"], errors="coerce")
             count += int((dates < pd.Timestamp(history_cutoff_day(as_of))).sum()) if as_of else len(frame)
-        if include_previous and count < n:
+        if include_previous and season_type == "Regular Season" and count < n:
             prior = previous_nba_season(history_season)
             for kind in ["Playoffs", "Regular Season"]:
                 try:
@@ -1192,6 +1195,9 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
         print(f"  ⚠️ 賠率匹配失敗 — 嘗試過: {odds_candidates[:4]}")
     package["odds"] = matched_odds
 
+    if season_context["season_phase"] == "PRESEASON":
+        package["meta"]["preseason_rookie_history_contract"] = 1
+
     # 提取雙方陣容與數據
     for side, abbr, full_name in [("away", away_abbr, away_name), ("home", home_abbr, home_name)]:
         print(f"\n📋 [{abbr}] 提取 {full_name} 陣容...")
@@ -1219,7 +1225,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
                 core_players.append(p)
 
         # 如果篩選太少，放寬條件
-        if len(core_players) < 5:
+        if len(core_players) < 5 or season_context["season_phase"] == "PRESEASON":
             core_players = roster  # Do not drop priced starters by roster row order.
 
         print(f"  🎯 核心球員: {len(core_players)}")
@@ -1237,10 +1243,18 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             print(f"  📊 提取 {pname} {status_tag}...")
 
             # L10 Game Log
-            gamelog = fetch_player_gamelog(
-                pid, pname, season=statistics_season, as_of=game_info.get('date'),
-                include_previous=season_context["season_phase"] == "EARLY_REGULAR",
+            rookie_preseason = (
+                season_context["season_phase"] == "PRESEASON"
+                and str(p.get("experience", "")).upper() == "R"
             )
+            gamelog = fetch_player_gamelog(
+                pid, pname, season=target_season if rookie_preseason else statistics_season,
+                as_of=game_info.get('date'),
+                include_previous=season_context["season_phase"] == "EARLY_REGULAR",
+                season_type="Pre Season" if rookie_preseason else "Regular Season",
+            )
+            if rookie_preseason and gamelog:
+                package["meta"]["history_mode"] = "previous_season_reference_with_current_preseason_rookies"
 
             # Home/Away & Rest Splits
             splits = fetch_player_splits(
@@ -1263,7 +1277,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             player_entry = {
                 "name": pname,
                 "player_id": int(pid),
-                "position": p.get('position', ''),
+                "position": p.get('position') or '',
                 "age": p.get('age', ''),
                 "advanced": adv,
                 "splits": splits,

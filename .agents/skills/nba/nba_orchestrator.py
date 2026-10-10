@@ -293,6 +293,27 @@ def _pipeline_release_action(
 
 # ─── Per-Game Pipeline ──────────────────────────────────────────────────
 
+def extractor_cache_current(path: str) -> bool:
+    """Invalidate preseason caches produced before rookies were retained."""
+    try:
+        with open(path, encoding="utf-8") as source:
+            payload = json.load(source)
+        meta = payload.get("meta", {})
+        groups = payload.get("players", {})
+        if not isinstance(groups, dict):
+            return False
+        for group in groups.values():
+            if not isinstance(group, list) or any(
+                not isinstance(player, dict) or not isinstance(player.get("position", ""), str)
+                for player in group
+            ):
+                return False
+        return (meta.get("season_phase") != "PRESEASON"
+                or meta.get("preseason_rookie_history_contract") == 1)
+    except (OSError, ValueError, AttributeError):
+        return False
+
+
 def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
                         date_str: str, game_num: int | None = None,
                         debug_skip_extractor: bool = False,
@@ -308,7 +329,9 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
 
     # ── Check if already completed ──
     existing = check_skeleton_exists(target_dir, game_tag)
-    if existing:
+    if existing and extractor_cache_current(
+        os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
+    ):
         print(f"✅ [{prefix}] 已存在合格報告: {os.path.basename(existing)} ({os.path.getsize(existing)} bytes)")
         if os.path.exists(VALIDATE_OUTPUT):
             validate_ok = run_script(VALIDATE_OUTPUT, [existing], label=f"{prefix} Existing Report Validator")
@@ -322,7 +345,7 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
     ext_date = date_str.replace("-", "")
     extractor_json = os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
 
-    if os.path.exists(extractor_json):
+    if os.path.exists(extractor_json) and extractor_cache_current(extractor_json):
         print(f"✅ [{prefix}] Extractor JSON 已存在: {os.path.basename(extractor_json)}")
     elif debug_skip_extractor:
         print(f"⚠️ [{prefix}] --debug-skip-extractor: 建立 DEBUG fallback JSON...")
