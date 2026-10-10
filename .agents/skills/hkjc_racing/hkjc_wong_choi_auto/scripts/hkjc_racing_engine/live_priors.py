@@ -115,11 +115,13 @@ JT_RATING_PARAMS = {
     "jockey_neg_scale": 0.5,
     "trainer_neg_scale": 0.25,
     "trainer_floor": 58.0,
-    # 練馬師舊季×0.3：馬房狀態季節性強（例：沈集成 24/25 勝率7.8% → 25/26 12.5%
+    # 兩季 EB：按「季齡」加權（本季、上季），兩季前唔用。
+    # 練馬師上季×0.3：馬房狀態季節性強（例：沈集成 24/25 勝率7.8% → 25/26 12.5%
     # 爭榜首），本季加權先反映到；backtest TEST 完全一致、TRAIN 只 1-2 場雜訊差。
-    # 騎師唔衰減（測過 w24=.5 無得益）。
-    "trainer_w24": 0.3,
-    "jockey_w24": 1.0,
+    # 騎師唔衰減（測過上季 .5 無得益）。
+    # ⚠️ 2026-10-10（EXP-20261010-01）：之前寫死標籤 "24_25" 做舊季，換季之後
+    # 25/26 同 26/27 都當 ×1.0、24/25 仲喺度，「本季加權」靜靜失效。
+    "season_weights": {"trainer": (1.0, 0.3), "jockey": (1.0, 1.0)},
     # 細樣本×層級先驗 Bayesian blend：預設熄（blend_below=0）。
     # Backtest 證實開咗會蝕 TEST good −3.7pp（主要係布浩榮呢類「有tier但HK數據差」
     # 被拉高）。真正一次性客串本身無 master-stats row → 已自動 fallback 層級表/海外
@@ -128,12 +130,32 @@ JT_RATING_PARAMS = {
     "blend_k": 100.0,
 }
 
-def _master_stats_paths(group: str) -> list[tuple[Path, str | None]]:
+def season_tag_for_date(day) -> str:
+    """HKJC season tag ("26_27") for a date; the season turns over in August."""
+    if isinstance(day, str):
+        day = date.fromisoformat(day[:10])
+    start = day.year if day.month >= 8 else day.year - 1
+    return f"{start % 100:02d}_{(start + 1) % 100:02d}"
+
+
+def _current_season_tag() -> str:
+    """Season the live snapshot is scored in (patched by replay tests)."""
+    return season_tag_for_date(date.today())
+
+
+def season_weight(group: str, season_tag: str, current_tag: str) -> float:
+    """Weight for one season's J/T record by its age relative to ``current_tag``."""
+    weights = JT_RATING_PARAMS["season_weights"][group]
+    try:
+        age = int(current_tag[:2]) - int(str(season_tag)[:2])
+    except (TypeError, ValueError):
+        return 0.0
+    return float(weights[age]) if 0 <= age < len(weights) else 0.0
+
+
+def _master_stats_paths(group: str) -> list[tuple[Path, str]]:
     return [
-        (
-            season_dir / f"{group}_master_stats.csv",
-            f"{group}_w24" if season_dir.name == "24_25" else None,
-        )
+        (season_dir / f"{group}_master_stats.csv", season_dir.name)
         for season_dir in _season_stats_dirs()
     ]
 
@@ -216,11 +238,14 @@ class JockeyTrainerRatings:
         neg_scale = p["jockey_neg_scale"] if group == "jockey" else p["trainer_neg_scale"]
         floor = 0.0 if group == "jockey" else p["trainer_floor"]
         frames = []
-        for path, weight_key in MASTER_STATS_FILES[group]:
+        current = _current_season_tag()
+        for path, tag in MASTER_STATS_FILES[group]:
+            season_w = season_weight(group, tag, current)
+            if season_w <= 0:
+                continue
             df_season = _read_prior_csv(path, (col, "Wins", "Starts", "Places"))
             if df_season is None:
                 continue
-            season_w = float(p.get(weight_key, 1.0)) if weight_key else 1.0
             for c in ("Wins", "Starts", "Places"):
                 df_season[c] = pd.to_numeric(df_season[c], errors="coerce").fillna(0.0) * season_w
             frames.append(df_season[[col, "Wins", "Starts", "Places"]])

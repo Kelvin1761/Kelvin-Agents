@@ -79,7 +79,8 @@ class PointInTimeTests(unittest.TestCase):
                     Wins=("Win", "sum"), Starts=("Win", "count"),
                     Places=("Place", "sum")).reset_index()
         with patch.object(live_priors, "_read_prior_csv",
-                          side_effect=lambda path, required: frames[path].copy()):
+                          side_effect=lambda path, required: frames[path].copy()), \
+             patch.object(live_priors, "_current_season_tag", return_value="25_26"):
             production = live_priors.JockeyTrainerRatings()
         for group in ("jockey", "trainer"):
             actual = pit.build_ratings(rows, group)

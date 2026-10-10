@@ -84,3 +84,54 @@ python3 .agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_expanded_corpus.p
 python3 .agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_expanded_corpus.py screen corpus.csv
 python3 .agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_expanded_corpus.py incremental corpus.csv --extra first_call_avg3
 ```
+
+## 附：賽日偏差診斷（Kelvin：「前置／內疊日表現好，後追／外疊日差好遠」）
+
+語料：harness baseline（origin/main，PIT），29 個賽日（剔走 04 月 speed_score 死日），
+每日「實際偏差」= 該日頭三名平均（檔位百分位 − 全場平均）／（實際首段位置 − 全場平均）。
+
+| | 數值 |
+|---|---:|
+| corr（每日 Good，內檔偏差） | **−0.616** |
+| corr（每日 Good，前置偏差） | 0.021 |
+| 內檔有利日（中位數以下）Good | **32.8%** |
+| 外檔有利日 Good | **15.8%** |
+| 模型頭三選平均檔位百分位 | **0.299**（全場 0.496） |
+
+**解讀**：賽日之間嘅波動嚟自**檔位**，唔係跑法。模型結構上大幅押注內檔（race_shape 27.4%，
+當中檔位分佔大頭），內檔有利日押中、外檔有利日押錯。呢個同 [[hkjc-race-day-consistency]]
+係同一個問題，而家知道機制。
+
+**下一步（入 race_shape 維度審計，逐個預先登記）**：
+1. 結構性傾斜幅度：量「模型頭三選檔位百分位」vs「實際上名馬檔位百分位」嘅長期差距，
+   睇係咪押過頭（實際上名馬平均檔位百分位要計埋）。
+2. 賽前預測當日檔位偏差（rail 位置、跑道、季節）—— 之前量過檔位重要性唔跨季穩定（r 0.11），
+   要先證明有預測力。
+3. 報告層警示：已跑場次顯示外檔有利時，dashboard 標示。
+4. 唔准重做同日偏差入分（EXP-20260928-04 REJECT）。
+
+## 附：模型結構性押注內檔（race_shape 審計起點）
+
+| | 模型頭三平均檔位百分位 | 實際頭三平均檔位百分位 |
+|---|---:|---:|
+| 沙田草地（184 場） | 0.317 | 0.426 |
+| 跑馬地（95 場） | **0.272** | 0.429 |
+| 全天候（7 場） | 0.246 | 0.429 |
+| 擴大語料 1,797 場 | — | 0.447（全場 0.495） |
+
+實測檔位效應（擴大語料，上名率 − 3/馬匹數）：
+
+| 場地 | 1–4 檔 | 5–8 檔 | 9+ 檔 |
+|---|---:|---:|---:|
+| 跑馬地 | +5.1pp | +0.5pp | −6.0pp |
+| 沙田草地 | +4.8pp | +0.1pp | −4.2pp |
+| 沙田直路 1000 | −5.9pp | +1.5pp | +3.2pp |
+
+**解讀**：檔位效應真實（內外差約 10pp，直路相反，模型嘅直路表已經反轉），但模型揀馬比
+實際上名馬內好多 —— 檔位（場內 AUC 約 0.56）佔綜合分約 15%（27.4% × 沙田 55%），而
+近績（AUC 0.68）只佔 4.9%。即係 [[hkjc-leaf-weight-accuracy-mismatch]] 嘅同一個問題，
+亦係「外檔日 Good 減半」嘅機制。
+
+**處理**：屬 Phase 3 外層權重（計劃次序最後）。必須用 Stage 4 v3 walk-forward
+（每個賽日只用之前賽日 fit），唔可以喺呢 286 場 in-sample 調。舊 refit（EXP-0902-03、
+0928-06/07）喺細語料同 v2 下失敗，今次條件唔同：擴大語料做內層、v3 全紀錄判決。

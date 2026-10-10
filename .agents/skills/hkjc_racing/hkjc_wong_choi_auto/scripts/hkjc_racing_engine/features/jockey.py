@@ -42,8 +42,8 @@ def continuous_rating(group, raw_name, *, as_of_date=None):
             f"混合層級先驗後實績評分{score:.1f}"
         )
         return score, reason
-    # 練馬師舊季有衰減（trainer_w24），starts 係加權數，講明先唔誤導
-    span = "兩季加權" if group == "trainer" and float(JT_RATING_PARAMS.get("trainer_w24", 1.0)) < 1.0 else "兩季"
+    # 練馬師上季有衰減（season_weights），starts 係加權數，講明先唔誤導
+    span = "兩季加權" if group == "trainer" and min(JT_RATING_PARAMS["season_weights"]["trainer"]) < 1.0 else "兩季"
     reason = (
         f"{span}{int(starts)}仗：勝率{hit['win_rate']:.0f}%、"
         f"上名率{hit['place_rate']:.0f}%，實績評分{score:.1f}"
