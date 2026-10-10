@@ -109,6 +109,42 @@ class MarketWaitingTests(unittest.TestCase):
             run.assert_not_called()
             self.assertFalse((folder / "_prediction_snapshots").exists())
 
+    def test_missing_game_data_keeps_coverage_blocked_and_emits_waiting(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            (folder / "Sportsbet_Odds_MEM_CHI.json").write_text(json.dumps({"target_analysis_date": "2026-10-11", "event_local_date": "2026-10-11", "matchup": "MEM @ CHI", "game_lines": {"ml_away": "2.2"}, "player_props": {}}))
+            output = io.StringIO()
+            with mock.patch.object(sys, "argv", ["orchestrator", "--date", "2026-10-11", "--auto"]), mock.patch.object(orchestrator, "get_target_dir", return_value=str(folder)), mock.patch.object(orchestrator, "load_espn_schedule", return_value=({"MEM_CHI", "DAL_HOU"}, True)), mock.patch.object(orchestrator, "process_single_game") as analyze, mock.patch.object(orchestrator, "run_script") as run, contextlib.redirect_stdout(output), self.assertRaises(SystemExit) as raised:
+                orchestrator.main()
+            self.assertEqual(raised.exception.code, 75)
+            result = subprocess.CompletedProcess([], 75, output.getvalue(), "")
+            self.assertEqual(schedule.waiting_game_markets(result), ["DAL_HOU"])
+            analyze.assert_not_called()
+            run.assert_not_called()
+            self.assertFalse((folder / "_prediction_snapshots").exists())
+            with mock.patch.object(schedule, "_run", return_value=result), self.assertRaises(schedule.GameMarketsWaiting):
+                schedule._run_orchestrator_refresh("2026-10-11", folder, refreshable_tags={"MEM_CHI", "DAL_HOU"}, schedule_tags={"MEM_CHI", "DAL_HOU"}, log=mock.Mock())
+
+    def test_game_data_waiting_records_missing_tags_without_claiming_success(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            output = io.StringIO()
+            with mock.patch.object(schedule, "STATE_DIR", folder / "state"), mock.patch.object(schedule, "LOG_DIR", folder / "logs"), mock.patch.object(schedule, "load_espn_events", return_value=({}, True)), mock.patch.object(schedule, "run_pregame", side_effect=schedule.GameMarketsWaiting(["DAL_HOU"])), mock.patch.object(schedule, "notify_once", return_value={"status": "sent"}) as notify, mock.patch.object(sys, "argv", ["scheduler", "--mode", "pregame", "--date", "2026-10-11"]), contextlib.redirect_stdout(output):
+                code = schedule.main()
+            self.assertEqual(code, 75)
+            self.assertEqual(json.loads(output.getvalue())["reason"], "sportsbet_game_data_missing")
+            log = json.loads(next((folder / "logs").glob("*.json")).read_text())
+            self.assertEqual(log["status"], "partial")
+            self.assertEqual(log["errors"], [])
+            self.assertEqual(log["waiting_games"], ["DAL_HOU"])
+            self.assertIn("等待賽事盤口資料", notify.call_args.args[1])
+            self.assertIn("尚未完成", notify.call_args.args[1])
+            self.assertNotIn("暫時失敗", notify.call_args.args[1])
+
+    def test_unverified_game_waiting_payload_remains_a_real_failure(self):
+        for result in (child_result(status="waiting_game_markets", reason="network_error"), child_result(code=1, status="waiting_game_markets", reason="sportsbet_game_data_missing"), child_result(status="waiting_game_markets", reason="sportsbet_game_data_missing", waiting_games=[])):
+            self.assertEqual(schedule.waiting_game_markets(result), [])
+
     def test_actual_full_game_handicap_format_keeps_away_spread(self):
         extractor = claw.SportsbetNBAExtractor(target_date="2026-10-10")
         book = {"markets": {"1": {"name": "Handicap Betting", "outcomeIds": [1, 2]}}, "outcomes": {
