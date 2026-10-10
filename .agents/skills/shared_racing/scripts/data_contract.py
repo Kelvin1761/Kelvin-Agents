@@ -58,6 +58,17 @@ PLATFORMS = {
         "data_root_attr": "HK_RACING",
         "baseline": "hkjc_data_contract.json",
         "engine": REPO_ROOT / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine",
+        # HKJC 有三個入分 leaf 唔喺 `feature_scores`，而喺 `derived_feature_scores`：
+        # race_shape（27.4% 權重）、賽績線（8%）、晨操。2026-10-10 之前呢個閘門
+        # 完全睇唔到佢哋 —— 死咗一樣綠燈發佈，同 AU 08-22 `pace_figure` 同一個形狀。
+        # 只收入分嘅 key；`margin_trend_score`／`same_distance_signal_score` 係展示用。
+        "extra_score_blocks": {
+            "derived_feature_scores": (
+                "race_shape_context_score",
+                "formline_strength_score",
+                "trackwork_trend_score",
+            ),
+        },
     },
 }
 
@@ -178,7 +189,20 @@ def neutral_point(field: str) -> float:
     return OVERLAY_NEUTRAL.get(field, 60.0)
 
 
-def observe(paths) -> tuple[dict, int, int, list]:
+def _scored_row(python_auto: dict, platform: str | None) -> dict:
+    row = dict(python_auto.get("feature_scores") or {})
+    if not row:
+        return row
+    extra = (PLATFORMS.get(platform) or {}).get("extra_score_blocks") or {}
+    for block, keys in extra.items():
+        values = python_auto.get(block) or {}
+        for key in keys:
+            if key in values:
+                row[key] = values[key]
+    return row
+
+
+def observe(paths, platform: str | None = None) -> tuple[dict, int, int, list]:
     """Collect per-field statistics from scored races."""
     fields: dict[str, Observation] = {}
     races = 0
@@ -193,10 +217,7 @@ def observe(paths) -> tuple[dict, int, int, list]:
             unreadable.append((path, f"{type(exc).__name__}: {exc}"))
             continue
         horses = list((data.get("horses") or {}).values())
-        rows = [
-            h.get("python_auto", {}).get("feature_scores") or {}
-            for h in horses
-        ]
+        rows = [_scored_row(h.get("python_auto") or {}, platform) for h in horses]
         rows = [r for r in rows if r]
         # ── Overlay（2026-08-31）───────────────────────────────────────────
         # `wet_form_feature` / `proven_class_feature` 直接加落綜合戰力分，但
@@ -217,7 +238,7 @@ def observe(paths) -> tuple[dict, int, int, list]:
         wet_applicable = ("soft" in going.lower() or "heavy" in going.lower())
         if rows:
             for row, h in zip(rows, [h for h in horses
-                                     if (h.get("python_auto", {}).get("feature_scores"))]):
+                                     if _scored_row(h.get("python_auto") or {}, platform)]):
                 pa = h.get("python_auto") or {}
                 if wet_applicable and "wet_form_feature" in pa:
                     row["wet_form_feature"] = pa["wet_form_feature"]
@@ -251,7 +272,7 @@ def observe(paths) -> tuple[dict, int, int, list]:
 
 
 def calibrate(platform: str, paths, out_path: Path) -> dict:
-    fields, races, horses, unreadable = observe(paths)
+    fields, races, horses, unreadable = observe(paths, platform)
     meetings = sorted({Path(p).parent.name for p in paths})
     baseline = {
         "platform": platform,
@@ -273,7 +294,7 @@ def calibrate(platform: str, paths, out_path: Path) -> dict:
 
 
 def check(baseline: dict, paths, platform: str) -> tuple[list, dict]:
-    fields, races, horses, unreadable = observe(paths)
+    fields, races, horses, unreadable = observe(paths, platform)
     violations: list[Violation] = []
 
     recorded = baseline.get("engine_fingerprint")
