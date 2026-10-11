@@ -28,17 +28,12 @@ SKILL_DIR = Path(__file__).resolve().parent
 RACECARD_SCRIPT = SKILL_DIR / "extract_racecard.py"
 FORMGUIDE_SCRIPT = SKILL_DIR / "extract_formguide_playwright.py"
 
-# ⚠️ 邊個來源話事：**賽績（formguide）**，唔係排位表。
-# `inject_hkjc_fact_anchors.parse_hkjc_formguide()` 個馬匹迴圈食嘅係
-# `* Race N 賽績.md`，排程亦係咁 call；排位表淨係補父系／見習騎師減磅。
-# 成條鏈係 賽績 → Facts → Logic → 板面。
+# ⚠️ 名單規則必須同 Facts 重建鏈一致。`parse_hkjc_formguide()` 先讀賽績，
+# 再用 `_reconcile_racecard()` 以排位表收斂最終 roster：明確標記「退出」
+# 嘅馬會被剔除，排位表新增／換馬則會被加入。
 #
-# 2026-09-05 呢個 module 最初比對排位表，後果係：排位表出咗退出馬 → 偵測到
-# → 重跑 → 重跑由賽績砌名單 → 隻馬仲喺度 → 下次掃描又偵測到，永遠唔收斂，
-# 而板上一直掛住隻已退出嘅馬。所以權威來源一定要同重建鏈用同一個檔。
-#
-# 排位表照掃，但只做第二意見：兩邊唔一致通常代表 HKJC 更新有時差，
-# 值得講出嚟，但唔可以用嚟決定重跑。
+# 2026-10-11 R4：賽績頁仲有 5 德心知遇，但排位表已標記退出。只用賽績
+# 會誤報「新馬」，之後重跑又必然由 reconciliation 剔除，形成無法收斂嘅重跑。
 
 _NUM = re.compile(r"^馬號:\s*(\d+)\s*$", re.M)
 _HORSE_BLOCK = re.compile(r"^馬號:\s*(\d+)\s*$\n^馬名:\s*(.+?)\s*$", re.M)
@@ -51,6 +46,39 @@ def parse_lineup(markdown: str) -> dict[int, str]:
     需要重跑，但只比對號碼係睇唔到嘅。
     """
     return {int(num): name for num, name in _HORSE_BLOCK.findall(markdown or "")}
+
+
+def active_racecard_lineup(lineup: dict[int, str]) -> dict[int, str]:
+    """Mirror Facts roster reconciliation by excluding explicit scratchings."""
+    return {num: name for num, name in lineup.items() if "退出" not in name}
+
+
+def describe_source_disagreement(form: dict[int, str], card: dict[int, str]) -> str:
+    """Describe source lag without treating it as a different roster rule."""
+    active_card = active_racecard_lineup(card)
+    bits = []
+    lagging_scratches = sorted(
+        num for num in set(form) & set(card) if "退出" in card[num]
+    )
+    if lagging_scratches:
+        bits.append("賽績尚有但排位表標退出：" + "、".join(
+            f"{num} {form[num]}" for num in lagging_scratches))
+    only_form = sorted(set(form) - set(card))
+    if only_form:
+        bits.append("只喺賽績：" + "、".join(
+            f"{num} {form[num]}" for num in only_form))
+    only_active_card = sorted(set(active_card) - set(form))
+    if only_active_card:
+        bits.append("只喺排位表：" + "、".join(
+            f"{num} {active_card[num]}" for num in only_active_card))
+    mismatched = sorted(
+        num for num in set(form) & set(active_card)
+        if form[num] != active_card[num]
+    )
+    if mismatched:
+        bits.append("兩邊馬名唔一致：" + "、".join(
+            f"{num} {form[num]}->{active_card[num]}" for num in mismatched))
+    return "；".join(bits)
 
 
 def lineup_looks_complete(markdown: str, lineup: dict[int, str]) -> bool:
@@ -119,8 +147,8 @@ def _lineup_from(script: Path, url: str, label: str, timeout: int) -> tuple[dict
 def scan_race(racecard_url: str, logic_path: Path, formguide_url: str = "") -> dict:
     """一場嘅掃描結果。`changed` 只會喺真係比對得成功嗰陣先為 True。
 
-    權威來源係**賽績**（見 module 開頭）。排位表只做第二意見：兩邊唔一致
-    會寫入 `source_disagreement`，但唔會影響 `changed`。
+    最終名單使用 Facts 同款嘅賽績 + 排位表 reconciliation。兩邊有時差
+    會寫入 `source_disagreement`，但 `changed` 只比對重建後會用嘅 roster。
     """
     out = {"changed": False, "error": "", "scratched": [], "added": [],
            "replaced": [], "source_disagreement": ""}
@@ -136,34 +164,29 @@ def scan_race(racecard_url: str, logic_path: Path, formguide_url: str = "") -> d
         out["error"] = "Logic 冇馬匹紀錄"
         return out
 
-    # 賽績 = 權威。抓唔到就乜都唔做 —— 唔可以退而求其次用排位表，
-    # 因為重建鏈唔會睇排位表，咁樣會觸發一個永遠唔收斂嘅重跑。
+    # Facts 要兩個來源先可以收斂 roster，任何一邊抓唔到都唔判變動。
     if not formguide_url:
         out["error"] = "冇賽績 URL，唔可以判斷"
         return out
-    current, error = _lineup_from(FORMGUIDE_SCRIPT, formguide_url, "賽績", 120)
+    form, error = _lineup_from(FORMGUIDE_SCRIPT, formguide_url, "賽績", 120)
     if error:
         out["error"] = error
         return out
 
-    out.update(diff_lineup(current, analysed))
-    out.setdefault("source_disagreement", "")
+    if not racecard_url:
+        out["error"] = "冇排位表 URL，唔可以用重建規則判斷"
+        return out
+    card, card_error = _lineup_from(RACECARD_SCRIPT, racecard_url, "排位表", 60)
+    if card_error:
+        out["error"] = card_error
+        return out
 
-    # 第二意見：排位表通常更快反映退出馬。唔一致 = HKJC 兩邊有時差，
-    # 值得講，但唔會改變上面個判斷。
-    if racecard_url:
-        card, card_error = _lineup_from(RACECARD_SCRIPT, racecard_url, "排位表", 60)
-        if not card_error and card != current:
-            only_card = sorted(set(current) - set(card))
-            only_form = sorted(set(card) - set(current))
-            bits = []
-            if only_card:
-                bits.append("排位表已經冇：" + "、".join(
-                    f"{n} {current[n]}" for n in only_card))
-            if only_form:
-                bits.append("排位表多咗：" + "、".join(
-                    f"{n} {card[n]}" for n in only_form))
-            out["source_disagreement"] = "；".join(bits) or "兩個來源馬名唔一致"
+    # Facts generation calls `_reconcile_racecard()` after parsing the
+    # formguide.  Compare against that same effective roster, not against the
+    # formguide alone; the latter can lag official scratching updates.
+    current = active_racecard_lineup(card)
+    out.update(diff_lineup(current, analysed))
+    out["source_disagreement"] = describe_source_disagreement(form, card)
     return out
 
 
