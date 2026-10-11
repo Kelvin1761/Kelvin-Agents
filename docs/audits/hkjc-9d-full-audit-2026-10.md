@@ -48,7 +48,7 @@ Kelvin 2026-10-09 要求：由全模型落到每個維度同每個 leaf，答九
 | 馬匹健康 | risk_score | 0.5149 [0.493, 0.536] | +0.03 | KEEP（4% 權重，剷走判唔到）；長休冇剩餘訊號 | EXP-02、06 |
 | 馬匹健康／級數優勢 | weight_score | 0.4752 [0.454, 0.497] | −0.10 | 讓磅化 FIXED；單獨 AUC < 0.5 係「負磅 = 評分倒數」，要同 class_score 一齊睇 | EXP-04 |
 | 晨操狀態 | trackwork_trend_score | 0.4984 [0.459, 0.543] | +0.10 | KEEP（兩個 arm REJECT）；重建 UNRESOLVABLE | EXP-11 |
-| 同程表現 | distance_fit_score（由 same_distance 0.5621 [0.526, 0.599] 推導） | — | +0.50 | KEEP；增程／縮程 × 分段冇剩餘訊號；血統 REJECT | EXP-10、15 |
+| 同程表現 | distance_fit_score（三級，AUC 0.6045 [0.586, 0.624]） | — | +0.50 | KEEP；連續化三個 arm REJECT，分級版打和、Kelvin 揀維持三級；增程／縮程冇剩餘訊號；血統 REJECT | EXP-10、15、16 |
 | 賽績線 | formline_strength_score | 0.5135 [0.477, 0.551] | +0.36 | KEEP；衰減 REJECT | EXP-08 |
 | 級數優勢 | class_score | 0.6126 [0.589, 0.637] | +0.48 | KEEP；搏分、升降班冇剩餘訊號 | EXP-07、02 |
 | 手調規則 | 配備「除去」−3 | — | — | **FORWARD**：剷走過 v3（Holm p 0.016），2026-10-11 起約 60 場一次性確認 | EXP-05 |
@@ -100,6 +100,9 @@ Kelvin 2026-10-09 要求：由全模型落到每個維度同每個 leaf，答九
 | 搏分、馬齡 | ❌ 冇剩餘訊號（馬齡由排位表直接讀，唔使接駁入 Logic） | EXP-07 |
 | 班次分／負磅分重建、見習減磅 | ✅ 負磅分讓磅化（§7） | EXP-04 |
 | 增程／縮程、從化 | ❌ 冇剩餘訊號 | EXP-10 |
+| 同程表現連續化 | ❌ A／B REJECT；C 打和，Kelvin 揀維持三級 | EXP-16 |
+| Dashboard 條長跟維度分數、典型馬基準、馬匹卡總分 | ✅ 上線（排名不變） | — |
+| 數據合約重新 calibrate | ✅ 9D 引擎指紋；trainer_score 早季偏平屬季節加權預期後果 | — |
 | 晨操重建 + dashboard 晨操時間線 | 時間線 ✅；重建 ❌（子訊號冇一個過 CI） | EXP-11 |
 | 賽績線衰減 | ❌ REJECT | EXP-08 |
 | 場地偏差日／押注內檔 | 診斷完；Kelvin 揀維持現狀；ledger 收集中 | EXP-13、14 |
