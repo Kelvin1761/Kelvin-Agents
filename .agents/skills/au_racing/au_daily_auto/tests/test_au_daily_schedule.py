@@ -95,6 +95,18 @@ class TestVenueMatch(unittest.TestCase):
         self.assertEqual(S.match_venue("belmont", api), "Belmont")
         self.assertEqual(S.match_venue("murray_bdge", api), "Murray Bridge")
 
+    def test_a_compound_slug_matches_a_shorter_api_name(self):
+        # 2026-10-11 實測：Sportsbet 係 `mindarie_halidon`，API 只係
+        # `Halidon`。單向 component match 會將真澳洲場次當海外剔走。
+        self.assertEqual(
+            S.match_venue("mindarie_halidon", ["Cairns", "Halidon", "Seymour"]),
+            "Halidon",
+        )
+
+    def test_a_compound_slug_component_still_refuses_to_guess(self):
+        self.assertIsNone(S.match_venue(
+            "mindarie_halidon", ["Mindarie", "Halidon", "Seymour"]))
+
     def test_a_component_match_still_refuses_to_guess(self):
         """配錯馬場比冇數據差 —— 會拉錯一個馬場嘅場地狀況入去評分。"""
         # 兩個 API 場次都有 `kensington` 呢個部件 → 唔准揀。

@@ -331,6 +331,18 @@ def match_venue(slug: str, api_venues: list[str]) -> str | None:
     exact = [v for v in api_venues if _venue_key(v) == want]
     if exact:
         return exact[0]
+    # A compound slug can name two places.  Check all of its components before
+    # prefix/first-token fallbacks; otherwise `mindarie_halidon` with both
+    # Mindarie and Halidon in the API would silently pick one.
+    slug_parts = {
+        _venue_key(part) for part in re.split(r"[^A-Za-z0-9]+", slug) if part
+    }
+    reverse_components = [
+        v for v in api_venues
+        if len(_venue_key(v)) >= 5 and _venue_key(v) in slug_parts
+    ]
+    if len(reverse_components) > 1:
+        return None
     prefix = [v for v in api_venues
               if len(want) >= 6 and len(_venue_key(v)) >= 6
               and (_venue_key(v).startswith(want) or want.startswith(_venue_key(v)))]
@@ -341,15 +353,21 @@ def match_venue(slug: str, api_venues: list[str]) -> str | None:
         token = [v for v in api_venues if v.split()[0].lower() == head]
         if len(token) == 1:
             return token[0]
-    # 第四步：逐個「部件」比。API 會用複合名（`Randwick-Kensington`），而索引頁
-    # 只出其中一半（`kensington`）。前三步全部靠成串比或者第一個 token 比，所以
-    # 兩者都配唔到 —— 2026-09-09 實測，Randwick-Kensington（悉尼市區）就係咁被
-    # 當「海外場次」剔走，而個 run 照樣報 `ok` / `pending: 0`。
+    # 第四步：雙向逐個「部件」比。API 同索引頁任何一邊都可以係複合名：
+    # `kensington` ↔ `Randwick-Kensington`，以及 `mindarie_halidon` ↔ `Halidon`。
+    # 前三步全部靠成串比或者第一個 token 比，所以兩種方向都要明確處理。
     # ⚠️ 仍然要求**全個名單只得一個**候選 —— 配錯馬場比冇數據差（會拉錯一個
     # 馬場嘅場地狀況入去評分）。所以呢步只可以解決歧義嘅情況，唔可以靠猜。
     if len(want) >= 5:
-        component = [v for v in api_venues
-                     if want in [_venue_key(part) for part in re.split(r"[^A-Za-z0-9]+", v) if part]]
+        component = [
+            v for v in api_venues
+            if want in {
+                _venue_key(part)
+                for part in re.split(r"[^A-Za-z0-9]+", v)
+                if part
+            }
+            or (len(_venue_key(v)) >= 5 and _venue_key(v) in slug_parts)
+        ]
         if len(component) == 1:
             return component[0]
     return None
