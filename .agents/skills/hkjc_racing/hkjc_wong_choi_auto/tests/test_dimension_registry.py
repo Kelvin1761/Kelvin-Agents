@@ -123,5 +123,9 @@ def test_transparency_rows_add_up_to_final_raw_after_orchestrator_adjustments():
     for horse in horses.values():
         auto = horse["python_auto"]
         gt = auto["grade_transparency"]
-        total = 60.0 + sum(r["impact"] for r in gt["rows"]) + sum(a["raw"] for a in gt["adjustments"])
+        total = gt["impact_baseline"] + sum(r["impact"] for r in gt["rows"]) + sum(a["raw"] for a in gt["adjustments"])
         assert abs(total - auto["ability_score_raw"]) < 0.01
+        # impact sign agrees with the printed score: below typical (display < 60) ⇒ negative
+        for r in gt["rows"]:
+            if abs(r["score"] - 60.0) > 0.05:
+                assert (r["score"] > 60.0) == (r["impact"] > 0), r

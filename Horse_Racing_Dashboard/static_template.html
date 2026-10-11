@@ -136,6 +136,8 @@
     .mkt__gap--near { background: #E2E8F0; color: #475569; }
     .mkt__gap--over { background: #FEE2E2; color: #991B1B; }
     .mkt__gap--under { background: #FEF3C7; color: #92400E; }
+    .horse-card__total { font-size: 0.74rem; color: #475569; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .horse-card__total b { color: #0F172A; font-size: 0.86rem; }
     .horse-card__body { word-break: break-word; box-sizing: border-box; overflow: hidden; min-width: 0; }
     .horse-card__details { overflow-wrap: break-word; word-break: break-word; min-width: 0; }
 
@@ -4170,15 +4172,19 @@ function renderDimensionStrip(horse) {
   // flattens the differences; subtracting neutral puts them back on screen and
   // adds a sign.
   const NEUTRAL_SCORE = 60;   // the engine's 統一尺: "60 為中性"
-  const IMPACT_SCALE = 11;    // ~max |impact| observed; bars clip beyond it
   // HKJC rows carry the engine's own impact = weight × (RAW score − 60). The
   // display score is a per-dimension ruler, so multiplying it did not add up to
   // the horse's real score (2026-10-10). Older reports without `impact` fall back.
   const impactOf = d => (d.impact != null ? d.impact : (d.score - NEUTRAL_SCORE) * dimFactor(d));
+  // Kelvin 2026-10-11: the bar shows the DIMENSION'S OWN SCORE (diverging from
+  // neutral 60, ±40 fills the half-track); the contribution to the total stays
+  // as the number on the right. A 75.8 同程表現 now draws a long bar even though
+  // its 2% coefficient only moves the total by +0.3.
+  const SCORE_SPAN = 40;
 
   let h = '<div class="dim-strip">';
 
-  h += `<div class="dim-strip__head"><span class="dim-strip__title">${ranked.length}維排名矩陣<span class="dim-strip__title-hint"> · 條長 = 對呢匹馬嘅實際影響</span></span>`;
+  h += `<div class="dim-strip__head"><span class="dim-strip__title">${ranked.length}維排名矩陣<span class="dim-strip__title-hint"> · 條長 = 維度分數（60 = 典型馬）· 右邊 = 比典型馬多／少幾多總分</span></span>`;
   if (horse.evidence_dimensions != null && horse.evidence_dimensions_total) {
     const thin = horse.evidence_dimensions < horse.evidence_dimensions_total;
     h += `<span class="dim-strip__evidence${thin ? ' dim-strip__evidence--thin' : ''}">${thin ? '⚠️ ' : ''}${horse.evidence_dimensions}/${horse.evidence_dimensions_total} 維有實測</span>`;
@@ -4190,14 +4196,15 @@ function renderDimensionStrip(horse) {
   const ordered = [...ranked].sort((a, b) => dimFactor(b) - dimFactor(a));
   ordered.forEach(d => {
     const impact = impactOf(d);
-    const colour = impact >= 0 ? '#059669' : '#DC2626';
-    const half = Math.min(Math.abs(impact) / IMPACT_SCALE, 1) * 50;
-    const side = impact >= 0 ? `left:50%;width:${half}%` : `right:50%;width:${half}%`;
+    const dev = d.score != null ? d.score - NEUTRAL_SCORE : 0;
+    const colour = dev >= 0 ? '#059669' : '#DC2626';
+    const half = +(Math.min(Math.abs(dev) / SCORE_SPAN, 1) * 50).toFixed(2);
+    const side = dev >= 0 ? `left:50%;width:${half}%` : `right:50%;width:${half}%`;
     const evidence = dimEvidenceLabel(d);
     h += '<div class="dim-row">';
     h += `<span class="dim-row__name" title="${esc(d.name)}">${esc(d.name)}</span>`;
     h += `<span class="dim-row__score" style="color:${DIM_SYMBOL_COLOR[d.symbol] || '#475569'}">${d.score != null ? d.score.toFixed(1) : '—'}</span>`;
-    h += `<span class="dim-row__track" title="${esc(d.name)} 對排名嘅影響 ${impact >= 0 ? '+' : ''}${impact.toFixed(1)} 分（${d.score.toFixed(1)} 分 vs 中性 60，乘 ${dimFactorLabel(d)} 合成係數）"><span class="dim-row__fill" style="${side};background:${colour}"></span></span>`;
+    h += `<span class="dim-row__track" title="${esc(d.name)} ${d.score != null ? d.score.toFixed(1) : '—'} 分（中性 60）；對總分影響 ${impact >= 0 ? '+' : ''}${impact.toFixed(1)}（${dimFactorLabel(d)} 合成係數）"><span class="dim-row__fill" style="${side};background:${colour}"></span></span>`;
     h += `<span class="dim-row__meta">${impact >= 0 ? '+' : ''}<b>${impact.toFixed(1)}</b> · ${dimFactorLabel(d)}${evidence ? ' · ' + esc(evidence) : ''}</span>`;
     h += '</div>';
   });
@@ -4218,7 +4225,9 @@ function renderDimensionStrip(horse) {
     const sum = ranked.reduce((acc, d) => acc + d.impact, 0);
     const adjustments = horse.score_adjustments || [];
     const adjText = adjustments.map(a => `${esc(a.label || a.key)} ${a.raw >= 0 ? '+' : ''}${Number(a.raw).toFixed(1)}`).join('、');
-    h += `<div class="dim-strip__total">原始總分 <b>${Number(horse.score_raw_total).toFixed(2)}</b> ＝ 中性 60 ${sum >= 0 ? '+' : '−'} 各維度影響 ${Math.abs(sum).toFixed(2)}${adjText ? '　＋　' + adjText : ''}</div>`;
+    const base = horse.score_impact_baseline != null ? Number(horse.score_impact_baseline) : NEUTRAL_SCORE;
+    const baseText = horse.score_impact_baseline != null ? `典型馬 ${base.toFixed(2)}` : '中性 60';
+    h += `<div class="dim-strip__total">原始總分 <b>${Number(horse.score_raw_total).toFixed(2)}</b> ＝ ${baseText} ${sum >= 0 ? '+' : '−'} 各維度影響 ${Math.abs(sum).toFixed(2)}${adjText ? '　＋　' + adjText : ''}</div>`;
   }
 
   if (reference.length) {
@@ -4356,6 +4365,12 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
   html += '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">';
   html += `<span class="horse-card__name">${esc(horse.horse_name)}</span>`;
   html += ratingBadge(horse.final_grade, 'lg');
+  // 總分 on the preview (Kelvin 2026-10-11): the display score the grade is cut
+  // from; the raw composite the ranking sorts on is in the tooltip.
+  if (horse.ability_score != null) {
+    const rawTip = horse.score_raw_total != null ? `；排名用原始總分 ${Number(horse.score_raw_total).toFixed(2)}` : '';
+    html += `<span class="horse-card__total" title="綜合戰力分（顯示尺）${rawTip}">總分 <b>${Number(horse.ability_score).toFixed(1)}</b></span>`;
+  }
   if (horse.underhorse_triggered) html += '<span class="badge badge--consensus" title="冷門馬訊號">🐴⚡</span>';
   html += '</div>';
   if (horse.horse_name_en) html += `<div class="horse-card__name-en">${esc(horse.horse_name_en)}</div>`;

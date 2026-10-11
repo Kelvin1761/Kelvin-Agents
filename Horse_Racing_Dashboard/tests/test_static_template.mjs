@@ -137,6 +137,39 @@ test("dimension strip reconciles to the raw score; score ledger is gone", () => 
   assert.doesNotMatch(template, /renderScoreLedger|查看全部評分|場內百分位/);
 });
 
+test("dimension bars follow the dimension score, not its contribution", () => {
+  const { renderDimensionStrip } = loadTemplateFunctions();
+  const html = renderDimensionStrip({
+    dimension_details: [
+      { name: "檔位與走位", score: 50, weight_pct: 27.4, impact: -2.0, ranking_weighted: true },
+      { name: "同程表現", score: 75.8, weight_pct: 2, impact: 0.3, ranking_weighted: true },
+    ],
+  });
+  // 75.8 − 60 = 15.8 of a 40-point half-track → 19.75%; the +0.3 impact stays as the number
+  assert.match(html, /left:50%;width:19\.75%;background:#059669/);
+  assert.match(html, /right:50%;width:12\.5%;background:#DC2626/);
+  assert.match(html, /\+<b>0\.3<\/b>/);
+  assert.match(html, /條長 = 維度分數/);
+});
+
+test("reconciliation line uses the typical-horse baseline when the engine gives one", () => {
+  const { renderDimensionStrip } = loadTemplateFunctions();
+  const html = renderDimensionStrip({
+    score_raw_total: 65.0, score_impact_baseline: 63.5,
+    dimension_details: [{ name: "級數優勢", score: 58.5, weight_pct: 14.3, impact: -0.2, ranking_weighted: true },
+                        { name: "檔位與走位", score: 70, weight_pct: 27.4, impact: 1.7, ranking_weighted: true }],
+  });
+  assert.match(html, /＝ 典型馬 63\.50 \+ 各維度影響 1\.50/);
+});
+
+test("horse card preview shows the total score", () => {
+  const { renderHorseCard } = loadTemplateFunctions();
+  const html = renderHorseCard({ horse_number: 1, horse_name: "嘉嘉友福", final_grade: "B",
+                                 ability_score: 70.1, score_raw_total: 65.8391, dimension_details: [] });
+  assert.match(html, /總分 <b>70\.1<\/b>/);
+  assert.match(html, /原始總分 65\.84/);
+});
+
 test("template ships the head tags iOS needs to install it as a standalone app", () => {
   const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
   // Without viewport-fit=cover every env(safe-area-inset-*) below resolves to 0

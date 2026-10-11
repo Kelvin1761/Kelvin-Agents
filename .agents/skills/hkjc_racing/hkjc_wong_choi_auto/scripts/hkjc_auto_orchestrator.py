@@ -33,6 +33,7 @@ from hkjc_racing_engine.renderer import (
 from hkjc_racing_engine.scoring import (
     CENTRED_MATRIX_WEIGHTS,
     DEBUT_MATRIX_WEIGHTS,
+    MATRIX_DISPLAY_CENTRES,
     MATRIX_WEIGHTS,
     RACE_SHAPE_ROBUST_DEVIATION_CAP,
     active_race_shape_robustness_profile,
@@ -260,7 +261,13 @@ def _refresh_grade_transparency(horses):
     the whole-field race_shape cap and SIP boosts, so the dashboard strip used
     to explain a score the horse no longer had. After both steps: refresh every
     row's raw score / contribution from the final matrix and list the non-matrix
-    adjustments, so 60 + Σ weight·(raw − 60) + Σ adjustments == ability_score_raw.
+    adjustments, so baseline + Σ impact + Σ adjustments == ability_score_raw.
+
+    Impact is measured against the dimension's TYPICAL horse (its display
+    centre, i.e. the raw score that prints as 60), not raw 60 (Kelvin
+    2026-10-11): 級數優勢 raw 63 prints 58.5 (below typical) but scored
+    +0.6 against raw 60, so the dashboard drew a red bar next to a plus sign.
+    baseline = 60 + Σ weight·(centre − 60) is the typical horse's raw score.
     """
     for horse in horses.values():
         auto = horse.get("python_auto") if isinstance(horse, dict) else None
@@ -270,6 +277,7 @@ def _refresh_grade_transparency(horses):
         matrix = auto.get("matrix_scores") or {}
         if not isinstance(transparency, dict) or not isinstance(transparency.get("rows"), list):
             continue
+        baseline = 60.0
         for row in transparency["rows"]:
             key = row.get("key")
             if key not in matrix:
@@ -280,13 +288,16 @@ def _refresh_grade_transparency(horses):
             row["score_raw"] = round(raw, 2)
             row["score"] = round(float(to_dimension_display(key, raw)), 2)
             row["contribution"] = round(weight * (raw - 60.0) if centred else raw * weight, 2)
-            row["impact"] = round(weight * (raw - 60.0), 4)
+            centre = float(MATRIX_DISPLAY_CENTRES.get(key, 60.0))
+            row["impact"] = round(weight * (raw - centre), 4)
+            baseline += weight * (centre - 60.0)
         adjustments = []
         boost = sum(float(flag.get("boost", 0) or 0) for flag in auto.get("sip_flags") or [])
         if boost:
             adjustments.append({"key": "sip_boost", "label": "SIP 輕磅好檔修正", "raw": round(boost, 2)})
         transparency["adjustments"] = adjustments
         transparency["ability_score_raw"] = auto.get("ability_score_raw")
+        transparency["impact_baseline"] = round(baseline, 4)
 
 
 def _apply_sip_enhancements(horses):

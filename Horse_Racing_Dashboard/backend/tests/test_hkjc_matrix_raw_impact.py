@@ -18,9 +18,11 @@ def test_raw_impact_and_adjustments_are_parsed(tmp_path):
                       "weight": 0.2737, "contribution": 18.1, "impact": 1.6779, "band": "➖"}],
             "adjustments": [{"key": "sip_boost", "label": "SIP 輕磅好檔修正", "raw": 1.0}],
             "ability_score_raw": 69.96,
+            "impact_baseline": 63.2,
         }}}}}), encoding="utf-8")
     details = parser_hkjc._load_matrix_details(analysis)[3]
     assert details[0].score_raw == 66.13 and details[0].impact == 1.6779
     extras = parser_hkjc.matrix_extras(analysis, 3)
     assert extras["raw_total"] == 69.96
     assert extras["adjustments"][0]["raw"] == 1.0
+    assert extras["impact_baseline"] == 63.2
