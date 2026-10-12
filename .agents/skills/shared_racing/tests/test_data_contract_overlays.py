@@ -92,5 +92,35 @@ class OverlayObservationTests(unittest.TestCase):
         self.assertEqual(fields["form_score"].summarise()["neutral_rate"], 1.0)
 
 
+class DryMeetingPresenceTests(unittest.TestCase):
+    """2026-10-10：乾地場次以前每次都出 `❌ [presence] wet_form_feature`
+    （production log 238 次）。真係消失（濕地都冇）就要照報。"""
+
+    BASELINE = {"engine_fingerprint": None, "fields": {
+        "form_score": {"neutral_rate": 0.1, "spread": 5.0, "min": 40, "max": 90},
+        "wet_form_feature": {"neutral_rate": 0.3, "spread": 1.0, "min": -3, "max": 3},
+    }}
+
+    def _presence(self, going, wet_key=True):
+        from data_contract import check
+        rows = [({"form_score": 70.0}, 1.0, 0.0), ({"form_score": 60.0}, -1.0, 0.0),
+                ({"form_score": 50.0}, 0.0, 0.0)]
+        payload = _logic(going, rows)
+        if not wet_key:
+            for h in payload["horses"].values():
+                h["python_auto"].pop("wet_form_feature")
+        with tempfile.TemporaryDirectory() as t:
+            path = _write(Path(t), "Race_1_Logic.json", payload)
+            violations, _ = check(self.BASELINE, [path], "au")
+        return [v for v in violations if v.check == "presence"]
+
+    def test_dry_meeting_is_not_a_missing_field(self):
+        self.assertEqual(self._presence("Good 4"), [])
+
+    def test_wet_meeting_without_the_overlay_is_still_flagged(self):
+        self.assertEqual([v.field_name for v in self._presence("Heavy 8", wet_key=False)],
+                         ["wet_form_feature"])
+
+
 if __name__ == "__main__":
     unittest.main()

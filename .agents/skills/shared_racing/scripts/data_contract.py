@@ -203,9 +203,15 @@ def _scored_row(python_auto: dict, platform: str | None) -> dict:
     return row
 
 
-def observe(paths, platform: str | None = None) -> tuple[dict, int, int, list]:
-    """Collect per-field statistics from scored races."""
+def observe(paths, platform: str | None = None,
+            context: dict | None = None) -> tuple[dict, int, int, list]:
+    """Collect per-field statistics from scored races.
+
+    `context`（可選）會收到 `wet_races` —— 有幾多場適用 wet overlay。
+    """
     fields: dict[str, Observation] = {}
+    if context is not None:
+        context.setdefault("wet_races", 0)
     races = 0
     unreadable = []
     horses_total = 0
@@ -237,6 +243,8 @@ def observe(paths, platform: str | None = None) -> tuple[dict, int, int, list]:
                 going = str(g)
                 break
         wet_applicable = ("soft" in going.lower() or "heavy" in going.lower())
+        if context is not None and wet_applicable and len(rows) >= 3:
+            context["wet_races"] += 1
         if rows:
             for row, h in zip(rows, [h for h in horses
                                      if _scored_row(h.get("python_auto") or {}, platform)]):
@@ -295,7 +303,8 @@ def calibrate(platform: str, paths, out_path: Path) -> dict:
 
 
 def check(baseline: dict, paths, platform: str) -> tuple[list, dict]:
-    fields, races, horses, unreadable = observe(paths, platform)
+    context: dict = {}
+    fields, races, horses, unreadable = observe(paths, platform, context)
     violations: list[Violation] = []
 
     recorded = baseline.get("engine_fingerprint")
@@ -318,6 +327,10 @@ def check(baseline: dict, paths, platform: str) -> tuple[list, dict]:
     for name, expected in baseline.get("fields", {}).items():
         obs = fields.get(name)
         if obs is None or not obs.horses:
+            # wet overlay 只喺軟／重地場次觀察；全乾地樣本冇呢個欄位係正確行為，
+            # 唔係「消失」。以前每個乾地場次都出一次 ❌（production log 238 次）。
+            if name == "wet_form_feature" and not context.get("wet_races"):
+                continue
             violations.append(Violation(name, "presence", "欄位完全消失（改名？抽取失敗？）"))
             continue
         actual = obs.summarise()
