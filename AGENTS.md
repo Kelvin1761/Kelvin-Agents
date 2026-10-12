@@ -23,6 +23,19 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
 `./整理.sh`（清已合併嘅分支）。**`檢查.sh` 查 code，`健康.sh` 查資料同排程 ——
 兩者唔互相覆蓋。**
 
+### 大型暫存一律放外置碟
+
+Mac 內置碟淨 ~15GB。2026-10-12 一個 AU 消融實驗喺 `/private/tmp` 抄咗 7 份
+2.3GB 語料，將 Mac 迫到剩 0.83GB，差啲令排程同 DB 寫唔到。所以：
+
+- **超過 ~1GB 嘅暫存**（語料複本、dump、replay、A/B 輸出）一律寫去
+  `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/<session或實驗名>/`，
+  連 `TMPDIR` 都指埋過去（`export TMPDIR=<上面嗰個目錄>`）。寫之前先確認
+  `/Volumes/Kelvin Hardisk 1` 真係有掛載 —— 冇掛載就停，唔好照寫，
+  否則個 `/Volumes/...` 路徑會靜靜寫返落 Mac 內置碟。
+- 消融唔好逐個 arm 抄一份完整語料；一個 arm 跑完、結果寫入之後，就刪咗嗰份複本先開下一個。
+- 開大型實驗之前先 `df -h /System/Volumes/Data`；**少過 10GB 就唔好開**。
+
 ### commit 同 push
 
 用 `./保存.sh --path <今次scope> "commit message"`。佢會交畀 Central release
