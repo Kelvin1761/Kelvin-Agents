@@ -80,7 +80,7 @@ walk-forward（每個賽日只用之前嘅賽日），殘差 = 入位 − 模型
 | R2 步速形勢 | REJECT | −0.12 | −0.16 | — |
 | 檔位 × 跑法 | REJECT | +0.08 | −0.04 | — |
 | C 馬場 × 跑法 | RANKING_WIN | +0.12 | +0.21 | p 0.05，**唔顯著** |
-| **H6 馬齡 × 性別** | **RANKING_WIN** | +0.12 | **+0.62** | **p 0.012 ✅** |
+| **H6 馬齡 × 性別** | **RANKING_WIN**（最終 code 語料：**PRIMARY_WIN**，Good +0.86 [+0.26,+1.44]） | +0.12 | **+0.62** | **p 0.012 ✅** |
 
 **答你兩條問題：**
 
@@ -150,6 +150,66 @@ walk-forward（每個賽日只用之前嘅賽日），殘差 = 入位 − 模型
    16:00 嗰個（`late`）一樣做法。
 3. **見習減磅**：頁面有 `(a-2)`，但 `parse_overview` 剷咗。未接駁，屬下一步抽取層工作。
 
-## 7. 九條問題 × 組件（更新）
+## 7. 九條問題 × 組件（最終判決表）
 
-（見 §8 表）
+**九條問題：**
+- Q1 中性化／權重
+- Q2 噪音
+- Q3 bug
+- Q4 唔合理
+- Q5 改善
+- Q6 新特徵
+- Q7 重建
+- Q8 數據
+- Q9 關係／overlay
+
+**判決詞：**
+- **KEEP**：量過，現狀已經係最好。
+- **FIXED**：§7 已發佈。
+- **REJECT**：試過唔得。
+- **SHADOW**：已實作，未入排名。
+- **UNRESOLVABLE**：而家判唔到。
+- **NO-ISSUE**：查過冇問題。
+
+| 組件 | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 | Q8 | Q9 |
+|---|---|---|---|---|---|---|---|---|---|
+| **全模型** | KEEP（dev-only 共識 refit REJECT） | KEEP（11 組件冇一個可剷） | FIXED（第一輪 15＋今日 3＋Codex 30） | NO-ISSUE | REJECT（R1、R2、R3 全唔過） | SHADOW（馬齡 × 性別） | KEEP（GBM 天花板；只重建輸入） | FIXED（語料 CSV 補欄、身份修復） | REJECT（維度交互兩對） |
+| stability | KEEP | KEEP（剷走 Good −4.72pp，CI 全負） | NO-ISSUE | KEEP（form −4 方向對） | NO-ISSUE | NO-ISSUE | KEEP | NO-ISSUE | REJECT（stability × pace_perf） |
+| └ form | KEEP | KEEP | FIXED（F4 往績行缺失） | FIXED（F1 900m 當試閘） | NO-ISSUE | NO-ISSUE | KEEP | FIXED | NO-ISSUE |
+| └ performance_quality | KEEP | KEEP | FIXED（F3 `10`→虛構頭馬經 fallback） | NO-ISSUE | NO-ISSUE | NO-ISSUE | KEEP | NO-ISSUE | NO-ISSUE |
+| pace_perf | KEEP | KEEP | NO-ISSUE | NO-ISSUE | REJECT（單場收縮 R3） | UNRESOLVABLE（速度盲測未夠 2,000 場） | KEEP | NO-ISSUE | NO-ISSUE |
+| └ pace_figure | KEEP | KEEP | NO-ISSUE（試閘 PF 有用，F2 REJECT） | NO-ISSUE | REJECT | NO-ISSUE | KEEP（全距單調） | FIXED（Codex PF 有限值守衛） | NO-ISSUE |
+| └ trial | KEEP | KEEP（剷走 dev −0.08） | NO-ISSUE | NO-ISSUE（冇試閘預設 56，B7 REJECT） | NO-ISSUE | NO-ISSUE | KEEP | NO-ISSUE | NO-ISSUE |
+| jockey_trainer | KEEP（內權重三個配置 REJECT） | KEEP | FIXED（人名清空） | NO-ISSUE | NO-ISSUE | REJECT（換騎分類：−0.86pp，細過 MDE） | KEEP | UNRESOLVABLE（as-of 要等 12-01） | NO-ISSUE |
+| └ jockey | KEEP | KEEP | NO-ISSUE | NO-ISSUE | UNRESOLVABLE（冇記錄 46.86 要 walk-forward；v2 邊緣過） | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
+| └ trainer | KEEP | KEEP | NO-ISSUE | NO-ISSUE | REJECT（冇記錄預設 B7 dev 唔過） | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
+| └ jockey_horse_fit | KEEP | KEEP | NO-ISSUE | REJECT（jhf −3 死 code，剷走零差異） | NO-ISSUE | NO-ISSUE | KEEP | NO-ISSUE | NO-ISSUE |
+| class_weight | KEEP | KEEP | NO-ISSUE | NO-ISSUE | UNRESOLVABLE（class_score 11-09 前瞻閘） | UNRESOLVABLE（班次標籤 11-15） | KEEP | FIXED（Codex 班次標題 cache） | REJECT（stability × class） |
+| └ rating | KEEP | KEEP | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | KEEP | NO-ISSUE | NO-ISSUE |
+| └ class_score | UNRESOLVABLE | KEEP（中性化近零） | NO-ISSUE | NO-ISSUE | UNRESOLVABLE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
+| preparation | KEEP | KEEP | FIXED（逐維一覽漏顯示，登記表） | NO-ISSUE | NO-ISSUE | NO-ISSUE | KEEP | NO-ISSUE | NO-ISSUE |
+| track | KEEP | KEEP（auc5 一致負，保留） | NO-ISSUE | NO-ISSUE（冇證據 62.9；安全欄只影響 #1／#2） | REJECT（R1 檔位） | REJECT（馬場 × 跑法，Holm 後唔顯著） | KEEP | NO-ISSUE | REJECT（wet × track 已試） |
+| wet overlay | KEEP | KEEP | FIXED（合約假警報） | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
+| proven_class overlay | KEEP | KEEP | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
+| 情境扣分（form −4／consistency −4／jhf −3） | KEEP／REJECT／REJECT | REJECT（後兩個死 code，剷走零差異） | FIXED（錯標籤） | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
+| race_shape（退役） | REJECT（加返 dev 唔過） | NO-ISSUE | FIXED（parser 錯配） | NO-ISSUE | REJECT（R2 步速形勢） | REJECT（檔位 × 跑法） | REJECT（重新砌都唔過） | UNRESOLVABLE（11-22 重驗） | REJECT |
+| form_line（退役） | REJECT | NO-ISSUE | NO-ISSUE | NO-ISSUE | REJECT | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
+| sectional（零權重） | REJECT | NO-ISSUE | NO-ISSUE | NO-ISSUE | REJECT（新維度） | NO-ISSUE | REJECT（缺失 48.8% 未解） | NO-ISSUE | NO-ISSUE |
+| distance（零權重） | REJECT | NO-ISSUE | NO-ISSUE | NO-ISSUE | REJECT（新維度 dev 唔過） | NO-ISSUE | REJECT | NO-ISSUE | NO-ISSUE |
+| 輸出層（信心級別、評級、安全欄） | NO-ISSUE | NO-ISSUE | FIXED（Codex 描述層） | UNRESOLVABLE（信心級別 Gold 分唔開；要預先登記先改） | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
+| 排程／管線 | NO-ISSUE | NO-ISSUE | FIXED（refresh 檔位假陽性、going、健康閘） | FIXED（下晝冇 refresh：模板已加，要人手裝） | FIXED（對手索引 7×快） | NO-ISSUE | NO-ISSUE | FIXED | NO-ISSUE |
+| 馬齡 × 性別（新） | — | — | — | — | SHADOW | **SHADOW**（walk-forward PRIMARY_WIN：Good +0.86pp，CI [+0.26,+1.44]） | — | — | — |
+| 見習減磅（新） | — | — | — | UNRESOLVABLE（頁面有 `(a-2)`，`parse_overview` 剷咗；未接駁） | — | — | — | — | — |
+
+**表入面「—」嘅意思**：新特徵未入模型，問題唔適用。
+
+**發佈記錄**（2026-10-12，全部自動 merge 同 activate）：
+
+| Release | commit | 內容 |
+|---|---|---|
+| A1 | `c7096055` | 評估尺：預測 artifact 路徑、數據合約指紋 |
+| A2 | `e348a74e` | Codex 審計基建 |
+| B1 | `9b0c5f14` | 數據合約乾地假警報 |
+| B2 | `c28db618` | F1／F3／F4、第一輪修正、下晝 refresh 模板 |
+
+**馬齡 × 性別 shadow** 留喺 worktree `claude-au-trial-leak-20261012`，未發佈。
