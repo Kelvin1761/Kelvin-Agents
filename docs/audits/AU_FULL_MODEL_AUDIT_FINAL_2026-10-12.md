@@ -181,7 +181,7 @@ walk-forward（每個賽日只用之前嘅賽日），殘差 = 入位 − 模型
 | └ pace_figure | KEEP | KEEP | NO-ISSUE（試閘 PF 有用：全靠試閘 681 匹 ≥70 +10.5pp／<50 −12.3pp；F2 REJECT） | NO-ISSUE | REJECT | NO-ISSUE | KEEP（全距單調） | FIXED（Codex PF 有限值守衛） | NO-ISSUE |
 | └ trial | KEEP | KEEP（剷走 dev −0.08） | NO-ISSUE | NO-ISSUE（冇試閘預設 56，B7 REJECT） | NO-ISSUE | NO-ISSUE | KEEP | NO-ISSUE | NO-ISSUE |
 | jockey_trainer | KEEP（內權重三個配置 REJECT） | KEEP | FIXED（人名清空） | NO-ISSUE | NO-ISSUE | REJECT（換騎分類：−0.86pp，細過 MDE） | KEEP | UNRESOLVABLE（as-of 要等 12-01） | NO-ISSUE |
-| └ jockey | KEEP | KEEP | NO-ISSUE | NO-ISSUE | UNRESOLVABLE（冇記錄 46.86 要 walk-forward；v2 邊緣過） | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
+| └ jockey | KEEP | KEEP | NO-ISSUE | NO-ISSUE | REJECT（冇記錄預設值，正式 walk-forward 全指標 Δ 0，EXP-34） | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
 | └ trainer | KEEP | KEEP | NO-ISSUE | NO-ISSUE | REJECT（冇記錄預設 B7 dev 唔過） | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
 | └ jockey_horse_fit | KEEP | KEEP | NO-ISSUE | REJECT（jhf −3 死 code，剷走零差異） | NO-ISSUE | NO-ISSUE | KEEP | NO-ISSUE | NO-ISSUE |
 | class_weight | KEEP | KEEP | NO-ISSUE | NO-ISSUE | UNRESOLVABLE（class_score 11-09 前瞻閘） | UNRESOLVABLE（班次標籤 11-15） | KEEP | FIXED（Codex 班次標題 cache） | REJECT（stability × class） |
@@ -199,7 +199,7 @@ walk-forward（每個賽日只用之前嘅賽日），殘差 = 入位 − 模型
 | 輸出層（信心級別、評級、安全欄） | NO-ISSUE | NO-ISSUE | FIXED（Codex 描述層） | UNRESOLVABLE（信心級別 Gold 分唔開；要預先登記先改） | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
 | 排程／管線 | NO-ISSUE | NO-ISSUE | FIXED（refresh 檔位假陽性、going、健康閘） | FIXED（下晝冇 refresh：模板已加，要人手裝） | FIXED（對手索引 7×快） | NO-ISSUE | NO-ISSUE | FIXED | NO-ISSUE |
 | 馬齡 × 性別（新） | — | — | — | — | REJECT（正式路徑：細場傷害） | REJECT；按馬匹數縮放版本做前瞻假設（2026-10-13 起） | — | — | — |
-| 見習減磅（新） | — | — | — | UNRESOLVABLE（頁面有 `(a-2)`，`parse_overview` 剷咗；未接駁） | — | — | — | — | — |
+| 見習減磅（新） | — | — | — | NO-ISSUE（殘差真：a2 −3.2pp） | UNRESOLVABLE §6（正式路徑：預算 < MDE，primary 近零，EXP-34） | 唔接駁（冇可量度收益） | — | — | — |
 
 **表入面「—」嘅意思**：新特徵未入模型，問題唔適用。
 
@@ -232,3 +232,11 @@ walk-forward（每個賽日只用之前嘅賽日），殘差 = 入位 − 模型
 - race_shape 重驗：11-22。
 - 騎練 as-of：12-01。
 - 馬齡性別（按馬匹數縮放）：2026-10-13 起，≥600 場。
+
+## 9. 補充（EXP-20261012-34）
+
+- **jockey 冇記錄預設值**：正式 walk-forward 判 REJECT，所有指標 Δ 0；v2 嗰次邊緣過閘係噪音。
+- **見習減磅**：殘差真（a2 −3.22pp [−5.06, −1.44]），但正式路徑判 UNRESOLVABLE（§6 預算細過 MDE）。唔接駁。
+- **Platinum Card production 核實**：
+  - 用 `wongchoi-scheduler` @ `16c028ab` 嘅 code 重跑 10-12 Tamworth：**62.2、第 3**，form 53.3、PQ 61.9。
+  - Smashit 嗰場 Scone 900m 正確標做「正式」。
