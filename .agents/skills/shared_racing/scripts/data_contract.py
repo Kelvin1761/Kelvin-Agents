@@ -84,7 +84,8 @@ ENGINE_FILES = ("scoring.py", "matrix_mapper.py", "engine_core.py")
 def engine_fingerprint(platform: str) -> str:
     digest = hashlib.sha256()
     engine_dir = PLATFORMS[platform]["engine"]
-    for name in ENGINE_FILES:
+    names = ENGINE_FILES + (("dimensions.py",) if platform == "au" and (engine_dir / "dimensions.py").exists() else ())
+    for name in names:
         path = engine_dir / name
         if path.exists():
             digest.update(path.read_bytes())

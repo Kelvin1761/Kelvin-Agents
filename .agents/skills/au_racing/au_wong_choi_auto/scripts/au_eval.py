@@ -440,6 +440,13 @@ def compare(races, base_scorer=None, cand_scorer=None, *, label="候選",
 
     判決：頭 K 位 holdout 區間唔過 0，而且 dev 點估計唔係負。
     """
+    if stage4_mode == "walk_forward_oos":
+        # This API applies one scorer to the entire corpus. It cannot establish
+        # per-day fitting, even when a caller labels the scorer as OOS. Use the
+        # separate prediction intake/producer with independently locked inputs.
+        return Verdict(label, len(races), False,
+                       "fitted_candidate_needs_walk_forward_predictions",
+                       decision_detail={"required": "validated_per_day_prediction_artifacts"})
     base_scorer = base_scorer or default_scorer
     n = len(races)
     dev_indices, holdout_indices = date_partitions(races, holdout)
@@ -498,7 +505,12 @@ def compare(races, base_scorer=None, cand_scorer=None, *, label="候選",
 
 def main():
     ap = argparse.ArgumentParser(description="AU Wong Choi 統一評估")
-    ap.add_argument("--data", required=True, help="leaves dump JSON")
+    source = ap.add_mutually_exclusive_group(required=True)
+    source.add_argument("--data", help="leaves dump JSON")
+    source.add_argument("--prediction-manifest", help="Locked paired-prediction corpus manifest JSON")
+    ap.add_argument("--family-predictions", help="JSON baseline/candidates with baseline/candidate profiles")
+    ap.add_argument("--family-registration", help="Preregistered family JSON with profile/sample/power hashes")
+    ap.add_argument("--power-record", help="Pre-evaluation component budget/MDE JSON")
     ap.add_argument("--swap-leaf", action="append", default=[],
                     help="LEAF=VALUE，把某個 leaf 設成常數（用嚟量佢貢獻）")
     ap.add_argument("--holdout", type=float, default=HOLDOUT)
@@ -521,6 +533,36 @@ def main():
               "predictions. v2 = legacy 15%% terminal tail."),
     )
     args = ap.parse_args()
+    if args.prediction_manifest:
+        required = (args.family_predictions, args.family_registration, args.power_record, args.output_json)
+        if not all(required):
+            ap.error("prediction manifest requires family predictions, registration, power record and output JSON")
+        if args.swap_leaf or args.matrix_weights or args.wet_scale is not None:
+            ap.error("artifact evaluation cannot mix legacy rescoring candidate options")
+        from au_prediction_evaluation import evaluate_family
+        try:
+            manifest = json.loads(Path(args.prediction_manifest).read_text())
+            predictions = json.loads(Path(args.family_predictions).read_text())
+            registration = json.loads(Path(args.family_registration).read_text())
+            power_record = json.loads(Path(args.power_record).read_text())
+            report = evaluate_family(
+                manifest, predictions["baseline"], predictions["candidates"],
+                baseline_profile=predictions["baseline_profile"],
+                candidate_profiles=predictions["candidate_profiles"],
+                registration=registration, power_record=power_record,
+            )
+        except (ValueError, KeyError, TypeError) as exc:
+            report = {"schema": "au-family-evaluation-error/v1", "verdict": "REJECT",
+                      "reason": str(exc), "release_authorized": False}
+            Path(args.output_json).write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+            print(f"Artifact evaluation rejected: {exc}")
+            return 2
+        Path(args.output_json).write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+        for arm, record in report["arms"].items():
+            print(f"{arm}: {record['decision']['verdict']} / {record['decision']['reason']} / {record['forward_status']}")
+        return 0
+    if args.family_predictions or args.family_registration or args.power_record:
+        ap.error("family artifact options require --prediction-manifest")
     if args.stage4_mode == "v2" and (args.swap_leaf or args.matrix_weights or args.wet_scale is not None):
         print("⚠️ Stage 4 v2 已被 v3 取代（docs/model-evaluation-contract.md）："
               "新候選請用 --stage4-mode fixed_rule 或 walk_forward_oos\n")

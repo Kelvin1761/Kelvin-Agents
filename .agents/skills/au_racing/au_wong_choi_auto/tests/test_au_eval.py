@@ -100,6 +100,16 @@ class VerdictRuleTests(unittest.TestCase):
         self.assertFalse(v.ship)
         self.assertEqual(v.stage4_verdict, "REJECT")
 
+    def test_oos_mode_string_cannot_promote_one_global_scorer(self):
+        races = _races(n=12)
+        def should_not_run(_):
+            raise AssertionError("global scorer must not run as OOS evidence")
+        v = au_eval.compare(races, should_not_run, should_not_run,
+                            leakage_audit_passed=True, stage4_mode="walk_forward_oos")
+        self.assertFalse(v.ship)
+        self.assertEqual(v.reason, "fitted_candidate_needs_walk_forward_predictions")
+        self.assertEqual(v.decision_detail["required"], "validated_per_day_prediction_artifacts")
+
     def test_a_neutral_change_is_not_shipped(self):
         """⚠️ 呢個係最重要嘅一條。純噪音擾動一定唔可以過 ——
         場數指標嗰套閘校準過係 0/40 中性改動全過，而呢把尺要做得更準。"""
