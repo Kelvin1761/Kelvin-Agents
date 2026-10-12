@@ -83,7 +83,7 @@ def parse_barrier(value) -> "int | None":
 def main():
     if not Path(CSV_PATH).exists():
         print(f"Error: {CSV_PATH} not found.")
-        return
+        return 1
 
     # 1. Read all rows and determine field sizes
     races = collections.defaultdict(list)
@@ -201,11 +201,16 @@ def main():
     if out_path.exists() and "--force" not in sys.argv:
         try:
             old = json.loads(out_path.read_text(encoding="utf-8"))
-            old_cells = sum(
-                1
-                for trk in (old.get("tracks") or {}).values()
-                for _ in (trk.get("distances") or {})
-            )
+            if not isinstance(old, dict) or not isinstance(old.get("tracks"), dict):
+                raise ValueError("existing matrix tracks must be an object")
+            tracks = old["tracks"]
+            if any(
+                not isinstance(track, dict)
+                or not isinstance(track.get("distances"), dict)
+                for track in tracks.values()
+            ):
+                raise ValueError("existing matrix distance cells must be objects")
+            old_cells = sum(len(track["distances"]) for track in tracks.values())
             new_cells = sum(
                 1
                 for trk in matrix["tracks"].values()
@@ -219,8 +224,9 @@ def main():
                     f"唔好用 --force 蓋過去。"
                 )
                 return 1
-        except (OSError, ValueError):
-            pass
+        except (OSError, ValueError) as exc:
+            print(f"❌ 唔寫入：無法核對現行檔位表（{type(exc).__name__}: {exc}）")
+            return 1
 
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump(matrix, f, indent=4, ensure_ascii=False)

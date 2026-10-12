@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import math
 import re
 import sys
 import unicodedata
@@ -58,11 +59,46 @@ def _norm(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", s)
 
 
-# 乾淨 point-in-time 起點。2026-06-06 之前嘅歸檔係**賽後**先重新評分嘅
-# （見 memory `au-archive-rescored-post-race`），leaf 值反映咗較後狀態，
-# 所以唔可以攞嚟 fit 任何常數。呢個唔係保守 —— 2026-08-26 實測過，
-# 用全語料 fit gain 會令 class_score 出現一個假嘅「過閘」。
-CLEAN_FROM = "2026-06-06"
+# Contract date eligibility is necessary, not proof of PIT. CSV date matches and
+# WinningTime token counts cannot certify captured inputs or label availability.
+CLEAN_FROM = "2026-08-05"
+
+# Follow-ups are not executable experimental registrations. Thresholds/families
+# must be preregistered after source/PIT validation; do not invent them here.
+# Existing speed/class forward profiles retain their own unchanged rules.
+PENDING_REGISTRATIONS = [
+    {
+        "id": "class_label_oos",
+        "owner": "AU full-model audit",
+        "source": "docs/audits/AU_FULL_MODEL_AUDIT_EXECUTION_PLAN_2026-10-11.md#12-phase-4",
+        "status": "PENDING_REGISTRATION",
+        "review_after": None,
+        "required": ["RA label captured-at", "eligible complete-day corpus",
+                     "frozen OOS family and power/forward rules"],
+        "why": "November is an old estimate, not a readiness threshold; existing class forward review is separate.",
+    },
+    {
+        "id": "people_asof_oos",
+        "owner": "AU full-model audit",
+        "source": "docs/experiments/EXP-20260901-02-au-people-database-unlocked.md",
+        "status": "PENDING_REGISTRATION",
+        "review_after": None,
+        "required": ["dated people snapshots", "source availability and coverage",
+                     "frozen OOS family and power/forward rules"],
+        "why": "Current career/monthly summaries alone do not certify historical availability.",
+    },
+    {
+        "id": "race_shape_start_position",
+        "owner": "AU full-model audit",
+        "source": "docs/audits/AU_FULL_MODEL_AUDIT_PLAN_ORIGINAL_2026-10-11.md",
+        "status": "PENDING_REGISTRATION",
+        "review_after": "2026-11-22",
+        "required": ["original registration artifact", "speedmap captured-at",
+                     "frozen samples, metric and reveal rules"],
+        "why": "Original plan mentions this review date; date alone is not authorization to reveal or run.",
+    },
+]
+
 MEET_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\s+(.+?)\s+Race\s")
 
 
@@ -109,11 +145,49 @@ def measure(data_root: Path) -> dict:
             if block.count("WinningTime:") >= 3:
                 with_time += 1
     return {
-        "clean_races": clean,
+        "clean_races": None,
+        "date_matched_races": clean,
+        "fit_date_from": CLEAN_FROM,
+        "readiness_status": "NOT_ESTABLISHED",
+        "diagnostic_only_metrics": ["date_matched_races", "speedfig_coverage_pct"],
+        "readiness_limits": [
+            "Date/race matches do not prove complete rosters or PIT.",
+            "WinningTime tokens are not computed speed-score coverage or source availability.",
+            "An independently verified eligible corpus is required before readiness.",
+        ],
         "speedfig_coverage_pct": (round(100.0 * with_time / runners, 1)
                                   if runners else 0.0),
         "_runners": runners,
     }
+
+
+def partition_retests(stats: dict, registered: list[dict]) -> tuple[list, list]:
+    """Fail closed on diagnostics, missing metrics or unestablished eligibility."""
+    due, waiting = [], []
+    for item in registered:
+        metric = item["metric"]
+        now = stats.get(metric)
+        threshold = item["threshold"]
+        valid_now = (isinstance(now, (int, float)) and not isinstance(now, bool)
+                     and math.isfinite(now))
+        valid_threshold = (isinstance(threshold, (int, float))
+                           and not isinstance(threshold, bool)
+                           and math.isfinite(threshold) and threshold > 0)
+        blockers = []
+        if stats.get("readiness_status") != "VERIFIED":
+            blockers.append("eligible_corpus_not_verified")
+        if metric in stats.get("diagnostic_only_metrics", []):
+            blockers.append("diagnostic_metric_not_readiness")
+        if not valid_now:
+            blockers.append("metric_missing_or_invalid")
+        if not valid_threshold:
+            blockers.append("threshold_missing_or_invalid")
+        row = {**item, "now": now,
+               "pct": round(100.0 * now / threshold, 1)
+               if valid_now and valid_threshold else None,
+               "readiness_blockers": blockers}
+        (due if not blockers and now >= threshold else waiting).append(row)
+    return due, waiting
 
 
 def main() -> int:
@@ -129,19 +203,17 @@ def main() -> int:
         root = Path(wongchoi_paths.AU_RACING)
 
     stats = measure(root)
-    due, waiting = [], []
-    for item in REGISTERED:
-        now = stats.get(item["metric"], 0)
-        row = {**item, "now": now, "pct": round(100.0 * now / item["threshold"], 1)}
-        (due if now >= item["threshold"] else waiting).append(row)
+    due, waiting = partition_retests(stats, REGISTERED)
 
     if args.json:
         print(json.dumps({"stats": stats, "due": due, "waiting": waiting,
-                          "resolved": RESOLVED},
+                          "resolved": RESOLVED,
+                          "pending_registrations": PENDING_REGISTRATIONS},
                          ensure_ascii=False, indent=2))
     else:
-        print(f"乾淨 point-in-time 場次（{CLEAN_FROM} 起）: {stats['clean_races']}")
-        print(f"速度評分 runner 覆蓋（≥3 條 WinningTime）: {stats['speedfig_coverage_pct']}%"
+        print(f"日期／場號匹配（{CLEAN_FROM} 起，未核證 PIT）: {stats['date_matched_races']}")
+        print("乾淨 PIT 場次：未建立，不能由日期匹配推定。")
+        print(f"WinningTime token runner 覆蓋（≥3 條；非速度評分／PIT 覆蓋）: {stats['speedfig_coverage_pct']}%"
               f"  （{stats['_runners']} 匹）\n")
         for row in due:
             print(f"✅ 夠數重測：{row['id']}（{row['exp']}）")
@@ -152,6 +224,10 @@ def main() -> int:
             print(f"⏳ 未夠：{row['id']}（{row['exp']}）"
                   f" {row['metric']} {row['now']} / {row['threshold']}（{row['pct']}%）")
             print(f"   {row['why']}")
+            if row["readiness_blockers"]:
+                print(f"   阻止就緒：{', '.join(row['readiness_blockers'])}")
+        for row in PENDING_REGISTRATIONS:
+            print(f"待完成預登記：{row['id']} — {row['why']}")
         if not due:
             print("\n冇候選到期。")
     return 10 if due else 0

@@ -20,13 +20,20 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import sys
 from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-FIELDS = ("Date", "Track", "Race", "Horse", "Pos", "Barrier", "SP", "Condition")
+FIELDS = ("Date", "Track", "Race", "Distance", "Condition", "Pos", "Horse",
+          "Barrier", "Weight", "Jockey", "Trainer", "Margin", "SP", "Time")
+
+
+def track_key(value):
+    """Conservative venue identity; retain different course/layout qualifiers."""
+    return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
 
 
 def iso_date(value: str) -> str:
@@ -76,14 +83,17 @@ def rows_for_meeting(meta, fetcher):
         if rno is None:
             continue
         cond = pr["meta"].get("track_condition") or ""
-        # 檔位由賽事頁 overview 攞，唔係由往績行 —— 往績行嗰個係嗰匹馬**嗰日**
-        # 嘅檔位，同今日無關。
-        barrier_by_name = {(v.get("name") or "").lower(): v.get("barrier")
-                           for v in pr["overview"].values()}
+        # Only the dated result run supplies historical runner metadata.
+        # An alternate entry can run at another venue on the same date/race.
+        # Overview has no historical barrier and current Trainer is not dated.
         for blk in parse_runner_blocks(html):
             for run in blk.get("runs", []):
                 h = run.get("header") or {}
                 if run_date(run) != meta["date"] or str(h.get("race")) != str(rno):
+                    continue
+                if not track_key(h.get("track")) or track_key(h.get("track")) != track_key(track):
+                    print(f"⚠️ result venue mismatch: {meta['date']} {track} R{rno} "
+                          f"{blk['name']} -> {h.get('track')!r}; row skipped", file=sys.stderr)
                     continue
                 try:
                     pos = int(run["pos"])
@@ -91,7 +101,13 @@ def rows_for_meeting(meta, fetcher):
                     break
                 out.append({"Date": meta["date"], "Track": track, "Race": rno,
                             "Horse": blk["name"], "Pos": pos,
-                            "Barrier": barrier_by_name.get(blk["name"].lower()) or "",
+                            "Distance": h.get("dist") or "",
+                            "Barrier": run.get("barrier") or "",
+                            "Weight": run.get("weight") or "",
+                            "Jockey": (run.get("jockey") or "").strip(),
+                            "Trainer": "",  # Dated run has no trainer; never use current overview.
+                            "Margin": "0" if pos == 1 else (run.get("margin") or ""),
+                            "Time": "",  # WinningTime is not this runner's Time.
                             "SP": run.get("sp") or "", "Condition": cond})
                 break
     return out

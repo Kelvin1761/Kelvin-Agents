@@ -209,7 +209,8 @@ def influence(weights, spread):
 
 def fingerprint(engine_dir: Path):
     entries = []
-    for name in FINGERPRINT_FILES:
+    names = FINGERPRINT_FILES + (("dimensions.py",) if engine_dir.name == "au_racing_engine" and (engine_dir / "dimensions.py").exists() else ())
+    for name in names:
         path = engine_dir / name
         if not path.exists():
             continue

@@ -2063,6 +2063,32 @@ def step_refresh_active(runlog: RunLog, today: date, *, max_meetings: int = 0,
     return updated
 
 
+def _racecard_original_draws(folder: Path, race_number: int, horses: dict) -> dict | None:
+    """Recover original draws only from one complete, identity-matched racecard."""
+    cards = list(folder.glob(f"* Race {race_number} Racecard.md"))
+    if len(cards) != 1:
+        return None
+    try:
+        body = cards[0].read_text(encoding="utf-8")
+    except (OSError, UnicodeError):
+        return None
+    draws = {}
+    names = {}
+    for match in re.finditer(r"^(\d+)\.\s+(.+?)\s+\((\d+)\)\s*$", body, re.M):
+        number, name, draw = match.groups()
+        number = str(int(number))
+        if number in draws or int(draw) <= 0:
+            return None
+        draws[number] = str(int(draw))
+        names[number] = normalise(name)
+    if set(draws) != set(map(str, horses)) or len(set(draws.values())) != len(draws):
+        return None
+    if any(not isinstance(value, dict) or names[str(number)] != normalise(value.get("horse_name", ""))
+           for number, value in horses.items()):
+        return None
+    return draws
+
+
 def stored_race_state(folder: Path) -> dict[int, dict]:
     """由 Logic.json 讀返分析當時用嘅資料。"""
     state: dict[int, dict] = {}
@@ -2075,12 +2101,15 @@ def stored_race_state(folder: Path) -> dict[int, dict]:
         except (OSError, ValueError):
             continue
         horses = data.get("horses") or {}
+        raw_draws = _racecard_original_draws(folder, int(m.group(1)), horses)
         state[int(m.group(1))] = {
             "going": normalise_going((data.get("race_analysis") or {}).get("going")),
             "jockeys": {str(k): str((v or {}).get("jockey") or "").strip()
                         for k, v in horses.items() if isinstance(v, dict)},
-            "barriers": {str(k): str((v or {}).get("barrier") or "").strip()
-                         for k, v in horses.items() if isinstance(v, dict)},
+            "barriers": raw_draws if raw_draws is not None else {
+                str(k): str((v or {}).get("barrier") or "").strip()
+                for k, v in horses.items() if isinstance(v, dict)},
+            "barrier_basis": "original_draw" if raw_draws is not None else "logic_unverified_draw",
             "field": sorted(str(k) for k in horses),
         }
     return state
@@ -2301,6 +2330,7 @@ def rebuild_meeting_from_cache(runlog: RunLog, folder: Path, key: str,
     if rc != 0:
         runlog.warn(f"{folder.name}: 重建分析 rc={rc}："
                     f"{error_excerpt(out, rc)}")
+        return False
     return True
 
 
@@ -2553,6 +2583,11 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
     if not stored:
         runlog.meeting(folder.name, "refresh_skipped", reason="冇 Logic.json 可以比對")
         return False
+    uncertain_draws = [rno for rno, state in stored.items()
+                       if state.get("barrier_basis") == "logic_unverified_draw"]
+    if uncertain_draws:
+        runlog.warn(f"{folder.name}: R{uncertain_draws} 原抽檔位來源缺失／不匹配，"
+                    "暫用 Logic 比較，未能認證原抽與密集檔位一致")
     live, page_going = live_race_state(runlog, folder)
     if not live:
         raise TemporaryFailure("重抓到嘅頁面一場都 parse 唔到")

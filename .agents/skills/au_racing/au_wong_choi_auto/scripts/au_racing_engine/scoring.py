@@ -2,6 +2,11 @@
 """AU Wong Choi Auto scoring primitives."""
 from __future__ import annotations
 
+from .dimensions import (
+    CLASS_SCORE_LIVE, CLASS_SCORE_LIVE_WEIGHT, FEATURE_KEYS, ABILITY_FEATURE_KEYS,
+    REPORT_ONLY_FEATURE_KEYS, MATRIX_WEIGHTS, SCORING_CONTRACT_VERSION,
+)
+
 import os
 import re
 
@@ -12,27 +17,9 @@ import re
 # 其他指標 —— **唔係已證實改善**。即時回退：`WC_AU_CLASS_SCORE_LIVE=0`。
 # 每匹馬 `class_score_live_delta` 係回退影子；forward ≥600 場由 2026-11-09 排程
 # 檢討，舊公式淨贏 ≥2 場 Gold 或 Good 而另一項非負 → 建議回退（唔會自動改 production）。
-CLASS_SCORE_LIVE = os.environ.get("WC_AU_CLASS_SCORE_LIVE", "1") != "0"
-CLASS_SCORE_LIVE_WEIGHT = 0.15
 
-FEATURE_KEYS = (
-    "form_score", "trial_score", "sectional_score", "pace_map_score",
-    "jockey_score", "trainer_score", "jockey_horse_fit_score", "class_score",
-    "rating_score", "weight_score", "distance_score", "track_score",
-    "formline_score", "consistency_score", "performance_quality_score",
-    "health_score", "confidence_score", "pace_figure_score", "preparation_score",
-)
-ABILITY_FEATURE_KEYS = (
-    "form_score", "performance_quality_score", "pace_figure_score",
-    "trial_score", "pace_map_score", "jockey_score", "trainer_score",
-    "jockey_horse_fit_score", "rating_score", "track_score", "preparation_score",
-)
 # ⚠️ class_score 留喺 REPORT_ONLY：佢經 matrix 配方入排名（CLASS_SCORE_LIVE），但
 # 資料覆蓋率／證據厚度安全欄嘅 leaf 計數唔郁 —— EXP-20261009-04 量嘅只係配方改動。
-REPORT_ONLY_FEATURE_KEYS = (
-    "sectional_score", "class_score", "weight_score", "distance_score",
-    "formline_score", "consistency_score", "health_score", "confidence_score",
-)
 
 # Legacy archive recovery only.  Old Logic files predate the complete
 # Sportsbet margin/prize/starter transport and therefore copied consistency
@@ -170,15 +157,6 @@ SPORTSBET_PQ_RECOVERY_ALPHA = 0.10
 # EXP-20260902-07 removes post-score gains. These coefficients are the old
 # weight × gain / scale, fixed algebraically without fitting on outcomes.
 # Earlier comments above document historical configurations, not this contract.
-MATRIX_WEIGHTS = {
-    "stability": 0.37099725005319806,
-    "pace_perf": 0.12093934478578448,
-    "jockey_trainer": 0.6626585553070451,
-    "class_weight": 0.3826193901797637,
-    "track": 0.14114297066700832,
-    "preparation": 0.25244110196132946,
-}
-SCORING_CONTRACT_VERSION = "au/raw-matrix-preparation-v2"
 
 # EXP-20260902-07: the coefficients above absorb the former gain / scale.
 # They are regression coefficients, not percentages summing to one. There is

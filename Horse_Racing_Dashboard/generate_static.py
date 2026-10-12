@@ -51,7 +51,11 @@ from models.race import AnalystName, Meeting, Region
 # 4: AU structured fields (rank / ability_score / confidence_score /
 #    evidence_dimensions / dimension_details) added 2026-09-02.
 # 5: HKJC full score ledger + official-vs-shadow ranking fields added 2026-10-08.
-CACHE_VERSION = 5
+# 6: AU registry metadata is part of the parsed race payload. Unchanged
+# report bytes must not reuse a cache made before the parser carried the spec.
+# 7: AU modern panorama class is parsed from its third component; invalidate
+# unchanged-report cache entries carrying the old "Race N" class value.
+CACHE_VERSION = 7
 DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".cache" / "meeting-snapshot-cache.json"
 AU_MEETING_DIR_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\s+(.+?)(?:\s+Race\s+\d+-\d+)?$")
 
@@ -283,7 +287,7 @@ def _source_fingerprint(meeting):
     fingerprint = []
     for path in _analysis_files(meeting):
         stat = path.stat()
-        fingerprint.append((str(path), stat.st_mtime_ns, stat.st_size))
+        fingerprint.append([str(path), stat.st_mtime_ns, stat.st_size])
     return fingerprint
 
 

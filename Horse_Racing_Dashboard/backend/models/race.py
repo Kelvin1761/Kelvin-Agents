@@ -197,6 +197,8 @@ class MonteCarloPick(BaseModel):
 
 
 class RaceAnalysis(BaseModel):
+    # AU report-captured registry; legacy reports retain unknown metadata.
+    dimension_registry: Optional[dict] = None
     race_number: int
     distance: Optional[str] = None
     race_class: Optional[str] = None

@@ -56,14 +56,8 @@ def main():
     from au_racing_engine.engine_core import backfill_prize_column  # noqa: E402
     from au_racing_engine.scoring import FEATURE_KEYS  # noqa: E402
 
-    try:
-        from au_racing_engine.engine_core import backfill_pf_metrics
-    except ImportError:
-        backfill_pf_metrics = None
-    try:
-        from au_racing_engine.engine_core import refresh_pf_own_l600
-    except ImportError:
-        refresh_pf_own_l600 = None
+    from au_racing_engine.engine_core import backfill_pf_metrics
+    from au_racing_engine.engine_core import refresh_pf_own_l600
 
     results = load_historical_results(HISTORICAL_RESULTS_CSV)
     races_out = []

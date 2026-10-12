@@ -4,6 +4,11 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261012-03](EXP-20261012-03-au-unused-intake-cutoff-standards.md) | 2026-10-12 | AU | 未用欄位零樣本intake、prior-only unique-event speed references | **HARNESS／PARTIAL RESEARCH**：448 meetings完整盤點；future／duplicates／root cache反例修正，14 scoped／AU808 tests PASS；source-bound outcome研究與actual fitted producer仍待接駁，無績效判決。 |
+| [EXP-20261012-02](EXP-20261012-02-au-exact-venue-results-identity.md) | 2026-10-12 | AU | Archive／reflector取消venue substring／layout collapse／all-row fallback | **CORRECTNESS／G2 PARTIAL**：16 fixtures PASS、full AU798；183配對轉unmatched，140僅source-bound metadata可恢復、43仍未解；無PIT／candidate KPI／release。 |
+| [EXP-20261012-01](EXP-20261012-01-au-dated-results-fill-safety.md) | 2026-10-12 | AU | CSV exact venue補值、raw draw保留、dated lineage CLI與研究副本驗收 | **CORRECTNESS／G2 PARTIAL**：34410列、83951 fills、全部原有非placeholder值保持；20880 conflicts／80 flags保留；43 scoped tests PASS，無PIT／績效／release判決。 |
+| [EXP-20261011-02](EXP-20261011-02-au-source-bound-baseline-description.md) | 2026-10-11 | AU | 原來源 serving baseline、完整 reported roster、19 leaf cohort 描述 | **DESCRIPTIVE／PIT FLAG**：1879場18075馬57日；leaf outcome只到09-26保護既有blind；無候選、CI、WIN或release。 |
+| [EXP-20261011-01](EXP-20261011-01-au-serving-directory-cache-audit.md) | 2026-10-11 | AU | 原目錄／Markdown-only serving copies 的 PF cache 差異、fresh worker 接駁與 RA publication/capture audit | **DIAGNOSTIC／PIT FLAG**：3385場34473馬 fresh worker ability/final ranking精確一致；copy root cache影響404場有序Top4，08-05後2579場零差；329 RA explicit publication stamps，22 pairs revision晚於capture。無候選KPI／WIN／release。 |
 | [EXP-20261009-05](EXP-20261009-05-au-speed-recency-orth.md) | 2026-10-09 | AU | 速度評分重新開發：近期加權（最少 2 仗）＋同 pace_figure 去重疊，k=0.5 | **PRE-REGISTERED／BLIND SHADOW**：dev（<09-27，2,078 場）36 組合全正，揀中 Gold +0.63pp [+0.14,+1.11]、Good +0.67pp [+0.14,+1.20]、5/5 fold，但有揀選偏差；同 EXP-20260927-02 共用 terminal（09-27 起 2,000 場），未揭盲（457 場）。 |
 | [EXP-20261009-04](EXP-20261009-04-au-class-score-prospective.md) | 2026-10-09 | AU | class_score 加入 class_weight（現行無 gain 架構，預先登記，k 只喺 09-09 前 dev 揀） | **dev REJECT → USER-ACCEPTED EXPERIMENTAL LIVE**：2,087 場 k=0.15 Gold −0.10pp、Good +0.19 [+0.05,+0.38]、NDCG@5 +0.13 [+0.02,+0.25]，9 指標 7 正；Kelvin 接受 2 場 Gold 噪音。`WC_AU_CLASS_SCORE_LIVE=0` 回退、`class_score_live_delta` 影子、≥600 場前瞻回退閘。**唔係已證實改善**。 |
 | [EXP-20261009-03](EXP-20261009-03-au-first-up-and-debut.md) | 2026-10-09 | AU | 預先登記：休後≥180日舊績打折（H1a/b）、初出馬近績用試閘分（H2a/b） | **REJECT（四臂）**：只用發現窗口前 2,087 場判；H1a Gold −0.19pp、H2a Good +0.58 [+0.05,+1.10] 但 Gold −0.14。H1 喺發現窗口 Gold +0.42（CI>0）而之前係負 —— 發現窗口幻覺。 |
@@ -116,3 +121,54 @@
 - [EXP-20260929-01](EXP-20260929-01-hkjc-hv-v3-experimental-live.md) — **USER-ACCEPTED EXPERIMENTAL LIVE**：只限跑馬地標準馬匹用 `draw + 0.45×(PIT谷草性能−60)`；沙田／AWT／初出馬／7D權重不變；115場歷史方向正但屬 post-hoc，保留 env rollback 同 V2 rollback shadow，未稱正式改善
 - [EXP-20260929-02](EXP-20260929-02-hkjc-sha-tin-shape-shrink.md) — `trip_half`／`fit_half`／`both_half` 全因 Gold 回歸 REJECT；`draw70` Gold/Good打和但 ranking證據不足，凍結成80場沙田草地 forward shadow；HV/AWT/初出馬 no-op
 - [EXP-20260929-03](EXP-20260929-03-hkjc-sha-tin-season-regime-audit.md) — 沙田新季係**多維度 predictive drift**：live AUC −0.1089、trainer −0.1172、class −0.0873、stability −0.0785、shape −0.0447；sectional持平、form-line上升。資料冇死欄位，28場不足即時重配權，只能 forward shadow
+
+- [EXP-20261012-04](EXP-20261012-04-au-production-training-projection.md): exact production projection + actual day-consensus fitter; full-corpus baseline/coefficient probes, synthetic OOS integration and scoped/quick checks PASS; canonical full check RED (Shared phase timeouts), G1 remains PARTIAL; no candidate gain/PIT/release claim.
+
+- [EXP-20261012-05](EXP-20261012-05-au-captured-snapshot-recovery.md): byte-exact 13-resource local ref witnesses; 23,933 captured ability instances reconstructed, wet/profile divergences explicit; G2 PARTIAL, no PIT/gain/release claim.
+
+- [EXP-20261012-06](EXP-20261012-06-au-historical-label-backup-observations.md): 62 frozen backups,1658 exact complete historical label observations/25 unmatched; byte-bound, timestamp unverified; G2 PARTIAL, no PIT/fit/price/shadow/release claim.
+
+- [EXP-20261012-07](EXP-20261012-07-au-result-identity-and-trial-repair.md): 12 source-bound Track corrections +2 proven trial rows separately quarantined;25/25 complete target rosters recovered, actual writer fixtures25/25 PASS; G2 PARTIAL/no availability or gain/release claim.
+
+- [EXP-20261012-08 — result reader boundaries](EXP-20261012-08-au-result-reader-boundaries.md): five actual reader fixtures, copy invariants and operational limits; G2 PARTIAL, no performance verdict.
+
+- [EXP-20261012-09 — retest readiness semantics](EXP-20261012-09-au-retest-readiness-semantics.md): date matches no longer certify PIT; pending registrations remain inactive; correctness scope only.
+
+- [EXP-20261012-10 — AU registry report/snapshot](EXP-20261012-10-au-registry-report-snapshot.md): captured spec transport, real dimension plugin and full captured-input equivalence; Phase A PARTIAL.
+
+- [EXP-20261012-11 — shadow terminal state](EXP-20261012-11-au-shadow-terminal-state.md): durable blind freeze/config integrity/reveal reuse/OS lock; original candidate configs preserved, lifecycle/PIT PARTIAL.
+
+- [EXP-20261012-12 — sectional zero display](EXP-20261012-12-au-sectional-zero-display.md): dormant helper preserves numeric zero;3,385/34,473 captured rendering comparison exact; H/PIT/calibration PARTIAL.
+
+- [EXP-20261012-13 — field-size leaf diagnostics](EXP-20261012-13-au-field-size-leaf-diagnostics.md): all76 cells/source-bound sample exact; nominal day CIs added; incremental/provenance/OOS still PARTIAL.
+
+- [EXP-20261012-14 — refit canonical rounding](EXP-20261012-14-au-refit-canonical-rounding.md):937 meaningful rounding mismatches corrected; all34,473 default published vectors exact; harness/PIT gaps retained.
+- [EXP-20261012-15 — genuine new leaf](EXP-20261012-15-au-genuine-leaf-plugin.md): actual three-arm pipeline/report/dashboard/eval/refit/contract/explanation connection; dormant exact, safety trace preserved; G3 PARTIAL.
+
+- [EXP-20261012-16 — registry display](EXP-20261012-16-au-registry-display-alignment.md): fixed count/label mismatch; real static cards6/6/7 after transport; default corpus exact; G3 PARTIAL.
+- [EXP-20261012-17 — registry cache schema](EXP-20261012-17-dashboard-registry-cache-schema.md): schema5 stale shape rejected by6; isolated fixtures, no live cache apply.
+
+- [EXP-20261012-18 — question coverage/inventory](EXP-20261012-18-au-question-coverage-inventory.md):414 scoped working cells/historical witnesses; exact names/count/coefficient clause verified; full audit incomplete.
+
+- [EXP-20261012-19 — AU offline performance baseline](EXP-20261012-19-au-offline-performance-baseline.md):8-race full cache-only replay, median16.99s, four exact output repeats; source timeout overrides verified, live/headroom/optimization pending.
+
+- [EXP-20261012-20 — people refresh single parse](EXP-20261012-20-au-people-refresh-single-parse.md):20people fixedclockcache/snapshotbytesexact,fulloutputequivalence;warm8race median15.37s;fullchecksPASS,live/nightlyunverified.
+
+- [EXP-20261012-21 — loaded AU scheduler/source provenance](EXP-20261012-21-au-loaded-scheduler-provenance.md):fourloadedargv/cwdverified/currentlocalHEADmatches;allidle,source/profilebundle andhistoricalduration notcertified;train/servePARTIAL.
+
+- [EXP-20261012-22 — output-layer descriptions](EXP-20261012-22-au-output-layer-descriptions.md):1399 core verdicts/13423 grades exact;43 fixed-window cohorts;confidence/safety nominal diagnostics,no calibration/WIN;fullchecksPASS.
+
+- [EXP-20261012-23 — refresh failure gate / actual field E2E](EXP-20261012-23-au-refresh-rebuild-failure-and-field-e2e.md):nonzero rebuild cannot report success;172scope/fullchecksPASS;actual16→15refresh/snapshot checks,parsergoing andraw/densepost-withdrawal gapsremain.
+
+- [EXP-20261012-24 — raw draw / going transport](EXP-20261012-24-au-refresh-draw-and-going-transport.md):actual field→unchanged→going-only/parser/static chainPASS;3385capturedraces outputrow-only/fullLogicexact;classheader/legacy/live/browser/domainrollbackpending.
+
+- [EXP-20261012-25 — modern class/cache](EXP-20261012-25-au-modern-class-header-cache.md):3385classmetadatacorrect/otherfields exact;cache7+fullchecksPASS;staticheaderclass/Heavy8verified;aggregateDRAFTcreated,fingerprintreuse/live/PITpending.
+
+- [EXP-20261012-26 — static fingerprint reuse](EXP-20261012-26-au-static-fingerprint-reuse.md):JSONnativediskfingerprint;actual8racecollector1/0/1 reparses/fullpayloadsexact;fullchecksPASS,ROI/live/Drive/fullscopepending.
+
+- [EXP-20261012-27 — silent dependencies／75-hit source semantics](EXP-20261012-27-au-silent-dependency-and-semantic-review.md):4import fallbacks fixed,RED5F/GREEN7P/fullPASS;75original hits rebound;open caller/PIT/missing-source pathways retained.
+
+- [EXP-20261012-28 — draw baseline refusal](EXP-20261012-28-au-draw-baseline-refusal.md):19tests/18validmatrixbytepairs;missingCSVnonzero,unverifiablebaselinepreserved;atomic/PITpending.
+- [EXP-20261012-29 — finite PF guard](EXP-20261012-29-au-pf-finite-input-guard.md):NaN100faultrefused,108testsGREEN/actualCLI;3575storedsummary+36543pacecalls exact;fullserving/PIT/publishpending.
+
+- [EXP-20261012-30 — fresh serving source parity](EXP-20261012-30-au-fresh-serving-source-parity.md):actual3385/34473/frozenFacts/root/fullverdict exact;4270runtimebodychecks/importreads/controlfaulttests;profile/PIT/live scopes explicit.

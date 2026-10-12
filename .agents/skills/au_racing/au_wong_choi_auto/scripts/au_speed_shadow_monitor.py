@@ -53,6 +53,8 @@ from model_evaluation_decision import (  # noqa: E402
 )
 
 
+from au_shadow_state import (exclusive_status_lock, freeze_complete_day_sample, reuse_revealed_state, sealed_status, validate_config_record)  # noqa: E402
+
 EXPERIMENT_ID = "EXP-20260927-02"
 START_DATE = "2026-09-27"
 TARGET_RACES = 2000
@@ -353,19 +355,17 @@ def atomic_write(path: Path, payload: dict) -> None:
 
 def validate_existing_config(existing: dict) -> None:
     """Reject config drift once any prospective race has been collected."""
-    old_hash = ((existing.get("config") or {}).get("config_sha256"))
-    if not old_hash or old_hash == config()["config_sha256"]:
-        return
-    if existing.get("races_collected", 0) == 0 and not existing.get("outcomes_visible"):
-        return
-    raise ValueError("shadow config changed after collection started")
+    validate_config_record(existing, config())
 
 
-def run(data_root: Path, output: Path) -> dict:
+def _run_locked(data_root: Path, output: Path) -> dict:
     existing = {}
     if output.exists():
         existing = json.loads(output.read_text(encoding="utf-8"))
         validate_existing_config(existing)
+    reused = reuse_revealed_state(existing, TARGET_RACES)
+    if reused is not None:
+        return reused
     meeting_dates = []
     for name in scored_meeting_index(data_root):
         match = MEETING_RE.match(name)
@@ -375,15 +375,26 @@ def run(data_root: Path, output: Path) -> dict:
     standards = build_asof_standards(observations, meeting_dates)
     races = load_races(data_root, START_DATE, standards)
     rows = race_rows(races)
-    locked_keys = existing.get("locked_race_keys")
+    sample = freeze_complete_day_sample(rows, existing, TARGET_RACES,
+                                       key_fn=race_key, day_selector=select_complete_date_sample)
+    if sample is not None:
+        atomic_write(output, sealed_status(config(), sample))
     status = build_status(
-        rows,
+        sample['rows'] if sample is not None else rows,
         reference_races=len(observations),
         reference_conflicts=conflicts,
-        locked_keys=locked_keys,
+        target=TARGET_RACES,
+        locked_keys=sample['locked_race_keys'] if sample is not None else None,
     )
+    if sample is not None:
+        status['sample_payload_sha256'] = sample['sample_payload_sha256']
     atomic_write(output, status)
     return status
+
+
+def run(data_root: Path, output: Path) -> dict:
+    with exclusive_status_lock(output):
+        return _run_locked(data_root, output)
 
 
 def main() -> int:

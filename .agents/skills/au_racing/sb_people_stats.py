@@ -22,6 +22,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -53,10 +54,7 @@ def parse_person_tables(html):
     Field Size 等之後可以在有 captured_at 的 forward snapshot 上驗證，
     而不會把 Career 與 Last 12 Months 的 `Good` 混為同一格。
     """
-    try:
-        from bs4 import BeautifulSoup
-    except ImportError:
-        return {}
+    from bs4 import BeautifulSoup
     soup = BeautifulSoup(html, "lxml")
     output = {}
     for table in soup.find_all("table"):
@@ -136,7 +134,11 @@ def parse_person(html):
     同一個標籤（例 `Good`）喺「Career」同「Last 12 Months」兩張表都出現，
     所以只收**第一次**（生涯），唔好畀後面嗰張覆蓋。
     """
-    tables = parse_person_tables(html)
+    return _stats_from_tables(parse_person_tables(html))
+
+
+def _stats_from_tables(tables):
+    """Extract the legacy view while preserving section and label order."""
     out = {}
     overall = (tables.get("Overall Stats") or {}).get("default") or {}
     for label in ("Career", "12 Months", "Last 10", "Last 100"):
@@ -217,8 +219,9 @@ def refresh(people, fetcher=None, ttl_days=TTL_DAYS, max_people=40, path=None,
         html = f.get(url)
         if not html:
             continue
-        stats = parse_person(html)
         contextual_stats = parse_person_tables(html)
+        # The old two parses produced independent dictionaries.
+        stats = deepcopy(_stats_from_tables(contextual_stats))
         if not stats:
             continue
         fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")

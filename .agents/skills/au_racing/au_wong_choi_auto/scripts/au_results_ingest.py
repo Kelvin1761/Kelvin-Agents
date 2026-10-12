@@ -38,7 +38,9 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
+import math
 import re
 import shutil
 import sys
@@ -136,8 +138,8 @@ def runner_draw(meeting: Path) -> dict:
     會塌到只剩 backfill CSV 嘅 703 行。
 
     同 `Time` 唔同，檔位係揾得返嘅 —— 場次資料夾自己嘅 Logic.json 就有。呢度帶
-    出去嘅係**原始抽籤**；轉成實際出閘檔位喺 `_densify_by_race` 做（分母一定要用
-    「實際有賽果嗰批」，唔係 Logic 名單）。
+    stored Logic 可能已被 serving 正規化。此 helper 的 barrier 不獲授予 raw-draw
+    certification；fill_missing 不用它補原始 CSV 檔位。
     """
     out = {}
     for path in sorted(meeting.glob("Race_*_Logic.json")):
@@ -207,6 +209,14 @@ def load_sb_csv(path: Path, stats: dict) -> list[dict]:
     return out
 
 
+def result_identity(row: dict) -> tuple[str, str, str, str]:
+    """A result belongs to one venue; date/race/horse alone can cross entries."""
+    return (str(row.get("Date") or "").strip(),
+            re.sub(r"[^a-z0-9]", "", str(row.get("Track") or "").lower()),
+            str(row.get("Race") or "").strip(),
+            normalize_horse_name(row.get("Horse") or ""))
+
+
 def existing_keys(path: Path) -> tuple[set, int]:
     keys, count = set(), 0
     if not path.exists():
@@ -214,9 +224,7 @@ def existing_keys(path: Path) -> tuple[set, int]:
     with path.open(encoding="utf-8-sig", newline="") as handle:
         for row in csv.DictReader(handle):
             count += 1
-            keys.add((str(row.get("Date") or "").strip(),
-                      str(row.get("Race") or "").strip(),
-                      normalize_horse_name(row.get("Horse") or "")))
+            keys.add(result_identity(row))
     return keys, count
 
 
@@ -297,18 +305,79 @@ def _meeting_date(meeting: Path) -> str:
     return match.group(1) if match else ""
 
 
-def build_fill_map(archive_root: Path) -> dict:
-    """{(Date, Race, horse_slug): {Barrier, Weight}} 橫跨所有場次資料夾。"""
-    out = {}
+def build_fill_map(archive_root: Path, diagnostics: list | None = None) -> dict:
+    """Exact date/venue/race/horse matches; conflicting fields never win by order.
+
+    Reflector header anchors venue/date to this meeting. Folder aliases alone do
+    not establish identity. Logic barrier may have been densified by serving and
+    therefore cannot fill a raw result draw without a separately bound raw source.
+    This is retrospective metadata recovery, not historical PIT certification.
+    """
+    diagnostics = diagnostics if diagnostics is not None else []
+    candidates = defaultdict(lambda: defaultdict(set))
     for meeting in sorted(archive_root.rglob("*")):
         if not meeting.is_dir() or not any(meeting.glob("Race_*_Logic.json")):
             continue
-        date = _meeting_date(meeting)
-        if not date:
+        header = meeting / "Race_Results_Reflector.md"
+        if not header.is_file():
+            diagnostics.append({"meeting": str(meeting), "reason": "venue_header_missing"})
             continue
-        for (race_no, slug), values in runner_draw(meeting).items():
-            if race_no and slug:
-                out.setdefault((date, str(race_no), slug), values)
+        venue, date, _ = parse_reflector(header)
+        if not venue or not date or date != _meeting_date(meeting):
+            diagnostics.append({"meeting": str(meeting), "reason": "venue_date_binding_unproven"})
+            continue
+        try:
+            inconsistent = False
+            for logic_path in sorted(meeting.glob("Race_*_Logic.json")):
+                data = json.loads(logic_path.read_text(encoding="utf-8"))
+                context = data.get("race_analysis") or {}
+                stated_venue = (context.get("meeting_intelligence") or {}).get("venue")
+                stated_date = context.get("date")
+                filename_race = re.fullmatch(r"Race_(\d+)_Logic.json", logic_path.name)
+                stated_race = str(context.get("race_number") or "")
+                if ((stated_venue and result_identity({"Track": stated_venue})[1] !=
+                     result_identity({"Track": venue})[1]) or
+                    (stated_date and str(stated_date) != date) or
+                    (stated_race and filename_race and stated_race != filename_race.group(1))):
+                    inconsistent = True
+            if inconsistent:
+                diagnostics.append({"meeting": str(meeting), "reason": "logic_header_identity_conflict"})
+                continue
+            values_by_runner = runner_draw(meeting)
+        except (ValueError, TypeError, OverflowError) as exc:
+            diagnostics.append({"meeting": str(meeting), "reason": "invalid_logic_metadata",
+                                "error": str(exc)})
+            continue
+        for (race_no, slug), values in values_by_runner.items():
+            if not race_no or not slug:
+                continue
+            identity = result_identity({"Date": date, "Track": venue, "Race": race_no, "Horse": slug})
+            for column, value in values.items():
+                if column == "Barrier":
+                    continue
+                if str(value or "").strip():
+                    if column in {"Weight", "Distance"}:
+                        try:
+                            number = float(value)
+                            valid = math.isfinite(number) and number > 0
+                            if column == "Distance":
+                                valid = valid and number.is_integer()
+                        except (ValueError, TypeError):
+                            valid = False
+                        if not valid:
+                            diagnostics.append({"key": identity, "column": column,
+                                                "reason": "invalid_source_value"})
+                            continue
+                    candidates[identity][column].add(str(value))
+    out = {}
+    for identity, fields in candidates.items():
+        out[identity] = {}
+        for column, values in fields.items():
+            if len(values) == 1:
+                out[identity][column] = next(iter(values))
+            else:
+                diagnostics.append({"key": identity, "column": column,
+                                    "reason": "conflicting_source_values", "values": sorted(values)})
     return out
 
 
@@ -358,87 +427,116 @@ def _densify_by_race(rows: list[dict]) -> tuple[int, int]:
     return changed, skipped
 
 
-def fill_missing(results_csv: Path, archive_root: Path, apply: bool) -> int:
-    """填返現有行嘅空白 `Barrier` / `Weight`，**唔覆蓋**任何已有值。
+def fill_missing(results_csv: Path, archive_root: Path, apply: bool,
+                 report_path: Path | None = None, *, source_csv: Path | None = None,
+                 lineage_path: Path | None = None) -> int:
+    """Fill exact-identity blank metadata; preserve every existing nonblank value.
 
-    點解要一個獨立模式：上面個合併係 add-only（`fresh` 只收 key 未見過嘅行），
-    所以已經寫入去嘅空白格永遠唔會自己好返。2026-08-31 實測缺口：
-
-        2026-07 檔位覆蓋 52.7% ・ 2026-08 **0.0%**（9,809 行）
-
-    只填空格係故意嘅 —— 舊行（2025-08 → 2026-06）由 `au_statistics_aggregator`
-    寫入，覆蓋 99–100%，冇理由用 Logic.json 去覆蓋一個已經對嘅值。
+    Raw Barrier is never reconstructed from normalized stored Logic. No result
+    roster assumption or densification occurs here. Explicit reports may be
+    written during dry-run; the input CSV and backups remain untouched.
     """
     if not results_csv.exists():
         print(f"❌ {results_csv} 唔存在")
         return 1
+    if report_path is not None and report_path.resolve() == results_csv.resolve():
+        raise ValueError("fill audit must not overwrite the results CSV")
+    original_bytes = results_csv.read_bytes()
     with results_csv.open(encoding="utf-8-sig", newline="") as handle:
-        rows = list(csv.DictReader(handle))
-    fill = build_fill_map(archive_root)
-    print(f"Logic.json 覆蓋      : {len(fill)} 個 (日期,場次,馬) 記錄")
-    print(f"CSV 行               : {len(rows)}")
-    filled = defaultdict(int)
-    blank_no_source = defaultdict(int)
-    renormalised = defaultdict(int)
-    # 保值格式正規化。`Barrier` / `Distance` 現有值係浮點寫法（`"2.0"` / `"1200.0"`），
-    # 新填嘅係純數字 —— 同一欄兩個慣例，正正係本檔上面警告過嘅嘢：
-    # 「A second convention in the same column silently breaks whichever consumer
-    # parses the string rather than the number.」`"2.0".isdigit()` 係 False 已經
-    # 令檔位偏差表讀到 0 行，而 `"1200.0"` 令逐距離 cell 引擎永遠查唔到。
-    # 呢一步唔改任何數值，只統一寫法。
-    for row in rows:
-        for column in ("Barrier", "Distance"):
-            text = str(row.get(column) or "").strip()
-            if not text:
-                continue
-            try:
-                number = float(text)
-            except ValueError:
-                continue
-            if number != int(number):
-                continue
-            canonical = str(int(number))
-            if canonical != text:
-                row[column] = canonical
-                renormalised[column] += 1
-    for row in rows:
-        key = (
-            (row.get("Date") or "").strip(),
-            str(row.get("Race") or "").strip(),
-            normalize_horse_name(row.get("Horse")),
-        )
-        source = fill.get(key)
-        for column in FILLABLE_COLUMNS:
-            if str(row.get(column) or "").strip():
-                continue
-            value = (source or {}).get(column, "")
-            if value:
-                row[column] = value
-                filled[column] += 1
-            else:
-                blank_no_source[column] += 1
-    dens_changed, dens_skipped = _densify_by_race(rows)
-    for column in FILLABLE_COLUMNS:
-        print(f"{column:<20} 填返 {filled[column]:>6}｜仍然空白 {blank_no_source[column]:>6}")
-    print(f"{'Barrier':<20} 實際出閘檔位修正 {dens_changed:>6}｜跳過（剪短／缺值）{dens_skipped:>6}")
-    for column, count in sorted(renormalised.items()):
-        print(f"{column:<20} 格式統一 {count:>6}（浮點寫法 → 純數字，數值不變）")
-    if not apply:
-        print("\ndry run — nothing written. re-run with --apply")
-        return 0
-    if not sum(filled.values()) and not sum(renormalised.values()) and not dens_changed:
-        print("\nnothing to fill.")
-        return 0
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    backup = results_csv.with_suffix(f".csv.bak_{stamp}")
-    shutil.copy2(results_csv, backup)
-    print(f"\nbackup: {backup.name}")
-    with results_csv.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
-        writer.writeheader()
+        reader = csv.DictReader(handle)
+        fieldnames = reader.fieldnames
+        rows = list(reader)
+    if not fieldnames or not set(FIELDNAMES) <= set(fieldnames):
+        raise ValueError("results CSV schema incomplete")
+    identities = [result_identity(row) for row in rows]
+    if len(identities) != len(set(identities)):
+        raise ValueError("duplicate result identities; repair requires conflict review")
+    if (source_csv is None) != (lineage_path is None):
+        raise ValueError("dated-source CSV and lineage must be provided together")
+    source_hashes = {}
+    if source_csv is not None:
+        from au_dated_results_repair import repair_rows
+        protected = {source_csv.resolve(), lineage_path.resolve(), results_csv.resolve()}
+        if report_path is not None and report_path.resolve() in protected:
+            raise ValueError("fill audit must not overwrite an input")
+        source_bytes = source_csv.read_bytes()
+        lineage_bytes = lineage_path.read_bytes()
+        source_hashes[str(source_csv)] = hashlib.sha256(source_bytes).hexdigest()
+        source_hashes[str(lineage_path)] = hashlib.sha256(lineage_bytes).hexdigest()
+        with source_csv.open(encoding="utf-8-sig", newline="") as handle:
+            source_rows = list(csv.DictReader(handle))
+        lineage = json.loads(lineage_bytes)
+        if not isinstance(lineage, list):
+            raise ValueError("dated-source lineage must be a list")
+        for link in lineage:
+            source_path = Path(link.get("source_path") or "")
+            if not source_path.is_file():
+                raise ValueError("dated source file missing")
+            if report_path is not None and report_path.resolve() == source_path.resolve():
+                raise ValueError("fill audit must not overwrite a source page")
+            name = str(source_path)
+            if name not in source_hashes:
+                source_hashes[name] = hashlib.sha256(source_path.read_bytes()).hexdigest()
+            if source_hashes[name] != link.get("source_sha256"):
+                raise ValueError("dated source hash changed")
+        rows, audit = repair_rows(rows, source_rows, lineage)
+        changes = audit["filled"]
+        conflicts = audit["conflicts"]
+        diagnostics = audit["quarantined_sources"]
+        filled = defaultdict(int)
+        for change in changes:
+            filled[change["column"]] += 1
+        barrier_policy = "Only exact dated-run source fills blanks; all existing draws preserved"
+        source_method = "dated_source_csv_with_hash_bound_lineage"
+    else:
+        diagnostics = []
+        fill = build_fill_map(archive_root, diagnostics)
+        filled = defaultdict(int)
+        changes, conflicts = [], []
         for row in rows:
-            writer.writerow({k: row.get(k, "") for k in FIELDNAMES})
-    print(f"✅ 寫入 {results_csv.name}")
+            identity = result_identity(row)
+            source = fill.get(identity, {})
+            for column in FILLABLE_COLUMNS:
+                value = source.get(column, "")
+                before = str(row.get(column) or "")
+                if before.strip():
+                    if value and before.strip() != str(value).strip():
+                        conflicts.append({"key": identity, "column": column,
+                                          "existing": before, "source": value})
+                    continue
+                if value:
+                    row[column] = value
+                    filled[column] += 1
+                    changes.append({"key": identity, "column": column, "before": before, "after": value})
+        barrier_policy = "Preserve raw CSV; normalized Logic draw not a certified raw source"
+        source_method = "exact_meeting_header_logic_metadata"
+    for name, expected in source_hashes.items():
+        if hashlib.sha256(Path(name).read_bytes()).hexdigest() != expected:
+            raise ValueError("dated source changed during repair")
+    report = {"schema": "au-result-fill-audit/v2", "rows_before": len(rows),
+              "rows_after": len(rows), "filled": dict(filled), "changes": changes,
+              "conflicts": conflicts, "source_flags": diagnostics,
+              "input_csv_sha256": hashlib.sha256(original_bytes).hexdigest(),
+              "source_input_hashes": source_hashes, "source_method": source_method,
+              "barrier_policy": barrier_policy,
+              "historical_pit": "NOT_CERTIFIED", "mode": "apply" if apply else "dry_run"}
+    backup = None
+    if apply and changes:
+        if results_csv.read_bytes() != original_bytes:
+            raise ValueError("results CSV changed during repair")
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        backup = results_csv.with_suffix(f".csv.bak_{stamp}")
+        shutil.copy2(results_csv, backup)
+        with results_csv.open("w", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(rows)
+    report["backup"] = str(backup) if backup else None
+    if report_path is not None:
+        report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n")
+    print(f"rows {len(rows)}; fills {dict(filled)}; conflicts {len(conflicts)}; source flags {len(diagnostics)}")
+    print(barrier_policy + "; historical PIT not certified")
+    print("applied with backup" if backup else "input CSV unchanged")
     return 0
 
 
@@ -460,10 +558,17 @@ def main() -> int:
     ap.add_argument("--fill-missing", action="store_true",
                     help="填返現有行嘅空白 Barrier / Weight（由 Logic.json），"
                          "唔加新行、唔覆蓋任何已有值")
+    ap.add_argument("--sb-lineage", type=Path, help="exact dated-run source identity/hash lineage for --fill-missing --sb-csv")
+    ap.add_argument("--fill-report", type=Path, help="explicit metadata fill diff/conflict JSON; may write in dry-run")
     args = ap.parse_args()
 
+    if not args.fill_missing and (args.sb_lineage or args.fill_report):
+        ap.error("--sb-lineage and --fill-report require --fill-missing")
     if args.fill_missing:
-        return fill_missing(args.results_csv, args.archive_root, args.apply)
+        if bool(args.sb_csv) != bool(args.sb_lineage):
+            ap.error("--fill-missing --sb-csv requires --sb-lineage; an unbound source cannot fill metadata")
+        return fill_missing(args.results_csv, args.archive_root, args.apply, args.fill_report,
+                            source_csv=args.sb_csv, lineage_path=args.sb_lineage)
 
     rows, stats = [], defaultdict(int)
     if args.sb_csv:
@@ -474,12 +579,12 @@ def main() -> int:
     rows.extend(reflector_rows)
     known, existing_count = existing_keys(args.results_csv)
     fresh = [r for r in rows
-             if (r["Date"], str(r["Race"]), normalize_horse_name(r["Horse"])) not in known]
+             if result_identity(r) not in known]
 
     seen = set()
     deduped = []
     for r in fresh:
-        key = (r["Date"], str(r["Race"]), normalize_horse_name(r["Horse"]))
+        key = result_identity(r)
         if key in seen:
             continue
         seen.add(key)

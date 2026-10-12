@@ -1,0 +1,167 @@
+{
+  "FEATURE_KEYS": [
+    "form_score",
+    "trial_score",
+    "sectional_score",
+    "pace_map_score",
+    "jockey_score",
+    "trainer_score",
+    "jockey_horse_fit_score",
+    "class_score",
+    "rating_score",
+    "weight_score",
+    "distance_score",
+    "track_score",
+    "formline_score",
+    "consistency_score",
+    "performance_quality_score",
+    "health_score",
+    "confidence_score",
+    "pace_figure_score",
+    "preparation_score"
+  ],
+  "ABILITY_FEATURE_KEYS": [
+    "form_score",
+    "performance_quality_score",
+    "pace_figure_score",
+    "trial_score",
+    "pace_map_score",
+    "jockey_score",
+    "trainer_score",
+    "jockey_horse_fit_score",
+    "rating_score",
+    "track_score",
+    "preparation_score"
+  ],
+  "REPORT_ONLY_FEATURE_KEYS": [
+    "sectional_score",
+    "class_score",
+    "weight_score",
+    "distance_score",
+    "formline_score",
+    "consistency_score",
+    "health_score",
+    "confidence_score"
+  ],
+  "MATRIX_WEIGHTS": {
+    "stability": 0.37099725005319806,
+    "pace_perf": 0.12093934478578448,
+    "jockey_trainer": 0.6626585553070451,
+    "class_weight": 0.3826193901797637,
+    "track": 0.14114297066700832,
+    "preparation": 0.25244110196132946
+  },
+  "SCORING_CONTRACT_VERSION": "au/raw-matrix-preparation-v2",
+  "MATRIX_FORMULAS": {
+    "stability": [
+      [
+        "form_score",
+        0.6
+      ],
+      [
+        "performance_quality_score",
+        0.4
+      ]
+    ],
+    "pace_perf": [
+      [
+        "pace_figure_score",
+        0.941744
+      ],
+      [
+        "trial_score",
+        0.058256
+      ]
+    ],
+    "race_shape": [
+      [
+        "pace_map_score",
+        1.0
+      ]
+    ],
+    "jockey_trainer": [
+      [
+        "jockey_score",
+        0.333333
+      ],
+      [
+        "trainer_score",
+        0.285714
+      ],
+      [
+        "jockey_horse_fit_score",
+        0.380952
+      ]
+    ],
+    "class_weight": [
+      [
+        "rating_score",
+        0.7
+      ],
+      [
+        "class_score",
+        0.15
+      ]
+    ],
+    "track": [
+      [
+        "track_score",
+        1.0
+      ]
+    ],
+    "form_line": [
+      [
+        "formline_score",
+        1.0
+      ]
+    ],
+    "preparation": [
+      [
+        "preparation_score",
+        1.0
+      ]
+    ]
+  },
+  "FEATURE_LABELS": {
+    "form_score": "近績分",
+    "trial_score": "試閘分",
+    "sectional_score": "段速分",
+    "pace_map_score": "檔位分",
+    "jockey_score": "騎師分",
+    "trainer_score": "練馬師分",
+    "jockey_horse_fit_score": "人馬配搭分",
+    "class_score": "級數分",
+    "rating_score": "Rating 分",
+    "weight_score": "負磅分",
+    "distance_score": "路程分",
+    "track_score": "同場／地況往績分",
+    "formline_score": "賽績線分",
+    "consistency_score": "穩定性分",
+    "performance_quality_score": "表現質素分",
+    "health_score": "備戰完整度分",
+    "confidence_score": "信心分",
+    "pace_figure_score": "L600 環境分",
+    "preparation_score": "試閘備戰分"
+  },
+  "MATRIX_LABELS": {
+    "stability": "狀態與穩定性",
+    "pace_perf": "速度考驗背景",
+    "race_shape": "檔位形勢",
+    "jockey_trainer": "騎練訊號",
+    "class_weight": "官方評分對位",
+    "track": "場地與地況適性",
+    "form_line": "賽績線",
+    "preparation": "試閘備戰"
+  },
+  "THIN_EVIDENCE_SCORED_LEAVES": [
+    "form_score",
+    "performance_quality_score",
+    "pace_figure_score",
+    "trial_score",
+    "jockey_score",
+    "trainer_score",
+    "jockey_horse_fit_score",
+    "rating_score",
+    "track_score"
+  ]
+}

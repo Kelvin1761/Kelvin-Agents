@@ -19,6 +19,7 @@ AUTO_SCRIPT_DIR = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_wong_c
 sys.path.append(str(AUTO_SCRIPT_DIR))
 sys.path.append(str(AUTO_SCRIPT_DIR))
 
+from au_result_identity import normalize_venue_name, select_venue_rows
 from au_racing_engine.matrix_mapper import MATRIX_FORMULAS  # noqa: E402
 from au_racing_engine.scoring import MATRIX_WEIGHTS, clip_score  # noqa: E402
 from au_racing_engine.scoring import FEATURE_KEYS as ENGINE_FEATURE_KEYS  # noqa: E402
@@ -85,23 +86,11 @@ def normalize_horse_name(name: str) -> str:
 
 
 def normalize_track_name(name: str) -> str:
-    clean = str(name or "").strip().lower()
-    clean = re.sub(r"^\d{4}-\d{2}-\d{2}\s+", "", clean)
-    clean = re.sub(r"\s+race\s+\d+(?:-\d+)?$", "", clean)
-    clean = clean.replace(" gardens", "")
-    clean = clean.replace(" heath", "")
-    clean = clean.replace(" lakeside", "")
-    clean = clean.replace(" hillside", "")
-    return slug(clean)
+    return normalize_venue_name(name)
 
 
-def choose_track_rows(rows: list[dict], meeting_track: str) -> list[dict]:
-    target_slug = normalize_track_name(meeting_track)
-    exact = [row for row in rows if row["track_slug"] == target_slug]
-    if exact:
-        return exact
-    loose = [row for row in rows if row["track_slug"] in target_slug or target_slug in row["track_slug"]]
-    return loose or rows
+def choose_track_rows(rows, meeting_track: str):
+    return select_venue_rows(rows, meeting_track)
 
 
 def field_bucket(field_count: int) -> str:

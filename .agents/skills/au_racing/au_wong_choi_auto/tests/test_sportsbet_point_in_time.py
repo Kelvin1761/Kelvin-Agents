@@ -159,7 +159,9 @@ class RefusalIsNotRetriedTests(unittest.TestCase):
                 self.calls += 1
                 return _R(*r)
 
-        f = C.SportsbetFormFetcher(delay=0.0, verbose=False,
+        # Retry semantics are tested using _S only, independent of the caller's
+        # cache-only research setting. The real HTTP session is never used.
+        f = C.SportsbetFormFetcher(delay=0.0, verbose=False, cache_only=False,
                                    cache_dir=Path(tempfile.mkdtemp()))
         f.session = _S()
         return f

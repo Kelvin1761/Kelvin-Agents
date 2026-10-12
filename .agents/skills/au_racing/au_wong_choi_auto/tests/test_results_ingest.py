@@ -23,6 +23,7 @@ from au_results_ingest import (  # noqa: E402
     FIELDNAMES,
     collect,
     existing_keys,
+    result_identity,
     parse_reflector,
 )
 
@@ -122,21 +123,21 @@ class TestIdempotence:
                 writer.writerow(row)
         known, count = existing_keys(csv_path)
         assert count == len(rows)
-        from au_racing_engine.source_alignment import normalize_horse_name
         fresh = [r for r in rows
-                 if (r["Date"], str(r["Race"]), normalize_horse_name(r["Horse"])) not in known]
+                 if result_identity(r) not in known]
         assert fresh == []
 
-    def test_key_is_date_race_horse_so_two_tracks_can_share_a_race_number(self, tmp_path):
+    def test_key_includes_track_for_cross_entered_same_horse(self, tmp_path):
         csv_path = tmp_path / "results.csv"
         with csv_path.open("w", encoding="utf-8-sig", newline="") as handle:
             writer = csv.DictWriter(handle, fieldnames=FIELDNAMES)
             writer.writeheader()
             writer.writerow({k: "" for k in FIELDNAMES} |
-                            {"Date": "2026-08-15", "Race": "1", "Horse": "Alpha"})
+                            {"Date": "2026-08-15", "Track": "Ipswich", "Race": "1", "Horse": "Alpha"})
         known, _ = existing_keys(csv_path)
-        assert ("2026-08-15", "1", "alpha") in known
-        assert ("2026-08-15", "1", "beta") not in known
+        assert ("2026-08-15", "ipswich", "1", "alpha") in known
+        assert ("2026-08-15", "coffsharbour", "1", "alpha") not in known
+        assert ("2026-08-15", "ipswich", "1", "beta") not in known
 
 
 if __name__ == "__main__":

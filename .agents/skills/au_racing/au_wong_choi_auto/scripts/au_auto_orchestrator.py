@@ -24,6 +24,7 @@ from au_racing_engine.engine_core import (
     horse_prize_level,
     horse_proven_class_level,
     normalise_field_barriers,
+    finite_pf_number,
 )
 from au_racing_engine.io_utils import write_json_atomic as _write_json_atomic
 from au_racing_engine.io_utils import write_text_atomic as _atomic_write_text
@@ -93,12 +94,18 @@ def _load_logic_file(logic_path: Path) -> dict:
     return logic_data
 
 
-def process_logic_file(
+def score_logic_data(
     logic_path: Path,
     going_override: str | None = None,
     *,
     logic_data: dict | None = None,
 ) -> dict:
+    """Use the complete production preprocessing/scoring path without output writes.
+
+    Source readers, profile/resources and cutoff provenance must be verified by
+    the caller; this API does not turn historical files into PIT evidence.
+    Caller-provided data is updated in place, matching process_logic_file.
+    """
     logic_data = (
         _load_logic_file(logic_path)
         if logic_data is None
@@ -143,6 +150,20 @@ def process_logic_file(
     errors = validate_logic_data(logic_data)
     if errors:
         raise ValueError(f"Logic validation failed for {logic_path}:\n" + "\n".join(errors))
+    return logic_data
+
+
+def process_logic_file(
+    logic_path: Path,
+    going_override: str | None = None,
+    *,
+    logic_data: dict | None = None,
+) -> dict:
+    logic_data = score_logic_data(
+        logic_path,
+        going_override,
+        logic_data=logic_data,
+    )
     # Write JSON first to avoid inconsistent state (json write before md/csv)
     _write_json_atomic(logic_path, logic_data)
     md_path, csv_path = write_race_outputs(logic_path, logic_data)
@@ -344,10 +365,7 @@ def _build_field_summary(horses):
             value = pf_agg.get(f"{key}_avg")
             if value is None:
                 continue
-            try:
-                values.append(float(value))
-            except (TypeError, ValueError):
-                pass
+            values.append(finite_pf_number(value, f"{key}_avg"))
         if all(
             pf_agg.get(f"{key}_avg") is not None
             for key in ("l800_delta", "l600_delta", "l400_delta", "l200_delta")
@@ -395,6 +413,8 @@ def _build_field_summary(horses):
             if len(values) >= 2
             else 0.0
         )
+        finite_pf_number(mean, f"{key}_field_mean")
+        finite_pf_number(stdev, f"{key}_field_stdev")
         summary[f"{key}_field_count"] = len(values)
         summary[f"{key}_field_mean"] = mean
         summary[f"{key}_field_stdev"] = stdev

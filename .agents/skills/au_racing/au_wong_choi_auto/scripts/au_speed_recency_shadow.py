@@ -40,6 +40,8 @@ from au_speed_venue_audit import (  # noqa: E402
 from au_unused_field_power import RE_HDR_DIST, RE_RUNNER  # noqa: E402
 from eval_metrics import race_metrics  # noqa: E402
 
+from au_shadow_state import (exclusive_status_lock, freeze_complete_day_sample, reuse_revealed_state, sealed_status, validate_config_record)  # noqa: E402
+
 EXPERIMENT_ID = "EXP-20261009-05"
 SPEED_K = 0.5
 RECENCY_WEIGHTS = (1.0, 0.8, 0.64, 0.51, 0.41, 0.33)
@@ -195,24 +197,43 @@ def evaluate(sample: list[dict]) -> dict:
     return out
 
 
-def run(root: Path, output: Path) -> dict:
-    rows = load_terminal(root)
-    sample = select_complete_date_sample(rows, TARGET_RACES)
-    cfg = config()
-    status = {"config": cfg, "races_collected": len(sample) if len(sample) >= TARGET_RACES else len(rows),
-              "race_days": len({r["date"] for r in rows}), "outcomes_visible": False, "state": "collecting"}
-    if len(sample) >= TARGET_RACES:
-        keys = [f"{r['date']}|{norm(r['venue'])}|{r['race']}" for r in sample]
-        status.update({
-            "state": "revealed", "outcomes_visible": True,
-            "sample_sha256": hashlib.sha256("\n".join(keys).encode()).hexdigest(),
-            "date_to": sample[-1]["date"], "evaluation": evaluate(sample),
-        })
+def _race_key(row):
+    return f"{row['date']}|{norm(row['venue'])}|{int(row['race'])}"
+
+
+def _atomic_status(output: Path, status: dict) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     tmp = output.with_name(f".{output.name}.tmp")
     tmp.write_text(json.dumps(status, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     tmp.replace(output)
+
+
+def _run_locked(root: Path, output: Path) -> dict:
+    existing = json.loads(output.read_text(encoding="utf-8")) if output.exists() else {}
+    cfg = config()
+    validate_config_record(existing, cfg)
+    reused = reuse_revealed_state(existing, TARGET_RACES)
+    if reused is not None:
+        return reused
+    rows = load_terminal(root)
+    sample = freeze_complete_day_sample(rows, existing, TARGET_RACES,
+                                       key_fn=_race_key, day_selector=select_complete_date_sample)
+    status = {"config": cfg, "races_collected": len(rows),
+              "race_days": len({r['date'] for r in rows}), "outcomes_visible": False, "state": "collecting"}
+    if sample is not None:
+        _atomic_status(output, sealed_status(cfg, sample))
+        status.update({k: v for k, v in sample.items() if k != 'rows'})
+        status.update({
+            "state": "revealed", "outcomes_visible": True,
+            "date_to": sample['locked_through_date'], "evaluation": evaluate(sample['rows']),
+        })
+    _atomic_status(output, status)
     return status
+
+
+def run(root: Path, output: Path) -> dict:
+    with exclusive_status_lock(output):
+        return _run_locked(root, output)
 
 
 def main() -> int:

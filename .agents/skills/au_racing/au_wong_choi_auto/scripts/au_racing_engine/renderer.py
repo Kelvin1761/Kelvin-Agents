@@ -1,4 +1,8 @@
 from __future__ import annotations
+import base64
+import json
+
+from .dimensions import FEATURE_LABELS, MATRIX_LABELS, THIN_EVIDENCE_SCORED_LEAVES, registry_snapshot, SAFETY_DEFAULTS
 
 import csv
 import io
@@ -12,52 +16,18 @@ from .matrix_mapper import MATRIX_FORMULAS
 
 ABILITY_LABEL = "綜合戰力分"
 
-FEATURE_LABELS = {
-    "form_score": "近績分",
-    "trial_score": "試閘分",
-    "sectional_score": "段速分",
-    # 2026-08-05 改名：`pace_map_score` 量嘅**純粹係檔位統計**（例：「檔位 3
-    # （內檔）據 Canterbury 1550m 統計勝率 18.8%（基準 16.7%）」），完全冇「形勢／
-    # 走位」內容 —— 2026-07-11 已經把借用嘅 track_score 歸還「場地適性」，令佢變成
-    # 純檔位。叫「形勢分」而維度又叫「檔位形勢」，讀者會以為係兩個訊號、或者以為
-    # 檔位被計兩次（Kelvin 就係咁問）。一個訊號一個名。
-    "pace_map_score": "檔位分",
-    "jockey_score": "騎師分",
-    "trainer_score": "練馬師分",
-    "jockey_horse_fit_score": "人馬配搭分",
-    "class_score": "級數分",
-    "rating_score": "Rating 分",
-    "weight_score": "負磅分",
-    "distance_score": "路程分",
-    "track_score": "同場／地況往績分",
-    "formline_score": "賽績線分",
-    "consistency_score": "穩定性分",
-    "performance_quality_score": "表現質素分",
-    "health_score": "備戰完整度分",
-    "confidence_score": "信心分",
-    "pace_figure_score": "L600 環境分",
-    "preparation_score": "試閘備戰分",
-}
 
-MATRIX_LABELS = {
-    "stability": "狀態與穩定性",
-    # 內部 key 為兼容舊 Logic 保留；Sportsbet L600 係 race-level 環境，唔係逐駒 split。
-    "pace_perf": "速度考驗背景",
-    "race_shape": "檔位形勢",
-    "jockey_trainer": "騎練訊號",
-    # 2026-08-26：改名。呢個維度嘅 MATRIX_FORMULAS 係 `rating_score × 0.70` ——
-    # 得一個 leaf。`class_score` 2026-07-29 退出排名、`weight_score` 2026-07-30
-    # 退出，兩個而家淨係出報告。叫「級數與負重」會令人以為班次同負磅入咗分，
-    # 實情兩樣都冇。改叫「官方評分對位」，同實際計算對齊。
-    "class_weight": "官方評分對位",
-    "track": "場地與地況適性",
-    "form_line": "賽績線",
-    "preparation": "試閘備戰",
-}
 
 # 2026-07-11：track_score 已去重，只喺「場地與地況適性」維度出現。「檔位形勢」而家係
 # 純檔位/走位，冇再借用 track_score，所以呢個跨維度別名表清空。
 MATRIX_COMPONENT_LABELS = {}
+
+
+def _ranking_dimension_label():
+    """Keep report wording aligned with the effective ranking coefficients."""
+    from .dimensions import ranking_dimension_numeral
+    from .scoring import MATRIX_WEIGHTS
+    return f"{ranking_dimension_numeral(MATRIX_WEIGHTS)}維排名"
 
 
 def _component_label(key, name):
@@ -70,18 +40,13 @@ REPORT_BANS = ("[FILL]", "PLACEHOLDER", "待補", "分析中")
 THIN_EVIDENCE_MIN_DEFAULTS = 2
 # 只數**計分**嘅 leaf。0% 權重嘅 leaf（sectional/consistency/distance/...）
 # 停留喺預設唔代表個排名分建基於空氣，所以唔應該數入去。
-THIN_EVIDENCE_SCORED_LEAVES = (
-    "form_score", "performance_quality_score", "pace_figure_score", "trial_score",
-    "jockey_score", "trainer_score", "jockey_horse_fit_score", "rating_score",
-    "track_score",
-)
 
 
 def _default_leaf_count(auto: dict) -> int:
-    """幾多個計分 leaf 剛好停留喺 60.0（＝冇證據嘅預設）。
+    """Count the registered legacy numeric defaults, with tolerance 0.005.
 
-    用 `== 60.0`（容差 0.005）而唔係 evidence_state，因為 evidence_state 唔係
-    每個 leaf 都寫，而「剛好 60.00」正正就係每個 leaf 嘅 no-evidence 出口。
+    This preserves the existing numeric safety policy; it does not infer
+    missing provenance or replace every engine fallback with a shared value.
     """
     fs = auto.get("feature_scores")
     if not isinstance(fs, dict) or not fs:
@@ -95,7 +60,7 @@ def _default_leaf_count(auto: dict) -> int:
         if val is None:
             continue          # 個別 leaf 缺 key 亦當「唔知」，唔算預設
         try:
-            if abs(float(val) - 60.0) < 0.005:
+            if abs(float(val) - SAFETY_DEFAULTS[key]) < 0.005:
                 n += 1
         except (TypeError, ValueError):
             continue
@@ -243,7 +208,10 @@ def render_race_markdown(logic_data: dict) -> str:
     verdict = ensure_verdict(logic_data)
     race = logic_data.get("race_analysis", {})
     horses = logic_data.get("horses", {})
+    encoded_registry = base64.b64encode(json.dumps(registry_snapshot(), sort_keys=True,
+        separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode()).decode("ascii")
     lines = [
+        f"<!-- wc-au-dimensions:v1:{encoded_registry} -->",
         _panorama(race, verdict, horses),
         "",
         "## [第二部分] 🛡️ 戰馬矩陣剖析",
@@ -393,6 +361,11 @@ def _pace_figure_coverage_text(verdict) -> str:
     return f"✅ {label}"
 
 
+def _safety_default_label():
+    defaults = {SAFETY_DEFAULTS[key] for key in THIN_EVIDENCE_SCORED_LEAVES}
+    return "預設 60" if defaults == {60.0} else "各項預設值"
+
+
 def _decision_trace_text(verdict) -> str:
     trace = verdict.get("decision_trace")
     if not isinstance(trace, dict):
@@ -401,7 +374,7 @@ def _decision_trace_text(verdict) -> str:
     if isinstance(swap, dict):
         # 有名嘅刻意調整 —— 唔可以同「不明原因次序有變」混為一談。
         return (f"證據厚度安全欄：首選 #{swap.get('demoted')} 有 "
-                f"{swap.get('default_leaf_count')} 個計分維度冇實測數據（停留預設 60），"
+                f"{swap.get('default_leaf_count')} 個計分維度冇實測數據（停留{_safety_default_label()}），"
                 f"已同 #{swap.get('promoted')} 對調（top-3／top-4 成員不變）")
     if trace.get("changed"):
         return "⚠️ 排名前後次序有變，請查 decision trace"
@@ -420,7 +393,8 @@ def _panorama(race, verdict, horses):
         "| 項目 | 內容 |",
         "|:---|:---|",
         f"| 賽事格局 | Race {race_number} / {distance} / {race_class} |",
-        "| **賽事類型** | **`[AU Wong Choi Auto Python 六維排名]`** |",
+        f"| **賽事類型** | **`[AU Wong Choi Auto Python {_ranking_dimension_label()}]`** |",
+        f"| 場地狀況 | {_inline_text(race.get('going')) or '—'} |",
         f"| 出馬數 | {len(horses)} |",
         f"| 跑道偏差 | {track_bias} |",
         f"| 信心分層 | {_confidence_tier_text(verdict)} |",
@@ -611,7 +585,8 @@ def _pace_perf_detail_lines(auto, name):
         # 冇 PI 嘅馬壓縮做一行（唔好逐行印 ＋0，讀落似壞咗）：「有冇數據」本身
         # 係四度驗證過嘅排名訊號（移除/中性化都蝕），呢度直接講明機制。
         if not d.get("has_pi"):
-            base = float(d.get("base") or 60.0)
+            base_value = d.get("base")
+            base = float(60.0 if base_value is None else base_value)
             return [f"缺 L400 PI 紀錄 → 維持中性 {base:.1f} 分。"
                     "有 PI 紀錄兼末段升位嘅馬先攞到加分；查唔到唔等於跑得差，所以中性而唔係扣分"]
         lines = []
@@ -808,7 +783,7 @@ def _render_horse_section(horse_num, horse, auto):
         ]
     if grade_summary:
         lines.extend([
-            "#### 🔢 評分總覽（六維排名加權 · Python Auto 引擎）",
+            f"#### 🔢 評分總覽（{_ranking_dimension_label()}加權 · Python Auto 引擎）",
             "",
             grade_summary,
             "",
@@ -826,7 +801,7 @@ def _render_horse_section(horse_num, horse, auto):
         "#### 🧠 核心分析",
         f"- {_render_core_logic(horse, auto)}",
         "",
-        "#### 📊 六維排名矩陣＋參考維度逐項拆解",
+        f"#### 📊 {_ranking_dimension_label()}矩陣＋參考維度逐項拆解",
         "> 每個維度：**評分構成**（點計出個分）→ 每個 sub分嘅來源 → **實證調整** → **判讀** → **數據**。",
     ])
     for key, label in MATRIX_LABELS.items():
@@ -976,7 +951,7 @@ def _render_verdict(verdict, horses, race=None):
     lines.extend([
         "## [第四部分] 分析盲區(緊隨第三部分)",
         "",
-        "- ranking 以 `ability_score`（綜合戰力分）排序；`base_7d_score` 係兼容舊檔名，只作六維排名基礎分解釋。",
+        f"- ranking 以 `ability_score`（綜合戰力分）排序；`base_7d_score` 係兼容舊檔名，只作{_ranking_dimension_label()}基礎分解釋。",
         "- 單一評分：`綜合戰力分` = `ability_score` = `final_rank_score` = `pure_7d_score + wet_form_feature + proven_class_feature`；後兩項缺證據時都係中性 0。",
         "- Rank 4-6 danger watchlist 只係提醒候選，不會交換 Top3 或 Top4 排名。",
         "- 初出馬若正式賽績空白，會較依賴試閘、馬房、走位結構與路程投影，信心不會無上限放大。",
@@ -1598,7 +1573,7 @@ def _seven_d_summary_lines(auto: dict) -> list[str]:
     lines = [
         "#### 📊 數據判讀",
         "",
-        f"- 🧭 **六維排名綜合**：綜合戰力分 {ability:.1f}｜Grade {grade}｜排名 {rank}",
+        f"- 🧭 **{_ranking_dimension_label()}綜合**：綜合戰力分 {ability:.1f}｜Grade {grade}｜排名 {rank}",
         f"- 🟢 **主要支柱**：{pillars}（佔分最重）",
     ]
     if weak_txt:

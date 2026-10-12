@@ -54,8 +54,9 @@ from au_racing_engine.scoring import compose_matrix_score, MATRIX_WEIGHTS  # noq
 HERE = Path.cwd()
 HOLDOUT = 0.15
 FOLDS = 5
-# form_line 出廠權重 0（退役維度），搜索空間同另一條線一致，維持 6 個維度。
-DIMS = ("stability", "pace_perf", "race_shape", "jockey_trainer", "class_weight", "track", "preparation")
+# Default search space follows the live registry; retired report dimensions
+# require an explicit registered research arm. Preserve coefficient order.
+DIMS = tuple(MATRIX_WEIGHTS)
 KEYS = ("gold", "good_pos", "pass", "champ", "winT3", "t3prec", "mrr",
         "blowout", "compet", "ndcg5")
 # 目標函數：九項 pp 指標嘅平均（blowout 反號）。刻意同時涵蓋
@@ -115,14 +116,12 @@ class Dataset:
         self.engine_ability = np.array([float(r["ability"]) for r in self.rows])
         # raw[k] = clip(60 + Σ inner·(leaf−60))，即係食 gain 之前嘅維度分。
         # 佢淨係睇 leaf，同 gain / weight 完全無關，所以可以預先算死。
-        self.raw = {}
-        for key, comps in MATRIX_FORMULAS.items():
-            acc = np.full(self.n, 60.0)
-            for leaf, w in comps:
-                acc += w * np.clip(
-                    np.array([float(r["features"].get(leaf, 60.0)) for r in self.rows]),
-                    0.0, 100.0) - w * 60.0
-            self.raw[key] = np.clip(acc, 0.0, 100.0)
+        # Use production's float arithmetic and two-decimal rounding. NumPy
+        # independently rounds halfway cases differently (57.7 class/rating:
+        # class_weight 58.04 instead of the production mapper's 58.05).
+        mapped = [map_features_to_matrix_scores(row["features"]) for row in self.rows]
+        self.raw = {key: np.array([scores[key] for scores in mapped])
+                    for key in MATRIX_FORMULAS}
 
     @staticmethod
     def _normalise_race(race):
@@ -157,9 +156,15 @@ class Dataset:
         return np.column_stack([np.round(self.raw[key], 2) for key in DIMS])
 
     def ability(self, mx, weights, wet_scale=1.0):
-        w = np.array([float(weights.get(k, 0.0)) for k in DIMS])
-        return (np.round(60.0 + (mx - 60.0) @ w, 4)
-                + self.wet * wet_scale + self.proven_class)
+        # Preserve production's ordered sum and Python rounding at both
+        # publication stages. A BLAS dot/NumPy decimal round is a different
+        # arithmetic path at halfway values and can alter a close ordering.
+        delta = np.zeros(len(mx))
+        for index, key in enumerate(DIMS):
+            delta += (mx[:, index] - 60.0) * float(weights.get(key, 0.0))
+        pure = [round(float(60.0 + value), 4) for value in delta]
+        return np.array([round(score + float(wet) * float(wet_scale) + float(proven), 4)
+                         for score, wet, proven in zip(pure, self.wet, self.proven_class)])
 
     def evaluate(self, ability, lo=0, hi=None):
         hi = len(self.slices) if hi is None else hi
@@ -428,7 +433,12 @@ def main():
                          "唔係量出嚟嘅最優分配。")
     ap.add_argument("--with-form-line", action="store_true",
                     help="把出廠權重 0 嘅 form_line（賽績線）維度加返入搜索空間")
+    ap.add_argument("--with-dimension", action="append", choices=tuple(MATRIX_FORMULAS), default=[],
+                    help="Explicitly add a registered report/research dimension to the search space.")
     args = ap.parse_args()
+    for key in args.with_dimension:
+        if key not in DIMS:
+            DIMS = DIMS + (key,)
     if args.with_form_line and "form_line" not in DIMS:
         DIMS = DIMS + ("form_line",)
     for _dim in args.drop_dim:

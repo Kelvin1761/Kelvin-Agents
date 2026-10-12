@@ -1,0 +1,10 @@
+# EXP-20261012-21 — AU loaded scheduler / source provenance
+
+- Scope: read-only loadedlaunchdendpoint/currentsource/provenance inspection. No rankingcandidate/KPI/optimizationclaim.
+- Fourjobs evening/morning/midday/healthcheck loaded;argv/cwdmatchinstalledplist;allidle/noPID. Last exit0 isnotfullpipelinesuccess orhistoricalsource/profileproof.
+- Current scheduler/mainHEAD andlocalorigin/main1dc706a153f759ae2c500d90593488c90edace17;locked audit0328 retained. No fetch,mainreset orproductionchanges. Earlier15sourcehashcomparisononlyschedulerpy differslockedGit,operationalmappingdirty.
+- Source-extracted code_version helper:trackedscoringchangeflagged;mappingignored;untrackedimportablefeatureignored. Limitedobservability,notclaimactualruntimeuntrackedmodelbug.
+- Wrapper mayselfupdate;preflightversionpayloadshortSHA lacksfullbundle/effectiveparamhash. AU snapshotcallsite/projectiondoesnotincludecomplete executable/profile/rootresourcebundle;existingartifacthashesnotPIT/livecertification.
+- Evidence:scheduler_loaded_runtime_observation_v1.json/log;sourcewitness8files;observe_loaded_runtime_v1.py;EXP20current-sourceobservation. No realblindstatus/results/privateenv/runstdoutorpriceanalysisread.
+- LatestcanonicaltestsEXP20PASS;readonlymetadata collectorassertionsPASS;manifest/ledgerevidencehashchecks. No source/model/golden/contract/calibrationchanges.
+- Decision: PLAN-L256/L255PARTIAL;historicalsnapshotreplay withsame consumedresources/profile andliveelapsed/retry/slot/Driveproof remainsrequired. Additivefutureprovenanceinstrumentationproposedonly;noactivation.

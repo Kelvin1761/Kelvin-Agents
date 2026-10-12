@@ -251,10 +251,7 @@ def parse_overview(html):
     ⚠️ 一定要行 HTML table 而唔係扁平文字 —— Sportsbet 逐格一行，而且會有
     HTML 屬性殘骸漏出嚟（實測見到 `14 : 5-0-4">`），純文字切法對唔齊欄。
     """
-    try:
-        from bs4 import BeautifulSoup
-    except ImportError:
-        return {}
+    from bs4 import BeautifulSoup
     soup = BeautifulSoup(html, "lxml")
     cols = ("name", "trainer", "jockey", "age_sex", "days", "ave_prize", "career",
             "win_pct", "place_pct", "last6", "rating", "fixed_win")

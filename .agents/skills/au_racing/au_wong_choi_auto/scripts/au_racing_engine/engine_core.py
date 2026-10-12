@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .preparation_cycle import preparation_cycle
+from .dimensions import DIMENSION_SPECS
 
 from .matrix_mapper import (
     MATRIX_ADVANTAGE_CUTOFF,
@@ -508,6 +509,21 @@ HORSE_BLOCK_RE = HORSE_HEADER_RE
 # 只認第一種，即係新增嗰批對手會**靜靜咁**被當成「冇後續」。
 # 呢個 repo 已經有五次同款缺陷（見 `scraper-silent-drop-failure-mode`）。
 RE_OPP_FOLLOWUP = re.compile(r"(?:出|見前三)\s*\d+\s*次:\s*(\d+)\s*勝")
+
+
+def finite_pf_number(value, field):
+    """PF absence is None; observed numbers must be finite and cannot be bool."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError(f"Invalid PF numeric value for {field}: boolean")
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"Invalid PF numeric value for {field}") from exc
+    if not math.isfinite(number):
+        raise ValueError(f"Nonfinite PF numeric value for {field}")
+    return number
 
 
 class RacingEngine:
@@ -2331,63 +2347,15 @@ class RacingEngine:
 
     def _matrix_reasoning(self, matrix_scores, feature_scores, feature_notes):
         return {
-            "stability": self._reason_bundle(
-                "stability",
-                matrix_scores["stability"],
+            spec.key: self._reason_bundle(
+                spec.key,
+                (matrix_scores.get(spec.key, spec.reasoning_score_default)
+                 if spec.reasoning_score_default is not None else matrix_scores[spec.key]),
                 feature_scores,
                 feature_notes,
-                "form_score",
-                "performance_quality_score",
-            ),
-            "pace_perf": self._reason_bundle(
-                "pace_perf",
-                matrix_scores.get("pace_perf", 60),
-                feature_scores,
-                feature_notes,
-                "pace_figure_score",
-                "sectional_score",
-                "trial_score",
-            ),
-            "race_shape": self._reason_bundle(
-                "race_shape",
-                matrix_scores["race_shape"],
-                feature_scores,
-                feature_notes,
-                "pace_map_score",
-            ),
-            "jockey_trainer": self._reason_bundle(
-                "jockey_trainer",
-                matrix_scores["jockey_trainer"],
-                feature_scores,
-                feature_notes,
-                "jockey_score",
-                "trainer_score",
-                "jockey_horse_fit_score",
-            ),
-            "class_weight": self._reason_bundle(
-                "class_weight",
-                matrix_scores["class_weight"],
-                feature_scores,
-                feature_notes,
-                "class_score",
-                "rating_score",
-                "weight_score",
-            ),
-            "track": self._reason_bundle(
-                "track",
-                matrix_scores["track"],
-                feature_scores,
-                feature_notes,
-                "track_score",
-            ),
-            "form_line": self._reason_bundle(
-                "form_line",
-                matrix_scores["form_line"],
-                feature_scores,
-                feature_notes,
-                "formline_score",
-                "form_score",
-            ),
+                *(spec.reasoning_components or tuple(key for key, _ in spec.leaves)),
+            )
+            for spec in DIMENSION_SPECS if spec.shown_in_report
         }
 
     def _reason_bundle(self, key, score, feature_scores, feature_notes, *component_keys):
@@ -2798,6 +2766,9 @@ class RacingEngine:
         return lines
 
     def _matrix_label(self, key):
+        from .dimensions import MATRIX_LABELS
+        if key in MATRIX_LABELS:
+            return MATRIX_LABELS[key]
         return {
             "stability": "狀態與穩定性",
             "pace_perf": "速度考驗背景",
@@ -2904,7 +2875,8 @@ class RacingEngine:
                 direction = "⚠️" if float(health) < 60.0 else "＋"
                 ref_bits.append(f"備戰 {direction}{reason}")
         if ref_bits:
-            summary += "\n**📎 參考分（不直接入六維公式）：** " + "、".join(ref_bits)
+            from .dimensions import ranking_dimension_numeral
+            summary += f"\n**📎 參考分（不直接入{ranking_dimension_numeral(MATRIX_WEIGHTS)}維公式）：** " + "、".join(ref_bits)
         if self.risk_flags:
             flag_descriptions = []
             for flag in sorted(set(self.risk_flags)):
@@ -4300,11 +4272,11 @@ class RacingEngine:
         # 場均／場內標準差**一定要**同分子攞同一個量，否則個 z 冇意義。
         # 兩者都齊先用，唔係就原封不動退返 race-level —— 舊 formguide
         # 冇 `margin:` 嘅 2.2% 往績行由呢條路走。
-        value = pf_agg.get("own_l600_delta_avg")
+        value = finite_pf_number(pf_agg.get("own_l600_delta_avg"), "own_l600_delta_avg")
         count = int(field.get("own_l600_delta_field_count") or 0)
         basis = "own"
         if value is None or count < 3:
-            value = pf_agg.get("l600_delta_avg")
+            value = finite_pf_number(pf_agg.get("l600_delta_avg"), "l600_delta_avg")
             count = int(field.get("l600_delta_field_count") or 0)
             basis = "race"
         detail["basis"] = basis
@@ -4312,8 +4284,8 @@ class RacingEngine:
             detail["state"] = "no_pf"
             return 60, "無往績賽事 L600 環境數據，L600 環境分中性 60。", "missing_neutral"
         prefix = "own_l600_delta" if basis == "own" else "l600_delta"
-        mean = parse_float(field.get(f"{prefix}_field_mean"))
-        stdev = parse_float(field.get(f"{prefix}_field_stdev")) or 0.0
+        mean = finite_pf_number(field.get(f"{prefix}_field_mean"), f"{prefix}_field_mean")
+        stdev = finite_pf_number(field.get(f"{prefix}_field_stdev"), f"{prefix}_field_stdev") or 0.0
         if mean is None or stdev <= 0.0:
             detail["state"] = "no_spread"
             return 60, "同場 L600 環境數據無有效分散，L600 環境分中性處理。", "no_spread"
@@ -5153,7 +5125,8 @@ class RacingEngine:
         )
         top_dim = self._matrix_label(ordered[0][0])
         low_dim = self._matrix_label(ordered[-1][0])
-        sents = [f"{name}今場六個排名維度以{top_dim}（{ordered[0][1]:.0f}）最強、{low_dim}（{ordered[-1][1]:.0f}）最弱。"]
+        from .dimensions import ranking_dimension_numeral
+        sents = [f"{name}今場{ranking_dimension_numeral(MATRIX_WEIGHTS)}個排名維度以{top_dim}（{ordered[0][1]:.0f}）最強、{low_dim}（{ordered[-1][1]:.0f}）最弱。"]
         real_adv = [a for a in (advantages or []) if "整體結構平均" not in a]
         real_dis = [d for d in (disadvantages or []) if "主要變數仍然係臨場步速" not in d]
         if real_adv:

@@ -18,6 +18,7 @@ import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
 from wongchoi_paths import AU_RACING, au_historical_results_csv
 sys.path.append(str(SCRIPT_DIR))
 
+from au_result_identity import normalize_venue_name, select_venue_rows
 from au_racing_engine.matrix_mapper import (
     MATRIX_KEYS,
     canonicalize_matrix_scores,
@@ -80,10 +81,7 @@ def normalize_horse_name(name: str) -> str:
 
 
 def normalize_track_name(name: str) -> str:
-    clean = str(name or "").strip().lower()
-    clean = clean.replace(" race 1-10", "").replace(" race 1-9", "").replace(" race 1-8", "").replace(" race 1-7", "")
-    clean = clean.replace(" gardens", "")
-    return slug(clean)
+    return normalize_venue_name(name)
 
 
 def normalize_condition_bucket(condition: str) -> str:
@@ -282,16 +280,7 @@ def detect_meeting_track(meeting_dir: Path, sample_logic: dict) -> str:
 
 
 def choose_track_rows(rows, meeting_track: str):
-    target_slug = normalize_track_name(meeting_track)
-    exact = [row for row in rows if row["track_slug"] == target_slug]
-    if exact:
-        return exact
-    loose = [row for row in rows if row["track_slug"] in target_slug or target_slug in row["track_slug"]]
-    # BUGFIX: never fall back to ALL rows. When a meeting's track does not match any
-    # result-row track, returning every track's race-N rows silently joins scoring
-    # against the WRONG track's results. Return [] so the race is (correctly) treated
-    # as un-evaluable instead of contaminating metrics/training data.
-    return loose
+    return select_venue_rows(rows, meeting_track)
 
 
 def iter_logic_rows(archive_root: Path, historical_results):

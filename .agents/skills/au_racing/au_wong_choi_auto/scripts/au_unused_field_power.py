@@ -30,7 +30,7 @@ AU_RACING = SCRIPT_DIR.parents[1]
 sys.path.insert(0, str(AU_RACING))
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from au_leaf_power import results_for, within_race_auc  # noqa: E402
+from au_leaf_power import within_race_auc  # noqa: E402
 
 RE_RUNNER = re.compile(r"^\[(\d+)\]\s+(.+?)\s+\(\d+\)\s*$", re.M)
 RE_HDR_DIST = re.compile(r"^RACE\s+(\d+)\s*[—–-]\s*(\d{3,5})m", re.M)
@@ -47,56 +47,29 @@ def _num(txt):
     return float(m.group(0).replace(",", "")) if m else None
 
 
-# ── 速度評分：track×distance 標準時間（2026-08-26）────────────────────────
-# 同 `_STANDARD_600M` 一樣係一個**靜態參考尺**，唔係逐匹馬嘅結果資料 ——
-# 「Flemington 1200m 中位頭馬時間」唔會編碼今日邊隻贏。掃一次全部 Formguide
-# 就 cache 住。設 `AU_SPEED_STD_ROOT` 指去 scored root；冇設就淨係用距離基準。
-_SPEED_STD = None
-_SPEED_GOING = None
+# Speed standards require an explicit, independently audited prior-only state.
+# A root-wide cache keyed by neither root nor cutoff is forbidden.
+def _speed_standards(prediction_at=None, sources=None):
+    if prediction_at is None or sources is None:
+        return {}, {}
+    from au_unused_field_intake import fit_speed_standards
+    state = fit_speed_standards(sources, prediction_at)
+    return state["standard"], state["going"]
 
 
-def _speed_standards():
-    global _SPEED_STD, _SPEED_GOING
-    if _SPEED_STD is not None:
-        return _SPEED_STD, _SPEED_GOING
-    import os
-    import collections
-    _SPEED_STD, _SPEED_GOING = {}, {}
-    root = os.environ.get("AU_SPEED_STD_ROOT")
-    if not root or not Path(root).exists():
-        return _SPEED_STD, _SPEED_GOING
-    per = collections.defaultdict(list)
-    for fg in Path(root).rglob("*Formguide.md"):
-        for ln in fg.read_text(encoding="utf-8", errors="replace").splitlines():
-            if "WinningTime:" not in ln or "**(TRIAL)**" in ln:
-                continue
-            m = re.match(r"^(\S.*?)\sR\d+\s\d{4}-\d{2}-\d{2}\s+(\d+)m\s+cond:(\S+)", ln)
-            w = re.search(r"WinningTime:(?:(\d+):)?([\d.]+)", ln)
-            if not (m and w):
-                continue
-            sec = (int(w.group(1)) * 60 if w.group(1) else 0) + float(w.group(2))
-            if not (25.0 < sec < 260.0):
-                continue
-            per[(m.group(1).strip(), int(m.group(2)))].append((sec, m.group(3)))
-    _SPEED_STD = {k: statistics.median([s for s, _ in v])
-                  for k, v in per.items() if len(v) >= 10}
-    dev = collections.defaultdict(list)
-    for (tr, d), v in per.items():
-        base = _SPEED_STD.get((tr, d))
-        if base is None:
-            continue
-        for sec, cond in v:
-            dev[cond].append(sec - base)
-    _SPEED_GOING = {k: statistics.median(v) for k, v in dev.items() if len(v) >= 40}
-    return _SPEED_STD, _SPEED_GOING
-
-
-def _speed_figure(run):
+def _speed_figure(run, standard_state=None, prediction_at=None):
     """一條往績行 → 每公里快過標準幾多秒（越大越好）。攞唔到就 None。"""
     if run.get("wt_sec") is None or not run.get("dist"):
         return None
-    std, going = _speed_standards()
-    base = std.get((run.get("track"), run["dist"]))
+    if standard_state is None:
+        return None
+    if prediction_at != standard_state["cutoff"]:
+        raise ValueError("speed standard cutoff does not match prediction")
+    if not run.get("date") or run["date"] >= str(prediction_at)[:10]:
+        return None
+    from au_result_identity import normalize_venue_name
+    std, going = standard_state["standard"], standard_state["going"]
+    base = std.get((normalize_venue_name(run.get("track")), run["dist"]))
     if base is None:
         return None
     # 個體時間 = 頭馬時間 + 輸幾多長度 × 每長度秒數（1 長度 ≈ 2.4m）
@@ -106,7 +79,7 @@ def _speed_figure(run):
     return -adj / (run["dist"] / 1000.0)
 
 
-def runner_features(block, today_dist, horse_name="", today_jockey=""):
+def runner_features(block, today_dist, horse_name="", today_jockey="", *, standard_state=None, prediction_at=None):
     """一匹馬 → {特徵名: 值}。攞唔到就唔放，唔會用 0 頂替。"""
     def field(label):
         m = re.search(rf"{re.escape(label)}\s+(.+?)(?:\s{{2,}}|$)", block, re.M)
@@ -200,7 +173,7 @@ def runner_features(block, today_dist, horse_name="", today_jockey=""):
         placed = bool(re.match(r"^([123])-", opp) and
                       re.search(rf"[123]-{re.escape(horse_name)}\b", opp))
         jk = re.search(r"\$[\d,]+\s+(.+?)\s+\(", ln)
-        runs.append({"dist": int(m.group(3)),
+        runs.append({"date": m.group(2), "dist": int(m.group(3)),
                      "l600": float(l6.group(1)) if l6 else None,
                      "trial": "**(TRIAL)**" in m.group(1),
                      "jockey": (jk.group(1) if jk else ""),
@@ -241,7 +214,7 @@ def runner_features(block, today_dist, horse_name="", today_jockey=""):
                 out["pre12m_starts"] = float(len(in12))
 
     # ── 絕對時間速度評分（2026-08-26）────────────────────────────────────
-    sf = [v for v in (_speed_figure(r) for r in official) if v is not None]
+    sf = [v for v in (_speed_figure(r, standard_state, prediction_at) for r in official) if v is not None]
     if sf:
         out["speed_fig_best"] = max(sf)
         out["speed_fig_mean"] = sum(sf) / len(sf)
@@ -251,7 +224,7 @@ def runner_features(block, today_dist, horse_name="", today_jockey=""):
     if today_dist:
         sfd = [v for r in official
                if abs(r["dist"] - today_dist) <= 200
-               and (v := _speed_figure(r)) is not None]
+               and (v := _speed_figure(r, standard_state, prediction_at)) is not None]
         if sfd:
             out["speed_fig_at_dist"] = max(sfd)
 
@@ -363,69 +336,18 @@ def main():
     ap = argparse.ArgumentParser(description="未接落引擎嘅欄位，量場內判別力")
     ap.add_argument("--scored", required=True)
     ap.add_argument("--min-depth", type=float, default=4.0)
+    ap.add_argument("--inventory-only", action="store_true", help="inspect root/Archive and parsed form depth without labels or feature power")
+    ap.add_argument("--inventory-output", type=Path)
     args = ap.parse_args()
+    from au_unused_field_intake import inventory
+    intake = inventory(args.scored)
+    if args.inventory_output:
+        args.inventory_output.write_text(json.dumps(intake, ensure_ascii=False, indent=2) + "\n")
+    print(json.dumps(intake["counts"]))
+    if args.inventory_only:
+        return 0
+    ap.error("Legacy date/race-only labels and unregistered feature screening are disabled. Source-bound label/PIT/registration integration is required; use --inventory-only for intake diagnostics.")
 
-    from sb_backfill_archive import load_meeting_ids, scored_meeting_index
-
-    depth = {}
-    meeting_dirs = scored_meeting_index(args.scored)
-    cj = Path(args.scored).parent / "source_compare.json"
-    if cj.exists():
-        depth = {d["meeting"]: d.get("form_depth", 0) for d in json.loads(cj.read_text())}
-
-    acc, races = {}, 0
-    for name, meta in sorted(load_meeting_ids().items(), key=lambda kv: kv[1]["date"]):
-        mdir = meeting_dirs.get(name)
-        if mdir is None:
-            continue
-        if args.min_depth and depth.get(name, 0) < args.min_depth:
-            continue
-        res = results_for(meta)
-        if not res:
-            continue
-        for fg in sorted(mdir.glob("*Formguide.md")):
-            text = fg.read_text(encoding="utf-8", errors="replace")
-            hm = RE_HDR_DIST.search(text)
-            if not hm:
-                continue
-            rno, dist = int(hm.group(1)), int(hm.group(2))
-            actual = res.get(rno)
-            if not actual:
-                continue
-            races += 1
-            starts = [m.start() for m in RE_RUNNER.finditer(text)]
-            feats = []
-            for i, m in enumerate(RE_RUNNER.finditer(text)):
-                end = starts[i + 1] if i + 1 < len(starts) else len(text)
-                pos = actual.get(norm(m.group(2)))
-                if pos is None:
-                    continue
-                blk = text[m.start():end]
-                jm = re.search(r"\|\s*J:\s*([^(\n|]+)", blk)
-                feats.append((runner_features(blk, dist, m.group(2),
-                                              (jm.group(1).strip() if jm else "")),
-                              pos <= 3))
-            keys = {k for f, _ in feats for k in f}
-            for k in keys:
-                pairs = [(f[k], p) for f, p in feats if k in f]
-                c, n = within_race_auc(pairs)
-                a = acc.setdefault(k, [0.0, 0, 0])
-                a[0] += c
-                a[1] += n
-                a[2] += len(pairs)
-
-    print(f"{races} 場\n")
-    print(f"{'候選特徵':26}{'場內 AUC':>10}{'可比對數':>12}{'有值匹數':>11}")
-    for k, (c, n, s) in sorted(acc.items(), key=lambda kv: -(kv[1][0] / kv[1][1])
-                               if kv[1][1] else 0):
-        if not n:
-            continue
-        auc = c / n
-        mark = "  ★" if auc >= 0.57 else ("  ·" if auc >= 0.53 else "  ✗")
-        print(f"{k:26}{auc:>10.3f}{n:>12,}{s:>11,}{mark}")
-    print("\n對照（同一把尺）：form_score 0.608 · pace_figure 0.555 · "
-          "pace_map 0.533 · sectional 0.469")
-    return 0
 
 
 if __name__ == "__main__":

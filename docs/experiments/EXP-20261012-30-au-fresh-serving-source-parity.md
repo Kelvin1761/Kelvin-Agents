@@ -1,0 +1,12 @@
+# EXP-20261012-30 — Fresh serving replay/source parity
+
+- Type: current isolated actual-serving-path source/numeric regression, not accuracy/fit/OOS/candidate judgement.
+- Prior:originalservingbaseline/source/import inventory inspectedbeforestart;EXP29stored-contextscope read. SpecificEXPgrepafterreplay,initialEXP20filenamewrong thenrg--files/researchcorrect;discipline deviation retained,notclaimedpreregisteredcandidate.
+- Inputs:preservedbaselineSHA bbf573f599ab6bbdfa9d8b9331a073876cdfa79713e50bfa5435d866498486af,3385raceIDs/34473runners/sameLogic/frozenroots;427complete-meetingfreshPython-B workers.
+- ActualscoreAPIincludesFacts/rootresources/enrichment/normalization/horseanalysis/finalverdict+safety/ties/validation;nooutputwriter/extractor/daily/deploy.
+- Parity:alloriginalrowfields/features/matrix/provenance/coverage/context/venue andwholeproductionverdict/fullorderexact. Newfullauto/mutatedLogicSHA nooldcounterpart,notfullhistoricalbyteproof.
+- Readbinding:13984frozenassetsallmanifestbound,0mismatch/unbound,commonoldruntimeasset0changes;import48/runtime14002/postinventory11(overlap);13noncodereporesources,29stdlibexternalpyc/special/absencesexplicit.
+- Runtime:10criticalcodeobjects eachworker matchsourcecompile=4270;onecapturedselectedprofilehash;B7currentmissingjockey60source/probe,envnameunusedincurrentengine.
+- Controls:6realhookcallbacktests(write/delete/mkdirrefusal/readinventory,syntheticnetevents);3fingerprintchecks demonstratechangeddefaultsnotcaughtbycodehash. Bootstrap/native/allimplicitpriors/live/scheduler/PIT remainoutsidecertification.
+- Time104svsold66snotcomparableinstrumentation,noperformanceclaim. Workerwrites/networkattempts0;source/resourcestability/hashverified.
+- No productioncodechange/newfulltestrepeat;currentproductioncodeEXP29fullPASS retained,newreplay/controls/staticchecks. CompleteauditstillPARTIAL,noproductionapply/commit/push/deploy/market/blindreveal.

@@ -7,6 +7,7 @@ import csv
 import io
 from pathlib import Path
 from typing import Optional
+from .au_dimension_registry import read_registry_metadata
 
 
 def _parse_data_readout(block: str) -> Optional[list]:
@@ -1209,7 +1210,17 @@ def _parse_au_race_header(text: str) -> dict:
     
     # Try table format first: | 賽事格局 | BM72 讓磅賽 / 1300m / Rosehill Gardens / Soft 6 |
     format_m = re.search(r'\|\s*賽事格局\s*\|\s*([^/]+?)(?:\s*讓磅賽|\s*平磅賽)?\s*/\s*(\d{3,4})\s*m\s*/', text)
-    if format_m:
+    modern_m = re.search(
+        r'^\|\s*賽事格局\s*\|\s*Race\s+(\d+)\s*/\s*([^/|\n]*?)\s*/\s*([^|\n]*?)\s*\|',
+        text, re.MULTILINE | re.IGNORECASE,
+    )
+    if modern_m:
+        info['race_number'] = int(modern_m.group(1))
+        distance = re.fullmatch(r'(\d{3,4})\s*m', modern_m.group(2).strip(), re.IGNORECASE)
+        info['distance'] = distance.group(1) + 'm' if distance else None
+        race_class = modern_m.group(3).strip()
+        info['race_class'] = race_class if race_class not in {'', '—', 'Unknown', 'None'} else None
+    elif format_m:
         info['race_class'] = format_m.group(1).strip()
         info['distance'] = format_m.group(2).strip() + 'm'
     else:
@@ -1227,9 +1238,15 @@ def _parse_au_race_header(text: str) -> dict:
     if race_name_m:
         info['race_name'] = race_name_m.group(1).strip()
     
-    going_m = re.search(r'(?:預測掛牌|Track Condition|Going)[：:]\s*(.+?)(?:\n|$)', text, re.IGNORECASE)
-    if going_m:
-        info['going'] = going_m.group(1).strip()
+    table_going = re.search(r'^\|\s*場地狀況\s*\|\s*([^|\n]*?)\s*\|', text, re.MULTILINE)
+    if table_going:
+        value = table_going.group(1).strip()
+        if value not in {'', '—', 'Unknown', 'None'}:
+            info['going'] = value
+    else:
+        going_m = re.search(r'(?:預測掛牌|Track Condition|Going)[：:]\s*(.+?)(?:\n|$)', text, re.IGNORECASE)
+        if going_m:
+            info['going'] = going_m.group(1).strip()
     
     return info
 
@@ -1248,6 +1265,8 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
         except Exception:
             return None
     
+    dimension_registry, text = read_registry_metadata(text)
+
     race_num_m = re.search(r'Race\s+(\d+)', path.name, re.IGNORECASE)
     race_number = int(race_num_m.group(1)) if race_num_m else 0
     
@@ -1298,6 +1317,7 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
 
     return RaceAnalysis(
         race_number=race_number,
+        dimension_registry=dimension_registry,
         distance=header_info.get('distance'),
         race_class=header_info.get('race_class'),
         going=header_info.get('going'),
