@@ -62,3 +62,10 @@
   - 預設 **唔入 ability**，每匹馬寫 `age_sex_shadow_delta`；`WC_AU_AGE_SEX_LIVE=1` 先生效
   - **Forward holdout**：2026-10-13 起嘅賽日，一個家族只開一次；≥600 場再經正式 artifact 路徑判。
 - 記錄寫明：**唔係已證實嘅 primary 改善**（Good CI 跨零）。
+
+## 2026-10-12 更新：正式 artifact 路徑判決（EXP-20261012-33）
+
+上面係**診斷**（冇 cohort guardrail，冇 provenance，未經 Holm 全家族）。經正式路徑重跑：
+
+- **馬齡 × 性別 → REJECT（cohort_regression）**：細場（4–8 匹，716 場）Gold −0.98pp [−1.91, −0.13]，屬顯著傷害；整體 Good +0.65pp，Holm 後 p=0.195。
+- shadow code **唔發佈**。「按馬匹數縮放」嘅版本登記做前瞻假設（2026-10-13 起）。

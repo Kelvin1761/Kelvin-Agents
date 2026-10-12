@@ -68,6 +68,16 @@ CLEAN_FROM = "2026-08-05"
 # Existing speed/class forward profiles retain their own unchanged rules.
 PENDING_REGISTRATIONS = [
     {
+        "id": "age_sex_field_scaled_forward",
+        "owner": "AU full-model audit",
+        "source": "docs/experiments/EXP-20261012-33-au-official-artifact-agesex-distance-sectional.md",
+        "status": "PENDING_REGISTRATION",
+        "review_after": "2026-12-15",
+        "required": ["forward races from 2026-10-13 only", ">=600 races",
+                     "age_sex effect x clip((n-5)/7,0,1)", "official artifact path, one opening"],
+        "why": "Unscaled age-sex REJECTED on small-field Gold harm; scaled variant was conceived after seeing that result.",
+    },
+    {
         "id": "class_label_oos",
         "owner": "AU full-model audit",
         "source": "docs/audits/AU_FULL_MODEL_AUDIT_EXECUTION_PLAN_2026-10-11.md#12-phase-4",

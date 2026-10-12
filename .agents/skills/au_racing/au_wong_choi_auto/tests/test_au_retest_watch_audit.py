@@ -60,6 +60,7 @@ def test_pending_followups_cannot_trigger_experiment():
     assert watch.REGISTERED == []
     assert {x['id'] for x in watch.RESOLVED} == {'class_score', 'speed_figure'}
     assert {x['id'] for x in watch.PENDING_REGISTRATIONS} == {
-        'class_label_oos', 'people_asof_oos', 'race_shape_start_position'}
+        'class_label_oos', 'people_asof_oos', 'race_shape_start_position',
+        'age_sex_field_scaled_forward'}
     assert all(x['status'] == 'PENDING_REGISTRATION' for x in watch.PENDING_REGISTRATIONS)
     assert not any('threshold' in x or 'cmd' in x for x in watch.PENDING_REGISTRATIONS)

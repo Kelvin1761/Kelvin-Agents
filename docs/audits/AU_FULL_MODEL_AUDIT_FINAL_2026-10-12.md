@@ -17,7 +17,7 @@
 
 修完 form 同 consistency 兩個 bug 之後，Platinum Card 由 64.85 跌到 62.2：首選 Halcyon Belle 退出之後，佢由「實際首選」變成排喺 Boa Vista（實際跑第 2）之後。pace_figure 用咗試閘數據原來有道理（見 §1）。
 
-唯一一個真正新、而且過到多重比較嘅訊號係**馬齡 × 性別**，已經接好但預設 shadow，等前瞻確認。
+**馬齡 × 性別**喺診斷入面過到多重比較，但經正式 artifact 路徑之後判 REJECT：佢喺細場（4–8 匹）令 Gold 顯著跌。按馬匹數縮放嘅版本已登記做前瞻假設。
 
 ---
 
@@ -80,7 +80,7 @@ walk-forward（每個賽日只用之前嘅賽日），殘差 = 入位 − 模型
 | R2 步速形勢 | REJECT | −0.12 | −0.16 | — |
 | 檔位 × 跑法 | REJECT | +0.08 | −0.04 | — |
 | C 馬場 × 跑法 | RANKING_WIN | +0.12 | +0.21 | p 0.05，**唔顯著** |
-| **H6 馬齡 × 性別** | **RANKING_WIN**（最終 code 語料：**PRIMARY_WIN**，Good +0.86 [+0.26,+1.44]） | +0.12 | **+0.62** | **p 0.012 ✅** |
+| H6 馬齡 × 性別 | 診斷 RANKING_WIN → **正式路徑 REJECT（細場 Gold −0.98 [−1.91,−0.13]）** | +0.04 | +0.65 | Holm 0.195 |
 
 **答你兩條問題：**
 
@@ -178,7 +178,7 @@ walk-forward（每個賽日只用之前嘅賽日），殘差 = 入位 − 模型
 | └ form | KEEP | KEEP | FIXED（F4 往績行缺失） | FIXED（F1 900m 當試閘） | NO-ISSUE | NO-ISSUE | KEEP | FIXED | NO-ISSUE |
 | └ performance_quality | KEEP | KEEP | FIXED（F3 `10`→虛構頭馬經 fallback） | NO-ISSUE | NO-ISSUE | NO-ISSUE | KEEP | NO-ISSUE | NO-ISSUE |
 | pace_perf | KEEP | KEEP | NO-ISSUE | NO-ISSUE | REJECT（單場收縮 R3） | UNRESOLVABLE（速度盲測未夠 2,000 場） | KEEP | NO-ISSUE | NO-ISSUE |
-| └ pace_figure | KEEP | KEEP | NO-ISSUE（試閘 PF 有用，F2 REJECT） | NO-ISSUE | REJECT | NO-ISSUE | KEEP（全距單調） | FIXED（Codex PF 有限值守衛） | NO-ISSUE |
+| └ pace_figure | KEEP | KEEP | NO-ISSUE（試閘 PF 有用：全靠試閘 681 匹 ≥70 +10.5pp／<50 −12.3pp；F2 REJECT） | NO-ISSUE | REJECT | NO-ISSUE | KEEP（全距單調） | FIXED（Codex PF 有限值守衛） | NO-ISSUE |
 | └ trial | KEEP | KEEP（剷走 dev −0.08） | NO-ISSUE | NO-ISSUE（冇試閘預設 56，B7 REJECT） | NO-ISSUE | NO-ISSUE | KEEP | NO-ISSUE | NO-ISSUE |
 | jockey_trainer | KEEP（內權重三個配置 REJECT） | KEEP | FIXED（人名清空） | NO-ISSUE | NO-ISSUE | REJECT（換騎分類：−0.86pp，細過 MDE） | KEEP | UNRESOLVABLE（as-of 要等 12-01） | NO-ISSUE |
 | └ jockey | KEEP | KEEP | NO-ISSUE | NO-ISSUE | UNRESOLVABLE（冇記錄 46.86 要 walk-forward；v2 邊緣過） | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
@@ -194,11 +194,11 @@ walk-forward（每個賽日只用之前嘅賽日），殘差 = 入位 − 模型
 | 情境扣分（form −4／consistency −4／jhf −3） | KEEP／REJECT／REJECT | REJECT（後兩個死 code，剷走零差異） | FIXED（錯標籤） | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
 | race_shape（退役） | REJECT（加返 dev 唔過） | NO-ISSUE | FIXED（parser 錯配） | NO-ISSUE | REJECT（R2 步速形勢） | REJECT（檔位 × 跑法） | REJECT（重新砌都唔過） | UNRESOLVABLE（11-22 重驗） | REJECT |
 | form_line（退役） | REJECT | NO-ISSUE | NO-ISSUE | NO-ISSUE | REJECT | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
-| sectional（零權重） | REJECT | NO-ISSUE | NO-ISSUE | NO-ISSUE | REJECT（新維度） | NO-ISSUE | REJECT（缺失 48.8% 未解） | NO-ISSUE | NO-ISSUE |
-| distance（零權重） | REJECT | NO-ISSUE | NO-ISSUE | NO-ISSUE | REJECT（新維度 dev 唔過） | NO-ISSUE | REJECT | NO-ISSUE | NO-ISSUE |
+| sectional（零權重） | REJECT | NO-ISSUE | NO-ISSUE | NO-ISSUE | REJECT（新維度） | NO-ISSUE | REJECT（缺失指示重建，正式路徑 EXP-33） | NO-ISSUE（48.8% 冇 PI 係來源限制） | NO-ISSUE |
+| distance（零權重） | REJECT | NO-ISSUE | NO-ISSUE | NO-ISSUE | REJECT（新維度 dev 唔過） | NO-ISSUE | REJECT（重建 + leakage PASS，正式路徑 Holm 後唔顯著） | NO-ISSUE | NO-ISSUE |
 | 輸出層（信心級別、評級、安全欄） | NO-ISSUE | NO-ISSUE | FIXED（Codex 描述層） | UNRESOLVABLE（信心級別 Gold 分唔開；要預先登記先改） | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE | NO-ISSUE |
 | 排程／管線 | NO-ISSUE | NO-ISSUE | FIXED（refresh 檔位假陽性、going、健康閘） | FIXED（下晝冇 refresh：模板已加，要人手裝） | FIXED（對手索引 7×快） | NO-ISSUE | NO-ISSUE | FIXED | NO-ISSUE |
-| 馬齡 × 性別（新） | — | — | — | — | SHADOW | **SHADOW**（walk-forward PRIMARY_WIN：Good +0.86pp，CI [+0.26,+1.44]） | — | — | — |
+| 馬齡 × 性別（新） | — | — | — | — | REJECT（正式路徑：細場傷害） | REJECT；按馬匹數縮放版本做前瞻假設（2026-10-13 起） | — | — | — |
 | 見習減磅（新） | — | — | — | UNRESOLVABLE（頁面有 `(a-2)`，`parse_overview` 剷咗；未接駁） | — | — | — | — | — |
 
 **表入面「—」嘅意思**：新特徵未入模型，問題唔適用。
@@ -212,4 +212,23 @@ walk-forward（每個賽日只用之前嘅賽日），殘差 = 入位 − 模型
 | B1 | `9b0c5f14` | 數據合約乾地假警報 |
 | B2 | `c28db618` | F1／F3／F4、第一輪修正、下晝 refresh 模板 |
 
-**馬齡 × 性別 shadow** 留喺 worktree `claude-au-trial-leak-20261012`，未發佈。
+**馬齡 × 性別** 正式路徑 REJECT，shadow code 留喺 worktree `claude-au-trial-leak-20261012`，唔發佈。
+
+## 8. 正式 artifact 路徑判決（EXP-20261012-33）
+
+| arm | 判決 | 重點 |
+|---|---|---|
+| 馬齡 × 性別 | REJECT cohort_regression | 細場 Gold −0.98pp [−1.91,−0.13] |
+| distance 重建（缺失指示、leakage PASS） | REJECT ranking_evidence_too_weak | top3_capture p 0.042，Holm 0.546 |
+| sectional 重建（冇 PI 自成一組） | REJECT primary_regression | 全部近零 |
+
+**Platinum Card 個 pace_figure（試閘）**：「全靠試閘」681 匹，≥70 分 +10.5pp、<50 分 −12.3pp，單調而且有預測力。
+即係保留試閘 PF 係實證決定。真正嘅 bug（form 當冇證據、`10` 變虛構頭馬、900m 當試閘）已經喺 `c28db618` 修好。
+
+**仲要等時間先判得到嘅**（全部已登記，數據喺未來先存在）：
+- 速度盲測：要 2,000 場。
+- class_score 前瞻：11-09。
+- 班次標籤：11-15。
+- race_shape 重驗：11-22。
+- 騎練 as-of：12-01。
+- 馬齡性別（按馬匹數縮放）：2026-10-13 起，≥600 場。
