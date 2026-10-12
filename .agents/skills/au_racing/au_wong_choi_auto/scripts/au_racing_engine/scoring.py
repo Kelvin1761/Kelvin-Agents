@@ -655,6 +655,12 @@ def parse_recent_finishes(text):
     """
     if not text: return None
     raw = str(text).strip()
+    # Facts「近績序列解讀」係**已解碼**、用 `-` 連接嘅名次（0=10th 寫成 10）。
+    # 只跑過一場而第 10 或更差嘅馬，序列就係 `10` —— 以前跌入下面嘅緊湊格式
+    # 分支，解成 [1, 10]：平白多咗一場頭馬（2026-10-12 Tamworth R4 Platinum Card：
+    # consistency +7 → performance_quality fallback 69.8；08-05 起 131 匹中招）。
+    if raw == "10":
+        return [10]
     if re.fullmatch(r"\d{2,}", raw):
         return [int(ch) if ch != "0" else 10 for ch in raw]
     nums = parse_numbers(raw)

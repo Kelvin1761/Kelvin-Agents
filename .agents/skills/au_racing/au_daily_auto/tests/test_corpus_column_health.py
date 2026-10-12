@@ -90,3 +90,11 @@ class CorpusColumnHealthTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DefaultCorpusPathTest(unittest.TestCase):
+    """預設路徑一定要 import 得到 —— 之前錯咗都綠，因為每個 test 都傳顯式路徑。"""
+
+    def test_default_path_resolves_without_error(self):
+        path = H.default_corpus_csv()
+        self.assertEqual(path.name, "AU_Historical_Raw_Race_Results.csv")

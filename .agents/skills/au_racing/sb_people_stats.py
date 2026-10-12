@@ -225,6 +225,8 @@ def refresh(people, fetcher=None, ttl_days=TTL_DAYS, max_people=40, path=None,
         if not stats:
             continue
         fetched_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        # 冇新名就保留舊名 —— 唔可以用空字串覆寫已知嘅名。
+        name = (name or "").strip() or (cache.get(key) or {}).get("name") or ""
         cache[key] = {"name": name, "id": str(pid), "kind": kind.lower(),
                       "stats": stats, "contextual_stats": contextual_stats,
                       "ly": ly_token(stats), "fetched_at": fetched_at}

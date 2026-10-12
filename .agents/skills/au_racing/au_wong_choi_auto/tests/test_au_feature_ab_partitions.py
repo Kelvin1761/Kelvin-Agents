@@ -52,5 +52,12 @@ def test_date_partitions_keep_the_large_boundary_day_whole() -> None:
 
 
 def test_completed_retests_do_not_keep_firing_the_watch() -> None:
-    assert REGISTERED == []
     assert {item["id"] for item in RESOLVED} == {"class_score", "speed_figure"}
+    assert not {item["id"] for item in REGISTERED} & {item["id"] for item in RESOLVED}
+
+
+def test_registered_retests_are_complete_and_measurable() -> None:
+    # 2026-10-10：四個「等數據」重測之前只寫喺實驗記錄，冇人會被提醒。
+    for item in REGISTERED:
+        assert {"id", "exp", "metric", "threshold", "what", "why", "cmd"} <= set(item)
+        assert item["metric"] in {"today_ordinal", "clean_races", "speedfig_coverage_pct"}

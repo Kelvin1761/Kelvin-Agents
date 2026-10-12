@@ -238,6 +238,25 @@ def dirichlet(rng, alpha):
     return [d / total * sum(MATRIX_WEIGHTS.values()) for d in draw]
 
 
+
+def terminal_start(races, holdout=HOLDOUT):
+    """第一場 terminal 場次嘅 index —— **同 `au_eval.date_partitions` 同一條規則**。
+
+    以前用 `int(n * (1 - holdout))` 按**場數**切，而 `au_eval` 按**日期**切
+    （尾 15% 日期，實際佔 ~22% 場次）。2026-10-10 實測：refit 嘅「dev」包咗
+    `au_eval` terminal 頭 246 場 —— 揀權重嗰陣偷睇咗之後要判決嘅窗口。
+    dump 已按日期排好序，所以 terminal 係一段連續尾段。
+    """
+    import math
+    dates = [r.get("date") for r in races]
+    if dates and all(dates):
+        unique = sorted(set(dates))
+        cut = unique[-max(1, math.ceil(len(unique) * holdout))]
+        for i, d in enumerate(dates):
+            if d >= cut:
+                return i
+    return int(len(races) * (1 - holdout))
+
 def fit_consensus(ds, mx, base_w, train_end, seed, n, min_folds, quiet=True):
     """喺 races[0:train_end] 上面 fit 一組共識權重。完全唔會掂 train_end 之後嘅嘢。"""
     folds = fold_bounds(train_end)
@@ -323,7 +342,7 @@ def cmd_refit(ds, args):
         else MATRIX_WEIGHTS
     mx = ds.dim_matrix(gains)
     n_races = len(ds.races)
-    split = int(n_races * (1 - HOLDOUT))
+    split = terminal_start(ds.races)
     folds = [(lo, hi) for lo, hi in fold_bounds(split)]
     print(f"races {n_races}  dev {split}  holdout {n_races - split}  "
           f"folds {[hi - lo for lo, hi in folds]}")
@@ -393,7 +412,7 @@ def cmd_compare(ds, args):
     gains = json.loads(Path(args.gains).read_text()) if args.gains else MATRIX_DISPLAY_GAINS
     weights = json.loads(Path(args.weights).read_text())
     n = len(ds.races)
-    split = int(n * (1 - HOLDOUT))
+    split = terminal_start(ds.races)
     mx = ds.dim_matrix(gains)
     ws = args.wet_scale
     if ws != 1.0:

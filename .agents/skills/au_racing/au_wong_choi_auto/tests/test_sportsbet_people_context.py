@@ -79,5 +79,36 @@ class PeopleContextParserTest(unittest.TestCase):
         ])
 
 
+class PeopleNamePreservationTest(unittest.TestCase):
+    """個人頁冇名；以前每次 TTL 重抓都用 `""` 覆寫，2,554 人有 2,191 個名被洗走。"""
+
+    def test_refresh_keeps_known_name_when_caller_has_none(self):
+        import sb_people_stats as sps
+
+        class FakeFetcher:
+            def _cache_path(self, url):
+                return Path(__file__)  # 存在即可
+
+            def get(self, url):
+                return PeopleContextParserTest.HTML
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "people.json"
+            path.write_text(json.dumps({"jockey|42": {
+                "name": "Nash Rawiller", "id": "42", "kind": "jockey", "stats": {},
+                "fetched_at": "2000-01-01T00:00:00+00:00"}}), encoding="utf-8")
+            sps.refresh([("Jockey", "42", "")], fetcher=FakeFetcher(), path=path,
+                        verbose=False, cache_only=True)
+            cache = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(cache["jockey|42"]["name"], "Nash Rawiller")
+
+    def test_race_page_link_title_supplies_the_name(self):
+        from claw_sportsbet_form import parse_race
+        html = ('<a class="detail-links cjockey" rel="facebox" href="/Jockey/1273/" '
+                'title="Nash Rawiller  - Career Statistics">Nash Rawiller</a>')
+        meta = parse_race(html)["meta"]
+        self.assertEqual(meta["people_names"][("Jockey", "1273")], "Nash Rawiller")
+
+
 if __name__ == "__main__":
     unittest.main()

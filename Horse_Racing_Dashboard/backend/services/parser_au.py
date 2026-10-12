@@ -56,13 +56,19 @@ def _parse_data_readout(block: str) -> Optional[list]:
             continue
 
         # per-dimension header: '**<維度>：<score> 分　<band> <word>**'
-        m = re.match(r'^\*\*(.+?)[：:]\s*([\d.]+)\s*分\s*([✅➖⚠️❌]+)\s*(.*)\*\*$', line)
+        # 參考維度個標題係 `**檔位形勢：60.0 分　➖ 中性**　（參考·不入排名）` ——
+        # tag 喺 `**` 之後。以前 regex 要求行尾係 `**`，對唔到，於是佢嘅 leaf
+        # 被當成上一個維度嘅 leaf（`檔位分` 跌咗入「速度考驗背景」）。
+        m = re.match(r'^\*\*(.+?)[：:]\s*([\d.]+)\s*分\s*([✅➖⚠️❌]+)\s*(.*?)\*\*\s*(（參考·不入排名）)?$', line)
         if m:
             # ⚠️ `reason` 一開始係空，跟住由下面嘅 sub-score 填返 —— 唔填嘅話
             # dashboard 只會見到「級數與負重 54.4 分 · 偏弱」而下面乜都冇，
             # 用戶睇唔到個分點嚟（Kelvin 2026-08-05 提出）。
+            trend = m.group(4).strip()
+            if m.group(5):
+                trend = f"{trend}{m.group(5)}".strip()
             rows.append({'band': m.group(3).strip(), 'label': m.group(1).strip(),
-                         'value': f"{m.group(2)} 分", 'trend': m.group(4).strip(),
+                         'value': f"{m.group(2)} 分", 'trend': trend,
                          'reason': ''})
             dim_row = rows[-1]
             continue

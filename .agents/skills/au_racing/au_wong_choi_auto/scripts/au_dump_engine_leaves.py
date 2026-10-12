@@ -156,6 +156,10 @@ def main():
                     "career_starts": hd.get("career_race_starts"),
                     "prep_stage": (res.get("preparation_cycle") or {}).get("stage"),
                     "days_since_last": (res.get("preparation_cycle") or {}).get("days_since_last_run"),
+                    "pf_runs": ((res.get("pace_perf_detail") or {}).get("pace") or {}).get("runs"),  # walk-forward 研究欄（EXP-20261012-32）
+                    "barrier": hd.get("barrier"), "field_n": len(horses),  # walk-forward 研究欄（EXP-20261012-32）
+                    "distance": race_analysis.get("distance"), "going": (res.get("race_context") or {}).get("going"),  # walk-forward 研究欄（EXP-20261012-32）
+                    "style": (hd.get("_data") or {}).get("running_style_line"),  # walk-forward 研究欄（EXP-20261012-32）
                 })
             if len(out_rows) >= 4:
                 races_out.append({"meeting": meeting_dir.name, "date": date,

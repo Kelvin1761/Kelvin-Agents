@@ -73,11 +73,14 @@ def apply_going_refresh(logic_data: dict, official_going: str) -> dict:
     if isinstance(meeting, dict):
         meeting["going"] = official_going
         meeting["track_summary"] = official_going
+    from datetime import datetime, timezone
     audit = {
         "previous": previous,
         "applied": official_going,
         "changed": previous != official_going,
         "family_changed": _condition_family(previous) != _condition_family(official_going),
+        # 有時間先判斷得到「呢次刷新係咪新過 Facts」（見 `_prepare_logic_data`）。
+        "applied_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
     race["going_refresh"] = audit
     return audit
@@ -216,11 +219,37 @@ def _prepare_logic_data(
     facts_path: Path | None,
     going_override: str | None,
 ) -> tuple[dict, dict | None]:
+    prior = dict((logic_data.get("race_analysis") or {}).get("going_refresh") or {})
     if facts_path and facts_path.exists():
         logic_data = enrich_logic_from_facts(logic_data, facts_path)
+    if not going_override:
+        going_override = _still_valid_going_refresh(prior, facts_path)
     audit = apply_going_refresh(logic_data, going_override) if going_override else None
     _normalise_synthetic_going(logic_data)
     return logic_data, audit
+
+
+def _still_valid_going_refresh(prior: dict, facts_path: Path | None) -> str | None:
+    """上一次官方場地刷新，如果新過 Facts，就要再套用。
+
+    2026-10-10 審計：冇 `--going` 重評分嗰陣，`enrich_logic_from_facts` 會用
+    Facts（抽取嗰陣）嘅舊場地覆蓋 Logic 入面已經刷新咗嘅官方場地
+    （例：Bunbury 09-28 R8 Good 4 → 又變返 Soft 5）。Facts 比刷新新（即係
+    重新抽取過）就信 Facts；冇時間戳嘅舊記錄維持舊行為。
+    """
+    applied = str(prior.get("applied") or "").strip()
+    applied_at = str(prior.get("applied_at") or "").strip()
+    if not applied or not applied_at or not facts_path or not facts_path.exists():
+        return None
+    from datetime import datetime, timezone
+    try:
+        refreshed = datetime.fromisoformat(applied_at)
+    except ValueError:
+        return None
+    if refreshed.tzinfo is None:
+        refreshed = refreshed.replace(tzinfo=timezone.utc)
+    facts_written = datetime.fromtimestamp(facts_path.stat().st_mtime, tz=timezone.utc)
+    return applied if refreshed >= facts_written else None
 
 
 def _normalise_synthetic_going(logic_data: dict) -> None:

@@ -35,6 +35,23 @@ class LaunchdInstallationTests(unittest.TestCase):
         self.assertIn("--skip-review", args)
         self.assertIn("--skip-analysis", args)
 
+    def test_afternoon_refreshes_each_own_a_distinct_slot(self):
+        # 2026-10-12：12:00 之後退出嘅馬一直掛喺 dashboard 做首選。每個時段要自己個
+        # slot，唔可以共用 12:00，否則 control plane 會當重複 run 跳過。
+        slots = set()
+        for label, hour in (("com.antigravity.au-wong-choi.midday", 12),
+                            ("com.antigravity.au-wong-choi.afternoon", 14),
+                            ("com.antigravity.au-wong-choi.late", 16)):
+            plist = self._plist(label)
+            self.assertEqual(plist["Label"], label)
+            self.assertEqual(plist["StartCalendarInterval"]["Hour"], hour)
+            args = plist["ProgramArguments"]
+            self.assertEqual(args[2], "morning")
+            self.assertIn("--skip-review", args)
+            self.assertIn("--skip-analysis", args)
+            slots.add(args[args.index("--slot") + 1])
+        self.assertEqual(slots, {"12:00", "14:00", "16:00"})
+
     def test_auxiliary_jobs_use_the_environment_wrapper(self):
         for label, task in (("com.antigravity.au-wong-choi.healthcheck", "healthcheck"),
                             ("com.antigravity.au-wong-choi.bot", "bot")):

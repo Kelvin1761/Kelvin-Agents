@@ -2,7 +2,6 @@
 from datetime import datetime
 import json
 from pathlib import Path
-from types import SimpleNamespace
 import sys
 
 SCRIPTS = Path(__file__).resolve().parents[1] / 'scripts'
@@ -68,8 +67,12 @@ def test_existing_index_uses_correct_venue_class_without_changing_asof(tmp_path)
 
 
 def followup(monkeypatch, runs):
-    monkeypatch.setattr(injector.subprocess, 'run', lambda *a, **k:
-                        SimpleNamespace(stdout=json.dumps({'rival': {'runs': runs}}), returncode=0))
+    # 2026-10-10：對手索引改咗 in-process（`_sb_index_lookup`），唔再開 subprocess。
+    # mock 原封不動回晒全部往績 —— 同以前 mock subprocess 一樣，令下面嘅
+    # 「當日截斷」test 量嘅仍然係 injector 自己嗰道閘。
+    monkeypatch.setattr(injector, '_sb_index_lookup',
+                        lambda names, as_of='': json.loads(json.dumps(
+                            {'rival': {'runs': runs}})))
     return injector.compute_form_lines_via_api([{
         'is_trial': False, 'finish_pos': 2, 'result_line': '1-Rival (57kg)',
         'date_dt': datetime(2026, 8, 1), 'date': '2026-08-01',

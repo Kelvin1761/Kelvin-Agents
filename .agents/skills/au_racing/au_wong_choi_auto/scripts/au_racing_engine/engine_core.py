@@ -611,11 +611,14 @@ class RacingEngine:
                 fd["final"] = round(clip_score(feature_scores["form_score"]), 2)
         if feature_scores.get("consistency_score", 60) >= 72 and ts < 60:
             feature_scores["consistency_score"] = feature_scores["consistency_score"] - 4
-            feature_notes["consistency_score"] = feature_notes.get("consistency_score", "") + "；場地未明，穩定性分小收 −4"
+            feature_notes["consistency_score"] = feature_notes.get("consistency_score", "") + "；場地往績偏弱／濕地未經驗證，穩定性分小收 −4"
             cd = getattr(self, "consistency_detail", None)
             if isinstance(cd, dict):
-                cd["adjustments"].append({"delta": -4.0, "factor": "[環境] 場地未明收回",
-                                          "evidence": "穩定度偏高但場地分未達中性"})
+                cd["adjustments"].append({"delta": -4.0, "factor": "[環境] 場地往績偏弱收回",
+                                          # 條件係 track_score < 60。track 冇證據係
+                                          # base 62.9（唔會觸發）；低過 60 只會係
+                                          # 往績差、或者濕地未經驗證（−6.4）。
+                                          "evidence": "穩定度偏高但場地往績分低於中性（往績偏弱或濕地未經驗證）"})
                 cd["final"] = round(clip_score(feature_scores["consistency_score"]), 2)
         # Complete class-adjusted margin evidence replaces the old consistency
         # leaf inside the stability matrix.  Where that evidence is unavailable,
@@ -1000,9 +1003,19 @@ class RacingEngine:
 
         entries = self._official_entries()
         if not entries:
-            detail["note"] = "缺乏正式賽績（賽績表未有可用場次），按中性 60 分處理"
-            detail["final"] = 60.0
-            return 60, "缺乏正式賽績，近績分按 60 分處理。", "career_tag"
+            # 生涯有正式賽，但 Sportsbet 往績頁冇嗰幾行（只剩試閘）。官方 Last 10
+            # 解讀（已跳過試閘）仍然話我哋知名次 —— 唔可以當「冇證據」中性 60。
+            # 2026-10-12 Tamworth R4 Platinum Card：生涯 1 場跑第 10，form 一直 60。
+            # 冇馬群大細、冇班次，所以只用絕對名次階梯、班次乘數 1.0。
+            fallback = (parse_recent_finishes(self.data.get("recent_form")) or [])[:min(starts, 4)]
+            if not fallback:
+                detail["note"] = "缺乏正式賽績（賽績表未有可用場次），按中性 60 分處理"
+                detail["final"] = 60.0
+                return 60, "缺乏正式賽績，近績分按 60 分處理。", "career_tag"
+            today_class = self.race_context.get("race_class", "")
+            entries = [{"placing": str(place), "field_size": None, "class": today_class,
+                        "kind": "", "from_last10": True} for place in fallback]
+            detail["source"] = "official_last10_without_form_lines"
 
         # Preserve the actual evidence separately from the prize proxy. A
         # sponsor title / historical HC is never proof of a race's BM class.
@@ -5343,6 +5356,9 @@ def _parse_formguide_pf_metrics(
         ]
         runs = []
         for line in body.splitlines():
+            # ⚠️ 試閘 PF **刻意保留**。EXP-20261012-31：剔走試閘（全部，或者只剔走冇正式
+            # PF 嘅馬）喺 2,436 場重建語料 Gold −0.37pp／−0.29pp —— 試閘嘅速度環境平均
+            # 有預測力，Platinum Card（單場試閘 → 84.1）係個別例外，唔係規律。
             run_date_match = re.search(r"\b(\d{4}-\d{2}-\d{2})\b", line)
             run_date = run_date_match.group(1) if run_date_match else ""
             distance_match = re.search(r"\b(\d{3,4})m\b", line, re.I)

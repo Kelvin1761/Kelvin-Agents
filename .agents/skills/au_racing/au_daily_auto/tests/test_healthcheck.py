@@ -26,6 +26,21 @@ DAY = "2026-08-10"
 VENUES = {"Dubbo", "Kilcoy", "Nowra", "Pakenham Synthetic"}
 
 
+# 語料 CSV 覆蓋率檢查讀**真**資料根。2026-10-10 修好佢個預設路徑之前，佢喺
+# production 永遠回 `[]`，所以呢度啲 test 一直「碰巧」hermetic；修好之後真實
+# 嘅死欄警告就漏咗入嚟。佢自己有專門 test（test_corpus_column_health.py）。
+_CORPUS_PATCH = unittest.mock.patch.object(
+    H, "corpus_column_advisories", lambda *a, **k: [])
+
+
+def setUpModule():
+    _CORPUS_PATCH.start()
+
+
+def tearDownModule():
+    _CORPUS_PATCH.stop()
+
+
 def patched(live, expect, scored):
     return unittest.mock.patch.multiple(
         H, live_meetings=lambda: live, au_venues_today=lambda day: expect,

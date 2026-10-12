@@ -678,7 +678,19 @@ def unresolved_post_heal_message(day: str, after: dict, *, heal_ok: bool,
 #   2026-08-26  `Time` 欄     99% → 0%（`au_results_ingest` 硬寫空字串）
 #   2026-08-31  `Barrier` 欄  99% → 0%（同一個硬寫，修 Time 時冇一齊掃）
 # 兩次都係「檔案仍在、行數仲加、零錯誤」。所以要逐欄睇覆蓋率，唔係睇檔案存在。
-CORPUS_COLUMNS = ("Barrier", "Distance", "SP", "Pos")
+# 2026-10-10：加 Weight／Jockey／Trainer —— 2026-09 起佢哋同 Barrier／Distance
+# 一齊死（`sb_results_csv.FIELDS` 得 8 欄），而舊清單一條都冇覆蓋到。
+CORPUS_COLUMNS = ("Barrier", "Distance", "Weight", "Jockey", "Trainer", "SP", "Pos")
+
+
+def default_corpus_csv() -> Path:
+    """語料 CSV 嘅正式路徑（同 `au_archive_calibrator` 同一個來源）。"""
+    # HERE = .../au_racing/au_daily_auto → HERE.parent = .../au_racing
+    scripts = HERE.parent / "au_wong_choi_auto" / "scripts"
+    if str(scripts) not in sys.path:
+        sys.path.insert(0, str(scripts))
+    from au_archive_calibrator import HISTORICAL_RESULTS_CSV
+    return Path(HISTORICAL_RESULTS_CSV)
 CORPUS_COLUMN_FLOOR = 0.90
 
 
@@ -693,11 +705,12 @@ def corpus_column_advisories(csv_path=None, *, recent_days: int = 60) -> list[st
 
     if csv_path is None:
         try:
-            sys.path.insert(0, str(HERE.parents[1] / "au_wong_choi_auto" / "scripts"))
-            from au_archive_calibrator import HISTORICAL_RESULTS_CSV as _csv_path
-            csv_path = _csv_path
-        except Exception:  # noqa: BLE001
-            return []
+            csv_path = default_corpus_csv()
+        except Exception as exc:  # noqa: BLE001
+            # 以前呢度靜靜回 `[]`，而路徑本身錯咗（`HERE.parents[1]` 指去
+            # `skills/`），所以 production 由頭到尾冇檢查過 —— 2026-09 起語料
+            # CSV 死咗 7 條欄五個星期都冇人知。搵唔到就要講出嚟。
+            return [f"語料 CSV 覆蓋率檢查自己壞咗（{exc.__class__.__name__}: {exc}）"]
     csv_path = Path(csv_path)
     if not csv_path.exists():
         return [f"語料 CSV 唔存在：{csv_path.name}"]

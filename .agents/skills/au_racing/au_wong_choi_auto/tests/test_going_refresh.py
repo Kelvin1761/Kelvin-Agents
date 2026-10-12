@@ -96,5 +96,43 @@ class GoingRefreshTests(unittest.TestCase):
         self.assertEqual(audit["applied"], "Good 4")
 
 
+    def _rescore_without_override(self, applied_at: str, facts_age_s: float):
+        import os, time
+
+        def stale_enrichment(logic_data: dict, _facts_path: Path) -> dict:
+            race = logic_data["race_analysis"]
+            race["meeting_intelligence"]["going"] = "Soft 5"
+            race["going"] = "Soft 5"
+            return logic_data
+
+        logic = _logic("Good 4")
+        logic["race_analysis"]["going_refresh"] = {
+            "previous": "Soft 5", "applied": "Good 4", "applied_at": applied_at}
+        with tempfile.TemporaryDirectory() as tmp:
+            facts_path = Path(tmp) / "Race 4 Facts.md"
+            facts_path.write_text("stale facts", encoding="utf-8")
+            stamp = time.time() - facts_age_s
+            os.utime(facts_path, (stamp, stamp))
+            with patch.object(au_auto_orchestrator, "enrich_logic_from_facts",
+                              side_effect=stale_enrichment):
+                prepared, _audit = _prepare_logic_data(
+                    logic, facts_path=facts_path, going_override=None)
+        return stored_going(prepared)
+
+    def test_newer_official_refresh_survives_rescore_without_override(self) -> None:
+        # Bunbury 09-28 R8：已刷新做 Good 4，冇 --going 重評分又變返 Facts 嘅 Soft 5。
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+        self.assertEqual(self._rescore_without_override(now, facts_age_s=3600), "Good 4")
+
+    def test_refetched_facts_newer_than_refresh_win(self) -> None:
+        self.assertEqual(
+            self._rescore_without_override("2000-01-01T00:00:00+00:00", facts_age_s=0),
+            "Soft 5")
+
+    def test_legacy_refresh_without_timestamp_keeps_old_behaviour(self) -> None:
+        self.assertEqual(self._rescore_without_override("", facts_age_s=3600), "Soft 5")
+
+
 if __name__ == "__main__":
     unittest.main()

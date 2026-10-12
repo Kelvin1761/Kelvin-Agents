@@ -190,7 +190,7 @@ def update(blocks, index=None, path=DEFAULT_INDEX, save_now=True,
             "opponent_runs_added": opp_added, "index_size": len(index)}
 
 
-def lookup(names, path=DEFAULT_INDEX, as_of="") -> dict:
+def lookup(names, path=DEFAULT_INDEX, as_of="", index=None) -> dict:
     """`--names` 嘅查詢。查唔到就出 `{"error": ...}`，同舊 scraper 一致 ——
     上游會譯做「查冊失敗」，唔會靜靜當成「未有出賽」（0 勝）而扣分。
 
@@ -199,7 +199,10 @@ def lookup(names, path=DEFAULT_INDEX, as_of="") -> dict:
     `compute_form_lines_via_api` 當成「後續走勢」計入賽績線 —— 同表格頁嗰個
     賽後洩漏一模一樣，只係由另一道門入。
     """
-    index = load(path)
+    # `index` 俾 in-process caller 傳一份已 load 嘅索引入嚟（唯讀，下面只砌新
+    # dict），慳返每匹馬重讀一次 34 MB JSON。
+    if index is None:
+        index = load(path)
     out = {}
     for name in names:
         slug = build_slug(name)

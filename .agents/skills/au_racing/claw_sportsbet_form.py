@@ -475,6 +475,14 @@ def parse_race(html):
             continue
         seen_p.add((k, pid))
         meta["people"].append((k, pid))
+    # 個人頁本身冇名，名只喺賽事頁條 link 嘅 `title="Nash Rawiller  - Career
+    # Statistics"`。以前 refresh 傳 `""` 做名，每次 TTL 過期重抓就洗走成個記錄
+    # 嘅名（2026-10-10 實測 2,554 人 2,191 個空）。
+    meta["people_names"] = {
+        (k, pid): re.sub(r"\s+", " ", name).strip()
+        for k, pid, name in re.findall(
+            r'href="/(Jockey|Trainer)/(\d+)/"\s+title="([^"]*?)\s*-\s*Career Statistics"', html)
+    }
 
     # 逐場往績：由 "Finished x/y" 錨定，向後掃同一段落
     runs = []
@@ -1413,7 +1421,8 @@ def main():
         # `sb_people_stats` 有 TTL cache，跑熟之後每場只補幾個。失敗非致命。
         try:
             import sb_people_stats
-            ppl = [(k, pid, "") for _, pr, _ in out
+            ppl = [(k, pid, (pr["meta"].get("people_names") or {}).get((k, pid), ""))
+                   for _, pr, _ in out
                    for k, pid in (pr["meta"].get("people") or [])]
             if ppl:
                 # `cache_only` 一定要傳落去 —— `refresh()` 個 docstring 講得好白：

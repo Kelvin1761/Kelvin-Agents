@@ -486,10 +486,25 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
 
         # Detect trial
         is_trial = TRIAL_MARKER in section[max(0, rm.start()-50):rm.start()+10]
-        if not is_trial:
-            is_trial = is_trial_venue(venue, distance)
-        if not is_trial and prize_str == '0':
-            is_trial = True
+        header_line = section[rm.start():section.find('\n', rm.start())
+                              if section.find('\n', rm.start()) != -1 else len(section)]
+        race_class = re.search(r'RaceClass:\[([^\]]*)\]', header_line)
+        if race_class is not None:
+            # Sportsbet 往績行有明確標記：`**(TRIAL)**`、`RaceClass:[… Barrier Trial]`、
+            # 試閘獎金 $0。有呢啲資料就**唔再用距離／馬場估**。以前
+            # `is_trial_venue` 將所有 600–950m 賽事當試閘，2026-08-05 起 2,188 場
+            # 正式短途賽（900m 1,077、800m 549、950m 539）被錯標，於是唔入近績、
+            # 穩定性、場數統計（2026-10-12 Tamworth R4 Smashit 嘅 Scone 900m MDN-SW）。
+            cls_text = race_class.group(1).lower()
+            if not is_trial:
+                is_trial = ('trial' in cls_text or '-bt' in cls_text
+                            or 'jump out' in cls_text or prize_str == '0')
+        else:
+            # 舊格式（冇 RaceClass）先保留估算。
+            if not is_trial:
+                is_trial = is_trial_venue(venue, distance)
+            if not is_trial and prize_str == '0':
+                is_trial = True
 
         # A post-race refresh can expose the target race (or a later run) in the
         # same Formguide. Dossier evidence is strictly pre-race: censor it once
@@ -879,6 +894,36 @@ import subprocess
 # 佢唯一嘅作用係喺索引未砌好嗰陣靜靜咁失敗，而唔係話畀我哋知索引未砌好。
 _SB_INDEX_PATH = str(_SCRIPT_DIR.parent / 'skills' / 'au_racing' / 'sb_horse_index.py')
 
+# 2026-10-10：以前每匹馬開一個 subprocess，每次重讀成份 34 MB 索引 ——
+# 一個 10 場場次 110 次，佔本機流程 ~70 秒（85%）。而家同一個 process 只 load
+# 一次（按檔案 mtime／大細失效），查詢照用 `sb_horse_index.lookup`，再行一次
+# JSON 來回令型別同 subprocess 輸出逐個一樣。
+_SB_INDEX_CACHE: dict = {}
+
+
+def _sb_index_lookup(names, as_of=''):
+    au_dir = str(Path(_SB_INDEX_PATH).parent)
+    if au_dir not in sys.path:
+        sys.path.insert(0, au_dir)
+    import sb_horse_index
+    index_path = Path(sb_horse_index.DEFAULT_INDEX)
+    try:
+        st = index_path.stat()
+        key = (str(index_path), st.st_mtime_ns, st.st_size)
+    except OSError:
+        key = (str(index_path), None, None)
+    if _SB_INDEX_CACHE.get('key') != key:
+        _SB_INDEX_CACHE.clear()
+        _SB_INDEX_CACHE['key'] = key
+        _SB_INDEX_CACHE['index'] = sb_horse_index.load(index_path)
+        if not _SB_INDEX_CACHE['index']:
+            # `load()` 讀唔到／壞檔都回 `{}`，之後每個對手都變「查冊失敗」、
+            # 賽績線全場坐 60，而以前一句警告都冇（2026-10-10 審計實測 109/110 匹）。
+            print(f"  ⚠️ [FormLines] 對手索引係空或者讀唔到：{index_path} —— "
+                  "賽績線會全部變「查冊失敗」", file=sys.stderr)
+    out = sb_horse_index.lookup(names, index_path, as_of, index=_SB_INDEX_CACHE['index'])
+    return json.loads(json.dumps(out, ensure_ascii=False))
+
 
 # ⚠️ 賽績線嘅時點閘。`compute_form_lines_via_api` 數「對手喺**呢條往績行之後**有冇
 # 再出賽／贏」，而條往績行係過去嘅。如果索引唔設上限，對手**當日**（即係我哋要
@@ -954,28 +999,11 @@ def compute_form_lines_via_api(entries: list[dict], max_races: int = 5) -> dict:
     scraper_available = True
     
     if unique_names:
-        scraper_path = _SB_INDEX_PATH
-        _python_cmd = "python3" if shutil.which("python3") else "python"
-        cmd = [_python_cmd, scraper_path, "--names", ",".join(unique_names)]
-        # `--as-of` 係時點閘，唔係優化。以前佢 conditional 喺「用緊索引」之上，
-        # 而家只有一條路，所以無條件加 —— 冇 as-of 就等於畀對手當日成績漏入去。
-        if _AS_OF:
-            cmd += ["--as-of", _AS_OF]
+        # `as_of` 係時點閘，唔係優化 —— 冇 as-of 就等於畀對手當日成績漏入去。
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=90)
-            if res.stdout.strip():
-                profile_data = json.loads(res.stdout)
-            elif res.returncode != 0:
-                print(f"  [FormLines] scraper exit code {res.returncode}: {res.stderr[:200]}", file=sys.stderr)
-                scraper_available = False
-        except FileNotFoundError:
-            print(f"  [FormLines] sb_horse_index.py not found at {scraper_path}", file=sys.stderr)
-            scraper_available = False
-        except subprocess.TimeoutExpired:
-            print(f"  [FormLines] scraper timeout (90s)", file=sys.stderr)
-            scraper_available = False
+            profile_data = _sb_index_lookup(unique_names, _AS_OF)
         except Exception as e:
-            print(f"  [FormLines] API Error: {e}", file=sys.stderr)
+            print(f"  [FormLines] 對手索引查詢失敗: {type(e).__name__}: {e}", file=sys.stderr)
             scraper_available = False
             
     # 3. Analyze Future form — Top-3 per race
