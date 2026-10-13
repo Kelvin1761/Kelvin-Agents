@@ -87,6 +87,45 @@ class ClassifyTests(unittest.TestCase):
         self.assertEqual(entry["bucket"], "model_wrong")
 
 
+def _hkjc_logic(scores):
+    """HKJC verdict：冇 confidence_tier，只有 ranking 嘅 rank_score。"""
+    return {"horses": {}, "python_auto_verdict": {"ranking": [
+        {"horse_number": str(i), "rank_score": v, "ability_score": v + 7.0, "rank": i}
+        for i, v in enumerate(scores, 1)]}}
+
+
+class HkjcCrowdTests(unittest.TestCase):
+    """HKJC 綜合分被壓窄（頭三差中位數 2.56），唔可以用 AU 嘅 2.0／0.5。"""
+
+    def test_tight_from_rank_score(self):
+        entry = ma.classify_race(1, _hkjc_logic([68.0, 67.6, 67.2, 60.0]), PREDS, MISS, platform="hkjc")
+        self.assertEqual(entry["bucket"], "crowded")
+        self.assertEqual([t["rule"] for t in entry["triggers"]], ["tight"])
+        self.assertAlmostEqual(entry["top1_top3_gap"], 0.8)
+
+    def test_tied_top_two(self):
+        entry = ma.classify_race(1, _hkjc_logic([68.0, 67.8, 65.0]), PREDS, MISS, platform="hkjc")
+        self.assertEqual({t["rule"] for t in entry["triggers"]}, {"tied"})
+
+    def test_au_thresholds_are_not_used_for_hkjc(self):
+        """頭三差 1.5：AU 會判 tight（<2.0），HKJC 唔會（<1.0）。"""
+        entry = ma.classify_race(1, _hkjc_logic([68.0, 67.0, 66.5]), PREDS, MISS, platform="hkjc")
+        self.assertEqual(entry["bucket"], "model_wrong")
+
+    def test_uses_rank_score_not_display_ability(self):
+        logic = _hkjc_logic([68.0, 67.7, 67.4])
+        for row, shown in zip(logic["python_auto_verdict"]["ranking"], (80.0, 70.0, 60.0)):
+            row["ability_score"] = shown
+        self.assertEqual(ma.classify_race(1, logic, PREDS, MISS, platform="hkjc")["bucket"], "crowded")
+
+    def test_missing_scores_never_crowded(self):
+        logic = {"horses": {}, "python_auto_verdict": {"ranking": [{"rank_score": 68.0}, {"rank_score": None}, {}]}}
+        self.assertEqual(ma.classify_race(1, logic, PREDS, MISS, platform="hkjc")["bucket"], "model_wrong")
+
+    def test_au_verdict_fields_still_win(self):
+        self.assertEqual(ma.crowd_context(_logic(tier="clear")["python_auto_verdict"], "au")["tier"], "clear")
+
+
 class OutputTests(unittest.TestCase):
     def _result(self, meeting="2026-10-11 Seymour Race 1-10", races=None):
         races = races if races is not None else [

@@ -23,10 +23,11 @@ EXP-20260905-02（全 miss 場日，九個特徵冇一個企得住）、EXP-2026
 規則同門檻係**預先寫死**嘅，全部取自 engine 現有常數或者只用賽前輸入量出嚟嘅
 基準觸發率（2026-09-2x～10-0x 760 場：每條 ≤10%），**冇用過賽果去調**。
 
-HKJC 限制：HKJC Logic 冇 `feature_evidence_state`、`confidence_tier`、
-`pace_figure_coverage`，所以 HKJC 暫時只有 Data_Health／上名馬冇評分／賽果
-三類觸發，`crowded` 永遠唔會出。唔好將 AU 嘅分差門檻（2.0／0.5）搬過去 ——
-HKJC 綜合分係另一把尺。
+HKJC：Logic 冇 `confidence_tier`，所以 `crowded` 由 verdict ranking 嘅 `rank_score`
+（HKJC 排序用嘅分數，唔係顯示用嘅 `ability_score`）自己計，門檻見 `DERIVED_CROWD`。
+唔可以搬 AU 嘅 2.0／0.5：HKJC 綜合分被壓窄，頭三名分差中位數得 2.56。
+HKJC 亦冇 `feature_evidence_state`／`pace_figure_coverage`，所以輸入類只有
+Data_Health／上名馬冇評分／賽果三種觸發。
 
 ⚠️ 硬規矩：呢度嘅輸出只做診斷。**唔准**用嚟擇參、調權重、或者揀 leaf。
 （AGENTS.md「唔准只針對最近一日／一個場次去調」。）
@@ -62,6 +63,15 @@ CROWD_RULES = frozenset({"tight", "tied"})
 # ≥4 只有約 6%（大部分係初出馬）。量度只用咗賽前輸入。
 THIN_HORSE_WEAK_LEAVES = 4
 
+# 冇 `confidence_tier` 嘅平台，由 ranking 分數自己計「擠迫」。
+# 門檻 = 令觸發率對齊 AU 嘅 quantile，只用賽前分數分佈量，冇用賽果：
+#   AU 2026-08-05 起 2,797 場：tight（頭三差 <2.0）9.2%、tied（頭兩差 <0.5）11.1%。
+#   HKJC 2025-09 起 371 場（rank_score）：9.2% 分位 0.97、11.1% 分位 0.26；
+#   前後兩半時間分別係 0.99／0.87 同 0.24／0.26。取 1.0／0.25 → 實際 10.5%／10.8%。
+DERIVED_CROWD = {
+    "hkjc": {"score": "rank_score", "tight": 1.0, "tied": 0.25},
+}
+
 LEDGER_NAMES = {"au": "AU_Miss_Autopsy.jsonl", "hkjc": "HKJC_Miss_Autopsy.jsonl"}
 REPORT_BEGIN = "<!-- miss-autopsy:begin -->"
 REPORT_END = "<!-- miss-autopsy:end -->"
@@ -79,8 +89,8 @@ TRIGGER_LABELS = {
     "unscored_placegetter": "上名馬冇評分",
     "dropped_result_rows": "賽果有行被丟走",
     "short_result": "賽果唔夠三名",
-    "tight": "頭三名分差 < 2",
-    "tied": "頭兩名分差 < 0.5",
+    "tight": "頭三名分差細（AU < 2／HKJC < 1）",
+    "tied": "頭兩名分差細（AU < 0.5／HKJC < 0.25）",
 }
 
 
@@ -144,10 +154,31 @@ def _active_predictions(prediction_list: list[dict], scratched: set[int]) -> lis
     return rows
 
 
+def crowd_context(verdict: dict, platform: str = "au") -> dict:
+    """→ {tier, tied, top1_top3_gap, top1_top2_gap}。
+
+    AU 直接用 renderer 寫好嘅 `confidence_tier`／`top_pick_tied`。其他平台冇呢兩欄，
+    就由 ranking 分數按 `DERIVED_CROWD` 計；分數唔齊就當「唔知」（唔會判擠迫）。
+    """
+    if "confidence_tier" in verdict or platform not in DERIVED_CROWD:
+        return {"tier": verdict.get("confidence_tier"), "tied": bool(verdict.get("top_pick_tied")),
+                "top1_top3_gap": verdict.get("top1_top3_gap"), "top1_top2_gap": verdict.get("top1_top2_gap")}
+    cfg = DERIVED_CROWD[platform]
+    scores = [row.get(cfg["score"]) for row in verdict.get("ranking") or []]
+    if len(scores) < 3 or any(not isinstance(v, (int, float)) for v in scores[:3]):
+        return {"tier": None, "tied": False, "top1_top3_gap": None, "top1_top2_gap": None}
+    gap3 = round(scores[0] - scores[2], 4)
+    gap2 = round(scores[0] - scores[1], 4)
+    return {"tier": "tight" if gap3 < cfg["tight"] else "derived", "tied": gap2 < cfg["tied"],
+            "top1_top3_gap": gap3, "top1_top2_gap": gap2}
+
+
 def classify_race(race_num: int, logic: dict, predictions: list[dict], actual_rows: list[dict],
-                  *, health_issues: list | None = None, dropped_rows: int = 0) -> dict:
+                  *, health_issues: list | None = None, dropped_rows: int = 0,
+                  platform: str = "au") -> dict:
     """一場失手嘅體檢。純函數：所有輸入由 caller 提供，方便測試。"""
     verdict = logic.get("python_auto_verdict") or {}
+    context = crowd_context(verdict, platform)
     horses = logic.get("horses") or {}
     model_top2 = [row["horse_no"] for row in predictions[:2]]
     actual_top3 = [row["horse_no"] for row in actual_rows[:3]]
@@ -178,10 +209,10 @@ def classify_race(race_num: int, logic: dict, predictions: list[dict], actual_ro
         triggers.append({"rule": "short_result", "value": len(actual_rows)})
 
     crowd = []
-    if verdict.get("confidence_tier") == "tight":
-        crowd.append({"rule": "tight", "value": verdict.get("top1_top3_gap")})
-    if verdict.get("top_pick_tied"):
-        crowd.append({"rule": "tied", "value": verdict.get("top1_top2_gap")})
+    if context["tier"] == "tight":
+        crowd.append({"rule": "tight", "value": context["top1_top3_gap"]})
+    if context["tied"]:
+        crowd.append({"rule": "tied", "value": context["top1_top2_gap"]})
 
     if triggers:
         bucket = "input_anomaly"
@@ -193,8 +224,8 @@ def classify_race(race_num: int, logic: dict, predictions: list[dict], actual_ro
         "race": race_num,
         "bucket": bucket,
         "triggers": triggers + crowd,
-        "confidence_tier": verdict.get("confidence_tier"),
-        "top1_top3_gap": verdict.get("top1_top3_gap"),
+        "confidence_tier": context["tier"],
+        "top1_top3_gap": context["top1_top3_gap"],
         "model_top2": model_top2,
         "actual_top3": actual_top3,
         "actual_top3_model_ranks": [rank_of.get(h) for h in actual_top3],
@@ -233,6 +264,7 @@ def autopsy_meeting(platform: str, meeting_dir: Path) -> dict:
         entry = classify_race(
             race_num, _logic(analysis_dir, race_num), active, actual_rows,
             health_issues=health.get(race_num), dropped_rows=dropped.get(race_num, 0),
+            platform=platform,
         )
         entry["label"] = label
         races.append(entry)
