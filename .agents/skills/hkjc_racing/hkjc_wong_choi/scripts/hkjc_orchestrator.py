@@ -44,6 +44,7 @@ from hkjc_orchestrator_helpers import (
     trigger_extractor,
 )
 from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
+from drift_monitor_hook import run_drift_advisory
 from racing_data_health import scan_meeting, status_line, write_report
 from subprocess_pool import bounded_workers
 from wongchoi_paths import is_materialized_file
@@ -357,6 +358,7 @@ def main() -> None:
         _run_auto(target_dir, args.validate_engine)
         _run_data_health_gate(target_dir)
         _run_compliance_gate(target_dir)
+        run_drift_advisory("hkjc", target_dir)
         run_post_success_cloudflare_deploy(
             source="HKJC Wong Choi",
             target_dir=target_dir,

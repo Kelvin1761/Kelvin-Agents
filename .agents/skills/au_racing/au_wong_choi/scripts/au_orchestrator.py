@@ -33,6 +33,7 @@ sys.path.insert(0, str(AUTO_ENGINE_DIR))
 sys.path.insert(0, str(PROJECT_ROOT))
 
 from cloudflare_deploy_hook import run_post_success_cloudflare_deploy
+from drift_monitor_hook import run_drift_advisory
 from au_racing_engine.source_alignment import validate_facts_horse_alignment, venue_from_meeting_name
 from subprocess_pool import bounded_workers, run_labeled_commands
 from wongchoi_paths import AU_RACING
@@ -99,6 +100,7 @@ def main():
                 _run(_auto_command(meeting_dir, official_going))
                 _run_data_health_gate(meeting_dir.parent)
                 _run_compliance_gate(meeting_dir.parent)
+                run_drift_advisory("au", meeting_dir.parent)
                 run_post_success_cloudflare_deploy(
                     source="AU Wong Choi",
                     target_dir=meeting_dir.parent,
@@ -125,6 +127,7 @@ def main():
         _run(_auto_command(meeting_dir, official_going))
         _run_data_health_gate(meeting_dir)
         _run_compliance_gate(meeting_dir)
+        run_drift_advisory("au", meeting_dir)
         run_post_success_cloudflare_deploy(
             source="AU Wong Choi",
             target_dir=meeting_dir,
