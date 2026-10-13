@@ -277,6 +277,51 @@ def parse_overview(html):
 
 RE_PERSON = re.compile(r'href="/(Jockey|Trainer)/(\d+)/"[^>]*>([^<]{2,60})<')
 
+# 騎師負磅調整：runner 區塊 `J` 行嘅後綴（2026-10-14，EXP-20261014-02）。
+#   `Tom Orr (a-1.5)`          → 見習減磅 1.5kg：實負 = 分配 − 1.5
+#   `Chad Schofield (a0.5)`    → **冇減號** = 超磅 0.5kg：實負 = 分配 + 0.5
+# 8,854 個 cache 頁、44,096 個 `J`：`a-N` 9,010（只有 1.5/2/3/4，全部見習），
+# `aN` 1,081（James McDonald、Tommy Berry 呢類資深騎師；52% 喺全場最低磅，
+# 基準 24% —— 即係壓唔到最低磅）。`aN` = 超磅係**由數據推斷**，Sportsbet 冇寫明。
+# 證實 `W` 係分配負磅：見習馬嘅 `W` 有 96% 跟住號碼次序單調，`W − 減磅` 94% 唔跟。
+RE_JOCKEY_ALLOWANCE = re.compile(r"\(\s*a\s*(?P<sign>-?)\s*(?P<kg>\d+(?:\.\d+)?)\s*\)\s*$", re.I)
+
+
+def parse_jockey_allowance(jockey_text):
+    """`J` 行文字 → 有符號負磅調整（kg）：減磅為負、超磅為正、冇後綴 = 0.0。"""
+    m = RE_JOCKEY_ALLOWANCE.search(str(jockey_text or ""))
+    if not m:
+        return 0.0
+    kg = float(m.group("kg"))
+    return -kg if m.group("sign") else kg
+
+
+def carried_weight(allotted_kg, allowance_kg):
+    """分配負磅 + 騎師調整 = 實負磅。分配負磅唔明就回 None。"""
+    try:
+        allotted = float(str(allotted_kg).lower().replace("kg", "").strip())
+    except (TypeError, ValueError):
+        return None
+    return round(allotted + float(allowance_kg or 0.0), 2)
+
+
+def format_weight_field(weight, allowance_kg):
+    """Racecard `Weight:` 欄。
+
+    第一個數字**一定**係分配負磅 —— `inject_fact_anchors`、`au_backfill_weights`、
+    `source_alignment.RACECARD_META_RE` 全部攞 `Weight:` 後面第一個數字，而讓磅
+    代理（`_handicap_weight_proxy`）要嘅正正係讓磅官派嘅分配負磅。調整寫喺括號，
+    `RACECARD_META_RE` 本身已容許 `(…)`。**唔准**加 `|`：`ra_fields` 靠
+    `rsplit("Rating:")`、`build_au_logic` 靠固定欄序。冇調整就同舊格式逐字一樣。
+    """
+    if not allowance_kg:
+        return str(weight)
+    carried = carried_weight(weight, allowance_kg)
+    if carried is None:
+        return str(weight)
+    label = "Claim" if allowance_kg < 0 else "Overweight"
+    return f"{weight} ({label} {abs(allowance_kg):g}kg, Carried {carried:g}kg)"
+
 
 RE_SILK_IMAGE_THEN_NUMBER = re.compile(
     # ⚠️ 兩個容器都要中：`selection-runner`（只有貼士推介嗰幾匹）同 `runner-silks`
@@ -817,7 +862,11 @@ def parse_runner_blocks(html, *, include_runs=True):
                    "stats": {}, "profile": {}, "_start": i}
             # 負磅：`W` 標籤之後嗰行（例 `61.5kg`）。Racecard 要佢，
             # 唔攞就會寫成 `Weight: ?`。
+            # ⚠️ `W` 係**分配負磅**，騎師減磅／超磅另寫喺 `J` 嗰行（`Tom Orr (a-1.5)`）。
+            # 總覽表個騎師格只得 `( )`，所以一定要喺呢度攞。見 `parse_jockey_allowance`。
             for j in range(k + 3, min(k + 12, len(ne))):
+                if ne[j][1] == "J" and j + 1 < len(ne) and "jockey_allowance_kg" not in cur:
+                    cur["jockey_allowance_kg"] = parse_jockey_allowance(ne[j + 1][1])
                 if ne[j][1] == "W" and j + 1 < len(ne) and re.fullmatch(r"[\d.]+kg", ne[j + 1][1]):
                     cur["stats"]["Weight"] = ne[j + 1][1]
                     break
@@ -939,7 +988,8 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
                     continue
                 f_rc.write(f"{num}. {name} ({bar})\n")
                 f_rc.write(f"Trainer: {ov.get('trainer','')} | Jockey: {ov.get('jockey','')} "
-                           f"| Weight: {st.get('Weight','?')} | Age: {ov.get('age_sex','')} "
+                           f"| Weight: {format_weight_field(st.get('Weight','?'), blk.get('jockey_allowance_kg'))} "
+                           f"| Age: {ov.get('age_sex','')} "
                            f"| Rating: {ov.get('rating','')}\n")
                 f_rc.write(f"Career: {ov.get('career','')} | Win: {ov.get('win_pct','')} "
                            f"| Place: {ov.get('place_pct','')}\n")

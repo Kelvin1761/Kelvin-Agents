@@ -19,7 +19,12 @@ HORSE_HEADER_RE = re.compile(
 RACECARD_HORSE_RE = re.compile(r"^\d+\.\s+(.+?)\s+\((\d+)\)$")
 RACECARD_META_RE = re.compile(
     r"^Trainer:\s*(?P<trainer>.*?)\s*\|\s*Jockey:\s*(?P<jockey>.*?)\s*\|\s*"
-    r"Weight:\s*(?P<weight>[0-9.]+)(?:kg)?(?:\s*\([^|]*\))?\s*\|\s*"
+    # 括號係 `claw_sportsbet_form.format_weight_field` 寫嘅騎師負磅調整：
+    # `61.0kg (Claim 1.5kg, Carried 59.5kg)`／`53.0kg (Overweight 0.5kg, Carried 53.5kg)`。
+    # `weight` 永遠係分配負磅；冇括號 = 冇調整（或者係 2026-10-14 之前抽嘅舊檔）。
+    r"Weight:\s*(?P<weight>[0-9.]+)(?:kg)?"
+    r"(?:\s*\((?:(?P<allowance_label>Claim|Overweight)\s+(?P<allowance_kg>[0-9.]+)kg)?[^|]*\))?"
+    r"\s*\|\s*"
     r"Age:\s*.*?\s*\|\s*Rating:\s*(?P<rating>[0-9.]+)?"
 )
 RAW_HORSE_HEADER_RE = re.compile(r"^### 馬匹 #(\d+)\b", re.M)

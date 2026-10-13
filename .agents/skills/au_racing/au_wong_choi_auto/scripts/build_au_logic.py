@@ -113,10 +113,13 @@ def _load_racecard_profiles(facts_path: Path, race_number: int) -> dict[str, dic
         meta_match = RACECARD_META_RE.match(lines[index + 1].strip())
         if meta_match:
             horse_name = _clean_identity(horse_match.group(1))
-            rating_raw = meta_match.group(2)
+            # ⚠️ 用 named group：`RACECARD_META_RE` 頭兩個 group 係 trainer／jockey，
+            # 舊寫法 `group(1)` 會 `float("練馬師名")`。（呢個函數冇 caller，
+            # 引擎用 `engine_core._load_racecard_profiles`。）
+            rating_raw = meta_match.group("rating")
             profiles[_normalize_horse_name(horse_name)] = {
                 "horse_rating": float(rating_raw) if rating_raw else None,
-                "declared_weight": float(meta_match.group(1)),
+                "declared_weight": float(meta_match.group("weight")),
             }
         index += 2
     return profiles

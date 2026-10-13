@@ -2328,8 +2328,12 @@ class RacingEngine:
             notes.append(f"過往首仗上陣有基本交代（{stage_stats['first_up'].get('runs', '')}次{stage_stats['first_up']['places']}上名，不入分）")
         if status_cycle in {"Second-up", "二出"} and stage_stats["second_up"]["places"] > 0:
             notes.append(f"二出歷史有承接（{stage_stats['second_up'].get('runs', '')}次{stage_stats['second_up']['places']}上名，不入分）")
-        if "(a)" in jockey and weight and weight >= 58:
-            notes.append(f"見習減磅可幫手化解負磅壓力（原負磅{weight:.1f}kg，不入分）")
+        # 舊條件係 `"(a)" in jockey` —— 但 Sportsbet 嘅減磅寫喺 `(a-1.5)`，而且
+        # 抽取層一直剝走，所以幾乎從來冇觸發（Formguide 只 0.5% 騎師名帶標記）。
+        # 而家減磅由 Racecard `Weight:` 括號帶入（EXP-20261014-02）。純 note，不入分。
+        claim = -float(self.horse_data.get("jockey_allowance_kg") or 0.0)
+        if claim > 0 and weight:
+            notes.append(f"見習減磅 {claim:g}kg（分配 {weight:.1f}kg → 實負 {weight - claim:.1f}kg，不入分）")
         if trainer in {"", "Unknown"}:
             notes.append("馬房資料不完整")
 
@@ -2577,7 +2581,7 @@ class RacingEngine:
 
         head = f"今仗 {race_class}"
         if weight is not None:
-            head += f"，負 {weight:.1f}kg"
+            head += f"，負 {weight:.1f}kg{self._weight_allowance_suffix()}"
         if class_move and "降班" in class_move:
             head += "，降班係實際著數"
         elif class_move and "升班" in class_move:
@@ -3848,11 +3852,21 @@ class RacingEngine:
         text = self._clean_identity(venue).lower()
         return "metro" if any(token in text for token in METRO_VENUE_TOKENS) else ("provincial" if text else "")
 
+    def _weight_allowance_suffix(self):
+        """`（見習減 1.5kg，實負 59.5kg）`／`（超磅 0.5kg，實負 53.5kg）`；冇調整回空字串。"""
+        allowance = parse_float(self.horse_data.get("jockey_allowance_kg")) or 0.0
+        carried = parse_float(self.horse_data.get("carried_weight"))
+        if not allowance or carried is None:
+            return ""
+        label = "見習減" if allowance < 0 else "超磅"
+        return f"（{label} {abs(allowance):g}kg，實負 {carried:.1f}kg）"
+
     def _weight_text(self):
+        # `weight` = 分配負磅；騎師調整只喺後綴顯示。
         weight = parse_float(self.horse_data.get("weight"))
         if weight is None:
             return ""
-        return f"{weight:.1f}kg"
+        return f"{weight:.1f}kg{self._weight_allowance_suffix()}"
 
     def _field_weight_brief(self):
         delta = self._field_weight_delta()
@@ -4248,6 +4262,9 @@ class RacingEngine:
         """
         if self._is_wfa_or_sw_race():
             return None, ""
+        # ⚠️ 一定要用**分配負磅**（`weight`），唔係 `carried_weight`。讓磅官先按
+        # 能力派磅，見習減磅係之後因騎師而減 —— 減磅講嘅係騎師經驗，唔係馬嘅
+        # 能力。用實負磅會將「見習騎師」誤當「讓磅官睇低呢匹馬」。EXP-20261014-02。
         weight = parse_float(self.horse_data.get("weight"))
         field = self._field_summary()
         avg_weight = parse_float(field.get("avg_weight"))
@@ -6046,6 +6063,14 @@ def enrich_logic_from_facts(
             horse["rating"] = racecard_profile["horse_rating"]
         if section.get("weight") is not None:
             horse["weight"] = section["weight"]
+        # `weight` 係**分配負磅**（讓磅官派嘅），讓磅代理同場內負磅統計要嘅就係佢；
+        # 實負磅只係報告用。EXP-20261014-02。
+        allowance = float(racecard_profile.get("jockey_allowance_kg") or 0.0)
+        horse["jockey_allowance_kg"] = allowance
+        weight_now = parse_float(horse.get("weight"))
+        horse["carried_weight"] = (
+            round(weight_now + allowance, 2) if weight_now is not None else None
+        )
         if section.get("barrier") is not None:
             horse["barrier"] = section["barrier"]
         horse["tactical_plan"] = _build_tactical_plan(
@@ -7835,6 +7860,15 @@ def _load_racecard_profiles(facts_path: Path, race_number: int) -> dict[str, dic
                     if meta_match.group("rating") else None
                 ),
                 "declared_weight": float(meta_match.group("weight")),
+                # 騎師負磅調整（有符號：見習減磅負、超磅正）。冇括號 = 0.0 ——
+                # 2026-10-14 之前抽嘅 Racecard 一律冇，所以舊檔讀成 0 係**未知**
+                # 而唔係「證實冇減磅」。只供顯示；讓磅代理照用分配負磅（見
+                # `_handicap_weight_proxy`、EXP-20261014-02）。
+                "jockey_allowance_kg": (
+                    (-1.0 if meta_match.group("allowance_label") == "Claim" else 1.0)
+                    * float(meta_match.group("allowance_kg"))
+                    if meta_match.group("allowance_kg") else 0.0
+                ),
                 "jockey": _clean_identity(meta_match.group("jockey")),
                 "trainer": _clean_identity(meta_match.group("trainer")),
             }
