@@ -1197,6 +1197,7 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
             runlog.meeting(folder.name, "reflection_failed",
                            detail=error_excerpt(out, rc))
             return {}
+        run_miss_autopsy(runlog, folder)
     else:
         runlog.step("reflection", "skipped-already-done", meeting=folder.name)
 
@@ -1205,6 +1206,26 @@ def review_one_meeting(runlog: RunLog, folder: Path, *,
         return {"races": expected}
 
     return archive_meeting(runlog, folder, expected)
+
+
+MISS_AUTOPSY = (PROJECT_ROOT / ".agents" / "skills" / "shared_racing"
+                / "scripts" / "miss_autopsy.py")
+
+
+def run_miss_autopsy(runlog: RunLog, folder: Path) -> bool:
+    """覆盤之後逐場失手做體檢（輸入有問題／擠迫／模型判錯）。
+
+    只做診斷，**唔准**餵返落權重。失敗只記 warning —— 體檢壞咗唔可以阻住歸檔。
+    """
+    rc, out = run_cmd([sys.executable, str(MISS_AUTOPSY), "--platform", "au",
+                       "--meeting", str(folder), "--write", "--append-report"],
+                      timeout=600)
+    if rc != 0:
+        runlog.warn(f"{folder.name}：失手體檢失敗（唔影響覆盤）—— {error_excerpt(out, rc)}")
+        runlog.step("miss-autopsy", "failed", meeting=folder.name)
+        return False
+    runlog.step("miss-autopsy", "done", meeting=folder.name)
+    return True
 
 
 def step_ingest_results(runlog: RunLog, *, from_date: str) -> bool:

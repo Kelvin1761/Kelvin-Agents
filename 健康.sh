@@ -253,6 +253,22 @@ for p in au hkjc; do
   else note_bad "$P 有欄位唔合格"; echo "$o" | sed -n '/唔合格/,/^$/p' | sed 's/^/      /'; fi
 done
 
+# ── 欄位健康趨勢 ─────────────────────────────────────────────────────────
+# 上面嗰段同一份固定基準比，捉死欄位；呢段逐週記錄、同前 4 週比，捉「慢慢死」，
+# 仲睇埋 evidence state 同結果 CSV（上面兩樣都睇唔到）。只警告，唔算 ❌。
+# 2026-10-13 第一次跑就量到 live 結果 CSV `Margin` 由 2026-W35 起 0%（healthcheck 嘅
+# CORPUS_COLUMNS 唔包 Margin／Time，所以之前冇警報）。
+hdr "欄位健康趨勢（逐週，捉慢慢死）"
+for p in au hkjc; do
+  P=$(echo "$p" | tr '[:lower:]' '[:upper:]')
+  if ! "$PY" .agents/skills/shared_racing/scripts/field_health.py --platform "$p" --record >/dev/null 2>&1; then
+    warn "$P 記錄唔到（跳過）"; continue
+  fi
+  o=$("$PY" .agents/skills/shared_racing/scripts/field_health.py --platform "$p" --trend 2>&1)
+  if echo "$o" | grep -q '✅'; then ok "$P $(echo "$o" | head -1 | sed 's/^欄位健康趨勢 — //') 冇欄位變差"
+  else warn "$P 有欄位變差"; echo "$o" | tail -n +2 | sed 's/^/      /'; fi
+done
+
 # ── Drive 鏡像同本機一唔一致 ──────────────────────────────────────────────
 # 上面「排程日誌」嗰段只答「上次 mirror run 有冇 failed」—— 嗰個永遠答「冇」，
 # 因為每次 run 都成功鏡像咗**佢自己嗰批**。但 `step_mirror_reports` 只掃「今次

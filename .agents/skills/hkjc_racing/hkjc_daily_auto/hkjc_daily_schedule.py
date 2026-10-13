@@ -62,6 +62,8 @@ HKJC_ORCHESTRATOR = (
     PROJECT_ROOT
     / ".agents/skills/hkjc_racing/hkjc_wong_choi/scripts/hkjc_orchestrator.py"
 )
+SHARED_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "shared_racing" / "scripts"
+MISS_AUTOPSY = SHARED_SCRIPTS / "miss_autopsy.py"
 REFLECTOR = (
     PROJECT_ROOT
     / ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py"
@@ -1274,6 +1276,14 @@ def run_postrace(state: dict, state_path: Path) -> int:
             log(f"post-race pending {key}: exit={code}")
             overall = max(overall, EXIT_TEMPORARY)
             continue
+        # 失手體檢：只做診斷，唔准餵返落權重；失敗唔影響 post-race 狀態。
+        autopsy_code, autopsy_output = run_cmd(
+            [sys.executable, str(MISS_AUTOPSY), "--platform", "hkjc",
+             "--meeting", str(meeting_dir), "--write", "--append-report"],
+            timeout=600,
+        )
+        if autopsy_code != 0:
+            log(f"miss autopsy failed {key} (non-blocking): {autopsy_output[-600:]}")
         rail_code, rail_output = run_cmd(
             [sys.executable, str(RAIL_DRAW_REFRESH)]
         )
@@ -1555,6 +1565,23 @@ def learning_lines(root: Path | None = None) -> list[str]:
     return lines
 
 
+def field_health_section(today: date | None = None) -> str:
+    """每週 review 尾加欄位健康 + 失手體檢摘要。任何失敗都只係少一段，唔影響 review。"""
+    try:
+        if str(SHARED_SCRIPTS) not in sys.path:
+            sys.path.insert(0, str(SHARED_SCRIPTS))
+        import field_health
+        import field_health_digest
+
+        today = today or date.today()
+        since = (today - timedelta(weeks=field_health.DEFAULT_RECORD_WEEKS)).isoformat()
+        field_health.record("hkjc", HK_RACING, since, field_health.ledger_path("hkjc", HK_RACING))
+        return "\n\n" + field_health_digest.build("hkjc", HK_RACING, today=today)
+    except Exception as exc:  # noqa: BLE001
+        log(f"field health digest failed (non-blocking): {exc}")
+        return ""
+
+
 def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     code, output = run_cmd([sys.executable, str(WEIGHT_REVIEW), "--json"])
     if code != 0:
@@ -1600,6 +1627,7 @@ def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
             pass
     if pr_url:
         message += f"\n{pr_url}"
+    message += field_health_section()
     notify(message)
     state["last_weekly_review"] = stamp()
     save_state(state_path, state)

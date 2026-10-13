@@ -747,6 +747,45 @@ def corpus_column_advisories(csv_path=None, *, recent_days: int = 60) -> list[st
     return out
 
 
+SHARED_SCRIPTS = HERE.parents[1] / "shared_racing" / "scripts"
+DIGEST_MARKER = ".field_health_digest_last"
+
+
+def weekly_field_health_digest(today: date | None = None, *, root: Path | None = None,
+                               send=None) -> str | None:
+    """每個 ISO 週發一次欄位健康 + 失手體檢摘要。已經發過就回 None。
+
+    放喺 healthcheck 而唔係晚更：healthcheck 獨立過排程，晚更死咗都照發。
+    記錄同摘要失敗只會 print，唔改 healthcheck 嘅退出碼 —— 摘要係資訊，唔係警報。
+    """
+    today = today or date.today()
+    if root is None:
+        from wongchoi_paths import AU_RACING
+        root = Path(AU_RACING)
+    year, week, _ = today.isocalendar()
+    this_week = f"{year}-W{week:02d}"
+    marker = Path(root) / DIGEST_MARKER
+    try:
+        if marker.read_text(encoding="utf-8").strip() == this_week:
+            return None
+    except OSError:
+        pass
+    if str(SHARED_SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(SHARED_SCRIPTS))
+    import field_health
+    import field_health_digest
+
+    since = (today - timedelta(weeks=field_health.DEFAULT_RECORD_WEEKS)).isoformat()
+    field_health.record("au", Path(root), since, field_health.ledger_path("au", Path(root)))
+    text = field_health_digest.build("au", Path(root), today=today)
+    if send is None:
+        import au_notify
+        send = au_notify.push
+    send(text)
+    marker.write_text(this_week + "\n", encoding="utf-8")
+    return text
+
+
 def check(day: str) -> dict:
     if run_in_progress():
         return {"state": "in-progress",
@@ -785,6 +824,12 @@ def main() -> int:
     day = sys.argv[1] if len(sys.argv) > 1 else date.today().isoformat()
     res = check(day)
     print(json.dumps(res, ensure_ascii=False, indent=2))
+    try:
+        digest = weekly_field_health_digest()
+        if digest:
+            print(digest)
+    except Exception as exc:  # noqa: BLE001
+        print("欄位健康週報失敗（唔影響體檢）:", exc)
 
     def notify(text: str):
         try:

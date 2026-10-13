@@ -23,6 +23,19 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
 `./整理.sh`（清已合併嘅分支）。**`檢查.sh` 查 code，`健康.sh` 查資料同排程 ——
 兩者唔互相覆蓋。**
 
+### 欄位健康趨勢同失手體檢（只做診斷）
+
+- `shared_racing/scripts/field_health.py`：逐週記錄 leaf 分、evidence state、
+  分數來源同結果 CSV 欄位，寫入 `<資料根>/<平台>_Field_Health.jsonl`；`--trend`
+  同前 4 週比較。`健康.sh` 每次都會跑。佢捉「慢慢死」，`data_contract --gate`
+  捉「今日死」—— 只有後者會攔 deploy。
+- `shared_racing/scripts/miss_autopsy.py`：覆盤之後將每場唔係 Gold／Good 嘅賽事
+  分做「輸入有問題／分數擠迫／模型判錯」，寫入 `Miss_Autopsy.json` 同
+  `<資料根>/<平台>_Miss_Autopsy.jsonl`。AU 同 HKJC 排程都會自動跑。
+- 兩樣嘢嘅摘要每星期發一次 Telegram（AU 經 healthcheck，HKJC 經 weekly review）。
+- **失手體檢嘅結果唔准用嚟擇參、調權重或者揀 leaf。** EXP-20261013-01 已經證實
+  失手共識搬去下一段 dev 會蝕。佢嘅用途係搵數據 bug。
+
 ### 大型暫存一律放外置碟
 
 Mac 內置碟淨 ~15GB。2026-10-12 一個 AU 消融實驗喺 `/private/tmp` 抄咗 7 份
