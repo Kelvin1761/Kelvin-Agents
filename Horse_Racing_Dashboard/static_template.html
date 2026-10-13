@@ -212,7 +212,9 @@
     .bp-race-sum { display: flex; justify-content: space-between; padding: 8px 12px; background: #F8FAFC; border-radius: 6px; margin-top: 8px; font-size: 0.75rem; }
     .bp-race-sum-lbl { color: #64748B; font-weight: 600; }
     .bp-bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; background: linear-gradient(135deg,#F0F9FF,#EFF6FF); border-top: 1px solid #E2E8F0; }
-    .bp-bar-info { font-size: 0.8rem; font-weight: 600; color: #334155; }
+    .bp-bar-info { min-width: 0; font-size: 0.8rem; font-weight: 600; color: #334155; }
+    .bp-bar-count { display: block; color: #0F172A; font-weight: 800; line-height: 1.4; font-variant-numeric: tabular-nums; }
+    .bp-bar-status { display: block; margin-top: 2px; font-size: 0.68rem; color: #64748B; line-height: 1.4; }
     .bp-bar-btn { padding: 6px 16px; background: #1D4ED8; color: #fff; border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
     .bp-bar-btn:hover { background: #1E40AF; }
     .bp-bar-btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -329,9 +331,10 @@
     .bp button:focus-visible, .bp input:focus-visible, .back-to-top:focus-visible { outline: 3px solid rgba(37,99,235,0.35); outline-offset: 2px; }
     /* Mobile: fixed bottom betting bar */
     @media (max-width: 768px) {
-      /* Sits directly on top of the bottom tab bar rather than at bottom:0 —
-         the tab bar owns the safe-area inset, so this one no longer pads for it. */
-      .bp-bar--fixed { position: fixed; bottom: var(--tabbar-total); left: 0; right: 0; z-index: 999; border-radius: 0; border-top: 2px solid #1D4ED8; box-shadow: 0 -4px 16px rgba(0,0,0,0.1); }
+      /* Float above the navigation only when there are confirmed bets.
+         With no bets, the summary stays in the panel instead of covering content. */
+      .bp-bar--fixed { position: fixed; bottom: var(--tabbar-total); left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); z-index: 999; max-width: 480px; margin: 0 auto; box-sizing: border-box; gap: 8px; padding: 10px 12px; border: 1px solid #DCE5F2; border-radius: 20px; background: #FFFFFF; box-shadow: 0 6px 24px rgba(15,23,42,0.12); }
+      .bp-bar-btn { flex-shrink: 0; border-radius: 12px; padding: 8px 12px; touch-action: manipulation; }
       .app-main { padding-bottom: calc(92px + var(--tabbar-total)); }
       .bp-hdr { align-items: flex-start; }
       .bp-header-meta { align-items: flex-end; flex-direction: column; gap: 4px; }
@@ -379,11 +382,11 @@
       .bh-top { gap: 10px; }
     }
     /* ─── Horses / NBA / Tennis workspace ─── */
-    .sport-switcher { display: flex; align-items: center; gap: 4px; padding: 4px; border: 1px solid #D7E1ED; border-radius: 12px; background: #F1F5F9; }
-    .sport-switch { min-height: 38px; padding: 7px 14px; border: 0; border-radius: 9px; background: transparent; color: #64748B; font: inherit; font-size: 0.76rem; font-weight: 800; cursor: pointer; }
+    .sport-switcher { display: flex; align-items: center; gap: 4px; padding: 5px; border: 1px solid #E2E8F0; border-radius: 999px; background: #F8FAFC; }
+    .sport-switch { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 7px 16px; border: 0; border-radius: 999px; background: transparent; color: #64748B; font: inherit; font-size: 0.76rem; font-weight: 800; cursor: pointer; }
     .sport-switch:hover { color: #1E40AF; background: #FFFFFF; }
-    .sport-switch--active { color: #FFFFFF; background: #1E40AF; box-shadow: 0 3px 9px rgba(30,64,175,.22); }
-    .sport-switch--active:hover { color: #FFFFFF; background: #1E3A8A; }
+    .sport-switch--active { color: var(--nav-accent); background: var(--nav-soft); box-shadow: 0 2px 6px rgba(15,23,42,.06); }
+    .sport-switch--active:hover { color: var(--nav-accent); background: var(--nav-soft); }
 
     /* ─── Skip rendering off-screen analysis prose ───
        A race detail lays out 60 analysis chapters totalling ~56,000px (10 horses x 6
@@ -401,6 +404,13 @@
        ~937px average chapter height and then remembers the real size once rendered. */
     .analysis-document__section { content-visibility: auto; contain-intrinsic-size: auto 900px; }
 
+    .sport-switch, .tabbar-btn { --nav-accent: #1D4ED8; --nav-soft: #EFF6FF; }
+    #sport-hkjc, #tabbar-hkjc { --nav-accent: #B91C1C; --nav-soft: #FEF2F2; }
+    #sport-nba, #tabbar-nba { --nav-accent: #C2410C; --nav-soft: #FFF7ED; }
+    #sport-tennis, #tabbar-tennis { --nav-accent: #3F6212; --nav-soft: #F7FEE7; }
+    .sport-switch .nav-icon, .tabbar-btn .nav-icon { color: var(--nav-accent); background: var(--nav-soft); border-radius: 8px; padding: 3px; }
+    .nav-flag, .nav-emoji { display: inline-flex; align-items: center; justify-content: center; font-size: 24px; line-height: 1; }
+
     /* ─── Header ───
        viewport-fit=cover (needed for the bottom bars) also extends the layout
        viewport UP behind the status bar, so in standalone mode the title would
@@ -408,6 +418,12 @@
        keeping it clear, and it is a no-op in a normal browser tab where the
        inset is 0. */
     .app-header { padding-top: calc(var(--space-m) + env(safe-area-inset-top)); }
+    .nav-icon { width: 22px; height: 22px; flex-shrink: 0; }
+    .sport-switch:focus-visible { outline: 3px solid #2563EB; outline-offset: 2px; }
+    @media (min-width: 769px) {
+      .app-header { position: sticky; top: 0; gap: clamp(12px, 2vw, 32px); background: rgba(255,255,255,.96); box-shadow: 0 4px 20px rgba(15,23,42,.05); }
+      .app-header__logo-mark { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: #EFF6FF; }
+    }
     .app-header__logo-mark { font-size: 1.15em; line-height: 1; }
     .app-header__logo-name { font-size: 1.06rem; font-weight: 850; letter-spacing: -0.015em; }
 
@@ -429,36 +445,38 @@
     .update-pill__dismiss:hover { color: #FFFFFF; background: rgba(255,255,255,0.12); }
     .update-pill__action:focus-visible, .update-pill__dismiss:focus-visible { outline: 3px solid rgba(255,255,255,0.6); outline-offset: -3px; }
 
-    /* ─── Mobile bottom tab bar (iOS-style; the primary nav once installed as a PWA) ───
+    /* ─── Floating mobile capsule (the primary nav once installed as a PWA) ───
        Desktop keeps the header sport-switcher; ≤768px swaps it for this bar so the
        top-level sports stay reachable one-thumb. Heights live in --tabbar-h /
        --tabbar-total so the other fixed elements (betting bar, back-to-top) and
        .app-main's bottom padding can all stack off a single number. */
     .app-bottom-nav { display: none; }
     @media (max-width: 768px) {
-      :root { --tabbar-h: 64px; --tabbar-total: calc(64px + env(safe-area-inset-bottom)); }
+      :root { --tabbar-h: 64px; --tabbar-total: calc(88px + env(safe-area-inset-bottom)); }
       .app-bottom-nav {
-        position: fixed; bottom: 0; left: 0; right: 0; z-index: 1000;
+        position: fixed; bottom: calc(12px + env(safe-area-inset-bottom)); left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); z-index: 1000;
         display: flex; align-items: stretch;
-        height: var(--tabbar-total);
-        padding-bottom: env(safe-area-inset-bottom);
-        border-top: 1px solid #E2E8F0;
+        height: var(--tabbar-h); box-sizing: border-box;
+        max-width: 480px; margin: 0 auto; padding: 5px;
+        border: 1px solid rgba(203,213,225,0.7); border-radius: 999px;
         background: rgba(255,255,255,0.92);
         -webkit-backdrop-filter: saturate(180%) blur(14px);
         backdrop-filter: saturate(180%) blur(14px);
-        box-shadow: 0 -2px 12px rgba(15,23,42,0.06);
+        box-shadow: 0 8px 32px rgba(15,23,42,0.14), 0 2px 6px rgba(15,23,42,0.04);
       }
       .tabbar-btn {
         flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
-        min-width: 0; min-height: var(--tabbar-h); padding: 8px 2px;
-        border: 0; background: transparent; color: #94A3B8; font: inherit; cursor: pointer;
+        min-width: 0; min-height: 44px; padding: 4px 2px; border-radius: 999px; touch-action: manipulation;
+        border: 0; background: transparent; color: #475569; font: inherit; cursor: pointer;
         -webkit-tap-highlight-color: transparent;
         transition: color 0.15s ease;
       }
-      .tabbar-btn__icon { font-size: 1.4rem; line-height: 1.1; }
+      .tabbar-btn__icon { display: flex; align-items: center; justify-content: center; line-height: 1; }
+      .nav-icon { width: 24px; height: 24px; }
       .tabbar-btn__label { overflow: hidden; max-width: 100%; font-size: 0.64rem; font-weight: 800; letter-spacing: 0.01em; line-height: 1.1; text-overflow: ellipsis; white-space: nowrap; }
-      .tabbar-btn--active { color: #1E40AF; }
-      .tabbar-btn--active .tabbar-btn__icon { transform: translateY(-1px); }
+      .tabbar-btn:hover { background: #F1F5F9; color: #0F172A; }
+      .tabbar-btn--active, .tabbar-btn--active:hover { color: var(--nav-accent); background: var(--nav-soft); }
+      .tabbar-btn--active .nav-icon { stroke-width: 2.5; }
       .tabbar-btn:focus-visible { outline: 3px solid rgba(37,99,235,0.35); outline-offset: -3px; }
       /* The header switcher is redundant once the tab bar is up, and dropping it
          is most of the win in standalone mode where there is no browser chrome
@@ -718,13 +736,13 @@
           <span class="app-header__logo-mark" aria-hidden="true">🏇</span><span class="app-header__logo-name">旺財<span class="app-header__logo-suffix"> Dashboard</span></span>
         </a>
       </div>
-      <div class="sport-switcher" role="tablist" aria-label="運動切換">
-        <button type="button" id="sport-hkjc" class="sport-switch sport-switch--active" onclick="showSport('hkjc')">🇭🇰 香港</button>
-        <button type="button" id="sport-au" class="sport-switch" onclick="showSport('au')">🇦🇺 澳洲</button>
-        <button type="button" id="sport-nba" class="sport-switch" onclick="showSport('nba')">🏀 NBA</button>
-        <button type="button" id="sport-tennis" class="sport-switch" onclick="showSport('tennis')">🎾 Tennis</button>
-        <button type="button" id="sport-portfolio" class="sport-switch" onclick="showSport('portfolio')">📈 Portfolio</button>
-      </div>
+      <nav class="sport-switcher" aria-label="運動切換">
+              <button type="button" id="sport-hkjc" class="sport-switch" onclick="showSport('hkjc')"><span class="nav-flag" aria-hidden="true">🇭🇰</span><span>香港</span></button>
+        <button type="button" id="sport-au" class="sport-switch" onclick="showSport('au')"><span class="nav-flag" aria-hidden="true">🇦🇺</span><span>澳洲</span></button>
+        <button type="button" id="sport-nba" class="sport-switch" onclick="showSport('nba')"><span class="nav-emoji" aria-hidden="true">🏀</span><span>NBA</span></button>
+        <button type="button" id="sport-tennis" class="sport-switch" onclick="showSport('tennis')"><span class="nav-emoji" aria-hidden="true">🎾</span><span>Tennis</span></button>
+        <button type="button" id="sport-portfolio" class="sport-switch" onclick="showSport('portfolio')"><span class="nav-emoji" aria-hidden="true">📈</span><span>Portfolio</span></button>
+      </nav>
       <nav class="app-header__nav-capsule" id="horse-nav">
         <a href="#" id="nav-races" class="nav-pill nav-pill--active" onclick="showDashboard(); return false;">📋 賽事</a>
         <a href="#" id="nav-roi" class="nav-pill" onclick="showROI(); return false;">📊 ROI</a>
@@ -743,28 +761,24 @@
     </footer>
   </div>
 </div>
-<!-- Mobile bottom tab bar. Mirrors the header sport-switcher (which is hidden at
-     ≤768px) so the four top-level sports stay one thumb away in standalone mode.
+<!-- Floating mobile navigation. Mirrors the header sport-switcher (hidden at
+     ≤768px) so the five destinations stay one thumb away in standalone mode.
      Labels match the desktop switcher on purpose. -->
 <!-- Plain nav + aria-current rather than role="tablist"/"tab": these switch the
      whole view, and there is no aria-controls'd tabpanel for a tab role to point
      at. aria-label is explicit because the visible label sits in a nested span
      next to an aria-hidden icon. -->
 <nav class="app-bottom-nav" id="app-bottom-nav" aria-label="運動切換">
-  <button type="button" id="tabbar-hkjc" class="tabbar-btn tabbar-btn--active" aria-label="香港賽馬" aria-current="page" onclick="showSport('hkjc')">
-    <span class="tabbar-btn__icon" aria-hidden="true">🇭🇰</span><span class="tabbar-btn__label">香港</span>
-  </button>
-  <button type="button" id="tabbar-au" class="tabbar-btn" aria-label="澳洲賽馬" onclick="showSport('au')">
-    <span class="tabbar-btn__icon" aria-hidden="true">🇦🇺</span><span class="tabbar-btn__label">澳洲</span>
-  </button>
+  <button type="button" id="tabbar-hkjc" class="tabbar-btn" aria-label="香港賽馬" onclick="showSport('hkjc')"><span class="tabbar-btn__icon nav-flag" aria-hidden="true">🇭🇰</span><span class="tabbar-btn__label">香港</span></button>
+  <button type="button" id="tabbar-au" class="tabbar-btn" aria-label="澳洲賽馬" onclick="showSport('au')"><span class="tabbar-btn__icon nav-flag" aria-hidden="true">🇦🇺</span><span class="tabbar-btn__label">澳洲</span></button>
   <button type="button" id="tabbar-nba" class="tabbar-btn" aria-label="NBA" onclick="showSport('nba')">
-    <span class="tabbar-btn__icon" aria-hidden="true">🏀</span><span class="tabbar-btn__label">NBA</span>
+    <span class="tabbar-btn__icon" aria-hidden="true"><span class="nav-emoji" aria-hidden="true">🏀</span></span><span class="tabbar-btn__label">NBA</span>
   </button>
   <button type="button" id="tabbar-tennis" class="tabbar-btn" aria-label="網球" onclick="showSport('tennis')">
-    <span class="tabbar-btn__icon" aria-hidden="true">🎾</span><span class="tabbar-btn__label">Tennis</span>
+    <span class="tabbar-btn__icon" aria-hidden="true"><span class="nav-emoji" aria-hidden="true">🎾</span></span><span class="tabbar-btn__label">Tennis</span>
   </button>
   <button type="button" id="tabbar-portfolio" class="tabbar-btn" aria-label="投資組合" onclick="showSport('portfolio')">
-    <span class="tabbar-btn__icon" aria-hidden="true">📈</span><span class="tabbar-btn__label">Portfolio</span>
+    <span class="tabbar-btn__icon" aria-hidden="true"><span class="nav-emoji" aria-hidden="true">📈</span></span><span class="tabbar-btn__label">Portfolio</span>
   </button>
 </nav>
 <!-- Shown only when deploy-manifest.json reports a snapshot strictly newer than
@@ -837,10 +851,14 @@ function setActiveRegion(region) {
   roiRegionFilter = activeRegion;
   const meetings = regionMeetings();
   const stillThere = selectedMeeting && meetings.some(m => m.date === selectedMeeting.date && m.venue === selectedMeeting.venue);
-  if (!stillThere) selectedMeeting = meetings[0] || null;
+  if (!stillThere) {
+    selectedMeeting = meetings[0] || null;
+    loadBettingState();
+    collapsedBetRaces.clear();
+  }
 }
 let expandedSession = null;
-let expandedBetRaces = new Set();
+let collapsedBetRaces = new Set();
 let sportsBetLedger = [];
 let portfolioSnapshot = null;
 const SPORTS_BET_ENDPOINT = window.location.protocol === 'file:' ? null : '/api/sports-bets';
@@ -1587,13 +1605,15 @@ function unscratchHorse(date, venue, race, horse) {
 }
 
 function toggleBetRace(rn) {
-  if (expandedBetRaces.has(rn)) expandedBetRaces.delete(rn);
-  else expandedBetRaces.add(rn);
+  const key = String(rn);
+  if (collapsedBetRaces.has(key)) collapsedBetRaces.delete(key);
+  else collapsedBetRaces.add(key);
   render();
 }
 
-function defaultExpandedBetRaces(racesData) {
-  return new Set(getMergedRaces(racesData).map(race => race.race_number));
+function isBetRaceExpanded(rn) {
+  // New or refreshed races stay open unless the user explicitly closes them.
+  return !collapsedBetRaces.has(String(rn));
 }
 
 // One-click: commit THIS meeting's 投注面板 records straight into the shared
@@ -2773,8 +2793,7 @@ function selectMeeting(index) {
   selectedMeeting = DASHBOARD_DATA.meetings[index];
   loadBettingState();
   pullBettingStateFromCloud(true);
-  const racesData = getRacesData(selectedMeeting);
-  expandedBetRaces = racesData ? defaultExpandedBetRaces(racesData) : new Set();
+  collapsedBetRaces.clear();
   render();
 }
 
@@ -3064,7 +3083,7 @@ function renderDashboardBettingPanel(meeting, races, isDualAnalyst) {
       }
     });
 
-    const isExp = expandedBetRaces.has(rn);
+    const isExp = isBetRaceExpanded(rn);
     const profitStr = rSettled > 0 ? `${rProfit >= 0 ? '+' : ''}$${rProfit.toFixed(2)}` : (rBets > 0 ? '待賽果' : '');
     const profitCls = rSettled > 0 ? (rProfit >= 0 ? 'bh-profit--win' : 'bh-profit--loss') : 'bh-profit--pending';
 
@@ -3092,9 +3111,10 @@ function renderDashboardBettingPanel(meeting, races, isDualAnalyst) {
     html += `</div>`;
   });
 
-  // Bottom bar (add bp-bar--fixed class for mobile sticky)
-  html += `<div class="bp-bar bp-bar--fixed">`;
-  html += `<div class="bp-bar-info">\u7e3d\u8a08 ${totalBets} \u6ce8${totalSettled > 0 ? ` \u00b7 \u6de8\u5229 <span class="bh-profit ${totalProfit >= 0 ? 'bh-profit--win' : 'bh-profit--loss'}">${totalProfit >= 0 ? '+' : ''}$${totalProfit.toFixed(2)}</span>` : (totalBets > 0 ? ' \u00b7 \u5f85\u8cfd\u679c' : '')}</div>`;
+  // Only confirmed bets need a floating action; zero bets stays in the panel.
+  const pendingBets = totalBets - totalSettled;
+  html += `<div class="bp-bar${totalBets > 0 ? ' bp-bar--fixed' : ''}">`;
+  html += `<div class="bp-bar-info"><span class="bp-bar-count">已確認 ${totalBets} 注</span><span class="bp-bar-status">${totalBets === 0 ? '確認投注後加入' : `${pendingBets > 0 ? `${pendingBets} 注待賽果` : '全部已結算'}${totalSettled > 0 ? ` · 淨利 <span class="bh-profit ${totalProfit >= 0 ? 'bh-profit--win' : 'bh-profit--loss'}">${totalProfit >= 0 ? '+' : ''}$${totalProfit.toFixed(2)}</span>` : ''}`}</span></div>`;
   html += `<button type="button" class="bp-bar-btn" onclick="commitBetsToDatabase()" ${totalBets===0?'disabled':''}>\ud83d\udce5 \u532f\u5165\u6295\u6ce8\u8a18\u9304</button>`;
   html += `</div>`;
 
@@ -6182,7 +6202,11 @@ function renderNow(main) {
   TOP_LEVEL_TABS.forEach(sport => {
     const isActive = activeTab === sport;
     const button = document.getElementById(`sport-${sport}`);
-    if (button) button.className = `sport-switch${isActive ? ' sport-switch--active' : ''}`;
+    if (button) {
+      button.className = `sport-switch${isActive ? ' sport-switch--active' : ''}`;
+      if (isActive) button.setAttribute('aria-current', 'page');
+      else button.removeAttribute('aria-current');
+    }
     // Mobile bottom tab bar mirrors the same active sport.
     const tab = document.getElementById(`tabbar-${sport}`);
     if (tab) {
@@ -6350,8 +6374,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (DASHBOARD_DATA.meetings.length) {
     selectedMeeting = DASHBOARD_DATA.meetings[0];
     loadBettingState();
-    const rd = getRacesData(selectedMeeting);
-    expandedBetRaces = rd ? defaultExpandedBetRaces(rd) : new Set();
+    collapsedBetRaces.clear();
   }
   startBettingSyncPolling();
   pullBettingStateFromCloud(false).finally(() => render());
