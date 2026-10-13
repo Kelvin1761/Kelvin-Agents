@@ -59,18 +59,20 @@ def _corpus(tmp: Path, *, dead_week: str | None = None, fallback_week: str | Non
     return root
 
 
-def _results_csv(path: Path, *, time_dead_from: str | None = None) -> Path:
+def _results_csv(path: Path, *, dead_from: str | None = None, column: str = "Margin") -> Path:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=["Date", "Track", "Race", *fh.RESULTS_COLUMNS])
         writer.writeheader()
         for day in WEEK_DAYS:
             for i in range(250):
-                dead = time_dead_from and day >= time_dead_from
-                writer.writerow({"Date": day, "Track": "X", "Race": 1, "Distance": 1200,
-                                 "Condition": "Good 4", "Pos": i % 10 + 1, "Horse": f"H{i}",
-                                 "Barrier": 1, "Weight": "58kg", "Jockey": "J", "Trainer": "T",
-                                 "Margin": "1.2L", "SP": "$3.00",
-                                 "Time": "" if dead else "01:10.000"})
+                dead = dead_from and day >= dead_from
+                row = {"Date": day, "Track": "X", "Race": 1, "Distance": 1200,
+                       "Condition": "Good 4", "Pos": i % 10 + 1, "Horse": f"H{i}",
+                       "Barrier": 1, "Weight": "58kg", "Jockey": "J", "Trainer": "T",
+                       "Margin": "1.2L", "SP": "$3.00", "Time": "01:10.000"}
+                if dead:
+                    row[column] = "—"
+                writer.writerow(row)
     return path
 
 
@@ -126,11 +128,21 @@ class TrendTests(unittest.TestCase):
         self.assertNotIn(("leaf", "sectional_score"), hits)
 
     def test_results_csv_column_dying_is_caught_and_dated(self):
-        _week, findings = self._findings(csv={"time_dead_from": "2026-08-17"})
-        time = [f for f in findings if f["source"] == "results_csv" and f["field"] == "Time"]
-        self.assertEqual(len(time), 1)
-        self.assertEqual(time[0]["status"], "dead")
-        self.assertEqual(time[0]["since"], "2026-W34")
+        """`Margin` 2026-W35 起寫成「—」：sb_results_csv 個 FIELDS 冇 Margin。"""
+        _week, findings = self._findings(csv={"dead_from": "2026-08-17"})
+        margin = [f for f in findings if f["source"] == "results_csv" and f["field"] == "Margin"]
+        self.assertEqual(len(margin), 1)
+        self.assertEqual(margin[0]["status"], "dead")
+        self.assertEqual(margin[0]["since"], "2026-W34")
+
+    def test_acknowledged_dead_column_is_known_not_alarm(self):
+        """`Time` 冇逐駒來源 —— 每週嗌同一句會令人唔再睇，所以縮做一行 ℹ️。"""
+        _week, findings = self._findings(csv={"dead_from": "2026-08-17", "column": "Time"})
+        time = [f for f in findings if f["field"] == "Time"]
+        self.assertEqual([f["status"] for f in time], ["known"])
+        text = fh.format_findings("au", "2026-W35", findings)
+        self.assertIn("✅ 冇欄位變差", text)
+        self.assertIn("已知死欄：結果 CSV Time（2026-W34 起）", text)
 
     def test_current_partial_week_is_not_the_default_target(self):
         """今個星期未完、CSV 樣本未夠，判咗只會漏報 —— 預設要揀上一個完整週。"""

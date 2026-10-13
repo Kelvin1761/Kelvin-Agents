@@ -74,17 +74,19 @@ def build(platform: str, root: Path, week: str | None = None, today: dt.date | N
 
     if not target:
         lines.append("欄位：未有紀錄（未跑過 field_health.py --record）")
-    elif not findings:
-        lines.append("欄位：✅ 冇欄位變差")
     else:
-        lines.append(f"欄位：{len(findings)} 項要留意")
-        for f in findings[:MAX_FIELDS]:
+        active = [f for f in findings if f["status"] != "known"]
+        known = [f for f in findings if f["status"] == "known"]
+        lines.append("欄位：✅ 冇欄位變差" if not active else f"欄位：{len(active)} 項要留意")
+        for f in active[:MAX_FIELDS]:
             since = f.get("since")
             tail = f"（{since} 起）" if since and since != f["week"] else ""
             lines.append(f"  {fh.STATUS_ICONS.get(f['status'], '•')} "
                          f"{fh.SOURCE_LABELS.get(f['source'], f['source'])} {f['field']}：{f['detail']}{tail}")
-        if len(findings) > MAX_FIELDS:
-            lines.append(f"  …另外 {len(findings) - MAX_FIELDS} 項")
+        if len(active) > MAX_FIELDS:
+            lines.append(f"  …另外 {len(active) - MAX_FIELDS} 項")
+        if known:
+            lines.append("  " + fh.known_line(known))
 
     miss_rows = _read_jsonl(Path(root) / MISS_LEDGERS[platform])
     if target and miss_rows:

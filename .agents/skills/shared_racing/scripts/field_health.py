@@ -63,6 +63,14 @@ PROVENANCE_RISE = dc.NEUTRAL_SLACK         # 單一來源比例升 25pp
 FILL_DROP = 0.20                           # 結果 CSV 非空率跌 20pp
 DEAD_HEALTHY_FLOOR = 0.50                  # 曾經 ≥50% 有值先叫得「死」
 
+# 已知死咗、而且講得出點解嘅欄位。仍然照報，但狀態係 `known`、縮成一行，唔再
+# 用 💀 —— 一個每週都嗌同一句嘅警報好快冇人睇，咁真嘅新問題就會被淹沒。
+# 修好咗就要由呢度剷走，否則佢復活亦睇唔到。
+ACKNOWLEDGED = {
+    ("results_csv", "Time"): "冇逐駒時間來源：Sportsbet 頁面只有頭馬時間（WinningTime），"
+                             "au_results_ingest 刻意寫空（EXP-20261012-01 限制）",
+}
+
 WEAK_STATES = frozenset({"fallback", "missing"})
 EMPTY_CELLS = frozenset({"", "—", "-", "nan", "None"})
 
@@ -368,8 +376,12 @@ def trend(rows: list[dict], week: str | None = None,
                        "status": status, "detail": detail, "n": current.get("n")}
             if status == "dead":
                 finding["since"] = _dead_since(source, items, week)
+            reason = ACKNOWLEDGED.get((source, field))
+            if reason and status == "dead":
+                finding["status"] = "known"
+                finding["detail"] = reason
             findings.append(finding)
-    order = {"dead": 0, "missing": 1, "degrading": 2}
+    order = {"dead": 0, "missing": 1, "degrading": 2, "known": 3}
     findings.sort(key=lambda f: (order.get(f["status"], 9), f["source"], f["field"]))
     return week, findings
 
@@ -382,25 +394,37 @@ def _previous_week(week: str) -> str:
 
 SOURCE_LABELS = {"leaf": "leaf 分數", "evidence": "證據狀態",
                  "provenance": "分數來源", "results_csv": "結果 CSV"}
-STATUS_ICONS = {"dead": "💀", "missing": "❓", "degrading": "📉"}
+STATUS_ICONS = {"dead": "💀", "missing": "❓", "degrading": "📉", "known": "ℹ️"}
+
+
+def known_line(known: list[dict]) -> str:
+    """已知死欄縮成一行：「ℹ️ 已知死欄：結果 CSV Time（2026-W30 起）」。"""
+    parts = [f"{SOURCE_LABELS.get(f['source'], f['source'])} {f['field']}"
+             + (f"（{f['since']} 起）" if f.get("since") else "") for f in known]
+    return f"{STATUS_ICONS['known']} 已知死欄：" + "、".join(parts)
 
 
 def format_findings(platform: str, week: str | None, findings: list[dict], limit: int | None = None) -> str:
     title = f"欄位健康趨勢 — {platform.upper()} {week or '(冇數據)'}"
     if not week:
         return f"{title}\n未有足夠紀錄，先跑 --record"
-    if not findings:
-        return f"{title}\n✅ 冇欄位變差"
+    active = [f for f in findings if f["status"] != "known"]
+    known = [f for f in findings if f["status"] == "known"]
     lines = [title]
-    shown = findings[:limit] if limit else findings
+    if not active:
+        lines.append("✅ 冇欄位變差")
+    shown = active[:limit] if limit else active
     for f in shown:
         since = f.get("since")
         tail = f"（{since} 起）" if since and since != f["week"] else ("（今週新出現）" if since else "")
         lines.append(f"{STATUS_ICONS.get(f['status'], '•')} [{SOURCE_LABELS.get(f['source'], f['source'])}] "
                      f"{f['field']}: {f['detail']}{tail}")
-    if limit and len(findings) > limit:
-        lines.append(f"…另外 {len(findings) - limit} 項（跑 field_health.py --trend 睇全部）")
-    lines.append("（只係警告。如果呢週改過引擎，leaf／來源變化可能係設計使然。）")
+    if limit and len(active) > limit:
+        lines.append(f"…另外 {len(active) - limit} 項（跑 field_health.py --trend 睇全部）")
+    if known:
+        lines.append(known_line(known))
+    if active:
+        lines.append("（只係警告。如果呢週改過引擎，leaf／來源變化可能係設計使然。）")
     return "\n".join(lines)
 
 
