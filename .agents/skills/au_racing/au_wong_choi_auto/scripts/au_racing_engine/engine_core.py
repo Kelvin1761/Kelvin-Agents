@@ -1005,9 +1005,10 @@ class RacingEngine:
         if not entries:
             # 生涯有正式賽，但 Sportsbet 往績頁冇嗰幾行（只剩試閘）。官方 Last 10
             # 解讀（已跳過試閘）仍然話我哋知名次 —— 唔可以當「冇證據」中性 60。
-            # 2026-10-12 Tamworth R4 Platinum Card：生涯 1 場跑第 10，form 一直 60。
+            # Last10 0 係未獲正式名次（亦可能取消資格），唔係確切第十名。
+            # 有非標準正式賽果行時唔會走呢個缺表 fallback。
             # 冇馬群大細、冇班次，所以只用絕對名次階梯、班次乘數 1.0。
-            fallback = (parse_recent_finishes(self.data.get("recent_form")) or [])[:min(starts, 4)]
+            fallback = (parse_recent_finishes(self.data.get("recent_form"), source_format=self.data.get("recent_form_format", "auto")) or [])[:min(starts, 4)]
             if not fallback:
                 detail["note"] = "缺乏正式賽績（賽績表未有可用場次），按中性 60 分處理"
                 detail["final"] = 60.0
@@ -3095,6 +3096,7 @@ class RacingEngine:
                 "going": cols[5],
                 "barrier": cols[6],
                 "placing": cols[7],
+                "result_status": "NON_STANDARD" if cols[7] == "非標準賽果" else "",
                 "class_move": cols[8],
                 "trajectory": cols[9],
                 "pi": cols[10] if len(cols) > 10 else "",
@@ -4279,6 +4281,9 @@ class RacingEngine:
         detail = {"value": None, "mean": None, "stdev": None, "z": None,
                   "runs": int(pf_agg.get("pf_run_count") or 0), "final": 60.0, "state": ""}
         detail["source"] = source
+        detail["trial_runs"] = int(pf_agg.get("trial_run_count") or 0)
+        detail["formal_runs"] = int(pf_agg.get("formal_run_count") or 0)
+        detail["run_dates"] = list(pf_agg.get("run_dates") or [])
         self.pace_figure_detail = detail
         field = self._field_summary()
         # 優先用個體化 L600（race-level L600 + 本駒喺嗰場輸咗幾多秒）。
@@ -4330,6 +4335,11 @@ class RacingEngine:
         else:
             note = (f"近{detail['runs']}場 L600 平均{direction}基準 {abs(float(value)):.2f} 秒；"
                     f"來源語意未明，唔當作逐駒實測；L600 環境分 {score:.1f}。")
+        if detail["trial_runs"]:
+            note += (f" 來源含 {detail['trial_runs']} 課試閘、{detail['formal_runs']} 場正式賽；"
+                     f"PF 日期：{', '.join(detail['run_dates'])}。")
+        if detail["runs"] < 3:
+            note += " 少於三次 PF 證據，單次數值不代表穩定速度。"
         return score, note, "pf_l600_delta_field_relative"
 
     def _is_wfa_or_sw_race(self):
@@ -4718,7 +4728,23 @@ class RacingEngine:
             detail["adjustments"].append({"delta": round(delta, 2),
                                           "factor": factor, "evidence": evidence})
 
-        recent = parse_recent_finishes(self.data.get("recent_form"))
+        recent_text = self.data.get("recent_form")
+        recent_format = self.data.get("recent_form_format", "auto")
+        if recent_format == "auto":
+            decoded = _capture(
+                self.facts_section or self.data.get("facts_section", ""),
+                r"近績序列解讀: `?([^`\n]+)`?",
+            )
+            if decoded and decoded.strip() == str(recent_text or "").strip():
+                recent_format = "positions"
+        recent = parse_recent_finishes(recent_text, source_format=recent_format)
+        official = self._official_entries()
+        if (official and len(official) >= self._career_starts()
+                and all(entry.get("result_status") for entry in official)):
+            # Last10 '0' also represents disqualification; it is not proof of
+            # tenth place or a large beaten margin when all starts have status.
+            recent = None
+            detail["recent_result_status"] = "non_standard_only"
         if recent:
             window = recent[:6]
             places = sum(1 for x in window if x <= 3)
@@ -5328,6 +5354,10 @@ def _pf_aggregates(runs: list[dict], source: str) -> dict:
     aggregates["latest_early_runner_pace"] = runs[0].get("early_runner_pace")
     aggregates["latest_early_race_pace"] = runs[0].get("early_race_pace")
     aggregates["pf_run_count"] = len(runs)
+    aggregates["trial_run_count"] = sum(run.get("run_kind") == "trial" for run in runs)
+    aggregates["formal_run_count"] = sum(run.get("run_kind") == "formal" for run in runs)
+    aggregates["run_dates"] = [run["run_date"] for run in runs if run.get("run_date")]
+
     aggregates["source"] = source
     aggregates["value_counts"] = {
         key: len(values(key)) for key in _PF_SPLIT_KEYS
@@ -5356,6 +5386,8 @@ def _parse_formguide_pf_metrics(
         ]
         runs = []
         for line in body.splitlines():
+            if "ResultStatus:NON_STANDARD" in line:
+                continue
             # ⚠️ 試閘 PF **刻意保留**。EXP-20261012-31：剔走試閘（全部，或者只剔走冇正式
             # PF 嘅馬）喺 2,436 場重建語料 Gold −0.37pp／−0.29pp —— 試閘嘅速度環境平均
             # 有預測力，Platinum Card（單場試閘 → 84.1）係個別例外，唔係規律。
@@ -5384,6 +5416,7 @@ def _parse_formguide_pf_metrics(
                     run_margin = None
             for token in _PF_TOKEN_RE.findall(line):
                 parsed = _parse_pf_token(token)
+                parsed["run_kind"] = "trial" if ("**(TRIAL)**" in line or re.search(r"\$0(?:\s|$)", line) or re.search(r"Barrier\s*Trial|Jump\s*Out", line, re.I)) else "formal"
                 if run_date:
                     parsed["run_date"] = run_date
                 if run_distance:
@@ -5724,37 +5757,28 @@ def refresh_pf_own_l600(logic_data: dict, facts_path: Path | None) -> int:
     （`au_dump_engine_leaves` 就係）都攞唔到新欄位，A/B 會同 baseline 一模一樣
     ——「一模一樣」係**冇接通**嘅徵狀，唔係「冇效果」（見 AGENTS.md 第 2 條）。
 
-    只補，唔覆蓋：已經有 `own_l600_delta_avg` 嘅 runner 原封不動。
-    Formguide 唔存在 / 嗰匹馬 parse 唔到，就保留原本 race-level entry，
-    `_pace_figure_score` 會自動退返 race-level 分支。
+    有匹配 Formguide 就原子刷新，包括排除試閘後嘅空 payload。
+    冇匹配來源先保留舊資料，避免將其他馬嘅數據混入。
     """
     if not facts_path:
         return 0
     horses = logic_data.get("horses")
     if not isinstance(horses, dict):
         return 0
-    stale = [
-        number
-        for number, horse in horses.items()
-        if isinstance(horse, dict)
-        and not (
-            ((horse.get("_data") or {}).get("pf_metrics") or {}).get("pf_aggregates") or {}
-        ).get("own_l600_delta_avg")
-    ]
-    if not stale:
-        return 0
+    # Reparse matched runners atomically, including an empty formal PF payload.
+    # A cached own delta is not evidence that its source was a formal race.
     parsed = _parse_formguide_pf_metrics(Path(facts_path))
-    if not parsed:
-        return 0
     filled = 0
-    for number in stale:
+    for number, horse in horses.items():
+        if not isinstance(horse, dict):
+            continue
         entry = parsed.get(str(number))
-        if not entry:
+        if entry is None:
             continue
-        if (entry.get("pf_aggregates") or {}).get("own_l600_delta_avg") is None:
-            continue
-        horses[number].setdefault("_data", {})["pf_metrics"] = entry
-        filled += 1
+        data = horse.setdefault("_data", {})
+        if data.get("pf_metrics") != entry:
+            data["pf_metrics"] = entry
+            filled += 1
     return filled
 
 
@@ -6048,6 +6072,8 @@ def enrich_logic_from_facts(
         # field is absent from that historical Facts format.
         _replace_data_value(data, "last10_raw", section.get("last10_raw"))
         _replace_data_value(data, "recent_form", section.get("recent_form"))
+        if section.get("recent_form"):
+            data["recent_form_format"] = "positions"
         _replace_data_value(data, "career_record_line", section.get("career_line"))
         _replace_data_value(data, "engine_line", section.get("engine_line"))
         _replace_data_value(data, "formline_line", section.get("formline_line"))
@@ -6845,6 +6871,8 @@ def _performance_quality_digest(
         run_date = str(entry.get("date") or "")
         if meeting_date and (not run_date or run_date >= meeting_date):
             continue
+        if entry.get("result_status"):
+            continue
         margin = parse_float(entry.get("margin"))
         prize = parse_float(entry.get("prize"))
         starters = parse_float(entry.get("starters"))
@@ -6980,6 +7008,7 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
         finish_pos = None
         margin = None
         margin_source = ""
+        result_status = "NON_STANDARD" if "ResultStatus:NON_STANDARD" in header else ""
         explicit_finish = re.search(r"\bfinish:(\d+)\s*/\s*(\d+)\b", header, re.I)
         if explicit_finish:
             parsed_finish = int(explicit_finish.group(1))
@@ -7001,6 +7030,9 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
                         margin = float(pos_m.group(4))
                         margin_source = "result_line"
                     break
+        if result_status:
+            finish_pos = margin = None
+            margin_source = ""
         # Defensive compatibility for archived Formguides produced before the
         # extractor fix: a positive number beside the winner is winning margin,
         # never the winner's beaten margin.
@@ -7029,6 +7061,7 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
             "flucs": flucs,
             "last_flucs": fluc_values[-1] if fluc_values else "",
             "finish_pos": finish_pos,
+            "result_status": result_status,
             "margin": margin,
             "margin_source": margin_source,
             "settled_pos": _parse_running_position(header, "Settled"),

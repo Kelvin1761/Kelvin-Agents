@@ -645,7 +645,7 @@ def parse_record_line(line):
         return {"starts":nums[0],"wins":wins,"seconds":nums[2],"thirds":0,"places":places}
     return {"starts":0,"wins":0,"seconds":0,"thirds":0,"places":0}
 
-def parse_recent_finishes(text):
+def parse_recent_finishes(text, *, source_format="auto"):
     """Finish positions from a recent-form string, newest conventions honoured.
 
     Handles both separated ("8-9-7-6") and compact ("2134") formats — the compact
@@ -653,12 +653,19 @@ def parse_recent_finishes(text):
     zeroing the consistency place/poor components for those horses. In compact
     form each digit is one run and "0" is the AU code for 10th-or-worse.
     """
+    if source_format not in {"auto", "positions", "compact"}:
+        raise ValueError(f"Unknown recent-form format: {source_format}")
     if not text: return None
     raw = str(text).strip()
-    # Facts「近績序列解讀」係**已解碼**、用 `-` 連接嘅名次（0=10th 寫成 10）。
-    # 只跑過一場而第 10 或更差嘅馬，序列就係 `10` —— 以前跌入下面嘅緊湊格式
-    # 分支，解成 [1, 10]：平白多咗一場頭馬（2026-10-12 Tamworth R4 Platinum Card：
-    # consistency +7 → performance_quality fallback 69.8；08-05 起 131 匹中招）。
+    # Facts has already decoded Last 10 into positions. Its single "10" is
+    # ONE tenth-place run, never a compact win followed by an unplaced run.
+    if source_format == "positions":
+        if not re.fullmatch(r"\d+(?:\s*[-,/]\s*\d+)*", raw):
+            return None
+        nums = parse_numbers(raw)
+        return [n if n else 10 for n in nums if 0 <= n <= 24] or None
+    if source_format == "compact":
+        return [int(ch) if ch != "0" else 10 for ch in raw if ch.isdigit()] or None
     if raw == "10":
         return [10]
     if re.fullmatch(r"\d{2,}", raw):

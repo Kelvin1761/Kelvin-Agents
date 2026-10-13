@@ -168,7 +168,7 @@ RE_RUN = re.compile(
     # Without the decimal guard, ``5`` (the margin's integer part) becomes a
     # fabricated field size and serialises as the impossible ``finish:6/5``.
     # Keep the run, placing and margin, but leave field=None when it is absent.
-    r"Finished\s+(?P<pos>\d+)\s*/\s*(?:"
+    r"Finished\s+(?P<pos>-?\d+)\s*/\s*(?:"
     r"(?P<field>\d+)(?![\d.])(?:\s+(?P<margin>[\d.]+)L)?"
     r"|(?P<margin_without_field>[\d.]+)L)"
     r".*?Jockey\s+(?P<jockey>[^,]+?)"
@@ -698,6 +698,7 @@ def run_line(run):
     # `Barrier Trial Apiam Bendigo` —— header regex 個 track group 會連前面
     # 嗰句 "Barrier Trial" 一齊食咗，落到賽事名度就變咗個唔存在嘅馬場。
     track = RE_TRIAL.sub("", (h.get("track") or "")).strip()
+    track = re.sub(r"^First\s*Start\s+", "", track, flags=re.I)
     dist = h.get("dist")
     cond = (h.get("going") or "").strip()
     # ⚠️ 下游 `inject_fact_anchors.race_simple` 要
@@ -725,7 +726,10 @@ def run_line(run):
     if run.get("settled"):
         pos.append(f"{run['settled']}@Settled")
     tail = " ".join(pos) + "."
-    if run.get("margin"):
+    non_standard = bool(run.get("pos") is not None and int(run["pos"]) <= 0)
+    if non_standard:
+        tail += f" ResultStatus:NON_STANDARD SourceFinish:[{run.get('pos')}/{run.get('field')}]"
+    if run.get("margin") and not non_standard:
         tail += f" margin:{run['margin']}L"
     if run.get("field"):
         tail += f" starters:{run['field']}"
@@ -742,7 +746,7 @@ def run_line(run):
     #   * PI（`settled - finish`）只有 19.1% 算得出，未上名嘅 0/22,846
     # 寫 `finish:N/M` 而唔係只寫 `N` —— 自帶馬匹數，令下游唔需要靠
     # `starters:` 同一格對齊，亦令舊 formguide（冇呢個 token）有清晰 fallback。
-    if run.get("pos") and run.get("field"):
+    if run.get("pos") and run.get("field") and not non_standard:
         tail += f" finish:{run['pos']}/{run['field']}"
     # Sportsbet historical headers already expose the exact race class (for
     # example ``F&M CL3-SW`` / ``BM64`` / ``HIGHWAY-C2``).  This used to die
@@ -761,7 +765,7 @@ def run_line(run):
     if run.get("winning_time"):
         tail += f" WinningTime:{run['winning_time']}"
     delta = _l600_delta(run.get("l600"), track, dist)
-    if delta is not None:
+    if delta is not None and not non_standard:
         # ⚠️ 個 key **一定要**係 `L600 Delta:`，唔係 `Last600:`。
         # `_pace_figure_score` 讀 `pf_aggregates['l600_delta_avg']`，而佢淨係由
         # `L600 Delta:` 嚟（engine_core `_parse_pf_token`）。`Last600:` 會去咗

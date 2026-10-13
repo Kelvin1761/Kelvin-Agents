@@ -575,10 +575,18 @@ def _pace_perf_detail_lines(auto, name):
                 rank_word = "慢過場內大多數對手"
             else:
                 rank_word = "屬全場最慢嗰批"
-            return [
+            lines = [
                 f"本駒近績所處賽事平均{vs_bench(d.get('value'))}；今場其他馬近績環境平均{vs_bench(d.get('mean'))}",
                 f"環境對比：{rank_word} → {_as_float(d.get('final'), 60):.1f} 分（60 為中性；唔係個體末段）",
             ]
+            if d.get("trial_runs"):
+                dates = ", ".join(d.get("run_dates") or []) or "日期未明"
+                lines.append(f"PF 來源：{d['trial_runs']} 課試閘、{d.get('formal_runs', 0)} 場正式賽；日期：{dates}")
+            runs = int(d.get("runs") or 0)
+            if 0 < runs < 3:
+                lines.append(f"只有 {runs} 次速度環境證據，未經多次重複證實，唔等於穩定速度。")
+            return lines
+
         return []
     if name == "sectional_score":
         d = sd.get("sectional") or {}

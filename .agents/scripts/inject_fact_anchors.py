@@ -686,7 +686,16 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
                     break
 
         # Assign finish position using Last 10 for non-trial races
-        if is_trial:
+        result_status = 'NON_STANDARD' if 'ResultStatus:NON_STANDARD' in header_line else ''
+        if result_status:
+            # A negative provider result is not a placing or a beaten margin.
+            # Keep the formal start; never reconstruct it from Last10/top-three.
+            finish_pos = None
+            pos_source = 'non_standard_result'
+            pos_note = '非標準正式賽果（取消資格等）；不當作有效名次'
+            race_margin = None
+            non_trial_idx += int(not is_trial)
+        elif is_trial:
             # ⚠️ 試閘名次一定要照收 `finish:N/M`。原本只信上名行，而上名行按定義
             # 唔會提到跑第 4 或以後嘅馬 —— 於是 `_trial_places` **結構上只裝得到
             # 前三名**。實測 8,862 個入到 trial_places 嘅名次，**100.0% 係第 1/2/3**，
@@ -769,7 +778,7 @@ def parse_formguide_for_horse(fg_text: str, horse_num: int, horse_name: str,
             'pos_1200': pos_1200, 'pos_800': pos_800,
             'pos_400': pos_400, 'settled': settled,
             'settled_source': settled_source,
-            'finish_pos': finish_pos, 'pos_source': pos_source,
+            'finish_pos': finish_pos, 'result_status': result_status, 'pos_source': pos_source,
             'pos_note': pos_note if not is_trial else '',
             'result_line': result_line,
             'video': video, 'note': note, 'stewards': stewards,
@@ -2255,7 +2264,8 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
             f" @ {horse['last_venue']} {horse['last_dist']}{trial_tag}"
         )
     else:
-        has_official_form = any(not entry.get('is_trial') for entry in entries)
+        career_match = re.match(r'\s*(\d+)', str(horse.get('career') or ''))
+        has_official_form = any(not entry.get('is_trial') for entry in entries) or bool(career_match and int(career_match.group(1)) > 0)
         if has_official_form:
             lines.append("  - 上仗結果: Racecard 未提供（已有正式賽績，唔當初出）")
         else:
@@ -2325,7 +2335,8 @@ def generate_full_block(horse: dict, today_dist_m: int = 0,
 
         cond = entry['condition'] if entry['condition'] != 'None' else '-'
         
-        finish_str = str(entry['finish_pos']) if entry['finish_pos'] is not None else '-'
+        finish_str = ('非標準賽果' if entry.get('result_status') else
+                      str(entry['finish_pos']) if entry['finish_pos'] is not None else '-')
         # 馬群大細嵌入「名次」格（2026-07-31）：寫成 `4/6` 而唔係加一個新欄位，
         # 因為 `_record_entries` / renderer 全部用位置索引讀 cols[7..17]，加欄會全部位移。
         # 所有下游 consumer 都用 `parse_float()` 抓頭一個數字（→ 4）或純顯示，

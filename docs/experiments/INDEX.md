@@ -172,3 +172,5 @@
 - [EXP-20261012-29 — finite PF guard](EXP-20261012-29-au-pf-finite-input-guard.md):NaN100faultrefused,108testsGREEN/actualCLI;3575storedsummary+36543pacecalls exact;fullserving/PIT/publishpending.
 
 - [EXP-20261012-30 — fresh serving source parity](EXP-20261012-30-au-fresh-serving-source-parity.md):actual3385/34473/frozenFacts/root/fullverdict exact;4270runtimebodychecks/importreads/controlfaulttests;profile/PIT/live scopes explicit.
+
+| 2026-10-13 | [EXP-20261013-05](EXP-20261013-05-au-history-source-integrity.md) | AU | 非標準正式賽果漏行、試閘 PF 來源透明度 | correctness；收縮規則 REJECT |
