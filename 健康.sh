@@ -265,7 +265,9 @@ for p in au hkjc; do
     warn "$P 記錄唔到（跳過）"; continue
   fi
   o=$("$PY" .agents/skills/shared_racing/scripts/field_health.py --platform "$p" --trend 2>&1)
-  if echo "$o" | grep -q '✅'; then ok "$P $(echo "$o" | head -1 | sed 's/^欄位健康趨勢 — //') 冇欄位變差"
+  if echo "$o" | grep -q '✅'; then
+    ok "$(echo "$o" | head -1 | sed 's/^欄位健康趨勢 — //') 冇欄位變差"
+    echo "$o" | grep '已知死欄' | sed 's/^/      /'
   else warn "$P 有欄位變差"; echo "$o" | tail -n +2 | sed 's/^/      /'; fi
 done
 
