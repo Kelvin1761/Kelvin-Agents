@@ -126,6 +126,47 @@ class HkjcCrowdTests(unittest.TestCase):
         self.assertEqual(ma.crowd_context(_logic(tier="clear")["python_auto_verdict"], "au")["tier"], "clear")
 
 
+def _hkjc_horse(provenance=None, flags=None):
+    return {"python_auto": {"score_provenance": provenance or {}, "risk_flags": flags or []}}
+
+
+DEBUT = _hkjc_horse({"class_score": "career_tag", "distance_score": "career_tag",
+                     "track_going_score": "missing_neutral"}, ["debut_race_experience_unknown"])
+
+
+class HkjcThinEvidenceTests(unittest.TestCase):
+    """HKJC 冇 evidence state，改數來源同風險旗；≥3 個記號 ≈ 5.7% 馬匹（對齊 AU）。"""
+
+    def _logic(self, horse8):
+        logic = _hkjc_logic([70.0, 66.0, 62.0])  # 分差清楚，唔會判擠迫
+        logic["horses"] = {"8": horse8}
+        return logic
+
+    def test_debut_runner_is_thin(self):
+        entry = ma.classify_race(1, self._logic(DEBUT), PREDS, MISS, platform="hkjc")
+        self.assertEqual(entry["bucket"], "input_anomaly")
+        self.assertEqual(entry["triggers"][0]["value"]["8"], [
+            "class_score:career_tag", "distance_score:career_tag", "debut_race_experience_unknown"])
+
+    def test_track_going_policy_neutral_does_not_count(self):
+        """track_going_score 100% 係 missing_neutral／policy_neutral，計埋就人人都薄。"""
+        horse = _hkjc_horse({"distance_score": "missing_neutral", "track_going_score": "missing_neutral"},
+                            ["medical_record_unknown"])
+        self.assertEqual(ma.classify_race(1, self._logic(horse), PREDS, MISS, platform="hkjc")["bucket"],
+                         "model_wrong")
+
+    def test_two_markers_is_not_enough(self):
+        horse = _hkjc_horse({"consistency_score": "missing_neutral", "distance_score": "missing_neutral"})
+        self.assertEqual(ma.classify_race(1, self._logic(horse), PREDS, MISS, platform="hkjc")["bucket"],
+                         "model_wrong")
+
+    def test_au_rule_unchanged_for_au(self):
+        """HKJC 記號唔會影響 AU：AU 照用 feature_evidence_state。"""
+        logic = _logic()
+        logic["horses"]["8"] = DEBUT
+        self.assertEqual(ma.classify_race(1, logic, PREDS, MISS)["bucket"], "model_wrong")
+
+
 class OutputTests(unittest.TestCase):
     def _result(self, meeting="2026-10-11 Seymour Race 1-10", races=None):
         races = races if races is not None else [

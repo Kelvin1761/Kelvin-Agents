@@ -14,8 +14,8 @@ EXP-20260905-02（全 miss 場日，九個特徵冇一個企得住）、EXP-2026
 所以呢個工具**只做分類，唔做建議**：
 
     input_anomaly  輸入有問題：Data_Health 有 issue、PF 覆蓋警報、證據厚度安全欄
-                   觸發咗、涉事馬匹 ≥4 個 leaf fallback／missing、上名馬冇評分、
-                   賽果有行被丟走
+                   觸發咗、涉事馬匹證據薄（AU ≥4 個 leaf fallback／missing；
+                   HKJC ≥3 個缺數記號）、上名馬冇評分、賽果有行被丟走
     crowded        輸入正常，但頭幾名分數擠埋一齊（confidence_tier == tight 或
                    top_pick_tied）—— 本身就難估
     model_wrong    輸入正常、分差清楚，模型都判錯
@@ -26,8 +26,8 @@ EXP-20260905-02（全 miss 場日，九個特徵冇一個企得住）、EXP-2026
 HKJC：Logic 冇 `confidence_tier`，所以 `crowded` 由 verdict ranking 嘅 `rank_score`
 （HKJC 排序用嘅分數，唔係顯示用嘅 `ability_score`）自己計，門檻見 `DERIVED_CROWD`。
 唔可以搬 AU 嘅 2.0／0.5：HKJC 綜合分被壓窄，頭三名分差中位數得 2.56。
-HKJC 亦冇 `feature_evidence_state`／`pace_figure_coverage`，所以輸入類只有
-Data_Health／上名馬冇評分／賽果三種觸發。
+HKJC 亦冇 `feature_evidence_state`，所以「證據薄」改數來源同風險旗（見 `HKJC_THIN`）；
+冇 `pace_figure_coverage`／證據厚度安全欄，嗰兩條觸發只限 AU。
 
 ⚠️ 硬規矩：呢度嘅輸出只做診斷。**唔准**用嚟擇參、調權重、或者揀 leaf。
 （AGENTS.md「唔准只針對最近一日／一個場次去調」。）
@@ -63,6 +63,20 @@ CROWD_RULES = frozenset({"tight", "tied"})
 # ≥4 只有約 6%（大部分係初出馬）。量度只用咗賽前輸入。
 THIN_HORSE_WEAK_LEAVES = 4
 
+# HKJC 冇 `feature_evidence_state`，改數結構化「冇數據」記號：
+#   score_provenance 係 missing_neutral／career_tag 嘅 leaf（唔計 track_going_score ——
+#   佢 100% 係 missing_neutral／policy_neutral，屬政策中性），加風險旗
+#   debut_race_experience_unknown／medical_record_unknown。
+# 4,645 匹賽前基準（2025-09 起）：≥2 = 14.1%、≥3 = 5.7%（對齊 AU ≥4 嘅 ~6%）、≥4 = 0.2%。
+# ≥3 嘅組成：初出馬 150 匹（班次＋路程 career_tag＋初出旗），冇近績／路程數據兼
+# 醫療紀錄不明 115 匹 —— 兩類都真係證據薄。量度只用咗賽前輸入。
+HKJC_THIN = {
+    "missing_provenance": frozenset({"missing_neutral", "career_tag"}),
+    "policy_leaves": frozenset({"track_going_score"}),
+    "flags": frozenset({"debut_race_experience_unknown", "medical_record_unknown"}),
+    "min": 3,
+}
+
 # 冇 `confidence_tier` 嘅平台，由 ranking 分數自己計「擠迫」。
 # 門檻 = 令觸發率對齊 AU 嘅 quantile，只用賽前分數分佈量，冇用賽果：
 #   AU 2026-08-05 起 2,797 場：tight（頭三差 <2.0）9.2%、tied（頭兩差 <0.5）11.1%。
@@ -85,7 +99,7 @@ TRIGGER_LABELS = {
     "data_health_issue": "Data_Health 有 issue",
     "pace_figure_alert": "PF 覆蓋警報",
     "thin_evidence_swap": "證據厚度安全欄觸發",
-    "thin_evidence_horse": f"涉事馬匹 ≥{THIN_HORSE_WEAK_LEAVES} 個 leaf 冇證據",
+    "thin_evidence_horse": "涉事馬匹證據薄",
     "unscored_placegetter": "上名馬冇評分",
     "dropped_result_rows": "賽果有行被丟走",
     "short_result": "賽果唔夠三名",
@@ -142,6 +156,17 @@ def _dropped_result_rows(results_file: Path | None) -> dict[int, int]:
     return dropped
 
 
+def _thin_markers(python_auto: dict, platform: str = "au") -> tuple[list[str], int]:
+    """→ (冇證據記號, 門檻)。AU 用 evidence state；HKJC 用來源同風險旗。"""
+    if platform == "hkjc":
+        cfg = HKJC_THIN
+        marks = sorted(f"{leaf}:{source}" for leaf, source in (python_auto.get("score_provenance") or {}).items()
+                       if source in cfg["missing_provenance"] and leaf not in cfg["policy_leaves"])
+        marks += sorted(flag for flag in python_auto.get("risk_flags") or [] if flag in cfg["flags"])
+        return marks, cfg["min"]
+    return _weak_leaves(python_auto), THIN_HORSE_WEAK_LEAVES
+
+
 def _weak_leaves(python_auto: dict) -> list[str]:
     return sorted(k for k, v in (python_auto.get("feature_evidence_state") or {}).items() if v in WEAK_STATES)
 
@@ -195,8 +220,8 @@ def classify_race(race_num: int, logic: dict, predictions: list[dict], actual_ro
         triggers.append({"rule": "thin_evidence_swap", "value": swap})
     thin = {}
     for horse_no in dict.fromkeys(model_top2 + actual_top3):
-        weak = _weak_leaves((horses.get(str(horse_no)) or {}).get("python_auto") or {})
-        if len(weak) >= THIN_HORSE_WEAK_LEAVES:
+        weak, minimum = _thin_markers((horses.get(str(horse_no)) or {}).get("python_auto") or {}, platform)
+        if len(weak) >= minimum:
             thin[str(horse_no)] = weak
     if thin:
         triggers.append({"rule": "thin_evidence_horse", "value": thin})
