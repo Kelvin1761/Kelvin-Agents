@@ -64,3 +64,36 @@ class TestPersonNameCapture(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRefreshKeepsExistingName(unittest.TestCase):
+    """claw 每晚傳 `""` 做名，晚更 TTL=0 令每個人都重寫 —— 修正前 2,568 人有 2,049 個被洗走名
+    （2026-10-13 量；修正 c28db618）。鎖住：空名唔可以覆蓋已知嘅名，快照亦要帶返個名。"""
+
+    def test_empty_name_does_not_erase_cached_name(self):
+        import json
+        import tempfile
+        from unittest import mock
+
+        import sb_people_stats as sps
+
+        class FakeFetcher:
+            def _cache_path(self, url):
+                return Path("/nonexistent")
+
+            def get(self, url):
+                return "<html>stats</html>"
+
+        tables = {"Overall Stats": {"default": {"12 Months": {"starts": 4, "1st": 1, "2nd": 0, "3rd": 1}}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "people.json"
+            path.write_text(json.dumps({"jockey|617411": {
+                "name": "Logan Bates A", "id": "617411", "kind": "jockey",
+                "stats": {}, "fetched_at": "2026-09-01T00:00:00+00:00"}}))
+            with mock.patch.object(sps, "parse_person_tables", return_value=tables):
+                sps.refresh([("Jockey", "617411", "")], fetcher=FakeFetcher(), ttl_days=0,
+                            path=path, verbose=False)
+            cache = json.loads(path.read_text())
+            self.assertEqual(cache["jockey|617411"]["name"], "Logan Bates A")
+            snap = sps.snapshot_path(path).read_text().strip().splitlines()[-1]
+            self.assertEqual(json.loads(snap)["name"], "Logan Bates A")

@@ -1396,6 +1396,19 @@ def main():
             pr = parse_race(html)
             race_no = pr["meta"].get("race_number", i)
             out.append((race_no, pr, parse_runner_blocks(html)))
+            # Expert Tips 存檔（2026-10-14）：賽前頁先有，賽後重抽就冇咗，以前
+            # 從來冇寫低過，所以一直冇得量佢有冇資訊。**只存檔，唔入評分／
+            # Racecard／Formguide**。只收賽前頁（見 sb_expert_tips docstring）。
+            # 攞頁時間用 cache 檔 mtime。失敗非致命，同下面馬匹索引一樣。
+            try:
+                import sb_expert_tips
+                if sb_expert_tips.capture(
+                        html, cache_file=f._cache_path(base_url), source_url=base_url,
+                        race_date=args.date, venue=args.venue, race_number=race_no,
+                        names={k: v.get("name") for k, v in pr["overview"].items()}):
+                    print(f"   💬 R{race_no} Expert Tips 已存檔")
+            except Exception as exc:  # noqa: BLE001 — 存檔失敗唔應該炸咗抽取
+                print(f"   ⚠️ Expert Tips 存檔略過（{type(exc).__name__}: {exc}）")
             # 官方預測定位序：**只由 cache 讀**，唔會多打請求。
             # `write_meeting()` 由來冇收過 `speedmaps=`，所以 11,356 行
             # `SpeedPos:` 全部係 `-`（2026-09-02 實測）。有 cache 就填返。
