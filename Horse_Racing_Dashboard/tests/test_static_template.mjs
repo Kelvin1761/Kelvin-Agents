@@ -68,8 +68,12 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       renderBetCard,
       renderMobileRoiRecord,
       renderDesktopRoiHorse,
-      defaultExpandedBetRaces,
+      isBetRaceExpanded,
+      toggleBetRace,
+      setCurrentViewForTest: (view) => { currentView = view; },
       renderDashboard,
+      loadBettingState,
+      showSport,
       setSelectedMeetingForTest: (meeting) => { selectedMeeting = meeting; },
       setRoiLedgerForTest: (records) => { roiLedger = records; },
       setRoiRegionForTest: (region) => { roiRegionFilter = region; },
@@ -201,7 +205,7 @@ test("mobile bottom tab bar carries every sport and stacks above the betting bar
   // The tab bar owns the bottom edge; the betting bar and back-to-top stack off
   // --tabbar-total so nothing overlaps the tab bar or the home indicator.
   assert.match(html, /:root \{ --tabbar-h: 0px; --tabbar-total: 0px; \}/);
-  assert.match(html, /--tabbar-total: calc\(64px \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(html, /--tabbar-total: calc\(88px \+ env\(safe-area-inset-bottom\)\)/);
   assert.match(html, /\.bp-bar--fixed \{ position: fixed; bottom: var\(--tabbar-total\)/);
   assert.match(html, /\.app-main \{ padding-bottom: calc\(92px \+ var\(--tabbar-total\)\); \}/);
   assert.match(html, /\.back-to-top \{ bottom: calc\(72px \+ var\(--tabbar-total\)\)/);
@@ -812,19 +816,16 @@ test("HKJC silk reaches betting candidates and the ranked horse analysis", () =>
   assert.match(renderSingleAnalystView(dashboardData.races["2026-07-15|跑馬地"].races_by_analyst.Kelvin[0], "Kelvin"), /EMERGING STAR/);
 });
 
-test("every race betting panel is expanded by default", () => {
+test("all races including newly arriving tail races stay open unless manually closed", () => {
   const context = loadTemplateFunctions();
-  const expanded = context.defaultExpandedBetRaces({
-    races_by_analyst: {
-      Kelvin: [
-        { race_number: 1 },
-        { race_number: 2 },
-        { race_number: 3 },
-      ],
-    },
-  });
-
-  assert.deepEqual([...expanded], [1, 2, 3]);
+  context.setCurrentViewForTest("test");
+  for (let rn = 1; rn <= 9; rn++) assert.equal(context.isBetRaceExpanded(rn), true);
+  context.toggleBetRace(8);
+  assert.equal(context.isBetRaceExpanded("8"), false);
+  assert.equal(context.isBetRaceExpanded(9), true);
+  assert.equal(context.isBetRaceExpanded(10), true);
+  context.toggleBetRace("8");
+  assert.equal(context.isBetRaceExpanded(8), true);
 });
 
 test("mobile betting record keeps each bet readable as a compact card", () => {
@@ -1599,4 +1600,56 @@ test("trackwork timeline lists gallops and trials with times and the 從化 stay
   assert.match(html, /從化 2026-09-20 → 2026-10-08（19 日/);
   assert.match(html, /試閘<\/td><td>從化 草地<\/td><td>56\.9<\/td><td>21\.3 \/ 22\.3/);
   assert.equal(renderTrackworkTimeline({}), "");
+});
+
+
+test("bet summary floats only with confirmed bets and separates pending from settled", () => {
+  const meeting = { date: "2026-10-14", venue: "HappyValley", region: "hkjc", analysts: ["Kelvin"] };
+  const horses = [1, 2].map(n => ({horse_number:n, horse_name:`Horse ${n}`, final_grade:"A"}));
+  const data = { meetings:[meeting], races:{"2026-10-14|HappyValley":{meeting, races_by_analyst:{Kelvin:[{
+    race_number:9, horses, top_picks:horses.map((h,i)=>({...h,rank:i+1,grade:"A"})),
+  }]}}}, consensus:{}, roi:{} };
+  const context = loadTemplateFunctions(data);
+  context.setSelectedMeetingForTest(meeting);
+  let html = context.renderDashboard();
+  assert.match(html, /已確認 0 注/);
+  assert.doesNotMatch(html, /class="bp-bar bp-bar--fixed"/);
+  const state = {
+    "bet|2026-10-14|HappyValley|9|1":{confirmed:true,odds:2,result:1},
+    "bet|2026-10-14|HappyValley|9|2":{confirmed:true,odds:3,result:null},
+  };
+  context.setLocalStorageForTest("bets_2026-10-14_HappyValley", state);
+  context.loadBettingState();
+  html = context.renderDashboard();
+  assert.match(html, /class="bp-bar bp-bar--fixed"/);
+  assert.match(html, /已確認 2 注/);
+  assert.match(html, /1 注待賽果/);
+  assert.match(html, /\+\$1\.00/);
+  state["bet|2026-10-14|HappyValley|9|2"].scratched = true;
+  context.setLocalStorageForTest("bets_2026-10-14_HappyValley", state);
+  context.loadBettingState();
+  html = context.renderDashboard();
+  assert.match(html, /已確認 1 注/);
+  assert.match(html, /全部已結算/);
+});
+
+
+
+test("region switches load that meeting's confirmed bets", () => {
+  const hk = {date:"2026-10-14",venue:"HappyValley",region:"hkjc",analysts:["Kelvin"]};
+  const au = {date:"2026-10-14",venue:"Ascot",region:"au",analysts:["Kelvin"]};
+  const race = {race_number:1,horses:[{horse_number:1,horse_name:"Test",final_grade:"A"}],top_picks:[{horse_number:1,horse_name:"Test",grade:"A",rank:1}]};
+  const context = loadTemplateFunctions({meetings:[hk,au],races:{
+    "2026-10-14|HappyValley":{meeting:hk,races_by_analyst:{Kelvin:[race]}},
+    "2026-10-14|Ascot":{meeting:au,races_by_analyst:{Kelvin:[race]}},
+  },consensus:{},roi:{}});
+  context.setLocalStorageForTest("bets_2026-10-14_HappyValley",{
+    "bet|2026-10-14|HappyValley|1|1":{confirmed:true,odds:2,result:null},
+  });
+  context.showSport("hkjc");
+  assert.match(context.renderDashboard(), /已確認 1 注/);
+  context.showSport("au");
+  assert.match(context.renderDashboard(), /已確認 0 注/);
+  context.showSport("hkjc");
+  assert.match(context.renderDashboard(), /已確認 1 注/);
 });
