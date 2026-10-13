@@ -43,6 +43,17 @@ def comparable(column, value):
     return value.casefold()
 
 
+def canonical(column, value):
+    """Written form. Margin follows the corpus convention `au_results_ingest.load_sb_csv`
+    already uses (`1.25` -> `1.25L`): readers that need the unit parse `<n>L`, and a
+    bare number silently reads as "no margin" (2026-10-13: 22,575 repaired cells and
+    ~3,400 April-June cells were invisible to the `MARGIN_L` harness regex)."""
+    value = str(value).strip()
+    if column == 'Margin' and not value.endswith('L'):
+        return f'{value}L'
+    return value
+
+
 def repair_rows(original, sources, lineage):
     """Fill verified same-identity blanks, preserve all originals and conflicts."""
     links = {}
@@ -109,6 +120,6 @@ def repair_rows(original, sources, lineage):
                     conflicts.append({'key': identity, 'column': column, 'existing': row[column], 'source': incoming, 'action': 'existing_value_preserved'})
                 continue
             before = row.get(column)
-            row[column] = str(incoming).strip()
+            row[column] = canonical(column, incoming)
             filled.append({'key': identity, 'column': column, 'before': before, 'after': row[column], 'source_sha256': link['source_sha256'], 'source_path': link.get('source_path'), 'usage': 'post_race_metadata_only'})
     return original, {'filled': filled, 'conflicts': conflicts, 'quarantined_sources': quarantined, 'source_rows': len(sources), 'verified_source_rows': len(lookup)}

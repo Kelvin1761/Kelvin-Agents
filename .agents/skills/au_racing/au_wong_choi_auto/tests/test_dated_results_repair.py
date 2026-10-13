@@ -14,10 +14,15 @@ class RepairTests(unittest.TestCase):
  def test_fill_dated_fields_and_preserve_semantics(self):
   rows,audit=self.run_repair()
   self.assertEqual(rows[0]['Barrier'],'12') # Original draw never densified.
-  self.assertEqual(rows[0]['Margin'],'0')
+  self.assertEqual(rows[0]['Margin'],'0L') # Corpus convention: unit suffix, like load_sb_csv.
   self.assertEqual(rows[0]['Trainer'],'');self.assertEqual(rows[0]['Time'],'')
   self.assertNotIn('SP',rows[0]);self.assertNotIn('WinningTime',rows[0])
   self.assertEqual(self.row['Barrier'],'');self.assertEqual(len(audit['filled']),4)
+ def test_margin_written_with_unit_and_compared_without(self):
+  rows,_=self.run_repair(row=dict(self.row,Pos='3'),src=dict(self.src,Pos='3',Margin='5.22'))
+  self.assertEqual(rows[0]['Margin'],'5.22L')
+  rows,audit=self.run_repair(row=dict(self.row,Pos='3',Margin='5.22L'),src=dict(self.src,Pos='3',Margin='5.22'))
+  self.assertEqual(rows[0]['Margin'],'5.22L');self.assertEqual(audit['conflicts'],[])
  def test_course_layout_does_not_cross_join(self):
   rows,audit=self.run_repair(link=dict(self.link,dated_run_track='Sandown Lakeside'))
   self.assertEqual(rows,[self.row]);self.assertEqual(audit['quarantined_sources'][0]['reason'],'track_alias_unverified')
