@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from claw_sportsbet_form import (BASE, SportsbetFormFetcher,  # noqa: E402
                                 parse_race, parse_runner_blocks, run_date)
+from sb_results_csv import same_venue  # noqa: E402
 
 
 def collect(meeting_key, ids):
@@ -38,6 +39,7 @@ def collect(meeting_key, ids):
     if not meta:
         return None, f"對應表冇 `{meeting_key}`"
     f = SportsbetFormFetcher(delay=0.0, verbose=False)
+    venue = meta["slug"].replace("_", " ").title()
     out, missing = {}, 0
     for rid in meta["races"]:
         url = f"{BASE}/{meta['meetingId']}/{rid}/"
@@ -56,6 +58,15 @@ def collect(meeting_key, ids):
             for run in blk.get("runs", []):
                 h = run.get("header") or {}
                 if run_date(run) != meta["date"] or str(h.get("race")) != str(rno):
+                    continue
+                # 2026-10-13：後備馬會喺同日、同場次號跑**另一個場地**。冇呢個
+                # 核對，佢喺嗰邊嘅名次會寫入呢個場次嘅賽果（例：Master Zous 跑
+                # Goulburn R5 第三，出現喺 Newcastle R5 賽果做「3rd」，同真嘅
+                # 第三名並列）。`sb_results_csv` 一早有呢個核對，呢度冇。
+                if not same_venue(h.get("track"), venue):
+                    print(f"⚠️ result venue mismatch: {meta['date']} {venue} R{rno} "
+                          f"{blk['name']} -> {h.get('track')!r}; row skipped",
+                          file=sys.stderr)
                     continue
                 try:
                     pos = int(run["pos"])

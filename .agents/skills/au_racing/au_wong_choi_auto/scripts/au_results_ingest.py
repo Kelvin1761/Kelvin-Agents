@@ -217,6 +217,65 @@ def result_identity(row: dict) -> tuple[str, str, str, str]:
             normalize_horse_name(row.get("Horse") or ""))
 
 
+def pre_race_people(archive_root: Path) -> dict:
+    """{result_identity: {Jockey, Trainer}} 由每個場次自己賽前嘅 `Meeting_Auto_Scoring.csv`。
+
+    2026-10-13：`sb_results_csv` 嘅 dated run 冇練馬師（刻意 —— Sportsbet 個
+    overview 係**現任**練馬師，唔係嗰場嘅）。但 sb 行係最先合併、add-only，
+    所以同一匹馬嘅 reflector 行（有練馬師）一定被當重複丟走。結果每晚新行嘅
+    `Trainer` 全空（2026-10-12：0/151），08-13 → 10-11 覆蓋得返 8%。
+
+    場次自己嘅評分 CSV 係賽前排位表 —— 就係嗰場嘅練馬師，冇前視問題。身份要
+    場地由 reflector 標題攞、日期要同資料夾一致；多過一個值就唔填。
+    """
+    candidates: dict = defaultdict(lambda: defaultdict(set))
+    for base in (archive_root, archive_root / "Archive"):
+        if not base.exists():
+            continue
+        for meeting in sorted(base.iterdir()):
+            match = MEETING_DIR_RE.match(meeting.name)
+            scoring = meeting / "Meeting_Auto_Scoring.csv"
+            header = meeting / "Race_Results_Reflector.md"
+            if not (match and meeting.is_dir() and scoring.is_file() and header.is_file()):
+                continue
+            # 場地以 reflector 標題為準（資料夾名係別名：Rosehill／Rosehill
+            # Gardens、Mt Isa／Mount Isa），同 `build_fill_map` 一樣；日期就
+            # 一定要同資料夾一致。
+            venue, date, _ = parse_reflector(header)
+            if not venue or date != match.group(1):
+                continue
+            try:
+                with scoring.open(encoding="utf-8-sig", newline="") as handle:
+                    for row in csv.DictReader(handle):
+                        identity = result_identity({
+                            "Date": date, "Track": venue,
+                            "Race": str(row.get("race_number") or "").strip(),
+                            "Horse": row.get("horse_name") or ""})
+                        for column, source in (("Jockey", "jockey"), ("Trainer", "trainer")):
+                            value = (row.get(source) or "").strip()
+                            if value:
+                                candidates[identity][column].add(value)
+            except OSError:
+                continue
+    return {identity: {column: next(iter(values))
+                       for column, values in fields.items() if len(values) == 1}
+            for identity, fields in candidates.items()}
+
+
+def fill_people(rows: list[dict], people: dict) -> int:
+    """只填空白嘅 Jockey / Trainer；已有值（dated run 嘅騎師）一律保留。"""
+    filled = 0
+    for row in rows:
+        source = people.get(result_identity(row))
+        if not source:
+            continue
+        for column in ("Jockey", "Trainer"):
+            if not str(row.get(column) or "").strip() and source.get(column):
+                row[column] = source[column]
+                filled += 1
+    return filled
+
+
 def existing_keys(path: Path) -> tuple[set, int]:
     keys, count = set(), 0
     if not path.exists():
@@ -577,6 +636,7 @@ def main() -> int:
     for key, value in reflector_stats.items():
         stats[key] += value
     rows.extend(reflector_rows)
+    stats["people_filled"] = fill_people(rows, pre_race_people(args.archive_root))
     known, existing_count = existing_keys(args.results_csv)
     fresh = [r for r in rows
              if result_identity(r) not in known]
@@ -597,6 +657,7 @@ def main() -> int:
     print(f"races skipped (too thin)  : {stats['races_too_thin']}")
     print(f"existing CSV rows         : {existing_count}")
     print(f"new rows to add           : {len(deduped)}")
+    print(f"jockey/trainer filled     : {stats['people_filled']}")
     if dates:
         print(f"new date range            : {dates[0]} .. {dates[-1]} ({len(dates)} race days)")
 

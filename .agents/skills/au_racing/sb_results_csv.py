@@ -36,6 +36,18 @@ def track_key(value):
     return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
 
 
+# 首戰馬嘅往績標題係「First Start Moe」，唔係「Moe」。2026-10-13 實測
+# 2026-07 → 10 有 17 行真實賽果因此被當成「場地唔對」跳走。只剝呢一個前綴 ——
+# 「Barrier Trial Pakenham Synthetic」係試閘，唔係呢場賽果，一定要繼續拒絕。
+_DEBUT_PREFIX = re.compile(r"^\s*first\s+start\s+", re.I)
+
+
+def same_venue(header_track, meeting_track) -> bool:
+    """往績標題場地係咪就係呢個場次。空白一律當唔係。"""
+    header = track_key(_DEBUT_PREFIX.sub("", str(header_track or "")))
+    return bool(header) and header == track_key(meeting_track)
+
+
 def iso_date(value: str) -> str:
     """Argparse validator; keeping the normalised ISO string makes comparisons cheap."""
     try:
@@ -91,7 +103,7 @@ def rows_for_meeting(meta, fetcher):
                 h = run.get("header") or {}
                 if run_date(run) != meta["date"] or str(h.get("race")) != str(rno):
                     continue
-                if not track_key(h.get("track")) or track_key(h.get("track")) != track_key(track):
+                if not same_venue(h.get("track"), track):
                     print(f"⚠️ result venue mismatch: {meta['date']} {track} R{rno} "
                           f"{blk['name']} -> {h.get('track')!r}; row skipped", file=sys.stderr)
                     continue

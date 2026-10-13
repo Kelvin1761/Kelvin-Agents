@@ -142,3 +142,30 @@ class TestIdempotence:
 
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))
+
+
+class TestSportsbetRowsGetPreRaceTrainer:
+    """2026-10-13: sb dated runs carry no trainer, and sb rows win the dedupe,
+    so every nightly row had a blank Trainer (2026-10-12: 0/151)."""
+
+    def _sb_row(self, horse, jockey=""):
+        return {"Date": "2026-08-15", "Track": "Rosehill Gardens", "Race": "1",
+                "Horse": horse, "Jockey": jockey, "Trainer": ""}
+
+    def test_blank_trainer_filled_from_meeting_scoring(self, meeting):
+        from au_results_ingest import fill_people, pre_race_people
+        rows = [self._sb_row("Attractiveness")]
+        assert fill_people(rows, pre_race_people(meeting)) == 2
+        assert (rows[0]["Jockey"], rows[0]["Trainer"]) == ("J Smith", "T Jones")
+
+    def test_dated_jockey_is_not_overwritten(self, meeting):
+        from au_results_ingest import fill_people, pre_race_people
+        rows = [self._sb_row("Attractiveness", jockey="Late Rider")]
+        fill_people(rows, pre_race_people(meeting))
+        assert (rows[0]["Jockey"], rows[0]["Trainer"]) == ("Late Rider", "T Jones")
+
+    def test_other_venue_same_horse_not_filled(self, meeting):
+        from au_results_ingest import fill_people, pre_race_people
+        rows = [dict(self._sb_row("Attractiveness"), Track="Randwick")]
+        assert fill_people(rows, pre_race_people(meeting)) == 0
+        assert rows[0]["Trainer"] == ""

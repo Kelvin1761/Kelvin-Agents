@@ -72,3 +72,14 @@ def test_loser_margin_and_original_draw_preserved(tmp_path):
 
 def test_course_layouts_do_not_collapse():
     assert sb_results_csv.track_key('Sandown Hillside') != sb_results_csv.track_key('Sandown Lakeside')
+
+
+def test_debut_header_prefix_is_same_venue(tmp_path):
+    """首戰馬往績標題係「First Start Coffs Harbour」—— 2026-10-13 之前被當錯場跳走。"""
+    run = dated_run(header={'date': '07/08/2026', 'race': '6', 'track': 'First Start Coffs Harbour', 'dist': '1200'})
+    assert len(result_rows(tmp_path, [run])) == 1
+
+
+def test_barrier_trial_header_still_rejected(tmp_path):
+    run = dated_run(header={'date': '07/08/2026', 'race': '6', 'track': 'Barrier Trial Coffs Harbour', 'dist': '1200'})
+    assert result_rows(tmp_path, [run]) == []
