@@ -200,6 +200,16 @@ class SubMinuteWinningTimeTests(unittest.TestCase):
                 self.assertIsNotNone(m, f"{text} 應該 match")
                 self.assertEqual(m.group("time"), expected)
 
+    def test_engine_reads_sub_minute_winning_time(self):
+        """2026-10-13：claw 修好咗，但引擎 `_parse_formguide_entries` 仍然讀唔到短途時間。"""
+        section = ("Ballarat R3 2026-08-01 1000m cond:Good $30000 J (4) 57kg "
+                   "WinningTime:58.420 starters:9.\n")
+        self.assertEqual(
+            _parse_formguide_entries(section, "Test Horse")[0]["winner_time_seconds"], 58.42)
+        section2 = section.replace("58.420", "59.08")
+        self.assertAlmostEqual(
+            _parse_formguide_entries(section2, "Test Horse")[0]["winner_time_seconds"], 59.08)
+
     def test_regex_still_rejects_garbage(self):
         from claw_sportsbet_form import RE_WINNING_TIME
         for text in ("Winning Time abc", "Winning Time", "Winning Time 58"):

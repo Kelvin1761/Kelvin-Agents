@@ -174,3 +174,8 @@
 - [EXP-20261012-30 — fresh serving source parity](EXP-20261012-30-au-fresh-serving-source-parity.md):actual3385/34473/frozenFacts/root/fullverdict exact;4270runtimebodychecks/importreads/controlfaulttests;profile/PIT/live scopes explicit.
 
 | 2026-10-13 | [EXP-20261013-05](EXP-20261013-05-au-history-source-integrity.md) | AU | 非標準正式賽果漏行、試閘 PF 來源透明度 | correctness；收縮規則 REJECT |
+- [EXP-20261013-09](EXP-20261013-09-au-engine-winning-time-sub-minute.md) — 正確性修正：引擎 `WinningTime` 讀唔到 <60 秒（18.8% token，全部短途）；冇 consumer、golden 120/120 一致；死咗嘅 Racenet 試閘速度加分 live 永遠唔觸發但舊語料會，留住加註解
+- [EXP-20261013-10](EXP-20261013-10-au-speed-rebuild-early-pace-and-late-speed.md) — **REJECT ×3**：頭段步速（場）AUC 0.5001 零訊號；本駒頭段速度正交（ρ≤0.07）但弱，terminal Good位回歸；位置修正末段速度**差過現行** pace_figure（0.5787 vs 0.5981，名次×0.877 馬位估落後誤差太大）。Sportsbet 速度代理已用盡，要真逐駒計時先答到
+- [EXP-20261013-11](EXP-20261013-11-au-pace-luck-and-speed-map.md) — **REJECT ×3**：蝕步速效應真但細（β +0.267 馬位）；調整負距反而蝕資訊（0.6207→0.6158）；被蝕過嘅馬冇反彈（0.4928）；單騎領放形勢 gold 全負。Speed map 最準係過往 800m 位置 ρ 0.451，加頭段速度跌到 0.394，SpeedPos 0.163。PI 0.5547 弱過純負距 0.6240 且同 form ρ 0.38。疊數 Sportsbet 冇資料
+- [EXP-20261013-12](EXP-20261013-12-pi-removal-au-hkjc.md) — 剷 PI：**AU 早已零權重**（swap sectional_score 3,461 場全部 +0.0000，冇嘢 refit）；**HKJC REJECT** —— PI 喺沙田走位匹配 ±5/±2，剷走 362 場 gold 20→19、good 87→83，Stage 4 v2 primary_regression；細但方向一致支持保留
+- [EXP-20261014-01](EXP-20261014-01-au-people-recent-form-and-apprentice-claim.md) — **REJECT ×4**：騎練近三個已完結月份狀態正交（ρ≈−0.03）但冇料（AUC 0.508/0.514）；見習減磅淨效應負（0.4833，新手騎師蓋過揹輕）。附帶：Sportsbet 負磅係分配負磅、Formguide 剝走減磅 → 見習馬記錄多揹 1.5–4kg（未修，另開）

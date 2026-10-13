@@ -6837,6 +6837,12 @@ def _summarize_formguide_section(
         "timing_same_dist_600m_speed": timing_summary["same_dist_600m_speed"],
         "timing_l600_entries_count": timing_summary["l600_entries_count"],
         "timing_speed_variance": timing_summary.get("speed_variance"),
+        # ⚠️ 2026-10-13：`timing_*` 全部由 Racenet 嘅 `600m / MM:SS.mmm` 分段砌。
+        # Sportsbet Formguide 一行都冇呢個格式 → **live 永遠係 None**，所以
+        # 用佢嘅三個加分（maiden 試閘 proxy +5、trial_score 快試閘 +4/+2、
+        # spell +0.5）live 永遠唔觸發。但 ≤2026-08-01 嘅 68 個舊賽日
+        # Formguide 仍有 105,927 條，回放舊語料會觸發 —— 剷走會改舊場次分數，
+        # 所以留住。要復活就要新來源（例如 Racing Queensland 逐駒段速）。
         "timing_trial_600m_avg_speed": timing_summary.get("trial_600m_avg_speed"),
         "performance_quality_raw": performance_quality.get("raw"),
         "performance_quality_run_count": performance_quality.get("run_count", 0),
@@ -6975,6 +6981,22 @@ def _parse_time_to_seconds(text: str) -> float | None:
     return int(match.group(1)) * 60 + int(match.group(2)) + int(match.group(3)) / 1000.0
 
 
+# `WinningTime:58.420`（<60 秒，冇 `M:`）同 `WinningTime:1:39.310` 兩種寫法。
+# 2026-10-13：claw 嘅 `RE_WINNING_TIME` 08-31 已修，但引擎呢邊仍然用
+# `_parse_time_to_seconds`（硬要 `M:SS.mmm`），語料 201,421 個 token 有
+# 37,902 個（18.8%，全部短途）讀唔到。暫時冇 consumer，所以排名不變。
+_WINNING_TIME_TOKEN = re.compile(r"\bWinningTime:(?:(\d{1,2}):)?(\d{1,2})\.(\d{2,3})(?!\d)")
+
+
+def _parse_winning_time(header: str) -> float | None:
+    match = _WINNING_TIME_TOKEN.search(header or "")
+    if not match:
+        return _parse_time_to_seconds(header)
+    minutes = int(match.group(1) or 0)
+    frac = match.group(3)
+    return minutes * 60 + int(match.group(2)) + int(frac) / (10 ** len(frac))
+
+
 def _parse_iso_date(text: str):
     match = re.search(r"(\d{4}-\d{2}-\d{2})", str(text or ""))
     if not match:
@@ -7041,7 +7063,7 @@ def _parse_formguide_entries(section: str, horse_name: str) -> list[dict]:
         note = _capture(block, r"^Note:\s*(.+)$")
         stewards = _capture(block, r"^Stewards:\s*(.+)$")
         video = _capture(block, r"^Video:\s*(.+)$")
-        winner_time = _parse_time_to_seconds(header)
+        winner_time = _parse_winning_time(header)
         l600_split = None
         l600_match = re.search(r"\(?600m\s*/\s*(\d{2}:\d{2}\.\d{3})\)?", header)
         if l600_match:
@@ -7143,10 +7165,9 @@ def _surface_kind(value):
 def _parse_running_position(header: str, marker: str) -> int | None:
     """`Nth@400m` 式走位 token。
 
-    ⚠️ 2026-08-31 實測：**四個 marker 全部 0% 命中**（4,021 條往績記錄，
-    `settled_pos` / `pos_1200` / `pos_800` / `pos_400` 一條都冇值）。Formguide 個
-    record header 根本冇 `Nth@400m` 呢個寫法 —— `claw_sportsbet_form.parse_race`
-    係 parse 到 `p400` / `p800` / `p1200`，但傳唔到呢個 header 格式嚟。
+    歷史：2026-08-31 實測四個 marker 全部 0% 命中（Formguide 當時冇
+    `Nth@400m` 寫法）。之後 claw 已經寫出呢個格式 —— 2026-10-13 重量（Ascot
+    10-14，539 條非試閘往績）：`pos_800` / `pos_400` **99.8%**、`settled_pos` 70.1%。
 
     後果**目前限於顯示層**：唯一消費者係 `_entry_shape_bucket` 同
     `_summarize_recent_shape`，而 `_entry_shape_bucket` 有散文關鍵詞 fallback
