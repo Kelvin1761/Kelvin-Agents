@@ -173,10 +173,21 @@
 
 - [EXP-20261012-30 — fresh serving source parity](EXP-20261012-30-au-fresh-serving-source-parity.md):actual3385/34473/frozenFacts/root/fullverdict exact;4270runtimebodychecks/importreads/controlfaulttests;profile/PIT/live scopes explicit.
 
+- [EXP-20261013-01](EXP-20261013-01-au-per-race-weight-oracle.md) — AU 逐場賽後反推：1,176 失手，正權重 455 場可同達 Gold＋Good；反向仍 207 無解；失手共識四段 forward 排名全退步，保留診斷、唔改 live。
+- [EXP-20261013-02](EXP-20261013-02-au-decoded-form-correctness.md) — Tamworth R4 Platinum Card：decoded `10` 被拆成虛構冠軍＋大敗；格式分源修正，完整賽前排名2→3；dev72／terminal47匹受影響，Gold／Good無回歸，保留正確性修正，未聲稱表現改善。
+- [EXP-20261013-03](EXP-20261013-03-au-stability-redesign.md) — Stability來源／情境及六格配比：40:60 dev多14場Good但CI跨零；前段選比後段Gold−1.07pp；B情境平均僅弱正，保留研究，live不改。
+- [EXP-20261013-04](EXP-20261013-04-au-stability-evidence-routing.md) — 按FORM／PQ證據缺口自動routing三版本全部DEV_REJECT；無有效FORM比例早期26%、後段近零，配比需先處理資料regime。
 | 2026-10-13 | [EXP-20261013-05](EXP-20261013-05-au-history-source-integrity.md) | AU | 非標準正式賽果漏行、試閘 PF 來源透明度 | correctness；收縮規則 REJECT |
+- [EXP-20261013-06](EXP-20261013-06-au-fixed-40-60-review.md) — AU：固定40:60原增益重現及現行main覆核；研究保留；未通過primary
+- [EXP-20261013-07：AU完整PQ／fallback來源分流](EXP-20261013-07-au-source-aware-stability-mix.md) — exploratory；Gold+4／Good+5，尚未獨立驗證。
 - [EXP-20261013-09](EXP-20261013-09-au-engine-winning-time-sub-minute.md) — 正確性修正：引擎 `WinningTime` 讀唔到 <60 秒（18.8% token，全部短途）；冇 consumer、golden 120/120 一致；死咗嘅 Racenet 試閘速度加分 live 永遠唔觸發但舊語料會，留住加註解
 - [EXP-20261013-10](EXP-20261013-10-au-speed-rebuild-early-pace-and-late-speed.md) — **REJECT ×3**：頭段步速（場）AUC 0.5001 零訊號；本駒頭段速度正交（ρ≤0.07）但弱，terminal Good位回歸；位置修正末段速度**差過現行** pace_figure（0.5787 vs 0.5981，名次×0.877 馬位估落後誤差太大）。Sportsbet 速度代理已用盡，要真逐駒計時先答到
 - [EXP-20261013-11](EXP-20261013-11-au-pace-luck-and-speed-map.md) — **REJECT ×3**：蝕步速效應真但細（β +0.267 馬位）；調整負距反而蝕資訊（0.6207→0.6158）；被蝕過嘅馬冇反彈（0.4928）；單騎領放形勢 gold 全負。Speed map 最準係過往 800m 位置 ρ 0.451，加頭段速度跌到 0.394，SpeedPos 0.163。PI 0.5547 弱過純負距 0.6240 且同 form ρ 0.38。疊數 Sportsbet 冇資料
 - [EXP-20261013-12](EXP-20261013-12-pi-removal-au-hkjc.md) — 剷 PI：**AU 早已零權重**（swap sectional_score 3,461 場全部 +0.0000，冇嘢 refit）；**HKJC REJECT** —— PI 喺沙田走位匹配 ±5/±2，剷走 362 場 gold 20→19、good 87→83，Stage 4 v2 primary_regression；細但方向一致支持保留
 - [EXP-20261014-01](EXP-20261014-01-au-people-recent-form-and-apprentice-claim.md) — **REJECT ×4**：騎練近三個已完結月份狀態正交（ρ≈−0.03）但冇料（AUC 0.508/0.514）；見習減磅淨效應負（0.4833，新手騎師蓋過揹輕）。附帶：Sportsbet 負磅係分配負磅、Formguide 剝走減磅 → 見習馬記錄多揹 1.5–4kg（未修，另開）
 - [EXP-20261014-02](EXP-20261014-02-au-apprentice-claim-carried-weight.md) — §7 正確性修正（跟進 14-01）：抽取層保存見習減磅 `(a-N)` 同超磅 `(aN)`，Racecard 寫 `Weight: 59.5kg (Claim 1.5kg, Carried 58kg)`；引擎讓磅代理照用分配負磅（實負磅等於後門加減磅特徵），實負磅只入報告；Rosehill 8 場 Scoring CSV 逐 byte 不變
+- [EXP-20261014-05](EXP-20261014-05-au-pace-reliability.md) — horse-analyst方向：REJECT_DEV；定位可靠度dev有訊號、terminal只有53匹標籤。
+- [EXP-20261014-06](EXP-20261014-06-au-cumulative-workload.md) — horse-analyst方向：路程／場數兩個低負荷加分arm均REJECT_DEV。
+- [EXP-20261014-07](EXP-20261014-07-au-ranking-sensitivity.md) — horse-analyst方向：分層診斷有方向，terminal CI跨零；未入分。
+- [EXP-20261014-08](EXP-20261014-08-au-top4-pace-diversity.md) — horse-analyst方向：89場觸發，terminal多1場Gold但CI跨零，Stage4 REJECT。
+- [EXP-20261014-09](EXP-20261014-09-au-market-movement-readiness.md) — AU 賠率變動ML資料審計：353 meeting／2,731場有history，2,246場多capture，34%重複獨贏價向量；265賽後補錄排除；clean-era Flucs全部單價。歷史jump time／freshness未驗證，**DATA_GATE_HOLD，未fit**；獨立市場增量試驗設計完成，現役模型不變。

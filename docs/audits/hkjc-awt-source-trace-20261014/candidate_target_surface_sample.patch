@@ -1,0 +1,16 @@
+--- a/.agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/engine_core.py
++++ b/.agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/engine_core.py
+@@ -929,7 +929,12 @@
+         """
+         text = self._clean(self._value("surface_performance_shadow") or "")
+         score_match = re.search(r"今場=.*?\s(\d+(?:\.\d+)?)分", text)
+-        sample_match = re.search(r"今場=.*?有效樣本(\d+(?:\.\d+)?)", text)
++        target_match = re.search(r"今場=([^|]+?)\s\d+(?:\.\d+)?分", text)
++        target = target_match.group(1).strip() if target_match else ""
++        sample_match = re.search(
++            rf"(?:^|\|)\s*{re.escape(target)}\s+[^|]*?有效樣本(\d+(?:\.\d+)?)",
++            text,
++        ) if target else None
+         source_match = re.search(r"採用來源=([^|]+)", text)
+         score = parse_float(score_match.group(1)) if score_match else None
+         effective_n = parse_float(sample_match.group(1)) if sample_match else None

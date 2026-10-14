@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-14T07:42:26+11:00",
+  "platform": "hkjc",
+  "meeting_dir": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-09-27_ShaTin",
+  "meeting": "2026-09-27_ShaTin",
+  "expected_races": 11,
+  "status": "ok",
+  "deploy_allowed": true,
+  "summary": {
+    "races": 11,
+    "horses": 139,
+    "errors": 0,
+    "warnings": 0,
+    "average_coverage_pct": 91.0
+  },
+  "races": [
+    {
+      "race": 1,
+      "runners": 12,
+      "facts_file": "09-27 Race 1 Facts.md",
+      "source_alignment_checked": true,
+      "facts_alignment_checked": true,
+      "coverage_pct": 90.97,
+      "status": "ok",
+      "issues": []
+    },
+    {
+      "race": 2,
+      "runners": 12,
+      "facts_file": "09-27 Race 2 Facts.md",
+      "source_alignment_checked": true,
+      "facts_alignment_checked": true,
+      "coverage_pct": 91.67,
+      "status": "ok",
+      "issues": []
+    },
+    {
+      "race": 3,
+      "runners": 14,
+      "facts_file": "09-27 Race 3 Facts.md",
+      "source_alignment_checked": true,
+      "facts_alignment_checked": true,
+      "coverage_pct": 91.07,
+      "status": "ok",
+      "issues": []
+    },
+    {
+      "race": 4,
+      "runners": 14,
+      "facts_file": "09-27 Race 4 Facts.md",
+      "source_alignment_checked": true,
+      "facts_alignment_checked": true,
+      "coverage_pct": 91.67,
+      "status": "ok",
+      "issues": []
+    },
+    {
+      "race": 5,
+      "runners": 12,
+      "facts_file": "09-27 Race 5 Facts.md",
+      "source_alignment_checked": true,
+      "facts_alignment_checked": true,
+      "coverage_pct": 91.67,
+      "status": "ok",
+      "issues": []
+    },
+    {
+      "race": 6,
+      "runners": 14,
+      "facts_file": "09-27 Race 6 Facts.md",
+      "source_alignment_checked": true,
+      "facts_alignment_checked": true,
+      "coverage_pct": 91.67,
+      "status": "ok",
+      "issues": []
+    },
+    {
+      "race": 7,
+      "runners": 12,
+      "facts_file": "09-27 Race 7 Facts.md",
+      "source_alignment_checked": true,
+      "facts_alignment_checked": true,
+      "coverage_pct": 90.28,
+      "status": "ok",
+      "issues": []
+    },
+    {
+      "race": 8,
+      "runners": 9,
+      "facts_file": "09-27 Race 8 Facts.md",
+      "source_alignment_checked": true,
+      "facts_alignment_checked": true,
+      "coverage_pct": 90.74,
+      "status": "ok",
+      "issues": []
+    },
+    {
+      "race": 9,
+      "runners": 14,
+      "facts_file": "09-27 Race 9 Facts.md",
+      "source_alignment_checked": true,
+      "facts_alignment_checked": true,
+      "coverage_pct": 90.48,
+      "status": "ok",
+      "issues": []
+    },
+    {
+      "race": 10,
+      "runners": 12,
+      "facts_file": "09-27 Race 10 Facts.md",
+      "source_alignment_checked": true,
+      "facts_alignment_checked": true,
+      "coverage_pct": 90.28,
+      "status": "ok",
+      "issues": []
+    },
+    {
+      "race": 11,
+      "runners": 14,
+      "facts_file": "09-27 Race 11 Facts.md",
+      "source_alignment_checked": true,
+      "facts_alignment_checked": true,
+      "coverage_pct": 90.48,
+      "status": "ok",
+      "issues": []
+    }
+  ],
+  "issues": []
+}

@@ -42,3 +42,7 @@ bootstrap.sh    text eol=lf
 *.xlsx          binary
 *.woff          binary
 *.woff2         binary
+
+# Stored patches/diffs carry diff context lines; trailing spaces there are content.
+*.patch         -whitespace
+*.diff          -whitespace

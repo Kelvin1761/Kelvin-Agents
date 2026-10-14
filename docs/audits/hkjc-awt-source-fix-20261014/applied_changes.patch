@@ -1,0 +1,56 @@
+--- a/.agents/scripts/inject_hkjc_fact_anchors.py
++++ b/.agents/scripts/inject_hkjc_fact_anchors.py
+@@ -941,6 +941,10 @@
+                 distance = 0
+                 going = ''
+             
++            # Keep the quoted AWT surface before choosing sectional standards.
++            if normalize_venue_surface(rail) == '沙田AWT':
++                venue = normalize_venue_surface(f'{venue} {rail}')
++
+             # Get race details block until next race or end
+             race_start = rm.end()
+             next_race = race_pattern.search(block, race_start)
+@@ -1991,7 +1995,7 @@
+         r = races[i] if i < len(races) else {}
+         p = p_entries[i] if i < len(p_entries) else {}
+         date = r.get('date', p.get('date', ''))
+-        venue = r.get('venue', p.get('venue_track', ''))[:4]
++        venue = normalize_venue_surface(r.get('venue', p.get('venue_track', '')))
+         distance = r.get('distance', p.get('distance', 0))
+         class_g = p.get('class_grade', '')
+         if class_g:
+@@ -2041,7 +2045,7 @@
+             r = races[i] if i < len(races) else {}
+             p = p_entries[i] if i < len(p_entries) else {}
+             date = r.get('date', p.get('date', ''))
+-            venue = r.get('venue', p.get('venue_track', ''))[:4]
++            venue = normalize_venue_surface(r.get('venue', p.get('venue_track', '')))
+             distance = r.get('distance', p.get('distance', 0))
+             class_g = p.get('class_grade', '')
+             if class_g:
+@@ -2137,7 +2141,7 @@
+         ftime = p.get('finish_time_raw', '-')
+         if ftime and ftime != '-':
+             ftime_sec = parse_time_to_seconds(ftime)
+-            r_venue = r.get('venue', '')[:4]
++            r_venue = normalize_venue_surface(r.get('venue', ''))
+             r_dist = r.get('distance', 0)
+             r_class = p.get('class_grade', '')
+             if r_class:
+--- a/.agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/engine_core.py
++++ b/.agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/engine_core.py
+@@ -929,7 +929,12 @@
+         """
+         text = self._clean(self._value("surface_performance_shadow") or "")
+         score_match = re.search(r"今場=.*?\s(\d+(?:\.\d+)?)分", text)
+-        sample_match = re.search(r"今場=.*?有效樣本(\d+(?:\.\d+)?)", text)
++        target_match = re.search(r"今場=([^|]+?)\s\d+(?:\.\d+)?分", text)
++        target = target_match.group(1).strip() if target_match else ""
++        sample_match = re.search(
++            rf"(?:^|\|)\s*{re.escape(target)}\s+[^|]*?有效樣本(\d+(?:\.\d+)?)",
++            text,
++        ) if target else None
+         source_match = re.search(r"採用來源=([^|]+)", text)
+         score = parse_float(score_match.group(1)) if score_match else None
+         effective_n = parse_float(sample_match.group(1)) if sample_match else None

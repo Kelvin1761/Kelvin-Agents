@@ -1,6 +1,7 @@
 # EXP-20260826-04 — 新數據源同退役維度：全部測完，冇一個過閘
 
-**狀態：REJECT（Part A 同 Part B 都冇一個過閘）；Part A 已預先登記重測條件**
+**狀態：REJECT（Part A 同 Part B 都冇一個過閘）；Part A 重測已於
+`EXP-20260927-01` 完成，仍然 REJECT**
 **日期：** 2026-08-26 ・ **平台：** AU ・ **語料：** 1,029–1,523 場（PF 可表達 / 全對到賽果）
 
 ## 背景
@@ -131,4 +132,3 @@ Good **−0.33**、Soft **+0.20**、Heavy **+1.53** 秒 —— 方向同幅度�
 `build_races` 讀 `source_compare.json` 攞 form depth，個檔唔存在就 `depth` 係空
 dict，於是 `depth.get(name, 0) = 0 < --min-depth 4.0` → **每個場次都被隔走**，
 輸出「0 場」再喺 `delta()` 度 `TypeError`。要 `--min-depth 0` 先跑到。
-

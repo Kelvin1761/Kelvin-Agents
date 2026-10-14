@@ -1,0 +1,66 @@
+{
+  "recorded_at": "2026-10-14T03:32:55.864726+00:00",
+  "commit": "0116c740330db7f02f9d04d2884e211b1d494517",
+  "worktree_dirty": true,
+  "local_source": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/AU_Historical_Raw_Race_Results.csv",
+  "local_source_sha256": "a7018814259cc0c8e90551962030fa4a93770780e53371bd64a8744f988b8274",
+  "sample_selection": "2026-10-10, first two races at Rosehill/Caulfield/Eagle Farm; complete local finishing positions checked before comparison",
+  "capture_method": "Chrome public UI, read-only rendered DOM; result cells and runner names/barriers/scratch classes/claim dd; transcribed into compact CSV",
+  "tab_api_status": "HTTP/2 INTERNAL_ERROR; HTTP/1.1 timeout; direct browser ERR_BLOCKED_BY_CLIENT; no API payload obtained",
+  "tab_urls": [
+    "https://www.tab.com.au/racing/2026-10-10/ROSEHILL/S/R/1",
+    "https://www.tab.com.au/racing/2026-10-10/ROSEHILL/S/R/2",
+    "https://www.tab.com.au/racing/2026-10-10/CAULFIELD/M/R/1",
+    "https://www.tab.com.au/racing/2026-10-10/CAULFIELD/M/R/2",
+    "https://www.tab.com.au/racing/2026-10-10/EAGLE-FARM/B/R/1",
+    "https://www.tab.com.au/racing/2026-10-10/EAGLE-FARM/B/R/2"
+  ],
+  "live_url": "https://www.tab.com.au/racing/2026-10-14/EAGLE-FARM/EAG/R/1",
+  "live_local_formguide": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/AU_Racing/2026-10-14 Eagle Farm Race 1-6/10-14 Race 1 Formguide.md",
+  "live_local_formguide_sha256": "022dda62b7cdee4ce03fa60db8c8ce7536e6f69274b173c84f183b171f0c78cf",
+  "live_observation": "Pre-race at displayed countdown about 29m, scheduled displayed 14:58; do not infer historical snapshot availability from this",
+  "speed_map": {
+    "First Start": [
+      "MALAMAGIC",
+      "SYMMETRIQUE"
+    ],
+    "Mid Field": [
+      "NO NO NO NO NO",
+      "QUEEN OF ACES"
+    ],
+    "On Pace": [
+      "DRAGON LINK",
+      "SEAPHIRA",
+      "FAIR SHAKE",
+      "PALMANOVA",
+      "TEXAS"
+    ]
+  },
+  "form_semantic_examples": {
+    "horse": "Dragon Link",
+    "TAB_2026_02_07": {
+      "venue": "GCST",
+      "going": "Good",
+      "time": "1:01.71",
+      "in_run": "2-2-4"
+    },
+    "Sportsbet_2026_02_07": {
+      "venue": "Aquis Park Gold Coast Poly",
+      "going": "Synthetic",
+      "winning_time": "1:01.690",
+      "p800": 2,
+      "p400": 4
+    },
+    "TAB_2026_01_16": {
+      "time": "0:58.18",
+      "margin": 2.5
+    },
+    "Sportsbet_2026_01_16": {
+      "winning_time": "57.750",
+      "margin": 2.52
+    },
+    "TAB_class_record": "2: 0 - 2",
+    "Sportsbet_class_record": "-",
+    "TAB_comment_evidence": "start/trip trouble mentioned; commentary also includes odds-on assessments; never import whole commentary as an independent feature"
+  }
+}

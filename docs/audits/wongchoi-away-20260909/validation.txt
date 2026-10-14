@@ -1,0 +1,14 @@
+2026-09-09 final validation
+
+Final ./檢查.sh: exit 0; 15 suites PASS; 2425 Python tests passed; existing 2 expected failures remain expected. Dashboard node suite also PASS (see full-check.log).
+Ruff, AU/HKJC golden snapshots and generated model documentation freshness PASS.
+Independent targeted Tennis scheduler/recovery run: 70 passed.
+Actual corpus contract checks: AU 60 races / 627 runners PASS; HKJC 60 races / 746 runners PASS.
+Full isolated-worktree test run has no local corpus by default and labels those checks skipped; actual corpus was checked separately with explicit read-only data roots.
+The first post-move sandbox run failed on read-only .codex worktree test logs / ruff cache. The final full check rerun with approved filesystem access passed. Those permission failures are not being counted as production failures or hidden as test success.
+Release dry-run: automation; 12 exact-scope files; no unrelated dirty paths; four-domain production sync; no installer or dashboard deploy in plan.
+No commit, push, merge, production activation, Telegram transmission, power-setting change or data deletion performed by this task.
+
+Branch: codex/automation-resilience-20260909
+Base: 75dd2c91b3e7423ef41519f589150950157a7437
+Worktree: /Users/imac/Antigravity-repo/.codex/worktrees/wc-automation-resilience-20260909

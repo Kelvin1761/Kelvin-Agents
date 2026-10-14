@@ -1,0 +1,398 @@
+diff --git a/.agents/skills/au_racing/au_daily_auto/au_telegram_bot.py b/.agents/skills/au_racing/au_daily_auto/au_telegram_bot.py
+index 73603b74..7c4a6220 100755
+--- a/.agents/skills/au_racing/au_daily_auto/au_telegram_bot.py
++++ b/.agents/skills/au_racing/au_daily_auto/au_telegram_bot.py
+@@ -54,6 +54,7 @@ HELP = ("我識嘅嘢：\n"
+         "/health          即刻做一次體檢\n"
+         "/diag            最近一次失敗嘅診斷\n"
+         "/retry           補跑抽取（抽唔齊嗰陣用）\n"
++        "/recover au|hkjc|tennis  由已安裝排程執行有保護嘅復原\n"
+         "/hkjc            強制分析最新 HKJC racecard\n"
+         "/hkjc_reflect    抽賽果、覆盤並更新 HKJC dashboard\n"
+         "/help            呢個")
+@@ -658,10 +659,12 @@ def cmd_retry() -> str:
+         # 新 worktree／剛重裝時未必跑過 daily job，logs/ 仍然可以唔存在。
+         # `/retry` 唔應該因為純粹欠一個可安全建立嘅目錄而失敗。
+         out.parent.mkdir(parents=True, exist_ok=True)
++        # Manual retry must not consume (or reuse) the canonical 22:00 slot.
+         # detach：bot 每兩分鐘就會退出，唔可以由佢等成個 run。
+         with out.open("w") as fh:
+             subprocess.Popen(
+                 ["/bin/zsh", str(runner), "evening", "--skip-review",
++                 "--slot", f"telegram-retry-{datetime.now():%H:%M:%S}",
+                  "--rounds", "3", "--round-gap", "420"],
+                 stdout=fh, stderr=fh, start_new_session=True)
+     except Exception as exc:  # noqa: BLE001
+@@ -734,6 +737,38 @@ def cmd_hkjc_reflect() -> str:
+     )
+ 
+ 
++# Fixed launchd jobs retain production environment, locks and daily retry limits.
++RECOVERY_LABELS = {
++    "au": "com.antigravity.au-wong-choi.healthcheck",
++    "hkjc": "com.antigravity.hkjc-wong-choi.recovery",
++    "tennis": "com.antigravity.tennis-wong-choi.recovery",
++}
++
++
++def cmd_recover(arg: str = "", *, actor: str) -> str:
++    import subprocess
++
++    if actor != AUTHORISED_TELEGRAM_ACTOR:
++        raise PermissionError("Recovery requires the authenticated Telegram dispatcher")
++    label = RECOVERY_LABELS.get(arg.strip().lower())
++    if label is None:
++        return "用法：/recover au 或 /recover hkjc 或 /recover tennis"
++    target = f"gui/{os.getuid()}/{label}"
++    # No -k: never kill an active run. launchd owns the job after the bot exits.
++    result = subprocess.run(
++        ["/bin/launchctl", "kickstart", target], capture_output=True,
++        text=True, encoding="utf-8", errors="replace", timeout=15, check=False,
++    )
++    if result.returncode:
++        detail = (result.stderr or result.stdout or "unknown error").strip()[-500:]
++        return f"復原未能啟動（可能已運行或排程未載入）：{detail}"
++    return (
++        f"▶️ 已交畀 {arg.strip().upper()} 已安裝排程做復原。\n"
++        "沿用鎖、每日重試上限同資料驗證；已有工作或次數用盡會跳過。\n"
++        "呢個只係啟動確認，完成狀態請用 /status 查看。"
++    )
++
++
+ def cmd_health() -> str:
+     import subprocess
+     try:
+@@ -805,6 +840,7 @@ COMMANDS = {"/status": cmd_status, "/git": cmd_git, "/models": cmd_models,
+ # 永遠唔會變成路徑或者指令。
+ COMMANDS_WITH_ARG = {"/picks": cmd_picks}
+ MUTATING_COMMANDS_WITH_ARG = {
++    "/recover": cmd_recover,
+     "/approve": cmd_approve,
+     "/notapprove": cmd_notapprove,
+     "/bootstrap_models": cmd_bootstrap_models,
+diff --git a/.agents/skills/au_racing/au_daily_auto/tests/test_telegram_retry.py b/.agents/skills/au_racing/au_daily_auto/tests/test_telegram_retry.py
+index 3db07fe5..c5de8848 100644
+--- a/.agents/skills/au_racing/au_daily_auto/tests/test_telegram_retry.py
++++ b/.agents/skills/au_racing/au_daily_auto/tests/test_telegram_retry.py
+@@ -51,6 +51,9 @@ class RetryGuardTests(unittest.TestCase):
+         # bot 每兩分鐘就退出，所以一定要 detach，否則個 run 會跟住死。
+         self.assertTrue(started["kw"].get("start_new_session"))
+         self.assertIn("--skip-review", started["cmd"])
++        slot = started["cmd"][started["cmd"].index("--slot") + 1]
++        self.assertTrue(slot.startswith("telegram-retry-"))
++        self.assertNotEqual(slot, "22:00")
+ 
+     def test_it_is_the_same_path_the_scheduler_uses(self):
+         # 唔會行一條特別嘅捷徑 —— 同排程一樣嘅 runner，所以驗證同發佈照做。
+@@ -441,3 +444,34 @@ class RetryGuardTests(unittest.TestCase):
+ 
+ if __name__ == "__main__":
+     unittest.main()
++
++
++class RecoveryCommandTests(unittest.TestCase):
++    def test_rejects_unauthenticated_actor(self):
++        with self.assertRaises(PermissionError):
++            B.cmd_recover("tennis", actor="untrusted")
++
++    def test_user_text_cannot_become_a_command(self):
++        with unittest.mock.patch("subprocess.run") as run:
++            reply = B.cmd_recover("tennis; reboot", actor=B.AUTHORISED_TELEGRAM_ACTOR)
++        run.assert_not_called()
++        self.assertIn("用法", reply)
++
++    def test_kickstart_uses_fixed_job_without_killing_active_work(self):
++        import subprocess
++        with unittest.mock.patch("subprocess.run", return_value=
++                subprocess.CompletedProcess([], 0, "", "")) as run:
++            reply = B.cmd_recover("tennis", actor=B.AUTHORISED_TELEGRAM_ACTOR)
++        command = run.call_args.args[0]
++        self.assertEqual(command[:2], ["/bin/launchctl", "kickstart"])
++        self.assertTrue(command[2].endswith("/com.antigravity.tennis-wong-choi.recovery"))
++        self.assertNotIn("-k", command)
++        self.assertIn("啟動確認", reply)
++
++    def test_launchd_failure_is_not_reported_as_recovery(self):
++        import subprocess
++        with unittest.mock.patch("subprocess.run", return_value=
++                subprocess.CompletedProcess([], 3, "", "No such process")):
++            reply = B.cmd_recover("hkjc", actor=B.AUTHORISED_TELEGRAM_ACTOR)
++        self.assertIn("未能啟動", reply)
++        self.assertIn("/recover", B.MUTATING_COMMANDS_WITH_ARG)
+diff --git a/.agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_daily_schedule.py b/.agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_daily_schedule.py
+index 758f6a70..3f19fb5a 100644
+--- a/.agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_daily_schedule.py
++++ b/.agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_daily_schedule.py
+@@ -274,6 +274,8 @@ def run_cmd(cmd: list[str], *, timeout: int = 7200,
+             cwd=PROJECT_ROOT,
+             env=env,
+             text=True,
++            encoding="utf-8",
++            errors="replace",
+             stdout=subprocess.PIPE,
+             stderr=subprocess.STDOUT,
+             timeout=timeout,
+diff --git a/.agents/skills/hkjc_racing/hkjc_daily_auto/tests/test_hkjc_daily_schedule.py b/.agents/skills/hkjc_racing/hkjc_daily_auto/tests/test_hkjc_daily_schedule.py
+index 445f9f81..600ec95d 100644
+--- a/.agents/skills/hkjc_racing/hkjc_daily_auto/tests/test_hkjc_daily_schedule.py
++++ b/.agents/skills/hkjc_racing/hkjc_daily_auto/tests/test_hkjc_daily_schedule.py
+@@ -426,3 +426,15 @@ def test_control_json_reports_temporary_discovery_failure(
+     payload = json.loads(capsys.readouterr().out.splitlines()[-1])
+     assert payload["status"] == "partial"
+     assert payload["exit_code"] == schedule.EXIT_TEMPORARY
++
++
++def test_invalid_diagnostic_bytes_preserve_command_failure(tmp_path, monkeypatch):
++    messages = []
++    monkeypatch.setattr(schedule, "PROJECT_ROOT", tmp_path)
++    monkeypatch.setattr(schedule, "log", messages.append)
++    code, output = schedule.run_cmd([
++        sys.executable, "-c",
++        "import os; os.write(2, b'failure: \\xef\\n'); raise SystemExit(7)",
++    ])
++    assert code == 7
++    assert "failure: \ufffd" in output
+diff --git a/.agents/skills/shared_wong_choi/command_adapter.py b/.agents/skills/shared_wong_choi/command_adapter.py
+index 181eb47b..2578c2cf 100644
+--- a/.agents/skills/shared_wong_choi/command_adapter.py
++++ b/.agents/skills/shared_wong_choi/command_adapter.py
+@@ -17,6 +17,7 @@ from .contracts import (
+     normalize_run_state,
+ )
+ from .control import RunManifest, manifest_path, single_run_lock
++from .process_runner import run_bounded
+ 
+ 
+ Runner = Callable[[list[str]], subprocess.CompletedProcess[str]]
+@@ -67,14 +68,7 @@ class ManifestCommandAdapter(ABC):
+     def _run_subprocess(
+         self, command: list[str], timeout: int
+     ) -> subprocess.CompletedProcess[str]:
+-        return subprocess.run(
+-            command,
+-            cwd=self.repo_root,
+-            text=True,
+-            capture_output=True,
+-            timeout=timeout,
+-            check=False,
+-        )
++        return run_bounded(command, cwd=self.repo_root, timeout=timeout)
+ 
+     def entrypoint(self, request: RunRequest) -> Path:
+         identity = request.identity
+diff --git a/.agents/skills/shared_wong_choi/tests/test_run_timeouts.py b/.agents/skills/shared_wong_choi/tests/test_run_timeouts.py
+index d9b18f12..81c1b5fa 100644
+--- a/.agents/skills/shared_wong_choi/tests/test_run_timeouts.py
++++ b/.agents/skills/shared_wong_choi/tests/test_run_timeouts.py
+@@ -130,7 +130,7 @@ def test_adapter_passes_the_per_mode_timeout_to_subprocess(
+         seen.update(kwargs)
+         return subprocess.CompletedProcess(command, 0, stdout='{"status": "ok"}', stderr="")
+ 
+-    monkeypatch.setattr(subprocess, "run", fake_run)
++    monkeypatch.setattr("shared_wong_choi.command_adapter.run_bounded", fake_run)
+     AUAdapter(REPO_ROOT, tmp_path).execute(_request("evening"))
+     assert seen["timeout"] == adapter_spec(Domain.AU).run_timeout_seconds("evening")
+ 
+diff --git a/tennis-wong-choi/scripts/tennis_card_recovery.py b/tennis-wong-choi/scripts/tennis_card_recovery.py
+index 3a6fbafe..97472704 100755
+--- a/tennis-wong-choi/scripts/tennis_card_recovery.py
++++ b/tennis-wong-choi/scripts/tennis_card_recovery.py
+@@ -279,9 +279,12 @@ def main(argv: list[str] | None = None) -> int:
+     # A recovered card is still the day's completed card. Send the same formal
+     # recommendation content as the 09:00 pass, to both configured recipients.
+     env["TENNIS_NOTIFY_BETS"] = "1"
++    # Failed 09:00 manifests are immutable. Reusing that slot only returns
++    # duplicate_skipped; each bounded recovery pass needs its own identity.
+     try:
+         completed = subprocess.run(
+-            [str(RUNNER), "--source", "recovery", "--refresh-today", "--today", day],
++            [str(RUNNER), "--source", "recovery", "--refresh-today", "--today", day,
++             "--slot", f"card-recovery-{state['analysis_attempts']}"],
+             cwd=PROJECT_DIR,
+             env=env,
+             timeout=7200,
+diff --git a/tennis-wong-choi/scripts/tennis_daily_schedule.py b/tennis-wong-choi/scripts/tennis_daily_schedule.py
+index f7871135..ff56b91d 100755
+--- a/tennis-wong-choi/scripts/tennis_daily_schedule.py
++++ b/tennis-wong-choi/scripts/tennis_daily_schedule.py
+@@ -929,6 +929,8 @@ def sync_dashboard_settlements(match_date: str) -> bool:
+             command,
+             cwd=str(PROJECT_DIR.parent),
+             text=True,
++            encoding="utf-8",
++            errors="replace",
+             stdout=subprocess.PIPE,
+             stderr=subprocess.STDOUT,
+             timeout=90,
+@@ -1174,6 +1176,8 @@ def run_cli(*args: str) -> str:
+         cwd=PROJECT_DIR,
+         env=env,
+         text=True,
++        encoding="utf-8",
++        errors="replace",
+         stdout=subprocess.PIPE,
+         stderr=subprocess.STDOUT,
+         check=False,
+diff --git a/tennis-wong-choi/tests/test_card_recovery.py b/tennis-wong-choi/tests/test_card_recovery.py
+index c618bcd6..0d6794cb 100644
+--- a/tennis-wong-choi/tests/test_card_recovery.py
++++ b/tennis-wong-choi/tests/test_card_recovery.py
+@@ -133,3 +133,32 @@ def test_completed_card_already_live_does_nothing(tmp_path, monkeypatch, capsys)
+     payload = json.loads(capsys.readouterr().out.splitlines()[-1])
+     assert payload["status"] == "dormant"
+     assert payload["reason"] == "card_and_dashboard_current"
++
++
++def test_failed_card_recovery_does_not_reuse_morning_or_previous_retry_slot(
++    tmp_path, monkeypatch
++):
++    import subprocess
++    from scripts import tennis_card_recovery as recovery
++
++    commands = []
++    monkeypatch.setattr(recovery, "runner_active", lambda _: False)
++    monkeypatch.setattr(recovery, "successful_card_for_day", lambda *_: None)
++    monkeypatch.setattr(recovery, "disk_headroom", lambda: {"ok": True})
++    monkeypatch.setattr(recovery, "notify", lambda *_: None)
++
++    def fail(command, **kwargs):
++        commands.append(command)
++        return subprocess.CompletedProcess(command, 1)
++
++    monkeypatch.setattr(recovery.subprocess, "run", fail)
++    args = ["--today", "2026-09-09", "--log", str(tmp_path / "log"),
++            "--state", str(tmp_path / "state.json")]
++    assert recovery.main(args) == 1
++    assert recovery.main(args) == 1
++    assert recovery.main(args) == 1  # exhausted: no third subprocess
++    assert len(commands) == 2
++    assert [cmd[cmd.index("--slot") + 1] for cmd in commands] == [
++        "card-recovery-1", "card-recovery-2",
++    ]
++    assert all("--refresh-today" in cmd for cmd in commands)
+diff --git a/tennis-wong-choi/tests/test_scheduler.py b/tennis-wong-choi/tests/test_scheduler.py
+index d455543b..26ce0e0d 100644
+--- a/tennis-wong-choi/tests/test_scheduler.py
++++ b/tennis-wong-choi/tests/test_scheduler.py
+@@ -2,6 +2,9 @@ from __future__ import annotations
+ 
+ import json
+ import subprocess
++from pathlib import Path
++
++import pytest
+ 
+ from scripts import tennis_daily_schedule as scheduler
+ 
+@@ -1220,3 +1223,23 @@ def test_health_line_reports_abandoned_settlements_when_there_are_any(monkeypatc
+         "cloudflare_deploy": {"attempted": True, "status": "deployed"},
+     })
+     assert "棄結" not in quiet
++
++
++def test_cli_invalid_diagnostic_bytes_do_not_hide_exit_code(monkeypatch, tmp_path):
++    import sys
++    from scripts import tennis_daily_schedule as scheduler
++
++    package = tmp_path / "src" / "tennis_wc"
++    package.mkdir(parents=True)
++    (package / "__init__.py").write_text("")
++    (package / "cli.py").write_text(
++        "import os; os.write(2, b'failure: \\xef\\n'); raise SystemExit(7)"
++    )
++    monkeypatch.setattr(scheduler, "PROJECT_DIR", tmp_path)
++    monkeypatch.setattr(scheduler, "PYTHON", Path(sys.executable))
++    messages = []
++    monkeypatch.setattr(scheduler, "log", messages.append)
++    with pytest.raises(subprocess.CalledProcessError) as error:
++        scheduler.run_cli("run-daily")
++    assert error.value.returncode == 7
++    assert any("failure:" in message for message in messages)
+diff --git a/.agents/skills/shared_wong_choi/process_runner.py b/.agents/skills/shared_wong_choi/process_runner.py
+new file mode 100644
+index 00000000..72f1c3fd
+--- /dev/null
++++ b/.agents/skills/shared_wong_choi/process_runner.py
+@@ -0,0 +1,32 @@
++"""Bound scheduler processes and terminate their process group on timeout."""
++from __future__ import annotations
++
++import os
++import signal
++import subprocess
++from pathlib import Path
++
++
++def run_bounded(command: list[str], *, cwd: Path, timeout: float) -> subprocess.CompletedProcess[str]:
++    # A separate session confines timeout cleanup to this run. Descendants that
++    # deliberately start their own session remain outside this boundary.
++    with subprocess.Popen(
++        command, cwd=cwd, text=True, encoding="utf-8", errors="replace",
++        stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True,
++    ) as process:
++        try:
++            stdout, stderr = process.communicate(timeout=timeout)
++        except BaseException:
++            # subprocess.run only kills the direct child. Its browser/worker
++            # descendants may otherwise retain locks and inherited pipe handles.
++            if os.name == "posix":
++                try:
++                    os.killpg(process.pid, signal.SIGKILL)
++                except ProcessLookupError:
++                    pass
++            else:  # non-POSIX fallback: no process groups available
++                process.kill()
++            # Do not wait forever on a pipe held by a deliberately detached child.
++            process.wait(timeout=10)
++            raise
++        return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+diff --git a/.agents/skills/shared_wong_choi/tests/test_process_runner.py b/.agents/skills/shared_wong_choi/tests/test_process_runner.py
+new file mode 100644
+index 00000000..b8a9cc51
+--- /dev/null
++++ b/.agents/skills/shared_wong_choi/tests/test_process_runner.py
+@@ -0,0 +1,44 @@
++"""Exercise real process/pipe/lock failures without touching production."""
++import fcntl
++import os
++import subprocess
++import sys
++from pathlib import Path
++
++import pytest
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
++
++from shared_wong_choi.process_runner import run_bounded  # noqa: E402
++
++
++def test_invalid_log_bytes_preserve_exit_status(tmp_path):
++    result = run_bounded(
++        [sys.executable, "-c", "import os; os.write(2, b'bad: \\xef\\n'); raise SystemExit(7)"],
++        cwd=tmp_path, timeout=5,
++    )
++    assert result.returncode == 7
++    assert "bad: \ufffd" in result.stderr
++
++
++@pytest.mark.skipif(os.name != "posix", reason="POSIX process groups and locks")
++def test_timeout_releases_grandchild_lock(tmp_path):
++    lock = tmp_path / "worker.lock"
++    ready = tmp_path / "ready"
++    worker = (
++        "import fcntl,time,pathlib; "
++        f"f=open({str(lock)!r},'w'); fcntl.flock(f,fcntl.LOCK_EX); "
++        f"pathlib.Path({str(ready)!r}).touch(); time.sleep(60)"
++    )
++    parent = (
++        "import subprocess,sys,time,pathlib; "
++        f"subprocess.Popen([sys.executable,'-c',{worker!r}]); "
++        "time.sleep(60)"
++    )
++    with pytest.raises(subprocess.TimeoutExpired):
++        run_bounded([sys.executable, "-c", parent], cwd=tmp_path, timeout=1)
++    assert ready.exists(), "The worker must actually acquire the lock before timeout"
++    # The descendant held stdout/stderr open too: returning already proves the
++    # parent did not hang forever draining an inherited pipe.
++    with lock.open() as handle:
++        fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)

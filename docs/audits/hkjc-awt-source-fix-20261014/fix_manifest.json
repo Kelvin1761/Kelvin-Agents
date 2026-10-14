@@ -1,0 +1,10 @@
+{
+  ".agents/scripts/inject_hkjc_fact_anchors.py": {
+    "baseline_sha256": "9012027cc291ce6ddc5ba88501a9aa628a75768b08d18c9a2e47a24b3eb68f55",
+    "fixed_sha256": "655220fc9aab2da38145364a47febf376b408da6b2753e8e40a0895b5f7e09bc"
+  },
+  ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/engine_core.py": {
+    "baseline_sha256": "9dea203f2e66b189032e125291e20dc930f732584390189368682d0792d1296f",
+    "fixed_sha256": "067cbf3dd078a12a55b5e25586b84ce2949b65090e158dc4583c6bd96ff9477f"
+  }
+}

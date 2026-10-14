@@ -1,5 +1,21 @@
 # HKJC Competitiveness Optimisation
 
+> ⚠️ **現況更正（2026-10-14）：下面嘅 `CORE_BALANCE` 已經唔係 live。**
+> 佢 2026-07-30 上線（`2c9e6ffb`，race_shape 0.2560 → **0.2260**），但 2026-08-09
+> merge `f7d35de5` 喺 `scoring.py` 衝突時揀咗 parent `201c6923` 嘅 **0.2737** ——
+> 即係對**舊**權重做嘅純 renormalise。七個維度全部對返舊組，呢份 refit 完全消失，
+> 而 `test_calibrated_matrix_weights_are_locked` 之後鎖住嘅係 merge 揀返嗰個值。
+>
+> **刻意唔還原。** 喺而家嘅語料同把尺之下，0.2260 唔係更好嘅答案：
+> `EXP-20260928-08`（320 場）量到 race_shape 減權令排名次序指標上升，
+> 但 Gold／Good 同時下跌（22% ≈ −0.73pp／−0.73pp），7 個候選全部 REJECT。
+> 而且 0.2260 係喺 245 場、formline 仲丟緊 60.9% 對手行嘅時候 fit 出嚟，本身已過期。
+>
+> 正式判決交畀 `EXP-20260928-10` 嘅 forward shadow arm `weight_refit_t02`
+> （27.37% → 25.37%），夠 120 個 active race 先用 Stage-4 v2 判。
+> 現役權重以 `.agents/skills/hkjc_racing/hkjc_wong_choi_auto/resources/01_scoring_contract.md`
+> 同 `hkjc_racing_engine/scoring.py` 為準，**唔好以呢份文件為準**。
+
 ## Goal
 令 HKJC Wong Choi 排名反映賽前真實競爭力，而唔係只追逐歷史 Top 3 賽果。
 
@@ -13,6 +29,7 @@
 - [x] 只保留通過 gate 的改動並跑回歸測試 → Verify: 67 Auto + 18 shared evaluator + 4 reflector pytest、12/12 template flow、Auto orchestrator、Reflector 及單 meeting replay 全部通過。
 - [x] 重建五個主要弱項並做 full-field matrix gate → Verify: 25 meetings、245 races、3,054 runners；唯一通過候選為 `shape_to_core_equal`。
 - [x] 將通過候選上線 → Verify: production contract `HKJC_7D_CONTRACT_2026_07_30_CORE_BALANCE`，並由測試鎖定七維權重。
+  （**2026-08-09 merge 之後已唔係 live**，見頂部更正。）
 - [x] 最終回歸驗證 → Verify: 89 pytest、67 Auto unittest、12/12 template flow 全部通過；7 月 15 日 Top-2／Top-5 capture 無退步。
 
 ## Done When
@@ -211,6 +228,7 @@ fit、較大 race-shape 轉移及 stability-led 版本，全部至少在一個�
 
 收到呢類新資料後應重開同一套 gate；未有新訊號之前，維持
 `HKJC_7D_CONTRACT_2026_07_30_CORE_BALANCE` 係泛化風險最低嘅選擇。
+（2026-07-30 時嘅判斷；之後佢喺 merge 消失咗，而 2026-09-28 嘅重測唔支持還原 —— 見頂部更正。）
 
 ## Notes
 - 極冷門、意外、受阻只作透明標籤；原始成績永遠保留，另報 adjusted metrics。

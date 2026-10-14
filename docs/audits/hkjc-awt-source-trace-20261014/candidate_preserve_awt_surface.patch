@@ -1,0 +1,13 @@
+--- a/.agents/scripts/inject_hkjc_fact_anchors.py
++++ b/.agents/scripts/inject_hkjc_fact_anchors.py
+@@ -941,6 +941,10 @@
+                 distance = 0
+                 going = ''
+             
++            # Keep the quoted AWT surface before choosing sectional standards.
++            if normalize_venue_surface(rail) == '沙田AWT':
++                venue = normalize_venue_surface(f'{venue} {rail}')
++
+             # Get race details block until next race or end
+             race_start = rm.end()
+             next_race = race_pattern.search(block, race_start)
