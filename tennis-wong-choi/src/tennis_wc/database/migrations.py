@@ -625,3 +625,58 @@ def _ensure_compat_columns(conn) -> None:
             "CREATE INDEX IF NOT EXISTS idx_prop_tracker_point_in_time "
             "ON prop_tracker(is_point_in_time, result_status)"
         )
+    ensure_close_audit_schema(conn)
+
+
+def ensure_close_audit_schema(conn) -> None:
+    """Columns/table that make a CLOSE auditable. Idempotent.
+
+    `closing_odds_snapshots.close_status` / `close_reason` (2026-10-14): the
+    match-winner close used to be the newest odds snapshot with no pre-start
+    bound. Measured read-only that day, 1,105 of 5,556 matches (19.9%) had an
+    effective close fetched AFTER the start -- in-running prices. A close is now
+    the last snapshot strictly before `start_time_utc`; when none exists the row
+    is written with NULL odds, `close_status = 'NO_CLOSE'` and the reason, so
+    "no close" is visible instead of silently filled with a post-start price.
+    Legacy rows keep NULL status; readers re-check the start time themselves.
+
+    `prop_price_log` (2026-10-14): `_sync_prop_clv` only puts STAKED value
+    props into clv_tracker, so the market's movement against everything the
+    model looked at and passed on was never recorded. One row per evaluated
+    prop (prop_tracker.id) holding the earliest pre-start price and the
+    pre-start close. Pure logging -- nothing reads it to choose or stake bets.
+    """
+    close_cols = {row["name"] for row in conn.execute("PRAGMA table_info(closing_odds_snapshots)").fetchall()}
+    if close_cols:
+        if "close_status" not in close_cols:
+            conn.execute("ALTER TABLE closing_odds_snapshots ADD COLUMN close_status TEXT")
+        if "close_reason" not in close_cols:
+            conn.execute("ALTER TABLE closing_odds_snapshots ADD COLUMN close_reason TEXT")
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS prop_price_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            prop_id INTEGER NOT NULL UNIQUE,
+            match_id INTEGER NOT NULL,
+            match_date TEXT NOT NULL,
+            market_key TEXT NOT NULL,
+            is_value INTEGER,
+            stake_units REAL,
+            odds_evaluated REAL,
+            start_time_utc TEXT,
+            earliest_pre_start_odds REAL,
+            earliest_pre_start_fetched_at TEXT,
+            close_pre_start_odds REAL,
+            close_pre_start_fetched_at TEXT,
+            pre_start_snapshots INTEGER NOT NULL DEFAULT 0,
+            clv_vs_close REAL,
+            status TEXT NOT NULL,
+            reason TEXT,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_prop_price_log_date "
+        "ON prop_price_log(match_date, status)"
+    )

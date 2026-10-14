@@ -749,6 +749,12 @@ def _record_daily_evidence(
 def run_daily(args: argparse.Namespace) -> None:
     provider_healthcheck(args)
     source_errors = []
+    # Degraded-but-not-failed sources: a stage that returned normally while
+    # serving cached data or skipping a missing file. Kept apart from
+    # source_errors so the readiness gate (CRITICAL_SOURCES) is unchanged, but
+    # stored and printed so a frozen feed is no longer indistinguishable from a
+    # healthy one.
+    source_warnings: list[dict] = []
     stage_timings: list[dict] = []
     clear_pipeline_source_errors(args.date)
     # Settle any past dates still holding PENDING tracker rows BEFORE today's
@@ -794,9 +800,11 @@ def run_daily(args: argparse.Namespace) -> None:
             ("metadata_backfill", lambda: backfill_confirmed_metadata_for_date(args.date)),
         ):
             try:
-                _run_timed_stage(label, step, stage_timings)
+                result = _run_timed_stage(label, step, stage_timings)
             except Exception as exc:
                 source_errors.append({"source": label, "error": str(exc)})
+            else:
+                source_warnings.extend(_stage_degradations(label, result))
         # Guard: confirm the per-event enrichment actually captured multi-market
         # odds. If a day ends up with only match-winner, combos collapse — make it
         # a loud, surfaced warning rather than a silent gap.
@@ -817,7 +825,11 @@ def run_daily(args: argparse.Namespace) -> None:
         "tennis_wc_pipeline",
         "/run-daily/source-errors",
         {"date": args.date},
-        {"mode": "mvp_snapshot" if args.mvp_snapshot else "live_full", "errors": source_errors},
+        {
+            "mode": "mvp_snapshot" if args.mvp_snapshot else "live_full",
+            "errors": source_errors,
+            "warnings": source_warnings,
+        },
         207 if source_errors else 200,
         "run_daily_source_errors",
         args.date,
@@ -910,6 +922,7 @@ def run_daily(args: argparse.Namespace) -> None:
         "analysis_dir": str(analysis_output_dir(args.date)),
         "report_path": str(report_path),
         "source_errors": source_errors,
+        "source_warnings": source_warnings,
         "settlement_backlog": settlement_backlog,
         "tracker_sync": tracker_sync,
         "stage_timings": stage_timings,
@@ -942,6 +955,36 @@ def run_daily(args: argparse.Namespace) -> None:
         stage_timings,
     )
     _print_json(payload)
+
+
+def _stage_degradations(label: str, result) -> list[dict]:
+    """Warnings for a run-daily stage that succeeded on degraded data.
+
+    Two shapes were silent until 2026-10-14:
+    - rankings: a provider failure fell back to cached rankings and returned
+      the cached row count, indistinguishable from a fresh pull (only a 206
+      row in raw_api_responses recorded it);
+    - history files: a 404 was appended to the stage's `errors` list as
+      `csv_not_found` and the list was discarded.
+    """
+    warnings: list[dict] = []
+    if label in ("rankings_atp", "rankings_wta"):
+        from tennis_wc.ingestion.ingest_rankings import rankings_cache_fallback
+
+        fallback = rankings_cache_fallback(label.split("_", 1)[1].upper())
+        if fallback:
+            warnings.append({
+                "source": label,
+                "warning": "rankings_cache_fallback",
+                "cached_latest_ranking_date": fallback.get("cached_latest_ranking_date"),
+                "error": fallback.get("error"),
+            })
+    if isinstance(result, dict):
+        for err in result.get("errors") or []:
+            if isinstance(err, dict):
+                warnings.append({"source": label, "warning": str(err.get("error") or "error"),
+                                 **{k: v for k, v in err.items() if k != "error"}})
+    return warnings
 
 
 def _merge_player_identities() -> dict:

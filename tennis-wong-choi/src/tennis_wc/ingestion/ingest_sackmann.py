@@ -62,7 +62,13 @@ def ingest_sackmann_history(start_year: int, end_year: int, tours: list[str] | N
                 rows = _download_csv(url)
             except HTTPError as exc:
                 if exc.code == 404:
-                    imported["errors"].append({"tour": tour, "year": year, "error": "csv_not_found"})
+                    # Not silent any more: JeffSackmann/tennis_atp and
+                    # tennis_wta both 404 on GitHub (verified 2026-10-14), so
+                    # this backbone is frozen at 2026-06-02. Keep a 404 row in
+                    # raw_api_responses so the outage is visible in the DB, not
+                    # only in a CLI payload nobody reads.
+                    imported["errors"].append({"tour": tour, "year": year, "error": "csv_not_found", "url": url})
+                    _record_not_found(PROVIDER_NAME, url, {"tour": tour, "year": year}, f"{tour}-{year}")
                     continue
                 raise
             raw_id = store_raw_response(
@@ -81,6 +87,17 @@ def ingest_sackmann_history(start_year: int, end_year: int, tours: list[str] | N
             imported["ranking_rows"] += stats["ranking_rows"]
             imported["skipped_invalid_identities"] += stats["skipped_invalid_identities"]
     return imported
+
+
+def _record_not_found(provider: str, url: str, params: dict, external_id: str) -> None:
+    # Its OWN entity_type on purpose. Under 'match_history' this row would
+    # become the newest of its (provider, endpoint) series, and
+    # prune_raw_responses keeps only the newest body -- blanking the last real
+    # CSV payload -- while backfill_service_games reads MAX(id) per external id.
+    store_raw_response(
+        provider, url, params, {"error": "csv_not_found", "url": url}, 404,
+        "match_history_not_found", external_id,
+    )
 
 
 def _download_csv(url: str) -> list[dict]:
@@ -115,7 +132,8 @@ def ingest_tml_low_tier_history(start_year: int, end_year: int, include_quali: b
                 rows = _download_csv(url)
             except HTTPError as exc:
                 if exc.code == 404:
-                    imported["errors"].append({"kind": kind, "year": year, "error": "csv_not_found"})
+                    imported["errors"].append({"kind": kind, "year": year, "error": "csv_not_found", "url": url})
+                    _record_not_found(TML_PROVIDER_NAME, url, {"kind": kind, "year": year}, f"{kind}-{year}")
                     continue
                 raise
             raw_id = store_raw_response(

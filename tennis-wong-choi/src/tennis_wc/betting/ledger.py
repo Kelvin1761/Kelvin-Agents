@@ -52,54 +52,147 @@ def record_bet(prediction_id: int, odds: float, stake: float) -> int:
 
 
 def fetch_closing_odds_for_date(match_date: str) -> int:
-    """
-    Stage 7 MVP stores latest available odds as closing odds.
-    Real providers should replace this with market-close snapshots.
+    """Store the match-winner CLOSE: the last snapshot strictly before the start.
+
+    Until 2026-10-14 this stored the NEWEST snapshot ("Stage 7 MVP") with no
+    pre-start bound, and odds snapshots include in-running prices. Measured
+    read-only that day: 19,948 of 109,380 stored close rows were fetched after
+    their match's start, and 1,105 of 5,556 matches (19.9%) had a post-start
+    row as their effective close. The props path has carried the same bound
+    since 2026-08-11 (see `_tracker_closing_odds`); this mirrors it.
+
+    No start time, or no snapshot before it, means no close: a row is written
+    with NULL odds, `close_status = 'NO_CLOSE'` and the reason, and the newer
+    post-start snapshot is NOT used as a fallback. Matches with no snapshot at
+    all are skipped as before (nothing was ever priced).
+
+    Idempotent per (match, close): if the newest stored row for the match
+    already records the same close, nothing new is inserted.
     """
     _ensure_tracking_schema()
     now = utc_now()
     with get_connection() as conn:
-        matches = conn.execute("SELECT id, market_event_id FROM matches WHERE match_date = ?", (match_date,)).fetchall()
+        matches = conn.execute(
+            "SELECT id, market_event_id, start_time_utc FROM matches WHERE match_date = ?",
+            (match_date,),
+        ).fetchall()
         count = 0
         for match in matches:
-            odds = conn.execute(
+            latest_any = conn.execute(
                 """
                 SELECT *
                 FROM odds_snapshots
                 WHERE match_id = ?
-                ORDER BY fetched_at DESC
+                ORDER BY fetched_at DESC, id DESC
                 LIMIT 1
                 """,
                 (match["id"],),
             ).fetchone()
-            if not odds:
+            if not latest_any:
+                continue
+            start_time = match["start_time_utc"]
+            odds = None
+            reason = None
+            if not start_time:
+                reason = "no_start_time"
+            else:
+                odds = conn.execute(
+                    """
+                    SELECT *
+                    FROM odds_snapshots
+                    WHERE match_id = ? AND fetched_at < ?
+                    ORDER BY fetched_at DESC, id DESC
+                    LIMIT 1
+                    """,
+                    (match["id"], start_time),
+                ).fetchone()
+                if not odds:
+                    reason = "no_pre_start_snapshot"
+            source = odds or latest_any
+            values = {
+                "event_id": source["event_id"],
+                "bookmaker": source["bookmaker"],
+                "market": source["market"],
+                "player_a": odds["player_a_odds"] if odds else None,
+                "player_b": odds["player_b_odds"] if odds else None,
+                "source_provider": source["source_provider"],
+                "raw_response_id": odds["raw_response_id"] if odds else None,
+                # For a NO_CLOSE row, fetched_at is the run time: there is no
+                # snapshot it describes.
+                "fetched_at": odds["fetched_at"] if odds else now,
+                "status": "PRE_START" if odds else "NO_CLOSE",
+                "reason": reason,
+            }
+            previous = conn.execute(
+                """
+                SELECT player_a_closing_odds, player_b_closing_odds, fetched_at,
+                       close_status, close_reason
+                FROM closing_odds_snapshots
+                WHERE match_id = ?
+                ORDER BY id DESC
+                LIMIT 1
+                """,
+                (match["id"],),
+            ).fetchone()
+            if previous and previous["close_status"] == values["status"] and (
+                (odds and previous["fetched_at"] == values["fetched_at"]
+                 and previous["player_a_closing_odds"] == values["player_a"]
+                 and previous["player_b_closing_odds"] == values["player_b"])
+                or (not odds and previous["close_reason"] == reason)
+            ):
                 continue
             conn.execute(
                 """
                 INSERT INTO closing_odds_snapshots (
                     match_id, event_id, bookmaker, market, player_a_closing_odds,
                     player_b_closing_odds, source_provider, raw_response_id,
-                    fetched_at, created_at
+                    fetched_at, created_at, close_status, close_reason
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     match["id"],
-                    odds["event_id"],
-                    odds["bookmaker"],
-                    odds["market"],
-                    odds["player_a_odds"],
-                    odds["player_b_odds"],
-                    odds["source_provider"],
-                    odds["raw_response_id"],
-                    odds["fetched_at"],
+                    values["event_id"],
+                    values["bookmaker"],
+                    values["market"],
+                    values["player_a"],
+                    values["player_b"],
+                    values["source_provider"],
+                    values["raw_response_id"],
+                    values["fetched_at"],
                     now,
+                    values["status"],
+                    values["reason"],
                 ),
             )
             count += 1
     update_open_bets_clv()
     update_clv_tracker_for_date(match_date)
     return count
+
+
+def _match_winner_close(conn, match_id: int):
+    """The newest stored close for a match that is provably pre-start.
+
+    Re-checks the start time instead of trusting `close_status`, because rows
+    written before 2026-10-14 carry no status and many of them are in-running
+    prices. A NO_CLOSE row has NULL odds and is never returned.
+    """
+    return conn.execute(
+        """
+        SELECT co.*
+        FROM closing_odds_snapshots co
+        JOIN matches m ON m.id = co.match_id
+        WHERE co.match_id = ?
+          AND m.start_time_utc IS NOT NULL AND m.start_time_utc != ''
+          AND co.fetched_at < m.start_time_utc
+          AND co.player_a_closing_odds IS NOT NULL
+          AND co.player_b_closing_odds IS NOT NULL
+        ORDER BY co.fetched_at DESC, co.id DESC
+        LIMIT 1
+        """,
+        (match_id,),
+    ).fetchone()
 
 
 def update_open_bets_clv() -> int:
@@ -109,17 +202,13 @@ def update_open_bets_clv() -> int:
         count = 0
         for bet in bets:
             prediction = _prediction(bet["prediction_id"])
-            closing = conn.execute(
-                """
-                SELECT *
-                FROM closing_odds_snapshots
-                WHERE match_id = ?
-                ORDER BY fetched_at DESC, id DESC
-                LIMIT 1
-                """,
-                (bet["match_id"],),
-            ).fetchone()
+            closing = _match_winner_close(conn, bet["match_id"])
             if not closing:
+                if bet["closing_odds"] is not None or bet["clv"] is not None:
+                    conn.execute(
+                        "UPDATE bet_ledger SET closing_odds = NULL, clv = NULL WHERE id = ?",
+                        (bet["id"],),
+                    )
                 continue
             closing_odds = (
                 closing["player_a_closing_odds"]
@@ -220,12 +309,14 @@ def sync_clv_tracker_for_date(match_date: str) -> dict:
             )
         props = _sync_prop_clv(conn, match_date, now)
         synced += props["synced"]
+        prop_prices = _log_prop_prices(conn, match_date, now)
         pruned = _prune_pending_tracker_duplicates(conn, match_date)
     updated_clv = update_clv_tracker_for_date(match_date)
     return {
         "synced": synced,
         "props_synced": props["synced"],
         "props_without_feed_identity": props["without_feed_identity"],
+        "prop_prices_logged": prop_prices,
         "clv_updated": updated_clv,
         "duplicates_pruned": pruned,
     }
@@ -299,6 +390,116 @@ def _sync_prop_clv(conn, match_date: str, now: str) -> dict:
     return {"synced": synced, "without_feed_identity": missing}
 
 
+def _log_prop_prices(conn, match_date: str, now: str) -> dict:
+    """Record the earliest pre-start price and the pre-start close of EVERY
+    evaluated prop on `match_date`, staked or not.
+
+    `_sync_prop_clv` only carries `is_value = 1 AND stake_units > 0` into
+    clv_tracker, so whether the market moved toward or away from the model on
+    everything it looked at and passed on was never measured. This is logging
+    only: it writes `prop_price_log` and nothing that chooses or stakes a bet
+    reads that table.
+
+    Same identity rules as `_tracker_closing_odds`: the feed's own market key,
+    market NAME, selection and line, and only snapshots strictly before
+    `start_time_utc`. No feed identity / no start time / no pre-start snapshot
+    are recorded as such with NULL prices, never guessed. Upsert per prop id,
+    so re-running a date refreshes the row instead of duplicating it.
+    """
+    rows = conn.execute(
+        """
+        SELECT p.id, p.match_id, p.match_date, p.market_key, p.is_value,
+               p.stake_units, p.decimal_odds, p.feed_market_key,
+               p.feed_market_name, p.feed_selection_name, p.feed_line,
+               m.start_time_utc
+        FROM prop_tracker p
+        LEFT JOIN matches m ON m.id = p.match_id
+        WHERE p.match_date = ?
+        """,
+        (match_date,),
+    ).fetchall()
+    counts = {"logged": 0, "with_close": 0, "no_feed_identity": 0,
+              "no_start_time": 0, "no_pre_start_snapshot": 0}
+    for row in rows:
+        start_time = row["start_time_utc"] or None
+        earliest = close = None
+        snapshots = 0
+        reason = None
+        if not (row["feed_market_key"] and row["feed_market_name"]
+                and row["feed_selection_name"]):
+            reason = "no_feed_identity"
+        elif not start_time:
+            reason = "no_start_time"
+        else:
+            where = (
+                "match_id = ? AND market_key = ? "
+                "AND lower(trim(market_name)) = lower(trim(?)) "
+                "AND lower(trim(selection_name)) = lower(trim(?)) "
+                "AND COALESCE(line, -999999) = COALESCE(?, -999999) "
+                "AND fetched_at < ?"
+            )
+            params = (row["match_id"], row["feed_market_key"], row["feed_market_name"],
+                      row["feed_selection_name"], row["feed_line"], start_time)
+            earliest = conn.execute(
+                f"SELECT odds, fetched_at FROM market_odds_snapshots WHERE {where} "
+                "ORDER BY fetched_at ASC, id ASC LIMIT 1", params,
+            ).fetchone()
+            close = conn.execute(
+                f"SELECT odds, fetched_at FROM market_odds_snapshots WHERE {where} "
+                "ORDER BY fetched_at DESC, id DESC LIMIT 1", params,
+            ).fetchone()
+            snapshots = int(conn.execute(
+                f"SELECT COUNT(*) FROM market_odds_snapshots WHERE {where}", params,
+            ).fetchone()[0])
+            if not close:
+                reason = "no_pre_start_snapshot"
+        clv = None
+        if close and close["odds"] and row["decimal_odds"]:
+            clv = calculate_clv(float(row["decimal_odds"]), float(close["odds"]))
+        status = "OK" if close else "NO_CLOSE"
+        conn.execute(
+            """
+            INSERT INTO prop_price_log (
+                prop_id, match_id, match_date, market_key, is_value, stake_units,
+                odds_evaluated, start_time_utc, earliest_pre_start_odds,
+                earliest_pre_start_fetched_at, close_pre_start_odds,
+                close_pre_start_fetched_at, pre_start_snapshots, clv_vs_close,
+                status, reason, updated_at
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(prop_id) DO UPDATE SET
+                is_value = excluded.is_value,
+                stake_units = excluded.stake_units,
+                odds_evaluated = excluded.odds_evaluated,
+                start_time_utc = excluded.start_time_utc,
+                earliest_pre_start_odds = excluded.earliest_pre_start_odds,
+                earliest_pre_start_fetched_at = excluded.earliest_pre_start_fetched_at,
+                close_pre_start_odds = excluded.close_pre_start_odds,
+                close_pre_start_fetched_at = excluded.close_pre_start_fetched_at,
+                pre_start_snapshots = excluded.pre_start_snapshots,
+                clv_vs_close = excluded.clv_vs_close,
+                status = excluded.status,
+                reason = excluded.reason,
+                updated_at = excluded.updated_at
+            """,
+            (
+                int(row["id"]), int(row["match_id"]), row["match_date"], row["market_key"],
+                row["is_value"], row["stake_units"], row["decimal_odds"], start_time,
+                earliest["odds"] if earliest else None,
+                earliest["fetched_at"] if earliest else None,
+                close["odds"] if close else None,
+                close["fetched_at"] if close else None,
+                snapshots, clv, status, reason, now,
+            ),
+        )
+        counts["logged"] += 1
+        if close:
+            counts["with_close"] += 1
+        else:
+            counts[reason] += 1
+    return counts
+
+
 def _prune_pending_tracker_duplicates(conn, match_date: str) -> int:
     rows = conn.execute(
         """
@@ -360,6 +561,18 @@ def update_clv_tracker_for_date(match_date: str) -> int:
         for row in rows:
             closing_odds = _tracker_closing_odds(conn, dict(row))
             if closing_odds is None:
+                if row["market_key"] == "match_winner" and (
+                    row["closing_odds"] is not None or row["clv"] is not None
+                ):
+                    # A match-winner CLV computed before 2026-10-14 may sit on
+                    # an in-running "close". With no provable pre-start close
+                    # the honest value is NULL, not the stale number.
+                    conn.execute(
+                        "UPDATE clv_tracker SET closing_odds = NULL, clv = NULL, "
+                        "updated_at = ? WHERE id = ?",
+                        (now, row["id"]),
+                    )
+                    updated += 1
                 continue
             clv = calculate_clv(float(row["odds_taken"]), float(closing_odds))
             conn.execute(
@@ -1943,16 +2156,7 @@ def _is_retired_score(score: dict | None) -> bool:
 
 def _tracker_closing_odds(conn, row: dict) -> float | None:
     if row["market_key"] == "match_winner":
-        closing = conn.execute(
-            """
-            SELECT *
-            FROM closing_odds_snapshots
-            WHERE match_id = ?
-            ORDER BY fetched_at DESC, id DESC
-            LIMIT 1
-            """,
-            (row["match_id"],),
-        ).fetchone()
+        closing = _match_winner_close(conn, row["match_id"])
         if not closing:
             return None
         value = closing["player_a_closing_odds"] if row["selection_side"] == "player_a" else closing["player_b_closing_odds"]
@@ -2517,6 +2721,9 @@ def _ensure_tracking_schema() -> None:
         tracker_columns = {row["name"] for row in conn.execute("PRAGMA table_info(clv_tracker)").fetchall()}
         if "market_line" not in tracker_columns:
             conn.execute("ALTER TABLE clv_tracker ADD COLUMN market_line REAL")
+        from tennis_wc.database.migrations import ensure_close_audit_schema
+
+        ensure_close_audit_schema(conn)
         result_columns = {row["name"] for row in conn.execute("PRAGMA table_info(match_results)").fetchall()}
         if "score_json" not in result_columns:
             conn.execute("ALTER TABLE match_results ADD COLUMN score_json TEXT")
