@@ -1,0 +1,53 @@
+﻿{
+ "RaceNo": "1",
+ "RaceInfoEng": {
+  "Date": "14/10/2026",
+  "RaceNo": 1,
+  "Racecourse": "Happy Valley",
+  "Track": "TURF",
+  "Distance": "1650m"
+ },
+ "RaceInfoChi": {
+  "Date": "14/10/2026",
+  "RaceNo": 1,
+  "Racecourse": "跑馬地",
+  "Track": "草地",
+  "Distance": "1650米"
+ },
+ "RaceMapEng": "data:image/png;base64,AAAA",
+ "RaceMapChi": "data:image/png;base64,BBBB",
+ "HasFile": true,
+ "SpeedPRO": [
+  {
+   "fitnessrating": "2",
+   "runnerno": "1",
+   "scratched": false,
+   "horse_eng": "X",
+   "horse_chi": "測",
+   "runnerrecords": [
+    {
+     "days": 74,
+     "energy": "88",
+     "pace_eng": "Good;",
+     "pace_chi": "中等步速;",
+     "wide": "2W3W",
+     "comments_eng": "Sat off pace 2 wide.",
+     "racedate": "13/09/2026",
+     "racecourse": "ST",
+     "cse": "B",
+     "dist": "1600",
+     "going": "GF",
+     "fp": "5",
+     "ts": "14",
+     "sectional_times": [
+      {
+       "Key": "24.61",
+       "Value": null
+      }
+     ],
+     "odds": "11"
+    }
+   ]
+  }
+ ]
+}

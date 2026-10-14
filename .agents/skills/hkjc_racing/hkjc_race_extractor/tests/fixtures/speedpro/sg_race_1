@@ -1,0 +1,176 @@
+﻿{
+ "en-us": {
+  "RaceNo": "1",
+  "RaceInfoEng": {
+   "Date": "14/10/2026",
+   "RaceNo": 1,
+   "Racecourse": "Happy Valley",
+   "Track": "TURF",
+   "Distance": "1650m"
+  },
+  "RaceInfoChi": {
+   "Date": "14/10/2026",
+   "RaceNo": 1,
+   "Racecourse": "跑馬地",
+   "Track": "草地",
+   "Distance": "1650米"
+  },
+  "RaceMap": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk",
+  "HasFile": true,
+  "SpeedPRO": [
+   {
+    "energyrequired": "93",
+    "lastrun": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "lastrun_2nd": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestlast12months": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestatdistance": {
+     "energy": ""
+    },
+    "fitnessrating": "2",
+    "speedproenergy": "93",
+    "speedproenergydifference": "0",
+    "runnernumber": "1",
+    "scratched": false,
+    "name_eng": "CHEERFUL WONGCHOY",
+    "name_chi": "開心旺財",
+    "draw": "1",
+    "brandno": "L041"
+   },
+   {
+    "energyrequired": "93",
+    "lastrun": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "lastrun_2nd": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestlast12months": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestatdistance": {
+     "energy": ""
+    },
+    "fitnessrating": "2",
+    "speedproenergy": "93",
+    "speedproenergydifference": "0",
+    "runnernumber": "2",
+    "scratched": false,
+    "name_eng": "FIXTURE TWO",
+    "name_chi": "測試二",
+    "draw": "2",
+    "brandno": "L042"
+   }
+  ]
+ },
+ "zh-hk": {
+  "RaceNo": "1",
+  "RaceInfoEng": {
+   "Date": "14/10/2026",
+   "RaceNo": 1,
+   "Racecourse": "Happy Valley",
+   "Track": "TURF",
+   "Distance": "1650m"
+  },
+  "RaceInfoChi": {
+   "Date": "14/10/2026",
+   "RaceNo": 1,
+   "Racecourse": "跑馬地",
+   "Track": "草地",
+   "Distance": "1650米"
+  },
+  "RaceMap": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk",
+  "HasFile": true,
+  "SpeedPRO": [
+   {
+    "energyrequired": "93",
+    "lastrun": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "lastrun_2nd": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestlast12months": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestatdistance": {
+     "energy": ""
+    },
+    "fitnessrating": "2",
+    "speedproenergy": "93",
+    "speedproenergydifference": "0",
+    "runnernumber": "1",
+    "scratched": false,
+    "name_eng": "CHEERFUL WONGCHOY",
+    "name_chi": "開心旺財",
+    "draw": "1",
+    "brandno": "L041"
+   },
+   {
+    "energyrequired": "93",
+    "lastrun": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "lastrun_2nd": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestlast12months": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestatdistance": {
+     "energy": ""
+    },
+    "fitnessrating": "2",
+    "speedproenergy": "93",
+    "speedproenergydifference": "0",
+    "runnernumber": "2",
+    "scratched": false,
+    "name_eng": "FIXTURE TWO",
+    "name_chi": "測試二",
+    "draw": "2",
+    "brandno": "L042"
+   }
+  ]
+ }
+}

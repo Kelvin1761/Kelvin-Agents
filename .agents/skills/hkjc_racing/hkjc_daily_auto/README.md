@@ -19,6 +19,18 @@ historical/reference review；新季 forward 收集本身唔受呢個限制。
 - `weekly`：星期一發 performance/drift 摘要；只有 `HKJC_Candidate_Gate.json` 明確為 `passed` 先建立 non-draft PR，永遠唔會自動 merge。
 - `monthly`：CLI fallback，只發一次 AU + HKJC review 提醒並按月份去重。正式月報由 Codex monthly automation 自動完成：彙總上一個完整曆月、輸出 Markdown／JSON／PDF，Telegram 傳摘要及 PDF；任何模型或 Matrix 改動仍只可提出候選，等人手批准。
 
+### SpeedPro 只向前收集（純資料，唔入分）
+
+HKJC 只喺 `consvc.hkjc.com/.../SpeedPro/current/` 公布 SpeedPro，**冇歷史檔**，錯過一個場次就永遠冇咗。
+`prerace`（full pipeline 之前）同 `lineup`（「未分析過」early return 之前）都會 best-effort 行
+`hkjc_race_extractor/scripts/collect_speedpro.py --date <賽日> --course <ST|HV>`：
+
+- 存去 `<HK data root>/_speedpro_snapshots/<YYYY-MM-DD>_<ST|HV>/<UTC 時間戳>/`，每份有 `manifest.json`，永不覆蓋；內容冇變就只喺 `fetch_log.jsonl` 加一行。
+- `current/` 仲係上一個場次 → exit 3（`not_current`），唔會存落錯日期。
+- 有 300 秒 subprocess timeout，任何失敗只寫 log，**永遠唔影響**分析／發佈；`WC_HKJC_SPEEDPRO_MIN_INTERVAL`（預設 3000 秒）限住 lineup 每半個鐘敲 HKJC。
+- 只有賽日連續 3 次失敗、而今場一份都未存過，先發一次 Telegram 警告。
+- `WC_HKJC_SPEEDPRO_DISABLE=1` 關閉（測試 conftest 預設咁做）。
+
 ## Install on macOS
 
 ```bash

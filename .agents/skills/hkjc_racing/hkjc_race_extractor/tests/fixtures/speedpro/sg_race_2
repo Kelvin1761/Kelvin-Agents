@@ -1,0 +1,242 @@
+﻿{
+ "en-us": {
+  "RaceNo": "2",
+  "RaceInfoEng": {
+   "Date": "14/10/2026",
+   "RaceNo": 2,
+   "Racecourse": "Happy Valley",
+   "Track": "TURF",
+   "Distance": "1650m"
+  },
+  "RaceInfoChi": {
+   "Date": "14/10/2026",
+   "RaceNo": 2,
+   "Racecourse": "跑馬地",
+   "Track": "草地",
+   "Distance": "1650米"
+  },
+  "RaceMap": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk",
+  "HasFile": true,
+  "SpeedPRO": [
+   {
+    "energyrequired": "93",
+    "lastrun": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "lastrun_2nd": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestlast12months": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestatdistance": {
+     "energy": ""
+    },
+    "fitnessrating": "2",
+    "speedproenergy": "93",
+    "speedproenergydifference": "0",
+    "runnernumber": "1",
+    "scratched": false,
+    "name_eng": "FIXTURE THREE",
+    "name_chi": "測試三",
+    "draw": "1",
+    "brandno": "L041"
+   },
+   {
+    "energyrequired": "93",
+    "lastrun": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "lastrun_2nd": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestlast12months": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestatdistance": {
+     "energy": ""
+    },
+    "fitnessrating": "2",
+    "speedproenergy": "93",
+    "speedproenergydifference": "0",
+    "runnernumber": "2",
+    "scratched": true,
+    "name_eng": "FIXTURE FOUR",
+    "name_chi": "測試四",
+    "draw": "2",
+    "brandno": "L042"
+   },
+   {
+    "energyrequired": "93",
+    "lastrun": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "lastrun_2nd": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestlast12months": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestatdistance": {
+     "energy": ""
+    },
+    "fitnessrating": "2",
+    "speedproenergy": "93",
+    "speedproenergydifference": "0",
+    "runnernumber": "3",
+    "scratched": false,
+    "name_eng": "FIXTURE FIVE",
+    "name_chi": "測試五",
+    "draw": "3",
+    "brandno": "L043"
+   }
+  ]
+ },
+ "zh-hk": {
+  "RaceNo": "2",
+  "RaceInfoEng": {
+   "Date": "14/10/2026",
+   "RaceNo": 2,
+   "Racecourse": "Happy Valley",
+   "Track": "TURF",
+   "Distance": "1650m"
+  },
+  "RaceInfoChi": {
+   "Date": "14/10/2026",
+   "RaceNo": 2,
+   "Racecourse": "跑馬地",
+   "Track": "草地",
+   "Distance": "1650米"
+  },
+  "RaceMap": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk",
+  "HasFile": true,
+  "SpeedPRO": [
+   {
+    "energyrequired": "93",
+    "lastrun": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "lastrun_2nd": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestlast12months": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestatdistance": {
+     "energy": ""
+    },
+    "fitnessrating": "2",
+    "speedproenergy": "93",
+    "speedproenergydifference": "0",
+    "runnernumber": "1",
+    "scratched": false,
+    "name_eng": "FIXTURE THREE",
+    "name_chi": "測試三",
+    "draw": "1",
+    "brandno": "L041"
+   },
+   {
+    "energyrequired": "93",
+    "lastrun": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "lastrun_2nd": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestlast12months": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestatdistance": {
+     "energy": ""
+    },
+    "fitnessrating": "2",
+    "speedproenergy": "93",
+    "speedproenergydifference": "0",
+    "runnernumber": "2",
+    "scratched": true,
+    "name_eng": "FIXTURE FOUR",
+    "name_chi": "測試四",
+    "draw": "2",
+    "brandno": "L042"
+   },
+   {
+    "energyrequired": "93",
+    "lastrun": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "lastrun_2nd": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestlast12months": {
+     "energy": "88",
+     "racecourse": "ST",
+     "distance": "1600",
+     "course": "B"
+    },
+    "bestatdistance": {
+     "energy": ""
+    },
+    "fitnessrating": "2",
+    "speedproenergy": "93",
+    "speedproenergydifference": "0",
+    "runnernumber": "3",
+    "scratched": false,
+    "name_eng": "FIXTURE FIVE",
+    "name_chi": "測試五",
+    "draw": "3",
+    "brandno": "L043"
+   }
+  ]
+ }
+}

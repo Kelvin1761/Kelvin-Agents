@@ -7,6 +7,8 @@ for launchd/cron:
 
 * ``watch``: dormant off-season poll for the next materialized racecard.
 * ``prerace``: run extraction -> Facts -> Logic -> scoring -> data-health -> deploy.
+  Before that it snapshots HKJC SpeedPro (best-effort, never blocks; see
+  ``collect_speedpro_best_effort``).
 * ``intraday``: collect partial results into a prospective reverse-bias shadow only.
 * ``postrace``: extract results and run the unified reflector once results exist.
 * ``recovery``: retry only meetings whose required sources were temporarily unavailable.
@@ -86,6 +88,7 @@ REVERSE_BIAS_SHADOW = (
 )
 RAIL_DRAW_REFRESH = PROJECT_ROOT / ".agents/scripts/build_rail_draw_dataset.py"
 FAST_RESULTS = EXTRACTOR_SCRIPTS / "fast_extract_results.py"
+SPEEDPRO_COLLECTOR = EXTRACTOR_SCRIPTS / "collect_speedpro.py"
 STATE_DIR = HERE / "state"
 LOG_DIR = HERE / "logs"
 DEFAULT_STATE = STATE_DIR / "hkjc_daily_state.json"
@@ -695,6 +698,89 @@ def readiness_digest(meeting_dir: Path) -> str:
     return "\n".join(lines)
 
 
+SPEEDPRO_TIMEOUT = 300
+SPEEDPRO_MIN_INTERVAL = max(0, int(os.environ.get("WC_HKJC_SPEEDPRO_MIN_INTERVAL", "3000")))
+SPEEDPRO_WARN_AFTER = 3
+
+
+def collect_speedpro_best_effort(state: dict, state_path: Path, meeting: dict) -> str:
+    """抓一份 HKJC SpeedPro 快照。**永遠唔會 raise、永遠唔會擋賽前流程。**
+
+    HKJC 只喺 `current/` 公布 SpeedPro、冇歷史檔，錯過一個場次就永遠冇咗，
+    所以 prerace（前一晚 + 賽日早上）同 lineup（賽日同前一日每 30 分鐘）
+    都會叫。內容冇變就只記一行 fetch log，唔會抄多份；`SPEEDPRO_MIN_INTERVAL`
+    限住 lineup 唔好每半個鐘都去敲 HKJC。
+
+    用 subprocess 行（有 timeout）：收集器吊死、import 錯、寫檔錯都只係
+    呢度嘅一行 log。純資料收集，冇任何評分讀佢。
+
+    回傳 status 字串（畀 log／測試用）：saved / duplicate / not_current /
+    failed / throttled / disabled。
+    """
+    if os.environ.get("WC_HKJC_SPEEDPRO_DISABLE") == "1":
+        return "disabled"
+    try:
+        key = f"{meeting['date']}|{meeting['venue']}"
+        record = state.setdefault("meetings", {}).setdefault(key, {})
+        info = record.setdefault("speedpro", {})
+        now_ts = time.time()
+        last = float(info.get("last_attempt_ts") or 0)
+        if SPEEDPRO_MIN_INTERVAL and now_ts - last < SPEEDPRO_MIN_INTERVAL:
+            return "throttled"
+        cmd = [
+            sys.executable, str(SPEEDPRO_COLLECTOR),
+            "--date", meeting["date"],
+            "--timeout", "15", "--retries", "2", "--json",
+        ]
+        course = meeting.get("course")
+        if course in ("ST", "HV"):
+            cmd += ["--course", course]
+        log("$ " + " ".join(cmd))
+        try:
+            completed = subprocess.run(
+                cmd, cwd=PROJECT_ROOT, encoding="utf-8", errors="replace",
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                timeout=SPEEDPRO_TIMEOUT, check=False,
+            )
+            code, out, err = completed.returncode, completed.stdout or "", completed.stderr or ""
+        except subprocess.TimeoutExpired:
+            code, out, err = 124, "", f"TIMEOUT after {SPEEDPRO_TIMEOUT}s"
+        status = "failed"
+        detail = (err.strip().splitlines() or [""])[-1][:300]
+        if code == 0:
+            try:
+                status = json.loads(out).get("status") or "saved"
+                detail = json.loads(out).get("snapshot") or ""
+            except ValueError:
+                status = "saved"
+        elif code == 3:
+            status = "not_current"
+        info.update({"last_attempt_ts": now_ts, "last_attempt": stamp(),
+                     "last_status": status, "last_exit": code, "last_detail": detail})
+        if status in ("saved", "duplicate"):
+            info["last_success"] = stamp()
+            info["failure_streak"] = 0
+            if status == "saved":
+                info["versions"] = int(info.get("versions") or 0) + 1
+        else:
+            info["failure_streak"] = int(info.get("failure_streak") or 0) + 1
+        log(f"HKJC SpeedPro {key}: {status}（exit {code}）{detail}")
+        # 只係警告：賽日連續幾次都攞唔到、而且呢個場次一份都未存過，先嗌一次。
+        # `not_current` 喺前兩日好正常（HKJC 仲掛住上一場），唔好每次都嗌。
+        race_day = meeting["date"] == now_local().date().isoformat()
+        if (race_day and not info.get("last_success") and not info.get("warned")
+                and int(info.get("failure_streak") or 0) >= SPEEDPRO_WARN_AFTER):
+            info["warned"] = stamp()
+            notify(f"⚠️ HKJC SpeedPro 未存到｜{meeting['date']} {meeting['venue']}\n"
+                   f"連續 {info['failure_streak']} 次：{status}｜{detail}\n"
+                   "唔影響分析同發佈；但 HKJC 冇歷史檔，今場錯過就冇得補。")
+        save_state(state_path, state)
+        return status
+    except Exception as exc:  # noqa: BLE001 —— 任何意外都唔可以傳上去
+        log(f"HKJC SpeedPro best-effort error: {type(exc).__name__}: {exc}")
+        return "failed"
+
+
 def run_lineup(
     state: dict,
     state_path: Path,
@@ -735,6 +821,9 @@ def run_lineup(
         log(f"HKJC lineup not due: {meeting['date']}")
         set_control_outcome("dormant", reason="lineup_not_due", meeting=meeting["date"])
         return EXIT_OK
+
+    # SpeedPro 同分析有冇做完無關 —— 放喺「未分析過」嘅 early return 之前。
+    collect_speedpro_best_effort(state, state_path, meeting)
 
     meeting_dir = meeting_dir_for(meeting)
     logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"))
@@ -792,7 +881,7 @@ def run_lineup(
     # 名單變動嘅重跑要收窄嘅閘：PDF 只需 `valid`，排位表／賽績照樣要 fresh。
     # 唔咁做嘅話，一次 PDF 失敗就可以令一隻已退出嘅馬留喺板上。
     code = run_prerace(state, state_path, meeting=meeting, force=True,
-                       gate_mode="field_change")
+                       gate_mode="field_change", collect_speedpro=False)
     if code != EXIT_OK:
         # 重跑失敗就唔可以當處理咗，下次掃描要再試。
         record.pop("last_lineup_signature", None)
@@ -832,6 +921,7 @@ def run_prerace(
     meeting: dict | None = None,
     force: bool = False,
     gate_mode: str = "strict",
+    collect_speedpro: bool = True,
 ) -> int:
     try:
         meeting = meeting or discover_next_meeting()
@@ -853,6 +943,9 @@ def run_prerace(
     if force:
         log(f"HKJC manual force requested for {meeting['date']} {meeting['venue']}")
 
+    if collect_speedpro:
+        # 喺 full pipeline 之前、best-effort：SpeedPro 失敗永遠唔影響下面。
+        collect_speedpro_best_effort(state, state_path, meeting)
     meeting_dir = meeting_dir_for(meeting, create=True)
     # `field_change` 只會由 `run_lineup` 傳入：見 batch_extract 個閘度嘅說明，
     # 佢只鬆 starter PDF 一格（排位表同賽績照樣要 fresh）。
