@@ -83,6 +83,32 @@ cp .wongchoi_*root <scratch路徑>/      # data-root marker 唔喺 git 入面，
 即係同一個目錄混住「已發佈」「過期」同「未保存」三種嘢，冇人分得清，
 而另一個 agent 喺度開工就會基於過期 code 做嘢（之前已經試過重複做咗 dashboard 修正）。
 生產排程行 `/Users/imac/wongchoi-scheduler`，唔受主 checkout 影響 —— 但未保存嘅工作會。
+（例外：Telegram bot 觸發嘅 HKJC run 會行主 checkout 入面嘅 runner，所以主 checkout
+落後 main = 呢條路徑行緊舊 code。）
+
+### 收工規則：做完嘅嘢唔准淨係留喺磁碟
+
+2026-10-14 清理時發現：主 checkout 有 224 個檔嘅工作從來冇 commit，另外仲有
+30 個 worktree 放低咗改動（最舊嗰批已經擺咗 39 日）。一個 session 用量爆咗、
+或者用戶轉咗題，啲嘢就永遠冇人執。所以每個 session（Claude Code 同 Codex 一樣）
+停手之前，自己改過嘅每個檔一定要落到以下其中一個狀態：
+
+1. **完成兼用戶要求交付** → `./保存.sh --path <scope> --expected-result ...`。
+   會自動批准、merge 同部署，所以 gate 同證據要求照舊。
+2. **未完成、未評估、或者係失敗實驗** → commit 落自己個 worktree 分支，再
+   `git push -u origin HEAD`。推去非 main 分支只係保存，**唔係 release、唔會部署**，
+   所以「失敗實驗嘅 model code 唔准自動 commit」呢條唔會被違反 —— 佢唔會入 main。
+3. **只係停低等用戶回覆** → 喺回覆入面講清楚邊啲檔未保存、點解。
+
+唔好用「之後會返嚟做」當理由留低未 commit 嘅改動 —— 下一個 session 唔會知。
+保存完冇用嘅 worktree 就 `git worktree remove`。
+
+兩道防線：
+- `./健康.sh` 嘅「未保存工作」一節逐個掃 worktree
+  （`.agents/scripts/unsaved_work_audit.py`）。主 checkout 唔喺 main 或者有改動
+  = ❌；其他 worktree 超過 6 個鐘冇郁而有未保存嘢 = ⚠️。排程版會推 Telegram。
+- Claude Code 有 project Stop hook（`.claude/settings.json`）：個 worktree 有未保存
+  嘢就提醒一次。Codex 冇 hook，靠呢段同 `健康.sh`。
 
 ### 五件唔可以做嘅事
 

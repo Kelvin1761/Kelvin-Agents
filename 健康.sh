@@ -437,6 +437,36 @@ else
   warn "重測監察跑唔到（rc=${RETEST_RC}）"
 fi
 
+# ── 未保存工作 ────────────────────────────────────────────────────────────
+# 2026-10-14：主 checkout 停喺 09-05 嘅 release 分支、落後 117 commit，224 個檔
+# 嘅工作從來冇 commit；同時仲有 30 個 worktree 有放低咗嘅改動。Claude Code 同
+# Codex 都唔會返轉頭睇舊 worktree，所以喺度逐個掃。規則見 AGENTS.md「收工規則」。
+hdr "未保存工作"
+UNSAVED="$("$PY" .agents/scripts/unsaved_work_audit.py 2>&1)"
+UNSAVED_RC=$?
+n_warn=0
+while IFS=$'\t' read -r kind arg detail; do
+  case "$kind" in
+    BAD) note_bad "$detail" ;;
+    WARN)
+      n_warn=$((n_warn+1))
+      # Codex worktrees all end in .../<name>/Antigravity-repo; show <name>.
+      case "$arg" in
+        "$HOME/Antigravity-repo") label="主 checkout" ;;
+        */Antigravity-repo) label="$(basename "$(dirname "$arg")")" ;;
+        *) label="$(basename "$arg")" ;;
+      esac
+      [ "$n_warn" -le 5 ] && warn "${label}：${detail}"
+      ;;
+  esac
+done <<< "$UNSAVED"
+[ "$n_warn" -gt 5 ] && warn "仲有 $((n_warn-5)) 個（行 python3 .agents/scripts/unsaved_work_audit.py 睇晒）"
+case "$UNSAVED_RC" in
+  0) ok "主 checkout 喺 main 而且乾淨，冇放低咗嘅 worktree" ;;
+  10|20) ;;
+  *) warn "未保存工作掃唔到（rc=${UNSAVED_RC}）" ;;
+esac
+
 # ── 總結 ─────────────────────────────────────────────────────────────────
 printf '\n\033[1m════════ 總結 ════════\033[0m\n'
 if [ "$PROBLEMS" -gt 0 ]; then
