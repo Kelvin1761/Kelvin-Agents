@@ -1,0 +1,1399 @@
+{
+  "design": {
+    "scope": "18 races input-only audit; no results or target columns read; no coefficient fitting",
+    "quarantine_from": "2026-09-09",
+    "stored_scores": "snapshot; no current engine replay",
+    "missing_speed_defaults": "absent speed key also counted neutral; not proof of unusable raw data"
+  },
+  "counts": {
+    "matched_runners": 213,
+    "surface_text_available": 32,
+    "surface_positive_sample": 26,
+    "foreign_surface_fallback": 0,
+    "speed_neutral": 5,
+    "foreign_rows_present": 182,
+    "hk_starts_metadata": 213
+  },
+  "races": 18,
+  "source_sha256": {
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-06-07_ShaTin/Race_1_Logic.json": "a261ba875814408a6d18f80ff7bd2e468ef79ebb80d11d535a44963dfd3d4cc6",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-06-07_ShaTin/Race_5_Logic.json": "d407b3c803c56a53585b10006123015c94c27c3e4b790d88a1c5507bbdcab1bd",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-06-13_ShaTin/Race_5_Logic.json": "ed153d32eebe85da8ffeb457342c5e694a9e7df0d1187baea3fc841326a8b666",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-06-13_ShaTin/Race_9_Logic.json": "92cdee7c1223b23156c39c6cde913947b10b5741898ac4547ab195e81b05c214",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-06-27_ShaTin/Race_5_Logic.json": "03b4d41735dccb1496c395208b136d610263a0260986513da355b47599bcec62",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-06-27_ShaTin/Race_9_Logic.json": "80438c5c65aae3894edfb17f2c0423a3693e047617a275b101d7880e0dca9835",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-07-04_ShaTin/Race_3_Logic.json": "1e1cf2568abadfcfd0e2b459e1276f51835c9c8d7e44f13ebbf23cd255fc6e77",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-07-04_ShaTin/Race_6_Logic.json": "3e9c3a6d2696ad56f3ca1e127ab5f8ce0c6809c188218835c17814ab9c3982cc",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-09-27_ShaTin/Race_1_Logic.json": "3521a898af151d1acef7d8bef1334ddef27884ee785be59e5bfbda8f6db8ca57",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-09-27_ShaTin/Race_5_Logic.json": "349e4ec80b08908c99c3437d69ed1caf8a44b0abf4ad2e7873e333da72f9dece",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-09-27_ShaTin/Race_7_Logic.json": "cc960a98e6d846e76db14d5d1a53238244f921ca189d89d3e748c1fa61f83daf",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-10-04_ShaTin/Race_1_Logic.json": "cdb6c0372a7b7928b3a7a3b301f24e1eb50b16412a073854769476616f14bbcd",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-10-04_ShaTin/Race_3_Logic.json": "ea1e1d5932463b52d35be478aabe059bc7de86ab17a36f9c6a4810e7b44220a3",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-10-04_ShaTin/Race_5_Logic.json": "3a0e9f9bc2412197f5acb4feb8e3190a623a7feedea2d7ff324b82d3a6c8bcc1",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-10-04_ShaTin/Race_9_Logic.json": "0a21f540954fb53cfa20b4d4987bd29b75ff30b4a29620e93ecbc37ea0c53743",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-10-11_ShaTin/Race_1_Logic.json": "85f2f8b5e0d7d6b0e580201921d9c541ed0d70653b9eaee960ef4aad732a55c9",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-10-11_ShaTin/Race_4_Logic.json": "050ba83325eace1fda0764fb1c562242fb74b0b0699f9a0d34b4a43c6f7a6f80",
+    "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-10-11_ShaTin/Race_5_Logic.json": "a5c52022a14d7868a867bf0128958ae39c3e80e27c39a5f74497bcd200c1caaf"
+  },
+  "records": [
+    {
+      "date": "2026-06-07",
+      "meeting": "2026-06-07_ShaTin",
+      "race": 1,
+      "counts": {
+        "matched_runners": 10,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 10,
+        "hk_starts_metadata": 10
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-06-07",
+      "meeting": "2026-06-07_ShaTin",
+      "race": 5,
+      "counts": {
+        "matched_runners": 14,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 14,
+        "hk_starts_metadata": 14
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 13,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 14,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-06-13",
+      "meeting": "2026-06-13_ShaTin",
+      "race": 5,
+      "counts": {
+        "matched_runners": 12,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 12,
+        "hk_starts_metadata": 12
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-06-13",
+      "meeting": "2026-06-13_ShaTin",
+      "race": 9,
+      "counts": {
+        "matched_runners": 12,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 1,
+        "foreign_rows_present": 11,
+        "hk_starts_metadata": 12
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-06-27",
+      "meeting": "2026-06-27_ShaTin",
+      "race": 5,
+      "counts": {
+        "matched_runners": 14,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 14,
+        "hk_starts_metadata": 14
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 13,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 14,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-06-27",
+      "meeting": "2026-06-27_ShaTin",
+      "race": 9,
+      "counts": {
+        "matched_runners": 13,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 13,
+        "hk_starts_metadata": 13
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 14,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-07-04",
+      "meeting": "2026-07-04_ShaTin",
+      "race": 3,
+      "counts": {
+        "matched_runners": 12,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 12,
+        "hk_starts_metadata": 12
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-07-04",
+      "meeting": "2026-07-04_ShaTin",
+      "race": 6,
+      "counts": {
+        "matched_runners": 12,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 2,
+        "foreign_rows_present": 10,
+        "hk_starts_metadata": 12
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-09-27",
+      "meeting": "2026-09-27_ShaTin",
+      "race": 1,
+      "counts": {
+        "matched_runners": 12,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 12,
+        "hk_starts_metadata": 12
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-09-27",
+      "meeting": "2026-09-27_ShaTin",
+      "race": 5,
+      "counts": {
+        "matched_runners": 12,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 1,
+        "foreign_rows_present": 11,
+        "hk_starts_metadata": 12
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-09-27",
+      "meeting": "2026-09-27_ShaTin",
+      "race": 7,
+      "counts": {
+        "matched_runners": 12,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 1,
+        "foreign_rows_present": 11,
+        "hk_starts_metadata": 12
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-10-04",
+      "meeting": "2026-10-04_ShaTin",
+      "race": 1,
+      "counts": {
+        "matched_runners": 14,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 14,
+        "hk_starts_metadata": 14
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 13,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 14,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-10-04",
+      "meeting": "2026-10-04_ShaTin",
+      "race": 3,
+      "counts": {
+        "matched_runners": 8,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 5,
+        "hk_starts_metadata": 8
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-10-04",
+      "meeting": "2026-10-04_ShaTin",
+      "race": 5,
+      "counts": {
+        "matched_runners": 13,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 13,
+        "hk_starts_metadata": 13
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 3,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 13,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-10-04",
+      "meeting": "2026-10-04_ShaTin",
+      "race": 9,
+      "counts": {
+        "matched_runners": 11,
+        "surface_text_available": 0,
+        "surface_positive_sample": 0,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 10,
+        "hk_starts_metadata": 11
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 2,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 4,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 5,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 6,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 7,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 8,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 9,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 10,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 11,
+          "surface_evidence": "",
+          "surface_source": null
+        },
+        {
+          "number": 12,
+          "surface_evidence": "",
+          "surface_source": null
+        }
+      ]
+    },
+    {
+      "date": "2026-10-11",
+      "meeting": "2026-10-11_ShaTin",
+      "race": 1,
+      "counts": {
+        "matched_runners": 12,
+        "surface_text_available": 12,
+        "surface_positive_sample": 10,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 3,
+        "hk_starts_metadata": 12
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "今場=沙田AWT 60.3分 | 沙田草地 61.4分(有效樣本4.0/原始5) | 跑馬地草地 59.7分(有效樣本0.7/原始1) | 沙田AWT 60.3分(有效樣本0.7/原始1) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 2,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 58.9分(有效樣本0.6/原始1) | 跑馬地草地 60.1分(有效樣本4.7/原始6) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        },
+        {
+          "number": 3,
+          "surface_evidence": "今場=沙田AWT 60.4分 | 沙田草地 61.5分(有效樣本4.4/原始6) | 跑馬地草地 60.0分(有效樣本0.0/原始0) | 沙田AWT 60.4分(有效樣本1.0/原始1) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 4,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 60.9分(有效樣本0.9/原始1) | 跑馬地草地 59.0分(有效樣本4.8/原始6) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        },
+        {
+          "number": 5,
+          "surface_evidence": "今場=沙田AWT 63.4分 | 沙田草地 54.5分(有效樣本2.4/原始3) | 跑馬地草地 60.0分(有效樣本0.0/原始0) | 沙田AWT 63.4分(有效樣本1.8/原始2) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 6,
+          "surface_evidence": "今場=沙田AWT 57.4分 | 沙田草地 52.4分(有效樣本3.1/原始5) | 跑馬地草地 57.6分(有效樣本0.7/原始1) | 沙田AWT 57.4分(有效樣本0.7/原始1) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 7,
+          "surface_evidence": "今場=沙田AWT 63.9分 | 沙田草地 54.9分(有效樣本2.3/原始3) | 跑馬地草地 60.0分(有效樣本0.0/原始0) | 沙田AWT 63.9分(有效樣本1.0/原始1) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 8,
+          "surface_evidence": "今場=沙田AWT 56.8分 | 沙田草地 57.8分(有效樣本0.6/原始1) | 跑馬地草地 60.0分(有效樣本0.0/原始0) | 沙田AWT 56.8分(有效樣本3.3/原始5) | 外地泥/Synthetic 62.0分(有效樣本0.5/原始2) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 9,
+          "surface_evidence": "今場=沙田AWT 61.0分 | 沙田草地 60.0分(有效樣本0.0/原始0) | 跑馬地草地 56.2分(有效樣本0.9/原始1) | 沙田AWT 61.0分(有效樣本2.1/原始3) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 10,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 57.5分(有效樣本1.5/原始2) | 跑馬地草地 56.9分(有效樣本1.6/原始2) | 沙田AWT 60.0分(有效樣本2.5/原始3) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 11,
+          "surface_evidence": "今場=沙田AWT 59.9分 | 沙田草地 56.5分(有效樣本1.7/原始2) | 跑馬地草地 55.9分(有效樣本2.0/原始3) | 沙田AWT 59.9分(有效樣本1.8/原始2) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 12,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 60.0分(有效樣本0.0/原始0) | 跑馬地草地 57.4分(有效樣本5.3/原始7) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-11",
+      "meeting": "2026-10-11_ShaTin",
+      "race": 4,
+      "counts": {
+        "matched_runners": 8,
+        "surface_text_available": 8,
+        "surface_positive_sample": 6,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 4,
+        "hk_starts_metadata": 8
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 62.6分(有效樣本4.8/原始6) | 跑馬地草地 59.7分(有效樣本0.7/原始1) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        },
+        {
+          "number": 2,
+          "surface_evidence": "今場=沙田AWT 66.2分 | 沙田草地 64.9分(有效樣本2.9/原始4) | 跑馬地草地 58.2分(有效樣本0.7/原始1) | 沙田AWT 66.2分(有效樣本1.8/原始2) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 4,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 60.0分(有效樣本0.0/原始0) | 跑馬地草地 63.7分(有效樣本5.4/原始7) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        },
+        {
+          "number": 6,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 54.7分(有效樣本2.5/原始3) | 跑馬地草地 60.0分(有效樣本0.0/原始0) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        },
+        {
+          "number": 7,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 59.6分(有效樣本2.1/原始3) | 跑馬地草地 62.6分(有效樣本3.0/原始4) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        },
+        {
+          "number": 8,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 62.6分(有效樣本3.9/原始5) | 跑馬地草地 60.0分(有效樣本0.0/原始0) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        },
+        {
+          "number": 9,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 60.0分(有效樣本0.0/原始0) | 跑馬地草地 60.0分(有效樣本0.0/原始0) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        },
+        {
+          "number": 10,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 58.5分(有效樣本2.9/原始5) | 跑馬地草地 60.0分(有效樣本0.0/原始0) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        }
+      ]
+    },
+    {
+      "date": "2026-10-11",
+      "meeting": "2026-10-11_ShaTin",
+      "race": 5,
+      "counts": {
+        "matched_runners": 12,
+        "surface_text_available": 12,
+        "surface_positive_sample": 10,
+        "foreign_surface_fallback": 0,
+        "speed_neutral": 0,
+        "foreign_rows_present": 3,
+        "hk_starts_metadata": 12
+      },
+      "horses": [
+        {
+          "number": 1,
+          "surface_evidence": "今場=沙田AWT 66.6分 | 沙田草地 60.6分(有效樣本0.8/原始1) | 跑馬地草地 57.5分(有效樣本0.9/原始1) | 沙田AWT 66.6分(有效樣本3.6/原始5) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 2,
+          "surface_evidence": "今場=沙田AWT 65.1分 | 沙田草地 58.0分(有效樣本1.5/原始2) | 跑馬地草地 60.0分(有效樣本0.0/原始0) | 沙田AWT 65.1分(有效樣本1.5/原始2) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 3,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 60.0分(有效樣本0.0/原始0) | 跑馬地草地 61.6分(有效樣本3.7/原始5) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        },
+        {
+          "number": 4,
+          "surface_evidence": "今場=沙田AWT 61.8分 | 沙田草地 58.5分(有效樣本0.6/原始1) | 跑馬地草地 59.3分(有效樣本3.1/原始4) | 沙田AWT 61.8分(有效樣本1.0/原始1) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 5,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 57.6分(有效樣本2.2/原始3) | 跑馬地草地 53.0分(有效樣本2.5/原始3) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        },
+        {
+          "number": 6,
+          "surface_evidence": "今場=沙田AWT 64.9分 | 沙田草地 57.0分(有效樣本2.2/原始3) | 跑馬地草地 60.4分(有效樣本1.8/原始2) | 沙田AWT 64.9分(有效樣本1.7/原始2) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 7,
+          "surface_evidence": "今場=沙田AWT 64.3分 | 沙田草地 60.1分(有效樣本1.2/原始2) | 跑馬地草地 60.0分(有效樣本0.0/原始0) | 沙田AWT 64.3分(有效樣本3.5/原始5) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 8,
+          "surface_evidence": "今場=沙田AWT 61.4分 | 沙田草地 57.8分(有效樣本0.8/原始1) | 跑馬地草地 61.4分(有效樣本3.9/原始5) | 沙田AWT 61.4分(有效樣本0.7/原始1) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 9,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 64.8分(有效樣本4.1/原始5) | 跑馬地草地 59.5分(有效樣本1.8/原始2) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        },
+        {
+          "number": 10,
+          "surface_evidence": "今場=沙田AWT 59.7分 | 沙田草地 56.3分(有效樣本2.4/原始3) | 跑馬地草地 55.1分(有效樣本2.5/原始3) | 沙田AWT 59.7分(有效樣本0.7/原始1) | 外地泥/Synthetic 65.5分(有效樣本1.5/原始4) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        },
+        {
+          "number": 11,
+          "surface_evidence": "今場=沙田AWT 60.0分 | 沙田草地 57.8分(有效樣本2.4/原始3) | 跑馬地草地 60.0分(有效樣本0.0/原始0) | 沙田AWT 60.0分(有效樣本0.0/原始0) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=neutral | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "neutral"
+        },
+        {
+          "number": 12,
+          "surface_evidence": "今場=沙田AWT 61.4分 | 沙田草地 60.0分(有效樣本0.0/原始0) | 跑馬地草地 55.8分(有效樣本1.4/原始2) | 沙田AWT 61.4分(有效樣本4.0/原始5) | 外地泥/Synthetic 60.0分(有效樣本0.0/原始0) | 採用來源=local_history | 規則=同馬、賽前、相近路程±200m、365日半衰、4場中性收縮；暫不入分",
+          "surface_source": "local_history"
+        }
+      ]
+    }
+  ],
+  "correction_20261014": {
+    "invalid_original_metric": "surface_positive_sample=26 reads first grass sample, not target AWT",
+    "correct_stored_awt_positive_sample": 18,
+    "evidence": "../hkjc-awt-source-trace-20261014/trace.json",
+    "foreign_rows_present_note": "182 counts any nonempty list including possible placeholders; not true overseas surface coverage"
+  }
+}

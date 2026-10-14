@@ -1,0 +1,138 @@
+{
+  "date": "2026-10-10",
+  "position_scope": "TAB visible top four only",
+  "races": [
+    {
+      "venue": "Caulfield",
+      "race": "1",
+      "tab_entrants": 12,
+      "tab_starters": 10,
+      "local_rows": 10,
+      "matched_starters": 10,
+      "ambiguous_names": [],
+      "tab_duplicate_rows": 0,
+      "local_duplicate_rows": 0,
+      "missing_from_local": [],
+      "missing_from_tab": [],
+      "scratchings_in_local": [],
+      "observed_positions": 4,
+      "position_disagreements": [],
+      "barrier_disagreements": [],
+      "compressed_barrier_disagreements": []
+    },
+    {
+      "venue": "Caulfield",
+      "race": "2",
+      "tab_entrants": 10,
+      "tab_starters": 9,
+      "local_rows": 9,
+      "matched_starters": 9,
+      "ambiguous_names": [],
+      "tab_duplicate_rows": 0,
+      "local_duplicate_rows": 0,
+      "missing_from_local": [],
+      "missing_from_tab": [],
+      "scratchings_in_local": [],
+      "observed_positions": 4,
+      "position_disagreements": [],
+      "barrier_disagreements": [],
+      "compressed_barrier_disagreements": []
+    },
+    {
+      "venue": "Eagle Farm",
+      "race": "1",
+      "tab_entrants": 9,
+      "tab_starters": 7,
+      "local_rows": 7,
+      "matched_starters": 7,
+      "ambiguous_names": [],
+      "tab_duplicate_rows": 0,
+      "local_duplicate_rows": 0,
+      "missing_from_local": [],
+      "missing_from_tab": [],
+      "scratchings_in_local": [],
+      "observed_positions": 4,
+      "position_disagreements": [],
+      "barrier_disagreements": [],
+      "compressed_barrier_disagreements": []
+    },
+    {
+      "venue": "Eagle Farm",
+      "race": "2",
+      "tab_entrants": 9,
+      "tab_starters": 8,
+      "local_rows": 8,
+      "matched_starters": 8,
+      "ambiguous_names": [],
+      "tab_duplicate_rows": 0,
+      "local_duplicate_rows": 0,
+      "missing_from_local": [],
+      "missing_from_tab": [],
+      "scratchings_in_local": [],
+      "observed_positions": 4,
+      "position_disagreements": [],
+      "barrier_disagreements": [
+        {
+          "horse": "LITTLE BEGINNINGS",
+          "tab": "9",
+          "local": "8"
+        },
+        {
+          "horse": "CHIEF IN CHARGE",
+          "tab": "8",
+          "local": "7"
+        }
+      ],
+      "compressed_barrier_disagreements": []
+    },
+    {
+      "venue": "Rosehill Gardens",
+      "race": "1",
+      "tab_entrants": 16,
+      "tab_starters": 11,
+      "local_rows": 11,
+      "matched_starters": 11,
+      "ambiguous_names": [],
+      "tab_duplicate_rows": 0,
+      "local_duplicate_rows": 0,
+      "missing_from_local": [],
+      "missing_from_tab": [],
+      "scratchings_in_local": [],
+      "observed_positions": 4,
+      "position_disagreements": [],
+      "barrier_disagreements": [],
+      "compressed_barrier_disagreements": []
+    },
+    {
+      "venue": "Rosehill Gardens",
+      "race": "2",
+      "tab_entrants": 16,
+      "tab_starters": 13,
+      "local_rows": 13,
+      "matched_starters": 13,
+      "ambiguous_names": [],
+      "tab_duplicate_rows": 0,
+      "local_duplicate_rows": 0,
+      "missing_from_local": [],
+      "missing_from_tab": [],
+      "scratchings_in_local": [],
+      "observed_positions": 4,
+      "position_disagreements": [],
+      "barrier_disagreements": [],
+      "compressed_barrier_disagreements": []
+    }
+  ],
+  "totals": {
+    "tab_entrants": 72,
+    "tab_starters": 58,
+    "local_rows": 58,
+    "matched_starters": 58,
+    "tab_duplicate_rows": 0,
+    "local_duplicate_rows": 0,
+    "observed_positions": 24
+  },
+  "inputs": {
+    "docs/experiments/evidence/tab-crosscheck-20261014/tab_visible_sample.csv": "5356b44f9e4261dce1a1863b6c707b11aec9db6d89b2624c2b4ebceec1554655",
+    "docs/experiments/evidence/tab-crosscheck-20261014/sportsbet_baseline_sample.csv": "776bdc97372467e843ca37de8436439ec2579123a04b7df065c2ae844faaa803"
+  }
+}

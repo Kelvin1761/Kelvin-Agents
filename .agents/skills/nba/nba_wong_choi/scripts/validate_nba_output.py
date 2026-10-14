@@ -170,8 +170,8 @@ def check_fw04_padding(content: str) -> list:
     """
     issues = []
 
-    # Split content into sentences (Chinese + English)
-    sentences = re.split(r'[。\.\!\？\?！]', content)
+    # Decimal points in probabilities, odds and averages are not sentence ends.
+    sentences = re.split(r'[。!?！？]|(?<!\d)\.|\.(?!\d)', content)
     # Only consider meaningful sentences (>30 chars to avoid table fragments / short markers)
     sentences = [s.strip() for s in sentences if len(s.strip()) > 30]
 

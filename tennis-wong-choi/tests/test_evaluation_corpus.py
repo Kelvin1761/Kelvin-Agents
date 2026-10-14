@@ -201,7 +201,7 @@ def test_corpus_summary_counts_each_class(tmp_path, monkeypatch):
     conn.close()
 
 
-def test_record_prop_stamps_the_class_at_write_time(tmp_path, monkeypatch):
+def test_record_prop_admits_only_provably_pre_match_writes(tmp_path, monkeypatch):
     db_path = configure_test_db(tmp_path, monkeypatch)
     from tennis_wc.database.migrations import init_db
     from tennis_wc.props import settlement
@@ -221,7 +221,38 @@ def test_record_prop_stamps_the_class_at_write_time(tmp_path, monkeypatch):
             "SELECT match_id, is_point_in_time FROM prop_tracker").fetchall()
     }
     assert got[1] == POINT_IN_TIME
-    assert got[2] == POST_START
+    assert 2 not in got, "new post-start prices must not become paper bets"
+    conn.close()
+
+
+def test_record_prop_rejects_an_untimed_fixture(tmp_path, monkeypatch):
+    db_path = configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    _seed(conn, 1, None)
+    conn.commit()
+    _write_prop(settlement, monkeypatch, conn, 1, "2026-08-20T01:00:00Z", odds=2.0)
+    assert conn.execute("SELECT COUNT(*) FROM prop_tracker").fetchone()[0] == 0
+    conn.close()
+
+
+def test_record_prop_keeps_existing_post_start_history_immutable(tmp_path, monkeypatch):
+    db_path = configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.props import settlement
+
+    init_db()
+    conn = sqlite3.connect(db_path)
+    conn.row_factory = sqlite3.Row
+    _seed(conn, 1, "2026-08-20T05:00:00Z")
+    _record(conn, 1, "a", "2026-08-20T09:00:00Z", POST_START)
+    before = [tuple(row) for row in conn.execute("SELECT * FROM prop_tracker")]
+    _write_prop(settlement, monkeypatch, conn, 1, "2026-08-20T10:00:00Z", odds=7.77)
+    assert [tuple(row) for row in conn.execute("SELECT * FROM prop_tracker")] == before
     conn.close()
 
 

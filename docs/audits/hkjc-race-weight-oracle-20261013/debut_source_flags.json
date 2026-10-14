@@ -1,0 +1,83 @@
+{
+  "counts": {
+    "races": 4,
+    "runners": 9,
+    "missed_races": 3,
+    "positive_unrescued_races": 2
+  },
+  "finding": "explicit 初出 without engine debut flags; raw-source verification required",
+  "records": [
+    {
+      "meeting": "2026-04-12_ShaTin",
+      "race": 1,
+      "horse": "1",
+      "name": "嘉應感恩",
+      "source": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-04-12_ShaTin/Race_1_Logic.json",
+      "logic_sha256": "fd7281e45044625391725dc523691f432c620fc9a4188605a3c2cd292f1a3136"
+    },
+    {
+      "meeting": "2026-04-12_ShaTin",
+      "race": 1,
+      "horse": "2",
+      "name": "通情達理",
+      "source": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-04-12_ShaTin/Race_1_Logic.json",
+      "logic_sha256": "fd7281e45044625391725dc523691f432c620fc9a4188605a3c2cd292f1a3136"
+    },
+    {
+      "meeting": "2026-04-12_ShaTin",
+      "race": 1,
+      "horse": "3",
+      "name": "銀騎士",
+      "source": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-04-12_ShaTin/Race_1_Logic.json",
+      "logic_sha256": "fd7281e45044625391725dc523691f432c620fc9a4188605a3c2cd292f1a3136"
+    },
+    {
+      "meeting": "2026-04-12_ShaTin",
+      "race": 1,
+      "horse": "4",
+      "name": "盛世英雄",
+      "source": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-04-12_ShaTin/Race_1_Logic.json",
+      "logic_sha256": "fd7281e45044625391725dc523691f432c620fc9a4188605a3c2cd292f1a3136"
+    },
+    {
+      "meeting": "2026-04-12_ShaTin",
+      "race": 1,
+      "horse": "5",
+      "name": "雙劍合璧",
+      "source": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-04-12_ShaTin/Race_1_Logic.json",
+      "logic_sha256": "fd7281e45044625391725dc523691f432c620fc9a4188605a3c2cd292f1a3136"
+    },
+    {
+      "meeting": "2026-04-12_ShaTin",
+      "race": 1,
+      "horse": "6",
+      "name": "精英奪冠",
+      "source": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-04-12_ShaTin/Race_1_Logic.json",
+      "logic_sha256": "fd7281e45044625391725dc523691f432c620fc9a4188605a3c2cd292f1a3136"
+    },
+    {
+      "meeting": "2026-04-12_ShaTin",
+      "race": 5,
+      "horse": "5",
+      "name": "輝灑自如",
+      "source": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-04-12_ShaTin/Race_5_Logic.json",
+      "logic_sha256": "4748e657921b51a843986b9136e937a34be3416fde174350969890755aaeb8f1"
+    },
+    {
+      "meeting": "2026-04-12_ShaTin",
+      "race": 7,
+      "horse": "7",
+      "name": "總統輝煌",
+      "source": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-04-12_ShaTin/Race_7_Logic.json",
+      "logic_sha256": "5353f4e3cfdccb4939c64e92a80f6277498b8e30416a1ae82b2e5730d6163515"
+    },
+    {
+      "meeting": "2026-04-12_ShaTin",
+      "race": 9,
+      "horse": "7",
+      "name": "重情重義",
+      "source": "/Users/imac/WongChoiData/Wong Choi Horse Race Analysis/HK_Racing/2026-04-12_ShaTin/Race_9_Logic.json",
+      "logic_sha256": "cfaabd13bc4ed395ae357004190f72462f80e2d27d38e28c9518e71bad1ef745"
+    }
+  ]
+}

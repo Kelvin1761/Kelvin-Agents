@@ -12,6 +12,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 import re
 import sys
 from collections import Counter
@@ -269,7 +270,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--cache-dir", type=Path,
-        default=AU_RACING / ".sportsbet_cache",
+        default=Path(os.environ.get("WC_SB_CACHE") or AU_RACING / ".sportsbet_cache"),
     )
     parser.add_argument(
         "--alphas", default="0.25,0.5,0.75,1.0",

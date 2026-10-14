@@ -1,0 +1,14 @@
+[
+  ".agents/skills/au_racing/au_daily_auto/au_telegram_bot.py",
+  ".agents/skills/au_racing/au_daily_auto/tests/test_telegram_retry.py",
+  ".agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_daily_schedule.py",
+  ".agents/skills/hkjc_racing/hkjc_daily_auto/tests/test_hkjc_daily_schedule.py",
+  ".agents/skills/shared_wong_choi/command_adapter.py",
+  ".agents/skills/shared_wong_choi/tests/test_run_timeouts.py",
+  "tennis-wong-choi/scripts/tennis_card_recovery.py",
+  "tennis-wong-choi/scripts/tennis_daily_schedule.py",
+  "tennis-wong-choi/tests/test_card_recovery.py",
+  "tennis-wong-choi/tests/test_scheduler.py",
+  ".agents/skills/shared_wong_choi/process_runner.py",
+  ".agents/skills/shared_wong_choi/tests/test_process_runner.py"
+]

@@ -1,0 +1,231 @@
+
+[1m── 0. 清走過期 bytecode[0m
+   已清
+
+[1m── 1. ruff（真係壞嘅嘢）[0m
+All checks passed!
+
+[1m── 2. 評分 golden — AU[0m
+✅ AU 評分golden：120 匹馬全部一致
+
+[1m── 2. 評分 golden — HKJC[0m
+✅ HKJC 評分golden：120 匹馬全部一致
+
+[1m── 3. 模型說明新鮮度 — AU[0m
+✅ AU Wong Choi 模型說明.md 同 live code 一致
+
+[1m── 3. 模型說明新鮮度 — HKJC[0m
+✅ HKJC Wong Choi 模型說明.md 同 live code 一致
+
+[1m── 4. 數據合約 — AU[0m
+
+數據合約檢查 — AU 最近 60 場（2026-08-23 之後，同基準同一個窗口）
+樣本：60 場 / 606 匹馬
+✅ 全部欄位符合基準
+
+[1m── 4. 數據合約 — HKJC[0m
+
+數據合約檢查 — HKJC 最近 60 場（2026-04-12 之後，同基準同一個窗口）
+樣本：60 場 / 745 匹馬
+✅ 全部欄位符合基準
+
+[1m── 5. 單元測試[0m
+
+==============================================================
+  AU Wong Choi
+==============================================================
+........................................................................ [ 11%]
+.................................................................... [ 21%]
+........................................................................ [ 32%]
+........................................................................ [ 43%]
+...................................................................... [ 54%]
+.............................................................. [ 64%]
+...................................................................... [ 74%]
+......................... [ 78%]
+................................................................. [ 88%]
+..........................................................................          [100%]
+=============================== warnings summary ===============================
+.agents/skills/au_racing/au_wong_choi_auto/tests/test_au_ml_program.py::AuMlProgramTests::test_pipeline_drops_constant_inputs_inside_fit_window
+  /Users/imac/Antigravity-repo/.venv/lib/python3.14/site-packages/sklearn/linear_model/_logistic.py:1381: FutureWarning: 'penalty' was deprecated in version 1.8 and will be removed in 1.10. To avoid this warning, leave 'penalty' set to its default value and use 'l1_ratio' or 'C' instead. Use l1_ratio=0 instead of penalty='l2', l1_ratio=1 instead of penalty='l1', l1_ratio set to a float between 0 and 1 instead of penalty='elasticnet', and C=np.inf instead of penalty=None.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+650 passed, 1 warning, 205 subtests passed in 11.63s
+
+==============================================================
+  AU daily auto
+==============================================================
+........................................................................ [ 22%]
+........................................................................ [ 45%]
+........................................................................ [ 67%]
+........................................................................ [ 90%]
+..............................                                           [100%]
+318 passed in 1.27s
+
+==============================================================
+  AU racing
+==============================================================
+................                                                         [100%]
+16 passed in 0.18s
+
+==============================================================
+  HKJC Wong Choi
+==============================================================
+........................................................................ [ 53%]
+..............................................................           [100%]
+134 passed in 18.50s
+
+==============================================================
+  HKJC daily auto
+==============================================================
+......................................................................   [100%]
+70 passed in 2.88s
+
+==============================================================
+  HKJC extractor
+==============================================================
+................................................                         [100%]
+48 passed in 0.16s
+
+==============================================================
+  HKJC reflector
+==============================================================
+..................................................                       [100%]
+50 passed in 1.85s
+
+==============================================================
+  Shared racing
+==============================================================
+........................................................................ [ 97%]
+..                                                                       [100%]
+74 passed in 0.44s
+
+==============================================================
+  Shared Wong Choi
+==============================================================
+........................................................................ [ 21%]
+........................................................................ [ 43%]
+........................................................................ [ 65%]
+........................................................................ [ 87%]
+..........................................                               [100%]
+330 passed in 97.05s (0:01:37)
+
+==============================================================
+  Race compliance QA
+==============================================================
+..........................                                         [100%]
+26 passed, 6 subtests passed in 0.05s
+
+==============================================================
+  NBA Wong Choi
+==============================================================
+.......................................................................................                                        [100%]
+87 passed, 18 subtests passed in 3.34s
+
+==============================================================
+  Agent scripts
+==============================================================
+.................x..x......................................              [100%]
+57 passed, 2 xfailed in 2.62s
+
+==============================================================
+  Dashboard (python)
+==============================================================
+.....................................................................s [ 47%]
+......................................................................s. [ 97%]
+....                                                                     [100%]
+=============================== warnings summary ===============================
+Horse_Racing_Dashboard/backend/tests/test_parsers.py::test_hkjc_auto_parser
+  /Users/imac/Antigravity-repo/.venv/lib/python3.14/site-packages/_pytest/python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but Horse_Racing_Dashboard/backend/tests/test_parsers.py::test_hkjc_auto_parser returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+Horse_Racing_Dashboard/backend/tests/test_parsers.py::test_hkjc_auto_archive_parser
+  /Users/imac/Antigravity-repo/.venv/lib/python3.14/site-packages/_pytest/python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but Horse_Racing_Dashboard/backend/tests/test_parsers.py::test_hkjc_auto_archive_parser returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+Horse_Racing_Dashboard/backend/tests/test_parsers.py::test_au_auto_parser_ballarat
+  /Users/imac/Antigravity-repo/.venv/lib/python3.14/site-packages/_pytest/python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but Horse_Racing_Dashboard/backend/tests/test_parsers.py::test_au_auto_parser_ballarat returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+Horse_Racing_Dashboard/backend/tests/test_parsers.py::test_au_meeting_loader_ballarat
+  /Users/imac/Antigravity-repo/.venv/lib/python3.14/site-packages/_pytest/python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but Horse_Racing_Dashboard/backend/tests/test_parsers.py::test_au_meeting_loader_ballarat returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+Horse_Racing_Dashboard/backend/tests/test_parsers.py::test_au_parser_accepts_mixed_case_bracket_headers
+  /Users/imac/Antigravity-repo/.venv/lib/python3.14/site-packages/_pytest/python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but Horse_Racing_Dashboard/backend/tests/test_parsers.py::test_au_parser_accepts_mixed_case_bracket_headers returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+Horse_Racing_Dashboard/backend/tests/test_parsers.py::test_meeting_detector
+  /Users/imac/Antigravity-repo/.venv/lib/python3.14/site-packages/_pytest/python.py:171: PytestReturnNotNoneWarning: Test functions should return None, but Horse_Racing_Dashboard/backend/tests/test_parsers.py::test_meeting_detector returned <class 'bool'>.
+  Did you mean to use `assert` instead of `return`?
+  See https://docs.pytest.org/en/stable/how-to/assert.html#return-not-none for more information.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+144 passed, 2 skipped, 6 warnings, 2 subtests passed in 2.92s
+
+==============================================================
+  Tennis Wong Choi
+==============================================================
+........................................................................ [ 13%]
+........................................................................ [ 26%]
+........................................................................ [ 39%]
+........................................................................ [ 52%]
+........................................................................ [ 65%]
+........................................................................ [ 78%]
+........................................................................ [ 92%]
+...........................................                              [100%]
+547 passed in 10.99s
+
+==============================================================
+  Dashboard (node)
+==============================================================
+--- Horse_Racing_Dashboard/tests/test_cloudflare_functions.mjs
+# pass 16
+# fail 0
+--- Horse_Racing_Dashboard/tests/test_static_template.mjs
+# pass 61
+# fail 0
+
+==============================================================
+  SUMMARY
+==============================================================
+  PASS  AU Wong Choi
+  PASS  AU daily auto
+  PASS  AU racing
+  PASS  HKJC Wong Choi
+  PASS  HKJC daily auto
+  PASS  HKJC extractor
+  PASS  HKJC reflector
+  PASS  Shared racing
+  PASS  Shared Wong Choi
+  PASS  Race compliance QA
+  PASS  NBA Wong Choi
+  PASS  Agent scripts
+  PASS  Dashboard (python)
+  PASS  Tennis Wong Choi
+  PASS  Dashboard (node)
+
+All suites passed.
+
+[1m════════ 總結 ════════[0m
+  [32m✅[0m 1. ruff（真係壞嘅嘢）
+  [32m✅[0m 2. 評分 golden — AU
+  [32m✅[0m 2. 評分 golden — HKJC
+  [32m✅[0m 3. 模型說明新鮮度 — AU
+  [32m✅[0m 3. 模型說明新鮮度 — HKJC
+  [32m✅[0m 4. 數據合約 — AU
+  [32m✅[0m 4. 數據合約 — HKJC
+  [32m✅[0m 5. 單元測試
+
+全部過 ✅

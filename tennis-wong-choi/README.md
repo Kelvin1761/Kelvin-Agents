@@ -133,10 +133,23 @@ all configured content recipients without sending a message.
 
 The 18:00 review job separately enables `TENNIS_NOTIFY_PERFORMANCE=1`. After
 yesterday's settlement it sends a Hong Kong Chinese performance card with
-daily and cumulative formal paper ROI, every player-prop family's fixed recent
-window, model-vs-market Brier, stale pending count and the current evidence
-gate. Paper recommendations and manually recorded live bets are always shown
-as separate ledgers; when no live bet has been recorded the message says so.
+daily and cumulative filter-qualified research paper ROI, every player-prop
+family's fixed recent window, model-vs-market Brier, stale pending count and the
+current evidence gate. Passing the numeric profile does not mean a row was
+issued as a formal recommendation: formal bets must come from that day's
+family-approved pre-match card. Research paper outcomes and manually recorded
+live bets are shown separately; when no live bet has been recorded the message
+says so.
+
+New paper rows require a known start time strictly after the write timestamp.
+A post-start or untimed discovery is not inserted into the prospective paper
+tracker, and cannot overwrite an existing pre-match price. Existing historical
+post-start/untimed rows remain auditable, excluded from decision evidence, and
+visible to the unchanged data-integrity checks.
+
+A critical integrity failure or unavailable integrity check suppresses the
+formal bet card and displays zero formal bets. Research sections remain
+available for investigation. SQL errors cannot count as empty, healthy data.
 
 ## Provider Notes
 

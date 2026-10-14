@@ -1,0 +1,47 @@
+
+── 0. 清走過期 bytecode
+   已清
+
+── 1. ruff（真係壞嘅嘢）
+ruff failed
+  Cause: Failed to create temporary file
+  Cause: Operation not permitted (os error 1) at path "/Users/imac/Antigravity-repo/.codex/worktrees/wc-automation-resilience-20260909/.ruff_cache/0.16.4/.tmpQIwHJN"
+
+── 2. 評分 golden — AU
+✅ AU 評分golden：120 匹馬全部一致
+
+── 2. 評分 golden — HKJC
+✅ HKJC 評分golden：120 匹馬全部一致
+
+── 3. 模型說明新鮮度 — AU
+✅ AU Wong Choi 模型說明.md 同 live code 一致
+
+── 3. 模型說明新鮮度 — HKJC
+✅ HKJC Wong Choi 模型說明.md 同 live code 一致
+
+── 4. 數據合約 — AU
+
+數據合約檢查 — AU 最近 60 場（2026-08-05 之後，同基準同一個窗口）
+樣本：60 場 / 627 匹馬
+
+⚠️  留意
+  [stale-baseline] (baseline): 基準係喺引擎 954031b9272c 之下建立，而家引擎係 68162f4075fd —— 下面嘅比較唔可信，請重新 --calibrate
+  [new-field] preparation_score: 新欄位，基準未涵蓋 —— 記得重新 --calibrate
+
+── 4. 數據合約 — HKJC
+
+數據合約檢查 — HKJC 最近 60 場（2026-05-24 之後，同基準同一個窗口）
+樣本：60 場 / 746 匹馬
+✅ 全部欄位符合基準
+
+════════ 總結 ════════
+  ✅ 2. 評分 golden — AU
+  ✅ 2. 評分 golden — HKJC
+  ✅ 3. 模型說明新鮮度 — AU
+  ✅ 3. 模型說明新鮮度 — HKJC
+  ✅ 4. 數據合約 — AU
+  ✅ 4. 數據合約 — HKJC
+  ➖ 5. 單元測試（--quick 跳過）（跳過）
+  ❌ 1. ruff（真係壞嘅嘢）
+
+有 1 項唔過。上面每一項都印咗點解同點修。

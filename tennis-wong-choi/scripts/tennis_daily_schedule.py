@@ -711,8 +711,9 @@ PERFORMANCE_FAMILY_LABELS = {
 def daily_performance_snapshot(match_date: str) -> dict:
     """One read-only, auditable performance view for the Telegram review.
 
-    Paper recommendations and bets recorded in the manual live ledger are
-    deliberately separate.  Treating every generated recommendation as money
+    Filter-qualified research paper outcomes and bets in the manual live
+    ledger are deliberately separate. The profile is not evidence that a row
+    was issued on a family-approved betting card.  Treating every generated recommendation as money
     actually staked was the main reason old summaries looked more certain than
     the account evidence justified.
     """
@@ -807,7 +808,8 @@ def daily_performance_message(match_date: str, snapshot: dict) -> str:
 
     lines = [
         f"📊 Tennis Wong Choi｜{match_date} 每日績效",
-        "口徑：正式 player-prop 推薦；紙上盤同已登記實盤分開。",
+        "口徑：符合篩選條件嘅研究紙上盤；未必獲正式推薦，唔代表有落注。",
+        "正式落注只跟當日賽前咭；研究紙上盤同已登記實盤分開。",
         (
             f"當日 {daily.get('settled', 0)} 注｜"
             f"{daily.get('wins', 0)} 中｜{_performance_units(daily.get('pnl'))}｜"
@@ -828,7 +830,7 @@ def daily_performance_message(match_date: str, snapshot: dict) -> str:
             f"ROI {_performance_pct(live.get('roi'))}"
         ),
         "",
-        "逐市場（正式紙上盤）：",
+        "逐市場（符合篩選條件嘅研究紙上盤）：",
     ]
     families = paper.get("families") or {}
     for family, label in PERFORMANCE_FAMILY_LABELS.items():

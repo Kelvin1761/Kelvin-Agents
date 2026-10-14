@@ -594,6 +594,9 @@ def test_daily_performance_message_separates_paper_from_live_and_lists_families(
     assert "贏一盤" in message and "球員 Ace" in message
     assert "Model 0.2127" in message and "Market 0.1962" in message
     assert "RESEARCH_ONLY" in message and "未結算 2" in message
+    assert "研究紙上盤" in message and "未必獲正式推薦" in message
+    assert "口徑：正式 player-prop 推薦" not in message
+    assert "正式落注只跟當日賽前咭" in message
 
 
 def test_review_sends_daily_performance_when_enabled(monkeypatch):
