@@ -647,8 +647,34 @@ def daily_health_line(match_date: str, payload: dict) -> str:
         f"CLV 同步 {trackers.get('synced', 0)} (prop {trackers.get('props_synced', 0)}, "
         f"無標識 {trackers.get('props_without_feed_identity', 0)}) · "
         f"已計 {trackers.get('clv_updated', 0)}\n"
+        f"{source_health_cell(payload)}\n"
         f"Dashboard {deploy.get('status') or 'unknown'}"
     )
+
+
+def _source_names(items) -> str:
+    names = [str((item or {}).get("source") or "?") for item in items]
+    return ", ".join(dict.fromkeys(names))
+
+
+def source_health_cell(payload: dict) -> str:
+    """`來源錯誤 N (names)`, always printed, plus degraded sources when any.
+
+    run-daily stores its source errors as an HTTP 207 row, but nothing a person
+    reads showed them: the schedule only warned when ZERO matches were
+    analysed. A history feed that 404s or a rankings pull served from cache
+    leaves the card looking normal while the inputs freeze -- the Sackmann
+    backbone has been frozen since 2026-06-02 that way. A zero is printed so
+    its absence can be noticed.
+    """
+    errors = payload.get("source_errors") or []
+    warnings = payload.get("source_warnings") or []
+    cell = f"來源錯誤 {len(errors)}"
+    if errors:
+        cell += f" ({_source_names(errors)})"
+    if warnings:
+        cell += f" · 降級 {len(warnings)} ({_source_names(warnings)})"
+    return cell
 
 
 def _prop_counts(match_date: str) -> dict:
@@ -995,6 +1021,14 @@ def analyse_next_day(match_date: str, *, today: str | None = None) -> None:
     if matches == 0 and source_errors:
         sources = ", ".join(str(err.get("source", "?")) for err in source_errors)
         log(f"WARNING: 0 matches analysed because data sources failed: {sources}. Details: {compact_json(source_errors)}")
+    elif source_errors:
+        # Matches were analysed, but on partial inputs. Still worth a line.
+        log(f"WARNING: {len(source_errors)} data source(s) failed: "
+            f"{_source_names(source_errors)}. Details: {compact_json(source_errors)}")
+    source_warnings = payload.get("source_warnings") or []
+    if source_warnings:
+        log(f"WARNING: {len(source_warnings)} data source(s) degraded: "
+            f"{_source_names(source_warnings)}. Details: {compact_json(source_warnings)}")
 
     # run-daily owns tracker sync and post-success dashboard deployment.  Keep
     # this wrapper scheduling-only so manual and scheduled analysis behave the
@@ -1039,6 +1073,8 @@ def analyse_next_day(match_date: str, *, today: str | None = None) -> None:
         "priced": coverage.get("priced_matches"),
         "analysed": payload.get("matches_analysed"),
         "deploy": deploy.get("status"),
+        "source_errors": len(source_errors),
+        "source_warnings": len(source_warnings),
     }, ensure_ascii=False))
     # The push is OPT-IN. The line is always written to the log, but deciding
     # that Kelvin's phone should buzz every morning is his call, not this

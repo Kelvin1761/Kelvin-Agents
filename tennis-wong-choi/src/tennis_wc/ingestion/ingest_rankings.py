@@ -8,7 +8,20 @@ from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
 from tennis_wc.providers import get_tennis_provider
 
 
+# tour -> details of the most recent call that served CACHED rankings instead of
+# the provider's. Reset at the start of every call, so an entry means "the last
+# ingest for this tour fell back". run-daily reads it to surface the fallback:
+# returning len(cached) looked exactly like a successful pull, and the only
+# trace was a 206 row in raw_api_responses nobody reads.
+LAST_CACHE_FALLBACK: dict[str, dict] = {}
+
+
+def rankings_cache_fallback(tour: str) -> dict | None:
+    return LAST_CACHE_FALLBACK.get(tour)
+
+
 def ingest_rankings(tour: str, date: str | None = None) -> int:
+    LAST_CACHE_FALLBACK.pop(tour, None)
     provider = get_tennis_provider()
     endpoint = "/rankings"
     status_code = 200
@@ -29,6 +42,11 @@ def ingest_rankings(tour: str, date: str | None = None) -> int:
             )
             raise
         _refresh_current_ranks_from_cached_rows(cached)
+        LAST_CACHE_FALLBACK[tour] = {
+            "error": str(exc),
+            "cached_rows": len(cached),
+            "cached_latest_ranking_date": max(row["ranking_date"] for row in cached),
+        }
         store_raw_response(
             provider.provider_name,
             "/cache/rankings",
@@ -48,6 +66,11 @@ def ingest_rankings(tour: str, date: str | None = None) -> int:
         cached = _latest_cached_rankings(tour, date)
         if cached:
             _refresh_current_ranks_from_cached_rows(cached)
+            LAST_CACHE_FALLBACK[tour] = {
+                "error": "provider returned zero ranking rows",
+                "cached_rows": len(cached),
+                "cached_latest_ranking_date": max(row["ranking_date"] for row in cached),
+            }
             store_raw_response(
                 provider.provider_name,
                 "/cache/rankings",
