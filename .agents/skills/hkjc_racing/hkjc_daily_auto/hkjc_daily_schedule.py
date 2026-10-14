@@ -1675,6 +1675,27 @@ def field_health_section(today: date | None = None) -> str:
         return ""
 
 
+def results_db_reconcile_section() -> str:
+    """每週 review 尾加「官方騎練排名 vs 賽果庫」對數。
+
+    官方本季頭馬／名次／出賽數應該同我哋 full_day_results.json 數出嚟嘅逐人一樣；
+    對唔上 = 賽果庫漏賽日（2026-08 曾經停七週冇人知）。只係數據質素檢查，唔入評分；
+    任何失敗都只係少一段，永遠唔可以拖冧 review。
+    """
+    try:
+        if str(EXTRACTOR_SCRIPTS) not in sys.path:
+            sys.path.insert(0, str(EXTRACTOR_SCRIPTS))
+        import crawl_hkjc_jockey_trainer as ranking
+
+        report = ranking.build_report(HK_RACING / "HKJC_Race_Results_Database")
+        if report.get("status") == "warn":
+            log("results-db reconcile WARN: " + "；".join(report.get("problems") or []))
+        return "\n\n" + ranking.format_report(report)
+    except Exception as exc:  # noqa: BLE001
+        log(f"results-db reconcile failed (non-blocking): {exc}")
+        return ""
+
+
 def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     code, output = run_cmd([sys.executable, str(WEIGHT_REVIEW), "--json"])
     if code != 0:
@@ -1721,6 +1742,7 @@ def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     if pr_url:
         message += f"\n{pr_url}"
     message += field_health_section()
+    message += results_db_reconcile_section()
     notify(message)
     state["last_weekly_review"] = stamp()
     save_state(state_path, state)
