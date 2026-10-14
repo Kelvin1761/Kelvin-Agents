@@ -414,6 +414,78 @@ def create_prediction_snapshot(meeting_dir: Path, *, at: datetime | None = None)
     return destination
 
 
+ODDS_ALERT_EVERY = 6
+
+
+def capture_prerace_odds(
+    state: dict,
+    state_path: Path,
+    meeting: dict,
+    meeting_dir: Path,
+    label: str,
+    *,
+    capture: Callable[..., dict] | None = None,
+) -> dict:
+    """影一次 HKJC 賽前 WIN/PLA 賠率快照。**永遠唔會拋，亦唔會改 exit code。**
+
+    賠率係將來研究用嘅 forward 證據（市場混合／去水／位獨一致／落飛），唔係
+    評分輸入 —— 所以佢失敗唔可以拖冧預測 pipeline。但都唔可以靜靜失敗：
+    「無輸出唔會報錯」呢個 repo 已經中過好多次。所以失敗寫入 state
+    （`odds_capture.failure_streak`）、寫 log，第一次同之後每 6 次推 Telegram，
+    恢復時再推一次。
+    """
+    key = f"{meeting['date']}|{meeting['venue']}"
+    # 開關：`WC_HKJC_ODDS_CAPTURE=0` 關閉（測試 conftest 預設關，防止單元測試
+    # 真係打 HKJC）。注入 `capture` 嘅呼叫唔受影響。
+    if capture is None and os.environ.get("WC_HKJC_ODDS_CAPTURE", "1") == "0":
+        log(f"HKJC odds capture disabled（{label}）")
+        return {"status": "disabled"}
+    try:
+        if capture is None:
+            if str(EXTRACTOR_SCRIPTS) not in sys.path:
+                sys.path.insert(0, str(EXTRACTOR_SCRIPTS))
+            from hkjc_odds_capture import capture_meeting as capture
+        result = capture(
+            meeting_dir,
+            race_date=meeting["date"],
+            venue=meeting["venue"],
+            venue_code=meeting.get("course") or ("ST" if meeting["venue"] == "ShaTin" else "HV"),
+            label=label,
+        )
+        error = ""
+    except Exception as exc:  # noqa: BLE001 — 任何錯都只係「今次影唔到」
+        result = {"status": "error"}
+        error = f"{type(exc).__name__}: {exc}"
+    try:
+        record = state.setdefault("meetings", {}).setdefault(key, {})
+        odds = record.setdefault("odds_capture", {})
+        previous_streak = int(odds.get("failure_streak") or 0)
+        odds.update({"last_attempt": stamp(), "last_label": label,
+                     "last_status": result.get("status")})
+        if error:
+            streak = previous_streak + 1
+            odds.update({"failure_streak": streak, "last_error": error[-300:]})
+            log(f"HKJC odds capture 失敗（{label}，第 {streak} 次）：{error}")
+            if streak == 1 or streak % ODDS_ALERT_EVERY == 0:
+                notify(f"⚠️ HKJC 賽前賠率快照失敗｜{meeting['date']} {meeting['venue']}\n"
+                       f"{label}｜連續第 {streak} 次\n{error[-300:]}\n"
+                       "預測 pipeline 照常行；只係少咗一個賠率時間點。")
+        else:
+            odds.update({"failure_streak": 0, "last_error": ""})
+            if result.get("status") == "ok":
+                odds["last_success"] = stamp()
+                odds["snapshots"] = int(odds.get("snapshots") or 0) + 1
+            log(f"HKJC odds capture {result.get('status')}（{label}）："
+                f"{result.get('races', 0)} 場 / {result.get('runners', 0)} 匹")
+            if previous_streak:
+                notify(f"✅ HKJC 賽前賠率快照恢復｜{meeting['date']} {meeting['venue']}\n"
+                       f"{label}｜之前連續失敗 {previous_streak} 次")
+        save_state(state_path, state)
+    except Exception as exc:  # noqa: BLE001
+        log(f"HKJC odds capture state 寫入失敗：{type(exc).__name__}: {exc}")
+    return {**result, "error": error} if error else result
+
+
 def health_status(meeting_dir: Path) -> str:
     path = meeting_dir / "Data_Health.json"
     if not is_materialized_file(path):
@@ -826,6 +898,10 @@ def run_lineup(
     collect_speedpro_best_effort(state, state_path, meeting)
 
     meeting_dir = meeting_dir_for(meeting)
+    # 賽日每 30 分鐘一格，係最接近頭場嘅定期排程 —— 賠率快照放喺度。
+    # 唔使等 Logic：賠率同我哋有冇分析過無關。
+    if meeting_dir.is_dir():
+        capture_prerace_odds(state, state_path, meeting, meeting_dir, "lineup")
     logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"))
     if not logic_files:
         log(f"HKJC lineup skipped: {meeting_dir.name} 未分析過")
@@ -947,6 +1023,9 @@ def run_prerace(
         # 喺 full pipeline 之前、best-effort：SpeedPro 失敗永遠唔影響下面。
         collect_speedpro_best_effort(state, state_path, meeting)
     meeting_dir = meeting_dir_for(meeting, create=True)
+    # 賠率快照排喺 pipeline **之前**：抽取／評分失敗都照樣留到呢個時間點，
+    # 而佢自己失敗亦唔會影響下面任何嘢（見 `capture_prerace_odds`）。
+    capture_prerace_odds(state, state_path, meeting, meeting_dir, "prerace")
     # `field_change` 只會由 `run_lineup` 傳入：見 batch_extract 個閘度嘅說明，
     # 佢只鬆 starter PDF 一格（排位表同賽績照樣要 fresh）。
     code, output = run_cmd(
