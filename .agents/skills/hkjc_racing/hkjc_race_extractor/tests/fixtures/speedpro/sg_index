@@ -1,0 +1,27 @@
+﻿{
+ "en-us": [
+  {
+   "race": "1",
+   "racefile": "sg_race_1.json"
+  },
+  {
+   "race": "2",
+   "racefile": "sg_race_2.json"
+  }
+ ],
+ "lastupdatetime": "2026-10-13 11:26 AM",
+ "racedate": "14/10/2026 10:50 PM",
+ "expiredate": "2026-10-15 02:50:00",
+ "zh-hk": [
+  {
+   "race": "1",
+   "racefile": "sg_race_1.json"
+  },
+  {
+   "race": "2",
+   "racefile": "sg_race_2.json"
+  }
+ ],
+ "excelch": "20261014_energygrid_ch.xls",
+ "excelen": ""
+}
