@@ -63,6 +63,27 @@ manager 自動做 policy gate、exact-scope commit／push、immutable manifest �
 **多個 agent session 同時開工**：commit 之前先睇 `git status`。只 stage 你自己
 今次改嘅嘢，唔好 `git add -A` 連人哋未 commit 嘅工作一齊掃入去。
 
+### 主 checkout 只跟 main，做嘢一律開 worktree
+
+`/Users/imac/Antigravity-repo` 呢個主 checkout **唔係任何 agent 嘅工作區**。
+Claude Code 同 Codex 每次開工都要由最新 `origin/main` 開一個獨立 worktree：
+
+```bash
+git fetch origin
+git worktree add -b <agent>-<題目>-<YYYYMMDD> <scratch路徑> origin/main
+cp .wongchoi_*root <scratch路徑>/      # data-root marker 唔喺 git 入面，唔抄就寫錯地方
+```
+
+喺 worktree 改、測、`./保存.sh`，完咗就 `git worktree remove`。主 checkout 唔准
+留未 commit 嘅改動，亦唔准長期停喺 release 分支。
+
+呢條規則存在嘅原因：2026-10-14 發現主 checkout 停喺 2026-09-05 嘅
+`codex-release-*` 分支，落後 `origin/main` 116 個 commit，98 個檔有未 commit 改動
+—— 32 個其實已經入咗 main，26 個係 main 嘅舊版，40 個喺任何 commit 都搵唔到。
+即係同一個目錄混住「已發佈」「過期」同「未保存」三種嘢，冇人分得清，
+而另一個 agent 喺度開工就會基於過期 code 做嘢（之前已經試過重複做咗 dashboard 修正）。
+生產排程行 `/Users/imac/wongchoi-scheduler`，唔受主 checkout 影響 —— 但未保存嘅工作會。
+
 ### 五件唔可以做嘅事
 
 1. **唔好手寫模型說明。** `Wong Choi 模型說明/` 入面啲檔由
