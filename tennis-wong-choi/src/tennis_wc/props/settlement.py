@@ -489,6 +489,11 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
     point_in_time = classify_point_in_time(
         now, start_row["start_time_utc"] if start_row else None
     )
+    # A newly discovered market after the first ball is research, never a
+    # prospective paper bet. Keep existing history untouched; settlement and
+    # audit readers still need it. Unknown start times cannot prove eligibility.
+    if point_in_time != 1:
+        return
     conn.execute(
         """
         INSERT INTO prop_tracker (

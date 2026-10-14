@@ -85,6 +85,10 @@ KNOWN = [
      "deploy.sh 自身出錯（變數空、解碼、或者 shell 引號）",
      "run_cmd 改成寬鬆解碼；account ID 解析改用 heredoc；變數後接非 ASCII 加大括號",
      "republish"),
+    (r"production snapshot 核實失敗|verify-live failed",
+     "Cloudflare production snapshot 冇反映今次發佈（包括並行 deploy 互相覆蓋）",
+     "全平台 deploy 由讀 live、build 到 upload 共用全域鎖；wrangler 必須印出完成訊號先算成功",
+     "republish"),
     (r"Resource deadlock avoided",
      "Google Drive 檔案系統鎖住（CloudStorage 同步中）",
      "鏡像連續失敗 8 次就收手，屬 best-effort，唔影響本機同發佈",
@@ -175,6 +179,8 @@ def diagnose(run: dict, history: list[dict]) -> str:
     ver = run.get("code_version") or {}
     steps = run.get("steps") or []
     last_step = steps[-1] if steps else {}
+    failed_step = next((step for step in reversed(steps)
+                        if step.get("status") == "failed"), {})
     first = errs[0] if errs else {}
     msg = str(first.get("message") or "")
 
@@ -191,7 +197,10 @@ def diagnose(run: dict, history: list[dict]) -> str:
     fallback_haystack = "\n".join(
         [str(w.get("message") or "") for w in (run.get("warnings") or [])]
         + [f"{m.get('status')} {m.get('detail') or ''} {m.get('reason') or ''}"
-           for m in (run.get("meetings_processed") or [])])
+           for m in (run.get("meetings_processed") or [])]
+        + [f"{s.get('step')} {s.get('status')} missing={s.get('missing') or []} "
+           f"still_present={s.get('still_present') or []} stale={s.get('stale', False)}"
+           for s in steps if s.get("status") == "failed"])
     haystack = error_haystack if errs else fallback_haystack
     matched = primary_known_match(haystack)
     same_needle = msg[:40]
@@ -208,6 +217,7 @@ def diagnose(run: dict, history: list[dict]) -> str:
     where = (f"- 死喺：`{first.get('step')}`" if errs else
              ("- 冇 error，只係有工序未做完（見下面「未完成」）"
               if run.get("status") == "partial" else
+              f"- 死喺：`{failed_step.get('step')}`" if failed_step else
               f"- 最後一步：`{last_step.get('step') or '?'}`"))
     out = [f"# AU 診斷 · {run.get('mode')} · {run.get('started_at', '')[:16]}",
            "",
@@ -260,12 +270,13 @@ def remedy_for(run: dict) -> str | None:
     ⚠️ 只睇**已知模式**。對唔上嘅錯誤永遠唔會觸發任何動作 —— 一個估出嚟嘅補救
     可以令情況變差，而且會遮蓋咗「呢個係新問題」呢個最重要嘅訊號。
     """
-    for e in (run.get("errors") or []):
-        msg = str(e.get("message") or "")
-        for pat, _cause, _fix, rem in KNOWN:
-            if rem and re.search(pat, msg):
-                return rem
-    return None
+    haystack = "\n".join(
+        [str(e.get("message") or "") for e in (run.get("errors") or [])]
+        + [f"{s.get('step')} {s.get('status')} missing={s.get('missing') or []}"
+           for s in (run.get("steps") or []) if s.get("status") == "failed"]
+    )
+    matched = primary_known_match(haystack)
+    return matched[2] if matched and matched[2] else None
 
 
 def phone_summary(text: str) -> str:

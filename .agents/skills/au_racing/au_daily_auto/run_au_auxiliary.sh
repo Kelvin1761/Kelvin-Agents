@@ -27,6 +27,10 @@ NOTIFY_ENV="$HOME/.wongchoi_notify.env"
 [ -f "$NOTIFY_ENV" ] && source "$NOTIFY_ENV"
 
 cd "$PROJECT_ROOT" || exit 1
+# Telegram updates remain on the server until the next poll outside gaming hours.
+if PYTHONPATH="$PROJECT_ROOT/.agents/skills" /usr/bin/python3 -c 'from datetime import datetime; from shared_wong_choi.scheduler_window import SYDNEY, quiet_until; import sys; sys.exit(0 if quiet_until(datetime.now(SYDNEY)) else 1)'; then
+  exit 0
+fi
 case "$TASK" in
   healthcheck) exec /usr/bin/python3 "$SCRIPT_DIR/au_healthcheck.py" ;;
   bot)         exec /usr/bin/python3 "$SCRIPT_DIR/au_telegram_bot.py" ;;

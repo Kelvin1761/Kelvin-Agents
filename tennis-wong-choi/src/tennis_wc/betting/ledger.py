@@ -9,6 +9,7 @@ from tennis_wc.betting.clv import calculate_clv
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.common import utc_now
 from tennis_wc.ingestion.name_matching import match_pair_score, same_player_name
+from tennis_wc.ingestion.raw_response_store import store_raw_response
 from tennis_wc.providers import get_tennis_provider
 from tennis_wc.evaluation.corpus import tracker_point_in_time_clause
 
@@ -603,8 +604,23 @@ def fetch_results_for_date(match_date: str) -> dict:
     else:
         provider_error = None
     provider_name = getattr(provider, "provider_name", "unknown")
-    imported = _store_result_rows(match_date, rows, provider_name)
-    resolver = _resolve_pending_match_results(match_date, rows, provider_name)
+    raw_response_id = None
+    if rows:
+        raw_response_id = store_raw_response(
+            provider_name,
+            f"historical_matches/{match_date}",
+            {"lookup_dates": lookup_dates},
+            rows,
+            200,
+            entity_type="match_results",
+            entity_external_id=match_date,
+        )
+    imported = _store_result_rows(
+        match_date, rows, provider_name, raw_response_id=raw_response_id
+    )
+    resolver = _resolve_pending_match_results(
+        match_date, rows, provider_name, raw_response_id=raw_response_id
+    )
     winners_seen = len([row for row in target_rows if row.get("won")])
     lookup_winners_seen = len([row for row in rows if row.get("won")])
     try:
@@ -2214,7 +2230,12 @@ def _tracker_closing_odds(conn, row: dict) -> float | None:
     return float(market["odds"]) if market and market["odds"] is not None else None
 
 
-def _store_result_rows(match_date: str, rows: list[dict], provider_name: str) -> int:
+def _store_result_rows(
+    match_date: str,
+    rows: list[dict],
+    provider_name: str,
+    raw_response_id: int | None = None,
+) -> int:
     winners = [row for row in rows if row.get("won")]
     imported = 0
     now = utc_now()
@@ -2228,19 +2249,28 @@ def _store_result_rows(match_date: str, rows: list[dict], provider_name: str) ->
             conn.execute(
                 """
                 INSERT INTO match_results (match_id, winner_player_id, score_json, source_provider, raw_response_id, created_at)
-                VALUES (?, ?, ?, ?, NULL, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(match_id, source_provider) DO UPDATE SET
                     winner_player_id = excluded.winner_player_id,
                     score_json = COALESCE(excluded.score_json, match_results.score_json),
+                    raw_response_id = excluded.raw_response_id,
                     created_at = excluded.created_at
                 """,
-                (match["id"], winner_player_id, score_json, provider_name, now),
+                (
+                    match["id"], winner_player_id, score_json, provider_name,
+                    raw_response_id, now,
+                ),
             )
             imported += 1
     return imported
 
 
-def _resolve_pending_match_results(match_date: str, rows: list[dict], provider_name: str) -> dict:
+def _resolve_pending_match_results(
+    match_date: str,
+    rows: list[dict],
+    provider_name: str,
+    raw_response_id: int | None = None,
+) -> dict:
     """
     Fill match_results for tracked sportsbook fixtures that normal result import missed.
 
@@ -2250,7 +2280,9 @@ def _resolve_pending_match_results(match_date: str, rows: list[dict], provider_n
     """
     _ensure_tracking_schema()
     event_summary = _resolve_pending_from_event_provider(match_date)
-    provider_rows_imported = _resolve_pending_from_provider_rows(match_date, rows, provider_name)
+    provider_rows_imported = _resolve_pending_from_provider_rows(
+        match_date, rows, provider_name, raw_response_id=raw_response_id
+    )
     history_imported = _resolve_pending_from_player_history(match_date)
     return {
         "event_id_tracked": event_summary["event_id_tracked"],
@@ -2291,18 +2323,34 @@ def _resolve_pending_from_event_provider(match_date: str) -> dict:
             continue
         if not isinstance(result, dict) or not result.get("winner_name"):
             continue
+        raw_response_id = store_raw_response(
+            getattr(provider, "provider_name", "sportsbook"),
+            f"event_result/{event_id}",
+            {"event_id": str(event_id), "match_date": match_date},
+            result,
+            200,
+            entity_type="match_result",
+            entity_external_id=str(event_id),
+        )
         inserted = _insert_resolved_result_from_names(
             dict(match),
             result.get("winner_name"),
             result.get("loser_name") or _opponent_from_winner(dict(match), result.get("winner_name")),
             "sportsbook_event_resolver",
             {"source": "sportsbook_event_resolver", "event_id": str(event_id), "raw": result},
+            raw_response_id=raw_response_id,
         )
         imported += inserted
     return {"event_id_tracked": event_id_tracked, "event_result_imported": imported, "event_result_errors": errors}
 
 
-def _resolve_pending_from_provider_rows(match_date: str, rows: list[dict], provider_name: str) -> int:
+def _resolve_pending_from_provider_rows(
+    match_date: str,
+    rows: list[dict],
+    provider_name: str,
+    *,
+    raw_response_id: int | None = None,
+) -> int:
     winners = [row for row in rows if row.get("won")]
     if not winners:
         return 0
@@ -2341,6 +2389,7 @@ def _resolve_pending_from_provider_rows(match_date: str, rows: list[dict], provi
                 "provider_match_id": best_row.get("id"),
             },
             json.loads(scoreline_json) if scoreline_json else None,
+            raw_response_id=raw_response_id,
         )
     return imported
 
@@ -2395,6 +2444,7 @@ def _resolve_pending_from_player_history(match_date: str) -> int:
                 "history_provider": best_row["source_provider"],
                 "history_provider_match_id": best_row["provider_match_id"],
             },
+            raw_response_id=best_row["raw_response_id"],
         )
     return imported
 
@@ -2445,6 +2495,8 @@ def _insert_resolved_result_from_names(
     source_provider: str,
     score_payload: dict,
     scoreline: dict | None = None,
+    *,
+    raw_response_id: int | None = None,
 ) -> int:
     """Record a resolved result, with the scoreline when the source carries one.
 
@@ -2467,13 +2519,17 @@ def _insert_resolved_result_from_names(
         conn.execute(
             """
             INSERT INTO match_results (match_id, winner_player_id, score_json, source_provider, raw_response_id, created_at)
-            VALUES (?, ?, ?, ?, NULL, ?)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON CONFLICT(match_id, source_provider) DO UPDATE SET
                 winner_player_id = excluded.winner_player_id,
                 score_json = COALESCE(excluded.score_json, match_results.score_json),
+                raw_response_id = excluded.raw_response_id,
                 created_at = excluded.created_at
             """,
-            (match["id"], winner_player_id, json.dumps(payload, sort_keys=True), source_provider, now),
+            (
+                match["id"], winner_player_id, json.dumps(payload, sort_keys=True),
+                source_provider, raw_response_id, now,
+            ),
         )
     return 1
 

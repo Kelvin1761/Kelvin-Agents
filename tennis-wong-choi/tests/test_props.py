@@ -1128,6 +1128,7 @@ def test_record_prop_idempotent(tmp_path, monkeypatch):
     from tennis_wc.props import settlement
     init_db()
     conn = get_connection()
+    _seed_match(conn, 1, 1, 2)
     for _ in range(3):
         _rec(conn, settlement, line=7.0, selection="7+", side="over", odds=1.5, model_p=0.7, market_p=0.72)
     conn.commit()

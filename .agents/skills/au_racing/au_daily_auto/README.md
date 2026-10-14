@@ -1,15 +1,15 @@
 # AU Wong Choi — 每日自動排程
 
-四個 launchd job，本機時區 `Australia/Sydney`：
+五個 launchd job，本機時區 `Australia/Sydney`：
 
 | Job | 時間 | 做乜 |
 |---|---|---|
-| `com.antigravity.au-wong-choi.evening` | **每日 22:00** | 覆盤 + 歸檔 dashboard 上已跑完嘅場次 → 分析下一個澳洲賽日 → 驗證 → 發佈 Cloudflare |
+| `com.antigravity.au-wong-choi.evening` | **每日 17:00** | 覆盤／必要賽果 ingestion → 分析下一賽日 → 驗證／發佈 → research shadow |
 | `com.antigravity.au-wong-choi.morning` | **每日 10:00** | 覆核 dashboard 上每場嘅場地狀況／退出馬／後備入替／檔位／騎師 → 有實質變動先重評分 → 驗證 → 發佈 |
 | `com.antigravity.au-wong-choi.healthcheck` | **02:30／09:15／11:00** | 獨立核實今日分析同 live dashboard；只對已知發佈故障自動補救 |
 | `com.antigravity.au-wong-choi.bot` | **每 2 分鐘** | 輪詢已授權 Telegram 指令（`/status`、`/health`、`/retry` 等） |
 
-launchd 用**本機 wall clock**，而本機時區就係 `Australia/Sydney`，所以 22:00 / 10:00
+launchd 用**本機 wall clock**，而本機時區就係 `Australia/Sydney`，所以 17:00 / 10:00
 直接等於悉尼時間，DST 亦自動跟。runner 開工會核對，時區唔對就喺 run log 大聲警告，
 installer 更會直接拒絕安裝。
 
@@ -101,7 +101,7 @@ tail -5 .agents/skills/au_racing/au_daily_auto/logs/launchd.morning.stdout.log
 ## 手動觸發
 
 ```bash
-# 完整 22:00 流程
+# 完整 17:00 流程
 ./.agents/skills/au_racing/au_daily_auto/run_au_daily_schedule.sh evening
 
 # 完整 10:00 流程
@@ -367,3 +367,19 @@ python3 .agents/skills/au_racing/sb_browser_fetch.py 2026-08-06
 ```bash
 python3 -m pytest .agents/skills/au_racing/au_daily_auto/tests/ -q
 ```
+
+## 遊戲時段與補跑（2026-10-12）
+
+每日悉尼 22:00–01:00 不啟動新排程工作；wrapper 在 self-update／下載前先檢查。
+待辦保存在 `~/WongChoiData/WongChoiControl/deferred/<domain>/`，保留原日期、時段與參數；
+新增 `.deferred` launchd job 每小時於非遊戲時段處理一項。AU :40、HKJC :20、NBA :50、Tennis :10，
+所以來源暫時失敗會至少冷卻 30 分鐘，實際補跑按下一個可用時段，沒有即時三連重跑。
+最多三次來源重試；checkpoint 可續跑至獨立有界上限，失敗 manifest 保留。
+
+21:45 起，scheduler-managed 子程序在新命令／AU 頁面請求邊界記 partial，稍後重入工作。
+已開始的子程序會安全完成，可能跨過 22:00；沒有強行中斷寫入或假稱完全零負載。
+未經 control-plane 直接執行分析／研究腳本不受這個排程閘保護。
+
+HKJC 20:00 起延後完整 prerace／recovery／startup 至 01:15；PDF 未齊時 extractor 早退，
+不改 fresh-data gate。Tennis 保留 09:00 card 及 18:00 日結；Tennis recovery 改經同一 wrapper。
+安裝器及 runtime verifier 已包含新增 job；新模板必須安裝後才改變現役 launchd 時間。

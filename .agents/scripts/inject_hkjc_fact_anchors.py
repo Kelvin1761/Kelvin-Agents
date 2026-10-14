@@ -1067,6 +1067,10 @@ def parse_hkjc_formguide(filepath: str) -> dict:
                 distance = 0
                 going = ''
             
+            # Preserve the AWT surface when selecting sectional standards.
+            if normalize_venue_surface(rail) == '沙田AWT':
+                venue = normalize_venue_surface(f'{venue} {rail}')
+
             # Get race details block until next race or end
             race_start = rm.end()
             next_race = race_pattern.search(block, race_start)
@@ -2400,7 +2404,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
         r = races[i] if i < len(races) else {}
         p = _profile_for_race(r, p_entries)
         date = r.get('date', p.get('date', ''))
-        venue = r.get('venue', p.get('venue_track', ''))[:4]
+        venue = normalize_venue_surface(r.get('venue', p.get('venue_track', '')))
         distance = r.get('distance', p.get('distance', 0))
         class_g = p.get('class_grade', '')
         if class_g:
@@ -2449,7 +2453,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
         for i in range(display_races, total_races):
             r, p = paired_history[i]
             date = r.get('date', p.get('date', ''))
-            venue = r.get('venue', p.get('venue_track', ''))[:4]
+            venue = normalize_venue_surface(r.get('venue', p.get('venue_track', '')))
             distance = r.get('distance', p.get('distance', 0))
             class_g = p.get('class_grade', '')
             if class_g:
@@ -2545,7 +2549,7 @@ def generate_horse_block(horse: dict, today_venue: str = '',
         ftime = p.get('finish_time_raw', '-')
         if ftime and ftime != '-':
             ftime_sec = parse_time_to_seconds(ftime)
-            r_venue = r.get('venue', '')[:4]
+            r_venue = normalize_venue_surface(r.get('venue', ''))
             r_dist = r.get('distance', 0)
             r_class = p.get('class_grade', '')
             if r_class:

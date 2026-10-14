@@ -193,13 +193,17 @@ def activation_plan(paths: Iterable[str]) -> dict:
         elif "install_macos_launchd.sh" in lowered or lowered.endswith(".plist"):
             # A plist belonging to an allowlisted installer is data consumed by
             # that installer, not a second manual action.
-            consumed_by_unified = unified_runtime and path.startswith(
-                (
+            # The unified installer now owns AU evening/deferred triggers and
+            # verifies all AU schedules while leaving its bot loaded. A changed
+            # standalone AU installer is shipped, never invoked by this path.
+            consumed_by_unified = unified_runtime and (path ==
+                ".agents/skills/au_racing/au_daily_auto/install_macos_launchd.sh"
+                or path.startswith((
                     ".agents/skills/central_wong_choi/",
                     ".agents/skills/hkjc_racing/hkjc_daily_auto/",
                     ".agents/skills/nba/nba_daily_auto/",
                     "tennis-wong-choi/",
-                )
+                ))
             )
             if not consumed_by_unified and not (
                 path.startswith(".agents/skills/central_wong_choi/launchd/")

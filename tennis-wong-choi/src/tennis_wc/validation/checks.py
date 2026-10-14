@@ -25,10 +25,9 @@ class CheckResult:
 
 
 def _rows(conn, sql: str, params: tuple = ()) -> list:
-    try:
-        return conn.execute(sql, params).fetchall()
-    except Exception:
-        return []
+    # A broken query is an unavailable check, not an empty, healthy warehouse.
+    # Report callers must fail closed rather than turn SQL errors into zero.
+    return conn.execute(sql, params).fetchall()
 
 
 def _count(conn, sql: str, params: tuple = ()) -> int:
@@ -131,12 +130,16 @@ def check_duplicate_identities(conn) -> CheckResult:
     A player split 70/8/0 across three ids is rejected by the ace model's
     ten-match minimum while the data exists.
     """
+    # Alias support adds this optional column outside the base schema. Before
+    # that migration, every identity is unmerged and must still be checked.
+    columns = {row[1] for row in _rows(conn, "PRAGMA table_info(players)")}
+    unmerged = "WHERE canonical_player_id IS NULL" if "canonical_player_id" in columns else ""
     count = _count(
         conn,
-        """
+        f"""
         SELECT COUNT(*) FROM (
             SELECT LOWER(TRIM(name)) n FROM players
-            WHERE canonical_player_id IS NULL
+            {unmerged}
             GROUP BY 1 HAVING COUNT(*) > 1
         )
         """,

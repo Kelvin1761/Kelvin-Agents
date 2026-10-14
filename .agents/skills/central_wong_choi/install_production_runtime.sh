@@ -15,7 +15,10 @@ TENNIS_PYTHON_BIN="${TENNIS_PYTHON_BIN:-$TENNIS_RUNTIME_ROOT/.venv/bin/python}"
 TENNIS_DB_POINTER="${WC_TENNIS_DB_POINTER:-$HOME/.wongchoi_tennis_db}"
 
 LABELS=(
+  com.antigravity.au-wong-choi.deferred
+  com.antigravity.au-wong-choi.evening
   com.antigravity.hkjc-wong-choi.intraday
+  com.antigravity.hkjc-wong-choi.deferred
   com.antigravity.hkjc-wong-choi.lineup
   com.antigravity.hkjc-wong-choi.postrace
   com.antigravity.hkjc-wong-choi.prerace
@@ -24,12 +27,14 @@ LABELS=(
   com.antigravity.hkjc-wong-choi.watch
   com.antigravity.hkjc-wong-choi.weekly
   com.antigravity.nba-wong-choi.final-refresh
+  com.antigravity.nba-wong-choi.deferred
   com.antigravity.nba-wong-choi.health
   com.antigravity.nba-wong-choi.postgame
   com.antigravity.nba-wong-choi.production
   com.antigravity.nba-wong-choi.startup
   com.antigravity.nba-wong-choi.warmup
   com.antigravity.tennis-wong-choi.card
+  com.antigravity.tennis-wong-choi.deferred
   com.antigravity.tennis-wong-choi.daily
   com.antigravity.tennis-wong-choi.recovery
   com.antigravity.central-wong-choi.durability
@@ -203,6 +208,18 @@ trap cleanup EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
+
+# Replace the AU evening timer and queue consumer transactionally, leaving the
+# Telegram poller loaded so the approval command can finish.
+AU_SCRIPT_DIR="$PROJECT_ROOT/.agents/skills/au_racing/au_daily_auto"
+for AU_LABEL in com.antigravity.au-wong-choi.evening com.antigravity.au-wong-choi.deferred; do
+  sed -e "s#__SCRIPT_DIR__#$AU_SCRIPT_DIR#g" -e "s#__PROJECT_ROOT__#$PROJECT_ROOT#g" \
+    "$AU_SCRIPT_DIR/launchd/$AU_LABEL.plist.template" \
+    > "$AGENTS_DIR/$AU_LABEL.plist"
+  "$LAUNCHCTL" bootout "$DOMAIN/$AU_LABEL" >/dev/null 2>&1 || true
+  "$LAUNCHCTL" bootstrap "$DOMAIN" "$AGENTS_DIR/$AU_LABEL.plist"
+  "$LAUNCHCTL" enable "$DOMAIN/$AU_LABEL"
+done
 
 /bin/bash "$PROJECT_ROOT/.agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh"
 /bin/bash "$PROJECT_ROOT/.agents/skills/nba/nba_daily_auto/install_macos_launchd.sh"

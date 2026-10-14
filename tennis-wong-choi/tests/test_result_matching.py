@@ -93,3 +93,191 @@ def test_tennismylife_rows_are_matched_on_the_tournament_week():
     assert _in_tournament_window(boundary.isoformat(), wanted)
     assert not _in_tournament_window((boundary - timedelta(days=1)).isoformat(), wanted)
     assert not _in_tournament_window(None, wanted)
+
+
+def test_tennismylife_retains_the_exact_considered_rows_as_result_provenance(
+    monkeypatch,
+):
+    from tennis_wc.ingestion import ingest_tennismylife as module
+
+    row = {
+        "tourney_date": "20260905",
+        "winner_name": "Player A",
+        "loser_name": "Player B",
+    }
+    monkeypatch.setattr(
+        module,
+        "_download_json",
+        lambda _url: {"files": [{"name": "2026.csv", "url": "https://source/2026.csv"}]},
+    )
+    monkeypatch.setattr(module, "_download_csv", lambda _url: [row])
+    observed = {}
+
+    def fake_raw(provider, endpoint, params, response, status, **kwargs):
+        observed["raw"] = (provider, endpoint, params, response, status, kwargs)
+        return 77
+
+    def fake_store(rows, wanted_dates, *, raw_response_id=None):
+        observed["store"] = (rows, wanted_dates, raw_response_id)
+        return 1, 0, 1, 0
+
+    monkeypatch.setattr(module, "store_raw_response", fake_raw, raising=False)
+    monkeypatch.setattr(module, "_store_rows", fake_store)
+
+    summary = module.ingest_tennismylife_results("2026-09-05")
+
+    assert summary["results_imported"] == 1
+    assert observed["raw"] == (
+        "tennismylife",
+        "results/2026.csv",
+        {"file": "2026.csv", "wanted_dates": ["2026-09-05"]},
+        [row],
+        200,
+        {"entity_type": "match_results", "entity_external_id": "2026-09-05"},
+    )
+    assert observed["store"] == ([row], {"2026-09-05"}, 77)
+
+
+def test_primary_result_provider_retains_rows_and_threads_raw_id_to_resolvers(
+    monkeypatch,
+):
+    from tennis_wc.betting import ledger
+    from tennis_wc.ingestion import ingest_tennisexplorer, ingest_tennismylife
+
+    rows = [
+        {
+            "id": "m1",
+            "match_date": lookup_date,
+            "player_name": "Player A",
+            "opponent_name": "Player B",
+            "won": True,
+        }
+        for lookup_date in ("2026-09-05", "2026-09-04", "2026-09-06")
+    ]
+
+    class Provider:
+        provider_name = "composite"
+
+        def fetch_historical_matches(self, start, _end):
+            return [row for row in rows if row["match_date"] == start]
+
+    observed = {}
+    monkeypatch.setattr(ledger, "_ensure_tracking_schema", lambda: None)
+    monkeypatch.setattr(ledger, "get_tennis_provider", lambda: Provider())
+    monkeypatch.setattr(
+        ledger,
+        "store_raw_response",
+        lambda provider, endpoint, params, response, status, **kwargs: (
+            observed.setdefault(
+                "raw", (provider, endpoint, params, response, status, kwargs)
+            )
+            and 88
+        ),
+        raising=False,
+    )
+    monkeypatch.setattr(
+        ledger,
+        "_store_result_rows",
+        lambda date, found, provider, raw_response_id=None: observed.setdefault(
+            "store", (date, found, provider, raw_response_id)
+        )
+        and 3,
+    )
+    monkeypatch.setattr(
+        ledger,
+        "_resolve_pending_match_results",
+        lambda date, found, provider, raw_response_id=None: observed.setdefault(
+            "resolver", (date, found, provider, raw_response_id)
+        )
+        and {
+            "event_id_tracked": 0,
+            "event_result_imported": 0,
+            "event_result_errors": [],
+            "provider_rows_imported": 0,
+            "local_history_imported": 0,
+        },
+    )
+    monkeypatch.setattr(
+        ingest_tennismylife, "ingest_tennismylife_results", lambda _date: {}
+    )
+    monkeypatch.setattr(
+        ingest_tennisexplorer, "ingest_tennisexplorer_results", lambda _date: {}
+    )
+
+    result = ledger.fetch_results_for_date("2026-09-05")
+
+    assert result["imported"] == 3
+    assert observed["raw"] == (
+        "composite",
+        "historical_matches/2026-09-05",
+        {"lookup_dates": ["2026-09-05", "2026-09-04", "2026-09-06"]},
+        rows,
+        200,
+        {"entity_type": "match_results", "entity_external_id": "2026-09-05"},
+    )
+    assert observed["store"][3] == 88
+    assert observed["resolver"][3] == 88
+
+
+def test_event_result_provider_retains_exact_response_and_threads_raw_id(
+    monkeypatch,
+):
+    from tennis_wc.betting import ledger
+    from tennis_wc import providers
+
+    match = {
+        "id": 1,
+        "market_event_id": "event-123",
+        "player_a_id": 10,
+        "player_b_id": 20,
+        "player_a_name": "Player A",
+        "player_b_name": "Player B",
+    }
+    result = {
+        "winner_name": "Player A",
+        "loser_name": "Player B",
+        "status": "complete",
+    }
+
+    class Provider:
+        provider_name = "sportsbet"
+
+        def fetch_event_result(self, event_id):
+            assert event_id == "event-123"
+            return result
+
+    observed = {}
+    monkeypatch.setattr(ledger, "_pending_result_matches", lambda _date: [match])
+    monkeypatch.setattr(providers, "get_odds_provider", lambda: Provider())
+    monkeypatch.setattr(
+        ledger,
+        "store_raw_response",
+        lambda provider, endpoint, params, response, status, **kwargs: (
+            observed.setdefault(
+                "raw", (provider, endpoint, params, response, status, kwargs)
+            )
+            and 99
+        ),
+    )
+    monkeypatch.setattr(
+        ledger,
+        "_insert_resolved_result_from_names",
+        lambda *args, **kwargs: observed.setdefault("insert", (args, kwargs)) and 1,
+    )
+
+    summary = ledger._resolve_pending_from_event_provider("2026-09-05")
+
+    assert summary == {
+        "event_id_tracked": 1,
+        "event_result_imported": 1,
+        "event_result_errors": [],
+    }
+    assert observed["raw"] == (
+        "sportsbet",
+        "event_result/event-123",
+        {"event_id": "event-123", "match_date": "2026-09-05"},
+        result,
+        200,
+        {"entity_type": "match_result", "entity_external_id": "event-123"},
+    )
+    assert observed["insert"][1]["raw_response_id"] == 99

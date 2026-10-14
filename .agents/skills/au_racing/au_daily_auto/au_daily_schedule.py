@@ -58,6 +58,7 @@ from wongchoi_paths import AU_RACING, AU_RACING_MIRROR  # noqa: E402
 SHARED_WC = PROJECT_ROOT / ".agents" / "skills"
 if str(SHARED_WC) not in sys.path:
     sys.path.insert(0, str(SHARED_WC))
+from shared_wong_choi.scheduler_window import checkpoint, SchedulerDeferred
 from shared_wong_choi.contracts import Domain  # noqa: E402
 from shared_wong_choi.domain_evidence import (  # noqa: E402
     record_prediction_decision_if_configured,
@@ -246,6 +247,8 @@ class RunLog:
                 text = au_diagnose.diagnose(self.data, au_diagnose.runs())
                 au_diagnose.BUNDLE.write_text(text, encoding="utf-8")
                 au_notify.push("🔎 " + au_diagnose.phone_summary(text))
+        except SchedulerDeferred:
+            raise
         except Exception as exc:  # noqa: BLE001
             log(f"[notify] 送唔出（{type(exc).__name__}: {exc}）—— run 結果不受影響")
 
@@ -309,6 +312,16 @@ def venue_from_slug(slug: str) -> str:
 #: 展開成同一個寫法先比。
 _VENUE_ALIASES = (("mount", "mt"), ("saint", "st"), ("port", "pt"))
 
+# Sportsbet 嘅 date index 用 track slug ``kensington``，但 NextEvents API 用
+# ``Randwick-Kensington``。兩個都係同一個 Royal Randwick Kensington meeting；
+# 唔明文對齊就會被當成海外場次剔走。只收窄處理呢個已知官方別名，避免用模糊
+# substring 將真正唔同嘅場地配埋一齊。
+_VENUE_EQUIVALENTS = {
+    "kensington": "randwickkensington",
+    "randwickkensington": "randwickkensington",
+    "royalrandwickkensington": "randwickkensington",
+}
+
 
 def _venue_key(name: str) -> str:
     """正規化 + 展開常見縮寫，令 `mount_isa` 同 `Mt Isa` 對得上。"""
@@ -316,7 +329,7 @@ def _venue_key(name: str) -> str:
     for long, short in _VENUE_ALIASES:
         if key.startswith(long):
             key = short + key[len(long):]
-    return key
+    return _VENUE_EQUIVALENTS.get(key, key)
 
 
 def match_venue(slug: str, api_venues: list[str]) -> str | None:
@@ -402,6 +415,7 @@ def normalise_going(raw: object) -> str:
 def run_cmd(cmd: list[str], *, cwd: Path | None = None, timeout: int = 3600,
             env: dict | None = None) -> tuple[int, str]:
     """跑一個命令，回 (returncode, output)。絕不 raise —— 由 caller 決定嚴重性。"""
+    checkpoint()
     log(f"$ {' '.join(str(c) for c in cmd)}")
     merged = os.environ.copy()
     # ⚠️ 所有 subprocess 一律 cache-only。sportsbetform 只行真瀏覽器（見
@@ -493,6 +507,7 @@ def fetch_page(runlog: RunLog, url: str, *, force: bool = False,
     （多數係 timeout），caller 應該跳過呢一版繼續；有 `stop_reason` 先係個站真係
     唔畀入（非 200／攔截頁／連續 timeout），嗰陣先收手。
     """
+    checkpoint()
     if runlog.site_refusing:
         return None
     session = browser(runlog)
@@ -539,6 +554,8 @@ def api_next_events(runlog: RunLog) -> list[dict]:
     try:
         response = fetcher.session.get(NEXT_EVENTS_URL, timeout=30)
         payload = response.json() if response.status_code == 200 else None
+    except SchedulerDeferred:
+        raise
     except Exception as exc:  # noqa: BLE001
         runlog.warn(f"NextEvents API 攞唔到（{type(exc).__name__}: {exc}）")
         return []
@@ -730,6 +747,7 @@ def refresh_result_pages(runlog: RunLog, key: str) -> dict:
     meta = mapping.get(key)
     if not meta:
         return {"refreshed": 0, "failed": 0, "reason": "對應表冇呢個場次"}
+    checkpoint()
     if runlog.site_refusing:
         return {"refreshed": 0, "failed": 0, "reason": outbound_gate_message(
             runlog,
@@ -907,6 +925,8 @@ def step_review_archive(runlog: RunLog, review_day: date, *,
             # 一個場次暫時失敗唔應該停晒其他場次。
             runlog.meeting(folder.name, "temporary_failure", detail=str(exc))
             continue
+        except SchedulerDeferred:
+            raise
         except Exception as exc:  # noqa: BLE001
             runlog.meeting(folder.name, "failed", detail=f"{type(exc).__name__}: {exc}")
             runlog.error("review-archive", f"{folder.name}: {exc}")
@@ -968,6 +988,8 @@ def step_settlement_evidence(runlog: RunLog, archived: list[str]) -> bool:
                 artifacts=list(evidence["artifacts"]),
                 settlement_state=SettlementState(evidence["settlement_state"]),
             )
+        except SchedulerDeferred:
+            raise
         except Exception as exc:  # noqa: BLE001
             runlog.error(
                 "settlement-evidence", f"{name}: {type(exc).__name__}: {exc}"
@@ -1518,11 +1540,14 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
             runlog.step("analyse-next-day", "cooldown", round_no=round_no,
                         sleep_seconds=gap, dry_rounds=dry_rounds,
                         waiting_for=[p["venue"] for p in remaining])
-            time.sleep(gap)
+            for elapsed in range(0, gap, 30):
+                checkpoint()
+                time.sleep(min(30, gap - elapsed))
             reset_outbound_gate(runlog)
         still: list[dict] = []
         progress = False
         for plan in remaining:
+            checkpoint()
             try:
                 folder, complete, gained = analyse_one_meeting(runlog, target, plan)
             except TemporaryFailure as exc:
@@ -1530,6 +1555,8 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
                                detail=str(exc), round_no=round_no)
                 still.append(plan)
                 continue
+            except SchedulerDeferred:
+                raise
             except Exception as exc:  # noqa: BLE001
                 runlog.meeting(f"{target} {plan['venue']}", "failed",
                                detail=f"{type(exc).__name__}: {exc}")
@@ -1601,11 +1628,13 @@ def warm_race_pages(runlog: RunLog, meeting_id: str, race_ids: list[str],
         if cache_path(url).exists():
             ready.append(race_id)
             continue
+        checkpoint()
         if runlog.site_refusing:
             break
         if fetch_page(runlog, url, where=f"{label} 第 {index} 場（raceId={race_id}）"):
             ready.append(race_id)
             continue
+        checkpoint()
         if runlog.site_refusing:
             break
         # 個站冇拒絕（冇非 200、冇攔截頁），淨係呢一版 hang 咗 —— 跳過佢繼續
@@ -1640,6 +1669,7 @@ def warm_speedmap_pages(runlog: RunLog, meeting_id: str, race_ids: list[str],
         if cache_path(url).exists():
             got += 1
             continue
+        checkpoint()
         if runlog.site_refusing:
             break
         if fetch_page(runlog, url, where=f"{label} 第 {index} 場 Speedmap"):
@@ -1717,6 +1747,7 @@ def warm_people_pages(runlog: RunLog, race_ids: list[str], meeting_id: str,
                     "（未 cache 頁已優先）")
     fetched = 0
     for url in todo:
+        checkpoint()
         if runlog.site_refusing:
             break
         if fetch_page(runlog, url, force=force, where=f"{label} 個人頁"):
@@ -1750,6 +1781,8 @@ def apply_ra_ratings(runlog: RunLog, folder: Path, day: str, venue: str) -> dict
         import ra_fields
         result = ra_fields.apply_to_meeting(
             folder, day, venue, ra_fields.Fetcher(delay=6.0, verbose=False))
+    except SchedulerDeferred:
+        raise
     except Exception as exc:  # noqa: BLE001
         runlog.warn(f"{folder.name}: RA 讓磅分補唔到（{type(exc).__name__}: {exc}）"
                     f"—— 照用 fallback")
@@ -1848,6 +1881,8 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
         # 失敗唔會 raise —— 佢係對照資料，唔係主線。
         try:
             warm_speedmap_pages(runlog, plan["meetingId"], ready, f"{day} {venue}")
+        except SchedulerDeferred:
+            raise
         except Exception as exc:  # noqa: BLE001 — Speedmap 失敗唔可以炸咗抽取
             runlog.warn(f"{day} {venue}: Speedmap 暖 cache 略過（"
                         f"{type(exc).__name__}: {exc}）")
@@ -1976,6 +2011,8 @@ def step_prediction_evidence(runlog: RunLog, meeting_dirs: list[Path]) -> bool:
                 decision_state=DecisionState.RECOMMEND,
                 recommendations=recommendations,
             )
+        except SchedulerDeferred:
+            raise
         except Exception as exc:  # noqa: BLE001
             runlog.error(
                 "prediction-evidence",
@@ -2045,7 +2082,9 @@ def step_refresh_active(runlog: RunLog, today: date, *, max_meetings: int = 0,
             runlog.step("refresh-active", "cooldown", round_no=round_no,
                         sleep_seconds=gap,
                         waiting_for=[f.name for f in remaining])
-            time.sleep(gap)
+            for elapsed in range(0, gap, 30):
+                checkpoint()
+                time.sleep(min(30, gap - elapsed))
             reset_outbound_gate(runlog)
         still: list[Path] = []
         for folder in remaining:
@@ -2056,6 +2095,8 @@ def step_refresh_active(runlog: RunLog, today: date, *, max_meetings: int = 0,
                                round_no=round_no)
                 still.append(folder)
                 continue
+            except SchedulerDeferred:
+                raise
             except Exception as exc:  # noqa: BLE001
                 runlog.meeting(folder.name, "failed",
                                detail=f"{type(exc).__name__}: {exc}")
@@ -2176,6 +2217,7 @@ def live_race_state(runlog: RunLog, folder: Path) -> tuple[dict[int, dict], str]
             raise TemporaryFailure(
                 f"對應表冇呢個場次，索引頁亦搵唔到對應馬場"
                 f"（索引有：{sorted(index)[:8]}）")
+    checkpoint()
     if runlog.site_refusing:
         raise TemporaryFailure(outbound_gate_message(
             runlog,
@@ -2575,6 +2617,8 @@ def refresh_fill_today_odds(runlog: RunLog, folders: list[Path], today: date) ->
         except TemporaryFailure as exc:
             ok = False
             runlog.meeting(folder.name, "refresh_deferred", detail=str(exc))
+        except SchedulerDeferred:
+            raise
         except Exception as exc:  # noqa: BLE001
             ok = False
             runlog.error("fill-today-odds", f"{folder.name}: {type(exc).__name__}: {exc}")
@@ -2749,6 +2793,8 @@ def download_live_snapshot(runlog: RunLog, dest: Path) -> Path | None:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(payload)
             return dest
+        except SchedulerDeferred:
+            raise
         except Exception as exc:  # noqa: BLE001
             runlog.retry("live-snapshot", attempt, f"{type(exc).__name__}: {exc}")
             time.sleep(5 * attempt)
@@ -3255,6 +3301,14 @@ def step_dashboard(runlog: RunLog, meeting_dirs: list[Path],
     verified = verify_live(runlog, expect_present, expect_absent,
                            min_generated_at=runlog.data["started_at"])
     runlog.data["cloudflare_deployment"]["verified"] = verified
+    if not verified.get("ok"):
+        runlog.error(
+            "verify-live",
+            "production snapshot 核實失敗："
+            f"missing={verified.get('missing') or []} "
+            f"still_present={verified.get('still_present') or []} "
+            f"stale={bool(verified.get('stale'))}",
+        )
     runlog.flush()
     return bool(verified.get("ok"))
 
@@ -3556,6 +3610,8 @@ def push_reflection(runlog: RunLog) -> None:
         sys.path.insert(0, str(HERE))
         import au_notify
         import au_reflect_notify
+    except SchedulerDeferred:
+        raise
     except Exception as exc:  # noqa: BLE001
         log(f"[reflect-push] import 失敗（{type(exc).__name__}: {exc}）")
         return
@@ -3569,6 +3625,8 @@ def push_reflection(runlog: RunLog) -> None:
             runlog.step("reflect-push", "ok" if sent else "no-outlet", day=day,
                         detail="; ".join(sent) or None)
             push_betting(runlog, day, "settle")
+        except SchedulerDeferred:
+            raise
         except Exception as exc:  # noqa: BLE001
             # 推送失敗唔可以令 run 失敗 —— 覆盤已經做完，呢個只係報告。
             runlog.step("reflect-push", "failed", day=day,
@@ -3598,6 +3656,8 @@ def push_betting(runlog: RunLog, day: str, mode: str) -> None:
         sent = au_notify.push(text, audience="content")
         runlog.step("betting-push", "ok" if sent else "no-outlet", mode=mode,
                     day=day, detail="; ".join(sent) or None)
+    except SchedulerDeferred:
+        raise
     except Exception as exc:  # noqa: BLE001
         runlog.step("betting-push", "failed", mode=mode,
                     detail=f"{type(exc).__name__}: {exc}")
@@ -3624,6 +3684,8 @@ def push_run_summary(runlog: RunLog, mode: str) -> None:
         sent = au_notify.push(text, audience="content")
         runlog.step("run-summary", "ok" if sent else "no-outlet", mode=mode,
                     detail="; ".join(sent) or None)
+    except SchedulerDeferred:
+        raise
     except Exception as exc:  # noqa: BLE001
         runlog.step("run-summary", "failed", detail=f"{type(exc).__name__}: {exc}")
 
@@ -3643,6 +3705,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         push_reflection(runlog)
         if not step_settlement_evidence(runlog, archived):
             temporary = True
+
     # After the reflectors exist, before anything that reads the corpus.
     if not args.skip_results_ingest:
         if not step_ingest_results(runlog, from_date=args.ingest_from_date):
@@ -3650,9 +3713,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
             # the full-field corpus is incomplete.  Mark the run retryable so
             # launchd, /diag and the independent healthcheck all see it.
             temporary = True
-    if not getattr(args, "skip_speed_shadow", False):
-        step_speed_shadow(runlog)
-        step_speed_recency_shadow(runlog)
+
     if not args.skip_analysis:
         try:
             analysed = step_analyse_next_day(runlog, review_day,
@@ -3677,6 +3738,10 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
     days = sorted({r["meeting"][:10] for r in runlog.data["races_added"]})
     for day in days:
         push_betting(runlog, day, "list")
+    if not getattr(args, "skip_speed_shadow", False):
+        step_speed_shadow(runlog)
+        step_speed_recency_shadow(runlog)
+
     return finish_run(runlog, ok, temporary)
 
 
@@ -3695,6 +3760,8 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
                 temporary = True
         except TemporaryFailure as exc:
             runlog.step("morning-review", "deferred", detail=str(exc))
+        except SchedulerDeferred:
+            raise
         except Exception as exc:  # noqa: BLE001
             runlog.error("morning-review", f"{type(exc).__name__}: {exc}")
             temporary = True
@@ -3736,6 +3803,8 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
         except TemporaryFailure as exc:
             # 今日冇賽事、索引頁攞唔到 —— 都唔應該令早更失敗。
             runlog.step("fill-today", "skipped", detail=str(exc))
+        except SchedulerDeferred:
+            raise
         except Exception as exc:  # noqa: BLE001
             runlog.error("fill-today", f"{type(exc).__name__}: {exc}")
             temporary = True
@@ -3974,6 +4043,13 @@ def main(argv: list[str] | None = None) -> int:
                 code = run_evening(runlog, args, today)
             else:
                 code = run_morning(runlog, args, today)
+        except SchedulerDeferred:
+            close_browser(runlog)
+            runlog.data["reason"] = "gaming_window_checkpoint"
+            runlog.finish("partial")
+            if args.json:
+                print(json.dumps(runlog.data, ensure_ascii=False))
+            return EXIT_TEMPORARY
         except KeyboardInterrupt:
             close_browser(runlog)
             runlog.finish("interrupted")

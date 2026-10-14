@@ -64,6 +64,26 @@ def test_parses_itf_match_with_full_scoreline():
     assert "retired" not in payload
 
 
+def test_provider_can_return_original_html_with_its_parsed_projection(monkeypatch):
+    from tennis_wc.providers.tennisexplorer_provider import (
+        TennisExplorerResultsProvider,
+    )
+
+    html = _page(
+        _row("raw-1", "Player A", "2", ["6", "6"]),
+        _row("raw-1b", "Player B", "0", ["3", "4"]),
+    )
+    provider = TennisExplorerResultsProvider()
+    monkeypatch.setattr(provider, "_fetch_html", lambda _url: html)
+
+    results, skipped, source = provider.fetch_results_with_source("2026-08-06")
+
+    assert skipped == 0 and results[0].winner_name == "Player A"
+    assert source["source_url"].endswith("year=2026&month=08&day=06")
+    assert source["source_html"] == html
+    assert source["parsed_results"][0]["winner_name"] == "Player A"
+
+
 def test_tiebreak_set_is_not_credited_to_the_loser():
     """`7` vs `65` is 7-6(5): read literally, 65 wins the set for the loser.
 
@@ -199,13 +219,24 @@ def test_ingest_writes_scoreline_in_the_fixture_player_order(tmp_path, monkeypat
     assert summary["imported"] == 1
 
     row = conn.execute(
-        "SELECT winner_player_id, score_json FROM match_results WHERE match_id = 1"
+        "SELECT winner_player_id, score_json, raw_response_id "
+        "FROM match_results WHERE match_id = 1"
     ).fetchone()
     assert row["winner_player_id"] == 2  # Glushkova, stored as player_b
     payload = json.loads(row["score_json"])
     assert payload["player_a_sets"] == 0 and payload["player_b_sets"] == 2
     assert payload["sets"][0] == {"player_a_games": 0, "player_b_games": 6}
     assert payload["player_a_games"] == 1 and payload["player_b_games"] == 12
+    assert type(row["raw_response_id"]) is int and row["raw_response_id"] > 0
+    raw = conn.execute(
+        "SELECT provider_name, endpoint, response_json FROM raw_api_responses WHERE id=?",
+        (row["raw_response_id"],),
+    ).fetchone()
+    assert (raw["provider_name"], raw["endpoint"]) == (
+        "tennisexplorer",
+        "results/2026-08-06",
+    )
+    assert json.loads(raw["response_json"])[0]["winner_name"] == "Glushkova D."
 
 
 def test_props_settle_from_an_imported_lower_tier_scoreline(tmp_path, monkeypatch):

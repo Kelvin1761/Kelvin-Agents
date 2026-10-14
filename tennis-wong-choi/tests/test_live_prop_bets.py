@@ -30,6 +30,9 @@ def _seed_prop(tmp_path, monkeypatch, *, market_key="player_win_a_set_1"):
             "VALUES (1,'m1','ATP','2026-08-14',1,1,2,'R32','test',?,?)",
             (now, now),
         )
+        conn.execute(
+            "UPDATE matches SET start_time_utc='2099-01-01T00:00:00Z' WHERE id=1"
+        )
         record_prop(
             conn,
             match_id=1,

@@ -87,6 +87,8 @@ ADAPTER_SPECS: dict[Domain, AdapterSpec] = {
                 HKJC_SCHEDULER,
                 "prerace",
                 "recovery",
+                "weekly",
+                "intraday",
                 readiness=CapabilityReadiness.PARTIAL,
                 note="Health gates exist, but there is no canonical standalone run manifest yet.",
             ),

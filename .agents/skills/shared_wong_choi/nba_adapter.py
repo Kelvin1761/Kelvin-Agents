@@ -10,6 +10,7 @@ from .contracts import (
 )
 from .command_adapter import ManifestCommandAdapter
 from .registry import adapter_spec
+from .schedule_policy import NBA_ROLE_SLOTS
 
 
 class NBAAdapter(ManifestCommandAdapter):
@@ -29,7 +30,8 @@ class NBAAdapter(ManifestCommandAdapter):
                 "00:30": "production",
                 "06:30": "final_refresh",
             }
-            role = role_by_slot.get(identity.scheduled_slot)
+            role_by_slot.update({slot: role for role, slot in NBA_ROLE_SLOTS.items()})
+            role = request.metadata.get("freshness_role") or role_by_slot.get(identity.scheduled_slot)
             if role:
                 command.extend(("--freshness-role", role))
         command.extend(str(item) for item in request.metadata.get("scheduler_args", ()))

@@ -1544,10 +1544,10 @@ def _integrity_warnings() -> list[str]:
         with get_connection() as conn:
             failures = checks.critical_failures(checks.run_checks(conn))
     except Exception:
-        return []
+        return ["⚠️ 資料完整性檢查無法完成；暫停正式推薦，等修復後重新檢查。"]
     if not failures:
         return []
-    lines = ["⚠️ 資料完整性檢查未過（下面嘅建議要打折扣睇）："]
+    lines = ["⚠️ 資料完整性檢查未過；暫停正式推薦："]
     lines.extend(f"   · {failure.detail}" for failure in failures[:4])
     return lines
 
@@ -1610,6 +1610,13 @@ def _recommended_bets_lines(
     data_unavailable: bool = False,
 ) -> list[str]:
     lines = ["## 🎯 今日落注建議（先睇呢度）", ""]
+    integrity = _integrity_warnings()
+    if integrity:
+        return lines + integrity + [
+            "今日結論：⚠️ 資料完整性未通過，今日正式注單 0 注，唔好落注。",
+            "（研究盤面及歷史紙上盤保留作核查，不能代替正式推薦。）",
+            "",
+        ]
     blocks: list[list[str]] = []
     sc_note, sc_n = _scorecard_note(prop)
 
@@ -1683,7 +1690,6 @@ def _recommended_bets_lines(
 
     # Conclusion line FIRST (after the header), then the blocks.
     conclusion: list[str]
-    integrity = _integrity_warnings()
     if data_unavailable:
         conclusion = [
             "今日結論：⚠️ 資料未就緒，唔可以判斷今日有冇投注機會。",
@@ -1729,8 +1735,6 @@ def _recommended_bets_lines(
             f"今日結論：✅ 有 {n} 組已通過驗證嘅 prop 選擇"
             "（注碼以每注列出嘅建議為準；先睇風險）。"
         ]
-    if integrity:
-        conclusion = [*integrity, *conclusion]
     lines.extend(conclusion + [""])
     for block in blocks:
         lines.extend(block + [""])

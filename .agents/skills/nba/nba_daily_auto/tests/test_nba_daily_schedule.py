@@ -644,8 +644,8 @@ if __name__ == "__main__":
 def test_launchd_pregame_jobs_pin_each_freshness_role() -> None:
     launchd = Path(schedule.__file__).resolve().parent / "launchd"
     expected = {
-        "warmup": (21, 0, "warmup"),
-        "production": (0, 30, "production"),
+        "warmup": (19, 30, "warmup"),
+        "production": (20, 30, "production"),
         "final-refresh": (6, 30, "final_refresh"),
     }
     for name, (hour, minute, role) in expected.items():

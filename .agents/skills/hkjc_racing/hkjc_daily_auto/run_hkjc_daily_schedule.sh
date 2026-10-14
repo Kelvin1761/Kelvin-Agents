@@ -8,6 +8,10 @@ MODE="${1:-watch}"
 [ "$#" -gt 0 ] && shift
 
 cd "$REPO_ROOT" || exit 1
+if [ "$MODE" = "deferred" ] || PYTHONPATH="$REPO_ROOT/.agents/skills" /usr/bin/python3 -c 'from datetime import datetime; from shared_wong_choi.scheduler_window import SYDNEY, quiet_until; import sys; sys.exit(0 if quiet_until(datetime.now(SYDNEY)) else 1)'; then
+  exec /usr/bin/python3 "$CONTROL_PLANE" --domain hkjc --mode "$MODE" "$@"
+fi
+
 
 # Pull the shared scheduler worktree forward before starting.  Failure is
 # deliberately non-fatal: the run can continue on the currently checked-out
@@ -20,11 +24,4 @@ NOTIFY_ENV="${WC_NOTIFY_ENV_FILE:-$HOME/.wongchoi_notify.env}"
 
 export PYTHONPATH="$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
 
-# Weekly is a model-promotion review gate, not a normal event lifecycle run.
-# Keep it outside the prediction control contract.
-# Weekly is a release review and intraday is a read-only prospective evidence
-# collector; neither is a new event prediction lifecycle run.
-if [ "$MODE" = "weekly" ] || [ "$MODE" = "intraday" ]; then
-  exec /usr/bin/python3 "$SCRIPT_DIR/hkjc_daily_schedule.py" --mode "$MODE" "$@"
-fi
 exec /usr/bin/python3 "$CONTROL_PLANE" --domain hkjc --mode "$MODE" "$@"

@@ -1,0 +1,73 @@
+{
+  "signal_pairwise_auc": [
+    {
+      "dimension": "sectional",
+      "pass": 0.6848832772166106,
+      "miss": 0.5399505997856251,
+      "unrescued": 0.4424827641494309
+    },
+    {
+      "dimension": "trainer_signal",
+      "pass": 0.7128988295654962,
+      "miss": 0.6245368233946914,
+      "unrescued": 0.5117968040190264
+    },
+    {
+      "dimension": "stability",
+      "pass": 0.7681443001443002,
+      "miss": 0.6299342530941515,
+      "unrescued": 0.5112858746192079
+    },
+    {
+      "dimension": "race_shape",
+      "pass": 0.7227109988776655,
+      "miss": 0.52739557162146,
+      "unrescued": 0.47584749612527383
+    },
+    {
+      "dimension": "class_advantage",
+      "pass": 0.710407647907648,
+      "miss": 0.5902763128016936,
+      "unrescued": 0.4595117845117845
+    },
+    {
+      "dimension": "horse_health",
+      "pass": 0.6030174763508097,
+      "miss": 0.5147659822786725,
+      "unrescued": 0.4281330500774945
+    },
+    {
+      "dimension": "form_line",
+      "pass": 0.587011063011063,
+      "miss": 0.5434955061858615,
+      "unrescued": 0.4827895355673133
+    }
+  ],
+  "cohorts": [
+    {
+      "venue": "沙田",
+      "surface": "AWT",
+      "races": 7,
+      "misses": 7,
+      "positive_unrescuable": 2
+    },
+    {
+      "venue": "沙田",
+      "surface": "Turf",
+      "races": 176,
+      "misses": 123,
+      "positive_unrescuable": 24
+    },
+    {
+      "venue": "跑馬地",
+      "surface": "Turf",
+      "races": 89,
+      "misses": 67,
+      "positive_unrescuable": 19
+    }
+  ],
+  "original_archive_misses": 206,
+  "overlap_misses": 176,
+  "replay_recovers_original": 30,
+  "replay_new_misses": 21
+}

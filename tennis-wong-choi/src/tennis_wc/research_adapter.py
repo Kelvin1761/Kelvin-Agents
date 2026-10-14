@@ -254,6 +254,9 @@ def read_settlement_sources(
                    m.player_a_id, m.player_b_id,
                    pa.name AS player_a_name, pb.name AS player_b_name,
                    p.selection_player_id, p.model_probability, p.no_vig_market_probability,
+                   (SELECT COUNT(DISTINCT all_results.winner_player_id)
+                    FROM match_results all_results WHERE all_results.match_id=p.match_id
+                   ) AS result_winner_count,
                    r.winner_player_id, r.source_provider AS result_source_provider,
                    r.raw_response_id AS result_raw_response_id,
                    r.created_at AS result_created_at,
@@ -294,6 +297,8 @@ def read_settlement_sources(
                 raise ValueError("invalid frozen forecast comparison") from exc
             if changed:
                 raise ValueError("stored prediction differs from frozen forecast")
+            if row["result_winner_count"] > 1:
+                raise ValueError("conflicting native result winners")
             if row["winner_player_id"] is None or row["raw_id"] is None:
                 raise ValueError("canonical result or raw provenance missing")
             raw_id = row["raw_id"]

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from collections import Counter
@@ -263,7 +264,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--cache-dir", type=Path,
-        default=AU_RACING / ".sportsbet_cache",
+        default=Path(os.environ.get("WC_SB_CACHE") or AU_RACING / ".sportsbet_cache"),
     )
     parser.add_argument("--limit", type=int)
     parser.add_argument(

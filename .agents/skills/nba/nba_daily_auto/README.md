@@ -4,8 +4,8 @@
 
 ## Schedule（Australia/Sydney）
 
-- `pregame`：21:00 分析聽日並保存 append-only `warmup` snapshot，但唔 publish／唔發content投注卡；00:30 refresh後保存正式 `production` snapshot並發佈；06:30只刷新未開賽game，有material source change先保存 `final_refresh` snapshot。所有舊snapshot保留，已開賽game artifacts不可改寫。
-- `postgame`：18:30、21:30 抽賽果、verify props、更新 reflector DB、產生 dashboard settlement proposal；結果完整先歸檔。
+- `pregame`：19:30 分析聽日並保存 append-only `warmup` snapshot，但唔 publish／唔發content投注卡；20:30 refresh聽日資料後保存正式 `production` snapshot並發佈；06:30只刷新未開賽game，有material source change先保存 `final_refresh` snapshot。所有舊snapshot保留，已開賽game artifacts不可改寫。
+- `postgame`：18:30、20:00 抽賽果、verify props、更新 reflector DB、產生 dashboard settlement proposal；結果完整先歸檔。
 - `health`：10:30 核實 ESPN schedule、今日 prediction snapshot 或已歸檔狀態。
 - `startup`：登入後補昨日 postgame，再補當前 pregame。
 
@@ -84,3 +84,19 @@ candidate. `drive_provenance.json` records source file IDs, modification times,
 byte counts, and hashes. Approved future model replacements must refresh this
 cache together with their model release; do not leave an older local v3 copy
 active after updating the source artifacts.
+
+## 遊戲時段與補跑（2026-10-12）
+
+每日悉尼 22:00–01:00 不啟動新排程工作；wrapper 在 self-update／下載前先檢查。
+待辦保存在 `~/WongChoiData/WongChoiControl/deferred/<domain>/`，保留原日期、時段與參數；
+新增 `.deferred` launchd job 每小時於非遊戲時段處理一項。AU :40、HKJC :20、NBA :50、Tennis :10，
+所以來源暫時失敗會至少冷卻 30 分鐘，實際補跑按下一個可用時段，沒有即時三連重跑。
+最多三次來源重試；checkpoint 可續跑至獨立有界上限，失敗 manifest 保留。
+
+21:45 起，scheduler-managed 子程序在新命令／AU 頁面請求邊界記 partial，稍後重入工作。
+已開始的子程序會安全完成，可能跨過 22:00；沒有強行中斷寫入或假稱完全零負載。
+未經 control-plane 直接執行分析／研究腳本不受這個排程閘保護。
+
+HKJC 20:00 起延後完整 prerace／recovery／startup 至 01:15；PDF 未齊時 extractor 早退，
+不改 fresh-data gate。Tennis 保留 09:00 card 及 18:00 日結；Tennis recovery 改經同一 wrapper。
+安裝器及 runtime verifier 已包含新增 job；新模板必須安裝後才改變現役 launchd 時間。

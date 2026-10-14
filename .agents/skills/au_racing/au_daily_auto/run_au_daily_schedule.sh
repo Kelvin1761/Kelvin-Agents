@@ -51,6 +51,11 @@ NOTIFY_ENV="$HOME/.wongchoi_notify.env"
 
 cd "$PROJECT_ROOT" || exit 1
 
+if [ "$MODE" = "deferred" ] || PYTHONPATH="$PROJECT_ROOT/.agents/skills" /usr/bin/python3 -c 'from datetime import datetime; from shared_wong_choi.scheduler_window import SYDNEY, quiet_until; import sys; sys.exit(0 if quiet_until(datetime.now(SYDNEY)) else 1)'; then
+  exec /usr/bin/python3 "$CONTROL_PLANE" --domain au --mode "$MODE" "$@"
+fi
+
+
 # launchd 會喺 Mac 剛睡醒、Wi-Fi/DNS 仲未 ready 嗰刻準時開 job。2026-09-11
 # 22:00 實測：GitHub、Cloudflare dashboard 同 Sportsbet 三個獨立 host 一齊
 # `Could not resolve host`，五分鐘後全部正常。直接開 pipeline 會變成一條假嘅

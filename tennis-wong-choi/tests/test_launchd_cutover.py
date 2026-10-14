@@ -75,9 +75,13 @@ def test_rendered_launchd_uses_versioned_code_and_existing_runtime(
     assert card["ProgramArguments"][:3] == ["/bin/zsh", runner, "card"]
     assert daily["ProgramArguments"][:2] == ["/bin/zsh", runner]
     assert recovery["ProgramArguments"] == [
-        str(python_bin),
-        str(PROJECT_DIR / "scripts" / "tennis_card_recovery.py"),
+        "/bin/zsh", runner, "recovery",
     ]
+    deferred = plistlib.load(
+        (destination / "com.antigravity.tennis-wong-choi.deferred.plist").open("rb")
+    )
+    assert deferred["ProgramArguments"] == ["/bin/zsh", runner, "deferred"]
+    assert deferred["EnvironmentVariables"]["DATABASE_URL"] == database_url
 
     cli_env = os.environ.copy()
     cli_env.pop("TENNIS_PROVIDER", None)

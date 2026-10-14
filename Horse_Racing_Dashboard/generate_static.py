@@ -644,6 +644,9 @@ def _merge_sports_feed(cached, fresh):
 
 def generate_html(data):
     """Generate self-contained HTML dashboard."""
+    # Research receipts are private local artifacts, not public race snapshots.
+    # Drop the reserved cache field before both HTML and downstream JSON export.
+    data.pop("research_feed", None)
     # A base snapshot may already contain yesterday's sports_feed.  It is only
     # a transport/cache for race data, never the authority for NBA/Tennis.
     # Rebuild the feed on every deploy so completed domain analysis appears
@@ -690,6 +693,8 @@ def generate_html(data):
     # Replace placeholders
     html = template.replace("/* __CSS_PLACEHOLDER__ */", css_content)
     html = html.replace('"__DATA_PLACEHOLDER__"', data_json)
+    html = html.replace('"__RESEARCH_PLACEHOLDER__"', "null")
+    html = html.replace('"__DEFAULT_WORKSPACE_PLACEHOLDER__"', '"horses"')
     html = html.replace("__GENERATED_TIME__", generated_time)
     
     return html

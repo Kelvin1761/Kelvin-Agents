@@ -12,6 +12,7 @@ from .contracts import Domain, Operation
 
 
 SYDNEY = ZoneInfo("Australia/Sydney")
+NBA_ROLE_SLOTS = {"warmup": "19:30", "production": "20:30", "final_refresh": "06:30"}
 
 
 class CalendarMode(str, Enum):
@@ -96,7 +97,7 @@ DOMAIN_SCHEDULES: dict[Domain, DomainSchedulePolicy] = {
             JobPolicy(
                 "evening",
                 Operation.PREDICT,
-                times=(_t(22, 0),),
+                times=(_t(17, 0),),
                 freshness_role=FreshnessRole.PRODUCTION,
                 refresh_scope=RefreshScope.ALL,
                 snapshot_mode=SnapshotMode.APPEND_ONLY,
@@ -128,13 +129,13 @@ DOMAIN_SCHEDULES: dict[Domain, DomainSchedulePolicy] = {
             JobPolicy(
                 "watch",
                 Operation.DISCOVER,
-                times=(_t(0, 15), _t(9, 15), _t(21, 15), _t(23, 15)),
+                times=(_t(1, 5), _t(9, 15), _t(19, 15)),
                 freshness_role=FreshnessRole.WATCH,
             ),
             JobPolicy(
                 "prerace",
                 Operation.PREDICT,
-                times=(_t(0, 30), _t(8, 0), _t(11, 0), _t(21, 30), _t(23, 30)),
+                times=(_t(1, 15), _t(8, 0), _t(11, 0)),
                 freshness_role=FreshnessRole.PRODUCTION,
                 refresh_scope=RefreshScope.UNSTARTED_ONLY,
                 snapshot_mode=SnapshotMode.APPEND_ONLY,
@@ -192,7 +193,7 @@ DOMAIN_SCHEDULES: dict[Domain, DomainSchedulePolicy] = {
             JobPolicy(
                 "pregame",
                 Operation.PREDICT,
-                times=(_t(21, 0),),
+                times=(_t(19, 30),),
                 target_day_offset=1,
                 freshness_role=FreshnessRole.WARMUP,
                 refresh_scope=RefreshScope.ALL,
@@ -203,7 +204,8 @@ DOMAIN_SCHEDULES: dict[Domain, DomainSchedulePolicy] = {
             JobPolicy(
                 "pregame",
                 Operation.PREDICT,
-                times=(_t(0, 30),),
+                times=(_t(20, 30),),
+                target_day_offset=1,
                 freshness_role=FreshnessRole.PRODUCTION,
                 refresh_scope=RefreshScope.UNSTARTED_ONLY,
                 snapshot_mode=SnapshotMode.APPEND_ONLY,
@@ -229,7 +231,7 @@ DOMAIN_SCHEDULES: dict[Domain, DomainSchedulePolicy] = {
             JobPolicy(
                 "postgame",
                 Operation.SETTLE,
-                times=(_t(18, 30), _t(21, 30)),
+                times=(_t(18, 30), _t(20, 0)),
                 freshness_role=FreshnessRole.POST_EVENT,
                 publish_allowed=True,
             ),
@@ -253,6 +255,9 @@ def due_runs(
 ) -> tuple[ScheduledRun, ...]:
     if now.tzinfo is None or now.utcoffset() is None:
         raise ValueError("scheduler clock must be timezone-aware")
+    from .scheduler_window import quiet_until
+    if quiet_until(now):
+        return ()
     policy = DOMAIN_SCHEDULES[Domain(domain)]
     local = now.astimezone(ZoneInfo(policy.timezone)).replace(second=0, microsecond=0)
     runs = []
@@ -329,6 +334,8 @@ def refreshable_events(
 
 def nba_pregame_role(now: datetime) -> FreshnessRole:
     local = now.astimezone(SYDNEY)
+    if local.time() >= _t(20, 30):
+        return FreshnessRole.PRODUCTION
     if local.time() >= _t(12, 0):
         return FreshnessRole.WARMUP
     if local.time() < _t(3, 0):

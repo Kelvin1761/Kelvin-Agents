@@ -14,7 +14,7 @@ def download_pdf(date_str):
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     }
     
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, timeout=(10, 30))
     if response.status_code == 200:
         pdf_path = os.path.join(__import__('tempfile').gettempdir(), f"{date_str}_starter.pdf")
         with open(pdf_path, 'wb') as f:

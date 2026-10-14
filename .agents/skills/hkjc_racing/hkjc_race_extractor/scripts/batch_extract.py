@@ -343,7 +343,31 @@ def main():
         print(f"   ✅ Starter PDF saved")
     else:
         print(f"   ❌ Starter PDF failed ({pdf_state}): {pdf_err}")
-        print(f"   ⏳ PDF 未 ready；先完成其餘來源探測，整批會標記 WAITING_SOURCE。")
+        gate_mode = os.environ.get("WC_HKJC_GATE", "strict")
+        if gate_mode != "field_change" or pdf_state not in ("fresh", "kept"):
+            # PDF is a hard publish requirement. Preserve all existing valid
+            # artifacts and wait instead of fetching every race and trackwork
+            # while this meeting cannot possibly pass the publish gate.
+            readiness_path = os.path.join(output_dir, "Extraction_Readiness.json")
+            try:
+                with open(readiness_path, encoding="utf-8") as handle:
+                    readiness = json.load(handle)
+            except (OSError, ValueError):
+                readiness = {"races": [], "racecards_valid": 0, "formguides_valid": 0}
+            readiness.update({
+                "schema_version": 1,
+                "generated_at": datetime.now().astimezone().isoformat(timespec='seconds'),
+                "meeting_date": date_raw, "expected_races": len(races),
+                "status": "waiting_source", "ready": False,
+                "starter_pdf_ready": False, "starter_pdf_state": pdf_state,
+                "starter_pdf_error": pdf_err or "", "gate_mode": gate_mode,
+                "racecards_ready": 0, "formguides_ready": 0,
+                "remaining_sources_not_attempted": True,
+                "self_recovery": "automatic_retry",
+            })
+            _atomic_write_json(readiness_path, readiness)
+            print("   ⏳ PDF 未 ready；保留其他來源，延後整批抽取。")
+            sys.exit(EXIT_TEMPORARY)
     print()
 
     # Step 2: Extract 晨操 (trackwork) — all races in one shot, fail-soft

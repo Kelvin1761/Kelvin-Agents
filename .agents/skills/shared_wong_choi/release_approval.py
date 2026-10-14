@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .release_events import ReleaseEventStore, effective_status
-from .release_manager import ReleaseError, _notify, _run
+from .release_manager import ReleaseError, _notify, _run, _retain_gate_output
 
 
 COMMIT_SELECTOR = re.compile(r"^[0-9a-f]{12,64}$")
@@ -61,8 +61,9 @@ def _run_gate_in_clean_clone(repo: Path, commit: str, check_name: str) -> None:
         if check_name == "quick":
             command.append("--quick")
         gate = _run(clone, *command, check=False, timeout=7200)
+        log_path = _retain_gate_output(repo, commit, check_name, gate)
         if gate.returncode != 0:
-            raise ReleaseError("approval recheck gate failed")
+            raise ReleaseError(f"approval recheck gate failed; output retained at {log_path}")
 
 
 def approve_release(

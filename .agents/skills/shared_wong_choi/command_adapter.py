@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -77,7 +78,8 @@ class ManifestCommandAdapter(ABC):
         # 提都冇提過係邊條命令、真正壞咗嘅係咩。AU 個 runner 2026-08-13
         # 已經因為同一件事修好咗 —— 但呢個教訓冇搬過嚟。
         # subprocess 輸出係俾人睇嘅 log，永遠唔應該有能力令 run 死。
-        return run_bounded(command, cwd=self.repo_root, timeout=timeout)
+        return run_bounded(command, cwd=self.repo_root, timeout=timeout,
+                           env={**os.environ, "WC_SCHEDULER_MANAGED": "1"})
 
     def entrypoint(self, request: RunRequest) -> Path:
         identity = request.identity

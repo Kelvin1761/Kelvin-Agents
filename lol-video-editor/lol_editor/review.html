@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LoL Clip Review</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#10141c;color:#edf3ff;font:15px system-ui,sans-serif}
+header{padding:24px 4vw;border-bottom:1px solid #303b50}h1{font-size:25px;margin:0 0 8px}p{color:#aebbd1;line-height:1.5}
+main{padding:24px 4vw;display:grid;grid-template-columns:minmax(300px,1.1fr) minmax(320px,1fr);gap:28px}
+video{width:100%;background:#000;border-radius:10px}aside{position:sticky;top:20px;align-self:start}
+button,select,input{font:inherit;border-radius:6px;border:1px solid #495a78;background:#1e2a40;color:#fff;padding:8px}
+button{cursor:pointer}button:hover{background:#334665}button.primary{background:#315fe4}button:disabled{opacity:.5}
+input[type=number]{width:105px}label{display:inline-flex;gap:6px;align-items:center}nav{display:flex;gap:8px;margin:16px 0}
+.clip{padding:15px;border:1px solid #35435e;border-radius:8px;margin:10px 0}.clip p{margin:8px 0;font-size:13px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px}.status{color:#baccff;min-height:24px}.muted{font-size:13px;color:#aebbd1}
+textarea{width:100%;min-height:75px;background:#192236;color:#fff;border:1px solid #495a78;padding:10px;font:18px system-ui;border-radius:6px;margin:10px 0}
+#captionNow{font-size:20px;min-height:34px;color:#fff;text-align:center}
+canvas{width:100%;height:80px;background:#172035;border-radius:6px;margin:12px 0;cursor:crosshair}
+details{margin:15px 0}table{width:100%;font-size:12px}td{padding:5px;border-bottom:1px solid #303b50}
+@media(max-width:850px){main{grid-template-columns:1fr}aside{position:static}}
+</style>
+<header><h1>LoL Clip Review</h1><div id="source">Loading saved analysis…</div></header>
+<main><aside><video id="video" controls preload="metadata"></video>
+<div id="captionNow" lang="zh-HK"></div>
+<canvas id="chart" width="900" height="100" title="Click to seek to a scored moment"></canvas>
+<div class="toolbar"><button id="markStart">Use playhead as start</button><button id="markEnd">Use playhead as end</button>
+<select id="frame"><option value="fit">Full gameplay frame</option><option value="crop">Center crop preview</option></select></div>
+<p id="now" class="muted"></p><p>Preview a clip, check its setup and outcome, then adjust the start and end in seconds.
+The vertical fit export preserves the HUD with padding. Center crop can hide action and the minimap.</p>
+<p id="speech" class="muted"></p><p id="status" class="status" role="status" aria-live="polite"></p>
+<button id="save" class="primary">Save selection</button>
+<p class="muted">Saving keeps the previous revision. Export with the render command after review. Scores indicate possible moments, not verified kills.</p>
+</aside><section><nav><button id="highlights">YouTube highlights</button><button id="shorts">笑位 Reels</button><button id="captions">編輯字幕</button></nav>
+<div id="captionTools" hidden><label>篩選 <select id="captionFilter"><option value="all">全部字幕</option><option value="uncertain">低信心／未校對</option><option value="funny">已標笑位</option></select></label>
+<button id="previous">上一頁</button><button id="next">下一頁</button><span id="captionPage"></span>
+<p class="muted">原片時間（秒）。可改字、時間，標記已校對／笑位；唔加人名。空白文字不會輸出。每頁 40 句。</p></div>
+<div id="summary"></div><div id="clips"></div><button id="add">Add clip at playhead</button>
+<details><summary>Highest scoring windows / voice transcript</summary><table id="scores"></table></details>
+</section></main>
+<script>
+const token=new URLSearchParams(location.search).get('token');
+const url=p=>p+'?token='+encodeURIComponent(token);
+const video=document.getElementById('video'), status=document.getElementById('status');
+let data, selection, captions, captionPage=0, kind='highlights', active=null, stopAt=null, dirty=false, dirtyCaption=false, dirtySelection=false;
+function markDirty(){if(kind==='captions')dirtyCaption=true;else dirtySelection=true;dirty=true}
+const time=s=>new Date(s*1000).toISOString().slice(11,19);
+const el=(tag,text)=>{const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n};
+async function load(){const response=await fetch(url('/api'));if(!response.ok)throw Error('Review access failed');
+data=await response.json();selection=data.selection;captions=data.captions;document.getElementById('source').textContent=data.source+' · '+time(data.duration);
+video.src=url('/video');document.getElementById('speech').textContent='Speech: '+data.speech.status+
+(data.speech.coverage?' · '+Math.round(data.speech.coverage.reduce((s,c)=>s+c[1]-c[0],0))+' seconds transcribed':'');
+draw();show();const table=document.getElementById('scores');
+[...data.rows].sort((a,b)=>b.score-a.score).slice(0,40).forEach(r=>{const tr=el('tr'),a=el('td'),b=el('button',time(r.start));
+b.onclick=()=>{video.currentTime=r.start;stopAt=r.end;video.play()};a.append(b);tr.append(a,el('td',r.score.toFixed(2)),el('td',r.text||r.reasons.join(', ')));table.append(tr)})}
+function draw(){const c=document.getElementById('chart'),ctx=c.getContext('2d');ctx.clearRect(0,0,c.width,c.height);ctx.fillStyle='#7194ff';
+data.rows.forEach(r=>ctx.fillRect(r.start/data.duration*c.width,100-r.score*95,Math.max(1,5/data.duration*c.width),r.score*95));
+c.onclick=e=>{video.currentTime=(e.clientX-c.getBoundingClientRect().left)/c.clientWidth*data.duration;stopAt=null}}
+function show(){const list=document.getElementById('clips');list.replaceChildren();active=null;stopAt=null;
+document.getElementById('add').textContent='Add clip at playhead';document.getElementById('captionTools').hidden=kind!=='captions';document.getElementById('save').textContent=kind==='captions'?'保存字幕':'Save selection';
+const total=selection.highlights.reduce((n,c)=>n+c.end-c.start,0);
+document.getElementById('summary').textContent=`長片: ${(total/60).toFixed(1)} 分鐘${selection.mode==='conversation'?(selection.target_seconds?'（對話為主，目標 '+(selection.target_seconds/60)+' 分鐘）':'（對話為主）'):''} · Reels: ${selection.shorts.length} / 5`;
+if(kind==='captions'){showCaptions();return}
+selection[kind].forEach((c,index)=>{const card=el('div');card.className='clip';const toolbar=el('div');toolbar.className='toolbar';
+const play=el('button',`Preview ${index+1}`);play.onclick=()=>{active=c;video.currentTime=c.start;stopAt=c.end;video.play()};toolbar.append(play);
+['start','end'].forEach(key=>{const label=el('label',key),input=el('input');input.type='number';input.min=0;input.max=data.duration;input.step=.1;input.value=c[key];
+input.onfocus=()=>active=c;input.onchange=()=>{c[key]=Number(input.value);markDirty();status.textContent='Unsaved timestamp changes'};label.append(input);toolbar.append(label)});
+const remove=el('button','Remove');remove.onclick=()=>{selection[kind].splice(index,1);markDirty();show()};toolbar.append(remove);card.append(toolbar);
+card.append(el('p',`Score ${(c.score||0).toFixed(2)} · ${(c.reasons||['Manually selected']).join(' · ')}`));list.append(card)});
+document.getElementById('add').disabled=kind==='shorts'&&selection.shorts.length>=5}
+document.getElementById('highlights').onclick=()=>{kind='highlights';show()};document.getElementById('shorts').onclick=()=>{kind='shorts';show()};
+document.getElementById('captions').onclick=()=>{kind='captions';show()};
+function showCaptions(){const filter=document.getElementById('captionFilter').value;
+const items=captions.segments.filter(c=>filter==='all'||(filter==='funny'?c.funny:(c.uncertain||!c.reviewed)));
+const pages=Math.max(1,Math.ceil(items.length/40));captionPage=Math.min(captionPage,pages-1);
+document.getElementById('captionPage').textContent=`${captionPage+1}/${pages} · ${items.length} 句`;
+document.getElementById('previous').disabled=captionPage===0;document.getElementById('next').disabled=captionPage===pages-1;
+const list=document.getElementById('clips');items.slice(captionPage*40,(captionPage+1)*40).forEach(c=>{
+const card=el('div');card.className='clip';const toolbar=el('div');toolbar.className='toolbar';
+const play=el('button','重聽 '+time(c.start));play.onclick=()=>{active=c;video.currentTime=Math.max(0,c.start-.4);stopAt=c.end+.4;video.play()};toolbar.append(play);
+['start','end'].forEach(key=>{const label=el('label',key),input=el('input');input.type='number';input.step=.1;input.min=0;input.max=data.duration;input.value=c[key];
+input.onfocus=()=>active=c;input.onchange=()=>{c[key]=Number(input.value);markDirty()};label.append(input);toolbar.append(label)});card.append(toolbar);
+const text=el('textarea');text.value=c.text;text.setAttribute('aria-label','香港繁體字幕 '+time(c.start));text.oninput=()=>{c.text=text.value;markDirty()};card.append(text);
+['reviewed','funny'].forEach(key=>{const label=el('label',key==='reviewed'?'已校對':'笑位'),input=el('input');input.type='checkbox';input.checked=!!c[key];
+input.onchange=()=>{c[key]=input.checked;markDirty()};label.append(input);card.append(label)});
+card.append(el('p',(c.uncertain?'⚠ 低信心，請重聽。 ':'')+'原辨識：'+(c.raw_text||c.text)));list.append(card)});
+document.getElementById('add').disabled=false;document.getElementById('add').textContent='喺播放位置加字幕'}
+document.getElementById('captionFilter').onchange=()=>{captionPage=0;show()};
+document.getElementById('previous').onclick=()=>{captionPage--;show()};document.getElementById('next').onclick=()=>{captionPage++;show()};
+document.getElementById('add').onclick=()=>{const length=kind==='shorts'?30:60,start=Math.max(0,Math.min(video.currentTime,data.duration-length));
+if(kind==='captions'){const start=Math.min(video.currentTime,data.duration-.1);captions.segments.push({id:crypto.randomUUID(),start,end:Math.min(start+2,data.duration),text:'',raw_text:'',reviewed:false,funny:false,uncertain:true});captions.segments.sort((a,b)=>a.start-b.start);markDirty();captionPage=Math.floor(captions.segments.findIndex(c=>c.start===start)/40);document.getElementById('captionFilter').value='all';show();return}
+selection[kind].push({start,end:Math.min(start+length,data.duration),score:0,reasons:['Manually selected']});markDirty();show()};
+['Start','End'].forEach(k=>document.getElementById('mark'+k).onclick=()=>{if(!active){status.textContent='Preview a clip first';return}
+active[k.toLowerCase()]=Number(video.currentTime.toFixed(3));markDirty();show()});
+document.getElementById('frame').onchange=e=>{video.style.aspectRatio=e.target.value==='crop'?'9/16':'16/9';video.style.objectFit=e.target.value==='crop'?'cover':'contain'};
+video.ontimeupdate=()=>{document.getElementById('now').textContent='Playhead '+time(video.currentTime)+' · '+video.currentTime.toFixed(1)+'s';
+document.getElementById('captionNow').textContent=captions?captions.segments.filter(c=>c.start<=video.currentTime&&c.end>video.currentTime).map(c=>c.text).join(' / '):'';
+if(stopAt!==null&&video.currentTime>=stopAt){video.pause();stopAt=null}};
+document.getElementById('save').onclick=async()=>{try{const isCaption=kind==='captions';const r=await fetch(url(isCaption?'/captions':'/selection'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(isCaption?captions:selection)});
+const result=await r.json();if(!r.ok)throw Error(result.error);if(isCaption)captions=result;else selection=result;if(isCaption)dirtyCaption=false;else dirtySelection=false;dirty=dirtyCaption||dirtySelection;status.textContent=(isCaption?'字幕已保存 · ':'Saved revision ')+result.revision;show()}catch(e){status.textContent=e.message}};
+window.onbeforeunload=e=>{if(dirty){e.preventDefault();e.returnValue=''}};load().catch(e=>status.textContent=e.message);
+</script></html>

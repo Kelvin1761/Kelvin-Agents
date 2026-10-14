@@ -31,6 +31,8 @@ if __package__ in (None, ""):
     )
     from shared_wong_choi.control import RetryPolicy, RunManifest, manifest_path
     from shared_wong_choi.operational import operational_event
+    from shared_wong_choi.scheduler_window import DeferredQueue, next_allowed, retry_request
+    from shared_wong_choi.schedule_policy import NBA_ROLE_SLOTS
 else:
     from .adapters import create_adapter
     from .contracts import (
@@ -44,6 +46,8 @@ else:
     )
     from .control import RetryPolicy, RunManifest, manifest_path
     from .operational import operational_event
+    from .scheduler_window import DeferredQueue, next_allowed, retry_request
+    from .schedule_policy import NBA_ROLE_SLOTS
 
 
 SYDNEY = ZoneInfo("Australia/Sydney")
@@ -62,6 +66,8 @@ PRIMARY_OPERATIONS: dict[tuple[Domain, str], Operation] = {
     (Domain.HKJC, "postrace"): Operation.SETTLE,
     (Domain.HKJC, "recovery"): Operation.RECOVER,
     (Domain.HKJC, "startup"): Operation.RECOVER,
+    (Domain.HKJC, "weekly"): Operation.HEALTH,
+    (Domain.HKJC, "intraday"): Operation.HEALTH,
     (Domain.TENNIS, "card"): Operation.PREDICT,
     (Domain.TENNIS, "daily"): Operation.SETTLE,
     (Domain.TENNIS, "recovery"): Operation.RECOVER,
@@ -71,14 +77,8 @@ PRIMARY_OPERATIONS: dict[tuple[Domain, str], Operation] = {
     (Domain.NBA, "startup"): Operation.RECOVER,
 }
 
-NBA_ROLE_SLOTS = {
-    "warmup": "21:00",
-    "production": "00:30",
-    "final_refresh": "06:30",
-}
-
 FIXED_MODE_SLOTS: dict[tuple[Domain, str], str] = {
-    (Domain.AU, "evening"): "22:00",
+    (Domain.AU, "evening"): "17:00",
     (Domain.AU, "morning"): "10:00",
     (Domain.TENNIS, "card"): "09:00",
     (Domain.TENNIS, "daily"): "18:00",
@@ -124,9 +124,14 @@ def infer_target_date(
 ) -> date:
     if explicit is not None:
         return explicit
-    local_day = now.astimezone(SYDNEY).date()
-    if domain is Domain.NBA and mode == "pregame" and slot == "21:00":
-        return local_day + timedelta(days=1)
+    local = now.astimezone(SYDNEY)
+    local_day = local.date()
+    if domain is Domain.NBA and mode == "pregame" and slot in ("19:30", "20:30", "21:00"):
+        return local_day if local.hour < 12 else local_day + timedelta(days=1)
+    if domain is Domain.AU and mode == "evening" and local.hour < 12:
+        return local_day - timedelta(days=1)
+    if domain is Domain.TENNIS and mode == "daily" and local.hour < 9:
+        return local_day - timedelta(days=1)
     return local_day
 
 
@@ -194,7 +199,7 @@ def _next_request(
         if (
             candidate.identity.domain is Domain.NBA
             and candidate.identity.mode == "pregame"
-            and candidate.identity.scheduled_slot == "21:00"
+            and candidate.identity.scheduled_slot in ("19:30", "21:00")
             and existing.state is RunState.PARTIAL
             and exit_code is not None
             and retry.should_retry(exit_code=exit_code, attempt=1)
@@ -222,26 +227,86 @@ def _next_request(
 
 
 def execute_with_retry(adapter, request: RunRequest, retry: RetryPolicy) -> OperationResult:
-    current = request
-    while True:
-        result = adapter.execute(current)
-        exit_code = result.detail.get("exit_code")
-        if not (
-            result.state is RunState.PARTIAL
-            and isinstance(exit_code, int)
-            and retry.should_retry(
-                exit_code=exit_code,
-                attempt=current.identity.attempt,
-            )
-        ):
+    # Source waiting and temporary failures are retried by the durable queue,
+    # not by re-running the whole pipeline three times at the same instant.
+    return adapter.execute(request)
+
+
+def dispatch(request: RunRequest, root: Path, state_root: Path, retry: RetryPolicy,
+             clock: datetime) -> OperationResult:
+    queue = DeferredQueue(state_root, request.identity.domain)
+    pending = queue.path(request)
+    if not request.dry_run and pending.exists():
+        saved = json.loads(pending.read_text(encoding="utf-8"))
+        due = datetime.fromisoformat(saved["due_at"])
+        if due > clock:
+            return OperationResult(RunState.BLOCKED, "deferred_cooldown", artifacts=(str(pending),),
+                                   detail={"next_retry_at": due.isoformat()})
+    allowed = next_allowed(clock, request.identity.domain, request.identity.mode)
+    if allowed > clock and not request.dry_run:
+        path = queue.put(request, allowed, reason="gaming_window")
+        return OperationResult(RunState.BLOCKED, "deferred_quiet_hours", artifacts=(str(path),),
+                               detail={"next_retry_at": allowed.isoformat()})
+    # A fresh launchd invocation may race the deferred consumer after cooldown.
+    # Resume the saved identity and retry budget rather than replaying attempt 1.
+    if not request.dry_run and pending.exists():
+        request = queue.request(json.loads(pending.read_text(encoding="utf-8")))
+    adapter = create_adapter(request.identity.domain, root, state_root)
+    result = execute_with_retry(adapter, request, retry)
+    exit_code = result.detail.get("exit_code")
+    if not request.dry_run and result.state is RunState.PARTIAL and isinstance(exit_code, int):
+        payload = result.detail.get("source_payload") or {}
+        checkpoint = payload.get("reason") == "gaming_window_checkpoint"
+        failures = int(request.metadata.get("temporary_failures", 0)) + (0 if checkpoint else 1)
+        limit = int(request.metadata.get("max_attempts", retry.max_attempts))
+        if (exit_code in retry.retryable_exit_codes
+                and request.identity.attempt < FORCE_ATTEMPT_CEILING
+                and (checkpoint or failures < limit)):
+            next_request = replace(retry_request(request), metadata={
+                **request.metadata, "temporary_failures": failures,
+            })
+            finished = max(clock, datetime.now(SYDNEY))
+            due = next_allowed(finished + timedelta(minutes=30), request.identity.domain, request.identity.mode)
+            queue.put(next_request, due, reason="checkpoint" if checkpoint else "temporary_failure",
+                      replace_existing=True)
+            result = replace(result, detail={**result.detail, "next_retry_at": due.isoformat()})
+    elif not request.dry_run and result.state is RunState.BLOCKED:
+        due = next_allowed(max(clock, datetime.now(SYDNEY)) + timedelta(minutes=30),
+                           request.identity.domain, request.identity.mode)
+        if result.detail.get("source_payload"):
+            request = retry_request(request)
+        if request.identity.attempt > FORCE_ATTEMPT_CEILING:
             return result
-        current = replace(
-            current,
-            identity=replace(
-                current.identity,
-                attempt=current.identity.attempt + 1,
-            ),
-        )
+        queue.put(request, due, reason="scheduler_locked", replace_existing=True)
+        result = replace(result, detail={**result.detail, "next_retry_at": due.isoformat()})
+    return result
+
+
+def drain_deferred(domain: Domain, root: Path, state_root: Path, clock: datetime) -> int:
+    from shared_wong_choi.control import single_run_lock
+    queue = DeferredQueue(state_root, domain)
+    if next_allowed(clock, domain, "deferred") > clock:
+        print(json.dumps({"status": "quiet_hours", "domain": domain.value}))
+        return 0
+    with single_run_lock(queue.root / "drain.lock") as acquired:
+        if not acquired:
+            return 0
+        for path, request in queue.ready(clock):
+            request = _next_request(request, state_root,
+                                    RetryPolicy(max_attempts=int(request.metadata.get("max_attempts", 3))),
+                                    force=bool(request.metadata.get("force")))
+            result = dispatch(request, root, state_root,
+                              RetryPolicy(max_attempts=int(request.metadata.get("max_attempts", 3))), clock)
+            # Rescheduled requests retain the same filename with a new attempt.
+            if "next_retry_at" not in result.detail:
+                path.unlink(missing_ok=True)
+            print(json.dumps({"domain": domain.value, "status": result.status,
+                              "target_date": request.identity.target_date.isoformat(),
+                              "scheduled_slot": request.identity.scheduled_slot,
+                              "detail": dict(result.detail)}, ensure_ascii=False))
+            return 0
+    print(json.dumps({"status": "no_pending_requests", "domain": domain.value}))
+    return 0
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -287,6 +352,13 @@ def main(
 
     domain = Domain(args.domain)
     mode = args.mode.strip().lower()
+    state_root = args.state_root.expanduser().resolve()
+    root = repo_root or Path(__file__).resolve().parents[3]
+    if mode == "deferred":
+        if args.dry_run:
+            print(json.dumps({"status": "dry_run", "domain": domain.value}))
+            return 0
+        return drain_deferred(domain, root, state_root, clock)
     try:
         operation = Operation(args.operation) if args.operation else primary_operation(domain, mode)
         slot = infer_slot(
@@ -312,6 +384,7 @@ def main(
         "meeting_url": args.meeting_url,
         "force": args.force,
         "scheduler_args": tuple(scheduler_args),
+        "max_attempts": args.max_attempts,
     }
     request = RunRequest(identity, operation, dry_run=args.dry_run, metadata=metadata)
     state_root = args.state_root.expanduser().resolve()
@@ -319,9 +392,7 @@ def main(
     if not args.dry_run:
         request = _next_request(request, state_root, retry, force=args.force)
 
-    root = repo_root or Path(__file__).resolve().parents[3]
-    adapter = create_adapter(domain, root, state_root)
-    result = execute_with_retry(adapter, request, retry)
+    result = dispatch(request, root, state_root, retry, clock)
     event = operational_event(request, result)
     output = {
         "schema_version": "wong-choi-control-result/v1",

@@ -391,7 +391,9 @@ def test_racing_sample_initialization_never_overwrites_existing_watermark(tmp_pa
     assert sample_state(path) == before
 
 
-def test_legacy_single_scope_racing_watermark_migrates_only_after_verified_review(tmp_path):
+def test_legacy_single_scope_racing_watermark_migrates_only_after_verified_review(tmp_path, monkeypatch):
+    import shared_wong_choi.research_racing_monitoring_page_runtime as paged_runtime
+    from shared_wong_choi.research_supervision import RacingMonitoringSampleInspectionRunner
     runtime, registry = setup(tmp_path)
     evidence, as_of, _result = racing_au_source(tmp_path / 'source')
     (runtime.state_root / 'research-review-cursors').mkdir(parents=True)
@@ -403,11 +405,16 @@ def test_legacy_single_scope_racing_watermark_migrates_only_after_verified_revie
         ruler_released_at=as_of - timedelta(days=30),
     )
     runner.initialize_racing_samples(domain=Domain.AU, evidence_root=evidence)
-    first = runner.run(
-        domain=Domain.AU, now=as_of, ruler_digest='1' * 64,
-        ruler_released_at=as_of - timedelta(days=30),
-        estimated_bytes=1048576, timeout_seconds=20,
-    )
+    # Create an actual old-schema watermark, not a new paged report dressed in
+    # old reference fields. Restore the new producer before the migration pass.
+    with monkeypatch.context() as old_runtime:
+        old_runtime.setattr(paged_runtime, 'RacingMonitoringCorpusInspectionRunner',
+                            RacingMonitoringSampleInspectionRunner)
+        first = runner.run(
+            domain=Domain.AU, now=as_of, ruler_digest='1' * 64,
+            ruler_released_at=as_of - timedelta(days=30),
+            estimated_bytes=1048576, timeout_seconds=20,
+        )
     assert first.disposition is ResearchDisposition.SUCCEEDED
     legacy = sample_state(path)
     reference = legacy['last_report']
@@ -432,6 +439,8 @@ def test_legacy_single_scope_racing_watermark_migrates_only_after_verified_revie
     assert second.disposition is ResearchDisposition.SUCCEEDED, second
     assert sample_state(path)['last_report'].get('scope_counts') == {'all': 1}
     assert 'sample_count' not in sample_state(path)['last_report']
+    from shared_wong_choi.research_racing_monitoring_pages import COVERAGE_SCHEMA
+    assert json.loads(Path(sample_state(path)['last_report']['path']).read_text())['schema_version'] == COVERAGE_SCHEMA
 
 
 def test_review_backlog_does_not_consume_racing_sample_watermark(tmp_path):
@@ -495,7 +504,9 @@ def test_changed_racing_source_blocks_both_cursors_without_rewriting_history(tmp
         ruler_released_at=as_of - timedelta(days=30),
         estimated_bytes=1048576, timeout_seconds=20,
     )
-    assert blocked.disposition is ResearchDisposition.BLOCKED
+    # Native source reconstruction now belongs to the supervised child, so its
+    # verification failure is propagated as FAILED, not a parent read BLOCKED.
+    assert blocked.disposition is ResearchDisposition.FAILED
     assert state(path) == before_cursor
     assert sample_state(path) == before_sample
 

@@ -69,6 +69,7 @@ from shared_wong_choi.schedule_policy import (  # noqa: E402
     FreshnessRole,
     nba_pregame_role,
 )
+from shared_wong_choi.scheduler_window import checkpoint, SchedulerDeferred
 from shared_wong_choi.contracts import Domain  # noqa: E402
 from shared_wong_choi.domain_evidence import (  # noqa: E402
     record_prediction_decision_if_configured,
@@ -206,6 +207,7 @@ def _run(command: list[str], *, timeout: int = 3600) -> subprocess.CompletedProc
     # 一個 shell 錯誤訊息入面嘅孤立 0xef 就令 HKJC prerace 同 Tennis card
     # 兩個 run 死喺 UnicodeDecodeError，而個訊息連係邊條命令都冇講。
     # subprocess 輸出係俾人睇嘅 log，永遠唔應該有能力令 run 死。
+    checkpoint()
     return subprocess.run(
         command,
         cwd=PROJECT_ROOT,
@@ -1192,6 +1194,10 @@ def main() -> int:
             log.finish(status)
             print(json.dumps({"status": status, "mode": args.mode, "target_date": target_date}))
             return 0
+        except SchedulerDeferred:
+            log.finish("partial", reason="gaming_window_checkpoint")
+            print(json.dumps({"status": "partial", "reason": "gaming_window_checkpoint"}))
+            return TEMPORARY_FAILURE
         except PlayerMarketsWaiting as exc:
             log.step(exc.step, "waiting", games=exc.games)
             log.finish("partial", reason=exc.reason, waiting_games=exc.games)

@@ -61,8 +61,16 @@ def _at(value):
 
 def _safe(path):
     path = Path(path)
-    if not path.is_absolute() or ".." in path.parts or any(item.is_symlink() for item in (path, *path.parents)):
+    if not path.is_absolute() or ".." in path.parts:
         raise ResearchIndexError("absolute non-symlink evidence path required")
+    for item in (path, *path.parents):
+        try:
+            linked = stat.S_ISLNK(os.lstat(item).st_mode)
+        except (OSError, ValueError):
+            # Preserve pathlib's missing-path and permission-error semantics.
+            linked = item.is_symlink()
+        if linked:
+            raise ResearchIndexError("absolute non-symlink evidence path required")
     return path
 
 

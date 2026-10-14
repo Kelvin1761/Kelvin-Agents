@@ -162,6 +162,9 @@ scratch/**/*.csv
 __pycache__/
 *.py[cod]
 
+# Local Codex worktree checkouts are separate repositories, not source files.
+.codex/worktrees/
+
 # 190MB × 2 嘅 DB 備份 —— 超過 GitHub 100MB 上限，唔應該入 git
 tennis-wong-choi/data/backups/
 

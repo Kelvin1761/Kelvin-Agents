@@ -64,9 +64,9 @@ done
 
 echo
 echo "NBA Wong Choi automation installed:"
-echo "  warmup   21:00 (tomorrow; no publish/content card)"
-echo "  pregame  00:30 production + 06:30 unstarted-only final refresh"
-echo "  postgame 18:30 + 21:30"
+echo "  warmup   19:30 (tomorrow; no publish/content card)"
+echo "  pregame  20:30 tomorrow production + 06:30 unstarted-only final refresh"
+echo "  postgame 18:30 + 20:00"
 echo "  health   10:30"
 echo "  startup  login catch-up"
 echo "Logs: $LOG_DIR"

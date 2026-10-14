@@ -49,10 +49,10 @@ def test_operational_event_has_stable_dedup_and_common_severity() -> None:
 @pytest.mark.parametrize(
     ("domain", "clock"),
     (
-        (Domain.AU, datetime(2026, 10, 21, 22, 0, tzinfo=SYDNEY)),
-        (Domain.HKJC, datetime(2026, 10, 21, 21, 30, tzinfo=SYDNEY)),
+        (Domain.AU, datetime(2026, 10, 21, 17, 0, tzinfo=SYDNEY)),
+        (Domain.HKJC, datetime(2026, 10, 21, 1, 15, tzinfo=SYDNEY)),
         (Domain.TENNIS, datetime(2026, 10, 21, 9, 0, tzinfo=SYDNEY)),
-        (Domain.NBA, datetime(2026, 10, 21, 0, 30, tzinfo=SYDNEY)),
+        (Domain.NBA, datetime(2026, 10, 21, 20, 30, tzinfo=SYDNEY)),
     ),
     ids=lambda value: value.value if isinstance(value, Domain) else None,
 )
@@ -78,7 +78,7 @@ def test_four_domain_release_gate_fails_closed_for_partial_stale_and_shadow(
 
 
 def test_nba_warmup_cannot_release_even_when_analysis_succeeds() -> None:
-    warmup = due_runs(datetime(2026, 10, 20, 21, 0, tzinfo=SYDNEY), Domain.NBA)[0]
+    warmup = due_runs(datetime(2026, 10, 20, 19, 30, tzinfo=SYDNEY), Domain.NBA)[0]
     success = OperationResult(RunState.SUCCEEDED, "complete")
     assert not release_allowed(
         warmup, success, calendar_mode=CalendarMode.PRODUCTION, source_fresh=True

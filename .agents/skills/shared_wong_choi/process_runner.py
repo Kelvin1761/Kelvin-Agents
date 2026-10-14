@@ -8,12 +8,13 @@ from pathlib import Path
 
 
 def run_bounded(
-    command: list[str], *, cwd: Path, timeout: float
+    command: list[str], *, cwd: Path, timeout: float, env: dict[str, str] | None = None
 ) -> subprocess.CompletedProcess[str]:
     """Run one command and kill its whole process group if the bound expires."""
     with subprocess.Popen(
         command,
         cwd=cwd,
+        env=env,
         text=True,
         encoding="utf-8",
         errors="replace",

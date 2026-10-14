@@ -8,6 +8,10 @@ MODE="${1:-health}"
 [ "$#" -gt 0 ] && shift
 
 cd "$REPO_ROOT" || exit 1
+if [ "$MODE" = "deferred" ] || PYTHONPATH="$REPO_ROOT/.agents/skills" /usr/bin/python3 -c 'from datetime import datetime; from shared_wong_choi.scheduler_window import SYDNEY, quiet_until; import sys; sys.exit(0 if quiet_until(datetime.now(SYDNEY)) else 1)'; then
+  exec /usr/bin/python3 "$CONTROL_PLANE" --domain nba --mode "$MODE" "$@"
+fi
+
 
 # 追上 origin/main。⚠️ 五個排程共用同一個 worktree，而 2026-09-09 之前**只有 AU
 # 個 wrapper 會 ff** —— 其餘四個更新 code 全靠 AU 啱啱好有開工帶挈。AU 一停，

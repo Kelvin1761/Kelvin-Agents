@@ -49,6 +49,7 @@ for item in (PROJECT_ROOT, SHARED_RACING, SHARED_WC):
         sys.path.insert(0, str(item))
 
 from racing_telegram import send_message  # noqa: E402
+from shared_wong_choi.scheduler_window import checkpoint, SchedulerDeferred
 from shared_wong_choi.contracts import Domain  # noqa: E402
 from shared_wong_choi.domain_evidence import (  # noqa: E402
     record_prediction_decision_if_configured,
@@ -278,6 +279,7 @@ def results_url(meeting_date: date) -> str:
 
 def run_cmd(cmd: list[str], *, timeout: int = 7200,
             env_overlay: dict | None = None) -> tuple[int, str]:
+    checkpoint()
     log("$ " + " ".join(str(part) for part in cmd))
     env = os.environ.copy()
     env.update(env_overlay or {})
@@ -2005,6 +2007,9 @@ def main(argv: list[str] | None = None) -> int:
                 code = run_monthly_review_reminder(state, args.state_file)
             else:
                 code = run_weekly(state, args.state_file, args.candidate_gate)
+        except SchedulerDeferred:
+            set_control_outcome("partial", reason="gaming_window_checkpoint")
+            code = EXIT_TEMPORARY
         except Exception as exc:  # noqa: BLE001
             log(f"HKJC {args.mode} failed: {type(exc).__name__}: {exc}")
             notify(f"❌ HKJC {args.mode} automation failed：{type(exc).__name__}: {exc}")

@@ -39,8 +39,8 @@ bash .agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh
 
 安裝後時間（Australia/Sydney 主機時間）：
 
-- racecard watch：00:15、09:15、21:15、23:15
-- pre-race refresh：00:30、08:00、11:00、21:30、23:30
+- racecard watch：01:05、09:15、19:15
+- pre-race refresh：01:15、08:00、11:00
 - pending source self-recovery：每 30 分鐘（只在 pending 狀態先真正重試）
 - post-race：08:30
 - weekly review：星期一 09:00
@@ -85,3 +85,19 @@ cp .agents/.env.example .agents/.env
 Runtime state/log 會寫入 `state/` 同 `logs/`，唔應 commit。候選 gate 由研究／
 evaluation workflow 寫入 `state/HKJC_Candidate_Gate.json`；必須包含 paired
 performance、branch、PR title 同 body file，scheduler 只負責開 PR 等人批准。
+
+## 遊戲時段與補跑（2026-10-12）
+
+每日悉尼 22:00–01:00 不啟動新排程工作；wrapper 在 self-update／下載前先檢查。
+待辦保存在 `~/WongChoiData/WongChoiControl/deferred/<domain>/`，保留原日期、時段與參數；
+新增 `.deferred` launchd job 每小時於非遊戲時段處理一項。AU :40、HKJC :20、NBA :50、Tennis :10，
+所以來源暫時失敗會至少冷卻 30 分鐘，實際補跑按下一個可用時段，沒有即時三連重跑。
+最多三次來源重試；checkpoint 可續跑至獨立有界上限，失敗 manifest 保留。
+
+21:45 起，scheduler-managed 子程序在新命令／AU 頁面請求邊界記 partial，稍後重入工作。
+已開始的子程序會安全完成，可能跨過 22:00；沒有強行中斷寫入或假稱完全零負載。
+未經 control-plane 直接執行分析／研究腳本不受這個排程閘保護。
+
+HKJC 20:00 起延後完整 prerace／recovery／startup 至 01:15；PDF 未齊時 extractor 早退，
+不改 fresh-data gate。Tennis 保留 09:00 card 及 18:00 日結；Tennis recovery 改經同一 wrapper。
+安裝器及 runtime verifier 已包含新增 job；新模板必須安裝後才改變現役 launchd 時間。

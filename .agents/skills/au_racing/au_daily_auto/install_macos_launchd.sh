@@ -12,6 +12,7 @@ DEST_DIR="$HOME/Library/LaunchAgents"
 UID_NUM="$(id -u)"
 LABELS=(
   com.antigravity.au-wong-choi.evening
+  com.antigravity.au-wong-choi.deferred
   com.antigravity.au-wong-choi.morning
   com.antigravity.au-wong-choi.healthcheck
   com.antigravity.au-wong-choi.bot
@@ -39,11 +40,11 @@ if [ "$action" = "uninstall" ]; then
   exit 0
 fi
 
-# 本機時區必須係 Australia/Sydney，否則 plist 嘅 22:00/10:00 唔係悉尼時間。
+# 本機時區必須係 Australia/Sydney，否則 plist 嘅 17:00/10:00 唔係悉尼時間。
 TZ_NAME="$(readlink /etc/localtime | sed 's#.*/zoneinfo/##')"
 if [ "$TZ_NAME" != "Australia/Sydney" ]; then
   echo "⚠️  本機時區係 ${TZ_NAME}，唔係 Australia/Sydney。"
-  echo "    launchd 用本機 wall clock，所以 22:00/10:00 唔會等於悉尼時間。"
+  echo "    launchd 用本機 wall clock，所以 17:00/10:00 唔會等於悉尼時間。"
   echo "    改機時區（系統設定 → 一般 → 日期與時間）之後再裝。"
   exit 1
 fi
@@ -67,8 +68,9 @@ done
 
 echo
 echo "排程（本機 = Australia/Sydney）："
-echo "  com.antigravity.au-wong-choi.evening   每日 22:00  覆盤 → 歸檔 → 分析下一賽日 → 發佈"
-echo "  com.antigravity.au-wong-choi.morning   每日 10:00  場地／退出馬覆核 → 需要時重評分 → 發佈"
+echo "  com.antigravity.au-wong-choi.evening   每日 17:00  必要賽果更新 → 分析下一賽日 → 發佈 → research shadow"
+echo "  com.antigravity.au-wong-choi.deferred
+  com.antigravity.au-wong-choi.morning   每日 10:00  場地／退出馬覆核 → 需要時重評分 → 發佈"
 echo "  com.antigravity.au-wong-choi.healthcheck 02:30／09:15／11:00  獨立核實＋已知故障補救"
 echo "  com.antigravity.au-wong-choi.bot       每 2 分鐘  Telegram 指令 poller"
 echo

@@ -163,7 +163,7 @@ def test_unified_runtime_installer_consumes_domain_launchd_cutover() -> None:
     assert plan["manual_required"] is False
 
 
-def test_unified_runtime_installer_does_not_consume_au_or_unrelated_installer() -> None:
+def test_unified_runtime_installer_does_not_consume_unrelated_installer() -> None:
     plan = activation_plan(
         [
             ".agents/skills/central_wong_choi/install_production_runtime.sh",
@@ -174,6 +174,14 @@ def test_unified_runtime_installer_does_not_consume_au_or_unrelated_installer() 
 
     assert plan["manual_required"] is True
     assert plan["manual_reasons"] == [
-        "launchd_install:.agents/skills/au_racing/au_daily_auto/install_macos_launchd.sh",
         "launchd_install:ops/install_macos_launchd.sh",
     ]
+
+
+def test_unified_runtime_consumes_au_timer_cutover_without_running_au_installer():
+    unified = ".agents/skills/central_wong_choi/install_production_runtime.sh"
+    au = ".agents/skills/au_racing/au_daily_auto/install_macos_launchd.sh"
+    plan = activation_plan([unified, au])
+    assert plan["manual_required"] is False
+    assert plan["installers"] == [unified]
+    assert activation_plan([au])["manual_required"] is True

@@ -512,6 +512,7 @@ class AutofixTests(unittest.TestCase):
         for msg in ("Pages only supports files up to 25 MiB in size",
                     "PermissionError: ... CloudStorage ... /HK_Racing",
                     "已歸檔但仲喺 dashboard：['x']",
+                    "production snapshot 核實失敗：missing=['x']",
                     "2026-08-09|Wagga 一場都冇（races_by_analyst 空)"):
             self.assertEqual(D.remedy_for({"errors": [{"message": msg}]}),
                              "republish", msg)
@@ -585,6 +586,23 @@ class AutofixTests(unittest.TestCase):
         report = D.diagnose(run, [retry, run])
         self.assertIn("## 自動補救", report)
         self.assertIn("後續 retry 已成功", report)
+
+    def test_historical_verify_live_failure_is_not_mislabelled_as_browser(self):
+        import au_diagnose as D
+        run = {
+            "status": "failed", "mode": "evening", "started_at": DAY,
+            "errors": [], "warnings": [], "meetings_processed": [],
+            "steps": [
+                {"step": "verify-live", "status": "failed",
+                 "missing": ["2026-10-14|Ascot"], "still_present": []},
+                {"step": "mirror", "status": "ok"},
+                {"step": "browser", "status": "closed"},
+            ],
+        }
+        report = D.diagnose(run, [run])
+        self.assertIn("死喺：`verify-live`", report)
+        self.assertIn("並行 deploy", report)
+        self.assertEqual(D.remedy_for(run), "republish")
 
 
 class AnalysisRecoveryTests(unittest.TestCase):

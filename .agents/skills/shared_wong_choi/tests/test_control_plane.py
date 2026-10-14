@@ -49,7 +49,7 @@ def test_warmup_slot_targets_tomorrow_and_builds_role_command(
     payload = json.loads(capsys.readouterr().out)
     assert code == 0
     assert payload["target_date"] == "2026-10-21"
-    assert payload["scheduled_slot"] == "21:00"
+    assert payload["scheduled_slot"] == "19:30"
     assert payload["severity"] == "info"
     assert payload["notification_dedup_key"].startswith("wc-op:")
     assert payload["detail"]["command"][-2:] == ["--freshness-role", "warmup"]
@@ -58,7 +58,7 @@ def test_warmup_slot_targets_tomorrow_and_builds_role_command(
 
 def test_fixed_domain_slot_is_stable_when_launchd_wakes_late() -> None:
     now = datetime(2026, 8, 26, 22, 47, tzinfo=SYDNEY)
-    assert M.infer_slot(Domain.AU, "evening", now=now) == "22:00"
+    assert M.infer_slot(Domain.AU, "evening", now=now) == "17:00"
     assert M.infer_slot(Domain.TENNIS, "daily", now=now) == "18:00"
 
 
@@ -71,7 +71,7 @@ def test_unknown_domain_mode_fails_closed() -> None:
         raise AssertionError("unknown mode unexpectedly accepted")
 
 
-def test_temporary_failure_retries_with_new_immutable_attempt() -> None:
+def test_temporary_failure_returns_without_immediate_pipeline_retry() -> None:
     calls: list[int] = []
 
     class Adapter:
@@ -90,8 +90,8 @@ def test_temporary_failure_retries_with_new_immutable_attempt() -> None:
         Operation.PREDICT,
     )
     result = M.execute_with_retry(Adapter(), request, RetryPolicy(max_attempts=3))
-    assert result.state is RunState.SUCCEEDED
-    assert calls == [1, 2]
+    assert result.state is RunState.PARTIAL
+    assert calls == [1]
 
 
 def test_scheduler_specific_options_are_forwarded_after_control_options(

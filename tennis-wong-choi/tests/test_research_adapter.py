@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -128,19 +129,26 @@ def test_missing_canonical_result_or_raw_is_blocked(sources, table):
         read_settlement_sources(conn, event_id="2026-10-09", forecast_rows=[forecast])
 
 
-def test_native_result_priority_aces_then_provider_then_latest(sources):
+def test_native_result_priority_with_coherent_winners(sources):
     conn, forecast = sources
     def selected():
         return read_settlement_sources(conn, event_id="2026-10-09", forecast_rows=[forecast])[0][0]
-    conn.execute("INSERT INTO match_results VALUES (9,7,22,'other',90,'2026-10-09T20:02:00Z','{}')")
-    assert selected()["winner_player_id"] == 11  # preferred provider, not newest
+    conn.execute("INSERT INTO match_results VALUES (9,7,11,'other',90,'2026-10-09T20:03:00Z','{}')")
+    assert selected()["result_source_provider"] == "tennismylife"
     conn.execute("UPDATE match_results SET score_json=? WHERE id=9", ('{"player_a_aces":0,"player_b_aces":0}',))
-    assert selected()["winner_player_id"] == 22  # complete aces precedes provider
+    assert selected()["result_source_provider"] == "other"
     conn.execute("UPDATE match_results SET score_json=? WHERE id=8", ('{"player_a_aces":1,"player_b_aces":2}',))
-    assert selected()["winner_player_id"] == 11
-    conn.execute("INSERT INTO match_results VALUES (10,7,22,'tennismylife',90,'2026-10-09T20:02:00Z',?)",
+    assert selected()["result_source_provider"] == "tennismylife"
+    conn.execute("INSERT INTO match_results VALUES (10,7,11,'tennismylife',90,'2026-10-09T20:04:00Z',?)",
                  ('{"player_a_aces":1,"player_b_aces":2}',))
-    assert selected()["winner_player_id"] == 22
+    assert selected()["result_created_at"] == "2026-10-09T20:04:00Z"
+
+
+def test_cross_provider_winner_conflict_cannot_be_hidden_by_priority(sources):
+    conn, forecast = sources
+    conn.execute("INSERT INTO match_results VALUES (9,7,22,'other',90,'2026-10-09T20:03:00Z','{}')")
+    with pytest.raises(ValueError, match="conflicting native result winners"):
+        read_settlement_sources(conn, event_id="2026-10-09", forecast_rows=[forecast])
 
 
 def test_duplicate_forecast_and_changed_participants_are_blocked(sources):
@@ -427,3 +435,96 @@ def test_changed_capture_before_real_writer_cannot_be_rehashed_as_valid(frozen_p
         record_research_settlement(conn, evidence_root=root, capture_root=tmp_path / "captures",
                                    event_id="2026-09-01", at=AT)
     assert EvidenceStore(root).audit()["counts"].get("settlement", 0) == 0
+
+
+@pytest.fixture
+def forward_result_source(frozen_parent, sources, monkeypatch):
+    """Real parser -> ingestion -> retained raw row, with only HTTP/clock mocked."""
+    from contextlib import contextmanager
+    from tennis_wc.ingestion import ingest_tennisexplorer as ingestion
+    from tennis_wc.ingestion import raw_response_store
+    from tennis_wc.providers.tennisexplorer_provider import TennisExplorerResultsProvider
+    from test_tennisexplorer import _page, _row
+
+    conn, _ = sources
+    _align_database_with_frozen_parent(conn)
+    conn.execute("DELETE FROM match_results")
+    conn.execute("DELETE FROM raw_api_responses")
+    conn.execute("CREATE UNIQUE INDEX result_identity ON match_results(match_id,source_provider)")
+    for name in ("request_url_hash", "request_params_json", "status_code", "entity_type", "entity_external_id"):
+        conn.execute(f"ALTER TABLE raw_api_responses ADD COLUMN {name} TEXT")
+    conn.row_factory = sqlite3.Row
+
+    @contextmanager
+    def connect():
+        yield conn
+        conn.commit()
+
+    monkeypatch.setattr(ingestion, "get_connection", connect)
+    monkeypatch.setattr(raw_response_store, "get_connection", connect)
+    monkeypatch.setattr(raw_response_store, "utc_now", lambda: "2026-09-01T20:00:00Z")
+    monkeypatch.setattr(ingestion, "utc_now", lambda: "2026-09-01T20:01:00Z")
+    html = _page(_row("r1", "Player A", "2", ["6", "6"]),
+                 _row("r1b", "Player B", "0", ["3", "4"]))
+    provider = TennisExplorerResultsProvider()
+    monkeypatch.setattr(provider, "_fetch_html", lambda _: html)
+    summary = ingestion.ingest_tennisexplorer_results("2026-09-01", provider=provider)
+    assert summary["imported"] == 1 and summary["errors"] == []
+    result = conn.execute("SELECT * FROM match_results").fetchone()
+    raw = conn.execute("SELECT * FROM raw_api_responses WHERE id=?", (result["raw_response_id"],)).fetchone()
+    assert result["source_provider"] == raw["provider_name"] == "tennisexplorer"
+    assert json.loads(raw["response_json"])["source_html"] == html
+    return frozen_parent, conn, dict(raw)
+
+
+def test_forward_http_source_to_current_immutable_settlement_receipt(forward_result_source, tmp_path):
+    from shared_wong_choi.evidence import EvidenceStore
+    from shared_wong_choi.research_tennis_settlement_source import inspect_tennis_settlement_candidates
+    (root, _, parent), conn, raw = forward_result_source
+    kwargs = dict(evidence_root=root, capture_root=tmp_path / "forward", event_id="2026-09-01")
+    first = record_research_settlement(conn, **kwargs, at=AT)
+    again = record_research_settlement(conn, **kwargs, at=AT + timedelta(days=1))
+    assert first["research_status"] == "result_provenance_captured"
+    assert first["verified_outcomes"] == 1 and first["decision_id"] == parent["decision_id"]
+    assert again["status"] == "duplicate" and first["settlement_id"] == again["settlement_id"]
+    record = EvidenceStore(root).load(first["settlement_id"])
+    artifacts = {Path(item["path"]).name: Path(item["path"]).read_bytes()
+                 for item in record["artifacts"]}
+    evidence = json.loads(artifacts["Tennis_Settlement_Evidence_2026-09-01.json"])["rows"][0]
+    assert evidence["result_raw_response_sha256"] == hashlib.sha256(raw["response_json"].encode()).hexdigest()
+    assert json.loads(artifacts[evidence["result_raw_artifact"]])["response_json"] == raw["response_json"]
+    verified = inspect_tennis_settlement_candidates(root=root, as_of=AT + timedelta(days=1))
+    assert verified["verified_outcomes"] == verified["label_verified_settlements"] == 1
+
+
+@pytest.mark.parametrize("corruption", ["missing_raw", "wrong_winner", "conflicting_provider"])
+def test_forward_invalid_result_abstains_from_verified_receipt(forward_result_source, tmp_path, corruption):
+    (root, _, _), conn, raw = forward_result_source
+    if corruption == "missing_raw":
+        conn.execute("DELETE FROM raw_api_responses")
+    elif corruption == "wrong_winner":
+        response = json.loads(raw["response_json"])
+        response["parsed_results"][0].update(winner_name="Player B", loser_name="Player A")
+        conn.execute("UPDATE raw_api_responses SET response_json=?", (json.dumps(response),))
+    else:
+        conn.execute("INSERT INTO match_results(match_id,winner_player_id,source_provider,raw_response_id,created_at,score_json) "
+                     "VALUES(501,22,'conflicting',?,'2026-09-01T20:02:00Z','{}')", (raw["id"],))
+    result = record_research_settlement(conn, evidence_root=root, capture_root=tmp_path / "forward",
+                                        event_id="2026-09-01", at=AT)
+    assert result["research_status"] == "unverified" and result["verified_outcomes"] == 0
+    assert not list((tmp_path / "forward").rglob("Tennis_Settlement_Evidence*"))
+
+
+def test_forward_captured_raw_bytes_cannot_be_tampered(forward_result_source, tmp_path):
+    from shared_wong_choi.evidence import EvidenceStore
+    from shared_wong_choi.research_tennis_settlement_source import inspect_tennis_settlement_candidates
+    (root, _, _), conn, _ = forward_result_source
+    result = record_research_settlement(conn, evidence_root=root, capture_root=tmp_path / "forward",
+                                        event_id="2026-09-01", at=AT)
+    receipt = EvidenceStore(root).load(result["settlement_id"])
+    artifact = next(Path(item["path"]) for item in receipt["artifacts"]
+                    if Path(item["path"]).name.startswith("Tennis_Settlement_Raw_"))
+    original = artifact.read_bytes()
+    artifact.write_bytes(original.replace(b'Player A', b'Player X'))
+    with pytest.raises(ValueError, match="artifact provenance mismatch"):
+        inspect_tennis_settlement_candidates(root=root, as_of=AT + timedelta(days=1))

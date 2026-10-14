@@ -99,3 +99,26 @@ def test_partial_batch_writes_manifest_and_exits_temporary(tmp_path: Path, monke
     assert readiness["status"] == "waiting_source"
     assert readiness["formguides_ready"] == 0
     assert readiness["self_recovery"] == "automatic_retry"
+
+
+def test_missing_pdf_waits_without_extracting_other_sources(tmp_path, monkeypatch):
+    existing = tmp_path / "Race_1_Formguide.md"
+    existing.write_text("last valid formguide", encoding="utf-8")
+    monkeypatch.setattr(sys, "argv", ["batch_extract.py", "--base_url",
+        "https://racing.hkjc.com/zh-hk/local/information/racecard?racedate=2026/10/14&Racecourse=HV&RaceNo=1",
+        "--races", "1", "--output_dir", str(tmp_path)])
+    monkeypatch.setenv("WC_HKJC_GATE", "strict")
+    with mock.patch.object(batch, "extract_starter_pdf", return_value=(False, "not published", "missing")), \
+         mock.patch.object(batch, "extract_trackwork_meeting") as trackwork, \
+         mock.patch.object(batch, "extract_single_race") as race, \
+         pytest.raises(SystemExit) as raised:
+        batch.main()
+    assert raised.value.code == 75
+    trackwork.assert_not_called()
+    race.assert_not_called()
+    assert existing.read_text() == "last valid formguide"
+    readiness = json.loads((tmp_path / "Extraction_Readiness.json").read_text())
+    assert readiness["schema_version"] == 1
+    assert readiness["expected_races"] == 1
+    assert readiness["remaining_sources_not_attempted"] is True
+    assert readiness["starter_pdf_ready"] is False

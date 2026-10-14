@@ -65,6 +65,24 @@ def _run(
     return completed
 
 
+
+def _retain_gate_output(repo: Path, commit: str, check_name: str, gate: subprocess.CompletedProcess[str]) -> Path:
+    common = Path(_run(repo, "git", "rev-parse", "--git-common-dir").stdout.strip())
+    if not common.is_absolute():
+        common = repo / common
+    logs = common / "wongchoi-release-checks" / commit
+    logs.mkdir(mode=0o700, parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+    log_path = logs / f"{stamp}-{uuid4().hex[:8]}.log"
+    with log_path.open("x", encoding="utf-8") as stream:
+        stream.write(f"commit: {commit}\ncheck: {check_name}\nexit_code: {gate.returncode}\n\n")
+        stream.write(gate.stdout or "")
+        stream.write("\n--- stderr ---\n")
+        stream.write(gate.stderr or "")
+    log_path.chmod(0o600)
+    return log_path
+
+
 def _git(repo: Path, *args: str, check: bool = True) -> str:
     return _run(repo, "git", *args, check=check).stdout.strip()
 
@@ -373,8 +391,9 @@ def prepare_release(
     if policy.check == "quick":
         check_args.append("--quick")
     checked = _run(repo, *check_args, check=False, timeout=7200)
+    gate_log = _retain_gate_output(repo, head, f"prepare:{policy.check}", checked)
     if checked.returncode != 0:
-        raise ReleaseError(f"{policy.check} gate failed; no files were staged")
+        raise ReleaseError(f"{policy.check} gate failed; no files were staged; output retained at {gate_log}")
 
     branch = _git(repo, "branch", "--show-current")
     if not branch or branch == "main":

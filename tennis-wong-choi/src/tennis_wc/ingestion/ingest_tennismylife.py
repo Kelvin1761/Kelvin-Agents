@@ -9,6 +9,7 @@ from urllib.request import Request, urlopen
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.common import utc_now
 from tennis_wc.ingestion.name_matching import match_pair_score, same_player_name
+from tennis_wc.ingestion.raw_response_store import store_raw_response
 
 
 PROVIDER_NAME = "tennismylife"
@@ -27,7 +28,25 @@ def ingest_tennismylife_results(start_date: str, end_date: str | None = None) ->
         except Exception as exc:
             summary["errors"].append({"file": file_info.get("name"), "error": str(exc)})
             continue
-        imported, unmatched, seen, adjacent_seen = _store_rows(rows, wanted_dates)
+        considered = [
+            row
+            for row in rows
+            if _in_tournament_window(_csv_date(row.get("tourney_date")), wanted_dates)
+        ]
+        raw_response_id = None
+        if considered:
+            raw_response_id = store_raw_response(
+                PROVIDER_NAME,
+                f"results/{file_info['name']}",
+                {"file": file_info["name"], "wanted_dates": sorted(wanted_dates)},
+                considered,
+                200,
+                entity_type="match_results",
+                entity_external_id=start_date,
+            )
+        imported, unmatched, seen, adjacent_seen = _store_rows(
+            considered, wanted_dates, raw_response_id=raw_response_id
+        )
         summary["files"] += 1
         summary["rows_seen"] += seen
         summary["lookup_rows_seen"] = summary.get("lookup_rows_seen", 0) + seen + adjacent_seen
@@ -85,7 +104,12 @@ def _is_year_candidate(name: str, year: str) -> bool:
     )
 
 
-def _store_rows(rows: list[dict], wanted_dates: set[str]) -> tuple[int, int, int, int]:
+def _store_rows(
+    rows: list[dict],
+    wanted_dates: set[str],
+    *,
+    raw_response_id: int | None = None,
+) -> tuple[int, int, int, int]:
     now = utc_now()
     imported = 0
     unmatched = 0
@@ -114,13 +138,17 @@ def _store_rows(rows: list[dict], wanted_dates: set[str]) -> tuple[int, int, int
             conn.execute(
                 """
                 INSERT INTO match_results (match_id, winner_player_id, score_json, source_provider, raw_response_id, created_at)
-                VALUES (?, ?, ?, ?, NULL, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(match_id, source_provider) DO UPDATE SET
                     winner_player_id = excluded.winner_player_id,
                     score_json = excluded.score_json,
+                    raw_response_id = excluded.raw_response_id,
                     created_at = excluded.created_at
                 """,
-                (match["id"], winner_player_id, score_json, PROVIDER_NAME, now),
+                (
+                    match["id"], winner_player_id, score_json, PROVIDER_NAME,
+                    raw_response_id, now,
+                ),
             )
             imported += 1
     return imported, unmatched, seen, adjacent_seen

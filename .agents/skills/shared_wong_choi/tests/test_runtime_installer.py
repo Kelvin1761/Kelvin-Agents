@@ -133,15 +133,17 @@ raise SystemExit(0 if accepted else 1)
         "com.antigravity.au-wong-choi.morning": au_runner,
     }
     for label, runner in au_labels.items():
-        with (agents / f"{label}.plist").open("wb") as handle:
-            plistlib.dump(
-                {
-                    "Label": label,
-                    "ProgramArguments": ["/bin/zsh", runner],
-                    "WorkingDirectory": str(REPO_ROOT),
-                },
-                handle,
-            )
+        template = REPO_ROOT / ".agents/skills/au_racing/au_daily_auto/launchd" / f"{label}.plist.template"
+        rendered = template.read_text().replace("__SCRIPT_DIR__", str(Path(runner).parent)).replace("__PROJECT_ROOT__", str(REPO_ROOT))
+        (agents / f"{label}.plist").write_text(rendered)
+    # Simulate the old production evening timer; activation must replace it.
+    evening_path = agents / "com.antigravity.au-wong-choi.evening.plist"
+    evening = plistlib.loads(evening_path.read_bytes())
+    evening["StartCalendarInterval"] = {"Hour": 22, "Minute": 0}
+    evening_path.write_bytes(plistlib.dumps(evening))
+    old_evening = evening_path.read_bytes()
+    bot_path = agents / "com.antigravity.au-wong-choi.bot.plist"
+    old_bot = bot_path.read_bytes()
     env = os.environ.copy()
     env.update(
         {
@@ -179,11 +181,16 @@ raise SystemExit(0 if accepted else 1)
         assert "runtime cutover failed" in result.stderr
         assert not (agents / "com.antigravity.central-wong-choi.research-review.plist").exists()
         assert {p.stem for p in agents.glob("*.plist")} == set(au_labels)
+        assert evening_path.read_bytes() == old_evening
+        assert bot_path.read_bytes() == old_bot
         receipt = tmp_path / "control/runs/central/test/research-review/acceptance.json"
         assert '"status": "failed"' in receipt.read_text()
         return
     assert result.returncode == 0, result.stdout + result.stderr
     assert "production runtime cutover verified" in result.stdout
+    assert plistlib.loads(evening_path.read_bytes())["StartCalendarInterval"] == {"Hour": 17, "Minute": 0}
+    assert (agents / "com.antigravity.au-wong-choi.deferred.plist").exists()
+    assert bot_path.read_bytes() == old_bot
     assert (home / ".wongchoi_tennis_db").read_text(encoding="utf-8").strip() == str(
         runtime / "tennis_wc.db"
     )

@@ -121,15 +121,33 @@ def inspect_au_settlement_candidates(*, root: Path, as_of: datetime,
     prediction_report = inspect_prediction_artifacts(
         root=root, domain=Domain.AU, as_of=end, relocation_roots=roots, checkpoint=checkpoint,
     )
+    return _inspect_au_settlement_records(prediction_report=prediction_report, root=root,
+                                          end=end, roots=roots, checkpoint=checkpoint)
+
+
+def _inspect_au_settlement_records(*, prediction_report, root, end, roots, checkpoint,
+                                    selected_prediction_ids=None, evidence_snapshot=None):
     verified_predictions = {
         item["record_id"]: item for item in prediction_report["records"]
         if item["snapshot_bundle_verified"]
     }
-    reader = _Reader(checkpoint)
-    records = _evidence(root, end, reader)
+    if evidence_snapshot is None:
+        reader = _Reader(checkpoint)
+        records = _evidence(root, end, reader)
+    else:
+        from .research_native_evidence_snapshot import _NativeEvidenceSnapshot
+        if type(evidence_snapshot) is not _NativeEvidenceSnapshot:
+            raise ValueError("native evidence snapshot required")
+        records, reader = evidence_snapshot._begin_read(
+            root=root, domain=Domain.AU, as_of=end, checkpoint=checkpoint,
+            selected_prediction_ids=selected_prediction_ids)
+    evidence_records_seen = len(records) if evidence_snapshot is None else evidence_snapshot.record_count
     settlements = [value for value in records.values()
                    if value[0].kind is RecordKind.SETTLEMENT
                    and value[0].body["settlement_state"] in {"settled", "hit", "miss"}]
+    if selected_prediction_ids is not None:
+        settlements = [value for value in settlements
+                       if records[value[0].links["decision_id"]][0].links["prediction_id"] in selected_prediction_ids]
     if len(settlements) > MAX_SETTLEMENTS:
         raise ValueError("AU settlement candidate limit exceeded")
     blobs, candidates = _Blobs(checkpoint), []
@@ -203,7 +221,7 @@ def inspect_au_settlement_candidates(*, root: Path, as_of: datetime,
         "as_of": end.isoformat(),
         "relocation_roots": [str(item) for item in roots],
         "prediction_report_hash": prediction_report["content_hash"],
-        "evidence_records_seen": len(records),
+        "evidence_records_seen": evidence_records_seen,
         "settlements_seen": len(candidates),
         "verified_prediction_bundles": sum(item["prediction_bundle_verified"] for item in candidates),
         "settlement_artifacts": sum(item["settlement_artifacts"] for item in candidates),

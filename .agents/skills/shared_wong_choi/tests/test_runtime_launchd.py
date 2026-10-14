@@ -25,12 +25,27 @@ def _write_plist(path: Path, arguments: list[str], working: str | None = None) -
 
 
 def _aligned_fixture(agents: Path, root: Path) -> None:
+    import shutil
+    source = Path(__file__).resolve().parents[4]
     for labels in (*DOMAIN_LABELS.values(), CENTRAL_LABELS):
         for label, relatives in labels.items():
-            _write_plist(
-                agents / f"{label}.plist",
-                [str(root / relative) for relative in relatives],
-            )
+            script = source / relatives[0]
+            template = script.parent / "launchd" / f"{label}.plist.template"
+            if not template.exists():
+                template = script.parent.parent / "launchd" / f"{label}.plist.template"
+            destination = root / template.relative_to(source)
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(template, destination)
+            payload, error = runtime_launchd._load_plist(template)
+            assert error is None
+            args = payload.get("ProgramArguments") or []
+            if label.startswith("com.antigravity.nba-wong-choi."):
+                payload["ProgramArguments"] = [str(root / relatives[0]), *args[1:]]
+            else:
+                payload["ProgramArguments"] = [str(root / relative) for relative in relatives]
+            agents.mkdir(parents=True, exist_ok=True)
+            with (agents / f"{label}.plist").open("wb") as handle:
+                plistlib.dump(payload, handle)
 
 
 def test_runtime_alignment_requires_every_label_on_production_root(
@@ -142,3 +157,22 @@ def test_only_explicit_handoff_bot_may_be_transiently_unloaded(
     )
     assert entry["loaded"] is False
     assert entry["unloaded_allowed"] is True
+
+
+def test_runtime_alignment_detects_old_calendar_role_and_timezone(tmp_path, monkeypatch):
+    root = tmp_path / "production"
+    agents = tmp_path / "LaunchAgents"
+    _aligned_fixture(agents, root)
+    label = "com.antigravity.nba-wong-choi.production"
+    path = agents / f"{label}.plist"
+    payload = plistlib.loads(path.read_bytes())
+    payload["StartCalendarInterval"] = {"Hour": 0, "Minute": 30}
+    payload["ProgramArguments"][-1] = "warmup"
+    path.write_bytes(plistlib.dumps(payload))
+    monkeypatch.setattr(runtime_launchd, "_runtime_timezone", lambda: "UTC")
+    result = collect_runtime_alignment({name: root for name in DOMAIN_LABELS},
+                                      control_root=root, launch_agents_root=agents, probe_loaded=False)
+    assert "runtime_timezone_not_sydney:UTC" in result["attention"]
+    entry = next(e for e in result["domains"]["nba"]["labels"] if e["label"] == label)
+    assert "schedule:StartCalendarInterval" in entry["mismatches"]
+    assert "schedule:ProgramArguments" in entry["mismatches"]

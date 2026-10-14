@@ -32,6 +32,7 @@ TENNIS_ANALYSIS_OUTPUT_ROOT="${TENNIS_ANALYSIS_OUTPUT_ROOT:-/Users/imac/Library/
 LABELS=(
   "com.antigravity.tennis-wong-choi.card"
   "com.antigravity.tennis-wong-choi.daily"
+  "com.antigravity.tennis-wong-choi.deferred"
   "com.antigravity.tennis-wong-choi.recovery"
 )
 

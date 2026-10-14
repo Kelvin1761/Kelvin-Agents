@@ -7,6 +7,25 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# HKJC、AU、NBA 都會由唔同 launchd job／checkout 叫呢個入口，但 Cloudflare
+# production alias 只有一個。鎖要包住「讀 live → build → upload」全段；淨係鎖
+# wrangler 會俾等候嗰邊用舊 live snapshot 覆蓋先完成嗰邊。固定放 /private/tmp，
+# 確保唔同 checkout 都係同一把鎖。
+if [ "${WC_DASHBOARD_DEPLOY_LOCK_HELD:-0}" != "1" ]; then
+    LOCK_PYTHON="${WC_DASHBOARD_LOCK_PYTHON:-/usr/bin/python3}"
+    if [ ! -x "$LOCK_PYTHON" ]; then
+        LOCK_PYTHON="$(command -v python3 2>/dev/null || true)"
+    fi
+    if [ -z "$LOCK_PYTHON" ]; then
+        echo "❌ 錯誤：搵唔到 Python，未能取得 Dashboard 全域發佈鎖"
+        exit 1
+    fi
+    exec "$LOCK_PYTHON" "$SCRIPT_DIR/scripts/run_with_file_lock.py" \
+        --lock "${WC_DASHBOARD_DEPLOY_LOCK_PATH:-/private/tmp/wongchoi-dashboard-deploy.lock}" \
+        -- "$0" "$@"
+fi
+
 DIST_DIR="$SCRIPT_DIR/.cloudflare_dist"
 HTML_OUT="$DIST_DIR/index.html"
 JSON_OUT="$DIST_DIR/dashboard-data.json"
@@ -312,6 +331,18 @@ echo "   - Commit Hash: $COMMIT_HASH"
 # Running from a tmp CWD silently drops Functions + KV → 匯入投注記錄 fails with
 # "寫入 ROI 資料庫失敗". CF_PAGES_BRANCH=main + --branch main force a production
 # deploy so wongchoi-dashboard.pages.dev updates.
+#
+# Wrangler 4.40.3 有一條壞路徑：上載途中 ENOENT 之後，佢自己再因
+# process.exitCode 型別錯誤而報 TypeError，但最終仍然 return 0。淨係信 rc 就會
+# 誤報「發佈完成」。所以除咗 rc，亦硬性要求成功訊號存在。
+mkdir -p "$DEPLOY_CWD"
+WRANGLER_OUTPUT="$(mktemp "$DEPLOY_CWD/wongchoi-wrangler.XXXXXX")"
+cleanup_wrangler_output() {
+    rm -f "$WRANGLER_OUTPUT"
+}
+trap cleanup_wrangler_output EXIT
+
+set +e
 (
     cd "$SCRIPT_DIR"
     env CI=1 CF_PAGES_BRANCH=main WRANGLER_VERSION="$WRANGLER_VERSION" CLOUDFLARE_ACCOUNT_ID="$RESOLVED_ACCOUNT_ID" npx "wrangler@${WRANGLER_VERSION}" pages deploy "$DIST_DIR" \
@@ -320,7 +351,17 @@ echo "   - Commit Hash: $COMMIT_HASH"
         --commit-hash "$COMMIT_HASH" \
         --commit-message "$COMMIT_MESSAGE" \
         --commit-dirty="$COMMIT_DIRTY"
-)
+) 2>&1 | tee "$WRANGLER_OUTPUT"
+WRANGLER_RC=${PIPESTATUS[0]}
+set -e
+
+if [ "$WRANGLER_RC" -ne 0 ] || ! grep -q "Deployment complete!" "$WRANGLER_OUTPUT"; then
+    echo "❌ Cloudflare 發佈未完成：wrangler rc=${WRANGLER_RC}，亦未確認 production deployment"
+    exit 1
+fi
+
+rm -f "$WRANGLER_OUTPUT"
+trap - EXIT
 
 if [ "$KEEP_DIST" -eq 0 ]; then
     rm -rf "$DIST_DIR"

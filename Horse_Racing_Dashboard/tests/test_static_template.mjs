@@ -11,9 +11,17 @@ const EMPTY_DASHBOARD_DATA = {
   roi: {},
 };
 
-function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
+function loadTemplateFunctions(
+  dashboardData = EMPTY_DASHBOARD_DATA,
+  researchData = null,
+  defaultWorkspace = 'horses',
+) {
   let html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
   html = html.replace('"__DATA_PLACEHOLDER__"', JSON.stringify(dashboardData));
+  html = html.replace('"__DEFAULT_WORKSPACE_PLACEHOLDER__"', JSON.stringify(defaultWorkspace));
+  // Match the Python script-safe embedding; exercise DOM text escaping after
+  // parsing, rather than truncating this harness's first-script extraction.
+  html = html.replace('"__RESEARCH_PLACEHOLDER__"', () => JSON.stringify(researchData).replaceAll('<', '\\u003c'));
   const scriptMatch = html.match(/<script>\s*([\s\S]*?)<\/script>/);
   assert.ok(scriptMatch, "static template script should exist");
 
@@ -109,12 +117,238 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       sportsPickLines: typeof sportsPickLines === "function" ? sportsPickLines : null,
       sportsLegParts: typeof sportsLegParts === "function" ? sportsLegParts : null,
       sportsHistory: typeof sportsHistory === "function" ? sportsHistory : null,
+      renderResearchWorkspace: typeof renderResearchWorkspace === "function" ? renderResearchWorkspace : null,
+      setResearchDomainForTest: (value) => { researchDomain = value; },
+      showSport,
+      setResearchDomain,
+      setDocumentNodesForTest: nodes => { document.getElementById = id => nodes[id] || null; },
+      setFetchForTest: handler => { fetch = handler; },
       renderSportsHistory: typeof renderSportsHistory === "function" ? renderSportsHistory : null,
     };
   `;
   vm.runInContext(source, context);
   return context.__dashboardTest;
 }
+
+function researchFixture() {
+  return {
+    schema_version: 'wong-choi-research-dashboard/v1', visibility: 'local_review_only', read_only: true,
+    domains: { au: {
+      domain: 'au', as_of: '2026-08-31T00:00:00+00:00', request_id: '1'.repeat(64), receipt_hash: '2'.repeat(64),
+      index_hash: '6'.repeat(64),
+      freeze_research_required: false, freeze_reasons: [], human_review_required: false, progress_only: true,
+      verified_monitoring_samples: null, live_drift: null, storage_health: null, model_promotion_allowed: false,
+      live_drift_evidence_status: 'not_integrated',
+      production_day_evidence_status: 'not_integrated',
+      queue_completeness_verified: false, process_liveness_verified: false,
+      other_ruler_experiment_ids: [], queue: [],
+      experiments: [{spec_id:'spec-one', hypothesis:'測試研究假設', ruler_id:'au-v2', ruler_digest:'3'.repeat(64),
+        baseline_commit:'a'.repeat(40), candidate_commit:'b'.repeat(40),
+        datasets:[{record_id:'dataset-one',manifest_rows:100,sample_hash:'4'.repeat(64)}],
+        runs:[{record_id:'run-one',execution_state:'succeeded',registered_decisions:[{
+          record_id:'decision-one',state:'shadow_review_proposal',rationale:'仍需覆核',
+          report_verification:'not_supplied',report:null,next_human_action:'verify_evidence_then_shadow_review'
+        }]}]}]
+    }}
+  };
+}
+
+test('research workspace defaults to not integrated, never a healthy empty lab', () => {
+  const api = loadTemplateFunctions();
+  assert.equal(typeof api.renderResearchWorkspace, 'function');
+  const html = api.renderResearchWorkspace();
+  assert.match(html, /研究資料未接入/);
+  assert.match(html, /中央研究/);
+  assert.doesNotMatch(html, /全部通過|已批准/);
+});
+
+test('workspace URL fallback follows the generated artifact default', () => {
+  const api = loadTemplateFunctions();
+  api.setLocationSearchForTest('');
+  assert.equal(api.getInitialSportFromUrl(), 'hkjc');
+  const research = loadTemplateFunctions(
+    EMPTY_DASHBOARD_DATA, researchFixture(), 'research',
+  );
+  research.setLocationSearchForTest('');
+  assert.equal(research.getInitialSportFromUrl(), 'research');
+});
+
+test('research view distinguishes manifest rows, unknown evidence and shadow review', () => {
+  const api = loadTemplateFunctions(EMPTY_DASHBOARD_DATA, researchFixture());
+  const html = api.renderResearchWorkspace();
+  assert.match(html, /shadow review 提案/);
+  assert.match(html, /合格監測樣本.*未核實/s);
+  assert.match(html, /manifest 行數.*100/s);
+  assert.match(html, /未附報告/);
+  assert.match(html, /只報進度/);
+  assert.match(html, /唔代表模型升級/);
+  assert.doesNotMatch(html, /onclick="(?:placeBet|saveSportsBet|approve|promote)/);
+});
+
+test('research view displays verified liveness counts without implying promotion', () => {
+  const data = researchFixture();
+  const view = data.domains.au;
+  view.queue_completeness_verified = true;
+  view.process_liveness_verified = true;
+  view.process_liveness = {
+    content_hash: '5'.repeat(64), queue_index_hash: '6'.repeat(64),
+    observed_at: '2026-08-31T00:00:00+00:00', all_claimed_processes_verified: false,
+    counts: {running_verified: 1, claimed_liveness_unverified: 2, claimed_not_alive: 1, queued: 0, terminal: 3}
+  };
+  const html = loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace();
+  assert.match(html, /運行中.*1/s);
+  assert.match(html, /存活未核實.*2/s);
+  assert.match(html, /非存活.*1/s);
+  assert.match(html, /來源已核實，但仍有 claimed job 未能確認存活/);
+  assert.doesNotMatch(html, /已批准|模型升級成功/);
+  view.process_liveness.counts.running_verified = -1;
+  assert.match(
+    loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace(),
+    /研究資料未通過展示檢查/
+  );
+});
+
+test('research view displays hash-bound storage health and rejects malformed evidence', () => {
+  const data = researchFixture();
+  const view = data.domains.au;
+  view.storage_health = 'ok';
+  view.storage_evidence = {
+    health: 'ok', observed_at: '2026-08-31T00:00:00+00:00', content_hash: '9'.repeat(64)
+  };
+  const html = loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace();
+  assert.match(html, /儲存.*正常/s);
+  assert.match(html, new RegExp('9'.repeat(64)));
+  assert.doesNotMatch(html, /已批准|模型升級成功/);
+  view.storage_evidence.health = 'attention';
+  assert.match(
+    loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace(),
+    /研究資料未通過展示檢查/
+  );
+});
+
+test('research view displays verified production day and rejects malformed counts', () => {
+  const data = researchFixture();
+  const view = data.domains.au;
+  view.production_day_evidence_status = 'verified_closed';
+  view.production_day_evidence = {
+    content_hash: '7'.repeat(64), observed_at: '2026-09-04T02:00:00+00:00',
+    production_day: '2026-09-03', production_day_closed: true,
+    operational_health: 'attention', closure_blockers: [],
+    counts: {expected: 3, terminal: 3, missing: 0, nonterminal: 0,
+      succeeded: 2, dormant: 0, partial: 0, failed: 1, blocked: 0}
+  };
+  const html = loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace();
+  assert.match(html, /生產日已完整核實/);
+  assert.match(html, /2026-09-03/);
+  assert.match(html, /需留意/);
+  assert.doesNotMatch(html, /已批准|模型升級成功/);
+  view.production_day_evidence.counts.terminal = -1;
+  assert.match(
+    loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace(),
+    /研究資料未通過展示檢查/
+  );
+});
+
+test('research view displays descriptive feature drift and rejects malformed evidence', () => {
+  const data = researchFixture();
+  const view = data.domains.au;
+  view.live_drift_evidence_status = 'verified_descriptive';
+  view.live_drift = {
+    content_hash: '8'.repeat(64), observed_at: '2026-09-04T00:00:00+00:00',
+    baseline_as_of: '2026-09-01T00:00:00+00:00', status: 'verified_descriptive',
+    feature_health: 'attention', direction: 'degraded', baseline_records: 10,
+    current_records: 4, availability_delta: -0.25, live_drift_verified: true,
+    metric_drift_verified: false, market_drift_verified: false
+  };
+  const html = loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace();
+  assert.match(html, /特徵 drift 已核實/);
+  assert.match(html, /轉差/);
+  assert.match(html, /模型指標／市場 drift 未核實/);
+  assert.doesNotMatch(html, /已批准|模型升級成功/);
+  view.live_drift.current_records = -1;
+  assert.match(
+    loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace(),
+    /研究資料未通過展示檢查/
+  );
+});
+
+test('research freeze and evidence identifiers remain visible and text escaped', () => {
+  const data = researchFixture();
+  data.domains.au.freeze_research_required = true;
+  data.domains.au.freeze_reasons = ['<img src=x onerror=alert(1)>'];
+  data.domains.au.experiments[0].hypothesis = '<script>alert(2)</script>';
+  const html = loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace();
+  assert.match(html, /凍結研究/);
+  assert.ok(html.includes('2'.repeat(64)));
+  assert.match(html, /&lt;script&gt;/);
+  assert.doesNotMatch(html, /<script>|<img src=x/);
+});
+
+test('research filtering does not mix domains and malformed authority fails closed', () => {
+  const data = researchFixture();
+  const api = loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data);
+  api.setResearchDomainForTest('tennis');
+  assert.doesNotMatch(api.renderResearchWorkspace(), /測試研究假設/);
+  data.domains.au.model_promotion_allowed = true;
+  const bad = loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace();
+  assert.match(bad, /研究資料未通過展示檢查/);
+  assert.doesNotMatch(bad, /測試研究假設/);
+});
+
+test('research metrics display reported CI without inferring a new decision', () => {
+  const data = researchFixture();
+  const choice = data.domains.au.experiments[0].runs[0].registered_decisions[0];
+  choice.report_verification = 'hash_and_lineage_verified_not_recomputed';
+  choice.report = {content_hash:'5'.repeat(64),scopes:[{scope:'match_winner',row_count:600,
+    metrics:{brier:{terminal_delta:-0.01,terminal_ci_low:-0.02,terminal_ci_high:0.005}}}]};
+  const html = loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace();
+  assert.match(html, /brier/);
+  assert.match(html, /-0\.02/);
+  assert.match(html, /0\.005/);
+  assert.match(html, /原報告/);
+  assert.doesNotMatch(html, /模型已改善|已批准/);
+});
+
+test('research navigation is reachable on desktop/mobile and via URL', () => {
+  const html = fs.readFileSync(new URL('../static_template.html', import.meta.url), 'utf8');
+  assert.match(html, /id="sport-research"/);
+  assert.match(html, /id="tabbar-research"/);
+  assert.match(html, /label for="research-domain"/);
+  const api = loadTemplateFunctions();
+  api.setLocationSearchForTest('?sport=research');
+  assert.equal(api.getInitialSportFromUrl(), 'research');
+});
+
+test('research zero metrics stay zero and malformed reports fail visibly', () => {
+  const data = researchFixture();
+  const choice = data.domains.au.experiments[0].runs[0].registered_decisions[0];
+  choice.report_verification = 'hash_and_lineage_verified_not_recomputed';
+  choice.report = {content_hash:'5'.repeat(64),scopes:[{scope:'match_winner',row_count:0,
+    metrics:{brier:{terminal_delta:0,terminal_ci_low:0,terminal_ci_high:0}}}]};
+  assert.match(loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace(), /<td>0<\/td>/);
+  choice.report.scopes[0].metrics.brier.terminal_ci_low = -0.000000001;
+  assert.match(loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace(), /-0\.000000001/);
+  choice.report.scopes = 'bad shape';
+  assert.match(loadTemplateFunctions(EMPTY_DASHBOARD_DATA, data).renderResearchWorkspace(), /研究資料未通過展示檢查/);
+});
+
+test('research navigation and filter render without fetching or touching a ledger', () => {
+  const api = loadTemplateFunctions(EMPTY_DASHBOARD_DATA, researchFixture());
+  const main = {innerHTML:''};
+  let focusCount = 0;
+  let requests = 0;
+  const tab = {setAttribute:(key, value) => {tab[key] = value;}, removeAttribute:key => delete tab[key]};
+  api.setDocumentNodesForTest({'app-main':main,'tabbar-research':tab,'research-domain':{focus:() => {focusCount++;}}});
+  api.setFetchForTest(() => { requests++; throw new Error('research must not fetch'); });
+  api.showSport('research');
+  assert.match(main.innerHTML, /測試研究假設/);
+  assert.equal(tab['aria-current'], 'page');
+  api.setResearchDomain('tennis');
+  assert.doesNotMatch(main.innerHTML, /測試研究假設/);
+  assert.match(main.innerHTML, /未接入此 domain/);
+  assert.equal(focusCount, 1);
+  assert.equal(requests, 0);
+});
 
 test("raw template explains that a generated dashboard must be opened", () => {
   const html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");

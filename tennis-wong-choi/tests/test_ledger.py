@@ -428,6 +428,18 @@ def test_local_history_resolver_backfills_pending_match_result(tmp_path, monkeyp
         )
         conn.execute(
             """
+            INSERT INTO raw_api_responses (
+                id, provider_name, endpoint, request_url_hash,
+                request_params_json, response_json, status_code, fetched_at,
+                entity_type, entity_external_id, created_at
+            )
+            VALUES (1, 'local_fixture', '/history', 'hash', '{}', '{}', 200,
+                    '2026-06-16T20:00:00Z', 'match_history', 'hist-1',
+                    '2026-06-16T20:00:00Z')
+            """
+        )
+        conn.execute(
+            """
             INSERT INTO player_match_history (
                 provider_match_id, player_id, opponent_id, tour, match_date,
                 surface, tournament_external_id, tournament_level, round, format,
@@ -443,11 +455,13 @@ def test_local_history_resolver_backfills_pending_match_result(tmp_path, monkeyp
     assert _resolve_pending_from_player_history("2026-06-16") == 1
     with get_connection() as conn:
         result = conn.execute(
-            "SELECT winner_player_id, source_provider FROM match_results WHERE match_id = 1"
+            "SELECT winner_player_id, source_provider, raw_response_id "
+            "FROM match_results WHERE match_id = 1"
         ).fetchone()
 
     assert result["winner_player_id"] == 2
     assert result["source_provider"] == "local_history_resolver"
+    assert result["raw_response_id"] == 1
 
 
 def test_market_validation_blocks_promotion_when_settlement_coverage_is_low(tmp_path, monkeypatch):

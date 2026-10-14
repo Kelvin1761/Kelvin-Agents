@@ -19,7 +19,7 @@ rather than as quietly missing results.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import date
 from html.parser import HTMLParser
 import re
@@ -72,6 +72,15 @@ class ParsedResult:
         if self.retired:
             payload["retired"] = True
         return payload
+
+
+def parsed_result_record(result: ParsedResult) -> dict:
+    """Canonical parsed row stored beside the original source response."""
+    return {
+        **asdict(result),
+        "winner_name": result.winner_name,
+        "loser_name": result.loser_name,
+    }
 
 
 class _ResultsTableParser(HTMLParser):
@@ -248,9 +257,21 @@ class TennisExplorerResultsProvider:
             return False
 
     def fetch_results_for_date(self, match_date: str) -> tuple[list[ParsedResult], int]:
+        results, skipped, _source = self.fetch_results_with_source(match_date)
+        return results, skipped
+
+    def fetch_results_with_source(
+        self, match_date: str
+    ) -> tuple[list[ParsedResult], int, dict]:
         day = date.fromisoformat(match_date)
         url = RESULTS_URL.format(year=day.year, month=day.month, day=day.day)
-        return parse_results_page(self._fetch_html(url))
+        html = self._fetch_html(url)
+        results, skipped = parse_results_page(html)
+        return results, skipped, {
+            "source_url": url,
+            "source_html": html,
+            "parsed_results": [parsed_result_record(result) for result in results],
+        }
 
     def _fetch_html(self, url: str) -> str:
         # Same impersonation the Sportsbet scrape needs; plain urlopen gets

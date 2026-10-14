@@ -24,6 +24,7 @@ from tennis_wc.ingestion.raw_response_store import store_raw_response
 from tennis_wc.providers.tennisexplorer_provider import (
     ParsedResult,
     TennisExplorerResultsProvider,
+    parsed_result_record,
 )
 
 PROVIDER_NAME = "tennisexplorer"
@@ -83,7 +84,12 @@ def _get_or_create_player(conn, name: str, tour: str, created: list) -> int | No
     return player_id
 
 
-def _store_history(conn, match_date: str, results: list[ParsedResult], raw_id: int) -> dict:
+def _store_history(
+    conn,
+    match_date: str,
+    results: list[ParsedResult],
+    raw_id: int | None,
+) -> dict:
     counts = {"matches": 0, "rows": 0, "players_created": 0, "skipped": 0}
     created: list[int] = []
     now = utc_now()
@@ -124,7 +130,8 @@ def _store_history(conn, match_date: str, results: list[ParsedResult], raw_id: i
                 ON CONFLICT(source_provider, provider_match_id, player_id) DO UPDATE SET
                     player_id = excluded.player_id,
                     opponent_id = excluded.opponent_id,
-                    won = excluded.won
+                    won = excluded.won,
+                    raw_response_id = excluded.raw_response_id
                 """,
                 (
                     provider_match_id, player_id, opponent_id, tour, match_date,
@@ -149,23 +156,34 @@ def ingest_tennisexplorer_history(
         "dates": 0, "matches": 0, "rows": 0, "players_created": 0,
         "skipped": 0, "parse_skipped": 0, "errors": [],
     }
-    raw_id = store_raw_response(
-        PROVIDER_NAME,
-        "tennisexplorer/results",
-        {"start_date": start_date, "end_date": end_date or start_date},
-        {"summary": "Lower-tier match corpus for Elo; ATP/WTA files carry no ITF."},
-        200,
-        "match_history",
-        PROVIDER_NAME,
-    )
     with get_connection() as conn:
         player_identity.ensure_identity_schema(conn)
         for match_date in _date_range(start_date, end_date or start_date):
             try:
-                results, parse_skipped = provider.fetch_results_for_date(match_date)
+                fetch_with_source = getattr(provider, "fetch_results_with_source", None)
+                if callable(fetch_with_source):
+                    results, parse_skipped, raw_response = fetch_with_source(
+                        match_date
+                    )
+                else:
+                    results, parse_skipped = provider.fetch_results_for_date(match_date)
+                    raw_response = [
+                        parsed_result_record(result) for result in results
+                    ]
             except Exception as exc:  # one bad day must not end the corpus build
                 summary["errors"].append({"date": match_date, "error": str(exc)})
                 continue
+            raw_id = None
+            if results:
+                raw_id = store_raw_response(
+                    PROVIDER_NAME,
+                    f"tennisexplorer/results/{match_date}",
+                    {"match_date": match_date},
+                    raw_response,
+                    200,
+                    entity_type="match_history",
+                    entity_external_id=match_date,
+                )
             counts = _store_history(conn, match_date, results, raw_id)
             conn.commit()
             summary["dates"] += 1

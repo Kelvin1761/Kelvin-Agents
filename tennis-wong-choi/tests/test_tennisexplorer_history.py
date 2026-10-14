@@ -1,6 +1,8 @@
 """The lower-tier corpus: build history for players no ATP/WTA file covers."""
 from __future__ import annotations
 
+import json
+
 
 def _setup(tmp_path, monkeypatch):
     from conftest import configure_test_db
@@ -50,7 +52,7 @@ def test_both_sides_of_every_match_are_stored(tmp_path, monkeypatch):
 
     conn = get_connection()
     rows = conn.execute(
-        "SELECT player_id, opponent_id, won, tournament_level, tour "
+        "SELECT player_id, opponent_id, won, tournament_level, tour, raw_response_id "
         "FROM player_match_history ORDER BY won DESC"
     ).fetchall()
     assert [r["won"] for r in rows] == [1, 0]
@@ -58,6 +60,13 @@ def test_both_sides_of_every_match_are_stored(tmp_path, monkeypatch):
     assert rows[0]["opponent_id"] == rows[1]["player_id"]
     assert rows[0]["tournament_level"] == "ITF"
     assert rows[0]["tour"] == "WTA", "a W35 event is a women's event"
+    assert rows[0]["raw_response_id"] == rows[1]["raw_response_id"]
+    raw = conn.execute(
+        "SELECT endpoint, response_json FROM raw_api_responses WHERE id = ?",
+        (rows[0]["raw_response_id"],),
+    ).fetchone()
+    assert raw["endpoint"] == "tennisexplorer/results/2026-03-01"
+    assert json.loads(raw["response_json"])[0]["winner_name"] == "Piper Charney"
 
 
 def test_a_rerun_updates_rather_than_duplicating(tmp_path, monkeypatch):

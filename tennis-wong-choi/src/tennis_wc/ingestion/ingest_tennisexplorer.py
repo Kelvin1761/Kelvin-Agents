@@ -18,9 +18,11 @@ import json
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.common import utc_now
 from tennis_wc.ingestion.name_matching import match_pair_score
+from tennis_wc.ingestion.raw_response_store import store_raw_response
 from tennis_wc.providers.tennisexplorer_provider import (
     ParsedResult,
     TennisExplorerResultsProvider,
+    parsed_result_record,
 )
 
 PROVIDER_NAME = "tennisexplorer"
@@ -47,19 +49,42 @@ def ingest_tennisexplorer_results(
     for match_date in _date_range(start_date, end_date or start_date):
         summary["dates"] += 1
         try:
-            results, skipped = provider.fetch_results_for_date(match_date)
+            fetch_with_source = getattr(provider, "fetch_results_with_source", None)
+            if callable(fetch_with_source):
+                results, skipped, raw_response = fetch_with_source(match_date)
+            else:
+                results, skipped = provider.fetch_results_for_date(match_date)
+                raw_response = [parsed_result_record(result) for result in results]
         except Exception as exc:  # noqa: BLE001 - one bad day must not stop the rest
             summary["errors"].append({"date": match_date, "error": str(exc)})
             continue
         summary["rows_parsed"] += len(results)
         summary["rows_skipped"] += skipped
-        stored = _store_results(match_date, results)
+        raw_response_id = None
+        if results:
+            raw_response_id = store_raw_response(
+                PROVIDER_NAME,
+                f"results/{match_date}",
+                {"match_date": match_date},
+                raw_response,
+                200,
+                entity_type="match_results",
+                entity_external_id=match_date,
+            )
+        stored = _store_results(
+            match_date, results, raw_response_id=raw_response_id
+        )
         for key in ("imported", "unmatched", "ambiguous"):
             summary[key] += stored[key]
     return summary
 
 
-def _store_results(match_date: str, results: list[ParsedResult]) -> dict:
+def _store_results(
+    match_date: str,
+    results: list[ParsedResult],
+    *,
+    raw_response_id: int | None = None,
+) -> dict:
     counts = {"imported": 0, "unmatched": 0, "ambiguous": 0}
     if not results:
         return counts
@@ -104,10 +129,11 @@ def _store_results(match_date: str, results: list[ParsedResult]) -> dict:
                 INSERT INTO match_results
                     (match_id, winner_player_id, score_json, source_provider,
                      raw_response_id, created_at)
-                VALUES (?, ?, ?, ?, NULL, ?)
+                VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(match_id, source_provider) DO UPDATE SET
                     winner_player_id = excluded.winner_player_id,
                     score_json = excluded.score_json,
+                    raw_response_id = excluded.raw_response_id,
                     created_at = excluded.created_at
                 """,
                 (
@@ -115,6 +141,7 @@ def _store_results(match_date: str, results: list[ParsedResult]) -> dict:
                     winner_player_id,
                     json.dumps(payload, sort_keys=True),
                     PROVIDER_NAME,
+                    raw_response_id,
                     now,
                 ),
             )

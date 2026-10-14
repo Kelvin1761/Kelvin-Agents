@@ -24,6 +24,9 @@ DOMAIN_LABELS: dict[str, dict[str, tuple[str, ...]]] = {
         "com.antigravity.au-wong-choi.healthcheck": (
             ".agents/skills/au_racing/au_daily_auto/run_au_auxiliary.sh",
         ),
+        "com.antigravity.au-wong-choi.deferred": (
+            ".agents/skills/au_racing/au_daily_auto/run_au_daily_schedule.sh",
+        ),
         "com.antigravity.au-wong-choi.morning": (
             ".agents/skills/au_racing/au_daily_auto/run_au_daily_schedule.sh",
         ),
@@ -36,6 +39,7 @@ DOMAIN_LABELS: dict[str, dict[str, tuple[str, ...]]] = {
         for label in (
             "com.antigravity.hkjc-wong-choi.intraday",
             "com.antigravity.hkjc-wong-choi.lineup",
+            "com.antigravity.hkjc-wong-choi.deferred",
             "com.antigravity.hkjc-wong-choi.postrace",
             "com.antigravity.hkjc-wong-choi.prerace",
             "com.antigravity.hkjc-wong-choi.recovery",
@@ -51,6 +55,7 @@ DOMAIN_LABELS: dict[str, dict[str, tuple[str, ...]]] = {
         for label in (
             "com.antigravity.nba-wong-choi.final-refresh",
             "com.antigravity.nba-wong-choi.health",
+            "com.antigravity.nba-wong-choi.deferred",
             "com.antigravity.nba-wong-choi.postgame",
             "com.antigravity.nba-wong-choi.production",
             "com.antigravity.nba-wong-choi.startup",
@@ -64,8 +69,11 @@ DOMAIN_LABELS: dict[str, dict[str, tuple[str, ...]]] = {
         "com.antigravity.tennis-wong-choi.daily": (
             "tennis-wong-choi/scripts/run_tennis_daily_schedule.sh",
         ),
+        "com.antigravity.tennis-wong-choi.deferred": (
+            "tennis-wong-choi/scripts/run_tennis_daily_schedule.sh",
+        ),
         "com.antigravity.tennis-wong-choi.recovery": (
-            "tennis-wong-choi/scripts/tennis_card_recovery.py",
+            "tennis-wong-choi/scripts/run_tennis_daily_schedule.sh",
         ),
     },
 }
@@ -123,6 +131,38 @@ def _loaded(label: str) -> bool:
     return result.returncode == 0
 
 
+def _runtime_timezone() -> str:
+    try:
+        return str(Path("/etc/localtime").resolve()).split("zoneinfo/", 1)[1]
+    except (OSError, IndexError):
+        return "unknown"
+
+
+def _schedule_mismatches(payload: dict, label: str, expected_root: Path,
+                         relative_paths: tuple[str, ...]) -> list[str]:
+    # Compare the installed trigger with the approved checkout's template.
+    # Matching executable paths alone cannot detect an obsolete timer.
+    script = expected_root / relative_paths[0]
+    template = script.parent / "launchd" / f"{label}.plist.template"
+    if not template.exists():
+        template = script.parent.parent / "launchd" / f"{label}.plist.template"
+    expected, error = _load_plist(template)
+    if expected is None:
+        return [f"schedule_template:{error}"]
+    mismatches = []
+    for key in ("StartCalendarInterval", "StartInterval", "RunAtLoad", "KeepAlive"):
+        if payload.get(key) != expected.get(key):
+            mismatches.append(f"schedule:{key}")
+    if label.startswith("com.antigravity.nba-wong-choi."):
+        args = payload.get("ProgramArguments") or []
+        expected_args = expected.get("ProgramArguments") or []
+        # The first entry is the rendered runner; subsequent mode and role
+        # arguments must match exactly, including the freshness role.
+        if args[1:] != expected_args[1:]:
+            mismatches.append("schedule:ProgramArguments")
+    return mismatches
+
+
 def _label_status(
     launch_agents_root: Path,
     *,
@@ -146,6 +186,7 @@ def _label_status(
     actual = set(arguments + ([working] if working else []))
     expected = [str(expected_root / relative) for relative in relative_paths]
     mismatches = [path for path in expected if path not in actual]
+    mismatches.extend(_schedule_mismatches(payload, label, expected_root, relative_paths))
     is_loaded = _loaded(label) if probe_loaded else None
     status = (
         "misaligned"
@@ -183,6 +224,9 @@ def collect_runtime_alignment(
     )
     domains: dict[str, Any] = {}
     attention: list[str] = []
+    timezone = _runtime_timezone()
+    if timezone != "Australia/Sydney":
+        attention.append(f"runtime_timezone_not_sydney:{timezone}")
     for domain, labels in DOMAIN_LABELS.items():
         configured = production_roots.get(domain)
         if configured is None:
@@ -238,6 +282,7 @@ def collect_runtime_alignment(
         "schema_version": RUNTIME_SCHEMA,
         "status": "aligned" if not attention else "attention",
         "launch_agents_root": str(agents),
+        "timezone": timezone,
         "domains": domains,
         "central": {"status": central_status, "labels": central_entries},
         "attention": attention,

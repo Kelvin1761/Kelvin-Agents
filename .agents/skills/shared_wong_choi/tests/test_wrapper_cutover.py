@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from pathlib import Path
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
@@ -27,8 +29,10 @@ def test_hkjc_weekly_review_stays_outside_prediction_dispatch_contract() -> None
     text = _read(
         ".agents/skills/hkjc_racing/hkjc_daily_auto/run_hkjc_daily_schedule.sh"
     )
-    assert 'if [ "$MODE" = "weekly" ]' in text
-    assert 'hkjc_daily_schedule.py" --mode "$MODE"' in text
+    from shared_wong_choi.control_plane import primary_operation
+    from shared_wong_choi.contracts import Domain, Operation
+    assert "--domain hkjc --mode" in text
+    assert primary_operation(Domain.HKJC, "weekly") is Operation.HEALTH
 
 
 def test_tennis_external_launcher_remains_backward_compatible() -> None:

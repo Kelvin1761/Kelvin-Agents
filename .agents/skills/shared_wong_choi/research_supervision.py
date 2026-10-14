@@ -7,9 +7,7 @@ Interrupted work is quarantined in its WARM attempt, never silently retried.
 
 from __future__ import annotations
 
-import hashlib
 import math
-import json
 import os
 import re
 import stat
@@ -28,7 +26,6 @@ from .research_dataset import (
     SplitPolicy,
     StorageTier,
     build_dataset_snapshot,
-    load_dataset_snapshot,
 )
 from .research_evaluation import _strict_json, _write_report
 from .research_registry import ExperimentRegistry, ExperimentSpec, _record_from_payload
@@ -108,7 +105,16 @@ def _phase(runtime, registry, spec, *, action, payload, estimated_bytes, timeout
     deadline = _deadline_now() + timeout_seconds
     source_inventory = action == "tennis-source"
     metadata_only = action in {
-        "tennis-source", "prediction-artifacts", "au-settlement-candidates",
+        "racing-monitoring-corpus-reconcile",
+        "racing-monitoring-corpus",
+        "racing-monitoring-page",
+        "racing-settlement-corpus-reconcile",
+        "racing-settlement-corpus",
+        "racing-settlement-page",
+        "racing-settlement-inventory",
+        "racing-feature-corpus-reconcile",
+        "racing-feature-corpus",
+        "tennis-source", "prediction-artifacts", "prediction-page", "prediction-corpus", "prediction-corpus-reconcile", "racing-feature-page", "au-settlement-candidates",
         "nba-settlement-candidates", "hkjc-settlement-candidates",
         "tennis-settlement-candidates", "au-feature-provenance",
         "tennis-feature-provenance", "hkjc-feature-provenance",
@@ -120,7 +126,16 @@ def _phase(runtime, registry, spec, *, action, payload, estimated_bytes, timeout
         "power-variance", "review", "notify",
     }
     if action not in {
-        "prepare", "scoring", "tennis-source", "prediction-artifacts",
+        "racing-monitoring-corpus-reconcile",
+        "racing-monitoring-corpus",
+        "racing-monitoring-page",
+        "racing-settlement-corpus-reconcile",
+        "racing-settlement-corpus",
+        "racing-settlement-page",
+        "racing-settlement-inventory",
+        "racing-feature-corpus-reconcile",
+        "racing-feature-corpus",
+        "prepare", "scoring", "tennis-source", "prediction-artifacts", "prediction-page", "prediction-corpus", "prediction-corpus-reconcile", "racing-feature-page",
         "au-settlement-candidates", "nba-settlement-candidates",
         "hkjc-settlement-candidates", "tennis-settlement-candidates", "au-feature-provenance",
         "tennis-feature-provenance", "hkjc-feature-provenance",
@@ -157,7 +172,16 @@ def _phase(runtime, registry, spec, *, action, payload, estimated_bytes, timeout
         runtime.warm_root.expanduser().absolute()
         / "research-phases"
         / (Domain(payload["domain"]).value if action in {
-            "prediction-artifacts", "au-settlement-candidates",
+            "racing-monitoring-corpus-reconcile",
+            "racing-monitoring-corpus",
+            "racing-monitoring-page",
+            "racing-settlement-corpus-reconcile",
+            "racing-settlement-corpus",
+            "racing-settlement-page",
+            "racing-settlement-inventory",
+            "racing-feature-corpus-reconcile",
+            "racing-feature-corpus",
+            "prediction-artifacts", "prediction-page", "prediction-corpus", "prediction-corpus-reconcile", "racing-feature-page", "au-settlement-candidates",
             "nba-settlement-candidates", "hkjc-settlement-candidates",
             "tennis-settlement-candidates", "au-feature-provenance",
             "tennis-feature-provenance", "hkjc-feature-provenance",
@@ -274,7 +298,7 @@ def _phase(runtime, registry, spec, *, action, payload, estimated_bytes, timeout
                     ):
                         raise ValueError("invalid source inventory receipt")
                     path_key = "report_path"
-                elif action == "prediction-artifacts":
+                elif action in {"racing-monitoring-page", "prediction-artifacts", "prediction-page", "prediction-corpus", "prediction-corpus-reconcile", "racing-feature-page", "racing-feature-corpus", "racing-feature-corpus-reconcile", "racing-settlement-inventory", "racing-settlement-page", "racing-settlement-corpus", "racing-settlement-corpus-reconcile"}:
                     if (set(completed) != {
                             "disposition", "status", "report_path", "content_hash",
                             "normalized_source_verified", "verified_monitoring_samples",
@@ -382,7 +406,7 @@ def _phase(runtime, registry, spec, *, action, payload, estimated_bytes, timeout
                             or not re.fullmatch("[0-9a-f]{64}", completed.get("content_hash", ""))):
                         raise ValueError("invalid NBA feature provenance receipt")
                     path_key = "report_path"
-                elif action == "racing-monitoring-samples":
+                elif action in {"racing-monitoring-samples", "racing-monitoring-corpus", "racing-monitoring-corpus-reconcile"}:
                     if (set(completed) != {
                             "disposition", "status", "report_path", "content_hash",
                             "verified_monitoring_samples", "terminal_labels_emitted",
@@ -555,6 +579,58 @@ def _phase(runtime, registry, spec, *, action, payload, estimated_bytes, timeout
                                           require_current_liveness=True,
                                           require_current_production_day=True,
                                           require_current_drift=True)
+                elif action == "racing-monitoring-corpus-reconcile":
+                    from .research_racing_monitoring_page_runtime import verify_racing_monitoring_corpus_reconciliation_receipt
+                    verify_racing_monitoring_corpus_reconciliation_receipt(payload=payload, runtime=runtime,
+                                                                           report_path=returned_path, receipt=completed)
+                elif action == "racing-monitoring-corpus":
+                    from .research_racing_monitoring_page_runtime import verify_racing_monitoring_corpus_receipt
+                    verify_racing_monitoring_corpus_receipt(payload=payload, runtime=runtime,
+                                                            report_path=returned_path, receipt=completed)
+                elif action == "racing-monitoring-page":
+                    from .research_racing_monitoring_page_runtime import verify_racing_monitoring_page_receipt
+                    verify_racing_monitoring_page_receipt(payload=payload, runtime=runtime,
+                                                          report_path=returned_path, receipt=completed)
+                elif action == "racing-settlement-corpus-reconcile":
+                    from .research_racing_settlement_page_runtime import verify_racing_settlement_corpus_reconciliation_receipt
+                    verify_racing_settlement_corpus_reconciliation_receipt(payload=payload, runtime=runtime,
+                                                                          report_path=returned_path, receipt=completed)
+                elif action == "racing-settlement-corpus":
+                    from .research_racing_settlement_page_runtime import verify_racing_settlement_corpus_receipt
+                    verify_racing_settlement_corpus_receipt(payload=payload, runtime=runtime,
+                                                            report_path=returned_path, receipt=completed)
+                elif action == "racing-settlement-page":
+                    from .research_racing_settlement_page_runtime import verify_racing_settlement_page_receipt
+                    verify_racing_settlement_page_receipt(payload=payload, runtime=runtime,
+                                                          report_path=returned_path, receipt=completed)
+                elif action == "racing-settlement-inventory":
+                    from .research_racing_settlement_inventory import verify_racing_settlement_inventory_receipt
+                    verify_racing_settlement_inventory_receipt(payload=payload, runtime=runtime,
+                                                               report_path=returned_path, receipt=completed)
+                elif action == "racing-feature-corpus-reconcile":
+                    from .research_racing_feature_page_runtime import verify_racing_feature_corpus_reconciliation_receipt
+                    verify_racing_feature_corpus_reconciliation_receipt(payload=payload, runtime=runtime,
+                                                                        report_path=returned_path, receipt=completed)
+                elif action == "racing-feature-corpus":
+                    from .research_racing_feature_page_runtime import verify_racing_feature_corpus_receipt
+                    verify_racing_feature_corpus_receipt(payload=payload, runtime=runtime,
+                                                         report_path=returned_path, receipt=completed)
+                elif action == "racing-feature-page":
+                    from .research_racing_feature_page_runtime import verify_racing_feature_page_receipt
+                    verify_racing_feature_page_receipt(payload=payload, runtime=runtime,
+                                                       report_path=returned_path, receipt=completed)
+                elif action == "prediction-corpus-reconcile":
+                    from .research_prediction_page_runtime import verify_prediction_corpus_reconciliation_receipt
+                    verify_prediction_corpus_reconciliation_receipt(payload=payload, runtime=runtime,
+                                                                    report_path=returned_path, receipt=completed)
+                elif action == "prediction-corpus":
+                    from .research_prediction_page_runtime import verify_prediction_corpus_receipt
+                    verify_prediction_corpus_receipt(payload=payload, runtime=runtime,
+                                                     report_path=returned_path, receipt=completed)
+                elif action == "prediction-page":
+                    from .research_prediction_page_runtime import verify_prediction_page_receipt
+                    verify_prediction_page_receipt(payload=payload, runtime=runtime,
+                                                   report_path=returned_path, receipt=completed)
                 elif action == "prediction-artifacts":
                     from .research_prediction_artifacts import verify_prediction_artifact_report
                     if returned_path.stat().st_size > 131072:
@@ -1680,8 +1756,21 @@ def _worker_body(request_path: Path):
         "scoring",
         "tennis-source",
         "prediction-artifacts",
+        "prediction-page",
+        "prediction-corpus",
+        "prediction-corpus-reconcile",
+        "racing-feature-page",
+        "racing-feature-corpus",
+        "racing-feature-corpus-reconcile",
+        "racing-settlement-inventory",
+        "racing-settlement-page",
+        "racing-settlement-corpus",
+        "racing-settlement-corpus-reconcile",
         "au-settlement-candidates",
+        "racing-monitoring-page",
+        "racing-monitoring-corpus",
         "nba-settlement-candidates",
+        "racing-monitoring-corpus-reconcile",
         "hkjc-settlement-candidates",
         "tennis-settlement-candidates",
         "au-feature-provenance",
@@ -1726,7 +1815,16 @@ def _worker_body(request_path: Path):
     checkpoint()
     source_inventory = request["action"] == "tennis-source"
     metadata_only = request["action"] in {
-        "tennis-source", "prediction-artifacts", "au-settlement-candidates",
+        "racing-monitoring-corpus-reconcile",
+        "racing-monitoring-corpus",
+        "racing-monitoring-page",
+        "racing-settlement-corpus-reconcile",
+        "racing-settlement-corpus",
+        "racing-settlement-page",
+        "racing-settlement-inventory",
+        "racing-feature-corpus-reconcile",
+        "racing-feature-corpus",
+        "tennis-source", "prediction-artifacts", "prediction-page", "prediction-corpus", "prediction-corpus-reconcile", "racing-feature-page", "au-settlement-candidates",
         "nba-settlement-candidates", "hkjc-settlement-candidates",
         "tennis-settlement-candidates", "au-feature-provenance",
         "tennis-feature-provenance", "hkjc-feature-provenance",
@@ -1760,6 +1858,76 @@ def _worker_body(request_path: Path):
                 result = {"disposition": "deferred", "status": "heavy_worker_busy"}
             else:
                 result = run_review_request(request, registry=registry, runtime=outer, workspace=workspace, checkpoint=checkpoint)
+    elif request["action"] == "racing-settlement-corpus-reconcile":
+        from .research_racing_settlement_page_runtime import run_racing_settlement_corpus_reconciliation_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_racing_settlement_corpus_reconciliation_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
+    elif request["action"] == "racing-settlement-corpus":
+        from .research_racing_settlement_page_runtime import run_racing_settlement_corpus_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_racing_settlement_corpus_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
+    elif request["action"] == "racing-settlement-page":
+        from .research_racing_settlement_page_runtime import run_racing_settlement_page_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_racing_settlement_page_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
+    elif request["action"] == "racing-settlement-inventory":
+        from .research_racing_settlement_inventory import run_racing_settlement_inventory_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_racing_settlement_inventory_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
+    elif request["action"] == "racing-feature-corpus-reconcile":
+        from .research_racing_feature_page_runtime import run_racing_feature_corpus_reconciliation_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_racing_feature_corpus_reconciliation_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
+    elif request["action"] == "racing-feature-corpus":
+        from .research_racing_feature_page_runtime import run_racing_feature_corpus_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_racing_feature_corpus_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
+    elif request["action"] == "racing-feature-page":
+        from .research_racing_feature_page_runtime import run_racing_feature_page_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_racing_feature_page_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
+    elif request["action"] == "prediction-corpus-reconcile":
+        from .research_prediction_page_runtime import run_prediction_corpus_reconciliation_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_prediction_corpus_reconciliation_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
+    elif request["action"] == "prediction-corpus":
+        from .research_prediction_page_runtime import run_prediction_corpus_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_prediction_corpus_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
+    elif request["action"] == "prediction-page":
+        from .research_prediction_page_runtime import run_prediction_page_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_prediction_page_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
     elif request["action"] == "prediction-artifacts":
         from .research_prediction_artifacts import inspect_prediction_artifacts
         with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
@@ -1979,6 +2147,27 @@ def _worker_body(request_path: Path):
                     "verified_monitoring_samples": None,
                     "model_promotion_allowed": False,
                 }
+    elif request["action"] == "racing-monitoring-corpus-reconcile":
+        from .research_racing_monitoring_page_runtime import run_racing_monitoring_corpus_reconciliation_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_racing_monitoring_corpus_reconciliation_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
+    elif request["action"] == "racing-monitoring-corpus":
+        from .research_racing_monitoring_page_runtime import run_racing_monitoring_corpus_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_racing_monitoring_corpus_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
+    elif request["action"] == "racing-monitoring-page":
+        from .research_racing_monitoring_page_runtime import run_racing_monitoring_page_request
+        with single_run_lock(outer.state_root / "locks/research-heavy-worker.lock") as acquired:
+            if not acquired:
+                result = {"disposition": "deferred", "status": "heavy_worker_busy"}
+            else:
+                result = run_racing_monitoring_page_request(request, runtime=outer, workspace=workspace, checkpoint=checkpoint)
     elif request["action"] == "racing-monitoring-samples":
         from .research_racing_monitoring_samples import (
             inspect_racing_monitoring_samples,

@@ -28,6 +28,36 @@ import au_daily_schedule as S  # noqa: E402
 from wongchoi_paths import au_historical_results_csv  # noqa: E402
 
 
+def test_evening_keeps_fresh_results_before_analysis_and_research_after_publish(monkeypatch):
+    calls = []
+    def step(name, result):
+        def run(*args, **kwargs):
+            calls.append(name)
+            return result
+        return run
+    for name, label, result in [
+        ("step_review_archive", "review", []),
+        ("step_ingest_results", "ingest", True),
+        ("step_analyse_next_day", "analyse", []),
+        ("step_prediction_evidence", "evidence", True),
+        ("step_dashboard", "publish", True),
+        ("step_speed_shadow", "research", True),
+        ("step_speed_recency_shadow", "research_recency", True),
+        ("step_settlement_evidence", "settlement", True),
+    ]:
+        monkeypatch.setattr(S, name, step(label, result))
+    for name in ("push_reflection", "step_mirror_reports", "push_run_summary", "push_betting"):
+        monkeypatch.setattr(S, name, lambda *a, **kw: None)
+    monkeypatch.setattr(S, "finish_run", lambda *a: 0)
+    args = types.SimpleNamespace(skip_analysis=False, skip_review=False, skip_results_ingest=False,
+        skip_speed_shadow=False, max_meetings=0, rounds=1, round_gap=0, no_archive=True,
+        ingest_from_date="2026-07-01", skip_deploy=True)
+    runlog = types.SimpleNamespace(data={"races_added": []})
+    assert S.run_evening(runlog, args, date(2026, 10, 12)) == 0
+    assert calls.index("ingest") < calls.index("analyse")
+    assert calls.index("publish") < calls.index("research")
+
+
 def setUpModule():
     """把測試嘅 log 引去 tmp。冇呢個嘅話 `log()` 會寫入生產
     `logs/au_daily_schedule.log` —— 實測污染過一個正在跑嘅晚更 run。"""
@@ -74,6 +104,18 @@ class TestVenueMatch(unittest.TestCase):
         self.assertEqual(S.match_venue("mt_isa", ["Mount Isa"]), "Mount Isa")
         self.assertEqual(S.match_venue("saint_arnaud", ["St Arnaud"]), "St Arnaud")
 
+    def test_kensington_index_slug_matches_randwick_kensington_api_name(self):
+        # 2026-09-09 實際事故：索引頁係 ``kensington``，NextEvents 係
+        # ``Randwick-Kensington``，結果全日七場被當海外賽事剔走。
+        self.assertEqual(
+            S.match_venue("kensington", ["Belmont", "Randwick-Kensington"]),
+            "Randwick-Kensington",
+        )
+        self.assertEqual(
+            S.match_venue("royal_randwick_kensington", ["Randwick-Kensington"]),
+            "Randwick-Kensington",
+        )
+
     def test_overseas_meetings_are_rejected(self):
         # 2026-08-05 索引頁 12 個場次，一半係英國／愛爾蘭／南非／加拿大。
         # 2026-08-06 索引頁嗰批：kempton / newmarket / sligo / vaal / yarmouth
@@ -109,11 +151,11 @@ class TestVenueMatch(unittest.TestCase):
 
     def test_a_component_match_still_refuses_to_guess(self):
         """配錯馬場比冇數據差 —— 會拉錯一個馬場嘅場地狀況入去評分。"""
-        # 兩個 API 場次都有 `kensington` 呢個部件 → 唔准揀。
+        # 兩個 API 場次都有 `bridge` 呢個部件 → 唔准揀。
         # ⚠️ 兩個都唔可以用「第一個 token」配到，唔係嘅話會喺上一步就中咗，
         # 呢個 test 就唔係測緊部件步。
         self.assertIsNone(S.match_venue(
-            "kensington", ["Randwick-Kensington", "Moonee-Kensington"]))
+            "bridge", ["Murray-Bridge", "Moonee-Bridge"]))
         # 部件太短唔算數，唔好靠 `pk` / `st` 之類撞岩。
         self.assertIsNone(S.match_venue("pk", ["Kensington Park"]))
         # 海外場次照樣要剔走。
@@ -2201,6 +2243,54 @@ class TestMirrorStripsMaclOnDenial(unittest.TestCase):
     def test_strip_macl_survives_a_missing_xattr_binary(self):
         with unittest.mock.patch.object(S.subprocess, "run", side_effect=OSError):
             self.assertFalse(S._strip_macl(Path("/tmp/whatever")))
+
+
+class TestDashboardVerificationFailure(unittest.TestCase):
+    def test_failed_live_verification_is_recorded_as_the_real_error(self):
+        runlog = unittest.mock.MagicMock()
+        runlog.data = {
+            "started_at": "2026-10-13T22:00:03+11:00",
+            "races_added": ["Ascot"],
+            "races_updated": [],
+        }
+        snapshot_payload = {
+            "meetings": [{"date": "2026-10-14", "venue": "Ascot"}],
+            "races": {"2026-10-14|Ascot": {}},
+        }
+        verification = {
+            "ok": False,
+            "missing": ["2026-10-14|Ascot"],
+            "still_present": ["2026-10-13|Grafton"],
+            "stale": False,
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp)
+            snapshot = work / "snapshot.json"
+            snapshot.write_text(json.dumps(snapshot_payload), encoding="utf-8")
+            with (
+                unittest.mock.patch.object(S, "WORK_DIR", work),
+                unittest.mock.patch.object(
+                    S, "build_snapshot", return_value=(snapshot, [], [])
+                ),
+                unittest.mock.patch.object(S, "check_data_contract", return_value=[]),
+                unittest.mock.patch.object(S, "shrink_to_fit", return_value=snapshot),
+                unittest.mock.patch.object(
+                    S, "validate_snapshot", return_value={"ok": True}
+                ),
+                unittest.mock.patch.object(
+                    S, "deploy_dashboard", return_value={"ok": True}
+                ),
+                unittest.mock.patch.object(S, "verify_live", return_value=verification),
+            ):
+                ok = S.step_dashboard(runlog, [work / "meeting"], [])
+
+        self.assertFalse(ok)
+        runlog.error.assert_called_once()
+        step, message = runlog.error.call_args.args
+        self.assertEqual(step, "verify-live")
+        self.assertIn("2026-10-14|Ascot", message)
+        self.assertIn("2026-10-13|Grafton", message)
 
 
 class TestErrorExcerpt(unittest.TestCase):
