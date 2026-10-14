@@ -23,3 +23,9 @@ The original primary checkout is retained at local preserve/main-checkout-202610
 An integrated initial full gate subsequently returned failure before staging. Its output was lost by the original prepare-release path; that path now uses the same tested log retention as immutable rechecks. A diagnostic rerun of all 14 non-shared suites passed. Final full gates remain mandatory, including the large native corpus cases.
 
 The latest main refresh also preserves the concurrent Tennis T0 closing-price corrections and HKJC result-backed jockey/trainer reconciliation. The focused shared diagnostic passed 1,626 checks (six large cases deferred to the full gate).
+
+## Confirmed clean-clone failure — 2026-10-15 Sydney
+
+The retained immutable recheck for 9ff8ffbe1827 identified the concrete failure: `test_no_stale_engine_constant_copies._candidate_files` excluded any absolute path containing a `scratch` or `archive` component. The mandatory external TMPDIR puts clean release checkouts beneath `scratch`, so the guard scanned zero Python files and its allowlist check failed. All other 14 suites, including the full shared history-reader cases, passed.
+
+The guard now applies exclusions only to paths relative to the repository. A regression constructs a checkout beneath both `scratch/archive` ancestors, verifies the live file is scanned, and still requires repo-local `scratch`, `archive`, bytecode and defining files to be excluded. The regression fails before the fix. No allowlist entries, scoring constants, corpus sizes or deadlines were removed or relaxed.

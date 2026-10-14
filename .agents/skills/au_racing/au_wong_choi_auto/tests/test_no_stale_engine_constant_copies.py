@@ -22,6 +22,8 @@ from __future__ import annotations
 import ast
 import sys
 import unittest
+import tempfile
+from unittest.mock import patch
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[5]
@@ -79,7 +81,9 @@ def _string_members(node: ast.AST) -> set[str]:
 def _candidate_files():
     for root in SEARCH_ROOTS:
         for path in sorted(root.rglob("*.py")):
-            parts = {p.lower() for p in path.parts}
+            # Only repo-local directories are excluded. A checkout beneath an
+            # external scratch/archive directory must still scan every live file.
+            parts = {p.lower() for p in path.relative_to(REPO).parts}
             if "__pycache__" in parts or "archive" in parts or "scratch" in parts:
                 continue
             if path.name in DEFINING_FILES:
@@ -88,6 +92,18 @@ def _candidate_files():
 
 
 class NoStaleEngineConstantCopies(unittest.TestCase):
+    def test_checkout_ancestor_names_do_not_disable_constant_scan(self):
+        with tempfile.TemporaryDirectory() as raw:
+            repo = Path(raw) / "scratch" / "archive" / "checkout"
+            root = repo / "au"
+            for name in ("live.py", "archive/old.py", "scratch/experiment.py",
+                         "__pycache__/cached.py", "scoring.py"):
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("FEATURE_KEYS = ['a', 'b', 'c', 'd']\n")
+            with patch.dict(globals(), REPO=repo, SEARCH_ROOTS=(root,)):
+                self.assertEqual([root / "live.py"], list(_candidate_files()))
+
     def test_literal_copies_of_engine_constants_are_complete_or_declared(self):
         stale = []
         for path in _candidate_files():
