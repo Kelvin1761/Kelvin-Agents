@@ -4,7 +4,7 @@
 
 | Job | 時間 | 做乜 |
 |---|---|---|
-| `com.antigravity.au-wong-choi.evening` | **每日 22:00** | 覆盤 + 歸檔 dashboard 上已跑完嘅場次 → 分析下一個澳洲賽日 → 驗證 → 發佈 Cloudflare |
+| `com.antigravity.au-wong-choi.evening` | **每日 22:00** | 覆盤 + 歸檔 dashboard 上已跑完嘅場次 → 更新速度盲測資料健康 → 分析下一個澳洲賽日 → 驗證 → 發佈 Cloudflare |
 | `com.antigravity.au-wong-choi.morning` | **每日 10:00** | 覆核 dashboard 上每場嘅場地狀況／退出馬／後備入替／檔位／騎師 → 有實質變動先重評分 → 驗證 → 發佈 |
 | `com.antigravity.au-wong-choi.healthcheck` | **02:30／09:15／11:00** | 獨立核實今日分析同 live dashboard；只對已知發佈故障自動補救 |
 | `com.antigravity.au-wong-choi.bot` | **每 2 分鐘** | 輪詢已授權 Telegram 指令（`/status`、`/health`、`/retry` 等） |
@@ -176,6 +176,10 @@ tail -f .agents/skills/au_racing/au_daily_auto/logs/au_daily_schedule.log
 # 最近一次 run 嘅結構化 log
 ls -t .agents/skills/au_racing/au_daily_auto/logs/run-*.json | head -1 | xargs cat
 
+# EXP-20260927-02 速度盲測：未夠 2,000 場只會見到場數／日數／覆蓋，冇績效
+jq '{state,outcomes_visible,races_collected,races_remaining,race_days,runner_coverage_pct}' \
+  .agents/skills/au_racing/au_daily_auto/work/au-speed-shadow-status.json
+
 # 一眼睇每次 run 嘅結果
 for f in .agents/skills/au_racing/au_daily_auto/logs/run-*.json; do \
   python3 -c "import json,sys; d=json.load(open(sys.argv[1])); \
@@ -185,6 +189,31 @@ updated={len(d['races_updated'])} errors={len(d['errors'])}\")" "$f"; done
 ```
 
 Exit code：`0` 完全成功 · `75` 部分／暫時性失敗（下一次排程會續） · `1` 硬失敗。
+
+### WinningTime 速度 prospective shadow
+
+晚更喺賽果摺返歷史庫之後會行
+`au_wong_choi_auto/scripts/au_speed_shadow_monitor.py`。候選鎖死為
+`final_rank_score + 0.5 × 場內 z(speed_best3)`，由 2026-09-27 起收最少 2,000 場：
+
+- 未達門檻：狀態檔只寫 sample size、完整賽日、WinningTime 覆蓋同四個場地嘅資料健康；
+  **Gold／Good／任何賽果 delta 都唔會寫出嚟**。
+- 達標：收埋令樣本過 2,000 嘅完整賽日，鎖死 race keys + SHA-256，之後新賽事唔會
+  靜靜擴大 terminal；先喺狀態檔解封 Stage 4 evidence。
+- 系統會自動用共用 Stage 4 判決器檢查 Gold／Good、coverage、field-size 同四個 watch
+  venues；判決同 activation spec 會寫成 immutable
+  `work/AU_Speed_Candidate_Gate.json`，重跑唔會產生第二份唔同 gate。
+- gate 第一次建立嗰個晚更，現有 primary-owner Telegram 完場通知會用人話講明
+  「通過／未通過、live 模型有冇改、下一步點做」；唔會外傳完整 evidence、gate hash
+  或本機路徑，之後重跑亦唔會重複通知。即使設咗 `WC_NOTIFY_ONLY_PROBLEMS=1`，呢個
+  一次性結果都唔會被靜音。
+- 通過只代表符合準備候選 release／non-draft PR 嘅資格；**目前 gate 本身唔會建立
+  commit／PR，亦唔會自動 merge、改 live 權重、排名或 deploy**。要先喺 Codex 要求
+  「準備 speed candidate release」，收到 exact candidate commit SHA 後，再由 owner
+  `/approve SHA`。
+- shadow 失敗會記 log，但唔可以阻住當日正式分析／dashboard。
+
+手動停一次可傳 `--skip-speed-shadow`；只係停止更新，唔會清除已收樣本。
 
 ### 自動復原界線
 
@@ -259,6 +288,7 @@ cache-only 重建補發。未知錯誤、模型／資料矛盾同重複失敗只
 | 只重評分 | `au_wong_choi_auto/scripts/au_auto_orchestrator.py <DIR> --going "…"` |
 | 賽果 | `sb_results.py --meeting <key> --meeting-dir <dir>` |
 | 覆盤 | `au_reflector/scripts/au_reflector_orchestrator.py <DIR> --skip-backtest` |
+| 速度盲測 | `au_wong_choi_auto/scripts/au_speed_shadow_monitor.py --data-root <AU_Racing> --output <status.json>` |
 | Dashboard 合併 | `Horse_Racing_Dashboard/generate_static.py --base-snapshot … --au-meeting-dir …` |
 | 發佈 | `WC_DASHBOARD_BASE_SNAPSHOT=<json> Horse_Racing_Dashboard/deploy.sh` |
 

@@ -77,6 +77,35 @@ class SummaryTests(unittest.TestCase):
         self.assertIn("2 個場次", body)
         self.assertIn("5 場", body)
 
+    def test_new_speed_gate_explains_pass_and_follow_up_in_human_language(self):
+        _, body = N.summarise(run(steps=[{
+            "step": "speed-stage4-gate",
+            "status": "created",
+            "candidate_status": "passed",
+        }]))
+        self.assertIn("Stage 4 通過", body)
+        self.assertIn("現行模型未改", body)
+        self.assertIn("準備 speed candidate release", body)
+        self.assertIn("真正 commit SHA", body)
+        self.assertNotIn("gate_sha", body)
+
+    def test_existing_speed_gate_is_not_announced_again(self):
+        _, body = N.summarise(run(steps=[{
+            "step": "speed-stage4-gate",
+            "status": "existing",
+            "candidate_status": "passed",
+        }]))
+        self.assertNotIn("WinningTime 速度盲測完成", body)
+
+    def test_rejected_speed_gate_needs_no_human_action(self):
+        _, body = N.summarise(run(steps=[{
+            "step": "speed-stage4-gate",
+            "status": "created",
+            "candidate_status": "rejected",
+        }]))
+        self.assertIn("Stage 4 未通過", body)
+        self.assertIn("唔使批准或做任何操作", body)
+
 
 class SendTests(unittest.TestCase):
     KEYS = ("WC_NOTIFY_NTFY_TOPIC", "WC_NOTIFY_WEBHOOK", "WC_NOTIFY_ONLY_PROBLEMS",
@@ -128,6 +157,25 @@ class SendTests(unittest.TestCase):
         os.environ["WC_NOTIFY_ONLY_PROBLEMS"] = "1"
         sent = N.send(run(status="failed"))
         self.assertNotIn("skipped: 只報問題", sent)
+
+    def test_only_problems_mode_does_not_hide_the_one_off_speed_result(self):
+        os.environ["WC_NOTIFY_ONLY_PROBLEMS"] = "1"
+        os.environ["WC_NOTIFY_TELEGRAM_TOKEN"] = "tok"
+        os.environ["WC_NOTIFY_TELEGRAM_CHAT"] = "42"
+        payloads = []
+
+        def fake_post(_url, data, _headers):
+            payloads.append(json.loads(data.decode("utf-8")))
+            return None
+
+        with unittest.mock.patch.object(N, "post", fake_post):
+            sent = N.send(run(status="ok", steps=[{
+                "step": "speed-stage4-gate",
+                "status": "created",
+                "candidate_status": "passed",
+            }]))
+        self.assertEqual(sent, ["telegram: ok"])
+        self.assertIn("Stage 4 通過", payloads[0]["text"])
 
 
 if __name__ == "__main__":

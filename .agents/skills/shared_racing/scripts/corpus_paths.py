@@ -58,7 +58,7 @@ def corpus_roots(root: Path | str) -> list[Path]:
 
 
 def logic_files(root: Path | str, pattern: str = "Race_*_Logic.json") -> list[str]:
-    """Every scored-race file under `root`, including archived meetings.
+    """Every scored-race file under native roots plus verified catalog WARM.
 
     Sorted newest-meeting-first so a caller taking the first N gets the most
     recent races — which, given the corpus history above, is also the only
@@ -68,8 +68,28 @@ def logic_files(root: Path | str, pattern: str = "Race_*_Logic.json") -> list[st
     for base in corpus_roots(root):
         for path in glob.glob(str(base / "*" / pattern)):
             seen.setdefault(path, None)
+    # For registered meetings, only the content-verified resolved copy is valid.
+    # Empty/corrupt native folders must not mask a valid WARM copy. Unregistered
+    # native enumeration (including legacy non-date names) stays unchanged.
+    for logical_name, meeting in _au_catalog_meetings(root):
+        if MEETING_NAME.match(logical_name):
+            seen = {path: value for path, value in seen.items()
+                    if Path(path).parent.name != logical_name}
+            for path in glob.glob(str(meeting / pattern)):
+                seen.setdefault(path, None)
     # Meeting folder name starts with the date, so sorting on it sorts by date.
     return sorted(seen, key=lambda p: (Path(p).parent.name, Path(p).name), reverse=True)
+
+
+def _au_catalog_meetings(root: Path | str) -> list[tuple[str, Path]]:
+    if Path(root).name.lower() != "au_racing":
+        return []
+    skills_root = Path(__file__).resolve().parents[2]
+    if str(skills_root) not in sys.path:
+        sys.path.insert(0, str(skills_root))
+    from shared_wong_choi.corpus_catalog import catalog_meeting_locations
+
+    return catalog_meeting_locations(domain="au")
 
 
 def meeting_dirs(root: Path | str) -> list[Path]:
@@ -89,14 +109,7 @@ def meeting_dirs(root: Path | str) -> list[Path]:
         for entry in entries:
             if entry.is_dir() and MEETING_NAME.match(entry.name):
                 out.setdefault(entry.name, entry)
-    root_path = Path(root)
-    if root_path.name.lower() == "au_racing":
-        skills_root = Path(__file__).resolve().parents[2]
-        if str(skills_root) not in sys.path:
-            sys.path.insert(0, str(skills_root))
-        from shared_wong_choi.corpus_catalog import catalog_meeting_locations
-
-        for logical_name, path in catalog_meeting_locations(domain="au"):
-            if MEETING_NAME.match(logical_name):
-                out.setdefault(logical_name, path)
+    for logical_name, path in _au_catalog_meetings(root):
+        if MEETING_NAME.match(logical_name):
+            out[logical_name] = path
     return [out[k] for k in sorted(out, reverse=True)]

@@ -168,3 +168,5 @@ tennis-wong-choi/data/backups/
 # 矩陣 refit 嘅輸出，寫落 repo root。
 au_refit_argmax.json
 au_refit_consensus.json
+.video_env/
+mahjong_edit/

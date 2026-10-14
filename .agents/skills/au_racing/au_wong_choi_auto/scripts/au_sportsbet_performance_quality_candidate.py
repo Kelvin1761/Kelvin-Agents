@@ -36,7 +36,7 @@ from au_eval import (  # noqa: E402
     load_races,
     verdict_dict,
 )
-from claw_sportsbet_form import BASE, parse_race, parse_runner_blocks, run_date  # noqa: E402
+from claw_sportsbet_form import BASE, CACHE_DIR, parse_race, parse_runner_blocks, run_date  # noqa: E402
 from au_racing_engine.engine_core import (  # noqa: E402
     _performance_quality_digest,
     clip_score,
@@ -269,7 +269,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--cache-dir", type=Path,
-        default=AU_RACING / ".sportsbet_cache",
+        default=CACHE_DIR,
     )
     parser.add_argument(
         "--alphas", default="0.25,0.5,0.75,1.0",

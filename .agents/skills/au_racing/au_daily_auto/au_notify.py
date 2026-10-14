@@ -37,6 +37,29 @@ TIMEOUT = 20
 ICON = {"ok": "✅", "partial": "⚠️", "failed": "❌", "running": "⏳"}
 
 
+def speed_stage4_summary(run: dict) -> str | None:
+    """一次性、非敏感嘅 WinningTime Stage 4 手機摘要。"""
+    steps = run.get("steps") or []
+    gate = next(
+        (step for step in reversed(steps)
+         if step.get("step") == "speed-stage4-gate"
+         and step.get("status") == "created"),
+        None,
+    )
+    if not gate:
+        return None
+    if gate.get("candidate_status") == "passed":
+        return (
+            "🏁 WinningTime 速度盲測完成：Stage 4 通過；現行模型未改。"
+            "下一步請喺 Codex 回覆「準備 speed candidate release」；"
+            "收到真正 commit SHA 前唔好批准。"
+        )
+    return (
+        "🏁 WinningTime 速度盲測完成：Stage 4 未通過；"
+        "現行模型保持不變，唔使批准或做任何操作。"
+    )
+
+
 def summarise(run: dict) -> tuple[str, str]:
     """run JSON → (標題, 內文)。內文要喺手機通知一眼睇晒。"""
     status = run.get("status") or "?"
@@ -82,6 +105,10 @@ def summarise(run: dict) -> tuple[str, str]:
         lines.append(f"⚠️ 版本更新：{str(ver['update_warning'])[:180]}")
     if ver.get("engine_dirty"):
         lines.append(f"⚠️ 引擎有 {len(ver['engine_dirty'])} 個未 commit 嘅檔")
+
+    speed_result = speed_stage4_summary(run)
+    if speed_result:
+        lines.append(speed_result)
 
     title = f"{icon} AU {mode} {status} · {day} · {mins} 分鐘"
     return title, "\n".join(lines) or "冇動作"
@@ -167,7 +194,8 @@ def push(text: str, title: str = "🏇 AU 覆盤",
 def send(run: dict) -> list[str]:
     """回一串「邊個出口點樣」嘅描述。冇配置就回空。"""
     status = run.get("status") or "?"
-    if os.environ.get("WC_NOTIFY_ONLY_PROBLEMS") and status == "ok":
+    if (os.environ.get("WC_NOTIFY_ONLY_PROBLEMS") and status == "ok"
+            and not speed_stage4_summary(run)):
         return ["skipped: 只報問題"]
 
     title, body = summarise(run)

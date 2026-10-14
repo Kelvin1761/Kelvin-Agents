@@ -29,12 +29,12 @@ def _archive(tmp_path: Path):
     result = archive_copy(
         source,
         warm_root=warm,
-        catalog_root=tmp_path / "catalog",
+        catalog_root=tmp_path / "control" / "storage" / "catalog",
         domain="au",
         artifact_class="settled-meeting",
         allowed_roots=[hot],
     )
-    return source, Path(result["destination"]), tmp_path / "catalog"
+    return source, Path(result["destination"]), tmp_path / "control" / "storage" / "catalog"
 
 
 def test_resolver_prefers_verified_hot_and_reports_degraded_warm(tmp_path: Path) -> None:
@@ -109,7 +109,7 @@ def test_au_meeting_reader_merges_hot_and_catalog_warm_then_fails_closed(
         artifact_class="settled-meeting",
         allowed_roots=[hot],
     )
-    archived.rename(hot / "approved-source-removal-simulation")
+    archived.rename(tmp_path / "approved-source-removal-simulation")
 
     meetings = corpus_paths.meeting_dirs(hot)
 
@@ -117,9 +117,44 @@ def test_au_meeting_reader_merges_hot_and_catalog_warm_then_fails_closed(
         "2026-08-29 Randwick Race 1-10",
         "2026-08-28 Geelong Race 1-9",
     ]
+    assert corpus_paths.logic_files(hot) == [
+        str(current / "Race_1_Logic.json"),
+        str(Path(result["destination"]) / "Race_1_Logic.json"),
+    ]
     Path(result["destination"]).rename(warm / "offline-simulation")
     with pytest.raises(CorpusCatalogError, match="full-history corpus unavailable"):
         corpus_paths.meeting_dirs(hot)
+    with pytest.raises(CorpusCatalogError, match="full-history corpus unavailable"):
+        corpus_paths.logic_files(hot)
+
+
+def test_au_logic_reader_does_not_duplicate_native_and_warm_meeting(tmp_path, monkeypatch):
+    scripts = PACKAGE_ROOT.parent / "shared_racing" / "scripts"
+    monkeypatch.syspath_prepend(str(scripts))
+    import corpus_paths
+    source, warm, catalog = _archive(tmp_path)
+    monkeypatch.setenv("WONGCHOI_CONTROL_STATE_ROOT", str(catalog.parents[1]))
+    assert corpus_paths.logic_files(source.parent) == [str(source / "Race_1_Logic.json")]
+    assert corpus_paths.logic_files(source.parent, "Missing_*.json") == []
+
+
+@pytest.mark.parametrize("hot_state", ["empty", "corrupt"])
+def test_au_readers_use_verified_warm_not_invalid_native_folder(
+    tmp_path, monkeypatch, hot_state
+):
+    scripts = PACKAGE_ROOT.parent / "shared_racing" / "scripts"
+    monkeypatch.syspath_prepend(str(scripts))
+    import corpus_paths
+
+    source, warm, catalog = _archive(tmp_path)
+    monkeypatch.setenv("WONGCHOI_CONTROL_STATE_ROOT", str(catalog.parents[1]))
+    if hot_state == "empty":
+        (source / "Race_1_Logic.json").unlink()
+    else:
+        (source / "Race_1_Logic.json").write_text("corrupt\n", encoding="utf-8")
+
+    assert corpus_paths.logic_files(source.parent) == [str(warm / "Race_1_Logic.json")]
+    assert corpus_paths.meeting_dirs(source.parent) == [warm]
 
 
 def test_hkjc_full_history_reader_merges_catalog_without_duplicate_meetings(

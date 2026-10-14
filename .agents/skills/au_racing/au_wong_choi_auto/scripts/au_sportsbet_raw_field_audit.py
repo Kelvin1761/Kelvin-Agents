@@ -14,6 +14,7 @@ AU_RACING = SCRIPT_DIR.parents[1]
 sys.path.insert(0, str(AU_RACING))
 
 from claw_sportsbet_form import (  # noqa: E402
+    CACHE_DIR,
     parse_race,
     parse_runner_blocks,
     run_line,
@@ -263,7 +264,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--cache-dir", type=Path,
-        default=AU_RACING / ".sportsbet_cache",
+        default=CACHE_DIR,
     )
     parser.add_argument("--limit", type=int)
     parser.add_argument(
