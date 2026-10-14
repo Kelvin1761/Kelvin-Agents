@@ -442,7 +442,10 @@ def evaluate_predictions(frame: pd.DataFrame) -> dict:
         "place_precision": float(per_race["place_precision"].mean()),
         "winner_average_rank": float(mean(winner_ranks)),
         "place_getter_average_rank": float(mean(place_ranks)),
-        "ranking_correlation": float(mean(rank_correlations)),
+        # A model can be completely flat inside every race at the smallest
+        # learning-curve sizes.  Spearman is then undefined; score that as
+        # zero ranking information instead of aborting the whole experiment.
+        "ranking_correlation": float(mean(rank_correlations)) if rank_correlations else 0.0,
         "gold": int(per_race["gold"].sum()),
         "gold_rate": float(per_race["gold"].sum() / races),
         "gold_strict": int(per_race["gold_strict"].sum()),
@@ -498,6 +501,8 @@ def paired_bootstrap(champion: dict, challenger: dict, iterations: int = 2000) -
         "place_log_loss_improvement": ("place_log_loss", -1),
         "top1_difference": ("top1", 1),
         "top3_difference": ("top3", 1),
+        "gold_difference": ("gold", 1),
+        "good_difference": ("good", 1),
     }
     output = {}
     for label, (key, direction) in metrics.items():
@@ -831,6 +836,14 @@ def _promotion_gate(
     champion_betting: dict,
     candidate_betting: dict,
 ) -> dict:
+    def development_rate(model: str, key: str) -> float:
+        total = sum(int(period["metrics"][model]["races"]) for period in wf_periods)
+        return sum(
+            float(period["metrics"][model][key])
+            * int(period["metrics"][model]["races"])
+            for period in wf_periods
+        ) / max(1, total)
+
     improved_periods = sum(
         model_selection_score(period["metrics"][candidate_name])
         > model_selection_score(period["metrics"]["champion"])
@@ -856,6 +869,29 @@ def _promotion_gate(
         and champion_betting.get("roi") is not None
         and candidate_betting["roi"] >= champion_betting["roi"] - 0.05
     )
+    primary = {}
+    for metric, bootstrap_key in (
+        ("gold_rate", "gold_difference"),
+        ("good_rate", "good_difference"),
+    ):
+        primary[metric] = {
+            "development_delta": (
+                development_rate(candidate_name, metric)
+                - development_rate("champion", metric)
+            ),
+            "terminal_delta": candidate[metric] - champion[metric],
+            "terminal_ci95": bootstrap[bootstrap_key]["ci95"],
+        }
+    primary_no_regression = all(
+        values["development_delta"] >= 0 and values["terminal_delta"] >= 0
+        for values in primary.values()
+    )
+    primary_win = any(
+        values["development_delta"] > 0
+        and values["terminal_delta"] > 0
+        and values["terminal_ci95"][0] > 0
+        for values in primary.values()
+    )
     return {
         "candidate": candidate_name,
         "probability": probability_ok,
@@ -864,7 +900,18 @@ def _promotion_gate(
         "walkforward_improved_periods": improved_periods,
         "bootstrap": statistically_supported,
         "betting_not_materially_worse": betting_ok,
-        "passed": all((probability_ok, ranking_ok, stable, statistically_supported, betting_ok)),
+        "primary": primary,
+        "primary_no_regression": primary_no_regression,
+        "primary_win": primary_win,
+        "passed": all((
+            probability_ok,
+            ranking_ok,
+            stable,
+            statistically_supported,
+            betting_ok,
+            primary_no_regression,
+            primary_win,
+        )),
     }
 
 
@@ -897,6 +944,8 @@ def promotion_verdict(
         f"Walk-forward consistency: {gate['walkforward_improved_periods']}/{len(wf_periods)} periods ({'PASS' if gate['walkforward'] else 'FAIL'})",
         f"Paired bootstrap support: {'PASS' if gate['bootstrap'] else 'FAIL'}",
         f"Betting not materially worse (5pp tolerance): {'PASS' if gate['betting_not_materially_worse'] else 'FAIL'}",
+        f"Stage-4 Gold/Good no regression: {'PASS' if gate['primary_no_regression'] else 'FAIL'}",
+        f"Stage-4 primary win: {'PASS' if gate['primary_win'] else 'FAIL'}",
     ]
     if gates["hybrid"]["passed"]:
         return "PROMOTE MATRIX + ML HYBRID", reasons, gates
@@ -1081,7 +1130,7 @@ def report_markdown(results: dict) -> str:
         )
     lines.extend([
         "",
-        "The maximum training point is 444 races because the last 150 development races remain a fixed chronological learning-curve validation block. Testing 500/600 training races would overlap that block and violate the point-in-time comparison. Win Brier continued to improve modestly, while Top-1/Top-3 remained unstable; more races may help probability estimation but current data do not show a stable ranking breakthrough.",
+        f"The maximum training point is {max(point['training_races'] for point in results['learning_curve'])} races because the final {results['learning_curve'][-1]['validation_races']} development races remain a fixed chronological learning-curve validation block. The curve is diagnostic only; promotion is decided by the locked walk-forward and final chronological gates above.",
         "",
         "## BETTING PERFORMANCE",
         "",

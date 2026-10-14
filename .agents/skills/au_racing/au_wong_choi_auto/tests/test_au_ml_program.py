@@ -18,6 +18,7 @@ from au_ml_program import (  # noqa: E402
     _race_confidence_labels,
     _race_winner_market_status_labels,
     chronological_holdout,
+    evaluate_predictions,
     make_pipeline,
     make_preprocessor,
     walkforward_splits,
@@ -108,20 +109,44 @@ class AuMlProgramTests(unittest.TestCase):
         self.assertEqual(int(support.sum()), 1)
         self.assertEqual(support.tolist(), [False, True])
 
+    def test_constant_race_predictions_have_zero_ranking_correlation(self) -> None:
+        rows = []
+        for race in range(2):
+            for horse in range(1, 5):
+                rows.append({
+                    "race_id": f"race-{race}",
+                    "horse_number": horse,
+                    "actual_pos": horse,
+                    "label_win": int(horse == 1),
+                    "label_place": int(horse <= 2),
+                    "place_slots": 2,
+                    "pred_win": 0.25,
+                    "pred_place": 0.5,
+                    "analysis_score": 0.5,
+                })
+
+        metrics = evaluate_predictions(pd.DataFrame(rows))
+
+        self.assertEqual(metrics["ranking_correlation"], 0.0)
+
     def test_promotion_gate_requires_all_analysis_and_betting_checks(self) -> None:
         champion = {
             "win_brier": 0.10, "place_brier": 0.20,
             "win_log_loss": 0.30, "place_log_loss": 0.50,
             "top1": 0.20, "top3": 0.50, "place_precision": 0.40,
+            "gold_rate": 0.20, "good_rate": 0.25, "races": 100,
         }
         candidate = {
             "win_brier": 0.09, "place_brier": 0.19,
             "win_log_loss": 0.29, "place_log_loss": 0.49,
             "top1": 0.21, "top3": 0.51, "place_precision": 0.41,
+            "gold_rate": 0.21, "good_rate": 0.26, "races": 100,
         }
         bootstrap = {
             "win_brier_improvement": {"ci95": [0.001, 0.01]},
             "place_brier_improvement": {"ci95": [-0.001, 0.01]},
+            "gold_difference": {"ci95": [0.001, 0.03]},
+            "good_difference": {"ci95": [-0.01, 0.03]},
         }
         periods = [
             {"metrics": {"champion": champion, "candidate": candidate}}
@@ -138,6 +163,39 @@ class AuMlProgramTests(unittest.TestCase):
         )
         self.assertFalse(failed["betting_not_materially_worse"])
         self.assertFalse(failed["passed"])
+
+    def test_promotion_gate_blocks_primary_regression(self) -> None:
+        champion = {
+            "win_brier": 0.10, "place_brier": 0.20,
+            "win_log_loss": 0.30, "place_log_loss": 0.50,
+            "top1": 0.20, "top3": 0.50, "place_precision": 0.40,
+            "gold_rate": 0.20, "good_rate": 0.25, "races": 100,
+        }
+        candidate = {
+            **champion,
+            "win_brier": 0.09, "place_brier": 0.19,
+            "win_log_loss": 0.29, "place_log_loss": 0.49,
+            "top1": 0.21, "top3": 0.51,
+            "gold_rate": 0.199, "good_rate": 0.27,
+        }
+        bootstrap = {
+            "win_brier_improvement": {"ci95": [0.001, 0.01]},
+            "place_brier_improvement": {"ci95": [0.001, 0.01]},
+            "gold_difference": {"ci95": [-0.02, 0.01]},
+            "good_difference": {"ci95": [0.001, 0.03]},
+        }
+        periods = [{"metrics": {
+            "champion": champion,
+            "candidate": {**candidate, "gold_rate": 0.21},
+        }} for _ in range(5)]
+
+        gate = _promotion_gate(
+            champion, candidate, bootstrap, periods, "candidate",
+            {"roi": 0.01}, {"roi": 0.01},
+        )
+
+        self.assertFalse(gate["primary_no_regression"])
+        self.assertFalse(gate["passed"])
 
 
 if __name__ == "__main__":
