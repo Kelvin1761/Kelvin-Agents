@@ -84,3 +84,29 @@
 - 當年 live 用嘅 snapshot 內容：檔案只會覆蓋，冇留版本。live 乾淨係由流程推斷，唔係逐場核實。
 - B 段量化用原始騎師分同練馬師分，未計組合／同程／換騎調整，亦唔係 ranking KPI。
 - 審計 scratch：session scratchpad `jt_audit/`（唔入 repo）。
+
+## C. 修正（2026-10-15）＋ 修正後重量
+
+修正（§7 正確性修正，冇改權重／公式）：
+1. `live_priors.temporal_source_is_safe`：`race_date` 缺失或無效時 **fail closed**（之前當 live 放行），stderr 警告一次。
+2. `engine_core._jockey_trainer_prior`：Logic 嵌入嘅 `jockey_trainer_combo_prior` 只准 live（賽日 ≥ 今日）用；回放一律忽略。
+3. 直接 call `RacingEngine` 嘅研究 caller（`build_hkjc_ranking_dataset`、`review_auto_weighting`、`validate_trainer_health_candidates`、`review_draw_weights`；`hkjc_pi_ablation_probe` 經 `review_auto_weighting`）用 meeting 資料夾日期補 `race_date`。
+4. 回歸測試：`hkjc_wong_choi_auto/tests/test_jt_prior_as_of_guard.py`（6 個）。
+
+Live 冇影響：live Logic 全部有 `race_date`（10-14 跑馬地 9/9、10-11 沙田 11/11），AU／HKJC golden 120/120 不變，`./檢查.sh` 全綠。
+
+同一語料（362 場／4,500 匹）用修正前後 code 各砌一份 ranking dataset（只差呢個改動）：
+
+| 量度 | 修正前 | 修正後 | Δ（配對 bootstrap 95% CI） |
+|---|---:|---:|---|
+| 能力分有變嘅馬 | — | 3,280／4,500（04–07 月幾乎全部；09–10 月 0%） | 平均 \|Δ\| 3.50，最大 14.12 |
+| 頭四順序有變嘅場次 | — | 242／362 | |
+| 場內 AUC（頭馬） | 0.7240 | 0.7196 | −0.0045 [−0.0151, +0.0055] |
+| 場內 AUC（頭三） | 0.6915 | 0.6919 | +0.0004 [−0.0065, +0.0072] |
+| Benter b_model（replay，356 場） | +0.214 [+0.058, +0.391] | **+0.215 [+0.069, +0.389]** | |
+
+判讀：
+- 前視主要喺冇 `race_date` 嘅舊歸檔（04–07 月）；09 月之後嘅 Logic 有日期，本身已經乾淨。
+- 修走前視之後，能力分大幅郁、排序大量變，但整體排名質素**冇顯著變化**——騎練前視虛增嘅係騎練分本身（+0.016），喺綜合分入面被其他維度攤薄。
+- **A 段「模型喺市場之外有資訊」唔係前視造出嚟**：修正後 replay 仍然 b_model +0.215，CI 唔跨零。但 replay 仍有其他 PIT provenance FLAG（歸檔 Logic 衍生欄位冇 immutable 時點證明），乾淨 snapshot 96 場仍然 CI 跨零。結論維持「方向一致、未證實」，要等 snapshot 累積。
+- 舊 `review_auto_weighting` 自己讀 `25_26` 季度 CSV 做候選特徵（唔經引擎）嘅部分**未修**，用佢嘅 candidate 數字對 2026-04～07 場次仍然有前視，FLAG。

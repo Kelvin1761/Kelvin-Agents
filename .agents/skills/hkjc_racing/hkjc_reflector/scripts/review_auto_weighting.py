@@ -2167,6 +2167,10 @@ def run_review(
             logic = json.loads(logic_path.read_text(encoding="utf-8"))
             race_context = logic.get("race_analysis", {})
             race_context = dict(race_context)
+            # Without race_date the engine cannot tell a replay from a live card;
+            # the folder date is the meeting authority (EXP-20261014-10).
+            if date:
+                race_context.setdefault("race_date", date)
             race_context.setdefault("venue", meeting_venue)
             horses = []
             has_debut = False

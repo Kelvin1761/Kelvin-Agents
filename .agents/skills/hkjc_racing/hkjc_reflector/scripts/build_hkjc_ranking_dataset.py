@@ -701,6 +701,10 @@ def build_rows(meeting_roots: list[Path], results_roots: list[Path]) -> tuple[pd
 
             logic = json.loads(logic_path.read_text(encoding="utf-8"))
             race_context = dict(logic.get("race_analysis", {}))
+            # Without race_date the engine cannot tell a replay from a live card;
+            # the folder date is the meeting authority (EXP-20261014-10).
+            if date:
+                race_context.setdefault("race_date", date)
             racecard_snapshot = _load_racecard_snapshot(str(meeting_dir), race_num)
             racecard_info = racecard_snapshot.get("race_info") or {}
             racecard_horses = racecard_snapshot.get("horses") or {}

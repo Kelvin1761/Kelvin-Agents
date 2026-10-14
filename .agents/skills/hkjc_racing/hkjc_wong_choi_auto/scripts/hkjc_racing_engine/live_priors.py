@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 import re
+import sys
 
 import pandas as pd
 
@@ -31,11 +32,43 @@ def temporal_source_is_safe(source, as_of_date=None) -> bool:
     whose cutoff matches that meeting date.
     """
     requested = _parse_as_of_date(as_of_date)
-    if requested is None or requested >= date.today():
+    if requested is None:
+        # No date = cannot prove the race is live.  Allowing it let every
+        # caller that skipped `race_date` read the full-season snapshot,
+        # including the race's own result (騎練分 in-race AUC +0.016,
+        # EXP-20261014-10).  Fail closed and say so once per process.
+        _warn_missing_as_of_date()
+        return False
+    if requested >= date.today():
         return True
     mode = str(getattr(source, "temporal_mode", "") or "")
     source_date = _parse_as_of_date(getattr(source, "as_of_date", None))
     return mode == "point_in_time" and source_date == requested
+
+
+_MISSING_AS_OF_WARNED = False
+
+
+def _warn_missing_as_of_date() -> None:
+    global _MISSING_AS_OF_WARNED
+    if _MISSING_AS_OF_WARNED:
+        return
+    _MISSING_AS_OF_WARNED = True
+    print(
+        "⚠️ HKJC 騎練 prior：race_context 冇 race_date，當歷史場次處理（中性）。"
+        "live 評分要經 orchestrator 寫入 race_date。",
+        file=sys.stderr,
+    )
+
+
+class EmbeddedLogicPrior:
+    """Aggregates embedded in archived Logic files carry no as-of provenance."""
+
+    temporal_mode = "embedded_logic_aggregate"
+    as_of_date = None
+
+
+EMBEDDED_LOGIC_PRIOR = EmbeddedLogicPrior()
 
 
 class EmptyRatings:

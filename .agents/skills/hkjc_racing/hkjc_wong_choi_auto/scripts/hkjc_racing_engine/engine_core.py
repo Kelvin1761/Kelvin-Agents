@@ -17,6 +17,7 @@ from .live_priors import (
     get_recency_trainer_rating,
     prior_source_manifest,
     temporal_source_is_safe,
+    EMBEDDED_LOGIC_PRIOR,
 )
 from .matrix_mapper import (
     MATRIX_FORMULAS,
@@ -3150,9 +3151,15 @@ class RacingEngine:
 
     def _jockey_trainer_prior(self):
         priors = self._value("jockey_trainer_combo_prior")
-        if isinstance(priors, dict):
-            return priors
-        return None
+        if not isinstance(priors, dict):
+            return None
+        # Old orchestrators embedded this aggregate into Logic and some 2026-04/05
+        # archives were rewritten after the races (same-day and future results).
+        # Only a live card may trust it; replays use the guarded prior stack.
+        as_of_date = (self.race_context or {}).get("race_date")
+        if not temporal_source_is_safe(EMBEDDED_LOGIC_PRIOR, as_of_date):
+            return None
+        return priors
 
     def _source_for(self, name):
         return {

@@ -105,7 +105,8 @@ def load_race_samples(result_index: dict[tuple[str, str, int], dict[str, int]]) 
             continue
         for logic_path in sorted(meeting_dir.glob("Race_*_Logic.json")):
             logic = json.loads(logic_path.read_text(encoding="utf-8"))
-            race_context = logic.get("race_analysis", {})
+            race_context = dict(logic.get("race_analysis", {}))
+            race_context.setdefault("race_date", date)  # replay, not a live card
             race_number = int(race_context.get("race_number") or 0)
             actual_pos = result_index.get((date, venue, race_number), {})
             if not actual_pos:
