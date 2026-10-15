@@ -22,8 +22,9 @@ class DataCoverageTests(unittest.TestCase):
     def test_coverage_block_present_and_shaped(self) -> None:
         auto = RacingEngine({"horse_name": "H", "barrier": 5, "horse_number": "1"}, _ctx()).analyze_horse()
         cov = auto["data_coverage"]
-        # Ranking coverage contains the ten active ability leaves.  class_score
-        # remains available in the report but no longer inflates this count.
+        # Ranking coverage: ten ability leaves (trial_score left in EXP-20261016-01)
+        # plus form_quality_score (EXP-20261016-06).  class_score remains available
+        # in the report but no longer inflates this count.
         self.assertEqual(cov["total"], 11)
         self.assertEqual(cov["present"] + len(cov["missing_features"]), cov["total"])
         self.assertIn(cov["confidence"], ("高", "中", "薄"))

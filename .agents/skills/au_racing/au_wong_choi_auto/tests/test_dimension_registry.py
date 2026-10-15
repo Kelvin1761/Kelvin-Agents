@@ -34,7 +34,7 @@ def test_retired_draw_still_counts_for_legacy_ability_keys_without_direct_score(
 
 
 def test_safety_count_and_composition_unchanged():
-    assert renderer._default_leaf_count({'feature_scores':dict.fromkeys(scoring.FEATURE_KEYS,60)})==9
+    assert renderer._default_leaf_count({'feature_scores':dict.fromkeys(scoring.FEATURE_KEYS,60)})==8  # EXP-20261016-01: trial_score no longer evidence
     fs={key:60+i*.75 for i,key in enumerate(scoring.FEATURE_KEYS)}
     matrices=matrix_mapper.map_features_to_matrix_scores(fs)
     independent=60+sum((matrices[key]-60)*weight for key,weight in scoring.MATRIX_WEIGHTS.items())

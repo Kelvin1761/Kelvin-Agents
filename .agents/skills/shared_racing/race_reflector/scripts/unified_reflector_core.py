@@ -703,7 +703,7 @@ def derive_improvement_theme(row: dict[str, Any]) -> tuple[str, str]:
         return "sectional", "加強段速 / 試閘 / 速度訊號"
     if any(name in keys for name in ("consistency_score", "form_score", "health_score",
                                      "risk_score", "performance_quality_score",
-                                     "confidence_score")):
+                                     "confidence_score", "form_quality_score")):
         return "stability", "改善近況 / 穩定性 / 風險寬恕"
     return "general", "微調綜合戰力分矩陣權重"
 

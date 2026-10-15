@@ -6,6 +6,8 @@ Deterministic full-Python AU scoring/ranking/output pipeline.
 
 from __future__ import annotations
 
+import math
+
 import argparse
 import json
 import re
@@ -26,6 +28,7 @@ from au_racing_engine.engine_core import (
     normalise_field_barriers,
     finite_pf_number,
     performance_pf_metrics,
+    refresh_form_quality,
 )
 from au_racing_engine.io_utils import write_json_atomic as _write_json_atomic
 from au_racing_engine.io_utils import write_text_atomic as _atomic_write_text
@@ -131,6 +134,8 @@ def score_logic_data(
     # Before the field summary: 段速實速 is field-relative, so PF has to be
     # complete for the whole race or not counted at all.
     backfill_pf_metrics(logic_data, facts_path)
+    # 近績質素分 is field-relative too: every runner's raw value before the summary.
+    refresh_form_quality(logic_data, facts_path)
     # 防禦性：`enrich_logic_from_facts` 已經正規化過，但 facts 缺失時 enrich 唔跑，
     # 而檔位分桶同馬群摘要都食絕對檔位。函數係 idempotent，乾淨場次係 no-op。
     normalise_field_barriers(logic_data)
@@ -340,6 +345,7 @@ def _build_field_summary(horses):
     weights = []
     ratings = []
     performance_quality = []
+    form_quality = []
     proven_class_levels = []
     # 班次代理（2026-07-31）：逐匹馬近仗獎金水平嘅場內中位數，供 `_form_score`
     # 做場內相對班次調整。同下面 pf_fields 嘅場內 mean/stdev 同一個 pattern。
@@ -392,6 +398,12 @@ def _build_field_summary(horses):
             quality = None
         if quality is not None:
             performance_quality.append(quality)
+        try:
+            form_q = float((horse.get("_data") or {}).get("form_quality_raw"))
+        except (TypeError, ValueError):
+            form_q = None
+        if form_q is not None and math.isfinite(form_q):
+            form_quality.append(form_q)
         pf_agg = performance_pf_metrics(horse).get("pf_aggregates") or {}
         for key, values in pf_fields.items():
             value = pf_agg.get(f"{key}_avg")
@@ -465,6 +477,14 @@ def _build_field_summary(horses):
         ** 0.5
         if len(performance_quality) >= 2
         else 0.0
+    )
+    # 近績質素分（EXP-20261016-06）：同表現質素分一樣用全場 population stdev。
+    form_quality_mean = sum(form_quality) / len(form_quality) if form_quality else None
+    summary["form_quality_field_count"] = len(form_quality)
+    summary["form_quality_field_mean"] = form_quality_mean
+    summary["form_quality_field_stdev"] = (
+        (sum((v - form_quality_mean) ** 2 for v in form_quality) / len(form_quality)) ** 0.5
+        if len(form_quality) >= 2 else 0.0
     )
     proven_class_mean = (
         sum(proven_class_levels) / len(proven_class_levels)

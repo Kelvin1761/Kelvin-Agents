@@ -42,7 +42,23 @@ def canonicalize_matrix_scores(matrix_scores, default=60.0):
     }
 
 
+def with_form_quality(features):
+    """Feature vectors scored before EXP-20261016-06 have no `form_quality_score`.
+
+    Fill it with that leaf's own fallback — the old stability mix
+    0.6 × form + 0.4 × performance quality — so stored Logic files, golden
+    samples and replay tools keep the exact pre-change stability score instead
+    of silently reading a neutral 60.
+    """
+    if not isinstance(features, dict) or "form_quality_score" in features:
+        return features
+    form = clip_score(features.get("form_score", 60))
+    quality = clip_score(features.get("performance_quality_score", 60))
+    return {**features, "form_quality_score": clip_score(60.0 + 0.6 * (form - 60.0) + 0.4 * (quality - 60.0))}
+
+
 def map_features_to_matrix_scores(features):
+    features = with_form_quality(features)
     matrix_scores = {}
     for key, components in MATRIX_FORMULAS.items():
         # Score weighted deviations from neutral.  This is algebraically

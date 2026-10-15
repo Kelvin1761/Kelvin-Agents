@@ -1,0 +1,222 @@
+{
+ "races": 2485,
+ "verdict": "REJECT",
+ "reason": "primary_regression",
+ "primary": {
+  "gold": {
+   "delta": 0.0,
+   "ci_low": -0.0012057877813504824,
+   "ci_high": 0.001168679392286716,
+   "p_value": 1.0
+  },
+  "good_positional": {
+   "delta": -0.0016096579476861167,
+   "ci_low": -0.003882657463330457,
+   "ci_high": 0.0004284490145672665,
+   "p_value": 0.216
+  }
+ },
+ "ranking": {
+  "top3_capture_at5": {
+   "delta": -0.00026827632461435283,
+   "ci_low": -0.0010244589576130108,
+   "ci_high": 0.0004482294935006723,
+   "p_value": 0.43
+  },
+  "ndcg_at5": {
+   "delta": -0.00021991143305788959,
+   "ci_low": -0.0007136130774624157,
+   "ci_high": 0.0002800038721211807,
+   "p_value": 0.367
+  },
+  "top5_pairwise_auc": {
+   "delta": -0.0002564937716092322,
+   "ci_low": -0.0008276022267909078,
+   "ci_high": 0.0003249684325535718,
+   "p_value": 0.404
+  }
+ },
+ "counts_base": {
+  "gold": 20.764587525150905,
+  "gold_strict": 7.4044265593561365,
+  "good_positional": 26.277665995975855,
+  "pass": 49.37625754527163,
+  "champion": 25.39235412474849,
+  "winner_in_top3": 57.142857142857146,
+  "winner_in_top5": 77.90744466800805,
+  "t3prec": 49.13480885311871
+ },
+ "counts_cand": {
+  "gold": 20.764587525150905,
+  "gold_strict": 7.44466800804829,
+  "good_positional": 26.116700201207244,
+  "pass": 49.17505030181086,
+  "champion": 25.39235412474849,
+  "winner_in_top3": 57.142857142857146,
+  "winner_in_top5": 77.90744466800805,
+  "t3prec": 49.06773977196512
+ },
+ "cohorts": {
+  "field:11-12:gold": {
+   "n": 621,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "field:11-12:good_positional": {
+   "n": 621,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "field:13+:gold": {
+   "n": 234,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "field:13+:good_positional": {
+   "n": 234,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "field:9-10:gold": {
+   "n": 846,
+   "delta_pp": -0.12,
+   "ci_pp": [
+    -0.38,
+    0.0
+   ]
+  },
+  "field:9-10:good_positional": {
+   "n": 846,
+   "delta_pp": -0.24,
+   "ci_pp": [
+    -0.71,
+    0.23
+   ]
+  },
+  "field:<=8:gold": {
+   "n": 784,
+   "delta_pp": 0.13,
+   "ci_pp": [
+    0.0,
+    0.4
+   ]
+  },
+  "field:<=8:good_positional": {
+   "n": 784,
+   "delta_pp": -0.26,
+   "ci_pp": [
+    -0.79,
+    0.25
+   ]
+  },
+  "top_pick_sp:$1-3:gold": {
+   "n": 855,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$1-3:good_positional": {
+   "n": 855,
+   "delta_pp": -0.23,
+   "ci_pp": [
+    -0.69,
+    0.23
+   ]
+  },
+  "top_pick_sp:$15+:gold": {
+   "n": 121,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$15+:good_positional": {
+   "n": 121,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$3-5:gold": {
+   "n": 722,
+   "delta_pp": -0.14,
+   "ci_pp": [
+    -0.44,
+    0.0
+   ]
+  },
+  "top_pick_sp:$3-5:good_positional": {
+   "n": 722,
+   "delta_pp": -0.28,
+   "ci_pp": [
+    -0.7,
+    0.0
+   ]
+  },
+  "top_pick_sp:$5-8:gold": {
+   "n": 494,
+   "delta_pp": 0.2,
+   "ci_pp": [
+    0.0,
+    0.64
+   ]
+  },
+  "top_pick_sp:$5-8:good_positional": {
+   "n": 494,
+   "delta_pp": 0.2,
+   "ci_pp": [
+    0.0,
+    0.66
+   ]
+  },
+  "top_pick_sp:$8-15:gold": {
+   "n": 291,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$8-15:good_positional": {
+   "n": 291,
+   "delta_pp": -0.34,
+   "ci_pp": [
+    -1.13,
+    0.0
+   ]
+  },
+  "top_pick_sp:unknown:gold": {
+   "n": 2,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:unknown:good_positional": {
+   "n": 2,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "cohort_ci_all_negative": []
+}

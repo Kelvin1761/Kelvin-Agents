@@ -1,0 +1,225 @@
+{
+ "races": 2485,
+ "M1": {
+  "by_month": {
+   "2026-08": {
+    "rows": 30513,
+    "labelled": 0.2207,
+    "parsed": 0.0803
+   },
+   "2026-09": {
+    "rows": 35190,
+    "labelled": 1.0,
+    "parsed": 0.3725
+   },
+   "2026-10": {
+    "rows": 17654,
+    "labelled": 1.0,
+    "parsed": 0.3413
+   }
+  },
+  "meeting_days": 71,
+  "full_coverage_days": 0,
+  "first_full_day": null,
+  "longest_consecutive_full_run": 0,
+  "top_labels": [
+   [
+    "…",
+    35269
+   ],
+   [
+    "MDN-SW",
+    6206
+   ],
+   [
+    "MDN",
+    3498
+   ],
+   [
+    "BM56",
+    2113
+   ],
+   [
+    "BM62",
+    2062
+   ],
+   [
+    "BM66",
+    1535
+   ],
+   [
+    "BM70",
+    1213
+   ],
+   [
+    "3Y MDN-SW",
+    887
+   ],
+   [
+    "BM78",
+    834
+   ],
+   [
+    "0 - 56",
+    727
+   ],
+   [
+    "BM64",
+    645
+   ],
+   [
+    "3UP MDN-SW",
+    631
+   ],
+   [
+    "BM74",
+    464
+   ],
+   [
+    "2Y MDN-SW",
+    441
+   ],
+   [
+    "2Y HCP",
+    397
+   ]
+  ]
+ },
+ "M2": {
+  "replica_max_abs_diff": 0.0,
+  "triggered": 1010,
+  "trigger_rate": 0.0422,
+  "changed_races": 597,
+  "excess_triggered_pp": 7.52,
+  "excess_triggered_ci": [
+   4.57,
+   11.37
+  ],
+  "excess_form72_not_triggered_pp": 10.59,
+  "excess_form72_not_triggered_ci": [
+   8.93,
+   12.96
+  ],
+  "n_form72_not_triggered": 5298,
+  "counts_base": {
+   "gold": 20.764587525150905,
+   "gold_strict": 7.4044265593561365,
+   "good_positional": 26.277665995975855,
+   "pass": 49.37625754527163,
+   "champion": 25.39235412474849,
+   "winner_in_top3": 57.142857142857146,
+   "winner_in_top5": 77.90744466800805,
+   "t3prec": 49.13480885311871
+  },
+  "counts_removed": {
+   "gold": 20.764587525150905,
+   "gold_strict": 7.605633802816901,
+   "good_positional": 26.197183098591548,
+   "pass": 49.33601609657948,
+   "champion": 25.593561368209254,
+   "winner_in_top3": 57.2635814889336,
+   "winner_in_top5": 77.82696177062374,
+   "t3prec": 49.17505030181086
+  },
+  "verdict_remove_rule": {
+   "verdict": "REJECT",
+   "reason": "primary_regression",
+   "detail": {
+    "mode": "fixed_rule",
+    "races": 2485,
+    "meeting_days": 71,
+    "blocks_required_nonnegative": 4,
+    "primary": {
+     "gold": {
+      "delta": 0.0,
+      "ci_low": -0.0021431633090441492,
+      "ci_high": 0.0021204410517387615,
+      "p_value": 1.0,
+      "block_deltas": [
+       -0.0044444444444444444,
+       0.002631578947368421,
+       0.0,
+       0.0,
+       0.0,
+       0.002857142857142857
+      ],
+      "higher_is_better": true
+     },
+     "good_positional": {
+      "delta": -0.0008048289738430583,
+      "ci_low": -0.003125,
+      "ci_high": 0.001289213579716373,
+      "p_value": 0.576,
+      "block_deltas": [
+       -0.0022222222222222222,
+       0.0,
+       0.0,
+       0.0020833333333333333,
+       0.0,
+       -0.005714285714285714
+      ],
+      "higher_is_better": true
+     }
+    },
+    "ranking": {
+     "top3_capture_at5": {
+      "delta": -4.467698288230006e-20,
+      "ci_low": -0.0009895391574780887,
+      "ci_high": 0.0012126111560226355,
+      "p_value": 0.97,
+      "block_deltas": [
+       0.0007407407407407406,
+       0.0008771929824561403,
+       -0.0008936550491510278,
+       0.0006944444444444445,
+       -0.0007374631268436578,
+       -0.0009523809523809524
+      ],
+      "higher_is_better": true
+     },
+     "ndcg_at5": {
+      "delta": 0.000552520920533358,
+      "ci_low": -0.00025316956710826755,
+      "ci_high": 0.0014172085030196558,
+      "p_value": 0.184,
+      "block_deltas": [
+       0.000910159122581274,
+       0.0005833455761970731,
+       0.00019903318165020255,
+       0.001928683141864406,
+       -0.0001247601649912884,
+       -0.0005766975053298412
+      ],
+      "higher_is_better": true
+     },
+     "top5_pairwise_auc": {
+      "delta": 0.00021036704961982302,
+      "ci_low": -0.000539205001481116,
+      "ci_high": 0.0009988373448341133,
+      "p_value": 0.577,
+      "block_deltas": [
+       3.745469112050611e-05,
+       0.0008741308216825565,
+       0.00016004549516613858,
+       0.0008840740102833753,
+       -0.0002223846559479044,
+       -0.0005994195288082175
+      ],
+      "higher_is_better": true
+     }
+    },
+    "metrics": [
+     "good_positional"
+    ]
+   }
+  }
+ },
+ "M3": {
+  "second_place_races": 11584,
+  "conflict_races_dropped": 3,
+  "winner_rows": 8262,
+  "winner_rows_margin_known": 0,
+  "known_share": 0.0,
+  "stop": "known winning margin < 50% — no AUC conclusion (protocol)"
+ }
+}

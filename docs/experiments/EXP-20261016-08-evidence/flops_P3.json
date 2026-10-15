@@ -1,0 +1,1 @@
+{"label": "P3_vs_A0r", "races": 2485, "top2_bottom_third_rate": {"base": 0.1469, "cand": 0.1521, "delta": 0.0052, "ci": [0.0009, 0.0098]}, "longshot15_top2_bottom_count": {"base": 171, "cand": 177, "delta": 6, "ci": [-7, 20]}, "top1_bottom_third_rate": {"base": 0.1316, "cand": 0.1372, "delta": 0.0056, "ci": [-0.0012, 0.0131]}}

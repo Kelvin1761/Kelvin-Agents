@@ -1029,8 +1029,9 @@ def _watchlist_signal(horse: dict, auto: dict, top3_cutoff: float) -> tuple[str,
         reasons.append("stable_enough")
     if _as_float(matrix.get("class_weight"), 60.0) >= 61.5:
         reasons.append("class_weight_ok")
-    if _as_float(matrix.get("jockey_trainer"), 60.0) >= 64.0 or _as_float(features.get("trial_score"), 60.0) >= 66.0:
-        reasons.append("jt_or_trial_support")
+    # trial_score left the model and the report (EXP-20261016-01); jockey/trainer only.
+    if _as_float(matrix.get("jockey_trainer"), 60.0) >= 64.0:
+        reasons.append("jt_support")
     if _as_float(features.get("distance_score"), 60.0) >= 60.0:
         reasons.append("distance_ok")
     market_low = _as_float(data.get("current_market_low"), None)
@@ -1054,7 +1055,7 @@ def _watchlist_reason_label(reason: str) -> str:
         "near_top3_score": "分差接近 Top3",
         "stable_enough": "穩定性夠",
         "class_weight_ok": "級數/負磅合理",
-        "jt_or_trial_support": "騎練或試閘支持",
+        "jt_support": "騎練支持",
         "distance_ok": "路程無明顯扣分",
         "market_context": "市場只作背景支持",
         "timing_context": "時間/段速背景支持",

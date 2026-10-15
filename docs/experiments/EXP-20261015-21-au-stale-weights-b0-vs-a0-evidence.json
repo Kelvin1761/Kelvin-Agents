@@ -1,0 +1,343 @@
+{
+ "experiment": "EXP-20261015-21",
+ "base_commit": "d51796e1",
+ "input_sha256": "c2c20cc92c0b4d114439620778e33380db34230d2ac35a67556890fbaf20c52a",
+ "procedure": {
+  "algorithm": "au-walkforward-refit/v1 (EXP-20261015-02 procedure)",
+  "clean_since": "2026-08-05",
+  "warmup_days": 30,
+  "window_days": 7,
+  "draws": 256,
+  "seed": 7,
+  "proposal_mix": "even i: Dirichlet(1); odd i: Dirichlet(max(25*anchor, 0.35))",
+  "objective": [
+   "gold",
+   "good_positional",
+   "pass",
+   "t3prec"
+  ],
+  "eligibility": "train gold>=anchor AND good>=anchor AND objective>anchor",
+  "time_blocks": 5,
+  "min_nonnegative_blocks": 4,
+  "consensus": "per-dimension median of eligible draws, renormalised to anchor total",
+  "median_recheck": "production arithmetic; same primary/objective/block gate",
+  "fallback": "anchor weights",
+  "label_filter": ">=3 placed and a winner",
+  "tie_rule": "saddlecloth order (stable)",
+  "dims": [
+   "stability",
+   "pace_perf",
+   "jockey_trainer",
+   "class_weight",
+   "track",
+   "preparation"
+  ],
+  "anchor_weights": {
+   "stability": 0.37099725005319806,
+   "pace_perf": 0.12093934478578448,
+   "jockey_trainer": 0.6626585553070451,
+   "class_weight": 0.3826193901797637,
+   "track": 0.14114297066700832,
+   "preparation": 0.25244110196132946
+  }
+ },
+ "procedure_hash": "7207e406e6a16701b46f4d58b0c057e3185a7c330691badae18ac763e02e975d",
+ "verify": {
+  "max_abs_exact_vs_engine": 0.0,
+  "max_abs_numpy_vs_exact": 0.0,
+  "max_abs_metric_table_vs_canonical": 7.105427357601002e-15,
+  "ok": true
+ },
+ "windows": [
+  {
+   "train_until": "2026-09-04",
+   "test_dates": [
+    "2026-09-05",
+    "2026-09-06",
+    "2026-09-07",
+    "2026-09-08",
+    "2026-09-09",
+    "2026-09-10",
+    "2026-09-11"
+   ],
+   "training_races": 1003,
+   "accepted_draws": 4,
+   "fallback": null,
+   "weights": {
+    "stability": 0.3017342335897887,
+    "pace_perf": 0.11808044008211685,
+    "jockey_trainer": 0.6496832286003275,
+    "class_weight": 0.30006095300535496,
+    "track": 0.1273490385419968,
+    "preparation": 0.43389071913454447
+   }
+  },
+  {
+   "train_until": "2026-09-11",
+   "test_dates": [
+    "2026-09-12",
+    "2026-09-13",
+    "2026-09-14",
+    "2026-09-15",
+    "2026-09-16",
+    "2026-09-17",
+    "2026-09-18"
+   ],
+   "training_races": 1244,
+   "accepted_draws": 3,
+   "fallback": null,
+   "weights": {
+    "stability": 0.2791904275064223,
+    "pace_perf": 0.11825881257363902,
+    "jockey_trainer": 0.6168525952834693,
+    "class_weight": 0.3304107532628983,
+    "track": 0.11940497310838598,
+    "preparation": 0.4666810512193143
+   }
+  },
+  {
+   "train_until": "2026-09-18",
+   "test_dates": [
+    "2026-09-19",
+    "2026-09-20",
+    "2026-09-21",
+    "2026-09-22",
+    "2026-09-23",
+    "2026-09-24",
+    "2026-09-25"
+   ],
+   "training_races": 1511,
+   "accepted_draws": 6,
+   "fallback": null,
+   "weights": {
+    "stability": 0.3258346886135849,
+    "pace_perf": 0.12983952578353974,
+    "jockey_trainer": 0.6447802378093166,
+    "class_weight": 0.3707130637781772,
+    "track": 0.11536562511268779,
+    "preparation": 0.344265471856823
+   }
+  },
+  {
+   "train_until": "2026-09-25",
+   "test_dates": [
+    "2026-09-26",
+    "2026-09-27",
+    "2026-09-28",
+    "2026-09-29",
+    "2026-09-30",
+    "2026-10-01",
+    "2026-10-02"
+   ],
+   "training_races": 1788,
+   "accepted_draws": 4,
+   "fallback": "consensus_failed_gate",
+   "weights": {
+    "stability": 0.37099725005319806,
+    "pace_perf": 0.12093934478578448,
+    "jockey_trainer": 0.6626585553070451,
+    "class_weight": 0.3826193901797637,
+    "track": 0.14114297066700832,
+    "preparation": 0.25244110196132946
+   }
+  },
+  {
+   "train_until": "2026-10-02",
+   "test_dates": [
+    "2026-10-03",
+    "2026-10-04",
+    "2026-10-05",
+    "2026-10-06",
+    "2026-10-07",
+    "2026-10-08",
+    "2026-10-09"
+   ],
+   "training_races": 2030,
+   "accepted_draws": 0,
+   "fallback": "no_consensus",
+   "weights": {
+    "stability": 0.37099725005319806,
+    "pace_perf": 0.12093934478578448,
+    "jockey_trainer": 0.6626585553070451,
+    "class_weight": 0.3826193901797637,
+    "track": 0.14114297066700832,
+    "preparation": 0.25244110196132946
+   }
+  },
+  {
+   "train_until": "2026-10-09",
+   "test_dates": [
+    "2026-10-10",
+    "2026-10-11",
+    "2026-10-12",
+    "2026-10-13",
+    "2026-10-14"
+   ],
+   "training_races": 2295,
+   "accepted_draws": 0,
+   "fallback": "no_consensus",
+   "weights": {
+    "stability": 0.37099725005319806,
+    "pace_perf": 0.12093934478578448,
+    "jockey_trainer": 0.6626585553070451,
+    "class_weight": 0.3826193901797637,
+    "track": 0.14114297066700832,
+    "preparation": 0.25244110196132946
+   }
+  }
+ ],
+ "counts": {
+  "live": [
+   283,
+   384,
+   727
+  ],
+  "refit": [
+   288,
+   386,
+   725
+  ],
+  "fields": [
+   "gold",
+   "good_positional",
+   "pass"
+  ]
+ },
+ "stale_check": {
+  "verdict": {
+   "verdict": "REJECT",
+   "reason": "ranking_evidence_too_weak",
+   "detail": {
+    "mode": "walk_forward_oos",
+    "races": 1452,
+    "meeting_days": 40,
+    "blocks_required_nonnegative": 4,
+    "primary": {
+     "gold": {
+      "delta": 0.003443526170798898,
+      "ci_low": 0.0,
+      "ci_high": 0.007331378299120235,
+      "p_value": 0.094,
+      "block_deltas": [
+       0.012448132780082987,
+       0.00749063670411985,
+       0.0,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "higher_is_better": true
+     },
+     "good_positional": {
+      "delta": 0.0013774104683195593,
+      "ci_low": -0.0034626038781163434,
+      "ci_high": 0.005980066445182724,
+      "p_value": 0.648,
+      "block_deltas": [
+       0.012448132780082987,
+       0.003745318352059925,
+       -0.007220216606498195,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "higher_is_better": true
+     }
+    },
+    "ranking": {
+     "top3_capture_at5": {
+      "delta": 0.00045913682277318613,
+      "ci_low": -0.0027404085700049835,
+      "ci_high": 0.0036945812807881763,
+      "p_value": 0.738,
+      "block_deltas": [
+       0.00829875518672199,
+       -0.006242197253433208,
+       0.0012033694344163659,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "higher_is_better": true
+     },
+     "ndcg_at5": {
+      "delta": 0.002042204431203762,
+      "ci_low": -3.5517274147986334e-05,
+      "ci_high": 0.004418242333200547,
+      "p_value": 0.056,
+      "block_deltas": [
+       0.006724453986062358,
+       -0.001321929040500754,
+       0.006128673203178836,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "higher_is_better": true
+     },
+     "top5_pairwise_auc": {
+      "delta": 0.0004864217918864648,
+      "ci_low": -0.0015053644835396102,
+      "ci_high": 0.002572963123898593,
+      "p_value": 0.605,
+      "block_deltas": [
+       0.006517262244600472,
+       -0.005436914793320223,
+       0.0021201461757651015,
+       0.0,
+       0.0,
+       0.0
+      ],
+      "higher_is_better": true
+     }
+    },
+    "positive_metrics": [
+     "top3_capture_at5",
+     "ndcg_at5",
+     "top5_pairwise_auc"
+    ],
+    "ci_supported_metrics": []
+   }
+  },
+  "pass_diagnostic": {
+   "delta": -0.0013774104683195593,
+   "ci_low": -0.011111111111111112,
+   "ci_high": 0.008377760853008377,
+   "p_value": 0.864,
+   "block_deltas": [
+    0.004149377593360996,
+    -0.011235955056179775,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "higher_is_better": true
+  },
+  "counts_live": {
+   "gold": 19.490358126721762,
+   "gold_strict": 7.851239669421488,
+   "good_positional": 26.446280991735538,
+   "pass": 50.06887052341598,
+   "champion": 25.68870523415978,
+   "winner_in_top3": 56.47382920110193,
+   "winner_in_top5": 77.68595041322314,
+   "t3prec": 49.63269054178145
+  },
+  "counts_refit": {
+   "gold": 19.834710743801654,
+   "gold_strict": 7.920110192837465,
+   "good_positional": 26.584022038567493,
+   "pass": 49.93112947658402,
+   "champion": 25.757575757575758,
+   "winner_in_top3": 57.02479338842975,
+   "winner_in_top5": 78.03030303030303,
+   "t3prec": 49.54086317722681
+  },
+  "races": 1452,
+  "meeting_days": 40,
+  "procedure_hash": "7207e406e6a16701b46f4d58b0c057e3185a7c330691badae18ac763e02e975d"
+ },
+ "source_audit": "FLAG: input/label availability not source-certified",
+ "promotion_authorized": false
+}

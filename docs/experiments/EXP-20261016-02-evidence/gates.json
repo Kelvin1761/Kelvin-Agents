@@ -1,0 +1,59 @@
+{
+ "G0_audit": {
+  "form_lines": 389176,
+  "page_has_wt": 162265,
+  "parsed_wt": 162261,
+  "trial_or_nonstandard": 114496,
+  "no_wt_or_margin": 112357,
+  "formguide_name_unparsed": 3,
+  "conflict_events": 48,
+  "events": 25560
+ },
+ "events": 25560,
+ "G1": {
+  "official_runs": 49678,
+  "matched_runs": 11090,
+  "pearson_r_time": 1.0,
+  "diff_s_median": 0.0,
+  "diff_s_iqr": [
+   -0.003,
+   0.002
+  ],
+  "abs_diff_s_p90": 0.007
+ },
+ "G0_coverage": {
+  "clean_runners": 23949,
+  "with_asb": 20615,
+  "share": 0.8608,
+  "races_comparable": 2273
+ },
+ "G2": {
+  "auc_asb": 0.61928,
+  "auc_asb_ci": [
+   0.61192,
+   0.62765
+  ],
+  "auc_pace_figure_same_runners": 0.60095,
+  "asb_minus_pf": 0.01833,
+  "asb_minus_pf_ci": [
+   0.00796,
+   0.02918
+  ],
+  "auc_pace_figure_all_observed": 0.6035,
+  "rho_mean": {
+   "pace_figure_score": 0.3002,
+   "form_score": 0.3679,
+   "performance_quality_score": 0.4497
+  },
+  "rho_races": {
+   "pace_figure_score": 2248,
+   "form_score": 2248,
+   "performance_quality_score": 2248
+  },
+  "stop_rule": {
+   "threshold": 0.6,
+   "rho_pace_figure": 0.3002,
+   "stop": false
+  }
+ }
+}
