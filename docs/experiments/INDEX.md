@@ -198,3 +198,5 @@
 - [EXP-20261015-08](EXP-20261015-08-au-neutral-speed-results.md) — 純速度／matched leaf／joint refit：全程AUC0.607、頭段0.541；同樣本PQ較強（Holm p=.024）。1,493場R1重配Gold+3／Good+5／Pass−4，排序CI跨零；加頭段較弱。長途未有可靠全程訊號；source FLAG／舊窗，NEEDS MORE TESTING，不改現役模型。
 - [EXP-20261015-09](EXP-20261015-09-au-distance-par-results.md) — 精確馬場×途程par：全程AUC .607→.613、長途 .484→.521（CI跨.5），相對現役Gold0／Good+1／Pass+1，排序未證實改善。精確支持中位數19場；R1固定前瞻shadow CLI已備、未接排程／未收新樣本，研究不部署。
 - [EXP-20261015-10](EXP-20261015-10-au-next-start-speed-results.md) — 最近正式賽→下一次出賽pairwise：純T AUC.608、profile .621（邊際CI跨0）；現行+T Gold+2／Good+2／Pass+4，+profile +2／−3／0。嚴格latest覆蓋12.54%；source FLAG／舊窗，T待驗、profile不採用，未改現役。
+- [EXP-20261015-11](EXP-20261015-11-au-history-preserved-results.md) — 近兩／三場舊基準延伸：相對最近一仗只Good+1／0，未採用；暫存driver遺失，保存存活結果及重現限制，不部署。
+- [EXP-20261015-12／13](EXP-20261015-12-au-time-coverage-results.md) — 官方TAS逐駒video time＋RQ冠名配對：385場3445筆source；乾淨1483場latest覆蓋12.65%→16.15%（+503匹次）。資料本身Gold0／Good+2／Pass+2，連上一仗修正+4／+7／+3；Holm最小p=.735、historical availability FLAG，研究分支保存，未正式啟用。
