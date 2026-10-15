@@ -63,19 +63,24 @@ def hold_ratio(hold_sum: float | None) -> float:
     return 1.0
 
 
-def combined_hold(conn, player_a_id: int, player_b_id: int, as_of_date: str) -> float | None:
+def combined_hold(conn, player_a_id: int, player_b_id: int, as_of_date: str,
+                  start_time: str | None = None) -> float | None:
     """Sum of both players' mean hold rate over their last N matches strictly
     before the match date (walk-forward safe). None unless both have >= 5
     hold samples — unknown must stay neutral, not penalised."""
+    from tennis_wc.features.history_asof import guard_clause, guard_params
+
     sums: list[float] = []
+    guard = guard_params(as_of_date, start_time)
     for pid in (player_a_id, player_b_id):
         rows = conn.execute(
-            """
+            f"""
             SELECT hold_rate FROM player_match_history
             WHERE player_id = ? AND hold_rate IS NOT NULL AND match_date < ?
+              {guard_clause()}
             ORDER BY match_date DESC LIMIT ?
             """,
-            (pid, as_of_date, _HOLD_WINDOW),
+            (pid, as_of_date, *guard, _HOLD_WINDOW),
         ).fetchall()
         vals = [float(r["hold_rate"]) for r in rows]
         if len(vals) < _HOLD_MIN_SAMPLES:

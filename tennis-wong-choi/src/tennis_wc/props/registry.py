@@ -148,7 +148,11 @@ def family_for_market(market_key: str, market_name: str = "") -> str:
         # alternatives and the plain match total stay outside this family.
         lowered = name.lower()
         if not any(token in lowered for token in ("set ", "alternative", "match total")):
-            if re.match(r"^.+?\s+total games\s+\d", name, re.I):
+            # "<Player> Total Games 12.5" until 2026-08-22; since 08-23 the
+            # line lives only on the selection ("<Player> Total Games",
+            # "Over 12.5"). Requiring the trailing number sent every new
+            # player market to match_total_games, where it was skipped.
+            if re.match(r"^.+?\s+total games(?:\s+\d|\s*$)", name, re.I):
                 return "player_total_games"
         return "match_total_games"
     return key

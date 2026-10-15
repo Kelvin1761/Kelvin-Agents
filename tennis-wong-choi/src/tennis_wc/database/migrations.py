@@ -652,6 +652,63 @@ def ensure_close_audit_schema(conn) -> None:
             conn.execute("ALTER TABLE closing_odds_snapshots ADD COLUMN close_status TEXT")
         if "close_reason" not in close_cols:
             conn.execute("ALTER TABLE closing_odds_snapshots ADD COLUMN close_reason TEXT")
+    # Preclose capture tables (2026-10-14). Same columns as odds_snapshots /
+    # market_odds_snapshots, filled ONLY by the scheduled near-start refresh
+    # and read ONLY by the close readers. Kept out of the live tables so the
+    # card (newest snapshot) and every replay (earliest snapshot) cannot see a
+    # price that was not on offer at card time.
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS preclose_odds_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id TEXT NOT NULL,
+            match_id INTEGER,
+            bookmaker TEXT NOT NULL,
+            market TEXT NOT NULL,
+            player_a_odds REAL NOT NULL,
+            player_b_odds REAL NOT NULL,
+            player_a_open_odds REAL,
+            player_b_open_odds REAL,
+            source_provider TEXT NOT NULL,
+            raw_response_id INTEGER NOT NULL,
+            fetched_at TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS preclose_market_odds_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id TEXT NOT NULL,
+            match_id INTEGER,
+            bookmaker TEXT NOT NULL,
+            market_key TEXT NOT NULL,
+            market_name TEXT NOT NULL,
+            selection_name TEXT NOT NULL,
+            selection_side TEXT,
+            line REAL,
+            odds REAL NOT NULL,
+            source_provider TEXT NOT NULL,
+            raw_response_id INTEGER NOT NULL,
+            fetched_at TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_preclose_odds_match "
+        "ON preclose_odds_snapshots(match_id, fetched_at)"
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_preclose_market_odds_match "
+        "ON preclose_market_odds_snapshots(match_id, market_key, fetched_at)"
+    )
+    # `clv_tracker.close_reason` (2026-10-14): why a tracked row has no close
+    # (no_start_time / no_pre_start_snapshot / ...). NULL when a close exists.
+    tracker_cols = {row["name"] for row in conn.execute("PRAGMA table_info(clv_tracker)").fetchall()}
+    if tracker_cols and "close_reason" not in tracker_cols:
+        conn.execute("ALTER TABLE clv_tracker ADD COLUMN close_reason TEXT")
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS prop_price_log (

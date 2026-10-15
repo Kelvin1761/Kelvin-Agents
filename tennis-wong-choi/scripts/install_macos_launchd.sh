@@ -6,6 +6,8 @@ set -eu
 #   .card   09:00 — produces the betting card for TODAY (--refresh-today)
 #   .daily  18:00 — settles and reviews yesterday, archives, warms tomorrow
 #   .recovery 10:30/12:30 — restores a missing card OR a stale dashboard
+#   .preclose every 30 min — near-start odds capture for CLV only (preclose
+#             tables; never read by the card or replays)
 #
 # The split exists because Sportsbet does not open tomorrow's book in the
 # evening. Its own listing returns HTTP 200 and two bytes at 18:07 and 55
@@ -33,6 +35,7 @@ LABELS=(
   "com.antigravity.tennis-wong-choi.card"
   "com.antigravity.tennis-wong-choi.daily"
   "com.antigravity.tennis-wong-choi.recovery"
+  "com.antigravity.tennis-wong-choi.preclose"
 )
 
 RENDER_ONLY=0
@@ -44,8 +47,11 @@ elif [ "${1:-}" = "--recovery-only" ]; then
   # Safe to use while the daily analysis is running: do not boot it out merely
   # to add the independent checker.
   LABELS=("com.antigravity.tennis-wong-choi.recovery")
+elif [ "${1:-}" = "--preclose-only" ]; then
+  # Same reasoning: adds the near-start capture without touching the others.
+  LABELS=("com.antigravity.tennis-wong-choi.preclose")
 elif [ -n "${1:-}" ]; then
-  echo "Usage: $0 [--recovery-only|--render-only DEST]" >&2
+  echo "Usage: $0 [--recovery-only|--preclose-only|--render-only DEST]" >&2
   exit 2
 fi
 
@@ -67,7 +73,8 @@ fi
 mkdir -p "$DEST_DIR" "$TENNIS_LOG_DIR"
 chmod +x "$PROJECT_DIR/scripts/run_tennis_daily_schedule.sh" \
          "$PROJECT_DIR/scripts/tennis_daily_schedule.py" \
-         "$PROJECT_DIR/scripts/tennis_card_recovery.py"
+         "$PROJECT_DIR/scripts/tennis_card_recovery.py" \
+         "$PROJECT_DIR/scripts/tennis_preclose_refresh.py"
 
 install_one() {
   local label="$1"
@@ -111,6 +118,7 @@ echo
 echo "  09:00  card    — prices TODAY, produces the betting card"
 echo "  18:00  daily   — settles/reviews yesterday, archives, warms tomorrow"
 echo "  10:30 + 12:30 recovery — missing card or dashboard-only retry, maximum twice each"
+echo "  every 30 min  preclose — near-start odds capture for CLV (no card changes)"
 echo "Logs: $TENNIS_LOG_DIR/"
 echo
 if [ "$RENDER_ONLY" -eq 1 ]; then

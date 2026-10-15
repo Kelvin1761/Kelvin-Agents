@@ -67,6 +67,9 @@ DOMAIN_LABELS: dict[str, dict[str, tuple[str, ...]]] = {
         "com.antigravity.tennis-wong-choi.recovery": (
             "tennis-wong-choi/scripts/tennis_card_recovery.py",
         ),
+        "com.antigravity.tennis-wong-choi.preclose": (
+            "tennis-wong-choi/scripts/tennis_preclose_refresh.py",
+        ),
     },
 }
 CENTRAL_LABELS = {

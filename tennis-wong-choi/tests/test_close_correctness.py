@@ -350,3 +350,220 @@ def test_health_line_always_prints_source_errors(monkeypatch):
     })
     assert "來源錯誤 2 (rankings_wta, history)" in loud
     assert "降級 1 (rankings_atp)" in loud
+
+
+# ---------------------------------------------------------------- A: MARKET_LEG
+
+
+def _market_snapshot(conn, match_id: int, fetched: str, odds: float,
+                     key: str = "total_games", selection: str = "Over", line: float = 22.5):
+    conn.execute(
+        """INSERT INTO market_odds_snapshots (event_id, match_id, bookmaker, market_key,
+               market_name, selection_name, selection_side, line, odds,
+               source_provider, raw_response_id, fetched_at, created_at)
+           VALUES (?, ?, 'sportsbet', ?, 'Total Games', ?, NULL, ?, ?, 'sportsbet', 0, ?, ?)""",
+        (f"E{match_id}", match_id, key, selection, line, odds, fetched, fetched),
+    )
+
+
+def _leg(conn, match_id: int, odds_taken: float = 1.90, clv=None, closing=None):
+    conn.execute(
+        """INSERT INTO clv_tracker (recommendation_type, source_id, match_id, match_date,
+               selection_name, selection_side, market_key, market_name, market_line,
+               tier, odds_taken, closing_odds, clv, result_status, recorded_at, updated_at)
+           VALUES ('MARKET_LEG', ?, ?, '2026-08-11', 'Over', NULL, 'total_games',
+                   'our own label', 22.5, 'CORE', ?, ?, ?, 'PENDING',
+                   '2026-08-11T00:00:00Z', '2026-08-11T00:00:00Z')""",
+        (match_id, match_id, odds_taken, closing, clv),
+    )
+
+
+def test_market_leg_close_ignores_in_running_snapshot(db):
+    from tennis_wc.betting.ledger import get_connection, update_clv_tracker_for_date
+
+    _match(db, 30)
+    _market_snapshot(db, 30, "2026-08-11T09:00:00Z", 1.95)
+    _market_snapshot(db, 30, "2026-08-11T11:50:00Z", 1.80)  # the true close
+    _market_snapshot(db, 30, "2026-08-11T12:40:00Z", 3.40)  # in-running
+    _leg(db, 30, odds_taken=1.95)
+    db.commit()
+
+    update_clv_tracker_for_date("2026-08-11")
+    row = get_connection().execute(
+        "SELECT closing_odds, clv, close_reason FROM clv_tracker WHERE match_id=30"
+    ).fetchone()
+    assert row["closing_odds"] == 1.80, "MARKET_LEG close took the in-running price"
+    assert row["clv"] == pytest.approx((1.95 - 1.80) / 1.80)
+    assert row["close_reason"] is None
+
+
+@pytest.mark.parametrize(
+    "start,snapshot,reason",
+    [
+        (None, "2026-08-11T09:00:00Z", "no_start_time"),
+        (START, "2026-08-11T12:30:00Z", "no_pre_start_snapshot"),
+    ],
+)
+def test_market_leg_without_pre_start_close_is_null_with_reason(db, start, snapshot, reason):
+    from tennis_wc.betting.ledger import get_connection, update_clv_tracker_for_date
+
+    _match(db, 31, start=start)
+    _market_snapshot(db, 31, snapshot, 2.60)
+    _leg(db, 31, odds_taken=1.95, closing=2.60, clv=-0.25)  # legacy stale CLV
+    db.commit()
+
+    update_clv_tracker_for_date("2026-08-11")
+    row = get_connection().execute(
+        "SELECT closing_odds, clv, close_reason FROM clv_tracker WHERE match_id=31"
+    ).fetchone()
+    assert row["closing_odds"] is None and row["clv"] is None
+    assert row["close_reason"] == reason
+
+
+# ---------------------------------------------------------------- B: preclose capture
+
+
+def _fake_page(match_id: int, odds: float, fetched: str) -> dict:
+    return {
+        "event_id": f"E{match_id}", "bookmaker": "sportsbet", "market": "match_winner",
+        "player_a_name": "A", "player_b_name": "B",
+        "player_a_odds": 1.70, "player_b_odds": 2.20, "timestamp": fetched,
+        "markets": [{
+            "market_key": "win_a_set", "market_name": "To Win At Least One Set",
+            "selections": [{"selection_name": "Sel 1", "odds": odds}],
+        }],
+    }
+
+
+def test_preclose_refresh_feeds_the_close_but_not_the_card(db, monkeypatch):
+    from datetime import datetime, timezone
+
+    from tennis_wc.betting.ledger import (
+        _ensure_tracking_schema, get_connection, sync_clv_tracker_for_date,
+    )
+    from tennis_wc.ingestion import ingest_odds
+    from tennis_wc.props.daily import _rows_for_date
+
+    _match(db, 7)                                     # start 12:00Z
+    _match(db, 8, start="2026-08-11T15:00:00Z")       # outside the window
+    _match(db, 9, start="2026-08-11T11:30:00Z")       # in window, never evaluated
+    _prop(db, 1, is_value=1, stake=1.0)
+    _prop(db, 2, is_value=0, stake=0.0, match_id=8)
+    _market(db, 1, "2026-08-11T01:00:00Z", 2.20)      # the only card-time price
+    db.commit()
+    _ensure_tracking_schema()
+    monkeypatch.setattr(ingest_odds, "_latest_sportsbet_event_refs", lambda d: [
+        {"match_id": 7, "event_id": "E7", "event_url": "https://x/e7"},
+        {"match_id": 9, "event_id": "E9", "event_url": "https://x/e9"},
+    ])
+    card_before = [tuple(r) for r in _rows_for_date(get_connection(), "2026-08-11")]
+    replay_before = [tuple(r) for r in _rows_for_date(get_connection(), "2026-08-11",
+                                                      earliest_only=True)]
+    fetched = []
+
+    def fetcher(ref, match_id):
+        fetched.append((ref, match_id))
+        page = _fake_page(match_id, 1.85, "2026-08-11T11:10:00Z")
+        return ingest_odds._store_preclose_event(page, match_id, "sportsbet_scrape", 0)
+
+    now = datetime(2026, 8, 11, 11, 0, tzinfo=timezone.utc)
+    summary = ingest_odds.refresh_pre_start_markets(
+        "2026-08-11", now=now, fetcher=fetcher, sleeper=lambda s: None)
+    assert fetched == [("https://x/e7", 7)], "only evaluated matches inside the window"
+    assert summary["refreshed"] == 1 and summary["failed"] == 0
+
+    # A second tick inside the same window does not fetch the page again.
+    again = ingest_odds.refresh_pre_start_markets(
+        "2026-08-11", now=now.replace(minute=30), fetcher=fetcher, sleeper=lambda s: None)
+    assert again["already_captured"] == 1 and len(fetched) == 1
+
+    conn = get_connection()
+    assert conn.execute("SELECT COUNT(*) FROM market_odds_snapshots").fetchone()[0] == 1, (
+        "the live table the card reads must be untouched")
+    assert [tuple(r) for r in _rows_for_date(conn, "2026-08-11")] == card_before
+    assert [tuple(r) for r in _rows_for_date(conn, "2026-08-11", earliest_only=True)] \
+        == replay_before, "replay (earliest snapshot) must not see the preclose price"
+
+    summary = sync_clv_tracker_for_date("2026-08-11")
+    assert summary["prop_prices_logged"]["with_two_plus_pre_start"] == 1
+    log = get_connection().execute(
+        "SELECT * FROM prop_price_log WHERE prop_id = 1").fetchone()
+    assert log["close_pre_start_odds"] == 1.85, "close must use the near-start capture"
+    assert log["earliest_pre_start_odds"] == 2.20
+    assert log["pre_start_snapshots"] == 2
+    tracker = get_connection().execute(
+        "SELECT closing_odds, clv FROM clv_tracker WHERE recommendation_type='PROP_RECOMMENDATION'"
+    ).fetchone()
+    assert tracker["closing_odds"] == 1.85
+    assert tracker["clv"] == pytest.approx((2.0 - 1.85) / 1.85)
+
+
+def test_preclose_match_winner_capture_becomes_the_close(db):
+    from tennis_wc.betting.ledger import (
+        _ensure_tracking_schema, fetch_closing_odds_for_date, get_connection,
+    )
+    from tennis_wc.ingestion import ingest_odds
+
+    _match(db, 1)
+    _odds(db, 1, "2026-08-11T01:00:00Z", 2.10, 1.75)
+    db.commit()
+    _ensure_tracking_schema()
+    ingest_odds._store_preclose_event(_fake_page(1, 1.9, "2026-08-11T11:20:00Z"),
+                                      1, "sportsbet_scrape", 0)
+    assert fetch_closing_odds_for_date("2026-08-11") == 1
+    close = get_connection().execute(
+        "SELECT * FROM closing_odds_snapshots WHERE match_id = 1").fetchone()
+    assert close["fetched_at"] == "2026-08-11T11:20:00Z"
+    assert (close["player_a_closing_odds"], close["player_b_closing_odds"]) == (1.70, 2.20)
+    assert get_connection().execute("SELECT COUNT(*) FROM odds_snapshots").fetchone()[0] == 1
+
+
+def test_preclose_refresh_reports_missing_event_ref_and_respects_cap(db, monkeypatch):
+    from datetime import datetime, timezone
+
+    from tennis_wc.betting.ledger import _ensure_tracking_schema
+    from tennis_wc.ingestion import ingest_odds
+
+    for mid in (20, 21, 22):
+        _match(db, mid)
+        _prop(db, mid, is_value=0, stake=0.0, match_id=mid)
+    db.commit()
+    _ensure_tracking_schema()
+    monkeypatch.setattr(ingest_odds, "_latest_sportsbet_event_refs", lambda d: [
+        {"match_id": 21, "event_id": "E21", "event_url": "https://x/e21"},
+        {"match_id": 22, "event_id": "E22", "event_url": "https://x/e22"},
+    ])
+    sleeps = []
+    summary = ingest_odds.refresh_pre_start_markets(
+        "2026-08-11", now=datetime(2026, 8, 11, 11, 0, tzinfo=timezone.utc),
+        max_events=2, fetcher=lambda ref, mid: 1, sleeper=sleeps.append)
+    assert summary["candidates"] == 3
+    assert summary["no_event_ref"] == 1, "match 20 is not in the latest listing"
+    assert summary["refreshed"] == 1 and summary["deferred_by_cap"] == 1
+    assert sleeps == [], "no pause before the first real fetch"
+
+
+def test_preclose_tick_covers_today_and_tomorrow():
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parents[1] / "scripts" / "tennis_preclose_refresh.py"
+    spec = importlib.util.spec_from_file_location("tennis_preclose_refresh_t", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.path.insert(0, str(path.parent))
+    try:
+        spec.loader.exec_module(module)
+    finally:
+        sys.path.remove(str(path.parent))
+    seen = []
+
+    def refresh(match_date):
+        seen.append(match_date)
+        if match_date.endswith("15"):
+            raise RuntimeError("boom")
+        return {"refreshed": 2, "failed": 0}
+
+    summary = module.run_tick("2026-10-14", refresh=refresh)
+    assert seen == ["2026-10-14", "2026-10-15"]
+    assert summary["refreshed"] == 2 and summary["failed"] == 1

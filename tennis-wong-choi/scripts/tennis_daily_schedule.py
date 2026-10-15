@@ -924,6 +924,7 @@ def ensure_live_provider_config() -> None:
 
 def review_previous_day(match_date: str) -> dict:
     top_up_lowtier_corpus(match_date)
+    top_up_wta_serve_stats(match_date)
     log(f"Reviewing previous day: {match_date}")
     payload = run_cli_json("review-date", "--date", match_date)
     report_path = payload.get("review_report_path")
@@ -987,6 +988,27 @@ def top_up_lowtier_corpus(match_date: str) -> None:
             f"{payload.get('players_created')} new players")
     except Exception as exc:  # a feed hiccup must not stop the day's analysis
         log(f"WARNING: lower-tier corpus top-up failed: {exc}")
+
+
+def top_up_wta_serve_stats(match_date: str) -> None:
+    """Pull the last week of official WTA match stats into `wta_match_stats`.
+
+    WTA serve columns have been empty since 2026-06 (Sackmann froze on
+    2026-05-18; TennisMyLife has no WTA). A week, not a day: a tournament's
+    late rounds and a slow stats feed land after the day they were played,
+    and already-stored matches are skipped, so the overlap costs only the
+    match-list requests. Feeds `wta_match_stats` only -- the serve models do
+    not read it until the wiring change passes its own gate.
+    """
+    try:
+        start = (date.fromisoformat(match_date) - timedelta(days=7)).isoformat()
+        payload = run_cli_json("ingest-wta-stats", "--start", start, "--end", match_date)
+        log(f"WTA serve stats: {payload.get('matches_with_stats')} new with stats, "
+            f"{payload.get('matches_without_stats')} without, "
+            f"{payload.get('already_stored')} already stored, "
+            f"{len(payload.get('errors') or [])} errors")
+    except Exception as exc:  # a feed hiccup must not stop the day's review
+        log(f"WARNING: WTA serve stats top-up failed: {exc}")
 
 
 def analyse_next_day(match_date: str, *, today: str | None = None) -> None:

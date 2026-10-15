@@ -92,7 +92,8 @@ def ingest_odds(date: str) -> int:
     return count
 
 
-def _insert_market_odds(conn, row: dict, match_id: int | None, provider_name: str, raw_id: int, now: str) -> None:
+def _insert_market_odds(conn, row: dict, match_id: int | None, provider_name: str, raw_id: int, now: str,
+                        *, table: str = "market_odds_snapshots", fetched_at: str | None = None) -> None:
     # selection_side must be oriented to the LINKED match row's player order:
     # the scrape can list players in the opposite order to the fixture-created
     # match, and a flipped side mirror-flips every downstream factor readout.
@@ -130,8 +131,8 @@ def _insert_market_odds(conn, row: dict, match_id: int | None, provider_name: st
             if odds is None or not selection_name:
                 continue
             conn.execute(
-                """
-                INSERT INTO market_odds_snapshots (
+                f"""
+                INSERT INTO {table} (
                     event_id, match_id, bookmaker, market_key, market_name,
                     selection_name, selection_side, line, odds, source_provider,
                     raw_response_id, fetched_at, created_at
@@ -150,7 +151,7 @@ def _insert_market_odds(conn, row: dict, match_id: int | None, provider_name: st
                     float(odds),
                     provider_name,
                     raw_id,
-                    row.get("timestamp", now),
+                    fetched_at or row.get("timestamp", now),
                     now,
                 ),
             )
@@ -564,18 +565,31 @@ def _normalise_name(value: str | None) -> str:
     return " ".join(str(value or "").lower().strip().split())
 
 
-def ingest_event_odds(event_id: str, match_id: int | None = None) -> int:
+def ingest_event_odds(event_id: str, match_id: int | None = None, *, preclose: bool = False) -> int:
+    """Fetch one event page and store every market on it.
+
+    `preclose=True` (2026-10-14) writes to `preclose_odds_snapshots` /
+    `preclose_market_odds_snapshots` instead of the two live tables. Those
+    hold ONLY the scheduled near-start capture, and only the CLOSE readers
+    (`fetch_closing_odds_for_date`, `_tracker_close`, `_log_prop_prices`) read
+    them. About fifty other queries read the live tables -- the card prices
+    from the newest snapshot and every replay from the earliest -- so a late
+    capture landing there could change a selection, or seed a replay with a
+    price that was never on offer at card time. Kept apart, it cannot.
+    """
     provider = get_odds_provider()
     row = provider.fetch_event_odds(event_id, ["match_winner"])
     raw_id = store_raw_response(
         provider.provider_name,
-        "/event-odds",
-        {"event_id": event_id, "markets": ["match_winner"]},
+        "/event-odds-preclose" if preclose else "/event-odds",
+        {"event_id": event_id, "markets": ["match_winner"], "preclose": preclose},
         row,
         200,
-        "odds",
+        "odds_preclose" if preclose else "odds",
         event_id,
     )
+    if preclose:
+        return _store_preclose_event(row, match_id, provider.provider_name, raw_id)
     now = utc_now()
     with get_connection() as conn:
         if match_id is None:
@@ -613,6 +627,155 @@ def ingest_event_odds(event_id: str, match_id: int | None = None) -> int:
         if match_id is not None:
             resync_selection_sides(conn, match_id)
     return 1
+
+
+def _store_preclose_event(row: dict, match_id: int | None, provider_name: str, raw_id: int) -> int:
+    now = utc_now()
+    # The capture time: a close is defined against the start by WHEN we saw it.
+    fetched_at = row.get("timestamp") or now
+    with get_connection() as conn:
+        if match_id is None:
+            match = conn.execute(
+                "SELECT id FROM matches WHERE market_event_id = ?",
+                (row.get("event_id"),),
+            ).fetchone()
+            match_id = int(match["id"]) if match else None
+        a_odds, b_odds, a_open, b_open = _oriented_positional_odds(conn, match_id, row)
+        if a_odds is not None and b_odds is not None:
+            conn.execute(
+                """
+                INSERT INTO preclose_odds_snapshots (
+                    event_id, match_id, bookmaker, market, player_a_odds, player_b_odds,
+                    player_a_open_odds, player_b_open_odds, source_provider, raw_response_id,
+                    fetched_at, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (row["event_id"], match_id, row.get("bookmaker") or provider_name,
+                 row.get("market") or "match_winner", a_odds, b_odds,
+                 a_open, b_open, provider_name, raw_id, fetched_at, now),
+            )
+        _insert_market_odds(conn, row | {"bookmaker": row.get("bookmaker") or provider_name},
+                            match_id, provider_name, raw_id, now,
+                            table="preclose_market_odds_snapshots", fetched_at=fetched_at)
+    return 1
+
+
+def _parse_utc(value: str) -> datetime:
+    parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=timezone.utc)
+
+
+def _iso_z(value: datetime) -> str:
+    return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def refresh_pre_start_markets(
+    match_date: str,
+    *,
+    now: datetime | None = None,
+    lead_min_minutes: int = 15,
+    lead_max_minutes: int = 75,
+    max_events: int = 30,
+    pause_seconds: float = 3.0,
+    fetcher=None,
+    sleeper=None,
+) -> dict:
+    """Second pre-start capture for the matches we evaluated on `match_date`.
+
+    Why (measured read-only 2026-10-14 on props since 2026-09-01 with a feed
+    identity and a start time): 2,839 of the 2,882 props with any pre-start
+    snapshot had EXACTLY ONE (98.5%), median 3.8h before the start. The close
+    WAS the price we evaluated at, so prop CLV was zero by construction.
+
+    Which matches: start in (now + lead_min, now + lead_max], at least one
+    prop_tracker or clv_tracker row (the model looked at it), and no preclose
+    capture yet inside [start - lead_max, start). The scheduler ticks every 30
+    minutes against a 60-minute window, so every start falls inside at least
+    one tick and the "already captured" guard drops the second.
+
+    Rate: one event page per match per day, `pause_seconds` apart, at most
+    `max_events` a tick -- ~45 pages spread over a day, against the ~60 the
+    09:00 card fetches back to back.
+
+    Writes only the preclose tables (see `ingest_event_odds`); nothing that
+    selects or stakes a bet reads them.
+    """
+    import time as _time
+
+    fetch = fetcher or (lambda ref, mid: ingest_event_odds(ref, mid, preclose=True))
+    sleep = sleeper or _time.sleep
+    now_dt = now or datetime.now(timezone.utc)
+    lower = _iso_z(now_dt + timedelta(minutes=lead_min_minutes))
+    upper = _iso_z(now_dt + timedelta(minutes=lead_max_minutes))
+    with get_connection() as conn:
+        candidates = conn.execute(
+            """
+            SELECT m.id, m.start_time_utc
+            FROM matches m
+            WHERE m.match_date = ?
+              AND m.start_time_utc IS NOT NULL AND m.start_time_utc != ''
+              AND m.start_time_utc > ? AND m.start_time_utc <= ?
+              AND (
+                EXISTS (SELECT 1 FROM prop_tracker p WHERE p.match_id = m.id)
+                OR EXISTS (SELECT 1 FROM clv_tracker t WHERE t.match_id = m.id)
+              )
+            ORDER BY m.start_time_utc, m.id
+            """,
+            (match_date, lower, upper),
+        ).fetchall()
+        todo = []
+        already = 0
+        for match in candidates:
+            window_open = _iso_z(_parse_utc(match["start_time_utc"])
+                                 - timedelta(minutes=lead_max_minutes))
+            seen = conn.execute(
+                """
+                SELECT 1 FROM preclose_market_odds_snapshots
+                WHERE match_id = ? AND fetched_at >= ? AND fetched_at < ?
+                LIMIT 1
+                """,
+                (match["id"], window_open, match["start_time_utc"]),
+            ).fetchone()
+            if seen:
+                already += 1
+            else:
+                todo.append(dict(match))
+    refs = {}
+    if todo:
+        refs = {int(r["match_id"]): r for r in _latest_sportsbet_event_refs(match_date)
+                if r.get("match_id") is not None}
+    refreshed = 0
+    errors: list[dict] = []
+    no_ref = 0
+    fetched_any = False
+    for match in todo[:max_events]:
+        ref = refs.get(int(match["id"])) or {}
+        event_ref = ref.get("event_url") or ref.get("event_id")
+        if not event_ref:
+            no_ref += 1
+            errors.append({"match_id": match["id"], "error": "no_event_ref_in_latest_listing"})
+            continue
+        if fetched_any:
+            sleep(pause_seconds)
+        fetched_any = True
+        try:
+            fetch(event_ref, int(match["id"]))
+            refreshed += 1
+        except Exception as exc:  # noqa: BLE001 -- one bad page must not stop the tick
+            errors.append({"match_id": match["id"],
+                           "error": _classify_sportsbet_probe_error(str(exc))})
+    return {
+        "date": match_date,
+        "window_utc": [lower, upper],
+        "candidates": len(candidates),
+        "already_captured": already,
+        "refreshed": refreshed,
+        "no_event_ref": no_ref,
+        "failed": len(errors) - no_ref,
+        "deferred_by_cap": max(0, len(todo) - max_events),
+        "errors": errors,
+    }
 
 
 def enrich_sportsbet_event_markets(match_date: str) -> dict:

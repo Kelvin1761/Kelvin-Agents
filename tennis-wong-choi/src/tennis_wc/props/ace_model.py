@@ -148,14 +148,20 @@ class AceProfile:
 
 
 def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | None,
-                       last_n: int = _LAST_N) -> AceProfile:
-    """Serve-ace form from the player's matches STRICTLY BEFORE as_of_date."""
+                       last_n: int = _LAST_N, start_time: str | None = None) -> AceProfile:
+    """Serve-ace form from the player's matches STRICTLY BEFORE as_of_date,
+    point-in-time guarded (features.history_asof): same-event rows count only
+    if ingested before `start_time`."""
+    from tennis_wc.features.history_asof import guard_clause, guard_params
+
     surf = (surface or "hard").lower()
+    guard = guard_params(as_of_date, start_time)
     rows = conn.execute(
-        """
+        f"""
         SELECT h.match_date, h.surface, h.ace_count, h.service_games_played
         FROM player_match_history h
         WHERE h.player_id = ? AND h.ace_count IS NOT NULL AND h.match_date < ?
+          {guard_clause("h")}
           AND (
               SELECT COUNT(*)
               FROM player_match_history duplicate
@@ -167,7 +173,7 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
         ORDER BY match_date DESC
         LIMIT ?
         """,
-        (player_id, as_of_date, last_n),
+        (player_id, as_of_date, *guard, last_n),
     ).fetchall()
     aces = [float(r["ace_count"]) for r in rows]
     surf_aces = [float(r["ace_count"]) for r in rows if (r["surface"] or "").lower() == surf]
@@ -199,7 +205,7 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
     )
     # aces this player conceded = opponent's aces in the player's recent matches
     conc_rows = conn.execute(
-        """
+        f"""
         SELECT o.ace_count AS opp_aces,
                o.service_games_played AS opp_service_games
         FROM player_match_history p
@@ -210,6 +216,7 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
              = replace(replace(p.provider_match_id, '-winner', ''), '-loser', '')
         WHERE p.player_id = ? AND p.match_date < ? AND o.ace_count IS NOT NULL
           AND p.ace_count IS NOT NULL
+          {guard_clause("p")}
           AND (
               SELECT COUNT(*)
               FROM player_match_history duplicate
@@ -220,7 +227,7 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
           ) = 1
         ORDER BY p.match_date DESC LIMIT ?
         """,
-        (player_id, as_of_date, last_n),
+        (player_id, as_of_date, *guard, last_n),
     ).fetchall()
     conc = [float(r["opp_aces"]) for r in conc_rows]
     conceded = sum(conc) / len(conc) if conc else None
@@ -431,7 +438,8 @@ def _devig(implied: float) -> float:
 def price_ace_legs(conn, match_id: int, player_a_id: int, player_b_id: int,
                    as_of_date: str, surface: str | None,
                    offered_lines: dict[float, float],
-                   model_weight: float | None = None) -> list[PricedAceLeg]:
+                   model_weight: float | None = None,
+                   start_time: str | None = None) -> list[PricedAceLeg]:
     """Price each offered {line: decimal_odds} rung for a match. Returns [] if
     either player is too thin to model (no fabricated edges on low data).
 
@@ -441,8 +449,8 @@ def price_ace_legs(conn, match_id: int, player_a_id: int, player_b_id: int,
     ``family_reliability`` had fitted 0.33 for player_aces on its settled
     outcomes -- and player_aces is the one family the gate lets bet.
     """
-    a = player_ace_profile(conn, player_a_id, as_of_date, surface)
-    b = player_ace_profile(conn, player_b_id, as_of_date, surface)
+    a = player_ace_profile(conn, player_a_id, as_of_date, surface, start_time=start_time)
+    b = player_ace_profile(conn, player_b_id, as_of_date, surface, start_time=start_time)
     if a.n < _MIN_HISTORY or b.n < _MIN_HISTORY:
         return []
     pred_mean = predict_match_ace_mean(a, b)

@@ -71,6 +71,7 @@ def serve_return_profile(
     *,
     surface: str | None = None,
     window: int = DEFAULT_WINDOW,
+    start_time: str | None = None,
 ) -> ServeReturnProfile:
     """Serve and return rates over the player's last ``window`` matches.
 
@@ -79,8 +80,10 @@ def serve_return_profile(
     treating it as a filter would empty the window for half the board; it is an
     adjustment on a pooled rate, never a gate.
     """
+    from tennis_wc.features.history_asof import guard_clause, guard_params
+
     columns = ", ".join((*_SERVE_COLUMNS, *_RETURN_COLUMNS, "opponent_elo"))
-    params: list = [player_id, as_of_date]
+    params: list = [player_id, as_of_date, *guard_params(as_of_date, start_time)]
     surface_clause = ""
     if surface:
         surface_clause = " AND LOWER(COALESCE(surface,'')) = LOWER(?)"
@@ -90,6 +93,7 @@ def serve_return_profile(
         f"""
         SELECT {columns} FROM player_match_history
         WHERE player_id = ? AND match_date < ? AND hold_rate IS NOT NULL
+          {guard_clause()}
           {surface_clause}
         ORDER BY match_date DESC, id DESC
         LIMIT ?
@@ -99,7 +103,8 @@ def serve_return_profile(
     used_surface = surface
     if surface and len(rows) < MIN_SAMPLES:
         return serve_return_profile(
-            conn, player_id, as_of_date, surface=None, window=window
+            conn, player_id, as_of_date, surface=None, window=window,
+            start_time=start_time,
         )
     if not surface:
         used_surface = None
