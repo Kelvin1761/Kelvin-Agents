@@ -197,3 +197,4 @@
 - [EXP-20261015-04](EXP-20261015-04-au-pit-leaks-l1-fixes.md) — §7 正確性修正：L1 不變性測試搵到嘅四個 AU PIT 洩漏（頁面累積統計、騎練 LY cache、檔位矩陣、tier 表）用同一個「D < 今日（悉尼）」定義分 live／歷史；全語料強制 live dump 逐位元不變；乾淨語料 Gold 20.59% → 20.59%；7 個同日賽後抽場次 stored 檔仍有洩漏（未重抽）
 - [EXP-20261015-08](EXP-20261015-08-au-neutral-speed-results.md) — 純速度／matched leaf／joint refit：全程AUC0.607、頭段0.541；同樣本PQ較強（Holm p=.024）。1,493場R1重配Gold+3／Good+5／Pass−4，排序CI跨零；加頭段較弱。長途未有可靠全程訊號；source FLAG／舊窗，NEEDS MORE TESTING，不改現役模型。
 - [EXP-20261015-09](EXP-20261015-09-au-distance-par-results.md) — 精確馬場×途程par：全程AUC .607→.613、長途 .484→.521（CI跨.5），相對現役Gold0／Good+1／Pass+1，排序未證實改善。精確支持中位數19場；R1固定前瞻shadow CLI已備、未接排程／未收新樣本，研究不部署。
+- [EXP-20261015-10](EXP-20261015-10-au-next-start-speed-results.md) — 最近正式賽→下一次出賽pairwise：純T AUC.608、profile .621（邊際CI跨0）；現行+T Gold+2／Good+2／Pass+4，+profile +2／−3／0。嚴格latest覆蓋12.54%；source FLAG／舊窗，T待驗、profile不採用，未改現役。
