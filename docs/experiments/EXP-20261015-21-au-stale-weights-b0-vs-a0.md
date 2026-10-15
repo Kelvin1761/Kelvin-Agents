@@ -1,4 +1,4 @@
-# EXP-20261015-11 — AU 現行權重有冇過時？（合約 §8 stale arm：B0 vs A0）
+# EXP-20261015-21 — AU 現行權重有冇過時？（合約 §8 stale arm：B0 vs A0）
 
 - 問題：之前所有 AU 候選都係喺現行 `MATRIX_WEIGHTS` 下測。修好 leaf（例如全程速度、
   sectional）之後，現行權重可能已經唔係最佳。合約 §8（EXP-20261015-08，分支
@@ -112,4 +112,4 @@ python3 $T stale --pred $S/wf_b0.json --out $S/stale_b0_a0.json
 ```
 
 dump sha256 同每窗權重、完整判決喺
-`EXP-20261015-11-au-stale-weights-b0-vs-a0-evidence.json`；逐場 prediction 大檔唔入 repo。
+`EXP-20261015-21-au-stale-weights-b0-vs-a0-evidence.json`；逐場 prediction 大檔唔入 repo。
