@@ -348,7 +348,7 @@ def _resolve_official_going(meeting_dir: Path, override: str | None) -> str | No
 
 
 def _auto_command(target: Path, official_going: str | None) -> list[str]:
-    command = [PYTHON, str(AUTO_ORCH), str(target)]
+    command = [PYTHON, str(AUTO_ORCH), str(target), "--refresh-time-data"]
     if official_going:
         command.extend(["--going", official_going])
     return command

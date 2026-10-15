@@ -75,14 +75,18 @@ def load_engine(engine_dir: Path):
     matrix_mapper = importlib.import_module(f"{package}.matrix_mapper")
     renderer = importlib.import_module(f"{package}.renderer")
     trial_cutoff = None
+    full_time_model = None
     if package == "au_racing_engine":
         trial_cutoff = importlib.import_module(f"{package}.engine_core").TRIAL_PERFORMANCE_START_CUTOFF
+        time_module = importlib.import_module(f"{package}.full_time_speed")
+        full_time_model = {"gain": time_module.FULL_TIME_SPEED_GAIN, "start": time_module.FULL_TIME_START_DATE}
 
     weights = dict(scoring.MATRIX_WEIGHTS)
     formulas = {k: list(v) for k, v in matrix_mapper.MATRIX_FORMULAS.items()}
     return {
         "weights": weights,
         "trial_performance_cutoff": trial_cutoff,
+        "full_time_model": full_time_model,
         # HKJC 9D：centred 維度（同程表現）唔佔加埋等於 1 嘅預算，貢獻 = 權重 ×（分 − 60）。
         "centred_weights": dict(getattr(scoring, "CENTRED_MATRIX_WEIGHTS", {}) or {}),
         "coefficient_model": hasattr(scoring, "compose_matrix_score"),
@@ -213,7 +217,7 @@ def influence(weights, spread):
 
 def fingerprint(engine_dir: Path):
     entries = []
-    names = FINGERPRINT_FILES + (("dimensions.py",) if engine_dir.name == "au_racing_engine" and (engine_dir / "dimensions.py").exists() else ())
+    names = FINGERPRINT_FILES + (("dimensions.py", "full_time_speed.py") if engine_dir.name == "au_racing_engine" and (engine_dir / "dimensions.py").exists() else ())
     if engine_dir.name == "au_racing_engine":
         names += ("engine_core.py",)
     for name in names:
@@ -294,6 +298,13 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
         A("速度比較剔除已標示嘅試閘 PF，新馬試閘時間亦唔再補入近績分。場內速度平均同分散度用相同過濾。")
         A("少於門檻或生涯場數未知嘅馬保留試閘表現。原始記錄、備戰完整度、試閘準備及騎師熟習背景保留。")
         A("呢個係用戶接受細微回測影響後嘅簡化取捨，唔係已證實嘅表現改善。")
+        A("")
+    if model.get("full_time_model"):
+        full_time = model["full_time_model"]
+        A(f"**逐駒全程情境速度：** 由 {full_time['start']} 起用已捕捉來源作賽前評分，倍數固定 {full_time['gain']:g}。")
+        A("每匹正式賽完成時間對場地、途程、場況及移欄標準；最近六條可配對往績按時效／途程／地況加權，場內標準化後再按證據量收縮。")
+        A("試閘、頭馬時間代理及新增頭段修正唔入今項。個別馬缺資料中性0；整份來源快取失效會攔住新預測，舊預測重播用原本不可改寫快照。")
+        A("呢個係用戶要求先啟用嘅固定候選；回看細幅上升未構成統計上已證實改善。km/h只描述該仗速度，模型比較用情境指數。")
         A("")
     A("### 每個維度佔幾重")
     A("")

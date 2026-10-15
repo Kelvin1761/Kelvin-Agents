@@ -8,6 +8,7 @@ import io
 from pathlib import Path
 from typing import Optional
 from .au_dimension_registry import read_registry_metadata
+from .au_full_time_metadata import read_time_metadata
 
 
 def _parse_data_readout(block: str) -> Optional[list]:
@@ -1271,6 +1272,7 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
         except Exception:
             return None
     
+    time_metadata, text = read_time_metadata(text)
     dimension_registry, text = read_registry_metadata(text)
 
     race_num_m = re.search(r'Race\s+(\d+)', path.name, re.IGNORECASE)
@@ -1321,7 +1323,14 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
         ['## [第二部分]', '###', '\n\n---\n', '#### ']
     )
 
+    if time_metadata:
+        for horse in horses:
+            captured = (time_metadata.get("horses") or {}).get(str(horse.horse_number)) or {}
+            clean = lambda value: re.sub(r"[^a-z0-9]", "", re.sub(r"\([^)]*\)", "", str(value or "").lower()))
+            if clean(captured.get("name")) == clean(horse.horse_name):
+                horse.full_time_speed = captured.get("detail")
     return RaceAnalysis(
+        full_time_speed=time_metadata.get("race") if time_metadata else None,
         race_number=race_number,
         dimension_registry=dimension_registry,
         distance=header_info.get('distance'),

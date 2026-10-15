@@ -192,3 +192,4 @@
 - [EXP-20261014-07](EXP-20261014-07-au-ranking-sensitivity.md) — horse-analyst方向：分層診斷有方向，terminal CI跨零；未入分。
 - [EXP-20261014-08](EXP-20261014-08-au-top4-pace-diversity.md) — horse-analyst方向：89場觸發，terminal多1場Gold但CI跨零，Stage4 REJECT。
 - [EXP-20261014-09](EXP-20261014-09-au-market-movement-readiness.md) — AU 賠率變動ML資料審計：353 meeting／2,731場有history，2,246場多capture，34%重複獨贏價向量；265賽後補錄排除；clean-era Flucs全部單價。歷史jump time／freshness未驗證，**DATA_GATE_HOLD，未fit**；獨立市場增量試驗設計完成，現役模型不變。
+- [EXP-20261015-07](EXP-20261015-07-au-full-time-activation.md) — 用戶要求先啟用逐駒全程A、更新dashboard；原逐窗Gold+1／Good+3／Pass+3，按原規則final refit gain1.5，固定版本回看+1／+1／+3（非新盲測）。10/16起只用已capture來源；5431筆研究／正式轉換一致；不加新步速修正。

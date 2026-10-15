@@ -83,6 +83,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       setLocalStorageForTest: (key, value) => { localStorage.setItem(key, JSON.stringify(value)); },
       getFilteredROI,
       renderHorseCard,
+      renderAuFullTimeStatus,
       renderDimensionStrip: typeof renderDimensionStrip === "function" ? renderDimensionStrip : null,
       renderTrackworkTimeline: typeof renderTrackworkTimeline === "function" ? renderTrackworkTimeline : null,
       buildHorseAnalysisSections,
@@ -1652,4 +1653,31 @@ test("region switches load that meeting's confirmed bets", () => {
   assert.match(context.renderDashboard(), /已確認 0 注/);
   context.showSport("hkjc");
   assert.match(context.renderDashboard(), /已確認 1 注/);
+});
+
+
+test("AU full-time banner distinguishes published legacy and captured new predictions", () => {
+  const { renderAuFullTimeStatus } = loadTemplateFunctions();
+  const legacy = renderAuFullTimeStatus({});
+  assert.match(legacy, /2026-10-16/);
+  assert.match(legacy, /發布時模型/);
+  const current = renderAuFullTimeStatus({ full_time_speed: { status: "ready", covered: 4, field_size: 10 }});
+  assert.match(current, /4\/10/);
+  assert.match(current, /缺資料嘅馬今項維持中性/);
+  assert.doesNotMatch(current, /發布時模型/);
+});
+
+
+test("horse card shows captured full-time index and actual contribution, not an invented speed score", () => {
+  const { renderHorseCard } = loadTemplateFunctions();
+  const horse = { horse_number: 1, horse_name: "Time Horse", full_time_speed: {
+    status: "observed", context_index: 101.25, latest_kmh: 61.23, contribution: -0.4,
+  }};
+  const current = renderHorseCard(horse);
+  assert.match(current, /101\.25/);
+  assert.match(current, /61\.23 km\/h/);
+  assert.match(current, /-0\.40 分/);
+  const missing = renderHorseCard({ ...horse, full_time_speed: { status: "no_matched_formal_runs" }});
+  assert.match(missing, /今項中性 0 分/);
+  assert.doesNotMatch(renderHorseCard({ horse_number: 1, horse_name: "Legacy" }), /全程情境指數/);
 });

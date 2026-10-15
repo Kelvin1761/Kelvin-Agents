@@ -119,6 +119,8 @@ def main():
             # ⚠️ 一定要喺 `_build_field_summary` 之前 —— 個調整係「本駒水平 −
             # 場內中位」，兩邊要嚟自同一個量度，唔然就同 own-L600 一樣靜靜錯。
             prize_filled += backfill_prize_column(logic, meeting_dir, race_no, date)
+            from au_racing_engine.full_time_speed import prepare_field
+            prepare_field(logic, facts_path)
             ctx = dict(race_analysis)
             ctx["field_summary"] = _build_field_summary(horses)
             ctx["field_horse_names"] = [h.get("horse_name") for h in horses.values()
@@ -151,6 +153,7 @@ def main():
                                  for k in FEATURE_KEYS},
                     "wet": float(res.get("wet_form_feature") or 0.0),
                     "proven_class": float(res.get("proven_class_feature") or 0.0),
+                    "full_time": float(res.get("full_time_speed_feature") or 0.0),
                     "ability": float(res.get("ability_score") or 0.0),
                     # 分層用（唔入分）：初出／休後實驗要喺同一份 dump 切 cohort。
                     "career_starts": hd.get("career_race_starts"),

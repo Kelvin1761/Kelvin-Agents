@@ -2814,6 +2814,14 @@ function showRace(raceNumber) {
   window.scrollTo(0, 0);
 }
 
+function renderAuFullTimeStatus(analysis) {
+    const timeStatus = analysis.full_time_speed;
+    const timeMessage = timeStatus?.status === 'ready'
+      ? `逐駒全程速度已納入評分 · 資料覆蓋 ${timeStatus.covered}/${timeStatus.field_size} 匹。缺資料嘅馬今項維持中性；各匹完整分析可見情境指數、km/h 及分數貢獻。`
+      : '新賽前模型由 2026-10-16 起加入逐駒全程速度，按場地、途程、場況及移欄比較。此場按發布時模型／可用資料展示；冇全程資料唔代表速度差。';
+    return `<div class="card" style="margin-bottom:16px;padding:12px 16px"><div style="font-size:.8rem;font-weight:700;margin-bottom:4px">⏱️ AU 全程情境速度</div><div style="font-size:.78rem;color:#64748B;line-height:1.6">${esc(timeMessage)}</div></div>`;
+}
+
 function renderRaceDetail() {
   const m = selectedMeeting;
   const raceNum = currentRace;
@@ -2874,6 +2882,8 @@ function renderRaceDetail() {
     html += '</div>';
   }
   html += '</div>';
+
+  if (m.region === 'au') html += renderAuFullTimeStatus(analysis);
 
   // 🗺️ 戰場全景 — simple inline card before consensus
   if (analysis.battlefield_overview) {
@@ -4418,6 +4428,13 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
   }
   html += renderMarketLine(horse, marketRanks);
   html += renderDimensionStrip(horse);
+  const timeEvidence = horse.full_time_speed;
+  if (timeEvidence) {
+    const timeLabel = timeEvidence.status === 'observed' && Number.isFinite(timeEvidence.context_index)
+      ? `全程情境指數 ${timeEvidence.context_index.toFixed(2)}（標準100） · 最近一仗 ${Number(timeEvidence.latest_kmh).toFixed(2)} km/h · 本項 ${Number(timeEvidence.contribution) >= 0 ? '+' : ''}${Number(timeEvidence.contribution).toFixed(2)} 分`
+      : '逐駒全程資料未覆蓋 · 今項中性 0 分';
+    html += `<div style="font-size:.75rem;line-height:1.6;color:#475569;padding:8px 0">⏱️ ${esc(timeLabel)}</div>`;
+  }
   html += renderTrackworkTimeline(horse);
   html += renderVerdictChips(horse);
   // 數據判讀 used to live here. It restated what the ranking matrix now shows

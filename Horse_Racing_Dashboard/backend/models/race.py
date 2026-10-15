@@ -91,6 +91,7 @@ class HorseAnalysis(BaseModel):
     trend_summary: Optional[str] = None  # 趨勢總評
     
     # HKJC-specific sections
+    full_time_speed: Optional[dict] = None  # AU report-captured full-time evidence
     speed_forensics: Optional[str] = None  # 🔬 段速法醫
     eem_energy: Optional[str] = None  # ⚡ 形勢與走位 (legacy field name kept for compat)
     forgiveness_file: Optional[str] = None  # 📋 寬恕檔案
@@ -199,6 +200,7 @@ class MonteCarloPick(BaseModel):
 class RaceAnalysis(BaseModel):
     # AU report-captured registry; legacy reports retain unknown metadata.
     dimension_registry: Optional[dict] = None
+    full_time_speed: Optional[dict] = None  # AU captured model/source status
     race_number: int
     distance: Optional[str] = None
     race_class: Optional[str] = None

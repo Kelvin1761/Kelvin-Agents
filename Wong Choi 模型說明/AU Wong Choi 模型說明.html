@@ -46,6 +46,10 @@ ul, ol { padding-left:1.5rem; }
 <p>速度比較剔除已標示嘅試閘 PF，新馬試閘時間亦唔再補入近績分。場內速度平均同分散度用相同過濾。</p>
 <p>少於門檻或生涯場數未知嘅馬保留試閘表現。原始記錄、備戰完整度、試閘準備及騎師熟習背景保留。</p>
 <p>呢個係用戶接受細微回測影響後嘅簡化取捨，唔係已證實嘅表現改善。</p>
+<p><strong>逐駒全程情境速度：</strong> 由 2026-10-16 起用已捕捉來源作賽前評分，倍數固定 1.5。</p>
+<p>每匹正式賽完成時間對場地、途程、場況及移欄標準；最近六條可配對往績按時效／途程／地況加權，場內標準化後再按證據量收縮。</p>
+<p>試閘、頭馬時間代理及新增頭段修正唔入今項。個別馬缺資料中性0；整份來源快取失效會攔住新預測，舊預測重播用原本不可改寫快照。</p>
+<p>呢個係用戶要求先啟用嘅固定候選；回看細幅上升未構成統計上已證實改善。km/h只描述該仗速度，模型比較用情境指數。</p>
 <h3>每個維度佔幾重</h3>
 <p>矩陣直接顯示分項分數，沒有尾段放大。合成式：<strong>60 ＋ Σ〔（維度分 −60）× 合成係數〕</strong>。</p>
 <p>下面的權重是合成係數，不是總和必須等於100%的百分比；ML／refit 直接擬合這一套係數。</p>
@@ -321,14 +325,15 @@ ul, ol { padding-left:1.5rem; }
 <li>備戰完整度分 <code>health_score</code></li>
 <li>信心分 <code>confidence_score</code></li></ul>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-10-15 13:55 AEDT</code></li>
-<li>Git commit：<code>b4373427</code></li>
+<ul><li>生成時間：<code>2026-10-15 18:12 AEDT</code></li>
+<li>Git commit：<code>7a962be5</code></li>
 <li>Scoring contract：<code>au/raw-matrix-preparation-v2</code></li>
-<li><code>scoring.py</code> 指紋：<code>e97c44f70f2c</code></li>
+<li><code>scoring.py</code> 指紋：<code>1a3db66feadc</code></li>
 <li><code>matrix_mapper.py</code> 指紋：<code>9b2553daebb9</code></li>
-<li><code>renderer.py</code> 指紋：<code>80f9e1c12e4d</code></li>
+<li><code>renderer.py</code> 指紋：<code>ee5a66f28254</code></li>
 <li><code>dimensions.py</code> 指紋：<code>3ae64d7d52a4</code></li>
-<li><code>engine_core.py</code> 指紋：<code>46201c359b67</code></li>
+<li><code>full_time_speed.py</code> 指紋：<code>cde292260587</code></li>
+<li><code>engine_core.py</code> 指紋：<code>9d7a27ea676f</code></li>
 <li>實測樣本：<strong>500 場、4988 匹馬</strong>，由 <code>2026-10-03 Gold Coast Race 1-8</code> 到 <code>2026-10-15 Warrnambool Race 1-8</code>（跳過 0 個舊格式檔案）</li></ul>
 <p>重新生成：</p>
 <pre><code>

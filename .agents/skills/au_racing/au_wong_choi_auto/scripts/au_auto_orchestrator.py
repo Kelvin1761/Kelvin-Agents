@@ -31,6 +31,7 @@ from au_racing_engine.io_utils import write_json_atomic as _write_json_atomic
 from au_racing_engine.io_utils import write_text_atomic as _atomic_write_text
 from au_racing_engine.renderer import ensure_verdict, render_meeting_csv, validate_report_text, write_race_outputs
 from au_racing_engine.validation import validate_engine_scripts, validate_logic_data
+from au_racing_engine.full_time_speed import prepare_field
 
 
 def _condition_family(condition: str) -> str:
@@ -133,6 +134,7 @@ def score_logic_data(
     # 防禦性：`enrich_logic_from_facts` 已經正規化過，但 facts 缺失時 enrich 唔跑，
     # 而檔位分桶同馬群摘要都食絕對檔位。函數係 idempotent，乾淨場次係 no-op。
     normalise_field_barriers(logic_data)
+    prepare_field(logic_data, facts_path)
     race_context["field_summary"] = _build_field_summary(logic_data.get("horses", {}))
     # Today's runner names so the engine can flag 賽績線 head-to-head rematches.
     race_context["field_horse_names"] = [
@@ -510,6 +512,7 @@ def main():
             "scored on Soft 5 Logic data)."
         ),
     )
+    parser.add_argument("--refresh-time-data", action="store_true", help="Refresh captured official runner-time sources before live scoring")
     args = parser.parse_args()
 
     script_errors = validate_engine_scripts(SCRIPT_DIR / "au_racing_engine")
@@ -517,6 +520,12 @@ def main():
         raise ValueError("Engine validation failed:\n" + "\n".join(script_errors))
 
     target = Path(args.target).resolve()
+    if args.refresh_time_data:
+        from au_time_sources import refresh
+        try:
+            print("⏱️ AU full-time evidence:", refresh())
+        except (OSError, ValueError) as exc:
+            print(f"⚠️ AU full-time refresh unavailable; scoring uses captured cache if valid: {exc}")
     if target.is_file():
         process_logic_file(target, going_override=args.going)
     elif target.is_dir():

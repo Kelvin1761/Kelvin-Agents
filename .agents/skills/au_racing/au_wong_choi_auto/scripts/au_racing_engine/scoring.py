@@ -2,6 +2,8 @@
 """AU Wong Choi Auto scoring primitives."""
 from __future__ import annotations
 
+from .full_time_speed import FULL_TIME_SPEED_GAIN
+
 from .dimensions import (
     CLASS_SCORE_LIVE, CLASS_SCORE_LIVE_WEIGHT, FEATURE_KEYS, ABILITY_FEATURE_KEYS,
     REPORT_ONLY_FEATURE_KEYS, MATRIX_WEIGHTS, SCORING_CONTRACT_VERSION,
@@ -183,6 +185,9 @@ def compose_matrix_score(matrix_scores, weights=None):
 PROVEN_CLASS_Z_WEIGHT = 0.5
 PROVEN_CLASS_DECAY = (1.0, 0.8, 0.6, 0.4)
 RANKING_OVERLAYS = (
+    {"key": "full_time_speed_feature", "label": "逐駒全程情境速度",
+     "formula": f"{FULL_TIME_SPEED_GAIN:g} × 場內全程情境速度 z-score × 證據權重",
+     "missing": "缺逐駒資料／來源未在預測前可用時 = 0；不使用試閘或頭馬代理"},
     {
         "key": "proven_class_feature",
         "label": "高班實績證明",

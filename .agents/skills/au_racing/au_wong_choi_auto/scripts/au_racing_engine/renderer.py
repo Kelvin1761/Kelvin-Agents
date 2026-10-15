@@ -11,6 +11,7 @@ import re
 from pathlib import Path
 
 from .scoring import clip_score, score_band
+from .full_time_speed import render_detail as render_full_time_detail
 from .matrix_mapper import MATRIX_FORMULAS
 
 
@@ -210,7 +211,13 @@ def render_race_markdown(logic_data: dict) -> str:
     horses = logic_data.get("horses", {})
     encoded_registry = base64.b64encode(json.dumps(registry_snapshot(), sort_keys=True,
         separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode()).decode("ascii")
+    time_metadata = {"schema": "au/full-time-v1", "race": race.get("full_time_speed"), "horses": {
+        str(n): {"name": h.get("horse_name"), "detail": (h.get("python_auto") or {}).get("full_time_speed_detail")}
+        for n, h in horses.items()}}
+    encoded_time = base64.b64encode(json.dumps(time_metadata, sort_keys=True,
+        separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode()).decode("ascii")
     lines = [
+        f"<!-- wc-au-full-time:v1:{encoded_time} -->",
         f"<!-- wc-au-dimensions:v1:{encoded_registry} -->",
         _panorama(race, verdict, horses),
         "",
@@ -240,6 +247,7 @@ def render_race_csv(logic_data: dict) -> str:
         "ability_score",
         "wet_form_feature",
         "proven_class_feature",
+        "full_time_speed_feature",
         "grade",
         "model_pick_status",
         "watchlist_level",
@@ -264,6 +272,7 @@ def render_race_csv(logic_data: dict) -> str:
             "ability_score": auto.get("ability_score", ""),
             "wet_form_feature": auto.get("wet_form_feature", ""),
             "proven_class_feature": auto.get("proven_class_feature", ""),
+            "full_time_speed_feature": auto.get("full_time_speed_feature", 0),
             "grade": auto.get("grade", ""),
             "model_pick_status": auto.get("model_pick_status", ""),
             "watchlist_level": auto.get("watchlist_level", ""),
@@ -798,6 +807,10 @@ def _render_horse_section(horse_num, horse, auto):
         ])
     lines.extend([
         *_data_readout_lines(auto),
+        "#### ⏱️ 逐駒全程速度",
+        render_full_time_detail(auto.get("full_time_speed_detail")),
+        "同場地、途程、場況及移欄標準比較；km/h 只描述該仗平均速度。今項不採用試閘時間。",
+        "",
         "#### ⏱️ 近績解構",
         f"- **近績序列:** `{_display_text(data.get('recent_form') or horse.get('recent_form'))}`",
         f"- **狀態週期:** `{_status_cycle_display(horse, auto) or '-'}`",
@@ -960,7 +973,7 @@ def _render_verdict(verdict, horses, race=None):
         "## [第四部分] 分析盲區(緊隨第三部分)",
         "",
         f"- ranking 以 `ability_score`（綜合戰力分）排序；`base_7d_score` 係兼容舊檔名，只作{_ranking_dimension_label()}基礎分解釋。",
-        "- 單一評分：`綜合戰力分` = `ability_score` = `final_rank_score` = `pure_7d_score + wet_form_feature + proven_class_feature`；後兩項缺證據時都係中性 0。",
+        "- 單一評分：`綜合戰力分` = `ability_score` = `final_rank_score` = `pure_7d_score + wet_form_feature + proven_class_feature + full_time_speed_feature`；額外項目缺證據時都係中性 0。",
         "- Rank 4-6 danger watchlist 只係提醒候選，不會交換 Top3 或 Top4 排名。",
         "- 初出馬若正式賽績空白，會較依賴試閘、馬房、走位結構與路程投影，信心不會無上限放大。",
         "- 如 Facts / Logic 更新，應重新執行 AU Auto orchestrator。",
