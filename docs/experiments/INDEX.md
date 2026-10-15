@@ -196,3 +196,4 @@
 - [EXP-20261015-02](EXP-20261015-02-hkjc-pit-leak-fixes.md) — §7 正確性修正：HKJC 三個 PIT 洩漏（formguide 往績冇 as-of 閘、歷史回放跌落冇日期層級表、守衛未知日期 fail-open）。live 今日 101 匹逐位不變、golden 120/120；回放 4,477 匹只 7 匹郁、canonical 297 場 0 場排名改變；外層權重 neutral／wf_refit、race_shape 幅度三個 REJECT 喺乾淨 harness 照樣 REJECT。EXP-20260902-03「乾淨版」本身係層級表洩漏，數字作廢
 - [EXP-20261015-04](EXP-20261015-04-au-pit-leaks-l1-fixes.md) — §7 正確性修正：L1 不變性測試搵到嘅四個 AU PIT 洩漏（頁面累積統計、騎練 LY cache、檔位矩陣、tier 表）用同一個「D < 今日（悉尼）」定義分 live／歷史；全語料強制 live dump 逐位元不變；乾淨語料 Gold 20.59% → 20.59%；7 個同日賽後抽場次 stored 檔仍有洩漏（未重抽）
 - [EXP-20261015-08](EXP-20261015-08-au-neutral-speed-results.md) — 純速度／matched leaf／joint refit：全程AUC0.607、頭段0.541；同樣本PQ較強（Holm p=.024）。1,493場R1重配Gold+3／Good+5／Pass−4，排序CI跨零；加頭段較弱。長途未有可靠全程訊號；source FLAG／舊窗，NEEDS MORE TESTING，不改現役模型。
+- [EXP-20261015-09](EXP-20261015-09-au-distance-par-results.md) — 精確馬場×途程par：全程AUC .607→.613、長途 .484→.521（CI跨.5），相對現役Gold0／Good+1／Pass+1，排序未證實改善。精確支持中位數19場；R1固定前瞻shadow CLI已備、未接排程／未收新樣本，研究不部署。
