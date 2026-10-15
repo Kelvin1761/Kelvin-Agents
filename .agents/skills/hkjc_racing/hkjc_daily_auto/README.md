@@ -31,6 +31,17 @@ HKJC 只喺 `consvc.hkjc.com/.../SpeedPro/current/` 公布 SpeedPro，**冇歷�
 - 只有賽日連續 3 次失敗、而今場一份都未存過，先發一次 Telegram 警告。
 - `WC_HKJC_SPEEDPRO_DISABLE=1` 關閉（測試 conftest 預設咁做）。
 
+### 賽前賠率快照（forward-only，唔入分析）
+
+`prerace`（pipeline 之前）同 `lineup`（賽日／前一日每 30 分鐘）各影一次
+WIN + PLA 賠率，追加入 meeting folder 嘅 `HKJC_Odds_History.json`
+（`captured_at` + `label`；每場有 `pre_race` = 兩個池仍然 `START_SELL`）。
+來源係 bet.hkjc.com 自己用嘅公開 GraphQL（一個 GET 攞晒全日），詳見
+`hkjc_race_extractor/scripts/hkjc_odds_capture.py`。失敗只記 state
+（`odds_capture.failure_streak`）同 Telegram（第 1、每第 6 次、恢復），**唔會**
+改變 pipeline exit code。`WC_HKJC_ODDS_CAPTURE=0` 可關閉。評分鏈唔准讀呢個檔
+（`hkjc_wong_choi_auto/tests/test_odds_stay_out_of_scoring.py`）。
+
 ## Install on macOS
 
 ```bash
