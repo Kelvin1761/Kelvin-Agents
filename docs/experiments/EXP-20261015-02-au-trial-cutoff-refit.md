@@ -120,6 +120,10 @@ Central exact-scope dry-run：risk=model、full gate、automatic activation。
 未繞過、未merge、未activate。完整改動與研究證據保存到非main分支
 `codex-au-trial-cutoff-20261015`，等擴大同步scope嘅批准。正式各domain模型／排程未被修改。
 
+2026-10-15 用戶其後明確批准「Central 嘅標準四線程式同步，啟用今次 AU 修改」。
+授權涵蓋標準production checkout同步；只啟用六場固定簡化，所有未通過嘅refit權重保持不套用。
+實際merge／activation結果以Central immutable release manifest及append-only events為準。
+
 ## 重現與保存
 
 Base commit `b4373427`；前次研究及baseline hash記錄喺研究分支
