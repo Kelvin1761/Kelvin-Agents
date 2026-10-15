@@ -195,3 +195,5 @@
 - [EXP-20261015-07](EXP-20261015-07-au-full-time-activation.md) — 用戶要求先啟用逐駒全程A、更新dashboard；原逐窗Gold+1／Good+3／Pass+3，按原規則final refit gain1.5，固定版本回看+1／+1／+3（非新盲測）。10/16起只用已capture來源；5431筆研究／正式轉換一致；不加新步速修正。
 - [EXP-20261015-02](EXP-20261015-02-hkjc-pit-leak-fixes.md) — §7 正確性修正：HKJC 三個 PIT 洩漏（formguide 往績冇 as-of 閘、歷史回放跌落冇日期層級表、守衛未知日期 fail-open）。live 今日 101 匹逐位不變、golden 120/120；回放 4,477 匹只 7 匹郁、canonical 297 場 0 場排名改變；外層權重 neutral／wf_refit、race_shape 幅度三個 REJECT 喺乾淨 harness 照樣 REJECT。EXP-20260902-03「乾淨版」本身係層級表洩漏，數字作廢
 - [EXP-20261015-04](EXP-20261015-04-au-pit-leaks-l1-fixes.md) — §7 正確性修正：L1 不變性測試搵到嘅四個 AU PIT 洩漏（頁面累積統計、騎練 LY cache、檔位矩陣、tier 表）用同一個「D < 今日（悉尼）」定義分 live／歷史；全語料強制 live dump 逐位元不變；乾淨語料 Gold 20.59% → 20.59%；7 個同日賽後抽場次 stored 檔仍有洩漏（未重抽）
+
+- [EXP-20261015-14](EXP-20261015-14-au-sportsbet-only-speed-contract.md) — Sportsbet-only欄位及速度定義：46頁542區塊，514個有最近正式賽，頭馬時間514／場級L600478／p800位置475。共用時間不冒充逐駒；找到空騎師regex跨run6處，候選修正恢復4trial＋2formal、raw Finished4794全部取齊。只有來源審計與定義，未fit／未模型發布。
