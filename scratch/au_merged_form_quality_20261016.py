@@ -21,7 +21,8 @@ for p in (SCRIPTS, SCRIPTS.parents[2] / "shared_racing", HERE):
 
 CUT = "2026-08-05"
 WEIGHTS = {"N4": (1.0, 0.8, 0.6, 0.4), "N6": (1.0, 0.8, 0.6, 0.4, 0.3, 0.2)}
-CANDIDATES = ("eq3_N4", "eq3_N6", "eq2_N4", "eq2_N6", "pen_N6", "gate_N6")  # pen/gate: EXP-20261016-09
+CANDIDATES = ("eq3_N4", "eq3_N6", "eq2_N4", "eq2_N6", "pen_N6", "gate_N6",  # pen/gate: EXP-20261016-09
+              "pg50_N6", "pg33_N6", "pgw_N6")  # EXP-20261016-10
 
 
 def pct(run):
@@ -54,6 +55,13 @@ def run_value(run, c, kind):
     zc = (math.log10(float(run["prize"])) - c["mu_p"]) / c["sd_p"]
     if kind == "eq2":
         return (zp + zc) / 2
+    # EXP-20261016-10: placing decides whether the class (prize) credit counts
+    if kind == "pg50":
+        return (zp + (zc if p <= 0.5 else min(0.0, zc))) / 2
+    if kind == "pg33":
+        return (zp + (zc if p <= 1 / 3 else min(0.0, zc))) / 2
+    if kind == "pgw":
+        return (zp + max(0.0, zc) * (1 - p) + min(0.0, zc)) / 2
     margin = min(20.0, abs(float(run["margin"])))
     zm = -(margin - c["mu_m"]) / c["sd_m"]
     if kind == "pen":   # EXP-20261016-09: only a heavier-than-average defeat costs

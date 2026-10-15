@@ -157,8 +157,9 @@ def cmd_flops(args):
         rng = random.Random(7)
         s = sorted(stat(p, fc) - stat(p, fb) for p in
                    ([days[rng.randrange(len(days))] for _ in days] for _ in range(2000)))
+        pval = min(1.0, 2 * min(sum(x <= 0 for x in s), sum(x >= 0 for x in s)) / len(s))
         res[name] = {"base": round(stat(days, fb), 4), "cand": round(stat(days, fc), 4),
-                     "delta": round(point, 4), "ci": [round(s[50], 4), round(s[1949], 4)]}
+                     "delta": round(point, 4), "ci": [round(s[50], 4), round(s[1949], 4)], "p": pval}
     print(json.dumps({"label": args.label, "races": len(keys), **res}, ensure_ascii=False))
 
 
