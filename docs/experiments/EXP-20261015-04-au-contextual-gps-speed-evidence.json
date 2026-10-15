@@ -1,0 +1,2851 @@
+{
+  "baseline_commit": "7a962be562ecb0af461daa71114b1dddf66ec8cd",
+  "baseline_sha256": "ffda85ef14eb3bda62180fbef51dde4eecc01a04f8920edad556c37f0e6a79b8",
+  "features_sha256": "7a2219256301d0ec15a4a6315b7eaca8a56770ded2ef5bfde1c80a28b1df423d",
+  "source_manifest_sha256": "0d674e86a1346431c85f7e2e8d8a486fa85a39bd7da86a2bf125ea5cc4e6c406",
+  "source_quality": {
+    "source_races": 5431,
+    "valid_runners": 49613,
+    "exact_rating_events": 5047,
+    "incomplete_or_trial_races": 175,
+    "csv_only_meetings": 1,
+    "valid_events": 5256,
+    "source_meetings": 706
+  },
+  "feature_diagnostics_all": {
+    "A": {
+      "covered": 5431,
+      "comparable_races": 688,
+      "within_race_auc_pair_weighted": 0.61678874549471,
+      "within_race_auc_date_ci95": [
+        0.5983728317455372,
+        0.6353113240554057
+      ],
+      "confidence_shrunk_signal_auc": 0.6181839321009185,
+      "pearson_within_race_z": {
+        "pace": 0.2200567933838101,
+        "form": 0.25436132746036194,
+        "PQ": 0.3581783129391136
+      }
+    },
+    "B": {
+      "covered": 5431,
+      "comparable_races": 688,
+      "within_race_auc_pair_weighted": 0.5520288338565283,
+      "within_race_auc_date_ci95": [
+        0.5348653967520131,
+        0.5688140069190308
+      ],
+      "confidence_shrunk_signal_auc": 0.5538890826648064,
+      "pearson_within_race_z": {
+        "pace": -0.07996779774821465,
+        "form": 0.11369804257817746,
+        "PQ": 0.07165548058754749
+      }
+    },
+    "C": {
+      "covered": 5431,
+      "comparable_races": 688,
+      "within_race_auc_pair_weighted": 0.4715730728985002,
+      "within_race_auc_date_ci95": [
+        0.45596535149042106,
+        0.48846387533867824
+      ],
+      "confidence_shrunk_signal_auc": 0.47035228461806766,
+      "pearson_within_race_z": {
+        "pace": 0.11122542454526199,
+        "form": -0.029255441142084986,
+        "PQ": -0.009915645755798355
+      }
+    }
+  },
+  "feature_diagnostics_oos": {
+    "A": {
+      "covered": 3145,
+      "comparable_races": 411,
+      "within_race_auc_pair_weighted": 0.6072475911185589,
+      "within_race_auc_date_ci95": [
+        0.584789977632005,
+        0.6306040893958517
+      ],
+      "confidence_shrunk_signal_auc": 0.6070381231671554,
+      "pearson_within_race_z": {
+        "pace": 0.20368426791632888,
+        "form": 0.3168211011373414,
+        "PQ": 0.36548057593420136
+      }
+    },
+    "B": {
+      "covered": 3145,
+      "comparable_races": 411,
+      "within_race_auc_pair_weighted": 0.5408462505236699,
+      "within_race_auc_date_ci95": [
+        0.5232334868547065,
+        0.5595045300526702
+      ],
+      "confidence_shrunk_signal_auc": 0.5431503979891077,
+      "pearson_within_race_z": {
+        "pace": -0.09610827424587917,
+        "form": 0.14762736787218445,
+        "PQ": 0.0727332465779811
+      }
+    },
+    "C": {
+      "covered": 3145,
+      "comparable_races": 411,
+      "within_race_auc_pair_weighted": 0.4869082530372853,
+      "within_race_auc_date_ci95": [
+        0.4688894921096153,
+        0.5060310500423612
+      ],
+      "confidence_shrunk_signal_auc": 0.4839757017176372,
+      "pearson_within_race_z": {
+        "pace": 0.12785385958198764,
+        "form": -0.046021799960511735,
+        "PQ": -0.010233061425446964
+      }
+    }
+  },
+  "windows": [
+    {
+      "test_dates": [
+        "2026-09-04",
+        "2026-09-05",
+        "2026-09-06",
+        "2026-09-07",
+        "2026-09-08",
+        "2026-09-09",
+        "2026-09-10"
+      ],
+      "fits": {
+        "A": {
+          "gain": 2.0,
+          "qualified_gains": [
+            2.0
+          ],
+          "training_races": 1003,
+          "train_through": "2026-09-03",
+          "fold_wins": [
+            5,
+            3,
+            2,
+            3,
+            5
+          ]
+        },
+        "B": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1003,
+          "train_through": "2026-09-03",
+          "fold_wins": [
+            5,
+            3,
+            3,
+            2,
+            3
+          ]
+        },
+        "C": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1003,
+          "train_through": "2026-09-03",
+          "fold_wins": [
+            5,
+            4,
+            2,
+            4,
+            0
+          ]
+        },
+        "AB": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1003,
+          "train_through": "2026-09-03",
+          "fold_wins": [
+            5,
+            3,
+            2,
+            3,
+            3
+          ]
+        },
+        "AC": {
+          "gain": 1.0,
+          "qualified_gains": [
+            1.0
+          ],
+          "training_races": 1003,
+          "train_through": "2026-09-03",
+          "fold_wins": [
+            5,
+            3,
+            3,
+            4,
+            3
+          ]
+        },
+        "ABC": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1003,
+          "train_through": "2026-09-03",
+          "fold_wins": [
+            5,
+            3,
+            2,
+            2,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "test_dates": [
+        "2026-09-11",
+        "2026-09-12",
+        "2026-09-13",
+        "2026-09-14",
+        "2026-09-15",
+        "2026-09-16",
+        "2026-09-17"
+      ],
+      "fits": {
+        "A": {
+          "gain": 2.0,
+          "qualified_gains": [
+            2.0
+          ],
+          "training_races": 1234,
+          "train_through": "2026-09-10",
+          "fold_wins": [
+            5,
+            3,
+            2,
+            2,
+            5
+          ]
+        },
+        "B": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1234,
+          "train_through": "2026-09-10",
+          "fold_wins": [
+            5,
+            3,
+            3,
+            3,
+            3
+          ]
+        },
+        "C": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1234,
+          "train_through": "2026-09-10",
+          "fold_wins": [
+            5,
+            4,
+            2,
+            4,
+            1
+          ]
+        },
+        "AB": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1234,
+          "train_through": "2026-09-10",
+          "fold_wins": [
+            5,
+            2,
+            2,
+            3,
+            3
+          ]
+        },
+        "AC": {
+          "gain": 1.0,
+          "qualified_gains": [
+            1.0
+          ],
+          "training_races": 1234,
+          "train_through": "2026-09-10",
+          "fold_wins": [
+            5,
+            3,
+            3,
+            4,
+            2
+          ]
+        },
+        "ABC": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1234,
+          "train_through": "2026-09-10",
+          "fold_wins": [
+            5,
+            2,
+            1,
+            3,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "test_dates": [
+        "2026-09-18",
+        "2026-09-19",
+        "2026-09-20",
+        "2026-09-21",
+        "2026-09-22",
+        "2026-09-23",
+        "2026-09-24"
+      ],
+      "fits": {
+        "A": {
+          "gain": 1.125,
+          "qualified_gains": [
+            0.25,
+            2.0
+          ],
+          "training_races": 1509,
+          "train_through": "2026-09-17",
+          "fold_wins": [
+            5,
+            4,
+            2,
+            3,
+            4
+          ]
+        },
+        "B": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1509,
+          "train_through": "2026-09-17",
+          "fold_wins": [
+            5,
+            3,
+            3,
+            4,
+            2
+          ]
+        },
+        "C": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1509,
+          "train_through": "2026-09-17",
+          "fold_wins": [
+            5,
+            4,
+            2,
+            4,
+            1
+          ]
+        },
+        "AB": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1509,
+          "train_through": "2026-09-17",
+          "fold_wins": [
+            5,
+            4,
+            2,
+            4,
+            4
+          ]
+        },
+        "AC": {
+          "gain": 1.0,
+          "qualified_gains": [
+            1.0
+          ],
+          "training_races": 1509,
+          "train_through": "2026-09-17",
+          "fold_wins": [
+            5,
+            4,
+            4,
+            4,
+            3
+          ]
+        },
+        "ABC": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1509,
+          "train_through": "2026-09-17",
+          "fold_wins": [
+            5,
+            3,
+            3,
+            3,
+            3
+          ]
+        }
+      }
+    },
+    {
+      "test_dates": [
+        "2026-09-25",
+        "2026-09-26",
+        "2026-09-27",
+        "2026-09-28",
+        "2026-09-29",
+        "2026-09-30",
+        "2026-10-01"
+      ],
+      "fits": {
+        "A": {
+          "gain": 1.125,
+          "qualified_gains": [
+            0.25,
+            2.0
+          ],
+          "training_races": 1781,
+          "train_through": "2026-09-24",
+          "fold_wins": [
+            5,
+            4,
+            1,
+            2,
+            4
+          ]
+        },
+        "B": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1781,
+          "train_through": "2026-09-24",
+          "fold_wins": [
+            5,
+            3,
+            2,
+            1,
+            2
+          ]
+        },
+        "C": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1781,
+          "train_through": "2026-09-24",
+          "fold_wins": [
+            5,
+            3,
+            2,
+            3,
+            1
+          ]
+        },
+        "AB": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1781,
+          "train_through": "2026-09-24",
+          "fold_wins": [
+            5,
+            3,
+            1,
+            1,
+            2
+          ]
+        },
+        "AC": {
+          "gain": 1.0,
+          "qualified_gains": [
+            1.0
+          ],
+          "training_races": 1781,
+          "train_through": "2026-09-24",
+          "fold_wins": [
+            5,
+            4,
+            4,
+            4,
+            3
+          ]
+        },
+        "ABC": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 1781,
+          "train_through": "2026-09-24",
+          "fold_wins": [
+            5,
+            3,
+            2,
+            2,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "test_dates": [
+        "2026-10-02",
+        "2026-10-03",
+        "2026-10-04",
+        "2026-10-05",
+        "2026-10-06",
+        "2026-10-07",
+        "2026-10-08"
+      ],
+      "fits": {
+        "A": {
+          "gain": 1.0,
+          "qualified_gains": [
+            0.25,
+            1.0,
+            2.0
+          ],
+          "training_races": 2019,
+          "train_through": "2026-10-01",
+          "fold_wins": [
+            5,
+            4,
+            3,
+            4,
+            5
+          ]
+        },
+        "B": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 2019,
+          "train_through": "2026-10-01",
+          "fold_wins": [
+            5,
+            3,
+            2,
+            2,
+            3
+          ]
+        },
+        "C": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 2019,
+          "train_through": "2026-10-01",
+          "fold_wins": [
+            5,
+            4,
+            3,
+            4,
+            2
+          ]
+        },
+        "AB": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 2019,
+          "train_through": "2026-10-01",
+          "fold_wins": [
+            5,
+            4,
+            2,
+            2,
+            3
+          ]
+        },
+        "AC": {
+          "gain": 1.0,
+          "qualified_gains": [
+            1.0
+          ],
+          "training_races": 2019,
+          "train_through": "2026-10-01",
+          "fold_wins": [
+            5,
+            4,
+            4,
+            4,
+            3
+          ]
+        },
+        "ABC": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 2019,
+          "train_through": "2026-10-01",
+          "fold_wins": [
+            5,
+            3,
+            3,
+            3,
+            2
+          ]
+        }
+      }
+    },
+    {
+      "test_dates": [
+        "2026-10-09",
+        "2026-10-10",
+        "2026-10-11",
+        "2026-10-12",
+        "2026-10-13",
+        "2026-10-14"
+      ],
+      "fits": {
+        "A": {
+          "gain": 1.0,
+          "qualified_gains": [
+            0.25,
+            1.0,
+            2.0
+          ],
+          "training_races": 2292,
+          "train_through": "2026-10-08",
+          "fold_wins": [
+            5,
+            4,
+            3,
+            4,
+            4
+          ]
+        },
+        "B": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 2292,
+          "train_through": "2026-10-08",
+          "fold_wins": [
+            5,
+            4,
+            3,
+            3,
+            2
+          ]
+        },
+        "C": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 2292,
+          "train_through": "2026-10-08",
+          "fold_wins": [
+            5,
+            4,
+            3,
+            4,
+            3
+          ]
+        },
+        "AB": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 2292,
+          "train_through": "2026-10-08",
+          "fold_wins": [
+            5,
+            4,
+            2,
+            3,
+            3
+          ]
+        },
+        "AC": {
+          "gain": 1.0,
+          "qualified_gains": [
+            1.0
+          ],
+          "training_races": 2292,
+          "train_through": "2026-10-08",
+          "fold_wins": [
+            5,
+            4,
+            4,
+            4,
+            3
+          ]
+        },
+        "ABC": {
+          "gain": 0.0,
+          "qualified_gains": [],
+          "training_races": 2292,
+          "train_through": "2026-10-08",
+          "fold_wins": [
+            5,
+            3,
+            3,
+            4,
+            4
+          ]
+        }
+      }
+    }
+  ],
+  "source_availability": "FLAG: historical publication/capture not certified",
+  "promotion_authorized": false,
+  "first_oos": "2026-09-04",
+  "last_oos": "2026-10-14",
+  "family_holm_primary_p": {
+    "A:good_positional": 1.0,
+    "AC:gold": 1.0,
+    "AC:good_positional": 1.0,
+    "A:gold": 1.0,
+    "B:gold": 1.0,
+    "B:good_positional": 1.0,
+    "C:gold": 1.0,
+    "C:good_positional": 1.0,
+    "AB:gold": 1.0,
+    "AB:good_positional": 1.0,
+    "ABC:gold": 1.0,
+    "ABC:good_positional": 1.0
+  },
+  "comparisons": {
+    "A": {
+      "races": 1493,
+      "days": 41,
+      "baseline": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "candidate": {
+        "gold": 19.356999330207636,
+        "gold_strict": 7.5686537173476225,
+        "good_positional": 26.52377762893503,
+        "pass": 50.368385800401875,
+        "champion": 25.987943737441395,
+        "winner_in_top3": 56.66443402545211,
+        "winner_in_top5": 77.82987273945076,
+        "t3prec": 49.67626702388926
+      },
+      "evidence": {
+        "gold": {
+          "delta": 0.0006697923643670462,
+          "ci95": [
+            -0.0014349012504926357,
+            0.0030257186081694403
+          ],
+          "p_two_sided": 0.789,
+          "six_blocks": [
+            -0.004329004329004329,
+            0.0036363636363636364,
+            0.0,
+            0.004201680672268907,
+            0.0,
+            0.0
+          ]
+        },
+        "good_positional": {
+          "delta": 0.0020093770931011385,
+          "ci95": [
+            -0.0013167862288083047,
+            0.005583182330852784
+          ],
+          "p_two_sided": 0.345,
+          "six_blocks": [
+            0.004329004329004329,
+            0.007272727272727273,
+            0.0,
+            -0.004201680672268907,
+            0.003663003663003663,
+            0.0
+          ]
+        },
+        "top3_capture_at5": {
+          "delta": 0.0004465282429113641,
+          "ci95": [
+            -0.0006640216542468004,
+            0.0014949850137919336
+          ],
+          "p_two_sided": 0.54,
+          "six_blocks": [
+            0.0,
+            0.0036363636363636364,
+            0.0,
+            0.0,
+            -0.0012210012210012212,
+            0.0
+          ]
+        },
+        "mean_top3_model_rank": {
+          "delta": -0.002009377093101138,
+          "ci95": [
+            -0.005471991419572067,
+            0.0011082484363097872
+          ],
+          "p_two_sided": 0.231,
+          "six_blocks": [
+            -0.007215007215007216,
+            3.2297397080004554e-18,
+            0.001225490196078432,
+            -0.004201680672268904,
+            -0.0012210012210012232,
+            -0.0016339869281045759
+          ]
+        },
+        "competitive_recall_at5": {
+          "delta": 0.0005581603036392053,
+          "ci95": [
+            -0.0003717818898074682,
+            0.0016570583180941054
+          ],
+          "p_two_sided": 0.331,
+          "six_blocks": [
+            0.0,
+            0.00393939393939394,
+            0.0,
+            0.0,
+            -0.0009157509157509158,
+            0.0
+          ]
+        },
+        "ndcg_at5": {
+          "delta": 0.0009561531784355272,
+          "ci95": [
+            4.1866235666560074e-05,
+            0.002021914958124165
+          ],
+          "p_two_sided": 0.039,
+          "six_blocks": [
+            0.00044922101073760636,
+            0.003599200698057967,
+            -0.0002928586468861945,
+            0.001977665486029195,
+            -2.336644644447382e-05,
+            -0.0002483399210031778
+          ]
+        },
+        "top5_pairwise_auc": {
+          "delta": 0.0007040905247240694,
+          "ci95": [
+            3.8894393283574595e-05,
+            0.0014106938825344043
+          ],
+          "p_two_sided": 0.036,
+          "six_blocks": [
+            0.0010085106080442014,
+            0.0021632120889086824,
+            -0.0002828054298642532,
+            0.0010523163513771513,
+            -0.00031697425847393494,
+            0.0006684491978609627
+          ]
+        }
+      },
+      "field_buckets": {
+        "baseline": {
+          "≤8": {
+            "races": 452,
+            "gold": 32.9646017699115,
+            "gold_strict": 13.716814159292035,
+            "good_positional": 36.283185840707965,
+            "pass": 65.04424778761062,
+            "champion": 30.97345132743363,
+            "winner_in_top3": 65.929203539823,
+            "winner_in_top5": 90.04424778761062,
+            "t3prec": 58.48082595870206
+          },
+          "9-10": {
+            "races": 514,
+            "gold": 17.120622568093385,
+            "gold_strict": 6.22568093385214,
+            "good_positional": 27.042801556420233,
+            "pass": 51.16731517509728,
+            "champion": 25.486381322957197,
+            "winner_in_top3": 57.00389105058366,
+            "winner_in_top5": 77.43190661478599,
+            "t3prec": 49.93514915693904
+          },
+          "11-12": {
+            "races": 373,
+            "gold": 11.26005361930295,
+            "gold_strict": 4.289544235924933,
+            "good_positional": 18.766756032171582,
+            "pass": 37.533512064343164,
+            "champion": 21.98391420911528,
+            "winner_in_top3": 48.793565683646115,
+            "winner_in_top5": 69.70509383378015,
+            "t3prec": 42.35924932975871
+          },
+          "13+": {
+            "races": 154,
+            "gold": 5.8441558441558445,
+            "gold_strict": 3.2467532467532467,
+            "good_positional": 12.987012987012987,
+            "pass": 33.76623376623377,
+            "champion": 22.07792207792208,
+            "winner_in_top3": 45.45454545454545,
+            "winner_in_top5": 61.688311688311686,
+            "t3prec": 39.82683982683983
+          }
+        },
+        "candidate": {
+          "≤8": {
+            "races": 452,
+            "gold": 33.4070796460177,
+            "gold_strict": 13.495575221238939,
+            "good_positional": 36.50442477876106,
+            "pass": 65.48672566371681,
+            "champion": 31.194690265486727,
+            "winner_in_top3": 66.15044247787611,
+            "winner_in_top5": 90.04424778761062,
+            "t3prec": 58.6283185840708
+          },
+          "9-10": {
+            "races": 514,
+            "gold": 16.926070038910506,
+            "gold_strict": 6.031128404669261,
+            "good_positional": 27.237354085603112,
+            "pass": 51.55642023346304,
+            "champion": 25.486381322957197,
+            "winner_in_top3": 57.19844357976654,
+            "winner_in_top5": 77.43190661478599,
+            "t3prec": 50.0
+          },
+          "11-12": {
+            "races": 373,
+            "gold": 11.26005361930295,
+            "gold_strict": 4.289544235924933,
+            "good_positional": 18.766756032171582,
+            "pass": 37.533512064343164,
+            "champion": 21.98391420911528,
+            "winner_in_top3": 49.061662198391424,
+            "winner_in_top5": 70.24128686327077,
+            "t3prec": 42.44861483467382
+          },
+          "13+": {
+            "races": 154,
+            "gold": 5.8441558441558445,
+            "gold_strict": 3.2467532467532467,
+            "good_positional": 13.636363636363637,
+            "pass": 33.116883116883116,
+            "champion": 22.07792207792208,
+            "winner_in_top3": 45.45454545454545,
+            "winner_in_top5": 61.688311688311686,
+            "t3prec": 39.82683982683983
+          }
+        }
+      },
+      "decision": {
+        "verdict": "REJECT",
+        "reason": "leakage_audit_failed",
+        "detail": {}
+      }
+    },
+    "B": {
+      "races": 1493,
+      "days": 41,
+      "baseline": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "candidate": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "evidence": {
+        "gold": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "good_positional": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "top3_capture_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "mean_top3_model_rank": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "competitive_recall_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "ndcg_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "top5_pairwise_auc": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "field_buckets": {
+        "baseline": {
+          "≤8": {
+            "races": 452,
+            "gold": 32.9646017699115,
+            "gold_strict": 13.716814159292035,
+            "good_positional": 36.283185840707965,
+            "pass": 65.04424778761062,
+            "champion": 30.97345132743363,
+            "winner_in_top3": 65.929203539823,
+            "winner_in_top5": 90.04424778761062,
+            "t3prec": 58.48082595870206
+          },
+          "9-10": {
+            "races": 514,
+            "gold": 17.120622568093385,
+            "gold_strict": 6.22568093385214,
+            "good_positional": 27.042801556420233,
+            "pass": 51.16731517509728,
+            "champion": 25.486381322957197,
+            "winner_in_top3": 57.00389105058366,
+            "winner_in_top5": 77.43190661478599,
+            "t3prec": 49.93514915693904
+          },
+          "11-12": {
+            "races": 373,
+            "gold": 11.26005361930295,
+            "gold_strict": 4.289544235924933,
+            "good_positional": 18.766756032171582,
+            "pass": 37.533512064343164,
+            "champion": 21.98391420911528,
+            "winner_in_top3": 48.793565683646115,
+            "winner_in_top5": 69.70509383378015,
+            "t3prec": 42.35924932975871
+          },
+          "13+": {
+            "races": 154,
+            "gold": 5.8441558441558445,
+            "gold_strict": 3.2467532467532467,
+            "good_positional": 12.987012987012987,
+            "pass": 33.76623376623377,
+            "champion": 22.07792207792208,
+            "winner_in_top3": 45.45454545454545,
+            "winner_in_top5": 61.688311688311686,
+            "t3prec": 39.82683982683983
+          }
+        },
+        "candidate": {
+          "≤8": {
+            "races": 452,
+            "gold": 32.9646017699115,
+            "gold_strict": 13.716814159292035,
+            "good_positional": 36.283185840707965,
+            "pass": 65.04424778761062,
+            "champion": 30.97345132743363,
+            "winner_in_top3": 65.929203539823,
+            "winner_in_top5": 90.04424778761062,
+            "t3prec": 58.48082595870206
+          },
+          "9-10": {
+            "races": 514,
+            "gold": 17.120622568093385,
+            "gold_strict": 6.22568093385214,
+            "good_positional": 27.042801556420233,
+            "pass": 51.16731517509728,
+            "champion": 25.486381322957197,
+            "winner_in_top3": 57.00389105058366,
+            "winner_in_top5": 77.43190661478599,
+            "t3prec": 49.93514915693904
+          },
+          "11-12": {
+            "races": 373,
+            "gold": 11.26005361930295,
+            "gold_strict": 4.289544235924933,
+            "good_positional": 18.766756032171582,
+            "pass": 37.533512064343164,
+            "champion": 21.98391420911528,
+            "winner_in_top3": 48.793565683646115,
+            "winner_in_top5": 69.70509383378015,
+            "t3prec": 42.35924932975871
+          },
+          "13+": {
+            "races": 154,
+            "gold": 5.8441558441558445,
+            "gold_strict": 3.2467532467532467,
+            "good_positional": 12.987012987012987,
+            "pass": 33.76623376623377,
+            "champion": 22.07792207792208,
+            "winner_in_top3": 45.45454545454545,
+            "winner_in_top5": 61.688311688311686,
+            "t3prec": 39.82683982683983
+          }
+        }
+      },
+      "decision": {
+        "verdict": "REJECT",
+        "reason": "leakage_audit_failed",
+        "detail": {}
+      }
+    },
+    "C": {
+      "races": 1493,
+      "days": 41,
+      "baseline": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "candidate": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "evidence": {
+        "gold": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "good_positional": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "top3_capture_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "mean_top3_model_rank": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "competitive_recall_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "ndcg_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "top5_pairwise_auc": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "field_buckets": {
+        "baseline": {
+          "≤8": {
+            "races": 452,
+            "gold": 32.9646017699115,
+            "gold_strict": 13.716814159292035,
+            "good_positional": 36.283185840707965,
+            "pass": 65.04424778761062,
+            "champion": 30.97345132743363,
+            "winner_in_top3": 65.929203539823,
+            "winner_in_top5": 90.04424778761062,
+            "t3prec": 58.48082595870206
+          },
+          "9-10": {
+            "races": 514,
+            "gold": 17.120622568093385,
+            "gold_strict": 6.22568093385214,
+            "good_positional": 27.042801556420233,
+            "pass": 51.16731517509728,
+            "champion": 25.486381322957197,
+            "winner_in_top3": 57.00389105058366,
+            "winner_in_top5": 77.43190661478599,
+            "t3prec": 49.93514915693904
+          },
+          "11-12": {
+            "races": 373,
+            "gold": 11.26005361930295,
+            "gold_strict": 4.289544235924933,
+            "good_positional": 18.766756032171582,
+            "pass": 37.533512064343164,
+            "champion": 21.98391420911528,
+            "winner_in_top3": 48.793565683646115,
+            "winner_in_top5": 69.70509383378015,
+            "t3prec": 42.35924932975871
+          },
+          "13+": {
+            "races": 154,
+            "gold": 5.8441558441558445,
+            "gold_strict": 3.2467532467532467,
+            "good_positional": 12.987012987012987,
+            "pass": 33.76623376623377,
+            "champion": 22.07792207792208,
+            "winner_in_top3": 45.45454545454545,
+            "winner_in_top5": 61.688311688311686,
+            "t3prec": 39.82683982683983
+          }
+        },
+        "candidate": {
+          "≤8": {
+            "races": 452,
+            "gold": 32.9646017699115,
+            "gold_strict": 13.716814159292035,
+            "good_positional": 36.283185840707965,
+            "pass": 65.04424778761062,
+            "champion": 30.97345132743363,
+            "winner_in_top3": 65.929203539823,
+            "winner_in_top5": 90.04424778761062,
+            "t3prec": 58.48082595870206
+          },
+          "9-10": {
+            "races": 514,
+            "gold": 17.120622568093385,
+            "gold_strict": 6.22568093385214,
+            "good_positional": 27.042801556420233,
+            "pass": 51.16731517509728,
+            "champion": 25.486381322957197,
+            "winner_in_top3": 57.00389105058366,
+            "winner_in_top5": 77.43190661478599,
+            "t3prec": 49.93514915693904
+          },
+          "11-12": {
+            "races": 373,
+            "gold": 11.26005361930295,
+            "gold_strict": 4.289544235924933,
+            "good_positional": 18.766756032171582,
+            "pass": 37.533512064343164,
+            "champion": 21.98391420911528,
+            "winner_in_top3": 48.793565683646115,
+            "winner_in_top5": 69.70509383378015,
+            "t3prec": 42.35924932975871
+          },
+          "13+": {
+            "races": 154,
+            "gold": 5.8441558441558445,
+            "gold_strict": 3.2467532467532467,
+            "good_positional": 12.987012987012987,
+            "pass": 33.76623376623377,
+            "champion": 22.07792207792208,
+            "winner_in_top3": 45.45454545454545,
+            "winner_in_top5": 61.688311688311686,
+            "t3prec": 39.82683982683983
+          }
+        }
+      },
+      "decision": {
+        "verdict": "REJECT",
+        "reason": "leakage_audit_failed",
+        "detail": {}
+      }
+    },
+    "AB": {
+      "races": 1493,
+      "days": 41,
+      "baseline": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "candidate": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "evidence": {
+        "gold": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "good_positional": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "top3_capture_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "mean_top3_model_rank": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "competitive_recall_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "ndcg_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "top5_pairwise_auc": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "field_buckets": {
+        "baseline": {
+          "≤8": {
+            "races": 452,
+            "gold": 32.9646017699115,
+            "gold_strict": 13.716814159292035,
+            "good_positional": 36.283185840707965,
+            "pass": 65.04424778761062,
+            "champion": 30.97345132743363,
+            "winner_in_top3": 65.929203539823,
+            "winner_in_top5": 90.04424778761062,
+            "t3prec": 58.48082595870206
+          },
+          "9-10": {
+            "races": 514,
+            "gold": 17.120622568093385,
+            "gold_strict": 6.22568093385214,
+            "good_positional": 27.042801556420233,
+            "pass": 51.16731517509728,
+            "champion": 25.486381322957197,
+            "winner_in_top3": 57.00389105058366,
+            "winner_in_top5": 77.43190661478599,
+            "t3prec": 49.93514915693904
+          },
+          "11-12": {
+            "races": 373,
+            "gold": 11.26005361930295,
+            "gold_strict": 4.289544235924933,
+            "good_positional": 18.766756032171582,
+            "pass": 37.533512064343164,
+            "champion": 21.98391420911528,
+            "winner_in_top3": 48.793565683646115,
+            "winner_in_top5": 69.70509383378015,
+            "t3prec": 42.35924932975871
+          },
+          "13+": {
+            "races": 154,
+            "gold": 5.8441558441558445,
+            "gold_strict": 3.2467532467532467,
+            "good_positional": 12.987012987012987,
+            "pass": 33.76623376623377,
+            "champion": 22.07792207792208,
+            "winner_in_top3": 45.45454545454545,
+            "winner_in_top5": 61.688311688311686,
+            "t3prec": 39.82683982683983
+          }
+        },
+        "candidate": {
+          "≤8": {
+            "races": 452,
+            "gold": 32.9646017699115,
+            "gold_strict": 13.716814159292035,
+            "good_positional": 36.283185840707965,
+            "pass": 65.04424778761062,
+            "champion": 30.97345132743363,
+            "winner_in_top3": 65.929203539823,
+            "winner_in_top5": 90.04424778761062,
+            "t3prec": 58.48082595870206
+          },
+          "9-10": {
+            "races": 514,
+            "gold": 17.120622568093385,
+            "gold_strict": 6.22568093385214,
+            "good_positional": 27.042801556420233,
+            "pass": 51.16731517509728,
+            "champion": 25.486381322957197,
+            "winner_in_top3": 57.00389105058366,
+            "winner_in_top5": 77.43190661478599,
+            "t3prec": 49.93514915693904
+          },
+          "11-12": {
+            "races": 373,
+            "gold": 11.26005361930295,
+            "gold_strict": 4.289544235924933,
+            "good_positional": 18.766756032171582,
+            "pass": 37.533512064343164,
+            "champion": 21.98391420911528,
+            "winner_in_top3": 48.793565683646115,
+            "winner_in_top5": 69.70509383378015,
+            "t3prec": 42.35924932975871
+          },
+          "13+": {
+            "races": 154,
+            "gold": 5.8441558441558445,
+            "gold_strict": 3.2467532467532467,
+            "good_positional": 12.987012987012987,
+            "pass": 33.76623376623377,
+            "champion": 22.07792207792208,
+            "winner_in_top3": 45.45454545454545,
+            "winner_in_top5": 61.688311688311686,
+            "t3prec": 39.82683982683983
+          }
+        }
+      },
+      "decision": {
+        "verdict": "REJECT",
+        "reason": "leakage_audit_failed",
+        "detail": {}
+      }
+    },
+    "AC": {
+      "races": 1493,
+      "days": 41,
+      "baseline": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "candidate": {
+        "gold": 19.356999330207636,
+        "gold_strict": 7.769591426657736,
+        "good_positional": 26.25586068318821,
+        "pass": 50.43536503683858,
+        "champion": 25.78700602813128,
+        "winner_in_top3": 56.66443402545211,
+        "winner_in_top5": 77.89685197588747,
+        "t3prec": 49.69859343603483
+      },
+      "evidence": {
+        "gold": {
+          "delta": 0.0006697923643670462,
+          "ci95": [
+            0.0,
+            0.0020216315462095002
+          ],
+          "p_two_sided": 0.695,
+          "six_blocks": [
+            0.0,
+            0.0036363636363636364,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "good_positional": {
+          "delta": -0.0006697923643670462,
+          "ci95": [
+            -0.0030303489718286566,
+            0.0014360097149314372
+          ],
+          "p_two_sided": 0.772,
+          "six_blocks": [
+            -0.004329004329004329,
+            0.0036363636363636364,
+            0.0,
+            -0.004201680672268907,
+            0.0,
+            0.0
+          ]
+        },
+        "top3_capture_at5": {
+          "delta": 0.00022326412145568203,
+          "ci95": [
+            -0.0004991512034422482,
+            0.0009946210649310662
+          ],
+          "p_two_sided": 0.8,
+          "six_blocks": [
+            0.0,
+            0.0024242424242424242,
+            -0.0012254901960784316,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "mean_top3_model_rank": {
+          "delta": -0.0029024335789238674,
+          "ci95": [
+            -0.005437234159153493,
+            -0.0006802259574114587
+          ],
+          "p_two_sided": 0.003,
+          "six_blocks": [
+            -0.0028860028860028873,
+            -0.0024242424242424203,
+            -0.002450980392156864,
+            -0.0014005602240896365,
+            -0.003663003663003663,
+            -0.004901960784313728
+          ]
+        },
+        "competitive_recall_at5": {
+          "delta": 5.581603036392051e-05,
+          "ci95": [
+            -0.0008971307648330914,
+            0.0008614748449345279
+          ],
+          "p_two_sided": 0.93,
+          "six_blocks": [
+            0.0,
+            0.002121212121212121,
+            -0.001838235294117647,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "ndcg_at5": {
+          "delta": 0.00038252516795499154,
+          "ci95": [
+            -0.0003207938964622039,
+            0.0011683670678202275
+          ],
+          "p_two_sided": 0.327,
+          "six_blocks": [
+            -4.4590823567248264e-05,
+            0.002436639902131979,
+            8.480866184162189e-05,
+            -0.0005057443588154508,
+            0.0001874751124823988,
+            -0.0002085633402744909
+          ]
+        },
+        "top5_pairwise_auc": {
+          "delta": 0.0005569250306662666,
+          "ci95": [
+            5.23010194442599e-05,
+            0.001146961501208799
+          ],
+          "p_two_sided": 0.024,
+          "six_blocks": [
+            0.00016174301888587594,
+            0.001626520022804852,
+            0.0001872382079766891,
+            0.000247157686604053,
+            0.00025792834616364017,
+            0.0008169934640522877
+          ]
+        }
+      },
+      "field_buckets": {
+        "baseline": {
+          "≤8": {
+            "races": 452,
+            "gold": 32.9646017699115,
+            "gold_strict": 13.716814159292035,
+            "good_positional": 36.283185840707965,
+            "pass": 65.04424778761062,
+            "champion": 30.97345132743363,
+            "winner_in_top3": 65.929203539823,
+            "winner_in_top5": 90.04424778761062,
+            "t3prec": 58.48082595870206
+          },
+          "9-10": {
+            "races": 514,
+            "gold": 17.120622568093385,
+            "gold_strict": 6.22568093385214,
+            "good_positional": 27.042801556420233,
+            "pass": 51.16731517509728,
+            "champion": 25.486381322957197,
+            "winner_in_top3": 57.00389105058366,
+            "winner_in_top5": 77.43190661478599,
+            "t3prec": 49.93514915693904
+          },
+          "11-12": {
+            "races": 373,
+            "gold": 11.26005361930295,
+            "gold_strict": 4.289544235924933,
+            "good_positional": 18.766756032171582,
+            "pass": 37.533512064343164,
+            "champion": 21.98391420911528,
+            "winner_in_top3": 48.793565683646115,
+            "winner_in_top5": 69.70509383378015,
+            "t3prec": 42.35924932975871
+          },
+          "13+": {
+            "races": 154,
+            "gold": 5.8441558441558445,
+            "gold_strict": 3.2467532467532467,
+            "good_positional": 12.987012987012987,
+            "pass": 33.76623376623377,
+            "champion": 22.07792207792208,
+            "winner_in_top3": 45.45454545454545,
+            "winner_in_top5": 61.688311688311686,
+            "t3prec": 39.82683982683983
+          }
+        },
+        "candidate": {
+          "≤8": {
+            "races": 452,
+            "gold": 33.1858407079646,
+            "gold_strict": 13.938053097345133,
+            "good_positional": 36.06194690265487,
+            "pass": 65.70796460176992,
+            "champion": 30.97345132743363,
+            "winner_in_top3": 66.59292035398231,
+            "winner_in_top5": 90.26548672566372,
+            "t3prec": 58.77581120943953
+          },
+          "9-10": {
+            "races": 514,
+            "gold": 17.120622568093385,
+            "gold_strict": 6.22568093385214,
+            "good_positional": 27.042801556420233,
+            "pass": 51.36186770428016,
+            "champion": 25.291828793774318,
+            "winner_in_top3": 57.00389105058366,
+            "winner_in_top5": 77.82101167315174,
+            "t3prec": 50.0
+          },
+          "11-12": {
+            "races": 373,
+            "gold": 11.26005361930295,
+            "gold_strict": 4.289544235924933,
+            "good_positional": 18.766756032171582,
+            "pass": 37.533512064343164,
+            "champion": 21.715817694369974,
+            "winner_in_top3": 48.793565683646115,
+            "winner_in_top5": 69.70509383378015,
+            "t3prec": 42.35924932975871
+          },
+          "13+": {
+            "races": 154,
+            "gold": 5.8441558441558445,
+            "gold_strict": 3.2467532467532467,
+            "good_positional": 12.987012987012987,
+            "pass": 33.76623376623377,
+            "champion": 22.07792207792208,
+            "winner_in_top3": 45.45454545454545,
+            "winner_in_top5": 61.688311688311686,
+            "t3prec": 39.82683982683983
+          }
+        }
+      },
+      "decision": {
+        "verdict": "REJECT",
+        "reason": "leakage_audit_failed",
+        "detail": {}
+      }
+    },
+    "ABC": {
+      "races": 1493,
+      "days": 41,
+      "baseline": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "candidate": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "evidence": {
+        "gold": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "good_positional": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "top3_capture_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "mean_top3_model_rank": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "competitive_recall_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "ndcg_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "top5_pairwise_auc": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "field_buckets": {
+        "baseline": {
+          "≤8": {
+            "races": 452,
+            "gold": 32.9646017699115,
+            "gold_strict": 13.716814159292035,
+            "good_positional": 36.283185840707965,
+            "pass": 65.04424778761062,
+            "champion": 30.97345132743363,
+            "winner_in_top3": 65.929203539823,
+            "winner_in_top5": 90.04424778761062,
+            "t3prec": 58.48082595870206
+          },
+          "9-10": {
+            "races": 514,
+            "gold": 17.120622568093385,
+            "gold_strict": 6.22568093385214,
+            "good_positional": 27.042801556420233,
+            "pass": 51.16731517509728,
+            "champion": 25.486381322957197,
+            "winner_in_top3": 57.00389105058366,
+            "winner_in_top5": 77.43190661478599,
+            "t3prec": 49.93514915693904
+          },
+          "11-12": {
+            "races": 373,
+            "gold": 11.26005361930295,
+            "gold_strict": 4.289544235924933,
+            "good_positional": 18.766756032171582,
+            "pass": 37.533512064343164,
+            "champion": 21.98391420911528,
+            "winner_in_top3": 48.793565683646115,
+            "winner_in_top5": 69.70509383378015,
+            "t3prec": 42.35924932975871
+          },
+          "13+": {
+            "races": 154,
+            "gold": 5.8441558441558445,
+            "gold_strict": 3.2467532467532467,
+            "good_positional": 12.987012987012987,
+            "pass": 33.76623376623377,
+            "champion": 22.07792207792208,
+            "winner_in_top3": 45.45454545454545,
+            "winner_in_top5": 61.688311688311686,
+            "t3prec": 39.82683982683983
+          }
+        },
+        "candidate": {
+          "≤8": {
+            "races": 452,
+            "gold": 32.9646017699115,
+            "gold_strict": 13.716814159292035,
+            "good_positional": 36.283185840707965,
+            "pass": 65.04424778761062,
+            "champion": 30.97345132743363,
+            "winner_in_top3": 65.929203539823,
+            "winner_in_top5": 90.04424778761062,
+            "t3prec": 58.48082595870206
+          },
+          "9-10": {
+            "races": 514,
+            "gold": 17.120622568093385,
+            "gold_strict": 6.22568093385214,
+            "good_positional": 27.042801556420233,
+            "pass": 51.16731517509728,
+            "champion": 25.486381322957197,
+            "winner_in_top3": 57.00389105058366,
+            "winner_in_top5": 77.43190661478599,
+            "t3prec": 49.93514915693904
+          },
+          "11-12": {
+            "races": 373,
+            "gold": 11.26005361930295,
+            "gold_strict": 4.289544235924933,
+            "good_positional": 18.766756032171582,
+            "pass": 37.533512064343164,
+            "champion": 21.98391420911528,
+            "winner_in_top3": 48.793565683646115,
+            "winner_in_top5": 69.70509383378015,
+            "t3prec": 42.35924932975871
+          },
+          "13+": {
+            "races": 154,
+            "gold": 5.8441558441558445,
+            "gold_strict": 3.2467532467532467,
+            "good_positional": 12.987012987012987,
+            "pass": 33.76623376623377,
+            "champion": 22.07792207792208,
+            "winner_in_top3": 45.45454545454545,
+            "winner_in_top5": 61.688311688311686,
+            "t3prec": 39.82683982683983
+          }
+        }
+      },
+      "decision": {
+        "verdict": "REJECT",
+        "reason": "leakage_audit_failed",
+        "detail": {}
+      }
+    }
+  },
+  "ablations": {
+    "A:AB": {
+      "races": 1493,
+      "days": 41,
+      "baseline": {
+        "gold": 19.356999330207636,
+        "gold_strict": 7.5686537173476225,
+        "good_positional": 26.52377762893503,
+        "pass": 50.368385800401875,
+        "champion": 25.987943737441395,
+        "winner_in_top3": 56.66443402545211,
+        "winner_in_top5": 77.82987273945076,
+        "t3prec": 49.67626702388926
+      },
+      "candidate": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "evidence": {
+        "gold": {
+          "delta": -0.0006697923643670462,
+          "ci95": [
+            -0.0030257186081694403,
+            0.0014349012504926346
+          ],
+          "p_two_sided": 0.789,
+          "six_blocks": [
+            0.004329004329004329,
+            -0.0036363636363636364,
+            0.0,
+            -0.004201680672268907,
+            0.0,
+            0.0
+          ]
+        },
+        "good_positional": {
+          "delta": -0.0020093770931011385,
+          "ci95": [
+            -0.005583182330852787,
+            0.001316786228808304
+          ],
+          "p_two_sided": 0.345,
+          "six_blocks": [
+            -0.004329004329004329,
+            -0.007272727272727273,
+            0.0,
+            0.004201680672268907,
+            -0.003663003663003663,
+            0.0
+          ]
+        },
+        "top3_capture_at5": {
+          "delta": -0.0004465282429113641,
+          "ci95": [
+            -0.001494985013791935,
+            0.0006640216542468003
+          ],
+          "p_two_sided": 0.54,
+          "six_blocks": [
+            0.0,
+            -0.0036363636363636364,
+            0.0,
+            0.0,
+            0.0012210012210012212,
+            0.0
+          ]
+        },
+        "mean_top3_model_rank": {
+          "delta": 0.002009377093101138,
+          "ci95": [
+            -0.0011082484363097878,
+            0.0054719914195720636
+          ],
+          "p_two_sided": 0.231,
+          "six_blocks": [
+            0.007215007215007216,
+            -3.2297397080004554e-18,
+            -0.001225490196078432,
+            0.004201680672268904,
+            0.0012210012210012232,
+            0.0016339869281045759
+          ]
+        },
+        "competitive_recall_at5": {
+          "delta": -0.0005581603036392053,
+          "ci95": [
+            -0.0016570583180941074,
+            0.00037178188980746806
+          ],
+          "p_two_sided": 0.331,
+          "six_blocks": [
+            0.0,
+            -0.00393939393939394,
+            0.0,
+            0.0,
+            0.0009157509157509158,
+            0.0
+          ]
+        },
+        "ndcg_at5": {
+          "delta": -0.0009561531784355272,
+          "ci95": [
+            -0.002021914958124166,
+            -4.186623566656052e-05
+          ],
+          "p_two_sided": 0.039,
+          "six_blocks": [
+            -0.00044922101073760636,
+            -0.003599200698057967,
+            0.0002928586468861945,
+            -0.001977665486029195,
+            2.336644644447382e-05,
+            0.0002483399210031778
+          ]
+        },
+        "top5_pairwise_auc": {
+          "delta": -0.0007040905247240694,
+          "ci95": [
+            -0.0014106938825344047,
+            -3.889439328357469e-05
+          ],
+          "p_two_sided": 0.036,
+          "six_blocks": [
+            -0.0010085106080442014,
+            -0.0021632120889086824,
+            0.0002828054298642532,
+            -0.0010523163513771513,
+            0.00031697425847393494,
+            -0.0006684491978609627
+          ]
+        }
+      },
+      "decision": {
+        "verdict": "REJECT",
+        "reason": "leakage_audit_failed",
+        "detail": {}
+      }
+    },
+    "A:AC": {
+      "races": 1493,
+      "days": 41,
+      "baseline": {
+        "gold": 19.356999330207636,
+        "gold_strict": 7.5686537173476225,
+        "good_positional": 26.52377762893503,
+        "pass": 50.368385800401875,
+        "champion": 25.987943737441395,
+        "winner_in_top3": 56.66443402545211,
+        "winner_in_top5": 77.82987273945076,
+        "t3prec": 49.67626702388926
+      },
+      "candidate": {
+        "gold": 19.356999330207636,
+        "gold_strict": 7.769591426657736,
+        "good_positional": 26.25586068318821,
+        "pass": 50.43536503683858,
+        "champion": 25.78700602813128,
+        "winner_in_top3": 56.66443402545211,
+        "winner_in_top5": 77.89685197588747,
+        "t3prec": 49.69859343603483
+      },
+      "evidence": {
+        "gold": {
+          "delta": 0.0,
+          "ci95": [
+            -0.0020121061942122535,
+            0.001967277698244405
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.004329004329004329,
+            0.0,
+            0.0,
+            -0.004201680672268907,
+            0.0,
+            0.0
+          ]
+        },
+        "good_positional": {
+          "delta": -0.0026791694574681848,
+          "ci95": [
+            -0.005844715863619401,
+            0.0
+          ],
+          "p_two_sided": 0.133,
+          "six_blocks": [
+            -0.008658008658008658,
+            -0.0036363636363636364,
+            0.0,
+            0.0,
+            -0.003663003663003663,
+            0.0
+          ]
+        },
+        "top3_capture_at5": {
+          "delta": -0.0002232641214556821,
+          "ci95": [
+            -0.0011440807443838157,
+            0.0007199683578305804
+          ],
+          "p_two_sided": 0.63,
+          "six_blocks": [
+            0.0,
+            -0.0012121212121212126,
+            -0.0012254901960784316,
+            0.0,
+            0.0012210012210012212,
+            0.0
+          ]
+        },
+        "mean_top3_model_rank": {
+          "delta": -0.000893056485822729,
+          "ci95": [
+            -0.003770380363669556,
+            0.00226772837375059
+          ],
+          "p_two_sided": 0.5,
+          "six_blocks": [
+            0.004329004329004329,
+            -0.002424242424242424,
+            -0.003676470588235296,
+            0.0028011204481792674,
+            -0.00244200244200244,
+            -0.0032679738562091517
+          ]
+        },
+        "competitive_recall_at5": {
+          "delta": -0.0005023442732752846,
+          "ci95": [
+            -0.0016245372751458812,
+            0.0005639203822196575
+          ],
+          "p_two_sided": 0.388,
+          "six_blocks": [
+            0.0,
+            -0.0018181818181818182,
+            -0.001838235294117647,
+            0.0,
+            0.0009157509157509158,
+            0.0
+          ]
+        },
+        "ndcg_at5": {
+          "delta": -0.0005736280104805355,
+          "ci95": [
+            -0.0015787147658952786,
+            0.00024346502259974063
+          ],
+          "p_two_sided": 0.205,
+          "six_blocks": [
+            -0.0004938118343048546,
+            -0.0011625607959259887,
+            0.0003776673087278164,
+            -0.0024834098448446454,
+            0.0002108415589268726,
+            3.97765807286869e-05
+          ]
+        },
+        "top5_pairwise_auc": {
+          "delta": -0.00014716549405780272,
+          "ci95": [
+            -0.0007647931024475559,
+            0.00040219423488093803
+          ],
+          "p_two_sided": 0.652,
+          "six_blocks": [
+            -0.0008467675891583253,
+            -0.0005366920661038307,
+            0.0004700436378409423,
+            -0.0008051586647730984,
+            0.0005749026046375751,
+            0.0001485442661913249
+          ]
+        }
+      },
+      "decision": {
+        "verdict": "REJECT",
+        "reason": "leakage_audit_failed",
+        "detail": {}
+      }
+    },
+    "AB:ABC": {
+      "races": 1493,
+      "days": 41,
+      "baseline": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "candidate": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "evidence": {
+        "gold": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "good_positional": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "top3_capture_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "mean_top3_model_rank": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "competitive_recall_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "ndcg_at5": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "top5_pairwise_auc": {
+          "delta": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ],
+          "p_two_sided": 1.0,
+          "six_blocks": [
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "decision": {
+        "verdict": "REJECT",
+        "reason": "leakage_audit_failed",
+        "detail": {}
+      }
+    },
+    "AC:ABC": {
+      "races": 1493,
+      "days": 41,
+      "baseline": {
+        "gold": 19.356999330207636,
+        "gold_strict": 7.769591426657736,
+        "good_positional": 26.25586068318821,
+        "pass": 50.43536503683858,
+        "champion": 25.78700602813128,
+        "winner_in_top3": 56.66443402545211,
+        "winner_in_top5": 77.89685197588747,
+        "t3prec": 49.69859343603483
+      },
+      "candidate": {
+        "gold": 19.29002009377093,
+        "gold_strict": 7.702612190221031,
+        "good_positional": 26.322839919624915,
+        "pass": 50.167448091091764,
+        "champion": 25.92096450100469,
+        "winner_in_top3": 56.463496316142,
+        "winner_in_top5": 77.69591426657736,
+        "t3prec": 49.58696137530699
+      },
+      "evidence": {
+        "gold": {
+          "delta": -0.0006697923643670462,
+          "ci95": [
+            -0.0020216315462095007,
+            0.0
+          ],
+          "p_two_sided": 0.695,
+          "six_blocks": [
+            0.0,
+            -0.0036363636363636364,
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "good_positional": {
+          "delta": 0.0006697923643670462,
+          "ci95": [
+            -0.0014360097149314385,
+            0.003030348971828656
+          ],
+          "p_two_sided": 0.772,
+          "six_blocks": [
+            0.004329004329004329,
+            -0.0036363636363636364,
+            0.0,
+            0.004201680672268907,
+            0.0,
+            0.0
+          ]
+        },
+        "top3_capture_at5": {
+          "delta": -0.00022326412145568203,
+          "ci95": [
+            -0.0009946210649310681,
+            0.0004991512034422394
+          ],
+          "p_two_sided": 0.8,
+          "six_blocks": [
+            0.0,
+            -0.0024242424242424242,
+            0.0012254901960784316,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "mean_top3_model_rank": {
+          "delta": 0.0029024335789238674,
+          "ci95": [
+            0.0006802259574114585,
+            0.0054372341591534925
+          ],
+          "p_two_sided": 0.003,
+          "six_blocks": [
+            0.0028860028860028873,
+            0.0024242424242424203,
+            0.002450980392156864,
+            0.0014005602240896365,
+            0.003663003663003663,
+            0.004901960784313728
+          ]
+        },
+        "competitive_recall_at5": {
+          "delta": -5.581603036392051e-05,
+          "ci95": [
+            -0.0008614748449345279,
+            0.0008971307648330914
+          ],
+          "p_two_sided": 0.93,
+          "six_blocks": [
+            0.0,
+            -0.002121212121212121,
+            0.001838235294117647,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "ndcg_at5": {
+          "delta": -0.00038252516795499154,
+          "ci95": [
+            -0.0011683670678202284,
+            0.00032079389646220285
+          ],
+          "p_two_sided": 0.327,
+          "six_blocks": [
+            4.4590823567248264e-05,
+            -0.002436639902131979,
+            -8.480866184162189e-05,
+            0.0005057443588154508,
+            -0.0001874751124823988,
+            0.0002085633402744909
+          ]
+        },
+        "top5_pairwise_auc": {
+          "delta": -0.0005569250306662666,
+          "ci95": [
+            -0.0011469615012087995,
+            -5.230101944426016e-05
+          ],
+          "p_two_sided": 0.024,
+          "six_blocks": [
+            -0.00016174301888587594,
+            -0.001626520022804852,
+            -0.0001872382079766891,
+            -0.000247157686604053,
+            -0.00025792834616364017,
+            -0.0008169934640522877
+          ]
+        }
+      },
+      "decision": {
+        "verdict": "REJECT",
+        "reason": "leakage_audit_failed",
+        "detail": {}
+      }
+    }
+  },
+  "a_a": {
+    "races": 1493,
+    "days": 41,
+    "baseline": {
+      "gold": 19.29002009377093,
+      "gold_strict": 7.702612190221031,
+      "good_positional": 26.322839919624915,
+      "pass": 50.167448091091764,
+      "champion": 25.92096450100469,
+      "winner_in_top3": 56.463496316142,
+      "winner_in_top5": 77.69591426657736,
+      "t3prec": 49.58696137530699
+    },
+    "candidate": {
+      "gold": 19.29002009377093,
+      "gold_strict": 7.702612190221031,
+      "good_positional": 26.322839919624915,
+      "pass": 50.167448091091764,
+      "champion": 25.92096450100469,
+      "winner_in_top3": 56.463496316142,
+      "winner_in_top5": 77.69591426657736,
+      "t3prec": 49.58696137530699
+    },
+    "evidence": {
+      "gold": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "p_two_sided": 1.0,
+        "six_blocks": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "good_positional": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "p_two_sided": 1.0,
+        "six_blocks": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "top3_capture_at5": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "p_two_sided": 1.0,
+        "six_blocks": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "mean_top3_model_rank": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "p_two_sided": 1.0,
+        "six_blocks": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "competitive_recall_at5": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "p_two_sided": 1.0,
+        "six_blocks": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "ndcg_at5": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "p_two_sided": 1.0,
+        "six_blocks": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "top5_pairwise_auc": {
+        "delta": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ],
+        "p_two_sided": 1.0,
+        "six_blocks": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      }
+    },
+    "decision": {
+      "verdict": "REJECT",
+      "reason": "leakage_audit_failed",
+      "detail": {}
+    }
+  },
+  "artifact_directory": "/Users/imac/.codex/visualizations/2026/10/15/01a13d68-afa0-77b3-a25d-8a74906a0796/AU-contextual-speed-research",
+  "tests": {
+    "source_and_temporal": "17 passed",
+    "quick": "passed",
+    "full": "all suites passed"
+  }
+}
