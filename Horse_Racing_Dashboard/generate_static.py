@@ -41,6 +41,7 @@ from services.race_display_metadata import (
     parse_hkjc_racecard_silks as _parse_hkjc_racecard_silks,
 )
 from services.multisport_exporter import build_multisport_feed
+from services.au_display_policy import apply_au_display_policy
 from models.race import AnalystName, Meeting, Region
 
 
@@ -644,6 +645,7 @@ def _merge_sports_feed(cached, fresh):
 
 def generate_html(data):
     """Generate self-contained HTML dashboard."""
+    apply_au_display_policy(data)
     # A base snapshot may already contain yesterday's sports_feed.  It is only
     # a transport/cache for race data, never the authority for NBA/Tennis.
     # Rebuild the feed on every deploy so completed domain analysis appears
@@ -964,6 +966,7 @@ def main():
     else:
         data = collect_all_data(args.cache_path)
     
+    apply_au_display_policy(data)
     _ensure_region_side_roi(data)
     meeting_count = len(data["meetings"])
     race_count = sum(
