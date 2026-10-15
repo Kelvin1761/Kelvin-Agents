@@ -77,16 +77,29 @@ class SparseContextStandard(fts.ContextStandard):
 
 
 # ── Sportsbet 事件 ─────────────────────────────────────────────────────────
-def parse_corpus(root):
-    """→ events {key: event}, histories {(date, meeting, race, norm_name): [keys]}, audit."""
-    raw = defaultdict(lambda: {"wt": set(), "rows": {}, "going": set(), "rating": set(), "class": set()})
-    histories = {}
-    audit = Counter()
+def corpus_sources(root):
+    """(target_date, label, folder) for every corpus meeting."""
+    out = []
     for meeting in meeting_dirs(root):
         date_m = re.search(r"(\d{4}-\d{2}-\d{2})", meeting.name)
-        if not date_m:
-            continue
-        target_date = date_m[1]
+        if date_m:
+            out.append((date_m[1], meeting.name, meeting))
+    return out
+
+
+def parse_corpus(root, sources=None):
+    """→ events {key: event}, histories {(date, label, race, norm_name): [keys]}, audit.
+
+    `sources` overrides the corpus with explicit (target_date, label, folder) tuples
+    (the forward shadow adds pre-race snapshot folders). Every event records
+    `first_seen` = earliest target date of a page that listed it, so a caller can
+    keep only events that were visible on or before a given day.
+    """
+    raw = defaultdict(lambda: {"wt": set(), "rows": {}, "going": set(), "rating": set(), "class": set(),
+                               "first_seen": "9999-99-99"})
+    histories = {}
+    audit = Counter()
+    for target_date, label, meeting in (sources if sources is not None else corpus_sources(root)):
         for fg in sorted(meeting.glob("*Race * Formguide.md")):
             race_m = re.search(r"Race (\d+) Formguide", fg.name)
             if not race_m:
@@ -118,6 +131,7 @@ def parse_corpus(root):
                     audit["parsed_wt"] += 1
                     key = (fts.normalize_venue_name(run[1]), run_date, int(run[2]), int(run[4]))
                     ev = raw[key]
+                    ev["first_seen"] = min(ev["first_seen"], target_date)
                     ev["wt"].add(ctx["winning_time"])
                     cond = run[5]
                     ev["going"].add(fts.condition_key(re.sub(r"\d+$", "", cond) or cond))
@@ -126,7 +140,7 @@ def parse_corpus(root):
                     ev["class"].add(fts.class_key(line))
                     ev["rows"][name] = ctx["winning_time"] + float(margin[1]) * SEC_PER_LENGTH
                     keys.append(key)
-                histories[(target_date, meeting.name, int(race_m[1]), name)] = sorted(
+                histories[(target_date, label, int(race_m[1]), name)] = sorted(
                     set(keys), key=lambda k: k[1], reverse=True)
     events = {}
     for key, ev in raw.items():
@@ -139,7 +153,7 @@ def parse_corpus(root):
         events[key] = {
             "key": key, "track": key[0], "date": key[1], "distance": key[3],
             "going": sorted(ev["going"])[0], "rating": sorted(ev["rating"])[0], "rail": "unknown",
-            "class": sorted(ev["class"])[0], "total": next(iter(ev["wt"])),
+            "class": sorted(ev["class"])[0], "total": next(iter(ev["wt"])), "first_seen": ev["first_seen"],
             "rows": [{"horse": h, "time": t, "distance": key[3], "key": key} for h, t in ev["rows"].items()],
         }
     audit["events"] = len(events)

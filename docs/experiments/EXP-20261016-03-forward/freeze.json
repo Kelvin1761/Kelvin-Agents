@@ -1,0 +1,80 @@
+{
+ "experiment": "EXP-20261016-03",
+ "candidate": "S2 (EXP-20261016-02)",
+ "valid_from": "2026-10-17",
+ "min_meeting_days": 41,
+ "one_look": true,
+ "weights": {
+  "A0_live": {
+   "stability": 0.37099725005319806,
+   "pace_perf": 0.11389390231594383,
+   "jockey_trainer": 0.6626585553070451,
+   "class_weight": 0.3826193901797637,
+   "track": 0.14114297066700832,
+   "preparation": 0.25244110196132946
+  },
+  "B0_pooled": {
+   "stability": 0.30013725766454274,
+   "pace_perf": 0.10842437103842902,
+   "jockey_trainer": 0.6071879499974496,
+   "class_weight": 0.40459727532161943,
+   "track": 0.10765773306355544,
+   "preparation": 0.39574858339869184
+  },
+  "B1_pooled": {
+   "stability": 0.3207410915672892,
+   "pace_perf": 0.17742722327732388,
+   "jockey_trainer": 0.6479006249405198,
+   "class_weight": 0.28704580455438194,
+   "track": 0.13036712519426089,
+   "preparation": 0.3602713009505129
+  }
+ },
+ "pooled_fit": {
+  "prod_f6a": {
+   "meta": {
+    "training_races": 2485,
+    "accepted_draws": 2,
+    "fallback": null
+   },
+   "races": 2485,
+   "last_date": "2026-10-15"
+  },
+  "arm_S2": {
+   "meta": {
+    "training_races": 2485,
+    "accepted_draws": 16,
+    "fallback": null
+   },
+   "races": 2485,
+   "last_date": "2026-10-15"
+  }
+ },
+ "refit_procedure_hash": "f92c8377b338c073f39fcb056318659dc2a1fc095410dde95afc5b869c4ae033",
+ "rule": "B1 vs B0 walk_forward_oos PRIMARY_WIN/RANKING_WIN AND B1 vs A0 not primary_regression/ranking_metric_harm; ranking metrics top3_capture_at5,ndcg_at5,top5_pairwise_auc",
+ "inputs": "pre-race immutable snapshots (pick_snapshot pre_cutoff), signature + per-file sha256 verified",
+ "code_sha256": {
+  "scratch/au_s2_forward_shadow_20261016.py": "4952ccb3dbd9d8ba906ee903091d4218ad7709bd026657274f3e323967bdc1e4",
+  "scratch/au_sb_total_speed_20261016.py": "e36cc22adc30a0d6c11b2f4984472a8bd1a5a8fdfee2e641b1e43aa9f0d0221f",
+  "scratch/au_sb_total_speed_arms_20261016.py": "d9587b431d90d26d1cefbdf84e21ab63d6c0f231dfbe4e523a8b7ea7a4357d44",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_walkforward_refit.py": "f485801f58db691a22649da40fb8d32ba4e35b3022d01f8428b15c301769e95a",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_window_review.py": "9aff2ee2a7e3730a472b9699cbd58cb093d042a99a1ecd35de9743184033ef9c",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_auto_orchestrator.py": "61baa20f491afee5a0a951e7ee7d098c7040a76b94be1fda41fa449a2db7f4ab",
+  ".agents/skills/shared_racing/model_evaluation_decision.py": "8be1249d72234bc3f016de72ae865a3dae6a2a402e18d6569bf2044f6ed897c1",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/__init__.py": "7546bcfb74f5c53fe2718c51f1c61d522a51a0d94c8afb5389ea983e3e106f57",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/au_draw_bias_calculator.py": "55f27fbd114afaa880169f4fa6aa1e5dc27a6c182480a71a79e5adcd21cbc339",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/dimensions.py": "298cda1284392bc089fce0adc95dca28e3b4e86c3c049f304e7dcc61146d0831",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/engine_core.py": "424488876c020d410eeba0bf9dd41b44cf07ec9922822261c92a13666662fe47",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/full_time_speed.py": "cde29226058728e782b51250ea7126704209670a0e3dc2e94a38642e829e10d4",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/io_utils.py": "e797e808d6f64e97b29538cc580895e550a0b23a722b3f9b48ab010c3fab2307",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/market_reference.py": "05a7a86e10ed18f55c2fb4377f45246c9db930805aaa804fb53f17885f162cb9",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/matrix_mapper.py": "9b2553daebb91ec3faba19bed8a86327721a59031d52faffedcbf08fe7ee789e",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/pit.py": "2f1c747dd2ffa74430c1a9e06db1f1c703909e1be5e782c1f993235cd7d46bd4",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/preparation_cycle.py": "221b8c3a3d90553a82d4177b1b2bd4014284e2e53c41a7bae45ffa01b56014a4",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/renderer.py": "e0f3c7775652b9dd6a38decc64ab76703b8cc257ea027aea3938b5f0ea36a3fc",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/scoring.py": "1a3db66feadc0893086c80c8401f4231176b398f65714e987510c801eff29b98",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/source_alignment.py": "a8fb592ab72e49d8f31a69e2f9d1fa6216fb9ffbdbbd51d701db3c5a37f93a73",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/validation.py": "f11c76732b0523644a51cf308e0714e554f9e15dd1e3e33da07a6a290cb6233c"
+ },
+ "frozen_at": "2026-10-16T00:48:14.651635+11:00"
+}

@@ -1,0 +1,37 @@
+{
+ "prod_f6a": {
+  "weights": {
+   "stability": 0.30013725766454274,
+   "pace_perf": 0.10842437103842902,
+   "jockey_trainer": 0.6071879499974496,
+   "class_weight": 0.40459727532161943,
+   "track": 0.10765773306355544,
+   "preparation": 0.39574858339869184
+  },
+  "meta": {
+   "training_races": 2485,
+   "accepted_draws": 2,
+   "fallback": null
+  },
+  "races": 2485,
+  "last_date": "2026-10-15"
+ },
+ "arm_S2": {
+  "weights": {
+   "stability": 0.3207410915672892,
+   "pace_perf": 0.17742722327732388,
+   "jockey_trainer": 0.6479006249405198,
+   "class_weight": 0.28704580455438194,
+   "track": 0.13036712519426089,
+   "preparation": 0.3602713009505129
+  },
+  "meta": {
+   "training_races": 2485,
+   "accepted_draws": 16,
+   "fallback": null
+  },
+  "races": 2485,
+  "last_date": "2026-10-15"
+ },
+ "procedure_hash": "f92c8377b338c073f39fcb056318659dc2a1fc095410dde95afc5b869c4ae033"
+}
