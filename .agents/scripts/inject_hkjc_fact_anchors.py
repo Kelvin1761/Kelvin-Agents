@@ -921,8 +921,32 @@ def mark_unverified_reconciled_runners(data: dict, profiles: dict) -> list:
     return missing
 
 
-def parse_hkjc_formguide(filepath: str) -> dict:
+def _races_before(races: list, as_of_date: str) -> list:
+    """Point-in-time gate for formguide past-run rows (strictly before race day).
+
+    The formguide page is a live page: re-extracted after the meeting (or for an
+    archived replay) it already contains the race being predicted and every later
+    run.  ``--race-date`` used to filter only horse-profile entries, so those rows
+    went straight into Facts → Logic → scoring (EXP-20261015-02).  Mirrors AU's
+    ``parse_formguide_for_horse(as_of)`` gate.  Rows whose date cannot be parsed
+    are dropped (fail-closed); surviving rows are renumbered 1..n so ``idx``
+    keeps meaning "n-th most recent run".
+    """
+    cutoff = datetime.strptime(as_of_date, '%Y-%m-%d')
+    kept = [race for race in races
+            if race.get('date_dt') is not None and race['date_dt'] < cutoff]
+    if len(kept) != len(races):
+        for position, race in enumerate(kept, start=1):
+            race['idx'] = position
+    return kept
+
+
+def parse_hkjc_formguide(filepath: str, as_of_date: Optional[str] = None) -> dict:
     """Parse the HKJC extracted formguide text file.
+
+    ``as_of_date`` (YYYY-MM-DD): keep only past-run rows dated strictly before
+    it.  Every scoring path passes the race date; ``None`` keeps the legacy
+    unfiltered behaviour for display/diagnostic callers only.
     
     Returns {
         'race_info': {...},
@@ -1138,6 +1162,12 @@ def parse_hkjc_formguide(filepath: str) -> dict:
                 'pace': pace,
             })
         
+        dropped_future = 0
+        if as_of_date:
+            before = len(races)
+            races = _races_before(races, as_of_date)
+            dropped_future = before - len(races)
+
         # Extract PDF Overseas Races
         pdf_overseas_races = []
         if pdf_path:
@@ -1155,6 +1185,7 @@ def parse_hkjc_formguide(filepath: str) -> dict:
             'today_gear': today_gear,
             'races': races,  # No limit — keep all for trend computation
             'pdf_overseas_races': pdf_overseas_races,
+            'dropped_future_runs': dropped_future,
         })
 
     horses, reconciliations = _reconcile_racecard(filepath, horses)
@@ -3024,7 +3055,10 @@ def main():
     _require_race_date(race_date)
 
     # Parse formguide
-    data = parse_hkjc_formguide(fg_path)
+    data = parse_hkjc_formguide(fg_path, as_of_date=race_date)
+    _dropped = sum(h.get('dropped_future_runs', 0) for h in data['horses'])
+    if _dropped:
+        print(f"   ⏳ as-of {race_date}: 剔走 {_dropped} 條賽日當日或之後嘅往績行", file=sys.stderr)
     
     if not data['horses']:
         print("❌ No horses found in Formguide", file=sys.stderr)

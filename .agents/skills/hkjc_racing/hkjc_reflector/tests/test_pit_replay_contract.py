@@ -132,5 +132,63 @@ class PointInTimeTests(unittest.TestCase):
             self.assertIn("conflicts", errors[0])
 
 
+class TemporalGuardFailClosedTests(unittest.TestCase):
+    """EXP-20261015-02：未知賽日要 fail-closed；層級表冇日期版本就唔准入歷史回放。"""
+
+    class _Latest:
+        temporal_mode = "latest_season_snapshot"
+        as_of_date = None
+
+    def test_unknown_race_date_is_unsafe(self):
+        for value in (None, "", "not-a-date"):
+            self.assertFalse(live_priors.temporal_source_is_safe(self._Latest(), value))
+        self.assertIs(live_priors.get_jt_ratings(None), live_priors._EMPTY_RATINGS)
+
+    def test_live_dates_still_use_latest_snapshot(self):
+        from datetime import date, timedelta
+        today = date.today()
+        self.assertTrue(live_priors.temporal_source_is_safe(self._Latest(), today.isoformat()))
+        self.assertTrue(live_priors.temporal_source_is_safe(
+            self._Latest(), (today + timedelta(days=3)).isoformat()))
+        self.assertFalse(live_priors.temporal_source_is_safe(
+            self._Latest(), (today - timedelta(days=1)).isoformat()))
+
+    def test_tier_table_is_gated_by_its_own_date(self):
+        from datetime import date
+        from hkjc_racing_engine.features import tier_loader
+        real = tier_loader.load_tiers()
+        name = next(n for t in real.get("jockey", []) if float(t["score"]) != 60.0
+                    for n in t.get("names", []))
+        today = date.today().isoformat()
+        live_score, _ = tier_loader.score_tier("jockey", name, "x", as_of_date=today)
+        self.assertNotEqual(live_score, 60.0)
+        for as_of in ("2026-04-12", None):
+            score, reason = tier_loader.score_tier("jockey", name, "x", as_of_date=as_of)
+            self.assertEqual((score, reason), (60.0, tier_loader.HISTORICAL_TIER_REASON))
+        dated = dict(real, as_of_date="2026-04-01")
+        with patch.object(tier_loader, "load_tiers", lambda: dated):
+            self.assertTrue(tier_loader.tiers_available("2026-04-12"))
+            self.assertFalse(tier_loader.tiers_available("2026-03-31"))
+
+
+class FormguideAsOfTests(unittest.TestCase):
+    def test_rows_on_or_after_race_day_are_dropped(self):
+        repo = Path(__file__).resolve().parents[5]
+        sys.path.insert(0, str(repo / ".agents" / "scripts"))
+        import inject_hkjc_fact_anchors as inject
+        form = repo / ".agents/skills/hkjc_racing/hkjc_race_extractor/formguide_3.txt"
+        full = inject.parse_hkjc_formguide(str(form))
+        dates = sorted({r["date_dt"] for h in full["horses"] for r in h["races"]})
+        cutoff = dates[len(dates) // 2]
+        gated = inject.parse_hkjc_formguide(str(form), as_of_date=cutoff.strftime("%Y-%m-%d"))
+        rows = [r for h in gated["horses"] for r in h["races"]]
+        self.assertTrue(rows)
+        self.assertTrue(all(r["date_dt"] < cutoff for r in rows))
+        self.assertLess(len(rows), sum(len(h["races"]) for h in full["horses"]))
+        for horse in gated["horses"]:
+            self.assertEqual([r["idx"] for r in horse["races"]],
+                             list(range(1, len(horse["races"]) + 1)))
+
+
 if __name__ == "__main__":
     unittest.main()

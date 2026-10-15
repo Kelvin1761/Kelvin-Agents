@@ -193,3 +193,4 @@
 - [EXP-20261014-08](EXP-20261014-08-au-top4-pace-diversity.md) — horse-analyst方向：89場觸發，terminal多1場Gold但CI跨零，Stage4 REJECT。
 - [EXP-20261014-09](EXP-20261014-09-au-market-movement-readiness.md) — AU 賠率變動ML資料審計：353 meeting／2,731場有history，2,246場多capture，34%重複獨贏價向量；265賽後補錄排除；clean-era Flucs全部單價。歷史jump time／freshness未驗證，**DATA_GATE_HOLD，未fit**；獨立市場增量試驗設計完成，現役模型不變。
 - [EXP-20261015-07](EXP-20261015-07-au-full-time-activation.md) — 用戶要求先啟用逐駒全程A、更新dashboard；原逐窗Gold+1／Good+3／Pass+3，按原規則final refit gain1.5，固定版本回看+1／+1／+3（非新盲測）。10/16起只用已capture來源；5431筆研究／正式轉換一致；不加新步速修正。
+- [EXP-20261015-02](EXP-20261015-02-hkjc-pit-leak-fixes.md) — §7 正確性修正：HKJC 三個 PIT 洩漏（formguide 往績冇 as-of 閘、歷史回放跌落冇日期層級表、守衛未知日期 fail-open）。live 今日 101 匹逐位不變、golden 120/120；回放 4,477 匹只 7 匹郁、canonical 297 場 0 場排名改變；外層權重 neutral／wf_refit、race_shape 幅度三個 REJECT 喺乾淨 harness 照樣 REJECT。EXP-20260902-03「乾淨版」本身係層級表洩漏，數字作廢

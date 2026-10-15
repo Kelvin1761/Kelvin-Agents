@@ -418,18 +418,24 @@ class AutoOutputTests(unittest.TestCase):
 
     def test_chinese_jockey_and_trainer_names_are_scored(self) -> None:
         # 主要來源＝兩季 master stats 連續實績評分（2026-07-08 ML 驗證上線）
-        score, reason = JockeyScorer({"jockey": "潘頓"}, {}).compute()
+        # live 賽日（今日）先用 latest 快照；未知賽日 fail-closed（EXP-20261015-02）。
+        from datetime import date
+        live = {"race_date": date.today().isoformat()}
+        score, reason = JockeyScorer({"jockey": "潘頓"}, live).compute()
         self.assertGreaterEqual(score, 75.0)
         self.assertIn("實績評分", reason)
-        mid_score, _ = JockeyScorer({"jockey": "田泰安"}, {}).compute()
+        mid_score, _ = JockeyScorer({"jockey": "田泰安"}, live).compute()
         self.assertGreater(score, mid_score)  # 連續評分要拉得開，唔係層級一刀切
-        t_score, t_reason = TrainerScorer({"trainer": "蔡約翰"}, {}).compute()
+        t_score, t_reason = TrainerScorer({"trainer": "蔡約翰"}, live).compute()
         self.assertGreater(t_score, 60.0)
         self.assertIn("實績評分", t_reason)
         # 唔喺 ratings 表（例如英文名）→ 退返層級表
-        self.assertEqual(JockeyScorer({"jockey": "PURTON"}, {}).compute()[0], 85.0)
+        self.assertEqual(JockeyScorer({"jockey": "PURTON"}, live).compute()[0], 85.0)
         # 完全未知 → 中性 60
-        self.assertEqual(JockeyScorer({"jockey": "無名氏測試"}, {}).compute()[0], 60.0)
+        self.assertEqual(JockeyScorer({"jockey": "無名氏測試"}, live).compute()[0], 60.0)
+        # 未知賽日 → 唔讀 latest 快照、唔讀冇日期嘅層級表
+        self.assertEqual(JockeyScorer({"jockey": "潘頓"}, {}).compute()[0], 60.0)
+        self.assertEqual(JockeyScorer({"jockey": "PURTON"}, {}).compute()[0], 60.0)
 
     def test_grade_uses_displayed_ability_boundary(self) -> None:
         self.assertEqual(compute_grade(60.0), "C+")
