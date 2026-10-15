@@ -25,6 +25,7 @@ from tennis_wc.ingestion.ingest_odds import (
     ingest_event_odds,
     ingest_odds,
     probe_sportsbet_event_markets,
+    refresh_pre_start_markets,
 )
 from tennis_wc.ingestion.confirmed_metadata import backfill_confirmed_metadata_for_date, metadata_audit_for_date
 from tennis_wc.ingestion.ingest_player_stats import ingest_player_stats
@@ -236,6 +237,27 @@ def fetch_event_odds(args: argparse.Namespace) -> None:
 
 def enrich_event_markets(args: argparse.Namespace) -> None:
     _print_json(enrich_sportsbet_event_markets(args.date))
+
+
+def ingest_wta_stats(args: argparse.Namespace) -> None:
+    from tennis_wc.ingestion.ingest_wta_stats import ingest_wta_match_stats
+
+    _print_json(ingest_wta_match_stats(
+        args.start, args.end, pause_seconds=args.pause, max_matches=args.max_matches,
+    ))
+
+
+def refresh_pre_start_odds(args: argparse.Namespace) -> None:
+    from tennis_wc.betting.ledger import _ensure_tracking_schema
+
+    _ensure_tracking_schema()  # creates the preclose tables on an older DB
+    _print_json(refresh_pre_start_markets(
+        args.date,
+        lead_min_minutes=args.lead_min,
+        lead_max_minutes=args.lead_max,
+        max_events=args.max_events,
+        pause_seconds=args.pause,
+    ))
 
 
 def probe_event_markets(args: argparse.Namespace) -> None:
@@ -746,6 +768,11 @@ def _record_daily_evidence(
     return evidence
 
 
+# A month covers an off-week plus a slow feed; past it the serve profile is
+# describing a different part of the season.
+WTA_SERVE_STALE_DAYS = 30
+
+
 def run_daily(args: argparse.Namespace) -> None:
     provider_healthcheck(args)
     source_errors = []
@@ -821,6 +848,22 @@ def run_daily(args: argparse.Namespace) -> None:
         except Exception as exc:  # noqa: BLE001
             source_errors.append({"source": "event_markets_check", "error": str(exc)})
 
+    # WTA serve history has been frozen since the Sackmann file stopped
+    # (2026-05-18) and nothing said so: every WTA set/games prop priced its
+    # holds from rows months old, as if they were current.
+    try:
+        from tennis_wc.ingestion.ingest_wta_stats import wta_serve_stats_health
+
+        with get_connection() as conn:
+            wta_serve = wta_serve_stats_health(conn, args.date)
+        if (wta_serve["model_serve_age_days"] or 10**6) > WTA_SERVE_STALE_DAYS:
+            source_warnings.append({
+                "source": "wta_serve_stats",
+                "warning": "wta_serve_profiles_stale",
+                **wta_serve,
+            })
+    except Exception as exc:  # noqa: BLE001
+        source_warnings.append({"source": "wta_serve_stats", "warning": f"check_failed: {exc}"})
     store_raw_response(
         "tennis_wc_pipeline",
         "/run-daily/source-errors",
@@ -912,6 +955,19 @@ def run_daily(args: argparse.Namespace) -> None:
         )
     except Exception as exc:  # noqa: BLE001
         source_errors.append({"source": "tracker_sync", "error": str(exc)})
+    # A family that normally writes rows and wrote none is a silent failure
+    # (2026-08-23: ace markets renamed, ace families at zero for seven weeks).
+    try:
+        from tennis_wc.props.family_health import (
+            market_group_coverage,
+            silent_prop_families,
+        )
+
+        with get_connection() as conn:
+            source_warnings.extend(silent_prop_families(conn, args.date))
+            source_warnings.extend(market_group_coverage(conn, args.date))
+    except Exception as exc:  # noqa: BLE001
+        source_warnings.append({"source": "prop_family_silent", "warning": f"check_failed: {exc}"})
     payload = {
         "date": args.date,
         "matches_analysed": len(snapshots),
@@ -1124,6 +1180,29 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("enrich-event-markets")
     p.add_argument("--date", required=True)
     p.set_defaults(func=enrich_event_markets)
+
+    p = sub.add_parser(
+        "ingest-wta-stats",
+        help="Official WTA per-match serve stats (WTA/125/Slam, main + quali) "
+             "into wta_match_stats. Not read by the serve models yet.",
+    )
+    p.add_argument("--start", required=True)
+    p.add_argument("--end", required=True)
+    p.add_argument("--pause", type=float, default=0.5)
+    p.add_argument("--max-matches", type=int)
+    p.set_defaults(func=ingest_wta_stats)
+
+    p = sub.add_parser(
+        "refresh-pre-start-odds",
+        help="Second pre-start capture (preclose tables only) for evaluated "
+             "matches starting in the next lead-min..lead-max minutes.",
+    )
+    p.add_argument("--date", required=True)
+    p.add_argument("--lead-min", type=int, default=15)
+    p.add_argument("--lead-max", type=int, default=75)
+    p.add_argument("--max-events", type=int, default=30)
+    p.add_argument("--pause", type=float, default=3.0)
+    p.set_defaults(func=refresh_pre_start_odds)
 
     p = sub.add_parser("probe-event-markets")
     p.add_argument("--date", required=True)

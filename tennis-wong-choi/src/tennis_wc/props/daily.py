@@ -20,9 +20,20 @@ from tennis_wc.props.settlement import record_prop
 from tennis_wc.modelling import set_distribution
 
 _LADDER_MARKET = "total_aces_in_the_match"
+# 2026-08-23 Sportsbet renamed the ace markets: the whole-match N+ ladder became
+# `total_aces` ("Total Aces") and the per-player Over/Under markets
+# (`total_<player>_aces_N_5`) were replaced by per-player N+ ladders
+# (`<player>_aces`, "<Player> Aces", selections "Zero", "1+", "3+", ...). Only
+# the old keys were recognised, so from that day every ace family produced
+# zero prop_tracker rows and nothing errored. Measured read-only 2026-10-14:
+# total_aces 1,699 and <player>_aces several thousand snapshots since, 0 rows.
+_NEW_MATCH_LADDER = "total_aces"
+_NEW_PLAYER_LADDER = re.compile(r"^(?!set_\d+_aces$)(?!total_)[a-z0-9_]+_aces$")
 _MATCH_OU = re.compile(r"^total_aces_\d+_5$")
 _PLAYER_OU = re.compile(r"^total_(?P<name>[a-z0-9_]+)_aces_\d+_5$")
 _MATCH_GAMES_OU = re.compile(r"^total_match_games_\d+_5$")
+_BRACKETED_HANDICAP = re.compile(r"\s*\([+-]?\d+(?:\.\d+)?\)\s*$")
+_TRAILING_HANDICAP = re.compile(r"\s+[+-]\d+(?:\.\d+)?\s*$")
 # A best-of-three winner takes at most 7+6+7 = 20 games and the loser 6+7+6 =
 # 19, so a genuine player-games line sits well below this. Anything higher is a
 # match total that resolved to a player's market name.
@@ -46,6 +57,8 @@ class AcePropBoard:
     game_handicap: list = field(default_factory=list)    # SpreadProp
     set_handicap: list = field(default_factory=list)     # SpreadProp
     exact_set_score: list = field(default_factory=list)  # ExactSetScoreProp
+    # Post-2026-08-23 N+ ladders, priced MODEL-ONLY: see _price_new_ladders.
+    unvalidated_ladder_legs: list = field(default_factory=list)  # dict per rung
     games_ou: list = field(default_factory=list)        # TwoWayProp (total match games)
     predicted_games: float | None = None
     anchor: object | None = None
@@ -59,6 +72,7 @@ def _match_meta(conn, match_id: int):
     return conn.execute(
         """
         SELECT m.id, m.player_a_id, m.player_b_id, m.match_date, m.tour,
+               m.start_time_utc,
                pa.name AS a_name, pb.name AS b_name,
                (SELECT t.name FROM tournaments t WHERE t.id = m.tournament_id)
                    AS tournament_name,
@@ -77,6 +91,14 @@ def _match_meta(conn, match_id: int):
         """,
         (match_id,),
     ).fetchone()
+
+
+def _start_time(meta) -> str | None:
+    """The fixture's start, for the point-in-time history guard."""
+    try:
+        return meta["start_time_utc"] or None
+    except (IndexError, KeyError):
+        return None
 
 
 def _games_bettable() -> bool:
@@ -397,10 +419,12 @@ def _holds_for(conn, meta, subject_id, *, use_fitted: bool | None = None):
         meta["player_b_id"] if subject_id == meta["player_a_id"] else meta["player_a_id"]
     )
     server = serve_return_profile(
-        conn, subject_id, meta["match_date"], surface=meta["surface"]
+        conn, subject_id, meta["match_date"], surface=meta["surface"],
+        start_time=_start_time(meta),
     )
     returner = serve_return_profile(
-        conn, opponent_id, meta["match_date"], surface=meta["surface"]
+        conn, opponent_id, meta["match_date"], surface=meta["surface"],
+        start_time=_start_time(meta),
     )
     fitted = USE_FITTED_HOLD if use_fitted is None else bool(use_fitted)
     if fitted:
@@ -576,6 +600,9 @@ def _spread_odds(rows, meta, family: str):
     need push/conditional settlement rules that do not belong in this contract.
     """
     out: dict = {}
+    # Post-2026-08-23 selections ("Name +1.5", no brackets), grouped
+    # {(match, family, |line|): {(market_name, a_handicap): pair}}.
+    unbracketed: dict = {}
     a_norm, b_norm = _norm(meta["a_name"]), _norm(meta["b_name"])
     for row in rows:
         if registry.family_for_market(row["market_key"], row["market_name"]) != family:
@@ -586,7 +613,29 @@ def _spread_odds(rows, meta, family: str):
         if abs(abs(handicap) % 1.0 - 0.5) > 1e-9:
             continue
         raw_selection = str(row["selection_name"] or "")
-        player_text = re.sub(r"\s*\([+-]?\d+(?:\.\d+)?\)\s*$", "", raw_selection)
+        if not _BRACKETED_HANDICAP.search(raw_selection):
+            # 2026-08-23 Sportsbet dropped the brackets: "Alex de Minaur -3.5"
+            # instead of "Alex de Minaur (-3.5)". The bracket-only strip left
+            # the number on the name, no selection matched either player, and
+            # player_game_handicap went from 48 rows/day to ~0 without an error.
+            player_text = _TRAILING_HANDICAP.sub("", raw_selection)
+            if player_text == raw_selection:
+                continue
+            selection = _norm(player_text)
+            side = "a" if selection == a_norm else ("b" if selection == b_norm else None)
+            if side is None:
+                continue
+            a_handicap = handicap if side == "a" else -handicap
+            pair = unbracketed.setdefault(
+                (row["match_id"], family, abs(handicap)), {}
+            ).setdefault(
+                (str(row["market_name"] or ""), a_handicap),
+                {"market_name": row["market_name"], "market_key": row["market_key"]},
+            )
+            pair[f"{side}_name"] = raw_selection
+            pair[side] = {"odds": float(row["odds"]), "handicap": handicap}
+            continue
+        player_text = _BRACKETED_HANDICAP.sub("", raw_selection)
         selection = _norm(player_text)
         side = "a" if selection == a_norm else ("b" if selection == b_norm else None)
         if side is None:
@@ -602,13 +651,34 @@ def _spread_odds(rows, meta, family: str):
             "odds": float(row["odds"]),
             "handicap": handicap,
         }
-    return {
+    result = {
         key: value
         for key, value in out.items()
         if "a" in value
         and "b" in value
         and abs(value["a"]["handicap"] + value["b"]["handicap"]) < 1e-9
     }
+    for key, pairs in unbracketed.items():
+        if key in result:
+            continue  # bracketed (pre-rename) rows keep their old meaning
+        complete = [
+            pair for pair in pairs.values()
+            if "a" in pair and "b" in pair
+            and abs(pair["a"]["handicap"] + pair["b"]["handicap"]) < 1e-9
+        ]
+        if not complete:
+            continue
+        # One prop per |line|, as before the rename. The new Alternative
+        # market lists BOTH orientations of every line (A -1.5 at 12.0 and
+        # A +1.5 at 1.03); prefer the main market, then the most balanced
+        # pair -- never whichever row happened to be read last.
+        complete.sort(key=lambda pair: (
+            "alternative" in str(pair["market_name"] or "").lower(),
+            abs(1.0 / pair["a"]["odds"] - 1.0 / pair["b"]["odds"]),
+            pair["a"]["handicap"],
+        ))
+        result[key] = complete[0]
+    return result
 
 
 def _exact_set_score_odds(rows, meta):
@@ -641,6 +711,95 @@ def _ladder_odds(rows):
         if r["market_key"] != _LADDER_MARKET or r["line"] is None:
             continue
         out.setdefault(r["match_id"], {})[float(r["line"])] = float(r["odds"])
+    return out
+
+
+def _new_ladder_odds(rows, match_id: int) -> dict:
+    """{(feed_key, market_name): {N: odds}} for the post-2026-08-23 N+ ladders.
+
+    "Zero" has no line and is not an N+ rung, so it is left out; "N+" rungs
+    are P(X >= N) one-way prices and are NOT complementary to each other.
+    """
+    out: dict = {}
+    for r in rows:
+        if int(r["match_id"]) != match_id or r["line"] is None:
+            continue
+        key = str(r["market_key"] or "")
+        if key != _NEW_MATCH_LADDER and not _NEW_PLAYER_LADDER.match(key):
+            continue
+        if not re.fullmatch(r"\d+\+", str(r["selection_name"] or "").strip()):
+            continue
+        out.setdefault((key, r["market_name"]), {})[float(r["line"])] = float(r["odds"])
+    return out
+
+
+def _price_new_ladders(conn, meta, match_rows, a, b, match_mean) -> list[dict]:
+    """Model-only P(X >= N) for each offered N+ rung of the new ace ladders.
+
+    The market side is deliberately NOT compared. A one-way N+ ladder has no
+    complementary selection to de-vig against, its rungs overlap (5+ contains
+    7+), and the only ladder de-vig in the code -- the flat `implied / 1.06`
+    of `price_ace_legs` -- was never validated on these markets. So
+    `market_prob_fair` is NULL, no edge/EV is claimed, and nothing is staked:
+    the rows exist so the family is visible, gradeable and measurable again,
+    not to bet. Turning them into bets needs a validated ladder de-vig first.
+
+    Match ladder: the calibrated match curve at the rung (`interp_prob_over`
+    is P(aces >= line)). Player ladder: the same exposure-scaled negative
+    binomial the player O/U used (P(X > N - 0.5) = P(X >= N)), falling back to
+    the calibrated player curve.
+    """
+    out: list[dict] = []
+    if a is None or b is None:
+        return out
+    for (key, market_name), ladder in _new_ladder_odds(match_rows, meta["id"]).items():
+        if key == _NEW_MATCH_LADDER:
+            if match_mean is None:
+                continue
+            scope, pid, mean, nb = "match", None, match_mean, False
+            curve = ace_model.match_curve_for_surface(meta["surface"])
+            min_n = min(a.n, b.n)
+        else:
+            pid, _ = _resolve_named_player(market_name or "", "player_aces", meta)
+            if pid is None:
+                continue
+            subj = a if pid == meta["player_a_id"] else b
+            opp = b if pid == meta["player_a_id"] else a
+            if min(subj.n, opp.n) < ace_model._MIN_HISTORY:
+                continue
+            min_n = min(subj.n, opp.n)
+            distribution = _player_games_distribution(conn, meta, pid, trials=1500)
+            nb = distribution is not None and subj.ace_rate is not None
+            if nb:
+                expected_service_games = sum(
+                    ga + gb for ga, gb in zip(distribution.games_a, distribution.games_b)
+                ) / (2.0 * distribution.trials)
+                mean = ace_model.predict_player_ace_exposure_mean(
+                    subj, opp, expected_service_games)
+            else:
+                mean = ace_model.predict_player_ace_mean(subj, opp)
+            scope = "player"
+            curve = ace_model.player_curve_for_surface(meta["surface"])
+        if not mean or mean <= 0:
+            continue
+        for line, odds in sorted(ladder.items()):
+            if odds <= 1.0 or line < 1:
+                continue
+            # Same trust range as the two-way path: no longshot rungs.
+            if line > ace_model._MAX_LINE_RATIO * mean or line < 0.30 * mean:
+                continue
+            prob = (
+                ace_model.negative_binomial_over_probability(line - 0.5, mean)
+                if nb else ace_model.interp_prob_over(line, mean, curve)
+            )
+            out.append({
+                "feed_market_key": key, "feed_market_name": market_name,
+                "scope": scope, "subject_player_id": pid, "line": line,
+                "odds": odds, "model_prob": round(max(0.001, min(0.999, prob)), 4),
+                "predicted_mean": mean, "min_history_n": min_n,
+                "market_comparison": "unvalidated_ladder_devig",
+                "count_model": "negative_binomial_size_3" if nb else "calibrated_curve",
+            })
     return out
 
 
@@ -962,10 +1121,12 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
         match_mean = None
         if ace_rows or mid in ladder:
             a = ace_model.player_ace_profile(
-                conn, meta["player_a_id"], meta["match_date"], meta["surface"]
+                conn, meta["player_a_id"], meta["match_date"], meta["surface"],
+                start_time=_start_time(meta),
             )
             b = ace_model.player_ace_profile(
-                conn, meta["player_b_id"], meta["match_date"], meta["surface"]
+                conn, meta["player_b_id"], meta["match_date"], meta["surface"],
+                start_time=_start_time(meta),
             )
             if a.n >= ace_model._MIN_HISTORY and b.n >= ace_model._MIN_HISTORY:
                 match_mean = ace_model.predict_match_ace_mean(a, b)
@@ -994,18 +1155,22 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
         )
         # v2 serve-dominance input for the games model (walk-forward safe).
         hold_sum = games_model.combined_hold(
-            conn, meta["player_a_id"], meta["player_b_id"], meta["match_date"])
+            conn, meta["player_a_id"], meta["player_b_id"], meta["match_date"],
+            start_time=_start_time(meta))
         # legacy N+ ladder
         if mid in ladder and match_mean is not None:
             board.ladder_legs = ace_model.price_ace_legs(
                 conn, mid, meta["player_a_id"], meta["player_b_id"],
                 meta["match_date"], meta["surface"], ladder[mid],
-                model_weight=model_weight("player_aces"))
+                model_weight=model_weight("player_aces"),
+                start_time=_start_time(meta))
             if (not _aces_gradeable(meta["tour"]) or min(a.n, b.n) < 10
                     or not tier_bettable):
                 for lg in board.ladder_legs:
                     lg.is_value = False
             board.anchor = ace_model.anchor_leg(board.ladder_legs)
+        board.unvalidated_ladder_legs = _price_new_ladders(
+            conn, meta, match_rows, a, b, match_mean)
         # two-way markets
         for (m_id, mk, market_name, line), od in two_way.items():
             if m_id != mid or "over" not in od or "under" not in od:
@@ -1393,8 +1558,34 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                             market_prob_fair=lg.market_prob_fair, blended_prob=lg.blended_prob,
                             edge=lg.edge, ev=lg.ev, predicted_mean=lg.predicted_mean,
                             stake_units=1.0 if lg.is_value else 0.0, is_value=lg.is_value)
+        if log and board.unvalidated_ladder_legs:
+            for leg in board.unvalidated_ladder_legs:
+                our_key = (
+                    "total_aces_ladder" if leg["scope"] == "match"
+                    else f"player_aces_ladder_{leg['subject_player_id']}"
+                )
+                record_prop(
+                    conn, match_id=mid, match_date=match_date, match_label=label,
+                    market_key=our_key, line=leg["line"],
+                    selection=f"{int(leg['line'])}+", side="over",
+                    prop_scope=leg["scope"],
+                    subject_player_id=leg["subject_player_id"],
+                    decimal_odds=leg["odds"], model_prob=leg["model_prob"],
+                    model_prob_raw=leg["model_prob"], temper_strength=0.0,
+                    # NULL on purpose: no validated de-vig for one-way ladders,
+                    # and calibration/scorecards skip NULL market rows, so
+                    # these cannot leak into family_reliability.
+                    market_prob_fair=None, blended_prob=leg["model_prob"],
+                    edge=None, ev=None, predicted_mean=leg["predicted_mean"],
+                    stake_units=0.0, is_value=False,
+                    feed_market_key=leg["feed_market_key"],
+                    feed_market_name=leg["feed_market_name"],
+                    feed_selection_name=f"{int(leg['line'])}+",
+                    feed_line=leg["line"],
+                )
         if (
-            board.ladder_legs or board.match_ou or board.player_ou
+            board.unvalidated_ladder_legs
+            or board.ladder_legs or board.match_ou or board.player_ou
             or board.double_fault_ou or board.player_games_ou
             or board.win_a_set or board.first_set_winner
             or board.first_set_match or board.first_set_game_handicap

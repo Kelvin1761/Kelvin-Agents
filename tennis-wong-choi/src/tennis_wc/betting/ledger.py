@@ -51,6 +51,30 @@ def record_bet(prediction_id: int, odds: float, stake: float) -> int:
         return int(cursor.lastrowid)
 
 
+# Close readers see the live snapshot tables PLUS the scheduled near-start
+# capture (`ingest_odds.refresh_pre_start_markets`, 2026-10-14). Only these
+# readers union them in; the card and every replay read the live tables alone.
+# `preclose` breaks a same-second tie toward the capture made for the close.
+_MATCH_ODDS_FOR_CLOSE = """(
+    SELECT id, 0 AS preclose, event_id, match_id, bookmaker, market,
+           player_a_odds, player_b_odds, source_provider, raw_response_id, fetched_at
+    FROM odds_snapshots
+    UNION ALL
+    SELECT id, 1 AS preclose, event_id, match_id, bookmaker, market,
+           player_a_odds, player_b_odds, source_provider, raw_response_id, fetched_at
+    FROM preclose_odds_snapshots
+)"""
+_MARKET_ODDS_FOR_CLOSE = """(
+    SELECT id, 0 AS preclose, match_id, market_key, market_name, selection_name,
+           line, odds, fetched_at
+    FROM market_odds_snapshots
+    UNION ALL
+    SELECT id, 1 AS preclose, match_id, market_key, market_name, selection_name,
+           line, odds, fetched_at
+    FROM preclose_market_odds_snapshots
+)"""
+
+
 def fetch_closing_odds_for_date(match_date: str) -> int:
     """Store the match-winner CLOSE: the last snapshot strictly before the start.
 
@@ -79,11 +103,11 @@ def fetch_closing_odds_for_date(match_date: str) -> int:
         count = 0
         for match in matches:
             latest_any = conn.execute(
-                """
+                f"""
                 SELECT *
-                FROM odds_snapshots
+                FROM {_MATCH_ODDS_FOR_CLOSE}
                 WHERE match_id = ?
-                ORDER BY fetched_at DESC, id DESC
+                ORDER BY fetched_at DESC, preclose DESC, id DESC
                 LIMIT 1
                 """,
                 (match["id"],),
@@ -97,11 +121,11 @@ def fetch_closing_odds_for_date(match_date: str) -> int:
                 reason = "no_start_time"
             else:
                 odds = conn.execute(
-                    """
+                    f"""
                     SELECT *
-                    FROM odds_snapshots
+                    FROM {_MATCH_ODDS_FOR_CLOSE}
                     WHERE match_id = ? AND fetched_at < ?
-                    ORDER BY fetched_at DESC, id DESC
+                    ORDER BY fetched_at DESC, preclose DESC, id DESC
                     LIMIT 1
                     """,
                     (match["id"], start_time),
@@ -418,8 +442,11 @@ def _log_prop_prices(conn, match_date: str, now: str) -> dict:
         """,
         (match_date,),
     ).fetchall()
-    counts = {"logged": 0, "with_close": 0, "no_feed_identity": 0,
-              "no_start_time": 0, "no_pre_start_snapshot": 0}
+    # `with_two_plus_pre_start`: props whose close can differ from the price
+    # evaluated. 98.5% had exactly one pre-start snapshot before the
+    # 2026-10-14 near-start capture; this is the number that should move.
+    counts = {"logged": 0, "with_close": 0, "with_two_plus_pre_start": 0,
+              "no_feed_identity": 0, "no_start_time": 0, "no_pre_start_snapshot": 0}
     for row in rows:
         start_time = row["start_time_utc"] or None
         earliest = close = None
@@ -441,15 +468,15 @@ def _log_prop_prices(conn, match_date: str, now: str) -> dict:
             params = (row["match_id"], row["feed_market_key"], row["feed_market_name"],
                       row["feed_selection_name"], row["feed_line"], start_time)
             earliest = conn.execute(
-                f"SELECT odds, fetched_at FROM market_odds_snapshots WHERE {where} "
-                "ORDER BY fetched_at ASC, id ASC LIMIT 1", params,
+                f"SELECT odds, fetched_at FROM {_MARKET_ODDS_FOR_CLOSE} WHERE {where} "
+                "ORDER BY fetched_at ASC, preclose ASC, id ASC LIMIT 1", params,
             ).fetchone()
             close = conn.execute(
-                f"SELECT odds, fetched_at FROM market_odds_snapshots WHERE {where} "
-                "ORDER BY fetched_at DESC, id DESC LIMIT 1", params,
+                f"SELECT odds, fetched_at FROM {_MARKET_ODDS_FOR_CLOSE} WHERE {where} "
+                "ORDER BY fetched_at DESC, preclose DESC, id DESC LIMIT 1", params,
             ).fetchone()
             snapshots = int(conn.execute(
-                f"SELECT COUNT(*) FROM market_odds_snapshots WHERE {where}", params,
+                f"SELECT COUNT(*) FROM {_MARKET_ODDS_FOR_CLOSE} WHERE {where}", params,
             ).fetchone()[0])
             if not close:
                 reason = "no_pre_start_snapshot"
@@ -493,6 +520,8 @@ def _log_prop_prices(conn, match_date: str, now: str) -> dict:
             ),
         )
         counts["logged"] += 1
+        if snapshots >= 2:
+            counts["with_two_plus_pre_start"] += 1
         if close:
             counts["with_close"] += 1
         else:
@@ -559,24 +588,25 @@ def update_clv_tracker_for_date(match_date: str) -> int:
     with get_connection() as conn:
         rows = conn.execute("SELECT * FROM clv_tracker WHERE match_date = ?", (match_date,)).fetchall()
         for row in rows:
-            closing_odds = _tracker_closing_odds(conn, dict(row))
+            closing_odds, reason = _tracker_close(conn, dict(row))
             if closing_odds is None:
-                if row["market_key"] == "match_winner" and (
-                    row["closing_odds"] is not None or row["clv"] is not None
-                ):
-                    # A match-winner CLV computed before 2026-10-14 may sit on
-                    # an in-running "close". With no provable pre-start close
-                    # the honest value is NULL, not the stale number.
+                if (row["closing_odds"] is not None or row["clv"] is not None
+                        or row["close_reason"] != reason):
+                    # A CLV computed before 2026-10-14 may sit on an
+                    # in-running "close" (match_winner and every MARKET_LEG
+                    # market). With no provable pre-start close the honest
+                    # value is NULL plus the reason, not the stale number.
                     conn.execute(
                         "UPDATE clv_tracker SET closing_odds = NULL, clv = NULL, "
-                        "updated_at = ? WHERE id = ?",
-                        (now, row["id"]),
+                        "close_reason = ?, updated_at = ? WHERE id = ?",
+                        (reason, now, row["id"]),
                     )
                     updated += 1
                 continue
             clv = calculate_clv(float(row["odds_taken"]), float(closing_odds))
             conn.execute(
-                "UPDATE clv_tracker SET closing_odds = ?, clv = ?, updated_at = ? WHERE id = ?",
+                "UPDATE clv_tracker SET closing_odds = ?, clv = ?, close_reason = NULL, "
+                "updated_at = ? WHERE id = ?",
                 (closing_odds, clv, now, row["id"]),
             )
             updated += 1
@@ -2155,12 +2185,32 @@ def _is_retired_score(score: dict | None) -> bool:
 
 
 def _tracker_closing_odds(conn, row: dict) -> float | None:
+    return _tracker_close(conn, row)[0]
+
+
+def _tracker_close(conn, row: dict) -> tuple[float | None, str | None]:
+    """(close odds, reason-when-None) for a clv_tracker row.
+
+    The CLOSE is the last snapshot strictly BEFORE the match started, for
+    every market type. Until 2026-10-14 only PROP rows (since 2026-08-11) and
+    match_winner (T0a, same day) carried that bound; MARKET_LEG rows on any
+    other market still took the newest snapshot. Measured read-only on the
+    live DB that day: of 921 non-match-winner MARKET_LEG rows, 195 had no start
+    time, 111 had ONLY post-start snapshots and 60 had a newer post-start
+    snapshot sitting on top of a pre-start one (42 with a different price) --
+    366 rows (39.7%) whose "close" was not provably pre-start.
+
+    No start time / no pre-start snapshot means no close: (None, reason). The
+    newer post-start price is never used as a fallback.
+    """
     if row["market_key"] == "match_winner":
         closing = _match_winner_close(conn, row["match_id"])
         if not closing:
-            return None
+            return None, "no_pre_start_match_winner_close"
         value = closing["player_a_closing_odds"] if row["selection_side"] == "player_a" else closing["player_b_closing_odds"]
-        return float(value) if value is not None else None
+        if value is None:
+            return None, "no_pre_start_match_winner_close"
+        return float(value), None
     # The market NAME is part of the identity, not decoration. Sportsbet reuses
     # `winner_related` across several markets -- the same reason
     # family_for_market cannot work from the key alone -- so on 2026-08-11 this
@@ -2181,37 +2231,34 @@ def _tracker_closing_odds(conn, row: dict) -> float | None:
     if row.get("recommendation_type") == "PROP_RECOMMENDATION" and row.get("market_name"):
         conditions.append("lower(trim(market_name)) = lower(trim(?))")
         params.append(row["market_name"])
-        # The CLOSE is the last snapshot BEFORE the match started, and until
-        # 2026-08-11 nothing enforced that. 2,919 of 120,004 snapshots (2.4%)
-        # were fetched after the match date and 257 selections swing more than
-        # threefold inside their own history -- 1.19 -> 67.00 is the middle of a
-        # set, not drift. `weekly_review` already disables CLV as a gate for
-        # this reason, and a prop CLV built on the newest snapshot would have
-        # inherited it.
-        #
-        # No start time means no close. Reporting nothing is right where the
-        # alternative is a number that might be an in-running price: the whole
-        # point of CLV during a go-live period is to be believed.
-        start = conn.execute(
-            "SELECT start_time_utc FROM matches WHERE id = ?",
-            (row["match_id"],),
-        ).fetchone()
-        start_time = start["start_time_utc"] if start else None
-        if not start_time:
-            return None
-        conditions.append("fetched_at < ?")
-        params.append(start_time)
+    # 2,919 of 120,004 snapshots (2.4%) were fetched after the match date and
+    # 257 selections swing more than threefold inside their own history --
+    # 1.19 -> 67.00 is the middle of a set, not drift. `weekly_review` already
+    # disables CLV as a gate for this reason. No start time means no close:
+    # reporting nothing is right where the alternative might be an in-running
+    # price.
+    start = conn.execute(
+        "SELECT start_time_utc FROM matches WHERE id = ?",
+        (row["match_id"],),
+    ).fetchone()
+    start_time = start["start_time_utc"] if start else None
+    if not start_time:
+        return None, "no_start_time"
+    conditions.append("fetched_at < ?")
+    params.append(start_time)
     market = conn.execute(
         f"""
         SELECT odds
-        FROM market_odds_snapshots
+        FROM {_MARKET_ODDS_FOR_CLOSE}
         WHERE {" AND ".join(conditions)}
-        ORDER BY fetched_at DESC, id DESC
+        ORDER BY fetched_at DESC, preclose DESC, id DESC
         LIMIT 1
         """,
         tuple(params),
     ).fetchone()
-    return float(market["odds"]) if market and market["odds"] is not None else None
+    if market is None or market["odds"] is None:
+        return None, "no_pre_start_snapshot"
+    return float(market["odds"]), None
 
 
 def _store_result_rows(match_date: str, rows: list[dict], provider_name: str) -> int:

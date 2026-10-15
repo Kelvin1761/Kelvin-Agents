@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import datetime, timezone
 from html import unescape
@@ -9,6 +10,20 @@ from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from .odds_provider_base import OddsProvider
+
+_GROUP_API_BASE = "https://www.sportsbet.com.au/apigw/sportsbook-sports"
+# Tabs that are already on the page, or hold only single-game / single-point
+# micro markets the pricer never reads. Anything else -- including a tab
+# Sportsbet adds or renames later -- is fetched, so a rename widens what we
+# store instead of silently narrowing it.
+_SKIP_GROUP = re.compile(r"^(?:top markets|match betting)$|individual point|^set \d+ game markets$")
+
+
+def market_groups_enabled() -> bool:
+    """Opt-out switch: TENNIS_SPORTSBET_MARKET_GROUPS=0 restores page-only."""
+    return os.environ.get("TENNIS_SPORTSBET_MARKET_GROUPS", "1").strip().lower() not in {
+        "0", "false", "no", "off",
+    }
 
 
 class SportsbetScrapeProvider(OddsProvider):
@@ -42,7 +57,110 @@ class SportsbetScrapeProvider(OddsProvider):
         rows = self._normalise_preloaded_state(event_id, payload)
         if not rows:
             raise ValueError("Sportsbet scrape found no valid match_winner odds.")
-        return rows[0]
+        row = rows[0]
+        if market_groups_enabled():
+            self._add_market_group_markets(row, payload)
+        return row
+
+    def _add_market_group_markets(self, row: dict, payload: dict) -> None:
+        """Fetch the market-group tabs the event page does not server-render.
+
+        Since ~2026-08-23 the event page's preloaded state carries only the
+        "Top Markets" tab: on 2026-10-15 a WTA 1000 fixture advertised
+        `numMarkets` 52 and rendered 4 (Match Betting, Set 1/2/3 Winner).
+        Game Handicap, Match/Player Total Games, Set Handicap, Set Betting and
+        both ace ladders exist only behind each tab's `httpLink`. We parsed
+        what the page had and nothing errored, so six prop families went
+        silent while the feed looked healthy -- page-has vs parsed was 12.5 vs
+        5.5 markets per event and nobody counted it.
+
+        Fail-soft: a tab that does not load leaves the page markets intact and
+        is named in `market_coverage`, which is stored with the raw response.
+        """
+        sportsbook = payload.get("entities", {}).get("sportsbook", {})
+        event = (row.get("raw") or {}).get("event") or {}
+        groupings = sportsbook.get("marketGroupings", {}) or {}
+        markets = list(row.get("markets") or [])
+        seen_ids = {str(market.get("market_id")) for market in markets}
+        coverage = {
+            "num_markets": event.get("numMarkets"),
+            "page_markets": len(markets),
+            "groups_fetched": 0,
+            "groups_skipped": [],
+            "groups_failed": [],
+            "group_markets_added": 0,
+        }
+        for grouping_id in event.get("marketGroupingIds") or []:
+            grouping = groupings.get(str(grouping_id)) or {}
+            name = str(grouping.get("name") or grouping_id)
+            link = grouping.get("httpLink")
+            if not link or _SKIP_GROUP.search(name.lower()):
+                coverage["groups_skipped"].append(name)
+                continue
+            try:
+                body = self._fetch_json(f"{_GROUP_API_BASE}/{str(link).lstrip('/')}")
+            except Exception as exc:  # noqa: BLE001 -- counted, never fatal
+                coverage["groups_failed"].append(f"{name}: {type(exc).__name__}")
+                continue
+            group_markets = body if isinstance(body, list) else (body or {}).get("markets")
+            if not isinstance(group_markets, list):
+                coverage["groups_failed"].append(f"{name}: unexpected_body")
+                continue
+            coverage["groups_fetched"] += 1
+            for market in group_markets:
+                parsed = self._group_market(market)
+                if parsed is None or parsed["market_id"] in seen_ids:
+                    continue
+                seen_ids.add(parsed["market_id"])
+                markets.append(parsed)
+                coverage["group_markets_added"] += 1
+        row["markets"] = markets
+        row["market_coverage"] = coverage
+
+    def _group_market(self, market: dict) -> dict | None:
+        if not isinstance(market, dict):
+            return None
+        market_name = str(market.get("name") or "")
+        if not market_name:
+            return None
+        selections = []
+        for selection in market.get("selections") or []:
+            if not isinstance(selection, dict):
+                continue
+            if selection.get("statusCode") not in (None, "A"):
+                continue  # suspended / closed: not a price anyone could take
+            name = selection.get("name")
+            price = self._group_price(selection.get("price"))
+            if not name or price is None:
+                continue
+            selections.append(
+                {
+                    "selection_id": str(selection.get("id") or ""),
+                    "selection_name": name,
+                    "odds": price,
+                    "line": self._selection_line(selection),
+                }
+            )
+        if len(selections) < 2:
+            return None
+        return {
+            "market_id": str(market.get("id") or market_name),
+            "market_key": self._market_key(market_name),
+            "market_name": market_name,
+            "selections": selections,
+        }
+
+    def _group_price(self, price) -> float | None:
+        """Same arithmetic as the page's {num, den}: 1 + num/den."""
+        if not isinstance(price, dict):
+            return None
+        num, den = price.get("winPriceNum"), price.get("winPriceDen")
+        if isinstance(num, (int, float)) and isinstance(den, (int, float)) and den > 0:
+            return round(1 + float(num) / float(den), 4)
+        return self._decimal_price(price.get("winPrice"))
+
+    def _fetch_json(self, url: str):
+        return json.loads(self._fetch_html(url))
 
     def fetch_historical_odds(self, event_id: str) -> list[dict]:
         return []
