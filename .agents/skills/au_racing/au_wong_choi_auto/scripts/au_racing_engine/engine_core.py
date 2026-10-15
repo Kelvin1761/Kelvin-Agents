@@ -5489,6 +5489,32 @@ def _pf_aggregates(runs: list[dict], source: str) -> dict:
     return aggregates
 
 
+_RUN_POSITION_RE = re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)@(800m|400m|Settled)\b")
+_RUN_FINISH_RE = re.compile(r"\bfinish:(\d{1,2})/(\d{1,2})\b")
+_RUN_WINNING_TIME_RE = re.compile(r"\bWinningTime:(?:(\d+):)?(\d{1,3}(?:\.\d+)?)\b")
+
+
+def _formguide_run_context(line: str) -> dict:
+    """Ordinal positions, finish/starters and the winner's time on one form line.
+
+    Recorded on each PF run as data only — no score reads them yet. They are
+    what a field-size-aware or speed-aware L600 needs, and positions are ordinal:
+    a place at 800m is not a number of lengths behind.
+    """
+    out: dict = {}
+    for place, mark in _RUN_POSITION_RE.findall(line):
+        key = {"800m": "pos_800", "400m": "pos_400", "Settled": "pos_settled"}[mark]
+        out[key] = int(place)
+    finish = _RUN_FINISH_RE.search(line)
+    if finish:
+        out["finish"], out["starters"] = int(finish.group(1)), int(finish.group(2))
+    winning = _RUN_WINNING_TIME_RE.search(line)
+    if winning:
+        minutes = int(winning.group(1) or 0)
+        out["winning_time"] = round(minutes * 60 + float(winning.group(2)), 3)
+    return out
+
+
 def _parse_formguide_pf_metrics(
     facts_path: Path,
     *,
@@ -5547,6 +5573,7 @@ def _parse_formguide_pf_metrics(
                     parsed["distance"] = run_distance
                 if run_margin is not None:
                     parsed["margin"] = run_margin
+                parsed.update(_formguide_run_context(line))
                 runs.append(parsed)
         marked_sources = {
             str(run.get("source"))
