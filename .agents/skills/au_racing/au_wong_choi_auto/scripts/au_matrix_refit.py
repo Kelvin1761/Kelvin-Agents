@@ -110,8 +110,8 @@ class Dataset:
             self.rows.extend(race["rows"])
         self.n = start
         self.wet = np.array([float(r["wet"] or 0.0) for r in self.rows])
-        self.proven_class = np.array(
-            [float(r.get("proven_class") or 0.0) for r in self.rows]
+        self.fixed_overlays = np.array(
+            [float(r.get("proven_class") or 0.0) + float(r.get("full_time", r.get("full_time_speed_feature", 0)) or 0.0) for r in self.rows]
         )
         self.engine_ability = np.array([float(r["ability"]) for r in self.rows])
         # raw[k] = clip(60 + Σ inner·(leaf−60))，即係食 gain 之前嘅維度分。
@@ -137,6 +137,7 @@ class Dataset:
                 "sp": row.get("sp", row.get("result_sp_label")),
                 "features": row.get("features", row.get("feature_scores", {})),
                 "wet": row.get("wet", row.get("wet_form_feature", 0.0)),
+                "full_time": row.get("full_time", row.get("full_time_speed_feature", 0.0)),
                 "proven_class": row.get(
                     "proven_class", row.get("proven_class_feature", 0.0)
                 ),
@@ -164,7 +165,7 @@ class Dataset:
             delta += (mx[:, index] - 60.0) * float(weights.get(key, 0.0))
         pure = [round(float(60.0 + value), 4) for value in delta]
         return np.array([round(score + float(wet) * float(wet_scale) + float(proven), 4)
-                         for score, wet, proven in zip(pure, self.wet, self.proven_class)])
+                         for score, wet, proven in zip(pure, self.wet, self.fixed_overlays)])
 
     def evaluate(self, ability, lo=0, hi=None):
         hi = len(self.slices) if hi is None else hi
@@ -220,6 +221,7 @@ def cmd_verify(ds, _args):
         compose_matrix_score(map_features_to_matrix_scores(r["features"]))
         + float(r["wet"] or 0.0)
         + float(r.get("proven_class") or 0.0)
+        + float(r.get("full_time", r.get("full_time_speed_feature", 0)) or 0.0)
         for r in ds.rows])
     for label, ref in (("真引擎存檔 ability", ds.engine_ability),
                        ("map_features_to_matrix_scores", slow)):

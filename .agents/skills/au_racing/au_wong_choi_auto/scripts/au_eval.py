@@ -115,6 +115,7 @@ def load_races(path):
                 "proven_class": row.get(
                     "proven_class", row.get("proven_class_feature", 0.0)
                 ),
+                "full_time": row.get("full_time", row.get("full_time_speed_feature", 0.0)),
                 "pos": row.get("pos", row.get("actual_pos")),
             })
         races.append({
@@ -132,6 +133,7 @@ def default_scorer(row):
         compose_matrix_score(m)
         + float(row["wet"] or 0.0)
         + float(row.get("proven_class") or 0.0)
+        + float(row.get("full_time", row.get("full_time_speed_feature", 0)) or 0.0)
     )
 
 
@@ -185,6 +187,7 @@ def configured_scorer(*, weights=None, wet_scale=1.0, leaf_overrides=None):
             compose_matrix_score(matrices, normalised)
             + float(row["wet"] or 0.0) * float(wet_scale)
             + float(row.get("proven_class") or 0.0)
+            + float(row.get("full_time", row.get("full_time_speed_feature", 0)) or 0.0)
         )
 
     return scorer
