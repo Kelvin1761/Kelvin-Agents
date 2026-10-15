@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261015-04](EXP-20261015-04-au-contextual-gps-speed.md) | 2026-10-15 | AU | 逐駒 total−L800、精確地況／途程／場地／移欄標準與步速修正 | **PROMISING DIAGNOSTIC／NOT SHIPPED／PIT FLAG**：706 meetings、49,613完整GPS；OOS1,493場A全程Gold+1／Good+3／Pass+3但CI跨零；全程AUC.607、頭段.541，B無訓練合格gain，A+C Good−1；六arm不改尺，未部署。 |
 | [EXP-20261015-03](EXP-20261015-03-au-measured-runner-time.md) | 2026-10-15 | AU | 真逐駒 GPS 全程時間對比共享頭馬／負馬位估算 | **NOT SHIPPED／PIT FLAG**：316 官方 CSV、22,745 完整時間；2,496 場固定 k=.5 逐駒 Gold−4／Good−3／Pass+4，feature 覆蓋僅7.83%；Sportsbet UI Time 實測為共用頭馬時間，未找到獨立 Finish Time；未改 live。 |
 | [EXP-20261015-02](EXP-20261015-02-au-trial-cutoff-refit.md) | 2026-10-15 | AU | 用戶確認六場起移除試閘表現；比較2／4／6場並refit | **USER-ACCEPTED simplification；refit REJECT**：3,297場較低門檻冇更好headline；1,493場逐窗OOS六場refit Gold+3但Good−3，訓練門檻policy Good−4，全部無顯著收益；保留六場／原權重，PIT FLAG未當PASS。 |
 | [EXP-20261012-03](EXP-20261012-03-au-unused-intake-cutoff-standards.md) | 2026-10-12 | AU | 未用欄位零樣本intake、prior-only unique-event speed references | **HARNESS／PARTIAL RESEARCH**：448 meetings完整盤點；future／duplicates／root cache反例修正，14 scoped／AU808 tests PASS；source-bound outcome研究與actual fitted producer仍待接駁，無績效判決。 |
