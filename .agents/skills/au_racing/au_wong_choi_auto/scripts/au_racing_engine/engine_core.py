@@ -68,16 +68,13 @@ AUTO_RESOURCE_DIR = Path(__file__).resolve().parents[2] / "resources"
 
 # User-accepted simplification, EXP-20261015-01: this is not a measured gain.
 TRIAL_PERFORMANCE_START_CUTOFF = 6
-# EXP-20261016-01 F6 (user decision 2026-10-16): trial performance is removed for
-# every horse — trial_score, trial PF rows and the maiden trial-time proxy. Trial
-# density (preparation) and fitness stay. Not a measured gain; see the results file.
-TRIAL_PERFORMANCE_REMOVED = True
+# EXP-20261016-01 (user decision 2026-10-16): `trial_score` left the ranking
+# entirely (dimensions.py); this cutoff still gates trial PF rows and the maiden
+# trial-time proxy, which stay for horses under 6 starts.
 
 
 def trial_performance_applies(horse):
-    """Whether trial results may enter ability scores for this horse."""
-    if TRIAL_PERFORMANCE_REMOVED:
-        return False
+    """Unknown career totals retain trial evidence; only known starts gate it."""
     starts = parse_float(horse.get("career_race_starts"))
     return not (starts is not None and math.isfinite(starts)
                 and starts >= TRIAL_PERFORMANCE_START_CUTOFF)
@@ -1313,11 +1310,6 @@ class RacingEngine:
         detail = {"base": None, "adjustments": [], "final": None, "note": ""}
         self.trial_detail = detail
         if not trial_performance_applies(self.horse_data):
-            if TRIAL_PERFORMANCE_REMOVED:
-                note = ("試閘表現已停用，不入能力分（EXP-20261016-01）；"
-                        "試閘資料保留作備戰及騎師熟習背景。")
-                detail.update(base=60.0, final=60.0, note=note, removed=True)
-                return 60.0, note, "disabled_neutral"
             starts = int(parse_float(self.horse_data.get("career_race_starts")))
             note = (f"已跑 {starts} 場正式賽，試閘表現不入能力分；"
                     "試閘資料保留作備戰及騎師熟習背景。")

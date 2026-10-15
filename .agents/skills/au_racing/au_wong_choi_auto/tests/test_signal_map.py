@@ -79,7 +79,7 @@ class SignalMapTests(unittest.TestCase):
             # sectional_score retired 2026-08-05: within-race AUC 0.525, and only
             # 0.532 even where the L400 PI data exists — weak because the leaf has
             # no discrimination, not because 21% of runners lack coverage.
-            "pace_figure_score", "trial_score",
+            "pace_figure_score",  # trial_score left the ranking (EXP-20261016-01)
             "jockey_score", "trainer_score", "jockey_horse_fit_score",
             "pace_map_score",
             "rating_score",  # weight_score retired 2026-08-01 (AUC 0.480)
@@ -172,6 +172,7 @@ class SignalMapTests(unittest.TestCase):
         )
         self.assertFalse(set(ABILITY_FEATURE_KEYS) & set(REPORT_ONLY_FEATURE_KEYS))
         expected_report_only = {
+            "trial_score",  # EXP-20261016-01
             "sectional_score",
             "class_score",
             "weight_score",

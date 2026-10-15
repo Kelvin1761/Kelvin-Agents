@@ -17,7 +17,7 @@ def test_registered_reasoning_includes_preparation_and_legacy_context():
     actual = engine_core.RacingEngine._matrix_reasoning(Probe(), values, {}, {})
     assert tuple(actual) == tuple(s.key for s in DIMENSION_SPECS if s.shown_in_report)
     assert actual["preparation"] == {"score": 63.25, "components": ("preparation_score",)}
-    assert actual["pace_perf"]["components"] == ("pace_figure_score", "sectional_score", "trial_score")
+    assert actual["pace_perf"]["components"] == ("pace_figure_score", "sectional_score")
     assert actual["class_weight"]["components"] == ("class_score", "rating_score", "weight_score")
     assert actual["form_line"]["components"] == ("formline_score", "form_score")
 

@@ -40,7 +40,8 @@ class DimensionSpec:
 
 LEAF_SPECS = (
     LeafSpec('form_score', '近績分', 0, False, True),
-    # EXP-20261016-01 F6: trial performance removed (user decision); report-only, not evidence.
+    # EXP-20261016-01 (user decision): trial_score left the ranking. Report-only and NOT
+    # evidence — a disabled leaf at 60 must not trip the thin-evidence rail (17.7% → 4.5%).
     LeafSpec('trial_score', '試閘分', None, True, False),
     LeafSpec('sectional_score', '段速分', None, True, False),
     LeafSpec('pace_map_score', '檔位分', 4, False, False),
@@ -63,7 +64,7 @@ LEAF_SPECS = (
 
 DIMENSION_SPECS = (
     DimensionSpec('stability', '狀態與穩定性', (('form_score', 0.6), ('performance_quality_score', 0.4)), 0.37099725005319806, 0),
-    # EXP-20261016-01 F6: trial_score left pace_perf. Coefficient = 0.12093934478578448 × 0.941744,
+    # EXP-20261016-01: trial_score left pace_perf. Coefficient = 0.12093934478578448 × 0.941744,
     # so pace_figure's contribution to the composite is unchanged.
     DimensionSpec('pace_perf', '速度考驗背景', (('pace_figure_score', 1.0),), 0.12093934478578448 * 0.941744, 1, reasoning_components=('pace_figure_score', 'sectional_score'), reasoning_score_default=60.0),
     DimensionSpec('race_shape', '檔位形勢', (('pace_map_score', 1.0),), None, None),

@@ -24,7 +24,6 @@
     "form_score",
     "performance_quality_score",
     "pace_figure_score",
-    "trial_score",
     "pace_map_score",
     "jockey_score",
     "trainer_score",
@@ -34,6 +33,7 @@
     "preparation_score"
   ],
   "REPORT_ONLY_FEATURE_KEYS": [
+    "trial_score",
     "sectional_score",
     "class_score",
     "weight_score",
@@ -45,7 +45,7 @@
   ],
   "MATRIX_WEIGHTS": {
     "stability": 0.37099725005319806,
-    "pace_perf": 0.12093934478578448,
+    "pace_perf": 0.11389390231594383,
     "jockey_trainer": 0.6626585553070451,
     "class_weight": 0.3826193901797637,
     "track": 0.14114297066700832,
@@ -66,11 +66,7 @@
     "pace_perf": [
       [
         "pace_figure_score",
-        0.941744
-      ],
-      [
-        "trial_score",
-        0.058256
+        1.0
       ]
     ],
     "race_shape": [
@@ -157,7 +153,6 @@
     "form_score",
     "performance_quality_score",
     "pace_figure_score",
-    "trial_score",
     "jockey_score",
     "trainer_score",
     "jockey_horse_fit_score",
