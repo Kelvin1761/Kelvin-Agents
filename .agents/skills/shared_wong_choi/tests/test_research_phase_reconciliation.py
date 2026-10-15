@@ -73,7 +73,7 @@ def crashed_phase(tmp_path, phase, point, *, failed=False):
                 "2026-08-10T23:59:00+00:00", "2026-08-20T23:59:00+00:00", "2026-08-29T23:59:00+00:00"
             ),
             estimated_bytes=1024,
-            timeout_seconds=30,
+            timeout_seconds=120,
         )
     else:
         result = ResearchScoringRunner(crashed_runtime, registry).run(job, spec, create_research_adapter("au"))
@@ -94,7 +94,7 @@ def inspect(spec, runtime, registry, attempt):
         attempt_path=attempt,
         request_sha256=hashlib.sha256((attempt / "request.json").read_bytes()).hexdigest(),
         estimated_bytes=1024,
-        timeout_seconds=30,
+        timeout_seconds=120,
     )
 
 

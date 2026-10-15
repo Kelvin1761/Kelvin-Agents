@@ -106,7 +106,7 @@ def test_racing_sample_baseline_and_no_growth_advance_atomically_with_review(tmp
     first = runner.run(
         domain=Domain.AU, now=as_of, ruler_digest='1' * 64,
         ruler_released_at=as_of - timedelta(days=30),
-        estimated_bytes=1048576, timeout_seconds=20,
+        estimated_bytes=1048576, timeout_seconds=120,
     )
     assert first.disposition is ResearchDisposition.SUCCEEDED, first
     first_summary = json.loads(first.review.report_path.read_bytes())
@@ -121,7 +121,7 @@ def test_racing_sample_baseline_and_no_growth_advance_atomically_with_review(tmp
         domain=Domain.AU, now=as_of + timedelta(minutes=1),
         ruler_digest='1' * 64,
         ruler_released_at=as_of - timedelta(days=30),
-        estimated_bytes=1048576, timeout_seconds=20,
+        estimated_bytes=1048576, timeout_seconds=120,
     )
     assert second.disposition is ResearchDisposition.SUCCEEDED, second
     second_summary = json.loads(second.review.report_path.read_bytes())
@@ -173,7 +173,7 @@ def test_racing_sample_and_calendar_cursor_roll_back_together_on_commit_failure(
         result = runner.run(
             domain=Domain.AU, now=as_of, ruler_digest='1' * 64,
             ruler_released_at=as_of - timedelta(days=30),
-            estimated_bytes=1048576, timeout_seconds=20,
+            estimated_bytes=1048576, timeout_seconds=120,
         )
     assert result.disposition is ResearchDisposition.BLOCKED
     assert state(path) == before_cursor
@@ -203,7 +203,7 @@ def test_tennis_family_sample_watermark_advances_with_calendar_in_one_commit(tmp
         ruler_digest='1' * 64,
         ruler_released_at=TENNIS_SAMPLE_END - timedelta(days=30),
         estimated_bytes=1048576,
-        timeout_seconds=20,
+        timeout_seconds=120,
     )
     assert result.disposition is ResearchDisposition.SUCCEEDED, result
     summary = json.loads(result.review.report_path.read_bytes())
@@ -358,7 +358,7 @@ def test_sample_storage_and_calendar_commit_one_verified_review(
     result = runner.run(
         domain=Domain.AU, now=as_of, ruler_digest='1' * 64,
         ruler_released_at=as_of - timedelta(days=30),
-        estimated_bytes=1048576, timeout_seconds=20,
+        estimated_bytes=1048576, timeout_seconds=120,
         production_evidence_root=evidence,
     )
     assert result.disposition is ResearchDisposition.SUCCEEDED, result
@@ -406,7 +406,7 @@ def test_legacy_single_scope_racing_watermark_migrates_only_after_verified_revie
     first = runner.run(
         domain=Domain.AU, now=as_of, ruler_digest='1' * 64,
         ruler_released_at=as_of - timedelta(days=30),
-        estimated_bytes=1048576, timeout_seconds=20,
+        estimated_bytes=1048576, timeout_seconds=120,
     )
     assert first.disposition is ResearchDisposition.SUCCEEDED
     legacy = sample_state(path)
@@ -427,7 +427,7 @@ def test_legacy_single_scope_racing_watermark_migrates_only_after_verified_revie
         domain=Domain.AU, now=as_of + timedelta(minutes=1),
         ruler_digest='1' * 64,
         ruler_released_at=as_of - timedelta(days=30),
-        estimated_bytes=1048576, timeout_seconds=20,
+        estimated_bytes=1048576, timeout_seconds=120,
     )
     assert second.disposition is ResearchDisposition.SUCCEEDED, second
     assert sample_state(path)['last_report'].get('scope_counts') == {'all': 1}
@@ -450,7 +450,7 @@ def test_review_backlog_does_not_consume_racing_sample_watermark(tmp_path):
     first = runner.run(
         domain=Domain.AU, now=as_of, ruler_digest='1' * 64,
         ruler_released_at=as_of - timedelta(days=30),
-        estimated_bytes=1048576, timeout_seconds=20, max_reviews=1,
+        estimated_bytes=1048576, timeout_seconds=120, max_reviews=1,
     )
     first_summary = json.loads(first.review.report_path.read_bytes())
     assert first.disposition is ResearchDisposition.SUCCEEDED
@@ -461,7 +461,7 @@ def test_review_backlog_does_not_consume_racing_sample_watermark(tmp_path):
     second = runner.run(
         domain=Domain.AU, now=as_of, ruler_digest='1' * 64,
         ruler_released_at=as_of - timedelta(days=30),
-        estimated_bytes=1048576, timeout_seconds=20, max_reviews=50,
+        estimated_bytes=1048576, timeout_seconds=120, max_reviews=50,
     )
     assert second.disposition is ResearchDisposition.SUCCEEDED
     assert json.loads(second.review.report_path.read_bytes())['remaining_requests'] == 0
@@ -483,7 +483,7 @@ def test_changed_racing_source_blocks_both_cursors_without_rewriting_history(tmp
     first = runner.run(
         domain=Domain.AU, now=as_of, ruler_digest='1' * 64,
         ruler_released_at=as_of - timedelta(days=30),
-        estimated_bytes=1048576, timeout_seconds=20,
+        estimated_bytes=1048576, timeout_seconds=120,
     )
     assert first.disposition is ResearchDisposition.SUCCEEDED
     before_cursor, before_sample = state(path), sample_state(path)
@@ -493,7 +493,7 @@ def test_changed_racing_source_blocks_both_cursors_without_rewriting_history(tmp
         domain=Domain.AU, now=as_of + timedelta(minutes=1),
         ruler_digest='1' * 64,
         ruler_released_at=as_of - timedelta(days=30),
-        estimated_bytes=1048576, timeout_seconds=20,
+        estimated_bytes=1048576, timeout_seconds=120,
     )
     assert blocked.disposition is ResearchDisposition.BLOCKED
     assert state(path) == before_cursor

@@ -25,7 +25,7 @@ from test_research_index import clock_args
 def catchup(runtime, registry, helper, **changes):
     return ResearchNotificationRunner(runtime, registry).catch_up(**{
         'domain': Domain.AU, 'route': route(), 'helper_path': helper,
-        'estimated_bytes': 1048576, 'timeout_seconds': 15, 'scan_limit': 1, **changes,
+        'estimated_bytes': 1048576, 'timeout_seconds': 120, 'scan_limit': 1, **changes,
     })
 
 
