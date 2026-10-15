@@ -1305,7 +1305,7 @@ class TestFillTodayOddsRefresh(unittest.TestCase):
         folder.mkdir(parents=True)
         for race in range(1, races + 1):
             (folder / f"Race_{race}_Logic.json").write_text("{}", encoding="utf-8")
-        payload = {str(race): {f"{stamp}|analysis": {}}
+        payload = {str(race): {f"{stamp}|analysis": {"1": ["3.2", "1.4"]}}
                    for race in range(1, races + 1)}
         (folder / S.ODDS_HISTORY).write_text(json.dumps(payload), encoding="utf-8")
 
@@ -1328,6 +1328,9 @@ class TestFillTodayOddsRefresh(unittest.TestCase):
             self._history(old, "2026-09-08T22:30:00")
             self._history(fresh, "2026-09-09T10:30:00")
             refreshed = []
+            def refresh(_log, folder, _api):
+                refreshed.append(folder)
+                (folder / S.ODDS_HISTORY).write_text((fresh / S.ODDS_HISTORY).read_text())
             runlog = unittest.mock.MagicMock()
             with unittest.mock.patch.object(S, "api_next_events", return_value=[]), \
                  unittest.mock.patch.object(
@@ -1335,7 +1338,7 @@ class TestFillTodayOddsRefresh(unittest.TestCase):
                  ), \
                  unittest.mock.patch.object(
                      S, "refresh_one_meeting",
-                     side_effect=lambda _log, folder, _api: refreshed.append(folder),
+                     side_effect=refresh,
                  ):
                 self.assertTrue(S.refresh_fill_today_odds(
                     runlog, [old, fresh], S.date(2026, 9, 9)))

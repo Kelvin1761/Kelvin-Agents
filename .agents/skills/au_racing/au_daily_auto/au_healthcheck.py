@@ -29,6 +29,8 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parents[3]))
 
+from odds_quality import dashboard_odds_issues, has_snapshot, snapshot_day  # noqa: E402
+
 LIVE_URL = "https://wongchoi-dashboard.pages.dev/dashboard-data.json"
 RUNNER = HERE / "run_au_daily_schedule.sh"
 JT_COVERAGE_MIN = float(os.environ.get("WC_AU_HEALTH_JT_MIN", "0.80"))
@@ -36,7 +38,7 @@ MORNING_ODDS_READY_HOUR = int(os.environ.get("WC_AU_MORNING_ODDS_READY_HOUR", "1
 
 
 
-def live_meetings() -> set[str] | None:
+def read_live_dashboard() -> dict | None:
     """⚠️ 一定要繞開 CDN cache，否則會攞到舊副本而誤判成「冇發佈」。"""
     url = f"{LIVE_URL}?cb={int(datetime.now().timestamp() * 1000)}"
     req = urllib.request.Request(url, headers={
@@ -47,7 +49,22 @@ def live_meetings() -> set[str] | None:
             d = json.loads(r.read())
     except Exception:  # noqa: BLE001
         return None
-    return {f"{m.get('date')}|{m.get('venue')}" for m in d.get("meetings") or []}
+    return d if isinstance(d, dict) else None
+
+
+def live_meetings() -> set[str] | None:
+    payload = read_live_dashboard()
+    if payload is None:
+        return None
+    return {f"{m.get('date')}|{m.get('venue')}" for m in payload.get("meetings") or []}
+
+
+def live_odds_issues(day: str) -> list[str]:
+    payload = read_live_dashboard()
+    if payload is None:
+        return ["live dashboard odds 未能核實（讀取失敗）"]
+    return dashboard_odds_issues(payload, day)
+
 
 
 def au_venues_today(day: str) -> set[str] | None:
@@ -104,17 +121,7 @@ def is_current_day_odds_snapshot(key: str, day: str) -> bool:
     race-day price and must not be reported as last night's price. An overnight
     ``analysis`` timestamp remains invalid for this check.
     """
-    raw_stamp, separator, tag = str(key).partition("|")
-    if not separator:
-        return False
-    if tag in MORNING_TAGS:
-        return True
-    if tag != "analysis":
-        return False
-    try:
-        return datetime.fromisoformat(raw_stamp).date().isoformat() == day
-    except ValueError:
-        return False
+    return snapshot_day(key) == day
 
 
 def local_quality_issues(day: str, *, root: Path | None = None,
@@ -143,6 +150,7 @@ def local_quality_issues(day: str, *, root: Path | None = None,
 
         missing_artifacts: list[str] = []
         stale_odds: list[int] = []
+        missing_odds: list[int] = []
         missing_going_audit: list[int] = []
         unavailable_official_going: list[int] = []
         for race in range(1, expected + 1):
@@ -158,11 +166,11 @@ def local_quality_issues(day: str, *, root: Path | None = None,
                 if not _has_nonempty(paths):
                     missing_artifacts.append(f"R{race} {label}")
 
-            if require_morning:
-                snapshots = (odds.get(str(race)) or {}) if isinstance(odds, dict) else {}
-                if not any(is_current_day_odds_snapshot(key, day)
-                           for key in snapshots):
-                    stale_odds.append(race)
+            snapshots = (odds.get(str(race)) or {}) if isinstance(odds, dict) else {}
+            if not has_snapshot(snapshots):
+                missing_odds.append(race)
+            if require_morning and not has_snapshot(snapshots, day=day):
+                stale_odds.append(race)
 
             logic = folder / f"Race_{race}_Logic.json"
             try:
@@ -184,6 +192,9 @@ def local_quality_issues(day: str, *, root: Path | None = None,
         if missing_artifacts:
             issues.append(f"{folder.name}：輸出唔齊（{', '.join(missing_artifacts[:8])}"
                           + ("…" if len(missing_artifacts) > 8 else "") + "）")
+        if missing_odds:
+            issues.append(f"{folder.name}：未有可用 win/place odds "
+                          f"R{','.join(map(str, missing_odds))}（來源未提供或抽取未完成）")
         if stale_odds:
             issues.append(f"{folder.name}：11:00 後仍冇 morning odds "
                           f"R{','.join(map(str, stale_odds))}")
@@ -436,7 +447,7 @@ def quality_issues(day: str) -> tuple[list[str], list[str]]:
     鏡像落後影響唔到預測同發佈。報得比實際嚴重同報得比實際輕微一樣壞，因為兩樣
     都會令人開始唔信呢條通知。
     """
-    blocking = local_quality_issues(day)
+    blocking = local_quality_issues(day) + live_odds_issues(day)
     for critical_step in ("data-contract", "ingest-results"):
         issue = latest_step_issue(critical_step)
         if issue:

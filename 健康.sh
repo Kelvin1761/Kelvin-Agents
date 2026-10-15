@@ -242,6 +242,46 @@ else:
     print("  ⚠️  NBA evidence ledger 尚未建立（新季第一個 postgame 後產生）")
 PYEOF
 
+# Check real outputs independently of the producer's success log.
+hdr "AU 今日實物品質（包括 live dashboard 賠率）"
+if "$PY" - <<'PYODDS'
+import sys
+from datetime import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
+sys.path.insert(0, str(Path(".agents/skills/au_racing/au_daily_auto").resolve()))
+from au_healthcheck import local_quality_issues, live_odds_issues
+issues = local_quality_issues(datetime.now(ZoneInfo("Australia/Sydney")).date().isoformat())
+issues += live_odds_issues(datetime.now(ZoneInfo("Australia/Sydney")).date().isoformat())
+for issue in issues:
+    print("      " + issue)
+raise SystemExit(1 if issues else 0)
+PYODDS
+then ok "本機輸出同 live dashboard 賠率檢查通過"
+else note_bad "AU 實物品質未過；唔可以由 run 成功推斷資料齊全"; fi
+
+hdr "四線最近 run（獨立於 30日平均）"
+CENTRAL_STATUS=$("$PY" .agents/skills/central_wong_choi/scripts/central_wong_choi.py status --json 2>/dev/null)
+if "$PY" - "$CENTRAL_STATUS" <<'PYRUNS'
+import json, sys
+try:
+    payload = json.loads(sys.argv[1])
+except (ValueError, IndexError):
+    print("      Central status unavailable")
+    raise SystemExit(1)
+failed = False
+for name in ("au", "hkjc", "tennis", "nba"):
+    run = ((payload.get("domains") or {}).get(name) or {}).get("latest_run") or {}
+    state = run.get("state") or "unknown"
+    bad = state not in {"succeeded", "dormant", "running"} or bool(run.get("errors"))
+    bad = bad or (state == "running" and run.get("lifecycle") != "within_timeout")
+    failed = failed or bad
+    print(f"      {name.upper()}: {state} · {run.get('target_date')} · {run.get('lifecycle', 'unknown')}")
+raise SystemExit(1 if failed else 0)
+PYRUNS
+then ok "四線最近 run 狀態正常"
+else note_bad "四線有最近 run 失敗／部分完成／未知，詳見上面"; fi
+
 # ── 數據合約 ─────────────────────────────────────────────────────────────
 hdr "數據合約（欄位有冇靜靜變空／變常數）"
 for p in au hkjc; do

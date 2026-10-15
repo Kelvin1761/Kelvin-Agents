@@ -60,7 +60,7 @@ def test_failed_field_refresh_does_not_record_rescored_or_successful_update(tmp_
          patch.object(S, 'live_race_state', return_value=(live, 'Good 4')), \
          patch.object(S, 'mapping_key_for', return_value='fixture'), \
          patch.object(S, 'market_drift'), \
-         patch.object(S, 'record_odds_from_cache'), \
+         patch.object(S, 'record_odds_from_cache', return_value=2), \
          patch.object(S, 'record_odds_snapshot') as after_snapshot, \
          patch.object(S, 'top_picks_snapshot', return_value={}), \
          patch.object(S, 'rebuild_meeting_from_cache', return_value=False):
@@ -99,7 +99,7 @@ def test_actual_refresh_and_rebuild_chain_propagates_failure(tmp_path):
          patch.object(S, 'mapping_key_for', return_value='fixture'), \
          patch.object(S, 'load_mapping', return_value={'fixture': metadata}), \
          patch.object(S, 'market_drift'), \
-         patch.object(S, 'record_odds_from_cache'), \
+         patch.object(S, 'record_odds_from_cache', return_value=2), \
          patch.object(S, 'record_odds_snapshot') as after_snapshot, \
          patch.object(S, 'warm_people_pages'), \
          patch.object(S, 'apply_ra_ratings'), \

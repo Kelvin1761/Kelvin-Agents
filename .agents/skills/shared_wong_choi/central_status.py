@@ -325,6 +325,10 @@ def collect_status(
     attention.extend(runtime.get("attention") or [])
     for name, domain in domains.items():
         run = domain.get("latest_run") or {}
+        if run.get("state") in {"failed", "partial", "blocked"}:
+            attention.append(f"run_unhealthy:{name}:{run['state']}")
+        if run.get("errors"):
+            attention.append(f"run_errors:{name}")
         if run.get("state") == "running" and run.get("lifecycle") == "overdue":
             attention.append(f"run_overdue:{name}")
         if run.get("state") == "running" and run.get("lifecycle") == "unknown_start":

@@ -235,3 +235,19 @@ def test_dirty_production_checkout_is_visible(tmp_path: Path, monkeypatch) -> No
     assert seen["control_root"] == production.resolve()
     assert "Production：AU" in render_telegram(result)
     assert "Automation：AU ❌" in render_telegram(result)
+
+
+def test_latest_partial_run_is_visible_even_with_passing_slo(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    initialise_repo(repo)
+    state = tmp_path / "state"
+    for domain in ("au", "hkjc", "tennis", "nba"):
+        folder = state / "runs" / domain / "2026-10-16" / "daily" / "1000"
+        folder.mkdir(parents=True)
+        (folder / "attempt-1.json").write_text(json.dumps({
+            "state": "partial", "mode": "daily", "target_date": "2026-10-16",
+            "completed_at": "2026-10-16T01:00:00+00:00", "warnings": [], "errors": []}))
+    result = collect_status(repo, state, now=datetime(2026, 10, 16, 2, tzinfo=timezone.utc), probe_launchd=False)
+    for domain in ("au", "hkjc", "tennis", "nba"):
+        assert f"run_unhealthy:{domain}:partial" in result["attention"]

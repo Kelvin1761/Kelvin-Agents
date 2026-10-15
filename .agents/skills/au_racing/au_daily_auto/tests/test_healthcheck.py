@@ -225,7 +225,7 @@ class DataQualityTests(unittest.TestCase):
         (folder / "Race_1_Auto_Scoring.csv").write_text("ok")
         label = "2026-08-10T10:05:00|morning-refresh" if morning \
             else "2026-08-09T22:00:00|analysis"
-        (folder / "odds_history.json").write_text(json.dumps({"1": {label: {}}}))
+        (folder / "odds_history.json").write_text(json.dumps({"1": {label: {"1": ["3.2", "1.4"]}}}))
         (folder / "Meeting_Summary.md").write_text(
             f"Jockey/trainer LY tokens filled: {jt[0]}; missing: {jt[1]}\n")
         return folder
@@ -241,7 +241,7 @@ class DataQualityTests(unittest.TestCase):
             folder = self._meeting(Path(tmp), morning=False)
             history = folder / "odds_history.json"
             history.write_text(
-                '{"1":{"2026-08-10T10:05:00|analysis":{}}}',
+                '{"1":{"2026-08-10T10:05:00|analysis":{"1":["3.2","1.4"]}}}',
                 encoding="utf-8",
             )
             self.assertEqual(
@@ -762,7 +762,7 @@ class MorningOddsGapTests(unittest.TestCase):
     def test_it_rides_as_an_advisory_never_as_a_blocker(self):
         # 嗰日已經完咗，補唔到 —— 報做 blocking 就等於叫 ./健康.sh 永遠紅燈。
         with unittest.mock.patch.multiple(
-                H, local_quality_issues=lambda day: [],
+                H, local_quality_issues=lambda day: [], live_odds_issues=lambda day: [],
                 latest_step_issue=lambda step: None,
                 mirror_issue=lambda day: None,
                 yesterday_odds_advisories=lambda day: ["尋日冇早更"]):

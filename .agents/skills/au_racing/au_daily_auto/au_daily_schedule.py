@@ -2523,26 +2523,17 @@ def earliest_odds(folder: Path, race_no: int) -> tuple[str, dict] | None:
 
 def missing_race_day_odds(folder: Path, day: str) -> list[int]:
     """Races that have no odds snapshot timestamped on their own race day."""
+    from odds_quality import has_snapshot
+
     expected = race_numbers(folder)
     try:
         hist = json.loads((folder / ODDS_HISTORY).read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return expected
-    missing: list[int] = []
-    for race_no in expected:
-        snapshots = hist.get(str(race_no)) or {}
-        current = False
-        for key in snapshots:
-            raw_stamp = str(key).partition("|")[0]
-            try:
-                current = datetime.fromisoformat(raw_stamp).date().isoformat() == day
-            except ValueError:
-                current = False
-            if current:
-                break
-        if not current:
-            missing.append(race_no)
-    return missing
+        hist = {}
+    if not isinstance(hist, dict):
+        hist = {}
+    return [race for race in expected
+            if not has_snapshot(hist.get(str(race)), day=day)]
 
 
 def refresh_fill_today_odds(runlog: RunLog, folders: list[Path], today: date) -> bool:
@@ -2572,6 +2563,12 @@ def refresh_fill_today_odds(runlog: RunLog, folders: list[Path], today: date) ->
     for folder, _races in stale:
         try:
             refresh_one_meeting(runlog, folder, api)
+            remaining = missing_race_day_odds(folder, day)
+            if remaining:
+                ok = False
+                runlog.step("odds-snapshot", "missing", meeting=folder.name,
+                            label="fill-today", missing_races=remaining)
+                runlog.warn(f"{folder.name}: 覆核後仍冇有效當日 win/place odds R{remaining}")
         except TemporaryFailure as exc:
             ok = False
             runlog.meeting(folder.name, "refresh_deferred", detail=str(exc))
@@ -2625,7 +2622,12 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
     _key = mapping_key_for(folder) or ""
     market_drift(runlog, folder, _key)
     # 每次覆核都影一個賠率時間點，唔理有冇實質變動。
-    record_odds_from_cache(runlog, folder, _key, "morning-refresh")
+    odds_races = record_odds_from_cache(runlog, folder, _key, "morning-refresh")
+    if odds_races < len(stored):
+        runlog.step("odds-snapshot", "missing" if odds_races == 0 else "partial",
+                    meeting=folder.name, label="morning-refresh",
+                    races=odds_races, expected=len(stored))
+        runlog.warn(f"{folder.name}: 早更只有 {odds_races}/{len(stored)} 場賠率")
 
     changes = diff_race_state(stored, live)
     for rno, delta in changes.items():
@@ -3105,7 +3107,13 @@ def validate_snapshot(runlog: RunLog, snapshot: Path,
     if not meetings:
         problems.append("snapshot 冇任何場次")
 
+    from odds_quality import dashboard_odds_issues
+    odds_issues = dashboard_odds_issues(payload)
+    for issue in odds_issues:
+        runlog.warn(issue)
+    # Keep independent model analysis available; prices have separate readiness.
     result = {"ok": not problems, "problems": problems,
+              "quality_issues": odds_issues,
               "meetings": keys,
               "race_counts": {k: len(race_numbers_in_snapshot(races.get(k)))
                               for k in keys},
@@ -3514,7 +3522,17 @@ def finish_run(runlog: RunLog, dashboard_ok: bool, hard_temporary: bool) -> int:
     if not dashboard_ok:
         runlog.finish("failed")
         return EXIT_FAILED
-    if hard_temporary or retryable:
+    latest_odds = {}
+    for step in runlog.data.get("steps", []):
+        if step.get("step") == "odds-snapshot":
+            latest_odds[step.get("meeting")] = step.get("status")
+    missing_odds = sorted(str(name) for name, status in latest_odds.items()
+                          if status in {"missing", "partial"})
+    display_issues = (runlog.data.get("dashboard_validation") or {}).get("quality_issues") or []
+    if missing_odds or display_issues:
+        runlog.step("outcome", "odds-degraded", meetings=missing_odds,
+                    display_issues=display_issues)
+    if hard_temporary or retryable or missing_odds or display_issues:
         runlog.step("outcome", "partial", retryable=retryable or None,
                     detail="下一次排程會接住做")
         runlog.finish("partial")

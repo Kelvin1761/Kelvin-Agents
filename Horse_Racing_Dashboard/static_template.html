@@ -4289,7 +4289,7 @@ function marketRankMap(fieldHorses) {
 function renderMarketLine(horse, marketRanks) {
   const win = horse.market_win_odds;
   const place = horse.market_place_odds;
-  if (win == null && place == null) return '';
+  if (win == null && place == null) return '<div class="mkt"><span class="mkt__odds">⚠️ 市場賠率未有資料 · 等候更新</span></div>';
 
   let h = '<div class="mkt">';
   const bits = [];
@@ -4297,6 +4297,7 @@ function renderMarketLine(horse, marketRanks) {
   if (place != null) bits.push(`位 $${place.toFixed(2)}`);
   h += `<span class="mkt__odds">💰 ${bits.join(' / ')}</span>`;
 
+  if (horse.market_odds_captured_at) h += `<span class="mkt__ranks">擷取 ${esc(horse.market_odds_captured_at)}</span>`;
   const mRank = marketRanks ? marketRanks.get(horse.horse_number) : null;
   const modelRank = horse.rank;
   if (mRank && modelRank) {

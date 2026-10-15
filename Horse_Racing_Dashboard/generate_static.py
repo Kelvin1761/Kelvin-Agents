@@ -42,6 +42,7 @@ from services.race_display_metadata import (
 )
 from services.multisport_exporter import build_multisport_feed
 from services.au_display_policy import apply_au_display_policy
+from services.au_market_odds import enrich_au_market_odds
 from models.race import AnalystName, Meeting, Region
 
 
@@ -56,7 +57,7 @@ from models.race import AnalystName, Meeting, Region
 # report bytes must not reuse a cache made before the parser carried the spec.
 # 7: AU modern panorama class is parsed from its third component; invalidate
 # unchanged-report cache entries carrying the old "Race N" class value.
-CACHE_VERSION = 8  # AU captured full-time speed metadata
+CACHE_VERSION = 9  # AU captured full-time speed metadata
 DEFAULT_CACHE_PATH = Path(__file__).resolve().parent / ".cache" / "meeting-snapshot-cache.json"
 AU_MEETING_DIR_RE = re.compile(r"^(\d{4}-\d{2}-\d{2})\s+(.+?)(?:\s+Race\s+\d+-\d+)?$")
 
@@ -279,6 +280,7 @@ def _analysis_files(meeting):
             files.extend(folder.glob("*全日出賽馬匹資料*.md"))
         else:
             files.extend(folder.glob("*Racecard.md"))
+            files.extend(folder.glob("odds_history.json"))
         files.extend(folder.glob("Race_*_MC_Results.json"))
     return sorted(set(files), key=lambda path: str(path))
 
@@ -381,6 +383,7 @@ def _collect_meeting(meeting):
     meeting_key = f"{meeting.date}|{meeting.venue}"
     all_races = load_meeting_races(meeting)
     enrich_race_display_metadata(meeting, all_races)
+    enrich_au_market_odds(meeting, all_races)
     races_data = {
         "meeting": meeting_data,
         "races_by_analyst": {
