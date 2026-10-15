@@ -24,4 +24,3 @@ def apply(variant: str) -> None:
         dimensions.MATRIX_WEIGHTS["pace_perf"] = OLD_PACE_PERF_COEF
     if variant in ("f6b", "f6c"):
         raise SystemExit("f6b/f6c only reproduce at commit 11214518")
-

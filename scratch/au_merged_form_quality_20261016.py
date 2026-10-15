@@ -21,7 +21,7 @@ for p in (SCRIPTS, SCRIPTS.parents[2] / "shared_racing", HERE):
 
 CUT = "2026-08-05"
 WEIGHTS = {"N4": (1.0, 0.8, 0.6, 0.4), "N6": (1.0, 0.8, 0.6, 0.4, 0.3, 0.2)}
-CANDIDATES = ("eq3_N4", "eq3_N6", "eq2_N4", "eq2_N6")
+CANDIDATES = ("eq3_N4", "eq3_N6", "eq2_N4", "eq2_N6", "pen_N6", "gate_N6")  # pen/gate: EXP-20261016-09
 
 
 def pct(run):
@@ -54,7 +54,12 @@ def run_value(run, c, kind):
     zc = (math.log10(float(run["prize"])) - c["mu_p"]) / c["sd_p"]
     if kind == "eq2":
         return (zp + zc) / 2
-    zm = -(min(20.0, abs(float(run["margin"]))) - c["mu_m"]) / c["sd_m"]
+    margin = min(20.0, abs(float(run["margin"])))
+    zm = -(margin - c["mu_m"]) / c["sd_m"]
+    if kind == "pen":   # EXP-20261016-09: only a heavier-than-average defeat costs
+        return (zp + zc + min(0.0, zm)) / 2
+    if kind == "gate":  # EXP-20261016-09: no class credit for a run beaten further than average
+        return (zp + (zc if margin <= c["mu_m"] else min(0.0, zc))) / 2
     return (zp + zm + zc) / 3
 
 
