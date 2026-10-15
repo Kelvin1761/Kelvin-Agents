@@ -87,9 +87,11 @@ def _clean(value):
 def apply_au_display_policy(payload: dict) -> dict:
     """Apply only to explicitly AU meetings; all ranking values stay intact."""
     au_keys = {f"{meeting.get('date')}|{meeting.get('venue')}"
-               for meeting in payload.get('meetings') or [] if meeting.get('region') == 'au'}
+               for meeting in payload.get('meetings') or []
+               if str(meeting.get('region') or '').lower() == 'au'}
     for key, entry in (payload.get('races') or {}).items():
-        if key not in au_keys and entry.get('region') != 'au':
+        region = entry.get('region') or (entry.get('meeting') or {}).get('region')
+        if key not in au_keys and str(region or '').lower() != 'au':
             continue
         for races in (entry.get('races_by_analyst') or {}).values():
             for race in races:

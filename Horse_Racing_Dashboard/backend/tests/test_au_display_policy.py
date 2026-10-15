@@ -57,3 +57,16 @@ def test_au_only_cleanup_preserves_identity_scores_and_hkjc_pi():
     assert payload['races']['2026-10-18|ShaTin'] == hk_before
     before_second_pass = deepcopy(payload)
     assert apply_au_display_policy(payload) == before_second_pass
+
+
+def test_legacy_uppercase_and_nested_region_are_explicit_au_but_unknown_is_not():
+    def entry(region=None):
+        return {'meeting': {'region': region}, 'races_by_analyst': {
+            'auto': [{'horses': [{'raw_text': '近段 PI +3'}]}]}}
+    payload = {'meetings': [{'date': '2026-10-15', 'venue': 'Test', 'region': 'AU'}],
+               'races': {'2026-10-15|Test': entry(), 'nested': entry('AU'),
+                         'unknown': entry()}}
+    apply_au_display_policy(payload)
+    for key in ['2026-10-15|Test', 'nested']:
+        assert payload['races'][key]['races_by_analyst']['auto'][0]['horses'][0]['raw_text'] == ''
+    assert payload['races']['unknown']['races_by_analyst']['auto'][0]['horses'][0]['raw_text'] == '近段 PI +3'
