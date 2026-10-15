@@ -102,6 +102,12 @@ TIMEZONE = "Australia/Sydney"
 LIVE_SNAPSHOT_URL = "https://wongchoi-dashboard.pages.dev/dashboard-data.json"
 NEXT_EVENTS_URL = ("https://www.sportsbet.com.au/apigw/sportsbook-racing/Sportsbook/"
                    "Racing/NextEvents?racingFilters=HR_DOMESTIC&groupByFilters=true")
+# Full day list. NextEvents only returns the next ~30 races, so on a busy day the
+# night meetings never appear in it (2026-10-16: Cranbourne, Sunshine Coast and
+# Launceston were dropped as "non-AU"). AllRacing lists every meeting of a date
+# with its region; it is the AU-membership authority, NextEvents only adds going.
+ALL_RACING_URL = ("https://www.sportsbet.com.au/apigw/sportsbook-racing/Sportsbook/"
+                  "Racing/AllRacing/{day}")
 
 MIN_FETCH_DELAY = 12.0
 DEFAULT_FETCH_DELAY = 25.0
@@ -559,6 +565,43 @@ def api_next_events(runlog: RunLog) -> list[dict]:
 
     walk(payload)
     return [e for e in found if e.get("country") == "Australia"]
+
+
+def au_thoroughbred_meetings(payload: dict) -> list[str]:
+    """AllRacing payload → Australian thoroughbred meeting names.
+
+    Only the `horse` section counts (harness and greyhounds reuse venue names,
+    e.g. Newcastle harness), and only `regionName == "Australia"`, so NZ and
+    same-named overseas tracks (Perth UK, Newcastle UK) stay out.
+    """
+    names = []
+    for day in (payload or {}).get("dates") or []:
+        for section in day.get("sections") or []:
+            if str(section.get("raceType") or "").lower() != "horse":
+                continue
+            for meeting in section.get("meetings") or []:
+                if (meeting.get("regionName") == "Australia"
+                        and not meeting.get("isInternational")
+                        and str(meeting.get("name") or "").strip()):
+                    names.append(str(meeting["name"]).strip())
+    return sorted(set(names))
+
+
+def api_day_meetings(runlog: RunLog, day: str) -> list[str]:
+    """AU thoroughbred meetings for one date from AllRacing. [] on failure (logged)."""
+    from claw_sportsbet_form import SportsbetFormFetcher
+    fetcher = SportsbetFormFetcher(delay=fetch_delay(), use_cache=False,
+                                   verbose=False, cache_only=False)
+    try:
+        response = fetcher.session.get(ALL_RACING_URL.format(day=day), timeout=30)
+        payload = response.json() if response.status_code == 200 else None
+    except Exception as exc:  # noqa: BLE001
+        runlog.warn(f"AllRacing API 攞唔到（{type(exc).__name__}: {exc}）")
+        return []
+    if not payload:
+        runlog.warn(f"AllRacing API 回空（{day}）")
+        return []
+    return au_thoroughbred_meetings(payload)
 
 
 def events_by_day(events: list[dict]) -> dict[str, dict[str, dict]]:
@@ -1451,7 +1494,17 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
             target = (review_day + timedelta(days=1)).isoformat()
             runlog.warn(f"NextEvents 冇下一個賽日資料，退回 {target}")
 
-    api_venues = by_day.get(target, {})
+    api_venues = dict(by_day.get(target, {}))
+    # NextEvents is truncated (~30 races): add every AU meeting AllRacing lists for
+    # the day, without going (racecard going is used until NextEvents reaches it).
+    day_list = api_day_meetings(runlog, target)
+    added = [name for name in day_list
+             if not any(_venue_key(name) == _venue_key(v) for v in api_venues)]
+    for name in added:
+        api_venues[name] = {"going": "", "status_codes": [], "races_seen": []}
+    if added:
+        runlog.step("discover", "allracing-added", race_day=target, meetings=added,
+                    reason="NextEvents 只有最近約 30 場；AllRacing 補返當日其餘澳洲場次")
     index = fetch_date_index(runlog, target)
     if not index:
         raise TemporaryFailure(f"{target} 索引頁冇任何場次")
