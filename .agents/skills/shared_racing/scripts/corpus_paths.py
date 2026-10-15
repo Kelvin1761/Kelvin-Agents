@@ -26,6 +26,15 @@ roots is both complete and safe.
 
 Matches the pattern already used by `au_results_ingest.py` and
 `au_paired_significance.py`, and is a no-op for HKJC.
+
+EXCLUSIONS (2026-10-15)
+-----------------------
+AU meetings listed in `resources/au_corpus_exclusions.json` are skipped by
+`meeting_dirs` and `logic_files` (EXP-20261015-04: extracted after the races,
+so page cumulative stats leak the result).  Each call that drops something
+prints one stderr line per process with the count and reasons; the last
+report is in `last_exclusion_report`.  Pass `include_excluded=True` only for
+maintenance/audit tools that must see every folder (e.g. the detector).
 """
 from __future__ import annotations
 
@@ -57,7 +66,39 @@ def corpus_roots(root: Path | str) -> list[Path]:
     return roots
 
 
-def logic_files(root: Path | str, pattern: str = "Race_*_Logic.json") -> list[str]:
+last_exclusion_report: dict = {}
+_reported: set = set()
+
+
+def _exclusions_for_root(root: Path | str) -> dict[str, dict]:
+    if Path(root).name.lower() != "au_racing":
+        return {}
+    here = str(Path(__file__).resolve().parent)
+    if here not in sys.path:
+        sys.path.insert(0, here)
+    from corpus_exclusions import load_exclusions
+
+    return load_exclusions("au")
+
+
+def _note_exclusions(root: Path | str, dropped: list[str], exclusions: dict) -> None:
+    reasons: dict[str, int] = {}
+    for name in dropped:
+        reason = exclusions[name].get("reason", "?")
+        reasons[reason] = reasons.get(reason, 0) + 1
+    last_exclusion_report.clear()
+    last_exclusion_report.update({"root": str(root), "excluded": sorted(dropped),
+                                  "reasons": reasons})
+    key = (str(root), tuple(sorted(dropped)))
+    if dropped and key not in _reported:
+        _reported.add(key)
+        detail = "、".join(f"{r} ×{n}" for r, n in sorted(reasons.items()))
+        print(f"corpus_paths：語料排除 {len(dropped)} 個場次（{detail}；"
+              "見 shared_racing/resources/au_corpus_exclusions.json）", file=sys.stderr)
+
+
+def logic_files(root: Path | str, pattern: str = "Race_*_Logic.json",
+                include_excluded: bool = False) -> list[str]:
     """Every scored-race file under native roots plus verified catalog WARM.
 
     Sorted newest-meeting-first so a caller taking the first N gets the most
@@ -77,6 +118,12 @@ def logic_files(root: Path | str, pattern: str = "Race_*_Logic.json") -> list[st
                     if Path(path).parent.name != logical_name}
             for path in glob.glob(str(meeting / pattern)):
                 seen.setdefault(path, None)
+    if not include_excluded:
+        exclusions = _exclusions_for_root(root)
+        if exclusions:
+            dropped = {Path(p).parent.name for p in seen if Path(p).parent.name in exclusions}
+            seen = {p: v for p, v in seen.items() if Path(p).parent.name not in exclusions}
+            _note_exclusions(root, sorted(dropped), exclusions)
     # Meeting folder name starts with the date, so sorting on it sorts by date.
     return sorted(seen, key=lambda p: (Path(p).parent.name, Path(p).name), reverse=True)
 
@@ -92,7 +139,7 @@ def _au_catalog_meetings(root: Path | str) -> list[tuple[str, Path]]:
     return catalog_meeting_locations(domain="au")
 
 
-def meeting_dirs(root: Path | str) -> list[Path]:
+def meeting_dirs(root: Path | str, include_excluded: bool = False) -> list[Path]:
     """Every meeting folder under HOT plus verified catalog-backed WARM.
 
     AU is inferred from its canonical root name.  Once any settled meeting is
@@ -112,4 +159,11 @@ def meeting_dirs(root: Path | str) -> list[Path]:
     for logical_name, path in _au_catalog_meetings(root):
         if MEETING_NAME.match(logical_name):
             out[logical_name] = path
+    if not include_excluded:
+        exclusions = _exclusions_for_root(root)
+        if exclusions:
+            dropped = sorted(k for k in out if k in exclusions)
+            for k in dropped:
+                del out[k]
+            _note_exclusions(root, dropped, exclusions)
     return [out[k] for k in sorted(out, reverse=True)]

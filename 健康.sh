@@ -253,6 +253,16 @@ for p in au hkjc; do
   else note_bad "$P 有欄位唔合格"; echo "$o" | sed -n '/唔合格/,/^$/p' | sed 's/^/      /'; fi
 done
 
+# ── AU 語料有冇新嘅賽後抽場次 ──────────────────────────────────────────────
+# EXP-20261015-04：同日賽後抽嘅場次，頁面累積統計（Career/Track/Distance…）已計埋
+# 賽果。已知嗰 7 個喺 au_corpus_exclusions.json 排除；呢度捉「新出現、未排除」嗰啲。
+hdr "AU 語料賽後抽偵測（頁面累積統計洩漏）"
+o=$("$PY" .agents/skills/shared_racing/scripts/corpus_exclusions.py --platform au --check 2>/dev/null)
+s=$?
+if [ $s -eq 0 ] && [ -n "$o" ]; then ok "$(echo "$o" | sed -n 2p)"
+elif [ $s -eq 1 ]; then note_bad "有新嘅賽後抽場次未排除"; echo "$o" | grep -E '未排除|重抽' | sed 's/^/      /'
+else warn "AU 語料讀唔到（跳過）"; fi
+
 # ── 欄位健康趨勢 ─────────────────────────────────────────────────────────
 # 上面嗰段同一份固定基準比，捉死欄位；呢段逐週記錄、同前 4 週比，捉「慢慢死」，
 # 仲睇埋 evidence state 同結果 CSV（上面兩樣都睇唔到）。只警告，唔算 ❌。
