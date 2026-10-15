@@ -266,6 +266,9 @@ class SportsbetNBAExtractor:
                 sportsbook = state.get("entities", {}).get("sportsbook", {})
                 
                 extracted = self._parse_normalized_markets(sportsbook)
+                # Ledger-only: Sportsbet external ids, so a published SGM can be
+                # re-priced with Sportsbet's public multi-pricer (no login).
+                self._sgm_context = self._sgm_pricing_context(sportsbook, match.get("event_id"))
                 
                 if extracted:
                     # Format matching Wong Choi
@@ -291,6 +294,53 @@ class SportsbetNBAExtractor:
                 print(f"   ⚠️ 讀取時發生錯誤: {e}")
                 
         return all_odds_data
+
+    @staticmethod
+    def _sgm_pricing_context(sportsbook, event_id):
+        """External ids for /apigw/multi-pricer/combinations/price.
+
+        Returns {"event": {...ids}, "outcomes": {market name: {selection: ids}}}
+        with selection names built exactly like _parse_normalized_markets.
+        """
+        try:
+            events = sportsbook.get("events", {}) or {}
+            event = events.get(str(event_id)) or {}
+            competition = (sportsbook.get("competitions", {}) or {}).get(
+                str(event.get("competitionId"))) or {}
+            klass = (sportsbook.get("classes", {}) or {}).get(
+                str(competition.get("classId"))) or {}
+            outcomes_db = sportsbook.get("outcomes", {}) or {}
+            outcomes = {}
+            for market in (sportsbook.get("markets", {}) or {}).values():
+                if market.get("eventId") not in (None, event_id) and str(market.get("eventId")) != str(event_id):
+                    continue
+                ids = {}
+                for out_id in market.get("outcomeIds", []):
+                    out = outcomes_db.get(str(out_id), {})
+                    name = out.get("name", "")
+                    hc = out.get("handicap")
+                    if hc and isinstance(hc, dict):
+                        name = f"{name} {hc.get('display') or hc.get('value')}"
+                    if name and out.get("externalId") and market.get("externalId"):
+                        ids[name.strip()] = {
+                            "market_external_id": market["externalId"],
+                            "outcome_external_id": out["externalId"],
+                        }
+                if ids:
+                    outcomes[market.get("name", "")] = ids
+            return {
+                "event": {
+                    "class_external_id": klass.get("externalId"),
+                    "competition_external_id": competition.get("externalId"),
+                    "event_external_id": event.get("externalId"),
+                    "same_game_multi": any(
+                        m.get("sameGameMultiEnabled") for m in (sportsbook.get("markets", {}) or {}).values()
+                    ),
+                },
+                "outcomes": outcomes,
+            }
+        except Exception:  # noqa: BLE001 - ledger metadata must never break extraction
+            return {"event": {}, "outcomes": {}}
 
     def _parse_normalized_markets(self, sportsbook):
         """
@@ -501,6 +551,14 @@ class SportsbetNBAExtractor:
 
         # ── Player Props ─────────────────────────────────────────────
         pp = {"points": {}, "rebounds": {}, "assists": {}, "threes_made": {}}
+        two_way = {"points": {}, "rebounds": {}, "assists": {}, "threes_made": {}}
+        sgm_ctx = getattr(self, "_sgm_context", None) or {"event": {}, "outcomes": {}}
+        sgm_ids = {"points": {}, "rebounds": {}, "assists": {}, "threes_made": {}}
+
+        def _remember_ids(category, player, line, market_name, selection_name):
+            ids = (sgm_ctx.get("outcomes") or {}).get(market_name, {}).get(selection_name)
+            if ids:
+                sgm_ids[category].setdefault(player, {})[str(line)] = ids
         cat_map = {
             "Points": "points", "Rebounds": "rebounds",
             "Assists": "assists", "Threes Made": "threes_made",
@@ -524,17 +582,31 @@ class SportsbetNBAExtractor:
                 if type_a_match:
                     # ─── TYPE A: Individual Player O/U ────────────────
                     player_name = type_a_match.group(1).strip()
+                    sides = {}
                     for sel_name, odds in selections.items():
-                        # Only take "Over" lines, skip "Under"
-                        if "Under" in sel_name:
-                            continue
                         # Extract line from selection name: "Over +22.5" → "22.5"
                         line_match = re.search(r'([+-]?\d+\.5)', sel_name)
+                        if line_match:
+                            side = (
+                                "under" if "Under" in sel_name
+                                else "over" if "Over" in sel_name
+                                else None
+                            )
+                            if side:
+                                sides.setdefault(line_match.group(1).replace("+", ""), {})[side] = str(odds)
+                        # player_props keeps only "Over" lines (picks are unchanged);
+                        # the Under is kept separately for market de-vig only.
+                        if "Under" in sel_name:
+                            continue
                         if line_match:
                             line_val = line_match.group(1).replace("+", "")
                             if player_name not in pp[mapped_cat]:
                                 pp[mapped_cat][player_name] = {"lines": {}}
                             pp[mapped_cat][player_name]["lines"][str(line_val)] = str(odds)
+                            _remember_ids(mapped_cat, player_name, line_val, market_name, sel_name)
+                    for line_val, pair in sides.items():
+                        if "over" in pair and "under" in pair:
+                            two_way[mapped_cat].setdefault(player_name, {})[line_val] = pair
 
                 elif type_b_match:
                     # ─── TYPE B: Multi-Player Milestone ───────────────
@@ -548,8 +620,28 @@ class SportsbetNBAExtractor:
                         if clean_player not in pp[mapped_cat]:
                             pp[mapped_cat][clean_player] = {"lines": {}}
                         pp[mapped_cat][clean_player]["lines"][str(line_val)] = str(odds)
+                        _remember_ids(mapped_cat, clean_player, line_val, market_name, player_name)
 
         formatted["player_props"] = pp
+        # Market-evaluation data only; no report/pick code reads this key.
+        # "{Player} - Points" O/U markets (Over/Under at X.5) are priced on
+        # both sides, so they can be de-vigged; Over X.5 is the same event as
+        # the milestone "X+0.5+".  The "To Score N+" milestone ladders list
+        # player names only (no Under / "No" side), so a milestone price can
+        # never be de-vigged per line.
+        formatted["player_props_two_way"] = {
+            category: players for category, players in two_way.items() if players
+        }
+        # Ledger-only: ids to quote Sportsbet's own SGM price for a combo.
+        formatted["sgm_pricing"] = {
+            **(sgm_ctx.get("event") or {}),
+            "outcomes": {category: players for category, players in sgm_ids.items() if players},
+        }
+        formatted["two_way_capture"] = {
+            "version": 1,
+            "ou_pairs": sum(len(lines) for players in two_way.values() for lines in players.values()),
+            "milestone_ladders": "one_sided_no_devig",
+        }
         return formatted
 
     def run(self) -> int:

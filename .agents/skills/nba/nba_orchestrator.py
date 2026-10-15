@@ -765,6 +765,17 @@ def main():
                 "reason": "player_markets_not_open",
                 "waiting_games": sorted(results["waiting"]),
             }, ensure_ascii=False))
+        else:
+            # Machine-readable outcome so the scheduler can freeze the games
+            # that did pass instead of losing the whole day's prediction.
+            print("NBA_PIPELINE_RESULT: " + json.dumps({
+                "status": "games_blocked",
+                "reason": "per_game_firewall_or_pipeline_failure",
+                "passed_games": sorted(results["passed"]),
+                "blocked_games": sorted(results["failed"]),
+                "waiting_games": sorted(results["waiting"]),
+                "sgm_ok": bool(sgm_ok),
+            }, ensure_ascii=False))
         sys.exit(75 if waiting_only else 1)
     sys.exit(0)
 

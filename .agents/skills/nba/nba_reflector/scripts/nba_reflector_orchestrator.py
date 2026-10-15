@@ -873,7 +873,19 @@ def main() -> None:
     parser.add_argument("--skip-fetch", action="store_true", help="Reuse existing Results/Verification files if present")
     parser.add_argument("--skip-pbp", action="store_true", help="Do not auto-fetch play-by-play")
     parser.add_argument("--skip-ml", action="store_true", help="Skip historical ML evaluation")
+    parser.add_argument(
+        "--exclude-games",
+        default="",
+        help="Comma-separated game tags written off as no_prediction; never recorded or trained on.",
+    )
+    parser.add_argument(
+        "--no-record",
+        action="store_true",
+        help="Whole date is no_prediction: fetch/verify results for the archive, but write "
+        "nothing to the reflector DB and skip ML evaluation.",
+    )
     args = parser.parse_args()
+    excluded_games = {tag.strip() for tag in args.exclude_games.split(",") if tag.strip()}
 
     analysis_date = args.date
     us_game_date = analysis_to_us_date(analysis_date)
@@ -906,18 +918,27 @@ def main() -> None:
             print("📉 PBP trigger not hit — skipping play-by-play fetch.")
 
     rows = load_prediction_rows(target_dir, analysis_date, us_game_date)
-    if not rows:
+    rows = [row for row in rows if row.get("game_tag") not in excluded_games]
+    if not rows and not args.no_record:
         raise SystemExit("❌ No analysable NBA reports found in target directory.")
     verification_index = load_verification_index(verification_path)
     rows = attach_verification(rows, verification_index)
 
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    ensure_db(conn)
-    upserted = upsert_rows(conn, rows)
-    snapshot_path = write_training_snapshot(rows, target_dir, analysis_date)
-    ml_summary = None if args.skip_ml else evaluate_historical_model(conn, analysis_date, target_dir)
-    conn.close()
+    if args.no_record:
+        # no_prediction day: reports were never frozen pre-tip, so they are not
+        # evidence. Results are archived; nothing reaches the DB or ML.
+        upserted = 0
+        snapshot_path = write_training_snapshot([], target_dir, analysis_date)
+        ml_summary = None
+        print("🚫 no_prediction date: reflector DB and ML evaluation skipped.")
+    else:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        ensure_db(conn)
+        upserted = upsert_rows(conn, rows)
+        snapshot_path = write_training_snapshot(rows, target_dir, analysis_date)
+        ml_summary = None if args.skip_ml else evaluate_historical_model(conn, analysis_date, target_dir)
+        conn.close()
 
     run_summary = {
         "analysis_date": analysis_date,
@@ -930,6 +951,8 @@ def main() -> None:
         "rows_recorded": upserted,
         "training_snapshot": snapshot_path,
         "ml_summary": ml_summary,
+        "no_prediction": bool(args.no_record),
+        "excluded_games": sorted(excluded_games),
     }
     summary_path = os.path.join(target_dir, f"Reflector_Run_Summary_{analysis_date}.json")
     with open(summary_path, "w", encoding="utf-8") as f:

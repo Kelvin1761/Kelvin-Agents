@@ -24,6 +24,7 @@ import argparse
 import json
 import io
 import time
+from datetime import datetime, timezone
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -166,20 +167,50 @@ def extract_player_stats(boxscore_data):
     return players
 
 
-def process_game(game):
-    """Process a single game from the scoreboard."""
+def _boxscore_points(boxscore, team_key):
+    team = ((boxscore or {}).get('boxScoreTraditional') or {}).get(team_key) or {}
+    points = (team.get('statistics') or {}).get('points')
+    return points if isinstance(points, (int, float)) else None
+
+
+def process_game(game, *, boxscore_may_settle=False):
+    """Process a single game from the scoreboard.
+
+    ScoreboardV2 can stay stale for days (2026-10-10 preseason: every game
+    still "6:30 pm ET" with PTS null on 10-15) while BoxScoreTraditionalV3
+    already has the final.  When the scoreboard has no score and the caller
+    says the game date is safely in the past (``boxscore_may_settle``), the
+    box score's team points are used and the status is marked
+    ``Final (boxscore)``.  Otherwise a missing score stays unresolved: the
+    status keeps the scoreboard text, which downstream treats as not final.
+    """
     game_id = game.get('gameId', '')
     home = game.get('homeTeam', {})
     away = game.get('awayTeam', {})
-    
+
     home_abbr = home.get('teamTricode', '?')
     away_abbr = away.get('teamTricode', '?')
     home_score = home.get('score', 0)
     away_score = away.get('score', 0)
-    
+    status = game.get('gameStatusText', '')
+
+    # Fetch detailed box score
+    print(f"  📊 擷取 {away_abbr} @ {home_abbr} Box Score...")
+    boxscore = fetch_boxscore(game_id)
+
+    if home_score is None or away_score is None:
+        box_home = _boxscore_points(boxscore, 'homeTeam')
+        box_away = _boxscore_points(boxscore, 'awayTeam')
+        if boxscore_may_settle and box_home is not None and box_away is not None:
+            home_score, away_score = box_home, box_away
+            status = 'Final (boxscore)'
+        else:
+            print(f"    ⚠️ 冇比分（scoreboard: {status}）— 當未完場處理")
+
+    scored = home_score is not None and away_score is not None
     result = {
         'game_id': game_id,
-        'status': game.get('gameStatusText', ''),
+        'status': status,
         'away': {
             'team': away_abbr,
             'name': away.get('teamName', '?'),
@@ -191,21 +222,17 @@ def process_game(game):
             'score': home_score,
         },
         'final_score': f"{away_abbr} {away_score} - {home_score} {home_abbr}",
-        'margin': abs(home_score - away_score),
-        'blowout': abs(home_score - away_score) >= 20,
-        'winner': home_abbr if home_score > away_score else away_abbr,
+        'margin': abs(home_score - away_score) if scored else None,
+        'blowout': scored and abs(home_score - away_score) >= 20,
+        'winner': (home_abbr if home_score > away_score else away_abbr) if scored else None,
     }
-    
-    # Fetch detailed box score
-    print(f"  📊 擷取 {away_abbr} @ {home_abbr} Box Score...")
-    boxscore = fetch_boxscore(game_id)
-    
+
     if boxscore:
         players = extract_player_stats(boxscore)
         result['players'] = players
-        
+
         # Flag players with low minutes (potential injury/foul trouble)
-        low_min_players = [p for p in players if p['starter'] and 
+        low_min_players = [p for p in players if p['starter'] and
                           _parse_minutes(p['minutes']) < 20]
         if low_min_players:
             result['low_minutes_alert'] = [
@@ -214,7 +241,7 @@ def process_game(game):
             ]
     else:
         result['players'] = []
-    
+
     return result
 
 
@@ -272,9 +299,17 @@ def main():
         sys.exit(1)
 
     # Process each game
+    # A box score may stand in for a stale scoreboard only once the US game
+    # date is at least two days old (no game can still be in progress).
+    try:
+        us_day = datetime.strptime(game_date_file, '%Y-%m-%d').date()
+        boxscore_may_settle = (datetime.now(timezone.utc).date() - us_day).days >= 2
+    except ValueError:
+        boxscore_may_settle = False
+
     results = []
     for game in games:
-        result = process_game(game)
+        result = process_game(game, boxscore_may_settle=boxscore_may_settle)
         results.append(result)
         
         score = result['final_score']
