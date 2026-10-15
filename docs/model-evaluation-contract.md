@@ -50,7 +50,7 @@ CI [−0.0085, +0.0078] —— 嗰個 terminal「改善」係 50 場嘅噪音。
 ### 8. 兩邊都 refit（2026-10-15 加）—— 管會改變 leaf 資訊量嘅候選
 
 > 呢次係**獨立改把尺**，冇包含任何候選 model／feature／weight 改動。
-> 實驗記錄：`EXP-20261015-08`。判決器：`model_evaluation_decision.evaluate_with_refit_arms`。
+> 實驗記錄：`EXP-20261015-20`。判決器：`model_evaluation_decision.evaluate_with_refit_arms`。
 
 **問題**：之前一個候選只會放入**現行權重**度比較。但現行權重係喺舊 leaf 之下 fit 出嚟：
 修好之前個 leaf 嘈，權重就會偏細；其他維度亦會頂替佢攞走一部分權重。
