@@ -170,15 +170,15 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-10-15 18:12 AEDT`
-- Git commit：`7a962be5`
+- 生成時間：`2026-10-15 19:37 AEDT`
+- Git commit：`58e77c99`
 - Scoring contract：`au/raw-matrix-preparation-v2`
 - `scoring.py` 指紋：`1a3db66feadc`
 - `matrix_mapper.py` 指紋：`9b2553daebb9`
 - `renderer.py` 指紋：`ee5a66f28254`
 - `dimensions.py` 指紋：`3ae64d7d52a4`
 - `full_time_speed.py` 指紋：`cde292260587`
-- `engine_core.py` 指紋：`9d7a27ea676f`
+- `engine_core.py` 指紋：`1c10bc7cd756`
 - 實測樣本：**500 場、4988 匹馬**，由 `2026-10-03 Gold Coast Race 1-8` 到 `2026-10-15 Warrnambool Race 1-8`（跳過 0 個舊格式檔案）
 
 重新生成：

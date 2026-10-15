@@ -20,6 +20,7 @@ Sportsbet 冇呢兩個問題：
 from __future__ import annotations
 
 import json
+import re
 import os
 import sys
 from copy import deepcopy
@@ -173,6 +174,65 @@ def append_snapshot(path, *, key, name, kind, person_id, fetched_at,
     snapshot.parent.mkdir(parents=True, exist_ok=True)
     with snapshot.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")) + "\n")
+
+
+_SNAPSHOT_KEY = re.compile(r'"key"\s*:\s*"([^"]*)"')
+
+
+def load_as_of(race_date, *, keys=None, cache=None, path=None):
+    """賽事日期 D 嘅 point-in-time 騎練統計：每個人用**嚴格早過 D**（悉尼 00:00）
+    最後一次攞到嘅版本。形狀同 `load_cache()` 一樣（`{key: {"ly", "stats", …}}`）。
+
+    點解要有（EXP-20261015-04，L1 leak 5）：`write_meeting` 一直用 cache 嘅
+    **最新** `ly`，唔理 `fetched_at` 係咪喺 D 之後。live 賽前抽取冇事（cache
+    一定早過開跑），但重抽舊場次就會用 D 之後先 refresh 嘅 12 個月往績 —— memory
+    「騎練率有前視」量過，單一 2026-08 快照令舊場次偏高 +1.0~1.75pp。
+
+    候選：`AU_Sportsbet_People_Snapshots.jsonl` 每一行（append-only，2026-08-09 起），
+    加埋 cache 本身嗰條（佢就係最近一次 fetch；早過 D 就一定係 D 前最後一次 ——
+    2026-08-02 嗰批 cache 冇對應快照，靠呢條先唔會漏）。
+    **冇 D 前版本 → 唔回傳（呼叫者寫 `-` = 中性），絕對唔可以跌返 current cache。**
+    """
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "au_wong_choi_auto" / "scripts"))
+    from au_racing_engine import pit
+
+    cutoff = pit.day_start_utc(race_date)
+    wanted = set(keys) if keys is not None else None
+    best = {}
+
+    def consider(key, captured, stats, name="", kind="", pid=""):
+        if wanted is not None and key not in wanted:
+            return
+        t = pit.parse_timestamp(captured)
+        if t is None or t >= cutoff or not stats:
+            return
+        cur = best.get(key)
+        if cur is None or t > cur[0]:
+            best[key] = (t, {"name": name, "id": str(pid), "kind": kind, "stats": stats,
+                             "ly": ly_token(stats), "fetched_at": t.isoformat(timespec="seconds"),
+                             "as_of": str(race_date)[:10]})
+
+    if cache is None:
+        cache = load_cache(path)
+    for key, entry in (cache or {}).items():
+        consider(key, (entry or {}).get("fetched_at"), (entry or {}).get("stats"),
+                 entry.get("name", ""), entry.get("kind", ""), entry.get("id", ""))
+    snap = snapshot_path(path)
+    if snap.exists():
+        with snap.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                # 便宜過濾：key 唔啱就唔 parse 成行 JSON（檔案 >150MB）。
+                if wanted is not None:
+                    m = _SNAPSHOT_KEY.search(line)
+                    if m and m.group(1) not in wanted:
+                        continue
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                consider(rec.get("key", ""), rec.get("captured_at"), rec.get("stats"),
+                         rec.get("name", ""), rec.get("kind", ""), rec.get("id", ""))
+    return {k: v for k, (_t, v) in best.items()}
 
 
 def ly_token(stats):
