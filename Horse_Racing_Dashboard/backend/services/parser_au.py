@@ -435,6 +435,39 @@ def _parse_au_scoreline(block: str) -> tuple[Optional[float], Optional[int]]:
         return None, None
 
 
+# 市場參考層（D1，2026-10-14）：引擎 `market_reference.horse_line` 出嘅一行，
+#   📊 市場參考（最早賽前盤 10-14 00:43 · 去水 · 非模型、唔入評分）: 市場第 1/10
+#   · 勝 43.5% · 位 79.3%（3 位） · 推算前三 79.4% · 前四 87.6%
+# 純顯示，唔參與 dashboard 任何排序。改格式要兩邊一齊改（test_parsers 有釘）。
+AU_MARKET_REF_RE = re.compile(r"^📊 市場參考（(?P<source>[^·）]+?)\s*·[^）]*）:\s*(?P<body>.+)$", re.M)
+
+
+def _parse_au_market_reference(block: str) -> dict:
+    out: dict = {}
+    m = AU_MARKET_REF_RE.search(block)
+    if not m:
+        return out
+    body = m.group("body")
+    out["market_reference_source"] = m.group("source").strip()
+    rm = re.search(r"市場第\s*(\d+)/(\d+)", body)
+    if rm:
+        out["market_rank"] = int(rm.group(1))
+        out["market_priced_runners"] = int(rm.group(2))
+    for key, pattern in (
+        ("market_win_prob", r"勝\s*([\d.]+)%"),
+        ("market_place_prob", r"位\s*([\d.]+)%"),
+        ("market_top3_prob", r"推算前三\s*([\d.]+)%"),
+        ("market_top4_prob", r"前四\s*([\d.]+)%"),
+    ):
+        pm = re.search(r"(?:^|·)\s*" + pattern, body)
+        if pm:
+            out[key] = round(float(pm.group(1)) / 100.0, 4)
+    pk = re.search(r"位\s*[\d.]+%（(\d+)\s*位）", body)
+    if pk:
+        out["market_places_paid"] = int(pk.group(1))
+    return out
+
+
 def _parse_au_confidence_score(block: str) -> Optional[float]:
     """信心分 from the 參考分 line. Explicitly NOT part of the six-dimension
     formula -- the file says so -- so it is surfaced as context, not a score."""
@@ -750,6 +783,8 @@ def parse_au_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAn
                 else:
                     _mp = _v
 
+    market_ref = _parse_au_market_reference(block)
+
     ability_score, rank = _parse_au_scoreline(block)
     evidence_dims, evidence_total = _parse_au_evidence_confidence(block)
 
@@ -758,6 +793,7 @@ def parse_au_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAn
         horse_name=horse_name,
         market_win_odds=_mw,
         market_place_odds=_mp,
+        **market_ref,
         ability_score=ability_score,
         rank=rank,
         confidence_score=_parse_au_confidence_score(block),

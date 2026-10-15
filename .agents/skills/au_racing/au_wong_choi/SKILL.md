@@ -219,3 +219,22 @@ python3 .agents/skills/au_racing/sb_browser_bridge.py --port 8787
 獨立 JSON，唔碰 `*Facts.md` 同 Logic 嘅 `_data`（引擎只讀嗰兩樣）。
 `test_odds_capture.py` 有一條測試掃 `engine_core.py`，見到 `Odds.json` /
 `FixedWin` / `FixedPlace` 就會紅。
+
+### 市場參考層（Decision D1，Kelvin 2026-10-14 批准）
+
+R1 / EXP-20261014 Benter combiner：模型對最早賽前市場**冇增量資訊**
+（α −0.112，CI 上限 +0.011）。所以方法論寫明：
+
+- **市場價永遠唔入評分或排名。** 市場資訊只喺**獨立顯示層**出現，同模型分開標明。
+- 報告每匹馬喺 `💰 市場盤（賽前）` 下面多一行
+  `📊 市場參考（最早賽前盤 MM-DD HH:MM · 去水 · 非模型、唔入評分）`：
+  市場排名、去水勝率（**power**；X1：AU 贏盤最佳，Δlogloss −0.0075 CI 唔包 0，
+  proportional 低估 <$2.0 大熱 11.4pp）、去水位率（**odds-ratio**，按派彩位數；
+  power 喺位盤過度修正）、**市場推算**前三／前四（discounted Harville，
+  λ 0.754／0.649／0.549，EXP-20261014-16）。
+- 用 `odds_history.json` **最早**快照（冇就用分析時 Formguide 價）。去水喺成個盤做，
+  退出馬之後按今日名單重新歸一；盤同名單唔一致時位率唔計。
+- 去水一律經共用 `shared_racing/scripts/devig.py`；顯示層唔准自己寫 1/odds。
+- 實作喺 `au_racing_engine/market_reference.py`，只有 `renderer.py` 可以 import；
+  `test_market_reference.py` 用 AST 守住，並證明有冇賠率 `python_auto`／CSV
+  bit-identical。dashboard `parser_au` 讀返做 `market_win_prob` 等欄位。

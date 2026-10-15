@@ -13,6 +13,8 @@ from pathlib import Path
 from .scoring import clip_score, score_band
 from .full_time_speed import render_detail as render_full_time_detail
 from .matrix_mapper import MATRIX_FORMULAS
+# 市場參考層：純顯示（D1）。只有 renderer 可以 import，引擎／評分唔准。
+from .market_reference import build_market_reference, horse_line as _market_ref_line, method_note as _market_ref_note
 
 
 ABILITY_LABEL = "綜合戰力分"
@@ -205,10 +207,13 @@ def _pace_figure_coverage(horses: dict) -> dict:
     }
 
 
-def render_race_markdown(logic_data: dict) -> str:
+def render_race_markdown(logic_data: dict, meeting_dir: Path | None = None) -> str:
     verdict = ensure_verdict(logic_data)
     race = logic_data.get("race_analysis", {})
     horses = logic_data.get("horses", {})
+    # 市場參考（D1）：喺排名**已經定咗之後**先計，只讀唔寫 —— 唔會郁到
+    # python_auto、_data 或者 CSV。`meeting_dir` 用嚟搵 odds_history.json 最早快照。
+    market_ref = build_market_reference(horses, meeting_dir, race.get("race_number"))
     encoded_registry = base64.b64encode(json.dumps(registry_snapshot(), sort_keys=True,
         separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode()).decode("ascii")
     time_metadata = {"schema": "au/full-time-v1", "race": race.get("full_time_speed"), "horses": {
@@ -224,8 +229,11 @@ def render_race_markdown(logic_data: dict) -> str:
         "## [第二部分] 🛡️ 戰馬矩陣剖析",
         "",
     ]
+    if market_ref.get("runners") or market_ref.get("note"):
+        lines.extend([_market_ref_note(market_ref), ""])
     for horse_num, horse in _horses_by_rank(horses):
-        lines.extend(_render_horse_section(horse_num, horse, horse["python_auto"]))
+        lines.extend(_render_horse_section(horse_num, horse, horse["python_auto"],
+                                           market_line=_market_ref_line(market_ref, horse_num)))
     lines.extend(_render_verdict(verdict, horses, race))
     return "\n".join(lines).strip() + "\n"
 
@@ -301,7 +309,7 @@ def write_race_outputs(logic_path: Path, logic_data: dict) -> tuple[Path, Path]:
     stem = logic_path.stem.replace("_Logic", "")
     md_path = logic_path.with_name(f"{stem}_Auto_Analysis.md")
     csv_path = logic_path.with_name(f"{stem}_Auto_Scoring.csv")
-    _atomic_write_text(md_path, render_race_markdown(logic_data))
+    _atomic_write_text(md_path, render_race_markdown(logic_data, meeting_dir=logic_path.parent))
     _atomic_write_text(csv_path, render_race_csv(logic_data))
     return md_path, csv_path
 
@@ -755,7 +763,7 @@ def _matrix_why(key, score, auto):
     return "；".join(bits) + f"；加權 {score:.1f} 分屬{band}。"
 
 
-def _render_horse_section(horse_num, horse, auto):
+def _render_horse_section(horse_num, horse, auto, market_line=None):
     jockey = _display_text(horse.get("jockey"))
     trainer = _display_text(horse.get("trainer"))
     weight = _display_weight(horse.get("weight"))
@@ -788,6 +796,8 @@ def _render_horse_section(horse_num, horse, auto):
         if _po:
             bits.append(f"位 ${float(_po):.2f}")
         lines += [f"💰 市場盤（賽前）: {' / '.join(bits)}　（唔入評分）", ""]
+    if market_line:
+        lines += [market_line, ""]
     gear = horse.get("gear_change")
     if gear:
         drop = "OFF" in gear.upper()
