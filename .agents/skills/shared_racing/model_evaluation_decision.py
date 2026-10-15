@@ -474,3 +474,127 @@ def holm_adjust(p_values: Mapping[str, float]) -> dict[str, float]:
         running = max(running, min(1.0, (m - rank) * p))
         adjusted[name] = running
     return adjusted
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Contract §8 (2026-10-15): both arms refit.
+#
+# A candidate that changes how informative a leaf is (a fix, a new leaf, a
+# coverage change) was judged only against the live weights — weights fitted
+# while that leaf was still broken. A fixed sectional can lose that test simply
+# because its weight is too small, or because form_score still carries the
+# weight it took over while sectional was broken. So such a candidate is also
+# judged with each side given its own weights by ONE pre-registered procedure:
+#
+#   A0 baseline leaves + live weights      A1 candidate leaves + live weights
+#   B0 baseline leaves + walk-forward fit  B1 candidate leaves + walk-forward fit
+#
+#   fixed arm   A1 vs A0   (fixed_rule)       — can it ship on live weights?
+#   refit arm   B1 vs B0   (walk_forward_oos) — is the feature itself better?
+#   live guard  B1 vs A0   (walk_forward_oos) — the refit package must not
+#                                               regress what is live
+#   stale       B0 vs A0   (report only)      — are the live weights stale?
+#
+# B1 vs A0 is NOT the credit for the candidate: if B0 alone beats A0, that gain
+# belongs to the refit, not to the fix. Two arms are two shots at a pass, so
+# they are Holm-adjusted as one family; an "equal weights" arm is diagnostic
+# only and is never a verdict (EXP-20261010-06: neutral Good −6.99pp).
+# ═══════════════════════════════════════════════════════════════════════════
+
+WIN_VERDICTS = (CandidateVerdict.PRIMARY_WIN.value, CandidateVerdict.RANKING_WIN.value)
+LIVE_GUARD_FAILURES = ("primary_regression", "ranking_metric_harm")
+
+
+def _arm_p_value(verdict: Mapping) -> float:
+    """Smallest p among the metrics the arm's WIN actually rests on (1.0 if no WIN)."""
+    if verdict.get("verdict") not in WIN_VERDICTS:
+        return 1.0
+    detail = verdict.get("detail") or {}
+    if verdict["verdict"] == CandidateVerdict.PRIMARY_WIN.value:
+        names, pool = detail.get("winning_metrics", []), detail.get("primary", {})
+    else:
+        names, pool = detail.get("ci_supported_metrics", []), detail.get("ranking", {})
+    values = [float(pool[name]["p_value"]) for name in names if name in pool]
+    return min(values) if values else 1.0
+
+
+def evaluate_with_refit_arms(
+    *,
+    domain: str,
+    dates: list[str],
+    live_baseline_rows: list[Mapping[str, float | bool | None]],
+    live_candidate_rows: list[Mapping[str, float | bool | None]],
+    refit_baseline_rows: list[Mapping[str, float | bool | None]],
+    refit_candidate_rows: list[Mapping[str, float | bool | None]],
+    baseline_refit_procedure_hash: str,
+    candidate_refit_procedure_hash: str,
+    leakage_audit_passed: bool,
+    alpha: float = 0.05,
+    **full_record_kwargs,
+) -> dict:
+    """Contract §8 verdict over the four arms (see module note above).
+
+    Every rows list must cover the same races in the same order as ``dates``.
+    The refit rows must be walk-forward predictions (each meeting scored by a
+    fit that saw only earlier meetings) produced by the same procedure for both
+    sides — same windows, warm-up, draw budget, seed, objective and fallback —
+    which the caller proves by passing the procedure hash for each side.
+    """
+    if not (len(dates) == len(live_baseline_rows) == len(live_candidate_rows)
+            == len(refit_baseline_rows) == len(refit_candidate_rows)):
+        return _fail("race_count_changed")
+    if not baseline_refit_procedure_hash or (
+            baseline_refit_procedure_hash != candidate_refit_procedure_hash):
+        return _fail("refit_procedure_not_symmetric", detail={
+            "baseline": baseline_refit_procedure_hash,
+            "candidate": candidate_refit_procedure_hash,
+        })
+
+    def judge(mode, base, cand):
+        return evaluate_full_record(
+            domain=domain, mode=mode, dates=dates, baseline_rows=base,
+            candidate_rows=cand, leakage_audit_passed=leakage_audit_passed,
+            **full_record_kwargs)
+
+    arms = {
+        "fixed": judge("fixed_rule", live_baseline_rows, live_candidate_rows),
+        "refit": judge("walk_forward_oos", refit_baseline_rows, refit_candidate_rows),
+    }
+    live_guard = judge("walk_forward_oos", live_baseline_rows, refit_candidate_rows)
+    stale = judge("walk_forward_oos", live_baseline_rows, refit_baseline_rows)
+    for verdict in (*arms.values(), live_guard, stale):
+        if verdict["reason"] in ("unsupported_domain", "leakage_audit_failed",
+                                 "unregistered_ranking_metric", "race_count_changed"):
+            return verdict
+
+    raw_p = {name: _arm_p_value(verdict) for name, verdict in arms.items()}
+    adjusted = holm_adjust(raw_p)
+    detail = {
+        "arms": arms,
+        "live_guard": live_guard,
+        "baseline_weights_stale": stale["verdict"] in WIN_VERDICTS,
+        "stale_check": stale,
+        "arm_p_values": raw_p,
+        "arm_p_holm": adjusted,
+        "refit_procedure_hash": baseline_refit_procedure_hash,
+    }
+
+    def passes(name):
+        return arms[name]["verdict"] in WIN_VERDICTS and adjusted[name] < alpha
+
+    if passes("fixed"):
+        return {"verdict": arms["fixed"]["verdict"], "reason": "fixed_arm_win",
+                "package": "candidate_with_live_weights", "detail": detail}
+    if passes("refit"):
+        if live_guard["reason"] in LIVE_GUARD_FAILURES:
+            return {"verdict": CandidateVerdict.REJECT.value,
+                    "reason": "refit_package_regresses_live",
+                    "package": None, "detail": detail}
+        return {"verdict": arms["refit"]["verdict"], "reason": "refit_arm_win",
+                "package": "candidate_with_refit_weights", "detail": detail}
+    if any(arms[name]["verdict"] in WIN_VERDICTS for name in arms):
+        reason = "arm_multiplicity_not_significant"
+    else:
+        reason = "both_arms_reject"
+    return {"verdict": CandidateVerdict.REJECT.value, "reason": reason,
+            "package": None, "detail": detail}
