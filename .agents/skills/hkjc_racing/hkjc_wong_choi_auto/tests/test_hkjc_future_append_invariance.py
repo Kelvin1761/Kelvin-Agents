@@ -14,7 +14,8 @@
        賽果極端）。
     3. 重新計 D：每個 leaf、維度分、綜合分、名次都要逐位元一樣。
 
-已知洩漏標 `expectedFailure` 並寫明來源同 leaf；修好會 XPASS，嗰陣拆 decorator。
+原本三個已知洩漏（formguide 往績、tier 表、guard fail-open）標 `expectedFailure`；
+EXP-20261015-02 修好，decorator 已拆。
 唔讀外置碟／Drive、唔出網：所有來源用 `mock.patch` 指去 tmp fixture。
 """
 from __future__ import annotations
@@ -408,9 +409,11 @@ class FutureAppendInvarianceTests(unittest.TestCase):
     # ── 每個來源一個 case ──
     # 量度（2026-10-14，呢個 fixture）寫喺每個 expectedFailure 嘅 docstring。
 
-    @unittest.expectedFailure
     def test_formguide_future_runs(self):
-        """LEAK（2026-10-14 呢個測試發現）：HKJC Formguide 往績行冇 as-of 閘。
+        """已修（EXP-20261015-02）：`parse_hkjc_formguide(as_of_date=)` 剔走賽日當日
+        及之後嘅往績行（fail-closed，日期解唔到亦剔）；main() 一律傳 race_date。
+
+        原記錄 —— LEAK（2026-10-14 呢個測試發現）：HKJC Formguide 往績行冇 as-of 閘。
 
         `inject_hkjc_fact_anchors` 嘅 `--race-date` 只用嚟剔馬匹頁 profile
         （`filter_profile_as_of`）同做錨點；`parse_hkjc_formguide` 讀到嘅往績行
@@ -445,7 +448,8 @@ class FutureAppendInvarianceTests(unittest.TestCase):
 
     def test_jockey_trainer_master_stats(self):
         """歷史日期 → `temporal_source_is_safe` 擋住 latest-season 快照
-        （EXP-20260902-03 修正）。非空洞：見 undated case，同一份檔一冇日期就入分。"""
+        （EXP-20260902-03 修正）。非空洞嘅反證喺 `test_pit_replay_contract`：今日／未來
+        日期照用 latest 快照（EXP-20261015-02 之後 undated case 亦已中性）。"""
         self._assert_invariant("master_stats")
 
     def test_general_pre_race_priors(self):
@@ -466,9 +470,11 @@ class FutureAppendInvarianceTests(unittest.TestCase):
         （display-only 欄位，leaf 唔讀）。"""
         self._assert_invariant("profile_history")
 
-    @unittest.expectedFailure
     def test_tier_table(self):
-        """LEAK：temporal guard 把 master stats 換成中性之後，`JockeyScorer` 跌落
+        """已修（EXP-20261015-02）：`score_tier(as_of_date=)` —— 歷史日期而層級表冇
+        `as_of_date` ≤ 賽日嘅版本就中性 60；live（今日或之後）不變。
+
+        原記錄 —— LEAK：temporal guard 把 master stats 換成中性之後，`JockeyScorer` 跌落
         `05_jockey_trainer_tiers.json` —— 一個**冇日期、冇版本**嘅人手表。
         即係歷史回放實際上係用「今日嘅 tier 表」評舊場次；D 之後任何重評都會改 D。
         fixture 量度：jockey_score 最多 +30、trainer_signal 最多 +16.5、綜合分
@@ -476,9 +482,10 @@ class FutureAppendInvarianceTests(unittest.TestCase):
         """
         self._assert_invariant("tier_table")
 
-    @unittest.expectedFailure
     def test_master_stats_when_logic_has_no_meeting_date(self):
-        """LEAK（EXP-20260902-03 嘅形狀仍然存在）：temporal guard **fail-open**。
+        """已修（EXP-20261015-02）：未知賽日 fail-closed（中性）＋ stderr 警告。
+
+        原記錄 —— LEAK（EXP-20260902-03 嘅形狀仍然存在）：temporal guard **fail-open**。
 
         `temporal_source_is_safe` 收到 `race_date=None` 回 True；而 race_date 只由
         Logic 欄位或者資料夾名 `YYYY-MM-DD` 推出（`_meeting_date_for_logic`）。

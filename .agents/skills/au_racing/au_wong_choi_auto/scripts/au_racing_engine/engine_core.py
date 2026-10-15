@@ -13,6 +13,7 @@ from pathlib import Path
 
 from .preparation_cycle import preparation_cycle
 from .full_time_speed import contribution as full_time_contribution
+from . import pit as _pit
 from .dimensions import DIMENSION_SPECS
 
 from .matrix_mapper import (
@@ -475,6 +476,39 @@ def _draw_pool_baseline(peer_cells, fallback):
     return winners / runners
 
 
+DRAW_BIAS_RACES_FILENAME = "au_draw_bias_races.json"
+_DRAW_ASOF_CACHE: dict = {}
+
+
+def _load_draw_bias_matrix_as_of(race_date: str) -> dict:
+    """歷史場次用：只由 `Date < race_date` 嘅賽果重砌檔位矩陣（EXP-20261015-04）。
+
+    `au_draw_bias_matrix.json` 係由**全份**結果 CSV 砌，冇 as-of —— live 冇事
+    （賽果全部早過今場），但回放舊場次就食咗之後嘅賽果（memory「檔位矩陣洩漏入
+    回測」）。calculator 而家另寫一份逐場 sidecar（`au_draw_bias_races.json`，
+    同矩陣同一個目錄），呢度按日期過濾再用**同一個** `build_matrix()` 砌。
+    冇 sidecar → 空矩陣（引擎跌返中性），唔准跌返未過濾嘅全期表。
+    cache key 包埋 sidecar 路徑同 mtime，換咗檔唔會讀到舊結果。
+    """
+    sidecar = DRAW_BIAS_MATRIX_PATH.with_name(DRAW_BIAS_RACES_FILENAME)
+    try:
+        st = sidecar.stat()
+    except OSError:
+        return {}
+    key = (str(sidecar), st.st_mtime_ns, st.st_size, race_date)
+    if key not in _DRAW_ASOF_CACHE:
+        try:
+            from .au_draw_bias_calculator import build_matrix
+            payload = json.loads(sidecar.read_text(encoding="utf-8"))
+            races = [r for r in (payload.get("races") or [])
+                     if str(r.get("date") or "") and str(r["date"]) < race_date]
+            _DRAW_ASOF_CACHE[key] = build_matrix(races) if races else {}
+        except Exception as e:  # noqa: BLE001
+            print(f"Error building as-of Draw Bias Matrix: {e}")
+            _DRAW_ASOF_CACHE[key] = {}
+    return _DRAW_ASOF_CACHE[key]
+
+
 def _load_draw_bias_matrix():
     global DRAW_BIAS_MATRIX_CACHE
     if DRAW_BIAS_MATRIX_CACHE is None:
@@ -513,6 +547,9 @@ def _load_named_rating_stats():
                     "confidence": _normalize_identity_text(row.get("confidence")),
                     "source": _normalize_identity_text(row.get("source")),
                     "notes": _normalize_identity_text(row.get("notes")),
+                    # 呢個 tier 判斷幾時已經存在（EXP-20261015-04）。歷史場次只准用
+                    # `as_of < 賽事日期` 嘅行；冇日期嘅行喺歷史場次當中性。
+                    "as_of": str(row.get("as_of") or "").strip()[:10],
                 }
                 for key in {payload["name"], payload["canonical_name"]}:
                     normalized = _normalize_rating_identity(key)
@@ -1615,7 +1652,9 @@ class RacingEngine:
                 f_cat = "field_13_plus"
                 expected_wr = 1.0 / max(field_size, 1)
 
-            matrix = _load_draw_bias_matrix()
+            race_date = self._race_date()
+            matrix = (_load_draw_bias_matrix_as_of(race_date)
+                      if _pit.is_historical(race_date) else _load_draw_bias_matrix())
             stats = None
             source_level = ""
             peer_cells = None
@@ -1760,17 +1799,40 @@ class RacingEngine:
         sign = "受惠" if adj > 0 else "受制"
         return adj, f"步速形勢: 預測{tempo}，本馬屬{role_zh.get(role, role)}{sign} ({adj:+.1f})"
 
+    def _race_date(self) -> str:
+        """賽事日期（YYYY-MM-DD）；攞唔到回 ""（= 當 live，唔改行為）。"""
+        for value in (self._meeting_intelligence().get("date"), self.race_context.get("date")):
+            text = str(value or "").strip()[:10]
+            if _pit.is_iso_date(text):
+                return text
+        if self.facts_path is not None:
+            match = re.search(r"(\d{4}-\d{2}-\d{2})", self.facts_path.parent.name)
+            if match:
+                return match.group(1)
+        return ""
+
+    def _rating_known_at_race(self, rating):
+        """騎練 tier 表冇版本：歷史場次只准用 `as_of < 賽事日期` 嘅行
+        （EXP-20261015-04，L1 leak 7）。live（今日或之後）行為不變。"""
+        if not rating:
+            return None
+        race_date = self._race_date()
+        if not _pit.is_historical(race_date):
+            return rating
+        as_of = str(rating.get("as_of") or "")
+        return rating if _pit.is_iso_date(as_of) and as_of < race_date else None
+
     def _jockey_rating_profile(self, jockey: str):
         if not jockey:
             return None
         jockey_cache, _ = _load_named_rating_stats()
-        return jockey_cache.get(_normalize_rating_identity(jockey))
+        return self._rating_known_at_race(jockey_cache.get(_normalize_rating_identity(jockey)))
 
     def _trainer_rating_profile(self, trainer: str):
         if not trainer:
             return None
         _, trainer_cache = _load_named_rating_stats()
-        return trainer_cache.get(_normalize_rating_identity(trainer))
+        return self._rating_known_at_race(trainer_cache.get(_normalize_rating_identity(trainer)))
 
     def _rating_tier_text(self, tier: str, kind: str):
         if kind == "jockey":

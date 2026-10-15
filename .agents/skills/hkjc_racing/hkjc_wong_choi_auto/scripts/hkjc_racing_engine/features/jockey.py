@@ -31,7 +31,7 @@ def continuous_rating(group, raw_name, *, as_of_date=None):
         return None
     score = float(hit["score"])
     starts = float(hit["starts"])
-    prior_score, _ = score_tier(group, raw_name, "")
+    prior_score, _ = score_tier(group, raw_name, "", as_of_date=as_of_date)
     # 只有「有已知先驗」（層級表有列＝客串名將/新加盟戰力）嘅細樣本先 blend；
     # 無先驗嘅細樣本騎師照用純實績（backtest：無差別拉向60會蝕 good/single）。
     if starts < JT_RATING_PARAMS["blend_below"] and float(prior_score) != 60.0:
@@ -61,7 +61,10 @@ class JockeyScorer(BaseScorer):
         if rated is not None:
             self.score, self.reason = rated
             return self.score, self.reason
-        self.score, self.reason = score_tier("jockey", self.horse_data.get("jockey", ""), "Neutral Jockey")
+        self.score, self.reason = score_tier(
+            "jockey", self.horse_data.get("jockey", ""), "Neutral Jockey",
+            as_of_date=(self.race_context or {}).get("race_date"),
+        )
 
         if self.score == 60.0:
             data = self.horse_data.get("_data", {}) if isinstance(self.horse_data.get("_data"), dict) else {}

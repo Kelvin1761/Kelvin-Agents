@@ -1,0 +1,55 @@
+{
+  "domain": "au",
+  "note": "AU 評估語料排除名單。由 corpus_paths.meeting_dirs / logic_files 讀，所有用 corpus_paths 嘅 harness 都會跳過呢度列出嘅場次。唔好搬資料檔入 Archive/ 代替呢份名單（Archive/ 本身係語料庫一部分，搬入去曾經令場次靜靜消失）。要加／拆一個場次就改呢份檔，附原因同偵測實驗。偵測規則：corpus_exclusions.detect_post_race_extraction()（Meeting_Summary.md 報『dropped as on/after D: N』N>0 = 同日賽後抽，頁面累積統計 Career/Track/Distance 等已計埋當日賽果）。",
+  "meetings": [
+    {
+      "meeting": "2026-08-12 Bendigo Race 1-8",
+      "reason": "post_race_extraction",
+      "dropped_form_rows": 63,
+      "detected_by": "EXP-20261015-04",
+      "decided": "2026-10-15 Kelvin"
+    },
+    {
+      "meeting": "2026-08-12 Canterbury Race 1-7",
+      "reason": "post_race_extraction",
+      "dropped_form_rows": 56,
+      "detected_by": "EXP-20261015-04",
+      "decided": "2026-10-15 Kelvin"
+    },
+    {
+      "meeting": "2026-08-12 Devonport Race 1-8",
+      "reason": "post_race_extraction",
+      "dropped_form_rows": 16,
+      "detected_by": "EXP-20261015-04",
+      "decided": "2026-10-15 Kelvin"
+    },
+    {
+      "meeting": "2026-08-12 Eagle Farm Race 1-8",
+      "reason": "post_race_extraction",
+      "dropped_form_rows": 75,
+      "detected_by": "EXP-20261015-04",
+      "decided": "2026-10-15 Kelvin"
+    },
+    {
+      "meeting": "2026-08-12 Pinjarra Scarpside Race 1-8",
+      "reason": "post_race_extraction",
+      "dropped_form_rows": 71,
+      "detected_by": "EXP-20261015-04",
+      "decided": "2026-10-15 Kelvin"
+    },
+    {
+      "meeting": "2026-09-09 Randwick-Kensington Race 1-7",
+      "reason": "post_race_extraction",
+      "dropped_form_rows": 19,
+      "detected_by": "EXP-20261015-04",
+      "decided": "2026-10-15 Kelvin"
+    },
+    {
+      "meeting": "2026-10-11 Seymour Race 1-10",
+      "reason": "post_race_extraction",
+      "dropped_form_rows": 8,
+      "detected_by": "EXP-20261015-04",
+      "decided": "2026-10-15 Kelvin"
+    }
+  ]
+}

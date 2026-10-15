@@ -918,8 +918,161 @@ def parse_runner_blocks(html, *, include_runs=True):
     return blocks
 
 
+# ── Point-in-time 累積統計（EXP-20261015-04，L1 leak 4）────────────────────
+# 表格頁嘅 Career / Last 10 / Track / Distance / Good / 12 months / J/H / Win% /
+# Place% / Days 係「抓頁嗰刻」嘅累積數。賽前抓（live）= 賽前數，冇問題；賽後
+# 抓（重抽舊場次、或者同日賽後重跑）就已經計埋 D 同之後嘅賽果。往績**行**一直有
+# `run_date >= D` 閘，但呢批統計係原封抄 —— 所以重抽會靜靜咁餵答案。
+#
+# 歷史模式唔用頁面累積數，改由**已經過咗日期閘嘅往績行**重新計。代價要講清楚：
+# 頁面最多 10 行往績（含試閘），所以 Career／Track／Distance… 係**下限**，唔係
+# 全數；量度見 EXP-20261015-04「live divergence」。Prize／Ave $ 由往績行計唔到
+# （行入面係賽事總獎金，唔係本駒所得），歷史模式寫 `-`。
+_SPELL_DAYS = 63            # 兩仗正式賽相隔 ≥ 9 星期 = 新一個 preparation（live 語料擬合，見 EXP）
+_GOING_FAMILIES = ("Firm", "Good", "Soft", "Heavy", "Synthetic")
+
+
+def _norm_track(name):
+    text = RE_TRIAL.sub("", _html.unescape(name or ""))
+    text = re.sub(r"^First\s*Start\s+", "", text.strip(), flags=re.I)
+    return re.sub(r"[^a-z]", "", text.lower())
+
+
+def _norm_jockey(name):
+    return _people_key(re.sub(r"\([^)]*\)", "", name or ""))
+
+
+def _going_family(run):
+    going = str((run.get("header") or {}).get("going") or "").strip()
+    track = str((run.get("header") or {}).get("track") or "")
+    if re.search(r"synthetic|poly|tapeta", going + " " + track, re.I):
+        return "Synthetic"
+    word = going.split(" ")[0].title() if going else ""
+    return word if word in _GOING_FAMILIES else ""
+
+
+def _run_pos(run):
+    try:
+        return int(str(run.get("pos") or "").strip())
+    except ValueError:
+        return None
+
+
+def _record(rows):
+    n = len(rows)
+    w = s = t = 0
+    for r in rows:
+        p = _run_pos(r)
+        w += p == 1
+        s += p == 2
+        t += p == 3
+    return f"{n}: {w}-{s}-{t}"
+
+
+def pit_runner_stats(runs, date_str, venue, distance, jockey, spell_days=None):
+    """由已過日期閘嘅往績行重計累積統計（歷史模式用）。
+
+    回 `(stats, overview)`：形狀同 `parse_runner_blocks()['stats']` 同
+    `parse_overview()` 一樣，`write_meeting` 直接當頁面數用。
+    """
+    from datetime import date as _date, timedelta as _td
+
+    spell = _SPELL_DAYS if spell_days is None else spell_days
+    dated = []
+    for r in runs or []:
+        d = run_date(r)
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", d) and d < date_str:
+            dated.append((d, r))
+    dated.sort(key=lambda x: x[0])                     # 舊 → 新
+    official = [(d, r) for d, r in dated if not r.get("is_trial")]
+    rows = [r for _, r in official]
+    venue_key = _norm_track(venue)
+    try:
+        dist = int(distance)
+    except (TypeError, ValueError):
+        dist = None
+
+    def run_dist(r):
+        try:
+            return int(str((r.get("header") or {}).get("dist") or "").strip())
+        except ValueError:
+            return None
+
+    same_track = [r for r in rows if venue_key and _norm_track((r.get("header") or {}).get("track")) == venue_key]
+    same_dist = [r for r in rows if dist is not None and run_dist(r) == dist]
+    D = _date.fromisoformat(date_str)
+    year_ago = (D - _td(days=365)).isoformat()
+    jkey = _norm_jockey(jockey)
+    stats = {
+        "Career": _record(rows),
+        "Track": _record(same_track),
+        "Distance": _record(same_dist),
+        "Trk/Dist": _record([r for r in same_track if r in same_dist]),
+        "12 months": _record([r for d, r in official if d >= year_ago]),
+        "Jockey": _record([r for r in rows if jkey and _norm_jockey(r.get("jockey")) == jkey]),
+        "Turf": _record([r for r in rows if _going_family(r) != "Synthetic"]),
+    }
+    for fam in _GOING_FAMILIES:
+        stats[fam] = _record([r for r in rows if _going_family(r) == fam])
+    # preparation：正式賽之間相隔 ≥ _SPELL_DAYS 就重新開始數
+    ups = {1: [], 2: [], 3: []}
+    stage, prev = 0, None
+    for d, r in official:
+        cur = _date.fromisoformat(d)
+        stage = 1 if prev is None or (cur - prev).days >= spell else stage + 1
+        prev = cur
+        if stage in ups:
+            ups[stage].append(r)
+    stats["1st Up"], stats["2nd Up"], stats["3rd Up"] = (_record(ups[k]) for k in (1, 2, 3))
+    win_d = sorted(run_dist(r) for r in rows if _run_pos(r) == 1 and run_dist(r))
+    stats["Win Range"] = f"{win_d[0]}m - {win_d[-1]}m" if win_d else "-"
+    stats["Prizemoney"] = "-"
+    # Last 10（頁面叫 last6）：Sportsbet 格式 = 最後 6 個字元（含 `x`），右邊最新；
+    # 名次 ≥10 寫 0；兩仗正式賽之間（同埋最後一仗到 D）休咗 ≥ spell 日就插 `x`
+    # （下游 `parse_last10` 跳過 `x`）。
+    chars, prev = [], None
+    for d, r in official:
+        cur = _date.fromisoformat(d)
+        if prev is not None and (cur - prev).days >= spell:
+            chars.append("x")
+        prev = cur
+        p = _run_pos(r)
+        chars.append("0" if p is not None and p >= 10 else (str(p) if p and p > 0 else "0"))
+    if prev is not None and (D - prev).days >= spell:
+        chars.append("x")
+    chars = chars[-6:]
+    n = len(rows)
+    w = sum(_run_pos(r) == 1 for r in rows)
+    pl = sum(1 for r in rows if (_run_pos(r) or 99) <= 3)
+    overview = {
+        "career": stats["Career"].replace(": ", " : "),
+        "win_pct": f"{round(w / n * 100)}%" if n else "0%",
+        "place_pct": f"{round(pl / n * 100)}%" if n else "0%",
+        "last6": "".join(chars) or "-",
+        # 頁面 `Days` 只計正式賽（試閘唔計）：live 語料對照 official-only 吻合較高。
+        "days": str((D - _date.fromisoformat(official[-1][0])).days) if official else "-",
+        "ave_prize": "-",
+    }
+    return stats, overview
+
+
+def _race_is_post_race_page(blocks, date_str):
+    """頁面出現 D 當日或之後嘅往績行 = 賽後先抓 = 累積統計已經計埋 D。"""
+    return any(run_date(run) >= date_str
+               for b in blocks or [] for run in (b.get("runs") or [])
+               if run_date(run))
+
+
+def _resolve_pit_mode(pit_mode, date_str):
+    if pit_mode in ("live", "historical"):
+        return pit_mode
+    sys.path.insert(0, str(Path(__file__).resolve().parent / "au_wong_choi_auto" / "scripts"))
+    from au_racing_engine import pit
+    return "historical" if pit.is_historical(date_str) else "live"
+
+
 def write_meeting(races, out_dir, date_str, venue, verbose=True,
-                  speedmaps=None, odds=None):
+                  speedmaps=None, odds=None, pit_mode=None):
     """寫下游兼容嘅 Sportsbet meeting 檔。`races` = [(race_no, parsed, blocks)]。
 
     格式**唔可以自創** —— 下游 `inject_fact_anchors` 同引擎逐行 regex 食佢。
@@ -951,8 +1104,30 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
     else:
         if not _people_cache:
             print("   ⚠️ 騎練統計 cache 係空 —— (LY:) 會全部空")
+    # ── Point-in-time 模式（EXP-20261015-04）──────────────────────────────
+    # 場次日期早過今日（悉尼）→ 成個 meeting 歷史；同日賽後重跑 → 頁面已經有
+    # D 嘅往績行嗰幾場歷史。歷史場次：(1) 累積統計由往績行重計，(2) `(LY:)`
+    # 用 D 之前最後一個騎練快照，冇就 `-`（中性）—— 唔准跌返 current cache。
+    meeting_mode = _resolve_pit_mode(pit_mode, date_str)
+    race_modes = {}
+    for race_no, _p, blocks in races:
+        post_race = pit_mode != "live" and _race_is_post_race_page(blocks, date_str)
+        race_modes[race_no] = "historical" if (meeting_mode == "historical" or post_race) else "live"
+    _people_as_of = {}
+    if sb_people_stats is not None and "historical" in race_modes.values():
+        keys = {f"{kind.lower()}|{pid}"
+                for race_no, p, _b in races if race_modes[race_no] == "historical"
+                for (kind, _k), pid in (p["meta"].get("people_by_name") or {}).items()}
+        try:
+            _people_as_of = sb_people_stats.load_as_of(date_str, keys=keys, cache=_people_cache)
+        except Exception as exc:  # noqa: BLE001 — 讀唔到快照 = 中性，唔係 current cache
+            print(f"   ⚠️ 騎練快照讀唔到（{type(exc).__name__}: {exc}）—— 歷史場次 (LY:) 全部 `-`")
+            _people_as_of = {}
+    pit_races = sum(1 for m in race_modes.values() if m == "historical")
     for race_no, p, blocks in races:
         meta = p["meta"]
+        historical = race_modes[race_no] == "historical"
+        people_source = _people_as_of if historical else _people_cache
         sm = speedmaps.get(race_no) or {}
         # 賠率優先用頁面 parse 到嗰批（瀏覽器路徑），caller 傳入嘅做後備。
         page_odds = meta.get("odds") or {}
@@ -980,6 +1155,12 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
                 name = ov.get("name", "?")
                 blk = by_name.get(name.lower(), {})
                 st = blk.get("stats", {})
+                if historical and not ov.get("scratched"):
+                    pit_st, pit_ov = pit_runner_stats(
+                        blk.get("runs", []), date_str, venue, dist, ov.get("jockey", ""))
+                    # 負磅唔係累積統計（係今場分配），照用頁面數。
+                    st = {**pit_st, "Weight": st.get("Weight", "?")}
+                    ov = {**ov, **pit_ov}
                 profile = blk.get("profile", {})
                 bar = blk.get("barrier", "?")
                 if ov.get("scratched"):
@@ -1030,7 +1211,7 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
                     nonlocal ly_hit, ly_miss
                     pid = _match_person(meta.get("people_by_name") or {}, kind,
                                         person_name)
-                    entry = _people_cache.get(f"{kind.lower()}|{pid}") if pid else None
+                    entry = people_source.get(f"{kind.lower()}|{pid}") if pid else None
                     tok = (entry or {}).get("ly") or "-"
                     if tok != "-":
                         ly_hit += 1
@@ -1097,7 +1278,9 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
     (out / "Meeting_Summary.md").write_text(
         f"# {venue} {date_str}\n\n{len(races)} races extracted from Sportsbet.\n"
         f"Form runs kept: {kept}; dropped as on/after {date_str}: {dropped}\n"
-        f"Jockey/trainer LY tokens filled: {ly_hit}; missing: {ly_miss}\n",
+        f"Jockey/trainer LY tokens filled: {ly_hit}; missing: {ly_miss}\n"
+        f"Point-in-time mode: {meeting_mode}; races with page stats recomputed "
+        f"from as-of rows and LY from pre-{date_str} snapshots: {pit_races}\n",
         encoding="utf-8")
     snap = _write_odds_snapshot(races, out, date_str, venue)
     if verbose:
@@ -1106,8 +1289,11 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
             print(f"   💰 賠率快照：{snap} 匹 → Odds.json")
         else:
             print("   💰 賠率：0 匹（賽後頁冇賠率；賽前頁要行瀏覽器）")
+    if verbose and pit_races:
+        print(f"   🕰️ PIT 歷史模式：{pit_races} 場累積統計由往績行重計、(LY:) 用 {date_str} 前快照")
     return {"kept": kept, "dropped": dropped, "ly_hit": ly_hit,
-            "ly_miss": ly_miss, "odds": snap}
+            "ly_miss": ly_miss, "odds": snap, "pit_mode": meeting_mode,
+            "pit_races": pit_races}
 
 
 def _write_odds_snapshot(races, out, date_str, venue):

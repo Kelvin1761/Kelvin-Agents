@@ -106,3 +106,11 @@ HOLDOUT（84 場）配對 bootstrap，consensus − live：
 3. **`sectional` 想加權重呢個直覺唔成立** —— 兩個 fit 都要求佢向下。
 4. 真正瓶頸唔喺配權，喺 `race_shape` 入面兩塊死 leaf（`fit_score` AUC 0.5089、
    `trip_score` 0.4887，佔沙田組合 45%）同語料量。
+
+## 2026-10-15 補註（EXP-20261015-02）
+
+上面「乾淨版」唔係真 point-in-time：守衛一響，`JockeyScorer`／`TrainerScorer` 就跌落冇日期嘅
+`05_jockey_trainer_tiers.json`（「今日嘅層級表」），3,318/3,318 匹都經呢條路 —— 即係另一個洩漏。
+所以「乾淨版」gold_strict 3.03%／good 23.48% 唔可以當 PIT baseline 引用。EXP-20261015-02 已修
+（歷史賽日冇日期版本就中性）。refit REJECT 嘅結論唔受影響：EXP-20261010-06 喺 PIT harness 重做，
+EXP-20261015-02 再喺修正後 harness 重判，neutral／wf_refit 照樣 REJECT。

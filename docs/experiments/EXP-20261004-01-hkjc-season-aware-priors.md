@@ -121,3 +121,14 @@ candidate 喺R1將實際第三名補入第4選，所以 canonical Gold／Top-4 c
 將頭馬由第2選推落第4選，直接失去一場 Good、Min 同 Winner-in-Top-3。按照 evaluation
 contract「任何 primary 點估計回歸即 reject」規則，呢個係 **TRADE-OFF／NO PROMOTION**，
 唔應用賽果事後覆寫10月4日分析。資料接線正確性修正照留，權重照舊。
+
+## 2026-10-15 補註（EXP-20261015-02 重跑）
+
+三個 PIT 洩漏修正之後，用原腳本 `patches/hkjc_season_aware_priors_ab.py`（冇改）喺同一批 7 個賽日／67 場，
+分別對修正前 code（`fb001d47`）同修正後 code 各跑一次：**兩份報告逐位一樣**。
+全部 67 場：Gold Δ 0.00pp [0.00, 0.00]、Good Δ 0.00pp [0.00, 0.00]、Champion Δ +1.49pp [0.00, +4.48]、
+Single Δ 0.00pp [0.00, 0.00]；沙田／跑馬地分層亦一樣。
+（同原表比，Champion／Single 由 0.00／−1.49pp 變 +1.49／0.00pp，係 10-04 之後引擎本身改咗，
+唔係洩漏修正造成 —— 修正前後兩邊一樣。）
+
+**判決不變：KEEP D1／D2（資料正確性），HOLD M1（冇 primary regression，亦冇改善證據）。**

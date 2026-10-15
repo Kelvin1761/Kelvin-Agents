@@ -71,6 +71,58 @@ overwrite them. Moneyline-only data is not a complete player-prop analysis:
 `player_markets_not_open` exits 75 and produces no report or snapshot. Scheduled
 pregame refreshes retry live extraction; missing markets are not fabricated.
 
+## Market evaluation ledger（forward-only，模型 vs 市場）
+
+NBA 由來冇同市場比過。`nba_market_ledger.py` 只做記錄同結算，**唔改任何預測、選腿或 SGM**。
+
+- **位置**：`$WONGCHOI_NBA_MARKET_LEDGER_ROOT`，預設 `~/WongChoiData/NBA_Market_Eval/`
+  （本機；唔入 repo）。`ledger/<Sydney日期>.jsonl` append-only；`reports/evaluation_latest.json` 係最新評估。
+- **寫入**：每次 `refresh_sportsbet_odds` 成功 → 每條 milestone 腿一行 `price_obs`；每個 snapshot →
+  `model_obs`（每條評估過嘅腿：`p_final`、`p_hit_rate_10f`、`p_ml`、`p_monte_carlo`、`picked`）、
+  `sgm_obs`（每個組合：naive／correlation-adjusted joint prob、腿價相乘，加 N1 shadow：
+  `sim_joint_prob`＝同一場模擬比賽入面全部腿一齊中嘅比例，共用 pace／賽果分差→主力垃圾時間／
+  球隊得分／球員角色因子；`sim_independent_prob`、`sim_correlation_lift`、
+  `sim_scaled_joint_prob`＝p_final 相乘 × lift；seed 每場固定）。shadow 只記錄，**唔改發佈邊條 SGM**；
+  未有足夠已結算 n 之前唔准講模型 vs 市場。概率嚟自
+  `generate_nba_reports.py` 同一次 run 寫嘅 `Game_<TAG>_Full_Analysis.md.market_legs.json`（綁住報告 SHA-256，
+  對唔上就記 `model_missing`）。
+- **結算**：postgame 歸檔後用 reflector 嘅 `Results_Brief_<US日期>.json` box score（同 `verify_props_hits`
+  一樣嘅配對／DNP void 規則）；每條腿第一次結算為準，唔覆寫。
+- **Point-in-time**：`captured_at` ≥ tip-off → `post_tip`；`recorded_at` ≥ tip-off → `late_write`。兩者都
+  唔入任何賽前指標。冇 backfill：漏咗賽前 snapshot 就係漏咗，報告會數 `legs_missed_pretip_price`／
+  `legs_without_pretip_model`。Dormant／off-season 唔會寫任何嘢；preseason 照記但評估預設排除。
+- **close 唔係真收市價**：排程 21:00／00:30／06:30（Sydney）先抓價，最後一次通常離 tip-off 幾個鐘。
+  CLV（earliest vs close）因此係「觀察到嘅最後賽前價」。
+- **De-vig**：評估腿都係 Sportsbet milestone（「X+」）；milestone 階梯只列球員名、冇 Under，**逐條線
+  永遠 de-vig 唔到**，raw `1/price`（含水）會**偏幫模型**。Sportsbet 另有「{Player} - Points」O/U X.5
+  （兩邊有價）：extractor 寫入 `player_props_two_way`（`player_props` 不變，揀腿唔受影響），ledger
+  記做 `price_source=ou_two_way`、line = X.5+0.5（Over 24.5 = 25+），`market_devig_close` 用最近一次
+  賽前 O/U 對做 two-way proportional。raw close／CLV 只用 milestone 價，兩種來源唔混。覆蓋只限
+  milestone 線啱好等於 O/U 線嘅腿（`devig_coverage`），verdict 嘅 n 亦只計呢批 cluster。
+- **Sportsbet SGM 價**：Sportsbet 網頁 bet slip 用嘅 `POST /apigw/multi-pricer/combinations/price`
+  唔使登入（2026-10-14 實測 200，回傳分數價 + quoteId）。extractor 喺 Sportsbet JSON 寫 `sgm_pricing`
+  （class／competition／event external id 同每條 milestone 腿嘅 market／outcome external id）；
+  排程每個非 warm-up snapshot 之後，對已經 render 咗嘅組合逐個報價，寫 `sgm_price_obs`（ok 或者點解冇價）。
+  evaluate 用最近一次賽前報價做 `sportsbet_sgm_implied`；冇報價嘅組合就只可以同「腿價相乘」比。
+  SGM 價係單邊、含水，de-vig 唔到。舊 `nba_analyst/scripts/nba_report_generator.py` 係孤兒檔，冇用。
+- **指標**：Brier／logloss（每個模型 variant vs 市場）、calibration buckets、CLV、按 market 同
+  picked／not-picked 分拆、SGM joint prob vs realised。
+
+**未有足夠 n 之前，冇任何「模型贏／輸市場」嘅判決係有效。** 粗略功效（`n = (z·sd/mean)²`，z=1.96，
+mean 係**假設**值，唔係觀測值）：
+
+- 逐腿 Brier 差：假設模型平均好 0.002、配對差 sd≈0.05 → n ≈ 2,401 個**獨立**結算單位。同一場同一球員
+  嘅 15+／20+／25+ 高度相關，所以要數 player-game-market cluster，唔係數腿。
+- 平注 ROI：賠率 ~2.0、每注 sd≈1.0、假設優勢 +3% → n ≈ 4,269 注。
+- SGM 每場得一兩個組合，要以季計。
+
+`evaluation_latest.json` 嘅 `verdict_status` 只會係 `market_not_devigged`／`insufficient_n`／
+`n_adequate_pending_review`；最後一個都唔係判決，要按 `docs/model-evaluation-contract.md` 另行評審。
+
+```bash
+python3 .agents/skills/nba/nba_daily_auto/nba_market_ledger.py evaluate [--since D] [--until D] [--include-preseason] [--write]
+```
+
 ## Local ML model cache
 
 `NBA_WC_MODEL_DIR` explicitly selects the existing ML model directory. The
@@ -84,3 +136,25 @@ candidate. `drive_provenance.json` records source file IDs, modification times,
 byte counts, and hashes. Approved future model replacements must refresh this
 cache together with their model release; do not leave an older local v3 copy
 active after updating the source artifacts.
+
+## no_prediction write-off（冇 snapshot 嘅日子）
+
+一日（或某幾場）賽前冇凍結到 `_prediction_snapshots`，**唔准事後補 snapshot**。
+要由人決定，再用支援嘅方法標記做 no_prediction：
+
+```bash
+python3 .agents/skills/nba/nba_daily_auto/nba_daily_schedule.py \
+  --mode mark-no-prediction --date YYYY-MM-DD --by Kelvin --reason "點解冇 prediction" \
+  [--game TAG ...]   # 唔畀 = 成日；有 snapshot 嘅日子只可以逐場標未凍結嘅場
+```
+
+- 寫 `<日期資料夾>/_no_prediction.json`（append-only；記 reason／marked_by／marked_at／
+  commit，同標記一刻檔案嘅 sha256 —— 只係審計，唔係 snapshot），同 market ledger 一行
+  `no_prediction`。已有 snapshot 嘅日子／場次會被拒絕。
+- `postgame`：唔再報 `live_analysis_has_no_prediction_snapshot`；reflector 用
+  `--no-record`（唔寫 `nba_reflector.db`、唔做 ML），賽果 final 先歸檔；跳過
+  settlement evidence、ledger settle 同表現 Telegram。
+- `health`：回 `no_prediction`（exit 0）；partial snapshot 嘅 blocked 場全部標咗就回 `ok`。
+- `pregame`：成日標咗就唔再跑，避免長出事後 snapshot。
+- `nba_market_ledger evaluate` 排除標咗嘅日子／場次（`counts.excluded_no_prediction_rows`、
+  `no_prediction_exclusions`）。

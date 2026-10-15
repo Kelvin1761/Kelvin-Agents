@@ -447,6 +447,14 @@ def main(argv=None) -> int:
     if args.meeting:
         paths = sorted(glob.glob(str(args.meeting / "Race_*_Logic.json")))
         label = args.meeting.name
+        if args.platform == "au":
+            # 只警告唔攔：同日賽後抽 = 頁面累積統計已計埋賽果（EXP-20261015-04）。
+            from corpus_exclusions import STATUS_POST_RACE, detect_post_race_extraction
+            hit = detect_post_race_extraction(args.meeting)
+            if hit["status"] == STATUS_POST_RACE:
+                print(f"⚠️  {label} 係賽後抽（丟棄 {hit['dropped']} 行當日往績）："
+                      "頁面累積統計已計埋賽果；唔好當賽前預測，回測要加入 "
+                      "au_corpus_exclusions.json 或者用 PIT 模式重抽")
     else:
         root = resolve_root(args.platform)
         if root is None:

@@ -516,6 +516,20 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
             A(f"- {feature_name(model, feature)}")
         A("")
 
+    if platform == "au":
+        A("## 市場參考層（唔入評分）")
+        A("")
+        A("報告入面 `💰 市場盤` 同 `📊 市場參考` 兩行係**獨立顯示層**，同模型分開：")
+        A("市場價**永遠唔入**上面任何維度、權重或排名（Decision D1，2026-10-14；")
+        A("R1 Benter combiner 量到模型對最早賽前市場冇增量資訊）。")
+        A("")
+        A("- 勝率：最早賽前盤用 power 去水")
+        A("- 位率：odds-ratio 去水，按派彩位數（8+ 匹 3 位、5–7 匹 2 位）")
+        A("- 推算前三／前四：由市場勝率經 discounted Harville（λ 0.754／0.649／0.549）推出，係**市場推算，唔係模型預測**")
+        A("")
+        A("去水用共用 `shared_racing/scripts/devig.py`；實作喺 `au_racing_engine/market_reference.py`。")
+        A("")
+
     # ── provenance ──
     A("## 呢份文件由邊度嚟")
     A("")

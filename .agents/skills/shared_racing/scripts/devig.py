@@ -5,8 +5,10 @@ tennis 嗰份喺 ``tennis-wong-choi/src/tennis_wc/betting/devig.py`` —— 兩�
 **刻意重複**：AU／HKJC／tennis 係獨立 package，唔互相 import（AGENTS.md）。
 改一邊要記得改埋另一邊。
 
-呢個 module 只係基建（plan item X0）：**冇任何 caller**。將現有 proportional
-caller 換成其他方法係另一個要量度嘅改動（X1），唔可以順手做。
+呢個 module 係基建（plan item X0）。唯一 caller：AU 顯示層
+``au_racing_engine/market_reference.py``（D1，2026-10-14 —— 純顯示，唔入評分；
+按 X1 結果用 power 計勝率、odds_ratio 計位率）。將其他 proportional caller 換成
+其他方法係另一個要量度嘅改動，唔可以順手做。
 
 方法
 ----

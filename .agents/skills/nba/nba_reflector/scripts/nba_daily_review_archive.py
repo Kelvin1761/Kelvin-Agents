@@ -25,6 +25,9 @@ SETTLEMENT = WORKSPACE_ROOT / "Horse_Racing_Dashboard" / "settle_dashboard_bets.
 sys.path.insert(0, str(WORKSPACE_ROOT))
 from wongchoi_paths import NBA_ANALYSIS  # noqa: E402
 
+sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "nba_daily_auto"))
+import nba_no_prediction  # noqa: E402
+
 DASHBOARD_BACKEND = WORKSPACE_ROOT / "Horse_Racing_Dashboard" / "backend"
 sys.path.insert(0, str(DASHBOARD_BACKEND))
 from services.multisport_exporter import export_nba_snapshot  # noqa: E402
@@ -48,6 +51,25 @@ def verification_is_complete(path: Path, *, allow_empty: bool = False) -> tuple[
     if hits + misses + voids != total:
         return False, "verification_totals_do_not_balance"
     return True, "complete"
+
+
+def results_are_final(path: Path) -> tuple[bool, str]:
+    """A no_prediction day archives on results alone, so they must be final."""
+    try:
+        brief = json.loads(path.read_text(encoding="utf-8"))
+        games = brief["games"]
+    except (OSError, KeyError, TypeError, json.JSONDecodeError) as exc:
+        return False, f"results_brief_unreadable:{exc}"
+    if brief.get("_version") != "RESULTS_BRIEF_V1" or not games:
+        return False, "results_brief_empty_or_unsupported"
+    pending = [
+        str(game.get("game_id") or "?")
+        for game in games
+        if "final" not in str(game.get("status") or "").lower()
+    ]
+    if pending:
+        return False, "games_not_final:" + ",".join(pending)
+    return True, "final"
 
 
 def is_valid_no_bet(analysis_date: str) -> bool:
@@ -74,12 +96,21 @@ def main() -> int:
     if not source.is_dir():
         return emit("skipped", analysis_date, "No live analysis folder exists.")
 
+    # A date/game written off as no_prediction keeps its results, but its
+    # never-frozen reports must not reach the reflector DB or ML evaluation.
     try:
-        subprocess.run(
-            [sys.executable, str(REFLECTOR), "--date", analysis_date, "--dir", str(source)],
-            cwd=WORKSPACE_ROOT,
-            check=True,
-        )
+        written_off = nba_no_prediction.scope(source)
+        whole_date = nba_no_prediction.covers_date(source)
+    except nba_no_prediction.NoPredictionError as exc:
+        return emit("review_failed", analysis_date, str(exc))
+    command = [sys.executable, str(REFLECTOR), "--date", analysis_date, "--dir", str(source)]
+    if whole_date:
+        command.append("--no-record")
+    elif written_off.game_tags:
+        command.extend(["--exclude-games", ",".join(sorted(written_off.game_tags))])
+
+    try:
+        subprocess.run(command, cwd=WORKSPACE_ROOT, check=True)
     except subprocess.CalledProcessError as exc:
         return emit("review_failed", analysis_date, f"Reflector exited with code {exc.returncode}.")
 
@@ -95,6 +126,17 @@ def main() -> int:
         rows_recorded = int(summary.get("rows_recorded") or 0)
     except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
         return emit("archive_skipped", analysis_date, f"Invalid reflector summary: {exc}")
+
+    if whole_date:
+        # Results are the only thing a no_prediction day contributes.
+        results_ready, results_reason = results_are_final(results_path)
+        if not results_ready:
+            return emit(
+                "archive_skipped",
+                analysis_date,
+                f"no_prediction date: results not final ({results_reason}); keeping the live folder in place.",
+            )
+        return _archive(source, destination, analysis_date, no_prediction="date")
 
     artifacts_exist = all(
         path.is_file() for path in (training_snapshot, results_path, verification_path)
@@ -139,13 +181,23 @@ def main() -> int:
             f"Settlement proposal exited with code {exc.returncode}; keeping live folder.",
         )
 
+    return _archive(source, destination, analysis_date)
+
+
+def _archive(source: Path, destination: Path, analysis_date: str, **extra: str) -> int:
     NBA_ANALYSIS.mkdir(parents=True, exist_ok=True)
     final_destination = destination
     if final_destination.exists():
         stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
         final_destination = NBA_ANALYSIS / f"{source.name} rerun {stamp}"
     shutil.move(str(source), str(final_destination))
-    return emit("archived", analysis_date, "Review complete and folder archived.", archive_path=str(final_destination))
+    return emit(
+        "archived",
+        analysis_date,
+        "Review complete and folder archived.",
+        archive_path=str(final_destination),
+        **extra,
+    )
 
 
 def emit(status: str, analysis_date: str, message: str, **extra: str) -> int:

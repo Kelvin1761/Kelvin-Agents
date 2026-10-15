@@ -97,5 +97,42 @@ class NbaReflectorSafetyTests(unittest.TestCase):
             )
 
 
+class StaleScoreboardTests(unittest.TestCase):
+    """2026-10-10/11 preseason: ScoreboardV2 stuck on tip time with PTS null."""
+
+    GAME = {
+        "gameId": "0012600015",
+        "gameStatusText": "6:30 pm ET",
+        "homeTeam": {"teamTricode": "TOR", "teamName": "Raptors", "score": None},
+        "awayTeam": {"teamTricode": "LAC", "teamName": "Clippers", "score": None},
+    }
+    BOX = {
+        "boxScoreTraditional": {
+            "homeTeam": {"teamTricode": "TOR", "statistics": {"points": 114}, "players": []},
+            "awayTeam": {"teamTricode": "LAC", "statistics": {"points": 101}, "players": []},
+        }
+    }
+
+    def _process(self, **kwargs):
+        from unittest import mock
+
+        import fetch_nba_results
+
+        with mock.patch.object(fetch_nba_results, "fetch_boxscore", return_value=self.BOX):
+            return fetch_nba_results.process_game(self.GAME, **kwargs)
+
+    def test_missing_score_is_not_final_and_does_not_crash(self) -> None:
+        result = self._process()
+        self.assertEqual(result["status"], "6:30 pm ET")
+        self.assertIsNone(result["margin"])
+        self.assertIsNone(result["winner"])
+
+    def test_old_game_date_settles_from_boxscore(self) -> None:
+        result = self._process(boxscore_may_settle=True)
+        self.assertEqual(result["status"], "Final (boxscore)")
+        self.assertEqual(result["final_score"], "LAC 101 - 114 TOR")
+        self.assertEqual((result["margin"], result["winner"]), (13, "TOR"))
+
+
 if __name__ == "__main__":
     unittest.main()

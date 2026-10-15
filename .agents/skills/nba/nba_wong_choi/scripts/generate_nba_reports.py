@@ -1820,9 +1820,25 @@ def preseason_sample_note(all_cards):
     return f"⛔ NO BET：新人季前賽小樣本（{counts}），只供 shadow 記錄，唔代表完整 L10。"
 
 
+def mc_game_seed(meta):
+    """Stable per-game seed from (date, away, home)."""
+    from monte_carlo_nba import stable_seed
+
+    meta = meta or {}
+    return stable_seed(
+        "nba-mc",
+        meta.get("date", "?"),
+        (meta.get("away") or {}).get("abbr", "?"),
+        (meta.get("home") or {}).get("abbr", "?"),
+    )
+
+
 def gen_full_report(meta, odds, injuries, news, team_stats,
                     all_cards, sportsbet_time, season_phase="MID_SEASON",
-                    engine_mode="hybrid"):
+                    engine_mode="hybrid", capture=None):
+    """Render the report.  ``capture`` (optional dict) receives the already
+    computed MC results and combos for the market-evaluation sidecar; it is
+    observation only and never feeds back into selection or rendering."""
     sections = []
 
     away_abbr = meta.get("away", {}).get("abbr", "?")
@@ -1915,6 +1931,9 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
 
     # ── Run Monte Carlo FIRST — build lookup for inline embedding ──
     mc_lookup = {}
+    # One deterministic seed per game: reports are reproducible run to run
+    # (before 2026-10-14 the MC was unseeded and every rerun differed).
+    game_seed = mc_game_seed(meta)
     try:
         from monte_carlo_nba import run_monte_carlo_for_cards, format_mc_section, build_mc_lookup
         is_b2b_map = {}
@@ -1925,7 +1944,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
         mc_results = run_monte_carlo_for_cards(
             all_cards, spread=odds.get("spread_away"),
             is_b2b_map=is_b2b_map, team_stats=team_stats, meta=meta, n=10000,
-            season_phase=season_phase)
+            season_phase=season_phase, seed=game_seed)
         
         if mc_results:
             mc_lookup = build_mc_lookup(mc_results)
@@ -1950,6 +1969,21 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     combo_2 = select_combo_2(candidates)
     combo_3 = select_combo_3(candidates)
     combo_x = select_combo_x_value_bomb(candidates)
+    if capture is not None:
+        capture["mc_results"] = list(mc_results or [])
+        capture["combos"] = {
+            "1": combo_1, "2": combo_2, "3": combo_3, "X": combo_x or [],
+        }
+        # N1 shadow: simulated joint probability of each already-selected
+        # combo.  Observation only; it never feeds selection or rendering.
+        try:
+            from monte_carlo_nba import simulate_sgm_joint
+            capture["sgm_sim"] = simulate_sgm_joint(
+                capture["combos"], all_cards, spread=odds.get("spread_away"),
+                is_b2b_map=is_b2b_map, team_stats=team_stats, meta=meta,
+                n=10000, season_phase=season_phase, seed=game_seed)
+        except Exception as e:  # noqa: BLE001
+            capture["sgm_sim"] = {"_error": f"{type(e).__name__}: {e}"}
 
     sections.append(f"## 🎰 SGM Parlay 組合 (Python Auto-Selection V5)")
     sections.append(f"")
@@ -2039,6 +2073,138 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"✅ Python 預填完成 | 組合數: {combo_count} | 未填寫項目 殘留: {fill_count} 個 (均為 Analyst 邏輯欄位)")
 
     return "\n".join(sections)
+
+
+# ─── Market-evaluation sidecar ──────────────────────────────────────────
+
+MARKET_EVAL_SIDECAR_SUFFIX = ".market_legs.json"
+MARKET_EVAL_SCHEMA = "nba-market-eval-legs/v1"
+_CATEGORY_TO_MARKET = {"points": "pts", "rebounds": "reb", "assists": "ast", "threes_made": "fg3m"}
+_LABEL_TO_MARKET = {"PTS": "pts", "REB": "reb", "AST": "ast", "3PM": "fg3m"}
+
+
+def _pct_to_prob(value):
+    try:
+        if value is None:
+            return None
+        number = float(value) / 100.0
+    except (TypeError, ValueError):
+        return None
+    return number if math.isfinite(number) else None
+
+
+def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, engine_mode):
+    """Flatten every evaluated player-milestone leg plus every rendered combo.
+
+    Pure observation of values already computed for the report: no probability
+    here is recomputed, and nothing returned is read by selection or rendering.
+    """
+    import hashlib
+
+    mc_by_key = {}
+    for r in capture.get("mc_results") or []:
+        key = (r.get("player"), r.get("team"), r.get("category"), r.get("line_display"))
+        mc_by_key[key] = r
+    combo_membership = {}
+    combos_out = []
+    for combo_id, legs in (capture.get("combos") or {}).items():
+        if not legs:
+            continue
+        combo_legs = []
+        for leg in legs:
+            market = _LABEL_TO_MARKET.get(leg.get("category"))
+            identity = (leg.get("player"), market, float(leg.get("line_val") or 0))
+            if leg.get("market_type") == PLAYER_MARKET and market:
+                combo_membership.setdefault(identity, []).append(str(combo_id))
+            combo_legs.append({
+                "market_type": leg.get("market_type"),
+                "player": leg.get("player"),
+                "team": leg.get("team"),
+                "market": market,
+                "line": float(leg.get("line_val") or 0),
+                "side": "over",
+                "price": float(leg.get("odds")),
+                "p_final": _pct_to_prob(leg.get("estimated_prob")),
+                "desc": leg.get("desc"),
+            })
+        ev = compute_combo_ev(legs)
+        sim_all = capture.get("sgm_sim") or {}
+        sim = sim_all.get(str(combo_id)) or (
+            {"sim_status": "failed", "sim_error": sim_all["_error"]} if "_error" in sim_all
+            else {"sim_status": "absent"}
+        )
+        naive = ev.get("naive_joint_prob")
+        lift = sim.get("sim_correlation_lift")
+        combos_out.append({
+            "combo_id": str(combo_id),
+            "legs": combo_legs,
+            "product_of_leg_prices": ev.get("combo_decimal_odds"),
+            "naive_joint_prob": ev.get("naive_joint_prob"),
+            "correlation_penalty": ev.get("correlation_penalty"),
+            "adjusted_joint_prob": ev.get("adjusted_joint_prob"),
+            "combo_ev_pct": ev.get("combo_ev_pct"),
+            "combo_risk_tier": ev.get("combo_risk_tier"),
+            # Sportsbet's own SGM price is not scraped by the current extractor.
+            "sportsbet_sgm_price": None,
+            "sportsbet_sgm_status": "not_scraped",
+            # N1 shadow joint probabilities (not used for selection).
+            **sim,
+            # p_final marginals with the simulated dependence structure.
+            "sim_scaled_joint_prob": (
+                round(min(1.0, naive * lift), 4) if naive is not None and lift is not None else None
+            ),
+        })
+
+    cat_label = {"points": "PTS", "threes_made": "3PM", "rebounds": "REB", "assists": "AST"}
+    legs_out = []
+    for card in all_cards:
+        market = _CATEGORY_TO_MARKET.get(card.get("category"))
+        if not market:
+            continue
+        for la in (card.get("line_analysis") or {}).values():
+            line = float(la["line"])
+            mc = mc_by_key.get((card["name"], card["team"], cat_label.get(card["category"]), la.get("line_display")))
+            identity = (card["name"], market, line)
+            legs_out.append({
+                "player": card["name"],
+                "team": card["team"],
+                "market": market,
+                "line": line,
+                "side": "over",
+                "price": float(la["odds"]),
+                "p_hit_rate_10f": _pct_to_prob(la.get("det_prob")),
+                "p_ml": _pct_to_prob(la["ml_prob"] * 100) if la.get("ml_prob") is not None else None,
+                "p_final": _pct_to_prob(la.get("estimated_prob")),
+                "p_monte_carlo": _pct_to_prob(mc.get("mc_prob")) if mc else None,
+                "p_l10_base_rate": _pct_to_prob(la.get("hit_l10")),
+                "engine": la.get("engine"),
+                "picked": identity in combo_membership,
+                "picked_in": sorted(set(combo_membership.get(identity, []))),
+            })
+    return {
+        "schema_version": MARKET_EVAL_SCHEMA,
+        "report_sha256": hashlib.sha256(report_text.encode("utf-8")).hexdigest(),
+        "odds_extraction_time": sportsbet.get("extraction_time"),
+        "sportsbet_event_id": sportsbet.get("sportsbet_event_id"),
+        "event_start_time": sportsbet.get("event_start_time"),
+        "game_date": meta.get("date"),
+        "away": (meta.get("away") or {}).get("abbr"),
+        "home": (meta.get("home") or {}).get("abbr"),
+        "season_phase": meta.get("season_phase"),
+        "engine_mode": engine_mode,
+        "legs": legs_out,
+        "combos": combos_out,
+    }
+
+
+def write_market_eval_sidecar(output_path, report_text, sportsbet, meta, all_cards, capture, engine_mode):
+    payload = build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, engine_mode)
+    destination = output_path + MARKET_EVAL_SIDECAR_SUFFIX
+    temporary = destination + ".tmp"
+    with open(temporary, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, ensure_ascii=False, sort_keys=True, allow_nan=False)
+    os.replace(temporary, destination)
+    return destination
 
 
 # ─── Main ───────────────────────────────────────────────────────────────
@@ -2200,14 +2366,22 @@ def main():
     print(f"📐 引擎版本: Adjusted Win Prob ({engine_name})")
 
     # Generate report
+    capture = {}
     report = gen_full_report(meta, ex_odds, injuries, news, team_stats,
                              all_cards, sportsbet_time, season_phase=season_phase,
-                             engine_mode=engine_mode)
+                             engine_mode=engine_mode, capture=capture)
 
     # Write
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
     with open(args.output, 'w', encoding='utf-8') as f:
         f.write(report)
+
+    # Market-evaluation sidecar (observation only; failure never blocks the report).
+    try:
+        write_market_eval_sidecar(
+            args.output, report, sportsbet, meta, all_cards, capture, engine_mode)
+    except Exception as exc:  # noqa: BLE001
+        print(f"⚠️ market-eval sidecar 未能寫入（報告不受影響）: {exc}")
 
     print(f"✅ Pre-filled skeleton V8 已生成: {args.output}")
     print(f"   📐 引擎版本: {engine_name}")

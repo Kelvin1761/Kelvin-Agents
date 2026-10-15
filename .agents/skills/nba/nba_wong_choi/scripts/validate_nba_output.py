@@ -171,7 +171,10 @@ def check_fw04_padding(content: str) -> list:
     issues = []
 
     # Split content into sentences (Chinese + English)
-    sentences = re.split(r'[。\.\!\？\?！]', content)
+    # A decimal point is not a sentence end: splitting "命中率 **81.0%**" at the
+    # "." turned every 81.x% hit rate into the same "sentence" and blocked
+    # whole preseason days (2026-10-11 SAS_PHX, 2026-10-12 CHI_DEN).
+    sentences = re.split(r'[。\!\？\?！]|\.(?!\d)|(?<!\d)\.', content)
     # Only consider meaningful sentences (>30 chars to avoid table fragments / short markers)
     sentences = [s.strip() for s in sentences if len(s.strip()) > 30]
 

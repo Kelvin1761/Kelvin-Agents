@@ -261,10 +261,18 @@ def pct(part: int, total: int) -> str:
 
 def write_csv(path: Path, rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    # `as_of` = 呢個 tier 判斷幾時存在（EXP-20261015-04）。引擎喺歷史場次只用
+    # `as_of < 賽事日期` 嘅行；重建今日嘅表就係今日嘅知識，唔可以倒灌入舊場次。
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    today = datetime.now(ZoneInfo("Australia/Sydney")).date().isoformat()
+    rows = [{**row, "as_of": row.get("as_of") or today} for row in rows]
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(
             handle,
-            fieldnames=["name", "canonical_name", "tier", "base_score", "confidence", "source", "notes"],
+            fieldnames=["name", "canonical_name", "tier", "base_score", "confidence", "source",
+                        "notes", "as_of"],
+            lineterminator="\n",  # LF：同練馬師表一致，CRLF 會俾 release diff check 當行尾空白
         )
         writer.writeheader()
         writer.writerows(rows)

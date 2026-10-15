@@ -347,6 +347,20 @@ def score_meeting_d(work: Path, future: frozenset, *, people_empty: bool = False
     index_path = res / "sb_horse_index.json"
     sb_horse_index.save(horse_index(future="horse_index" in future), index_path)
     people = {} if people_empty else people_cache(future="people_cache" in future)
+    # 騎練 point-in-time 快照（append-only）：D 之前一定有 07-31 嗰次；F 之後
+    # refresh 會**追加**一條 08-23，而 cache 本身被覆蓋成 08-23 版本。
+    snapshots = res / "people_snapshots.jsonl"
+    with snapshots.open("w", encoding="utf-8") as handle:
+        if not people_empty:
+            versions = [people_cache(future=False)]
+            if "people_cache" in future:
+                versions.append(people)
+            for version in versions:
+                for key, entry in version.items():
+                    handle.write(json.dumps({
+                        "captured_at": entry["fetched_at"], "key": key, "name": entry["name"],
+                        "kind": entry["kind"], "id": entry["id"], "stats": entry["stats"],
+                        "contextual_stats": {}}) + "\n")
 
     archive = work / "archive"
     meeting = archive / f"{D_DATE} {VENUE} Race {RACE_NO}-{RACE_NO}"
@@ -371,6 +385,7 @@ def score_meeting_d(work: Path, future: frozenset, *, people_empty: bool = False
         # pytest process 之後嘅測試靜靜帶住 D 做時點上限。
         mock.patch.object(inject_fact_anchors, "_AS_OF", inject_fact_anchors._AS_OF),
         mock.patch.object(sb_people_stats, "load_cache", lambda path=None: copy.deepcopy(people)),
+        mock.patch.object(sb_people_stats, "snapshot_path", lambda path=None: snapshots),
     ]
     sink = io.StringIO()
     with contextlib.ExitStack() as stack:
@@ -505,9 +520,8 @@ class FutureAppendInvarianceTests(unittest.TestCase):
         `_prize_map_from_formguide`、PF parser 仍然要剔走。"""
         self._assert_invariant("form_runs_raw")
 
-    @unittest.expectedFailure
     def test_form_page_cumulative_stats(self):
-        """LEAK（2026-10-14 呢個測試發現）：表格頁**累積統計**冇日期閘。
+        """已修（EXP-20261015-04）。原本 LEAK（2026-10-14 呢個測試發現）：表格頁**累積統計**冇日期閘。
 
         `claw_sportsbet_form.write_meeting` 只濾往績**行**
         （`run_date(run) >= date_str`），但 `Career / Last 10 / Track / Distance /
@@ -516,12 +530,13 @@ class FutureAppendInvarianceTests(unittest.TestCase):
         `sb_backfill_archive.py` 重抽舊場次）已經計埋當日同之後嘅賽果。
         賽前生產抽取冇事；回放／backfill 有事。
         fixture 量度：`consistency_score` 四匹馬 98.74 → 100.0（排名未變）。
+        修法：歷史場次（D < 今日，或頁面已有 D 當日往績行）唔用頁面累積數，
+        由已過日期閘嘅往績行重計（`pit_runner_stats`）；live 照用頁面數。
         """
         self._assert_invariant("form_stats")
 
-    @unittest.expectedFailure
     def test_people_stats_cache(self):
-        """LEAK（已知形狀，memory「騎練率有前視」）：`sb_people_stats` cache 冇 as-of。
+        """已修（EXP-20261015-04）。原本 LEAK（memory「騎練率有前視」）：`sb_people_stats` cache 冇 as-of。
 
         `write_meeting` 用 `entry["ly"]`（最近一次 refresh 嘅 12 個月往績）寫
         `(LY: …)`，唔理 `fetched_at` 係咪喺 D 之後；`jockey_score` /
@@ -529,6 +544,9 @@ class FutureAppendInvarianceTests(unittest.TestCase):
         已經有 point-in-time 快照，但冇 reader 用佢。
         fixture 量度：jockey_score +20.9~+30.7、trainer_score +21.3~+39.4、
         綜合分 +8.6~+14.2，**排名 #7/#8 對調**。
+        修法：歷史場次用 `sb_people_stats.load_as_of(D)` —— 嚴格早過 D（悉尼
+        00:00）最後一個快照；冇就 `-`（中性），唔准跌返 current cache。
+        fixture 有寫快照檔，baseline 嘅 LY 係真值（唔係兩邊都中性嘅假綠）。
         """
         self._assert_invariant("people_cache")
 
@@ -541,15 +559,16 @@ class FutureAppendInvarianceTests(unittest.TestCase):
         self.assertTrue(any(r["date"] > D_DATE for r in future["duchess-zou"]["runs"]))
         self._assert_invariant("horse_index")
 
-    @unittest.expectedFailure
     def test_draw_bias_matrix(self):
-        """LEAK（已知形狀，memory「檔位矩陣洩漏入回測」）：
+        """已修（EXP-20261015-04）。原本 LEAK（memory「檔位矩陣洩漏入回測」）：
 
         `au_draw_bias_calculator.main()` 用**全份**結果 CSV（主 CSV + backfill）
         建矩陣，冇 as-of 參數；引擎讀單一靜態 `au_draw_bias_matrix.json`。
         fixture 量度：`pace_map_score` 60.0 → 64.05（四匹）。`race_shape` 已退役
         （權重 0），所以綜合分同排名今日唔郁 —— 但任何重新啟用 pace_map 嘅
         候選喺回放都會食到未來。
+        修法：calculator 另寫逐場 sidecar `au_draw_bias_races.json`；歷史場次
+        由 `Date < D` 嘅場次用同一個 `build_matrix()` 重砌。
         """
         self._assert_invariant("draw_matrix")
 
@@ -564,12 +583,12 @@ class FutureAppendInvarianceTests(unittest.TestCase):
         """有 `(LY:)` 嘅時候 tier 表唔入分（統一上名率優先）。"""
         self._assert_invariant("jt_ratings")
 
-    @unittest.expectedFailure
     def test_jockey_trainer_ratings_fallback(self):
-        """LEAK：`(LY: -)` 嘅馬跌落 `AU_{Jockey,Trainer}_Ratings.csv` tier 表，
+        """已修（EXP-20261015-04）。原本 LEAK：`(LY: -)` 嘅馬跌落 `AU_{Jockey,Trainer}_Ratings.csv` tier 表，
         而個表冇日期／版本 —— D 之後任何重評都會改 D 嘅 leaf。
         fixture 量度：jockey_score / trainer_score 60 → 74、綜合分 +5.75（四匹）、
         評級升一級（排名未變，因為四匹同時升）。
+        修法：tier 表加 `as_of` 欄；歷史場次只用 `as_of < D` 嘅行，冇日期 = 中性。
         """
         self._assert_invariant("jt_ratings", people_empty=True)
 
@@ -577,6 +596,88 @@ class FutureAppendInvarianceTests(unittest.TestCase):
         """PF 歷史 backfill 預設關（`WC_PF_BACKFILL` 未 set）。呢個 case 只證明
         生產預設唔讀佢；開咗之後嘅 as-of（`target_date`）**未有覆蓋**。"""
         self._assert_invariant("pf_backfill")
+
+
+class PointInTimeModeTests(unittest.TestCase):
+    """修法嘅另一面：live（D ≥ 今日）一定要同以前一模一樣。"""
+
+    def _write(self, tmp, today, *, people=None, snapshots=()):
+        snap = Path(tmp) / "snap.jsonl"
+        snap.write_text("".join(json.dumps(r) + "\n" for r in snapshots), encoding="utf-8")
+        out = Path(tmp) / today
+        with mock.patch.dict(os.environ, {"WC_AU_PIT_TODAY": today}), \
+                mock.patch.object(sb_people_stats, "load_cache",
+                                  lambda path=None: copy.deepcopy(people or {})), \
+                mock.patch.object(sb_people_stats, "snapshot_path", lambda path=None: snap), \
+                contextlib.redirect_stdout(io.StringIO()):
+            summary = claw_sportsbet_form.write_meeting(build_races(), str(out), D_DATE, VENUE,
+                                                        verbose=False)
+        return summary, (out / f"08-01 Race {RACE_NO} Formguide.md").read_text(encoding="utf-8")
+
+    def test_live_keeps_page_stats_and_current_cache(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary, text = self._write(tmp, D_DATE, people=people_cache(future=True))
+        self.assertEqual(summary["pit_races"], 0)
+        self.assertIn("Career:    10: 2-2-2", text)            # 頁面數，原封
+        future_ly = people_cache(future=True)["jockey|j201"]["ly"]
+        self.assertIn(f"(LY: {future_ly})", text)               # live 用 current cache
+
+    def test_historical_recomputes_and_uses_pre_d_snapshot(self):
+        base = people_cache(future=False)
+        snaps = [{"captured_at": e["fetched_at"], "key": k, "stats": e["stats"]}
+                 for k, e in base.items()]
+        with tempfile.TemporaryDirectory() as tmp:
+            summary, text = self._write(tmp, "2026-10-14", people=people_cache(future=True),
+                                        snapshots=snaps)
+        self.assertEqual(summary["pit_races"], 1)
+        self.assertNotIn("10: 2-2-2", text)
+        self.assertIn("Career:    3: ", text)                    # 三條 D 前往績
+        self.assertIn(f"(LY: {base['jockey|j201']['ly']})", text)
+
+    def test_historical_without_pre_d_snapshot_is_neutral(self):
+        """冇 D 前快照 → `-`，唔准跌返 current cache。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            _summary, text = self._write(tmp, "2026-10-14", people=people_cache(future=True))
+        self.assertNotIn("(LY: 3", text)
+        self.assertIn("(LY: -)", text)
+
+    def test_dated_tier_rows_survive_historical_and_undated_do_not(self):
+        engine = engine_core.RacingEngine.__new__(engine_core.RacingEngine)
+        engine.race_context = {"meeting_intelligence": {"date": D_DATE}}
+        engine.facts_path = None
+        dated = {"tier": "T1", "as_of": "2026-05-16"}
+        later = {"tier": "T1", "as_of": D_DATE}               # 同日先評 = 唔算賽前
+        undated = {"tier": "T1", "as_of": ""}
+        with mock.patch.dict(os.environ, {"WC_AU_PIT_TODAY": "2026-10-14"}):
+            self.assertIs(engine._rating_known_at_race(dated), dated)
+            self.assertIsNone(engine._rating_known_at_race(later))
+            self.assertIsNone(engine._rating_known_at_race(undated))
+        with mock.patch.dict(os.environ, {"WC_AU_PIT_TODAY": D_DATE}):   # live：照舊
+            self.assertIs(engine._rating_known_at_race(undated), undated)
+
+    def test_historical_draw_matrix_without_sidecar_is_empty(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(engine_core, "DRAW_BIAS_MATRIX_PATH", Path(tmp) / "m.json"):
+            self.assertEqual(engine_core._load_draw_bias_matrix_as_of(D_DATE), {})
+
+    def test_post_race_page_is_historical_even_on_race_day(self):
+        """同日賽後重跑：今日 = D，但頁面已經有 D 當日往績行 → 嗰場當歷史。"""
+        races = build_races(future_runs=False)
+        for blk in races[0][2]:
+            blk["runs"] = [_run(D_DATE, VENUE, RACE_NO, DISTANCE, "Good", pos=1, field=10,
+                                margin="0", jockey="X", barrier=1, weight="58", sp="2.0",
+                                settled=1, p800=1, p400=1, l600="34.0", prize=100000,
+                                opponents=[])] + blk["runs"]
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict(os.environ, {"WC_AU_PIT_TODAY": D_DATE}), \
+                mock.patch.object(sb_people_stats, "load_cache", lambda path=None: {}), \
+                mock.patch.object(sb_people_stats, "snapshot_path",
+                                  lambda path=None: Path(tmp) / "none.jsonl"), \
+                contextlib.redirect_stdout(io.StringIO()):
+            summary = claw_sportsbet_form.write_meeting(races, tmp, D_DATE, VENUE, verbose=False)
+        self.assertEqual(summary["pit_mode"], "live")
+        self.assertEqual(summary["pit_races"], 1)
+        self.assertEqual(summary["dropped"], len(HORSES))
 
 
 if __name__ == "__main__":

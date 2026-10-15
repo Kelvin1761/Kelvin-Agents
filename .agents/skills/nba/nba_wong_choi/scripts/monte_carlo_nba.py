@@ -24,7 +24,7 @@ Usage:
 
 Version: 2.0.0
 """
-import sys, io, json, math, argparse, random
+import sys, io, json, math, argparse, random, hashlib
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -39,12 +39,12 @@ def _normal_sample(mean, sd):
 
 # ─── Stat-Specific Distribution Samplers ──────────────────────────────────────
 
-def _sample_truncated_normal(mean, sd, n):
+def _sample_truncated_normal(mean, sd, n, rng=random):
     """PTS/REB/AST: truncated normal (floor at 0)."""
-    return [max(0, random.gauss(mean, sd)) for _ in range(n)]
+    return [max(0, rng.gauss(mean, sd)) for _ in range(n)]
 
 
-def _sample_beta_binomial(mean, sd, n):
+def _sample_beta_binomial(mean, sd, n, rng=random):
     """3PM: shot attempts × make rate using beta-binomial.
     Models the inherent uncertainty in both shot attempts and shooting percentage."""
     est_attempts = max(3, round(mean / 0.36))  # ~36% 3P% league avg
@@ -59,15 +59,15 @@ def _sample_beta_binomial(mean, sd, n):
     samples = []
     for _ in range(n):
         try:
-            p = random.betavariate(alpha, beta_param)
+            p = rng.betavariate(alpha, beta_param)
         except ValueError:
             p = est_rate
-        made = sum(1 for _ in range(est_attempts) if random.random() < p)
+        made = sum(1 for _ in range(est_attempts) if rng.random() < p)
         samples.append(made)
     return samples
 
 
-def _sample_poisson(mean, n):
+def _sample_poisson(mean, n, rng=random):
     """STL/BLK: low-count events using Poisson via inverse transform."""
     lam = max(0.1, mean)
     L = math.exp(-lam)
@@ -76,19 +76,25 @@ def _sample_poisson(mean, n):
         k, p = 0, 1.0
         while p > L:
             k += 1
-            p *= random.random()
+            p *= rng.random()
         samples.append(k - 1)
     return samples
 
 
-def _sample_by_category(category, mean, sd, n):
+def _sample_by_category(category, mean, sd, n, rng=random):
     """Route to the appropriate distribution for each stat type."""
     if category == "3PM":
-        return _sample_beta_binomial(mean, sd, n)
+        return _sample_beta_binomial(mean, sd, n, rng)
     elif category in ("STL", "BLK"):
-        return _sample_poisson(mean, n)
+        return _sample_poisson(mean, n, rng)
     else:  # PTS, REB, AST, and others
-        return _sample_truncated_normal(mean, sd, n)
+        return _sample_truncated_normal(mean, sd, n, rng)
+
+
+def stable_seed(*parts):
+    """Deterministic 32-bit seed from any parts (Python's hash() is salted)."""
+    text = "|".join(str(part) for part in parts)
+    return int(hashlib.sha256(text.encode("utf-8")).hexdigest()[:8], 16)
 
 
 # ─── Shrinkage Mean ────────────────────────────────────────────────
@@ -145,7 +151,8 @@ def monte_carlo_player_prop(avg, sd, line, n=10000,
                             l20_avg=None,
                             cov=None,
                             odds=None,
-                            seed=None):
+                            seed=None,
+                            rng=None):
     """
     Multi-factor Monte Carlo simulation V2 for a single player prop.
 
@@ -173,13 +180,15 @@ def monte_carlo_player_prop(avg, sd, line, n=10000,
         l20_avg: L20 average (for shrinkage)
         cov: Coefficient of variation (for confidence adjustment)
         odds: Decimal odds (for EV calculation)
-        seed: Random seed for reproducibility
+        seed: Random seed for reproducibility (a private RNG; the global
+              ``random`` state is no longer reseeded as a side effect)
+        rng: Optional ``random.Random`` to draw from instead of ``seed``
 
     Returns:
         dict with mc_prob, mc_avg, mc_sd, distribution quartiles, EV metrics
     """
-    if seed is not None:
-        random.seed(seed)
+    if rng is None:
+        rng = random.Random(seed) if seed is not None else random
 
     if sd <= 0:
         sd = avg * 0.15  # Fallback: assume 15% CoV if no SD
@@ -207,7 +216,7 @@ def monte_carlo_player_prop(avg, sd, line, n=10000,
     adj_avg += usg_bonus
 
     # Sample using category-appropriate distribution
-    samples = _sample_by_category(category, adj_avg, sd, n)
+    samples = _sample_by_category(category, adj_avg, sd, n, rng)
 
     # Continuity correction for integer milestones:
     # Sportsbet "10+" means >= 10 (integer stat).
@@ -360,10 +369,14 @@ def compute_context_factors(card, spread=None, is_b2b=False, is_home=None,
 
 def run_monte_carlo_for_cards(all_cards, spread=None, is_b2b_map=None,
                               team_stats=None, meta=None, n=10000,
-                              season_phase="MID_SEASON"):
+                              season_phase="MID_SEASON", seed=None):
     """
     Run Monte Carlo simulation for all player cards.
-    
+
+    ``seed`` (per game) makes the run reproducible: each leg draws from its
+    own RNG seeded by (seed, player, team, category, line), so a leg's result
+    does not depend on which other legs exist or their order.
+
     Returns list of MC results per player per line.
     """
     results = []
@@ -395,12 +408,17 @@ def run_monte_carlo_for_cards(all_cards, spread=None, is_b2b_map=None,
         cl = cat_map.get(card["category"], card["category"])
 
         for line_key, la in card.get("line_analysis", {}).items():
+            leg_seed = (
+                stable_seed(seed, card["name"], team, cl, la["line"])
+                if seed is not None else None
+            )
             mc = monte_carlo_player_prop(
                 avg=card["avg"], sd=card["sd"], line=la["line"], n=n,
                 season_phase=season_phase,
                 category=cl,
                 cov=card.get("cov"),
                 odds=float(la["odds"]),
+                seed=leg_seed,
                 **ctx)
 
             mc["player"] = card["name"]
@@ -414,6 +432,185 @@ def run_monte_carlo_for_cards(all_cards, spread=None, is_b2b_map=None,
             mc["mc_edge"] = mc.get("prob_edge_pp", round(mc["mc_prob"] - la["implied_prob"], 1))
             results.append(mc)
 
+    return results
+
+
+# ─── SGM joint simulation (shadow) ───────────────────────────────────────────
+
+SGM_SIM_VERSION = "sgm-joint-sim/v1"
+# Shared-factor scales (per simulated game).  They are structural priors, not
+# fitted values: no settled SGM sample exists yet to fit them on.
+SGM_PACE_SD = 0.03          # both teams' counting stats
+SGM_TEAM_SCORING_SD = 0.05  # one team's PTS / 3PM / AST
+SGM_PLAYER_ROLE_SD = 0.08   # one player's minutes/usage, shared by his markets
+SGM_MARGIN_SD = 12.0        # final margin around the spread
+SGM_STARTER_MIN_AVG = 28.0  # starters lose minutes in blowouts
+_TEAM_SCORING_CATEGORIES = {"PTS", "3PM", "AST"}
+_CAT_LABEL = {"points": "PTS", "threes_made": "3PM", "rebounds": "REB", "assists": "AST"}
+
+
+def _blowout_minutes(margin_abs):
+    """Same table as compute_context_factors, applied to the *simulated* margin."""
+    if margin_abs >= 15:
+        return 0.90
+    if margin_abs >= 12:
+        return 0.94
+    if margin_abs >= 8.5:
+        return 0.97
+    return 1.0
+
+
+def _expected_blowout_minutes(mu, sd):
+    """E[_blowout_minutes(|M|)] for M ~ N(mu, sd), exact for the step table."""
+    def cdf(value):
+        return 0.5 * (1 + math.erf((value - mu) / (sd * math.sqrt(2))))
+
+    def p_abs_at_least(x):
+        return (1 - cdf(x)) + cdf(-x)
+
+    p15, p12, p85 = p_abs_at_least(15), p_abs_at_least(12), p_abs_at_least(8.5)
+    return p15 * 0.90 + (p12 - p15) * 0.94 + (p85 - p12) * 0.97 + (1 - p85) * 1.0
+
+
+def simulate_sgm_joint(combos, all_cards, spread=None, is_b2b_map=None,
+                       team_stats=None, meta=None, n=10000,
+                       season_phase="MID_SEASON", seed=0):
+    """Joint hit probability of each combo from one set of simulated games.
+
+    Every simulation draws game-level factors once (pace, final margin →
+    starters' blowout minutes, each team's scoring level) and one role factor
+    per player; every leg of every combo is then scored against the SAME
+    simulated game, and a combo hits only when all its legs hit in that
+    simulation.  Marginals use the same means/SDs/context as
+    ``run_monte_carlo_for_cards`` (the spread-based deterministic minutes
+    factor is replaced by the simulated margin).  Idiosyncratic SD is shrunk so
+    the shared factors do not inflate each leg's total variance.
+
+    Shadow only: callers must not use the result to choose or publish combos.
+    Returns {combo_id: result}.
+    """
+    is_b2b_map = is_b2b_map or {}
+    team_stats = team_stats or {}
+    meta = meta or {}
+    away = (meta.get("away") or {}).get("abbr", "?")
+    home = (meta.get("home") or {}).get("abbr", "?")
+    cards = {(card["name"], _CAT_LABEL.get(card["category"], card["category"])): card
+             for card in all_cards}
+    phase_sd = {"EARLY_SEASON": 1.20, "MID_SEASON": 1.00, "LATE_REGULAR": 1.10,
+                "PLAY_IN": 0.92, "PLAYOFFS": 0.85}.get(season_phase, 1.0)
+    common_var = SGM_PACE_SD ** 2 + SGM_TEAM_SCORING_SD ** 2 + SGM_PLAYER_ROLE_SD ** 2
+
+    results = {}
+    streams = {}  # (player, category) -> sampling spec
+    combo_legs = {}
+    for combo_id, legs in (combos or {}).items():
+        if not legs:
+            continue
+        specs = []
+        status = "ok"
+        for leg in legs:
+            key = (leg.get("player"), leg.get("category"))
+            card = cards.get(key)
+            if leg.get("market_type") not in (None, "player") and card is None:
+                status = "unsupported_leg"
+                break
+            if card is None:
+                status = "card_missing"
+                break
+            if key not in streams:
+                team = card["team"]
+                opponent = home if team == away else away
+                ctx = compute_context_factors(
+                    card, spread=None, is_b2b=is_b2b_map.get(team, False),
+                    is_home=(team == home),
+                    opp_pace=team_stats.get(opponent, {}).get("PACE"),
+                    team_pace=team_stats.get(team, {}).get("PACE"),
+                    opp_def_rank=team_stats.get(opponent, {}).get("DEF_RANK"),
+                    usg_bonus=card.get("usg_bonus", 0))
+                sd = card["sd"] if card["sd"] > 0 else card["avg"] * 0.15
+                sd *= phase_sd
+                mean = card["avg"]
+                for factor in ("pace_factor", "home_away_factor", "fatigue_factor",
+                               "matchup_factor", "minutes_factor"):
+                    mean *= ctx[factor]
+                mean += ctx["usg_bonus"]
+                category = key[1]
+                team_sd = SGM_TEAM_SCORING_SD if category in _TEAM_SCORING_CATEGORIES else 0.0
+                factor_var = SGM_PACE_SD ** 2 + team_sd ** 2 + SGM_PLAYER_ROLE_SD ** 2
+                idio = math.sqrt(max(sd ** 2 - (mean ** 2) * factor_var, (0.5 * sd) ** 2))
+                streams[key] = {
+                    "player": key[0], "category": category, "team": team,
+                    "mean": mean, "sd": idio, "team_sd": team_sd,
+                    "starter": float(card.get("min_avg") or 0) >= SGM_STARTER_MIN_AVG,
+                }
+            specs.append((key, float(leg.get("line_val") or 0) - 0.5))
+        if status != "ok":
+            results[str(combo_id)] = {"sim_status": status, "sim_model_version": SGM_SIM_VERSION}
+            continue
+        combo_legs[str(combo_id)] = specs
+
+    if combo_legs:
+        rng = random.Random(seed)
+        try:
+            mu_away = -float(spread) if spread not in (None, "", "?") else 0.0
+        except (TypeError, ValueError):
+            mu_away = 0.0
+        margin_sd = SGM_MARGIN_SD * math.sqrt(0.6 ** 2 + 0.8 ** 2)
+        # Blowout minutes are re-centred so each starter's average multiplier
+        # equals the single-leg MC's deterministic spread factor: the
+        # simulation adds co-movement, not a different marginal.
+        blowout_scale = (
+            _blowout_minutes(abs(mu_away)) / _expected_blowout_minutes(mu_away, margin_sd)
+        )
+        players = sorted({stream["player"] for stream in streams.values()})
+        stream_keys = sorted(streams)
+        joint = {cid: 0 for cid in combo_legs}
+        leg_hits = {cid: [0] * len(specs) for cid, specs in combo_legs.items()}
+        for _ in range(n):
+            z_pace = rng.gauss(0, 1)
+            z_team = {away: rng.gauss(0, 1), home: rng.gauss(0, 1)}
+            z_margin = rng.gauss(0, 1)
+            z_role = {player: rng.gauss(0, 1) for player in players}
+            # The scoring shocks also move the margin, so a hot team, a big
+            # margin and benched starters arrive together.
+            margin = mu_away + SGM_MARGIN_SD * (
+                0.6 * z_margin + 0.8 * (z_team[away] - z_team[home]) / math.sqrt(2))
+            blowout = _blowout_minutes(abs(margin)) * blowout_scale
+            pace = 1 + SGM_PACE_SD * z_pace
+            values = {}
+            for key in stream_keys:
+                stream = streams[key]
+                mult = pace * (1 + SGM_PLAYER_ROLE_SD * z_role[stream["player"]])
+                mult *= 1 + stream["team_sd"] * z_team.get(stream["team"], 0.0)
+                if stream["starter"]:
+                    mult *= blowout
+                values[key] = _sample_by_category(
+                    stream["category"], max(0.0, stream["mean"] * mult), stream["sd"], 1, rng)[0]
+            for cid, specs in combo_legs.items():
+                all_hit = True
+                for index, (key, threshold) in enumerate(specs):
+                    if values[key] >= threshold:
+                        leg_hits[cid][index] += 1
+                    else:
+                        all_hit = False
+                if all_hit:
+                    joint[cid] += 1
+        for cid, specs in combo_legs.items():
+            marginals = [hits / n for hits in leg_hits[cid]]
+            independent = 1.0
+            for value in marginals:
+                independent *= value
+            joint_prob = joint[cid] / n
+            results[cid] = {
+                "sim_status": "ok",
+                "sim_model_version": SGM_SIM_VERSION,
+                "sim_n": n,
+                "sim_seed": seed,
+                "sim_joint_prob": round(joint_prob, 4),
+                "sim_independent_prob": round(independent, 4),
+                "sim_leg_marginals": [round(value, 4) for value in marginals],
+                "sim_correlation_lift": round(joint_prob / independent, 4) if independent > 0 else None,
+            }
     return results
 
 

@@ -14,7 +14,10 @@ class TrainerScorer(BaseScorer):
         if rated is not None:
             self.score, self.reason = rated
             return self.score, self.reason
-        self.score, self.reason = score_tier("trainer", self.horse_data.get("trainer", ""), "Neutral Trainer")
+        as_of_date = (self.race_context or {}).get("race_date")
+        self.score, self.reason = score_tier(
+            "trainer", self.horse_data.get("trainer", ""), "Neutral Trainer", as_of_date=as_of_date
+        )
 
         if self.score == 60.0:
             data = self.horse_data.get("_data", {}) if isinstance(self.horse_data.get("_data"), dict) else {}
@@ -30,7 +33,10 @@ class TrainerScorer(BaseScorer):
                         self.score = scoring.TRAINER_MICRO_WEIGHTS.get("overseas_g23_base", 75.0)
                         self.reason = "Overseas Trainer (G2/G3 Level)"
                     else:
-                        jockey_score, _ = score_tier("jockey", self.horse_data.get("jockey", ""), "Neutral Jockey")
+                        jockey_score, _ = score_tier(
+                            "jockey", self.horse_data.get("jockey", ""), "Neutral Jockey",
+                            as_of_date=as_of_date,
+                        )
                         if jockey_score > 60.0:
                             self.score = jockey_score
                             self.reason = "Overseas Trainer (Aligns with Jockey Tier)"

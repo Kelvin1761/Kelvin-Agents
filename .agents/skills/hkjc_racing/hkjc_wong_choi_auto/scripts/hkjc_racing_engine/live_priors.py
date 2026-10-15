@@ -24,12 +24,44 @@ def _parse_as_of_date(value) -> date | None:
         return None
 
 
+_UNKNOWN_DATE_WARNED = False
+
+
+def _warn_unknown_race_date() -> None:
+    """Flag (once per process) that a race was scored without a race date."""
+    global _UNKNOWN_DATE_WARNED
+    if _UNKNOWN_DATE_WARNED:
+        return
+    _UNKNOWN_DATE_WARNED = True
+    import sys
+    print(
+        "⚠️ temporal guard: race_date 未知（Logic 冇 race_date、資料夾冇 YYYY-MM-DD 前綴）"
+        " —— 最新季度騎練統計／層級表一律當中性（fail-closed）。",
+        file=sys.stderr,
+    )
+
+
+def is_live_race_date(as_of_date) -> bool:
+    """True only for a known race date that is today or later (live card).
+
+    Unknown dates are NOT live: an archived Logic without ``race_date`` used to
+    be treated as live and silently read the latest-season snapshots (fail-open,
+    EXP-20261015-02).
+    """
+    requested = _parse_as_of_date(as_of_date)
+    if requested is None:
+        _warn_unknown_race_date()
+        return False
+    return requested >= date.today()
+
+
 def temporal_source_is_safe(source, as_of_date=None) -> bool:
     """Reject current/full-season priors when replaying a historical race.
 
     Live/current-date scoring may use the latest materialized pre-race files.
     Historical scoring requires an explicitly injected point-in-time source
-    whose cutoff matches that meeting date.
+    whose cutoff matches that meeting date.  An unknown race date is unsafe
+    (fail-closed) and is flagged on stderr.
     """
     requested = _parse_as_of_date(as_of_date)
     if requested is None:
@@ -41,6 +73,8 @@ def temporal_source_is_safe(source, as_of_date=None) -> bool:
         return False
     if requested >= date.today():
         return True
+    if requested is None:
+        return False
     mode = str(getattr(source, "temporal_mode", "") or "")
     source_date = _parse_as_of_date(getattr(source, "as_of_date", None))
     return mode == "point_in_time" and source_date == requested

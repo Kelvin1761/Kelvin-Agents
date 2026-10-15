@@ -131,6 +131,7 @@
     .mkt { margin-top: 8px; max-width: 1040px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 0.72rem; padding: 7px 10px; border-radius: 8px; background: #EFF6FF; border: 1px solid #DBEAFE; }
     .mkt__odds { font-weight: 700; color: #1E40AF; font-variant-numeric: tabular-nums; }
     .mkt__ranks { color: #475569; font-variant-numeric: tabular-nums; }
+    .mkt__ref { color: #475569; font-variant-numeric: tabular-nums; flex-basis: 100%; }
     .mkt__gap { font-weight: 700; padding: 1px 7px; border-radius: 999px; font-size: 0.68rem; }
     .mkt__gap--agree { background: #D1FAE5; color: #065F46; }
     .mkt__gap--near { background: #E2E8F0; color: #475569; }
@@ -4314,7 +4315,22 @@ function renderMarketLine(horse, marketRanks) {
   } else if (mRank) {
     h += `<span class="mkt__ranks">市場第 ${mRank}</span>`;
   }
+  h += renderMarketReference(horse);
   return h + '</div>';
+}
+
+// 市場參考層（D1，2026-10-14）：最早賽前盤去水後嘅機率。純顯示，唔參與任何
+// 排序；前三／前四係由市場勝率推算（discounted Harville），唔係模型預測。
+function renderMarketReference(horse) {
+  const pct = v => (typeof v === 'number' ? `${(v * 100).toFixed(1)}%` : null);
+  const bits = [];
+  if (pct(horse.market_win_prob)) bits.push(`勝 ${pct(horse.market_win_prob)}`);
+  if (pct(horse.market_place_prob)) bits.push(`位 ${pct(horse.market_place_prob)}`);
+  if (pct(horse.market_top3_prob)) bits.push(`推算前三 ${pct(horse.market_top3_prob)}`);
+  if (pct(horse.market_top4_prob)) bits.push(`前四 ${pct(horse.market_top4_prob)}`);
+  if (!bits.length) return '';
+  const src = horse.market_reference_source ? esc(horse.market_reference_source) : '最早賽前盤';
+  return `<span class="mkt__ref" title="${src} · 去水（勝 power／位 odds-ratio／前三四 discounted Harville）· 市場推算，非模型，唔入評分">📊 市場參考（去水，非模型）${bits.join(' · ')}</span>`;
 }
 
 // ═══════════════════════════════════════════════

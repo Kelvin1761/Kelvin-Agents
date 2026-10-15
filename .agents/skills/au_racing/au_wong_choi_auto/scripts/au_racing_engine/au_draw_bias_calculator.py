@@ -80,46 +80,46 @@ def parse_barrier(value) -> "int | None":
     return int(number)
 
 
-def main():
-    if not Path(CSV_PATH).exists():
-        print(f"Error: {CSV_PATH} not found.")
-        return 1
+RACES_FILENAME = "au_draw_bias_races.json"
 
-    # 1. Read all rows and determine field sizes
-    races = collections.defaultdict(list)
-    source_rows = []
-    for csv_path in (CSV_PATH, BACKFILL_CSV_PATH):
-        if Path(csv_path).exists():
-            with open(csv_path, 'r', encoding='utf-8-sig') as f:
-                source_rows.extend(csv.DictReader(f))
-    if source_rows:
-        for row in source_rows:
-            date = row.get("Date", "").strip()
-            track = row.get("Track", "").strip().title()
-            race_num = row.get("Race", "").strip()
-            distance = canonical_distance(row.get("Distance"))
-            barrier_str = row.get("Barrier", "").strip()
-            pos_str = row.get("Pos", "").strip()
 
-            # 2026-08-31：`isdigit()` 太嚴。`au_results_ingest` 寫嘅係浮點格式
-            # （`"2.0"`），而 `"2.0".isdigit()` 係 **False** —— 18,564 行主 CSV
-            # 一行都讀唔到，成個表只靠 backfill 嗰 703 行。同一族缺陷嘅第八次
-            # （見 [[scraper-silent-drop-failure-mode]]）：一個嚴格 pattern
-            # 靜靜丟掉一整類數據，而唔會拋錯。
-            barrier = parse_barrier(barrier_str)
-            if barrier is None or barrier <= 0:
-                continue
+def collect_races(csv_paths) -> list[dict]:
+    """結果 CSV → 逐場 `{date, track, distance, runners: [[barrier, pos], …]}`。
 
-            pos = parse_pos(pos_str)
-            race_id = f"{date}_{track}_{race_num}"
-            races[race_id].append({
-                "track": track,
-                "distance": distance,
-                "barrier": barrier,
-                "pos": pos
-            })
+    呢個係矩陣嘅**唯一**輸入形狀。`main()` 同引擎嘅 as-of 重砌
+    （`engine_core._load_draw_bias_matrix_as_of`，EXP-20261015-04）都行
+    `build_matrix(collect_races(...))`，所以 live 表同歷史表係同一條公式。
+    """
+    races: dict[str, dict] = {}
+    for csv_path in csv_paths:
+        if not Path(csv_path).exists():
+            continue
+        with open(csv_path, 'r', encoding='utf-8-sig') as f:
+            for row in csv.DictReader(f):
+                date = row.get("Date", "").strip()
+                track = row.get("Track", "").strip().title()
+                race_num = row.get("Race", "").strip()
+                distance = canonical_distance(row.get("Distance"))
+                # 2026-08-31：`isdigit()` 太嚴。`au_results_ingest` 寫嘅係浮點格式
+                # （`"2.0"`），而 `"2.0".isdigit()` 係 **False** —— 18,564 行主 CSV
+                # 一行都讀唔到，成個表只靠 backfill 嗰 703 行。同一族缺陷嘅第八次
+                # （見 [[scraper-silent-drop-failure-mode]]）：一個嚴格 pattern
+                # 靜靜丟掉一整類數據，而唔會拋錯。
+                barrier = parse_barrier(row.get("Barrier", "").strip())
+                if barrier is None or barrier <= 0:
+                    continue
+                pos = parse_pos(row.get("Pos", "").strip())
+                race_id = f"{date}_{track}_{race_num}"
+                # 同一場第一行嘅 distance 定義成場（同舊版逐 runner 記錄等價：
+                # 同一場所有行嘅 Distance 一樣）。
+                entry = races.setdefault(race_id, {"date": date, "track": track,
+                                                   "distance": distance, "runners": []})
+                entry["runners"].append([barrier, pos])
+    return list(races.values())
 
-    # 2. Accumulate stats
+
+def build_matrix(races) -> dict:
+    """逐場記錄 → 檔位矩陣（舊 `main()` 第 2、3 步，邏輯一字不改）。"""
     # global_stats: field_size_category -> bucket -> stats
     global_counts = collections.defaultdict(lambda: collections.defaultdict(int))
     global_wins = collections.defaultdict(lambda: collections.defaultdict(int))
@@ -135,7 +135,8 @@ def main():
     dist_wins = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(int)))
     dist_places = collections.defaultdict(lambda: collections.defaultdict(lambda: collections.defaultdict(int)))
 
-    for race_id, runners in races.items():
+    for race in races:
+        runners = race["runners"]
         field_size = len(runners)
         if field_size <= 8:
             field_cat = "field_1_8"
@@ -144,12 +145,10 @@ def main():
         else:
             field_cat = "field_13_plus"
 
-        for r in runners:
-            trk = r["track"]
-            dst = r["distance"]  # "" = CSV 冇距離，只計 track 總體同全域
-            bkt = get_bucket(r["barrier"])
-            pos = r["pos"]
-
+        trk = race["track"]
+        dst = race["distance"]  # "" = CSV 冇距離，只計 track 總體同全域
+        for barrier, pos in runners:
+            bkt = get_bucket(barrier)
             is_win = (pos == 1)
             is_place = (pos <= 3)
 
@@ -171,17 +170,12 @@ def main():
             if is_win: dist_wins[trk][dst][bkt] += 1
             if is_place: dist_places[trk][dst][bkt] += 1
 
-    # 3. Build JSON structure
     matrix = {
         "global_general": {},
         "tracks": {}
     }
-
-    # Populate global
     for f_cat in ["field_1_8", "field_9_12", "field_13_plus"]:
         matrix["global_general"][f_cat] = compute_rates(global_counts[f_cat], global_wins[f_cat], global_places[f_cat])
-
-    # Populate tracks
     for trk, t_counts in track_counts.items():
         matrix["tracks"][trk] = {
             "track_general": compute_rates(t_counts, track_wins[trk], track_places[trk]),
@@ -189,6 +183,37 @@ def main():
         }
         for dst, d_counts in dist_counts[trk].items():
             matrix["tracks"][trk]["distances"][dst] = compute_rates(d_counts, dist_wins[trk][dst], dist_places[trk][dst])
+    return matrix
+
+
+def write_races_sidecar(races) -> Path:
+    """逐場 sidecar：引擎歷史場次按 `date < 賽事日期` 過濾後重砌（EXP-20261015-04）。"""
+    path = Path(OUTPUT_JSON).with_name(RACES_FILENAME)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    ordered = sorted(races, key=lambda r: (r["date"], r["track"], r["distance"]))
+    path.write_text(json.dumps({"version": 1, "races": ordered}, ensure_ascii=False,
+                               separators=(",", ":")), encoding="utf-8")
+    return path
+
+
+def main():
+    if not Path(CSV_PATH).exists():
+        print(f"Error: {CSV_PATH} not found.")
+        return 1
+
+    # 1. Read all rows grouped by race
+    race_list = collect_races((CSV_PATH, BACKFILL_CSV_PATH))
+    # `--index-only`：只更新逐場 sidecar，唔郁 live 矩陣（加 as-of 嗰次用，
+    # 令 live 表同 golden 唔會因為「順手重建」而郁）。
+    if "--index-only" in sys.argv:
+        path = write_races_sidecar(race_list)
+        print(f"✅ Wrote {len(race_list)} races to {path}")
+        return 0
+
+    # 2./3. Accumulate stats + build JSON structure
+    matrix = build_matrix(race_list)
+    track_counts = matrix["tracks"]
+    races = race_list
 
     out_path = Path(OUTPUT_JSON)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -230,6 +255,7 @@ def main():
 
     with open(out_path, 'w', encoding='utf-8') as f:
         json.dump(matrix, f, indent=4, ensure_ascii=False)
+    write_races_sidecar(race_list)
 
     print(f"✅ Successfully generated Draw Bias Matrix at {OUTPUT_JSON}")
     print(f"Processed {new_races} races across {len(track_counts)} tracks.")

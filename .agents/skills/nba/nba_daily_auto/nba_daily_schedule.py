@@ -44,6 +44,8 @@ from nba_research_evidence import (  # noqa: E402
     build_recommendation_projection,
     freeze_settlement_artifacts,
 )
+import nba_market_ledger as market_ledger  # noqa: E402
+import nba_no_prediction as no_prediction  # noqa: E402
 
 HOOK_DIR = (
     PROJECT_ROOT
@@ -131,6 +133,51 @@ def _waiting_market_games(result: subprocess.CompletedProcess[str], status: str,
             return sorted(set(games))
         return []
     return []
+
+
+class AnalysisGamesBlocked(TemporaryFailure):
+    """Some games failed the per-game firewall; the others are publishable.
+
+    Before 2026-10-14 one blocked game made the orchestrator exit 1 and the
+    scheduler froze nothing at all, so postgame had no prediction to review
+    (2026-10-10/11/12: ``live_analysis_has_no_prediction_snapshot``).
+    """
+
+    def __init__(self, blocked: list[str], passed: list[str]) -> None:
+        self.blocked = sorted(set(blocked))
+        self.passed = sorted(set(passed))
+        super().__init__("games_blocked:" + ",".join(self.blocked))
+
+
+def blocked_games_result(result: subprocess.CompletedProcess[str]) -> dict[str, Any] | None:
+    """Parse the orchestrator's ``games_blocked`` outcome (exit 1 only)."""
+    if result.returncode != 1:
+        return None
+    prefix = "NBA_PIPELINE_RESULT: "
+    for line in reversed(result.stdout.splitlines()):
+        if not line.startswith(prefix):
+            continue
+        try:
+            payload = json.loads(line[len(prefix):])
+        except ValueError:
+            return None
+        if not isinstance(payload, dict) or payload.get("status") != "games_blocked":
+            return None
+        blocked = payload.get("blocked_games")
+        passed = payload.get("passed_games")
+        if not (
+            isinstance(blocked, list)
+            and blocked
+            and isinstance(passed, list)
+            and all(isinstance(tag, str) and tag for tag in [*blocked, *passed])
+        ):
+            return None
+        return {
+            "blocked": sorted(set(blocked)),
+            "passed": sorted(set(passed)),
+            "sgm_ok": payload.get("sgm_ok") is True,
+        }
+    return None
 
 
 def waiting_player_games(result: subprocess.CompletedProcess[str]) -> list[str]:
@@ -457,9 +504,29 @@ def snapshot_manifest(snapshot: Path) -> dict[str, Any]:
     return _read_json(snapshot / "manifest.json", {}) if snapshot.is_dir() else {}
 
 
-def latest_snapshot(folder: Path, *, role: FreshnessRole | None = None) -> Path | None:
+def snapshot_is_partial(snapshot: Path) -> bool:
+    return snapshot_manifest(snapshot).get("completeness") == "partial"
+
+
+def latest_snapshot(
+    folder: Path,
+    *,
+    role: FreshnessRole | None = None,
+    include_partial: bool | None = None,
+) -> Path | None:
+    """Latest snapshot; role lookups (pregame idempotency) skip partial ones.
+
+    A partial snapshot freezes the games that passed while others were
+    blocked.  It is a real prediction for postgame/health, but it must not
+    tell the next pregame run "already snapshotted": the blocked games still
+    need their retry.
+    """
     root = folder / "_prediction_snapshots"
     snapshots = sorted(path for path in root.glob("*") if (path / "manifest.json").is_file())
+    if include_partial is None:
+        include_partial = role is None
+    if not include_partial:
+        snapshots = [path for path in snapshots if not snapshot_is_partial(path)]
     if role is not None:
         snapshots = [
             path
@@ -477,6 +544,7 @@ def create_prediction_snapshot(
     role: FreshnessRole = FreshnessRole.PRODUCTION,
     refreshable_tags: list[str] | None = None,
     event_starts: dict[str, datetime] | None = None,
+    blocked_tags: list[str] | None = None,
 ) -> Path:
     problems = validate_analysis(folder, target_date, tags)
     if problems:
@@ -496,6 +564,8 @@ def create_prediction_snapshot(
                 f"Sportsbet_Odds_{tag}.json",
                 f"nba_game_data_{tag}.json",
                 f"Game_{tag}_Full_Analysis.md",
+                # Optional market-evaluation sidecar; absent files are skipped.
+                f"Game_{tag}_Full_Analysis.md{market_ledger.SIDECAR_SUFFIX}",
             ]
         )
     copied: dict[str, dict[str, Any]] = {}
@@ -556,6 +626,10 @@ def create_prediction_snapshot(
         "season_context": classify_nba_season(target_date),
         "snapshot_role": role.value,
         "refreshable_game_tags": sorted(refreshable_tags or tags),
+        "completeness": "partial" if blocked_tags else "complete",
+        # Aggregate SGM/Banker reports are copied as written and may still
+        # mention a blocked game; consumers must filter by game_tags.
+        "blocked_game_tags": sorted(blocked_tags or []),
         "append_only": True,
         "files": [{"name": name, **copied[name]} for name in sorted(copied)],
         "research_evidence": research_status,
@@ -606,12 +680,60 @@ def _restore_bytes(path: Path, content: bytes) -> None:
     temp.replace(path)
 
 
+def _market_ledger(log: Any, action: str, call) -> None:
+    """Run one forward market-ledger write; it can never fail or alter a run."""
+    try:
+        detail = call()
+    except market_ledger.LedgerIsolationError as exc:
+        log.step("market_ledger", "skipped", action=action, reason=str(exc))
+    except Exception as exc:  # noqa: BLE001
+        log.step("market_ledger", "failed", action=action, error=f"{type(exc).__name__}: {exc}")
+    else:
+        log.step("market_ledger", "ok", action=action, detail=detail)
+
+
+def _record_no_prediction_ledger(
+    written_off: "no_prediction.NoPredictionScope", target_date: str, log: Any
+) -> None:
+    """Re-assert the ledger exclusion (idempotent) so evaluation never counts it."""
+    if not written_off.marked:
+        return
+
+    def call() -> dict[str, Any]:
+        summary = written_off.summary()
+        appended = market_ledger.record_no_prediction(
+            target_date,
+            game_tags=None if written_off.whole_date else sorted(written_off.game_tags),
+            reason=str(summary.get("reason") or ""),
+            marked_by=str(summary.get("marked_by") or ""),
+            marked_at=str(summary.get("marked_at") or ""),
+        )
+        return {"status": "no_prediction_excluded", "appended": appended, **summary}
+
+    _market_ledger(log, "no_prediction", call)
+
+
+def _settle_market_ledger(archive: Path, target_date: str, log: Any) -> None:
+    def call() -> dict[str, Any]:
+        root = market_ledger.ledger_root()
+        results = market_ledger.results_brief_for(archive, target_date)
+        if not results.is_file():
+            return {"status": "results_brief_missing", "path": results.name}
+        settled = market_ledger.settle(target_date, results, root=root)
+        report = market_ledger.evaluate(root=root)
+        market_ledger.write_evaluation(report, root=root)
+        return {**settled, "verdict_status": report.get("verdict_status")}
+
+    _market_ledger(log, "settle", call)
+
+
 def refresh_sportsbet_odds(
     folder: Path,
     target_date: str,
     *,
     protected_tags: set[str],
     log: RunLog,
+    event_starts: dict[str, datetime] | None = None,
 ) -> None:
     """Refresh odds while preserving every already-started game's exact bytes."""
     folder.mkdir(parents=True, exist_ok=True)
@@ -654,6 +776,15 @@ def refresh_sportsbet_odds(
             path.unlink(missing_ok=True)
         else:
             _restore_bytes(path, previous)
+    # Every successful scrape is a price observation, even when the analysis
+    # later waits; this is what makes "earliest" and "close" observable.
+    _market_ledger(
+        log,
+        "record_prices",
+        lambda: market_ledger.record_prices(
+            folder, target_date, event_starts=event_starts, context="odds_refresh"
+        ),
+    )
 
 
 def _run_orchestrator_refresh(
@@ -679,16 +810,24 @@ def _run_orchestrator_refresh(
         for tag in sorted(refreshable_tags):
             commands.append([*base, "--game", tag])
 
+    blocked: set[str] = set()
+    passed: set[str] = set()
     for command in commands:
         result = _run(command)
         tag = command[-1] if "--game" in command else "all"
         game_markets = waiting_game_markets(result)
         waiting_games = game_markets or waiting_player_games(result)
+        outcome = None if waiting_games else blocked_games_result(result)
+        partial_ok = bool(outcome and outcome["sgm_ok"])
         log.step(
             "orchestrator",
-            "waiting" if waiting_games else "ok" if result.returncode == 0 else "failed",
+            "waiting" if waiting_games
+            else "ok" if result.returncode == 0
+            else "games_blocked" if partial_ok
+            else "failed",
             game=tag,
             exit_code=result.returncode,
+            blocked_games=outcome["blocked"] if outcome else None,
             stdout_tail=result.stdout[-2000:],
             stderr_tail=result.stderr[-2000:],
         )
@@ -696,8 +835,87 @@ def _run_orchestrator_refresh(
             raise GameMarketsWaiting(game_markets)
         if waiting_games:
             raise PlayerMarketsWaiting(waiting_games)
+        if outcome and partial_ok:
+            # Keep going: in per-game mode the other games still need their run.
+            blocked.update(outcome["blocked"])
+            passed.update(outcome["passed"])
+            continue
         if result.returncode != 0:
             raise TemporaryFailure(f"orchestrator_exit_{result.returncode}:{tag}")
+        if tag != "all":
+            passed.add(tag)
+    if blocked:
+        raise AnalysisGamesBlocked(sorted(blocked), sorted(passed - blocked))
+
+
+def _freeze_partial_snapshot(
+    folder: Path,
+    target_date: str,
+    blocked: AnalysisGamesBlocked,
+    *,
+    schedule_tags: set[str],
+    refreshable_tags: set[str],
+    freshness_role: FreshnessRole,
+    event_starts: dict[str, datetime] | None,
+    log: Any,
+) -> Path | None:
+    """Freeze the games that passed; return None when nothing can be frozen."""
+    blocked_tags = set(blocked.blocked)
+    tags = [tag for tag in sportsbet_tags(folder, target_date) if tag not in blocked_tags]
+    problems = schedule_coverage_problems(schedule_tags - blocked_tags, tags)
+    problems.extend(validate_analysis(folder, target_date, tags))
+    if problems:
+        log.step(
+            "prediction_snapshot",
+            "partial_blocked",
+            problems=problems,
+            blocked_games=sorted(blocked_tags),
+        )
+        return None
+    current = _artifact_hashes(folder, set(tags))
+    previous = latest_snapshot(folder, role=freshness_role, include_partial=True)
+    if previous is not None and snapshot_is_partial(previous):
+        manifest = snapshot_manifest(previous)
+        frozen = {
+            entry.get("name"): entry.get("sha256") for entry in manifest.get("files") or []
+        }
+        if (
+            sorted(manifest.get("game_tags") or []) == sorted(tags)
+            and sorted(manifest.get("blocked_game_tags") or []) == sorted(blocked_tags)
+            and all(frozen.get(name) == sha for name, sha in current.items())
+        ):
+            log.step(
+                "prediction_snapshot",
+                "partial_unchanged",
+                snapshot=str(previous),
+                blocked_games=sorted(blocked_tags),
+            )
+            return previous
+    snapshot = create_prediction_snapshot(
+        folder,
+        target_date,
+        tags,
+        role=freshness_role,
+        refreshable_tags=sorted(refreshable_tags - blocked_tags),
+        event_starts=event_starts,
+        blocked_tags=sorted(blocked_tags),
+    )
+    log.step(
+        "prediction_snapshot",
+        "partial",
+        snapshot=str(snapshot),
+        games=len(tags),
+        blocked_games=sorted(blocked_tags),
+        freshness_role=freshness_role.value,
+    )
+    _market_ledger(
+        log,
+        "record_snapshot",
+        lambda: market_ledger.record_snapshot(
+            snapshot, target_date, event_starts=event_starts
+        ),
+    )
+    return snapshot
 
 
 def run_pregame(
@@ -732,6 +950,11 @@ def run_pregame(
         raise TemporaryFailure("official_games_found_during_configured_off_season")
 
     folder = live_dir(target_date)
+    written_off = no_prediction.scope(folder)
+    if written_off.whole_date:
+        # A written-off date must never grow a post-hoc snapshot.
+        log.step("pregame", "no_prediction", **written_off.summary())
+        return "no_prediction"
     refreshable_tags = (
         set(schedule_tags)
         if freshness_role is FreshnessRole.WARMUP
@@ -774,14 +997,35 @@ def run_pregame(
             target_date,
             protected_tags=protected_tags,
             log=log,
+            event_starts=event_starts if schedule_events is not None else None,
         )
-        _run_orchestrator_refresh(
-            target_date,
-            folder,
-            refreshable_tags=refreshable_tags,
-            schedule_tags=schedule_tags,
-            log=log,
-        )
+        try:
+            _run_orchestrator_refresh(
+                target_date,
+                folder,
+                refreshable_tags=refreshable_tags,
+                schedule_tags=schedule_tags,
+                log=log,
+            )
+        except AnalysisGamesBlocked as blocked:
+            if _artifact_hashes(folder, protected_tags) != protected_before:
+                raise TemporaryFailure("started_game_artifact_changed_during_refresh")
+            partial = _freeze_partial_snapshot(
+                folder,
+                target_date,
+                blocked,
+                schedule_tags=schedule_tags,
+                refreshable_tags=refreshable_tags,
+                freshness_role=freshness_role,
+                event_starts=event_starts if schedule_events is not None else None,
+                log=log,
+            )
+            # Still a failure: no dashboard, no card, and the next run retries
+            # the blocked games.  The message is stable so Telegram dedupes it.
+            raise TemporaryFailure(
+                f"games_blocked:{','.join(blocked.blocked)}"
+                + (":partial_snapshot_frozen" if partial else ":nothing_frozen")
+            ) from blocked
         protected_after = _artifact_hashes(folder, protected_tags)
         if protected_after != protected_before:
             raise TemporaryFailure("started_game_artifact_changed_during_refresh")
@@ -823,6 +1067,28 @@ def run_pregame(
                 freshness_role=freshness_role.value,
                 refreshable_games=sorted(refreshable_tags),
             )
+
+    recorded_snapshot = snapshot
+    _market_ledger(
+        log,
+        "record_snapshot",
+        lambda: market_ledger.record_snapshot(
+            recorded_snapshot,
+            target_date,
+            event_starts=event_starts if schedule_events is not None else None,
+        ),
+    )
+    if freshness_role is not FreshnessRole.WARMUP:
+        # Sportsbet's own price for each published combo (ledger only).
+        _market_ledger(
+            log,
+            "record_sgm_prices",
+            lambda: market_ledger.record_sgm_prices(
+                recorded_snapshot,
+                target_date,
+                event_starts=event_starts if schedule_events is not None else None,
+            ),
+        )
 
     decision_state = (
         DecisionState.SHADOW
@@ -998,7 +1264,14 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         archives = archived_dirs(target_date)
         if archives:
             if len(archives) == 1:
-                _record_settlement_evidence(archives[0], target_date, log)
+                written_off = no_prediction.scope(archives[0])
+                if no_prediction.covers_date(archives[0]):
+                    log.step("settlement_evidence", "skipped", reason="no_prediction")
+                    _record_no_prediction_ledger(written_off, target_date, log)
+                else:
+                    _record_settlement_evidence(archives[0], target_date, log)
+                    _record_no_prediction_ledger(written_off, target_date, log)
+                    _settle_market_ledger(archives[0], target_date, log)
             else:
                 log.step("settlement_evidence", "blocked", reason="ambiguous_archive_paths")
             log.step("postgame", "already_archived")
@@ -1006,6 +1279,8 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         log.step("postgame", "dormant", reason="no_live_analysis")
         return "dormant"
 
+    written_off = no_prediction.scope(folder)
+    date_written_off = no_prediction.covers_date(folder)
     if latest_snapshot(folder) is None:
         # Pregame creates the directory before odds discovery. A failed first
         # extraction can leave it empty; there is no prediction to review.
@@ -1013,7 +1288,10 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         if not any(folder.iterdir()):
             log.step("postgame", "dormant", reason="no_prediction_artifacts")
             return "dormant"
-        raise TemporaryFailure("live_analysis_has_no_prediction_snapshot")
+        if not date_written_off:
+            raise TemporaryFailure("live_analysis_has_no_prediction_snapshot")
+        # Explicitly written off (mark-no-prediction): archive results only.
+        log.step("prediction_snapshot", "no_prediction", **written_off.summary())
     result = _run([sys.executable, str(REVIEW_ARCHIVE), "--date", target_date], timeout=3600)
     summary = _last_json_line(result.stdout) or {}
     status = str(summary.get("status") or "unknown")
@@ -1033,17 +1311,31 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         return status
 
     archive = Path(str(summary.get("archive_path") or ""))
-    _record_settlement_evidence(archive, target_date, log)
+    if date_written_off:
+        log.step("settlement_evidence", "skipped", reason="no_prediction")
+        _record_no_prediction_ledger(written_off, target_date, log)
+    else:
+        _record_settlement_evidence(archive, target_date, log)
+        _record_no_prediction_ledger(written_off, target_date, log)
+        _settle_market_ledger(archive if archive.is_dir() else folder, target_date, log)
     deploy_target = archive if archive.is_dir() else folder
     deploy = _deploy("NBA Wong Choi scheduled postgame", deploy_target)
     log.step("dashboard", deploy)
+    operational_text = f"✅ NBA Wong Choi {target_date} 覆盤完成並已歸檔\nDashboard：{deploy}"
+    if date_written_off:
+        operational_text = (
+            f"✅ NBA Wong Choi {target_date} 已歸檔（no_prediction：冇 prediction snapshot，"
+            f"只存賽果，唔計表現）\n原因：{written_off.summary().get('reason')}\nDashboard：{deploy}"
+        )
     operational = notify_once(
         f"postgame-ops:{target_date}",
-        f"✅ NBA Wong Choi {target_date} 覆盤完成並已歸檔\nDashboard：{deploy}",
+        operational_text,
         audience="primary",
     )
     log.step("telegram_operational", str(operational.get("status") or "unknown"))
-    if archive.is_dir():
+    if date_written_off:
+        log.step("telegram_performance", "skipped", reason="no_prediction")
+    elif archive.is_dir():
         try:
             performance_message = postgame_message(target_date, archive)
         except ValueError as exc:
@@ -1095,8 +1387,73 @@ def health_payload(target_date: str) -> tuple[dict[str, Any], int]:
         return payload, 0
     snapshot = latest_snapshot(folder)
     payload["snapshot"] = str(snapshot) if snapshot else None
+    written_off = no_prediction.scope(folder)
+    if written_off.marked:
+        payload["no_prediction"] = written_off.summary()
+    if snapshot is None and no_prediction.covers_date(folder):
+        payload["status"] = "no_prediction"
+        payload["reason"] = "marked_no_prediction:" + str(written_off.summary().get("reason"))
+        return payload, 0
+    if snapshot and snapshot_is_partial(snapshot):
+        blocked = snapshot_manifest(snapshot).get("blocked_game_tags") or []
+        if written_off.covers(blocked):
+            payload["status"] = "ok"
+            payload["reason"] = "blocked_games_marked_no_prediction:" + ",".join(blocked)
+            return payload, 0
+        payload["status"] = "partial_prediction"
+        payload["reason"] = "blocked_games:" + ",".join(blocked)
+        return payload, 1
     payload["status"] = "ok" if snapshot else "missing_prediction"
     return payload, 0 if snapshot else 1
+
+
+def mark_no_prediction(
+    target_date: str,
+    *,
+    reason: str,
+    marked_by: str,
+    game_tags: list[str] | None = None,
+    now: datetime | None = None,
+) -> dict[str, Any]:
+    """Write off a date (or games) as no_prediction; never creates a snapshot.
+
+    Writes ``_no_prediction.json`` in the date folder (live, or the single
+    archive copy) and the matching market-ledger exclusion row(s).
+    """
+    folder = live_dir(target_date)
+    if not folder.is_dir():
+        archives = archived_dirs(target_date)
+        if len(archives) != 1:
+            raise no_prediction.NoPredictionError(
+                "analysis_folder_missing" if not archives else "ambiguous_archive_paths"
+            )
+        folder = archives[0]
+    commit = _run(["git", "rev-parse", "HEAD"], timeout=30)
+    result = no_prediction.mark(
+        folder,
+        target_date,
+        reason=reason,
+        marked_by=marked_by,
+        now=now or now_sydney(),
+        game_tags=[canonical_game_tag(tag) for tag in game_tags or []],
+        model_commit=commit.stdout.strip() if commit.returncode == 0 else "unknown",
+    )
+    written_off = no_prediction.scope(folder)
+    summary = written_off.summary()
+    try:
+        appended = market_ledger.record_no_prediction(
+            target_date,
+            game_tags=None if written_off.whole_date else sorted(written_off.game_tags),
+            reason=str(summary.get("reason") or ""),
+            marked_by=str(summary.get("marked_by") or ""),
+            marked_at=str(summary.get("marked_at") or ""),
+        )
+    except market_ledger.LedgerIsolationError as exc:
+        result["market_ledger"] = {"status": "skipped", "reason": str(exc)}
+    else:
+        result["market_ledger"] = {"status": "ok", "appended": appended}
+    result["folder"] = str(folder)
+    return result
 
 
 def run_startup(log: RunLog) -> str:
@@ -1125,8 +1482,20 @@ def run_startup(log: RunLog) -> str:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="NBA Wong Choi daily automation")
-    parser.add_argument("--mode", choices=("pregame", "postgame", "health", "startup"), required=True)
+    parser.add_argument(
+        "--mode",
+        choices=("pregame", "postgame", "health", "startup", "mark-no-prediction"),
+        required=True,
+    )
     parser.add_argument("--date", help="Override target Australia/Sydney date (YYYY-MM-DD)")
+    parser.add_argument("--reason", help="mark-no-prediction: why this date/game has no prediction")
+    parser.add_argument("--by", dest="marked_by", help="mark-no-prediction: who decided (e.g. Kelvin)")
+    parser.add_argument(
+        "--game",
+        action="append",
+        default=[],
+        help="mark-no-prediction: limit to one game tag (repeatable); omit for the whole date",
+    )
     parser.add_argument(
         "--freshness-role",
         choices=("auto", "warmup", "production", "final_refresh"),
@@ -1134,6 +1503,8 @@ def main() -> int:
         help="Pregame snapshot role; auto derives it from the Sydney run time.",
     )
     args = parser.parse_args()
+    if args.mode == "mark-no-prediction" and not (args.date and args.reason and args.marked_by):
+        parser.error("--mode mark-no-prediction requires --date, --reason and --by")
 
     now = now_sydney()
     if args.date:
@@ -1150,6 +1521,22 @@ def main() -> int:
             fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             print(json.dumps({"status": "skipped_locked", "mode": args.mode, "target_date": target_date}))
+            return 0 if args.mode != "mark-no-prediction" else TEMPORARY_FAILURE
+
+        if args.mode == "mark-no-prediction":
+            # A manual audit action: no RunLog/Telegram, the marker is the record.
+            try:
+                result = mark_no_prediction(
+                    target_date,
+                    reason=args.reason,
+                    marked_by=args.marked_by,
+                    game_tags=args.game,
+                )
+            except no_prediction.NoPredictionError as exc:
+                print(json.dumps({"status": "refused", "error": str(exc), "target_date": target_date},
+                                 ensure_ascii=False))
+                return 1
+            print(json.dumps({**result, "target_date": target_date}, ensure_ascii=False, sort_keys=True))
             return 0
 
         log = RunLog(args.mode, target_date)
