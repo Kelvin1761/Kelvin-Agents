@@ -29,6 +29,33 @@ def _corpus_meeting_dirs(root):
     from corpus_paths import meeting_dirs
     return sorted(meeting_dirs(root))
 
+def _six_run_digests(meeting_dir, race_no, date):
+    """Same parse + digest as production PQ, but up to 6 runs (research only).
+
+    The recency tuple is swapped only for this call; production scoring above
+    keeps its 4-run digest.
+    """
+    import re as _re
+    from au_racing_engine import engine_core as _ec
+    paths = sorted(meeting_dir.glob(f"*Race {race_no} Formguide.md"))
+    if not paths:
+        return {}
+    text = paths[0].read_text(encoding="utf-8")
+    heads = list(_re.finditer(r"^\[(\d+)\]\s+(.+?) \((\d+)\)\s*$", text, _re.M))
+    saved = _ec._PERFORMANCE_QUALITY_RECENCY_WEIGHTS
+    _ec._PERFORMANCE_QUALITY_RECENCY_WEIGHTS = (1.0, 0.8, 0.6, 0.4, 0.3, 0.2)
+    out = {}
+    try:
+        for i, h in enumerate(heads):
+            section = text[h.start(): heads[i + 1].start() if i + 1 < len(heads) else len(text)]
+            entries = [e for e in _ec._parse_formguide_entries(section, h.group(2).strip())
+                       if str(e.get("date") or "") < date and not e["is_trial"]]
+            out[h.group(1)] = _ec._performance_quality_digest(entries, meeting_date=date).get("runs", [])
+    finally:
+        _ec._PERFORMANCE_QUALITY_RECENCY_WEIGHTS = saved
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
@@ -121,6 +148,7 @@ def main():
                                         if isinstance(h, dict) and h.get("horse_name")]
 
             out_rows = []
+            runs6 = _six_run_digests(meeting_dir, race_no, date)
             for hnum, horse in horses.items():
                 row = lookup.get(normalize_horse_name(get_true_horse_name(horse)))
                 if not row:
@@ -170,7 +198,8 @@ def main():
                     "minus4": any(b.get("factor") == "[環境] 級數偏弱收回"
                                   for b in (getattr(eng, "form_detail", {}) or {}).get("bonus", [])),
                     "pq_runs": (eng.data.get("performance_quality_runs") or []),
-                    "pq_source": eng.provenance.get("performance_quality_score"),  # walk-forward 研究欄（EXP-20261012-32）
+                    "pq_source": eng.provenance.get("performance_quality_score"),
+                    "pq_runs6": runs6.get(str(hnum), []),  # walk-forward 研究欄（EXP-20261012-32）
                 })
             if len(out_rows) >= 4:
                 races_out.append({"meeting": meeting_dir.name, "date": date,
