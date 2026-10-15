@@ -194,3 +194,5 @@
 - [EXP-20261014-07](EXP-20261014-07-au-ranking-sensitivity.md) — horse-analyst方向：分層診斷有方向，terminal CI跨零；未入分。
 - [EXP-20261014-08](EXP-20261014-08-au-top4-pace-diversity.md) — horse-analyst方向：89場觸發，terminal多1場Gold但CI跨零，Stage4 REJECT。
 - [EXP-20261014-09](EXP-20261014-09-au-market-movement-readiness.md) — AU 賠率變動ML資料審計：353 meeting／2,731場有history，2,246場多capture，34%重複獨贏價向量；265賽後補錄排除；clean-era Flucs全部單價。歷史jump time／freshness未驗證，**DATA_GATE_HOLD，未fit**；獨立市場增量試驗設計完成，現役模型不變。
+- [EXP-20261015-05](EXP-20261015-05-au-phase-speed.md) — 距離／起步拆段 discovery：同3145匹次／411場，E800 AUC .5408、E600 .5356、自適應 .5308、比例 .5300、巡航 .5066；全程 .6072。未支持單靠換L600或剔起步增益，未改live。
+- [EXP-20261015-06](EXP-20261015-06-au-joint-pace-capacity.md) — full-time capacity＋全場步速／本駒相對頭段用力聯合模型；兩種固定拆段，逐日prior-only、within-horse ridge、對全程A逐項比較。已完成：J800 Gold0／Good0／Pass+3；JAdaptive全窗gain0。未勝過全程A；GPS／header鐘定義須另核，無promotion。
