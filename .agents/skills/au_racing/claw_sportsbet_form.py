@@ -171,7 +171,9 @@ RE_RUN = re.compile(
     r"Finished\s+(?P<pos>-?\d+)\s*/\s*(?:"
     r"(?P<field>\d+)(?![\d.])(?:\s+(?P<margin>[\d.]+)L)?"
     r"|(?P<margin_without_field>[\d.]+)L)"
-    r".*?Jockey\s+(?P<jockey>[^,]+?)"
+    # Empty jockey is legitimate on jump-outs. A match must never consume the
+    # next Finished row to find a nonempty name or missing metadata.
+    r"(?:(?!\bFinished\b).)*?Jockey\s+(?P<jockey>(?:(?!\bFinished\b)[^,])*?)"
     r"(?:,\s*Barrier\s+(?P<barrier>\d+))?"
     # ⚠️ SP 後面唔可以跟字母。負磅冇數字嘅時候，下一個 token 係 `1st Kyle …`，
     # 而 `[\d.]+` 會食咗個 "1" 當 SP —— 試閘變咗 `Flucs:$- $1`。
