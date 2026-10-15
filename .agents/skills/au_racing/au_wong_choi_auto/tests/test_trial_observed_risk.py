@@ -35,7 +35,9 @@ def engine(*places: int) -> RacingEngine:
         "weight": 57.0,
         "jockey": "Nash Rawiller",
         "trainer": "Chris Waller",
-        "career_race_starts": 18,
+        # Experienced horses now exclude trial performance; this fixture tests
+        # observed risk where trial performance remains applicable.
+        "career_race_starts": 5,
         "_data": {"trial_count": len(places)},
     }
     return RacingEngine(horse, dict(CTX), facts_section="\n".join(rows))

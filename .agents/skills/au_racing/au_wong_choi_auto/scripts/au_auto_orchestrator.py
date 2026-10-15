@@ -25,6 +25,7 @@ from au_racing_engine.engine_core import (
     horse_proven_class_level,
     normalise_field_barriers,
     finite_pf_number,
+    performance_pf_metrics,
 )
 from au_racing_engine.io_utils import write_json_atomic as _write_json_atomic
 from au_racing_engine.io_utils import write_text_atomic as _atomic_write_text
@@ -389,7 +390,7 @@ def _build_field_summary(horses):
             quality = None
         if quality is not None:
             performance_quality.append(quality)
-        pf_agg = ((horse.get("_data") or {}).get("pf_metrics") or {}).get("pf_aggregates") or {}
+        pf_agg = performance_pf_metrics(horse).get("pf_aggregates") or {}
         for key, values in pf_fields.items():
             value = pf_agg.get(f"{key}_avg")
             if value is None:

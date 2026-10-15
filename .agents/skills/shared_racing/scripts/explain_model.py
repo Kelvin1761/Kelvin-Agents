@@ -74,11 +74,15 @@ def load_engine(engine_dir: Path):
     scoring = importlib.import_module(f"{package}.scoring")
     matrix_mapper = importlib.import_module(f"{package}.matrix_mapper")
     renderer = importlib.import_module(f"{package}.renderer")
+    trial_cutoff = None
+    if package == "au_racing_engine":
+        trial_cutoff = importlib.import_module(f"{package}.engine_core").TRIAL_PERFORMANCE_START_CUTOFF
 
     weights = dict(scoring.MATRIX_WEIGHTS)
     formulas = {k: list(v) for k, v in matrix_mapper.MATRIX_FORMULAS.items()}
     return {
         "weights": weights,
+        "trial_performance_cutoff": trial_cutoff,
         # HKJC 9D：centred 維度（同程表現）唔佔加埋等於 1 嘅預算，貢獻 = 權重 ×（分 − 60）。
         "centred_weights": dict(getattr(scoring, "CENTRED_MATRIX_WEIGHTS", {}) or {}),
         "coefficient_model": hasattr(scoring, "compose_matrix_score"),
@@ -210,6 +214,8 @@ def influence(weights, spread):
 def fingerprint(engine_dir: Path):
     entries = []
     names = FINGERPRINT_FILES + (("dimensions.py",) if engine_dir.name == "au_racing_engine" and (engine_dir / "dimensions.py").exists() else ())
+    if engine_dir.name == "au_racing_engine":
+        names += ("engine_core.py",)
     for name in names:
         path = engine_dir / name
         if not path.exists():
@@ -282,6 +288,13 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
         A("3. 維度分按下面嘅權重加權相加 → 綜合戰力分")
         A("4. 場內由高到低排名，就係最終推介次序")
     A("")
+    if model.get("trial_performance_cutoff") is not None:
+        cutoff = model["trial_performance_cutoff"]
+        A(f"**試閘表現適用範圍：** 已跑 **{cutoff} 場或以上正式賽**嘅馬，試閘分固定中性 60，")
+        A("速度比較剔除已標示嘅試閘 PF，新馬試閘時間亦唔再補入近績分。場內速度平均同分散度用相同過濾。")
+        A("少於門檻或生涯場數未知嘅馬保留試閘表現。原始記錄、備戰完整度、試閘準備及騎師熟習背景保留。")
+        A("呢個係用戶接受細微回測影響後嘅簡化取捨，唔係已證實嘅表現改善。")
+        A("")
     A("### 每個維度佔幾重")
     A("")
     coefficients = model.get("coefficient_model", False)

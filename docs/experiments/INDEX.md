@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261015-02](EXP-20261015-02-au-trial-cutoff-refit.md) | 2026-10-15 | AU | 用戶確認六場起移除試閘表現；比較2／4／6場並refit | **USER-ACCEPTED simplification；refit REJECT**：3,297場較低門檻冇更好headline；1,493場逐窗OOS六場refit Gold+3但Good−3，訓練門檻policy Good−4，全部無顯著收益；保留六場／原權重，PIT FLAG未當PASS。 |
 | [EXP-20261012-03](EXP-20261012-03-au-unused-intake-cutoff-standards.md) | 2026-10-12 | AU | 未用欄位零樣本intake、prior-only unique-event speed references | **HARNESS／PARTIAL RESEARCH**：448 meetings完整盤點；future／duplicates／root cache反例修正，14 scoped／AU808 tests PASS；source-bound outcome研究與actual fitted producer仍待接駁，無績效判決。 |
 | [EXP-20261012-02](EXP-20261012-02-au-exact-venue-results-identity.md) | 2026-10-12 | AU | Archive／reflector取消venue substring／layout collapse／all-row fallback | **CORRECTNESS／G2 PARTIAL**：16 fixtures PASS、full AU798；183配對轉unmatched，140僅source-bound metadata可恢復、43仍未解；無PIT／candidate KPI／release。 |
 | [EXP-20261012-01](EXP-20261012-01-au-dated-results-fill-safety.md) | 2026-10-12 | AU | CSV exact venue補值、raw draw保留、dated lineage CLI與研究副本驗收 | **CORRECTNESS／G2 PARTIAL**：34410列、83951 fills、全部原有非placeholder值保持；20880 conflicts／80 flags保留；43 scoped tests PASS，無PIT／績效／release判決。 |

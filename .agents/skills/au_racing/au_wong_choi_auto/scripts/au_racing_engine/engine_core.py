@@ -63,6 +63,34 @@ from .scoring import (
 
 TRACK_RESOURCE_DIR = Path(__file__).resolve().parents[3] / "au_horse_analyst" / "resources"
 AUTO_RESOURCE_DIR = Path(__file__).resolve().parents[2] / "resources"
+
+# User-accepted simplification, EXP-20261015-01: this is not a measured gain.
+TRIAL_PERFORMANCE_START_CUTOFF = 6
+
+
+def trial_performance_applies(horse):
+    """Unknown career totals retain trial evidence; only known starts gate it."""
+    starts = parse_float(horse.get("career_race_starts"))
+    return not (starts is not None and math.isfinite(starts)
+                and starts >= TRIAL_PERFORMANCE_START_CUTOFF)
+
+
+def performance_pf_metrics(horse):
+    """Same filtered PF evidence for the runner and whole-field normalization.
+
+    Preserve raw trial rows for context; preparation consumes separate trial
+    fields. Untagged legacy rows cannot safely be classified as trials.
+    """
+    metrics = ((horse.get("_data") or {}).get("pf_metrics") or {})
+    if trial_performance_applies(horse):
+        return metrics
+    runs = metrics.get("pf_runs") or []
+    kept = [run for run in runs if run.get("run_kind") != "trial"]
+    if len(kept) == len(runs):
+        return metrics
+    source = (metrics.get("pf_aggregates") or {}).get("source", "unknown")
+    return {**metrics, "pf_runs": kept,
+            "pf_aggregates": _pf_aggregates([dict(run) for run in kept], source)}
 JOCKEY_TRAINER_COMBO_STATS_PATH = AUTO_RESOURCE_DIR / "AU_Jockey_Trainer_Combo_Stats.csv"
 JOCKEY_RATINGS_PATH = AUTO_RESOURCE_DIR / "AU_Jockey_Ratings.csv"
 TRAINER_RATINGS_PATH = AUTO_RESOURCE_DIR / "AU_Trainer_Ratings.csv"
@@ -567,7 +595,7 @@ class RacingEngine:
         individual sectional speed.
         """
         if self._pf_metrics_cache is None:
-            metrics = self.data.get("pf_metrics")
+            metrics = performance_pf_metrics(self.horse_data)
             self._pf_metrics_cache = metrics if isinstance(metrics, dict) else {}
         return self._pf_metrics_cache
 
@@ -1150,7 +1178,7 @@ class RacingEngine:
         score = min(100.0, max(0.0, avg_score))
         detail["avg"] = round(score, 2)
 
-        if self._is_maiden_race():
+        if self._is_maiden_race() and trial_performance_applies(self.horse_data):
             # 2026-07-10：新馬補充由「試閘名次」改為「試閘 L600 時間」（用戶提出）。
             # A/B：時間版全檔 GGP +1、A窗 +1（good +0.7pp）、無指標倒退；名次版無增益，
             # 兩者取大亦無增益 → 淨用時間。門檻沿用 _trial_score 嘅 17.5/17.0 m/s。
@@ -1232,6 +1260,13 @@ class RacingEngine:
     def _trial_score(self):
         detail = {"base": None, "adjustments": [], "final": None, "note": ""}
         self.trial_detail = detail
+        if not trial_performance_applies(self.horse_data):
+            starts = int(parse_float(self.horse_data.get("career_race_starts")))
+            note = (f"已跑 {starts} 場正式賽，試閘表現不入能力分；"
+                    "試閘資料保留作備戰及騎師熟習背景。")
+            detail.update(base=60.0, final=60.0, note=note,
+                          excluded_by_career_starts=True)
+            return 60.0, note, "disabled_neutral"
         trial_places = self._trial_places()
         starts = self._career_starts()
         is_maiden = self._is_maiden_race()
