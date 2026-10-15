@@ -88,13 +88,24 @@ class CorpusColumnHealthTests(unittest.TestCase):
         self.assertTrue(H.corpus_column_advisories(self.path))
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class DefaultCorpusPathTest(unittest.TestCase):
-    """預設路徑一定要 import 得到 —— 之前錯咗都綠，因為每個 test 都傳顯式路徑。"""
+    """預設路徑一定要 import 得到 —— 之前錯咗都綠，因為每個 test 都傳顯式路徑。
+
+    唔可以斷言實際檔名：`wongchoi_paths.au_historical_results_csv` 係**刻意**
+    喺 canonical 同 `.latest.csv` 之間揀較新嗰個（Drive FileProvider 會將
+    canonical 卡成舊 placeholder，排程改寫 `.latest`）。資料根指去 Drive 鏡像
+    嘅機（冇 `.wongchoi_au_data_root`）就會合法咁解析到 `.latest.csv`，舊斷言
+    因此視乎部機紅綠。揀檔規則本身喺 test_au_daily_schedule 用 tmp dir 測。
+    """
 
     def test_default_path_resolves_without_error(self):
+        from wongchoi_paths import AU_RACING
+
         path = H.default_corpus_csv()
-        self.assertEqual(path.name, "AU_Historical_Raw_Race_Results.csv")
+        self.assertIn(path.name, {"AU_Historical_Raw_Race_Results.csv",
+                                  "AU_Historical_Raw_Race_Results.latest.csv"})
+        self.assertEqual(path.parent, Path(AU_RACING))
+
+
+if __name__ == "__main__":
+    unittest.main()
