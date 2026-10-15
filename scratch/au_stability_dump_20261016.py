@@ -140,6 +140,9 @@ def main():
             # ⚠️ 一定要喺 `_build_field_summary` 之前 —— 個調整係「本駒水平 −
             # 場內中位」，兩邊要嚟自同一個量度，唔然就同 own-L600 一樣靜靜錯。
             prize_filled += backfill_prize_column(logic, meeting_dir, race_no, date)
+            # 近績質素分（EXP-20261016-06）係場內相對，一定要喺 field summary 之前。
+            from au_racing_engine.engine_core import refresh_form_quality
+            refresh_form_quality(logic, facts_path)
             from au_racing_engine.full_time_speed import prepare_field
             prepare_field(logic, facts_path)
             ctx = dict(race_analysis)

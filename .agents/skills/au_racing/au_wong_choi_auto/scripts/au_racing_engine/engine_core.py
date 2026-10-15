@@ -833,6 +833,15 @@ class RacingEngine:
                 r"人馬配搭分 \d+(?:\.\d+)?",
                 f"人馬配搭分 {feature_scores['jockey_horse_fit_score']:.1f}", note)
 
+        # 近績質素分 (EXP-20261016-06) after every form / PQ context adjustment, so
+        # its fallback is exactly the old stability composite of the final leaves.
+        fq, fq_note, fq_source = self._merged_form_quality(feature_scores)
+        feature_scores["form_quality_score"] = fq
+        feature_notes["form_quality_score"] = fq_note
+        self.provenance["form_quality_score"] = fq_source
+        self.evidence_state["form_quality_score"] = (
+            "observed" if fq_source == "form_quality_field_relative" else "fallback")
+
         # Export the same precision consumed by the matrix. This makes a saved
         # feature vector replayable by ML/refit without hidden rounding drift.
         feature_scores = {key: round(value, 6) for key, value in feature_scores.items()}
@@ -4957,6 +4966,38 @@ class RacingEngine:
         note_str = "；".join(notes) if notes else "未見特別跑法或表現穩定特徵"
         return score, f"{note_str}。跑法穩定性 {clip_score(score):.1f} 分。", "run_style+sectional_trend+repeatability"
 
+    def _form_quality_score(self):
+        """Dispatcher placeholder: the real leaf needs the final form / PQ leaves,
+        so `analyze_horse` overwrites it via `_merged_form_quality`."""
+        return 60.0, "近績質素分喺其他 leaf 完成後先計。", "derived_after_context"
+
+    def _merged_form_quality(self, feature_scores):
+        """近績質素分：名次同賽事質素合併（EXP-20261016-06）。
+
+        冇最少兩場完整往績、或者全場少過 3 匹有值 → 用返舊 stability 組合
+        （0.6 × 近績分 + 0.4 × 表現質素分），排名同上線前一樣。
+        """
+        form = clip_score(feature_scores.get("form_score", 60))
+        quality = clip_score(feature_scores.get("performance_quality_score", 60))
+        composite = clip_score(60.0 + 0.6 * (form - 60.0) + 0.4 * (quality - 60.0))
+        raw = parse_float(self.data.get("form_quality_raw"))
+        runs = int(parse_float(self.data.get("form_quality_run_count")) or 0)
+        summary = self.race_context.get("field_summary") or {}
+        count = int(parse_float(summary.get("form_quality_field_count")) or 0)
+        mean = parse_float(summary.get("form_quality_field_mean"))
+        stdev = parse_float(summary.get("form_quality_field_stdev")) or 0.0
+        self.form_quality_detail = {"raw": raw, "run_count": runs, "field_count": count,
+                                    "runs": self.data.get("form_quality_runs") or []}
+        if raw is None or runs < 2 or count < 3 or mean is None or stdev <= 0:
+            self.form_quality_detail.update(final=round(composite, 2), fallback="form_and_quality_composite")
+            return composite, (f"未有最少兩場完整往績（名次、出馬數、獎金），沿用近績分 {form:.1f} 同"
+                               f"表現質素分 {quality:.1f} 嘅組合 {composite:.1f}。"), "form_quality_fallback_composite"
+        z = (raw - mean) / stdev
+        score = clip_score(60.0 + 20.0 * z)
+        self.form_quality_detail.update(z=round(z, 4), final=round(score, 2))
+        return score, (f"近 {runs} 場按名次（場內百分位）同賽事獎金級別合併，"
+                       f"場內標準分 {score:.1f}。"), "form_quality_field_relative"
+
     def _performance_quality_score(self):
         if os.environ.get("WC_DISABLE_AU_PERFORMANCE_QUALITY") == "1":
             self.performance_quality_detail = {"disabled": True, "final": None}
@@ -7039,11 +7080,87 @@ _PERFORMANCE_QUALITY_RECENCY_WEIGHTS = (1.0, 0.8, 0.6, 0.4)
 _PERFORMANCE_QUALITY_CLASS_CREDIT = 4.0
 _PERFORMANCE_QUALITY_REFERENCE_PRIZE = 50000.0
 
+# ── 近績質素分（EXP-20261016-06 eq2_N6，用戶 2026-10-16 批准上線）─────────────
+# 每場往績 = 名次（場內百分位）同賽事質素（log10 獎金）兩個 z 嘅平均；最近 6 場
+# 完整正式賽（同表現質素分同一個揀選規則），權重 1.0／0.8／0.6／0.4／0.3／0.2，
+# 最少 2 場，再場內標準化。取代 stability 入面近績分 0.6 + 表現質素分 0.4。
+# 常數只用 run_date < 2026-08-05 嘅 41,647 條往績計（冇賽果標籤），**凍結，唔准調**。
+# 研究證據（來源 FLAG，唔係正式 v3 WIN）：§8 fixed arm Gold +1.62pp [+0.14, +3.30]，
+# refit arm Gold +1.89pp [+0.73, +3.12]、Good +1.75pp [+0.14, +3.55]。
+FORM_QUALITY_RECENCY_WEIGHTS = (1.0, 0.8, 0.6, 0.4, 0.3, 0.2)
+FORM_QUALITY_SD_PCT = 0.3190854842046987
+FORM_QUALITY_MU_LOG_PRIZE = 4.586282737969997
+FORM_QUALITY_SD_LOG_PRIZE = 0.35441149811378186
+
+
+def _form_quality_digest(official_entries: list[dict], *, meeting_date: str = "") -> dict:
+    """Raw 近績質素 = recency-weighted mean of per-run (z_placing + z_prize) / 2."""
+    runs = _performance_quality_digest(
+        official_entries, meeting_date=meeting_date,
+        max_runs=len(FORM_QUALITY_RECENCY_WEIGHTS)).get("runs", [])
+    values = []
+    for run in runs:
+        finish, starters = int(run.get("finish_pos") or 0), int(run.get("starters") or 0)
+        if not (starters >= 2 and 1 <= finish <= starters):
+            continue
+        z_place = (0.5 - (finish - 1) / (starters - 1)) / FORM_QUALITY_SD_PCT
+        z_prize = (math.log10(float(run["prize"])) - FORM_QUALITY_MU_LOG_PRIZE) / FORM_QUALITY_SD_LOG_PRIZE
+        values.append((run, (z_place + z_prize) / 2))
+    if len(values) < 2:
+        return {}
+    weights = FORM_QUALITY_RECENCY_WEIGHTS[: len(values)]
+    raw = sum(v * w for (_r, v), w in zip(values, weights)) / sum(weights)
+    return {"raw": round(raw, 6), "run_count": len(values),
+            "runs": [{"date": r.get("date"), "finish_pos": r.get("finish_pos"),
+                      "starters": r.get("starters"), "prize": r.get("prize"),
+                      "value": round(v, 6)} for r, v in values]}
+
+
+def refresh_form_quality(logic_data: dict, facts_path: Path | None) -> int:
+    """Re-derive 近績質素 from the race Formguide for every runner. → runners refreshed.
+
+    Same pattern as `refresh_pf_own_l600`: stored Logic files predate this leaf,
+    so live scoring and every replay recompute it from the Formguide. Must run
+    before `_build_field_summary` (the leaf is field-relative). Runners with no
+    matching Formguide section get the field cleared, never a stale value.
+    """
+    horses = logic_data.get("horses") if isinstance(logic_data, dict) else None
+    if not isinstance(horses, dict) or not facts_path:
+        return 0
+    race_number = (logic_data.get("race_analysis") or {}).get("race_number") or 0
+    try:
+        formguide = _formguide_path_for_facts(Path(facts_path), int(race_number or 0))
+    except (OSError, ValueError):
+        formguide = None
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", Path(facts_path).parent.name)
+    meeting_date = date_match.group(1) if date_match else ""
+    digests = {}
+    if formguide and formguide.exists():
+        text = formguide.read_text(encoding="utf-8")
+        heads = list(re.finditer(r"^\[(\d+)\]\s+(.+?) \((\d+)\)\s*$", text, re.M))
+        for i, head in enumerate(heads):
+            section = text[head.start(): heads[i + 1].start() if i + 1 < len(heads) else len(text)]
+            entries = [e for e in _parse_formguide_entries(section, head.group(2).strip())
+                       if str(e.get("date") or "") < meeting_date and not e["is_trial"]]
+            digests[head.group(1)] = _form_quality_digest(entries, meeting_date=meeting_date)
+    refreshed = 0
+    for number, horse in horses.items():
+        if not isinstance(horse, dict):
+            continue
+        data = horse.setdefault("_data", {})
+        digest = digests.get(str(number)) or {}
+        data["form_quality_raw"] = digest.get("raw")
+        data["form_quality_run_count"] = digest.get("run_count", 0)
+        data["form_quality_runs"] = digest.get("runs", [])
+        refreshed += digest.get("raw") is not None
+    return refreshed
+
 
 def _performance_quality_digest(
     official_entries: list[dict],
     *,
     meeting_date: str = "",
+    max_runs: int | None = None,
 ) -> dict:
     """Summarize demonstrated performance against race strength.
 
@@ -7088,10 +7205,13 @@ def _performance_quality_digest(
             "venue": entry.get("venue", ""),
             "quality": round(quality, 6),
         })
-        if len(evidence) == len(_PERFORMANCE_QUALITY_RECENCY_WEIGHTS):
+        if len(evidence) == (max_runs or len(_PERFORMANCE_QUALITY_RECENCY_WEIGHTS)):
             break
     if len(evidence) < 2:
         return {}
+    if max_runs:
+        # Callers asking for a longer window only want the selected rows.
+        return {"runs": evidence}
     weights = _PERFORMANCE_QUALITY_RECENCY_WEIGHTS[: len(evidence)]
     raw = sum(row["quality"] * weight for row, weight in zip(evidence, weights)) / sum(weights)
     return {

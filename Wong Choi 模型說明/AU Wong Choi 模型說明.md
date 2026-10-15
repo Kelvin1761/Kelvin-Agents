@@ -8,7 +8,7 @@
 
 隻馬最後得到嘅係一個「綜合戰力分」。個分係咁計出嚟：
 
-1. 由原始資料計出 **18 個基礎分**（近績、騎師、檔位…），每個都係 0–100，**60 分 = 中性／冇證據**
+1. 由原始資料計出 **19 個基礎分**（近績、騎師、檔位…），每個都係 0–100，**60 分 = 中性／冇證據**
 2. 啲基礎分按固定配方合成 **8 個維度分**
 3. 維度分按下面嘅權重加權相加 → 矩陣基礎分
 4. 加上下面逐項列明嘅 ranking adjustment → 綜合戰力分
@@ -73,8 +73,7 @@
 
 | 基礎分 | 喺呢個維度佔 |
 |---|---:|
-| 近績分 `form_score` | 60.0% |
-| 表現質素分 `performance_quality_score` | 40.0% |
+| 近績質素分 `form_quality_score` | 100.0% |
 
 實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 **11.40 分**；**0.1%** 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。
 
@@ -181,15 +180,15 @@ R1 Benter combiner 量到模型對最早賽前市場冇增量資訊）。
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-10-16 01:08 AEDT`
-- Git commit：`f4441f46`
+- 生成時間：`2026-10-16 01:31 AEDT`
+- Git commit：`9f429552`
 - Scoring contract：`au/raw-matrix-preparation-v2`
 - `scoring.py` 指紋：`1a3db66feadc`
-- `matrix_mapper.py` 指紋：`9b2553daebb9`
+- `matrix_mapper.py` 指紋：`7e081c69cdd9`
 - `renderer.py` 指紋：`e0f3c7775652`
-- `dimensions.py` 指紋：`298cda128439`
+- `dimensions.py` 指紋：`3b7a2a136e3a`
 - `full_time_speed.py` 指紋：`cde292260587`
-- `engine_core.py` 指紋：`628aae234128`
+- `engine_core.py` 指紋：`5176725552ee`
 - 實測樣本：**500 場、4988 匹馬**，由 `2026-10-03 Kalgoorlie Race 1-9` 到 `2026-10-16 Taree Race 1-8`（跳過 0 個舊格式檔案）
 
 重新生成：

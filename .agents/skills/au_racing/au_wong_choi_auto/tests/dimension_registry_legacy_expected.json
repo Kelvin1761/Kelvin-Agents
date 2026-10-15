@@ -18,7 +18,8 @@
     "health_score",
     "confidence_score",
     "pace_figure_score",
-    "preparation_score"
+    "preparation_score",
+    "form_quality_score"
   ],
   "ABILITY_FEATURE_KEYS": [
     "form_score",
@@ -30,7 +31,8 @@
     "jockey_horse_fit_score",
     "rating_score",
     "track_score",
-    "preparation_score"
+    "preparation_score",
+    "form_quality_score"
   ],
   "REPORT_ONLY_FEATURE_KEYS": [
     "trial_score",
@@ -55,12 +57,8 @@
   "MATRIX_FORMULAS": {
     "stability": [
       [
-        "form_score",
-        0.6
-      ],
-      [
-        "performance_quality_score",
-        0.4
+        "form_quality_score",
+        1.0
       ]
     ],
     "pace_perf": [
@@ -137,7 +135,8 @@
     "health_score": "備戰完整度分",
     "confidence_score": "信心分",
     "pace_figure_score": "L600 環境分",
-    "preparation_score": "試閘備戰分"
+    "preparation_score": "試閘備戰分",
+    "form_quality_score": "近績質素分"
   },
   "MATRIX_LABELS": {
     "stability": "狀態與穩定性",

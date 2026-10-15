@@ -60,10 +60,16 @@ LEAF_SPECS = (
     LeafSpec('confidence_score', '信心分', None, True, False),
     LeafSpec('pace_figure_score', 'L600 環境分', 2, False, True),
     LeafSpec('preparation_score', '試閘備戰分', 10, False, False),
+    # EXP-20261016-06 (user-approved 2026-10-16): replaces the 0.6 form + 0.4 PQ mix in
+    # stability. Not counted as evidence: form_score and PQ keep the thin-evidence rail
+    # exactly as before.
+    LeafSpec('form_quality_score', '近績質素分', 11, False, False),
 )
 
 DIMENSION_SPECS = (
-    DimensionSpec('stability', '狀態與穩定性', (('form_score', 0.6), ('performance_quality_score', 0.4)), 0.37099725005319806, 0),
+    # EXP-20261016-06: one per-run leaf (placing judged by race quality, last 6 runs);
+    # coefficient unchanged (§8 fixed arm). Falls back to the old 0.6/0.4 mix inside the leaf.
+    DimensionSpec('stability', '狀態與穩定性', (('form_quality_score', 1.0),), 0.37099725005319806, 0, reasoning_components=('form_quality_score', 'form_score', 'performance_quality_score')),
     # EXP-20261016-01: trial_score left pace_perf. Coefficient = 0.12093934478578448 × 0.941744,
     # so pace_figure's contribution to the composite is unchanged.
     DimensionSpec('pace_perf', '速度考驗背景', (('pace_figure_score', 1.0),), 0.12093934478578448 * 0.941744, 1, reasoning_components=('pace_figure_score', 'sectional_score'), reasoning_score_default=60.0),

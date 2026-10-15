@@ -75,7 +75,9 @@ class SignalMapTests(unittest.TestCase):
 
     def test_direct_matrix_feature_set_matches_documentation(self) -> None:
         documented = {
-            "form_score", "performance_quality_score",
+            # form_score + performance_quality_score merged into one per-run leaf
+            # (EXP-20261016-06); both stay as report components and rail evidence.
+            "form_quality_score",
             # sectional_score retired 2026-08-05: within-race AUC 0.525, and only
             # 0.532 even where the L400 PI data exists — weak because the leaf has
             # no discrimination, not because 21% of runners lack coverage.
