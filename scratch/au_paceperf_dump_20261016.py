@@ -32,6 +32,7 @@ def _corpus_meeting_dirs(root):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
+    ap.add_argument("--variant", required=True)
     args = ap.parse_args()
 
     # 一定要喺 import engine 之前設好，backfill 開關喺 module 層讀
@@ -46,7 +47,11 @@ def main():
 
     from au_racing_engine.engine_core import backfill_pf_metrics
     from au_racing_engine.engine_core import refresh_pf_own_l600
-    from au_racing_engine.engine_core import performance_pf_metrics
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import au_paceperf_variants_20261016 as _variants
+    _variants.apply(args.variant)
+    from au_racing_engine import engine_core as _ec
+    performance_pf_metrics = lambda h: _ec.performance_pf_metrics(h)  # noqa: E731  (patched per variant)
 
     results = load_historical_results(HISTORICAL_RESULTS_CSV)
     races_out = []

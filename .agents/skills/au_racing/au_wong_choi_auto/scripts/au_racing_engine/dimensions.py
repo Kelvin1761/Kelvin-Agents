@@ -40,7 +40,8 @@ class DimensionSpec:
 
 LEAF_SPECS = (
     LeafSpec('form_score', '近績分', 0, False, True),
-    LeafSpec('trial_score', '試閘分', 3, False, True),
+    # EXP-20261016-01 F6: trial performance removed (user decision); report-only, not evidence.
+    LeafSpec('trial_score', '試閘分', None, True, False),
     LeafSpec('sectional_score', '段速分', None, True, False),
     LeafSpec('pace_map_score', '檔位分', 4, False, False),
     LeafSpec('jockey_score', '騎師分', 5, False, True),
@@ -62,7 +63,9 @@ LEAF_SPECS = (
 
 DIMENSION_SPECS = (
     DimensionSpec('stability', '狀態與穩定性', (('form_score', 0.6), ('performance_quality_score', 0.4)), 0.37099725005319806, 0),
-    DimensionSpec('pace_perf', '速度考驗背景', (('pace_figure_score', 0.941744), ('trial_score', 0.058256)), 0.12093934478578448, 1, reasoning_components=('pace_figure_score', 'sectional_score', 'trial_score'), reasoning_score_default=60.0),
+    # EXP-20261016-01 F6: trial_score left pace_perf. Coefficient = 0.12093934478578448 × 0.941744,
+    # so pace_figure's contribution to the composite is unchanged.
+    DimensionSpec('pace_perf', '速度考驗背景', (('pace_figure_score', 1.0),), 0.12093934478578448 * 0.941744, 1, reasoning_components=('pace_figure_score', 'sectional_score'), reasoning_score_default=60.0),
     DimensionSpec('race_shape', '檔位形勢', (('pace_map_score', 1.0),), None, None),
     DimensionSpec('jockey_trainer', '騎練訊號', (('jockey_score', 0.333333), ('trainer_score', 0.285714), ('jockey_horse_fit_score', 0.380952)), 0.6626585553070451, 2),
     DimensionSpec('class_weight', '官方評分對位', (("rating_score", 0.70),) + ((("class_score", CLASS_SCORE_LIVE_WEIGHT),) if CLASS_SCORE_LIVE else ()), 0.3826193901797637, 3, reasoning_components=('class_score', 'rating_score', 'weight_score')),
