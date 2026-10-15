@@ -181,15 +181,15 @@ R1 Benter combiner 量到模型對最早賽前市場冇增量資訊）。
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-10-16 00:35 AEDT`
-- Git commit：`d8156d13`
+- 生成時間：`2026-10-16 01:08 AEDT`
+- Git commit：`f4441f46`
 - Scoring contract：`au/raw-matrix-preparation-v2`
 - `scoring.py` 指紋：`1a3db66feadc`
 - `matrix_mapper.py` 指紋：`9b2553daebb9`
 - `renderer.py` 指紋：`e0f3c7775652`
 - `dimensions.py` 指紋：`298cda128439`
 - `full_time_speed.py` 指紋：`cde292260587`
-- `engine_core.py` 指紋：`424488876c02`
+- `engine_core.py` 指紋：`628aae234128`
 - 實測樣本：**500 場、4988 匹馬**，由 `2026-10-03 Kalgoorlie Race 1-9` 到 `2026-10-16 Taree Race 1-8`（跳過 0 個舊格式檔案）
 
 重新生成：

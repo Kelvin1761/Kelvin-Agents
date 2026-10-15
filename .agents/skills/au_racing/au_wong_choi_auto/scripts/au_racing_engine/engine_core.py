@@ -73,6 +73,42 @@ TRIAL_PERFORMANCE_START_CUTOFF = 6
 # trial-time proxy, which stay for horses under 6 starts.
 
 
+def _bm_tier(rating):
+    if rating >= 88: return 4
+    if rating >= 72: return 5
+    if rating >= 64: return 6
+    return 7
+
+
+def race_class_tier(text):
+    """Race class label → (tier, recognised). Lower tier = higher class; 7 when unknown.
+
+    EXP-20261016-05 (correctness fix): the old substring tests read sponsor words as
+    class ("lr", "g1", "open" inside names) and missed the spelled-out labels the
+    titles actually use ("BENCHMARK 78", "MDN", rating bands "0 - 56", "CL3").
+    Tokens now need word boundaries; a label that says nothing about class
+    ("HANDICAP", "SW") stays the unknown default 7.
+    """
+    t = str(text or "").lower()
+    if re.search(r"\b(?:group\s*1|g1)\b", t): return 1, True
+    if re.search(r"\b(?:group\s*[23]|g[23])\b", t): return 2, True
+    if re.search(r"\b(?:listed|lr|open)\b", t): return 3, True
+    m = re.search(r"\b(?:bm|benchmark)\s*(\d{2,3})\b", t)
+    if m: return _bm_tier(int(m.group(1))), True
+    m = re.search(r"\b0\s*-\s*(\d{2,3})\b", t)              # rating band "0 - 56" ≈ BM56
+    if m: return _bm_tier(int(m.group(1))), True
+    m = re.search(r"\b(?:rtg|rating)\s*(\d{2,3})\s*\+?", t)  # "RTG 66+" — floor of the band
+    if m: return _bm_tier(int(m.group(1))), True
+    m = re.search(r"\b(\d{2,3})\s*\+", t)                # "GRAD HCP 60+" — floor of the band
+    if m: return _bm_tier(int(m.group(1))), True
+    m = re.search(r"\b(?:class|cl|c)\s*([1-6])\b", t)      # "Class 3", "CL3", "HIGHWAY-C3"
+    if m:
+        n = int(m.group(1))
+        return (5 if n >= 5 else 6 if n >= 3 else 7), True
+    if re.search(r"\b(?:maiden|mdn)\b", t): return 8, True
+    return 7, False
+
+
 def trial_performance_applies(horse):
     """Unknown career totals retain trial evidence; only known starts gate it."""
     starts = parse_float(horse.get("career_race_starts"))
@@ -1051,22 +1087,7 @@ class RacingEngine:
         }
 
     def _get_class_tier(self, text):
-        text = str(text).lower()
-        if "group 1" in text or "g1" in text: return 1
-        if "group 2" in text or "g2" in text or "group 3" in text or "g3" in text: return 2
-        if "listed" in text or "lr" in text or "open" in text: return 3
-        bm_match = re.search(r"bm\s*(\d+)", text)
-        if bm_match:
-            rating = int(bm_match.group(1))
-            if rating >= 88: return 4
-            if rating >= 72: return 5
-            if rating >= 64: return 6
-            return 7
-        if "class 6" in text or "class 5" in text: return 5
-        if "class 4" in text or "class 3" in text: return 6
-        if "class 2" in text or "class 1" in text: return 7
-        if "maiden" in text: return 8
-        return 7
+        return race_class_tier(text)[0]
 
     def _form_score(self):
         starts = self._career_starts()
