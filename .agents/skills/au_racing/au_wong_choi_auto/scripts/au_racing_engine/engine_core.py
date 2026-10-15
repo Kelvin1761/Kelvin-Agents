@@ -5139,8 +5139,6 @@ class RacingEngine:
             items.append("近仗至少有一兩場蝕位或受阻，紙面名次可能低估真身")
         if self._formline_followup_counts()["higher"] > 0:
             items.append("對手後續升班仲交到貨，賽績線唔薄")
-        if self._career_starts() == 0 and feature_scores["trial_score"] >= 72:
-            items.append("初出前備戰唔差，試閘交代比一般新馬清晰")
         return items[:3] or ["整體結構平均，未見特別爆點，但亦唔算有明顯穿崩位"]
 
     def _disadvantages(self, feature_scores, matrix_scores):

@@ -40,9 +40,9 @@ class DimensionSpec:
 
 LEAF_SPECS = (
     LeafSpec('form_score', '近績分', 0, False, True),
-    # EXP-20261016-01 (user decision): trial_score left the ranking. Report-only and NOT
-    # evidence — a disabled leaf at 60 must not trip the thin-evidence rail (17.7% → 4.5%).
-    LeafSpec('trial_score', '試閘分', None, True, False),
+    # EXP-20261016-01 (user decision): trial_score left the ranking and the report. Kept as a
+    # data column for research tools only; NOT evidence — a disabled leaf at 60 must not trip the thin-evidence rail (17.7% → 4.5%).
+    LeafSpec('trial_score', '試閘分', None, True, False, shown_in_report=False),
     LeafSpec('sectional_score', '段速分', None, True, False),
     LeafSpec('pace_map_score', '檔位分', 4, False, False),
     LeafSpec('jockey_score', '騎師分', 5, False, True),

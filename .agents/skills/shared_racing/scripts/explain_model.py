@@ -83,6 +83,12 @@ def load_engine(engine_dir: Path):
 
     weights = dict(scoring.MATRIX_WEIGHTS)
     formulas = {k: list(v) for k, v in matrix_mapper.MATRIX_FORMULAS.items()}
+    # Leaves kept only as data columns (AU registry `shown_in_report=False`) stay
+    # out of the explanation, exactly as they stay out of the race reports.
+    hidden = set()
+    if package == "au_racing_engine":
+        dims = importlib.import_module(f"{package}.dimensions")
+        hidden = {spec.key for spec in dims.LEAF_SPECS if not spec.shown_in_report}
     return {
         "weights": weights,
         "trial_performance_cutoff": trial_cutoff,
@@ -106,8 +112,9 @@ def load_engine(engine_dir: Path):
             "target_sd": getattr(scoring, "MATRIX_DISPLAY_TARGET_SD", None),
         },
         "ability_label": getattr(renderer, "ABILITY_LABEL", "綜合戰力分"),
-        "feature_keys": tuple(getattr(scoring, "FEATURE_KEYS", ())),
-        "report_only_keys": tuple(getattr(scoring, "REPORT_ONLY_FEATURE_KEYS", ()) or ()),
+        "feature_keys": tuple(k for k in getattr(scoring, "FEATURE_KEYS", ()) if k not in hidden),
+        "report_only_keys": tuple(k for k in (getattr(scoring, "REPORT_ONLY_FEATURE_KEYS", ()) or ())
+                                  if k not in hidden),
         "ranking_overlays": tuple(getattr(scoring, "RANKING_OVERLAYS", ()) or ()),
         "ranking_adjustments": tuple(
             getattr(scoring, "RANKING_ADJUSTMENTS", ()) or ()
@@ -294,10 +301,11 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
     A("")
     if model.get("trial_performance_cutoff") is not None:
         cutoff = model["trial_performance_cutoff"]
-        A(f"**試閘表現適用範圍：** 已跑 **{cutoff} 場或以上正式賽**嘅馬，試閘分固定中性 60，")
-        A("速度比較剔除已標示嘅試閘 PF，新馬試閘時間亦唔再補入近績分。場內速度平均同分散度用相同過濾。")
-        A("少於門檻或生涯場數未知嘅馬保留試閘表現。原始記錄、備戰完整度、試閘準備及騎師熟習背景保留。")
-        A("呢個係用戶接受細微回測影響後嘅簡化取捨，唔係已證實嘅表現改善。")
+        A("**試閘表現：** 試閘分已退出排名同報告。")
+        A(f"已跑 **{cutoff} 場或以上正式賽**嘅馬，速度比較剔除已標示嘅試閘 PF，新馬試閘時間亦唔再補入近績分；"
+          "場內速度平均同分散度用相同過濾。少於門檻或生涯場數未知嘅馬，試閘 PF 照計。")
+        A("原始記錄、備戰完整度、試閘準備及騎師熟習背景保留。")
+        A("呢兩步都係用戶接受細微回測影響後嘅簡化取捨，唔係已證實嘅表現改善。")
         A("")
     if model.get("full_time_model"):
         full_time = model["full_time_model"]
