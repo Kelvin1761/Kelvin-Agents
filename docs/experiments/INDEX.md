@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261015-01](EXP-20261015-01-au-trial-six-start-cutoff.md) | 2026-10-15 | AU | Stop trial performance at 6+ career starts; retain preparation | **REJECT for activation**: 3,297 races, five fixed ablation arms; full cutoff Gold -4 / Good unchanged / Pass -10, overall CI span zero; weaker experienced-horse trial signal does not establish benefit from removal. Capture-era direction agrees; historical PIT FLAG retained. No production change. |
 | [EXP-20261012-03](EXP-20261012-03-au-unused-intake-cutoff-standards.md) | 2026-10-12 | AU | 未用欄位零樣本intake、prior-only unique-event speed references | **HARNESS／PARTIAL RESEARCH**：448 meetings完整盤點；future／duplicates／root cache反例修正，14 scoped／AU808 tests PASS；source-bound outcome研究與actual fitted producer仍待接駁，無績效判決。 |
 | [EXP-20261012-02](EXP-20261012-02-au-exact-venue-results-identity.md) | 2026-10-12 | AU | Archive／reflector取消venue substring／layout collapse／all-row fallback | **CORRECTNESS／G2 PARTIAL**：16 fixtures PASS、full AU798；183配對轉unmatched，140僅source-bound metadata可恢復、43仍未解；無PIT／candidate KPI／release。 |
 | [EXP-20261012-01](EXP-20261012-01-au-dated-results-fill-safety.md) | 2026-10-12 | AU | CSV exact venue補值、raw draw保留、dated lineage CLI與研究副本驗收 | **CORRECTNESS／G2 PARTIAL**：34410列、83951 fills、全部原有非placeholder值保持；20880 conflicts／80 flags保留；43 scoped tests PASS，無PIT／績效／release判決。 |
