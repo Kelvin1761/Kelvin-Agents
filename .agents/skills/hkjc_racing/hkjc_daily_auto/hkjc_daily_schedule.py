@@ -1775,6 +1775,85 @@ def results_db_reconcile_section() -> str:
         return ""
 
 
+# EXP-20261016-53 最快第一段 forward 退回條件。窗口、指標、門檻全部預先登記，
+# 喺判定器入面，呢度唔准改；呢度只係每週代跑一次同轉述。
+FIRST_SECTION_EXP_DOC = "docs/experiments/EXP-20261016-53-hkjc-first-section-owner-release.md"
+FIRST_SECTION_SINCE = "2026-10-17"
+FIRST_SECTION_FINAL_RACES = 150
+EVAL_HARNESS = PROJECT_ROOT / ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_eval_harness.py"
+FIRST_SECTION_ARM = PROJECT_ROOT / "docs/experiments/patches/hkjc_arm_no_first_section.py"
+FIRST_SECTION_JUDGE = PROJECT_ROOT / "docs/experiments/patches/hkjc_first_section_forward.py"
+_JUDGE_NUMBERS_RE = re.compile(
+    r"races=(\d+)\s+頭2換馬淨上名=([+-]\d+)\s+Good Δ=([+-][\d.]+)pp\s+Gold Δ=([+-][\d.]+)pp")
+
+
+def _jsonl_dropped(path: Path) -> tuple[int, int]:
+    """(score 失敗行數, speed_score 死咗而被判定器剔走嘅行數)。"""
+    errors = dead = 0
+    for line in path.read_text(encoding="utf-8").splitlines():
+        row = json.loads(line)
+        if "error" in row:
+            errors += 1
+        elif "speed_score" in (row.get("meeting_dead_fields") or []):
+            dead += 1
+    return errors, dead
+
+
+def first_section_forward_section(state: dict, out_dir: Path | None = None) -> str:
+    """每週 review 尾加「前速 forward」一行（EXP-20261016-53）。
+
+    同其他尾段唔同：失敗唔可以靜靜少一段 —— 呢個係 Kelvin 上線時嘅退回條件，
+    冇咗呢行就冇人知要唔要退。所以任何失敗都印 ⚠️ 行。
+    只報告，**永遠唔自動退回**。REVERT 或者 ≥150 場嘅最終判定會凍結入 state
+    （最終「只判一次」），之後每週照印，唔再重跑。
+    """
+    frozen = state.get("first_section_forward_final")
+    if isinstance(frozen, dict) and frozen.get("line"):
+        return f"\n\n{frozen['line']}\n（{frozen.get('decided_at', '?')} 已定案，唔再重跑；見 {FIRST_SECTION_EXP_DOC}）"
+
+    head = f"🏇 前速 forward（EXP-20261016-53，由 {FIRST_SECTION_SINCE} 起）"
+    try:
+        out_dir = out_dir or HK_RACING / "Forward_Checks" / "EXP-20261016-53"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        live, cf = out_dir / "live.jsonl", out_dir / "counterfactual.jsonl"
+        env = {"PYTHONDONTWRITEBYTECODE": "1"}
+        steps = (
+            ("live harness", [sys.executable, str(EVAL_HARNESS), "run",
+                              "--since", FIRST_SECTION_SINCE, "--out", str(live)]),
+            ("反事實 harness", [sys.executable, str(EVAL_HARNESS), "run", "--since", FIRST_SECTION_SINCE,
+                               "--arm", str(FIRST_SECTION_ARM), "--out", str(cf)]),
+            ("判定器", [sys.executable, str(FIRST_SECTION_JUDGE), str(live), str(cf)]),
+        )
+        output = ""
+        for name, cmd in steps:
+            code, output = run_cmd(cmd, timeout=3600, env_overlay=env)
+            if code != 0:
+                raise RuntimeError(f"{name} exit={code}｜{output[-300:]}")
+        numbers = _JUDGE_NUMBERS_RE.search(output)
+        verdict = re.search(r"判定:\s*(.+)", output)
+        if not numbers or not verdict:
+            raise RuntimeError(f"判定器輸出對唔上格式｜{output[-300:]}")
+        races, swap, good, gold = numbers.groups()
+        verdict_text = verdict.group(1).strip()
+        line = (f"{head}：{races} 場｜頭2換馬淨上名 {swap}｜Good Δ {good}pp｜Gold Δ {gold}pp"
+                f"｜判定 {verdict_text}")
+        live_err, live_dead = _jsonl_dropped(live)
+        cf_err, cf_dead = _jsonl_dropped(cf)
+        if live_err or cf_err:
+            line += f"\n⚠️ score 失敗已剔除：live {live_err} 場、反事實 {cf_err} 場 —— 先查數據"
+        if live_dead or cf_dead:
+            line += f"\n⚠️ speed_score 死欄位已剔除：live {live_dead} 場、反事實 {cf_dead} 場"
+        if verdict_text.startswith("REVERT"):
+            line += (f"\n🛑 觸發預先登記退回條件。唔會自動退回 —— 你決定；做法見 {FIRST_SECTION_EXP_DOC}"
+                     "（四個 first_section_* 權重設 0，用 保存.sh 發佈）")
+        if verdict_text.startswith("REVERT") or int(races) >= FIRST_SECTION_FINAL_RACES:
+            state["first_section_forward_final"] = {"line": line, "decided_at": stamp()}
+        return "\n\n" + line
+    except Exception as exc:  # noqa: BLE001
+        log(f"first-section forward check failed: {exc}")
+        return f"\n\n⚠️ {head} 檢查失敗，今個星期冇判定：{type(exc).__name__}: {exc}"
+
+
 def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     code, output = run_cmd([sys.executable, str(WEIGHT_REVIEW), "--json"])
     if code != 0:
@@ -1822,6 +1901,7 @@ def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
         message += f"\n{pr_url}"
     message += field_health_section()
     message += results_db_reconcile_section()
+    message += first_section_forward_section(state)
     notify(message)
     state["last_weekly_review"] = stamp()
     save_state(state_path, state)

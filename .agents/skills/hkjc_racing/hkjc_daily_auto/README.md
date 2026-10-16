@@ -17,6 +17,7 @@ historical/reference review；新季 forward 收集本身唔受呢個限制。
 - `postrace`：賽日翌日抽正式賽果、對齊 snapshot、跑 unified reflector 及更新 forward corpus。
 - `startup`：每次 macOS 登入後即時補查 pre-race 同 post-race，避免關機期間錯過一次排程。
 - `weekly`：星期一發 performance/drift 摘要；只有 `HKJC_Candidate_Gate.json` 明確為 `passed` 先建立 non-draft PR，永遠唔會自動 merge。
+  尾段加「🏇 前速 forward」一行（EXP-20261016-53）：每週用 `hkjc_eval_harness.py --since 2026-10-17` 跑 live 同反事實（`hkjc_arm_no_first_section.py`），交預先登記判定器出 WAIT／CONTINUE／KEEP／REVERT。只報告、唔自動退回；REVERT 或 ≥150 場最終判定凍結入 state（`first_section_forward_final`），唔再重跑。失敗會印 ⚠️，唔會靜靜少一行。輸出寫 `<HK 資料根>/Forward_Checks/EXP-20261016-53/`。
 - `monthly`：CLI fallback，只發一次 AU + HKJC review 提醒並按月份去重。正式月報由 Codex monthly automation 自動完成：彙總上一個完整曆月、輸出 Markdown／JSON／PDF，Telegram 傳摘要及 PDF；任何模型或 Matrix 改動仍只可提出候選，等人手批准。
 
 ### SpeedPro 只向前收集（純資料，唔入分）
