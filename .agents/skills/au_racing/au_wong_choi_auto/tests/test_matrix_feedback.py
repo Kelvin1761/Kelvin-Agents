@@ -117,9 +117,12 @@ def test_preparation_is_separate_without_double_counting():
     features = auto['feature_scores']
     assert features['preparation_score'] > 60
     assert features['jockey_horse_fit_score'] + features['preparation_score'] - 60 == pytest.approx(before)
-    old = {**features, 'jockey_horse_fit_score': before, 'preparation_score':60}
-    assert compose_matrix_score(map_features_to_matrix_scores(features)) == pytest.approx(
-        compose_matrix_score(map_features_to_matrix_scores(old)), abs=.01)
+    # EXP-20261016-77：試閘備戰 = 0.5 試閘密度 + 0.5 試閘速度（用戶決定，§8 評估過），所以搬去試閘備戰
+    # 唔再係「總分不變」；改為鎖住新公式。
+    prep_dim = map_features_to_matrix_scores(features)['preparation']
+    assert prep_dim == pytest.approx(60 + 0.5 * (features['preparation_score'] - 60)
+                                     + 0.5 * (features['trial_speed_score'] - 60), abs=.01)
+    assert compose_matrix_score(map_features_to_matrix_scores(features)) > 0
     assert not any(a['factor'] in engine._PREPARATION_FACTORS
                    for a in auto['jt_fit_detail']['adjustments'])
 

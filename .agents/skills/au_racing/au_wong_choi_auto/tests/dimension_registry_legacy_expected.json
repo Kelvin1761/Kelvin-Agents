@@ -19,7 +19,8 @@
     "confidence_score",
     "pace_figure_score",
     "preparation_score",
-    "form_quality_score"
+    "form_quality_score",
+    "trial_speed_score"
   ],
   "ABILITY_FEATURE_KEYS": [
     "form_score",
@@ -32,7 +33,8 @@
     "rating_score",
     "track_score",
     "preparation_score",
-    "form_quality_score"
+    "form_quality_score",
+    "trial_speed_score"
   ],
   "REPORT_ONLY_FEATURE_KEYS": [
     "trial_score",
@@ -112,7 +114,11 @@
     "preparation": [
       [
         "preparation_score",
-        1.0
+        0.5
+      ],
+      [
+        "trial_speed_score",
+        0.5
       ]
     ]
   },
@@ -136,7 +142,8 @@
     "confidence_score": "信心分",
     "pace_figure_score": "L600 環境分",
     "preparation_score": "試閘備戰分",
-    "form_quality_score": "近績質素分"
+    "form_quality_score": "近績質素分",
+    "trial_speed_score": "試閘 L600 分"
   },
   "MATRIX_LABELS": {
     "stability": "狀態與穩定性",

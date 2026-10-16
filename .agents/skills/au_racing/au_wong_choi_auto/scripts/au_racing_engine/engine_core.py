@@ -126,15 +126,33 @@ def trial_performance_applies(horse):
                 and starts >= TRIAL_PERFORMANCE_START_CUTOFF)
 
 
-def performance_pf_metrics(horse):
-    """Same filtered PF evidence for the runner and whole-field normalization.
+def trial_speed_raw(horse):
+    """EXP-20261016-77：試閘 PF 行嘅個體 L600 平均（越細越快）；唔適用或者冇試閘 PF → None。"""
+    if not trial_performance_applies(horse):
+        return None
+    metrics = ((horse.get("_data") or {}).get("pf_metrics") or {})
+    source = (metrics.get("pf_aggregates") or {}).get("source", "")
+    values = []
+    for run in metrics.get("pf_runs") or []:
+        if run.get("run_kind") != "trial" or run.get("l600_delta") is None:
+            continue
+        base = float(run["l600_delta"])
+        margin = run.get("margin")
+        own = (str(run.get("source") or source) == "sportsbet_race_context" and margin is not None)
+        values.append(base + float(margin) * _SEC_PER_LENGTH if own else base)
+    values = [v for v in values if math.isfinite(v)]
+    return sum(values) / len(values) if values else None
 
-    Preserve raw trial rows for context; preparation consumes separate trial
-    fields. Untagged legacy rows cannot safely be classified as trials.
+
+def performance_pf_metrics(horse):
+    """Same formal-only PF evidence for the runner and whole-field normalization.
+
+    Trial rows stay in the raw `pf_metrics` for `trial_speed_raw` (試閘備戰) but never
+    reach L600 環境分. Untagged legacy rows cannot safely be classified as trials.
     """
     metrics = ((horse.get("_data") or {}).get("pf_metrics") or {})
-    if trial_performance_applies(horse):
-        return metrics
+    # EXP-20261016-77（用戶 2026-10-16 決定）：L600 環境分只用正式賽，試閘 PF 行一律唔計；
+    # 試閘速度改由 `trial_speed_score` 喺試閘備戰計。
     runs = metrics.get("pf_runs") or []
     kept = [run for run in runs if run.get("run_kind") != "trial"]
     if len(kept) == len(runs):
@@ -858,6 +876,10 @@ class RacingEngine:
         fq, fq_note, fq_source = self._merged_form_quality(feature_scores)
         fq, fq_note = self._trip_change_adjustment(fq, fq_note)
         feature_scores["form_quality_score"] = fq
+        ts_score, ts_note = self._merged_trial_speed()
+        feature_scores["trial_speed_score"] = ts_score
+        feature_notes["trial_speed_score"] = ts_note
+        self.provenance["trial_speed_score"] = "trial_pf_own_l600_field_relative"
         feature_notes["form_quality_score"] = fq_note
         self.provenance["form_quality_score"] = fq_source
         self.evidence_state["form_quality_score"] = (
@@ -942,6 +964,7 @@ class RacingEngine:
             "grade_transparency": grade_transparency,
             "jt_fit_detail": self.jt_fit_detail,
             "preparation_detail": getattr(self, "preparation_detail", None),
+            "trial_speed_detail": getattr(self, "trial_speed_detail", None),
             "stability_detail": {
                 "form": getattr(self, "form_detail", {}) or {},
                 "consistency": getattr(self, "consistency_detail", {}) or {},
@@ -5033,6 +5056,30 @@ class RacingEngine:
         """Dispatcher placeholder: the real leaf needs the final form / PQ leaves,
         so `analyze_horse` overwrites it via `_merged_form_quality`."""
         return 60.0, "近績質素分喺其他 leaf 完成後先計。", "derived_after_context"
+
+    def _trial_speed_score(self):
+        """Dispatcher 佔位（真計法喺 `_merged_trial_speed`，要等 field summary）。"""
+        return 60.0, "", "trial_speed_placeholder"
+
+    def _merged_trial_speed(self):
+        """EXP-20261016-77：試閘個體 L600 場內 z → 60 − 20z；場內有值少過 3 匹或者冇值 → 60。→ (score, note)"""
+        raw = trial_speed_raw(self.horse_data)
+        field = self._field_summary()
+        count = int(field.get("trial_speed_field_count") or 0)
+        mean = parse_float(field.get("trial_speed_field_mean"))
+        stdev = parse_float(field.get("trial_speed_field_stdev")) or 0.0
+        detail = {"raw": None if raw is None else round(raw, 2), "field_count": count,
+                  "mean": None if mean is None else round(mean, 2), "stdev": round(stdev, 2),
+                  "applies": trial_performance_applies(self.horse_data), "final": 60.0}
+        self.trial_speed_detail = detail
+        if not detail["applies"]:
+            return 60.0, "正式賽已有 6 場或以上，試閘速度唔計（中性 60）。"
+        if raw is None or count < 3 or mean is None or stdev <= 0:
+            return 60.0, "冇足夠試閘 L600 數據（本駒冇或者同場少過 3 匹），試閘 L600 分中性 60。"
+        score = clip_score(60.0 - 20.0 * (raw - mean) / stdev)
+        detail.update(z=round((raw - mean) / stdev, 2), final=round(score, 1))
+        rel = "快過" if raw < mean else "慢過"
+        return score, f"試閘個體 L600 {raw:+.2f} 秒，{rel}同場試閘均值 {mean:+.2f} 秒，試閘 L600 分 {score:.1f}。"
 
     def _trip_change_adjustment(self, fq, fq_note):
         """EXP-20261016-71 F2：大幅增程／縮程（同最近一場合資格往績差 ≥ 400m）→ 近績質素分 −5。"""

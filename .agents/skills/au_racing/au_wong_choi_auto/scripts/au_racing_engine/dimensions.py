@@ -66,6 +66,9 @@ LEAF_SPECS = (
     # stability. Not counted as evidence: form_score and PQ keep the thin-evidence rail
     # exactly as before.
     LeafSpec('form_quality_score', '近績質素分', 11, False, False),
+    # EXP-20261016-77（用戶 2026-10-16 決定）：試閘速度由 L600 環境分搬嚟試閘備戰。
+    # 試閘 PF 行嘅個體 L600（場級 L600 + 輸距 × 0.17）場內 z；只限正式賽少過 6 場嘅馬。
+    LeafSpec('trial_speed_score', '試閘 L600 分', 12, False, False),
 )
 
 DIMENSION_SPECS = (
@@ -80,7 +83,8 @@ DIMENSION_SPECS = (
     DimensionSpec('class_weight', '官方評分對位', (("rating_score", RATING_SCORE_SHARE),) + ((("class_score", CLASS_SCORE_LIVE_WEIGHT),) if CLASS_SCORE_LIVE else ()), 0.3826193901797637, 3, reasoning_components=('class_score', 'rating_score', 'weight_score')),
     DimensionSpec('track', '場地與地況適性', (('track_score', 1.0),), 0.14114297066700832, 4),
     DimensionSpec('form_line', '賽績線', (('formline_score', 1.0),), None, None, reasoning_components=('formline_score', 'form_score')),
-    DimensionSpec('preparation', '試閘備戰', (('preparation_score', 1.0),), 0.25244110196132946, 5),
+    # EXP-20261016-77：試閘相關證據集中喺試閘備戰 —— 試閘密度（preparation_score）同試閘速度各半。
+    DimensionSpec('preparation', '試閘備戰', (('preparation_score', 0.5), ('trial_speed_score', 0.5)), 0.25244110196132946, 5),
  )
 
 def validate_registry(leaf_specs, dimension_specs):

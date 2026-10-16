@@ -699,7 +699,7 @@ def derive_improvement_theme(row: dict[str, Any]) -> tuple[str, str]:
     # "general"（「微調綜合戰力分矩陣權重」）—— 即係最無用嗰個建議。
     if any(name in keys for name in ("sectional_score", "speed_score", "trial_score",
                                      "speed_rating_score", "pace_figure_score",
-                                     "preparation_score")):
+                                     "preparation_score", "trial_speed_score")):
         return "sectional", "加強段速 / 試閘 / 速度訊號"
     if any(name in keys for name in ("consistency_score", "form_score", "health_score",
                                      "risk_score", "performance_quality_score",

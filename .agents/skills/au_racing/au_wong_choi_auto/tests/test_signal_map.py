@@ -88,6 +88,7 @@ class SignalMapTests(unittest.TestCase):
             "track_score",
             "formline_score",  # form_line dim exists but its weight is 0.0
             "preparation_score",
+            "trial_speed_score",  # EXP-20261016-77: trial speed moved from L600 into 試閘備戰
         } | ({"class_score"} if CLASS_SCORE_LIVE else set())  # EXP-20261009-04
         in_formulas = {name for comps in MATRIX_FORMULAS.values() for name, _w in comps}
         self.assertEqual(in_formulas, documented)

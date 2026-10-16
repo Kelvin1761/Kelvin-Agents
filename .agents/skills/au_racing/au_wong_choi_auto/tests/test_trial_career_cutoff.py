@@ -48,7 +48,8 @@ def test_pf_filter_retains_formal_runs_and_raw_context():
     assert filtered['pf_aggregates']['own_l600_delta_avg'] == 1.34
     assert filtered['pf_aggregates']['trial_run_count'] == 0
     assert data == original
-    assert performance_pf_metrics(horse(5))['pf_aggregates']['pf_run_count'] == 2
+    # EXP-20261016-77：L600 環境分一律唔計試閘行，少過 6 場都係（試閘速度改喺試閘備戰計）。
+    assert performance_pf_metrics(horse(5))['pf_aggregates']['pf_run_count'] == 1
 
 
 def test_all_trial_pf_becomes_missing_without_deleting_raw_rows():

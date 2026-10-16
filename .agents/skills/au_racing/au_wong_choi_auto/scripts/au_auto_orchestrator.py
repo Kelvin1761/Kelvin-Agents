@@ -28,6 +28,7 @@ from au_racing_engine.engine_core import (
     normalise_field_barriers,
     finite_pf_number,
     performance_pf_metrics,
+    trial_speed_raw,
     refresh_form_quality,
     refresh_trial_runs,
 )
@@ -348,6 +349,7 @@ def _build_field_summary(horses):
     ratings = []
     performance_quality = []
     form_quality = []
+    trial_speed = []   # EXP-20261016-77：試閘速度分場內標準化
     proven_class_levels = []
     # 班次代理（2026-07-31）：逐匹馬近仗獎金水平嘅場內中位數，供 `_form_score`
     # 做場內相對班次調整。同下面 pf_fields 嘅場內 mean/stdev 同一個 pattern。
@@ -406,6 +408,9 @@ def _build_field_summary(horses):
             form_q = None
         if form_q is not None and math.isfinite(form_q):
             form_quality.append(form_q)
+        ts_raw = trial_speed_raw(horse)
+        if ts_raw is not None:
+            trial_speed.append(ts_raw)
         pf_agg = performance_pf_metrics(horse).get("pf_aggregates") or {}
         for key, values in pf_fields.items():
             value = pf_agg.get(f"{key}_avg")
@@ -482,6 +487,11 @@ def _build_field_summary(horses):
     )
     # 近績質素分（EXP-20261016-06）：同表現質素分一樣用全場 population stdev。
     form_quality_mean = sum(form_quality) / len(form_quality) if form_quality else None
+    summary["trial_speed_field_count"] = len(trial_speed)
+    if trial_speed:
+        ts_mean = sum(trial_speed) / len(trial_speed)
+        summary["trial_speed_field_mean"] = ts_mean
+        summary["trial_speed_field_stdev"] = (sum((v - ts_mean) ** 2 for v in trial_speed) / len(trial_speed)) ** 0.5
     summary["form_quality_field_count"] = len(form_quality)
     summary["form_quality_field_mean"] = form_quality_mean
     summary["form_quality_field_stdev"] = (

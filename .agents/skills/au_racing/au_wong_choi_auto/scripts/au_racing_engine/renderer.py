@@ -729,6 +729,18 @@ def _jt_detail_lines(auto, name):
         if d.get("adjustments") and d.get("final") is not None:
             lines.append(f"合計 ＝ {float(d['final']):.1f}")
         return lines
+    if name == "trial_speed_score":
+        d = auto.get("trial_speed_detail") or {}
+        if not d.get("applies"):
+            return ["正式賽已有 6 場或以上，試閘速度唔計（中性 60）"]
+        if d.get("raw") is None:
+            return ["冇試閘 L600 數據 → 中性 60"]
+        if (d.get("field_count") or 0) < 3 or d.get("z") is None:
+            return [f"試閘個體 L600 {float(d['raw']):+.2f} 秒；同場有試閘數據嘅馬少過 3 匹 → 中性 60"]
+        rel = "快過" if float(d["raw"]) < float(d["mean"]) else "慢過"
+        return [f"試閘個體 L600 平均 {float(d['raw']):+.2f} 秒（場級 L600 差 + 輸距 × 0.17；負數 = 快過基準）",
+                f"同場有試閘數據 {int(d['field_count'])} 匹，平均 {float(d['mean']):+.2f} 秒 → 本駒{rel}場均",
+                f"場內標準分 z {float(d['z']):+.2f} → 60 − 20z ＝ {float(d['final']):.1f}"]
     if name in {"jockey_horse_fit_score", "preparation_score"}:
         d = auto.get("preparation_detail" if name == "preparation_score" else "jt_fit_detail") or {}
         lines = []
@@ -864,6 +876,10 @@ def _render_horse_section(horse_num, horse, auto, market_line=None):
                         lines.append(f"      - {dline}")
                 elif key == "track":
                     for dline in _track_dim_detail_lines(auto, name):
+                        lines.append(f"      - {dline}")
+                elif key == "preparation":
+                    # EXP-20261016-77：試閘證據集中喺試閘備戰；之前呢個維度冇細項分支。
+                    for dline in _jt_detail_lines(auto, name):
                         lines.append(f"      - {dline}")
         reasoning_text = str(reason_bundle.get("text") or "").strip()
         lines.append(f"  - **判讀：** {reasoning_text}" if reasoning_text

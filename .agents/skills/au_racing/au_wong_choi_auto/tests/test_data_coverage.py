@@ -24,8 +24,9 @@ class DataCoverageTests(unittest.TestCase):
         cov = auto["data_coverage"]
         # Ranking coverage: ten ability leaves (trial_score left in EXP-20261016-01)
         # plus form_quality_score (EXP-20261016-06).  class_score remains available
-        # in the report but no longer inflates this count.
-        self.assertEqual(cov["total"], 11)
+        # in the report but no longer inflates this count.  trial_speed_score joined in
+        # EXP-20261016-77 (試閘備戰); it is always "computed", so it never shows as missing.
+        self.assertEqual(cov["total"], 12)
         self.assertEqual(cov["present"] + len(cov["missing_features"]), cov["total"])
         self.assertIn(cov["confidence"], ("高", "中", "薄"))
         self.assertTrue(0 <= cov["coverage_pct"] <= 100)

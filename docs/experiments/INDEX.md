@@ -214,3 +214,4 @@
 - [EXP-20261016-76](EXP-20261016-76-au-trial-speed-field-dead-results.md) — `timing_trial_600m_avg_speed`（同正式賽 `timing_600m_*`）乾淨窗 0% 有值：解析只認 Racenet 逐駒 600m，Sportsbet 冇；剷讀佢嘅死規則令 Racenet 年代存檔 15 場排名改變（乾淨窗 0），照登記**唔上線**，留喺分支等用戶決定
 - [EXP-20261016-77](EXP-20261016-77-au-trial-speed-to-preparation-results.md) — 試閘速度由 L600 環境分搬去試閘備戰（0.5/0.5）：§8 both_arms_reject；搬走唔似剷走（F6c）咁蝕，資訊保得住但冇改善 → 維持現行
 - [EXP-20261016-78](EXP-20261016-78-au-dead-trial-speed-rule-section7-results.md) — §7（用戶決定）：剷走讀 `timing_trial_600m_avg_speed` 嘅兩條死規則；乾淨窗 0 匹改變，Racenet 年代存檔 15 場排名改變；唔係改善
+- [EXP-20261016-77 上線](EXP-20261016-77-au-trial-speed-to-preparation-ship.md) — 用戶決定：試閘速度由 L600 環境分搬去試閘備戰（試閘 L600 分 0.5 + 試閘密度 0.5），可解釋性理由；§8 冇改善亦冇顯著變差；dashboard／報告加試閘備戰細項
