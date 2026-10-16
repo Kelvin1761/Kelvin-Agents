@@ -80,6 +80,12 @@ def _bm_tier(rating):
     return 7
 
 
+# EXP-20261016-71 F2：今場路程同最近一場合資格往績相差 ≥ 400m → 近績質素分 −5。
+# 模型名次層內實測剩餘超額 −5.8pp [−7.6, −4.1]（大幅縮程最明顯）。v3 RANKING_WIN（Gold ±0、Good +0.28pp、
+# NDCG CI 全正）；§8 fixed arm OOS RANKING_WIN，跨 arm Holm p 0.096 —— 冇代價嘅修正，唔係已證實改善。
+FORM_QUALITY_TRIP_CHANGE_M = 400.0
+FORM_QUALITY_TRIP_CHANGE_PEN = -5.0
+
 # EXP-20261016-13 A/B 開關：False = 舊行為（讀唔存在嘅 `entry["class"]`）。
 FORM_ENTRY_CLASS_TIER = True
 
@@ -850,6 +856,7 @@ class RacingEngine:
         # 近績質素分 (EXP-20261016-06) after every form / PQ context adjustment, so
         # its fallback is exactly the old stability composite of the final leaves.
         fq, fq_note, fq_source = self._merged_form_quality(feature_scores)
+        fq, fq_note = self._trip_change_adjustment(fq, fq_note)
         feature_scores["form_quality_score"] = fq
         feature_notes["form_quality_score"] = fq_note
         self.provenance["form_quality_score"] = fq_source
@@ -4686,8 +4693,7 @@ class RacingEngine:
         track_context = self._track_context()
         wet_state = self._wet_state()
         going_bucket = track_context.get("going_bucket", "")
-        going_sample = going_stats.get(going_bucket, {})
-        
+
         w = TRACK_MICRO_WEIGHTS
         score = w.get("base", 60.0)
         notes = []
@@ -4721,39 +4727,14 @@ class RacingEngine:
         # 雖然同 overlay 相關，但**帶真訊號**，唔係純重複。flag 保留只為將來重測
         # （語料長大之後），**唔應該開**。
         _skip_going = os.environ.get("WC_TRACK_NO_GOING") == "1"
-        if _skip_going:
-            pass
-        elif going_sample.get("starts", 0) > 0 and going_sample.get("places", 0) > 0:
-            score += min(10, going_sample["places"] * w.get("going_place_bonus", 3.0))
-            notes.append(f"{going_bucket} 樣本顯示對今場掛牌有基本適應")
-            if going_sample.get("wins", 0) > 0 and going_bucket in {"軟地", "重地"}:
-                score += w.get("going_win_bonus", 2.0)
-                notes.append(f"{going_bucket} 曾贏馬，地狀證明更實淨")
-        elif going_sample.get("starts", 0) >= 2 and going_sample.get("places", 0) == 0:
-            score += w.get("going_poor_pen1_wet", -5.0) if going_bucket in {"軟地", "重地"} else w.get("going_poor_pen1_dry", -4.0)
-            notes.append(f"{going_bucket} 多次出賽仍未有前列，適應性要保守")
-        elif going_sample.get("starts", 0) > 0 and going_sample.get("places", 0) == 0:
-            score += w.get("going_poor_pen2_wet", -4.0) if going_bucket in {"軟地", "重地"} else w.get("going_poor_pen2_dry", -3.0)
-            notes.append(f"{going_bucket} 成績未見支持")
+        if not _skip_going:
+            going_parts, going_note = self._going_adjustment(going_stats, going_bucket, wet_state)
+            for going_delta, _text in going_parts:   # 逐項加，次序同以前一樣 → 逐位元相同
+                score += going_delta
+            if going_note:
+                notes.append(going_note)
+                tdetail["going_adjustment"] = round(sum(d for d, _ in going_parts), 2)
 
-        if not _skip_going and wet_state in {"soft7plus", "heavy"}:
-            if not self._has_verified_wet_place():
-                score += w.get("wet_unverified_pen", -5.0)
-                notes.append("爛地實績未經驗證，轉場風險極高")
-            elif wet_state == "heavy":
-                heavy_stats = going_stats.get("重地", {})
-                if heavy_stats.get("wins", 0) > 0:
-                     score += w.get("heavy_win_bonus", 3.0)
-                     notes.append("重地曾奪冠，泥漿戰力極強")
-                     self.reason_codes.append("proven_heavy_specialist")
-                elif heavy_stats.get("places", 0) > 0:
-                     score += w.get("heavy_place_bonus", 2.0)
-                     notes.append("具備重地作戰能力")
-                elif heavy_stats.get("starts", 0) >= 2 and heavy_stats.get("places", 0) == 0:
-                     score += w.get("heavy_poor_pen", -3.0)
-                     notes.append("重地多次出賽全無表現，適應力有疑慮")
-                     self.risk_flags.append("poor_heavy_performance")
-            
         # 場地／地狀往績記錄行先（用戶要求）：一眼睇到同場、好/軟/重地實績
         rec_bits = []
         same = re.match(r"\s*(\d+:\d+-\d+-\d+)", str(self.data.get("track_stats_line") or ""))
@@ -4772,6 +4753,51 @@ class RacingEngine:
         tdetail["notes"] = ([f"往績 {' / '.join(rec_bits)}"] if rec_bits else []) + list(notes)
         body = f"{rec_prefix}{'；'.join(notes) if notes else '場地資料未見鮮明優劣'}"
         return clip_score(score), f"{body}。場地分 {clip_score(score):.1f}。", "track_stats+going_stats+wet_track"
+
+    def _going_adjustment(self, going_stats, going_bucket, wet_state):
+        """地況／濕地適應：**一個**調整、**一句**說明（EXP-20261016-72 A，用戶 2026-10-16 要求集中）。
+
+        以前分兩處計：② 今場地況往績（上名加分／0 上名扣分）同 ③ 爛地專項（未驗證 −6.4、
+        重地曾贏／曾上名／多戰 0 上名）。用戶接受各項分數，但要同一份證據喺同一處扣。
+        各項數值同次序完全唔變（逐匹逐位元相同），只係合併成一個總數同一句說明。
+        → (parts, note)：parts = [(delta, 說明)]，由 caller 逐項加；冇觸發 → ([], "")。
+        """
+        w = TRACK_MICRO_WEIGHTS
+        sample = going_stats.get(going_bucket, {})
+        wet_bucket = going_bucket in {"軟地", "重地"}
+        parts = []   # (delta, 說明)
+
+        if sample.get("starts", 0) > 0 and sample.get("places", 0) > 0:
+            parts.append((min(10, sample["places"] * w.get("going_place_bonus", 3.0)),
+                          f"{going_bucket}有上名（{sample['places']}／{sample['starts']}）"))
+            if sample.get("wins", 0) > 0 and wet_bucket:
+                parts.append((w.get("going_win_bonus", 2.0), f"{going_bucket}曾贏"))
+        elif sample.get("starts", 0) >= 2 and sample.get("places", 0) == 0:
+            parts.append((w.get("going_poor_pen1_wet", -5.0) if wet_bucket else w.get("going_poor_pen1_dry", -4.0),
+                          f"{going_bucket} {sample['starts']} 戰未有前列"))
+        elif sample.get("starts", 0) > 0 and sample.get("places", 0) == 0:
+            parts.append((w.get("going_poor_pen2_wet", -4.0) if wet_bucket else w.get("going_poor_pen2_dry", -3.0),
+                          f"{going_bucket} 1 戰未有成績"))
+
+        if wet_state in {"soft7plus", "heavy"}:
+            if not self._has_verified_wet_place():
+                parts.append((w.get("wet_unverified_pen", -5.0), "爛地實績未經驗證"))
+            elif wet_state == "heavy":
+                heavy_stats = going_stats.get("重地", {})
+                if heavy_stats.get("wins", 0) > 0:
+                    parts.append((w.get("heavy_win_bonus", 3.0), "重地曾奪冠"))
+                    self.reason_codes.append("proven_heavy_specialist")
+                elif heavy_stats.get("places", 0) > 0:
+                    parts.append((w.get("heavy_place_bonus", 2.0), "具備重地作戰能力"))
+                elif heavy_stats.get("starts", 0) >= 2 and heavy_stats.get("places", 0) == 0:
+                    parts.append((w.get("heavy_poor_pen", -3.0), "重地多戰全無表現"))
+                    self.risk_flags.append("poor_heavy_performance")
+
+        if not parts:
+            return [], ""
+        total = sum(d for d, _ in parts)
+        sign = "＋" if total >= 0 else "−"
+        return parts, f"地況適應：{'、'.join(text for _, text in parts)}（合計 {sign}{abs(total):.1f}）"
 
     def _formline_future_wins(self):
         rows = self._formline_rows()
@@ -5007,6 +5033,21 @@ class RacingEngine:
         """Dispatcher placeholder: the real leaf needs the final form / PQ leaves,
         so `analyze_horse` overwrites it via `_merged_form_quality`."""
         return 60.0, "近績質素分喺其他 leaf 完成後先計。", "derived_after_context"
+
+    def _trip_change_adjustment(self, fq, fq_note):
+        """EXP-20261016-71 F2：大幅增程／縮程（同最近一場合資格往績差 ≥ 400m）→ 近績質素分 −5。"""
+        trip_runs = self.data.get("form_quality_runs") or []
+        last_trip = parse_float(trip_runs[0].get("distance")) if trip_runs else None
+        today_trip = self._distance_m()
+        if not (last_trip and today_trip and abs(today_trip - last_trip) >= FORM_QUALITY_TRIP_CHANGE_M):
+            return fq, fq_note
+        change = "增程" if today_trip > last_trip else "縮程"
+        detail = getattr(self, "form_quality_detail", None)
+        if isinstance(detail, dict):
+            detail["trip_change"] = {"today": today_trip, "last": last_trip, "delta": FORM_QUALITY_TRIP_CHANGE_PEN}
+        return clip_score(fq + FORM_QUALITY_TRIP_CHANGE_PEN), (
+            f"{fq_note}今場 {today_trip}m 對上仗 {last_trip:.0f}m 大幅{change}"
+            f"（≥{FORM_QUALITY_TRIP_CHANGE_M:.0f}m），近績參考價值打折 {FORM_QUALITY_TRIP_CHANGE_PEN:+.0f}。")
 
     def _merged_form_quality(self, feature_scores):
         """近績質素分：名次同賽事質素合併（EXP-20261016-06）。
@@ -7166,7 +7207,7 @@ def _form_quality_digest(official_entries: list[dict], *, meeting_date: str = ""
     return {"raw": round(raw, 6), "run_count": len(values),
             "runs": [{"date": r.get("date"), "finish_pos": r.get("finish_pos"),
                       "starters": r.get("starters"), "prize": r.get("prize"),
-                      "value": round(v, 6)} for r, v in values]}
+                      "distance": r.get("distance"), "value": round(v, 6)} for r, v in values]}
 
 
 def refresh_form_quality(logic_data: dict, facts_path: Path | None) -> int:
