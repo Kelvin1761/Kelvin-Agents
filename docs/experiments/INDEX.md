@@ -210,3 +210,8 @@
 - [EXP-20261016-70](EXP-20261016-70-au-track-audit-results.md) — 場地與地況適性六項：同場斷崖係真（1 戰 −3.7pp → 2 戰 −9.1pp），剷斷崖、濕地唔重扣、剷重地專項三個都輸 → 保留；只上線 base 62.9 → 60（§7，consistency −4 門檻跟住 60 → 57.1，排名不變）。留低：同場比率（6+ 戰 1 次上名 −11.0pp 照加 +5）、未跑濕地 −6.4 過重、合成跑道 85 場未夠
 - [EXP-20261016-71](EXP-20261016-71-au-form-quality-distance-results.md) — 近績路程相關度 + 大幅增減程：模型名次層內 |Δ|≥400m 剩餘 −5.8pp [−7.6,−4.1]（大幅縮程最差）；F1 路程加權 REJECT（OOS Gold −1.08pp 六 block 全負）；F2 大幅轉程近績質素分 −5 上線（v3 RANKING_WIN，Good +0.28pp，Holm p 0.096 唔算顯著改善）
 - [EXP-20261016-72](EXP-20261016-72-au-track-rate-and-centralise-results.md) — 地況扣分集中一個 `_going_adjustment`（32,448 匹逐位元相同）上線；同場比率 R REJECT（Gold −0.32pp，§8 both_arms_reject）；合成跑道維持當好地，85 場，夠 100 場再測
+
+- [EXP-20261016-86](EXP-20261016-86-hkjc-draw-percentile.md) — HKJC 相對檔位連續分：325 場配對，Gold -2、Good -11 場；v3 REJECT，保留現行；來源認證限制另列，未開 forward。
+- [EXP-20261016-87](EXP-20261016-87-hkjc-draw-pit-group.md) — HKJC 分場地途程歷史差：325 場配對，Gold -4、Good -6 場；v3 REJECT，保留現行；來源認證限制另列，未開 forward。
+- [EXP-20261016-88](EXP-20261016-88-hkjc-draw-pit-hierarchy.md) — HKJC 檔位出馬數欄位分層：325 場配對，Gold -4、Good -14 場；v3 REJECT，保留現行；來源認證限制另列，未開 forward。
+- [EXP-20261016-89](EXP-20261016-89-hkjc-draw-pit-ridge.md) — HKJC 正則化回歸曲線：325 場配對，Gold -3、Good -10 場；v3 REJECT，保留現行；來源認證限制另列，未開 forward。
