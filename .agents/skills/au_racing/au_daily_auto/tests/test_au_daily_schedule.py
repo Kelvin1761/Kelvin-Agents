@@ -1491,6 +1491,45 @@ class TestNoNotify(unittest.TestCase):
 
 
 class TestSharedRunLock(unittest.TestCase):
+    def test_busy_run_emits_dormant_json_without_starting_pipeline(self):
+        import io
+        from shared_wong_choi.command_adapter import last_json_object
+        from shared_wong_choi.contracts import normalize_run_state, RunState
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             unittest.mock.patch.object(S, "AU_RACING", Path(tmp)), \
+             unittest.mock.patch.object(S, "LOG_DIR", Path(tmp)), \
+             unittest.mock.patch.object(S, "run_morning") as pipeline:
+            output = io.StringIO()
+            with S.single_run_lock() as held:
+                self.assertTrue(held)
+                with contextlib.redirect_stdout(output):
+                    code = S.main(["--mode", "morning", "--today", "2026-10-16",
+                                   "--json", "--no-notify"])
+            self.assertEqual(code, S.EXIT_OK)
+            payload = last_json_object(output.getvalue())
+            self.assertIsNotNone(payload)
+            self.assertEqual(payload["reason"], "another_run_active")
+            self.assertEqual(payload["mode"], "morning")
+            self.assertEqual(normalize_run_state(payload["status"]), RunState.DORMANT)
+            pipeline.assert_not_called()
+
+    def test_lock_failure_emits_failed_json(self):
+        import io
+        from shared_wong_choi.command_adapter import last_json_object
+
+        with tempfile.TemporaryDirectory() as tmp, \
+             unittest.mock.patch.object(S, "LOG_DIR", Path(tmp)), \
+             unittest.mock.patch.object(S, "single_run_lock",
+                                        lambda: contextlib.nullcontext(None)):
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                code = S.main(["--mode", "morning", "--json", "--no-notify"])
+            self.assertEqual(code, S.EXIT_FAILED)
+            payload = last_json_object(output.getvalue())
+            self.assertEqual(payload["status"], "failed")
+            self.assertEqual(payload["reason"], "shared_lock_unavailable")
+
     def test_unopenable_shared_lock_fails_closed(self):
         # 退去 checkout 私有鎖會令 production worktree 同主 repo 同時開工。
         with unittest.mock.patch.object(S.Path, "open", side_effect=PermissionError("no")), \

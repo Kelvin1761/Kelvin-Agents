@@ -4028,9 +4028,17 @@ def main(argv: list[str] | None = None) -> int:
 
     with single_run_lock() as acquired:
         if acquired is None:
+            if args.json:
+                print(json.dumps({"status": "failed", "mode": args.mode,
+                                  "reason": "shared_lock_unavailable"}))
             return EXIT_FAILED
         if not acquired:
             log("另一個 AU daily run 仲喺度跑，今次唔開工（避免撞車）。")
+            # The control adapter requires a status even when no run is started.
+            # This is idle overlap, not a completed refresh or a pipeline failure.
+            if args.json:
+                print(json.dumps({"status": "dormant", "mode": args.mode,
+                                  "reason": "another_run_active"}))
             return EXIT_OK
         runlog = RunLog(args.mode, today, log_path,
                         notify=not args.no_notify)
