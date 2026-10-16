@@ -264,7 +264,7 @@ class IncidentReliabilityShadowTests(unittest.TestCase):
                 self.assertEqual(shadow["matrix_scores"][key], value)
         self.assertEqual(
             {item["factor"] for item in shadow["adjustments"]},
-            {"raw_l400", "l400_trend", "energy_trend", "finish_time_trend"},
+            {"raw_l400", "l400_trend", "energy_trend"},
         )
 
     def test_older_incident_does_not_change_shadow_score(self):

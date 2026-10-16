@@ -171,7 +171,6 @@ class RacingEngine:
         matrix_scores = map_features_to_matrix_scores(feature_scores)
         matrix_scores["trainer_signal"] = self._apply_trainer_signal_v3(matrix_scores["trainer_signal"])
         matrix_scores["horse_health"] = self._apply_health_only_v2(matrix_scores["horse_health"])
-        matrix_scores["sectional"] = self._apply_finish_time_trend(matrix_scores["sectional"])
         # 同程表現（9D，2026-10-10）：之前係 7D 以外嘅獨立 raw 調整，而家係一個
         # centred 維度。leaf = 60 + 調整 ÷ 權重，所以 權重 × (leaf − 60) 等於原本嘅調整。
         distance_suitability = self._distance_suitability_adjustment(feature_scores, matrix_scores)
@@ -953,12 +952,6 @@ class RacingEngine:
             reason = "影子排序重算 consistency_score，加入輸距權重同近期回暖/回落。"
 
         matrix_scores = map_features_to_matrix_scores(shadow_features)
-        # 同主線一致：重算後必須重套 finish-time trend nudge，否則 ability_delta 被污染。
-        # reason_codes 係主線嗰個 list，shadow 重算唔可以 append 落去。
-        saved_reason_codes = self.reason_codes
-        self.reason_codes = list(saved_reason_codes)
-        matrix_scores["sectional"] = self._apply_finish_time_trend(matrix_scores["sectional"])
-        self.reason_codes = saved_reason_codes
         ability_raw = round(self._ability_score(matrix_scores), 2)
         ability_score = round(to_display_scale(ability_raw), 2)
         base_ability = float(auto.get("ability_score", ability_score))
@@ -1395,7 +1388,6 @@ class RacingEngine:
                 "why": f"最近一仗有醫療異常；改用之前{l400_context['prior_runs']}仗中位數",
             })
 
-        suppress_finish_trend = False
         if latest_incident and mode in {"reliability", "combined"}:
             l400_trend = self._clean(adjusted_data.get("l400_trend") or "")
             if "衰退中" in l400_trend:
@@ -1405,10 +1397,6 @@ class RacingEngine:
             if "下降" in energy_trend and "⚠️" in energy_trend:
                 adjusted_data["energy_trend"] = "異常仗可靠度調整：中性"
                 adjustments.append({"factor": "energy_trend", "from": "下降", "to": "中性", "why": "負面趨勢包含醫療異常仗"})
-            finish_time = self._clean(adjusted_data.get("finish_time_block") or "")
-            if "退步" in finish_time:
-                suppress_finish_trend = True
-                adjustments.append({"factor": "finish_time_trend", "from": "退步", "to": "中性", "why": "負面趨勢包含醫療異常仗"})
 
         applied = bool(adjustments)
         if not applied:
@@ -1435,11 +1423,6 @@ class RacingEngine:
         shadow_features["speed_score"] = clip_score(speed_score)
         recalculated = map_features_to_matrix_scores(shadow_features)
         sectional = recalculated["sectional"]
-        if not suppress_finish_trend:
-            saved_reason_codes = self.reason_codes
-            self.reason_codes = list(saved_reason_codes)
-            sectional = self._apply_finish_time_trend(sectional)
-            self.reason_codes = saved_reason_codes
 
         matrix_scores = dict(base_matrix)
         matrix_scores["sectional"] = round(clip_score(sectional), 2)
@@ -1670,24 +1653,6 @@ class RacingEngine:
                 })
             return round(clip_score(base_score + delta), 2)
         return round(clip_score(base_score), 2)
-
-    def _apply_finish_time_trend(self, base_score):
-        # ML-validated (walk-forward 18 meetings / 180 races): the finish-time
-        # deviation TREND in `finish_time_block` (improving vs declining vs HKJC
-        # standard) carries ranking signal that SpeedScorer ignores — it only used
-        # the absolute level. Nudging the sectional dim by this trend lifted
-        # min/single/top3 on the held-out split with no metric regressing.
-        block = self._text("finish_time_block")
-        delta = 0.0
-        if "進步" in block:
-            delta = scoring.FINISH_TREND_MICRO_WEIGHTS["improving"]
-        elif "退步" in block:
-            delta = scoring.FINISH_TREND_MICRO_WEIGHTS["declining"]
-        if delta:
-            self.reason_codes.append(
-                "finish_time_trend_up" if delta > 0 else "finish_time_trend_down"
-            )
-        return round(clip_score(base_score + delta), 2)
 
     def _candidate_health_risk_score(self):
         score = scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["base"]
@@ -2189,17 +2154,13 @@ class RacingEngine:
                 "evidence": evidence,
                 "text": self._matrix_summary_text(key, label, score, features, evidence),
             }
-            # 矩陣後調整（例如 sectional 嘅完成時間對標趨勢 ±5）唔喺 sub分加權入面，
+            # 矩陣後調整唔喺 sub分加權入面，
             # 唔寫出嚟嘅話「評分構成」加極都對唔返 header 個分 — 呢度補返一行。
             expected = clip_score(sum(clip_score(features.get(name, 60.0)) * weight
                                       for name, weight in MATRIX_FORMULAS[key]))
             diff = round(float(raw) - expected, 2)
             if abs(diff) >= 0.05:
-                if key == "sectional" and any(c.startswith("finish_time_trend") for c in self.reason_codes):
-                    direction = "進步" if diff > 0 else "退步"
-                    reasoning[key]["adjustment"] = f"完成時間對標趨勢{direction}：sub分加權後再{diff:+.1f}"
-                else:
-                    reasoning[key]["adjustment"] = f"矩陣後調整：sub分加權後再{diff:+.1f}"
+                reasoning[key]["adjustment"] = f"矩陣後調整：sub分加權後再{diff:+.1f}"
         return reasoning
 
     def _score_breakdown(self, features, notes):

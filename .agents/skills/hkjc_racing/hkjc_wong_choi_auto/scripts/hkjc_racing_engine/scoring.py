@@ -550,13 +550,9 @@ def score_band(score):
         return "❌"
     return "❌❌"
 
-# Finish-time deviation TREND (vs HKJC standard) applied to the sectional matrix
-# dim. ML-validated add-on signal: +/-5 lifted min/single/top3 on the held-out
-# backtest split with no metric regressing (stable across magnitudes 3-6).
-FINISH_TREND_MICRO_WEIGHTS = {
-    "improving": 5.0,
-    "declining": -5.0,
-}
+# 完成時間趨勢 ±5（FINISH_TREND_MICRO_WEIGHTS）已於 2026-10-16 剷走（EXP-20261016-16，§7）：
+# 引擎搵「進步」但 Facts 寫「📈改善中」，+5 由 2026-06-19 接線起從未觸發，上線嘅只係單邊 −5；
+# 同一個完成時間偏差已經由 SpeedScorer 嘅「步速修正等級」計分。
 
 # 配備訊號（2026-07-10 pit backtest，15 賽日 153 場）：
 #   除去配備 −3 於 TRAIN/TEST 齊升（FULL min +0.7、gold +0.7、single +0.6，
