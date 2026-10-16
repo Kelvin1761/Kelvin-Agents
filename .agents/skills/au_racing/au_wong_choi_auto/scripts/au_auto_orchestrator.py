@@ -29,6 +29,7 @@ from au_racing_engine.engine_core import (
     finite_pf_number,
     performance_pf_metrics,
     refresh_form_quality,
+    refresh_trial_runs,
 )
 from au_racing_engine.io_utils import write_json_atomic as _write_json_atomic
 from au_racing_engine.io_utils import write_text_atomic as _atomic_write_text
@@ -136,6 +137,7 @@ def score_logic_data(
     backfill_pf_metrics(logic_data, facts_path)
     # 近績質素分 is field-relative too: every runner's raw value before the summary.
     refresh_form_quality(logic_data, facts_path)
+    refresh_trial_runs(logic_data, facts_path)
     # 防禦性：`enrich_logic_from_facts` 已經正規化過，但 facts 缺失時 enrich 唔跑，
     # 而檔位分桶同馬群摘要都食絕對檔位。函數係 idempotent，乾淨場次係 no-op。
     normalise_field_barriers(logic_data)

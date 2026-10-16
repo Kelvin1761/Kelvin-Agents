@@ -95,7 +95,7 @@ def dump_fixture(monkeypatch, tmp_path, missing=None):
 
     core.RacingEngine = Engine
     core.backfill_prize_column = lambda *args: 0
-    for name in ("backfill_pf_metrics", "refresh_pf_own_l600", "refresh_form_quality"):
+    for name in ("backfill_pf_metrics", "refresh_pf_own_l600", "refresh_form_quality", "refresh_trial_runs"):
         if name != missing:
             setattr(core, name, lambda *args: 0)
     scoring = ModuleType("au_racing_engine.scoring")
@@ -109,7 +109,7 @@ def dump_fixture(monkeypatch, tmp_path, missing=None):
     return dump, dest
 
 
-@pytest.mark.parametrize("missing", ["backfill_pf_metrics", "refresh_pf_own_l600", "refresh_form_quality"])
+@pytest.mark.parametrize("missing", ["backfill_pf_metrics", "refresh_pf_own_l600", "refresh_form_quality", "refresh_trial_runs"])
 def test_dump_missing_serving_enrichment_fails_before_output(monkeypatch, tmp_path, missing):
     dump, dest = dump_fixture(monkeypatch, tmp_path, missing)
     with pytest.raises(ImportError, match=missing):

@@ -59,6 +59,7 @@ def main():
     from au_racing_engine.engine_core import backfill_pf_metrics
     from au_racing_engine.engine_core import refresh_pf_own_l600
     from au_racing_engine.engine_core import refresh_form_quality
+    from au_racing_engine.engine_core import refresh_trial_runs
 
     results = load_historical_results(HISTORICAL_RESULTS_CSV)
     races_out = []
@@ -122,6 +123,7 @@ def main():
             prize_filled += backfill_prize_column(logic, meeting_dir, race_no, date)
             # 近績質素分（EXP-20261016-06）係場內相對，一定要喺 field summary 之前。
             refresh_form_quality(logic, facts_path)
+            refresh_trial_runs(logic, facts_path)
             from au_racing_engine.full_time_speed import prepare_field
             prepare_field(logic, facts_path)
             ctx = dict(race_analysis)

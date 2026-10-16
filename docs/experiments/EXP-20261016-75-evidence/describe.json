@@ -1,0 +1,117 @@
+{
+ "races": 2485,
+ "runners": 23949,
+ "prep_state": {
+  "none": 15788,
+  "ok": 7342,
+  "ok+T1": 819
+ },
+ "P6_trial_ok_vs_none": {
+  "weighted_diff": 0.0738,
+  "ci": [
+   0.0614,
+   0.0864
+  ],
+  "per_stratum": {
+   "6+": {
+    "a_n": 4229,
+    "a_excess": 0.0332,
+    "b_n": 12738,
+    "b_excess": -0.0222,
+    "diff": 0.0554
+   },
+   "1-5": {
+    "a_n": 2681,
+    "a_excess": 0.0525,
+    "b_n": 2302,
+    "b_excess": -0.0355,
+    "diff": 0.088
+   },
+   "0": {
+    "a_n": 432,
+    "a_excess": 0.0855,
+    "b_n": 748,
+    "b_excess": -0.0809,
+    "diff": 0.1665
+   }
+  }
+ },
+ "P6_T1_among_ok": {
+  "weighted_diff": 0.0953,
+  "ci": [
+   0.0644,
+   0.1275
+  ],
+  "per_stratum": {
+   "6+": {
+    "a_n": 402,
+    "a_excess": 0.1213,
+    "b_n": 4229,
+    "b_excess": 0.0332,
+    "diff": 0.0881
+   },
+   "1-5": {
+    "a_n": 369,
+    "a_excess": 0.1548,
+    "b_n": 2681,
+    "b_excess": 0.0525,
+    "diff": 0.1023
+   },
+   "0": {
+    "a_n": 48,
+    "a_excess": 0.188,
+    "b_n": 432,
+    "b_excess": 0.0855,
+    "diff": 0.1024
+   }
+  }
+ },
+ "P4": {
+  "debut/first-up | no": {
+   "n": 748,
+   "excess": -0.0809
+  },
+  "debut/first-up | trial ok": {
+   "n": 480,
+   "excess": 0.0958
+  },
+  "later | no": {
+   "n": 15040,
+   "excess": -0.0242
+  },
+  "later | trial ok": {
+   "n": 7681,
+   "excess": 0.0504
+  }
+ },
+ "P5": {
+  "runners_with_trials": 19545,
+  "with_trial_speed": 0,
+  "coverage": 0.0
+ },
+ "changes_P1": {
+  "ok→none": 6441,
+  "ok+T1→none": 679
+ },
+ "changes_P2": {
+  "ok→none": 1240,
+  "ok+T1→none": 46,
+  "none→ok": 222,
+  "none→ok+T1": 43
+ },
+ "changes_P3": {
+  "ok→ok+T1": 1709,
+  "ok+T1→ok": 309
+ },
+ "changes_P4": {
+  "ok→none": 6910,
+  "ok+T1→none": 771
+ },
+ "changes_P6a": {
+  "ok+T1→ok": 819
+ },
+ "changes_P6b": {
+  "ok→none": 7342,
+  "ok+T1→none": 819
+ }
+}
