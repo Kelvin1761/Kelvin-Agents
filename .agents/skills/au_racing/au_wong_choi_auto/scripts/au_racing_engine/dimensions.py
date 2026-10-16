@@ -16,6 +16,8 @@ REGISTRY_SCHEMA_VERSION = "au/dimensions-v1"
 SCORING_CONTRACT_VERSION = "au/raw-matrix-preparation-v2"
 CLASS_SCORE_LIVE = os.environ.get("WC_AU_CLASS_SCORE_LIVE", "1") != "0"
 CLASS_SCORE_LIVE_WEIGHT = 0.15
+# class_weight 入面 rating_score 嘅份額；rating 代理要知佢，先可以扣返 class_score 多計嗰份（EXP-20261016-18 R2x）。
+RATING_SCORE_SHARE = 0.70
 
 @dataclass(frozen=True)
 class LeafSpec:
@@ -75,7 +77,7 @@ DIMENSION_SPECS = (
     DimensionSpec('pace_perf', '速度考驗背景', (('pace_figure_score', 1.0),), 0.12093934478578448 * 0.941744, 1, reasoning_components=('pace_figure_score', 'sectional_score'), reasoning_score_default=60.0),
     DimensionSpec('race_shape', '檔位形勢', (('pace_map_score', 1.0),), None, None),
     DimensionSpec('jockey_trainer', '騎練訊號', (('jockey_score', 0.333333), ('trainer_score', 0.285714), ('jockey_horse_fit_score', 0.380952)), 0.6626585553070451, 2),
-    DimensionSpec('class_weight', '官方評分對位', (("rating_score", 0.70),) + ((("class_score", CLASS_SCORE_LIVE_WEIGHT),) if CLASS_SCORE_LIVE else ()), 0.3826193901797637, 3, reasoning_components=('class_score', 'rating_score', 'weight_score')),
+    DimensionSpec('class_weight', '官方評分對位', (("rating_score", RATING_SCORE_SHARE),) + ((("class_score", CLASS_SCORE_LIVE_WEIGHT),) if CLASS_SCORE_LIVE else ()), 0.3826193901797637, 3, reasoning_components=('class_score', 'rating_score', 'weight_score')),
     DimensionSpec('track', '場地與地況適性', (('track_score', 1.0),), 0.14114297066700832, 4),
     DimensionSpec('form_line', '賽績線', (('formline_score', 1.0),), None, None, reasoning_components=('formline_score', 'form_score')),
     DimensionSpec('preparation', '試閘備戰', (('preparation_score', 1.0),), 0.25244110196132946, 5),

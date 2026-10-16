@@ -14,7 +14,7 @@ from pathlib import Path
 from .preparation_cycle import preparation_cycle
 from .full_time_speed import contribution as full_time_contribution
 from . import pit as _pit
-from .dimensions import DIMENSION_SPECS
+from .dimensions import DIMENSION_SPECS, RATING_SCORE_SHARE
 
 from .matrix_mapper import (
     MATRIX_ADVANTAGE_CUTOFF,
@@ -412,6 +412,9 @@ METRO_VENUE_TOKENS = (
     "randwick", "rosehill", "warwick farm", "canterbury",
     "flemington", "caulfield", "sandown", "moonee valley",
     "eagle farm", "doomben",
+    # EXP-20261016-18 R6x（§7）：阿德萊德同珀斯都會一直漏咗 —— Belmont／Morphettville 被當省賽，
+    # 喺嗰度比賽永遠唔算「今場都會」，由嗰度去 Flemington 又會被錯扣「省賽轉都會」。
+    "morphettville", "ascot", "belmont", "the valley",
 )
 
 
@@ -4254,6 +4257,15 @@ class RacingEngine:
         race_bucket = self._race_class_bucket()
         latest_rt = self._latest_l600_rt_metrics().get("rt")
         latest_place = parse_placing((official_entries[0] or {}).get("placing")) if official_entries else None
+        # EXP-20261016-18 R4x（§7）：上仗「上名／冇表現」改按場內百分位（同 `_form_score` 2026-07-31 修正一樣）：
+        # 6 匹跑第 3 同 16 匹跑第 3 唔係同一回事。冇馬匹數就照舊用絕對名次。
+        latest_field = (official_entries[0] or {}).get("field_size") if official_entries else None
+        if latest_place is not None and latest_field and latest_field >= 2 and latest_place <= latest_field:
+            latest_pct = (latest_place - 1) / (latest_field - 1)
+            latest_good, latest_poor = latest_pct <= 0.25, latest_pct > 0.5
+        else:
+            latest_good = latest_place is not None and latest_place <= 3
+            latest_poor = latest_place is not None and latest_place >= 6
         
         current_tier = self._venue_tier(self._meeting_intelligence().get("venue") or self._track_profile().get("venue") or "")
         latest_tier = self._venue_tier((official_entries[0] or {}).get("venue") if official_entries else "")
@@ -4271,7 +4283,7 @@ class RacingEngine:
                 score += w.get("career0_2yo_bonus", 2.0)
                 notes.append("2歲馬初出常有爆發力")
         elif career_starts <= 5:
-            if latest_place is not None and latest_place <= 3:
+            if latest_good:
                 score += w.get("career5_placed_bonus", 2.0)
                 notes.append("出賽少但已上名，有進步空間")
             else:
@@ -4281,10 +4293,10 @@ class RacingEngine:
             if race_bucket == "maiden":
                 score += w.get("career15_maiden_pen", -4.0)
                 notes.append("多跑仍未能於處女馬賽勝出，班底已見底")
-            elif latest_place is not None and latest_place >= 6:
+            elif latest_poor:
                 score += w.get("career15_unplaced_pen", -2.0)
                 notes.append("多跑但近期未有表現，級數可能見頂")
-            elif latest_place is not None and latest_place <= 3:
+            elif latest_good:
                 score += w.get("career15_placed_bonus", 2.0)
                 notes.append("作戰經驗豐富且近況有承接")
 
@@ -4325,8 +4337,24 @@ class RacingEngine:
             # 兩個訊號互補而唔係疊加，所以混合贏過任何一邊單獨用。
             class_proxy = clip_score(self._class_score()[0])
             weight_proxy, weight_line = self._handicap_weight_proxy()
+            # EXP-20261016-18 R2x：class_score 已經自己以 0.15 入維度；代理再用佢就計兩次
+            # （代理馬維度 = 0.50 級數 + 0.35 負磅，有評分馬級數只佔 0.15）。扣返多計嗰份。
+            class_once = ((CLASS_SCORE_LIVE_WEIGHT / RATING_SCORE_SHARE) * (class_proxy - 60.0)
+                          if CLASS_SCORE_LIVE else 0.0)
+            # EXP-20261016-18 R1x：同一場有 ≥2 匹有評分，冇評分嗰啲改用負磅代理單獨
+            # （同評分一樣 z×6、±12 嘅尺），唔再同評分馬用兩把尺比較。
+            if rating is None and rated_count >= 2 and weight_proxy is not None:
+                score = clip_score(weight_proxy - class_once)
+                rdetail["source"] = "proxy_weight_only"
+                rdetail["lines"] = [
+                    "今場其他馬有官方讓磅分，本駒冇",
+                    weight_line,
+                    f"用負磅代理（同評分同一把尺）{score:.1f}（60 為中性）",
+                ]
+                note = f"本駒未有官方讓磅分，改用場內負磅代理 {score:.1f}（同場評分馬同一把尺）。"
+                return score, note, "weight_proxy_mixed_field"
             if weight_proxy is None:
-                score = class_proxy
+                score = clip_score(class_proxy - class_once)
                 rdetail["source"] = "proxy"
                 rdetail["lines"] = [
                     "呢場多數馬未有官方讓磅分（處女／未評分賽事常見）",
@@ -4335,7 +4363,7 @@ class RacingEngine:
                 note = (f"未有足夠官方讓磅分（多見於處女賽），"
                         f"改以級數分 {class_proxy:.1f} 作能力代理。")
                 return score, note, "class_proxy"
-            score = clip_score(0.5 * class_proxy + 0.5 * weight_proxy)
+            score = clip_score(0.5 * class_proxy + 0.5 * weight_proxy - class_once)
             rdetail["source"] = "proxy_class_weight"
             rdetail["lines"] = [
                 "呢場多數馬未有官方讓磅分（處女／未評分賽事常見）",
@@ -4351,7 +4379,6 @@ class RacingEngine:
         avg_rating = parse_float(field.get("avg_rating"))
         stdev = parse_float(field.get("rating_stdev")) or 0.0
         top3_cutoff = parse_float(field.get("top3_rating_cutoff"))
-        race_bucket = self._race_class_bucket()
         notes = [f"今場官方 rating 為 {rating:.1f}"]
 
         adjustment = 0.0
@@ -4379,20 +4406,10 @@ class RacingEngine:
                 else:
                     notes.append("與場均接近")
 
-        if top3_cutoff is not None:
-            if rating >= top3_cutoff:
-                adjustment += 1.5
-                notes.append("rating 已達場內前三門檻")
-            elif rating + 1.0 < top3_cutoff:
-                adjustment -= 1.0
-                notes.append("rating 未達場內前三門檻")
-
-        if race_bucket in {"bm58", "bm72", "bm88"}:
-            adjustment *= 0.9
-            notes.append("BM handicap rating 訊號已輕量 temper")
-        elif race_bucket == "maiden":
-            adjustment *= 0.8
-            notes.append("處女馬 rating 波動較大，只作保守參考")
+        # EXP-20261016-18：前三門檻 ±1.5／−1.0（R5b，剷走 Gold +0.40pp [+0.08, +0.73]）同
+        # BM ×0.9／處女 ×0.8（R5a，primary 不變、ranking 證據支持）都係 2026-05 人手值、冇 A/B，已剷走。
+        if top3_cutoff is not None and rating >= top3_cutoff:
+            notes.append("rating 已達場內前三門檻")
 
         score = clip_score(60.0 + adjustment)
         rdetail["source"] = "official"

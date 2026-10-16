@@ -1,0 +1,194 @@
+{
+ "races": 2485,
+ "replica_gaps": {
+  "class": 0.0,
+  "rating": 0.0,
+  "ability": 0.00010000000000331966
+ },
+ "R1": {
+  "mixed_races": 145,
+  "cells": {
+   "official|56-60": {
+    "n": 236,
+    "excess": -0.0296
+   },
+   "official|60-64": {
+    "n": 170,
+    "excess": 0.0264
+   },
+   "official|64+": {
+    "n": 312,
+    "excess": 0.166
+   },
+   "official|<56": {
+    "n": 249,
+    "excess": -0.1034
+   },
+   "proxy|56-60": {
+    "n": 210,
+    "excess": -0.0631
+   },
+   "proxy|60-64": {
+    "n": 153,
+    "excess": -0.0062
+   },
+   "proxy|64+": {
+    "n": 18,
+    "excess": 0.0331
+   },
+   "proxy|<56": {
+    "n": 117,
+    "excess": -0.085
+   }
+  }
+ },
+ "R2": {
+  "official": 15244,
+  "proxy": 8705
+ },
+ "R3": {
+  "trigger_rate": {
+   "2026-08": 0.0,
+   "2026-09": 0.0,
+   "2026-10": 0.0,
+   "live 10-02→": 0.052
+  },
+  "today_prize_coverage": {
+   "2026-08": 0.0,
+   "2026-09": 0.0009,
+   "2026-10": 0.0,
+   "live 10-02→": 0.3844
+  },
+  "triggered": {
+   "n": 246,
+   "excess": 0.106
+  },
+  "not": {
+   "n": 23703,
+   "excess": -0.0008
+  }
+ },
+ "R4": {
+  "runners_flag_changed": 1755
+ },
+ "R5": {
+  "official_runners_by_bucket": {
+   "other": 12489,
+   "bm58": 2055,
+   "maiden": 611,
+   "listed": 48,
+   "bm72": 41
+  }
+ },
+ "R6": {
+  "tiers": {
+   "provincial": 39822,
+   "blank": 1291,
+   "metro": 6785
+  },
+  "top_provincial": [
+   [
+    "belmont",
+    564
+   ],
+   [
+    "ipswich",
+    552
+   ],
+   [
+    "kalgoorlie",
+    521
+   ],
+   [
+    "townsville",
+    506
+   ],
+   [
+    "sunshine coast",
+    496
+   ],
+   [
+    "northam",
+    462
+   ],
+   [
+    "bunbury",
+    444
+   ],
+   [
+    "ballarat synthetic",
+    443
+   ],
+   [
+    "hawkesbury",
+    427
+   ],
+   [
+    "newcastle",
+    399
+   ],
+   [
+    "geelong",
+    399
+   ],
+   [
+    "warrnambool",
+    385
+   ],
+   [
+    "gold coast",
+    379
+   ],
+   [
+    "kembla grange",
+    357
+   ],
+   [
+    "pakenham synthetic",
+    352
+   ],
+   [
+    "dubbo",
+    341
+   ],
+   [
+    "grafton",
+    335
+   ],
+   [
+    "ballarat",
+    324
+   ],
+   [
+    "tamworth",
+    322
+   ],
+   [
+    "cairns",
+    309
+   ],
+   [
+    "bendigo",
+    305
+   ],
+   [
+    "morphettville",
+    299
+   ],
+   [
+    "port macquarie",
+    292
+   ],
+   [
+    "canberra",
+    284
+   ],
+   [
+    "mornington",
+    258
+   ]
+  ],
+  "metro_prov_condition_old": 1088,
+  "metro_prov_condition_new": 1469
+ }
+}

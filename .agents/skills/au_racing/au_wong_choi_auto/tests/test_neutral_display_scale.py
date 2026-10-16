@@ -308,7 +308,10 @@ class TestHandicapWeightProxy:
         assert source == "class_weight_proxy"
         class_proxy = eng._class_score()[0]
         weight_proxy, _ = eng._handicap_weight_proxy()
-        assert score == pytest.approx(0.5 * class_proxy + 0.5 * weight_proxy, abs=0.05)
+        # EXP-20261016-18 R2x：class_score 已經自己以 0.15 入維度，代理扣返多計嗰份。
+        from au_racing_engine.dimensions import CLASS_SCORE_LIVE_WEIGHT, RATING_SCORE_SHARE
+        once = CLASS_SCORE_LIVE_WEIGHT / RATING_SCORE_SHARE * (class_proxy - 60.0)
+        assert score == pytest.approx(0.5 * class_proxy + 0.5 * weight_proxy - once, abs=0.05)
 
     def test_rating_fallback_stays_class_only_without_usable_weight(self):
         eng = engine(
