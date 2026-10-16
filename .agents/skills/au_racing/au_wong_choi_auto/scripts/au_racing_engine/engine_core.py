@@ -86,6 +86,10 @@ def _bm_tier(rating):
 FORM_QUALITY_TRIP_CHANGE_M = 400.0
 FORM_QUALITY_TRIP_CHANGE_PEN = -5.0
 
+# EXP-20261016-79 研究開關（預設 "" = 現行）："C1" 試閘證據集中（試閘騎師分由人馬配搭分搬出）；
+# "C2" = C1 + 唔用試閘名次。試閘備戰 ⅓／⅓／⅓ 由研究變體改 MATRIX_FORMULAS。只喺研究 dump 設定。
+TRIAL_REBUILD = ""
+
 # EXP-20261016-13 A/B 開關：False = 舊行為（讀唔存在嘅 `entry["class"]`）。
 FORM_ENTRY_CLASS_TIER = True
 
@@ -878,6 +882,12 @@ class RacingEngine:
         feature_scores["form_quality_score"] = fq
         ts_score, ts_note = self._merged_trial_speed()
         feature_scores["trial_speed_score"] = ts_score
+        if TRIAL_REBUILD:
+            parts = getattr(self, "trial_rider_parts", None) or []
+            feature_scores["trial_rider_score"] = clip_score(60.0 + sum(d for d, _f, _e in parts))
+            self.trial_rider_detail = {"base": 60.0, "adjustments": [
+                {"delta": round(d, 2), "factor": f, "evidence": e} for d, f, e in parts],
+                "final": round(feature_scores["trial_rider_score"], 2)}
         feature_notes["trial_speed_score"] = ts_note
         self.provenance["trial_speed_score"] = "trial_pf_own_l600_field_relative"
         feature_notes["form_quality_score"] = fq_note
@@ -954,7 +964,8 @@ class RacingEngine:
             "matrix_scores": matrix_scores,
             "data_coverage": data_coverage,
             "matrix_reasoning": matrix_reasoning,
-            "feature_scores": {key: feature_scores[key] for key in FEATURE_KEYS},
+            "feature_scores": {key: feature_scores[key] for key in
+                               (*FEATURE_KEYS, *(("trial_rider_score",) if "trial_rider_score" in feature_scores else ()))},
             "feature_notes": {key: feature_notes.get(key, "") for key in FEATURE_KEYS},
             "core_logic": core_logic,
             "preparation_cycle": prep_context,
@@ -2399,7 +2410,10 @@ class RacingEngine:
         # 免報告出「有講冇分」嘅因子。
         # EXP-20261016-75：試閘數嚟自往績表全部試閘（唔係「近期」）—— 只數今次備戰嘅版本（P1）
         # 排名指標 CI 全負，舊試閘一樣有資訊；只俾初出／首仗／二出（P4）亦 REJECT。
-        if trial_count >= 2 and trial_top3 >= 2:
+        rider_parts = []   # EXP-20261016-79：試閘騎師分（C1／C2 先用）
+        self.trial_rider_parts = rider_parts
+        trial_ok = trial_count >= 2 and (trial_top3 >= 2 or TRIAL_REBUILD == "C2")
+        if trial_ok:
             add(FIT_MICRO_WEIGHTS.get("trial_ok_bonus", 4.0), "試閘交代密度足夠",
                 f"往績表試閘{trial_count}課、{trial_top3}課跑入試閘前列")
             if top_jockey or top_trainer:
@@ -2418,6 +2432,11 @@ class RacingEngine:
             if current_formal_rides >= 2 and current_place_rate >= 0.66:
                 add(FIT_MICRO_WEIGHTS.get("current_high_fit_bonus", 2.0), "現役騎師對此駒配合率偏高",
                     f"配合率{current_place_rate * 100:.0f}%（{current_formal_rides}騎)")
+        elif TRIAL_REBUILD and current_trial_rides > 0 and (current_trial_top3 > 0 or TRIAL_REBUILD == "C2"):
+            basis = current_trial_rides if TRIAL_REBUILD == "C2" else current_trial_top3
+            rider_parts.append((min(FIT_MICRO_WEIGHTS.get("current_trial_cap", 4.0), basis * FIT_MICRO_WEIGHTS.get("current_trial_mult", 2.0)),
+                                "現役騎師已透過試閘熟習此駒",
+                                f"{jockey}試閘策此駒{current_trial_rides}次、{current_trial_top3}次入前三"))
         elif current_trial_rides > 0 and current_trial_top3 > 0:
             add(min(FIT_MICRO_WEIGHTS.get("current_trial_cap", 4.0), current_trial_top3 * FIT_MICRO_WEIGHTS.get("current_trial_mult", 2.0)),
                 "現役騎師已透過試閘熟習此駒",
@@ -2505,6 +2524,9 @@ class RacingEngine:
                 # 1–2 次層 −3.7pp、3+ 次層 −6.7pp，加權差 −4.2pp [−6.1, −2.4]。
                 # 同 2026-09-01「回配」同一個家族、同一種錯。
                 notes.append(f"{jockey_change_signal}（實測此群低於同層 3.7–6.7pp，不入分）")
+            elif "試閘手接手" in jockey_change_signal and TRIAL_REBUILD:
+                rider_parts.append((FIT_MICRO_WEIGHTS.get("signal_trial_rider_bonus", 2.0),
+                                    "試閘手接手，備戰線完整", jockey_change_signal))
             elif "試閘手接手" in jockey_change_signal:
                 add(FIT_MICRO_WEIGHTS.get("signal_trial_rider_bonus", 2.0),
                     "試閘手接手，備戰線完整", jockey_change_signal)
@@ -2543,6 +2565,12 @@ class RacingEngine:
         # 點位掃過 58/56/54/52：只有 58 喺 holdout 完全唔傷（每個指標剛好 0.00），
         # dev champ +0.50、winT3 +0.33、compet +0.33、blowout −0.16、good_pos −0.17。
         # 再低（54/52）dev gold +2 但 holdout gold −1、good_pos −0.94 → 唔採用。
+        pairing = [a for a in adjustments if a["factor"] not in self._PREPARATION_FACTORS]
+        if TRIAL_REBUILD and adjustments and not pairing:
+            # C1／C2：配搭「有冇證據」只睇正式賽配搭；試閘加分照加（之後會搬去試閘備戰），
+            # 所以起點係 58 而唔係 60。
+            score = self._JT_FIT_NO_EVIDENCE + sum(a["delta"] for a in adjustments)
+            notes.append("並無正式賽人馬配搭紀錄，按實測低於中性處理（試閘證據喺試閘備戰計）")
         if not adjustments:
             score = self._JT_FIT_NO_EVIDENCE
             notes.append("並無任何人馬配搭紀錄（新配搭／輕出賽馬），按實測低於中性處理")
