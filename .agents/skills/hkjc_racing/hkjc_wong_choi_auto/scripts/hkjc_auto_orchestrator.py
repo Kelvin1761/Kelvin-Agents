@@ -805,6 +805,48 @@ def _load_formline_opponent_summaries(logic_path, race_context, horses):
             summaries[str(horse_num)] = summary
     return summaries
 
+_SIGNED_NUMBER = re.compile(r"[+-]?\d+(?:\.\d+)?")
+
+
+def _first_section_min_delta(section_text):
+    """Fastest first-section deviation vs HKJC standard over the Facts 全段速剖面 (≤ 6 runs).
+
+    Δ1 < 0 = faster than standard. The table has 12 or 14 columns depending on
+    whether any listed run had five sections, so Δ1 is located by header —
+    hard-coded column indices read S5 instead of Δ1 on 14-column tables
+    (EXP-20261016-31). Fewer than two valid runs → None (no evidence).
+    """
+    marker = "全段速剖面"
+    if marker not in section_text:
+        return None
+    table = section_text.split(marker, 1)[1].split("🔧", 1)[0]
+    column = None
+    values = []
+    for line in table.splitlines():
+        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        if cells and cells[0] == "#":
+            column = cells.index("Δ1") if "Δ1" in cells else None
+            continue
+        if (column is not None and cells and cells[0].isdigit() and len(cells) > column
+                and _SIGNED_NUMBER.fullmatch(cells[column])):
+            values.append(float(cells[column]))
+    return min(values) if len(values) >= 2 else None
+
+
+def _load_first_section_deltas(logic_path, race_context, horses):
+    """Facts → Logic `_data["first_section_min_delta"]` (EXP-20261016-32/33)."""
+    facts_path = _facts_path_for_logic(logic_path, race_context.get("race_number"))
+    if not facts_path or not facts_path.exists():
+        return {}
+    text = facts_path.read_text(encoding="utf-8")
+    out = {}
+    for horse_num in horses.keys():
+        value = _first_section_min_delta(_section_for_horse(text, horse_num))
+        if value is not None:
+            out[str(horse_num)] = round(value, 2)
+    return out
+
+
 DEFAULT_SHADOW_PROFILES = (
     "incident_reliability",
     "weight_refit_t02",
@@ -938,6 +980,10 @@ class HKJCAutoOrchestrator:
             data = horse_obj.setdefault("_data", {})
             if isinstance(data, dict):
                 data.update(summary)
+        for h_num, value in _load_first_section_deltas(race_file, race_context, horses).items():
+            horse_obj = horses.get(h_num)
+            if isinstance(horse_obj, dict) and isinstance(horse_obj.setdefault("_data", {}), dict):
+                horse_obj["_data"]["first_section_min_delta"] = value
         
         for h_num, h_obj in horses.items():
             h_name = h_obj.get("horse_name", "Unknown")
