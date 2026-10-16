@@ -12,7 +12,7 @@ from __future__ import annotations
 OLD_PACE_PERF = (("pace_figure_score", 0.941744), ("trial_score", 0.058256))
 OLD_PACE_PERF_COEF = 0.12093934478578448
 VARIANTS = ("base", "f6a", "f6b", "f6c", "jt_auc")
-# EXP-20261016-17：騎練訊號內部份額按暖身 30 日（08-05 → 09-04）場內入位 AUC − 0.5 分配。
+# EXP-20261016-31：騎練訊號內部份額按暖身 30 日（08-05 → 09-04）場內入位 AUC − 0.5 分配。
 JT_AUC_SHARES = (("jockey_score", 0.344913), ("trainer_score", 0.370554),
                  ("jockey_horse_fit_score", 0.284533))
 

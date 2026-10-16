@@ -1,6 +1,6 @@
-# EXP-20261016-17 結果：騎練訊號內部份額按 AUC − 0.5 分配 —— REJECT
+# EXP-20261016-31 結果：騎練訊號內部份額按 AUC − 0.5 分配 —— REJECT
 
-- **預先登記**：[protocol](EXP-20261016-17-au-jockey-trainer-inner-shares-protocol.md)（`3b3454a1`，量度之前）。
+- **預先登記**：[protocol](EXP-20261016-31-au-jockey-trainer-inner-shares-protocol.md)（`3b3454a1`，量度之前）。
 - **語料**：`scratch/au_jt_audit_dump_20261016.py` @ `05dd1b20`（`k2` 特徵 = production）。A0／A1 ability 都用 `exact_score` 重算
   （引擎 ability 有一匹馬差 1e-4 嘅 proven_class 捨入，refit 嘅 verify 會拒絕；兩邊同一種計法）。
 - refit 程序 hash `f92c8377…e033`，兩邊一樣（`hash symmetric: True`）；判決器用 `claude-refit-both-arms-20261015` 嘅 §8 模組。
