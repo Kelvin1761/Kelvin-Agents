@@ -561,7 +561,9 @@ FIT_MICRO_WEIGHTS = {
     "signal_best_jockey_bonus": 3.85,
     # 2026-08-04：以下三項本來係函數入面硬寫嘅 `add(2, …)`。提升成有名參數，
     # 因為一個 ablation 掃唔到嘅魔術數字比一個調得太多嘅參數更難升級。
-    "signal_same_jockey_bonus": 2.0,
+    # 退出計分（EXP-20261016-12，§7）：方向反，見 engine_core「沿用上仗騎師」分支。
+    # Rollback: 2.0。留 key 做文獻，理由同上面 latest_downgrade_pen。
+    "signal_same_jockey_bonus": 0.0,
     "signal_trial_rider_bonus": 2.0,
     "signal_reunite_bonus": 0.0,   # 退出計分 2026-09-01，見上面 leave_proven 註釋
 }

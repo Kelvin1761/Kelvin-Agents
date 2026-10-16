@@ -80,6 +80,10 @@ def _bm_tier(rating):
     return 7
 
 
+# EXP-20261016-13 A/B 開關：False = 舊行為（讀唔存在嘅 `entry["class"]`）。
+FORM_ENTRY_CLASS_TIER = True
+
+
 def race_class_tier(text):
     """Race class label → (tier, recognised). Lower tier = higher class; 7 when unknown.
 
@@ -1142,7 +1146,7 @@ class RacingEngine:
             self.risk_flags.append("surface_transfer_unverified")
 
         today_class = self.race_context.get("race_class", "")
-        today_tier = self._get_class_tier(today_class)
+        today_tier, today_known = race_class_tier(today_class)
 
         total_weighted_score = 0.0
         total_applied_weights = 0.0
@@ -1188,8 +1192,14 @@ class RacingEngine:
             elif i == 2: decay = 0.6
             else: decay = 0.4
 
-            entry_tier = self._get_class_tier(entry.get("class", ""))
-            delta = today_tier - entry_tier
+            # EXP-20261016-13（K2，§7 正確性修正）：以前讀 `entry["class"]`，呢個 key 由來冇存在，
+            # entry_tier 永遠係 7，乘數變成由今場班次決定嘅全場常數（今場新馬賽 ×1.1、
+            # Group 1 ×0.7）。改讀往績真班次 `source_race_class`；任何一邊認唔到就唔調（×1.0）。
+            if FORM_ENTRY_CLASS_TIER:
+                entry_tier, entry_known = race_class_tier(entry.get("source_race_class") or "")
+                delta = today_tier - entry_tier if (today_known and entry_known) else 0
+            else:
+                delta = today_tier - self._get_class_tier(entry.get("class", ""))
 
             if delta >= 2: class_mult = 1.2
             elif delta == 1: class_mult = 1.1
@@ -2450,8 +2460,11 @@ class RacingEngine:
                 # 因此保留準確描述，唔用未泛化嘅大額微調入分。
                 notes.append(f"{jockey_change_signal}（評級變化只作背景，不入分）")
             elif "沿用上仗騎師" in jockey_change_signal:
-                add(FIT_MICRO_WEIGHTS.get("signal_same_jockey_bonus", 2.0),
-                    "沿用上仗騎師，部署連貫", jockey_change_signal)
+                # `signal_same_jockey_bonus` (+2.00) 退出計分（EXP-20261016-12，§7）：手寫值、
+                # 從來冇 fit 過，條件化量度（控制「曾策騎此駒」次數）方向反 ——
+                # 1–2 次層 −3.7pp、3+ 次層 −6.7pp，加權差 −4.2pp [−6.1, −2.4]。
+                # 同 2026-09-01「回配」同一個家族、同一種錯。
+                notes.append(f"{jockey_change_signal}（實測此群低於同層 3.7–6.7pp，不入分）")
             elif "試閘手接手" in jockey_change_signal:
                 add(FIT_MICRO_WEIGHTS.get("signal_trial_rider_bonus", 2.0),
                     "試閘手接手，備戰線完整", jockey_change_signal)

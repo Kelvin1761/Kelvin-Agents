@@ -62,19 +62,19 @@ ul, ol { padding-left:1.5rem; }
 <tr>
 <td>騎練訊號 <code>jockey_trainer</code></td>
 <td>0.6627</td>
-<td>24.1%</td>
+<td>24.0%</td>
 <td>█████···············</td>
 </tr>
 <tr>
 <td>官方評分對位 <code>class_weight</code></td>
 <td>0.3826</td>
-<td>12.4%</td>
+<td>12.3%</td>
 <td>██··················</td>
 </tr>
 <tr>
 <td>狀態與穩定性 <code>stability</code></td>
 <td>0.3710</td>
-<td>36.9%</td>
+<td>37.1%</td>
 <td>███████·············</td>
 </tr>
 <tr>
@@ -132,7 +132,7 @@ ul, ol { padding-left:1.5rem; }
 <td>38.1%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>4.19 分</strong>；<strong>0.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>4.20 分</strong>；<strong>0.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>官方評分對位　<code>class_weight</code>　— 合成係數 0.3826</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -158,7 +158,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>11.48 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>11.59 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>試閘備戰　<code>preparation</code>　— 合成係數 0.2524</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -169,7 +169,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.29 分</strong>；<strong>64.4%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.28 分</strong>；<strong>64.4%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>場地與地況適性　<code>track</code>　— 合成係數 0.1411</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -191,7 +191,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>18.45 分</strong>；<strong>0.4%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>18.47 分</strong>；<strong>0.5%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>賽績線　<code>form_line</code>　— 合成係數 0.0000（唔入排名）</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -202,7 +202,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>12.54 分</strong>；<strong>6.9%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>12.52 分</strong>；<strong>6.9%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>檔位形勢　<code>race_shape</code>　— 合成係數 0.0000（唔入排名）</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -325,16 +325,16 @@ ul, ol { padding-left:1.5rem; }
 <li>推算前三／前四：由市場勝率經 discounted Harville（λ 0.754／0.649／0.549）推出，係<strong>市場推算，唔係模型預測</strong></li></ul>
 <p>去水用共用 <code>shared_racing/scripts/devig.py</code>；實作喺 <code>au_racing_engine/market_reference.py</code>。</p>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-10-16 10:55 AEDT</code></li>
-<li>Git commit：<code>c242b6c1</code></li>
+<ul><li>生成時間：<code>2026-10-16 11:23 AEDT</code></li>
+<li>Git commit：<code>8c4702bd</code></li>
 <li>Scoring contract：<code>au/raw-matrix-preparation-v2</code></li>
-<li><code>scoring.py</code> 指紋：<code>1a3db66feadc</code></li>
+<li><code>scoring.py</code> 指紋：<code>4931ab67cad4</code></li>
 <li><code>matrix_mapper.py</code> 指紋：<code>7e081c69cdd9</code></li>
 <li><code>renderer.py</code> 指紋：<code>e0f3c7775652</code></li>
 <li><code>dimensions.py</code> 指紋：<code>3b7a2a136e3a</code></li>
 <li><code>full_time_speed.py</code> 指紋：<code>cde292260587</code></li>
-<li><code>engine_core.py</code> 指紋：<code>ba366aa1ad4a</code></li>
-<li>實測樣本：<strong>500 場、4930 匹馬</strong>，由 <code>2026-10-03 Murray Bridge Race 1-9</code> 到 <code>2026-10-16 Taree Race 1-8</code>（跳過 0 個舊格式檔案）</li></ul>
+<li><code>engine_core.py</code> 指紋：<code>a47ac899d7cc</code></li>
+<li>實測樣本：<strong>500 場、4929 匹馬</strong>，由 <code>2026-10-03 Murray Bridge Race 1-9</code> 到 <code>2026-10-16 Taree Race 1-8</code>（跳過 0 個舊格式檔案）</li></ul>
 <p>重新生成：</p>
 <pre><code>
 python3 .agents/skills/shared_racing/scripts/explain_model.py --platform au

@@ -1,159 +1,166 @@
 {
   "platform": "au",
-  "engine_fingerprint": "132355ae4442",
+  "engine_fingerprint": "1dfeecc1eb94",
   "calibrated_from": {
     "races": 2000,
-    "horses": 19799,
+    "horses": 19753,
     "files": 2000,
-    "first_meeting": "2026-08-26 Belmont Race 1-8",
+    "first_meeting": "2026-08-26 Bendigo Race 1-8",
     "last_meeting": "2026-10-16 Taree Race 1-8"
   },
   "fields": {
     "class_score": {
-      "horses": 19799,
-      "neutral_rate": 0.2928,
-      "mean_within_race_spread": 2.2716,
+      "horses": 19753,
+      "neutral_rate": 0.2929,
+      "mean_within_race_spread": 2.2756,
       "min": 47.73,
       "max": 67.52
     },
     "confidence_score": {
-      "horses": 19799,
+      "horses": 19753,
       "neutral_rate": 0.0,
-      "mean_within_race_spread": 3.0476,
+      "mean_within_race_spread": 3.0346,
       "min": 55.0,
       "max": 88.0
     },
     "consistency_score": {
-      "horses": 19799,
+      "horses": 19753,
       "neutral_rate": 0.0,
-      "mean_within_race_spread": 10.2963,
+      "mean_within_race_spread": 10.2939,
       "min": 46.1,
       "max": 100.0
     },
     "distance_score": {
-      "horses": 19799,
-      "neutral_rate": 0.2305,
-      "mean_within_race_spread": 3.6332,
+      "horses": 19753,
+      "neutral_rate": 0.2297,
+      "mean_within_race_spread": 3.6278,
       "min": 49.0,
       "max": 66.0
     },
+    "form_quality_score": {
+      "horses": 152,
+      "neutral_rate": 0.0,
+      "mean_within_race_spread": 18.0936,
+      "min": 8.015499,
+      "max": 100.0
+    },
     "form_score": {
-      "horses": 19799,
-      "neutral_rate": 0.058,
-      "mean_within_race_spread": 8.2481,
+      "horses": 19753,
+      "neutral_rate": 0.0581,
+      "mean_within_race_spread": 8.2503,
       "min": 36.569898,
       "max": 100.0
     },
     "formline_score": {
-      "horses": 19799,
+      "horses": 19753,
       "neutral_rate": 0.0663,
-      "mean_within_race_spread": 12.283,
+      "mean_within_race_spread": 12.2871,
       "min": 53.0,
       "max": 100.0
     },
     "health_score": {
-      "horses": 19799,
-      "neutral_rate": 0.3018,
-      "mean_within_race_spread": 0.6131,
+      "horses": 19753,
+      "neutral_rate": 0.3006,
+      "mean_within_race_spread": 0.6136,
       "min": 59.0,
       "max": 61.0
     },
     "jockey_horse_fit_score": {
-      "horses": 19799,
-      "neutral_rate": 0.1283,
-      "mean_within_race_spread": 2.6321,
+      "horses": 19753,
+      "neutral_rate": 0.1293,
+      "mean_within_race_spread": 2.6307,
       "min": 55.89,
       "max": 71.52
     },
     "jockey_score": {
-      "horses": 19799,
-      "neutral_rate": 0.0084,
-      "mean_within_race_spread": 8.3756,
+      "horses": 19753,
+      "neutral_rate": 0.0072,
+      "mean_within_race_spread": 8.3805,
       "min": 33.570344,
       "max": 97.1289
     },
     "pace_figure_score": {
-      "horses": 19799,
-      "neutral_rate": 0.0337,
-      "mean_within_race_spread": 19.5119,
+      "horses": 19753,
+      "neutral_rate": 0.0334,
+      "mean_within_race_spread": 19.5316,
       "min": 0.0,
       "max": 100.0
     },
     "pace_map_score": {
-      "horses": 19799,
+      "horses": 19753,
       "neutral_rate": 0.0025,
-      "mean_within_race_spread": 1.3295,
+      "mean_within_race_spread": 1.3268,
       "min": 51.66,
       "max": 64.05
     },
     "performance_quality_score": {
-      "horses": 19799,
+      "horses": 19753,
       "neutral_rate": 0.0001,
-      "mean_within_race_spread": 18.8488,
+      "mean_within_race_spread": 18.855,
       "min": 0.0,
       "max": 100.0
     },
     "preparation_score": {
-      "horses": 16949,
-      "neutral_rate": 0.6522,
-      "mean_within_race_spread": 1.282,
+      "horses": 16976,
+      "neutral_rate": 0.6508,
+      "mean_within_race_spread": 1.283,
       "min": 60.0,
       "max": 64.38
     },
     "proven_class_feature": {
-      "horses": 19799,
-      "neutral_rate": 0.2076,
-      "mean_within_race_spread": 0.4065,
+      "horses": 19753,
+      "neutral_rate": 0.2082,
+      "mean_within_race_spread": 0.4067,
       "min": -1.6583,
       "max": 1.8708
     },
     "rating_score": {
-      "horses": 19799,
-      "neutral_rate": 0.0402,
-      "mean_within_race_spread": 5.3639,
+      "horses": 19753,
+      "neutral_rate": 0.0401,
+      "mean_within_race_spread": 5.3683,
       "min": 47.0,
       "max": 73.5
     },
     "sectional_score": {
-      "horses": 19799,
-      "neutral_rate": 0.5694,
-      "mean_within_race_spread": 5.6884,
+      "horses": 19753,
+      "neutral_rate": 0.5685,
+      "mean_within_race_spread": 5.6937,
       "min": 60.0,
       "max": 86.19
     },
     "track_score": {
-      "horses": 19799,
+      "horses": 19753,
       "neutral_rate": 0.0,
-      "mean_within_race_spread": 4.6363,
+      "mean_within_race_spread": 4.6395,
       "min": 42.94,
       "max": 85.67
     },
     "trainer_score": {
-      "horses": 19799,
-      "neutral_rate": 0.0322,
-      "mean_within_race_spread": 8.6597,
+      "horses": 19753,
+      "neutral_rate": 0.0321,
+      "mean_within_race_spread": 8.662,
       "min": 24.000805,
       "max": 88.410464
     },
     "trial_score": {
-      "horses": 19799,
-      "neutral_rate": 0.1883,
-      "mean_within_race_spread": 7.7571,
+      "horses": 19753,
+      "neutral_rate": 0.1889,
+      "mean_within_race_spread": 7.7353,
       "min": 56.0,
       "max": 97.0
     },
     "weight_score": {
-      "horses": 19799,
-      "neutral_rate": 0.8665,
-      "mean_within_race_spread": 0.7319,
+      "horses": 19753,
+      "neutral_rate": 0.8671,
+      "mean_within_race_spread": 0.7285,
       "min": 53.0,
       "max": 63.0
     },
     "wet_form_feature": {
-      "horses": 9287,
-      "neutral_rate": 0.1354,
-      "mean_within_race_spread": 1.3751,
-      "min": -5.6787,
+      "horses": 9241,
+      "neutral_rate": 0.1348,
+      "mean_within_race_spread": 1.3739,
+      "min": -5.3774,
       "max": 6.1818
     }
   }

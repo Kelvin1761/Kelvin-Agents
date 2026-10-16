@@ -195,3 +195,5 @@
 - [EXP-20261015-07](EXP-20261015-07-au-full-time-activation.md) — 用戶要求先啟用逐駒全程A、更新dashboard；原逐窗Gold+1／Good+3／Pass+3，按原規則final refit gain1.5，固定版本回看+1／+1／+3（非新盲測）。10/16起只用已capture來源；5431筆研究／正式轉換一致；不加新步速修正。
 - [EXP-20261015-02](EXP-20261015-02-hkjc-pit-leak-fixes.md) — §7 正確性修正：HKJC 三個 PIT 洩漏（formguide 往績冇 as-of 閘、歷史回放跌落冇日期層級表、守衛未知日期 fail-open）。live 今日 101 匹逐位不變、golden 120/120；回放 4,477 匹只 7 匹郁、canonical 297 場 0 場排名改變；外層權重 neutral／wf_refit、race_shape 幅度三個 REJECT 喺乾淨 harness 照樣 REJECT。EXP-20260902-03「乾淨版」本身係層級表洩漏，數字作廢
 - [EXP-20261015-04](EXP-20261015-04-au-pit-leaks-l1-fixes.md) — §7 正確性修正：L1 不變性測試搵到嘅四個 AU PIT 洩漏（頁面累積統計、騎練 LY cache、檔位矩陣、tier 表）用同一個「D < 今日（悉尼）」定義分 live／歷史；全語料強制 live dump 逐位元不變；乾淨語料 Gold 20.59% → 20.59%；7 個同日賽後抽場次 stored 檔仍有洩漏（未重抽）
+- [EXP-20261016-12](EXP-20261016-12-au-jockey-trainer-audit-results.md) — 騎練訊號六項審計：「沿用上仗騎師 +2.0」條件化方向反（−4.2pp [−6.1,−2.4]）→ §7 退出計分；試閘計兩次前提錯（已搬走）；現役騎師計次數有用（剷走 Good −0.20pp CI 全負）；58 點位、LY as-of 冇問題。連同 EXP-13 合併版 Gold/Good 各 +0.04pp CI 跨零，唔係改善
+- [EXP-20261016-13](EXP-20261016-13-au-form-entry-class-tier-protocol.md) — §7 K2：近績分班次乘數改讀往績 `source_race_class`（以前讀唔存在嘅 `entry["class"]`，乘數變全場常數）；認唔到 → ×1.0；586 場郁，冇 CI 全負

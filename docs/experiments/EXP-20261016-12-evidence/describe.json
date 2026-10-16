@@ -1,0 +1,153 @@
+{
+ "races": 2485,
+ "runners": 23949,
+ "baseline_fit_recompute_max_gap": 1.4210854715202004e-14,
+ "J1": {
+  "trial_only_at_60": {
+   "n": 3596,
+   "excess": 0.0317
+  },
+  "no_evidence_at_58": {
+   "n": 7925,
+   "excess": -0.053
+  }
+ },
+ "J2": {
+  "best": {
+   "weighted_diff": 0.0686,
+   "ci": [
+    0.0502,
+    0.0887
+   ],
+   "per_stratum": {
+    "3+": {
+     "trig_n": 2457,
+     "trig_excess": 0.0411,
+     "not_n": 1848,
+     "not_excess": -0.0161,
+     "diff": 0.0572
+    },
+    "1-2": {
+     "trig_n": 1624,
+     "trig_excess": 0.0862,
+     "not_n": 6108,
+     "not_excess": 0.0002,
+     "diff": 0.086
+    }
+   },
+   "trigger_rate": 0.1704,
+   "reversed": false
+  },
+  "same": {
+   "weighted_diff": -0.0421,
+   "ci": [
+    -0.0607,
+    -0.024
+   ],
+   "per_stratum": {
+    "3+": {
+     "trig_n": 650,
+     "trig_excess": -0.0399,
+     "not_n": 3655,
+     "not_excess": 0.0266,
+     "diff": -0.0666
+    },
+    "1-2": {
+     "trig_n": 3137,
+     "trig_excess": -0.0037,
+     "not_n": 4595,
+     "not_excess": 0.0333,
+     "diff": -0.037
+    }
+   },
+   "trigger_rate": 0.1581,
+   "reversed": true
+  },
+  "trial": {
+   "weighted_diff": 0.0265,
+   "ci": [
+    0.008,
+    0.045
+   ],
+   "per_stratum": {
+    "0": {
+     "trig_n": 1526,
+     "trig_excess": 0.0219,
+     "not_n": 10386,
+     "not_excess": -0.0229,
+     "diff": 0.0449
+    },
+    "3+": {
+     "trig_n": 301,
+     "trig_excess": -0.005,
+     "not_n": 4004,
+     "not_excess": 0.0182,
+     "diff": -0.0232
+    },
+    "1-2": {
+     "trig_n": 498,
+     "trig_excess": 0.0187,
+     "not_n": 7234,
+     "not_excess": 0.0183,
+     "diff": 0.0004
+    }
+   },
+   "trigger_rate": 0.0971,
+   "reversed": false
+  }
+ },
+ "J3": {
+  "rides 1-2 | places 0": {
+   "n": 3617,
+   "excess": -0.0516
+  },
+  "rides 1-2 | places 1": {
+   "n": 3459,
+   "excess": 0.0735
+  },
+  "rides 1-2 | places 2": {
+   "n": 656,
+   "excess": 0.1124
+  },
+  "rides 3+ | places 0": {
+   "n": 521,
+   "excess": -0.1004
+  },
+  "rides 3+ | places 1": {
+   "n": 1025,
+   "excess": -0.0249
+  },
+  "rides 3+ | places 2": {
+   "n": 1265,
+   "excess": 0.0181
+  },
+  "rides 3+ | places 3+": {
+   "n": 1494,
+   "excess": 0.0846
+  }
+ },
+ "J5": {
+  "no_evidence": {
+   "n": 11521,
+   "excess": -0.0266
+  },
+  "with_evidence": {
+   "n": 12428,
+   "excess": 0.0253
+  }
+ },
+ "J6": {
+  "jockey_score": 0.5884,
+  "trainer_score": 0.5968,
+  "jockey_horse_fit_score": 0.5622,
+  "shares": {
+   "jockey_score": 0.333333,
+   "trainer_score": 0.285714,
+   "jockey_horse_fit_score": 0.380952
+  }
+ },
+ "K2": {
+  "runners_ability_moved": 1281,
+  "races_ability_moved": 586
+ }
+}
