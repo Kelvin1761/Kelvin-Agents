@@ -1,0 +1,71 @@
+{
+ "experiment": "EXP-20261016-74",
+ "a0_sha": "d51796e1afaacaebc05698669d7e6bb4c90c679a",
+ "a1_sha": "2d7ec14c09a3d6fa0bc5733406a730f7dff344ff",
+ "valid_from": "2026-10-17",
+ "min_meeting_days": 41,
+ "one_look": true,
+ "b1_weights": {
+  "stability": 0.31774877342342017,
+  "pace_perf": 0.13384866026826542,
+  "jockey_trainer": 0.8854653650209459,
+  "class_weight": 0.39715011514657095,
+  "track": 0.0787400407134619,
+  "preparation": 0.11080021591162373
+ },
+ "b1_meta": {
+  "training_races": 2485,
+  "accepted_draws": 1,
+  "fallback": null
+ },
+ "refit_procedure_hash": "f92c8377b338c073f39fcb056318659dc2a1fc095410dde95afc5b869c4ae033",
+ "train_window": [
+  "2026-08-05",
+  "2026-10-16"
+ ],
+ "train_races": 2485,
+ "corpus_file_sha256": "56ffda3f7574526debbde1ba15a12c42ddd86ba3616f160941636cdef79eada7",
+ "gbm": {
+  "params": {
+   "max_iter": 200,
+   "learning_rate": 0.05,
+   "max_leaf_nodes": 15,
+   "min_samples_leaf": 50,
+   "l2_regularization": 1.0,
+   "random_state": 7
+  },
+  "features": [
+   "form_score",
+   "trial_score",
+   "sectional_score",
+   "pace_map_score",
+   "jockey_score",
+   "trainer_score",
+   "jockey_horse_fit_score",
+   "class_score",
+   "rating_score",
+   "weight_score",
+   "distance_score",
+   "track_score",
+   "formline_score",
+   "consistency_score",
+   "performance_quality_score",
+   "health_score",
+   "confidence_score",
+   "pace_figure_score",
+   "preparation_score",
+   "form_quality_score",
+   "wet",
+   "proven_class",
+   "full_time"
+  ],
+  "sklearn": "1.6.1",
+  "model_sha256": "9fd87e3d87fbbd4d33969998a70064a6780db1909bcfa24a51d0f1eb38c443b0",
+  "train_rows": 23949
+ },
+ "code_sha256": {
+  "scratch/au_bundle_forward_20261016.py": "7f6fd193039852342cb07ee169054cacc3f337950630b05b64ffa8aed36c7d4c",
+  "scratch/au_bundle_replay_worker_20261016.py": "280057c4e52a6e865101f811320833b19eb89ca43cff9630b1bd01453492b4e1"
+ },
+ "frozen_at": "2026-10-16T15:58:16.177581+11:00"
+}
