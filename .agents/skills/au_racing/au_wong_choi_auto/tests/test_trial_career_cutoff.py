@@ -76,11 +76,14 @@ def test_preparation_bonus_is_retained_after_six_starts():
     assert subject.data['trial_count'] == 3
 
 
-def test_maiden_trial_time_no_longer_changes_form_after_six_starts():
+def test_trial_600m_speed_field_no_longer_changes_form():
+    """EXP-20261016-76：`timing_trial_600m_avg_speed` 嚟自 Racenet 逐駒 600m，Sportsbet 冇，語料 0% 有值；
+    讀佢嘅「新馬試閘時間補充」已剷走，所以任何出賽數都唔再受呢個欄影響。"""
     def form(starts, speed):
         h = horse(starts)
         h['_data']['timing_trial_600m_avg_speed'] = speed
         h['_data']['recent_form'] = '1234'
         return RacingEngine(h, {'race_class': 'Maiden', 'distance': '1200m'})._form_score()[0]
     assert form(6, 18.) == form(6, None)
-    assert form(5, 18.) > form(5, None)
+    assert form(5, 18.) == form(5, None)
+    assert form(0, 18.) == form(0, None)

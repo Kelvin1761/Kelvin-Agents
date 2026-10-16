@@ -1284,21 +1284,10 @@ class RacingEngine:
         score = min(100.0, max(0.0, avg_score))
         detail["avg"] = round(score, 2)
 
-        if self._is_maiden_race() and trial_performance_applies(self.horse_data):
-            # 2026-07-10：新馬補充由「試閘名次」改為「試閘 L600 時間」（用戶提出）。
-            # A/B：時間版全檔 GGP +1、A窗 +1（good +0.7pp）、無指標倒退；名次版無增益，
-            # 兩者取大亦無增益 → 淨用時間。門檻沿用 _trial_score 嘅 17.5/17.0 m/s。
-            trial_speed = parse_float(self.data.get("timing_trial_600m_avg_speed"))
-            if trial_speed and trial_speed >= 17.5:
-                score += 5
-                self.reason_codes.append("maiden_trial_time_proxy")
-                notes.append("試閘時間快，作近績補充參考")
-                detail["bonus"].append({"delta": 5.0, "factor": "新馬試閘時間補充",
-                                        "evidence": f"試閘 L600 平均速度 {trial_speed:.2f} m/s（≥17.5 屬快）"})
-            elif trial_speed and trial_speed >= 17.0:
-                score += 3
-                detail["bonus"].append({"delta": 3.0, "factor": "新馬試閘時間補充",
-                                        "evidence": f"試閘 L600 平均速度 {trial_speed:.2f} m/s（≥17.0 屬中上）"})
+        # 2026-07-10「新馬試閘時間補充」（+5／+3）已剷走（EXP-20261016-76）：佢讀
+        # `timing_trial_600m_avg_speed`，嗰個欄嚟自 Racenet 時代逐駒 600m 分段時間。轉 Sportsbet 之後
+        # 頁面冇逐駒 600m（試閘行只有場級 L600 差 41.9%、頭馬時間 65.1%），乾淨窗 28,974 匹 0% 有值，
+        # 規則由來冇觸發。試閘速度已經經 pace_figure（個體 L600，試閘 PF 行保留）入分，唔再重砌。
 
         # 劣績中性回歸（2026-07-10）：診斷證實偏弱近績被罰過盡（<55帶 1仗馬實際前三率
         # 24.6% 反高過 3-4仗馬 21.8%），偏強分係真訊號唔收（反向變體 A/B 反證會蝕）。
@@ -1433,14 +1422,7 @@ class RacingEngine:
             if is_maiden and trial_count >= 6 and safe_ratio(good, trial_count) >= 0.6:
                 add(tw.get("density_maiden_bonus", 3.0), "新馬賽密集備戰加碼", "")
                 self.reason_codes.append("maiden_trial_density_boost")
-        # Maiden: trial speed as direct signal
-        if is_maiden:
-            tw_trial = self.data.get("timing_trial_600m_avg_speed")
-            if tw_trial and tw_trial >= 17.5:
-                add(tw.get("fast_trial_bonus", 4.0), "試閘時間快", f"試閘 L600 平均 {tw_trial:.2f} m/s（≥17.5 屬快）")
-                self.reason_codes.append("maiden_fast_trial_speed")
-            elif tw_trial and tw_trial >= 17.0:
-                add(tw.get("mid_trial_bonus", 2.0), "試閘時間中上", f"試閘 L600 平均 {tw_trial:.2f} m/s")
+        # 新馬試閘時間快 +4／+2 已剷走（EXP-20261016-76）：`timing_trial_600m_avg_speed` 由來冇值。
         # Trial video signals were scored here (被拑制／盡試冇料／有爭勝／轉弱／
         # 帶放／走勢改善, ±2-4 points). They fired on 12 of 20,882 runners because
         # this source does not publish trial comments at all: of 77,336 `Video:`
