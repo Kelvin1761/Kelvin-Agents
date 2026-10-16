@@ -91,6 +91,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       renderChronologySeries,
       formatRichSection,
       renderDataReadoutItem,
+      renderSubScoreDetails,
       sanitizeBattlefieldOverviewText,
       renderBattlefieldOverview,
       parseBattlefieldOverview,
@@ -1680,4 +1681,23 @@ test("horse card shows captured full-time index and actual contribution, not an 
   const missing = renderHorseCard({ ...horse, full_time_speed: { status: "no_matched_formal_runs" }});
   assert.match(missing, /今項中性 0 分/);
   assert.doesNotMatch(renderHorseCard({ horse_number: 1, horse_name: "Legacy" }), /全程情境指數/);
+});
+
+
+test("speed signal scores stay separate from signed seconds in the value", () => {
+  const { renderSubScoreDetails } = loadTemplateFunctions();
+  for (const [line, score, tone, label] of [
+    ["· 最快第一段（-0.17s） +2.0　第一段曾快過標準", "+2.0", "up", "頭段速度（-0.17s）"],
+    ["· 頭段速度（+0.90s） -2.0　第一段明顯慢", "-2.0", "down", "頭段速度（+0.90s）"],
+    ["· 頭段速度（+0.10s） 0　第一段接近標準", "0", "flat", "頭段速度（+0.10s）"],
+    ["· 步速修正等級（近 3 仗修正平均: +1.4s） +0.7　接近標準平均", "+0.7", "up", "步速修正等級（近 3 仗修正平均: +1.4s）"],
+    ["· L400 絕對值（23.86s） 0　末段一般（23.6–24.0s）", "0", "flat", "L400 絕對值（23.86s）"],
+    ["· 頭段速度(-0.17s) +2.0 第一段曾快過標準", "+2.0", "up", "頭段速度(-0.17s)"],
+  ]) {
+    const html = renderSubScoreDetails([{ text: line }], "");
+    assert.ok(html.includes(`dim-adj--${tone}`), html);
+    assert.ok(html.includes(`<span class="dim-adj__num">${score}</span>`), html);
+    assert.ok(html.includes(label), html);
+    assert.doesNotMatch(html, /最快第一段/);
+  }
 });

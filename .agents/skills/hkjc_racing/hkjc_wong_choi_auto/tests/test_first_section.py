@@ -56,12 +56,12 @@ class FirstSectionTests(unittest.TestCase):
             scorer = SpeedScorer(horse(delta), {})
             score, _ = scorer.compute()
             self.assertAlmostEqual(score - base, expected, places=2, msg=delta)
-            self.assertIn("最快第一段", {d["factor"] for d in scorer.detail})
+            self.assertIn("頭段速度", {d["factor"] for d in scorer.detail})
 
     def test_missing_field_leaves_score_untouched(self):
         scorer = SpeedScorer(horse(None), {})
         scorer.compute()
-        self.assertNotIn("最快第一段", {d["factor"] for d in scorer.detail})
+        self.assertNotIn("頭段速度", {d["factor"] for d in scorer.detail})
 
 
 if __name__ == "__main__":

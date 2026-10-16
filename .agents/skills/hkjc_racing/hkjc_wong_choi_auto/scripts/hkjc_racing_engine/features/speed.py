@@ -31,7 +31,7 @@ class SpeedScorer(BaseScorer):
         if delta is None:
             return score, note
         self.detail = list(getattr(self, "detail", []) or []) + [
-            {"factor": "最快第一段", "value": f"{float(m):+.2f}s", "delta": round(delta, 2), "why": why}]
+            {"factor": "頭段速度", "value": f"{float(m):+.2f}s", "delta": round(delta, 2), "why": why}]
         return clip_score(score + delta), note
 
     def _compute_core(self):

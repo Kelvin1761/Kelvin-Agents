@@ -4790,7 +4790,8 @@ const SUBSCORE_LINE_RE = /^(.{1,14}?分)[ \t]+([\d.]+)(?=$|[\s　←（(])\s*(?:
 // The sign is glued to the closing bracket in HKJC -- "（騎師分）+4.0" -- so a
 // required space before it matched nothing.
 const ADJUST_LINE_RE = /^(.+?)\s*([+\-]\d[\d.]*)\s*(?:←\s*)?(.*)$/;
-const SIGNAL_LINE_RE = /^[·•]\s*(.+?)\s*([+\-]\d[\d.]*)\s*(.*)$/;
+// Signed seconds inside the value brackets are data; the score follows them.
+const SIGNAL_LINE_RE = /^[·•]\s*((?:[^（）()]|（[^）]*）|\([^)]*\))+?)\s+([+\-]\d+(?:\.\d+)?|0)(?=\s|$)\s*(.*)$/;
 const ADJUST_TARGET_RE = /[（(]([^）)]*?分)[^）)]*[）)]/;
 
 // "組合：沙田加權 檔位55%＋走位匹配25%＋近仗消耗20%" — 檔位與走位 has a single
@@ -4891,10 +4892,12 @@ function renderSubScoreDetails(children, captionText) {
     }
     const signal = SIGNAL_LINE_RE.exec(text);
     if (signal) {
-      const positive = !signal[2].startsWith('-');
-      html += `<div class="dim-adj dim-adj--${positive ? 'up' : 'down'}">`
+      const delta = Number(signal[2]);
+      const tone = delta > 0 ? 'up' : delta < 0 ? 'down' : 'flat';
+      const label = signal[1].replace(/^最快第一段(?=[（(]|$)/, '頭段速度');
+      html += `<div class="dim-adj dim-adj--${tone}">`
         + `<span class="dim-adj__num">${esc(signal[2])}</span>`
-        + `<span class="dim-adj__label">${esc(signal[1])}`
+        + `<span class="dim-adj__label">${esc(label)}`
         + (signal[3] ? `<span class="dim-adj__why">${esc(signal[3])}</span>` : '')
         + `</span></div>`;
       continue;
