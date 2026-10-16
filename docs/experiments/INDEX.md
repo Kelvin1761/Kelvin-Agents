@@ -211,3 +211,5 @@
 - [EXP-20261016-71](EXP-20261016-71-au-form-quality-distance-results.md) — 近績路程相關度 + 大幅增減程：模型名次層內 |Δ|≥400m 剩餘 −5.8pp [−7.6,−4.1]（大幅縮程最差）；F1 路程加權 REJECT（OOS Gold −1.08pp 六 block 全負）；F2 大幅轉程近績質素分 −5 上線（v3 RANKING_WIN，Good +0.28pp，Holm p 0.096 唔算顯著改善）
 - [EXP-20261016-72](EXP-20261016-72-au-track-rate-and-centralise-results.md) — 地況扣分集中一個 `_going_adjustment`（32,448 匹逐位元相同）上線；同場比率 R REJECT（Gold −0.32pp，§8 both_arms_reject）；合成跑道維持當好地，85 場，夠 100 場再測
 - [EXP-20261016-75](EXP-20261016-75-au-preparation-audit-results.md) — 試閘備戰六項：兩項加分方向都啱（合格 +7.4pp、T1 +9.5pp）；只數今次備戰（P1）、只俾初出（P4）、數據定頂級騎練（P3）全部 REJECT；試閘前列改場內百分位（P2）§7 上線（Gold −0.08、Good −0.12，CI 跨零，唔係改善）；「近期試閘」改字眼；`timing_trial_600m_avg_speed` 語料 0% 有值（新馬試閘時間 +5 規則從未觸發）
+- [EXP-20261016-76](EXP-20261016-76-au-trial-speed-field-dead-results.md) — `timing_trial_600m_avg_speed`（同正式賽 `timing_600m_*`）乾淨窗 0% 有值：解析只認 Racenet 逐駒 600m，Sportsbet 冇；剷讀佢嘅死規則令 Racenet 年代存檔 15 場排名改變（乾淨窗 0），照登記**唔上線**，留喺分支等用戶決定
+- [EXP-20261016-77](EXP-20261016-77-au-trial-speed-to-preparation-results.md) — 試閘速度由 L600 環境分搬去試閘備戰（0.5/0.5）：§8 both_arms_reject；搬走唔似剷走（F6c）咁蝕，資訊保得住但冇改善 → 維持現行
