@@ -208,3 +208,4 @@
 - [EXP-20261016-52](EXP-20261016-52-hkjc-first-section-results.md) — 最快第一段 K=2/4/6 預先登記：**UNRESOLVABLE**（Good +0.70/+1.40/+1.05，Holm 0.697，< MDE）；換馬層面頭 2 換入上名 52% vs 換出 23%（探索性）
 - [EXP-20261016-53](EXP-20261016-53-hkjc-first-section-owner-release.md) — **Kelvin 決定上線 K=4，未證實**：Facts → Logic `first_section_min_delta`，段速 +4/+2/0/−1/−2；forward 退回條件 2026-10-17 起 60 場中期止蝕、150 場最終判定
 - [EXP-20261016-70](EXP-20261016-70-au-track-audit-results.md) — 場地與地況適性六項：同場斷崖係真（1 戰 −3.7pp → 2 戰 −9.1pp），剷斷崖、濕地唔重扣、剷重地專項三個都輸 → 保留；只上線 base 62.9 → 60（§7，consistency −4 門檻跟住 60 → 57.1，排名不變）。留低：同場比率（6+ 戰 1 次上名 −11.0pp 照加 +5）、未跑濕地 −6.4 過重、合成跑道 85 場未夠
+- [EXP-20261016-73](EXP-20261016-73-au-trip-change-magnitude-results.md) — 大幅轉程扣分幅度：dev 揀縮程 −12／增程 −8，OOS 確認 REJECT（Gold ±0、Good +0.20pp，CI 跨零）→ 維持 −5；要再測等新賽日

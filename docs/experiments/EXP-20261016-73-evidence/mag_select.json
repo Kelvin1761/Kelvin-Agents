@@ -1,0 +1,222 @@
+{
+ "dev_races": 1003,
+ "triggered": 1791,
+ "grid": [
+  {
+   "ks": 3,
+   "ki": 3,
+   "symmetric": true,
+   "gold": 20.239,
+   "good": 24.427,
+   "sum": 44.666
+  },
+  {
+   "ks": 3,
+   "ki": 5,
+   "symmetric": false,
+   "gold": 20.239,
+   "good": 24.427,
+   "sum": 44.666
+  },
+  {
+   "ks": 3,
+   "ki": 8,
+   "symmetric": false,
+   "gold": 20.239,
+   "good": 24.526,
+   "sum": 44.766
+  },
+  {
+   "ks": 3,
+   "ki": 12,
+   "symmetric": false,
+   "gold": 20.239,
+   "good": 24.427,
+   "sum": 44.666
+  },
+  {
+   "ks": 3,
+   "ki": 16,
+   "symmetric": false,
+   "gold": 20.14,
+   "good": 24.526,
+   "sum": 44.666
+  },
+  {
+   "ks": 5,
+   "ki": 3,
+   "symmetric": false,
+   "gold": 20.239,
+   "good": 24.427,
+   "sum": 44.666
+  },
+  {
+   "ks": 5,
+   "ki": 5,
+   "symmetric": true,
+   "gold": 20.239,
+   "good": 24.427,
+   "sum": 44.666
+  },
+  {
+   "ks": 5,
+   "ki": 8,
+   "symmetric": false,
+   "gold": 20.239,
+   "good": 24.526,
+   "sum": 44.766
+  },
+  {
+   "ks": 5,
+   "ki": 12,
+   "symmetric": false,
+   "gold": 20.239,
+   "good": 24.427,
+   "sum": 44.666
+  },
+  {
+   "ks": 5,
+   "ki": 16,
+   "symmetric": false,
+   "gold": 20.14,
+   "good": 24.526,
+   "sum": 44.666
+  },
+  {
+   "ks": 8,
+   "ki": 3,
+   "symmetric": false,
+   "gold": 20.439,
+   "good": 24.526,
+   "sum": 44.965
+  },
+  {
+   "ks": 8,
+   "ki": 5,
+   "symmetric": false,
+   "gold": 20.439,
+   "good": 24.526,
+   "sum": 44.965
+  },
+  {
+   "ks": 8,
+   "ki": 8,
+   "symmetric": true,
+   "gold": 20.439,
+   "good": 24.626,
+   "sum": 45.065
+  },
+  {
+   "ks": 8,
+   "ki": 12,
+   "symmetric": false,
+   "gold": 20.439,
+   "good": 24.526,
+   "sum": 44.965
+  },
+  {
+   "ks": 8,
+   "ki": 16,
+   "symmetric": false,
+   "gold": 20.339,
+   "good": 24.626,
+   "sum": 44.965
+  },
+  {
+   "ks": 12,
+   "ki": 3,
+   "symmetric": false,
+   "gold": 20.439,
+   "good": 24.726,
+   "sum": 45.165
+  },
+  {
+   "ks": 12,
+   "ki": 5,
+   "symmetric": false,
+   "gold": 20.439,
+   "good": 24.726,
+   "sum": 45.165
+  },
+  {
+   "ks": 12,
+   "ki": 8,
+   "symmetric": false,
+   "gold": 20.439,
+   "good": 24.826,
+   "sum": 45.264
+  },
+  {
+   "ks": 12,
+   "ki": 12,
+   "symmetric": true,
+   "gold": 20.439,
+   "good": 24.726,
+   "sum": 45.165
+  },
+  {
+   "ks": 12,
+   "ki": 16,
+   "symmetric": false,
+   "gold": 20.339,
+   "good": 24.826,
+   "sum": 45.165
+  },
+  {
+   "ks": 16,
+   "ki": 3,
+   "symmetric": false,
+   "gold": 19.94,
+   "good": 24.726,
+   "sum": 44.666
+  },
+  {
+   "ks": 16,
+   "ki": 5,
+   "symmetric": false,
+   "gold": 19.94,
+   "good": 24.726,
+   "sum": 44.666
+  },
+  {
+   "ks": 16,
+   "ki": 8,
+   "symmetric": false,
+   "gold": 19.94,
+   "good": 24.826,
+   "sum": 44.766
+  },
+  {
+   "ks": 16,
+   "ki": 12,
+   "symmetric": false,
+   "gold": 19.94,
+   "good": 24.726,
+   "sum": 44.666
+  },
+  {
+   "ks": 16,
+   "ki": 16,
+   "symmetric": true,
+   "gold": 19.84,
+   "good": 24.826,
+   "sum": 44.666
+  }
+ ],
+ "chosen": {
+  "ks": 12,
+  "ki": 8,
+  "symmetric": false,
+  "gold": 20.439,
+  "good": 24.826,
+  "sum": 45.264
+ },
+ "current_minus5": {
+  "ks": 5,
+  "ki": 5,
+  "symmetric": true,
+  "gold": 20.239,
+  "good": 24.427,
+  "sum": 44.666
+ }
+}
