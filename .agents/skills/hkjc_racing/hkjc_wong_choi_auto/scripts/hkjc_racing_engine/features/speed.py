@@ -1,11 +1,40 @@
 from hkjc_racing_engine import scoring
 from hkjc_racing_engine.scoring import BaseScorer, clip_score, parse_float
 
+def first_section_delta(min_delta):
+    """近 6 仗最快第一段（Δ1 對標準，負 = 快）→ 段速分加減。None = 冇證據。"""
+    m = parse_float(min_delta)
+    if m is None:
+        return None, ""
+    w = scoring.SPEED_MICRO_WEIGHTS
+    if m < -0.3:
+        return w["first_section_fast_bonus"], "第一段曾快過標準 >0.3s"
+    if m < 0:
+        return w["first_section_quick_bonus"], "第一段曾快過標準"
+    if m < 0.3:
+        return 0.0, "第一段接近標準"
+    if m < 0.6:
+        return w["first_section_slowish_pen"], "第一段偏慢"
+    return w["first_section_slow_pen"], "第一段明顯慢"
+
+
 class SpeedScorer(BaseScorer):
     def _data(self):
         return self.horse_data.get("_data", {}) if isinstance(self.horse_data.get("_data"), dict) else {}
 
     def compute(self):
+        score, note = self._compute_core()
+        # 最快第一段（EXP-20261016-52/53，Kelvin 2026-10-16 決定上線，未證實）：喺所有返回路徑之後加，
+        # 唔計入 signals —— 同 A/B arm 一模一樣，排名可以同 arm 逐場對數。
+        m = self._data().get("first_section_min_delta")
+        delta, why = first_section_delta(m)
+        if delta is None:
+            return score, note
+        self.detail = list(getattr(self, "detail", []) or []) + [
+            {"factor": "最快第一段", "value": f"{float(m):+.2f}s", "delta": round(delta, 2), "why": why}]
+        return clip_score(score + delta), note
+
+    def _compute_core(self):
         data = self._data()
         signals = 0
         strong_signals = 0

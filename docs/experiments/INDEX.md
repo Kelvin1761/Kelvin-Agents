@@ -200,3 +200,10 @@
 - [EXP-20261016-18](EXP-20261016-18-au-class-weight-audit-results.md) — 官方評分對位六項：混合場代理改用負磅尺（R1x）、代理馬級數只計一次（R2x）、上仗名次場內百分位（R4x）、剷 BM／處女乘數同前三門檻（R5a/b）、補阿德萊德／珀斯都會（R6x）。真引擎合併版 v3 PRIMARY_WIN Gold +0.60pp [+0.19,+1.04]，§8 fixed arm OOS Gold +0.81pp（Holm p 0.002）；窗口重用，要新賽日確認。降班 +2.1 觸發馬超額 +10.6pp，幅度另登記
 - [EXP-20261016-30](EXP-20261016-30-au-fit-weak-class-minus3-results.md) — 「配搭分 ≥72 而 class_score <58 → −3」（2026-05-16 加入，冇 A/B）：乾淨窗 23,949 匹觸發 **0** 匹（配搭分 ≥72 只得 3 匹），係死 code；依登記只報告唔改
 - [EXP-20261016-31](EXP-20261016-31-au-jockey-trainer-inner-shares-results.md) — 騎練訊號內部份額按暖身 AUC − 0.5 分配（練馬師 0.29→0.37、人馬配搭 0.38→0.28）：§8 both_arms_reject，refit NDCG@5 −0.0046 CI 全負，頭兩名 $15+ 跑包尾 +8 [+1,+15]；配搭分單獨最唔準但邊際貢獻最大，唔再試份額
+- [EXP-20261016-14](EXP-20261016-14-hkjc-sectional-dimension-review.md) — HKJC 段速表現審查：L400 絕對值同趨勢都有貢獻（剷走 Good −1.6～−2.0pp）；維度調整 +5 因標籤錯（改善中 vs 進步）從未觸發；段速冇早段速度訊號，模型 4–6 名前置馬上名 33.9% vs 後上 20.9%
+- [EXP-20261016-15](EXP-20261016-15-hkjc-early-habit-results.md) — 前置習慣（近 3 仗第一沿途位 ≤3 比例）K=3/6/9 預先登記：**REJECT**，K=3 Gold +1.40 但 Good −1.05，Holm 0.684；cohort 差距冇轉化
+- [EXP-20261016-16](EXP-20261016-16-hkjc-remove-finish-time-trend.md) — §7：剷走段速完成時間趨勢 ±5（實際單邊 −5）；306 場 Gold +0.33／Good +0.98 CI 跨零，冇 cohort CI 全負。**唔係已證實改善**
+- [EXP-20261016-17](EXP-20261016-17-hkjc-remove-engine-type.md) — 剷引擎型態 **REJECT／未上線**：喺完成時間趨勢剷走後 Good −1.31pp；EXP-14 嘅 ±0.33 已過時
+- [EXP-20261016-51](EXP-20261016-51-hkjc-first-section-speed-screen.md) — 第一段速度篩選：近 6 仗最快 Δ1 AUC 0.565、對模型 ρ +0.07、對今仗第一沿途位 ρ −0.42，增量未顯著；EXP-20261010-10 parser 讀錯欄、TAU=3 太自信
+- [EXP-20261016-52](EXP-20261016-52-hkjc-first-section-results.md) — 最快第一段 K=2/4/6 預先登記：**UNRESOLVABLE**（Good +0.70/+1.40/+1.05，Holm 0.697，< MDE）；換馬層面頭 2 換入上名 52% vs 換出 23%（探索性）
+- [EXP-20261016-53](EXP-20261016-53-hkjc-first-section-owner-release.md) — **Kelvin 決定上線 K=4，未證實**：Facts → Logic `first_section_min_delta`，段速 +4/+2/0/−1/−2；forward 退回條件 2026-10-17 起 60 場中期止蝕、150 場最終判定
