@@ -80,6 +80,13 @@ def _bm_tier(rating):
     return 7
 
 
+# EXP-20261016-72 B 研究開關：同場有上名 → 收縮上名率（預設 False = 現行次數加分）。
+SAME_TRACK_RATE = False
+# EXP-20261016-71 F1 研究開關：近績質素分每場再乘路程相關度（預設 False = 現行）。
+FORM_QUALITY_DISTANCE_WEIGHTING = False
+FORM_QUALITY_DISTANCE_BANDS = ((200, 1.0), (400, 0.6))   # 之外 0.3
+FORM_QUALITY_DISTANCE_FAR = 0.3
+
 # EXP-20261016-13 A/B 開關：False = 舊行為（讀唔存在嘅 `entry["class"]`）。
 FORM_ENTRY_CLASS_TIER = True
 
@@ -4686,15 +4693,18 @@ class RacingEngine:
         track_context = self._track_context()
         wet_state = self._wet_state()
         going_bucket = track_context.get("going_bucket", "")
-        going_sample = going_stats.get(going_bucket, {})
-        
+
         w = TRACK_MICRO_WEIGHTS
         score = w.get("base", 60.0)
         notes = []
         tdetail = {"base": round(float(score), 1), "final": None}
         self.track_detail = tdetail
 
-        if track_stats["places"] > 0:
+        if track_stats["places"] > 0 and SAME_TRACK_RATE:
+            rate = (track_stats["places"] + 0.30 * 3) / (track_stats["starts"] + 3)
+            score += max(-9.0, min(9.0, (rate - 0.30) * 30.0))
+            notes.append("同場有實際上名支持")
+        elif track_stats["places"] > 0:
             score += min(9, track_stats["places"] * w.get("same_track_place_bonus", 3.0) + track_stats["wins"] * w.get("same_track_win_bonus", 2.0))
             notes.append("同場有實際上名支持")
         elif track_stats["starts"] >= 2 and track_stats["places"] == 0:
@@ -4721,39 +4731,14 @@ class RacingEngine:
         # 雖然同 overlay 相關，但**帶真訊號**，唔係純重複。flag 保留只為將來重測
         # （語料長大之後），**唔應該開**。
         _skip_going = os.environ.get("WC_TRACK_NO_GOING") == "1"
-        if _skip_going:
-            pass
-        elif going_sample.get("starts", 0) > 0 and going_sample.get("places", 0) > 0:
-            score += min(10, going_sample["places"] * w.get("going_place_bonus", 3.0))
-            notes.append(f"{going_bucket} 樣本顯示對今場掛牌有基本適應")
-            if going_sample.get("wins", 0) > 0 and going_bucket in {"軟地", "重地"}:
-                score += w.get("going_win_bonus", 2.0)
-                notes.append(f"{going_bucket} 曾贏馬，地狀證明更實淨")
-        elif going_sample.get("starts", 0) >= 2 and going_sample.get("places", 0) == 0:
-            score += w.get("going_poor_pen1_wet", -5.0) if going_bucket in {"軟地", "重地"} else w.get("going_poor_pen1_dry", -4.0)
-            notes.append(f"{going_bucket} 多次出賽仍未有前列，適應性要保守")
-        elif going_sample.get("starts", 0) > 0 and going_sample.get("places", 0) == 0:
-            score += w.get("going_poor_pen2_wet", -4.0) if going_bucket in {"軟地", "重地"} else w.get("going_poor_pen2_dry", -3.0)
-            notes.append(f"{going_bucket} 成績未見支持")
+        if not _skip_going:
+            going_parts, going_note = self._going_adjustment(going_stats, going_bucket, wet_state)
+            for going_delta, _text in going_parts:   # 逐項加，次序同以前一樣 → 逐位元相同
+                score += going_delta
+            if going_note:
+                notes.append(going_note)
+                tdetail["going_adjustment"] = round(sum(d for d, _ in going_parts), 2)
 
-        if not _skip_going and wet_state in {"soft7plus", "heavy"}:
-            if not self._has_verified_wet_place():
-                score += w.get("wet_unverified_pen", -5.0)
-                notes.append("爛地實績未經驗證，轉場風險極高")
-            elif wet_state == "heavy":
-                heavy_stats = going_stats.get("重地", {})
-                if heavy_stats.get("wins", 0) > 0:
-                     score += w.get("heavy_win_bonus", 3.0)
-                     notes.append("重地曾奪冠，泥漿戰力極強")
-                     self.reason_codes.append("proven_heavy_specialist")
-                elif heavy_stats.get("places", 0) > 0:
-                     score += w.get("heavy_place_bonus", 2.0)
-                     notes.append("具備重地作戰能力")
-                elif heavy_stats.get("starts", 0) >= 2 and heavy_stats.get("places", 0) == 0:
-                     score += w.get("heavy_poor_pen", -3.0)
-                     notes.append("重地多次出賽全無表現，適應力有疑慮")
-                     self.risk_flags.append("poor_heavy_performance")
-            
         # 場地／地狀往績記錄行先（用戶要求）：一眼睇到同場、好/軟/重地實績
         rec_bits = []
         same = re.match(r"\s*(\d+:\d+-\d+-\d+)", str(self.data.get("track_stats_line") or ""))
@@ -4772,6 +4757,51 @@ class RacingEngine:
         tdetail["notes"] = ([f"往績 {' / '.join(rec_bits)}"] if rec_bits else []) + list(notes)
         body = f"{rec_prefix}{'；'.join(notes) if notes else '場地資料未見鮮明優劣'}"
         return clip_score(score), f"{body}。場地分 {clip_score(score):.1f}。", "track_stats+going_stats+wet_track"
+
+    def _going_adjustment(self, going_stats, going_bucket, wet_state):
+        """地況／濕地適應：**一個**調整、**一句**說明（EXP-20261016-72 A，用戶 2026-10-16 要求集中）。
+
+        以前分兩處計：② 今場地況往績（上名加分／0 上名扣分）同 ③ 爛地專項（未驗證 −6.4、
+        重地曾贏／曾上名／多戰 0 上名）。用戶接受各項分數，但要同一份證據喺同一處扣。
+        各項數值同次序完全唔變（逐匹逐位元相同），只係合併成一個總數同一句說明。
+        → (parts, note)：parts = [(delta, 說明)]，由 caller 逐項加；冇觸發 → ([], "")。
+        """
+        w = TRACK_MICRO_WEIGHTS
+        sample = going_stats.get(going_bucket, {})
+        wet_bucket = going_bucket in {"軟地", "重地"}
+        parts = []   # (delta, 說明)
+
+        if sample.get("starts", 0) > 0 and sample.get("places", 0) > 0:
+            parts.append((min(10, sample["places"] * w.get("going_place_bonus", 3.0)),
+                          f"{going_bucket}有上名（{sample['places']}／{sample['starts']}）"))
+            if sample.get("wins", 0) > 0 and wet_bucket:
+                parts.append((w.get("going_win_bonus", 2.0), f"{going_bucket}曾贏"))
+        elif sample.get("starts", 0) >= 2 and sample.get("places", 0) == 0:
+            parts.append((w.get("going_poor_pen1_wet", -5.0) if wet_bucket else w.get("going_poor_pen1_dry", -4.0),
+                          f"{going_bucket} {sample['starts']} 戰未有前列"))
+        elif sample.get("starts", 0) > 0 and sample.get("places", 0) == 0:
+            parts.append((w.get("going_poor_pen2_wet", -4.0) if wet_bucket else w.get("going_poor_pen2_dry", -3.0),
+                          f"{going_bucket} 1 戰未有成績"))
+
+        if wet_state in {"soft7plus", "heavy"}:
+            if not self._has_verified_wet_place():
+                parts.append((w.get("wet_unverified_pen", -5.0), "爛地實績未經驗證"))
+            elif wet_state == "heavy":
+                heavy_stats = going_stats.get("重地", {})
+                if heavy_stats.get("wins", 0) > 0:
+                    parts.append((w.get("heavy_win_bonus", 3.0), "重地曾奪冠"))
+                    self.reason_codes.append("proven_heavy_specialist")
+                elif heavy_stats.get("places", 0) > 0:
+                    parts.append((w.get("heavy_place_bonus", 2.0), "具備重地作戰能力"))
+                elif heavy_stats.get("starts", 0) >= 2 and heavy_stats.get("places", 0) == 0:
+                    parts.append((w.get("heavy_poor_pen", -3.0), "重地多戰全無表現"))
+                    self.risk_flags.append("poor_heavy_performance")
+
+        if not parts:
+            return [], ""
+        total = sum(d for d, _ in parts)
+        sign = "＋" if total >= 0 else "−"
+        return parts, f"地況適應：{'、'.join(text for _, text in parts)}（合計 {sign}{abs(total):.1f}）"
 
     def _formline_future_wins(self):
         rows = self._formline_rows()
@@ -7146,7 +7176,18 @@ FORM_QUALITY_MU_LOG_PRIZE = 4.586282737969997
 FORM_QUALITY_SD_LOG_PRIZE = 0.35441149811378186
 
 
-def _form_quality_digest(official_entries: list[dict], *, meeting_date: str = "") -> dict:
+def _distance_relevance(run_distance, target_distance) -> float:
+    if not FORM_QUALITY_DISTANCE_WEIGHTING or not target_distance or not run_distance:
+        return 1.0
+    gap = abs(float(run_distance) - float(target_distance))
+    for limit, weight in FORM_QUALITY_DISTANCE_BANDS:
+        if gap <= limit:
+            return weight
+    return FORM_QUALITY_DISTANCE_FAR
+
+
+def _form_quality_digest(official_entries: list[dict], *, meeting_date: str = "",
+                         target_distance: float | None = None) -> dict:
     """Raw 近績質素 = recency-weighted mean of per-run (z_placing + z_prize) / 2."""
     runs = _performance_quality_digest(
         official_entries, meeting_date=meeting_date,
@@ -7161,12 +7202,13 @@ def _form_quality_digest(official_entries: list[dict], *, meeting_date: str = ""
         values.append((run, (z_place + z_prize) / 2))
     if len(values) < 2:
         return {}
-    weights = FORM_QUALITY_RECENCY_WEIGHTS[: len(values)]
+    weights = [w * _distance_relevance(r.get("distance"), target_distance)
+               for (r, _v), w in zip(values, FORM_QUALITY_RECENCY_WEIGHTS)]
     raw = sum(v * w for (_r, v), w in zip(values, weights)) / sum(weights)
     return {"raw": round(raw, 6), "run_count": len(values),
             "runs": [{"date": r.get("date"), "finish_pos": r.get("finish_pos"),
                       "starters": r.get("starters"), "prize": r.get("prize"),
-                      "value": round(v, 6)} for r, v in values]}
+                      "distance": r.get("distance"), "value": round(v, 6)} for r, v in values]}
 
 
 def refresh_form_quality(logic_data: dict, facts_path: Path | None) -> int:
@@ -7187,6 +7229,8 @@ def refresh_form_quality(logic_data: dict, facts_path: Path | None) -> int:
         formguide = None
     date_match = re.search(r"(\d{4}-\d{2}-\d{2})", _meeting_dir(Path(facts_path)).name)
     meeting_date = date_match.group(1) if date_match else ""
+    dist_match = re.search(r"(\d{3,4})", str((logic_data.get("race_analysis") or {}).get("distance") or ""))
+    target_distance = float(dist_match.group(1)) if dist_match else None
     digests = {}
     if formguide and formguide.exists():
         text = formguide.read_text(encoding="utf-8")
@@ -7195,7 +7239,8 @@ def refresh_form_quality(logic_data: dict, facts_path: Path | None) -> int:
             section = text[head.start(): heads[i + 1].start() if i + 1 < len(heads) else len(text)]
             entries = [e for e in _parse_formguide_entries(section, head.group(2).strip())
                        if str(e.get("date") or "") < meeting_date and not e["is_trial"]]
-            digests[head.group(1)] = _form_quality_digest(entries, meeting_date=meeting_date)
+            digests[head.group(1)] = _form_quality_digest(entries, meeting_date=meeting_date,
+                                                          target_distance=target_distance)
     refreshed = 0
     for number, horse in horses.items():
         if not isinstance(horse, dict):
