@@ -8,7 +8,7 @@ import re
 import sys
 import unicodedata
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from .preparation_cycle import preparation_cycle
@@ -85,6 +85,10 @@ def _bm_tier(rating):
 # NDCG CI 全正）；§8 fixed arm OOS RANKING_WIN，跨 arm Holm p 0.096 —— 冇代價嘅修正，唔係已證實改善。
 FORM_QUALITY_TRIP_CHANGE_M = 400.0
 FORM_QUALITY_TRIP_CHANGE_PEN = -5.0
+
+# EXP-20261016-75 研究開關（預設 "" = 現行）：P1 今次備戰試閘、P2 試閘場內百分位、P3 數據定頂級騎練、
+# P4 只俾初出／首仗／二出、P6a 剷 +1.0、P6b 剷成個試閘加分。只喺研究 dump 設定。
+PREP_VARIANT = ""
 
 # EXP-20261016-13 A/B 開關：False = 舊行為（讀唔存在嘅 `entry["class"]`）。
 FORM_ENTRY_CLASS_TIER = True
@@ -2326,6 +2330,28 @@ class RacingEngine:
         note = "；".join(a.get("evidence") or a["factor"] for a in selected)
         return 60.0 + delta, note or "未有額外試閘備戰證據", "trial_preparation"
 
+    def _prep_trial_counts(self, variant):
+        """EXP-20261016-75 研究：由 Formguide 試閘紀錄計 (課數, 合格課數)。"""
+        trials = self.data.get("fg_trials") or []
+        race_date = self._race_date()
+        if variant == "P1":
+            last_formal = str(self.data.get("fg_last_formal_date") or "")
+            if last_formal:
+                trials = [t for t in trials if str(t.get("date") or "") > last_formal]
+            elif race_date:
+                cutoff = (datetime.fromisoformat(race_date) - timedelta(days=365)).date().isoformat()
+                trials = [t for t in trials if str(t.get("date") or "") >= cutoff]
+            good = sum(1 for t in trials if t.get("finish_pos") and int(t["finish_pos"]) <= 3)
+            return len(trials), good
+        good = 0
+        for t in trials:
+            f, n = t.get("finish_pos"), t.get("starters")
+            if f and n and int(n) >= 2:
+                good += (int(f) - 1) / (int(n) - 1) <= 0.4
+            elif f:
+                good += int(f) <= 3
+        return len(trials), good
+
     def _jockey_horse_fit_score(self):
         jockey = self._clean_identity(self.horse_data.get("jockey"))
         trainer = self._clean_identity(self.horse_data.get("trainer"))
@@ -2338,6 +2364,11 @@ class RacingEngine:
         stage_stats = self._stage_stats()
         top_jockey = self._is_top_jockey(jockey)
         top_trainer = self._is_top_trainer(trainer)
+        if PREP_VARIANT in {"P1", "P2"} and self.data.get("fg_trials") is not None:
+            trial_count, trial_top3 = self._prep_trial_counts(PREP_VARIANT)
+        if PREP_VARIANT == "P3":
+            top_jockey = (self._place_rate_score("jockey") or (0,))[0] >= 68
+            top_trainer = (self._place_rate_score("trainer") or (0,))[0] >= 68
         current_formal_rides = self._current_jockey_formal_rides()
         current_formal_places = self._current_jockey_formal_places()
         current_formal_wins = self._current_jockey_formal_wins()
@@ -2376,10 +2407,13 @@ class RacingEngine:
 
         # debut_top_trainer / young_top_jt 權重已被 ML 歸零 — 死支 2026-07-11 刪除，
         # 免報告出「有講冇分」嘅因子。
-        if trial_count >= 2 and trial_top3 >= 2:
+        stage_ok = (self._career_starts() == 0
+                    or status_cycle in {"First-up", "久休復出", "Second-up", "二出"})
+        if (trial_count >= 2 and trial_top3 >= 2 and PREP_VARIANT != "P6b"
+                and (PREP_VARIANT != "P4" or stage_ok)):
             add(FIT_MICRO_WEIGHTS.get("trial_ok_bonus", 4.0), "試閘交代密度足夠",
                 f"近期試閘{trial_count}課、{trial_top3}課入前三")
-            if top_jockey or top_trainer:
+            if (top_jockey or top_trainer) and PREP_VARIANT != "P6a":
                 add(FIT_MICRO_WEIGHTS.get("trial_ok_top_jt_bonus", 2.0), "備戰同騎練配置方向一致",
                     "試閘密度足夠且配頂級騎/練")
         if current_formal_rides > 0:
@@ -7208,6 +7242,42 @@ def _form_quality_digest(official_entries: list[dict], *, meeting_date: str = ""
             "runs": [{"date": r.get("date"), "finish_pos": r.get("finish_pos"),
                       "starters": r.get("starters"), "prize": r.get("prize"),
                       "distance": r.get("distance"), "value": round(v, 6)} for r, v in values]}
+
+
+def refresh_trial_runs(logic_data: dict, facts_path: Path | None) -> int:
+    """EXP-20261016-75 研究：由 Formguide 寫 `fg_trials`（日期、名次、試閘馬匹數）同 `fg_last_formal_date`。"""
+    horses = logic_data.get("horses") if isinstance(logic_data, dict) else None
+    if not isinstance(horses, dict) or not facts_path:
+        return 0
+    race_number = (logic_data.get("race_analysis") or {}).get("race_number") or 0
+    try:
+        formguide = _formguide_path_for_facts(Path(facts_path), int(race_number or 0))
+    except (OSError, ValueError):
+        formguide = None
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", _meeting_dir(Path(facts_path)).name)
+    meeting_date = date_match.group(1) if date_match else ""
+    found = {}
+    if formguide and formguide.exists():
+        text = formguide.read_text(encoding="utf-8")
+        heads = list(re.finditer(r"^\[(\d+)\]\s+(.+?) \((\d+)\)\s*$", text, re.M))
+        for i, head in enumerate(heads):
+            section = text[head.start(): heads[i + 1].start() if i + 1 < len(heads) else len(text)]
+            entries = [e for e in _parse_formguide_entries(section, head.group(2).strip())
+                       if str(e.get("date") or "") < meeting_date]
+            found[head.group(1)] = (
+                [{"date": e.get("date"), "finish_pos": e.get("finish_pos"), "starters": e.get("starters")}
+                 for e in entries if e["is_trial"]],
+                max((str(e.get("date") or "") for e in entries if not e["is_trial"]), default=""))
+    refreshed = 0
+    for number, horse in horses.items():
+        if not isinstance(horse, dict):
+            continue
+        data = horse.setdefault("_data", {})
+        trials, last_formal = found.get(str(number), (None, ""))
+        data["fg_trials"] = trials
+        data["fg_last_formal_date"] = last_formal
+        refreshed += trials is not None
+    return refreshed
 
 
 def refresh_form_quality(logic_data: dict, facts_path: Path | None) -> int:
