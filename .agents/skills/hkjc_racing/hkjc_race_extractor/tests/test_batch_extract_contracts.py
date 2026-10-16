@@ -195,3 +195,11 @@ def test_the_default_is_strict():
 def test_the_gate_mode_is_recorded_in_the_manifest():
     """事後要查得返「呢次係用邊個閘過嘅」。"""
     assert '"gate_mode": gate_mode,' in _gate_source()
+
+
+@pytest.mark.parametrize("race_count, expected_timeout", [(2, 300), (11, 660)])
+def test_trackwork_budget_scales_with_meeting_size(tmp_path, race_count, expected_timeout):
+    with mock.patch.object(batch.subprocess, "run", return_value=mock.Mock(returncode=0)) as run:
+        batch.extract_trackwork_meeting("http://x", list(range(1, race_count + 1)),
+                                       str(tmp_path), "10-19")
+    assert run.call_args.kwargs["timeout"] == expected_timeout

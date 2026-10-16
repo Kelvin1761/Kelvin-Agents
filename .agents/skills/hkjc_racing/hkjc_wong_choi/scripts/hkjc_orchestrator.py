@@ -68,7 +68,7 @@ def _run(cmd: list[str], label: str) -> None:
     print(f"\n{'=' * 72}")
     print(f"🏇 {label}")
     print(" ".join(cmd))
-    print(f"{'=' * 72}")
+    print(f"{'=' * 72}", flush=True)
     result = subprocess.run(cmd, cwd=ROOT, text=True)
     if result.returncode != 0:
         raise SystemExit(result.returncode)

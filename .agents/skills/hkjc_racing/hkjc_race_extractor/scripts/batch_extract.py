@@ -271,7 +271,9 @@ def extract_trackwork_meeting(base_url, races, output_dir, date_prefix):
              '--races', race_list,
              '--output_dir', output_dir,
              '--fail-soft'],
-            capture_output=True, text=True, timeout=300,
+            # Each race fetches every runner serially. A fixed five-minute
+            # meeting budget cut off R11 on 2026-10-19 after R1-R10 finished.
+            capture_output=True, text=True, timeout=max(300, 60 * len(races)),
             encoding='utf-8', env=SUBPROCESS_ENV
         )
     except (subprocess.SubprocessError, OSError) as exc:

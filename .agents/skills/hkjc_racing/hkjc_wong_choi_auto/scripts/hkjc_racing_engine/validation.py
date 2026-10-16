@@ -465,7 +465,7 @@ def _validate_verdict(logic_data: dict, scored: list[tuple[str, dict]]) -> list[
             scored,
             key=lambda item: (
                 -float(item[1].get("rank_score", item[1].get("ability_score", 0))),
-                -float(item[1].get("ability_score", 0)),
+                -float(item[1].get("ability_score_raw", item[1].get("ability_score", 0))),
                 _horse_number_sort_key(item[0]),
             ),
         )[:4]

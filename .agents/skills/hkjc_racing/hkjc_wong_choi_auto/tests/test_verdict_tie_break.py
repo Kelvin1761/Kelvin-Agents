@@ -38,4 +38,20 @@ def test_display_tie_with_different_raw_is_not_refused():
     assert order == ["7", "3", "1"]
     scored = [(n, h["python_auto"]) for n, h in logic["horses"].items()]
     errors = _validate_verdict(logic, scored)
-    assert not [e for e in errors if e.startswith("VERDICT-002")], errors
+    assert errors == []
+
+
+def test_top4_boundary_uses_raw_score_and_rejects_wrong_order():
+    logic = _logic()
+    for number, score in (("10", 90.0), ("9", 80.0)):
+        logic["horses"][number] = {"horse_name": f"H{number}", "python_auto": {
+            "ability_score": score, "ability_score_raw": score,
+            "official_ranking_score": score, "grade": "A",
+        }}
+    ensure_verdict(logic)
+    verdict = logic["python_auto_verdict"]
+    assert [h["horse_number"] for h in verdict["top4"]] == ["10", "9", "7", "3"]
+    scored = [(n, h["python_auto"]) for n, h in logic["horses"].items()]
+    assert _validate_verdict(logic, scored) == []
+    verdict["top4"][2], verdict["top4"][3] = verdict["top4"][3], verdict["top4"][2]
+    assert any(e.startswith("VERDICT-003") for e in _validate_verdict(logic, scored))
