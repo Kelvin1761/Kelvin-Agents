@@ -1839,7 +1839,7 @@ class RacingEngine:
             if _pit.is_iso_date(text):
                 return text
         if self.facts_path is not None:
-            match = re.search(r"(\d{4}-\d{2}-\d{2})", self.facts_path.parent.name)
+            match = re.search(r"(\d{4}-\d{2}-\d{2})", _meeting_dir(self.facts_path).name)
             if match:
                 return match.group(1)
         return ""
@@ -5588,7 +5588,7 @@ def _parse_formguide_pf_metrics(
     if not text:
         return {}
     if not target_date:
-        date_match = re.search(r"(\d{4}-\d{2}-\d{2})", facts_path.parent.name)
+        date_match = re.search(r"(\d{4}-\d{2}-\d{2})", _meeting_dir(facts_path).name)
         target_date = date_match.group(1) if date_match else ""
     output: dict = {}
     headers = list(_FG_HORSE_HDR_RE.finditer(text))
@@ -5735,7 +5735,7 @@ def _load_pf_backfill(archive_root: Path) -> dict:
 
 def _pf_backfill_for_race(facts_path: Path, race_number: int | None) -> dict:
     """{horse_number: {"pf_runs": [...], "pf_aggregates": {...}}} for one race."""
-    meeting_dir = facts_path.parent
+    meeting_dir = _meeting_dir(facts_path)
     meetings = _load_pf_backfill(meeting_dir.parent)
     meeting = meetings.get(meeting_dir.name)
     if not isinstance(meeting, dict) or not race_number:
@@ -6827,6 +6827,22 @@ def _tactical_scenario_text(expected_position: str, barrier: int, consumption: s
     return text
 
 
+def _meeting_dir(facts_path: Path) -> Path:
+    """The folder whose name carries the meeting date and venue.
+
+    Files are always read next to the Facts file, but the meeting's identity is
+    its folder name. A pre-race snapshot lives at
+    `<meeting>/_prediction_snapshots/<20261014T004339…>/`, whose own name has no
+    date — replaying it in place used to blank the meeting date, so
+    `refresh_form_quality` dropped every run (0/376 runners on 2026-10-14) and
+    the date-gated Formguide / PF parsers lost their cut-off.
+    """
+    parent = Path(facts_path).parent
+    if parent.parent.name == "_prediction_snapshots":
+        return parent.parent.parent
+    return parent
+
+
 def _formguide_path_for_facts(facts_path: Path, race_number: int = 0) -> Path | None:
     race_number = race_number or _extract_race_number_from_text_or_name(facts_path.read_text(encoding="utf-8"), facts_path.name)
     matches = sorted(facts_path.parent.glob(f"*Race {race_number} Formguide.md"))
@@ -6838,7 +6854,7 @@ def _load_formguide_digests(facts_path: Path, race_number: int = 0) -> dict[str,
     if not formguide_path or not formguide_path.exists():
         return {}
     text = formguide_path.read_text(encoding="utf-8")
-    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", facts_path.parent.name)
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", _meeting_dir(facts_path).name)
     meeting_date = date_match.group(1) if date_match else ""
     sections = list(re.finditer(r"^\[(\d+)\]\s+(.+?) \((\d+)\)\s*$", text, re.M))
     output: dict[str, dict] = {}
@@ -7132,7 +7148,7 @@ def refresh_form_quality(logic_data: dict, facts_path: Path | None) -> int:
         formguide = _formguide_path_for_facts(Path(facts_path), int(race_number or 0))
     except (OSError, ValueError):
         formguide = None
-    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", Path(facts_path).parent.name)
+    date_match = re.search(r"(\d{4}-\d{2}-\d{2})", _meeting_dir(Path(facts_path)).name)
     meeting_date = date_match.group(1) if date_match else ""
     digests = {}
     if formguide and formguide.exists():
@@ -7683,7 +7699,7 @@ def _load_meeting_intelligence(facts_path: Path, race_number: int = 0) -> dict:
     if meeting_path.exists():
         intelligence = _parse_meeting_intelligence(
             meeting_path.read_text(encoding="utf-8"),
-            _venue_from_folder_name(facts_path.parent.name),
+            _venue_from_folder_name(_meeting_dir(facts_path).name),
         )
     else:
         intelligence = {}
@@ -7708,8 +7724,8 @@ def _load_meeting_intelligence(facts_path: Path, race_number: int = 0) -> dict:
 def _meeting_context_from_extractor_files(facts_path: Path, race_number: int = 0) -> dict:
     folder = facts_path.parent
     context = {
-        "venue": _venue_from_folder_name(folder.name),
-        "date": _capture(folder.name, r"(\d{4}-\d{2}-\d{2})"),
+        "venue": _venue_from_folder_name(_meeting_dir(facts_path).name),
+        "date": _capture(_meeting_dir(facts_path).name, r"(\d{4}-\d{2}-\d{2})"),
         "weather_summary": "",
         "track_summary": "",
         "going": "",
