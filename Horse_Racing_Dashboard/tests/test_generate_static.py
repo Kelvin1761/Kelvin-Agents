@@ -3,6 +3,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 
@@ -274,6 +275,70 @@ class SlimForTransportTests(unittest.TestCase):
         self.assertNotIn("\n", body)        # 冇 indent 換行
         self.assertNotIn('": ', body)       # key 同 value 之間冇空格
         self.assertIn('"races":{', body)    # 緊湊分隔符
+
+
+class CompressedSnapshotTests(unittest.TestCase):
+    def test_unicode_analysis_survives_repeated_merge_writes(self):
+        raw = "#### 完整分析 🏇\n" + "速度、步速與證據。\n" * 500
+        payload = {"meetings": [], "races": {"AU": {"races_by_analyst": {
+            "K": [{"race_number": 1, "horses": [
+                {"horse_number": 1, "raw_text": raw, "score": 82.5}]}]}}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "snapshot.json"
+            for _ in range(3):
+                generate_static._write_json(path, payload)
+                encoded = json.loads(path.read_text())
+                horse = encoded["races"]["AU"]["races_by_analyst"]["K"][0]["horses"][0]
+                self.assertNotIn("raw_text", horse)
+                self.assertEqual(horse["score"], 82.5)
+                self.assertLess(path.stat().st_size, len(raw.encode()) / 4)
+                payload = generate_static.load_snapshot(path)
+                restored = payload["races"]["AU"]["races_by_analyst"]["K"][0]["horses"][0]
+                self.assertEqual(restored["raw_text"], raw)
+            _, bundles = generate_static.extract_analysis_bundles(payload)
+            self.assertEqual(next(iter(bundles.values()))["K|1|1"], raw)
+
+    def test_legacy_snapshot_remains_readable(self):
+        payload = {"races": {"HK": {"races_by_analyst": {"K": [
+            {"horses": [{"raw_text": "舊分析"}]}]}}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "legacy.json"
+            path.write_text(json.dumps(payload))
+            self.assertEqual(generate_static.load_snapshot(path), payload)
+            generate_static._write_json(path, payload)
+            self.assertEqual(payload["races"]["HK"]["races_by_analyst"]["K"][0]
+                             ["horses"][0]["raw_text"], "舊分析")
+
+    def test_incremental_merge_and_prune_restore_preserved_meeting(self):
+        key = "2026-10-19|ShaTin"
+        payload = {"meetings": [{"date": "2026-10-19", "venue": "ShaTin", "region": "HKJC"}],
+                   "races": {key: {"races_by_analyst": {"K": [
+                       {"horses": [{"raw_text": "保留香港完整分析"}]}]}}},
+                   "consensus": {}}
+        meeting = SimpleNamespace(date="2026-10-17", venue="Narromine",
+                                  region=generate_static.Region.AU)
+        fresh = ({"date": meeting.date, "venue": meeting.venue, "region": "AU"},
+                 "2026-10-17|Narromine", {"races_by_analyst": {}}, {})
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "snapshot.json"
+            generate_static._write_json(path, payload)
+            with patch.object(generate_static, "_meeting_from_directory", return_value=meeting), \
+                    patch.object(generate_static, "_collect_meeting", return_value=fresh), \
+                    patch.object(generate_static, "_build_snapshot_meta", return_value={}):
+                merged = generate_static.collect_incremental_au_data(path, tmp)
+                generate_static._write_json(path, merged)
+                pruned = generate_static.drop_au_meetings(path, [fresh[1]])
+        self.assertEqual(pruned["races"][key], payload["races"][key])
+        self.assertEqual(pruned["meetings"], payload["meetings"])
+
+    def test_corrupt_analysis_fails_closed(self):
+        payload = {"races": {"AU": {"races_by_analyst": {"K": [
+            {"horses": [{"raw_text_gzip": "invalid!"}]}]}}}}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "corrupt.json"
+            path.write_text(json.dumps(payload))
+            with self.assertRaises(ValueError):
+                generate_static.load_snapshot(path)
 
 
 class TrackGeometryPayloadTests(unittest.TestCase):

@@ -3,6 +3,8 @@ Generate Static Dashboard — Produces a self-contained HTML file
 that works without any server. Just double-click to open.
 """
 import argparse
+import base64
+import gzip
 import sys, os, json, io, re
 import copy
 import warnings
@@ -460,7 +462,7 @@ def _meeting_from_directory(meeting_dir):
 def collect_incremental_au_data(base_snapshot_path, meeting_dir):
     """Merge one fresh meeting (AU or HKJC) into a published snapshot."""
     base_snapshot_path = Path(base_snapshot_path)
-    data = json.loads(base_snapshot_path.read_text(encoding="utf-8"))
+    data = load_snapshot(base_snapshot_path)
     meeting = _meeting_from_directory(meeting_dir)
     meeting_data, meeting_key, races_data, consensus = _collect_meeting(meeting)
 
@@ -527,7 +529,7 @@ def drop_au_meetings(base_snapshot_path, keys):
     Consensus keys are `{meeting_key}|...`, so they go by prefix.
     """
     base_snapshot_path = Path(base_snapshot_path)
-    data = json.loads(base_snapshot_path.read_text(encoding="utf-8"))
+    data = load_snapshot(base_snapshot_path)
     wanted = set(keys)
     kept_meetings = [
         item for item in data.get("meetings", [])
@@ -861,12 +863,50 @@ def _write_analysis_bundles(directory: Path, bundles):
     return written
 
 
+def _snapshot_horses(payload):
+    for entry in (payload.get("races") or {}).values():
+        for races in (entry.get("races_by_analyst") or {}).values():
+            for race in races:
+                yield from race.get("horses") or []
+
+
+def load_snapshot(path):
+    """Read legacy or compressed snapshots, restoring complete analysis text.
+
+    Keep scores and metadata as ordinary JSON for scheduler validation. Only
+    raw_text is encoded; the renderer restores it before creating lazy bundles.
+    Invalid compressed text raises rather than publishing incomplete analysis.
+    """
+    payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    for horse in _snapshot_horses(payload):
+        encoded = horse.pop("raw_text_gzip", None)
+        if encoded is not None:
+            horse["raw_text"] = gzip.decompress(
+                base64.b64decode(encoded, validate=True)).decode("utf-8")
+    return payload
+
+
+def _compress_snapshot_text(payload):
+    # Do not mutate the renderer's data or the caller's merge base. A complete
+    # Saturday card exceeded 25 MiB on 2026-10-17, even with duplicate prose
+    # removed. Lossless text compression preserves every meeting and analysis.
+    packed = copy.deepcopy(payload)
+    for horse in _snapshot_horses(packed):
+        raw = horse.get("raw_text")
+        if raw:
+            horse["raw_text_gzip"] = base64.b64encode(
+                gzip.compress(raw.encode("utf-8"), mtime=0)).decode("ascii")
+            del horse["raw_text"]
+    return packed
+
+
 def _write_json(path: Path, payload):
     path.parent.mkdir(parents=True, exist_ok=True)
     payload, dropped = _slim_for_transport(payload)
     # ⚠️ No indent, compact separators. Pretty-printing this snapshot cost
     # 4 MiB of pure whitespace against a 25 MiB hard limit.
-    body = json.dumps(payload, ensure_ascii=False, separators=(",", ":"),
+    transport = _compress_snapshot_text(payload) if isinstance(payload, dict) else payload
+    body = json.dumps(transport, ensure_ascii=False, separators=(",", ":"),
                       default=str)
     path.write_text(body, encoding="utf-8")
     if dropped:
@@ -957,7 +997,7 @@ def main():
         parser.error("--drop-meeting and --au-meeting-dir are separate passes; "
                      "run the drop first, then merge from its output")
     if args.from_snapshot:
-        data = json.loads(Path(args.from_snapshot).read_text(encoding="utf-8"))
+        data = load_snapshot(args.from_snapshot)
         data.setdefault("roi", {})
         data["meta"] = _build_snapshot_meta(data)
         print(f"   Rendering from prebuilt snapshot: "
