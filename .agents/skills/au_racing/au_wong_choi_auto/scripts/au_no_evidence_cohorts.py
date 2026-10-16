@@ -40,7 +40,7 @@ NO_EVIDENCE = {
                           (64.6, "base：有往績但冇任何加減觸發")],
     "class_score": [(57.7, "career0_base：初出馬")],
     "sectional_score": [(60.0, "base：冇 PI／段速數據（2026-08-01 已由 35.8 修上嚟）")],
-    "track_score": [(62.9, "base：呢個場地／going 冇往績")],
+    "track_score": [(60.0, "base：呢個場地／going 冇往績（EXP-20261016-70 由 62.9 改）")],
     "pace_map_score": [(60.0, "base（2026-08-01 已由 55.7 修上嚟）")],
     "jockey_horse_fit_score": [(60.0, "base：今場騎師從未策過呢匹馬")],
     "formline_score": [(60.0, "冇對手強度證據")],

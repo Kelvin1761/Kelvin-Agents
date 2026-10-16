@@ -386,7 +386,9 @@ SECTIONAL_MICRO_WEIGHTS = {
 }
 
 TRACK_MICRO_WEIGHTS = {
-    "base": 62.9,
+    # EXP-20261016-70 T5x（§7 顯示正確性）：62.9 → 60.0。62.9 令冇任何場地證據嘅馬都顯示「場地分稍好」，
+    # 而全部馬 ability 靜靜 +0.41。場內常數平移，排名逐匹不變（3,288 場只得 1 場因 4 位小數捨入打和調位）。
+    "base": 60.0,
     "same_track_place_bonus": 5.0,
     "same_track_win_bonus": 2.4,
     "same_track_poor_pen1": -8.81,

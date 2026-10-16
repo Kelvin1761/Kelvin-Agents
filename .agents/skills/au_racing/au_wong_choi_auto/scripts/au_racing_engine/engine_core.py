@@ -408,6 +408,11 @@ VENUE_STATE_MAP = {
     "doomben": "QLD",
 }
 
+# `track_score` 偏弱門檻（consistency −4 規則用）。EXP-20261016-70 將 track base 由 62.9 改 60，
+# 門檻跟住由 60 改 57.1，維持原本「只有往績差或濕地未驗證先觸發」。
+TRACK_WEAK_THRESHOLD = 57.1
+
+
 METRO_VENUE_TOKENS = (
     "randwick", "rosehill", "warwick farm", "canterbury",
     "flemington", "caulfield", "sandown", "moonee valley",
@@ -721,14 +726,16 @@ class RacingEngine:
                                         f"級數分 {cs:.1f} <60：近績評分高，但班次證據偏弱"
                                     )})
                 fd["final"] = round(clip_score(feature_scores["form_score"]), 2)
-        if feature_scores.get("consistency_score", 60) >= 72 and ts < 60:
+        # EXP-20261016-70 T5x：track base 62.9 → 60 係常數平移，呢條門檻要跟住移（60 → 57.1），
+        # 否則「同場 1 戰冇上名」（62.09 → 59.19）會開始觸發，靜靜改排名（實測 114 場）。
+        if feature_scores.get("consistency_score", 60) >= 72 and ts < TRACK_WEAK_THRESHOLD:
             feature_scores["consistency_score"] = feature_scores["consistency_score"] - 4
             feature_notes["consistency_score"] = feature_notes.get("consistency_score", "") + "；場地往績偏弱／濕地未經驗證，穩定性分小收 −4"
             cd = getattr(self, "consistency_detail", None)
             if isinstance(cd, dict):
                 cd["adjustments"].append({"delta": -4.0, "factor": "[環境] 場地往績偏弱收回",
-                                          # 條件係 track_score < 60。track 冇證據係
-                                          # base 62.9（唔會觸發）；低過 60 只會係
+                                          # 條件係 track_score < 57.1（base 60 減 2.9）。
+                                          # track 冇證據係 60（唔會觸發）；低過門檻只會係
                                           # 往績差、或者濕地未經驗證（−6.4）。
                                           "evidence": "穩定度偏高但場地往績分低於中性（往績偏弱或濕地未經驗證）"})
                 cd["final"] = round(clip_score(feature_scores["consistency_score"]), 2)

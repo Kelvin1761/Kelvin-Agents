@@ -1,0 +1,81 @@
+{
+ "races": 2485,
+ "replica_gaps": {
+  "track": 0.0,
+  "ability": 0.0
+ },
+ "T1": {
+  "0 places | 1 starts": {
+   "n": 2426,
+   "excess": -0.0365
+  },
+  "0 places | 2 starts": {
+   "n": 954,
+   "excess": -0.091
+  },
+  "0 places | 3 starts": {
+   "n": 414,
+   "excess": -0.0875
+  },
+  "0 places | 4+ starts": {
+   "n": 405,
+   "excess": -0.1154
+  }
+ },
+ "T2": {
+  "starts 1-2 | places 1": {
+   "n": 2586,
+   "excess": 0.0685
+  },
+  "starts 1-2 | places 2": {
+   "n": 424,
+   "excess": 0.0937
+  },
+  "starts 3-5 | places 1": {
+   "n": 1018,
+   "excess": -0.0348
+  },
+  "starts 3-5 | places 2": {
+   "n": 901,
+   "excess": 0.0238
+  },
+  "starts 3-5 | places 3+": {
+   "n": 572,
+   "excess": 0.0735
+  },
+  "starts 6+ | places 1": {
+   "n": 247,
+   "excess": -0.1098
+  },
+  "starts 6+ | places 2": {
+   "n": 382,
+   "excess": -0.0564
+  },
+  "starts 6+ | places 3+": {
+   "n": 1912,
+   "excess": 0.0046
+  }
+ },
+ "T3": {
+  "no wet starts": {
+   "n": 588,
+   "excess": -0.012
+  },
+  "wet placed": {
+   "n": 1843,
+   "excess": 0.021
+  },
+  "wet unplaced": {
+   "n": 453,
+   "excess": -0.0698
+  }
+ },
+ "good_going_block": {
+  "none": 11328
+ },
+ "T6": {
+  "synthetic_races": 85,
+  "runners": 836,
+  "with_synth_record": 492
+ }
+}
