@@ -1,6 +1,6 @@
-# EXP-20261016-16 預先登記：「人馬配搭分 ≥ 72 而 class_score < 58 → −3」方向審計
+# EXP-20261016-30 預先登記：「人馬配搭分 ≥ 72 而 class_score < 58 → −3」方向審計
 
-> 量度之前寫。結果另寫 `EXP-20261016-16-au-fit-weak-class-minus3-results.md`。
+> 量度之前寫。結果另寫 `EXP-20261016-30-au-fit-weak-class-minus3-results.md`。
 
 - **日期**：2026-10-16；**平台**：AU；**baseline**：main `05dd1b20`。
 - **規則**（`engine_core.py` 約 L768）：`jockey_horse_fit_score`（含試閘，搬去試閘備戰之前）≥ 72 而且

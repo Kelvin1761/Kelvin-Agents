@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""EXP-20261016-16：「配搭分 ≥72 而 class_score <58 → −3」方向審計。規格見 protocol —— 唔准喺度改。
+"""EXP-20261016-30：「配搭分 ≥72 而 class_score <58 → −3」方向審計。規格見 protocol —— 唔准喺度改。
 
     run --dump jt.json --outdir D   → D/describe.json、D/base.json、D/no_minus3.json
 用 dump 嘅 `k2` 特徵做 production baseline（05dd1b20 起 K2 開）。

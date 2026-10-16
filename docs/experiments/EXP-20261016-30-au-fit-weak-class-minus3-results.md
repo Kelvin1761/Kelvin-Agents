@@ -1,6 +1,6 @@
-# EXP-20261016-16 結果：「人馬配搭分 ≥ 72 而 class_score < 58 → −3」
+# EXP-20261016-30 結果：「人馬配搭分 ≥ 72 而 class_score < 58 → −3」
 
-- **預先登記**：[protocol](EXP-20261016-16-au-fit-weak-class-minus3-protocol.md)（`8ac16e5d`，量度之前）。
+- **預先登記**：[protocol](EXP-20261016-30-au-fit-weak-class-minus3-protocol.md)（`8ac16e5d`，量度之前）。
 - **語料**：`scratch/au_jt_audit_dump_20261016.py` 喺 `05dd1b20` 重跑，用 `k2` 特徵做 production baseline；
   乾淨窗 2,485 場／23,949 匹；配搭分重算同 ability 重算都同引擎一致（差 < 1e-3）。
 

@@ -197,4 +197,4 @@
 - [EXP-20261015-04](EXP-20261015-04-au-pit-leaks-l1-fixes.md) — §7 正確性修正：L1 不變性測試搵到嘅四個 AU PIT 洩漏（頁面累積統計、騎練 LY cache、檔位矩陣、tier 表）用同一個「D < 今日（悉尼）」定義分 live／歷史；全語料強制 live dump 逐位元不變；乾淨語料 Gold 20.59% → 20.59%；7 個同日賽後抽場次 stored 檔仍有洩漏（未重抽）
 - [EXP-20261016-12](EXP-20261016-12-au-jockey-trainer-audit-results.md) — 騎練訊號六項審計：「沿用上仗騎師 +2.0」條件化方向反（−4.2pp [−6.1,−2.4]）→ §7 退出計分；試閘計兩次前提錯（已搬走）；現役騎師計次數有用（剷走 Good −0.20pp CI 全負）；58 點位、LY as-of 冇問題。連同 EXP-13 合併版 Gold/Good 各 +0.04pp CI 跨零，唔係改善
 - [EXP-20261016-13](EXP-20261016-13-au-form-entry-class-tier-protocol.md) — §7 K2：近績分班次乘數改讀往績 `source_race_class`（以前讀唔存在嘅 `entry["class"]`，乘數變全場常數）；認唔到 → ×1.0；586 場郁，冇 CI 全負
-- [EXP-20261016-16](EXP-20261016-16-au-fit-weak-class-minus3-results.md) — 「配搭分 ≥72 而 class_score <58 → −3」（2026-05-16 加入，冇 A/B）：乾淨窗 23,949 匹觸發 **0** 匹（配搭分 ≥72 只得 3 匹），係死 code；依登記只報告唔改
+- [EXP-20261016-30](EXP-20261016-30-au-fit-weak-class-minus3-results.md) — 「配搭分 ≥72 而 class_score <58 → −3」（2026-05-16 加入，冇 A/B）：乾淨窗 23,949 匹觸發 **0** 匹（配搭分 ≥72 只得 3 匹），係死 code；依登記只報告唔改
