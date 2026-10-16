@@ -93,23 +93,8 @@ class SpeedScorer(BaseScorer):
                 add("L400 趨勢", ltail, scoring.SPEED_MICRO_WEIGHTS.get("l400_trend_decline_pen", -4.0), "末段速度衰退")
                 strong_signals += 1
 
-        engine_type = str(data.get("engine_type") or "").strip()
-        if engine_type:
-            signals += 1
-            reasons.append(f"引擎={engine_type}")
-            etype = engine_type.split("|")[0].strip()
-            if "漸進加速型" in engine_type:
-                add("引擎型態", etype, scoring.SPEED_MICRO_WEIGHTS.get("engine_progressive_bonus", 3.0), "漸進加速型")
-                strong_signals += 1
-            elif "均速型" in engine_type:
-                add("引擎型態", etype, scoring.SPEED_MICRO_WEIGHTS.get("engine_steady_bonus", 1.5), "均速型")
-            elif "混合型" in engine_type and "信心: 低" in engine_type:
-                add("引擎型態", etype, scoring.SPEED_MICRO_WEIGHTS.get("engine_mixed_low_conf_pen", -2.0), "混合型＋低信心")
-            elif "快開慢收型" in engine_type:
-                add("引擎型態", etype, scoring.SPEED_MICRO_WEIGHTS.get("engine_fast_slow_pen", -2.5), "快開慢收型")
-                strong_signals += 1
-            if "信心: 低" in engine_type:
-                add("引擎信心", "低", scoring.SPEED_MICRO_WEIGHTS.get("engine_low_conf_pen", -1.0), "剖面樣本不足")
+        # 引擎型態（近 6 仗分段形態多數決）2026-10-16 剷走（EXP-20261016-17）：
+        # 剷走 Gold +0.33／Good −0.33pp（±1 場），冇證據有貢獻；形態主要跟場次步速走，唔係馬匹特性。
 
         distance_text = str(data.get("best_distance") or "").strip()
         distance = str(self.race_context.get("distance") or "").replace("m", "").strip()

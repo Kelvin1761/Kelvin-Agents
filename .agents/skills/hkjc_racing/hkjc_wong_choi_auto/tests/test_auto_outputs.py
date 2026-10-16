@@ -829,8 +829,11 @@ class AutoOutputTests(unittest.TestCase):
                 "best_distance": "1650m | 今仗 1650m = 同程適配",
             }
         }
-        score, reason = SpeedScorer(horse, {"distance": "1650m"}).compute()
-        self.assertAlmostEqual(score, 75.86, places=2)
+        scorer = SpeedScorer(horse, {"distance": "1650m"})
+        score, reason = scorer.compute()
+        # 引擎型態 2026-10-16 起唔再計分（EXP-20261016-17）：漸進加速型唔再 +3.03。
+        self.assertAlmostEqual(score, 72.83, places=2)
+        self.assertNotIn("引擎型態", {item["factor"] for item in scorer.detail})
         self.assertIn("Positive race sectional profile", reason)
         self.assertIn("L400=23.17", reason)
 

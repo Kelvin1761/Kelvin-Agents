@@ -2636,9 +2636,6 @@ class RacingEngine:
             concerning = (any(k in bw for k in ("明顯上升", "明顯下降", "上落較大", "狀態欠穩定"))
                           and "實測係正面訊號" not in bw)
             add("體重狀態", bw, "", band="⚠️" if concerning else "➖")
-        eng = self._value("engine_type")
-        if present(eng):
-            add("段速型態", str(eng).split("|")[0].strip(), "")
         bd = self._value("best_distance")
         if present(bd):
             m = re.search(r"今仗\s*(\d+m)\s*=\s*(\d+)場\s*\(([\d\-]+)\)", str(bd))
