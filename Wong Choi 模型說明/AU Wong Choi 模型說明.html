@@ -37,7 +37,7 @@ ul, ol { padding-left:1.5rem; }
 </blockquote>
 <h2>1. 一頁睇晒</h2>
 <p>隻馬最後得到嘅係一個「綜合戰力分」。個分係咁計出嚟：</p>
-<ol><li>由原始資料計出 <strong>19 個基礎分</strong>（近績、騎師、檔位…），每個都係 0–100，<strong>60 分 = 中性／冇證據</strong></li>
+<ol><li>由原始資料計出 <strong>19 個基礎分</strong>（近績、騎師、檔位…），每個都係 0–100；缺資料通常回退 60，實際要對照來源標記</li>
 <li>啲基礎分按固定配方合成 <strong>8 個維度分</strong></li>
 <li>維度分按下面嘅權重加權相加 → 矩陣基礎分</li>
 <li>加上下面逐項列明嘅 ranking adjustment → 綜合戰力分</li>
@@ -132,7 +132,7 @@ ul, ol { padding-left:1.5rem; }
 <td>38.1%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>4.20 分</strong>；<strong>0.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>4.20 分</strong>；<strong>0.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分；是否缺資料須對照來源標記。</p>
 <h3>官方評分對位　<code>class_weight</code>　— 合成係數 0.3826</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -147,7 +147,7 @@ ul, ol { padding-left:1.5rem; }
 <td>15.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.73 分</strong>；<strong>4.6%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.73 分</strong>；<strong>4.6%</strong> 嘅馬喺呢個維度攞到恰好 60 分；是否缺資料須對照來源標記。</p>
 <h3>狀態與穩定性　<code>stability</code>　— 合成係數 0.3710</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -158,7 +158,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>11.80 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>11.80 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分；是否缺資料須對照來源標記。</p>
 <h3>試閘備戰　<code>preparation</code>　— 合成係數 0.2524</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -169,7 +169,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.28 分</strong>；<strong>64.7%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.28 分</strong>；<strong>64.7%</strong> 嘅馬喺呢個維度攞到恰好 60 分；是否缺資料須對照來源標記。</p>
 <h3>場地與地況適性　<code>track</code>　— 合成係數 0.1411</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -180,7 +180,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>4.59 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>4.59 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分；是否缺資料須對照來源標記。</p>
 <h3>速度考驗背景　<code>pace_perf</code>　— 合成係數 0.1139</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -191,7 +191,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>18.49 分</strong>；<strong>0.7%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>18.49 分</strong>；<strong>0.7%</strong> 嘅馬喺呢個維度攞到恰好 60 分；是否缺資料須對照來源標記。</p>
 <h3>賽績線　<code>form_line</code>　— 合成係數 0.0000（唔入排名）</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -202,7 +202,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>12.47 分</strong>；<strong>7.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>12.47 分</strong>；<strong>7.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分；是否缺資料須對照來源標記。</p>
 <h3>檔位形勢　<code>race_shape</code>　— 合成係數 0.0000（唔入排名）</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -213,9 +213,9 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.27 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.27 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分；是否缺資料須對照來源標記。</p>
 <h2>3. 個分點樣讀</h2>
-<p><strong>60 分永遠代表「中性 / 冇證據」</strong>，唔係「合格」。高過 60 = 有正面證據，低過 60 = 有負面證據。</p>
+<p><strong>單憑 60 分唔能夠判斷有冇證據。</strong> 缺資料可以回退 60，有資料亦可以計出 60；應對照來源標記。</p>
 <h3>報告入面嘅符號</h3>
 <table><thead><tr>
 <th>符號</th>
@@ -325,8 +325,8 @@ ul, ol { padding-left:1.5rem; }
 <li>推算前三／前四：由市場勝率經 discounted Harville（λ 0.754／0.649／0.549）推出，係<strong>市場推算，唔係模型預測</strong></li></ul>
 <p>去水用共用 <code>shared_racing/scripts/devig.py</code>；實作喺 <code>au_racing_engine/market_reference.py</code>。</p>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-10-16 15:35 AEDT</code></li>
-<li>Git commit：<code>8fdcf071</code></li>
+<ul><li>生成時間：<code>2026-10-16 16:00 AEDT</code></li>
+<li>Git commit：<code>2d7ec14c</code></li>
 <li>Scoring contract：<code>au/raw-matrix-preparation-v2</code></li>
 <li><code>scoring.py</code> 指紋：<code>00d83d15518b</code></li>
 <li><code>matrix_mapper.py</code> 指紋：<code>7e081c69cdd9</code></li>

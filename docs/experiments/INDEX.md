@@ -4,6 +4,12 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261016-80](EXP-20261016-80-hkjc-stability-overlap.md) | 2026-10-16 | HKJC | 近績與穩定性重疊可以靠單獨設60簡化 | REJECT／UNRESOLVABLE：近績設60退步；穩定性設60無確定收益，維持兩項。 |
+| [EXP-20261016-81](EXP-20261016-81-hkjc-rank67-bucket.md) | 2026-10-16 | HKJC | 第六七名同第四五名同分可減少粗化損失 | REJECT：Good少5場。 |
+| [EXP-20261016-82](EXP-20261016-82-hkjc-top3-margin.md) | 2026-10-16 | HKJC | 亞季但輸距大嘅close credit應按輸距折減 | 見更正後配對結果：原先混入冠軍嘅測試已撤回；不啟用新規則。 |
+| [EXP-20261016-83](EXP-20261016-83-hkjc-consistency-fallback-scale.md) | 2026-10-16 | HKJC | 缺詳情改用同一穩定性尺有益 | REJECT：Gold／Good各多1場，但集中最早塊，排序CI跨0。 |
+| [EXP-20261016-84](EXP-20261016-84-hkjc-invalid-finish-correctness.md) | 2026-10-16 | HKJC | 非完成0名次不應進入consistency樣本及趨勢 | §7 CORRECTNESS FIX：三場較後排名改動，全部已登記指標及SP分層primary不變；唔係已證實表現改善。 |
+| [EXP-20261016-85](EXP-20261016-85-hkjc-nine-dimension-weight-recheck.md) | 2026-10-16 | HKJC | 最新code下既定walk-forward權重refit可贏現役 | REJECT：Gold少4場，Good少6場，維持九維權重。 |
 | [EXP-20261015-02](EXP-20261015-02-au-trial-cutoff-refit.md) | 2026-10-15 | AU | 用戶確認六場起移除試閘表現；比較2／4／6場並refit | **USER-ACCEPTED simplification；refit REJECT**：3,297場較低門檻冇更好headline；1,493場逐窗OOS六場refit Gold+3但Good−3，訓練門檻policy Good−4，全部無顯著收益；保留六場／原權重，PIT FLAG未當PASS。 |
 | [EXP-20261012-03](EXP-20261012-03-au-unused-intake-cutoff-standards.md) | 2026-10-12 | AU | 未用欄位零樣本intake、prior-only unique-event speed references | **HARNESS／PARTIAL RESEARCH**：448 meetings完整盤點；future／duplicates／root cache反例修正，14 scoped／AU808 tests PASS；source-bound outcome研究與actual fitted producer仍待接駁，無績效判決。 |
 | [EXP-20261012-02](EXP-20261012-02-au-exact-venue-results-identity.md) | 2026-10-12 | AU | Archive／reflector取消venue substring／layout collapse／all-row fallback | **CORRECTNESS／G2 PARTIAL**：16 fixtures PASS、full AU798；183配對轉unmatched，140僅source-bound metadata可恢復、43仍未解；無PIT／candidate KPI／release。 |

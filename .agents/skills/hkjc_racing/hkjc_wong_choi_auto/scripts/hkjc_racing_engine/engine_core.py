@@ -457,7 +457,8 @@ class RacingEngine:
 
     def _consistency_score(self, features):
         form = str(self.horse_data.get("last_6_finishes") or "")
-        finishes = [int(item) for item in re.findall(r"\b\d+\b", form)[:6]]
+        # 0 is a non-completion/status marker, not a finishing position.
+        finishes = [int(item) for item in re.findall(r"\b\d+\b", form) if int(item) > 0][:6]
         if self._is_debut():
             prep = self._prep_score()
             score = scoring.CONSISTENCY_MICRO_WEIGHTS.get("debut_base", 58.0) + (prep - 60) * scoring.CONSISTENCY_MICRO_WEIGHTS.get("debut_prep_mult", 0.35)
@@ -1949,6 +1950,8 @@ class RacingEngine:
             try:
                 rank = int(rank_text)
             except ValueError:
+                continue
+            if rank <= 0:
                 continue
             runs.append(
                 {

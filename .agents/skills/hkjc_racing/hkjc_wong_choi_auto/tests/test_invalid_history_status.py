@@ -25,3 +25,22 @@ def test_surface_sample_is_from_target_not_first_surface():
 def test_zero_does_not_prove_recovery():
     engine = RacingEngine({'last_6_finishes': '0-6-7-8'}, {})
     assert not engine._has_recovery_evidence()
+
+
+def test_consistency_ignores_status_rows_before_weighting_and_trend():
+    valid = "第1仗: 6名 2 | 第2仗: 7名 4 | 第3仗: 3名 1 | 第4仗: 1名 0 | 第5仗: 8名 6"
+    with_status = "第0仗: 0名 N/A | " + valid
+    clean = RacingEngine({"_data": {"recent_6_detail": valid}}, {})
+    invalid = RacingEngine({"_data": {"recent_6_detail": with_status}}, {})
+    assert invalid._consistency_shadow_detail() == clean._consistency_shadow_detail()
+
+
+def test_consistency_fallback_ignores_zero_before_sample_count():
+    clean = RacingEngine({"last_6_finishes": "1-1"}, {})
+    invalid = RacingEngine({"last_6_finishes": "0-1-1"}, {})
+    assert invalid._consistency_score({"form_score": 100}) == clean._consistency_score({"form_score": 100})
+
+
+def test_only_status_rows_have_no_consistency_detail():
+    engine = RacingEngine({"_data": {"recent_6_detail": "第1仗: 0名 N/A"}}, {})
+    assert engine._consistency_shadow_detail() is None

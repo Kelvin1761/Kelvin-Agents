@@ -29,6 +29,7 @@ whichever loaded first.  See run_tests.sh for the same constraint.
 from __future__ import annotations
 
 import argparse
+import ast
 import glob
 import hashlib
 import html as html_mod
@@ -90,6 +91,7 @@ def load_engine(engine_dir: Path):
         dims = importlib.import_module(f"{package}.dimensions")
         hidden = {spec.key for spec in dims.LEAF_SPECS if not spec.shown_in_report}
     return {
+        "sip_formula": hkjc_sip_formula(engine_dir) if package == "hkjc_racing_engine" else None,
         "weights": weights,
         "trial_performance_cutoff": trial_cutoff,
         "full_time_model": full_time_model,
@@ -122,6 +124,26 @@ def load_engine(engine_dir: Path):
         "contract_version": getattr(scoring, "SCORING_CONTRACT_VERSION", None),
         "bands": band_thresholds(scoring),
     }
+
+
+def hkjc_sip_formula(engine_dir: Path) -> dict:
+    """Read SIP conditions from production AST so documentation cannot invent them."""
+    source = (engine_dir.parent / "hkjc_auto_orchestrator.py").read_text(encoding="utf-8")
+    function = next(node for node in ast.parse(source).body
+                    if isinstance(node, ast.FunctionDef) and node.name == "_apply_sip_enhancements")
+    assignments = {}
+    for node in ast.walk(function):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+            assignments[node.targets[0].id] = ast.unparse(node.value)
+    condition = next(node for node in ast.walk(function)
+                     if isinstance(node, ast.If) and "is_light" in ast.unparse(node.test)
+                     and "is_good_draw" in ast.unparse(node.test))
+    signal = next(node for node in condition.body if isinstance(node, ast.If))
+    boost = next(node.value for node in signal.body if isinstance(node, ast.Assign)
+                 and any(isinstance(target, ast.Name) and target.id == "boost" for target in node.targets))
+    return {"median": assignments["field_median"], "light": assignments["is_light"],
+            "draw": assignments["is_good_draw"], "gate": ast.unparse(condition.test),
+            "signal": ast.unparse(signal.test), "boost": ast.unparse(boost)}
 
 
 def band_thresholds(scoring):
@@ -289,7 +311,7 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
     A("")
     A(f"隻馬最後得到嘅係一個「{model['ability_label']}」。個分係咁計出嚟：")
     A("")
-    A(f"1. 由原始資料計出 **{len(model['feature_keys'])} 個基礎分**（近績、騎師、檔位…），每個都係 0–100，**60 分 = 中性／冇證據**")
+    A(f"1. 由原始資料計出 **{len(model['feature_keys'])} 個基礎分**（近績、騎師、檔位…），每個都係 0–100；缺資料通常回退 60，實際要對照來源標記")
     A(f"2. 啲基礎分按固定配方合成 **{len(labels)} 個維度分**")
     if overlays or adjustments:
         A("3. 維度分按下面嘅權重加權相加 → 矩陣基礎分")
@@ -433,7 +455,7 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
             flat = stats["flat_rate"].get(key)
             if spread is not None:
                 A(f"實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 **{spread:.2f} 分**；"
-                  f"**{flat * 100:.1f}%** 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。")
+                  f"**{flat * 100:.1f}%** 嘅馬喺呢個維度攞到恰好 60 分；是否缺資料須對照來源標記。")
                 A("")
         if key in gains:
             A(f"顯示尺放大倍數 `gain` = **{gains[key]:.4f}**　"
@@ -443,7 +465,9 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
     # ── 3. how to read a score ──
     A("## 3. 個分點樣讀")
     A("")
-    A("**60 分永遠代表「中性 / 冇證據」**，唔係「合格」。高過 60 = 有正面證據，低過 60 = 有負面證據。")
+    A("**單憑 60 分唔能夠判斷有冇證據。** 缺資料可以回退 60，有資料亦可以計出 60；應對照來源標記。")
+    if model.get("display_scale"):
+        A("HKJC 維度顯示分嘅 60 係換尺時設定嘅實測中位基準；綜合顯示分亦有獨立換算，唔代表同一種中性值。")
     A("")
     A("### 報告入面嘅符號")
     A("")
@@ -468,7 +492,7 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
         slope = ds["target_sd"] / ds["observed_sd"]
         A(f"### {model['ability_label']}同維度分都係顯示尺")
         A("")
-        A("七個維度加權平均出嚟嘅係**原始分**，佢永遠困喺各維度自己嘅範圍之內 ——")
+        A("維度加權合成出嚟嘅係**原始分**。顯示尺最初以舊七維模型校準：")
         A(f"實測 {ds['sample']:,} 匹馬只佔 50–77 分，所以上面由 A 到 S+ 六級曾經係")
         A("**數學上到唔到**（一隻六戰全勝、官方評分高過全場 33 分嘅馬只讀到「B+ 中上游」）。")
         A("所以報告印出嚟嘅綜合分係一條仿射變換：")
@@ -477,7 +501,7 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
         A("")
         dd = model.get("dimension_display") or {}
         if dd.get("gains"):
-            A("**逐個維度亦有自己一把尺。** 七個維度嘅原始 SD 由 3.47 到 12.26（差 3.5 倍），")
+            A("**逐個維度亦有自己一把尺。** 初次校準時，舊七維嘅原始 SD 由 3.47 到 12.26（差 3.5 倍），")
             A("但 band 門檻（✅✅ 85 / ✅ 70 / ➖ 55 / ❌ 40）係同一套 —— 所以五個維度永遠")
             A("出唔到 ✅✅，「馬匹健康」連 ❌ 都出唔到，「賽績線」永遠出唔到 ❌。校正式：")
             A("")
@@ -500,6 +524,21 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
             A("**兩把尺都唔加任何資訊，亦唔改任何排名** —— 斜率全部正數、全體同一條式，")
             A("排名讀嘅係原始分（`ability_score_raw` / `matrix_scores`）。金樣本、單元測試")
             A("同 run contract 三邊都守住呢一點。")
+        A("")
+
+    sip = model.get("sip_formula")
+    if sip:
+        A("### 額外 SIP 加分（由 production 原碼抽取）")
+        A("")
+        A("矩陣原始分計好後、全場檔位限幅之前，符合以下條件會額外加分。weight 係馬匹負磅，barrier 係檔位；speed、form、consist 係基礎速度、近績、穩定性分。")
+        A("")
+        A("```python")
+        A(f"field_median = {sip['median']}")
+        A(f"is_light = {sip['light']}")
+        A(f"is_good_draw = {sip['draw']}")
+        A(f"if ({sip['gate']}) and ({sip['signal']}):")
+        A(f"    raw += {sip['boost']}")
+        A("```")
         A("")
 
     # ── 4. debut / report-only ──
