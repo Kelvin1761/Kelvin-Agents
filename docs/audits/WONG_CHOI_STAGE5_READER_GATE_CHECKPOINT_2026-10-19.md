@@ -144,4 +144,3 @@ do not bypass, broaden scope or approve another release to force completion.
 
 Tasks 6–10, reviewed power profiles, real Tennis/racing pilots, research
 scheduler/Telegram/private-Dashboard acceptance and Stage 5 exit remain open.
-
