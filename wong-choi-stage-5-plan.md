@@ -38,6 +38,8 @@
 
 ## Current Checkpoint — 2026-10-18 reader recovery
 
+- Integration-only continuation: reader plus the independently preserved test correction passed the complete original gate on non-main `a0448bbb8d54081242c774e298ffd7bfa79cd342` (15/15 suites; 5,115 Python passes, two expected failures, two skips; 89 Node passes). Full external log and phase hashes are recorded in the recovery audit. This 37-path integration is not heartbeat-approval eligible: the extra test path remains outside its allowlist. No release/merge/activation occurred; the earlier reader-only failed gate remains recorded, and Tasks 6–10 remain open.
+
 - Reconstructed the removed reader in isolated branch `codex-stage5-reader-recovery-20261018`, based on fetched `origin/main` `efebdb06c62b9e09b2fb7b1f6f0e8228876f7f16`. The external backup is unchanged; its patch and all 22 untracked-file hashes match the cleanup manifest.
 - Recovered 35 paths. Upstream changed `test_research_review_cursor.py`; recovery preserves main's 120-second test timeouts while restoring the real legacy-schema producer fixture and child-failure expectations. The additional `research_index.py` symlink-check change is retained for fresh verification, not covered by the historical gate claim.
 - Fresh quick gate passed, including unchanged AU/HKJC scoring goldens and actual 60-meeting data-contract checks per domain. AU neutral track/trial coverage and an uncalibrated new trial-speed field remain warnings; no ruler, model or calibration was changed.

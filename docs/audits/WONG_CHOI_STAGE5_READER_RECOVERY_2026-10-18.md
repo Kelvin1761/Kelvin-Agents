@@ -55,6 +55,20 @@ The test path `.agents/scripts/tests/test_wongchoi_external_run.py` is outside t
 
 Read-only policy inspection of the reader's 36 paths yields risk `code`, gate `full`, four-domain code sync, no installer, no Dashboard deploy and no manual reason. This does not satisfy the missing successful full gate, immutable remote/rollback checks or other approval conditions. No release manifest or approval was created.
 
+## Integration-only full gate — passed, not release approval
+
+The separate reader and one-file test correction were combined on non-main branch `codex-stage5-integration-20261018`, based on the same fetched main. Tested immutable HEAD: `a0448bbb8d54081242c774e298ffd7bfa79cd342`; worktree clean before and after. The 37-path integration is not the reader's 36-path release scope and is not eligible for automatic heartbeat approval because it includes `.agents/scripts/tests/test_wongchoi_external_run.py`.
+
+The original complete gate was rerun with the external wrapper and `nice -n 10`, piping output through `tee "$TMPDIR/full-gate.log"` under `bash -c 'set -o pipefail; ...'`. Session `29041` terminated with **exit 0**, all **15/15 suites passed**: Python 5,115 passed, two expected failures, two Dashboard skips; Node 89 passed. Shared Wong Choi: 1,609 passed in 2,503.76 seconds; Agent scripts: 102 passed / two expected failures; Tennis: 709 passed. All original large cases and limits remained intact. Goldens and actual AU/HKJC data-contract checks passed with the previously recorded AU warnings.
+
+Log: `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/command-runs/wc-run-w8y_v6js/full-gate.log`; SHA256 `efbade10a451523075edcce82a031796d34364c7894236c73e88f150efdb7882`.
+
+- AU corpus: 485.533295083 seconds, hash `d2d1ec7b2368e4d62f8122dc3e51efd70b69c0259989f239a0c4025e2c772138`; review: 239.691915875 seconds, hash `58db83c4d36c1976f4c7bcbb57e830362ee4d1d76144e935717aee66601102f9`.
+- HKJC corpus: 513.641649708 seconds, hash `c95e9ca91de8ac3f152bef7f7bd9dd76a1cc77a11ea3c0ec8f9d50f0f84c2b08`; review: 242.577615250 seconds, hash `8999e1b727ee3aa389ba76d3c027f4c39f586ca5f7f4aad8f970d49aed444e3d`.
+- All four phase publications were `receipt_verified`, within unchanged separate 600-second limits; model promotion remained false. These timings are not a controlled performance comparison or model-quality evidence.
+
+This green integration run does not erase the earlier failed reader-only gate. No release manifest, approval, main merge or activation was created. Separate correction authorization, release-controller gates/current SHA checks, real pilots and power evidence remain outstanding. Any subsequent documentation-only commit is not the tested immutable HEAD.
+
 ## Remaining acceptance
 
 1. Separate scope/release decision for the independently verified upstream test correction; no automatic approval under the Stage 5 heartbeat.
