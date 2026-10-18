@@ -214,8 +214,8 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-10-18 19:11 AEDT`
-- Git commit：`ae45a16e`
+- 生成時間：`2026-10-18 19:55 AEDT`
+- Git commit：`5f1b0a62`
 - Scoring contract：`HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1`
 - `scoring.py` 指紋：`8e880dcef8d8`
 - `matrix_mapper.py` 指紋：`1da521a47df6`

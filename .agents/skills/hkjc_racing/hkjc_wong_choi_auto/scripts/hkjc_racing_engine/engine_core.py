@@ -454,14 +454,16 @@ class RacingEngine:
 
     def _weight_score(self, _features):
         # 負磅分只計讓磅官嘅負磅（EXP-20261010-04）。馬匹體重趨勢係健康訊號，已經喺
-        # risk_score 計（而且方向相反：轉輕喺健康扣分、喺度以前加分），所以唔再重複計。
-        # 分界用實際負磅 = 負磅 − 見習減磅。
+        # risk_score 計，所以唔再重複計。
+        # Logic `weight` 已經係**實際負磅**（已扣見習減磅）：335 個見習騎師坐騎入面 327 個
+        # 同賽果 `actual_wt` 一樣、0 個等於「負磅＋減磅」。以前再扣一次減磅，令 90 匹（27%）
+        # 跌錯負磅分級（EXP-20261018-06，§7）。減磅只入說明。
         weight = parse_float(self._value("weight_carried") or self._value("weight"))
         if weight is None:
             return 60, "負磅資料不足，負磅分60分。", "missing_neutral"
         allowance = parse_float(self._value("jockey_allowance")) or 0.0
-        carried = weight - allowance
-        claim = f"（負磅 {weight:.0f} 減見習 {allowance:.0f}）" if allowance else ""
+        carried = weight
+        claim = f"（已扣見習減磅 {allowance:.0f}）" if allowance else ""
         score = scoring.WEIGHT_MICRO_WEIGHTS.get("base", 64.0)
         note = f"今仗實際負磅{carried:.0f}磅{claim}，屬中游負磅，讓磅官冇特別意見，負磅分{score:.0f}分。"
         if carried <= 120:

@@ -212,6 +212,7 @@
 - [EXP-20261018-03](EXP-20261018-03-hkjc-jockey-trainer-review.md) — 騎練訊號深入審查：六個加減項成套剷走 Good −2.61pp（CI 全負、平均名次 Holm p<0.001）→ 全部保留；換騎 −1.5 剷走 Good −1.16 CI 全負；升級／降級換騎對市場冇分別，唔使拆方向；同程鍵 live 退步見 EXP-02
 - [EXP-20261018-04](EXP-20261018-04-hkjc-jt-adjustment-guard.md) — 監控：field_health 加「騎練調整項」逐週出現率（≤1% 而曾經 ≥30% → 💀），真數據回放 W41 即報同程兩項死咗（早五日）；生成器 Distance 改寫整數
 - [EXP-20261018-05](EXP-20261018-05-hkjc-race-shape-review.md) — 檔位與走位深入審查：§7「中低消耗」1,169 仗當咗「低消耗」（70 vs 66），回放 26 場郁（全沙田）、Gold +0.29pp、前三平均名次改善 CI 全負；欄位偏差／跑馬地 v3 正常，v3 rollback review 下個跑馬地賽日後到期；消融唔重做
+- [EXP-20261018-06](EXP-20261018-06-hkjc-class-advantage-review.md) — 級數優勢深入審查：§7 見習減磅扣兩次（Logic 負磅已係實際負磅，327/335 同賽果一樣），90 個坐騎跌錯負磅分級；回放 25 場郁、Gold／Good 0、冇 cohort 為負；方向同班次資訊之前已判，唔重做
 - [EXP-20261016-70](EXP-20261016-70-au-track-audit-results.md) — 場地與地況適性六項：同場斷崖係真（1 戰 −3.7pp → 2 戰 −9.1pp），剷斷崖、濕地唔重扣、剷重地專項三個都輸 → 保留；只上線 base 62.9 → 60（§7，consistency −4 門檻跟住 60 → 57.1，排名不變）。留低：同場比率（6+ 戰 1 次上名 −11.0pp 照加 +5）、未跑濕地 −6.4 過重、合成跑道 85 場未夠
 - [EXP-20261016-71](EXP-20261016-71-au-form-quality-distance-results.md) — 近績路程相關度 + 大幅增減程：模型名次層內 |Δ|≥400m 剩餘 −5.8pp [−7.6,−4.1]（大幅縮程最差）；F1 路程加權 REJECT（OOS Gold −1.08pp 六 block 全負）；F2 大幅轉程近績質素分 −5 上線（v3 RANKING_WIN，Good +0.28pp，Holm p 0.096 唔算顯著改善）
 - [EXP-20261016-72](EXP-20261016-72-au-track-rate-and-centralise-results.md) — 地況扣分集中一個 `_going_adjustment`（32,448 匹逐位元相同）上線；同場比率 R REJECT（Gold −0.32pp，§8 both_arms_reject）；合成跑道維持當好地，85 場，夠 100 場再測
