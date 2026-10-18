@@ -66,7 +66,25 @@ same 11 component names, not a renamed/extra component set. None had zero
 raw `active` flags. This does **not** replay their exact in-memory inputs:
 `_components` can project a warned neutral non-Elo component inactive, and its
 final rejection also covers a set with no usable projected active component.
-Do not infer the failing row or change that boundary from this metadata alone.
+Do not infer the original first failing row or change that boundary from this
+metadata alone.
+
+A subsequent bounded inspection isolated a reproducible current-persisted
+condition: 23 of those 56 rows have only `head_to_head_edge` raw-active, at
+neutral probability with a warning, so the unchanged projection leaves no
+usable active component. Another 18 rows have a warned effectful/backbone
+component. Neither count is a qualified sample count; the remaining rows were
+not granted qualification.
+
+For prediction ID `15153`, the exact stored `pricing_json` SHA256 was
+`6b6066e652ac9e188ebb3f4723f48ac48e539e2172b79f24bf744f9b3d37007f`.
+Calling the unchanged `_components({}, stored_pricing, available_by=stored_prediction_clock)`
+reproduced `ValueError: incomplete Tennis component set`. The deliberately
+empty snapshot suffices because this row reaches no active input-path read.
+This is a **minimal component-boundary reproduction**, not its original memory
+snapshot, full forecast replay, retrospective source repair or PIT evidence.
+It supports keeping the rejection, not weakening it or declaring all historical
+captures explained.
 
 ## Reproducible inspection boundaries
 
