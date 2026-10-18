@@ -251,8 +251,7 @@ def run_review_request(request, *, registry, runtime, workspace, checkpoint):
     sample_status = 'not_integrated'
     if sample_path is not None:
         from .research_monitoring_samples import (
-            monitoring_report_reference,
-            monitoring_sample_snapshots,
+            review_child_monitoring_samples,
         )
 
         def load_sample(path_value):
@@ -262,13 +261,14 @@ def run_review_request(request, *, registry, runtime, workspace, checkpoint):
                     or path.stat().st_size > 1048576):
                 raise ValueError('racing sample report is outside supervised WARM evidence')
             report = _strict_json(path.read_text())
-            samples = monitoring_sample_snapshots(report)
+            samples, reference = review_child_monitoring_samples(
+                path=path, report=report, runtime=runtime, checkpoint=checkpoint)
             roots = [str(_safe(Path(item))) for item in payload['racing_sample_relocation_roots']]
             if (any(sample.domain is not clock['domain'] for sample in samples)
                     or report['root'] != str(_safe(Path(payload['racing_sample_evidence_root'])))
                     or report['relocation_roots'] != roots):
                 raise ValueError('monitoring sample report scope mismatch')
-            return report, samples, monitoring_report_reference(path, report)
+            return report, samples, reference
 
         current_report, sample_current, sample_current_ref = load_sample(sample_path)
         if _at(sample_current_ref['observed_at']) != _at(clock['now']):
@@ -701,8 +701,7 @@ def verify_review_summary(*, request, runtime, report_path, receipt,
     sample_freeze = False
     if sample_path is not None:
         from .research_monitoring_samples import (
-            monitoring_report_reference,
-            monitoring_sample_snapshots,
+            review_parent_monitoring_samples,
         )
 
         def verify_sample_ref(path_value, reference):
@@ -712,8 +711,8 @@ def verify_review_summary(*, request, runtime, report_path, receipt,
                     or path.stat().st_size > 1048576):
                 raise ValueError('invalid supervised racing sample path')
             report = _strict_json(path.read_text())
-            samples = monitoring_sample_snapshots(report)
-            expected_reference = monitoring_report_reference(path, report)
+            samples, expected_reference = review_parent_monitoring_samples(
+                path=path, report=report, runtime=runtime, checkpoint=lambda: None)
             roots = [str(_safe(Path(item))) for item in payload['racing_sample_relocation_roots']]
             if (reference != expected_reference
                     or report['root'] != str(_safe(Path(payload['racing_sample_evidence_root'])))

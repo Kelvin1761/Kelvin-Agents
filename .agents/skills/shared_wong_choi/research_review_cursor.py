@@ -271,8 +271,10 @@ class ResearchReviewCursorRunner:
         path = _safe(Path(reference['path']))
         phase_root = _safe(self.runtime.warm_root / 'research-phases' / domain.value)
         prefixes = {
-            Domain.AU: 'racing-monitoring-samples-',
-            Domain.HKJC: 'racing-monitoring-samples-',
+            Domain.AU: ('racing-monitoring-samples-', 'racing-monitoring-corpus-',
+                        'racing-monitoring-corpus-reconcile-'),
+            Domain.HKJC: ('racing-monitoring-samples-', 'racing-monitoring-corpus-',
+                          'racing-monitoring-corpus-reconcile-'),
             Domain.NBA: 'nba-monitoring-samples-',
             Domain.TENNIS: 'tennis-monitoring-samples-',
         }
@@ -281,12 +283,11 @@ class ResearchReviewCursorRunner:
                 or not path.parent.parent.name.startswith(prefixes[domain])):
             raise ValueError('monitoring sample report is outside owned phase root')
         from .research_monitoring_samples import (
-            monitoring_report_reference,
-            monitoring_sample_snapshots,
+            review_parent_monitoring_samples,
         )
         report = _strict_json(path.read_text())
-        samples = monitoring_sample_snapshots(report)
-        expected_reference = monitoring_report_reference(path, report)
+        samples, expected_reference = review_parent_monitoring_samples(
+            path=path, report=report, runtime=self.runtime, checkpoint=checkpoint)
         if set(reference) == legacy_fields:
             if len(samples) != 1:
                 raise ValueError('legacy sample reference requires one scope')
@@ -352,12 +353,13 @@ class ResearchReviewCursorRunner:
                 # Normalize the old single-scope reference in memory. It is
                 # written back only if the new review and the joint transaction
                 # succeed, so a failed migration leaves durable state untouched.
-                from .research_monitoring_samples import monitoring_report_reference
+                from .research_monitoring_samples import review_parent_monitoring_samples
+                _, normalized = review_parent_monitoring_samples(
+                    path=Path(value['last_report']['path']), report=report,
+                    runtime=self.runtime, checkpoint=checkpoint)
                 value = {
                     **value,
-                    'last_report': monitoring_report_reference(
-                        Path(value['last_report']['path']), report,
-                    ),
+                    'last_report': normalized,
                 }
         return value
 
@@ -616,7 +618,6 @@ class ResearchReviewCursorRunner:
                 if sample_config is not None:
                     from .research_supervision import (
                         NbaMonitoringSampleInspectionRunner,
-                        RacingMonitoringSampleInspectionRunner,
                         TennisMonitoringSampleInspectionRunner,
                     )
                     common = {
@@ -629,7 +630,8 @@ class ResearchReviewCursorRunner:
                         'timeout_seconds': deadline-time.monotonic(),
                     }
                     if domain in {Domain.AU, Domain.HKJC}:
-                        sample_result = RacingMonitoringSampleInspectionRunner(
+                        from .research_racing_monitoring_page_runtime import RacingMonitoringCorpusInspectionRunner
+                        sample_result = RacingMonitoringCorpusInspectionRunner(
                             self.runtime, self.registry
                         ).run(domain=domain, **common)
                     elif domain is Domain.NBA:
