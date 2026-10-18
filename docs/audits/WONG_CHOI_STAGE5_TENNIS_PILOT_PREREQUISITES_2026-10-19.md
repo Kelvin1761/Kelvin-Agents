@@ -136,4 +136,45 @@ Code boundaries inspected:
    acceptance remain separate Task 7 deliverables, not implied by snapshots
    or by source-only cadence tests.
 
+## Follow-up: real corpus health audit completed
+
+Recorded at `2026-10-18T22:45:00Z` (2026-10-19 Sydney), after the latest Tennis
+card run succeeded. The unchanged, approved production CLI completed with exit
+0 and `status: ok`:
+
+```text
+PYTHONDONTWRITEBYTECODE=1 python3 .agents/scripts/wongchoi_external_run.py -- nice -n 10 python3 .agents/skills/central_wong_choi/scripts/central_wong_choi.py corpus-audit --domain tennis --active-sqlite /Users/imac/Antigravity-repo/tennis-wong-choi/tennis_wc.db --json
+```
+
+Working directory: `/Users/imac/wongchoi-scheduler`, approved main
+`660b0952d952cf57ca9e35f55dd8a96f005a4c9e`. External scratch:
+`/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/command-runs/wc-run-jbvqund0`.
+
+The active DB and all four catalog-backed archive DBs passed `PRAGMA
+quick_check`. Both relevant catalog artifacts resolved with verified copy
+hashes (`catalog_status: ok`): `wc-artifact:5f6c9a118c80bfab16addb33`
+(`migration-db-snapshots`, three DBs) and
+`wc-artifact:bdcad6e5e530b9e857b170a5` (`db-snapshot`, one DB). All four archived
+DBs were read from the mounted external archive, not substituted into runtime.
+
+| Named table | Active rows observed | Maximum archived rows |
+| --- | ---: | ---: |
+| `matches` | 9,070 | 4,690 |
+| `match_results` | 11,919 | 5,552 |
+| `odds_snapshots` | 15,778 | 9,503 |
+
+There was no regression against these three row watermarks, and
+`runtime_snapshot_substitution_allowed` remained `false`. SQLite connections
+used `mode=ro` and `PRAGMA query_only=ON`; no DB was restored, replaced,
+backfilled or attached as the active source, and no ledger SQL was applied.
+
+This closes this observation's **known catalog / SQLite quick-check / three
+named row-watermark** preflight, not a foreign-key audit, full
+`integrity_check`, all-market coverage proof, immutable pilot dataset,
+historical feature derivation, earliest-price proof or model evaluation.
+Catalog coverage does not establish the completeness of uncatalogued data.
+These row counts are not distinct qualified outcomes or research samples.
+The native prediction/settlement provenance and reviewed power gaps above
+remain open; Task 8 and Stage 5 exit are not accepted.
+
 No claim of improved prediction performance or Stage 5 completion is made.
