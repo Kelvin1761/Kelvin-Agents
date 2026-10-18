@@ -1,0 +1,13 @@
+{
+ "experiment": "EXP-20261018-10",
+ "a0_sha": "2d7ec14c09a3d6fa0bc5733406a730f7dff344ff",
+ "a1_sha": "6e3fdeac7914b1a0c023555ca2fa268e6728b63b",
+ "valid_from": "2026-10-19",
+ "min_meeting_days": 41,
+ "one_look": true,
+ "code_sha256": {
+  "scratch/au_post_bundle_forward_20261018.py": "e11769ad9a8a3afe441896c813c920339b88fd6975a63193498fef2e5847b920",
+  "scratch/au_post_bundle_replay_worker_20261018.py": "eaa9abae5e1d764e4a93bfc7ed8cf3ec208bf7987812ddaddac588bbbca9c364"
+ },
+ "frozen_at": "2026-10-18T18:12:06.144922+11:00"
+}
