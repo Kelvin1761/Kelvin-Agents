@@ -87,13 +87,25 @@ if __name__ == "__main__":
 
 
 class ApprenticeAllowance(unittest.TestCase):
-    def test_bands_use_weight_actually_carried(self):
-        """負磅 123 減見習 3 = 實際 120 → 輕磅帶（EXP-20261010-04）。"""
+    """Logic 嘅負磅已經係實際負磅（已扣見習減磅），唔可以再扣（EXP-20261018-06）。
+
+    舊 test 當 `weight_carried` 係宣佈負磅；實測 327/335 個見習坐騎同賽果 actual_wt 一樣。
+    """
+
+    def _engine(self, carried, allowance):
         engine = RacingEngine.__new__(RacingEngine)
-        engine.horse_data = {"weight_carried": 123}
-        engine.data = {"jockey_allowance": 3}
+        engine.horse_data = {"weight_carried": carried}
+        engine.data = {"jockey_allowance": allowance}
         engine.provenance = {}
         engine.race_analysis = {}
-        score, note, _ = engine._weight_score({})
+        return engine
+
+    def test_claim_is_not_subtracted_twice(self):
+        score, note, _ = self._engine(123, 3)._weight_score({})
+        self.assertEqual(score, scoring.WEIGHT_MICRO_WEIGHTS["base"])
+        self.assertIn("實際負磅123磅", note)
+        self.assertIn("已扣見習減磅 3", note)
+
+    def test_light_band_uses_carried_weight(self):
+        score, _note, _ = self._engine(120, 3)._weight_score({})
         self.assertEqual(score, scoring.WEIGHT_MICRO_WEIGHTS["light_weight_base"])
-        self.assertIn("減見習 3", note)

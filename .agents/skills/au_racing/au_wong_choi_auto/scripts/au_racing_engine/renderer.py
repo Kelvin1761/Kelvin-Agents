@@ -710,6 +710,10 @@ def _class_weight_detail_lines(auto, name):
     return []
 
 
+# 喺騎練訊號計分、但屬於試閘證據嘅項目；報告喺試閘備戰嗰段一併列出（EXP-20261016-79）。
+TRIAL_ITEMS_SCORED_IN_JT = ("現役騎師已透過試閘熟習此駒", "試閘手接手，備戰線完整")
+
+
 def _jt_detail_lines(auto, name):
     """騎練訊號三個 sub 分嘅完整組件（同 stability/pace_perf 一樣嘅透明度）。"""
     if name == "jockey_score":
@@ -754,6 +758,14 @@ def _jt_detail_lines(auto, name):
             lines.append("實證調整：無觸發（試閘／人馬往績／換騎訊號均未達門檻）")
         elif d.get("final") is not None:
             lines.append(f"合計（0-100 封頂）＝ {float(d['final']):.1f}")
+        if name == "preparation_score":
+            # 試閘證據喺報告集中喺試閘備戰（用戶 2026-10-16）。下面兩項嘅分仲係喺騎練訊號計 ——
+            # EXP-20261016-79 試過搬入試閘備戰計分，排名變差（§8 fixed Good −0.61pp），所以只係顯示喺度。
+            jt = auto.get("jt_fit_detail") or {}
+            for a in jt.get("adjustments") or []:
+                if a.get("factor") in TRIAL_ITEMS_SCORED_IN_JT:
+                    ev = f" ← {a['evidence']}" if a.get("evidence") else ""
+                    lines.append(f"（喺騎練訊號計分）{a['factor']} {float(a['delta']):+.1f}{ev}")
         return lines
     return []
 

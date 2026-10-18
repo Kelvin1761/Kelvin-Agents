@@ -186,6 +186,9 @@ def run(args) -> int:
                             "raw": float(auto.get("ability_score_raw")),
                             "debut": any("debut" in str(c).lower() for c in auto.get("reason_codes") or []),
                             "m": {k: float(v) for k, v in auto["matrix_scores"].items()},
+                            # leaf 分（EXP-20261019-03 內部份額研究用）
+                            "f": {k: float(v) for block in ("feature_scores", "derived_feature_scores")
+                                  for k, v in (auto.get(block) or {}).items() if isinstance(v, (int, float))},
                         })
                     except (TypeError, ValueError):
                         continue

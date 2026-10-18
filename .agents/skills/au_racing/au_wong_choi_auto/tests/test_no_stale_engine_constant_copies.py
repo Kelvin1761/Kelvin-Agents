@@ -21,8 +21,10 @@ from __future__ import annotations
 
 import ast
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 REPO = Path(__file__).resolve().parents[5]
 ENGINE_SCRIPTS = REPO / ".agents/skills/au_racing/au_wong_choi_auto/scripts"
@@ -79,7 +81,8 @@ def _string_members(node: ast.AST) -> set[str]:
 def _candidate_files():
     for root in SEARCH_ROOTS:
         for path in sorted(root.rglob("*.py")):
-            parts = {p.lower() for p in path.parts}
+            # A checkout may itself live under an external scratch/archive root.
+            parts = {p.lower() for p in path.relative_to(root).parts}
             if "__pycache__" in parts or "archive" in parts or "scratch" in parts:
                 continue
             if path.name in DEFINING_FILES:
@@ -88,6 +91,21 @@ def _candidate_files():
 
 
 class NoStaleEngineConstantCopies(unittest.TestCase):
+    def test_scan_exclusions_apply_only_inside_search_root(self):
+        for ancestor in ("scratch", "archive", "__pycache__"):
+            with self.subTest(ancestor=ancestor), tempfile.TemporaryDirectory() as raw:
+                root = Path(raw) / ancestor / "checkout" / "au_racing"
+                for relative in (
+                    "live.py", "archive/old.py", "scratch/experiment.py",
+                    "__pycache__/cached.py", "scoring.py",
+                ):
+                    path = root / relative
+                    path.parent.mkdir(parents=True, exist_ok=True)
+                    path.write_text("VALUE = 1\n", encoding="utf-8")
+                with patch.dict(_candidate_files.__globals__, SEARCH_ROOTS=(root,)):
+                    found = {p.relative_to(root).as_posix() for p in _candidate_files()}
+                self.assertEqual({"live.py"}, found)
+
     def test_literal_copies_of_engine_constants_are_complete_or_declared(self):
         stale = []
         for path in _candidate_files():

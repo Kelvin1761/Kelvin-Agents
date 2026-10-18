@@ -58,43 +58,43 @@ ul, ol { padding-left:1.5rem; }
 <tr>
 <td>騎練訊號 <code>trainer_signal</code></td>
 <td>23.6%</td>
-<td>13.1%</td>
+<td>13.6%</td>
 <td>███·················</td>
 </tr>
 <tr>
 <td>級數優勢 <code>class_advantage</code></td>
 <td>14.3%</td>
-<td>6.5%</td>
+<td>6.4%</td>
 <td>█···················</td>
 </tr>
 <tr>
 <td>段速表現 <code>sectional</code></td>
 <td>12.8%</td>
-<td>18.6%</td>
+<td>18.2%</td>
 <td>████················</td>
 </tr>
 <tr>
 <td>狀態與穩定性 <code>stability</code></td>
 <td>8.8%</td>
-<td>13.4%</td>
+<td>13.2%</td>
 <td>███·················</td>
 </tr>
 <tr>
 <td>賽績線 <code>form_line</code></td>
 <td>8.0%</td>
-<td>13.5%</td>
+<td>13.8%</td>
 <td>███·················</td>
 </tr>
 <tr>
 <td>馬匹健康 / 新鮮感 <code>horse_health</code></td>
 <td>4.0%</td>
-<td>2.2%</td>
+<td>2.1%</td>
 <td>····················</td>
 </tr>
 <tr>
 <td>同程表現 <code>distance_fit</code></td>
 <td>2.0%（以 60 為中心）</td>
-<td>3.8%</td>
+<td>3.7%</td>
 <td>█···················</td>
 </tr>
 <tr>
@@ -126,12 +126,12 @@ ul, ol { padding-left:1.5rem; }
 <p>實際跑落去，呢個維度喺同一場馬入面真係拉開幾多分距離 —— 一個權重好高但成場馬</p>
 <p>都畀差唔多分數嘅維度，其實冇乜影響力。兩者差得遠，就代表個維度「有名無實」。</p>
 <p><strong>⚠️ 配方同實際唔夾嘅維度：</strong></p>
-<ul><li><strong>賽績線</strong> — 帳面 8.0%，實際 13.5%（大過帳面 68%）</li>
-<li><strong>級數優勢</strong> — 帳面 14.3%，實際 6.5%（細過帳面 54%）</li>
-<li><strong>狀態與穩定性</strong> — 帳面 8.8%，實際 13.4%（大過帳面 51%）</li>
-<li><strong>馬匹健康 / 新鮮感</strong> — 帳面 4.0%，實際 2.2%（細過帳面 47%）</li>
-<li><strong>騎練訊號</strong> — 帳面 23.6%，實際 13.1%（細過帳面 45%）</li>
-<li><strong>段速表現</strong> — 帳面 12.8%，實際 18.6%（大過帳面 45%）</li></ul>
+<ul><li><strong>賽績線</strong> — 帳面 8.0%，實際 13.8%（大過帳面 72%）</li>
+<li><strong>級數優勢</strong> — 帳面 14.3%，實際 6.4%（細過帳面 55%）</li>
+<li><strong>狀態與穩定性</strong> — 帳面 8.8%，實際 13.2%（大過帳面 49%）</li>
+<li><strong>馬匹健康 / 新鮮感</strong> — 帳面 4.0%，實際 2.1%（細過帳面 48%）</li>
+<li><strong>騎練訊號</strong> — 帳面 23.6%，實際 13.6%（細過帳面 43%）</li>
+<li><strong>段速表現</strong> — 帳面 12.8%，實際 18.2%（大過帳面 42%）</li></ul>
 <p>呢個唔一定係錯，但值得查：通常代表某個維度嘅分數散開程度同當初調校時唔同咗</p>
 <p>（例如換咗數據源、或者有 leaf 退役），權重就冇再對應返佢真正嘅話事權。</p>
 <p>ℹ️ <strong>同程表現</strong> 係「以 60 為中心」嘅維度：貢獻 = 權重 ×（分 − 60），唔佔加埋等於 100% 嘅份額。</p>
@@ -146,7 +146,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>6.69 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>6.76 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>騎練訊號　<code>trainer_signal</code>　— 權重 23.6%</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -161,7 +161,7 @@ ul, ol { padding-left:1.5rem; }
 <td>45.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.66 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.85 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>級數優勢　<code>class_advantage</code>　— 權重 14.3%</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -176,7 +176,7 @@ ul, ol { padding-left:1.5rem; }
 <td>25.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.02 分</strong>；<strong>1.3%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.01 分</strong>；<strong>1.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>段速表現　<code>sectional</code>　— 權重 12.8%</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -187,7 +187,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>9.58 分</strong>；<strong>2.1%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>9.48 分</strong>；<strong>3.2%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>狀態與穩定性　<code>stability</code>　— 權重 8.8%</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -213,7 +213,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>11.16 分</strong>；<strong>21.6%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>11.56 分</strong>；<strong>21.8%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>馬匹健康 / 新鮮感　<code>horse_health</code>　— 權重 4.0%</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -228,7 +228,7 @@ ul, ol { padding-left:1.5rem; }
 <td>38.9%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.53 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>3.50 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>同程表現　<code>distance_fit</code>　— 權重 2.0%</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -239,7 +239,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>12.46 分</strong>；<strong>12.3%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>12.26 分</strong>；<strong>15.3%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>晨操狀態　<code>trackwork</code>　— 權重 1.0%</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -250,7 +250,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>9.70 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>9.77 分</strong>；<strong>0.3%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h2>3. 個分點樣讀</h2>
 <p><strong>60 分永遠代表「中性 / 冇證據」</strong>，唔係「合格」。高過 60 = 有正面證據，低過 60 = 有負面證據。</p>
 <h3>報告入面嘅符號</h3>
@@ -438,13 +438,13 @@ ul, ol { padding-left:1.5rem; }
 </tr>
 </tbody></table>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-10-16 17:46 AEDT</code></li>
-<li>Git commit：<code>e9d10de4</code></li>
+<ul><li>生成時間：<code>2026-10-18 22:33 AEDT</code></li>
+<li>Git commit：<code>de10065a</code></li>
 <li>Scoring contract：<code>HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1</code></li>
 <li><code>scoring.py</code> 指紋：<code>8e880dcef8d8</code></li>
 <li><code>matrix_mapper.py</code> 指紋：<code>1da521a47df6</code></li>
 <li><code>renderer.py</code> 指紋：<code>2f658c846a36</code></li>
-<li>實測樣本：<strong>20 場、236 匹馬</strong>，由 <code>2026-10-11_ShaTin</code> 到 <code>2026-10-14_HappyValley</code>（跳過 351 個舊格式檔案）</li></ul>
+<li>實測樣本：<strong>31 場、380 匹馬</strong>，由 <code>2026-10-11_ShaTin</code> 到 <code>2026-10-19_ShaTin</code>（跳過 351 個舊格式檔案）</li></ul>
 <p>重新生成：</p>
 <pre><code>
 python3 .agents/skills/shared_racing/scripts/explain_model.py --platform hkjc
