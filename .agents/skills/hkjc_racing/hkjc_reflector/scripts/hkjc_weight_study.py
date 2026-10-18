@@ -14,6 +14,8 @@ Pre-registered arms (EXP-20261010-06):
                 meetings use production weights). Within-race softmax on the
                 composite / τ (τ = 3), weights = softmax(θ) so they stay ≥ 0 and
                 sum to 1, L2 shrink λ = 2.0 towards production. Nothing tuned.
+  wf_refit_tau  (EXP-20261019-02) same as wf_refit but τ is fitted jointly
+                (log τ, start 3, bounds 0.5–30) at every walk-forward step.
 
 Output: per-race rows in the harness format, ready for
 `hkjc_eval_harness.py compare --stage4 fixed_rule|walk_forward_oos`.
@@ -69,7 +71,8 @@ def rank_row(row: dict, weights: dict, centred: dict, base_weights: dict, arm: s
     return out
 
 
-def fit(rows: list[dict], keys: list[str], prior: dict, centred: dict, base_weights: dict) -> dict:
+def fit(rows: list[dict], keys: list[str], prior: dict, centred: dict, base_weights: dict,
+        fit_tau: bool = False, trail: dict | None = None) -> dict:
     import numpy as np
 
     races = []
@@ -89,11 +92,13 @@ def fit(rows: list[dict], keys: list[str], prior: dict, centred: dict, base_weig
         e = np.exp(theta - theta.max())
         return e / e.sum()
 
-    def loss(theta):
+    def loss(params):
+        theta = params[:len(keys)]
+        tau = math.exp(params[len(keys)]) if fit_tau else TAU
         w = weights_of(theta)
         total = 0.0
         for x, offset, y in races:
-            s = (x @ w + offset) / TAU
+            s = (x @ w + offset) / tau
             s = s - s.max()
             total -= float(y @ (s - np.log(np.exp(s).sum())))
         return total / len(races) + L2 * float(((w - w0) ** 2).sum())
@@ -101,8 +106,14 @@ def fit(rows: list[dict], keys: list[str], prior: dict, centred: dict, base_weig
     # Exact optimisation (L-BFGS on θ, numerical gradient). The first version used
     # a hand-rolled gradient step 25× too large and collapsed every fit into one
     # corner — an optimiser bug, not evidence (EXP-20261010-06).
-    result = minimize(loss, np.log(w0), method="L-BFGS-B", options={"maxiter": 200})
-    w = weights_of(result.x)
+    # `fit_tau`（EXP-20261019-02）：τ 一齊 fit（log τ，起點 3）。固定 τ=3 實測太自信
+    # （EXP-20261018-51：自由模型分係數 −0.59），會令 likelihood 偏向噪音。
+    start = np.append(np.log(w0), math.log(TAU)) if fit_tau else np.log(w0)
+    bounds = [(None, None)] * len(keys) + ([(math.log(0.5), math.log(30.0))] if fit_tau else [])
+    result = minimize(loss, start, method="L-BFGS-B", bounds=bounds, options={"maxiter": 300})
+    w = weights_of(result.x[:len(keys)])
+    if trail is not None:
+        trail["tau"] = round(math.exp(result.x[len(keys)]), 4) if fit_tau else TAU
     return {k: float(v) for k, v in zip(keys, w)}
 
 
@@ -166,7 +177,7 @@ def main(argv=None) -> int:
 
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("dump")
-    ap.add_argument("--arm", choices=("current", "neutral", "wf_refit", "wf_shape_k"), required=True)
+    ap.add_argument("--arm", choices=("current", "neutral", "wf_refit", "wf_refit_tau", "wf_shape_k"), required=True)
     ap.add_argument("--out", required=True)
     args = ap.parse_args(argv)
     rows = load(args.dump)
@@ -189,9 +200,11 @@ def main(argv=None) -> int:
         trail = []
         for index, meeting in enumerate(meetings):
             history = [r for m in meetings[:index] for r in by_meeting[m]]
-            weights = base if index < WARMUP_MEETINGS else fit(history, keys, base, centred, base)
-            trail.append({"meeting": meeting, "weights": {k: round(v, 4) for k, v in weights.items()}})
-            out.extend(rank_row(r, weights, centred, base, "wf_refit") for r in by_meeting[meeting])
+            extra: dict = {}
+            weights = base if index < WARMUP_MEETINGS else fit(
+                history, keys, base, centred, base, fit_tau=args.arm == "wf_refit_tau", trail=extra)
+            trail.append({"meeting": meeting, "weights": {k: round(v, 4) for k, v in weights.items()}, **extra})
+            out.extend(rank_row(r, weights, centred, base, args.arm) for r in by_meeting[meeting])
         Path(args.out + ".weights.json").write_text(json.dumps(trail, ensure_ascii=False, indent=1), encoding="utf-8")
     with open(args.out, "w", encoding="utf-8") as handle:
         for row in out:
