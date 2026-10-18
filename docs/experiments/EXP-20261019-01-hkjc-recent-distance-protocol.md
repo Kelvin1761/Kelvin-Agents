@@ -46,4 +46,4 @@ EXP-13 已經見過「截斷版好過完整版」嘅方向；截斷版大約等�
 
 ## 結果
 
-見 `EXP-20261019-01-hkjc-recent-distance-results.md`（跑完先寫）。
+見 `EXP-20261019-01-hkjc-recent-distance-results.md`：**REJECT**（N=6 Good +1.16 但 Gold −0.58，Holm 0.459）。
