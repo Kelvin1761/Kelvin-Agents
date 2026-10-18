@@ -23,9 +23,14 @@ def mounted(tmp_path, monkeypatch):
     return root
 
 
-def test_local_storage_is_not_an_external_volume(tmp_path):
+def test_local_storage_is_not_an_external_volume(tmp_path, monkeypatch):
+    # TMPDIR may deliberately put pytest's tmp_path on a mounted external disk.
+    # Use a lexical non-/Volumes path; rejection must precede any disk access.
+    local = Path(tmp_path.anchor) / "wongchoi-local-storage"
+    monkeypatch.setattr(runner.shutil, "disk_usage",
+                        lambda path: pytest.fail("local storage reached disk probe"))
     with pytest.raises(ValueError, match="/Volumes"):
-        runner.inspect_root(tmp_path)
+        runner.inspect_root(local)
 
 
 def test_unmounted_disk_does_not_create_scratch(mounted, monkeypatch):
