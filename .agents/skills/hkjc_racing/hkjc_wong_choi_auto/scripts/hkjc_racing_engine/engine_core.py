@@ -3433,7 +3433,12 @@ class RacingEngine:
         }
 
     def _formline_strength_signal(self):
-        text = self._clean(self._value("formline_strength") or "")
+        # 只睇標籤本身。每個標籤都帶住「(強組比例: a/b)」，入面有個「強」字，
+        # 以前 `"強" in text` 令「中強／中弱／弱／無資料」全部當咗 strong（78），
+        # weak（54）由來冇觸發過（EXP-20261018-08，§7）。
+        text = self._clean(self._value("formline_strength") or "").split("(")[0].split("（")[0].strip()
+        if not text or "無資料" in text:
+            return "unknown"
         if "極強" in text:
             return "elite"
         if "強" in text:
