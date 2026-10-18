@@ -127,6 +127,21 @@ def _meeting_date_for_logic(logic_path, race_context):
     return date.fromisoformat(match.group(1)) if match else None
 
 
+_FOLDER_VENUES = {"ShaTin": "沙田", "HappyValley": "跑馬地"}
+
+
+def _meeting_venue_for_logic(logic_path):
+    """Venue from the meeting folder name (`YYYY-MM-DD_ShaTin` / `_HappyValley`).
+
+    The 2026-04-12 → 05-09 archive Logic files carry no `race_analysis.venue`
+    (or 'Unknown'); DrawScorer then treats every such race as 跑馬地 and the
+    Sha Tin recipes never apply. Live Logic always has the venue
+    (EXP-20261018-01, §7).
+    """
+    match = re.search(r"\d{4}-\d{2}-\d{2}_(ShaTin|HappyValley)", str(Path(logic_path).parent))
+    return _FOLDER_VENUES[match.group(1)] if match else None
+
+
 def _profile_season_key(date_str):
     """HK racing season (Sep–Aug) start year from a dd/mm/yy date."""
     parsed = _profile_entry_date(date_str)
@@ -971,6 +986,10 @@ class HKJCAutoOrchestrator:
             meeting_date = _meeting_date_for_logic(race_file, race_context)
             if meeting_date is not None:
                 race_context["race_date"] = meeting_date.isoformat()
+            if str(race_context.get("venue") or "").strip() in ("", "Unknown"):
+                venue = _meeting_venue_for_logic(race_file)
+                if venue:
+                    race_context["venue"] = venue
             _enrich_profile_history(horses, as_of_date=meeting_date)
         formline_summaries = _load_formline_opponent_summaries(race_file, race_context, horses)
         for h_num, summary in formline_summaries.items():
