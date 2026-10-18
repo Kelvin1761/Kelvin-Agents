@@ -17,6 +17,11 @@ from shared_wong_choi.research_runner import ResearchDisposition, SubprocessRese
 from shared_wong_choi.research_supervision import PostflightReconciliationRunner
 from test_research_resources import fixture
 
+# The crash happens within ~2 s; the timeout only has to never win. 30 s lost to a
+# stalled release gate (parallel suites, background throttling) and the crash was
+# reported TIMED_OUT. What these tests check is crash classification, not timing.
+CRASH_TIMEOUT_SECONDS = 300
+
 
 def interrupted_fixture(tmp_path, point):
     spec, args, runtime, registry = fixture(tmp_path)
@@ -45,7 +50,7 @@ def interrupted_fixture(tmp_path, point):
 
     crashed = ResearchPostflightRunner(
         replace(runtime, executor=CrashingExecutor(poll_seconds=0.02, terminate_grace=0.1)), registry
-    ).run(spec, **args, estimated_bytes=1024, timeout_seconds=30)
+    ).run(spec, **args, estimated_bytes=1024, timeout_seconds=CRASH_TIMEOUT_SECONDS)
     assert crashed.disposition is ResearchDisposition.FAILED
     assert not (crashed.attempt_path / "completed.json").exists()
     outcome = json.loads((crashed.attempt_path / "outcome.json").read_text())
@@ -60,7 +65,7 @@ def reconcile(spec, runtime, registry, attempt, **kwargs):
         attempt_path=attempt,
         request_sha256=hashlib.sha256((attempt / "request.json").read_bytes()).hexdigest(),
         estimated_bytes=1024,
-        timeout_seconds=30,
+        timeout_seconds=CRASH_TIMEOUT_SECONDS,
         **kwargs,
     )
 
@@ -123,7 +128,7 @@ def test_conflicting_or_redirected_evidence_cannot_be_reconciled_as_success(tmp_
         attempt.mkdir()
         (attempt / "request.json").write_bytes((original / "request.json").read_bytes())
     result = PostflightReconciliationRunner(runtime, registry).run(
-        spec, attempt_path=attempt, request_sha256=pinned, estimated_bytes=1024, timeout_seconds=30
+        spec, attempt_path=attempt, request_sha256=pinned, estimated_bytes=1024, timeout_seconds=CRASH_TIMEOUT_SECONDS
     )
     assert result.disposition is not ResearchDisposition.SUCCEEDED
     assert result.decision_id is None and result.report_path is None

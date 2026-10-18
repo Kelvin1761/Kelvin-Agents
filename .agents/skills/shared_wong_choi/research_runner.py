@@ -521,6 +521,15 @@ class SubprocessResearchExecutor:
         state = CommandState.SUCCEEDED
         try:
             while True:
+                # A command that already exited is judged by its exit code, not by the
+                # clock: checking the deadline first labelled a process that finished
+                # just before it (or between two polls on a loaded machine) TIMED_OUT
+                # and "terminated" it after the fact.
+                if process.poll() is not None:
+                    stdout, stderr = process.communicate()
+                    if process.returncode != 0:
+                        state = CommandState.FAILED
+                    break
                 elapsed = time.monotonic() - started
                 try:
                     should_preempt = production_active()
