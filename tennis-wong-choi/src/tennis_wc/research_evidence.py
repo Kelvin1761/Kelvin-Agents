@@ -436,14 +436,17 @@ def build_prediction_artifacts(
         }
         if selection not in participants or len(participants) != 2:
             raise ValueError("Tennis selection is not an exact participant")
-        components, component_raw_refs = _components(
-            snapshot, pricing, available_by=prediction_at,
-        )
-        decision_inputs, decision_raw_refs = {}, {}
-        for name, path in DECISION_PATHS.items():
-            item, raw_ref = _input(snapshot, path, available_by=prediction_at)
-            decision_inputs[name] = item
-            _remember(decision_raw_refs, raw_ref)
+        try:
+            components, component_raw_refs = _components(
+                snapshot, pricing, available_by=prediction_at,
+            )
+            decision_inputs, decision_raw_refs = {}, {}
+            for name, path in DECISION_PATHS.items():
+                item, raw_ref = _input(snapshot, path, available_by=prediction_at)
+                decision_inputs[name] = item
+                _remember(decision_raw_refs, raw_ref)
+        except ValueError as exc:
+            raise ValueError(f"Tennis prediction {prediction_id}: {exc}") from exc
         raw_refs = dict(component_raw_refs)
         for raw_ref in decision_raw_refs.values():
             _remember(raw_refs, dict(raw_ref))
