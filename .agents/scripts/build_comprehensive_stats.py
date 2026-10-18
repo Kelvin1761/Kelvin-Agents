@@ -246,6 +246,15 @@ def build_all(season_key: str, extend: bool = True):
     if extend:
         base, added = append_new_meetings(season_key, base)
     dist_rows = base[base["Distance"].notna()] if "Distance" in base else base
+    if "Distance" in dist_rows:
+        # Integer metres. A NaN anywhere in the season's rows makes the column
+        # float, so the CSV said `1200.0` and the live engine (which looks up
+        # "1200") missed every 騎師同程／練馬師同程 row from 2026-10-07
+        # (EXP-20261018-02/04).
+        dist_rows = dist_rows.copy()
+        dist_rows["Distance"] = pd.to_numeric(dist_rows["Distance"], errors="coerce")
+        dist_rows = dist_rows[dist_rows["Distance"].notna()]
+        dist_rows["Distance"] = dist_rows["Distance"].round().astype(int)
 
     out = {}
     m = agg(base, ["Jockey"], with_profit=True)
