@@ -182,6 +182,12 @@ def inspect_au_feature_provenance(*, root: Path, as_of: datetime,
     prediction_report = inspect_prediction_artifacts(
         root=root, domain=Domain.AU, as_of=end, relocation_roots=roots, checkpoint=checkpoint,
     )
+    return _inspect_au_feature_records(prediction_report=prediction_report, root=root,
+                                       end=end, roots=roots, checkpoint=checkpoint)
+
+
+def _inspect_au_feature_records(*, prediction_report, root, end, roots, checkpoint):
+    """Native projection over internally verified records; not a public input API."""
     blobs, records = _Blobs(checkpoint), []
     for prediction in prediction_report["records"]:
         blockers: set[str] = set()
