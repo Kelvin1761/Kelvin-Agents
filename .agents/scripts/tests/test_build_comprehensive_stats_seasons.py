@@ -91,6 +91,9 @@ class ComprehensiveStatsSeasonTests(unittest.TestCase):
         self.assertEqual(int(jockey.loc["騎師乙", "Places"]), 1)
         distance = built["jockey_distance_stats.csv"].set_index("Jockey")
         self.assertEqual(float(distance.loc["騎師甲", "Distance"]), 1200.0)
+        # 寫出嚟要係 "1200" 唔係 "1200.0"（引擎用字串鍵查，EXP-20261018-04）
+        self.assertIn("騎師甲,1200,", built["jockey_distance_stats.csv"].to_csv(index=False))
+        self.assertIn(",1200,", built["trainer_distance_stats.csv"].to_csv(index=False))
         venue_track = built["jockey_venue_track_stats.csv"].set_index("Jockey")
         self.assertEqual(venue_track.loc["騎師甲", "Venue"], "沙田")
         self.assertEqual(venue_track.loc["騎師甲", "Track"], "Turf")

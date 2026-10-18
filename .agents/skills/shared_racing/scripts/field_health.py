@@ -79,6 +79,14 @@ RESULTS_COLUMNS = ("Distance", "Condition", "Pos", "Horse", "Barrier", "Weight",
                    "Jockey", "Trainer", "Margin", "SP", "Time")
 LEDGER_NAMES = {"au": "AU_Field_Health.jsonl", "hkjc": "HKJC_Field_Health.jsonl"}
 
+# 騎練訊號加減項（HKJC `python_auto.trainer_signal_detail.adjustments`）逐週出現率。
+# 2026-10-07 → 10-18 騎師同程／練馬師同程每匹馬都消失（統計寫 `1200.0`、引擎查
+# `1200`），leaf 分佈只係細幅移位，data_contract 同上面四個來源全部睇唔到
+# （EXP-20261018-02/04）。只量平時出現率高嘅項；「除去配備」本身罕見，唔量。
+ADJUSTMENT_FACTORS = {"hkjc": ("人馬歷史", "騎練組合", "騎師同程", "練馬師同程", "換騎")}
+ADJUSTMENT_MIN_HORSES = 100       # 一個香港賽日 ~100–145 匹；單日週都要判到
+ADJUSTMENT_HEALTHY_FLOOR = 0.30   # 曾經 ≥30% 匹馬有呢項先叫得「死」
+
 
 def iso_week(date_text: str) -> str | None:
     try:
@@ -135,6 +143,31 @@ def _evidence_and_provenance(paths) -> tuple[dict, dict, int]:
     return weak, provenance, races
 
 
+def _adjustment_presence(paths, factors) -> tuple[Counter, int, int]:
+    """每個加減項有幾多匹馬帶住（有記錄就算，±0 都計）。"""
+    present: Counter = Counter()
+    horses = races = 0
+    for path in paths:
+        try:
+            with open(path, encoding="utf-8") as handle:
+                data = json.load(handle)
+        except Exception:
+            continue
+        autos = [h.get("python_auto") or {} for h in (data.get("horses") or {}).values() if isinstance(h, dict)]
+        autos = [pa for pa in autos if pa.get("feature_scores")]
+        if not autos:
+            continue
+        races += 1
+        for pa in autos:
+            horses += 1
+            seen = {a.get("factor") for a in ((pa.get("trainer_signal_detail") or {}).get("adjustments") or [])
+                    if isinstance(a, dict)}
+            for factor in factors:
+                if factor in seen:
+                    present[factor] += 1
+    return present, horses, races
+
+
 def measure_logic_week(week: str, paths, platform: str) -> list[dict]:
     rows = []
     fields, races, _horses, _unreadable = dc.observe(paths, platform)
@@ -164,6 +197,15 @@ def measure_logic_week(week: str, paths, platform: str) -> list[dict]:
             "top_share": round(top_count / total, 4),
             "distinct": len(counts),
         })
+    factors = ADJUSTMENT_FACTORS.get(platform, ())
+    if factors:
+        present, horses, adj_races = _adjustment_presence(paths, factors)
+        for factor in factors:  # 0 次都要寫一行，唔係就變咗「消失」而唔係「死」
+            rows.append({
+                "week": week, "source": "adjustment", "field": factor,
+                "n": horses, "races": adj_races,
+                "fill_rate": round(present[factor] / horses, 4) if horses else None,
+            })
     return rows
 
 
@@ -261,6 +303,8 @@ def write_ledger(path: Path, new_rows: list[dict]) -> None:
 # ── 趨勢判斷 ──────────────────────────────────────────────────────────────────
 
 def _enough(row: dict) -> bool:
+    if row.get("source") == "adjustment":
+        return (row.get("n") or 0) >= ADJUSTMENT_MIN_HORSES
     minimum = MIN_ROWS if row.get("source") == "results_csv" else MIN_HORSES
     return (row.get("n") or 0) >= minimum
 
@@ -273,16 +317,19 @@ def _median(values):
 def _judge(source: str, current: dict, history: list[dict]) -> tuple[str, str] | None:
     """回傳 (status, detail) 或 None。history 由舊到新，已經過濾樣本量。"""
     baseline = history[-BASELINE_WEEKS:]
-    if source == "results_csv":
+    if source in ("results_csv", "adjustment"):
         now = current.get("fill_rate")
         med = _median(r.get("fill_rate") for r in baseline)
         best = max((r.get("fill_rate") or 0.0) for r in history)
+        floor = ADJUSTMENT_HEALTHY_FLOOR if source == "adjustment" else DEAD_HEALTHY_FLOOR
         if now is None:
             return None
-        if now <= 0.01 and best >= DEAD_HEALTHY_FLOOR:
-            return "dead", f"非空率 {now:.0%}，以前最高 {best:.0%}"
+        if now <= 0.01 and best >= floor:
+            word = "出現率" if source == "adjustment" else "非空率"
+            return "dead", f"{word} {now:.0%}，以前最高 {best:.0%}"
         if med is not None and med - now >= FILL_DROP:
-            return "degrading", f"非空率 {now:.0%}，前 {len(baseline)} 週中位數 {med:.0%}"
+            word = "出現率" if source == "adjustment" else "非空率"
+            return "degrading", f"{word} {now:.0%}，前 {len(baseline)} 週中位數 {med:.0%}"
         return None
     if source == "leaf":
         now = current.get("neutral_rate")
@@ -393,7 +440,8 @@ def _previous_week(week: str) -> str:
 
 
 SOURCE_LABELS = {"leaf": "leaf 分數", "evidence": "證據狀態",
-                 "provenance": "分數來源", "results_csv": "結果 CSV"}
+                 "provenance": "分數來源", "results_csv": "結果 CSV",
+                 "adjustment": "騎練調整項"}
 STATUS_ICONS = {"dead": "💀", "missing": "❓", "degrading": "📉", "known": "ℹ️"}
 
 
