@@ -145,6 +145,12 @@ def inspect_hkjc_feature_provenance(*, root: Path, as_of: datetime,
         root=root, domain=Domain.HKJC, as_of=end, relocation_roots=roots,
         checkpoint=checkpoint,
     )
+    return _inspect_hkjc_feature_records(prediction_report=prediction_report, root=root,
+                                         end=end, roots=roots, checkpoint=checkpoint)
+
+
+def _inspect_hkjc_feature_records(*, prediction_report, root, end, roots, checkpoint):
+    """Native projection over internally verified records; not a public input API."""
     blobs, records = _Blobs(checkpoint), []
     for prediction in prediction_report["records"]:
         blockers: set[str] = set()

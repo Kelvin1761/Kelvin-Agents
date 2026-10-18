@@ -57,13 +57,24 @@ def _build_report(*, root: Path, domain: Domain, as_of: datetime,
         raise ValueError("known domain required")
     if not isinstance(relocation_roots, tuple):
         raise ValueError("tuple relocation roots required")
-    settlement_inspector, feature_inspector, parse_results = _sources(domain)
+    settlement_inspector, feature_inspector, _ = _sources(domain)
     evidence_root, end = _safe(root), _at(as_of)
     roots = tuple(_safe(Path(item)) for item in relocation_roots)
     common = dict(root=evidence_root, as_of=end, relocation_roots=roots,
                   checkpoint=checkpoint)
     settlements = settlement_inspector(**common)
     features = feature_inspector(**common)
+    return _join_reports(settlements=settlements, features=features,
+                         root=evidence_root, domain=domain, as_of=end,
+                         relocation_roots=roots, checkpoint=checkpoint)
+
+
+def _join_reports(*, settlements, features, root, domain, as_of,
+                  relocation_roots, checkpoint):
+    """Private projection: callers must reconstruct both native sources."""
+    _, _, parse_results = _sources(domain)
+    evidence_root, end = _safe(root), _at(as_of)
+    roots = tuple(_safe(Path(item)) for item in relocation_roots)
     if settlements["prediction_report_hash"] != features["prediction_report_hash"]:
         raise ValueError("label and feature inventories do not share a prediction snapshot")
     feature_records = {item["record_id"]: item for item in features["records"]}

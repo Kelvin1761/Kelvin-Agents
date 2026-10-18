@@ -196,6 +196,30 @@ def _manifest_consistent(record: EvidenceRecord, resolved: list[tuple]) -> tuple
             str(path) if path else None)
 
 
+def _project_prediction(value, raw, domain, roots, blobs):
+    """One canonical bundle projection, shared by legacy and paged readers."""
+    cutoff = _at(value.body["source_cutoff_at"])
+    if any(_at(ref.captured_at) != cutoff or ref.source != f"{domain.value}_prediction_snapshot"
+           for ref in value.artifacts):
+        raise ValueError("prediction artifact provenance conflicts with record")
+    resolved, invalid = _resolve_bundle(value.artifacts, value.body["event_id"], roots, blobs)
+    direct = sum(item[1] == "direct" for item in resolved)
+    relocated = sum(item[1] == "relocated" for item in resolved)
+    unavailable = sum(item[1] == "unavailable" for item in resolved)
+    manifest_ok, manifest_path = _manifest_consistent(value, resolved)
+    resolved_roots = {str(path.parent) for _ref, status, path, _raw, _size in resolved
+                      if status != "unavailable" and path is not None}
+    bundle = bool(value.artifacts) and unavailable == 0 and manifest_ok and len(resolved_roots) == 1
+    return {"record_id": value.record_id, "event_id": value.body["event_id"],
+            "created_at": value.created_at, "source_cutoff_at": value.body["source_cutoff_at"],
+            "content_hash": raw["content_hash"], "artifact_refs": len(value.artifacts),
+            "direct_verified": direct, "relocated_verified": relocated,
+            "unavailable_refs": unavailable, "direct_invalid_refs": invalid,
+            "manifest_consistent": manifest_ok, "snapshot_bundle_verified": bundle,
+            "resolved_snapshot_root": next(iter(resolved_roots)) if len(resolved_roots) == 1 else None,
+            "resolved_manifest": manifest_path}
+
+
 def inspect_prediction_artifacts(*, root: Path, domain: Domain, as_of: datetime,
                                  relocation_roots: tuple[Path, ...] = (),
                                  checkpoint: Callable[[], None] = lambda: None) -> dict:
@@ -214,26 +238,7 @@ def inspect_prediction_artifacts(*, root: Path, domain: Domain, as_of: datetime,
         raise ValueError("prediction artifact reference limit exceeded")
     records = []
     for value, raw in sorted(predictions, key=lambda item: item[0].record_id):
-        cutoff = _at(value.body["source_cutoff_at"])
-        if any(_at(ref.captured_at) != cutoff or ref.source != f"{domain.value}_prediction_snapshot"
-               for ref in value.artifacts):
-            raise ValueError("prediction artifact provenance conflicts with record")
-        resolved, invalid = _resolve_bundle(value.artifacts, value.body["event_id"], roots, blobs)
-        direct = sum(item[1] == "direct" for item in resolved)
-        relocated = sum(item[1] == "relocated" for item in resolved)
-        unavailable = sum(item[1] == "unavailable" for item in resolved)
-        manifest_ok, manifest_path = _manifest_consistent(value, resolved)
-        resolved_roots = {str(path.parent) for _ref, status, path, _raw, _size in resolved
-                          if status != "unavailable" and path is not None}
-        bundle = bool(value.artifacts) and unavailable == 0 and manifest_ok and len(resolved_roots) == 1
-        records.append({"record_id": value.record_id, "event_id": value.body["event_id"],
-                        "created_at": value.created_at, "source_cutoff_at": value.body["source_cutoff_at"],
-                        "content_hash": raw["content_hash"], "artifact_refs": len(value.artifacts),
-                        "direct_verified": direct, "relocated_verified": relocated,
-                        "unavailable_refs": unavailable, "direct_invalid_refs": invalid,
-                        "manifest_consistent": manifest_ok, "snapshot_bundle_verified": bundle,
-                        "resolved_snapshot_root": next(iter(resolved_roots)) if len(resolved_roots) == 1 else None,
-                        "resolved_manifest": manifest_path})
+        records.append(_project_prediction(value, raw, domain, roots, blobs))
     blobs.recheck()
     reader.recheck()
     report = {"schema_version": SCHEMA, "domain": domain.value, "root": str(root),

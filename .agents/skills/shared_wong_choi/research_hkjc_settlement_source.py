@@ -168,15 +168,34 @@ def inspect_hkjc_settlement_candidates(
         root=root, domain=Domain.HKJC, as_of=end, relocation_roots=roots,
         checkpoint=checkpoint,
     )
+    return _inspect_hkjc_settlement_records(prediction_report=prediction_report, root=root,
+                                            end=end, roots=roots, checkpoint=checkpoint)
+
+
+def _inspect_hkjc_settlement_records(*, prediction_report, root, end, roots, checkpoint,
+                                      selected_prediction_ids=None, evidence_snapshot=None):
     predictions = {item["record_id"]: item for item in prediction_report["records"]}
-    reader, blobs = _Reader(checkpoint), _Blobs(checkpoint)
-    records = _evidence(root, end, reader)
+    blobs = _Blobs(checkpoint)
+    if evidence_snapshot is None:
+        reader = _Reader(checkpoint)
+        records = _evidence(root, end, reader)
+    else:
+        from .research_native_evidence_snapshot import _NativeEvidenceSnapshot
+        if type(evidence_snapshot) is not _NativeEvidenceSnapshot:
+            raise ValueError("native evidence snapshot required")
+        records, reader = evidence_snapshot._begin_read(
+            root=root, domain=Domain.HKJC, as_of=end, checkpoint=checkpoint,
+            selected_prediction_ids=selected_prediction_ids)
+    evidence_records_seen = len(records) if evidence_snapshot is None else evidence_snapshot.record_count
     settlements = sorted(
         (item for item in records.values()
          if item.kind is RecordKind.SETTLEMENT
          and item.body["settlement_state"] in {"settled", "hit", "miss"}),
         key=lambda item: item.record_id,
     )
+    if selected_prediction_ids is not None:
+        settlements = [value for value in settlements
+                       if records[value.links["decision_id"]].links["prediction_id"] in selected_prediction_ids]
     if len(settlements) > MAX_SETTLEMENTS:
         raise ValueError("HKJC settlement candidate limit exceeded")
     candidates = []
@@ -262,7 +281,7 @@ def inspect_hkjc_settlement_candidates(
         "as_of": end.isoformat(),
         "relocation_roots": [str(item) for item in roots],
         "prediction_report_hash": prediction_report["content_hash"],
-        "evidence_records_seen": len(records),
+        "evidence_records_seen": evidence_records_seen,
         "settlements_seen": len(candidates),
         "verified_prediction_bundles": sum(item["prediction_bundle_verified"] for item in candidates),
         "settlement_artifacts": sum(item["settlement_artifacts"] for item in candidates),
