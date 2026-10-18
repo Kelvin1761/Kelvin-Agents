@@ -47,6 +47,66 @@ CI [−0.0085, +0.0078] —— 嗰個 terminal「改善」係 50 場嘅噪音。
   乾淨 point-in-time 段做 walk-forward**（之前存檔係賽後重評，有前視）。
 - **驗證把尺**：A/A（候選 = baseline）必須 REJECT；已知結果嘅舊候選重判要判得啱。
 
+### 8. 兩邊都 refit（2026-10-15 加）—— 管會改變 leaf 資訊量嘅候選
+
+> 呢次係**獨立改把尺**，冇包含任何候選 model／feature／weight 改動。
+> 實驗記錄：`EXP-20261015-20`。判決器：`model_evaluation_decision.evaluate_with_refit_arms`。
+
+**問題**：之前一個候選只會放入**現行權重**度比較。但現行權重係喺舊 leaf 之下 fit 出嚟：
+修好之前個 leaf 嘈，權重就會偏細；其他維度亦會頂替佢攞走一部分權重。
+所以「凍結權重下過唔到」唔等於「呢個修正冇用」，有可能只係「舊權重聽唔到佢」
+（實例：試閘分 AUC 0.5587、覆蓋 98.6%，但每分只傳導 0.007 綜合分）。
+
+**適用**：所有會改變 leaf／維度資訊量嘅候選，即係修正 leaf、加或者剷 leaf、改覆蓋率。
+純權重候選（本身已經係 fit）同純顯示改動唔適用。
+
+**四個 arm**：
+
+| | 現行權重 | walk-forward refit |
+|---|---|---|
+| baseline leaf | A0 | B0 |
+| candidate leaf | A1 | B1 |
+
+| 比較 | 模式 | 答咩問題 |
+|---|---|---|
+| **fixed arm** A1 vs A0 | `fixed_rule` | 唔郁權重，直接上線得唔得？ |
+| **refit arm** B1 vs B0 | `walk_forward_oos` | 兩邊都有自己嘅權重，特徵本身係咪真係好咗？ |
+| **live guard** B1 vs A0 | `walk_forward_oos` | 連新權重一齊上線，會唔會差過而家 live？ |
+| **stale** B0 vs A0 | 只報告 | 現行權重係咪已經過時？ |
+
+**判決**（以下次序）：
+
+1. B0 同 B1 一定要用**同一個預先登記嘅 refit 程序**：同一套窗口、warmup、draw 數、
+   seed、目標函數、fallback 規則同維度集。程序要喺睇任何 arm 結果之前鎖定，
+   以 hash 證明兩邊一樣，唔一樣就直接拒絕（`refit_procedure_not_symmetric`）。
+   refit 只可以用 v3 准許嘅乾淨窗口（AU：2026-08-05 起）。
+2. fixed arm 同 refit arm 係同一個候選嘅兩次機會，所以當一個 family 做 **Holm**
+   調整（以每個 arm WIN 所依靠嘅指標中最細嘅 p）。調整後 p < 0.05 先算數。
+3. fixed arm WIN → **用現行權重上線**（`candidate_with_live_weights`）。
+4. 否則 refit arm WIN，**而且** live guard 唔係 `primary_regression`／`ranking_metric_harm`
+   → **候選 leaf 連同佢嘅 refit 權重一齊上線**（`candidate_with_refit_weights`），
+   當一個改動。上線用嘅權重係用同一程序、喺上線日之前全部乾淨數據 fit 出嚟嘅共識。
+5. 其他情況一律 REJECT（`refit_package_regresses_live`／`arm_multiplicity_not_significant`／
+   `both_arms_reject`）。
+
+**唔准做嘅嘢**：
+
+- **唔可以將 B1 vs A0 當成候選嘅功勞。** 如果 B0 本身已經贏 A0，嗰份增益屬於 refit，
+  唔屬於候選。候選嘅功勞只係 B1 − B0。B0 贏 A0 嘅話，`baseline_weights_stale` 會舉旗，
+  要另外以純權重候選（`walk_forward_oos`）身份過閘，唔可以夾帶上線。
+- **「全部權重設中性／相等」唔係判決 arm**，只可以做診斷。EXP-20261010-06：
+  HKJC 中性權重 Good −6.99pp [−11.5, −2.6]，明顯差過現行權重；喺一個差好多嘅模型上面
+  加分，唔代表喺 live 模型上面加分。
+- **唔追溯。** 呢條規則之前已經 REJECT 嘅候選唔會自動改判。要用 §8 重測舊候選，
+  就當一個新實驗：揀一張短名單，預先登記成一個 family，入面再做 Holm。
+  唔准將全部舊 REJECT 逐個用 B arm 再試一次。
+- **§6 功效前置照舊適用。** refit 會加變異，refit arm「CI 跨零」好多時只係量唔到。
+
+**工具現況**（2026-10-15）：判決器已有，有測試（`test_refit_both_arms.py`，A/A 必須 REJECT）。
+AU 嘅 walk-forward refit 預測產生器未整理成可重用工具；
+EXP-20261015-02 嘅研究程式（分支 `codex-au-trial-cutoff-20261015`）係起點。
+HKJC 可以用 `hkjc_weight_study.py` 嘅 `wf_refit` arm。
+
 ## Stage 4 判決順序（v2，2026-08-26）
 
 呢次係**獨立改把尺**，冇包含任何候選 model／feature／weight 改動。舊 AU AUC-only

@@ -207,6 +207,9 @@
 - [EXP-20261016-51](EXP-20261016-51-hkjc-first-section-speed-screen.md) — 第一段速度篩選：近 6 仗最快 Δ1 AUC 0.565、對模型 ρ +0.07、對今仗第一沿途位 ρ −0.42，增量未顯著；EXP-20261010-10 parser 讀錯欄、TAU=3 太自信
 - [EXP-20261016-52](EXP-20261016-52-hkjc-first-section-results.md) — 最快第一段 K=2/4/6 預先登記：**UNRESOLVABLE**（Good +0.70/+1.40/+1.05，Holm 0.697，< MDE）；換馬層面頭 2 換入上名 52% vs 換出 23%（探索性）
 - [EXP-20261016-53](EXP-20261016-53-hkjc-first-section-owner-release.md) — **Kelvin 決定上線 K=4，未證實**：Facts → Logic `first_section_min_delta`，段速 +4/+2/0/−1/−2；forward 退回條件 2026-10-17 起 60 場中期止蝕、150 場最終判定
+- [EXP-20261018-01](EXP-20261018-01-hkjc-9d-label-mismatch-scan.md) — HKJC 全 9D 標籤錯配掃描：222 個關鍵字檢查對 4,788 匹存檔；除已修嘅「進步」外，舊存檔九日冇 venue 令沙田配方唔生效（§7 由資料夾名補，live 零改變，回放 57 場郁、Gold +0.58pp CI 跨零）；段速兩個死分支、長休晨操顯示句、持續增減磅分支留俾各維度審查
+- [EXP-20261018-02](EXP-20261018-02-hkjc-jt-distance-key-regression.md) — §7：騎師同程／練馬師同程 live 由 10-07 起 0 命中（統計重建寫 `1200.0`，引擎查 `1200`）；loader 正規化後 10-19 144/144 命中、首選 0 場變、頭 2 組合 3 場變；回放本身冇呢個 bug（PIT 已正規化）
+- [EXP-20261018-03](EXP-20261018-03-hkjc-jockey-trainer-review.md) — 騎練訊號深入審查：六個加減項成套剷走 Good −2.61pp（CI 全負、平均名次 Holm p<0.001）→ 全部保留；換騎 −1.5 剷走 Good −1.16 CI 全負；升級／降級換騎對市場冇分別，唔使拆方向；同程鍵 live 退步見 EXP-02
 - [EXP-20261016-70](EXP-20261016-70-au-track-audit-results.md) — 場地與地況適性六項：同場斷崖係真（1 戰 −3.7pp → 2 戰 −9.1pp），剷斷崖、濕地唔重扣、剷重地專項三個都輸 → 保留；只上線 base 62.9 → 60（§7，consistency −4 門檻跟住 60 → 57.1，排名不變）。留低：同場比率（6+ 戰 1 次上名 −11.0pp 照加 +5）、未跑濕地 −6.4 過重、合成跑道 85 場未夠
 - [EXP-20261016-71](EXP-20261016-71-au-form-quality-distance-results.md) — 近績路程相關度 + 大幅增減程：模型名次層內 |Δ|≥400m 剩餘 −5.8pp [−7.6,−4.1]（大幅縮程最差）；F1 路程加權 REJECT（OOS Gold −1.08pp 六 block 全負）；F2 大幅轉程近績質素分 −5 上線（v3 RANKING_WIN，Good +0.28pp，Holm p 0.096 唔算顯著改善）
 - [EXP-20261016-72](EXP-20261016-72-au-track-rate-and-centralise-results.md) — 地況扣分集中一個 `_going_adjustment`（32,448 匹逐位元相同）上線；同場比率 R REJECT（Gold −0.32pp，§8 both_arms_reject）；合成跑道維持當好地，85 場，夠 100 場再測
@@ -216,3 +219,4 @@
 - [EXP-20261016-78](EXP-20261016-78-au-dead-trial-speed-rule-section7-results.md) — §7（用戶決定）：剷走讀 `timing_trial_600m_avg_speed` 嘅兩條死規則；乾淨窗 0 匹改變，Racenet 年代存檔 15 場排名改變；唔係改善
 - [EXP-20261016-77 上線](EXP-20261016-77-au-trial-speed-to-preparation-ship.md) — 用戶決定：試閘速度由 L600 環境分搬去試閘備戰（試閘 L600 分 0.5 + 試閘密度 0.5），可解釋性理由；§8 冇改善亦冇顯著變差；dashboard／報告加試閘備戰細項
 - [EXP-20261016-79](EXP-20261016-79-au-trial-dimension-rebuild-results.md) — 試閘維度重建：試閘證據全部集中（⅓ 份額）REJECT（§8 fixed Good −0.61pp、NDCG CI 全負）；唔用試閘名次再差（三個排名指標 CI 全負）→ 名次保留；集中可以改喺報告層做
+- [EXP-20261015-20](EXP-20261015-20-ruler-refit-both-arms.md) — 把尺：合約 §8「兩邊都 refit」—— 改 leaf 資訊量嘅候選要有 A0／A1／B0／B1 四個 arm，fixed 同 refit 兩個 arm 做 Holm；判決器 `evaluate_with_refit_arms`。2026-10-16 已經喺 EXP-12／17／18／31／71／77／79 等用分支模組做參考判決，2026-10-18 正式發佈
