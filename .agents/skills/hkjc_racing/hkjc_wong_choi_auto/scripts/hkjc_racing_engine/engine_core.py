@@ -1873,16 +1873,26 @@ class RacingEngine:
             lines.append("醫療欄有紀錄，或屬傷病後復出，須留意復原情況")
 
         # 長休 × 晨操 context（#6）：長休（>60日）要睇操練夠唔夠
+        # 以前 strong = 「快操」或「試閘」出現 —— 但每份摘要都有「近#日快操#課、試閘#課」
+        # 模板字，所以長休馬一律印「操練量充足」（897 匹只有 1 匹兩樣都係 0）。
+        # 而家睇實際課數（EXP-20261018-10，純顯示，唔入分）。
         tw = self._text("trackwork_digest") + self._text("trackwork_trainer")
         if days is not None and days > 60:
-            strong = any(k in tw for k in ("快操", "試閘", "積極", "加強", "操練充足", "好過近績"))
-            weak = any(k in tw for k in ("放緩", "偏保守", "操練量少", "操練不足"))
-            if strong:
-                lines.append("復出前操練量充足，狀態有支持")
-            elif weak:
-                lines.append("長休後操練偏保守，狀態須觀察")
+            counts = re.search(r"近(\d+)日快操(\d+)課、試閘(\d+)課", tw)
+            gallops = int(counts.group(2)) if counts else None
+            trials = int(counts.group(3)) if counts else None
+            seen = f"（近{counts.group(1)}日快操{gallops}課、試閘{trials}課）" if counts else ""
+            slowing = any(k in tw for k in ("放緩", "偏保守", "操練量少", "操練不足"))
+            enough = bool(counts) and ((gallops >= 3 and trials >= 1) or gallops >= 5)
+            light = bool(counts) and gallops <= 2 and trials == 0
+            if enough and not slowing:
+                lines.append(f"復出前操練量充足{seen}，狀態有支持")
+            elif enough:
+                lines.append(f"復出前有實際操練{seen}，但近期操練趨勢放緩，狀態須觀察")
+            elif light or slowing:
+                lines.append(f"長休後操練偏保守{seen}，狀態須觀察")
             else:
-                lines.append("長休復出，宜對照晨操判斷備戰")
+                lines.append(f"長休復出{seen}，宜對照晨操判斷備戰")
 
         verdict = "；".join(lines[1:]) if len(lines) > 1 else (lines[0] if lines else "")
         return {"lines": lines, "verdict": verdict}

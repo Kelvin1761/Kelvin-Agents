@@ -1,6 +1,6 @@
 {
   "platform": "hkjc",
-  "engine_fingerprint": "738eeacfbdd1",
+  "engine_fingerprint": "12452f450c3d",
   "calibrated_from": {
     "races": 150,
     "horses": 1871,
@@ -61,14 +61,14 @@
     "jockey_score": {
       "horses": 1871,
       "neutral_rate": 0.0198,
-      "mean_within_race_spread": 7.2607,
+      "mean_within_race_spread": 7.3276,
       "min": 48.18,
       "max": 94.2
     },
     "race_shape_context_score": {
       "horses": 1470,
       "neutral_rate": 0.0034,
-      "mean_within_race_spread": 8.6523,
+      "mean_within_race_spread": 8.6532,
       "min": 39.06,
       "max": 82.0
     },
@@ -82,7 +82,7 @@
     "speed_score": {
       "horses": 1871,
       "neutral_rate": 0.0283,
-      "mean_within_race_spread": 8.5674,
+      "mean_within_race_spread": 8.5686,
       "min": 38.62,
       "max": 86.63
     },
@@ -95,22 +95,22 @@
     },
     "trackwork_trend_score": {
       "horses": 1871,
-      "neutral_rate": 0.0155,
-      "mean_within_race_spread": 9.6277,
+      "neutral_rate": 0.015,
+      "mean_within_race_spread": 9.6297,
       "min": 48.24,
       "max": 77.1
     },
     "trainer_score": {
       "horses": 1871,
       "neutral_rate": 0.0267,
-      "mean_within_race_spread": 3.3298,
+      "mean_within_race_spread": 3.367,
       "min": 56.3,
       "max": 85.0
     },
     "weight_score": {
       "horses": 1871,
       "neutral_rate": 0.0567,
-      "mean_within_race_spread": 5.2649,
+      "mean_within_race_spread": 5.2327,
       "min": 50.0,
       "max": 74.0
     }
