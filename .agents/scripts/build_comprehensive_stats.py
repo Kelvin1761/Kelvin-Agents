@@ -224,6 +224,37 @@ def agg(df: pd.DataFrame, keys: list[str], with_profit: bool = False) -> pd.Data
     return g
 
 
+_BRAND = re.compile(r"\(([A-Z]\d{3})\)\s*$")
+
+
+def horse_distance_table(df: pd.DataFrame) -> pd.DataFrame:
+    """每匹馬 × 路程嘅完整香港往績（出賽／冠／亞／季／上名）。
+
+    Facts 嘅「同程 (a-b-c-d)」只數賽績頁列出嘅仗：9–10 月 40% 少數、7.9% 有上名被當冇
+    （EXP-20261018-12/13）。呢張表由賽果庫砌，live 讀 latest，回放由 pit_backtest 按日期注入。
+    Brand 由「馬名(J208)」抽；冇烙號就留空，靠馬名對。
+    """
+    columns = ["Brand", "Horse", "Distance", "Starts", "Wins", "Seconds", "Thirds", "Places"]
+    if df is None or df.empty or not {"Horse", "Distance", "Rank"} <= set(df.columns):
+        return pd.DataFrame(columns=columns)
+    d = df[["Horse", "Distance", "Rank"]].copy()
+    d["Distance"] = pd.to_numeric(d["Distance"], errors="coerce")
+    d["Rank"] = pd.to_numeric(d["Rank"], errors="coerce")
+    d = d[d["Distance"].notna() & d["Rank"].notna() & (d["Rank"] > 0)]
+    d["Distance"] = d["Distance"].round().astype(int)
+    horse = d["Horse"].astype(str)
+    d["Brand"] = horse.str.extract(_BRAND, expand=False).fillna("")
+    d["Horse"] = horse.str.replace(r"\(.*\)\s*$", "", regex=True).str.strip()
+    d["Wins"] = (d["Rank"] == 1).astype(int)
+    d["Seconds"] = (d["Rank"] == 2).astype(int)
+    d["Thirds"] = (d["Rank"] == 3).astype(int)
+    g = d.groupby(["Brand", "Horse", "Distance"], dropna=False).agg(
+        Starts=("Rank", "count"), Wins=("Wins", "sum"), Seconds=("Seconds", "sum"), Thirds=("Thirds", "sum"),
+    ).reset_index()
+    g["Places"] = g["Wins"] + g["Seconds"] + g["Thirds"]
+    return g[columns]
+
+
 def build_change_priors(df: pd.DataFrame) -> pd.DataFrame:
     d = df.sort_values("Date").copy()
     d["PrevJockey"] = d.groupby("Horse")["Jockey"].shift(1)
@@ -268,6 +299,7 @@ def build_all(season_key: str, extend: bool = True):
     vt = agg(base, ["Jockey", "Venue", "Track"], with_profit=True)
     out["jockey_venue_track_stats.csv"] = vt[["Jockey", "Venue", "Track", "Wins", "Starts", "Places", "Profit", "WinRate", "ROI"]]
     combo = agg(base, ["Jockey", "Trainer"])
+    out["horse_distance_stats.csv"] = horse_distance_table(base)
     out["general_pre_race_priors/jockey_trainer_combo_priors.csv"] = combo[["Jockey", "Trainer", "Wins", "Starts", "Places", "WinRate", "PlaceRate"]]
     out["general_pre_race_priors/jockey_change_priors.csv"] = build_change_priors(base)
     return out, added
