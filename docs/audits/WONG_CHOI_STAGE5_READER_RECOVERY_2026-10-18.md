@@ -31,11 +31,35 @@ The preserved `research_index.py` change uses `lstat` to check symlinks, with pa
 
 Targeted recheck: `python3 -m pytest -q -p no:cacheprovider` over `test_research_native_evidence_snapshot.py`, `test_research_index.py`, `test_research_review_cursor.py` and `test_research_paged_monitoring_consumer.py` (all under `.agents/skills/shared_wong_choi/tests/`), using the same external wrapper and environment. Exit 0: **166 passed in 53.07 seconds**; external scratch `wc-run-ni1dje9l`. `git diff --check` also passed. This includes the reconciled cursor tests and index symlink rejection, but is not full-gate or live-pilot acceptance.
 
+## Full gate on the recovered payload — failed, not release-ready
+
+Command: `env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.agents/skills /usr/bin/caffeinate -i python3 .agents/scripts/wongchoi_external_run.py -- nice -n 10 ./檢查.sh`.
+
+- Immutable tested HEAD: `bed38b257e1cf8446173c70bc3fab8ab60d23645`; the worktree was clean before and after execution.
+- Terminal session `36401` exited **1**. External scratch: `wc-run-iv_krlzd`.
+- **14/15 suites passed; Agent scripts failed.** Across Python suites: 5,114 passed, one failed, two expected failures and two Dashboard skips. Node: 89 passed. Ruff, unchanged scoring goldens, generated descriptions and both actual meeting data-contract checks passed (AU warnings above remain).
+- Shared Wong Choi: **1,609 passed in 2,727.55 seconds**. All original large cases were included, with no selection filter, reduced history, altered labels or relaxed timeout. Tennis: 709 passed in 177.40 seconds.
+- AU 1,300-prediction/>5,000-reference/13-page case: corpus 559.265149458 seconds, review 334.233480042 seconds, both `receipt_verified` and within their unchanged separate 600-second limits. Corpus hash `329691b3388789d3fc9e09d0b4ad2338c03ed75457ecd95c261e830a641d8afc`; review hash `daec1531a0d8624a40518f43bba2c8134281e3a00176073ff842d33a2a5edefb`.
+- HKJC counterpart: corpus 528.172195750 seconds, review 257.809622458 seconds, both `receipt_verified` within unchanged separate limits. Corpus hash `57f9b4b41e060d7e1d271efc86fa6edc3d402c50e0ccebcd63403bfd6908d981`; review hash `05ba3e51f245f35691ae4928bed07262aa45649e77cead39259b1a17d778f25e`.
+- Each case retains one real fixture label only, no sample growth or promotion authority, and unchanged companion bytes after review. These are engineering fixtures, not real domain pilots or model-performance evidence.
+
+### Isolated upstream test failure
+
+`test_local_storage_is_not_an_external_volume` passes pytest's `tmp_path` to the external storage inspector and expects a non-`/Volumes` rejection. When the wrapper deliberately routes `TMPDIR` to the mounted external disk, that fixture is a valid external path: the expected exception must not occur. Agent scripts reported one failed, 101 passed and two expected failures.
+
+The failure was independently reproduced on clean `origin/main` base `efebdb06c62b9e09b2fb7b1f6f0e8228876f7f16` without any reader changes: one failed in 0.05 seconds, external scratch `wc-run-1uqq1wgx`.
+
+A separate one-file WIP branch `codex-external-scratch-test-20261018`, commit `6985b534300ef6f3066a9534545d5c10ad94cf07`, uses a lexical non-`/Volumes` path anchored at the filesystem root and asserts rejection before any disk-capacity probe. It does not change the production guard, allowed storage paths or timeouts. External-wrapper recheck: all 11 tests passed in 0.11 seconds (`wc-run-j0318v6x`); its repo quick gate also passed (`wc-run-h8uie5z4`). Commit and push were preservation only, not release/merge/activation.
+
+The test path `.agents/scripts/tests/test_wongchoi_external_run.py` is outside the heartbeat's Stage 5 approval allowlist. It has not been folded into the reader scope or automatically merged. A separate human scope/release decision is required; then align the reader and rerun the full gate. The passing isolated recheck cannot retroactively turn the failed full gate green.
+
+Read-only policy inspection of the reader's 36 paths yields risk `code`, gate `full`, four-domain code sync, no installer, no Dashboard deploy and no manual reason. This does not satisfy the missing successful full gate, immutable remote/rollback checks or other approval conditions. No release manifest or approval was created.
+
 ## Remaining acceptance
 
-1. Fresh targeted snapshot/index/cursor/paged-consumer tests, including preserved upstream timeout behavior.
-2. Full repository gate, including both original large AU/HKJC reader cases without reduced history, relaxed limits or changed labels.
-3. Scoped preservation on a non-main branch; then separate release eligibility and current immutable SHA checks. A recovery branch is not a release and must not deploy.
+1. Separate scope/release decision for the independently verified upstream test correction; no automatic approval under the Stage 5 heartbeat.
+2. Align to the approved base and rerun the complete repository gate; the failed run and its evidence remain historical, not replaced by a partial recheck.
+3. Reader WIP preservation is complete; release eligibility and current immutable SHA checks remain open. A recovery branch is not a release and must not deploy.
 4. Task 6 real reviewed power applicability, Task 7 live acceptance and Tasks 8–10 pilots/checkpoints remain unproven. Reader engineering success cannot stand in for these requirements.
 
 No scoring, feature, weight, ruler, holdout, scheduler, installer, Dashboard, credential, retention, ledger, bankroll or promotion change is part of this recovery.
