@@ -465,6 +465,17 @@ class TrainerSignalPriors:
         df = pd.concat(frames, ignore_index=True)
         for column in ("Wins", "Starts", "Places"):
             df[column] = pd.to_numeric(df[column], errors="coerce").fillna(0.0)
+        if "Distance" in keys:
+            # The engine looks up `(name, "1200")`. Since the 2026-10 stats rebuild
+            # 25_26/26_27 write `1200.0`, and concat turns every season into float,
+            # so 騎師同程／練馬師同程 silently missed every runner from the
+            # 2026-10-07 meeting on (EXP-20261018-02). PIT replays already
+            # normalised this way (pit_backtest._grouped_priors).
+            numeric = pd.to_numeric(df["Distance"], errors="coerce")
+            df["Distance"] = [
+                str(int(value)) if pd.notna(value) else str(raw).strip()
+                for value, raw in zip(numeric, df["Distance"])
+            ]
         grouped = df.groupby(keys, dropna=False)[["Wins", "Starts", "Places"]].sum().reset_index()
         records: dict[tuple[str, ...], dict] = {}
         for row in grouped.to_dict(orient="records"):
