@@ -48,4 +48,33 @@ Re-poll the same live handle. If it fails, isolate the actual reported failure b
 3. Revalidate the original standing-approval scope and use the existing controller for any approval/merge/activation; verify all configured production domains afterward.
 4. Keep Tasks 6–10 open: reviewed power design, live review scheduler/Telegram/Dashboard acceptance, real Tennis and racing pilots, NBA forward evidence, operational/fault/resource checks and final exit audit.
 
-This audit is preservation on a non-main branch, not another release or a deployment instruction.
+## Terminal diagnostic result and isolated cause
+
+Handle `79783` is terminal, exit 1; do not restart or poll it as live. The unchanged clean-clone gate reproduced exactly one failure: `NoStaleEngineConstantCopies.test_allowlist_has_no_dead_entries` in `.agents/skills/au_racing/au_wong_choi_auto/tests/test_no_stale_engine_constant_copies.py`. Fourteen suites passed; only AU failed (1 failed / 1,246 passed). Shared Wong Choi passed all 1,609 tests in 3,113.78 seconds, with every original large case included. Overall Python: 5,100 passed, one failed, two expected failures and 16 Dashboard skips; Node: 89 passed. AU/HKJC goldens and generated model explanations passed. Clean clone lacked untracked local data-root markers, so both meeting data-contract checks skipped; the initial controller gate had checked actual local corpora.
+
+Retained complete diagnostic log SHA256: `b7e81414d63f77354150fc95b83b679bce254b8725d2e8dd79b851b7eb6a7b36` at the path above. Its final marker is `UNCHANGED_APPROVAL_GATE_EXIT=1`. This does not replace either failed approval with a green result.
+
+The scanner tests every component of `path.parts` against `scratch`, `archive` and `__pycache__`. The mandated external TMPDIR is below `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/`; therefore the scanner excludes **all** repository Python files in the clean clone. All ten legitimate allowlist entries appear dead, and the literal-copy test passes vacuously. This is an upstream test-discovery defect, not a reader failure or evidence of model degradation. The same scanner file is unchanged between the reader commit and the subsequently fetched main.
+
+The independent fix branch `codex-au-scan-root-fix-20261018` is based on newer main `1528d16e`; its single-file commit is `435996dfc3ff49b18075b1250a695d30dfd5e190`. It changes exclusion matching to `path.relative_to(root).parts`, keeping true in-repository scratch/archive/cache and defining-file exclusions. A regression exercises checkouts beneath each excluded ancestor while requiring `live.py` to remain discoverable. The new regression first failed (1 failed / 2 passed, `wc-run-0uizeg_0`), then all three tests passed after the minimal fix (`wc-run-4bdaaf8c`); repo quick gate passed with actual AU/HKJC corpus checks and unchanged goldens (`wc-run-9hlsnacc`). No original assertion or allowlist entry was removed; no model, ruler or timeout changed.
+
+The new AU test path is **outside** the standing Stage 5 automatic-approval scope. Preserve the one-file fix on a non-main branch and request a separate human scoped release/merge decision. Do not fold it into the reader release or approve other pending releases. The full AU suite in a true external scratch clean clone completed under handle `76734`, scratch `wc-run-ibg88nel`: **1,250 passed** in 28.63 seconds, one existing deprecation warning, terminal exit 0. The clone checked out exact fix commit `435996dfc3ff49b18075b1250a695d30dfd5e190`; no test was selected out or skipped. This proves the isolated fix in the failing path environment, not a successful full reader approval gate or current production activation.
+
+## Large-case diagnostic receipts observed before pytest cleanup
+
+All four publications were `receipt_verified`, with unchanged separate 600-second limits and `model_promotion_allowed=false`. These are fixture evidence, not real pilot/sample-growth or model-quality evidence.
+
+| Domain / phase | Wall seconds | Content hash |
+|---|---:|---|
+| AU corpus | 565.285152250 | `9accbb5e42b048890a3733c3be6442869c342168ee961d1bbe3fbd4c5cca271e` |
+| AU review | 342.004631917 | `8973e50eaed962a91d1bb4a3b311c9df0df5d556174a712149539cef52adc4f2` |
+| HKJC corpus | 539.001894250 | `552faeb3af170ec199f79b047527bfb984a97268fb9086b99301e00a2d4f788c` |
+| HKJC review | 342.390871583 | `f5e57068fcd323bc190b5c8b812782f3e8fd42a13deb00c9fc7addafe857f0a8` |
+
+Pytest later performs its ordinary old-temporary-directory cleanup. Receipt values above were read directly while available; no agent source deletion or archive migration was performed. The retained gate log remains the terminal suite evidence.
+
+## Concurrent-main expiry
+
+While diagnosis ran, remote main advanced first to `a55f5c6bb0d43afbc63a88844db3459b1c198e56` (AU display-only report changes, six non-overlapping paths), then to `1528d16e` (HKJC prior-distance normalization). The immutable reader branch remained `92004edd5bba`; its rollback target remains `f852b3d51497`. Thus it cannot now pass immutable-main approval even after the isolated test fix. Keep it pending, preserve its failed evidence, and prepare a newly aligned scoped reader release only after the separate fix decision. Telegram notification of the main-expiry condition succeeded (`ok=true`, one part, one target).
+
+Tasks 6–10 remain open. This audit is preservation on a non-main branch, not another release or a deployment instruction.
