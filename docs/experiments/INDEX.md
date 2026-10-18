@@ -217,6 +217,7 @@
 - [EXP-20261018-08](EXP-20261018-08-hkjc-formline-review.md) — 賽績線審查：「(強組比例…)」入面個「強」令弱組全部當 strong（78），weak 由來冇觸發；修正回放 224 場郁、Good −1.74pp（CI 跨零）—— 唔上線；Kelvin 揀弱組用中性，見 EXP-09
 - [EXP-20261018-09](EXP-20261018-09-hkjc-formline-neutral-weak-results.md) — 賽績線標籤修正、弱組用中性 64：**REJECT**（Good −0.87pp CI 跨零）；弱 54 蝕 1.74、弱 64 蝕 0.87 —— 越少開動越少蝕；唔上線，記錄做已知缺陷
 - [EXP-20261018-10](EXP-20261018-10-hkjc-horse-health-review.md) — 馬匹健康審查：休賽日數 99.7% 對賽果庫、醫療欄冇誤罰；「持續增減磅／穩定」唔入分支但 CI 全包 1，冇根據補；修長休晨操顯示句（以前永遠「充足」），評分 0 改變
+- [EXP-20261018-11](EXP-20261018-11-hkjc-trackwork-review.md) — 晨操審查：§7「加強／放緩」有 38% 係比較唔同路程快操（首尾差 >4 秒），而家當中性；回放 80 場郁、Good −0.29pp（一場，CI 上界 0）、competitive_recall CI 全正；標籤方向正確
 - [EXP-20261016-70](EXP-20261016-70-au-track-audit-results.md) — 場地與地況適性六項：同場斷崖係真（1 戰 −3.7pp → 2 戰 −9.1pp），剷斷崖、濕地唔重扣、剷重地專項三個都輸 → 保留；只上線 base 62.9 → 60（§7，consistency −4 門檻跟住 60 → 57.1，排名不變）。留低：同場比率（6+ 戰 1 次上名 −11.0pp 照加 +5）、未跑濕地 −6.4 過重、合成跑道 85 場未夠
 - [EXP-20261016-71](EXP-20261016-71-au-form-quality-distance-results.md) — 近績路程相關度 + 大幅增減程：模型名次層內 |Δ|≥400m 剩餘 −5.8pp [−7.6,−4.1]（大幅縮程最差）；F1 路程加權 REJECT（OOS Gold −1.08pp 六 block 全負）；F2 大幅轉程近績質素分 −5 上線（v3 RANKING_WIN，Good +0.28pp，Holm p 0.096 唔算顯著改善）
 - [EXP-20261016-72](EXP-20261016-72-au-track-rate-and-centralise-results.md) — 地況扣分集中一個 `_going_adjustment`（32,448 匹逐位元相同）上線；同場比率 R REJECT（Gold −0.32pp，§8 both_arms_reject）；合成跑道維持當好地，85 場，夠 100 場再測

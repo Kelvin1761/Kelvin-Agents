@@ -717,7 +717,18 @@ class RacingEngine:
         trackwork = self._trackwork_markers()
         classification = trackwork["classification"]
         trend = trackwork["trend"]
-        
+
+        # 「加強／放緩」係抽取層用第一課同最後一課快操嘅完成時間比出嚟（extract_trackwork.classify_trend）。
+        # 快操路程唔一（完成時間 26–85 秒），首尾相差 >4 秒嗰 38% 其實係比緊唔同路程，
+        # 但全部都被標咗加強／放緩（EXP-20261018-11，§7）。呢類唔計趨勢。
+        raw = self.horse_data.get("trackwork")
+        raw_summary = raw.get("summary") if isinstance(raw, dict) else {}
+        times = raw_summary.get("gallop_times") if isinstance(raw_summary, dict) else None
+        if (("加強" in trend or "放緩" in trend) and isinstance(times, list) and len(times) >= 2
+                and all(isinstance(t, (int, float)) for t in (times[0], times[-1]))
+                and abs(float(times[-1]) - float(times[0])) > 4.0):
+            trend = "操練趨勢未明（首尾快操唔同路程，唔比較）"
+
         # 1. Text-based trend base score
         if classification == "翻案復刻":
             base_score = scoring.TRACKWORK_MICRO_WEIGHTS.get("rebound_base", 66.0)
