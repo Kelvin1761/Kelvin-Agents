@@ -144,3 +144,51 @@ do not bypass, broaden scope or approve another release to force completion.
 
 Tasks 6–10, reviewed power profiles, real Tennis/racing pilots, research
 scheduler/Telegram/private-Dashboard acceptance and Stage 5 exit remain open.
+
+## Task 7 read-only production preflight
+
+While the clean-checkout gate continued, the approved production wrapper was
+invoked with **only** `--status --receipt` (no initialize, review pass, scheduler
+installation, notification or model action). The selected receipt was the
+newest one in the inspected Central research-review receipt inventory:
+
+```text
+/Users/imac/WongChoiData/WongChoiControl/runs/central/2026-10-15/research-review/144755.927250Z-a713bdb7fff3.json
+```
+
+Its byte SHA256 is
+`1b0e833c7db0a4067e163109afb6a96ea9e073daac819d345d9f226d35f37632`;
+the existing status verifier accepted its content hash
+`3597e6ca2e1d724302b62f0946995e44a6928793c13a4a40c1a2434fc1fe145c`.
+All four existing cursor structures/configurations verified, but overall status
+was correctly **blocked**: the receipt is `partial`, over its 36-hour freshness
+limit (289,443.64 seconds at inspection). That historical receipt reports AU
+and HKJC failed without advancing (generation 0), Tennis succeeded with
+`reviews_recorded` and NBA succeeded with `reviewed_freeze_required`
+(generation 2 each). These are receipt observations, not a new claim about
+current cursor generations or completed production acceptance. Promotion and
+Telegram-delivery flags remain false.
+
+Reading the original production phase outcomes, separately from current pytest
+scratch, confirms both race failures end in
+`ValueError: prediction artifact reference limit exceeded`:
+
+- AU: `research-phases/au/racing-monitoring-samples-zkc13unv/phase-outcome.json`,
+  SHA256 `22906014e5c3635d3accc4c4ef51a513edf85fc7dbe0be0ffa4f3665c92ed730`.
+- HKJC: `research-phases/hkjc/racing-monitoring-samples-_hbs2oam/phase-outcome.json`,
+  SHA256 `43eac9cdac44a554df55dcd44381a8febf0e29a1d479f0e3228901388405a0b0`.
+
+Both paths are relative to
+`/Volumes/Kelvin Hardisk 1/WongChoi-Archive/`. Matching failures also exist for
+the earlier 2026-10-09 pass. No historical receipt or cursor was repaired,
+deleted or reclassified as success.
+
+The candidate `research_review_cursor.py` routes AU/HKJC through
+`RacingMonitoringCorpusInspectionRunner`. This establishes that the pending
+reader addresses the observed old capacity boundary; it does **not** establish
+that the real production corpus is accepted or that no later blocker exists.
+After successful immutable activation, the next relevant acceptance is a fresh
+controlled review using the existing production-lock/resource/preemption
+guards. Production work must defer research. Preserve all original history,
+append new evidence and inspect the new receipt; never advance cursors by hand,
+shrink the corpus or install a scheduler to hide a failing first pass.
