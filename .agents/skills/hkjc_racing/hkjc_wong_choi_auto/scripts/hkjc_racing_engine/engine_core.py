@@ -18,6 +18,7 @@ from .live_priors import (
     prior_source_manifest,
     temporal_source_is_safe,
     EMBEDDED_LOGIC_PRIOR,
+    get_horse_distance_records,
 )
 from .matrix_mapper import (
     MATRIX_FORMULAS,
@@ -409,9 +410,8 @@ class RacingEngine:
         best_text = self._clean(best_distance or "")
         distance_token = distance.replace("m", "").strip()
         direct_match = best_text.startswith(f"{distance_token}m") or best_text.startswith(distance)
-        # `season_stats` is now rebuilt from complete point-in-time history.
-        # It must outrank the legacy `best_distance` sentence, which can still
-        # say "未跑過" when the older six-run summary omitted earlier starts.
+        # `_same_distance_record` 而家用賽果庫完整往績（EXP-20261018-13；之前 `season_stats`
+        # 其實只數賽績頁，同 `best_distance` 一樣截斷）。佢要排喺 `best_distance` 句子前面。
         if record and record["starts"] > 0:
             if record["places"] > 0:
                 return scoring.DISTANCE_MICRO_WEIGHTS.get("direct_match_place_base", 72.0), \
@@ -3439,19 +3439,33 @@ class RacingEngine:
         return parse_record(self.horse_data.get("season_stats") or self._value("season_stats_line"))
 
     def _same_distance_record(self):
-        """同程 (冠-亞-季-其餘) —— starts 係四項總和，唔係第四項（見 parse_record）。"""
+        """同程 (冠-亞-季-其餘) —— starts 係四項總和，唔係第四項（見 parse_record）。
+
+        Facts 嘅「同程」只數賽績頁列出嘅仗，9–10 月 40% 少數、7.9% 有上名被當冇
+        （EXP-20261018-12）。所以同賽果庫完整往績（live latest／回放 PIT 注入）比，
+        取出賽次數多嗰個；賽果庫未入最新賽日時就唔會比而家差（EXP-20261018-13）。
+        """
         text = self._clean(self.horse_data.get("season_stats") or self._value("season_stats_line") or "")
+        facts = None
         match = re.search(r"同程\s*\((\d+)-(\d+)-(\d+)-(\d+)\)", text)
-        if not match:
-            return None
-        wins, seconds, thirds, rest = (int(part) for part in match.groups())
-        return {
-            "wins": wins,
-            "seconds": seconds,
-            "thirds": thirds,
-            "starts": wins + seconds + thirds + rest,
-            "places": wins + seconds + thirds,
-        }
+        if match:
+            wins, seconds, thirds, rest = (int(part) for part in match.groups())
+            facts = {
+                "wins": wins,
+                "seconds": seconds,
+                "thirds": thirds,
+                "starts": wins + seconds + thirds + rest,
+                "places": wins + seconds + thirds,
+            }
+        records = get_horse_distance_records((self.race_context or {}).get("race_date"))
+        full = records.lookup(
+            self.horse_data.get("horse_code") or self._value("horse_code"),
+            self.horse_data.get("horse_name"),
+            (self.race_context or {}).get("distance"),
+        ) if records is not None else None
+        if full and (facts is None or full["starts"] > facts["starts"]):
+            return full
+        return facts
 
     def _formline_strength_signal(self):
         text = self._clean(self._value("formline_strength") or "")

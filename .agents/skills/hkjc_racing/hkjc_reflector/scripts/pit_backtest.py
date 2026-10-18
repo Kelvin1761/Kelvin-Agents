@@ -228,6 +228,10 @@ def inject_as_of(all_rows: pd.DataFrame, meeting_date: str):
         build_change(sub),
         meeting_date,
     )
+    # 同程完整往績（EXP-20261018-13）：同一個 builder，只用賽日之前嘅賽果。
+    live_priors._HORSE_DISTANCE = live_priors.HorseDistanceRecords(
+        bcs.horse_distance_table(sub), temporal_mode="point_in_time", as_of_date=meeting_date,
+    )
     return len(sub)
 
 

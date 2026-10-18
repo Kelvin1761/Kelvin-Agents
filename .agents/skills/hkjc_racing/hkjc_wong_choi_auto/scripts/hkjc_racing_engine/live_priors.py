@@ -167,6 +167,7 @@ GENERAL_PRIOR_FILES = {
     "trainer_distance": _general_prior_paths("trainer_distance_stats.csv"),
     "jockey_change": _general_prior_paths("general_pre_race_priors/jockey_change_priors.csv"),
     "jockey_draw": _general_prior_paths("jockey_draw_performance.csv"),
+    "horse_distance": _general_prior_paths("horse_distance_stats.csv"),
 }
 
 
@@ -520,3 +521,67 @@ class TrainerSignalPriors:
                 "place_rate": (places / starts * 100.0) if starts else 0.0,
             }
         return records
+
+
+class HorseDistanceRecords:
+    """每匹馬 × 路程完整香港往績（EXP-20261018-13）。
+
+    Live 讀 `comprehensive_stats/<季>/horse_distance_stats.csv`（排程每日由賽果庫重建）。
+    回放由 `pit_backtest.inject_as_of` 換成 `Date < 賽日` 版本；冇注入就 fail closed。
+    """
+
+    def __init__(self, frame: pd.DataFrame | None = None, *, temporal_mode: str = "latest_season_snapshot",
+                 as_of_date=None) -> None:
+        self.temporal_mode = temporal_mode
+        self.as_of_date = as_of_date
+        if frame is None:
+            required = ("Horse", "Distance", "Starts", "Wins", "Seconds", "Thirds", "Places")
+            frames = [f for path in GENERAL_PRIOR_FILES["horse_distance"]
+                      if (f := _read_prior_csv(path, required)) is not None]
+            frame = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+        self.by_brand: dict[tuple[str, str], dict] = {}
+        self.by_name: dict[tuple[str, str], dict] = {}
+        if frame is None or frame.empty:
+            return
+        frame = frame.copy()
+        frame["Distance"] = pd.to_numeric(frame["Distance"], errors="coerce")
+        frame = frame[frame["Distance"].notna()]
+        frame["Distance"] = frame["Distance"].round().astype(int).astype(str)
+        if "Brand" not in frame:
+            frame["Brand"] = ""
+        frame["Brand"] = frame["Brand"].fillna("").astype(str).str.strip()
+        frame["Horse"] = frame["Horse"].fillna("").astype(str).str.strip()
+        numeric = ["Starts", "Wins", "Seconds", "Thirds", "Places"]
+        for column in numeric:
+            frame[column] = pd.to_numeric(frame[column], errors="coerce").fillna(0).astype(int)
+        for keys, target in ((["Brand", "Distance"], self.by_brand), (["Horse", "Distance"], self.by_name)):
+            sub = frame[frame[keys[0]] != ""]
+            for row in sub.groupby(keys)[numeric].sum().reset_index().to_dict("records"):
+                target[(row[keys[0]], row["Distance"])] = {
+                    "starts": int(row["Starts"]), "wins": int(row["Wins"]), "seconds": int(row["Seconds"]),
+                    "thirds": int(row["Thirds"]), "places": int(row["Places"]),
+                }
+
+    def lookup(self, brand, name, distance) -> dict | None:
+        dist = str(distance or "").replace("m", "").replace("米", "").strip()
+        if not dist.isdigit():
+            return None
+        brand = str(brand or "").strip()
+        if brand and (brand, dist) in self.by_brand:
+            return dict(self.by_brand[(brand, dist)])
+        name = str(name or "").strip()
+        if name and (name, dist) in self.by_name:
+            return dict(self.by_name[(name, dist)])
+        return None
+
+
+_HORSE_DISTANCE: HorseDistanceRecords | None = None
+
+
+def get_horse_distance_records(as_of_date=None) -> HorseDistanceRecords | None:
+    global _HORSE_DISTANCE
+    if _HORSE_DISTANCE is None:
+        _HORSE_DISTANCE = HorseDistanceRecords()
+    if not temporal_source_is_safe(_HORSE_DISTANCE, as_of_date):
+        return None
+    return _HORSE_DISTANCE
