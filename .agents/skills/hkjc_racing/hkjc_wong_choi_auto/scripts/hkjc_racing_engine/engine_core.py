@@ -99,6 +99,26 @@ def _format_hkjc_class_display(value):
     return text
 
 
+_CONSUMPTION_VALUE = re.compile(r"消耗=([^,，|\s]+)")
+
+
+def _consumption_label(part, mapping):
+    """`消耗=中低消耗` → "中低"（mapping key）；冇標籤／未知 → None.
+
+    以前用 `label in part` 長標籤優先：「低消耗」比「中低」長，所以 1,169 個
+    「中低消耗」全部當咗「低消耗」（70 而唔係 66）。而家只睇「消耗=」後面個值，
+    用前綴對，長優先（「極高」先過「高」）。EXP-20261018-05，§7。
+    """
+    match = _CONSUMPTION_VALUE.search(str(part or ""))
+    if not match:
+        return None
+    value = match.group(1)
+    for label in sorted(mapping, key=len, reverse=True):
+        if value == label or value.startswith(label):
+            return label
+    return None
+
+
 class RacingEngine:
     def __init__(self, horse_data, race_context):
         self.horse_data = horse_data
@@ -434,14 +454,16 @@ class RacingEngine:
 
     def _weight_score(self, _features):
         # 負磅分只計讓磅官嘅負磅（EXP-20261010-04）。馬匹體重趨勢係健康訊號，已經喺
-        # risk_score 計（而且方向相反：轉輕喺健康扣分、喺度以前加分），所以唔再重複計。
-        # 分界用實際負磅 = 負磅 − 見習減磅。
+        # risk_score 計，所以唔再重複計。
+        # Logic `weight` 已經係**實際負磅**（已扣見習減磅）：335 個見習騎師坐騎入面 327 個
+        # 同賽果 `actual_wt` 一樣、0 個等於「負磅＋減磅」。以前再扣一次減磅，令 90 匹（27%）
+        # 跌錯負磅分級（EXP-20261018-06，§7）。減磅只入說明。
         weight = parse_float(self._value("weight_carried") or self._value("weight"))
         if weight is None:
             return 60, "負磅資料不足，負磅分60分。", "missing_neutral"
         allowance = parse_float(self._value("jockey_allowance")) or 0.0
-        carried = weight - allowance
-        claim = f"（負磅 {weight:.0f} 減見習 {allowance:.0f}）" if allowance else ""
+        carried = weight
+        claim = f"（已扣見習減磅 {allowance:.0f}）" if allowance else ""
         score = scoring.WEIGHT_MICRO_WEIGHTS.get("base", 64.0)
         note = f"今仗實際負磅{carried:.0f}磅{claim}，屬中游負磅，讓磅官冇特別意見，負磅分{score:.0f}分。"
         if carried <= 120:
@@ -695,7 +717,18 @@ class RacingEngine:
         trackwork = self._trackwork_markers()
         classification = trackwork["classification"]
         trend = trackwork["trend"]
-        
+
+        # 「加強／放緩」係抽取層用第一課同最後一課快操嘅完成時間比出嚟（extract_trackwork.classify_trend）。
+        # 快操路程唔一（完成時間 26–85 秒），首尾相差 >4 秒嗰 38% 其實係比緊唔同路程，
+        # 但全部都被標咗加強／放緩（EXP-20261018-11，§7）。呢類唔計趨勢。
+        raw = self.horse_data.get("trackwork")
+        raw_summary = raw.get("summary") if isinstance(raw, dict) else {}
+        times = raw_summary.get("gallop_times") if isinstance(raw_summary, dict) else None
+        if (("加強" in trend or "放緩" in trend) and isinstance(times, list) and len(times) >= 2
+                and all(isinstance(t, (int, float)) for t in (times[0], times[-1]))
+                and abs(float(times[-1]) - float(times[0])) > 4.0):
+            trend = "操練趨勢未明（首尾快操唔同路程，唔比較）"
+
         # 1. Text-based trend base score
         if classification == "翻案復刻":
             base_score = scoring.TRACKWORK_MICRO_WEIGHTS.get("rebound_base", 66.0)
@@ -860,13 +893,10 @@ class RacingEngine:
         scores = []
         labels = []
         for part in text.split("|")[:3]:
-            part = part.strip()
-            # 長標籤優先，否則「高」會搶先 match 走「極高」
-            for label, score in sorted(mapping.items(), key=lambda kv: -len(kv[0])):
-                if label in part:
-                    scores.append(score)
-                    labels.append(label)
-                    break
+            label = _consumption_label(part, mapping)
+            if label is not None:
+                scores.append(mapping[label])
+                labels.append(label)
         if not scores:
             return 60.0, "近仗消耗未有清晰標籤，按中性處理。"
         score = sum(scores) / len(scores)
@@ -895,12 +925,15 @@ class RacingEngine:
             add("走位PI", weights["pi_up_bonus"], "走位 PI 上升")
         elif "衰退中" in text:
             add("走位PI", weights["pi_down_pen"], "走位 PI 衰退")
-        recent = self._clean(self._value("position_window") or "").split("|")[0]
-        if "低消耗" in recent:
+        recent = _consumption_label(
+            self._clean(self._value("position_window") or "").split("|")[0],
+            scoring.RACE_SHAPE_TRIP_CONSUMPTION_SCORES,
+        )
+        if recent == "低消耗":
             add("近仗消耗", weights["recent_low_consumption_bonus"], "最近走位低消耗")
-        elif "極高" in recent:
+        elif recent == "極高":
             add("近仗消耗", weights["recent_extreme_consumption_pen"], "最近走位極高消耗")
-        elif "高" in recent:
+        elif recent == "高":
             add("近仗消耗", weights["recent_high_consumption_pen"], "最近走位高消耗")
         context_weights = scoring.RACE_SHAPE_CONTEXT_WEIGHTS
         delta = max(context_weights["non_sha_tin_delta_floor"], min(context_weights["non_sha_tin_delta_cap"], delta))
@@ -1851,16 +1884,26 @@ class RacingEngine:
             lines.append("醫療欄有紀錄，或屬傷病後復出，須留意復原情況")
 
         # 長休 × 晨操 context（#6）：長休（>60日）要睇操練夠唔夠
+        # 以前 strong = 「快操」或「試閘」出現 —— 但每份摘要都有「近#日快操#課、試閘#課」
+        # 模板字，所以長休馬一律印「操練量充足」（897 匹只有 1 匹兩樣都係 0）。
+        # 而家睇實際課數（EXP-20261018-10，純顯示，唔入分）。
         tw = self._text("trackwork_digest") + self._text("trackwork_trainer")
         if days is not None and days > 60:
-            strong = any(k in tw for k in ("快操", "試閘", "積極", "加強", "操練充足", "好過近績"))
-            weak = any(k in tw for k in ("放緩", "偏保守", "操練量少", "操練不足"))
-            if strong:
-                lines.append("復出前操練量充足，狀態有支持")
-            elif weak:
-                lines.append("長休後操練偏保守，狀態須觀察")
+            counts = re.search(r"近(\d+)日快操(\d+)課、試閘(\d+)課", tw)
+            gallops = int(counts.group(2)) if counts else None
+            trials = int(counts.group(3)) if counts else None
+            seen = f"（近{counts.group(1)}日快操{gallops}課、試閘{trials}課）" if counts else ""
+            slowing = any(k in tw for k in ("放緩", "偏保守", "操練量少", "操練不足"))
+            enough = bool(counts) and ((gallops >= 3 and trials >= 1) or gallops >= 5)
+            light = bool(counts) and gallops <= 2 and trials == 0
+            if enough and not slowing:
+                lines.append(f"復出前操練量充足{seen}，狀態有支持")
+            elif enough:
+                lines.append(f"復出前有實際操練{seen}，但近期操練趨勢放緩，狀態須觀察")
+            elif light or slowing:
+                lines.append(f"長休後操練偏保守{seen}，狀態須觀察")
             else:
-                lines.append("長休復出，宜對照晨操判斷備戰")
+                lines.append(f"長休復出{seen}，宜對照晨操判斷備戰")
 
         verdict = "；".join(lines[1:]) if len(lines) > 1 else (lines[0] if lines else "")
         return {"lines": lines, "verdict": verdict}
