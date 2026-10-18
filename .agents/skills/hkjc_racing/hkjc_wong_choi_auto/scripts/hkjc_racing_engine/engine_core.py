@@ -99,6 +99,26 @@ def _format_hkjc_class_display(value):
     return text
 
 
+_CONSUMPTION_VALUE = re.compile(r"消耗=([^,，|\s]+)")
+
+
+def _consumption_label(part, mapping):
+    """`消耗=中低消耗` → "中低"（mapping key）；冇標籤／未知 → None.
+
+    以前用 `label in part` 長標籤優先：「低消耗」比「中低」長，所以 1,169 個
+    「中低消耗」全部當咗「低消耗」（70 而唔係 66）。而家只睇「消耗=」後面個值，
+    用前綴對，長優先（「極高」先過「高」）。EXP-20261018-05，§7。
+    """
+    match = _CONSUMPTION_VALUE.search(str(part or ""))
+    if not match:
+        return None
+    value = match.group(1)
+    for label in sorted(mapping, key=len, reverse=True):
+        if value == label or value.startswith(label):
+            return label
+    return None
+
+
 class RacingEngine:
     def __init__(self, horse_data, race_context):
         self.horse_data = horse_data
@@ -860,13 +880,10 @@ class RacingEngine:
         scores = []
         labels = []
         for part in text.split("|")[:3]:
-            part = part.strip()
-            # 長標籤優先，否則「高」會搶先 match 走「極高」
-            for label, score in sorted(mapping.items(), key=lambda kv: -len(kv[0])):
-                if label in part:
-                    scores.append(score)
-                    labels.append(label)
-                    break
+            label = _consumption_label(part, mapping)
+            if label is not None:
+                scores.append(mapping[label])
+                labels.append(label)
         if not scores:
             return 60.0, "近仗消耗未有清晰標籤，按中性處理。"
         score = sum(scores) / len(scores)
@@ -895,12 +912,15 @@ class RacingEngine:
             add("走位PI", weights["pi_up_bonus"], "走位 PI 上升")
         elif "衰退中" in text:
             add("走位PI", weights["pi_down_pen"], "走位 PI 衰退")
-        recent = self._clean(self._value("position_window") or "").split("|")[0]
-        if "低消耗" in recent:
+        recent = _consumption_label(
+            self._clean(self._value("position_window") or "").split("|")[0],
+            scoring.RACE_SHAPE_TRIP_CONSUMPTION_SCORES,
+        )
+        if recent == "低消耗":
             add("近仗消耗", weights["recent_low_consumption_bonus"], "最近走位低消耗")
-        elif "極高" in recent:
+        elif recent == "極高":
             add("近仗消耗", weights["recent_extreme_consumption_pen"], "最近走位極高消耗")
-        elif "高" in recent:
+        elif recent == "高":
             add("近仗消耗", weights["recent_high_consumption_pen"], "最近走位高消耗")
         context_weights = scoring.RACE_SHAPE_CONTEXT_WEIGHTS
         delta = max(context_weights["non_sha_tin_delta_floor"], min(context_weights["non_sha_tin_delta_cap"], delta))
