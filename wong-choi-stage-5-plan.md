@@ -36,7 +36,24 @@
 - [ ] 9. 擴展至AU／HKJC ranking squeeze同NBA season research：先查舊實驗，逐個假設測Gold／Good保護下嘅Top-5 capture、competitive recall、NDCG同cohort；NBA按season／market／odds／injury freshness做歷史描述性baseline並保留新季live gate。→ Verify：至少一個AU或HKJC候選完整走完ranking gate（通過或拒絕都算平台證據）；NBA hit rate唔會被當盈利證據，synthetic／歷史結果唔會冒充forward live acceptance或產生promotion proposal。
 - [ ] 10. 完成四個stage checkpoint同Stage 5 research-platform production activation（唔等於任何model promotion）：Task 1後做metrics readiness review、Task 6後做platform safety review、Task 9後做domain pilot review，最後做exit review。→ Verify：每個checkpoint都有immutable decision／風險／rollback；`./檢查.sh`、`./健康.sh`、reproducibility／fault／leakage／resource-isolation matrix全綠；至少兩個domain完成end-to-end pilot、failed experiment可檢索、Stage 4 bypass測試全拒絕；更新roadmap同Stage 6 entry decision。
 
-## Current Checkpoint — 2026-10-18 reader recovery
+## Current Checkpoint — 2026-10-20 native provenance diagnosis
+
+- Byte-bounded reader release `ea95996493ed` completed full gate, clean approval
+  recheck, merge and four-domain activation; Telegram delivery was confirmed.
+  Production/main subsequently advanced to documentation-only `a99710261120`,
+  retaining the same five reader source files. This is engineering acceptance,
+  not proof of real pilots or model improvement.
+- Native review `101046.862278Z-d1f982ff898f.json` failed: AU has artifact
+  provenance mismatch; HKJC was production-preempted, Tennis/NBA deferred.
+  No cursors advanced. Bounded diagnosis found ten mismatched AU artifact refs
+  across 273 settlements. Existing immutable records point to mutable result or
+  reflector paths. Keep fail-closed behavior; do not skip records, repin hashes,
+  manufacture samples or retimestamp history. See
+  `docs/audits/WONG_CHOI_STAGE5_NATIVE_REVIEW_PROVENANCE_2026-10-20.md` and
+  `stage5-settlement-provenance-repair.md`. Production capture changes and any
+  historical restore/mapping need distinct scope approval. Tasks 6–10 remain open.
+
+## Historical Checkpoint — 2026-10-18 reader recovery
 
 - 2026-10-19 fresh-base recheck: concurrent approved executor release advanced remote main from `f3675bc5c026` to `660b0952d952` while the initial full gate was running. The owned controller and test descendants were explicitly stopped after verifying this immutable-base mismatch, before a new reader release commit/manifest or activation; this interrupted run is not a passing gate. The reader branch now normally includes `660b0952d952`; the upstream runner/deadline-test changes are already in main and are not part of the 36-path reader release delta. Start a new full controller gate on this aligned tree; retain all original large cases and approval/rollback controls.
 - 2026-10-19 resume: Kelvin explicitly resumed after the pause. The interrupted controller and its test descendants were stopped before commit/merge/activation; the aligned checkpoint remains recoverable from remote backup `05316877804a`. The same reader branch is now normally merged with freshly fetched approved main `f3675bc5c026`, with no merge conflicts and the same 36-path reader delta. Yesterday's partial gate is not reused. Fresh full gate, exact-scope classification, immutable remote recheck and four-domain activation verification remain required; Tasks 6–10 stay open.
