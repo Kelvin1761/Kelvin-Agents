@@ -168,3 +168,31 @@ D1 backup/local restore/WARM were verified; latest COLD proof/backlog, HOT
 warning and missing central research-review label remained open. HOT had
 24.22 GiB free and mounted WARM 817.79 GiB. These are timestamped observations,
 not a new claim of all-green production or completed Stage 5.
+
+## Clean approval gate: AU phase receipts observed
+
+The same controller session 17881 / PID 48488 remains live. Its clean-checkout
+approval gate (pytest PID 58575, `pytest-22`) completed both unchanged AU large
+monitoring phases with `succeeded`, `receipt_verified`, return code 0:
+
+| Phase | Wall seconds | Outcome SHA256 | Result content hash |
+| --- | ---: | --- | --- |
+| `racing-monitoring-corpus-nbcgwd93` | 503.71816150000006 | `b376da16e9737b1192aabd10fc482aeadbee5fb0c73233aab59b3b1525daef9a` | `ff177c2cc2b2a986d30d9897b2a2a7ed5cabca526bb4e53f0f74c5d4a55c39a2` |
+| `review-x3w9y2n3` | 262.26235316600014 | `07b9aa243c740fe9a494b2ecefe05a6ee43a0c682bd915a4a3c46136ed5386ca` | `8af8c28b9bf5b4ee120ebeef39d2f9f25745c6987bb6e0dea6c1ad857fd05018` |
+
+Both outcome files were read directly beneath
+`/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/command-runs/wc-run-vnua_o21/pytest-of-imac/pytest-22/test_large_monitoring_corpus_a0/warm/research-phases/au/`.
+The corpus reports exactly one fixture monitoring sample; both phases deny
+model promotion, and review does not confirm Telegram delivery. No fixture
+result is counted as real pilot evidence. The original separate 600-second
+limits were unchanged. HKJC and the remaining suites are not yet proven by
+these AU receipts. No merge or activation is claimed.
+
+Separate read-only production inspections during this wait verified four
+cursor database structures (`--status`, receipt null), but not a new review
+pass or Telegram acceptance. Power applicability remains 0/4, all
+`power_profile_missing`, content hash
+`072d1b455e322d2ceab6378f9a1083f38b9e00631f372386f4681569a07e8f2f`.
+Installed and loaded domain labels remain aligned; the central research-review
+label is still missing. These observations do not authorize an installer or
+change the pending engineering release scope.
