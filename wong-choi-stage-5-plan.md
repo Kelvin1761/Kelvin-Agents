@@ -118,3 +118,16 @@ supervisor deadlines and model-promotion prohibition. See
 `docs/audits/WONG_CHOI_STAGE5_BYTE_BOUNDED_READERS_2026-10-19.md` for RED/GREEN
 evidence and remaining gate/native replay requirements. Do not tick Tasks 6–10
 or real pilot/power acceptance on the basis of this engineering candidate.
+
+The first byte-bounded candidate failed the unchanged 600-second AU corpus
+deadline and was not released. The second iteration measured and removed
+duplicate path/blob work while reserving byte budget for complete final
+rechecks. At source commit `558e9714`, 151 related tests plus quick gate passed;
+the original AU/HKJC large corpus **and** review-child parametrized test then
+passed both cases in 1693.82 s, with all four phase receipts verified and the
+600-second limits/assertions unchanged. Each domain still contributes exactly
+one real fixture label; cloned metadata does not increase samples.
+
+Formal full release gate, clean immutable-SHA approval recheck, activation and
+fresh native production review remain pending. These engineering results do
+not complete Tasks 6–10, a real pilot, reviewed power or model promotion.
