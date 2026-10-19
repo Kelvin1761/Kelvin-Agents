@@ -159,12 +159,15 @@ class _MetadataPages(_Reader):
     """
 
     def read(self, path):
-        self.checkpoint()
-        path = _safe(path)
+        path = Path(path)
         if path not in self.files and len(self.files) >= self.max_records:
+            self.checkpoint()
             raise ResearchIndexError("evidence record limit exceeded")
         if self.max_total_bytes < 2:
+            self.checkpoint()
             raise ResearchIndexError("evidence byte budget exceeded")
+        # The physical reader performs the native checkpoint/path guard before
+        # every open, including the final complete-source recheck.
         page = _Reader(self.checkpoint, max_records=1,
                        max_record_bytes=self.max_record_bytes,
                        max_total_bytes=self.max_total_bytes // 2)

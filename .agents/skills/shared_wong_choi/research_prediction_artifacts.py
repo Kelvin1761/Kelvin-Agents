@@ -29,8 +29,11 @@ MAX_TOTAL_BYTES = 512 * 1024 * 1024
 
 
 class _Blobs:
-    def __init__(self, checkpoint: Callable[[], None]):
+    def __init__(self, checkpoint: Callable[[], None], *, reserve_recheck: bool = False):
+        if type(reserve_recheck) is not bool:
+            raise ValueError("boolean recheck reservation required")
         self.checkpoint = checkpoint
+        self.reserve_recheck = reserve_recheck
         self.files: dict[Path, tuple[str, int]] = {}
         self.bytes_read = 0
 
@@ -50,7 +53,8 @@ class _Blobs:
                     break
                 length += len(chunk)
                 self.bytes_read += len(chunk)
-                if length > MAX_FILE_BYTES or self.bytes_read > MAX_TOTAL_BYTES:
+                budget = MAX_TOTAL_BYTES // 2 if self.reserve_recheck else MAX_TOTAL_BYTES
+                if length > MAX_FILE_BYTES or self.bytes_read > budget:
                     raise ValueError("prediction artifact read budget exceeded")
                 chunks.append(chunk)
         finally:

@@ -215,11 +215,11 @@ def inspect_prediction_page(
         parent = _record(parent_raw, RecordKind.MODEL_RELEASE, domain, parent_path)
         if _at(value.created_at) > end or _at(parent.created_at) > end:
             raise ValueError("prediction page has future evidence")
-        blobs = _Blobs(checkpoint)
+        # Reserve the other half for every source blob's final page-wide read.
+        blobs = _Blobs(checkpoint, reserve_recheck=True)
         records.append(_project_prediction(value, raw, domain, roots, blobs))
         # A complete bundle and all resolution attempts share the native cap.
         # Never split an oversized bundle or reset a physical reader counter.
-        blobs.recheck()
         for path, expected in blobs.files.items():
             if path in source_blobs and source_blobs[path] != expected:
                 raise ValueError("prediction artifact changed across bundle pages")
@@ -231,7 +231,6 @@ def inspect_prediction_page(
         _raw, digest, size = bounded.read(path)
         if (digest, size) != expected:
             raise ValueError("prediction artifact changed across bundle pages")
-        bounded.recheck()
     reader.recheck()
     body = {
         "schema_version": RESULT_SCHEMA, "inventory_hash": inventory["content_hash"],

@@ -33,15 +33,19 @@ telemetry, not a disguised counter reset. Existing flat index readers retain
 their original aggregate budget. Snapshot and both all-history inventories use
 this traversal; prediction-page metadata uses it as well.
 
-Each prediction bundle uses its own native `_Blobs` reader, including all
-direct/relocation attempts and its byte-for-byte recheck. One oversized bundle
+Each prediction bundle uses its own `_Blobs` reader with half the native byte
+budget reserved for final source recheck, including all direct/relocation
+attempts in the initial half. Default legacy readers remain unchanged. One oversized bundle
 still fails; it is never split to bypass the cap. Across bundles, conflicting
 digests/sizes are rejected. Before returning a page, every unique source blob
-is revisited with a bounded reader and rechecked, then all metadata is rechecked.
+is reread once with a bounded native reader and compared with its pinned digest
+and size, then all metadata is rechecked. For every bundle, these final unique
+bytes cannot exceed its initial bytes, so the reserved half suffices. Source
+growth or digest changes fail closed rather than expanding a page budget.
 The outer deterministic page list and complete-source reconstruction remain
 mandatory. These subpages grant no authority independently of the complete proof.
 
-The cost is additional bounded readers/I/O, especially for bundle rechecks.
+The cost is additional bounded readers and source traversal.
 The existing supervisor's deadline, resource checks, production-lock/preemption
 and create-only publication remain unchanged. Full runtime tests must still
 prove the candidate fits them. No native runtime improvement is claimed from
@@ -121,3 +125,40 @@ plus final per-blob double reads as hypotheses. First measure exact reader-call
 counts with a regression test, then optimize while preserving complete final
 source/directory/mutation checks. Re-run focused tests and the original full
 gate; do not extend the deadline or relabel intermediate pages as success.
+
+## Second iteration: measured duplicate work
+
+The first full gate is terminal, not a live handle. A clean working tree at
+checkpoint `111278423ecbc6da8798819b7dc07f988f585dee` was used to reproduce two
+exact call-count failures before changing code (`wc-run-sl11kd91`, two failed):
+metadata initial/final reads invoked the native path guard four times instead
+of twice; four valid bundles sharing three source files made 30 blob reads
+instead of 12 reference visits plus three final unique-source reads.
+
+The next candidate removes only the outer duplicate metadata guard/checkpoint:
+each physical `_Reader.read` still performs the original checkpoint, full
+non-symlink path guard, no-follow open, type/size/byte limits and chunk checks.
+Early graph-count/budget rejection still calls the supervisor checkpoint.
+No source-path cache or check-frequency throttling is introduced.
+
+Bundle initial reads now reserve half the unchanged native cap. One final
+full-page digest/size reconstruction replaces the first iteration's redundant
+per-bundle and extra per-file rechecks. No physical counter resets; failed
+readers retain their cumulative byte counts. Default `_Blobs` callers retain
+their original cap, including their existing recheck behavior. A mutation
+after the last bundle but before final proof remains explicitly tested; the
+fault injection targets that actual boundary, not a removed inner method call.
+
+`wc-run-6xocj8eq`: 150 related metadata/snapshot/inventory/prediction/artifact
+tests passed in 32.08 s. Quick gate `wc-run-5al2ov2c` passed with the existing AU
+sparsity/new-field warnings unchanged. Exact call counts improved; timings from
+different test selections are not a speed benchmark. The original AU/HKJC
+large corpus plus real review-child tests with their unchanged 600-second
+limits must still pass, followed by full release and immutable approval gates.
+No native pilot acceptance or production performance improvement is claimed.
+
+After explicit reservation/cumulative-counter coverage was added,
+`wc-run-e_qzq8b2` passed all 151 selected tests in 49.82 s. Final quick gate
+`wc-run-gx15cph5` also passed, with the same existing AU warnings. The next
+checkpoint is still non-main WIP, not a release; the original parametrized
+AU/HKJC large-corpus/review test will run unchanged before another full gate.

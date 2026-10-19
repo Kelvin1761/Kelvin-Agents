@@ -8,6 +8,23 @@ from shared_wong_choi.research_index import ResearchIndexError, _Reader
 from test_research_racing_settlement_inventory import fixture
 
 
+def test_metadata_page_performs_one_native_path_guard_per_physical_read(tmp_path, monkeypatch):
+    from shared_wong_choi import research_index as module
+    path = tmp_path / "record.json"
+    path.write_text("{}")
+    calls, guard = [], module._safe
+
+    def traced(value):
+        calls.append(value)
+        return guard(value)
+
+    monkeypatch.setattr(module, "_safe", traced)
+    reader = module._MetadataPages(lambda: None)
+    reader.read(path)
+    reader.recheck()
+    assert calls == [path, path]
+
+
 def test_metadata_pages_keep_native_bounds_and_cumulative_io(tmp_path, monkeypatch):
     from shared_wong_choi.research_index import _MetadataPages
     reads = []

@@ -66,6 +66,24 @@ def test_large_byte_page_uses_complete_bounded_bundle_subpages(tmp_path, monkeyp
     assert result["model_promotion_allowed"] is False
 
 
+def test_bundle_pages_read_each_reference_once_and_final_unique_source_once(tmp_path, monkeypatch):
+    from shared_wong_choi.research_prediction_artifacts import _Blobs
+    root, value = inventory(tmp_path, 4)
+    calls, original = [], _Blobs.read
+
+    def traced(reader, path):
+        result = original(reader, path)
+        calls.append(path)
+        return result
+
+    monkeypatch.setattr(_Blobs, "read", traced)
+    result = inspect_prediction_page(inventory=value, page=plan_prediction_pages(value)[0],
+                                     root=root, domain=Domain.AU, as_of=NOW)
+    refs = sum(record["artifact_refs"] for record in result["records"])
+    assert refs == 12 and len(set(calls)) == 3
+    assert len(calls) == refs + len(set(calls))
+
+
 def test_one_oversized_bundle_is_not_split_to_bypass_byte_limit(tmp_path, monkeypatch):
     from shared_wong_choi import research_prediction_artifacts as blobs_module
     root, value = inventory(tmp_path)
@@ -75,21 +93,41 @@ def test_one_oversized_bundle_is_not_split_to_bypass_byte_limit(tmp_path, monkey
                                 root=root, domain=Domain.AU, as_of=NOW)
 
 
+def test_recheck_reservation_never_resets_reader_bytes_or_enlarges_native_budget(tmp_path, monkeypatch):
+    from shared_wong_choi import research_prediction_artifacts as module
+    path = tmp_path / "blob"
+    path.write_bytes(b"a" * 48)
+    monkeypatch.setattr(module, "MAX_TOTAL_BYTES", 128)
+    reserved = module._Blobs(lambda: None, reserve_recheck=True)
+    reserved.read(path)
+    with pytest.raises(ValueError, match="read budget"):
+        reserved.read(path)
+    assert reserved.bytes_read == 96
+    native = module._Blobs(lambda: None)
+    native.read(path)
+    native.recheck()
+    assert native.bytes_read == 96
+    with pytest.raises(ValueError, match="boolean"):
+        module._Blobs(lambda: None, reserve_recheck=1)
+
+
 def test_blob_change_after_last_bundle_is_rejected_by_complete_page_recheck(tmp_path, monkeypatch):
-    from shared_wong_choi.research_prediction_artifacts import _Blobs, _records
+    from shared_wong_choi import research_prediction_pages as module
+    from shared_wong_choi.research_prediction_artifacts import _records
     from shared_wong_choi.research_index import _Reader
     root, value = inventory(tmp_path, 4)
     prediction = _records(root, Domain.AU, NOW, _Reader(lambda: None))[0][0]
     target = Path(prediction.artifacts[0].path)
-    recheck, calls = _Blobs.recheck, []
+    project, calls = module._project_prediction, []
 
-    def mutate_after_last_bundle(reader):
-        recheck(reader)
+    def mutate_after_last_bundle(*args):
+        report = project(*args)
         calls.append(True)
         if len(calls) == 4:
             target.write_bytes(target.read_bytes() + b" ")
+        return report
 
-    monkeypatch.setattr(_Blobs, "recheck", mutate_after_last_bundle)
+    monkeypatch.setattr(module, "_project_prediction", mutate_after_last_bundle)
     with pytest.raises(ValueError, match="changed across bundle pages"):
         inspect_prediction_page(inventory=value, page=plan_prediction_pages(value)[0],
                                 root=root, domain=Domain.AU, as_of=NOW)
