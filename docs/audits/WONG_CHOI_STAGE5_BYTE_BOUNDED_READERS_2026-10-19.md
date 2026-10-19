@@ -79,3 +79,45 @@ must be diagnosed, not hidden by these pagination changes.
 
 Stage 5 Tasks 6–10, real pilots, reviewed power profiles, Central research
 scheduler/Telegram/private Dashboard acceptance and exit health remain open.
+
+## First full-gate attempt: rejected on runtime
+
+Final quick gate `wc-run-2a5y2xjn` passed. Exact-scope dry-run classified all
+eight paths as code/full, with no installer, Dashboard deploy or manual reason;
+remote main was still `ffc9111118a0`. Source checkpoint `0fe7e1a4` and complete
+gate-input snapshot `0be74c832e80baee1ae9307fb5d1d8a1b21c7887` were pushed only
+to private non-main branches. No formal candidate release was created.
+
+Controller session `14598`, PID `38548`, ran the full gate with external scratch
+`wc-run-g4dsr_ya`. Both inventory-only feature-corpus fixture phases succeeded
+with verified receipts: AU 95.239624959 s, HKJC 120.8603745 s. These do not
+establish monitoring/pilot acceptance.
+
+The mandatory large AU monitoring-corpus fixture then **timed out** under the
+unchanged 600-second limit. Its preserved outcome is:
+
+```text
+/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/command-runs/wc-run-g4dsr_ya/pytest-of-imac/pytest-8/test_large_monitoring_corpus_a0/warm/research-phases/au/racing-monitoring-corpus-l0u_6vq_/phase-outcome.json
+SHA256 f9ed40e0b2120a16fb38f2378bacec038ea5645345b752bd419a0abdded08366
+disposition/status/execution.state: timed_out
+execution.wall_seconds: 598.052643334
+execution.returncode: -15
+publication: unconfirmed_reconcile_before_retry
+result: null
+```
+
+All 13 intermediate monitoring pages existed, but **no acknowledged complete
+receipt** was obtained. The test requires `ResearchDisposition.SUCCEEDED`, so
+the full gate was conclusively red. Only the verified six-PID controller
+subtree `[38548, 38570, 38606, 39089, 39090, 46341]` was stopped; session 14598
+terminated 143. Production jobs and original failure evidence were not changed.
+No gate success, full-suite totals, immutable approval, merge or activation is
+claimed for this candidate. Do not resume or duplicate that terminated gate.
+
+The next engineering iteration must reduce duplicate work without dropping
+source rechecks or resetting/increasing native limits. Read-only inspection
+identifies repeated outer/physical metadata path guards and both per-bundle
+plus final per-blob double reads as hypotheses. First measure exact reader-call
+counts with a regression test, then optimize while preserving complete final
+source/directory/mutation checks. Re-run focused tests and the original full
+gate; do not extend the deadline or relabel intermediate pages as success.

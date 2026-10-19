@@ -103,3 +103,18 @@
 ## Proposed Goal Function Objective
 
 完成Wong Choi Stage 5 Automated Research Platform：先獨立審核並凍結AU／HKJC v2、Tennis v1及NBA v1 evaluation rulers，再建立append-only experiment registry、immutable point-in-time dataset manifests、production-safe可重現跨domain runner、walk-forward／ablation／leakage／statistical decision gates、按run／calendar／sample／incident運作嘅self-review、Central Dashboard／Telegram visibility；以Tennis及AU／HKJC做end-to-end pilots，NBA保持live evidence gate，同時確保所有model promotion仍受Stage 4 contract及human approval約束。
+
+## 2026-10-19 byte-volume follow-up (engineering, not pilot acceptance)
+
+Reader `ffc9111118a0` passed both full gates, merged and activated across all
+four configured runtime domains. Its first real review remained partial: AU
+hit the metadata recheck byte budget, HKJC the prediction artifact read budget;
+neither racing cursor advanced. Therefore the history-reader native acceptance
+is still open, not completed by the synthetic large-reference fixture.
+
+Candidate follow-up uses bounded metadata record pages and whole-bundle blob
+subpages, preserving complete inventory/byte rechecks, existing native limits,
+supervisor deadlines and model-promotion prohibition. See
+`docs/audits/WONG_CHOI_STAGE5_BYTE_BOUNDED_READERS_2026-10-19.md` for RED/GREEN
+evidence and remaining gate/native replay requirements. Do not tick Tasks 6–10
+or real pilot/power acceptance on the basis of this engineering candidate.
