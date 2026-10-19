@@ -196,3 +196,33 @@ pass or Telegram acceptance. Power applicability remains 0/4, all
 Installed and loaded domain labels remain aligned; the central research-review
 label is still missing. These observations do not authorize an installer or
 change the pending engineering release scope.
+
+## Terminal controller result and post-release continuation
+
+Session 17881 is now terminal exit 0, not an active gate. The original controller
+returned `merged`, `activation: succeeded`, `automation_status: completed` for
+`ea95996493ed58187bf6f219f63a0c4c02ac14ab`, with the same nine paths, no
+installers, no Dashboard deploy and all four configured domains aligned.
+Its final Telegram result is `sent`, one part to one target. The append-only
+release event files were independently read and SHA256 checked:
+
+| Event | UTC time | File SHA256 |
+| --- | --- | --- |
+| approval_granted | 2026-10-19T06:33:39.580301Z | `c383913e290700ed14a07d696218d73113e331fbde64220d150c4182deba0198` |
+| merged | 2026-10-19T06:33:41.626151Z | `c799090ffc2c41df1d7317f76134c306e1d0825bf4ee60764231a7298aee88d4` |
+| activation_succeeded | 2026-10-19T06:33:48.904004Z | `8121a8f05da4e92c03bac6fab796702969078c222263acfee83dd7fabbf86bf4` |
+
+At the next inspection remote main and production had advanced together to
+`a99710261120d10bf4b76e9c81bcd79916b214e8`, a subsequent HKJC review-document
+commit. `ea959964` remains an ancestor, the immutable reader branch still points
+exactly to it, and the five released reader source files have no diff between
+that release and current production. Two existing generated-data modifications
+were preserved; no reset or overwrite was used.
+
+A fresh native record-only review was launched through the existing production
+wrapper and external scratch runner after confirming no other native review
+was live, mounted WARM, and approximately 23 GiB HOT / 818 GiB WARM available.
+Its session is 64823, scratch `wc-run-a0bf80v2`. The original production locks,
+900-second per-domain limit, frozen rulers and no-promotion/no-notification
+authority remain unchanged. Its result is still pending at this checkpoint;
+neither real pilot acceptance nor Stage 5 completion is claimed.
