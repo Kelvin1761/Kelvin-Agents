@@ -162,3 +162,57 @@ After explicit reservation/cumulative-counter coverage was added,
 `wc-run-gx15cph5` also passed, with the same existing AU warnings. The next
 checkpoint is still non-main WIP, not a release; the original parametrized
 AU/HKJC large-corpus/review test will run unchanged before another full gate.
+
+## Original large corpus and review-child regression: passed
+
+At clean/pushed source commit `558e97145e6c3772dc14625e77cd6b7ee4b2949c`,
+the following original test, including **both** existing domain parameters and
+all existing assertions, terminated with exit 0: **2 passed in 1693.82 s**.
+
+```text
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=.agents/skills python3 .agents/scripts/wongchoi_external_run.py -- python3 -m pytest .agents/skills/shared_wong_choi/tests/test_research_racing_monitoring_page_runtime.py::test_large_monitoring_corpus_above_legacy_reference_limit_keeps_one_real_fixture_label -xq -p no:cacheprovider
+```
+
+`-x` stops at the first failure; it did not deselect a domain or change a
+threshold. Each corpus and each real review child retained its original
+600-second limit. All four phases returned `succeeded / receipt_verified`:
+
+| Domain | Corpus seconds | Review-child seconds |
+| --- | ---: | ---: |
+| AU | 538.176406417 | 251.932969791 |
+| HKJC | 537.957921959 | 274.019308834 |
+
+This verifies the unchanged 1,300-prediction / above-legacy-reference-limit /
+13-page fixture, one real fixture label per domain, no sample growth through
+metadata cloning, original-source preservation and promotion prohibition.
+The result is not a benchmark against a different harness, not native
+production corpus acceptance, and not a model-performance or pilot claim.
+
+All paths below share this retained external prefix:
+
+```text
+/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/command-runs/wc-run-oe86rh3v/pytest-of-imac/pytest-0/
+```
+
+- AU corpus: `test_large_monitoring_corpus_a0/warm/research-phases/au/racing-monitoring-corpus-uckjdt1n/`.
+  Outcome SHA256 `f62ee755572b7f27cd10fd771e4e3ad753353bb6abc4026b782308605fd70e01`;
+  completed SHA256 `4df3f63aff0d22bdf065e71734a50abb97404f4bdd6753a0ff8e413ca8118116`;
+  content hash `a25105e06680894028b4ba58d0a1e0a83ddca12d8731759ee8d6ec1620d9fe4b`.
+- AU review: same `a0/.../au/` parent, `review-noslurl4/`.
+  Outcome SHA256 `b4ac1a8dc26f86421e1578480dc3289d5f074cf7fe8a7ccc08729f922afd3009`;
+  completed SHA256 `813013504afba94dcb1118aa400de374a17e6f958223af6c7f53bcc9681a58dc`;
+  content hash `de35645e73fccf355f9b071a19183cdf8e5a718c178508979e83be564c69bffe`.
+- HKJC corpus: `test_large_monitoring_corpus_a1/warm/research-phases/hkjc/racing-monitoring-corpus-pkh1bvek/`.
+  Outcome SHA256 `e70ac6cdf89ae96e755d823869ec01edd99c5701b6d82c4ad908625d7f5924d2`;
+  completed SHA256 `a34edc3f5b774b9685688f044218e113a7b35bdd767556ae71b4b8e6889b9be8`;
+  content hash `61a9c42d2d33b80d9c79779e0f5a0d0535049703ee84b48a31c3bab8c909a19f`.
+- HKJC review: same `a1/.../hkjc/` parent, `review-11c150tb/`.
+  Outcome SHA256 `9ebbb8638a548d7f2a72ea26095876ea0dd83a76e2f45be52a7b21c39b17e84d`;
+  completed SHA256 `e3ee3bc3dd3f8657aaa9b6add0f58075e5afc89c62ab23f8852ccae72007f214`;
+  content hash `b120ca3e27245e246fb8f7014712753557a4c0faac4dda94fd4bcd0de27ae13a`.
+
+The first failed full-gate attempt and timeout above remain preserved. Its
+terminated session `14598` must not be resumed. This successful targeted test
+session `86079` is also terminal, not a live job to restart. Next run the
+formal nine-path scoped release dry-run/full gate and clean immutable recheck;
+there is still no release approval, merge, activation or native pilot result.
