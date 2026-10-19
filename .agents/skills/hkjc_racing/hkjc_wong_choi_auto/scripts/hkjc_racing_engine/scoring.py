@@ -343,7 +343,10 @@ CONSISTENCY_MICRO_WEIGHTS = {
     "neutral_base": 60.0
 }
 
-RISK_MICRO_WEIGHTS = {
+# 風險篩查（唔入分）：只決定 risk_flags、說明文字，同 confidence_score 嘅
+# 「篩查分 < 55 再扣」。馬匹健康 leaf 用嘅係 HORSE_HEALTH_CONTEXT_WEIGHTS。
+# 以前叫 RISK_MICRO_WEIGHTS，數值一直被健康分覆蓋（2026-10-19 公式審查）。
+RISK_SCREEN_WEIGHTS = {
     "base": 68.0,
     "medical_unknown_pen": -6.59,
     "debut_pen": -5.0,
@@ -581,6 +584,5 @@ TRACKWORK_MICRO_WEIGHTS = {
     "trial_weight": 1.0,     # 每課大閘加分
     "trotting_weight": 0.1,  # 每課踱步加分
     "swimming_weight": 0.05, # 每課游水加分
-    "activity_cap": 8.0,     # 活躍度加分上限 (防操過籠)
-    "activity_floor": -4.0   # 活躍度扣分下限
+    "activity_cap": 8.0,     # 活躍度加分上限 (防操過籠)；計數全部 ≥ 0，所以冇下限
 }

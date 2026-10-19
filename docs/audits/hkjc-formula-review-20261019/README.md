@@ -210,3 +210,31 @@ python3 $D/drawb.py dump.jsonl         # 第 5.4 節
 - 365 場、單一時期（2026-04 → 10）；AUC 係描述，唔係評估閘。
 - 「影響力」冇計相關，只係量級參考。
 - 直路 1000 米只有約 21 場，第 5.4 節嗰個表**唔係證據**，只係「要量」嘅理由。
+
+## 8. 跟進：死 code 清理（2026-10-19，排名同全部輸出 bit-identical）
+
+**做咗：**
+
+- **風險分**：`_risk_score` 而家直接回傳健康分（`_candidate_health_risk_score`），
+  唔再先寫一個篩查分再俾 `_apply_mainline_context` 覆蓋。篩查改名 `_risk_screen`，
+  常數 `RISK_MICRO_WEIGHTS` → `RISK_SCREEN_WEIGHTS`。
+  **更正第 4 節第 1 點**：篩查分唔係完全死 —— `confidence_score` 嘅「< 55 再扣 5」讀緊佢。
+  變異測試（將 `high_risk_pen` −5 → −5.5）郁到 4,788 匹入面 186 匹（3.9%），所以呢條路保留，
+  只係改由 `self._risk_screen_score` 明確傳入，唔再借 `risk_score` 呢個 key。
+- **晨操**：剷走 `activity_floor` 同「操練量偏少」分支（計數全部 ≥ 0，永遠到唔到）。
+
+**驗證**（`fullout.py`：382 份 Logic、4,788 匹，跑成個 `analyze_horse()` 輸出，sort_keys JSON）：
+改動前後逐 byte 一樣；同一 code 跑兩次亦一樣（確定性）；上面嗰個變異會改 186 行（即係個比較捉得到改動）。
+HKJC golden 120 匹全部一致。
+
+**冇做（唔係死 code）：**
+
+- `track_going_score`：常數 60 但係**公開 schema** —— dashboard parser、數據合約、
+  `miss_autopsy` 嘅 `policy_leaves`、`racing_data_health` 標籤、reflector、golden 120 處都讀佢，
+  而且歷史快照全部有呢個 key。剷走係跨系統 schema 改動，唔係清理。
+- `distance_score` / `same_distance_signal_score`：ρ 1.00 但**唔係同一條式**
+  （冇同程紀錄時 66／62／56 vs 64／58），而且各自餵唔同嘅報告文字
+  （前者：風險篩查同敘述；後者：renderer 嘅中距離旗號）。合併會改報告。
+
+**順帶發現（未改，係模型改動）：** `test_auto_outputs` 守住「海外賽駒唔會因為冇本會醫療記錄被扣分」，
+但呢個豁免只存在於篩查分；真正入分嘅健康分對海外馬照扣 `medical_unknown_pen` −5。

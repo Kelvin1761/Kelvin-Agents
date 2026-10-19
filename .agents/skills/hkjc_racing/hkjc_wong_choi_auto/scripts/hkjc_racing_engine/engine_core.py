@@ -581,7 +581,25 @@ class RacingEngine:
         return {"lines": lines, "verdict": verdict}
 
     def _risk_score(self, features):
-        score = scoring.RISK_MICRO_WEIGHTS.get("base", 68.0)
+        """馬匹健康 leaf（`risk_score`）＝醫療＋休賽日數＋體重（`_candidate_health_risk_score`）。
+
+        以前呢度先計一個「風險篩查分」（醫療／初出／檔位壓力／路程未證），寫入
+        `risk_score`，之後 `_apply_mainline_context` 一定用健康分覆蓋 —— 篩查分由來冇入過
+        任何維度（2026-10-19 公式審查）。而家直接回傳健康分；篩查只留低 risk_flags、
+        說明文字，同埋 `confidence_score` 嘅「篩查分 < 55」扣分。輸出 bit-identical。
+        """
+        screen_score, screen_note = self._risk_screen(features)
+        self._risk_screen_score = screen_score
+        health_score, health_note = self._candidate_health_risk_score()
+        note = self._append_note(
+            self._strip_embedded_score(screen_note, "風險分"),
+            f"{health_note}重算風險分{clip_score(health_score):.1f}。",
+        )
+        return clip_score(health_score), note, "th01_health_context"
+
+    def _risk_screen(self, features):
+        """風險篩查：只產生 risk_flags、說明同 confidence 用嘅篩查分，唔入分。"""
+        score = scoring.RISK_SCREEN_WEIGHTS.get("base", 68.0)
         notes = []
         medical = self._text("medical_flags")
         foreign = self._is_foreign_runner()
@@ -591,19 +609,19 @@ class RacingEngine:
             # Visiting runner with no HKJC medical record — treat as neutral, not a risk.
             notes.append("海外賽駒，本會醫療欄無記錄，按中性處理")
         else:
-            score += scoring.RISK_MICRO_WEIGHTS.get("medical_unknown_pen", -8.0)
+            score += scoring.RISK_SCREEN_WEIGHTS.get("medical_unknown_pen", -8.0)
             self.risk_flags.append("medical_record_unknown")
             notes.append("醫療欄資料不足")
         if self._is_debut():
-            score += scoring.RISK_MICRO_WEIGHTS.get("debut_pen", -5.0)
+            score += scoring.RISK_SCREEN_WEIGHTS.get("debut_pen", -5.0)
             self.risk_flags.append("debut_race_experience_unknown")
             notes.append("初出缺正式賽經驗")
         if features.get("draw_score", 60) < 55:
-            score += scoring.RISK_MICRO_WEIGHTS.get("draw_pressure_pen", -5.0)
+            score += scoring.RISK_SCREEN_WEIGHTS.get("draw_pressure_pen", -5.0)
             self.risk_flags.append("draw_pressure")
             notes.append("檔位分偏低")
         if features.get("distance_score", 60) < 58:
-            score += scoring.RISK_MICRO_WEIGHTS.get("distance_unproven_pen", -4.0)
+            score += scoring.RISK_SCREEN_WEIGHTS.get("distance_unproven_pen", -4.0)
             record = self._same_distance_record()
             if record and record["starts"] > 0:
                 if "distance_record_weak" not in self.risk_flags:
@@ -612,7 +630,7 @@ class RacingEngine:
             else:
                 self.risk_flags.append("distance_unproven")
                 notes.append("路程證明不足")
-        return clip_score(score), "、".join(notes) + f"，風險分{clip_score(score):.1f}。", "medical_flags"
+        return clip_score(score), "、".join(notes) + f"，風險分{clip_score(score):.1f}。"
 
     def _confidence_score(self, features):
         present = 0
@@ -630,7 +648,7 @@ class RacingEngine:
             pen = scoring.CONFIDENCE_MICRO_WEIGHTS.get("debut_pen", -4.0)
             score += pen
             bits.append(f"初出未有正式賽數據（{pen:.1f}）")
-        if features.get("risk_score", 60) < 55:
+        if getattr(self, "_risk_screen_score", 60.0) < 55:
             pen = scoring.CONFIDENCE_MICRO_WEIGHTS.get("high_risk_pen", -5.0)
             score += pen
             bits.append(f"風險分偏低再扣（{pen:.0f}）")
@@ -767,17 +785,15 @@ class RacingEngine:
         
         activity_bonus = (gallops * gallop_w) + (trials * trial_w) + (trotting * trotting_w) + (swimming * swimming_w)
         
-        # Apply cap and floor
+        # 四個計數都 ≥ 0，所以活躍度只有 0 → 上限；以前嘅 −4 下限同「操練量偏少」
+        # 句子永遠觸發唔到（2026-10-19 公式審查剷走）。
         cap = scoring.TRACKWORK_MICRO_WEIGHTS.get("activity_cap", 8.0)
-        floor = scoring.TRACKWORK_MICRO_WEIGHTS.get("activity_floor", -4.0)
-        activity_bonus = max(floor, min(activity_bonus, cap))
-        
+        activity_bonus = min(activity_bonus, cap)
+
         final_score = scoring.clip_score(base_score + activity_bonus)
         if activity_bonus > 2.0:
             note += f"；操練量充足（活躍度+{activity_bonus:.1f}）"
-        elif activity_bonus < -1.0:
-            note += f"；操練量偏少（活躍度-{abs(activity_bonus):.1f}）"
-            
+
         return final_score, note, "trackwork_digest"
 
     def _race_shape_context_score(self, features):
@@ -1489,15 +1505,6 @@ class RacingEngine:
         if trainer_note:
             sources["jockey_score"] = "th01_trainer_context"
             sources["trainer_score"] = "th01_trainer_context"
-
-        health_score, health_note = self._candidate_health_risk_score()
-        if health_score is not None:
-            updated["risk_score"] = clip_score(health_score)
-            notes["risk_score"] = self._append_note(
-                self._strip_embedded_score(feature_notes.get("risk_score"), "風險分"),
-                f"{health_note}重算風險分{clip_score(health_score):.1f}。",
-            )
-            sources["risk_score"] = "th01_health_context"
 
         shadow = self._consistency_shadow_detail()
         if shadow is not None:

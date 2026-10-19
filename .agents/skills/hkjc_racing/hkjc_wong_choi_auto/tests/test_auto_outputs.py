@@ -495,9 +495,10 @@ class AutoOutputTests(unittest.TestCase):
         self.assertFalse(eng_b._is_foreign_runner())
 
         # Isolate the medical/coverage gating with neutral features (no draw/distance noise).
+        # This is the risk *screen* (flags + confidence), not the scored health leaf.
         neutral = {"draw_score": 60, "distance_score": 60, "risk_score": 60}
-        risk_f, _, _ = eng_f._risk_score(neutral)
-        risk_b, _, _ = eng_b._risk_score(neutral)
+        risk_f, _ = eng_f._risk_screen(neutral)
+        risk_b, _ = eng_b._risk_screen(neutral)
         self.assertNotIn("medical_record_unknown", eng_f.risk_flags)
         self.assertIn("medical_record_unknown", eng_b.risk_flags)
         self.assertGreater(risk_f, risk_b)  # foreign not docked for missing HK medical
