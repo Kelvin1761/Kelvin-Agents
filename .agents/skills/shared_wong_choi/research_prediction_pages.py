@@ -15,7 +15,7 @@ from urllib.parse import quote
 from .contracts import Domain
 from .evidence import RecordKind
 from .research_evaluation import _write_report
-from .research_index import _Reader, _at, _encoded, _hash, _hashed, _safe
+from .research_index import _MetadataPages, _Reader, _at, _encoded, _hash, _hashed, _safe
 from .research_prediction_artifacts import MAX_ARTIFACTS, _Blobs, _project_prediction, _record, _records
 from .research_review_clock import _digest
 
@@ -37,7 +37,7 @@ def freeze_prediction_inventory(
     root, end = _safe(root), _at(as_of)
     if not root.is_dir() or not (root / "records").is_dir():
         raise ValueError("production evidence store unavailable")
-    reader = _Reader(checkpoint)
+    reader = _MetadataPages(checkpoint)
     predictions = _records(root, domain, end, reader)
     records = []
     for value, raw in sorted(predictions, key=lambda item: item[0].record_id):
@@ -183,7 +183,7 @@ def inspect_prediction_page(
     max_records: int = MAX_PAGE_RECORDS,
     checkpoint: Callable[[], None] = lambda: None,
 ) -> dict:
-    """Inspect one exact page under unchanged native blob budgets.
+    """Inspect an exact page through byte-bounded whole-bundle subpages.
 
     Operational callers must use the process supervisor and production/WARM
     guard. This primitive does not publish or initialize any persistent state.
@@ -198,8 +198,8 @@ def inspect_prediction_page(
     roots = tuple(_safe(Path(item)) for item in relocation_roots)
     if len(set(roots)) != len(roots) or any(not item.is_dir() for item in roots):
         raise ValueError("unique existing relocation directories required")
-    reader, blobs = _Reader(checkpoint), _Blobs(checkpoint)
-    records = []
+    reader = _MetadataPages(checkpoint)
+    records, source_blobs = [], {}
     for identity in page["record_ids"]:
         checkpoint()
         path = root / "records" / "prediction" / (quote(identity, safe="._-") + ".json")
@@ -215,9 +215,23 @@ def inspect_prediction_page(
         parent = _record(parent_raw, RecordKind.MODEL_RELEASE, domain, parent_path)
         if _at(value.created_at) > end or _at(parent.created_at) > end:
             raise ValueError("prediction page has future evidence")
+        blobs = _Blobs(checkpoint)
         records.append(_project_prediction(value, raw, domain, roots, blobs))
+        # A complete bundle and all resolution attempts share the native cap.
+        # Never split an oversized bundle or reset a physical reader counter.
+        blobs.recheck()
+        for path, expected in blobs.files.items():
+            if path in source_blobs and source_blobs[path] != expected:
+                raise ValueError("prediction artifact changed across bundle pages")
+            source_blobs[path] = expected
     # Protect returned proof against a change during the page read itself.
-    blobs.recheck()
+    for path, expected in source_blobs.items():
+        checkpoint()
+        bounded = _Blobs(checkpoint)
+        _raw, digest, size = bounded.read(path)
+        if (digest, size) != expected:
+            raise ValueError("prediction artifact changed across bundle pages")
+        bounded.recheck()
     reader.recheck()
     body = {
         "schema_version": RESULT_SCHEMA, "inventory_hash": inventory["content_hash"],

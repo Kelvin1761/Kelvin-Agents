@@ -10,7 +10,7 @@ import re
 
 from .contracts import Domain
 from .evidence import RecordKind
-from .research_index import _Reader, _at, _encoded, _hash, _hashed, _safe
+from .research_index import _MetadataPages, _Reader, _at, _encoded, _hash, _hashed, _safe
 from .research_prediction_pages import MAX_INVENTORY_BYTES
 
 SCHEMA = "wong-choi-racing-settlement-inventory/v1"
@@ -22,7 +22,7 @@ def freeze_racing_settlement_inventory(*, root, domain, as_of, checkpoint=lambda
     root, end = _safe(Path(root)), _at(as_of)
     if not root.is_dir() or not (root / "records").is_dir():
         raise ValueError("canonical racing evidence root required")
-    reader = _Reader(checkpoint)
+    reader = _MetadataPages(checkpoint)
     if domain is Domain.AU:
         from .research_au_settlement_source import _evidence
         records = {key: value[0] for key, value in _evidence(root, end, reader).items()}

@@ -13,7 +13,7 @@ from typing import Callable
 
 from .contracts import Domain
 from .evidence import RecordKind
-from .research_index import _Reader, _at, _encoded, _hashed, _safe
+from .research_index import _MetadataPages, _at, _encoded, _hashed, _safe
 
 
 class _NativeEvidenceSnapshot:
@@ -31,7 +31,7 @@ class _NativeEvidenceSnapshot:
             from .research_au_settlement_source import _evidence
         else:
             from .research_hkjc_settlement_source import _evidence
-        reader = _Reader(checkpoint)
+        reader = _MetadataPages(checkpoint)
         records = _evidence(root, end, reader)
         reader.recheck()
         self._root, self._domain, self._end = root, domain, end
@@ -74,7 +74,7 @@ class _NativeEvidenceSnapshot:
         return records
 
     def _begin_read(self, *, root: Path, domain: Domain, as_of: datetime,
-                    checkpoint: Callable[[], None], selected_prediction_ids=None) -> tuple[dict, _Reader]:
+                    checkpoint: Callable[[], None], selected_prediction_ids=None) -> tuple[dict, _MetadataPages]:
         """Native caller must recheck this reader after its blob/label work."""
         reader = self._source_reader(root=root, domain=domain, as_of=as_of, checkpoint=checkpoint)
         records = self._records
@@ -101,14 +101,14 @@ class _NativeEvidenceSnapshot:
         return len(self._records)
 
     def _source_reader(self, *, root: Path, domain: Domain, as_of: datetime,
-                       checkpoint: Callable[[], None]) -> _Reader:
+                       checkpoint: Callable[[], None]) -> _MetadataPages:
         checkpoint()
         if (not isinstance(domain, Domain)
                 or (_safe(Path(root)), domain, _at(as_of)) != (self._root, self._domain, self._end)):
             raise ValueError("native evidence snapshot scope mismatch")
-        # A fresh reader preserves the original per-inspection byte/record bounds.
+        # Every metadata page preserves native byte bounds; graph count is global.
         # No mtime-only cache or resource-check throttling is used.
-        reader = _Reader(checkpoint)
+        reader = _MetadataPages(checkpoint)
         for folder, expected in self._directories:
             if tuple(path.name for path in reader.listing(folder)) != expected:
                 raise ValueError("native evidence snapshot directory changed")

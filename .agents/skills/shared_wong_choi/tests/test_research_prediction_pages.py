@@ -1,4 +1,5 @@
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -45,6 +46,53 @@ def test_bundle_never_splits_to_fit_page(tmp_path):
     _, value = inventory(tmp_path)
     with pytest.raises(ValueError, match="bundle"):
         plan_prediction_pages(value, max_refs=2)
+
+
+def test_large_byte_page_uses_complete_bounded_bundle_subpages(tmp_path, monkeypatch):
+    from shared_wong_choi import research_prediction_artifacts as blobs_module
+    root, value = inventory(tmp_path, 4)
+    plans = plan_prediction_pages(value)
+    # Scale only the fixture budget: each full bundle + recheck fits, but all
+    # four bundles do not. Real native limits are unchanged by production code.
+    from shared_wong_choi.research_prediction_artifacts import _records
+    from shared_wong_choi.research_index import _Reader
+    prediction = _records(root, Domain.AU, NOW, _Reader(lambda: None))[0][0]
+    bundle_bytes = sum(Path(ref.path).stat().st_size for ref in prediction.artifacts)
+    monkeypatch.setattr(blobs_module, "MAX_TOTAL_BYTES", 2 * bundle_bytes + 1)
+    result = inspect_prediction_page(inventory=value, page=plans[0], root=root,
+                                     domain=Domain.AU, as_of=NOW)
+    assert len(result["records"]) == 4
+    assert all(record["snapshot_bundle_verified"] for record in result["records"])
+    assert result["model_promotion_allowed"] is False
+
+
+def test_one_oversized_bundle_is_not_split_to_bypass_byte_limit(tmp_path, monkeypatch):
+    from shared_wong_choi import research_prediction_artifacts as blobs_module
+    root, value = inventory(tmp_path)
+    monkeypatch.setattr(blobs_module, "MAX_TOTAL_BYTES", 1)
+    with pytest.raises(ValueError, match="read budget"):
+        inspect_prediction_page(inventory=value, page=plan_prediction_pages(value)[0],
+                                root=root, domain=Domain.AU, as_of=NOW)
+
+
+def test_blob_change_after_last_bundle_is_rejected_by_complete_page_recheck(tmp_path, monkeypatch):
+    from shared_wong_choi.research_prediction_artifacts import _Blobs, _records
+    from shared_wong_choi.research_index import _Reader
+    root, value = inventory(tmp_path, 4)
+    prediction = _records(root, Domain.AU, NOW, _Reader(lambda: None))[0][0]
+    target = Path(prediction.artifacts[0].path)
+    recheck, calls = _Blobs.recheck, []
+
+    def mutate_after_last_bundle(reader):
+        recheck(reader)
+        calls.append(True)
+        if len(calls) == 4:
+            target.write_bytes(target.read_bytes() + b" ")
+
+    monkeypatch.setattr(_Blobs, "recheck", mutate_after_last_bundle)
+    with pytest.raises(ValueError, match="changed across bundle pages"):
+        inspect_prediction_page(inventory=value, page=plan_prediction_pages(value)[0],
+                                root=root, domain=Domain.AU, as_of=NOW)
 
 
 def test_page_bound_cannot_exceed_existing_reader_limit(tmp_path):
@@ -135,14 +183,14 @@ def test_preemption_checkpoint_is_not_swallowed(tmp_path):
 
 def test_concurrent_append_during_read_fails_recheck(tmp_path, monkeypatch):
     root, _ = inventory(tmp_path)
-    from shared_wong_choi.research_index import _Reader
+    from shared_wong_choi.research_index import _MetadataPages, _Reader
     from shared_wong_choi.research_prediction_artifacts import _records
     original = _records(root, Domain.AU, NOW, _Reader(lambda: None))[0][0]
-    recheck = _Reader.recheck
+    recheck = _MetadataPages.recheck
     def changed(reader):
         EvidenceStore(root).append(replace(original, record_id=f"{original.record_id}:concurrent"))
         recheck(reader)
-    monkeypatch.setattr(_Reader, "recheck", changed)
+    monkeypatch.setattr(_MetadataPages, "recheck", changed)
     with pytest.raises(ResearchIndexError, match="directory changed"):
         freeze_prediction_inventory(root=root, domain=Domain.AU, as_of=NOW)
 

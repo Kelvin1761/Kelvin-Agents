@@ -147,6 +147,35 @@ class _Reader:
         self.checkpoint()
 
 
+class _MetadataPages(_Reader):
+    """Full metadata graph in single-record pages, not a larger flat reader.
+
+    Each page reserves half the native byte limit for its initial read and
+    half for the final full-graph recheck; per-file limits are unchanged.
+    The graph retains all file digests and directory witnesses, and inherited
+    recheck revisits every page. bytes_read is cumulative I/O telemetry here;
+    no counter in a physical page reader is reset. Supervisors still bound
+    overall work, memory and time. Flat index readers keep their original cap.
+    """
+
+    def read(self, path):
+        self.checkpoint()
+        path = _safe(path)
+        if path not in self.files and len(self.files) >= self.max_records:
+            raise ResearchIndexError("evidence record limit exceeded")
+        if self.max_total_bytes < 2:
+            raise ResearchIndexError("evidence byte budget exceeded")
+        page = _Reader(self.checkpoint, max_records=1,
+                       max_record_bytes=self.max_record_bytes,
+                       max_total_bytes=self.max_total_bytes // 2)
+        raw, digest = page.read(path)
+        if path in self.files and self.files[path] != digest:
+            raise ResearchIndexError("evidence bytes changed during read")
+        self.files[path] = digest
+        self.bytes_read += page.bytes_read
+        return raw, digest
+
+
 class _FrozenRegistry(ExperimentRegistry):
     def __init__(self, records):
         self.records = records
