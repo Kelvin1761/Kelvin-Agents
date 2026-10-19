@@ -192,3 +192,73 @@ controlled review using the existing production-lock/resource/preemption
 guards. Production work must defer research. Preserve all original history,
 append new evidence and inspect the new receipt; never advance cursors by hand,
 shrink the corpus or install a scheduler to hide a failing first pass.
+
+## Terminal release result and first native acceptance
+
+Controller session `15756` terminated with exit 0. Both full gates passed;
+`ffc9111118a08eab801f64ef5c3c3d11e92882eb` was approved, fast-forwarded into
+remote main and activated through the existing controller. Remote main and the
+immutable release branch were independently verified at that SHA. The original
+manifest remains immutable; approval, merge and activation are append-only
+events at 2026-10-18T23:57:26Z, 23:57:28Z and 23:57:34Z respectively.
+The controller reports one successful Telegram delivery. No installer or
+Dashboard deploy ran. A subsequent configured-root status check verified all
+four domains aligned, their installed labels loaded and their runtime SHA equal
+to the release. Central research-review launchd remains missing; durability is
+loaded/aligned. AU/Tennis latest runs succeeded, HKJC/NBA dormant; AU/HKJC
+registry stages remain production and Tennis/NBA shadow.
+
+A fresh existing-wrapper manual pass then ran from the approved production
+checkout with all four production locks and external scratch
+`wc-run-66xwupsw`. No cursor initialization, scheduler installation, ledger
+action, notification or promotion was performed. Its terminal result is
+**partial**, not Stage 5 acceptance:
+
+```text
+/Users/imac/WongChoiData/WongChoiControl/runs/central/2026-10-18/research-review/235811.249477Z-4b7d7ed68c85.json
+byte SHA256: 426f692981b7ca3bd984e7f759e6bd8b4b2f895ecba856e46394156a42288e59
+content_hash: 512dc468770ebe53ccedcd3c426e798ffee2e46b450f2bdeed5aa357e58bf024
+```
+
+AU/HKJC failed, did not advance and remain generation 0. Tennis recorded
+reviews and NBA recorded `reviewed_freeze_required`; both advanced to generation
+3. These are review bookkeeping outcomes, not qualified experiment samples or
+model improvement. All promotion/delivery-authority flags remain false.
+
+New preserved native phase failures, relative to WARM:
+
+- `research-phases/au/racing-monitoring-corpus-g1loaiwo/phase-outcome.json`:
+  SHA256 `e80d05c88ad49a75826f4961d36c11570c58925f117eedeaac1761cb5135376a`;
+  `_NativeEvidenceSnapshot.__init__` -> `_Reader.recheck` fails with
+  `ResearchIndexError: evidence byte budget exceeded`.
+- `research-phases/hkjc/racing-monitoring-corpus-pf_wmyaf/phase-outcome.json`:
+  SHA256 `c46172f0fa964bdc18c636d4be6da97dca0f1364c32879ed1a597328bc9fb38a`;
+  prediction page inspection -> `_Blobs.read` fails with
+  `ValueError: prediction artifact read budget exceeded`.
+
+Read-only sizing isolates the remaining design boundary. At inspection, the
+canonical AU filename set contained 1,620 files totaling 22,298,211 bytes;
+two full reads would cost 44,596,422 bytes against the existing 33,554,432-byte
+reader budget. The stack fails during the second read. No byte budget was reset
+or enlarged. HKJC's persisted inventory contains 145 predictions. Reconstructing
+the deterministic **first actual page** using both current limits (100 records,
+5,000 refs) gives 67 predictions/4,942 refs, whose existing artifacts total
+954,633,579 bytes per visit, already above the 536,870,912-byte blob budget.
+This was metadata/stat sizing only, not blob verification. An earlier sizing
+of the first 100 records was not the actual planned page and is not used as the
+failure evidence.
+
+Thus ref-count pagination is insufficient for this native corpus. The next
+engineering candidate needs bounded byte-aware source traversal and artifact
+pages, with deterministic complete inventory coverage, unchanged source-byte
+and directory rechecks, atomic publication, mid-read mutation rejection,
+production preemption and unchanged supervisor limits. Test both metadata
+recheck volume and blob bytes before another formal release/native replay.
+Do not fix this by resetting counters, silently increasing limits, skipping
+records, accepting partial coverage or treating the passing synthetic large-ref
+fixture as evidence that large-byte native history was accepted. No corrective
+source change has yet been implemented or released.
+
+At post-activation inspection HOT had about 24.6 GiB free and WARM about
+818.5 GiB; external volume was mounted. D1 backup/restore/WARM proof remained
+OK, but COLD backlog and the HOT warning remain. Tasks 6–10 stay open.
