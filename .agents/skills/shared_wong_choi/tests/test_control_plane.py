@@ -43,13 +43,13 @@ def test_warmup_slot_targets_tomorrow_and_builds_role_command(
             str(tmp_path),
             "--dry-run",
         ],
-        now=datetime(2026, 10, 20, 21, 4, tzinfo=SYDNEY),
+        now=datetime(2026, 10, 20, 19, 4, tzinfo=SYDNEY),
         repo_root=REPO_ROOT,
     )
     payload = json.loads(capsys.readouterr().out)
     assert code == 0
     assert payload["target_date"] == "2026-10-21"
-    assert payload["scheduled_slot"] == "21:00"
+    assert payload["scheduled_slot"] == "19:00"
     assert payload["severity"] == "info"
     assert payload["notification_dedup_key"].startswith("wc-op:")
     assert payload["detail"]["command"][-2:] == ["--freshness-role", "warmup"]
@@ -209,3 +209,57 @@ def test_nba_warmup_recovery_is_bounded_and_other_slots_keep_policy(tmp_path: Pa
             _write_manifest(tmp_path, replace(identity, attempt=attempt), RunState.PARTIAL, exit_code=75)
         selected=M._next_request(RunRequest(identity, Operation.PREDICT), tmp_path, RetryPolicy(max_attempts=3))
         assert selected.identity.attempt == count
+
+
+def test_production_slot_targets_tomorrow_and_builds_role_command(tmp_path, capsys) -> None:
+    # 2026-10-20: production moved from 00:30 (today's date) to 21:00 (evening
+    # before), so the dashboard is ready by 22:00.  If it kept inferring
+    # "today" it would analyse a slate that has already tipped off.
+    code = M.main(
+        [
+            "--domain", "nba", "--mode", "pregame",
+            "--freshness-role", "production",
+            "--state-root", str(tmp_path), "--dry-run",
+        ],
+        now=datetime(2026, 10, 20, 21, 4, tzinfo=SYDNEY),
+        repo_root=REPO_ROOT,
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert payload["target_date"] == "2026-10-21"
+    assert payload["scheduled_slot"] == "21:00"
+    assert payload["detail"]["command"][-2:] == ["--freshness-role", "production"]
+
+
+def test_final_refresh_slot_still_targets_its_own_day(tmp_path, capsys) -> None:
+    code = M.main(
+        [
+            "--domain", "nba", "--mode", "pregame",
+            "--freshness-role", "final_refresh",
+            "--state-root", str(tmp_path), "--dry-run",
+        ],
+        now=datetime(2026, 10, 21, 6, 34, tzinfo=SYDNEY),
+        repo_root=REPO_ROOT,
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert payload["target_date"] == "2026-10-21"
+    assert payload["scheduled_slot"] == "06:30"
+
+
+def test_legacy_midnight_production_run_still_targets_today(tmp_path, capsys) -> None:
+    # During a launchd changeover the old 00:30 production job can still fire
+    # against the new code.  Its role maps to slot 21:00 (next-day slot), but the
+    # clock says it is already the slate's own day.
+    code = M.main(
+        [
+            "--domain", "nba", "--mode", "pregame",
+            "--freshness-role", "production",
+            "--state-root", str(tmp_path), "--dry-run",
+        ],
+        now=datetime(2026, 10, 21, 0, 30, tzinfo=SYDNEY),
+        repo_root=REPO_ROOT,
+    )
+    payload = json.loads(capsys.readouterr().out)
+    assert code == 0
+    assert payload["target_date"] == "2026-10-21"

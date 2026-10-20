@@ -644,15 +644,19 @@ if __name__ == "__main__":
 def test_launchd_pregame_jobs_pin_each_freshness_role() -> None:
     launchd = Path(schedule.__file__).resolve().parent / "launchd"
     expected = {
-        "warmup": (21, 0, "warmup"),
-        "production": (0, 30, "production"),
-        "final-refresh": (6, 30, "final_refresh"),
+        "warmup": ([(19, 0)], "warmup"),
+        # 21:45 re-runs production for games whose player markets were not open
+        # at 21:00; a completed production is `already_snapshotted`, so it is free.
+        "production": ([(21, 0), (21, 45)], "production"),
+        "final-refresh": ([(6, 30)], "final_refresh"),
     }
-    for name, (hour, minute, role) in expected.items():
+    for name, (slots, role) in expected.items():
         payload = plistlib.loads(
             (launchd / f"com.antigravity.nba-wong-choi.{name}.plist.template").read_bytes()
         )
-        assert payload["StartCalendarInterval"] == {"Hour": hour, "Minute": minute}
+        calendar = payload["StartCalendarInterval"]
+        calendar = calendar if isinstance(calendar, list) else [calendar]
+        assert [(item["Hour"], item["Minute"]) for item in calendar] == slots
         assert payload["ProgramArguments"][-2:] == ["--freshness-role", role]
 
     assert not (launchd / "com.antigravity.nba-wong-choi.pregame.plist.template").exists()

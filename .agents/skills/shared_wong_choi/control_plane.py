@@ -72,10 +72,22 @@ PRIMARY_OPERATIONS: dict[tuple[Domain, str], Operation] = {
 }
 
 NBA_ROLE_SLOTS = {
-    "warmup": "21:00",
-    "production": "00:30",
+    "warmup": "19:00",
+    "production": "21:00",
     "final_refresh": "06:30",
 }
+
+#: NBA pregame slots that analyse the NEXT Sydney day's slate.  Warmup and
+#: production both run the evening before (2026-10-20: production moved from
+#: 00:30 to 21:00 so the dashboard is ready by 22:00); the 06:30 final refresh
+#: runs on the slate's own day.  The 21:45 slot is production's catch-up
+#: spelling (schedule_policy), it targets the same slate.
+NBA_NEXT_DAY_SLOTS = frozenset({"19:00", "21:00", "21:45"})
+
+#: Slots whose later invocation must re-read newly opened player markets after
+#: an earlier bounded batch exhausted its retries (warmup, and production now
+#: that it is the one that publishes).
+NBA_REREAD_MARKET_SLOTS = frozenset({"19:00", "21:00", "21:45"})
 
 FIXED_MODE_SLOTS: dict[tuple[Domain, str], str] = {
     (Domain.AU, "evening"): "22:00",
@@ -124,9 +136,17 @@ def infer_target_date(
 ) -> date:
     if explicit is not None:
         return explicit
-    local_day = now.astimezone(SYDNEY).date()
-    if domain is Domain.NBA and mode == "pregame" and slot == "21:00":
-        return local_day + timedelta(days=1)
+    local_now = now.astimezone(SYDNEY)
+    local_day = local_now.date()
+    if domain is Domain.NBA and mode == "pregame":
+        # Same rule as nba_daily_schedule.pregame_target: an evening run warms
+        # tomorrow's slate, a midnight/morning run covers today's.  Derived
+        # from the clock, not only the slot label, so a legacy 00:30 launchd
+        # job still running against new code during a plist changeover keeps
+        # targeting today instead of silently analysing the day after.
+        if slot in NBA_NEXT_DAY_SLOTS and local_now.hour >= 12:
+            return local_day + timedelta(days=1)
+        return local_day
     return local_day
 
 
@@ -194,7 +214,7 @@ def _next_request(
         if (
             candidate.identity.domain is Domain.NBA
             and candidate.identity.mode == "pregame"
-            and candidate.identity.scheduled_slot == "21:00"
+            and candidate.identity.scheduled_slot in NBA_REREAD_MARKET_SLOTS
             and existing.state is RunState.PARTIAL
             and exit_code is not None
             and retry.should_retry(exit_code=exit_code, attempt=1)

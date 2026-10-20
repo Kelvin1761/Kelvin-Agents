@@ -37,7 +37,7 @@ Point-in-time rules
   module has no backfill path (running it late only produces ``late_write``
   rows).
 * "close" is the latest *observed* pre-tip capture.  The scheduler scrapes at
-  21:00 / 00:30 / 06:30 Sydney, i.e. hours before tip, so it is not the true
+  19:00 / 21:00 / 21:45 / 06:30 Sydney, i.e. hours before tip, so it is not the true
   closing line.
 
 Market probability
