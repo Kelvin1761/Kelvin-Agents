@@ -1,5 +1,6 @@
 import datetime as _dt
 import re
+from datetime import date
 import sys
 from pathlib import Path
 
@@ -1701,7 +1702,14 @@ class RacingEngine:
         days = self._days_since_last()
         weight_span = self._weight_trend_span(weight_trend)
 
-        if "✅ 無醫療事故記錄" in medical:
+        # 官方傷患記錄（EXP-20261020-02）：預設 "off" 唔入分；A/B arm 先開。
+        mode = scoring.OFFICIAL_INJURY_SCORING
+        official = bool(self._official_medical_records()) and "✅ 無醫療事故記錄" in medical
+        if official and mode == "issue":
+            medical = "官方傷患記錄"   # 當作醫療事故，行下面 −12（有康復證據 +6）
+        if "✅ 無醫療事故記錄" in medical and official and mode == "no_clear":
+            pass                      # 唔再俾「醫療清白」+2
+        elif "✅ 無醫療事故記錄" in medical:
             score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_clear_bonus"]
         elif medical and medical != "N/A":
             score += scoring.HORSE_HEALTH_CONTEXT_WEIGHTS["medical_issue_pen"]
@@ -1860,6 +1868,32 @@ class RacingEngine:
                      f"——長休組重咗嘅上名率高過輕咗嘅 +7.9pp）")
         return word
 
+    def _official_injury_records(self):
+        records = self.data.get("official_injury_records") if isinstance(self.data, dict) else None
+        return [r for r in records if isinstance(r, dict)] if isinstance(records, list) else []
+
+    def _official_medical_records(self):
+        """官方傷患記錄減去淨「表現」覆檢（表現令人失望／難以接受等）。"""
+        return [r for r in self._official_injury_records() if not r.get("performance_only")]
+
+    def _official_injury_lines(self):
+        """賽會傷患記錄頁白話（display-only），最新一條行先。"""
+        race_day = str((self.race_context or {}).get("race_date") or "")
+        lines = []
+        for rec in sorted(self._official_injury_records(), key=lambda r: r.get("incident_date") or "", reverse=True):
+            inc = rec.get("incident_date") or "日期不明"
+            passed = rec.get("passed_date")
+            gap = ""
+            if race_day and inc[:4].isdigit():
+                try:
+                    gap = f"，距今 {(date.fromisoformat(race_day[:10]) - date.fromisoformat(inc)).days} 日"
+                except ValueError:
+                    gap = ""
+            tail = f"；{passed} 通過檢驗" if passed else ""
+            tag = "賽會覆檢" if rec.get("performance_only") else "賽會傷患記錄"
+            lines.append(f"{tag}：{inc} {rec.get('detail', '')}{gap}{tail}")
+        return lines
+
     def _health_readout(self):
         """馬匹健康白話判讀（display-only）：上次出賽日期＋休賽 band＋體重＋
         傷後/長休＋長休×晨操 context。回傳 {lines, verdict}。"""
@@ -1883,6 +1917,10 @@ class RacingEngine:
         l6 = re.findall(r"\d+", str(self.horse_data.get("last_6_finishes") or ""))
         if days is not None and days <= 7 and l6 and int(l6[0]) >= 6:
             lines.append(f"⚠️ 上仗大敗（{l6[0]}名）後{int(days)}日內急放，歷史此組合上名率偏低（約6.6%），須留神")
+
+        # 官方傷患記錄頁（2026-10-20）：兩仗之間嘅手術／受傷，賽事短評唔會有
+        for official_line in self._official_injury_lines():
+            lines.append(f"⚠️ {official_line}" if "傷患" in official_line else official_line)
 
         # 傷病後復出：醫療欄有真事故（非「無事故」）＋今仗復出
         medical = self._text("medical_flags")
@@ -3707,7 +3745,12 @@ class RacingEngine:
         days = self._days_since_last()
         wt = self._text("weight_trend")
         span = self._weight_trend_span(wt)
-        if "無醫療事故" in medical:
+        official = self._official_medical_records()
+        if "無醫療事故" in medical and official:
+            latest = max(official, key=lambda r: r.get("incident_date") or "")
+            medical_text = (f"賽事短評未見事故，但賽會傷患記錄有 {latest.get('incident_date')} "
+                            f"{latest.get('detail', '')}，須核對復原情況")
+        elif "無醫療事故" in medical:
             medical_text = "醫療乾淨"
         elif medical and medical != "N/A":
             medical_text = "有歷史醫療異常紀錄，須核對復原及覆檢情況；紀錄本身不代表目前仍患病"

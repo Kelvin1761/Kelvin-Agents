@@ -677,6 +677,19 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
     return lines
 
 
+def _official_injury_fact(data: dict) -> str:
+    """官方傷患記錄頁（display-only）：「07-16 左前球節接受關節鏡手術（10-06 通過）」。"""
+    records = data.get("official_injury_records") if isinstance(data, dict) else None
+    if not isinstance(records, list):
+        return ""
+    bits = []
+    for rec in sorted((r for r in records if isinstance(r, dict)),
+                      key=lambda r: r.get("incident_date") or "", reverse=True):
+        passed = f"（{rec['passed_date']} 通過）" if rec.get("passed_date") else ""
+        bits.append(f"{rec.get('incident_date', '')} {rec.get('detail', '')}{passed}")
+    return "；".join(bits)
+
+
 def _race_shape_detail_lines(auto: dict) -> list[str]:
     """檔位與走位逐項：檔位分 / 走位匹配分 / 近仗消耗分，各一行（連原因）。
     組合方式（沙田加權 / 跑馬地檔位為主）用一句短講。"""
@@ -864,6 +877,7 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
         return _compact_fact_lines(
             ("休賽 / 體重趨勢", rest_weight, 260),
             ("健康掃描", data.get("medical_flags"), 120),
+            ("賽會傷患記錄", _official_injury_fact(data), 260),
         )
     if key == "form_line":
         last_result = _join_nonempty(

@@ -862,6 +862,26 @@ def _load_first_section_deltas(logic_path, race_context, horses):
     return out
 
 
+def _load_official_injury_records(logic_path, meeting_date, horses):
+    """全日出賽馬匹資料 PDF 嘅官方傷患記錄 → Logic `_data["official_injury_records"]`（2026-10-20）。
+
+    以前 `medical_flags` 只掃賽事短評，兩仗之間嘅手術／受傷永遠睇唔到。顯示一律用；
+    計分預設唔用（`scoring.OFFICIAL_INJURY_SCORING`，A/B 見 EXP-20261020-02）。
+    """
+    if meeting_date is None:
+        return {}
+    from hkjc_official_injury import injury_records_for_meeting
+    by_name = injury_records_for_meeting(Path(logic_path).parent, meeting_date)
+    out = {}
+    for h_num, horse in horses.items():
+        if not isinstance(horse, dict):
+            continue
+        records = by_name.get(str(horse.get("horse_name") or "").strip())
+        if records:
+            out[str(h_num)] = records
+    return out
+
+
 DEFAULT_SHADOW_PROFILES = (
     "incident_reliability",
     "weight_refit_t02",
@@ -1003,6 +1023,11 @@ class HKJCAutoOrchestrator:
             horse_obj = horses.get(h_num)
             if isinstance(horse_obj, dict) and isinstance(horse_obj.setdefault("_data", {}), dict):
                 horse_obj["_data"]["first_section_min_delta"] = value
+        injury_date = meeting_date if isinstance(race_context, dict) else None
+        for h_num, records in _load_official_injury_records(race_file, injury_date, horses).items():
+            horse_obj = horses.get(h_num)
+            if isinstance(horse_obj, dict) and isinstance(horse_obj.setdefault("_data", {}), dict):
+                horse_obj["_data"]["official_injury_records"] = records
         
         for h_num, h_obj in horses.items():
             h_name = h_obj.get("horse_name", "Unknown")

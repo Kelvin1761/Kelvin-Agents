@@ -568,6 +568,13 @@ def score_band(score):
 #   零回退；−1/−2/−3 同方向、單調）→ 入分。
 #   初戴（任何/淨眼罩/晨操預演 gated）全部 NULL 或過擬合（TRAIN 升 TEST 唔升）
 #   → 只做顯示。詳見 memory hkjc-gear-module-spec。
+# 官方傷患記錄頁點入馬匹健康分（EXP-20261020-02 預先登記，未判決）。
+#   "off"      = 唔入分（live 預設；只顯示）
+#   "issue"    = 短評冇事故但有官方記錄 → 行醫療事故 −12（有康復證據 +6）
+#   "no_clear" = 短評冇事故但有官方記錄 → 唔俾醫療清白 +2
+# 淨「表現」覆檢唔計。改呢個值 = 改模型，要跟判決。
+OFFICIAL_INJURY_SCORING = "off"
+
 GEAR_SIGNAL_WEIGHTS = {
     "gear_removed_pen": -3.0,
 }
