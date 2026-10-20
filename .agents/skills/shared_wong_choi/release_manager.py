@@ -286,6 +286,7 @@ def prepare_release(
     allow_unrelated: bool = False,
     activation_base: str | None = None,
     expected_results: Sequence[str] = (),
+    auto_approve: bool = True,
 ) -> dict:
     repo = repo.resolve()
     selected = _scope_paths(repo, paths)
@@ -451,7 +452,9 @@ def prepare_release(
         branch=branch,
         commit=commit,
     )
-    if push_ok and automatic:
+    # auto_approve=False: a caller that already holds the automatic-release
+    # lock (the auto-rebase replay) approves the new commit itself.
+    if push_ok and automatic and auto_approve:
         from .release_automation import auto_approve_release
 
         result = auto_approve_release(

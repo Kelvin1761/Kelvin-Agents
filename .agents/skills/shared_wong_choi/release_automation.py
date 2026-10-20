@@ -70,7 +70,7 @@ def auto_approve_release(
 ) -> dict:
     from .release_activation import activate_release
     from .release_approval import _load_release, approve_release
-    from .release_manager import ReleaseError, _notify
+    from .release_manager import ReleaseError, _notify, _run
     from .release_events import ReleaseEventStore, effective_status
 
     config = release_automation_config(repo)
@@ -80,11 +80,17 @@ def auto_approve_release(
     effective = effective_status(manifest, ReleaseEventStore(state_root / "release-events").list(manifest["release_id"]))
     if effective["status"] in {"rejected", "superseded"}:
         raise ReleaseError(f"automatic approval cannot reopen a {effective['status']} release")
+    from .release_rebase import (
+        MAX_AUTO_REBASES, is_expiry, main_delta, rebase_blockers,
+        refresh_in_isolated_worktree, release_paths,
+    )
+
     actor = "user-delegated:auto-release"
     result = {"commit": manifest["commit"], "status": "blocked", "activation": "not_started"}
     expected = expected_results or manifest.get("expected_results") or [
         "Expected impact was not supplied; no measured improvement is claimed."
     ]
+    rebased_from: list[str] = []
     try:
         with single_run_lock(state_root / "auto-release.lock") as acquired:
             if not acquired:
@@ -101,8 +107,37 @@ def auto_approve_release(
                 _notify(repo, "▶️ 自動發佈，毋須 Telegram 批准\n"
                         f"{manifest.get('message') or manifest['commit'][:12]}\n"
                         "預期結果（未來效果並非保證）：\n" + "\n".join(expected), dry_run=False)
-            merged = approve_release(repo, state_root, selector=selector, actor=actor,
-                                     authorization=config["authorization"], notify=False)
+            # Approval stays pinned to the exact main the commit was gated on.
+            # When main moves underneath, a release whose scope cannot interact
+            # with main's new commits is replayed and re-gated on the combined
+            # tree (see release_rebase); anything else still stops here.
+            while True:
+                try:
+                    merged = approve_release(repo, state_root, selector=selector, actor=actor,
+                                             authorization=config["authorization"], notify=False)
+                    break
+                except ReleaseError as exc:
+                    if not is_expiry(exc):
+                        raise
+                    if len(rebased_from) >= MAX_AUTO_REBASES:
+                        raise ReleaseError(
+                            f"{exc}; main kept moving after {MAX_AUTO_REBASES} auto-rebases"
+                        ) from exc
+                    _run(repo, "git", "fetch", "origin", check=False, timeout=300)
+                    blockers = rebase_blockers(
+                        release_paths(manifest), main_delta(repo, manifest["rollback_target"])
+                    )
+                    if blockers:
+                        raise ReleaseError(
+                            f"{exc}; auto-rebase refused: " + "; ".join(blockers)
+                        ) from exc
+                    refreshed = refresh_in_isolated_worktree(
+                        repo, state_root, selector=selector, actor=actor
+                    )
+                    rebased_from.append(manifest["commit"])
+                    selector = str(refreshed["release"]["commit"])
+                    _path, manifest = _load_release(state_root / "releases", selector)
+                    result["commit"] = manifest["commit"]
             result.update(merged)
             # Docs/tests still have no production activation side effects.
             if manifest["policy"]["risk"] != "docs_tests":
@@ -120,6 +155,8 @@ def auto_approve_release(
         result["automation_status"] = "blocked"
     else:
         result["automation_status"] = "completed"
+    if rebased_from:
+        result["rebased_from"] = rebased_from
     if notify:
         done = result["automation_status"] == "completed"
         result["telegram"] = _notify(
@@ -127,6 +164,8 @@ def auto_approve_release(
             ("✅ 自動發佈完成" if done else "⚠️ 自動發佈未完成")
             + f"\n{manifest.get('message') or ''}\ncommit：{manifest['commit'][:12]}"
             + f"\nmerge：{result['status']} · activation：{result['activation']}"
+            + (f"\n自動 rebase：{' → '.join(c[:12] for c in rebased_from)} → {result['commit'][:12]}"
+               if rebased_from else "")
             + "\n預期結果（非已量度改善）：\n" + "\n".join(expected)
             + (f"\n原因：{result['error']}" if result.get("error") else ""),
             dry_run=False,

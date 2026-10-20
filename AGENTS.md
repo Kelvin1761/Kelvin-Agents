@@ -60,6 +60,13 @@ manager 自動做 policy gate、exact-scope commit／push、immutable manifest �
 改為 `false` 就恢復 Telegram 人手批准。禁止再用舊式
 「掃晒成個 worktree」保存。
 
+**過期自動 rebase**：批准仍然綁死 gate 嗰陣嘅 `origin/main`。main 郁咗而兩邊
+冇共同檔案、冇共同 production domain、亦冇掂共用 package／冇單一歸屬嘅 code
+（`.agents/scripts/`、`檢查.sh` 等），auto-approve 會喺臨時 worktree replay、
+喺合併後嘅 tree 重跑 gate 再 merge（最多 3 次，`shared_wong_choi/release_rebase.py`）。
+其餘情況照舊停喺 `approval expired`，要人手 `central_wong_choi.py refresh`。
+即係 HKJC 同 NBA 唔使互相等；同一個 domain 嘅兩個 release 仍然要串行。
+
 **多個 agent session 同時開工**：commit 之前先睇 `git status`。只 stage 你自己
 今次改嘅嘢，唔好 `git add -A` 連人哋未 commit 嘅工作一齊掃入去。
 
