@@ -30,7 +30,6 @@ HKJC_REFLECTOR_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(SHARED_ROOT))
 sys.path.insert(0, str(AU_SCRIPTS))
-sys.path.insert(0, str(AU_SCRIPTS / "racing_engine"))
 sys.path.insert(0, str(HKJC_REFLECTOR_SCRIPTS))
 
 from wongchoi_paths import HK_RACING  # noqa: E402

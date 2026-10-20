@@ -13,7 +13,6 @@ sys.path.insert(0, str(ROOT / ".agents" / "scripts"))
 sys.path.insert(0, str(ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_wong_choi" / "scripts"))
 sys.path.insert(0, str(ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi" / "scripts"))
 sys.path.insert(0, str(ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts"))
-sys.path.insert(0, str(ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "racing_engine"))
 
 from racing_content_guard import assert_no_dummy_text, quarantine_file, scan_json_for_dummy, scan_text_for_dummy
 from create_hkjc_logic_skeleton import validate_parsed_horse_header

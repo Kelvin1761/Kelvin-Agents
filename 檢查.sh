@@ -46,6 +46,8 @@ export PYTHONDONTWRITEBYTECODE=1
 
 step "1. ruff（真係壞嘅嘢）" "$PY" -m ruff check --select F821,F811,F823,F701,F702,F706,F707,F811,E9 .
 
+step "1b. sys.path 唔准放引擎 package 目錄（AST）" "$PY" .agents/scripts/check_engine_syspath.py
+
 SHARED=.agents/skills/shared_racing/scripts
 for p in au hkjc; do
   P=$(echo "$p" | tr "[:lower:]" "[:upper:]")

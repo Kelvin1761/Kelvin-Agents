@@ -143,6 +143,26 @@ cp .wongchoi_*root <scratch路徑>/      # data-root marker 唔喺 git 入面，
    ```
    前提係你已經確認過個變化係你想要嘅 —— golden 會逐匹馬印出邊度變咗。
 
+### 規則 ↔ 強制者（邊條規則有人睇住）
+
+純文字規則 = 冇人睇住；犯咗兩次就唔好再加多句文字，要將個 repo 改到呢類錯做唔出
+（pstack `correct` 嘅做法：消除 > 強制 > 驗證 > 文件）。**如果一條規則已存在而
+冇嘢強制佢，再犯就算 repeat，要喺同一個 change 升級。**
+
+| 規則 | 強制者 | 狀態 |
+|---|---|---|
+| 五件事 #2 清 bytecode | `檢查.sh` 第 0 步 | ✅ 自動 |
+| 五件事 #3 `sys.path` 唔放引擎目錄 | `檢查.sh` 1b（AST，`.agents/scripts/check_engine_syspath.py`）+ 單元測試 | ✅ 自動（2026-10-20 新增；之前純文字，犯咗三次） |
+| 五件事 #5 改評分要更新 golden | `檢查.sh` 第 2 步 golden | ✅ 自動 |
+| 五件事 #1 唔手寫模型說明 | `檢查.sh` 第 3 步新鮮度 | ✅ 自動（檢查過期，唔係檢查有冇人手寫） |
+| 死欄位唔准 deploy | `data_contract --gate` | ✅ 自動 |
+| 主 checkout 只跟 main、唔留改動 | `健康.sh` 未保存工作 + Stop hook | ⚠️ 只提醒，唔攔 |
+| 五件事 #4 唔好合併 AU／HKJC 模型 | — | ❌ 純文字，冇人強制 |
+| 改模型要有 baseline／唔准講「改善」 | `model-regression-gate` skill | ⚠️ 靠 agent 自覺 |
+| 非模型改動唔准靜靜搞崩下游 | `blast-radius` skill | ⚠️ 靠 agent 自覺 |
+
+新加規則時，先問「得唔得做成 check」，得就寫 check，再喺呢度加一行。
+
 ### 發佈閘：死欄位會攔住 deploy
 
 `step_dashboard` 喺 snapshot 驗證**之前**跑 `data_contract --meeting --gate`，
@@ -251,7 +271,7 @@ Antigravity 目前最重要嘅兩條賽馬主線已經轉咗做 **full Python pi
 - `.claude/skills/`
   Claude Code project skills —— 證據紀律（`model-regression-gate`、
   `leakage-audit`、`feature-ablation`、`data-quality-audit`、
-  `experiment-review`）同幾個 vendor 返嚟嘅 upstream skill。
+  `experiment-review`、`blast-radius`）同幾個 vendor 返嚟嘅 upstream skill。
   vendor 嗰批唔好手改，改咗就同上游脫節。
 - `docs/model-evaluation-contract.md`
   **判決規則同 baseline 嘅唯一真源。** 改佢 = 改把尺。
