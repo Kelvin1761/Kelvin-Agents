@@ -19,6 +19,7 @@ from .evidence import ArtifactRef, EvidenceRecord, RecordKind
 from .research_index import _Reader, _at, _encoded, _hash, _hashed, _safe
 from .research_prediction_artifacts import _Blobs, inspect_prediction_artifacts
 from .research_review_clock import _digest
+from .recovered_settlement_artifacts import resolve_recovered_artifact
 
 
 SCHEMA = "wong-choi-au-settlement-candidates/v1"
@@ -151,6 +152,7 @@ def _inspect_au_settlement_records(*, prediction_report, root, end, roots, check
     if len(settlements) > MAX_SETTLEMENTS:
         raise ValueError("AU settlement candidate limit exceeded")
     blobs, candidates = _Blobs(checkpoint), []
+    recovery_reader = _Reader(checkpoint)
     for settlement, _raw in sorted(settlements, key=lambda item: item[0].record_id):
         decision = records[settlement.links["decision_id"]][0]
         prediction = records[decision.links["prediction_id"]][0]
@@ -161,14 +163,26 @@ def _inspect_au_settlement_records(*, prediction_report, root, end, roots, check
         verified_artifacts, result_paths, artifact_parents = 0, [], set()
         for ref in settlement.artifacts:
             path = _safe(Path(ref.path))
-            raw, digest, _size = blobs.read(path)
-            if (digest != ref.sha256 or ref.source != "au_settlement"
+            if (ref.source != "au_settlement"
                     or _at(ref.captured_at) != _at(settlement.body["settled_at"])):
                 raise ValueError("AU settlement artifact provenance mismatch")
+            resolved = path
+            try:
+                _raw, digest, _size = blobs.read(path)
+            except FileNotFoundError:
+                digest = None
+            if digest != ref.sha256:
+                try:
+                    resolved = resolve_recovered_artifact(
+                        root=root, original=path, sha256=ref.sha256,
+                        event_id=settlement.body["event_id"],
+                        reader=recovery_reader, blobs=blobs)
+                except FileNotFoundError as exc:
+                    raise ValueError("AU settlement artifact provenance mismatch") from exc
             verified_artifacts += 1
             artifact_parents.add(path.parent)
             if path.name == RESULT_NAME:
-                result_paths.append(path)
+                result_paths.append(resolved)
         if artifact_parents and (
                 len(artifact_parents) != 1
                 or next(iter(artifact_parents)).name != settlement.body["event_id"]):
@@ -213,6 +227,7 @@ def _inspect_au_settlement_records(*, prediction_report, root, end, roots, check
             "sample_qualified": False,
         })
     blobs.recheck()
+    recovery_reader.recheck()
     reader.recheck()
     report = {
         "schema_version": SCHEMA,

@@ -182,3 +182,66 @@ def test_no_settlement_is_not_source_complete(tmp_path):
     assert report["settlements_seen"] == 0
     assert report["source_coverage_complete"] is False
     assert report["verified_monitoring_samples"] is None
+
+
+@pytest.mark.parametrize("name", ["HKJC_Weight_RaceShape_V3_Prospective.json",
+                                  "HKJC_Reverse_Bias_Prospective.json"])
+def test_global_shadow_ledger_verified_without_label_authority(tmp_path, name):
+    evidence, meeting, snapshot = prediction_fixture(tmp_path)
+    result_file(meeting)
+    report = meeting / "HKJC_Reflection_Report.md"
+    report.write_text("original report")
+    state = tmp_path / ".agents/skills/hkjc_racing/hkjc_daily_auto/state"
+    state.mkdir(parents=True)
+    ledger = state / name
+    ledger.write_text('{"summary":{}}')
+    record_settlement_for_event(
+        domain=Domain.HKJC, event_id=EVENT, evidence_root=evidence,
+        summary={"meeting": meeting.name}, artifacts=[report, ledger],
+        settled_at=NOW + timedelta(hours=10), required=True)
+    candidate = inspect(evidence)["candidates"][0]
+    assert candidate["settlement_artifacts_verified"] == 2
+    assert candidate["label_source_verified"] is False
+    assert "result_artifact_not_evidenced" in candidate["blockers"]
+    ledger.write_text('{"summary":{"changed":true}}')
+    with pytest.raises(ValueError, match="provenance"):
+        inspect(evidence)
+
+
+def test_exact_hkjc_recovery_preserves_records_and_result_authority(tmp_path):
+    from shared_wong_choi.recovered_settlement_artifacts import register_recovered_artifact
+    evidence, meeting, _snapshot, results = settled_fixture(tmp_path)
+    files = {p: p.read_bytes() for p in (evidence / "records").glob("**/*.json")}
+    expected = digest(results)
+    saved = tmp_path / "saved-results.json"
+    saved.write_bytes(results.read_bytes())
+    results.write_text('{"corrected":true}')
+    copy = register_recovered_artifact(
+        root=evidence, original=results, sha256=expected, event_id=EVENT,
+        source=saved, domain="hkjc")
+    assert copy.parent.name == meeting.name
+    candidate = inspect(evidence)["candidates"][0]
+    assert candidate["label_source_verified"] is True
+    assert candidate["sample_qualified"] is False
+    assert {p: p.read_bytes() for p in files} == files
+    copy.chmod(0o644)
+    copy.write_text('corrupted recovery')
+    with pytest.raises(ValueError, match="provenance"):
+        inspect(evidence)
+
+
+@pytest.mark.parametrize("kind", ["foreign_meeting", "fake_state"])
+def test_hkjc_auxiliary_name_cannot_launder_foreign_parent(tmp_path, kind):
+    evidence, meeting, _snapshot = prediction_fixture(tmp_path)
+    report = meeting / "HKJC_Reflection_Report.md"
+    report.write_text("report")
+    other = tmp_path / ("2026-09-14_ShaTin" if kind == "foreign_meeting" else "state")
+    other.mkdir()
+    ledger = other / "HKJC_Reverse_Bias_Prospective.json"
+    ledger.write_text('{}')
+    record_settlement_for_event(
+        domain=Domain.HKJC, event_id=EVENT, evidence_root=evidence,
+        summary={"meeting": meeting.name}, artifacts=[report, ledger],
+        settled_at=NOW + timedelta(hours=10), required=True)
+    with pytest.raises(ValueError, match="event meeting"):
+        inspect(evidence)

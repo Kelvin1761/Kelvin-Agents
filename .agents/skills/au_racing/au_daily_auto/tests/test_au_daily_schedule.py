@@ -1217,7 +1217,9 @@ class TestSettlementEvidenceRecovery(unittest.TestCase):
 
     def test_retry_backfills_recent_archived_void_meeting(self):
         with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp) / "Archive"
+            # macOS may return /var, an alias; capture requires real paths.
+            temporary = Path(tmp).resolve()
+            root = temporary / "Archive"
             folder = root / "2026-10-03 Gunbower Race 1-8"
             folder.mkdir(parents=True)
             S.write_non_result_settlement(
@@ -1239,6 +1241,12 @@ class TestSettlementEvidenceRecovery(unittest.TestCase):
                 stack.enter_context(unittest.mock.patch.object(S, "ARCHIVE_ROOT", root))
                 stack.enter_context(unittest.mock.patch.object(
                     S, "record_settlement_for_event", record))
+                warm = temporary / "warm"
+                warm.mkdir()
+                stack.enter_context(unittest.mock.patch.dict(
+                    os.environ, {"WC_WARM_ARCHIVE_ROOT": str(warm)}))
+                stack.enter_context(unittest.mock.patch(
+                    "os.path.ismount", side_effect=lambda path: Path(path) == warm))
                 self.assertTrue(S.step_settlement_evidence(runlog, []))
 
         self.assertEqual(len(recorded), 1)

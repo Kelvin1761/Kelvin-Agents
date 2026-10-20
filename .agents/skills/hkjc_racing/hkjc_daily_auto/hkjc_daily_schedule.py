@@ -1418,6 +1418,28 @@ def refresh_dashboard_after_results(
     return True
 
 
+def capture_postrace_artifacts(meeting_dir: Path, *, ledgers: list[Path],
+                               event_id: str, warm_root: Path) -> tuple[Path, ...]:
+    from shared_wong_choi.immutable_settlement_artifacts import capture_settlement_artifacts
+
+    warm = Path(warm_root).absolute()
+
+    def mounted():
+        if (not warm.is_dir() or any(p.is_symlink() for p in (warm, *warm.parents))
+                or not any(os.path.ismount(p) for p in (warm, *warm.parents)
+                           if p != Path("/"))):
+            raise ValueError("HKJC settlement WARM root is unavailable or unmounted")
+
+    mounted()
+    artifacts = [meeting_dir / "HKJC_Reflection_Report.md",
+                 meeting_dir / f"{meeting_dir.name}_全日賽果.json"]
+    artifacts.extend(path for path in ledgers if is_materialized_file(path))
+    return capture_settlement_artifacts(
+        artifacts=artifacts, event_id=event_id, domain="hkjc", root=warm,
+        checkpoint=mounted,
+    )
+
+
 def run_postrace(state: dict, state_path: Path) -> int:
     pending = pending_postrace_meetings()
     retry_payload = state.get("pending_dashboard_refresh") or {}
@@ -1521,14 +1543,16 @@ def run_postrace(state: dict, state_path: Path) -> int:
                 "updated_at": stamp(),
             }
         try:
-            settlement_artifacts = [report]
-            if is_materialized_file(shadow_ledger):
-                settlement_artifacts.append(shadow_ledger)
-            if is_materialized_file(reverse_bias_ledger):
-                settlement_artifacts.append(reverse_bias_ledger)
+            event_id = f"{meeting_date.isoformat()}|{venue_from_meeting_dir(meeting_dir)}"
+            settlement_artifacts = capture_postrace_artifacts(
+                meeting_dir, ledgers=[shadow_ledger, reverse_bias_ledger], event_id=event_id,
+                warm_root=Path(os.environ.get(
+                    "WC_WARM_ARCHIVE_ROOT", "/Volumes/Kelvin Hardisk 1/WongChoi-Archive",
+                )),
+            )
             settlement = record_settlement_for_event(
                 domain=Domain.HKJC,
-                event_id=f"{meeting_date.isoformat()}|{venue_from_meeting_dir(meeting_dir)}",
+                event_id=event_id,
                 evidence_root=Path(
                     os.environ.get(
                         "WONGCHOI_CONTROL_STATE_ROOT",

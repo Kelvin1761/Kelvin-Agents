@@ -71,6 +71,7 @@ from au_research_evidence import (  # noqa: E402
     SETTLEMENT_STATUS_NAME,
     SETTLEMENT_STATUS_SCHEMA,
     build_feature_projection,
+    capture_settlement_evidence,
     resolve_settlement_evidence,
 )
 
@@ -1023,7 +1024,12 @@ def step_settlement_evidence(runlog: RunLog, archived: list[str]) -> bool:
     for name in meetings:
         folder = ARCHIVE_ROOT / name
         try:
-            evidence = resolve_settlement_evidence(folder, event_id=name)
+            evidence = capture_settlement_evidence(
+                folder, event_id=name,
+                warm_root=Path(os.environ.get(
+                    "WC_WARM_ARCHIVE_ROOT", "/Volumes/Kelvin Hardisk 1/WongChoi-Archive",
+                )),
+            )
             result = record_settlement_for_event(
                 domain=Domain.AU,
                 event_id=name,

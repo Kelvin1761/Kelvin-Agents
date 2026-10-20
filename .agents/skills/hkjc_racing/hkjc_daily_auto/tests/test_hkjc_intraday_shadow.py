@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 import json
 import sys
 from datetime import date, datetime
@@ -101,7 +103,12 @@ def test_intraday_freezes_shadow_and_notifies_only_new_reverse_risk(tmp_path: Pa
 def test_postrace_settles_reverse_bias_into_separate_ledger(tmp_path: Path) -> None:
     meeting = _meeting(tmp_path, "2026-10-04_ShaTin")
     (meeting / "HKJC_Reflection_Report.md").write_text("done", encoding="utf-8")
-    state_path = tmp_path / "state.json"
+    (meeting / f"{meeting.name}_全日賽果.json").write_text('{"1":{"results":[]}}')
+    state_dir = tmp_path / ".agents/skills/hkjc_racing/hkjc_daily_auto/state"
+    state_dir.mkdir(parents=True)
+    state_path = state_dir / "state.json"
+    warm = tmp_path / "warm"
+    warm.mkdir()
     state = schedule.load_state(state_path)
 
     def fake_run(command: list[str], **_kwargs):
@@ -111,6 +118,8 @@ def test_postrace_settles_reverse_bias_into_separate_ledger(tmp_path: Path) -> N
         return 0, "{}"
 
     with (
+        mock.patch.dict(os.environ, {"WC_WARM_ARCHIVE_ROOT": str(warm)}),
+        mock.patch.object(schedule.os.path, "ismount", side_effect=lambda p: Path(p) == warm),
         mock.patch.object(schedule, "pending_postrace_meetings", return_value=[meeting]),
         mock.patch.object(schedule, "run_cmd", side_effect=fake_run) as run,
         mock.patch.object(schedule, "record_settlement_for_event", return_value={"ok": True}) as settle,
@@ -136,6 +145,16 @@ def test_postrace_settles_reverse_bias_into_separate_ledger(tmp_path: Path) -> N
     assert len(rail_calls) == 1
     assert "--settle" in reverse_calls[0]
     reverse_ledger = state_path.parent / schedule.DEFAULT_REVERSE_BIAS_LEDGER_NAME
-    assert reverse_ledger in settle.call_args.kwargs["artifacts"]
+    captured = settle.call_args.kwargs["artifacts"]
+    assert reverse_ledger not in captured
+    assert {path.name for path in captured} == {
+        "HKJC_Reflection_Report.md", f"{meeting.name}_全日賽果.json",
+        schedule.DEFAULT_SHADOW_LEDGER_NAME, schedule.DEFAULT_REVERSE_BIAS_LEDGER_NAME,
+    }
+    assert all(path.parent.name == meeting.name for path in captured)
+    reverse_copy = next(path for path in captured if path.name == reverse_ledger.name)
+    before = reverse_copy.read_bytes()
+    reverse_ledger.write_text('updated next meeting')
+    assert reverse_copy.read_bytes() == before
     assert state["meetings"][meeting.name]["reverse_bias_shadow"]["status"] == "settled"
     assert state["meetings"][meeting.name]["rail_draw_history"]["status"] == "refreshed"

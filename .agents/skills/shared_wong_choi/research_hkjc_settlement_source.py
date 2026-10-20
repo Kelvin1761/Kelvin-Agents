@@ -21,6 +21,10 @@ from .research_prediction_artifacts import _Blobs, inspect_prediction_artifacts
 from .research_review_clock import _digest
 
 
+from .recovered_settlement_artifacts import resolve_recovered_artifact
+from .immutable_settlement_artifacts import is_hkjc_support_artifact
+
+
 SCHEMA = "wong-choi-hkjc-settlement-candidates/v1"
 MAX_RECORDS = 10000
 MAX_SETTLEMENTS = 1000
@@ -176,6 +180,7 @@ def _inspect_hkjc_settlement_records(*, prediction_report, root, end, roots, che
                                       selected_prediction_ids=None, evidence_snapshot=None):
     predictions = {item["record_id"]: item for item in prediction_report["records"]}
     blobs = _Blobs(checkpoint)
+    recovery_reader = _Reader(checkpoint)
     if evidence_snapshot is None:
         reader = _Reader(checkpoint)
         records = _evidence(root, end, reader)
@@ -213,16 +218,28 @@ def _inspect_hkjc_settlement_records(*, prediction_report, root, end, roots, che
         result_paths, parents = [], set()
         for ref in settlement.artifacts:
             path = _safe(Path(ref.path))
-            _raw, digest, _ = blobs.read(path)
-            if (
-                digest != ref.sha256
-                or ref.source != "hkjc_settlement"
-                or _at(ref.captured_at) != _at(settlement.body["settled_at"])
-            ):
+            if (ref.source != "hkjc_settlement"
+                    or _at(ref.captured_at) != _at(settlement.body["settled_at"])):
                 raise ValueError("HKJC settlement artifact provenance mismatch")
-            parents.add(path.parent)
+            resolved = path
+            try:
+                _raw, digest, _ = blobs.read(path)
+            except FileNotFoundError:
+                digest = None
+            if digest != ref.sha256:
+                try:
+                    resolved = resolve_recovered_artifact(
+                        root=root, original=path, sha256=ref.sha256,
+                        event_id=event_id, domain="hkjc",
+                        reader=recovery_reader, blobs=blobs)
+                except FileNotFoundError as exc:
+                    raise ValueError("HKJC settlement artifact provenance mismatch") from exc
+            # Historical global shadow ledgers are verified auxiliaries only.
+            # Meeting/result identity always comes from the original evidence path.
+            if not is_hkjc_support_artifact(path):
+                parents.add(path.parent)
             if RESULT_NAME.fullmatch(path.name):
-                result_paths.append(path)
+                result_paths.append(resolved)
         if parents and (
             len(parents) != 1
             or not _event_folder_matches(event_id, next(iter(parents)))
@@ -273,6 +290,7 @@ def _inspect_hkjc_settlement_records(*, prediction_report, root, end, roots, che
             "sample_qualified": False,
         })
     blobs.recheck()
+    recovery_reader.recheck()
     reader.recheck()
     report = {
         "schema_version": SCHEMA,

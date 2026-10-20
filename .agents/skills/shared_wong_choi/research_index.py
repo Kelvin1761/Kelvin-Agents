@@ -63,14 +63,19 @@ def _safe(path):
     path = Path(path)
     if not path.is_absolute() or ".." in path.parts:
         raise ResearchIndexError("absolute non-symlink evidence path required")
-    for item in (path, *path.parents):
+    current = str(path)
+    while True:
         try:
-            linked = stat.S_ISLNK(os.lstat(item).st_mode)
+            linked = stat.S_ISLNK(os.lstat(current).st_mode)
         except (OSError, ValueError):
             # Preserve pathlib's missing-path and permission-error semantics.
-            linked = item.is_symlink()
+            linked = Path(current).is_symlink()
         if linked:
             raise ResearchIndexError("absolute non-symlink evidence path required")
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
     return path
 
 
@@ -81,6 +86,7 @@ class _Reader:
         self.checkpoint = checkpoint
         self.max_records, self.max_record_bytes, self.max_total_bytes = max_records, max_record_bytes, max_total_bytes
         self.files, self.directories, self.bytes_read = {}, {}, 0
+        self._validated_json = {}
 
     def listing(self, folder):
         self.checkpoint()
@@ -107,7 +113,7 @@ class _Reader:
         self.directories[folder] = result
         return tuple(folder / name for name in result)
 
-    def read(self, path):
+    def _read_bytes(self, path):
         self.checkpoint()
         path = _safe(path)
         if not stat.S_ISREG(path.stat().st_mode):
@@ -137,11 +143,25 @@ class _Reader:
         if path in self.files and self.files[path] != digest:
             raise ResearchIndexError("evidence bytes changed during read")
         self.files[path] = digest
-        return _json(raw), digest
+        return raw, digest
+
+    def read(self, path):
+        raw, digest = self._read_bytes(path)
+        value = _json(raw)
+        self._validated_json[Path(path)] = digest
+        return value, digest
+
+    def _verify_read(self, path):
+        raw, digest = self._read_bytes(path)
+        # Identical bytes already passed JSON validation in this reader.
+        # Every recheck still performs the full bounded read and path guard.
+        if self._validated_json.get(Path(path)) != digest:
+            _json(raw)
+            self._validated_json[Path(path)] = digest
 
     def recheck(self):
         for path in tuple(self.files):
-            self.read(path)
+            self._verify_read(path)
         for folder in tuple(self.directories):
             self.listing(folder)
         self.checkpoint()
@@ -158,7 +178,7 @@ class _MetadataPages(_Reader):
     overall work, memory and time. Flat index readers keep their original cap.
     """
 
-    def read(self, path):
+    def _read_page(self, path, *, decode):
         path = Path(path)
         if path not in self.files and len(self.files) >= self.max_records:
             self.checkpoint()
@@ -171,12 +191,20 @@ class _MetadataPages(_Reader):
         page = _Reader(self.checkpoint, max_records=1,
                        max_record_bytes=self.max_record_bytes,
                        max_total_bytes=self.max_total_bytes // 2)
-        raw, digest = page.read(path)
+        raw, digest = page.read(path) if decode else page._read_bytes(path)
         if path in self.files and self.files[path] != digest:
             raise ResearchIndexError("evidence bytes changed during read")
         self.files[path] = digest
         self.bytes_read += page.bytes_read
+        if decode:
+            self._validated_json[path] = digest
         return raw, digest
+
+    def read(self, path):
+        return self._read_page(path, decode=True)
+
+    def _read_bytes(self, path):
+        return self._read_page(path, decode=False)
 
 
 class _FrozenRegistry(ExperimentRegistry):

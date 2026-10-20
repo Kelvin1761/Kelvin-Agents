@@ -144,13 +144,21 @@ def test_settlement_adapter_pins_canonical_result_and_reflector(
     report.write_text("# reflector\n", encoding="utf-8")
     monkeypatch.setattr(schedule, "ARCHIVE_ROOT", archive)
     monkeypatch.setenv("WC_AU_SCHED_LOG_DIR", str(tmp_path / "logs"))
+    warm = tmp_path / "warm"
+    warm.mkdir()
+    monkeypatch.setenv("WC_WARM_ARCHIVE_ROOT", str(warm))
+    monkeypatch.setattr("os.path.ismount", lambda path: Path(path) == warm)
     with mock.patch.object(
         schedule,
         "record_settlement_for_event",
         return_value={"status": "appended", "settlement_id": "settlement"},
     ) as record:
         assert schedule.step_settlement_evidence(_runlog(tmp_path), [EVENT]) is True
-    assert record.call_args.kwargs["artifacts"] == [result, report]
+    captured = record.call_args.kwargs["artifacts"]
+    assert [path.name for path in captured] == [result.name, report.name]
+    assert all(warm in path.parents and path.parent.name == EVENT for path in captured)
+    result.write_text("changed after append", encoding="utf-8")
+    assert captured[0].read_text(encoding="utf-8") == "# canonical results\n"
 
 
 def test_settlement_adapter_blocks_missing_canonical_result(
@@ -165,6 +173,24 @@ def test_settlement_adapter_blocks_missing_canonical_result(
     with mock.patch.object(schedule, "record_settlement_for_event") as record:
         assert schedule.step_settlement_evidence(_runlog(tmp_path), [EVENT]) is False
     record.assert_not_called()
+
+
+def test_settlement_adapter_blocks_unmounted_warm_before_append(tmp_path, monkeypatch):
+    archive = tmp_path / "Archive"
+    folder = archive / EVENT
+    folder.mkdir(parents=True)
+    (folder / "Race_Results_Reflector.md").write_text("results", encoding="utf-8")
+    (folder / f"{EVENT}_Reflector_Report.md").write_text("report", encoding="utf-8")
+    warm = tmp_path / "warm"
+    warm.mkdir()
+    monkeypatch.setattr(schedule, "ARCHIVE_ROOT", archive)
+    monkeypatch.setenv("WC_WARM_ARCHIVE_ROOT", str(warm))
+    monkeypatch.setenv("WC_AU_SCHED_LOG_DIR", str(tmp_path / "logs"))
+    monkeypatch.setattr("os.path.ismount", lambda path: False)
+    with mock.patch.object(schedule, "record_settlement_for_event") as record:
+        assert schedule.step_settlement_evidence(_runlog(tmp_path), [EVENT]) is False
+    record.assert_not_called()
+    assert not (warm / "settlement-artifacts").exists()
 
 
 def test_morning_review_records_settlement_and_propagates_evidence_failure(
