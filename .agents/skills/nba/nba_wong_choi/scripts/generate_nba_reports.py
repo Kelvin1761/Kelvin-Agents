@@ -1935,7 +1935,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     # (before 2026-10-14 the MC was unseeded and every rerun differed).
     game_seed = mc_game_seed(meta)
     try:
-        from monte_carlo_nba import run_monte_carlo_for_cards, format_mc_section, build_mc_lookup
+        from monte_carlo_nba import run_monte_carlo_for_cards, format_mc_section, build_mc_lookup, context_inputs_status
         is_b2b_map = {}
         for t_abbr in [away_abbr, home_abbr]:
             fatigue = meta.get("away" if t_abbr == away_abbr else "home", {}).get("fatigue", {})
@@ -2038,7 +2038,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     # ── Monte Carlo Simulation Summary Table ──
     try:
         if mc_results:
-            sections.append(format_mc_section(mc_results))
+            sections.append(format_mc_section(mc_results, context_status=context_inputs_status(team_stats, meta)))
             sections.append("")
     except Exception as e:
         sections.append(f"\n> ⚠️ Monte Carlo 模擬暫時無法執行: {e}\n")

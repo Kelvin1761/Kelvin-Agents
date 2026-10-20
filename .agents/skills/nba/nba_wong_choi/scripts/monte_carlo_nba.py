@@ -614,14 +614,45 @@ def simulate_sgm_joint(combos, all_cards, spread=None, is_b2b_map=None,
     return results
 
 
-def format_mc_section(mc_results):
+def context_inputs_status(team_stats, meta=None):
+    """Which matchup inputs are really populated, and from which season.
+
+    The MC header used to claim pace/defence were injected unconditionally;
+    in the 2026-27 opener ``team_stats`` was ``{}`` so neither was.
+    """
+    meta = meta or {}
+    teams = [t for t in (meta.get("away", {}).get("abbr"), meta.get("home", {}).get("abbr")) if t]
+    teams = teams or list((team_stats or {}).keys())
+    rows = [(team_stats or {}).get(t) or {} for t in teams]
+    sources = meta.get("data_sources") or {}
+    ts = sources.get("team_stats") or {}
+    return {
+        "pace": bool(rows) and all(r.get("PACE") for r in rows),
+        "defence": bool(rows) and all(r.get("DEF_RANK") for r in rows),
+        "data_season": ts.get("data_season") or meta.get("statistics_season"),
+        "fallback_used": bool(ts.get("fallback_used")),
+    }
+
+
+def format_mc_section(mc_results, context_status=None):
     """Format Monte Carlo results as markdown section."""
     lines = []
     lines.append("")
     lines.append("### 📊 Monte Carlo 命中率模擬 (10,000 次)")
     lines.append("")
     lines.append("> 🐍 由 Python `monte_carlo_nba.py` 自動計算 | Multi-Factor Adjusted Distribution")
-    lines.append("> 唔係 Simple Normal(avg, sd) — 已注入 Pace、主客、B2B、防守、分鐘等情境因素")
+    if context_status is None:
+        lines.append("> 唔係 Simple Normal(avg, sd) — 已注入主客、B2B、分鐘等情境因素")
+    else:
+        applied = ["主客", "B2B", "分鐘"]
+        missing = []
+        for key, label in (("pace", "Pace"), ("defence", "防守")):
+            (applied if context_status.get(key) else missing).append(label)
+        lines.append(f"> 唔係 Simple Normal(avg, sd) — 已注入 {'、'.join(applied)} 等情境因素")
+        if missing:
+            lines.append(f"> ⚠️ {'、'.join(missing)} 數據缺失，**冇**套用呢啲調整（對手球隊數據為空）")
+        elif context_status.get("fallback_used"):
+            lines.append(f"> ℹ️ Pace／防守數字來自上季 {context_status.get('data_season')}（新季未有足夠賽事），僅作參考")
     lines.append("")
     lines.append("| Player | Prop | Line | L10 命中 | 10-Factor | MC 命中 | 隱含勝率 | MC Edge |")
     lines.append("|--------|------|------|---------|-----------|--------|---------|---------|")
