@@ -1185,6 +1185,12 @@ class TestSettlementEvidenceRecovery(unittest.TestCase):
                 stack.enter_context(unittest.mock.patch.object(S, "ARCHIVE_ROOT", root))
                 stack.enter_context(unittest.mock.patch.object(
                     S, "record_settlement_for_event", record))
+                warm = Path(tmp) / "warm"
+                warm.mkdir()
+                stack.enter_context(unittest.mock.patch.dict(
+                    os.environ, {"WC_WARM_ARCHIVE_ROOT": str(warm)}))
+                stack.enter_context(unittest.mock.patch(
+                    "os.path.ismount", side_effect=lambda path: Path(path) == warm))
                 self.assertTrue(S.step_settlement_evidence(runlog, []))
 
         self.assertEqual(len(recorded), 1)

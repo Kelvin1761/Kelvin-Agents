@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
@@ -237,3 +238,23 @@ def resolve_settlement_evidence(folder: Path, *, event_id: str) -> dict:
         "artifacts": artifacts,
         "summary": {"meeting": event_id, "archive_status": "archived"},
     }
+
+
+def capture_settlement_evidence(folder: Path, *, event_id: str, warm_root: Path) -> dict:
+    """Capture future outcomes only; never rewrite old evidence or source bytes."""
+    from shared_wong_choi.immutable_settlement_artifacts import capture_settlement_artifacts
+
+    warm = Path(warm_root).absolute()
+
+    def mounted():
+        if (not warm.is_dir() or any(p.is_symlink() for p in (warm, *warm.parents))
+                or not any(os.path.ismount(p) for p in (warm, *warm.parents)
+                           if p != Path("/"))):
+            raise ValueError("AU settlement WARM root is unavailable or unmounted")
+
+    mounted()
+    evidence = resolve_settlement_evidence(folder, event_id=event_id)
+    captured = capture_settlement_artifacts(
+        artifacts=evidence["artifacts"], event_id=event_id, root=warm, checkpoint=mounted,
+    )
+    return {**evidence, "artifacts": captured}

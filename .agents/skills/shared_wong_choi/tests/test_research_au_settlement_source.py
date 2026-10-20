@@ -76,6 +76,37 @@ def test_mutated_evidenced_result_fails_closed(tmp_path):
         inspect(evidence)
 
 
+def test_immutable_capture_preserves_native_reader_checks_after_source_rewrite(tmp_path):
+    from shared_wong_choi.immutable_settlement_artifacts import capture_settlement_artifacts
+
+    evidence, meeting, _snapshot, _ = prediction_fixture(tmp_path)
+    result = meeting / "Race_Results_Reflector.md"
+    result.write_text("# Results\n\n## Race 1\n1st: #7 Fast Horse SP$3.00\n"
+                      "2nd: #4 Second Horse (0.20L) SP$4.00\n"
+                      "3rd: #2 Third Horse (0.50L) SP$5.00\n", encoding="utf-8")
+    report = meeting / f"{EVENT}_Reflector_Report.md"
+    report.write_text("# original report\n", encoding="utf-8")
+    warm = tmp_path / "warm"
+    warm.mkdir()
+    captured = capture_settlement_artifacts(
+        artifacts=(result, report), event_id=EVENT, root=warm,
+    )
+    record_settlement_for_event(
+        domain=Domain.AU, event_id=EVENT, evidence_root=evidence,
+        summary={"meeting": EVENT, "archive_status": "archived"},
+        artifacts=captured, settled_at=NOW + timedelta(hours=1), required=True,
+    )
+    result.write_text("rewritten results", encoding="utf-8")
+    report.write_text("rewritten report", encoding="utf-8")
+    verified = inspect(evidence)
+    assert verified["label_verified_settlements"] == 1
+    assert verified["model_promotion_allowed"] is False
+    captured[0].chmod(0o644)
+    captured[0].write_text("corrupt capture", encoding="utf-8")
+    with pytest.raises(ValueError, match="provenance mismatch"):
+        inspect(evidence)
+
+
 def test_hash_valid_result_from_another_event_folder_is_rejected(tmp_path):
     evidence, meeting, _snapshot, _ = prediction_fixture(tmp_path)
     report = meeting / f"{EVENT}_Reflector_Report.md"
