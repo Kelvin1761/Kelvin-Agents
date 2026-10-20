@@ -112,6 +112,9 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       sportsLegParts: typeof sportsLegParts === "function" ? sportsLegParts : null,
       sportsHistory: typeof sportsHistory === "function" ? sportsHistory : null,
       renderSportsHistory: typeof renderSportsHistory === "function" ? renderSportsHistory : null,
+      hasLiveSportsFeed: typeof hasLiveSportsFeed === "function" ? hasLiveSportsFeed : null,
+      sportsFeedExpired: typeof sportsFeedExpired === "function" ? sportsFeedExpired : null,
+      sportsReferencePicks: typeof sportsReferencePicks === "function" ? sportsReferencePicks : null,
     };
   `;
   vm.runInContext(source, context);
@@ -1030,6 +1033,8 @@ test("live tennis feed replaces fallback history and keeps combo legs in the bet
     sport: "tennis",
     category: "combo",
     event_date: "2026-07-25",
+    // Not yet started: a pick whose match has begun is expired, whatever date it carries.
+    start_time_utc: "2099-01-01T00:00:00Z",
     event_name: "2-match Combo · 價值膽",
     market: "Tennis Multi",
     selection: "Elina Avanesyan + Otto Virtanen",
@@ -1236,7 +1241,8 @@ test("coverage and strategy diagnostics stay collapsed so picks are not buried",
 
 test("a feed with real recommendations still wins over history", () => {
   const live = {
-    id: "tennis-live", event_date: "2026-07-31", event_name: "Live Match",
+    id: "tennis-live", event_date: "2026-07-31", start_time_utc: "2099-01-01T00:00:00Z",
+    event_name: "Live Match",
     market: "Player Aces", selection: "Over 3.5", odds: 1.9, outcome: "pending", metrics: {},
   };
   const data = {
@@ -1249,6 +1255,64 @@ test("a feed with real recommendations still wins over history", () => {
   const html = renderSportsHistory("tennis");
   assert.doesNotMatch(html, /今日冇合格建議/);
   assert.doesNotMatch(html, /Old Match/);
+});
+
+test("a snapshot whose picks have already started is not today's picks", () => {
+  // 2026-10-20: the NBA tab offered 10-15 preseason combos, with a confirm button,
+  // five days after they tipped off.  The CDN snapshot can be days old; the browser
+  // has to judge expiry again on every render.
+  const stale = {
+    id: "nba:old", sport: "nba", event_date: "2000-01-01", event_name: "OLD @ GAME",
+    market: "Same Game Multi", selection: "stale combo", odds: 3.4, outcome: "pending",
+    decision: "BET", bet_type: "combo", legs: [], metrics: {},
+  };
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    sports_history: { nba: [{ id: "archive", event_name: "Archive Case", metrics: {} }], tennis: [] },
+    sports_feed: { sports: { nba: {
+      validation_status: "valid", analysis_run_id: "nba:2000-01-01", recommendations: [stale],
+    } } },
+  };
+  const { hasLiveSportsFeed, sportsFeedExpired, renderSportsHistory } = loadTemplateFunctions(data);
+  assert.equal(hasLiveSportsFeed("nba"), false);
+  assert.equal(sportsFeedExpired("nba"), true);
+  const html = renderSportsHistory("nba");
+  assert.match(html, /已經開賽／過期/);
+  assert.doesNotMatch(html, /stale combo/);
+  assert.doesNotMatch(html, /今日冇合格建議/);
+});
+
+test("an exporter-expired NBA snapshot says the analysis is not out yet", () => {
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    sports_feed: { sports: { nba: {
+      validation_status: "expired", analysis_run_id: "nba:2026-10-15", recommendations: [],
+    } } },
+  };
+  const { sportsFeedExpired } = loadTemplateFunctions(data);
+  assert.equal(sportsFeedExpired("nba"), true);
+});
+
+test("tennis reference picks render as reference, never as a bet to place", () => {
+  const reference = {
+    id: "tennis:reference:1", sport: "tennis", category: "reference_model_edge",
+    event_date: "2099-01-01", start_time_utc: "2099-01-01T00:00:00Z",
+    event_name: "A vs B", market: "Match Winner", selection: "A", odds: 2.4,
+    outcome: "pending", decision: "BET", bet_type: "single", legs: [], metrics: {},
+  };
+  const started = { ...reference, id: "tennis:reference:2", start_time_utc: "2000-01-01T00:00:00Z" };
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    sports_feed: { sports: { tennis: {
+      validation_status: "valid", recommendations: [], reference_picks: [reference, started],
+    } } },
+  };
+  const { sportsReferencePicks, renderSportsHistory } = loadTemplateFunctions(data);
+  assert.deepEqual([...sportsReferencePicks("tennis").map((item) => item.id)], ["tennis:reference:1"]);
+  const html = renderSportsHistory("tennis");
+  assert.match(html, /參考：模型 edge 單（1 個，唔係正式建議）/);
+  assert.match(html, /未過正式落注閘/);
+  assert.doesNotMatch(html, /tennis:reference:2/);
 });
 
 test("a bare over/under line is joined to its subject, a self-describing pick is not", () => {

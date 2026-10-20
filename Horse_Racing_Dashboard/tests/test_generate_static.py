@@ -223,6 +223,43 @@ class GenerateStaticTests(unittest.TestCase):
 
 
 
+class ExpiredNbaFeedTests(unittest.TestCase):
+    def test_past_nba_feed_is_not_preserved_over_a_blocked_local_view(self):
+        # 2026-10-20: 10-15 preseason combos were republished for five days
+        # because every deploy preserved the last valid NBA feed.
+        cached = {"schema_version": 2, "sports": {"nba": {
+            "analysis_run_id": "nba:2026-10-15",
+            "validation_status": "valid",
+            "recommendations": [{"id": "old"}],
+        }}}
+        fresh = {"schema_version": 2, "sports": {"nba": {
+            "analysis_run_id": "nba:2026-10-17",
+            "validation_status": "blocked",
+            "recommendations": [],
+        }}}
+
+        merged = generate_static._merge_sports_feed(cached, fresh, today="2026-10-20")
+
+        self.assertEqual(merged["sports"]["nba"]["analysis_run_id"], "nba:2026-10-17")
+        self.assertEqual(merged["sports"]["nba"]["recommendations"], [])
+
+    def test_current_nba_feed_is_still_preserved(self):
+        cached = {"schema_version": 2, "sports": {"nba": {
+            "analysis_run_id": "nba:2026-10-21",
+            "validation_status": "valid",
+            "recommendations": [{"id": "today"}],
+        }}}
+        fresh = {"schema_version": 2, "sports": {"nba": {
+            "analysis_run_id": "nba:unavailable",
+            "validation_status": "unavailable",
+            "recommendations": [],
+        }}}
+
+        merged = generate_static._merge_sports_feed(cached, fresh, today="2026-10-20")
+
+        self.assertEqual(merged["sports"]["nba"]["recommendations"], [{"id": "today"}])
+
+
 class SlimForTransportTests(unittest.TestCase):
     """Cloudflare Pages 硬性拒收任何超過 25 MiB 嘅單一檔案。
 

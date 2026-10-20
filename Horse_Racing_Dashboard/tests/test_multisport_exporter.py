@@ -12,6 +12,7 @@ if str(BACKEND_DIR) not in sys.path:
     sys.path.insert(0, str(BACKEND_DIR))
 
 from services.multisport_exporter import (  # noqa: E402
+    _export_tennis_reference_singles,
     export_nba_snapshot,
     export_tennis_snapshot,
     validate_multisport_feed,
@@ -91,6 +92,103 @@ class MultiSportExporterTests(unittest.TestCase):
             self.assertEqual(snapshot["validation_status"], "blocked")
             self.assertEqual(snapshot["recommendations"], [])
             self.assertIn("missing_matching_sportsbet_json", snapshot["warnings"])
+
+    @staticmethod
+    def _write_nba_day(root, day, tag="CHI_WAS"):
+        analysis_dir = root / f"{day} NBA Analysis"
+        analysis_dir.mkdir()
+        (analysis_dir / f"Sportsbet_Odds_{tag}.json").write_text(
+            json.dumps({
+                "target_analysis_date": day, "game_tag": tag, "source": "sportsbet.com.au",
+                "player_props": {"PTS": {"Zach LaVine": {"line": "24+", "odds": 1.72}}},
+            }),
+            encoding="utf-8",
+        )
+        (analysis_dir / f"Game_{tag}_Full_Analysis.md").write_text(
+            "**odds_source**: SPORTSBET_LIVE ✅\n"
+            "## 🎰 SGM Parlay 組合 (Python Auto-Selection V5)\n"
+            "### 🛡️ 組合 1: 穩膽 SGM (Low Risk) — 組合賠率 @2.12\n"
+            "| 🧩 1 | Zach LaVine 24+ PTS | @1.72 | 80% | 74% | +5.1% |\n"
+            "| 🧩 2 | Jordan Poole 4+ AST | @1.23 | 90% | 82% | +2.0% |\n"
+            "未填寫項目 殘留: 0 個\n",
+            encoding="utf-8",
+        )
+
+    def test_nba_auto_select_skips_newest_folder_without_analysis(self):
+        # 2026-10-20: the scheduler made 10-16/10-17 folders (odds only, player
+        # markets not open).  Picking the newest blindly blocked the feed.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_nba_day(root, "2026-10-21")
+            (root / "2026-10-22 NBA Analysis").mkdir()
+
+            snapshot = export_nba_snapshot(root, today="2026-10-21")
+
+            self.assertEqual(snapshot["analysis_run_id"], "nba:2026-10-21")
+            self.assertEqual(snapshot["validation_status"], "valid")
+            self.assertTrue(snapshot["recommendations"])
+
+    def test_nba_auto_selected_past_analysis_is_expired_not_republished(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_nba_day(root, "2026-10-15")
+
+            snapshot = export_nba_snapshot(root, today="2026-10-20")
+
+            self.assertEqual(snapshot["validation_status"], "expired")
+            self.assertEqual(snapshot["recommendations"], [])
+            self.assertIn("nba_latest_analysis_expired:2026-10-15", snapshot["warnings"])
+
+    def test_tennis_reference_picks_come_from_model_edge_bets_not_recommendations(self):
+        connection = sqlite3.connect(":memory:")
+        connection.executescript(
+            """
+            CREATE TABLE players (id INTEGER PRIMARY KEY, name TEXT);
+            CREATE TABLE tournaments (id INTEGER PRIMARY KEY, name TEXT);
+            CREATE TABLE matches (id INTEGER PRIMARY KEY, match_date TEXT, tour TEXT,
+                round TEXT, tournament_id INTEGER, player_a_id INTEGER,
+                player_b_id INTEGER, start_time_utc TEXT);
+            CREATE TABLE market_predictions (id INTEGER PRIMARY KEY, match_id INTEGER);
+            CREATE TABLE combo_tracker (id INTEGER PRIMARY KEY, match_date TEXT);
+            CREATE TABLE odds_snapshots (id INTEGER PRIMARY KEY, match_id INTEGER,
+                source_provider TEXT, fetched_at TEXT, event_id TEXT);
+            CREATE TABLE predictions (id INTEGER PRIMARY KEY, match_id INTEGER,
+                selection_name TEXT, current_market_odds REAL, model_probability REAL,
+                no_vig_market_probability REAL, edge REAL, minimum_acceptable_odds REAL,
+                decision TEXT, stake_units REAL, confidence INTEGER, risk TEXT);
+            INSERT INTO players VALUES (1, 'Talia Gibson'), (2, 'Mai Hontama'),
+                (3, 'A'), (4, 'B');
+            INSERT INTO tournaments VALUES (1, 'WTA 125');
+            INSERT INTO matches VALUES
+                (10, '2026-10-19', 'WTA', 'R32', 1, 1, 2, '2026-10-19T04:00:00Z'),
+                (11, '2026-10-19', 'WTA', 'R32', 1, 3, 4, '2026-10-19T05:00:00Z');
+            INSERT INTO odds_snapshots VALUES
+                (1, 10, 'sportsbet', '2026-10-18T22:00:00Z', 'e10'),
+                (2, 11, 'sportsbet', '2026-10-18T22:00:00Z', 'e11');
+            -- match 10: an older BET superseded by NO_BET must not leak through
+            INSERT INTO predictions VALUES
+                (1, 10, 'Talia Gibson', 1.72, 0.65, 0.58, 0.07, 1.6, 'BET', 1, 71, 'Low'),
+                (2, 10, 'Talia Gibson', 1.60, 0.60, 0.61, -0.01, 1.7, 'NO_BET', 0, 50, 'Low'),
+                (3, 11, 'A', 2.40, 0.50, 0.40, 0.10, 2.1, 'BET', 1, 75, 'Low');
+            """
+        )
+        connection.commit()
+        connection.row_factory = sqlite3.Row
+
+        picks = _export_tennis_reference_singles(connection, "2026-10-19")
+        connection.close()
+
+        self.assertEqual([pick["selection"] for pick in picks], ["A"])
+        self.assertEqual(picks[0]["category"], "reference_model_edge")
+        self.assertEqual(picks[0]["start_time_utc"], "2026-10-19T05:00:00Z")
+        self.assertEqual(picks[0]["odds"], 2.40)
+
+    def test_tennis_reference_picks_tolerate_older_predictions_schema(self):
+        connection = sqlite3.connect(":memory:")
+        connection.row_factory = sqlite3.Row
+        connection.execute("CREATE TABLE predictions (id INTEGER, match_id INTEGER)")
+        self.assertEqual(_export_tennis_reference_singles(connection, "2026-10-19"), [])
+        connection.close()
 
     def test_tennis_exporter_emits_only_validated_props_and_preserves_combo_legs(self):
         with tempfile.TemporaryDirectory() as tmp:

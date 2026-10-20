@@ -42,7 +42,7 @@ from services.race_display_metadata import (
     parse_hkjc_pdf_english_names as _parse_hkjc_pdf_english_names,
     parse_hkjc_racecard_silks as _parse_hkjc_racecard_silks,
 )
-from services.multisport_exporter import build_multisport_feed
+from services.multisport_exporter import build_multisport_feed, sydney_today
 from services.au_display_policy import apply_au_display_policy
 from services.au_market_odds import enrich_au_market_odds
 from models.race import AnalystName, Meeting, Region
@@ -613,7 +613,7 @@ def _run_date(snapshot):
     return value if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value) else ""
 
 
-def _merge_sports_feed(cached, fresh):
+def _merge_sports_feed(cached, fresh, today=None):
     """Never let a checkout without one domain's data erase a valid live feed.
 
     AU and Tennis publish from different checkouts.  The AU scheduler has no
@@ -635,7 +635,11 @@ def _merge_sports_feed(cached, fresh):
         old_is_good = old_status in {"valid", "partial"}
         new_is_good = new_status in {"valid", "partial"}
         older = old_is_good and new_is_good and _run_date(new) < _run_date(old)
-        if old_is_good and (not new_is_good or older):
+        # NBA run dates are Sydney game dates.  A past one has tipped off, so
+        # it must never be republished as the current feed -- that is how the
+        # 10-15 preseason combos stayed on the page until 10-20.
+        expired = sport == "nba" and _run_date(old) < (today or sydney_today())
+        if old_is_good and not expired and (not new_is_good or older):
             kept = copy.deepcopy(old)
             warnings = list(kept.get("warnings") or [])
             marker = "preserved_from_live_snapshot:local_domain_unavailable_or_older"
