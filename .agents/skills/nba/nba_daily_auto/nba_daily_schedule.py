@@ -1133,7 +1133,7 @@ def run_pregame(
                 f"🟡 NBA Wong Choi {target_date} warm-up完成\n"
                 f"已驗證賽事：{len(schedule_tags)}\n"
                 f"Prediction snapshot：{snapshot.name}\n"
-                "00:30 production refresh前唔發投注Dashboard或content投注卡。"
+                "21:00 production refresh前唔發投注Dashboard或content投注卡。"
             ),
             audience="primary",
         )

@@ -64,8 +64,8 @@ done
 
 echo
 echo "NBA Wong Choi automation installed:"
-echo "  warmup   21:00 (tomorrow; no publish/content card)"
-echo "  pregame  00:30 production + 06:30 unstarted-only final refresh"
+echo "  warmup   19:00 (tomorrow; no publish/content card)"
+echo "  pregame  21:00 production (+21:45 retry if any game was partial) + 06:30 unstarted-only final refresh"
 echo "  postgame 18:30 + 21:30"
 echo "  health   10:30"
 echo "  startup  login catch-up"

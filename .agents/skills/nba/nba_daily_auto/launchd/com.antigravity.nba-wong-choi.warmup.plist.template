@@ -6,7 +6,7 @@
     <string>__RUNNER__</string><string>pregame</string>
     <string>--freshness-role</string><string>warmup</string>
   </array>
-  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
+  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>19</integer><key>Minute</key><integer>0</integer></dict>
   <key>ProcessType</key><string>Background</string>
   <key>StandardOutPath</key><string>__LOG_DIR__/launchd-warmup.log</string>
   <key>StandardErrorPath</key><string>__LOG_DIR__/launchd-warmup-error.log</string>

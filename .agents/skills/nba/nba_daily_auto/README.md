@@ -4,7 +4,7 @@
 
 ## Schedule（Australia/Sydney）
 
-- `pregame`：21:00 分析聽日並保存 append-only `warmup` snapshot，但唔 publish／唔發content投注卡；00:30 refresh後保存正式 `production` snapshot並發佈；06:30只刷新未開賽game，有material source change先保存 `final_refresh` snapshot。所有舊snapshot保留，已開賽game artifacts不可改寫。
+- `pregame`：19:00 分析聽日並保存 append-only `warmup` snapshot，但唔 publish／唔發content投注卡（逐場約 8 分鐘，2026-10-20 實測）；21:00 refresh後保存正式 `production` snapshot並發佈，21:45 再跑一次補返因盤口未開而 partial 嘅場次（全部完成就 `already_snapshotted` 即跳過）；06:30只刷新未開賽game，有material source change先保存 `final_refresh` snapshot。所有舊snapshot保留，已開賽game artifacts不可改寫。
 - `postgame`：18:30、21:30 抽賽果、verify props、更新 reflector DB、產生 dashboard settlement proposal；結果完整先歸檔。
 - `health`：10:30 核實 ESPN schedule、今日 prediction snapshot 或已歸檔狀態。
 - `startup`：登入後補昨日 postgame，再補當前 pregame。
@@ -91,7 +91,7 @@ NBA 由來冇同市場比過。`nba_market_ledger.py` 只做記錄同結算，**
 - **Point-in-time**：`captured_at` ≥ tip-off → `post_tip`；`recorded_at` ≥ tip-off → `late_write`。兩者都
   唔入任何賽前指標。冇 backfill：漏咗賽前 snapshot 就係漏咗，報告會數 `legs_missed_pretip_price`／
   `legs_without_pretip_model`。Dormant／off-season 唔會寫任何嘢；preseason 照記但評估預設排除。
-- **close 唔係真收市價**：排程 21:00／00:30／06:30（Sydney）先抓價，最後一次通常離 tip-off 幾個鐘。
+- **close 唔係真收市價**：排程 19:00／21:00／21:45／06:30（Sydney）先抓價，最後一次通常離 tip-off 幾個鐘。
   CLV（earliest vs close）因此係「觀察到嘅最後賽前價」。
 - **De-vig**：評估腿都係 Sportsbet milestone（「X+」）；milestone 階梯只列球員名、冇 Under，**逐條線
   永遠 de-vig 唔到**，raw `1/price`（含水）會**偏幫模型**。Sportsbet 另有「{Player} - Points」O/U X.5

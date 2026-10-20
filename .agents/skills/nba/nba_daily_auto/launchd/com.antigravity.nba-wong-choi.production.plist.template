@@ -6,7 +6,10 @@
     <string>__RUNNER__</string><string>pregame</string>
     <string>--freshness-role</string><string>production</string>
   </array>
-  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>0</integer><key>Minute</key><integer>30</integer></dict>
+  <key>StartCalendarInterval</key><array>
+    <dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>45</integer></dict>
+  </array>
   <key>ProcessType</key><string>Background</string>
   <key>StandardOutPath</key><string>__LOG_DIR__/launchd-production.log</string>
   <key>StandardErrorPath</key><string>__LOG_DIR__/launchd-production-error.log</string>

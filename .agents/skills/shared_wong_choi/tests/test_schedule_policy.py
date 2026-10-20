@@ -24,8 +24,8 @@ SYDNEY = ZoneInfo("Australia/Sydney")
 
 
 def test_nba_three_pregame_slots_have_distinct_freshness_roles() -> None:
-    warmup = due_runs(datetime(2026, 10, 20, 21, 0, tzinfo=SYDNEY), Domain.NBA)[0]
-    production = due_runs(datetime(2026, 10, 21, 0, 30, tzinfo=SYDNEY), Domain.NBA)[0]
+    warmup = due_runs(datetime(2026, 10, 20, 19, 0, tzinfo=SYDNEY), Domain.NBA)[0]
+    production = due_runs(datetime(2026, 10, 20, 21, 0, tzinfo=SYDNEY), Domain.NBA)[0]
     final = due_runs(datetime(2026, 10, 21, 6, 30, tzinfo=SYDNEY), Domain.NBA)[0]
 
     assert warmup.freshness_role is FreshnessRole.WARMUP
@@ -33,12 +33,16 @@ def test_nba_three_pregame_slots_have_distinct_freshness_roles() -> None:
     assert warmup.publish_allowed is False
     assert production.freshness_role is FreshnessRole.PRODUCTION
     assert production.publish_allowed is True
+    # Production runs the evening before, so it analyses tomorrow's slate; the
+    # 06:30 final refresh runs on the slate's own day.
+    assert production.target_date.isoformat() == "2026-10-21"
+    assert final.target_date.isoformat() == "2026-10-21"
     assert final.freshness_role is FreshnessRole.FINAL_REFRESH
 
 
 def test_shadow_calendar_never_publishes_or_sends_content_card() -> None:
     run = due_runs(
-        datetime(2026, 10, 10, 0, 30, tzinfo=SYDNEY),
+        datetime(2026, 10, 10, 21, 0, tzinfo=SYDNEY),
         Domain.NBA,
         calendar_mode=CalendarMode.SHADOW,
     )[0]
@@ -57,13 +61,14 @@ def test_final_refresh_returns_only_events_that_have_not_started() -> None:
 
 
 def test_missed_run_clock_recovers_each_fixed_slot_once() -> None:
-    after = datetime(2026, 10, 20, 20, 0, tzinfo=SYDNEY)
+    after = datetime(2026, 10, 20, 18, 45, tzinfo=SYDNEY)
     through = datetime(2026, 10, 21, 7, 0, tzinfo=SYDNEY)
     runs = missed_runs(after, through, Domain.NBA)
     assert [(run.scheduled_slot, run.freshness_role.value) for run in runs] == [
-        ("21:00", "warmup"),
+        ("19:00", "warmup"),
+        ("21:00", "production"),
         ("21:30", "post_event"),
-        ("00:30", "production"),
+        ("21:45", "production"),
         ("06:30", "final_refresh"),
     ]
 

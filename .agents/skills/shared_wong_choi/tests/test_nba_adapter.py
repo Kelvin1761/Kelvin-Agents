@@ -29,7 +29,7 @@ def _request(*, attempt: int = 1, dry_run: bool = False) -> RunRequest:
             Domain.NBA,
             "pregame",
             date(2026, 10, 21),
-            "00:30",
+            "21:00",
             attempt,
         ),
         operation=Operation.PREDICT,
@@ -103,3 +103,15 @@ def test_nba_adapter_fails_closed_when_exit_zero_has_unknown_status(tmp_path: Pa
     manifest = RunManifest.load(Path(result.artifacts[0]))
     assert result.state is RunState.FAILED
     assert "unknown Wong Choi run status" in manifest.payload["errors"][0]
+
+
+def test_catch_up_slot_2145_is_production_not_unroled(tmp_path: Path) -> None:
+    adapter = NBAAdapter(REPO_ROOT, tmp_path)
+    request = _request(dry_run=True)
+    request = RunRequest(
+        identity=RunIdentity(Domain.NBA, "pregame", date(2026, 10, 21), "21:45", 1),
+        operation=Operation.PREDICT,
+        dry_run=True,
+    )
+    command = adapter.execute(request).detail["command"]
+    assert command[-2:] == ["--freshness-role", "production"]
