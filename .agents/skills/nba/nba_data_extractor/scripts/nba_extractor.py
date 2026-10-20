@@ -361,6 +361,44 @@ def history_date_to(date_value):
     return (history_cutoff_day(date_value) - timedelta(days=1)).strftime("%m/%d/%Y")
 
 
+# League-level feeds need roughly a full league to be usable. After game 1 of a
+# new season only the teams that have played return rows, so "non-empty" is not
+# enough to trust the current season.
+MIN_TEAM_ROWS = 25
+MIN_PLAYER_ROWS = 100
+
+
+def fetch_with_season_fallback(fetch_fn, season, as_of, min_rows=1, label=""):
+    """Call ``fetch_fn(season, as_of)``; if it is empty/thin, use last season.
+
+    The leakage guard is untouched: ``as_of`` still bounds ``date_to`` for the
+    fallback season, so no game on or after the event's US day is read.
+    Returns ``(data, info)`` where ``info`` records which season the numbers
+    really come from.
+    """
+    data = fetch_fn(season, as_of)
+    rows = len(data) if data else 0
+    info = {
+        "label": label,
+        "requested_season": season,
+        "data_season": season,
+        "fallback_used": False,
+        "rows": rows,
+    }
+    if rows >= min_rows:
+        return data, info
+    prior = previous_nba_season(season)
+    print(f"  ↩️ {label or 'data'}: {season} 得 {rows} 行 (<{min_rows})，改用 {prior}")
+    prior_data = fetch_fn(prior, as_of)
+    prior_rows = len(prior_data) if prior_data else 0
+    if prior_rows > rows:
+        info.update({"data_season": prior, "fallback_used": True,
+                     "rows": prior_rows, "current_rows": rows})
+        return prior_data, info
+    info["fallback_failed"] = True
+    return data, info
+
+
 def detect_season_phase(date_str, game_info=None):
     return classify_nba_season(date_str, game_info)["season_phase"]
 
@@ -1121,7 +1159,8 @@ def compute_correlation_warnings(players, team_abbr):
 # ==========================================
 # 主引擎：單場深度提取
 # ==========================================
-def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stats, odds_data):
+def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stats, odds_data,
+                        data_sources=None):
     """
     針對單場比賽提取雙方所有球員的深度數據。
     這是核心函數，輸出一個完整的 JSON 數據包。
@@ -1150,6 +1189,8 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
                 else "current_season"
             ),
             "history_date_to": history_date_to(game_info.get('date')),
+            "data_sources": data_sources or {},
+            "fallback_used": any(v.get("fallback_used") for v in (data_sources or {}).values()),
             "away": {"name": away_name, "abbr": away_abbr},
             "home": {"name": home_name, "abbr": home_abbr},
             "extracted_at": datetime.now().isoformat(),
@@ -1260,6 +1301,14 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             splits = fetch_player_splits(
                 pid, pname, season=statistics_season, as_of=game_info.get('date'),
             )
+            splits_season = statistics_season
+            if not splits and season_context["season_phase"] != "PRESEASON":
+                prior_splits = fetch_player_splits(
+                    pid, pname, season=previous_nba_season(statistics_season),
+                    as_of=game_info.get('date'),
+                )
+                if prior_splits:
+                    splits, splits_season = prior_splits, previous_nba_season(statistics_season)
 
             # 進階數據
             adv = adv_stats.get(pid, {})
@@ -1281,6 +1330,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
                 "age": p.get('age', ''),
                 "advanced": adv,
                 "splits": splits,
+                "splits_season": splits_season if splits else None,
                 "gamelog": gamelog,
                 "h2h": h2h,
             }
@@ -1468,10 +1518,15 @@ def main():
     stats_date = analysis_game['date'] if analysis_game else formatted_date
     statistics_season = statistics_season_for_game(stats_date, analysis_game)
     print(f"📚 歷史數據球季: {statistics_season} | 截止: {history_date_to(stats_date)}")
-    team_stats = fetch_team_advanced_stats(statistics_season, stats_date)
-    adv_stats = fetch_all_player_advanced_stats(statistics_season, stats_date)
-    defender_data = fetch_defender_impact(statistics_season, stats_date)
-    team_dvp = fetch_team_defense_vs_position(statistics_season, stats_date)
+    data_sources = {}
+    team_stats, data_sources["team_stats"] = fetch_with_season_fallback(
+        fetch_team_advanced_stats, statistics_season, stats_date, MIN_TEAM_ROWS, "team_stats")
+    adv_stats, data_sources["player_advanced"] = fetch_with_season_fallback(
+        fetch_all_player_advanced_stats, statistics_season, stats_date, MIN_PLAYER_ROWS, "player_advanced")
+    defender_data, data_sources["key_defenders"] = fetch_with_season_fallback(
+        fetch_defender_impact, statistics_season, stats_date, MIN_PLAYER_ROWS, "key_defenders")
+    team_dvp, data_sources["team_dvp"] = fetch_with_season_fallback(
+        fetch_team_defense_vs_position, statistics_season, stats_date, MIN_TEAM_ROWS, "team_dvp")
 
     # ── Step 3: 賠率 (Claw Code 主動提取) ──
     odds_data = fetch_action_network_odds(formatted_date)
@@ -1513,7 +1568,8 @@ def main():
             print(f"❌ official_game_not_found: {game_tag_input}，唔會以 synthetic game/date 代替官方賽程。")
             sys.exit(1)
 
-        package = extract_single_game(target_game, adv_stats, defender_data, team_dvp, team_stats, odds_data)
+        package = extract_single_game(target_game, adv_stats, defender_data, team_dvp, team_stats, odds_data,
+                                      data_sources=data_sources)
 
         # 驗證數據品質 — 冇真實 gamelog 則 fail
         has_real_data = False
@@ -1553,7 +1609,8 @@ def main():
 
         print("\n🏀 正在為每場比賽生成深度數據包...")
         for g in games:
-            package = extract_single_game(g, adv_stats, defender_data, team_dvp, team_stats, odds_data)
+            package = extract_single_game(g, adv_stats, defender_data, team_dvp, team_stats, odds_data,
+                                      data_sources=data_sources)
 
             json_path = f"nba_game_data_{g['tag']}.json"
             with open(json_path, "w", encoding="utf-8") as f:
