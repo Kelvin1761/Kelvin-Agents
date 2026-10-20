@@ -28,6 +28,38 @@ from wongchoi_paths import NBA_ML_DATASET
 MODEL_DIR = os.environ.get("NBA_WC_MODEL_DIR") or str(NBA_ML_DATASET / "models" / "v3")
 
 
+# Training-parity constants (build_nba_ml_dataset.py). The model was trained
+# with these conventions; live inputs must be built the same way.
+TRAIN_PACE_BASELINE = 98.0   # build_nba_ml_dataset.py: pace_adj uses (opp_pace-98)/98
+TRAIN_USG_BONUS_PCT = 0      # training never populated usg_bonus_pct (always 0)
+
+
+def training_hit_features(arr, line_value):
+    """Hit-rate / AMC features exactly as the training builder computes them.
+
+    ``arr`` is the newest-first game log for the stat; threshold is ``>=``
+    (a milestone "N+"), percentages rounded to 0 dp, AMC to 1 dp.
+    """
+    arr = arr or []
+    l5, l3 = arr[:5], arr[:3]
+
+    def rate(xs):
+        return round(sum(1 for x in xs if x >= line_value) / len(xs) * 100, 0) if xs else 0
+
+    clr = [x - line_value for x in arr if x >= line_value]
+    return {
+        "hit_rate_l10": rate(arr),
+        "hit_rate_l5": rate(l5),
+        "hit_rate_l3": rate(l3),
+        "amc": round(sum(clr) / len(clr), 1) if clr else 0,
+    }
+
+
+def training_pace_projected(l10_avg, opp_pace):
+    pace_adj = round((opp_pace - TRAIN_PACE_BASELINE) / TRAIN_PACE_BASELINE * l10_avg, 1) if l10_avg > 0 else 0
+    return round(l10_avg + pace_adj, 1)
+
+
 class MLPropPredictor:
     """Loads trained model and predicts prop hit probability."""
 
@@ -120,14 +152,6 @@ class MLPropPredictor:
             except (ValueError, TypeError):
                 return default
 
-        # L3 hit rate (recency signal)
-        hit_rate_l3_val = 0
-        if pa and "sportsbet_lines" in pa:
-            for li in pa.get("sportsbet_lines", []):
-                if li.get("line") == line_value:
-                    hit_rate_l3_val = li.get("hit_rate_L3", 0)
-                    break
-
         features = {
             "l10_avg": safe_float(gl_stats.get("avg"), 0),
             "l10_sd": safe_float(gl_stats.get("sd"), 0),
@@ -136,7 +160,8 @@ class MLPropPredictor:
             "l5_avg": round(sum(l5_arr) / len(l5_arr), 1) if l5_arr else 0,
             "l3_avg": round(sum(l3_arr) / len(l3_arr), 1) if l3_arr else 0,
             "min_avg": safe_float(min_stats.get("avg"), round(sum(min_arr) / len(min_arr), 1) if min_arr else 0),
-            "pace_projected": safe_float(pa.get("pace_projected")),
+            # Same baseline as training (98), NOT the extractor's 100-based value.
+            "pace_projected": training_pace_projected(safe_float(gl_stats.get("avg"), 0), opp_pace),
             "usg_pct": safe_float(adv.get("USG_PCT")),
             "ts_pct": safe_float(adv.get("TS_PCT")),
             "def_rtg": safe_float(adv.get("DEF_RATING")),
@@ -144,35 +169,19 @@ class MLPropPredictor:
             "opp_def_rank": opp_def_rank,
             "opp_pace": opp_pace,
             "defender_pm": defender_pm,
-            "usg_bonus_pct": usg_bonus_pct,
+            "usg_bonus_pct": TRAIN_USG_BONUS_PCT,  # arg ignored: never non-zero in training
             "b2b_flag": 1 if fatigue and fatigue.get("is_b2b", False) else 0,
             "b2b_ppg_diff_pct": self._b2b_diff(fatigue),
             "rest_days": safe_float((fatigue or {}).get("rest_days", 1) if fatigue else 1, 1),
             "is_home": is_home,
             "home_ppg": safe_float(splits.get("Home_PPG")),
             "away_ppg": safe_float(splits.get("Road_PPG")),
-            "hit_rate_l10": 0,
-            "hit_rate_l5": 0,
-            "hit_rate_l3": hit_rate_l3_val,
-            "amc": 0,
             "line_value": line_value,
         }
-
-        # Fill hit rates from prop_analytics
-        if pa and "sportsbet_lines" in pa:
-            for li in pa.get("sportsbet_lines", []):
-                if li.get("line") == line_value:
-                    features["hit_rate_l10"] = li.get("hit_rate_L10", 0)
-                    features["hit_rate_l5"] = li.get("hit_rate_L5", 0)
-                    features["amc"] = li.get("AMC", 0)
-                    break
-        else:
-            hits = sum(1 for x in arr if x >= line_value) if arr else 0
-            features["hit_rate_l10"] = round(hits / len(arr) * 100, 0) if arr else 0
-            h5 = sum(1 for x in l5_arr if x >= line_value) if l5_arr else 0
-            features["hit_rate_l5"] = round(h5 / len(l5_arr) * 100, 0) if l5_arr else 0
-            clr = [x - line_value for x in arr if x >= line_value] if arr else []
-            features["amc"] = round(sum(clr) / len(clr), 1) if clr else 0
+        # Always computed from the game log for the requested line (integer
+        # milestone), as in training. The extractor's sportsbet_lines are x.5
+        # lines with a different `>` convention and never match a milestone.
+        features.update(training_hit_features(arr, line_value))
 
         return features
 
