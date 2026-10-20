@@ -37,6 +37,8 @@ live 維持 `OFFICIAL_INJURY_SCORING = "off"`；parser 同顯示照上線（唔�
 2. **forward live shadow**：由 2026-10-21 起逐場記錄 B1 排名，≥ 60 場一次性確認（Gold、Good、NDCG@5 Δ ≥ 0）先轉 `issue`。
    唔可以因為今次 Holm 前偏正就直接上 —— 呢個係預先登記寫明嘅規則。
 
+**Kelvin 2026-10-21 揀咗 2**：規則見 `EXP-20261020-02-hkjc-official-injury-forward.md`。
+
 ## 重現
 
 見 protocol「量度」一節。A0 = `run --dump-matrix`（分支、off），B1／B2 = 對應 arm。

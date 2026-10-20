@@ -1854,6 +1854,67 @@ def first_section_forward_section(state: dict, out_dir: Path | None = None) -> s
         return f"\n\n⚠️ {head} 檢查失敗，今個星期冇判定：{type(exc).__name__}: {exc}"
 
 
+# EXP-20261020-02 B1（官方傷患記錄當醫療事故）forward 一次性確認。規則喺判定器入面，呢度唔准改；
+# 同前速 forward 一樣：每週代跑、轉述、任何失敗都印 ⚠️、永遠唔自動改設定。
+INJURY_EXP_DOC = "docs/experiments/EXP-20261020-02-hkjc-official-injury-forward.md"
+INJURY_SINCE = "2026-10-21"
+INJURY_ARM = PROJECT_ROOT / "docs/experiments/patches/hkjc_arm_official_injury_issue.py"
+INJURY_JUDGE = PROJECT_ROOT / "docs/experiments/patches/hkjc_official_injury_forward.py"
+_INJURY_NUMBERS_RE = re.compile(
+    r"races=(\d+)\s+Gold Δ=([+-][\d.]+)pp\s+Good Δ=([+-][\d.]+)pp\s+NDCG Δ=([+-][\d.]+)\s+排序改變=(\d+)場")
+
+
+def official_injury_forward_section(state: dict, out_dir: Path | None = None) -> str:
+    """每週 review 尾加「傷患記錄 forward」一行（EXP-20261020-02 B1）。
+
+    ≥ 60 場嘅判定（CONFIRM／STAY_OFF）凍結入 state，只判一次。CONFIRM 都唔會自動轉 issue ——
+    要 Kelvin 決定，用 保存.sh 將 `scoring.OFFICIAL_INJURY_SCORING` 改做 "issue"。
+    """
+    frozen = state.get("official_injury_forward_final")
+    if isinstance(frozen, dict) and frozen.get("line"):
+        return f"\n\n{frozen['line']}\n（{frozen.get('decided_at', '?')} 已定案，唔再重跑；見 {INJURY_EXP_DOC}）"
+
+    head = f"🩺 傷患記錄 forward（EXP-20261020-02 B1，由 {INJURY_SINCE} 起）"
+    try:
+        out_dir = out_dir or HK_RACING / "Forward_Checks" / "EXP-20261020-02"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        live, cand = out_dir / "live.jsonl", out_dir / "candidate_issue.jsonl"
+        env = {"PYTHONDONTWRITEBYTECODE": "1"}
+        steps = (
+            ("live harness", [sys.executable, str(EVAL_HARNESS), "run",
+                              "--since", INJURY_SINCE, "--out", str(live)]),
+            ("候選 harness", [sys.executable, str(EVAL_HARNESS), "run", "--since", INJURY_SINCE,
+                             "--arm", str(INJURY_ARM), "--out", str(cand)]),
+            ("判定器", [sys.executable, str(INJURY_JUDGE), str(live), str(cand)]),
+        )
+        output = ""
+        for name, cmd in steps:
+            code, output = run_cmd(cmd, timeout=3600, env_overlay=env)
+            if code != 0:
+                raise RuntimeError(f"{name} exit={code}｜{output[-300:]}")
+        numbers = _INJURY_NUMBERS_RE.search(output)
+        verdict = re.search(r"判定:\s*(.+)", output)
+        if not numbers or not verdict:
+            raise RuntimeError(f"判定器輸出對唔上格式｜{output[-300:]}")
+        races, gold, good, ndcg, changed = numbers.groups()
+        verdict_text = verdict.group(1).strip()
+        line = (f"{head}：{races} 場｜Gold Δ {gold}pp｜Good Δ {good}pp｜NDCG Δ {ndcg}｜排序改變 {changed} 場"
+                f"｜判定 {verdict_text}")
+        live_err, _ = _jsonl_dropped(live)
+        cand_err, _ = _jsonl_dropped(cand)
+        if live_err or cand_err:
+            line += f"\n⚠️ score 失敗已剔除：live {live_err} 場、候選 {cand_err} 場 —— 先查數據"
+        if verdict_text.startswith("CONFIRM"):
+            line += (f"\n✅ 預先登記確認條件達到。唔會自動轉 —— 你決定；做法見 {INJURY_EXP_DOC}"
+                     "（OFFICIAL_INJURY_SCORING 改做 \"issue\"，用 保存.sh 發佈）")
+        if not verdict_text.startswith("WAIT"):
+            state["official_injury_forward_final"] = {"line": line, "decided_at": stamp()}
+        return "\n\n" + line
+    except Exception as exc:  # noqa: BLE001
+        log(f"official-injury forward check failed: {exc}")
+        return f"\n\n⚠️ {head} 檢查失敗，今個星期冇判定：{type(exc).__name__}: {exc}"
+
+
 def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     code, output = run_cmd([sys.executable, str(WEIGHT_REVIEW), "--json"])
     if code != 0:
@@ -1902,6 +1963,7 @@ def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     message += field_health_section()
     message += results_db_reconcile_section()
     message += first_section_forward_section(state)
+    message += official_injury_forward_section(state)
     notify(message)
     state["last_weekly_review"] = stamp()
     save_state(state_path, state)
