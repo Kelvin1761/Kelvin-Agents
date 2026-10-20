@@ -224,6 +224,7 @@
 - [EXP-20261019-02](EXP-20261019-02-hkjc-outer-weights-rerun-results.md) — 外層權重重跑（修 bug 後）：neutral Good −5.80pp CI 全負；wf_refit／wf_refit_tau 打和 → 維持現行。τ fit ≈ 5–6.4（唔係 3），τ 校正後 fit 權重貼近現行
 - [EXP-20261019-03](EXP-20261019-03-hkjc-inner-shares-results.md) — 四個維度內部份額 walk-forward：REJECT 但設計冇功效（λ=2 釘死份額）→ UNRESOLVABLE；診斷：騎師份額想 0.70、級數／健康想剷負磅，NLL 改善全部 ≤0.0015，維持現行
 - [EXP-20261019-04](EXP-20261019-04-hkjc-leaf-removal-results.md) — 逐 leaf 移除（9 個）：全部 REJECT → 全部保留；騎師分（Good −4.35）同負磅分（−2.61）Holm 後顯著；consistency 同晨操判唔到有貢獻，唔剷
+- [EXP-20261020-01](EXP-20261020-01-hkjc-signal-screen-results.md) — 新訊號篩選（唔係 A/B）：直路 1000 內檔差企得住（外−內 +0.25 [+0.00,+0.50]）但幅度可能高估；L400 按上仗場地路程標準化 AUC +0.0064 [−0.0024,+0.0152]，未證實；兩樣都唔開 A/B
 - [EXP-20261016-70](EXP-20261016-70-au-track-audit-results.md) — 場地與地況適性六項：同場斷崖係真（1 戰 −3.7pp → 2 戰 −9.1pp），剷斷崖、濕地唔重扣、剷重地專項三個都輸 → 保留；只上線 base 62.9 → 60（§7，consistency −4 門檻跟住 60 → 57.1，排名不變）。留低：同場比率（6+ 戰 1 次上名 −11.0pp 照加 +5）、未跑濕地 −6.4 過重、合成跑道 85 場未夠
 - [EXP-20261016-71](EXP-20261016-71-au-form-quality-distance-results.md) — 近績路程相關度 + 大幅增減程：模型名次層內 |Δ|≥400m 剩餘 −5.8pp [−7.6,−4.1]（大幅縮程最差）；F1 路程加權 REJECT（OOS Gold −1.08pp 六 block 全負）；F2 大幅轉程近績質素分 −5 上線（v3 RANKING_WIN，Good +0.28pp，Holm p 0.096 唔算顯著改善）
 - [EXP-20261016-72](EXP-20261016-72-au-track-rate-and-centralise-results.md) — 地況扣分集中一個 `_going_adjustment`（32,448 匹逐位元相同）上線；同場比率 R REJECT（Gold −0.32pp，§8 both_arms_reject）；合成跑道維持當好地，85 場，夠 100 場再測
