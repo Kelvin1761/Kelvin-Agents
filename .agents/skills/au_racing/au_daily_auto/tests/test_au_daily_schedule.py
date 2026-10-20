@@ -41,6 +41,60 @@ def tearDownModule():
     _LOG_TMP.cleanup()
 
 
+class TestCorpusArchiveGuard(unittest.TestCase):
+    def test_other_venue_on_same_day_is_not_protected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "AU_Historical_Raw_Race_Results.csv").write_text(
+                "Date,Track,Race\n2026-10-20,Kyneton,1\n", encoding="utf-8")
+            with unittest.mock.patch.object(S, "AU_RACING", root):
+                keys = S.corpus_meeting_keys()
+        self.assertFalse(S.corpus_contains_meeting(keys, "2026-10-20", "Grafton"))
+        self.assertTrue(S.corpus_contains_meeting(keys, "2026-10-20", "Kyneton"))
+        self.assertFalse(S.corpus_contains_meeting(keys, "2026-10-21", "Kyneton"))
+
+    def test_aliases_and_course_qualifiers_stay_protected(self):
+        keys = {("2026-10-20", S._venue_key("Mount Isa")),
+                ("2026-10-20", S._venue_key("bet365 Park Geelong"))}
+        self.assertTrue(S.corpus_contains_meeting(keys, "2026-10-20", "Mt Isa"))
+        self.assertTrue(S.corpus_contains_meeting(keys, "2026-10-20", "Geelong"))
+
+    def test_missing_or_unknown_track_keeps_date_wide_protection(self):
+        for column in ("", "Unknown", "N/A"):
+            with self.subTest(track=column), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / "AU_Historical_Raw_Race_Results.csv").write_text(
+                    f"Date,Track,Race\n2026-10-20,{column},1\n", encoding="utf-8")
+                with unittest.mock.patch.object(S, "AU_RACING", root):
+                    keys = S.corpus_meeting_keys()
+                self.assertTrue(S.corpus_contains_meeting(keys, "2026-10-20", "Grafton"))
+
+    def test_review_only_protects_the_meeting_with_corpus_results(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            runlog = S.RunLog("evening", S.date(2026, 10, 20),
+                              root / "run.json", notify=False)
+            folders = {venue: root / f"2026-10-20 {venue} Race 1-8"
+                       for venue in ("Grafton", "Kyneton")}
+            board = [{"key": f"2026-10-20|{venue}", "date": "2026-10-20",
+                      "venue": venue} for venue in folders]
+            with unittest.mock.patch.object(S, "dashboard_au_meetings", return_value=board), \
+                 unittest.mock.patch.object(S, "unreviewed_local_meetings", return_value=[]), \
+                 unittest.mock.patch.object(S, "corpus_meeting_keys",
+                                            return_value={("2026-10-20", "kyneton")}), \
+                 unittest.mock.patch.object(S, "find_meeting_dir",
+                                            side_effect=lambda day, venue: folders[venue]), \
+                 unittest.mock.patch.object(S, "review_one_meeting",
+                                            return_value={"archived": True, "races": [1]}) as review:
+                archived = S.step_review_archive(runlog, S.date(2026, 10, 20))
+            review.assert_called_once_with(runlog, folders["Grafton"], no_archive=False,
+                                           today=S.date(2026, 10, 20))
+            self.assertEqual(archived, [folders["Grafton"].name])
+            self.assertTrue(any(m["meeting"] == folders["Kyneton"].name
+                                and m["status"] == "archive_blocked_corpus"
+                                for m in runlog.data["meetings_processed"]))
+
+
 class TestGoing(unittest.TestCase):
     def test_api_and_page_formats(self):
         self.assertEqual(S.normalise_going("Soft (5)"), "Soft 5")
@@ -994,7 +1048,7 @@ class TestReflectionPush(unittest.TestCase):
                                             lambda rl: on_board), \
                  unittest.mock.patch.object(S, "unreviewed_local_meetings",
                                             lambda day: []), \
-                 unittest.mock.patch.object(S, "corpus_meeting_days",
+                 unittest.mock.patch.object(S, "corpus_meeting_keys",
                                             lambda: set()), \
                  unittest.mock.patch.object(
                      S, "find_meeting_dir",

@@ -821,8 +821,8 @@ def dashboard_au_meetings(runlog: RunLog) -> list[dict] | None:
             if m.get("region") == "au"]
 
 
-def corpus_meeting_days() -> set[str] | None:
-    """`AU_Historical_Raw_Race_Results.csv` 有賽果嘅賽日。None = 讀唔到。
+def corpus_meeting_keys() -> set[tuple[str, str]] | None:
+    """歷史賽果嘅 (日期, 馬場)；空馬場保守地保護同日所有場次。
 
     ⚠️ 呢個 CSV 加上 `AU_Racing` **根目錄**嘅 meeting folder 就係 backtest 語料庫
     （`au_archive_calibrator.ARCHIVE_ROOT = AU_RACING`，而且用非遞歸 `iterdir()`）。
@@ -841,12 +841,32 @@ def corpus_meeting_days() -> set[str] | None:
     signal_module.alarm(90)
     try:
         with path.open(newline="", encoding="utf-8-sig", errors="replace") as handle:
-            return {str(row.get("Date"))[:10] for row in csv.DictReader(handle)}
+            keys = set()
+            for row in csv.DictReader(handle):
+                day = str(row.get("Date") or "")[:10]
+                venue = _venue_key(row.get("Track") or "")
+                if venue in {"unknown", "na", "nan", "none"}:
+                    venue = ""
+                if day:
+                    keys.add((day, venue))
+            return keys
     except (OSError, ValueError, TimeoutError):
         return None
     finally:
         signal_module.alarm(0)
         signal_module.signal(signal_module.SIGALRM, previous)
+
+
+def corpus_contains_meeting(keys: set[tuple[str, str]], day: str, venue: str) -> bool:
+    """Keep aliases/sponsor prefixes protected without blocking unrelated venues."""
+    wanted = _venue_key(venue)
+    return any(
+        saved_day == day and (
+            not saved_venue or not wanted
+            or saved_venue in wanted or wanted in saved_venue
+        )
+        for saved_day, saved_venue in keys
+    )
 
 
 # 補漏覆盤只回溯幾多日。收得緊係刻意：`AU_Racing` 根目錄同時係 backtest 語料庫
@@ -919,8 +939,8 @@ def step_review_archive(runlog: RunLog, review_day: date, *,
         runlog.step("review-archive", "nothing-to-do")
         return archived
 
-    corpus_days = corpus_meeting_days()
-    if corpus_days is None:
+    corpus_keys = corpus_meeting_keys()
+    if corpus_keys is None:
         runlog.warn("讀唔到歷史賽果 CSV，語料庫 guard 今次唔可用（照行 dashboard 準則）")
 
     candidates: list[Path] = []
@@ -935,9 +955,10 @@ def step_review_archive(runlog: RunLog, review_day: date, *,
             runlog.meeting(folder.name, "already_archived")
             archived.append(folder.name)
             continue
-        if corpus_days is not None and meeting["date"] in corpus_days:
+        if corpus_keys is not None and corpus_contains_meeting(
+                corpus_keys, meeting["date"], meeting["venue"]):
             runlog.meeting(folder.name, "archive_blocked_corpus",
-                           detail="歷史賽果 CSV 已收錄呢個賽日 —— 搬走會由 "
+                           detail="歷史賽果 CSV 已收錄呢個日期及馬場 —— 搬走會由 "
                                   "backtest 語料庫消失，要人手決定")
             continue
         candidates.append(folder)
