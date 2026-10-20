@@ -8,6 +8,8 @@ import pytest
 from shared_wong_choi.contracts import Domain
 from shared_wong_choi.research_evaluation import _write_report
 from shared_wong_choi.research_index import ResearchIndexError, _hash
+from shared_wong_choi.research_prediction_artifacts import MAX_ARTIFACTS
+from shared_wong_choi.research_prediction_pages import MAX_PAGE_RECORDS
 from shared_wong_choi.research_prediction_pages import freeze_prediction_inventory
 from shared_wong_choi.research_racing_settlement_inventory import freeze_racing_settlement_inventory
 from shared_wong_choi.research_registry import ExperimentRegistry
@@ -403,9 +405,29 @@ def test_monitoring_reconciliation_copy_failure_preserves_prior_and_partial_atte
     assert not registry.root.exists()
 
 
+# Scaled limits for the large-corpus test. At the production limits (5,000 refs, 100 records a page)
+# crossing the cap needs 1,300 records, and every page is rebuilt six times by design (twice per page,
+# then two full aggregate passes, each re-checking every path for symlinks). That cost ~4 CPU-minutes
+# per child phase, so with three or four full ./檢查.sh runs sharing the machine the 600 s phase
+# deadline expired (2026-10-21: two releases blocked by TIMED_OUT). Both limits travel in the phase
+# payload, which the review child replays, so scaling them by 10 keeps the same shape — above the
+# legacy single-pass cap, 13 pages, one real label — at a tenth of the work.
+SCALED_REFS, SCALED_RECORDS = MAX_ARTIFACTS // 10, MAX_PAGE_RECORDS // 10
+
+
+def test_corpus_runner_defaults_are_the_production_limits():
+    """The large-corpus test scales the limits down; the runners must still default to the real ones."""
+    import inspect
+    from shared_wong_choi.research_racing_monitoring_page_runtime import RacingMonitoringCorpusInspectionRunner
+    params = inspect.signature(RacingMonitoringCorpusInspectionRunner.run).parameters
+    assert params["max_refs"].default == MAX_ARTIFACTS == 5000
+    assert params["max_records"].default == MAX_PAGE_RECORDS == 100
+
+
 @pytest.mark.parametrize("domain", [Domain.AU, Domain.HKJC])
-def test_large_monitoring_corpus_above_legacy_reference_limit_keeps_one_real_fixture_label(tmp_path, domain):
+def test_large_monitoring_corpus_above_legacy_reference_limit_keeps_one_real_fixture_label(tmp_path, monkeypatch, domain):
     from datetime import timedelta
+    import shared_wong_choi.research_prediction_artifacts as artifacts
     from shared_wong_choi.evidence import EvidenceStore
     from shared_wong_choi.research_index import _Reader
     from shared_wong_choi.research_prediction_artifacts import _records
@@ -416,22 +438,26 @@ def test_large_monitoring_corpus_above_legacy_reference_limit_keeps_one_real_fix
     original = _records(options["evidence_root"], domain, options["as_of"], _Reader(lambda: None))[0][0]
     store = EvidenceStore(options["evidence_root"])
     # Only prediction metadata is cloned. No cloned settlements count as samples.
-    for index in range(1, 1300):
+    records = 13 * SCALED_RECORDS
+    for index in range(1, records):
         store.append(replace(original, record_id=f"{original.record_id}:copy-{index:05d}"))
     inventory = freeze_prediction_inventory(root=options["evidence_root"], domain=domain, as_of=options["as_of"])
-    assert inventory["records_seen"] == 1300 and inventory["artifact_refs"] > 5000
+    assert inventory["records_seen"] == records and inventory["artifact_refs"] > SCALED_REFS
+    # The legacy single-pass inspector reads the module cap at call time.
+    monkeypatch.setattr(artifacts, "MAX_ARTIFACTS", SCALED_REFS)
     with pytest.raises(ValueError, match="reference limit"):
         inspect_racing_monitoring_samples(root=options["evidence_root"], domain=domain, as_of=options["as_of"])
     result = RacingMonitoringCorpusInspectionRunner(runtime, registry).run(
         domain=domain, evidence_root=options["evidence_root"], as_of=options["as_of"],
-        estimated_bytes=128 * 1024 * 1024, timeout_seconds=600)
+        estimated_bytes=128 * 1024 * 1024, timeout_seconds=600,
+        max_refs=SCALED_REFS, max_records=SCALED_RECORDS)
     assert result.disposition is ResearchDisposition.SUCCEEDED, result.status
     proof = json.loads(result.report_path.read_text())
     assert proof["qualified_races"] == proof["verified_monitoring_samples"] == 1
     assert proof["candidate_settlements"] == 1 and proof["blocked_settlements"] == 0
     assert proof["page_coverage_complete"] is True and len(proof["page_hashes"]) == 13
     prediction = json.loads((result.report_path.parent / "prediction-coverage.json").read_text())
-    assert prediction["records_seen"] == 1300
+    assert prediction["records_seen"] == records
     assert prediction["artifact_refs"] == inventory["artifact_refs"]
     assert len(list(result.report_path.parent.glob("racing-monitoring-page-*.json"))) == 13
     assert proof["model_promotion_allowed"] is False and not registry.root.exists()
