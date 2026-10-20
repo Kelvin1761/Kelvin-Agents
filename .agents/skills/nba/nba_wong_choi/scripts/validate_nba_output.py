@@ -87,6 +87,8 @@ REQUIRED_SECTIONS = [
 PADDING_WHITELIST = [
     "Sportsbet SGM",           # Disclaimer appears per-combo
     "Sportsbet 顯示為準",     # Disclaimer
+    "；真實樣本",             # Per-player provenance line (資料來源：… ；真實樣本 N 場；截止 …).
+                               # Opening night every player shares one fallback sample, so it repeats.
     "Python 選擇此 Leg",      # Per-leg explanation marker
     "Python 自動核心邏輯",    # Per-leg marker
     "📊 組合結算",            # Section header per-combo
