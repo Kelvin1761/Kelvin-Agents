@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261021-01](EXP-20261021-01-nba-ml-train-serve-parity.md) | 2026-10-21 | NBA | live ML 特徵同訓練唔一致 | 已修 live 側（hit-rate／pace／usg／defender）；−5pp 懲罰 58%→6.5% 但加分 11%→46%，**唔聲稱改善**；訓練側 opp_abbr 缺陷未修；公佈 AUC 無效，建議時間分組重訓 |
 | [EXP-20261015-02](EXP-20261015-02-au-trial-cutoff-refit.md) | 2026-10-15 | AU | 用戶確認六場起移除試閘表現；比較2／4／6場並refit | **USER-ACCEPTED simplification；refit REJECT**：3,297場較低門檻冇更好headline；1,493場逐窗OOS六場refit Gold+3但Good−3，訓練門檻policy Good−4，全部無顯著收益；保留六場／原權重，PIT FLAG未當PASS。 |
 | [EXP-20261012-03](EXP-20261012-03-au-unused-intake-cutoff-standards.md) | 2026-10-12 | AU | 未用欄位零樣本intake、prior-only unique-event speed references | **HARNESS／PARTIAL RESEARCH**：448 meetings完整盤點；future／duplicates／root cache反例修正，14 scoped／AU808 tests PASS；source-bound outcome研究與actual fitted producer仍待接駁，無績效判決。 |
 | [EXP-20261012-02](EXP-20261012-02-au-exact-venue-results-identity.md) | 2026-10-12 | AU | Archive／reflector取消venue substring／layout collapse／all-row fallback | **CORRECTNESS／G2 PARTIAL**：16 fixtures PASS、full AU798；183配對轉unmatched，140僅source-bound metadata可恢復、43仍未解；無PIT／candidate KPI／release。 |
