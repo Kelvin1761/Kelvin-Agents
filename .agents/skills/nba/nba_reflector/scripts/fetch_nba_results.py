@@ -117,6 +117,115 @@ def _convert_scoreboard_v2(data):
     return games
 
 
+
+# ── Finality ─────────────────────────────────────────────────────────────────
+# ScoreboardV3 never reports a final for this feed (gameStatus None, scores
+# None, statusText = tip-off time, every date checked 2026-10-11..20), so a
+# game's finality is decided here, in order:
+#   1. ESPN scoreboard event (completed / STATUS_FINAL) matched by canonical
+#      team abbreviations; ESPN says NOT completed => the game stays non-final,
+#      whatever the box score looks like.
+#   2. only when ESPN is unreachable / has no matching event: the box-score
+#      completeness rule (box_score_is_complete).
+#   3. last resort: the legacy >= 2-day rule.
+# In every case the scores must come from a box score that actually carries
+# player stats; a game is never settled from nothing.
+ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
+_NBA_SKILL = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, _NBA_SKILL)
+from nba_schedule import canonical_team_abbr  # noqa: E402
+
+
+def fetch_espn_events(game_date_file, timeout=15):
+    """ESPN events for a US date (YYYY-MM-DD). Returns (events, reachable)."""
+    try:
+        import requests
+        url = f"{ESPN_SCOREBOARD}?dates={game_date_file.replace('-', '')}"
+        response = requests.get(url, timeout=timeout)
+        response.raise_for_status()
+        return response.json().get("events") or [], True
+    except Exception as exc:
+        print(f"  ⚠️ ESPN 賽果核對失敗（改用 box score 完整性規則）: {exc}")
+        return [], False
+
+
+def espn_index(events):
+    """{(away, home): {completed, status, away_score, home_score, detail}} (canonical abbrs)."""
+    index = {}
+    for event in events:
+        try:
+            comp = event["competitions"][0]
+            teams = {c["homeAway"]: c for c in comp["competitors"]}
+            status = (event.get("status") or {}).get("type") or {}
+            key = (canonical_team_abbr(teams["away"]["team"]["abbreviation"]),
+                   canonical_team_abbr(teams["home"]["team"]["abbreviation"]))
+            index[key] = {
+                "completed": bool(status.get("completed")) and status.get("name") == "STATUS_FINAL",
+                "status": status.get("name"),
+                "detail": status.get("detail"),
+                "away_score": int(teams["away"]["score"]),
+                "home_score": int(teams["home"]["score"]),
+            }
+        except (KeyError, IndexError, TypeError, ValueError):
+            continue
+    return index
+
+
+def _team_minutes(boxscore, team_key):
+    team = ((boxscore or {}).get("boxScoreTraditional") or {}).get(team_key) or {}
+    text = str((team.get("statistics") or {}).get("minutes") or "")
+    try:
+        minutes, _, seconds = text.partition(":")
+        return int(minutes) + (int(seconds) / 60 if seconds else 0)
+    except ValueError:
+        return None
+
+
+def box_score_is_complete(boxscore):
+    """Objective completeness rule, used only when ESPN cannot answer.
+
+    Final <=> both teams' total minutes are 240 + 25*k (k >= 0: regulation end
+    or a finished overtime), the two totals agree, both team scores exist and
+    DIFFER, and player stats are present. A tied score at 240 (or at 265...)
+    means another period follows, so it is never final. A live game can only
+    satisfy this at the exact instant a period ends with the score not tied,
+    which is the end of the game. Edge cases: a box score caught mid-period
+    (minutes not on a 25-minute boundary) is non-final; empty/partial stats
+    are non-final.
+    """
+    home_pts, away_pts = _boxscore_points(boxscore, "homeTeam"), _boxscore_points(boxscore, "awayTeam")
+    home_min, away_min = _team_minutes(boxscore, "homeTeam"), _team_minutes(boxscore, "awayTeam")
+    if None in (home_pts, away_pts, home_min, away_min) or home_pts == away_pts:
+        return False
+    if abs(home_min - away_min) > 0.01 or home_min < 240 - 0.01:
+        return False
+    if abs((home_min - 240) % 25) > 0.01 and abs((home_min - 240) % 25 - 25) > 0.01:
+        return False
+    box = (boxscore or {}).get("boxScoreTraditional") or {}
+    return bool((box.get("homeTeam") or {}).get("players")) and bool((box.get("awayTeam") or {}).get("players"))
+
+
+def decide_finality(away_abbr, home_abbr, boxscore, espn, boxscore_may_settle):
+    """Return (final: bool, scores: (away, home) | None, source: str)."""
+    box_home, box_away = _boxscore_points(boxscore, "homeTeam"), _boxscore_points(boxscore, "awayTeam")
+    has_stats = bool(((boxscore or {}).get("boxScoreTraditional") or {}).get("homeTeam", {}).get("players"))
+    key = (canonical_team_abbr(away_abbr), canonical_team_abbr(home_abbr))
+    event = (espn or {}).get(key)
+    if event is not None:
+        if not event["completed"]:
+            return False, None, "espn_not_final"
+        if not has_stats or box_home is None or box_away is None:
+            return False, None, "espn_final_no_boxscore"
+        if (box_away, box_home) != (event["away_score"], event["home_score"]):
+            return False, None, "espn_boxscore_score_mismatch"
+        return True, (box_away, box_home), "espn"
+    if box_score_is_complete(boxscore):
+        return True, (box_away, box_home), "boxscore_completeness"
+    if boxscore_may_settle and box_home is not None and box_away is not None:   # legacy rule, unchanged
+        return True, (box_away, box_home), "boxscore_age"
+    return False, None, "unresolved"
+
+
 def fetch_boxscore(game_id):
     """Fetch box score for a specific game."""
     try:
@@ -198,7 +307,7 @@ def _boxscore_points(boxscore, team_key):
     return points if isinstance(points, (int, float)) else None
 
 
-def process_game(game, *, boxscore_may_settle=False):
+def process_game(game, *, boxscore_may_settle=False, espn=None):
     """Process a single game from the scoreboard.
 
     ScoreboardV2 can stay stale for days (2026-10-10 preseason: every game
@@ -223,19 +332,24 @@ def process_game(game, *, boxscore_may_settle=False):
     print(f"  📊 擷取 {away_abbr} @ {home_abbr} Box Score...")
     boxscore = fetch_boxscore(game_id)
 
+    scoreboard_status = status
+    status_source = "scoreboard"
     if home_score is None or away_score is None:
-        box_home = _boxscore_points(boxscore, 'homeTeam')
-        box_away = _boxscore_points(boxscore, 'awayTeam')
-        if boxscore_may_settle and box_home is not None and box_away is not None:
-            home_score, away_score = box_home, box_away
-            status = 'Final (boxscore)'
+        final, scores, status_source = decide_finality(
+            away_abbr, home_abbr, boxscore, espn, boxscore_may_settle)
+        if final:
+            away_score, home_score = scores
+            status = {"espn": "Final", "boxscore_age": "Final (boxscore)"}.get(
+                status_source, f"Final ({status_source})")
         else:
-            print(f"    ⚠️ 冇比分（scoreboard: {status}）— 當未完場處理")
+            print(f"    ⚠️ 冇比分（scoreboard: {status}；finality: {status_source}）— 當未完場處理")
 
     scored = home_score is not None and away_score is not None
     result = {
         'game_id': game_id,
         'status': status,
+        'status_source': status_source,
+        'scoreboard_status_text': scoreboard_status,
         'away': {
             'team': away_abbr,
             'name': away.get('teamName', '?'),
@@ -332,9 +446,15 @@ def main():
     except ValueError:
         boxscore_may_settle = False
 
+    espn_events, espn_ok = fetch_espn_events(game_date_file)
+    espn = espn_index(espn_events) if espn_ok else None
     results = []
+    seen_ids = set()
     for game in games:
-        result = process_game(game, boxscore_may_settle=boxscore_may_settle)
+        if game.get('gameId') in seen_ids:      # ScoreboardV3 lists every game twice
+            continue
+        seen_ids.add(game.get('gameId'))
+        result = process_game(game, boxscore_may_settle=boxscore_may_settle, espn=espn)
         results.append(result)
         
         score = result['final_score']

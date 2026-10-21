@@ -365,6 +365,203 @@ def parse_leg_block(
     }
 
 
+# ── Current (Python-generated) report format ────────────────────────────────
+# The legacy parser above only understands the LLM-era "Leg N: Player (TEAM) -
+# 25+ PTS" blocks. Current reports list legs as combo TABLE rows and per-player
+# cards; the structured sidecar carries the leg list. Field provenance (a field
+# a source does not carry stays None -- never a default, never a guess):
+#   sidecar  : combo_id, player, team, stat, line, odds (price), predicted_prob (p_final)
+#   card     : implied_prob, edge_pct, l10 hit rate/hits/total, l10 avg/med/sd, cov_label
+#   combo row: odds, l10 hit, predicted_prob, edge_pct, cov_label (fallback when no sidecar)
+#   header   : odds_source, model_version
+#   NOT in the report (stay None): raw_l10_json (only L5 is printed; L10 values are not)
+_STAT_RE = r"PTS|REB|AST|3PM|PRA|PR|PA|RA|SB|STL|BLK|TOV|Points|Rebounds|Assists|Threes Made?"
+_COMBO_ROW_RE = re.compile(
+    r"^\|\s*🧩\s*\d+\s*\|\s*(?P<player>.+?)\s*(?:\((?P<team>[A-Z]{2,4})\))?\s+(?P<stat>" + _STAT_RE + r")\s+"
+    r"(?P<line>\d+(?:\.\d+)?)\+?\s*\|(?P<rest>.*)$",
+    re.IGNORECASE,
+)
+_CARD_HEAD_RE = re.compile(r"^####\s+(?P<player>.+?)\s+\(#[^,)]*,\s*(?P<team>[A-Z]{2,4})\)\s+—\s+(?P<stat>" + _STAT_RE + r")\s*$", re.IGNORECASE)
+_LINE_ROW_RE = re.compile(r"^\|\s*(?P<line>\d+(?:\.\d+)?)\+\s*\|\s*@(?P<odds>\d+(?:\.\d+)?)\s*\|(?P<rest>.*)$")
+_HIT_RE = re.compile(r"(\d+(?:\.\d+)?)%\s*\((\d+)/(\d+)\)")
+_PCT_RE = re.compile(r"([+\-]?\d+(?:\.\d+)?)%")
+
+
+def _num(value) -> float | None:
+    try:
+        return None if value is None else float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_player_cards(content: str) -> dict[tuple[str, str, float], dict]:
+    """Per-player card facts keyed by (player lower, stat, line)."""
+    cards: dict[tuple[str, str, float], dict] = {}
+    player = stat = None
+    head: dict = {}
+    for raw in content.splitlines():
+        line = raw.strip()
+        head_match = _CARD_HEAD_RE.match(line)
+        if head_match:
+            player = head_match.group("player").strip().lower()
+            stat = normalize_stat(head_match.group("stat"))
+            head = {}
+            continue
+        if line.startswith("## ") or line.startswith("### "):
+            player = stat = None
+            continue
+        if not player:
+            continue
+        match = re.search(r"L10 均值\**:\s*([+\-]?\d+(?:\.\d+)?)\s*\\?\|\s*\**中位\**:\s*([+\-]?\d+(?:\.\d+)?)", line)
+        if match:
+            head["l10_avg"], head["l10_med"] = float(match.group(1)), float(match.group(2))
+        match = re.search(r"\*\*SD\*\*:\s*([+\-]?\d+(?:\.\d+)?)\s*\\?\|\s*\*\*CoV\*\*:\s*([^|]+?)\s*\|", line)
+        if match:
+            head["l10_sd"], head["cov_label"] = float(match.group(1)), match.group(2).replace("*", "").strip()
+        row = _LINE_ROW_RE.match(line)
+        if row:
+            cells = [c.strip() for c in row.group("rest").split("|")]
+            # 隱含勝率 | L10 命中 | L5 命中 | 預期勝率 | Edge | EV% | 判定
+            if len(cells) < 6:
+                continue
+            implied = _PCT_RE.search(cells[0])
+            hit = _HIT_RE.search(cells[1])
+            predicted = _PCT_RE.search(cells[3])
+            edge = _PCT_RE.search(cells[4])
+            entry = dict(head)
+            entry.update({
+                "odds": float(row.group("odds")),
+                "implied_prob": float(implied.group(1)) if implied else None,
+                "l10_hit_rate": float(hit.group(1)) if hit else None,
+                "l10_hits": int(hit.group(2)) if hit else None,
+                "l10_total": int(hit.group(3)) if hit else None,
+                "predicted_prob": float(predicted.group(1)) if predicted else None,
+                "edge_pct": float(edge.group(1)) if edge else None,
+            })
+            cards[(player, stat, float(row.group("line")))] = entry
+    return cards
+
+
+def parse_combo_table_rows(content: str) -> list[dict]:
+    """Combo leg rows: ``| 🧩 1 | Name (TEAM) REB 6+ | @1.52 | 80.0% (8/10) | **77.0%** | +11.21% | +17.04% | 0.384 🎲神經刀 |``."""
+    rows: list[dict] = []
+    combo_re = re.compile(r"(?:###?\s*)?(?:🛡️|🔥|💎|💣)\s*(?:組合|Combo|SGM)\s*(\d+|X)", re.IGNORECASE)
+    combo_id = "?"
+    for raw in content.splitlines():
+        combo_match = combo_re.search(raw)
+        if combo_match:
+            combo_id = combo_match.group(1)
+        match = _COMBO_ROW_RE.match(raw.strip())
+        if not match:
+            continue
+        cells = [c.strip() for c in match.group("rest").split("|")]
+        # @odds | L10 命中 | 預期勝率 | Edge | EV% | CoV
+        odds = re.search(r"@?\s*(\d+(?:\.\d+)?)", cells[0]) if cells else None
+        hit = _HIT_RE.search(cells[1]) if len(cells) > 1 else None
+        predicted = _PCT_RE.search(cells[2]) if len(cells) > 2 else None
+        edge = _PCT_RE.search(cells[3]) if len(cells) > 3 else None
+        cov = cells[5].replace("*", "").strip() if len(cells) > 5 and cells[5].strip() else None
+        rows.append({
+            "combo_id": combo_id,
+            "player_name": match.group("player").strip(),
+            "team_abbr": match.group("team"),
+            "prop_stat": normalize_stat(match.group("stat")),
+            "line": float(match.group("line")),
+            "odds": float(odds.group(1)) if odds else None,
+            "predicted_prob": float(predicted.group(1)) if predicted else None,
+            "edge_pct": float(edge.group(1)) if edge else None,
+            "l10_hit_rate": float(hit.group(1)) if hit else None,
+            "l10_hits": int(hit.group(2)) if hit else None,
+            "l10_total": int(hit.group(3)) if hit else None,
+            "cov_label": cov,
+        })
+    return rows
+
+
+def load_sidecar_combo_legs(report_path: str, content: str) -> list[dict] | None:
+    """Combo legs from the structured sidecar, or None when absent/unreadable/stale.
+
+    The sidecar is only trusted when its ``report_sha256`` matches the report
+    text it sits next to (same check the market ledger applies).
+    """
+    import hashlib
+    sidecar = report_path + ".market_legs.json"
+    try:
+        with open(sidecar, "r", encoding="utf-8") as handle:
+            payload = json.load(handle)
+        with open(report_path, "rb") as handle:
+            report_sha = hashlib.sha256(handle.read()).hexdigest()
+    except (OSError, ValueError):
+        return None
+    if payload.get("report_sha256") != report_sha:
+        return None
+    legs: list[dict] = []
+    for combo in payload.get("combos") or []:
+        for leg in combo.get("legs") or []:
+            if leg.get("market_type") not in (None, "PLAYER_MILESTONE") or not leg.get("player"):
+                continue
+            line = _num(leg.get("line"))
+            if line is None:
+                continue
+            p_final = _num(leg.get("p_final"))
+            legs.append({
+                "combo_id": str(combo.get("combo_id")),
+                "player_name": str(leg["player"]).strip(),
+                "team_abbr": leg.get("team"),
+                "prop_stat": normalize_stat(leg.get("market")),
+                "line": line,
+                "odds": _num(leg.get("price")),
+                "predicted_prob": round(p_final * 100, 2) if p_final is not None else None,
+            })
+    return legs or None
+
+
+def parse_current_format_rows(
+    report_path: str, content: str, analysis_date: str, us_game_date: str, game_tag: str, report_meta: dict[str, str]
+) -> list[dict]:
+    legs = load_sidecar_combo_legs(report_path, content)
+    from_sidecar = legs is not None
+    if legs is None:
+        legs = parse_combo_table_rows(content)
+    if not legs:
+        return []
+    cards = parse_player_cards(content)
+    out: list[dict] = []
+    for leg in legs:
+        card = cards.get((leg["player_name"].lower(), leg["prop_stat"], float(leg["line"])), {})
+
+        def pick(field):
+            # sidecar/combo-row value wins; the card fills only what is missing
+            return leg[field] if leg.get(field) is not None else card.get(field)
+        out.append({
+            "analysis_date": analysis_date,
+            "us_game_date": us_game_date,
+            "game_tag": game_tag,
+            "combo_id": leg["combo_id"],
+            "report_file": os.path.basename(report_path),
+            "player_name": leg["player_name"],
+            "team_abbr": leg.get("team_abbr") or card.get("team_abbr"),
+            "prop_stat": leg["prop_stat"],
+            "line": float(leg["line"]),
+            "odds": pick("odds"),
+            "implied_prob": card.get("implied_prob"),
+            "predicted_prob": pick("predicted_prob"),
+            "edge_pct": pick("edge_pct"),
+            "l10_hit_rate": pick("l10_hit_rate"),
+            "l10_hits": pick("l10_hits"),
+            "l10_total": pick("l10_total"),
+            "l10_avg": card.get("l10_avg"),
+            "l10_med": card.get("l10_med"),
+            "l10_sd": card.get("l10_sd"),
+            "cov_label": pick("cov_label"),
+            "raw_l10_json": None,
+            "odds_source": report_meta["odds_source"],
+            "model_version": report_meta["model_version"],
+            "source_run_key": analysis_date,
+        })
+    return out
+
+
 def load_prediction_rows(target_dir: str, analysis_date: str, us_game_date: str) -> list[dict]:
     reports = sorted(
         glob.glob(os.path.join(target_dir, "*_NBA_*_Analysis.md"))
@@ -377,6 +574,7 @@ def load_prediction_rows(target_dir: str, analysis_date: str, us_game_date: str)
             content = f.read()
         game_tag = extract_game_tag_from_filename(report_path)
         report_meta = parse_report_metadata(content)
+        legacy_rows: list[dict] = []
         for combo_id, header, block_text in iter_leg_blocks(content):
             row = parse_leg_block(
                 header,
@@ -389,7 +587,12 @@ def load_prediction_rows(target_dir: str, analysis_date: str, us_game_date: str)
                 report_meta,
             )
             if row:
-                rows.append(row)
+                legacy_rows.append(row)
+        if legacy_rows:
+            rows.extend(legacy_rows)
+        else:
+            rows.extend(parse_current_format_rows(
+                report_path, content, analysis_date, us_game_date, game_tag, report_meta))
     return rows
 
 
