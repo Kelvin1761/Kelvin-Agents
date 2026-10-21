@@ -174,3 +174,34 @@ H2（n＝150,876）：(a) ≥0.70 42,388（28.1%）0.784／0.701；≥0.80 23,22
 
 ## 10. 決定
 **PASSES（離線、按預先登記規則）：(A)(B)(C)。** 但：(1) 實質貢獻主要係 Poisson/NB＋重校準，7 個 live 項經擬合後貢獻細；(2) 冇利潤聲稱、冇 production 聲稱；(3) 建議只進行 §9 嘅 shadow（若用戶批准）。(E)（live 最終機率）係本實驗中最差嘅 arm。
+
+## 11. §9 addendum（2026-10-21）：shadow artefact for candidate (A)——已建、未接入 live
+
+按用戶決定建好 (A) 嘅**凍結係數檔**同**參考實作**；**冇改任何 production scoring code**，接入（default-off shadow 欄位）由 NBA session 負責。
+
+**檔案（全部喺 repo）**
+| 項 | 路徑 | sha256 |
+|---|---|---|
+| 凍結係數 | `.agents/skills/nba/nba_wong_choi/resources/nba_fit_layer_A_v1.json` | `7e74022cc7dfa37938dc3046b665d17af4c6279ab64f720fc5ae5af65227e56f` |
+| 參考實作（純標準庫，無 scipy／numpy） | `.agents/skills/nba/nba_wong_choi/scripts/nba_fit_layer.py` | — |
+| parity fixture（400 個真 unit） | `.agents/skills/nba/nba_wong_choi/tests/fixtures/nba_fit_layer_A_parity.json` | `46889d3217ddbb740829a301d6f01d01e4c07c0755840ab16bd22e490346aaa6` |
+| 測試 | `.agents/skills/nba/nba_wong_choi/tests/test_nba_fit_layer.py`（11 個） | — |
+| 產生腳本 | `docs/experiments/patches/nba_calibration_exp20261021_02/make_fit_layer_artifact.py` | — |
+
+- 係數檔嘅值**原封不動**取自 EXP-05 `results5.json`（sha256 `ddff920d…`）嘅 dev 擬合：NB `α(PTS)`＝0.19714961024606556（REB／AST／3PM＝Poisson）；per-stat 重校準 `(a,b)`：PTS (0.05311, 0.80714)、REB (−0.04003, 0.87462)、AST (−0.05775, 0.86413)、3PM (−0.11288, 0.88895)。**冇用 H1／H2 或更新數據重擬合。** 檔內帶 `model_id=nba_fit_layer_A_v1`、`created_at`、`source_experiment`、harness commit `4b14b8e6…`、dev 窗、兩季 raw game-log sha256、擬合命令。
+- Loader 用 `nba_fit_layer.py` 內釘死嘅 `EXPECTED_SHA256` 驗證；檔案缺失／hash 唔符／格式壞 → 回 `(None, reason)`，**唔會 raise，亦唔會出機率**（呼叫方要將 shadow 欄位留空）。改係數檔必須同時改釘死嘅 hash（即係一個有紀錄嘅改動）。
+- **Runtime 只需標準庫**（`math`、`json`、`hashlib`、`os`）；Poisson／NegBin 存活函數用 pmf 遞推實作，同 scipy 比對 ≤1e-10。喺 scheduler 用嘅 `/usr/bin/python3`（3.9.6）驗證過；測試包含 `python3 -I` 子程序確認 import 後 `scipy`／`numpy` 不在 `sys.modules`。
+- **Parity**：400 個 unit（seed 20261021，覆蓋 4 個 stat，兩季）；輸入由 raw game log 重算（並 assert 同 harness 嘅 `mu` 一致到 1e-12），`p_fit_A` 同 harness (A)（`nba_refit.recal_pred`，clip [0.01,0.99]）最大差 <1e-9（測試通過）。
+
+**Live pipeline 必須提供嘅輸入（每個 stat、每條線）**
+```
+p_fit_A(stat, line, season_stat_total, season_minutes_total, prior10_mean_min)
+```
+- `stat`：`PTS`／`REB`／`AST`／`FG3M`（亦接受 `3PM` 等別名）。
+- `line`：整數 milestone `N≥1`（結果＝ `stat ≥ N`）；非整數／<1 → `None`。
+- `season_stat_total`：該球員**同一賽季**、**日期嚴格早於今場日期**、`MIN>0` 嘅所有場次，該 stat 嘅總和。
+- `season_minutes_total`：同一批場次嘅 MIN 總和（必須 >0）。
+- `prior10_mean_min`：同一批場次入面最近 10 場嘅 MIN 平均（必須 >0；已驗證 population 係 ≥10 場 prior 且平均 ≥20）。
+- **Point-in-time 規則**：只可用**今場日期之前**（嚴格 `<`，同日唔計）嘅場次；DNP／`MIN==0` 唔計入；唔跨季（季初未夠 10 場 prior → 唔出 shadow 機率）。
+- 輸出：`[0.01, 0.99]` 內機率，或 `None`（輸入無效／模型檔驗證失敗）；`fit_prob_A(...)` 另回 reason 字串方便寫入 shadow 欄位。
+- **接入建議（NBA session 負責，shadow only）**：`NBA_FIT_LAYER_SHADOW_ENABLED`（預設關）；只寫 `shadow_fit_prob_A`／`shadow_fit_model_id`／必要輸入快照，**唔參與** EV／Kelly／排名／SGM；線落喺 prior-10 平均附近以外嘅 milestone 超出已驗證範圍，要標記（`line` 與 `prior10 mean` 偏離）。升格前 forward 證據門檻見 §9。
