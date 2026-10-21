@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261021-03](EXP-20261021-03-nba-adjustment-ablation.md) | 2026-10-21 | NBA | live 可重現調整項（trend／cov／buffer／sip_n04／sip_n01／b2b／home_away）逐項 ablation：邊項令 base 機率更差 | **ABLATION／NEEDS MORE TESTING**：add-one H1 ΔBrier：cov +0.0077、sip_n01 +0.0043、buffer +0.0029、sip_n04 +0.0020、b2b +0.0006 → harmful；trend、home_away no evidence；0 項 helpful。害處 ~91% 係加法（單項總和 +0.0173 vs 聯合 +0.0190），重疊 pair ≤0.0007；主因係項多只減（Σadj 平均 −7.7pp）而 base 已低估 3pp。判決部分依賴 population（S1）。唔講利潤、冇改 production。 |
 | [EXP-20261021-02](EXP-20261021-02-nba-probability-calibration.md) | 2026-10-21 | NBA | 只用公開 game log、嚴格時間切分，量度 live 球員 prop 機率（L10 命中率＋調整項）喺近平均 milestone 線嘅校準度 | **NOT SHOWN BETTER（全部候選）／MEASUREMENT**：live base slope≈0.55（過度自信，兩季穩定，PTS 0.16）；Poisson/NB、live MC、收縮 Brier 顯著贏 base（−0.007～−0.013）但 slope 全 <0.85 未過預先登記條件；可重現嘅 live 調整項令 Brier 更差（+0.019）。唔講利潤、冇改 production。 |
 | [EXP-20261015-02](EXP-20261015-02-au-trial-cutoff-refit.md) | 2026-10-15 | AU | 用戶確認六場起移除試閘表現；比較2／4／6場並refit | **USER-ACCEPTED simplification；refit REJECT**：3,297場較低門檻冇更好headline；1,493場逐窗OOS六場refit Gold+3但Good−3，訓練門檻policy Good−4，全部無顯著收益；保留六場／原權重，PIT FLAG未當PASS。 |
 | [EXP-20261012-03](EXP-20261012-03-au-unused-intake-cutoff-standards.md) | 2026-10-12 | AU | 未用欄位零樣本intake、prior-only unique-event speed references | **HARNESS／PARTIAL RESEARCH**：448 meetings完整盤點；future／duplicates／root cache反例修正，14 scoped／AU808 tests PASS；source-bound outcome研究與actual fitted producer仍待接駁，無績效判決。 |
