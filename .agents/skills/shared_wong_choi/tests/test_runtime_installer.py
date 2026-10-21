@@ -59,8 +59,10 @@ def test_runtime_installer_snapshot_restore_is_exact_and_idempotent(
         assert not introduced.exists()
 
 
-@pytest.mark.parametrize("active_run,acceptance", [(False, True), (True, True), (False, False)])
-def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path, active_run: bool, acceptance: bool) -> None:
+@pytest.mark.parametrize("active_run,acceptance,calendar_ok", [
+    (False, True, True), (True, True, True), (False, False, True), (False, True, False),
+])
+def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path, active_run: bool, acceptance: bool, calendar_ok: bool) -> None:
     home = tmp_path / "home"
     agents = home / "Library" / "LaunchAgents"
     agents.mkdir(parents=True)
@@ -75,7 +77,20 @@ def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path, active_
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
     fake_launchctl = fake_bin / "launchctl"
-    fake_launchctl.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake_launchctl.write_text('''#!/usr/bin/python3
+import os, plistlib, sys
+from pathlib import Path
+root = Path(os.environ["WC_LAUNCH_AGENTS_DIR"])
+label = "com.antigravity.central-wong-choi.research-review"
+marker = root / "calendar-fault-injected"
+if (os.environ["TEST_CALENDAR_MISMATCH"] == "1" and sys.argv[1] == "enable"
+        and sys.argv[-1].endswith("/" + label) and not marker.exists()):
+    path = root / (label + ".plist")
+    payload = plistlib.loads(path.read_bytes())
+    payload["StartCalendarInterval"] = {"Hour": 7, "Minute": 10}
+    path.write_bytes(plistlib.dumps(payload))
+    marker.touch()
+''', encoding="utf-8")
     fake_launchctl.chmod(0o755)
     # Process discovery belongs to the fixture too: a real scheduled run on the
     # host must neither break the isolated success case nor satisfy its guard test.
@@ -155,6 +170,7 @@ raise SystemExit(0 if accepted else 1)
             "TENNIS_ANALYSIS_OUTPUT_ROOT": str(tmp_path / "mirror"),
             "WC_RESEARCH_PYTHON_BIN": str(research_python),
             "TEST_RESEARCH_ACCEPTANCE": "1" if acceptance else "0",
+            "TEST_CALENDAR_MISMATCH": "0" if calendar_ok else "1",
             "WONGCHOI_CONTROL_STATE_ROOT": str(tmp_path / "control"),
             "WC_WARM_ARCHIVE_ROOT": str(warm),
             "WONGCHOI_AU_DATA_ROOT": str(tmp_path / "au"),
@@ -182,7 +198,16 @@ raise SystemExit(0 if accepted else 1)
         receipt = tmp_path / "control/runs/central/test/research-review/acceptance.json"
         assert '"status": "failed"' in receipt.read_text()
         return
+    if not calendar_ok:
+        assert result.returncode != 0
+        assert "installed research calendar differs" in result.stdout
+        assert "runtime cutover failed" in result.stderr
+        assert {p.stem for p in agents.glob("*.plist")} == set(au_labels)
+        return
     assert result.returncode == 0, result.stdout + result.stderr
+    installed = plistlib.loads((agents / "com.antigravity.central-wong-choi.research-review.plist").read_bytes())
+    template = plistlib.loads((INSTALLER.parent / "launchd/com.antigravity.central-wong-choi.research-review.plist.template").read_bytes())
+    assert installed["StartCalendarInterval"] == template["StartCalendarInterval"]
     assert "production runtime cutover verified" in result.stdout
     assert (home / ".wongchoi_tennis_db").read_text(encoding="utf-8").strip() == str(
         runtime / "tennis_wc.db"

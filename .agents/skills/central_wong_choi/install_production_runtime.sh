@@ -215,6 +215,9 @@ WC_TENNIS_RUNTIME_ROOT="$TENNIS_RUNTIME_ROOT" \
 WC_INSTALL_RESEARCH_REVIEW=1 \
   WC_LAUNCH_AGENTS_DIR="$AGENTS_DIR" WC_LAUNCHCTL_BIN="$LAUNCHCTL" \
   /bin/zsh "$PROJECT_ROOT/.agents/skills/central_wong_choi/install_macos_launchd.sh"
+/usr/bin/python3 "$PROJECT_ROOT/.agents/skills/central_wong_choi/scripts/verify_research_calendar.py" \
+  --template "$PROJECT_ROOT/.agents/skills/central_wong_choi/launchd/com.antigravity.central-wong-choi.research-review.plist.template" \
+  --installed "$AGENTS_DIR/com.antigravity.central-wong-choi.research-review.plist"
 status_runtime
 
 COMPLETED=1
