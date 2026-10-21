@@ -108,4 +108,4 @@ STAGED=""
 "$LAUNCHCTL" enable "$DOMAIN/$LABEL"
 "$LAUNCHCTL" print "$DOMAIN/$LABEL" >/dev/null
 COMPLETE=1
-print -r -- "research review installed: daily Sydney 07:10; acceptance $RECEIPT"
+print -r -- "research review installed: daily Sydney 07:10 + Monday 09:00; acceptance $RECEIPT"

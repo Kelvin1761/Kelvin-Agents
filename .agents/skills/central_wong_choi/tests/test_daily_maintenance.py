@@ -5,8 +5,11 @@ import plistlib
 import sys
 import subprocess
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
+
+import pytest
 
 PACKAGE_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = PACKAGE_ROOT / "scripts"
@@ -14,6 +17,8 @@ sys.path.insert(0, str(SCRIPTS))
 
 from central_daily_maintenance import run_maintenance  # noqa: E402
 from shared_wong_choi.artifact_archive import artifact_digest  # noqa: E402
+from shared_wong_choi.contracts import Domain  # noqa: E402
+from shared_wong_choi.research_review_clock import plan_reviews  # noqa: E402
 
 
 def test_daily_maintenance_logs_and_notifies_success(tmp_path: Path) -> None:
@@ -183,7 +188,42 @@ def test_research_review_wrapper_binds_actual_four_locks(tmp_path: Path) -> None
 def test_research_review_template_has_daily_schedule_and_fixed_tennis_paths() -> None:
     path = PACKAGE_ROOT / "launchd" / "com.antigravity.central-wong-choi.research-review.plist.template"
     payload = plistlib.loads(path.read_bytes())
-    assert payload["StartCalendarInterval"] == {"Hour": 7, "Minute": 10}
+    assert payload["StartCalendarInterval"] == [
+        {"Hour": 7, "Minute": 10},
+        {"Weekday": 1, "Hour": 9, "Minute": 0},
+    ]
     assert payload["EnvironmentVariables"]["TENNIS_LOG_DIR"] == "__TENNIS_LOG_DIR__"
     assert payload["ProgramArguments"][0] == "/bin/zsh"
     assert "RunAtLoad" not in payload
+
+
+@pytest.mark.parametrize("due_utc", [
+    "2026-10-04T22:00:00+00:00",
+    "2027-04-04T23:00:00+00:00",
+])
+def test_research_schedule_wakes_at_frozen_weekly_monthly_clock(due_utc: str) -> None:
+    due = datetime.fromisoformat(due_utc)
+    local_due = due.astimezone(ZoneInfo("Australia/Sydney"))
+    path = PACKAGE_ROOT / "launchd" / "com.antigravity.central-wong-choi.research-review.plist.template"
+    schedule = plistlib.loads(path.read_bytes())["StartCalendarInterval"]
+    slots = schedule if isinstance(schedule, list) else [schedule]
+    assert any(
+        entry["Hour"] == local_due.hour
+        and entry["Minute"] == local_due.minute
+        and entry.get("Weekday", local_due.isoweekday()) == local_due.isoweekday()
+        for entry in slots
+    ), "daily 07:10 alone defers Monday 09:00 reviews until Tuesday"
+
+    options = dict(
+        domain=Domain.AU,
+        window_start=local_due.replace(hour=7, minute=10),
+        ruler_released_at=due - timedelta(days=10),
+        ruler_digest="a" * 64,
+    )
+    assert not plan_reviews(**options, now=due - timedelta(seconds=1))["requests"]
+    plan = plan_reviews(**options, now=due)
+    assert {item["kind"] for item in plan["requests"]} == {"weekly", "monthly"}
+    assert {item["due_at"] for item in plan["requests"]} == {due.isoformat()}
+    assert plan["model_promotion_allowed"] is False
+    acknowledged = frozenset(item["request_id"] for item in plan["requests"])
+    assert not plan_reviews(**options, now=due, completed_request_ids=acknowledged)["requests"]

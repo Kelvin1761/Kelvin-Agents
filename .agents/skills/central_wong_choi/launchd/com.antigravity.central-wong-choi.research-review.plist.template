@@ -12,7 +12,11 @@
     <key>WC_TENNIS_RUNTIME_ROOT</key><string>__TENNIS_RUNTIME_ROOT__</string>
     <key>TENNIS_LOG_DIR</key><string>__TENNIS_LOG_DIR__</string>
   </dict>
-  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>7</integer><key>Minute</key><integer>10</integer></dict>
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Hour</key><integer>7</integer><key>Minute</key><integer>10</integer></dict>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>0</integer></dict>
+  </array>
   <key>StandardOutPath</key><string>__SCRIPT_DIR__/logs/central-research-review.out</string>
   <key>StandardErrorPath</key><string>__SCRIPT_DIR__/logs/central-research-review.err</string>
 </dict>
