@@ -63,6 +63,23 @@ manager 自動做 policy gate、exact-scope commit／push、immutable manifest �
 **多個 agent session 同時開工**：commit 之前先睇 `git status`。只 stage 你自己
 今次改嘅嘢，唔好 `git add -A` 連人哋未 commit 嘅工作一齊掃入去。
 
+**發佈過期點處理**：`./保存.sh` 報 `approval expired`／`origin/main changed while
+approval gate was running`（gate 跑緊期間另一個 release merge 咗）**唔好人手開新分支重做** ——
+咁做會留低一份永遠 pending 嘅舊 manifest。用 refresh：
+
+```bash
+C=.agents/skills/central_wong_choi/scripts/central_wong_choi.py
+python3 $C refresh --commit <過期嗰個 SHA> --actor <你> --dry-run   # 先睇
+python3 $C refresh --commit <過期嗰個 SHA> --actor <你>             # replay 去新 main + 重新 gate + 舊 manifest 自動 superseded
+python3 .agents/skills/central_wong_choi/scripts/auto_approve_release.py --commit <新 SHA>
+```
+
+要在乾淨 worktree 跑（refresh 會 checkout 同 cherry-pick）。replay 唔乾淨 = 真係撞咗檔，要人手處理。
+報 `another automatic release is running` = 另一個 release 揸住鎖，等佢完咗再用
+`auto_approve_release.py --commit <SHA>` 續（manifest 仲喺度，唔使重做）。
+已經被取代、內容已經喺 main 嘅舊 manifest，用 `python3 $C reject --commit <SHA> --actor <你> --reason "superseded: …"`
+清走，reason 寫明取代佢嘅 commit。量度同後續改善方案：`docs/plans/2026-10-21-release-expiry-fast-path.md`。
+
 ### 主 checkout 只跟 main，做嘢一律開 worktree
 
 `/Users/imac/Antigravity-repo` 呢個主 checkout **唔係任何 agent 嘅工作區**。
