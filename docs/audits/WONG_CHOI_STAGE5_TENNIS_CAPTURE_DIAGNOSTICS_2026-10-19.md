@@ -32,3 +32,12 @@ both unchanged scoring goldens; existing AU sparse/new-field and HKJC stale
 calibration warnings remain. Full gate and immutable release verification
 remain open; neither old-base evidence nor quick checks authorize activation.
 No live DB, old snapshot, evidence record, scheduler, ruler or ledger was edited.
+
+Preserved refresh WIP `689bed90` is pushed to the private non-main branch
+`codex-stage5-tennis-diagnostics-refresh-20261022`. It is not a release manifest.
+The remote already has a branch named `codex`, so its Git ref namespace refuses
+`codex/` children; no existing remote branch was modified to resolve that conflict.
+The scoped-save wrapper requires a dirty selected path; the remaining audit
+update will be selected while its mandatory unmerged-history classification
+must include exactly these same three paths. Dry-run must prove that union
+before a full controller gate. WIP preservation grants no activation authority.
