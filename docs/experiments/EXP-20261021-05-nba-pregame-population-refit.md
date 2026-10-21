@@ -179,7 +179,7 @@ H2（n＝150,876）：(a) ≥0.70 42,388（28.1%）0.784／0.701；≥0.80 23,22
 
 按用戶決定建好 (A) 嘅**凍結係數檔**同**參考實作**；**冇改任何 production scoring code**，接入（default-off shadow 欄位）由 NBA session 負責。
 
-**檔案**（⚠️ 係碼／係數檔，唔屬 docs release；隨 NBA shadow 整合另行發佈，目前只喺 branch `claude/nba-calibration-exp-56dc4c` commit `ee517011`；下表路徑指嗰個 commit，main 入面暫時未有）
+**檔案（全部喺 repo）**
 | 項 | 路徑 | sha256 |
 |---|---|---|
 | 凍結係數 | `.agents/skills/nba/nba_wong_choi/resources/nba_fit_layer_A_v1.json` | `7e74022cc7dfa37938dc3046b665d17af4c6279ab64f720fc5ae5af65227e56f` |
