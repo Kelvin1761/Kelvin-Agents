@@ -129,6 +129,22 @@ def fetch_boxscore(game_id):
         return None
 
 
+def _player_display_name(player):
+    """Full display name from either payload shape.
+
+    BoxScoreTraditionalV3 has no ``name``; it carries ``firstName`` / ``familyName``
+    / ``nameI`` ("A. Thompson").  Reading only ``name`` made every player '?', so on
+    2026-10-21 every leg of the first finished games was PLAYER_NOT_FOUND.
+    """
+    name = str(player.get('name') or '').strip()
+    if name:
+        return name
+    full = ' '.join(
+        part for part in (str(player.get('firstName') or '').strip(),
+                          str(player.get('familyName') or '').strip()) if part)
+    return full or str(player.get('nameI') or '').strip() or '?'
+
+
 def extract_player_stats(boxscore_data):
     """Extract player stats from BoxScoreTraditionalV3 response."""
     players = []
@@ -143,12 +159,21 @@ def extract_player_stats(boxscore_data):
         
         for player in team_data.get('players', []):
             stats = player.get('statistics', {})
+            comment = str(player.get('comment') or '').strip()
+            minutes = stats.get('minutes', '0')
+            # BoxScoreTraditionalV3 lists DNP / inactive players with minutes '' and a
+            # non-empty comment.  Empty minutes parse as "unknown", which verify_legs
+            # then scores as a played game with 0 stats (MISS) instead of VOID.
+            if comment and not str(minutes or '').strip():
+                minutes = '0'
             players.append({
-                'name': player.get('name', '?'),
+                'name': _player_display_name(player),
                 'team': team_abbr,
                 'position': player.get('position', '?'),
-                'starter': player.get('starter', '') == '1',
-                'minutes': stats.get('minutes', '0'),
+                # V3 has no 'starter' flag; only starters carry a position.
+                'starter': player.get('starter', '') == '1' or bool(str(player.get('position') or '').strip()),
+                'comment': comment,
+                'minutes': minutes,
                 'pts': stats.get('points', 0),
                 'reb': stats.get('reboundsTotal', 0),
                 'ast': stats.get('assists', 0),
