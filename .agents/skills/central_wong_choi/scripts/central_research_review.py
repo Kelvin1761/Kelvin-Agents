@@ -16,6 +16,7 @@ import re
 import sqlite3
 import stat
 import sys
+import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -50,6 +51,7 @@ from shared_wong_choi.research_review_cursor import (  # noqa: E402
 from shared_wong_choi.research_runner import (  # noqa: E402
     ResearchDisposition,
     ResearchRuntime,
+    ResearchRunner,
 )
 from shared_wong_choi.storage_status import DEFAULT_WARM_ROOT  # noqa: E402
 
@@ -58,6 +60,7 @@ CONTRACT_PATH = PACKAGE_ROOT / "resources" / "stage5_research_runtime.json"
 RUNTIME_SCHEMA = "wong-choi-central-research-review-runtime/v1"
 RUN_SCHEMA = "wong-choi-central-research-review-run/v1"
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+MAX_PRODUCTION_ATTEMPTS = 8
 _GIT_SHA = re.compile(r"^[0-9a-f]{40}$")
 _TABLE_SCHEMAS = {
     "cursor_state": SCHEMA,
@@ -496,6 +499,14 @@ def _overall_status(results: Mapping[str, Mapping[str, Any]]) -> str:
     return "failed"
 
 
+def _production_preempted(outcome: Mapping[str, Any]) -> bool:
+    return (outcome.get("advanced") is False and
+            outcome.get("status") == "production_active" and
+            outcome.get("disposition") in {
+                ResearchDisposition.DEFERRED.value, ResearchDisposition.PREEMPTED.value,
+            })
+
+
 def run_review_pass(
     *,
     repo_root: Path,
@@ -520,40 +531,65 @@ def run_review_pass(
     if clock.tzinfo is None or clock.utcoffset() is None:
         raise ValueError("review pass clock must be timezone-aware")
     runner = runner_factory(context.runtime, context.registry)
+    # Reallocate only interrupted production work inside the original maximum
+    # pass budget. Each native attempt retains its own original deadline.
+    deadline = time.monotonic() + contract.timeout_seconds_per_domain * len(contract.domains)
     domain_results: dict[str, dict[str, Any]] = {}
-    for binding in contract.domains.values():
-        try:
-            result = runner.run(
-                domain=binding.domain,
-                now=clock,
-                ruler_digest=binding.ruler_digest,
-                ruler_released_at=contract.ruler_released_at,
-                estimated_bytes=contract.estimated_bytes,
-                timeout_seconds=contract.timeout_seconds_per_domain,
-                queue_root=context.queue_root,
-                max_reviews=contract.max_reviews_per_domain,
-                production_evidence_root=context.production_evidence_root,
-            )
-            disposition = result.disposition.value
-            status = result.status
-            cursor_path = str(result.cursor_path) if result.cursor_path else None
-            generation = result.generation
-            advanced = result.advanced
-        except Exception as exc:  # one domain cannot erase the other outcomes
-            disposition = ResearchDisposition.BLOCKED.value
-            status = f"scheduler_exception:{type(exc).__name__}"
-            cursor_path = None
-            generation = None
-            advanced = False
-        domain_results[binding.domain.value] = {
-            "disposition": disposition,
-            "status": status,
-            "cursor_path": cursor_path,
-            "generation": generation,
-            "advanced": bool(advanced),
-            "model_promotion_allowed": False,
-            "telegram_delivery_confirmed": False,
-        }
+    attempts: dict[str, list[dict[str, Any]]] = {name: [] for name in contract.domains}
+    pending = list(contract.domains.values())
+    observer = ResearchRunner(context.runtime, context.registry)
+    for round_number in range(MAX_PRODUCTION_ATTEMPTS):
+        if round_number:
+            while observer._production_active() and time.monotonic() < deadline:
+                time.sleep(min(1.0, max(0.0, deadline - time.monotonic())))
+            if time.monotonic() >= deadline:
+                break
+        for binding in pending:
+            remaining = deadline - time.monotonic()
+            try:
+                if remaining <= 0:
+                    disposition = ResearchDisposition.DEFERRED.value
+                    status = "pass_time_budget_exhausted"
+                    cursor_path = generation = None
+                    advanced = False
+                else:
+                    result = runner.run(
+                        domain=binding.domain,
+                        now=clock,
+                        ruler_digest=binding.ruler_digest,
+                        ruler_released_at=contract.ruler_released_at,
+                        estimated_bytes=contract.estimated_bytes,
+                        timeout_seconds=min(contract.timeout_seconds_per_domain, remaining),
+                        queue_root=context.queue_root,
+                        max_reviews=contract.max_reviews_per_domain,
+                        production_evidence_root=context.production_evidence_root,
+                    )
+                    disposition = result.disposition.value
+                    status = result.status
+                    cursor_path = str(result.cursor_path) if result.cursor_path else None
+                    generation = result.generation
+                    advanced = result.advanced
+            except Exception as exc:  # one domain cannot erase the other outcomes
+                disposition = ResearchDisposition.BLOCKED.value
+                status = f"scheduler_exception:{type(exc).__name__}"
+                cursor_path = generation = None
+                advanced = False
+            outcome = {
+                "disposition": disposition,
+                "status": status,
+                "cursor_path": cursor_path,
+                "generation": generation,
+                "advanced": bool(advanced),
+                "model_promotion_allowed": False,
+                "telegram_delivery_confirmed": False,
+            }
+            name = binding.domain.value
+            domain_results[name] = outcome
+            attempts[name].append(dict(outcome))
+        pending = [binding for binding in pending
+                   if _production_preempted(domain_results[binding.domain.value])]
+        if not pending:
+            break
     stamp = clock.astimezone(timezone.utc).strftime("%H%M%S.%fZ")
     target_date = clock.astimezone(timezone.utc).date().isoformat()
     run_path = (
@@ -571,6 +607,7 @@ def run_review_pass(
         "evaluation_release_id": contract.evaluation_release_id,
         "evaluation_release_commit": contract.evaluation_release_commit,
         "domains": domain_results,
+        "attempts": attempts,
         "model_promotion_allowed": False,
         "telegram_delivery_confirmed": False,
         "run_log": str(run_path),
@@ -661,6 +698,21 @@ def review_runtime_status(
             ResearchDisposition(entry.get("disposition"))
             if not isinstance(entry.get("status"), str) or not entry["status"]:
                 raise ValueError("receipt domain status missing")
+        attempts = payload.get("attempts")
+        if attempts is not None:
+            if not isinstance(attempts, dict) or set(attempts) != set(domains):
+                raise ValueError("receipt attempt domains mismatch")
+            for name, history in attempts.items():
+                if (not isinstance(history, list)
+                        or not 1 <= len(history) <= MAX_PRODUCTION_ATTEMPTS
+                        or history[-1] != domains[name]
+                        or any(not isinstance(item, dict)
+                               or set(item) != set(domains[name])
+                               or item.get("model_promotion_allowed") is not False
+                               or item.get("telegram_delivery_confirmed") is not False
+                               for item in history)
+                        or any(not _production_preempted(item) for item in history[:-1])):
+                    raise ValueError("receipt attempt history mismatch")
         if payload.get("status") != _overall_status(domains):
             raise ValueError("receipt overall status mismatch")
         result["receipt"] = payload

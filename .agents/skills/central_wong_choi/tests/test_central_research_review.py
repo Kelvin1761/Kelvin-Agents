@@ -370,3 +370,144 @@ def test_runtime_requires_explicit_production_locks_and_has_no_delivery_imports(
     assert json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))[
         "model_promotion_allowed"
     ] is False
+
+
+class _SequenceRunner(_RecordingRunner):
+    def run(self, **kwargs):
+        self.calls.append(kwargs)
+        values = self.results[kwargs["domain"]]
+        return values.pop(0) if len(values) > 1 else values[0]
+
+
+def _sequence_runner(au):
+    return _SequenceRunner({
+        domain: list(au) if domain is Domain.AU else [
+            _Result(ResearchDisposition.SUCCEEDED, "reviews_recorded")]
+        for domain in Domain
+    })
+
+
+def test_production_preemption_resumes_only_unfinished_domain_at_same_clock(tmp_path):
+    roots = _roots(tmp_path)
+    initialize_review_state(**roots)
+    fake = _sequence_runner([
+        _Result(ResearchDisposition.PREEMPTED, "production_active", advanced=False),
+        _Result(ResearchDisposition.SUCCEEDED, "reviews_recorded"),
+    ])
+    result = run_review_pass(**roots, now=NOW,
+                             runner_factory=lambda _runtime, _registry: fake)
+    assert result["status"] == "succeeded"
+    assert [call["domain"] for call in fake.calls] == [*Domain, Domain.AU]
+    assert all(call["now"] is NOW for call in fake.calls)
+    assert all(0 < call["timeout_seconds"] <= 900 for call in fake.calls)
+    assert [entry["disposition"] for entry in result["attempts"]["au"]] == [
+        "preempted", "succeeded"]
+    assert all(len(result["attempts"][domain.value]) == 1
+               for domain in Domain if domain is not Domain.AU)
+    verified = review_runtime_status(**roots, now=NOW,
+                                    receipt_path=Path(result["run_log"]))
+    assert verified["status"] == "verified"
+    assert verified["model_promotion_allowed"] is False
+
+
+@pytest.mark.parametrize("disposition,status,advanced", [
+    (ResearchDisposition.TIMED_OUT, "phase_timeout", False),
+    (ResearchDisposition.FAILED, "provenance_mismatch", False),
+    (ResearchDisposition.DEFERRED, "warm_offline", False),
+    (ResearchDisposition.PREEMPTED, "evidence_changed", False),
+    (ResearchDisposition.PREEMPTED, "production_active", True),
+])
+def test_resume_never_retries_timeout_data_fault_or_committed_work(
+        tmp_path, disposition, status, advanced):
+    fake = _sequence_runner([_Result(disposition, status, advanced=advanced)])
+    result = run_review_pass(**_roots(tmp_path), now=NOW,
+                             runner_factory=lambda _runtime, _registry: fake)
+    assert len(fake.calls) == 4
+    assert len(result["attempts"]["au"]) == 1
+    assert result["domains"]["au"]["disposition"] == disposition.value
+    assert result["status"] != "succeeded"
+
+
+def test_resume_waits_for_shared_production_observer_without_interrupting_it(
+        tmp_path, monkeypatch):
+    ticks, sleeps = [100.0], []
+    active = iter([True, True, False])
+    monkeypatch.setattr(review_module.time, "monotonic", lambda: ticks[0])
+    def sleep(seconds):
+        sleeps.append(seconds)
+        ticks[0] += seconds
+    monkeypatch.setattr(review_module.time, "sleep", sleep)
+    monkeypatch.setattr(review_module.ResearchRunner, "_production_active",
+                        lambda _self: next(active, False))
+    fake = _sequence_runner([
+        _Result(ResearchDisposition.DEFERRED, "production_active", advanced=False),
+        _Result(ResearchDisposition.SUCCEEDED, "reviews_recorded"),
+    ])
+    result = run_review_pass(**_roots(tmp_path), now=NOW,
+                             runner_factory=lambda _runtime, _registry: fake)
+    assert sleeps == [1.0, 1.0]
+    assert ticks[0] == 102.0
+    assert result["status"] == "succeeded"
+    assert [call["domain"] for call in fake.calls] == [*Domain, Domain.AU]
+
+
+def test_repeated_production_preemptions_are_bounded_and_never_fabricate_success(tmp_path):
+    fake = _sequence_runner([
+        _Result(ResearchDisposition.PREEMPTED, "production_active", advanced=False)])
+    result = run_review_pass(**_roots(tmp_path), now=NOW,
+                             runner_factory=lambda _runtime, _registry: fake)
+    assert len(result["attempts"]["au"]) == review_module.MAX_PRODUCTION_ATTEMPTS == 8
+    assert sum(call["domain"] is Domain.AU for call in fake.calls) == 8
+    assert len(fake.calls) == 11
+    assert result["status"] == "partial"
+    assert result["domains"]["au"]["disposition"] == "preempted"
+
+
+def test_resume_keeps_original_total_budget_and_caps_remaining_attempt(tmp_path, monkeypatch):
+    from dataclasses import replace
+    ticks = [0.0]
+    contract = replace(load_runtime_contract(), timeout_seconds_per_domain=2.0)
+    monkeypatch.setattr(review_module, "load_runtime_contract", lambda *_args, **_kwargs: contract)
+    monkeypatch.setattr(review_module.time, "monotonic", lambda: ticks[0])
+    calls = []
+    class BudgetRunner:
+        def run(self, **kwargs):
+            calls.append(kwargs)
+            ticks[0] += 7.0 if len(calls) == 1 else 2.0
+            return _Result(
+                ResearchDisposition.PREEMPTED if len(calls) == 1 else ResearchDisposition.SUCCEEDED,
+                "production_active" if len(calls) == 1 else "reviews_recorded",
+                advanced=len(calls) != 1)
+    result = run_review_pass(**_roots(tmp_path), now=NOW,
+                             runner_factory=lambda _runtime, _registry: BudgetRunner())
+    assert [call["timeout_seconds"] for call in calls] == [2.0, 1.0]
+    assert [call["domain"] for call in calls] == [Domain.AU, Domain.HKJC]
+    assert result["domains"]["tennis"]["status"] == "pass_time_budget_exhausted"
+    assert result["domains"]["nba"]["status"] == "pass_time_budget_exhausted"
+    assert result["status"] == "partial"
+
+
+@pytest.mark.parametrize("fault", ["last_mismatch", "earlier_success", "earlier_advanced"])
+def test_status_rejects_rehashed_but_inconsistent_attempt_history(tmp_path, fault):
+    roots = _roots(tmp_path)
+    initialize_review_state(**roots)
+    fake = _sequence_runner([
+        _Result(ResearchDisposition.PREEMPTED, "production_active", advanced=False),
+        _Result(ResearchDisposition.SUCCEEDED, "reviews_recorded"),
+    ])
+    result = run_review_pass(**roots, now=NOW,
+                             runner_factory=lambda _runtime, _registry: fake)
+    payload = dict(result)
+    payload.pop("content_hash")
+    if fault == "last_mismatch":
+        payload["attempts"]["au"][-1]["status"] = "fabricated"
+    elif fault == "earlier_success":
+        payload["attempts"]["au"][0] = dict(payload["domains"]["au"])
+    else:
+        payload["attempts"]["au"][0]["advanced"] = True
+    target = Path(result["run_log"]).with_name(f"inconsistent-{fault}.json")
+    payload["run_log"] = str(target)
+    _write_run(target, payload)
+    verified = review_runtime_status(**roots, now=NOW, receipt_path=target)
+    assert verified["status"] == "blocked"
+    assert "attempt" in verified["receipt_error"]

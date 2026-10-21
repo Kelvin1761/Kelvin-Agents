@@ -11,12 +11,15 @@ import resource
 import shlex
 import shutil
 import signal
+import stat
+import threading
 import subprocess
 import sys
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 from enum import Enum
+from functools import cached_property
 from pathlib import Path
 from typing import Any, Callable, Mapping, Protocol
 from urllib.parse import quote
@@ -610,6 +613,146 @@ def _free_space(path: Path) -> int:
     return int(shutil.disk_usage(path).free)
 
 
+class _ProductionLockHandles:
+    """Reuse descriptors only; every probe rechecks path, rights and flock.
+
+    No lock is held between probes. Identity changes preempt instead of letting
+    an old descriptor certify a replacement path. The cache is process-local,
+    bounded, discarded on copy and never part of a serialized runtime.
+    """
+    MAX_HANDLES = 16
+
+    def __init__(self):
+        self.handles = {}
+        self.mutex = threading.RLock()
+        self.owner_mutex = threading.Lock()
+        self.owner = None
+        self.cache_limit = self.MAX_HANDLES
+
+    def __deepcopy__(self, memo):
+        return type(self)()
+
+    def _drop(self, key):
+        item = self.handles.pop(key, None)
+        if item is not None:
+            fd, identity = item
+            try:
+                info = os.fstat(fd)
+                if (info.st_dev, info.st_ino) == identity:
+                    os.close(fd)
+            except OSError:
+                pass
+
+    def close(self):
+        with self.mutex:
+            for key in tuple(self.handles):
+                self._drop(key)
+
+    def __del__(self):
+        try:
+            self.close()
+        except Exception:
+            pass
+
+    @staticmethod
+    def _busy(fd):
+        try:
+            fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return True
+        # Unlock failure propagates so the caller closes this descriptor.
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        return False
+
+    def _same_cached_paths(self, paths):
+        # Other threads must not acquire the cache mutex while its owner probes.
+        # Only immutable identity tuples are inspected here, never shared fds.
+        for path in paths:
+            item = self.handles.get(os.fspath(path))
+            if item is not None:
+                try:
+                    info = os.stat(path, follow_symlinks=False)
+                except (OSError, ValueError):
+                    return False
+                if (info.st_dev, info.st_ino) != item[1]:
+                    return False
+        return True
+
+    def active(self, paths):
+        thread_id = threading.get_ident()
+        if self.owner is None:
+            with self.owner_mutex:
+                if self.owner is None:
+                    self.owner = thread_id
+        if self.owner != thread_id:
+            if not self._same_cached_paths(paths):
+                return True
+            temporary_probe = type(self)()
+            temporary_probe.cache_limit = 0
+            try:
+                busy = temporary_probe.active(paths)
+                return busy or not self._same_cached_paths(paths)
+            finally:
+                temporary_probe.close()
+        with self.mutex:
+            for path in paths:
+                key = os.fspath(path)
+                item = self.handles.get(key)
+                temporary = None
+                try:
+                    try:
+                        info = os.stat(path, follow_symlinks=False)
+                    except FileNotFoundError:
+                        if item is not None:
+                            fd, identity = item
+                            opened = os.fstat(fd)
+                            if (opened.st_dev, opened.st_ino) != identity:
+                                self._drop(key)
+                                return True
+                            if self._busy(fd):
+                                return True
+                            self._drop(key)
+                        continue
+                    if not stat.S_ISREG(info.st_mode) or not os.access(path, os.W_OK):
+                        return True
+                    identity = (info.st_dev, info.st_ino)
+                    if item is not None:
+                        fd, expected = item
+                        opened = os.fstat(fd)
+                        if (opened.st_dev, opened.st_ino) != expected:
+                            self._drop(key)
+                            return True
+                        if identity != expected:
+                            if not self._busy(fd):
+                                self._drop(key)
+                            return True
+                    else:
+                        fd = os.open(path, os.O_WRONLY | os.O_APPEND |
+                                     os.O_NOFOLLOW | os.O_NONBLOCK)
+                        temporary = fd
+                        opened = os.fstat(fd)
+                        current = os.stat(path, follow_symlinks=False)
+                        if (not stat.S_ISREG(opened.st_mode)
+                                or (opened.st_dev, opened.st_ino) != identity
+                                or (current.st_dev, current.st_ino) != identity):
+                            return True
+                        if len(self.handles) < self.cache_limit:
+                            self.handles[key] = (fd, identity)
+                            temporary = None
+                    if self._busy(fd):
+                        return True
+                except (OSError, ValueError):
+                    self._drop(key)
+                    return True
+                finally:
+                    if temporary is not None:
+                        try:
+                            os.close(temporary)
+                        except OSError:
+                            pass
+        return False
+
+
 @dataclass(frozen=True)
 class ResearchRuntime:
     state_root: Path
@@ -627,6 +770,13 @@ class ResearchRuntime:
     def __post_init__(self) -> None:
         if self.reserve_bytes < 0:
             raise ValueError("reserve_bytes cannot be negative")
+
+    def __copy__(self):
+        return replace(self)
+
+    @cached_property
+    def _production_lock_handles(self) -> _ProductionLockHandles:
+        return _ProductionLockHandles()
 
 
 @dataclass(frozen=True)
@@ -655,26 +805,7 @@ class ResearchRunner:
         return ResearchRunResult(job.job_id, disposition, status, **kwargs)
 
     def _production_active(self) -> bool:
-        for path in self.runtime.production_lock_paths:
-            if not path.exists():
-                continue
-            try:
-                with path.open("a", encoding="utf-8") as handle:
-                    try:
-                        # Production owners (central/domain single_run_lock)
-                        # use LOCK_EX. Observers must share LOCK_SH, otherwise
-                        # parent and worker probes impersonate production.
-                        fcntl.flock(handle.fileno(), fcntl.LOCK_SH | fcntl.LOCK_NB)
-                    except BlockingIOError:
-                        return True
-                    finally:
-                        try:
-                            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
-                        except OSError:
-                            pass
-            except OSError:
-                return True
-        return False
+        return self.runtime._production_lock_handles.active(self.runtime.production_lock_paths)
 
     def _review_status(self, spec: ExperimentSpec) -> str | None:
         from .research_guard import research_gate_status
