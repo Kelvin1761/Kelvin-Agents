@@ -28,6 +28,7 @@ from pathlib import Path
 
 NBA_SKILL_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA_SKILL_DIR))
+from nba_identity import player_name_key
 from nba_schedule import canonical_team_abbr
 
 if sys.stdout.encoding != 'utf-8':
@@ -57,7 +58,14 @@ def normalize_stat(stat_str):
 
 
 def get_player_actual(players_list, player_name):
-    """Find a player's actual stats from box score data."""
+    """Find a player's actual stats from box score data.
+
+    Order: exact lower-case name, then accent/punctuation-insensitive name
+    (Sportsbet "Nikola Jokic" vs box score "Nikola Jokić"), then a unique surname
+    match whose first name is prefix-compatible (nickname/initial).  The old surname fallback could
+    settle a leg with another player's stats (Jalen vs Jaylin Williams); an
+    unmatched leg is flagged PLAYER_NOT_FOUND instead, which is safe.
+    """
     name_lower = player_name.lower().strip()
     exact = [
         player for player in players_list
@@ -65,11 +73,23 @@ def get_player_actual(players_list, player_name):
     ]
     if exact:
         return exact[0]
-    last_name = name_lower.split()[-1] if name_lower else ""
-    surname_matches = [
-        player for player in players_list
-        if str(player.get('name', '')).lower().strip().split()[-1:] == [last_name]
-    ]
+    key = player_name_key(player_name)
+    keyed = [p for p in players_list if player_name_key(p.get('name', '')) == key]
+    if len(keyed) == 1:
+        return keyed[0]
+    parts = key.split()
+    if len(parts) < 2:
+        return None
+    last_name, first = parts[-1], parts[0]
+    surname_matches = []
+    for p in players_list:
+        other = player_name_key(p.get('name', '')).split()
+        if len(other) < 2 or other[-1] != last_name:
+            continue
+        # first names must be nickname-compatible: one is a prefix of the other
+        # (Nic/Nicolas, Cam/Cameron, "J." initial). Jaylin vs Jalen is NOT a match.
+        if other[0].startswith(first) or first.startswith(other[0]):
+            surname_matches.append(p)
     return surname_matches[0] if len(surname_matches) == 1 else None
 
 
