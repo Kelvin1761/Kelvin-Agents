@@ -12,6 +12,7 @@ import json
 import mimetypes
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 import uuid
@@ -22,6 +23,31 @@ ENV_FILE = PROJECT_ROOT / ".agents" / ".env"
 USER_NOTIFY_ENV = Path.home() / ".wongchoi_notify.env"
 MAX_TELEGRAM_TEXT = 4096
 MAX_TELEGRAM_DOCUMENT = 50 * 1024 * 1024
+SEND_ATTEMPTS = 4
+RETRY_BACKOFF_SECONDS = 2.0
+
+
+def _transient(exc: Exception) -> bool:
+    """Connection resets/timeouts, HTTP 429 and 5xx are worth another attempt."""
+    if isinstance(exc, urllib.error.HTTPError):
+        return exc.code == 429 or exc.code >= 500
+    return isinstance(exc, (OSError, urllib.error.URLError))
+
+
+def _post_with_retry(request: urllib.request.Request, timeout: float) -> dict:
+    """POST once per attempt; retry only transient failures with linear backoff.
+
+    2026-10-21: a single `Connection reset by peer` dropped the NBA betting card,
+    because the sender tried exactly once."""
+    for attempt in range(1, SEND_ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(request, timeout=timeout) as response:
+                return json.loads(response.read().decode("utf-8"))
+        except (OSError, urllib.error.URLError) as exc:
+            if attempt == SEND_ATTEMPTS or not _transient(exc):
+                raise
+            time.sleep(RETRY_BACKOFF_SECONDS * attempt)
+    raise RuntimeError("unreachable")
 
 
 def load_env(path: Path | None = None) -> None:
@@ -121,8 +147,7 @@ def send_message(
                 method="POST",
             )
             try:
-                with urllib.request.urlopen(request, timeout=timeout) as response:
-                    body = json.loads(response.read().decode("utf-8"))
+                body = _post_with_retry(request, timeout)
             except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
                 failures.append(f"{type(exc).__name__}: {exc}")
                 target_ok = False
@@ -142,6 +167,7 @@ def send_message(
             "sent_targets": sent_targets,
             "failed_targets": len(failures),
             "error": failures[0],
+            "errors": failures,
         }
     return {
         "ok": True,
@@ -235,8 +261,7 @@ def send_document(
                 headers={"Content-Type": content_type},
                 method="POST",
             )
-            with urllib.request.urlopen(request, timeout=timeout) as response:
-                body = json.loads(response.read().decode("utf-8"))
+            body = _post_with_retry(request, timeout)
         except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
             failures.append(f"{type(exc).__name__}: {exc}")
             continue
