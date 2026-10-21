@@ -192,7 +192,7 @@ DOMAIN_SCHEDULES: dict[Domain, DomainSchedulePolicy] = {
             JobPolicy(
                 "pregame",
                 Operation.PREDICT,
-                times=(_t(21, 0),),
+                times=(_t(19, 0),),
                 target_day_offset=1,
                 freshness_role=FreshnessRole.WARMUP,
                 refresh_scope=RefreshScope.ALL,
@@ -203,7 +203,8 @@ DOMAIN_SCHEDULES: dict[Domain, DomainSchedulePolicy] = {
             JobPolicy(
                 "pregame",
                 Operation.PREDICT,
-                times=(_t(0, 30),),
+                times=(_t(21, 0), _t(21, 45)),
+                target_day_offset=1,
                 freshness_role=FreshnessRole.PRODUCTION,
                 refresh_scope=RefreshScope.UNSTARTED_ONLY,
                 snapshot_mode=SnapshotMode.APPEND_ONLY,

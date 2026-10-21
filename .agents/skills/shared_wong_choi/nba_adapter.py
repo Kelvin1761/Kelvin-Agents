@@ -25,8 +25,9 @@ class NBAAdapter(ManifestCommandAdapter):
             command.extend(("--date", identity.target_date.isoformat()))
         if identity.mode == "pregame":
             role_by_slot = {
-                "21:00": "warmup",
-                "00:30": "production",
+                "19:00": "warmup",
+                "21:00": "production",
+                "21:45": "production",
                 "06:30": "final_refresh",
             }
             role = role_by_slot.get(identity.scheduled_slot)
