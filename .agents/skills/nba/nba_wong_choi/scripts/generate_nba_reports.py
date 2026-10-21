@@ -42,6 +42,111 @@ ML_STATUS = {"requested": None, "loaded": None, "load_error": None,
              "predictions": 0, "failures": 0, "failure_samples": []}
 
 
+# ── Fitted probability layer: SHADOW ONLY (EXP-20261021-05) ──────────────────
+# Computed and recorded for forward evidence; NO code path reads the value.
+# Failure isolation: every failure is caught, counted and surfaced; it can never
+# block or alter a live report. Kill switch: NBA_FIT_LAYER_SHADOW_ENABLED=0.
+FIT_STATUS = {"computed": 0, "null": 0, "errors": 0, "reasons": {}, "error_samples": []}
+FIT_MIN_GAMES = 10
+FIT_MIN_PRIOR10_MIN = 20.0
+
+
+def fit_layer_shadow_enabled():
+    return os.environ.get("NBA_FIT_LAYER_SHADOW_ENABLED", "1").strip().lower() not in {"0", "false", "no", "off"}
+
+
+def reset_fit_status():
+    FIT_STATUS.update({"computed": 0, "null": 0, "errors": 0, "reasons": {}, "error_samples": []})
+
+
+def _fit_layer_module():
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nba_fit_layer.py")
+    spec = importlib.util.spec_from_file_location("nba_fit_layer", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def _validated_lines(mean):
+    """The three integers N>=1 nearest the prior-10 mean (the experiment's lines)."""
+    import math
+    lo, hi = max(1, int(math.floor(mean)) - 3), int(math.ceil(mean)) + 3
+    return sorted(range(lo, hi + 1), key=lambda n: (abs(n - mean), n))[:3]
+
+
+def _shadow_null(status, inputs=None):
+    FIT_STATUS["null"] += 1
+    FIT_STATUS["reasons"][status] = FIT_STATUS["reasons"].get(status, 0) + 1
+    return {"shadow_fit_prob_A": None, "shadow_fit_version": None,
+            "shadow_fit_status": status, "shadow_fit_inputs": inputs}
+
+
+def compute_shadow_fit(ext_player, stat_key, line_val, layer=None):
+    """Return the four shadow fields for one leg. Never raises."""
+    try:
+        if not fit_layer_shadow_enabled():
+            return {"shadow_fit_prob_A": None, "shadow_fit_version": None,
+                    "shadow_fit_status": "disabled", "shadow_fit_inputs": None}
+        gl = (ext_player or {}).get("gamelog") or {}
+        if not gl:
+            return _shadow_null("no_gamelog")
+        fi = gl.get("fit_inputs")
+        if not isinstance(fi, dict) or "error" in fi or "totals" not in fi:
+            return _shadow_null("no_fit_inputs", {"error": (fi or {}).get("error") if isinstance(fi, dict) else None})
+        games = fi.get("same_season_rs_games") or 0
+        inputs = {"season": fi.get("season"), "same_season_rs_games": games,
+                  "prior10_mean_min": fi.get("prior10_mean_min")}
+        if games < FIT_MIN_GAMES:
+            return _shadow_null("insufficient_same_season_games", inputs)
+        m10 = fi.get("prior10_mean_min")
+        if m10 is None or m10 < FIT_MIN_PRIOR10_MIN:
+            return _shadow_null("low_minutes_out_of_population", inputs)
+        if stat_key not in (fi.get("totals") or {}):
+            return _shadow_null("stat_unsupported", inputs)
+        layer = layer or _fit_layer_module()
+        total, minutes = fi["totals"][stat_key], fi.get("minutes_total")
+        prob, reason = layer.fit_prob_A(stat_key, line_val, total, minutes, m10)
+        if prob is None:
+            status = "artifact_invalid" if "sha256" in str(reason) or "model" in str(reason) else "invalid_inputs"
+            return _shadow_null(status, dict(inputs, reason=reason))
+        l10_mean = (fi.get("prior10_mean") or {}).get(stat_key)
+        inputs.update({
+            "stat_total": total, "minutes_total": minutes,
+            # logged for analysis only (the probability above comes from nba_fit_layer)
+            "mu": round(max(0.05, total / minutes * m10), 4) if minutes else None,
+            "l10_mean": l10_mean,
+            "line_minus_mean": round(float(line_val) - l10_mean, 3) if l10_mean is not None else None,
+        })
+        inside = l10_mean is not None and l10_mean >= 1 and int(line_val) in _validated_lines(l10_mean)
+        FIT_STATUS["computed"] += 1
+        status = "ok" if inside else "ok_outside_validated_lines"
+        FIT_STATUS["reasons"][status] = FIT_STATUS["reasons"].get(status, 0) + 1
+        return {"shadow_fit_prob_A": round(float(prob), 4), "shadow_fit_version": getattr(layer, "MODEL_ID", None),
+                "shadow_fit_status": status, "shadow_fit_inputs": inputs}
+    except Exception as exc:  # isolation: never touch the live report
+        FIT_STATUS["errors"] += 1
+        msg = f"{type(exc).__name__}: {exc}"
+        if len(FIT_STATUS["error_samples"]) < 3:
+            FIT_STATUS["error_samples"].append(msg)
+        return {"shadow_fit_prob_A": None, "shadow_fit_version": None,
+                "shadow_fit_status": "error", "shadow_fit_inputs": {"error": msg}}
+
+
+def fit_status_lines():
+    if not fit_layer_shadow_enabled():
+        return []
+    st = FIT_STATUS
+    if not (st["computed"] or st["null"] or st["errors"]):
+        return []
+    reasons = "、".join(f"{k} {v}" for k, v in sorted(st["reasons"].items()))
+    line = (f"> ℹ️ 擬合機率層 shadow（只記錄，唔影響任何機率／EV／Kelly／選腿）：已計 {st['computed']}、"
+            f"空值 {st['null']}、錯誤 {st['errors']}（{reasons or '—'}）。")
+    if st["errors"]:
+        line += f" 例：{st['error_samples'][0]}"
+    return [line]
+
+
 def hybrid_ml_adjust_enabled():
     """Hybrid ML adjustment is SHADOW-ONLY unless NBA_HYBRID_ML_ADJUST_ENABLED=1.
 
@@ -746,6 +851,7 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             "hybrid_prob": final_prob if final_engine == "hybrid" else None,
             "ml_prob": ml_prob,
             "ml_est_prob": ml_est_prob,
+            **compute_shadow_fit(ext_player, stat_key, line_val),
             "ml_delta_pp": round(ml_delta, 1) if ml_delta is not None else None,
             "hybrid_adj_shadow_pp": hybrid_adj_shadow,
             "hybrid_adj_applied_pp": hybrid_adj,
@@ -2052,7 +2158,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"> [!IMPORTANT]")
     sections.append(f"> 以下組合由 Python V5 短腿數 + Playoff Gate + Post-Reflector EV Gate 自動篩選。所有數學數據不可修改。")
     sections.append(f"> Engine mode: **{engine_mode.upper()}**；任何 `Combo EV% <= 0` 或 Kelly = 0% 嘅組合會被 hard block。")
-    for _l in ml_status_lines():
+    for _l in ml_status_lines() + fit_status_lines():
         sections.append(_l)
     sections.append(f"")
 
@@ -2238,6 +2344,10 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
                 "price": float(la["odds"]),
                 "p_hit_rate_10f": _pct_to_prob(la.get("det_prob")),
                 "p_ml": _pct_to_prob(la["ml_prob"] * 100) if la.get("ml_prob") is not None else None,
+                "shadow_fit_prob_A": la.get("shadow_fit_prob_A"),
+                "shadow_fit_version": la.get("shadow_fit_version"),
+                "shadow_fit_status": la.get("shadow_fit_status"),
+                "shadow_fit_inputs": la.get("shadow_fit_inputs"),
                 "ml_delta_pp": la.get("ml_delta_pp"),
                 "hybrid_adj_shadow_pp": la.get("hybrid_adj_shadow_pp"),
                 "hybrid_adj_applied_pp": la.get("hybrid_adj_applied_pp"),
@@ -2336,6 +2446,7 @@ def main():
     # ── Engine 初始化：Hybrid/ML use ML predictor; legacy stays deterministic ──
     ml_predictor = None
     reset_ml_status(engine_mode)
+    reset_fit_status()
     if engine_mode in {"hybrid", "ml"}:
         try:
             _ml_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "scripts", "nba_ml")

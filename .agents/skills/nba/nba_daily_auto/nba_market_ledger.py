@@ -418,6 +418,12 @@ def record_snapshot(
                 "price_at_model": price, "odds_captured_at": _iso(model_captured),
                 **{name: _float(leg.get(name)) for name in (*MODEL_VARIANTS, "p_l10_base_rate")},
                 "engine": leg.get("engine"),
+                # SHADOW fit layer: recorded for forward evidence, deliberately
+                # not in MODEL_VARIANTS so evaluate() is untouched.
+                "shadow_fit_prob_A": _float(leg.get("shadow_fit_prob_A")),
+                "shadow_fit_version": leg.get("shadow_fit_version"),
+                "shadow_fit_status": leg.get("shadow_fit_status"),
+                "shadow_fit_inputs": leg.get("shadow_fit_inputs"),
                 "picked": bool(leg.get("picked")), "picked_in": leg.get("picked_in") or [],
             })
         for combo in payload.get("combos") or []:
