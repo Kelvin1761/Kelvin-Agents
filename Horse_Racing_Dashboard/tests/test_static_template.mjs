@@ -115,6 +115,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       hasLiveSportsFeed: typeof hasLiveSportsFeed === "function" ? hasLiveSportsFeed : null,
       sportsFeedExpired: typeof sportsFeedExpired === "function" ? sportsFeedExpired : null,
       sportsReferencePicks: typeof sportsReferencePicks === "function" ? sportsReferencePicks : null,
+      calibrationBadge: typeof calibrationBadge === "function" ? calibrationBadge : null,
     };
   `;
   vm.runInContext(source, context);
@@ -1306,6 +1307,42 @@ test("on the same day a started NBA game drops out of today's picks and an unsta
 function sydneyDateForTest() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney" }).format(new Date());
 }
+
+test("live NBA picks carry the calibration notice and flag only legs at 70%+", () => {
+  const combo = {
+    id: "nba:cal", sport: "nba", event_date: "2099-01-01", start_time_utc: "2099-01-01T00:00:00Z",
+    event_name: "AAA @ BBB", market: "Same Game Multi", selection: "combo", odds: 3.4, outcome: "pending",
+    decision: "BET", bet_type: "combo", metrics: {},
+    legs: [
+      { selection: "High P (AAA) PTS 10+", market: "Player PTS", odds: 1.3, metrics: { model_probability: 0.77 } },
+      { selection: "Low P (BBB) REB 6+", market: "Player REB", odds: 1.8, metrics: { model_probability: 0.60 } },
+      { selection: "No P (BBB) AST 4+", market: "Player AST", odds: 1.5 },
+    ],
+  };
+  const data = { ...EMPTY_DASHBOARD_DATA, sports_feed: { sports: { nba: {
+    validation_status: "valid", analysis_run_id: "nba:2099-01-01", recommendations: [combo] } } } };
+  const { renderSportsHistory } = loadTemplateFunctions(data);
+  const html = renderSportsHistory("nba");
+  assert.match(html, /校準提示（離線量度，唔係利潤結論）/);
+  assert.match(html, /EXP-20261021-05／06/);
+  assert.equal((html.match(/pick-leg__calib/g) || []).length - (html.match(/\.pick-leg__calib/g) || []).length, 1);
+  assert.match(html, /High P \(AAA\) PTS 10\+<em class="pick-leg__calib"/);
+  assert.doesNotMatch(html, /Low P \(BBB\) REB 6\+<em/);
+});
+
+test("the calibration notice is NBA-only and never shown on history or tennis", () => {
+  const history = { ...EMPTY_DASHBOARD_DATA, sports_history: { nba: [{ id: "h", event_name: "Old", metrics: { model_probability: 0.9 } }], tennis: [] } };
+  const nbaHistory = loadTemplateFunctions(history).renderSportsHistory("nba");
+  assert.doesNotMatch(nbaHistory, /校準提示/);
+  const tennisLive = { ...EMPTY_DASHBOARD_DATA, sports_feed: { sports: { tennis: {
+    validation_status: "valid", analysis_run_id: "tennis:2099-01-01",
+    recommendations: [{ id: "t", sport: "tennis", event_date: "2099-01-01", start_time_utc: "2099-01-01T00:00:00Z",
+      event_name: "A vs B", market: "Match Winner", selection: "A", odds: 1.8, outcome: "pending",
+      decision: "BET", bet_type: "single", legs: [], metrics: { model_probability: 0.9 } }] } } } };
+  const tennisHtml = loadTemplateFunctions(tennisLive).renderSportsHistory("tennis");
+  assert.doesNotMatch(tennisHtml, /校準提示/);
+  assert.doesNotMatch(tennisHtml, /pick-leg__calib"/);
+});
 
 test("an exporter-expired NBA snapshot says the analysis is not out yet", () => {
   const data = {
