@@ -543,6 +543,7 @@
     .pick-leg__label { min-width: 0; color: #0F172A; font-size: .7rem; font-weight: 800; line-height: 1.35; word-break: break-word; }
     .pick-leg__odds { color: #334155; font-size: .7rem; font-weight: 900; font-variant-numeric: tabular-nums; }
     .pick-leg__status { font-size: .58rem; font-weight: 900; white-space: nowrap; }
+    .pick-leg__calib { display: inline-block; margin-left: .35rem; padding: 0 .3rem; border-radius: 4px; background: #FEF3C7; color: #92400E; font-size: .56rem; font-style: normal; font-weight: 900; white-space: nowrap; }
     .pick-leg--won { border-color: #A7F3D0; background: #F0FDF9; }
     .pick-leg--lost { border-color: #FECACA; background: #FEF6F6; }
     .pick-leg--won .pick-leg__status { color: #047857; }
@@ -1926,6 +1927,33 @@ function sportsPickLines(item) {
 // Legs arrive either as objects from the live pipeline or as pre-formatted strings in
 // the archived cases. Split off price and status either way so they can be columns
 // rather than buried in a sentence.
+// Offline calibration finding (EXP-20261021-05/06, regular-season game logs 2024-25 and
+// 2025-26, lines near the player's L10 mean): the live probability is overstated by about
+// 10-14pp for legs at or above 70%, more early in the season. It is a calibration warning,
+// not a correction and not a profit statement; the probabilities themselves are unchanged.
+const CALIBRATION_HIGH_ZONE = 0.70;
+
+function inHighProbabilityZone(metrics) {
+  const p = Number(metrics && metrics.model_probability);
+  return Number.isFinite(p) && p >= CALIBRATION_HIGH_ZONE;
+}
+
+function calibrationBadge(metrics) {
+  return inHighProbabilityZone(metrics)
+    ? '<em class="pick-leg__calib" title="離線量度：70% 以上嘅區間歷史上預測高估約 10–14pp">⚠ 高機率區偏樂觀</em>'
+    : '';
+}
+
+function sportsCalibrationNotice(sport) {
+  if (sport !== 'nba') return '';
+  return `<div class="sports-notice sports-notice--reference"><span>📉</span><span>
+    <strong>校準提示（離線量度，唔係利潤結論）：</strong>
+    live 引擎顯示嘅命中機率喺 70% 以上嘅區間，用 2024-25 同 2025-26 兩季 game log 量度，平均高估約 10–14pp，賽季初更高；
+    2026-10-21 單日有報價嘅腿亦見到同方向（樣本細）。量度用嘅係「近球員平均線」，唔係莊家開價 population，
+    所以只係提示「70%＋偏樂觀」，唔係每條腿嘅修正值，亦冇改動下面任何機率。詳情：EXP-20261021-05／06。
+  </span></div>`;
+}
+
 function sportsLegParts(leg) {
   if (leg && typeof leg === 'object') {
     return {
@@ -1973,7 +2001,7 @@ function renderSportsPick(item, sport) {
       const { label, odds, status } = sportsLegParts(leg);
       return `<li class="pick-leg${status ? ` pick-leg--${esc(status)}` : ''}">
         <span class="pick-leg__n">${index + 1}</span>
-        <span class="pick-leg__label">${esc(label)}</span>
+        <span class="pick-leg__label">${esc(label)}${sport === 'nba' && leg && typeof leg === 'object' ? calibrationBadge(leg.metrics) : ''}</span>
         ${odds == null ? '' : `<span class="pick-leg__odds">${odds.toFixed(2)}</span>`}
         ${status ? `<span class="pick-leg__status">${esc(sportsStatusLabel(status))}</span>` : ''}
       </li>`;
@@ -1992,7 +2020,7 @@ function renderSportsPick(item, sport) {
   return `<div class="pick-block${item.category === 'reference_model_edge' ? ' pick-block--reference' : ''}">
     <div class="pick-block__label">${pickLabel}</div>
     ${kicker ? `<div class="pick-block__kicker">${esc(kicker)}</div>` : ''}
-    <div class="pick-block__headline">${esc(headline)}</div>
+    <div class="pick-block__headline">${esc(headline)}${sport === 'nba' ? calibrationBadge(item.metrics) : ''}</div>
     <div class="pick-block__foot">${priceText}</div>
   </div>`;
 }
@@ -2148,7 +2176,7 @@ function renderSportsHistory(sport) {
   // strategy state are diagnostics; "what happened when we actually did this"
   // is the answer, and it matters most on exactly this path -- where the cards
   // below are archived cases and the reader is deciding how much to trust them.
-  return `${blockedNotice}${expiredNotice}${gatedTodayNotice}${referenceSection}${notice}${verifiedNotice}${diagnostics}<div class="history-grid">${items.map(item => renderHistoryCard(item, sport)).join('')}</div>`;
+  return `${blockedNotice}${expiredNotice}${gatedTodayNotice}${referenceSection}${notice}${live ? sportsCalibrationNotice(sport) : ''}${verifiedNotice}${diagnostics}<div class="history-grid">${items.map(item => renderHistoryCard(item, sport)).join('')}</div>`;
 }
 
 function sportsStatusLabel(status) {
