@@ -1,0 +1,278 @@
+{
+ "combos": [
+  {
+   "adjusted_joint_prob": 0.7239,
+   "combo_ev_pct": 95.9,
+   "combo_id": "1",
+   "combo_risk_tier": "VALUE",
+   "correlation_penalty": 0.1,
+   "legs": [
+    {
+     "desc": "De'Aaron Fox (SAS) AST 4+",
+     "line": 4.0,
+     "market": "ast",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "De'Aaron Fox",
+     "price": 1.25,
+     "side": "over",
+     "team": "SAS"
+    },
+    {
+     "desc": "Devin Vassell (SAS) REB 4+",
+     "line": 4.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "Devin Vassell",
+     "price": 1.64,
+     "side": "over",
+     "team": "SAS"
+    },
+    {
+     "desc": "Dylan Harper (SAS) REB 4+",
+     "line": 4.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "Dylan Harper",
+     "price": 1.32,
+     "side": "over",
+     "team": "SAS"
+    }
+   ],
+   "naive_joint_prob": 0.8044,
+   "product_of_leg_prices": 2.71,
+   "sim_correlation_lift": 1.002,
+   "sim_independent_prob": 0.6968,
+   "sim_joint_prob": 0.6982,
+   "sim_leg_marginals": [
+    0.9624,
+    0.8152,
+    0.8882
+   ],
+   "sim_model_version": "sgm-joint-sim/v1",
+   "sim_n": 10000,
+   "sim_scaled_joint_prob": 0.806,
+   "sim_seed": 1048371087,
+   "sim_status": "ok",
+   "sportsbet_sgm_price": null,
+   "sportsbet_sgm_status": "not_scraped"
+  },
+  {
+   "adjusted_joint_prob": 0.5647,
+   "combo_ev_pct": 129.2,
+   "combo_id": "2",
+   "combo_risk_tier": "VALUE",
+   "correlation_penalty": 0.1,
+   "legs": [
+    {
+     "desc": "De'Aaron Fox (SAS) AST 4+",
+     "line": 4.0,
+     "market": "ast",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "De'Aaron Fox",
+     "price": 1.25,
+     "side": "over",
+     "team": "SAS"
+    },
+    {
+     "desc": "Devin Vassell (SAS) REB 4+",
+     "line": 4.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "Devin Vassell",
+     "price": 1.64,
+     "side": "over",
+     "team": "SAS"
+    },
+    {
+     "desc": "Dylan Harper (SAS) REB 4+",
+     "line": 4.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "Dylan Harper",
+     "price": 1.32,
+     "side": "over",
+     "team": "SAS"
+    },
+    {
+     "desc": "Shai Gilgeous-Alexander (OKC) AST 6+",
+     "line": 6.0,
+     "market": "ast",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.78,
+     "player": "Shai Gilgeous-Alexander",
+     "price": 1.5,
+     "side": "over",
+     "team": "OKC"
+    }
+   ],
+   "naive_joint_prob": 0.6274,
+   "product_of_leg_prices": 4.06,
+   "sim_correlation_lift": 1.0031,
+   "sim_independent_prob": 0.5306,
+   "sim_joint_prob": 0.5323,
+   "sim_leg_marginals": [
+    0.9624,
+    0.8152,
+    0.8882,
+    0.7615
+   ],
+   "sim_model_version": "sgm-joint-sim/v1",
+   "sim_n": 10000,
+   "sim_scaled_joint_prob": 0.6293,
+   "sim_seed": 1048371087,
+   "sim_status": "ok",
+   "sportsbet_sgm_price": null,
+   "sportsbet_sgm_status": "not_scraped"
+  },
+  {
+   "adjusted_joint_prob": 0.3972,
+   "combo_ev_pct": 280.3,
+   "combo_id": "3",
+   "combo_risk_tier": "VALUE",
+   "correlation_penalty": 0.1,
+   "legs": [
+    {
+     "desc": "Shai Gilgeous-Alexander (OKC) AST 8+",
+     "line": 8.0,
+     "market": "ast",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.59,
+     "player": "Shai Gilgeous-Alexander",
+     "price": 2.9,
+     "side": "over",
+     "team": "OKC"
+    },
+    {
+     "desc": "De'Aaron Fox (SAS) AST 4+",
+     "line": 4.0,
+     "market": "ast",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "De'Aaron Fox",
+     "price": 1.25,
+     "side": "over",
+     "team": "SAS"
+    },
+    {
+     "desc": "Devin Vassell (SAS) REB 4+",
+     "line": 4.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "Devin Vassell",
+     "price": 1.64,
+     "side": "over",
+     "team": "SAS"
+    },
+    {
+     "desc": "Dylan Harper (SAS) REB 4+",
+     "line": 4.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "Dylan Harper",
+     "price": 1.32,
+     "side": "over",
+     "team": "SAS"
+    },
+    {
+     "desc": "Stephon Castle (SAS) REB 4+",
+     "line": 4.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "Stephon Castle",
+     "price": 1.22,
+     "side": "over",
+     "team": "SAS"
+    }
+   ],
+   "naive_joint_prob": 0.4414,
+   "product_of_leg_prices": 9.57,
+   "sim_correlation_lift": 1.0119,
+   "sim_independent_prob": 0.3418,
+   "sim_joint_prob": 0.3459,
+   "sim_leg_marginals": [
+    0.5579,
+    0.9624,
+    0.8152,
+    0.8882,
+    0.8793
+   ],
+   "sim_model_version": "sgm-joint-sim/v1",
+   "sim_n": 10000,
+   "sim_scaled_joint_prob": 0.4467,
+   "sim_seed": 1048371087,
+   "sim_status": "ok",
+   "sportsbet_sgm_price": null,
+   "sportsbet_sgm_status": "not_scraped"
+  },
+  {
+   "adjusted_joint_prob": 0.5001,
+   "combo_ev_pct": 197.3,
+   "combo_id": "X",
+   "combo_risk_tier": "BANKER",
+   "correlation_penalty": 0.02,
+   "legs": [
+    {
+     "desc": "Devin Vassell (SAS) REB 4+",
+     "line": 4.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "Devin Vassell",
+     "price": 1.64,
+     "side": "over",
+     "team": "SAS"
+    },
+    {
+     "desc": "Shai Gilgeous-Alexander (OKC) AST 8+",
+     "line": 8.0,
+     "market": "ast",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.59,
+     "player": "Shai Gilgeous-Alexander",
+     "price": 2.9,
+     "side": "over",
+     "team": "OKC"
+    },
+    {
+     "desc": "De'Aaron Fox (SAS) AST 4+",
+     "line": 4.0,
+     "market": "ast",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "De'Aaron Fox",
+     "price": 1.25,
+     "side": "over",
+     "team": "SAS"
+    }
+   ],
+   "naive_joint_prob": 0.5103,
+   "product_of_leg_prices": 5.94,
+   "sim_correlation_lift": 1.0014,
+   "sim_independent_prob": 0.4377,
+   "sim_joint_prob": 0.4383,
+   "sim_leg_marginals": [
+    0.8152,
+    0.5579,
+    0.9624
+   ],
+   "sim_model_version": "sgm-joint-sim/v1",
+   "sim_n": 10000,
+   "sim_scaled_joint_prob": 0.511,
+   "sim_seed": 1048371087,
+   "sim_status": "ok",
+   "sportsbet_sgm_price": null,
+   "sportsbet_sgm_status": "not_scraped"
+  }
+ ],
+ "schema_version": "nba-market-eval-legs/v1",
+ "report_sha256": "__SHA__"
+}

@@ -1,0 +1,195 @@
+{
+ "combos": [
+  {
+   "adjusted_joint_prob": 0.7871,
+   "combo_ev_pct": 112.9,
+   "combo_id": "1",
+   "combo_risk_tier": "BANKER",
+   "correlation_penalty": 0.0,
+   "legs": [
+    {
+     "desc": "Tyrese Maxey (PHI) AST 4+",
+     "line": 4.0,
+     "market": "ast",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.91,
+     "player": "Tyrese Maxey",
+     "price": 1.32,
+     "side": "over",
+     "team": "PHI"
+    },
+    {
+     "desc": "LeBron James (PHI) PTS 15+",
+     "line": 15.0,
+     "market": "pts",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "LeBron James",
+     "price": 1.68,
+     "side": "over",
+     "team": "PHI"
+    },
+    {
+     "desc": "Josh Hart (NYK) REB 6+",
+     "line": 6.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "Josh Hart",
+     "price": 1.22,
+     "side": "over",
+     "team": "NYK"
+    }
+   ],
+   "naive_joint_prob": 0.7871,
+   "product_of_leg_prices": 2.71,
+   "sim_correlation_lift": 1.0093,
+   "sim_independent_prob": 0.6318,
+   "sim_joint_prob": 0.6377,
+   "sim_leg_marginals": [
+    0.8353,
+    0.8946,
+    0.8455
+   ],
+   "sim_model_version": "sgm-joint-sim/v1",
+   "sim_n": 10000,
+   "sim_scaled_joint_prob": 0.7944,
+   "sim_seed": 1139448371,
+   "sim_status": "ok",
+   "sportsbet_sgm_price": null,
+   "sportsbet_sgm_status": "not_scraped"
+  },
+  {
+   "adjusted_joint_prob": 0.666,
+   "combo_ev_pct": 186.7,
+   "combo_id": "2",
+   "combo_risk_tier": "BANKER",
+   "correlation_penalty": 0.07,
+   "legs": [
+    {
+     "desc": "LeBron James (PHI) PTS 15+",
+     "line": 15.0,
+     "market": "pts",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "LeBron James",
+     "price": 1.68,
+     "side": "over",
+     "team": "PHI"
+    },
+    {
+     "desc": "Josh Hart (NYK) REB 6+",
+     "line": 6.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "Josh Hart",
+     "price": 1.22,
+     "side": "over",
+     "team": "NYK"
+    },
+    {
+     "desc": "VJ Edgecombe (PHI) AST 2+",
+     "line": 2.0,
+     "market": "ast",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.9,
+     "player": "VJ Edgecombe",
+     "price": 1.25,
+     "side": "over",
+     "team": "PHI"
+    },
+    {
+     "desc": "Jaylen Brown (PHI) PTS 20+",
+     "line": 20.0,
+     "market": "pts",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.92,
+     "player": "Jaylen Brown",
+     "price": 1.68,
+     "side": "over",
+     "team": "PHI"
+    }
+   ],
+   "naive_joint_prob": 0.7161,
+   "product_of_leg_prices": 4.3,
+   "sim_correlation_lift": 1.0145,
+   "sim_independent_prob": 0.5079,
+   "sim_joint_prob": 0.5153,
+   "sim_leg_marginals": [
+    0.8946,
+    0.8455,
+    0.8255,
+    0.8135
+   ],
+   "sim_model_version": "sgm-joint-sim/v1",
+   "sim_n": 10000,
+   "sim_scaled_joint_prob": 0.7265,
+   "sim_seed": 1139448371,
+   "sim_status": "ok",
+   "sportsbet_sgm_price": null,
+   "sportsbet_sgm_status": "not_scraped"
+  },
+  {
+   "adjusted_joint_prob": 0.3486,
+   "combo_ev_pct": 719.4,
+   "combo_id": "X",
+   "combo_risk_tier": "BANKER",
+   "correlation_penalty": 0.02,
+   "legs": [
+    {
+     "desc": "LeBron James (PHI) PTS 20+",
+     "line": 20.0,
+     "market": "pts",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.75,
+     "player": "LeBron James",
+     "price": 3.2,
+     "side": "over",
+     "team": "PHI"
+    },
+    {
+     "desc": "Anfernee Simons (PHI) PTS 15+",
+     "line": 15.0,
+     "market": "pts",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.51,
+     "player": "Anfernee Simons",
+     "price": 6.5,
+     "side": "over",
+     "team": "PHI"
+    },
+    {
+     "desc": "Karl-Anthony Towns (NYK) REB 8+",
+     "line": 8.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "Karl-Anthony Towns",
+     "price": 1.13,
+     "side": "over",
+     "team": "NYK"
+    }
+   ],
+   "naive_joint_prob": 0.3557,
+   "product_of_leg_prices": 23.5,
+   "sim_correlation_lift": 1.0199,
+   "sim_independent_prob": 0.3098,
+   "sim_joint_prob": 0.316,
+   "sim_leg_marginals": [
+    0.6938,
+    0.5523,
+    0.8086
+   ],
+   "sim_model_version": "sgm-joint-sim/v1",
+   "sim_n": 10000,
+   "sim_scaled_joint_prob": 0.3628,
+   "sim_seed": 1139448371,
+   "sim_status": "ok",
+   "sportsbet_sgm_price": null,
+   "sportsbet_sgm_status": "not_scraped"
+  }
+ ],
+ "schema_version": "nba-market-eval-legs/v1",
+ "report_sha256": "__SHA__"
+}

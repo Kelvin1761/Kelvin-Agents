@@ -1,0 +1,207 @@
+{
+ "combos": [
+  {
+   "adjusted_joint_prob": 0.465,
+   "combo_ev_pct": 34.3,
+   "combo_id": "1",
+   "combo_risk_tier": "BANKER",
+   "correlation_penalty": 0.02,
+   "legs": [
+    {
+     "desc": "Ausar Thompson (DET) REB 6+",
+     "line": 6.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.77,
+     "player": "Ausar Thompson",
+     "price": 1.52,
+     "side": "over",
+     "team": "DET"
+    },
+    {
+     "desc": "Payton Pritchard (BOS) AST 4+",
+     "line": 4.0,
+     "market": "ast",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.78,
+     "player": "Payton Pritchard",
+     "price": 1.45,
+     "side": "over",
+     "team": "BOS"
+    },
+    {
+     "desc": "Duncan Robinson (DET) 3PM 2+",
+     "line": 2.0,
+     "market": "fg3m",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.79,
+     "player": "Duncan Robinson",
+     "price": 1.31,
+     "side": "over",
+     "team": "DET"
+    }
+   ],
+   "naive_joint_prob": 0.4745,
+   "product_of_leg_prices": 2.89,
+   "sim_correlation_lift": 1.0012,
+   "sim_independent_prob": 0.4445,
+   "sim_joint_prob": 0.445,
+   "sim_leg_marginals": [
+    0.7548,
+    0.7742,
+    0.7606
+   ],
+   "sim_model_version": "sgm-joint-sim/v1",
+   "sim_n": 10000,
+   "sim_scaled_joint_prob": 0.4751,
+   "sim_seed": 2174176202,
+   "sim_status": "ok",
+   "sportsbet_sgm_price": null,
+   "sportsbet_sgm_status": "not_scraped"
+  },
+  {
+   "adjusted_joint_prob": 0.4286,
+   "combo_ev_pct": 87.1,
+   "combo_id": "2",
+   "combo_risk_tier": "BANKER",
+   "correlation_penalty": 0.02,
+   "legs": [
+    {
+     "desc": "Duncan Robinson (DET) PTS 10+",
+     "line": 10.0,
+     "market": "pts",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.8,
+     "player": "Duncan Robinson",
+     "price": 1.72,
+     "side": "over",
+     "team": "DET"
+    },
+    {
+     "desc": "Ausar Thompson (DET) REB 6+",
+     "line": 6.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.77,
+     "player": "Ausar Thompson",
+     "price": 1.52,
+     "side": "over",
+     "team": "DET"
+    },
+    {
+     "desc": "Paul George (BOS) 3PM 3+",
+     "line": 3.0,
+     "market": "fg3m",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.71,
+     "player": "Paul George",
+     "price": 1.67,
+     "side": "over",
+     "team": "BOS"
+    }
+   ],
+   "naive_joint_prob": 0.4374,
+   "product_of_leg_prices": 4.37,
+   "sim_correlation_lift": 1.008,
+   "sim_independent_prob": 0.3474,
+   "sim_joint_prob": 0.3502,
+   "sim_leg_marginals": [
+    0.7283,
+    0.7548,
+    0.632
+   ],
+   "sim_model_version": "sgm-joint-sim/v1",
+   "sim_n": 10000,
+   "sim_scaled_joint_prob": 0.4409,
+   "sim_seed": 2174176202,
+   "sim_status": "ok",
+   "sportsbet_sgm_price": null,
+   "sportsbet_sgm_status": "not_scraped"
+  },
+  {
+   "adjusted_joint_prob": 0.2391,
+   "combo_ev_pct": 106.7,
+   "combo_id": "3",
+   "combo_risk_tier": "VALUE",
+   "correlation_penalty": 0.1,
+   "legs": [
+    {
+     "desc": "Duncan Robinson (DET) 3PM 3+",
+     "line": 3.0,
+     "market": "fg3m",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.67,
+     "player": "Duncan Robinson",
+     "price": 1.99,
+     "side": "over",
+     "team": "DET"
+    },
+    {
+     "desc": "Jayson Tatum (BOS) 3PM 2+",
+     "line": 2.0,
+     "market": "fg3m",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.93,
+     "player": "Jayson Tatum",
+     "price": 1.18,
+     "side": "over",
+     "team": "BOS"
+    },
+    {
+     "desc": "Ausar Thompson (DET) REB 6+",
+     "line": 6.0,
+     "market": "reb",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.77,
+     "player": "Ausar Thompson",
+     "price": 1.52,
+     "side": "over",
+     "team": "DET"
+    },
+    {
+     "desc": "Paul George (BOS) 3PM 3+",
+     "line": 3.0,
+     "market": "fg3m",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.71,
+     "player": "Paul George",
+     "price": 1.67,
+     "side": "over",
+     "team": "BOS"
+    },
+    {
+     "desc": "Payton Pritchard (BOS) AST 4+",
+     "line": 4.0,
+     "market": "ast",
+     "market_type": "PLAYER_MILESTONE",
+     "p_final": 0.78,
+     "player": "Payton Pritchard",
+     "price": 1.45,
+     "side": "over",
+     "team": "BOS"
+    }
+   ],
+   "naive_joint_prob": 0.2657,
+   "product_of_leg_prices": 8.64,
+   "sim_correlation_lift": 1.0301,
+   "sim_independent_prob": 0.1599,
+   "sim_joint_prob": 0.1647,
+   "sim_leg_marginals": [
+    0.5946,
+    0.7281,
+    0.7548,
+    0.632,
+    0.7742
+   ],
+   "sim_model_version": "sgm-joint-sim/v1",
+   "sim_n": 10000,
+   "sim_scaled_joint_prob": 0.2737,
+   "sim_seed": 2174176202,
+   "sim_status": "ok",
+   "sportsbet_sgm_price": null,
+   "sportsbet_sgm_status": "not_scraped"
+  }
+ ],
+ "schema_version": "nba-market-eval-legs/v1",
+ "report_sha256": "__SHA__"
+}
