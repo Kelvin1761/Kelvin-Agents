@@ -119,7 +119,7 @@ def build_rows(df, season, gen):
                 for n in choose_lines(m):
                     hr10 = gen.hit_rate(l10, n)[0]
                     hr5 = gen.hit_rate(l10[:5], n)[0]
-                    e, _ = gen.calc_adjusted_winprob(
+                    e, bd = gen.calc_adjusted_winprob(
                         base_rate=hr10, hit_l5=hr5, cov=cov, avg=avg, line_val=float(n),
                         is_b2b=is_b2b, is_home=bool(home[i]), l10=l10, min_avg=min_avg10,
                         home_ppg=hp, road_ppg=rp, season_phase="MID_SEASON")
@@ -128,7 +128,13 @@ def build_rows(df, season, gen):
                         player_id=int(pid), stat=s, line=n, m=m, rel=n - m, rel_pct=(n - m) / m,
                         primary=primary, s1=s1, y=int(vals_all[s][i] >= n), actual=float(vals_all[s][i]),
                         a=hr10 / 100.0, hit_sea=float((v >= n).mean()), mu=mu,
-                        e=e / 100.0, f=live_mc_prob(avg, sd, n, s), k=k))
+                        e=e / 100.0, f=live_mc_prob(avg, sd, n, s), k=k,
+                        # EXP-20261021-03 (additive columns): live per-term breakdown, pp
+                        t_trend=bd["trend"], t_cov=bd["cov"], t_buffer=bd["buffer"],
+                        t_sip_n04=bd["sip_n04_trend_protect"], t_sip_n01=bd["sip_n01_bench_risk"],
+                        t_b2b=bd["b2b_fatigue"], t_home_away=bd["home_away"],
+                        t_other=sum(bd[x] for x in ("pace", "minutes_floor", "opp_defense", "usg_shift",
+                                                    "matchup_pace", "playoff_guard"))))
     return rows
 
 
