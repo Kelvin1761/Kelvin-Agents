@@ -1282,6 +1282,31 @@ test("a snapshot whose picks have already started is not today's picks", () => {
   assert.doesNotMatch(html, /今日冇合格建議/);
 });
 
+test("on the same day a started NBA game drops out of today's picks and an unstarted one stays", () => {
+  // 2026-10-21: BOS@DET tipped 06:00 and still offered 確認落注 at noon, because the page
+  // only compared dates.  start_time_utc is judged against the clock on every render.
+  const pick = (id, start) => ({
+    id, sport: "nba", event_date: sydneyDateForTest(), event_name: id, market: "Same Game Multi",
+    selection: id, odds: 3.4, outcome: "pending", decision: "BET", bet_type: "combo",
+    legs: [], metrics: {}, start_time_utc: start,
+  });
+  const started = pick("started", "2000-01-01T00:00:00Z");
+  const upcoming = pick("upcoming", "2099-01-01T00:00:00Z");
+  const data = {
+    ...EMPTY_DASHBOARD_DATA,
+    sports_feed: { sports: { nba: {
+      validation_status: "valid", analysis_run_id: "nba:" + sydneyDateForTest(),
+      recommendations: [started, upcoming],
+    } } },
+  };
+  const { sportsHistory } = loadTemplateFunctions(data);
+  assert.deepEqual([...sportsHistory("nba").map((item) => item.id)], ["upcoming"]);
+});
+
+function sydneyDateForTest() {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Australia/Sydney" }).format(new Date());
+}
+
 test("an exporter-expired NBA snapshot says the analysis is not out yet", () => {
   const data = {
     ...EMPTY_DASHBOARD_DATA,
