@@ -46,3 +46,11 @@ bootstrap.sh    text eol=lf
 # Stored patches/diffs carry diff context lines; trailing spaces there are content.
 *.patch         -whitespace
 *.diff          -whitespace
+
+# ----------------------------------------------------------------------
+# docs/experiments/INDEX.md — every agent appends one line per experiment, so two
+# releases in flight almost always both touch it. `union` keeps both sides' added
+# lines instead of conflicting; the release replay (release_automation) relies on
+# this and still re-gates the replayed commit. Only safe for append-only files.
+# ----------------------------------------------------------------------
+docs/experiments/INDEX.md merge=union

@@ -63,9 +63,12 @@ manager 自動做 policy gate、exact-scope commit／push、immutable manifest �
 **多個 agent session 同時開工**：commit 之前先睇 `git status`。只 stage 你自己
 今次改嘅嘢，唔好 `git add -A` 連人哋未 commit 嘅工作一齊掃入去。
 
-**發佈過期點處理**：`./保存.sh` 報 `approval expired`／`origin/main changed while
-approval gate was running`（gate 跑緊期間另一個 release merge 咗）**唔好人手開新分支重做** ——
-咁做會留低一份永遠 pending 嘅舊 manifest。用 refresh：
+**發佈過期點處理**：自動批准（2026-10-10 授權嗰條路）而家會自己處理大部分過期 ——
+main 期間改嘅檔同今次範圍**冇重疊**（`docs/experiments/INDEX.md` 係 union merge，唔計）就喺臨時
+worktree replay 去新 main、對**新 SHA** 重跑完整 gate 先 merge，最多 3 次；結果會有 `replayed_from`。
+有重疊、replay 唔乾淨、或者 gate 失敗，就照舊停低。停低嘅時候（`approval expired`／`origin/main
+changed while approval gate was running`）**唔好人手開新分支重做** —— 咁做會留低一份永遠 pending
+嘅舊 manifest。用 refresh：
 
 ```bash
 C=.agents/skills/central_wong_choi/scripts/central_wong_choi.py

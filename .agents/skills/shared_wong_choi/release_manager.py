@@ -286,7 +286,10 @@ def prepare_release(
     allow_unrelated: bool = False,
     activation_base: str | None = None,
     expected_results: Sequence[str] = (),
+    auto_approve: bool = True,
 ) -> dict:
+    """`auto_approve=False` is only for the delegated replay, which already holds the
+    approval lock and approves the replayed commit itself (release_automation)."""
     repo = repo.resolve()
     selected = _scope_paths(repo, paths)
     unrelated = sorted(set(changed_paths(repo)).difference(selected))
@@ -451,7 +454,7 @@ def prepare_release(
         branch=branch,
         commit=commit,
     )
-    if push_ok and automatic:
+    if push_ok and automatic and auto_approve:
         from .release_automation import auto_approve_release
 
         result = auto_approve_release(

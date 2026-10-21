@@ -1,6 +1,6 @@
 # 發佈「一 merge 就過期」：現況量度同改善方案（待 Kelvin 批）
 
-> 狀態：Kelvin 2026-10-21 批准。**A 已完成**（見 §4 A）；B+C 下一步；D 未定。每一步分開發佈。
+> 狀態：Kelvin 2026-10-21 批准。**A、B、C 已完成**（B+C 見 §7）；D 未定。
 
 ## 1. 而家點運作
 
@@ -102,3 +102,19 @@
 ```bash
 python3 docs/plans/scripts/release_expiry_stats.py     # 讀 ~/WongChoiData/WongChoiControl
 ```
+
+## 7. B+C 實作（2026-10-21）
+
+- `release_automation.auto_approve_release`：`approve_release` 報過期 → fetch → `_replay_conflicts`
+  （`git diff rollback_target..origin/main` ∩ manifest scope，減去 origin/main 上 `merge=union` 嘅檔）→
+  冇衝突就 `_replay_release`：喺臨時 `git worktree --detach` 跑現有 `refresh_release(auto_approve=False)`
+  （cherry-pick、準備 gate、push 新分支、舊 manifest superseded），再對新 SHA 行 `approve_release`
+  （clean-clone 完整 gate + main 不變檢查 + fast-forward）。最多 `MAX_REPLAYS = 3`。
+- **同方案嘅分別**：仍然係兩次 gate（refresh 嘅準備 gate + 批准 gate），唔係一次。要慳嗰次就要喺 `prepare_release`
+  加「跳過 gate」開關，我寧願唔開呢個口。慳到嘅係「人手介入」同「等人發現」，唔係 CPU。
+- `prepare_release` / `refresh_release` 加 `auto_approve=True`（預設不變）：replay 自己揸住批准鎖，唔可以再遞歸觸發。
+- 人手 `approve_release`（Telegram `/approve`）**完全不變**，照舊一過期就停。
+- C：`.gitattributes` 加 `docs/experiments/INDEX.md merge=union`。
+- 測試：`tests/test_release_replay.py`（10 個）——無撞檔 replay 並且 gate 嘅正正係落 main 嗰個 SHA、唔郁 caller checkout、
+  撞檔照停、replay 後 gate 失敗唔 merge、非過期錯誤唔 replay、上限 3 次、人手批准不變、INDEX union 可以 replay、
+  冇 union attribute 照停、repo 真係有 union 設定。release 相關 45 個測試全過。

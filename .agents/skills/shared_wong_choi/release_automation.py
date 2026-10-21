@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 
 from .control import single_run_lock
@@ -64,6 +67,60 @@ def production_roots() -> dict[str, Path]:
     return roots
 
 
+# Delegated approval may replay an expired release onto the new main at most this many
+# times in one run (docs/plans/2026-10-21-release-expiry-fast-path.md §4 B).
+MAX_REPLAYS = 3
+_EXPIRY_MARKERS = ("approval expired", "changed while approval gate was running")
+
+
+def _git_out(repo: Path, *args: str) -> str:
+    return subprocess.run(["git", *args], cwd=repo, text=True, capture_output=True, check=True).stdout
+
+
+def _replay_conflicts(repo: Path, manifest: dict) -> list[str]:
+    """Scoped paths that main also changed since the release was gated.
+
+    Paths marked `merge=union` on origin/main (docs/experiments/INDEX.md) are left to the
+    cherry-pick: both sides' added lines are kept, and the replayed commit is gated again.
+    """
+    scope = set(manifest.get("scope") or manifest.get("selected_scope") or [])
+    moved = set(filter(None, _git_out(repo, "diff", "--name-only", "-z",
+                                      manifest["rollback_target"], "origin/main").split("\0")))
+    overlap = sorted(scope & moved)
+    if not overlap:
+        return []
+    attrs = _git_out(repo, "check-attr", "--source", "origin/main", "-z", "merge", "--", *overlap).split("\0")
+    union = {attrs[i] for i in range(0, len(attrs) - 2, 3) if attrs[i + 2] == "union"}
+    return [path for path in overlap if path not in union]
+
+
+def _replay_release(repo: Path, state_root: Path, selector: str, *, actor: str) -> str:
+    """Replay one expired release onto origin/main in a throwaway worktree; return the new SHA.
+
+    Uses the existing `refresh_release` (cherry-pick, full prepare gate, push a never-reused
+    branch, supersede the old manifest). It runs in its own worktree so the caller's checkout —
+    possibly the main checkout — never changes branch.
+    """
+    from .release_refresh import refresh_release
+
+    with tempfile.TemporaryDirectory(prefix="wc-release-replay-") as raw:
+        checkout = Path(raw) / "checkout"
+        _git_out(repo, "worktree", "add", "-q", "--detach", str(checkout), "origin/main")
+        branch = None
+        try:
+            for marker in repo.glob(".wongchoi_*root"):
+                shutil.copy2(marker, checkout / marker.name)
+            refreshed = refresh_release(checkout, state_root, selector=selector, actor=actor,
+                                        notify=False, auto_approve=False)
+            branch = refreshed.get("branch")
+            return str(refreshed["release"]["commit"])
+        finally:
+            subprocess.run(["git", "worktree", "remove", "--force", str(checkout)], cwd=repo,
+                           capture_output=True, check=False)
+            if branch:
+                subprocess.run(["git", "branch", "-D", branch], cwd=repo, capture_output=True, check=False)
+
+
 def auto_approve_release(
     repo: Path, state_root: Path, *, selector: str, notify: bool = True,
     expected_results: tuple[str, ...] = (),
@@ -101,9 +158,30 @@ def auto_approve_release(
                 _notify(repo, "▶️ 自動發佈，毋須 Telegram 批准\n"
                         f"{manifest.get('message') or manifest['commit'][:12]}\n"
                         "預期結果（未來效果並非保證）：\n" + "\n".join(expected), dry_run=False)
-            merged = approve_release(repo, state_root, selector=selector, actor=actor,
-                                     authorization=config["authorization"], notify=False)
+            replayed = []
+            while True:
+                try:
+                    merged = approve_release(repo, state_root, selector=selector, actor=actor,
+                                             authorization=config["authorization"], notify=False)
+                    break
+                except ReleaseError as exc:
+                    if not any(marker in str(exc) for marker in _EXPIRY_MARKERS):
+                        raise
+                    if len(replayed) >= MAX_REPLAYS:
+                        raise ReleaseError(f"{exc}; replay limit ({MAX_REPLAYS}) reached") from exc
+                    _run_fetch = subprocess.run(["git", "fetch", "-q", "origin"], cwd=repo,
+                                                capture_output=True, check=False)
+                    if _run_fetch.returncode != 0:
+                        raise ReleaseError(f"{exc}; cannot refresh origin to replay") from exc
+                    conflicts = _replay_conflicts(repo, manifest)
+                    if conflicts:
+                        raise ReleaseError(f"{exc}; main also changed {conflicts} — needs a human") from exc
+                    replayed.append(selector)
+                    selector = _replay_release(repo, state_root, selector, actor=actor)
+                    _path, manifest = _load_release(state_root / "releases", selector)
             result.update(merged)
+            if replayed:
+                result["replayed_from"] = replayed
             # Docs/tests still have no production activation side effects.
             if manifest["policy"]["risk"] != "docs_tests":
                 activation = activate_release(
