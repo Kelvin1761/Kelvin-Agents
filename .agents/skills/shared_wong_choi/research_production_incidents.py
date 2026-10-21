@@ -14,7 +14,7 @@ from zoneinfo import ZoneInfo
 
 from .contracts import Domain
 from .evidence import ArtifactRef, EvidenceRecord, RecordKind
-from .research_index import _Reader, _at, _encoded, _hash, _hashed, _safe
+from .research_index import _MetadataPages, _at, _encoded, _hash, _hashed, _safe
 
 SCHEMA = 'wong-choi-production-metadata-incidents/v1'
 CODES = frozenset({'settlement_event_after_settled_at', 'settlement_outcome_artifacts_missing',
@@ -36,7 +36,10 @@ def collect_production_incidents(*, root: Path, domain: Domain, as_of: datetime,
     root, end = _safe(root), _at(as_of)
     if not root.is_dir() or not (root / 'records').is_dir():
         raise ValueError('production evidence store unavailable, not an empty healthy source')
-    reader = _Reader(checkpoint)
+    # The complete graph can exceed a flat reader's initial-plus-recheck budget.
+    # Each metadata page keeps the native file/read caps and the graph-wide
+    # record limit; the final recheck still revisits every file and directory.
+    reader = _MetadataPages(checkpoint)
     records = {}
     prefix = quote(f'wc:{domain.value}:', safe='._-')
     for kind in RecordKind:
