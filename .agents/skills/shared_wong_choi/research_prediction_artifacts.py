@@ -132,7 +132,9 @@ def _attempt(refs: tuple[ArtifactRef, ...], paths: tuple[Path | None, ...],
     for ref, path in zip(refs, paths):
         raw = size = None
         if path is not None:
-            path = _safe(path)
+            # Both callers pass `_safe` output (or None), and `_Blobs.read` re-checks the
+            # path immediately before its O_NOFOLLOW open — a third check here was a
+            # duplicate of the one a line earlier in `_resolve_bundle`.
             if path.is_file():
                 raw, digest, size = blobs.read(path)
                 if digest == ref.sha256:
