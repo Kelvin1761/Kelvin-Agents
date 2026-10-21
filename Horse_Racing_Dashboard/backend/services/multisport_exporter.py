@@ -96,6 +96,19 @@ def _find_nba_analysis_dir(root: Path, target_date: Optional[str]) -> Tuple[Opti
     return directory, analysis_date
 
 
+def _utc_iso(value: Any) -> Optional[str]:
+    """``2026-10-21T06:00:00+11:00`` -> ``2026-10-20T19:00:00Z``; None if unusable."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).strip().replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return None
+    return parsed.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def _sportsbet_tag(path: Path, payload: Dict[str, Any]) -> str:
     if payload.get("game_tag"):
         return str(payload["game_tag"]).strip()
@@ -429,8 +442,15 @@ def export_nba_snapshot(
             continue
         source_files = [sportsbet_path.name, report.name]
         combos = _parse_nba_combos(content, analysis_date, game_tag, source_files)
-        recommendations.extend(combos)
-        recommendations.extend(_build_nba_bankers(combos))
+        game_recs = combos + _build_nba_bankers(combos)
+        # The page can only tell "today" from "yesterday" by date.  The tip-off
+        # lets it stop offering 確認落注 on a game that has already started
+        # (2026-10-21: BOS@DET tipped 06:00 and still showed the button at noon).
+        start_utc = _utc_iso(_read_json(sportsbet_path).get("event_start_time"))
+        if start_utc:
+            for rec in game_recs:
+                rec["start_time_utc"] = start_utc
+        recommendations.extend(game_recs)
         all_source_files.extend(source_files)
 
     if not recommendations:

@@ -96,15 +96,17 @@ class MultiSportExporterTests(unittest.TestCase):
             self.assertIn("missing_matching_sportsbet_json", snapshot["warnings"])
 
     @staticmethod
-    def _write_nba_day(root, day, tag="CHI_WAS"):
+    def _write_nba_day(root, day, tag="CHI_WAS", event_start_time=None):
         analysis_dir = root / f"{day} NBA Analysis"
         analysis_dir.mkdir()
+        odds = {
+            "target_analysis_date": day, "game_tag": tag, "source": "sportsbet.com.au",
+            "player_props": {"PTS": {"Zach LaVine": {"line": "24+", "odds": 1.72}}},
+        }
+        if event_start_time:
+            odds["event_start_time"] = event_start_time
         (analysis_dir / f"Sportsbet_Odds_{tag}.json").write_text(
-            json.dumps({
-                "target_analysis_date": day, "game_tag": tag, "source": "sportsbet.com.au",
-                "player_props": {"PTS": {"Zach LaVine": {"line": "24+", "odds": 1.72}}},
-            }),
-            encoding="utf-8",
+            json.dumps(odds), encoding="utf-8",
         )
         (analysis_dir / f"Game_{tag}_Full_Analysis.md").write_text(
             "**odds_source**: SPORTSBET_LIVE ✅\n"
@@ -157,6 +159,30 @@ class MultiSportExporterTests(unittest.TestCase):
 
             self.assertIs(passed, False)
             self.assertTrue(any("BLOCK" in item for item in blocks), blocks)
+
+    def test_nba_recommendations_carry_the_tip_off_time_in_utc(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_nba_day(root, "2026-10-21", event_start_time="2026-10-21T06:00:00+11:00")
+
+            snapshot = export_nba_snapshot(root, today="2026-10-21", firewall=nba_no_firewall)
+
+            self.assertTrue(snapshot["recommendations"])
+            self.assertEqual(
+                {rec["start_time_utc"] for rec in snapshot["recommendations"]},
+                {"2026-10-20T19:00:00Z"},
+            )
+
+    def test_nba_missing_or_unparseable_tip_off_leaves_the_field_out(self):
+        for value in (None, "not a time", "2026-10-21T06:00:00"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self._write_nba_day(root, "2026-10-21", event_start_time=value)
+
+                snapshot = export_nba_snapshot(root, today="2026-10-21", firewall=nba_no_firewall)
+
+                self.assertTrue(snapshot["recommendations"])
+                self.assertTrue(all("start_time_utc" not in rec for rec in snapshot["recommendations"]))
 
     def test_nba_auto_select_skips_newest_folder_without_analysis(self):
         # 2026-10-20: the scheduler made 10-16/10-17 folders (odds only, player
