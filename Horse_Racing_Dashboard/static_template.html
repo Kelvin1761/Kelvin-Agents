@@ -558,6 +558,9 @@
     .history-card__more-summary:hover { color: var(--sport-accent); background: #F8FAFC; }
     .history-card__more-summary:focus-visible { outline: 3px solid rgba(37,99,235,.35); outline-offset: -3px; }
     .sports-notice--gated { border-color: #FCA5A5; background: #FEF2F2; color: #991B1B; }
+    .sports-notice--reference { border-color: #FCD34D; background: #FFFBEB; color: #92400E; }
+    .pick-block--reference { border-left-color: #F59E0B; background: #FFFBEB; }
+    .pick-block--reference .pick-block__label { color: #B45309; }
     /* Says which book a page is counting, so ROI and Portfolio stop looking like they
        contradict each other. */
     .scope-note { display: flex; gap: 9px; margin-bottom: 14px; padding: 10px 13px; border: 1px solid #DBEAFE; border-radius: 10px; background: #F5F9FF; color: #1E3A8A; font-size: .68rem; line-height: 1.55; }
@@ -1804,9 +1807,47 @@ function hasCurrentSportsFeed(sport) {
   return Boolean(snapshot && ['valid', 'partial'].includes(snapshot.validation_status));
 }
 
-function hasLiveSportsFeed(sport) {
+// A static snapshot can sit on the CDN for days.  Whatever the exporter
+// decided at deploy time, a pick whose match has started is not a pick any
+// more: on 2026-10-20 the NBA tab still offered 10-15 preseason combos with a
+// "確認落注" button.  Judge it again in the browser, every render.
+function sydneyToday() {
+  try {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney' }).format(new Date());
+  } catch (_) {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+function isSportsPickExpired(item) {
+  if (!item) return true;
+  const start = Date.parse(item.start_time_utc || '');
+  if (Number.isFinite(start)) return Date.now() >= start;
+  const eventDate = String(item.event_date || '');
+  return /^\d{4}-\d{2}-\d{2}$/.test(eventDate) && eventDate < sydneyToday();
+}
+
+function activeSportsRecommendations(sport) {
   const snapshot = sportsFeedSnapshot(sport);
-  return Boolean(hasCurrentSportsFeed(sport) && snapshot.recommendations?.length);
+  if (!hasCurrentSportsFeed(sport)) return [];
+  return (snapshot.recommendations || []).filter(item => !isSportsPickExpired(item));
+}
+
+function sportsReferencePicks(sport) {
+  const snapshot = sportsFeedSnapshot(sport);
+  if (!hasCurrentSportsFeed(sport)) return [];
+  return (snapshot.reference_picks || []).filter(item => !isSportsPickExpired(item));
+}
+
+function sportsFeedExpired(sport) {
+  const snapshot = sportsFeedSnapshot(sport);
+  if (snapshot?.validation_status === 'expired') return true;
+  return Boolean(hasCurrentSportsFeed(sport) && snapshot.recommendations?.length
+    && !activeSportsRecommendations(sport).length);
+}
+
+function hasLiveSportsFeed(sport) {
+  return activeSportsRecommendations(sport).length > 0;
 }
 
 function sportsHistory(sport) {
@@ -1815,7 +1856,7 @@ function sportsHistory(sport) {
   // gate passed nothing returns [], and gating on validity alone made that empty
   // list win — blanking the workspace and hiding every historical case. The
   // stricter the gate got, the emptier the page became.
-  if (hasLiveSportsFeed(sport)) return sportsFeedSnapshot(sport).recommendations || [];
+  if (hasLiveSportsFeed(sport)) return activeSportsRecommendations(sport);
   return DASHBOARD_DATA.sports_history?.[sport] || [];
 }
 
@@ -1945,8 +1986,11 @@ function renderSportsPick(item, sport) {
   }
 
   const { kicker, headline } = sportsPickLines(item);
-  return `<div class="pick-block">
-    <div class="pick-block__label">🎯 落注</div>
+  const pickLabel = item.category === 'reference_model_edge'
+    ? '📎 參考 · 模型 edge 單（未過正式落注閘）'
+    : '🎯 落注';
+  return `<div class="pick-block${item.category === 'reference_model_edge' ? ' pick-block--reference' : ''}">
+    <div class="pick-block__label">${pickLabel}</div>
     ${kicker ? `<div class="pick-block__kicker">${esc(kicker)}</div>` : ''}
     <div class="pick-block__headline">${esc(headline)}</div>
     <div class="pick-block__foot">${priceText}</div>
@@ -2057,16 +2101,33 @@ function renderSportsHistory(sport) {
         最後分析：${esc(coverage.latest_analysis || snapshot?.generated_at || '—')}
       </span></div>`
     : '';
+  const referencePicks = sportsReferencePicks(sport);
+  const referenceSection = referencePicks.length
+    ? `<div class="sports-notice sports-notice--reference"><span>📎</span><span>
+        <strong>參考：模型 edge 單（${referencePicks.length} 個，唔係正式建議）</strong>。
+        呢啲係每日報告「Match-winner 模型 edge 單」，未通過正式落注閘；回測 15,299 注長期 −5~−10%。
+        要跟只可平注細注，賠率跌穿「最低可接受」即棄。
+      </span></div>
+      <div class="history-grid">${referencePicks.map(item => renderHistoryCard(item, sport)).join('')}</div>`
+    : '';
+  const runId = snapshot?.analysis_run_id ? String(snapshot.analysis_run_id).split(':').pop() : '';
+  const expiredNotice = !live && sportsFeedExpired(sport)
+    ? `<div class="sports-notice sports-notice--gated"><span>⌛</span><span><strong>上次分析${runId ? `（${esc(runId)}）` : ''}嘅建議已經開賽／過期</strong>，今日分析仲未出。新分析完成後會自動更新；下面唔係今日建議。</span></div>`
+    : '';
+  const firewallBlocked = !live && (snapshot?.warnings || []).some(w => String(w).startsWith('nba_firewall_blocked'));
+  const blockedNotice = firewallBlocked
+    ? `<div class="sports-notice sports-notice--gated"><span>🛑</span><span><strong>今日 NBA 分析未通過發佈檢查</strong>（${esc(String(snapshot.analysis_run_id || '').split(':').pop())}），所以暫時冇建議。修復後會自動更新；下面唔係今日建議。</span></div>`
+    : '';
   if (!items.length) {
     const message = hasCurrentSportsFeed(sport)
       ? '今次分析已完成，但未有通過模型及風控門檻嘅建議。'
       : '未有可用歷史分析。';
-    return `${verifiedNotice}${coverageNotice}${strategyNotice}<div class="sports-empty">${message}</div>`;
+    return `${blockedNotice}${expiredNotice}${referenceSection}${verifiedNotice}${coverageNotice}${strategyNotice}<div class="sports-empty">${message}</div>`;
   }
   // Today's analysis ran and passed nothing, so the cards below are history. Say so
   // outright — otherwise old cases read as today's picks, which is the worst possible
   // way to be wrong on a betting page.
-  const gatedTodayNotice = !live && hasCurrentSportsFeed(sport)
+  const gatedTodayNotice = !live && hasCurrentSportsFeed(sport) && !sportsFeedExpired(sport)
     ? `<div class="sports-notice sports-notice--gated"><span>🚫</span><span><strong>今日冇合格建議。</strong>今次分析已完成，但冇任何選擇通過模型同風控門檻，所以${sport === 'nba' ? 'NBA' : 'Tennis'}今日<strong>唔應該落注</strong>。下面係過往案例，只供檢討。</span></div>`
     : '';
   const notice = live
@@ -2087,7 +2148,7 @@ function renderSportsHistory(sport) {
   // strategy state are diagnostics; "what happened when we actually did this"
   // is the answer, and it matters most on exactly this path -- where the cards
   // below are archived cases and the reader is deciding how much to trust them.
-  return `${gatedTodayNotice}${notice}${verifiedNotice}${diagnostics}<div class="history-grid">${items.map(item => renderHistoryCard(item, sport)).join('')}</div>`;
+  return `${blockedNotice}${expiredNotice}${gatedTodayNotice}${referenceSection}${notice}${verifiedNotice}${diagnostics}<div class="history-grid">${items.map(item => renderHistoryCard(item, sport)).join('')}</div>`;
 }
 
 function sportsStatusLabel(status) {

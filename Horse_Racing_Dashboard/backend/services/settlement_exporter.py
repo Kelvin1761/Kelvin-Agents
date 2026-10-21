@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
-from .multisport_exporter import export_nba_snapshot
+from .multisport_exporter import export_nba_snapshot, nba_no_firewall
 
 
 SETTLED_MAP = {
@@ -358,7 +358,12 @@ def export_nba_settlements(analysis_dir: Path) -> Dict[str, Any]:
         results = json.loads(result_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         results = {}
-    snapshot = export_nba_snapshot(analysis_dir.parent, target_date=date_match.group(1))
+    # Settlement grades picks that were already frozen/published; it is not a
+    # publication decision, so a later change to a firewall rule must not stop
+    # a finished day from being graded.
+    snapshot = export_nba_snapshot(
+        analysis_dir.parent, target_date=date_match.group(1), firewall=nba_no_firewall
+    )
     settlements: List[Dict[str, Any]] = []
     warnings: List[str] = []
     for recommendation in snapshot.get("recommendations") or []:

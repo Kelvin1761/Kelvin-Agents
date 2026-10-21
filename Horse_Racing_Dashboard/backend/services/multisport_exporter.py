@@ -12,12 +12,15 @@ instead of inventing a line, odds, probability, or recommendation.
 """
 from __future__ import annotations
 
+import importlib.util
 import json
 import re
 import sqlite3
+import sys
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
+from zoneinfo import ZoneInfo
 
 
 SCHEMA_VERSION = 2
@@ -27,6 +30,11 @@ NBA_COMBO_HEADING_RE = re.compile(
     r"^###\s+.*?組合\s+(\d+|X).*?組合賠率\s*@\s*(\d+(?:\.\d+)?)",
     re.MULTILINE,
 )
+
+
+def sydney_today() -> str:
+    """NBA folders and event dates are Sydney dates; so is "today" on the page."""
+    return datetime.now(ZoneInfo("Australia/Sydney")).date().isoformat()
 
 
 def _utc_now() -> str:
@@ -74,7 +82,17 @@ def _find_nba_analysis_dir(root: Path, target_date: Optional[str]) -> Tuple[Opti
                 candidates.append((match.group(1), item))
     if not candidates:
         return None, None
-    analysis_date, directory = sorted(candidates, reverse=True)[0]
+    # The newest folder is often one the scheduler created but could not
+    # analyse (player markets not open yet).  Picking it blindly made the feed
+    # "blocked", and the deploy merge then republished the last valid feed
+    # forever: on 2026-10-20 the page still showed 10-15 preseason combos as
+    # today's picks, five days later.  Prefer the newest folder that actually
+    # has a Full Analysis; staleness is judged by the caller.
+    ordered = sorted(candidates, reverse=True)
+    for analysis_date, directory in ordered:
+        if any(directory.glob("Game_*_Full_Analysis.md")):
+            return directory, analysis_date
+    analysis_date, directory = ordered[0]
     return directory, analysis_date
 
 
@@ -305,12 +323,74 @@ def _build_nba_bankers(combos: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]
     return bankers
 
 
-def export_nba_snapshot(root: Path, target_date: Optional[str] = None) -> Dict[str, Any]:
+REPO_ROOT = Path(__file__).resolve().parents[3]
+_NBA_SKILLS_DIR = REPO_ROOT / ".agents" / "skills" / "nba"
+_NBA_VALIDATOR = _NBA_SKILLS_DIR / "nba_wong_choi" / "scripts" / "validate_nba_output.py"
+
+
+def nba_publication_firewall(
+    report_path: Path, sportsbet_path: Optional[Path] = None
+) -> Tuple[Optional[bool], List[str]]:
+    """Run the NBA pipeline's own publication firewall on one report.
+
+    Returns ``(passed, blocks)``; ``passed`` is ``None`` when the validator
+    cannot be loaded, which callers must treat as NOT publishable.
+
+    Why the exporter re-runs it: the orchestrator refuses to deploy a blocked
+    day, but every other domain's deploy rebuilds this feed from whatever
+    reports sit in the checkout.  On 2026-10-21 all three opening-night reports
+    were BLOCKED by FW-04 and the live dashboard still served 13 picks from
+    them, because only the orchestrator's own deploy honoured the verdict.
+    """
+    if not _NBA_VALIDATOR.is_file():
+        return None, ["validator_not_found"]
+    added = [str(_NBA_SKILLS_DIR), str(_NBA_VALIDATOR.parent)]
+    for entry in added:
+        sys.path.insert(0, entry)
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "_wc_validate_nba_output", _NBA_VALIDATOR
+        )
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)  # type: ignore[union-attr]
+        result = module.validate_file(
+            str(report_path), str(sportsbet_path) if sportsbet_path else None
+        )
+    except Exception as exc:  # fail closed: an unreadable verdict is not a pass
+        return None, [f"validator_error:{type(exc).__name__}"]
+    finally:
+        for entry in added:
+            try:
+                sys.path.remove(entry)
+            except ValueError:
+                pass
+    return bool(result.get("passed")), list(result.get("blocks") or [])
+
+
+def nba_no_firewall(
+    report_path: Path, sportsbet_path: Optional[Path] = None
+) -> Tuple[Optional[bool], List[str]]:
+    """Explicit opt-out for callers that grade or parse and never publish."""
+    return True, []
+
+
+def export_nba_snapshot(
+    root: Path,
+    target_date: Optional[str] = None,
+    today: Optional[str] = None,
+    firewall=nba_publication_firewall,
+) -> Dict[str, Any]:
     """Export validated NBA combos from one orchestrator analysis directory."""
     analysis_dir, analysis_date = _find_nba_analysis_dir(Path(root), target_date)
     run_id = f"nba:{analysis_date or target_date or 'unavailable'}"
     if not analysis_dir:
         return _empty_snapshot("nba", run_id, "unavailable", ["nba_analysis_directory_not_found"])
+    # NBA dates are Sydney game dates; once that date is behind us every game
+    # has tipped off.  Auto-selected stale analysis is not "today's picks".
+    if not target_date and analysis_date < (today or sydney_today()):
+        return _empty_snapshot(
+            "nba", run_id, "expired", [f"nba_latest_analysis_expired:{analysis_date}"]
+        )
 
     sportsbet_by_tag = {}
     all_source_files = []
@@ -339,6 +419,13 @@ def export_nba_snapshot(root: Path, target_date: Optional[str] = None) -> Dict[s
         required_markers = ["SPORTSBET_LIVE", "Python Auto-Selection", "未填寫項目 殘留: 0"]
         if any(marker not in content for marker in required_markers) or "[FILL]" in content:
             warnings.append(f"nba_report_validation_failed:{game_tag}")
+            continue
+        passed, blocks = firewall(report, sportsbet_path)
+        if passed is None:
+            warnings.append(f"nba_firewall_unavailable:{game_tag}")
+            continue
+        if not passed:
+            warnings.append(f"nba_firewall_blocked:{game_tag}")
             continue
         source_files = [sportsbet_path.name, report.name]
         combos = _parse_nba_combos(content, analysis_date, game_tag, source_files)
@@ -1077,6 +1164,110 @@ def _export_tennis_singles(
     return recommendations
 
 
+def _export_tennis_reference_singles(
+    connection: sqlite3.Connection,
+    analysis_date: str,
+) -> List[Dict[str, Any]]:
+    """Match-winner model-edge singles, exported as REFERENCE, never as BET.
+
+    These are the rows the daily report lists under "參考：Match-winner 模型
+    edge 單（唔係建議）".  The dashboard used to drop them entirely, so on every
+    day the prop gate passed nothing the Tennis tab was blank while the report
+    had 2-10 picks.  They stay out of ``recommendations`` (that list is the
+    evidence-gated one) and carry the backtest warning with them.
+    """
+    if not _table_exists(connection, "predictions"):
+        return []
+    prediction_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(predictions)").fetchall()
+    }
+    required = {
+        "selection_name", "current_market_odds", "model_probability",
+        "no_vig_market_probability", "edge", "minimum_acceptable_odds",
+        "stake_units", "confidence", "risk", "decision",
+    }
+    if not required <= prediction_columns:
+        # Optional section: an older schema must not block the gated feed.
+        return []
+    match_columns = {
+        row["name"] for row in connection.execute("PRAGMA table_info(matches)").fetchall()
+    }
+    start_sql = "m.start_time_utc" if "start_time_utc" in match_columns else "NULL AS start_time_utc"
+    odds_filter = (
+        "AND EXISTS (SELECT 1 FROM odds_snapshots o WHERE o.match_id = m.id"
+        " AND o.source_provider = 'sportsbet')"
+        if _table_exists(connection, "odds_snapshots") else ""
+    )
+    rows = connection.execute(
+        f"""
+        SELECT p.id, p.match_id, p.selection_name, p.current_market_odds,
+               p.model_probability, p.no_vig_market_probability, p.edge,
+               p.minimum_acceptable_odds, p.stake_units, p.confidence, p.risk,
+               m.match_date, m.tour, m.round, {start_sql},
+               pa.name AS player_a, pb.name AS player_b, t.name AS tournament_name
+        FROM predictions p
+        JOIN matches m ON m.id = p.match_id
+        LEFT JOIN players pa ON pa.id = m.player_a_id
+        LEFT JOIN players pb ON pb.id = m.player_b_id
+        LEFT JOIN tournaments t ON t.id = m.tournament_id
+        WHERE m.match_date = ?
+          AND p.decision = 'BET'
+          AND p.id IN (SELECT MAX(id) FROM predictions GROUP BY match_id)
+          {odds_filter}
+        ORDER BY p.edge DESC, p.id
+        """,
+        (analysis_date,),
+    ).fetchall()
+    picks = []
+    for row in rows:
+        item = dict(row)
+        odds = _safe_float(item.get("current_market_odds"))
+        if odds is None or odds <= 1:
+            continue
+        picks.append(
+            {
+                "id": f"tennis:reference:{item['id']}",
+                "sport": "tennis",
+                "category": "reference_model_edge",
+                "event_date": item["match_date"],
+                "start_time_utc": item.get("start_time_utc"),
+                "event_name": f"{item.get('player_a') or '?'} vs {item.get('player_b') or '?'}",
+                "market": "Match Winner",
+                "selection": str(item.get("selection_name") or "").strip(),
+                "odds": odds,
+                "odds_status": "sportsbet_extracted",
+                "bet_type": "single",
+                "legs": [],
+                "metrics": {
+                    "model_probability": _safe_float(item.get("model_probability")),
+                    "market_fair_probability": _safe_float(item.get("no_vig_market_probability")),
+                    "edge": _safe_float(item.get("edge")),
+                    "minimum_acceptable_odds": _safe_float(item.get("minimum_acceptable_odds")),
+                    "stake_units": _safe_float(item.get("stake_units")),
+                    "confidence": item.get("confidence"),
+                },
+                "insight": "Match-winner 模型 edge 單 · 只供參考，未通過正式落注閘。",
+                "risk": (
+                    "回測 15,299 注 walk-forward：呢類模型 edge 單長期 −5~−10%，edge 越大蝕越多。"
+                    "要跟只可平注細注，賠率跌穿最低可接受即棄。"
+                ),
+                "decision": "BET",
+                "outcome": "pending",
+                "actual": "待賽果",
+                "provenance": f"tennis_wc.db · predictions#{item['id']}",
+                "source_files": ["tennis-wong-choi/tennis_wc.db"],
+                "validation_status": "reference",
+                "context": {
+                    "tour": item.get("tour"),
+                    "round": item.get("round"),
+                    "tournament": item.get("tournament_name"),
+                    "match_id": item.get("match_id"),
+                },
+            }
+        )
+    return picks
+
+
 def _normalise_tennis_leg(leg: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "id": str(leg.get("id") or ""),
@@ -1293,6 +1484,7 @@ def export_tennis_snapshot(db_path: Path, target_date: Optional[str] = None) -> 
         strategy = _tennis_strategy_state(connection, as_of_date=analysis_date)
         recommendations = _export_tennis_singles(connection, analysis_date, strategy)
         recommendations.extend(_export_tennis_combos(connection, analysis_date, strategy))
+        reference_picks = _export_tennis_reference_singles(connection, analysis_date)
         coverage = _tennis_coverage(connection, analysis_date)
         verified_record = _tennis_verified_record(connection)
         connection.close()
@@ -1309,6 +1501,7 @@ def export_tennis_snapshot(db_path: Path, target_date: Optional[str] = None) -> 
             else "unavailable"
         ),
         "recommendations": recommendations,
+        "reference_picks": reference_picks,
         "strategy": strategy,
         "coverage": coverage,
         "verified_record": verified_record,
