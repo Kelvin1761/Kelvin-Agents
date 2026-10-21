@@ -36,6 +36,68 @@ from nba_identity import player_name_key
 
 _ML_PREDICTOR = None  # lazy-loaded for hybrid/ml modes
 
+# Counted + surfaced ML health. Failures used to be swallowed by a bare except,
+# so a broken model looked identical to "ML agreed with the 10-factor engine".
+ML_STATUS = {"requested": None, "loaded": None, "load_error": None,
+             "predictions": 0, "failures": 0, "failure_samples": []}
+
+
+def hybrid_ml_adjust_enabled():
+    """Hybrid ML adjustment is SHADOW-ONLY unless NBA_HYBRID_ML_ADJUST_ENABLED=1.
+
+    The ML signal is unvalidated (leakage-invalid published metrics, training-side
+    opp_abbr defect, 13.7% vs ~55% positive-rate mismatch; EXP-20261021-01), so
+    picks rest on the 10-Factor probability. ml_delta is still computed/recorded.
+    """
+    return os.environ.get("NBA_HYBRID_ML_ADJUST_ENABLED", "0").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def hybrid_adjustment(stat_key, ml_delta, season_phase):
+    """The historical hybrid rule: percentage-point adjustment implied by ml_delta."""
+    adj = 0.0
+    if stat_key in {"REB", "AST"}:
+        if ml_delta >= 12:
+            adj += 3.0
+        elif ml_delta <= -15:
+            adj -= 5.0
+    elif stat_key in {"PTS", "FG3M"}:
+        if ml_delta <= -10:
+            adj -= 5.0
+        elif ml_delta >= 20 and season_phase not in {"PLAYOFFS", "PLAY_IN"}:
+            adj += 2.0
+    return adj
+
+
+def reset_ml_status(requested=None):
+    ML_STATUS.update({"requested": requested, "loaded": None, "load_error": None,
+                      "predictions": 0, "failures": 0, "failure_samples": []})
+
+
+def record_ml_failure(context, exc):
+    ML_STATUS["failures"] += 1
+    msg = f"{context}: {type(exc).__name__}: {exc}"
+    if len(ML_STATUS["failure_samples"]) < 5:
+        ML_STATUS["failure_samples"].append(msg)
+    if ML_STATUS["failures"] <= 5:
+        print(f"⚠️ ML prediction failed ({msg})")
+
+
+def ml_status_lines():
+    """Report lines describing ML health; empty when ML was never requested."""
+    st = ML_STATUS
+    if st["requested"] not in {"hybrid", "ml"}:
+        return []
+    if st["loaded"] is False:
+        return [f"> ⚠️ ML 模型載入失敗，已退回 10-Factor Legacy（{st['load_error']}）。"]
+    lines = []
+    if st["requested"] == "hybrid" and not hybrid_ml_adjust_enabled():
+        lines.append("> ℹ️ ML 訊號而家只係 **shadow（只記錄，唔影響機率／EV／Kelly）**，未經驗證；"
+                     "所有 leg 以 10-Factor 機率為準。")
+    if st["failures"]:
+        lines.append(f"> ⚠️ ML 預測失敗 {st['failures']} 次（成功 {st['predictions']} 次）；失敗嘅 leg 用 10-Factor。"
+                     f"例：{st['failure_samples'][0]}")
+    return lines
+
 L10_ORDER = "newest_first"
 PLAYER_MARKET = "PLAYER_MILESTONE"
 TEAM_MARKET = "TEAM_MARKET"
@@ -504,7 +566,8 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
                       is_b2b=False, is_home=None, spread=None,
                       usg_bonus=0, defender_impact=None, top_defender_name="",
                       opponent_abbr="", season_phase="MID_SEASON",
-                      ml_predictor=None, team_stats=None, engine_mode="hybrid"):
+                      ml_predictor=None, team_stats=None, engine_mode="hybrid",
+                      ml_defender_pm=None):
     card = {
         "name": player_name,
         "team": team_abbr,
@@ -623,12 +686,14 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
                     opp_def_rating=opp_stats.get("DEF_RATING", 0) or 0,
                     opp_def_rank=opponent_def_rank or 0,
                     opp_pace=opponent_pace or 98.0,
-                    defender_pm=defender_impact or 0,
+                    # Training used the opponent's TOP defender, not the top-3 mean.
+                    defender_pm=ml_defender_pm or 0,
                     usg_bonus_pct=usg_bonus)
                 ml_prob = ml_predictor.predict(ml_feats)
                 ml_features_used = True
+                ML_STATUS["predictions"] += 1
             except Exception as e:
-                pass
+                record_ml_failure(f"{player_name} {stat_key} {line_val_str}", e)
 
         ml_est_prob = round(ml_prob * 100, 1) if ml_prob is not None else None
 
@@ -636,6 +701,9 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             stat_key, line_val, season_phase, card, adv if ext_player else {}, gl if ext_player else {})
         rebound_bonus = _rebound_direction_bonus(stat_key, season_phase, card["cov"], hr_l5)
 
+        ml_delta = None
+        hybrid_adj_shadow = 0.0
+        hybrid_adj = 0.0
         if engine_mode == "legacy" or ml_est_prob is None:
             final_prob = est_prob
             final_engine = "legacy"
@@ -648,17 +716,8 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             # current ML backtest has stronger ROC-AUC but slightly worse Brier,
             # so averaging probabilities would underprice otherwise viable legs.
             ml_delta = ml_est_prob - est_prob
-            hybrid_adj = 0.0
-            if stat_key in {"REB", "AST"}:
-                if ml_delta >= 12:
-                    hybrid_adj += 3.0
-                elif ml_delta <= -15:
-                    hybrid_adj -= 5.0
-            elif stat_key in {"PTS", "FG3M"}:
-                if ml_delta <= -10:
-                    hybrid_adj -= 5.0
-                elif ml_delta >= 20 and season_phase not in {"PLAYOFFS", "PLAY_IN"}:
-                    hybrid_adj += 2.0
+            hybrid_adj_shadow = hybrid_adjustment(stat_key, ml_delta, season_phase)
+            hybrid_adj = hybrid_adj_shadow if hybrid_ml_adjust_enabled() else 0.0
             final_prob = round(est_prob + hybrid_adj, 1)
             final_engine = "hybrid"
 
@@ -687,6 +746,9 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             "hybrid_prob": final_prob if final_engine == "hybrid" else None,
             "ml_prob": ml_prob,
             "ml_est_prob": ml_est_prob,
+            "ml_delta_pp": round(ml_delta, 1) if ml_delta is not None else None,
+            "hybrid_adj_shadow_pp": hybrid_adj_shadow,
+            "hybrid_adj_applied_pp": hybrid_adj,
             "engine": final_engine,
             "engine_notes": engine_notes,
             "base_rate": hr_l10,
@@ -1990,6 +2052,8 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"> [!IMPORTANT]")
     sections.append(f"> 以下組合由 Python V5 短腿數 + Playoff Gate + Post-Reflector EV Gate 自動篩選。所有數學數據不可修改。")
     sections.append(f"> Engine mode: **{engine_mode.upper()}**；任何 `Combo EV% <= 0` 或 Kelly = 0% 嘅組合會被 hard block。")
+    for _l in ml_status_lines():
+        sections.append(_l)
     sections.append(f"")
 
     sections.append(gen_combo_section(
@@ -2174,6 +2238,9 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
                 "price": float(la["odds"]),
                 "p_hit_rate_10f": _pct_to_prob(la.get("det_prob")),
                 "p_ml": _pct_to_prob(la["ml_prob"] * 100) if la.get("ml_prob") is not None else None,
+                "ml_delta_pp": la.get("ml_delta_pp"),
+                "hybrid_adj_shadow_pp": la.get("hybrid_adj_shadow_pp"),
+                "hybrid_adj_applied_pp": la.get("hybrid_adj_applied_pp"),
                 "p_final": _pct_to_prob(la.get("estimated_prob")),
                 "p_monte_carlo": _pct_to_prob(mc.get("mc_prob")) if mc else None,
                 "p_l10_base_rate": _pct_to_prob(la.get("hit_l10")),
@@ -2268,6 +2335,7 @@ def main():
 
     # ── Engine 初始化：Hybrid/ML use ML predictor; legacy stays deterministic ──
     ml_predictor = None
+    reset_ml_status(engine_mode)
     if engine_mode in {"hybrid", "ml"}:
         try:
             _ml_dir = os.path.join(os.path.dirname(__file__), "..", "..", "..", "..", "scripts", "nba_ml")
@@ -2276,10 +2344,13 @@ def main():
             ml_predictor = MLPropPredictor()
             global _ML_PREDICTOR
             _ML_PREDICTOR = ml_predictor
+            ML_STATUS["loaded"] = True
             print(f"🧠 ML Engine active: {len(ml_predictor.feature_names)} features | mode={engine_mode}")
         except Exception as e:
             print(f"⚠️ ML Engine failed to load: {e}")
             print(f"   Falling back to 10-Factor engine")
+            ML_STATUS["loaded"] = False
+            ML_STATUS["load_error"] = f"{type(e).__name__}: {e}"
             engine_mode = "legacy"
 
     # V3: Pre-compute context for each team
@@ -2340,6 +2411,8 @@ def main():
             is_b2b = team_b2b.get(team, False)
             usg_bonus = usg_redistribution.get(team, {}).get(player_name, {}).get("bonus_USG", 0)
             def_impact, top_def_name = get_defender_impact(opponent)
+            _kd = key_defenders.get(opponent, [])
+            ml_def_pm = _kd[0].get("PCT_PLUSMINUS") if _kd and isinstance(_kd[0].get("PCT_PLUSMINUS"), (int, float)) else 0
 
             card = build_player_card(
                 player_name, team, bet_data, ext_p, category,
@@ -2349,7 +2422,7 @@ def main():
                 top_defender_name=top_def_name, opponent_abbr=opponent,
                 season_phase=season_phase,
                 ml_predictor=ml_predictor, team_stats=team_stats,
-                engine_mode=engine_mode)
+                engine_mode=engine_mode, ml_defender_pm=ml_def_pm)
             all_cards.append(card)
 
     # Summary

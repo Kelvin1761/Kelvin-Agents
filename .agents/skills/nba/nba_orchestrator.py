@@ -309,8 +309,18 @@ def extractor_cache_current(path: str) -> bool:
                 for player in group
             ):
                 return False
-        return (meta.get("season_phase") != "PRESEASON"
-                or meta.get("preseason_rookie_history_contract") == 1)
+        if meta.get("season_phase") == "PRESEASON":
+            return meta.get("preseason_rookie_history_contract") == 1
+        # Regular season: a cache written while team_stats / advanced data came
+        # back empty (opening night 2026-10-21, before the season fallback) must
+        # be re-extracted, otherwise the report keeps the "Pace／防守缺失" label.
+        team_stats = payload.get("team_stats")
+        if isinstance(team_stats, dict) and not any(team_stats.values()):
+            return False
+        players = [p for group in groups.values() for p in group]
+        if players and not any(p.get("advanced") for p in players):
+            return False
+        return True
     except (OSError, ValueError, AttributeError):
         return False
 
