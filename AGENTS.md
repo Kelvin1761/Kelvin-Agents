@@ -78,8 +78,12 @@ python3 .agents/skills/central_wong_choi/scripts/auto_approve_release.py --commi
 ```
 
 要在乾淨 worktree 跑（refresh 會 checkout 同 cherry-pick）。replay 唔乾淨 = 真係撞咗檔，要人手處理。
-報 `another automatic release is running` = 另一個 release 揸住鎖，等佢完咗再用
-`auto_approve_release.py --commit <SHA>` 續（manifest 仲喺度，唔使重做）。
+批准鎖而家會**排隊**：另一個 release 揸住鎖時，`./保存.sh` 會印「⏳ approval lock busy — queued」
+然後等（預設最多 3 個鐘，`WC_RELEASE_LOCK_WAIT_SECONDS` 可改），等到之後 main 郁咗就自動 replay。
+所以 `./保存.sh` 有時會跑得耐 —— 要放背景跑，唔好當咗佢死機。真係等到逾時先會報
+`another automatic release is running (holder …)`，訊息入面有揸鎖嗰個 release 同續做嘅指令
+（`auto_approve_release.py --commit <SHA>`，manifest 仲喺度，唔使重做）。揸鎖紀錄喺
+`~/WongChoiData/WongChoiControl/auto-release.lock.json`。
 已經被取代、內容已經喺 main 嘅舊 manifest，用 `python3 $C reject --commit <SHA> --actor <你> --reason "superseded: …"`
 清走，reason 寫明取代佢嘅 commit。量度同後續改善方案：`docs/plans/2026-10-21-release-expiry-fast-path.md`。
 

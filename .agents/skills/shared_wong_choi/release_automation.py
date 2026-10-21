@@ -2,14 +2,17 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
+import time
+from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
-
-from .control import single_run_lock
 from .runtime_launchd import DOMAIN_LABELS, _load_plist
 
 
@@ -65,6 +68,72 @@ def production_roots() -> dict[str, Path]:
             if len(found) == 1:
                 roots[domain] = found.pop()
     return roots
+
+
+# A busy approval lock is queued for, not failed on (plan §4 D). The holder can run a
+# full gate plus replays, so the wait must outlast one gate (`_run_gate_in_clean_clone`
+# allows 7200 s); otherwise a waiter just recreates the old "retry by hand" failure.
+LOCK_WAIT_SECONDS = float(os.environ.get("WC_RELEASE_LOCK_WAIT_SECONDS", "10800"))
+LOCK_POLL_SECONDS = 5.0
+
+
+def _holder_text(record: Path) -> str:
+    try:
+        holder = json.loads(record.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return "holder unknown"
+    return (f"holder {str(holder.get('commit') or '?')[:12]} "
+            f"「{str(holder.get('message') or '').splitlines()[0] if holder.get('message') else ''}」 "
+            f"pid {holder.get('pid', '?')} since {holder.get('acquired_at', '?')}")
+
+
+@contextmanager
+def _queued_release_lock(state_root: Path, *, manifest: dict):
+    """Exclusive approval lock that waits (bounded) instead of failing at once.
+
+    Yields the seconds spent waiting. Raises ReleaseError on timeout, naming the holder and
+    the exact resume command. The holder record is advisory: flock is released when its
+    process dies, so a left-over record never blocks anyone.
+    """
+    from .release_manager import ReleaseError
+
+    path = state_root / "auto-release.lock"
+    record = state_root / "auto-release.lock.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as handle:
+        started = time.monotonic()
+        announced = False
+        while True:
+            try:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                waited = time.monotonic() - started
+                if waited >= LOCK_WAIT_SECONDS:
+                    raise ReleaseError(
+                        f"another automatic release is running ({_holder_text(record)}); "
+                        f"waited {waited / 60:.0f} min; resume with: python3 "
+                        f".agents/skills/central_wong_choi/scripts/auto_approve_release.py "
+                        f"--commit {manifest['commit']}"
+                    ) from None
+                if not announced:
+                    print(f"⏳ approval lock busy — queued ({_holder_text(record)})", file=sys.stderr, flush=True)
+                    announced = True
+                time.sleep(LOCK_POLL_SECONDS)
+        waited = time.monotonic() - started
+        token = {"commit": manifest["commit"], "release_id": manifest.get("release_id"),
+                 "message": manifest.get("message"), "pid": os.getpid(),
+                 "acquired_at": datetime.now(timezone.utc).isoformat()}
+        record.write_text(json.dumps(token, ensure_ascii=False), encoding="utf-8")
+        try:
+            yield waited
+        finally:
+            try:
+                if json.loads(record.read_text(encoding="utf-8")).get("pid") == os.getpid():
+                    record.unlink()
+            except (OSError, ValueError):
+                pass
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 # Delegated approval may replay an expired release onto the new main at most this many
@@ -143,9 +212,8 @@ def auto_approve_release(
         "Expected impact was not supplied; no measured improvement is claimed."
     ]
     try:
-        with single_run_lock(state_root / "auto-release.lock") as acquired:
-            if not acquired:
-                raise ReleaseError("another automatic release is running; retry after it finishes")
+        with _queued_release_lock(state_root, manifest=manifest) as waited:
+            result["lock_waited_seconds"] = round(waited, 1)
             roots = production_roots()
             plan = manifest.get("activation_plan") or {}
             missing = set(plan.get("production_sync_domains") or []).difference(roots)

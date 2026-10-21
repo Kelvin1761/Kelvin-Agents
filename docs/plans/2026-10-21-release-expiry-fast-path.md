@@ -1,6 +1,6 @@
 # 發佈「一 merge 就過期」：現況量度同改善方案（待 Kelvin 批）
 
-> 狀態：Kelvin 2026-10-21 批准。**A、B、C 已完成**（B+C 見 §7）；D 未定。
+> 狀態：Kelvin 2026-10-21 批准。**A、B、C、D 全部完成**（B+C 見 §7，D 見 §8）。
 
 ## 1. 而家點運作
 
@@ -118,3 +118,17 @@ python3 docs/plans/scripts/release_expiry_stats.py     # 讀 ~/WongChoiData/Wong
 - 測試：`tests/test_release_replay.py`（10 個）——無撞檔 replay 並且 gate 嘅正正係落 main 嗰個 SHA、唔郁 caller checkout、
   撞檔照停、replay 後 gate 失敗唔 merge、非過期錯誤唔 replay、上限 3 次、人手批准不變、INDEX union 可以 replay、
   冇 union attribute 照停、repo 真係有 union 設定。release 相關 45 個測試全過。
+
+## 8. D 實作（2026-10-21）
+
+Kelvin：「個鎖令批准同發佈閘卡住」。實情係個鎖揸得唔耐（歷史中位 ~5 分鐘、p75 ~19 分鐘），
+卡住嘅原因係**攞唔到鎖就即刻放棄**，manifest 留喺 pending，冇人自動續。
+
+- `release_automation._queued_release_lock`：攞唔到就每 5 秒試一次，最多 `LOCK_WAIT_SECONDS`
+  （預設 10800 秒 = 3 個鐘，`WC_RELEASE_LOCK_WAIT_SECONDS` 可改；要長過一次 gate 嘅 7200 秒上限，唔係等於冇改）。
+- 揸住時寫 `auto-release.lock.json`（commit、message、pid、開始時間）；排隊嗰個會印出等緊邊個，逾時嘅錯誤訊息
+  寫明揸鎖者同續做指令。flock 跟住 process 死就放，所以殘留紀錄唔會塞住人（有測試）。
+- 等到之後 main 已經郁咗 → B 自動 replay（有測試）。
+- `control.single_run_lock` 冇改（research 排程都用緊，佢哋要「攞唔到即走」）。
+- 測試：`tests/test_release_lock_queue.py`（6 個）；release 相關 93 個測試全過。
+- 仲未處理：揸鎖嗰個如果 gate 本身 hang，最長會揸到 gate 嘅 7200 秒逾時，期間其他人會一直排隊。
