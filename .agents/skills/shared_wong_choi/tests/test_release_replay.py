@@ -100,6 +100,22 @@ def auto(repo: Path, commit: str) -> dict:
 
 # ── B: no overlap → replay, gate the NEW sha, merge ─────────────────────────────
 
+def test_multicommit_audit_tip_preserves_code_through_automatic_replay(repo, monkeypatch):
+    (repo / "engine.py").write_text("VALUE = 42\n", encoding="utf-8")
+    git(repo, "add", "engine.py")
+    git(repo, "commit", "-m", "wip: preserve complete source")
+    prepared = pending_release(repo, monkeypatch, {"audit.md": "Source evidence\n"})
+    assert set(prepared["scope"]) == {"engine.py", "audit.md"}
+    other_agent_lands(repo, {"other.py": "OTHER = 1\n"})
+    seen = gated_commits(monkeypatch)
+    result = auto(repo, prepared["commit"])
+    assert result["automation_status"] == "completed", result.get("error")
+    assert remote_file(repo, "engine.py") == "VALUE = 42"
+    assert remote_file(repo, "audit.md") == "Source evidence"
+    assert seen == [result["commit"]]
+    assert result["commit"] != prepared["commit"]
+    assert prepared["commit"] not in {str(v["commit"]) for v in pending_releases(state(repo), repo)}
+
 def test_disjoint_expiry_replays_gates_the_new_sha_and_merges(repo, monkeypatch):
     prepared = pending_release(repo, monkeypatch, {"engine.py": "VALUE = 1\n"})
     other_agent_lands(repo, {"other.py": "OTHER = 1\n"})
