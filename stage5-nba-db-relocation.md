@@ -5,8 +5,8 @@ model/ruler changes and research incident unfreezing remain out of scope.
 
 - [x] Confirm unexpected production DB and available HOT/WARM storage.
 - [x] Test HOT-only DB creation, existing history preservation and fail-closed legacy/storage handling (27 tests; quick gate passed).
-- [ ] Verify no active producer or release controller; stop on concurrent writes.
-- [ ] Copy exact bytes to a new HOT destination and a mounted external backup;
+- [x] Verify no active producer or release controller; stop on concurrent writes.
+- [x] Copy exact bytes to a new HOT destination and a mounted external backup;
   verify SHA-256, SQLite integrity and table counts before recoverable relocation.
 - [ ] Run quick/full source gates and exact-scope Central release with immutable
   SHA/current-main checks; preserve rollback code and all database copies.
@@ -72,3 +72,30 @@ This is an independent copy, not a hard-link, and preserves the postgame state.
 It does not prove future freshness, COLD replication, a restore drill, cutover,
 release acceptance or model improvement. Initial HOT and WARM snapshots are
 untouched. The explicit HOT-snapshot rotation decision remains pending.
+
+## Explicit rotation approval and completed data cutover
+
+Kelvin explicitly approved: 「批准封存本次建立嘅舊 HOT 副本，再搬遷最新完整 DB；
+保留所有舊副本，驗證後才發佈」. This supersedes the pending rotation decision,
+not any model/ruler/promotion/incident-unfreeze restriction.
+
+Under the existing NBA scheduler exclusive flock, confirmed no direct producer,
+verified production source and independent WARM with the latest `4d153e76…`
+bytes, and preserved initial HOT bytes `a01d4c04…` using an exclusive hard-link
+at `/Users/imac/WongChoiData/NBA/recovery-20261022/pre-cutover-verified-copy.db`.
+Only then removed the initial HOT pathname (all bytes retained at that recovery
+path), ran the tested relocation helper, and verified the final HOT and WARM
+SQLite/count/hash proofs. Production source pathname is now absent; original
+bytes remain at `recovery-20261022/nba_reflector.original.db`.
+
+All initial WARM versions and the latest independent WARM version remain.
+Production git status now contains only the two expected mutable JSON paths;
+no DB ignore rule, mutable-path policy or release gate was changed.
+
+Code activation is still pending. Legacy production code must not be allowed
+to create a new empty checkout DB during a prolonged gate. Recheck before the
+next NBA postgame slot (Sydney 21:30); if source code has not activated, stop
+the session-owned release safely and restore the original DB pathname under
+the NBA lock without overwriting any new path. On activation failure, preserve
+any newer HOT writes and restore latest complete data for the rollback code;
+never blindly overwrite with the earlier 36/1 snapshot.
