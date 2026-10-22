@@ -11,7 +11,7 @@ tip fails closed at exact-scope selection instead of recovering that release.
   malformed scope rejection, plus existing refresh/replay tests and quick gate.
 - [x] Full Central exact-scope release; immutable SHA/main recheck, existing
   approval/activation/rollback controls unchanged; record acceptance.
-- [ ] Refresh the original Tennis manifest via that controller and continue
+- [x] Refresh the original Tennis manifest via that controller and continue
   weekly-cadence work serially. Do not manually duplicate pending releases.
 
 No ruler, model, authority/allowlist, gate threshold, data retention or ledger
@@ -64,10 +64,36 @@ installed/loaded launchd probe then returned AU/HKJC/NBA/Tennis and Central
 legacy checkout NBA database. No installer or Dashboard deployment occurred.
 No model/ruler/promotion/retention/ledger authority was granted or changed.
 
-The original Tennis `86d88875cc38` remains pending: fixed-production-controller
+Historical pre-refresh checkpoint: Tennis `86d88875cc38` remained pending; fixed-production-controller
 refresh dry-run preserves exactly its three recorded paths and supersedes that
 original manifest. No real refresh was started yet. Another controller holds
 the release lock; observe its actual live process, never infer liveness from
 the advisory lock file alone. This acceptance note is saved on a non-main
 branch while that controller runs, to avoid expiring its gate via a docs merge.
-Tennis/cadence acceptance and Stage 5 Tasks 6–10 remain open.
+At that checkpoint Tennis/cadence acceptance and Stage 5 Tasks 6–10 remained open.
+
+## Original payload refresh accepted — 2026-10-23
+
+The real refreshed three-path payload is now
+`c9b222039ec6900bda42f02315a3120b172bdd1a`, release
+`wc-release:c9b222039ec6:2026-10-22T173502.847441_0000`. Source full and
+push exit codes are 0; the separate immutable clean approval was granted at
+`2026-10-22T18:09:34Z`, followed by merge at `18:09:37Z` and successful
+activation at `18:09:43Z`. Session 16011 returned terminal exit 0. Existing
+primary Telegram reported one sent part/target. This is actual controller
+acceptance, not fixture results or the earlier interrupted source/replay gates.
+
+An independent `git diff --exit-code` confirms every byte of all three original
+`86d88875cc38` paths matches the deployed c9 commit. Independent deployment
+verification checks all four domains' required files and exact source/target
+SHA, with no dirty overlap; installed/loaded AU/HKJC/NBA/Tennis and Central are
+aligned, attention empty. No installer or Dashboard deploy was involved.
+
+The controller superseded intermediate b975. After the above verification,
+the original 86 pending manifest was rejected through the existing controller
+as superseded by c9 (event `20261022T211758.588757Z-31d3864c10175862`), with
+notifications disabled for this duplicate cleanup only. All manifests and
+earlier WIP/recovery copies remain retained. Cadence was then normally aligned
+to c9 for its own fresh tests/gates; its installation acceptance is still open.
+This closes the refresh repair's engineering acceptance, not Stage 5 Tasks
+6–10, Tennis input-quality debt, real pilots or model improvement.

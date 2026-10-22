@@ -52,15 +52,14 @@ Completed engineering is not Stage 5 completion. Tasks 6–10 stay unchecked.
   in its immutable release events and `stage5-refresh-payload-integrity.md`;
   the later acceptance-note update is preserved on a non-main branch while
   another controller runs, not silently merged during its approval gate.
-- Original Tennis release `86d88875cc38` remains pending, with exactly its
-  original three paths. After observing the previous other controller finish,
-  fixed-controller preflight verified exact scope, the original remote SHA and
-  zero main overlap. The first process later disappeared with no new manifest;
-  its original payload was saved as non-main WIP `cb8dcdd2` after a fresh quick
-  gate. The same original manifest is now refreshing through the fixed
-  controller on branch `wc-refresh-86d88875cc38-r2`, approved `bc5b1d2a`;
-  fresh full source/approval gates, supersede and native acceptance remain
-  unproven. Do not start a duplicate or reuse the interrupted older recheck.
+- Original Tennis diagnostics are now released as `c9b222039ec6`: real source
+  full/push 0, separate immutable approval, merge and activation succeeded;
+  controller session 16011 exited 0. Independently verified original three
+  path bytes, all four domains' required files/exact SHA and installed/loaded
+  runtime alignment. b975 was superseded normally; original 86 was rejected
+  through the controller only after proving byte-identical successful c9
+  activation. No old WIP/copy/evidence was deleted. This adds prediction-ID
+  diagnostics, not missing inputs, new qualified samples or model improvement.
 - Cadence was aligned to approved `778ba75dd3f2` as eight-path WIP `de8669df`.
   Gate inventory then found Central's independent tests were not registered
   in the configured full runner. WIP `e909a730` adds only `run_tests.sh` to the
@@ -107,7 +106,7 @@ Completed engineering is not Stage 5 completion. Tasks 6–10 stay unchecked.
 | 10 Exit | All formal checkpoint decisions, health/reproducibility/fault/leakage/resource proof, two genuine domain pilots, and an explicit Stage 6 entry decision. No completion inferred from code gates alone. |
 
 Next serial sequence: observe the already running original Tennis refresh until
-terminal, then reconcile/release the nine-path cadence WIP with real installer
+terminal (now verified), then reconcile/release the nine-path cadence WIP with real installer
 acceptance. Finish Telegram/private
 Dashboard integration acceptance and reviewed safety/pilot gaps afterward.
 The standing engineering approval does not authorize model/ruler/holdout,
