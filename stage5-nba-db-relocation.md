@@ -8,9 +8,9 @@ model/ruler changes and research incident unfreezing remain out of scope.
 - [x] Verify no active producer or release controller; stop on concurrent writes.
 - [x] Copy exact bytes to a new HOT destination and a mounted external backup;
   verify SHA-256, SQLite integrity and table counts before recoverable relocation.
-- [ ] Run quick/full source gates and exact-scope Central release with immutable
+- [x] Run quick/full source gates and exact-scope Central release with immutable
   SHA/current-main checks; preserve rollback code and all database copies.
-- [ ] Verify production paths and four-domain runtime health; then reconsider
+- [x] Verify production paths and four-domain runtime alignment; then reconsider
   the preserved Tennis and weekly-cadence candidates serially.
 
 Production DB is small and actively mutable, so it remains HOT. Its recovery copy
@@ -99,3 +99,31 @@ the session-owned release safely and restore the original DB pathname under
 the NBA lock without overwriting any new path. On activation failure, preserve
 any newer HOT writes and restore latest complete data for the rollback code;
 never blindly overwrite with the earlier 36/1 snapshot.
+
+## Released and independently verified
+
+Controller session 6065 reached terminal exit 0 (do not restart it).
+Five-path release `wc-release:a5911388ffc8:2026-10-22T081957.871451_0000`
+passed the source full gate and immutable-SHA approval recheck, was pushed and
+merged, then activated at `2026-10-22T08:51:06Z` (Sydney 19:51, before 21:30
+postgame). Manifest check/push exit codes are both 0. Approval event content
+hash: `9a30baab76e7e2a5133ca65c72e016db37e768500e5b5e0f2a0256f5cf0d5163`.
+Only NBA code sync was selected; no installer or Dashboard deployment. The
+existing authorized Telegram path reported one successful part/target.
+
+Independent post-activation probe at current runtime
+`c931673c09818e8d8223e0313d35473391a91ca5` proves the released commit
+`a5911388ffc83727df530dcfa027058dd2622749` remains an ancestor. Actual installed
+AU/HKJC/NBA/Tennis and Central launchd status is `aligned`, attention empty.
+Imported production `DB_PATH` resolves to the HOT database above; read-only
+SQLite quick-check is `ok`, with 150 legs / 2 model runs, and the legacy
+checkout database is absent. Current runtime advanced through other agents'
+work; that work was not approved or released by this session.
+
+Latest WARM restore to the fresh external scratch path
+`/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/stage5-nba-db-restore-20261022/nba_reflector.db`
+passed SQLite, exact byte hash and 150/2 count checks without touching live DB.
+All earlier HOT/WARM recovery versions remain. This does not prove COLD
+replication or freshness after future writes. Four-domain job success, research
+incident clearance, reviewed power profiles and real pilots are separate:
+Stage 5 Tasks 6–10 remain open and no model improvement/promotion is claimed.
