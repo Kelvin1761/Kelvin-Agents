@@ -1,0 +1,32 @@
+rows 19601 dev 15093 hold 3647
+quote after 19:00 ET on game day: 91 (dropped)
+C coefficients [a_PTS a_REB a_AST a_3PM beta_market gamma_L10]: [-0.295 -0.16  -0.32  -0.287  0.755  0.14 ]
+shuffle test: holdout slope=+2.182 (uninformative: near-constant preds)  Brier=0.2452 vs base-rate Brier=0.2465
+shuffle skill +0.00128 vs real C skill +0.05694  ratio=0.022 (need < 0.10)
+
+== holdout overall
+arm    Brier  logloss  slope   icpt
+M     0.1920   0.5678  0.853 -0.256
+E     0.2145   0.6507  0.517 +0.079
+B     0.1992   0.5833  0.957 -0.016
+C     0.1896   0.5588  0.962 +0.017
+D     0.1906   0.5612  0.945 +0.010
+base-rate Brier 0.2465
+
+== banker zone (p >= 0.8): n, mean p, actual, gap CI
+M    n=  587 mean_p=0.903 actual=0.807 gap=+0.095 CI[+0.027,+0.149]
+E    n=  507 mean_p=0.919 actual=0.783 gap=+0.136 CI[+0.080,+0.189]
+B    n=  289 mean_p=0.855 actual=0.806 gap=+0.049 CI[-0.014,+0.111]
+C    n=  408 mean_p=0.883 actual=0.850 gap=+0.033 CI[-0.028,+0.080]
+D    n=  412 mean_p=0.874 actual=0.842 gap=+0.032 CI[-0.033,+0.079]
+
+== deltas and verdicts
+B: dBrier vs E -0.0153 CI[-0.0204,-0.0100] | vs M +0.0071 CI[+0.0021,+0.0141] | slope 0.957 | zone gap CI [-0.014,+0.111] | checks(vsE<0, slope, zone∋0, vsM<=.001)=(np.True_, np.True_, np.True_, np.False_) -> fails
+C: dBrier vs E -0.0249 CI[-0.0325,-0.0175] | vs M -0.0025 CI[-0.0051,+0.0006] | slope 0.962 | zone gap CI [-0.028,+0.080] | checks(vsE<0, slope, zone∋0, vsM<=.001)=(np.True_, np.True_, np.True_, np.True_) -> passes
+D: dBrier vs E -0.0239 CI[-0.0318,-0.0161] | vs M -0.0014 CI[-0.0046,+0.0028] | slope 0.945 | zone gap CI [-0.033,+0.079] | checks(vsE<0, slope, zone∋0, vsM<=.001)=(np.True_, np.True_, np.True_, np.False_) -> fails
+
+== per stat (holdout): Brier M / E / C and slope E / C
+PTS   n= 1096 M=0.1933 E=0.2197 C=0.1909 D=0.1904 | slope E=0.48 C=0.90
+REB   n=  987 M=0.1858 E=0.2017 C=0.1831 D=0.1852 | slope E=0.56 C=1.03
+AST   n=  626 M=0.1960 E=0.2077 C=0.1897 D=0.1893 | slope E=0.55 C=1.06
+FG3M  n=  938 M=0.1944 E=0.2264 C=0.1947 D=0.1974 | slope E=0.52 C=0.92
