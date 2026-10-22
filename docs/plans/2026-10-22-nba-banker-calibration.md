@@ -74,6 +74,7 @@
 5. **Bug 修正**（各自獨立 PR、各自帶測試）：§1.2 三項。
 
 ### Phase 2｜穩膽資格規則（Phase 1 之後，2–3 日）
+> **進度（2026-10-22，EXP-20261022-02）**：喺上季語料用預先登記協議做咗 ablation：S（PTS/REB）、C（cov≤0.35）、P（賠率 1.30–1.45，由 dev 揀）、ALL 全部 `not shown`（holdout MDE≈9pp，S／P 方向正但 CI 跨 0）。**呢個語料功效唔夠驗證**，所以改為 **forward shadow**：live 照舊，額外記錄 V2 規則組合到 sidecar，累積 ≥約 30 個比賽日再重驗。未改 live。
 改 `select_combo_1`，**每條規則逐個 ablation**：
 1. Stat 白名單（§2.1）。
 2. 角色適配（§2.2）。

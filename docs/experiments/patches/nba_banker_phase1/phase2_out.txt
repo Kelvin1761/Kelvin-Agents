@@ -1,0 +1,22 @@
+dev 2026-04-12 2026-05-06 gap ['2026-05-07'] holdout 2026-05-08 2026-06-10
+  dev band [1.2,1.3) n=248 ROI=-0.087
+  dev band [1.3,1.45) n=183 ROI=+0.019
+  dev band [1.2,1.45) n=431 ROI=-0.042
+  dev band [1.3,1.6) n=268 ROI=-0.032
+  dev band [1.45,1.8) n=160 ROI=-0.049
+P band frozen from dev: (1.3, 1.45)
+
+== per-arm legs (flat ROI) and combos
+A0   dev legs ROI=-0.065 (n=670)  hold legs ROI=-0.002 (n=183)  | hold combos=11 hit=0.455 avg_odds=2.26 ROI_upper=+0.059
+S    dev legs ROI=-0.040 (n=390)  hold legs ROI=+0.062 (n=116)  | hold combos=12 hit=0.417 avg_odds=2.31 ROI_upper=-0.036
+C    dev legs ROI=-0.006 (n=283)  hold legs ROI=-0.003 (n=75)  | hold combos=12 hit=0.250 avg_odds=2.35 ROI_upper=-0.424
+P    dev legs ROI=+0.019 (n=183)  hold legs ROI=+0.074 (n=57)  | hold combos=8 hit=0.625 avg_odds=2.53 ROI_upper=+0.568
+N    dev legs ROI=-0.065 (n=670)  hold legs ROI=-0.002 (n=183)  | hold combos=16 hit=0.438 avg_odds=1.74 ROI_upper=-0.219
+ALL  dev legs ROI=-0.057 (n=78)  hold legs ROI=+0.090 (n=20)  | hold combos=6 hit=0.667 avg_odds=1.83 ROI_upper=+0.236
+
+== verdicts vs A0 (primary: holdout leg ROI diff, day-cluster bootstrap)
+S    hold dROI=+0.064 CI[-0.008,+0.146]  dev dROI=+0.025  -> not shown
+C    hold dROI=-0.001 CI[-0.191,+0.127]  dev dROI=+0.059  -> not shown
+P    hold dROI=+0.076 CI[-0.031,+0.167]  dev dROI=+0.084  -> not shown
+N    hold dROI=+0.000 CI[+0.000,+0.000]  dev dROI=+0.000  -> n/a for legs (N only changes combo build; legs identical to A0)
+ALL  hold dROI=+0.092 CI[-0.032,+0.296]  dev dROI=+0.008  -> not shown
