@@ -242,3 +242,4 @@
 - [EXP-20261016-77 上線](EXP-20261016-77-au-trial-speed-to-preparation-ship.md) — 用戶決定：試閘速度由 L600 環境分搬去試閘備戰（試閘 L600 分 0.5 + 試閘密度 0.5），可解釋性理由；§8 冇改善亦冇顯著變差；dashboard／報告加試閘備戰細項
 - [EXP-20261016-79](EXP-20261016-79-au-trial-dimension-rebuild-results.md) — 試閘維度重建：試閘證據全部集中（⅓ 份額）REJECT（§8 fixed Good −0.61pp、NDCG CI 全負）；唔用試閘名次再差（三個排名指標 CI 全負）→ 名次保留；集中可以改喺報告層做
 - [EXP-20261015-20](EXP-20261015-20-ruler-refit-both-arms.md) — 把尺：合約 §8「兩邊都 refit」—— 改 leaf 資訊量嘅候選要有 A0／A1／B0／B1 四個 arm，fixed 同 refit 兩個 arm 做 Holm；判決器 `evaluate_with_refit_arms`。2026-10-16 已經喺 EXP-12／17／18／31／71／77／79 等用分支模組做參考判決，2026-10-18 正式發佈
+- [EXP-20261022-01](EXP-20261022-01-nba-banker-phase1-baseline.md) — NBA 穩膽 Phase 1 baseline：上季 131 份賽前莊家梯級 19,601 行；莊家隱含機率每 stat 贏 L10；穩膽式單腿 flat ROI −6.3%（CI 包 0）；3PM 移出白名單；只量度，冇改 production
