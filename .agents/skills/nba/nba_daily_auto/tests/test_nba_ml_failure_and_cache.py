@@ -102,7 +102,14 @@ class _FixedML:
         return self.prob
 
 
-def _leg(monkeypatch, engine, ml_prob, flag, stat="points", line="25"):
+def _leg(monkeypatch, engine, ml_prob, flag, stat="points", line="25", layer=False):
+    # These tests pin the LEGACY 10-factor/hybrid path. The calibrated probability layer
+    # (EXP-20261022-03) replaces estimated_prob when on, so it is switched off here and
+    # covered separately by test_calibrated_layer_replaces_legacy_probability.
+    if layer:
+        monkeypatch.delenv("NBA_WC_PROB_LAYER", raising=False)
+    else:
+        monkeypatch.setenv("NBA_WC_PROB_LAYER", "0")
     if flag is None:
         monkeypatch.delenv("NBA_HYBRID_ML_ADJUST_ENABLED", raising=False)
     else:
@@ -134,6 +141,17 @@ def test_flag_on_old_rule_still_applies(monkeypatch) -> None:
     live = _leg(monkeypatch, "hybrid", 0.02, "1")
     assert live["hybrid_adj_applied_pp"] == -5.0
     assert live["estimated_prob"] == round(legacy["estimated_prob"] - 5.0, 1)
+
+
+def test_calibrated_layer_replaces_legacy_probability(monkeypatch) -> None:
+    legacy = _leg(monkeypatch, "legacy", 0.0, None)
+    live = _leg(monkeypatch, "hybrid", 0.02, "1", layer=True)
+    # market-anchored: a 10/10-ish L10 star at 1.30 is nowhere near the legacy 98% cap
+    assert live["calibrated_prob"] is not None
+    assert live["estimated_prob"] == live["calibrated_prob"]
+    assert live["estimated_prob"] < legacy["estimated_prob"]
+    assert live["legacy_prob"] == round(legacy["estimated_prob"] - 5.0, 1)  # old ML rule, kept for audit only
+    assert live["engine"].startswith("calibrated(")
 
 
 def test_ml_delta_recorded_when_off_for_both_directions(monkeypatch) -> None:
