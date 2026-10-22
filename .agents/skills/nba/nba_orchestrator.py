@@ -314,12 +314,16 @@ def extractor_cache_current(path: str) -> bool:
         # Regular season: a cache written while team_stats / advanced data came
         # back empty (opening night 2026-10-21, before the season fallback) must
         # be re-extracted, otherwise the report keeps the "Pace／防守缺失" label.
+        # EVERY team must have data, not just one: 2026-10-23 CLE_PHI / DEN_OKC cached
+        # with the away team's team_stats and advanced both empty (the other team was
+        # fine), passed the old "any team has data" test, and were never re-extracted.
+        # The report then said "對手球隊數據為空" and found no combos for the game.
         team_stats = payload.get("team_stats")
-        if isinstance(team_stats, dict) and not any(team_stats.values()):
+        if isinstance(team_stats, dict) and any(not value for value in team_stats.values()):
             return False
-        players = [p for group in groups.values() for p in group]
-        if players and not any(p.get("advanced") for p in players):
-            return False
+        for group in groups.values():
+            if group and not any(player.get("advanced") for player in group):
+                return False
         return True
     except (OSError, ValueError, AttributeError):
         return False

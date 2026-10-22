@@ -88,6 +88,31 @@ def test_regular_season_cache_with_data_is_current(tmp_path) -> None:
     assert o.extractor_cache_current(_cache(tmp_path, payload))
 
 
+def test_cache_where_only_one_team_has_data_is_stale(tmp_path) -> None:
+    """2026-10-23: CLE_PHI/DEN_OKC cached with the away team's data empty and never re-extracted."""
+    payload = {"meta": {"season_phase": "EARLY_REGULAR"},
+               "team_stats": {"CLE": {}, "PHI": {"PACE": 99.0}},
+               "players": {"CLE": [{"name": "A", "position": "G", "advanced": {}}],
+                           "PHI": [{"name": "B", "position": "G", "advanced": {"USG_PCT": 20.1}}]}}
+    assert not o.extractor_cache_current(_cache(tmp_path, payload))
+
+
+def test_cache_with_team_stats_but_one_team_missing_advanced_is_stale(tmp_path) -> None:
+    payload = {"meta": {"season_phase": "EARLY_REGULAR"},
+               "team_stats": {"CLE": {"PACE": 98.0}, "PHI": {"PACE": 99.0}},
+               "players": {"CLE": [{"name": "A", "position": "G", "advanced": {}}],
+                           "PHI": [{"name": "B", "position": "G", "advanced": {"USG_PCT": 20.1}}]}}
+    assert not o.extractor_cache_current(_cache(tmp_path, payload))
+
+
+def test_cache_with_both_teams_complete_is_current(tmp_path) -> None:
+    payload = {"meta": {"season_phase": "EARLY_REGULAR"},
+               "team_stats": {"CLE": {"PACE": 98.0}, "PHI": {"PACE": 99.0}},
+               "players": {"CLE": [{"name": "A", "position": "G", "advanced": {"USG_PCT": 22.0}}],
+                           "PHI": [{"name": "B", "position": "G", "advanced": {"USG_PCT": 20.1}}]}}
+    assert o.extractor_cache_current(_cache(tmp_path, payload))
+
+
 # ── Hybrid ML adjustment is shadow-only unless explicitly enabled ──
 class _FixedML:
     feature_names: list = []
