@@ -245,3 +245,4 @@
 - [EXP-20261022-01](EXP-20261022-01-nba-banker-phase1-baseline.md) — NBA 穩膽 Phase 1 baseline：上季 131 份賽前莊家梯級 19,601 行；莊家隱含機率每 stat 贏 L10；穩膽式單腿 flat ROI −6.3%（CI 包 0）；3PM 移出白名單；只量度，冇改 production
 - [EXP-20261022-02](EXP-20261022-02-nba-banker-selection-rules-ablation.md) — NBA 穩膽揀腿規則 ablation（上季梯級，dev/holdout）：S/C/P/ALL 全部 not shown（holdout 每 arm 20–183 腿，MDE≈9pp）；S、P 方向一致但跨 0；建議 forward shadow 而非改 live
 - [EXP-20261022-03](EXP-20261022-03-nba-probability-layer-vs-market.md) — NBA 機率層 vs 莊家價：live 式引擎 slope 0.52、穩膽區高估 13.6pp；C（莊家價＋L10 logistic）按預先登記規則 passes（ΔBrier vs E −0.025，slope 0.96，唔差過市場），L10 增量極細；今日 10 個 combo 1 校準後 9 個 EV 為負；未改 production
+- [EXP-20261023-01](EXP-20261023-01-nba-b2b-flag-correctness.md) — NBA B2B 旗標正確性修正：舊規則 22/22 隊永遠觸發（任何歷史 PPG 跌幅）、MC 由來冇收到旗標、UTC 日期令晚場錯一日；p_10f 平均 +1.08pp 但 p_final／選腿零變化；冇聲稱改善
