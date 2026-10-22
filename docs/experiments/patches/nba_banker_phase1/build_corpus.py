@@ -100,7 +100,7 @@ def main():
                         n_l10=len(l10), hit_l10=sum(x >= line for x in l10) / len(l10),
                         hit_l5=sum(x >= line for x in l5) / len(l5),
                         avg_l10=avg10, l3_avg=sum(l10[:3]) / len(l10[:3]), cov=cov, min_avg=mins10,
-                        game=f"{away_abbr}@{home_abbr}", po_in_l10=po_in_l10,
+                        game=f"{away_abbr}@{home_abbr}", po_in_l10=po_in_l10, l10_list="|".join(str(x) for x in l10),
                         actual=actual, minutes=mins,
                         y=(None if actual is None else int(actual >= line)),
                     ))
