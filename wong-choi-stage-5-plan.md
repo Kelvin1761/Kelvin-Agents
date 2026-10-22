@@ -36,7 +36,57 @@
 - [ ] 9. 擴展至AU／HKJC ranking squeeze同NBA season research：先查舊實驗，逐個假設測Gold／Good保護下嘅Top-5 capture、competitive recall、NDCG同cohort；NBA按season／market／odds／injury freshness做歷史描述性baseline並保留新季live gate。→ Verify：至少一個AU或HKJC候選完整走完ranking gate（通過或拒絕都算平台證據）；NBA hit rate唔會被當盈利證據，synthetic／歷史結果唔會冒充forward live acceptance或產生promotion proposal。
 - [ ] 10. 完成四個stage checkpoint同Stage 5 research-platform production activation（唔等於任何model promotion）：Task 1後做metrics readiness review、Task 6後做platform safety review、Task 9後做domain pilot review，最後做exit review。→ Verify：每個checkpoint都有immutable decision／風險／rollback；`./檢查.sh`、`./健康.sh`、reproducibility／fault／leakage／resource-isolation matrix全綠；至少兩個domain完成end-to-end pilot、failed experiment可檢索、Stage 4 bypass測試全拒絕；更新roadmap同Stage 6 entry decision。
 
-## Current Checkpoint — 2026-10-22 production reconciliation
+## Current Checkpoint — 2026-10-22 engineering acceptance and remaining gates
+
+Completed engineering is not Stage 5 completion. Tasks 6–10 stay unchecked.
+
+- NBA database isolation `a5911388` passed real source/approval full gates,
+  merged and activated. Latest 150 legs / 2 model runs were preserved in HOT,
+  independent verified WARM and a fresh external restore check; every earlier
+  recovery version was retained. This is the separately approved runtime DB
+  relocation, not authority to rewrite historical evidence or external ledgers.
+- Complete-payload refresh repair `778ba75dd3f2` also passed both real full
+  gates, merged and activated across all four configured domains. Independent
+  installed/loaded probes verified AU/HKJC/NBA/Tennis plus Central aligned at
+  this SHA with no attention and no legacy checkout DB. Acceptance evidence is
+  in its immutable release events and `stage5-refresh-payload-integrity.md`;
+  the later acceptance-note update is preserved on a non-main branch while
+  another controller runs, not silently merged during its approval gate.
+- Original Tennis release `86d88875cc38` remains pending, with exactly its
+  original three paths. Fixed-controller dry-run preserves the complete
+  manifest payload; real refresh/supersede, fresh gates and native acceptance
+  still need to run. Do not manually duplicate that pending release.
+- Cadence remains the original eight-path WIP, normally aligned to approved
+  `778ba75dd3f2` and saved as `de8669df`. Four selected maintenance/calendar/
+  installer/clock suites passed 71 tests; quick gate passed. These narrower
+  tests do not replace the earlier 109-case coverage or a current full gate.
+  Fresh full source/approval gates, allowlisted installer snapshot/rollback,
+  actual loaded-calendar verification and native receipt acceptance are open.
+- Fresh read-only inspection of deployed code still verifies 0/4 reviewed
+  power profiles, promotion false, AU/NBA incident latches present, and an
+  installed research-review calendar containing only daily 07:10. Source
+  templates, successful reviews and engineering release alerts do not prove
+  Monday 09:00 scheduling, incident clearance or weekly research-digest delivery.
+
+| Task | Still required to accept the whole task |
+|---|---|
+| 6 Safety | Reviewed dev-only power inputs/authority and complete real safety provenance; no invented effect size, boolean safety substitute or automatic incident unfreeze. |
+| 7 Visibility/cadence | Loaded calendar and real native receipt; authorized, deduplicated research Telegram acceptance and authenticated read-only Dashboard projection. A release-success Telegram is not the weekly research digest. |
+| 8 Tennis pilot | Verified family-specific PIT inputs/settlements and a reproducible spec-to-decision loop. Diagnostic context and synthetic fixtures do not repair historical missing bytes or prove a real pilot. |
+| 9 Other pilots | A real AU/HKJC ranking-gate loop under the frozen ruler, plus NBA descriptive/forward evidence as required. Other agents' manual model experiments are not automatically Stage 5 runner acceptance. |
+| 10 Exit | All formal checkpoint decisions, health/reproducibility/fault/leakage/resource proof, two genuine domain pilots, and an explicit Stage 6 entry decision. No completion inferred from code gates alone. |
+
+Next serial sequence: observe the existing live release holder until terminal,
+refresh original Tennis via the repaired controller, then reconcile/release the
+eight-path cadence WIP with real installer acceptance. Finish Telegram/private
+Dashboard integration acceptance and reviewed safety/pilot gaps afterward.
+The standing engineering approval does not authorize model/ruler/holdout,
+incident-unfreeze, bankroll or deletion actions. Previously reported exact-byte
+AU/HKJC recovery is retained; do not hard-code old mismatches as permanent.
+The newer NBA WARM copy/restore is verified, but no new COLD-coverage or overall
+storage/SLO green claim is made without fresh checks.
+
+## Historical Checkpoint — 2026-10-22 initial production reconciliation
 
 - The nine-file source-only WIP `3362b35e` is no longer an unreleased implementation gap: main already includes its capture/adapter/test work through `37f67d8a`, with additional bounded HKJC support and recovery verification. Two AU adapter files match the WIP exactly; other source/test differences preserve newer work. Do not replay older whole files over current main or create a duplicate release. The old local audit/repair-plan checkpoint is historical, not current release authority.
 - Independently reopened the native receipt `runs/central/2026-10-21/research-review/060802.093996Z-db1b9e01c8cc.json` through the installed production `--status --receipt` verifier: verified, content hash `ad4a839e23d8f46dd1a283c14f5898eea060376aa96ebf6d604f5e86f111ee74`. All four dispositions succeeded; AU/HKJC generations 1, Tennis/NBA generations 6. AU/NBA remain `reviewed_freeze_required`; success means the review ran, not that safety permits research/model promotion. All promotion and Telegram-delivery authority flags remain false.
