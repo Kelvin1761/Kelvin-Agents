@@ -83,6 +83,10 @@ def main():
                 team = today.iloc[0]["TEAM_ABBREVIATION"] if len(today) else prior.iloc[-1]["TEAM_ABBREVIATION"]
                 l10 = prior[stat].tolist()[::-1]  # newest first
                 l5 = l10[:5]
+                sd = (sum((x - sum(l10) / len(l10)) ** 2 for x in l10) / len(l10)) ** 0.5
+                avg10 = sum(l10) / len(l10)
+                cov = sd / avg10 if avg10 else 0.0
+                mins10 = prior['MIN'].mean()
                 prev_team = prior.iloc[-1]["TEAM_ABBREVIATION"]
                 po_in_l10 = int((prior["SEASON_TYPE"] == "Playoffs").sum())
                 for line, price in (rec.get("lines") or {}).items():
@@ -95,7 +99,8 @@ def main():
                         stat=stat, line=line, price=price, implied=1 / price,
                         n_l10=len(l10), hit_l10=sum(x >= line for x in l10) / len(l10),
                         hit_l5=sum(x >= line for x in l5) / len(l5),
-                        avg_l10=sum(l10) / len(l10), po_in_l10=po_in_l10,
+                        avg_l10=avg10, l3_avg=sum(l10[:3]) / len(l10[:3]), cov=cov, min_avg=mins10,
+                        game=f"{away_abbr}@{home_abbr}", po_in_l10=po_in_l10,
                         actual=actual, minutes=mins,
                         y=(None if actual is None else int(actual >= line)),
                     ))
