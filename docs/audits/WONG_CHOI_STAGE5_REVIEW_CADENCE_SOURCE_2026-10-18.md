@@ -146,3 +146,31 @@ still includes exactly all nine paths from unmerged history, classifies
 the existing allowlisted unified installer. Dashboard deployment is false and
 manual reasons are empty. This is planning evidence, not an executed full
 gate or installer. Preserve the checkpoint on the WIP branch while Tennis runs.
+
+## Tennis activation and cadence release resumption — 2026-10-23
+
+The original Tennis diagnostics payload is now released as
+`c9b222039ec6900bda42f02315a3120b172bdd1a` (source full/push exit 0,
+separate immutable approval at `2026-10-22T18:09:34Z`, merge `18:09:37Z`,
+activation `18:09:43Z`). The original three files match `86d88875cc38`
+byte-for-byte. The controller superseded intermediate `b975376a862f`; after
+independent four-domain file/SHA and installed/loaded alignment verification,
+the original `86d88875cc38` pending manifest was rejected through the existing
+controller as superseded, retaining all records. Primary Telegram success was
+already sent by that release; no duplicate completion send is needed.
+
+Normally aligned this cadence WIP with approved main `c9b222039ec6` without
+conflicts or overlap in the nine cadence paths. All upstream NBA/Dashboard/
+Tennis changes remain inherited main, not cadence scope. The resulting delta
+still contains exactly the same nine paths. Fresh combined Central/installer/
+clock tests, quick gate, exact-nine-path preview and full source/clean approval
+gates are required on this base before actual installer/calendar acceptance.
+No research/model unfreeze, notification route, scientific ruler or retention
+change is included. Calendar installation success must not be confused with
+an observed Monday firing or an accepted real research pilot.
+
+Fresh c9-aligned verification: all Central plus shared installer/clock tests
+passed 111 cases in 64.67 s (`wc-run-g0kmiv9y`); quick gate passed
+(`wc-run-wvhjiavw`), scoring goldens unchanged. AU sparse trial/new-field and
+HKJC stale-baseline warnings remain visible. No fixture, deadline or assertion
+was relaxed. These are scoped/quick results, not full-release acceptance.
