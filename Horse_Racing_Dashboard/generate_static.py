@@ -650,7 +650,21 @@ def _merge_sports_feed(cached, fresh, today=None):
                     for w in (new.get("warnings") or []))
             and _run_date(new) >= _run_date(old)
         )
-        if old_is_good and not expired and not firewall_blocked and (not new_is_good or older):
+        # The local checkout analysed this date and found NO validated combo (the
+        # calibrated probability layer makes that the normal case: most days have no
+        # +EV 穩膽).  That is a real answer, not a missing domain: source files exist
+        # and the warning says so.  Without this, the combos published earlier on the
+        # same date -- e.g. by an earlier, over-confident run -- stayed on the board
+        # for ever (2026-10-23: +98.6% EV combos survived the honest re-run).
+        no_validated_combos = (
+            sport == "nba"
+            and new_status == "blocked"
+            and bool(new.get("source_files"))
+            and "no_validated_nba_combos" in [str(w) for w in (new.get("warnings") or [])]
+            and _run_date(new) >= _run_date(old)
+        )
+        if (old_is_good and not expired and not firewall_blocked
+                and not no_validated_combos and (not new_is_good or older)):
             kept = copy.deepcopy(old)
             warnings = list(kept.get("warnings") or [])
             marker = "preserved_from_live_snapshot:local_domain_unavailable_or_older"
