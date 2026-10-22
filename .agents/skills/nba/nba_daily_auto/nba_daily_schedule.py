@@ -45,6 +45,7 @@ from nba_research_evidence import (  # noqa: E402
     freeze_settlement_artifacts,
 )
 import nba_market_ledger as market_ledger  # noqa: E402
+import nba_combo_roi  # noqa: E402
 import nba_no_prediction as no_prediction  # noqa: E402
 
 HOOK_DIR = (
@@ -1258,6 +1259,18 @@ def _record_settlement_evidence(archive: Path, target_date: str, log: RunLog) ->
     )
 
 
+def _combo_roi_text(target_date: str, log: RunLog) -> str:
+    """Daily + cumulative combo ROI by type; never blocks the postgame summary."""
+    try:
+        reports = nba_combo_roi.write_reports(target_date, market_ledger.ledger_root())
+        log.step("combo_roi", "ok", combos=reports["daily"]["total"]["combos"],
+                 settled=reports["daily"]["total"]["settled"])
+        return "\n".join(nba_combo_roi.message_lines(reports))
+    except Exception as exc:  # noqa: BLE001 — a reporting add-on must not fail postgame
+        log.step("combo_roi", "failed", error=f"{type(exc).__name__}: {exc}")
+        return "📊 組合 ROI：今次計算失敗（已記錄），唔影響上面賽果摘要。"
+
+
 def run_postgame(target_date: str, log: RunLog) -> str:
     folder = live_dir(target_date)
     if not folder.is_dir():
@@ -1338,6 +1351,7 @@ def run_postgame(target_date: str, log: RunLog) -> str:
     elif archive.is_dir():
         try:
             performance_message = postgame_message(target_date, archive)
+            performance_message += "\n\n" + _combo_roi_text(target_date, log)
         except ValueError as exc:
             warning = notify_once(
                 f"postgame-performance-blocked:{target_date}",
