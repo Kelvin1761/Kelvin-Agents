@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import importlib.util
+import io
 import multiprocessing
 import os
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import redirect_stdout
 from dataclasses import replace
 from pathlib import Path
 
@@ -128,6 +131,7 @@ def test_process_environment_cannot_widen_or_change_recipient(tmp_path, monkeypa
     box.dispatch(path)
     args, kwargs = calls[0]
     assert args[args.index("--audience") + 1] == "primary"
+    assert "--single-attempt" in args
     assert kwargs["env"]["TELEGRAM_CHAT_ID"] == "98765"
     assert kwargs["env"]["WC_NOTIFY_TELEGRAM_CHAT"] == "98765"
     assert kwargs["env"]["TELEGRAM_BOT_TOKEN"] == "123456:dummy-secret"
@@ -136,6 +140,40 @@ def test_process_environment_cannot_widen_or_change_recipient(tmp_path, monkeypa
     records = "".join(p.read_text() for p in box.root.rglob("*.json"))
     assert "dummy-secret" not in records and "98765" not in records
     assert "dummy-secret" not in repr(route())
+
+
+def test_real_helper_uncertain_post_is_not_retried_inside_or_after_outbox(tmp_path, monkeypatch):
+    helper = Path(__file__).resolve().parents[2] / "shared_racing/scripts/racing_telegram.py"
+    module_spec = importlib.util.spec_from_file_location("research_single_attempt_helper", helper)
+    notifier = importlib.util.module_from_spec(module_spec)
+    module_spec.loader.exec_module(notifier)
+    attempts = []
+
+    def uncertain_post(request, timeout):
+        attempts.append(request)
+        # Simulates a server accepting the message before its reply is lost.
+        raise ConnectionResetError("accepted, response lost")
+
+    monkeypatch.setattr(notifier.urllib.request, "urlopen", uncertain_post)
+    monkeypatch.setattr(notifier, "telegram_credentials", lambda: ("123456:dummy-secret", "98765"))
+    monkeypatch.setattr(notifier, "telegram_targets", lambda audience: ["98765"])
+    monkeypatch.setattr(notifier.time, "sleep", lambda _: None)
+    monkeypatch.delenv("WC_TELEGRAM_DISABLE", raising=False)
+
+    def local_cli(args, **kwargs):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = notifier.main(args[2:])
+        return subprocess.CompletedProcess(args, code, output.getvalue(), "")
+
+    path, box, calls = fixture(tmp_path, run=local_cli)
+    box.helper_path = helper
+    first = box.dispatch(path)
+    second = ResearchTelegramOutbox(box.root, route(), helper_path=helper, run=box.run).dispatch(path)
+    assert first["status"] == second["status"] == "reconcile_required"
+    assert first["transport_reported_sent"] is False
+    assert first["delivery_confirmed"] is False
+    assert len(attempts) == len(calls) == 1
 
 
 def test_process_disable_switch_is_respected_before_claim(tmp_path, monkeypatch):

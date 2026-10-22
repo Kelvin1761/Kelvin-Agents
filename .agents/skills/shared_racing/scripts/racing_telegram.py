@@ -34,17 +34,18 @@ def _transient(exc: Exception) -> bool:
     return isinstance(exc, (OSError, urllib.error.URLError))
 
 
-def _post_with_retry(request: urllib.request.Request, timeout: float) -> dict:
+def _post_with_retry(request: urllib.request.Request, timeout: float, *, single_attempt: bool = False) -> dict:
     """POST once per attempt; retry only transient failures with linear backoff.
 
     2026-10-21: a single `Connection reset by peer` dropped the NBA betting card,
     because the sender tried exactly once."""
-    for attempt in range(1, SEND_ATTEMPTS + 1):
+    attempts = 1 if single_attempt else SEND_ATTEMPTS
+    for attempt in range(1, attempts + 1):
         try:
             with urllib.request.urlopen(request, timeout=timeout) as response:
                 return json.loads(response.read().decode("utf-8"))
         except (OSError, urllib.error.URLError) as exc:
-            if attempt == SEND_ATTEMPTS or not _transient(exc):
+            if attempt == attempts or not _transient(exc):
                 raise
             time.sleep(RETRY_BACKOFF_SECONDS * attempt)
     raise RuntimeError("unreachable")
@@ -118,6 +119,7 @@ def send_message(
     audience: str = "primary",
     dry_run: bool = False,
     timeout: float = 10.0,
+    single_attempt: bool = False,
 ) -> dict:
     parts = _chunks(message)
     if not parts:
@@ -147,7 +149,7 @@ def send_message(
                 method="POST",
             )
             try:
-                body = _post_with_retry(request, timeout)
+                body = _post_with_retry(request, timeout, single_attempt=single_attempt)
             except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
                 failures.append(f"{type(exc).__name__}: {exc}")
                 target_ok = False
@@ -217,6 +219,7 @@ def send_document(
     audience: str = "primary",
     dry_run: bool = False,
     timeout: float = 30.0,
+    single_attempt: bool = False,
 ) -> dict:
     """Send one locally generated report to Telegram recipients.
 
@@ -261,7 +264,7 @@ def send_document(
                 headers={"Content-Type": content_type},
                 method="POST",
             )
-            body = _post_with_retry(request, timeout)
+            body = _post_with_retry(request, timeout, single_attempt=single_attempt)
         except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
             failures.append(f"{type(exc).__name__}: {exc}")
             continue
@@ -289,6 +292,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--caption", default="")
     parser.add_argument("--audience", choices=("primary", "content"), default="primary")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--single-attempt", action="store_true",
+                        help="Never retry an uncertain POST; intended for durable outbox callers")
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args(argv)
     if args.document:
@@ -297,13 +302,15 @@ def main(argv: list[str] | None = None) -> int:
             caption=args.caption,
             audience=args.audience,
             dry_run=args.dry_run,
+            single_attempt=args.single_attempt,
         )
     else:
         message = args.message
         if args.message_file:
             message = args.message_file.read_text(encoding="utf-8")
         result = send_message(
-            message or "", audience=args.audience, dry_run=args.dry_run
+            message or "", audience=args.audience, dry_run=args.dry_run,
+            single_attempt=args.single_attempt,
         )
     if args.as_json:
         print(json.dumps(result, ensure_ascii=False, indent=2))

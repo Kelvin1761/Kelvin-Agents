@@ -212,7 +212,8 @@ class ResearchTelegramOutbox:
                "WC_NOTIFY_TELEGRAM_EXTRA": "", "PYTHONDONTWRITEBYTECODE": "1"}
         reply, reason = None, "helper_exception"
         try:
-            result = self.run([sys.executable, str(helper), "--message", text, "--audience", "primary", "--json"],
+            result = self.run([sys.executable, str(helper), "--message", text, "--audience", "primary",
+                               "--single-attempt", "--json"],
                               env=env, capture_output=True, text=True, timeout=30, check=False)
             if result.returncode != 0:
                 reason = "helper_nonzero"
