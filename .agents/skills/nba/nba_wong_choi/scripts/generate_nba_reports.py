@@ -1636,7 +1636,9 @@ def gen_meeting_intelligence(meta, odds, injuries, news, team_stats, season_phas
     lines.append(f"| **總分盤** | O/U {total} |")
     lines.append(f"| **獨贏** | {away_abbr} {ml_away} / {home_abbr} {ml_home} |")
     lines.append(f"| **節奏** | 中 |")
-    lines.append(f"| **B2B** | 否 |")
+    _b2b = (meta or {}).get("team_b2b") or {}
+    _b2b_teams = [t for t, v in _b2b.items() if v]
+    lines.append(f"| **B2B** | {'、'.join(_b2b_teams) + ' B2B' if _b2b_teams else '否'} |")
     lines.append(f"")
 
     for abbr in [away_abbr, home_abbr]:
@@ -2013,11 +2015,9 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     game_seed = mc_game_seed(meta)
     try:
         from monte_carlo_nba import run_monte_carlo_for_cards, format_mc_section, build_mc_lookup, context_inputs_status
-        is_b2b_map = {}
-        for t_abbr in [away_abbr, home_abbr]:
-            fatigue = meta.get("away" if t_abbr == away_abbr else "home", {}).get("fatigue", {})
-            is_b2b_map[t_abbr] = fatigue.get("is_b2b", False) if isinstance(fatigue, dict) else False
-        
+        team_b2b_meta = meta.get("team_b2b") or {}
+        is_b2b_map = {t_abbr: bool(team_b2b_meta.get(t_abbr)) for t_abbr in [away_abbr, home_abbr]}
+
         mc_results = run_monte_carlo_for_cards(
             all_cards, spread=odds.get("spread_away"),
             is_b2b_map=is_b2b_map, team_stats=team_stats, meta=meta, n=10000,
@@ -2292,6 +2292,23 @@ def write_market_eval_sidecar(output_path, report_text, sportsbet, meta, all_car
 
 # ─── Main ───────────────────────────────────────────────────────────────
 
+def detect_team_b2b(ext_players, teams):
+    """True for a team when most players with known rest are on 0 days rest.
+
+    Before 2026-10-23 this fired on `fatigue_pct > 0 or warning`, i.e. whenever ANY
+    player had a historical PPG drop on back-to-backs - true for every team every
+    day (22/22 teams on 2026-10-22), so every leg took a -2/-4 B2B penalty and the
+    Monte Carlo never saw the flag.  Uses the per-player `is_b2b` the extractor
+    derives from the game log and the game's US local date."""
+    result = {}
+    for abbr in teams:
+        known = [(p.get("fatigue") or {}) for p in (ext_players or {}).get(abbr, [])]
+        known = [f for f in known if "is_b2b" in f and f.get("rest_known", True)]
+        flagged = sum(1 for f in known if f.get("is_b2b"))
+        result[abbr] = bool(known) and flagged * 2 >= len(known)
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description="NBA Wong Choi V2 — Pre-filled Skeleton Generator")
     parser.add_argument("--sportsbet", required=True, help="Sportsbet odds JSON (from sportsbet_parser.py)")
@@ -2372,14 +2389,10 @@ def main():
     # V3: Pre-compute context for each team
     spread = ex_odds.get("spread_away", None)
 
-    # Detect B2B from fatigue data (scan all players, if any has fatigue warning → B2B)
-    team_b2b = {away_abbr: False, home_abbr: False}
-    for abbr in [away_abbr, home_abbr]:
-        for p in ext_players.get(abbr, []):
-            fatigue = p.get("fatigue") or {}
-            if fatigue.get("fatigue_pct", 0) > 0 or fatigue.get("warning", ""):
-                team_b2b[abbr] = True
-                break
+    # Today's back-to-back flag per team: majority of the roster's own game logs
+    # say the last game was yesterday (see detect_team_b2b).
+    team_b2b = detect_team_b2b(ext_players, [away_abbr, home_abbr])
+    meta["team_b2b"] = team_b2b
 
     # Compute defender impact per opponent team (avg PCT_PLUSMINUS of top 3)
     def get_defender_impact(team_abbr):
