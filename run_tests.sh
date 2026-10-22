@@ -52,6 +52,8 @@ run_suite "HKJC extractor"      "$REPO_ROOT" .agents/skills/hkjc_racing/hkjc_rac
 run_suite "HKJC reflector"      "$REPO_ROOT" .agents/skills/hkjc_racing/hkjc_reflector/tests
 run_suite "Shared racing"       "$REPO_ROOT" .agents/skills/shared_racing/tests
 run_suite "Shared Wong Choi"   "$REPO_ROOT" .agents/skills/shared_wong_choi/tests
+# Central's scheduler/calendar/CLI tests must participate in every full gate.
+run_suite "Central Wong Choi"  "$REPO_ROOT" .agents/skills/central_wong_choi/tests
 run_suite "Race compliance QA"  "$REPO_ROOT" .agents/skills/race_compliance_qa/tests
 run_suite "NBA Wong Choi"       "$REPO_ROOT" \
   .agents/skills/nba/nba_wong_choi/tests \

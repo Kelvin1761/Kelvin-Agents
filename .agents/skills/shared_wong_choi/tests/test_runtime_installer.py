@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import os
+import json
 import plistlib
 import shutil
 import sqlite3
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -15,6 +17,38 @@ INSTALLER = (
     REPO_ROOT
     / ".agents/skills/central_wong_choi/install_production_runtime.sh"
 )
+
+
+@pytest.mark.parametrize("central_fails", [False, True])
+def test_full_gate_runs_central_tests_and_propagates_failure(tmp_path, central_fails):
+    """Exercise the real runner with stub suites, never production installers."""
+    root = tmp_path / "gate"
+    root.mkdir()
+    (root / "tennis-wong-choi").mkdir()
+    runner = root / "run_tests.sh"
+    runner.write_bytes((REPO_ROOT / "run_tests.sh").read_bytes())
+    calls = root / "calls.jsonl"
+    python = root / "suite-python"
+    python.write_text(
+        f"#!{sys.executable}\n"
+        "import json, os, sys\n"
+        "with open(os.environ['GATE_CALLS'], 'a') as output:\n"
+        "    output.write(json.dumps(sys.argv[1:]) + '\\n')\n"
+        "raise SystemExit(7 if os.environ['FAIL_CENTRAL'] == '1' and "
+        "'.agents/skills/central_wong_choi/tests' in sys.argv else 0)\n",
+        encoding="utf-8",
+    )
+    python.chmod(0o755)
+    env = {**os.environ, "PYTHON_BIN": str(python), "GATE_CALLS": str(calls),
+           "FAIL_CENTRAL": "1" if central_fails else "0"}
+    result = subprocess.run(["bash", str(runner)], cwd=root, env=env,
+                            capture_output=True, text=True, timeout=20)
+    invoked = [json.loads(line) for line in calls.read_text().splitlines()]
+    assert sum(".agents/skills/central_wong_choi/tests" in row for row in invoked) == 1
+    assert len(invoked) >= 15  # Retain the original 14 Python suites too.
+    assert any("tests" in row for row in invoked)  # Continue through Tennis after a failure.
+    assert result.returncode == (1 if central_fails else 0), result.stdout + result.stderr
+    assert ("FAIL  Central Wong Choi" if central_fails else "PASS  Central Wong Choi") in result.stdout
 
 
 def test_runtime_installer_snapshot_restore_is_exact_and_idempotent(

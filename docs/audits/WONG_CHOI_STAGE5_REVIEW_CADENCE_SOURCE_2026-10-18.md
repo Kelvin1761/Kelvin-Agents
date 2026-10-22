@@ -92,3 +92,30 @@ cadence release, advancing main or changing LaunchAgents. The original Tennis
 manifest remains pending and will be refreshed first using the repaired
 controller. Reconcile any later approved main, then rerun full source/immutable
 approval gates and installed-calendar/native acceptance before cadence delivery.
+
+## Full-gate coverage correction (nine-path candidate)
+
+Read-only gate inventory found that the configured full runner omitted the
+independent `central_wong_choi/tests` directory. The separately run Central
+tests remain valid scoped evidence, but the configured 15-suite historical
+passes did not automatically run this directory. Do not conflate them.
+
+The cadence candidate now has nine paths: the original eight plus root
+`run_tests.sh`. Its only runner change adds a separate Central suite, retaining
+every previous suite and existing failure aggregation. The already scoped
+`test_runtime_installer.py` adds an isolated real-runner test with stub Python
+suites: Central must run exactly once; its failure must propagate to nonzero
+exit while subsequent suites still run. Both cases failed before registration
+(2 RED failures, 10 deselected, 1.50 s).
+
+After registration, all Central tests plus shared installer/clock suites pass
+111 tests in 77.35 s (`wc-run-bnzqnyjs`). Quick gate also passes
+(`wc-run-e_jxf2va`), with unchanged scoring goldens and existing AU sparse/new
+field and HKJC stale-baseline warnings. No deadline, fixture, exclusion,
+release-policy, approval or rollback protection was relaxed.
+
+These results apply to the aligned `778ba75dd3f2` WIP base. Later approved main
+has advanced; re-align after the original Tennis refresh and run the new full
+gate plus immutable approval recheck. The old eight-path dry-run is historical;
+the nine-path dry-run/installer/native acceptance are still required. This is
+non-main source preservation only, not a release or installed-calendar claim.
