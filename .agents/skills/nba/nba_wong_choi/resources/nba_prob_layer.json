@@ -1,0 +1,16 @@
+{
+  "version": "C-2026-10-22",
+  "enabled": false,
+  "experiment": "docs/experiments/EXP-20261022-03-nba-probability-layer-vs-market.md",
+  "fit": {
+    "corpus": "2025-26 Sportsbet milestone ladders, 2026-04-12..2026-05-06 (19 days, dev split only)",
+    "holdout_checked": "2026-05-08..2026-06-10 (11 days): dBrier vs live-like engine -0.0249 [-0.0325,-0.0175], slope 0.962",
+    "caveat": "Fitted on playoffs/play-in only; not yet validated on early-season. Market-anchored (beta 0.755) so expected to travel, but re-fit once the 2025-10/11 corpus and live shadow data exist."
+  },
+  "formula": "logit(p) = a_stat + beta*logit(clip(1/price, 0.02, 0.98)) + gamma*logit(clip(L10_hit_rate, 0.05, 0.95))",
+  "intercepts": {"PTS": -0.295, "REB": -0.160, "AST": -0.320, "FG3M": -0.287},
+  "beta_market": 0.755,
+  "gamma_l10": 0.140,
+  "clip_market": [0.02, 0.98],
+  "clip_l10": [0.05, 0.95]
+}
