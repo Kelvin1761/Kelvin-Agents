@@ -119,3 +119,30 @@ has advanced; re-align after the original Tennis refresh and run the new full
 gate plus immutable approval recheck. The old eight-path dry-run is historical;
 the nine-path dry-run/installer/native acceptance are still required. This is
 non-main source preservation only, not a release or installed-calendar claim.
+
+## Current-main preparation checkpoint
+
+Normally merged approved main `bc5b1d2ac065fdaa1a9cf9e066710539793b1cb1`
+without conflicts and preserved the result as remote WIP `e38b7917`.
+The delta against that main remains exactly the nine paths above; the upstream
+NBA probability-layer changes are inherited main, not cadence-authored scope.
+An initial dry-run selected all nine already committed paths and was correctly
+rejected as `scoped path has no changes`. No release manifest, gate pass or
+installer execution resulted. The release entry requires a changed selected
+path; this checkpoint supplies that audit change while the existing controller
+classifies the complete unmerged nine-path history. Verify that union in the
+next dry-run. Do not omit earlier WIP code or claim the old eight-path preview
+as current acceptance.
+
+The first Tennis refresh process and its test descendants are no longer present;
+its original immutable payload was preserved as WIP `cb8dcdd2` after a fresh
+quick gate. The original manifest is now being refreshed again through the
+same deployed controller, with a fresh full gate. Its interrupted earlier gate
+is unproven, not a pass. No concurrent cadence release is started here.
+
+The corrected dry-run exited 0 (`wc-run-raozva_f`): selecting this changed audit
+still includes exactly all nine paths from unmerged history, classifies
+`automation` / `full`, targets all four production domains and selects only
+the existing allowlisted unified installer. Dashboard deployment is false and
+manual reasons are empty. This is planning evidence, not an executed full
+gate or installer. Preserve the checkpoint on the WIP branch while Tennis runs.
