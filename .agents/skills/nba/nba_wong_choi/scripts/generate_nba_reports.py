@@ -33,6 +33,8 @@ NBA_SKILL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 sys.path.insert(0, NBA_SKILL_DIR)
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import nba_prob_layer
 
 _ML_PREDICTOR = None  # lazy-loaded for hybrid/ml modes
 
@@ -721,13 +723,24 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             final_prob = round(est_prob + hybrid_adj, 1)
             final_engine = "hybrid"
 
-        final_prob = round(max(1.0, min(98.0, final_prob + usage_penalty + rebound_bonus)), 1)
+        legacy_prob = round(max(1.0, min(98.0, final_prob + usage_penalty + rebound_bonus)), 1)
+        # EXP-20261022-03: calibrated, market-anchored probability replaces the legacy
+        # engine output when enabled (resources/nba_prob_layer.json). legacy_prob is kept
+        # for audit/comparison.
+        layer_prob = nba_prob_layer.calibrated_prob(stat_key, odds_str, hr_l10)
+        if layer_prob is not None:
+            final_prob = layer_prob
+            final_engine = f"calibrated({final_engine})"
+        else:
+            final_prob = legacy_prob
         final_edge = edge_calc(final_prob, imp)
         final_true_ev = ev_pct_calc(final_prob, float(odds_str))
         conf_mult = confidence_multiplier(card["cov"])
         final_conf_adj_ev = round(final_true_ev * conf_mult, 2)
 
         engine_notes = []
+        if layer_prob is not None:
+            engine_notes.append(f"CAL {layer_prob}% (legacy {legacy_prob}%)")
         if ml_est_prob is not None:
             engine_notes.append(f"ML {ml_est_prob}%")
         engine_notes.append(f"10F {est_prob}%")
@@ -743,6 +756,8 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             "implied_prob": imp,
             "estimated_prob": final_prob,
             "det_prob": est_prob,
+            "legacy_prob": legacy_prob,
+            "calibrated_prob": layer_prob,
             "hybrid_prob": final_prob if final_engine == "hybrid" else None,
             "ml_prob": ml_prob,
             "ml_est_prob": ml_est_prob,
@@ -2242,6 +2257,7 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
                 "hybrid_adj_shadow_pp": la.get("hybrid_adj_shadow_pp"),
                 "hybrid_adj_applied_pp": la.get("hybrid_adj_applied_pp"),
                 "p_final": _pct_to_prob(la.get("estimated_prob")),
+                "p_legacy": _pct_to_prob(la.get("legacy_prob")),
                 "p_monte_carlo": _pct_to_prob(mc.get("mc_prob")) if mc else None,
                 "p_l10_base_rate": _pct_to_prob(la.get("hit_l10")),
                 "engine": la.get("engine"),
