@@ -53,15 +53,22 @@ Completed engineering is not Stage 5 completion. Tasks 6–10 stay unchecked.
   the later acceptance-note update is preserved on a non-main branch while
   another controller runs, not silently merged during its approval gate.
 - Original Tennis release `86d88875cc38` remains pending, with exactly its
-  original three paths. Fixed-controller dry-run preserves the complete
-  manifest payload; real refresh/supersede, fresh gates and native acceptance
-  still need to run. Do not manually duplicate that pending release.
-- Cadence remains the original eight-path WIP, normally aligned to approved
-  `778ba75dd3f2` and saved as `de8669df`. Four selected maintenance/calendar/
-  installer/clock suites passed 71 tests; quick gate passed. These narrower
-  tests do not replace the earlier 109-case coverage or a current full gate.
-  Fresh full source/approval gates, allowlisted installer snapshot/rollback,
-  actual loaded-calendar verification and native receipt acceptance are open.
+  original three paths. After observing the previous other controller finish,
+  fixed-controller preflight verified exact scope, the original remote SHA and
+  zero main overlap. Its real refresh is now running on approved `bc5b1d2a`;
+  fresh full source/approval gates, supersede and native acceptance remain
+  unproven. Do not start a duplicate or reuse the interrupted older recheck.
+- Cadence was aligned to approved `778ba75dd3f2` as eight-path WIP `de8669df`.
+  Gate inventory then found Central's independent tests were not registered
+  in the configured full runner. WIP `e909a730` adds only `run_tests.sh` to the
+  scope (now nine paths), retaining all old suites and adding regressions in
+  the already scoped installer test. Both RED cases reproduced the omission;
+  all Central/installer/clock tests then passed 111 cases, plus quick gate.
+  This strengthens coverage, not approval/gate thresholds or scientific rules.
+  Historical configured-full passes are not proof those Central tests ran.
+  Re-alignment to later main, nine-path dry-run, fresh full source/approval
+  gates, allowlisted installer snapshot/rollback, actual loaded calendar and
+  native receipt acceptance remain open.
 - Fresh read-only inspection of deployed code still verifies 0/4 reviewed
   power profiles, promotion false, AU/NBA incident latches present, and an
   installed research-review calendar containing only daily 07:10. Source
@@ -76,9 +83,9 @@ Completed engineering is not Stage 5 completion. Tasks 6–10 stay unchecked.
 | 9 Other pilots | A real AU/HKJC ranking-gate loop under the frozen ruler, plus NBA descriptive/forward evidence as required. Other agents' manual model experiments are not automatically Stage 5 runner acceptance. |
 | 10 Exit | All formal checkpoint decisions, health/reproducibility/fault/leakage/resource proof, two genuine domain pilots, and an explicit Stage 6 entry decision. No completion inferred from code gates alone. |
 
-Next serial sequence: observe the existing live release holder until terminal,
-refresh original Tennis via the repaired controller, then reconcile/release the
-eight-path cadence WIP with real installer acceptance. Finish Telegram/private
+Next serial sequence: observe the already running original Tennis refresh until
+terminal, then reconcile/release the nine-path cadence WIP with real installer
+acceptance. Finish Telegram/private
 Dashboard integration acceptance and reviewed safety/pilot gaps afterward.
 The standing engineering approval does not authorize model/ruler/holdout,
 incident-unfreeze, bankroll or deletion actions. Previously reported exact-byte
