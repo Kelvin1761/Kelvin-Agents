@@ -55,7 +55,10 @@ Completed engineering is not Stage 5 completion. Tasks 6–10 stay unchecked.
 - Original Tennis release `86d88875cc38` remains pending, with exactly its
   original three paths. After observing the previous other controller finish,
   fixed-controller preflight verified exact scope, the original remote SHA and
-  zero main overlap. Its real refresh is now running on approved `bc5b1d2a`;
+  zero main overlap. The first process later disappeared with no new manifest;
+  its original payload was saved as non-main WIP `cb8dcdd2` after a fresh quick
+  gate. The same original manifest is now refreshing through the fixed
+  controller on branch `wc-refresh-86d88875cc38-r2`, approved `bc5b1d2a`;
   fresh full source/approval gates, supersede and native acceptance remain
   unproven. Do not start a duplicate or reuse the interrupted older recheck.
 - Cadence was aligned to approved `778ba75dd3f2` as eight-path WIP `de8669df`.
@@ -66,9 +69,29 @@ Completed engineering is not Stage 5 completion. Tasks 6–10 stay unchecked.
   all Central/installer/clock tests then passed 111 cases, plus quick gate.
   This strengthens coverage, not approval/gate thresholds or scientific rules.
   Historical configured-full passes are not proof those Central tests ran.
-  Re-alignment to later main, nine-path dry-run, fresh full source/approval
-  gates, allowlisted installer snapshot/rollback, actual loaded calendar and
-  native receipt acceptance remain open.
+  Normal alignment to approved `bc5b1d2a` and nine-path dry-run now passed:
+  WIP `d18a4107`, scratch `wc-run-raozva_f`, automation/full, all four domains,
+  unified installer only, no Dashboard deploy/manual reason. Fresh full
+  source/approval gates, installer snapshot/rollback, actual loaded calendar
+  and native receipt acceptance remain open; no cadence activation occurred.
+- Research notification source WIP `5ca506ba` fixes a nested retry mismatch:
+  the durable outbox suppressed a second helper invocation, but the helper
+  retried ambiguous transient POSTs internally. Research now explicitly requests
+  `--single-attempt`; default racing retries are unchanged. Two RED tests
+  reproduced the missing flag; final helper/outbox 45 tests and quick passed,
+  including real-helper lost-response/recreated-dispatcher coverage without
+  network. Preserve all five paths and release serially after Tennis/cadence;
+  no full gate, deployment, actual research send or exactly-once delivery claim.
+- Task 6 callback prerequisite: deployed `research_supervision.py` deliberately
+  blocks both `power-dev-engine` and `power-dev-producer` with
+  `label_safe_domain_callback_required`. Generic self-reported metrics cannot
+  supply power evidence. Implement and independently review separate AU/HKJC
+  callbacks that expose only pre-race scorer inputs and let the measurement
+  layer verify the seven frozen metrics against separately held dev labels.
+  Preserve terminal isolation and the existing block until that proof exists.
+  Then generate genuine dev-only variance, obtain a separately reviewed
+  meaningful-effect/power authority and only afterward verify readiness.
+  Do not fill numeric profiles from fixtures or unfreeze AU/NBA incidents.
 - Fresh read-only inspection of deployed code still verifies 0/4 reviewed
   power profiles, promotion false, AU/NBA incident latches present, and an
   installed research-review calendar containing only daily 07:10. Source
