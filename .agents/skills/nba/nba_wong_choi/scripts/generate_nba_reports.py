@@ -787,6 +787,38 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
 
 # ─── Auto-Combo Engine ──────────────────────────────────────────────────
 
+def classify_injury_status(status):
+    """ESPN injury status -> 'out' | 'dtd' | 'ok'.
+
+    Before 2026-10-23 only the literal "Out" excluded a player and only "Day-To-Day"
+    flagged one, so "Out For Season", "Doubtful", "Suspension" and "Questionable"
+    were all treated as healthy."""
+    text = str(status or "").strip().lower()
+    if not text:
+        return "ok"
+    if (text.startswith("out") or text in ("doubtful", "suspension", "suspended", "inactive")
+            or "injured reserve" in text or text == "ir"):
+        return "out"
+    if text in ("day-to-day", "day to day", "dtd", "questionable", "game-time decision", "gtd"):
+        return "dtd"
+    return "ok"
+
+
+def injury_status_for(injuries, team_abbr, player_name):
+    """Injury status by full-name identity (accent/suffix-insensitive), not exact string.
+
+    The odds feed spells "Luka Doncic" where ESPN's roster says "Luka Dončić"; an exact
+    dict lookup silently reported such players as healthy."""
+    team = (injuries or {}).get(team_abbr) or {}
+    if player_name in team:
+        return team[player_name]
+    key = player_name_key(player_name)
+    for name, status in team.items():
+        if player_name_key(name) == key:
+            return status
+    return ""
+
+
 def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
     """Build a flat list of all possible legs from player cards + team odds.
     V3.1: SIP-N01 bench minutes risk flag, SIP-N05 high CoV 3PM filter."""
@@ -799,14 +831,15 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
     for card in all_cards:
         team_abbr = card["team"]
         player_name = card["name"]
-        status = injuries.get(team_abbr, {}).get(player_name, "")
-        
-        # ⚠️ Skip players who are strictly OUT or injured so they do not pollute safely generated combos
-        if status.lower() == "out":
+        status = injury_status_for(injuries, team_abbr, player_name)
+        injury_level = classify_injury_status(status)
+
+        # ⚠️ Skip players who are out (or doubtful / suspended) so they do not pollute generated combos
+        if injury_level == "out":
             continue
-        
-        # Flag Day-To-Day players (excluded from 穩膽 only, allowed in other combos)
-        is_day_to_day = status.lower() in ("day-to-day", "dtd")
+
+        # Flag Day-To-Day / Questionable players (excluded from 穩膽 only, allowed in other combos)
+        is_day_to_day = injury_level == "dtd"
             
         cl = cat_label.get(card["category"], card["category"])
 
