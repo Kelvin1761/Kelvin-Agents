@@ -13,6 +13,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+from pathlib import Path
 
 os.environ.setdefault("PYTHONUTF8", "1")
 if hasattr(sys.stdout, "reconfigure"):
@@ -29,7 +30,19 @@ PYTHON = "python3" if shutil.which("python3") else "python"
 FETCH_RESULTS = os.path.join(SCRIPT_DIR, "fetch_nba_results.py")
 FETCH_PBP = os.path.join(SCRIPT_DIR, "fetch_nba_pbp.py")
 VERIFY_PROPS = os.path.join(SCRIPT_DIR, "verify_props_hits.py")
-DB_PATH = os.path.join(WORKSPACE_ROOT, "nba_reflector.db")
+DB_PATH = str(Path.home() / "WongChoiData" / "NBA" / "nba_reflector.db")
+
+
+def open_reflector_db() -> sqlite3.Connection:
+    """Keep mutable history outside code; never silently split legacy history."""
+    legacy = Path(WORKSPACE_ROOT) / "nba_reflector.db"
+    if legacy.exists() or legacy.is_symlink():
+        raise RuntimeError("Legacy NBA reflector DB requires verified controlled relocation")
+    destination = Path(DB_PATH)
+    if destination.is_symlink():
+        raise RuntimeError("NBA reflector DB must not be a symlink")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    return sqlite3.connect(str(destination))
 
 STAT_ALIASES = {
     "points": "pts",
@@ -1135,7 +1148,7 @@ def main() -> None:
         ml_summary = None
         print("🚫 no_prediction date: reflector DB and ML evaluation skipped.")
     else:
-        conn = sqlite3.connect(DB_PATH)
+        conn = open_reflector_db()
         conn.row_factory = sqlite3.Row
         ensure_db(conn)
         upserted = upsert_rows(conn, rows)

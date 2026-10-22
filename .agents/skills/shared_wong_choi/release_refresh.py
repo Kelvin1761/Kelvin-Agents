@@ -114,6 +114,17 @@ def refresh_release(
     # The commit message is the one thing the manifest does not record.
     message = _git(repo, "log", "-1", "--pretty=%s", old_commit)
 
+    # A scoped save can include earlier WIP commits plus an audit-only tip.
+    # Replay the immutable candidate tree relative to its gated rollback target,
+    # not only the last commit's diff. Reject unrecorded paths before checkout.
+    payload_paths = set(filter(None, _git(
+        repo, "diff", "--no-renames", "--name-only", "-z",
+        str(manifest["rollback_target"]), old_commit,
+    ).split("\0")))
+    outside = sorted(payload_paths.difference(scope))
+    if outside:
+        raise ReleaseError(f"release payload outside recorded scope: {outside}")
+
     plan = {
         "status": "dry_run",
         "supersedes": manifest["release_id"],
@@ -141,8 +152,13 @@ def refresh_release(
 
     branch = _free_branch(repo, old_commit)
     original_head = _git(repo, "rev-parse", "HEAD")
+    # Synthetic single-parent commit: same candidate tree, complete gated base
+    # delta, normal Git three-way/merge-driver behaviour, no branch publication.
+    tree = _git(repo, "rev-parse", f"{old_commit}^{{tree}}")
+    replay_commit = _git(repo, "commit-tree", tree, "-p",
+                         str(manifest["rollback_target"]), "-m", message)
     _run(repo, "git", "checkout", "-q", "-B", branch, main_sha)
-    picked = _run(repo, "git", "cherry-pick", "-n", old_commit, check=False)
+    picked = _run(repo, "git", "cherry-pick", "-n", replay_commit, check=False)
     if picked.returncode != 0:
         conflicts = _run(repo, "git", "diff", "--name-only", "--diff-filter=U",
                          check=False).stdout.split()

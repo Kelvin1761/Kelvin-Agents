@@ -197,3 +197,73 @@ def test_there_is_no_refresh_all(two_pending) -> None:
 
     assert not hasattr(mod, "refresh_all")
     assert "all" not in inspect.signature(refresh_release).parameters
+
+
+def stacked_pending(two_pending):
+    repo, state, first, _second = two_pending
+    git(repo, "checkout", "-q", "-B", "stacked", "origin/main")
+    (repo / "payload.py").write_text("VALUE = 42\n", encoding="utf-8")
+    git(repo, "add", "payload.py")
+    git(repo, "commit", "-m", "wip: preserve engineering payload")
+    (repo / "notes.md").write_text("Verified source candidate\n", encoding="utf-8")
+    candidate = prepare_release(repo, paths=["notes.md"], message="fix: full payload",
+                                state_root=state / "releases", notify=False)
+    return repo, state, first, candidate
+
+
+def test_refresh_replays_entire_manifest_not_only_audit_tip(two_pending):
+    repo, state, first, candidate = stacked_pending(two_pending)
+    assert set(candidate["scope"]) == {"payload.py", "notes.md"}
+    assert git(repo, "diff-tree", "--no-commit-id", "--name-only", "-r", candidate["commit"]) == "notes.md"
+    approve_release(repo, state, selector=first["commit"], actor="t", notify=False)
+    out = refresh_release(repo, state, selector=candidate["commit"], actor="t", notify=False)
+    assert set(out["release"]["scope"]) == set(candidate["scope"])
+    assert git(repo, "show", out["release"]["commit"] + ":payload.py") == "VALUE = 42"
+    assert out["release"]["policy"]["check"] == "full"
+    assert out["release"]["check_exit_code"] == 0
+
+
+def test_refresh_does_not_hide_conflict_in_earlier_payload(two_pending):
+    repo, state, first, candidate = stacked_pending(two_pending)
+    git(repo, "checkout", "-q", "-B", "payload-conflict", "origin/main")
+    (repo / "payload.py").write_text("VALUE = 99\n", encoding="utf-8")
+    conflicting = prepare_release(repo, paths=["payload.py"], message="other payload",
+                                  state_root=state / "releases", notify=False)
+    approve_release(repo, state, selector=conflicting["commit"], actor="t", notify=False)
+    with pytest.raises(ReleaseError, match="does not replay cleanly"):
+        refresh_release(repo, state, selector=candidate["commit"], actor="t", notify=False)
+    assert git(repo, "diff", "--name-only", "--diff-filter=U") == ""
+    assert git(repo, "status", "--porcelain", "--untracked-files=no") == ""
+
+
+def test_refresh_rejects_payload_outside_recorded_scope(two_pending, monkeypatch):
+    import shared_wong_choi.release_refresh as module
+    repo, state, first, candidate = stacked_pending(two_pending)
+    approve_release(repo, state, selector=first["commit"], actor="t", notify=False)
+    load = module._load_release
+    def tampered(*args):
+        path, manifest = load(*args)
+        return path, {**manifest, "scope": ["notes.md"]}
+    monkeypatch.setattr(module, "_load_release", tampered)
+    before = git(repo, "rev-parse", "HEAD")
+    with pytest.raises(ReleaseError, match="outside recorded scope"):
+        refresh_release(repo, state, selector=candidate["commit"], actor="t", notify=False)
+    assert git(repo, "rev-parse", "HEAD") == before
+
+
+def test_complete_payload_preserves_binary_and_earlier_deletion(two_pending):
+    repo, state, first, _second = two_pending
+    git(repo, "checkout", "-q", "-B", "binary-stack", "origin/main")
+    raw = b"\x00\xff\x01immutable payload\x00"
+    (repo / "payload.bin").write_bytes(raw)
+    (repo / "README.md").unlink()
+    git(repo, "add", "payload.bin", "README.md")
+    git(repo, "commit", "-m", "wip: binary and deleted path")
+    (repo / "audit.md").write_text("Later audit\n", encoding="utf-8")
+    candidate = prepare_release(repo, paths=["audit.md"], message="binary payload",
+                                state_root=state / "releases", notify=False)
+    approve_release(repo, state, selector=first["commit"], actor="t", notify=False)
+    out = refresh_release(repo, state, selector=candidate["commit"], actor="t", notify=False)
+    new_sha = out["release"]["commit"]
+    assert subprocess.check_output(["git", "show", new_sha + ":payload.bin"], cwd=repo) == raw
+    assert "README.md" not in git(repo, "ls-tree", "--name-only", new_sha).splitlines()
