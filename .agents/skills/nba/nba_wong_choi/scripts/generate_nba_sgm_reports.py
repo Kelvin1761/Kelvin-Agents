@@ -119,11 +119,30 @@ def extract_summary(content):
 
 
 def extract_banker_leg(content):
-    """Extract the strongest single banker leg from the summary section."""
-    match = re.search(r'最強一關.*?[：:]\s*(.+?)(?:\n|$)', content)
-    if match:
-        return match.group(1).strip()
-    return None
+    """Highest-EV leg inside combo 1 (穩膽), same pick as the dashboard banker.
+
+    The old version searched the summary for "最強一關", a label the report
+    never prints (it writes "最強關"), so the 速覽 table was N/A on every row.
+    "最強關" is also the best leg of the whole game, often a @7.5 long shot, so
+    it must not stand in for the 穩膽 leg — read combo 1's own table instead.
+    """
+    section = extract_combos(content).get(1)
+    if not section:
+        return None
+    best = None
+    for line in section.split('\n'):
+        row = re.match(
+            r'\|\s*🧩\s*\d+\s*\|\s*(.+?)\s*\|\s*@([\d.]+)\s*\|.*\|\s*\+?(-?[\d.]+)%\s*\|[^|]*\|\s*$',
+            line)
+        if not row:
+            continue
+        desc, odds, ev = row.group(1), row.group(2), float(row.group(3))
+        if best is None or ev > best[0]:
+            best = (ev, desc, odds)
+    if best is None:
+        return None
+    ev, desc, odds = best
+    return f'{desc} @{odds} (EV {ev:+.1f}%)'
 
 
 def generate_all_sgm_report(games_data, analysis_date):
