@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+import hashlib
 import json
 import sys
 from datetime import datetime, timezone
@@ -254,3 +256,59 @@ def test_missing_or_unpriced_prediction_is_rejected() -> None:
             observations=[_observation(pricing=pricing)],
             raw_responses=_raws(),
         )
+
+
+@pytest.mark.parametrize(
+    ("fault", "reason"),
+    [
+        ("neutral_only", "incomplete Tennis component set"),
+        ("effectful_warning", "active Tennis component has unresolved warnings"),
+        ("missing_decision_input", "missing Tennis feature path: match_context.tour"),
+    ],
+)
+def test_failed_row_identifies_prediction_without_returning_partial_capture(
+    fault: str, reason: str, monkeypatch,
+) -> None:
+    invalid = _observation()
+    invalid["prediction_id"] = 202
+    if fault == "neutral_only":
+        for component in invalid["pricing"]["model"]["components"]:
+            component.update(active=False, probability=0.5, warnings=["missing_input"])
+            if component["name"] == "head_to_head_edge":
+                component.update(active=True, warnings=["low_h2h_sample"])
+    elif fault == "effectful_warning":
+        invalid["pricing"]["model"]["components"][0]["warnings"] = ["unresolved"]
+    else:
+        del invalid["snapshot"]["match_context"]["tour"]
+    observations = [invalid, _observation()]
+    raw_responses = _raws()
+    before = copy.deepcopy((observations, raw_responses))
+
+    def unexpected_raw_capture(**_kwargs):
+        pytest.fail("failed row must not publish an earlier valid row")
+
+    monkeypatch.setattr("tennis_wc.research_evidence._raw_artifacts", unexpected_raw_capture)
+    with pytest.raises(ValueError) as failure:
+        build_prediction_artifacts(
+            event_id=EVENT, captured_at=CUTOFF,
+            observations=observations, raw_responses=raw_responses,
+        )
+
+    assert str(failure.value) == f"Tennis prediction 202: {reason}"
+    assert isinstance(failure.value.__cause__, ValueError)
+    assert str(failure.value.__cause__) == reason
+    assert (observations, raw_responses) == before
+
+
+def test_diagnostic_context_preserves_known_good_artifact_bytes() -> None:
+    artifacts = build_prediction_artifacts(
+        event_id=EVENT, captured_at=CUTOFF,
+        observations=[_observation()], raw_responses=_raws(),
+    )
+    encoded = json.dumps(
+        {name: raw.decode("utf-8") for name, raw in artifacts.items()},
+        sort_keys=True, separators=(",", ":"),
+    ).encode()
+    assert hashlib.sha256(encoded).hexdigest() == (
+        "760863df33638a1209d4b98302e031ef97dff816d4298c58175c7a3184f07dd7"
+    )
