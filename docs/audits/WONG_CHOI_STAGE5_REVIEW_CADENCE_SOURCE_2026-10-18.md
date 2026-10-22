@@ -71,3 +71,24 @@ targets, the existing unified installer, no Dashboard deploy and no manual
 reason. Policy files are unchanged. These are pre-release checks: full gate,
 immutable approval recheck, installer snapshot/install/rollback and actual
 loaded calendar/native-receipt acceptance remain open.
+
+## Re-alignment after verified runtime repairs
+
+Normally merged approved main `778ba75dd3f2a8fa0018a687b32f678e6073e005`
+into the existing clean cadence WIP, merge checkpoint `ed236b38`. This includes
+the already released NBA DB isolation and complete-payload refresh repair;
+neither repair is an additional cadence release path. Relative to approved main
+the scope remains exactly the original eight cadence/installer/test/audit paths.
+
+On this aligned tree, selected `test_daily_maintenance.py`,
+`test_research_calendar.py`, `test_runtime_installer.py` and
+`test_research_review_clock.py` passed 71 tests in 112.79 s via external scratch
+`wc-run-ewvubguc`. This is a narrower selection than the historical combined
+109-test run above; it is not a new full-gate or live-installer claim.
+
+Another actual release controller was observed live holding the existing lock.
+This checkpoint is preserved on the non-main WIP branch, without preparing a
+cadence release, advancing main or changing LaunchAgents. The original Tennis
+manifest remains pending and will be refreshed first using the repaired
+controller. Reconcile any later approved main, then rerun full source/immutable
+approval gates and installed-calendar/native acceptance before cadence delivery.
