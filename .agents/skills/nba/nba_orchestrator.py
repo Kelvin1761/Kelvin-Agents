@@ -336,6 +336,11 @@ def report_inputs(sportsbet_json: str, extractor_json: str, legacy: bool) -> dic
         "sportsbet": _file_digest(sportsbet_json),
         "extractor": _file_digest(extractor_json),
         "renderer": _file_digest(GENERATE_REPORTS),
+        "prob_layer": {
+            name: _file_digest(os.path.join(os.path.dirname(GENERATE_REPORTS), rel))
+            for name, rel in (("code", "nba_prob_layer.py"), ("config", "../resources/nba_prob_layer.json"))
+            if os.path.isfile(os.path.join(os.path.dirname(GENERATE_REPORTS), rel))
+        },
         "legacy": legacy,
     }
     revision = subprocess.run(
