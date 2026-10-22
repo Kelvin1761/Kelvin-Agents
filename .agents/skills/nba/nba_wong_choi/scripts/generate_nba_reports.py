@@ -787,6 +787,38 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
 
 # ─── Auto-Combo Engine ──────────────────────────────────────────────────
 
+def classify_injury_status(status):
+    """ESPN injury status -> 'out' | 'dtd' | 'ok'.
+
+    Before 2026-10-23 only the literal "Out" excluded a player and only "Day-To-Day"
+    flagged one, so "Out For Season", "Doubtful", "Suspension" and "Questionable"
+    were all treated as healthy."""
+    text = str(status or "").strip().lower()
+    if not text:
+        return "ok"
+    if (text.startswith("out") or text in ("doubtful", "suspension", "suspended", "inactive")
+            or "injured reserve" in text or text == "ir"):
+        return "out"
+    if text in ("day-to-day", "day to day", "dtd", "questionable", "game-time decision", "gtd"):
+        return "dtd"
+    return "ok"
+
+
+def injury_status_for(injuries, team_abbr, player_name):
+    """Injury status by full-name identity (accent/suffix-insensitive), not exact string.
+
+    The odds feed spells "Luka Doncic" where ESPN's roster says "Luka Dončić"; an exact
+    dict lookup silently reported such players as healthy."""
+    team = (injuries or {}).get(team_abbr) or {}
+    if player_name in team:
+        return team[player_name]
+    key = player_name_key(player_name)
+    for name, status in team.items():
+        if player_name_key(name) == key:
+            return status
+    return ""
+
+
 def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
     """Build a flat list of all possible legs from player cards + team odds.
     V3.1: SIP-N01 bench minutes risk flag, SIP-N05 high CoV 3PM filter."""
@@ -799,14 +831,15 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
     for card in all_cards:
         team_abbr = card["team"]
         player_name = card["name"]
-        status = injuries.get(team_abbr, {}).get(player_name, "")
-        
-        # ⚠️ Skip players who are strictly OUT or injured so they do not pollute safely generated combos
-        if status.lower() == "out":
+        status = injury_status_for(injuries, team_abbr, player_name)
+        injury_level = classify_injury_status(status)
+
+        # ⚠️ Skip players who are out (or doubtful / suspended) so they do not pollute generated combos
+        if injury_level == "out":
             continue
-        
-        # Flag Day-To-Day players (excluded from 穩膽 only, allowed in other combos)
-        is_day_to_day = status.lower() in ("day-to-day", "dtd")
+
+        # Flag Day-To-Day / Questionable players (excluded from 穩膽 only, allowed in other combos)
+        is_day_to_day = injury_level == "dtd"
             
         cl = cat_label.get(card["category"], card["category"])
 
@@ -1636,7 +1669,9 @@ def gen_meeting_intelligence(meta, odds, injuries, news, team_stats, season_phas
     lines.append(f"| **總分盤** | O/U {total} |")
     lines.append(f"| **獨贏** | {away_abbr} {ml_away} / {home_abbr} {ml_home} |")
     lines.append(f"| **節奏** | 中 |")
-    lines.append(f"| **B2B** | 否 |")
+    _b2b = (meta or {}).get("team_b2b") or {}
+    _b2b_teams = [t for t, v in _b2b.items() if v]
+    lines.append(f"| **B2B** | {'、'.join(_b2b_teams) + ' B2B' if _b2b_teams else '否'} |")
     lines.append(f"")
 
     for abbr in [away_abbr, home_abbr]:
@@ -2013,11 +2048,9 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     game_seed = mc_game_seed(meta)
     try:
         from monte_carlo_nba import run_monte_carlo_for_cards, format_mc_section, build_mc_lookup, context_inputs_status
-        is_b2b_map = {}
-        for t_abbr in [away_abbr, home_abbr]:
-            fatigue = meta.get("away" if t_abbr == away_abbr else "home", {}).get("fatigue", {})
-            is_b2b_map[t_abbr] = fatigue.get("is_b2b", False) if isinstance(fatigue, dict) else False
-        
+        team_b2b_meta = meta.get("team_b2b") or {}
+        is_b2b_map = {t_abbr: bool(team_b2b_meta.get(t_abbr)) for t_abbr in [away_abbr, home_abbr]}
+
         mc_results = run_monte_carlo_for_cards(
             all_cards, spread=odds.get("spread_away"),
             is_b2b_map=is_b2b_map, team_stats=team_stats, meta=meta, n=10000,
@@ -2292,6 +2325,23 @@ def write_market_eval_sidecar(output_path, report_text, sportsbet, meta, all_car
 
 # ─── Main ───────────────────────────────────────────────────────────────
 
+def detect_team_b2b(ext_players, teams):
+    """True for a team when most players with known rest are on 0 days rest.
+
+    Before 2026-10-23 this fired on `fatigue_pct > 0 or warning`, i.e. whenever ANY
+    player had a historical PPG drop on back-to-backs - true for every team every
+    day (22/22 teams on 2026-10-22), so every leg took a -2/-4 B2B penalty and the
+    Monte Carlo never saw the flag.  Uses the per-player `is_b2b` the extractor
+    derives from the game log and the game's US local date."""
+    result = {}
+    for abbr in teams:
+        known = [(p.get("fatigue") or {}) for p in (ext_players or {}).get(abbr, [])]
+        known = [f for f in known if "is_b2b" in f and f.get("rest_known", True)]
+        flagged = sum(1 for f in known if f.get("is_b2b"))
+        result[abbr] = bool(known) and flagged * 2 >= len(known)
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description="NBA Wong Choi V2 — Pre-filled Skeleton Generator")
     parser.add_argument("--sportsbet", required=True, help="Sportsbet odds JSON (from sportsbet_parser.py)")
@@ -2372,14 +2422,10 @@ def main():
     # V3: Pre-compute context for each team
     spread = ex_odds.get("spread_away", None)
 
-    # Detect B2B from fatigue data (scan all players, if any has fatigue warning → B2B)
-    team_b2b = {away_abbr: False, home_abbr: False}
-    for abbr in [away_abbr, home_abbr]:
-        for p in ext_players.get(abbr, []):
-            fatigue = p.get("fatigue") or {}
-            if fatigue.get("fatigue_pct", 0) > 0 or fatigue.get("warning", ""):
-                team_b2b[abbr] = True
-                break
+    # Today's back-to-back flag per team: majority of the roster's own game logs
+    # say the last game was yesterday (see detect_team_b2b).
+    team_b2b = detect_team_b2b(ext_players, [away_abbr, home_abbr])
+    meta["team_b2b"] = team_b2b
 
     # Compute defender impact per opponent team (avg PCT_PLUSMINUS of top 3)
     def get_defender_impact(team_abbr):

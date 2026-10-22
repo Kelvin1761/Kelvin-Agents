@@ -263,6 +263,48 @@ class ExpiredNbaFeedTests(unittest.TestCase):
         self.assertEqual(merged["sports"]["nba"]["recommendations"], [])
         self.assertEqual(merged["sports"]["nba"]["validation_status"], "blocked")
 
+    def test_analysed_but_no_validated_combos_replaces_earlier_same_day_combos(self):
+        # 2026-10-23: the 21:00 run published combos with +98.6% EV; the re-run with the
+        # calibrated probability layer found no +EV combo, but the live feed was
+        # preserved because the local view was "blocked".  Real analysis (source files
+        # present) that finds nothing must win over the stale published combos.
+        cached = {"schema_version": 2, "sports": {"nba": {
+            "analysis_run_id": "nba:2026-10-23",
+            "validation_status": "valid",
+            "recommendations": [{"id": "overconfident"}],
+        }}}
+        fresh = {"schema_version": 2, "sports": {"nba": {
+            "analysis_run_id": "nba:2026-10-23",
+            "validation_status": "blocked",
+            "source_files": ["Sportsbet_Odds_CLE_PHI.json"],
+            "warnings": ["no_validated_nba_combos"],
+            "recommendations": [],
+        }}}
+
+        merged = generate_static._merge_sports_feed(cached, fresh, today="2026-10-23")
+
+        self.assertEqual(merged["sports"]["nba"]["recommendations"], [])
+        self.assertEqual(merged["sports"]["nba"]["validation_status"], "blocked")
+
+    def test_missing_nba_data_with_the_same_warning_still_preserves_live(self):
+        # A checkout with no NBA analysis (no source files) must not erase live.
+        cached = {"schema_version": 2, "sports": {"nba": {
+            "analysis_run_id": "nba:2026-10-23",
+            "validation_status": "valid",
+            "recommendations": [{"id": "today"}],
+        }}}
+        fresh = {"schema_version": 2, "sports": {"nba": {
+            "analysis_run_id": "nba:2026-10-23",
+            "validation_status": "blocked",
+            "source_files": [],
+            "warnings": ["no_validated_nba_combos"],
+            "recommendations": [],
+        }}}
+
+        merged = generate_static._merge_sports_feed(cached, fresh, today="2026-10-23")
+
+        self.assertEqual(merged["sports"]["nba"]["recommendations"], [{"id": "today"}])
+
     def test_current_nba_feed_is_still_preserved(self):
         cached = {"schema_version": 2, "sports": {"nba": {
             "analysis_run_id": "nba:2026-10-21",

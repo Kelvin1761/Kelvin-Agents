@@ -1074,56 +1074,82 @@ def compute_usage_redistribution(players, team_abbr):
 # ==========================================
 # 模塊 D2：Rest Day Fatigue Model
 # ==========================================
+def nba_local_game_date(game_date):
+    """Calendar date (YYYY-MM-DD) of a game in US local time.
+
+    ESPN gives tip-off in UTC (e.g. 2026-10-22T02:00Z for a 10pm-ET/7pm-PT game
+    on Oct 21).  Game logs carry the US local date, so comparing against the raw
+    UTC date made every late West-Coast game look a day further from its last
+    game than it was.  US Pacific local date matches the NBA's own game date
+    for every tip-off slot."""
+    text = str(game_date or "")
+    if "T" in text:
+        try:
+            from datetime import datetime, timezone
+            from zoneinfo import ZoneInfo
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
+        except Exception:
+            pass
+    return text[:10]
+
+
+def compute_rest_info(gamelog, game_date=None):
+    """rest_days / is_b2b for the game being analysed, from the player's own game log.
+
+    Independent of rest splits: early in a season (or for a rookie) the splits are
+    missing, and B2B used to be silently unknown.  `rest_days` keeps its historical
+    meaning (calendar days since the last game, floored at 0) because the ML
+    feature uses it; `is_b2b` is True when the last game was yesterday."""
+    l10_dates = (gamelog or {}).get("l10_dates", [])
+    if not (l10_dates and game_date):
+        return {"rest_days": 1, "is_b2b": False, "rest_known": False}
+    try:
+        from datetime import datetime
+        cur = datetime.strptime(nba_local_game_date(game_date), "%Y-%m-%d")
+        last_game = datetime.strptime(l10_dates[0].title(), "%b %d, %Y")
+        delta = (cur - last_game).days
+        return {"rest_days": max(0, delta), "is_b2b": delta <= 1, "rest_known": True}
+    except Exception:
+        return {"rest_days": 1, "is_b2b": False, "rest_known": False}
+
+
 def compute_fatigue_adjustment(player_splits, gamelog, game_date=None):
     """
     根據休息日數自動調整預期值。
     如果 0 Days Rest (B2B) 的 PPG 顯著低於 1+ Days Rest，生成警告。
-    同時計算當前比賽嘅 rest_days 同 is_b2b。
+    同時計算當前比賽嘅 rest_days 同 is_b2b（唔再依賴 rest_splits，新季冇 splits 都計到）。
     """
-    if not player_splits:
-        return None
-    
-    rest_splits = player_splits.get('rest_splits', {})
-    if not rest_splits:
-        return None
-    
-    b2b = rest_splits.get('0 Days Rest', {})
-    normal = rest_splits.get('1 Days Rest', {})
-    
-    if not b2b or not normal:
-        return None
-    
+    rest = compute_rest_info(gamelog, game_date)
+    rest_splits = (player_splits or {}).get('rest_splits', {})
+    b2b = rest_splits.get('0 Days Rest', {}) if rest_splits else {}
+    normal = rest_splits.get('1 Days Rest', {}) if rest_splits else {}
+
+    if not (b2b and normal):
+        if not rest["rest_known"]:
+            return None
+        return {
+            "b2b_ppg": 0, "normal_ppg": 0, "fatigue_drop": 0, "fatigue_pct": 0,
+            "rest_days": rest["rest_days"], "is_b2b": rest["is_b2b"], "rest_known": True,
+            "warning": "",
+        }
+
     b2b_ppg = b2b.get('PPG', 0)
     normal_ppg = normal.get('PPG', 0)
-    
+
     fatigue_drop = round(normal_ppg - b2b_ppg, 1) if normal_ppg > 0 else 0
     fatigue_pct = round(fatigue_drop / normal_ppg * 100, 1) if normal_ppg > 0 else 0
 
-    # Compute rest_days + is_b2b from gamelog dates
-    rest_days = 1
-    is_b2b = False
-    l10_dates = (gamelog or {}).get("l10_dates", [])
-    if l10_dates and game_date:
-        try:
-            from datetime import datetime
-        except ImportError:
-            from datetime import datetime
-        try:
-            cur = datetime.strptime(game_date[:10], "%Y-%m-%d")
-            last_game = datetime.strptime(l10_dates[0], "%b %d, %Y")
-            delta = (cur - last_game).days
-            rest_days = max(0, delta)
-            is_b2b = rest_days <= 1
-        except Exception:
-            pass
-    
     return {
         "b2b_ppg": b2b_ppg,
         "normal_ppg": normal_ppg,
         "fatigue_drop": fatigue_drop,
         "fatigue_pct": fatigue_pct,
-        "rest_days": rest_days,
-        "is_b2b": is_b2b,
+        "rest_days": rest["rest_days"],
+        "is_b2b": rest["is_b2b"],
+        "rest_known": rest["rest_known"],
         "warning": f"⚠️ B2B 疲勞警告: PPG 下降 {fatigue_pct}%" if fatigue_pct > 10 else ""
     }
 
