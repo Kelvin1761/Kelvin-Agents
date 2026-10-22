@@ -46,6 +46,7 @@ from nba_research_evidence import (  # noqa: E402
 )
 import nba_market_ledger as market_ledger  # noqa: E402
 import nba_combo_roi  # noqa: E402
+import nba_reliability  # noqa: E402
 import nba_no_prediction as no_prediction  # noqa: E402
 
 HOOK_DIR = (
@@ -1271,6 +1272,18 @@ def _combo_roi_text(target_date: str, log: RunLog) -> str:
         return "📊 組合 ROI：今次計算失敗（已記錄），唔影響上面賽果摘要。"
 
 
+def _reliability_text(target_date: str, log: RunLog) -> str:
+    """Rolling calibration of the live probability; never blocks the postgame summary."""
+    try:
+        report = nba_reliability.build(target_date, market_ledger.ledger_root())
+        nba_reliability.write(report, market_ledger.ledger_root())
+        log.step("reliability", report["status"], settled=report["overall"]["n"])
+        return "\n".join(nba_reliability.message_lines(report))
+    except Exception as exc:  # noqa: BLE001 — monitoring add-on must not fail postgame
+        log.step("reliability", "failed", error=f"{type(exc).__name__}: {exc}")
+        return "📐 機率校準：今次計算失敗（已記錄），唔影響上面賽果摘要。"
+
+
 def run_postgame(target_date: str, log: RunLog) -> str:
     folder = live_dir(target_date)
     if not folder.is_dir():
@@ -1352,6 +1365,7 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         try:
             performance_message = postgame_message(target_date, archive)
             performance_message += "\n\n" + _combo_roi_text(target_date, log)
+            performance_message += "\n\n" + _reliability_text(target_date, log)
         except ValueError as exc:
             warning = notify_once(
                 f"postgame-performance-blocked:{target_date}",
