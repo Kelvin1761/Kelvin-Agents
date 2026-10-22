@@ -38,7 +38,8 @@ have SHA-256
 `4d153e76d9eba0cc0d23eca7548fa58731268ce64e747ed599dea55a61c4cfb3`,
 150 legs and 2 model runs; quick-check passed. The hard-link recovery is NOT
 an independent immutable backup of these newer bytes. Initial HOT/WARM copies
-still retain the earlier 36/1 state, so no current WARM durability is claimed.
+still retained the earlier 36/1 state at that checkpoint; see the later
+independent WARM copy below.
 
 Auto-review rejected moving the initial HOT copy aside to enable another
 cutover: the existing-destination/no-overwrite restriction requires a new
@@ -52,3 +53,22 @@ Five-path scoped release dry-run: risk `code`, full gate, NBA code sync only,
 no installer, no Dashboard deployment or manual reason. Full source gate and
 approval recheck have NOT run. No commit on main or activation is claimed.
 The change only fixes storage placement; it is not evidence of model improvement.
+
+## Independent latest-state backup (cutover still pending)
+
+Without executing any rejected rotation/replacement, acquired the existing NBA
+scheduler flock and a read-only SQLite transaction, then used the production
+Central `archive_copy` implementation to append a new content-addressed WARM
+version. Production source was not moved, removed or modified.
+
+- Latest bytes: `4d153e76d9eba0cc0d23eca7548fa58731268ce64e747ed599dea55a61c4cfb3`.
+- Both source and WARM: SQLite quick-check `ok`, 150 legs / 2 model runs.
+- WARM: `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/nba/reflector-runtime-recovery/9bad595328f6/nba_reflector.db`.
+- Artifact: `wc-artifact:2ad4a78e0bff222ab80ce88e`.
+- Immutable catalog record: `/Users/imac/WongChoiData/WongChoiControl/storage/catalog/records/wc-artifact%3A2ad4a78e0bff222ab80ce88e.json`.
+- Verified source hash unchanged before/after copy and identical WARM hash.
+
+This is an independent copy, not a hard-link, and preserves the postgame state.
+It does not prove future freshness, COLD replication, a restore drill, cutover,
+release acceptance or model improvement. Initial HOT and WARM snapshots are
+untouched. The explicit HOT-snapshot rotation decision remains pending.
