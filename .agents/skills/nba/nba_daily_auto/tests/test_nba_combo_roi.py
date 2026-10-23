@@ -72,3 +72,12 @@ def test_message_lines_handle_empty_and_label_types():
     both = roi.summarise(roi.settle_combos(rows))
     text = "\n".join(roi.message_lines({"daily": both, "cumulative": both}))
     assert "穩膽" in text and "樣本細" in text
+
+
+def test_frozen_publication_quote_wins_over_later_reference_observation():
+    from nba_sgm_quote import legs_identity
+    chosen = sgm('1', [leg('A'), leg('B')], 2.25)
+    chosen.update(sportsbet_sgm_status='ok', sportsbet_sgm_price=2.0,
+                  sgm_quote={'status': 'ok', 'decimal_odds': 2.0, 'legs_sha256': legs_identity(chosen['legs'])})
+    out = roi.settle_combos([chosen, quote('1', 3.0), settle('A', 'hit'), settle('B', 'hit')])
+    assert out[0]['sgm_price'] == 2.0

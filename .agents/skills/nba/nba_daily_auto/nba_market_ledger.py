@@ -65,6 +65,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import sys
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
@@ -418,6 +419,8 @@ def record_snapshot(
                 "price_at_model": price, "odds_captured_at": _iso(model_captured),
                 **{name: _float(leg.get(name)) for name in (*MODEL_VARIANTS, "p_l10_base_rate")},
                 "engine": leg.get("engine"),
+                "mc_model_version": leg.get("mc_model_version"),
+                "probability_model_id": leg.get("probability_model_id"),
                 # SHADOW fit layer: recorded for forward evidence, deliberately
                 # not in MODEL_VARIANTS so evaluate() is untouched.
                 "shadow_fit_prob_A": _float(leg.get("shadow_fit_prob_A")),
@@ -438,6 +441,7 @@ def record_snapshot(
                 "correlation_penalty": _float(combo.get("correlation_penalty")),
                 "sportsbet_sgm_price": _float(combo.get("sportsbet_sgm_price")),
                 "sportsbet_sgm_status": combo.get("sportsbet_sgm_status") or "not_scraped",
+                "sgm_quote": combo.get("sgm_quote"),
                 # N1 shadow: same-simulation joint probability (never used to pick).
                 "sim_status": combo.get("sim_status") or "absent",
                 "sim_model_version": combo.get("sim_model_version"),
@@ -680,8 +684,10 @@ def settle(
         game = _match_game(tag, games)
         if game is None:
             continue  # game not in this brief yet; retry on a later run
-        status = str(game.get("status") or "")
-        if status and "final" not in status.lower():
+        status = str(game.get("status") or "").strip().lower()
+        # Results_Brief uses Final, Final/OT, or Final (<verified source>).
+        # Missing status and arbitrary text containing "final" are not proof.
+        if not re.fullmatch(r"final(?:/\d*ot|\s+\([^()]+\))?", status):
             continue
         verified = verify_legs([{"player": player, "stat": market, "line": line}], game)[0]
         cleared = verified.get("cleared")
@@ -691,6 +697,10 @@ def settle(
             else "miss" if cleared is False
             else "unresolved"
         )
+        # A missing player/stat is a retryable observation, not a settlement.
+        # Appending it would occupy the immutable first-write-wins key forever.
+        if outcome == "unresolved":
+            continue
         out.append({
             "row_type": "settlement", "schema": SCHEMA, "target_date": target_date,
             "game_tag": tag, "player": player, "market": market, "line": line, "side": side,
@@ -769,6 +779,15 @@ def _choose_snapshot(rows: list[dict]) -> str | None:
     best = max(eligible, key=lambda r: (str(r.get("snapshot_created_at") or ""),
                                         ROLE_PRIORITY.get(str(r.get("snapshot_role")), 0)))
     return best.get("snapshot_id")
+
+
+def probability_model_id(row: Mapping[str, Any]) -> str:
+    identity = row.get("probability_model_id")
+    if identity:
+        return str(identity)
+    engine = str(row.get("engine") or "unknown")
+    # A historical engine label cannot establish which coefficients were used.
+    return "calibrated:unversioned" if engine.startswith("calibrated(") else f"legacy:{engine}"
 
 
 def _compare(pairs: list[tuple[float, float, int]], assumed_mean: float, assumed_sd: float) -> dict:
@@ -872,6 +891,7 @@ def evaluate(
         devig_close = two_way[-1] if two_way else (close if close and close.get("complement_price") else None)
         legs.append({
             "key": key, "market": key[3], "picked": bool(model.get("picked")), "y": y,
+            "probability_model_id": probability_model_id(model),
             **{name: model.get(name) for name in MODEL_VARIANTS},
             "price_at_model": model.get("price_at_model"),
             "earliest_price": earliest.get("price") if earliest else None,
@@ -924,6 +944,15 @@ def evaluate(
     by_market = {m: section([leg for leg in legs if leg["market"] == m]) for m in sorted({l["market"] for l in legs})}
     by_picked = {name: section([leg for leg in legs if leg["picked"] is flag])
                  for name, flag in (("picked", True), ("not_picked", False))}
+    by_model = {
+        identity: {
+            **section([leg for leg in legs if leg["probability_model_id"] == identity]),
+            "by_market": {market: section([leg for leg in legs if leg["probability_model_id"] == identity and leg["market"] == market])
+                          for market in by_market},
+            "picked": section([leg for leg in legs if leg["probability_model_id"] == identity and leg["picked"]]),
+        }
+        for identity in sorted({leg["probability_model_id"] for leg in legs})
+    }
 
     # SGMs: one chosen pre-tip snapshot per game.
     sgm_pairs = {"model_naive": [], "model_adjusted": [], "model_sim_joint": [], "model_sim_scaled": [],
@@ -996,6 +1025,7 @@ def evaluate(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "window": {"since": since, "until": until, "include_preseason": include_preseason},
         "verdict_status": verdict,
+        "by_probability_model": by_model,
         "verdict_note": (
             "No model-vs-market verdict is valid yet. Comparisons against raw 1/price are "
             "biased in the model's favour (vig-inclusive, one-sided milestone markets). "

@@ -29,7 +29,7 @@ import sys, io, json, math, argparse, random, hashlib
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-MC_MODEL_VERSION = "2.0"
+MC_MODEL_VERSION = "2.1"
 
 # Use built-in random for portability (no numpy dependency)
 def _normal_sample(mean, sd):
@@ -281,6 +281,24 @@ def monte_carlo_player_prop(avg, sd, line, n=10000,
     return result
 
 
+def usage_bonus_stat_units(avg, category, original_usg_pct, bonus_usg_pp):
+    """Constant-efficiency scenario for stats ending used possessions.
+
+    A +5 percentage-point USG shift from 25% is +20% relative volume, not
+    five points/rebounds/assists. USG does not measure assists or rebounds;
+    those stats have no direct conversion through this channel.
+    """
+    if category not in {"points", "threes_made", "PTS", "3PM", "FG3M"}:
+        return 0.0
+    try:
+        avg, original, bonus = float(avg), float(original_usg_pct), float(bonus_usg_pp)
+    except (TypeError, ValueError):
+        return 0.0
+    if not all(math.isfinite(x) for x in (avg, original, bonus)) or avg < 0 or not 0 < original <= 100 or bonus < 0 or original + bonus > 100:
+        return 0.0
+    return avg * bonus / original
+
+
 def compute_context_factors(card, spread=None, is_b2b=False, is_home=None,
                             opp_pace=None, team_pace=None, opp_def_rank=None,
                             usg_bonus=0):
@@ -437,7 +455,7 @@ def run_monte_carlo_for_cards(all_cards, spread=None, is_b2b_map=None,
 
 # ─── SGM joint simulation (shadow) ───────────────────────────────────────────
 
-SGM_SIM_VERSION = "sgm-joint-sim/v1"
+SGM_SIM_VERSION = "sgm-joint-sim/v1.1"
 # Shared-factor scales (per simulated game).  They are structural priors, not
 # fitted values: no settled SGM sample exists yet to fit them on.
 SGM_PACE_SD = 0.03          # both teams' counting stats

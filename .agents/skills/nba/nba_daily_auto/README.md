@@ -123,6 +123,21 @@ mean 係**假設**值，唔係觀測值）：
 python3 .agents/skills/nba/nba_daily_auto/nba_market_ledger.py evaluate [--since D] [--until D] [--include-preseason] [--write]
 ```
 
+## Availability freshness and probability identity
+
+歷史數據 cache 同即時傷停／陣容分開核對。每份 extractor JSON 嘅
+`meta.availability` 記錄已驗證來源、完整陣容身份及 UTC 時間；30 分鐘後先用輕量
+`nba_extractor.py --refresh-availability <game.json>` 刷新。陣容改變會要求 full
+extraction；來源失敗／未驗證／賽事已開始會保留原檔並阻擋發布。舊 cache 首次升級
+要重新抽取，唔會用檔案 mtime 冒充來源時間。刷新成功先 atomic replace。
+
+每條新機率都有 `probability_model_id`，由校準層版本及實際係數／clip 設定產生。
+Market ledger 先選最新賽前 observation，再按身份分組；reliability 只評現役身份，
+舊版同欠身份嘅歷史結果留喺背景統計。設定變更唔會延續舊係數嘅校準樣本。
+
+校準設定損壞／讀取失敗／非有限係數會停止報告發佈；刻意關閉
+`NBA_WC_PROB_LAYER=0` 或 `enabled=false` 仍然有效，監察會明示 disabled。
+
 ## Local ML model cache
 
 `NBA_WC_MODEL_DIR` explicitly selects the existing ML model directory. The

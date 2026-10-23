@@ -1,0 +1,1617 @@
+{
+  "purpose": "software replay baseline; not point-in-time performance proof",
+  "baseline": {
+    "code_commit": "0bffbeb674d32ef9cc79722c931751c35250315a",
+    "renderer_sha256": "d09fbd546576748aef15986e44a041505495e2535223a065f8c3d10162af7661",
+    "manifest_sha256": "c36df013217d64882442ea6725581e681076e952911f2a980f12bad4ae270023",
+    "status": "complete",
+    "results": [
+      {
+        "case_id": "2026-04-15_NBA_Analysis__ATL_NYK",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 151,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "793befce842a11785d7d07ffe6f49ca5f22964f52cf3efa76020380dd1470a1c"
+      },
+      {
+        "case_id": "2026-04-15_NBA_Analysis__GSW_LAC",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 158,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "c3479b45b85270dcc5fb3d39ba467ea80f1b552fd42fd70e47233c81c7882368"
+      },
+      {
+        "case_id": "2026-04-15_NBA_Analysis__HOU_LAL",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 70,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "ab54ab50f74c00fcf11552b652cab9851fb59b738a5b528b3cb292f2ada32311"
+      },
+      {
+        "case_id": "2026-04-15_NBA_Analysis__MIA_CHA",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 202,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "4f9a330454ef4c5393710c2b3bfb122513c072f782d7356f5210da5cbd004bb0"
+      },
+      {
+        "case_id": "2026-04-15_NBA_Analysis__ORL_PHI",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 137,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "dd181fe23a85a3bb38b45cdadf432b471325bdcc882fc35389e443d1d3507cc2"
+      },
+      {
+        "case_id": "2026-04-15_NBA_Analysis__POR_PHX",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 173,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "74af655e8e30bdb375ffc9351685b9e0d84ab36f41bd0c9b26ff844c14797eec"
+      },
+      {
+        "case_id": "2026-04-15_NBA_Analysis__TOR_CLE",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 112,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "9c42fdd55fb7f460ccf413560b948880dbad6834c412ccf4271dcd9711b85528"
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__ATL_NYK",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 153,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "d907f0d38550f699535f3e76fec301e23d7d64ad3fe6b3cd49f9493f25df74bd"
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__GSW_LAC",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 169,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "0fad1a7baaea68a3fb81c12a9c0ed36efd9fcda6f2d0827b15c41e4982544701"
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__HOU_LAL",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 127,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "5403c0aaa5cc78c11c94f8079841da5739319e3dc541e0604328271fcc08c7c5"
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__MIN_DEN",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 144,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "07eb7716c0e7d2a43769adea053215b8a7d1d0e129289f6764fa66429040c55f"
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__ORL_PHI",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 172,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "23497c16e84c4617ea2bf265ec8952f075d7bd207b55b5e567e656fda715d9a0"
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__POR_SAS",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 74,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "803c240f0c382475cd04b8f60cd0ecf4d7e2c26912ac75ee8628268f7acc7501"
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__TOR_CLE",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 115,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "903e7775f09af6b66469276b89aadcbeddb4f57590d6f9d4094e23c405597cc0"
+      },
+      {
+        "case_id": "2026-04-24_NBA_Analysis__CLE_TOR",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 189,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "61fac0f607727c7fb136494c8e575d9d56e37e8a7b17f1148e875bbcd5cd4b50"
+      },
+      {
+        "case_id": "2026-04-24_NBA_Analysis__DEN_MIN",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 177,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "ece525d5f678cef04017d85c3efff0052a137a40b11e67cf04538ccb0e60f68b"
+      },
+      {
+        "case_id": "2026-04-24_NBA_Analysis__NYK_ATL",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 185,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "539d65cc711fceb7eb67d5f79ef975ae7f34eb6ea7c63dbe309d4d50e7b04f1f"
+      },
+      {
+        "case_id": "2026-04-25_NBA_Analysis__BOS_PHI",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 201,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "a83ea4ff522921c71edcade0883b008c642a10f21826efa92e174a98be6e11d7"
+      },
+      {
+        "case_id": "2026-04-25_NBA_Analysis__LAL_HOU",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 152,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "637e2f67799c1584e1111e69511b2dedc2d1cfb2e3395254247db1f327f4c33a"
+      },
+      {
+        "case_id": "2026-04-25_NBA_Analysis__SAS_POR",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 181,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "546e90c00c55b832c6a54e088856064d13ef0a0d969259840d8849c4caf2a7ef"
+      },
+      {
+        "case_id": "2026-04-26_NBA_Analysis__DEN_MIN",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 173,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "d45dc171bb94849fef6215f5c00130af409c1c02d6d9943ca550c5baf667023f"
+      },
+      {
+        "case_id": "2026-04-26_NBA_Analysis__DET_ORL",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 160,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "fcf4b2298ec0e6b7ad81f45b15e060cb28e045cca613ce73a78c77c577c4e5cb"
+      },
+      {
+        "case_id": "2026-04-26_NBA_Analysis__NYK_ATL",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 176,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "859d3c6dfb3df1d0c6d18359e4c70824e47ba53973b677bf11cacdd9c7f86839"
+      },
+      {
+        "case_id": "2026-04-26_NBA_Analysis__OKC_PHX",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 147,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "dc49ceb3c0e3e7692de9546a1bdd815e8a4d40d4d606cf67a24e695f8870850e"
+      },
+      {
+        "case_id": "2026-04-28_NBA_Analysis__DET_ORL",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 161,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "65fd99a43c2046c7e556a5ea99a6a807a0883680964d7fffb914213a1e8381dc"
+      },
+      {
+        "case_id": "2026-04-28_NBA_Analysis__MIN_DEN",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 167,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "2d818ced8ef3db301cf0556ce79df79114710013a0de9fc7b26484a1eda719fc"
+      },
+      {
+        "case_id": "2026-04-28_NBA_Analysis__OKC_PHX",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 189,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "e66c75a75b0ca32debb57e4ec9ed2975fedceaf4f6f3b8b876d9ef0f178dfebd"
+      },
+      {
+        "case_id": "2026-04-29_NBA_Analysis__ATL_NYK",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 183,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "e4add263b6da7e806d175f9f77f6fc0c7d71c06a465a7285ef9a366249729892"
+      },
+      {
+        "case_id": "2026-04-29_NBA_Analysis__PHI_BOS",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 183,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "7467eccdd31f751646dc18d3835240f6ed085b500e40d60ab04ec55c2a021121"
+      },
+      {
+        "case_id": "2026-04-29_NBA_Analysis__POR_SAS",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 169,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "5524cad5d762de25362e863494f6fd7c4add73e37d44d3784dc6cb065298483d"
+      },
+      {
+        "case_id": "2026-04-30_NBA_Analysis__HOU_LAL",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 143,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "dc0c59b5578aae1f7a0b5c324a1b844001de16354956ad3a2daefdf53efafdb2"
+      },
+      {
+        "case_id": "2026-04-30_NBA_Analysis__ORL_DET",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 158,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "6531cc87933b5169cc49f6c330fbb35149b97cd1aad713491a936855cf1b3ff8"
+      },
+      {
+        "case_id": "2026-04-30_NBA_Analysis__TOR_CLE",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 176,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "0dca3d432314f20ad962aa9082aa88b2a9cc2d1d538ce04f38c7c438a27d168c"
+      },
+      {
+        "case_id": "2026-05-01_NBA_Analysis__BOS_PHI",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 187,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "5d532ae034eb11e87dabb0a5d97da22562c7189f6350ac3dde44e3d416694d9f"
+      },
+      {
+        "case_id": "2026-05-01_NBA_Analysis__DEN_MIN",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 157,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "ca39708c99eb60dfcf2e1ea78173be4dee6d81ccaf12b1bf0f79e986efeca456"
+      },
+      {
+        "case_id": "2026-05-01_NBA_Analysis__NYK_ATL",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 180,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "9ad4afe3f15994d53e1754ead4195cb9bfe267dbaa82c2c39aaa582db8aa514e"
+      },
+      {
+        "case_id": "2026-05-02_NBA_Analysis__CLE_TOR",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 200,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "d23a3fd9dada63202bbf8c9955b44961666f87db3fd946fcd4535ecf4e711f02"
+      },
+      {
+        "case_id": "2026-05-02_NBA_Analysis__DET_ORL",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 150,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "d091388af92b7e50dfed347e153d3cc283858ef65107c1af5bf8129a1a29ff1f"
+      },
+      {
+        "case_id": "2026-05-02_NBA_Analysis__LAL_HOU",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 137,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "4c1ad700c3cf64c43537d417c9b6004d9618304f238c1dbd963b05cad802a3ff"
+      },
+      {
+        "case_id": "2026-05-02_NBA_Analysis__MIN_SAS",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 94,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "5ff1bfa559d6ea28d66d2512c21b60451e9722b55d86de332bef665947a2dbfb"
+      },
+      {
+        "case_id": "2026-05-02_NBA_Analysis__PHI_BOS",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 88,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "50d37f23c00c25ec65801ad187c735ff9a46f3ef9c0b8e4c2dc1c37f92b7611f"
+      },
+      {
+        "case_id": "2026-05-04_NBA_Analysis__LAL_OKC",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ],
+        "legs": 134,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "bb9f1462968f747225f1185b4ce4ea24aaf94703972ef260a0d44a5a12ab1c3f"
+      },
+      {
+        "case_id": "2026-05-04_NBA_Analysis__MIN_SAS",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 165,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "66e1e7bc3fa09f06a02a4d83967daa200a98b584683db4fd579cb0bfe74893ae"
+      },
+      {
+        "case_id": "2026-05-04_NBA_Analysis__ORL_DET",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 151,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "4d68f3a9c4e52249351e0a87d54e7946d1fb2aa8d7eb2a2ea824c600db5e89ed"
+      },
+      {
+        "case_id": "2026-05-05_NBA_Analysis__MIN_SAS",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 167,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "13f763651705991a982648a72de5a9dd3b55b9c9b87ef24fb9fc22ffef77bc1a"
+      },
+      {
+        "case_id": "2026-05-05_NBA_Analysis__PHI_NYK",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 190,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "e80e8193bedd9d22d7beceadea6770083862d69e81523f39e7e4385dcae9e4b7"
+      },
+      {
+        "case_id": "2026-05-06_NBA_Analysis__CLE_DET",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 167,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "4a884fdec279c14209741ae6931fcf4ade4b6be86e89fbcdb7eced6e75d39ef2"
+      },
+      {
+        "case_id": "2026-05-06_NBA_Analysis__LAL_OKC",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 174,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "c1e89178d98b5eeb0c66ac1aef50698b7aeabf9cfbf5f7e570010bcdccff3d6a"
+      },
+      {
+        "case_id": "2026-05-07_NBA_Analysis__MIN_SAS",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 183,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "5f73189c5999a76b9d3e9426ff9e1dae3719bc89aa95ee319197b13e08fa8f63"
+      },
+      {
+        "case_id": "2026-05-07_NBA_Analysis__PHI_NYK",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 191,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "f54f0f76a521bcf151eedb7356ad5a403de06f27343edf735cccd78a85a99af8"
+      },
+      {
+        "case_id": "2026-05-08_NBA_Analysis__CLE_DET",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 171,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "e79744df5d459c14cc04b57777ac2cdcd37c2b3e067b65f877ed68b6aee565d6"
+      },
+      {
+        "case_id": "2026-05-08_NBA_Analysis__LAL_OKC",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 176,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "69564d363a1090abbb452b5e92c448521b9d1f297af25327115c64835be636a7"
+      },
+      {
+        "case_id": "2026-05-10_NBA_Analysis__DET_CLE",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 168,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "1239b0785b19b78737b746b851cb8d3398f701b6a4aaace9c74aba9d250c994a"
+      },
+      {
+        "case_id": "2026-05-10_NBA_Analysis__OKC_LAL",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 152,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "9b0d8521d75ca36abe5a1edaf00acb89b3b6bda2f2252256d982340d13d25a72"
+      },
+      {
+        "case_id": "2026-05-11_NBA_Analysis__NYK_PHI",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 169,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "64a35feb1ba462b1883eca351ccd5b58746f5aa148c3242192f3373b25bbe519"
+      },
+      {
+        "case_id": "2026-05-11_NBA_Analysis__SAS_MIN",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 182,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "44f56f6361c6d6435fb4fa18a6818f7f89fa99b9ac2aaaa1db5202bae3b6903e"
+      },
+      {
+        "case_id": "2026-05-14_NBA_Analysis__CLE_DET",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 179,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "5574b598bf6382bab1933acd48e172a1e3e0f743671285fdf8605fbb8810c067"
+      },
+      {
+        "case_id": "2026-05-16_NBA_Analysis__DET_CLE",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 180,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "220fb0a050609a171b094afedf7631de2193a899be24007227eeb40ab949e119"
+      },
+      {
+        "case_id": "2026-05-16_NBA_Analysis__SAS_MIN",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 189,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "49becad7796e4dba36e6bcb5eaba132074706e25d812d4130639e632d663016d"
+      },
+      {
+        "case_id": "2026-05-17_NBA_Analysis__CLE_DET",
+        "exit_code": 0,
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ],
+        "legs": 167,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "45f19dfcde0ac20d318ba57ddce26d7035f1aeba61e358440012e06a35fe1e45"
+      },
+      {
+        "case_id": "2026-06-04_NBA_Analysis__NYK_SAS",
+        "exit_code": 0,
+        "temporal_warnings": [],
+        "legs": 195,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "90d2c5bf1fa788853d6ce51d5c8e4521cc6b30016fd0ec3c5855d7fa5a2cb760"
+      },
+      {
+        "case_id": "2026-06-06_NBA_Analysis__NYK_SAS",
+        "exit_code": 0,
+        "temporal_warnings": [],
+        "legs": 193,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "127cc6cde6296982f3b342b33c6037b76be3d722558c79c419a72cf72609472b"
+      },
+      {
+        "case_id": "2026-06-09_NBA_Analysis__SAS_NYK",
+        "exit_code": 0,
+        "temporal_warnings": [],
+        "legs": 196,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "cf1503a79083e55038aca09d680d841a62c6e40b5f7c563d038d397cc3bddb11"
+      },
+      {
+        "case_id": "2026-06-11_NBA_Analysis__SAS_NYK",
+        "exit_code": 0,
+        "temporal_warnings": [],
+        "legs": 191,
+        "picked": 0,
+        "combos": 0,
+        "sidecar_sha256": "ab0eb29bab3aa0d8fbff9f50e07b3aab80c55d7abc506c08753fc40a0827850b"
+      }
+    ],
+    "missing": [
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_ATL_CLE.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_DAL_PHX.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_MEM_DEN.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_MIN_ORL.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_POR_SAS.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_BOS_NY.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_CHI_WSH.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_CLE_ATL.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_DET_CHA.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_IND_BKN.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_LAL_GS.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_MIA_TOR.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_MIA_WSH.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_NO_BOS.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_PHI_HOU.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_PHI_IND.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      }
+    ]
+  },
+  "input_manifest": {
+    "cases": [
+      {
+        "case_id": "2026-04-15_NBA_Analysis__ATL_NYK",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_ATL_NYK.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/Sportsbet_Odds_ATL_NYK.json",
+        "game_sha256": "2ee72064c75a04edadbddfbe1323845b4ee75c322b80798103a0ddb232b8d170",
+        "odds_sha256": "a7ec5abcdb4e63f264b2955f60ef9a04adf4ee9d9f2251dfdf8e004e996a8621",
+        "game_date": "2026-04-14",
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-15_NBA_Analysis__GSW_LAC",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_GSW_LAC.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/Sportsbet_Odds_GSW_LAC.json",
+        "game_sha256": "c4fa1e5a1d7a775fe0bde1f222060e61dc91ba1f3afb1fa1b7e1aabc1a1eb02e",
+        "odds_sha256": "85dc9542f7a7710137f2aaaffa4147a41ea957b78192925448fa800152419769",
+        "game_date": "2026-04-14",
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-15_NBA_Analysis__HOU_LAL",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_HOU_LAL.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/Sportsbet_Odds_HOU_LAL.json",
+        "game_sha256": "d90de786d1f9f6f5b1207619fc0b4688330efb800d6d579acbb530eeeac96164",
+        "odds_sha256": "a061496a0d0021bc971dc34a164f71e8d09477e356e4a7e347b193034998c86b",
+        "game_date": "2026-04-14",
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-15_NBA_Analysis__MIA_CHA",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_MIA_CHA.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/Sportsbet_Odds_MIA_CHA.json",
+        "game_sha256": "ce8cb537aac25e564e84abbae358ba0b6fa1ba0d3a3a9122e32053389980a604",
+        "odds_sha256": "2a912676f17b6db01a21ec405a1cce1c2a1bce7789801ebff64e415e53a35edb",
+        "game_date": "2026-04-14",
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-15_NBA_Analysis__ORL_PHI",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_ORL_PHI.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/Sportsbet_Odds_ORL_PHI.json",
+        "game_sha256": "6ecb35397b653d5f0fef11ffc876b12b88d44710735aa572b79ae3655e2bd8c3",
+        "odds_sha256": "cc908fe84c87efb4a5994d8476c0be796804347c76c3f67df2f1a1e2046e4acb",
+        "game_date": "2026-04-14",
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-15_NBA_Analysis__POR_PHX",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_POR_PHX.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/Sportsbet_Odds_POR_PHX.json",
+        "game_sha256": "dcaa8257764fbef9ca893a4a8470d4f3ee8ed27bacc491618aa19669d30036f6",
+        "odds_sha256": "fe2d03e79ca78375195b2cd948d588e6387db698d446a6c8c652e6d1b8a46cd8",
+        "game_date": "2026-04-14",
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-15_NBA_Analysis__TOR_CLE",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_TOR_CLE.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/Sportsbet_Odds_TOR_CLE.json",
+        "game_sha256": "3c7cddde86ac09e9f90186eb870e4cef576770b0975fdc6fb17eb9878f5ee214",
+        "odds_sha256": "b82578a6f693a5fab19a3fd85a16561ea80f562342c043bdc263046aba1dc179",
+        "game_date": "2026-04-14",
+        "temporal_warnings": [
+          "game_data_timestamp_unknown",
+          "odds_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__ATL_NYK",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_ATL_NYK.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/Sportsbet_Odds_ATL_NYK.json",
+        "game_sha256": "94f6b493b743d7b6465c8ad54c0e4f35230c78c691dd2c597be4e49d1522b521",
+        "odds_sha256": "d0f28dd41f08beeb8a2f55fd51e0627b4b9c9be7cd3d4f2bfe6ac812f930fbfc",
+        "game_date": "2026-04-15",
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__GSW_LAC",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_GSW_LAC.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/Sportsbet_Odds_GSW_LAC.json",
+        "game_sha256": "9d0badea8299dab9ab56fc73c4b820721b8b10b9af6764c3fff601dfd5504b5c",
+        "odds_sha256": "5af3a2fc001bb165a08a7fb11c0ed2cce539eeb0ee50472a32fe55ecd111d881",
+        "game_date": "2026-04-16",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__HOU_LAL",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_HOU_LAL.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/Sportsbet_Odds_HOU_LAL.json",
+        "game_sha256": "073d27217af3c14e3bfbb535a6fdb5c37902ae35d863109ad2b26308984e7208",
+        "odds_sha256": "ff72f12a9537b4869174b7737c946dcd4a4b09c39c7a0d3fab214eb36d7bd97d",
+        "game_date": "2026-04-15",
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__MIN_DEN",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_MIN_DEN.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/Sportsbet_Odds_MIN_DEN.json",
+        "game_sha256": "517473783c03d746a0144cac3f9a629361a9057f70a118c85a20abe20ce2e494",
+        "odds_sha256": "41dfae4e832330b72f56f4be4eef0dc2376bada970c201ee97c1c8afcd275b2a",
+        "game_date": "2026-04-15",
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__ORL_PHI",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_ORL_PHI.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/Sportsbet_Odds_ORL_PHI.json",
+        "game_sha256": "5be8bcc57d96e49b52a44970a7261e5d57d974e4bd0ed1820eb0810478f0c508",
+        "odds_sha256": "23cd810ce909a55a44faeec5cde23a372801c4e3105f84732588d04d75bf29d4",
+        "game_date": "2026-04-15",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__POR_SAS",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_POR_SAS.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/Sportsbet_Odds_POR_SAS.json",
+        "game_sha256": "3c9a697183716dc0fb886f5345cc7c036856e4922f7b3da4d174d1e00c98ace9",
+        "odds_sha256": "41a3b807f8cc80f5c4ed49fe8fad1c949f83d7514f757143fce958c8f40f723d",
+        "game_date": "2026-04-15",
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-16_NBA_Analysis__TOR_CLE",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_TOR_CLE.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/Sportsbet_Odds_TOR_CLE.json",
+        "game_sha256": "383d7d71db28f52b849dea19678d5dd99a74b5671b87229c4583c5370baca169",
+        "odds_sha256": "93eea3106db874e7c48c5331ef65ac8bf22d74aec2873da3cc7d87778037e403",
+        "game_date": "2026-04-15",
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-24_NBA_Analysis__CLE_TOR",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-24 NBA Analysis/nba_game_data_CLE_TOR.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-24 NBA Analysis/Sportsbet_Odds_CLE_TOR.json",
+        "game_sha256": "b9f9af2308198a3c9ccea1b1e90d457414394b6bef540fdbccfd7b7797218e7d",
+        "odds_sha256": "80a93a0c154e5dc5319a7bc27127e7797d5b4ef633dc4d06841b85dc0506091f",
+        "game_date": "2026-04-24",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-24_NBA_Analysis__DEN_MIN",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-24 NBA Analysis/nba_game_data_DEN_MIN.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-24 NBA Analysis/Sportsbet_Odds_DEN_MIN.json",
+        "game_sha256": "d5d563b9298bf08a51d08117a47d0bdc5a51f77b34c8e18f199e77f4bf176e12",
+        "odds_sha256": "0c89a8dbe5228578179ee9e4cf2acda03547160c2eff68b1cf63f8269bfbc4b5",
+        "game_date": "2026-04-24",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-24_NBA_Analysis__NYK_ATL",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-24 NBA Analysis/nba_game_data_NYK_ATL.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-24 NBA Analysis/Sportsbet_Odds_NYK_ATL.json",
+        "game_sha256": "d67e11721788f2e3f614f02cdaa19165c6de1e6cadb41868daf312b09e9d3252",
+        "odds_sha256": "311767201e4eda02fa3b7576b2742daad5e393d28d8b546e468e53f25e51c2b3",
+        "game_date": "2026-04-23",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-25_NBA_Analysis__BOS_PHI",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-25 NBA Analysis/nba_game_data_BOS_PHI.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-25 NBA Analysis/Sportsbet_Odds_BOS_PHI.json",
+        "game_sha256": "db8fbdbfbe4eaed422726cfb622b09d4c5bea7a01da36849400ace1b87280ac8",
+        "odds_sha256": "1288b42958fdb4fa8dcf4754b4438dc82a8484ffcc9263b350db48c5614a8b10",
+        "game_date": "2026-04-24",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-25_NBA_Analysis__LAL_HOU",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-25 NBA Analysis/nba_game_data_LAL_HOU.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-25 NBA Analysis/Sportsbet_Odds_LAL_HOU.json",
+        "game_sha256": "c2e76b27ccffafd44dd7a83b5fc7601b97059c1267d4a4474f2b2b1cb40b9a7b",
+        "odds_sha256": "30a4341c8318b87fd8cd0015eb85341fd3ea9464633bb990654f50477c9e187d",
+        "game_date": "2026-04-25",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-25_NBA_Analysis__SAS_POR",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-25 NBA Analysis/nba_game_data_SAS_POR.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-25 NBA Analysis/Sportsbet_Odds_SAS_POR.json",
+        "game_sha256": "830e12059af441629f11a5809bdb1640ab7fafc15bea146b613dc28d225868df",
+        "odds_sha256": "c23ab3753d3832747c9463ff0d647832671c52aee852a5c51fc8364a51487dbc",
+        "game_date": "2026-04-25",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-26_NBA_Analysis__DEN_MIN",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-26 NBA Analysis/nba_game_data_DEN_MIN.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-26 NBA Analysis/Sportsbet_Odds_DEN_MIN.json",
+        "game_sha256": "7ab6e5a8ca247290ca6ba4ef1e6e2b25e1f56079458ec312963bc34558d6317e",
+        "odds_sha256": "5969ac7d025b49762969decca44009562f361db183e037d4fc3bd9af6c4bf425",
+        "game_date": "2026-04-26",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-26_NBA_Analysis__DET_ORL",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-26 NBA Analysis/nba_game_data_DET_ORL.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-26 NBA Analysis/Sportsbet_Odds_DET_ORL.json",
+        "game_sha256": "e5e6f58f51268d8069de8491f71c79dfb86d19ee6d5451bb65ded31d72e2ced7",
+        "odds_sha256": "226df1e7e879e24ffd3cdfe1691141927b6fe9e8251d91fd772beaf12a329665",
+        "game_date": "2026-04-25",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-26_NBA_Analysis__NYK_ATL",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-26 NBA Analysis/nba_game_data_NYK_ATL.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-26 NBA Analysis/Sportsbet_Odds_NYK_ATL.json",
+        "game_sha256": "28b566404e85fedcd07bc71557cd5ef7e9517e4223417b871a335b44d738f1f0",
+        "odds_sha256": "83f793dc15008ece8afd2e3b40a2ba5463dc7e25488a1c70f424ac3949574e71",
+        "game_date": "2026-04-25",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-26_NBA_Analysis__OKC_PHX",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-26 NBA Analysis/nba_game_data_OKC_PHX.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-26 NBA Analysis/Sportsbet_Odds_OKC_PHX.json",
+        "game_sha256": "bf21c345633771c58ba209c9b57587e8cadbf3967062ea7eee48420cb810e080",
+        "odds_sha256": "08c4578044aa97278e5536ca16202a096f93273b003195d66461bb492a393121",
+        "game_date": "2026-04-25",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-28_NBA_Analysis__DET_ORL",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-28 NBA Analysis/nba_game_data_DET_ORL.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-28 NBA Analysis/Sportsbet_Odds_DET_ORL.json",
+        "game_sha256": "8452c8cf5547406ae6affe572f4843e7db920800ebb26845a884c9227b509996",
+        "odds_sha256": "e25c6a2d7e0fe99e5d323465f675e6585ac7b20f86dd36f39602dccccb78868b",
+        "game_date": "2026-04-28",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-28_NBA_Analysis__MIN_DEN",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-28 NBA Analysis/nba_game_data_MIN_DEN.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-28 NBA Analysis/Sportsbet_Odds_MIN_DEN.json",
+        "game_sha256": "c8831ed292cb1791bbcefa4ee4684de6614a944ed56f6f1e74007bc009e7ff99",
+        "odds_sha256": "b40be86652e655e11d40089b685ed1d5f38f2e11309f0054dd3adb07bf22893f",
+        "game_date": "2026-04-28",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-28_NBA_Analysis__OKC_PHX",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-28 NBA Analysis/nba_game_data_OKC_PHX.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-28 NBA Analysis/Sportsbet_Odds_OKC_PHX.json",
+        "game_sha256": "cb0b1cd5f6d4324058fa31118de889142308d76d79825e66c016af12d657cc23",
+        "odds_sha256": "d688f18e00d6d80efa8ea48137cb6f0cc7e6daf16c350472cfa6d6290a01c9ea",
+        "game_date": "2026-04-28",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-29_NBA_Analysis__ATL_NYK",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-29 NBA Analysis/nba_game_data_ATL_NYK.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-29 NBA Analysis/Sportsbet_Odds_ATL_NYK.json",
+        "game_sha256": "e7b725bd4414e0f1035628c031f300affa812002e60f1639b6f5721ad2953c92",
+        "odds_sha256": "078b15f3188db2639f20aafa192cbcde5bc9fbb557dd8805e6c3f727fd253a30",
+        "game_date": "2026-04-29",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-29_NBA_Analysis__PHI_BOS",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-29 NBA Analysis/nba_game_data_PHI_BOS.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-29 NBA Analysis/Sportsbet_Odds_PHI_BOS.json",
+        "game_sha256": "c3959a187e0bc48f31ccd528b124b8114e61c31b419cb018136283e5dee1fde3",
+        "odds_sha256": "4911c05a06dd9c0b4d844be353b8d21eec8d265ad92332ef7e99f7a9738e1a75",
+        "game_date": "2026-04-28",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-29_NBA_Analysis__POR_SAS",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-29 NBA Analysis/nba_game_data_POR_SAS.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-29 NBA Analysis/Sportsbet_Odds_POR_SAS.json",
+        "game_sha256": "7d581ed031771222e8fe3e070b7fdd2c9def0cea924661518cba8cd549320e2c",
+        "odds_sha256": "8f0b2a99e637327a8482ba8990e2b58e4cecd3e98898d4618e8b95322ee182c1",
+        "game_date": "2026-04-29",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-30_NBA_Analysis__HOU_LAL",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-30 NBA Analysis/nba_game_data_HOU_LAL.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-30 NBA Analysis/Sportsbet_Odds_HOU_LAL.json",
+        "game_sha256": "075bf12035a2ed0a5d7874f7101944f2d27f867dcab16caf5e4d2fe03f855ba7",
+        "odds_sha256": "cd3e321f332d10df608d2260b34e6631a714f5bf14f198106d9c7b693913cb66",
+        "game_date": "2026-04-30",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-30_NBA_Analysis__ORL_DET",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-30 NBA Analysis/nba_game_data_ORL_DET.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-30 NBA Analysis/Sportsbet_Odds_ORL_DET.json",
+        "game_sha256": "170c04e6036b83dbeb4e9c2e9fed72a484289f70f95d64db69880ef3ee364671",
+        "odds_sha256": "c4ff71b53f11ff1aa9451ac631865ec291503330a8283a88811597a7898764b6",
+        "game_date": "2026-04-29",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-04-30_NBA_Analysis__TOR_CLE",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-30 NBA Analysis/nba_game_data_TOR_CLE.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-30 NBA Analysis/Sportsbet_Odds_TOR_CLE.json",
+        "game_sha256": "5b14f7bfcd286c6998534eaaaba93e6d9d7a9512bdbf98703377e35fb4865ebb",
+        "odds_sha256": "bc8fd38b4d26c1abc62c93d85fa70563833ae6c1aaff2a620f1327d3816ef5e3",
+        "game_date": "2026-04-29",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-01_NBA_Analysis__BOS_PHI",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-01 NBA Analysis/nba_game_data_BOS_PHI.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-01 NBA Analysis/Sportsbet_Odds_BOS_PHI.json",
+        "game_sha256": "aa536504581fbcec5d96481b0e6ca3dfefcebc2708231dcbe026d9c71c69795c",
+        "odds_sha256": "fa35e3f13d66875698d3bcc2ee9760041d4068abb2b453cadf740af2c4d6c2e2",
+        "game_date": "2026-05-01",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-01_NBA_Analysis__DEN_MIN",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-01 NBA Analysis/nba_game_data_DEN_MIN.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-01 NBA Analysis/Sportsbet_Odds_DEN_MIN.json",
+        "game_sha256": "711f5481a4dfe27252cb203bfeb0882b13877d52fc9aa45ca8554d3406553090",
+        "odds_sha256": "8de042fc563b511190fd08d574773aa2397045e4d49d3e750649e3a5c927c117",
+        "game_date": "2026-05-01",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-01_NBA_Analysis__NYK_ATL",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-01 NBA Analysis/nba_game_data_NYK_ATL.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-01 NBA Analysis/Sportsbet_Odds_NYK_ATL.json",
+        "game_sha256": "8affe58288fbefd52ad3831919f02b70d5cb73c2e3e3b308b067705c5a166a9c",
+        "odds_sha256": "6f041ddd482645cff5e5203ca74e410b7186ca0b7f71142f240db016079efda7",
+        "game_date": "2026-04-30",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-02_NBA_Analysis__CLE_TOR",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/nba_game_data_CLE_TOR.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/Sportsbet_Odds_CLE_TOR.json",
+        "game_sha256": "815ffa1d8517af705427fedddedd261072b215869b6b3020ce818ec2b7336d39",
+        "odds_sha256": "d5904ed466bd20bde605bde47f2555dd7e1acfbfc3791e5bb519d17575ee57e2",
+        "game_date": "2026-05-01",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-02_NBA_Analysis__DET_ORL",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/nba_game_data_DET_ORL.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/Sportsbet_Odds_DET_ORL.json",
+        "game_sha256": "70088f176cfac0b56bb4d1e8e6a27b0213ec95bd9951908f77f01bc32b409f60",
+        "odds_sha256": "1f5ee5e847481c3c2922b0ce663c451a691ad3b3dec5e9afd82691fb4aef8d30",
+        "game_date": "2026-05-01",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-02_NBA_Analysis__LAL_HOU",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/nba_game_data_LAL_HOU.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/Sportsbet_Odds_LAL_HOU.json",
+        "game_sha256": "8cb5a3bb26d82a0038bd8bee0c34fd0247515f11b111e826da381ea9e491d626",
+        "odds_sha256": "fe3226b0ea32ee1456327e551fdcc0f1f733e4cbc73c9508b54d0967bae7b30c",
+        "game_date": "2026-05-02",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-02_NBA_Analysis__MIN_SAS",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/nba_game_data_MIN_SAS.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/Sportsbet_Odds_MIN_SAS.json",
+        "game_sha256": "785dfe7ba221a80ffd37d30e429909c40e22fca9112e67480125e62c99999736",
+        "odds_sha256": "01714d94b7b59e321526701e61d7f59b4c9b5115af7b2b375dc7d6090d623313",
+        "game_date": "2026-05-02",
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-02_NBA_Analysis__PHI_BOS",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/nba_game_data_PHI_BOS.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/Sportsbet_Odds_PHI_BOS.json",
+        "game_sha256": "d591c48d14c825112c6fc83991500191c230ac2dbe55650543d3b6f4288861c1",
+        "odds_sha256": "3719037ec722461346cb509b6e24a39be4a187a9e57f6eb19f122398d68b314e",
+        "game_date": "2026-05-02",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-04_NBA_Analysis__LAL_OKC",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-04 NBA Analysis/nba_game_data_LAL_OKC.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-04 NBA Analysis/Sportsbet_Odds_LAL_OKC.json",
+        "game_sha256": "c29ae86468006815259b8bf65c36ed491a6f64549b6b3cc347160607bbdf4aaa",
+        "odds_sha256": "a84a3fd9e58ccdf7799467a0ce61341023e74ced5b6a9103f923c3c66f92d8f5",
+        "game_date": "2026-05-03",
+        "temporal_warnings": [
+          "game_data_captured_post_tip",
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-04_NBA_Analysis__MIN_SAS",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-04 NBA Analysis/nba_game_data_MIN_SAS.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-04 NBA Analysis/Sportsbet_Odds_MIN_SAS.json",
+        "game_sha256": "616b05eef0105bfeaa553fa7a9b257ad5fd5acd6be3e5c3b62e9fc7274c0f8a1",
+        "odds_sha256": "d5f7c356b2252091366a10c5af2fd183595d10c101a268d2b123ed0e2d157bbd",
+        "game_date": "2026-05-05",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-04_NBA_Analysis__ORL_DET",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-04 NBA Analysis/nba_game_data_ORL_DET.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-04 NBA Analysis/Sportsbet_Odds_ORL_DET.json",
+        "game_sha256": "c86098233a3301ec2ac8a9b4cea4178062ce3b5453be71344f7ef20762885c0e",
+        "odds_sha256": "9661d1cb5d9dbf72d73792d96fc5c615ea06b772ba3b790b4304c4849890112d",
+        "game_date": "2026-05-03",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-05_NBA_Analysis__MIN_SAS",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-05 NBA Analysis/nba_game_data_MIN_SAS.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-05 NBA Analysis/Sportsbet_Odds_MIN_SAS.json",
+        "game_sha256": "dd48f2ee83caf646acf87657fc6428fe2b5f26bfa4c948fa8fcb18146fde07e2",
+        "odds_sha256": "276bfd24930ebd939891ebd377d1c15dbff1dd41700934827d8f5253d7acf538",
+        "game_date": "2026-05-05",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-05_NBA_Analysis__PHI_NYK",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-05 NBA Analysis/nba_game_data_PHI_NYK.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-05 NBA Analysis/Sportsbet_Odds_PHI_NYK.json",
+        "game_sha256": "37319717fcee615362798caa515d9f4a918d0f825a725295df1261ead6cfb6c7",
+        "odds_sha256": "7d1cb1a1f3e4b04892c6eb03aaf401c276192c29e8fec49d6949214fab6f316e",
+        "game_date": "2026-05-05",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-06_NBA_Analysis__CLE_DET",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-06 NBA Analysis/nba_game_data_CLE_DET.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-06 NBA Analysis/Sportsbet_Odds_CLE_DET.json",
+        "game_sha256": "9648866e204de4d5711ad3f04389fb4d9aadebc84c8d5bd24e1104c2a3851622",
+        "odds_sha256": "e015a44989cf4e20b37f4d5bfd879148bb6f7911c196a85fd604fa276c7ca075",
+        "game_date": "2026-05-05",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-06_NBA_Analysis__LAL_OKC",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-06 NBA Analysis/nba_game_data_LAL_OKC.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-06 NBA Analysis/Sportsbet_Odds_LAL_OKC.json",
+        "game_sha256": "4b4b8fb6044a390abb773ae390c8f29e7419c9a3559026e94719a9f97225775a",
+        "odds_sha256": "996607ae6e3c64f758a6669afed67bf0fe86a75a9337062b938c1fa0cc88d256",
+        "game_date": "2026-05-06",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-07_NBA_Analysis__MIN_SAS",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-07 NBA Analysis/nba_game_data_MIN_SAS.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-07 NBA Analysis/Sportsbet_Odds_MIN_SAS.json",
+        "game_sha256": "db5856851312ff229d8845d4d8bc235ba4dd16f646a2d0de8a1b526ecafcb443",
+        "odds_sha256": "7e79ee3b3ff4d1f492f0e16808cc4e2a185c8bc4e4b1fa2da60051876c98b6e6",
+        "game_date": "2026-05-07",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-07_NBA_Analysis__PHI_NYK",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-07 NBA Analysis/nba_game_data_PHI_NYK.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-07 NBA Analysis/Sportsbet_Odds_PHI_NYK.json",
+        "game_sha256": "ad9d782e00e1ae8aaae02103220f481e8664c3cc37798aa663ec3a9bf32ddcff",
+        "odds_sha256": "839256c67a1c0208aae66d13c7cbce1d6e2d446aa7714879b8d076ef97a268ce",
+        "game_date": "2026-05-06",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-08_NBA_Analysis__CLE_DET",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-08 NBA Analysis/nba_game_data_CLE_DET.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-08 NBA Analysis/Sportsbet_Odds_CLE_DET.json",
+        "game_sha256": "1e6ac0f4efdc99c58fea34ccb8712eb1bd66f4fee97a98493e9dee8cf075ad36",
+        "odds_sha256": "64c420770809751f58cbbc70c0e646cfd3a70c1f4601d52e5574025486eba471",
+        "game_date": "2026-05-07",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-08_NBA_Analysis__LAL_OKC",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-08 NBA Analysis/nba_game_data_LAL_OKC.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-08 NBA Analysis/Sportsbet_Odds_LAL_OKC.json",
+        "game_sha256": "44d45f57fdea68ab36dcf6f71453d71a22d5fd92d6e8d64331a76148843073ea",
+        "odds_sha256": "e3d501a2df1bdc98fbdf50997299870a63779530f669c3f9d35ebbbf845075cc",
+        "game_date": "2026-05-08",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-10_NBA_Analysis__DET_CLE",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-10 NBA Analysis/nba_game_data_DET_CLE.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-10 NBA Analysis/Sportsbet_Odds_DET_CLE.json",
+        "game_sha256": "28e1c25a61b50551a43ed235f62c6a2b97ad19b02374c9dacb74ecf4019c15e2",
+        "odds_sha256": "dce9403274edcdc9ec3c5eab1fc264cf13fb497f1f9c3b223fccaebfcd7f7564",
+        "game_date": "2026-05-09",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-10_NBA_Analysis__OKC_LAL",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-10 NBA Analysis/nba_game_data_OKC_LAL.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-10 NBA Analysis/Sportsbet_Odds_OKC_LAL.json",
+        "game_sha256": "4c23a141c9c4cb12660956502fa660cdcc69108ba6d7dacfb324e0035b43a970",
+        "odds_sha256": "c142e2c6ca1ef3e8505851588065cbd89a25c3d638449450f86168cb8209f9ca",
+        "game_date": "2026-05-10",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-11_NBA_Analysis__NYK_PHI",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-11 NBA Analysis/nba_game_data_NYK_PHI.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-11 NBA Analysis/Sportsbet_Odds_NYK_PHI.json",
+        "game_sha256": "ce2352f606b7dcf5d36822ed3b3654ded6693a4ea21d1977afca82f953839a08",
+        "odds_sha256": "31d9f5658a29877a8473ee2e63cc044e6da4897328de2e2e1ecd389ce3c75fab",
+        "game_date": "2026-05-10",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-11_NBA_Analysis__SAS_MIN",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-11 NBA Analysis/nba_game_data_SAS_MIN.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-11 NBA Analysis/Sportsbet_Odds_SAS_MIN.json",
+        "game_sha256": "7b5897b345983fb78da4495c1792e9222a56e6adec03f8c55b534a48478c8003",
+        "odds_sha256": "70cca05ee6af093d7c2bac5655b6489098a5945e05add29627818300593473c8",
+        "game_date": "2026-05-10",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-14_NBA_Analysis__CLE_DET",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-14 NBA Analysis/nba_game_data_CLE_DET.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-14 NBA Analysis/Sportsbet_Odds_CLE_DET.json",
+        "game_sha256": "ae8e99ef622aaf46ac479271b5dc7b12f9d619f21f680c6173f938e696d85f68",
+        "odds_sha256": "8444da1be19fdbe00ced685edc87bbbeae029a1ac80134652f4e6419556101c8",
+        "game_date": "2026-05-14",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-16_NBA_Analysis__DET_CLE",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-16 NBA Analysis/nba_game_data_DET_CLE.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-16 NBA Analysis/Sportsbet_Odds_DET_CLE.json",
+        "game_sha256": "a1418929086ffa7fe96c88889a006ad1d3f2fc823f38000a73ba8b7e07bb21de",
+        "odds_sha256": "b8644ad16028b46420bfe6c0f8ecce4615b6c37c116652c40b57038397773f89",
+        "game_date": "2026-05-15",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-16_NBA_Analysis__SAS_MIN",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-16 NBA Analysis/nba_game_data_SAS_MIN.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-16 NBA Analysis/Sportsbet_Odds_SAS_MIN.json",
+        "game_sha256": "c4a54cd512716feb6e80abac1298a9a9617d70f865b4470a6f34ca6da414271e",
+        "odds_sha256": "e736eac05d08656d9c4d8b3eeff62c27030b006131612c94c0cb854eee852a27",
+        "game_date": "2026-05-16",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-05-17_NBA_Analysis__CLE_DET",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-17 NBA Analysis/nba_game_data_CLE_DET.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-17 NBA Analysis/Sportsbet_Odds_CLE_DET.json",
+        "game_sha256": "c004d2e5299e6b92f053b6ca5a1e2515f35e86ceef0012f1f2c8444f200bde09",
+        "odds_sha256": "2d3196af582b260d405b669ce1efee95d81ae74c9c1628670b0bbc74d246611e",
+        "game_date": "2026-05-18",
+        "temporal_warnings": [
+          "odds_event_start_unverified"
+        ]
+      },
+      {
+        "case_id": "2026-06-04_NBA_Analysis__NYK_SAS",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-06-04 NBA Analysis/nba_game_data_NYK_SAS.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-06-04 NBA Analysis/Sportsbet_Odds_NYK_SAS.json",
+        "game_sha256": "8852a5ddc4348e5b34762be98adab0ebaa4125993da2350c21359cc84ebb2b53",
+        "odds_sha256": "f2fd1194fc7dc495375a36960ddbf2d2a0c22042d2e63d7ab4f53eb88fedb87c",
+        "game_date": "2026-06-04",
+        "temporal_warnings": []
+      },
+      {
+        "case_id": "2026-06-06_NBA_Analysis__NYK_SAS",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-06-06 NBA Analysis/nba_game_data_NYK_SAS.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-06-06 NBA Analysis/Sportsbet_Odds_NYK_SAS.json",
+        "game_sha256": "35b40b57391c1418abed8a93cca9ee08ef950cecb5951579d69fcc3581d22595",
+        "odds_sha256": "46cfabf97ca43c93ec5fc13f8d9968928ae4985a6f94f6a068e2d6cd931e0af2",
+        "game_date": "2026-06-06",
+        "temporal_warnings": []
+      },
+      {
+        "case_id": "2026-06-09_NBA_Analysis__SAS_NYK",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-06-09 NBA Analysis/nba_game_data_SAS_NYK.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-06-09 NBA Analysis/Sportsbet_Odds_SAS_NYK.json",
+        "game_sha256": "d1ba562eec256a1804c4398a5b6d5bfa9d06daac0e501cd8b7be664f26a7ca22",
+        "odds_sha256": "9ab7e72297e0217035be7a1a6e27ec88ba59e0befbe3e73a50c96e39f2f76abe",
+        "game_date": "2026-06-09",
+        "temporal_warnings": []
+      },
+      {
+        "case_id": "2026-06-11_NBA_Analysis__SAS_NYK",
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-06-11 NBA Analysis/nba_game_data_SAS_NYK.json",
+        "odds": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-06-11 NBA Analysis/Sportsbet_Odds_SAS_NYK.json",
+        "game_sha256": "a108b6e2510bebdc5a7c2d2c5618ad139e75004fc14ee77e7c2094e1f850f081",
+        "odds_sha256": "3f146e50df14b44063ab0d90177c298253aa0e95995879f2e59afa94db6546fe",
+        "game_date": "2026-06-11",
+        "temporal_warnings": []
+      }
+    ],
+    "missing": [
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_ATL_CLE.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_DAL_PHX.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_MEM_DEN.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_MIN_ORL.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_POR_SAS.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_BOS_NY.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_CHI_WSH.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_CLE_ATL.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_DET_CHA.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_IND_BKN.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_LAL_GS.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_MIA_TOR.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_MIA_WSH.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_NO_BOS.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_PHI_HOU.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      },
+      {
+        "game": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_PHI_IND.json",
+        "reason": "odds_absent_or_ambiguous",
+        "matches": 0
+      }
+    ]
+  },
+  "download_manifest_sha256": "0f6b375c4daf02e505a52e819082a12f5d0dafc9894f77cce875a040a0cc6116",
+  "download_files": 228,
+  "download_bytes": 91375319,
+  "source": "Google Drive connector; per-file bytes and SHA-256 verified before replay"
+}

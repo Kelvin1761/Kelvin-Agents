@@ -1,0 +1,47 @@
+{
+  "players": 576,
+  "same_player_set": true,
+  "pct_plusminus_changed": 0,
+  "sample_units": [
+    {
+      "PLAYER_NAME": "Donovan Clingan",
+      "GP": 75,
+      "D_FGA": 18.84,
+      "D_FG_PCT": 0.45,
+      "PCT_PLUSMINUS": -0.047,
+      "total_D_FGA": 1413
+    },
+    {
+      "PLAYER_NAME": "Alperen Sengun",
+      "GP": 69,
+      "D_FGA": 17.3,
+      "D_FG_PCT": 0.504,
+      "PCT_PLUSMINUS": 0.021,
+      "total_D_FGA": 1194
+    },
+    {
+      "PLAYER_NAME": "Victor Wembanyama",
+      "GP": 63,
+      "D_FGA": 17.03,
+      "D_FG_PCT": 0.38,
+      "PCT_PLUSMINUS": -0.112,
+      "total_D_FGA": 1073
+    },
+    {
+      "PLAYER_NAME": "Alex Sarr",
+      "GP": 48,
+      "D_FGA": 16.9,
+      "D_FG_PCT": 0.494,
+      "PCT_PLUSMINUS": 0.001,
+      "total_D_FGA": 811
+    },
+    {
+      "PLAYER_NAME": "Nikola Joki\u0107",
+      "GP": 64,
+      "D_FGA": 16.44,
+      "D_FG_PCT": 0.518,
+      "PCT_PLUSMINUS": 0.03,
+      "total_D_FGA": 1052
+    }
+  ]
+}

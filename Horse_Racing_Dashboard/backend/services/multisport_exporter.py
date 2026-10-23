@@ -236,7 +236,7 @@ def _parse_nba_combos(
                 "market": "Same Game Multi",
                 "selection": heading,
                 "odds": combined_odds,
-                "odds_status": "sportsbet_extracted",
+                "odds_status": "independent_leg_estimate",
                 "bet_type": "combo",
                 "legs": legs,
                 "metrics": {
@@ -310,7 +310,7 @@ def _build_nba_bankers(combos: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]
                 "market": leg.get("market") or "NBA player prop",
                 "selection": leg.get("selection") or "",
                 "odds": leg.get("odds"),
-                "odds_status": combo.get("odds_status"),
+                "odds_status": "sportsbet_extracted",
                 "bet_type": "single",
                 "legs": [],
                 "metrics": leg.get("metrics") or {},
@@ -442,6 +442,23 @@ def export_nba_snapshot(
             continue
         source_files = [sportsbet_path.name, report.name]
         combos = _parse_nba_combos(content, analysis_date, game_tag, source_files)
+        sidecar = _read_json(Path(str(report) + ".market_legs.json"))
+        # The publication firewall verifies report hash, exact event/legs, price
+        # and freshness. Historical grading can deliberately bypass that gate.
+        import hashlib
+        if sidecar.get("report_sha256") == hashlib.sha256(content.encode()).hexdigest():
+            by_id = {str(row.get("combo_id")): row for row in sidecar.get("combos", [])}
+            for combo in combos:
+                row = by_id.get(combo["id"].rsplit(":", 1)[-1], {})
+                quote = row.get("sgm_quote", {})
+                if quote.get("status") == "ok" and quote.get("decimal_odds") == combo["odds"]:
+                    combo["odds_status"] = "sportsbet_sgm_quoted"
+                    combo["sgm_quote"] = quote
+                    combo["quote_expires_at"] = quote.get("expires_at")
+                    combo["metrics"].update(model_probability=row.get("adjusted_joint_prob"),
+                        expected_value=(row["adjusted_joint_prob"] * combo["odds"] - 1),
+                        correlation_penalty=row.get("correlation_penalty"),
+                        product_of_leg_prices=row.get("product_of_leg_prices"))
         game_recs = combos + _build_nba_bankers(combos)
         # The page can only tell "today" from "yesterday" by date.  The tip-off
         # lets it stop offering 確認落注 on a game that has already started

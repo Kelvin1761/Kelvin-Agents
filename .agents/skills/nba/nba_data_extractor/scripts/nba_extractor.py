@@ -38,8 +38,12 @@ from pathlib import Path
 NBA_SKILL_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA_SKILL_DIR))
 from nba_schedule import canonical_team_abbr, canonical_game_tag, event_sydney_date
+from nba_data_contract import NBA_STATISTICS_CONTRACT
+from nba_availability import compute_usage_redistribution
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
+from nba_availability import (AvailabilityUnavailable, RosterChanged, apply_availability,
+                              availability_current, aware_time, fetch_team_availability, refresh_availability)
 
 try:
     import requests
@@ -485,26 +489,9 @@ def fetch_team_roster(team_nickname, season=None):
 
 
 def fetch_team_injuries(team_abbr):
-    """從 ESPN API 獲取球隊傷病名單"""
-    espn_abbr = TEAM_ABBR_ESPN_MAP.get(team_abbr, team_abbr)
-    print(f"  🏥 [Module 1b] 嘗試獲取 {team_abbr} (ESPN:{espn_abbr}) 傷病名單 (ESPN)...")
-    try:
-        url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/{espn_abbr}/roster"
-        r = requests.get(url, timeout=10)
-        if r.status_code == 200:
-            athletes = r.json().get('athletes', [])
-            injury_map = {}
-            for a in athletes:
-                name = a.get('fullName', '')
-                injuries = a.get('injuries', [])
-                if injuries and len(injuries) > 0:
-                    status = injuries[0].get('status', 'Active')
-                    injury_map[name] = status
-            return injury_map
-        return {}
-    except Exception as e:
-        print(f"  ⚠️ 獲取傷病名單失敗: {e}")
-        return {}
+    """An empty verified list means healthy; a source failure must never mean healthy."""
+    print(f"  🏥 [Module 1b] 獲取 {team_abbr} 即時傷停及完整陣容 (ESPN)...")
+    return fetch_team_availability(team_abbr, get=requests.get)
 
 
 FIT_STATS = ("PTS", "REB", "AST", "FG3M")
@@ -854,7 +841,7 @@ def fetch_defender_impact(season=None, as_of=None):
     try:
         dvp = leaguedashptdefend.LeagueDashPtDefend(
             defense_category='Overall',
-            per_mode_simple='PerGame',
+            per_mode_simple='Totals',
             season=season or nba_season_for_date(as_of),
             date_to_nullable=history_date_to(as_of),
         )
@@ -869,6 +856,8 @@ def fetch_defender_impact(season=None, as_of=None):
                 "team": row.get('PLAYER_LAST_TEAM_ABBREVIATION', ''),
                 "position": row.get('PLAYER_POSITION', ''),
                 "D_FGA": row.get('D_FGA', 0),
+                "D_FGA_unit": "total_attempts",
+                "GP": row.get('GP', 0),
                 "D_FG_PCT": round(row.get('D_FG_PCT', 0), 3),
                 "NORMAL_FG_PCT": round(row.get('NORMAL_FG_PCT', 0), 3),
                 "PCT_PLUSMINUS": round(row.get('PCT_PLUSMINUS', 0), 3),
@@ -1095,41 +1084,6 @@ def fetch_action_network_odds(date_str):
 # ==========================================
 # 模塊 D1：Usage Redistribution (傷缺紅利自動計算)
 # ==========================================
-def compute_usage_redistribution(players, team_abbr):
-    """
-    當核心球員缺陣時，自動計算球權重新分配。
-    原理：缺陣球員的 USG% 按比例分配給其他活躍球員。
-    """
-    active = []
-    injured_usg = 0
-    
-    for p in players:
-        adv = p.get('advanced', {})
-        gl = p.get('gamelog')
-        usg = adv.get('USG_PCT', 0)
-        
-        # 如果最近無 gamelog 或少於 3 場，視為缺陣
-        if not gl or gl.get('games_played', 0) < 3:
-            injured_usg += usg
-        else:
-            active.append(p)
-    
-    redistribution = {}
-    if injured_usg > 0 and active:
-        total_active_usg = sum(p.get('advanced', {}).get('USG_PCT', 0) for p in active)
-        for p in active:
-            p_usg = p.get('advanced', {}).get('USG_PCT', 0)
-            share = p_usg / total_active_usg if total_active_usg > 0 else 0
-            bonus_usg = round(injured_usg * share, 1)
-            redistribution[p['name']] = {
-                "original_USG": p_usg,
-                "bonus_USG": bonus_usg,
-                "projected_USG": round(p_usg + bonus_usg, 1),
-            }
-    
-    return redistribution
-
-
 # ==========================================
 # 模塊 D2：Rest Day Fatigue Model
 # ==========================================
@@ -1244,6 +1198,15 @@ def compute_correlation_warnings(players, team_abbr):
 # ==========================================
 # 主引擎：單場深度提取
 # ==========================================
+def key_defenders_for_team(defender_data, team_abbr):
+    """The existing 20-attempt sample floor applies to totals, never PerGame."""
+    candidates = [row for row in defender_data.values()
+                  if canonical_team_abbr(row.get('team', '')) == canonical_team_abbr(team_abbr)
+                  and row.get('D_FGA_unit') == 'total_attempts'
+                  and row.get('D_FGA', 0) >= 20]
+    return sorted(candidates, key=lambda row: row.get('PCT_PLUSMINUS', 0))[:8]
+
+
 def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stats, odds_data,
                         data_sources=None):
     """
@@ -1275,6 +1238,12 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             ),
             "history_date_to": history_date_to(game_info.get('date')),
             "data_sources": data_sources or {},
+            "statistics_contract": NBA_STATISTICS_CONTRACT,
+            "defender_source": {"per_mode": "Totals", "sample_unit": "total_attempts",
+                                "observed_players": len(defender_data),
+                                "qualified_players": sum(row.get('D_FGA_unit') == 'total_attempts'
+                                                         and row.get('D_FGA', 0) >= 20
+                                                         for row in defender_data.values())},
             "fallback_used": any(v.get("fallback_used") for v in (data_sources or {}).values()),
             "away": {"name": away_name, "abbr": away_abbr},
             "home": {"name": home_name, "abbr": home_abbr},
@@ -1325,6 +1294,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
         package["meta"]["preseason_rookie_history_contract"] = 1
 
     # 提取雙方陣容與數據
+    availability_maps = {}
     for side, abbr, full_name in [("away", away_abbr, away_name), ("home", home_abbr, home_name)]:
         print(f"\n📋 [{abbr}] 提取 {full_name} 陣容...")
         roster = fetch_team_roster(full_name, target_season)
@@ -1336,6 +1306,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
 
         # 抓取真實傷病名單並存儲到 metadata
         injury_map = fetch_team_injuries(abbr)
+        availability_maps[abbr] = injury_map
         package["injuries"][abbr] = injury_map
         
         # 抓取球隊新聞
@@ -1410,6 +1381,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
 
             player_entry = {
                 "name": pname,
+                "status": p_status,
                 "player_id": int(pid),
                 "position": p.get('position') or '',
                 "age": p.get('age', ''),
@@ -1436,15 +1408,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             package["players"][abbr].append(player_entry)
 
         # 防守者
-        team_defenders = []
-        for did, ddata in defender_data.items():
-            dteam = ddata.get('team', '')
-            if dteam == abbr or dteam in full_name:
-                if ddata.get('D_FGA', 0) >= 20:
-                    team_defenders.append(ddata)
-        # 按壓制力排序
-        team_defenders.sort(key=lambda x: x.get('PCT_PLUSMINUS', 0))
-        package["key_defenders"][abbr] = team_defenders[:8]
+        package["key_defenders"][abbr] = key_defenders_for_team(defender_data, abbr)
 
         # 🧠 Usage Redistribution (Module D1)
         usg_redist = compute_usage_redistribution(package["players"][abbr], abbr)
@@ -1456,7 +1420,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
         if corr_warnings:
             package.setdefault("correlation_warnings", {})[abbr] = corr_warnings
 
-    return package
+    return apply_availability(package, availability_maps)
 
 
 # ==========================================
@@ -1548,12 +1512,46 @@ def build_game_info_from_tag(game_tag):
 # ==========================================
 # 主程式
 # ==========================================
+def _write_verified_package(path, package):
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+    tip = aware_time(package.get("meta", {}).get("date"))
+    if tip is not None and tip <= now:
+        raise AvailabilityUnavailable("game already started; cached pregame data is protected")
+    if not availability_current(package, now=now):
+        package = refresh_availability(package, fetch=fetch_team_injuries, now=now)
+    temporary = path + ".availability.tmp"
+    try:
+        with open(temporary, "w", encoding="utf-8") as target:
+            json.dump(package, target, ensure_ascii=False, indent=2, allow_nan=False)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
 def main():
     parser = argparse.ArgumentParser(description="NBA Wong Choi Claw Code V3 Extractor")
     parser.add_argument("--date", type=str, help="YYYYMMDD (AEST)", default=None)
     parser.add_argument("--game", type=str, help="Game tag e.g. PHX_CHA", default=None)
     parser.add_argument("--output", type=str, help="Output path", default="NBA_Data_Package_Auto.md")
+    parser.add_argument("--refresh-availability", help="Refresh only verified injuries/roster in a cached game JSON")
     args = parser.parse_args()
+
+    if args.refresh_availability:
+        path = args.refresh_availability
+        try:
+            with open(path, encoding="utf-8") as source:
+                package = json.load(source)
+            package = refresh_availability(package, fetch=fetch_team_injuries)
+        except RosterChanged as exc:
+            print(f"⏳ {exc}")
+            raise SystemExit(2)
+        except (OSError, ValueError, AvailabilityUnavailable) as exc:
+            print(f"⛔ availability_unavailable: {exc}")
+            raise SystemExit(75)
+        _write_verified_package(path, package)
+        return
 
     target_date = args.date or datetime.now().strftime("%Y%m%d")
     formatted_date = f"{target_date[:4]}-{target_date[4:6]}-{target_date[6:]}"
@@ -1677,8 +1675,7 @@ def main():
         if output_path.endswith('.md'):
             output_path = f"nba_game_data_{target_game['tag']}.json"
 
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(package, f, ensure_ascii=False, indent=2)
+        _write_verified_package(output_path, package)
         print(f"\n✅ 單場深度數據已儲存至: {output_path}")
 
     else:
@@ -1698,12 +1695,15 @@ def main():
                                       data_sources=data_sources)
 
             json_path = f"nba_game_data_{g['tag']}.json"
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(package, f, ensure_ascii=False, indent=2)
+            _write_verified_package(json_path, package)
             print(f"  ✅ {g['tag']} → {json_path}")
 
     print("\n🏁 提取完成！")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except AvailabilityUnavailable as exc:
+        print(f"⛔ availability_unavailable: {exc}", file=sys.stderr)
+        sys.exit(75)

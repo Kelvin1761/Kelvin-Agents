@@ -31,6 +31,8 @@ import hashlib
 import json
 import subprocess
 import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from nba_availability import availability_current
 
 # ─── Cross-Platform Python ──────────────────────────────────────────────
 PYTHON = sys.executable
@@ -89,8 +91,11 @@ def run_script(
     args_list: list,
     label: str = "Script",
     timeout: int = 1800,
+    failure_codes: list[int] | None = None,
 ) -> bool:
     if not os.path.exists(script_path):
+        if failure_codes is not None:
+            failure_codes.append(75)
         print(f"❌ [{label}] 找不到腳本: {script_path}")
         return False
     cmd = [PYTHON, script_path] + args_list
@@ -114,6 +119,8 @@ def run_script(
                 print(f"   {output}")
         return True
     except subprocess.CalledProcessError as e:
+        if failure_codes is not None:
+            failure_codes.append(e.returncode)
         print(f"⚠️ [{label}] 執行失敗 (exit code: {e.returncode})")
         if e.stdout:
             print(f"   stdout: {e.stdout[-4000:]}")
@@ -121,6 +128,8 @@ def run_script(
             print(f"   stderr: {e.stderr[-2000:]}")
         return False
     except subprocess.TimeoutExpired:
+        if failure_codes is not None:
+            failure_codes.append(75)
         print(f"⏱️ [{label}] 超過 {timeout} 秒，已停止並當作失敗。")
         return False
 
@@ -300,6 +309,16 @@ def extractor_cache_current(path: str) -> bool:
         with open(path, encoding="utf-8") as source:
             payload = json.load(source)
         meta = payload.get("meta", {})
+        from nba_data_contract import NBA_STATISTICS_CONTRACT
+        if meta.get("statistics_contract") != NBA_STATISTICS_CONTRACT:
+            return False
+        defender_source = meta.get("defender_source") or {}
+        if (defender_source.get("per_mode") != "Totals"
+                or defender_source.get("sample_unit") != "total_attempts"
+                or not isinstance(defender_source.get("observed_players"), int)
+                or isinstance(defender_source.get("observed_players"), bool)
+                or defender_source["observed_players"] <= 0):
+            return False
         groups = payload.get("players", {})
         if not isinstance(groups, dict):
             return False
@@ -325,7 +344,7 @@ def extractor_cache_current(path: str) -> bool:
             if group and not any(player.get("advanced") for player in group):
                 return False
         return True
-    except (OSError, ValueError, AttributeError):
+    except (OSError, ValueError, TypeError, AttributeError):
         return False
 
 
@@ -336,7 +355,7 @@ def _file_digest(path: str) -> str:
 
 def report_inputs(sportsbet_json: str, extractor_json: str, legacy: bool) -> dict:
     inputs = {
-        "schema_version": 1,
+        "schema_version": 2,
         "sportsbet": _file_digest(sportsbet_json),
         "extractor": _file_digest(extractor_json),
         "renderer": _file_digest(GENERATE_REPORTS),
@@ -346,6 +365,15 @@ def report_inputs(sportsbet_json: str, extractor_json: str, legacy: bool) -> dic
             if os.path.isfile(os.path.join(os.path.dirname(GENERATE_REPORTS), rel))
         },
         "legacy": legacy,
+        "runtime_flags": {
+            name: os.environ.get(name, default)
+            for name, default in (
+                ("NBA_WC_ENGINE", "hybrid"),
+                ("NBA_WC_PROB_LAYER", ""),
+                ("NBA_HYBRID_ML_ADJUST_ENABLED", "0"),
+                ("NBA_FIT_LAYER_SHADOW_ENABLED", "1"),
+            )
+        },
     }
     revision = subprocess.run(
         ["git", "-C", WORKSPACE_ROOT, "rev-parse", "HEAD"],
@@ -368,6 +396,10 @@ def report_cache_current(report: str, sportsbet_json: str, extractor_json: str, 
     try:
         with open(report + ".inputs.json", encoding="utf-8") as source:
             cached = json.load(source)
+        from nba_wong_choi.scripts.validate_nba_output import check_fw13_sgm_quotes
+        with open(report, encoding="utf-8") as source:
+            if check_fw13_sgm_quotes(source.read(), report, sportsbet_json):
+                return False
         return (cached.get("inputs") == report_inputs(sportsbet_json, extractor_json, legacy)
                 and cached.get("report") == _file_digest(report))
     except (OSError, ValueError, AttributeError):
@@ -387,9 +419,28 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
         print(f"⏳ [{prefix}] player_markets_not_open：未有可分析球員里程碑盤口，保留重試，唔生成分析或 snapshot。")
         return False
 
+    extractor_json = os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
+    availability_ready = False
+    if os.path.isfile(extractor_json) and extractor_cache_current(extractor_json):
+        with open(extractor_json, encoding="utf-8") as source:
+            availability_ready = availability_current(json.load(source))
+        if not availability_ready:
+            refresh_failures = []
+            refreshed = run_script(NBA_EXTRACTOR, ["--refresh-availability", extractor_json],
+                                   label=f"{prefix} Availability Refresh", failure_codes=refresh_failures)
+            if refreshed:
+                with open(extractor_json, encoding="utf-8") as source:
+                    availability_ready = availability_current(json.load(source))
+                if not availability_ready:
+                    print(f"⛔ [{prefix}] availability refresh 冇產生可驗證資料，唔重用舊報告。")
+                    return False
+            elif refresh_failures != [2]:
+                print(f"⛔ [{prefix}] 傷停來源失敗或賽事已開始，保留原檔等重試。")
+                return False
+
     # ── Check if already completed ──
     existing = check_skeleton_exists(target_dir, game_tag)
-    if existing and not debug_skip_extractor and extractor_cache_current(
+    if existing and availability_ready and not debug_skip_extractor and extractor_cache_current(
         os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
     ) and report_cache_current(
         existing, sportsbet_json,
@@ -408,7 +459,7 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
     ext_date = date_str.replace("-", "")
     extractor_json = os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
 
-    if os.path.exists(extractor_json) and extractor_cache_current(extractor_json):
+    if availability_ready and os.path.exists(extractor_json) and extractor_cache_current(extractor_json):
         print(f"✅ [{prefix}] Extractor JSON 已存在: {os.path.basename(extractor_json)}")
     elif debug_skip_extractor:
         print(f"⚠️ [{prefix}] --debug-skip-extractor: 建立 DEBUG fallback JSON...")
@@ -427,6 +478,12 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
             print(f"   可能原因: nba_api 未安裝 / API 限流 / ESPN 日期轉換問題")
             print(f"   ⛔ 跳過此賽事 — 冇真實 L10 gamelog 不進行分析。")
             return False
+
+    if not debug_skip_extractor:
+        with open(extractor_json, encoding="utf-8") as source:
+            if not availability_current(json.load(source)):
+                print(f"⛔ [{prefix}] 傷停／陣容未驗證或已過期，保留重試，唔發布。")
+                return False
 
     # ── Phase 1A.5: JSON Schema Validation (Pre-flight for report gen) ──
     if os.path.exists(VALIDATE_SCHEMA):
@@ -707,6 +764,21 @@ def main():
             if not player_milestone_markets_available(_load_sportsbet_json(sb_json)):
                 results["waiting"].append(tag)
 
+    # A long slate can outlive an early game's quote. Reprice only reports
+    # whose exact-price check no longer passes, using the same cached inputs.
+    if not args.debug_skip_extractor:
+        from nba_wong_choi.scripts.validate_nba_output import check_fw13_sgm_quotes
+        for game in games:
+            tag = game["tag"]
+            report = os.path.join(target_dir, f"Game_{tag}_Full_Analysis.md")
+            if tag not in results["passed"]:
+                continue
+            with open(report, encoding="utf-8") as source:
+                needs_price = bool(check_fw13_sgm_quotes(source.read(), report, game["sportsbet_json"]))
+            if needs_price and not process_single_game(tag, game["sportsbet_json"], target_dir, args.date, legacy=args.legacy):
+                results["passed"].remove(tag)
+                results["failed"].append(tag)
+
     # ── Summary ──
     print(f"\n{'='*60}")
     print(f"🏆 Pipeline 執行摘要")
@@ -719,7 +791,7 @@ def main():
     sgm_ok = False
     if results["passed"] and os.path.exists(GENERATE_SGM):
         print(f"\n📋 生成 Master SGM + Banker 報告...")
-        sgm_ok = run_script(
+        sgm_ok = validate_reports_for_release(target_dir) and run_script(
             GENERATE_SGM,
             ["--dir", target_dir],
             label="SGM Master Report",

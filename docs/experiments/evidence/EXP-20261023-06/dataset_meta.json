@@ -1,0 +1,387 @@
+{
+  "feature_contract": "nba-ml-features/v2",
+  "manifest_sha256": "1727e3bc88b76918c0dfd0f932e450a353611dc10f1f8d3db849c9f5b49b6bf2",
+  "labels_sha256": "294d52dad1c7a0e3d31bcee039fa22ac324ba3dc7261fec5f0cf7525cc245bdf",
+  "dataset_sha256": "16b378cd914d1d684609760eb0edbeb6d4648d52a7b5552faba10fd45c3a7e0d",
+  "cases": [
+    {
+      "case_id": "2026-04-16_NBA_Analysis__GSW_LAC",
+      "priced_rows": 169,
+      "labeled_rows": 169,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401866756"
+    },
+    {
+      "case_id": "2026-04-16_NBA_Analysis__ORL_PHI",
+      "priced_rows": 172,
+      "labeled_rows": 172,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401866757"
+    },
+    {
+      "case_id": "2026-04-24_NBA_Analysis__CLE_TOR",
+      "priced_rows": 189,
+      "labeled_rows": 175,
+      "void_or_missing_label_rows": 14,
+      "event_id": "401869375"
+    },
+    {
+      "case_id": "2026-04-24_NBA_Analysis__DEN_MIN",
+      "priced_rows": 177,
+      "labeled_rows": 164,
+      "void_or_missing_label_rows": 13,
+      "event_id": "401869398"
+    },
+    {
+      "case_id": "2026-04-24_NBA_Analysis__NYK_ATL",
+      "priced_rows": 185,
+      "labeled_rows": 185,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869389"
+    },
+    {
+      "case_id": "2026-04-25_NBA_Analysis__BOS_PHI",
+      "priced_rows": 201,
+      "labeled_rows": 201,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869404"
+    },
+    {
+      "case_id": "2026-04-25_NBA_Analysis__LAL_HOU",
+      "priced_rows": 152,
+      "labeled_rows": 136,
+      "void_or_missing_label_rows": 16,
+      "event_id": "401869400"
+    },
+    {
+      "case_id": "2026-04-25_NBA_Analysis__SAS_POR",
+      "priced_rows": 181,
+      "labeled_rows": 181,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869382"
+    },
+    {
+      "case_id": "2026-04-26_NBA_Analysis__DEN_MIN",
+      "priced_rows": 173,
+      "labeled_rows": 173,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869399"
+    },
+    {
+      "case_id": "2026-04-26_NBA_Analysis__DET_ORL",
+      "priced_rows": 160,
+      "labeled_rows": 160,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869414"
+    },
+    {
+      "case_id": "2026-04-26_NBA_Analysis__NYK_ATL",
+      "priced_rows": 176,
+      "labeled_rows": 176,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869391"
+    },
+    {
+      "case_id": "2026-04-26_NBA_Analysis__OKC_PHX",
+      "priced_rows": 147,
+      "labeled_rows": 147,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869370"
+    },
+    {
+      "case_id": "2026-04-28_NBA_Analysis__DET_ORL",
+      "priced_rows": 161,
+      "labeled_rows": 161,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869415"
+    },
+    {
+      "case_id": "2026-04-28_NBA_Analysis__MIN_DEN",
+      "priced_rows": 167,
+      "labeled_rows": 157,
+      "void_or_missing_label_rows": 10,
+      "event_id": "401869401"
+    },
+    {
+      "case_id": "2026-04-28_NBA_Analysis__OKC_PHX",
+      "priced_rows": 189,
+      "labeled_rows": 179,
+      "void_or_missing_label_rows": 10,
+      "event_id": "401869373"
+    },
+    {
+      "case_id": "2026-04-29_NBA_Analysis__ATL_NYK",
+      "priced_rows": 183,
+      "labeled_rows": 183,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869392"
+    },
+    {
+      "case_id": "2026-04-29_NBA_Analysis__PHI_BOS",
+      "priced_rows": 183,
+      "labeled_rows": 183,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869408"
+    },
+    {
+      "case_id": "2026-04-29_NBA_Analysis__POR_SAS",
+      "priced_rows": 169,
+      "labeled_rows": 169,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869386"
+    },
+    {
+      "case_id": "2026-04-30_NBA_Analysis__HOU_LAL",
+      "priced_rows": 143,
+      "labeled_rows": 141,
+      "void_or_missing_label_rows": 2,
+      "event_id": "401869407"
+    },
+    {
+      "case_id": "2026-04-30_NBA_Analysis__ORL_DET",
+      "priced_rows": 158,
+      "labeled_rows": 146,
+      "void_or_missing_label_rows": 12,
+      "event_id": "401869416"
+    },
+    {
+      "case_id": "2026-04-30_NBA_Analysis__TOR_CLE",
+      "priced_rows": 176,
+      "labeled_rows": 176,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869380"
+    },
+    {
+      "case_id": "2026-05-01_NBA_Analysis__BOS_PHI",
+      "priced_rows": 187,
+      "labeled_rows": 187,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869410"
+    },
+    {
+      "case_id": "2026-05-01_NBA_Analysis__DEN_MIN",
+      "priced_rows": 157,
+      "labeled_rows": 131,
+      "void_or_missing_label_rows": 26,
+      "event_id": "401869402"
+    },
+    {
+      "case_id": "2026-05-01_NBA_Analysis__NYK_ATL",
+      "priced_rows": 180,
+      "labeled_rows": 180,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869393"
+    },
+    {
+      "case_id": "2026-05-02_NBA_Analysis__CLE_TOR",
+      "priced_rows": 200,
+      "labeled_rows": 187,
+      "void_or_missing_label_rows": 13,
+      "event_id": "401869381"
+    },
+    {
+      "case_id": "2026-05-02_NBA_Analysis__DET_ORL",
+      "priced_rows": 150,
+      "labeled_rows": 150,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869417"
+    },
+    {
+      "case_id": "2026-05-02_NBA_Analysis__LAL_HOU",
+      "priced_rows": 137,
+      "labeled_rows": 137,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869409"
+    },
+    {
+      "case_id": "2026-05-02_NBA_Analysis__PHI_BOS",
+      "priced_rows": 88,
+      "labeled_rows": 76,
+      "void_or_missing_label_rows": 12,
+      "event_id": "401869412"
+    },
+    {
+      "case_id": "2026-05-04_NBA_Analysis__MIN_SAS",
+      "priced_rows": 165,
+      "labeled_rows": 151,
+      "void_or_missing_label_rows": 14,
+      "event_id": "401871152"
+    },
+    {
+      "case_id": "2026-05-04_NBA_Analysis__ORL_DET",
+      "priced_rows": 151,
+      "labeled_rows": 151,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401869418"
+    },
+    {
+      "case_id": "2026-05-05_NBA_Analysis__MIN_SAS",
+      "priced_rows": 167,
+      "labeled_rows": 167,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871152"
+    },
+    {
+      "case_id": "2026-05-05_NBA_Analysis__PHI_NYK",
+      "priced_rows": 190,
+      "labeled_rows": 190,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871159"
+    },
+    {
+      "case_id": "2026-05-06_NBA_Analysis__CLE_DET",
+      "priced_rows": 167,
+      "labeled_rows": 167,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871333"
+    },
+    {
+      "case_id": "2026-05-06_NBA_Analysis__LAL_OKC",
+      "priced_rows": 174,
+      "labeled_rows": 174,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871326"
+    },
+    {
+      "case_id": "2026-05-07_NBA_Analysis__MIN_SAS",
+      "priced_rows": 183,
+      "labeled_rows": 183,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871153"
+    },
+    {
+      "case_id": "2026-05-07_NBA_Analysis__PHI_NYK",
+      "priced_rows": 191,
+      "labeled_rows": 166,
+      "void_or_missing_label_rows": 25,
+      "event_id": "401871160"
+    },
+    {
+      "case_id": "2026-05-08_NBA_Analysis__CLE_DET",
+      "priced_rows": 171,
+      "labeled_rows": 171,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871334"
+    },
+    {
+      "case_id": "2026-05-08_NBA_Analysis__LAL_OKC",
+      "priced_rows": 176,
+      "labeled_rows": 176,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871327"
+    },
+    {
+      "case_id": "2026-05-10_NBA_Analysis__DET_CLE",
+      "priced_rows": 168,
+      "labeled_rows": 168,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871335"
+    },
+    {
+      "case_id": "2026-05-10_NBA_Analysis__OKC_LAL",
+      "priced_rows": 152,
+      "labeled_rows": 151,
+      "void_or_missing_label_rows": 1,
+      "event_id": "401871328"
+    },
+    {
+      "case_id": "2026-05-11_NBA_Analysis__NYK_PHI",
+      "priced_rows": 169,
+      "labeled_rows": 169,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871162"
+    },
+    {
+      "case_id": "2026-05-11_NBA_Analysis__SAS_MIN",
+      "priced_rows": 182,
+      "labeled_rows": 182,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871155"
+    },
+    {
+      "case_id": "2026-05-14_NBA_Analysis__CLE_DET",
+      "priced_rows": 179,
+      "labeled_rows": 165,
+      "void_or_missing_label_rows": 14,
+      "event_id": "401871337"
+    },
+    {
+      "case_id": "2026-05-16_NBA_Analysis__DET_CLE",
+      "priced_rows": 180,
+      "labeled_rows": 180,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871338"
+    },
+    {
+      "case_id": "2026-05-16_NBA_Analysis__SAS_MIN",
+      "priced_rows": 189,
+      "labeled_rows": 189,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871157"
+    },
+    {
+      "case_id": "2026-05-17_NBA_Analysis__CLE_DET",
+      "priced_rows": 167,
+      "labeled_rows": 167,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401871339"
+    },
+    {
+      "case_id": "2026-06-04_NBA_Analysis__NYK_SAS",
+      "priced_rows": 195,
+      "labeled_rows": 195,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401859963"
+    },
+    {
+      "case_id": "2026-06-06_NBA_Analysis__NYK_SAS",
+      "priced_rows": 193,
+      "labeled_rows": 193,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401859964"
+    },
+    {
+      "case_id": "2026-06-09_NBA_Analysis__SAS_NYK",
+      "priced_rows": 196,
+      "labeled_rows": 196,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401859965"
+    },
+    {
+      "case_id": "2026-06-11_NBA_Analysis__SAS_NYK",
+      "priced_rows": 191,
+      "labeled_rows": 191,
+      "void_or_missing_label_rows": 0,
+      "event_id": "401859966"
+    }
+  ],
+  "duplicate_rows_resolved_earliest": 138,
+  "rows": 8468,
+  "labeled_rows": 8286,
+  "game_dates": [
+    "2026-04-15",
+    "2026-04-23",
+    "2026-04-24",
+    "2026-04-25",
+    "2026-04-27",
+    "2026-04-28",
+    "2026-04-29",
+    "2026-04-30",
+    "2026-05-01",
+    "2026-05-02",
+    "2026-05-03",
+    "2026-05-04",
+    "2026-05-05",
+    "2026-05-06",
+    "2026-05-07",
+    "2026-05-09",
+    "2026-05-10",
+    "2026-05-13",
+    "2026-05-15",
+    "2026-05-17",
+    "2026-06-03",
+    "2026-06-05",
+    "2026-06-08",
+    "2026-06-10"
+  ]
+}

@@ -23,6 +23,9 @@ import argparse
 import glob
 import re
 import io
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from nba_selection_policy import BANKER
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
@@ -202,7 +205,7 @@ def generate_banker_report(games_data, analysis_date):
     lines.append(f'# 📅 日期: {analysis_date} | 總場次: {len(games_data)}')
     if any(game.get('shadow') for game in games_data):
         lines.append('# ⛔ NO BET — PRESEASON SHADOW ONLY：歷史參考組合，禁止投注。')
-    lines.append(f'# 策略: 收錄每場組合 1 (穩膽 SGM 2-3 Legs) 嘊完整 Leg 分析')
+    lines.append(f'# 策略: 收錄每場組合 1 (Banker SGM {BANKER.min_legs}-{BANKER.max_legs} Legs，含明示 fallback) 嘊完整 Leg 分析')
     lines.append('')
 
     # Section 1: Top Banker Legs quick reference

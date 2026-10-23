@@ -14,11 +14,15 @@ p >= 0.8 band off by > 10pp with >= 30 legs, once >= 100 legs are settled.
 from __future__ import annotations
 
 import json
+import sys
 from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
 import nba_market_ledger as ledger
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "nba_wong_choi" / "scripts"))
+import nba_prob_layer
 
 WINDOW_DAYS = 30
 # First analysis date whose ledger rows carry the calibrated probability layer
@@ -46,33 +50,50 @@ def _high(buckets: list[dict]) -> dict:
     return _summ([b for b in buckets if float(b["bucket"].split("-")[0]) >= HIGH_BAND])
 
 
-def _section(root: Path, since: str, until: str) -> dict:
+def current_model_id() -> str | None:
+    return nba_prob_layer.probability_model_id()
+
+
+def _section(root: Path, since: str, until: str, model_id: str | None = None) -> dict:
     report = ledger.evaluate(root=root, since=since, until=until)
-    overall = report["overall"]
+    empty = {"legs": 0, "variants": {"p_final": {"calibration": []}}}
+    if model_id is None:
+        overall = report["overall"]
+        picked = report["by_picked"].get("picked")
+        by_market = report["by_market"]
+    else:
+        overall = report["by_probability_model"].get(model_id, empty)
+        picked = overall.get("picked")
+        by_market = overall.get("by_market", {})
     buckets = overall["variants"]["p_final"]["calibration"]
-    picked = report["by_picked"].get("picked")
     return {
         "since": since, "until": until,
+        "probability_model_id": model_id,
+        "excluded_model_legs": report["overall"]["legs"] - overall["legs"],
+        "models_seen": {identity: section["legs"] for identity, section in report["by_probability_model"].items()},
         "overall": _summ(buckets), "high_band": _high(buckets),
         "market_raw_close": _summ(overall.get("market_raw_close_calibration") or []),
         "picked": _summ(picked["variants"]["p_final"]["calibration"]) if picked else _summ([]),
         "by_stat": {MARKET_LABELS.get(m, m): _summ(sec["variants"]["p_final"]["calibration"])
-                    for m, sec in report["by_market"].items()},
+                    for m, sec in by_market.items()},
         "buckets": buckets,
     }
 
 
 def build(until: str, root: Path | None = None, window_days: int = WINDOW_DAYS,
           epoch: str = CALIBRATION_EPOCH) -> dict:
-    """Alert status comes from the calibrated-layer epoch only; the all-engine window is context."""
+    """Choose the actual latest pre-tip observation first, then match its model identity."""
     root = root or ledger.ledger_root()
     since = (date.fromisoformat(until) - timedelta(days=window_days - 1)).isoformat()
-    live = _section(root, max(since, epoch), until) if until >= epoch else None
+    model_id = current_model_id()
+    live = _section(root, max(since, epoch), until, model_id) if until >= epoch and model_id else None
     legacy_mixed = _section(root, since, until)
     cur = live or {"overall": _summ([]), "high_band": _summ([]), "market_raw_close": _summ([]),
                    "picked": _summ([]), "by_stat": {}, "buckets": [], "since": epoch, "until": until}
     total, high = cur["overall"], cur["high_band"]
-    if total["n"] < MIN_SETTLED:
+    if model_id is None:
+        status = "disabled"
+    elif total["n"] < MIN_SETTLED:
         status = "insufficient_n"
     elif abs(total["gap"]) > ALERT_GAP or (high["n"] >= MIN_HIGH_BAND and abs(high["gap"]) > ALERT_GAP):
         status = "alert"
@@ -81,11 +102,15 @@ def build(until: str, root: Path | None = None, window_days: int = WINDOW_DAYS,
     return {
         "until": until, "since": cur["since"], "window_days": window_days, "epoch": epoch, "status": status,
         "min_settled": MIN_SETTLED, "alert_gap": ALERT_GAP,
+        "probability_model_id": model_id,
+        "excluded_model_legs": cur.get("excluded_model_legs", 0),
+        "models_seen": cur.get("models_seen", {}),
         "overall": total, "high_band": high, "market_raw_close": cur["market_raw_close"],
         "picked": cur["picked"], "by_stat": cur["by_stat"], "buckets": cur["buckets"],
         "all_engines_context": {k: legacy_mixed[k] for k in ("since", "overall", "high_band")},
         "note": "legs inside one game are correlated; n is legs, not independent clusters; "
-                "alert uses only rows from the calibrated layer epoch",
+                "alert uses only latest pre-tip observations matching the current coefficient identity; "
+                "legacy and unversioned models remain context only",
     }
 
 
@@ -106,7 +131,9 @@ def _pct(x: Any) -> str:
 
 def message_lines(report: dict) -> list[str]:
     o, h, m = report["overall"], report["high_band"], report["market_raw_close"]
-    head = f"📐 機率校準（校準層上線後 {report['since']} 起，已結算 {o['n']} 腿）"
+    head = f"📐 機率校準（現役模型，{report['since']} 起，已結算 {o['n']} 腿）"
+    if report["status"] == "disabled":
+        return [head, "校準層已刻意關閉；舊模型紀錄只作背景，唔會當成現役校準結果。"]
     if report["status"] == "insufficient_n":
         return [head, f"樣本未夠（要 ≥{report['min_settled']} 腿）先判斷；暫時只記錄，唔作結論。"]
     lines = [head, f"預測 {_pct(o['mean_p'])}／實際 {_pct(o['hit_rate'])}（差 {o['gap'] * 100:+.0f}pp）"
@@ -131,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.write:
         write(report)
     print("\n".join(message_lines(report)))
-    return 0 if report["status"] != "alert" else 3
+    return 3 if report["status"] == "alert" else 75 if report["status"] == "disabled" else 0
 
 
 if __name__ == "__main__":

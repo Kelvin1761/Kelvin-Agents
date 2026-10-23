@@ -1,0 +1,1175 @@
+{
+  "audit_date_sydney": "2026-10-23",
+  "captured_at_utc": "2026-10-23T05:15:42.274437+00:00",
+  "baseline_commit": "8f09e341",
+  "scope": "live ledger 2026-10-21..23; sampled current extractor files; code and existing experiment review; NOT a full-history performance study",
+  "days": [
+    {
+      "date": "2026-10-21",
+      "source": "/Users/imac/WongChoiData/NBA_Market_Eval/ledger/2026-10-21.jsonl",
+      "source_sha256": "5a21557293cced85c3450cc33b28ba6e92a76e3f489859b9b510aa4f266472ac",
+      "source_bytes": 8335268,
+      "row_types": {
+        "price_obs": 9999,
+        "model_obs": 893,
+        "sgm_obs": 10,
+        "sgm_price_obs": 30,
+        "settlement": 893
+      },
+      "settlement_outcomes": {
+        "miss": 665,
+        "hit": 228
+      },
+      "selected_model_engines": {
+        "hybrid": 603
+      },
+      "overall_legs": 603,
+      "settled_legs": 603,
+      "clusters_player_game_market": 102,
+      "devig_coverage": {
+        "legs_with_two_way_price": 58,
+        "settled_with_two_way_price": 58,
+        "settled_clusters_with_two_way_price": 58
+      },
+      "comparisons": {
+        "p_final": {
+          "market_raw_close": {
+            "n": 603,
+            "brier_model": 0.1312,
+            "brier_market": 0.11962,
+            "logloss_model": 0.41264,
+            "logloss_market": 0.37758,
+            "mean_brier_diff_model_minus_market": 0.01159,
+            "paired_sd": 0.13499,
+            "n_required": 17500,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.13499,
+              "sd_source": "observed"
+            }
+          },
+          "market_devig_close": {
+            "n": 58,
+            "brier_model": 0.31349,
+            "brier_market": 0.2549,
+            "logloss_model": 0.86499,
+            "logloss_market": 0.70318,
+            "mean_brier_diff_model_minus_market": 0.05859,
+            "paired_sd": 0.20598,
+            "n_required": 40747,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.20598,
+              "sd_source": "observed"
+            }
+          }
+        },
+        "p_hit_rate_10f": {
+          "market_raw_close": {
+            "n": 603,
+            "brier_model": 0.13492,
+            "brier_market": 0.11962,
+            "logloss_model": 0.4368,
+            "logloss_market": 0.37758,
+            "mean_brier_diff_model_minus_market": 0.0153,
+            "paired_sd": 0.13575,
+            "n_required": 17700,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.13575,
+              "sd_source": "observed"
+            }
+          },
+          "market_devig_close": {
+            "n": 58,
+            "brier_model": 0.31684,
+            "brier_market": 0.2549,
+            "logloss_model": 0.90364,
+            "logloss_market": 0.70318,
+            "mean_brier_diff_model_minus_market": 0.06194,
+            "paired_sd": 0.21886,
+            "n_required": 46003,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.21886,
+              "sd_source": "observed"
+            }
+          }
+        },
+        "p_ml": {
+          "market_raw_close": {
+            "n": 603,
+            "brier_model": 0.17286,
+            "brier_market": 0.11962,
+            "logloss_model": 0.51407,
+            "logloss_market": 0.37758,
+            "mean_brier_diff_model_minus_market": 0.05324,
+            "paired_sd": 0.28777,
+            "n_required": 79530,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.28777,
+              "sd_source": "observed"
+            }
+          },
+          "market_devig_close": {
+            "n": 58,
+            "brier_model": 0.34035,
+            "brier_market": 0.2549,
+            "logloss_model": 0.9093,
+            "logloss_market": 0.70318,
+            "mean_brier_diff_model_minus_market": 0.08545,
+            "paired_sd": 0.25487,
+            "n_required": 62385,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.25487,
+              "sd_source": "observed"
+            }
+          }
+        },
+        "p_monte_carlo": {
+          "market_raw_close": {
+            "n": 603,
+            "brier_model": 0.12899,
+            "brier_market": 0.11962,
+            "logloss_model": 0.41344,
+            "logloss_market": 0.37758,
+            "mean_brier_diff_model_minus_market": 0.00937,
+            "paired_sd": 0.0955,
+            "n_required": 8759,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.0955,
+              "sd_source": "observed"
+            }
+          },
+          "market_devig_close": {
+            "n": 58,
+            "brier_model": 0.2757,
+            "brier_market": 0.2549,
+            "logloss_model": 0.75372,
+            "logloss_market": 0.70318,
+            "mean_brier_diff_model_minus_market": 0.0208,
+            "paired_sd": 0.13896,
+            "n_required": 18544,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.13896,
+              "sd_source": "observed"
+            }
+          }
+        }
+      },
+      "picked": {
+        "legs": 14,
+        "settled": 14,
+        "variants": {
+          "p_final": {
+            "market_raw_close": {
+              "n": 14,
+              "brier_model": 0.37128,
+              "brier_market": 0.18864,
+              "logloss_model": 1.07924,
+              "logloss_market": 0.55149,
+              "mean_brier_diff_model_minus_market": 0.18264,
+              "paired_sd": 0.22661,
+              "n_required": 2401,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.05,
+                "sd_source": "assumed"
+              }
+            },
+            "market_devig_close": {
+              "n": 1,
+              "brier_model": 0.8649,
+              "brier_market": 0.32181,
+              "logloss_model": 2.65926,
+              "logloss_market": 0.83767,
+              "mean_brier_diff_model_minus_market": 0.54309,
+              "paired_sd": null,
+              "n_required": 2401,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.05,
+                "sd_source": "assumed"
+              }
+            },
+            "calibration": [
+              {
+                "bucket": "0.5-0.6",
+                "n": 2,
+                "mean_p": 0.55,
+                "hit_rate": 0.0
+              },
+              {
+                "bucket": "0.7-0.8",
+                "n": 2,
+                "mean_p": 0.765,
+                "hit_rate": 0.0
+              },
+              {
+                "bucket": "0.9-1.0",
+                "n": 10,
+                "mean_p": 0.924,
+                "hit_rate": 0.6
+              }
+            ]
+          },
+          "p_hit_rate_10f": {
+            "market_raw_close": {
+              "n": 14,
+              "brier_model": 0.41571,
+              "brier_market": 0.18864,
+              "logloss_model": 1.40659,
+              "logloss_market": 0.55149,
+              "mean_brier_diff_model_minus_market": 0.22707,
+              "paired_sd": 0.26859,
+              "n_required": 2401,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.05,
+                "sd_source": "assumed"
+              }
+            },
+            "market_devig_close": {
+              "n": 1,
+              "brier_model": 0.9604,
+              "brier_market": 0.32181,
+              "logloss_model": 3.91202,
+              "logloss_market": 0.83767,
+              "mean_brier_diff_model_minus_market": 0.63859,
+              "paired_sd": null,
+              "n_required": 2401,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.05,
+                "sd_source": "assumed"
+              }
+            },
+            "calibration": [
+              {
+                "bucket": "0.5-0.6",
+                "n": 1,
+                "mean_p": 0.56,
+                "hit_rate": 0.0
+              },
+              {
+                "bucket": "0.6-0.7",
+                "n": 1,
+                "mean_p": 0.64,
+                "hit_rate": 0.0
+              },
+              {
+                "bucket": "0.8-0.9",
+                "n": 2,
+                "mean_p": 0.815,
+                "hit_rate": 0.0
+              },
+              {
+                "bucket": "0.9-1.0",
+                "n": 10,
+                "mean_p": 0.974,
+                "hit_rate": 0.6
+              }
+            ]
+          },
+          "p_ml": {
+            "market_raw_close": {
+              "n": 14,
+              "brier_model": 0.25747,
+              "brier_market": 0.18864,
+              "logloss_model": 0.70416,
+              "logloss_market": 0.55149,
+              "mean_brier_diff_model_minus_market": 0.06883,
+              "paired_sd": 0.40877,
+              "n_required": 2401,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.05,
+                "sd_source": "assumed"
+              }
+            },
+            "market_devig_close": {
+              "n": 1,
+              "brier_model": 0.07102,
+              "brier_market": 0.32181,
+              "logloss_model": 0.30993,
+              "logloss_market": 0.83767,
+              "mean_brier_diff_model_minus_market": -0.25079,
+              "paired_sd": null,
+              "n_required": 2401,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.05,
+                "sd_source": "assumed"
+              }
+            },
+            "calibration": [
+              {
+                "bucket": "0.1-0.2",
+                "n": 4,
+                "mean_p": 0.1674,
+                "hit_rate": 0.0
+              },
+              {
+                "bucket": "0.2-0.3",
+                "n": 10,
+                "mean_p": 0.2679,
+                "hit_rate": 0.6
+              }
+            ]
+          },
+          "p_monte_carlo": {
+            "market_raw_close": {
+              "n": 14,
+              "brier_model": 0.32754,
+              "brier_market": 0.18864,
+              "logloss_model": 0.88724,
+              "logloss_market": 0.55149,
+              "mean_brier_diff_model_minus_market": 0.13891,
+              "paired_sd": 0.17252,
+              "n_required": 2401,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.05,
+                "sd_source": "assumed"
+              }
+            },
+            "market_devig_close": {
+              "n": 1,
+              "brier_model": 0.64964,
+              "brier_market": 0.32181,
+              "logloss_model": 1.6399,
+              "logloss_market": 0.83767,
+              "mean_brier_diff_model_minus_market": 0.32783,
+              "paired_sd": null,
+              "n_required": 2401,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.05,
+                "sd_source": "assumed"
+              }
+            },
+            "calibration": [
+              {
+                "bucket": "0.5-0.6",
+                "n": 2,
+                "mean_p": 0.5525,
+                "hit_rate": 0.0
+              },
+              {
+                "bucket": "0.6-0.7",
+                "n": 1,
+                "mean_p": 0.685,
+                "hit_rate": 0.0
+              },
+              {
+                "bucket": "0.7-0.8",
+                "n": 1,
+                "mean_p": 0.756,
+                "hit_rate": 0.0
+              },
+              {
+                "bucket": "0.8-0.9",
+                "n": 9,
+                "mean_p": 0.8444,
+                "hit_rate": 0.5556
+              },
+              {
+                "bucket": "0.9-1.0",
+                "n": 1,
+                "mean_p": 0.968,
+                "hit_rate": 1.0
+              }
+            ]
+          }
+        },
+        "market_raw_close_calibration": [
+          {
+            "bucket": "0.1-0.2",
+            "n": 1,
+            "mean_p": 0.1538,
+            "hit_rate": 0.0
+          },
+          {
+            "bucket": "0.3-0.4",
+            "n": 2,
+            "mean_p": 0.3287,
+            "hit_rate": 0.0
+          },
+          {
+            "bucket": "0.5-0.6",
+            "n": 2,
+            "mean_p": 0.5952,
+            "hit_rate": 0.0
+          },
+          {
+            "bucket": "0.6-0.7",
+            "n": 2,
+            "mean_p": 0.6382,
+            "hit_rate": 0.0
+          },
+          {
+            "bucket": "0.7-0.8",
+            "n": 2,
+            "mean_p": 0.7576,
+            "hit_rate": 1.0
+          },
+          {
+            "bucket": "0.8-0.9",
+            "n": 5,
+            "mean_p": 0.8249,
+            "hit_rate": 0.8
+          }
+        ],
+        "clv_earliest_vs_close": {
+          "n": 14,
+          "mean": 0.00518,
+          "share_positive": 0.1429
+        },
+        "clv_model_price_vs_close": {
+          "n": 14,
+          "mean": 0.0
+        },
+        "settled_clusters_player_game_market": 12,
+        "devig_coverage": {
+          "legs_with_two_way_price": 1,
+          "settled_with_two_way_price": 1,
+          "settled_clusters_with_two_way_price": 1
+        }
+      },
+      "verdict_status": "insufficient_n",
+      "counts": {
+        "rows_price_obs": 9999,
+        "rows_model_obs": 893,
+        "excluded_model_obs_post_tip_or_late": 290,
+        "rows_sgm_obs": 10,
+        "excluded_sgm_obs_post_tip_or_late": 3,
+        "rows_sgm_price_obs": 30,
+        "rows_settlement": 893,
+        "legs_without_pretip_model": 290
+      },
+      "clean_sgm_quote_observations": 18,
+      "legacy_selected_examples": []
+    },
+    {
+      "date": "2026-10-22",
+      "source": "/Users/imac/WongChoiData/NBA_Market_Eval/ledger/2026-10-22.jsonl",
+      "source_sha256": "e50c173075cf3a363f037bc287efbbd562c9278a76d3470b11dd988852cec951",
+      "source_bytes": 11223379,
+      "row_types": {
+        "price_obs": 8044,
+        "model_obs": 4793,
+        "sgm_obs": 69,
+        "sgm_price_obs": 69,
+        "settlement": 2736
+      },
+      "settlement_outcomes": {
+        "miss": 2023,
+        "hit": 705,
+        "void": 8
+      },
+      "selected_model_engines": {
+        "hybrid": 2736
+      },
+      "overall_legs": 2736,
+      "settled_legs": 2728,
+      "clusters_player_game_market": 504,
+      "devig_coverage": {
+        "legs_with_two_way_price": 202,
+        "settled_with_two_way_price": 202,
+        "settled_clusters_with_two_way_price": 202
+      },
+      "comparisons": {
+        "p_final": {
+          "market_raw_close": {
+            "n": 2728,
+            "brier_model": 0.12687,
+            "brier_market": 0.1102,
+            "logloss_model": 0.41153,
+            "logloss_market": 0.34997,
+            "mean_brier_diff_model_minus_market": 0.01667,
+            "paired_sd": 0.16244,
+            "n_required": 25342,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.16244,
+              "sd_source": "observed"
+            }
+          },
+          "market_devig_close": {
+            "n": 202,
+            "brier_model": 0.27221,
+            "brier_market": 0.24716,
+            "logloss_model": 0.81673,
+            "logloss_market": 0.6874,
+            "mean_brier_diff_model_minus_market": 0.02504,
+            "paired_sd": 0.25043,
+            "n_required": 60234,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.25043,
+              "sd_source": "observed"
+            }
+          }
+        },
+        "p_hit_rate_10f": {
+          "market_raw_close": {
+            "n": 2728,
+            "brier_model": 0.12687,
+            "brier_market": 0.1102,
+            "logloss_model": 0.41153,
+            "logloss_market": 0.34997,
+            "mean_brier_diff_model_minus_market": 0.01667,
+            "paired_sd": 0.16244,
+            "n_required": 25342,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.16244,
+              "sd_source": "observed"
+            }
+          },
+          "market_devig_close": {
+            "n": 202,
+            "brier_model": 0.27221,
+            "brier_market": 0.24716,
+            "logloss_model": 0.81673,
+            "logloss_market": 0.6874,
+            "mean_brier_diff_model_minus_market": 0.02504,
+            "paired_sd": 0.25043,
+            "n_required": 60234,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.25043,
+              "sd_source": "observed"
+            }
+          }
+        },
+        "p_ml": {
+          "market_raw_close": {
+            "n": 2728,
+            "brier_model": 0.16401,
+            "brier_market": 0.1102,
+            "logloss_model": 0.4918,
+            "logloss_market": 0.34997,
+            "mean_brier_diff_model_minus_market": 0.05381,
+            "paired_sd": 0.17577,
+            "n_required": 29671,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.17577,
+              "sd_source": "observed"
+            }
+          },
+          "market_devig_close": {
+            "n": 202,
+            "brier_model": 0.35351,
+            "brier_market": 0.24716,
+            "logloss_model": 0.949,
+            "logloss_market": 0.6874,
+            "mean_brier_diff_model_minus_market": 0.10635,
+            "paired_sd": 0.2568,
+            "n_required": 63335,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.2568,
+              "sd_source": "observed"
+            }
+          }
+        },
+        "p_monte_carlo": {
+          "market_raw_close": {
+            "n": 2728,
+            "brier_model": 0.12623,
+            "brier_market": 0.1102,
+            "logloss_model": 0.4541,
+            "logloss_market": 0.34997,
+            "mean_brier_diff_model_minus_market": 0.01603,
+            "paired_sd": 0.1359,
+            "n_required": 17739,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.1359,
+              "sd_source": "observed"
+            }
+          },
+          "market_devig_close": {
+            "n": 202,
+            "brier_model": 0.27506,
+            "brier_market": 0.24716,
+            "logloss_model": 0.81506,
+            "logloss_market": 0.6874,
+            "mean_brier_diff_model_minus_market": 0.02789,
+            "paired_sd": 0.16713,
+            "n_required": 26827,
+            "n_required_basis": {
+              "assumed_mean_improvement": 0.002,
+              "sd": 0.16713,
+              "sd_source": "observed"
+            }
+          }
+        }
+      },
+      "picked": {
+        "legs": 66,
+        "settled": 66,
+        "variants": {
+          "p_final": {
+            "market_raw_close": {
+              "n": 66,
+              "brier_model": 0.31985,
+              "brier_market": 0.20501,
+              "logloss_model": 1.04359,
+              "logloss_market": 0.59365,
+              "mean_brier_diff_model_minus_market": 0.11483,
+              "paired_sd": 0.27579,
+              "n_required": 73048,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.27579,
+                "sd_source": "observed"
+              }
+            },
+            "market_devig_close": {
+              "n": 8,
+              "brier_model": 0.31359,
+              "brier_market": 0.2468,
+              "logloss_model": 1.03853,
+              "logloss_market": 0.68673,
+              "mean_brier_diff_model_minus_market": 0.06679,
+              "paired_sd": 0.35378,
+              "n_required": 2401,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.05,
+                "sd_source": "assumed"
+              }
+            },
+            "calibration": [
+              {
+                "bucket": "0.4-0.5",
+                "n": 1,
+                "mean_p": 0.44,
+                "hit_rate": 0.0
+              },
+              {
+                "bucket": "0.5-0.6",
+                "n": 2,
+                "mean_p": 0.5,
+                "hit_rate": 0.5
+              },
+              {
+                "bucket": "0.6-0.7",
+                "n": 8,
+                "mean_p": 0.6537,
+                "hit_rate": 0.5
+              },
+              {
+                "bucket": "0.7-0.8",
+                "n": 6,
+                "mean_p": 0.76,
+                "hit_rate": 0.1667
+              },
+              {
+                "bucket": "0.8-0.9",
+                "n": 12,
+                "mean_p": 0.8458,
+                "hit_rate": 0.3333
+              },
+              {
+                "bucket": "0.9-1.0",
+                "n": 37,
+                "mean_p": 0.9641,
+                "hit_rate": 0.7297
+              }
+            ]
+          },
+          "p_hit_rate_10f": {
+            "market_raw_close": {
+              "n": 66,
+              "brier_model": 0.31985,
+              "brier_market": 0.20501,
+              "logloss_model": 1.04359,
+              "logloss_market": 0.59365,
+              "mean_brier_diff_model_minus_market": 0.11483,
+              "paired_sd": 0.27579,
+              "n_required": 73048,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.27579,
+                "sd_source": "observed"
+              }
+            },
+            "market_devig_close": {
+              "n": 8,
+              "brier_model": 0.31359,
+              "brier_market": 0.2468,
+              "logloss_model": 1.03853,
+              "logloss_market": 0.68673,
+              "mean_brier_diff_model_minus_market": 0.06679,
+              "paired_sd": 0.35378,
+              "n_required": 2401,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.05,
+                "sd_source": "assumed"
+              }
+            },
+            "calibration": [
+              {
+                "bucket": "0.4-0.5",
+                "n": 1,
+                "mean_p": 0.44,
+                "hit_rate": 0.0
+              },
+              {
+                "bucket": "0.5-0.6",
+                "n": 2,
+                "mean_p": 0.5,
+                "hit_rate": 0.5
+              },
+              {
+                "bucket": "0.6-0.7",
+                "n": 8,
+                "mean_p": 0.6537,
+                "hit_rate": 0.5
+              },
+              {
+                "bucket": "0.7-0.8",
+                "n": 6,
+                "mean_p": 0.76,
+                "hit_rate": 0.1667
+              },
+              {
+                "bucket": "0.8-0.9",
+                "n": 12,
+                "mean_p": 0.8458,
+                "hit_rate": 0.3333
+              },
+              {
+                "bucket": "0.9-1.0",
+                "n": 37,
+                "mean_p": 0.9641,
+                "hit_rate": 0.7297
+              }
+            ]
+          },
+          "p_ml": {
+            "market_raw_close": {
+              "n": 66,
+              "brier_model": 0.3213,
+              "brier_market": 0.20501,
+              "logloss_model": 0.92687,
+              "logloss_market": 0.59365,
+              "mean_brier_diff_model_minus_market": 0.11628,
+              "paired_sd": 0.30477,
+              "n_required": 89208,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.30477,
+                "sd_source": "observed"
+              }
+            },
+            "market_devig_close": {
+              "n": 8,
+              "brier_model": 0.32188,
+              "brier_market": 0.2468,
+              "logloss_model": 1.00497,
+              "logloss_market": 0.68673,
+              "mean_brier_diff_model_minus_market": 0.07509,
+              "paired_sd": 0.39734,
+              "n_required": 2401,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.05,
+                "sd_source": "assumed"
+              }
+            },
+            "calibration": [
+              {
+                "bucket": "0.6-0.7",
+                "n": 2,
+                "mean_p": 0.6683,
+                "hit_rate": 0.0
+              },
+              {
+                "bucket": "0.7-0.8",
+                "n": 11,
+                "mean_p": 0.7681,
+                "hit_rate": 0.3636
+              },
+              {
+                "bucket": "0.8-0.9",
+                "n": 27,
+                "mean_p": 0.8558,
+                "hit_rate": 0.5926
+              },
+              {
+                "bucket": "0.9-1.0",
+                "n": 26,
+                "mean_p": 0.9287,
+                "hit_rate": 0.6538
+              }
+            ]
+          },
+          "p_monte_carlo": {
+            "market_raw_close": {
+              "n": 66,
+              "brier_model": 0.30264,
+              "brier_market": 0.20501,
+              "logloss_model": 1.21558,
+              "logloss_market": 0.59365,
+              "mean_brier_diff_model_minus_market": 0.09763,
+              "paired_sd": 0.26989,
+              "n_required": 69955,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.26989,
+                "sd_source": "observed"
+              }
+            },
+            "market_devig_close": {
+              "n": 8,
+              "brier_model": 0.30182,
+              "brier_market": 0.2468,
+              "logloss_model": 0.81221,
+              "logloss_market": 0.68673,
+              "mean_brier_diff_model_minus_market": 0.05502,
+              "paired_sd": 0.23961,
+              "n_required": 2401,
+              "n_required_basis": {
+                "assumed_mean_improvement": 0.002,
+                "sd": 0.05,
+                "sd_source": "assumed"
+              }
+            },
+            "calibration": [
+              {
+                "bucket": "0.4-0.5",
+                "n": 2,
+                "mean_p": 0.4525,
+                "hit_rate": 0.5
+              },
+              {
+                "bucket": "0.5-0.6",
+                "n": 5,
+                "mean_p": 0.5472,
+                "hit_rate": 0.4
+              },
+              {
+                "bucket": "0.6-0.7",
+                "n": 8,
+                "mean_p": 0.6529,
+                "hit_rate": 0.5
+              },
+              {
+                "bucket": "0.7-0.8",
+                "n": 14,
+                "mean_p": 0.7514,
+                "hit_rate": 0.5
+              },
+              {
+                "bucket": "0.8-0.9",
+                "n": 17,
+                "mean_p": 0.8397,
+                "hit_rate": 0.5294
+              },
+              {
+                "bucket": "0.9-1.0",
+                "n": 20,
+                "mean_p": 0.9597,
+                "hit_rate": 0.7
+              }
+            ]
+          }
+        },
+        "market_raw_close_calibration": [
+          {
+            "bucket": "0.0-0.1",
+            "n": 1,
+            "mean_p": 0.0833,
+            "hit_rate": 0.0
+          },
+          {
+            "bucket": "0.1-0.2",
+            "n": 5,
+            "mean_p": 0.1649,
+            "hit_rate": 0.2
+          },
+          {
+            "bucket": "0.2-0.3",
+            "n": 3,
+            "mean_p": 0.2518,
+            "hit_rate": 0.3333
+          },
+          {
+            "bucket": "0.3-0.4",
+            "n": 3,
+            "mean_p": 0.3235,
+            "hit_rate": 0.3333
+          },
+          {
+            "bucket": "0.4-0.5",
+            "n": 3,
+            "mean_p": 0.4486,
+            "hit_rate": 0.3333
+          },
+          {
+            "bucket": "0.5-0.6",
+            "n": 9,
+            "mean_p": 0.5525,
+            "hit_rate": 0.4444
+          },
+          {
+            "bucket": "0.6-0.7",
+            "n": 15,
+            "mean_p": 0.6593,
+            "hit_rate": 0.4667
+          },
+          {
+            "bucket": "0.7-0.8",
+            "n": 11,
+            "mean_p": 0.7433,
+            "hit_rate": 0.7273
+          },
+          {
+            "bucket": "0.8-0.9",
+            "n": 12,
+            "mean_p": 0.8491,
+            "hit_rate": 0.9167
+          },
+          {
+            "bucket": "0.9-1.0",
+            "n": 4,
+            "mean_p": 0.9393,
+            "hit_rate": 0.75
+          }
+        ],
+        "clv_earliest_vs_close": {
+          "n": 55,
+          "mean": -0.01453,
+          "share_positive": 0.2182
+        },
+        "clv_model_price_vs_close": {
+          "n": 66,
+          "mean": 0.0
+        },
+        "settled_clusters_player_game_market": 51,
+        "devig_coverage": {
+          "legs_with_two_way_price": 8,
+          "settled_with_two_way_price": 8,
+          "settled_clusters_with_two_way_price": 8
+        }
+      },
+      "verdict_status": "insufficient_n",
+      "counts": {
+        "rows_price_obs": 8044,
+        "rows_model_obs": 4793,
+        "rows_sgm_obs": 69,
+        "rows_sgm_price_obs": 69,
+        "rows_settlement": 2736,
+        "legs_void": 8
+      },
+      "clean_sgm_quote_observations": 69,
+      "legacy_selected_examples": []
+    },
+    {
+      "date": "2026-10-23",
+      "source": "/Users/imac/WongChoiData/NBA_Market_Eval/ledger/2026-10-23.jsonl",
+      "source_sha256": "701629d467e138b7430e986b86577606c47797176eb01444baaa255fd3cd76dd",
+      "source_bytes": 3007859,
+      "row_types": {
+        "price_obs": 2086,
+        "model_obs": 1732,
+        "sgm_obs": 16,
+        "sgm_price_obs": 24
+      },
+      "settlement_outcomes": {},
+      "selected_model_engines": {
+        "calibrated(hybrid)": 579,
+        "hybrid": 3
+      },
+      "overall_legs": 582,
+      "settled_legs": 0,
+      "clusters_player_game_market": 0,
+      "devig_coverage": {
+        "legs_with_two_way_price": 45,
+        "settled_with_two_way_price": 0,
+        "settled_clusters_with_two_way_price": 0
+      },
+      "comparisons": {
+        "p_final": {
+          "market_raw_close": {
+            "n": 0
+          },
+          "market_devig_close": {
+            "n": 0
+          }
+        },
+        "p_hit_rate_10f": {
+          "market_raw_close": {
+            "n": 0
+          },
+          "market_devig_close": {
+            "n": 0
+          }
+        },
+        "p_ml": {
+          "market_raw_close": {
+            "n": 0
+          },
+          "market_devig_close": {
+            "n": 0
+          }
+        },
+        "p_monte_carlo": {
+          "market_raw_close": {
+            "n": 0
+          },
+          "market_devig_close": {
+            "n": 0
+          }
+        }
+      },
+      "picked": {
+        "legs": 0,
+        "settled": 0,
+        "variants": {
+          "p_final": {
+            "market_raw_close": {
+              "n": 0
+            },
+            "market_devig_close": {
+              "n": 0
+            },
+            "calibration": []
+          },
+          "p_hit_rate_10f": {
+            "market_raw_close": {
+              "n": 0
+            },
+            "market_devig_close": {
+              "n": 0
+            },
+            "calibration": []
+          },
+          "p_ml": {
+            "market_raw_close": {
+              "n": 0
+            },
+            "market_devig_close": {
+              "n": 0
+            },
+            "calibration": []
+          },
+          "p_monte_carlo": {
+            "market_raw_close": {
+              "n": 0
+            },
+            "market_devig_close": {
+              "n": 0
+            },
+            "calibration": []
+          }
+        },
+        "market_raw_close_calibration": [],
+        "clv_earliest_vs_close": {
+          "n": 0,
+          "mean": null,
+          "share_positive": null
+        },
+        "clv_model_price_vs_close": {
+          "n": 0,
+          "mean": null
+        },
+        "settled_clusters_player_game_market": 0,
+        "devig_coverage": {
+          "legs_with_two_way_price": 0,
+          "settled_with_two_way_price": 0,
+          "settled_clusters_with_two_way_price": 0
+        }
+      },
+      "verdict_status": "market_not_devigged",
+      "counts": {
+        "rows_price_obs": 2086,
+        "rows_model_obs": 1732,
+        "rows_sgm_obs": 16,
+        "rows_sgm_price_obs": 24,
+        "legs_unsettled": 582,
+        "legs_without_pretip_model": 1
+      },
+      "clean_sgm_quote_observations": 24,
+      "legacy_selected_examples": [
+        {
+          "game_tag": "CLE_PHI",
+          "player": "Peyton Watson",
+          "market": "fg3m",
+          "line": 5.0,
+          "snapshot_role": "production"
+        },
+        {
+          "game_tag": "DEN_OKC",
+          "player": "Chet Holmgren",
+          "market": "reb",
+          "line": 4.0,
+          "snapshot_role": "production"
+        },
+        {
+          "game_tag": "DEN_OKC",
+          "player": "Shai Gilgeous-Alexander",
+          "market": "reb",
+          "line": 10.0,
+          "snapshot_role": "production"
+        }
+      ]
+    }
+  ],
+  "extractor_samples": [
+    {
+      "source": "/Users/imac/wongchoi-scheduler/2026-10-23 NBA Analysis/nba_game_data_CLE_PHI.json",
+      "source_sha256": "5e427322df6f776b4e4d58de5e440e923d74122cb2a69c0bb3be9ca546c34857",
+      "extracted_at": "2026-10-22T19:00:29.163942",
+      "players": 24,
+      "players_with_gamelog": 20,
+      "key_defenders": {
+        "CLE": 0,
+        "PHI": 0
+      },
+      "injury_entries": {
+        "CLE": 3,
+        "PHI": 4
+      }
+    },
+    {
+      "source": "/Users/imac/wongchoi-scheduler/2026-10-23 NBA Analysis/nba_game_data_DEN_OKC.json",
+      "source_sha256": "333b4f22b774978a281e3f4e13aaeab0f2e5a2cdf276049b5c0506a1d0a82705",
+      "extracted_at": "2026-10-23T11:07:12.719983",
+      "players": 28,
+      "players_with_gamelog": 25,
+      "key_defenders": {
+        "DEN": 0,
+        "OKC": 0
+      },
+      "injury_entries": {
+        "DEN": 2,
+        "OKC": 3
+      }
+    }
+  ],
+  "validation": {
+    "baseline_nba_passed": 336,
+    "pre_fix_regressions_failed": 9,
+    "pre_fix_targeted_passed": 31,
+    "final_nba_passed": 351,
+    "added_test_cases": 15,
+    "quick_gate": "pass",
+    "full_gate": "pass",
+    "full_suites_passed": 16,
+    "diff_check": "pass",
+    "prediction_formulas_changed": false,
+    "live_data_written": false,
+    "local_gate_log_sha256": "36c23c7a89f8f0b3a1651015214766266119339522259ee6cfb3d32131d7a732"
+  }
+}
