@@ -248,3 +248,4 @@
 - [EXP-20261023-01](EXP-20261023-01-nba-b2b-flag-correctness.md) — NBA B2B 旗標正確性修正：舊規則 22/22 隊永遠觸發（任何歷史 PPG 跌幅）、MC 由來冇收到旗標、UTC 日期令晚場錯一日；p_10f 平均 +1.08pp 但 p_final／選腿零變化；冇聲稱改善
 - [EXP-20261023-02](EXP-20261023-02-nba-injury-status-matching.md) — NBA 傷病排除：精確字串配對漏重音名、只認字面 Out；改全名身份配對＋Doubtful／Suspension 排除、Questionable 排出穩膽；真實 11 場 A/B 零變化，防禦性正確性修正，冇聲稱改善
 - [EXP-20261023-04](EXP-20261023-04-nba-partial-season-fill.md) — NBA 開季數據：聯盟 feed 28/30 隊（未打首戰嘅隊冇行）過咗 ≥25 門檻，DEN／CLE 全無 team_stats 同 advanced，兩場零組合；改為逐隊／逐球員由上季補缺（守住賽前截止）；真實 API 驗證 DEN 0→14/14；冇聲稱改善
+- [EXP-20261023-05](EXP-20261023-05-nba-fit-layer-shadow-integration.md) — NBA 擬合層 A（Poisson/NB＋逐 stat 重校準）shadow 接駁：只記錄 shadow_fit_* 欄位，唔影響機率／揀注；前瞻證據累積中，未採納
