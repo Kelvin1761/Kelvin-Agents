@@ -59,3 +59,27 @@ removal, symlink or path-binding mismatch blocks restoration before services
 are touched. Legacy snapshots carry no pointer authority and leave it alone.
 This is detected-change protection, not a claim of exactly-once filesystem
 transactions or power-loss durability. No full release/activation is proven yet.
+
+## Resumption checkpoint
+
+Read-only process inspection confirmed the previously observed other-agent
+release controller has ended; no release controller was running at this probe.
+Fetched main `08ec7914086e5eea184aa26ce4692c4b90d69e99` has no overlap with
+these three paths. Normal merge `9eb24b3708cd9717382b680ad7bb488ded6379bf`
+preserves upstream work; the complete candidate delta remains exactly the
+installer, its matching tests and this plan. Upstream NBA changes are observed
+only, not authored or approved by this session.
+
+Mounted external scratch has 816 GiB available and HOT has 16 GiB at this
+checkpoint. Re-run the Central/installer/review-clock suites and quick gate,
+then exact-scope preview before the existing full-gated release workflow.
+An initial test invocation used the nonexistent `test_research_clock.py` and
+exited 4 with no tests run; the corrected suite is
+`test_research_review_clock.py`. This invocation error is not a passing gate.
+No production install, model change or weekly-calendar acceptance is inferred.
+
+Aligned verification: all Central tests plus runtime installer and review clock
+passed **120 tests in 62.61 s** (`wc-run-pmvo32hb`). Repository quick gate passed
+(`wc-run-zw6ujn6s`), both 120-horse scoring goldens unchanged; existing data
+contract warnings remain visible. Full release and installed acceptance are
+still outstanding; proceed only through the existing Central controller.
