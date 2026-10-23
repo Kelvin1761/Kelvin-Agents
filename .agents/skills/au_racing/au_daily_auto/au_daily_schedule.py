@@ -88,6 +88,8 @@ SB_RESULTS = AU_SKILL / "sb_results.py"
 MEETING_IDS = AU_SKILL / "data" / "sb_archive_meeting_ids.json"
 AU_ORCH = AU_SKILL / "au_wong_choi" / "scripts" / "au_orchestrator.py"
 AU_AUTO_ORCH = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_auto_orchestrator.py"
+# Reports can be written before validation fails; only a successful retry clears this.
+ANALYSIS_PENDING = ".analysis_pending"
 REFLECTOR = AU_SKILL / "au_reflector" / "scripts" / "au_reflector_orchestrator.py"
 SB_RESULTS_CSV = AU_SKILL / "sb_results_csv.py"
 RESULTS_INGEST = (AU_SKILL / "au_wong_choi_auto" / "scripts"
@@ -1888,7 +1890,9 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
     scored = sorted(int(re.search(r"Race_(\d+)_", p.name).group(1))
                     for p in existing.glob("Race_*_Auto_Analysis.md")) \
         if existing is not None else []
-    complete = existing is not None and meeting_is_complete(have, scored, expected)
+    complete = (existing is not None
+                and not (existing / ANALYSIS_PENDING).exists()
+                and meeting_is_complete(have, scored, expected))
 
     if complete:
         runlog.meeting(existing.name, "skipped_already_analysed", races=len(scored))
@@ -1963,15 +1967,18 @@ def analyse_one_meeting(runlog: RunLog, day: str, plan: dict) -> tuple:
         cmd += ["--going", plan["going"]]
     else:
         runlog.warn(f"{folder.name}: 冇官方場地狀況，用 Logic 內嘅值評分")
+    pending = folder / ANALYSIS_PENDING
+    pending.write_text("AU analysis has not completed validation. Retry before publishing.\n",
+                       encoding="utf-8")
     rc, out = run_cmd(cmd, timeout=10800)
     scored = sorted(int(re.search(r"Race_(\d+)_", p.name).group(1))
                     for p in folder.glob("Race_*_Auto_Analysis.md"))
-    if rc != 0 and not scored:
+    if rc != 0:
         raise TemporaryFailure(
             f"分析失敗（rc={rc}）：{error_excerpt(out, rc)}")
-    if rc != 0:
-        runlog.warn(f"{folder.name}: orchestrator rc={rc} 但有 {len(scored)} 場出咗分，"
-                    f"當部分成功處理")
+    if not set(got).issubset(scored):
+        raise TemporaryFailure(f"分析輸出未齊：已抽取 {got}，已評分 {scored}")
+    pending.unlink()
     complete = len(scored) >= expected and not partial
     # ⚠️ 呢個先係真正「分析時」嘅賠率 —— 一定要喺呢刻影，因為之後任何重建都會
     # 覆寫 Formguide。
@@ -2924,6 +2931,8 @@ def unpublished_local_meetings(payload: dict, already: list[Path],
     for folder in live_meeting_dirs():
         if folder.name in have:
             continue
+        if (folder / ANALYSIS_PENDING).exists():
+            continue  # Failed/interrupted validation is not unpublished success.
         try:
             day = datetime.strptime(folder.name[:10], "%Y-%m-%d").date()
         except ValueError:
@@ -3010,6 +3019,8 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
         if folder.parent == ARCHIVE_ROOT:
             runlog.warn(f"{folder.name} 已經歸檔 —— 唔合併（剪走先啱）")
             continue
+        if (folder / ANALYSIS_PENDING).exists():
+            raise TemporaryFailure(f"{folder.name}: 分析未通過，重試成功之前唔合併")
         live_dirs.append(folder)
     meeting_dirs = live_dirs
 

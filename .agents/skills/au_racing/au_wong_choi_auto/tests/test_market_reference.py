@@ -160,6 +160,40 @@ class DevigMethods(unittest.TestCase):
         self.assertIn("1 匹冇贏盤價", ref["note"])
         self.assertEqual(ref["places"], 0, "≤4 匹冇位盤")
 
+    def test_incomplete_win_book_does_not_publish_derived_probabilities(self):
+        for size in (5, 8):
+            for missing in (None, "-", float("nan"), float("inf"), 1.0):
+                with self.subTest(size=size, missing=missing):
+                    horses = self._horses(list(ODDS.values())[:size])
+                    horses[str(size)]["_data"]["win_odds"] = missing
+                    ref = M.build_market_reference(horses)
+                    self.assertEqual(ref["field"], size)
+                    self.assertEqual(ref["priced"], size - 1)
+                    self.assertEqual(ref["runners"], {})
+                    self.assertEqual(ref["places"], 0)
+                    self.assertIn("1 匹冇贏盤價", ref["note"])
+                    self.assertIsNone(M.horse_line(ref, "1"))
+
+    def test_snapshot_missing_a_current_runner_does_not_use_later_formguide_prices(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            snap = {k: list(v) for k, v in ODDS.items() if k != "8"}
+            (Path(tmp) / M.ODDS_HISTORY).write_text(json.dumps({"1": {
+                "2026-10-14T00:43:38|analysis": snap}}))
+            ref = M.build_market_reference(self._horses(ODDS.values()), Path(tmp), 1)
+        self.assertEqual(ref["priced"], 7)
+        self.assertEqual(ref["runners"], {})
+        self.assertEqual(ref["places"], 0)
+        self.assertIn("1 匹冇贏盤價", ref["note"])
+
+    def test_missing_place_price_only_suppresses_place_probabilities(self):
+        horses = self._horses(ODDS.values())
+        horses["8"]["_data"]["place_odds"] = None
+        ref = M.build_market_reference(horses)
+        self.assertEqual(ref["places"], 0)
+        self.assertEqual(len(ref["runners"]), 8)
+        self.assertTrue(all(r["place_prob"] is None for r in ref["runners"].values()))
+        self.assertAlmostEqual(sum(r["win_prob"] for r in ref["runners"].values()), 1.0)
+
     def test_line_round_trips_through_dashboard_parser(self):
         dash = Path(__file__).resolve().parents[5] / "Horse_Racing_Dashboard" / "backend"
         sys.path.insert(0, str(dash))
