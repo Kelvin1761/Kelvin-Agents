@@ -287,6 +287,7 @@ def prepare_release(
     activation_base: str | None = None,
     expected_results: Sequence[str] = (),
     auto_approve: bool = True,
+    _gate_receipts: list | None = None,
 ) -> dict:
     """`auto_approve=False` is only for the delegated replay, which already holds the
     approval lock and approves the replayed commit itself (release_automation)."""
@@ -372,12 +373,34 @@ def prepare_release(
     if dry_run:
         return plan
 
-    check_args = ["./檢查.sh"]
-    if policy.check == "quick":
-        check_args.append("--quick")
-    checked = _run(repo, *check_args, check=False, timeout=7200)
-    if checked.returncode != 0:
-        raise ReleaseError(f"{policy.check} gate failed; no files were staged")
+    branch = _git(repo, "branch", "--show-current")
+    if branch and branch != "main":
+        # A remote `codex` ref blocks every `codex/...` branch, but Git's
+        # push --dry-run misses that conflict. Detect it before an expensive gate.
+        remote = _run(repo, "git", "ls-remote", "--heads", "origin", check=False, timeout=300)
+        if remote.returncode != 0:
+            raise ReleaseError("cannot verify remote branch namespace before gate")
+        names = [line.split("\t", 1)[1].removeprefix("refs/heads/")
+                 for line in remote.stdout.splitlines() if "\t" in line]
+        conflicts = [name for name in names
+                     if branch.startswith(name + "/") or name.startswith(branch + "/")]
+        if conflicts:
+            raise ReleaseError(f"remote branch namespace conflict: {branch} vs {conflicts}; "
+                               "rename this worktree branch before running the gate")
+
+    from .release_candidate import freeze_candidate, publish_candidate, supported
+    from .release_gate import run_gate
+    candidate = None
+    gate_receipt = None
+    single_gate = (automatic and automation.get("single_clean_gate", False)
+                   and supported(repo))
+    if single_gate:
+        candidate, gate_receipt = freeze_candidate(repo, head, selected, message)
+        checked = gate_receipt
+        if _gate_receipts is not None:
+            _gate_receipts.append(gate_receipt)
+    else:
+        checked = run_gate(repo, policy.check, attest=False)
 
     branch = _git(repo, "branch", "--show-current")
     if not branch or branch == "main":
@@ -394,14 +417,17 @@ def prepare_release(
         branch = "codex-release-" + datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
         _git(repo, "checkout", "-b", branch)
 
-    _git(repo, "add", "--", *selected)
-    staged = staged_paths(repo)
-    if set(staged) != set(selected):
-        raise ReleaseError(f"staged scope mismatch: expected {selected}, got {staged}")
-    diff_check = _run(repo, "git", "diff", "--cached", "--check", check=False)
-    if diff_check.returncode != 0:
-        raise ReleaseError(f"staged diff check failed: {diff_check.stdout.strip()}")
-    _git(repo, "commit", "-m", message)
+    if candidate:
+        publish_candidate(repo, candidate, head, selected)
+    else:
+        _git(repo, "add", "--", *selected)
+        staged = staged_paths(repo)
+        if set(staged) != set(selected):
+            raise ReleaseError(f"staged scope mismatch: expected {selected}, got {staged}")
+        diff_check = _run(repo, "git", "diff", "--cached", "--check", check=False)
+        if diff_check.returncode != 0:
+            raise ReleaseError(f"staged diff check failed: {diff_check.stdout.strip()}")
+        _git(repo, "commit", "-m", message)
     commit = _git(repo, "rev-parse", "HEAD")
     pushed = _run(repo, "git", "push", "-u", "origin", branch, check=False, timeout=300)
     push_ok = pushed.returncode == 0
@@ -436,7 +462,11 @@ def prepare_release(
         "branch": branch,
         "commit": commit,
         "rollback_target": rollback_target,
-        "check_exit_code": checked.returncode,
+        "check_exit_code": 0,
+        "gate": {"commit": checked.commit, "check": checked.check,
+                 "elapsed_seconds": checked.elapsed_seconds, "log": checked.log,
+                 "environment_hash": checked.environment,
+                 "single_clean_gate": single_gate},
         "push_exit_code": pushed.returncode,
         "activation": "not_started",
     }
@@ -458,7 +488,8 @@ def prepare_release(
         from .release_automation import auto_approve_release
 
         result = auto_approve_release(
-            repo, state_root.expanduser().resolve().parent, selector=commit, notify=notify
+            repo, state_root.expanduser().resolve().parent, selector=commit, notify=notify,
+            gate_receipt=gate_receipt,
         )
         payload.update(result)
     return payload

@@ -23,11 +23,14 @@ QUICK=0
 PASS=(); FAIL=(); SKIP=()
 step() {
   local label="$1"; shift
+  local started=$SECONDS
   printf '\n\033[1m── %s\033[0m\n' "$label"
   if "$@"; then PASS+=("$label"); else FAIL+=("$label"); fi
+  printf '  ⏱ %ss\n' "$((SECONDS - started))"
 }
 soft_step() {   # 依賴資料根目錄；攞唔到就跳過，唔算失敗
   local label="$1"; shift
+  local started=$SECONDS
   printf '\n\033[1m── %s\033[0m\n' "$label"
   local out status
   out="$("$@" 2>&1)"; status=$?
@@ -35,6 +38,7 @@ soft_step() {   # 依賴資料根目錄；攞唔到就跳過，唔算失敗
   if [ $status -eq 2 ]; then SKIP+=("$label")
   elif [ $status -eq 0 ]; then PASS+=("$label")
   else FAIL+=("$label"); fi
+  printf '  ⏱ %ss\n' "$((SECONDS - started))"
 }
 
 printf '\n\033[1m── 0. 清走過期 bytecode\033[0m\n'

@@ -36,7 +36,10 @@ def _remote_sha(repo: Path, ref: str) -> str | None:
     return result.stdout.strip() if result.returncode == 0 else None
 
 
-def _run_gate_in_clean_clone(repo: Path, commit: str, check_name: str) -> None:
+def _run_gate_in_clean_clone(repo: Path, commit: str, check_name: str):
+    from .release_gate import run_gate
+    from .release_automation import release_automation_config
+    import shutil
     with tempfile.TemporaryDirectory(prefix="wc-release-approval-") as raw:
         clone = Path(raw) / "checkout"
         cloned = _run(
@@ -57,12 +60,14 @@ def _run_gate_in_clean_clone(repo: Path, commit: str, check_name: str) -> None:
         )
         if checked_out.returncode != 0:
             raise ReleaseError("approval commit is not available in clean checkout")
-        command = ["./檢查.sh"]
-        if check_name == "quick":
-            command.append("--quick")
-        gate = _run(clone, *command, check=False, timeout=7200)
-        if gate.returncode != 0:
-            raise ReleaseError("approval recheck gate failed")
+        for marker in repo.glob(".wongchoi_*root"):
+            shutil.copy2(marker, clone / marker.name)
+        receipt = run_gate(clone, check_name, commit=commit,
+                           attest=release_automation_config(repo).get("single_clean_gate") is True)
+        if (_remote_sha(clone, "HEAD") != commit
+                or _run(clone, "git", "status", "--porcelain", "--untracked-files=no").stdout.strip()):
+            raise ReleaseError("clean gate changed its candidate checkout; refusing receipt")
+        return receipt
 
 
 def approve_release(
@@ -74,6 +79,7 @@ def approve_release(
     notify: bool = True,
     dry_run: bool = False,
     authorization: str | None = None,
+    gate_receipt=None,
 ) -> dict[str, Any]:
     """Approve and fast-forward main; activation remains a separate recorded step."""
     repo = repo.expanduser().resolve()
@@ -112,7 +118,17 @@ def approve_release(
     if _remote_sha(repo, "origin/main") != manifest["rollback_target"]:
         raise ReleaseError("origin/main changed after release; approval expired")
 
-    _run_gate_in_clean_clone(repo, manifest["commit"], manifest["policy"]["check"])
+    from .release_gate import GateReceipt
+    reused = (isinstance(gate_receipt, GateReceipt)
+              and gate_receipt.reusable(repo, manifest["commit"], manifest["policy"]["check"]))
+    # Refresh dynamic data contracts and cheap code checks even on receipt reuse.
+    checked = _run_gate_in_clean_clone(repo, manifest["commit"],
+                                     "quick" if reused else manifest["policy"]["check"])
+    if reused and checked.environment != gate_receipt.environment:
+        # Dependencies/markers may change between the reuse probe and quick
+        # checkout creation. A quick pass cannot bless that new environment.
+        reused = False
+        checked = _run_gate_in_clean_clone(repo, manifest["commit"], manifest["policy"]["check"])
     fetch = _run(repo, "git", "fetch", "origin", check=False, timeout=300)
     if fetch.returncode != 0 or _remote_sha(repo, "origin/main") != manifest["rollback_target"]:
         raise ReleaseError("origin/main changed while approval gate was running")
@@ -123,6 +139,9 @@ def approve_release(
         event_type="approval_granted",
         actor=actor,
         detail={"selector": selector, "rollback_target": manifest["rollback_target"],
+                "full_gate_reused": reused,
+                "gate_seconds": getattr(checked, "elapsed_seconds", None),
+                "gate_log": getattr(checked, "log", None),
                 **({"authorization": authorization} if authorization else {})},
     )
     pushed = _run(
@@ -148,6 +167,7 @@ def approve_release(
         "release_id": manifest["release_id"],
         "commit": manifest["commit"],
         "activation": "not_started",
+        "full_gate_reused": reused,
         "approval_event": approval["path"],
         "merge_event": merged["path"],
     }
