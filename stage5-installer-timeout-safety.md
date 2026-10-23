@@ -7,7 +7,7 @@ production scheduler, edit a database or retry an unverified cutover manually.
 
 - [x] RED: timeout diagnostics and delayed child-write tests; success/nonzero parity.
 - [x] Implement installer-only process isolation/timeout cleanup and safe stage markers.
-- [ ] Run focused tests and quick gate; preserve exact source/test/plan scope.
+- [x] Run focused tests and quick gate; preserve exact source/test/plan scope.
 - [ ] Full-gated release and actual installed/calendar acceptance, separately proven.
 
 Incident: `5e1fa7d8f27d` passed its clean full gate (1321.558 s), immutable
@@ -40,3 +40,10 @@ write after timeout or after its parent exits. Stage markers contain operation
 names, not credentials or DB contents. Temporary outputs are externally routed.
 This hardens cleanup and observability; it does not establish the original
 timeout's precise cause or prove a successful production install.
+
+Release preparation: exact five-path source/test/plan payload is preserved as
+non-main WIP `bc232db0`. Rechecked main is still `5e1fa7d8f27d`, with no other
+release controller live. Preview must include all five unmerged paths, select
+the existing unified installer only, and retain full gate / immutable approval
+and rollback requirements. Do not reclassify this as docs-only or retry the
+previous failed manifest in place of a fresh verified candidate.
