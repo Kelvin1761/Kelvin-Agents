@@ -154,5 +154,28 @@ class SettlementExporterTests(unittest.TestCase):
             self.assertEqual([leg["status"] for leg in combo["legs"]], ["won", "lost"])
 
 
+class NbaNameMatchingTests(unittest.TestCase):
+    """2026-10-22: GSW_LAL combos 1/2/3/X were dropped as 'leg unresolved' because the
+    Results Brief spells 'Luka Dončić' and the report 'Luka Doncic'."""
+
+    def test_normalise_name_is_accent_insensitive(self):
+        from services.settlement_exporter import _normalise_name
+        self.assertEqual(_normalise_name("Luka Dončić"), _normalise_name("Luka Doncic"))
+        self.assertEqual(_normalise_name("Nikola Jokić"), _normalise_name("Nikola Jokic"))
+        self.assertEqual(_normalise_name("Đorđe Petrović"), _normalise_name("Dorde Petrovic"))
+        self.assertEqual(_normalise_name("Jaime Jaquez Jr."), _normalise_name("jaime jaquez jr"))
+        self.assertNotEqual(_normalise_name("Luka Doncic"), _normalise_name("Luka Dokic"))
+
+    def test_leg_resolves_against_accented_box_score_name(self):
+        from services.settlement_exporter import _settle_nba_leg
+        game = {"players": [{"name": "Luka Dončić", "minutes": "29:42", "pts": 28, "reb": 6, "ast": 5}]}
+        leg = {"player": "Luka Doncic", "stat": "PTS", "line": 30.0, "selection": "Luka Doncic (LAL) PTS 30+",
+               "market": "Player PTS", "odds": 1.48}
+        settled = _settle_nba_leg(game, leg, "Results_Brief_x.json")
+        self.assertIsNotNone(settled)
+        self.assertEqual(settled["status"], "lost")
+        self.assertEqual(settled["result_value"], 28)
+
+
 if __name__ == "__main__":
     unittest.main()
