@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
@@ -214,8 +215,21 @@ def export_tennis_settlements(db_path: Path, target_date: Optional[str] = None) 
     }
 
 
+_LETTER_FOLDS = str.maketrans({"đ": "d", "ð": "d", "ł": "l", "ø": "o", "ı": "i", "ß": "ss", "æ": "ae", "œ": "oe"})
+
+
 def _normalise_name(value: Any) -> str:
-    return re.sub(r"[^a-z0-9]", "", str(value or "").lower())
+    """Accent-insensitive name key.
+
+    The old ``[^a-z0-9]`` strip deleted accented letters outright, so ``Luka Dončić``
+    became ``lukaonic`` and never matched ``Luka Doncic`` - every combo containing
+    such a player was reported "leg unresolved" and silently left out of settlement
+    (2026-10-22 GSW_LAL combos 1/2/3/X).  Decompose first, drop the combining marks,
+    then keep letters and digits as before.
+    """
+    text = unicodedata.normalize("NFKD", str(value or "")).lower().translate(_LETTER_FOLDS)
+    text = "".join(char for char in text if not unicodedata.combining(char))
+    return re.sub(r"[^a-z0-9]", "", text)
 
 
 def _nba_stat(player: Dict[str, Any], stat: str) -> Optional[float]:
