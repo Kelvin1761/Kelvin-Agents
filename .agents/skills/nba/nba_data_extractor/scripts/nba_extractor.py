@@ -40,6 +40,8 @@ sys.path.insert(0, str(NBA_SKILL_DIR))
 from nba_schedule import canonical_team_abbr, canonical_game_tag, event_sydney_date
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
+from nba_availability import (AvailabilityUnavailable, RosterChanged, apply_availability,
+                              availability_current, aware_time, fetch_team_availability, refresh_availability)
 
 try:
     import requests
@@ -485,26 +487,9 @@ def fetch_team_roster(team_nickname, season=None):
 
 
 def fetch_team_injuries(team_abbr):
-    """從 ESPN API 獲取球隊傷病名單"""
-    espn_abbr = TEAM_ABBR_ESPN_MAP.get(team_abbr, team_abbr)
-    print(f"  🏥 [Module 1b] 嘗試獲取 {team_abbr} (ESPN:{espn_abbr}) 傷病名單 (ESPN)...")
-    try:
-        url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/{espn_abbr}/roster"
-        r = requests.get(url, timeout=10)
-        if r.status_code == 200:
-            athletes = r.json().get('athletes', [])
-            injury_map = {}
-            for a in athletes:
-                name = a.get('fullName', '')
-                injuries = a.get('injuries', [])
-                if injuries and len(injuries) > 0:
-                    status = injuries[0].get('status', 'Active')
-                    injury_map[name] = status
-            return injury_map
-        return {}
-    except Exception as e:
-        print(f"  ⚠️ 獲取傷病名單失敗: {e}")
-        return {}
+    """An empty verified list means healthy; a source failure must never mean healthy."""
+    print(f"  🏥 [Module 1b] 獲取 {team_abbr} 即時傷停及完整陣容 (ESPN)...")
+    return fetch_team_availability(team_abbr, get=requests.get)
 
 
 FIT_STATS = ("PTS", "REB", "AST", "FG3M")
@@ -1325,6 +1310,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
         package["meta"]["preseason_rookie_history_contract"] = 1
 
     # 提取雙方陣容與數據
+    availability_maps = {}
     for side, abbr, full_name in [("away", away_abbr, away_name), ("home", home_abbr, home_name)]:
         print(f"\n📋 [{abbr}] 提取 {full_name} 陣容...")
         roster = fetch_team_roster(full_name, target_season)
@@ -1336,6 +1322,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
 
         # 抓取真實傷病名單並存儲到 metadata
         injury_map = fetch_team_injuries(abbr)
+        availability_maps[abbr] = injury_map
         package["injuries"][abbr] = injury_map
         
         # 抓取球隊新聞
@@ -1410,6 +1397,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
 
             player_entry = {
                 "name": pname,
+                "status": p_status,
                 "player_id": int(pid),
                 "position": p.get('position') or '',
                 "age": p.get('age', ''),
@@ -1456,7 +1444,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
         if corr_warnings:
             package.setdefault("correlation_warnings", {})[abbr] = corr_warnings
 
-    return package
+    return apply_availability(package, availability_maps)
 
 
 # ==========================================
@@ -1548,12 +1536,46 @@ def build_game_info_from_tag(game_tag):
 # ==========================================
 # 主程式
 # ==========================================
+def _write_verified_package(path, package):
+    from datetime import timezone
+    now = datetime.now(timezone.utc)
+    tip = aware_time(package.get("meta", {}).get("date"))
+    if tip is not None and tip <= now:
+        raise AvailabilityUnavailable("game already started; cached pregame data is protected")
+    if not availability_current(package, now=now):
+        package = refresh_availability(package, fetch=fetch_team_injuries, now=now)
+    temporary = path + ".availability.tmp"
+    try:
+        with open(temporary, "w", encoding="utf-8") as target:
+            json.dump(package, target, ensure_ascii=False, indent=2, allow_nan=False)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
 def main():
     parser = argparse.ArgumentParser(description="NBA Wong Choi Claw Code V3 Extractor")
     parser.add_argument("--date", type=str, help="YYYYMMDD (AEST)", default=None)
     parser.add_argument("--game", type=str, help="Game tag e.g. PHX_CHA", default=None)
     parser.add_argument("--output", type=str, help="Output path", default="NBA_Data_Package_Auto.md")
+    parser.add_argument("--refresh-availability", help="Refresh only verified injuries/roster in a cached game JSON")
     args = parser.parse_args()
+
+    if args.refresh_availability:
+        path = args.refresh_availability
+        try:
+            with open(path, encoding="utf-8") as source:
+                package = json.load(source)
+            package = refresh_availability(package, fetch=fetch_team_injuries)
+        except RosterChanged as exc:
+            print(f"⏳ {exc}")
+            raise SystemExit(2)
+        except (OSError, ValueError, AvailabilityUnavailable) as exc:
+            print(f"⛔ availability_unavailable: {exc}")
+            raise SystemExit(75)
+        _write_verified_package(path, package)
+        return
 
     target_date = args.date or datetime.now().strftime("%Y%m%d")
     formatted_date = f"{target_date[:4]}-{target_date[4:6]}-{target_date[6:]}"
@@ -1677,8 +1699,7 @@ def main():
         if output_path.endswith('.md'):
             output_path = f"nba_game_data_{target_game['tag']}.json"
 
-        with open(output_path, "w", encoding="utf-8") as f:
-            json.dump(package, f, ensure_ascii=False, indent=2)
+        _write_verified_package(output_path, package)
         print(f"\n✅ 單場深度數據已儲存至: {output_path}")
 
     else:
@@ -1698,12 +1719,15 @@ def main():
                                       data_sources=data_sources)
 
             json_path = f"nba_game_data_{g['tag']}.json"
-            with open(json_path, "w", encoding="utf-8") as f:
-                json.dump(package, f, ensure_ascii=False, indent=2)
+            _write_verified_package(json_path, package)
             print(f"  ✅ {g['tag']} → {json_path}")
 
     print("\n🏁 提取完成！")
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except AvailabilityUnavailable as exc:
+        print(f"⛔ availability_unavailable: {exc}", file=sys.stderr)
+        sys.exit(75)

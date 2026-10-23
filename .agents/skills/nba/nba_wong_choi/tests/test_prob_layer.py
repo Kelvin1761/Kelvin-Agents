@@ -8,6 +8,9 @@ from __future__ import annotations
 import json
 import math
 import sys
+import copy
+import pytest
+import runpy
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
@@ -60,3 +63,58 @@ def test_shipped_config_is_complete() -> None:
     for key in ("intercepts", "beta_market", "gamma_l10", "clip_market", "clip_l10"):
         assert key in CONFIG
     assert set(CONFIG["intercepts"]) == {"PTS", "REB", "AST", "FG3M"}
+
+
+@pytest.mark.parametrize("field,value", [
+    ("enabled", "true"), ("version", ""), ("intercepts", {"PTS": 0}),
+    ("beta_market", float("nan")), ("gamma_l10", float("inf")),
+    ("clip_market", [0, 1]), ("clip_l10", [0.9, 0.1]), ("clip_l10", [False, 0.9]),
+])
+def test_invalid_configuration_blocks_instead_of_falling_back(field, value):
+    bad = {**ON, field: value}
+    with pytest.raises(layer.ProbabilityConfigError):
+        layer.calibrated_prob("PTS", 1.5, 90, bad)
+
+
+@pytest.mark.parametrize("content", ["{", "[]", '{"enabled": true}'])
+def test_unreadable_or_invalid_config_can_recover_without_sticky_failure(tmp_path, content):
+    path = tmp_path / "config.json"
+    path.write_text(content)
+    with pytest.raises(layer.ProbabilityConfigError):
+        layer.load_config(str(path))
+    path.write_text(json.dumps(ON))
+    assert layer.load_config(str(path)) == ON
+
+
+def test_missing_config_fails_but_explicit_kill_switch_does_not_read_it(tmp_path, monkeypatch):
+    monkeypatch.setattr(layer, "_CONFIG_PATH", str(tmp_path / "missing.json"))
+    with pytest.raises(layer.ProbabilityConfigError, match="cannot load"):
+        layer.calibrated_prob("PTS", 1.5, 90)
+    monkeypatch.setenv("NBA_WC_PROB_LAYER", "0")
+    assert layer.calibrated_prob("PTS", 1.5, 90) is None
+    assert layer.probability_model_id() is None
+
+
+def test_identity_tracks_actual_coefficients_but_not_editorial_notes():
+    identity = layer.probability_model_id(ON)
+    assert identity.startswith("calibrated:C-2026-10-22:")
+    assert layer.probability_model_id({**ON, "fit": {"note": "changed"}}) == identity
+    changed = copy.deepcopy(ON)
+    changed["intercepts"]["PTS"] -= 0.01
+    assert layer.probability_model_id(changed) != identity
+
+
+@pytest.mark.parametrize("odds,hit", [(float("nan"), 50), (float("inf"), 50), (1.5, -1), (1.5, 101)])
+def test_nonfinite_or_impossible_inputs_cannot_generate_a_probability(odds, hit):
+    assert layer.calibrated_prob("PTS", odds, hit, ON) is None
+
+
+def test_report_cli_blocks_before_reading_inputs_when_config_is_broken(tmp_path, monkeypatch, capsys):
+    monkeypatch.delenv("NBA_WC_PROB_LAYER", raising=False)
+    monkeypatch.setattr(layer, "_CONFIG_PATH", str(tmp_path / "missing-model-config.json"))
+    renderer = Path(__file__).resolve().parents[1] / "scripts" / "generate_nba_reports.py"
+    monkeypatch.setattr(sys, "argv", [str(renderer)])
+    with pytest.raises(SystemExit) as error:
+        runpy.run_path(str(renderer), run_name="__main__")
+    assert error.value.code == 1
+    assert "probability_config_invalid" in capsys.readouterr().err

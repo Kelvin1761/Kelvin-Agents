@@ -31,6 +31,8 @@ import hashlib
 import json
 import subprocess
 import sys
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from nba_availability import availability_current
 
 # ─── Cross-Platform Python ──────────────────────────────────────────────
 PYTHON = sys.executable
@@ -89,8 +91,11 @@ def run_script(
     args_list: list,
     label: str = "Script",
     timeout: int = 1800,
+    failure_codes: list[int] | None = None,
 ) -> bool:
     if not os.path.exists(script_path):
+        if failure_codes is not None:
+            failure_codes.append(75)
         print(f"❌ [{label}] 找不到腳本: {script_path}")
         return False
     cmd = [PYTHON, script_path] + args_list
@@ -114,6 +119,8 @@ def run_script(
                 print(f"   {output}")
         return True
     except subprocess.CalledProcessError as e:
+        if failure_codes is not None:
+            failure_codes.append(e.returncode)
         print(f"⚠️ [{label}] 執行失敗 (exit code: {e.returncode})")
         if e.stdout:
             print(f"   stdout: {e.stdout[-4000:]}")
@@ -121,6 +128,8 @@ def run_script(
             print(f"   stderr: {e.stderr[-2000:]}")
         return False
     except subprocess.TimeoutExpired:
+        if failure_codes is not None:
+            failure_codes.append(75)
         print(f"⏱️ [{label}] 超過 {timeout} 秒，已停止並當作失敗。")
         return False
 
@@ -396,9 +405,28 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
         print(f"⏳ [{prefix}] player_markets_not_open：未有可分析球員里程碑盤口，保留重試，唔生成分析或 snapshot。")
         return False
 
+    extractor_json = os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
+    availability_ready = False
+    if os.path.isfile(extractor_json) and extractor_cache_current(extractor_json):
+        with open(extractor_json, encoding="utf-8") as source:
+            availability_ready = availability_current(json.load(source))
+        if not availability_ready:
+            refresh_failures = []
+            refreshed = run_script(NBA_EXTRACTOR, ["--refresh-availability", extractor_json],
+                                   label=f"{prefix} Availability Refresh", failure_codes=refresh_failures)
+            if refreshed:
+                with open(extractor_json, encoding="utf-8") as source:
+                    availability_ready = availability_current(json.load(source))
+                if not availability_ready:
+                    print(f"⛔ [{prefix}] availability refresh 冇產生可驗證資料，唔重用舊報告。")
+                    return False
+            elif refresh_failures != [2]:
+                print(f"⛔ [{prefix}] 傷停來源失敗或賽事已開始，保留原檔等重試。")
+                return False
+
     # ── Check if already completed ──
     existing = check_skeleton_exists(target_dir, game_tag)
-    if existing and not debug_skip_extractor and extractor_cache_current(
+    if existing and availability_ready and not debug_skip_extractor and extractor_cache_current(
         os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
     ) and report_cache_current(
         existing, sportsbet_json,
@@ -417,7 +445,7 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
     ext_date = date_str.replace("-", "")
     extractor_json = os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
 
-    if os.path.exists(extractor_json) and extractor_cache_current(extractor_json):
+    if availability_ready and os.path.exists(extractor_json) and extractor_cache_current(extractor_json):
         print(f"✅ [{prefix}] Extractor JSON 已存在: {os.path.basename(extractor_json)}")
     elif debug_skip_extractor:
         print(f"⚠️ [{prefix}] --debug-skip-extractor: 建立 DEBUG fallback JSON...")
@@ -436,6 +464,12 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
             print(f"   可能原因: nba_api 未安裝 / API 限流 / ESPN 日期轉換問題")
             print(f"   ⛔ 跳過此賽事 — 冇真實 L10 gamelog 不進行分析。")
             return False
+
+    if not debug_skip_extractor:
+        with open(extractor_json, encoding="utf-8") as source:
+            if not availability_current(json.load(source)):
+                print(f"⛔ [{prefix}] 傷停／陣容未驗證或已過期，保留重試，唔發布。")
+                return False
 
     # ── Phase 1A.5: JSON Schema Validation (Pre-flight for report gen) ──
     if os.path.exists(VALIDATE_SCHEMA):

@@ -883,6 +883,9 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             "det_prob": est_prob,
             "legacy_prob": legacy_prob,
             "calibrated_prob": layer_prob,
+            "probability_model_id": (
+                nba_prob_layer.probability_model_id() if layer_prob is not None else f"legacy:{final_engine}"
+            ),
             "hybrid_prob": final_prob if final_engine == "hybrid" else None,
             "ml_prob": ml_prob,
             "ml_est_prob": ml_est_prob,
@@ -2424,6 +2427,7 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
                 "p_monte_carlo": _pct_to_prob(mc.get("mc_prob")) if mc else None,
                 "p_l10_base_rate": _pct_to_prob(la.get("hit_l10")),
                 "engine": la.get("engine"),
+                "probability_model_id": la.get("probability_model_id"),
                 "picked": identity in combo_membership,
                 "picked_in": sorted(set(combo_membership.get(identity, []))),
             })
@@ -2656,4 +2660,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        # Validate even when no player can be analysed: a broken live model
+        # must not publish a misleading NO BET or silently become legacy.
+        nba_prob_layer.enabled()
+        main()
+    except nba_prob_layer.ProbabilityConfigError as exc:
+        print(f"⛔ probability_config_invalid：{exc}；停止報告發佈。", file=sys.stderr)
+        sys.exit(1)
