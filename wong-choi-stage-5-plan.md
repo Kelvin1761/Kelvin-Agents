@@ -81,6 +81,22 @@ Completed engineering is not Stage 5 completion. Tasks 6–10 stay unchecked.
   including real-helper lost-response/recreated-dispatcher coverage without
   network. Preserve all five paths and release serially after Tennis/cadence;
   no full gate, deployment, actual research send or exactly-once delivery claim.
+- Cadence release `4ce065e9d381` subsequently passed source full/push and
+  separate immutable approval and merged, but installer activation failed on
+  the production-active preflight. External/plist and Git rollback succeeded
+  to c9, without rollback errors; the failure notification was delivered.
+  Later approved production advanced (observed `8f09e341`), and the actual
+  calendar still differs from the source template. Do not retry old 4ce by
+  downgrading newer production, or treat merged source as installed cadence.
+  A real installer side-effect bug was then reproduced: pointer publication
+  occurs before every preflight, and failed installation does not restore it.
+  Three isolated failure cases changed sentinel pointer bytes. A separate
+  three-path source/test/plan repair on latest main defers publication and adds
+  path-bound configuration rollback with detected-concurrency guards, retaining
+  all existing active-run/SQLite/AU/calendar and release controls. It does not
+  modify any DB contents or stop production. Fresh tests/full gates, exact SHA,
+  installer snapshot/rollback and actual calendar/native acceptance remain
+  mandatory before this repair can close the cadence deployment gap.
 - Task 6 callback prerequisite: deployed `research_supervision.py` deliberately
   blocks both `power-dev-engine` and `power-dev-producer` with
   `label_safe_domain_callback_required`. Generic self-reported metrics cannot
@@ -105,9 +121,10 @@ Completed engineering is not Stage 5 completion. Tasks 6–10 stay unchecked.
 | 9 Other pilots | A real AU/HKJC ranking-gate loop under the frozen ruler, plus NBA descriptive/forward evidence as required. Other agents' manual model experiments are not automatically Stage 5 runner acceptance. |
 | 10 Exit | All formal checkpoint decisions, health/reproducibility/fault/leakage/resource proof, two genuine domain pilots, and an explicit Stage 6 entry decision. No completion inferred from code gates alone. |
 
-Next serial sequence: observe the already running original Tennis refresh until
-terminal (now verified), then reconcile/release the nine-path cadence WIP with real installer
-acceptance. Finish Telegram/private
+Next serial sequence: Tennis activation is verified. Complete the genuine
+installer pointer repair through fresh full/immutable gates and actual cadence
+installation acceptance on latest approved main, preserving later releases.
+Then deliver the preserved notification single-attempt safeguard and finish Telegram/private
 Dashboard integration acceptance and reviewed safety/pilot gaps afterward.
 The standing engineering approval does not authorize model/ruler/holdout,
 incident-unfreeze, bankroll or deletion actions. Previously reported exact-byte
