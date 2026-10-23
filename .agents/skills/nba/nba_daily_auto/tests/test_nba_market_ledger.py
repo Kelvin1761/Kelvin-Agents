@@ -180,6 +180,46 @@ def test_settlement_from_box_scores_first_write_wins(root, tmp_path):
     assert again == {"candidates": 0, "appended": 0}
 
 
+def test_unmatched_player_remains_retryable_until_box_score_is_complete(root, tmp_path):
+    snap = _snapshot(tmp_path / "live", role="production", created=TIP - timedelta(hours=12),
+                     extraction="2026-10-22 00:30:00", legs=LEGS)
+    ledger.record_snapshot(snap, DAY, now=TIP - timedelta(hours=12))
+    brief = _brief(tmp_path / "Results_Brief_2026-10-21.json")
+    complete = brief.read_text()
+    partial = json.loads(complete)
+    partial["games"][0]["players"] = []
+    brief.write_text(json.dumps(partial))
+    assert ledger.settle(DAY, brief)["appended"] == 0
+    assert not [r for r in ledger.read_rows(root, DAY) if r["row_type"] == "settlement"]
+    brief.write_text(complete)
+    assert ledger.settle(DAY, brief)["appended"] == 3
+    assert ledger.settle(DAY, brief)["appended"] == 0
+
+
+@pytest.mark.parametrize("status", [None, "", "In Progress", "Not Final", "Final pending"])
+def test_missing_or_nonfinal_status_never_settles(root, tmp_path, status):
+    snap = _snapshot(tmp_path / "live", role="production", created=TIP - timedelta(hours=12),
+                     extraction="2026-10-22 00:30:00", legs=LEGS)
+    ledger.record_snapshot(snap, DAY, now=TIP - timedelta(hours=12))
+    brief = _brief(tmp_path / "Results_Brief_2026-10-21.json")
+    payload = json.loads(brief.read_text())
+    payload["games"][0]["status"] = status
+    brief.write_text(json.dumps(payload))
+    assert ledger.settle(DAY, brief)["appended"] == 0
+
+
+@pytest.mark.parametrize("status", ["Final", "Final/OT", "Final/2OT", "Final (boxscore)", "Final (legacy_age)"])
+def test_verified_final_status_variants_settle(root, tmp_path, status):
+    snap = _snapshot(tmp_path / "live", role="production", created=TIP - timedelta(hours=12),
+                     extraction="2026-10-22 00:30:00", legs=LEGS)
+    ledger.record_snapshot(snap, DAY, now=TIP - timedelta(hours=12))
+    brief = _brief(tmp_path / "Results_Brief_2026-10-21.json")
+    payload = json.loads(brief.read_text())
+    payload["games"][0]["status"] = status
+    brief.write_text(json.dumps(payload))
+    assert ledger.settle(DAY, brief)["appended"] == 3
+
+
 def test_evaluation_metrics_clv_splits_and_sgm(root, tmp_path):
     _full_day(root, tmp_path)
     report = ledger.evaluate(root=root)

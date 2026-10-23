@@ -10,6 +10,8 @@ import nba_orchestrator as o
 
 @pytest.fixture
 def inputs(tmp_path, monkeypatch):
+    for name in ("NBA_WC_ENGINE", "NBA_WC_PROB_LAYER", "NBA_HYBRID_ML_ADJUST_ENABLED", "NBA_FIT_LAYER_SHADOW_ENABLED"):
+        monkeypatch.delenv(name, raising=False)
     monkeypatch.setenv("NBA_WC_MODEL_DIR", str(tmp_path / "model"))
     (tmp_path / "model").mkdir()
     (tmp_path / "model" / "model.pkl").write_bytes(b"fixture model")
@@ -38,6 +40,19 @@ def test_changed_inputs_or_report_cannot_reuse(inputs, change):
     elif change == "absent":
         cache.unlink()
     assert not o.report_cache_current(str(report), str(odds), str(extractor), change == "legacy")
+
+
+@pytest.mark.parametrize("name,value", [
+    ("NBA_WC_ENGINE", "ml"),
+    ("NBA_WC_PROB_LAYER", "0"),
+    ("NBA_HYBRID_ML_ADJUST_ENABLED", "1"),
+    ("NBA_FIT_LAYER_SHADOW_ENABLED", "0"),
+])
+def test_runtime_model_switch_invalidates_report(inputs, monkeypatch, name, value):
+    odds, extractor, report, _cache = inputs
+    assert o.report_cache_current(str(report), str(odds), str(extractor), False)
+    monkeypatch.setenv(name, value)
+    assert not o.report_cache_current(str(report), str(odds), str(extractor), False)
 
 
 def test_unchanged_report_reuses_with_firewall(inputs):

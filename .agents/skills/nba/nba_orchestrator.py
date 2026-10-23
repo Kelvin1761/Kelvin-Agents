@@ -336,7 +336,7 @@ def _file_digest(path: str) -> str:
 
 def report_inputs(sportsbet_json: str, extractor_json: str, legacy: bool) -> dict:
     inputs = {
-        "schema_version": 1,
+        "schema_version": 2,
         "sportsbet": _file_digest(sportsbet_json),
         "extractor": _file_digest(extractor_json),
         "renderer": _file_digest(GENERATE_REPORTS),
@@ -346,6 +346,15 @@ def report_inputs(sportsbet_json: str, extractor_json: str, legacy: bool) -> dic
             if os.path.isfile(os.path.join(os.path.dirname(GENERATE_REPORTS), rel))
         },
         "legacy": legacy,
+        "runtime_flags": {
+            name: os.environ.get(name, default)
+            for name, default in (
+                ("NBA_WC_ENGINE", "hybrid"),
+                ("NBA_WC_PROB_LAYER", ""),
+                ("NBA_HYBRID_ML_ADJUST_ENABLED", "0"),
+                ("NBA_FIT_LAYER_SHADOW_ENABLED", "1"),
+            )
+        },
     }
     revision = subprocess.run(
         ["git", "-C", WORKSPACE_ROOT, "rev-parse", "HEAD"],

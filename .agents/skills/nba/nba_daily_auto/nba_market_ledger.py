@@ -65,6 +65,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import sys
 from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
@@ -680,8 +681,10 @@ def settle(
         game = _match_game(tag, games)
         if game is None:
             continue  # game not in this brief yet; retry on a later run
-        status = str(game.get("status") or "")
-        if status and "final" not in status.lower():
+        status = str(game.get("status") or "").strip().lower()
+        # Results_Brief uses Final, Final/OT, or Final (<verified source>).
+        # Missing status and arbitrary text containing "final" are not proof.
+        if not re.fullmatch(r"final(?:/\d*ot|\s+\([^()]+\))?", status):
             continue
         verified = verify_legs([{"player": player, "stat": market, "line": line}], game)[0]
         cleared = verified.get("cleared")
@@ -691,6 +694,10 @@ def settle(
             else "miss" if cleared is False
             else "unresolved"
         )
+        # A missing player/stat is a retryable observation, not a settlement.
+        # Appending it would occupy the immutable first-write-wins key forever.
+        if outcome == "unresolved":
+            continue
         out.append({
             "row_type": "settlement", "schema": SCHEMA, "target_date": target_date,
             "game_tag": tag, "player": player, "market": market, "line": line, "side": side,
