@@ -366,15 +366,24 @@ def history_date_to(date_value):
 # enough to trust the current season.
 MIN_TEAM_ROWS = 25
 MIN_PLAYER_ROWS = 100
+ALWAYS_FILL = 10 ** 9   # player-level feeds have no fixed 'complete' size
 
 
-def fetch_with_season_fallback(fetch_fn, season, as_of, min_rows=1, label=""):
-    """Call ``fetch_fn(season, as_of)``; if it is empty/thin, use last season.
+def fetch_with_season_fallback(fetch_fn, season, as_of, min_rows=1, label="", fill_below=None):
+    """Call ``fetch_fn(season, as_of)``; use last season when empty/thin, and fill gaps.
 
-    The leakage guard is untouched: ``as_of`` still bounds ``date_to`` for the
-    fallback season, so no game on or after the event's US day is read.
-    Returns ``(data, info)`` where ``info`` records which season the numbers
-    really come from.
+    Two cases, both bounded by ``as_of`` (no game on or after the event's US day is read):
+
+    * whole feed empty/thin (< ``min_rows``): use last season entirely;
+    * feed usable but incomplete: keep the current-season rows and fill each MISSING
+      key (team / player) from last season.  2026-10-23: after opening night the
+      league feed returned 28 teams (>= MIN_TEAM_ROWS) so it was trusted as-is, and
+      DEN / CLE - who had not yet played - got no team or advanced data, so their game
+      had no combos.  ``fill_below`` (e.g. 30 teams) is the row count at which the
+      current feed counts as complete; at or above it no extra request is made.
+      ``None`` (default) never fills.
+
+    Returns ``(data, info)``; ``info`` records which season the numbers really come from.
     """
     data = fetch_fn(season, as_of)
     rows = len(data) if data else 0
@@ -385,17 +394,31 @@ def fetch_with_season_fallback(fetch_fn, season, as_of, min_rows=1, label=""):
         "fallback_used": False,
         "rows": rows,
     }
-    if rows >= min_rows:
-        return data, info
     prior = previous_nba_season(season)
-    print(f"  ↩️ {label or 'data'}: {season} 得 {rows} 行 (<{min_rows})，改用 {prior}")
-    prior_data = fetch_fn(prior, as_of)
-    prior_rows = len(prior_data) if prior_data else 0
-    if prior_rows > rows:
-        info.update({"data_season": prior, "fallback_used": True,
-                     "rows": prior_rows, "current_rows": rows})
-        return prior_data, info
-    info["fallback_failed"] = True
+    if rows < min_rows:
+        print(f"  ↩️ {label or 'data'}: {season} 得 {rows} 行 (<{min_rows})，改用 {prior}")
+        prior_data = fetch_fn(prior, as_of)
+        prior_rows = len(prior_data) if prior_data else 0
+        if prior_rows > rows:
+            info.update({"data_season": prior, "fallback_used": True,
+                         "rows": prior_rows, "current_rows": rows})
+            return prior_data, info
+        info["fallback_failed"] = True
+        return data, info
+    if isinstance(data, dict) and fill_below is not None and rows < fill_below:
+        prior_data = fetch_fn(prior, as_of)
+        if isinstance(prior_data, dict):
+            missing = [key for key in prior_data if key not in data]
+            if missing:
+                merged = dict(data)
+                merged.update({key: prior_data[key] for key in missing})
+                print(f"  ↩️ {label or 'data'}: {season} 缺 {len(missing)} 項，由 {prior} 補上")
+                info.update({
+                    "fallback_used": True, "fallback_partial": True, "current_rows": rows,
+                    "rows": len(merged), "filled_from": prior, "filled_count": len(missing),
+                    "filled_keys": [str(key) for key in missing[:40]],
+                })
+                return merged, info
     return data, info
 
 
@@ -1546,13 +1569,13 @@ def main():
     print(f"📚 歷史數據球季: {statistics_season} | 截止: {history_date_to(stats_date)}")
     data_sources = {}
     team_stats, data_sources["team_stats"] = fetch_with_season_fallback(
-        fetch_team_advanced_stats, statistics_season, stats_date, MIN_TEAM_ROWS, "team_stats")
+        fetch_team_advanced_stats, statistics_season, stats_date, MIN_TEAM_ROWS, "team_stats", fill_below=30)
     adv_stats, data_sources["player_advanced"] = fetch_with_season_fallback(
-        fetch_all_player_advanced_stats, statistics_season, stats_date, MIN_PLAYER_ROWS, "player_advanced")
+        fetch_all_player_advanced_stats, statistics_season, stats_date, MIN_PLAYER_ROWS, "player_advanced", fill_below=ALWAYS_FILL)
     defender_data, data_sources["key_defenders"] = fetch_with_season_fallback(
-        fetch_defender_impact, statistics_season, stats_date, MIN_PLAYER_ROWS, "key_defenders")
+        fetch_defender_impact, statistics_season, stats_date, MIN_PLAYER_ROWS, "key_defenders", fill_below=ALWAYS_FILL)
     team_dvp, data_sources["team_dvp"] = fetch_with_season_fallback(
-        fetch_team_defense_vs_position, statistics_season, stats_date, MIN_TEAM_ROWS, "team_dvp")
+        fetch_team_defense_vs_position, statistics_season, stats_date, MIN_TEAM_ROWS, "team_dvp", fill_below=30)
 
     # ── Step 3: 賠率 (Claw Code 主動提取) ──
     odds_data = fetch_action_network_odds(formatted_date)

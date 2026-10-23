@@ -99,3 +99,52 @@ class ReportGateTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class PartialFillTests(unittest.TestCase):
+    """2026-10-23: 28 of 30 teams had played, the feed passed the >=25 test, and the
+    two teams that had not yet played got no team or advanced data."""
+
+    def test_missing_teams_filled_from_previous_season_current_rows_kept(self):
+        current = {k: {"PACE": 101.0} for k in (f"T{i}" for i in range(28))}
+        prior = {k: {"PACE": 99.0} for k in (f"T{i}" for i in range(30))}
+        calls = []
+
+        def fetch(season, as_of):
+            calls.append((season, as_of))
+            return current if season == '2026-27' else prior
+
+        data, info = extractor.fetch_with_season_fallback(fetch, '2026-27', AS_OF, 25, 'team_stats', fill_below=30)
+        self.assertEqual(len(data), 30)
+        self.assertEqual(data["T0"]["PACE"], 101.0)       # current season wins where it exists
+        self.assertEqual(data["T29"]["PACE"], 99.0)       # missing team filled from last season
+        self.assertTrue(info["fallback_used"] and info["fallback_partial"])
+        self.assertEqual(info["filled_count"], 2)
+        self.assertEqual(info["filled_from"], '2025-26')
+        self.assertEqual({a for _, a in calls}, {AS_OF})   # leakage cutoff unchanged
+
+    def test_complete_current_feed_makes_no_extra_request(self):
+        calls = []
+
+        def fetch(season, as_of):
+            calls.append(season)
+            return teams(30)
+
+        data, info = extractor.fetch_with_season_fallback(fetch, '2026-27', AS_OF, 25, 'team_stats', fill_below=30)
+        self.assertEqual(calls, ['2026-27'])
+        self.assertFalse(info["fallback_used"])
+
+    def test_player_feed_always_fills_missing_players(self):
+        fetch = lambda season, as_of: ({1: {"USG_PCT": 25}} if season == '2026-27'
+                                       else {1: {"USG_PCT": 20}, 2: {"USG_PCT": 18}})
+        data, info = extractor.fetch_with_season_fallback(fetch, '2026-27', AS_OF, 1, 'player_advanced',
+                                                         fill_below=extractor.ALWAYS_FILL)
+        self.assertEqual(data[1]["USG_PCT"], 25)
+        self.assertEqual(data[2]["USG_PCT"], 18)
+        self.assertEqual(info["filled_count"], 1)
+
+    def test_prior_empty_leaves_current_untouched(self):
+        fetch = lambda season, as_of: teams(28) if season == '2026-27' else {}
+        data, info = extractor.fetch_with_season_fallback(fetch, '2026-27', AS_OF, 25, 'team_stats', fill_below=30)
+        self.assertEqual(len(data), 28)
+        self.assertFalse(info["fallback_used"])
