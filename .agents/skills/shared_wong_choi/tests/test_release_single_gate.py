@@ -222,3 +222,25 @@ def test_environment_change_between_probe_and_quick_gate_forces_full(repo, monke
     assert result["full_gate_reused"] is False
     assert calls(repo) == [f"full {prepared['commit']}", f"--quick {prepared['commit']}",
                            f"full {prepared['commit']}"]
+
+
+def test_prepare_result_uses_the_replayed_manifest_and_gate(repo, monkeypatch):
+    from shared_wong_choi import release_candidate
+    from test_release_replay import other_agent_lands
+    freeze = release_candidate.freeze_candidate
+    moved = []
+    def move_after_first_gate(*args):
+        result = freeze(*args)
+        if not moved:
+            moved.append(other_agent_lands(repo, {"other.py": "OTHER = 1\n"}))
+        return result
+    monkeypatch.setattr(release_candidate, "freeze_candidate", move_after_first_gate)
+    result = save(repo)
+    assert result["automation_status"] == "completed", result.get("error")
+    assert result["replayed_from"]
+    manifest = json.loads(Path(result["manifest"]).read_text())
+    for key in ("commit", "release_id", "branch", "created_at", "rollback_target",
+                "activation_base", "scope", "activation_scope", "gate"):
+        assert result[key] == manifest[key], key
+    assert result["gate"]["commit"] == result["commit"]
+    assert result["rollback_target"] == moved[0]

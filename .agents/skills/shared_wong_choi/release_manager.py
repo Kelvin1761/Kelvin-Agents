@@ -491,6 +491,16 @@ def prepare_release(
             repo, state_root.expanduser().resolve().parent, selector=commit, notify=notify,
             gate_receipt=gate_receipt,
         )
+        if result.get("commit", commit) != commit:
+            from .release_approval import _load_release
+
+            actual_path, actual_manifest = _load_release(
+                state_root.expanduser().resolve(), result["commit"]
+            )
+            # Replay creates a new immutable release. Its metadata and gate
+            # proof must accompany the returned SHA, not the superseded one.
+            payload.update(actual_manifest)
+            payload["manifest"] = str(actual_path)
         payload.update(result)
     return payload
 
