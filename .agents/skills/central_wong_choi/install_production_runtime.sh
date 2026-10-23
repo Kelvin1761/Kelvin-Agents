@@ -43,6 +43,64 @@ AU_LABELS=(
   com.antigravity.au-wong-choi.morning
 )
 
+snapshot_pointer() {
+  local destination="$1"
+  [[ "$TENNIS_DB_POINTER" == /* && "$TENNIS_DB_POINTER" != *$'\n'* ]] || return 1
+  if [ -L "$TENNIS_DB_POINTER" ] || { [ -e "$TENNIS_DB_POINTER" ] && [ ! -f "$TENNIS_DB_POINTER" ]; }; then
+    print -u2 -- "unsafe Tennis DB pointer"
+    return 1
+  fi
+  if [ -f "$TENNIS_DB_POINTER" ]; then
+    [ "$(wc -c < "$TENNIS_DB_POINTER")" -le 4096 ] || return 1
+    cp -p "$TENNIS_DB_POINTER" "$destination/.tennis-db-pointer-original" || return 1
+    cmp -s "$TENNIS_DB_POINTER" "$destination/.tennis-db-pointer-original" || return 1
+  fi
+  print -r -- "$TENNIS_DB_POINTER" > "$destination/.tennis-db-pointer-path" || return 1
+  print -r -- "$TENNIS_RUNTIME_ROOT/tennis_wc.db" > "$destination/.tennis-db-pointer-candidate" || return 1
+}
+
+restore_pointer() {
+  local source="$1" bound restore_tmp item
+  # Older snapshots predate pointer coverage; never infer their prior value.
+  if [ ! -e "$source/.tennis-db-pointer-path" ] && [ ! -L "$source/.tennis-db-pointer-path" ]; then
+    return 0
+  fi
+  for item in path candidate; do
+    [ -f "$source/.tennis-db-pointer-$item" ] && [ ! -L "$source/.tennis-db-pointer-$item" ] || return 1
+    [ "$(wc -c < "$source/.tennis-db-pointer-$item")" -le 4096 ] || return 1
+  done
+  IFS= read -r bound < "$source/.tennis-db-pointer-path"
+  [ "$bound" = "$TENNIS_DB_POINTER" ] || return 1
+  if [ -e "$source/.tennis-db-pointer-original" ] || [ -L "$source/.tennis-db-pointer-original" ]; then
+    [ -f "$source/.tennis-db-pointer-original" ] && [ ! -L "$source/.tennis-db-pointer-original" ] || return 1
+    [ "$(wc -c < "$source/.tennis-db-pointer-original")" -le 4096 ] || return 1
+  fi
+  [ ! -L "$TENNIS_DB_POINTER" ] || return 1
+  if [ -e "$TENNIS_DB_POINTER" ]; then
+    [ -f "$TENNIS_DB_POINTER" ] || return 1
+    [ "$(wc -c < "$TENNIS_DB_POINTER")" -le 4096 ] || return 1
+    if [ -f "$source/.tennis-db-pointer-original" ] && cmp -s "$TENNIS_DB_POINTER" "$source/.tennis-db-pointer-original"; then
+      return 0
+    fi
+    cmp -s "$TENNIS_DB_POINTER" "$source/.tennis-db-pointer-candidate" || {
+      print -u2 -- "Tennis DB pointer rollback blocked: concurrent change"
+      return 1
+    }
+    if [ -f "$source/.tennis-db-pointer-original" ]; then
+      [ ! -L "$source/.tennis-db-pointer-original" ] || return 1
+      restore_tmp="$(mktemp "${TENNIS_DB_POINTER}.restore.XXXXXX")" || return 1
+      cp -p "$source/.tennis-db-pointer-original" "$restore_tmp" || { rm -f -- "$restore_tmp"; return 1; }
+      mv -f -- "$restore_tmp" "$TENNIS_DB_POINTER" || { rm -f -- "$restore_tmp"; return 1; }
+    else
+      rm -f -- "$TENNIS_DB_POINTER" || return 1
+    fi
+  elif [ -f "$source/.tennis-db-pointer-original" ]; then
+    print -u2 -- "Tennis DB pointer rollback blocked: concurrent removal"
+    return 1
+  fi
+  return 0
+}
+
 snapshot_runtime() {
   local destination="$1"
   if [ -e "$destination" ] && [ -n "$(find "$destination" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
@@ -50,6 +108,7 @@ snapshot_runtime() {
     return 1
   fi
   mkdir -p "$destination"
+  snapshot_pointer "$destination" || return 1
   for label in $LABELS; do
     local source="$AGENTS_DIR/$label.plist"
     [ ! -f "$source" ] || cp -p "$source" "$destination/$label.plist"
@@ -64,6 +123,7 @@ restore_runtime() {
     return 1
   }
   local failed=0
+  restore_pointer "$source" || return 1
   mkdir -p "$AGENTS_DIR"
   for label in $LABELS; do
     local target="$AGENTS_DIR/$label.plist"
@@ -151,14 +211,6 @@ if not result or result[0] != "ok":
     raise SystemExit(f"Tennis SQLite quick_check failed: {result}")
 PY
 
-# Dashboard deploys may originate from AU/HKJC versioned checkouts, while the
-# live Tennis database remains in its stable runtime directory.  Publish one
-# machine-local pointer only after SQLite validation succeeds.
-POINTER_TMP="${TENNIS_DB_POINTER}.tmp.$$"
-print -r -- "$TENNIS_RUNTIME_ROOT/tennis_wc.db" >| "$POINTER_TMP"
-chmod 644 "$POINTER_TMP"
-mv -f "$POINTER_TMP" "$TENNIS_DB_POINTER"
-
 # Refuse to boot out a live domain run. The Telegram poller is intentionally
 # excluded because it is the caller and AU is not reinstalled.
 if pgrep -f 'hkjc_daily_schedule.py|nba_daily_schedule.py|tennis_daily_schedule.py|tennis_card_recovery.py' >/dev/null 2>&1; then
@@ -190,6 +242,7 @@ done
 SNAPSHOT="$(mktemp -d -t wc-runtime-cutover)"
 snapshot_runtime "$SNAPSHOT"
 COMPLETED=0
+POINTER_TMP=""
 cleanup() {
   local original_status=$?
   trap - EXIT HUP INT TERM
@@ -197,6 +250,7 @@ cleanup() {
     print -u2 -- "runtime cutover failed; restoring previous launchd plists"
     restore_runtime "$SNAPSHOT" || print -u2 -- "CRITICAL: launchd plist restore failed"
   fi
+  [ -z "$POINTER_TMP" ] || rm -f -- "$POINTER_TMP"
   rm -rf -- "$SNAPSHOT"
   exit "$original_status"
 }
@@ -204,6 +258,17 @@ trap cleanup EXIT
 trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
+
+# Publish configuration only after every preflight and with rollback armed.
+if [ -f "$SNAPSHOT/.tennis-db-pointer-original" ]; then
+  cmp -s "$TENNIS_DB_POINTER" "$SNAPSHOT/.tennis-db-pointer-original" || exit 1
+else
+  [ ! -e "$TENNIS_DB_POINTER" ] && [ ! -L "$TENNIS_DB_POINTER" ] || exit 1
+fi
+POINTER_TMP="$(mktemp "${TENNIS_DB_POINTER}.publish.XXXXXX")"
+cp "$SNAPSHOT/.tennis-db-pointer-candidate" "$POINTER_TMP"
+chmod 644 "$POINTER_TMP"
+mv -f -- "$POINTER_TMP" "$TENNIS_DB_POINTER"
 
 /bin/bash "$PROJECT_ROOT/.agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh"
 /bin/bash "$PROJECT_ROOT/.agents/skills/nba/nba_daily_auto/install_macos_launchd.sh"

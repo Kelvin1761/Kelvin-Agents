@@ -51,8 +51,9 @@ def test_full_gate_runs_central_tests_and_propagates_failure(tmp_path, central_f
     assert ("FAIL  Central Wong Choi" if central_fails else "PASS  Central Wong Choi") in result.stdout
 
 
+@pytest.mark.parametrize("pointer_existed", [False, True])
 def test_runtime_installer_snapshot_restore_is_exact_and_idempotent(
-    tmp_path: Path,
+    tmp_path: Path, pointer_existed: bool,
 ) -> None:
     agents = tmp_path / "LaunchAgents"
     agents.mkdir()
@@ -63,11 +64,18 @@ def test_runtime_installer_snapshot_restore_is_exact_and_idempotent(
     existing = agents / "com.antigravity.hkjc-wong-choi.prerace.plist"
     introduced = agents / "com.antigravity.nba-wong-choi.health.plist"
     existing.write_text("old plist\n", encoding="utf-8")
+    pointer = tmp_path / "tennis-db-pointer"
+    runtime = tmp_path / "tennis-runtime"
+    if pointer_existed:
+        pointer.write_bytes(b"original-db-path\n")
+        pointer.chmod(0o640)
     env = os.environ.copy()
     env.update(
         {
             "WC_LAUNCH_AGENTS_DIR": str(agents),
             "WC_LAUNCHCTL_BIN": str(fake_launchctl),
+            "WC_TENNIS_DB_POINTER": str(pointer),
+            "WC_TENNIS_RUNTIME_ROOT": str(runtime),
         }
     )
 
@@ -80,6 +88,7 @@ def test_runtime_installer_snapshot_restore_is_exact_and_idempotent(
     )
     existing.write_text("candidate plist\n", encoding="utf-8")
     introduced.write_text("new plist\n", encoding="utf-8")
+    pointer.write_text(str(runtime / "tennis_wc.db") + "\n", encoding="utf-8")
 
     for _attempt in range(2):
         subprocess.run(
@@ -91,6 +100,82 @@ def test_runtime_installer_snapshot_restore_is_exact_and_idempotent(
         )
         assert existing.read_text(encoding="utf-8") == "old plist\n"
         assert not introduced.exists()
+        if pointer_existed:
+            assert pointer.read_bytes() == b"original-db-path\n"
+            assert pointer.stat().st_mode & 0o777 == 0o640
+        else:
+            assert not pointer.exists()
+
+    # A pre-change snapshot has no pointer proof; never guess what it contained.
+    for metadata in snapshot.glob(".tennis-db-pointer-*"):
+        metadata.unlink()
+    pointer.write_bytes(b"newer-config-outside-legacy-snapshot\n")
+    subprocess.run(["/bin/zsh", str(INSTALLER), "--restore", str(snapshot)],
+                   env=env, capture_output=True, text=True, check=True)
+    assert pointer.read_bytes() == b"newer-config-outside-legacy-snapshot\n"
+
+
+@pytest.mark.parametrize("change", ["value", "removed", "symlink", "different_path"])
+def test_runtime_pointer_restore_refuses_detected_concurrent_change(tmp_path, change):
+    agents = tmp_path / "agents"
+    agents.mkdir()
+    snapshot = tmp_path / "snapshot"
+    pointer = tmp_path / "db-pointer"
+    pointer.write_bytes(b"original\n")
+    protected = tmp_path / "protected"
+    protected.write_bytes(b"newer-owner-value\n")
+    marker = tmp_path / "launchctl-called"
+    launchctl = tmp_path / "launchctl"
+    launchctl.write_text(f'#!/bin/sh\ntouch "{marker}"\nexit 0\n')
+    launchctl.chmod(0o755)
+    env = {**os.environ, "WC_LAUNCH_AGENTS_DIR": str(agents),
+           "WC_LAUNCHCTL_BIN": str(launchctl), "WC_TENNIS_DB_POINTER": str(pointer),
+           "WC_TENNIS_RUNTIME_ROOT": str(tmp_path / "runtime")}
+    subprocess.run(["/bin/zsh", str(INSTALLER), "--snapshot", str(snapshot)],
+                   env=env, capture_output=True, text=True, check=True)
+    if change == "value":
+        pointer.write_bytes(b"newer-owner-value\n")
+    elif change == "removed":
+        pointer.unlink()
+    elif change == "symlink":
+        pointer.unlink()
+        pointer.symlink_to(protected)
+    else:
+        env["WC_TENNIS_DB_POINTER"] = str(protected)
+    result = subprocess.run(["/bin/zsh", str(INSTALLER), "--restore", str(snapshot)],
+                            env=env, capture_output=True, text=True)
+    assert result.returncode != 0
+    assert not marker.exists()  # Fail before changing any loaded service.
+    assert protected.read_bytes() == b"newer-owner-value\n"
+    if change == "value":
+        assert pointer.read_bytes() == b"newer-owner-value\n"
+    elif change == "removed":
+        assert not pointer.exists()
+    elif change == "symlink":
+        assert pointer.is_symlink()
+
+
+@pytest.mark.parametrize("unsafe", ["symlink", "directory", "fifo", "oversized"])
+def test_runtime_pointer_snapshot_rejects_unsafe_config(tmp_path, unsafe):
+    pointer = tmp_path / "pointer"
+    protected = tmp_path / "protected"
+    protected.write_bytes(b"untouched\n")
+    if unsafe == "symlink":
+        pointer.symlink_to(protected)
+    elif unsafe == "directory":
+        pointer.mkdir()
+    elif unsafe == "fifo":
+        os.mkfifo(pointer)
+    else:
+        pointer.write_bytes(b"x" * 4097)
+    snapshot = tmp_path / "snapshot"
+    env = {**os.environ, "WC_TENNIS_DB_POINTER": str(pointer),
+           "WC_LAUNCH_AGENTS_DIR": str(tmp_path / "absent-agents")}
+    result = subprocess.run(["/bin/zsh", str(INSTALLER), "--snapshot", str(snapshot)],
+                            env=env, capture_output=True, text=True, timeout=10)
+    assert result.returncode != 0
+    assert not (snapshot / ".complete").exists()
+    assert protected.read_bytes() == b"untouched\n"
 
 
 @pytest.mark.parametrize("active_run,acceptance,calendar_ok", [
@@ -100,6 +185,9 @@ def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path, active_
     home = tmp_path / "home"
     agents = home / "Library" / "LaunchAgents"
     agents.mkdir(parents=True)
+    pointer = home / ".wongchoi_tennis_db"
+    original_pointer = b"original-live-db-path\n"
+    pointer.write_bytes(original_pointer)
     runtime = tmp_path / "tennis-runtime"
     runtime.mkdir()
     with sqlite3.connect(runtime / "tennis_wc.db") as connection:
@@ -223,12 +311,14 @@ raise SystemExit(0 if accepted else 1)
         assert result.returncode != 0
         assert "automation run is active; cutover deferred" in result.stderr
         assert {p.stem for p in agents.glob("*.plist")} == set(au_labels)
+        assert pointer.read_bytes() == original_pointer
         return
     if not acceptance:
         assert result.returncode != 0
         assert "runtime cutover failed" in result.stderr
         assert not (agents / "com.antigravity.central-wong-choi.research-review.plist").exists()
         assert {p.stem for p in agents.glob("*.plist")} == set(au_labels)
+        assert pointer.read_bytes() == original_pointer
         receipt = tmp_path / "control/runs/central/test/research-review/acceptance.json"
         assert '"status": "failed"' in receipt.read_text()
         return
@@ -237,6 +327,7 @@ raise SystemExit(0 if accepted else 1)
         assert "installed research calendar differs" in result.stdout
         assert "runtime cutover failed" in result.stderr
         assert {p.stem for p in agents.glob("*.plist")} == set(au_labels)
+        assert pointer.read_bytes() == original_pointer
         return
     assert result.returncode == 0, result.stdout + result.stderr
     installed = plistlib.loads((agents / "com.antigravity.central-wong-choi.research-review.plist").read_bytes())
