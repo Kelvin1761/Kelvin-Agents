@@ -1019,6 +1019,13 @@ class HKJCAutoOrchestrator:
             data = horse_obj.setdefault("_data", {})
             if isinstance(data, dict):
                 data.update(summary)
+        if _facts_path_for_logic(race_file, race_context.get("race_number")) is not None:
+            # Facts is authoritative even when it no longer contains enough runs.
+            # Logic-only inputs retain their embedded evidence.
+            for horse in horses.values():
+                data = horse.get("_data") if isinstance(horse, dict) else None
+                if isinstance(data, dict):
+                    data.pop("first_section_min_delta", None)
         for h_num, value in _load_first_section_deltas(race_file, race_context, horses).items():
             horse_obj = horses.get(h_num)
             if isinstance(horse_obj, dict) and isinstance(horse_obj.setdefault("_data", {}), dict):

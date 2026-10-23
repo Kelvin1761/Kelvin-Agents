@@ -645,6 +645,80 @@ class PipelineIntegrityTests(unittest.TestCase):
         )
         self.assertEqual(inferred, date(2026, 7, 15))
 
+    def test_serial_logic_failure_stops_before_scoring(self) -> None:
+        for workers, races in ((3, (1,)), (1, (1, 2))):
+            with self.subTest(workers=workers, races=races), tempfile.TemporaryDirectory() as tmp:
+                folder = Path(tmp)
+                old_logic = '{"horses": {"1": {"horse_name": "舊資料"}}}'
+                for race in races:
+                    (folder / f"07-15 Race {race} Facts.md").write_text(
+                        "### 馬號 1 — 測試甲\n", encoding="utf-8"
+                    )
+                    (folder / f"Race_{race}_Logic.json").write_text(old_logic, encoding="utf-8")
+
+                def invalid_build(cmd, **_kwargs):
+                    Path(cmd[cmd.index("--output") + 1]).write_text(
+                        '{"horses": {"2": {}}}', encoding="utf-8"
+                    )
+                    return subprocess.CompletedProcess(cmd, 0)
+
+                with (
+                    mock.patch.object(main, "_logic_needs_refresh", return_value=True),
+                    mock.patch.object(main.subprocess, "run", side_effect=invalid_build),
+                    mock.patch.object(main, "_run_auto") as score,
+                ):
+                    with self.assertRaises(SystemExit) as stopped:
+                        main._generate_logic(folder, False, workers)
+                        main._run_auto(folder, False)
+                self.assertEqual(stopped.exception.code, 1)
+                score.assert_not_called()
+                self.assertEqual((folder / "Race_1_Logic.json").read_text(encoding="utf-8"), old_logic)
+
+    def test_auto_rerun_replaces_first_section_evidence_from_facts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            path = folder / "Race_1_Logic.json"
+            facts = folder / "07-15 Race 1 Facts.md"
+            logic = _minimal_logic()
+            path.write_text(json.dumps(logic, ensure_ascii=False), encoding="utf-8")
+            runner = auto.HKJCAutoOrchestrator(folder)
+            header = "### 馬號 1 — 測試甲\n全段速剖面\n| # | Δ1 |\n"
+            for rows, expected in (
+                ("| 1 | -0.64 |\n| 2 | +0.34 |\n", -0.64),
+                ("| 1 | +0.41 |\n| 2 | +1.69 |\n", 0.41),
+                ("| 1 | +0.41 |\n", None),
+                ("| 1 | -0.64 |\n| 2 | +0.34 |\n", -0.64),
+                ("", None),
+            ):
+                with self.subTest(rows=rows):
+                    facts.write_text(header + rows, encoding="utf-8")
+                    with mock.patch.object(auto, "_get_profile_scraper", return_value=None):
+                        result = runner.score_race(path)
+                    self.assertIsNotNone(result)
+                    horse = result["horses"]["1"]
+                    self.assertEqual(horse["_data"].get("first_section_min_delta"), expected)
+                    if expected is None:
+                        self.assertNotIn("first_section_min_delta", horse["_data"])
+                    clean = copy.deepcopy(horse)
+                    clean["_data"].pop("first_section_min_delta", None)
+                    if expected is None:
+                        self.assertEqual(
+                            engine_core.SpeedScorer(horse, {}).compute()[0],
+                            engine_core.SpeedScorer(clean, {}).compute()[0],
+                        )
+
+    def test_logic_only_input_keeps_embedded_first_section_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp)
+            path = folder / "Race_1_Logic.json"
+            logic = _minimal_logic()
+            logic["horses"]["1"]["_data"]["first_section_min_delta"] = -0.64
+            path.write_text(json.dumps(logic, ensure_ascii=False), encoding="utf-8")
+            with mock.patch.object(auto, "_get_profile_scraper", return_value=None):
+                result = auto.HKJCAutoOrchestrator(path).score_race(path)
+            self.assertIsNotNone(result)
+            self.assertEqual(result["horses"]["1"]["_data"]["first_section_min_delta"], -0.64)
+
     def test_fresh_logic_build_replaces_stale_runner_atomically(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp)

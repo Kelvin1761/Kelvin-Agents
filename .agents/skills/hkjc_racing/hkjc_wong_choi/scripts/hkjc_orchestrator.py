@@ -190,7 +190,11 @@ def _generate_logic(target_dir: Path, skip_logic: bool, workers: int = 1) -> Non
         return
     if race_workers == 1 or len(jobs) == 1:
         for job in jobs:
-            _generate_logic_for_race(*job, stream=True)
+            result = _generate_logic_for_race(*job, stream=True)
+            if result["stderr"]:
+                print(result["stderr"], file=sys.stderr, end="" if result["stderr"].endswith("\n") else "\n")
+            if result["returncode"] != 0:
+                raise SystemExit(result["returncode"])
         return
 
     print(f"⚙️ Building HKJC Logic for {len(jobs)} race(s) with {race_workers} worker(s)")
