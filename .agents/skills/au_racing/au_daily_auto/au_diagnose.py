@@ -34,6 +34,10 @@ BUNDLE = HERE / "logs" / "last_diagnosis.md"
 # 抽取側嘅失敗（個站拒絕、瀏覽器死、賽果未出）**冇** remedy：補佢哋要重抽幾百版，
 # 唔應該由一個自動修觸發，而且下一次排程本身就會接住做。
 KNOWN = [
+    (r"開唔到真 Chrome|BrowserType\.launch_persistent_context|Playwright Sync API inside the asyncio loop",
+     "Chrome／Playwright 啟動失敗（本機 session，唔係頁面 timeout 或個站拒絕）",
+     "啟動或建頁失敗會關閉 context 同 Playwright，下一輪用全新 session 重試",
+     None),
     (r"Pages only supports files up to",
      "snapshot 超過 Cloudflare 25 MiB 上限",
      "shrink_to_fit 會由已跑完場次讓路；如果單日賽事本身超標就要再縮 payload",
@@ -102,6 +106,10 @@ def primary_known_match(haystack: str) -> tuple[str, str, str | None] | None:
             if re.search(pat, haystack)]
     if not hits:
         return None
+
+    startup = next((hit for hit in hits if hit[1].startswith("Chrome／Playwright 啟動失敗")), None)
+    if startup:
+        return startup[1:]
 
     # 本機網絡訊號係確切分類；舊 log 同一時間會帶住一條誤導性「個站拒絕」
     # detail，所以必須優先於遠端拒絕 wording。
@@ -191,7 +199,9 @@ def diagnose(run: dict, history: list[dict]) -> str:
     fallback_haystack = "\n".join(
         [str(w.get("message") or "") for w in (run.get("warnings") or [])]
         + [f"{m.get('status')} {m.get('detail') or ''} {m.get('reason') or ''}"
-           for m in (run.get("meetings_processed") or [])])
+           for m in (run.get("meetings_processed") or [])]
+        + [f"{s.get('where') or ''} {s.get('stop_reason') or ''} {s.get('network_reason') or ''}"
+           for s in steps if s.get("step") in {"site-gate", "browser"}])
     haystack = error_haystack if errs else fallback_haystack
     matched = primary_known_match(haystack)
     same_needle = msg[:40]
