@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import shutil
+import signal
+import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any, Mapping
@@ -20,6 +23,44 @@ EXPECTED_MUTABLE_PATHS = frozenset(
         ".agents/scripts/hkjc_draw_stats.json",
     }
 )
+
+
+def _run_installer(repo: Path, *args: str, timeout: float) -> subprocess.CompletedProcess[str]:
+    """Stop the owned process group before rollback; keep bounded diagnostics."""
+    def output(handle) -> str:
+        size = handle.seek(0, os.SEEK_END)
+        handle.seek(0)
+        if size <= 2000:
+            raw = handle.read()
+        else:
+            raw = handle.read(1000) + b"\n...\n"
+            handle.seek(-1000, os.SEEK_END)
+            raw += handle.read(1000)
+        return raw.decode("utf-8", errors="replace")
+
+    with tempfile.TemporaryFile() as stdout, tempfile.TemporaryFile() as stderr:
+        process = subprocess.Popen(list(args), cwd=repo, stdout=stdout, stderr=stderr,
+                                   start_new_session=True)
+        expired = False
+        try:
+            process.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            expired = True
+        finally:
+            # Also remove background descendants of an exited installer. Real
+            # launchd jobs belong to launchd, not this isolated process group.
+            try:
+                os.killpg(process.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            process.wait()
+        result = subprocess.CompletedProcess(list(args), 124 if expired else process.returncode,
+                                             output(stdout), output(stderr))
+        if expired:
+            # Keep check=False semantics so a timed-out restore is recorded
+            # as failed and does not skip the remaining rollback bookkeeping.
+            result.stderr = f"installer timed out after {timeout:g} seconds\n" + result.stderr
+        return result
 
 
 def _command_failure(prefix: str, result) -> ReleaseError:
@@ -323,13 +364,12 @@ def activate_release(
             if not installer.is_file():
                 raise ReleaseError(f"approved activation installer missing: {relative}")
             snapshot = snapshot_root / f"installer-{index}"
-            snapshotted = _run(
+            snapshotted = _run_installer(
                 installer_root,
                 "/bin/zsh",
                 str(installer),
                 "--snapshot",
                 str(snapshot),
-                check=False,
                 timeout=120,
             )
             if snapshotted.returncode != 0:
@@ -343,23 +383,21 @@ def activate_release(
                     "snapshot": str(snapshot),
                 }
             )
-            installed = _run(
+            installed = _run_installer(
                 installer_root,
                 "/bin/zsh",
                 str(installer),
-                check=False,
                 timeout=300,
             )
             if installed.returncode != 0:
                 raise _command_failure(
                     f"approved activation installer failed: {relative}", installed
                 )
-            checked = _run(
+            checked = _run_installer(
                 installer_root,
                 "/bin/zsh",
                 str(installer),
                 "--status",
-                check=False,
                 timeout=60,
             )
             if checked.returncode != 0:
@@ -393,13 +431,12 @@ def activate_release(
         # return to a commit from before that installer was introduced.
         for item in reversed(installer_snapshots):
             installer = Path(item["root"]) / item["path"]
-            restored = _run(
+            restored = _run_installer(
                 Path(item["root"]),
                 "/bin/zsh",
                 str(installer),
                 "--restore",
                 item["snapshot"],
-                check=False,
                 timeout=300,
             )
             if restored.returncode == 0:
@@ -408,7 +445,7 @@ def activate_release(
                 )
             else:
                 external_rollback_errors.append(
-                    f"{item['path']}: installer state restore exit {restored.returncode}"
+                    str(_command_failure(f"{item['path']}: installer state restore failed", restored))
                 )
         rollback_results: list[dict[str, Any]] = []
         rollback_errors: list[str] = []

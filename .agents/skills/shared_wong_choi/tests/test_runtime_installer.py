@@ -307,6 +307,9 @@ raise SystemExit(0 if accepted else 1)
         check=False,
     )
 
+    assert "runtime cutover stage: interpreter preflight" in result.stdout
+    assert "runtime cutover stage: active-run preflight" in result.stdout
+
     if active_run:
         assert result.returncode != 0
         assert "automation run is active; cutover deferred" in result.stderr
@@ -330,6 +333,13 @@ raise SystemExit(0 if accepted else 1)
         assert pointer.read_bytes() == original_pointer
         return
     assert result.returncode == 0, result.stdout + result.stderr
+    stages = [line.removeprefix("runtime cutover stage: ")
+              for line in result.stdout.splitlines()
+              if line.startswith("runtime cutover stage: ")]
+    assert stages == ["interpreter preflight", "SQLite preflight", "active-run preflight",
+                      "AU preflight", "snapshot", "HKJC installer", "NBA installer",
+                      "Tennis installer", "Central installer", "calendar verification",
+                      "loaded runtime verification"]
     installed = plistlib.loads((agents / "com.antigravity.central-wong-choi.research-review.plist").read_bytes())
     template = plistlib.loads((INSTALLER.parent / "launchd/com.antigravity.central-wong-choi.research-review.plist.template").read_bytes())
     assert installed["StartCalendarInterval"] == template["StartCalendarInterval"]

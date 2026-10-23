@@ -199,10 +199,12 @@ done
   print -u2 -- "Tennis runtime interpreter is missing: $TENNIS_PYTHON_BIN"
   exit 1
 }
+print -r -- "runtime cutover stage: interpreter preflight"
 "$TENNIS_PYTHON_BIN" -c 'import curl_cffi' || {
   print -u2 -- "Tennis runtime interpreter is missing curl_cffi: $TENNIS_PYTHON_BIN"
   exit 1
 }
+print -r -- "runtime cutover stage: SQLite preflight"
 /usr/bin/python3 - "$TENNIS_RUNTIME_ROOT/tennis_wc.db" <<'PY'
 import sqlite3, sys
 with sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True) as conn:
@@ -213,6 +215,7 @@ PY
 
 # Refuse to boot out a live domain run. The Telegram poller is intentionally
 # excluded because it is the caller and AU is not reinstalled.
+print -r -- "runtime cutover stage: active-run preflight"
 if pgrep -f 'hkjc_daily_schedule.py|nba_daily_schedule.py|tennis_daily_schedule.py|tennis_card_recovery.py' >/dev/null 2>&1; then
   print -u2 -- "a HKJC/NBA/Tennis automation run is active; cutover deferred"
   exit 1
@@ -220,6 +223,7 @@ fi
 
 # AU must already be on this checkout. This proves we can leave its bot loaded
 # while the approval command completes.
+print -r -- "runtime cutover stage: AU preflight"
 for label in $AU_LABELS; do
   plist="$AGENTS_DIR/$label.plist"
   [ -f "$plist" ] || { print -u2 -- "missing AU runtime plist: $label"; exit 1; }
@@ -239,6 +243,7 @@ raise SystemExit(0 if any(value.startswith(expected) for value in values) else 1
       }
 done
 
+print -r -- "runtime cutover stage: snapshot"
 SNAPSHOT="$(mktemp -d -t wc-runtime-cutover)"
 snapshot_runtime "$SNAPSHOT"
 COMPLETED=0
@@ -270,19 +275,25 @@ cp "$SNAPSHOT/.tennis-db-pointer-candidate" "$POINTER_TMP"
 chmod 644 "$POINTER_TMP"
 mv -f -- "$POINTER_TMP" "$TENNIS_DB_POINTER"
 
+print -r -- "runtime cutover stage: HKJC installer"
 /bin/bash "$PROJECT_ROOT/.agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh"
+print -r -- "runtime cutover stage: NBA installer"
 /bin/bash "$PROJECT_ROOT/.agents/skills/nba/nba_daily_auto/install_macos_launchd.sh"
+print -r -- "runtime cutover stage: Tennis installer"
 WC_TENNIS_RUNTIME_ROOT="$TENNIS_RUNTIME_ROOT" \
   TENNIS_PYTHON_BIN="$TENNIS_PYTHON_BIN" \
   TENNIS_LOG_DIR="$TENNIS_RUNTIME_ROOT/data/logs" \
   TENNIS_ANALYSIS_OUTPUT_ROOT="${TENNIS_ANALYSIS_OUTPUT_ROOT:-/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity}" \
   /bin/zsh "$PROJECT_ROOT/tennis-wong-choi/scripts/install_macos_launchd.sh"
+print -r -- "runtime cutover stage: Central installer"
 WC_INSTALL_RESEARCH_REVIEW=1 \
   WC_LAUNCH_AGENTS_DIR="$AGENTS_DIR" WC_LAUNCHCTL_BIN="$LAUNCHCTL" \
   /bin/zsh "$PROJECT_ROOT/.agents/skills/central_wong_choi/install_macos_launchd.sh"
+print -r -- "runtime cutover stage: calendar verification"
 /usr/bin/python3 "$PROJECT_ROOT/.agents/skills/central_wong_choi/scripts/verify_research_calendar.py" \
   --template "$PROJECT_ROOT/.agents/skills/central_wong_choi/launchd/com.antigravity.central-wong-choi.research-review.plist.template" \
   --installed "$AGENTS_DIR/com.antigravity.central-wong-choi.research-review.plist"
+print -r -- "runtime cutover stage: loaded runtime verification"
 status_runtime
 
 COMPLETED=1
