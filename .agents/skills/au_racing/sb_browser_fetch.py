@@ -245,16 +245,23 @@ class BrowserFetcher:
             return self._page
         from playwright.sync_api import sync_playwright
         self.profile_dir.mkdir(parents=True, exist_ok=True)
-        self._pw = sync_playwright().start()
         try:
-            self._ctx = self._launch()
-        except Exception as exc:  # noqa: BLE001
-            self.log(f"⚠️ 開唔到（{type(exc).__name__}: {str(exc)[:120]}）—— "
-                     f"試清 profile lock 之後再開一次")
-            if not self._clear_stale_profile_lock():
-                raise
-            self._ctx = self._launch()
-        self._page = self._ctx.new_page()
+            self._pw = sync_playwright().start()
+            try:
+                self._ctx = self._launch()
+            except Exception as exc:  # noqa: BLE001
+                self.log(f"⚠️ 開唔到（{type(exc).__name__}: {str(exc)[:120]}）—— "
+                         f"試清 profile lock 之後再開一次")
+                if not self._clear_stale_profile_lock():
+                    raise
+                self._ctx = self._launch()
+            self._page = self._ctx.new_page()
+        except BaseException:
+            # start() owns an asyncio loop even when launching Chrome fails.
+            # Leaving it alive makes every later start() fail with Sync API
+            # inside asyncio, so the next cooldown can never recover.
+            self.close()
+            raise
         if self.verbose:
             self.log(f"🌐 真 Chrome 已開（profile {self.profile_dir}）")
         return self._page
