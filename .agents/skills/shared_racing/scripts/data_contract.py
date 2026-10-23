@@ -358,7 +358,20 @@ def check(baseline: dict, paths, platform: str) -> tuple[list, dict]:
 
         want_spread = expected.get("mean_within_race_spread") or 0.0
         got_spread = actual["mean_within_race_spread"]
-        if want_spread > 1.0 and got_spread <= DEAD_SPREAD:
+        # A sparse feature can legitimately be neutral for an entire country
+        # card (Armidale 2026-10-24: no runner met the trial bonus threshold).
+        # Do not let the spread test contradict the neutral-rate test above.
+        # Constant non-neutral scores and normally populated fields still block.
+        sparse_neutral = (want_neutral is not None
+                          and want_neutral > DEAD_BASELINE_MAX
+                          and got_neutral == 1.0)
+        if want_spread > 1.0 and got_spread <= DEAD_SPREAD and sparse_neutral:
+            violations.append(Violation(
+                name, "spread",
+                f"全場中性，基準亦有 {want_neutral:.1%} 中性 —— 稀疏證據，只提示",
+                "warning",
+            ))
+        elif want_spread > 1.0 and got_spread <= DEAD_SPREAD:
             violations.append(Violation(
                 name, "dead-field",
                 f"場內分數散開度 {got_spread:.2f}（基準 {want_spread:.2f}）"

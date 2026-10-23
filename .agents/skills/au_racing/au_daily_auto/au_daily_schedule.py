@@ -322,6 +322,10 @@ _VENUE_ALIASES = (("mount", "mt"), ("saint", "st"), ("port", "pt"))
 def _venue_key(name: str) -> str:
     """正規化 + 展開常見縮寫，令 `mount_isa` 同 `Mt Isa` 對得上。"""
     key = normalise(name)
+    # Sportsbetform includes the sponsor; the API names the same Poly track
+    # without it. Keep the surface suffix: Gold Coast turf is a different card.
+    if key.startswith("aquispark"):
+        key = key[len("aquispark"):]
     for long, short in _VENUE_ALIASES:
         if key.startswith(long):
             key = short + key[len(long):]
@@ -340,6 +344,8 @@ def match_venue(slug: str, api_venues: list[str]) -> str | None:
     exact = [v for v in api_venues if _venue_key(v) == want]
     if exact:
         return exact[0]
+    if want == "goldcoastpoly":
+        return None  # Never let the prefix fallback select Gold Coast turf.
     # A compound slug can name two places.  Check all of its components before
     # prefix/first-token fallbacks; otherwise `mindarie_halidon` with both
     # Mindarie and Halidon in the API would silently pick one.

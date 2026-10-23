@@ -116,6 +116,15 @@ class TestVenueMatch(unittest.TestCase):
     AU = ["Belmont", "Canterbury", "Cranbourne", "Doomben", "Hobart",
           "Murray Bridge"]
 
+    def test_sponsored_gold_coast_poly_matches_exact_surface(self):
+        self.assertEqual(S.match_venue("aquis_park_gold_coast_poly",
+                                      ["Gold Coast", "Gold Coast Poly"]),
+                         "Gold Coast Poly")
+
+    def test_poly_never_falls_back_to_turf(self):
+        for slug in ("aquis_park_gold_coast_poly", "gold_coast_poly"):
+            self.assertIsNone(S.match_venue(slug, ["Gold Coast"]))
+
     def test_exact_and_abbreviated(self):
         self.assertEqual(S.match_venue("belmont", self.AU), "Belmont")
         # 索引頁用縮寫，API 出全名。

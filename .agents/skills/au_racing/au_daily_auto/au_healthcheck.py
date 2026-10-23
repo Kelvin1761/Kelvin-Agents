@@ -463,6 +463,28 @@ def quality_issues(day: str) -> tuple[list[str], list[str]]:
     return blocking, advisories
 
 
+def heal_failure_detail(stdout: str, stderr: str) -> str:
+    """Keep the domain error, rather than the tail of control-result JSON."""
+    for line in reversed((stdout or "").splitlines()):
+        try:
+            payload = json.loads(line)
+        except ValueError:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        detail = payload.get("detail") or {}
+        source = detail.get("source_payload") or {}
+        errors = source.get("errors") or []
+        messages = [f"{e.get('step', 'run')}: {e['message']}"
+                    for e in errors if isinstance(e, dict) and e.get("message")]
+        if messages:
+            return "；".join(messages)[:600]
+        reason = detail.get("error") or detail.get("stderr_tail")
+        if reason:
+            return str(reason)[-600:]
+    return (stderr or stdout or "補發佈失敗，請查 run log")[-600:]
+
+
 def heal() -> tuple[bool, str]:
     """由本機重建再發佈。唔出網抽頁，所以安全、快、唔會同排程爭資源。
 
@@ -481,7 +503,9 @@ def heal() -> tuple[bool, str]:
     try:
         r = subprocess.run([str(RUNNER), "morning", "--slot", slot, "--skip-refresh"],
                            capture_output=True, text=True, timeout=3600)
-        return r.returncode in (0, 75), (r.stdout or "")[-400:]
+        ok = r.returncode in (0, 75)
+        return ok, ((r.stdout or "")[-400:] if ok
+                    else heal_failure_detail(r.stdout, r.stderr))
     except Exception as exc:  # noqa: BLE001
         return False, f"{type(exc).__name__}: {exc}"
 
@@ -677,7 +701,7 @@ def unresolved_post_heal_message(day: str, after: dict, *, heal_ok: bool,
                 "補發佈程序已成功收尾，但公開 dashboard 經多次查證仍未收斂。\n"
                 f"暫時未能確認：{missing}\n"
                 "系統會保留為驗證警告，唔會誤報成發佈失敗。")
-    compact = " ".join((detail or "冇錯誤詳情").split())[-200:]
+    compact = " ".join((detail or "冇錯誤詳情").split())[:600]
     return (f"❌ AU 體檢 {day}\n補發佈真正失敗，仍未上線：{missing}\n"
             f"{compact}")
 

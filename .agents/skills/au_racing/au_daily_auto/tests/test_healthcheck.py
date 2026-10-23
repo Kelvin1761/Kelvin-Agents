@@ -769,3 +769,29 @@ class MorningOddsGapTests(unittest.TestCase):
             blocking, advisories = H.quality_issues("2026-08-28")
         self.assertEqual(blocking, [])
         self.assertIn("尋日冇早更", advisories)
+
+
+class HealDiagnosticTests(unittest.TestCase):
+    def test_domain_error_survives_control_json_tail(self):
+        import json
+        error = "Armidale: [dead-field] pace_figure_score: 欄位死咗"
+        raw = json.dumps({"detail": {"source_payload": {"errors": [
+            {"step": "data-contract", "message": error}]}},
+            "scheduled_slot": "heal-09:15", "state": "failed"})
+        result = unittest.mock.Mock(returncode=1, stdout=raw, stderr="")
+        with unittest.mock.patch.object(H.subprocess, "run", return_value=result):
+            ok, detail = H.heal()
+        self.assertFalse(ok)
+        self.assertIn(error, detail)
+        message = H.unresolved_post_heal_message(
+            DAY, {"missing": ["Armidale"]}, heal_ok=ok, detail=detail)
+        self.assertIn(error, message)
+        self.assertNotIn('"scheduled_slot"', message)
+
+    def test_wrapper_failure_keeps_stderr(self):
+        self.assertEqual(H.heal_failure_detail("", "runner: command not found"),
+                         "runner: command not found")
+
+    def test_adapter_failure_keeps_error(self):
+        raw = '{"detail":{"error":"adapter timeout"},"state":"failed"}'
+        self.assertEqual(H.heal_failure_detail(raw, ""), "adapter timeout")
