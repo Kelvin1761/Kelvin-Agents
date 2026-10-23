@@ -365,7 +365,8 @@ def test_generator_sidecar_observes_without_changing_values():
     assert by_line[20.0]["p_monte_carlo"] == 0.66
     assert by_line[20.0]["picked"] is True and by_line[20.0]["picked_in"] == ["2"]
     assert by_line[25.0]["p_ml"] is None and by_line[25.0]["picked"] is False
-    assert payload["combos"][0]["sportsbet_sgm_status"] == "not_scraped"
+    assert payload["combos"][0]["sportsbet_sgm_status"] == "missing"
+    assert payload["combos"][0]["sportsbet_sgm_price"] is None
     assert payload["combos"][0]["sim_joint_prob"] == 0.6
     assert payload["combos"][0]["sim_scaled_joint_prob"] == round(0.61 * 1.1, 4)
     assert payload["report_sha256"] == hashlib.sha256(b"report").hexdigest()

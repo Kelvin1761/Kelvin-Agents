@@ -35,6 +35,7 @@ from nba_season import classify_nba_season
 from nba_identity import player_name_key
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nba_prob_layer
+from nba_sgm_quote import quote_combo, quote_valid, quote_legs, legs_identity
 
 _ML_PREDICTOR = None  # lazy-loaded for hybrid/ml modes
 
@@ -1029,6 +1030,7 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
                 "trend": card["trend"],
                 "adj_narrative": la.get("adj_narrative", ""),
                 "adj_line": la.get("adj_line", ""),
+                "probability_model_id": la.get("probability_model_id"),
                 "correlation_flags": [],
                 "selection_reject_reasons": [],
                 "desc": f"{card['name']} ({card['team']}) {cl} {la['line_display']}",
@@ -1276,6 +1278,11 @@ def compute_combo_ev(combo):
         naive_joint_prob *= leg.get("estimated_prob", leg.get("hit_l10", 50)) / 100
         combo_odds_val *= leg["odds"]
 
+    product_of_leg_prices = combo_odds_val
+    quote = getattr(combo, "quote", {})
+    quoted_price_valid = (quote.get("status") == "ok" and quote.get("legs_sha256") == legs_identity(combo))
+    if quoted_price_valid:
+        combo_odds_val = quote["decimal_odds"]
     corr_penalty = correlation_penalty(combo)
     adjusted_joint_prob = naive_joint_prob * (1 - corr_penalty)
     combo_ev = (adjusted_joint_prob * combo_odds_val - 1) * 100
@@ -1299,9 +1306,11 @@ def compute_combo_ev(combo):
     return {
         "naive_joint_prob": round(naive_joint_prob, 4),
         "correlation_penalty": round(corr_penalty, 3),
-        "adjusted_joint_prob": round(adjusted_joint_prob, 4),
-        "combo_decimal_odds": round(combo_odds_val, 2),
-        "combo_ev_pct": round(combo_ev, 1),
+        "adjusted_joint_prob": adjusted_joint_prob,
+        "combo_decimal_odds": combo_odds_val,
+        "product_of_leg_prices": round(product_of_leg_prices, 4),
+        "price_source": "sportsbet_sgm_pricer" if quoted_price_valid else "independent_leg_estimate",
+        "combo_ev_pct": combo_ev,
         "avg_confidence_ev": round(avg_conf_ev, 1),
         "combo_risk_tier": risk_tier,
     }
@@ -1318,7 +1327,7 @@ def _combo_passes_positive_ev_gate(combo, tier="value"):
         return False
     data = compute_combo_ev(combo)
     combo_ev_pct = data.get("combo_ev_pct", -999)
-    adj_joint_prob_pct = round(data.get("adjusted_joint_prob", 0) * 100, 1)
+    adj_joint_prob_pct = data.get("adjusted_joint_prob", 0) * 100
     kelly_f = kelly_fraction(adj_joint_prob_pct, data.get("combo_decimal_odds", _combo_odds(combo)))
     if combo_ev_pct <= 0 or kelly_f <= 0:
         return False
@@ -1877,7 +1886,7 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     """Generate a complete combo section with pre-filled data."""
     lines = []
 
-    if not legs:
+    if not legs or not getattr(legs, "quote", {}).get("status") == "ok":
         lines.append(f"### {combo_emoji} {combo_name}")
         lines.append(f"> ⚠️ 未能根據穩健 +EV 篩選條件搵到合適嘅 legs。此層級建議觀望，除非重新提取 Sportsbet 盤口後通過同一套 gate。")
         lines.append(f"")
@@ -1900,7 +1909,10 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
         combo_hit *= (h / 100)
     combo_hit_pct = round(combo_hit * 100, 1)
 
-    raw_combo_odds = round(raw_combo_odds, 2)
+    product_odds = round(raw_combo_odds, 4)
+    raw_combo_odds = legs.quote["decimal_odds"]
+    naive_hit_pct = combo_hit_pct
+    combo_hit_pct = round(compute_combo_ev(legs)["adjusted_joint_prob"] * 100, 1)
     payout = round(raw_combo_odds * 100, 0)
 
     # Header
@@ -1938,13 +1950,14 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
         adj_line = leg.get('adj_line', '')
         if adj_line:
             lines.append(f"")
-            lines.append(f"📐 **Python 推理 (8-Factor Adjusted Win Prob):**")
+            lines.append(f"📐 **Python 推理 (10-Factor 診斷):**")
             lines.append(f"```")
             lines.append(f"Base Rate: {base_r}%")
             lines.append(f"{adj_line}")
-            lines.append(f"→ Final Adjusted: {adj_p}%")
+            lines.append(f"→ 10-Factor 診斷: {leg.get('det_prob', base_r)}%")
+            lines.append(f"→ Final Adjusted: {adj_p}% | 機率來源: {leg.get('probability_model_id', leg.get('engine', 'unknown'))}")
             lines.append(f"```")
-            lines.append(f"> Python 選擇此 Leg 嘅原因: Base Rate {base_r}% 經 8-Factor 調整後 → {adj_p}%, Edge {ev_str} {leg['edge_grade']}")
+            lines.append(f"> Python 選擇此 Leg 嘅原因: 最終機率 {adj_p}%（{leg.get('engine', 'unknown')}）, Edge {ev_str} {leg['edge_grade']}")
         # Auto-generated core logic from Python
         narrative = leg.get('adj_narrative', '')
         if narrative:
@@ -2021,14 +2034,15 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     corr_penalty_val = combo_ev_data.get("correlation_penalty", 0)
     adj_joint_prob = combo_ev_data.get("adjusted_joint_prob", 0)
     adj_joint_prob_pct = round(adj_joint_prob * 100, 1)
-    combo_ev_pct = combo_ev_data.get("combo_ev_pct", 0)
+    combo_ev_pct = round(combo_ev_data.get("combo_ev_pct", 0), 1)
     risk_tier = combo_ev_data.get("combo_risk_tier", "—")
     risk_tier_emoji = {"BANKER": "🛡️", "VALUE": "🔥", "MARGINAL": "⚠️", "NEGATIVE": "❌"}.get(risk_tier, "—")
 
     lines.append(f"**📊 組合結算:**")
-    lines.append(f"- **賠率相乘**: {odds_mult_parts} = **@{raw_combo_odds}**")
+    lines.append(f"- **獨立單腿價格乘積（僅參考）**: {odds_mult_parts} = **@{product_odds}**")
+    lines.append(f"- **Sportsbet SGM 報價**: **@{raw_combo_odds}** | quote {legs.quote['quote_id']} | {legs.quote['captured_at']}")
     lines.append(f"- **$100 回報**: **${int(payout)}**")
-    lines.append(f"- **組合命中率 (naive)**: {hit_mult_parts} = **{combo_hit_pct}%**")
+    lines.append(f"- **組合命中率 (naive)**: {hit_mult_parts} = **{naive_hit_pct}%**")
     if corr_penalty_val > 0:
         lines.append(f"- **關聯性懲罰**: -{round(corr_penalty_val*100, 1)}% (同隊/同場相關性扣減)")
         lines.append(f"- **調整後組合命中率**: **{adj_joint_prob_pct}%**")
@@ -2036,15 +2050,15 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     lines.append(f"- **Combo EV%**: {'+' if combo_ev_pct > 0 else ''}{combo_ev_pct}% {risk_tier_emoji} {risk_tier}")
     # Kelly Criterion (Half-Kelly) — use adjusted probability
     combo_odds_for_kelly = raw_combo_odds
-    kelly_prob = adj_joint_prob_pct if corr_penalty_val > 0 else combo_hit_pct
+    kelly_prob = adj_joint_prob * 100
     kelly_f = kelly_fraction(kelly_prob, combo_odds_for_kelly)
     kelly_stake = round(kelly_f * 1000, 0)
     lines.append(f"- **🎯 Kelly 注碼建議**: {kelly_f*100:.1f}% bankroll (Half-Kelly) → **${int(kelly_stake)}** / $1000")
     lines.append(f"- **🛡️ 組合核心邏輯**: {core_logic}")
     lines.append(f"- **⚠️ 主要風險**: {' / '.join(risk_factors)}")
-    lines.append(f"- **建議注碼**: {stake}")
+    lines.append(f"- **建議注碼**: 按同一相關性調整後機率及真實報價計算 Half-Kelly：{kelly_f*100:.1f}% bankroll；唔另加固定 units。")
     lines.append(f"")
-    lines.append(f"> ⚠️ 以上賠率為獨立 Leg 相乘。實際 Sportsbet SGM 價格可能因關聯性調整而不同，落注前請以 Sportsbet 顯示為準。")
+    lines.append(f"> ⚠️ EV／Kelly 按以上 Sportsbet SGM 報價及相關性調整後機率計算；報價只在短時間內有效，落注前須重新確認。")
     lines.append(f"")
     lines.append(f"---")
     return "\n".join(lines)
@@ -2076,7 +2090,7 @@ def mc_game_seed(meta):
 
 def gen_full_report(meta, odds, injuries, news, team_stats,
                     all_cards, sportsbet_time, season_phase="MID_SEASON",
-                    engine_mode="hybrid", capture=None):
+                    engine_mode="hybrid", capture=None, sportsbet_odds=None):
     """Render the report.  ``capture`` (optional dict) receives the already
     computed MC results and combos for the market-evaluation sidecar; it is
     observation only and never feeds back into selection or rendering."""
@@ -2208,7 +2222,27 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     combo_2 = select_combo_2(candidates)
     combo_3 = select_combo_3(candidates)
     combo_x = select_combo_x_value_bomb(candidates)
+    priced = {}
+    quote_attempts = {}
+    for key, proposal in {"1": combo_1, "2": combo_2, "3": combo_3, "X": combo_x or []}.items():
+        if not proposal:
+            priced[key] = []
+            continue
+        quote_source = sportsbet_odds if sportsbet_odds is not None else odds
+        quoted = quote_combo(quote_source, proposal)
+        quote_attempts[key] = quoted.quote
+        if (quote_valid(quoted.quote, quote_source, proposal) and _combo_passes_positive_ev_gate(quoted)
+                and quoted.quote["decimal_odds"] >= {"1": 2.0, "2": 3.0, "3": 8.0, "X": 1.0}[key]):
+            priced[key] = quoted
+        else:
+            priced[key] = []
+            if quoted.quote["status"] == "ok":
+                quote_attempts[key] = {**quoted.quote, "rejected": "actual_price_fails_ev_floor_or_expired"}
+    combo_1, combo_2, combo_3, combo_x = (priced[key] for key in ("1", "2", "3", "X"))
+    if quote_attempts:
+        sections.append("**SGM 報價檢查**：" + "；".join(f"{key}: {value.get('rejected', value['status'])}" for key, value in quote_attempts.items()))
     if capture is not None:
+        capture["quote_attempts"] = quote_attempts
         capture["mc_results"] = list(mc_results or [])
         capture["combos"] = {
             "1": combo_1, "2": combo_2, "3": combo_3, "X": combo_x or [],
@@ -2235,7 +2269,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
 
     sections.append(gen_combo_section(
         "組合 1: 穩膽 SGM (Low Risk)", "🛡️",
-        f"2-3 Legs | L10/L5 ≥80% | 目標 2.0-3.2x",
+        "2-4 Legs | 主門檻 L10/L5 ≥80%、CoV ≤0.65；不足時 fallback ≥70%、CoV ≤0.75 | 目標 2.0-3.5x（fallback 至4.0x；建構容許上限20%浮動）",
         combo_1))
     sections.append(f"")
 
@@ -2379,15 +2413,16 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
         combos_out.append({
             "combo_id": str(combo_id),
             "legs": combo_legs,
-            "product_of_leg_prices": ev.get("combo_decimal_odds"),
+            "product_of_leg_prices": ev.get("product_of_leg_prices"),
             "naive_joint_prob": ev.get("naive_joint_prob"),
             "correlation_penalty": ev.get("correlation_penalty"),
             "adjusted_joint_prob": ev.get("adjusted_joint_prob"),
             "combo_ev_pct": ev.get("combo_ev_pct"),
             "combo_risk_tier": ev.get("combo_risk_tier"),
             # Sportsbet's own SGM price is not scraped by the current extractor.
-            "sportsbet_sgm_price": None,
-            "sportsbet_sgm_status": "not_scraped",
+            "sportsbet_sgm_price": ev.get("combo_decimal_odds") if ev.get("price_source") == "sportsbet_sgm_pricer" else None,
+            "sportsbet_sgm_status": getattr(legs, "quote", {}).get("status", "missing"),
+            "sgm_quote": getattr(legs, "quote", {}),
             # N1 shadow joint probabilities (not used for selection).
             **sim,
             # p_final marginals with the simulated dependence structure.
@@ -2444,6 +2479,7 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
         "engine_mode": engine_mode,
         "legs": legs_out,
         "combos": combos_out,
+        "quote_attempts": capture.get("quote_attempts", {}),
     }
 
 
@@ -2639,7 +2675,7 @@ def main():
     capture = {}
     report = gen_full_report(meta, ex_odds, injuries, news, team_stats,
                              all_cards, sportsbet_time, season_phase=season_phase,
-                             engine_mode=engine_mode, capture=capture)
+                             engine_mode=engine_mode, capture=capture, sportsbet_odds=sportsbet)
 
     # Write
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)

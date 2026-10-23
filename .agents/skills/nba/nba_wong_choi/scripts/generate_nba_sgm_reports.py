@@ -202,7 +202,7 @@ def generate_banker_report(games_data, analysis_date):
     lines.append(f'# 📅 日期: {analysis_date} | 總場次: {len(games_data)}')
     if any(game.get('shadow') for game in games_data):
         lines.append('# ⛔ NO BET — PRESEASON SHADOW ONLY：歷史參考組合，禁止投注。')
-    lines.append(f'# 策略: 收錄每場組合 1 (穩膽 SGM 2-3 Legs) 嘊完整 Leg 分析')
+    lines.append(f'# 策略: 收錄每場組合 1 (穩膽 SGM 2-4 Legs，含明示 fallback) 嘊完整 Leg 分析')
     lines.append('')
 
     # Section 1: Top Banker Legs quick reference

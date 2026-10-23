@@ -69,6 +69,14 @@ def _combo_rows(rows: list[dict]) -> list[dict]:
 
 def _sgm_price(rows: list[dict], combo: Mapping[str, Any]) -> float | None:
     """Latest clean Sportsbet SGM quote for this very snapshot/combo, else None."""
+    # New reports select against this frozen quote. A later observation must
+    # never rewrite the price used for the published recommendation.
+    quote = combo.get("sgm_quote") or {}
+    if combo.get("sportsbet_sgm_status") == "ok" and quote.get("status") == "ok":
+        from nba_sgm_quote import legs_identity
+        if (quote.get("legs_sha256") == legs_identity(combo.get("legs") or [])
+                and _price(quote.get("decimal_odds")) == _price(combo.get("sportsbet_sgm_price"))):
+            return _price(quote.get("decimal_odds"))
     quotes = [
         r for r in rows
         if r.get("row_type") == "sgm_price_obs" and r.get("status") == "ok"

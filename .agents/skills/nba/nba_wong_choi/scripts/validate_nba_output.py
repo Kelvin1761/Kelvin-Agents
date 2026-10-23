@@ -2,7 +2,7 @@
 import os
 os.environ.setdefault('PYTHONUTF8', '1')
 import sys
-if hasattr(sys.stdout, 'reconfigure'):
+if __name__ == '__main__' and hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 """
 validate_nba_output.py — NBA Wong Choi Post-Generation Firewall V2
@@ -41,7 +41,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from nba_identity import player_name_key
 
-if sys.stdout.encoding != 'utf-8':
+if __name__ == '__main__' and sys.stdout.encoding != 'utf-8' and hasattr(sys.stdout, 'buffer'):
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
 
@@ -85,6 +85,8 @@ REQUIRED_SECTIONS = [
 
 # Whitelist patterns: legitimate structural repetitions in Python-generated skeletons
 PADDING_WHITELIST = [
+    "Half-Kelly",             # Per-combo sizing formula
+    "獨立單腿價格乘積",       # Per-combo reference price
     "Sportsbet SGM",           # Disclaimer appears per-combo
     "Sportsbet 顯示為準",     # Disclaimer
     "；真實樣本",             # Per-player provenance line (資料來源：… ；真實樣本 N 場；截止 …).
@@ -419,6 +421,7 @@ def validate_file(filepath: str, odds_json_path: str = None) -> dict:
     all_issues.extend(check_fw10_over_only(content))
     all_issues.extend(check_fw11_combo_gates(content))
     all_issues.extend(check_fw12_engine_markers(content))
+    all_issues.extend(check_fw13_sgm_quotes(content, filepath, odds_json_path))
 
     blocks = [i for i in all_issues if "BLOCK" in i]
     warns = [i for i in all_issues if "WARN" in i]
@@ -430,6 +433,52 @@ def validate_file(filepath: str, odds_json_path: str = None) -> dict:
         "warnings": warns,
         "total_issues": len(all_issues),
     }
+
+
+def check_fw13_sgm_quotes(content, filepath, odds_json_path, *, now=None):
+    """A formal combo must have a fresh, event/legs-bound quote in its sidecar."""
+    import hashlib
+    import math
+    from nba_sgm_quote import quote_valid
+    headings = list(re.finditer(r'^### .*?組合\s+(\d+|X).*?組合賠率\s*@\s*(\d+(?:\.\d+)?)', content, re.MULTILINE))
+    if not headings:
+        return []
+    try:
+        sidecar = json.loads(Path(str(filepath) + '.market_legs.json').read_text())
+        odds = json.loads(Path(odds_json_path).read_text())
+        if sidecar['report_sha256'] != hashlib.sha256(content.encode()).hexdigest():
+            raise ValueError('report hash mismatch')
+        combos = {str(row['combo_id']): row for row in sidecar['combos']}
+        if len(combos) != len(headings):
+            raise ValueError('combo count mismatch')
+        for index, heading in enumerate(headings):
+            key, header_price = heading.groups()
+            row = combos[key]
+            quote = row['sgm_quote']
+            if not quote_valid(quote, odds, row['legs'], now=now):
+                raise ValueError('quote missing, expired or binding mismatch')
+            price = quote['decimal_odds']
+            probability = row['adjusted_joint_prob']
+            section = content[heading.end():headings[index+1].start() if index+1 < len(headings) else len(content)]
+            table = [line for line in section.splitlines() if line.strip().startswith('| 🧩')]
+            if len(table) != len(row['legs']):
+                raise ValueError('report/sidecar leg count mismatch')
+            for line, leg in zip(table, row['legs']):
+                cells = [cell.strip() for cell in line.strip().strip('|').split('|')]
+                if cells[1] != leg['desc'] or float(cells[2].lstrip('@')) != leg['price']:
+                    raise ValueError('report/sidecar leg mismatch')
+            naive = math.prod(leg['p_final'] for leg in row['legs'])
+            penalty = row['correlation_penalty']
+            if (not math.isclose(float(header_price), price, rel_tol=1e-10)
+                    or row['sportsbet_sgm_price'] != price
+                    or not math.isfinite(probability) or not 0 < probability < 1
+                    or not 0 <= penalty <= .30
+                    or not math.isclose(probability, naive * (1-penalty), abs_tol=1e-10)
+                    or probability * price <= 1):
+                raise ValueError('price/probability/EV mismatch')
+    except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
+        return [f'FW-13 ❌ BLOCK: SGM quote verification failed ({exc})']
+    return []
 
 
 def find_odds_json(analysis_path: str) -> str:

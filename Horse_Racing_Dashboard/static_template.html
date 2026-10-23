@@ -1820,8 +1820,16 @@ function sydneyToday() {
   }
 }
 
+function isSgmQuoteExpired(item) {
+  if (!item || item.odds_status !== 'sportsbet_sgm_quoted') return false;
+  const captured = Date.parse(item.sgm_quote?.captured_at || '');
+  const expires = Date.parse(item.quote_expires_at || '');
+  return !Number.isFinite(captured) || !Number.isFinite(expires)
+    || Date.now() < captured || Date.now() >= expires;
+}
+
 function isSportsPickExpired(item) {
-  if (!item) return true;
+  if (!item || isSgmQuoteExpired(item)) return true;
   const start = Date.parse(item.start_time_utc || '');
   if (Number.isFinite(start)) return Date.now() >= start;
   const eventDate = String(item.event_date || '');
@@ -2034,8 +2042,8 @@ function renderHistoryCard(item, sport) {
     .map(label => `<span class="metric-chip">${esc(label)}</span>`).join('');
   const odds = item.odds == null
     ? '<span class="odds-missing">原始賠率未存檔 · 落注時手動輸入</span>'
-    : `${item.odds_status === 'sportsbet_extracted' ? 'Sportsbet 提取賠率' : '分析賠率'} <strong>${Number(item.odds).toFixed(2)}</strong>`;
-  const canConfirm = item.decision === 'BET' && item.outcome === 'pending' && Number(item.odds) > 1;
+    : `${item.odds_status === 'sportsbet_sgm_quoted' ? 'Sportsbet SGM 報價' : (item.odds_status === 'sportsbet_extracted' ? 'Sportsbet 提取賠率' : '分析賠率')} <strong>${Number(item.odds).toFixed(2)}</strong>`;
+  const canConfirm = item.decision === 'BET' && item.outcome === 'pending' && Number(item.odds) > 1 && !isSgmQuoteExpired(item);
   const confirmation = canConfirm
     ? renderInlineBetDraft(item, sport)
     : `<div class="history-card__review-only">${item.outcome !== 'pending'
@@ -2382,6 +2390,7 @@ function sportsBetDraftFromSource(source, sport = activeSport) {
 }
 
 function renderInlineBetDraft(source, sport = activeSport) {
+  if (isSgmQuoteExpired(source)) return '<div class="history-card__review-only">SGM 報價已過期，請重新提取報價。</div>';
   const draft = sportsBetDraftFromSource(source, sport);
   const extractedOdds = source.odds == null ? '' : Number(source.odds).toFixed(2);
   const stakeSource = source.metrics?.stake_units != null ? '旺財建議注碼' : '旺財平注注碼';
@@ -2493,6 +2502,12 @@ async function confirmInlineSportsBet(event, encodedSourceId) {
   const source = sportsHistory(activeSport).find(item => item.id === sourceId);
   if (!source) return;
   const form = event.currentTarget;
+  if (isSgmQuoteExpired(source)) {
+    const error = form.querySelector('.inline-bet-confirm__error');
+    error.style.display = 'block';
+    error.textContent = 'SGM 報價已過期，請重新提取報價。';
+    return;
+  }
   const formData = new FormData(form);
   const odds = Number(formData.get('actual_odds'));
   const stake = Number(formData.get('stake'));

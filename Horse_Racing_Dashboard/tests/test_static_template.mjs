@@ -1843,3 +1843,22 @@ test("speed signal scores stay separate from signed seconds in the value", () =>
     assert.doesNotMatch(html, /最快第一段/);
   }
 });
+
+test("SGM quote expiry stops an already-rendered static recommendation", () => {
+  const now = Date.now();
+  const item = { id: "nba:quote", sport: "nba", event_date: "2099-01-01", event_name: "BOS @ LAL",
+    market: "Same Game Multi", selection: "quoted combo", odds: 2, odds_status: "sportsbet_sgm_quoted",
+    outcome: "pending", decision: "BET", bet_type: "combo", legs: [], metrics: {},
+    sgm_quote: { captured_at: new Date(now - 400000).toISOString() },
+    quote_expires_at: new Date(now - 100000).toISOString(), start_time_utc: "2099-01-01T00:00:00Z" };
+  const data = { ...EMPTY_DASHBOARD_DATA, sports_feed: { sports: { nba: {
+    validation_status: "valid", recommendations: [item] } } } };
+  const { hasLiveSportsFeed, renderHistoryCard, renderInlineBetDraft } = loadTemplateFunctions(data);
+  assert.equal(hasLiveSportsFeed("nba"), false);
+  assert.doesNotMatch(renderHistoryCard(item, "nba"), /onsubmit=/);
+  assert.match(renderInlineBetDraft(item, "nba"), /SGM 報價已過期/);
+  const fresh = { ...item, sgm_quote: { captured_at: new Date(now - 1000).toISOString() },
+    quote_expires_at: new Date(now + 299000).toISOString() };
+  assert.match(renderHistoryCard(fresh, "nba"), /onsubmit=/);
+  assert.match(renderHistoryCard(fresh, "nba"), /Sportsbet SGM 報價/);
+});

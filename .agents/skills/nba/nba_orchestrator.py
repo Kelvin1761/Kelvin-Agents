@@ -386,6 +386,10 @@ def report_cache_current(report: str, sportsbet_json: str, extractor_json: str, 
     try:
         with open(report + ".inputs.json", encoding="utf-8") as source:
             cached = json.load(source)
+        from nba_wong_choi.scripts.validate_nba_output import check_fw13_sgm_quotes
+        with open(report, encoding="utf-8") as source:
+            if check_fw13_sgm_quotes(source.read(), report, sportsbet_json):
+                return False
         return (cached.get("inputs") == report_inputs(sportsbet_json, extractor_json, legacy)
                 and cached.get("report") == _file_digest(report))
     except (OSError, ValueError, AttributeError):
@@ -750,6 +754,21 @@ def main():
             if not player_milestone_markets_available(_load_sportsbet_json(sb_json)):
                 results["waiting"].append(tag)
 
+    # A long slate can outlive an early game's quote. Reprice only reports
+    # whose exact-price check no longer passes, using the same cached inputs.
+    if not args.debug_skip_extractor:
+        from nba_wong_choi.scripts.validate_nba_output import check_fw13_sgm_quotes
+        for game in games:
+            tag = game["tag"]
+            report = os.path.join(target_dir, f"Game_{tag}_Full_Analysis.md")
+            if tag not in results["passed"]:
+                continue
+            with open(report, encoding="utf-8") as source:
+                needs_price = bool(check_fw13_sgm_quotes(source.read(), report, game["sportsbet_json"]))
+            if needs_price and not process_single_game(tag, game["sportsbet_json"], target_dir, args.date, legacy=args.legacy):
+                results["passed"].remove(tag)
+                results["failed"].append(tag)
+
     # ── Summary ──
     print(f"\n{'='*60}")
     print(f"🏆 Pipeline 執行摘要")
@@ -762,7 +781,7 @@ def main():
     sgm_ok = False
     if results["passed"] and os.path.exists(GENERATE_SGM):
         print(f"\n📋 生成 Master SGM + Banker 報告...")
-        sgm_ok = run_script(
+        sgm_ok = validate_reports_for_release(target_dir) and run_script(
             GENERATE_SGM,
             ["--dir", target_dir],
             label="SGM Master Report",

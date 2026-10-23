@@ -70,7 +70,7 @@ class MultiSportExporterTests(unittest.TestCase):
                 row for row in snapshot["recommendations"] if row["category"] == "banker"
             )
             self.assertEqual(recommendation["odds"], 2.12)
-            self.assertEqual(recommendation["odds_status"], "sportsbet_extracted")
+            self.assertEqual(recommendation["odds_status"], "independent_leg_estimate")
             self.assertEqual(recommendation["bet_type"], "combo")
             self.assertEqual(len(recommendation["legs"]), 2)
             self.assertEqual(recommendation["legs"][0]["odds"], 1.72)

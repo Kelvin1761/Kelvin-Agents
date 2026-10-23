@@ -440,6 +440,7 @@ def record_snapshot(
                 "correlation_penalty": _float(combo.get("correlation_penalty")),
                 "sportsbet_sgm_price": _float(combo.get("sportsbet_sgm_price")),
                 "sportsbet_sgm_status": combo.get("sportsbet_sgm_status") or "not_scraped",
+                "sgm_quote": combo.get("sgm_quote"),
                 # N1 shadow: same-simulation joint probability (never used to pick).
                 "sim_status": combo.get("sim_status") or "absent",
                 "sim_model_version": combo.get("sim_model_version"),
