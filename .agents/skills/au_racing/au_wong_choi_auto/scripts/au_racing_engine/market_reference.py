@@ -213,6 +213,11 @@ def build_market_reference(horses: dict, meeting_dir: Path | None = None,
         if priced:
             out["note"] = "有贏盤價嘅馬少過 2 匹，計唔到"
         return out
+    if len(priced) < len(field):
+        # Missing prices are not scratchings: conditioning on only the priced
+        # runners would allocate the missing runner's probability to everyone else.
+        out["note"] = f"{len(field) - len(priced)} 匹冇贏盤價，市場盤未齊，機率暫不計"
+        return out
     try:
         win = devig.devig([book[num][0] for num in book_priced], WIN_METHOD)
     except ValueError as exc:  # UnderroundError / InvalidOddsError 都係 ValueError
@@ -256,8 +261,6 @@ def build_market_reference(horses: dict, meeting_dir: Path | None = None,
     scratched = [num for num in book_priced if num not in priced]
     if scratched:
         notes.append(f"盤內 {len(scratched)} 匹已退出：勝率按今日名單重新歸一，位率唔計")
-    if len(priced) < len(field):
-        notes.append(f"{len(field) - len(priced)} 匹冇贏盤價，未計入")
     out["note"] = "；".join(notes) or None
     return out
 
