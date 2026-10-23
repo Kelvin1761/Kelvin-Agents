@@ -1,0 +1,75 @@
+{
+  "version": "nba-ml-temporal-audit-v2",
+  "purpose": "Repair opponent context, preprocessing leakage and row-wise random split. Not an automatic model promotion.",
+  "manifest_sha256": "1727e3bc88b76918c0dfd0f932e450a353611dc10f1f8d3db849c9f5b49b6bf2",
+  "population": "all uniquely matched archived priced lines from both-source pre-tip artifacts; same-game logs excluded; no outcome-driven sample filtering",
+  "event_group": "US game date plus canonical away/home event identity; all player/stat/lines of an event stay together",
+  "dev_dates": [
+    "2026-04-15",
+    "2026-04-23",
+    "2026-04-24",
+    "2026-04-25",
+    "2026-04-27",
+    "2026-04-28",
+    "2026-04-29",
+    "2026-04-30",
+    "2026-05-01",
+    "2026-05-02",
+    "2026-05-03",
+    "2026-05-04",
+    "2026-05-05",
+    "2026-05-06",
+    "2026-05-07",
+    "2026-05-09",
+    "2026-05-10",
+    "2026-05-13",
+    "2026-05-15"
+  ],
+  "terminal_diagnostic_dates": [
+    "2026-05-17",
+    "2026-06-03",
+    "2026-06-05",
+    "2026-06-08",
+    "2026-06-10"
+  ],
+  "terminal_limit": "These historical dates have been inspected in earlier model studies. Terminal diagnostics are not a fresh confirmatory holdout, never tuned, and cannot authorize production promotion.",
+  "cv": {
+    "method": "expanding TimeSeriesSplit over unique dev dates",
+    "n_splits": 5,
+    "no_shuffle": true
+  },
+  "preprocessing": {
+    "fit": "training fold only",
+    "method": "median",
+    "all_empty_training_feature": 0,
+    "persistence": "same fitted sklearn Pipeline used for serving"
+  },
+  "classifier": {
+    "kind": "RandomForest when XGBoost unavailable, existing fixed hyperparameters; no search",
+    "n_estimators": 300,
+    "max_depth": 10,
+    "min_samples_leaf": 5,
+    "class_weight": "balanced_subsample",
+    "random_state": 42
+  },
+  "features": "same 27 numeric feature names; correct opponent/team resolution and shared train/serve constructor; no odds in ML inputs",
+  "labels": "verified official Final summary for exact event, player/team identity; DNP is not miss; source hashes retained",
+  "comparators": [
+    "raw L10 hit rate",
+    "vig-inclusive raw market 1/price",
+    "unchanged current C formula (historical fitted comparator; not independent)"
+  ],
+  "metrics": [
+    "Brier",
+    "log loss",
+    "ROC-AUC",
+    "row/game/date/population counts",
+    "paired date bootstrap 95% interval"
+  ],
+  "bootstrap": {
+    "replicates": 2000,
+    "seed": 20261023,
+    "cluster": "US game date"
+  },
+  "artifact": "candidate external only; do not overwrite v3 or enable ML from diagnostic results"
+}

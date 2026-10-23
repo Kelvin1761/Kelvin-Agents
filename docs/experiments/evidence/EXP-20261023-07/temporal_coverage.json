@@ -1,0 +1,649 @@
+{
+  "coverage": {
+    "files": 80,
+    "drive_modified_before_tip": 55,
+    "players": 2306,
+    "logs_with_dates": 2292,
+    "logs_strictly_prior": 2292,
+    "timestamp_unknown": 14,
+    "drive_modified_after_tip": 11,
+    "logs_missing_dates": 14
+  },
+  "files": [
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_ATL_CLE.json",
+      "flags": [],
+      "tip": "2026-04-08T23:00:00+00:00",
+      "us_game_date": "2026-04-08",
+      "captured_at": "2026-04-09T00:02:58.569506+10:00",
+      "drive_modified_at": "2026-04-08T14:06:07.369Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_DAL_PHX.json",
+      "flags": [],
+      "tip": "2026-04-09T02:00:00+00:00",
+      "us_game_date": "2026-04-08",
+      "captured_at": "2026-04-09T00:09:42.953547+10:00",
+      "drive_modified_at": "2026-04-08T14:15:21.658Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_MEM_DEN.json",
+      "flags": [],
+      "tip": "2026-04-09T01:00:00+00:00",
+      "us_game_date": "2026-04-08",
+      "captured_at": "2026-04-09T00:06:13.905690+10:00",
+      "drive_modified_at": "2026-04-08T14:09:30.461Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_MIN_ORL.json",
+      "flags": [],
+      "tip": "2026-04-08T23:00:00+00:00",
+      "us_game_date": "2026-04-08",
+      "captured_at": "2026-04-08T23:52:52.627171+10:00",
+      "drive_modified_at": "2026-04-08T13:56:09.445Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-09 NBA Analysis/nba_game_data_POR_SAS.json",
+      "flags": [],
+      "tip": "2026-04-09T01:30:00+00:00",
+      "us_game_date": "2026-04-08",
+      "captured_at": "2026-04-09T00:26:29.277966+10:00",
+      "drive_modified_at": "2026-04-08T14:29:08.381Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_ATL_NYK.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_GSW_LAC.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_HOU_LAL.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_MIA_CHA.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_ORL_PHI.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_POR_PHX.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-15_NBA_Analysis/nba_game_data_TOR_CLE.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_ATL_NYK.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_GSW_LAC.json",
+      "flags": [],
+      "tip": "2026-04-16T02:00:00+00:00",
+      "us_game_date": "2026-04-15",
+      "captured_at": "2026-04-15T21:28:43.881169+10:00",
+      "drive_modified_at": "2026-04-15T11:31:44.836Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_HOU_LAL.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_MIN_DEN.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_ORL_PHI.json",
+      "flags": [],
+      "tip": "2026-04-15T23:30:00+00:00",
+      "us_game_date": "2026-04-15",
+      "captured_at": "2026-04-15T21:21:21.599879+10:00",
+      "drive_modified_at": "2026-04-15T11:23:56.402Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_POR_SAS.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-16 NBA Analysis/nba_game_data_TOR_CLE.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-24 NBA Analysis/nba_game_data_CLE_TOR.json",
+      "flags": [],
+      "tip": "2026-04-24T00:00:00+00:00",
+      "us_game_date": "2026-04-23",
+      "captured_at": "2026-04-24T02:34:31.932211+10:00",
+      "drive_modified_at": "2026-04-23T16:39:45.304Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-24 NBA Analysis/nba_game_data_DEN_MIN.json",
+      "flags": [],
+      "tip": "2026-04-24T01:30:00+00:00",
+      "us_game_date": "2026-04-23",
+      "captured_at": "2026-04-24T02:40:06.118601+10:00",
+      "drive_modified_at": "2026-04-23T16:43:55.502Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-24 NBA Analysis/nba_game_data_NYK_ATL.json",
+      "flags": [],
+      "tip": "2026-04-23T23:00:00+00:00",
+      "us_game_date": "2026-04-23",
+      "captured_at": "2026-04-24T02:44:12.903163+10:00",
+      "drive_modified_at": "2026-04-23T16:48:23.134Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-25 NBA Analysis/nba_game_data_BOS_PHI.json",
+      "flags": [],
+      "tip": "2026-04-24T23:00:00+00:00",
+      "us_game_date": "2026-04-24",
+      "captured_at": "2026-04-24T16:11:54.593503+10:00",
+      "drive_modified_at": "2026-04-24T06:17:26.678Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-25 NBA Analysis/nba_game_data_LAL_HOU.json",
+      "flags": [],
+      "tip": "2026-04-25T00:00:00+00:00",
+      "us_game_date": "2026-04-24",
+      "captured_at": "2026-04-24T16:17:56.657139+10:00",
+      "drive_modified_at": "2026-04-24T06:21:51.625Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-25 NBA Analysis/nba_game_data_SAS_POR.json",
+      "flags": [],
+      "tip": "2026-04-25T02:30:00+00:00",
+      "us_game_date": "2026-04-24",
+      "captured_at": "2026-04-24T16:22:10.718587+10:00",
+      "drive_modified_at": "2026-04-24T06:25:38.386Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-26 NBA Analysis/nba_game_data_DEN_MIN.json",
+      "flags": [],
+      "tip": "2026-04-26T00:30:00+00:00",
+      "us_game_date": "2026-04-25",
+      "captured_at": "2026-04-25T20:59:57.062635+10:00",
+      "drive_modified_at": "2026-04-25T11:04:40.316Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-26 NBA Analysis/nba_game_data_DET_ORL.json",
+      "flags": [],
+      "tip": "2026-04-25T17:00:00+00:00",
+      "us_game_date": "2026-04-25",
+      "captured_at": "2026-04-25T20:33:36.531110+10:00",
+      "drive_modified_at": "2026-04-25T10:38:16.105Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-26 NBA Analysis/nba_game_data_NYK_ATL.json",
+      "flags": [],
+      "tip": "2026-04-25T22:00:00+00:00",
+      "us_game_date": "2026-04-25",
+      "captured_at": "2026-04-25T20:51:42.767487+10:00",
+      "drive_modified_at": "2026-04-25T10:56:38.222Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-26 NBA Analysis/nba_game_data_OKC_PHX.json",
+      "flags": [],
+      "tip": "2026-04-25T19:30:00+00:00",
+      "us_game_date": "2026-04-25",
+      "captured_at": "2026-04-25T20:41:26.970095+10:00",
+      "drive_modified_at": "2026-04-25T10:46:18.966Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-28 NBA Analysis/nba_game_data_DET_ORL.json",
+      "flags": [],
+      "tip": "2026-04-28T00:00:00+00:00",
+      "us_game_date": "2026-04-27",
+      "captured_at": "2026-04-27T20:44:38.833856+10:00",
+      "drive_modified_at": "2026-04-27T10:49:40.144Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-28 NBA Analysis/nba_game_data_MIN_DEN.json",
+      "flags": [],
+      "tip": "2026-04-28T02:30:00+00:00",
+      "us_game_date": "2026-04-27",
+      "captured_at": "2026-04-27T20:46:32.751363+10:00",
+      "drive_modified_at": "2026-04-27T10:51:05.973Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-28 NBA Analysis/nba_game_data_OKC_PHX.json",
+      "flags": [],
+      "tip": "2026-04-28T01:30:00+00:00",
+      "us_game_date": "2026-04-27",
+      "captured_at": "2026-04-27T20:46:40.622803+10:00",
+      "drive_modified_at": "2026-04-27T10:51:26.754Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-29 NBA Analysis/nba_game_data_ATL_NYK.json",
+      "flags": [],
+      "tip": "2026-04-29T00:00:00+00:00",
+      "us_game_date": "2026-04-28",
+      "captured_at": "2026-04-28T22:47:46.696764+10:00",
+      "drive_modified_at": "2026-04-28T12:52:47.300Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-29 NBA Analysis/nba_game_data_PHI_BOS.json",
+      "flags": [],
+      "tip": "2026-04-28T23:00:00+00:00",
+      "us_game_date": "2026-04-28",
+      "captured_at": "2026-04-28T22:39:11.000030+10:00",
+      "drive_modified_at": "2026-04-28T12:43:14.698Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-29 NBA Analysis/nba_game_data_POR_SAS.json",
+      "flags": [],
+      "tip": "2026-04-29T01:30:00+00:00",
+      "us_game_date": "2026-04-28",
+      "captured_at": "2026-04-28T22:54:08.930018+10:00",
+      "drive_modified_at": "2026-04-28T12:58:29.574Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-30 NBA Analysis/nba_game_data_HOU_LAL.json",
+      "flags": [],
+      "tip": "2026-04-30T02:00:00+00:00",
+      "us_game_date": "2026-04-29",
+      "captured_at": "2026-04-29T23:25:47.592184+10:00",
+      "drive_modified_at": "2026-04-29T13:29:08.163Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-30 NBA Analysis/nba_game_data_ORL_DET.json",
+      "flags": [],
+      "tip": "2026-04-29T23:00:00+00:00",
+      "us_game_date": "2026-04-29",
+      "captured_at": "2026-04-29T23:29:17.406656+10:00",
+      "drive_modified_at": "2026-04-29T13:34:41.272Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-04-30 NBA Analysis/nba_game_data_TOR_CLE.json",
+      "flags": [],
+      "tip": "2026-04-29T23:30:00+00:00",
+      "us_game_date": "2026-04-29",
+      "captured_at": "2026-04-29T23:34:51.231541+10:00",
+      "drive_modified_at": "2026-04-29T13:39:29.918Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-01 NBA Analysis/nba_game_data_BOS_PHI.json",
+      "flags": [],
+      "tip": "2026-05-01T00:00:00+00:00",
+      "us_game_date": "2026-04-30",
+      "captured_at": "2026-04-30T18:23:38.719860+10:00",
+      "drive_modified_at": "2026-04-30T08:27:40.633Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-01 NBA Analysis/nba_game_data_DEN_MIN.json",
+      "flags": [],
+      "tip": "2026-05-01T01:30:00+00:00",
+      "us_game_date": "2026-04-30",
+      "captured_at": "2026-04-30T18:28:02.568743+10:00",
+      "drive_modified_at": "2026-04-30T08:32:51.318Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-01 NBA Analysis/nba_game_data_NYK_ATL.json",
+      "flags": [],
+      "tip": "2026-04-30T23:00:00+00:00",
+      "us_game_date": "2026-04-30",
+      "captured_at": "2026-04-30T18:06:46.648607+10:00",
+      "drive_modified_at": "2026-04-30T08:13:36.263Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/nba_game_data_CLE_TOR.json",
+      "flags": [],
+      "tip": "2026-05-01T23:30:00+00:00",
+      "us_game_date": "2026-05-01",
+      "captured_at": "2026-05-01T16:40:22.664857+10:00",
+      "drive_modified_at": "2026-05-01T06:43:58.911Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/nba_game_data_DET_ORL.json",
+      "flags": [],
+      "tip": "2026-05-01T23:00:00+00:00",
+      "us_game_date": "2026-05-01",
+      "captured_at": "2026-05-01T16:38:12.539348+10:00",
+      "drive_modified_at": "2026-05-01T06:43:08.681Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/nba_game_data_LAL_HOU.json",
+      "flags": [],
+      "tip": "2026-05-02T01:30:00+00:00",
+      "us_game_date": "2026-05-01",
+      "captured_at": "2026-05-01T16:40:25.522715+10:00",
+      "drive_modified_at": "2026-05-01T06:44:18.762Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/nba_game_data_MIN_SAS.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-02 NBA Analysis/nba_game_data_PHI_BOS.json",
+      "flags": [],
+      "tip": "2026-05-02T23:30:00+00:00",
+      "us_game_date": "2026-05-02",
+      "captured_at": "2026-05-02T20:52:16.311326+10:00",
+      "drive_modified_at": "2026-05-02T10:56:31.637Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-04 NBA Analysis/nba_game_data_LAL_OKC.json",
+      "flags": [
+        "timestamp_unknown"
+      ]
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-04 NBA Analysis/nba_game_data_MIN_SAS.json",
+      "flags": [],
+      "tip": "2026-05-05T01:30:00+00:00",
+      "us_game_date": "2026-05-04",
+      "captured_at": "2026-05-04T00:00:48.851847+10:00",
+      "drive_modified_at": "2026-05-03T14:06:02.235Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-04 NBA Analysis/nba_game_data_ORL_DET.json",
+      "flags": [],
+      "tip": "2026-05-03T19:30:00+00:00",
+      "us_game_date": "2026-05-03",
+      "captured_at": "2026-05-04T00:06:11.755504+10:00",
+      "drive_modified_at": "2026-05-03T14:11:29.466Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-05 NBA Analysis/nba_game_data_MIN_SAS.json",
+      "flags": [],
+      "tip": "2026-05-05T01:30:00+00:00",
+      "us_game_date": "2026-05-04",
+      "captured_at": "2026-05-04T22:18:41.675615+10:00",
+      "drive_modified_at": "2026-05-04T12:22:57.524Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-05 NBA Analysis/nba_game_data_PHI_NYK.json",
+      "flags": [],
+      "tip": "2026-05-05T00:00:00+00:00",
+      "us_game_date": "2026-05-04",
+      "captured_at": "2026-05-04T22:13:07.407556+10:00",
+      "drive_modified_at": "2026-05-04T12:17:12.617Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-06 NBA Analysis/nba_game_data_CLE_DET.json",
+      "flags": [],
+      "tip": "2026-05-05T23:00:00+00:00",
+      "us_game_date": "2026-05-05",
+      "captured_at": "2026-05-05T22:13:31.140022+10:00",
+      "drive_modified_at": "2026-05-05T12:17:23.406Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-06 NBA Analysis/nba_game_data_LAL_OKC.json",
+      "flags": [],
+      "tip": "2026-05-06T00:30:00+00:00",
+      "us_game_date": "2026-05-05",
+      "captured_at": "2026-05-05T22:17:58.020284+10:00",
+      "drive_modified_at": "2026-05-05T12:22:22.559Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-07 NBA Analysis/nba_game_data_MIN_SAS.json",
+      "flags": [],
+      "tip": "2026-05-07T01:30:00+00:00",
+      "us_game_date": "2026-05-06",
+      "captured_at": "2026-05-06T21:28:21.923171+10:00",
+      "drive_modified_at": "2026-05-06T11:33:04.849Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-07 NBA Analysis/nba_game_data_PHI_NYK.json",
+      "flags": [],
+      "tip": "2026-05-06T23:00:00+00:00",
+      "us_game_date": "2026-05-06",
+      "captured_at": "2026-05-06T21:23:29.396296+10:00",
+      "drive_modified_at": "2026-05-06T11:28:01.949Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-08 NBA Analysis/nba_game_data_CLE_DET.json",
+      "flags": [],
+      "tip": "2026-05-07T23:00:00+00:00",
+      "us_game_date": "2026-05-07",
+      "captured_at": "2026-05-07T19:25:22.198559+10:00",
+      "drive_modified_at": "2026-05-07T09:30:31.292Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-08 NBA Analysis/nba_game_data_LAL_OKC.json",
+      "flags": [],
+      "tip": "2026-05-08T01:30:00+00:00",
+      "us_game_date": "2026-05-07",
+      "captured_at": "2026-05-07T19:31:11.653136+10:00",
+      "drive_modified_at": "2026-05-07T09:36:37.572Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-10 NBA Analysis/nba_game_data_DET_CLE.json",
+      "flags": [],
+      "tip": "2026-05-09T19:00:00+00:00",
+      "us_game_date": "2026-05-09",
+      "captured_at": "2026-05-09T22:15:54.766854+10:00",
+      "drive_modified_at": "2026-05-09T12:20:48.657Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-10 NBA Analysis/nba_game_data_OKC_LAL.json",
+      "flags": [],
+      "tip": "2026-05-10T00:30:00+00:00",
+      "us_game_date": "2026-05-09",
+      "captured_at": "2026-05-09T22:21:10.445836+10:00",
+      "drive_modified_at": "2026-05-09T12:25:50.701Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-11 NBA Analysis/nba_game_data_NYK_PHI.json",
+      "flags": [],
+      "tip": "2026-05-10T19:30:00+00:00",
+      "us_game_date": "2026-05-10",
+      "captured_at": "2026-05-10T18:40:06.276391+10:00",
+      "drive_modified_at": "2026-05-10T08:45:05.811Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-11 NBA Analysis/nba_game_data_SAS_MIN.json",
+      "flags": [],
+      "tip": "2026-05-10T23:30:00+00:00",
+      "us_game_date": "2026-05-10",
+      "captured_at": "2026-05-10T18:45:23.083410+10:00",
+      "drive_modified_at": "2026-05-10T08:49:50.904Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-14 NBA Analysis/nba_game_data_CLE_DET.json",
+      "flags": [],
+      "tip": "2026-05-14T00:00:00+00:00",
+      "us_game_date": "2026-05-13",
+      "captured_at": "2026-05-13T16:02:28.156642+10:00",
+      "drive_modified_at": "2026-05-13T06:08:46.317Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-16 NBA Analysis/nba_game_data_DET_CLE.json",
+      "flags": [],
+      "tip": "2026-05-15T23:00:00+00:00",
+      "us_game_date": "2026-05-15",
+      "captured_at": "2026-05-15T22:36:37.692397+10:00",
+      "drive_modified_at": "2026-05-15T12:41:37.894Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-16 NBA Analysis/nba_game_data_SAS_MIN.json",
+      "flags": [],
+      "tip": "2026-05-16T01:30:00+00:00",
+      "us_game_date": "2026-05-15",
+      "captured_at": "2026-05-15T22:41:49.313242+10:00",
+      "drive_modified_at": "2026-05-15T12:46:09.140Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-05-17 NBA Analysis/nba_game_data_CLE_DET.json",
+      "flags": [],
+      "tip": "2026-05-18T00:00:00+00:00",
+      "us_game_date": "2026-05-17",
+      "captured_at": "2026-05-16T22:29:39.056517+10:00",
+      "drive_modified_at": "2026-05-16T12:35:56.219Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-06-04 NBA Analysis/nba_game_data_NYK_SAS.json",
+      "flags": [],
+      "tip": "2026-06-04T00:30:00+00:00",
+      "us_game_date": "2026-06-03",
+      "captured_at": "2026-06-03T23:54:25.790887+10:00",
+      "drive_modified_at": "2026-06-03T13:58:58.789Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-06-06 NBA Analysis/nba_game_data_NYK_SAS.json",
+      "flags": [],
+      "tip": "2026-06-06T00:30:00+00:00",
+      "us_game_date": "2026-06-05",
+      "captured_at": "2026-06-05T22:29:47.855130+10:00",
+      "drive_modified_at": "2026-06-05T12:34:15.788Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-06-09 NBA Analysis/nba_game_data_SAS_NYK.json",
+      "flags": [],
+      "tip": "2026-06-09T00:30:00+00:00",
+      "us_game_date": "2026-06-08",
+      "captured_at": "2026-06-08T21:45:46.304603+10:00",
+      "drive_modified_at": "2026-06-08T11:50:20.915Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/2026-06-11 NBA Analysis/nba_game_data_SAS_NYK.json",
+      "flags": [],
+      "tip": "2026-06-11T00:30:00+00:00",
+      "us_game_date": "2026-06-10",
+      "captured_at": "2026-06-10T21:13:34.546013+10:00",
+      "drive_modified_at": "2026-06-10T11:17:56.195Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_BOS_NY.json",
+      "flags": [
+        "drive_modified_after_tip"
+      ],
+      "tip": "2026-04-09T23:30:00+00:00",
+      "us_game_date": "2026-04-09",
+      "captured_at": "2026-04-09T03:10:50.035768+10:00",
+      "drive_modified_at": "2026-05-14T04:14:51.192Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_CHI_WSH.json",
+      "flags": [
+        "drive_modified_after_tip"
+      ],
+      "tip": "2026-04-09T23:00:00+00:00",
+      "us_game_date": "2026-04-09",
+      "captured_at": "2026-04-10T00:33:29.524304+10:00",
+      "drive_modified_at": "2026-05-14T04:14:51.357Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_CLE_ATL.json",
+      "flags": [
+        "drive_modified_after_tip"
+      ],
+      "tip": "2026-04-10T23:00:00+00:00",
+      "us_game_date": "2026-04-10",
+      "captured_at": "2026-04-10T00:37:02.381289+10:00",
+      "drive_modified_at": "2026-05-14T04:14:57.604Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_DET_CHA.json",
+      "flags": [
+        "drive_modified_after_tip"
+      ],
+      "tip": "2026-04-10T23:00:00+00:00",
+      "us_game_date": "2026-04-10",
+      "captured_at": "2026-04-10T00:31:45.060587+10:00",
+      "drive_modified_at": "2026-05-14T04:15:02.441Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_IND_BKN.json",
+      "flags": [
+        "drive_modified_after_tip"
+      ],
+      "tip": "2026-04-09T23:30:00+00:00",
+      "us_game_date": "2026-04-09",
+      "captured_at": "2026-04-09T03:07:40.927909+10:00",
+      "drive_modified_at": "2026-05-14T04:15:02.632Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_LAL_GS.json",
+      "flags": [
+        "drive_modified_after_tip"
+      ],
+      "tip": "2026-04-10T02:00:00+00:00",
+      "us_game_date": "2026-04-09",
+      "captured_at": "2026-04-09T03:16:14.875954+10:00",
+      "drive_modified_at": "2026-05-14T04:15:01.501Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_MIA_TOR.json",
+      "flags": [
+        "drive_modified_after_tip"
+      ],
+      "tip": "2026-04-09T23:00:00+00:00",
+      "us_game_date": "2026-04-09",
+      "captured_at": "2026-04-09T02:37:13.072460+10:00",
+      "drive_modified_at": "2026-05-14T04:15:02.154Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_MIA_WSH.json",
+      "flags": [
+        "drive_modified_after_tip"
+      ],
+      "tip": "2026-04-10T23:00:00+00:00",
+      "us_game_date": "2026-04-10",
+      "captured_at": "2026-04-10T00:34:46.662252+10:00",
+      "drive_modified_at": "2026-05-14T04:15:02.597Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_NO_BOS.json",
+      "flags": [
+        "drive_modified_after_tip"
+      ],
+      "tip": "2026-04-10T23:30:00+00:00",
+      "us_game_date": "2026-04-10",
+      "captured_at": "2026-04-10T00:39:59.390615+10:00",
+      "drive_modified_at": "2026-05-14T04:15:01.955Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_PHI_HOU.json",
+      "flags": [
+        "drive_modified_after_tip"
+      ],
+      "tip": "2026-04-10T00:00:00+00:00",
+      "us_game_date": "2026-04-09",
+      "captured_at": "2026-04-09T03:13:26.028631+10:00",
+      "drive_modified_at": "2026-05-14T04:15:02.122Z"
+    },
+    {
+      "file": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/codex-nba-remediation-20261023/corpus/nba_analysis_20260410/nba_game_data_PHI_IND.json",
+      "flags": [
+        "drive_modified_after_tip"
+      ],
+      "tip": "2026-04-10T23:30:00+00:00",
+      "us_game_date": "2026-04-10",
+      "captured_at": "2026-04-10T00:43:30.203334+10:00",
+      "drive_modified_at": "2026-05-14T04:15:02.564Z"
+    }
+  ],
+  "target_or_future_logs": []
+}

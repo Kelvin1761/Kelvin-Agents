@@ -9,7 +9,8 @@ Usage:
   from nba_ml_predictor import MLPropPredictor
 
   predictor = MLPropPredictor("NBA_ML_Dataset/models/v2")
-  prob = predictor.predict(player_features, stat="PTS", line=25.5)
+  features = predictor.build_features(player_data, "PTS", 25, 1, "BOS")
+  prob = predictor.predict(features)
 """
 
 import os
@@ -28,8 +29,7 @@ from wongchoi_paths import NBA_ML_DATASET
 MODEL_DIR = os.environ.get("NBA_WC_MODEL_DIR") or str(NBA_ML_DATASET / "models" / "v3")
 
 
-# Training-parity constants (build_nba_ml_dataset.py). The model was trained
-# with these conventions; live inputs must be built the same way.
+# Legacy v3 shadow compatibility only. v2 uses nba_ml_features and its persisted imputer.
 TRAIN_PACE_BASELINE = 98.0   # build_nba_ml_dataset.py: pace_adj uses (opp_pace-98)/98
 TRAIN_USG_BONUS_PCT = 0      # training never populated usg_bonus_pct (always 0)
 
@@ -63,7 +63,9 @@ def training_pace_projected(l10_avg, opp_pace):
 class MLPropPredictor:
     """Loads trained model and predicts prop hit probability."""
 
-    def __init__(self, model_dir=MODEL_DIR):
+    def __init__(self, model_dir=None):
+        if model_dir is None:
+            model_dir = os.environ.get("NBA_WC_MODEL_DIR") or MODEL_DIR
         model_path = os.path.join(model_dir, "model.pkl")
         feat_path = os.path.join(model_dir, "feature_names.json")
 
@@ -76,6 +78,23 @@ class MLPropPredictor:
         with open(feat_path) as f:
             meta = json.load(f)
         self.feature_names = meta.get("features", [])
+        self.feature_contract = meta.get("feature_contract", "legacy-unverified")
+        self.deployment_eligible = meta.get("deployment_eligible", False)
+        if not isinstance(self.deployment_eligible,bool):raise ValueError('invalid deployment eligibility metadata')
+        if (not isinstance(self.feature_names,list) or not self.feature_names
+                or any(not isinstance(name,str) for name in self.feature_names)
+                or len(set(self.feature_names))!=len(self.feature_names)):raise ValueError('invalid feature metadata')
+        from nba_ml_features import FEATURE_CONTRACT, FEATURE_COLS
+        if self.feature_contract==FEATURE_CONTRACT and self.feature_names!=FEATURE_COLS:
+            raise ValueError('v2 feature order/contract mismatch')
+        if self.feature_contract==FEATURE_CONTRACT:
+            from nba_ml_pit import sha
+            if meta.get("model_sha256")!=sha(model_path):raise ValueError('model/metadata hash mismatch')
+            if meta.get("feature_constructor_sha256")!=sha(_Path(__file__).with_name('nba_ml_features.py')):
+                raise ValueError('training/serving feature constructor changed')
+            if not hasattr(self.model,'named_steps') or 'imputer' not in self.model.named_steps:
+                raise ValueError('v2 artifact has no persisted preprocessing Pipeline')
+        if self.feature_contract!=FEATURE_CONTRACT:self.deployment_eligible=False
 
         self.stat_map = {"PTS": "pts", "REB": "reb", "AST": "ast", "FG3M": "fg3m"}
         print(f"🏀 MLPropPredictor loaded: {os.path.basename(model_dir)}")
@@ -87,35 +106,24 @@ class MLPropPredictor:
         row_dict: dict with keys matching feature_names.
         Returns probability (0-1) that prop hits.
         """
-        df = pd.DataFrame([row_dict])
-        for col in self.feature_names:
-            if col not in df.columns:
-                df[col] = 0
-        X = df[self.feature_names].fillna(0)
-        # Convert any string "N/A" or similar to 0
-        for col in X.columns:
-            if X[col].dtype == object:
-                X[col] = pd.to_numeric(X[col], errors='coerce').fillna(0)
-        prob = self.model.predict_proba(X)[0, 1]
-        return round(float(prob), 4)
+        return self.predict_batch([row_dict])[0]
 
     def predict_batch(self, rows):
-        """Predict hit probabilities for multiple props.
-
-        rows: list of dicts.
-        Returns list of probabilities.
-        """
-        df = pd.DataFrame(rows)
-        for col in self.feature_names:
-            if col not in df.columns:
-                df[col] = 0
-        X = df[self.feature_names].fillna(0)
-        probs = self.model.predict_proba(X)[:, 1]
-        return [round(float(p), 4) for p in probs]
+        """Use the persisted v2 imputer; preserve legacy shadow compatibility."""
+        from nba_ml_features import FEATURE_CONTRACT
+        if not rows:return []
+        frame=pd.DataFrame(rows).reindex(columns=self.feature_names)
+        X=frame.apply(pd.to_numeric,errors='coerce').replace([np.inf,-np.inf],np.nan)
+        if getattr(self,'feature_contract','legacy-unverified')!=FEATURE_CONTRACT:
+            X=X.fillna(0)
+        probabilities=self.model.predict_proba(X)[:,1]
+        if not np.isfinite(probabilities).all() or ((probabilities<0)|(probabilities>1)).any():
+            raise ValueError('model returned invalid probability')
+        return [round(float(value),4) for value in probabilities]
 
     def build_features(self, player_data, stat, line_value, is_home, opp_abbr,
-                       opp_def_rating=0, opp_def_rank=0, opp_pace=98.0,
-                       defender_pm=0, usg_bonus_pct=0):
+                       opp_def_rating=None, opp_def_rank=None, opp_pace=None,
+                       defender_pm=None, usg_bonus_pct=None):
         """Build feature dict from player_data JSON + context.
 
         player_data: dict from nba_game_data.json's player entry.
@@ -129,6 +137,12 @@ class MLPropPredictor:
         defender_pm: defender plus-minus (from key_defenders)
         usg_bonus_pct: usage bonus from injuries (from usage_redistribution)
         """
+        from nba_ml_features import FEATURE_CONTRACT, build_features
+        if getattr(self,'feature_contract','legacy-unverified')==FEATURE_CONTRACT:
+            return build_features(player_data,stat,line_value,is_home,opp_abbr,
+                opp_def_rating=opp_def_rating,opp_def_rank=opp_def_rank,opp_pace=opp_pace,
+                defender_pm=defender_pm,usg_bonus_pct=usg_bonus_pct)
+        opp_pace = 98.0 if opp_pace is None else opp_pace
         gl = player_data.get("gamelog") or {}
         gl_stats = gl.get(f"{stat}_stats") or {}
         arr = gl.get(stat) or []

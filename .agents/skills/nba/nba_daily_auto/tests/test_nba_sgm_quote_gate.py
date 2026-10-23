@@ -170,3 +170,26 @@ def test_dashboard_exports_frozen_sgm_price_and_adjusted_probability(tmp_path):
     assert combo['quote_expires_at'] == quoted.quote['expires_at']
     banker = next(row for row in snapshot['recommendations'] if row['bet_type'] == 'single')
     assert banker['odds_status'] == 'sportsbet_extracted'
+
+
+def test_publication_checks_availability_even_when_quote_is_valid(tmp_path):
+    import nba_availability as availability
+    from nba_data_contract import NBA_STATISTICS_CONTRACT
+    odds,legs=inputs();quoted=q.quote_combo(odds,legs,now=NOW,post=post_price(2))
+    text=r.gen_combo_section('組合 1: test','','',quoted)
+    maps={team:availability.InjuryMap({},[leg['player'],*[f'Roster Member {i}' for i in range(4)]],NOW.isoformat())
+          for team,leg in zip(('BOS','LAL'),legs)}
+    packet=availability.apply_availability({'meta':{'date':odds['event_start_time'],'away':{'abbr':'BOS'},'home':{'abbr':'LAL'},
+        'statistics_contract':NBA_STATISTICS_CONTRACT},'players':{}},maps)
+    report=tmp_path/'Game_BOS_LAL_Full_Analysis.md';report.write_text(text)
+    source=tmp_path/'odds.json';source.write_text(json.dumps(odds))
+    payload=r.build_market_eval_sidecar(text,odds,{},[],{'combos':{'1':quoted},'availability':packet},'hybrid')
+    sidecar=Path(str(report)+'.market_legs.json');sidecar.write_text(json.dumps(payload))
+    assert not v.check_fw13_sgm_quotes(text,report,source,now=NOW)
+    assert not v.check_fw14_availability(text,report,now=NOW)
+    assert v.check_fw14_availability(text,report,now=NOW+timedelta(minutes=31))
+    payload['availability']['meta']['statistics_contract']=1;sidecar.write_text(json.dumps(payload))
+    assert v.check_fw14_availability(text,report,now=NOW)
+    payload['availability']=None;sidecar.write_text(json.dumps(payload))
+    assert v.check_fw14_availability(text,report,now=NOW)
+    assert any('FW-14' in issue for issue in v.validate_file(str(report),str(source))['blocks'])

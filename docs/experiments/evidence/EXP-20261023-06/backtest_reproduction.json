@@ -1,0 +1,84 @@
+{
+  "model_sha256": "4e0ad61caafb8f079d82c3fd1f997892ca3fccc138ba083f0f785f898e459005",
+  "dataset_sha256": "16b378cd914d1d684609760eb0edbeb6d4648d52a7b5552faba10fd45c3a7e0d",
+  "training_end_date": "2026-05-15",
+  "excluded_in_sample_rows": 7344,
+  "rows": 942,
+  "dates": [
+    "2026-05-17",
+    "2026-06-03",
+    "2026-06-05",
+    "2026-06-08",
+    "2026-06-10"
+  ],
+  "evaluation_status": "historical_terminal_reproduction",
+  "promotion_authorized": false,
+  "metrics": {
+    "accuracy": 0.7303609341825902,
+    "precision": 0.6795180722891566,
+    "recall": 0.6997518610421837,
+    "f1": 0.6894865525672371,
+    "roc_auc": 0.7958193879852865,
+    "brier_score": 0.1822194315073076,
+    "log_loss": 0.5457210564384873
+  },
+  "comparisons": {
+    "raw_l10": {
+      "metrics": {
+        "accuracy": 0.732484076433121,
+        "precision": 0.6696629213483146,
+        "recall": 0.739454094292804,
+        "f1": 0.7028301886792453,
+        "roc_auc": 0.7887481182412057,
+        "brier_score": 0.18759023354564758,
+        "log_loss": 0.897116250924195
+      },
+      "paired_brier_delta_model_minus_comparator": -0.005370802038339947,
+      "paired_date_bootstrap_95": [
+        -0.011562475005604889,
+        1.7338726333677047e-05
+      ],
+      "date_clusters": 5,
+      "replicates": 2000,
+      "seed": 20261023
+    },
+    "market_raw_vig_inclusive": {
+      "metrics": {
+        "accuracy": 0.7569002123142251,
+        "precision": 0.7219387755102041,
+        "recall": 0.7022332506203474,
+        "f1": 0.7119496855345911,
+        "roc_auc": 0.8181288757325623,
+        "brier_score": 0.17198970381249543,
+        "log_loss": 0.521709510339431
+      },
+      "paired_brier_delta_model_minus_comparator": 0.010229727694812172,
+      "paired_date_bootstrap_95": [
+        -0.0011236812610133779,
+        0.019775389515016565
+      ],
+      "date_clusters": 5,
+      "replicates": 2000,
+      "seed": 20261023
+    },
+    "current_C_historical_fit": {
+      "metrics": {
+        "accuracy": 0.7558386411889597,
+        "precision": 0.7478510028653295,
+        "recall": 0.6476426799007444,
+        "f1": 0.6941489361702128,
+        "roc_auc": 0.8172633817795107,
+        "brier_score": 0.1710710371549894,
+        "log_loss": 0.5167567934939492
+      },
+      "paired_brier_delta_model_minus_comparator": 0.01114839435231823,
+      "paired_date_bootstrap_95": [
+        0.001561859058434976,
+        0.01995838859884235
+      ],
+      "date_clusters": 5,
+      "replicates": 2000,
+      "seed": 20261023
+    }
+  }
+}

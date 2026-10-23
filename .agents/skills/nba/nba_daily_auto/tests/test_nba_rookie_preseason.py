@@ -57,6 +57,7 @@ def test_preseason_roster_retains_rookie_when_five_veterans_have_usage():
 
 @pytest.mark.parametrize('meta,valid',[({'season_phase':'PRESEASON'},False),({'season_phase':'PRESEASON','preseason_rookie_history_contract':1},True),({'season_phase':'REGULAR_SEASON'},True)])
 def test_stale_preseason_cache_requires_reextraction(tmp_path,meta,valid):
+    meta = {**meta, 'statistics_contract':2, 'defender_source':{'per_mode':'Totals','sample_unit':'total_attempts','observed_players':20}}
     p=tmp_path/'data.json';p.write_text(json.dumps({'meta':meta}))
     assert o.extractor_cache_current(str(p)) is valid
 

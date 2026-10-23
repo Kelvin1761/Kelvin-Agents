@@ -1,0 +1,521 @@
+{
+  "status": "complete",
+  "base_commit": "0bffbeb674d32ef9cc79722c931751c35250315a",
+  "cases": 50,
+  "unique_games": 49,
+  "legs": 8606,
+  "labeled_legs": 8286,
+  "label_identities_absent_from_renderer": [],
+  "baseline_formal_prequote_combos": 0,
+  "arms": {
+    "injury_status": {
+      "cases": 50,
+      "legs": 8606,
+      "formal_prequote_combos": 0,
+      "combo_membership_changes": 0,
+      "probabilities": {
+        "p_final": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.1702495266714941,
+          "candidate_brier": 0.1702495266714941,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        },
+        "p_hit_rate_10f": {
+          "changed_rows": 2471,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.050000000000000044,
+          "baseline_brier": 0.1917853487810765,
+          "candidate_brier": 0.19119584841902001,
+          "paired_brier_delta": -0.0005895003620564813,
+          "paired_date_bootstrap_95": [
+            -0.0010178106022419057,
+            -0.00014792576519474972
+          ],
+          "date_clusters": 24
+        },
+        "p_monte_carlo": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.18302560511706492,
+          "candidate_brier": 0.18302560511706492,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        }
+      }
+    },
+    "mc_usage": {
+      "cases": 50,
+      "legs": 8606,
+      "formal_prequote_combos": 0,
+      "combo_membership_changes": 0,
+      "probabilities": {
+        "p_final": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.1702495266714941,
+          "candidate_brier": 0.1702495266714941,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        },
+        "p_hit_rate_10f": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.1917853487810765,
+          "candidate_brier": 0.1917853487810765,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        },
+        "p_monte_carlo": {
+          "changed_rows": 232,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.31100000000000005,
+          "baseline_brier": 0.18302560511706492,
+          "candidate_brier": 0.18297744822592324,
+          "paired_brier_delta": -4.815689114168479e-05,
+          "paired_date_bootstrap_95": [
+            -0.000279197129151582,
+            0.00012592468334704423
+          ],
+          "date_clusters": 24
+        }
+      }
+    },
+    "team_pace": {
+      "cases": 50,
+      "legs": 8606,
+      "formal_prequote_combos": 0,
+      "combo_membership_changes": 0,
+      "probabilities": {
+        "p_final": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.1702495266714941,
+          "candidate_brier": 0.1702495266714941,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        },
+        "p_hit_rate_10f": {
+          "changed_rows": 559,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.030000000000000027,
+          "baseline_brier": 0.1917853487810765,
+          "candidate_brier": 0.19191652184407434,
+          "paired_brier_delta": 0.00013117306299782777,
+          "paired_date_bootstrap_95": [
+            -8.61347897698284e-06,
+            0.0003305147175637346
+          ],
+          "date_clusters": 24
+        },
+        "p_monte_carlo": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.18302560511706492,
+          "candidate_brier": 0.18302560511706492,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        }
+      }
+    },
+    "blowout": {
+      "cases": 50,
+      "legs": 8606,
+      "formal_prequote_combos": 0,
+      "combo_membership_changes": 0,
+      "probabilities": {
+        "p_final": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.1702495266714941,
+          "candidate_brier": 0.1702495266714941,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        },
+        "p_hit_rate_10f": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.1917853487810765,
+          "candidate_brier": 0.1917853487810765,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        },
+        "p_monte_carlo": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.18302560511706492,
+          "candidate_brier": 0.18302560511706492,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        }
+      }
+    },
+    "full": {
+      "cases": 50,
+      "legs": 8606,
+      "formal_prequote_combos": 0,
+      "combo_membership_changes": 0,
+      "probabilities": {
+        "p_final": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.1702495266714941,
+          "candidate_brier": 0.1702495266714941,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        },
+        "p_hit_rate_10f": {
+          "changed_rows": 2795,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.050000000000000044,
+          "baseline_brier": 0.1917853487810765,
+          "candidate_brier": 0.19133696596669078,
+          "paired_brier_delta": -0.0004483828143857113,
+          "paired_date_bootstrap_95": [
+            -0.0008705054527097652,
+            -1.2404379160830911e-05
+          ],
+          "date_clusters": 24
+        },
+        "p_monte_carlo": {
+          "changed_rows": 2645,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.49200000000000005,
+          "baseline_brier": 0.18302560511706492,
+          "candidate_brier": 0.1823376054791214,
+          "paired_brier_delta": -0.0006879996379435202,
+          "paired_date_bootstrap_95": [
+            -0.002222997891269423,
+            0.00065248219335812
+          ],
+          "date_clusters": 24
+        }
+      }
+    },
+    "minus_injury_status": {
+      "cases": 50,
+      "legs": 8606,
+      "formal_prequote_combos": 0,
+      "combo_membership_changes": 0,
+      "probabilities": {
+        "p_final": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.1702495266714941,
+          "candidate_brier": 0.1702495266714941,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        },
+        "p_hit_rate_10f": {
+          "changed_rows": 559,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.030000000000000027,
+          "baseline_brier": 0.1917853487810765,
+          "candidate_brier": 0.19191652184407434,
+          "paired_brier_delta": 0.00013117306299782777,
+          "paired_date_bootstrap_95": [
+            -8.61347897698284e-06,
+            0.0003305147175637346
+          ],
+          "date_clusters": 24
+        },
+        "p_monte_carlo": {
+          "changed_rows": 232,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.31100000000000005,
+          "baseline_brier": 0.18302560511706492,
+          "candidate_brier": 0.18297744822592324,
+          "paired_brier_delta": -4.815689114168479e-05,
+          "paired_date_bootstrap_95": [
+            -0.000279197129151582,
+            0.00012592468334704423
+          ],
+          "date_clusters": 24
+        }
+      }
+    },
+    "minus_mc_usage": {
+      "cases": 50,
+      "legs": 8606,
+      "formal_prequote_combos": 0,
+      "combo_membership_changes": 0,
+      "probabilities": {
+        "p_final": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.1702495266714941,
+          "candidate_brier": 0.1702495266714941,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        },
+        "p_hit_rate_10f": {
+          "changed_rows": 2795,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.050000000000000044,
+          "baseline_brier": 0.1917853487810765,
+          "candidate_brier": 0.19133696596669078,
+          "paired_brier_delta": -0.0004483828143857113,
+          "paired_date_bootstrap_95": [
+            -0.0008705054527097652,
+            -1.2404379160830911e-05
+          ],
+          "date_clusters": 24
+        },
+        "p_monte_carlo": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.18302560511706492,
+          "candidate_brier": 0.18302560511706492,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        }
+      }
+    },
+    "minus_team_pace": {
+      "cases": 50,
+      "legs": 8606,
+      "formal_prequote_combos": 0,
+      "combo_membership_changes": 0,
+      "probabilities": {
+        "p_final": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.1702495266714941,
+          "candidate_brier": 0.1702495266714941,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        },
+        "p_hit_rate_10f": {
+          "changed_rows": 2471,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.050000000000000044,
+          "baseline_brier": 0.1917853487810765,
+          "candidate_brier": 0.19119584841902001,
+          "paired_brier_delta": -0.0005895003620564813,
+          "paired_date_bootstrap_95": [
+            -0.0010178106022419057,
+            -0.00014792576519474972
+          ],
+          "date_clusters": 24
+        },
+        "p_monte_carlo": {
+          "changed_rows": 2645,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.49200000000000005,
+          "baseline_brier": 0.18302560511706492,
+          "candidate_brier": 0.1823376054791214,
+          "paired_brier_delta": -0.0006879996379435202,
+          "paired_date_bootstrap_95": [
+            -0.002222997891269423,
+            0.00065248219335812
+          ],
+          "date_clusters": 24
+        }
+      }
+    },
+    "minus_blowout": {
+      "cases": 50,
+      "legs": 8606,
+      "formal_prequote_combos": 0,
+      "combo_membership_changes": 0,
+      "probabilities": {
+        "p_final": {
+          "changed_rows": 0,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.0,
+          "baseline_brier": 0.1702495266714941,
+          "candidate_brier": 0.1702495266714941,
+          "paired_brier_delta": 0.0,
+          "paired_date_bootstrap_95": [
+            0.0,
+            0.0
+          ],
+          "date_clusters": 24
+        },
+        "p_hit_rate_10f": {
+          "changed_rows": 2795,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.050000000000000044,
+          "baseline_brier": 0.1917853487810765,
+          "candidate_brier": 0.19133696596669078,
+          "paired_brier_delta": -0.0004483828143857113,
+          "paired_date_bootstrap_95": [
+            -0.0008705054527097652,
+            -1.2404379160830911e-05
+          ],
+          "date_clusters": 24
+        },
+        "p_monte_carlo": {
+          "changed_rows": 2645,
+          "labeled_rows": 8286,
+          "missing": 0,
+          "max_abs_probability_change": 0.49200000000000005,
+          "baseline_brier": 0.18302560511706492,
+          "candidate_brier": 0.1823376054791214,
+          "paired_brier_delta": -0.0006879996379435202,
+          "paired_date_bootstrap_95": [
+            -0.002222997891269423,
+            0.00065248219335812
+          ],
+          "date_clusters": 24
+        }
+      }
+    }
+  },
+  "full_minus_feature_mc": {
+    "injury_status": {
+      "changed_rows": 2667,
+      "labeled_rows": 8286,
+      "missing": 0,
+      "max_abs_probability_change": 0.49200000000000005,
+      "baseline_brier": 0.18297744822592324,
+      "candidate_brier": 0.1823376054791214,
+      "paired_brier_delta": -0.0006398427468018354,
+      "paired_date_bootstrap_95": [
+        -0.0020358305828947526,
+        0.000573256526224442
+      ],
+      "date_clusters": 24
+    },
+    "mc_usage": {
+      "changed_rows": 2645,
+      "labeled_rows": 8286,
+      "missing": 0,
+      "max_abs_probability_change": 0.49200000000000005,
+      "baseline_brier": 0.18302560511706492,
+      "candidate_brier": 0.1823376054791214,
+      "paired_brier_delta": -0.0006879996379435202,
+      "paired_date_bootstrap_95": [
+        -0.002222997891269423,
+        0.00065248219335812
+      ],
+      "date_clusters": 24
+    },
+    "team_pace": {
+      "changed_rows": 0,
+      "labeled_rows": 8286,
+      "missing": 0,
+      "max_abs_probability_change": 0.0,
+      "baseline_brier": 0.1823376054791214,
+      "candidate_brier": 0.1823376054791214,
+      "paired_brier_delta": 0.0,
+      "paired_date_bootstrap_95": [
+        0.0,
+        0.0
+      ],
+      "date_clusters": 24
+    },
+    "blowout": {
+      "changed_rows": 0,
+      "labeled_rows": 8286,
+      "missing": 0,
+      "max_abs_probability_change": 0.0,
+      "baseline_brier": 0.1823376054791214,
+      "candidate_brier": 0.1823376054791214,
+      "paired_brier_delta": 0.0,
+      "paired_date_bootstrap_95": [
+        0.0,
+        0.0
+      ],
+      "date_clusters": 24
+    }
+  },
+  "interpretation": "Fixed historical diagnostics only. C coefficients unchanged; no new model or parameter is selected here. SGM bookmaker quotes are outside this experiment."
+}

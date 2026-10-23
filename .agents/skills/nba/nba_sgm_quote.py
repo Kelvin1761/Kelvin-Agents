@@ -17,6 +17,7 @@ class QuotedCombo(list):
     def __init__(self, legs, quote):
         super().__init__(legs)
         self.quote = quote
+        self.selection_rule = getattr(legs, "selection_rule", None)
 
 
 def quote_legs(legs):

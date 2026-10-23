@@ -419,6 +419,7 @@ def record_snapshot(
                 "price_at_model": price, "odds_captured_at": _iso(model_captured),
                 **{name: _float(leg.get(name)) for name in (*MODEL_VARIANTS, "p_l10_base_rate")},
                 "engine": leg.get("engine"),
+                "mc_model_version": leg.get("mc_model_version"),
                 "probability_model_id": leg.get("probability_model_id"),
                 # SHADOW fit layer: recorded for forward evidence, deliberately
                 # not in MODEL_VARIANTS so evaluate() is untouched.

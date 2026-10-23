@@ -121,3 +121,20 @@ def test_legacy_cache_without_provenance_is_stale():
     old = package()
     del old["meta"]["availability"]
     assert not a.availability_current(old, now=NOW)
+
+
+def test_cached_player_outside_verified_roster_is_excluded_without_injury_donation():
+    original=package()
+    original['players']['BOS']=[
+        {'name':NAMES[0],'advanced':{'USG_PCT':30},'gamelog':{'PTS':[20]}},
+        {'name':NAMES[1],'advanced':{'USG_PCT':20},'gamelog':{'PTS':[15]}},
+        {'name':'Former Teammate','advanced':{'USG_PCT':50},'gamelog':{'PTS':[30]}},
+    ]
+    updated=a.apply_availability(original,maps())
+    departed=updated['players']['BOS'][2]
+    assert departed['roster_verified'] is False
+    assert departed['status']=='Not On Verified Roster'
+    assert a.classify_injury_status(updated['injuries']['BOS']['Former Teammate'])=='out'
+    assert updated['usage_redistribution']['BOS'][NAMES[1]]['bonus_USG']==30  # not 80
+    assert departed['gamelog']==original['players']['BOS'][2]['gamelog']
+    assert a.availability_current(updated,now=NOW)

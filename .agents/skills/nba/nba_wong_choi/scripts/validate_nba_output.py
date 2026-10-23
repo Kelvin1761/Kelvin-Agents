@@ -422,6 +422,7 @@ def validate_file(filepath: str, odds_json_path: str = None) -> dict:
     all_issues.extend(check_fw11_combo_gates(content))
     all_issues.extend(check_fw12_engine_markers(content))
     all_issues.extend(check_fw13_sgm_quotes(content, filepath, odds_json_path))
+    all_issues.extend(check_fw14_availability(content, filepath))
 
     blocks = [i for i in all_issues if "BLOCK" in i]
     warns = [i for i in all_issues if "WARN" in i]
@@ -478,6 +479,31 @@ def check_fw13_sgm_quotes(content, filepath, odds_json_path, *, now=None):
                 raise ValueError('price/probability/EV mismatch')
     except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
         return [f'FW-13 ❌ BLOCK: SGM quote verification failed ({exc})']
+    return []
+
+
+def check_fw14_availability(content,filepath,*,now=None):
+    """Other-domain dashboard rebuilds must honor the same source-data gate."""
+    if not re.search(r'^### .*?組合\s+(?:\d+|X).*?組合賠率\s*@',content,re.MULTILINE):
+        return []
+    from nba_availability import availability_current
+    from nba_data_contract import NBA_STATISTICS_CONTRACT
+    import hashlib
+    try:
+        sidecar=json.loads(Path(str(filepath)+'.market_legs.json').read_text())
+        packet=sidecar.get('availability') or {}
+        meta=packet.get('meta') or {}
+        if (sidecar.get('report_sha256')!=hashlib.sha256(content.encode()).hexdigest()
+                or not availability_current(packet,now=now)
+                or meta.get('statistics_contract')!=NBA_STATISTICS_CONTRACT):
+            raise ValueError('stale/unverified availability or old statistics contract')
+        rosters=meta['availability']['rosters']
+        for combo in sidecar.get('combos') or []:
+            for leg in combo['legs']:
+                if player_name_key(leg['player']) not in {player_name_key(name) for name in rosters[leg['team']]}:
+                    raise ValueError('recommended player not on verified team roster')
+    except (OSError,ValueError,TypeError,KeyError,AttributeError) as exc:
+        return [f'FW-14 ❌ BLOCK: source availability verification failed ({exc})']
     return []
 
 

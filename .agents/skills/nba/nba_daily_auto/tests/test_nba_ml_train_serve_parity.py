@@ -56,6 +56,7 @@ def payload(with_x5_lines=True):
                        "DET": {"DEF_RATING": 108.9, "DEF_RANK": 2, "PACE": 99.88}},
         "key_defenders": {"BOS": [{"PCT_PLUSMINUS": -0.031}, {"PCT_PLUSMINUS": 0.02}, {"PCT_PLUSMINUS": 0.05}],
                           "DET": [{"PCT_PLUSMINUS": 0.044}, {"PCT_PLUSMINUS": -0.01}]},
+        "injuries": {"BOS": {}, "DET": {}},
         "usage_redistribution": {"DET": {"Test Star": {"bonus_USG": 3.4}}},
         "players": {"BOS": [], "DET": [player]},
     }, player
@@ -72,16 +73,14 @@ def training_row(data, line):
 
 
 def live_features(player, line):
-    """Live path. The opp_* arguments are what the TRAINING builder resolves for
-    this DET (home) player, i.e. DET's own stats -- see
-    test_training_builder_resolves_opponent_to_own_team -- so every other
-    feature can be compared like for like."""
+    """v2 serving resolves the same true opponent and verified injury map."""
     p = predictor.MLPropPredictor.__new__(predictor.MLPropPredictor)  # no model needed
+    p.feature_contract = "nba-ml-features/v2"
     return p.build_features(
         player, "PTS", line, 1, "BOS",
-        opp_def_rating=108.9, opp_def_rank=2, opp_pace=99.88,
-        defender_pm=0.044,       # TOP defender, as training does
-        usg_bonus_pct=3.4)       # live nonzero; training is always 0
+        opp_def_rating=111.7, opp_def_rank=4, opp_pace=95.58,
+        defender_pm=-0.031,      # actual opponent BOS top defender
+        usg_bonus_pct=0)        # no confirmed absences; stale precomputed bonus ignored
 
 
 class ParityTests(unittest.TestCase):
@@ -107,24 +106,19 @@ class ParityTests(unittest.TestCase):
         _, player = payload(True)
         live = live_features(player, 25)
         self.assertEqual(live["pace_projected"],
-                         predictor.training_pace_projected(stats(PTS)["avg"], 99.88))
+                         predictor.training_pace_projected(stats(PTS)["avg"], 95.58))
         self.assertNotEqual(live["pace_projected"], 29.9)
 
-    def test_training_builder_resolves_opponent_to_own_team(self):
-        """KNOWN TRAINING DEFECT (documented, not fixed here: no retraining).
-
-        build_nba_ml_dataset.extract_game_data sets
-        ``opp_abbr = home_abbr if is_home else away_abbr``, which is the
-        player's OWN team, so opp_def_rating / opp_def_rank / opp_pace /
-        defender_pm in the training set are own-team values. Live passes the
-        true opponent. If this test starts failing the builder was fixed:
-        revisit docs/experiments EXP-20261021-01 before retraining.
-        """
+    def test_training_builder_resolves_true_opponent(self):
         data, _ = payload(True)
         row = training_row(data, 10)
         self.assertEqual(row["team"], "DET")
-        self.assertEqual(row["opponent"], "DET")
-        self.assertEqual(row["opp_pace"], 99.88)
+        self.assertEqual(row["opponent"], "BOS")
+        self.assertEqual(row["opp_pace"], 95.58)
+        self.assertEqual(row["defender_pm"], -0.031)
+        self.assertEqual(row["usg_bonus_pct"], 0)
+        self.assertEqual(row["feature_contract"], "nba-ml-features/v2")
+        self.assertEqual(row["pit_status"], "unverified")  # this synthetic fixture has no immutable snapshot
 
 
 if __name__ == "__main__":

@@ -65,6 +65,8 @@ def test_failing_predictor_in_build_player_card_is_counted() -> None:
 
 
 def _cache(tmp_path, payload) -> str:
+    # These fixtures isolate the team/advanced-data checks after migration.
+    payload['meta'].update(statistics_contract=2, defender_source={'per_mode':'Totals','sample_unit':'total_attempts','observed_players':20})
     p = tmp_path / "data.json"
     p.write_text(json.dumps(payload))
     return str(p)

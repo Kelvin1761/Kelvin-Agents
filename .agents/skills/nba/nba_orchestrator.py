@@ -309,6 +309,16 @@ def extractor_cache_current(path: str) -> bool:
         with open(path, encoding="utf-8") as source:
             payload = json.load(source)
         meta = payload.get("meta", {})
+        from nba_data_contract import NBA_STATISTICS_CONTRACT
+        if meta.get("statistics_contract") != NBA_STATISTICS_CONTRACT:
+            return False
+        defender_source = meta.get("defender_source") or {}
+        if (defender_source.get("per_mode") != "Totals"
+                or defender_source.get("sample_unit") != "total_attempts"
+                or not isinstance(defender_source.get("observed_players"), int)
+                or isinstance(defender_source.get("observed_players"), bool)
+                or defender_source["observed_players"] <= 0):
+            return False
         groups = payload.get("players", {})
         if not isinstance(groups, dict):
             return False
@@ -334,7 +344,7 @@ def extractor_cache_current(path: str) -> bool:
             if group and not any(player.get("advanced") for player in group):
                 return False
         return True
-    except (OSError, ValueError, AttributeError):
+    except (OSError, ValueError, TypeError, AttributeError):
         return False
 
 

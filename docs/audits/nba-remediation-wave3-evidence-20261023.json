@@ -1,0 +1,19 @@
+{
+  "files": {
+    "docs/experiments/evidence/EXP-20261023-06/artifact_metadata.json": "a04cd87b2463f049e692a5df006fcb4b9ad0012e6b0e30708f9989cbd3559917",
+    "docs/experiments/evidence/EXP-20261023-06/backtest_reproduction.json": "2ea78bf83691e938d1b3bc37507357a902e19bfde5aace3c652de34151300c38",
+    "docs/experiments/evidence/EXP-20261023-06/comparison_source_identity.json": "8a3db9105845c31f84df344b52f65f6c2091957fce1b43bb96167c1cd5fbcaa7",
+    "docs/experiments/evidence/EXP-20261023-06/dataset_meta.json": "dc80311a7965b485eaa65c08eaacd185f82f1233e5063181d42113f2d10ac8a5",
+    "docs/experiments/evidence/EXP-20261023-06/dataset_reproduction.json": "fdf557510d318498a2637071549652e3d913b02799e2e2d1bfa866815b9239a7",
+    "docs/experiments/evidence/EXP-20261023-06/metrics.json": "61f7ebdbd583d2aba3dea14d0aa6edae56926c08bf87a5cb04eb1f2510f56ed3",
+    "docs/experiments/evidence/EXP-20261023-06/protocol.json": "4ac407f80dc5e3f31f1cc7e57dc645f2712506da4c06b230a1998dd708b1378c",
+    "docs/experiments/evidence/EXP-20261023-06/rerun_consistency.json": "760061716a4640b3b4399175e60066031e2106980a465a41add6c2c5b521fa25",
+    "docs/experiments/evidence/EXP-20261023-07/defender_unit_parity.json": "b9c77a8eca015430eb1c543407ddebd8577beb489c593fc873048bd89f332127",
+    "docs/experiments/evidence/EXP-20261023-07/defender_units.json": "ea5455db0adf56ac0929976371463810d3322d167b411c0946e9d3e0a0e77a42",
+    "docs/experiments/evidence/EXP-20261023-07/paired_summary.json": "3299bd81358a9fd7c149e9f8a527a12c2f273cfa948ec6f4d4734de07670852e",
+    "docs/experiments/evidence/EXP-20261023-07/protocol.json": "2f1488706e717e346b32576b0ffcb2f9878e76a47b2d46837632a0e6b4fbb3b8",
+    "docs/experiments/evidence/EXP-20261023-07/temporal_coverage.json": "657cefd141eb3389580b6cb6cf714809adbcf46e5b2de045675937bfa77ce856"
+  },
+  "model_artifacts_retained_external_only": true,
+  "no_model_promotion": true
+}

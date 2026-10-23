@@ -2,12 +2,66 @@
 from __future__ import annotations
 
 import copy
+import math
 from datetime import datetime, timezone
 
 from nba_identity import player_name_key
 from nba_schedule import TEAM_ALIASES, canonical_team_abbr
 
 MAX_AGE_SECONDS = 30 * 60  # operational refresh cadence, not a fitted model parameter
+
+
+def classify_injury_status(status):
+    text = str(status or "").strip().lower()
+    if (text.startswith("out") or text in ("doubtful", "suspension", "suspended", "inactive", "not on verified roster")
+            or "injured reserve" in text or text == "ir"):
+        return "out"
+    if text in ("day-to-day", "day to day", "dtd", "questionable", "game-time decision", "gtd"):
+        return "dtd"
+    return "ok"
+
+
+def compute_usage_redistribution(players, team_abbr=None):
+    """Preserve the allocation rule, funding it only from confirmed absences.
+
+    USG values and bonuses are percentage points. Missing game history never
+    establishes an injury; uncertain players neither fund nor receive a bonus.
+    """
+    active, absent_usg = [], 0.0
+    for player in players:
+        if player.get("roster_verified") is False:
+            continue  # a waived/traded player is not an injured teammate
+        value = (player.get("advanced") or {}).get("USG_PCT")
+        if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value) or not 0 < value <= 100:
+            continue
+        status = classify_injury_status(player.get("status"))
+        if status == "out":
+            absent_usg += value
+        elif status == "ok":
+            active.append((player, value))
+    total = sum(value for _, value in active)
+    if not absent_usg or not total:
+        return {}
+    return {player["name"]: {"original_USG": value, "bonus_USG": round(absent_usg * value / total, 1),
+                             "projected_USG": round(value + absent_usg * value / total, 1),
+                             "unit": "percentage_points"} for player, value in active}
+
+
+def usage_from_injuries(players_by_team, injuries):
+    result = {}
+    for team, players in players_by_team.items():
+        statuses = {player_name_key(name): status for name, status in injuries.get(team, {}).items()}
+        current = [{**player, "status": statuses.get(player_name_key(player.get("name", "")), "Active")}
+                   for player in players]
+        if bonus := compute_usage_redistribution(current, team):
+            result[team] = bonus
+    return result
+
+
+def usage_bonus_for(redistribution, team, name):
+    key = player_name_key(name)
+    matches = [value for player, value in redistribution.get(team, {}).items() if player_name_key(player) == key]
+    return matches[0].get("bonus_USG", 0) if len(matches) == 1 else 0
 
 
 class AvailabilityUnavailable(RuntimeError):
@@ -110,8 +164,18 @@ def apply_availability(payload, maps):
     result["meta"]["availability"] = availability_metadata(maps)
     for team, players in result.get("players", {}).items():
         statuses = {player_name_key(name): status for name, status in maps[team].items()}
+        roster = {player_name_key(name) for name in maps[team].roster_names} if isinstance(maps[team], InjuryMap) else None
         for player in players:
-            player["status"] = statuses.get(player_name_key(player.get("name", "")), "Active")
+            key = player_name_key(player.get("name", ""))
+            if roster is not None:
+                player["roster_verified"] = key in roster
+            if roster is not None and key not in roster:
+                player["status"] = "Not On Verified Roster"
+                result["injuries"][team][player["name"]] = player["status"]
+            else:
+                player["status"] = statuses.get(key, "Active")
+    result["usage_redistribution"] = {team: bonus for team, players in result.get("players", {}).items()
+                                    if (bonus := compute_usage_redistribution(players, team))}
     return result
 
 

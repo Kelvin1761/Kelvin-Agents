@@ -1,0 +1,6 @@
+{
+  "probability_model_id": "calibrated:C-2026-10-22:06bc5c856a67409ff1d097ebfdc934e8b31ac1b003021068013fead9dad8e1b4",
+  "config_sha256": "c0e9820f3f4c024efcf281f8372d862f1efb55704d0cf455312ca6ba3c786f8f",
+  "equal_to_immutable_base": true,
+  "statement": "Comparator identity recorded separately; coefficients and clipping unchanged throughout diagnostic runs."
+}

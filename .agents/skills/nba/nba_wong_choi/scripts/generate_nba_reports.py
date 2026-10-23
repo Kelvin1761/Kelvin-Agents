@@ -33,9 +33,15 @@ NBA_SKILL_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".
 sys.path.insert(0, NBA_SKILL_DIR)
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
+from nba_availability import classify_injury_status, usage_from_injuries, usage_bonus_for
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nba_prob_layer
+from nba_selection_policy import BANKER, BANKER_FALLBACK, VALUE, HIGH, BUILD_TOLERANCE, SelectedCombo, description as policy_description
 from nba_sgm_quote import quote_combo, quote_valid, quote_legs, legs_identity
+
+class MLModelUnavailable(RuntimeError):
+    """Explicit live-ML requests must never silently become a different model."""
+
 
 _ML_PREDICTOR = None  # lazy-loaded for hybrid/ml modes
 
@@ -216,11 +222,11 @@ def ml_status_lines():
     if st["requested"] not in {"hybrid", "ml"}:
         return []
     if st["loaded"] is False:
-        return [f"> ⚠️ ML 模型載入失敗，已退回 10-Factor Legacy（{st['load_error']}）。"]
+        return [f"> ⚠️ ML shadow 模型載入失敗（{st['load_error']}）；最終機率來源見報告標示。"]
     lines = []
     if st["requested"] == "hybrid" and not hybrid_ml_adjust_enabled():
         lines.append("> ℹ️ ML 訊號而家只係 **shadow（只記錄，唔影響機率／EV／Kelly）**，未經驗證；"
-                     "所有 leg 以 10-Factor 機率為準。")
+                     "最終機率來源見報告及各 Leg 標示。")
     if st["failures"]:
         lines.append(f"> ⚠️ ML 預測失敗 {st['failures']} 次（成功 {st['predictions']} 次）；失敗嘅 leg 用 10-Factor。"
                      f"例：{st['failure_samples'][0]}")
@@ -771,6 +777,11 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
         card["fatigue"] = {}
         card["position"] = "?"
 
+    from monte_carlo_nba import usage_bonus_stat_units
+    card["usg_bonus_pct"] = usg_bonus
+    card["usg_bonus"] = usage_bonus_stat_units(card["avg"], category, card.get("usg_pct"), usg_bonus)
+    card["usg_bonus_unit"] = "stat_count"
+
     # Hit rates for each Sportsbet line
     card["line_analysis"] = {}
     data_for_hr = card["l10"]
@@ -796,7 +807,7 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             is_b2b=is_b2b, is_home=is_home, spread=spread,
             usg_bonus=usg_bonus, defender_impact=defender_impact, amc=0,
             home_ppg=card.get("home_ppg"), road_ppg=card.get("road_ppg"),
-            team_pace=None, l10=data_for_hr, min_avg=card.get("min_avg", 0),
+            team_pace=(team_stats or {}).get(team_abbr, {}).get("PACE"), l10=data_for_hr, min_avg=card.get("min_avg", 0),
             season_phase=season_phase)  # team_pace set at main() level
         # V7: Narrative now written by LLM (not Python)
         narrative = ""
@@ -808,20 +819,23 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
         if ml_predictor is not None and ext_player is not None:
             try:
                 opp_stats = team_stats.get(opponent_abbr, {}) if team_stats else {}
+                native_missing = getattr(ml_predictor, "feature_contract", None) == "nba-ml-features/v2"
                 ml_feats = ml_predictor.build_features(
                     ext_player, stat_key, line_val,
                     1 if is_home else 0, opponent_abbr,
-                    opp_def_rating=opp_stats.get("DEF_RATING", 0) or 0,
-                    opp_def_rank=opponent_def_rank or 0,
-                    opp_pace=opponent_pace or 98.0,
+                    opp_def_rating=opp_stats.get("DEF_RATING") if native_missing else (opp_stats.get("DEF_RATING", 0) or 0),
+                    opp_def_rank=opponent_def_rank if native_missing else (opponent_def_rank or 0),
+                    opp_pace=opponent_pace if native_missing else (opponent_pace or 98.0),
                     # Training used the opponent's TOP defender, not the top-3 mean.
-                    defender_pm=ml_defender_pm or 0,
+                    defender_pm=ml_defender_pm if native_missing else (ml_defender_pm or 0),
                     usg_bonus_pct=usg_bonus)
                 ml_prob = ml_predictor.predict(ml_feats)
                 ml_features_used = True
                 ML_STATUS["predictions"] += 1
             except Exception as e:
                 record_ml_failure(f"{player_name} {stat_key} {line_val_str}", e)
+                if engine_mode == "ml" or (engine_mode == "hybrid" and hybrid_ml_adjust_enabled()):
+                    raise MLModelUnavailable(f"live ML prediction failed: {player_name} {stat_key}") from e
 
         ml_est_prob = round(ml_prob * 100, 1) if ml_prob is not None else None
 
@@ -916,23 +930,6 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
 
 
 # ─── Auto-Combo Engine ──────────────────────────────────────────────────
-
-def classify_injury_status(status):
-    """ESPN injury status -> 'out' | 'dtd' | 'ok'.
-
-    Before 2026-10-23 only the literal "Out" excluded a player and only "Day-To-Day"
-    flagged one, so "Out For Season", "Doubtful", "Suspension" and "Questionable"
-    were all treated as healthy."""
-    text = str(status or "").strip().lower()
-    if not text:
-        return "ok"
-    if (text.startswith("out") or text in ("doubtful", "suspension", "suspended", "inactive")
-            or "injured reserve" in text or text == "ir"):
-        return "out"
-    if text in ("day-to-day", "day to day", "dtd", "questionable", "game-time decision", "gtd"):
-        return "dtd"
-    return "ok"
-
 
 def injury_status_for(injuries, team_abbr, player_name):
     """Injury status by full-name identity (accent/suffix-insensitive), not exact string.
@@ -1030,6 +1027,7 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
                 "trend": card["trend"],
                 "adj_narrative": la.get("adj_narrative", ""),
                 "adj_line": la.get("adj_line", ""),
+                "adj_breakdown": dict(la.get("adj_breakdown") or {}),
                 "probability_model_id": la.get("probability_model_id"),
                 "correlation_flags": [],
                 "selection_reject_reasons": [],
@@ -1441,13 +1439,13 @@ def _passes_playoff_gate(leg, tier):
 
 
 def select_combo_1(candidates):
-    """🛡️ 穩膽 V5: 2-3 ultra-safe legs targeting 2.0-3.2x.
+    """Banker selection with explicit strict/fallback policy; no safety guarantee.
     - L10 ≥ 80% AND L5 ≥ 80% (true recent consistency)
     - avg must exceed line by ≥ 15% (buffer safety)
     - Playoff gate: starter minutes + recent form required
     - SIP-N01: bench risk banned
     - SIP-N04: L3 < Line banned
-    - 神經刀 banned"""
+    - Numeric CoV cap; volatility grade is not a separate exclusion."""
 
     def _has_buffer(c):
         """Check if player's avg exceeds line by at least 15%."""
@@ -1459,11 +1457,11 @@ def select_combo_1(candidates):
 
     pool = [c for c in candidates
             if _is_player_milestone(c)
-            and c["hit_l10"] >= 80
-            and c.get("hit_l5", 0) >= 80
+            and c["hit_l10"] >= BANKER.l10
+            and c.get("hit_l5", 0) >= BANKER.l5
             and c["edge"] >= 0  # V5.3: FW-11 blocks negative EV legs — must be >= 0
-            and c["odds"] >= 1.20  # V5.2: Remove 'almost free' legs — each leg should carry meaningful odds
-            and c.get("cov", 0) <= 0.65
+            and c["odds"] >= BANKER.min_odds  # V5.2: Remove 'almost free' legs — each leg should carry meaningful odds
+            and c.get("cov", 0) <= BANKER.max_cov
             and not c.get("bench_minutes_risk", False)
             and not c.get("day_to_day", False)
             and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0)
@@ -1480,21 +1478,23 @@ def select_combo_1(candidates):
         return avg_hit * 0.6 + total_edge * 0.1 + len(combo) * 2 + perfect_bonus + near_perfect_bonus
 
     result = _greedy_build(pool,
-                           target_min=2.0, target_max=3.5,  # V5.3: FW-11 floor is 2.0x
-                           min_legs=2, max_legs=4,  # V5.3: Allow 4 legs to reach 2.0x target
+                           target_min=BANKER.target_min, target_max=BANKER.target_max,  # V5.3: FW-11 floor is 2.0x
+                           min_legs=BANKER.min_legs, max_legs=BANKER.max_legs,  # V5.3: Allow 4 legs to reach 2.0x target
                            score_fn=score_fn,
                            max_same_team_pts=2, max_same_team=3,
                            tier="banker")
 
+    rule = "banker"
     # Fallback: relax to L10 ≥ 70% if strict pool is too small
     if not result:
+        rule = "banker_fallback"
         pool_relaxed = [c for c in candidates
                         if _is_player_milestone(c)
-                        and c["hit_l10"] >= 70
-                        and c.get("hit_l5", 0) >= 70
+                        and c["hit_l10"] >= BANKER_FALLBACK.l10
+                        and c.get("hit_l5", 0) >= BANKER_FALLBACK.l5
                         and c["edge"] >= 0  # V5.3: FW-11 blocks negative EV legs
-                        and c["odds"] >= 1.15  # V5.2: Slightly relaxed from 1.20 for fallback
-                        and c.get("cov", 0) <= 0.75
+                        and c["odds"] >= BANKER_FALLBACK.min_odds  # V5.2: Slightly relaxed from 1.20 for fallback
+                        and c.get("cov", 0) <= BANKER_FALLBACK.max_cov
                         and not c.get("bench_minutes_risk", False)
                         and not c.get("day_to_day", False)
                         and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0) * 0.85
@@ -1502,13 +1502,13 @@ def select_combo_1(candidates):
                         and _post_reflector_leg_allowed(c, "banker")]
         pool_relaxed.sort(key=lambda x: (-x["hit_l10"], -x["edge"], x["odds"]))
         result = _greedy_build(pool_relaxed,
-                               target_min=2.0, target_max=4.0,  # V5.3: FW-11 floor is 2.0x
-                               min_legs=2, max_legs=4,  # V5.3: Allow 4 legs
+                               target_min=BANKER_FALLBACK.target_min, target_max=BANKER_FALLBACK.target_max,  # V5.3: FW-11 floor is 2.0x
+                               min_legs=BANKER_FALLBACK.min_legs, max_legs=BANKER_FALLBACK.max_legs,  # V5.3: Allow 4 legs
                                score_fn=score_fn,
                                max_same_team_pts=2, max_same_team=3,
                                tier="banker")
 
-    return result
+    return SelectedCombo(result or [], rule)
 
 
 # ─── Capped Greedy Builder (V5) ──────────────────────────────────────────
@@ -1595,7 +1595,7 @@ def _greedy_build(pool, target_min, target_max, min_legs, max_legs,
         if len(combo) >= min_legs and target_min <= final_odds <= target_max and _combo_passes_positive_ev_gate(combo, tier):
             return combo
         # If we overshot slightly, still accept if within 20% tolerance
-        if len(combo) >= min_legs and final_odds >= target_min and final_odds <= target_max * 1.2 and _combo_passes_positive_ev_gate(combo, tier):
+        if len(combo) >= min_legs and final_odds >= target_min and final_odds <= target_max * BUILD_TOLERANCE and _combo_passes_positive_ev_gate(combo, tier):
             return combo
         return None
 
@@ -1607,7 +1607,7 @@ def _greedy_build(pool, target_min, target_max, min_legs, max_legs,
         result = _try_build_from(seed_idx)
         if result:
             odds = _combo_odds(result)
-            if odds > target_max * 1.2:  # Hard ceiling
+            if odds > target_max * BUILD_TOLERANCE:  # Hard ceiling
                 continue
             avg_hit = sum(leg["hit_l10"] for leg in result) / len(result)
             avg_hit_l5 = sum(leg.get("hit_l5", leg["hit_l10"]) for leg in result) / len(result)
@@ -1626,17 +1626,17 @@ def _greedy_build(pool, target_min, target_max, min_legs, max_legs,
 
 def select_combo_2(candidates, exclude_descs=None):
     """🔥 價值膽 V5: Mid-risk 2-4 legs targeting 2.8-5.0x.
-    L10 ≥ 60%, L5 ≥ 60%, edge ≥ 0, 神經刀 banned.
+    L10 ≥ 60%, L5 ≥ 60%, edge ≥ 0, numeric CoV cap 0.75.
     Playoff gate removes low-minute and stale-form props."""
     exclude = set(exclude_descs or [])
 
     pool = [c for c in candidates
             if _is_player_milestone(c)
             and c["edge"] >= 0  # V5.3: FW-11 blocks negative EV legs
-            and c["hit_l10"] >= 60
-            and c.get("hit_l5", 0) >= 60
-            and c["odds"] >= 1.20  # V5.2: Meaningful odds per leg
-            and c.get("cov", 0) <= 0.75
+            and c["hit_l10"] >= VALUE.l10
+            and c.get("hit_l5", 0) >= VALUE.l5
+            and c["odds"] >= VALUE.min_odds  # V5.2: Meaningful odds per leg
+            and c.get("cov", 0) <= VALUE.max_cov
             and not c.get("bench_minutes_risk", False)
             and _passes_playoff_gate(c, "value")
             and _post_reflector_leg_allowed(c, "value")
@@ -1649,8 +1649,8 @@ def select_combo_2(candidates, exclude_descs=None):
         return avg_hit * 0.35 + avg_l5 * 0.2 + total_edge * 0.15 + closeness * 0.3
 
     return _greedy_build(pool,
-                         target_min=3.0, target_max=5.0,  # V5.3: FW-11 floor is 3.0x
-                         min_legs=2, max_legs=4,
+                         target_min=VALUE.target_min, target_max=VALUE.target_max,  # V5.3: FW-11 floor is 3.0x
+                         min_legs=VALUE.min_legs, max_legs=VALUE.max_legs,
                          score_fn=score_fn,
                          max_same_team=3,
                          tier="value")
@@ -1664,11 +1664,11 @@ def select_combo_3(candidates, exclude_descs=None):
     exclude = set(exclude_descs or [])
     pool = [c for c in candidates
             if _is_player_milestone(c)
-            and c["hit_l10"] >= 50
-            and c.get("hit_l5", 0) >= 50
+            and c["hit_l10"] >= HIGH.l10
+            and c.get("hit_l5", 0) >= HIGH.l5
             and c["edge"] >= 0  # V5.3: FW-11 blocks negative EV legs
-            and c["odds"] >= 1.15  # V5.2: Meaningful odds per leg
-            and c.get("cov", 0) <= 0.85
+            and c["odds"] >= HIGH.min_odds  # V5.2: Meaningful odds per leg
+            and c.get("cov", 0) <= HIGH.max_cov
             and not c.get("bench_minutes_risk", False)
             and _passes_playoff_gate(c, "high")
             and _post_reflector_leg_allowed(c, "high")
@@ -1681,15 +1681,15 @@ def select_combo_3(candidates, exclude_descs=None):
         return avg_hit * 0.4 + avg_l5 * 0.25 + total_edge * 0.1 + closeness * 0.25
 
     return _greedy_build(pool,
-                         target_min=8.0, target_max=15.0,  # V5.3: FW-11 floor is 8.0x
-                         min_legs=3, max_legs=5,  # V5.3: Allow up to 5 legs to reach 8.0x
+                         target_min=HIGH.target_min, target_max=HIGH.target_max,  # V5.3: FW-11 floor is 8.0x
+                         min_legs=HIGH.min_legs, max_legs=HIGH.max_legs,  # V5.3: Allow up to 5 legs to reach 8.0x
                          score_fn=score_fn,
                          max_same_team=4,
                          tier="high")
 
 
 def select_combo_x_value_bomb(candidates):
-    """💣 Value Bomb V5: 2-3 legs targeting 5-15x.
+    """Value Bomb: 2-3 legs, product odds at least 5x, no hard ceiling.
     Safe base (L10 ≥ 80%, L5 ≥ 70%) + 1-2 edge spikes (Edge ≥ 10%, L10 ≥ 60%).
     Entertainment stake only."""
 
@@ -1790,7 +1790,7 @@ def gen_meeting_intelligence(meta, odds, injuries, news, team_stats, season_phas
         f"🧭 season_phase: **{public_phase}** | postseason_type: **{postseason_type or 'N/A'}** "
         f"| strategy_phase: **{season_phase}** | L10_ORDER: **{L10_ORDER}**"
     )
-    lines.append(f"🎯 盤口來源: **Sportsbet MCP Playwright 實時提取** (odds_source: SPORTSBET_LIVE)")
+    lines.append(f"🎯 盤口來源: **Sportsbet 已保存盤口** (odds_source: SPORTSBET_LIVE)")
     lines.append(f"")
     lines.append(f"---")
     lines.append(f"")
@@ -1888,6 +1888,8 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
 
     if not legs or not getattr(legs, "quote", {}).get("status") == "ok":
         lines.append(f"### {combo_emoji} {combo_name}")
+        if combo_desc:
+            lines.append(f"> {combo_desc}")
         lines.append(f"> ⚠️ 未能根據穩健 +EV 篩選條件搵到合適嘅 legs。此層級建議觀望，除非重新提取 Sportsbet 盤口後通過同一套 gate。")
         lines.append(f"")
         lines.append(f"---")
@@ -1946,7 +1948,7 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
             lines.append(f"correlation_flags: {', '.join(leg['correlation_flags'])}")
         lines.append(f"📊 數據: L10 `{leg['l10']}` | AVG {leg['avg']} | MED {leg['med']} | SD {leg['sd']}")
         lines.append(f"隱含勝率 {leg['implied_prob']}% | Base Rate {base_r}% | 預期勝率 **{adj_p}%** | Edge: {ev_str} {leg['edge_grade']}")
-        # Show 8-Factor adjustment breakdown — Python reasoning trace for LLM
+        # Show the 10-Factor diagnostic separately from the actual final source
         adj_line = leg.get('adj_line', '')
         if adj_line:
             lines.append(f"")
@@ -1977,20 +1979,6 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     adj_probs = [leg.get('estimated_prob', leg['hit_l10']) for leg in legs]
     hit_mult_parts = " × ".join(f"{p}%" for p in adj_probs)
 
-    # Auto-determine stake recommendation from true combo probability.
-    num_legs = len(legs)
-
-    if combo_hit_pct >= 55 and avg_edge >= 3 and num_legs <= 3:
-        stake = "💰💰💰 標準注 (2-3 units) — 高信心穩膽"
-    elif combo_hit_pct >= 40 and avg_edge >= 0 and num_legs <= 3:
-        stake = "💰💰 半注 (1-2 units) — 中等信心"
-    elif combo_hit_pct >= 25 and avg_edge >= 0 and num_legs <= 4:
-        stake = "💰 試探注 (0.5-1 unit) — 整注命中率偏低"
-    elif combo_hit_pct >= 15:
-        stake = "💰 小額試探 (0.5 unit) — 高賠率投機"
-    else:
-        stake = "⚠️ 觀望 / 極小額 — 整注命中率偏低"
-
     # Auto-determine risk
     risk_factors = []
     high_cov_legs = [l for l in legs if isinstance(l["cov"], (int, float)) and l["cov"] > 0.35]
@@ -2016,7 +2004,7 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     elif combo_hit_pct >= 50:
         logic_parts.append(f"組合命中率 {combo_hit_pct}% 中等")
     if avg_edge >= 10:
-        logic_parts.append(f"平均 Edge {'+' if avg_edge > 0 else ''}{avg_edge}% 莊家顯著低估")
+        logic_parts.append(f"模型平均 Edge {'+' if avg_edge > 0 else ''}{avg_edge}%（相對單腿隱含機率）")
     elif avg_edge >= 5:
         logic_parts.append(f"平均 Edge +{avg_edge}% 正值有利")
     teams_in_combo = set(l.get("team", "") for l in legs if l.get("team") != "TEAM")
@@ -2095,6 +2083,8 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     computed MC results and combos for the market-evaluation sidecar; it is
     observation only and never feeds back into selection or rendering."""
     sections = []
+    if capture is not None:
+        capture["availability"] = {"meta": dict(meta), "injuries": injuries}
 
     away_abbr = meta.get("away", {}).get("abbr", "?")
     home_abbr = meta.get("home", {}).get("abbr", "?")
@@ -2107,9 +2097,21 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     engine_label = {
         "legacy": "10-Factor V8 Legacy",
         "ml": "ML Main V1 + Safety Gates",
-        "hybrid": "Hybrid V1 (ML shortlist + 10-Factor safety gates)",
+        "hybrid": "Hybrid（ML 調整＋安全篩選）" if hybrid_ml_adjust_enabled() else "Hybrid（ML shadow＋安全篩選）",
     }.get(engine_mode, "Hybrid V1")
-    sections.append(f"**odds_source**: SPORTSBET_LIVE ✅ | **引擎版本**: {engine_label} (EV Quant + Correlation Penalty)")
+    sources=set()
+    for card in all_cards:
+        for leg in card.get("line_analysis", {}).values():
+            model_id=str(leg.get("probability_model_id") or "")
+            if model_id.startswith("calibrated:"):
+                sources.add(model_id.split(":")[1]+" 市場＋L10 校準層")
+            elif str(leg.get("engine", "")).startswith("calibrated"):
+                sources.add("校準層（版本未記錄）")
+            else:
+                sources.add("Legacy 10-Factor＋既有修正" if leg.get("engine") in {"legacy", "hybrid"} else str(leg.get("engine") or "未記錄"))
+    final_source="、".join(sorted(sources)) if sources else "無可評估盤口"
+    sections.append(f"**odds_source**: SPORTSBET_LIVE ✅ | **引擎版本**: {engine_label}（運算／安全篩選模式）")
+    sections.append(f"**最終機率來源**: {final_source}；ML shadow 訊號唔代表最終機率。")
     public_phase = meta.get("season_phase", season_phase)
     postseason_type = meta.get("postseason_type") or "N/A"
     sections.append(
@@ -2268,27 +2270,27 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"")
 
     sections.append(gen_combo_section(
-        "組合 1: 穩膽 SGM (Low Risk)", "🛡️",
-        "2-4 Legs | 主門檻 L10/L5 ≥80%、CoV ≤0.65；不足時 fallback ≥70%、CoV ≤0.75 | 目標 2.0-3.5x（fallback 至4.0x；建構容許上限20%浮動）",
+        "組合 1: Banker SGM", "🛡️",
+        policy_description("1", combo_1),
         combo_1))
     sections.append(f"")
 
     sections.append(gen_combo_section(
-        "組合 2: 價值膽 Multi-Leg (Mid Risk)", "🔥",
-        f"2-4 Legs | L10/L5 ≥60% | 目標 2.8-5.0x",
+        "組合 2: 價值膽 Multi-Leg", "🔥",
+        policy_description("2", combo_2),
         combo_2))
     sections.append(f"")
 
     sections.append(gen_combo_section(
-        "組合 3: 高倍率 (High Return)", "💎",
-        f"3-5 Legs | L10/L5 ≥50% | 目標 8.0-15.0x",
+        "組合 3: 高倍率 SGM", "💎",
+        policy_description("3", combo_3),
         combo_3))
     sections.append(f"")
 
     if combo_x:
         sections.append(gen_combo_section(
-            "組合 X: 💣 Value Bomb (莊家低估)", "💣",
-            f"2-3 Legs | 安全基座 + Edge≥10% 炸彈腿 | 目標 5.0-15.0x",
+            "組合 X: 💣 Value Bomb", "💣",
+            "2-3 Legs | 基座 L10≥80%／L5≥70%；炸彈腿 Edge≥10%／L10≥60%／L5≥50%＋確認 gate | 單腿乘積≥5.0x；冇硬性上限",
             combo_x))
         sections.append(f"")
 
@@ -2335,8 +2337,8 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"---")
     sections.append(f"")
     sections.append(f"## ✅ 盤口數據來源驗證")
-    sections.append(f"> **Sportsbet MCP Playwright** 即時提取 | 提取時間: {sportsbet_time}")
-    sections.append(f"> 所有 Lines/Odds 來自 sportsbet.com.au DOM Snapshot")
+    sections.append(f"> **Sportsbet 已保存盤口** | 提取時間: {sportsbet_time}")
+    sections.append(f"> 所有 Lines/Odds 來自 sportsbet.com.au 已保存提取檔")
     sections.append(f"> Sportsbet 線格式: \"10+\" = 10 分或以上 (≥10)")
 
     # Count remaining [FILL] slots
@@ -2423,6 +2425,7 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
             "sportsbet_sgm_price": ev.get("combo_decimal_odds") if ev.get("price_source") == "sportsbet_sgm_pricer" else None,
             "sportsbet_sgm_status": getattr(legs, "quote", {}).get("status", "missing"),
             "sgm_quote": getattr(legs, "quote", {}),
+            "selection_rule": getattr(legs, "selection_rule", None),
             # N1 shadow joint probabilities (not used for selection).
             **sim,
             # p_final marginals with the simulated dependence structure.
@@ -2460,6 +2463,7 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
                 "p_final": _pct_to_prob(la.get("estimated_prob")),
                 "p_legacy": _pct_to_prob(la.get("legacy_prob")),
                 "p_monte_carlo": _pct_to_prob(mc.get("mc_prob")) if mc else None,
+                "mc_model_version": mc.get("mc_model_version") if mc else None,
                 "p_l10_base_rate": _pct_to_prob(la.get("hit_l10")),
                 "engine": la.get("engine"),
                 "probability_model_id": la.get("probability_model_id"),
@@ -2480,6 +2484,7 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
         "legs": legs_out,
         "combos": combos_out,
         "quote_attempts": capture.get("quote_attempts", {}),
+        "availability": capture.get("availability"),
     }
 
 
@@ -2554,7 +2559,7 @@ def main():
 
     # V3: Extract additional context data
     key_defenders = extractor.get("key_defenders", {})
-    usg_redistribution = extractor.get("usage_redistribution", {})
+    usg_redistribution = usage_from_injuries(ext_players, injuries)
     correlation_warnings = extractor.get("correlation_warnings", {})
 
     away_abbr = meta.get("away", {}).get("abbr", "?")
@@ -2579,11 +2584,17 @@ def main():
             sys.path.insert(0, _ml_dir)
             from nba_ml_predictor import MLPropPredictor
             ml_predictor = MLPropPredictor()
+            if (engine_mode == "ml" or hybrid_ml_adjust_enabled()) and not ml_predictor.deployment_eligible:
+                raise MLModelUnavailable("ML artifact has no approved v2 temporal evaluation; shadow only")
             global _ML_PREDICTOR
             _ML_PREDICTOR = ml_predictor
             ML_STATUS["loaded"] = True
-            print(f"🧠 ML Engine active: {len(ml_predictor.feature_names)} features | mode={engine_mode}")
+            print(f"🧠 ML 已載入: {len(ml_predictor.feature_names)} features | mode={engine_mode} | {'live-eligible' if ml_predictor.deployment_eligible else 'shadow only'}")
+        except MLModelUnavailable:
+            raise
         except Exception as e:
+            if engine_mode == "ml" or hybrid_ml_adjust_enabled():
+                raise MLModelUnavailable(f"requested live ML cannot load: {type(e).__name__}") from e
             print(f"⚠️ ML Engine failed to load: {e}")
             print(f"   Falling back to 10-Factor engine")
             ML_STATUS["loaded"] = False
@@ -2642,10 +2653,10 @@ def main():
             opp_pace = opp_stats.get("PACE", None)
             is_home = (team == home_abbr)
             is_b2b = team_b2b.get(team, False)
-            usg_bonus = usg_redistribution.get(team, {}).get(player_name, {}).get("bonus_USG", 0)
+            usg_bonus = usage_bonus_for(usg_redistribution, team, player_name)
             def_impact, top_def_name = get_defender_impact(opponent)
             _kd = key_defenders.get(opponent, [])
-            ml_def_pm = _kd[0].get("PCT_PLUSMINUS") if _kd and isinstance(_kd[0].get("PCT_PLUSMINUS"), (int, float)) else 0
+            ml_def_pm = _kd[0].get("PCT_PLUSMINUS") if _kd and isinstance(_kd[0].get("PCT_PLUSMINUS"), (int, float)) else None
 
             card = build_player_card(
                 player_name, team, bet_data, ext_p, category,
@@ -2689,10 +2700,10 @@ def main():
     except Exception as exc:  # noqa: BLE001
         print(f"⚠️ market-eval sidecar 未能寫入（報告不受影響）: {exc}")
 
-    print(f"✅ Pre-filled skeleton V8 已生成: {args.output}")
+    print(f"✅ Python 完整分析報告已生成: {args.output}")
     print(f"   📐 引擎版本: {engine_name}")
     print(f"   🧠 核心邏輯已自動生成 (無 [FILL] 佔位符)")
-    print(f"   📎 下一步: NBA Analyst 審閱及補充分析")
+    print(f"   📎 發佈前須通過資料／報價防火牆；可另行審閱分析。")
 
 
 if __name__ == "__main__":
@@ -2701,6 +2712,9 @@ if __name__ == "__main__":
         # must not publish a misleading NO BET or silently become legacy.
         nba_prob_layer.enabled()
         main()
+    except MLModelUnavailable as exc:
+        print(f"⛔ live_ml_unavailable：{exc}；停止報告發佈。", file=sys.stderr)
+        sys.exit(1)
     except nba_prob_layer.ProbabilityConfigError as exc:
         print(f"⛔ probability_config_invalid：{exc}；停止報告發佈。", file=sys.stderr)
         sys.exit(1)

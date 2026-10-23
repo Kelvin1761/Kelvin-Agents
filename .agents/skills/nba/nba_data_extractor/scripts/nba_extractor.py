@@ -38,6 +38,8 @@ from pathlib import Path
 NBA_SKILL_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA_SKILL_DIR))
 from nba_schedule import canonical_team_abbr, canonical_game_tag, event_sydney_date
+from nba_data_contract import NBA_STATISTICS_CONTRACT
+from nba_availability import compute_usage_redistribution
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
 from nba_availability import (AvailabilityUnavailable, RosterChanged, apply_availability,
@@ -839,7 +841,7 @@ def fetch_defender_impact(season=None, as_of=None):
     try:
         dvp = leaguedashptdefend.LeagueDashPtDefend(
             defense_category='Overall',
-            per_mode_simple='PerGame',
+            per_mode_simple='Totals',
             season=season or nba_season_for_date(as_of),
             date_to_nullable=history_date_to(as_of),
         )
@@ -854,6 +856,8 @@ def fetch_defender_impact(season=None, as_of=None):
                 "team": row.get('PLAYER_LAST_TEAM_ABBREVIATION', ''),
                 "position": row.get('PLAYER_POSITION', ''),
                 "D_FGA": row.get('D_FGA', 0),
+                "D_FGA_unit": "total_attempts",
+                "GP": row.get('GP', 0),
                 "D_FG_PCT": round(row.get('D_FG_PCT', 0), 3),
                 "NORMAL_FG_PCT": round(row.get('NORMAL_FG_PCT', 0), 3),
                 "PCT_PLUSMINUS": round(row.get('PCT_PLUSMINUS', 0), 3),
@@ -1080,41 +1084,6 @@ def fetch_action_network_odds(date_str):
 # ==========================================
 # 模塊 D1：Usage Redistribution (傷缺紅利自動計算)
 # ==========================================
-def compute_usage_redistribution(players, team_abbr):
-    """
-    當核心球員缺陣時，自動計算球權重新分配。
-    原理：缺陣球員的 USG% 按比例分配給其他活躍球員。
-    """
-    active = []
-    injured_usg = 0
-    
-    for p in players:
-        adv = p.get('advanced', {})
-        gl = p.get('gamelog')
-        usg = adv.get('USG_PCT', 0)
-        
-        # 如果最近無 gamelog 或少於 3 場，視為缺陣
-        if not gl or gl.get('games_played', 0) < 3:
-            injured_usg += usg
-        else:
-            active.append(p)
-    
-    redistribution = {}
-    if injured_usg > 0 and active:
-        total_active_usg = sum(p.get('advanced', {}).get('USG_PCT', 0) for p in active)
-        for p in active:
-            p_usg = p.get('advanced', {}).get('USG_PCT', 0)
-            share = p_usg / total_active_usg if total_active_usg > 0 else 0
-            bonus_usg = round(injured_usg * share, 1)
-            redistribution[p['name']] = {
-                "original_USG": p_usg,
-                "bonus_USG": bonus_usg,
-                "projected_USG": round(p_usg + bonus_usg, 1),
-            }
-    
-    return redistribution
-
-
 # ==========================================
 # 模塊 D2：Rest Day Fatigue Model
 # ==========================================
@@ -1229,6 +1198,15 @@ def compute_correlation_warnings(players, team_abbr):
 # ==========================================
 # 主引擎：單場深度提取
 # ==========================================
+def key_defenders_for_team(defender_data, team_abbr):
+    """The existing 20-attempt sample floor applies to totals, never PerGame."""
+    candidates = [row for row in defender_data.values()
+                  if canonical_team_abbr(row.get('team', '')) == canonical_team_abbr(team_abbr)
+                  and row.get('D_FGA_unit') == 'total_attempts'
+                  and row.get('D_FGA', 0) >= 20]
+    return sorted(candidates, key=lambda row: row.get('PCT_PLUSMINUS', 0))[:8]
+
+
 def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stats, odds_data,
                         data_sources=None):
     """
@@ -1260,6 +1238,12 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             ),
             "history_date_to": history_date_to(game_info.get('date')),
             "data_sources": data_sources or {},
+            "statistics_contract": NBA_STATISTICS_CONTRACT,
+            "defender_source": {"per_mode": "Totals", "sample_unit": "total_attempts",
+                                "observed_players": len(defender_data),
+                                "qualified_players": sum(row.get('D_FGA_unit') == 'total_attempts'
+                                                         and row.get('D_FGA', 0) >= 20
+                                                         for row in defender_data.values())},
             "fallback_used": any(v.get("fallback_used") for v in (data_sources or {}).values()),
             "away": {"name": away_name, "abbr": away_abbr},
             "home": {"name": home_name, "abbr": home_abbr},
@@ -1424,15 +1408,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             package["players"][abbr].append(player_entry)
 
         # 防守者
-        team_defenders = []
-        for did, ddata in defender_data.items():
-            dteam = ddata.get('team', '')
-            if dteam == abbr or dteam in full_name:
-                if ddata.get('D_FGA', 0) >= 20:
-                    team_defenders.append(ddata)
-        # 按壓制力排序
-        team_defenders.sort(key=lambda x: x.get('PCT_PLUSMINUS', 0))
-        package["key_defenders"][abbr] = team_defenders[:8]
+        package["key_defenders"][abbr] = key_defenders_for_team(defender_data, abbr)
 
         # 🧠 Usage Redistribution (Module D1)
         usg_redist = compute_usage_redistribution(package["players"][abbr], abbr)

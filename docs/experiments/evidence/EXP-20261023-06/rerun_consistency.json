@@ -1,0 +1,13 @@
+{
+  "reason": "artifact metadata binding and baseline output formatting fixes only; no feature/parameter/date/data changes",
+  "dataset_sha256": "16b378cd914d1d684609760eb0edbeb6d4648d52a7b5552faba10fd45c3a7e0d",
+  "rows": 942,
+  "max_probability_difference": 2.220446049250313e-16,
+  "identical": false,
+  "deployment_eligible": false,
+  "all_tree_arrays_identical": true,
+  "interpretation": "tree arrays identical; <=2.23e-16 floating reduction-order variation, below the 4-decimal serving precision; no parameter tuning",
+  "serving_probabilities_equal": true,
+  "max_serving_probability_difference": 0.0,
+  "imputer_statistics_identical": true
+}

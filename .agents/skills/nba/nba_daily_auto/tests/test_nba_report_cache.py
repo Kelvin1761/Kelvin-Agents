@@ -22,7 +22,7 @@ def inputs(tmp_path, monkeypatch):
     odds = tmp_path / "Sportsbet_Odds_MEM_CHI.json"
     odds.write_text(json.dumps({"player_props":{"points":{"Fixture Player":{"lines":{"15":"1.74"}}}}}))
     extractor = tmp_path / "nba_game_data_MEM_CHI.json"
-    extractor.write_text(json.dumps({"meta":{"season_phase":"PRESEASON","preseason_rookie_history_contract":1},"players":{}}))
+    extractor.write_text(json.dumps({"meta":{"season_phase":"PRESEASON","preseason_rookie_history_contract":1,"statistics_contract":2,"defender_source":{"per_mode":"Totals","sample_unit":"total_attempts","observed_players":20}},"players":{}}))
     report = tmp_path / "Game_MEM_CHI_Full_Analysis.md"
     report.write_text("verified synthetic report\n" + "x" * 6000)
     cache = Path(str(report) + ".inputs.json")

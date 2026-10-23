@@ -1,0 +1,6 @@
+{
+  "original_sha256": "16b378cd914d1d684609760eb0edbeb6d4648d52a7b5552faba10fd45c3a7e0d",
+  "reproduced_sha256": "16b378cd914d1d684609760eb0edbeb6d4648d52a7b5552faba10fd45c3a7e0d",
+  "identical_bytes": true,
+  "note": "UTC-aware earliest market receipt ordering; same locked historical inputs, no population/feature/parameter changes"
+}
