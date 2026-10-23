@@ -68,6 +68,7 @@ def refresh_release(
     notify: bool = True,
     dry_run: bool = False,
     auto_approve: bool = True,
+    _gate_receipts: list | None = None,
 ) -> dict[str, Any]:
     """Re-prepare one expired release against current origin/main.
 
@@ -190,6 +191,7 @@ def refresh_release(
         allow_unrelated=True,
         expected_results=manifest.get("expected_results") or (),
         auto_approve=auto_approve,
+        _gate_receipts=_gate_receipts,
     )
     if prepared.get("status") == "blocked":
         raise ReleaseError(f"replay gate failed: {prepared.get('error')}")

@@ -33,6 +33,8 @@ def release_automation_config(repo: Path) -> dict:
         raise ReleaseError("release automation requires a boolean enabled setting")
     if config["enabled"] and not str(config.get("authorization") or "").strip():
         raise ReleaseError("automatic approval requires recorded user authorization")
+    if "single_clean_gate" in config and type(config["single_clean_gate"]) is not bool:
+        raise ReleaseError("single_clean_gate requires a boolean setting")
     return config
 
 
@@ -103,6 +105,7 @@ def _queued_release_lock(state_root: Path, *, manifest: dict):
     with path.open("a", encoding="utf-8") as handle:
         started = time.monotonic()
         announced = False
+        next_update = 0.0
         while True:
             try:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -116,9 +119,10 @@ def _queued_release_lock(state_root: Path, *, manifest: dict):
                         f".agents/skills/central_wong_choi/scripts/auto_approve_release.py "
                         f"--commit {manifest['commit']}"
                     ) from None
-                if not announced:
-                    print(f"⏳ approval lock busy — queued ({_holder_text(record)})", file=sys.stderr, flush=True)
+                if not announced or waited >= next_update:
+                    print(f"⏳ approval lock busy — queued {waited:.0f}s ({_holder_text(record)})", file=sys.stderr, flush=True)
                     announced = True
+                    next_update = waited + 30
                 time.sleep(LOCK_POLL_SECONDS)
         waited = time.monotonic() - started
         token = {"commit": manifest["commit"], "release_id": manifest.get("release_id"),
@@ -163,7 +167,8 @@ def _replay_conflicts(repo: Path, manifest: dict) -> list[str]:
     return [path for path in overlap if path not in union]
 
 
-def _replay_release(repo: Path, state_root: Path, selector: str, *, actor: str) -> str:
+def _replay_release(repo: Path, state_root: Path, selector: str, *, actor: str,
+                    gate_receipts: list | None = None) -> str:
     """Replay one expired release onto origin/main in a throwaway worktree; return the new SHA.
 
     Uses the existing `refresh_release` (cherry-pick, full prepare gate, push a never-reused
@@ -180,7 +185,8 @@ def _replay_release(repo: Path, state_root: Path, selector: str, *, actor: str) 
             for marker in repo.glob(".wongchoi_*root"):
                 shutil.copy2(marker, checkout / marker.name)
             refreshed = refresh_release(checkout, state_root, selector=selector, actor=actor,
-                                        notify=False, auto_approve=False)
+                                        notify=False, auto_approve=False,
+                                        _gate_receipts=gate_receipts)
             branch = refreshed.get("branch")
             return str(refreshed["release"]["commit"])
         finally:
@@ -193,6 +199,7 @@ def _replay_release(repo: Path, state_root: Path, selector: str, *, actor: str) 
 def auto_approve_release(
     repo: Path, state_root: Path, *, selector: str, notify: bool = True,
     expected_results: tuple[str, ...] = (),
+    gate_receipt=None,
 ) -> dict:
     from .release_activation import activate_release
     from .release_approval import _load_release, approve_release
@@ -230,7 +237,8 @@ def auto_approve_release(
             while True:
                 try:
                     merged = approve_release(repo, state_root, selector=selector, actor=actor,
-                                             authorization=config["authorization"], notify=False)
+                                             authorization=config["authorization"], notify=False,
+                                             gate_receipt=gate_receipt)
                     break
                 except ReleaseError as exc:
                     if not any(marker in str(exc) for marker in _EXPIRY_MARKERS):
@@ -245,7 +253,10 @@ def auto_approve_release(
                     if conflicts:
                         raise ReleaseError(f"{exc}; main also changed {conflicts} — needs a human") from exc
                     replayed.append(selector)
-                    selector = _replay_release(repo, state_root, selector, actor=actor)
+                    replay_receipts = []
+                    selector = _replay_release(repo, state_root, selector, actor=actor,
+                                               gate_receipts=replay_receipts)
+                    gate_receipt = replay_receipts[-1] if replay_receipts else None
                     _path, manifest = _load_release(state_root / "releases", selector)
             result.update(merged)
             if replayed:

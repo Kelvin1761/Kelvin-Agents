@@ -23,18 +23,44 @@ PY="${PYTHON_BIN:-python3}"
 FAILED=()
 PASSED=()
 
+# The byte/path guards visit every ancestor on every read. macOS's default
+# /var/folders/.../T/pytest-of-... hierarchy adds substantial repeated path work.
+# Use a short, unique base without changing any fixture size or safety check.
+# Respect explicitly configured/external scratch locations.
+TEST_TEMP_PARENT="${WC_TEST_TMPDIR:-${TMPDIR:-/tmp}}"
+if [ "$(uname -s)" = "Darwin" ] && [ -z "${WC_TEST_TMPDIR:-}" ]; then
+  case "$TEST_TEMP_PARENT" in
+    /var/folders/*|/private/var/folders/*|/tmp) TEST_TEMP_PARENT=/private/tmp ;;
+  esac
+fi
+TEST_TEMP_PARENT="$(cd "$TEST_TEMP_PARENT" && pwd -P)" || exit 1
+TEST_TEMP_ROOT="$(mktemp -d "$TEST_TEMP_PARENT/wct.XXXXXX")" || exit 1
+TEST_SUITE_NUMBER=0
+cleanup_test_temp() {
+  if [ "${#FAILED[@]}" -eq 0 ]; then
+    rm -rf "$TEST_TEMP_ROOT"
+  else
+    echo "Failed test artifacts retained: $TEST_TEMP_ROOT"
+  fi
+}
+trap cleanup_test_temp EXIT
+
 run_suite() {
   local label="$1" workdir="$2"
   shift 2
+  local started=$SECONDS
+  TEST_SUITE_NUMBER=$((TEST_SUITE_NUMBER + 1))
   echo ""
   echo "=============================================================="
   echo "  $label"
   echo "=============================================================="
-  if ( cd "$workdir" && "$PY" -m pytest "$@" -q -p no:cacheprovider ); then
+  if ( cd "$workdir" && "$PY" -m pytest "$@" -q -p no:cacheprovider --durations=5 \
+        --basetemp="$TEST_TEMP_ROOT/$TEST_SUITE_NUMBER" ); then
     PASSED+=("$label")
   else
     FAILED+=("$label")
   fi
+  echo "  ⏱ $label: $((SECONDS - started))s"
 }
 
 run_suite "AU Wong Choi"        "$REPO_ROOT" .agents/skills/au_racing/au_wong_choi_auto/tests
