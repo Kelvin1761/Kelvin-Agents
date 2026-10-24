@@ -1,0 +1,373 @@
+{
+  "verified_at_utc": "2026-10-24T05:14:29.670049+00:00",
+  "final_code_commit": "81b5c6428223e6a52368cb106628298abf242774",
+  "scheduler_head": "81b5c6428223e6a52368cb106628298abf242774",
+  "runtime_release_in_scheduler_lineage": true,
+  "releases": [
+    {
+      "commit": "0bffbeb674d32ef9cc79722c931751c35250315a",
+      "manifest": "/Users/imac/WongChoiData/WongChoiControl/releases/wc-release%3A0bffbeb674d3%3A2026-10-23T062938.963614_0000.json",
+      "manifest_sha256": "c3350da0754d792f8301cbda735570add7809ceeb0e5704d11e2f7c06cc38bab",
+      "full_gate_seconds": 754.876,
+      "full_gate_exit_code": 0,
+      "push_exit_code": 0,
+      "full_gate_log": "/var/folders/h1/br6y1s5j0nb07gfb5rjqxk6r0000gn/T/wc-release-gate-logs/0bffbeb674d3-full-z5ltbs24.log",
+      "full_gate_log_sha256": "2f0c99a79f6fa5ded68df2e967d85be5c5d960929f3e9c06b583996bdc4f7ad5",
+      "event_types": [
+        "approval_granted",
+        "merged",
+        "activation_started",
+        "activation_succeeded"
+      ],
+      "activation": {
+        "deploy": null,
+        "installers": [],
+        "sync": [
+          {
+            "after": "0bffbeb674d32ef9cc79722c931751c35250315a",
+            "before": "2a6695e9e43a9f3a5baea2e9139d26559231e5a6",
+            "root": "/Users/imac/wongchoi-scheduler",
+            "status": "updated"
+          }
+        ],
+        "verification": [
+          {
+            "domain": "nba",
+            "status": "aligned",
+            "target_commit": "0bffbeb674d32ef9cc79722c931751c35250315a"
+          }
+        ]
+      },
+      "commit_in_final_main_lineage": true
+    },
+    {
+      "commit": "1fa3e4fa8afefd4dee6e9e6ff6784144d602962b",
+      "manifest": "/Users/imac/WongChoiData/WongChoiControl/releases/wc-release%3A1fa3e4fa8afe%3A2026-10-23T102517.955080_0000.json",
+      "manifest_sha256": "5235c787f85a0fc49b51af01d58647472ecf82a5a6489a90877d9999d324d042",
+      "full_gate_seconds": 735.986,
+      "full_gate_exit_code": 0,
+      "push_exit_code": 0,
+      "full_gate_log": "/var/folders/h1/br6y1s5j0nb07gfb5rjqxk6r0000gn/T/wc-release-gate-logs/1fa3e4fa8afe-full-1kjopsn_.log",
+      "full_gate_log_sha256": "5eb2b3909bde58978c89536a4fb4296a9a720162b8a5ddbaed1fcc5d4eb530ec",
+      "event_types": [
+        "approval_granted",
+        "merged",
+        "activation_started",
+        "activation_succeeded"
+      ],
+      "activation": {
+        "deploy": {
+          "exit_code": 0,
+          "status": "succeeded"
+        },
+        "installers": [],
+        "sync": [
+          {
+            "after": "1fa3e4fa8afefd4dee6e9e6ff6784144d602962b",
+            "before": "0bffbeb674d32ef9cc79722c931751c35250315a",
+            "root": "/Users/imac/wongchoi-scheduler",
+            "status": "updated"
+          }
+        ],
+        "verification": [
+          {
+            "domain": "nba",
+            "status": "aligned",
+            "target_commit": "1fa3e4fa8afefd4dee6e9e6ff6784144d602962b"
+          }
+        ]
+      },
+      "commit_in_final_main_lineage": true
+    },
+    {
+      "commit": "e1ded7a65ec712abb479498e8d16d3597afa5b16",
+      "manifest": "/Users/imac/WongChoiData/WongChoiControl/releases/wc-release%3Ae1ded7a65ec7%3A2026-10-23T120434.489767_0000.json",
+      "manifest_sha256": "3859f966bb4976b86ec1095a5681ff4278d9497effee73cd337e7659280e1fe6",
+      "full_gate_seconds": 743.513,
+      "full_gate_exit_code": 0,
+      "push_exit_code": 0,
+      "full_gate_log": "/var/folders/h1/br6y1s5j0nb07gfb5rjqxk6r0000gn/T/wc-release-gate-logs/e1ded7a65ec7-full-slziwso6.log",
+      "full_gate_log_sha256": "34f444ae176a9d5eb684d47df30bf583b0c53dfc40c64c64fd1e9fc3d9549774",
+      "event_types": [
+        "approval_granted",
+        "merged",
+        "activation_started",
+        "activation_succeeded"
+      ],
+      "activation": {
+        "deploy": null,
+        "installers": [],
+        "sync": [
+          {
+            "after": "e1ded7a65ec712abb479498e8d16d3597afa5b16",
+            "before": "1fa3e4fa8afefd4dee6e9e6ff6784144d602962b",
+            "root": "/Users/imac/wongchoi-scheduler",
+            "status": "updated"
+          }
+        ],
+        "verification": [
+          {
+            "domain": "nba",
+            "status": "aligned",
+            "target_commit": "e1ded7a65ec712abb479498e8d16d3597afa5b16"
+          }
+        ]
+      },
+      "commit_in_final_main_lineage": true
+    },
+    {
+      "commit": "08ec7914086e5eea184aa26ce4692c4b90d69e99",
+      "manifest": "/Users/imac/WongChoiData/WongChoiControl/releases/wc-release%3A08ec7914086e%3A2026-10-23T121738.548521_0000.json",
+      "manifest_sha256": "79c11a58bececf739cb509c12a99a3d498241d19ea6998918e8a1539a4e66768",
+      "full_gate_seconds": 736.013,
+      "full_gate_exit_code": 0,
+      "push_exit_code": 0,
+      "full_gate_log": "/var/folders/h1/br6y1s5j0nb07gfb5rjqxk6r0000gn/T/wc-release-gate-logs/08ec7914086e-full-6_rww6al.log",
+      "full_gate_log_sha256": "cab5401487967984d9936b7a4b5728a2d552bd481aa49824295af0635f33b955",
+      "event_types": [
+        "approval_granted",
+        "merged",
+        "activation_started",
+        "activation_succeeded"
+      ],
+      "activation": {
+        "deploy": null,
+        "installers": [],
+        "sync": [
+          {
+            "after": "08ec7914086e5eea184aa26ce4692c4b90d69e99",
+            "before": "e1ded7a65ec712abb479498e8d16d3597afa5b16",
+            "root": "/Users/imac/wongchoi-scheduler",
+            "status": "updated"
+          }
+        ],
+        "verification": [
+          {
+            "domain": "nba",
+            "status": "aligned",
+            "target_commit": "08ec7914086e5eea184aa26ce4692c4b90d69e99"
+          }
+        ]
+      },
+      "commit_in_final_main_lineage": true
+    },
+    {
+      "commit": "7f91a55fc9a4f6d058a0aeda82df1165102ed56e",
+      "manifest": "/Users/imac/WongChoiData/WongChoiControl/releases/wc-release%3A7f91a55fc9a4%3A2026-10-24T050108.753975_0000.json",
+      "manifest_sha256": "92dcfe98003a0ebda58318e2b152e5c364d2c93957dbfb3a054acecade334d02",
+      "full_gate_seconds": 734.886,
+      "full_gate_exit_code": 0,
+      "push_exit_code": 0,
+      "full_gate_log": "/var/folders/h1/br6y1s5j0nb07gfb5rjqxk6r0000gn/T/wc-release-gate-logs/7f91a55fc9a4-full-72ga83mq.log",
+      "full_gate_log_sha256": "3b8342a0bb37a3823056a606cbaa10fe79e1c5b2bde92511e4ebab69f34c6bbf",
+      "event_types": [
+        "approval_granted",
+        "merged",
+        "activation_started",
+        "activation_succeeded"
+      ],
+      "activation": {
+        "deploy": null,
+        "installers": [],
+        "sync": [],
+        "verification": []
+      },
+      "commit_in_final_main_lineage": true
+    },
+    {
+      "commit": "81b5c6428223e6a52368cb106628298abf242774",
+      "manifest": "/Users/imac/WongChoiData/WongChoiControl/releases/wc-release%3A81b5c6428223%3A2026-10-24T051358.175461_0000.json",
+      "manifest_sha256": "39598c31d0e4803e60613b0c7bb1d0d1d4658d09f5ea8c57d1b9fa30f770f010",
+      "full_gate_seconds": 735.978,
+      "full_gate_exit_code": 0,
+      "push_exit_code": 0,
+      "full_gate_log": "/var/folders/h1/br6y1s5j0nb07gfb5rjqxk6r0000gn/T/wc-release-gate-logs/81b5c6428223-full-jp6kxd0e.log",
+      "full_gate_log_sha256": "dd36de65142efe92e8555d3f928ed7761dc6b4fb976b72de36e418ee563abd3a",
+      "event_types": [
+        "approval_granted",
+        "merged",
+        "activation_started",
+        "activation_succeeded"
+      ],
+      "activation": {
+        "deploy": null,
+        "installers": [],
+        "sync": [
+          {
+            "after": "81b5c6428223e6a52368cb106628298abf242774",
+            "before": "7f91a55fc9a4f6d058a0aeda82df1165102ed56e",
+            "root": "/Users/imac/wongchoi-scheduler",
+            "status": "updated"
+          }
+        ],
+        "verification": [
+          {
+            "domain": "nba",
+            "status": "aligned",
+            "target_commit": "81b5c6428223e6a52368cb106628298abf242774"
+          }
+        ]
+      },
+      "commit_in_final_main_lineage": true
+    }
+  ],
+  "runtime_files": [
+    {
+      "path": ".agents/scripts/nba_ml/backtest_nba_ml.py",
+      "sha256": "a92d3bf37930a9ab3b08e69f6b6525767c9173574687ea558886daf015aa1667",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/scripts/nba_ml/build_nba_ml_dataset.py",
+      "sha256": "a89dc5ec7f60bdc119220d902061cd4143ef7dcdc6ad156f73b4fd5ebe377df8",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/scripts/nba_ml/build_verified_nba_dataset.py",
+      "sha256": "388376e90951c714642fdfd43624060dfe49fa980f6003d7059a94eb0aac78cc",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/scripts/nba_ml/nba_ml_features.py",
+      "sha256": "3c24813ac2d86f2fecd6e79dbe1f04f854d053f03aa762dc4bc5a5b2cf35705b",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/scripts/nba_ml/nba_ml_pit.py",
+      "sha256": "41c390363791919c2c80f516ab8dcb32beb60bba048b7c6a87efa0e369d332c4",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/scripts/nba_ml/nba_ml_predictor.py",
+      "sha256": "525ce1886c715780d4eaf6ba2547442af38f703d3921d169f89458ea954b2f02",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/scripts/nba_ml/train_nba_xgboost.py",
+      "sha256": "ed4bc0cccbfcde1366ab4e3d303cc93d8f7e16280c561ae93f093be5b629f836",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_availability.py",
+      "sha256": "ae7b73921b4204f02e942f83f0580a377ca1845efb7111ad2d4be86edf6d1e43",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_daily_auto/nba_combo_roi.py",
+      "sha256": "d73ae16c74d1e4875787ba0d350b6b537c4c43d770a469d0e5d1c4ce09007712",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_daily_auto/nba_market_ledger.py",
+      "sha256": "31f7e7b2e9328143bc62b070ccd025265c9ff80b09abdd7270a8470019dc48e2",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_daily_auto/nba_reliability.py",
+      "sha256": "4e437ca0c76ab6e0a38503b0af1dd623889d3793de619a43cb2da172379151bc",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_data_contract.py",
+      "sha256": "10ee5c264215feafbf96165dc482dfd73e5b0780635c9443e36dfbbbfec4184d",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_data_extractor/scripts/nba_extractor.py",
+      "sha256": "7fc531cd332ae3f651b9922c8c3757fe2bf93c35d40b84835875f20eabf72286",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_orchestrator.py",
+      "sha256": "c073e321cd3db1c2188eb941533eebdc15991b57ccfed069b6564d91e86bb398",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_selection_policy.py",
+      "sha256": "d6921658b4966d0e2d6fbad9760f26cd04faef52f4213e15aea05f901ee469a2",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_sgm_quote.py",
+      "sha256": "c76c0dbe4e370cfe725bfa4d6c417a4eb3008254f27556bfbf39720310b1ce82",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_wong_choi/scripts/generate_nba_reports.py",
+      "sha256": "4fd047fa1157f40059c4eab921aa7f8e70c21840c06a89b0a373c9d920768309",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_wong_choi/scripts/generate_nba_sgm_reports.py",
+      "sha256": "a160f03748cfb42330ec6c47bdc506bcc7967117d44719e40ed70262a414f387",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_wong_choi/scripts/monte_carlo_nba.py",
+      "sha256": "4e8b82d3c88288cdc0df8a10850fd8cfbd2890323642bf087c733cc3406e6b00",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_wong_choi/scripts/nba_prob_layer.py",
+      "sha256": "b4893bb24e828aababcd9a5d5a7ade49760996438bd8899db3d13eba410117f7",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": ".agents/skills/nba/nba_wong_choi/scripts/validate_nba_output.py",
+      "sha256": "a19a9b9d1808b3ec4f7ab17eb4f7663a10a4fef85107bbfa69774a03908df7fe",
+      "scheduler_matches_main": true
+    },
+    {
+      "path": "Horse_Racing_Dashboard/backend/services/multisport_exporter.py",
+      "sha256": "3dcce591190880dca9f46b01f8733ae905521d9200341f95ab852007c4fc4163",
+      "scheduler_matches_main": true
+    }
+  ],
+  "offline_backtest": {
+    "path": ".agents/scripts/nba_ml/backtest_nba_ml.py",
+    "sha256": "a92d3bf37930a9ab3b08e69f6b6525767c9173574687ea558886daf015aa1667",
+    "activation_scope": "offline evaluation tool in main, synchronized by final NBA runtime release"
+  },
+  "C_config_sha256": "c0e9820f3f4c024efcf281f8372d862f1efb55704d0cf455312ca6ba3c786f8f",
+  "C_unchanged": true,
+  "shadow_artifacts": {
+    "model_dir": "/Users/imac/WongChoiData/NBA_ML_Dataset/models/v3",
+    "artifacts": {
+      "model.pkl": {
+        "sha256": "459803dd73799293a4771a4d1e299238c199ce5519ef1b87461f7be4712a0265",
+        "same_as_baseline": true
+      },
+      "feature_names.json": {
+        "sha256": "9fba3c085c9762c8eb9a9a1843ac6257b861b5bdc5c4009e5eaf61124c7a5a27",
+        "same_as_baseline": true
+      }
+    }
+  },
+  "research_evidence_files_verified": 13,
+  "ledger_readonly": {
+    "read_only": true,
+    "files": 5,
+    "dates": [
+      "2026-10-16",
+      "2026-10-21",
+      "2026-10-22",
+      "2026-10-23",
+      "2026-10-24"
+    ],
+    "row_types": {
+      "price_obs": 44699,
+      "model_obs": 8840,
+      "sgm_obs": 99,
+      "sgm_price_obs": 123,
+      "settlement": 3629
+    },
+    "settlement_outcomes": {
+      "miss": 2688,
+      "hit": 933,
+      "void": 8
+    },
+    "malformed_lines": 0,
+    "legacy_unresolved_settlement_files": []
+  },
+  "RF_promoted": false
+}
