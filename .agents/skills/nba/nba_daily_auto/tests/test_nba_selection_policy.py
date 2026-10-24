@@ -55,4 +55,5 @@ def test_full_report_identifies_actual_c_source_and_avoids_false_safety_and_prov
     version=card['line_analysis']['10']['probability_model_id'].split(':')[1]
     assert f'最終機率來源**: {version} 市場＋L10 校準層' in text
     assert '(Low Risk)' not in text and 'MCP Playwright' not in text and 'DOM Snapshot' not in text
-    assert 'fallback ≥70%' in text and '3.0-5.0x' in text
+    assert 'fallback ≥70%' in text and '只保留穩膽' in text
+    assert '組合 2:' not in text and '組合 3:' not in text and '組合 X:' not in text

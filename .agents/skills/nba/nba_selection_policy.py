@@ -19,6 +19,7 @@ BANKER_FALLBACK=Policy(70,70,1.15,.75,2,4,2.0,4.0)
 VALUE=Policy(60,60,1.20,.75,2,4,3.0,5.0)
 HIGH=Policy(50,50,1.15,.85,3,5,8.0,15.0)
 BUILD_TOLERANCE=1.2
+STRATEGY_PROFILE="banker-only-v1"
 
 
 class SelectedCombo(list):

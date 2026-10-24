@@ -165,6 +165,8 @@ def _row_key(row: Mapping[str, Any]) -> tuple:
         return (kind, row.get("snapshot_id"), *leg)
     if kind == "sgm_obs":
         return (kind, row.get("snapshot_id"), row.get("game_tag"), row.get("combo_id"))
+    if kind in {"banker_shadow_obs", "selection_obs"}:
+        return (kind, row.get("snapshot_id"), row.get("game_tag"), row.get("arm"))
     if kind == "model_missing":
         return (kind, row.get("snapshot_id"), row.get("game_tag"))
     if kind == "settlement":
@@ -407,6 +409,31 @@ def record_snapshot(
             continue
         model_captured = _aware(payload.get("odds_extraction_time"), naive_tz=SYDNEY)
         flags = _flags(tip, model_captured, now)
+        if payload.get("selection_diagnostics"):
+            rows.append({"row_type": "selection_obs", **base, **flags,
+                         "strategy_profile": payload.get("strategy_profile"),
+                         "diagnostics": payload["selection_diagnostics"],
+                         "snapshot_completeness": manifest.get("completeness"),
+                         "banker_formal": any(str(c.get("combo_id")) == "1" for c in payload.get("combos", []))})
+        for experiment in payload.get("banker_shadow") or []:
+            if experiment.get("version") != "banker-ev-shadow-v1" or experiment.get("arm") not in {"B0", "B1", "B2"}:
+                continue
+            sys.path.insert(0, str(NBA_SKILL))
+            from nba_sgm_quote import quote_valid
+            quote = experiment.get("sgm_quote") or {}
+            captured = _aware(quote.get("captured_at"))
+            legs = experiment.get("legs") or []
+            verified = bool(captured and captured <= now and quote_valid(quote, odds, legs, now=captured))
+            identities = {leg.get("probability_model_id") for leg in payload.get("legs", [])}
+            identity = next(iter(identities)) if len(identities) == 1 else None
+            price = _float(experiment.get("sportsbet_sgm_price"))
+            rows.append({**experiment, **base, **_flags(tip, captured, now),
+                         "row_type": "banker_shadow_obs", "analysis_only": True, "decision": "OBSERVE",
+                         "odds_captured_at": _iso(captured), "probability_model_id": identity,
+                         "eligible": bool(experiment.get("eligible") and verified and identity
+                                          and 2 <= len(legs) <= 4
+                                          and price == _float(quote.get("decimal_odds")) and price >= 2.0),
+                         "sportsbet_sgm_status": "ok" if verified else "unverified"})
         for leg in payload.get("legs") or []:
             line = _float(leg.get("line"))
             price = _float(leg.get("price"))

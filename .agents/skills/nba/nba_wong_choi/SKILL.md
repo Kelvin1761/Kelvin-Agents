@@ -76,6 +76,12 @@ Orchestrator 會生成以下檔案：
 | `NBA_All_SGM_Report.txt` | 全日所有場次 SGM 組合完整分析 |
 | `NBA_Banker_Report.txt` | 穩膽報告 + 跨場 Parlay |
 
+## 正式策略範圍（2026-10-24）
+
+新正式輸出使用 `banker-only-v1`：只保留 combo 1 穩膽，真實 Sportsbet SGM 價至少 2.0，現有機率、選腿及正 EV 閘保留。價值膽／高倍率／Value Bomb 唔再成為新正式建議；舊紀錄仍可檢討及結算。
+
+`banker-ev-shadow-v1` 嘅 B0/B1/B2 只做 forward EV 消融，維持 OBSERVE／無注碼，唔計入正式 ROI。協議見 `docs/experiments/EXP-20261024-02-nba-banker-only-ev-shadow.md`。連續三個完整可評估正式賽日零穩膽觸發策略審計提醒，唔自動降門檻。呢啲係工程及產品取捨，未證明可提高盈利。
+
 ## Unattended Automation
 
 每日排程唯一入口：

@@ -168,7 +168,9 @@ def test_dashboard_exports_frozen_sgm_price_and_adjusted_probability(tmp_path):
     assert combo['metrics']['model_probability'] == pytest.approx(.64)
     assert combo['metrics']['expected_value'] == pytest.approx(.28)
     assert combo['quote_expires_at'] == quoted.quote['expires_at']
-    banker = next(row for row in snapshot['recommendations'] if row['bet_type'] == 'single')
+    assert len(snapshot['recommendations']) == 1
+    legacy = export_nba_snapshot(tmp_path, target_date='2026-10-23', firewall=nba_no_firewall, include_legacy_strategies=True)
+    banker = next(row for row in legacy['recommendations'] if row['bet_type'] == 'single')
     assert banker['odds_status'] == 'sportsbet_extracted'
 
 

@@ -85,7 +85,8 @@ def build_latest_analysis(folder, target_date, firewall, saved_reports=()):
                     if not isinstance(item, dict) or item.get('analysis_only') is not True or item.get('decision') != 'OBSERVE':
                         continue
                     candidate_legs = item.get('legs')
-                    if (not isinstance(candidate_legs, list) or not 2 <= len(candidate_legs) <= 3
+                    max_legs = 4 if item.get('version') == 'banker-ev-shadow-v1' else 3
+                    if (not isinstance(candidate_legs, list) or not 2 <= len(candidate_legs) <= max_legs
                             or any(not isinstance(leg, dict) or not leg.get('selection')
                                    or not _number(leg.get('odds')) or leg['odds'] <= 1 for leg in candidate_legs)
                             or not _number(item.get('model_probability'))

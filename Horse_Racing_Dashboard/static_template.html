@@ -2148,6 +2148,7 @@ function renderNbaLatestAnalysis(latest) {
       return `<section class="nba-game-analysis"><div class="nba-game-analysis__head"><h2>🏀 ${esc(game.event_name)}</h2><span class="metric-chip">${esc(labels[game.status] || '待分析')}</span></div>
         <p>${game.start_time_utc ? `開賽：${esc(new Date(game.start_time_utc).toLocaleString('zh-HK',{timeZone:'Australia/Sydney',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}))}（悉尼） · ` : ''}${esc(game.status_reason)}${game.analysis_time ? ` · 來源更新 ${esc(nbaLocalTime(game.analysis_time))}（悉尼）` : ''}</p>
         ${game.status === 'analysed' ? `<div class="metric-row"><span class="metric-chip">已評估 ${Number(game.market_count || 0)} 個盤口</span><span class="metric-chip">模型正 EV ${Number(game.positive_ev_count || 0)} 個</span><span class="metric-chip">正式 SGM ${Number(game.formal_sgm_count || 0)} 個</span></div>
+          ${game.diagnostics?.banker_funnel?.fallback ? `<p>穩膽 fallback：近期命中率合格 ${Number(game.diagnostics.banker_funnel.fallback.remaining.recent_hits || 0)} 腿 → 同時非負 edge ${Number(game.diagnostics.banker_funnel.fallback.remaining.nonnegative_edge || 0)} 腿 → 全部單腿條件合格 ${Number(game.diagnostics.banker_funnel.fallback.remaining.reflector || 0)} 腿；之後仍須合法組合、真價及 EV 驗證。</p>` : ''}
           ${game.diagnostics?.player_candidates != null ? `<p>選腿診斷：${Number(game.diagnostics.player_candidates)} 個可用選腿 → ${Number(game.diagnostics.positive_edge_candidates || 0)} 個非負 edge → ${Number(game.diagnostics.positive_edge_and_l10_50 || 0)} 個同時達最近十場 ≥50%。${game.formal_sgm_count ? '' : '暫未砌成通過全部正式門檻嘅組合。'}</p>` : ''}
           ${candidates ? `<div class="nba-candidates">${candidates}</div>` : `<p>${game.diagnostics?.review_error ? '候選生成未完成，需刷新；本場其餘分析已保存。' : '暫未有可驗證候選；下面保留本場分析。'}</p>`}
           ${injuries.length ? `<details><summary>傷停及陣容</summary><ul>${injuries.map(text => `<li>${esc(text)}</li>`).join('')}</ul></details>` : ''}
@@ -2377,7 +2378,7 @@ function renderSportsWorkspace(sport = activeSport) {
         <div class="sports-eyebrow">${isNba ? 'NBA WONG CHOI' : 'TENNIS WONG CHOI'}</div>
         <h1 class="sports-title">${isNba ? '🏀 NBA 分析與投注工作台' : '🎾 Tennis 分析與投注工作台'}</h1>
         <p class="sports-intro">${isNba
-          ? '先睇 matchup、球員盤同風險訊號，再保存你實際落注賠率；賽後同一頁結算及回看當時分析。'
+          ? '集中穩膽 SGM：正式建議須有真實組合價 ≥2.0 並通過 EV 驗證；影子候選只作研究，未證明可盈利。'
           : '將模型概率、市場 fair probability、edge、EV 同主要風險放埋一張卡，減少來回翻報告。'}</p>
       </div>
       <div class="sports-hero__aside">

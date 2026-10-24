@@ -327,6 +327,26 @@ def _odds(value: Any) -> str:
         return "@N/A"
 
 
+def _no_banker_diagnostics(snapshot: dict[str, Any]) -> str:
+    latest = snapshot.get("latest_analysis") or {}
+    coverage = latest.get("coverage") or {}
+    games = latest.get("games") or []
+    recent = edge = 0
+    found = False
+    for game in games:
+        counts = ((game.get("diagnostics") or {}).get("banker_funnel") or {}).get("fallback", {}).get("remaining", {})
+        if counts:
+            found = True
+            recent += counts.get("recent_hits", 0)
+            edge += counts.get("nonnegative_edge", 0)
+    summary = f"分析：{coverage.get('analysed_games', 0)}/{coverage.get('scheduled_games', 0)} 場；正式穩膽 0。"
+    if found:
+        summary += f"\n穩膽 fallback 漏斗：近期命中率合格 {recent} 腿 → 同時非負 edge {edge} 腿；之後仍需波幅／陣容／合法組合／實價 EV 檢查。"
+    else:
+        summary += "\n原因：正式分析未有通過全部驗證嘅 NBA 組合；逐關診斷未齊，唔將原因一律歸咎門檻。"
+    return summary
+
+
 def nba_betting_message(target_date: str, snapshot: dict[str, Any]) -> str:
     """Render a Telegram card from the validated Dashboard NBA contract only."""
     status = str(snapshot.get("validation_status") or "unavailable")
@@ -353,8 +373,10 @@ def nba_betting_message(target_date: str, snapshot: dict[str, Any]) -> str:
         return (
             f"🏀 NBA 旺財投注卡｜{target_date}\n"
             "⛔ 今日 NO BET\n"
-            "原因：正式分析未有通過全部驗證嘅 NBA 組合。\n"
-            "紀律：唔為咗有飛而降低門檻。"
+            "正式策略：只保留穩膽；真實 SGM 價 ≥2.0，保留 EV 驗證。\n"
+            + _no_banker_diagnostics(snapshot)
+            + "\n" + nba_reliability.selection_message(snapshot.get("selection_health") or {})
+            + "\n零出手亦需檢查機率、門檻及市場價；唔等於已證明模型有盈利優勢。"
         )
 
     bankers = [row for row in recommendations if row.get("category") == "banker"]
@@ -1195,6 +1217,11 @@ def run_pregame(
         return "shadow_complete"
 
     exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date)
+    try:
+        exported["selection_health"] = nba_reliability.selection_health(target_date)
+    except Exception as exc:
+        exported["selection_health"] = {"status": "insufficient_data"}
+        log.step("selection_health", "failed", error=f"{type(exc).__name__}: {exc}")
     try:
         card = nba_betting_message(target_date, exported)
     except ValueError as exc:

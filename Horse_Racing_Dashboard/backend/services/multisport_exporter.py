@@ -412,6 +412,7 @@ def export_nba_snapshot(
     target_date: Optional[str] = None,
     today: Optional[str] = None,
     firewall=nba_publication_firewall,
+    *, include_legacy_strategies: bool = False,
 ) -> Dict[str, Any]:
     """Export validated NBA combos from one orchestrator analysis directory."""
     analysis_dir, analysis_date = _find_nba_analysis_dir(Path(root), target_date)
@@ -461,7 +462,11 @@ def export_nba_snapshot(
         combos = _parse_nba_combos(content, analysis_date, game_tag, source_files)
         sidecar = _read_json(Path(str(report) + ".market_legs.json"))
         _hydrate_nba_quotes(combos, content, sidecar)
-        game_recs = combos + _build_nba_bankers(combos)
+        # New formal publications are banker-only; legacy parsing stays available for history.
+        if not include_legacy_strategies:
+            combos = [row for row in combos if row["id"].endswith(":combo:1")]
+        # Banker-only means one SGM ticket, not an extra single-leg BET.
+        game_recs = combos + (_build_nba_bankers(combos) if include_legacy_strategies else [])
         # The page can only tell "today" from "yesterday" by date.  The tip-off
         # lets it stop offering 確認落注 on a game that has already started
         # (2026-10-21: BOS@DET tipped 06:00 and still showed the button at noon).

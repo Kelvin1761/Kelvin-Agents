@@ -93,3 +93,18 @@ def test_same_day_older_checkout_cannot_regress_verified_analysis():
     newer = deepcopy(fresh)
     newer['sports']['nba']['latest_analysis']['games'] = [dict(saved, analysis_time='2099-10-24T09:00:00Z')]
     assert _merge_sports_feed(cached, newer, today='2099-10-24')['sports']['nba']['latest_analysis']['games'][0]['analysis_time'].endswith('09:00:00Z')
+
+
+def test_banker_shadow_allows_four_legs_but_legacy_review_keeps_its_bound(tmp_path):
+    write_game(tmp_path)
+    path = tmp_path/'Game_BKN_CLE_Full_Analysis.md.market_legs.json'
+    data = json.loads(path.read_text())
+    candidate = data['review_candidates'][0]
+    candidate['legs'] = [dict(candidate['legs'][0], selection=f'Player {i} 10+') for i in range(4)]
+    path.write_text(json.dumps(data))
+    assert build_latest_analysis(tmp_path, '2099-10-25', lambda *a: (True, []))['games'][0]['review_candidates'] == []
+    candidate['version'] = 'banker-ev-shadow-v1'
+    path.write_text(json.dumps(data))
+    reviews = build_latest_analysis(tmp_path, '2099-10-25', lambda *a: (True, []))['games'][0]['review_candidates']
+    assert len(reviews) == 1 and len(reviews[0]['legs']) == 4
+    assert reviews[0]['decision'] == 'OBSERVE' and reviews[0]['odds'] is None

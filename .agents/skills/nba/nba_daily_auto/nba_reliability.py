@@ -100,6 +100,7 @@ def build(until: str, root: Path | None = None, window_days: int = WINDOW_DAYS,
     else:
         status = "ok"
     return {
+        "selection_health": selection_health(until, root),
         "until": until, "since": cur["since"], "window_days": window_days, "epoch": epoch, "status": status,
         "min_settled": MIN_SETTLED, "alert_gap": ALERT_GAP,
         "probability_model_id": model_id,
@@ -131,12 +132,13 @@ def _pct(x: Any) -> str:
 
 def message_lines(report: dict) -> list[str]:
     o, h, m = report["overall"], report["high_band"], report["market_raw_close"]
+    health_line = selection_message(report.get("selection_health") or {})
     head = f"📐 機率校準（現役模型，{report['since']} 起，已結算 {o['n']} 腿）"
     if report["status"] == "disabled":
         return [head, "校準層已刻意關閉；舊模型紀錄只作背景，唔會當成現役校準結果。"]
     if report["status"] == "insufficient_n":
-        return [head, f"樣本未夠（要 ≥{report['min_settled']} 腿）先判斷；暫時只記錄，唔作結論。"]
-    lines = [head, f"預測 {_pct(o['mean_p'])}／實際 {_pct(o['hit_rate'])}（差 {o['gap'] * 100:+.0f}pp）"
+        return [head, health_line, f"樣本未夠（要 ≥{report['min_settled']} 腿）先判斷；暫時只記錄，唔作結論。"]
+    lines = [head, health_line, f"預測 {_pct(o['mean_p'])}／實際 {_pct(o['hit_rate'])}（差 {o['gap'] * 100:+.0f}pp）"
              f"｜市場隱含 {_pct(m['mean_p'])}"]
     if h["n"]:
         lines.append(f"p≥80% 區：預測 {_pct(h['mean_p'])}／實際 {_pct(h['hit_rate'])}（{h['n']} 腿，差 {h['gap'] * 100:+.0f}pp）")
@@ -159,6 +161,55 @@ def main(argv: list[str] | None = None) -> int:
         write(report)
     print("\n".join(message_lines(report)))
     return 3 if report["status"] == "alert" else 75 if report["status"] == "disabled" else 0
+
+
+
+def selection_health(until: str, root: Path | None = None, window_days: int = 30) -> dict:
+    """Zero-bankers is an operational audit signal, never a parameter trigger."""
+    from collections import defaultdict
+    root = root or ledger.ledger_root()
+    since = max(CALIBRATION_EPOCH, (date.fromisoformat(until)-timedelta(days=window_days-1)).isoformat())
+    identity = current_model_id()
+    days = []
+    for day in ledger._iter_dates(since, until, root):
+        rows = ledger.read_rows(root, day)
+        exclusions = ledger.no_prediction_exclusions(rows)
+        rows = [r for r in rows if r.get('season_phase') != 'PRESEASON' and not ledger._excluded(r, exclusions)]
+        models = defaultdict(list)
+        expected = set()
+        for row in rows:
+            if row.get('row_type') == 'price_obs' and ledger._pre_tip(row):
+                expected.add(row.get('game_tag'))
+            if row.get('row_type') == 'model_obs':
+                models[row.get('game_tag')].append(row)
+        analysed, bankers = 0, 0
+        for tag, candidates in models.items():
+            chosen = ledger._choose_snapshot(candidates)
+            selected = [r for r in candidates if chosen and r.get('snapshot_id') == chosen]
+            if not selected or not identity or any(ledger.probability_model_id(r) != identity for r in selected):
+                continue
+            analysed += 1
+            bankers += int(any('1' in [str(x) for x in r.get('picked_in', [])] for r in selected))
+        complete = bool(expected) and analysed == len(expected)
+        days.append({'date': day, 'analysed_games': analysed, 'expected_priced_games': len(expected),
+                     'banker_games': bankers, 'coverage_complete': complete})
+    streak = 0
+    for day in reversed(days):
+        if not day['coverage_complete'] or day['banker_games']:
+            break
+        streak += 1
+    return {'status': 'review_required' if streak >= 3 else ('observing' if days else 'insufficient_data'),
+            'zero_banker_runs': streak, 'alert_after_runs': 3, 'days': days,
+            'probability_model_id': identity,
+            'note': 'Complete priced-game coverage only; missing/legacy/warmup data breaks the streak. No parameter changes.'}
+
+
+def selection_message(health: dict) -> str:
+    if health.get('status') == 'review_required':
+        return f"⚠️ 連續 {health['zero_banker_runs']} 個完整可評估賽日零穩膽：策略需審計，唔代表已證明成功避險。"
+    if health.get('status') == 'insufficient_data':
+        return '出手監察：正式逐日紀錄未足，唔判定策略正常或失效。'
+    return f"出手監察：連續 {health.get('zero_banker_runs', 0)} 個完整可評估賽日零穩膽；達3日觸發審計提醒。"
 
 
 if __name__ == "__main__":

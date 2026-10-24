@@ -1930,7 +1930,7 @@ test("latest NBA analysis replaces historical fallback even when no BET qualifie
   const latest={event_date:"2099-10-25",coverage:{analysed_games:1,review_candidates:1},games:[{
     game_tag:"BKN_CLE",event_name:"BKN @ CLE",status:"analysed",status_reason:"賽前分析已保存。",market_count:100,positive_ev_count:5,formal_sgm_count:0,
     report_markdown:"LATEST FULL GAME REPORT",player_markets:[{player:"Actual Star",market:"pts",line:20,odds:1.5,model_probability:.6,l10_hit_rate:.8,expected_value:-.1}],
-    diagnostics:{player_candidates:90,positive_edge_candidates:5,positive_edge_and_l10_50:1},
+    diagnostics:{player_candidates:90,positive_edge_candidates:5,positive_edge_and_l10_50:1,banker_funnel:{fallback:{remaining:{recent_hits:12,nonnegative_edge:0,reflector:0}}}},
     review_candidates:[{label:"較低倍率",analysis_only:true,decision:"OBSERVE",odds:1.8,quote_status:"expired",model_probability:.5,expected_value:-.1,
       reasons:["未通過正式投注閘"],legs:[{selection:"Actual Star PTS 20+",odds:1.5},{selection:"Another Star REB 5+",odds:1.4}]}]}]};
   const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{analysis_run_id:"nba:2099-10-25",validation_status:"blocked",recommendations:[],latest_analysis:latest}}},
@@ -1938,6 +1938,8 @@ test("latest NBA analysis replaces historical fallback even when no BET qualifie
   const html=api.renderSportsWorkspace("nba");
   assert.match(html,/最新分析/);assert.match(html,/BKN @ CLE/);assert.match(html,/Actual Star PTS 20\+/);
   assert.match(html,/LATEST FULL GAME REPORT/);assert.match(html,/已過期，需刷新/);assert.match(html,/SGM 候選/);
+  assert.match(html,/穩膽 fallback：近期命中率合格 12 腿/);assert.match(html,/同時非負 edge 0 腿/);
+  assert.match(html,/真實組合價 ≥2.0/);
   assert.doesNotMatch(html,/OLD APRIL CASE/);assert.doesNotMatch(html,/Reflector/);assert.doesNotMatch(html,/onsubmit=/);
   api.setSportsTab("archive");assert.match(api.renderSportsWorkspace("nba"),/OLD APRIL CASE/);
   api.setSportsTab("history");assert.match(api.renderSportsWorkspace("nba"),/LATEST FULL GAME REPORT/);

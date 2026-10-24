@@ -36,7 +36,7 @@ from nba_identity import player_name_key
 from nba_availability import classify_injury_status, usage_from_injuries, usage_bonus_for
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nba_prob_layer
-from nba_selection_policy import BANKER, BANKER_FALLBACK, VALUE, HIGH, BUILD_TOLERANCE, SelectedCombo, description as policy_description
+from nba_selection_policy import BANKER, BANKER_FALLBACK, VALUE, HIGH, BUILD_TOLERANCE, SelectedCombo, STRATEGY_PROFILE, description as policy_description
 from nba_sgm_quote import quote_combo, quote_valid, quote_legs, legs_identity
 
 class MLModelUnavailable(RuntimeError):
@@ -1438,7 +1438,7 @@ def _passes_playoff_gate(leg, tier):
     return True
 
 
-def select_combo_1(candidates):
+def select_combo_1(candidates, *, require_leg_ev=True, require_combo_ev=True):
     """Banker selection with explicit strict/fallback policy; no safety guarantee.
     - L10 ≥ 80% AND L5 ≥ 80% (true recent consistency)
     - avg must exceed line by ≥ 15% (buffer safety)
@@ -1459,7 +1459,7 @@ def select_combo_1(candidates):
             if _is_player_milestone(c)
             and c["hit_l10"] >= BANKER.l10
             and c.get("hit_l5", 0) >= BANKER.l5
-            and c["edge"] >= 0  # V5.3: FW-11 blocks negative EV legs — must be >= 0
+            and (not require_leg_ev or c["edge"] >= 0)  # False is forward-shadow only
             and c["odds"] >= BANKER.min_odds  # V5.2: Remove 'almost free' legs — each leg should carry meaningful odds
             and c.get("cov", 0) <= BANKER.max_cov
             and not c.get("bench_minutes_risk", False)
@@ -1482,7 +1482,7 @@ def select_combo_1(candidates):
                            min_legs=BANKER.min_legs, max_legs=BANKER.max_legs,  # V5.3: Allow 4 legs to reach 2.0x target
                            score_fn=score_fn,
                            max_same_team_pts=2, max_same_team=3,
-                           tier="banker")
+                           tier="banker", require_positive_ev=require_combo_ev)
 
     rule = "banker"
     # Fallback: relax to L10 ≥ 70% if strict pool is too small
@@ -1492,7 +1492,7 @@ def select_combo_1(candidates):
                         if _is_player_milestone(c)
                         and c["hit_l10"] >= BANKER_FALLBACK.l10
                         and c.get("hit_l5", 0) >= BANKER_FALLBACK.l5
-                        and c["edge"] >= 0  # V5.3: FW-11 blocks negative EV legs
+                        and (not require_leg_ev or c["edge"] >= 0)  # False is forward-shadow only
                         and c["odds"] >= BANKER_FALLBACK.min_odds  # V5.2: Slightly relaxed from 1.20 for fallback
                         and c.get("cov", 0) <= BANKER_FALLBACK.max_cov
                         and not c.get("bench_minutes_risk", False)
@@ -1506,7 +1506,7 @@ def select_combo_1(candidates):
                                min_legs=BANKER_FALLBACK.min_legs, max_legs=BANKER_FALLBACK.max_legs,  # V5.3: Allow 4 legs
                                score_fn=score_fn,
                                max_same_team_pts=2, max_same_team=3,
-                               tier="banker")
+                               tier="banker", require_positive_ev=require_combo_ev)
 
     return SelectedCombo(result or [], rule)
 
@@ -1516,7 +1516,7 @@ def select_combo_1(candidates):
 
 def _greedy_build(pool, target_min, target_max, min_legs, max_legs,
                   score_fn=None, max_same_team_pts=2, max_same_team=4,
-                  tier="value"):
+                  tier="value", require_positive_ev=True):
     """Greedy capped SGM builder V5.
     
     Improvements over V4:
@@ -1592,10 +1592,10 @@ def _greedy_build(pool, target_min, target_max, min_legs, max_legs,
                 break  # Past minimum with extra leg cushion — stop
 
         final_odds = _combo_odds(combo)
-        if len(combo) >= min_legs and target_min <= final_odds <= target_max and _combo_passes_positive_ev_gate(combo, tier):
+        if len(combo) >= min_legs and target_min <= final_odds <= target_max and (not require_positive_ev or _combo_passes_positive_ev_gate(combo, tier)):
             return combo
         # If we overshot slightly, still accept if within 20% tolerance
-        if len(combo) >= min_legs and final_odds >= target_min and final_odds <= target_max * BUILD_TOLERANCE and _combo_passes_positive_ev_gate(combo, tier):
+        if len(combo) >= min_legs and final_odds >= target_min and final_odds <= target_max * BUILD_TOLERANCE and (not require_positive_ev or _combo_passes_positive_ev_gate(combo, tier)):
             return combo
         return None
 
@@ -2223,17 +2223,19 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     
     # F4: No cascading exclusion — each combo selects independently from full pool.
     # With multi-leg combos, overlap is acceptable and produces better results.
-    combo_2 = select_combo_2(candidates)
-    combo_3 = select_combo_3(candidates)
-    combo_x = select_combo_x_value_bomb(candidates)
+    # Product focus: other strategies remain readable in historical artifacts.
+    combo_2, combo_3, combo_x = [], [], []
     priced = {}
     quote_attempts = {}
+    quote_cache = {}
     for key, proposal in {"1": combo_1, "2": combo_2, "3": combo_3, "X": combo_x or []}.items():
         if not proposal:
             priced[key] = []
             continue
         quote_source = sportsbet_odds if sportsbet_odds is not None else odds
         quoted = quote_combo(quote_source, proposal)
+        from nba_sgm_quote import legs_identity
+        quote_cache[legs_identity(proposal)] = quoted
         quote_attempts[key] = quoted.quote
         if (quote_valid(quoted.quote, quote_source, proposal) and _combo_passes_positive_ev_gate(quoted)
                 and quoted.quote["decimal_odds"] >= {"1": 2.0, "2": 3.0, "3": 8.0, "X": 1.0}[key]):
@@ -2277,33 +2279,36 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
         combo_1))
     sections.append(f"")
 
-    sections.append(gen_combo_section(
-        "組合 2: 價值膽 Multi-Leg", "🔥",
-        policy_description("2", combo_2),
-        combo_2))
-    sections.append(f"")
+    sections.append("正式策略：只保留穩膽；價值膽、高倍率及 Value Bomb 已退出新正式建議。")
+    sections.append("")
 
-    sections.append(gen_combo_section(
-        "組合 3: 高倍率 SGM", "💎",
-        policy_description("3", combo_3),
-        combo_3))
-    sections.append(f"")
-
-    if combo_x:
-        sections.append(gen_combo_section(
-            "組合 X: 💣 Value Bomb", "💣",
-            "2-3 Legs | 基座 L10≥80%／L5≥70%；炸彈腿 Edge≥10%／L10≥60%／L5≥50%＋確認 gate | 單腿乘積≥5.0x；冇硬性上限",
-            combo_x))
-        sections.append(f"")
-
+    # Forward experiments never feed formal selection or Kelly sizing.
+    from nba_review_candidates import banker_funnel, build_banker_shadow
+    def cached_quote(source, legs):
+        from nba_sgm_quote import legs_identity
+        key = legs_identity(legs)
+        if key not in quote_cache:
+            quote_cache[key] = quote_combo(source, legs)
+        return quote_cache[key]
+    shadow_error = None
+    try:
+        shadow = build_banker_shadow(candidates, sportsbet_odds if sportsbet_odds is not None else odds,
+                                     select=select_combo_1, quote=cached_quote,
+                                     valid_quote=quote_valid, evaluate=compute_combo_ev)
+    except Exception as exc:
+        shadow, shadow_error = [], type(exc).__name__
+    funnel = banker_funnel(candidates, playoff=_passes_playoff_gate, reflector=_post_reflector_leg_allowed)
+    if shadow_error:
+        print(f"⚠️ banker_shadow_failed:{shadow_error}；正式穩膽結果保留。")
+        sections.append(f"⚠️ 穩膽影子比較未完成（{shadow_error}）；唔將缺實驗資料當成零出手機會。")
+    if capture is not None:
+        capture["banker_shadow"] = shadow
+        capture["strategy_profile"] = STRATEGY_PROFILE
     # Review candidates are computed AFTER formal selection and never feed it.
     review_error = None
     try:
-        from nba_review_candidates import build_review_candidates
-        review = build_review_candidates(
-            candidates, sportsbet_odds if sportsbet_odds is not None else odds,
-            allowed=_combo_is_allowed, evaluate=compute_combo_ev,
-            quote=quote_combo, valid_quote=quote_valid)
+        from nba_review_candidates import banker_shadow_review
+        review = banker_shadow_review(shadow)
     except Exception as exc:
         review = []
         review_error = type(exc).__name__
@@ -2315,6 +2320,9 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
         "formal_combinations": sum(bool(c) for c in (combo_1, combo_2, combo_3, combo_x)),
         "formal_quote_attempts": len(quote_attempts),
         "review_error": review_error,
+        "banker_funnel": funnel,
+        "banker_shadow_error": shadow_error,
+        "strategy_profile": STRATEGY_PROFILE,
     }
     if capture is not None:
         capture["review_candidates"] = review
@@ -2520,6 +2528,8 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
         "combos": combos_out,
         "quote_attempts": capture.get("quote_attempts", {}),
         "selection_diagnostics": capture.get("selection_diagnostics", {}),
+        "strategy_profile": capture.get("strategy_profile", STRATEGY_PROFILE),
+        "banker_shadow": capture.get("banker_shadow", []),
         "review_candidates": capture.get("review_candidates", []),
         "availability": capture.get("availability"),
     }

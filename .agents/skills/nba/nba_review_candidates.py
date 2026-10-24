@@ -70,3 +70,99 @@ def build_review_candidates(candidates, odds, *, allowed, evaluate, quote, valid
                                  'model_probability': c['estimated_prob']/100,
                                  'l10_hit_rate': c['hit_l10']/100} for c in legs]})
     return output
+
+
+BANKER_SHADOW_VERSION = 'banker-ev-shadow-v1'
+BANKER_SHADOW_ARMS = (('B0', True, True), ('B1', False, True), ('B2', False, False))
+
+
+def banker_funnel(candidates, *, playoff, reflector):
+    """Descriptive per-gate counts on copies; never changes selector inputs."""
+    from nba_selection_policy import BANKER
+    tiers = {}
+    for name, policy in (('strict', BANKER), ('fallback', BANKER_FALLBACK)):
+        pool = [deepcopy(c) for c in candidates if c.get('market_type') == 'PLAYER_MILESTONE']
+        counts = {'player_markets': len(pool)}
+        def buffer(c):
+            line, avg = c.get('line_val', 0), c.get('avg', 0)
+            return name == 'fallback' or line <= 0 or avg <= 0 or (avg-line)/line >= .15
+        gates = (
+            ('recent_hits', lambda c: c.get('hit_l10', 0) >= policy.l10 and c.get('hit_l5', 0) >= policy.l5),
+            ('nonnegative_edge', lambda c: c.get('edge', -1) >= 0),
+            ('leg_price', lambda c: c.get('odds', 0) >= policy.min_odds),
+            ('volatility', lambda c: c.get('cov', 0) <= policy.max_cov),
+            ('availability', lambda c: not c.get('bench_minutes_risk') and not c.get('day_to_day')),
+            ('recent_form', lambda c: c.get('l3_avg', c.get('avg', 0)) >= c.get('line_val', 0) * (1 if name == 'strict' else .85)),
+            ('buffer', buffer),
+            ('playoff', lambda c: playoff(c, 'banker')),
+            ('reflector', lambda c: reflector(c, 'banker')),
+        )
+        # Both a waterfall and independent failures: gate order cannot hide a
+        # second bottleneck (e.g. high-hit legs also fail the model edge gate).
+        failures = {key: sum(not check(deepcopy(c)) for c in pool) for key, check in gates}
+        for key, check in gates:
+            pool = [c for c in pool if check(c)]
+            counts[key] = len(pool)
+        tiers[name] = {'remaining': counts, 'independent_failures': failures,
+                       'distinct_players': len({c.get('player') for c in pool})}
+    return tiers
+
+
+def build_banker_shadow(candidates, odds, *, select, quote, valid_quote, evaluate):
+    """Frozen EV ablation. Returned rows are OBSERVE, never formal combos."""
+    output = []
+    markets = {'PTS': 'pts', 'REB': 'reb', 'AST': 'ast', '3PM': 'fg3m'}
+    for arm, leg_ev, combo_ev in BANKER_SHADOW_ARMS:
+        proposal = select(deepcopy(candidates), require_leg_ev=leg_ev, require_combo_ev=combo_ev)
+        row = {'version': BANKER_SHADOW_VERSION, 'arm': arm, 'analysis_only': True,
+               'decision': 'OBSERVE', 'eligible': False, 'legs': [], 'reasons': [],
+               'selection_rule': getattr(proposal, 'selection_rule', None),
+               'require_leg_ev': leg_ev, 'require_combo_ev': combo_ev}
+        if not proposal:
+            row['reasons'] = ['no_candidate']
+            output.append(row)
+            continue
+        priced = quote(odds, proposal)
+        verified = valid_quote(priced.quote, odds, proposal)
+        metrics = evaluate(priced if verified else proposal)
+        actual = priced.quote.get('decimal_odds') if verified else None
+        ev = metrics.get('combo_ev_pct')
+        if not verified:
+            row['reasons'].append('quote_unverified')
+        elif actual < BANKER_FALLBACK.target_min:
+            row['reasons'].append('actual_price_below_2')
+        if combo_ev and (not isinstance(ev, (int, float)) or not math.isfinite(ev) or ev <= 0):
+            row['reasons'].append('nonpositive_combo_ev')
+        row.update(eligible=not row['reasons'], sportsbet_sgm_price=actual,
+                   sportsbet_sgm_status='ok' if verified else 'unverified',
+                   sgm_quote=priced.quote, adjusted_joint_prob=metrics['adjusted_joint_prob'],
+                   product_of_leg_prices=metrics['product_of_leg_prices'],
+                   expected_value=ev/100 if verified else None,
+                   legs=[{'player': c['player'], 'team': c['team'], 'market': markets[c['category']],
+                          'line': c['line_val'], 'side': 'over', 'price': c['odds'],
+                          'selection': c['desc'], 'category': c['category'],
+                          'model_probability': c['estimated_prob']/100, 'l10_hit_rate': c['hit_l10']/100}
+                         for c in proposal])
+        output.append(row)
+    return output
+
+
+def banker_shadow_review(rows):
+    """One public banker research candidate, always OBSERVE, with the real price."""
+    proposal = next((r for r in rows if r.get('arm') == 'B2' and r.get('legs')), None)
+    if not proposal:
+        return []
+    translations = {'quote_unverified': '未取得有效 Sportsbet 組合報價。',
+                    'actual_price_below_2': '真實組合價低於穩膽最低2.0倍。',
+                    'nonpositive_combo_ev': '模型組合 EV 非正。'}
+    reasons = ['穩膽影子候選：只通過近期命中／波幅等選腿規則，未驗證盈利；唔係正式建議。']
+    reasons += [translations.get(reason, reason) for reason in proposal['reasons']]
+    if proposal.get('expected_value') is not None and proposal['expected_value'] <= 0:
+        reasons.append('按真實組合價計算 EV 非正，正式策略維持 NO BET。')
+    return [{'candidate_id': 'steady', 'label': '穩膽影子候選', 'version': BANKER_SHADOW_VERSION,
+             'analysis_only': True, 'decision': 'OBSERVE', 'odds': proposal.get('sportsbet_sgm_price'),
+             'sgm_quote': proposal.get('sgm_quote') or {},
+             'quote_verified_at_generation': proposal.get('sportsbet_sgm_status') == 'ok',
+             'model_probability': proposal.get('adjusted_joint_prob'),
+             'expected_value': proposal.get('expected_value'), 'reasons': reasons,
+             'legs': [dict(leg, odds=leg['price']) for leg in proposal['legs']]}]

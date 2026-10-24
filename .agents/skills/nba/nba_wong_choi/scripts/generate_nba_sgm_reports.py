@@ -170,16 +170,14 @@ def generate_all_sgm_report(games_data, analysis_date):
         lines.append('')
 
         # Add all combos with full analysis
-        for combo_num in sorted(game['combos'].keys(), key=lambda k: (0, k) if isinstance(k, int) else (1, k)):
+        for combo_num in (key for key in game['combos'] if str(key) == '1'):
             combo_content = game['combos'][combo_num]
             # Remove the leading ## to make it fit under the game section
             lines.append(combo_content)
             lines.append('')
 
         # Add Value Bomb if exists
-        if game.get('value_bomb'):
-            lines.append(game['value_bomb'])
-            lines.append('')
+        # Value/high/bomb strategies are retired from new formal reports.
 
         # Add summary
         if game.get('summary'):
