@@ -1821,6 +1821,7 @@ function sydneyToday() {
 }
 
 function isSgmQuoteExpired(item) {
+  if (item?.analysis_only === true) return true;
   if (!item || item.odds_status !== 'sportsbet_sgm_quoted') return false;
   const captured = Date.parse(item.sgm_quote?.captured_at || '');
   const expires = Date.parse(item.quote_expires_at || '');
@@ -1859,7 +1860,29 @@ function hasLiveSportsFeed(sport) {
   return activeSportsRecommendations(sport).length > 0;
 }
 
+function sportsAnalysisCards(sport) {
+  if (sport !== 'nba') return [];
+  const snapshot = sportsFeedSnapshot(sport);
+  if (!snapshot) return [];
+  const frozen = (snapshot.analysis_cards || []).filter(item => item.analysis_only === true);
+  const expired = hasCurrentSportsFeed(sport)
+    ? (snapshot.recommendations || []).filter(item => {
+        const captured = Date.parse(item.sgm_quote?.captured_at);
+        const expires = Date.parse(item.quote_expires_at);
+        return ['valid', 'partial'].includes(item.validation_status)
+          && Number.isFinite(captured) && Number.isFinite(expires)
+          && captured <= Date.now() && expires > captured && expires <= Date.now();
+      }).map(item => ({
+        ...item, analysis_only: true, validation_status: 'analysis_only', decision: 'OBSERVE',
+        published_at: item.sgm_quote?.captured_at || snapshot.generated_at,
+        risk: '賽前分析已保存；報價或傷停需重新驗證，唔代表即時 +EV。',
+      })) : [];
+  return [...new Map([...expired, ...frozen].map(item => [item.id, item])).values()];
+}
+
 function sportsHistory(sport) {
+  const analysisCards = sportsAnalysisCards(sport);
+  if (analysisCards.length) return [...activeSportsRecommendations(sport), ...analysisCards];
   // Gate on the feed actually HAVING recommendations (hasLiveSportsFeed), not on it
   // merely being valid (hasCurrentSportsFeed). A valid tennis feed whose evidence
   // gate passed nothing returns [], and gating on validity alone made that empty
@@ -1991,7 +2014,7 @@ function renderSportsPick(item, sport) {
   const reviewOnly = item.outcome === 'review';
   const priceText = item.odds == null
     ? `<span class="pick-block__noprice">${item.odds_status === 'not_archived' ? '原始賠率未存檔 · 落注時輸入你實際價' : '未有已驗證賠率'}</span>`
-    : `<span class="pick-block__price">${isCombo ? '合併賠率' : '賠率'} <strong>${Number(item.odds).toFixed(2)}</strong></span>`;
+    : `<span class="pick-block__price">${item.analysis_only ? '快照賠率（非即時）' : (isCombo ? '合併賠率' : '賠率')} <strong>${Number(item.odds).toFixed(2)}</strong></span>`;
 
   if (reviewOnly) {
     // Not a bet — a modelling lesson. Labelling it as one would be actively misleading
@@ -2015,7 +2038,7 @@ function renderSportsPick(item, sport) {
       </li>`;
     }).join('');
     return `<div class="pick-block pick-block--combo">
-      <div class="pick-block__label">🎯 落注 · ${(item.legs || []).length} 腳 combo（全中才派彩）</div>
+      <div class="pick-block__label">${item.analysis_only ? '📋 已保存 SGM 分析 · 需刷新報價' : '🎯 落注'} · ${(item.legs || []).length} 腳 combo（全中才派彩）</div>
       <ol class="pick-legs">${legs}</ol>
       <div class="pick-block__foot">${priceText}</div>
     </div>`;
@@ -2039,7 +2062,7 @@ function renderHistoryCard(item, sport) {
     ? [item.category ? `Tier ${String(item.category).toUpperCase()}` : '', context.tour, context.round, context.tournament].filter(Boolean)
     : [item.category ? String(item.category).toUpperCase() : ''];
   const metrics = [...contextLabels, ...sportsMetricLabels(item, sport)]
-    .map(label => `<span class="metric-chip">${esc(label)}</span>`).join('');
+    .map(label => `<span class="metric-chip">${item.analysis_only ? '快照 · ' : ''}${esc(label)}</span>`).join('');
   const odds = item.odds == null
     ? '<span class="odds-missing">原始賠率未存檔 · 落注時手動輸入</span>'
     : `${item.odds_status === 'sportsbet_sgm_quoted' ? 'Sportsbet SGM 報價' : (item.odds_status === 'sportsbet_extracted' ? 'Sportsbet 提取賠率' : '分析賠率')} <strong>${Number(item.odds).toFixed(2)}</strong>`;
@@ -2048,7 +2071,7 @@ function renderHistoryCard(item, sport) {
     ? renderInlineBetDraft(item, sport)
     : `<div class="history-card__review-only">${item.outcome !== 'pending'
       ? '舊案例只供檢討，唔會加入新投注或 ROI。'
-      : '未有已驗證 Sportsbet 賠率，暫時唔可以確認落注。'}</div>`;
+      : (isSgmQuoteExpired(item) ? 'SGM 分析已保存；報價／傷停需刷新，暫時唔可以確認落注。' : '未有已驗證 Sportsbet 賠率，暫時唔可以確認落注。')}</div>`;
   // Fixture and pick stay always-visible; the model commentary folds away. <details>
   // rather than a JS toggle so there is no open/closed state to lose when render()
   // rebuilds this innerHTML on the next bet-sync tick.
@@ -2079,6 +2102,7 @@ function renderHistoryCard(item, sport) {
 function renderSportsHistory(sport) {
   const items = sportsHistory(sport);
   const live = hasLiveSportsFeed(sport);
+  const analysisCards = sportsAnalysisCards(sport);
   const snapshot = sportsFeedSnapshot(sport);
   const coverage = sport === 'tennis' ? snapshot?.coverage : null;
   const strategy = sport === 'tennis' ? snapshot?.strategy : null;
@@ -2147,10 +2171,10 @@ function renderSportsHistory(sport) {
       <div class="history-grid">${referencePicks.map(item => renderHistoryCard(item, sport)).join('')}</div>`
     : '';
   const runId = snapshot?.analysis_run_id ? String(snapshot.analysis_run_id).split(':').pop() : '';
-  const expiredNotice = !live && sportsFeedExpired(sport)
+  const expiredNotice = !live && !analysisCards.length && sportsFeedExpired(sport)
     ? `<div class="sports-notice sports-notice--gated"><span>⌛</span><span><strong>上次分析${runId ? `（${esc(runId)}）` : ''}嘅建議已經開賽／過期</strong>，今日分析仲未出。新分析完成後會自動更新；下面唔係今日建議。</span></div>`
     : '';
-  const firewallBlocked = !live && (snapshot?.warnings || []).some(w => String(w).startsWith('nba_firewall_blocked'));
+  const firewallBlocked = !live && !analysisCards.length && (snapshot?.warnings || []).some(w => String(w).startsWith('nba_firewall_blocked'));
   const blockedNotice = firewallBlocked
     ? `<div class="sports-notice sports-notice--gated"><span>🛑</span><span><strong>今日 NBA 分析未通過發佈檢查</strong>（${esc(String(snapshot.analysis_run_id || '').split(':').pop())}），所以暫時冇建議。修復後會自動更新；下面唔係今日建議。</span></div>`
     : '';
@@ -2163,10 +2187,15 @@ function renderSportsHistory(sport) {
   // Today's analysis ran and passed nothing, so the cards below are history. Say so
   // outright — otherwise old cases read as today's picks, which is the worst possible
   // way to be wrong on a betting page.
-  const gatedTodayNotice = !live && hasCurrentSportsFeed(sport) && !sportsFeedExpired(sport)
-    ? `<div class="sports-notice sports-notice--gated"><span>🚫</span><span><strong>今日冇合格建議。</strong>今次分析已完成，但冇任何選擇通過模型同風控門檻，所以${sport === 'nba' ? 'NBA' : 'Tennis'}今日<strong>唔應該落注</strong>。下面係過往案例，只供檢討。</span></div>`
+  const completedNoBet = sport === 'nba'
+    && (snapshot?.warnings || []).includes('no_validated_nba_combos')
+    && (snapshot?.source_files || []).some(path => /^Game_.*_Full_Analysis\.md$/.test(path));
+  const gatedTodayNotice = !live && !analysisCards.length && (hasCurrentSportsFeed(sport) || completedNoBet) && !sportsFeedExpired(sport)
+    ? `<div class="sports-notice sports-notice--gated"><span>🚫</span><span><strong>${completedNoBet && runId ? `${esc(runId)} 冇合格建議。` : '今日冇合格建議。'}</strong>今次分析已完成，但冇任何選擇通過模型同風控門檻，所以${sport === 'nba' ? 'NBA' : 'Tennis'}今日<strong>唔應該落注</strong>。下面係過往案例，只供檢討。</span></div>`
     : '';
-  const notice = live
+  const notice = analysisCards.length
+    ? `<div class="sports-notice"><span>📋</span><span>以下保留已驗證賽前 SGM 分析。快照賠率／EV 唔係即時報價；需刷新來源及報價先可確認落注。${analysisCards[0].published_at ? `分析時間：${esc(analysisCards[0].published_at)}` : ''}</span></div>`
+    : live
     ? `<div class="sports-notice"><span>✅</span><span>正式 ${sport === 'nba' ? 'NBA Wong Choi artifacts' : 'tennis_wc.db'} live feed · ${esc(snapshot.analysis_run_id || '')} · ${items.length} 個已驗證建議。所有 odds／legs 直接由 pipeline 匯出；下一次新分析會替換呢個建議清單，但唔會改動已確認投注。</span></div>`
     : sport === 'nba'
     ? `<div class="sports-notice"><span>⚠️</span><span>NBA 呢批係真實 Reflector 案例，但舊版流程無保存原始 Sportsbet 賠率。為免作假，畫面唔會估賠率；加入投注單時要輸入你實際落注價。</span></div>`
@@ -2286,14 +2315,14 @@ function renderSportsWorkspace(sport = activeSport) {
           : '將模型概率、市場 fair probability、edge、EV 同主要風險放埋一張卡，減少來回翻報告。'}</p>
       </div>
       <div class="sports-hero__aside">
-        <div class="sports-hero-stat"><strong>${history.length}</strong><span>歷史案例</span></div>
+        <div class="sports-hero-stat"><strong>${history.length}</strong><span>${sportsAnalysisCards(sport).length ? 'SGM／分析卡' : (hasLiveSportsFeed(sport) ? '建議' : '歷史案例')}</span></div>
         <div class="sports-hero-stat"><strong>${wins}/${settled.length}</strong><span>案例命中</span></div>
         <div class="sports-hero-stat"><strong>${records.length}</strong><span>我的投注</span></div>
         <div class="sports-hero-stat"><strong>${isNba ? 'Reflector' : 'Settled'}</strong><span>資料狀態</span></div>
       </div>
     </div>
     <div class="sports-tabs" role="tablist">
-      <button type="button" class="sports-tab ${activeSportsTab === 'history' ? 'sports-tab--active' : ''}" onclick="setSportsTab('history')">${hasLiveSportsFeed(sport) ? '📡 今日建議' : '📚 歷史分析'}</button>
+      <button type="button" class="sports-tab ${activeSportsTab === 'history' ? 'sports-tab--active' : ''}" onclick="setSportsTab('history')">${sportsAnalysisCards(sport).length ? '📋 賽前分析' : (hasLiveSportsFeed(sport) ? '📡 今日建議' : '📚 歷史分析')}</button>
       <button type="button" class="sports-tab ${activeSportsTab === 'bets' ? 'sports-tab--active' : ''}" onclick="setSportsTab('bets')">🧾 我的投注 ${records.length ? `(${records.length})` : ''}</button>
       <button type="button" class="sports-tab ${activeSportsTab === 'roi' ? 'sports-tab--active' : ''}" onclick="setSportsTab('roi')">📊 ROI</button>
     </div>

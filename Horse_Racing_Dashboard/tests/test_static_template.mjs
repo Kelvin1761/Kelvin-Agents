@@ -110,6 +110,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       formatSnapshotStamp: typeof formatSnapshotStamp === "function" ? formatSnapshotStamp : null,
       sportsPickLines: typeof sportsPickLines === "function" ? sportsPickLines : null,
       sportsLegParts: typeof sportsLegParts === "function" ? sportsLegParts : null,
+      sportsAnalysisCards: typeof sportsAnalysisCards === "function" ? sportsAnalysisCards : null,
       sportsHistory: typeof sportsHistory === "function" ? sportsHistory : null,
       renderSportsHistory: typeof renderSportsHistory === "function" ? renderSportsHistory : null,
       hasLiveSportsFeed: typeof hasLiveSportsFeed === "function" ? hasLiveSportsFeed : null,
@@ -1861,4 +1862,64 @@ test("SGM quote expiry stops an already-rendered static recommendation", () => {
     quote_expires_at: new Date(now + 299000).toISOString() };
   assert.match(renderHistoryCard(fresh, "nba"), /onsubmit=/);
   assert.match(renderHistoryCard(fresh, "nba"), /Sportsbet SGM 報價/);
+});
+
+test("expired SGM remains visible as analysis without any confirmation form", () => {
+  const now = Date.now();
+  const item = { id: "nba:analysis", sport: "nba", validation_status: "valid", event_date: "2099-01-01", event_name: "BKN @ CLE",
+    market: "Same Game Multi", selection: "Verified two-leg SGM", odds: 3.5, odds_status: "sportsbet_sgm_quoted",
+    outcome: "pending", decision: "BET", bet_type: "combo", legs: [{ selection: "First Star 20+" }, { selection: "Second Star 5+" }], metrics: {},
+    sgm_quote: { captured_at: new Date(now-400000).toISOString() }, quote_expires_at: new Date(now-100000).toISOString(), start_time_utc: "2099-01-01T00:00:00Z" };
+  const data = { ...EMPTY_DASHBOARD_DATA, sports_feed: { sports: { nba: { validation_status: "valid", recommendations: [item] } } } };
+  const api=loadTemplateFunctions(data);
+  assert.equal(api.hasLiveSportsFeed("nba"), false);
+  const cards=api.sportsHistory("nba");
+  assert.equal(cards.length,1);
+  assert.equal(cards[0].analysis_only,true);
+  assert.equal(cards[0].decision,"OBSERVE");
+  const html=api.renderSportsHistory("nba");
+  assert.match(html,/已保存 SGM 分析/);
+  assert.match(html,/快照賠率（非即時）/);
+  assert.match(html,/First Star 20\+/);
+  assert.doesNotMatch(html,/onsubmit=/);
+  assert.match(api.renderInlineBetDraft(cards[0],"nba"),/SGM 報價已過期/);
+});
+
+test("a blocked current feed may show proven published analysis without claiming live picks", () => {
+  const card={ id:"nba:saved",sport:"nba",event_name:"BKN @ CLE",event_date:"2099-01-01",analysis_only:true,
+    decision:"OBSERVE",outcome:"pending",bet_type:"combo",selection:"Saved SGM",odds:3.5,metrics:{},
+    legs:[{selection:"Verified Player 20+"},{selection:"Other Player 5+"}],published_at:"2026-10-24T00:00:00Z" };
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{validation_status:"blocked",recommendations:[],analysis_cards:[card]}}}});
+  assert.equal(api.hasLiveSportsFeed("nba"),false);
+  assert.equal(api.sportsHistory("nba").length,1);
+  const html=api.renderSportsHistory("nba");
+  assert.match(html,/已驗證賽前 SGM 分析/);
+  assert.doesNotMatch(html,/onsubmit=/);
+  assert.doesNotMatch(html,/呢批係真實 Reflector 案例/);
+});
+
+
+test("malformed or future SGM quotes cannot become saved analysis", () => {
+  const now=Date.now();
+  const base={id:"nba:bad",sport:"nba",validation_status:"valid",odds_status:"sportsbet_sgm_quoted",decision:"BET",event_date:"2099-01-01",start_time_utc:"2099-01-01T00:00:00Z"};
+  for (const quote of [
+    {sgm_quote:{captured_at:"invalid"},quote_expires_at:new Date(now-1000).toISOString()},
+    {sgm_quote:{captured_at:new Date(now+1000).toISOString()},quote_expires_at:new Date(now+300000).toISOString()},
+    {sgm_quote:{captured_at:new Date(now-1000).toISOString()},quote_expires_at:"invalid"},
+  ]) {
+    const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{validation_status:"valid",recommendations:[{...base,...quote}]}}}});
+    assert.equal(api.sportsAnalysisCards("nba").length,0);
+    assert.equal(api.hasLiveSportsFeed("nba"),false);
+  }
+});
+
+
+test("a completed NBA NO BET run explains zero qualified SGM above historical cases", () => {
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,
+    sports_feed:{sports:{nba:{validation_status:"blocked",analysis_run_id:"nba:2026-10-25",warnings:["no_validated_nba_combos"],source_files:["Game_BKN_CLE_Full_Analysis.md"],recommendations:[]}}},
+    sports_history:{nba:[{id:"old",sport:"nba",event_name:"old game",outcome:"review",legs:[],metrics:{}}]}});
+  const html=api.renderSportsHistory("nba");
+  assert.match(html,/2026-10-25 冇合格建議/);
+  assert.match(html,/分析已完成/);
+  assert.doesNotMatch(html,/分析未通過發佈檢查/);
 });

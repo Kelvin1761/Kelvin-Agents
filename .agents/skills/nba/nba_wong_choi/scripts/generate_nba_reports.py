@@ -2112,6 +2112,8 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     final_source="、".join(sorted(sources)) if sources else "無可評估盤口"
     sections.append(f"**odds_source**: SPORTSBET_LIVE ✅ | **引擎版本**: {engine_label}（運算／安全篩選模式）")
     sections.append(f"**最終機率來源**: {final_source}；ML shadow 訊號唔代表最終機率。")
+    from monte_carlo_nba import MC_MODEL_VERSION
+    sections.append(f"**MC_MODEL_VERSION**: {MC_MODEL_VERSION}（模擬診斷版本；最終機率來源見上）")
     public_phase = meta.get("season_phase", season_phase)
     postseason_type = meta.get("postseason_type") or "N/A"
     sections.append(

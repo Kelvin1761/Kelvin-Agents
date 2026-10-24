@@ -179,22 +179,29 @@ def apply_availability(payload, maps):
     return result
 
 
+def _utc_now():
+    return datetime.now(timezone.utc)
+
+
 def refresh_availability(payload, *, fetch=fetch_team_availability, now=None):
     """Return a new verified payload. Caller atomically writes only on success."""
-    now = now or datetime.now(timezone.utc)
+    started_at = now or _utc_now()
     meta = payload.get("meta", {})
     tip = aware_time(meta.get("date"))
-    if tip is not None and tip <= now:
+    if tip is not None and tip <= started_at:
         raise AvailabilityUnavailable("game already started; availability refresh is forbidden")
     teams = [(meta.get(side) or {}).get("abbr") for side in ("away", "home")]
     if not all(teams) or len(set(teams)) != 2:
         raise AvailabilityUnavailable("game team identities missing")
     maps = {team: fetch(team) for team in teams}
+    completed_at = now or _utc_now()
+    if tip is not None and tip <= completed_at:
+        raise AvailabilityUnavailable("game started during availability refresh")
     new = availability_metadata(maps)
     previous = meta.get("availability", {})
     if previous.get("rosters") != new.get("rosters"):
         raise RosterChanged("roster changed or never verified; full extraction required")
     result = apply_availability(payload, maps)
-    if not availability_current(result, now=now):
+    if not availability_current(result, now=completed_at):
         raise AvailabilityUnavailable("availability response is stale or unverified")
     return result

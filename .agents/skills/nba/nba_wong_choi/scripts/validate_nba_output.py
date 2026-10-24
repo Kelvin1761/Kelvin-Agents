@@ -403,7 +403,7 @@ def check_fw12_engine_markers(content: str) -> list:
 
 # ─── Main Validation Runner ─────────────────────────────────────────────
 
-def validate_file(filepath: str, odds_json_path: str = None) -> dict:
+def validate_file(filepath: str, odds_json_path: str = None, *, now=None) -> dict:
     """Run all validation checks on a single file."""
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -421,8 +421,8 @@ def validate_file(filepath: str, odds_json_path: str = None) -> dict:
     all_issues.extend(check_fw10_over_only(content))
     all_issues.extend(check_fw11_combo_gates(content))
     all_issues.extend(check_fw12_engine_markers(content))
-    all_issues.extend(check_fw13_sgm_quotes(content, filepath, odds_json_path))
-    all_issues.extend(check_fw14_availability(content, filepath))
+    all_issues.extend(check_fw13_sgm_quotes(content, filepath, odds_json_path, now=now))
+    all_issues.extend(check_fw14_availability(content, filepath, now=now))
 
     blocks = [i for i in all_issues if "BLOCK" in i]
     warns = [i for i in all_issues if "WARN" in i]

@@ -138,3 +138,21 @@ def test_cached_player_outside_verified_roster_is_excluded_without_injury_donati
     assert updated['usage_redistribution']['BOS'][NAMES[1]]['bonus_USG']==30  # not 80
     assert departed['gamelog']==original['players']['BOS'][2]['gamelog']
     assert a.availability_current(updated,now=NOW)
+
+
+def test_refresh_validates_after_request_completion(monkeypatch):
+    clock=iter([NOW,NOW+timedelta(seconds=3)])
+    monkeypatch.setattr(a,'_utc_now',lambda:next(clock))
+    fresh=maps(NOW+timedelta(seconds=1))
+    updated=a.refresh_availability(package(NOW-timedelta(hours=1)),fetch=lambda team:fresh[team])
+    assert a.availability_current(updated,now=NOW+timedelta(seconds=3))
+
+
+def test_game_starting_during_refresh_cannot_be_published(monkeypatch):
+    old=package();old['meta']['date']=(NOW+timedelta(seconds=2)).isoformat()
+    before=copy.deepcopy(old);clock=iter([NOW,NOW+timedelta(seconds=3)])
+    monkeypatch.setattr(a,'_utc_now',lambda:next(clock))
+    fresh=maps(NOW+timedelta(seconds=1))
+    with pytest.raises(a.AvailabilityUnavailable,match='started during'):
+        a.refresh_availability(old,fetch=lambda team:fresh[team])
+    assert old==before

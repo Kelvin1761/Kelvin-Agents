@@ -663,6 +663,19 @@ def _merge_sports_feed(cached, fresh, today=None):
             and "no_validated_nba_combos" in [str(w) for w in (new.get("warnings") or [])]
             and _run_date(new) >= _run_date(old)
         )
+        # Read-only, previously verified analysis survives a checkout without
+        # this domain's files. Never restore BET recommendations through here.
+        old_cards = [card for card in (old.get("analysis_cards") or [])
+                     if isinstance(card, dict) and card.get("analysis_only") is True
+                     and card.get("decision") == "OBSERVE"
+                     and card.get("validation_status") == "analysis_only"]
+        if (sport == "nba" and old_cards and not expired and not new.get("analysis_cards")
+                and _run_date(old) >= _run_date(new)):
+            new = copy.deepcopy(new)
+            new["analysis_cards"] = copy.deepcopy(old_cards)
+            if _run_date(old) > _run_date(new):
+                new["analysis_run_id"] = old["analysis_run_id"]
+            merged["sports"][sport] = new
         if (old_is_good and not expired and not firewall_blocked
                 and not no_validated_combos and (not new_is_good or older)):
             kept = copy.deepcopy(old)

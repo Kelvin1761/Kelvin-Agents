@@ -846,6 +846,18 @@ def _run_orchestrator_refresh(
             raise TemporaryFailure(f"orchestrator_exit_{result.returncode}:{tag}")
         if tag != "all":
             passed.add(tag)
+    # Single-game runs each write an aggregate for their own scope. Rebuild the
+    # union once, after all refreshable games finish, without touching started games.
+    if len(commands) > 1 and passed - blocked:
+        compile_result = _run([
+            sys.executable, str(ORCHESTRATOR), "--date", target_date,
+            "--compile-only", "--games", *sorted(passed - blocked),
+            "--skip-cloudflare-deploy",
+        ])
+        log.step("compile_refreshed_games", "ok" if compile_result.returncode == 0 else "failed",
+                 game_tags=sorted(passed - blocked), exit_code=compile_result.returncode)
+        if compile_result.returncode != 0:
+            raise TemporaryFailure(f"compile_refreshed_games_exit_{compile_result.returncode}")
     if blocked:
         raise AnalysisGamesBlocked(sorted(blocked), sorted(passed - blocked))
 
