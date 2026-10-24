@@ -1,0 +1,51 @@
+{
+  "day": "2026-10-24",
+  "meetings": 16,
+  "sportsbet_requests": 0,
+  "cloudflare_uploads": 0,
+  "scoring_runs": 0,
+  "upload_simulation_seconds": 2.0,
+  "analysis_simulation_seconds": 0.15,
+  "source_files": {
+    "au_progressive_publish.py": "2fa27d07a9272267aa9f17511ca74eb29c44461a11756636d6ee99f0f53bf111",
+    "au_daily_schedule.py": "bcb9440d620a6bc0cf4747ee6f5b097eec36ce7e8e7bc718d587e81d23d3e5e2"
+  },
+  "base_snapshot_sha256": "b477bdac064db33648be4e4732d3953dd78de6715ecbef1a01813f4ba6196b04",
+  "frozen_input_bytes": 146416516,
+  "foreground_copy_seconds": 0.4509,
+  "simulated_batches": [
+    1,
+    9,
+    16
+  ],
+  "simulated_publish_count": 3,
+  "simulated_first_live_before_last_ready": true,
+  "simulated_elapsed_seconds": 6.5136,
+  "simulated_all_verified": true,
+  "real_batch_build_seconds": 58.6966,
+  "frozen_inputs_unchanged_by_real_builder": true,
+  "real_build_passed": true,
+  "quarantined": {},
+  "final_merge_json_files": 1,
+  "final_merge_html_files": 1,
+  "dashboard_meetings": [
+    "2026-10-25|ShaTin",
+    "2026-10-24|Albury",
+    "2026-10-24|Armidale",
+    "2026-10-24|Ascot",
+    "2026-10-24|Collie",
+    "2026-10-24|Darwin",
+    "2026-10-24|Eagle Farm",
+    "2026-10-24|Flemington",
+    "2026-10-24|Gold Coast Poly",
+    "2026-10-24|Gold Coast",
+    "2026-10-24|Kembla Grange",
+    "2026-10-24|Laverton",
+    "2026-10-24|Morphettville",
+    "2026-10-24|Randwick",
+    "2026-10-24|St Arnaud",
+    "2026-10-24|Toowoomba",
+    "2026-10-24|Yarra Valley"
+  ],
+  "baseline_commit": "27397c6d8fbe216a42013dc6feaf776e54df9681"
+}

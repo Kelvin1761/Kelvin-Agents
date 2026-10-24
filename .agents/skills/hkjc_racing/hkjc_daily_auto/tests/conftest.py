@@ -17,3 +17,9 @@ import pytest
 def _no_live_hkjc_fetches(monkeypatch):
     monkeypatch.setenv("WC_HKJC_SPEEDPRO_DISABLE", "1")
     monkeypatch.setenv("WC_HKJC_ODDS_CAPTURE", "0")
+
+
+@pytest.fixture(autouse=True)
+def _isolated_dashboard_publication_lock(tmp_path, monkeypatch):
+    monkeypatch.setenv("WC_DASHBOARD_PUBLICATION_LOCK_PATH", str(tmp_path / "dashboard.lock"))
+    monkeypatch.delenv("_WC_DASHBOARD_PUBLICATION_LOCK_HELD", raising=False)

@@ -50,6 +50,7 @@ for item in (PROJECT_ROOT, SHARED_RACING, SHARED_WC):
 
 from racing_telegram import send_message  # noqa: E402
 from shared_wong_choi.contracts import Domain  # noqa: E402
+from shared_wong_choi.dashboard_publish_lock import serialized_publication  # noqa: E402
 from shared_wong_choi.domain_evidence import (  # noqa: E402
     record_prediction_decision_if_configured,
     record_settlement_for_event,
@@ -1110,11 +1111,7 @@ def run_prerace(
                "欄位級合約發現死欄位，唔會上板：\n" + "\n".join(blocking[:4]))
         set_control_outcome("failed", reason="data_contract_dead_field", meeting=key)
         return EXIT_FAILED
-    snapshot_for_deploy = build_dashboard_snapshot(meeting_dir)
-    deploy_env = ({"WC_DASHBOARD_BASE_SNAPSHOT": str(snapshot_for_deploy)}
-                  if snapshot_for_deploy else None)
-    deploy_code, deploy_output = run_cmd([str(DASHBOARD_DEPLOY)], timeout=1800,
-                                         env_overlay=deploy_env)
+    deploy_code, deploy_output = publish_dashboard_meetings(meeting_dir)
     if deploy_code != 0:
         notify(f"⏳ HKJC evidence 已保存但 Dashboard deploy 失敗：{deploy_output[-1200:]}")
         set_control_outcome("partial", reason="dashboard_deploy_failed")
@@ -1376,6 +1373,13 @@ def venue_from_meeting_dir(path: Path) -> str:
     raise ValueError(f"cannot infer HKJC venue from meeting folder: {path.name}")
 
 
+@serialized_publication
+def publish_dashboard_meetings(*meeting_dirs: Path) -> tuple[int, str]:
+    snapshot = build_dashboard_snapshot(*meeting_dirs)
+    env = {"WC_DASHBOARD_BASE_SNAPSHOT": str(snapshot)} if snapshot else None
+    return run_cmd([str(DASHBOARD_DEPLOY)], timeout=1800, env_overlay=env)
+
+
 def refresh_dashboard_after_results(
     state: dict,
     state_path: Path,
@@ -1397,11 +1401,7 @@ def refresh_dashboard_after_results(
     # Merge each settled meeting again so its reflected result reaches the
     # board. Without a snapshot `deploy.sh` republishes the live projection
     # unchanged, so the card kept showing its pre-race state for ever.
-    snapshot_for_deploy = build_dashboard_snapshot(*meeting_dirs)
-    deploy_env = ({"WC_DASHBOARD_BASE_SNAPSHOT": str(snapshot_for_deploy)}
-                  if snapshot_for_deploy else None)
-    code, output = run_cmd([str(DASHBOARD_DEPLOY)], timeout=1800,
-                           env_overlay=deploy_env)
+    code, output = publish_dashboard_meetings(*meeting_dirs)
     if code != 0:
         state["pending_dashboard_refresh"] = {
             "meeting_dirs": [str(path) for path in meeting_dirs],

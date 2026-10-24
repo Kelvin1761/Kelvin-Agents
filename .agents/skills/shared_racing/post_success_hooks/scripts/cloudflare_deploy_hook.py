@@ -11,6 +11,9 @@ from pathlib import Path
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[5]
+sys.path.insert(0, str(PROJECT_ROOT / ".agents/skills"))
+from shared_wong_choi.dashboard_publish_lock import serialized_publication  # noqa: E402
+
 DEPLOY_SCRIPT = PROJECT_ROOT / "deploy.sh"
 DASHBOARD_ROOT = PROJECT_ROOT / "Horse_Racing_Dashboard"
 DASHBOARD_FETCH_LIVE = DASHBOARD_ROOT / "scripts" / "fetch_live_snapshot.py"
@@ -87,6 +90,7 @@ def flush_post_success_cloudflare_deploy(*, source: str = "batch", allow_failure
     return _run_deploy(source=source, target_dir=None, allow_failure=allow_failure, clear_queue_on_success=True)
 
 
+@serialized_publication
 def _run_deploy(
     *,
     source: str,

@@ -59,6 +59,7 @@ SHARED_WC = PROJECT_ROOT / ".agents" / "skills"
 if str(SHARED_WC) not in sys.path:
     sys.path.insert(0, str(SHARED_WC))
 from shared_wong_choi.contracts import Domain  # noqa: E402
+from shared_wong_choi.dashboard_publish_lock import serialized_publication  # noqa: E402
 from shared_wong_choi.domain_evidence import (  # noqa: E402
     record_prediction_decision_if_configured,
     record_settlement_for_event,
@@ -1508,7 +1509,8 @@ def step_speed_shadow(runlog: RunLog) -> bool:
 def step_analyse_next_day(runlog: RunLog, review_day: date, *,
                           max_meetings: int = 0, rounds: int = 1,
                           round_gap: int = 900,
-                          target_day: str | None = None) -> list[Path]:
+                          target_day: str | None = None,
+                          on_complete=None) -> list[Path]:
     """發現 → 抽取 → 分析一個賽日嘅所有場次。回新分析好嘅目錄。
 
     `target_day` 唔畀就揀下一個可用賽日（晚更）。畀嘅話就做嗰日 —— 早更用嚟
@@ -1626,6 +1628,12 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
             progress = progress or gained
             if folder is not None and folder not in analysed:
                 analysed.append(folder)
+            if complete and folder is not None and on_complete is not None:
+                # Publication errors must not reclassify a successful analysis.
+                try:
+                    on_complete(folder)
+                except Exception as exc:  # noqa: BLE001
+                    reject_publication(runlog, folder, f"queue: {type(exc).__name__}: {exc}")
             if not complete:
                 # 半份抽取 —— 留喺清單，下一輪補齊剩低嘅場次。
                 still.append(plan)
@@ -2953,8 +2961,16 @@ def unpublished_local_meetings(payload: dict, already: list[Path],
     return out
 
 
+def reject_publication(runlog: RunLog, folder: Path, reason: str) -> None:
+    runlog.data.setdefault("publication_rejected", {})[folder.name] = reason
+    runlog.error("publication-quarantine", f"{folder.name}: {reason}")
+
+
 def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
-                   drop_keys: list[str] | None = None) -> tuple[Path, list[str], list[Path]]:
+                   drop_keys: list[str] | None = None, *,
+                   recover_unpublished: bool = True,
+                   isolate_failures: bool = False,
+                   retain_intermediates: bool = True) -> tuple[Path, list[str], list[Path]]:
     """由 live snapshot 剪走已歸檔場次，再串連合併每個場次 → 最終 JSON。
 
     ⚠️ `generate_static.py` 一次只食一個 `--au-meeting-dir`，所以第二個場次嘅
@@ -2991,7 +3007,8 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
                             f"推導出嚟，今次剪走")
         # 反方向：本機分析好但 snapshot 冇嘅場次要補上去。上一晚發佈失敗嘅話，
         # 冇呢步就永遠冇人再發佈嗰批分析。
-        missed = unpublished_local_meetings(payload, meeting_dirs, date.today())
+        missed = (unpublished_local_meetings(payload, meeting_dirs, date.today())
+                  if recover_unpublished else [])
         if missed:
             runlog.warn(f"本機有 {len(missed)} 個已分析場次未發佈（大概上一次發佈"
                         f"失敗）—— 今次補發：{[f.name for f in missed]}")
@@ -3026,7 +3043,13 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
             runlog.warn(f"{folder.name} 已經歸檔 —— 唔合併（剪走先啱）")
             continue
         if (folder / ANALYSIS_PENDING).exists():
+            if isolate_failures:
+                reject_publication(runlog, folder, "分析未通過，重試成功之前唔合併")
+                continue
             raise TemporaryFailure(f"{folder.name}: 分析未通過，重試成功之前唔合併")
+        if isolate_failures and check_data_contract(runlog, [folder]):
+            reject_publication(runlog, folder, "欄位級資料合約未通過")
+            continue
         live_dirs.append(folder)
     meeting_dirs = live_dirs
 
@@ -3042,6 +3065,7 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
             "攞唔到 live snapshot，冇 base 可以合併 —— 由零 build 會掃走板上"
             f"其餘所有場次，所以唔做。今次想合併：{[f.name for f in meeting_dirs]}")
 
+    merged_dirs = []
     for i, folder in enumerate(meeting_dirs, 1):
         out_json = WORK_DIR / f"merge-{i:02d}.json"
         cmd = [sys.executable, GENERATE_STATIC,
@@ -3051,10 +3075,22 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
                "--output-html", str(WORK_DIR / f"merge-{i:02d}.html")]
         rc, out = run_cmd(cmd, cwd=DASHBOARD_DIR, timeout=3600)
         if rc != 0 or not out_json.exists():
-            raise TemporaryFailure(
-                f"合併 {folder.name} 失敗（rc={rc}）："
-                f"{error_excerpt(out, rc)}")
+            reason = f"合併失敗（rc={rc}）：{error_excerpt(out, rc)}"
+            if isolate_failures:
+                reject_publication(runlog, folder, reason)
+                if not retain_intermediates:
+                    out_json.unlink(missing_ok=True)
+                    out_json.with_suffix(".html").unlink(missing_ok=True)
+                continue
+            raise TemporaryFailure(f"合併 {folder.name} 失敗（rc={rc}）：{error_excerpt(out, rc)}")
+        if not retain_intermediates and current.parent == WORK_DIR:
+            # The next merge has consumed this intermediate. Keep at most one
+            # generated pair instead of O(meetings) full dashboard copies.
+            if current.name.startswith(("merge-", "pruned")):
+                current.unlink(missing_ok=True)
+                current.with_suffix(".html").unlink(missing_ok=True)
         current = out_json
+        merged_dirs.append(folder)
         runlog.step("dashboard-merge", "ok", meeting=folder.name,
                     snapshot=out_json.name)
     if current is None:
@@ -3062,7 +3098,7 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
     # Return the exact set that was merged.  Callers must gate this list rather
     # than the originally requested list: this function deliberately discovers
     # analysed-but-unpublished meetings as a recovery path.
-    return current, drop_keys, meeting_dirs
+    return current, drop_keys, merged_dirs
 
 
 # Cloudflare Pages 硬性拒收超過 25 MiB 嘅單一檔案。喺 24 就收手，留一格緩衝。
@@ -3299,8 +3335,12 @@ def verify_live(runlog: RunLog, expect_present: list[str],
     return last or {"ok": False, "detail": "冇讀到 live snapshot"}
 
 
+@serialized_publication
 def step_dashboard(runlog: RunLog, meeting_dirs: list[Path],
-                   archived_names: list[str], *, skip_deploy: bool = False) -> bool:
+                   archived_names: list[str], *, skip_deploy: bool = False,
+                   recover_unpublished: bool = True,
+                   isolate_failures: bool = False,
+                   retain_intermediates: bool = True) -> bool:
     """合併 → 驗證 → 發佈 → 核實。回 True = 一切正常（含「冇變唔使發」）。"""
     runlog.step("dashboard", "start", merge=len(meeting_dirs),
                 archived=len(archived_names))
@@ -3310,7 +3350,9 @@ def step_dashboard(runlog: RunLog, meeting_dirs: list[Path],
     # 最終實際合併嘅名單。以前 skip-refresh 傳入 []，gate 就檢查 0 個場次並通過，
     # builder 隨後先補入 10 個未發佈場次，變成真正嘅 gate bypass。
     snapshot, expect_absent, merged_meeting_dirs = build_snapshot(
-        runlog, meeting_dirs, expect_absent)
+        runlog, meeting_dirs, expect_absent,
+        recover_unpublished=recover_unpublished, isolate_failures=isolate_failures,
+        retain_intermediates=retain_intermediates)
     # 欄位級合約仍然喺任何驗證／deploy 之前 —— 建好本機暫存 snapshot 唔會改 live。
     contract_problems = check_data_contract(runlog, merged_meeting_dirs)
     if contract_problems:
@@ -3629,7 +3671,8 @@ def finish_run(runlog: RunLog, dashboard_ok: bool, hard_temporary: bool) -> int:
     if missing_odds or display_issues:
         runlog.step("outcome", "odds-degraded", meetings=missing_odds,
                     display_issues=display_issues)
-    if hard_temporary or retryable or missing_odds or display_issues:
+    if (hard_temporary or retryable or missing_odds or display_issues
+            or runlog.data.get("publication_rejected")):
         runlog.step("outcome", "partial", retryable=retryable or None,
                     detail="下一次排程會接住做")
         runlog.finish("partial")
@@ -3768,31 +3811,49 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
     if not getattr(args, "skip_speed_shadow", False):
         step_speed_shadow(runlog)
         step_speed_recency_shadow(runlog)
-    if not args.skip_analysis:
-        try:
-            analysed = step_analyse_next_day(runlog, review_day,
-                                             max_meetings=args.max_meetings,
-                                             rounds=args.rounds,
-                                             round_gap=args.round_gap)
-        except TemporaryFailure as exc:
-            runlog.error("analyse-next-day", f"暫時性：{exc}")
-            temporary = True
+    publisher = None
+    progressive = (not args.skip_deploy and not args.skip_analysis
+                   and os.environ.get("WC_AU_PROGRESSIVE_PUBLISH", "1") != "0")
+    if progressive:
+        from au_progressive_publish import ProgressivePublisher
+        publisher = ProgressivePublisher(sys.modules[__name__], runlog, archived)
+    try:
+        if not args.skip_analysis:
+            try:
+                kwargs = {"max_meetings": args.max_meetings, "rounds": args.rounds,
+                          "round_gap": args.round_gap}
+                if publisher is not None:
+                    kwargs["on_complete"] = publisher.submit
+                analysed = step_analyse_next_day(runlog, review_day, **kwargs)
+            except TemporaryFailure as exc:
+                runlog.error("analyse-next-day", f"暫時性：{exc}")
+                temporary = True
 
-    evidence_ok = step_prediction_evidence(runlog, analysed)
-    if not evidence_ok:
-        temporary = True
-    ok = step_dashboard(
-        runlog,
-        analysed,
-        archived,
-        skip_deploy=args.skip_deploy or not evidence_ok,
-    )
-    step_mirror_reports(runlog, analysed)
-    push_run_summary(runlog, "evening")
-    days = sorted({r["meeting"][:10] for r in runlog.data["races_added"]})
-    for day in days:
-        push_betting(runlog, day, "list")
-    return finish_run(runlog, ok, temporary)
+        if publisher is not None:
+            result = publisher.finish()
+            temporary = temporary or not result.get("complete", False)
+            temporary = temporary or any(
+                m.get("status") == "failed" for m in runlog.data["meetings_processed"])
+            ok = bool(result.get("published") or result.get("complete"))
+        else:
+            evidence_ok = step_prediction_evidence(runlog, analysed)
+            if not evidence_ok:
+                temporary = True
+            ok = step_dashboard(runlog, analysed, archived,
+                                skip_deploy=args.skip_deploy or not evidence_ok,
+                                isolate_failures=True)
+        step_mirror_reports(runlog, analysed)
+        push_run_summary(runlog, "evening")
+        # Never send a new betting list for quarantined or unverified meetings.
+        if (not runlog.data.get("publication_rejected")
+                and (publisher is None or result.get("complete"))):
+            days = sorted({r["meeting"][:10] for r in runlog.data["races_added"]})
+            for day in days:
+                push_betting(runlog, day, "list")
+        return finish_run(runlog, ok, temporary)
+    finally:
+        if publisher is not None:
+            publisher.abort()
 
 
 def run_morning(runlog: RunLog, args, today: date) -> int:
@@ -3863,6 +3924,7 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
         updated,
         [],
         skip_deploy=args.skip_deploy or not evidence_ok,
+        isolate_failures=True,
     )
     step_mirror_reports(runlog, updated)
     push_run_summary(runlog, "morning")

@@ -92,6 +92,9 @@ def evening(run: dict) -> str | None:
     if not added:
         return None
     dep = run.get("cloudflare_deployment") or {}
+    progressive = run.get("progressive_publication") or {}
+    rejected = run.get("publication_rejected") or {}
+    pending = progressive.get("pending") or []
     live = (dep.get("verified") or {}).get("ok")
     total = sum(len(r.get("races") or []) for r in added)
     lines = [f"🆕 新分析已完成 · {len(added)} 個馬場 / {total} 場", ""]
@@ -101,7 +104,12 @@ def evening(run: dict) -> str | None:
         flag = "" if r.get("complete", True) else "  ⚠️ 未齊"
         lines.append(f"· {_venue(r['meeting'])} — {n} 場 · {going}{flag}")
     lines.append("")
-    if dep.get("skipped"):
+    if rejected or pending:
+        published = progressive.get("published") or {}
+        lines.append(f"⚠️ 部分上線：{len(published)} 個馬場已確認；其餘保留待處理")
+        for name in sorted(set(rejected) | set(pending)):
+            lines.append(f"· {_venue(name)}：未更新上線")
+    elif dep.get("skipped"):
         lines.append("發佈：冇變動，唔使發")
     elif live:
         lines.append("✅ 已上線並核實 —— dashboard 睇得到")

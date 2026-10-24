@@ -13,6 +13,38 @@ launchd 用**本機 wall clock**，而本機時區就係 `Australia/Sydney`，�
 直接等於悉尼時間，DST 亦自動跟。runner 開工會核對，時區唔對就喺 run log 大聲警告，
 installer 更會直接拒絕安裝。
 
+## 晚更逐馬場背景發佈（2026-10-24）
+
+晚更每完成一個 **meeting／馬場嘅全套賽事**，就先建立 prediction evidence，再將嗰份
+immutable snapshot 嘅檔案交畀獨立 publisher process。下一個馬場嘅抽取及分析可以繼續；
+publisher 會將上傳期間完成嘅馬場合併做下一批。並非每一場 race 都部署一次。
+早更仍然等全部覆核完成後，只呼叫一次 batch 發佈。
+
+- 只有一個 publisher；AU、HKJC、post-success hook 同直接 deploy 共用檔案鎖，
+  由讀取最新 live snapshot 一直鎖到上傳／驗證完成，避免彼此覆蓋。
+- 逐馬場跑原有欄位合約及 parser；不合格嘅馬場會隔離，其他合格馬場繼續。
+  被隔離馬場如已有 live 版本，保留原版本；唔會當成今次更新成功。
+  run summary 會列出未更新／未上線項目，狀態為 partial／failed。
+- 背景發佈只讀已排隊嘅 immutable inputs，唔會順手掃入抽取緊嘅其他馬場。
+  evidence 或 hash 驗證失敗會拒絕嗰個輸入；冇新 Sportsbet 抽取或評分。
+- 每個馬場最多 64 MiB、每次 run 排隊最多 512 MiB；合併中間檔用完即刪。
+  queue／batch log／result 留喺 `work/progressive/<run-log-stem>/` 供診斷。
+- 主程序完結會等 publisher drain；逾時、主程序中止或被 kill 時，publisher
+  及其上傳子程序會停止。下次正常 run 會重新提交已完成資料，唔會盲目重播舊 queue。
+
+回退：喺 scheduler runner 環境設定 `WC_AU_PROGRESSIVE_PUBLISH=0`，晚更就回到一次
+batch 發佈（保留逐馬場隔離）。`--skip-deploy` 一樣唔會啟動背景上傳。
+`WC_AU_PUBLICATION_DRAIN_SECONDS` 預設 3600；共享鎖等候
+`WC_DASHBOARD_PUBLICATION_LOCK_TIMEOUT` 預設 3600。
+唔好自行設定內部 `_WC_DASHBOARD_PUBLICATION_LOCK_HELD`。
+
+run log 嘅 `progressive_publication` 會記錄 `copy_seconds`、`evidence_seconds`、
+`foreground_queue_seconds`、`foreground_drain_seconds`、`publication_seconds`、
+`batch_count`、`deployment_count` 同 `first_live_delay_seconds`。
+呢啲先係實際運行成本；離線模擬上傳時間唔可以當 Cloudflare 實測。
+可重現嘅離線命令及首輪結果見
+[`2026-10-24-au-progressive-publication.md`](../../../../docs/audits/2026-10-24-au-progressive-publication.md)。
+
 ## 資料位置：AU 分析樹住本機硬碟（2026-08-05 搬遷）
 
 ```

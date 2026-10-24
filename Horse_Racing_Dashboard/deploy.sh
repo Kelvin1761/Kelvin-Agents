@@ -11,6 +11,14 @@ DIST_DIR="$SCRIPT_DIR/.cloudflare_dist"
 HTML_OUT="$DIST_DIR/index.html"
 JSON_OUT="$DIST_DIR/dashboard-data.json"
 MANIFEST_OUT="$DIST_DIR/deploy-manifest.json"
+
+# Python producers hold this lock from live-read through verification. Direct
+# deploys acquire it before touching the shared build directory.
+if [ "${_WC_DASHBOARD_PUBLICATION_LOCK_HELD:-}" != "1" ]; then
+    exec /usr/bin/env python3 "$REPO_ROOT/.agents/skills/shared_wong_choi/dashboard_publish_lock.py" \
+        -- /bin/bash "$0" "$@"
+fi
+
 BUILD_ONLY=0
 KEEP_DIST=0
 PAGES_PROJECT="${WC_CLOUDFLARE_PAGES_PROJECT:-wongchoi-dashboard}"
