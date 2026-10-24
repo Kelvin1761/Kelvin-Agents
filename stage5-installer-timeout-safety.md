@@ -8,7 +8,8 @@ production scheduler, edit a database or retry an unverified cutover manually.
 - [x] RED: timeout diagnostics and delayed child-write tests; success/nonzero parity.
 - [x] Implement installer-only process isolation/timeout cleanup and safe stage markers.
 - [x] Run focused tests and quick gate; preserve exact source/test/plan scope.
-- [ ] Full-gated release and actual installed/calendar acceptance, separately proven.
+- [x] Full-gated source release and immutable approval/merge.
+- [ ] Actual installed/calendar acceptance, separately proven.
 
 Incident: `5e1fa7d8f27d` passed its clean full gate (1321.558 s), immutable
 approval recheck and merge. Activation failed after 300 s, event
@@ -47,3 +48,28 @@ release controller live. Preview must include all five unmerged paths, select
 the existing unified installer only, and retain full gate / immutable approval
 and rollback requirements. Do not reclassify this as docs-only or retry the
 previous failed manifest in place of a fresh verified candidate.
+
+## Terminal release checkpoint
+
+Release `e7e1d28e0076f9981b8bf135cfc1f42eb90c353f` passed its clean full
+gate (1956.18 s), immutable approval/quick recheck and merged at
+2026-10-23T22:08:39Z. Activation failed at 22:09:07Z at the active-run
+preflight, not a timeout. New diagnostics retained the interpreter/SQLite/
+active-run stage markers and the explicit busy guard. External restore and
+Git rollback to 5e succeeded, both error arrays empty, event
+`20261023T220907.489360Z-44c3eb8bab1c1148`. Primary failure Telegram was
+already sent. Session84278 is terminal1, PID17139/17137 absent.
+
+Fetched main/production subsequently advanced to
+`9f103c277769062c402ed4a409ac370b0f59a7d8`, containing e7; later AU changes
+were observed only, not approved by this chat. Current read-only process probe
+finds no controller or matching domain scheduler. Actual all4/Central loaded
+state is aligned, attention empty, but installed calendar still blocks.
+Neither source in main nor an idle probe constitutes installer acceptance.
+No refresh/retry/downgrade was attempted: refresh explicitly refuses a release
+already contained in main, and activation correctly pins the old manifest SHA.
+
+See `stage5-forward-activation-reconciliation.md` for a proposed separately
+authorized forward-only reconciliation path. Until that decision (or a real
+external installation/acceptance change), retain all evidence and avoid costly
+repeat gates, duplicate alerts, invented source deltas or manual installation.
