@@ -103,6 +103,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       calculateSportsRoi: typeof calculateSportsRoi === "function" ? calculateSportsRoi : null,
       setSportsLedgerForTest: (records) => { sportsBetLedger = records; },
       setSportsTabForTest: (tab) => { activeSportsTab = tab; },
+      setSportsTab: typeof setSportsTab === "function" ? setSportsTab : null,
       getInitialSportFromUrl: typeof getInitialSportFromUrl === "function" ? getInitialSportFromUrl : null,
       sportsBetDraftFromSource: typeof sportsBetDraftFromSource === "function" ? sportsBetDraftFromSource : null,
       setLocationSearchForTest: (search) => { window.location.search = search; },
@@ -1938,7 +1939,8 @@ test("latest NBA analysis replaces historical fallback even when no BET qualifie
   assert.match(html,/最新分析/);assert.match(html,/BKN @ CLE/);assert.match(html,/Actual Star PTS 20\+/);
   assert.match(html,/LATEST FULL GAME REPORT/);assert.match(html,/已過期，需刷新/);assert.match(html,/SGM 候選/);
   assert.doesNotMatch(html,/OLD APRIL CASE/);assert.doesNotMatch(html,/Reflector/);assert.doesNotMatch(html,/onsubmit=/);
-  api.setSportsTabForTest("archive");assert.match(api.renderSportsWorkspace("nba"),/OLD APRIL CASE/);
+  api.setSportsTab("archive");assert.match(api.renderSportsWorkspace("nba"),/OLD APRIL CASE/);
+  api.setSportsTab("history");assert.match(api.renderSportsWorkspace("nba"),/LATEST FULL GAME REPORT/);
 });
 
 test("latest NBA view includes unopened and insufficient-data games", () => {

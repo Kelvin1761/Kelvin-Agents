@@ -848,7 +848,7 @@ if (typeof DASHBOARD_DATA === 'string') {
 let selectedMeeting = null;
 let currentView = 'dashboard'; // 'dashboard' | 'race' | 'roi' | 'sports'
 let activeSport = 'horses';
-let activeSportsTab = 'history'; // 'history' | 'bets' | 'roi'
+let activeSportsTab = 'history'; // 'history' | 'archive' | 'bets' | 'roi'
 let currentRace = null;
 let activeAnalyst = null; // null = comparison mode
 let roiRegionFilter = 'hkjc'; // follows the active racing tab ('hkjc' | 'au')
@@ -1790,7 +1790,7 @@ async function loadPortfolio() {
 }
 
 function setSportsTab(tab) {
-  if (!['history', 'bets', 'roi'].includes(tab)) return;
+  if (!['history', 'archive', 'bets', 'roi'].includes(tab)) return;
   activeSportsTab = tab;
   render();
 }
