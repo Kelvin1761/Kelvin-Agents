@@ -487,7 +487,7 @@ def check_fw14_availability(content,filepath,*,now=None):
     if not re.search(r'^### .*?組合\s+(?:\d+|X).*?組合賠率\s*@',content,re.MULTILINE):
         return []
     from nba_availability import availability_current
-    from nba_data_contract import NBA_STATISTICS_CONTRACT
+    from nba_data_contract import statistics_current
     import hashlib
     try:
         sidecar=json.loads(Path(str(filepath)+'.market_legs.json').read_text())
@@ -495,8 +495,8 @@ def check_fw14_availability(content,filepath,*,now=None):
         meta=packet.get('meta') or {}
         if (sidecar.get('report_sha256')!=hashlib.sha256(content.encode()).hexdigest()
                 or not availability_current(packet,now=now)
-                or meta.get('statistics_contract')!=NBA_STATISTICS_CONTRACT):
-            raise ValueError('stale/unverified availability or old statistics contract')
+                or not statistics_current(meta)):
+            raise ValueError('stale/unverified availability or statistics source')
         rosters=meta['availability']['rosters']
         for combo in sidecar.get('combos') or []:
             for leg in combo['legs']:

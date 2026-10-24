@@ -54,3 +54,24 @@ def test_cache_reextracts_old_unit_or_source_failure(tmp_path,contract,mode,coun
              'team_stats':{'BOS':{'PACE':99}},'players':{'BOS':[{'position':'C','advanced':{'USG_PCT':20}}]}}
     path=tmp_path/'data.json';path.write_text(json.dumps(payload))
     assert o.extractor_cache_current(str(path)) is valid
+
+
+@pytest.mark.parametrize('count,valid',[(0,False),(None,False),('576',False),(True,False),(576,True)])
+def test_new_extraction_checks_statistics_before_schema_or_report(tmp_path,monkeypatch,count,valid):
+    odds=tmp_path/'odds.json';odds.write_text('{}')
+    target=tmp_path/'nba_game_data_BOS_LAL.json';calls=[]
+    payload={'meta':{'statistics_contract':NBA_STATISTICS_CONTRACT,
+                     'defender_source':{'per_mode':'Totals','sample_unit':'total_attempts','observed_players':count}}}
+    monkeypatch.setattr(o,'player_milestone_markets_available',lambda _:True)
+    monkeypatch.setattr(o,'availability_current',lambda _:True)
+    def run(script,args,**kwargs):
+        calls.append(script)
+        if script==o.NBA_EXTRACTOR:
+            target.write_text(json.dumps(payload));return True
+        return False  # the valid receipt reaches schema; no report is generated
+    monkeypatch.setattr(o,'run_script',run)
+    assert not o.process_single_game('BOS_LAL',str(odds),str(tmp_path),'2026-10-24')
+    assert calls[0]==o.NBA_EXTRACTOR
+    assert (o.VALIDATE_SCHEMA in calls) is valid
+    assert len(calls)==(2 if valid else 1)
+    assert target.read_text()==json.dumps(payload)  # diagnostic input is retained

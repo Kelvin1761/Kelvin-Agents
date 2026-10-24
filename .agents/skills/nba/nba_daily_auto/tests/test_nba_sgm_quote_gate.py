@@ -180,7 +180,7 @@ def test_publication_checks_availability_even_when_quote_is_valid(tmp_path):
     maps={team:availability.InjuryMap({},[leg['player'],*[f'Roster Member {i}' for i in range(4)]],NOW.isoformat())
           for team,leg in zip(('BOS','LAL'),legs)}
     packet=availability.apply_availability({'meta':{'date':odds['event_start_time'],'away':{'abbr':'BOS'},'home':{'abbr':'LAL'},
-        'statistics_contract':NBA_STATISTICS_CONTRACT},'players':{}},maps)
+        'statistics_contract':NBA_STATISTICS_CONTRACT,'defender_source':{'per_mode':'Totals','sample_unit':'total_attempts','observed_players':576}},'players':{}},maps)
     report=tmp_path/'Game_BOS_LAL_Full_Analysis.md';report.write_text(text)
     source=tmp_path/'odds.json';source.write_text(json.dumps(odds))
     payload=r.build_market_eval_sidecar(text,odds,{},[],{'combos':{'1':quoted},'availability':packet},'hybrid')
@@ -188,6 +188,16 @@ def test_publication_checks_availability_even_when_quote_is_valid(tmp_path):
     assert not v.check_fw13_sgm_quotes(text,report,source,now=NOW)
     assert not v.check_fw14_availability(text,report,now=NOW)
     assert v.check_fw14_availability(text,report,now=NOW+timedelta(minutes=31))
+    original_source=packet['meta']['defender_source']
+    for broken_source in (None,{},[],{**original_source,'observed_players':0},
+                          {**original_source,'observed_players':'576'},
+                          {**original_source,'observed_players':True},
+                          {**original_source,'per_mode':'PerGame'},
+                          {**original_source,'sample_unit':'per_game'}):
+        payload['availability']['meta']['defender_source']=broken_source
+        sidecar.write_text(json.dumps(payload))
+        assert v.check_fw14_availability(text,report,now=NOW)
+    payload['availability']['meta']['defender_source']=original_source
     payload['availability']['meta']['statistics_contract']=1;sidecar.write_text(json.dumps(payload))
     assert v.check_fw14_availability(text,report,now=NOW)
     payload['availability']=None;sidecar.write_text(json.dumps(payload))

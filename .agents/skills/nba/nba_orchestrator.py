@@ -309,15 +309,8 @@ def extractor_cache_current(path: str) -> bool:
         with open(path, encoding="utf-8") as source:
             payload = json.load(source)
         meta = payload.get("meta", {})
-        from nba_data_contract import NBA_STATISTICS_CONTRACT
-        if meta.get("statistics_contract") != NBA_STATISTICS_CONTRACT:
-            return False
-        defender_source = meta.get("defender_source") or {}
-        if (defender_source.get("per_mode") != "Totals"
-                or defender_source.get("sample_unit") != "total_attempts"
-                or not isinstance(defender_source.get("observed_players"), int)
-                or isinstance(defender_source.get("observed_players"), bool)
-                or defender_source["observed_players"] <= 0):
+        from nba_data_contract import statistics_current
+        if not statistics_current(meta):
             return False
         groups = payload.get("players", {})
         if not isinstance(groups, dict):
@@ -480,10 +473,15 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
             return False
 
     if not debug_skip_extractor:
+        from nba_data_contract import statistics_current
         with open(extractor_json, encoding="utf-8") as source:
-            if not availability_current(json.load(source)):
-                print(f"⛔ [{prefix}] 傷停／陣容未驗證或已過期，保留重試，唔發布。")
-                return False
+            current_payload = json.load(source)
+        if not statistics_current(current_payload.get("meta")):
+            print(f"⛔ [{prefix}] 統計來源失敗或單位未驗證，保留重試，唔發布。")
+            return False
+        if not availability_current(current_payload):
+            print(f"⛔ [{prefix}] 傷停／陣容未驗證或已過期，保留重試，唔發布。")
+            return False
 
     # ── Phase 1A.5: JSON Schema Validation (Pre-flight for report gen) ──
     if os.path.exists(VALIDATE_SCHEMA):
