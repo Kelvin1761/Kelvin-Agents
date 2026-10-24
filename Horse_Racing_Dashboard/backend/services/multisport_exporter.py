@@ -473,10 +473,12 @@ def export_nba_snapshot(
         all_source_files.extend(source_files)
 
     analysis_cards = []
+    saved_reports = []
     if firewall is nba_publication_firewall:
         from .nba_published_analysis import verified_published_reports
         live_ids = {row["id"] for row in recommendations}
-        for tag, report, odds_path, captured in verified_published_reports(analysis_dir, analysis_date, firewall):
+        saved_reports = verified_published_reports(analysis_dir, analysis_date, firewall)
+        for tag, report, odds_path, captured in saved_reports:
             odds = _read_json(odds_path)
             if not _valid_sportsbet_payload(odds, analysis_date):
                 continue
@@ -493,6 +495,12 @@ def export_nba_snapshot(
                 card["risk"] = "已驗證賽前快照；報價／傷停須重新驗證，唔係即時 +EV 或可直接投注建議。"
                 analysis_cards.append(card)
 
+    from .nba_latest_analysis import build_latest_analysis
+    latest_saved = saved_reports
+    if firewall is nba_publication_firewall:
+        latest_saved = verified_published_reports(analysis_dir, analysis_date, firewall, include_warmup=True)
+    latest_analysis = build_latest_analysis(analysis_dir, analysis_date, firewall, latest_saved)
+
     if not recommendations:
         if not warnings:
             warnings.append("no_validated_nba_combos")
@@ -506,6 +514,7 @@ def export_nba_snapshot(
         "validation_status": status,
         "recommendations": recommendations,
         "analysis_cards": analysis_cards,
+        "latest_analysis": latest_analysis,
         "source_files": sorted(set(all_source_files)),
         "warnings": list(dict.fromkeys(warnings)),
     }

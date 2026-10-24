@@ -2296,6 +2296,39 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
             combo_x))
         sections.append(f"")
 
+    # Review candidates are computed AFTER formal selection and never feed it.
+    review_error = None
+    try:
+        from nba_review_candidates import build_review_candidates
+        review = build_review_candidates(
+            candidates, sportsbet_odds if sportsbet_odds is not None else odds,
+            allowed=_combo_is_allowed, evaluate=compute_combo_ev,
+            quote=quote_combo, valid_quote=quote_valid)
+    except Exception as exc:
+        review = []
+        review_error = type(exc).__name__
+        print(f"⚠️ review_candidates_failed:{review_error}；正式選腿結果保留。")
+    diagnostics = {
+        "player_candidates": len(_pc),
+        "positive_edge_candidates": sum(c.get("edge", -1) >= 0 for c in _pc),
+        "positive_edge_and_l10_50": sum(c.get("edge", -1) >= 0 and c.get("hit_l10", 0) >= 50 for c in _pc),
+        "formal_combinations": sum(bool(c) for c in (combo_1, combo_2, combo_3, combo_x)),
+        "formal_quote_attempts": len(quote_attempts),
+        "review_error": review_error,
+    }
+    if capture is not None:
+        capture["review_candidates"] = review
+        capture["selection_diagnostics"] = diagnostics
+    sections.append("## 📋 SGM 候選評估（分析用途）")
+    sections.append("以下候選未通過正式策略驗證，唔係正式投注建議；正式注維持上面同一套門檻。")
+    if review_error:
+        sections.append(f"候選生成未完成（{review_error}）；正式選腿結果保留，需重試候選分析。")
+    for item in review:
+        price = f"Sportsbet 組合價 @{item['odds']}" if item['odds'] else "組合價未驗證"
+        sections.append(f"- {item['label']}：{price}；" + "、".join(leg["selection"] for leg in item["legs"]))
+        sections.append("  " + "；".join(item["reasons"]))
+    sections.append("")
+
     # Summary
     # Find strongest/weakest legs across all combos
     all_combo_legs = combo_1 + combo_2 + combo_3 + (combo_x or [])
@@ -2486,6 +2519,8 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
         "legs": legs_out,
         "combos": combos_out,
         "quote_attempts": capture.get("quote_attempts", {}),
+        "selection_diagnostics": capture.get("selection_diagnostics", {}),
+        "review_candidates": capture.get("review_candidates", []),
         "availability": capture.get("availability"),
     }
 

@@ -130,3 +130,10 @@ Python Auto-Selection
     assert card['metrics']['model_probability']==0.4
     assert card['metrics']['expected_value']==pytest.approx(0.4)
     assert card['odds_status']=='published_snapshot_price'
+
+
+def test_warmup_is_available_only_to_explicit_readonly_analysis_caller(tmp_path):
+    folder,_,_=snapshot(tmp_path,role='warmup')
+    firewall=lambda *a,**kw:(True,[])
+    assert verified_published_reports(folder,'2026-10-25',firewall)==[]
+    assert len(verified_published_reports(folder,'2026-10-25',firewall,include_warmup=True))==1

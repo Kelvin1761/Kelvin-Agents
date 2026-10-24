@@ -13,7 +13,8 @@ def _time(value):
         return None
 
 
-def verified_published_reports(folder, target_date, firewall):
+def verified_published_reports(folder, target_date, firewall, *, include_warmup=False):
+    roles = {"production", "final_refresh"} | ({"warmup"} if include_warmup else set())
     root = Path(folder) / "_prediction_snapshots"
     seen = set()
     result = []
@@ -24,7 +25,7 @@ def verified_published_reports(folder, target_date, firewall):
             if (manifest.get("sport") != "nba"
                     or manifest.get("target_date") != target_date
                     or manifest.get("append_only") is not True
-                    or manifest.get("snapshot_role") not in {"production", "final_refresh"}
+                    or manifest.get("snapshot_role") not in roles
                     or not captured or captured > datetime.now(timezone.utc)):
                 continue
             files = {row["name"]: row for row in manifest["files"]}

@@ -254,3 +254,5 @@
 - [EXP-20261021-06](EXP-20261021-06-nba-early-season-carryover.md) — 賽季初（同季第 1–10 場）用上季 rate carryover，frozen layer A 可否由第 1 場起出有效機率 | **冇任何 arm 被採納（NEEDS MORE TESTING）**：A0／A1／X1 六條全過但 selection-bias 預檢否決（20–30 分鐘桶 y−p −4pp，第 1 場 −8pp：賽季初實際分鐘低過 prior-10 4–11%）；carryover 令 count model 大勝 live base（H2 −0.011～−0.016，三季一致），frozen A slope 可轉移但水平高估；live final E 更差。建議 EXP-07 做賽季初分鐘校正；賽季初 shadow 維持 null。無利潤聲稱。
 - [EXP-20261023-06](EXP-20261023-06-nba-verified-temporal-ml-rebuild.md) — NBA v2 修正己隊／對手、Final／US 日期標籤、缺值及隨機逐盤切分；49 場實價資料、訓練 7,344／terminal 942 列；RF Brier .1822 輸現役 C .1711 → 不晉升，資料／訓練／推論／回測合約修正
 - [EXP-20261023-07](EXP-20261023-07-nba-context-wiring-ablation.md) — NBA blowout／傷停使用率／MC 單位／隊伍 pace 接線及防守 Totals 修正；9×50 captures、p_final／組合零變化；MC ΔBrier −.000688 CI 跨零，唔聲稱改善；官方防守覆蓋 0→523／576
+
+- [EXP-20261024-01](EXP-20261024-01-nba-latest-analysis-review-candidates.md) — NBA 最新逐場分析及 review-only SGM 候選；同源五場 305 個 p_final／正式 combos 不變，15 個真實 SGM 報價接線；工程驗證，無盈利聲稱，正式策略不晉升。

@@ -663,6 +663,17 @@ def _merge_sports_feed(cached, fresh, today=None):
             and "no_validated_nba_combos" in [str(w) for w in (new.get("warnings") or [])]
             and _run_date(new) >= _run_date(old)
         )
+        old_latest = old.get("latest_analysis") or {}
+        new_latest = new.get("latest_analysis") or {}
+        # A domain-less checkout may publish racing; preserve already verified
+        # NBA analysis without restoring any formal BET recommendations.
+        if (sport == "nba" and old_latest.get("games") and not expired
+                and (not new_latest.get("games")
+                     or str(old_latest.get("event_date", "")) > str(new_latest.get("event_date", "")))):
+            new = copy.deepcopy(new)
+            new["latest_analysis"] = copy.deepcopy(old_latest)
+            new["analysis_run_id"] = old.get("analysis_run_id")
+            merged["sports"][sport] = new
         # Read-only, previously verified analysis survives a checkout without
         # this domain's files. Never restore BET recommendations through here.
         old_cards = [card for card in (old.get("analysis_cards") or [])

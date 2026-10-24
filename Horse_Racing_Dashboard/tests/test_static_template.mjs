@@ -1923,3 +1923,29 @@ test("a completed NBA NO BET run explains zero qualified SGM above historical ca
   assert.match(html,/分析已完成/);
   assert.doesNotMatch(html,/分析未通過發佈檢查/);
 });
+
+
+test("latest NBA analysis replaces historical fallback even when no BET qualifies", () => {
+  const latest={event_date:"2099-10-25",coverage:{analysed_games:1,review_candidates:1},games:[{
+    game_tag:"BKN_CLE",event_name:"BKN @ CLE",status:"analysed",status_reason:"賽前分析已保存。",market_count:100,positive_ev_count:5,formal_sgm_count:0,
+    report_markdown:"LATEST FULL GAME REPORT",player_markets:[{player:"Actual Star",market:"pts",line:20,odds:1.5,model_probability:.6,l10_hit_rate:.8,expected_value:-.1}],
+    diagnostics:{player_candidates:90,positive_edge_candidates:5,positive_edge_and_l10_50:1},
+    review_candidates:[{label:"較低倍率",analysis_only:true,decision:"OBSERVE",odds:1.8,quote_status:"expired",model_probability:.5,expected_value:-.1,
+      reasons:["未通過正式投注閘"],legs:[{selection:"Actual Star PTS 20+",odds:1.5},{selection:"Another Star REB 5+",odds:1.4}]}]}]};
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{analysis_run_id:"nba:2099-10-25",validation_status:"blocked",recommendations:[],latest_analysis:latest}}},
+    sports_history:{nba:[{id:"old",event_name:"OLD APRIL CASE",legs:[],metrics:{},outcome:"review"}]}});
+  const html=api.renderSportsWorkspace("nba");
+  assert.match(html,/最新分析/);assert.match(html,/BKN @ CLE/);assert.match(html,/Actual Star PTS 20\+/);
+  assert.match(html,/LATEST FULL GAME REPORT/);assert.match(html,/已過期，需刷新/);assert.match(html,/SGM 候選/);
+  assert.doesNotMatch(html,/OLD APRIL CASE/);assert.doesNotMatch(html,/Reflector/);assert.doesNotMatch(html,/onsubmit=/);
+  api.setSportsTabForTest("archive");assert.match(api.renderSportsWorkspace("nba"),/OLD APRIL CASE/);
+});
+
+test("latest NBA view includes unopened and insufficient-data games", () => {
+  const latest={event_date:"2099-10-25",coverage:{analysed_games:0,pending_games:2},games:[
+    {event_name:"MIL @ PHI",status:"waiting_player_markets",status_reason:"球員市場未開"},
+    {event_name:"MIA @ CHA",status:"data_insufficient",status_reason:"資料未達完整分析要求"}]};
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{validation_status:"blocked",recommendations:[],latest_analysis:latest}}}});
+  const html=api.renderSportsWorkspace("nba");
+  assert.match(html,/MIL @ PHI/);assert.match(html,/MIA @ CHA/);assert.match(html,/等候開盤/);assert.match(html,/資料不足/);
+});

@@ -504,6 +504,23 @@
     .sports-tab { flex: 0 0 auto; min-height: 40px; padding: 8px 15px; border: 0; border-radius: 8px; background: transparent; color: #64748B; font: inherit; font-size: .75rem; font-weight: 800; cursor: pointer; }
     .sports-tab--active { color: #FFFFFF; background: var(--sport-accent); }
     .sports-notice { display: flex; gap: 10px; margin-bottom: 14px; padding: 11px 13px; border: 1px solid #FDE68A; border-radius: 10px; background: #FFFBEB; color: #854D0E; font-size: .72rem; line-height: 1.55; }
+    .sports-tabs--latest { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); overflow:visible; }
+    .sports-tabs--latest .sports-tab { min-width:0; padding-inline:4px; font-size:.72rem; }
+    .nba-latest-games { display:grid; gap:16px; }
+    .nba-game-analysis { padding:18px; border:1px solid #D8E3EF; border-radius:16px; background:#fff; min-width:0; }
+    .nba-game-analysis__head { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+    .nba-game-analysis h2 { font-size:1.05rem; margin:0; }
+    .nba-game-analysis p,.nba-candidate p { font-size:.8rem; color:#475569; line-height:1.65; }
+    .nba-game-analysis details { margin-top:12px; padding:10px; border-top:1px solid #E2E8F0; }
+    .nba-game-analysis summary { cursor:pointer; font-weight:700; font-size:.85rem; }
+    .nba-candidates { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; margin:14px 0; }
+    .nba-candidate { background:#F8FAFC; border:1px solid #CBD5E1; border-radius:12px; padding:12px; font-size:.8rem; }
+    .nba-candidate li { margin:8px 0; overflow-wrap:anywhere; }
+    .nba-candidate small { color:#92400E; font-weight:700; }
+    .nba-market-scroll { overflow-x:auto; }
+    .nba-market-scroll table { width:100%; font-size:.75rem; white-space:nowrap; }
+    .nba-market-scroll td,.nba-market-scroll th { text-align:left; padding:7px; border-bottom:1px solid #E2E8F0; }
+    .nba-report { white-space:pre-wrap; overflow-wrap:anywhere; font-size:.72rem; line-height:1.65; max-height:70vh; overflow:auto; }
     .history-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 14px; }
     .history-card { display: flex; min-width: 0; flex-direction: column; border: 1px solid #DCE5EF; border-radius: 14px; background: #FFFFFF; box-shadow: 0 5px 18px rgba(15,23,42,.045); overflow: hidden; }
     .history-card__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding: 15px 16px 10px; }
@@ -2099,7 +2116,55 @@ function renderHistoryCard(item, sport) {
   </article>`;
 }
 
+function latestNbaAnalysis(sport) {
+  if (sport !== 'nba') return null;
+  const latest = sportsFeedSnapshot(sport)?.latest_analysis;
+  return latest?.games?.length && latest.event_date >= sydneyToday() ? latest : null;
+}
+
+function nbaLocalTime(value) {
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toLocaleString('zh-HK', {timeZone:'Australia/Sydney',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}) : '時間未核實';
+}
+
+function renderNbaLatestAnalysis(latest) {
+  const labels = {analysed:'已分析',waiting_player_markets:'等候開盤',data_insufficient:'資料不足',
+    awaiting_analysis:'待分析',refresh_required:'待刷新',source_invalid:'來源待驗證'};
+  const pending = latest.games.filter(game => game.status !== 'analysed').map(game => game.event_name).join('、');
+  const statLabels = {pts:'得分',reb:'籃板',ast:'助攻',fg3m:'三分'};
+  const formal = [...activeSportsRecommendations('nba'), ...sportsAnalysisCards('nba')];
+  const formalSection = formal.length ? `<h2>已驗證 SGM</h2><div class="history-grid">${formal.map(item => renderHistoryCard(item,'nba')).join('')}</div>` : '';
+  return `<div class="sports-notice"><span>📋</span><span><strong>${esc(latest.event_date)} 最新賽前分析</strong> · 已分析 ${Number(latest.coverage?.analysed_games || 0)}／${latest.games.length} 場。候選組合供比較；正式建議須另外通過策略及即時報價檢查。${pending ? `<br>待補資料／開盤：${esc(pending)}` : ''}</span></div>
+    ${formalSection}<div class="nba-latest-games">${latest.games.map(game => {
+      const candidates = (game.review_candidates || []).map(item => {
+        const price = item.odds == null ? '未取得已驗證組合價' : `Sportsbet 組合價 ${Number(item.odds).toFixed(2)}${item.quote_status === 'expired' || Date.parse(item.sgm_quote?.expires_at || '') <= Date.now() ? '（已過期，需刷新）' : '（分析快照）'}`;
+        return `<article class="nba-candidate"><strong>${esc(item.label)} · ${(item.legs || []).length} 腳候選</strong>
+          <ol>${(item.legs || []).map(leg => `<li>${esc(leg.selection)} <span>單腿 ${Number(leg.odds).toFixed(2)}</span></li>`).join('')}</ol>
+          <div>${esc(price)}</div>${item.sgm_quote?.captured_at ? `<small>報價時間：${esc(nbaLocalTime(item.sgm_quote.captured_at))}（悉尼）</small>` : ''}<div class="metric-row"><span class="metric-chip">模型組合機率 ${pct(item.model_probability)}</span>${item.expected_value == null ? '' : `<span class="metric-chip">快照 EV ${pct(item.expected_value)}</span>`}</div>
+          <p>${(item.reasons || []).map(esc).join(' ')}</p><small>研究候選 · 未通過正式投注閘</small></article>`;
+      }).join('');
+      const markets = (game.player_markets || []).map(row => `<tr><td>${esc(row.player)}</td><td>${esc(statLabels[row.market] || row.market)} ${esc(row.line)}+</td><td>${Number(row.odds).toFixed(2)}</td><td>${pct(row.model_probability)}</td><td>${pct(row.l10_hit_rate)}</td><td>${pct(row.expected_value)}</td></tr>`).join('');
+      const injuries = Object.entries(game.injuries || {}).flatMap(([team, players]) => Object.entries(players || {}).map(([name, status]) => `${team} · ${name}：${status}`));
+      return `<section class="nba-game-analysis"><div class="nba-game-analysis__head"><h2>🏀 ${esc(game.event_name)}</h2><span class="metric-chip">${esc(labels[game.status] || '待分析')}</span></div>
+        <p>${game.start_time_utc ? `開賽：${esc(new Date(game.start_time_utc).toLocaleString('zh-HK',{timeZone:'Australia/Sydney',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}))}（悉尼） · ` : ''}${esc(game.status_reason)}${game.analysis_time ? ` · 來源更新 ${esc(nbaLocalTime(game.analysis_time))}（悉尼）` : ''}</p>
+        ${game.status === 'analysed' ? `<div class="metric-row"><span class="metric-chip">已評估 ${Number(game.market_count || 0)} 個盤口</span><span class="metric-chip">模型正 EV ${Number(game.positive_ev_count || 0)} 個</span><span class="metric-chip">正式 SGM ${Number(game.formal_sgm_count || 0)} 個</span></div>
+          ${game.diagnostics?.player_candidates != null ? `<p>選腿診斷：${Number(game.diagnostics.player_candidates)} 個可用選腿 → ${Number(game.diagnostics.positive_edge_candidates || 0)} 個非負 edge → ${Number(game.diagnostics.positive_edge_and_l10_50 || 0)} 個同時達最近十場 ≥50%。${game.formal_sgm_count ? '' : '暫未砌成通過全部正式門檻嘅組合。'}</p>` : ''}
+          ${candidates ? `<div class="nba-candidates">${candidates}</div>` : `<p>${game.diagnostics?.review_error ? '候選生成未完成，需刷新；本場其餘分析已保存。' : '暫未有可驗證候選；下面保留本場分析。'}</p>`}
+          ${injuries.length ? `<details><summary>傷停及陣容</summary><ul>${injuries.map(text => `<li>${esc(text)}</li>`).join('')}</ul></details>` : ''}
+          ${markets ? `<details><summary>球員盤口及模型評估（${game.player_markets.length} 個）</summary><div class="nba-market-scroll"><table><thead><tr><th>球員</th><th>盤口</th><th>單腿價</th><th>模型機率</th><th>L10 命中</th><th>模型 EV</th></tr></thead><tbody>${markets}</tbody></table></div></details>` : ''}
+          ${game.report_markdown ? `<details><summary>完整賽前分析報告</summary><pre class="nba-report">${esc(game.report_markdown)}</pre></details>` : ''}` : ''}
+      </section>`;
+    }).join('')}</div>`;
+}
+
+function renderSportsArchive(sport) {
+  const items = DASHBOARD_DATA.sports_history?.[sport] || [];
+  return `<div class="sports-notice">歷史案例只供檢討，唔係最新賽事建議。</div><div class="history-grid">${items.map(item => renderHistoryCard(item,sport)).join('')}</div>`;
+}
+
 function renderSportsHistory(sport) {
+  const latest = latestNbaAnalysis(sport);
+  if (latest) return renderNbaLatestAnalysis(latest);
   const items = sportsHistory(sport);
   const live = hasLiveSportsFeed(sport);
   const analysisCards = sportsAnalysisCards(sport);
@@ -2296,6 +2361,7 @@ function renderSportsRoi(sport) {
 
 function renderSportsWorkspace(sport = activeSport) {
   const isNba = sport === 'nba';
+  const latest = latestNbaAnalysis(sport);
   const history = sportsHistory(sport);
   const records = sportsRecords(sport);
   const settled = history.filter(item => ['won', 'lost'].includes(item.outcome));
@@ -2304,7 +2370,7 @@ function renderSportsWorkspace(sport = activeSport) {
     ? renderSportsBets(sport)
     : activeSportsTab === 'roi'
       ? renderSportsRoi(sport)
-      : renderSportsHistory(sport);
+      : activeSportsTab === 'archive' ? renderSportsArchive(sport) : renderSportsHistory(sport);
   return `<section class="sports-shell sports-shell--${esc(sport)}">
     <div class="sports-hero">
       <div>
@@ -2315,14 +2381,19 @@ function renderSportsWorkspace(sport = activeSport) {
           : '將模型概率、市場 fair probability、edge、EV 同主要風險放埋一張卡，減少來回翻報告。'}</p>
       </div>
       <div class="sports-hero__aside">
+        ${latest ? `<div class="sports-hero-stat"><strong>${latest.games.length}</strong><span>${esc(latest.event_date)} 賽事</span></div>
+        <div class="sports-hero-stat"><strong>${Number(latest.coverage?.analysed_games || 0)}</strong><span>已完成分析</span></div>
+        <div class="sports-hero-stat"><strong>${Number(latest.coverage?.review_candidates || 0)}</strong><span>SGM 候選</span></div>
+        <div class="sports-hero-stat"><strong>${activeSportsRecommendations(sport).filter(item => item.bet_type === 'combo').length}</strong><span>即時正式 SGM</span></div>` : `
         <div class="sports-hero-stat"><strong>${history.length}</strong><span>${sportsAnalysisCards(sport).length ? 'SGM／分析卡' : (hasLiveSportsFeed(sport) ? '建議' : '歷史案例')}</span></div>
         <div class="sports-hero-stat"><strong>${wins}/${settled.length}</strong><span>案例命中</span></div>
         <div class="sports-hero-stat"><strong>${records.length}</strong><span>我的投注</span></div>
-        <div class="sports-hero-stat"><strong>${isNba ? 'Reflector' : 'Settled'}</strong><span>資料狀態</span></div>
+        <div class="sports-hero-stat"><strong>${isNba ? 'Reflector' : 'Settled'}</strong><span>資料狀態</span></div>`}
       </div>
     </div>
-    <div class="sports-tabs" role="tablist">
-      <button type="button" class="sports-tab ${activeSportsTab === 'history' ? 'sports-tab--active' : ''}" onclick="setSportsTab('history')">${sportsAnalysisCards(sport).length ? '📋 賽前分析' : (hasLiveSportsFeed(sport) ? '📡 今日建議' : '📚 歷史分析')}</button>
+    <div class="sports-tabs${latest ? ' sports-tabs--latest' : ''}" role="tablist">
+      <button type="button" class="sports-tab ${activeSportsTab === 'history' ? 'sports-tab--active' : ''}" onclick="setSportsTab('history')">${latest ? '📋 最新分析' : sportsAnalysisCards(sport).length ? '📋 賽前分析' : (hasLiveSportsFeed(sport) ? '📡 今日建議' : '📚 歷史分析')}</button>
+      ${latest ? `<button type="button" class="sports-tab ${activeSportsTab === 'archive' ? 'sports-tab--active' : ''}" onclick="setSportsTab('archive')">📚 歷史案例</button>` : ''}
       <button type="button" class="sports-tab ${activeSportsTab === 'bets' ? 'sports-tab--active' : ''}" onclick="setSportsTab('bets')">🧾 我的投注 ${records.length ? `(${records.length})` : ''}</button>
       <button type="button" class="sports-tab ${activeSportsTab === 'roi' ? 'sports-tab--active' : ''}" onclick="setSportsTab('roi')">📊 ROI</button>
     </div>
