@@ -416,7 +416,7 @@ def report_cache_current(report: str, sportsbet_json: str, extractor_json: str, 
 def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
                         date_str: str, game_num: int | None = None,
                         debug_skip_extractor: bool = False,
-                        legacy: bool = False) -> bool:
+                        legacy: bool = False, banker_search_audit: bool = False) -> bool:
     prefix = f"Game {game_num}" if game_num else game_tag
     print(f"\n{'='*60}")
     print(f"🏀 [{prefix}] {game_tag} — 開始 Pipeline")
@@ -447,7 +447,7 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
 
     # ── Check if already completed ──
     existing = check_skeleton_exists(target_dir, game_tag)
-    if existing and availability_ready and not debug_skip_extractor and extractor_cache_current(
+    if not banker_search_audit and existing and availability_ready and not debug_skip_extractor and extractor_cache_current(
         os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
     ) and report_cache_current(
         existing, sportsbet_json,
@@ -520,6 +520,8 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
     ]
     if legacy:
         _report_args.append("--legacy")
+    if banker_search_audit:
+        _report_args.append("--banker-search-audit")
     try:
         inputs_before = report_inputs(sportsbet_json, extractor_json, legacy)
     except OSError as exc:
@@ -629,11 +631,18 @@ def main():
     parser.add_argument("--debug-skip-extractor", action="store_true",
                         help="⚠️ DEBUG ONLY: 跳過 nba_extractor.py（用 Sportsbet fallback）。"
                              "生成嘅報告標記為 DEBUG_ONLY_DO_NOT_BET。")
+    parser.add_argument("--banker-search-audit", action="store_true",
+                        help="Opt-in isolated true-price banker search; OBSERVE only")
     parser.add_argument("--legacy", action="store_true",
                         help="使用舊版 10-Factor 引擎（預設為 Hybrid）")
     parser.add_argument("--skip-cloudflare-deploy", action="store_true",
                         help="完成分析後唔更新 Cloudflare Dashboard。")
     args = parser.parse_args()
+
+    if args.banker_search_audit and (args.compile_only or args.debug_skip_extractor or args.legacy or args.status or args.list):
+        parser.error("--banker-search-audit requires a normal hybrid analysis run")
+    if args.banker_search_audit:
+        args.skip_cloudflare_deploy = True
 
     if args.games and (not args.compile_only or args.game):
         parser.error("--games requires --compile-only and cannot be combined with --game")
@@ -775,7 +784,7 @@ def main():
         success = process_single_game(
             tag, sb_json, target_dir, args.date,
             game_num=idx, debug_skip_extractor=args.debug_skip_extractor,
-            legacy=args.legacy
+            legacy=args.legacy, banker_search_audit=args.banker_search_audit
         )
         if success:
             results["passed"].append(tag)
@@ -784,6 +793,7 @@ def main():
             if not player_milestone_markets_available(_load_sportsbet_json(sb_json)):
                 results["waiting"].append(tag)
 
+    # The independently timestamped research audit is not rerun on quote refresh.
     # A long slate can outlive an early game's quote. Reprice only reports
     # whose exact-price check no longer passes, using the same cached inputs.
     if not args.debug_skip_extractor:

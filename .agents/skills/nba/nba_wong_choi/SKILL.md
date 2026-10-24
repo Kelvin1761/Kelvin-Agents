@@ -130,3 +130,11 @@ compatibility 嘅 `strategy_phase`，唔係公開 lifecycle。
 - `resources/00_pipeline_and_execution.md` — 完整管線
 - `resources/engine_directives.md` — 硬性 XML 約束
 - `resources/02_quality_scan.md` — 品質掃描
+
+## Opt-in 真價搜尋審計（研究用途）
+
+```bash
+python3 .agents/skills/nba/nba_orchestrator.py --date YYYY-MM-DD --auto --banker-search-audit
+```
+
+`banker-search-v1` 獨立比較 Q0／Q1／Q2（報價前EV與有限多組合搜尋），每場最多12個新增報價，另有至多2個基準候選；輸出 `Game_TAG_Full_Analysis.md.banker_search.json`。正式機率／門檻與B0/B1/B2協議不變，預設與每日排程不啟用；此模式強制跳過Cloudflare部署，結果唔進BET／ROI／公開推薦。詳見 `docs/experiments/EXP-20261024-03-nba-actual-price-search.md`。模型估計正EV亦只係研究候選，未驗證盈利。

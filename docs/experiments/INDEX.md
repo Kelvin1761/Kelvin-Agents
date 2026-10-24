@@ -258,3 +258,5 @@
 - [EXP-20261024-01](EXP-20261024-01-nba-latest-analysis-review-candidates.md) — NBA 最新逐場分析及 review-only SGM 候選；同源五場 305 個 p_final／正式 combos 不變，15 個真實 SGM 報價接線；工程驗證，無盈利聲稱，正式策略不晉升。
 
 - [EXP-20261024-02](EXP-20261024-02-nba-banker-only-ev-shadow.md) — 正式產品集中穩膽；EV 保留，新增逐關漏斗、零穩膽審計提醒及 B0/B1/B2 forward-only EV 消融；工程隔離驗證，未證明盈利改善。
+
+- [EXP-20261024-03](EXP-20261024-03-nba-actual-price-search.md)：NBA opt-in真價搜尋Q0/Q1/Q2，有限報價、正式策略不變；NEEDS MORE TESTING。

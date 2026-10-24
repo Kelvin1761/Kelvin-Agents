@@ -1438,6 +1438,52 @@ def _passes_playoff_gate(leg, tier):
     return True
 
 
+def banker_pool(candidates, rule, *, require_leg_ev=True):
+    """Shared unchanged banker eligibility; callers choose formal or research EV."""
+    if rule == "banker":
+        def _has_buffer(c):
+            """Check if player's avg exceeds line by at least 15%."""
+            line_val = c.get("line_val", 0)
+            avg = c.get("avg", 0)
+            if line_val <= 0 or avg <= 0:
+                return True  # Can't verify, allow through
+            return (avg - line_val) / line_val >= 0.15
+
+        pool = [c for c in candidates
+                if _is_player_milestone(c)
+                and c["hit_l10"] >= BANKER.l10
+                and c.get("hit_l5", 0) >= BANKER.l5
+                and (not require_leg_ev or c["edge"] >= 0)  # False is forward-shadow only
+                and c["odds"] >= BANKER.min_odds  # V5.2: Remove 'almost free' legs — each leg should carry meaningful odds
+                and c.get("cov", 0) <= BANKER.max_cov
+                and not c.get("bench_minutes_risk", False)
+                and not c.get("day_to_day", False)
+                and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0)
+                and _has_buffer(c)
+                and _passes_playoff_gate(c, "banker")
+                and _post_reflector_leg_allowed(c, "banker")]
+        # F5: Prioritize L10 100% → 90% → 80% legs first, then by edge
+        pool.sort(key=lambda x: (-x["hit_l10"], -x["hit_l5"], -x["edge"], x["odds"]))
+
+        return pool
+    if rule != "banker_fallback":
+        raise ValueError("unknown banker rule")
+    pool = [c for c in candidates
+                    if _is_player_milestone(c)
+                    and c["hit_l10"] >= BANKER_FALLBACK.l10
+                    and c.get("hit_l5", 0) >= BANKER_FALLBACK.l5
+                    and (not require_leg_ev or c["edge"] >= 0)  # False is forward-shadow only
+                    and c["odds"] >= BANKER_FALLBACK.min_odds  # V5.2: Slightly relaxed from 1.20 for fallback
+                    and c.get("cov", 0) <= BANKER_FALLBACK.max_cov
+                    and not c.get("bench_minutes_risk", False)
+                    and not c.get("day_to_day", False)
+                    and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0) * 0.85
+                    and _passes_playoff_gate(c, "banker")
+                    and _post_reflector_leg_allowed(c, "banker")]
+    pool.sort(key=lambda x: (-x["hit_l10"], -x["edge"], x["odds"]))
+    return pool
+
+
 def select_combo_1(candidates, *, require_leg_ev=True, require_combo_ev=True):
     """Banker selection with explicit strict/fallback policy; no safety guarantee.
     - L10 ≥ 80% AND L5 ≥ 80% (true recent consistency)
@@ -1447,29 +1493,7 @@ def select_combo_1(candidates, *, require_leg_ev=True, require_combo_ev=True):
     - SIP-N04: L3 < Line banned
     - Numeric CoV cap; volatility grade is not a separate exclusion."""
 
-    def _has_buffer(c):
-        """Check if player's avg exceeds line by at least 15%."""
-        line_val = c.get("line_val", 0)
-        avg = c.get("avg", 0)
-        if line_val <= 0 or avg <= 0:
-            return True  # Can't verify, allow through
-        return (avg - line_val) / line_val >= 0.15
-
-    pool = [c for c in candidates
-            if _is_player_milestone(c)
-            and c["hit_l10"] >= BANKER.l10
-            and c.get("hit_l5", 0) >= BANKER.l5
-            and (not require_leg_ev or c["edge"] >= 0)  # False is forward-shadow only
-            and c["odds"] >= BANKER.min_odds  # V5.2: Remove 'almost free' legs — each leg should carry meaningful odds
-            and c.get("cov", 0) <= BANKER.max_cov
-            and not c.get("bench_minutes_risk", False)
-            and not c.get("day_to_day", False)
-            and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0)
-            and _has_buffer(c)
-            and _passes_playoff_gate(c, "banker")
-            and _post_reflector_leg_allowed(c, "banker")]
-    # F5: Prioritize L10 100% → 90% → 80% legs first, then by edge
-    pool.sort(key=lambda x: (-x["hit_l10"], -x["hit_l5"], -x["edge"], x["odds"]))
+    pool = banker_pool(candidates, "banker", require_leg_ev=require_leg_ev)
 
     def score_fn(combo, odds, avg_hit, total_edge):
         # F5: Bonus for near-perfect hit rate legs
@@ -1488,19 +1512,7 @@ def select_combo_1(candidates, *, require_leg_ev=True, require_combo_ev=True):
     # Fallback: relax to L10 ≥ 70% if strict pool is too small
     if not result:
         rule = "banker_fallback"
-        pool_relaxed = [c for c in candidates
-                        if _is_player_milestone(c)
-                        and c["hit_l10"] >= BANKER_FALLBACK.l10
-                        and c.get("hit_l5", 0) >= BANKER_FALLBACK.l5
-                        and (not require_leg_ev or c["edge"] >= 0)  # False is forward-shadow only
-                        and c["odds"] >= BANKER_FALLBACK.min_odds  # V5.2: Slightly relaxed from 1.20 for fallback
-                        and c.get("cov", 0) <= BANKER_FALLBACK.max_cov
-                        and not c.get("bench_minutes_risk", False)
-                        and not c.get("day_to_day", False)
-                        and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0) * 0.85
-                        and _passes_playoff_gate(c, "banker")
-                        and _post_reflector_leg_allowed(c, "banker")]
-        pool_relaxed.sort(key=lambda x: (-x["hit_l10"], -x["edge"], x["odds"]))
+        pool_relaxed = banker_pool(candidates, "banker_fallback", require_leg_ev=require_leg_ev)
         result = _greedy_build(pool_relaxed,
                                target_min=BANKER_FALLBACK.target_min, target_max=BANKER_FALLBACK.target_max,  # V5.3: FW-11 floor is 2.0x
                                min_legs=BANKER_FALLBACK.min_legs, max_legs=BANKER_FALLBACK.max_legs,  # V5.3: Allow 4 legs
@@ -2078,7 +2090,7 @@ def mc_game_seed(meta):
 
 def gen_full_report(meta, odds, injuries, news, team_stats,
                     all_cards, sportsbet_time, season_phase="MID_SEASON",
-                    engine_mode="hybrid", capture=None, sportsbet_odds=None):
+                    engine_mode="hybrid", capture=None, sportsbet_odds=None, banker_search_audit=False):
     """Render the report.  ``capture`` (optional dict) receives the already
     computed MC results and combos for the market-evaluation sidecar; it is
     observation only and never feeds back into selection or rendering."""
@@ -2297,6 +2309,12 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
                                      valid_quote=quote_valid, evaluate=compute_combo_ev)
     except Exception as exc:
         shadow, shadow_error = [], type(exc).__name__
+    if banker_search_audit and capture is not None:
+        from nba_banker_search import audit_search
+        capture["banker_search_audit"] = audit_search(
+            candidates, sportsbet_odds, pool=banker_pool, select=select_combo_1,
+            allowed=_combo_is_allowed, evaluate=compute_combo_ev,
+            quote=cached_quote, valid_quote=quote_valid)
     funnel = banker_funnel(candidates, playoff=_passes_playoff_gate, reflector=_post_reflector_leg_allowed)
     if shadow_error:
         print(f"⚠️ banker_shadow_failed:{shadow_error}；正式穩膽結果保留。")
@@ -2569,6 +2587,7 @@ def main():
     parser.add_argument("--sportsbet", required=True, help="Sportsbet odds JSON (from sportsbet_parser.py)")
     parser.add_argument("--extractor", required=True, help="nba_extractor.py output JSON")
     parser.add_argument("--output", required=True, help="Output skeleton .md path")
+    parser.add_argument("--banker-search-audit", action="store_true", help="Opt-in OBSERVE true-price search; never changes formal bets")
     parser.add_argument("--engine", choices=sorted(ENGINE_MODES), default=DEFAULT_ENGINE_MODE,
                         help="Probability engine: hybrid (default), ml, or legacy")
     parser.add_argument("--legacy", action="store_true", help="Deprecated alias for --engine legacy")
@@ -2733,7 +2752,22 @@ def main():
     capture = {}
     report = gen_full_report(meta, ex_odds, injuries, news, team_stats,
                              all_cards, sportsbet_time, season_phase=season_phase,
-                             engine_mode=engine_mode, capture=capture, sportsbet_odds=sportsbet)
+                             engine_mode=engine_mode, capture=capture, sportsbet_odds=sportsbet,
+                             banker_search_audit=args.banker_search_audit)
+
+    # Research is separate from the formal sidecar and publication feed.
+    if args.banker_search_audit:
+        audit = capture["banker_search_audit"]
+        import hashlib
+        from nba_prob_layer import probability_model_id
+        input_sha256 = {}
+        for path in (args.sportsbet, args.extractor):
+            with open(path, "rb") as source:
+                input_sha256[str(path)] = hashlib.sha256(source.read()).hexdigest()
+        audit.update(probability_model_id=probability_model_id(), input_sha256=input_sha256)
+        os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+        with open(args.output + ".banker_search.json", "w", encoding="utf-8") as handle:
+            json.dump(audit, handle, ensure_ascii=False, indent=2, allow_nan=False)
 
     # Write
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
