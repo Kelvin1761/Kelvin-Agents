@@ -71,3 +71,25 @@ def test_malformed_candidate_legs_are_dropped_without_losing_game(tmp_path):
     side=json.loads(path.read_text());side['review_candidates'][0]['legs']='invalid';path.write_text(json.dumps(side))
     game=build_latest_analysis(tmp_path,'2099-10-25',lambda *a:(True,[]))['games'][0]
     assert game['status']=='analysed' and game['review_candidates']==[]
+
+
+def test_same_day_older_checkout_cannot_regress_verified_analysis():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from generate_static import _merge_sports_feed
+    from copy import deepcopy
+    saved = {'game_tag': 'BKN_CLE', 'status': 'analysed', 'analysis_time': '2099-10-24T08:00:00Z',
+             'review_candidates': [{'decision': 'OBSERVE'}], 'formal_sgm_count': 0}
+    cached = {'sports': {'nba': {'analysis_run_id': 'nba:2099-10-25', 'latest_analysis': {
+        'event_date': '2099-10-25', 'games': [saved]}, 'recommendations': [{'id': 'old-bet'}]}}}
+    for status in ['analysed', 'awaiting_analysis', 'waiting_player_markets', 'data_insufficient']:
+        incoming = dict(saved, status=status, analysis_time='2099-10-24T07:00:00Z', review_candidates=[])
+        fresh = {'sports': {'nba': {'analysis_run_id': 'nba:2099-10-25', 'validation_status': 'blocked',
+                 'source_files': ['report.md'], 'warnings': ['no_validated_nba_combos'],
+                 'latest_analysis': {'event_date': '2099-10-25', 'games': [incoming]}, 'recommendations': []}}}
+        result = _merge_sports_feed(cached, fresh, today='2099-10-24')['sports']['nba']
+        assert result['latest_analysis']['games'] == [saved]
+        assert result['latest_analysis']['coverage']['review_candidates'] == 1
+        assert result['recommendations'] == []
+    newer = deepcopy(fresh)
+    newer['sports']['nba']['latest_analysis']['games'] = [dict(saved, analysis_time='2099-10-24T09:00:00Z')]
+    assert _merge_sports_feed(cached, newer, today='2099-10-24')['sports']['nba']['latest_analysis']['games'][0]['analysis_time'].endswith('09:00:00Z')

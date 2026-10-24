@@ -674,6 +674,31 @@ def _merge_sports_feed(cached, fresh, today=None):
             new["latest_analysis"] = copy.deepcopy(old_latest)
             new["analysis_run_id"] = old.get("analysis_run_id")
             merged["sports"][sport] = new
+        # Code releases can run from an older same-day checkout. Keep each
+        # verified read-only report when that checkout has older inputs, while
+        # leaving the fresh formal recommendation/firewall decision untouched.
+        if (sport == "nba" and not expired and old_latest.get("games")
+                and old_latest.get("event_date") == new_latest.get("event_date")):
+            old_games = {g.get("game_tag"): g for g in old_latest["games"]}
+            games = []
+            for game in new_latest.get("games", []):
+                saved = old_games.get(game.get("game_tag"), {})
+                older_report = (game.get("status") == "analysed"
+                                and str(saved.get("analysis_time", "")) > str(game.get("analysis_time", "")))
+                missing_report = game.get("status") in {"awaiting_analysis", "waiting_player_markets", "data_insufficient"}
+                games.append(copy.deepcopy(saved if saved.get("status") == "analysed"
+                                           and (older_report or missing_report) else game))
+            if games != new_latest.get("games", []):
+                new = copy.deepcopy(new)
+                latest = copy.deepcopy(new_latest)
+                latest["games"] = games
+                analysed = sum(g.get("status") == "analysed" for g in games)
+                latest["coverage"] = {"scheduled_games": len(games), "analysed_games": analysed,
+                                      "pending_games": len(games) - analysed,
+                                      "review_candidates": sum(len(g.get("review_candidates", [])) for g in games),
+                                      "formal_sgm_count": sum(g.get("formal_sgm_count", 0) for g in games)}
+                new["latest_analysis"] = latest
+                merged["sports"][sport] = new
         # Read-only, previously verified analysis survives a checkout without
         # this domain's files. Never restore BET recommendations through here.
         old_cards = [card for card in (old.get("analysis_cards") or [])
