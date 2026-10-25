@@ -148,3 +148,11 @@ def test_reb3pm_subset_is_frozen_and_only_scores_its_stats(tmp_path):
     legs, counts = f.collect(tmp_path, "2026-10-26", d, cfg)
     assert sorted(l["stat"] for l in legs) == ["FG3M", "REB"] and counts["stat_out_of_scope"] == 1
     assert counts["c_legs"] == 2   # out-of-scope legs never dilute the coverage guard
+
+
+def test_v3_config_is_frozen_and_reads_v3_fields():
+    assert hashlib.sha256(f.CONFIG_V3_PATH.read_bytes()).hexdigest() == \
+        "d4ff377b554367f3e9af95c12eaa54baa38d3534e374c462f8b7be4e3cfa9c8b"
+    cfg, _ = f.load_config(f.CONFIG_V3_PATH)
+    assert cfg["season_rate_version"] == "nba_season_rate_S_v3"
+    assert cfg["season_rate_fields"]["prob"] == "season_rate_v3_prob_S" and "stats" not in cfg

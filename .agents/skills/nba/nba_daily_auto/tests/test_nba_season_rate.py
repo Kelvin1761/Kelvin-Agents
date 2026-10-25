@@ -19,7 +19,7 @@ import nba_market_ledger as ledger
 import nba_season_rate as S
 
 KEYS = {"season_rate_prob_S", "season_rate_version", "season_rate_status", "season_rate_inputs",
-        *reports.V2_SHADOW_KEYS}
+        *reports.V2_SHADOW_KEYS, *reports.V3_SHADOW_KEYS}
 
 
 def log(pts, mins=None, kinds=None):
@@ -167,3 +167,66 @@ def test_v2_shadow_reaches_the_card_without_changing_it(monkeypatch):
     assert plain["season_rate_v2_status"] == "no_opponent_context"
     strip = lambda d: {k: v for k, v in d.items() if k not in KEYS}
     assert strip(la) == strip(plain)
+
+
+TEAM_DATES = [f"2026-11-{d:02d}" for d in range(20, 10, -1)]   # team's last 10 games, newest first
+TEAM_RECENT = {"status": "available", "dates": TEAM_DATES,
+               "mean": {"PTS": 112.0, "REB": 44.0, "AST": 26.0, "FG3M": 13.0}}
+
+
+def mate(name, status, pts, minutes=32.0, games=10, roster=True, kinds=None):
+    lg = log([pts] * games, mins=[minutes] * games, kinds=kinds)
+    lg["dates"] = TEAM_DATES[:games]
+    return {"name": name, "status": status, "roster_verified": roster, "gamelog": {"season_log": lg}}
+
+
+def test_absence_counts_out_only_and_reports_dtd_separately():
+    from nba_availability import classify_injury_status as classify
+    players = [mate("Star", "Out", 28.0), mate("Maybe", "Day-To-Day", 11.2), mate("Fine", "Active", 20.0),
+               mate("Gone", "Out", 25.0, roster=False),              # traded/waived: not a teammate
+               mate("Bench", "Out", 9.0, minutes=12.0),               # < 20 minutes: not key
+               mate("Rare", "Out", 9.0, games=4),                     # < 5 team games: not key
+               mate("Camp", "Out", 30.0, kinds=["Pre Season"] * 10)]  # preseason only: no evidence
+    a = S.teammate_absence(players, TEAM_RECENT, classify)
+    assert a["status"] == "available" and a["absent"] == ["Star"] and a["dtd"] == ["Maybe"]
+    assert a["A"]["PTS"] == pytest.approx(28.0 / 112.0) and a["A_dtd"]["PTS"] == pytest.approx(11.2 / 112.0)
+    assert S.teammate_absence(players, None, classify)["status"] == "no_team_recent"
+
+
+def test_v3_is_v2_without_absences_and_rises_with_them():
+    zero = {"status": "available", "A": {s: 0.0 for s in S.DISPERSION_K}, "A_dtd": {}}
+    lg = log([20.0] * 30)
+    assert S.season_rate_prob_v3(lg, "PTS", 20, OPP, zero)[0] == S.season_rate_prob_v2(lg, "PTS", 20, OPP)[0]
+    star_out = {"status": "available", "A": {"PTS": 0.25, "REB": 0.0, "AST": 0.25, "FG3M": 0.0}, "A_dtd": {}}
+    p3, status, inputs = S.season_rate_prob_v3(lg, "PTS", 20, OPP, star_out)
+    assert status == "ok" and p3 > S.season_rate_prob_v2(lg, "PTS", 20, OPP)[0]
+    _, _, i2 = S.season_rate_prob_v2(lg, "PTS", 20, OPP)
+    assert abs(inputs["mu"] - i2["mu"] * (1 + 0.20 * 0.25 / 0.75)) < 2e-3 and inputs["k"] == i2["k"]
+    assert S.season_rate_prob_v3(lg, "PTS", 20, OPP, None)[1] == "no_team_recent"
+    assert S.season_rate_prob_v3(lg, "PTS", 20, OPP, {"status": "no_team_recent"})[1] == "no_team_recent"
+
+
+def test_team_recent_uses_only_the_teams_games_before_cutoff():
+    import datetime as dt
+    import nba_team_context as tc
+    rows = [{"GAME_ID": str(i), "GAME_DATE": f"2026-11-{i:02d}", "TEAM_ID": 1, "TEAM_ABBREVIATION": "GSW",
+             "PTS": 100 + i, "REB": 40, "AST": 25, "FG3M": 12} for i in range(1, 15)]
+    rows.append(dict(rows[0], TEAM_ABBREVIATION="LAL", TEAM_ID=2, PTS=999))
+    out = tc.team_recent({"tables": {"Regular Season": {"status": "available", "rows": rows}}}, "GS", dt.date(2026, 11, 14))
+    assert out["dates"][0] == "2026-11-13" and len(out["dates"]) == 10
+    assert out["mean"]["PTS"] == sum(100 + i for i in range(4, 14)) / 10
+
+
+def test_v3_shadow_reaches_the_card_without_changing_it(monkeypatch):
+    pts = [22.0, 25, 18, 24, 21, 26, 19, 23, 20, 27, 22, 24]
+    ext = {"name": "Test Star", "position": "G",
+           "gamelog": {"PTS": pts[:10], "MIN": [32] * 10, "season_log": log(pts)}}
+    ab = {"status": "available", "A": {"PTS": 0.2, "REB": 0.0, "AST": 0.0, "FG3M": 0.0}, "A_dtd": {}}
+    card = reports.build_player_card("Test Star", "DET", {"lines": {"20": "1.80"}}, ext, "points",
+                                     opponent_abbr="BOS", team_stats={}, engine_mode="legacy",
+                                     opponent_context=OPP, absence_context=ab)
+    la = card["line_analysis"]["20"]
+    assert la["season_rate_v3_status"] == "ok" and la["season_rate_v3_version"] == "nba_season_rate_S_v3"
+    assert la["season_rate_v3_prob_S"] > la["season_rate_v2_prob_S"]
+    strip = lambda d: {k: v for k, v in d.items() if k not in KEYS}
+    assert strip(la) == strip(card_for(ext)["line_analysis"]["20"])

@@ -121,3 +121,21 @@ def opponent_context(bundle, opponent_abbr, cutoff_day):
                         **{s: [v[s] for _, v in allowed] for s in STATS}},
             'league_avg': league, 'league_team_games': len(rs_rows), 'league_source': league_source,
             'captured_at': bundle.get('captured_at'), 'tables_sha256': bundle.get('tables_sha256')}
+
+
+def team_recent(bundle, team_abbr, cutoff_day, games=10):
+    """The team's own last `games` games before cutoff_day: dates + per-game means (S_v3 absence share)."""
+    tables = (bundle or {}).get('tables') or {}
+    target = canonical_team_abbr(team_abbr)
+    rows = [dict(r, _day=_day(r['GAME_DATE'])) for kind in SEASON_TYPES
+            for r in (tables.get(kind) or {}).get('rows', [])
+            if (tables.get(kind) or {}).get('status') == 'available'
+            and canonical_team_abbr(r['TEAM_ABBREVIATION']) == target]
+    rows = sorted((r for r in rows if r['_day'] is not None and r['_day'] < cutoff_day),
+                  key=lambda r: r['_day'], reverse=True)[:games]
+    if not rows:
+        return {'status': 'source_unavailable' if (tables.get('Regular Season') or {}).get('status') != 'available'
+                else 'no_games'}
+    return {'status': 'available', 'team': target, 'dates': [r['_day'].isoformat() for r in rows],
+            'mean': {s: sum(float(r[s]) for r in rows) / len(rows) for s in STATS},
+            'captured_at': bundle.get('captured_at'), 'tables_sha256': bundle.get('tables_sha256')}
