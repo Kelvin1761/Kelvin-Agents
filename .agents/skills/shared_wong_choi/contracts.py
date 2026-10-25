@@ -82,6 +82,8 @@ _STATUS_ALIASES = {
     "failed": RunState.FAILED,
     "interrupted": RunState.FAILED,
     "missing_prediction": RunState.FAILED,
+    "no_prediction": RunState.DORMANT,
+    "not_due": RunState.DORMANT,
     "ok": RunState.SUCCEEDED,
     "partial": RunState.PARTIAL,
     "ready": RunState.READY,
@@ -91,6 +93,8 @@ _STATUS_ALIASES = {
     "succeeded": RunState.SUCCEEDED,
     "success": RunState.SUCCEEDED,
     "temporary_failure": RunState.PARTIAL,
+    "unchanged": RunState.SUCCEEDED,
+    "updated": RunState.SUCCEEDED,
     "warmup_complete": RunState.SUCCEEDED,
 }
 

@@ -452,6 +452,13 @@ def postgame_message(target_date: str, archive: Path) -> str:
     if snapshot_path.is_file():
         with snapshot_path.open("r", encoding="utf-8", newline="") as handle:
             rows = list(csv.DictReader(handle))
+    run_summary = _read_json(archive / f"Reflector_Run_Summary_{target_date}.json", {})
+    if (not rows and snapshot_path.is_file() and isinstance(run_summary, dict)
+            and run_summary.get("verified_no_combos") is True
+            and run_summary.get("rows_recorded") == 0):
+        return (f"🏀 NBA 旺財賽後覆盤｜{target_date}\n"
+                "已驗證分析完成，今日冇組合通過選擇門檻；賽果已歸檔。\n"
+                "正式推薦：0｜命中率：N/A（冇推薦腿，唔計入命中率）。")
     if not rows:
         raise ValueError(f"postgame_training_snapshot_missing_or_empty:{snapshot_path}")
     settled = [row for row in rows if str(row.get("cleared") or "").strip() in {"0", "1"}]
@@ -467,7 +474,6 @@ def postgame_message(target_date: str, archive: Path) -> str:
         archive / f"Dashboard_Settlement_Proposal_{target_date}.json", {}
     )
     proposal_count = int(((proposal.get("summary") or {}).get("nba") or 0)) if isinstance(proposal, dict) else 0
-    run_summary = _read_json(archive / f"Reflector_Run_Summary_{target_date}.json", {})
     ml_summary = run_summary.get("ml_summary") or {} if isinstance(run_summary, dict) else {}
 
     lines = [

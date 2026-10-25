@@ -5,6 +5,7 @@ import argparse
 import csv
 import datetime as dt
 import glob
+import hashlib
 import json
 import math
 import os
@@ -575,6 +576,33 @@ def parse_current_format_rows(
     return out
 
 
+def verified_no_combo_reports(target_dir: str, excluded_games=()) -> bool:
+    """Accept explicit abstentions only; missing/stale/malformed reports still fail."""
+    reports = sorted(Path(target_dir).glob("Game_*_Full_Analysis.md"))
+    reports += sorted(Path(target_dir).glob("Game_*_Full_Analysis.txt"))
+    checked = 0
+    for report in reports:
+        if extract_game_tag_from_filename(str(report)) in excluded_games:
+            continue
+        try:
+            data = json.loads(Path(str(report) + ".market_legs.json").read_text(encoding="utf-8"))
+            if not isinstance(data, dict):
+                return False
+            if (data.get("schema_version") != "nba-market-eval-legs/v1"
+                    or data.get("report_sha256") != hashlib.sha256(report.read_bytes()).hexdigest()
+                    or data.get("combos") != []
+                    or not isinstance(data.get("legs"), list) or not data["legs"]):
+                return False
+            if any(not isinstance(leg, dict) or not leg.get("player")
+                   or leg.get("picked") is not False or leg.get("picked_in") != []
+                   for leg in data["legs"]):
+                return False
+        except (OSError, ValueError):
+            return False
+        checked += 1
+    return checked > 0
+
+
 def load_prediction_rows(target_dir: str, analysis_date: str, us_game_date: str) -> list[dict]:
     reports = sorted(
         glob.glob(os.path.join(target_dir, "*_NBA_*_Analysis.md"))
@@ -1135,18 +1163,19 @@ def main() -> None:
 
     rows = load_prediction_rows(target_dir, analysis_date, us_game_date)
     rows = [row for row in rows if row.get("game_tag") not in excluded_games]
-    if not rows and not args.no_record:
+    no_combos = not rows and verified_no_combo_reports(target_dir, excluded_games)
+    if not rows and not args.no_record and not no_combos:
         raise SystemExit("❌ No analysable NBA reports found in target directory.")
     verification_index = load_verification_index(verification_path)
     rows = attach_verification(rows, verification_index)
 
-    if args.no_record:
+    if args.no_record or no_combos:
         # no_prediction day: reports were never frozen pre-tip, so they are not
         # evidence. Results are archived; nothing reaches the DB or ML.
         upserted = 0
         snapshot_path = write_training_snapshot([], target_dir, analysis_date)
         ml_summary = None
-        print("🚫 no_prediction date: reflector DB and ML evaluation skipped.")
+        print("🚫 No prediction legs: reflector DB and ML evaluation skipped.")
     else:
         conn = open_reflector_db()
         conn.row_factory = sqlite3.Row
@@ -1168,6 +1197,7 @@ def main() -> None:
         "training_snapshot": snapshot_path,
         "ml_summary": ml_summary,
         "no_prediction": bool(args.no_record),
+        "verified_no_combos": no_combos,
         "excluded_games": sorted(excluded_games),
     }
     summary_path = os.path.join(target_dir, f"Reflector_Run_Summary_{analysis_date}.json")

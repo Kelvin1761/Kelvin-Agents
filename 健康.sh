@@ -80,7 +80,10 @@ if catalog_cold.get("status") == "ok":
 elif catalog_cold.get("known_artifacts"):
     print(f"  ⚠️  Artifact COLD：{catalog_cold.get('verified_artifacts')}/{catalog_cold.get('known_artifacts')} verified")
 if not cold.get("configured") and catalog_cold.get("status") != "ok":
-    print("  ⚠️  COLD Drive root未設定；外置碟目前只係一份copy，未可以批准刪本機原件")
+    if catalog_cold.get("verified_artifacts"):
+        print(f"  ⚠️  COLD 尚欠 {catalog_cold.get('unverified_artifacts', '?')} 份 artifact 第二副本驗證；已驗證副本有效，未齊嗰份唔可以刪本機原件")
+    else:
+        print("  ⚠️  COLD Drive root未設定，亦未有provider第二副本驗證；唔可以批准刪本機原件")
 elif cold.get("configured") and cold.get("status") != "available":
     print(f"  ⚠️  COLD Drive不可用：{cold.get('error') or 'unknown'}")
 PYEOF
@@ -245,6 +248,7 @@ else:
     print("  ➖ NBA 校準：未有 reliability_latest.json（賽後 run 未寫過）")
 
 nba_db = next((candidate for candidate in (
+    os.path.expanduser("~/WongChoiData/NBA/nba_reflector.db"),
     "nba_reflector.db",
     "/Users/imac/Antigravity-repo/nba_reflector.db",
 ) if os.path.exists(candidate)), None)
@@ -371,7 +375,7 @@ echo "$mo" | while IFS=$'\t' read -r tag rest; do
   esac
 done
 if [ $ms -ne 0 ]; then
-  note_bad "Drive 鏡像有檔落後過本機正本 —— 補數：.agents/scripts/mirror_consistency.py --backfill"
+  note_bad "Drive 鏡像過期或未能完成檢查 —— 先處理上面錯誤；可讀後用 .agents/scripts/mirror_consistency.py --backfill 補數"
 fi
 
 # ── 中央30日SLO／evidence provenance ──────────────────────────────────────
@@ -409,9 +413,11 @@ LOG_SCAN=$("$PY" - <<'PYEOF'
 import glob
 import json
 import os
-import re
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+sys.path.insert(0, str(Path(".agents/scripts").resolve()))
+from health_log_scan import recent_errors
 
 roots = (
     Path("/Users/imac/wongchoi-scheduler/.agents/skills/au_racing/au_daily_auto/logs"),
@@ -420,10 +426,7 @@ roots = (
     Path("tennis-wong-choi/data/logs"),
 )
 cutoff = datetime.now() - timedelta(days=3)
-error_re = re.compile(
-    r"traceback|fatal|Operation not permitted|unbound variable|❌ \[", re.I
-)
-stamp_re = re.compile(r"\[?(20\d\d-\d\d-\d\d[T ][0-9:]+(?:[+-][0-9:]+)?)")
+runs_root = Path(os.environ.get("WONGCHOI_CONTROL_STATE_ROOT", str(Path.home() / "WongChoiData/WongChoiControl"))) / "runs"
 
 # A successful newer mirror run resolves older best-effort File Provider noise.
 mirror_step = None
@@ -466,19 +469,11 @@ for root in roots:
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
             continue
-        current_time = None
+        candidates, undated = recent_errors(lines, cutoff, runs_root)
+        if undated:
+            print(f"UNDATED\t{path.name}\t{undated}")
         errors = []
-        for line in lines:
-            match = stamp_re.search(line)
-            if match:
-                try:
-                    current_time = datetime.fromisoformat(match.group(1)).replace(tzinfo=None)
-                except ValueError:
-                    current_time = None
-            if not error_re.search(line):
-                continue
-            if current_time is not None and current_time < cutoff:
-                continue
+        for line in candidates:
             lower = line.lower()
             resolved_mirror_noise = mirror_ok and (
                 "[mirror]" in lower or "鏡像" in line or "mirror 最近狀態" in line
@@ -496,6 +491,7 @@ while IFS=$'\t' read -r kind arg count; do
   case "$kind" in
     RECOVERED) ok "$arg" ;;
     WARN) warn "$arg: $count 行錯誤"; found=1 ;;
+    UNDATED) warn "$arg: $count 行錯誤缺執行時間，未計入近三日"; found=1 ;;
     LINE) printf '        %s\n' "$arg" ;;
   esac
 done <<< "$LOG_SCAN"

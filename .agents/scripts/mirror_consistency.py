@@ -51,11 +51,8 @@ def _mirror_root(marker: str) -> Path | None:
 def _primary_for(primary_root: Path, rel: Path) -> Path | None:
     """正本可能喺 root，亦可能喺 `Archive/`（完成嘅場次會搬入去）。"""
     for cand in (primary_root / rel, primary_root / "Archive" / rel):
-        try:
-            if cand.exists():
-                return cand
-        except OSError:
-            continue
+        if cand.exists():
+            return cand
     return None
 
 
@@ -65,7 +62,12 @@ def scan(mirror_root: Path, primary_root: Path) -> dict:
     worst = 0.0
     worst_path = ""
     drift: list[tuple[Path, Path]] = []
-    for dirpath, _dirs, files in os.walk(mirror_root):
+    errors: list[str] = []
+
+    def scan_error(exc: OSError) -> None:
+        errors.append(f"{type(exc).__name__}: {exc}")
+
+    for dirpath, _dirs, files in os.walk(mirror_root, onerror=scan_error):
         for name in files:
             if name.startswith("."):
                 continue          # `.wongchoi-tmp-*` 之類
@@ -75,13 +77,18 @@ def scan(mirror_root: Path, primary_root: Path) -> dict:
                 rel = mirror.relative_to(mirror_root)
             except ValueError:
                 continue
-            primary = _primary_for(primary_root, rel)
+            try:
+                primary = _primary_for(primary_root, rel)
+            except OSError as exc:
+                scan_error(exc)
+                continue
             if primary is None:
                 continue          # 鏡像獨有（舊嘢）—— 唔係我哋要答嘅問題
             paired += 1
             try:
                 ms, ps = mirror.stat(), primary.stat()
-            except OSError:
+            except OSError as exc:
+                scan_error(exc)
                 continue
             if ms.st_size == ps.st_size:
                 matched += 1
@@ -95,7 +102,8 @@ def scan(mirror_root: Path, primary_root: Path) -> dict:
                 worst, worst_path = lag_days, str(rel)
     return {"total": total, "paired": paired, "matched": matched,
             "behind": behind, "stale": stale, "worst_days": worst,
-            "worst_path": worst_path, "drift": drift, "now": now}
+            "worst_path": worst_path, "drift": drift, "now": now,
+            "errors": errors}
 
 
 def backfill(drift, mirror_root: Path) -> dict:
@@ -139,20 +147,34 @@ def main() -> int:
         mirror_root = _mirror_root(marker)
         if mirror_root is None or not mirror_root.is_dir():
             print(f"SKIP\t{label}\t搵唔到鏡像根（{marker}）")
+            worst_status = max(worst_status, 2)
             continue
         primary_root = Path(primary_default)
         if not primary_root.is_dir():
             print(f"SKIP\t{label}\t搵唔到本機正本根")
+            worst_status = max(worst_status, 2)
             continue
 
         result = scan(mirror_root, primary_root)
+        if result["errors"] or not result["paired"]:
+            print(f"ERROR\t{label}\t鏡像檢查未完成（paired={result['paired']}）；唔可以當成功")
+            for error in result["errors"][:5]:
+                print(f"ERROR\t{label}\t{error}")
+            worst_status = max(worst_status, 2)
+            continue
         if args.backfill and result["drift"]:
             out = backfill(result["drift"], mirror_root)
             print(f"BACKFILL\t{label}\t補咗 {out['done']}"
                   f"\t失敗 {out['failed']}\t核實唔過 {out['verify_failed']}")
             for why, rel in out["problems"][:5]:
                 print(f"  留低：{why}\t{rel}")
+            if out["failed"] or out["verify_failed"]:
+                worst_status = max(worst_status, 2)
             result = scan(mirror_root, primary_root)
+            if result["errors"] or not result["paired"]:
+                print(f"ERROR\t{label}\t補數後未能完成驗證：{result['errors'][:5]}")
+                worst_status = max(worst_status, 2)
+                continue
 
         pct = 100.0 * result["matched"] / max(1, result["paired"])
         line = (f"{label}\t對得上 {result['matched']}/{result['paired']}"
@@ -161,7 +183,7 @@ def main() -> int:
         if result["stale"]:
             print(f"STALE\t{line}\t最耐 {result['worst_days']:.0f} 日"
                   f"：{result['worst_path'][:60]}")
-            worst_status = 1
+            worst_status = max(worst_status, 1)
         elif result["behind"]:
             print(f"DRIFT\t{line}\t（全部喺 {STALE_DAYS:.0f} 日內，"
                   f"應該係啱啱寫完未輪到鏡像）")
