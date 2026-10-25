@@ -280,7 +280,12 @@ def main():
     parser.add_argument("--dataset", default=DATASET_PATH, help="Path to dataset CSV")
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT, help="Output directory")
     parser.add_argument("--skip-shap", action="store_true", help="Skip SHAP analysis")
+    parser.add_argument("--residual-study", action="store_true", help="Research-only market residual trends; no live artifact")
     args = parser.parse_args()
+    if args.residual_study:
+        from nba_market_residual import run_study
+        run_study(args.dataset, args.output_dir)
+        return
 
     output_dir = args.output_dir
     os.makedirs(output_dir, exist_ok=False)

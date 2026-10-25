@@ -260,3 +260,5 @@
 - [EXP-20261024-02](EXP-20261024-02-nba-banker-only-ev-shadow.md) — 正式產品集中穩膽；EV 保留，新增逐關漏斗、零穩膽審計提醒及 B0/B1/B2 forward-only EV 消融；工程隔離驗證，未證明盈利改善。
 
 - [EXP-20261024-03](EXP-20261024-03-nba-actual-price-search.md)：NBA opt-in真價搜尋Q0/Q1/Q2，有限報價、正式策略不變；NEEDS MORE TESTING。
+
+- [EXP-20261025-01](EXP-20261025-01-nba-market-residual-trends.md)：動態分鐘／每分鐘產出殘差五fold消融；三arm均不晉升，無SGM盈利聲稱，研究分支保存。
