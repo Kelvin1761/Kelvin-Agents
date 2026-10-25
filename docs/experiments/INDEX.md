@@ -269,3 +269,5 @@
 
 - [EXP-20261025-08](EXP-20261025-08-hkjc-same-course-best-time-protocol.md)：HKJC 同程最佳時間（對全場，扣場地 variant）＋近 6 仗最快 L400 預先登記；篩選 ΔΔLL +0.008（5/5 fold）、對模型 ρ +0.29；fixed_rule 4 arm 全部 REJECT：同程時間將上名馬拉入頭 5（cap@5 +1.1pp）但推走首選（Good −1.6～−2.2pp）；最快 L400 打和，維持上仗 L400。結果見 [results](EXP-20261025-08-hkjc-same-course-best-time-results.md)。
 - [EXP-20261025-11](EXP-20261025-11-nba-season-rate-core.md)：獨立模型核心由L10換全季分鐘×產出率，OOF Brier 0.1752→0.1731（CI跨零，4/5 fold）；REB／AST／3PM追平市場、PTS落後；市場＋S vs C結構 −0.0004（CI跨零）；NEEDS MORE TESTING。
+
+- [EXP-20261025-12](EXP-20261025-12-nba-ms-vs-c-forward-protocol.md)：市場＋S（MS）對 Layer C 嘅 forward 判決協議，喺零數據時凍結；MS 係數只用歷史 dev fit；150 場傷害檢查／400 場主要／800 場最終，97.5% 比賽日 cluster CI；工具 nba_ms_forward.py 只讀。
