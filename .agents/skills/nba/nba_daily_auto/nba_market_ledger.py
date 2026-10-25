@@ -465,6 +465,10 @@ def record_snapshot(
                 "season_rate_v2_version": leg.get("season_rate_v2_version"),
                 "season_rate_v2_status": leg.get("season_rate_v2_status"),
                 "season_rate_v2_inputs": leg.get("season_rate_v2_inputs"),
+                "season_rate_v3_prob_S": _float(leg.get("season_rate_v3_prob_S")),
+                "season_rate_v3_version": leg.get("season_rate_v3_version"),
+                "season_rate_v3_status": leg.get("season_rate_v3_status"),
+                "season_rate_v3_inputs": leg.get("season_rate_v3_inputs"),
                 "picked": bool(leg.get("picked")), "picked_in": leg.get("picked_in") or [],
                 "prop_training": nba_prop_training.observation(training_source, leg),
             })

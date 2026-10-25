@@ -276,3 +276,4 @@
 - [EXP-20261025-14](EXP-20261025-14-nba-ms2-vs-c-forward-protocol.md)：MS2（市場＋S_v2）對 Layer C forward 判決協議，零數據時凍結；同 EXP-12 同一把尺並行；S_v2 shadow 同對手數據（每晚 1 次聯盟球隊 game log）同步接線。
 - [EXP-20261025-15](EXP-20261025-15-nba-ms2-reb-3pm-forward-protocol.md)：MS2 只用喺 REB＋3PM 對 C 嘅 forward 協議，零數據時預先登記；400 場 MDE 0.00069；三個並行測試切換前要 Holm 調整。
 - [EXP-20261025-16](EXP-20261025-16-nba-season-rate-v3-teammate-absence.md)：S_v3 候選（隊友缺陣，PTS γ0.2／AST γ0.15）；例行賽 VALID −0.0034（PTS −0.0091），屬洩漏上限；有價季後賽冇改善；NEEDS MORE TESTING，未接線。
+- [EXP-20261026-01](EXP-20261026-01-nba-s-v3-shadow-and-forward-protocol.md)：S_v3（賽前傷停名單：out／doubtful 權重 1、day-to-day 權重 0 另記 A_dtd、離隊唔計）以 shadow 接線；MS3 forward 協議零數據時凍結；四個並行測試要 Holm。

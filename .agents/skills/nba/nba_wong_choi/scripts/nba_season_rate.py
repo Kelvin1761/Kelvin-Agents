@@ -84,12 +84,8 @@ V2_EFFICIENCY_PRIOR = {"two": (0.54, 100.0), "three": (0.36, 100.0), "ft": (0.78
 V2_FIELDS = ("MIN", "PTS", "REB", "AST", "FG3M", "FGA", "FG3A", "FTA", "FGM", "FTM")
 
 
-def season_rate_prob_v2(season_log, stat, line, opponent):
-    """S_v2: S_v1 + opponent-allowed adjustment + PTS shot decomposition + fitted dispersion.
-
-    ``opponent`` is ``package["opponent_context"][team]`` from the extractor. Returns
-    (probability or None, status, inputs). Never raises on bad data.
-    """
+def _v2_core(season_log, stat, line, opponent):
+    """S_v2 mean and dispersion before the NB tail: ((mu, k, line) or None, status, inputs)."""
     if not isinstance(season_log, dict) or not season_log.get("dates"):
         return None, "no_season_log", None
     if stat not in DISPERSION_K:
@@ -143,6 +139,105 @@ def season_rate_prob_v2(season_log, stat, line, opponent):
     mu *= opp_factor
     scale, power = V2_DISPERSION[stat]
     k = DISPERSION_K[stat] * scale * (max(mu, 0.3) / V2_DISPERSION_REF[stat]) ** power
+    inputs.update(minutes=round(minutes, 2), opp_factor=round(opp_factor, 4))
+    return (mu, k, line), "ok", inputs
+
+
+def season_rate_prob_v2(season_log, stat, line, opponent):
+    """S_v2: S_v1 + opponent-allowed adjustment + PTS shot decomposition + fitted dispersion.
+
+    ``opponent`` is ``package["opponent_context"][team]`` from the extractor. Returns
+    (probability or None, status, inputs). Never raises on bad data.
+    """
+    core, status, inputs = _v2_core(season_log, stat, line, opponent)
+    if core is None:
+        return None, status, inputs
+    mu, k, line = core
     mu = max(mu, 0.05)
-    inputs.update(minutes=round(minutes, 2), mu=round(mu, 3), k=round(k, 4), opp_factor=round(opp_factor, 4))
+    inputs.update(mu=round(mu, 3), k=round(k, 4))
+    return round(_nb_sf(line, mu, k), 4), "ok", inputs
+
+
+# ---------------------------------------------------------------------------
+# S_v3 (EXP-20261025-16 dev, EXP-20261026-01 live rules). S_v2 plus teammate absences
+# from the PRE-GAME injury list. gamma chosen on 2025-26 regular-season TUNE.
+MODEL_ID_V3 = "nba_season_rate_S_v3"
+V3_GAMMA = {"PTS": 0.20, "REB": 0.05, "AST": 0.15, "FG3M": 0.10}
+V3_KEY_MIN_APPEARANCES = 5
+V3_KEY_MIN_MINUTES = 20.0
+V3_SHARE_CAP = 0.6
+
+
+def _kept_games(season_log):
+    """Non-preseason MIN>0 games, newest first, as dicts. None when the log is unusable."""
+    try:
+        dates = list(season_log["dates"])
+        kinds = list(season_log.get("season_types") or [""] * len(dates))
+        cols = {name: [float(v) for v in season_log[name]] for name in ("MIN", *DISPERSION_K)}
+    except (KeyError, TypeError, ValueError):
+        return None
+    if len(kinds) != len(dates) or any(len(v) != len(dates) for v in cols.values()):
+        return None
+    return [{"date": dates[i], **{n: cols[n][i] for n in cols}} for i in range(len(dates))
+            if "pre" not in str(kinds[i]).lower() and cols["MIN"][i] > 0
+            and all(math.isfinite(cols[n][i]) for n in cols)]
+
+
+def teammate_absence(players, team_recent, classify):
+    """Share of the team's recent production missing because key teammates are OUT pre-game.
+
+    `players` is package["players"][team]; `classify` is nba_availability.classify_injury_status.
+    Out/doubtful count (weight 1); day-to-day/questionable count 0 but are reported as A_dtd;
+    players not on the verified roster are not teammates. Never raises on bad data.
+    """
+    if not isinstance(team_recent, dict) or team_recent.get("status") != "available":
+        return {"status": "no_team_recent"}
+    try:
+        team_dates = set(team_recent["dates"])
+        team_mean = {s: float(team_recent["mean"][s]) for s in DISPERSION_K}
+    except (KeyError, TypeError, ValueError):
+        return {"status": "no_team_recent"}
+    out_sum = {s: 0.0 for s in DISPERSION_K}
+    dtd_sum = {s: 0.0 for s in DISPERSION_K}
+    absent, doubtful = [], []
+    for player in players or []:
+        if player.get("roster_verified") is False:
+            continue
+        level = classify(player.get("status"))
+        if level not in ("out", "dtd"):
+            continue
+        games = _kept_games(((player.get("gamelog") or {}).get("season_log")) or {})
+        if not games:
+            continue
+        with_team = [g for g in games if g["date"] in team_dates]
+        if (len(with_team) < V3_KEY_MIN_APPEARANCES
+                or sum(g["MIN"] for g in with_team) / len(with_team) < V3_KEY_MIN_MINUTES):
+            continue
+        recent = games[:10]
+        target = out_sum if level == "out" else dtd_sum
+        for s in DISPERSION_K:
+            target[s] += sum(g[s] for g in recent) / len(recent)
+        (absent if level == "out" else doubtful).append(player.get("name"))
+    share = lambda sums: {s: (min(sums[s] / team_mean[s], V3_SHARE_CAP) if team_mean[s] > 0 else 0.0)
+                          for s in DISPERSION_K}
+    return {"status": "available", "A": share(out_sum), "A_dtd": share(dtd_sum),
+            "absent": absent, "dtd": doubtful, "team_games": len(team_dates)}
+
+
+def season_rate_prob_v3(season_log, stat, line, opponent, absence):
+    """S_v3 = S_v2 mean x (1 + gamma * A/(1-A)); k stays S_v2's (as in development)."""
+    if not isinstance(absence, dict) or absence.get("status") != "available":
+        return None, (absence or {}).get("status") or "no_team_recent", None
+    core, status, inputs = _v2_core(season_log, stat, line, opponent)
+    if core is None:
+        return None, status, inputs
+    mu, k, line = core
+    try:
+        share = float(absence["A"][stat])
+    except (KeyError, TypeError, ValueError):
+        return None, "invalid_inputs", inputs
+    mu = max(mu * (1 + V3_GAMMA[stat] * share / (1 - share)), 0.05)
+    inputs.update(mu=round(mu, 3), k=round(k, 4), A=round(share, 4),
+                  A_dtd=round(float((absence.get("A_dtd") or {}).get(stat, 0.0)), 4),
+                  absent=absence.get("absent"), dtd=absence.get("dtd"))
     return round(_nb_sf(line, mu, k), 4), "ok", inputs

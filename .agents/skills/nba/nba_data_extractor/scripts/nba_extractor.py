@@ -1530,6 +1530,10 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
                 away_abbr: nba_team_context.opponent_context(team_context, home_abbr, cutoff_day),
                 home_abbr: nba_team_context.opponent_context(team_context, away_abbr, cutoff_day),
             }
+            # Shadow S_v3 input (EXP-20261026-01): each side's own last-10 games.
+            package["team_recent"] = {
+                abbr: nba_team_context.team_recent(team_context, abbr, cutoff_day) for abbr in (away_abbr, home_abbr)
+            }
         except Exception as exc:  # shadow data must never break extraction
             package["opponent_context"] = {"error": f"{type(exc).__name__}: {exc}"}
     return apply_availability(package, availability_maps)

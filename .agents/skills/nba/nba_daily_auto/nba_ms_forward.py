@@ -23,6 +23,7 @@ import nba_market_ledger as ledger
 CONFIG_PATH = Path(__file__).with_name("nba_ms_forward_v1.json")  # sha256 pinned in the protocol and tests
 CONFIG_V2_PATH = Path(__file__).with_name("nba_ms_forward_v2.json")  # EXP-20261025-14, same ruler
 CONFIG_V2_REB3PM_PATH = Path(__file__).with_name("nba_ms_forward_v2_reb3pm.json")  # EXP-20261025-15
+CONFIG_V3_PATH = Path(__file__).with_name("nba_ms_forward_v3.json")  # EXP-20261026-01
 V1_FIELDS = {"prob": "season_rate_prob_S", "status": "season_rate_status",
              "version": "season_rate_version", "inputs": "season_rate_inputs"}
 MARKET_STAT = {"pts": "PTS", "reb": "REB", "ast": "AST", "fg3m": "FG3M", "3pm": "FG3M"}
@@ -268,10 +269,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=None)
     parser.add_argument("--until", required=True)
     parser.add_argument("--output", type=Path, default=None)
-    parser.add_argument("--model", choices=("v1", "v2", "v2-reb3pm"), default="v1")
+    parser.add_argument("--model", choices=("v1", "v2", "v2-reb3pm", "v3"), default="v1")
     args = parser.parse_args(argv)
     config, sha = load_config({"v1": CONFIG_PATH, "v2": CONFIG_V2_PATH,
-                               "v2-reb3pm": CONFIG_V2_REB3PM_PATH}[args.model])
+                               "v2-reb3pm": CONFIG_V2_REB3PM_PATH, "v3": CONFIG_V3_PATH}[args.model])
     legs, counts = collect(args.root or ledger.ledger_root(), config["epoch"], args.until, config)
     report = analyse(legs, counts, sha, config.get("protocol_id", "EXP-20261025-12"))
     text = json.dumps(report, ensure_ascii=False, indent=1)
