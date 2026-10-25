@@ -249,9 +249,12 @@ def archived_dirs(target_date: str) -> list[Path]:
     return sorted(NBA_ANALYSIS.glob(f"{target_date} NBA Analysis*"))
 
 
+ORCHESTRATOR_BUDGET_WARN = 0.5
+RUN_TIMEOUT = 7200
+
 # 預設 7200：orchestrator 全 slate 跑法要俾夠時間（2026-10-26 七場要 61 分鐘，
 # 舊嘅 3600 上限令 pregame 連日 TimeoutExpired）。要短嘅呼叫都有自己明確 timeout。
-def _run(command: list[str], *, timeout: int = 7200) -> subprocess.CompletedProcess[str]:
+def _run(command: list[str], *, timeout: int = RUN_TIMEOUT) -> subprocess.CompletedProcess[str]:
     # ⚠️ 一定要 encoding="utf-8", errors="replace"。`text=True` 係嚴格 UTF-8，
     # 而 launchd 底下 locale 可能係 POSIX（會退去 ASCII）。2026-09-09 實測：
     # 一個 shell 錯誤訊息入面嘅孤立 0xef 就令 HKJC prerace 同 Tennis card
@@ -840,8 +843,23 @@ def _run_orchestrator_refresh(
     blocked: set[str] = set()
     passed: set[str] = set()
     for command in commands:
-        result = _run(command)
         tag = command[-1] if "--game" in command else "all"
+        started = datetime.now()
+        try:
+            result = _run(command)
+        except subprocess.TimeoutExpired as exc:
+            # 逾時唔係「壞咗」：每場嘅 extractor／報告都有 cache，下一個 slot 會
+            # 由已完成嗰度續做。當 TemporaryFailure 重試，而唔係報 critical failed。
+            done = sorted(path.name[5:-17] for path in folder.glob("Game_*_Full_Analysis.md"))
+            log.step("orchestrator", "timeout", game=tag, timeout_seconds=exc.timeout,
+                     games_with_reports=done)
+            raise TemporaryFailure(
+                f"orchestrator_timeout:{tag}:{len(done)}_reports_cached") from exc
+        elapsed = (datetime.now() - started).total_seconds()
+        if elapsed > ORCHESTRATOR_BUDGET_WARN * RUN_TIMEOUT:
+            # 預警：用咗超過一半預算，下一個大 slate 就會逾時。
+            log.step("orchestrator_slow", "warning", game=tag, elapsed_seconds=round(elapsed),
+                     budget_seconds=RUN_TIMEOUT)
         game_markets = waiting_game_markets(result)
         waiting_games = game_markets or waiting_player_games(result)
         outcome = None if waiting_games else blocked_games_result(result)
