@@ -529,6 +529,28 @@ def compute_fit_inputs(df, game_season):
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
+SEASON_LOG_STATS = ("MIN", "PTS", "REB", "AST", "FG3M", "FGA", "FG3A", "FTA")
+
+
+def compact_season_log(df):
+    """Every fetched game (already cut before the event's US day), newest-first.
+
+    Feeds the shadow season-rate model (EXP-20261025-11), which needs more than
+    L10. Same fetch as L10, so no extra API calls. Never raises.
+    """
+    try:
+        import pandas as pd
+        dates = pd.to_datetime(df["GAME_DATE"], errors="coerce")
+        out = {"dates": [d.strftime("%Y-%m-%d") for d in dates],
+               "seasons": [str(x) for x in df["_season"]],
+               "season_types": [str(x) for x in df["_season_type"]]}
+        for stat in SEASON_LOG_STATS:
+            out[stat] = [float(x) for x in pd.to_numeric(df[stat], errors="coerce").fillna(0)]
+        return out
+    except Exception as exc:  # shadow data must never break extraction
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+
 def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, include_previous=False, season_type="Regular Season"):
     """為單一球員提取 L10 完整 Box Score（Season-Agnostic: RS + Playoffs 合併）
     
@@ -658,6 +680,7 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
             "FTA": df_l10['FTA'].tolist(),
             "PLUS_MINUS": df_l10['PLUS_MINUS'].tolist(),
         }
+        record["season_log"] = compact_season_log(df)
         record["fit_inputs"] = compute_fit_inputs(
             df, nba_season_for_date(as_of) if as_of else history_season)
         # 計算統計量

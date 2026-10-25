@@ -456,6 +456,11 @@ def record_snapshot(
                 "shadow_fit_version": leg.get("shadow_fit_version"),
                 "shadow_fit_status": leg.get("shadow_fit_status"),
                 "shadow_fit_inputs": leg.get("shadow_fit_inputs"),
+                # SHADOW season-rate model S (EXP-20261025-11): same rule, not a MODEL_VARIANT.
+                "season_rate_prob_S": _float(leg.get("season_rate_prob_S")),
+                "season_rate_version": leg.get("season_rate_version"),
+                "season_rate_status": leg.get("season_rate_status"),
+                "season_rate_inputs": leg.get("season_rate_inputs"),
                 "picked": bool(leg.get("picked")), "picked_in": leg.get("picked_in") or [],
                 "prop_training": nba_prop_training.observation(training_source, leg),
             })
