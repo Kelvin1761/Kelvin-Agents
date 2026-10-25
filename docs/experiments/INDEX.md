@@ -271,3 +271,5 @@
 - [EXP-20261025-11](EXP-20261025-11-nba-season-rate-core.md)：獨立模型核心由L10換全季分鐘×產出率，OOF Brier 0.1752→0.1731（CI跨零，4/5 fold）；REB／AST／3PM追平市場、PTS落後；市場＋S vs C結構 −0.0004（CI跨零）；NEEDS MORE TESTING。
 
 - [EXP-20261025-12](EXP-20261025-12-nba-ms-vs-c-forward-protocol.md)：市場＋S（MS）對 Layer C 嘅 forward 判決協議，喺零數據時凍結；MS 係數只用歷史 dev fit；150 場傷害檢查／400 場主要／800 場最終，97.5% 比賽日 cluster CI；工具 nba_ms_forward.py 只讀。
+
+- [EXP-20261025-13](EXP-20261025-13-nba-season-rate-v2.md)：獨立模型 S_v2（對手調整、PTS 拆解、離散度、分鐘 half-life 3）；例行賽 VALID log-loss −0.0055 [−0.0071,−0.0039]；唔用價已同市場打和（REB／3PM 贏市場）；MS2 vs C_refit −0.0003 CI 跨零；未接線。
