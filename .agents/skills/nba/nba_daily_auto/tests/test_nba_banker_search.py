@@ -143,3 +143,65 @@ def test_future_quote_cannot_pass_as_of_validation():
     audit=run(odds,legs,quote=quote)
     assert not audit['stages']['Q2']['positive_ev_candidate']
     assert all(not r['quote_verified_at_capture'] for r in audit['quote_attempts'])
+
+
+def accuracy_row(key, joint=.4, price=2.1, probabilities=(.7, .6)):
+    return dict(legs_sha256=key, quote_verified_at_capture=True, actual_price=price,
+                adjusted_joint_probability=joint, expected_value=joint*price-1,
+                legs=[dict(player=str(i), model_probability=p) for i,p in enumerate(probabilities)])
+
+
+def test_accuracy_ranking_keeps_negative_ev_visible_without_promoting():
+    from nba_banker_search import accuracy_review
+    baseline=accuracy_row('old',joint=.3,price=4)
+    candidate=accuracy_row('new')
+    inputs=[baseline,candidate];before=deepcopy(inputs)
+    out=accuracy_review(inputs,'old',is_current=lambda r:True)
+    assert out['candidate_at_capture']['legs_sha256']=='new'
+    assert out['baseline_at_capture']['expected_value']>0
+    assert out['candidate_at_capture']['expected_value']<0
+    assert out['candidate_at_capture']['weakest_leg_probability']==.6
+    assert not out['candidate_at_capture']['formal_eligible'] and not out['promotion_allowed']
+    assert not out['role_filter_applied'] and inputs==before
+
+
+@pytest.mark.parametrize('change',[
+    {'quote_verified_at_capture':False}, {'actual_price':1.99}, {'actual_price':float('inf')},
+    {'adjusted_joint_probability':float('nan')}, {'adjusted_joint_probability':1},
+    {'legs':[]}, {'legs':[{'model_probability':None}]}, {'legs':[{'model_probability':1}]},
+    {'legs':[{'model_probability':.8}]}, {'legs':[{'model_probability':.8}]*5},
+])
+def test_accuracy_review_rejects_unverified_prices_or_probabilities(change):
+    from nba_banker_search import accuracy_review
+    row=accuracy_row('bad');row.update(change)
+    out=accuracy_review([row],None,is_current=lambda r:True)
+    assert out['eligible_quoted_combinations']==0
+    assert out['candidate_at_capture'] is None and out['current_candidate'] is None
+
+
+def test_accuracy_review_retains_capture_but_never_current_expired_quotes():
+    from nba_banker_search import accuracy_review
+    out=accuracy_review([accuracy_row('expired')],'expired',is_current=lambda r:False)
+    assert out['candidate_at_capture'] and out['current_candidate'] is None
+
+
+def test_accuracy_ties_use_weakest_leg_then_stable_identity_not_outcomes():
+    from nba_banker_search import accuracy_review
+    rows=[accuracy_row('z',probabilities=(.8,.5)),accuracy_row('b'),accuracy_row('a')]
+    rows[0]['outcome']='hit';rows[2]['outcome']='miss'
+    for items in (rows,list(reversed(rows))):
+        out=accuracy_review(items,None,is_current=lambda r:True)
+        assert out['candidate_at_capture']['legs_sha256']=='a'
+
+
+def test_integrated_accuracy_review_reuses_quotes_and_exposes_leg_evidence():
+    odds,legs=source(4)
+    out=run(odds,legs,price=2.1)
+    review=out['accuracy_review']
+    assert review['current_candidate']
+    assert review['candidate_at_capture']['adjusted_joint_probability']==max(
+        r['adjusted_joint_probability'] for r in out['quote_attempts'] if r['actual_price']>=2)
+    assert all('l10_hit_rate' in c and 'probability_model_id' in c
+               for c in review['candidate_at_capture']['legs'])
+    assert out['unique_quotes']<=QUOTE_BUDGET+2
+    assert not report.select_combo_1(legs)

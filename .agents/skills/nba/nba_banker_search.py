@@ -16,10 +16,54 @@ def _finite(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
 
+def accuracy_review(attempts, baseline_key, *, is_current):
+    """Rerank the same verified quotes, never refit probabilities or recommend bets."""
+    eligible = []
+    for row in attempts:
+        legs = row.get('legs') or []
+        probabilities = [leg.get('model_probability') for leg in legs]
+        if (not row.get('quote_verified_at_capture') or not row.get('legs_sha256')
+                or not _finite(row.get('actual_price')) or row['actual_price'] < 2
+                or not _finite(row.get('adjusted_joint_probability'))
+                or not 0 < row['adjusted_joint_probability'] < 1
+                or not 2 <= len(legs) <= 4
+                or any(not _finite(p) or not 0 < p < 1 for p in probabilities)):
+            continue
+        eligible.append(row)
+    eligible.sort(key=lambda r: (-r['adjusted_joint_probability'],
+                                -min(c['model_probability'] for c in r['legs']),
+                                len(r['legs']), r['legs_sha256']))
+
+    def describe(row):
+        if row is None:
+            return None
+        result = deepcopy(row)
+        result['weakest_leg_probability'] = min(c['model_probability'] for c in row['legs'])
+        result['weakest_legs'] = [deepcopy(c) for c in row['legs']
+                                 if c['model_probability'] == result['weakest_leg_probability']]
+        result['formal_eligible'] = False
+        return result
+
+    current = [row for row in eligible if is_current(row)]
+    baseline = next((r for r in eligible if r['legs_sha256'] == baseline_key), None)
+    return {'version': 'banker-accuracy-review-v1', 'analysis_only': True,
+            'status': 'NEEDS_MORE_TESTING',
+            'decision': 'OBSERVE', 'promotion_allowed': False,
+            'probabilities_refitted': False, 'eligible_quoted_combinations': len(eligible),
+            'baseline_at_capture': describe(baseline),
+            'candidate_at_capture': describe(eligible[0] if eligible else None),
+            'current_candidate': describe(current[0] if current else None),
+            'role_filter_applied': False,
+            'note': 'Highest supplied joint probability among existing verified quotes >=2.0 only. '
+                    'Capture records are historical evidence, not actionable prices. Negative EV remains visible; '
+                    'no formal recommendation, accuracy or profitability claim. No outcomes enter ranking.'}
+
+
 def audit_search(candidates, odds, *, pool, select, allowed, evaluate, quote, valid_quote):
     """Q0/Q1 isolate prequote EV; Q2 explores more combinations at frozen budget."""
     inputs = deepcopy(candidates)
     cached = {}
+    proposals = {}
     attempts = []
     stages = {}
     counts = {}
@@ -29,6 +73,7 @@ def audit_search(candidates, odds, *, pool, select, allowed, evaluate, quote, va
         if key in cached:
             return cached[key]
         proposed = deepcopy(legs)
+        proposals[key] = proposed
         quoted = quote(odds, proposed)
         verified = valid_quote(quoted.quote, odds, proposed)
         metrics = evaluate(quoted if verified else proposed)
@@ -43,7 +88,10 @@ def audit_search(candidates, odds, *, pool, select, allowed, evaluate, quote, va
                'actual_price': actual, 'expected_value': ev/100 if _finite(ev) else None,
                'adjusted_joint_probability': joint,
                'legs': [dict(quote_legs([c])[0], team=c['team'], category=c['category'],
-                             model_probability=c['estimated_prob']/100, selection=c['desc']) for c in proposed]}
+                             model_probability=c['estimated_prob']/100, selection=c['desc'],
+                             probability_model_id=c.get('probability_model_id'),
+                             l10_hit_rate=c.get('hit_l10'), l5_hit_rate=c.get('hit_l5'),
+                             cov=c.get('cov'), average_minutes=c.get('min_avg')) for c in proposed]}
         cached[key] = row
         attempts.append(row)
         return row
@@ -115,6 +163,10 @@ def audit_search(candidates, odds, *, pool, select, allowed, evaluate, quote, va
                     'positive_candidates_at_capture': len(positive),
                     'positive_candidates_still_current': len(current_positive)}
     remaining = sum(key not in cached for _, (_, key, _) in queues)
+    incumbent = stages['Q1']['candidate']
+    accuracy = accuracy_review(attempts, incumbent['legs_sha256'] if incumbent else None,
+                               is_current=lambda row: valid_quote(row['sgm_quote'], odds,
+                                                                 proposals[row['legs_sha256']]))
     return {'version': VERSION, 'analysis_only': True, 'decision': 'OBSERVE',
             'status': 'NEEDS_MORE_TESTING', 'promotion_allowed': False,
             'evidence_scope': 'engineering_preview_not_forward_profit',
@@ -123,6 +175,6 @@ def audit_search(candidates, odds, *, pool, select, allowed, evaluate, quote, va
             'limits': {'shortlist_per_tier': SHORTLIST, 'new_quote_budget': QUOTE_BUDGET},
             'search_counts': counts, 'new_search_quotes': extra, 'unique_quotes': len(attempts),
             'unpriced_combinations': remaining, 'quote_budget_exhausted': extra == QUOTE_BUDGET and remaining > 0,
-            'stages': stages, 'quote_attempts': attempts,
+            'stages': stages, 'quote_attempts': attempts, 'accuracy_review': accuracy,
             'note': 'Bounded search; unpriced combinations remain unknown. Positive means model-estimated EV only. '
                     'No profitability claim or formal recommendation; expired winners are excluded.'}
