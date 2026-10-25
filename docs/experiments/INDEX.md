@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261025-04](EXP-20261025-04-nba-price-free-opportunity-model.md) | 2026-10-25 | NBA | 市場獨立、逐stat公式與分鐘／角色／對手／賽程消融 | **NOT SHOWN BETTER／研究分支**：5,305列32場OOF，full Brier .176236、core .175155、市場 .171768；選中單腿+10.69%但CI極寬且高估近20pp；40/41資料類別擷取成功，不改C。 |
 | [EXP-20261025-03](EXP-20261025-03-nba-daily-multi-feasibility.md) | 2026-10-25 | NBA | 跨場兩張參考Multi及進階數據接線審計 | **DESCRIPTIVE／NEEDS MORE TESTING**：保留EV零張，研究2張但參考EV為負；修正離隊／Out防守名單，新增opponent描述collector，不改C／正式策略。 |
 | [EXP-20261021-05](EXP-20261021-05-nba-pregame-population-refit.md) | 2026-10-21 | NBA | 喺賽前可知 population（prior-10 MIN≥20、冇賽後過濾）重做擬合層，驗證可否過六條件校準門檻 | **PASSES（離線）：(A)(B)(C) 六條全過、bias 檢查通過**；增益主要係 Poisson/NB＋per-stat 重校準 (A)（slope .57→.92），7 個 live 項經擬合只剩 buffer／sip_n04 細幅貢獻（(B) 對 (A) ~−0.0006）；live 最終機率 (E) 最差（slope .446、p≥0.80 預測 .897 對實際 .767）。DNP 缺失 3–5%（最壞 +2pp 高估）。冇利潤／production 聲稱；只建議 shadow 設計（首選 (A)）。 |
 | [EXP-20261021-04](EXP-20261021-04-nba-adjustment-layer-refit.md) | 2026-10-21 | NBA | 喺 Poisson/NB 底上用 dev 擬合 logistic 調整層（含 7 個 live 項）代替逐項移除，驗證可否過 calibration 門檻 | **規則字面 (B)(C) passes、(A) not shown；但 passes 係賽後 MIN≥15 選擇偏差偽影（sip_n01 係數反向 −2.4×；bench 行 y−p +14pp）→ NEEDS MORE TESTING**：S1 賽前 population 下對 (c) 增益 ~0；(c)/(A) 已大勝 live base（slope .77→.90），live base 於 p≥0.70 高估 5–9pp。唔建議 shadow／production；下一步 EXP-05 用賽前 population 重做。冇利潤聲稱。 |
