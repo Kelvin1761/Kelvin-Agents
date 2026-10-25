@@ -959,6 +959,7 @@ def evaluate(
         out["clv_model_price_vs_close"] = {
             "n": len(model_clv), "mean": round(sum(model_clv) / len(model_clv), 5) if model_clv else None,
         }
+        out["settled_event_clusters"] = len({leg["key"][:2] for leg in settled if leg["p_final"] is not None})
         out["settled_clusters_player_game_market"] = len({leg["key"][:4] for leg in settled})
         devigged_settled = [leg for leg in settled if leg["market_devig_close"] is not None]
         out["devig_coverage"] = {
@@ -977,6 +978,8 @@ def evaluate(
             "by_market": {market: section([leg for leg in legs if leg["probability_model_id"] == identity and leg["market"] == market])
                           for market in by_market},
             "picked": section([leg for leg in legs if leg["probability_model_id"] == identity and leg["picked"]]),
+            "picked_by_market": {market: section([leg for leg in legs if leg["probability_model_id"] == identity
+                                                  and leg["picked"] and leg["market"] == market]) for market in by_market},
         }
         for identity in sorted({leg["probability_model_id"] for leg in legs})
     }

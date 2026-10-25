@@ -39,6 +39,7 @@ NBA_SKILL_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA_SKILL_DIR))
 from nba_schedule import canonical_team_abbr, canonical_game_tag, event_sydney_date
 from nba_data_contract import NBA_STATISTICS_CONTRACT
+import nba_opportunities
 from nba_availability import compute_usage_redistribution
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
@@ -924,7 +925,7 @@ def fetch_team_opponent_stats(season=None, as_of=None):
         except Exception:
             modes[unit] = ('unavailable', None)
         time.sleep(API_SLEEP)
-    fields = ('OPP_PTS', 'OPP_REB', 'OPP_AST', 'OPP_OREB', 'OPP_DREB', 'OPP_FGA', 'OPP_FGM')
+    fields = ('OPP_PTS', 'OPP_REB', 'OPP_AST', 'OPP_OREB', 'OPP_DREB', 'OPP_FGA', 'OPP_FGM', 'OPP_FG3A', 'OPP_FG3M')
     result = {}
     for unit, (status, frame) in modes.items():
         if frame is None:
@@ -949,6 +950,7 @@ def fetch_team_opponent_stats(season=None, as_of=None):
             values = {field: number(row.get(field)) for field in fields}
             gp = number(row.get('GP'))
             complete = gp is not None and gp > 0 and all(v is not None for v in values.values())
+            record['captured_at'] = datetime.now(ZoneInfo('UTC')).isoformat()
             record['modes'][unit] = {
                 'status': 'available' if complete else 'insufficient',
                 'games': int(gp) if gp is not None and gp.is_integer() else None,
@@ -1272,7 +1274,7 @@ def key_defenders_for_team(defender_data, team_abbr, *, limit=8):
 
 
 def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stats, odds_data,
-                        data_sources=None):
+                        data_sources=None, opportunity_sources=None):
     """
     針對單場比賽提取雙方所有球員的深度數據。
     這是核心函數，輸出一個完整的 JSON 數據包。
@@ -1456,6 +1458,14 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
                 "h2h": h2h,
             }
             
+            if opportunity_sources is not None:
+                opp_team = home_abbr if side == "away" else away_abbr
+                nba_ids = {canonical_team_abbr(t['abbreviation']): t['id'] for t in teams.get_teams()} if NBA_API_AVAILABLE else {}
+                player_entry["opportunity_features"] = nba_opportunities.build_features(
+                    player_entry, abbr, nba_ids.get(canonical_team_abbr(opp_team)), opportunity_sources,
+                    tip=game_info['date'], season=statistics_season,
+                    cutoff=history_date_to(game_info['date']), opponent_stats=team_stats.get(opp_team, {}))
+
             # 🧠 Python Math Engine: 計算命中率、盤口線、Pace 調整、+EV
             opp_abbr = home_abbr if side == "away" else away_abbr
             opp_stats = team_stats.get(opp_abbr, {})
@@ -1486,6 +1496,8 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
         if corr_warnings:
             package.setdefault("correlation_warnings", {})[abbr] = corr_warnings
 
+    if opportunity_sources is not None:
+        package["meta"]["opportunity_health"] = nba_opportunities.summarize(package["players"])
     return apply_availability(package, availability_maps)
 
 
@@ -1677,6 +1689,13 @@ def main():
     team_dvp, data_sources["team_dvp"] = fetch_with_season_fallback(
         fetch_team_defense_vs_position, statistics_season, stats_date, MIN_TEAM_ROWS, "team_dvp", fill_below=30)
 
+    # Research-only opportunity evidence: one league capture shared by game runs.
+    opportunity_sources = nba_opportunities.fetch_sources(
+        statistics_season, history_date_to(stats_date),
+        Path(args.output).resolve().parent / "NBA_Opportunity_Sources.json") if games else {"status": "no_official_games", "sources": {}}
+    print("📐 Opportunity sources: " + ", ".join(
+        f"{name}={source.get('status')}" for name, source in opportunity_sources.get('sources', {}).items()))
+
     # ── Step 3: 賠率 (Claw Code 主動提取) ──
     odds_data = fetch_action_network_odds(formatted_date)
     if not odds_data and THE_ODDS_API_KEY:
@@ -1718,7 +1737,7 @@ def main():
             sys.exit(1)
 
         package = extract_single_game(target_game, adv_stats, defender_data, team_dvp, team_stats, odds_data,
-                                      data_sources=data_sources)
+                                      data_sources=data_sources, opportunity_sources=opportunity_sources)
 
         # 驗證數據品質 — 冇真實 gamelog 則 fail
         has_real_data = False
@@ -1758,7 +1777,7 @@ def main():
         print("\n🏀 正在為每場比賽生成深度數據包...")
         for g in games:
             package = extract_single_game(g, adv_stats, defender_data, team_dvp, team_stats, odds_data,
-                                      data_sources=data_sources)
+                                      data_sources=data_sources, opportunity_sources=opportunity_sources)
 
             json_path = f"nba_game_data_{g['tag']}.json"
             _write_verified_package(json_path, package)

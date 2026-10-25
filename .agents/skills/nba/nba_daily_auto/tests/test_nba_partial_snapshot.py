@@ -185,3 +185,17 @@ def test_orchestrator_emits_machine_readable_blocked_result() -> None:
     source = (NBA_SKILL / "nba_orchestrator.py").read_text(encoding="utf-8")
     assert '"status": "games_blocked"' in source
     assert '"blocked_games": sorted(results["failed"])' in source
+
+
+def test_opportunity_raw_sources_are_hash_bound_in_prediction_snapshot(tmp_path):
+    folder = tmp_path / (DATE + ' NBA Analysis'); folder.mkdir()
+    _game(folder, 'BOS_LAL'); _aggregates(folder)
+    raw = b'{"contract":"nba-opportunities/v1","sources":{}}'
+    (folder / 'NBA_Opportunity_Sources.json').write_bytes(raw)
+    with mock.patch.object(schedule, 'validate_analysis', return_value=[]):
+        snapshot = schedule.create_prediction_snapshot(folder, DATE, ['BOS_LAL'])
+    assert (snapshot / 'NBA_Opportunity_Sources.json').read_bytes() == raw
+    manifest = schedule.snapshot_manifest(snapshot)
+    files = {row['name']: row for row in manifest['files']}
+    import hashlib
+    assert files['NBA_Opportunity_Sources.json']['sha256'] == hashlib.sha256(raw).hexdigest()

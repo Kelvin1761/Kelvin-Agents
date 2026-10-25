@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import sys
 import json
+import pytest
 from pathlib import Path
 
 AUTO = Path(__file__).resolve().parents[1]
@@ -110,3 +111,41 @@ def test_deliberately_disabled_current_layer_is_explicit(tmp_path, monkeypatch):
     report = rel.build(DAY, tmp_path, epoch="2026-10-01")
     assert report["status"] == "disabled" and report["overall"]["n"] == 0
     assert "刻意關閉" in "\n".join(rel.message_lines(report))
+
+
+def _picked_population(root, events=10, per_event=10):
+    rows = []
+    for picked, p, hits in [(True, .7, 4), (False, .3, 6)]:
+        for event in range(events):
+            for i in range(per_event):
+                key = {'game_tag': f'A{event:02d}_B{event:02d}', 'player': f'{picked}-{i}', 'market': 'pts', 'line': 10., 'side': 'over'}
+                rows.append({'row_type': 'model_obs', 'target_date': DAY, 'snapshot_id': 's1', 'snapshot_role': 'production',
+                             'snapshot_created_at': '2026-10-22T10:00:00+11:00', 'post_tip': False, 'late_write': False,
+                             'tip_unknown': False, 'p_final': p, 'picked': picked, 'probability_model_id': rel.current_model_id(), **key})
+                rows.append({'row_type': 'settlement', 'target_date': DAY, 'outcome': 'hit' if i < hits else 'miss', 'y': int(i < hits), **key})
+    ledger.append_rows(root, DAY, rows)
+
+
+def test_picked_miscalibration_alerts_even_when_global_calibration_is_good(tmp_path):
+    _picked_population(tmp_path)
+    report = rel.build(DAY, tmp_path, epoch='2026-10-01')
+    assert abs(report['overall']['gap']) < .001
+    assert report['picked_status'] == 'alert' and report['status'] == 'alert'
+    assert report['picked_event_clusters'] == 10 and report['picked']['n'] == 100
+    assert report['picked_by_stat']['PTS']['gap'] == pytest.approx(.3)
+    assert '選中腿校準警報' in '\n'.join(rel.message_lines(report))
+
+
+def test_many_picked_legs_from_one_game_are_not_enough_events(tmp_path):
+    _picked_population(tmp_path, events=1, per_event=100)
+    report = rel.build(DAY, tmp_path, epoch='2026-10-01')
+    assert report['picked']['n'] == 100
+    assert report['picked_status'] == 'insufficient_n'
+    assert report['picked_event_clusters'] == 1
+
+
+def test_old_model_picked_rows_are_not_current_selection_evidence(tmp_path):
+    _picked_population(tmp_path)
+    _change_models(tmp_path, 'calibrated:old:fixture')
+    report = rel.build(DAY, tmp_path, epoch='2026-10-01')
+    assert report['picked']['n'] == 0 and report['picked_status'] == 'insufficient_n'

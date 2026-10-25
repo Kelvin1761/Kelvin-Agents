@@ -16,13 +16,14 @@ def test_opponent_modes_preserve_source_and_do_not_read_own_totals():
         return mock.Mock(get_data_frames=lambda: [pd.DataFrame([{
             'TEAM_ID': 1, 'GP': 2, 'PTS': 999, 'REB': 999,
             'OPP_PTS': value, 'OPP_REB': 41, 'OPP_AST': 24,
-            'OPP_OREB': 9, 'OPP_DREB': 32, 'OPP_FGA': 90, 'OPP_FGM': 42,
+            'OPP_OREB': 9, 'OPP_DREB': 32, 'OPP_FGA': 90, 'OPP_FGM': 42, 'OPP_FG3A': 35, 'OPP_FG3M': 12,
         }])])
     with mock.patch.object(extractor, 'NBA_API_AVAILABLE', True), mock.patch.object(extractor.teams, 'get_teams', return_value=[{'id': 1, 'abbreviation': 'MIL'}]), mock.patch.object(extractor.leaguedashteamstats, 'LeagueDashTeamStats', side_effect=endpoint), mock.patch.object(extractor.time, 'sleep'):
         record = extractor.fetch_team_opponent_stats('2026-27', '2026-10-25')['MIL']
     assert record['modes']['per_game']['values']['OPP_PTS'] == 115
     assert record['modes']['per_100_possessions']['values']['OPP_PTS'] == 109
     assert record['modes']['per_game']['games'] == 2
+    assert record['modes']['per_100_possessions']['values']['OPP_FG3A'] == 35
     assert record['model_input_enabled'] is False
     for call in calls:
         assert call['season'] == '2026-27'

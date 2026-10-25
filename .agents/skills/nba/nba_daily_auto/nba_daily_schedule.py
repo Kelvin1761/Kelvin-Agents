@@ -581,7 +581,8 @@ def create_prediction_snapshot(
     final = root / stamp
     temp.mkdir()
 
-    names = ["NBA_All_SGM_Report.txt", "NBA_Banker_Report.txt", "_nba_session_state.md"]
+    names = ["NBA_All_SGM_Report.txt", "NBA_Banker_Report.txt", "_nba_session_state.md",
+             "NBA_Opportunity_Sources.json"]
     for tag in tags:
         names.extend(
             [
