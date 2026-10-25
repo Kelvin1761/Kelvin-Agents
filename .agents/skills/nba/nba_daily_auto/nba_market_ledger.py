@@ -409,6 +409,8 @@ def record_snapshot(
             continue
         model_captured = _aware(payload.get("odds_extraction_time"), naive_tz=SYDNEY)
         flags = _flags(tip, model_captured, now)
+        import nba_prop_training
+        training_source = nba_prop_training.snapshot_source(snapshot, manifest, tag, tip, tip_source=tip_source)
         if payload.get("selection_diagnostics"):
             rows.append({"row_type": "selection_obs", **base, **flags,
                          "strategy_profile": payload.get("strategy_profile"),
@@ -455,6 +457,7 @@ def record_snapshot(
                 "shadow_fit_status": leg.get("shadow_fit_status"),
                 "shadow_fit_inputs": leg.get("shadow_fit_inputs"),
                 "picked": bool(leg.get("picked")), "picked_in": leg.get("picked_in") or [],
+                "prop_training": nba_prop_training.observation(training_source, leg),
             })
         for combo in payload.get("combos") or []:
             rows.append({
@@ -1050,6 +1053,7 @@ def evaluate(
         verdict = "insufficient_n"
     else:
         verdict = "n_adequate_pending_review"
+    import nba_prop_training
     return {
         "schema": SCHEMA,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -1072,6 +1076,7 @@ def evaluate(
         "by_market": by_market,
         "by_picked": by_picked,
         "sgm": sgm,
+        "prop_training_evidence": nba_prop_training.summary(rows),
     }
 
 
