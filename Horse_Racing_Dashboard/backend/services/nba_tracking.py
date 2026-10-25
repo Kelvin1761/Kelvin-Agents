@@ -14,6 +14,9 @@ import sys
 from .nba_published_analysis import verified_published_reports
 
 
+TRACKING_START_DATE = "2026-10-25"
+
+
 def _number(value):
     return isinstance(value, (int, float)) and not isinstance(value, bool) and math.isfinite(value)
 
@@ -39,7 +42,7 @@ def _research_card(sidecar, odds, day, tag, published):
     import hashlib
     for candidate in sidecar.get('review_candidates', []):
         if (not isinstance(candidate, dict) or candidate.get('candidate_id') != 'steady'
-                or candidate.get('version') != 'banker-ev-shadow-v1'
+                or not isinstance(candidate.get('version'), str) or not candidate['version'].strip()
                 or candidate.get('analysis_only') is not True or candidate.get('decision') != 'OBSERVE'):
             continue
         legs = candidate.get('legs')
@@ -74,7 +77,8 @@ def build_tracking(roots, ledger_root, firewall):
                 datetime.strptime(day, '%Y-%m-%d')
             except ValueError:
                 continue
-            folders.setdefault(day, []).append(folder)
+            if day >= TRACKING_START_DATE:
+                folders.setdefault(day, []).append(folder)
     records = []
     for day, sources in sorted(folders.items()):
         settlements, excluded = {}, set()
@@ -151,7 +155,7 @@ def build_tracking(roots, ledger_root, firewall):
                 selected.add(tag)
             except (OSError, ValueError, KeyError, TypeError, AttributeError):
                 warnings.append(f'publication_unavailable:{day}:{tag}')
-    return {'schema_version':2, 'basis':'first_verified_formal_or_steady_research', 'stake_dollars':1,
+    return {'schema_version':2, 'inception_date':TRACKING_START_DATE, 'basis':'first_verified_formal_or_steady_research', 'stake_dollars':1,
             'status':'valid' if folders else 'unavailable', 'generated_at':datetime.now(timezone.utc).isoformat(),
             'covered_dates':sorted(folders), 'records':records, 'warnings':sorted(set(warnings))}
 

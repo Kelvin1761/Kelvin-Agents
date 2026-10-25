@@ -59,7 +59,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
   });
   const source = `${scriptMatch[1]}
     globalThis.__dashboardTest = {
-      nbaStats, nbaRecords, nbaDashboard, nbaSelectRows, nbaShortDate,
+      nbaStats, nbaRecords, nbaDashboard, nbaSelectRows, nbaShortDate, nbaJersey,
       nbaShouldAutoRefresh, checkForNewSnapshot,
       setFetchForTest: (fn) => { fetch = fn; },
       setReloadForTest: (fn) => { window.location.reload = fn; },
@@ -2043,4 +2043,19 @@ test("research candidates including unquoted legs are tracked without invented R
  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[{id:'r',day,event_name:'BOS @ NYK',stake:1,odds:null,state:'unpriced',tracking_kind:'research',legs:[{player:'Test',stat:'PTS',line:20,state:'won',actual:25}]}]}}}}});
  const stats=api.nbaStats(api.nbaRecords());assert.equal(stats.n,1);assert.equal(stats.legWins,1);assert.equal(stats.roi,null);assert.equal(stats.sgm,100);
  const html=api.renderSportsWorkspace('nba');assert.match(html,/研究候選/);assert.match(html,/待核價/);assert.match(html,/expanded-legs/);assert.doesNotMatch(html,/累積淨利|dashboard-chart|查看 1 腳及賽果/);assert.match(html,/球衣/);assert.doesNotMatch(html,/null 倍/);
+});
+
+
+test("NBA jerseys use a sleeveless court cut and safe automatic team wordmarks",()=>{
+ const api=loadTemplateFunctions(EMPTY_DASHBOARD_DATA);
+ assert.match(api.nbaJersey('LAL'),/LAKERS/);assert.match(api.nbaJersey('BOS'),/BOSTON/);
+ assert.match(api.nbaJersey('NYK'),/NEW YORK/);assert.match(api.nbaJersey('ORL'),/opacity=".3"/);
+ assert.match(api.nbaJersey('<script>'),/NBA 球衣/);assert.doesNotMatch(api.nbaJersey('<script>'),/<script>|https?:/);
+});
+
+test("NBA ROI starts on October 25 and continues across model versions",()=>{
+ const row=(id,day,model_version)=>({id,day,model_version,event_name:'BOS @ NYK',stake:1,odds:2.5,state:'won',legs:[{player:'Test',stat:'PTS',line:20,state:'won',actual:25}]});
+ const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[row('legacy','2026-10-24','v0'),row('first','2026-10-25','v1'),row('next','2026-10-26','v2')]}}}}});
+ const rows=api.nbaRecords();assert.equal(rows.length,2);assert.equal(api.nbaStats(rows).profit,3);
+ api.setSportsTabForTest('archive');assert.match(api.renderSportsWorkspace('nba'),/2026-10-25 起；模型升級不會清零/);
 });

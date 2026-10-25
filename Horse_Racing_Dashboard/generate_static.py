@@ -44,6 +44,7 @@ from services.race_display_metadata import (
 )
 from services.multisport_exporter import build_multisport_feed, sydney_today
 from services.au_display_policy import apply_au_display_policy
+from services.nba_tracking import TRACKING_START_DATE
 from services.au_market_odds import enrich_au_market_odds
 from models.race import AnalystName, Meeting, Region
 
@@ -742,6 +743,13 @@ def _merge_sports_feed(cached, fresh, today=None):
     elif old_tracking:
         nba['tracking'] = copy.deepcopy(old_tracking)
         nba['tracking']['status'] = 'stale'
+    if nba.get('tracking'):
+        nba['tracking']['inception_date'] = TRACKING_START_DATE
+        nba['tracking']['records'] = [r for r in nba['tracking'].get('records', [])
+                                      if isinstance(r.get('day'), str) and r['day'] >= TRACKING_START_DATE]
+        for field in ('covered_dates', 'retained_dates'):
+            if field in nba['tracking']:
+                nba['tracking'][field] = [day for day in nba['tracking'][field] if day >= TRACKING_START_DATE]
     return merged
 
 
