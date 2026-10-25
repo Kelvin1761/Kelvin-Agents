@@ -29,6 +29,10 @@ class NBAAdapter(ManifestCommandAdapter):
                 "21:00": "production",
                 "21:45": "production",
                 "06:30": "final_refresh",
+                "08:30": "final_refresh",
+                "10:00": "final_refresh",
+                "11:30": "final_refresh",
+                "13:00": "final_refresh",
             }
             role = role_by_slot.get(identity.scheduled_slot)
             if role:

@@ -85,3 +85,11 @@ def test_nba_role_for_startup_clock_is_deterministic() -> None:
     assert nba_pregame_role(datetime(2026, 10, 20, 21, 0, tzinfo=SYDNEY)) is FreshnessRole.WARMUP
     assert nba_pregame_role(datetime(2026, 10, 21, 0, 30, tzinfo=SYDNEY)) is FreshnessRole.PRODUCTION
     assert nba_pregame_role(datetime(2026, 10, 21, 6, 30, tzinfo=SYDNEY)) is FreshnessRole.FINAL_REFRESH
+
+
+def test_nba_final_refresh_runs_before_tips_through_the_morning() -> None:
+    after = datetime(2026, 10, 21, 6, 0, tzinfo=SYDNEY)
+    through = datetime(2026, 10, 21, 13, 30, tzinfo=SYDNEY)
+    runs = [r for r in missed_runs(after, through, Domain.NBA) if r.freshness_role is FreshnessRole.FINAL_REFRESH]
+    assert [r.scheduled_slot for r in runs] == ["06:30", "08:30", "10:00", "11:30", "13:00"]
+    assert {r.target_date.isoformat() for r in runs} == {"2026-10-21"}

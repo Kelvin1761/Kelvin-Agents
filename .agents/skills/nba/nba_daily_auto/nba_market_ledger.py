@@ -176,6 +176,8 @@ def _row_key(row: Mapping[str, Any]) -> tuple:
                 row.get("captured_at"))
     if kind == "no_prediction":
         return (kind, row.get("game_tag"))
+    if kind == "availability_obs":
+        return (kind, row.get("snapshot_id"), row.get("game_tag"), row.get("team"), row.get("name_key"))
     return (kind, json.dumps(row, sort_keys=True))
 
 
@@ -350,6 +352,42 @@ def record_prices(
     return append_rows(root, target_date, rows)
 
 
+def availability_rows(availability: Mapping[str, Any] | None, base: dict, flags: dict) -> list[dict]:
+    """One row per player on either injury list (ESPN roster feed or league report) at this snapshot.
+
+    Recorded so day-to-day/questionable outcomes can be measured against box scores
+    later (does a "Questionable" player actually play?). Observation only.
+    """
+    if not isinstance(availability, dict):
+        return []
+    sys.path.insert(0, str(NBA_SKILL))
+    import nba_official_injuries as official
+    from nba_availability import classify_injury_status
+    espn = availability.get("injuries") or {}
+    league = availability.get("official") or {}
+    rows: dict[tuple, dict] = {}
+    for team, players in espn.items():
+        for name, status in (players or {}).items():
+            rows[(team, official.name_key(name))] = {"player": name, "espn_status": status,
+                                                    "espn_level": classify_injury_status(status)}
+    for team, report in league.items():
+        if not isinstance(report, dict):
+            continue
+        for key, entry in (report.get("players") or {}).items():
+            row = rows.setdefault((team, key), {"player": entry.get("player")})
+            row.update(official_status=entry.get("status"), official_level=entry.get("level"),
+                       official_reason=entry.get("reason"))
+    out = []
+    for (team, key), row in rows.items():
+        report = league.get(team) if isinstance(league.get(team), dict) else {}
+        out.append({"row_type": "availability_obs", **base, **flags, "team": team, "name_key": key,
+                    "espn_status": None, "espn_level": None, "official_status": None, "official_level": None,
+                    **row, "official_report_status": report.get("status"),
+                    "official_report_time": report.get("report_time"),
+                    "official_submitted": report.get("submitted")})
+    return out
+
+
 def record_snapshot(
     snapshot: Path,
     target_date: str,
@@ -436,6 +474,7 @@ def record_snapshot(
                                           and 2 <= len(legs) <= 4
                                           and price == _float(quote.get("decimal_odds")) and price >= 2.0),
                          "sportsbet_sgm_status": "ok" if verified else "unverified"})
+        rows.extend(availability_rows(payload.get("availability"), base, flags))
         for leg in payload.get("legs") or []:
             line = _float(leg.get("line"))
             price = _float(leg.get("price"))

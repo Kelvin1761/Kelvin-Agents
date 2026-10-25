@@ -214,7 +214,10 @@ DOMAIN_SCHEDULES: dict[Domain, DomainSchedulePolicy] = {
             JobPolicy(
                 "pregame",
                 Operation.PREDICT,
-                times=(_t(6, 30),),
+                # 06:30 plus late refreshes so a game-time decision / late scratch is seen
+                # 30-90 min before tip (about 90% of tips are 10:00-13:30 Sydney before the
+                # US clock change, 11:00-14:30 after). Unstarted games only.
+                times=(_t(6, 30), _t(8, 30), _t(10, 0), _t(11, 30), _t(13, 0)),
                 freshness_role=FreshnessRole.FINAL_REFRESH,
                 refresh_scope=RefreshScope.UNSTARTED_ONLY,
                 snapshot_mode=SnapshotMode.APPEND_ONLY,

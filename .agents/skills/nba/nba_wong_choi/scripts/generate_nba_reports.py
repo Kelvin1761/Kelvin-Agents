@@ -34,6 +34,7 @@ sys.path.insert(0, NBA_SKILL_DIR)
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
 from nba_availability import classify_injury_status, usage_from_injuries, usage_bonus_for
+import nba_official_injuries
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nba_prob_layer
 from nba_selection_policy import BANKER, BANKER_FALLBACK, VALUE, HIGH, BUILD_TOLERANCE, SelectedCombo, STRATEGY_PROFILE, description as policy_description
@@ -1010,7 +1011,10 @@ def injury_status_for(injuries, team_abbr, player_name):
     return ""
 
 
-def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
+AVAILABILITY_SEVERITY = {"ok": 0, "dtd": 1, "out": 2}
+
+
+def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None, official_injuries=None):
     """Build a flat list of all possible legs from player cards + team odds.
     V3.1: SIP-N01 bench minutes risk flag, SIP-N05 high CoV 3PM filter."""
     candidates = []
@@ -1024,6 +1028,11 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
         player_name = card["name"]
         status = injury_status_for(injuries, team_abbr, player_name)
         injury_level = classify_injury_status(status)
+        # League injury report can only make a leg stricter than ESPN, never looser:
+        # e.g. ESPN "Day-To-Day" but league "Out" -> out; league "Probable" never clears ESPN DTD.
+        official_level = nba_official_injuries.level_for((official_injuries or {}).get(team_abbr), player_name)
+        if official_level and AVAILABILITY_SEVERITY[official_level] > AVAILABILITY_SEVERITY[injury_level]:
+            injury_level = official_level
 
         # ⚠️ Skip players who are out (or doubtful / suspended) so they do not pollute generated combos
         if injury_level == "out":
@@ -2158,13 +2167,14 @@ def mc_game_seed(meta):
 
 def gen_full_report(meta, odds, injuries, news, team_stats,
                     all_cards, sportsbet_time, season_phase="MID_SEASON",
-                    engine_mode="hybrid", capture=None, sportsbet_odds=None, banker_search_audit=False):
+                    engine_mode="hybrid", capture=None, sportsbet_odds=None, banker_search_audit=False,
+                    official_injuries=None):
     """Render the report.  ``capture`` (optional dict) receives the already
     computed MC results and combos for the market-evaluation sidecar; it is
     observation only and never feeds back into selection or rendering."""
     sections = []
     if capture is not None:
-        capture["availability"] = {"meta": dict(meta), "injuries": injuries}
+        capture["availability"] = {"meta": dict(meta), "injuries": injuries, "official": official_injuries}
 
     away_abbr = meta.get("away", {}).get("abbr", "?")
     home_abbr = meta.get("home", {}).get("abbr", "?")
@@ -2290,7 +2300,8 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
         print(f"⚠️ Monte Carlo 預計算失敗: {e}")
 
     # ── Auto-Combo (placed FIRST for quick reference) ──
-    candidates = build_leg_candidates(all_cards, team_odds=odds, meta=meta, injuries=injuries)
+    candidates = build_leg_candidates(all_cards, team_odds=odds, meta=meta, injuries=injuries,
+                                      official_injuries=official_injuries)
 
     _pc = [c for c in candidates if c.get('market_type') == PLAYER_MARKET]
     print(f"  📊 SGM Pool: {len(all_cards)} cards → {len(candidates)} candidates ({len(_pc)} player)")
@@ -2832,7 +2843,8 @@ def main():
     report = gen_full_report(meta, ex_odds, injuries, news, team_stats,
                              all_cards, sportsbet_time, season_phase=season_phase,
                              engine_mode=engine_mode, capture=capture, sportsbet_odds=sportsbet,
-                             banker_search_audit=args.banker_search_audit)
+                             banker_search_audit=args.banker_search_audit,
+                             official_injuries=extractor.get("official_injuries"))
 
     # Research is separate from the formal sidecar and publication feed.
     if args.banker_search_audit:
