@@ -75,3 +75,26 @@ names dated 2026-10-19 through 2026-10-25; count `python_auto.score_provenance` 
   20 GiB critical floor. No original files were deleted.
 - Historical SLO failures remain append-only. A repaired future run does not
   retroactively rewrite their outcome.
+
+## Production verification and log-path follow-up
+
+Core remediation released as `8a5c9fa94ee5e30e25f9705f38e9642708fcf985` after
+rebasing over the disjoint AU release and rerunning the full gate. All four
+production runtimes aligned. NBA 2026-10-25 postgame attempt 4 returned `archived`;
+attempt 5 through the installed wrapper returned `already_archived`. The wrapper
+uses `WONGCHOI_NBA_DATA_ROOT`; an initial direct control invocation omitted that
+environment and archived to the existing Drive default. A verified copy was then
+made to the canonical local archive, retaining Drive. Both copies matched:
+263 files, 61,362,314 bytes, artifact digest
+`a4868aa6a6bb12b8dde82011c75837921e2c9064292ce4bf11a64951f2beb10e`.
+The zero-combo summary records zero training rows and no ML evaluation. Research
+settlement evidence remains explicitly blocked by the pre-existing incomplete
+NBA result chain; operational archive and market-ledger settlement succeeded.
+
+The final primary-checkout health run found one more diagnostic path issue:
+NBA run freshness was reading a legacy August checkout log while the actual
+production producer was current. Health now prefers production logs, uses the
+same canonical status mapping for incremental results, and includes production
+HKJC/NBA logs in the error scan with path deduplication. The four-domain Central
+run states were healthy. Historical SLO and inaccessible racing Drive mirrors
+remain real outstanding conditions, not cleared by a successful code release.

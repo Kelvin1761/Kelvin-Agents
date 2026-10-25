@@ -208,9 +208,12 @@ else:
 # NBA off-season `dormant` is healthy. In season the immutable snapshot and
 # reflector ledger are separate liveness/evidence signals.
 nba_runs = []
-for root in (".agents/skills/nba/nba_daily_auto/logs",
+for root in ("/Users/imac/wongchoi-scheduler/.agents/skills/nba/nba_daily_auto/logs",
+             ".agents/skills/nba/nba_daily_auto/logs",
              "/Users/imac/Antigravity-repo/.agents/skills/nba/nba_daily_auto/logs"):
     nba_runs.extend(glob.glob(os.path.join(root, "run-*.json")))
+    if nba_runs:
+        break  # Prefer the producer's logs over copied/legacy checkout logs.
 if nba_runs:
     latest = max(set(nba_runs), key=os.path.getmtime)
     try:
@@ -218,7 +221,12 @@ if nba_runs:
         a = age_days(os.path.getmtime(latest))
         status = payload.get("status") or "unknown"
         target = payload.get("target_date") or "?"
-        healthy = status in {"complete", "dormant", "archived", "already_archived", "ok"}
+        sys.path.insert(0, os.path.join(os.getcwd(), ".agents/skills"))
+        from shared_wong_choi.contracts import normalize_run_state, RunState
+        try:
+            healthy = normalize_run_state(status) in {RunState.SUCCEEDED, RunState.DORMANT}
+        except ValueError:
+            healthy = False
         mark = "✅" if healthy and a < 2 else "⚠️ "
         print(f"  {mark} NBA: 最新排程 {target} / {status}（{a:.1f} 日前）")
     except (OSError, ValueError) as exc:
@@ -421,6 +429,9 @@ from health_log_scan import recent_errors
 
 roots = (
     Path("/Users/imac/wongchoi-scheduler/.agents/skills/au_racing/au_daily_auto/logs"),
+    Path("/Users/imac/wongchoi-scheduler/.agents/skills/hkjc_racing/hkjc_daily_auto/logs"),
+    Path("/Users/imac/wongchoi-scheduler/.agents/skills/nba/nba_daily_auto/logs"),
+    Path("/Users/imac/Antigravity-repo/tennis-wong-choi/data/logs"),
     Path(".agents/skills/hkjc_racing/hkjc_daily_auto/logs"),
     Path(".agents/skills/nba/nba_daily_auto/logs"),
     Path("tennis-wong-choi/data/logs"),
@@ -454,6 +465,7 @@ if mirror_ok:
         f"copied {mirror_step.get('copied', 0)} / failed {mirror_step.get('failed', 0)}"
     )
 
+seen_logs = set()
 for root in roots:
     if not root.is_dir():
         continue
@@ -461,6 +473,10 @@ for root in roots:
     for pattern in ("*.log", "*.err", "*.out"):
         files.extend(root.glob(pattern))
     for path in sorted(set(files)):
+        resolved = path.resolve()
+        if resolved in seen_logs:
+            continue
+        seen_logs.add(resolved)
         if path.name in {"health.out", "health.err"}:
             continue
         try:
