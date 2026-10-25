@@ -1,10 +1,15 @@
-# NBA dashboard visual preview
+# NBA dashboard preview v2
 
-Scope: standalone interactive design preview only; no production template, scheduler, model, D1 or deployment changes.
+Goal: blue Wong Choi dashboard for today's and historical bets, with embedded time
+filters, separate SGM / leg accuracy, verified settlement progress and $1 simulation.
 
-- [x] Agree warm white / charcoal / orange, Hong Kong typography and SVG jerseys.
-- [x] Build today, history and performance views with clearly labelled fictional fixtures.
-- [x] Verify mobile and desktop layout, long names, keyboard navigation and period filters.
-- [x] Save screenshot evidence and preview artifact; preserve branch without production release.
+- [x] Match existing #1e40af / #1d4ed8 / #2563eb brand colours.
+- [x] Replace the dark ROI block and three-number strip with a unified tracking dashboard.
+- [x] Embed Today / Week / Month / All controls in the dashboard itself.
+- [x] Add bet counts, separate hit rates, dollar P&L, ROI and settlement statuses.
+- [x] Add per-day historical cards and expandable per-leg actual results.
+- [x] Demo final-game settlement synchronises today and history, with reset.
+- [x] Verify mobile layouts, period maths and demo settlement; save screenshots.
+- [x] Complete repository checks and preserve the preview branch without deployment.
 
-Next stage after visual approval: integrate immutable published BET snapshots, separate research tracking, verified settlement and daily / weekly / monthly / overall ROI. Flat 1u paper tracking; no actual betting ledger writes. Missing quotes and uncertain void repricing remain unpriced. Existing Layer C remains unchanged.
+Actual data integration / automation is a later stage after visual approval.

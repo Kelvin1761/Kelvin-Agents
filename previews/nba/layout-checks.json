@@ -1,65 +1,56 @@
 [
   {
-    "client": 305,
     "overflow": false,
-    "scroll": 305,
-    "tab": "今日賽事",
+    "playerOverflow": 0,
+    "tab": "今日投注",
     "width": 320
   },
   {
-    "client": 305,
     "overflow": false,
-    "scroll": 305,
-    "tab": "歷史紀錄",
+    "playerOverflow": 0,
+    "tab": "歷史投注",
     "width": 320
   },
   {
-    "client": 305,
     "overflow": false,
-    "scroll": 305,
-    "tab": "表現",
+    "playerOverflow": 0,
+    "tab": "賽前分析",
     "width": 320
   },
   {
-    "client": 360,
     "overflow": false,
-    "scroll": 360,
-    "tab": "今日賽事",
+    "playerOverflow": 0,
+    "tab": "今日投注",
     "width": 375
   },
   {
-    "client": 360,
     "overflow": false,
-    "scroll": 360,
-    "tab": "歷史紀錄",
+    "playerOverflow": 0,
+    "tab": "歷史投注",
     "width": 375
   },
   {
-    "client": 360,
     "overflow": false,
-    "scroll": 360,
-    "tab": "表現",
+    "playerOverflow": 0,
+    "tab": "賽前分析",
     "width": 375
   },
   {
-    "client": 375,
     "overflow": false,
-    "scroll": 375,
-    "tab": "今日賽事",
+    "playerOverflow": 0,
+    "tab": "今日投注",
     "width": 390
   },
   {
-    "client": 375,
     "overflow": false,
-    "scroll": 375,
-    "tab": "歷史紀錄",
+    "playerOverflow": 0,
+    "tab": "歷史投注",
     "width": 390
   },
   {
-    "client": 375,
     "overflow": false,
-    "scroll": 375,
-    "tab": "表現",
+    "playerOverflow": 0,
+    "tab": "賽前分析",
     "width": 390
   }
 ]

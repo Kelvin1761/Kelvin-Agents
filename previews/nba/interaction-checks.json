@@ -1,0 +1,47 @@
+{
+  "periods": [
+    {
+      "label": "今日",
+      "expected": [
+        "6張",
+        "66.7%",
+        "88.9%",
+        "+$2.06"
+      ],
+      "pass": true
+    },
+    {
+      "label": "本週",
+      "expected": [
+        "9張",
+        "66.7%",
+        "88.2%",
+        "+$3.76"
+      ],
+      "pass": true
+    },
+    {
+      "label": "本月",
+      "expected": [
+        "11張",
+        "62.5%",
+        "87%",
+        "+$4.26"
+      ],
+      "pass": true
+    },
+    {
+      "label": "全部",
+      "expected": [
+        "12張",
+        "55.6%",
+        "84%",
+        "+$3.26"
+      ],
+      "pass": true
+    }
+  ],
+  "settleFirst": true,
+  "settleSecond": true,
+  "historySync": true
+}
