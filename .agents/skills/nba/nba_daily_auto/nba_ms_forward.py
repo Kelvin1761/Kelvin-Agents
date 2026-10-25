@@ -21,6 +21,10 @@ from typing import Any
 import nba_market_ledger as ledger
 
 CONFIG_PATH = Path(__file__).with_name("nba_ms_forward_v1.json")  # sha256 pinned in the protocol and tests
+CONFIG_V2_PATH = Path(__file__).with_name("nba_ms_forward_v2.json")  # EXP-20261025-14, same ruler
+CONFIG_V2_REB3PM_PATH = Path(__file__).with_name("nba_ms_forward_v2_reb3pm.json")  # EXP-20261025-15
+V1_FIELDS = {"prob": "season_rate_prob_S", "status": "season_rate_status",
+             "version": "season_rate_version", "inputs": "season_rate_inputs"}
 MARKET_STAT = {"pts": "PTS", "reb": "REB", "ast": "AST", "fg3m": "FG3M", "3pm": "FG3M"}
 
 # Fixed in the protocol before any forward data existed. Changing any of these
@@ -97,21 +101,25 @@ def collect(root: Path, since: str, until: str, config: dict) -> tuple[list[dict
         if stat is None:
             counts["stat_unsupported"] += 1
             continue
-        if "season_rate_status" not in m:
+        if config.get("stats") and stat not in config["stats"]:
+            counts["stat_out_of_scope"] += 1
+            continue
+        fields = config.get("season_rate_fields") or V1_FIELDS
+        if fields["status"] not in m:
             # Snapshot written by code older than the S shadow (cf3c2960): outside the
             # test epoch, not an S failure, so it must not dilute the coverage guard.
             counts["pre_shadow_snapshot"] += 1
             continue
         counts["c_legs"] += 1
-        if m.get("season_rate_status") != "ok" or m.get("season_rate_version") != config["season_rate_version"]:
-            counts[f"s_{m.get('season_rate_status') or 'missing'}"] += 1
+        if m.get(fields["status"]) != "ok" or m.get(fields["version"]) != config["season_rate_version"]:
+            counts[f"s_{m.get(fields['status']) or 'missing'}"] += 1
             continue
-        p_c, p_s = m.get("p_final"), m.get("season_rate_prob_S")
+        p_c, p_s = m.get("p_final"), m.get(fields["prob"])
         p_ms = ms_prob(config, stat, m.get("price_at_model"), p_s)
         if p_c is None or p_ms is None:
             counts["invalid_probability"] += 1
             continue
-        inputs = m.get("season_rate_inputs") or {}
+        inputs = m.get(fields["inputs"]) or {}
         legs.append({"date": key[0], "event": f"{key[0]}:{key[1]}", "player": key[2], "stat": stat,
                      "line": key[4], "y": int(settle["y"]), "p_c": float(p_c), "p_ms": p_ms,
                      "p_s": float(p_s), "price": float(m["price_at_model"]),
@@ -187,12 +195,12 @@ def _high_band_gap(legs, weights):
     return _wmean([l["p_ms"] - l["y"] for l, _ in sub], [w for _, w in sub])
 
 
-def analyse(legs: list[dict], counts: dict, config_sha: str) -> dict:
+def analyse(legs: list[dict], counts: dict, config_sha: str, protocol: str = "EXP-20261025-12") -> dict:
     events = sorted({l["event"] for l in legs})
     dates = sorted({l["date"] for l in legs})
     n_events = len(events)
     report: dict[str, Any] = {
-        "protocol": "EXP-20261025-12", "config_sha256": config_sha, "events": n_events,
+        "protocol": protocol, "config_sha256": config_sha, "events": n_events,
         "dates": len(dates), "legs": len(legs), "counts": counts,
         "checkpoints": {"harm": HARM_CHECK_EVENTS, "primary": PRIMARY_EVENTS, "final": FINAL_EVENTS},
         "promotion_allowed": False,
@@ -260,10 +268,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=None)
     parser.add_argument("--until", required=True)
     parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument("--model", choices=("v1", "v2", "v2-reb3pm"), default="v1")
     args = parser.parse_args(argv)
-    config, sha = load_config()
+    config, sha = load_config({"v1": CONFIG_PATH, "v2": CONFIG_V2_PATH,
+                               "v2-reb3pm": CONFIG_V2_REB3PM_PATH}[args.model])
     legs, counts = collect(args.root or ledger.ledger_root(), config["epoch"], args.until, config)
-    report = analyse(legs, counts, sha)
+    report = analyse(legs, counts, sha, config.get("protocol_id", "EXP-20261025-12"))
     text = json.dumps(report, ensure_ascii=False, indent=1)
     if args.output:
         args.output.write_text(text + "\n", encoding="utf-8")

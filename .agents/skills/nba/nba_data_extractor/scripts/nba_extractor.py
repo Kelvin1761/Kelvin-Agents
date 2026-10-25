@@ -40,6 +40,7 @@ sys.path.insert(0, str(NBA_SKILL_DIR))
 from nba_schedule import canonical_team_abbr, canonical_game_tag, event_sydney_date
 from nba_data_contract import NBA_STATISTICS_CONTRACT
 import nba_opportunities
+import nba_team_context
 from nba_availability import compute_usage_redistribution
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
@@ -529,7 +530,7 @@ def compute_fit_inputs(df, game_season):
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
-SEASON_LOG_STATS = ("MIN", "PTS", "REB", "AST", "FG3M", "FGA", "FG3A", "FTA")
+SEASON_LOG_STATS = ("MIN", "PTS", "REB", "AST", "FG3M", "FGA", "FG3A", "FTA", "FGM", "FTM")
 
 
 def compact_season_log(df):
@@ -1297,7 +1298,7 @@ def key_defenders_for_team(defender_data, team_abbr, *, limit=8):
 
 
 def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stats, odds_data,
-                        data_sources=None, opportunity_sources=None):
+                        data_sources=None, opportunity_sources=None, team_context=None):
     """
     針對單場比賽提取雙方所有球員的深度數據。
     這是核心函數，輸出一個完整的 JSON 數據包。
@@ -1521,6 +1522,16 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
 
     if opportunity_sources is not None:
         package["meta"]["opportunity_health"] = nba_opportunities.summarize(package["players"])
+    if team_context is not None:
+        # Shadow S_v2 input (EXP-20261025-13): what each side's OPPONENT allowed per game.
+        try:
+            cutoff_day = history_cutoff_day(game_info.get('date'))
+            package["opponent_context"] = {
+                away_abbr: nba_team_context.opponent_context(team_context, home_abbr, cutoff_day),
+                home_abbr: nba_team_context.opponent_context(team_context, away_abbr, cutoff_day),
+            }
+        except Exception as exc:  # shadow data must never break extraction
+            package["opponent_context"] = {"error": f"{type(exc).__name__}: {exc}"}
     return apply_availability(package, availability_maps)
 
 
@@ -1716,6 +1727,13 @@ def main():
     opportunity_sources = nba_opportunities.fetch_sources(
         statistics_season, history_date_to(stats_date),
         Path(args.output).resolve().parent / "NBA_Opportunity_Sources.json") if games else {"status": "no_official_games", "sources": {}}
+    try:  # shadow S_v2 input only; a failure here must never stop extraction
+        team_context = nba_team_context.fetch_bundle(
+            statistics_season, previous_nba_season(statistics_season), history_date_to(stats_date),
+            Path(args.output).resolve().parent / "NBA_Team_Context.json") if games else None
+    except Exception as exc:
+        print(f"⚠️ team context unavailable: {type(exc).__name__}: {exc}")
+        team_context = {"status": "error", "tables": {}}
     print("📐 Opportunity sources: " + ", ".join(
         f"{name}={source.get('status')}" for name, source in opportunity_sources.get('sources', {}).items()))
 
@@ -1760,7 +1778,8 @@ def main():
             sys.exit(1)
 
         package = extract_single_game(target_game, adv_stats, defender_data, team_dvp, team_stats, odds_data,
-                                      data_sources=data_sources, opportunity_sources=opportunity_sources)
+                                      data_sources=data_sources, opportunity_sources=opportunity_sources,
+                                      team_context=team_context)
 
         # 驗證數據品質 — 冇真實 gamelog 則 fail
         has_real_data = False
@@ -1800,7 +1819,8 @@ def main():
         print("\n🏀 正在為每場比賽生成深度數據包...")
         for g in games:
             package = extract_single_game(g, adv_stats, defender_data, team_dvp, team_stats, odds_data,
-                                      data_sources=data_sources, opportunity_sources=opportunity_sources)
+                                      data_sources=data_sources, opportunity_sources=opportunity_sources,
+                                      team_context=team_context)
 
             json_path = f"nba_game_data_{g['tag']}.json"
             _write_verified_package(json_path, package)

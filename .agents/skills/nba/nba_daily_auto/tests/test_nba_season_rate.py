@@ -18,7 +18,8 @@ import nba_extractor as x
 import nba_market_ledger as ledger
 import nba_season_rate as S
 
-KEYS = {"season_rate_prob_S", "season_rate_version", "season_rate_status", "season_rate_inputs"}
+KEYS = {"season_rate_prob_S", "season_rate_version", "season_rate_status", "season_rate_inputs",
+        *reports.V2_SHADOW_KEYS}
 
 
 def log(pts, mins=None, kinds=None):
@@ -27,7 +28,8 @@ def log(pts, mins=None, kinds=None):
     return {"dates": dates, "seasons": ["2026-27"] * n,
             "season_types": kinds or ["Regular Season"] * n,
             "MIN": mins or [30.0] * n, "PTS": pts, "REB": [5.0] * n, "AST": [4.0] * n,
-            "FG3M": [2.0] * n, "FGA": [15.0] * n, "FG3A": [5.0] * n, "FTA": [4.0] * n}
+            "FG3M": [2.0] * n, "FGA": [15.0] * n, "FG3A": [5.0] * n, "FTA": [4.0] * n,
+            "FGM": [7.0] * n, "FTM": [3.0] * n}
 
 
 @pytest.fixture(autouse=True)
@@ -69,7 +71,10 @@ def test_extractor_keeps_every_fetched_game_newest_first():
     rows = [{"GAME_DATE": f"OCT {28 - i}, 2026", "_season": "2026-27", "_season_type": "Regular Season",
              "MIN": 30, "PTS": 20 + i, "REB": 5, "AST": 4, "FG3M": 2, "FGA": 15, "FG3A": 5, "FTA": 4}
             for i in range(14)]
+    for row in rows:
+        row.update(FGM=6, FTM=3)
     out = x.compact_season_log(pd.DataFrame(rows))
+    assert out["FGM"][0] == 6.0 and out["FTM"][0] == 3.0
     assert len(out["dates"]) == 14 and out["dates"][0] == "2026-10-28" and out["PTS"][-1] == 33.0
     assert "error" in x.compact_season_log(pd.DataFrame([{"a": 1}]))
 
@@ -101,3 +106,64 @@ def test_module_failure_is_isolated(monkeypatch):
 
 def test_ledger_variants_untouched():
     assert not any("season_rate" in name for name in ledger.MODEL_VARIANTS)
+
+
+OPP = {"status": "available", "league_avg": {"PTS": 112.0, "REB": 44.0, "AST": 26.0, "FG3M": 13.0},
+       "allowed": {"dates": ["2026-12-01"] * 0, "PTS": [], "REB": [], "AST": [], "FG3M": []}}
+
+
+def test_v2_matches_hand_computation_for_a_constant_player():
+    # 30 identical games: rates are exact, no opponent games -> factor 1.
+    p, status, inputs = S.season_rate_prob_v2(log([20.0] * 30), "REB", 6, OPP)
+    assert status == "ok" and inputs["opp_factor"] == 1.0 and inputs["mu"] == 5.0
+    k = S.DISPERSION_K["REB"] * 1.6
+    assert p == round(float(nbinom.sf(5, k, k / (k + 5.0))), 4)
+    # PTS from shots: 30 min x (8 two-att x .5 x2 ... ) with shrunk efficiencies
+    p_pts, _, i_pts = S.season_rate_prob_v2(log([20.0] * 30), "PTS", 20, OPP)
+    e2 = (5 * 30 + 0.54 * 100) / (10 * 30 + 100)
+    e3 = (2 * 30 + 0.36 * 100) / (5 * 30 + 100)
+    eft = (3 * 30 + 0.78 * 50) / (4 * 30 + 50)
+    assert abs(i_pts["mu"] - round(10 * e2 * 2 + 5 * e3 * 3 + 4 * eft, 3)) < 1e-3
+
+
+def test_v2_opponent_factor_shrinks_and_requires_context():
+    soft = dict(OPP, allowed={"dates": ["d"] * 10, "PTS": [], "REB": [55.0] * 10, "AST": [], "FG3M": []})
+    _, _, inputs = S.season_rate_prob_v2(log([20.0] * 30), "REB", 6, soft)
+    assert inputs["opp_factor"] == round(((550 + 10 * 44) / 20) / 44, 4)   # half-way to 55/44
+    assert S.season_rate_prob_v2(log([20.0] * 30), "REB", 6, None)[1] == "no_opponent_context"
+    assert S.season_rate_prob_v2(log([20.0] * 30), "REB", 6, {"status": "source_unavailable"})[1] == "no_opponent_context"
+    missing = log([20.0] * 30); del missing["FTM"]
+    assert S.season_rate_prob_v2(missing, "PTS", 20, OPP)[1] == "invalid_inputs"
+
+
+def test_team_context_reports_what_the_opponent_allowed_before_the_cutoff():
+    import datetime as dt
+    import nba_team_context as tc
+    def game(gid, day, a, b, pts_a, pts_b):
+        base = {"GAME_ID": gid, "GAME_DATE": day, "REB": 40, "AST": 25, "FG3M": 12}
+        return [dict(base, TEAM_ID=1, TEAM_ABBREVIATION=a, PTS=pts_a), dict(base, TEAM_ID=2, TEAM_ABBREVIATION=b, PTS=pts_b)]
+    rows = game("1", "2026-10-22", "GSW", "LAL", 100, 120) + game("2", "2026-10-24", "BOS", "GSW", 90, 95) \
+        + game("3", "2026-10-26", "GSW", "PHX", 80, 130)          # on/after cutoff: must be ignored
+    bundle = {"tables": {"Regular Season": {"status": "available", "rows": rows},
+                         "previous_regular": {"status": "available", "rows": [dict(r, PTS=110) for r in rows] * 50}},
+              "captured_at": "x", "tables_sha256": "y"}
+    ctx = tc.opponent_context(bundle, "GS", dt.date(2026, 10, 26))
+    assert ctx["status"] == "available" and ctx["opponent"] == "GSW"
+    assert ctx["allowed"]["PTS"] == [90.0, 120.0] and ctx["allowed"]["dates"] == ["2026-10-24", "2026-10-22"]
+    assert ctx["league_source"] == "previous_regular" and ctx["league_avg"]["PTS"] == 110.0
+    assert tc.opponent_context({"tables": {}}, "GSW", dt.date(2026, 10, 26))["status"] == "source_unavailable"
+
+
+def test_v2_shadow_reaches_the_card_without_changing_it(monkeypatch):
+    pts = [22.0, 25, 18, 24, 21, 26, 19, 23, 20, 27, 22, 24]
+    ext = {"name": "Test Star", "position": "G",
+           "gamelog": {"PTS": pts[:10], "MIN": [32] * 10, "season_log": log(pts)}}
+    card = reports.build_player_card("Test Star", "DET", {"lines": {"20": "1.80"}}, ext, "points",
+                                     opponent_abbr="BOS", team_stats={}, engine_mode="legacy",
+                                     opponent_context=OPP)
+    la = card["line_analysis"]["20"]
+    assert la["season_rate_v2_status"] == "ok" and la["season_rate_v2_version"] == "nba_season_rate_S_v2"
+    plain = card_for(ext)["line_analysis"]["20"]
+    assert plain["season_rate_v2_status"] == "no_opponent_context"
+    strip = lambda d: {k: v for k, v in d.items() if k not in KEYS}
+    assert strip(la) == strip(plain)

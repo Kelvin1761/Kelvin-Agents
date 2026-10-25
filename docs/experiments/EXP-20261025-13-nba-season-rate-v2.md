@@ -1,7 +1,7 @@
 # EXP-20261025-13 獨立模型 S_v2：對手、PTS 拆解、離散度、分鐘 half-life
 
 - **日期**：2026-10-25（Claude Code）
-- **狀態**：**開發證據過關；未接線、未 forward 驗證。** S_v1 嘅 forward 測試（EXP-20261025-12）唔受影響。
+- **狀態**：**開發證據過關；已以 shadow 接線（`nba_season_rate_S_v2`），forward 協議見 EXP-20261025-14。** S_v1 嘅 forward 測試（EXP-20261025-12）唔受影響。
 - **承接**：EXP-20261025-11（S_v1）。協議 `v2/Protocol_v2.md` SHA256 `8d6d0e75…10fe0`，喺任何 v2 結果之前寫低。
 
 ## 語料同切分

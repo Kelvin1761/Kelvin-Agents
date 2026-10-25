@@ -109,3 +109,42 @@ def test_guards_block_judgement():
     legs[0]["leak"] = True
     assert f.analyse(legs, {"c_legs": len(legs)}, "x")["status"] == "INVALID_DATA"
     assert f.analyse([], {}, "x")["status"] == "AWAITING_DATA"
+
+
+FROZEN_V2_SHA = "cbc78f1e03662d22bdd6aff39549482223ca758013189d398da54156f020f96a"
+
+
+def test_v2_config_is_frozen_and_reads_v2_fields(tmp_path):
+    assert hashlib.sha256(f.CONFIG_V2_PATH.read_bytes()).hexdigest() == FROZEN_V2_SHA
+    cfg, _ = f.load_config(f.CONFIG_V2_PATH)
+    assert cfg["season_rate_version"] == "nba_season_rate_S_v2" and cfg["comparator_probability_model_id"] == C_ID
+    d = "2026-10-28"
+    v2 = _model(d, "A_B", "v2ok", 5.0, with_s=False)
+    v2.update(season_rate_v2_status="ok", season_rate_v2_version="nba_season_rate_S_v2", season_rate_v2_prob_S=0.6,
+              season_rate_v2_inputs={"last_game_date": "2026-10-26", "seasons": ["2026-27"]})
+    v1_only = _model(d, "A_B", "v1only", 5.0)          # written before the v2 shadow existed
+    _write(tmp_path, d, [v2, _settle(d, "A_B", "v2ok", 5.0, 1), v1_only, _settle(d, "A_B", "v1only", 5.0, 0)])
+    legs, counts = f.collect(tmp_path, "2026-10-26", d, cfg)
+    assert [l["player"] for l in legs] == ["v2ok"] and counts["pre_shadow_snapshot"] == 1
+    assert abs(legs[0]["p_ms"] - f.ms_prob(cfg, "REB", 1.8, 0.6)) < 1e-12
+    legs1, _ = f.collect(tmp_path, "2026-10-26", d, f.load_config()[0])   # v1 untouched by v2 fields
+    assert [l["player"] for l in legs1] == ["v1only"]
+
+
+def test_reb3pm_subset_is_frozen_and_only_scores_its_stats(tmp_path):
+    assert hashlib.sha256(f.CONFIG_V2_REB3PM_PATH.read_bytes()).hexdigest() == \
+        "be37d53912d9154e1f51b9b6c5b4b0156737dfad1a78b4b2900c1193565e5c5c"
+    cfg, _ = f.load_config(f.CONFIG_V2_REB3PM_PATH)
+    assert cfg["stats"] == ["REB", "FG3M"] and cfg["coefficients"] == f.load_config(f.CONFIG_V2_PATH)[0]["coefficients"]
+    d = "2026-10-28"
+    rows = []
+    for player, market in (("r", "reb"), ("t", "fg3m"), ("p", "pts")):
+        m = _model(d, "A_B", player, 3.0, with_s=False)
+        m.update(market=market, season_rate_v2_status="ok", season_rate_v2_version="nba_season_rate_S_v2",
+                 season_rate_v2_prob_S=0.6, season_rate_v2_inputs={"last_game_date": "2026-10-26"})
+        s = _settle(d, "A_B", player, 3.0, 1); s["market"] = market
+        rows += [m, s]
+    _write(tmp_path, d, rows)
+    legs, counts = f.collect(tmp_path, "2026-10-26", d, cfg)
+    assert sorted(l["stat"] for l in legs) == ["FG3M", "REB"] and counts["stat_out_of_scope"] == 1
+    assert counts["c_legs"] == 2   # out-of-scope legs never dilute the coverage guard
