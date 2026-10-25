@@ -848,6 +848,8 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
             ("最佳路程", data.get("best_distance"), 160),
             ("L400 / 能量趨勢", _join_nonempty(data.get("raw_l400"), data.get("l400_trend"), data.get("energy_trend"), sep=" | "), 320),
             ("步速修正", finish_time, 260),
+            # 純顯示（EXP-20261025-08 入分 REJECT）：引擎冇讀呢個欄位。
+            ("同程最佳時間", data.get("same_course_best_time"), 200),
         )
     if key == "race_shape":
         draw_running = _join_nonempty(
