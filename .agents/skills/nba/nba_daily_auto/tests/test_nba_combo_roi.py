@@ -81,3 +81,33 @@ def test_frozen_publication_quote_wins_over_later_reference_observation():
                   sgm_quote={'status': 'ok', 'decimal_odds': 2.0, 'legs_sha256': legs_identity(chosen['legs'])})
     out = roi.settle_combos([chosen, quote('1', 3.0), settle('A', 'hit'), settle('B', 'hit')])
     assert out[0]['sgm_price'] == 2.0
+
+
+def test_standalone_cli_reads_frozen_quotes_without_parent_pythonpath(tmp_path):
+    import json
+    import os
+    import subprocess
+    sys.path.insert(0, str(AUTO_DIR.parent))
+    from nba_sgm_quote import legs_identity
+    from nba_reliability import current_model_id
+    chosen = sgm('1', [leg('A'), leg('B')], 2.25)
+    chosen.update(sportsbet_sgm_status='ok', sportsbet_sgm_price=2.1,
+                  sgm_quote={'status':'ok','decimal_odds':2.1,'legs_sha256':legs_identity(chosen['legs'])})
+    base = dict(chosen, probability_model_id=current_model_id(), season_phase='EARLY_REGULAR', tip_unknown=False)
+    rows = [chosen, dict(base,row_type='model_obs',player='A',market='pts',line=10),settle('A','hit'),settle('B','hit')]
+    for arm in ('B0','B1','B2'):
+        rows.append(dict(base,row_type='banker_shadow_obs',version='banker-ev-shadow-v1',arm=arm,eligible=arm=='B2'))
+    path=tmp_path/'ledger'/f'{D}.jsonl';path.parent.mkdir()
+    path.write_text(''.join(json.dumps(r)+'\n' for r in rows));before=path.read_bytes()
+    env=dict(os.environ,WONGCHOI_NBA_MARKET_LEDGER_ROOT=str(tmp_path),PYTHONDONTWRITEBYTECODE='1',NBA_WC_PROB_LAYER='1')
+    env.pop('PYTHONPATH',None)
+    command=[sys.executable,str(AUTO_DIR/'nba_combo_roi.py'),'--date',D]
+    normal=subprocess.run(command,cwd=tmp_path,env=env,text=True,capture_output=True)
+    assert normal.returncode==0,normal.stderr
+    assert '1/1 中' in normal.stdout
+    shadow=subprocess.run(command+['--shadow'],cwd=tmp_path,env=env,text=True,capture_output=True)
+    assert shadow.returncode==0,shadow.stderr
+    result=json.loads(shadow.stdout)
+    assert result['arms']['B2']['sgm']['n']==1 and result['arms']['B2']['sgm']['profit_units']==1.1
+    assert not result['promotion_allowed']
+    assert path.read_bytes()==before and not (tmp_path/'reports').exists()
