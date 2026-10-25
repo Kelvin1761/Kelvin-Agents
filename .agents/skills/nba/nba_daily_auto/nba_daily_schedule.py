@@ -1344,6 +1344,77 @@ def _reliability_text(target_date: str, log: RunLog) -> str:
         return "📐 機率校準：今次計算失敗（已記錄），唔影響上面賽果摘要。"
 
 
+def results_due(folder: Path, target_date: str, now: datetime, *, rows=None, attempts=None) -> list[str]:
+    """First poll tip+150m, then every 15m; settled games never need another fetch."""
+    rows = market_ledger.read_rows(market_ledger.ledger_root(), target_date) if rows is None else rows
+    attempts = attempts or {}
+    exclusions = market_ledger.no_prediction_exclusions(rows)
+    wanted, settled = {}, set()
+    for row in rows:
+        tag = row.get("game_tag")
+        if market_ledger._excluded(row, exclusions):
+            continue
+        if row.get("row_type") == "settlement" and row.get("outcome") in {"hit", "miss", "void"}:
+            settled.add(market_ledger._leg_key(row))
+        elif (row.get("row_type") in {"model_obs", "sgm_obs"}
+              and row.get("snapshot_role") in {"production", "final_refresh"}
+              and market_ledger._pre_tip(row)):
+            legs = row.get("legs", []) if row["row_type"] == "sgm_obs" else [row]
+            for leg in legs:
+                wanted.setdefault(tag, set()).add(market_ledger._leg_key({**leg, "game_tag":tag, "target_date":target_date}))
+    due = []
+    for path in folder.glob("Sportsbet_Odds_*.json"):
+        odds = _read_json(path, {})
+        tag = path.stem.removeprefix("Sportsbet_Odds_")
+        if not wanted.get(tag) or wanted[tag].issubset(settled):
+            continue
+        tip = market_ledger._aware(odds.get("event_start_time"))
+        if tip is None or now < tip + timedelta(minutes=150):
+            continue
+        # Postponed/missing games stay unresolved; nightly review handles late recovery.
+        if now > tip + timedelta(hours=8):
+            continue
+        previous = market_ledger._aware(attempts.get(tag+":"+market_ledger._iso(tip)))
+        if previous and now < previous + timedelta(minutes=15):
+            continue
+        due.append(tag)
+    return sorted(set(due))
+
+
+def run_results_refresh(target_date: str, log: RunLog) -> str:
+    """Incremental verified Final results only; never archive or touch D1 bets."""
+    folder = live_dir(target_date)
+    if not folder.is_dir() or latest_snapshot(folder) is None:
+        return "dormant"
+    if no_prediction.covers_date(folder):
+        return "no_prediction"
+    now = now_sydney()
+    state_path = STATE_DIR / f"results_attempts_{target_date}.json"
+    attempts = _read_json(state_path, {})
+    due = results_due(folder, target_date, now, attempts=attempts)
+    if not due:
+        return "not_due"
+    for tag in due:
+        odds = _read_json(folder / f"Sportsbet_Odds_{tag}.json", {})
+        tip = market_ledger._aware(odds.get("event_start_time"))
+        attempts[tag+":"+market_ledger._iso(tip)] = now.isoformat()
+    _write_json(state_path, attempts)
+    fetcher = NBA_SKILL / "nba_reflector" / "scripts" / "fetch_nba_results.py"
+    us_date = (date.fromisoformat(target_date) - timedelta(days=1)).isoformat()
+    result = _run([sys.executable, str(fetcher), "--date", us_date, "--dir", str(folder), "--games", ",".join(due)], timeout=600)
+    if result.returncode != 0:
+        raise TemporaryFailure("incremental_results_fetch_failed")
+    results = market_ledger.results_brief_for(folder, target_date)
+    if not results.is_file():
+        raise TemporaryFailure("incremental_results_brief_missing")
+    settled = market_ledger.settle(target_date, results, root=market_ledger.ledger_root())
+    log.step("incremental_results", "ok", **settled)
+    if settled.get("appended", 0):
+        log.step("dashboard", _deploy("NBA verified Final results update", folder))
+        return "updated"
+    return "unchanged"
+
+
 def run_postgame(target_date: str, log: RunLog) -> str:
     folder = live_dir(target_date)
     if not folder.is_dir():
@@ -1575,6 +1646,7 @@ def main() -> int:
         choices=("pregame", "postgame", "health", "startup", "mark-no-prediction"),
         required=True,
     )
+    parser.add_argument("--incremental-results", action="store_true", help="Postgame: poll only due games (tip+150m, 15m retry); keep evening archive runs")
     parser.add_argument("--date", help="Override target Australia/Sydney date (YYYY-MM-DD)")
     parser.add_argument("--reason", help="mark-no-prediction: why this date/game has no prediction")
     parser.add_argument("--by", dest="marked_by", help="mark-no-prediction: who decided (e.g. Kelvin)")
@@ -1643,7 +1715,8 @@ def main() -> int:
                     schedule_events=load_espn_events(target_date),
                 )
             elif args.mode == "postgame":
-                status = run_postgame(target_date, log)
+                status = (run_results_refresh(target_date, log) if args.incremental_results and (now.hour, now.minute // 15) not in {(18, 2), (21, 2)}
+                          else run_postgame(target_date, log))
             elif args.mode == "startup":
                 status = run_startup(log)
             else:

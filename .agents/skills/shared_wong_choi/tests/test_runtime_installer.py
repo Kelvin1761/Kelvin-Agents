@@ -336,7 +336,7 @@ raise SystemExit(0 if accepted else 1)
     stages = [line.removeprefix("runtime cutover stage: ")
               for line in result.stdout.splitlines()
               if line.startswith("runtime cutover stage: ")]
-    assert stages == ["interpreter preflight", "SQLite preflight", "active-run preflight",
+    assert stages == ["NBA result timer preflight", "interpreter preflight", "SQLite preflight", "active-run preflight",
                       "AU preflight", "snapshot", "HKJC installer", "NBA installer",
                       "Tennis installer", "Central installer", "calendar verification",
                       "loaded runtime verification"]
@@ -423,3 +423,15 @@ raise SystemExit(subprocess.call(["/bin/cp", *sys.argv[1:]]))
         assert result.returncode != 0
         assert dest.read_bytes() == old
         assert loaded.exists(), "failed install must restore the previously loaded job"
+
+
+
+def test_active_run_guard_does_not_confuse_release_scope_paths_with_running_jobs():
+    import re
+    script=INSTALLER.read_text()
+    pattern=re.search(r"if pgrep -f '([^']+)'",script).group(1)
+    python_pattern=pattern.replace('[[:space:]]',r'\s').replace('[^[:space:]]',r'\S')
+    assert re.search(python_pattern,'/usr/bin/python3 /repo/.agents/skills/nba/nba_daily_auto/nba_daily_schedule.py --mode postgame')
+    assert re.search(python_pattern,'/Framework/Python -u /repo/tennis_daily_schedule.py --mode daily')
+    assert not re.search(python_pattern,'/usr/bin/python3 /repo/scoped_release.py --path .agents/skills/nba/nba_daily_auto/nba_daily_schedule.py')
+    assert not re.search(python_pattern,'python3 -m pytest tests/test_nba_daily_schedule.py')

@@ -13,7 +13,7 @@ def _time(value):
         return None
 
 
-def verified_published_reports(folder, target_date, firewall, *, include_warmup=False):
+def verified_published_reports(folder, target_date, firewall, *, include_warmup=False, all_publications=False):
     roles = {"production", "final_refresh"} | ({"warmup"} if include_warmup else set())
     root = Path(folder) / "_prediction_snapshots"
     seen = set()
@@ -34,7 +34,7 @@ def verified_published_reports(folder, target_date, firewall, *, include_warmup=
             for tag in manifest.get("game_tags", []):
                 if tag in manifest.get("blocked_game_tags", []):
                     continue
-                if (tag in seen or not isinstance(tag, str)
+                if ((tag in seen and not all_publications) or not isinstance(tag, str)
                         or not all(c.isalnum() or c == "_" for c in tag)):
                     continue
                 names = [f"Game_{tag}_Full_Analysis.md", f"Sportsbet_Odds_{tag}.json",

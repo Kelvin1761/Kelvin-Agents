@@ -199,6 +199,10 @@ done
   print -u2 -- "Tennis runtime interpreter is missing: $TENNIS_PYTHON_BIN"
   exit 1
 }
+# Reject an unsafe NBA polling cadence before snapshotting or touching any plist.
+print -r -- "runtime cutover stage: NBA result timer preflight"
+/usr/bin/python3 "$PROJECT_ROOT/.agents/skills/nba/nba_daily_auto/verify_results_timer.py" \
+  "$PROJECT_ROOT/.agents/skills/nba/nba_daily_auto/launchd/com.antigravity.nba-wong-choi.postgame.plist.template"
 print -r -- "runtime cutover stage: interpreter preflight"
 "$TENNIS_PYTHON_BIN" -c 'import curl_cffi' || {
   print -u2 -- "Tennis runtime interpreter is missing curl_cffi: $TENNIS_PYTHON_BIN"
@@ -216,7 +220,7 @@ PY
 # Refuse to boot out a live domain run. The Telegram poller is intentionally
 # excluded because it is the caller and AU is not reinstalled.
 print -r -- "runtime cutover stage: active-run preflight"
-if pgrep -f 'hkjc_daily_schedule.py|nba_daily_schedule.py|tennis_daily_schedule.py|tennis_card_recovery.py' >/dev/null 2>&1; then
+if pgrep -f '(^|/)([Pp]ython[0-9.]*)([[:space:]]+-[A-Za-z]+)*[[:space:]]+[^[:space:]]*/(hkjc_daily_schedule.py|nba_daily_schedule.py|tennis_daily_schedule.py|tennis_card_recovery.py)([[:space:]]|$)' >/dev/null 2>&1; then
   print -u2 -- "a HKJC/NBA/Tennis automation run is active; cutover deferred"
   exit 1
 fi

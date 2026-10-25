@@ -1639,6 +1639,8 @@ def build_multisport_feed(
             "tennis": export_tennis_snapshot(tennis_db, target_date=target_date),
         },
     }
+    from .nba_tracking import export_tracking
+    feed["sports"]["nba"]["tracking"] = export_tracking(repo_root)
     errors = validate_multisport_feed(feed)
     feed["validation_status"] = "valid" if not errors else "blocked"
     feed["validation_errors"] = errors
