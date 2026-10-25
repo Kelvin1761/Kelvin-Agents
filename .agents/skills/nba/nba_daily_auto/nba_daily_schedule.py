@@ -249,7 +249,9 @@ def archived_dirs(target_date: str) -> list[Path]:
     return sorted(NBA_ANALYSIS.glob(f"{target_date} NBA Analysis*"))
 
 
-def _run(command: list[str], *, timeout: int = 3600) -> subprocess.CompletedProcess[str]:
+# 預設 7200：orchestrator 全 slate 跑法要俾夠時間（2026-10-26 七場要 61 分鐘，
+# 舊嘅 3600 上限令 pregame 連日 TimeoutExpired）。要短嘅呼叫都有自己明確 timeout。
+def _run(command: list[str], *, timeout: int = 7200) -> subprocess.CompletedProcess[str]:
     # ⚠️ 一定要 encoding="utf-8", errors="replace"。`text=True` 係嚴格 UTF-8，
     # 而 launchd 底下 locale 可能係 POSIX（會退去 ASCII）。2026-09-09 實測：
     # 一個 shell 錯誤訊息入面嘅孤立 0xef 就令 HKJC prerace 同 Tennis card

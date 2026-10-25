@@ -635,6 +635,9 @@ def main():
                         help="Opt-in isolated true-price banker search; OBSERVE only")
     parser.add_argument("--legacy", action="store_true",
                         help="使用舊版 10-Factor 引擎（預設為 Hybrid）")
+    parser.add_argument("--workers", type=int,
+                        default=int(os.environ.get("NBA_PIPELINE_WORKERS", "3")),
+                        help="同時處理幾場賽事（預設 3；1 = 串行）。")
     parser.add_argument("--skip-cloudflare-deploy", action="store_true",
                         help="完成分析後唔更新 Cloudflare Dashboard。")
     args = parser.parse_args()
@@ -778,14 +781,29 @@ def main():
     # ── Per-Game Pipeline ──
     results = {"passed": [], "failed": [], "waiting": []}
 
-    for idx, game in enumerate(games, 1):
-        tag = game["tag"]
-        sb_json = game["sportsbet_json"]
-        success = process_single_game(
-            tag, sb_json, target_dir, args.date,
+    # ⚠️ 逐場串行跑會超時：extractor 每場 ~6.5 分鐘（nba_api 逐個 call 之間 sleep
+    # 限流，大部分時間係等），7 場 slate 2026-10-26 要 61 分鐘，撞正 scheduler 嘅
+    # 3600s 上限（最後一場 20:01:15 先完，limit 20:00:03）。各場只寫自己個
+    # `*_{tag}.*` 檔，互不相干，所以用細 pool 並行。結果仍按場次次序收集。
+    def _run_game(item):
+        idx, game = item
+        return process_single_game(
+            game["tag"], game["sportsbet_json"], target_dir, args.date,
             game_num=idx, debug_skip_extractor=args.debug_skip_extractor,
             legacy=args.legacy, banker_search_audit=args.banker_search_audit
         )
+
+    workers = max(1, min(args.workers, len(games) or 1))
+    if workers == 1:
+        outcomes = [_run_game(item) for item in enumerate(games, 1)]
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            outcomes = list(pool.map(_run_game, enumerate(games, 1)))
+
+    for game, success in zip(games, outcomes):
+        tag = game["tag"]
+        sb_json = game["sportsbet_json"]
         if success:
             results["passed"].append(tag)
         else:
