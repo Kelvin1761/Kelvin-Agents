@@ -848,6 +848,25 @@ def _first_section_min_delta(section_text):
     return min(values) if len(values) >= 2 else None
 
 
+def _same_course_best_times(race_context, horses):
+    """{horse_key: 同程最佳時間顯示字串}；冇 horse_code 嘅馬唔計。失敗返回 {}，唔影響評分。"""
+    if not isinstance(race_context, dict) or not isinstance(horses, dict):
+        return {}
+    try:
+        import hkjc_same_course_times as same_course
+
+        codes = {}
+        for key, horse in horses.items():
+            data = horse.get("_data") if isinstance(horse, dict) else None
+            code = (horse.get("horse_code") if isinstance(horse, dict) else None) or (
+                data.get("horse_code") if isinstance(data, dict) else None)
+            if code:
+                codes[key] = str(code).strip()
+        return same_course.field_best_times(race_context.get("race_date"), same_course.race_cell(race_context), codes)
+    except Exception:  # noqa: BLE001 — display only
+        return {}
+
+
 def _load_first_section_deltas(logic_path, race_context, horses):
     """Facts → Logic `_data["first_section_min_delta"]` (EXP-20261016-52/53)."""
     facts_path = _facts_path_for_logic(logic_path, race_context.get("race_number"))
@@ -1030,6 +1049,11 @@ class HKJCAutoOrchestrator:
             horse_obj = horses.get(h_num)
             if isinstance(horse_obj, dict) and isinstance(horse_obj.setdefault("_data", {}), dict):
                 horse_obj["_data"]["first_section_min_delta"] = value
+        # 同程最佳時間（對全場）：只顯示，引擎冇任何地方讀（EXP-20261025-08 入分 REJECT）。
+        for h_num, text in _same_course_best_times(race_context, horses).items():
+            horse_obj = horses.get(h_num)
+            if isinstance(horse_obj, dict) and isinstance(horse_obj.setdefault("_data", {}), dict):
+                horse_obj["_data"]["same_course_best_time"] = text
         injury_date = meeting_date if isinstance(race_context, dict) else None
         for h_num, records in _load_official_injury_records(race_file, injury_date, horses).items():
             horse_obj = horses.get(h_num)
