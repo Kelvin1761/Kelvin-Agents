@@ -597,8 +597,34 @@ def au_thoroughbred_meetings(payload: dict) -> list[str]:
     return sorted(set(names))
 
 
-def api_day_meetings(runlog: RunLog, day: str) -> list[str]:
-    """AU thoroughbred meetings for one date from AllRacing. [] on failure (logged)."""
+def au_meeting_first_starts(payload: dict) -> dict[str, int]:
+    """AllRacing payload → {venue: first race start (epoch)} for the same meetings
+    `au_thoroughbred_meetings` returns."""
+    starts: dict[str, int] = {}
+    for day in (payload or {}).get("dates") or []:
+        for section in day.get("sections") or []:
+            if str(section.get("raceType") or "").lower() != "horse":
+                continue
+            for meeting in section.get("meetings") or []:
+                name = str(meeting.get("name") or "").strip()
+                if (meeting.get("regionName") != "Australia"
+                        or meeting.get("isInternational") or not name):
+                    continue
+                for event in meeting.get("events") or []:
+                    try:
+                        when = int(event.get("startTime"))
+                    except (TypeError, ValueError):
+                        continue
+                    if name not in starts or when < starts[name]:
+                        starts[name] = when
+    return starts
+
+
+def api_day_meetings(runlog: RunLog, day: str,
+                     starts: dict[str, int] | None = None) -> list[str]:
+    """AU thoroughbred meetings for one date from AllRacing. [] on failure (logged).
+
+    `starts`, when given, is filled with {venue: first race start epoch}."""
     from claw_sportsbet_form import SportsbetFormFetcher
     fetcher = SportsbetFormFetcher(delay=fetch_delay(), use_cache=False,
                                    verbose=False, cache_only=False)
@@ -611,6 +637,8 @@ def api_day_meetings(runlog: RunLog, day: str) -> list[str]:
     if not payload:
         runlog.warn(f"AllRacing API 回空（{day}）")
         return []
+    if starts is not None:
+        starts.update(au_meeting_first_starts(payload))
     return au_thoroughbred_meetings(payload)
 
 
@@ -1505,6 +1533,23 @@ def step_speed_shadow(runlog: RunLog) -> bool:
 
 
 
+def classify_unclaimed(target: str, first_start: int | None,
+                       now: datetime | None = None) -> str:
+    """API 有、索引頁冇嘅澳洲場次：仲等得到定係已經開跑。
+
+    `awaiting_source`（可重試）= 場次未開跑，sportsbetform 之後可能會列出，
+    之後每個排程都會再試。`source_never_listed`（要人睇）= 已經開跑／賽日已過
+    仲未有 —— 唔會再有賽前分析，唔可以靜靜當完成。
+    """
+    tz = ZoneInfo(TIMEZONE) if ZoneInfo else None
+    now = now or datetime.now(tz)
+    if first_start is not None:
+        return ("awaiting_source" if now.timestamp() < first_start
+                else "source_never_listed")
+    return ("awaiting_source" if date.fromisoformat(target) >= now.date()
+            else "source_never_listed")
+
+
 # ── 步驟 2：分析下一個賽日 ─────────────────────────────────────────────────
 def step_analyse_next_day(runlog: RunLog, review_day: date, *,
                           max_meetings: int = 0, rounds: int = 1,
@@ -1534,7 +1579,8 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
     api_venues = dict(by_day.get(target, {}))
     # NextEvents is truncated (~30 races): add every AU meeting AllRacing lists for
     # the day, without going (racecard going is used until NextEvents reaches it).
-    day_list = api_day_meetings(runlog, target)
+    first_starts: dict[str, int] = {}
+    day_list = api_day_meetings(runlog, target, starts=first_starts)
     added = [name for name in day_list
              if not any(_venue_key(name) == _venue_key(v) for v in api_venues)]
     for name in added:
@@ -1585,6 +1631,16 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
                     f"（索引頁剩低配唔到嘅 slug：{excluded}）")
         runlog.step("discover", "unclaimed-au-venues", venues=unclaimed,
                     unmatched_slugs=excluded)
+        # ⚠️ 以前淨係 warn：run 照報 ok / complete，場次靜靜消失（2026-10-26
+        # Newcastle：Sportsbet API 有，sportsbetform 索引頁成頁冇，dashboard 得 2/3）。
+        # 記成 meeting 狀態，令 finish_run 出 partial、運行摘要推送、下個排程重試。
+        for venue in unclaimed:
+            status = classify_unclaimed(target, first_starts.get(venue))
+            runlog.meeting(
+                f"{target} {venue}", status,
+                detail="Sportsbet API 有呢個場次，但 sportsbetform 索引頁冇列出 —— "
+                       "未有任何分析" + ("；之後每個排程會再試" if status == "awaiting_source"
+                                          else "；場次已開跑，唔會再有賽前分析"))
     if not planned:
         raise TemporaryFailure(f"{target} 索引頁一個澳洲場次都配唔到")
     if max_meetings and len(planned) > max_meetings:
@@ -3640,10 +3696,11 @@ def archive_dashboard_key(folder_name: str) -> str:
 # ── mode 編排 ───────────────────────────────────────────────────────────────
 #: 重試會解決嘅狀態 → run 報 partial（exit 75），下一次排程接住做。
 RETRYABLE_STATUSES = {"pending_extraction", "refresh_deferred", "temporary_failure",
-                      "reflection_failed", "analysed_partial"}
+                      "reflection_failed", "analysed_partial", "awaiting_source"}
 #: 要人手睇嘅狀態 → run 唔算失敗，但要喺 log 打出嚟，唔可以靜靜過。
 ATTENTION_STATUSES = {"pending_results", "partial_results", "archive_blocked_corpus",
-                      "archive_conflict", "no_local_folder", "failed"}
+                      "archive_conflict", "no_local_folder", "failed",
+                      "source_never_listed"}
 
 
 def finish_run(runlog: RunLog, dashboard_ok: bool, hard_temporary: bool) -> int:

@@ -87,10 +87,25 @@ def morning(run: dict) -> str | None:
     return "\n".join(lines)
 
 
+def _unanalysed(run: dict) -> list[str]:
+    """API 話有、但根本冇分析嘅場次（來源未列出）。"""
+    out = []
+    for m in run.get("meetings_processed") or []:
+        status = m.get("status")
+        if status in ("awaiting_source", "source_never_listed"):
+            tail = "（來源未列出，之後會再試）" if status == "awaiting_source" \
+                else "（已開跑，冇賽前分析）"
+            out.append(f"· {_venue(m['meeting'])}{tail}")
+    return sorted(set(out))
+
+
 def evening(run: dict) -> str | None:
     added = run.get("races_added") or []
-    if not added:
+    missing = _unanalysed(run)
+    if not added and not missing:
         return None
+    if not added:
+        return "\n".join(["⚠️ 有澳洲場次未有分析", ""] + missing)
     dep = run.get("cloudflare_deployment") or {}
     progressive = run.get("progressive_publication") or {}
     rejected = run.get("publication_rejected") or {}
@@ -117,6 +132,8 @@ def evening(run: dict) -> str | None:
         lines.append("⚠️ 發佈完成但核實唔到，體檢會跟進")
     else:
         lines.append("❌ 未發佈得到 —— 體檢會嘗試補發")
+    if missing:
+        lines += ["", "⚠️ 以下場次未有分析："] + missing
     return "\n".join(lines)
 
 
