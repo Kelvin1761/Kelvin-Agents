@@ -13,7 +13,7 @@ const EMPTY_DASHBOARD_DATA = {
 
 function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
   let html = fs.readFileSync(new URL("../static_template.html", import.meta.url), "utf8");
-  html = html.replace('"__DATA_PLACEHOLDER__"', JSON.stringify(dashboardData));
+  html = html.replace('"__DATA_PLACEHOLDER__"', JSON.stringify(dashboardData).replaceAll("<", "\\u003c"));
   const scriptMatch = html.match(/<script>\s*([\s\S]*?)<\/script>/);
   assert.ok(scriptMatch, "static template script should exist");
 
@@ -59,6 +59,14 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
   });
   const source = `${scriptMatch[1]}
     globalThis.__dashboardTest = {
+      nbaStats, nbaRecords, nbaDashboard, nbaSelectRows, nbaShortDate,
+      nbaShouldAutoRefresh, checkForNewSnapshot,
+      setFetchForTest: (fn) => { fetch = fn; },
+      setReloadForTest: (fn) => { window.location.reload = fn; },
+      resetSnapshotClockForTest: () => { lastSnapshotCheckAt = 0; },
+      setVisibilityForTest: (value) => { document.visibilityState = value; },
+      setFocusedElementForTest: (value) => { document.activeElement = value; },
+      setSeenAutoVersionForTest: (value) => { sessionStorage.setItem('wc_nba_auto_version', value); },
       calcProfit,
       mergeBetStateMaps,
       renderSilk: typeof renderSilk === "function" ? renderSilk : null,
@@ -912,14 +920,15 @@ test("multi-sport workspace shows provenance, archived-odds warnings, and add-to
     }],
   };
   const data = { ...EMPTY_DASHBOARD_DATA, sports_history: history };
-  const { renderSportsWorkspace } = loadTemplateFunctions(data);
+  const { renderSportsWorkspace, setSportsTabForTest } = loadTemplateFunctions(data);
+  setSportsTabForTest("archive");
   const nba = renderSportsWorkspace("nba");
   const tennis = renderSportsWorkspace("tennis");
 
   assert.match(nba, /NYK @ ATL/);
   assert.match(nba, /原始賠率未存檔/);
   assert.match(nba, /NBA Reflector observation log/);
-  assert.match(nba, /加入投注單/);
+  assert.doesNotMatch(nba, /onclick="openSportsBetModal/);
   assert.match(tennis, /Quentin Halys vs Mariano Navone/);
   assert.match(tennis, /1\.70/);
   assert.match(tennis, /模型概率 74\.8%/);
@@ -1552,7 +1561,7 @@ test("ROI explains that new analysis replaces recommendations but never confirme
     },
   };
   const { renderSportsWorkspace, setSportsTabForTest } = loadTemplateFunctions(data);
-  setSportsTabForTest("roi");
+  setSportsTabForTest("bets");
   const html = renderSportsWorkspace("nba");
 
   assert.match(html, /新分析只會替換「今日建議」/);
@@ -1935,14 +1944,15 @@ test("latest NBA analysis replaces historical fallback even when no BET qualifie
       reasons:["未通過正式投注閘"],legs:[{selection:"Actual Star PTS 20+",odds:1.5},{selection:"Another Star REB 5+",odds:1.4}]}]}]};
   const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{analysis_run_id:"nba:2099-10-25",validation_status:"blocked",recommendations:[],latest_analysis:latest}}},
     sports_history:{nba:[{id:"old",event_name:"OLD APRIL CASE",legs:[],metrics:{},outcome:"review"}]}});
+  api.setSportsTab("roi");
   const html=api.renderSportsWorkspace("nba");
-  assert.match(html,/最新分析/);assert.match(html,/BKN @ CLE/);assert.match(html,/Actual Star PTS 20\+/);
+  assert.match(html,/賽前分析/);assert.match(html,/BKN @ CLE/);assert.match(html,/Actual Star PTS 20\+/);
   assert.match(html,/LATEST FULL GAME REPORT/);assert.match(html,/已過期，需刷新/);assert.match(html,/SGM 候選/);
   assert.match(html,/穩膽 fallback：近期命中率合格 12 腿/);assert.match(html,/同時非負 edge 0 腿/);
   assert.match(html,/真實組合價 ≥2.0/);
   assert.doesNotMatch(html,/OLD APRIL CASE/);assert.doesNotMatch(html,/Reflector/);assert.doesNotMatch(html,/onsubmit=/);
   api.setSportsTab("archive");assert.match(api.renderSportsWorkspace("nba"),/OLD APRIL CASE/);
-  api.setSportsTab("history");assert.match(api.renderSportsWorkspace("nba"),/LATEST FULL GAME REPORT/);
+  api.setSportsTab("roi");assert.match(api.renderSportsWorkspace("nba"),/LATEST FULL GAME REPORT/);
 });
 
 test("latest NBA view includes unopened and insufficient-data games", () => {
@@ -1950,6 +1960,87 @@ test("latest NBA view includes unopened and insufficient-data games", () => {
     {event_name:"MIL @ PHI",status:"waiting_player_markets",status_reason:"球員市場未開"},
     {event_name:"MIA @ CHA",status:"data_insufficient",status_reason:"資料未達完整分析要求"}]};
   const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{validation_status:"blocked",recommendations:[],latest_analysis:latest}}}});
+  api.setSportsTab("roi");
   const html=api.renderSportsWorkspace("nba");
   assert.match(html,/MIL @ PHI/);assert.match(html,/MIA @ CHA/);assert.match(html,/等候開盤/);assert.match(html,/資料不足/);
+});
+
+
+test("NBA dashboard embeds periods and counts only verified paper results", () => {
+  const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Sydney'}).format(new Date());
+  const row=(id,state,odds,legs)=>({id,day,event_name:'BOS @ NYK',stake:1,odds,state,legs});
+  const legs=[{player:'<script>alert(1)</script>',stat:'PTS',line:20,state:'won',actual:25},{player:'Other',stat:'REB',line:6,state:'lost',actual:4}];
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[row('a','won',2.5,[legs[0]]),row('b','lost',2.2,legs),row('c','pending',2.4,[{...legs[0],state:'pending'}]),row('d','unpriced',2.3,[{...legs[0],state:'void'}])]}}}}});
+  const rows=api.nbaRecords(), metrics=api.nbaStats(rows);
+  assert.equal(metrics.n,4);assert.equal(metrics.decided,2);assert.equal(metrics.wins,1);
+  assert.equal(metrics.profit,.5);assert.equal(metrics.roi,25);
+  assert.equal(metrics.legN,3);assert.equal(metrics.legWins,2);
+  const html=api.renderSportsWorkspace('nba');
+  assert.doesNotMatch(html,/class="dashboard-periods"|setNbaPeriod/);assert.match(html,/\+25%/);
+  assert.match(html,/每注 \$1/);assert.doesNotMatch(html,/<script>alert/);
+  assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/示範結算/);
+});
+
+test("missing NBA evidence shows unavailable rather than a zero-return claim",()=>{
+  const api=loadTemplateFunctions(EMPTY_DASHBOARD_DATA),html=api.renderSportsWorkspace('nba');
+  assert.match(html,/紀錄暫未能讀取/);assert.doesNotMatch(html,/ROI<\/span>/);
+});
+
+
+
+test("expired saved Kawhi Barrett analysis never appears above the latest slate",()=>{
+ const card={id:'nba:2099-10-26:TOR_MIN:combo:1',sport:'nba',event_date:'2099-10-26',event_name:'TOR @ MIN',analysis_only:true,decision:'OBSERVE',validation_status:'analysis_only',odds_status:'published_snapshot_price',odds:3.5,legs:[{selection:'Kawhi Leonard REB 6+'},{selection:'RJ Barrett PTS 20+'}]};
+ const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{validation_status:'blocked',recommendations:[],analysis_cards:[card],latest_analysis:{event_date:'2099-10-26',coverage:{analysed_games:1},games:[{event_name:'TOR @ MIN',status:'analysed',market_count:0,formal_sgm_count:0,review_candidates:[],player_markets:[]}]}}}}});
+ api.setSportsTabForTest('roi');const html=api.renderSportsWorkspace('nba');
+ assert.match(html,/TOR @ MIN/);assert.doesNotMatch(html,/Kawhi Leonard|RJ Barrett|已驗證 SGM/);
+ assert.equal(api.sportsAnalysisCards('nba').length,1); // Archived evidence remains intact.
+});
+
+
+test("Sydney history labels preserve winter dates without a hard-coded DST offset",()=>{
+ const api=loadTemplateFunctions(EMPTY_DASHBOARD_DATA);
+ assert.match(api.nbaShortDate('2026-07-25'),/25\/7/);
+ assert.match(api.nbaShortDate('2026-10-25'),/25\/10/);
+});
+
+
+test("NBA refreshes read-only tracking views while preserving drafts and preventing edge reload loops",()=>{
+ const api=loadTemplateFunctions(EMPTY_DASHBOARD_DATA);
+ api.showSport('nba');api.setVisibilityForTest('visible');
+ assert.equal(api.nbaShouldAutoRefresh('new-version'),true);
+ api.setSportsTabForTest('archive');assert.equal(api.nbaShouldAutoRefresh('new-version'),true);
+ api.setSportsTabForTest('bets');assert.equal(api.nbaShouldAutoRefresh('new-version'),false);
+ api.setSportsTabForTest('roi');assert.equal(api.nbaShouldAutoRefresh('new-version'),false);
+ api.setSportsTabForTest('history');api.setFocusedElementForTest({tagName:'INPUT'});
+ assert.equal(api.nbaShouldAutoRefresh('new-version'),false);
+ api.setFocusedElementForTest(null);api.setSeenAutoVersionForTest('new-version');
+ assert.equal(api.nbaShouldAutoRefresh('new-version'),false);
+ assert.equal(api.nbaShouldAutoRefresh('next-version'),true);
+ api.setVisibilityForTest('hidden');assert.equal(api.nbaShouldAutoRefresh('next-version'),false);
+});
+
+
+test("a newly deployed result refreshes NBA tracking once and stores the selected view",async()=>{
+ const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,meta:{generated_at:'2000-01-01T00:00:00'}});
+ api.showSport('nba');api.setSportsTabForTest('archive');api.setVisibilityForTest('visible');
+ let reloads=0;api.setReloadForTest(()=>{reloads++});
+ api.setFetchForTest(async()=>new Response(JSON.stringify({generated_at:'2000-01-02T00:00:00'}),{status:200}));
+ await api.checkForNewSnapshot();assert.equal(reloads,1);
+ api.resetSnapshotClockForTest();await api.checkForNewSnapshot();assert.equal(reloads,1);
+});
+
+
+test("history has embedded week month all only, never today's dashboard heading",()=>{
+ const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[]}}}}});
+ api.setSportsTabForTest('archive');const html=api.renderSportsWorkspace('nba');
+ assert.match(html,/歷史投注表現/);assert.match(html,/累積淨利/);assert.doesNotMatch(html,/今日投注表現|setNbaPeriod\('history','day'\)/);
+ for(const period of ['week','month','all']) assert.ok(html.includes("setNbaPeriod('history','"+period+"')"));
+ assert.match(html,/class="dashboard-periods"/);
+});
+
+test("research candidates including unquoted legs are tracked without invented ROI",()=>{
+ const day=new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Sydney'}).format(new Date());
+ const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[{id:'r',day,event_name:'BOS @ NYK',stake:1,odds:null,state:'unpriced',tracking_kind:'research',legs:[{player:'Test',stat:'PTS',line:20,state:'won',actual:25}]}]}}}}});
+ const stats=api.nbaStats(api.nbaRecords());assert.equal(stats.n,1);assert.equal(stats.legWins,1);assert.equal(stats.roi,null);assert.equal(stats.sgm,100);
+ const html=api.renderSportsWorkspace('nba');assert.match(html,/研究候選/);assert.match(html,/待核價/);assert.match(html,/expanded-legs/);assert.doesNotMatch(html,/累積淨利|dashboard-chart|查看 1 腳及賽果/);assert.match(html,/球衣/);assert.doesNotMatch(html,/null 倍/);
 });

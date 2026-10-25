@@ -405,6 +405,7 @@ def main():
     parser = argparse.ArgumentParser(description='NBA Reflector Results Fetcher')
     parser.add_argument('--date', required=True, 
                        help='US game date (YYYY-MM-DD or MM/DD/YYYY)')
+    parser.add_argument('--games', default='', help='Only fetch these canonical AWAY_HOME tags (comma separated); merge other cached games')
     parser.add_argument('--dir', required=True, 
                        help='Output directory for Results Brief JSON')
     args = parser.parse_args()
@@ -450,7 +451,11 @@ def main():
     espn = espn_index(espn_events) if espn_ok else None
     results = []
     seen_ids = set()
+    requested = {tag.strip() for tag in args.games.split(',') if tag.strip()}
     for game in games:
+        tag = canonical_team_abbr(game.get('awayTeam',{}).get('teamTricode',''))+'_'+canonical_team_abbr(game.get('homeTeam',{}).get('teamTricode',''))
+        if requested and tag not in requested:
+            continue
         if game.get('gameId') in seen_ids:      # ScoreboardV3 lists every game twice
             continue
         seen_ids.add(game.get('gameId'))
@@ -465,6 +470,18 @@ def main():
             for alert in result['low_minutes_alert']:
                 print(f"    ⚠️ 低上場時間: {alert}")
 
+    # Incremental polls preserve other games, including previously verified Finals.
+    out_path = os.path.join(target_dir, f'Results_Brief_{game_date_file}.json')
+    if requested and os.path.isfile(out_path):
+        try:
+            with open(out_path, encoding='utf-8') as existing:
+                previous = json.load(existing)
+            if previous.get('date') == game_date_file and previous.get('_version') == 'RESULTS_BRIEF_V1':
+                fetched = {row.get('game_id') for row in results}
+                results = [row for row in previous.get('games', []) if row.get('game_id') not in fetched] + results
+        except (OSError, ValueError, TypeError, AttributeError):
+            pass
+
     # Build final brief
     brief = {
         '_version': 'RESULTS_BRIEF_V1',
@@ -476,8 +493,9 @@ def main():
 
     # Save
     out_path = os.path.join(target_dir, f'Results_Brief_{game_date_file}.json')
-    with open(out_path, 'w', encoding='utf-8') as f:
+    with open(out_path+'.tmp', 'w', encoding='utf-8') as f:
         json.dump(brief, f, ensure_ascii=False, indent=2)
+    os.replace(out_path+'.tmp', out_path)
 
     print(f"\n{'=' * 60}")
     print(f"🏆 完成！{len(results)} 場賽果已擷取")

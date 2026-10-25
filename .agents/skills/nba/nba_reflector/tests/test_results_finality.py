@@ -165,3 +165,25 @@ def test_ledger_skips_a_non_final_brief(tmp_path, monkeypatch):
     ledger.append_rows(root, "2026-10-21", [{"row_type": "model_obs", "game_tag": "BOS_DET", "player": "Jalen Duren",
                                              "market": "pts", "line": 15.0, "side": "over", "target_date": "2026-10-21"}])
     assert ledger.settle("2026-10-21", brief, root=root)["appended"] == 0
+
+
+def test_incremental_cli_fetches_only_due_game_and_preserves_other_cached_finals(tmp_path, monkeypatch):
+    """An overtime retry must not refetch every box score or erase earlier Finals."""
+    brief=tmp_path/'Results_Brief_2026-10-24.json'
+    previous={'_version':'RESULTS_BRIEF_V1','date':'2026-10-24','games':[{'game_id':'cached','status':'Final','away':{'team':'LAL'},'home':{'team':'MIA'}}]}
+    brief.write_text(json.dumps(previous))
+    games=[{'gameId':'due','awayTeam':{'teamTricode':'BOS'},'homeTeam':{'teamTricode':'NYK'}},
+           {'gameId':'future','awayTeam':{'teamTricode':'GSW'},'homeTeam':{'teamTricode':'CLE'}}]
+    monkeypatch.setattr(f,'fetch_scoreboard',lambda day:games)
+    monkeypatch.setattr(f,'fetch_espn_events',lambda day:([],True))
+    calls=[]
+    def process(game,**kwargs):
+        calls.append(game['gameId'])
+        return {'game_id':game['gameId'],'status':'Final','final_score':'BOS 100 - NYK 90','blowout':False}
+    monkeypatch.setattr(f,'process_game',process)
+    monkeypatch.setattr(sys,'argv',['fetch_nba_results.py','--date','2026-10-24','--dir',str(tmp_path),'--games','BOS_NYK'])
+    f.main()
+    saved=json.loads(brief.read_text())
+    assert calls==['due']
+    assert {g['game_id'] for g in saved['games']}=={'cached','due'}
+    assert saved['total_games']==2 and not Path(str(brief)+'.tmp').exists()

@@ -723,6 +723,25 @@ def _merge_sports_feed(cached, fresh, today=None):
             merged["sports"][sport] = kept
             print(f"   ⚠️ Preserved valid {sport} feed from live snapshot; "
                   f"local view was {new_status or 'missing'} / {_run_date(new) or 'undated'}")
+    # Tracking has its own read-only evidence authority, independent of live BET status.
+    old_tracking = (cached_sports.get('nba') or {}).get('tracking')
+    fresh_tracking = ((fresh or {}).get('sports', {}).get('nba') or {}).get('tracking')
+    nba = merged['sports'].setdefault('nba', {})
+    if fresh_tracking and fresh_tracking.get('status') == 'valid':
+        nba['tracking'] = copy.deepcopy(fresh_tracking)
+        covered = set(fresh_tracking.get('covered_dates', []))
+        # A different domain's checkout, or later cold archival, must not erase
+        # already-published history. Locally covered dates remain authoritative.
+        retained = [r for r in (old_tracking or {}).get('records', [])
+                    if r.get('day') not in covered]
+        by_id = {r['id']: r for r in retained}
+        by_id.update({r['id']: r for r in fresh_tracking.get('records', [])})
+        nba['tracking']['records'] = list(by_id.values())
+        if retained:
+            nba['tracking']['retained_dates'] = sorted({r['day'] for r in retained})
+    elif old_tracking:
+        nba['tracking'] = copy.deepcopy(old_tracking)
+        nba['tracking']['status'] = 'stale'
     return merged
 
 
@@ -766,7 +785,7 @@ def generate_html(data):
     css_path = Path(__file__).resolve().parent / "frontend" / "src" / "index.css"
     css_content = css_path.read_text(encoding="utf-8") if css_path.exists() else ""
     
-    data_json = json.dumps(data, ensure_ascii=False, default=str)
+    data_json = json.dumps(data, ensure_ascii=False, default=str).replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
     generated_time = datetime.now().strftime("%Y-%m-%d %H:%M")
     
     html_template_path = Path(__file__).resolve().parent / "static_template.html"
