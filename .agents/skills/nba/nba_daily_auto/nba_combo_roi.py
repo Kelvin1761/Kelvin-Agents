@@ -106,7 +106,13 @@ def settle_combos(rows: list[dict]) -> list[dict]:
                    for leg in combo.get("legs") or []]
         if not results:
             continue
-        if any(r == "void" for r in results):
+        # A settled miss means the selection lost whatever the other legs did.
+        # Checking void first dropped known losses from ROI (bias upward). This
+        # assumes void legs are resettled on the remaining legs, not that one void
+        # refunds the whole SGM (Sportsbet's exact SGM void wording not yet verified).
+        if any(r == "miss" for r in results):
+            state = "loss"
+        elif any(r == "void" for r in results):
             state = "void"
         elif any(r == "unresolved" for r in results):
             state = "pending"
