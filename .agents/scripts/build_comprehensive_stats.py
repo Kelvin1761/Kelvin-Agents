@@ -4,8 +4,8 @@
 引擎（hkjc_wong_choi_auto）食嘅統計檔全部係靜態快照，之前冇生成器。
 呢個 script 由 race_results_{season}.csv 重新聚合出引擎消耗嘅檔案，
 並可以由季度賽果資料夾（full_day_results.json）自動追加快照之後嘅新賽日
-（新賽日 rows 冇距離／班次 → 只入 master／組合／換騎／場地統計，
- 同程統計維持由 race_results 主表計）。
+（追加 rows 同主表一樣齊欄：完成時間、檔位、負磅、走位、班次…，
+ 見 `result_row`）。
 
 重建檔案（每季）：
   jockey_master_stats.csv / trainer_master_stats.csv      ← 連續實績評分用
@@ -26,6 +26,7 @@ from __future__ import annotations
 import os
 os.environ.setdefault("PYTHONUTF8", "1")
 import argparse
+import ast
 import json
 import re
 import shutil
@@ -138,6 +139,145 @@ def _num(v):
         return None
 
 
+# Same labels as the original snapshot builder (scratch/aggregate_all_stats.py),
+# so appended rows group together with the materialized race_results CSV rows.
+CLASS_LABELS = (
+    ("新馬", "Griffin"), ("第一班", "Class 1"), ("第二班", "Class 2"), ("第三班", "Class 3"),
+    ("第四班", "Class 4"), ("第五班", "Class 5"), ("一級賽", "Group 1"), ("國際", "Group 1"),
+    ("二級賽", "Group 2"), ("三級賽", "Group 3"),
+)
+
+
+def _header_rows(race: dict) -> list[list[str]]:
+    raw = race.get("sectional_times") or race.get("cumulative_times") or []
+    if isinstance(raw, str):
+        # The results writer stores the header table as a Python repr string.
+        try:
+            raw = ast.literal_eval(raw)
+        except (ValueError, SyntaxError):
+            return []
+    return [[str(c).strip() for c in row] for row in raw if isinstance(row, (list, tuple))]
+
+
+def _cell_after(rows: list[list[str]], label: str) -> str:
+    for row in rows:
+        for i, cell in enumerate(row):
+            if label in cell:
+                rest = [c for c in row[i + 1:] if c and c != ":"]
+                return rest[0] if rest else "Unknown"
+    return "Unknown"
+
+
+def race_header(race: dict) -> dict:
+    """Class, going and course from the official result header.
+
+    The snapshot builder put the race title in Going and the race name in
+    Course (it took the first cell of the row instead of the cell after the
+    label). Rows appended here carry the real values: ``好地`` and
+    ``草地 - "C" 賽道``.
+    """
+    rows = _header_rows(race)
+    text = " ".join(" ".join(r) for r in rows) or json.dumps(race.get("sectional_times") or "", ensure_ascii=False)
+    title = next((r[0] for r in rows if r and "米" in r[0] and " - " in r[0]), text)
+    # None (not "Unknown") so pit_sources can still fill it from Logic／排位表.
+    race_class = next((label for token, label in CLASS_LABELS if token in title), None)
+    return {"RaceClass": race_class, "Going": _cell_after(rows, "場地狀況"), "Course": _cell_after(rows, "賽道")}
+
+
+def _finish_seconds(value) -> float | None:
+    match = re.fullmatch(r"(?:(\d+):)?(\d+(?:\.\d+)?)", str(value or "").strip())
+    if not match or not match.group(1):
+        return None
+    return int(match.group(1)) * 60 + float(match.group(2))
+
+
+def _run_style(positions: str) -> str:
+    first = str(positions or "").split()[:1]
+    if not first or not first[0].isdigit():
+        return "Unknown"
+    early = int(first[0])
+    return "Frontrunner" if early <= 3 else "Midpack" if early <= 7 else "Closer"
+
+
+def _odds_bucket(odds: float | None) -> str:
+    if not odds or odds <= 0:
+        return "Unknown"
+    for cap, label in ((3, "Hot Fav (<3)"), (6, "Fav (3-6)"), (10, "Contender (6-10)"),
+                       (20, "Mid (10-20)"), (50, "Longshot (20-50)")):
+        if odds < cap:
+            return label
+    return "Outsider (50+)"
+
+
+def _weight_bucket(wt: float | None) -> str:
+    if wt is None:
+        return "Unknown"
+    for cap, label in ((115, "Light (<=115)"), (120, "Med-Light (116-120)"),
+                       (126, "Medium (121-126)"), (130, "Med-Heavy (127-130)")):
+        if wt <= cap:
+            return label
+    return "Heavy (131+)"
+
+
+def hkjc_season(day: str) -> str:
+    year, month = int(day[:4]), int(day[5:7])
+    start = year if month >= 9 else year - 1
+    return f"{start % 100:02d}/{(start + 1) % 100:02d}"
+
+
+def result_row(day: str, race_key, race: dict, row: dict, header: dict) -> dict | None:
+    """One runner from ``full_day_results.json`` in the race_results CSV schema.
+
+    Until 2026-10-25 appended rows only had the 12 BASE_COLUMNS, so every
+    meeting after the 2026-05-09 snapshot had no finish time, draw, weights,
+    running positions or horse ID — and nothing reported it.
+    """
+    pos = _num(re.sub(r"\D", "", str(row.get("pos", ""))) or None)
+    if pos is None or pos <= 0:
+        return None
+    venue = VENUE_NORM.get(str(race.get("venue", "")).strip(), str(race.get("venue", "")).strip())
+    distance, track = race_metadata(race)
+    odds = _num(row.get("win_odds"))
+    win = 1 if pos == 1 else 0
+    actual_wt = _num(row.get("actual_wt"))
+    positions = str(row.get("running_positions") or "").strip()
+    horse = str(row.get("horse_name", ""))
+    horse_id = re.search(r"\(([A-Z]\d{3})\)\s*$", horse)
+    race_no = _num(race.get("race_no")) or _num(race_key)
+    return {
+        "Date": day,
+        "Month": day[:7],
+        "Season": hkjc_season(day),
+        "RaceNo": race_no,
+        "RaceClass": header["RaceClass"],
+        "Venue": venue,
+        "Track": track,
+        "Course": header["Course"],
+        "Going": header["Going"],
+        "Distance": distance,
+        "Horse": horse,
+        "Jockey": str(row.get("jockey", "")).strip(),
+        "Trainer": str(row.get("trainer", "")).strip(),
+        "Draw": _num(row.get("draw")),
+        "Rank": pos,
+        "Win": win,
+        "Place": 1 if pos <= 3 else 0,
+        "Odds": odds,
+        "OddsBucket": _odds_bucket(odds),
+        "Profit": (odds - 1.0) if (win and odds) else (-1.0 if odds else 0.0),
+        "ActualWt": actual_wt,
+        "WtBucket": _weight_bucket(actual_wt),
+        "HorseWt": _num(row.get("horse_wt")),
+        "FinishTimeSec": _finish_seconds(row.get("finish_time")),
+        "RunStyle": _run_style(positions),
+        "RunningPos": positions or None,
+        "HorseID": horse_id.group(1) if horse_id else None,
+        "Sire": "Unknown",
+        "DamSire": "Unknown",
+        "Origin": "Unknown",
+    }
+
+
 def load_base_rows(season_key: str) -> pd.DataFrame:
     config = SEASONS[season_key]
     path = STATS_ROOT / season_key / str(config["csv"])
@@ -176,28 +316,11 @@ def append_new_meetings(season_key: str, base: pd.DataFrame) -> tuple[pd.DataFra
         for race_key, race in data.items():
             if not isinstance(race, dict):
                 continue
-            venue = VENUE_NORM.get(str(race.get("venue", "")).strip(), str(race.get("venue", "")).strip())
-            distance, track = race_metadata(race)
+            header = race_header(race)
             for row in race.get("results", []):
-                pos = _num(re.sub(r"\D", "", str(row.get("pos", ""))) or None)
-                if pos is None or pos <= 0:
-                    continue
-                odds = _num(row.get("win_odds"))
-                win = 1 if pos == 1 else 0
-                new_rows.append({
-                    "Date": day_dir.name,
-                    "Venue": venue,
-                    "Track": track,
-                    "Distance": distance,
-                    "Horse": str(row.get("horse_name", "")),
-                    "Jockey": str(row.get("jockey", "")).strip(),
-                    "Trainer": str(row.get("trainer", "")).strip(),
-                    "Rank": pos,
-                    "Win": win,
-                    "Place": 1 if pos <= 3 else 0,
-                    "Odds": odds,
-                    "Profit": (odds - 1.0) if (win and odds) else (-1.0 if odds else 0.0),
-                })
+                record = result_row(day_dir.name, race_key, race, row, header)
+                if record is not None:
+                    new_rows.append(record)
         added_dates.append(day_dir.name)
     if not new_rows:
         return base, []
@@ -281,6 +404,46 @@ def load_all_completed_rows() -> pd.DataFrame:
         base, _added = append_new_meetings(season_key, base)
         frames.append(base)
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame(columns=BASE_COLUMNS)
+
+
+COVERAGE_COLUMNS = (
+    "RaceNo", "RaceClass", "Track", "Distance", "Draw", "Odds", "ActualWt",
+    "HorseWt", "FinishTimeSec", "RunningPos", "HorseID",
+)
+
+
+def coverage_regressions(rows: pd.DataFrame, recent_days: int = 60,
+                         healthy: float = 0.90, dead: float = 0.50) -> list[str]:
+    """Columns that used to be filled but have gone empty recently.
+
+    Fill rate over the last ``recent_days`` vs the best calendar month before
+    that. A column whose best month was ≥ ``healthy`` and is < ``dead`` now is
+    a silent extraction break (2026-05-13 → 2026-10-25: finish time, draw,
+    weights and horse ID all 0% while every consumer kept running).
+
+    The reference is the best month, not the pooled older rows: pooling lets
+    the dead period dilute its own baseline — five dead months had already
+    pulled pooled coverage to 89%, under the alarm line.
+    """
+    if rows.empty:
+        return []
+    dates = pd.to_datetime(rows["Date"].astype(str), errors="coerce")
+    cutoff = dates.max() - pd.Timedelta(days=recent_days)
+    old_mask, new_mask = dates <= cutoff, dates > cutoff
+    if not old_mask.any() or not new_mask.any():
+        return []
+    months = dates[old_mask].dt.to_period("M")
+    out = []
+    for column in COVERAGE_COLUMNS:
+        if column in rows:
+            best = rows.loc[old_mask, column].notna().groupby(months).mean().max()
+            now = rows.loc[new_mask, column].notna().mean()
+        else:
+            best, now = 0.0, 0.0
+        if best >= healthy and now < dead:
+            out.append(f"{column}: 歷史最佳月 {best:.1%} → 近 {recent_days} 日 {now:.1%}"
+                       f"（{int(new_mask.sum())} 行）")
+    return out
 
 
 def build_trainer_recency_snapshot(
@@ -380,7 +543,19 @@ def main() -> int:
     ap.add_argument("--write", action="store_true", help="覆寫現有 CSV（預設只 check）")
     ap.add_argument("--no-extend", action="store_true", help="唔追加快照後嘅新賽日")
     ap.add_argument("--season", choices=list(SEASONS), help="只處理一季（預設全部）")
+    ap.add_argument("--coverage-check", action="store_true",
+                    help="只檢查追加 rows 有冇欄位靜靜變空（❌ → exit 1），唔重算")
     args = ap.parse_args()
+
+    if args.coverage_check:
+        rows = load_all_completed_rows()
+        problems = coverage_regressions(rows)
+        print(f"賽果庫 {len(rows)} 行，{rows['Date'].min()} → {rows['Date'].max()}")
+        for line in problems:
+            print(f"  ❌ {line}")
+        if not problems:
+            print("  ✅ 冇欄位變空")
+        return 1 if problems else 0
 
     for season_key in ([args.season] if args.season else SEASONS):
         print(f"== {season_key} ==")

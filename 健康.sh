@@ -314,6 +314,16 @@ for p in au hkjc; do
   else note_bad "$P 有欄位唔合格"; echo "$o" | sed -n '/唔合格/,/^$/p' | sed 's/^/      /'; fi
 done
 
+# ── HKJC 賽果庫追加 rows 有冇欄位變空 ──────────────────────────────────────
+# 2026-05-13 → 2026-10-25：快照之後追加嘅 rows 一直冇完成時間、檔位、負磅、HorseID，
+# 上面嘅數據合約睇 Logic 唔睇賽果庫，所以五個月冇警報。
+hdr "HKJC 賽果庫欄位覆蓋"
+o=$("$PY" .agents/scripts/build_comprehensive_stats.py --coverage-check 2>&1)
+s=$?
+if   [ $s -eq 0 ]; then ok "$(echo "$o" | head -1)，冇欄位變空"
+elif [ $s -eq 1 ]; then note_bad "HKJC 賽果庫有欄位靜靜變空"; echo "$o" | grep '❌' | sed 's/^/      /'
+else warn "HKJC 賽果庫讀唔到（跳過）"; fi
+
 # ── AU 語料有冇新嘅賽後抽場次 ──────────────────────────────────────────────
 # EXP-20261015-04：同日賽後抽嘅場次，頁面累積統計（Career/Track/Distance…）已計埋
 # 賽果。已知嗰 7 個喺 au_corpus_exclusions.json 排除；呢度捉「新出現、未排除」嗰啲。
