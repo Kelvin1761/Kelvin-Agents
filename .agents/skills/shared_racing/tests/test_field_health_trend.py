@@ -169,3 +169,23 @@ class TrendTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def test_intentionally_disabled_scores_keep_warning_with_provenance_context():
+    rows = []
+    for week in ('2026-W40', '2026-W41', '2026-W42', '2026-W43'):
+        current = week == '2026-W43'
+        rows.extend([
+            {'week': week, 'source': 'leaf', 'field': 'trial_score', 'n': 300,
+             'neutral_rate': .73 if current else .20, 'spread': 4.0},
+            {'week': week, 'source': 'evidence', 'field': 'trial_score', 'n': 300,
+             'weak_rate': .725 if current else .20},
+            {'week': week, 'source': 'provenance', 'field': 'trial_score', 'n': 300,
+             'top_value': 'disabled_neutral' if current else 'trial_table',
+             'top_share': .724 if current else 1.0},
+        ])
+    _, findings = fh.trend(rows, week='2026-W43')
+    warnings = [f for f in findings if f['source'] in ('leaf', 'evidence')]
+    assert len(warnings) == 2
+    assert all(f['status'] == 'degrading' for f in warnings)
+    assert all('72.4%' in f['detail'] and '唔等於抽取缺失' in f['detail'] for f in warnings)

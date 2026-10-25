@@ -680,3 +680,17 @@ def test_betting_card_identity_follows_picks_not_prices() -> None:
     assert schedule.betting_card_identity(base) != schedule.betting_card_identity(changed)
     assert schedule.betting_card_identity(base) != schedule.betting_card_identity(
         {"validation_status": "blocked", "recommendations": []})
+
+
+def test_postgame_message_accepts_verified_abstention_but_not_missing_legs(tmp_path):
+    import pytest
+    day = '2026-10-25'
+    (tmp_path / f'Reflector_Training_Snapshot_{day}.csv').write_text('cleared,status\n')
+    with pytest.raises(ValueError, match='missing_or_empty'):
+        schedule.postgame_message(day, tmp_path)
+    (tmp_path / f'Reflector_Run_Summary_{day}.json').write_text(json.dumps({
+        'verified_no_combos': True, 'rows_recorded': 0,
+    }))
+    text = schedule.postgame_message(day, tmp_path)
+    assert '正式推薦：0' in text
+    assert '命中率：N/A' in text

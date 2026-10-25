@@ -902,7 +902,10 @@ def run_lineup(
     # 賽日每 30 分鐘一格，係最接近頭場嘅定期排程 —— 賠率快照放喺度。
     # 唔使等 Logic：賠率同我哋有冇分析過無關。
     if meeting_dir.is_dir():
-        capture_prerace_odds(state, state_path, meeting, meeting_dir, "lineup")
+        odds_capture = capture_prerace_odds(state, state_path, meeting, meeting_dir, "lineup")
+        if not force and meeting_date == today and (odds_capture or {}).get("status") == "closed":
+            set_control_outcome("dormant", reason="meeting_pools_closed", meeting=meeting["date"])
+            return EXIT_OK
     logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"))
     if not logic_files:
         log(f"HKJC lineup skipped: {meeting_dir.name} 未分析過")
@@ -1026,7 +1029,11 @@ def run_prerace(
     meeting_dir = meeting_dir_for(meeting, create=True)
     # 賠率快照排喺 pipeline **之前**：抽取／評分失敗都照樣留到呢個時間點，
     # 而佢自己失敗亦唔會影響下面任何嘢（見 `capture_prerace_odds`）。
-    capture_prerace_odds(state, state_path, meeting, meeting_dir, "prerace")
+    odds_capture = capture_prerace_odds(state, state_path, meeting, meeting_dir, "prerace")
+    if not force and meeting_date == today and (odds_capture or {}).get("status") == "closed":
+        log(f"HKJC pre-race dormant: all betting pools closed for {meeting['date']}")
+        set_control_outcome("dormant", reason="meeting_pools_closed", meeting=meeting["date"])
+        return EXIT_OK
     # `field_change` 只會由 `run_lineup` 傳入：見 batch_extract 個閘度嘅說明，
     # 佢只鬆 starter PDF 一格（排位表同賽績照樣要 fresh）。
     code, output = run_cmd(

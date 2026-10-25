@@ -27,6 +27,8 @@ from wongchoi_paths import NBA_ANALYSIS  # noqa: E402
 
 sys.path.insert(0, str(SCRIPT_DIR.parents[1] / "nba_daily_auto"))
 import nba_no_prediction  # noqa: E402
+from nba_reflector_orchestrator import verified_no_combo_reports  # noqa: E402
+from verify_props_hits import match_report_to_game  # noqa: E402
 
 DASHBOARD_BACKEND = WORKSPACE_ROOT / "Horse_Racing_Dashboard" / "backend"
 sys.path.insert(0, str(DASHBOARD_BACKEND))
@@ -53,7 +55,7 @@ def verification_is_complete(path: Path, *, allow_empty: bool = False) -> tuple[
     return True, "complete"
 
 
-def results_are_final(path: Path) -> tuple[bool, str]:
+def results_are_final(path: Path, *, report_names=()) -> tuple[bool, str]:
     """A no_prediction day archives on results alone, so they must be final."""
     try:
         brief = json.loads(path.read_text(encoding="utf-8"))
@@ -69,6 +71,9 @@ def results_are_final(path: Path) -> tuple[bool, str]:
     ]
     if pending:
         return False, "games_not_final:" + ",".join(pending)
+    missing = [name for name in report_names if match_report_to_game(name, games) is None]
+    if missing:
+        return False, "games_missing_results:" + ",".join(missing)
     return True, "final"
 
 
@@ -142,6 +147,15 @@ def main() -> int:
         path.is_file() for path in (training_snapshot, results_path, verification_path)
     )
     valid_no_bet = rows_recorded <= 0 and is_valid_no_bet(analysis_date)
+    if valid_no_bet:
+        if not verified_no_combo_reports(str(source), written_off.game_tags):
+            return emit("archive_skipped", analysis_date, "Zero-combo reports could not be verified.")
+        report_names = [p.name for pattern in ("Game_*_Full_Analysis.md", "Game_*_Full_Analysis.txt")
+                        for p in source.glob(pattern)]
+        results_ready, results_reason = results_are_final(results_path, report_names=report_names)
+        if not results_ready:
+            return emit("archive_skipped", analysis_date,
+                        f"Zero-combo day: results not final ({results_reason}); keeping the live folder.")
     if (rows_recorded <= 0 and not valid_no_bet) or not artifacts_exist:
         return emit(
             "archive_skipped",
