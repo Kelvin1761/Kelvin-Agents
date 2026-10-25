@@ -1,0 +1,65 @@
+[
+  {
+    "client": 305,
+    "overflow": false,
+    "scroll": 305,
+    "tab": "今日賽事",
+    "width": 320
+  },
+  {
+    "client": 305,
+    "overflow": false,
+    "scroll": 305,
+    "tab": "歷史紀錄",
+    "width": 320
+  },
+  {
+    "client": 305,
+    "overflow": false,
+    "scroll": 305,
+    "tab": "表現",
+    "width": 320
+  },
+  {
+    "client": 360,
+    "overflow": false,
+    "scroll": 360,
+    "tab": "今日賽事",
+    "width": 375
+  },
+  {
+    "client": 360,
+    "overflow": false,
+    "scroll": 360,
+    "tab": "歷史紀錄",
+    "width": 375
+  },
+  {
+    "client": 360,
+    "overflow": false,
+    "scroll": 360,
+    "tab": "表現",
+    "width": 375
+  },
+  {
+    "client": 375,
+    "overflow": false,
+    "scroll": 375,
+    "tab": "今日賽事",
+    "width": 390
+  },
+  {
+    "client": 375,
+    "overflow": false,
+    "scroll": 375,
+    "tab": "歷史紀錄",
+    "width": 390
+  },
+  {
+    "client": 375,
+    "overflow": false,
+    "scroll": 375,
+    "tab": "表現",
+    "width": 390
+  }
+]
