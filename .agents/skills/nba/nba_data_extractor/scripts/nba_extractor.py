@@ -41,6 +41,7 @@ from nba_schedule import canonical_team_abbr, canonical_game_tag, event_sydney_d
 from nba_data_contract import NBA_STATISTICS_CONTRACT
 import nba_opportunities
 import nba_team_context
+import nba_official_injuries
 from nba_availability import compute_usage_redistribution
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
@@ -1628,6 +1629,22 @@ def build_game_info_from_tag(game_tag):
 # ==========================================
 # 主程式
 # ==========================================
+def attach_official_injuries(package, cache_dir):
+    """Supplementary league injury report for both teams of this game. Never raises."""
+    try:
+        meta = package.get("meta") or {}
+        game_day = history_cutoff_day(meta.get("date"))
+        bundle = nba_official_injuries.fetch_latest(
+            nba_season_for_date(meta.get("date")), Path(cache_dir) / "NBA_Official_Injuries.json")
+        teams = [(meta.get(side) or {}).get("abbr") for side in ("away", "home")]
+        package["official_injuries"] = {t: nba_official_injuries.for_team(bundle, t, game_day) for t in teams if t}
+        meta["official_injuries"] = {k: bundle.get(k) for k in ("status", "report_time", "url", "pdf_sha256",
+                                                                 "captured_at", "error")}
+    except Exception as exc:
+        package["official_injuries"] = {"error": f"{type(exc).__name__}: {exc}"}
+    return package
+
+
 def _write_verified_package(path, package):
     from datetime import timezone
     now = datetime.now(timezone.utc)
@@ -1660,6 +1677,7 @@ def main():
             with open(path, encoding="utf-8") as source:
                 package = json.load(source)
             package = refresh_availability(package, fetch=fetch_team_injuries)
+            package = attach_official_injuries(package, Path(path).resolve().parent)
         except RosterChanged as exc:
             print(f"⏳ {exc}")
             raise SystemExit(2)
@@ -1801,6 +1819,8 @@ def main():
             print(f"   可能原因: nba_api 未安裝 / API 限流 / 球隊 abbreviation 唔啱")
             sys.exit(1)
 
+        attach_official_injuries(package, Path(args.output).resolve().parent)
+
         # 儲存為 JSON
         output_path = args.output
         if output_path.endswith('.md'):
@@ -1827,6 +1847,7 @@ def main():
                                       team_context=team_context)
 
             json_path = f"nba_game_data_{g['tag']}.json"
+            attach_official_injuries(package, Path(json_path).resolve().parent)
             _write_verified_package(json_path, package)
             print(f"  ✅ {g['tag']} → {json_path}")
 

@@ -77,6 +77,10 @@ NBA_ROLE_SLOTS = {
     "final_refresh": "06:30",
 }
 
+#: Every final-refresh firing needs its own slot: with one shared "06:30" slot the
+#: later same-day refreshes would be skipped as duplicates of the first.
+NBA_FINAL_REFRESH_SLOTS = ("06:30", "08:30", "10:00", "11:30", "13:00")
+
 #: NBA pregame slots that analyse the NEXT Sydney day's slate.  Warmup and
 #: production both run the evening before (2026-10-20: production moved from
 #: 00:30 to 21:00 so the dashboard is ready by 22:00); the 06:30 final refresh
@@ -118,6 +122,12 @@ def infer_slot(
         return explicit
     if mode == "startup":
         return "startup"
+    if domain is Domain.NBA and mode == "pregame" and freshness_role == "final_refresh":
+        # The latest final-refresh slot at or before now (a delayed launchd firing keeps
+        # its own slot); before 06:30 it is the 06:30 slot as before.
+        clock = now.astimezone(SYDNEY).strftime("%H:%M")
+        due = [slot for slot in NBA_FINAL_REFRESH_SLOTS if slot <= clock]
+        return due[-1] if due else NBA_FINAL_REFRESH_SLOTS[0]
     if domain is Domain.NBA and mode == "pregame" and freshness_role:
         try:
             return NBA_ROLE_SLOTS[freshness_role]

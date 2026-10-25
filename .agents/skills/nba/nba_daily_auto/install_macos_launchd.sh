@@ -65,7 +65,7 @@ done
 echo
 echo "NBA Wong Choi automation installed:"
 echo "  warmup   19:00 (tomorrow; no publish/content card)"
-echo "  pregame  21:00 production (+21:45 retry if any game was partial) + 06:30 unstarted-only final refresh"
+echo "  pregame  21:00 production (+21:45 retry if any game was partial) + 06:30/08:30/10:00/11:30/13:00 unstarted-only final refresh"
 echo "  results  source tip +150m, retry every 15m until verified Final (local timer; no early fetch)"
 echo "  postgame 18:30 + 21:30 (archive)"
 echo "  health   10:30"

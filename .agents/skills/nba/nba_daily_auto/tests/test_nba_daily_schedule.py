@@ -648,7 +648,9 @@ def test_launchd_pregame_jobs_pin_each_freshness_role() -> None:
         # 21:45 re-runs production for games whose player markets were not open
         # at 21:00; a completed production is `already_snapshotted`, so it is free.
         "production": ([(21, 0), (21, 45)], "production"),
-        "final-refresh": ([(6, 30)], "final_refresh"),
+        # Late refreshes catch game-time decisions 30-90 min before tip; each has its own
+        # control-plane slot (see test_late_final_refreshes_get_their_own_slot_and_role).
+        "final-refresh": ([(6, 30), (8, 30), (10, 0), (11, 30), (13, 0)], "final_refresh"),
     }
     for name, (slots, role) in expected.items():
         payload = plistlib.loads(
@@ -666,3 +668,15 @@ def test_launchd_runner_dispatches_through_manifest_control_plane() -> None:
     runner = (Path(schedule.__file__).resolve().parent / "run_nba_daily_schedule.sh").read_text()
     assert "shared_wong_choi/control_plane.py" in runner
     assert "--domain nba --mode" in runner
+
+
+def test_betting_card_identity_follows_picks_not_prices() -> None:
+    row = {"event_name": "IND @ BKN", "selection": "Siakam PTS 20+ / Turner REB 6+", "decision": "BET",
+           "odds": 2.10, "validation_status": "valid"}
+    base = {"validation_status": "valid", "recommendations": [row]}
+    moved = {"validation_status": "valid", "recommendations": [dict(row, odds=2.25)]}
+    changed = {"validation_status": "valid", "recommendations": [dict(row, selection="Siakam PTS 15+")]}
+    assert schedule.betting_card_identity(base) == schedule.betting_card_identity(moved)
+    assert schedule.betting_card_identity(base) != schedule.betting_card_identity(changed)
+    assert schedule.betting_card_identity(base) != schedule.betting_card_identity(
+        {"validation_status": "blocked", "recommendations": []})

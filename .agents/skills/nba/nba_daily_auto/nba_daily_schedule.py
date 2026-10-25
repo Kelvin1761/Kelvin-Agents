@@ -352,6 +352,21 @@ def _no_banker_diagnostics(snapshot: dict[str, Any]) -> str:
     return summary
 
 
+def betting_card_identity(snapshot: dict[str, Any]) -> str:
+    """What the card recommends (event + selection + decision), not its prices.
+
+    Late final refreshes re-publish whenever odds move; the content card is only
+    re-sent when the recommended bets themselves change.
+    """
+    picks = sorted(
+        (str(row.get("event_name")), str(row.get("selection")), str(row.get("decision")))
+        for row in snapshot.get("recommendations") or []
+        if isinstance(row, dict)
+    )
+    payload = json.dumps([str(snapshot.get("validation_status")), picks], ensure_ascii=False)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+
+
 def nba_betting_message(target_date: str, snapshot: dict[str, Any]) -> str:
     """Render a Telegram card from the validated Dashboard NBA contract only."""
     status = str(snapshot.get("validation_status") or "unavailable")
@@ -1208,8 +1223,14 @@ def run_pregame(
     )
     log.step("dashboard", deploy)
     tags = sportsbet_tags(folder, target_date)
+    late_refresh = freshness_role is FreshnessRole.FINAL_REFRESH
+    exported = None
+    if late_refresh and not is_preseason:
+        exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date)
+    ops_key = (f"pregame-ops:{target_date}:final:{betting_card_identity(exported)}" if exported is not None
+               else f"pregame-ops:{target_date}:{snapshot.name}")
     operational = notify_once(
-        f"pregame-ops:{target_date}:{snapshot.name}",
+        ops_key,
         (
             f"✅ NBA Wong Choi {target_date} 分析完成\n"
             f"已驗證賽事：{len(tags)}\n"
@@ -1237,7 +1258,8 @@ def run_pregame(
         )
         return "shadow_complete"
 
-    exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date)
+    if exported is None:
+        exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date)
     try:
         exported["selection_health"] = nba_reliability.selection_health(target_date)
     except Exception as exc:
@@ -1261,8 +1283,10 @@ def run_pregame(
             notify_status=blocked.get("status"),
         )
     else:
+        card_key = (f"pregame-card:{target_date}:picks:{betting_card_identity(exported)}" if late_refresh
+                    else f"pregame-card:{target_date}:{snapshot.name}")
         card_result = notify_once(
-            f"pregame-card:{target_date}:{snapshot.name}",
+            card_key,
             card,
             audience="content",
         )
