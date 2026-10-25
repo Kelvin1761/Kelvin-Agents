@@ -158,3 +158,13 @@ class MarketWaitingTests(unittest.TestCase):
         self.assertTrue(all(not players for players in data["player_props"].values()))
         self.assertIsNone(extractor._classify_market("1st Quarter Handicap Betting"))
         self.assertIsNone(extractor._classify_market("Pick Your Own Handicap"))
+
+
+class OrchestratorTimeoutTests(unittest.TestCase):
+    def test_timeout_is_a_retryable_failure_not_a_crash(self):
+        log = mock.Mock()
+        boom = subprocess.TimeoutExpired(["orchestrator"], 7200)
+        with mock.patch.object(schedule, "_run", side_effect=boom):
+            with self.assertRaisesRegex(schedule.TemporaryFailure, "orchestrator_timeout:all"):
+                schedule._run_orchestrator_refresh("2026-10-10", Path("/unused"), refreshable_tags={"MEM_CHI"}, schedule_tags={"MEM_CHI"}, log=log)
+        self.assertEqual(log.step.call_args.args[:2], ("orchestrator", "timeout"))
