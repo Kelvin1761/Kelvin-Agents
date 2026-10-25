@@ -266,3 +266,5 @@
 - [EXP-20261024-03](EXP-20261024-03-nba-actual-price-search.md)：NBA opt-in真價搜尋Q0/Q1/Q2，有限報價、正式策略不變；NEEDS MORE TESTING。
 
 - [EXP-20261025-02](EXP-20261025-02-nba-calibrated-accuracy-review.md)：同一真價搜尋集合的joint機率排序／最弱腿審計；已見6場重播4→5全中不作採用證據，角色資料不足不硬禁AST；正式selector／EV／C不變。
+
+- [EXP-20261025-08](EXP-20261025-08-hkjc-same-course-best-time-protocol.md)：HKJC 同程最佳時間（對全場，扣場地 variant）＋近 6 仗最快 L400 預先登記；篩選 ΔΔLL +0.008（5/5 fold）、對模型 ρ +0.29；fixed_rule 4 arm 全部 REJECT：同程時間將上名馬拉入頭 5（cap@5 +1.1pp）但推走首選（Good −1.6～−2.2pp）；最快 L400 打和，維持上仗 L400。結果見 [results](EXP-20261025-08-hkjc-same-course-best-time-results.md)。
