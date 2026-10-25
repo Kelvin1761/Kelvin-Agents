@@ -162,6 +162,27 @@ def compute_shadow_fit(ext_player, stat_key, line_val, layer=None):
                 "shadow_fit_status": "error", "shadow_fit_inputs": {"error": msg}}
 
 
+def season_rate_shadow_enabled():
+    return os.environ.get("NBA_SEASON_RATE_SHADOW_ENABLED", "1").strip().lower() not in {"0", "false", "no", "off"}
+
+
+def compute_season_rate(ext_player, stat_key, line_val):
+    """Season-rate model S shadow fields (EXP-20261025-11). Record only; never raises."""
+    try:
+        if not season_rate_shadow_enabled():
+            return {"season_rate_prob_S": None, "season_rate_version": None,
+                    "season_rate_status": "disabled", "season_rate_inputs": None}
+        import nba_season_rate
+        log = ((ext_player or {}).get("gamelog") or {}).get("season_log")
+        prob, status, inputs = nba_season_rate.season_rate_prob(log, stat_key, line_val)
+        return {"season_rate_prob_S": prob,
+                "season_rate_version": nba_season_rate.MODEL_ID if prob is not None else None,
+                "season_rate_status": status, "season_rate_inputs": inputs}
+    except Exception as exc:  # isolation: never touch the live report
+        return {"season_rate_prob_S": None, "season_rate_version": None,
+                "season_rate_status": "error", "season_rate_inputs": {"error": f"{type(exc).__name__}: {exc}"}}
+
+
 def fit_status_lines():
     if not fit_layer_shadow_enabled():
         return []
@@ -233,6 +254,10 @@ def ml_status_lines():
     return lines
 
 L10_ORDER = "newest_first"
+# Layer C was fitted only on legs with >= 5 prior games (nba_banker_phase1/build_corpus.py).
+# Shorter histories (rookies, players back from injury after the early-season
+# prior-season backfill ends) turn 3/3 into "100%" and must not be scored or selected.
+MIN_HISTORY_GAMES = 5
 PLAYER_MARKET = "PLAYER_MILESTONE"
 TEAM_MARKET = "TEAM_MARKET"
 ENGINE_MODES = {"legacy", "ml", "hybrid"}
@@ -867,7 +892,9 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
         # EXP-20261022-03: calibrated, market-anchored probability replaces the legacy
         # engine output when enabled (resources/nba_prob_layer.json). legacy_prob is kept
         # for audit/comparison.
-        layer_prob = nba_prob_layer.calibrated_prob(stat_key, odds_str, hr_l10)
+        history_games = len(data_for_hr)
+        layer_prob = (nba_prob_layer.calibrated_prob(stat_key, odds_str, hr_l10)
+                      if history_games >= MIN_HISTORY_GAMES else None)
         if layer_prob is not None:
             final_prob = layer_prob
             final_engine = f"calibrated({final_engine})"
@@ -905,6 +932,7 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             "ml_prob": ml_prob,
             "ml_est_prob": ml_est_prob,
             **compute_shadow_fit(ext_player, stat_key, line_val),
+            **compute_season_rate(ext_player, stat_key, line_val),
             "ml_delta_pp": round(ml_delta, 1) if ml_delta is not None else None,
             "hybrid_adj_shadow_pp": hybrid_adj_shadow,
             "hybrid_adj_applied_pp": hybrid_adj,
@@ -917,6 +945,7 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             "confidence_adjusted_ev_pct": final_conf_adj_ev,  # V8: confidence-discounted EV
             "edge_grade": edge_grade(final_edge),
             "hit_l10": hr_l10, "hit_l10_count": hr_l10_count,
+            "history_games": history_games,
             "hit_l5": hr_l5, "hit_l5_count": hr_l5_count,
             "hit_l3": hr_l3, "hit_l3_count": hr_l3_count,
             "misses": misses,
@@ -982,6 +1011,10 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
             # SIP-N05: Block high CoV 3PM legs from ALL combo pools
             # 3PM is inherently high variance; CoV > 0.5 makes it unpredictable
             if cl == "3PM" and card["cov"] > 0.5:
+                continue
+
+            # Fewer than MIN_HISTORY_GAMES prior games: outside Layer C's fitted population.
+            if la.get("history_games", len(card.get("l10", []))) < MIN_HISTORY_GAMES:
                 continue
 
             # SIP-N04: Compute L3 average for trend protection
@@ -2518,6 +2551,10 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
                 "shadow_fit_version": la.get("shadow_fit_version"),
                 "shadow_fit_status": la.get("shadow_fit_status"),
                 "shadow_fit_inputs": la.get("shadow_fit_inputs"),
+                "season_rate_prob_S": la.get("season_rate_prob_S"),
+                "season_rate_version": la.get("season_rate_version"),
+                "season_rate_status": la.get("season_rate_status"),
+                "season_rate_inputs": la.get("season_rate_inputs"),
                 "ml_delta_pp": la.get("ml_delta_pp"),
                 "hybrid_adj_shadow_pp": la.get("hybrid_adj_shadow_pp"),
                 "hybrid_adj_applied_pp": la.get("hybrid_adj_applied_pp"),

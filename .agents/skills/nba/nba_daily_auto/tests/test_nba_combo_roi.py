@@ -111,3 +111,14 @@ def test_standalone_cli_reads_frozen_quotes_without_parent_pythonpath(tmp_path):
     assert result['arms']['B2']['sgm']['n']==1 and result['arms']['B2']['sgm']['profit_units']==1.1
     assert not result['promotion_allowed']
     assert path.read_bytes()==before and not (tmp_path/'reports').exists()
+
+
+def test_known_miss_beats_void_and_pending():
+    rows = [
+        sgm("1", [leg("A"), leg("E")], 3.0),             # miss + void -> loss, not void
+        sgm("2", [leg("A"), leg("D")], 3.0),             # miss + unsettled -> already lost
+        sgm("3", [leg("B"), leg("E")], 3.0),             # hit + void -> void
+        settle("A", "miss"), settle("B", "hit"), settle("E", "void"),
+    ]
+    out = {c["combo_id"]: c["state"] for c in roi.settle_combos(rows)}
+    assert out == {"1": "loss", "2": "loss", "3": "void"}
