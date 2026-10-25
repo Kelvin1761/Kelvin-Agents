@@ -97,4 +97,4 @@ for f in a3 a6 a9 b; do python3 $H compare base.jsonl $f.jsonl --stage4 fixed_ru
 
 ## 結果
 
-（跑完之後寫喺 `EXP-20261025-08-hkjc-same-course-best-time-results.md`）
+見 `EXP-20261025-08-hkjc-same-course-best-time-results.md`：**4 個 arm 全部 REJECT**（Holm 後冇 WIN），冇開 forward。
