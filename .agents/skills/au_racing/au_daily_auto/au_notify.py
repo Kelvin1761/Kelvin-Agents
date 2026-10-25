@@ -96,7 +96,8 @@ def summarise(run: dict) -> tuple[str, str]:
         lines.append(f"❌ {e.get('step')}: {str(e.get('message'))[:100]}")
     pending = sorted({m.get("status") for m in run.get("meetings_processed") or []}
                      & {"pending_extraction", "pending_results", "partial_results",
-                        "refresh_deferred"})
+                        "refresh_deferred", "awaiting_source",
+                        "source_never_listed"})
     if pending:
         lines.append("未完成：" + "、".join(pending) + "（下次排程接住做）")
 

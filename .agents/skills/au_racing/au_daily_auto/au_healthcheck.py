@@ -80,7 +80,13 @@ def au_venues_today(day: str) -> set[str] | None:
 
         events = S.api_next_events(_Quiet())
         by_day = S.events_by_day(events)
-        return set(by_day.get(day) or [])
+        venues = set(by_day.get(day) or [])
+        # NextEvents 只有最近約 30 場 —— 後面嘅場次（2026-10-26 Newcastle）唔喺
+        # 度，用佢做「應該有咩」會令漏咗嘅場次睇落似冇漏。AllRacing 有成日名單。
+        for name in S.api_day_meetings(_Quiet(), day):
+            if not any(S._venue_key(name) == S._venue_key(v) for v in venues):
+                venues.add(name)
+        return venues
     except Exception:  # noqa: BLE001
         return None
 
