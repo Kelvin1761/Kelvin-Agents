@@ -174,6 +174,32 @@ def apply_availability(payload, maps):
                 result["injuries"][team][player["name"]] = player["status"]
             else:
                 player["status"] = statuses.get(key, "Active")
+    if "key_defenders" in result:
+        # Preserve the historical pool so a later availability refresh can
+        # restore a recovered defender without retaining departed players.
+        reference = result.setdefault("key_defenders_reference", copy.deepcopy(result["key_defenders"]))
+        teams = {}
+        result["key_defenders"] = {}
+        for team, defenders in reference.items():
+            verified = isinstance(maps.get(team), InjuryMap)
+            roster = {player_name_key(name) for name in maps[team].roster_names} if verified else set()
+            statuses = {player_name_key(name): status for name, status in maps.get(team, {}).items()}
+            eligible, excluded = [], []
+            for defender in defenders:
+                name = defender.get("name", "")
+                key = player_name_key(name)
+                reason = ("roster_unverified" if not verified else
+                          "not_on_verified_roster" if not key or key not in roster else
+                          "known_unavailable" if classify_injury_status(statuses.get(key)) == "out" else None)
+                if reason:
+                    excluded.append({"name": name, "reason": reason})
+                else:
+                    eligible.append(defender)
+            result["key_defenders"][team] = eligible[:8]
+            teams[team] = {"status": "roster_checked" if verified else "roster_unverified",
+                           "source_count": len(defenders), "eligible_count": len(eligible),
+                           "excluded": excluded}
+        result["meta"]["defender_availability"] = {"actual_matchups_verified": False, "teams": teams}
     result["usage_redistribution"] = {team: bonus for team, players in result.get("players", {}).items()
                                     if (bonus := compute_usage_redistribution(players, team))}
     return result

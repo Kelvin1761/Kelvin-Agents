@@ -904,6 +904,64 @@ def fetch_team_defense_vs_position(season=None, as_of=None):
 # ==========================================
 # 模塊 6：球隊進階數據 (DEF_RTG, OFF_RTG, PACE)
 # ==========================================
+def fetch_team_opponent_stats(season=None, as_of=None):
+    """Optional descriptive opponent totals; never substitutes missing values with zero."""
+    if not NBA_API_AVAILABLE:
+        return {}
+    season = season or nba_season_for_date(as_of)
+    cutoff = history_date_to(as_of)
+    id_to_abbr = {t['id']: t['abbreviation'] for t in teams.get_teams()}
+    modes = {}
+    for mode, unit in [('PerGame', 'per_game'), ('Per100Possessions', 'per_100_possessions')]:
+        try:
+            response = leaguedashteamstats.LeagueDashTeamStats(
+                measure_type_detailed_defense='Opponent', per_mode_detailed=mode,
+                season=season, season_type_all_star='Regular Season',
+                date_to_nullable=cutoff, timeout=15,
+            )
+            frame = response.get_data_frames()[0]
+            modes[unit] = ('available', frame)
+        except Exception:
+            modes[unit] = ('unavailable', None)
+        time.sleep(API_SLEEP)
+    fields = ('OPP_PTS', 'OPP_REB', 'OPP_AST', 'OPP_OREB', 'OPP_DREB', 'OPP_FGA', 'OPP_FGM')
+    result = {}
+    for unit, (status, frame) in modes.items():
+        if frame is None:
+            continue
+        for _, row in frame.iterrows():
+            abbr = id_to_abbr.get(row.get('TEAM_ID'))
+            if not abbr:
+                continue
+            record = result.setdefault(abbr, {
+                'source': 'NBA LeagueDashTeamStats/Opponent', 'season': season,
+                'season_type': 'Regular Season', 'history_date_to': cutoff,
+                'model_input_enabled': False,
+                'modes': {key: {'status': state, 'games': None, 'values': {}}
+                          for key, (state, _) in modes.items()},
+            })
+            def number(value):
+                try:
+                    value = float(value)
+                    return value if math.isfinite(value) and value >= 0 else None
+                except (TypeError, ValueError):
+                    return None
+            values = {field: number(row.get(field)) for field in fields}
+            gp = number(row.get('GP'))
+            complete = gp is not None and gp > 0 and all(v is not None for v in values.values())
+            record['modes'][unit] = {
+                'status': 'available' if complete else 'insufficient',
+                'games': int(gp) if gp is not None and gp.is_integer() else None,
+                'values': values,
+            }
+    # A successful endpoint can still omit an individual team.
+    for record in result.values():
+        for mode in record['modes'].values():
+            if mode['status'] == 'available' and not mode['values']:
+                mode['status'] = 'team_missing'
+    return result
+
+
 def fetch_team_advanced_stats(season=None, as_of=None):
     """全聯盟球隊進階數據"""
     if not NBA_API_AVAILABLE:
@@ -936,6 +994,12 @@ def fetch_team_advanced_stats(season=None, as_of=None):
                 "PACE": round(row['PACE'], 2),
                 "NET_RATING": round(row['NET_RATING'], 1),
             }
+        opponent = fetch_team_opponent_stats(season, as_of)
+        for abbr, record in result.items():
+            record['opponent_stats'] = opponent.get(abbr, {
+                'status': 'unavailable', 'season': season or nba_season_for_date(as_of),
+                'history_date_to': history_date_to(as_of), 'model_input_enabled': False,
+            })
         print(f"  ✅ 獲取 {len(result)} 支球隊數據")
         return result
     except Exception as e:
@@ -1198,13 +1262,13 @@ def compute_correlation_warnings(players, team_abbr):
 # ==========================================
 # 主引擎：單場深度提取
 # ==========================================
-def key_defenders_for_team(defender_data, team_abbr):
+def key_defenders_for_team(defender_data, team_abbr, *, limit=8):
     """The existing 20-attempt sample floor applies to totals, never PerGame."""
     candidates = [row for row in defender_data.values()
                   if canonical_team_abbr(row.get('team', '')) == canonical_team_abbr(team_abbr)
                   and row.get('D_FGA_unit') == 'total_attempts'
                   and row.get('D_FGA', 0) >= 20]
-    return sorted(candidates, key=lambda row: row.get('PCT_PLUSMINUS', 0))[:8]
+    return sorted(candidates, key=lambda row: row.get('PCT_PLUSMINUS', 0))[:limit]
 
 
 def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stats, odds_data,
@@ -1408,7 +1472,9 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             package["players"][abbr].append(player_entry)
 
         # 防守者
-        package["key_defenders"][abbr] = key_defenders_for_team(defender_data, abbr)
+        # Availability must remove departed / unavailable players before the
+        # top-eight context cap, otherwise old-season leaders consume the pool.
+        package["key_defenders"][abbr] = key_defenders_for_team(defender_data, abbr, limit=None)
 
         # 🧠 Usage Redistribution (Module D1)
         usg_redist = compute_usage_redistribution(package["players"][abbr], abbr)
