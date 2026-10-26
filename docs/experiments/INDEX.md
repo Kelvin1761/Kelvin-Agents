@@ -287,3 +287,4 @@
 - EXP-20261026-02（補充）：用戶跟 21:00 版本落注 → 朝早 final refresh 唔再重新發佈推介，只發傷停提示；組合 ROI／B2 shadow／季初保護監察新增 21:00 落注版本。
 - [EXP-20261026-08](EXP-20261026-08-nba-s-v4-shadow-and-forward-protocol.md)：S_v4 shadow 接線（season_log 加每場球隊）；forward 只比較有上季比賽嘅腿（S_v4 對 S_v2），季初完結或 12-01 判一次；零數據時凍結。
 - [EXP-20261026-09](EXP-20261026-09-nba-experiment-readiness-alerts.md)：NBA 實驗準備度通知：每日賽後計，星期一發進度總結，檢查點首次到期即刻提示（primary）；只讀。
+- [EXP-20261027-01](EXP-20261027-01-au-1016-bundle-forward-replay.md) — 10-16 改動整批 forward 回放（473 場／10 賽日，舊 6de9e625 vs 現行 c60bcb38）：Gold +1.48pp [+0.30,+2.72]、Good +0.63pp CI 跨零、首選上名 −2.75pp [−7.92,+1.33]；W43 下跌兩個引擎都有，唔係新 code 造成；≥30 賽日再跑
