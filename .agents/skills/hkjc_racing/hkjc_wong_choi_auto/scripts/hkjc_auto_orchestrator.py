@@ -1188,7 +1188,10 @@ class HKJCAutoOrchestrator:
                 if actual_top3 and shadow_picks[0] == actual_top3[0]:
                     shadow_stats["champion"] += 1
 
+        # 賽前跑嗰陣冇賽果，KPI 全部係 0。標明狀態，唔好令人以為成日 0 中；
+        # 賽後覆盤會用 eval_metrics 嘅標準標籤覆寫呢個檔（見 unified_reflector_core）。
         summary = {
+            "status": "evaluated_against_results" if evaluated_races else "pending_results",
             "scoring_profile": self.scoring_profile,
             "shadow_profile": self.shadow_profile,
             "race_count": len(results),
