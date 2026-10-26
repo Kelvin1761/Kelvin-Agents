@@ -1,0 +1,1103 @@
+{
+  "captured_at": "2026-10-26T04:06:45.507832+00:00",
+  "status": "attention",
+  "warehouse_changed_during_audit": false,
+  "history_sources": [
+    {
+      "source_provider": "composite",
+      "tour": "ATP",
+      "n": 14370,
+      "latest": "2026-10-25",
+      "hold_n": 0,
+      "ace_n": 0
+    },
+    {
+      "source_provider": "composite",
+      "tour": "WTA",
+      "n": 7757,
+      "latest": "2026-10-25",
+      "hold_n": 0,
+      "ace_n": 0
+    },
+    {
+      "source_provider": "jeff_sackmann",
+      "tour": "ATP",
+      "n": 34880,
+      "latest": "2026-05-17",
+      "hold_n": 32963,
+      "ace_n": 33006
+    },
+    {
+      "source_provider": "jeff_sackmann",
+      "tour": "WTA",
+      "n": 31858,
+      "latest": "2026-05-18",
+      "hold_n": 30511,
+      "ace_n": 30572
+    },
+    {
+      "source_provider": "mock",
+      "tour": "ATP",
+      "n": 12,
+      "latest": "2026-04-20",
+      "hold_n": 12,
+      "ace_n": 0
+    },
+    {
+      "source_provider": "tennisexplorer",
+      "tour": "ATP",
+      "n": 229859,
+      "latest": "2026-10-24",
+      "hold_n": 0,
+      "ace_n": 0
+    },
+    {
+      "source_provider": "tennisexplorer",
+      "tour": "WTA",
+      "n": 5933,
+      "latest": "2026-10-24",
+      "hold_n": 0,
+      "ace_n": 0
+    },
+    {
+      "source_provider": "tennismylife_history",
+      "tour": "ATP",
+      "n": 93564,
+      "latest": "2026-10-26",
+      "hold_n": 91200,
+      "ace_n": 91894
+    }
+  ],
+  "possible_history_duplicates": [
+    {
+      "groups_with_copies": 6903,
+      "extra_rows": 11052
+    }
+  ],
+  "history_input_defects": [
+    {
+      "source_provider": "composite",
+      "n": 22127,
+      "self_rows": 3406,
+      "invalid_hold": null,
+      "invalid_first_serve": null,
+      "invalid_return": null
+    },
+    {
+      "source_provider": "jeff_sackmann",
+      "n": 66738,
+      "self_rows": 0,
+      "invalid_hold": 17,
+      "invalid_first_serve": 2,
+      "invalid_return": 2
+    },
+    {
+      "source_provider": "mock",
+      "n": 12,
+      "self_rows": 0,
+      "invalid_hold": 0,
+      "invalid_first_serve": 0,
+      "invalid_return": 0
+    },
+    {
+      "source_provider": "tennisexplorer",
+      "n": 235792,
+      "self_rows": 0,
+      "invalid_hold": null,
+      "invalid_first_serve": null,
+      "invalid_return": null
+    },
+    {
+      "source_provider": "tennismylife_history",
+      "n": 93564,
+      "self_rows": 19,
+      "invalid_hold": 0,
+      "invalid_first_serve": 0,
+      "invalid_return": 0
+    }
+  ],
+  "result_sources": [
+    {
+      "matches": 7567,
+      "extra_source_rows": 5299,
+      "conflicting_winners": 6
+    }
+  ],
+  "latest_prediction_timing": [
+    {
+      "n": 6317,
+      "unknown_start": 489,
+      "pre_start": 3681,
+      "post_start": 2147
+    }
+  ],
+  "live_prop_bets": [
+    {
+      "n": 0
+    }
+  ],
+  "prediction_query_indexes": [],
+  "odds_query_indexes": [],
+  "wta_official_feed": [
+    {
+      "stats_status": "OK",
+      "n": 658,
+      "earliest": "2026-10-08",
+      "latest": "2026-10-24",
+      "hold_n": 658
+    }
+  ],
+  "corpus": {
+    "point_in_time": 11294,
+    "point_in_time_graded": 10054,
+    "point_in_time_staked": 973,
+    "post_start": 8578,
+    "post_start_graded": 7497,
+    "post_start_staked": 836,
+    "unverifiable": 5582,
+    "unverifiable_graded": 5271,
+    "unverifiable_staked": 1423
+  },
+  "checks": [
+    {
+      "name": "features_not_as_of",
+      "passed": true,
+      "severity": "critical",
+      "detail": "806 of 12876 feature snapshots (6.3%) fell back to the mutable rating instead of an as-of one",
+      "count": 806,
+      "examples": []
+    },
+    {
+      "name": "feature_snapshot_after_match",
+      "passed": false,
+      "severity": "warning",
+      "detail": "15782 feature snapshots were built after their match day",
+      "count": 15782,
+      "examples": []
+    },
+    {
+      "name": "self_matches",
+      "passed": true,
+      "severity": "warning",
+      "detail": "0 fixtures list the same player on both sides",
+      "count": 0,
+      "examples": []
+    },
+    {
+      "name": "duplicate_fixtures",
+      "passed": true,
+      "severity": "critical",
+      "detail": "0 (date, player pair) combinations appear more than once",
+      "count": 0,
+      "examples": []
+    },
+    {
+      "name": "unmerged_duplicate_identities",
+      "passed": false,
+      "severity": "warning",
+      "detail": "2 normalised names still map to more than one unmerged player",
+      "count": 2,
+      "examples": []
+    },
+    {
+      "name": "impossible_scoreline",
+      "passed": true,
+      "severity": "critical",
+      "detail": "0 results hold a scoreline that cannot occur",
+      "count": 0,
+      "examples": []
+    },
+    {
+      "name": "winner_not_in_match",
+      "passed": true,
+      "severity": "critical",
+      "detail": "0 results name a winner who did not play the match",
+      "count": 0,
+      "examples": []
+    },
+    {
+      "name": "prop_subject_not_in_match",
+      "passed": true,
+      "severity": "critical",
+      "detail": "0 player props name a subject who is not in the fixture",
+      "count": 0,
+      "examples": []
+    },
+    {
+      "name": "post_match_odds_present",
+      "passed": false,
+      "severity": "warning",
+      "detail": "3005 odds snapshots were fetched after their match day; backtests must use the earliest snapshot per selection",
+      "count": 3005,
+      "examples": []
+    },
+    {
+      "name": "settled_without_result",
+      "passed": true,
+      "severity": "critical",
+      "detail": "0 props are graded WON/LOST with nothing to grade them from",
+      "count": 0,
+      "examples": []
+    },
+    {
+      "name": "stale_pending_stakes",
+      "passed": false,
+      "severity": "warning",
+      "detail": "3 staked props are still PENDING more than a fortnight after the match",
+      "count": 3,
+      "examples": []
+    },
+    {
+      "name": "model_probability_no_signal",
+      "passed": true,
+      "severity": "warning",
+      "detail": "1323 of 15149 predictions (8.7%) are exactly 0.5000, the no-Elo fallback",
+      "count": 1323,
+      "examples": []
+    },
+    {
+      "name": "props_recorded_before_match",
+      "passed": false,
+      "severity": "critical",
+      "detail": "2730 of 11668 props recorded since 2026-08-27 (23.4%) were written after their match started or cannot be timed at all",
+      "count": 2730,
+      "examples": []
+    }
+  ],
+  "critical_failures": [
+    "props_recorded_before_match"
+  ],
+  "base_commit": "36101baa8d4638f7c7a62f876ec105f3eee8e2d4",
+  "scorecard": {
+    "settled": 9576,
+    "model": {
+      "brier": 0.2082,
+      "log_loss": 0.6025
+    },
+    "market": {
+      "brier": 0.1921,
+      "log_loss": 0.5654
+    },
+    "verdict": "MARKET beats model (model is the weak link, like match-winner)",
+    "calibration": [
+      {
+        "pred": 0.036,
+        "realised": 0.278,
+        "n": 18
+      },
+      {
+        "pred": 0.117,
+        "realised": 0.13,
+        "n": 447
+      },
+      {
+        "pred": 0.194,
+        "realised": 0.184,
+        "n": 1931
+      },
+      {
+        "pred": 0.306,
+        "realised": 0.339,
+        "n": 1150
+      },
+      {
+        "pred": 0.403,
+        "realised": 0.433,
+        "n": 1075
+      },
+      {
+        "pred": 0.501,
+        "realised": 0.528,
+        "n": 2197
+      },
+      {
+        "pred": 0.595,
+        "realised": 0.56,
+        "n": 992
+      },
+      {
+        "pred": 0.695,
+        "realised": 0.643,
+        "n": 956
+      },
+      {
+        "pred": 0.792,
+        "realised": 0.762,
+        "n": 446
+      },
+      {
+        "pred": 0.892,
+        "realised": 0.798,
+        "n": 228
+      },
+      {
+        "pred": 0.986,
+        "realised": 0.978,
+        "n": 136
+      }
+    ],
+    "graded_on": "model_prob_raw",
+    "legacy_rows_excluded": 0,
+    "by_family": {
+      "first_set_winner": {
+        "settled": 2577,
+        "model": {
+          "brier": 0.2419,
+          "log_loss": 0.6777
+        },
+        "market": {
+          "brier": 0.2101,
+          "log_loss": 0.6073
+        }
+      },
+      "player_exact_set_score": {
+        "settled": 771,
+        "model": {
+          "brier": 0.1732,
+          "log_loss": 0.5258
+        },
+        "market": {
+          "brier": 0.1608,
+          "log_loss": 0.4944
+        }
+      },
+      "player_win_a_set": {
+        "settled": 1264,
+        "model": {
+          "brier": 0.2159,
+          "log_loss": 0.6229
+        },
+        "market": {
+          "brier": 0.1938,
+          "log_loss": 0.5694
+        }
+      },
+      "match_total_aces": {
+        "settled": 45,
+        "model": {
+          "brier": 0.1653,
+          "log_loss": 0.5008
+        },
+        "market": {
+          "brier": 0.1561,
+          "log_loss": 0.483
+        }
+      },
+      "player_aces": {
+        "settled": 37,
+        "model": {
+          "brier": 0.3106,
+          "log_loss": 0.8403
+        },
+        "market": {
+          "brier": 0.251,
+          "log_loss": 0.6951
+        }
+      },
+      "match_total_games": {
+        "settled": 1656,
+        "model": {
+          "brier": 0.1883,
+          "log_loss": 0.5489
+        },
+        "market": {
+          "brier": 0.1999,
+          "log_loss": 0.5819
+        }
+      },
+      "player_total_games": {
+        "settled": 163,
+        "model": {
+          "brier": 0.2677,
+          "log_loss": 0.7336
+        },
+        "market": {
+          "brier": 0.2512,
+          "log_loss": 0.6954
+        }
+      },
+      "player_game_handicap": {
+        "settled": 555,
+        "model": {
+          "brier": 0.2557,
+          "log_loss": 0.7224
+        },
+        "market": {
+          "brier": 0.2267,
+          "log_loss": 0.6457
+        }
+      },
+      "player_set_handicap": {
+        "settled": 115,
+        "model": {
+          "brier": 0.23,
+          "log_loss": 0.6605
+        },
+        "market": {
+          "brier": 0.2175,
+          "log_loss": 0.6282
+        }
+      },
+      "player_first_set_match": {
+        "settled": 3,
+        "model": {
+          "brier": 0.1329,
+          "log_loss": 0.4065
+        },
+        "market": {
+          "brier": 0.0753,
+          "log_loss": 0.2848
+        }
+      },
+      "player_first_set_game_handicap": {
+        "settled": 66,
+        "model": {
+          "brier": 0.2754,
+          "log_loss": 0.7474
+        },
+        "market": {
+          "brier": 0.2472,
+          "log_loss": 0.6875
+        }
+      }
+    }
+  },
+  "paper_roi": {
+    "overall": {
+      "settled": 973,
+      "wins": 430,
+      "hit_rate": 0.4419,
+      "staked": 973.0,
+      "pnl": -155.046,
+      "roi": -0.1593,
+      "loss_probability": 1.0,
+      "max_drawdown_units": -158.746,
+      "recent_settled": 429,
+      "recent_roi": -0.1447,
+      "recent_loss_probability": 0.9975,
+      "short_term_settled": 100,
+      "short_term_roi": -0.4378,
+      "short_term_loss_probability": 1.0
+    },
+    "formal_player_prop_profile": {
+      "settled": 886,
+      "wins": 391,
+      "hit_rate": 0.4413,
+      "staked": 886.0,
+      "pnl": -144.263,
+      "roi": -0.1628,
+      "loss_probability": 1.0,
+      "max_drawdown_units": -147.963,
+      "recent_settled": 408,
+      "recent_roi": -0.1146,
+      "recent_loss_probability": 0.988,
+      "short_term_settled": 100,
+      "short_term_roi": -0.4236,
+      "short_term_loss_probability": 1.0
+    },
+    "by_family_formal_profile": {
+      "first_set_winner": {
+        "settled": 313,
+        "wins": 145,
+        "hit_rate": 0.4633,
+        "staked": 313.0,
+        "pnl": -22.75,
+        "roi": -0.0727,
+        "loss_probability": 0.8885,
+        "max_drawdown_units": -31.35,
+        "recent_settled": 143,
+        "recent_roi": -0.0076,
+        "recent_loss_probability": 0.521,
+        "short_term_settled": 100,
+        "short_term_roi": -0.0638,
+        "short_term_loss_probability": 0.7355
+      },
+      "player_win_a_set": {
+        "settled": 241,
+        "wins": 112,
+        "hit_rate": 0.4647,
+        "staked": 241.0,
+        "pnl": -31.348,
+        "roi": -0.1301,
+        "loss_probability": 0.9785,
+        "max_drawdown_units": -31.848,
+        "recent_settled": 84,
+        "recent_roi": -0.1883,
+        "recent_loss_probability": 0.953,
+        "short_term_settled": 100,
+        "short_term_roi": -0.1424,
+        "short_term_loss_probability": 0.9085
+      },
+      "player_total_games": {
+        "settled": 39,
+        "wins": 15,
+        "hit_rate": 0.3846,
+        "staked": 39.0,
+        "pnl": -12.549,
+        "roi": -0.3218,
+        "loss_probability": 0.991,
+        "max_drawdown_units": -12.549,
+        "recent_settled": 25,
+        "recent_roi": -0.3732,
+        "recent_loss_probability": 0.9895,
+        "short_term_settled": 39,
+        "short_term_roi": -0.3218,
+        "short_term_loss_probability": 0.991
+      },
+      "player_game_handicap": {
+        "settled": 224,
+        "wins": 86,
+        "hit_rate": 0.3839,
+        "staked": 224.0,
+        "pnl": -65.868,
+        "roi": -0.2941,
+        "loss_probability": 1.0,
+        "max_drawdown_units": -66.038,
+        "recent_settled": 103,
+        "recent_roi": -0.2151,
+        "recent_loss_probability": 0.9885,
+        "short_term_settled": 100,
+        "short_term_roi": -0.2485,
+        "short_term_loss_probability": 0.9945
+      },
+      "match_total_aces": {
+        "settled": 16,
+        "wins": 12,
+        "hit_rate": 0.75,
+        "staked": 16.0,
+        "pnl": 5.26,
+        "roi": 0.3287,
+        "loss_probability": null,
+        "max_drawdown_units": -2.0,
+        "recent_settled": 16,
+        "recent_roi": 0.3287,
+        "recent_loss_probability": null,
+        "short_term_settled": 16,
+        "short_term_roi": 0.3287,
+        "short_term_loss_probability": null
+      },
+      "player_aces": {
+        "settled": 16,
+        "wins": 7,
+        "hit_rate": 0.4375,
+        "staked": 16.0,
+        "pnl": -2.391,
+        "roi": -0.1494,
+        "loss_probability": null,
+        "max_drawdown_units": -3.361,
+        "recent_settled": 16,
+        "recent_roi": -0.1494,
+        "recent_loss_probability": null,
+        "short_term_settled": 16,
+        "short_term_roi": -0.1494,
+        "short_term_loss_probability": null
+      },
+      "player_set_handicap": {
+        "settled": 29,
+        "wins": 18,
+        "hit_rate": 0.6207,
+        "staked": 29.0,
+        "pnl": 0.423,
+        "roi": 0.0146,
+        "loss_probability": 0.4525,
+        "max_drawdown_units": -4.88,
+        "recent_settled": 25,
+        "recent_roi": -0.0524,
+        "recent_loss_probability": 0.6055,
+        "short_term_settled": 29,
+        "short_term_roi": 0.0146,
+        "short_term_loss_probability": 0.4525
+      },
+      "player_first_set_game_handicap": {
+        "settled": 24,
+        "wins": 8,
+        "hit_rate": 0.3333,
+        "staked": 24.0,
+        "pnl": -9.78,
+        "roi": -0.4075,
+        "loss_probability": 0.991,
+        "max_drawdown_units": -9.78,
+        "recent_settled": 24,
+        "recent_roi": -0.4075,
+        "recent_loss_probability": 0.991,
+        "short_term_settled": 24,
+        "short_term_roi": -0.4075,
+        "short_term_loss_probability": 0.991
+      }
+    },
+    "by_tour": {
+      "ATP": {
+        "settled": 579,
+        "wins": 263,
+        "hit_rate": 0.4542,
+        "staked": 579.0,
+        "pnl": -81.279,
+        "roi": -0.1404,
+        "loss_probability": 0.9995,
+        "max_drawdown_units": -88.746,
+        "recent_settled": 231,
+        "recent_roi": -0.0808,
+        "recent_loss_probability": 0.8905,
+        "short_term_settled": 100,
+        "short_term_roi": -0.145,
+        "short_term_loss_probability": 0.9225
+      },
+      "WTA": {
+        "settled": 394,
+        "wins": 167,
+        "hit_rate": 0.4239,
+        "staked": 394.0,
+        "pnl": -73.767,
+        "roi": -0.1872,
+        "loss_probability": 1.0,
+        "max_drawdown_units": -74.805,
+        "recent_settled": 186,
+        "recent_roi": -0.2602,
+        "recent_loss_probability": 1.0,
+        "short_term_settled": 100,
+        "short_term_roi": -0.3748,
+        "short_term_loss_probability": 1.0
+      }
+    },
+    "by_surface": {
+      "HARD": {
+        "settled": 662,
+        "wins": 294,
+        "hit_rate": 0.4441,
+        "staked": 662.0,
+        "pnl": -112.66,
+        "roi": -0.1702,
+        "loss_probability": 1.0,
+        "max_drawdown_units": -115.86,
+        "recent_settled": 244,
+        "recent_roi": -0.2009,
+        "recent_loss_probability": 0.9985,
+        "short_term_settled": 100,
+        "short_term_roi": -0.3429,
+        "short_term_loss_probability": 1.0
+      },
+      "CLAY": {
+        "settled": 6,
+        "wins": 1,
+        "hit_rate": 0.1667,
+        "staked": 6.0,
+        "pnl": -4.5,
+        "roi": -0.75,
+        "loss_probability": null,
+        "max_drawdown_units": -5.0,
+        "recent_settled": 6,
+        "recent_roi": -0.75,
+        "recent_loss_probability": null,
+        "short_term_settled": 6,
+        "short_term_roi": -0.75,
+        "short_term_loss_probability": null
+      },
+      "UNKNOWN": {
+        "settled": 302,
+        "wins": 132,
+        "hit_rate": 0.4371,
+        "staked": 302.0,
+        "pnl": -39.419,
+        "roi": -0.1305,
+        "loss_probability": 0.985,
+        "max_drawdown_units": -42.909,
+        "recent_settled": 148,
+        "recent_roi": -0.1503,
+        "recent_loss_probability": 0.965,
+        "short_term_settled": 100,
+        "short_term_roi": -0.1374,
+        "short_term_loss_probability": 0.912
+      },
+      "GRASS": {
+        "settled": 3,
+        "wins": 3,
+        "hit_rate": 1.0,
+        "staked": 3.0,
+        "pnl": 1.533,
+        "roi": 0.511,
+        "loss_probability": null,
+        "max_drawdown_units": 0.0,
+        "recent_settled": 3,
+        "recent_roi": 0.511,
+        "recent_loss_probability": null,
+        "short_term_settled": 3,
+        "short_term_roi": 0.511,
+        "short_term_loss_probability": null
+      }
+    }
+  },
+  "recommendations": {
+    "status": "RESEARCH_ONLY",
+    "enabled_families": [],
+    "require_verifiable_start": true
+  },
+  "corrected_match_diagnostic": {
+    "fixtures_scored": 3743,
+    "fixtures_with_opening_odds": 3461,
+    "corpus_policy": "earliest pre-start forecast; MIN(id) pre-start odds pair; agreed result",
+    "note": "Opening market and forecast clocks may differ; this is a probability diagnostic, not executable ROI or promotion evidence.",
+    "buckets": [
+      {
+        "label": "recorded Elo present",
+        "n": 1677,
+        "models": {
+          "model": {
+            "brier": 0.2331,
+            "log_loss": 0.6593,
+            "auc": 0.6518
+          },
+          "model+calibrated": {
+            "brier": 0.2364,
+            "log_loss": 0.6702,
+            "auc": 0.6504
+          },
+          "market": {
+            "brier": 0.1934,
+            "log_loss": 0.5682,
+            "auc": 0.7741
+          },
+          "elo": {
+            "brier": 0.2421,
+            "log_loss": 0.6795,
+            "auc": 0.6185
+          },
+          "favourite": {
+            "brier": 0.1934,
+            "log_loss": 0.5682,
+            "auc": 0.7741
+          },
+          "coin": {
+            "brier": 0.25,
+            "log_loss": 0.6931,
+            "auc": 0.5
+          }
+        }
+      },
+      {
+        "label": "recorded Elo unavailable",
+        "n": 1784,
+        "models": {
+          "model": {
+            "brier": 0.2369,
+            "log_loss": 0.6669,
+            "auc": 0.7683
+          },
+          "model+calibrated": {
+            "brier": 0.2337,
+            "log_loss": 0.6603,
+            "auc": 0.7503
+          },
+          "market": {
+            "brier": 0.1877,
+            "log_loss": 0.5532,
+            "auc": 0.7865
+          },
+          "favourite": {
+            "brier": 0.1877,
+            "log_loss": 0.5532,
+            "auc": 0.7865
+          },
+          "coin": {
+            "brier": 0.25,
+            "log_loss": 0.6931,
+            "auc": 0.5
+          }
+        }
+      }
+    ]
+  },
+  "frozen_shadow_forward_audit": {
+    "since": "2026-10-10",
+    "version": "elo-v2-start-of-day.surface-0.35",
+    "excluded_invalid_result_match_ids": [
+      20160,
+      20251,
+      20289,
+      20496,
+      20499,
+      20501,
+      20612,
+      20671,
+      20696,
+      20711,
+      20768,
+      20769,
+      20901,
+      20953,
+      20971,
+      21219,
+      21357,
+      21371,
+      21388,
+      21431,
+      21459
+    ],
+    "selection_policy": "existing registered latest pre-start forecast; agreed completed result; first pre-start odds",
+    "bootstrap": {
+      "resamples": 4000,
+      "seed": 20260826,
+      "unit": "match"
+    },
+    "groups": {
+      "all": {
+        "n": 349,
+        "log_loss": {
+          "production": 0.6879413644348654,
+          "shadow": 0.6800168642746746,
+          "market": 0.6063625122417786,
+          "paired": {
+            "n": 349,
+            "delta": -0.007924500160190107,
+            "ci": [
+              -0.01506247538137301,
+              -0.001292417588893252
+            ]
+          }
+        },
+        "brier": {
+          "production": 0.24658132701449192,
+          "shadow": 0.24304634868998012,
+          "market": 0.2096298587095233,
+          "paired": {
+            "n": 349,
+            "delta": -0.003534978324512082,
+            "ci": [
+              -0.006724943239456966,
+              -0.0005246290986177096
+            ]
+          }
+        }
+      },
+      "tour": {
+        "n": 141,
+        "log_loss": {
+          "production": 0.6687314597340497,
+          "shadow": 0.6575979811635377,
+          "market": 0.6519769990518256,
+          "paired": {
+            "n": 141,
+            "delta": -0.011133478570511989,
+            "ci": [
+              -0.02381142580332406,
+              0.0012864318953781306
+            ]
+          }
+        },
+        "brier": {
+          "production": 0.23581615442248624,
+          "shadow": 0.23130582866763127,
+          "market": 0.22969203348835804,
+          "paired": {
+            "n": 141,
+            "delta": -0.004510325754855075,
+            "ci": [
+              -0.010195267149040442,
+              0.0010649856214838447
+            ]
+          }
+        }
+      },
+      "bettable": {
+        "n": 214,
+        "log_loss": {
+          "production": 0.6729546933192032,
+          "shadow": 0.6630253925391737,
+          "market": 0.6305776744485955,
+          "paired": {
+            "n": 214,
+            "delta": -0.00992930078002915,
+            "ci": [
+              -0.01831611122654199,
+              -0.0009546795094718122
+            ]
+          }
+        },
+        "brier": {
+          "production": 0.23945496469344127,
+          "shadow": 0.2352916807751401,
+          "market": 0.22067019970124502,
+          "paired": {
+            "n": 214,
+            "delta": -0.004163283918301333,
+            "ci": [
+              -0.007982835167161029,
+              -0.00020761107209242718
+            ]
+          }
+        }
+      },
+      "unknown": {
+        "n": 20,
+        "log_loss": {
+          "production": 0.7414931701726873,
+          "shadow": 0.7463497432194829,
+          "market": 0.68132227496344,
+          "paired": {
+            "n": 20,
+            "delta": 0.004856573046795545,
+            "ci": [
+              -0.014687239118797343,
+              0.025849368425560848
+            ]
+          }
+        },
+        "brier": {
+          "production": 0.2732824474437659,
+          "shadow": 0.27508241085,
+          "market": 0.24471883132462907,
+          "paired": {
+            "n": 20,
+            "delta": 0.001799963406234159,
+            "ci": [
+              -0.007209143418087221,
+              0.011435493739580855
+            ]
+          }
+        }
+      },
+      "challenger": {
+        "n": 73,
+        "log_loss": {
+          "production": 0.6811118979151844,
+          "shadow": 0.6735084747852661,
+          "market": 0.5892447324067408,
+          "paired": {
+            "n": 73,
+            "delta": -0.007603423129918457,
+            "ci": [
+              -0.014030744636675018,
+              -0.0013158061967792672
+            ]
+          }
+        },
+        "brier": {
+          "production": 0.24648335165514962,
+          "shadow": 0.24299038142115068,
+          "market": 0.20324446594805437,
+          "paired": {
+            "n": 73,
+            "delta": -0.003492970233998901,
+            "ci": [
+              -0.006526070637854253,
+              -0.0005412294821935098
+            ]
+          }
+        }
+      },
+      "itf_utr": {
+        "n": 115,
+        "log_loss": {
+          "production": 0.7065162470783026,
+          "shadow": 0.7000996240355549,
+          "market": 0.5482647734009792,
+          "paired": {
+            "n": 115,
+            "delta": -0.006416623042748002,
+            "ci": [
+              -0.020803419696753186,
+              0.0061714222463548464
+            ]
+          }
+        },
+        "brier": {
+          "production": 0.2551988846503123,
+          "shadow": 0.2519052851297652,
+          "market": 0.18298279414838725,
+          "paired": {
+            "n": 115,
+            "delta": -0.00329359952054708,
+            "ci": [
+              -0.009527060183166038,
+              0.0022517637755055846
+            ]
+          }
+        }
+      }
+    }
+  },
+  "active_sqlite_archive_audit": {
+    "schema_version": "wong-choi-sqlite-corpus-audit/v1",
+    "status": "ok",
+    "domain": "tennis",
+    "active": {
+      "path": "/Users/imac/Antigravity-repo/tennis-wong-choi/tennis_wc.db",
+      "quick_check": "ok",
+      "counts": {
+        "matches": 9681,
+        "match_results": 12866,
+        "odds_snapshots": 16644
+      }
+    },
+    "snapshot_count": 4,
+    "snapshots": [
+      {
+        "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/tennis/migration-db-snapshots/pre_pit_migration--baf42ed4c400/tennis_wc_pre_phase12_20260827.db",
+        "quick_check": "ok",
+        "counts": {
+          "matches": 4532,
+          "match_results": 5173,
+          "odds_snapshots": 9235
+        }
+      },
+      {
+        "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/tennis/migration-db-snapshots/pre_pit_migration--baf42ed4c400/tennis_wc_pre_pit_20260826.db",
+        "quick_check": "ok",
+        "counts": {
+          "matches": 4532,
+          "match_results": 5173,
+          "odds_snapshots": 9235
+        }
+      },
+      {
+        "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/tennis/migration-db-snapshots/pre_pit_migration--baf42ed4c400/tennis_wc_pre_rankfix_20260827.db",
+        "quick_check": "ok",
+        "counts": {
+          "matches": 4532,
+          "match_results": 5173,
+          "odds_snapshots": 9235
+        }
+      },
+      {
+        "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/tennis/db-snapshot/c7c5b0385bde/tennis_wc_pre_surface_20260829.db",
+        "quick_check": "ok",
+        "counts": {
+          "matches": 4690,
+          "match_results": 5552,
+          "odds_snapshots": 9503
+        }
+      }
+    ],
+    "watermarks": {
+      "matches": 4690,
+      "match_results": 5552,
+      "odds_snapshots": 9503
+    },
+    "catalog_status": "ok",
+    "runtime_snapshot_substitution_allowed": false
+  },
+  "validation": {
+    "baseline_tennis_passed": 713,
+    "final_tennis_passed": 730,
+    "full_check": "passed",
+    "full_suite_count": 16,
+    "nba_permission_recheck_passed": 13,
+    "full_check_log_sha256": "16360c60d88d6bec1bbc388945fee42b4c94c5e320a955b610ad3416ef69e0fc",
+    "source_and_test_sha256": {
+      "tennis-wong-choi/scripts/holdout_validation.py": "9816fe460da2efad24f48d1478ece328278713f269e8efdd1f5513c3f9535ca8",
+      "tennis-wong-choi/scripts/measure_match_model.py": "d183d04cbe9cc8b4dabc478f3e99053ce16bd9438fddc8432797f688c4836277",
+      "tennis-wong-choi/src/tennis_wc/modelling/backtester.py": "91cb24aa8e90c2cf7b400aeab37f9ad27e33cee40d4ca12948ff1e23625f37e2",
+      "tennis-wong-choi/src/tennis_wc/modelling/probability_calibration.py": "2067a7573f5f9b3146eee11de6026837b67e3f10ba91d3b70c4c56bffc08fabe",
+      "tennis-wong-choi/src/tennis_wc/validation/checks.py": "5e17d6e8c814ce7d8d9e18e64a92e580204ee2f0fa834a3058aee8c8253bc7c5",
+      "tennis-wong-choi/scripts/audit_model_data.py": "c665b0d20f324875d1e01ee913569f47db476498237d7d6d1f06d14dc22ff0ce",
+      "tennis-wong-choi/src/tennis_wc/evaluation/match_corpus.py": "8ed2dc991a052adb73a06eae79a2f15fc36b74ff857cbd4ff90b5cb4dd9fd34d",
+      "tennis-wong-choi/tests/test_backtester.py": "d680c06a41323258ede6106f613e6d8d80af5b54a8b28ab9bb32d38811ecf8fd",
+      "tennis-wong-choi/tests/test_match_corpus.py": "25492c6e18d650e121be9a9d5e73a4ebb834b503e63496ef496f91c3a8ff3df9",
+      "tennis-wong-choi/tests/test_probability_calibration.py": "b28cedac4cfbb15d34d96a4c52e31f45ecd8c1e13dc16fc09174f454bd561eca",
+      "tennis-wong-choi/tests/test_validation_checks.py": "b094d2a19d73290621d3af7e56dc1aafe3e7547205e4033f3db4e8f80cc38c1d"
+    }
+  },
+  "source_branch": "codex-tennis-model-audit-20261026",
+  "source_branch_commit": "a920bb295ff6c45940e31e8626298de394499798",
+  "production_pricing_changed": false,
+  "model_promoted": false
+}
