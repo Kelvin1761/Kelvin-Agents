@@ -82,15 +82,17 @@ def test_fit_as_of_only_sees_earlier_matches(tmp_path, monkeypatch):
                    player_a_id, player_b_id, round, source_provider, created_at, updated_at)
                VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (i + 1, f"M{i}", "ATP", day, 1, 1, 2, "R1", "test", "now", "now"))
+        conn.execute("UPDATE matches SET start_time_utc=? WHERE id=?",
+                     (day + "T12:00:00Z", i + 1))
         conn.execute(
             "INSERT INTO match_results (match_id, winner_player_id, score_json, "
-            "source_provider, raw_response_id, created_at) VALUES (?,?,?,?,NULL,'now')",
-            (i + 1, 1 if i % 2 == 0 else 2, "{}", "test"))
+            "source_provider, raw_response_id, created_at) VALUES (?,?,?,?,NULL,?)",
+            (i + 1, 1 if i % 2 == 0 else 2, "{}", "test", day + "T16:00:00Z"))
         conn.execute(
             "INSERT INTO predictions (match_id, feature_set_version, selection_player_id, "
             "selection_name, model_probability, decision, stake_units, confidence, risk, "
-            "pricing_json, created_at) VALUES (?,'v1',1,'P1',?, 'NO_BET',0,'low','low','{}','now')",
-            (i + 1, 0.8 if i % 2 == 0 else 0.2))
+            "pricing_json, created_at) VALUES (?,'v1',1,'P1',?, 'NO_BET',0,'low','low','{}',?)",
+            (i + 1, 0.8 if i % 2 == 0 else 0.2, day + "T09:00:00Z"))
     conn.commit()
 
     early = calib.fit_as_of(conn, "2026-02-01")

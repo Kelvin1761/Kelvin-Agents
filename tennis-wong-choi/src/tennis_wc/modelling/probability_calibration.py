@@ -94,20 +94,10 @@ def apply(probability: float, calibration: Calibration) -> float:
 
 
 def fit_as_of(conn, as_of_date: str) -> Calibration:
-    """Fit on every match settled STRICTLY BEFORE ``as_of_date``."""
-    rows = conn.execute(
-        """
-        SELECT m.player_a_id, r.winner_player_id,
-               (SELECT CASE WHEN p.selection_player_id = m.player_a_id
-                            THEN p.model_probability ELSE 1.0 - p.model_probability END
-                  FROM predictions p WHERE p.match_id = m.id
-                 ORDER BY p.id DESC LIMIT 1) AS model_p
-        FROM matches m JOIN match_results r ON r.match_id = m.id
-        WHERE m.match_date < ? AND r.winner_player_id IS NOT NULL
-          AND m.player_a_id <> m.player_b_id
-        """,
-        (as_of_date,),
-    ).fetchall()
+    """Fit on recorded pre-match forecasts whose results were known by the cutoff."""
+    from tennis_wc.evaluation.match_corpus import prematch_outcomes
+
+    rows = prematch_outcomes(conn, before=as_of_date)
     samples = [
         (float(row["model_p"]),
          1.0 if row["winner_player_id"] == row["player_a_id"] else 0.0)

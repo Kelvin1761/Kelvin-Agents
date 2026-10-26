@@ -11,6 +11,7 @@ from tennis_wc.features.common import utc_now
 from tennis_wc.ingestion.name_matching import match_pair_score, same_player_name
 from tennis_wc.providers import get_tennis_provider
 from tennis_wc.evaluation.corpus import tracker_point_in_time_clause
+from tennis_wc.database.result_consensus import conflicting_result_matches, result_agreement_clause
 
 # Gates and track records read only legs written before their match started;
 # see evaluation.corpus.tracker_point_in_time_clause.
@@ -687,7 +688,9 @@ def settle_bets_for_date(match_date: str, auto_refresh: bool = True) -> dict:
     now = utc_now()
     settled = 0
     pending = 0
+    held_conflicts = 0
     with get_connection() as conn:
+        conflicts = conflicting_result_matches(conn)
         bets = conn.execute(
             """
             SELECT b.*, r.winner_player_id
@@ -712,6 +715,10 @@ def settle_bets_for_date(match_date: str, auto_refresh: bool = True) -> dict:
             (match_date,),
         ).fetchall()
         for bet in bets:
+            if int(bet["match_id"]) in conflicts:
+                held_conflicts += 1
+                pending += 1
+                continue
             if bet["winner_player_id"] is None:
                 pending += 1
                 continue
@@ -732,6 +739,7 @@ def settle_bets_for_date(match_date: str, auto_refresh: bool = True) -> dict:
     return {
         "settled": settled,
         "pending_without_result": pending,
+        "held_conflicting_results": held_conflicts,
         "tracker_settlement": tracker_settlement,
         "combo_settlement": combo_settlement,
         "tier_roi": tier_roi_summary(),
@@ -822,13 +830,15 @@ def settle_clv_tracker_for_date(match_date: str) -> dict:
     unsupported = 0
     prop_linked_settled = 0
     prop_linked_voided = 0
+    held_conflicts: set[int] = set()
     with get_connection() as conn:
+        conflicts = conflicting_result_matches(conn)
         # Prop settlement has the exact synthetic market scope, subject and
         # retirement handling.  Copy its authoritative result instead of
         # trying to re-derive the same bet from the coarser CLV row.
         prop_rows = conn.execute(
             """
-            SELECT c.id, p.result_status, p.profit_loss_units
+            SELECT c.id, c.match_id, p.result_status, p.profit_loss_units
             FROM clv_tracker c
             JOIN prop_tracker p
               ON c.recommendation_type = 'PROP_RECOMMENDATION'
@@ -842,6 +852,9 @@ def settle_clv_tracker_for_date(match_date: str) -> dict:
             (match_date,),
         ).fetchall()
         for row in prop_rows:
+            if int(row["match_id"]) in conflicts:
+                held_conflicts.add(int(row["id"]))
+                continue
             status = str(row["result_status"])
             conn.execute(
                 """
@@ -885,6 +898,10 @@ def settle_clv_tracker_for_date(match_date: str) -> dict:
             (match_date,),
         ).fetchall()
         for row in rows:
+            if int(row["match_id"]) in conflicts:
+                held_conflicts.add(int(row["id"]))
+                pending += 1
+                continue
             if row["winner_player_id"] is None:
                 pending += 1
                 continue
@@ -909,6 +926,7 @@ def settle_clv_tracker_for_date(match_date: str) -> dict:
         "unsupported_market_results": unsupported,
         "prop_linked_settled": prop_linked_settled,
         "prop_linked_voided": prop_linked_voided,
+        "held_conflicting_results": len(held_conflicts),
     }
 
 
@@ -1889,7 +1907,7 @@ def _combo_result_row(conn, leg: dict) -> dict | None:
     except (TypeError, ValueError):
         return None
     row = conn.execute(
-        """
+        f"""
         SELECT r.winner_player_id, r.score_json,
                m.player_a_id, m.player_b_id,
                pa.name AS player_a_name, pb.name AS player_b_name
@@ -1910,7 +1928,7 @@ def _combo_result_row(conn, leg: dict) -> dict | None:
                 r2.id DESC
             LIMIT 1
         )
-        WHERE m.id = ?
+        WHERE m.id = ? AND {result_agreement_clause('m', 'id')}
         """,
         (match_id,),
     ).fetchone()

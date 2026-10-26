@@ -294,7 +294,9 @@ def _match_context(match: dict, tournament: dict, tournament_level: dict) -> dic
         "indoor_outdoor": datapoint(indoor_outdoor, tournament_prov),
         "match_date": datapoint(match["match_date"], match_prov),
     }
-    base["format"] = datapoint(detect_match_format({"tour": match["tour"], "level": level}), tournament_prov)
+    base["format"] = datapoint(detect_match_format({
+        "tour": match["tour"], "level": level, "round": match["round"],
+    }), tournament_prov)
     return base
 
 

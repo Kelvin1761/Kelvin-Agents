@@ -11,7 +11,12 @@ def detect_match_format(match: dict) -> str:
     """
     Return BO3 or BO5. BO5 applies to men's Grand Slam main draw singles.
     """
-    if match.get("tour") == "ATP" and match.get("level") == "GRAND_SLAM":
+    round_name = str(match.get("round") or "").strip().upper()
+    qualifying = (round_name in {"Q", "Q1", "Q2", "Q3", "QR1", "QR2", "QR3"}
+                  or "QUAL" in round_name)
+    if (str(match.get("tour") or "").upper() == "ATP"
+            and str(match.get("level") or "").upper() == "GRAND_SLAM"
+            and not qualifying):
         return "BO5"
     return "BO3"
 

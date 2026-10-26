@@ -1544,7 +1544,7 @@ def _integrity_warnings() -> list[str]:
         with get_connection() as conn:
             failures = checks.critical_failures(checks.run_checks(conn))
     except Exception:
-        return []
+        return ["⚠️ 資料完整性檢查未能完成，今次建議暫不適用。"]
     if not failures:
         return []
     lines = ["⚠️ 資料完整性檢查未過（下面嘅建議要打折扣睇）："]
@@ -1954,6 +1954,10 @@ def _reference_prop_board_lines(prop: dict | None) -> list[str]:
         if bd.predicted_games:
             header += f"｜預測總局數 ≈ {bd.predicted_games}"
         segment = [header]
+        if getattr(bd, "unsupported_reason", None):
+            from tennis_wc.props.daily import unsupported_prop_message
+
+            segment.append("⚠ " + unsupported_prop_message(bd.unsupported_reason))
         for tw in bd.match_ou:
             segment.append(_two_way_line("全場aces", tw, throwaway))
         for tw in bd.player_ou:
@@ -2911,6 +2915,10 @@ def _ace_prop_lines(match_date: str) -> list[str]:
         if bd.predicted_games:
             hdr += f"｜預測總局數 ≈ {bd.predicted_games}"
         seg = [hdr]
+        if getattr(bd, "unsupported_reason", None):
+            from tennis_wc.props.daily import unsupported_prop_message
+
+            seg.append("⚠ " + unsupported_prop_message(bd.unsupported_reason))
         for tw in bd.match_ou:
             seg.append(_two_way_line("全場aces", tw, val_picks))
         for tw in bd.player_ou:

@@ -23,6 +23,7 @@ import re
 
 from tennis_wc.evaluation.corpus import classify_point_in_time, point_in_time_clause
 from tennis_wc.features.common import utc_now
+from tennis_wc.database.result_consensus import conflicting_result_matches, result_agreement_clause
 
 
 # A match can carry more than one result row (an ordinary import plus a
@@ -673,6 +674,7 @@ def _abandoned_reason(conn, match_id: int, today: str | None = None) -> str | No
 
 
 def settle_props(conn, today: str | None = None) -> dict:
+    conflicts = conflicting_result_matches(conn)
     # Legacy label migration: prop_tracker used WIN/LOSS while every other
     # tracker uses WON/LOST. Converge idempotently so cross-table stats need
     # only one vocabulary (also fixes rows written by machines on old code).
@@ -688,6 +690,8 @@ def settle_props(conn, today: str | None = None) -> dict:
     for row in conn.execute(
         "SELECT id, match_id FROM prop_tracker WHERE result_status IN ('WON', 'LOST')"
     ).fetchall():
+        if int(row["match_id"]) in conflicts:
+            continue
         if _match_void_reason(conn, int(row["match_id"])):
             conn.execute(
                 "UPDATE prop_tracker SET result_status='VOID', actual_value=NULL, "
@@ -706,6 +710,8 @@ def settle_props(conn, today: str | None = None) -> dict:
         "SELECT id, match_id FROM prop_tracker WHERE result_status = 'VOID'"
     ).fetchall():
         match_id = int(row["match_id"])
+        if match_id in conflicts:
+            continue
         if _match_void_reason(conn, match_id):
             continue
         if not conn.execute(
@@ -723,6 +729,8 @@ def settle_props(conn, today: str | None = None) -> dict:
         ).fetchall()
     abandoned = 0
     for p in pending:
+        if int(p["match_id"]) in conflicts:
+            continue
         void_reason = _match_void_reason(conn, int(p["match_id"]))
         if not void_reason:
             void_reason = _abandoned_reason(conn, int(p["match_id"]), today)
@@ -759,6 +767,8 @@ def settle_props(conn, today: str | None = None) -> dict:
         "regraded_to_void": regraded,
         "revived_from_void": revived,
         "still_pending": len(pending) - graded - voided,
+        "held_conflicting_results": sum(int(p["match_id"]) in conflicts for p in pending),
+        "conflicting_result_match_ids": sorted(conflicts),
     }
 
 
@@ -787,7 +797,8 @@ def prop_roi_report(conn, value_only: bool = True,
     """
     # `where` is interpolated as `WHERE p.{where}`, so the FIRST term must stay
     # unqualified and every later one carries its own alias.
-    where = "result_status IN ('WON','LOST') AND stake_units > 0"
+    where = ("result_status IN ('WON','LOST') AND stake_units > 0"
+             f" AND {result_agreement_clause('p')}")
     if point_in_time_only:
         where += f" AND {point_in_time_clause('p')}"
     if value_only:
@@ -1069,7 +1080,8 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
     rows = conn.execute(
         f"SELECT p.match_id, p.{column} AS prob, p.market_prob_fair, p.result_status, "
         "p.market_key FROM prop_tracker p JOIN matches m ON m.id=p.match_id "
-        f"WHERE p.result_status IN ('WON','LOST') AND p.{column} IS NOT NULL "
+        f"WHERE p.result_status IN ('WON','LOST') AND {result_agreement_clause('p')} "
+        f"AND p.{column} IS NOT NULL "
         "AND p.market_prob_fair IS NOT NULL AND p.side='over' "
         "AND (p.prop_scope!='player_first_set' "
         "OR p.subject_player_id=m.player_a_id)" + pit_clause + date_clause,
@@ -1077,7 +1089,7 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
     ).fetchall()
     legacy_only = conn.execute(
         "SELECT COUNT(*) FROM prop_tracker p JOIN matches m ON m.id=p.match_id "
-        "WHERE p.result_status IN ('WON','LOST') "
+        f"WHERE p.result_status IN ('WON','LOST') AND {result_agreement_clause('p')} "
         "AND p.model_prob_raw IS NULL AND p.model_prob IS NOT NULL "
         "AND p.side='over' AND (p.prop_scope!='player_first_set' "
         "OR p.subject_player_id=m.player_a_id)" + pit_clause + date_clause,

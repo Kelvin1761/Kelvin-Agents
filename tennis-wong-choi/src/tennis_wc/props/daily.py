@@ -62,6 +62,7 @@ class AcePropBoard:
     games_ou: list = field(default_factory=list)        # TwoWayProp (total match games)
     predicted_games: float | None = None
     anchor: object | None = None
+    unsupported_reason: str | None = None
 
 
 def _norm(s: str) -> str:
@@ -72,7 +73,8 @@ def _match_meta(conn, match_id: int):
     return conn.execute(
         """
         SELECT m.id, m.player_a_id, m.player_b_id, m.match_date, m.tour,
-               m.start_time_utc,
+               m.start_time_utc, m.round,
+               pa.tour AS player_a_tour, pb.tour AS player_b_tour,
                pa.name AS a_name, pb.name AS b_name,
                (SELECT t.name FROM tournaments t WHERE t.id = m.tournament_id)
                    AS tournament_name,
@@ -99,6 +101,14 @@ def _start_time(meta) -> str | None:
         return meta["start_time_utc"] or None
     except (IndexError, KeyError):
         return None
+
+
+def unsupported_prop_message(reason: str) -> str:
+    if reason == "conflicting_result_sources":
+        return "賽果來源有衝突，暫停定價及新結算，等候核實。"
+    if reason == "unsupported_match_format_BO5":
+        return "呢場係五盤三勝；現有 prop 模型只支援三盤兩勝，暫停定價。"
+    return "比賽賽制未確認，暫停 prop 定價。"
 
 
 def _games_bettable() -> bool:
@@ -1104,6 +1114,9 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
     for row in rows:
         rows_by_match.setdefault(int(row["match_id"]), []).append(row)
     match_ids = set(rows_by_match)
+    from tennis_wc.database.result_consensus import conflicting_result_matches
+
+    conflicts = conflicting_result_matches(conn)
     boards: list[AcePropBoard] = []
     for mid in match_ids:
         meta = _match_meta(conn, mid)
@@ -1111,6 +1124,29 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
             continue
         if "/" in str(meta["a_name"] or "") or "/" in str(meta["b_name"] or ""):
             continue  # current player-prop models are singles-only
+        if mid in conflicts:
+            boards.append(AcePropBoard(
+                mid, f"{meta['a_name']} vs {meta['b_name']}", None,
+                unsupported_reason="conflicting_result_sources",
+            ))
+            continue
+        from tennis_wc.features.bo_format import detect_match_format
+
+        tour = meta["tour"]
+        if tour == "UNKNOWN" and meta["player_a_tour"] == meta["player_b_tour"]:
+            tour = meta["player_a_tour"]
+        match_format = detect_match_format({
+            "tour": tour, "level": meta["tournament_level"], "round": meta["round"],
+        })
+        unknown_slam = (meta["tournament_level"] == "GRAND_SLAM"
+                        and tour not in {"ATP", "WTA"})
+        if match_format != "BO3" or unknown_slam:
+            boards.append(AcePropBoard(
+                mid, f"{meta['a_name']} vs {meta['b_name']}", None,
+                unsupported_reason=("unverified_grand_slam_format" if unknown_slam
+                                    else f"unsupported_match_format_{match_format}"),
+            ))
+            continue
         match_rows = rows_by_match[mid]
         ace_rows = [
             row for row in match_rows

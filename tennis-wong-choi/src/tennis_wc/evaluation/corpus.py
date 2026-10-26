@@ -93,10 +93,13 @@ def tracker_point_in_time_clause(table: str = "clv_tracker") -> str:
     A correlated EXISTS rather than a JOIN, so the readers' unqualified column
     names (`match_date`, `updated_at`) stay unambiguous.
     """
+    from tennis_wc.database.result_consensus import result_agreement_clause
+
     return (
         f"EXISTS (SELECT 1 FROM matches pit_m WHERE pit_m.id = {table}.match_id "
         f"AND pit_m.start_time_utc IS NOT NULL AND pit_m.start_time_utc != '' "
-        f"AND {table}.recorded_at < pit_m.start_time_utc)"
+        f"AND {table}.recorded_at < pit_m.start_time_utc) "
+        f"AND {result_agreement_clause(table)}"
     )
 
 

@@ -634,7 +634,8 @@ def test_prop_settlement_voids_retired_matches(tmp_path, monkeypatch):
         "SELECT result_status, profit_loss_units FROM prop_tracker"
     ).fetchone()
     assert out == {"graded": 0, "voided": 1, "voided_abandoned": 0,
-                   "regraded_to_void": 0, "revived_from_void": 0, "still_pending": 0}
+                   "regraded_to_void": 0, "revived_from_void": 0, "still_pending": 0,
+                   "held_conflicting_results": 0, "conflicting_result_match_ids": []}
     # A retirement void is not an abandonment void: this match HAS a result.
     assert out["voided_abandoned"] == 0
     assert row["result_status"] == "VOID"

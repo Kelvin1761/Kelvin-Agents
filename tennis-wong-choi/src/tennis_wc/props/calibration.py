@@ -27,6 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from tennis_wc.evaluation.corpus import point_in_time_clause
+from tennis_wc.database.result_consensus import result_agreement_clause
 from tennis_wc.props.registry import family_for_market
 
 MIN_SETTLED = 120
@@ -115,6 +116,7 @@ def family_reliability(conn, family: str, as_of_date: str | None = None) -> Fami
             LEFT JOIN quality q ON q.match_id=p.match_id
             WHERE p.result_status IN ('WON','LOST')
               AND {point_in_time_clause('p')}
+              AND {result_agreement_clause('p')}
               AND p.model_prob_raw IS NOT NULL
               AND p.market_prob_fair IS NOT NULL
               AND p.side='over'
