@@ -15,6 +15,7 @@ import shutil
 import sqlite3
 import subprocess
 import tempfile
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -149,11 +150,21 @@ def _remote_counts(
         _count_query(),
         "--json",
     ]
-    result = runner(command, root)
-    if result.returncode != 0:
-        detail = (result.stderr or result.stdout or "unknown error").strip()[-1000:]
+    # Nightly OAuth requests can receive 7403 and later succeed with the same
+    # account/database. Retry only this read-only probe, never switch credentials
+    # or treat an authorization failure as a verified backup.
+    for attempt in range(3):
+        result = runner(command, root)
+        if result.returncode == 0:
+            return _parse_counts(result.stdout)
+        raw = result.stderr or result.stdout or "unknown error"
+        retryable = re.search(r'"code"\s*:\s*7403\b|\[code:\s*7403\]', raw)
+        if retryable and attempt < 2:
+            time.sleep(2 ** attempt)
+            continue
+        detail = raw.strip()[-1000:]
         raise DashboardBackupError(f"D1 row-count query failed: {detail}")
-    return _parse_counts(result.stdout)
+    raise AssertionError("D1 count retries exhausted without a result")
 
 
 def _export_remote(
