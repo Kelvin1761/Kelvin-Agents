@@ -3804,6 +3804,7 @@ function splitBattlefieldRacePattern(value) {
   return parts.map((part, index) => {
     if (index === 0) return { label: /^Race\s*\d+/i.test(part) ? '場次' : '班次', value: part };
     if (index === 1 && /\d+\s*m\b/i.test(part)) return { label: '路程', value: part };
+    if (/跑道|賽道|草地/.test(part)) return { label: '場地', value: part };
     if (/^HKJC$/i.test(part)) return { label: '賽區', value: '香港' };
     if (/^(?:AU|Australia)$/i.test(part)) return { label: '賽區', value: '澳洲' };
     return { label: '賽事條件', value: part };
