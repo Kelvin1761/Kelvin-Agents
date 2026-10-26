@@ -1,6 +1,6 @@
 # EXP-20261026-05 — Simulator 跨盤發球輪轉：單一 correctness 修正
 
-日期 2026-10-26；狀態：先登記，未建立 candidate／未讀 candidate 結果。
+日期 2026-10-26；狀態：已量度。Protocol `e0c1ce4f` 先入 main；baseline 完成後先改 candidate。
 
 ## 已重現問題與固定修正
 
@@ -28,4 +28,53 @@ Rule 14（PDF p10）及 Rule 5(b)（p8）：每局延續發球輪轉；tie-break
 
 ## 結果
 
-待 baseline／candidate 同窗比較。
+**Correctness：FIX。Predictive improvement：未證明。投注 family：唔 promotion。**
+665 matches／1,230 props，固定 corpus／quote／outcome 完全一致，無 coverage 變化；ATP 483 場、WTA 182 場。
+| 版本 | Brier ↓ | Log loss ↓ |
+|---|---:|---:|
+| baseline | 0.251512 | 0.701830 |
+| candidate | 0.251835 | 0.703654 |
+| market | 0.233667 | 0.659996 |
+
+候選 ΔBrier +0.000322，95% match CI [-0.0009015235907742399, 0.0015308431812515529]；
+ΔLL +0.001824，CI [-0.001351276718879943, 0.005011989942559916]。兩者跨零，唔聲稱準確率改善，point estimate 輕微退步照報。
+
+| Family | matches / props | B0 Brier | B1 Brier |
+|---|---|---:|---:|
+| player_first_set | 627 / 627 | 0.250037 | 0.249879 |
+| player_first_set_game_margin | 64 / 64 | 0.271143 | 0.269554 |
+| player_game_margin | 124 / 414 | 0.246756 | 0.248678 |
+| player_games | 62 / 125 | 0.264613 | 0.263029 |
+
+所有 family ΔBrier／LL CI 均跨零。627 場 first-set winner 理論不受後盤 server 影響，
+有限 MC stream 因後續局數改變，首盤 sample sequence 亦會改變；其微小升跌唔作獨立 signal。
+市場仍明顯較好；無 CLV 或交易 edge 結論。現役 shadow／family eligibility／stake 規則不變。
+次要 raw edge≥0.04 平注：B0 −28.683u /473（−6.06%），B1 −36.093u /480（−7.52%）；
+唔將 correctness fix 包裝成 profitability upgrade，亦唔用 ROI 反調權重去救結果。
+
+## 工程及證據
+- 原 kernel deterministic red proof：4 failed／3 passed；按 game parity 修正後 native Tennis 748 passed（16.58s），quick 全綠。
+- GROUP BY MIN(id) reader 同 sequential first-id reader，全部 baseline records／probabilities／quotes 完全一致（1,230 records）；只係讀法改善。
+- Source 只讀 legacy history，無 WTA overlay；WTA 直接接線 REJECT 結論獨立保留。
+- 修正係符合 ITF 規則嘅 deterministic correctness fix；唔係參數 search，唔宣稱有 market-relative 性能勝出，唔據此啟用任何新投注 family。
+- 呢份係同輸入 counterfactual A/B，唔係當時已保存嘅 candidate forecasts；legacy history 對超過 13 日舊 rows 主要靠日期，確切 capture availability 未全部證明。仍標 FLAG，唔作正式 PIT／live promotion 證據。
+- Rollback：發佈前 baseline `007fbc62`（後續 docs commit 亦無改 kernel），immutable manifest 保留回退 SHA。
+- Candidate file SHA256：`f2527c25c83be89c56ba0640a544345462fb8985a84dc0ad148a50940ee17e21`。
+- 資料 SHA256 同 EXP-04；原始逐合約 baseline／candidate 同 comparison 存外置 scratch，唔進 git。
+
+## 重跑
+研究 driver 係 non-main 分支 `codex-tennis-refine-20261026` 嘅 `scripts/evaluate_service_order.py`。
+先無 candidate 參數生成 baseline，再用 `--baseline <baseline.json> --candidate <fixed match_simulator.py>` 生成候選與 comparison。
+固定 `PYTHONDONTWRITEBYTECODE=1`、`PYTHONPATH=src`；DB 路徑同 EXP-04；研究 driver SHA：`2a873f64a7150209a6346e7959d51f4d98338c72`。
+
+
+```bash
+cd tennis-wong-choi  # research driver checkout at 2a873f64a7150209a6346e7959d51f4d98338c72
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python scripts/evaluate_service_order.py \
+  --db "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/tennis_research.db" \
+  --output "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/service_order_baseline.json"
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python scripts/evaluate_service_order.py \
+  --db "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/tennis_research.db" \
+  --baseline "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/service_order_baseline.json" \  --candidate "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/service_order_candidate_kernel.py" \
+  --output "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/service_order_candidate.json"
+```

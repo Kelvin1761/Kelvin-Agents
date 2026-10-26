@@ -281,4 +281,4 @@
 - [EXP-20261026-02](EXP-20261026-02-nba-availability-official-report-and-late-refresh.md)：NBA 官方傷停報告做輔助來源（只會令穩膽更嚴）、availability_obs 記錄 ESPN／官方狀態同實際上場、final refresh 加 08:30／10:00／11:30／13:00；冇改機率。
 
 - [EXP-20261026-04](EXP-20261026-04-tennis-wta-fresh-history.md)：WTA 官方新 history 固定消融，114 場／300 props；A1 Brier 0.2645→0.2760，落後市場；REJECT，source 及 exposure 品質問題完整保存。
-- [EXP-20261026-05](EXP-20261026-05-tennis-simulator-service-order.md)：已重現跨盤發球輪轉 bug；先凍結單一 correctness 修正及全 BO3 同窗比較協議，未建立 candidate。
+- [EXP-20261026-05](EXP-20261026-05-tennis-simulator-service-order.md)：跨盤發球輪轉 correctness 修正；665 場／1,230 props，Brier 0.251512→0.251835（CI 跨零），未證明準確度提升；不 promotion 投注 family。
