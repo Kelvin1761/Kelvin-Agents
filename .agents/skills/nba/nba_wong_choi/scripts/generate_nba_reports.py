@@ -170,6 +170,7 @@ def season_rate_shadow_enabled():
 
 V2_SHADOW_KEYS = ("season_rate_v2_prob_S", "season_rate_v2_version", "season_rate_v2_status", "season_rate_v2_inputs")
 V3_SHADOW_KEYS = ("season_rate_v3_prob_S", "season_rate_v3_version", "season_rate_v3_status", "season_rate_v3_inputs")
+V4_SHADOW_KEYS = ("season_rate_v4_prob_S", "season_rate_v4_version", "season_rate_v4_status", "season_rate_v4_inputs")
 
 
 def team_absence_context(ext_players, team_recent):
@@ -183,14 +184,16 @@ def team_absence_context(ext_players, team_recent):
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
-def compute_season_rate(ext_player, stat_key, line_val, opponent_context=None, absence_context=None):
+def compute_season_rate(ext_player, stat_key, line_val, opponent_context=None, absence_context=None,
+                        current_season=None, team=None):
     """Season-rate model S shadow fields: v1 (EXP-20261025-11) and v2 (EXP-20261025-13).
     Record only; never raises. v1 stays as-is because EXP-20261025-12 froze it."""
     if not season_rate_shadow_enabled():
         return {"season_rate_prob_S": None, "season_rate_version": None,
                 "season_rate_status": "disabled", "season_rate_inputs": None,
                 **dict(zip(V2_SHADOW_KEYS, (None, None, "disabled", None))),
-                **dict(zip(V3_SHADOW_KEYS, (None, None, "disabled", None)))}
+                **dict(zip(V3_SHADOW_KEYS, (None, None, "disabled", None))),
+                **dict(zip(V4_SHADOW_KEYS, (None, None, "disabled", None)))}
     out = {}
     log = ((ext_player or {}).get("gamelog") or {}).get("season_log")
     try:
@@ -217,6 +220,14 @@ def compute_season_rate(ext_player, stat_key, line_val, opponent_context=None, a
                                         status, inputs)))
     except Exception as exc:
         out.update(zip(V3_SHADOW_KEYS, (None, None, "error", {"error": f"{type(exc).__name__}: {exc}"})))
+    try:
+        import nba_season_rate
+        prob, status, inputs = nba_season_rate.season_rate_prob_v4(
+            log, stat_key, line_val, opponent_context, current_season, team)
+        out.update(zip(V4_SHADOW_KEYS, (prob, nba_season_rate.MODEL_ID_V4 if prob is not None else None,
+                                        status, inputs)))
+    except Exception as exc:
+        out.update(zip(V4_SHADOW_KEYS, (None, None, "error", {"error": f"{type(exc).__name__}: {exc}"})))
     return out
 
 
@@ -763,7 +774,8 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
                       usg_bonus=0, defender_impact=None, top_defender_name="",
                       opponent_abbr="", season_phase="MID_SEASON",
                       ml_predictor=None, team_stats=None, engine_mode="hybrid",
-                      ml_defender_pm=None, opponent_context=None, absence_context=None):
+                      ml_defender_pm=None, opponent_context=None, absence_context=None,
+                      current_season=None):
     card = {
         "name": player_name,
         "team": team_abbr,
@@ -972,7 +984,8 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             "ml_prob": ml_prob,
             "ml_est_prob": ml_est_prob,
             **compute_shadow_fit(ext_player, stat_key, line_val),
-            **compute_season_rate(ext_player, stat_key, line_val, opponent_context, absence_context),
+            **compute_season_rate(ext_player, stat_key, line_val, opponent_context, absence_context,
+                                  current_season, team_abbr),
             "ml_delta_pp": round(ml_delta, 1) if ml_delta is not None else None,
             "hybrid_adj_shadow_pp": hybrid_adj_shadow,
             "hybrid_adj_applied_pp": hybrid_adj,
@@ -2632,6 +2645,7 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
                 "season_rate_inputs": la.get("season_rate_inputs"),
                 **{key: la.get(key) for key in V2_SHADOW_KEYS},
                 **{key: la.get(key) for key in V3_SHADOW_KEYS},
+                **{key: la.get(key) for key in V4_SHADOW_KEYS},
                 "ml_delta_pp": la.get("ml_delta_pp"),
                 "hybrid_adj_shadow_pp": la.get("hybrid_adj_shadow_pp"),
                 "hybrid_adj_applied_pp": la.get("hybrid_adj_applied_pp"),
@@ -2851,7 +2865,8 @@ def main():
                 ml_predictor=ml_predictor, team_stats=team_stats,
                 engine_mode=engine_mode, ml_defender_pm=ml_def_pm,
                 opponent_context=(extractor.get("opponent_context") or {}).get(team),
-                absence_context=absence_by_team.get(team))
+                absence_context=absence_by_team.get(team),
+                current_season=meta.get("roster_season"))
             all_cards.append(card)
 
     # Summary

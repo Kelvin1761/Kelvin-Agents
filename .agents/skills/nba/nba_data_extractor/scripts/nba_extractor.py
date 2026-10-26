@@ -546,6 +546,9 @@ def compact_season_log(df):
         out = {"dates": [d.strftime("%Y-%m-%d") for d in dates],
                "seasons": [str(x) for x in df["_season"]],
                "season_types": [str(x) for x in df["_season_type"]]}
+        if "MATCHUP" in df:
+            # Team per game (first token of MATCHUP): S_v4 needs to know who moved.
+            out["teams"] = [str(m).split()[0] if str(m).split() else "" for m in df["MATCHUP"]]
         for stat in SEASON_LOG_STATS:
             out[stat] = [float(x) for x in pd.to_numeric(df[stat], errors="coerce").fillna(0)]
         return out

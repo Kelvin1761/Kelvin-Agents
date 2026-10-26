@@ -84,8 +84,12 @@ V2_EFFICIENCY_PRIOR = {"two": (0.54, 100.0), "three": (0.36, 100.0), "ft": (0.78
 V2_FIELDS = ("MIN", "PTS", "REB", "AST", "FG3M", "FGA", "FG3A", "FTA", "FGM", "FTM")
 
 
-def _v2_core(season_log, stat, line, opponent):
-    """S_v2 mean and dispersion before the NB tail: ((mu, k, line) or None, status, inputs)."""
+def _v2_core(season_log, stat, line, opponent, factors=None):
+    """S_v2 mean and dispersion before the NB tail: ((mu, k, line) or None, status, inputs).
+
+    `factors` (aligned with season_log dates) down-weights individual games (S_v4);
+    None means every game counts fully, which is exactly S_v2.
+    """
     if not isinstance(season_log, dict) or not season_log.get("dates"):
         return None, "no_season_log", None
     if stat not in DISPERSION_K:
@@ -115,23 +119,27 @@ def _v2_core(season_log, stat, line, opponent):
     if len(keep) < MIN_GAMES:
         return None, "insufficient_games", inputs
     h = {n: [cols[n][i] for i in keep] for n in V2_FIELDS}
+    f = [1.0 if factors is None else float(factors[i]) for i in keep]
     mins = h["MIN"]
-    wm = [0.5 ** (i / V2_MIN_HALF_LIFE) for i in range(len(mins))]
-    wr = [0.5 ** (i / V2_RATE_HALF_LIFE) for i in range(len(mins))]
+    wm = [0.5 ** (i / V2_MIN_HALF_LIFE) * f[i] for i in range(len(mins))]
+    wr = [0.5 ** (i / V2_RATE_HALF_LIFE) * f[i] for i in range(len(mins))]
     minutes = sum(w * m for w, m in zip(wm, mins)) / sum(wm)
-    total_minutes = sum(mins)
+    total_minutes = sum(x * m for x, m in zip(f, mins))
+
+    def weighted(values):
+        return sum(x * v for x, v in zip(f, values))
 
     def rate(values):
-        return ((sum(w * v for w, v in zip(wr, values)) + V2_PRIOR_MINUTES * sum(values) / total_minutes)
+        return ((sum(w * v for w, v in zip(wr, values)) + V2_PRIOR_MINUTES * weighted(values) / total_minutes)
                 / (sum(w * m for w, m in zip(wr, mins)) + V2_PRIOR_MINUTES))
 
     if stat == "PTS":
         two_att = [a - b for a, b in zip(h["FGA"], h["FG3A"])]
         two_made = [a - b for a, b in zip(h["FGM"], h["FG3M"])]
         (p2, n2), (p3, n3), (pf, nf) = (V2_EFFICIENCY_PRIOR[k] for k in ("two", "three", "ft"))
-        e2 = (sum(two_made) + p2 * n2) / (sum(two_att) + n2)
-        e3 = (sum(h["FG3M"]) + p3 * n3) / (sum(h["FG3A"]) + n3)
-        eft = (sum(h["FTM"]) + pf * nf) / (sum(h["FTA"]) + nf)
+        e2 = (weighted(two_made) + p2 * n2) / (weighted(two_att) + n2)
+        e3 = (weighted(h["FG3M"]) + p3 * n3) / (weighted(h["FG3A"]) + n3)
+        eft = (weighted(h["FTM"]) + pf * nf) / (weighted(h["FTA"]) + nf)
         mu = minutes * (rate(two_att) * e2 * 2 + rate(h["FG3A"]) * e3 * 3 + rate(h["FTA"]) * eft)
     else:
         mu = minutes * rate(h[stat])
@@ -240,4 +248,51 @@ def season_rate_prob_v3(season_log, stat, line, opponent, absence):
     inputs.update(mu=round(mu, 3), k=round(k, 4), A=round(share, 4),
                   A_dtd=round(float((absence.get("A_dtd") or {}).get(stat, 0.0)), 4),
                   absent=absence.get("absent"), dtd=absence.get("dtd"))
+    return round(_nb_sf(line, mu, k), 4), "ok", inputs
+
+
+# ---------------------------------------------------------------------------
+# S_v4 (EXP-20261026-07): early in a season the extractor appends last season's games
+# until a player has 10 current-season games. Those games count 0.25, and less again
+# for a player who changed team. Chosen on the 2024 early season, validated on 2025.
+MODEL_ID_V4 = "nba_season_rate_S_v4"
+V4_PREVIOUS_SEASON_WEIGHT = {"PTS": (0.25, 0.25), "REB": (0.25, 1.0), "AST": (0.25, 0.5), "FG3M": (0.25, 1.0)}
+
+
+def season_rate_prob_v4(season_log, stat, line, opponent, current_season, current_team):
+    """S_v2 with previous-season games down-weighted. Never raises on bad data.
+
+    `current_season` is the game's season label (meta roster_season); `current_team` the
+    player's team today. A previous-season history needs per-game teams to tell whether
+    the player moved; without them the leg is left null rather than guessed.
+    """
+    if not current_season:
+        return None, "no_current_season", None
+    if not isinstance(season_log, dict) or not season_log.get("dates"):
+        return None, "no_season_log", None
+    if stat not in V4_PREVIOUS_SEASON_WEIGHT:
+        return None, "stat_unsupported", None
+    dates = list(season_log.get("dates") or [])
+    seasons = list(season_log.get("seasons") or [])
+    if len(seasons) != len(dates):
+        return None, "invalid_inputs", None
+    previous = [s != current_season for s in seasons]
+    moved = False
+    if any(previous):
+        teams = list(season_log.get("teams") or [])
+        if len(teams) != len(dates):
+            return None, "no_team_history", None
+        from nba_schedule import canonical_team_abbr
+        last_previous_team = teams[previous.index(True)]          # newest-first: latest previous-season game
+        moved = canonical_team_abbr(last_previous_team) != canonical_team_abbr(current_team)
+    weight, moved_factor = V4_PREVIOUS_SEASON_WEIGHT[stat]
+    factor = weight * (moved_factor if moved else 1.0)
+    core, status, inputs = _v2_core(season_log, stat, line, opponent,
+                                    factors=[factor if p else 1.0 for p in previous])
+    if core is None:
+        return None, status, inputs
+    mu, k, line = core
+    mu = max(mu, 0.05)
+    inputs.update(mu=round(mu, 3), k=round(k, 4), previous_games=sum(previous), moved=moved,
+                  previous_weight=factor)
     return round(_nb_sf(line, mu, k), 4), "ok", inputs
