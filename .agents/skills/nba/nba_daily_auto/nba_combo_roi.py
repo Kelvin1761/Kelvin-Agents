@@ -55,12 +55,17 @@ def _price(value: Any) -> float | None:
     return number if number > 1.0 else None
 
 
-def _combo_rows(rows: list[dict]) -> list[dict]:
-    """One sgm_obs row per (game, combo): the latest clean published snapshot, else latest."""
+def _combo_rows(rows: list[dict], view: str = "latest") -> list[dict]:
+    """One sgm_obs row per (game, combo): the latest clean published snapshot, else latest.
+
+    view="bet" keeps only the 21:00 production publication the user actually bets.
+    """
     exclusions = ledger.no_prediction_exclusions(rows)
     best: dict[tuple, dict] = {}
     for row in rows:
         if row.get("row_type") != "sgm_obs" or row.get("snapshot_role") == "warmup":
+            continue
+        if view == "bet" and row.get("snapshot_role") != ledger.BET_ROLE:
             continue
         if ledger._excluded(row, exclusions):
             continue
@@ -95,13 +100,13 @@ def _sgm_price(rows: list[dict], combo: Mapping[str, Any]) -> float | None:
     return _price(max(quotes, key=lambda r: str(r.get("captured_at") or "")).get("sportsbet_sgm_price"))
 
 
-def settle_combos(rows: list[dict]) -> list[dict]:
+def settle_combos(rows: list[dict], view: str = "latest") -> list[dict]:
     outcomes: dict[tuple, str] = {}
     for row in rows:
         if row.get("row_type") == "settlement":
             outcomes.setdefault(_leg_key(row.get("game_tag"), row), str(row.get("outcome")))
     out = []
-    for combo in _combo_rows(rows):
+    for combo in _combo_rows(rows, view):
         results = [outcomes.get(_leg_key(combo.get("game_tag"), leg), "unresolved")
                    for leg in combo.get("legs") or []]
         if not results:
@@ -170,17 +175,24 @@ def summarise(combos: list[dict]) -> dict:
 
 def daily(target_date: str, root: Path | None = None) -> dict:
     root = root or ledger.ledger_root()
-    combos = settle_combos(ledger.read_rows(root, target_date))
-    return {"target_date": target_date, **summarise(combos), "rows": combos}
+    rows = ledger.read_rows(root, target_date)
+    combos = settle_combos(rows)
+    bet = settle_combos(rows, "bet")
+    return {"target_date": target_date, **summarise(combos), "rows": combos,
+            "bet_version": {**summarise(bet), "rows": bet}}
 
 
 def cumulative(root: Path | None = None, until: str | None = None) -> dict:
     root = root or ledger.ledger_root()
     combos: list[dict] = []
+    bet: list[dict] = []
     dates = ledger._iter_dates(None, until, root)
     for date in dates:
-        combos.extend(settle_combos(ledger.read_rows(root, date)))
-    return {"dates": dates, **summarise(combos), "rows": combos}
+        rows = ledger.read_rows(root, date)
+        combos.extend(settle_combos(rows))
+        bet.extend(settle_combos(rows, "bet"))
+    return {"dates": dates, **summarise(combos), "rows": combos,
+            "bet_version": {**summarise(bet), "rows": bet}}
 
 
 def write_reports(target_date: str, root: Path | None = None) -> dict:
@@ -193,6 +205,7 @@ def write_reports(target_date: str, root: Path | None = None) -> dict:
     (out / "combo_roi_cumulative.json").write_text(
         json.dumps(total, ensure_ascii=False, indent=2), encoding="utf-8")
     shadow = banker_shadow(target_date, root)
+    shadow["bet_version"] = banker_shadow(target_date, root, version="bet")
     (out / "banker_shadow_latest.json").write_text(json.dumps(shadow, ensure_ascii=False, indent=2), encoding="utf-8")
     return {"daily": day, "cumulative": total, "banker_shadow": shadow}
 
@@ -214,6 +227,11 @@ def _line(name: str, b: Mapping[str, Any]) -> str:
 
 def message_lines(reports: Mapping[str, Any]) -> list[str]:
     lines = ["📊 組合 ROI（每注 1u；樣本細，唔等於有 edge）"]
+    if all("bet_version" in reports[s] for s in ("daily", "cumulative")):
+        lines.append("🎯 21:00 落注版本：")
+        for scope, title in (("daily", "今日"), ("cumulative", "累計")):
+            lines.append("  " + _line(f"{title}合共", reports[scope]["bet_version"]["total"]))
+        lines.append("🔄 最新版本（包括朝早刷新）：")
     for scope, title in (("daily", "今日"), ("cumulative", "累計")):
         data = reports[scope]
         lines.append(_line(f"{title}合共", data["total"]))
@@ -232,7 +250,8 @@ def message_lines(reports: Mapping[str, Any]) -> list[str]:
     return lines
 
 
-def banker_shadow(until: str, root: Path | None = None, *, model_id: str | None = None) -> dict:
+def banker_shadow(until: str, root: Path | None = None, *, model_id: str | None = None,
+                  version: str = "latest") -> dict:
     """Forward research only; reuse settlement/real-price ROI without adding BETs."""
     import random
     if model_id is None:
@@ -251,7 +270,7 @@ def banker_shadow(until: str, root: Path | None = None, *, model_id: str | None 
                 models[row.get('game_tag')].append(row)
         chosen = {}
         for tag, observations in models.items():
-            snap = ledger._choose_snapshot(observations)
+            snap = ledger._choose_view_snapshot(observations, version)
             current = [r for r in observations if snap and r.get('snapshot_id') == snap]
             if current and model_id and all(ledger.probability_model_id(r) == model_id for r in current):
                 chosen[tag] = snap
@@ -307,7 +326,7 @@ def banker_shadow(until: str, root: Path | None = None, *, model_id: str | None 
             peak = max(peak, running)
             drawdown = max(drawdown, peak-running)
         bucket['end_of_day_drawdown_units'] = round(drawdown, 4)
-    return {'version': 'banker-ev-shadow-v1', 'until': until, 'probability_model_id': model_id,
+    return {'version': 'banker-ev-shadow-v1', 'view': version, 'until': until, 'probability_model_id': model_id,
             'status': 'NEEDS_MORE_TESTING', 'promotion_allowed': False,
             'recorded_game_opportunities': len(opportunities), 'opportunity_days': len(days),
             'incomplete_games': incomplete, 'arms': by_arm,

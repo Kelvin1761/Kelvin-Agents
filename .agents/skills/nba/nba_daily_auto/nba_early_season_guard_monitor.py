@@ -19,7 +19,7 @@ import nba_market_ledger as ledger
 BANKER_LIKE = {"l10": 0.8, "p": 0.6, "price": 1.15}
 
 
-def legs(root: Path, since: str | None, until: str | None) -> list[dict]:
+def legs(root: Path, since: str | None, until: str | None, view: str = "bet") -> list[dict]:
     out = []
     for day in ledger._iter_dates(since, until, root):
         rows = ledger.read_rows(root, day)
@@ -30,7 +30,7 @@ def legs(root: Path, since: str | None, until: str | None) -> list[dict]:
             elif r.get("row_type") == "settlement":
                 settlements.setdefault(ledger._leg_key(r), r)
         for key, group in models.items():
-            snap = ledger._choose_snapshot(group)
+            snap = ledger._choose_view_snapshot(group, view)
             if snap is None:
                 continue
             m = next(r for r in group if r.get("snapshot_id") == snap)
@@ -67,8 +67,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", type=Path, default=None)
     parser.add_argument("--since", default="2026-10-27")
     parser.add_argument("--until")
+    parser.add_argument("--view", choices=ledger.VIEWS, default="bet",
+                        help="bet = the 21:00 publication the user bets (default); latest = last pre-tip snapshot")
     args = parser.parse_args(argv)
-    print(json.dumps(summarise(legs(args.root or ledger.ledger_root(), args.since, args.until)),
+    print(json.dumps(summarise(legs(args.root or ledger.ledger_root(), args.since, args.until, args.view)),
                      ensure_ascii=False, indent=1))
     return 0
 

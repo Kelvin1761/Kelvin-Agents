@@ -54,3 +54,16 @@ PYTHONDONTWRITEBYTECODE=1 python3 nba_availability_outcomes.py --since 2026-10-2
 10:00 同 11:30 嘅 final refresh 有行，但係報 `analysis already_snapshotted` 就跳過咗。原因係 `run_pregame` 只要見到當日有任何 final_refresh 快照，就當已經做完，冇理係邊個時段。
 
 修正：final_refresh 快照只會覆蓋佢自己嘅刷新時段。時段開始時間由 `schedule_policy` 嗰份時間表推算，同 launchd 同 control plane 用同一份，唔會再多寫一份。同一時段入面重試，仍然當已經做咗。測試覆蓋：06:55 重試算已做；10:00 同 13:01 一定要重新讀取來源；`created_at` 壞咗就當未做。
+
+## 改動（2026-10-26 晚）：以 21:00 落注版本為準
+
+用戶確認落注係跟 **21:00 production 發佈**嘅版本，唔係朝早刷新後嘅版本。所以做咗兩項改動：
+
+1. **朝早 final refresh 唔再重新發佈推介**：快照同 ledger 照樣更新，供模型評估用；但唔再重新部署 dashboard，亦唔再發新投注卡。只有 21:00 已發佈組合入面有球員被 ESPN 或官方報告列為 Out／Doubtful／Questionable／DTD 時，先發一條提示（`published_leg_availability_alert`，按內容去重）。原本為 final refresh 加嘅「按推介內容去重」功能已刪走，因為唔會再用到。
+2. **評估同時報兩個版本**：
+   - `nba_combo_roi` 嘅每日、累計同 B 系列 shadow，新增 `bet_version`，即最新嘅賽前 production 快照；原有欄位保持「最新版本」。
+   - Telegram 總結會先列 21:00 版本。
+   - `nba_early_season_guard_monitor.py` 預設用 `--view bet`。EXP-20261026-06 §6 嘅判斷就用呢個版本，喺任何 forward 數據之前更改。
+   - 模型校準同 MS forward 測試照舊用最新快照，因為佢哋量嘅係機率準唔準，而且協議已經凍結。
+
+**歷史限制**：B 系列 shadow 喺 10-25 冇 production 記錄（10-24 晚之後先部署），所以 10-25 嘅 B2 8 中 5 只有朝早版本；10-26 B2 21:00 版本係 7 中 2。兩個版本嘅歷史數字唔可以直接比較，由 10-27 開始先有完整嘅兩個版本。

@@ -96,3 +96,5 @@
 - **剷走**：被擋嘅腿實際 − C 嘅 95% CI 包零，而且點估計喺 −3pp 以上。即係話，擋走嘅腿其實同 C 預期一樣準。
 - 其他情況：NEEDS MORE TESTING，下季季初再量。
 - 轉隊規則喺 2025 年數據入面對全部 stat 都有約 −8pp，但 CI 好闊（例如 PTS [−19.6, −0.3]）。如果 forward 證據支持剷走，就照剷，唔會因為「離線有效」而保留。
+
+**修訂（2026-10-26 晚，喺任何 forward 數據之前）**：用戶確認落注版本係 21:00 production 發佈，所以監察同判斷改為用最新嘅賽前 production 快照（`nba_early_season_guard_monitor.py` 預設 `--view bet`）。最新快照嘅結果都會照列（`--view latest`），只作對照。判斷門檻冇改。

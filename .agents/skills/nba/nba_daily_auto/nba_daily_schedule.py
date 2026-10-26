@@ -353,19 +353,46 @@ def _no_banker_diagnostics(snapshot: dict[str, Any]) -> str:
     return summary
 
 
-def betting_card_identity(snapshot: dict[str, Any]) -> str:
-    """What the card recommends (event + selection + decision), not its prices.
+def published_leg_availability_alert(folder: Path, target_date: str, *, root: Path | None = None) -> str | None:
+    """Warn when a player in a 21:00-published combo is now Out/Doubtful/Questionable.
 
-    Late final refreshes re-publish whenever odds move; the content card is only
-    re-sent when the recommended bets themselves change.
+    Published = the latest pre-tip production sgm_obs per game in the ledger. Status = the
+    stricter of ESPN and the league report in the refreshed game file. Never raises.
     """
-    picks = sorted(
-        (str(row.get("event_name")), str(row.get("selection")), str(row.get("decision")))
-        for row in snapshot.get("recommendations") or []
-        if isinstance(row, dict)
-    )
-    payload = json.dumps([str(snapshot.get("validation_status")), picks], ensure_ascii=False)
-    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+    try:
+        import nba_official_injuries as official
+        from nba_availability import classify_injury_status
+        rows = market_ledger.read_rows(root or market_ledger.ledger_root(), target_date)
+        published: dict[str, dict] = {}
+        for row in rows:
+            if (row.get("row_type") == "sgm_obs" and row.get("snapshot_role") == market_ledger.BET_ROLE
+                    and market_ledger._pre_tip(row)):
+                key = row.get("game_tag")
+                if key not in published or str(row.get("snapshot_created_at")) > str(published[key].get("snapshot_created_at")):
+                    published[key] = row
+        severity = {"ok": 0, "dtd": 1, "out": 2}
+        lines = []
+        for tag, combo in sorted(published.items()):
+            game = _read_json(folder / f"nba_game_data_{tag}.json", {})
+            espn, league = game.get("injuries") or {}, game.get("official_injuries") or {}
+            for leg in combo.get("legs") or []:
+                name, team = leg.get("player"), leg.get("team")
+                status = next((s for n, s in (espn.get(team) or {}).items()
+                               if official.name_key(n) == official.name_key(name)), "")
+                level = classify_injury_status(status)
+                league_level = official.level_for(league.get(team), name)
+                league_row = ((league.get(team) or {}).get("players") or {}).get(official.name_key(name)) or {}
+                if league_level and severity[league_level] > severity[level]:
+                    level = league_level
+                if level in ("out", "dtd"):
+                    shown = league_row.get("status") or status or level
+                    lines.append(f"{tag} {name} {str(leg.get('market', '')).upper()} {leg.get('line'):g}+：{shown}")
+        if not lines:
+            return None
+        return (f"⚠️ NBA {target_date} 21:00 已發佈組合有球員傷停變動\n" + "\n".join(lines)
+                + "\nOut 嘅腳通常會被 void；Questionable／DTD 有機會唔落場。推介冇重新發佈。")
+    except Exception:
+        return None
 
 
 def nba_betting_message(target_date: str, snapshot: dict[str, Any]) -> str:
@@ -1250,6 +1277,18 @@ def run_pregame(
         log.step("dashboard", "refresh_skipped_no_material_change")
         return "complete"
 
+    if freshness_role is FreshnessRole.FINAL_REFRESH:
+        # The user bets the 21:00 publication (2026-10-26). Morning refreshes keep the
+        # snapshot and ledger current for evaluation but never re-publish picks; they
+        # only warn when a player in a published combo is now ruled out or doubtful.
+        alert = published_leg_availability_alert(folder, target_date)
+        if alert:
+            sent = notify_once(f"pregame-availability:{target_date}:{hashlib.sha256(alert.encode()).hexdigest()[:16]}",
+                               alert, audience="content")
+            log.step("telegram_availability_alert", str(sent.get("status") or "unknown"))
+        log.step("dashboard", "final_refresh_not_republished")
+        return "complete"
+
     is_preseason = season_context["automation_mode"] == "shadow"
     deploy = (
         "shadow_skipped"
@@ -1258,14 +1297,8 @@ def run_pregame(
     )
     log.step("dashboard", deploy)
     tags = sportsbet_tags(folder, target_date)
-    late_refresh = freshness_role is FreshnessRole.FINAL_REFRESH
-    exported = None
-    if late_refresh and not is_preseason:
-        exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date)
-    ops_key = (f"pregame-ops:{target_date}:final:{betting_card_identity(exported)}" if exported is not None
-               else f"pregame-ops:{target_date}:{snapshot.name}")
     operational = notify_once(
-        ops_key,
+        f"pregame-ops:{target_date}:{snapshot.name}",
         (
             f"✅ NBA Wong Choi {target_date} 分析完成\n"
             f"已驗證賽事：{len(tags)}\n"
@@ -1293,8 +1326,7 @@ def run_pregame(
         )
         return "shadow_complete"
 
-    if exported is None:
-        exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date)
+    exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date)
     try:
         exported["selection_health"] = nba_reliability.selection_health(target_date)
     except Exception as exc:
@@ -1318,10 +1350,8 @@ def run_pregame(
             notify_status=blocked.get("status"),
         )
     else:
-        card_key = (f"pregame-card:{target_date}:picks:{betting_card_identity(exported)}" if late_refresh
-                    else f"pregame-card:{target_date}:{snapshot.name}")
         card_result = notify_once(
-            card_key,
+            f"pregame-card:{target_date}:{snapshot.name}",
             card,
             audience="content",
         )
