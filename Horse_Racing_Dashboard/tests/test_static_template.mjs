@@ -60,7 +60,8 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
   const source = `${scriptMatch[1]}
     globalThis.__dashboardTest = {
       nbaStats, nbaRecords, nbaDashboard, nbaSelectRows, nbaShortDate, nbaJersey,
-      nbaShouldAutoRefresh, checkForNewSnapshot,
+      nbaShouldAutoRefresh, checkForNewSnapshot, reloadSnapshot, restoreNbaTrackingView,
+      getSportsTabForTest: () => activeSportsTab,
       setFetchForTest: (fn) => { fetch = fn; },
       setReloadForTest: (fn) => { window.location.reload = fn; },
       resetSnapshotClockForTest: () => { lastSnapshotCheckAt = 0; },
@@ -2004,13 +2005,13 @@ test("Sydney history labels preserve winter dates without a hard-coded DST offse
 });
 
 
-test("NBA refreshes read-only tracking views while preserving drafts and preventing edge reload loops",()=>{
+test("NBA refreshes read-only tracking and analysis views while preserving drafts and preventing edge reload loops",()=>{
  const api=loadTemplateFunctions(EMPTY_DASHBOARD_DATA);
  api.showSport('nba');api.setVisibilityForTest('visible');
  assert.equal(api.nbaShouldAutoRefresh('new-version'),true);
  api.setSportsTabForTest('archive');assert.equal(api.nbaShouldAutoRefresh('new-version'),true);
  api.setSportsTabForTest('bets');assert.equal(api.nbaShouldAutoRefresh('new-version'),false);
- api.setSportsTabForTest('roi');assert.equal(api.nbaShouldAutoRefresh('new-version'),false);
+ api.setSportsTabForTest('roi');assert.equal(api.nbaShouldAutoRefresh('new-version'),true);
  api.setSportsTabForTest('history');api.setFocusedElementForTest({tagName:'INPUT'});
  assert.equal(api.nbaShouldAutoRefresh('new-version'),false);
  api.setFocusedElementForTest(null);api.setSeenAutoVersionForTest('new-version');
@@ -2058,4 +2059,23 @@ test("NBA ROI starts on October 25 and continues across model versions",()=>{
  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[row('legacy','2026-10-24','v0'),row('first','2026-10-25','v1'),row('next','2026-10-26','v2')]}}}}});
  const rows=api.nbaRecords();assert.equal(rows.length,2);assert.equal(api.nbaStats(rows).profit,3);
  api.setSportsTabForTest('archive');assert.match(api.renderSportsWorkspace('nba'),/2026-10-25 起；模型升級不會清零/);
+});
+
+
+test("new NBA analysis reloads an open pregame view once and restores that tab",async()=>{
+ const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,meta:{generated_at:'2000-01-01T00:00:00'}});
+ api.showSport('nba');api.setSportsTabForTest('roi');api.setVisibilityForTest('visible');
+ let reloads=0;api.setReloadForTest(()=>{reloads++});
+ api.setFetchForTest(async()=>new Response(JSON.stringify({generated_at:'2000-01-02T00:00:00'}),{status:200}));
+ await api.checkForNewSnapshot();assert.equal(reloads,1);
+ api.showSport('nba');api.restoreNbaTrackingView();assert.equal(api.getSportsTabForTest(),'roi');
+ api.resetSnapshotClockForTest();await api.checkForNewSnapshot();assert.equal(reloads,1);
+});
+
+test("manual NBA snapshot refresh restores the pregame tab",async()=>{
+ const api=loadTemplateFunctions(EMPTY_DASHBOARD_DATA);
+ api.showSport('nba');api.setSportsTabForTest('roi');
+ let reloads=0;api.setReloadForTest(()=>{reloads++});
+ await api.reloadSnapshot();assert.equal(reloads,1);
+ api.showSport('nba');api.restoreNbaTrackingView();assert.equal(api.getSportsTabForTest(),'roi');
 });

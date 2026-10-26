@@ -6624,6 +6624,10 @@ function renderSnapshotStamp() {
 }
 
 async function reloadSnapshot() {
+  if (activeSport === 'nba' && ['history','archive','roi'].includes(activeSportsTab)) {
+    try { sessionStorage.setItem('wc_nba_restore', JSON.stringify({tab:activeSportsTab,period:nbaPeriod})); }
+    catch (_) { /* Storage restrictions must not prevent a manual refresh. */ }
+  }
   const btn = document.getElementById('snapshot-refresh');
   if (btn) btn.classList.add('app-header__refresh--busy');
   // The service worker serves navigations CACHE-first (an app open is then instant and
@@ -6677,7 +6681,7 @@ function isNewerSnapshot(remoteGeneratedAt, loadedGeneratedAt) {
 }
 
 function nbaShouldAutoRefresh(remoteGeneratedAt) {
-  if (activeSport !== 'nba' || !['history','archive'].includes(activeSportsTab)) return false;
+  if (activeSport !== 'nba' || !['history','archive','roi'].includes(activeSportsTab)) return false;
   if (document.visibilityState !== 'visible' || document.querySelector?.('dialog[open]')) return false;
   const focused = document.activeElement;
   if (focused && (['INPUT','TEXTAREA','SELECT'].includes(focused.tagName) || focused.isContentEditable)) return false;
@@ -6690,7 +6694,7 @@ function restoreNbaTrackingView() {
   try {
     const saved = JSON.parse(sessionStorage.getItem('wc_nba_restore') || 'null');
     sessionStorage.removeItem('wc_nba_restore');
-    if (!saved || !['history','archive'].includes(saved.tab)) return;
+    if (!saved || !['history','archive','roi'].includes(saved.tab)) return;
     activeSportsTab = saved.tab;
     for (const scope of ['today','history']) {
       if (scope==='history' && ['week','month','all'].includes(saved.period?.[scope])) nbaPeriod[scope] = saved.period[scope];
