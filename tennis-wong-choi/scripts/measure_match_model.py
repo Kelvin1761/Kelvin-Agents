@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 """One ruler for the match-winner model: us, the market, and simple baselines.
 
-Reports separately for fixtures where an as-of Elo exists and where it does
-not.  A pooled number is meaningless here: the model returns exactly 0.5 when
-it has no Elo backbone, which was 24.3% of stored predictions, so a pooled
-Brier mixes a real estimate with a coin flip and reads as mediocre skill rather
-than as absent coverage.
+Reports separately where the actual forecast's Elo backbone was recorded and
+where it cannot be recovered. An unavailable stored backbone is not proof that
+the forecast lacked Elo: older payloads may omit the decomposition.
 
 Baselines, because complexity has to earn its place:
   * market      -- the de-vigged match-winner price
@@ -42,13 +40,33 @@ def _log_loss(pairs) -> float:
 
 
 def _auc(pairs) -> float | None:
-    positives = [p for p, y in pairs if y == 1]
-    negatives = [p for p, y in pairs if y == 0]
+    positives = sum(y == 1 for _, y in pairs)
+    negatives = len(pairs) - positives
     if not positives or not negatives:
         return None
-    wins = sum(1 for a in positives for b in negatives if a > b)
-    ties = sum(1 for a in positives for b in negatives if a == b)
-    return (wins + 0.5 * ties) / (len(positives) * len(negatives))
+    from itertools import groupby
+
+    wins = negative_seen = 0.0
+    for _, group in groupby(sorted(pairs), key=lambda pair: pair[0]):
+        outcomes = [y for _, y in group]
+        positive_ties = sum(outcomes)
+        negative_ties = len(outcomes) - positive_ties
+        wins += positive_ties * (negative_seen + 0.5 * negative_ties)
+        negative_seen += negative_ties
+    return wins / (positives * negatives)
+
+
+def _recorded_elo_probability(pricing_json: str) -> float | None:
+    """Use the actual forecast's backbone, not today's rebuilt Elo history."""
+    try:
+        model = json.loads(pricing_json)["pricing"]["model"]
+        if not any(c.get("active") and c.get("name") in
+                   {"surface_elo_edge", "overall_elo_edge"}
+                   for c in model.get("components", [])):
+            return None
+        return 1.0 / (1.0 + math.exp(-float(model["elo_base_logit"])))
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return None
 
 
 def _report(label: str, series: dict) -> dict:
@@ -70,33 +88,18 @@ def main() -> int:
     parser.add_argument("--db", type=Path, default=PROJECT_DIR / "tennis_wc.db")
     args = parser.parse_args()
 
-    from tennis_wc.features.elo import elo_probability
-    from tennis_wc.history import elo_history
+    from tennis_wc.evaluation.match_corpus import earliest_match_odds, prematch_outcomes
     from tennis_wc.modelling import probability_calibration as calib
 
     conn = sqlite3.connect(f"file:{args.db}?mode=ro", uri=True)
     conn.row_factory = sqlite3.Row
-    rows = conn.execute(
-        """
-        SELECT m.id, m.match_date, m.player_a_id, m.player_b_id, r.winner_player_id,
-               (SELECT CASE WHEN p.selection_player_id = m.player_a_id
-                            THEN p.model_probability ELSE 1.0 - p.model_probability END
-                  FROM predictions p WHERE p.match_id = m.id
-                 ORDER BY p.id DESC LIMIT 1) AS model_p,
-               MIN(CASE WHEN s.selection_side = 'player_a' THEN s.odds END) AS odds_a,
-               MIN(CASE WHEN s.selection_side = 'player_b' THEN s.odds END) AS odds_b
-        FROM matches m
-        JOIN match_results r ON r.match_id = m.id
-        JOIN market_odds_snapshots s ON s.match_id = m.id AND s.market_key = 'match_winner'
-        WHERE r.winner_player_id IS NOT NULL AND m.player_a_id <> m.player_b_id
-        GROUP BY m.id
-        """
-    ).fetchall()
+    rows = prematch_outcomes(conn)
+    opening = earliest_match_odds(conn)
 
     buckets: dict[str, dict[str, list]] = {
-        "elo present": {k: [] for k in
+        "recorded Elo present": {k: [] for k in
                         ("model", "model+calibrated", "market", "elo", "favourite", "coin")},
-        "elo absent": {k: [] for k in
+        "recorded Elo unavailable": {k: [] for k in
                        ("model", "model+calibrated", "market", "favourite", "coin")},
     }
     # Walk-forward: refit on everything settled before each date, so a fixture
@@ -109,15 +112,15 @@ def main() -> int:
         return calibrations[match_date]
 
     for row in rows:
-        if not row["odds_a"] or not row["odds_b"]:
+        odds = opening.get(row["match_id"])
+        if not odds:
             continue
-        implied_a, implied_b = 1 / row["odds_a"], 1 / row["odds_b"]
+        implied_a, implied_b = 1 / odds["player_a_odds"], 1 / odds["player_b_odds"]
         market = implied_a / (implied_a + implied_b)
         outcome = 1.0 if row["winner_player_id"] == row["player_a_id"] else 0.0
-        rating_a = elo_history.rating_as_of(conn, row["player_a_id"], row["match_date"])
-        rating_b = elo_history.rating_as_of(conn, row["player_b_id"], row["match_date"])
-        has_elo = rating_a is not None and rating_b is not None
-        key = "elo present" if has_elo else "elo absent"
+        elo = _recorded_elo_probability(row["pricing_json"])
+        has_elo = elo is not None
+        key = "recorded Elo present" if has_elo else "recorded Elo unavailable"
         if row["model_p"] is not None:
             buckets[key]["model"].append((float(row["model_p"]), outcome))
             buckets[key]["model+calibrated"].append(
@@ -128,10 +131,13 @@ def main() -> int:
         buckets[key]["favourite"].append((market, outcome))
         buckets[key]["coin"].append((0.5, outcome))
         if has_elo:
-            buckets[key]["elo"].append((elo_probability(rating_a, rating_b), outcome))
+            buckets[key]["elo"].append((elo, outcome))
 
     payload = {
         "fixtures_scored": len(rows),
+        "fixtures_with_opening_odds": sum(row["match_id"] in opening for row in rows),
+        "corpus_policy": "earliest pre-start forecast; MIN(id) pre-start odds pair; agreed result",
+        "note": "Opening market and forecast clocks may differ; this is a probability diagnostic, not executable ROI or promotion evidence.",
         "buckets": [_report(name, series) for name, series in buckets.items()],
     }
     print(json.dumps(payload, indent=2))

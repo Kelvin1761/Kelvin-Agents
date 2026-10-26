@@ -25,10 +25,7 @@ class CheckResult:
 
 
 def _rows(conn, sql: str, params: tuple = ()) -> list:
-    try:
-        return conn.execute(sql, params).fetchall()
-    except Exception:
-        return []
+    return conn.execute(sql, params).fetchall()
 
 
 def _count(conn, sql: str, params: tuple = ()) -> int:
@@ -131,12 +128,14 @@ def check_duplicate_identities(conn) -> CheckResult:
     A player split 70/8/0 across three ids is rejected by the ace model's
     ten-match minimum while the data exists.
     """
+    columns = {row["name"] for row in _rows(conn, "PRAGMA table_info(players)")}
+    unmerged = "WHERE canonical_player_id IS NULL" if "canonical_player_id" in columns else ""
     count = _count(
         conn,
-        """
+        f"""
         SELECT COUNT(*) FROM (
             SELECT LOWER(TRIM(name)) n FROM players
-            WHERE canonical_player_id IS NULL
+            {unmerged}
             GROUP BY 1 HAVING COUNT(*) > 1
         )
         """,
@@ -357,7 +356,16 @@ ALL_CHECKS = (
 
 
 def run_checks(conn, checks=ALL_CHECKS) -> list[CheckResult]:
-    return [check(conn) for check in checks]
+    results = []
+    for check in checks:
+        try:
+            results.append(check(conn))
+        except Exception as exc:
+            results.append(CheckResult(
+                check.__name__.removeprefix("check_"), False, "critical",
+                f"check could not run: {type(exc).__name__}: {exc}",
+            ))
+    return results
 
 
 def critical_failures(results: list[CheckResult]) -> list[CheckResult]:

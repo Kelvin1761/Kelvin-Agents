@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261026-03](EXP-20261026-03-tennis-model-audit.md) | 2026-10-26 | Tennis | 全面資料／模型審計及既有 frozen Elo shadow 前向檢查 | **SHADOW／NEEDS MORE TESTING**：349 場相對現役 ΔLL −0.00792，仍輸市場；PIT paper ROI −15.93%。四類離線工具修正留審閱分支，WTA stale／重複 history／衝突結果／BO5 等另列；無模型 promotion。 |
 | [EXP-20261025-07](EXP-20261025-07-nba-prop-forward-training-evidence.md) | 2026-10-25 | NBA | 新機會量與80/80逐腿賽前輸入、C baseline及獨立Final targets接線 | **ENGINEERING／FORWARD PENDING**：native snapshot自動留來源、日期、GP與缺失；最新pretip export不回填舊features，舊ledger合格新資料0行；不fit、不改C／EV／selector。 |
 | [EXP-20261025-05](EXP-20261025-05-nba-prop-opportunity-intake.md) | 2026-10-25 | NBA | 各prop專屬機會量來源與選中腿校準監測 | **DATA CONTRACT／MONITORING**：7未開賽場175 provider player-games，7來源成功、缺值明列；補opponent 3PA/3PM及picked監測盲點，不fit、不改C／EV。 |
 | [EXP-20261025-04](EXP-20261025-04-nba-price-free-opportunity-model.md) | 2026-10-25 | NBA | 市場獨立、逐stat公式與分鐘／角色／對手／賽程消融 | **NOT SHOWN BETTER／研究分支**：5,305列32場OOF，full Brier .176236、core .175155、市場 .171768；選中單腿+10.69%但CI極寬且高估近20pp；40/41資料類別擷取成功，不改C。 |
