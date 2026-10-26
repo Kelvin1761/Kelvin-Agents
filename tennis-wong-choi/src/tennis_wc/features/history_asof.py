@@ -28,8 +28,9 @@ def guard_clause(alias: str = "") -> str:
     """SQL fragment; bind `guard_params(...)` right after the clause's position."""
     a = f"{alias}." if alias else ""
     return (
+        f" AND ({a}opponent_id IS NULL OR {a}opponent_id!={a}player_id)"
         f" AND ({a}match_date < date(?, '-{SAME_EVENT_WINDOW_DAYS} days')"
-        f" OR {a}created_at < ?)"
+        f" OR julianday({a}created_at) < julianday(?))"
     )
 
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import date
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.features.history_values import clean_history_row
+from tennis_wc.features.history_asof import guard_clause, guard_params
 from tennis_wc.features.common import avg, rate, shrink_rate, utc_now
 from tennis_wc.features.opponent_rank_buckets import get_opponent_rank_at_match_date
 from tennis_wc.features.common import parse_date
@@ -15,7 +17,7 @@ def _time_filter(as_of_date: date, time_window: str) -> tuple[str, str]:
     return date.fromordinal(as_of_date.toordinal() - days).isoformat(), as_of_date.isoformat()
 
 
-def _rows(player_id: int, tournament_level: str, surface: str | None, as_of_date: date, time_window: str) -> list[dict]:
+def _rows(player_id: int, tournament_level: str, surface: str | None, as_of_date: date, time_window: str, start_time: str | None = None) -> list[dict]:
     start, end = _time_filter(as_of_date, time_window)
     query = """
         SELECT *
@@ -23,11 +25,13 @@ def _rows(player_id: int, tournament_level: str, surface: str | None, as_of_date
         WHERE player_id = ? AND upper(tournament_level) = upper(?) AND match_date >= ? AND match_date < ?
     """
     params: list = [player_id, tournament_level, start, end]
+    query += guard_clause()
+    params.extend(guard_params(as_of_date.isoformat(), start_time))
     if surface:
         query += " AND lower(surface) = lower(?)"
         params.append(surface)
     with get_connection() as conn:
-        return [dict(row) for row in conn.execute(query, params).fetchall()]
+        return [clean_history_row(row) for row in conn.execute(query, params).fetchall()]
 
 
 def _summarise(rows: list[dict]) -> dict:
@@ -62,6 +66,7 @@ def calculate_tournament_level_stats(
     surface: str | None,
     as_of_date: date,
     time_window: str,
+    *, persist: bool = True, start_time: str | None = None,
 ) -> dict:
     """
     Calculate player performance in tournament level before the match date.
@@ -77,8 +82,8 @@ def calculate_tournament_level_stats(
             "warnings": ["unknown_tournament_level"],
         }
 
-    surface_rows = _rows(player_id, tournament_level, surface, as_of_date, time_window)
-    all_surface_rows = _rows(player_id, tournament_level, None, as_of_date, time_window)
+    surface_rows = _rows(player_id, tournament_level, surface, as_of_date, time_window, start_time)
+    all_surface_rows = _rows(player_id, tournament_level, None, as_of_date, time_window, start_time)
     selected_rows = surface_rows if len(surface_rows) >= 10 else all_surface_rows
     summary = _summarise(selected_rows)
     prior = _summarise(all_surface_rows)["win_rate"] or 0.5
@@ -92,6 +97,9 @@ def calculate_tournament_level_stats(
         summary["warnings"].append("surface_sample_below_10_blended_all_surface")
     if summary["sample_size"] < 10:
         summary["warnings"].append("low_sample")
+
+    if not persist:
+        return summary
 
     now = utc_now()
     with get_connection() as conn:

@@ -13,6 +13,7 @@ the model that consumes this has to degrade rather than pretend.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from tennis_wc.features.history_values import clean_history_row
 
 # Long enough to be stable, short enough to track form. combined_hold uses 20
 # on the same column; matching it keeps the two comparable while this is being
@@ -47,6 +48,7 @@ class ServeReturnProfile:
     returning: dict
     opponent_elo_mean: float | None
     surface: str | None
+    history_ids: tuple[int,...] = ()
 
     @property
     def is_usable(self) -> bool:
@@ -91,8 +93,8 @@ def serve_return_profile(
     params.append(window)
     rows = conn.execute(
         f"""
-        SELECT {columns} FROM player_match_history
-        WHERE player_id = ? AND match_date < ? AND hold_rate IS NOT NULL
+        SELECT id,{columns} FROM player_match_history
+        WHERE player_id = ? AND match_date < ? AND typeof(hold_rate) IN ('integer','real') AND hold_rate BETWEEN 0 AND 1
           {guard_clause()}
           {surface_clause}
         ORDER BY match_date DESC, id DESC
@@ -100,6 +102,7 @@ def serve_return_profile(
         """,
         tuple(params),
     ).fetchall()
+    rows = [clean_history_row(row) for row in rows]
     used_surface = surface
     if surface and len(rows) < MIN_SAMPLES:
         return serve_return_profile(
@@ -130,7 +133,7 @@ def serve_return_profile(
         serve=serve,
         returning=returning,
         opponent_elo_mean=_mean(row["opponent_elo"] for row in rows),
-        surface=used_surface,
+        surface=used_surface,history_ids=tuple(int(r['id']) for r in rows),
     )
 
 

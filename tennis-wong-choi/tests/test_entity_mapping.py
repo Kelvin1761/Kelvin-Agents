@@ -64,3 +64,27 @@ def test_existing_provider_alias_rebinds_to_history_rich_canonical_player(tmp_pa
             "WHERE provider_name='composite' AND provider_entity_id='fritz'"
         ).fetchone()[0]
         assert mapped == 1
+
+
+def test_reused_player_alias_cannot_rename_existing_history(tmp_path, monkeypatch):
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.ingestion.entity_mapping import get_or_create_player
+    init_db()
+    first=get_or_create_player('feed','same-key','Taylor Fritz','ATP',0)
+    with pytest.raises(ValueError,match='identity changed'):
+        get_or_create_player('feed','same-key','Rinky Hijikata','ATP',0)
+    with get_connection() as conn:
+        assert conn.execute('SELECT name FROM players WHERE id=?',(first,)).fetchone()[0]=='Taylor Fritz'
+        assert conn.execute('SELECT COUNT(*) FROM players').fetchone()[0]==1
+
+
+def test_same_initial_full_names_are_not_one_player(tmp_path, monkeypatch):
+    configure_test_db(tmp_path, monkeypatch)
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.ingestion.entity_mapping import get_or_create_player
+    init_db()
+    get_or_create_player('feed','key','Tim Smith','ATP',0)
+    with pytest.raises(ValueError,match='identity changed'):
+        get_or_create_player('feed','key','Taylor Smith','ATP',0)

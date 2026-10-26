@@ -40,6 +40,7 @@ class CountProfile:
     n: int
     mean: float
     values: tuple[float, ...]
+    history_ids: tuple[int,...] = ()
 
 
 @dataclass
@@ -168,10 +169,12 @@ def count_profile(
     *,
     surface: str | None = None,
     last_n: int = 25,
+    start_time: str | None = None,
 ) -> CountProfile:
     if column not in {"double_fault_count"}:
         raise ValueError(f"unsupported count column: {column}")
-    params: list = [player_id, as_of_date]
+    from tennis_wc.features.history_asof import guard_clause, guard_params
+    params: list = [player_id, as_of_date, *guard_params(as_of_date, start_time)]
     surface_sql = ""
     if surface:
         surface_sql = " AND lower(COALESCE(surface,'')) = lower(?)"
@@ -179,9 +182,10 @@ def count_profile(
     params.append(last_n)
     rows = conn.execute(
         f"""
-        SELECT {column} AS value
+        SELECT id,{column} AS value
         FROM player_match_history
-        WHERE player_id = ? AND match_date < ? AND {column} IS NOT NULL
+        WHERE player_id = ? AND match_date < ? AND typeof({column}) IN ('integer','real') AND {column}>=0 AND {column}=CAST({column} AS INTEGER)
+          {guard_clause()}
           {surface_sql}
         ORDER BY match_date DESC
         LIMIT ?
@@ -191,10 +195,10 @@ def count_profile(
     values = tuple(float(row["value"]) for row in rows)
     if len(values) < _MIN_HISTORY and surface:
         return count_profile(
-            conn, player_id, as_of_date, column, surface=None, last_n=last_n
+            conn, player_id, as_of_date, column, surface=None, last_n=last_n, start_time=start_time
         )
     mean = sum(values) / len(values) if values else 0.0
-    return CountProfile(player_id, len(values), round(mean, 3), values)
+    return CountProfile(player_id, len(values), round(mean, 3), values,tuple(int(r['id']) for r in rows))
 
 
 def _empirical_over(line: float, values: tuple[float, ...]) -> float:

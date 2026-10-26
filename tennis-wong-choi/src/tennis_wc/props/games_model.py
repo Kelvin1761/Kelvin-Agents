@@ -76,7 +76,7 @@ def combined_hold(conn, player_a_id: int, player_b_id: int, as_of_date: str,
         rows = conn.execute(
             f"""
             SELECT hold_rate FROM player_match_history
-            WHERE player_id = ? AND hold_rate IS NOT NULL AND match_date < ?
+            WHERE player_id = ? AND typeof(hold_rate) IN ('integer','real') AND hold_rate BETWEEN 0 AND 1 AND match_date < ?
               {guard_clause()}
             ORDER BY match_date DESC LIMIT ?
             """,

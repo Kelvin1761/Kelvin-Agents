@@ -8,7 +8,7 @@ passes the strategy gate.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
 
 from tennis_wc.props import ace_model
 from tennis_wc.props import games_model
@@ -106,6 +106,8 @@ def _start_time(meta) -> str | None:
 def unsupported_prop_message(reason: str) -> str:
     if reason == "conflicting_result_sources":
         return "賽果來源有衝突，暫停定價及新結算，等候核實。"
+    if reason == "ambiguous_quote_source":
+        return "盤口來自多個來源，未能確認同一組報價，暫停 prop 定價。"
     if reason == "unsupported_match_format_BO5":
         return "呢場係五盤三勝；現有 prop 模型只支援三盤兩勝，暫停定價。"
     return "比賽賽制未確認，暫停 prop 定價。"
@@ -274,6 +276,8 @@ def _rows_for_date(conn, match_date: str, earliest_only: bool = False):
     silently contaminates any replay of a finished day, which is exactly what
     the evidence base is built from.
     """
+    from tennis_wc.database.market_captures import current_market_clause
+
     earliest_filter = (
         """
         AND mo.id = (
@@ -285,12 +289,12 @@ def _rows_for_date(conn, match_date: str, earliest_only: bool = False):
         )
         """
         if earliest_only
-        else ""
+        else f" AND {current_market_clause(conn)}"
     )
     return conn.execute(
         f"""
         SELECT mo.match_id, mo.market_key, mo.market_name, mo.selection_name,
-               mo.line, mo.odds, mo.id
+               mo.line, mo.odds, mo.id,mo.bookmaker,mo.source_provider,mo.raw_response_id,mo.fetched_at
         FROM market_odds_snapshots mo JOIN matches m ON m.id = mo.match_id
         WHERE m.match_date = ? {earliest_filter} AND (
             mo.market_key = ?
@@ -436,6 +440,9 @@ def _holds_for(conn, meta, subject_id, *, use_fitted: bool | None = None):
         conn, opponent_id, meta["match_date"], surface=meta["surface"],
         start_time=_start_time(meta),
     )
+    evidence=meta.get('_pricing_evidence') if isinstance(meta,dict) else None
+    if evidence is not None:
+        evidence['profiles'].setdefault('serve_return',{}).update({str(p.player_id):asdict(p) for p in (server,returner)})
     fitted = USE_FITTED_HOLD if use_fitted is None else bool(use_fitted)
     if fitted:
         subject = estimate_hold_fitted(server, returner)
@@ -816,16 +823,20 @@ def _price_new_ladders(conn, meta, match_rows, a, b, match_mean) -> list[dict]:
 def _resolve_player(market_name: str, meta) -> tuple[int | None, str]:
     """Map a 'Total <Player> Aces X.5' market to player_a/b via name match."""
     m = re.match(r"total\s+(.*?)\s+aces", market_name.strip(), re.I)
-    who = _norm(m.group(1)) if m else ""
+    who = m.group(1).strip() if m else ""
     if not who:
         return None, ""
-    a, b = _norm(meta["a_name"]), _norm(meta["b_name"])
-    # substring either way to tolerate accents/initials
-    if who and (who in a or a in who):
-        return meta["player_a_id"], meta["a_name"]
-    if who and (who in b or b in who):
-        return meta["player_b_id"], meta["b_name"]
-    return None, ""
+    return _player_from_name(who, meta)
+
+
+def _player_from_name(who: str, meta) -> tuple[int | None, str]:
+    from tennis_wc.ingestion.ingest_odds import selection_side_for
+    side = selection_side_for(meta['a_name'], meta['b_name'], who)
+    if side == 'player_a':
+        return meta['player_a_id'], meta['a_name']
+    if side == 'player_b':
+        return meta['player_b_id'], meta['b_name']
+    return None, ''
 
 
 def _resolve_named_player(market_name: str, family: str, meta) -> tuple[int | None, str]:
@@ -836,16 +847,10 @@ def _resolve_named_player(market_name: str, family: str, meta) -> tuple[int | No
         "player_win_a_set": r"^(.*?)\s+to win at least (?:one|1) set",
     }
     match = re.search(patterns.get(family, r"$^"), market_name.strip(), re.I)
-    who = _norm(match.group(1)) if match else ""
+    who = match.group(1).strip() if match else ""
     if not who:
         return None, ""
-    for pid_key, name_key in (
-        ("player_a_id", "a_name"), ("player_b_id", "b_name")
-    ):
-        candidate = _norm(meta[name_key])
-        if who in candidate or candidate in who:
-            return meta[pid_key], meta[name_key]
-    return None, ""
+    return _player_from_name(who, meta)
 
 
 def _feed_identity(feed, market_key, side_key, line=None):
@@ -878,7 +883,7 @@ def _feed_identity(feed, market_key, side_key, line=None):
 
 
 def _log_two_way(conn, match_date, label, tw: "ace_model.TwoWayProp",
-                 scope: str, subject_player_id, feed=None, feed_market_key=None):
+                 scope: str, subject_player_id, feed=None, feed_market_key=None, pricing_evidence=None):
     """Log the over side (scorecard) + the value side (bet) for a two-way prop.
 
     Two probabilities are stored per row: `model_prob` is the staking-side
@@ -901,7 +906,7 @@ def _log_two_way(conn, match_date, label, tw: "ace_model.TwoWayProp",
                 predicted_mean=tw.predicted_mean, stake_units=1.0 if over_is_val else 0.0,
                 is_value=over_is_val,
                 **dict(zip(("feed_market_key", "feed_market_name", "feed_selection_name", "feed_line"),
-                           _feed_identity(feed, feed_market_key, "over", tw.line))))
+                           _feed_identity(feed, feed_market_key, "over", tw.line))),pricing_evidence=pricing_evidence)
     if tw.value_side == "under":
         record_prop(conn, match_id=tw.match_id, match_date=match_date, match_label=label,
                     market_key=tw.market_key, line=tw.line, selection=f"Under {tw.line}",
@@ -913,11 +918,11 @@ def _log_two_way(conn, match_date, label, tw: "ace_model.TwoWayProp",
                     edge=tw.edge, ev=tw.ev, predicted_mean=tw.predicted_mean,
                     stake_units=1.0, is_value=True,
                     **dict(zip(("feed_market_key", "feed_market_name", "feed_selection_name", "feed_line"),
-                               _feed_identity(feed, feed_market_key, "under", tw.line))))
+                               _feed_identity(feed, feed_market_key, "under", tw.line))),pricing_evidence=pricing_evidence)
 
 
 def _log_binary(conn, match_date, label, binary, subject_player_id,
-                feed=None, feed_market_key=None):
+                feed=None, feed_market_key=None, pricing_evidence=None):
     yes_is_value = binary.value_side == "yes"
     record_prop(
         conn, match_id=binary.match_id, match_date=match_date, match_label=label,
@@ -933,7 +938,7 @@ def _log_binary(conn, match_date, label, binary, subject_player_id,
         stake_units=1.0 if yes_is_value else 0.0, is_value=yes_is_value,
         **dict(zip(("feed_market_key", "feed_market_name", "feed_selection_name", "feed_line"),
                    _feed_identity(feed, feed_market_key, "yes"))),
-    )
+    pricing_evidence=pricing_evidence)
     if binary.value_side == "no":
         record_prop(
             conn, match_id=binary.match_id, match_date=match_date, match_label=label,
@@ -945,11 +950,11 @@ def _log_binary(conn, match_date, label, binary, subject_player_id,
             market_prob_fair=round(1-binary.fair_prob_yes, 4),
             blended_prob=binary.blended_prob, edge=binary.edge, ev=binary.ev,
             predicted_mean=binary.model_prob_yes, stake_units=1.0, is_value=True,
-        )
+        pricing_evidence=pricing_evidence)
 
 
 def _log_head_to_head(conn, match_date, label, prop,
-                      feed=None, feed_market_key=None):
+                      feed=None, feed_market_key=None, pricing_evidence=None):
     a_value = prop.value_player_id == prop.player_a_id
     record_prop(
         conn, match_id=prop.match_id, match_date=match_date, match_label=label,
@@ -964,7 +969,7 @@ def _log_head_to_head(conn, match_date, label, prop,
         is_value=a_value,
         **dict(zip(("feed_market_key", "feed_market_name", "feed_selection_name", "feed_line"),
                    _feed_identity(feed, feed_market_key, "a"))),
-    )
+    pricing_evidence=pricing_evidence)
     if prop.value_player_id == prop.player_b_id:
         record_prop(
             conn, match_id=prop.match_id, match_date=match_date, match_label=label,
@@ -981,11 +986,11 @@ def _log_head_to_head(conn, match_date, label, prop,
                         "feed_selection_name", "feed_line"),
                        _feed_identity(feed, feed_market_key, "b"))),
             is_value=True,
-        )
+        pricing_evidence=pricing_evidence)
 
 
 def _log_spread(conn, match_date, label, prop, scope: str,
-                feed=None, feed_market_key=None):
+                feed=None, feed_market_key=None, pricing_evidence=None):
     """Log player-A cover canonically and player-B only when it is value.
 
     Both rows settle against player A's raw margin.  Player A covers when the
@@ -1009,7 +1014,7 @@ def _log_spread(conn, match_date, label, prop, scope: str,
         stake_units=1.0 if a_value else 0.0, is_value=a_value,
         **dict(zip(("feed_market_key", "feed_market_name", "feed_selection_name", "feed_line"),
                    _feed_identity(feed, feed_market_key, "a", prop.a_handicap))),
-    )
+    pricing_evidence=pricing_evidence)
     if prop.value_player_id == prop.player_b_id:
         record_prop(
             conn, match_id=prop.match_id, match_date=match_date, match_label=label,
@@ -1025,10 +1030,10 @@ def _log_spread(conn, match_date, label, prop, scope: str,
             predicted_mean=prop.predicted_margin, stake_units=1.0, is_value=True,
             **dict(zip(("feed_market_key", "feed_market_name", "feed_selection_name", "feed_line"),
                        _feed_identity(feed, feed_market_key, "b", prop.b_handicap))),
-        )
+        pricing_evidence=pricing_evidence)
 
 
-def _log_exact_set_score(conn, match_date, label, prop):
+def _log_exact_set_score(conn, match_date, label, prop, pricing_evidence=None):
     """Log all four mutually exclusive outcomes for multiclass scorekeeping."""
     for selection in prop.selections:
         record_prop(
@@ -1050,10 +1055,10 @@ def _log_exact_set_score(conn, match_date, label, prop):
             predicted_mean=selection.model_prob,
             stake_units=1.0 if selection.is_value else 0.0,
             is_value=selection.is_value,
-        )
+        pricing_evidence=pricing_evidence)
 
 
-def _log_first_set_match(conn, match_date, label, prop, feed):
+def _log_first_set_match(conn, match_date, label, prop, feed, pricing_evidence=None):
     """Log all four outcomes; only win-first rows may carry paper stake."""
     for selection in prop.selections:
         source = feed[selection.outcome]
@@ -1085,7 +1090,7 @@ def _log_first_set_match(conn, match_date, label, prop, feed):
             feed_market_name=source["market_name"],
             feed_selection_name=source["selection_name"],
             feed_line=None,
-        )
+        pricing_evidence=pricing_evidence)
 
 
 def price_ace_props_for_date(conn, match_date: str, log: bool = True,
@@ -1148,6 +1153,17 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
             ))
             continue
         match_rows = rows_by_match[mid]
+        from tennis_wc.props.pricing_evidence import capture_context
+        from tennis_wc.features.common import utc_now
+
+        meta=dict(meta)
+        pricing_evidence=capture_context(conn,mid,utc_now(),match_rows)
+        meta['_pricing_evidence']=pricing_evidence
+        books={(str(r['bookmaker']).strip().lower(),r['source_provider']) for r in rows_by_match[mid]}
+        if len(books)>1:
+            boards.append(AcePropBoard(mid,f"{meta['a_name']} vs {meta['b_name']}",None,
+                                       unsupported_reason='ambiguous_quote_source'))
+            continue
         ace_rows = [
             row for row in match_rows
             if registry.family_for_market(row["market_key"], row["market_name"])
@@ -1166,6 +1182,8 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
             )
             if a.n >= ace_model._MIN_HISTORY and b.n >= ace_model._MIN_HISTORY:
                 match_mean = ace_model.predict_match_ace_mean(a, b)
+        if a is not None and b is not None:
+            pricing_evidence['profiles']['aces']={str(p.player_id):asdict(p) for p in (a,b)}
         label = f"{meta['a_name']} vs {meta['b_name']}"
         board = AcePropBoard(match_id=mid, match_label=label, predicted_match_mean=match_mean)
         set_joint = (
@@ -1225,7 +1243,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                         tw = _strip_value(tw)
                     board.match_ou.append(tw)
                     if log:
-                        _log_two_way(conn, match_date, label, tw, "match", None)
+                        _log_two_way(conn, match_date, label, tw, "match", None,pricing_evidence=pricing_evidence)
             elif family == "player_aces":
                 if a is None or b is None or match_mean is None:
                     continue
@@ -1278,15 +1296,16 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                         tw = _strip_value(tw)
                     board.player_ou.append(tw)
                     if log:
-                        _log_two_way(conn, match_date, label, tw, "player", pid)
+                        _log_two_way(conn, match_date, label, tw, "player", pid,pricing_evidence=pricing_evidence)
             elif family == "player_double_faults":
                 pid, pname = _resolve_named_player(market_name, family, meta)
                 if pid is None:
                     continue
                 profile = player_model.count_profile(
                     conn, pid, meta["match_date"], "double_fault_count",
-                    surface=meta["surface"],
+                    surface=meta["surface"], start_time=_start_time(meta),
                 )
+                pricing_evidence['profiles'].setdefault('double_faults',{})[str(pid)]=asdict(profile)
                 tw = player_model.price_count_two_way(
                     mid, f"player_double_faults_{pid}_{line:g}", pname, line,
                     od["over"], od["under"], profile,
@@ -1297,7 +1316,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                     if log:
                         _log_two_way(
                             conn, match_date, label, tw, "player_double_faults", pid
-                        )
+                        ,pricing_evidence=pricing_evidence)
             elif family == "player_total_games":
                 pid, pname = _resolve_named_player(market_name, family, meta)
                 if pid is None or prob_map.get(mid) is None:
@@ -1344,7 +1363,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                     board.player_games_ou.append(tw)
                     if log:
                         _log_two_way(conn, match_date, label, tw, "player_games", pid,
-                                     feed=od, feed_market_key=mk)
+                                     feed=od, feed_market_key=mk,pricing_evidence=pricing_evidence)
             elif (
                 family == "match_total_games"
                 and "set " not in market_name.lower()
@@ -1361,7 +1380,8 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                     board.predicted_games = tw.predicted_mean
                     board.games_ou.append(tw)
                     if log:
-                        _log_two_way(conn, match_date, label, tw, "match_games", None)
+                        _log_two_way(conn, match_date, label, tw, "match_games", None,
+                                     feed=od, feed_market_key=mk, pricing_evidence=pricing_evidence)
         for (m_id, mk, market_name), od in yes_no.items():
             if m_id != mid or "yes" not in od or "no" not in od:
                 continue
@@ -1393,7 +1413,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                 board.win_a_set.append(binary)
                 if log:
                     _log_binary(conn, match_date, label, binary, pid,
-                                feed=od, feed_market_key=mk)
+                                feed=od, feed_market_key=mk,pricing_evidence=pricing_evidence)
         for (m_id, mk, _market_name), od in _head_to_head_odds(match_rows, meta).items():
             if m_id != mid or "a" not in od or "b" not in od or prob_map.get(mid) is None:
                 continue
@@ -1420,7 +1440,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                 board.first_set_winner.append(prop)
                 if log:
                     _log_head_to_head(conn, match_date, label, prop,
-                                      feed=od, feed_market_key=mk)
+                                      feed=od, feed_market_key=mk,pricing_evidence=pricing_evidence)
         if first_set_match_feed and first_set_distribution is not None:
             prop = player_model.price_first_set_match_outcomes(
                 mid, "player_first_set_match",
@@ -1444,7 +1464,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                 if log:
                     _log_first_set_match(
                         conn, match_date, label, prop, first_set_match_feed
-                    )
+                    ,pricing_evidence=pricing_evidence)
         exact_odds = _exact_set_score_odds(match_rows, meta).get(mid)
         if exact_odds and prob_map.get(mid) is not None:
             prop = player_model.price_exact_set_score(
@@ -1467,7 +1487,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                     prop = _strip_structured_value(prop)
                 board.exact_set_score.append(prop)
                 if log:
-                    _log_exact_set_score(conn, match_date, label, prop)
+                    _log_exact_set_score(conn, match_date, label, prop,pricing_evidence=pricing_evidence)
         for (m_id, _family, abs_line), od in _spread_odds(
             match_rows, meta, "player_game_handicap"
         ).items():
@@ -1514,7 +1534,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                 board.game_handicap.append(prop)
                 if log:
                     _log_spread(conn, match_date, label, prop, "player_game_margin",
-                                feed=od, feed_market_key=od.get("market_key"))
+                                feed=od, feed_market_key=od.get("market_key"),pricing_evidence=pricing_evidence)
         for (m_id, _family, abs_line), od in first_set_spreads.items():
             if m_id != mid or first_set_distribution is None:
                 continue
@@ -1549,7 +1569,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                         conn, match_date, label, prop,
                         "player_first_set_game_margin", feed=od,
                         feed_market_key=od.get("market_key"),
-                    )
+                    pricing_evidence=pricing_evidence)
         for (m_id, _family, abs_line), od in _spread_odds(
             match_rows, meta, "player_set_handicap"
         ).items():
@@ -1578,7 +1598,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                 board.set_handicap.append(prop)
                 if log:
                     _log_spread(conn, match_date, label, prop, "player_set_margin",
-                                feed=od, feed_market_key=od.get("market_key"))
+                                feed=od, feed_market_key=od.get("market_key"),pricing_evidence=pricing_evidence)
         # log legacy ladder value legs + anchor (over-only)
         if log and board.ladder_legs:
             for lg in board.ladder_legs:
@@ -1593,7 +1613,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                             model_prob_raw=lg.model_prob, temper_strength=0.0,
                             market_prob_fair=lg.market_prob_fair, blended_prob=lg.blended_prob,
                             edge=lg.edge, ev=lg.ev, predicted_mean=lg.predicted_mean,
-                            stake_units=1.0 if lg.is_value else 0.0, is_value=lg.is_value)
+                            stake_units=1.0 if lg.is_value else 0.0, is_value=lg.is_value,pricing_evidence=pricing_evidence)
         if log and board.unvalidated_ladder_legs:
             for leg in board.unvalidated_ladder_legs:
                 our_key = (
@@ -1618,7 +1638,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                     feed_market_name=leg["feed_market_name"],
                     feed_selection_name=f"{int(leg['line'])}+",
                     feed_line=leg["line"],
-                )
+                pricing_evidence=pricing_evidence)
         if (
             board.unvalidated_ladder_legs
             or board.ladder_legs or board.match_ou or board.player_ou

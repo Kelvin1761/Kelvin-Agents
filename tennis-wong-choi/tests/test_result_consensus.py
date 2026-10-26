@@ -98,3 +98,41 @@ def test_native_ledger_and_prop_linked_clv_hold_disputed_settlement(db):
     assert result['settled']==1
     assert db.execute("SELECT status FROM bet_ledger").fetchone()[0]=='WON'
     assert db.execute("SELECT result_status FROM clv_tracker").fetchone()[0]=='WON'
+
+
+def test_same_winner_different_score_stays_pending_and_out_of_evidence(db):
+    from tennis_wc.database.result_consensus import conflicting_result_matches,result_agreement_clause
+    from tennis_wc.props.settlement import settle_props
+    db.execute('UPDATE match_results SET winner_player_id=1')
+    db.execute("UPDATE match_results SET score_json=? WHERE source_provider='b'",
+               (json.dumps({'player_a_games':13,'player_b_games':7,'player_a_sets':2,'player_b_sets':0}),))
+    assert conflicting_result_matches(db)=={1}
+    assert settle_props(db)['held_conflicting_results']==1
+    assert db.execute(f'SELECT COUNT(*) FROM prop_tracker p WHERE {result_agreement_clause()}').fetchone()[0]==0
+    db.execute("UPDATE match_results SET score_json=? WHERE source_provider='b'",
+               (json.dumps({'player_a_games':12,'player_b_games':7,'player_a_sets':2,'player_b_sets':0}),))
+    assert conflicting_result_matches(db)==set()
+    assert settle_props(db)['graded']==1
+
+
+def test_partial_extra_fields_do_not_manufacture_a_score_conflict(db):
+    from tennis_wc.database.result_consensus import conflicting_result_matches
+    db.execute('UPDATE match_results SET winner_player_id=1')
+    db.execute("UPDATE match_results SET score_json='{}' WHERE source_provider='b'")
+    assert conflicting_result_matches(db)==set()
+
+
+@pytest.mark.parametrize('payload',['broken','[]'])
+def test_malformed_source_score_is_held_without_sql_json_failure(db,payload):
+    from tennis_wc.database.result_consensus import conflicting_result_matches,result_agreement_clause
+    db.execute('UPDATE match_results SET winner_player_id=1')
+    db.execute("UPDATE match_results SET score_json=? WHERE source_provider='b'",(payload,))
+    assert conflicting_result_matches(db)=={1}
+    assert db.execute(f'SELECT COUNT(*) FROM prop_tracker p WHERE {result_agreement_clause()}').fetchone()[0]==0
+
+
+def test_a_single_result_with_wrong_winner_orientation_is_not_consensus(db):
+    from tennis_wc.database.result_consensus import conflicting_result_matches
+    db.execute("DELETE FROM match_results WHERE source_provider='a'")
+    # Source b labels player 2 the winner but its score says player 1 won 2-0.
+    assert conflicting_result_matches(db)=={1}

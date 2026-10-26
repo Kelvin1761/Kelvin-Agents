@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import date
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.features.history_values import clean_history_row
+from tennis_wc.features.history_asof import guard_clause, guard_params
 from tennis_wc.features.common import avg, med, parse_date, rate, shrink_rate, utc_now
 
 
@@ -75,6 +77,7 @@ def calculate_player_rank_bucket_stats(
     surface: str | None,
     as_of_date: date,
     time_window: str,
+    *, persist: bool = True, start_time: str | None = None,
 ) -> dict:
     """
     Calculate player's win rate against opponent ranking buckets.
@@ -86,11 +89,13 @@ def calculate_player_rank_bucket_stats(
         WHERE player_id = ? AND match_date < ? AND match_date >= ?
     """
     params: list = [player_id, as_of_date.isoformat(), _window_start(as_of_date, time_window)]
+    query += guard_clause()
+    params.extend(guard_params(as_of_date.isoformat(), start_time))
     if surface:
         query += " AND lower(surface) = lower(?)"
         params.append(surface)
     with get_connection() as conn:
-        rows = [dict(row) for row in conn.execute(query, params).fetchall()]
+        rows = [clean_history_row(row) for row in conn.execute(query, params).fetchall()]
 
     total_wins = sum(1 for row in rows if row["won"])
     prior = rate(total_wins, len(rows)) or 0.5
@@ -130,45 +135,46 @@ def calculate_player_rank_bucket_stats(
                 "sample_size": matches,
                 "warnings": warnings,
             }
-            conn.execute(
-                """
-                INSERT INTO player_opponent_rank_bucket_stats (
-                    player_id, tour, surface, bucket, time_window, matches, wins, losses,
-                    win_rate, shrinked_win_rate, avg_opponent_rank, median_opponent_rank,
-                    avg_opponent_elo, source_match_count, calculated_at, created_at, updated_at
+            if persist:
+                conn.execute(
+                    """
+                    INSERT INTO player_opponent_rank_bucket_stats (
+                        player_id, tour, surface, bucket, time_window, matches, wins, losses,
+                        win_rate, shrinked_win_rate, avg_opponent_rank, median_opponent_rank,
+                        avg_opponent_elo, source_match_count, calculated_at, created_at, updated_at
+                    )
+                    VALUES (?, COALESCE((SELECT tour FROM players WHERE id = ?), 'ATP'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(player_id, tour, surface, bucket, time_window) DO UPDATE SET
+                        matches = excluded.matches,
+                        wins = excluded.wins,
+                        losses = excluded.losses,
+                        win_rate = excluded.win_rate,
+                        shrinked_win_rate = excluded.shrinked_win_rate,
+                        avg_opponent_rank = excluded.avg_opponent_rank,
+                        median_opponent_rank = excluded.median_opponent_rank,
+                        avg_opponent_elo = excluded.avg_opponent_elo,
+                        source_match_count = excluded.source_match_count,
+                        calculated_at = excluded.calculated_at,
+                        updated_at = excluded.updated_at
+                    """,
+                    (
+                        player_id,
+                        player_id,
+                        surface,
+                        bucket,
+                        time_window,
+                        matches,
+                        wins,
+                        matches - wins,
+                        raw_rate,
+                        shrinked,
+                        avg(ranks),
+                        med(ranks),
+                        avg_elo,
+                        matches,
+                        now,
+                        now,
+                        now,
+                    ),
                 )
-                VALUES (?, COALESCE((SELECT tour FROM players WHERE id = ?), 'ATP'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(player_id, tour, surface, bucket, time_window) DO UPDATE SET
-                    matches = excluded.matches,
-                    wins = excluded.wins,
-                    losses = excluded.losses,
-                    win_rate = excluded.win_rate,
-                    shrinked_win_rate = excluded.shrinked_win_rate,
-                    avg_opponent_rank = excluded.avg_opponent_rank,
-                    median_opponent_rank = excluded.median_opponent_rank,
-                    avg_opponent_elo = excluded.avg_opponent_elo,
-                    source_match_count = excluded.source_match_count,
-                    calculated_at = excluded.calculated_at,
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    player_id,
-                    player_id,
-                    surface,
-                    bucket,
-                    time_window,
-                    matches,
-                    wins,
-                    matches - wins,
-                    raw_rate,
-                    shrinked,
-                    avg(ranks),
-                    med(ranks),
-                    avg_elo,
-                    matches,
-                    now,
-                    now,
-                    now,
-                ),
-            )
     return results
