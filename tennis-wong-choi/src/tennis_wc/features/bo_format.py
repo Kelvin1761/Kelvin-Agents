@@ -27,6 +27,7 @@ def calculate_bo_format_stats(
     surface: str | None,
     as_of_date: date,
     time_window: str,
+    *, persist: bool = True,
 ) -> dict:
     if format == "BO5":
         with get_connection() as conn:
@@ -74,6 +75,9 @@ def calculate_bo_format_stats(
         ),
         "warnings": ["low_sample"] if matches < 10 else [],
     }
+    if not persist:
+        return result
+
     now = utc_now()
     with get_connection() as conn:
         conn.execute(

@@ -75,6 +75,7 @@ def calculate_player_rank_bucket_stats(
     surface: str | None,
     as_of_date: date,
     time_window: str,
+    *, persist: bool = True,
 ) -> dict:
     """
     Calculate player's win rate against opponent ranking buckets.
@@ -130,45 +131,46 @@ def calculate_player_rank_bucket_stats(
                 "sample_size": matches,
                 "warnings": warnings,
             }
-            conn.execute(
-                """
-                INSERT INTO player_opponent_rank_bucket_stats (
-                    player_id, tour, surface, bucket, time_window, matches, wins, losses,
-                    win_rate, shrinked_win_rate, avg_opponent_rank, median_opponent_rank,
-                    avg_opponent_elo, source_match_count, calculated_at, created_at, updated_at
+            if persist:
+                conn.execute(
+                    """
+                    INSERT INTO player_opponent_rank_bucket_stats (
+                        player_id, tour, surface, bucket, time_window, matches, wins, losses,
+                        win_rate, shrinked_win_rate, avg_opponent_rank, median_opponent_rank,
+                        avg_opponent_elo, source_match_count, calculated_at, created_at, updated_at
+                    )
+                    VALUES (?, COALESCE((SELECT tour FROM players WHERE id = ?), 'ATP'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ON CONFLICT(player_id, tour, surface, bucket, time_window) DO UPDATE SET
+                        matches = excluded.matches,
+                        wins = excluded.wins,
+                        losses = excluded.losses,
+                        win_rate = excluded.win_rate,
+                        shrinked_win_rate = excluded.shrinked_win_rate,
+                        avg_opponent_rank = excluded.avg_opponent_rank,
+                        median_opponent_rank = excluded.median_opponent_rank,
+                        avg_opponent_elo = excluded.avg_opponent_elo,
+                        source_match_count = excluded.source_match_count,
+                        calculated_at = excluded.calculated_at,
+                        updated_at = excluded.updated_at
+                    """,
+                    (
+                        player_id,
+                        player_id,
+                        surface,
+                        bucket,
+                        time_window,
+                        matches,
+                        wins,
+                        matches - wins,
+                        raw_rate,
+                        shrinked,
+                        avg(ranks),
+                        med(ranks),
+                        avg_elo,
+                        matches,
+                        now,
+                        now,
+                        now,
+                    ),
                 )
-                VALUES (?, COALESCE((SELECT tour FROM players WHERE id = ?), 'ATP'), ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(player_id, tour, surface, bucket, time_window) DO UPDATE SET
-                    matches = excluded.matches,
-                    wins = excluded.wins,
-                    losses = excluded.losses,
-                    win_rate = excluded.win_rate,
-                    shrinked_win_rate = excluded.shrinked_win_rate,
-                    avg_opponent_rank = excluded.avg_opponent_rank,
-                    median_opponent_rank = excluded.median_opponent_rank,
-                    avg_opponent_elo = excluded.avg_opponent_elo,
-                    source_match_count = excluded.source_match_count,
-                    calculated_at = excluded.calculated_at,
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    player_id,
-                    player_id,
-                    surface,
-                    bucket,
-                    time_window,
-                    matches,
-                    wins,
-                    matches - wins,
-                    raw_rate,
-                    shrinked,
-                    avg(ranks),
-                    med(ranks),
-                    avg_elo,
-                    matches,
-                    now,
-                    now,
-                    now,
-                ),
-            )
     return results

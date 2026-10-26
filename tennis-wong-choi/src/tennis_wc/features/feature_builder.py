@@ -4,6 +4,8 @@ import json
 from datetime import date
 from typing import Any
 
+from tennis_wc.database.market_captures import current_market_clause
+from tennis_wc.ingestion.fixture_versions import active_fixture_clause
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.big_match import calculate_big_match_stats
 from tennis_wc.features.bo_format import calculate_bo_format_stats, detect_match_format
@@ -98,21 +100,21 @@ def _wrap_numeric_tree(value: Any, prov: dict) -> Any:
     return value
 
 
-def _player_payload(player_id: int, opponent_id: int, match_context: dict, as_of_date: date) -> dict:
+def _player_payload(player_id: int, opponent_id: int, match_context: dict, as_of_date: date, *, persist_derived: bool = True) -> dict:
     # One connection for the whole payload, closed on the way out: the as-of
     # lookups below run per player per match, so a connection each would be
     # both slow and a handle leak.
     conn = get_connection()
     try:
         return _build_player_payload(
-            conn, player_id, opponent_id, match_context, as_of_date
+            conn, player_id, opponent_id, match_context, as_of_date,persist_derived=persist_derived
         )
     finally:
         conn.close()
 
 
 def _build_player_payload(conn, player_id: int, opponent_id: int,
-                          match_context: dict, as_of_date: date) -> dict:
+                          match_context: dict, as_of_date: date, *, persist_derived: bool = True) -> dict:
     player = conn.execute("SELECT * FROM players WHERE id = ?", (player_id,)).fetchone()
     if player is None:
         raise ValueError(f"Player not found: {player_id}")
@@ -124,12 +126,12 @@ def _build_player_payload(conn, player_id: int, opponent_id: int,
     round_name = match_context["round"]["value"]
     match_format = match_context["format"]["value"]
 
-    rank_buckets = calculate_player_rank_bucket_stats(player_id, surface, as_of_date, "LAST_52_WEEKS")
+    rank_buckets = calculate_player_rank_bucket_stats(player_id, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived)
     elo_buckets = calculate_player_elo_bucket_stats(player_id, surface, as_of_date, "LAST_52_WEEKS")
-    tournament_level = calculate_tournament_level_stats(player_id, level, surface, as_of_date, "LAST_52_WEEKS")
-    round_stats = calculate_round_stats(player_id, round_name, level, surface, as_of_date, "LAST_52_WEEKS")
-    big_match = calculate_big_match_stats(player_id, surface, as_of_date, "LAST_52_WEEKS")
-    bo_format = calculate_bo_format_stats(player_id, match_format, surface, as_of_date, "LAST_52_WEEKS")
+    tournament_level = calculate_tournament_level_stats(player_id, level, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived)
+    round_stats = calculate_round_stats(player_id, round_name, level, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived)
+    big_match = calculate_big_match_stats(player_id, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived)
+    bo_format = calculate_bo_format_stats(player_id, match_format, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived)
     pressure = calculate_pressure_stats(player_id, surface, as_of_date, "LAST_52_WEEKS")
     h2h = calculate_head_to_head_stats(player_id, opponent_id, surface, as_of_date)
     rest_days = _rest_days(player_id, as_of_date)
@@ -317,40 +319,29 @@ def _market(match_id: int) -> dict:
             (match_id,),
         ).fetchone()
         odds_rows = conn.execute(
-            """
-            SELECT *
-            FROM market_odds_snapshots
-            WHERE match_id = ?
-              AND market_key = 'match_winner'
-              AND id IN (
-                  SELECT MAX(id)
-                  FROM market_odds_snapshots
-                  WHERE match_id = ?
-                    AND market_key = 'match_winner'
-                  GROUP BY selection_name, COALESCE(line, -999999)
-              )
-            ORDER BY id DESC
-            """,
-            (match_id, match_id),
-        ).fetchall()
+            f"""SELECT mo.* FROM market_odds_snapshots mo
+            WHERE mo.match_id=? AND mo.market_key='match_winner'
+              AND {current_market_clause(conn)} ORDER BY mo.id DESC""",(match_id,)).fetchall()
     if not odds_rows:
         return _legacy_positional_market(match_id)
     if match is None:
         prov = _raw_meta(odds_rows[0]["raw_response_id"])
         return {"errors": ["odds_selection_mapping_failed"], "timestamp": datapoint(odds_rows[0]["fetched_at"], prov)}
 
+    batches={(r['source_provider'],str(r['bookmaker']).strip().lower(),r['raw_response_id'],r['fetched_at']) for r in odds_rows}
+    if len(batches)!=1 or len(odds_rows)!=2:
+        return {'errors':['odds_snapshot_pair_unverified'],'mapping_status':datapoint('failed',_raw_meta(odds_rows[0]['raw_response_id']))}
     player_a_name = match["player_a_name"]
     player_b_name = match["player_b_name"]
-    player_a_key = _normalise_name(player_a_name)
-    player_b_key = _normalise_name(player_b_name)
-    player_a_row = None
-    player_b_row = None
+    from tennis_wc.ingestion.ingest_odds import selection_side_for
+
+    player_a_row=player_b_row=None
     for row in odds_rows:
-        selection_key = _normalise_name(row["selection_name"])
-        if selection_key == player_a_key:
-            player_a_row = row
-        elif selection_key == player_b_key:
-            player_b_row = row
+        side=selection_side_for(player_a_name,player_b_name,row['selection_name'])
+        if side=='player_a':
+            player_a_row=row
+        elif side=='player_b':
+            player_b_row=row
 
     prov = _raw_meta(odds_rows[0]["raw_response_id"])
     if player_a_row is None or player_b_row is None:
@@ -381,10 +372,10 @@ def _market(match_id: int) -> dict:
 def _legacy_positional_market(match_id: int) -> dict:
     with get_connection() as conn:
         row = conn.execute(
-            """
-            SELECT *
-            FROM odds_snapshots
-            WHERE match_id = ?
+            f"""
+            SELECT o.*
+            FROM odds_snapshots o
+            WHERE match_id = ? AND {current_market_clause(conn,'o','odds_snapshots')}
             ORDER BY fetched_at DESC
             LIMIT 1
             """,
@@ -406,7 +397,7 @@ def _legacy_positional_market(match_id: int) -> dict:
     }
 
 
-def assemble_match_feature_snapshot(match_id: int) -> tuple[dict, dict]:
+def assemble_match_feature_snapshot(match_id: int, *, persist_derived: bool = False) -> tuple[dict, dict]:
     """
     Build the complete two-player feature snapshot WITHOUT persisting it.
 
@@ -418,6 +409,8 @@ def assemble_match_feature_snapshot(match_id: int) -> tuple[dict, dict]:
         match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
         if not match:
             raise ValueError(f"Match not found: {match_id}")
+        if 'fixture_status' in match.keys() and match['fixture_status']=='DISPUTED':
+            raise ValueError(f"Fixture identity disputed: {match_id}")
         tournament = conn.execute("SELECT * FROM tournaments WHERE id = ?", (match["tournament_id"],)).fetchone()
         tournament_level = conn.execute(
             """
@@ -442,8 +435,8 @@ def assemble_match_feature_snapshot(match_id: int) -> tuple[dict, dict]:
         "match_id": datapoint(match_id, _raw_meta(match["raw_response_id"])),
         "feature_set_version": FEATURE_SET_VERSION,
         "match_context": context,
-        "player_a": _player_payload(match["player_a_id"], match["player_b_id"], context, as_of_date),
-        "player_b": _player_payload(match["player_b_id"], match["player_a_id"], context, as_of_date),
+        "player_a": _player_payload(match["player_a_id"], match["player_b_id"], context, as_of_date,persist_derived=persist_derived),
+        "player_b": _player_payload(match["player_b_id"], match["player_a_id"], context, as_of_date,persist_derived=persist_derived),
         "market": _market(match_id),
         "entity_mapping_complete": True,
     }
@@ -499,7 +492,7 @@ def build_match_feature_snapshot(match_id: int) -> dict:
     Build complete feature set for both players.
     Store feature snapshots in database and return structured JSON.
     """
-    snapshot, _tournament_level = assemble_match_feature_snapshot(match_id)
+    snapshot, _tournament_level = assemble_match_feature_snapshot(match_id,persist_derived=True)
     quality = snapshot["data_quality"]
 
     now = utc_now()
@@ -530,7 +523,7 @@ def build_match_feature_snapshot(match_id: int) -> dict:
 
 def build_feature_snapshots_for_date(match_date: str) -> list[dict]:
     with get_connection() as conn:
-        rows = conn.execute("SELECT id FROM matches WHERE match_date = ?", (match_date,)).fetchall()
+        rows = conn.execute(f"SELECT m.id FROM matches m WHERE m.match_date=? AND {active_fixture_clause(conn)}", (match_date,)).fetchall()
     return [build_match_feature_snapshot(int(row["id"])) for row in rows]
 
 
@@ -538,13 +531,14 @@ def _sportsbet_priced_matches(conn, match_date: str) -> list[dict]:
     return [
         dict(row)
         for row in conn.execute(
-            """
+            f"""
             SELECT DISTINCT m.id, t.name AS tournament_name
             FROM matches m
             JOIN tournaments t ON t.id = m.tournament_id
             JOIN odds_snapshots o ON o.match_id = m.id
             WHERE m.match_date = ?
               AND o.source_provider = 'sportsbet'
+              AND {active_fixture_clause(conn)}
             ORDER BY m.id
             """,
             (match_date,),
@@ -649,7 +643,7 @@ def _distinct_fixture_count(conn, match_date: str, extra_where: str = "") -> int
                 FROM matches m
                 JOIN players pa ON pa.id = m.player_a_id
                 JOIN players pb ON pb.id = m.player_b_id
-                WHERE m.match_date = ?
+                WHERE m.match_date = ? AND {active_fixture_clause(conn)}
                   AND m.player_a_id != m.player_b_id
                   AND lower(trim(pa.name)) NOT IN ('unknown player', 'unknown', 'tbd', 'none', 'null', '')
                   AND lower(trim(pb.name)) NOT IN ('unknown player', 'unknown', 'tbd', 'none', 'null', '')

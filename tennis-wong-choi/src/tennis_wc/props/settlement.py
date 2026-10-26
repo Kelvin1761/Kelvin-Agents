@@ -461,7 +461,7 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
                 feed_market_key: str | None = None,
                 feed_market_name: str | None = None,
                 feed_selection_name: str | None = None,
-                feed_line: float | None = None) -> None:
+                feed_line: float | None = None, pricing_evidence: dict | None = None) -> None:
     """Upsert a surfaced prop as PENDING (idempotent per match+market+selection).
     All probabilities are OF THIS SIDE.
 
@@ -481,6 +481,13 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
     """
     prop_key = f"{match_id}|{market_key}|{selection}"
     now = utc_now()
+    from tennis_wc.props.pricing_evidence import capture_context,freeze_context
+    from tennis_wc.props.registry import family_for_market
+
+    context=pricing_evidence if pricing_evidence is not None else capture_context(conn,match_id,now)
+    context = {**context, 'context_captured_at': context.get('priced_at'), 'priced_at': now}
+    evidence_json=freeze_context(context,family_for_market(market_key),subject_player_id,
+                                 feed_market_key,feed_market_name,feed_selection_name,feed_line)
     # Stamped at write time, not re-derived later: `start_time_utc` gets
     # backfilled and corrected, and re-deriving would silently reclassify rows
     # that a decision had already been made on. See evaluation/corpus.py.
@@ -500,9 +507,10 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
             is_value, result_status, profit_loss_units, actual_value,
             recorded_at, updated_at, settled_at,
             feed_market_key, feed_market_name, feed_selection_name, feed_line,
-            is_point_in_time
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING', NULL, NULL, ?, ?, NULL, ?,?,?,?,?)
+            is_point_in_time,pricing_evidence_json,priced_at
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?, 'PENDING', NULL, NULL, ?, ?, NULL, ?,?,?,?,?,?,?)
         ON CONFLICT(prop_key) DO UPDATE SET
+            pricing_evidence_json=excluded.pricing_evidence_json,priced_at=excluded.priced_at,
             decimal_odds=excluded.decimal_odds, model_prob=excluded.model_prob,
             model_prob_raw=excluded.model_prob_raw,
             temper_strength=excluded.temper_strength,
@@ -540,7 +548,7 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
          market_prob_fair, blended_prob, edge, ev, predicted_mean, stake_units,
          1 if is_value else 0, now, now,
          feed_market_key, feed_market_name, feed_selection_name, feed_line,
-         point_in_time),
+         point_in_time,evidence_json,now),
     )
 
 
@@ -805,16 +813,16 @@ def prop_roi_report(conn, value_only: bool = True,
         where += " AND is_value = 1"
     params: list = []
     if as_of_date:
-        where += " AND p.match_date < ?"
-        params.append(as_of_date)
+        where += " AND p.match_date < ? AND julianday(p.settled_at) < julianday(?)"
+        params.extend((as_of_date, as_of_date))
     if since_date:
         where += " AND p.match_date >= ?"
         params.append(since_date)
-    from tennis_wc.features.snapshot_quality import LATEST_QUALITY_CTE
+    columns = {row['name'] for row in conn.execute('PRAGMA table_info(prop_tracker)')}
+    receipt = 'p.pricing_evidence_json' if 'pricing_evidence_json' in columns else 'NULL'
 
     rows = conn.execute(
         f"""
-        WITH quality AS ({LATEST_QUALITY_CTE})
         SELECT p.*,
                m.tour,
                COALESCE(
@@ -823,10 +831,9 @@ def prop_roi_report(conn, value_only: bool = True,
                     ORDER BY tl.id DESC LIMIT 1),
                    'UNKNOWN'
                ) AS surface,
-               quality.data_quality_score
+               {receipt} AS frozen_pricing_evidence
         FROM prop_tracker p
         LEFT JOIN matches m ON m.id = p.match_id
-        LEFT JOIN quality ON quality.match_id = p.match_id
         WHERE p.{where}
         ORDER BY p.match_date, p.id
         """
@@ -947,42 +954,10 @@ def prop_roi_report(conn, value_only: bool = True,
     # family look profitable and thereby graduate lower-odds recommendations.
     from tennis_wc.props import strategy
 
-    def live_quality(row) -> float:
-        market_family = family(row["market_key"])
-        if market_family not in {
-            "player_aces", "match_total_aces", "player_double_faults"
-        }:
-            return strategy.normalise_data_quality(row["data_quality_score"])
-        match = conn.execute(
-            "SELECT player_a_id,player_b_id FROM matches WHERE id=?",
-            (row["match_id"],),
-        ).fetchone()
-        if not match:
-            return 0.0
-        if market_family == "match_total_aces":
-            player_ids = (match["player_a_id"], match["player_b_id"])
-            column = "ace_count"
-        elif market_family == "player_aces":
-            subject = row["subject_player_id"]
-            opponent = (
-                match["player_b_id"]
-                if subject == match["player_a_id"] else match["player_a_id"]
-            )
-            player_ids = (subject, opponent)
-            column = "ace_count"
-        else:
-            player_ids = (row["subject_player_id"],)
-            column = "double_fault_count"
-        counts = [
-            conn.execute(
-                f"SELECT COUNT(*) FROM (SELECT 1 FROM player_match_history "
-                f"WHERE player_id=? AND match_date<? AND {column} IS NOT NULL "
-                "ORDER BY match_date DESC LIMIT 15)",
-                (player_id, row["match_date"]),
-            ).fetchone()[0]
-            for player_id in player_ids if player_id is not None
-        ]
-        return min(counts, default=0) / 15.0
+    def live_quality(row) -> float | None:
+        from tennis_wc.props.pricing_evidence import read_evidence
+        evidence = read_evidence(row['frozen_pricing_evidence'])
+        return evidence.get('source_quality') if evidence else None
 
     for row in rows:
         by_quality.setdefault(quality_band(live_quality(row)), []).append(row)
@@ -1070,8 +1045,8 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
     date_parts: list[str] = []
     params: list[str] = []
     if as_of_date:
-        date_parts.append(" AND p.match_date < ?")
-        params.append(as_of_date)
+        date_parts.append(" AND p.match_date < ? AND julianday(p.settled_at) < julianday(?)")
+        params.extend((as_of_date, as_of_date))
     if since_date:
         date_parts.append(" AND p.match_date >= ?")
         params.append(since_date)

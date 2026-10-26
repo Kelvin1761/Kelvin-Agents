@@ -940,6 +940,10 @@ def run_daily(args: argparse.Namespace) -> None:
     report_path = _run_timed_stage(
         "daily_report", lambda: generate_daily_report(args.date), stage_timings
     )
+    from tennis_wc.reports.daily_report import latest_prop_pricing_error
+    prop_error = latest_prop_pricing_error(args.date)
+    if prop_error:
+        source_errors.append({'source': 'prop_pricing', 'error': prop_error})
     # Record today's recommendations in the trackers as part of the pipeline
     # itself. Previously only the scheduler wrapper did this, so manual runs
     # left no CLV/combo rows behind (nothing to settle or measure later).

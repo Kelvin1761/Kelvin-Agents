@@ -348,3 +348,24 @@ def test_the_replay_refuses_to_delete_a_real_record_without_being_told(tmp_path)
     conn = sqlite3.connect(db)
     assert conn.execute("SELECT COUNT(*) FROM prop_tracker").fetchone()[0] == 3
     conn.close()
+
+
+def test_classifier_compares_instants_and_rejects_unknown_clock():
+    assert classify_point_in_time('2026-10-26T10:00:00+10:00','2026-10-26T01:00:00Z')==1
+    assert classify_point_in_time('2026-10-26T01:00:00.500Z','2026-10-26T01:00:00Z')==0
+    assert classify_point_in_time('not-a-time','2026-10-26T01:00:00Z') is None
+    assert classify_point_in_time('2026-10-26T00:00:00','2026-10-26T01:00:00Z') is None
+
+
+def test_migration_classifier_agrees_with_actual_timestamp_order():
+    import sqlite3
+    from tennis_wc.evaluation.corpus import CLASSIFY_SQL
+    c=sqlite3.connect(':memory:')
+    for captured,start,expected in [
+        ('2026-10-26T10:00:00+10:00','2026-10-26T01:00:00Z',1),
+        ('2026-10-26T01:00:00.500Z','2026-10-26T01:00:00Z',0),
+        ('broken','2026-10-26T01:00:00Z',None),
+        ('2026-10-26','2026-10-26T01:00:00Z',None),
+    ]:
+        assert c.execute(f'SELECT {CLASSIFY_SQL} FROM (SELECT ? recorded_at) p CROSS JOIN (SELECT ? start_time_utc) m',(captured,start)).fetchone()[0]==expected
+    c.close()

@@ -47,6 +47,7 @@ class ServeReturnProfile:
     returning: dict
     opponent_elo_mean: float | None
     surface: str | None
+    history_ids: tuple[int,...] = ()
 
     @property
     def is_usable(self) -> bool:
@@ -91,7 +92,7 @@ def serve_return_profile(
     params.append(window)
     rows = conn.execute(
         f"""
-        SELECT {columns} FROM player_match_history
+        SELECT id,{columns} FROM player_match_history
         WHERE player_id = ? AND match_date < ? AND hold_rate IS NOT NULL
           {guard_clause()}
           {surface_clause}
@@ -130,7 +131,7 @@ def serve_return_profile(
         serve=serve,
         returning=returning,
         opponent_elo_mean=_mean(row["opponent_elo"] for row in rows),
-        surface=used_surface,
+        surface=used_surface,history_ids=tuple(int(r['id']) for r in rows),
     )
 
 
