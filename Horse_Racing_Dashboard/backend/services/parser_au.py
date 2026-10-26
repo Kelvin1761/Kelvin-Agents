@@ -442,6 +442,21 @@ def _parse_au_scoreline(block: str) -> tuple[Optional[float], Optional[int]]:
 AU_MARKET_REF_RE = re.compile(r"^📊 市場參考（(?P<source>[^·）]+?)\s*·[^）]*）:\s*(?P<body>.+)$", re.M)
 
 
+# 首選早盤分歧（2026-10-27）：引擎 `market_reference.divergence_lines` 第一行，
+#   > **📊 市場分歧：🚨 大分歧**（首選 #8 Joliestar 喺最早賽前盤 10-17 04:43排第 5/12，$17.00）
+# 純顯示信心提示，唔參與任何排序。改格式要兩邊一齊改（test_market_reference 有釘）。
+AU_MARKET_DIVERGENCE_RE = re.compile(
+    r"📊 市場分歧：(?P<icon>\S+)\s+(?P<level>[^*]+?)\*\*（首選 #(?P<pick>\d+).*?排第\s*(?P<rank>\d+)/(?P<priced>\d+)")
+
+
+def _parse_au_market_divergence(text: str) -> Optional[dict]:
+    m = AU_MARKET_DIVERGENCE_RE.search(text or "")
+    if not m:
+        return None
+    return {"level": m.group("level").strip(), "icon": m.group("icon"), "top_pick": int(m.group("pick")),
+            "market_rank": int(m.group("rank")), "priced": int(m.group("priced"))}
+
+
 def _parse_au_market_reference(block: str) -> dict:
     out: dict = {}
     m = AU_MARKET_REF_RE.search(block)
@@ -1378,5 +1393,6 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
         scenario_top_picks=scenario_top_picks,
         monte_carlo_simulation=monte_carlo if monte_carlo else None,
         battlefield_overview=battlefield,
+        market_divergence=_parse_au_market_divergence(text),
         analysis_type='auto' if path.name.endswith("_Auto_Analysis.md") else 'classic',
     )

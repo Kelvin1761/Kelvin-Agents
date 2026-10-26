@@ -91,7 +91,8 @@ class RankingIsIdenticalWithAndWithoutOdds(unittest.TestCase):
             without = render_race_markdown(_score(Path(a), _logic(False)), meeting_dir=Path(a))
             with_ = render_race_markdown(_score(Path(b), _logic(True)), meeting_dir=Path(b))
             strip = lambda t: [ln for ln in t.splitlines()  # noqa: E731
-                               if "市場盤（賽前）" not in ln and "市場參考" not in ln and ln.strip()]
+                               if "市場盤（賽前）" not in ln and "市場參考" not in ln
+                               and "市場分歧" not in ln and ln.strip()]
             self.assertEqual(strip(without), strip(with_))
             self.assertNotIn("市場參考", without)
 
@@ -211,6 +212,41 @@ class DevigMethods(unittest.TestCase):
         for key, field in (("market_win_prob", "win_prob"), ("market_place_prob", "place_prob"),
                            ("market_top3_prob", "top3_prob"), ("market_top4_prob", "top4_prob")):
             self.assertAlmostEqual(got[key], round(r[field], 3), places=3, msg=key)
+
+
+class TopPickMarketDivergence(unittest.TestCase):
+    def _ref(self):
+        return M.build_market_reference(DevigMethods._horses(None, ODDS.values()))
+
+    def test_tiers_follow_the_top_picks_market_rank(self):
+        ref = self._ref()
+        got = {num: M.divergence(ref, num)["level"] for num in ("1", "2", "3", "4", "5", "8")}
+        self.assertEqual(got, {"1": "一致", "2": "輕微分歧", "3": "分歧", "4": "分歧",
+                               "5": "大分歧", "8": "大分歧"})
+
+    def test_unpriced_top_pick_prints_nothing(self):
+        self.assertIsNone(M.divergence(self._ref(), "99"))
+        self.assertEqual(M.divergence_lines(self._ref(), "99"), [])
+        self.assertEqual(M.divergence_lines({"runners": {}}, "1"), [])
+
+    def test_report_shows_it_for_the_published_top_pick_and_dashboard_reads_it(self):
+        dash = Path(__file__).resolve().parents[5] / "Horse_Racing_Dashboard" / "backend"
+        sys.path.insert(0, str(dash))
+        try:
+            from services.parser_au import _parse_au_market_divergence
+        finally:
+            sys.path.remove(str(dash))
+        with tempfile.TemporaryDirectory() as tmp:
+            logic = _score(Path(tmp), _logic(with_odds=True))
+            md = render_race_markdown(logic, meeting_dir=Path(tmp))
+            top = next(n for n, h in logic["horses"].items() if h["python_auto"]["rank"] == 1)
+            expected = M.divergence(M.build_market_reference(logic["horses"], Path(tmp), 1), top)
+        self.assertEqual(md.count("📊 市場分歧："), 2)  # 戰場全景 + Top 4 各一次
+        got = _parse_au_market_divergence(md)
+        self.assertEqual(got["top_pick"], int(top))
+        self.assertEqual(got["level"], expected["level"])
+        self.assertEqual(got["market_rank"], expected["market_rank"])
+        self.assertEqual(got["priced"], 8)
 
 
 class ScoringNeverImportsTheMarketLayer(unittest.TestCase):

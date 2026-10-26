@@ -244,6 +244,7 @@ class RaceAnalysis(BaseModel):
     
     # Raw sections
     battlefield_overview: Optional[str] = None  # 第一部分
+    market_divergence: Optional[dict] = None  # AU 首選早盤分歧（純顯示）：level/icon/top_pick/market_rank/priced
     verdict_text: Optional[str] = None  # 第三部分
     blind_spots: Optional[str] = None  # 第四部分
     analysis_type: Optional[str] = None  # classic / auto
