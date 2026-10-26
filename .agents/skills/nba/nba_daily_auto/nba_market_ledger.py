@@ -84,6 +84,10 @@ NBA_SKILL = HERE.parent
 MARKET_KEYS = {"points": "pts", "rebounds": "reb", "assists": "ast", "threes_made": "fg3m"}
 MODEL_VARIANTS = ("p_final", "p_hit_rate_10f", "p_ml", "p_monte_carlo")
 ROLE_PRIORITY = {"final_refresh": 3, "production": 2, "warmup": 1}
+# The user bets the 21:00 (production) publication, not the morning final refresh
+# (2026-10-26). Pick/ROI evaluation reports this "bet version" beside the latest one.
+BET_ROLE = "production"
+VIEWS = ("latest", "bet")
 
 # Power estimate defaults.  The mean is an ASSUMPTION, never the observed mean:
 # solving n from an observed mean is circular (it is exactly the quantity whose
@@ -508,6 +512,10 @@ def record_snapshot(
                 "season_rate_v3_version": leg.get("season_rate_v3_version"),
                 "season_rate_v3_status": leg.get("season_rate_v3_status"),
                 "season_rate_v3_inputs": leg.get("season_rate_v3_inputs"),
+                "season_rate_v4_prob_S": _float(leg.get("season_rate_v4_prob_S")),
+                "season_rate_v4_version": leg.get("season_rate_v4_version"),
+                "season_rate_v4_status": leg.get("season_rate_v4_status"),
+                "season_rate_v4_inputs": leg.get("season_rate_v4_inputs"),
                 "early_season_guard": leg.get("early_season_guard"),
                 "picked": bool(leg.get("picked")), "picked_in": leg.get("picked_in") or [],
                 "prop_training": nba_prop_training.observation(training_source, leg),
@@ -862,6 +870,18 @@ def _choose_snapshot(rows: list[dict]) -> str | None:
     best = max(eligible, key=lambda r: (str(r.get("snapshot_created_at") or ""),
                                         ROLE_PRIORITY.get(str(r.get("snapshot_role")), 0)))
     return best.get("snapshot_id")
+
+
+def _choose_view_snapshot(rows: list[dict], view: str = "latest") -> str | None:
+    """`latest`: the normal evaluation rule; `bet`: the latest pre-tip 21:00 publication."""
+    if view == "latest":
+        return _choose_snapshot(rows)
+    if view != "bet":
+        raise ValueError(f"unknown view: {view}")
+    eligible = [r for r in rows if _pre_tip(r) and r.get("snapshot_role") == BET_ROLE]
+    if not eligible:
+        return None
+    return max(eligible, key=lambda r: str(r.get("snapshot_created_at") or "")).get("snapshot_id")
 
 
 def probability_model_id(row: Mapping[str, Any]) -> str:

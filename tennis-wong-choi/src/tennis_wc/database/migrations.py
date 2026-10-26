@@ -628,6 +628,14 @@ def _ensure_compat_columns(conn) -> None:
             "CREATE INDEX IF NOT EXISTS idx_prop_tracker_point_in_time "
             "ON prop_tracker(is_point_in_time, result_status)"
         )
+    from tennis_wc.ingestion.fixture_versions import ensure_fixture_schema
+
+    ensure_fixture_schema(conn)
+    from tennis_wc.database.result_observations import ensure_result_observations
+
+    ensure_result_observations(conn)
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_predictions_match_id ON predictions(match_id,id)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_odds_snapshots_match_id ON odds_snapshots(match_id,id)')
     ensure_close_audit_schema(conn)
     from tennis_wc.database.market_captures import ensure_market_captures
 

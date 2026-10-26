@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
+import logging
 
 from tennis_wc.config import get_settings
 from tennis_wc.database.db import get_connection
@@ -10,6 +11,8 @@ from tennis_wc.ingestion.entity_mapping import (
     upsert_tournament,
     valid_player_identity,
 )
+from tennis_wc.ingestion.fixture_versions import upsert_fixture
+from tennis_wc.ingestion.ingest_odds import _row_start_time_utc
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
 from tennis_wc.providers import get_tennis_provider
 
@@ -90,7 +93,8 @@ def ingest_upcoming_matches(match_date: str) -> int:
                 raw_id,
                 {"name": row.get("player_b_name"), "tour": row.get("tour"), "current_rank": row.get("player_b_current_rank")},
             )
-        except ValueError:
+        except ValueError as exc:
+            logging.getLogger(__name__).warning("fixture/history identity rejected: %s",exc)
             continue
         if player_a_id == player_b_id:
             continue
@@ -105,39 +109,13 @@ def ingest_upcoming_matches(match_date: str) -> int:
             row.get("indoor_outdoor"),
         )
         with get_connection() as conn:
-            conn.execute(
-                """
-                INSERT INTO matches (
-                    provider_match_id, market_event_id, tour, match_date, tournament_id,
-                    player_a_id, player_b_id, round, source_provider, raw_response_id,
-                    created_at, updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(source_provider, provider_match_id) DO UPDATE SET
-                    market_event_id = excluded.market_event_id,
-                    match_date = excluded.match_date,
-                    tournament_id = excluded.tournament_id,
-                    player_a_id = excluded.player_a_id,
-                    player_b_id = excluded.player_b_id,
-                    round = excluded.round,
-                    raw_response_id = excluded.raw_response_id,
-                    updated_at = excluded.updated_at
-                """,
-                (
-                    row["id"],
-                    row.get("market_event_id"),
-                    row["tour"],
-                    row.get("analysis_date") or row["match_date"],
-                    tournament_id,
-                    player_a_id,
-                    player_b_id,
-                    row["round"],
-                    provider.provider_name,
-                    raw_id,
-                    now,
-                    now,
-                ),
-            )
+            upsert_fixture(conn, {
+                "provider_match_id": str(row["id"]), "market_event_id": row.get("market_event_id"),
+                "tour": row["tour"], "match_date": row.get("analysis_date") or row["match_date"],
+                "tournament_id": tournament_id, "player_a_id": player_a_id, "player_b_id": player_b_id,
+                "round": row["round"], "source_provider": provider.provider_name,
+                "raw_response_id": raw_id, "start_time_utc": _row_start_time_utc(row),
+            }, now)
         count += 1
     return count
 
@@ -170,7 +148,8 @@ def ingest_historical_matches(start_date: str, end_date: str) -> int:
                 raw_id,
                 {"name": row.get("opponent_name"), "tour": row.get("tour"), "current_rank": row.get("opponent_current_rank")},
             )
-        except ValueError:
+        except ValueError as exc:
+            logging.getLogger(__name__).warning("fixture/history identity rejected: %s",exc)
             continue
         if player_id == opponent_id:
             continue

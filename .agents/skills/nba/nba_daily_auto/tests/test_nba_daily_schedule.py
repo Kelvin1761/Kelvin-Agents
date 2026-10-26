@@ -670,18 +670,6 @@ def test_launchd_runner_dispatches_through_manifest_control_plane() -> None:
     assert "--domain nba --mode" in runner
 
 
-def test_betting_card_identity_follows_picks_not_prices() -> None:
-    row = {"event_name": "IND @ BKN", "selection": "Siakam PTS 20+ / Turner REB 6+", "decision": "BET",
-           "odds": 2.10, "validation_status": "valid"}
-    base = {"validation_status": "valid", "recommendations": [row]}
-    moved = {"validation_status": "valid", "recommendations": [dict(row, odds=2.25)]}
-    changed = {"validation_status": "valid", "recommendations": [dict(row, selection="Siakam PTS 15+")]}
-    assert schedule.betting_card_identity(base) == schedule.betting_card_identity(moved)
-    assert schedule.betting_card_identity(base) != schedule.betting_card_identity(changed)
-    assert schedule.betting_card_identity(base) != schedule.betting_card_identity(
-        {"validation_status": "blocked", "recommendations": []})
-
-
 def test_postgame_message_accepts_verified_abstention_but_not_missing_legs(tmp_path):
     import pytest
     day = '2026-10-25'

@@ -128,9 +128,26 @@ class SportsbetOddsProvider(OddsProvider):
     def fetch_event_odds(self, event_id: str, markets: list[str]) -> dict:
         if hasattr(self, "_fallback"):
             return self._fallback.fetch_event_odds(event_id, markets)
-        body = post_json(f"{self.base_url}/api/odds", self.headers, {"odds_data_id": event_id})
-        rows = self._normalise_wagerwise_fixture({"game_masterID": event_id, "team_names": {}}, body)
-        return rows[0] if rows else {}
+        listing=get_json(f"{self.base_url}/api/fixtures",self.headers)
+        candidates=[]
+        if isinstance(listing,dict):
+            for league in listing.values():
+                if not isinstance(league,dict):
+                    continue
+                for fixture in league.values():
+                    if not isinstance(fixture,dict) or not self._fixture_matches(fixture,'tennis'):
+                        continue
+                    odds_id=self._sportsbet_odds_data_id(fixture)
+                    if str(fixture.get('game_masterID'))==str(event_id) or odds_id==str(event_id):
+                        candidates.append((fixture,odds_id))
+        if len(candidates)!=1 or not candidates[0][1]:
+            raise ValueError(f'Sportsbet event has no unique fixture identity: {event_id}')
+        fixture,odds_id=candidates[0]
+        body=post_json(f"{self.base_url}/api/odds",self.headers,{'odds_data_id':odds_id})
+        rows=self._normalise_wagerwise_fixture(fixture,body)
+        if not rows:
+            raise ValueError(f'Sportsbet event has no verified pair prices: {event_id}')
+        return rows[0]
 
     def fetch_historical_odds(self, event_id: str) -> list[dict]:
         if hasattr(self, "_fallback"):
@@ -186,16 +203,25 @@ class SportsbetOddsProvider(OddsProvider):
                 else f"markets_present_none_matched_{'/'.join(MATCH_WINNER_TOKENS)}"
             )
 
-        home_market = self._find_selection(candidates, home_name)
-        away_market = self._find_selection(candidates, away_name)
+        try:
+            home_market = self._find_selection(candidates, home_name)
+            away_market = self._find_selection(candidates, away_name)
+        except ValueError:
+            return dropped('selection_name_ambiguous')
+        if home_market is not None and home_market is away_market:
+            return dropped('selection_name_ambiguous')
         if not home_market or not away_market:
             return dropped("selection_name_did_not_match_either_team")
 
-        timestamp = fixture.get("last_updated_at") or home_market.get("last_updated_at")
+        # Snapshot time is when we observed the quote, not when the book last changed it.
+        timestamp = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00','Z')
         return [
             {
                 "event_id": str(fixture.get("game_masterID") or home_market.get("odds_data_ID")),
                 "market": "match_winner",
+                "player_a_name": str(team_names.get("home_team") or '').strip(),
+                "player_b_name": str(team_names.get("away_team") or '').strip(),
+                "source_updated_at": fixture.get("last_updated_at") or home_market.get("last_updated_at"),
                 "bookmaker": self.bookmaker_name,
                 "player_a_odds": float(home_market["odds"]),
                 "player_b_odds": float(away_market["odds"]),
@@ -211,10 +237,10 @@ class SportsbetOddsProvider(OddsProvider):
     def _find_selection(self, candidates: list[tuple[str, dict]], participant_name: str) -> dict | None:
         if not participant_name:
             return None
-        for market_name, market in candidates:
-            if participant_name in market_name:
-                return market
-        return None
+        matched=[market for market_name,market in candidates if participant_name in market_name]
+        if len(matched)>1:
+            raise ValueError('ambiguous participant quote')
+        return matched[0] if matched else None
 
     def _fixture_utc_time(self, fixture: dict) -> str | None:
         parsed = self._fixture_datetime(fixture)

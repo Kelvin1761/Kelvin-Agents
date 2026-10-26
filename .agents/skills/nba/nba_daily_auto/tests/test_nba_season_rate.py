@@ -19,7 +19,7 @@ import nba_market_ledger as ledger
 import nba_season_rate as S
 
 KEYS = {"season_rate_prob_S", "season_rate_version", "season_rate_status", "season_rate_inputs",
-        *reports.V2_SHADOW_KEYS, *reports.V3_SHADOW_KEYS}
+        *reports.V2_SHADOW_KEYS, *reports.V3_SHADOW_KEYS, *reports.V4_SHADOW_KEYS}
 
 
 def log(pts, mins=None, kinds=None):
@@ -73,8 +73,12 @@ def test_extractor_keeps_every_fetched_game_newest_first():
             for i in range(14)]
     for row in rows:
         row.update(FGM=6, FTM=3)
+    assert "teams" not in x.compact_season_log(pd.DataFrame(rows))      # no MATCHUP column: no guessing
+    for i, row in enumerate(rows):
+        row["MATCHUP"] = "PHI vs. BOS" if i < 3 else "LAL @ GSW"
     out = x.compact_season_log(pd.DataFrame(rows))
     assert out["FGM"][0] == 6.0 and out["FTM"][0] == 3.0
+    assert out["teams"][:4] == ["PHI", "PHI", "PHI", "LAL"]
     assert len(out["dates"]) == 14 and out["dates"][0] == "2026-10-28" and out["PTS"][-1] == 33.0
     assert "error" in x.compact_season_log(pd.DataFrame([{"a": 1}]))
 
@@ -230,3 +234,53 @@ def test_v3_shadow_reaches_the_card_without_changing_it(monkeypatch):
     assert la["season_rate_v3_prob_S"] > la["season_rate_v2_prob_S"]
     strip = lambda d: {k: v for k, v in d.items() if k not in KEYS}
     assert strip(la) == strip(card_for(ext)["line_analysis"]["20"])
+
+
+
+def two_season_log(cur_pts, prev_pts, prev_team="PHI"):
+    lg = log(list(cur_pts) + list(prev_pts))
+    n_cur = len(cur_pts)
+    lg["seasons"] = ["2026-27"] * n_cur + ["2025-26"] * len(prev_pts)
+    lg["teams"] = ["PHI"] * n_cur + [prev_team] * len(prev_pts)
+    return lg
+
+
+def test_v4_equals_v2_without_previous_season_games():
+    lg = two_season_log([20.0] * 12, [])
+    assert S.season_rate_prob_v4(lg, "PTS", 20, OPP, "2026-27", "PHI")[0] == S.season_rate_prob_v2(lg, "PTS", 20, OPP)[0]
+
+
+def test_v4_leans_on_this_season_and_more_so_after_a_move():
+    lg = two_season_log([28.0] * 3, [15.0] * 40)          # hot start, cold last season
+    p2 = S.season_rate_prob_v2(lg, "PTS", 20, OPP)[0]
+    p4, status, inputs = S.season_rate_prob_v4(lg, "PTS", 20, OPP, "2026-27", "PHI")
+    assert status == "ok" and p4 > p2 and inputs["previous_games"] == 40 and inputs["moved"] is False
+    moved_log = two_season_log([28.0] * 3, [15.0] * 40, prev_team="LAL")
+    p4m, _, inp = S.season_rate_prob_v4(moved_log, "PTS", 20, OPP, "2026-27", "PHI")
+    assert inp["moved"] is True and inp["previous_weight"] == 0.25 * 0.25 and p4m > p4
+    reb = S.season_rate_prob_v4(moved_log, "REB", 6, OPP, "2026-27", "PHI")[2]
+    assert reb["previous_weight"] == 0.25                    # REB: no extra team-change factor
+
+
+def test_v4_refuses_to_guess():
+    lg = two_season_log([20.0] * 3, [20.0] * 10); del lg["teams"]
+    assert S.season_rate_prob_v4(lg, "PTS", 20, OPP, "2026-27", "PHI")[1] == "no_team_history"
+    assert S.season_rate_prob_v4(lg, "PTS", 20, OPP, None, "PHI")[1] == "no_current_season"
+    ok_without_teams = log([20.0] * 12); ok_without_teams["seasons"] = ["2026-27"] * 12
+    assert S.season_rate_prob_v4(ok_without_teams, "PTS", 20, OPP, "2026-27", "PHI")[1] == "ok"
+
+
+def test_v4_reaches_the_card_without_changing_it():
+    lg = two_season_log([22.0, 25, 18], [20.0] * 20)
+    ext = {"name": "Test Star", "position": "G", "gamelog": {"PTS": [22, 25, 18] + [20] * 7, "MIN": [32] * 10,
+                                                            "season_log": lg}}
+    card = reports.build_player_card("Test Star", "PHI", {"lines": {"20": "1.80"}}, ext, "points",
+                                     opponent_abbr="BOS", team_stats={}, engine_mode="legacy",
+                                     opponent_context=OPP, current_season="2026-27")
+    la = card["line_analysis"]["20"]
+    assert la["season_rate_v4_status"] == "ok" and la["season_rate_v4_version"] == "nba_season_rate_S_v4"
+    plain = reports.build_player_card("Test Star", "PHI", {"lines": {"20": "1.80"}}, ext, "points",
+                                      opponent_abbr="BOS", team_stats={}, engine_mode="legacy")
+    assert plain["line_analysis"]["20"]["season_rate_v4_status"] == "no_current_season"
+    strip = lambda d: {k: v for k, v in d.items() if k not in KEYS}
+    assert strip(la) == strip(plain["line_analysis"]["20"])
