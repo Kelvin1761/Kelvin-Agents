@@ -239,6 +239,29 @@ class AuParityTests(unittest.TestCase):
         )
         self.assertEqual(performances[0].label, "Pass")
 
+    def test_races_without_results_are_not_scored_as_miss(self) -> None:
+        from unified_reflector_core import build_race_performances
+
+        predictions = [
+            {"horse_no": 1, "horse_name": "A", "derived_rank": 1},
+            {"horse_no": 2, "horse_name": "B", "derived_rank": 2},
+            {"horse_no": 3, "horse_name": "C", "derived_rank": 3},
+        ]
+        results = [
+            {"placing": 1, "horse_no": 1, "horse_name": "A"},
+            {"placing": 2, "horse_no": 2, "horse_name": "B"},
+            {"placing": 3, "horse_no": 3, "horse_name": "C"},
+        ]
+        performances = build_race_performances(
+            "au",
+            {"races": [{"race_num": 1, "top_picks": []}, {"race_num": 2, "top_picks": []}]},
+            {1: {"results": results}},  # race 2 abandoned / never extracted
+            {1: predictions, 2: predictions},
+        )
+
+        self.assertEqual([race.race_num for race in performances], [1])
+        self.assertEqual(performances[0].label, "Gold")
+
     def test_only_explicit_scratches_are_removed_and_reranked(self) -> None:
         from unified_reflector_core import build_race_performances
 
