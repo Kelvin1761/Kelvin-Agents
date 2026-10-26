@@ -1607,7 +1607,27 @@ def run_postgame(target_date: str, log: RunLog) -> str:
             log.step("telegram_performance", str(performance.get("status") or "unknown"))
     else:
         log.step("telegram_performance", "skipped", reason="archive_path_unavailable")
+    _experiment_readiness(target_date, log)
     return "archived"
+
+
+def _experiment_readiness(target_date: str, log: RunLog) -> None:
+    """Monday progress digest + a one-off alert when a frozen experiment's checkpoint is due.
+
+    Read-only; the experiments' own protocols decide verdicts. Never fails postgame.
+    """
+    try:
+        import nba_experiment_readiness as readiness
+        report = readiness.build(target_date)
+        alerts = readiness.due_alerts(report)
+        for key, line in alerts:
+            notify_once(f"experiment-ready:{key}", line, audience="primary")
+        if date.fromisoformat(target_date).weekday() == 0:
+            notify_once(f"experiment-progress:{target_date}", "\n".join(readiness.progress_lines(report)),
+                        audience="primary")
+        log.step("experiment_readiness", "ok", due=len(alerts), items=len(report["items"]))
+    except Exception as exc:  # noqa: BLE001 — a reporting add-on must not fail postgame
+        log.step("experiment_readiness", "failed", error=f"{type(exc).__name__}: {exc}")
 
 
 def health_payload(target_date: str) -> tuple[dict[str, Any], int]:
