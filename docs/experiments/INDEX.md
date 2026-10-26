@@ -279,3 +279,6 @@
 - [EXP-20261025-16](EXP-20261025-16-nba-season-rate-v3-teammate-absence.md)：S_v3 候選（隊友缺陣，PTS γ0.2／AST γ0.15）；例行賽 VALID −0.0034（PTS −0.0091），屬洩漏上限；有價季後賽冇改善；NEEDS MORE TESTING，未接線。
 - [EXP-20261026-01](EXP-20261026-01-nba-s-v3-shadow-and-forward-protocol.md)：S_v3（賽前傷停名單：out／doubtful 權重 1、day-to-day 權重 0 另記 A_dtd、離隊唔計）以 shadow 接線；MS3 forward 協議零數據時凍結；四個並行測試要 Holm。
 - [EXP-20261026-02](EXP-20261026-02-nba-availability-official-report-and-late-refresh.md)：NBA 官方傷停報告做輔助來源（只會令穩膽更嚴）、availability_obs 記錄 ESPN／官方狀態同實際上場、final refresh 加 08:30／10:00／11:30／13:00；冇改機率。
+
+- [EXP-20261026-04](EXP-20261026-04-tennis-wta-fresh-history.md)：WTA 官方新 history 固定消融，114 場／300 props；A1 Brier 0.2645→0.2760，落後市場；REJECT，source 及 exposure 品質問題完整保存。
+- [EXP-20261026-05](EXP-20261026-05-tennis-simulator-service-order.md)：已重現跨盤發球輪轉 bug；先凍結單一 correctness 修正及全 BO3 同窗比較協議，未建立 candidate。
