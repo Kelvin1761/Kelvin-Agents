@@ -71,6 +71,7 @@ SHARED_WC_DIR = PROJECT_ROOT / ".agents" / "skills"
 sys.path.insert(0, str(SHARED_WC_DIR))
 from shared_wong_choi.schedule_policy import (  # noqa: E402
     FreshnessRole,
+    jobs_for,
     nba_pregame_role,
 )
 from shared_wong_choi.contracts import Domain  # noqa: E402
@@ -552,6 +553,31 @@ def validate_analysis(folder: Path, target_date: str, tags: list[str]) -> list[s
 
 def snapshot_manifest(snapshot: Path) -> dict[str, Any]:
     return _read_json(snapshot / "manifest.json", {}) if snapshot.is_dir() else {}
+
+
+def final_refresh_slot_start(now: datetime) -> datetime:
+    """Start of the final-refresh slot `now` belongs to (schedule_policy times, Sydney)."""
+    local = now.astimezone(SYDNEY)
+    times = sorted(t for job in jobs_for(Domain.NBA) if job.freshness_role is FreshnessRole.FINAL_REFRESH
+                   for t in job.times)
+    due = [t for t in times if t <= local.time().replace(tzinfo=None)]
+    start = due[-1] if due else times[0]
+    return local.replace(hour=start.hour, minute=start.minute, second=0, microsecond=0)
+
+
+def snapshot_covers_final_refresh_slot(snapshot: Path, now: datetime) -> bool:
+    """A final_refresh snapshot only satisfies the slot it was taken in.
+
+    Without this, the 06:30 snapshot made every later refresh (08:30-13:00) report
+    "already_snapshotted" and skip the injury/odds re-read it exists for (2026-10-26).
+    """
+    try:
+        created = datetime.fromisoformat(str(snapshot_manifest(snapshot).get("created_at")))
+    except ValueError:
+        return False
+    if created.tzinfo is None:
+        return False
+    return created >= final_refresh_slot_start(now)
 
 
 def snapshot_is_partial(snapshot: Path) -> bool:
@@ -1052,6 +1078,9 @@ def run_pregame(
         return "dormant"
 
     snapshot = latest_snapshot(folder, role=freshness_role)
+    if (snapshot and freshness_role is FreshnessRole.FINAL_REFRESH
+            and not snapshot_covers_final_refresh_slot(snapshot, now)):
+        snapshot = None  # taken in an earlier refresh slot; this slot re-reads sources
     no_material_change = False
     if snapshot:
         tags = sportsbet_tags(folder, target_date)

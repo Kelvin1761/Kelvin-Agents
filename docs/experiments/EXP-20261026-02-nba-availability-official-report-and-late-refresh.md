@@ -48,3 +48,9 @@
 cd .agents/skills/nba/nba_daily_auto
 PYTHONDONTWRITEBYTECODE=1 python3 nba_availability_outcomes.py --since 2026-10-27
 ```
+
+## 修正（2026-10-26 晚）：開波前刷新第一日冇生效
+
+10:00 同 11:30 嘅 final refresh 有行，但係報 `analysis already_snapshotted` 就跳過咗。原因係 `run_pregame` 只要見到當日有任何 final_refresh 快照，就當已經做完，冇理係邊個時段。
+
+修正：final_refresh 快照只會覆蓋佢自己嘅刷新時段。時段開始時間由 `schedule_policy` 嗰份時間表推算，同 launchd 同 control plane 用同一份，唔會再多寫一份。同一時段入面重試，仍然當已經做咗。測試覆蓋：06:55 重試算已做；10:00 同 13:01 一定要重新讀取來源；`created_at` 壞咗就當未做。

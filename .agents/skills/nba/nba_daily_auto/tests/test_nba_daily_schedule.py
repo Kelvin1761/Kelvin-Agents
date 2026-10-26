@@ -694,3 +694,17 @@ def test_postgame_message_accepts_verified_abstention_but_not_missing_legs(tmp_p
     text = schedule.postgame_message(day, tmp_path)
     assert '正式推薦：0' in text
     assert '命中率：N/A' in text
+
+
+def test_final_refresh_snapshot_only_satisfies_its_own_slot(tmp_path) -> None:
+    snap = tmp_path / "s1"
+    snap.mkdir()
+    (snap / "manifest.json").write_text(json.dumps({"created_at": "2026-10-26T06:49:27+11:00"}))
+    at = lambda h, m: datetime(2026, 10, 26, h, m, tzinfo=SYDNEY)
+    assert schedule.final_refresh_slot_start(at(10, 4)) == at(10, 0)
+    assert schedule.final_refresh_slot_start(at(5, 0)) == at(6, 30)
+    assert schedule.snapshot_covers_final_refresh_slot(snap, at(6, 55)) is True     # same 06:30 slot retry
+    assert schedule.snapshot_covers_final_refresh_slot(snap, at(10, 0)) is False    # 10:00 must re-read
+    assert schedule.snapshot_covers_final_refresh_slot(snap, at(13, 1)) is False
+    (snap / "manifest.json").write_text(json.dumps({"created_at": "not a time"}))
+    assert schedule.snapshot_covers_final_refresh_slot(snap, at(6, 55)) is False
