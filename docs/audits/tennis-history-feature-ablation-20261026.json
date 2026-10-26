@@ -1,0 +1,1358 @@
+{
+  "ids": [
+    10162,
+    12099,
+    13088,
+    13574,
+    15254,
+    16144,
+    16873,
+    17560,
+    18262,
+    19363,
+    20182,
+    21003
+  ],
+  "summary": {
+    "guard_only": {
+      "fixtures": 12,
+      "probability_changed": 7,
+      "max_absolute_probability_delta": 0.029085669446863194,
+      "errors": 0
+    },
+    "values_only": {
+      "fixtures": 12,
+      "probability_changed": 0,
+      "max_absolute_probability_delta": 0.0,
+      "errors": 0
+    },
+    "combined": {
+      "fixtures": 12,
+      "probability_changed": 7,
+      "max_absolute_probability_delta": 0.029085669446863194,
+      "errors": 0
+    }
+  },
+  "baseline_models": {
+    "10162": {
+      "shadow": {
+        "version": "elo-v2-start-of-day.surface-0.35",
+        "elo_base_logit": 0.715201,
+        "player_a_probability": 0.67047
+      },
+      "player_a_probability": 0.6992788220659262,
+      "player_b_probability": 0.3007211779340738,
+      "active_weight": 4.800000000000001,
+      "elo_base_logit": 0.848757,
+      "total_nudge_logit": -0.004891,
+      "components": [
+        {
+          "name": "surface_elo_edge",
+          "probability": 0.7076782865353846,
+          "weight": 0.65,
+          "active": true,
+          "reason": "Surface Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "overall_elo_edge",
+          "probability": 0.6863383955763531,
+          "weight": 0.35,
+          "active": true,
+          "reason": "Overall Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "serve_return_edge",
+          "probability": 0.4976989280560709,
+          "weight": 1.1,
+          "active": true,
+          "reason": "Serve/return proxy from tournament-level stats",
+          "warnings": []
+        },
+        {
+          "name": "recent_form_edge",
+          "probability": 0.54971932638332,
+          "weight": 0.55,
+          "active": true,
+          "reason": "recent_form_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "opponent_rank_bucket_edge",
+          "probability": 0.5478764478764478,
+          "weight": 0.55,
+          "active": true,
+          "reason": "opponent_rank_bucket_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "tournament_level_edge",
+          "probability": 0.42857142857142855,
+          "weight": 0.35,
+          "active": true,
+          "reason": "tournament_level_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "round_performance_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "Round metadata unconfirmed; neutralised",
+          "warnings": [
+            "round_unknown"
+          ]
+        },
+        {
+          "name": "big_match_edge",
+          "probability": 0.6907894736842105,
+          "weight": 0.2,
+          "active": true,
+          "reason": "big_match_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "pressure_edge",
+          "probability": 0.5193483270840422,
+          "weight": 0.3,
+          "active": true,
+          "reason": "pressure_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "head_to_head_edge",
+          "probability": 0.33333333333333337,
+          "weight": 0.45,
+          "active": true,
+          "reason": "head_to_head_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "fatigue_edge",
+          "probability": 0.5,
+          "weight": 0.3,
+          "active": true,
+          "reason": "Rest-days differential from match history",
+          "warnings": []
+        }
+      ]
+    },
+    "12099": {
+      "shadow": {
+        "version": "elo-v2-start-of-day.surface-0.35",
+        "elo_base_logit": -0.150065,
+        "player_a_probability": 0.46335
+      },
+      "player_a_probability": 0.48966921370195343,
+      "player_b_probability": 0.5103307862980466,
+      "active_weight": 2.65,
+      "elo_base_logit": -0.04453,
+      "total_nudge_logit": 0.003201,
+      "components": [
+        {
+          "name": "surface_elo_edge",
+          "probability": 0.4888693930393128,
+          "weight": 0.65,
+          "active": true,
+          "reason": "Surface Elo probability from stored player rating",
+          "warnings": [
+            "missing_surface"
+          ]
+        },
+        {
+          "name": "overall_elo_edge",
+          "probability": 0.4888693930393128,
+          "weight": 0.35,
+          "active": true,
+          "reason": "Overall Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "serve_return_edge",
+          "probability": 0.5,
+          "weight": 1.1,
+          "active": false,
+          "reason": "Serve/return API fields incomplete",
+          "warnings": [
+            "missing_serve_return"
+          ]
+        },
+        {
+          "name": "recent_form_edge",
+          "probability": 0.5,
+          "weight": 0.55,
+          "active": false,
+          "reason": "recent_form_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "opponent_rank_bucket_edge",
+          "probability": 0.5166666666666666,
+          "weight": 0.55,
+          "active": true,
+          "reason": "opponent_rank_bucket_edge: compared shrinked rates",
+          "warnings": [
+            "missing_current_rank_b"
+          ]
+        },
+        {
+          "name": "tournament_level_edge",
+          "probability": 0.48295454545454547,
+          "weight": 0.35,
+          "active": true,
+          "reason": "tournament_level_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "round_performance_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "Round metadata unconfirmed; neutralised",
+          "warnings": [
+            "round_unknown"
+          ]
+        },
+        {
+          "name": "big_match_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "big_match_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "pressure_edge",
+          "probability": 0.5,
+          "weight": 0.3,
+          "active": false,
+          "reason": "pressure_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "head_to_head_edge",
+          "probability": 0.5,
+          "weight": 0.45,
+          "active": true,
+          "reason": "H2H sample below 3; neutralised",
+          "warnings": [
+            "low_h2h_sample"
+          ]
+        },
+        {
+          "name": "fatigue_edge",
+          "probability": 0.5,
+          "weight": 0.3,
+          "active": true,
+          "reason": "Rest-days differential from match history",
+          "warnings": []
+        }
+      ]
+    },
+    "13088": {
+      "shadow": {
+        "version": "elo-v2-start-of-day.surface-0.35",
+        "elo_base_logit": -0.02024,
+        "player_a_probability": 0.485362
+      },
+      "player_a_probability": 0.4386084136437019,
+      "player_b_probability": 0.5613915863562982,
+      "active_weight": 4.800000000000001,
+      "elo_base_logit": -0.208482,
+      "total_nudge_logit": -0.03833,
+      "components": [
+        {
+          "name": "surface_elo_edge",
+          "probability": 0.4001517648057616,
+          "weight": 0.65,
+          "active": true,
+          "reason": "Surface Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "overall_elo_edge",
+          "probability": 0.5389632909507466,
+          "weight": 0.35,
+          "active": true,
+          "reason": "Overall Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "serve_return_edge",
+          "probability": 0.49279875137357837,
+          "weight": 1.1,
+          "active": true,
+          "reason": "Serve/return proxy from tournament-level stats",
+          "warnings": []
+        },
+        {
+          "name": "recent_form_edge",
+          "probability": 0.4114724480578139,
+          "weight": 0.55,
+          "active": true,
+          "reason": "recent_form_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "opponent_rank_bucket_edge",
+          "probability": 0.5888888888888889,
+          "weight": 0.55,
+          "active": true,
+          "reason": "opponent_rank_bucket_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "tournament_level_edge",
+          "probability": 0.4634615384615385,
+          "weight": 0.35,
+          "active": true,
+          "reason": "tournament_level_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "round_performance_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "Round metadata unconfirmed; neutralised",
+          "warnings": [
+            "round_unknown"
+          ]
+        },
+        {
+          "name": "big_match_edge",
+          "probability": 0.45588235294117646,
+          "weight": 0.2,
+          "active": true,
+          "reason": "big_match_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "pressure_edge",
+          "probability": 0.4700161990222128,
+          "weight": 0.3,
+          "active": true,
+          "reason": "pressure_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "head_to_head_edge",
+          "probability": 0.5,
+          "weight": 0.45,
+          "active": true,
+          "reason": "H2H sample below 3; neutralised",
+          "warnings": [
+            "low_h2h_sample"
+          ]
+        },
+        {
+          "name": "fatigue_edge",
+          "probability": 0.5,
+          "weight": 0.3,
+          "active": true,
+          "reason": "Rest-days differential from match history",
+          "warnings": []
+        }
+      ]
+    },
+    "13574": {
+      "shadow": {
+        "version": "elo-v2-start-of-day.surface-0.35",
+        "elo_base_logit": 0.274184,
+        "player_a_probability": 0.57411
+      },
+      "player_a_probability": 0.5730584931685225,
+      "player_b_probability": 0.42694150683147747,
+      "active_weight": 3.35,
+      "elo_base_logit": 0.269885,
+      "total_nudge_logit": 0.024456,
+      "components": [
+        {
+          "name": "surface_elo_edge",
+          "probability": 0.5670647138512254,
+          "weight": 0.65,
+          "active": true,
+          "reason": "Surface Elo probability from stored player rating",
+          "warnings": [
+            "missing_surface"
+          ]
+        },
+        {
+          "name": "overall_elo_edge",
+          "probability": 0.5670647138512254,
+          "weight": 0.35,
+          "active": true,
+          "reason": "Overall Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "serve_return_edge",
+          "probability": 0.5,
+          "weight": 1.1,
+          "active": false,
+          "reason": "Serve/return API fields incomplete",
+          "warnings": [
+            "missing_serve_return"
+          ]
+        },
+        {
+          "name": "recent_form_edge",
+          "probability": 0.4322352216748768,
+          "weight": 0.55,
+          "active": true,
+          "reason": "recent_form_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "opponent_rank_bucket_edge",
+          "probability": 0.47204433497536946,
+          "weight": 0.55,
+          "active": true,
+          "reason": "opponent_rank_bucket_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "tournament_level_edge",
+          "probability": 0.5,
+          "weight": 0.35,
+          "active": false,
+          "reason": "tournament_level_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "round_performance_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "Round metadata unconfirmed; neutralised",
+          "warnings": [
+            "round_unknown"
+          ]
+        },
+        {
+          "name": "big_match_edge",
+          "probability": 0.41666666666666663,
+          "weight": 0.2,
+          "active": true,
+          "reason": "big_match_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "pressure_edge",
+          "probability": 0.5175617268337912,
+          "weight": 0.3,
+          "active": true,
+          "reason": "pressure_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "head_to_head_edge",
+          "probability": 0.6666666666666666,
+          "weight": 0.45,
+          "active": true,
+          "reason": "head_to_head_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "fatigue_edge",
+          "probability": 0.545,
+          "weight": 0.3,
+          "active": true,
+          "reason": "Rest-days differential from match history",
+          "warnings": []
+        }
+      ]
+    },
+    "15254": {
+      "shadow": {
+        "version": "elo-v2-start-of-day.surface-0.35",
+        "elo_base_logit": 0.091082,
+        "player_a_probability": 0.545589
+      },
+      "player_a_probability": 0.5489190537087106,
+      "player_b_probability": 0.45108094629128936,
+      "active_weight": 4.800000000000001,
+      "elo_base_logit": 0.104524,
+      "total_nudge_logit": 0.09178,
+      "components": [
+        {
+          "name": "surface_elo_edge",
+          "probability": 0.5480339082481646,
+          "weight": 0.65,
+          "active": true,
+          "reason": "Surface Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "overall_elo_edge",
+          "probability": 0.48518232874338174,
+          "weight": 0.35,
+          "active": true,
+          "reason": "Overall Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "serve_return_edge",
+          "probability": 0.5678571428571428,
+          "weight": 1.1,
+          "active": true,
+          "reason": "Serve/return proxy from tournament-level stats",
+          "warnings": []
+        },
+        {
+          "name": "recent_form_edge",
+          "probability": 0.5165631469979296,
+          "weight": 0.55,
+          "active": true,
+          "reason": "recent_form_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "opponent_rank_bucket_edge",
+          "probability": 0.49047619047619045,
+          "weight": 0.55,
+          "active": true,
+          "reason": "opponent_rank_bucket_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "tournament_level_edge",
+          "probability": 0.5,
+          "weight": 0.35,
+          "active": true,
+          "reason": "tournament_level_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "round_performance_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "Round metadata unconfirmed; neutralised",
+          "warnings": [
+            "round_unknown"
+          ]
+        },
+        {
+          "name": "big_match_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": true,
+          "reason": "big_match_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "pressure_edge",
+          "probability": 0.4442200127818664,
+          "weight": 0.3,
+          "active": true,
+          "reason": "pressure_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "head_to_head_edge",
+          "probability": 0.5,
+          "weight": 0.45,
+          "active": true,
+          "reason": "H2H sample below 3; neutralised",
+          "warnings": [
+            "low_h2h_sample"
+          ]
+        },
+        {
+          "name": "fatigue_edge",
+          "probability": 0.6,
+          "weight": 0.3,
+          "active": true,
+          "reason": "Rest-days differential from match history",
+          "warnings": []
+        }
+      ]
+    },
+    "16144": {
+      "shadow": {
+        "version": "elo-v2-start-of-day.surface-0.35",
+        "elo_base_logit": -0.454707,
+        "player_a_probability": 0.356504
+      },
+      "player_a_probability": 0.36746169354233177,
+      "player_b_probability": 0.6325383064576682,
+      "active_weight": 4.800000000000001,
+      "elo_base_logit": -0.407256,
+      "total_nudge_logit": -0.135866,
+      "components": [
+        {
+          "name": "surface_elo_edge",
+          "probability": 0.3941102884295976,
+          "weight": 0.65,
+          "active": true,
+          "reason": "Surface Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "overall_elo_edge",
+          "probability": 0.4097757405161013,
+          "weight": 0.35,
+          "active": true,
+          "reason": "Overall Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "serve_return_edge",
+          "probability": 0.43050838050838053,
+          "weight": 1.1,
+          "active": true,
+          "reason": "Serve/return proxy from tournament-level stats",
+          "warnings": []
+        },
+        {
+          "name": "recent_form_edge",
+          "probability": 0.455026455026455,
+          "weight": 0.55,
+          "active": true,
+          "reason": "recent_form_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "opponent_rank_bucket_edge",
+          "probability": 0.5064516129032258,
+          "weight": 0.55,
+          "active": true,
+          "reason": "opponent_rank_bucket_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "tournament_level_edge",
+          "probability": 0.4041666666666667,
+          "weight": 0.35,
+          "active": true,
+          "reason": "tournament_level_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "round_performance_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "Round metadata unconfirmed; neutralised",
+          "warnings": [
+            "round_unknown"
+          ]
+        },
+        {
+          "name": "big_match_edge",
+          "probability": 0.45,
+          "weight": 0.2,
+          "active": true,
+          "reason": "big_match_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "pressure_edge",
+          "probability": 0.5026795410268914,
+          "weight": 0.3,
+          "active": true,
+          "reason": "pressure_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "head_to_head_edge",
+          "probability": 0.5,
+          "weight": 0.45,
+          "active": true,
+          "reason": "H2H sample below 3; neutralised",
+          "warnings": [
+            "low_h2h_sample"
+          ]
+        },
+        {
+          "name": "fatigue_edge",
+          "probability": 0.515,
+          "weight": 0.3,
+          "active": true,
+          "reason": "Rest-days differential from match history",
+          "warnings": []
+        }
+      ]
+    },
+    "16873": {
+      "shadow": {
+        "version": "elo-v2-start-of-day.surface-0.35",
+        "elo_base_logit": -0.481728,
+        "player_a_probability": 0.349283
+      },
+      "player_a_probability": 0.3405122509029608,
+      "player_b_probability": 0.6594877490970392,
+      "active_weight": 3.35,
+      "elo_base_logit": -0.520548,
+      "total_nudge_logit": -0.140464,
+      "components": [
+        {
+          "name": "surface_elo_edge",
+          "probability": 0.3727241246612594,
+          "weight": 0.65,
+          "active": true,
+          "reason": "Surface Elo probability from stored player rating",
+          "warnings": [
+            "missing_surface"
+          ]
+        },
+        {
+          "name": "overall_elo_edge",
+          "probability": 0.3727241246612594,
+          "weight": 0.35,
+          "active": true,
+          "reason": "Overall Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "serve_return_edge",
+          "probability": 0.5,
+          "weight": 1.1,
+          "active": false,
+          "reason": "Serve/return API fields incomplete",
+          "warnings": [
+            "missing_serve_return"
+          ]
+        },
+        {
+          "name": "recent_form_edge",
+          "probability": 0.3594318181818182,
+          "weight": 0.55,
+          "active": true,
+          "reason": "recent_form_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "opponent_rank_bucket_edge",
+          "probability": 0.2952272727272727,
+          "weight": 0.55,
+          "active": true,
+          "reason": "opponent_rank_bucket_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "tournament_level_edge",
+          "probability": 0.5,
+          "weight": 0.35,
+          "active": false,
+          "reason": "tournament_level_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "round_performance_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "Round metadata unconfirmed; neutralised",
+          "warnings": [
+            "round_unknown"
+          ]
+        },
+        {
+          "name": "big_match_edge",
+          "probability": 0.75,
+          "weight": 0.2,
+          "active": true,
+          "reason": "big_match_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "pressure_edge",
+          "probability": 0.49824370254736533,
+          "weight": 0.3,
+          "active": true,
+          "reason": "pressure_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "head_to_head_edge",
+          "probability": 0.5,
+          "weight": 0.45,
+          "active": true,
+          "reason": "H2H sample below 3; neutralised",
+          "warnings": [
+            "low_h2h_sample"
+          ]
+        },
+        {
+          "name": "fatigue_edge",
+          "probability": 0.5,
+          "weight": 0.3,
+          "active": true,
+          "reason": "Rest-days differential from match history",
+          "warnings": []
+        }
+      ]
+    },
+    "17560": {
+      "shadow": {
+        "version": "elo-v2-start-of-day.surface-0.35",
+        "elo_base_logit": -0.351319,
+        "player_a_probability": 0.4043
+      },
+      "player_a_probability": 0.3248531121391668,
+      "player_b_probability": 0.6751468878608332,
+      "active_weight": 2.3,
+      "elo_base_logit": -0.695296,
+      "total_nudge_logit": -0.036261,
+      "components": [
+        {
+          "name": "surface_elo_edge",
+          "probability": 0.3328559295090711,
+          "weight": 0.65,
+          "active": true,
+          "reason": "Surface Elo probability from stored player rating",
+          "warnings": [
+            "missing_surface"
+          ]
+        },
+        {
+          "name": "overall_elo_edge",
+          "probability": 0.3328559295090711,
+          "weight": 0.35,
+          "active": true,
+          "reason": "Overall Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "serve_return_edge",
+          "probability": 0.5,
+          "weight": 1.1,
+          "active": false,
+          "reason": "Serve/return API fields incomplete",
+          "warnings": [
+            "missing_serve_return"
+          ]
+        },
+        {
+          "name": "recent_form_edge",
+          "probability": 0.5,
+          "weight": 0.55,
+          "active": false,
+          "reason": "recent_form_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "opponent_rank_bucket_edge",
+          "probability": 0.48861655773420476,
+          "weight": 0.55,
+          "active": true,
+          "reason": "opponent_rank_bucket_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "tournament_level_edge",
+          "probability": 0.5,
+          "weight": 0.35,
+          "active": false,
+          "reason": "tournament_level_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "round_performance_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "Round metadata unconfirmed; neutralised",
+          "warnings": [
+            "round_unknown"
+          ]
+        },
+        {
+          "name": "big_match_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "big_match_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "pressure_edge",
+          "probability": 0.5,
+          "weight": 0.3,
+          "active": false,
+          "reason": "pressure_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "head_to_head_edge",
+          "probability": 0.5,
+          "weight": 0.45,
+          "active": true,
+          "reason": "H2H sample below 3; neutralised",
+          "warnings": [
+            "low_h2h_sample"
+          ]
+        },
+        {
+          "name": "fatigue_edge",
+          "probability": 0.4,
+          "weight": 0.3,
+          "active": true,
+          "reason": "Rest-days differential from match history",
+          "warnings": []
+        }
+      ]
+    },
+    "18262": {
+      "shadow": {
+        "version": "elo-v2-start-of-day.surface-0.35",
+        "elo_base_logit": 0.576872,
+        "player_a_probability": 0.625233
+      },
+      "player_a_probability": 0.5946190862146699,
+      "player_b_probability": 0.40538091378533014,
+      "active_weight": 3.5500000000000003,
+      "elo_base_logit": 0.448146,
+      "total_nudge_logit": -0.065052,
+      "components": [
+        {
+          "name": "surface_elo_edge",
+          "probability": 0.5830229876367258,
+          "weight": 0.65,
+          "active": true,
+          "reason": "Surface Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "overall_elo_edge",
+          "probability": 0.6587907054974617,
+          "weight": 0.35,
+          "active": true,
+          "reason": "Overall Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "serve_return_edge",
+          "probability": 0.5,
+          "weight": 1.1,
+          "active": false,
+          "reason": "Serve/return API fields incomplete",
+          "warnings": [
+            "missing_serve_return"
+          ]
+        },
+        {
+          "name": "recent_form_edge",
+          "probability": 0.43653846153846154,
+          "weight": 0.55,
+          "active": true,
+          "reason": "recent_form_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "opponent_rank_bucket_edge",
+          "probability": 0.43653846153846154,
+          "weight": 0.55,
+          "active": true,
+          "reason": "opponent_rank_bucket_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "tournament_level_edge",
+          "probability": 0.5,
+          "weight": 0.35,
+          "active": false,
+          "reason": "tournament_level_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "round_performance_edge",
+          "probability": 0.4625,
+          "weight": 0.2,
+          "active": true,
+          "reason": "round_performance_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "big_match_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": true,
+          "reason": "big_match_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "pressure_edge",
+          "probability": 0.5408533926391069,
+          "weight": 0.3,
+          "active": true,
+          "reason": "pressure_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "head_to_head_edge",
+          "probability": 0.5,
+          "weight": 0.45,
+          "active": true,
+          "reason": "H2H sample below 3; neutralised",
+          "warnings": [
+            "low_h2h_sample"
+          ]
+        },
+        {
+          "name": "fatigue_edge",
+          "probability": 0.5,
+          "weight": 0.3,
+          "active": true,
+          "reason": "Rest-days differential from match history",
+          "warnings": []
+        }
+      ]
+    },
+    "19363": {
+      "shadow": null,
+      "player_a_probability": 0.6626908106441868,
+      "player_b_probability": 0.3373091893558132,
+      "active_weight": 2.6,
+      "elo_base_logit": 0.68509,
+      "total_nudge_logit": -0.009781,
+      "components": [
+        {
+          "name": "surface_elo_edge",
+          "probability": 0.6648737389458602,
+          "weight": 0.65,
+          "active": true,
+          "reason": "Surface Elo probability from stored player rating",
+          "warnings": [
+            "elo_not_as_of",
+            "missing_surface",
+            "rank_seed_elo"
+          ]
+        },
+        {
+          "name": "overall_elo_edge",
+          "probability": 0.6648737389458602,
+          "weight": 0.35,
+          "active": true,
+          "reason": "Overall Elo probability from stored player rating",
+          "warnings": [
+            "elo_not_as_of",
+            "rank_seed_elo"
+          ]
+        },
+        {
+          "name": "serve_return_edge",
+          "probability": 0.5,
+          "weight": 1.1,
+          "active": false,
+          "reason": "Serve/return API fields incomplete",
+          "warnings": [
+            "missing_serve_return"
+          ]
+        },
+        {
+          "name": "recent_form_edge",
+          "probability": 0.5,
+          "weight": 0.55,
+          "active": false,
+          "reason": "recent_form_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "opponent_rank_bucket_edge",
+          "probability": 0.4903977272727273,
+          "weight": 0.55,
+          "active": true,
+          "reason": "opponent_rank_bucket_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "tournament_level_edge",
+          "probability": 0.5,
+          "weight": 0.35,
+          "active": false,
+          "reason": "tournament_level_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "round_performance_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "Round metadata unconfirmed; neutralised",
+          "warnings": [
+            "round_unknown"
+          ]
+        },
+        {
+          "name": "big_match_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "big_match_edge: missing rate, neutralised",
+          "warnings": [
+            "missing_rate"
+          ]
+        },
+        {
+          "name": "pressure_edge",
+          "probability": 0.5,
+          "weight": 0.3,
+          "active": true,
+          "reason": "pressure_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "head_to_head_edge",
+          "probability": 0.5,
+          "weight": 0.45,
+          "active": true,
+          "reason": "H2H sample below 3; neutralised",
+          "warnings": [
+            "low_h2h_sample"
+          ]
+        },
+        {
+          "name": "fatigue_edge",
+          "probability": 0.485,
+          "weight": 0.3,
+          "active": true,
+          "reason": "Rest-days differential from match history",
+          "warnings": []
+        }
+      ]
+    },
+    "20182": {
+      "shadow": {
+        "version": "elo-v2-start-of-day.surface-0.35",
+        "elo_base_logit": 3.1e-05,
+        "player_a_probability": 0.520844
+      },
+      "player_a_probability": 0.49792945966822294,
+      "player_b_probability": 0.5020705403317771,
+      "active_weight": 4.800000000000001,
+      "elo_base_logit": -0.091674,
+      "total_nudge_logit": 0.083392,
+      "components": [
+        {
+          "name": "surface_elo_edge",
+          "probability": 0.4539505326907762,
+          "weight": 0.65,
+          "active": true,
+          "reason": "Surface Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "overall_elo_edge",
+          "probability": 0.5202706066274627,
+          "weight": 0.35,
+          "active": true,
+          "reason": "Overall Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "serve_return_edge",
+          "probability": 0.5330939036453742,
+          "weight": 1.1,
+          "active": true,
+          "reason": "Serve/return proxy from tournament-level stats",
+          "warnings": []
+        },
+        {
+          "name": "recent_form_edge",
+          "probability": 0.5562865497076024,
+          "weight": 0.55,
+          "active": true,
+          "reason": "recent_form_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "opponent_rank_bucket_edge",
+          "probability": 0.4519230769230769,
+          "weight": 0.55,
+          "active": true,
+          "reason": "opponent_rank_bucket_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "tournament_level_edge",
+          "probability": 0.56375,
+          "weight": 0.35,
+          "active": true,
+          "reason": "tournament_level_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "round_performance_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "Round metadata unconfirmed; neutralised",
+          "warnings": [
+            "round_unknown"
+          ]
+        },
+        {
+          "name": "big_match_edge",
+          "probability": 0.548951048951049,
+          "weight": 0.2,
+          "active": true,
+          "reason": "big_match_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "pressure_edge",
+          "probability": 0.5345698337194191,
+          "weight": 0.3,
+          "active": true,
+          "reason": "pressure_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "head_to_head_edge",
+          "probability": 0.5,
+          "weight": 0.45,
+          "active": true,
+          "reason": "H2H sample below 3; neutralised",
+          "warnings": [
+            "low_h2h_sample"
+          ]
+        },
+        {
+          "name": "fatigue_edge",
+          "probability": 0.5,
+          "weight": 0.3,
+          "active": true,
+          "reason": "Rest-days differential from match history",
+          "warnings": []
+        }
+      ]
+    },
+    "21003": {
+      "shadow": {
+        "version": "elo-v2-start-of-day.surface-0.35",
+        "elo_base_logit": -0.131933,
+        "player_a_probability": 0.408584
+      },
+      "player_a_probability": 0.40905727877529596,
+      "player_b_probability": 0.590942721224704,
+      "active_weight": 4.800000000000001,
+      "elo_base_logit": -0.129973,
+      "total_nudge_logit": -0.237891,
+      "components": [
+        {
+          "name": "surface_elo_edge",
+          "probability": 0.47276345513278745,
+          "weight": 0.65,
+          "active": true,
+          "reason": "Surface Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "overall_elo_edge",
+          "probability": 0.45789423304697374,
+          "weight": 0.35,
+          "active": true,
+          "reason": "Overall Elo probability from stored player rating",
+          "warnings": []
+        },
+        {
+          "name": "serve_return_edge",
+          "probability": 0.5224353873250932,
+          "weight": 1.1,
+          "active": true,
+          "reason": "Serve/return proxy from tournament-level stats",
+          "warnings": []
+        },
+        {
+          "name": "recent_form_edge",
+          "probability": 0.4225,
+          "weight": 0.55,
+          "active": true,
+          "reason": "recent_form_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "opponent_rank_bucket_edge",
+          "probability": 0.39354838709677414,
+          "weight": 0.55,
+          "active": true,
+          "reason": "opponent_rank_bucket_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "tournament_level_edge",
+          "probability": 0.5611111111111111,
+          "weight": 0.35,
+          "active": true,
+          "reason": "tournament_level_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "round_performance_edge",
+          "probability": 0.5,
+          "weight": 0.2,
+          "active": false,
+          "reason": "Round metadata unconfirmed; neutralised",
+          "warnings": [
+            "round_unknown"
+          ]
+        },
+        {
+          "name": "big_match_edge",
+          "probability": 0.25,
+          "weight": 0.2,
+          "active": true,
+          "reason": "big_match_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "pressure_edge",
+          "probability": 0.4623828995262631,
+          "weight": 0.3,
+          "active": true,
+          "reason": "pressure_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "head_to_head_edge",
+          "probability": 0.25,
+          "weight": 0.45,
+          "active": true,
+          "reason": "head_to_head_edge: compared shrinked rates",
+          "warnings": []
+        },
+        {
+          "name": "fatigue_edge",
+          "probability": 0.47,
+          "weight": 0.3,
+          "active": true,
+          "reason": "Rest-days differential from match history",
+          "warnings": []
+        }
+      ]
+    }
+  },
+  "artifacts": {
+    "/private/tmp/tennis-history-features-baseline.json": "344377a5b9ffda03a7408fe63fe8af1fc95a8947dd48b1ba09d8706a2c59bba4",
+    "/private/tmp/tennis-history-features-baseline-cached.json": "344377a5b9ffda03a7408fe63fe8af1fc95a8947dd48b1ba09d8706a2c59bba4",
+    "/private/tmp/tennis-history-features-ablation.json": "e09b2fa350d877ca590f155c5e2b0fa95812edd95b0618e0636be7845a4bc90d"
+  }
+}

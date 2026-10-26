@@ -6,8 +6,10 @@ def ensure_market_captures(conn) -> None:
     conn.execute('''CREATE TABLE IF NOT EXISTS market_captures (
         id INTEGER PRIMARY KEY AUTOINCREMENT,match_id INTEGER NOT NULL,event_id TEXT NOT NULL,
         source_provider TEXT NOT NULL,bookmaker TEXT NOT NULL,raw_response_id INTEGER NOT NULL,
-        target_table TEXT NOT NULL,captured_at TEXT NOT NULL,
+        target_table TEXT NOT NULL,captured_at TEXT NOT NULL,listed INTEGER NOT NULL DEFAULT 1,
         UNIQUE(match_id,source_provider,bookmaker,raw_response_id,target_table))''')
+    if 'listed' not in {r['name'] for r in conn.execute('PRAGMA table_info(market_captures)')}:
+        conn.execute('ALTER TABLE market_captures ADD COLUMN listed INTEGER NOT NULL DEFAULT 1')
     conn.execute('''CREATE INDEX IF NOT EXISTS idx_market_captures_current
         ON market_captures(match_id,source_provider,bookmaker,target_table,id)''')
 
@@ -17,9 +19,9 @@ def record_market_capture(conn,match_id,row,provider,raw_id,now,table):
         return
     ensure_market_captures(conn)
     conn.execute('''INSERT OR IGNORE INTO market_captures
-        (match_id,event_id,source_provider,bookmaker,raw_response_id,target_table,captured_at)
-        VALUES (?,?,?,?,?,?,?)''',(match_id,str(row['event_id']),provider,
-        str(row.get('bookmaker') or provider).strip().lower(),raw_id,table,now))
+        (match_id,event_id,source_provider,bookmaker,raw_response_id,target_table,captured_at,listed)
+        VALUES (?,?,?,?,?,?,?,?)''',(match_id,str(row['event_id']),provider,
+        str(row.get('bookmaker') or provider).strip().lower(),raw_id,table,now,int(row.get('listed',True))))
 
 
 def current_market_clause(conn,alias='mo',table='market_odds_snapshots') -> str:
@@ -71,3 +73,12 @@ def bookmaker_event_for_match(conn, match_id: int, provider: str) -> str | None:
     if match and match['source_provider'] == provider and match['market_event_id']:
         return str(match['market_event_id'])
     return None
+
+
+def book_listing_clause(conn, alias='m', provider='sportsbet') -> str:
+    exists = conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='market_captures'").fetchone()
+    if not exists or 'listed' not in {r['name'] for r in conn.execute('PRAGMA table_info(market_captures)')}:
+        return '1=1'
+    return (f"COALESCE((SELECT cap.listed FROM market_captures cap WHERE cap.match_id={alias}.id "
+            f"AND cap.source_provider='{provider}' AND cap.target_table='market_odds_snapshots' "
+            "ORDER BY cap.id DESC LIMIT 1),1)=1")

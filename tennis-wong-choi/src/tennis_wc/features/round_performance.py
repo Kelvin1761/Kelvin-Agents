@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import date
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.features.history_values import clean_history_row
+from tennis_wc.features.history_asof import guard_clause, guard_params
 from tennis_wc.features.common import avg, parse_date, rate, shrink_rate, utc_now
 from tennis_wc.features.opponent_rank_buckets import get_opponent_rank_at_match_date
 
@@ -42,7 +44,7 @@ def calculate_round_stats(
     surface: str | None,
     as_of_date: date,
     time_window: str,
-    *, persist: bool = True,
+    *, persist: bool = True, start_time: str | None = None,
 ) -> dict:
     """
     Calculate round-specific player performance.
@@ -60,8 +62,10 @@ def calculate_round_stats(
         WHERE player_id = ? AND match_date >= ? AND match_date < ?
     """
     params: list = [player_id, start, as_of_date.isoformat()]
+    query += guard_clause()
+    params.extend(guard_params(as_of_date.isoformat(), start_time))
     with get_connection() as conn:
-        rows = [dict(row) for row in conn.execute(query, params).fetchall()]
+        rows = [clean_history_row(row) for row in conn.execute(query, params).fetchall()]
     rows = [row for row in rows if normalise_round(row["round"]) == round_code]
     if tournament_level:
         level_rows = [row for row in rows if row["tournament_level"] == tournament_level]

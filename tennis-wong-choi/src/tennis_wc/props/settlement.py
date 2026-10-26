@@ -479,6 +479,15 @@ def record_prop(conn, *, match_id: int, match_date: str, match_label: str,
                        prop's CLOSING price -- which is why closing-line value
                        existed for the match-winner path and for zero props.
     """
+    fixture = conn.execute('SELECT * FROM matches WHERE id=?', (match_id,)).fetchone()
+    if fixture is None:
+        raise ValueError(f'Prop fixture not found: {match_id}')
+    if fixture['player_a_id'] == fixture['player_b_id']:
+        raise ValueError(f'Prop fixture lists the same player twice: {match_id}')
+    if subject_player_id is not None and subject_player_id not in (fixture['player_a_id'], fixture['player_b_id']):
+        raise ValueError(f'Prop subject is outside fixture: {match_id}/{subject_player_id}')
+    if 'fixture_status' in fixture.keys() and fixture['fixture_status'] != 'ACTIVE':
+        raise ValueError(f'Prop fixture is inactive: {match_id}')
     prop_key = f"{match_id}|{market_key}|{selection}"
     now = utc_now()
     from tennis_wc.props.pricing_evidence import capture_context,freeze_context
@@ -840,6 +849,9 @@ def prop_roi_report(conn, value_only: bool = True,
         , tuple(params)
     ).fetchall()
 
+    from tennis_wc.props.evidence_contract import verified_contract_rows
+    rows, contract_audit = verified_contract_rows(rows)
+
     def agg(rs):
         n = len(rs)
         if not n:
@@ -994,6 +1006,7 @@ def prop_roi_report(conn, value_only: bool = True,
         peak = max(peak, running)
         max_drawdown = min(max_drawdown, running - peak)
     return {
+        "contract_audit": contract_audit,
         "overall": agg(rows),
         "by_side": {k: agg(v) for k, v in by_side.items()},
         "by_family": {k: agg(v) for k, v in by_family.items()},
@@ -1053,7 +1066,7 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
     date_clause = "".join(date_parts)
     date_params = tuple(params)
     rows = conn.execute(
-        f"SELECT p.match_id, p.{column} AS prob, p.market_prob_fair, p.result_status, "
+        f"SELECT p.id,p.feed_market_name,p.match_id, p.{column} AS prob, p.market_prob_fair, p.result_status, "
         "p.market_key FROM prop_tracker p JOIN matches m ON m.id=p.match_id "
         f"WHERE p.result_status IN ('WON','LOST') AND {result_agreement_clause('p')} "
         f"AND p.{column} IS NOT NULL "
@@ -1070,9 +1083,11 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
         "OR p.subject_player_id=m.player_a_id)" + pit_clause + date_clause,
         date_params,
     ).fetchone()[0]
+    from tennis_wc.props.evidence_contract import verified_contract_rows
+    rows, contract_audit = verified_contract_rows(rows)
     n = len(rows)
     if not n:
-        return {"settled": 0, "model": None, "market": None,
+        return {"settled": 0, "model": None, "market": None, "contract_audit": contract_audit,
                 "verdict": ("no settled props with a raw model probability yet — "
                             f"{legacy_only} older rows only stored the tempered value"),
                 "calibration": [], "graded_on": column, "legacy_rows_excluded": legacy_only}
@@ -1133,6 +1148,7 @@ def model_vs_market_scorecard(conn, use_raw: bool = True,
             "market": family_market,
         }
     return {"settled": n, "model": model, "market": market, "verdict": verdict,
+            "contract_audit": contract_audit,
             "calibration": calibration, "graded_on": column,
             "legacy_rows_excluded": legacy_only if use_raw else 0,
             "by_family": by_family}

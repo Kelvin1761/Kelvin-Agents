@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import date
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.features.history_values import clean_history_row
+from tennis_wc.features.history_asof import guard_clause, guard_params
 from tennis_wc.features.common import avg, parse_date, rate, utc_now
 from tennis_wc.features.opponent_rank_buckets import get_opponent_rank_at_match_date
 from tennis_wc.features.round_performance import normalise_round
@@ -33,7 +35,7 @@ def calculate_big_match_stats(
     surface: str | None,
     as_of_date: date,
     time_window: str,
-    *, persist: bool = True,
+    *, persist: bool = True, start_time: str | None = None,
 ) -> dict:
     start = "0001-01-01"
     if time_window == "LAST_52_WEEKS":
@@ -42,11 +44,13 @@ def calculate_big_match_stats(
         start = date.fromordinal(as_of_date.toordinal() - 182).isoformat()
     query = "SELECT * FROM player_match_history WHERE player_id = ? AND match_date >= ? AND match_date < ?"
     params: list = [player_id, start, as_of_date.isoformat()]
+    query += guard_clause()
+    params.extend(guard_params(as_of_date.isoformat(), start_time))
     if surface:
         query += " AND lower(surface) = lower(?)"
         params.append(surface)
     with get_connection() as conn:
-        rows = [dict(row) for row in conn.execute(query, params).fetchall()]
+        rows = [clean_history_row(row) for row in conn.execute(query, params).fetchall()]
     big_rows = []
     ranks = []
     for row in rows:

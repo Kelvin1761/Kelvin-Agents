@@ -88,3 +88,32 @@ def test_bookmaker_event_never_uses_another_providers_fixture_id(tmp_path, monke
         record_market_capture(c, 1, dict(event_id='sportsbet-789'), 'sportsbet', 2, 'now', 'market_odds_snapshots')
         assert bookmaker_event_for_match(c, 1, 'sportsbet') == 'sportsbet-789'
         assert c.execute('SELECT market_event_id FROM matches WHERE id=1').fetchone()[0] == 'espn-123'
+
+
+def test_empty_book_listing_retires_composite_quotes_without_deleting_history(tmp_path,monkeypatch):
+    from tennis_wc.ingestion import ingest_odds
+    configure_test_db(tmp_path,monkeypatch);init_db()
+    with get_connection() as c:
+        for pid,name in ((1,'Player One'),(2,'Player Two')):
+            c.execute("INSERT INTO players(id,name,tour,source_provider,created_at,updated_at) VALUES (?,?,'ATP','test','now','now')",(pid,name))
+        c.execute("INSERT INTO matches(id,provider_match_id,market_event_id,tour,match_date,tournament_id,player_a_id,player_b_id,round,source_provider,created_at,updated_at) VALUES (1,'fixture','espn-123','ATP','2026-06-01',1,1,2,'R1','composite','now','now')")
+        row=dict(event_id='book-456',bookmaker='Sportsbet',player_a_name='Player One',player_b_name='Player Two',markets=[
+            dict(market_key='total_games',market_name='Match Total Games',selections=[
+                dict(selection_name='Over',line=22.5,odds=1.9),dict(selection_name='Under',line=22.5,odds=1.9)])])
+        _insert_market_odds(c,row,1,'sportsbet',1,'2026-06-01T08:00:00Z')
+    ingest_odds._prune_stale_sportsbet_odds_for_date('sportsbet','2026-06-01',set(),raw_id=2)
+    with get_connection() as c:
+        assert _rows_for_date(c,'2026-06-01')==[]
+        assert c.execute('SELECT COUNT(*) FROM market_odds_snapshots').fetchone()[0]==2
+        match=c.execute('SELECT * FROM matches WHERE id=1').fetchone()
+        assert match['market_event_id']=='espn-123' and match['fixture_status']=='ACTIVE'
+        assert c.execute('SELECT listed FROM market_captures ORDER BY id DESC LIMIT 1').fetchone()[0]==0
+        c.commit()
+        from tennis_wc.features.feature_builder import odds_coverage_for_date
+        coverage=odds_coverage_for_date('2026-06-01')
+        assert coverage['priced_matches']==0 and coverage['book_fixtures']==0
+
+        # A new verified observation makes this book available again.
+        _insert_market_odds(c,row,1,'sportsbet',3,'2026-06-01T10:00:00Z')
+        assert len(_rows_for_date(c,'2026-06-01'))==2
+        assert c.execute('SELECT COUNT(*) FROM market_odds_snapshots').fetchone()[0]==4

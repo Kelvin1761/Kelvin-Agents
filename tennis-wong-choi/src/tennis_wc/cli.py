@@ -899,6 +899,12 @@ def run_daily(args: argparse.Namespace) -> None:
         )
     except Exception as exc:  # noqa: BLE001
         source_errors.append({"source": "identity_merge", "error": str(exc)})
+    from tennis_wc.validation.current_slate import audit_current_slate
+    with get_connection() as conn:
+        slate_integrity = audit_current_slate(conn, args.date, apply=True)
+    if slate_integrity['held']:
+        source_errors.append({'source': 'slate_integrity',
+                              'error': f"held fixtures: {slate_integrity['held']}"})
     snapshots = _run_timed_stage(
         "feature_snapshots",
         lambda: build_sportsbet_feature_snapshots_for_date(args.date),
@@ -985,6 +991,7 @@ def run_daily(args: argparse.Namespace) -> None:
         "source_warnings": source_warnings,
         "settlement_backlog": settlement_backlog,
         "tracker_sync": tracker_sync,
+        "slate_integrity": slate_integrity,
         "stage_timings": stage_timings,
         "stage": "7",
         "mode": "mvp_snapshot" if args.mvp_snapshot else "live_full",

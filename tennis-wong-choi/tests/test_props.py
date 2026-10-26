@@ -1140,6 +1140,8 @@ def test_record_prop_idempotent(tmp_path, monkeypatch):
     from tennis_wc.props import settlement
     init_db()
     conn = get_connection()
+    _seed_player(conn, 1, "A"); _seed_player(conn, 2, "B")
+    _seed_match(conn, 1, 1, 2)
     for _ in range(3):
         _rec(conn, settlement, line=7.0, selection="7+", side="over", odds=1.5, model_p=0.7, market_p=0.72)
     conn.commit()
@@ -2512,3 +2514,25 @@ def test_a_retirement_void_is_never_revived(tmp_path, monkeypatch):
     assert out["revived_from_void"] == 0
     assert conn.execute(
         "SELECT result_status FROM prop_tracker").fetchone()["result_status"] == "VOID"
+
+
+def test_record_prop_rejects_missing_self_and_foreign_subject_fixtures(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+    configure_test_db(tmp_path, monkeypatch); init_db()
+    with get_connection() as conn:
+        params=dict(line=7.0,selection='7+',side='over',odds=1.5,model_p=.7,market_p=.72)
+        with pytest.raises(ValueError,match='fixture not found'):
+            _rec(conn,settlement,**params)
+        _seed_player(conn,1,'A');_seed_player(conn,2,'B');_seed_match(conn,1,1,2)
+        with pytest.raises(ValueError,match='subject is outside'):
+            _rec(conn,settlement,subject=99,**params)
+        conn.execute("UPDATE matches SET fixture_status='DISPUTED' WHERE id=1")
+        with pytest.raises(ValueError,match='inactive'):
+            _rec(conn,settlement,**params)
+        conn.execute("UPDATE matches SET fixture_status='ACTIVE',player_b_id=1 WHERE id=1")
+        with pytest.raises(ValueError,match='same player twice'):
+            _rec(conn,settlement,**params)
+        assert conn.execute('SELECT COUNT(*) FROM prop_tracker').fetchone()[0]==0

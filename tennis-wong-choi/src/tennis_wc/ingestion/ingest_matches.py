@@ -4,6 +4,7 @@ from datetime import date, timedelta
 import logging
 
 from tennis_wc.config import get_settings
+from tennis_wc.features.history_values import clean_history_row
 from tennis_wc.database.db import get_connection
 from tennis_wc.ingestion.entity_mapping import (
     get_internal_entity_id,
@@ -135,6 +136,7 @@ def ingest_historical_matches(start_date: str, end_date: str) -> int:
     now = utc_now()
     count = 0
     for row in rows:
+        row = clean_history_row(row)
         try:
             player_id = _ensure_player(
                 provider.provider_name,

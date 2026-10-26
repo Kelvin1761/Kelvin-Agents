@@ -17,6 +17,8 @@ All functions take an open sqlite connection so they are unit-testable.
 """
 from __future__ import annotations
 
+from tennis_wc.features.history_values import clean_history_row, measurement
+
 from dataclasses import dataclass, field
 import math
 
@@ -162,7 +164,7 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
         f"""
         SELECT h.id,h.match_date, h.surface, h.ace_count, h.service_games_played
         FROM player_match_history h
-        WHERE h.player_id = ? AND h.ace_count IS NOT NULL AND h.match_date < ?
+        WHERE h.player_id = ? AND typeof(h.ace_count) IN ('integer','real') AND h.ace_count>=0 AND h.ace_count=CAST(h.ace_count AS INTEGER) AND h.match_date < ?
           {guard_clause("h")}
           AND (
               SELECT COUNT(*)
@@ -177,6 +179,7 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
         """,
         (player_id, as_of_date, *guard, last_n),
     ).fetchall()
+    rows = [clean_history_row(row) for row in rows]
     aces = [float(r["ace_count"]) for r in rows]
     surf_aces = [float(r["ace_count"]) for r in rows if (r["surface"] or "").lower() == surf]
     overall = sum(aces) / len(aces) if aces else _GLOBAL_ACE_FALLBACK
@@ -216,7 +219,7 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
          AND o.source_provider = p.source_provider
          AND replace(replace(o.provider_match_id, '-winner', ''), '-loser', '')
              = replace(replace(p.provider_match_id, '-winner', ''), '-loser', '')
-        WHERE p.player_id = ? AND p.match_date < ? AND o.ace_count IS NOT NULL
+        WHERE p.player_id = ? AND p.match_date < ? AND typeof(o.ace_count) IN ('integer','real') AND o.ace_count>=0 AND o.ace_count=CAST(o.ace_count AS INTEGER)
           AND p.ace_count IS NOT NULL
           {guard_clause("p")}
           AND (
@@ -231,6 +234,8 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
         """,
         (player_id, as_of_date, *guard, last_n),
     ).fetchall()
+    conc_rows = [{**dict(row), "opp_service_games": measurement(row["opp_service_games"])}
+                 for row in conc_rows]
     conc = [float(r["opp_aces"]) for r in conc_rows]
     conceded = sum(conc) / len(conc) if conc else None
     conc_exposed = [

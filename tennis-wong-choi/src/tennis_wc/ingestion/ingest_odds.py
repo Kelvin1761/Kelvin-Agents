@@ -33,7 +33,7 @@ def ingest_odds(date: str) -> int:
     now = utc_now()
     count = 0
     rows = [row for row in rows if _row_matches_requested_date(row, date)]
-    _prune_stale_sportsbet_odds_for_date(provider.provider_name, date, {str(row.get("event_id")) for row in rows if row.get("event_id")})
+    _prune_stale_sportsbet_odds_for_date(provider.provider_name, date, {str(row.get("event_id")) for row in rows if row.get("event_id")}, raw_id=raw_id)
     for row in rows:
         if provider.provider_name == "mock":
             row = row | {"event_id": f"mock-event-{date}-1"}
@@ -167,35 +167,35 @@ def _insert_market_odds(conn, row: dict, match_id: int | None, provider_name: st
             )
 
 
-def _prune_stale_sportsbet_odds_for_date(provider_name: str, match_date: str, active_event_ids: set[str]) -> None:
-    if provider_name not in {"sportsbet", "sportsbet_scrape"} or not active_event_ids:
+def _prune_stale_sportsbet_odds_for_date(provider_name: str, match_date: str,
+                                         active_event_ids: set[str], *, raw_id: int | None = None) -> None:
+    if provider_name not in {"sportsbet", "sportsbet_scrape"}:
         return
+    from tennis_wc.database.market_captures import bookmaker_event_for_match,record_market_capture
+    from tennis_wc.ingestion.fixture_versions import _observe
     with get_connection() as conn:
-        rows = conn.execute(
-            """
-            SELECT id
-            FROM matches
-            WHERE match_date = ?
-              AND source_provider IN ('sportsbet', 'sportsbet_scrape')
-              AND market_event_id IS NOT NULL
-            """,
-            (match_date,),
-        ).fetchall()
-        stale_ids = []
-        for row in rows:
-            match = conn.execute("SELECT market_event_id FROM matches WHERE id = ?", (row["id"],)).fetchone()
-            if match and str(match["market_event_id"]) not in active_event_ids:
-                stale_ids.append(int(row["id"]))
-        if not stale_ids:
-            return
-        # Listing absence is not permission to erase immutable price/forecast history.
         ensure_fixture_schema(conn)
-        for match_id in stale_ids:
-            old=dict(conn.execute('SELECT * FROM matches WHERE id=?',(match_id,)).fetchone())
-            if old['fixture_status']=='ACTIVE':
-                from tennis_wc.ingestion.fixture_versions import _observe
-                _observe(conn,match_id,old,'NOT_LISTED',utc_now())
-                conn.execute("UPDATE matches SET fixture_status='NOT_LISTED' WHERE id=?",(match_id,))
+        rows = conn.execute("""SELECT m.* FROM matches m WHERE m.match_date=? AND (
+            m.source_provider IN ('sportsbet','sportsbet_scrape')
+            OR EXISTS(SELECT 1 FROM odds_snapshots o WHERE o.match_id=m.id AND o.source_provider=?)
+            OR EXISTS(SELECT 1 FROM market_odds_snapshots o WHERE o.match_id=m.id AND o.source_provider=?))""",
+            (match_date,provider_name,provider_name)).fetchall()
+        for row in rows:
+            event_id=bookmaker_event_for_match(conn,int(row['id']),provider_name)
+            if not event_id or event_id in active_event_ids:
+                continue
+            if raw_id is not None:
+                books={r[0] for r in conn.execute("""SELECT bookmaker FROM odds_snapshots WHERE match_id=? AND source_provider=?
+                    UNION SELECT bookmaker FROM market_odds_snapshots WHERE match_id=? AND source_provider=?""",
+                    (row['id'],provider_name,row['id'],provider_name))}
+                for book in books or {provider_name}:
+                    record_market_capture(conn,int(row['id']),{'event_id':event_id,'bookmaker':book,'listed':False},
+                                          provider_name,raw_id,utc_now(),'market_odds_snapshots')
+            # Availability belongs to the book; another fixture feed may still
+            # list the event. Retain every old quote and forecast in both cases.
+            if row['source_provider'] in {'sportsbet','sportsbet_scrape'} and row['fixture_status']=='ACTIVE':
+                _observe(conn,int(row['id']),dict(row),'NOT_LISTED',utc_now())
+                conn.execute("UPDATE matches SET fixture_status='NOT_LISTED' WHERE id=?",(row['id'],))
 
 
 _NAME_NOISE = re.compile(r"-\s*(rain delay|walkover|retired|suspended)\b")
@@ -246,8 +246,9 @@ def selection_side_for(
     normalised = _normalise_name(selection_name)
     if normalised in {"over", "under"}:
         return normalised
-    matches_a = bool(selection & _name_tokens(player_a_name))
-    matches_b = bool(selection & _name_tokens(player_b_name))
+    names_a, names_b = _name_tokens(player_a_name), _name_tokens(player_b_name)
+    matches_a = bool(names_a and (selection <= names_a or names_a <= selection))
+    matches_b = bool(names_b and (selection <= names_b or names_b <= selection))
     if matches_a and not matches_b:
         return "player_a"
     if matches_b and not matches_a:

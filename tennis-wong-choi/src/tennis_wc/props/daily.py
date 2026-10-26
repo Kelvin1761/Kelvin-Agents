@@ -823,16 +823,20 @@ def _price_new_ladders(conn, meta, match_rows, a, b, match_mean) -> list[dict]:
 def _resolve_player(market_name: str, meta) -> tuple[int | None, str]:
     """Map a 'Total <Player> Aces X.5' market to player_a/b via name match."""
     m = re.match(r"total\s+(.*?)\s+aces", market_name.strip(), re.I)
-    who = _norm(m.group(1)) if m else ""
+    who = m.group(1).strip() if m else ""
     if not who:
         return None, ""
-    a, b = _norm(meta["a_name"]), _norm(meta["b_name"])
-    # substring either way to tolerate accents/initials
-    if who and (who in a or a in who):
-        return meta["player_a_id"], meta["a_name"]
-    if who and (who in b or b in who):
-        return meta["player_b_id"], meta["b_name"]
-    return None, ""
+    return _player_from_name(who, meta)
+
+
+def _player_from_name(who: str, meta) -> tuple[int | None, str]:
+    from tennis_wc.ingestion.ingest_odds import selection_side_for
+    side = selection_side_for(meta['a_name'], meta['b_name'], who)
+    if side == 'player_a':
+        return meta['player_a_id'], meta['a_name']
+    if side == 'player_b':
+        return meta['player_b_id'], meta['b_name']
+    return None, ''
 
 
 def _resolve_named_player(market_name: str, family: str, meta) -> tuple[int | None, str]:
@@ -843,16 +847,10 @@ def _resolve_named_player(market_name: str, family: str, meta) -> tuple[int | No
         "player_win_a_set": r"^(.*?)\s+to win at least (?:one|1) set",
     }
     match = re.search(patterns.get(family, r"$^"), market_name.strip(), re.I)
-    who = _norm(match.group(1)) if match else ""
+    who = match.group(1).strip() if match else ""
     if not who:
         return None, ""
-    for pid_key, name_key in (
-        ("player_a_id", "a_name"), ("player_b_id", "b_name")
-    ):
-        candidate = _norm(meta[name_key])
-        if who in candidate or candidate in who:
-            return meta[pid_key], meta[name_key]
-    return None, ""
+    return _player_from_name(who, meta)
 
 
 def _feed_identity(feed, market_key, side_key, line=None):
@@ -1305,7 +1303,7 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                     continue
                 profile = player_model.count_profile(
                     conn, pid, meta["match_date"], "double_fault_count",
-                    surface=meta["surface"],
+                    surface=meta["surface"], start_time=_start_time(meta),
                 )
                 pricing_evidence['profiles'].setdefault('double_faults',{})[str(pid)]=asdict(profile)
                 tw = player_model.price_count_two_way(
@@ -1382,7 +1380,8 @@ def price_ace_props_for_date(conn, match_date: str, log: bool = True,
                     board.predicted_games = tw.predicted_mean
                     board.games_ou.append(tw)
                     if log:
-                        _log_two_way(conn, match_date, label, tw, "match_games", None,pricing_evidence=pricing_evidence)
+                        _log_two_way(conn, match_date, label, tw, "match_games", None,
+                                     feed=od, feed_market_key=mk, pricing_evidence=pricing_evidence)
         for (m_id, mk, market_name), od in yes_no.items():
             if m_id != mid or "yes" not in od or "no" not in od:
                 continue

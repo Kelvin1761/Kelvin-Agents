@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from tennis_wc.features.history_values import clean_history_row
+
 import csv
 from datetime import datetime
 from io import StringIO
@@ -252,12 +254,14 @@ def _history_pair_exists(provider: str, winner_id: int, loser_id: int, match_dat
 
 
 def _insert_history_pair(tour: str, row: dict, raw_id: int, winner_id: int, loser_id: int, match_date: str, now: str, provider: str = PROVIDER_NAME) -> None:
+    if winner_id == loser_id:
+        return
     tournament_level = _normalise_level(tour, row.get("tourney_level"))
     surface = _normalise_surface(row.get("surface"))
     match_format = f"BO{row.get('best_of') or 3}"
     base_match_id = f"{tour}-{row.get('tourney_id')}-{row.get('match_num')}"
-    winner_metrics = _metrics(row, "w", "l")
-    loser_metrics = _metrics(row, "l", "w")
+    winner_metrics = clean_history_row(_metrics(row, "w", "l"))
+    loser_metrics = clean_history_row(_metrics(row, "l", "w"))
     winner_deciding = _deciding_set_won(row.get("score"), won=True)
     loser_deciding = _deciding_set_won(row.get("score"), won=False)
     loser_lost_first = _lost_first_set(row.get("score"), won=False)

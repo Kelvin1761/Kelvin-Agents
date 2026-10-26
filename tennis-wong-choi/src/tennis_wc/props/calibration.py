@@ -55,6 +55,7 @@ class FamilyReliability:
     model_brier: float | None
     market_brier: float | None
     unverified_quality_rows: int = 0
+    contract_excluded_rows: int = 0
 
     @property
     def evidence_ratio(self) -> float:
@@ -103,7 +104,7 @@ def family_reliability(conn, family: str, as_of_date: str | None = None) -> Fami
         params.extend((as_of_date, as_of_date))
     rows = conn.execute(
         f"""
-        SELECT p.match_id,p.match_date,p.market_key,p.model_prob_raw,
+        SELECT p.id,p.feed_market_name,p.match_id,p.match_date,p.market_key,p.model_prob_raw,
                p.market_prob_fair,p.result_status,{receipt} AS pricing_evidence_json
         FROM prop_tracker p
         JOIN matches m ON m.id=p.match_id
@@ -117,6 +118,9 @@ def family_reliability(conn, family: str, as_of_date: str | None = None) -> Fami
         ORDER BY p.match_date,p.id
         """, tuple(params),
     ).fetchall()
+    from tennis_wc.props.evidence_contract import verified_contract_rows
+    rows, contract_audit = verified_contract_rows(rows)
+    excluded = len(contract_audit['excluded']) if family == 'match_total_games' else 0
     sample = []
     unverified = 0
     for row in rows:
@@ -134,7 +138,7 @@ def family_reliability(conn, family: str, as_of_date: str | None = None) -> Fami
     if not sample:
         return FamilyReliability(
             family, as_of_date, 0, DEFAULT_MODEL_WEIGHT, DEFAULT_MODEL_WEIGHT,
-            None, None, unverified,
+            None, None, unverified, excluded,
         )
     numerator = denominator = model_error = market_error = 0.0
     for row in sample:
@@ -160,6 +164,7 @@ def family_reliability(conn, family: str, as_of_date: str | None = None) -> Fami
         model_brier=round(model_error / n, 6),
         market_brier=round(market_error / n, 6),
         unverified_quality_rows=unverified,
+        contract_excluded_rows=excluded,
     )
 
 

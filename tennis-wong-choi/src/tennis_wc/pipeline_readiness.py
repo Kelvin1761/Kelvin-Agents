@@ -7,6 +7,7 @@ from typing import Any
 MIN_PRICED_RATIO = 0.35
 MIN_FIXTURES_FOR_RATIO_CHECK = 10
 CRITICAL_SOURCES = {
+    "slate_integrity",
     "prop_pricing",
     "odds",
     "event_markets",

@@ -4,12 +4,13 @@ import json
 from datetime import date
 from typing import Any
 
-from tennis_wc.database.market_captures import current_market_clause
+from tennis_wc.database.market_captures import current_market_clause, book_listing_clause
 from tennis_wc.ingestion.fixture_versions import active_fixture_clause
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.big_match import calculate_big_match_stats
 from tennis_wc.features.bo_format import calculate_bo_format_stats, detect_match_format
 from tennis_wc.features.common import datapoint, provenance, utc_now
+from tennis_wc.features.history_asof import guard_clause, guard_params
 from tennis_wc.features.data_quality import validate_data_freshness
 from tennis_wc.features.head_to_head import calculate_head_to_head_stats
 from tennis_wc.features.opponent_elo_buckets import calculate_player_elo_bucket_stats
@@ -126,15 +127,16 @@ def _build_player_payload(conn, player_id: int, opponent_id: int,
     round_name = match_context["round"]["value"]
     match_format = match_context["format"]["value"]
 
-    rank_buckets = calculate_player_rank_bucket_stats(player_id, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived)
-    elo_buckets = calculate_player_elo_bucket_stats(player_id, surface, as_of_date, "LAST_52_WEEKS")
-    tournament_level = calculate_tournament_level_stats(player_id, level, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived)
-    round_stats = calculate_round_stats(player_id, round_name, level, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived)
-    big_match = calculate_big_match_stats(player_id, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived)
-    bo_format = calculate_bo_format_stats(player_id, match_format, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived)
-    pressure = calculate_pressure_stats(player_id, surface, as_of_date, "LAST_52_WEEKS")
-    h2h = calculate_head_to_head_stats(player_id, opponent_id, surface, as_of_date)
-    rest_days = _rest_days(player_id, as_of_date)
+    start_time = (match_context.get("start_time_utc") or {}).get("value")
+    rank_buckets = calculate_player_rank_bucket_stats(player_id, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived, start_time=start_time)
+    elo_buckets = calculate_player_elo_bucket_stats(player_id, surface, as_of_date, "LAST_52_WEEKS", start_time=start_time)
+    tournament_level = calculate_tournament_level_stats(player_id, level, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived, start_time=start_time)
+    round_stats = calculate_round_stats(player_id, round_name, level, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived, start_time=start_time)
+    big_match = calculate_big_match_stats(player_id, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived, start_time=start_time)
+    bo_format = calculate_bo_format_stats(player_id, match_format, surface, as_of_date, "LAST_52_WEEKS", persist=persist_derived, start_time=start_time)
+    pressure = calculate_pressure_stats(player_id, surface, as_of_date, "LAST_52_WEEKS", start_time=start_time)
+    h2h = calculate_head_to_head_stats(player_id, opponent_id, surface, as_of_date, start_time=start_time)
+    rest_days = _rest_days(player_id, as_of_date, start_time=start_time)
 
     # As-of, not latest. players.overall_elo is one mutable number rewritten on
     # every rebuild with the rating computed over the WHOLE record, so reading
@@ -260,16 +262,17 @@ def _is_effectively_now(stamp: str) -> bool:
     return (date.today() - as_of).days <= CURRENT_RANK_FALLBACK_DAYS
 
 
-def _rest_days(player_id: int, as_of_date: date) -> int | None:
+def _rest_days(player_id: int, as_of_date: date, *, start_time: str | None = None) -> int | None:
     with get_connection() as conn:
         row = conn.execute(
-            """
+            f"""
             SELECT MAX(match_date) AS last_match_date
             FROM player_match_history
             WHERE player_id = ?
               AND match_date < ?
+              {guard_clause()}
             """,
-            (player_id, as_of_date.isoformat()),
+            (player_id, as_of_date.isoformat(), *guard_params(as_of_date.isoformat(), start_time)),
         ).fetchone()
     if not row or not row["last_match_date"]:
         return None
@@ -295,6 +298,7 @@ def _match_context(match: dict, tournament: dict, tournament_level: dict) -> dic
         "surface": datapoint(surface, tournament_prov),
         "indoor_outdoor": datapoint(indoor_outdoor, tournament_prov),
         "match_date": datapoint(match["match_date"], match_prov),
+        "start_time_utc": datapoint(match.get("start_time_utc"), match_prov),
     }
     base["format"] = datapoint(detect_match_format({
         "tour": match["tour"], "level": level, "round": match["round"],
@@ -538,6 +542,7 @@ def _sportsbet_priced_matches(conn, match_date: str) -> list[dict]:
             JOIN odds_snapshots o ON o.match_id = m.id
             WHERE m.match_date = ?
               AND o.source_provider = 'sportsbet'
+              AND {current_market_clause(conn,'o','odds_snapshots')}
               AND {active_fixture_clause(conn)}
             ORDER BY m.id
             """,
@@ -670,13 +675,17 @@ def odds_coverage_for_date(match_date: str) -> dict:
     """
     with get_connection() as conn:
         fixtures = _distinct_fixture_count(conn, match_date)
-        book_fixtures = _distinct_fixture_count(conn, match_date, _BOOK_SCOPE_SQL)
-        priced = _distinct_fixture_count(conn, match_date, _PRICED_SCOPE_SQL)
+        book_fixtures = _distinct_fixture_count(conn, match_date, _BOOK_SCOPE_SQL + f" AND {book_listing_clause(conn)}")
+        priced_scope = (" AND EXISTS(SELECT 1 FROM odds_snapshots o WHERE o.match_id=m.id "
+                        "AND o.source_provider='sportsbet' AND "
+                        + current_market_clause(conn,'o','odds_snapshots') + ")")
+        priced = _distinct_fixture_count(conn, match_date, priced_scope)
         latest = conn.execute(
-            """
+            f"""
             SELECT MAX(o.fetched_at) FROM odds_snapshots o
             JOIN matches m ON m.id = o.match_id
             WHERE m.match_date = ? AND o.source_provider = 'sportsbet'
+              AND {current_market_clause(conn,'o','odds_snapshots')}
             """,
             (match_date,),
         ).fetchone()[0]

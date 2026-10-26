@@ -88,7 +88,7 @@ def active_fixture_clause(conn, alias: str = "m") -> str:
     return f"{alias}.fixture_status='ACTIVE'" if 'fixture_status' in columns else '1=1'
 
 
-def quarantine_fixture(conn, match_id: int, incoming: dict, now: str) -> None:
+def quarantine_fixture(conn, match_id: int, incoming: dict, now: str, *, reason: str = 'EVENT_PAIR_CONFLICT') -> None:
     old=dict(conn.execute('SELECT * FROM matches WHERE id=?',(match_id,)).fetchone())
-    _observe(conn,match_id,{**old,'incoming_odds_pair':incoming},'EVENT_PAIR_CONFLICT',now)
+    _observe(conn,match_id,{**old,'incoming_odds_pair':incoming},reason,now)
     conn.execute("UPDATE matches SET fixture_status='DISPUTED' WHERE id=?",(match_id,))
