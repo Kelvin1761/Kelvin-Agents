@@ -35,6 +35,7 @@ from nba_season import classify_nba_season
 from nba_identity import player_name_key
 from nba_availability import classify_injury_status, usage_from_injuries, usage_bonus_for
 import nba_official_injuries
+from nba_schedule import canonical_team_abbr
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nba_prob_layer
 from nba_selection_policy import BANKER, BANKER_FALLBACK, VALUE, HIGH, BUILD_TOLERANCE, SelectedCombo, STRATEGY_PROFILE, description as policy_description
@@ -786,6 +787,9 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
         card["l10"] = l10
         card["history_seasons"] = gl.get("history_seasons", [])
         card["history_season_types"] = list(dict.fromkeys(gl.get("l10_season_types", [])))
+        # Per-game season and team of the L10 (early-season guard, EXP-20261026-03).
+        card["l10_seasons"] = list(gl.get("l10_seasons") or [])
+        card["l10_teams"] = [str(m).split()[0] for m in (gl.get("l10_matchups") or []) if str(m).split()]
         card["history_date_to"] = gl.get("history_date_to", "")
         card["position"] = ext_player.get("position", "?")
 
@@ -1013,6 +1017,26 @@ def injury_status_for(injuries, team_abbr, player_name):
 
 AVAILABILITY_SEVERITY = {"ok": 0, "dtd": 1, "out": 2}
 
+# EXP-20261026-03: with L10 mostly from last season, AST hit rate falls 7.8pp and 3PM 4.5pp
+# (PTS/REB unchanged); after a team change every stat falls 7-9pp. Banker eligibility only.
+EARLY_SEASON_PREV_GAMES = 6
+EARLY_SEASON_ROLE_STATS = ("AST", "3PM")
+NEW_TEAM_MIN_GAMES = 5
+
+
+def early_season_guard(card, stat_label, current_season):
+    """Reasons this leg must stay out of 穩膽 early in a season, or None. Never relaxes anything."""
+    reasons = []
+    seasons = card.get("l10_seasons") or []
+    if (current_season and stat_label in EARLY_SEASON_ROLE_STATS
+            and sum(1 for s in seasons if s != current_season) >= EARLY_SEASON_PREV_GAMES):
+        reasons.append("l10_mostly_previous_season")
+    team = canonical_team_abbr(card.get("team"))
+    teams = [canonical_team_abbr(t) for t in card.get("l10_teams") or []]
+    if teams and any(t != team for t in teams) and sum(t == team for t in teams) < NEW_TEAM_MIN_GAMES:
+        reasons.append("new_team_under_5_games")
+    return reasons or None
+
 
 def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None, official_injuries=None):
     """Build a flat list of all possible legs from player cards + team odds.
@@ -1117,6 +1141,7 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None, of
                 "l3_avg": l3_avg,
                 "l1_val": l1_val,
                 "day_to_day": is_day_to_day,
+                "early_season_guard": early_season_guard(card, cl, meta.get("roster_season")),
                 "season_phase": season_phase,
             })
 
@@ -1535,6 +1560,7 @@ def banker_pool(candidates, rule, *, require_leg_ev=True):
                 and c.get("cov", 0) <= BANKER.max_cov
                 and not c.get("bench_minutes_risk", False)
                 and not c.get("day_to_day", False)
+                and not c.get("early_season_guard")
                 and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0)
                 and _has_buffer(c)
                 and _passes_playoff_gate(c, "banker")
@@ -1554,6 +1580,7 @@ def banker_pool(candidates, rule, *, require_leg_ev=True):
                     and c.get("cov", 0) <= BANKER_FALLBACK.max_cov
                     and not c.get("bench_minutes_risk", False)
                     and not c.get("day_to_day", False)
+                    and not c.get("early_season_guard")
                     and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0) * 0.85
                     and _passes_playoff_gate(c, "banker")
                     and _post_reflector_leg_allowed(c, "banker")]
@@ -2590,6 +2617,8 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
                 "market": market,
                 "line": line,
                 "side": "over",
+                "early_season_guard": early_season_guard(card, cat_label.get(card["category"]),
+                                                         meta.get("roster_season")),
                 "price": float(la["odds"]),
                 "p_hit_rate_10f": _pct_to_prob(la.get("det_prob")),
                 "p_ml": _pct_to_prob(la["ml_prob"] * 100) if la.get("ml_prob") is not None else None,
