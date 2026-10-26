@@ -92,6 +92,7 @@ def banker_funnel(candidates, *, playoff, reflector):
             ('leg_price', lambda c: c.get('odds', 0) >= policy.min_odds),
             ('volatility', lambda c: c.get('cov', 0) <= policy.max_cov),
             ('availability', lambda c: not c.get('bench_minutes_risk') and not c.get('day_to_day')),
+            ('early_season_role', lambda c: not c.get('early_season_guard')),
             ('recent_form', lambda c: c.get('l3_avg', c.get('avg', 0)) >= c.get('line_val', 0) * (1 if name == 'strict' else .85)),
             ('buffer', buffer),
             ('playoff', lambda c: playoff(c, 'banker')),
