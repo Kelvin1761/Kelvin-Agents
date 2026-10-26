@@ -130,14 +130,14 @@ def stratified(rows, arms=ARMS, reference="A0"):
                        for s in sorted({r["surface"] or "unknown" for r in rows})}}
 
 
-def prop_study(conn, overlay):
+def prop_study(conn, overlay, *, all_tours=False, profile_provider=None, records_only=False):
     scopes = ('player_games','player_game_margin','player_first_set_game_margin','player_first_set')
     conflicts = conflicting_result_matches(conn)
     # Earliest observation of each EXACT feed selection, never a later/in-play price.
     first_prices = {}
-    for row in conn.execute("""SELECT o.* FROM market_odds_snapshots o JOIN
-        (SELECT MIN(id) id FROM market_odds_snapshots GROUP BY match_id,bookmaker,
-         market_key,market_name,selection_name,line) x ON x.id=o.id"""):
+    # ORDER BY primary-key + first occurrence is exactly MIN(id), without
+    # materialising a sort and doing thousands of random archive-disk lookups.
+    for row in conn.execute('SELECT * FROM market_odds_snapshots ORDER BY id'):
         key = (row['match_id'],row['market_key'],row['market_name'],row['selection_name'],row['line'])
         # Tracker lacks bookmaker: retain the first id across books, never shop after outcomes.
         if key not in first_prices or row['id'] < first_prices[key]['id']:
@@ -145,7 +145,11 @@ def prop_study(conn, overlay):
     price_groups=defaultdict(list)
     for key, quote in first_prices.items():
         price_groups[key[:3]].append(quote)
-    rows = conn.execute("""SELECT p.*, m.player_a_id,m.player_b_id,m.start_time_utc,
+    tour_filter="" if all_tours else "AND (m.tour='WTA' OR (a.tour='WTA' AND b.tour='WTA'))"
+    rows = conn.execute(f"""SELECT p.*, m.player_a_id,m.player_b_id,m.start_time_utc,m.tour,m.round,
+        a.tour a_tour,b.tour b_tour,
+        (SELECT level FROM tournament_levels tl WHERE tl.tournament_id=m.tournament_id
+         ORDER BY id DESC LIMIT 1) tournament_level,
         (SELECT surface FROM tournament_levels tl WHERE tl.tournament_id=m.tournament_id
          AND tl.surface IS NOT NULL ORDER BY id DESC LIMIT 1) surface,
         a.name a_name,b.name b_name
@@ -153,7 +157,7 @@ def prop_study(conn, overlay):
         JOIN players a ON a.id=m.player_a_id JOIN players b ON b.id=m.player_b_id
         WHERE p.is_point_in_time=1 AND p.result_status IN ('WON','LOST')
         AND p.side='over' AND p.prop_scope IN (?,?,?,?)
-        AND (m.tour='WTA' OR (a.tour='WTA' AND b.tour='WTA'))
+        {tour_filter}
         AND p.match_date BETWEEN '2026-06-01' AND '2026-10-25' ORDER BY p.id""",scopes).fetchall()
     from tennis_wc.props.daily import _two_way_odds, _head_to_head_odds, _spread_odds
     output = []
@@ -166,6 +170,14 @@ def prop_study(conn, overlay):
             coverage['duplicate_contract'] += 1
             continue
         seen.add(identity)
+        from tennis_wc.features.bo_format import detect_match_format
+        tour=row['tour']
+        if tour=='UNKNOWN' and row['a_tour']==row['b_tour']:
+            tour=row['a_tour']
+        if (detect_match_format({'tour':tour,'level':row['tournament_level'],'round':row['round']})!='BO3'
+                or (row['tournament_level']=='GRAND_SLAM' and tour not in ('ATP','WTA'))):
+            coverage['unsupported_format'] += 1
+            continue
         if row['match_id'] in conflicts:
             coverage['conflicting_result'] += 1
             continue
@@ -226,7 +238,8 @@ def prop_study(conn, overlay):
             coverage['noncanonical_subject'] += 1
             continue
         opponent=row['player_b_id'] if subject==row['player_a_id'] else row['player_a_id']
-        variants=profiles(conn,overlay,subject,opponent,forecast_day,row['surface'],forecast_time)
+        provider=profile_provider or profiles
+        variants=provider(conn,overlay,subject,opponent,forecast_day,row['surface'],forecast_time)
         holds={arm:estimates(pair,scope!='player_first_set') for arm,pair in variants.items()}
         for arm,hs in holds.items():
             coverage[arm+'_usable'] += int(all(h.is_usable for h in hs))
@@ -247,9 +260,11 @@ def prop_study(conn, overlay):
         won=int(row['result_status']=='WON')
         output.append({'cluster':row['match_id'],'date':row['match_date'],'surface':row['surface'],
                        'family':scope,'exposure':1,'probabilities':probabilities,'market':market,'won':won,
-                       'odds':odds[0], 'quote_id':own['id'],
+                       'odds':odds[0], 'quote_id':own['id'],'contract':identity,'tour':tour,
                        'losses':{**{arm:binomial_losses(p,won,1) for arm,p in probabilities.items()},
                                  'market':binomial_losses(market,won,1)}})
+    if records_only:
+        return {'coverage':dict(coverage),'records':output}
     result={'coverage':dict(coverage),'paired':stratified(output),
             'secondary_raw_edge_threshold':.04,
             'families':{s:stratified([r for r in output if r['family']==s]) for s in scopes}}

@@ -85,3 +85,16 @@ def test_prop_replay_uses_first_feed_quote_and_actual_recorded_side(wta_db, monk
     assert result['paired']['all']['observations']==1
     assert result['paired']['all']['arms']['A0']['brier']==pytest.approx(.16)
     assert result['market_and_secondary_roi']['all']['market_brier']==pytest.approx((1-.55)**2)
+    records=study.prop_study(db,None,all_tours=True,records_only=True,
+                            profile_provider=lambda conn,o,a,b,day,surface,start:{
+                                arm:[study.baseline_profile(conn,pid,day,surface,start) for pid in (a,b)]
+                                for arm in study.ARMS})
+    assert records['records'][0]['contract']==(1,'player_games',1,10.5)
+    assert records['records'][0]['quote_id']==1
+    db.execute("UPDATE matches SET tour='ATP',tournament_id=7,round='R128'")
+    db.execute("INSERT INTO tournament_levels (tournament_id,tour,level,source_provider,raw_response_id,"
+               "created_at,updated_at) VALUES (7,'ATP','GRAND_SLAM','test',0,'now','now')")
+    guarded=study.prop_study(db,None,all_tours=True,records_only=True,
+                             profile_provider=lambda *args:pytest.fail('BO5 profile lookup reached'))
+    assert guarded['records']==[]
+    assert guarded['coverage']['unsupported_format']==1
