@@ -282,4 +282,5 @@
 
 - [EXP-20261026-04](EXP-20261026-04-tennis-wta-fresh-history.md)：WTA 官方新 history 固定消融，114 場／300 props；A1 Brier 0.2645→0.2760，落後市場；REJECT，source 及 exposure 品質問題完整保存。
 - [EXP-20261026-05](EXP-20261026-05-tennis-simulator-service-order.md)：跨盤發球輪轉 correctness 修正；665 場／1,230 props，Brier 0.251512→0.251835（CI 跨零），未證明準確度提升；不 promotion 投注 family。
-- [EXP-20261026-03](EXP-20261026-03-nba-early-season-cross-season-l10.md)：季初 L10 大部分係上季時 AST −7.8pp、3PM −4.5pp（PTS／REB 冇影響），轉隊全部 stat −7～−9pp；季中 AST 同 PTS 一樣可信；live 穩膽區 AST 32 中 16；未改 code。
+- [EXP-20261026-06](EXP-20261026-06-nba-early-season-cross-season-l10.md)：季初 L10 大部分係上季時 AST −7.8pp、3PM −4.5pp（PTS／REB 冇影響），轉隊全部 stat −7～−9pp；季中 AST 同 PTS 一樣可信；live 穩膽區 AST 32 中 16；未改 code。
+- [EXP-20261026-07](EXP-20261026-07-nba-season-rate-v4-early-season-weight.md)：S_v4 季初上季比賽 0.25 權重（轉隊再減）；2024 季初揀、2025 季初驗證 −0.0061 [−0.0092,−0.0037]，AST −0.0090；季初 L10 失準係 C 嘅 L10 項造成，S 本身已校準；未接線。

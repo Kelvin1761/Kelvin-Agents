@@ -787,7 +787,7 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
         card["l10"] = l10
         card["history_seasons"] = gl.get("history_seasons", [])
         card["history_season_types"] = list(dict.fromkeys(gl.get("l10_season_types", [])))
-        # Per-game season and team of the L10 (early-season guard, EXP-20261026-03).
+        # Per-game season and team of the L10 (early-season guard, EXP-20261026-06).
         card["l10_seasons"] = list(gl.get("l10_seasons") or [])
         card["l10_teams"] = [str(m).split()[0] for m in (gl.get("l10_matchups") or []) if str(m).split()]
         card["history_date_to"] = gl.get("history_date_to", "")
@@ -1017,7 +1017,7 @@ def injury_status_for(injuries, team_abbr, player_name):
 
 AVAILABILITY_SEVERITY = {"ok": 0, "dtd": 1, "out": 2}
 
-# EXP-20261026-03: with L10 mostly from last season, AST hit rate falls 7.8pp and 3PM 4.5pp
+# EXP-20261026-06: with L10 mostly from last season, AST hit rate falls 7.8pp and 3PM 4.5pp
 # (PTS/REB unchanged); after a team change every stat falls 7-9pp. Banker eligibility only.
 EARLY_SEASON_PREV_GAMES = 6
 EARLY_SEASON_ROLE_STATS = ("AST", "3PM")

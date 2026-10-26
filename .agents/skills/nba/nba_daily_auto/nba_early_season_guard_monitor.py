@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Forward monitor for the early-season banker guard (EXP-20261026-03). Read-only.
+"""Forward monitor for the early-season banker guard (EXP-20261026-06). Read-only.
 
 For banker-like legs (L10 >= 80%, C >= 60%, price >= 1.15) on the latest published
 pre-tip snapshot, compares guarded and unguarded legs by stat: count, games, mean C,
@@ -58,7 +58,7 @@ def summarise(rows: list[dict]) -> dict:
             "legs": n, "games": len({(r["day"], r["game"]) for r in g}),
             "mean_c": round(sum(r["p"] for r in g) / n, 3), "hit": round(sum(r["y"] for r in g) / n, 3),
             "market": round(sum(1 / r["price"] for r in g) / n, 3)}
-    return {"protocol": "EXP-20261026-03", "banker_like": BANKER_LIKE, "table": table,
+    return {"protocol": "EXP-20261026-06", "banker_like": BANKER_LIKE, "table": table,
             "note": "descriptive; judge only by games, not legs"}
 
 

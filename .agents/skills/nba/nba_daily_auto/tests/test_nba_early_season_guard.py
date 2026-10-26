@@ -1,4 +1,4 @@
-"""Early-season banker guard (EXP-20261026-03): stricter only, AST/3PM and new-team legs."""
+"""Early-season banker guard (EXP-20261026-06): stricter only, AST/3PM and new-team legs."""
 from __future__ import annotations
 
 import json
