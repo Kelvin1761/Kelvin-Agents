@@ -15,6 +15,7 @@ from .full_time_speed import render_detail as render_full_time_detail
 from .matrix_mapper import MATRIX_FORMULAS
 # 市場參考層：純顯示（D1）。只有 renderer 可以 import，引擎／評分唔准。
 from .market_reference import build_market_reference, horse_line as _market_ref_line, method_note as _market_ref_note
+from .market_reference import divergence_lines as _market_divergence_lines
 
 
 ABILITY_LABEL = "綜合戰力分"
@@ -214,6 +215,9 @@ def render_race_markdown(logic_data: dict, meeting_dir: Path | None = None) -> s
     # 市場參考（D1）：喺排名**已經定咗之後**先計，只讀唔寫 —— 唔會郁到
     # python_auto、_data 或者 CSV。`meeting_dir` 用嚟搵 odds_history.json 最早快照。
     market_ref = build_market_reference(horses, meeting_dir, race.get("race_number"))
+    top_pick = (verdict.get("top4") or [{}])[0]
+    divergence = _market_divergence_lines(market_ref, top_pick.get("horse_number"),
+                                          top_pick.get("horse_name", "")) if top_pick else []
     encoded_registry = base64.b64encode(json.dumps(registry_snapshot(), sort_keys=True,
         separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode()).decode("ascii")
     time_metadata = {"schema": "au/full-time-v1", "race": race.get("full_time_speed"), "horses": {
@@ -224,7 +228,7 @@ def render_race_markdown(logic_data: dict, meeting_dir: Path | None = None) -> s
     lines = [
         f"<!-- wc-au-full-time:v1:{encoded_time} -->",
         f"<!-- wc-au-dimensions:v1:{encoded_registry} -->",
-        _panorama(race, verdict, horses),
+        _panorama(race, verdict, horses, divergence),
         "",
         "## [第二部分] 🛡️ 戰馬矩陣剖析",
         "",
@@ -234,7 +238,7 @@ def render_race_markdown(logic_data: dict, meeting_dir: Path | None = None) -> s
     for horse_num, horse in _horses_by_rank(horses):
         lines.extend(_render_horse_section(horse_num, horse, horse["python_auto"],
                                            market_line=_market_ref_line(market_ref, horse_num)))
-    lines.extend(_render_verdict(verdict, horses, race))
+    lines.extend(_render_verdict(verdict, horses, race, divergence))
     return "\n".join(lines).strip() + "\n"
 
 
@@ -398,7 +402,7 @@ def _decision_trace_text(verdict) -> str:
     return "矩陣＋已聲明 overlay 排名次序一致（冇隱藏後置 rerank）"
 
 
-def _panorama(race, verdict, horses):
+def _panorama(race, verdict, horses, divergence=()):
     race_number = race.get("race_number", "")
     distance = race.get("distance", "")
     race_class = race.get("race_class", "")
@@ -419,6 +423,7 @@ def _panorama(race, verdict, horses):
         f"| 排名審計 | {_decision_trace_text(verdict)} |",
         "",
         *_going_box_advisory(race),
+        *divergence,
         "**🏃 形勢推演**",
         "",
         *_shape_overview_lines(speed_map, horses),
@@ -972,11 +977,12 @@ def _au_formline_table_lines(auto):
     return lines
 
 
-def _render_verdict(verdict, horses, race=None):
+def _render_verdict(verdict, horses, race=None, divergence=()):
     lines = [
         "## [第三部分] 🏆 Top 4 位置精選",
         "",
         *(_going_box_advisory(race) if race else []),
+        *divergence,
     ]
     labels = ("🥇", "🥈", "🥉", "🏅")
     text_labels = ("第一選", "第二選", "第三選", "第四選")
