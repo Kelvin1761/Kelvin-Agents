@@ -101,6 +101,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       renderDataReadoutItem,
       renderSubScoreDetails,
       sanitizeBattlefieldOverviewText,
+      splitBattlefieldRacePattern,
       renderBattlefieldOverview,
       parseBattlefieldOverview,
       speedMapSvgFromTable,
@@ -2058,4 +2059,11 @@ test("NBA ROI starts on October 25 and continues across model versions",()=>{
  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[row('legacy','2026-10-24','v0'),row('first','2026-10-25','v1'),row('next','2026-10-26','v2')]}}}}});
  const rows=api.nbaRecords();assert.equal(rows.length,2);assert.equal(api.nbaStats(rows).profit,3);
  api.setSportsTabForTest('archive');assert.match(api.renderSportsWorkspace('nba'),/2026-10-25 起；模型升級不會清零/);
+});
+
+test("race pattern labels the HKJC track segment as 場地", () => {
+  const { splitBattlefieldRacePattern } = loadTemplateFunctions();
+  const parts = splitBattlefieldRacePattern("第四班 / 1200m / 沙田全天候跑道 / HKJC");
+  assert.equal(parts.map(part => part.label).join("/"), "班次/路程/場地/賽區");
+  assert.equal(parts[2].value, "沙田全天候跑道");
 });

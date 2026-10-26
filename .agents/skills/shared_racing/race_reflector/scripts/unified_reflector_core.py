@@ -685,27 +685,35 @@ def derive_improvement_theme(row: dict[str, Any]) -> tuple[str, str]:
     # Improvement themes must come from the weakest leaves.  The old
     # descending sort selected the horse's strengths and then described those
     # strengths as the reason it was missed.
-    keys = [name for name, _score in ranked[:4]]
-    if any(name in keys for name in ("class_score", "distance_score", "weight_score",
-                                     "formline_score", "rating_score")):
-        return "class_distance", "加強班次 / 路程 / form line interpretation"
-    if any(name in keys for name in ("draw_score", "pace_map_score", "track_score", "track_going_score")):
-        return "draw_pace", "細化檔位 / 步速 / 場地偏差 context"
-    if any(name in keys for name in ("trainer_score", "jockey_score", "jockey_horse_fit_score")):
-        return "jockey_trainer", "加強騎師 / 練馬師 / 人馬配搭權重"
     # 2026-09-04：呢條梯本身都係手抄嘅，`pace_figure_score`（11.49% 權重）、
     # `preparation_score`（試閘備戰維度）、`performance_quality_score`、
     # `rating_score` 四個都冇喺任何一格，所以佢哋做主導 factor 嗰陣一律跌落
     # "general"（「微調綜合戰力分矩陣權重」）—— 即係最無用嗰個建議。
-    if any(name in keys for name in ("sectional_score", "speed_score", "trial_score",
-                                     "speed_rating_score", "pace_figure_score",
-                                     "preparation_score", "trial_speed_score")):
-        return "sectional", "加強段速 / 試閘 / 速度訊號"
-    if any(name in keys for name in ("consistency_score", "form_score", "health_score",
-                                     "risk_score", "performance_quality_score",
-                                     "confidence_score", "form_quality_score")):
-        return "stability", "改善近況 / 穩定性 / 風險寬恕"
+    # 2026-10-26：舊版喺最弱四個 leaf 入面按「主題次序」揀，班次／路程排第一，
+    # 而 weight_score／distance_score 差唔多每匹馬都喺最弱四個之內，所以 10-25
+    # 19 匹漏馬有 15 匹都係「加強班次 / 路程」。而家由最弱嗰個有主題嘅 leaf 決定。
+    for name, _score in ranked:
+        theme = IMPROVEMENT_THEMES_BY_LEAF.get(name)
+        if theme:
+            return theme
     return "general", "微調綜合戰力分矩陣權重"
+
+
+_THEME_LEAVES = (
+    (("class_score", "distance_score", "weight_score", "formline_score", "rating_score"),
+     ("class_distance", "加強班次 / 路程 / form line interpretation")),
+    (("draw_score", "pace_map_score", "track_score", "track_going_score"),
+     ("draw_pace", "細化檔位 / 步速 / 場地偏差 context")),
+    (("trainer_score", "jockey_score", "jockey_horse_fit_score"),
+     ("jockey_trainer", "加強騎師 / 練馬師 / 人馬配搭權重")),
+    (("sectional_score", "speed_score", "trial_score", "speed_rating_score", "pace_figure_score",
+      "preparation_score", "trial_speed_score"),
+     ("sectional", "加強段速 / 試閘 / 速度訊號")),
+    (("consistency_score", "form_score", "health_score", "risk_score", "performance_quality_score",
+      "confidence_score", "form_quality_score"),
+     ("stability", "改善近況 / 穩定性 / 風險寬恕")),
+)
+IMPROVEMENT_THEMES_BY_LEAF = {leaf: theme for leaves, theme in _THEME_LEAVES for leaf in leaves}
 
 
 def extract_incident_signals(text: str) -> list[str]:
@@ -778,17 +786,21 @@ def analyse_missed_horse(
     incident = incident_excerpt(incident_text, actual_row["horse_name"], actual_row["horse_no"])
     incident_signals = extract_incident_signals(incident)
 
-    if incident_signals:
-        verdict = "可寬恕 / 需保留"
-        reason = f"官方 / 可用備註見到 {', '.join(incident_signals)} 訊號，呢類偏向賽事事故，未必應直接當成純模型失誤。"
-    elif candidate["derived_rank"] <= 6 and (gap is None or gap <= 3.0):
+    # 呢度嘅馬全部係「實際跑入前三但模型冇揀」。佢受阻都照樣上名，代表模型低估得
+    # 更多，唔係寬恕理由 —— 舊版將佢標做「可寬恕」，10-25 沙田 19 匹漏馬有 6 匹嘅
+    # 模型失誤就咁被遮咗。寬恕只適用於模型揀咗但跑唔入前三嘅馬（見
+    # analyse_race_incidents）。
+    if candidate["derived_rank"] <= 6 and (gap is None or gap <= 3.0):
         verdict = "模型有訊號但低估"
         reason = "其實模型已經將呢匹馬放喺前列邊緣，只係未能推入 Top 3，較似權重排序問題多過完全 miss。"
     else:
         verdict = "模型失誤"
         reason = "現有綜合戰力分未有足夠把呢匹馬推上前列，較似矩陣權重或 context factor 漏捉。"
+    if incident_signals:
+        verdict += "（受阻仍上名）"
+        reason += f" 官方報告見到 {', '.join(incident_signals)}，但佢照樣跑入前三 —— 唔係寬恕理由，反而代表低估得更多。"
 
-    evidence = "有" if strengths else "有限"
+    evidence = "N/A" if gap is None else f"{gap:.2f} 分"
     hidden_signals = " / ".join(strengths[:2]) if strengths else "未見明顯隱藏訊號"
     weakness_text = " / ".join(weaknesses[:2]) if weaknesses else "未見清晰短板"
 
@@ -830,18 +842,28 @@ def analyse_race_incidents(
             "signals": [],
         }
 
-    relevant_names = [row["horse_name"] for row in model_top3 + actual_top3]
+    # 寬恕只可以用喺「模型揀咗但跑唔入前三」嘅馬。舊版將實際前三嘅事故都計埋，
+    # 仲會喺搵唔到逐駒段落時用成份報告，結果幾乎場場（連 Gold 場）都係「可寬恕」。
+    placed = {row["horse_no"] for row in actual_top3}
+    failed_picks = [row for row in model_top3 if row.get("horse_no") not in placed]
+    if not failed_picks:
+        return {
+            "classification": "不適用",
+            "summary": "模型頭三全部跑入前三，冇失手需要寬恕。",
+            "signals": [],
+        }
     matched_excerpts = [
         incident_excerpt(incident_text, row["horse_name"], row.get("horse_no"))
-        for row in model_top3 + actual_top3
+        for row in failed_picks
         if row.get("horse_name")
     ]
     matched_excerpts = [excerpt for excerpt in matched_excerpts if excerpt]
-    signal_counter = Counter(extract_incident_signals(" ".join(matched_excerpts) or incident_text))
+    signal_counter = Counter(extract_incident_signals(" ".join(matched_excerpts)))
+    failed_text = "、".join(f"#{row['horse_no']} {row['horse_name']}" for row in failed_picks)
     if not signal_counter:
         return {
             "classification": "無明顯事故",
-            "summary": "有 incident text，但未見明確干擾 / 慢閘 / 外疊 / 獸醫等可直接歸因訊號。",
+            "summary": f"跑唔入前三嘅模型頭三（{failed_text}）未見干擾 / 慢閘 / 外疊 / 獸醫等可歸因訊號。",
             "signals": [],
             "excerpt": matched_excerpts[:2],
         }
@@ -856,7 +878,7 @@ def analyse_race_incidents(
     }
     return {
         "classification": mapping.get(top_signal, "可寬恕事故"),
-        "summary": f"可用 incident notes 指向 {top_signal}，今場部份失手可視為具備寬恕基礎。",
+        "summary": f"跑唔入前三嘅模型頭三（{failed_text}）有 {top_signal} 記錄，呢部份失手具備寬恕基礎。",
         "signals": list(signal_counter.elements()),
         "excerpt": matched_excerpts[:2],
     }
@@ -1259,6 +1281,15 @@ def summarize_meeting_failures(races: list[RacePerformance]) -> list[str]:
     return lines
 
 
+def race_verdict(race: RacePerformance) -> str:
+    if race.label in {"Gold", "Good"}:
+        return "達標"
+    classification = race.incident_analysis.get("classification")
+    if classification in {"無明顯事故", "資料不足", "不適用"}:
+        return "偏向 clean model failure" if race.label in {"Miss", "1 Hit"} else "部份命中，失手冇事故可歸因"
+    return "失手有部份可歸因於模型首選嘅賽事事故"
+
+
 def render_markdown_report(
     platform: str,
     meeting_dir: Path,
@@ -1341,14 +1372,11 @@ def render_markdown_report(
                     f" 短板 `{missed.get('weaknesses', 'N/A')}`。"
                 )
                 lines.append(f"  - 原因: {missed['reason']}")
-                lines.append(f"  - 是否有足夠歷史證據: {missed.get('evidence_level', '有限')}")
+                lines.append(f"  - 落後模型第三名: {missed.get('evidence_level', 'N/A')}")
                 lines.append(f"  - 建議測試方向: {missed.get('suggestion_text', 'N/A')}")
                 if missed.get("incident_excerpt"):
                     lines.append(f"  - Incident / notes excerpt: {missed['incident_excerpt']}")
-        race_clean_fail = race.incident_analysis.get("classification") in {"無明顯事故", "資料不足"}
-        lines.append(
-            f"- Race verdict: {'偏向 clean model failure' if race_clean_fail and race.label in {'Miss', '1 Hit'} else '帶有可寬恕元素或非純模型錯誤'}"
-        )
+        lines.append(f"- Race verdict: {race_verdict(race)}")
 
     lines.extend(attribution_lines or [])
     lines.extend(["", "## Backtested Improvement Suggestions"])
@@ -1461,6 +1489,44 @@ def _hkjc_record_rail_bias(meeting_dir: Path) -> None:
         print(f"⚠️ Rail-bias ledger 失敗：{type(exc).__name__}: {exc}")
 
 
+def write_reflected_evaluation_summary(meeting_dir: Path, races: list[RacePerformance],
+                                      evaluated_version: str | None) -> Path:
+    """Replace the pre-race `evaluation_summary.json` with the reflector's labels.
+
+    The HKJC auto orchestrator writes this file before the races, so it used to
+    sit at `evaluated_race_count: 0` with every KPI at 0 next to a reflector
+    report saying Gold 3 (2026-10-25 Sha Tin).  Pre-race fields are kept; the
+    KPIs become the canonical exclusive labels (Gold = capture-at-4).
+    """
+    path = meeting_dir / "evaluation_summary.json"
+    try:
+        summary = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    except (OSError, json.JSONDecodeError):
+        summary = {}
+    distribution = summarize_label_distribution(races)
+    summary.update({
+        "status": "reflected",
+        "evaluated_version": evaluated_version,
+        "evaluated_race_count": len(races),
+        "kpi_definition": "eval_metrics.exclusive_label（Gold = 實際頭三全部喺模型頭四）",
+        "kpis": {
+            "gold": distribution["Gold"],
+            "good": distribution["Good"],
+            "pass": distribution["Pass"],
+            "one_hit": distribution["1 Hit"],
+            "miss": distribution["Miss"],
+            "champion": sum(
+                1 for race in races
+                if race.model_top3 and race.actual_top3
+                and race.model_top3[0]["horse_no"] == race.actual_top3[0]["horse_no"]
+            ),
+        },
+        "race_labels": {str(race.race_num): race.label for race in races},
+    })
+    path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
 def run_unified_reflector(
     platform: str,
     meeting_ref: str | None = None,
@@ -1534,6 +1600,8 @@ def run_unified_reflector(
         encoding="utf-8",
     )
     print(f"✅ Unified reflector report written: {final_report_path}")
+    if platform == "hkjc":
+        write_reflected_evaluation_summary(resolved_meeting_dir, races, evaluated_version)
 
     return build_json_summary(
         platform,
