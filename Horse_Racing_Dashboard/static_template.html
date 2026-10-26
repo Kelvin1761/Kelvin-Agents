@@ -6023,6 +6023,20 @@ function renderBattlefieldCard(bfText, paceText) {
 // ═══════════════════════════════════════════════
 // Single Analyst View
 // ═══════════════════════════════════════════════
+// 首選早盤分歧：顏色跟級別。上名率係引擎 DIVERGENCE_TIERS 嘅歷史量度，喺報告全文有。
+const MARKET_DIVERGENCE_TONE = {
+  '一致': ['#ECFDF5', '#047857'], '輕微分歧': ['#F8FAFC', '#475569'],
+  '分歧': ['#FFFBEB', '#B45309'], '大分歧': ['#FEF2F2', '#B91C1C'],
+};
+function renderMarketDivergenceBadge(d) {
+  if (!d || !d.level) return '';
+  const [bg, fg] = MARKET_DIVERGENCE_TONE[d.level] || MARKET_DIVERGENCE_TONE['輕微分歧'];
+  return `<div class="market-divergence" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 12px;padding:8px 12px;border-radius:10px;background:${bg};color:${fg};font-size:.85rem;max-width:900px">`
+    + `<strong>${esc(d.icon || '')} 市場分歧：${esc(d.level)}</strong>`
+    + `<span>首選 #${esc(String(d.top_pick))} 早盤市場第 ${esc(String(d.market_rank))}/${esc(String(d.priced))}</span>`
+    + `<span style="opacity:.75">· 純顯示，唔入評分</span></div>`;
+}
+
 function renderSingleAnalystView(analysis, analystName) {
   if (!analysis) return '';
   const picks = analysis.top_picks || [];
@@ -6044,6 +6058,9 @@ function renderSingleAnalystView(analysis, analystName) {
   let html = '';
   // Monte Carlo simulation panel
   html += renderMonteCarloPanel(analysis);
+
+  // AU 首選早盤分歧（純顯示信心提示；引擎 market_reference.divergence_lines，唔入評分）
+  html += renderMarketDivergenceBadge(analysis.market_divergence);
 
   // Horse cards
   html += `<h2 style="font-size:1rem;font-weight:700;margin-bottom:12px">📋 全場馬匹分析</h2>`;
