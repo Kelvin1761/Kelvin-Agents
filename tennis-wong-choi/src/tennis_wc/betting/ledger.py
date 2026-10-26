@@ -2345,8 +2345,14 @@ def _resolve_pending_from_event_provider(match_date: str) -> dict:
     if not callable(fetch_event_result):
         return {"event_id_tracked": event_id_tracked, "event_result_imported": 0, "event_result_errors": []}
 
+    from tennis_wc.database.market_captures import bookmaker_event_for_match
+
+    with get_connection() as conn:
+        event_refs = {row['id']: bookmaker_event_for_match(conn, row['id'], provider.provider_name)
+                      for row in matches}
+    event_id_tracked = sum(bool(ref) for ref in event_refs.values())
     for match in matches:
-        event_id = match["market_event_id"]
+        event_id = event_refs[match['id']]
         if not event_id:
             continue
         try:

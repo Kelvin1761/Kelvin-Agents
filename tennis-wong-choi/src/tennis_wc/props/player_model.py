@@ -40,6 +40,7 @@ class CountProfile:
     n: int
     mean: float
     values: tuple[float, ...]
+    history_ids: tuple[int,...] = ()
 
 
 @dataclass
@@ -179,7 +180,7 @@ def count_profile(
     params.append(last_n)
     rows = conn.execute(
         f"""
-        SELECT {column} AS value
+        SELECT id,{column} AS value
         FROM player_match_history
         WHERE player_id = ? AND match_date < ? AND {column} IS NOT NULL
           {surface_sql}
@@ -194,7 +195,7 @@ def count_profile(
             conn, player_id, as_of_date, column, surface=None, last_n=last_n
         )
     mean = sum(values) / len(values) if values else 0.0
-    return CountProfile(player_id, len(values), round(mean, 3), values)
+    return CountProfile(player_id, len(values), round(mean, 3), values,tuple(int(r['id']) for r in rows))
 
 
 def _empirical_over(line: float, values: tuple[float, ...]) -> float:

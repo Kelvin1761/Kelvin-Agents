@@ -33,6 +33,7 @@ def calculate_big_match_stats(
     surface: str | None,
     as_of_date: date,
     time_window: str,
+    *, persist: bool = True,
 ) -> dict:
     start = "0001-01-01"
     if time_window == "LAST_52_WEEKS":
@@ -67,6 +68,9 @@ def calculate_big_match_stats(
         "sample_size": matches,
         "warnings": ["low_sample"] if matches < 10 else [],
     }
+    if not persist:
+        return result
+
     now = utc_now()
     with get_connection() as conn:
         conn.execute(

@@ -62,6 +62,7 @@ def calculate_tournament_level_stats(
     surface: str | None,
     as_of_date: date,
     time_window: str,
+    *, persist: bool = True,
 ) -> dict:
     """
     Calculate player performance in tournament level before the match date.
@@ -92,6 +93,9 @@ def calculate_tournament_level_stats(
         summary["warnings"].append("surface_sample_below_10_blended_all_surface")
     if summary["sample_size"] < 10:
         summary["warnings"].append("low_sample")
+
+    if not persist:
+        return summary
 
     now = utc_now()
     with get_connection() as conn:

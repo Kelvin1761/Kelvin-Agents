@@ -13,6 +13,7 @@ from tennis_wc.betting.segment_risk import apply_segment_risk as _apply_segment_
 from tennis_wc.betting.segment_risk import segment_risk as _segment_risk
 from tennis_wc.betting.staking import kelly_stake_units
 from tennis_wc.config import get_settings
+from tennis_wc.database.market_captures import current_market_clause
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.common import utc_now
 from tennis_wc.features.market import implied_probability
@@ -256,11 +257,11 @@ def source_status_for_date(match_date: str) -> dict:
             """
         ).fetchone()
         market_count = conn.execute(
-            """
+            f"""
             SELECT COUNT(*) AS rows, COUNT(DISTINCT market_key) AS markets
             FROM market_odds_snapshots mo
             JOIN matches m ON m.id = mo.match_id
-            WHERE m.match_date = ?
+            WHERE m.match_date = ? AND {current_market_clause(conn)}
               AND mo.id IN (
                 SELECT MAX(mo2.id)
                 FROM market_odds_snapshots mo2
@@ -310,16 +311,21 @@ def source_status_for_date(match_date: str) -> dict:
 
 
 def clear_pipeline_source_errors(match_date: str) -> None:
+    """Start a new run without erasing earlier failure observations."""
+    from tennis_wc.ingestion.raw_response_store import store_raw_response
+    store_raw_response('tennis_wc_pipeline', '/run-daily/start', {'date': match_date},
+                       {'mode': 'started', 'errors': []}, 200,
+                       'run_daily_source_errors', match_date)
+
+
+def latest_prop_pricing_error(match_date: str) -> str | None:
     with get_connection() as conn:
-        conn.execute(
-            """
-            DELETE FROM raw_api_responses
-            WHERE provider_name = 'tennis_wc_pipeline'
-              AND entity_type = 'run_daily_source_errors'
-              AND entity_external_id = ?
-            """,
-            (match_date,),
-        )
+        row = conn.execute("""SELECT response_json FROM raw_api_responses
+            WHERE provider_name='tennis_wc_pipeline' AND entity_type='prop_pricing_status'
+              AND entity_external_id=? ORDER BY id DESC LIMIT 1""", (match_date,)).fetchone()
+    if row is None:
+        return 'missing_prop_pricing_status'
+    return json.loads(row['response_json']).get('error')
 
 
 def _ranking_source_note(rows: dict) -> str:
@@ -525,7 +531,7 @@ def _ensure_market_predictions_table() -> None:
 def _market_odds_base_rows(match_date: str) -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             WITH BestLevels AS (
                 SELECT *,
                        ROW_NUMBER() OVER (
@@ -547,7 +553,7 @@ def _market_odds_base_rows(match_date: str) -> list[dict]:
             LEFT JOIN BestLevels tl ON tl.tournament_id = m.tournament_id AND tl.tour = m.tour AND tl.rn = 1
             JOIN players p1 ON p1.id = m.player_a_id
             JOIN players p2 ON p2.id = m.player_b_id
-            WHERE m.match_date = ?
+            WHERE m.match_date = ? AND {current_market_clause(conn)}
               AND mo.id IN (
                 SELECT MAX(mo2.id)
                 FROM market_odds_snapshots mo2
@@ -565,7 +571,8 @@ def _market_odds_base_rows(match_date: str) -> list[dict]:
 def _group_market_rows(rows: list[dict]) -> dict[tuple, list[dict]]:
     grouped: dict[tuple, list[dict]] = {}
     for row in rows:
-        key = (row["match_id"], row["market_key"], row["market_name"], row["line"])
+        key = (row["match_id"], row["market_key"], row["market_name"], row["line"],
+               str(row.get("bookmaker") or "").lower(),row.get("source_provider"))
         grouped.setdefault(key, []).append(row)
     return grouped
 
@@ -2519,30 +2526,43 @@ def _prop_source_quality(family: str, carrier, fallback):
 
 
 def _ace_prop_data(match_date: str) -> dict:
-    """Price the day's props ONCE and share the result between the merged daily
-    report (🎯 recommendations + reference board) and the legacy banker report.
-    Returns {'error': ...} instead of raising — the prop engine is experimental
-    and must never break the report."""
+    """Render failures visibly and retain a status for the readiness gate."""
+    conn = None
     try:
-        from tennis_wc.props.daily import price_ace_props_for_date
-        from tennis_wc.props.settlement import (
-            settle_props, prop_roi_report, model_vs_market_scorecard,
-        )
-        from tennis_wc.props import calibration, strategy
         conn = get_connection()
-        settle_props(conn)  # grade anything now settleable before we review
-        boards = price_ace_props_for_date(conn, match_date, log=True)
-        profiles = [
-            calibration.family_reliability(conn, family, as_of_date=match_date)
-            for family in sorted(strategy.SUPPORTED_FAMILIES)
-        ]
-        ev_note = "逐 family、只用賽前舊結果估權重：" + "；".join(
-            f"{profile.family} {profile.model_weight:.0%}(n={profile.settled})"
-            for profile in profiles
-        )
+        data = _build_ace_prop_data(match_date, conn)
+        conn.commit()
     except Exception as exc:
-        return {"error": str(exc), "boards": [], "value_legs": [], "combos": [],
+        if conn is not None:
+            conn.rollback()
+        data = {"error": str(exc), "boards": [], "value_legs": [], "combos": [],
                 "scorecard": None, "roi": None, "ev_note": None, "strategy": None}
+    finally:
+        if conn is not None:
+            conn.close()
+    from tennis_wc.ingestion.raw_response_store import store_raw_response
+    store_raw_response('tennis_wc_pipeline', '/prop-pricing', {'date': match_date},
+                       {'error': data.get('error'), 'boards': len(data.get('boards', []))},
+                       500 if data.get('error') else 200, 'prop_pricing_status', match_date)
+    return data
+
+
+def _build_ace_prop_data(match_date: str, conn) -> dict:
+    from tennis_wc.props.daily import price_ace_props_for_date
+    from tennis_wc.props.settlement import (
+        settle_props, prop_roi_report, model_vs_market_scorecard,
+    )
+    from tennis_wc.props import calibration, strategy
+    settle_props(conn)  # grade anything now settleable before we review
+    boards = price_ace_props_for_date(conn, match_date, log=True)
+    profiles = [
+        calibration.family_reliability(conn, family, as_of_date=match_date)
+        for family in sorted(strategy.SUPPORTED_FAMILIES)
+    ]
+    ev_note = "逐 family、只用賽前舊結果估權重：" + "；".join(
+        f"{profile.family} {profile.model_weight:.0%}(n={profile.settled})"
+        for profile in profiles
+    )
     value_legs: list[dict] = []
     # A pick you cannot place is not a pick. Until 2026-08-16 nothing in the
     # report or betting layer looked at `start_time_utc` at all, so 35.9% of
@@ -2786,17 +2806,14 @@ def _ace_prop_data(match_date: str) -> dict:
         # fixtures carry one, so an absent value must stay usable rather than
         # being read as "starts at the epoch" and silently dropped.
         leg["start_time_utc"] = start_time_by_match.get(int(leg["match_id"]))
-    try:
-        scorecard = model_vs_market_scorecard(conn, as_of_date=match_date)
-        roi = prop_roi_report(conn, as_of_date=match_date)
-        strategy_state = strategy.recommendation_gate(scorecard, roi)
-        for leg in value_legs:
-            leg["hit_probability"] = leg.get("prob")
-            leg["confidence_score"] = strategy.confidence_score(
-                leg, strategy_state
-            )
-    except Exception:
-        scorecard = roi = strategy_state = None
+    scorecard = model_vs_market_scorecard(conn, as_of_date=match_date)
+    roi = prop_roi_report(conn, as_of_date=match_date)
+    strategy_state = strategy.recommendation_gate(scorecard, roi)
+    for leg in value_legs:
+        leg["hit_probability"] = leg.get("prob")
+        leg["confidence_score"] = strategy.confidence_score(
+            leg, strategy_state
+        )
     return {"error": None, "boards": boards, "value_legs": value_legs,
             "combos": _prop_combos(value_legs), "scorecard": scorecard,
             "roi": roi, "ev_note": ev_note, "strategy": strategy_state}
@@ -4483,7 +4500,7 @@ def market_odds_for_date(match_date: str) -> list[dict]:
     _ensure_market_predictions_table()
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             WITH BestLevels AS (
                 SELECT *,
                        ROW_NUMBER() OVER (
@@ -4524,7 +4541,7 @@ def market_odds_for_date(match_date: str) -> list[dict]:
                     GROUP BY match_id
                 ) latest ON latest.max_prediction_id = p1.id
             ) lp ON lp.match_id = m.id
-            WHERE m.match_date = ?
+            WHERE m.match_date = ? AND {current_market_clause(conn)}
               AND mo.id IN (
                 SELECT MAX(mo2.id)
                 FROM market_odds_snapshots mo2

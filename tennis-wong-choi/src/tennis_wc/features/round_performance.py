@@ -42,6 +42,7 @@ def calculate_round_stats(
     surface: str | None,
     as_of_date: date,
     time_window: str,
+    *, persist: bool = True,
 ) -> dict:
     """
     Calculate round-specific player performance.
@@ -91,6 +92,9 @@ def calculate_round_stats(
         "sample_size": matches,
         "warnings": ["low_sample"] if matches < 10 else [],
     }
+
+    if not persist:
+        return result
 
     now = utc_now()
     with get_connection() as conn:

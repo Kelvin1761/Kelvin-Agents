@@ -145,6 +145,8 @@ class AceProfile:
     service_games_mean: float | None = None
     ace_rate: float | None = None
     conceded_ace_rate: float | None = None
+    history_ids: tuple[int,...] = ()
+    conceded_history_ids: tuple[int,...] = ()
 
 
 def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | None,
@@ -158,7 +160,7 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
     guard = guard_params(as_of_date, start_time)
     rows = conn.execute(
         f"""
-        SELECT h.match_date, h.surface, h.ace_count, h.service_games_played
+        SELECT h.id,h.match_date, h.surface, h.ace_count, h.service_games_played
         FROM player_match_history h
         WHERE h.player_id = ? AND h.ace_count IS NOT NULL AND h.match_date < ?
           {guard_clause("h")}
@@ -206,7 +208,7 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
     # aces this player conceded = opponent's aces in the player's recent matches
     conc_rows = conn.execute(
         f"""
-        SELECT o.ace_count AS opp_aces,
+        SELECT o.id,o.ace_count AS opp_aces,
                o.service_games_played AS opp_service_games
         FROM player_match_history p
         JOIN player_match_history o
@@ -249,6 +251,8 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
         ace_rate=round(ace_rate, 6) if ace_rate is not None else None,
         conceded_ace_rate=(round(conceded_rate, 6)
                            if conceded_rate is not None else None),
+        history_ids=tuple(int(r['id']) for r in rows),
+        conceded_history_ids=tuple(int(r['id']) for r in conc_rows),
     )
 
 

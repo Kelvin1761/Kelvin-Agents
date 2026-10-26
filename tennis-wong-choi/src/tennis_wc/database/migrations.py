@@ -596,6 +596,9 @@ def _ensure_compat_columns(conn) -> None:
     }.items():
         if prop_cols and name not in prop_cols:
             conn.execute(ddl)
+    for name in ('pricing_evidence_json','priced_at'):
+        if prop_cols and name not in prop_cols:
+            conn.execute(f'ALTER TABLE prop_tracker ADD COLUMN {name} TEXT')
     if prop_cols and "is_point_in_time" not in prop_cols:
         # 2026-08-26: the track record was not a track record. A single run on
         # 2026-08-10 wrote 9,594 of the 13,658 rows, covering match dates from
@@ -626,6 +629,9 @@ def _ensure_compat_columns(conn) -> None:
             "ON prop_tracker(is_point_in_time, result_status)"
         )
     ensure_close_audit_schema(conn)
+    from tennis_wc.database.market_captures import ensure_market_captures
+
+    ensure_market_captures(conn)
 
 
 def ensure_close_audit_schema(conn) -> None:

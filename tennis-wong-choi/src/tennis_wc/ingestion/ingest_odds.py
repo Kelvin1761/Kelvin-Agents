@@ -59,30 +59,31 @@ def ingest_odds(date: str) -> int:
         with get_connection() as conn:
             a_odds, b_odds, a_open, b_open = _oriented_positional_odds(
                 conn, match_id, row)
-            conn.execute(
-                """
-                INSERT INTO odds_snapshots (
-                    event_id, match_id, bookmaker, market, player_a_odds, player_b_odds,
-                    player_a_open_odds, player_b_open_odds, source_provider, raw_response_id,
-                    fetched_at, created_at
+            if a_odds is not None and b_odds is not None:
+                conn.execute(
+                    """
+                    INSERT INTO odds_snapshots (
+                        event_id, match_id, bookmaker, market, player_a_odds, player_b_odds,
+                        player_a_open_odds, player_b_open_odds, source_provider, raw_response_id,
+                        fetched_at, created_at
+                    )
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        row["event_id"],
+                        match_id,
+                        row["bookmaker"],
+                        row["market"],
+                        a_odds,
+                        b_odds,
+                        a_open,
+                        b_open,
+                        provider.provider_name,
+                        raw_id,
+                        row.get("timestamp", now),
+                        now,
+                    ),
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    row["event_id"],
-                    match_id,
-                    row["bookmaker"],
-                    row["market"],
-                    a_odds,
-                    b_odds,
-                    a_open,
-                    b_open,
-                    provider.provider_name,
-                    raw_id,
-                    row.get("timestamp", now),
-                    now,
-                ),
-            )
             _insert_market_odds(conn, row, match_id, provider.provider_name, raw_id, now)
             # The fixture's players can have been rewritten by the upsert above
             # since these sides were last written; re-derive rather than trust.
@@ -94,6 +95,9 @@ def ingest_odds(date: str) -> int:
 
 def _insert_market_odds(conn, row: dict, match_id: int | None, provider_name: str, raw_id: int, now: str,
                         *, table: str = "market_odds_snapshots", fetched_at: str | None = None) -> None:
+    from tennis_wc.database.market_captures import record_market_capture
+
+    record_market_capture(conn,match_id,row,provider_name,raw_id,now,table)
     # selection_side must be oriented to the LINKED match row's player order:
     # the scrape can list players in the opposite order to the fixture-created
     # match, and a flipped side mirror-flips every downstream factor readout.
@@ -217,6 +221,15 @@ def selection_side_for(
     A name that matches both players, or neither, returns None on purpose. A
     guess here mirror-flips the price, which is worse than declining to say.
     """
+    from tennis_wc.ingestion.name_matching import normalise_player_name
+
+    exact=normalise_player_name(selection_name)
+    a,b=normalise_player_name(player_a_name),normalise_player_name(player_b_name)
+    if exact and a!=b:
+        if exact==a:
+            return 'player_a'
+        if exact==b:
+            return 'player_b'
     selection = _name_tokens(selection_name)
     if not selection:
         return None
@@ -599,30 +612,31 @@ def ingest_event_odds(event_id: str, match_id: int | None = None, *, preclose: b
             ).fetchone()
             match_id = int(match["id"]) if match else None
         a_odds, b_odds, a_open, b_open = _oriented_positional_odds(conn, match_id, row)
-        conn.execute(
-            """
-            INSERT INTO odds_snapshots (
-                event_id, match_id, bookmaker, market, player_a_odds, player_b_odds,
-                player_a_open_odds, player_b_open_odds, source_provider, raw_response_id,
-                fetched_at, created_at
+        if a_odds is not None and b_odds is not None:
+            conn.execute(
+                """
+                INSERT INTO odds_snapshots (
+                    event_id, match_id, bookmaker, market, player_a_odds, player_b_odds,
+                    player_a_open_odds, player_b_open_odds, source_provider, raw_response_id,
+                    fetched_at, created_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["event_id"],
+                    match_id,
+                    row["bookmaker"],
+                    row["market"],
+                    a_odds,
+                    b_odds,
+                    a_open,
+                    b_open,
+                    provider.provider_name,
+                    raw_id,
+                    row.get("timestamp") or now,
+                    now,
+                ),
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                row["event_id"],
-                match_id,
-                row["bookmaker"],
-                row["market"],
-                a_odds,
-                b_odds,
-                a_open,
-                b_open,
-                provider.provider_name,
-                raw_id,
-                row.get("timestamp") or now,
-                now,
-            ),
-        )
         _insert_market_odds(conn, row, match_id, provider.provider_name, raw_id, now)
         if match_id is not None:
             resync_selection_sides(conn, match_id)
