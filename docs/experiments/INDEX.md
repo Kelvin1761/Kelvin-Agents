@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261027-03](EXP-20261027-03-hkjc-awt-aptitude-pit-rebuild.md) | 2026-10-27 | HKJC | 沙田 AWT 適性：用 production parser＋profile cache 由存檔賽績重建 PIT 證據（忠實度 32/32、leakage 0），v2 路程殘差／場地殘差 w0.08 cap4 | **UNRESOLVABLE（唔上線）**：32 場 AWT 頭四只變 1／7 場；兩個訊號場內 AUC 0.518／0.470（模型 0.671）—— 適性分本身冇料。事後發現「冇 AWT 經驗」分層差 +12.7pp [+5.6,+21.1]（in-sample），由 10-28 起 forward 登記，≥30 場先判 |
 | [EXP-20261026-03](EXP-20261026-03-tennis-model-audit.md) | 2026-10-26 | Tennis | 全面資料／模型審計及既有 frozen Elo shadow 前向檢查 | **SHADOW／NEEDS MORE TESTING**：349 場相對現役 ΔLL −0.00792，仍輸市場；PIT paper ROI −15.93%。四類離線工具修正留審閱分支，WTA stale／重複 history／衝突結果／BO5 等另列；無模型 promotion。 |
 | [EXP-20261025-07](EXP-20261025-07-nba-prop-forward-training-evidence.md) | 2026-10-25 | NBA | 新機會量與80/80逐腿賽前輸入、C baseline及獨立Final targets接線 | **ENGINEERING／FORWARD PENDING**：native snapshot自動留來源、日期、GP與缺失；最新pretip export不回填舊features，舊ledger合格新資料0行；不fit、不改C／EV／selector。 |
 | [EXP-20261025-05](EXP-20261025-05-nba-prop-opportunity-intake.md) | 2026-10-25 | NBA | 各prop專屬機會量來源與選中腿校準監測 | **DATA CONTRACT／MONITORING**：7未開賽場175 provider player-games，7來源成功、缺值明列；補opponent 3PA/3PM及picked監測盲點，不fit、不改C／EV。 |
