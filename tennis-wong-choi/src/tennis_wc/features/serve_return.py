@@ -109,6 +109,12 @@ def serve_return_profile(
     if not surface:
         used_surface = None
 
+    return profile_from_rows(player_id, as_of_date, used_surface, rows)
+
+
+def profile_from_rows(player_id: int, as_of_date: str, surface: str | None,
+                      rows) -> ServeReturnProfile:
+    """Apply the unchanged profile math to an explicitly selected history window."""
     serve = {name: _mean(row[name] for row in rows) for name in _SERVE_COLUMNS}
     returning = {name: _mean(row[name] for row in rows) for name in _RETURN_COLUMNS}
     # Break points are counts, not rates; the ratio is what a model wants and
@@ -130,7 +136,7 @@ def serve_return_profile(
         serve=serve,
         returning=returning,
         opponent_elo_mean=_mean(row["opponent_elo"] for row in rows),
-        surface=used_surface,
+        surface=surface,
     )
 
 
