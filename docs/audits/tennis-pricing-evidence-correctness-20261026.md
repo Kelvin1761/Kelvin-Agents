@@ -26,3 +26,15 @@ Native Tennis tests and quick repository checks are run with `PYTHONDONTWRITEBYT
 Release/activation and final test counts must be confirmed from the release manifest; this document does not declare deployment. Current-market repair cannot reconstruct disappeared historical quote batches or exact pricing-time receipts that were never recorded. No old forecasts or graded bets are rewritten.
 
 Still separate work: remaining history-reader causality/invalid-value guards, legacy mislabeled market evidence, scoped current-slate identity readiness, and clean fixed-corpus model research after correctness gates pass. A failed model experiment remains rejected; greater historical row count alone is not evidence of profitable edge.
+
+## Fixed-corpus result (before release)
+
+Both arms use the exact database/checksum above. Baseline source: `6dfe0cec3863e23671a07b402e446a3c0bdf4aee`; candidate integration: `a78dc787` (individual evidence repair `daf33579`). The same driver calls every supported family's `family_reliability(..., as_of_date="2026-10-26")` and `prop_roi_report(conn)` on a read-only connection. Raw ROI here is current-known descriptive history, not an as-of replay or a betting recommendation.
+
+- Raw ROI dictionaries are exactly identical: 1,003 paper recommendations, P/L −146.231 units, ROI −14.58%.
+- Formal-profile sample falls from 930 to 0 because no legacy row recorded a pricing receipt. All 1,003 raw rows remain visible under UNKNOWN quality; none are deleted or regraded.
+- Every supported reliability fit reports zero quality-verified rows and exposes unverified counts. The registered insufficient-evidence default (10%) is unchanged; some previous fitted zero weights consequently return to that default in research pricing. This is an uncertainty consequence, not a measured accuracy improvement or permission to stake.
+- The baseline fitted samples with outcomes have worse raw model Brier than the de-vigged market for every supported family. This does not justify a profitability claim.
+- Integration validation: **803 Tennis tests passed**, quick repository checks passed. Full immutable release validation and activation remain to be confirmed separately.
+
+Machine-readable before/after outputs, source-file hashes and checksums are in `tennis-pricing-evidence-20261026.json`. Reproduce with Python 3.9, `PYTHONDONTWRITEBYTECODE=1`, importing each recorded source revision's `src` via `PYTHONPATH`; do not mix source versions or writable databases.
