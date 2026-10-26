@@ -102,6 +102,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       renderDataReadoutItem,
       renderSubScoreDetails,
       sanitizeBattlefieldOverviewText,
+      splitBattlefieldRacePattern,
       renderBattlefieldOverview,
       parseBattlefieldOverview,
       speedMapSvgFromTable,
@@ -2078,4 +2079,11 @@ test("manual NBA snapshot refresh restores the pregame tab",async()=>{
  let reloads=0;api.setReloadForTest(()=>{reloads++});
  await api.reloadSnapshot();assert.equal(reloads,1);
  api.showSport('nba');api.restoreNbaTrackingView();assert.equal(api.getSportsTabForTest(),'roi');
+});
+
+test("race pattern labels the HKJC track segment as 場地", () => {
+  const { splitBattlefieldRacePattern } = loadTemplateFunctions();
+  const parts = splitBattlefieldRacePattern("第四班 / 1200m / 沙田全天候跑道 / HKJC");
+  assert.equal(parts.map(part => part.label).join("/"), "班次/路程/場地/賽區");
+  assert.equal(parts[2].value, "沙田全天候跑道");
 });

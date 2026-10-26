@@ -445,9 +445,24 @@ def validate_report_text(text: str) -> list[str]:
     return [f"REPORT-001 contains banned term: {term}" for term in REPORT_BANS if term in text]
 
 
+def _is_all_weather(race: dict) -> bool:
+    text = " ".join(str(race.get(key) or "") for key in ("venue", "track", "course")).upper()
+    return any(token in text for token in ("AWT", "ALL WEATHER", "全天候", "泥地"))
+
+
+def _track_label(race: dict) -> str:
+    venue = str(race.get("venue") or "").replace("AWT", "").strip()
+    if _is_all_weather(race):
+        return f"{venue}全天候跑道" if venue else "全天候跑道"
+    course = str(race.get("course") or "").strip()
+    turf = f"{venue}草地" if venue else "草地"
+    return f'{turf} "{course}" 賽道' if course and course.lower() != "unknown" else turf
+
+
 def _render_panorama(race: dict, verdict: dict, horses: dict, shadow_verdicts: dict | None = None) -> list[str]:
     race_class = _fmt(race.get("race_class"))
-    distance = _fmt(race.get("distance"))
+    # distance 由 Logic 帶住 "1200m"；舊版再加一個 m，每份報告都印 1200mm。
+    distance = re.sub(r"\s*m$", "", _fmt(race.get("distance")), flags=re.IGNORECASE)
     race_number = _fmt(race.get("race_number"))
     shadow_verdicts = shadow_verdicts or {}
     return [
@@ -455,7 +470,7 @@ def _render_panorama(race: dict, verdict: dict, horses: dict, shadow_verdicts: d
         "",
         "| 項目 | 內容 |",
         "|:---|:---|",
-        f"| 賽事格局 | {race_class} / {distance}m / HKJC |",
+        f"| 賽事格局 | {race_class} / {distance}m / {_track_label(race)} / HKJC |",
         f"| **賽事類型** | **`[HKJC Wong Choi Auto Python {DIM_TAG}]`** |",
         "| 天氣 / 場地 | 以本地已抽取資料為準；缺資料以中性分處理 |",
         f"| 分析邊界 | 12項分數 + {DIM_TAG}；不使用即場市場資料、主觀補寫或外部模型 |",
@@ -474,6 +489,39 @@ def _render_panorama(race: dict, verdict: dict, horses: dict, shadow_verdicts: d
         f"| 排名 | 馬號 | 馬名 | {DIM_TAG}正式分 | Grade | 資料完整度 | 風險分 | 情境標記 |",
         "|---:|---:|---|---:|---|---:|---:|---|",
         *[_ranking_row(item, horses) for item in verdict.get("ranking", [])],
+        *_all_weather_notice(race, verdict, horses),
+    ]
+
+
+_SAME_COURSE_RE = re.compile(r"同場同程\s*\((\d+)-(\d+)-(\d+)-(\d+)\)")
+
+
+def _all_weather_notice(race: dict, verdict: dict, horses: dict) -> list[str]:
+    """純顯示：AWT 適性喺排名入面係零權重，報告要講清楚，唔好令人以為已計。
+
+    排名用嘅「同程」唔分草地／泥地；同場同程同個別場地性能都只係 shadow
+    （EXP-20260928-05：AWT 樣本未夠 30 場）。2026-10-28 全日 AWT，111 匹有 40 匹
+    最近七仗冇跑過泥地。
+    """
+    if not _is_all_weather(race):
+        return []
+    no_record, with_record = [], []
+    for item in verdict.get("ranking", []):
+        num = str(item["horse_number"])
+        horse = horses.get(num) or {}
+        name = item.get("horse_name") or horse.get("horse_name") or ""
+        record = _SAME_COURSE_RE.search(str(horse.get("season_stats") or ""))
+        if record and int(record.group(4)) > 0:
+            wins, seconds, thirds, starts = record.groups()
+            with_record.append(f"[{num}] {name} {wins}-{seconds}-{thirds}-{starts}")
+        else:
+            no_record.append(f"[{num}] {name}")
+    return [
+        "",
+        "**⚠️ 全天候跑道提示（純顯示，唔影響排名）:**",
+        "- 排名用嘅「同程」往績唔分草地／泥地；泥地專屬往績（同場同程、個別場地性能）而家只係 shadow，未入分。",
+        f"- 今場場地路程未跑過: {'、'.join(no_record) if no_record else '冇'}",
+        f"- 同場同程（冠-亞-季-出賽）: {'、'.join(with_record) if with_record else '冇'}",
     ]
 
 

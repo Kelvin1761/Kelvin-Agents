@@ -11,6 +11,20 @@ import re
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
+def parse_surface_track_distance(text):
+    """Split the racecard's `草地, "C" 賽道, 2200米, 好地` segment.
+
+    全天候跑道冇賽道欄（「全天候跑道, 1650米」），按位置讀會將路程寫入「賽道」、
+    「路程」留空 —— build_hkjc_ranking_dataset 就讀唔到 AWT 路程（2026-10-28 全日 9 場）。
+    """
+    p2_parts = [p.strip() for p in str(text).split(',')]
+    surface = p2_parts[0] if p2_parts else ""
+    rest = [p.replace('"', '') for p in p2_parts[1:]]
+    distance = next((p for p in rest if re.fullmatch(r"\d{3,4}\s*米", p)), "")
+    track = next((p for p in rest if "賽道" in p), "")
+    return surface, track, distance
+
+
 def clean_text(s):
     return re.sub(r'\s+', ' ', s).strip()
 
@@ -116,10 +130,7 @@ def extract_racecard(url):
                 time_str = p1_parts[3] if len(p1_parts) > 3 else ""
 
                 # Parse part 2
-                p2_parts = [p.strip() for p in parts[2].split(',')]
-                surface = p2_parts[0] if len(p2_parts) > 0 else ""
-                track = p2_parts[1].replace('"','') if len(p2_parts) > 1 else ""
-                distance = p2_parts[2] if len(p2_parts) > 2 else ""
+                surface, track, distance = parse_surface_track_distance(parts[2])
 
                 # Parse part 3 correctly avoiding splitting prize comma
                 p3_str = parts[3]
