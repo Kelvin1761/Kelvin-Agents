@@ -95,8 +95,17 @@ def test_fit_as_of_only_sees_earlier_matches(tmp_path, monkeypatch):
             (i + 1, 0.8 if i % 2 == 0 else 0.2, day + "T09:00:00Z"))
     conn.commit()
 
+    # Backdating result.created_at does not backdate the real observation clock.
+    assert calib.fit_as_of(conn, "2026-02-01").sample == 0
+    # Simulate genuine historical captures to exercise the chronological split.
+    conn.execute("""INSERT INTO result_observations
+        (result_id,match_id,source_provider,winner_player_id,score_json,reported_created_at,
+         observed_at,observation_kind,player_a_id,player_b_id)
+        SELECT r.id,r.match_id,r.source_provider,r.winner_player_id,r.score_json,r.created_at,
+               r.created_at,'TEST_CAPTURE',m.player_a_id,m.player_b_id
+        FROM match_results r JOIN matches m ON m.id=r.match_id""")
     early = calib.fit_as_of(conn, "2026-02-01")
-    assert early.sample == 250, "only matches before the date may be used"
+    assert early.sample == 250, "only matches and observed labels before the date may be used"
     assert early.fitted_through == "2026-02-01"
 
     later = calib.fit_as_of(conn, "2026-08-01")

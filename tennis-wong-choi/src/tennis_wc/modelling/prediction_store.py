@@ -9,6 +9,15 @@ from tennis_wc.features.common import utc_now
 def store_prediction(match_id: int, feature_set_version: str, pricing: dict, filter_result: dict) -> int:
     now = utc_now()
     with get_connection() as conn:
+        fixture=conn.execute('SELECT * FROM matches WHERE id=?',(match_id,)).fetchone()
+        if fixture is None:
+            raise ValueError(f'Match not found: {match_id}')
+        fixture=dict(fixture)
+        if fixture.get('fixture_status','ACTIVE')!='ACTIVE':
+            raise ValueError(f'Inactive fixture identity: {match_id}')
+        if pricing.get('selection_player_id') not in (None,fixture['player_a_id'],fixture['player_b_id']):
+            raise ValueError(f'Forecast player outside fixture identity: {match_id}')
+        evidence={k:fixture.get(k) for k in ('id','player_a_id','player_b_id','match_date','start_time_utc','fixture_status')}
         cursor = conn.execute(
             """
             INSERT INTO predictions (
@@ -36,7 +45,7 @@ def store_prediction(match_id: int, feature_set_version: str, pricing: dict, fil
                 filter_result["stake_units"],
                 filter_result["confidence"],
                 filter_result["risk"],
-                json.dumps({"pricing": pricing, "filter": filter_result}, sort_keys=True),
+                json.dumps({"pricing": pricing, "filter": filter_result,"fixture_at_prediction":evidence}, sort_keys=True),
                 now,
             ),
         )
