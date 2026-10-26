@@ -13,6 +13,7 @@ from tennis_wc.betting.segment_risk import apply_segment_risk as _apply_segment_
 from tennis_wc.betting.segment_risk import segment_risk as _segment_risk
 from tennis_wc.betting.staking import kelly_stake_units
 from tennis_wc.config import get_settings
+from tennis_wc.ingestion.fixture_versions import active_fixture_clause
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.common import utc_now
 from tennis_wc.features.market import implied_probability
@@ -33,7 +34,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 def latest_predictions_for_date(match_date: str) -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             WITH BestLevels AS (
                 SELECT *,
                        ROW_NUMBER() OVER (
@@ -77,7 +78,7 @@ def latest_predictions_for_date(match_date: str) -> list[dict]:
             JOIN BestLevels tl ON tl.tournament_id = m.tournament_id AND tl.tour = m.tour AND tl.rn = 1
             JOIN players pa ON pa.id = m.player_a_id
             JOIN players pb ON pb.id = m.player_b_id
-            WHERE m.match_date = ?
+            WHERE m.match_date = ? AND {active_fixture_clause(conn)}
               AND EXISTS (
                 SELECT 1
                 FROM odds_snapshots o
@@ -472,7 +473,7 @@ def banker_market_predictions_for_date(match_date: str) -> list[dict]:
     _ensure_market_predictions_table()
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT
                 mp.*,
                 t.name AS tournament_name,
@@ -483,7 +484,7 @@ def banker_market_predictions_for_date(match_date: str) -> list[dict]:
             JOIN tournaments t ON t.id = m.tournament_id
             JOIN players p1 ON p1.id = m.player_a_id
             JOIN players p2 ON p2.id = m.player_b_id
-            WHERE m.match_date = ?
+            WHERE m.match_date = ? AND {active_fixture_clause(conn)}
             ORDER BY mp.match_id, mp.market_key, mp.line, mp.selection_name
             """,
             (match_date,),

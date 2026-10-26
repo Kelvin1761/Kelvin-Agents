@@ -4,6 +4,7 @@ import json
 from datetime import date
 from typing import Any
 
+from tennis_wc.ingestion.fixture_versions import active_fixture_clause
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.big_match import calculate_big_match_stats
 from tennis_wc.features.bo_format import calculate_bo_format_stats, detect_match_format
@@ -418,6 +419,8 @@ def assemble_match_feature_snapshot(match_id: int) -> tuple[dict, dict]:
         match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
         if not match:
             raise ValueError(f"Match not found: {match_id}")
+        if 'fixture_status' in match.keys() and match['fixture_status']=='DISPUTED':
+            raise ValueError(f"Fixture identity disputed: {match_id}")
         tournament = conn.execute("SELECT * FROM tournaments WHERE id = ?", (match["tournament_id"],)).fetchone()
         tournament_level = conn.execute(
             """
@@ -530,7 +533,7 @@ def build_match_feature_snapshot(match_id: int) -> dict:
 
 def build_feature_snapshots_for_date(match_date: str) -> list[dict]:
     with get_connection() as conn:
-        rows = conn.execute("SELECT id FROM matches WHERE match_date = ?", (match_date,)).fetchall()
+        rows = conn.execute(f"SELECT m.id FROM matches m WHERE m.match_date=? AND {active_fixture_clause(conn)}", (match_date,)).fetchall()
     return [build_match_feature_snapshot(int(row["id"])) for row in rows]
 
 
@@ -538,13 +541,14 @@ def _sportsbet_priced_matches(conn, match_date: str) -> list[dict]:
     return [
         dict(row)
         for row in conn.execute(
-            """
+            f"""
             SELECT DISTINCT m.id, t.name AS tournament_name
             FROM matches m
             JOIN tournaments t ON t.id = m.tournament_id
             JOIN odds_snapshots o ON o.match_id = m.id
             WHERE m.match_date = ?
               AND o.source_provider = 'sportsbet'
+              AND {active_fixture_clause(conn)}
             ORDER BY m.id
             """,
             (match_date,),
@@ -649,7 +653,7 @@ def _distinct_fixture_count(conn, match_date: str, extra_where: str = "") -> int
                 FROM matches m
                 JOIN players pa ON pa.id = m.player_a_id
                 JOIN players pb ON pb.id = m.player_b_id
-                WHERE m.match_date = ?
+                WHERE m.match_date = ? AND {active_fixture_clause(conn)}
                   AND m.player_a_id != m.player_b_id
                   AND lower(trim(pa.name)) NOT IN ('unknown player', 'unknown', 'tbd', 'none', 'null', '')
                   AND lower(trim(pb.name)) NOT IN ('unknown player', 'unknown', 'tbd', 'none', 'null', '')

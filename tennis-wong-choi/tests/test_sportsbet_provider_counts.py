@@ -128,3 +128,45 @@ def test_stats_are_published_even_on_a_successful_run():
     provider._record_parse_stats(60, collections.Counter({"x": 5}), [{}] * 55)
     assert provider.last_parse_stats["fixtures_in_response"] == 60
     assert provider.last_parse_stats["rows_parsed"] == 55
+
+
+def test_api_rows_carry_the_verified_pair_names():
+    provider=_provider()
+    body={'odds_data':{'Learner Tien':_market('Learner Tien',2.1),'Frances Tiafoe':_market('Frances Tiafoe',1.75)}}
+    row,=provider._normalise_wagerwise_fixture(_fixture(),body)
+    assert row['player_a_name']=='Learner Tien'
+    assert row['player_b_name']=='Frances Tiafoe'
+
+
+def test_api_event_refresh_uses_fixture_odds_data_id_and_names(monkeypatch):
+    import tennis_wc.providers.sportsbet_provider as module
+    provider=_provider();provider.base_url='https://example.invalid';provider.headers={}
+    fixture={**_fixture(),'bookmaker_data':{'Sportsbet':'odds-99'}}
+    monkeypatch.setattr(module,'get_json',lambda *args:{'ATP':{'g1':fixture}})
+    posted=[]
+    def post(url,headers,body):
+        posted.append(body)
+        return {'odds_data':{'Learner Tien':_market('Learner Tien',2.1),'Frances Tiafoe':_market('Frances Tiafoe',1.75)}}
+    monkeypatch.setattr(module,'post_json',post)
+    row=provider.fetch_event_odds('g1',['match_winner'])
+    assert posted==[{'odds_data_id':'odds-99'}]
+    assert row['event_id']=='g1' and row['player_a_name']=='Learner Tien'
+
+
+def test_api_event_without_unique_fixture_identity_is_explicit_failure(monkeypatch):
+    import tennis_wc.providers.sportsbet_provider as module
+    provider=_provider();provider.base_url='https://example.invalid';provider.headers={}
+    monkeypatch.setattr(module,'get_json',lambda *args:{})
+    monkeypatch.setattr(module,'post_json',lambda *args:pytest.fail('do not query a guessed odds id'))
+    with pytest.raises(ValueError,match='fixture identity'):
+        provider.fetch_event_odds('missing',['match_winner'])
+
+
+def test_multiple_prices_for_one_player_are_not_arbitrarily_chosen():
+    import collections
+    provider=_provider();drops=collections.Counter()
+    body={'odds_data':{'Learner Tien':_market('Learner Tien',2.1),
+                      'Alternate Learner Tien':_market('Learner Tien',1.5),
+                      'Frances Tiafoe':_market('Frances Tiafoe',1.75)}}
+    assert provider._normalise_wagerwise_fixture(_fixture(),body,drops)==[]
+    assert drops['selection_name_ambiguous']==1
