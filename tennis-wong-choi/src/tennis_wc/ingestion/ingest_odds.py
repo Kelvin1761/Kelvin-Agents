@@ -2,10 +2,14 @@ from __future__ import annotations
 
 from datetime import date as date_type, datetime, timezone, timedelta
 import re
+import logging
 from zoneinfo import ZoneInfo
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.ingestion.entity_mapping import get_or_create_player, upsert_tournament
+from tennis_wc.ingestion.fixture_versions import (
+    upsert_fixture, ensure_fixture_schema, active_fixture_clause, quarantine_fixture,
+)
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
 from tennis_wc.ingestion.sportsbet_fixture_mapping import sportsbet_competition_meta, sportsbet_round_label, sportsbet_slug
 from tennis_wc.providers import get_odds_provider
@@ -33,13 +37,19 @@ def ingest_odds(date: str) -> int:
     for row in rows:
         if provider.provider_name == "mock":
             row = row | {"event_id": f"mock-event-{date}-1"}
+        # Refresh this provider's own provisional generation before resolving its event key.
+        if provider.provider_name == "sportsbet":
+            with get_connection() as conn:
+                own=conn.execute("SELECT id FROM matches WHERE source_provider='sportsbet' AND provider_match_id=?",
+                                 (f"sportsbet-{row['event_id']}",)).fetchone()
+            if own:
+                _create_provisional_match_for_odds(provider.provider_name,date,row,raw_id)
         with get_connection() as conn:
-            match = conn.execute(
-                "SELECT id FROM matches WHERE market_event_id = ?",
-                (row["event_id"],),
-            ).fetchone()
-            match_id = int(match["id"]) if match else _find_match_id_for_odds(conn, date, row)
-        
+            match_id,blocked=_resolve_odds_fixture(conn,row,date,provider_name=provider.provider_name)
+        if blocked:
+            logging.getLogger(__name__).warning("odds identity rejected: %s/%s",provider.provider_name,row.get('event_id'))
+            continue
+
         # Always ensure tournament metadata for sportsbet matches
         _ensure_provisional_tournament_for_odds(provider.provider_name, date, row, raw_id)
         
@@ -84,10 +94,6 @@ def ingest_odds(date: str) -> int:
                 ),
             )
             _insert_market_odds(conn, row, match_id, provider.provider_name, raw_id, now)
-            # The fixture's players can have been rewritten by the upsert above
-            # since these sides were last written; re-derive rather than trust.
-            if match_id is not None:
-                resync_selection_sides(conn, match_id)
         count += 1
     return count
 
@@ -178,10 +184,14 @@ def _prune_stale_sportsbet_odds_for_date(provider_name: str, match_date: str, ac
                 stale_ids.append(int(row["id"]))
         if not stale_ids:
             return
-        placeholders = ",".join("?" for _ in stale_ids)
-        conn.execute(f"DELETE FROM odds_snapshots WHERE match_id IN ({placeholders}) AND source_provider IN ('sportsbet', 'sportsbet_scrape')", stale_ids)
-        conn.execute(f"DELETE FROM market_odds_snapshots WHERE match_id IN ({placeholders}) AND source_provider IN ('sportsbet', 'sportsbet_scrape')", stale_ids)
-        conn.execute(f"DELETE FROM market_predictions WHERE match_id IN ({placeholders})", stale_ids)
+        # Listing absence is not permission to erase immutable price/forecast history.
+        ensure_fixture_schema(conn)
+        for match_id in stale_ids:
+            old=dict(conn.execute('SELECT * FROM matches WHERE id=?',(match_id,)).fetchone())
+            if old['fixture_status']=='ACTIVE':
+                from tennis_wc.ingestion.fixture_versions import _observe
+                _observe(conn,match_id,old,'NOT_LISTED',utc_now())
+                conn.execute("UPDATE matches SET fixture_status='NOT_LISTED' WHERE id=?",(match_id,))
 
 
 _NAME_NOISE = re.compile(r"-\s*(rain delay|walkover|retired|suspended)\b")
@@ -364,49 +374,14 @@ def _create_provisional_match_for_odds(provider_name: str, match_date: str, row:
     tournament_id = _ensure_provisional_tournament_for_odds(provider_name, match_date, row, raw_id)
     now = utc_now()
     with get_connection() as conn:
-        cursor = conn.execute(
-            """
-            INSERT INTO matches (
-                provider_match_id, market_event_id, tour, match_date, tournament_id,
-                player_a_id, player_b_id, round, source_provider, raw_response_id,
-                created_at, updated_at, start_time_utc
-            )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(source_provider, provider_match_id) DO UPDATE SET
-                market_event_id = excluded.market_event_id,
-                match_date = excluded.match_date,
-                tournament_id = excluded.tournament_id,
-                player_a_id = excluded.player_a_id,
-                player_b_id = excluded.player_b_id,
-                round = CASE
-                    WHEN matches.round IS NULL OR matches.round = 'UNKNOWN' THEN excluded.round
-                    ELSE matches.round
-                END,
-                raw_response_id = excluded.raw_response_id,
-                updated_at = excluded.updated_at,
-                -- Never overwrite a known start time with nothing: the close
-                -- cannot be identified without it.
-                start_time_utc = COALESCE(excluded.start_time_utc,
-                                          matches.start_time_utc)
-            RETURNING id
-            """,
-            (
-                provider_match_id,
-                row["event_id"],
-                meta.tour,
-                match_date,
-                tournament_id,
-                player_a_id,
-                player_b_id,
-                sportsbet_round_label(row.get("round"), row.get("event_name"), row.get("name"), row.get("event_url"), row.get("competition")),
-                provider_name,
-                raw_id,
-                now,
-                now,
-                _row_start_time_utc(row),
-            ),
-        )
-        return int(cursor.fetchone()["id"])
+        return upsert_fixture(conn, {
+            "provider_match_id": provider_match_id, "market_event_id": str(row["event_id"]),
+            "tour": meta.tour, "match_date": match_date, "tournament_id": tournament_id,
+            "player_a_id": player_a_id, "player_b_id": player_b_id,
+            "round": sportsbet_round_label(row.get("round"),row.get("event_name"),row.get("name"),row.get("event_url"),row.get("competition")),
+            "source_provider": provider_name, "raw_response_id": raw_id,
+            "start_time_utc": _row_start_time_utc(row),
+        }, now)
 
 
 
@@ -470,21 +445,49 @@ def _find_match_id_for_odds(conn, match_date: str, row: dict) -> int | None:
     dates = _nearby_dates(match_date)
     placeholders = ",".join("?" for _ in dates)
     rows = conn.execute(
-        f"""
-        SELECT m.id, p1.name AS player_a_name, p2.name AS player_b_name
-        FROM matches m
-        JOIN players p1 ON p1.id = m.player_a_id
-        JOIN players p2 ON p2.id = m.player_b_id
-        WHERE m.match_date IN ({placeholders})
-        """,
-        dates,
-    ).fetchall()
-    for match in rows:
-        match_a = _normalise_name(match["player_a_name"])
-        match_b = _normalise_name(match["player_b_name"])
-        if (match_a == player_a and match_b == player_b) or (match_a == player_b and match_b == player_a):
-            return int(match["id"])
-    return None
+        f"""SELECT m.id,p1.name AS player_a_name,p2.name AS player_b_name FROM matches m
+        JOIN players p1 ON p1.id=m.player_a_id JOIN players p2 ON p2.id=m.player_b_id
+        WHERE m.match_date IN ({placeholders}) AND {active_fixture_clause(conn)}""",dates).fetchall()
+    matches=[int(m['id']) for m in rows if _pair_matches(m,row)]
+    if len(matches)>1:
+        raise ValueError('ambiguous odds fixture pair')
+    return matches[0] if matches else None
+
+
+def _pair_matches(match, row: dict) -> bool:
+    from tennis_wc.ingestion.name_matching import normalise_player_name
+    a,b=(normalise_player_name(row.get(k)) for k in ('player_a_name','player_b_name'))
+    x,y=(normalise_player_name(match[k]) for k in ('player_a_name','player_b_name'))
+    return bool(a and b and a!=b and ((a==x and b==y) or (a==y and b==x)))
+
+
+def _resolve_odds_fixture(conn, row: dict, match_date: str | None = None, *,
+                          explicit_id: int | None = None, provider_name: str = '') -> tuple[int | None,bool]:
+    ensure_fixture_schema(conn)
+    where,params=('m.id=?',(explicit_id,)) if explicit_id is not None else ('m.market_event_id=?',(str(row.get('event_id')),))
+    rows=conn.execute(f"""SELECT m.*,pa.name AS player_a_name,pb.name AS player_b_name FROM matches m
+        JOIN players pa ON pa.id=m.player_a_id JOIN players pb ON pb.id=m.player_b_id WHERE {where}""",params).fetchall()
+    if not row.get('player_a_name') or not row.get('player_b_name'):
+        # Static mock rows carry a trusted explicit fixture key; live rows need both names.
+        return (int(rows[0]['id']),False) if provider_name=='mock' and len(rows)==1 else (None,True)
+    matched=[r for r in rows if _pair_matches(r,row) and r['fixture_status'] in {'ACTIVE','NOT_LISTED'}]
+    if len(matched)==1:
+        return int(matched[0]['id']),False
+    if rows:
+        # Conflicting event identifiers must not attach a new pair's prices to old forecasts.
+        for r in rows:
+            if not _pair_matches(r,row) and r['fixture_status'] in {'ACTIVE','NOT_LISTED'}:
+                quarantine_fixture(conn,int(r['id']),row,utc_now())
+        return None,True
+    if explicit_id is not None:
+        return None,True
+    if match_date:
+        try:
+            match_id=_find_match_id_for_odds(conn,match_date,row)
+        except ValueError:
+            return None,True
+        return match_id,False
+    return None,False
 
 
 def _nearby_dates(match_date: str) -> list[str]:
@@ -592,12 +595,9 @@ def ingest_event_odds(event_id: str, match_id: int | None = None, *, preclose: b
         return _store_preclose_event(row, match_id, provider.provider_name, raw_id)
     now = utc_now()
     with get_connection() as conn:
-        if match_id is None:
-            match = conn.execute(
-                "SELECT id FROM matches WHERE market_event_id = ?",
-                (row["event_id"],),
-            ).fetchone()
-            match_id = int(match["id"]) if match else None
+        match_id,blocked=_resolve_odds_fixture(conn,row,explicit_id=match_id,provider_name=provider.provider_name)
+        if blocked:
+            return 0
         a_odds, b_odds, a_open, b_open = _oriented_positional_odds(conn, match_id, row)
         conn.execute(
             """
@@ -624,8 +624,6 @@ def ingest_event_odds(event_id: str, match_id: int | None = None, *, preclose: b
             ),
         )
         _insert_market_odds(conn, row, match_id, provider.provider_name, raw_id, now)
-        if match_id is not None:
-            resync_selection_sides(conn, match_id)
     return 1
 
 
@@ -634,12 +632,9 @@ def _store_preclose_event(row: dict, match_id: int | None, provider_name: str, r
     # The capture time: a close is defined against the start by WHEN we saw it.
     fetched_at = row.get("timestamp") or now
     with get_connection() as conn:
-        if match_id is None:
-            match = conn.execute(
-                "SELECT id FROM matches WHERE market_event_id = ?",
-                (row.get("event_id"),),
-            ).fetchone()
-            match_id = int(match["id"]) if match else None
+        match_id,blocked=_resolve_odds_fixture(conn,row,explicit_id=match_id,provider_name=provider_name)
+        if blocked:
+            return 0
         a_odds, b_odds, a_open, b_open = _oriented_positional_odds(conn, match_id, row)
         if a_odds is not None and b_odds is not None:
             conn.execute(

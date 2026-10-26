@@ -132,3 +132,22 @@ def test_warehouse_audit_runs_on_a_query_only_connection(tmp_path, monkeypatch):
         assert result["status"] == "checks_passed"
         assert result["live_prop_bets"] == [{"n": 0}]
         assert db.execute("PRAGMA query_only").fetchone()[0] == 1
+
+
+def test_same_winner_first_set_disagreement_is_not_a_clean_match(conn):
+    conn.execute("UPDATE match_results SET score_json=?",(json.dumps({'sets':[{'player_a_games':6,'player_b_games':1}]}),))
+    conn.execute("INSERT INTO match_results VALUES (2,1,10,?,'2026-06-01T15:00:00Z')",(json.dumps({'sets':[{'player_a_games':6,'player_b_games':4}]}),))
+    assert prematch_outcomes(conn)==[]
+
+
+def test_new_forecast_uses_its_frozen_start_not_later_fixture_edits(conn):
+    conn.execute('UPDATE predictions SET pricing_json=? WHERE id=1',
+                 (json.dumps({'fixture_at_prediction':{'start_time_utc':'2026-06-01T12:00:00Z'}}),))
+    conn.execute("UPDATE matches SET start_time_utc='2026-06-01T08:00:00Z'")
+    row,=prematch_outcomes(conn)
+    assert row['prediction_id']==1
+    assert row['start_time_utc']=='2026-06-01T12:00:00Z'
+    # A missing clock at prediction time cannot borrow a later clock silently.
+    conn.execute('UPDATE predictions SET pricing_json=?',
+                 (json.dumps({'fixture_at_prediction':{'start_time_utc':None}}),))
+    assert prematch_outcomes(conn)==[]

@@ -8,6 +8,12 @@ from __future__ import annotations
 import json
 
 
+def _forecast_start(alias: str) -> str:
+    payload=f"CASE WHEN json_valid({alias}.pricing_json) THEN {alias}.pricing_json ELSE '{{}}' END"
+    return (f"CASE WHEN json_type({payload},'$.fixture_at_prediction')='object' "
+            f"THEN json_extract({payload},'$.fixture_at_prediction.start_time_utc') ELSE m.start_time_utc END")
+
+
 def prematch_outcomes(conn, *, before: str | None = None,
                       since: str | None = None) -> list[dict]:
     """Earliest valid pre-start forecast per fixture, with one agreed outcome.
@@ -35,10 +41,10 @@ def prematch_outcomes(conn, *, before: str | None = None,
             FROM predictions x JOIN matches m ON m.id=x.match_id
             WHERE x.selection_player_id IN (m.player_a_id,m.player_b_id)
               AND x.model_probability > 0 AND x.model_probability < 1
-              AND julianday(x.created_at) < julianday(m.start_time_utc)
+              AND julianday(x.created_at) < julianday({_forecast_start("x")})
             GROUP BY x.match_id
         )
-        SELECT m.id AS match_id, m.match_date, m.start_time_utc,
+        SELECT m.id AS match_id, m.match_date, {_forecast_start("p")} AS start_time_utc,
                m.player_a_id, m.player_b_id, m.tour, m.tournament_id, m.round,
                p.id AS prediction_id, p.created_at AS prediction_created_at,
                p.pricing_json,
@@ -55,12 +61,16 @@ def prematch_outcomes(conn, *, before: str | None = None,
     if before:
         result_filter = " AND julianday(created_at) < julianday(?)"
         result_params = (before,)
+    observation_table=conn.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='result_observations'").fetchone()
+    if before and observation_table:
+        from tennis_wc.database.result_observations import results_known_before
+        result_rows=results_known_before(conn,before)
+    else:
+        result_rows=conn.execute(
+            "SELECT id,match_id,winner_player_id,score_json,created_at FROM match_results "
+            "WHERE winner_player_id IS NOT NULL"+result_filter+" ORDER BY id",result_params)
     results: dict[int, list] = {}
-    for row in conn.execute(
-        "SELECT id,match_id,winner_player_id,score_json,created_at "
-        "FROM match_results WHERE winner_player_id IS NOT NULL"
-        + result_filter + " ORDER BY id", result_params,
-    ):
+    for row in result_rows:
         results.setdefault(row["match_id"], []).append(row)
     out = []
     for forecast in forecasts:
@@ -72,6 +82,7 @@ def prematch_outcomes(conn, *, before: str | None = None,
         if winner not in (forecast["player_a_id"], forecast["player_b_id"]):
             continue
         invalid = False
+        facts = {}
         for result in candidates:
             try:
                 score = json.loads(result["score_json"] or "{}")
@@ -81,7 +92,17 @@ def prematch_outcomes(conn, *, before: str | None = None,
             if not isinstance(score, dict):
                 invalid = True
                 break
+            from tennis_wc.database.result_consensus import score_fact_values
+
+            for path,value in score_fact_values(score).items():
+                if path in facts and facts[path]!=value:
+                    invalid=True
+                facts[path]=value
             a_sets, b_sets = score.get("player_a_sets"), score.get("player_b_sets")
+            if isinstance(a_sets,(int,float)) and isinstance(b_sets,(int,float)):
+                if max(a_sets,b_sets)>=2 and a_sets!=b_sets:
+                    score_winner=forecast['player_a_id'] if a_sets>b_sets else forecast['player_b_id']
+                    invalid=invalid or score_winner!=winner
             if (any(score.get(key) for key in ("retired", "walkover", "incomplete_scoreline"))
                     or (a_sets is not None and b_sets is not None and a_sets == b_sets)):
                 invalid = True
