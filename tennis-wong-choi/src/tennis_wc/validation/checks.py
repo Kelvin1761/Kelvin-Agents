@@ -10,6 +10,8 @@ gives the subset the daily job should refuse to publish through.
 """
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+
 import re
 from dataclasses import dataclass, field
 
@@ -234,14 +236,14 @@ def check_settled_props_have_a_result(conn) -> CheckResult:
     """
     count = _count(
         conn,
-        """
+        f"""
         SELECT COUNT(*) FROM prop_tracker t
         JOIN matches m ON m.id = t.match_id
         WHERE t.result_status IN ('WON', 'LOST')
           AND NOT EXISTS (SELECT 1 FROM match_results r WHERE r.match_id = t.match_id)
           AND NOT EXISTS (
               SELECT 1 FROM player_match_history h
-              WHERE h.match_date = m.match_date
+              WHERE {history_active_clause(conn,"h")} AND h.match_date = m.match_date
                 AND h.player_id IN (m.player_a_id, m.player_b_id)
                 AND (h.ace_count IS NOT NULL OR h.double_fault_count IS NOT NULL)
           )

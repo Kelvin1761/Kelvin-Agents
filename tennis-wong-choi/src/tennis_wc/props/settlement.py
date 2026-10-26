@@ -17,12 +17,15 @@ Win rule (works for both integer 'N+' and '.5' O/U lines):
 """
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+
 import json
 import math
 import re
 
 from tennis_wc.evaluation.corpus import classify_point_in_time, point_in_time_clause
 from tennis_wc.features.common import utc_now
+from tennis_wc.features.history_values import measurement
 from tennis_wc.database.result_consensus import conflicting_result_matches, result_agreement_clause
 
 
@@ -437,17 +440,17 @@ def _history_count(conn, match_id: int, player_id: int, column: str) -> float | 
     day = (meta["match_date"] or "")[:10]
     if not day:
         return None
-    row = conn.execute(
+    rows = conn.execute(
         """
         SELECT {column} AS value FROM player_match_history
-        WHERE player_id = ? AND opponent_id = ? AND {column} IS NOT NULL
+        WHERE player_id = ? AND opponent_id = ? AND {column} IS NOT NULL AND {active}
           AND match_date BETWEEN date(?, '-16 days') AND date(?, '+2 days')
         ORDER BY ABS(julianday(match_date) - julianday(?))
-        LIMIT 1
-        """.format(column=column),
+        """.format(column=column,active=history_active_clause(conn)),
         (player_id, opponent_id, day, day, day),
-    ).fetchone()
-    return float(row["value"]) if row else None
+    ).fetchall()
+    values = {measurement(row["value"]) for row in rows}
+    return values.pop() if len(values) == 1 else None
 
 
 def record_prop(conn, *, match_id: int, match_date: str, match_label: str,

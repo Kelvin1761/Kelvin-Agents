@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.database.history_observations import history_active_clause
 from tennis_wc.features.history_values import clean_history_row
 from tennis_wc.features.history_asof import guard_clause, guard_params
 from tennis_wc.features.common import rate
@@ -24,7 +25,7 @@ def calculate_pressure_stats(player_id: int, surface: str | None, as_of_date: da
         params.append(surface)
     with get_connection() as conn:
         _ensure_pressure_columns(conn)
-        rows = [clean_history_row(row) for row in conn.execute(query, params).fetchall()]
+        rows = [clean_history_row(row) for row in conn.execute(query + f" AND {history_active_clause(conn)}", params).fetchall()]
 
     bp_saved = _sum(rows, "break_points_saved")
     bp_faced = _sum(rows, "break_points_faced")

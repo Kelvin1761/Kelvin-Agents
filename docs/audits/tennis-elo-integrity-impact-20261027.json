@@ -1,0 +1,294 @@
+{
+  "projection_manifest": {
+    "source": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-bugs-20261026/bug_research_baseline.db",
+    "source_sha256": "2e13a17a63871cbd5e108a4c258ec1c7193d1c032752ed74025f8f02249284ac",
+    "projection": "/private/tmp/tennis-elo-source-projection-20261027.db",
+    "sha256": "52476aac8f72950b9ed06d362b03484525c0773f2cdb1ac614198ffaba873c4c",
+    "bytes": 177029120,
+    "row_counts": {
+      "players": 25224,
+      "player_match_history": 419769
+    },
+    "limitations": [
+      "Only complete player/history tables; raw source bodies and unrelated tables are not copied. Not an evaluation corpus."
+    ]
+  },
+  "baseline_summary": {
+    "players_rated": 20135,
+    "elo_history_rows": 387993,
+    "elo_history_v2_rows": 557294,
+    "winner_rows_processed": 198806,
+    "surfaces": [
+      "carpet",
+      "clay",
+      "grass",
+      "hard"
+    ],
+    "raw_response_id": 1,
+    "min_player_matches": 1,
+    "max_player_matches": 560
+  },
+  "arms": {
+    "self-only": {
+      "summary": {
+        "players_rated": 20135,
+        "elo_history_rows": 387993,
+        "elo_history_v2_rows": 557254,
+        "winner_rows_processed": 198796,
+        "surfaces": [
+          "carpet",
+          "clay",
+          "grass",
+          "hard"
+        ],
+        "raw_response_id": 1,
+        "min_player_matches": 1,
+        "max_player_matches": 560
+      },
+      "quarantined_rows": 0,
+      "overall_ratings_changed": 7907,
+      "surface_rating_payloads_changed": 897,
+      "maximum_absolute_overall_change": 3.4550000000001546,
+      "largest_changes": [
+        {
+          "player_id": 402,
+          "baseline": 1630.283,
+          "candidate": 1633.738,
+          "delta": 3.4550000000001546
+        },
+        {
+          "player_id": 1180,
+          "baseline": 1650.678,
+          "candidate": 1652.696,
+          "delta": 2.0179999999998017
+        },
+        {
+          "player_id": 69,
+          "baseline": 1651.251,
+          "candidate": 1652.904,
+          "delta": 1.65300000000002
+        },
+        {
+          "player_id": 223,
+          "baseline": 1570.738,
+          "candidate": 1572.317,
+          "delta": 1.5789999999999509
+        },
+        {
+          "player_id": 230,
+          "baseline": 1584.753,
+          "candidate": 1586.231,
+          "delta": 1.4780000000000655
+        },
+        {
+          "player_id": 246,
+          "baseline": 1704.646,
+          "candidate": 1705.768,
+          "delta": 1.122000000000071
+        },
+        {
+          "player_id": 1202,
+          "baseline": 1594.211,
+          "candidate": 1595.264,
+          "delta": 1.0529999999998836
+        },
+        {
+          "player_id": 187,
+          "baseline": 1802.473,
+          "candidate": 1803.46,
+          "delta": 0.98700000000008
+        },
+        {
+          "player_id": 277,
+          "baseline": 1668.504,
+          "candidate": 1669.396,
+          "delta": 0.8920000000000528
+        },
+        {
+          "player_id": 35,
+          "baseline": 1675.372,
+          "candidate": 1676.158,
+          "delta": 0.7859999999998308
+        }
+      ]
+    },
+    "quarantine-only": {
+      "summary": {
+        "players_rated": 20135,
+        "elo_history_rows": 387906,
+        "elo_history_v2_rows": 557074,
+        "winner_rows_processed": 198751,
+        "surfaces": [
+          "carpet",
+          "clay",
+          "grass",
+          "hard"
+        ],
+        "raw_response_id": 1,
+        "min_player_matches": 1,
+        "max_player_matches": 560
+      },
+      "quarantined_rows": 88,
+      "overall_ratings_changed": 6579,
+      "surface_rating_payloads_changed": 866,
+      "maximum_absolute_overall_change": 17.674999999999955,
+      "largest_changes": [
+        {
+          "player_id": 185,
+          "baseline": 1630.281,
+          "candidate": 1612.606,
+          "delta": -17.674999999999955
+        },
+        {
+          "player_id": 3566,
+          "baseline": 1706.528,
+          "candidate": 1692.841,
+          "delta": -13.687000000000126
+        },
+        {
+          "player_id": 245,
+          "baseline": 1527.243,
+          "candidate": 1540.181,
+          "delta": 12.938000000000102
+        },
+        {
+          "player_id": 1197,
+          "baseline": 1578.273,
+          "candidate": 1590.022,
+          "delta": 11.749000000000024
+        },
+        {
+          "player_id": 188,
+          "baseline": 1703.248,
+          "candidate": 1691.898,
+          "delta": -11.350000000000136
+        },
+        {
+          "player_id": 130,
+          "baseline": 1711.523,
+          "candidate": 1701.417,
+          "delta": -10.105999999999995
+        },
+        {
+          "player_id": 1181,
+          "baseline": 1686.243,
+          "candidate": 1695.601,
+          "delta": 9.358000000000175
+        },
+        {
+          "player_id": 67,
+          "baseline": 1789.196,
+          "candidate": 1780.479,
+          "delta": -8.71699999999987
+        },
+        {
+          "player_id": 167,
+          "baseline": 1683.653,
+          "candidate": 1675.132,
+          "delta": -8.520999999999958
+        },
+        {
+          "player_id": 36,
+          "baseline": 1758.511,
+          "candidate": 1750.211,
+          "delta": -8.299999999999955
+        }
+      ]
+    },
+    "candidate": {
+      "summary": {
+        "players_rated": 20135,
+        "elo_history_rows": 387906,
+        "elo_history_v2_rows": 557034,
+        "winner_rows_processed": 198741,
+        "surfaces": [
+          "carpet",
+          "clay",
+          "grass",
+          "hard"
+        ],
+        "raw_response_id": 1,
+        "min_player_matches": 1,
+        "max_player_matches": 560
+      },
+      "quarantined_rows": 88,
+      "overall_ratings_changed": 9288,
+      "surface_rating_payloads_changed": 986,
+      "maximum_absolute_overall_change": 17.56899999999996,
+      "largest_changes": [
+        {
+          "player_id": 185,
+          "baseline": 1630.281,
+          "candidate": 1612.712,
+          "delta": -17.56899999999996
+        },
+        {
+          "player_id": 3566,
+          "baseline": 1706.528,
+          "candidate": 1692.958,
+          "delta": -13.569999999999936
+        },
+        {
+          "player_id": 245,
+          "baseline": 1527.243,
+          "candidate": 1540.192,
+          "delta": 12.94900000000007
+        },
+        {
+          "player_id": 1197,
+          "baseline": 1578.273,
+          "candidate": 1590.228,
+          "delta": 11.955000000000155
+        },
+        {
+          "player_id": 188,
+          "baseline": 1703.248,
+          "candidate": 1692.01,
+          "delta": -11.238000000000056
+        },
+        {
+          "player_id": 130,
+          "baseline": 1711.523,
+          "candidate": 1701.517,
+          "delta": -10.005999999999858
+        },
+        {
+          "player_id": 1181,
+          "baseline": 1686.243,
+          "candidate": 1695.856,
+          "delta": 9.613000000000056
+        },
+        {
+          "player_id": 67,
+          "baseline": 1789.196,
+          "candidate": 1780.702,
+          "delta": -8.493999999999915
+        },
+        {
+          "player_id": 167,
+          "baseline": 1683.653,
+          "candidate": 1675.277,
+          "delta": -8.375999999999976
+        },
+        {
+          "player_id": 36,
+          "baseline": 1758.511,
+          "candidate": 1750.304,
+          "delta": -8.20699999999988
+        }
+      ]
+    }
+  },
+  "limitations": [
+    "All four arms run the same production Elo formula and fixed parameters on complete projected history/player tables.",
+    "Ablation changes only self-pair exclusion and proven source-context quarantine. Source order is preserved.",
+    "Final rating differences measure input propagation; they establish neither predictive accuracy nor profitability.",
+    "No production Elo archive was overwritten by this probe."
+  ],
+  "artifact_sha256": {
+    "tennis-elo-impact-baseline.json": "2eeb04bb29315efbd48d2619631ac77cb4ce5023dae0875b9767b83f50c53d2c",
+    "tennis-elo-impact-quarantine-only.json": "a43db3fa18085bbf134515a0090670049bdb93f392b07b3e3893cfab8ab50f30",
+    "tennis-elo-impact-self-only.json": "bfa6b6fcd9b13877c6479250fc7217d550a377f1ed4529701f523cb2a61fa5ad",
+    "tennis-elo-impact-candidate.json": "5ad935e3631e534105f530b92facb8390ea908a80a8ebea85fcc17c44e437c69"
+  }
+}

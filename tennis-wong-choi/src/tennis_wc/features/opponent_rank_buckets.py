@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.database.history_observations import history_active_clause
 from tennis_wc.features.history_values import clean_history_row
 from tennis_wc.features.history_asof import guard_clause, guard_params
 from tennis_wc.features.common import avg, med, parse_date, rate, shrink_rate, utc_now
@@ -95,7 +96,7 @@ def calculate_player_rank_bucket_stats(
         query += " AND lower(surface) = lower(?)"
         params.append(surface)
     with get_connection() as conn:
-        rows = [clean_history_row(row) for row in conn.execute(query, params).fetchall()]
+        rows = [clean_history_row(row) for row in conn.execute(query + f" AND {history_active_clause(conn)}", params).fetchall()]
 
     total_wins = sum(1 for row in rows if row["won"])
     prior = rate(total_wins, len(rows)) or 0.5

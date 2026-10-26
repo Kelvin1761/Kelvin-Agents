@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import date
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.database.history_observations import history_active_clause
 from tennis_wc.features.history_values import clean_history_row
 from tennis_wc.features.history_asof import guard_clause, guard_params
 from tennis_wc.features.common import rate
@@ -20,7 +21,7 @@ def calculate_head_to_head_stats(player_id: int, opponent_id: int, surface: str 
     query += guard_clause()
     params.extend(guard_params(as_of_date.isoformat(), start_time))
     with get_connection() as conn:
-        all_rows = [clean_history_row(row) for row in conn.execute(query, params).fetchall()]
+        all_rows = [clean_history_row(row) for row in conn.execute(query + f" AND {history_active_clause(conn)}", params).fetchall()]
     surface_rows = [row for row in all_rows if surface and (row.get("surface") or "").lower() == surface.lower()]
     selected = surface_rows if len(surface_rows) >= 2 else all_rows
     wins = sum(1 for row in selected if row["won"])

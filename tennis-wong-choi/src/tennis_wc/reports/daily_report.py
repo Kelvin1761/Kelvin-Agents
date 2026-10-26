@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+from tennis_wc.features.history_asof import guard_clause, guard_params
+from tennis_wc.features.bo_format import detect_match_format
+
 from itertools import combinations
 import json
 import math
@@ -902,30 +906,36 @@ def _historical_ace_mean(match_id: int, player_id: int | None) -> float | None:
     with get_connection() as conn:
         if not _has_history_prop_columns(conn):
             return None
-        match = conn.execute("SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)).fetchone()
+        match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+        if not match:
+            return None
+        cutoff = str(match["match_date"])[:10]
+        history_params = (cutoff, *guard_params(cutoff, match["start_time_utc"]))
         if player_id is None:
             rows = conn.execute(
-                """
+                f"""
                 SELECT ace_count
                 FROM player_match_history
                 WHERE player_id IN (?, ?)
-                  AND ace_count IS NOT NULL
+                  AND ace_count >= 0 AND ace_count = CAST(ace_count AS INTEGER)
+                  AND match_date < ? {guard_clause()} AND {history_active_clause(conn)}
                 ORDER BY match_date DESC
                 LIMIT 40
                 """,
-                (match["player_a_id"], match["player_b_id"]),
+                (match["player_a_id"], match["player_b_id"], *history_params),
             ).fetchall()
         else:
             rows = conn.execute(
-                """
+                f"""
                 SELECT ace_count
                 FROM player_match_history
                 WHERE player_id = ?
-                  AND ace_count IS NOT NULL
+                  AND ace_count >= 0 AND ace_count = CAST(ace_count AS INTEGER)
+                  AND match_date < ? {guard_clause()} AND {history_active_clause(conn)}
                 ORDER BY match_date DESC
                 LIMIT 25
                 """,
-                (player_id,),
+                (player_id, *history_params),
             ).fetchall()
     values = [float(row["ace_count"]) for row in rows if row["ace_count"] is not None]
     if len(values) < 10:
@@ -1118,7 +1128,7 @@ def _match_games_context(match_id: int) -> dict | None:
     Returns None if hold history is unavailable for either player."""
     with get_connection() as conn:
         match = conn.execute(
-            "SELECT player_a_id, player_b_id, tour, tournament_id FROM matches WHERE id = ?",
+            "SELECT * FROM matches WHERE id = ?",
             (match_id,),
         ).fetchone()
         if not match:
@@ -1126,12 +1136,14 @@ def _match_games_context(match_id: int) -> dict | None:
 
         def avg_hold(player_id: int) -> float | None:
             row = conn.execute(
-                """
+                f"""
                 SELECT AVG(hold_rate) AS h
                 FROM player_match_history
-                WHERE player_id = ? AND hold_rate IS NOT NULL
+                WHERE player_id = ? AND hold_rate BETWEEN 0 AND 1
+                  AND match_date < ? {guard_clause()} AND {history_active_clause(conn)}
                 """,
-                (player_id,),
+                (player_id, str(match["match_date"])[:10],
+                 *guard_params(str(match["match_date"])[:10], match["start_time_utc"])),
             ).fetchone()
             return float(row["h"]) if row and row["h"] is not None else None
 
@@ -1145,7 +1157,7 @@ def _match_games_context(match_id: int) -> dict | None:
         return None
     # Only ATP Grand Slam main draw is best-of-5; everything else is best-of-3.
     level = str(level_row["level"] or "").upper() if level_row else ""
-    best_of = 5 if str(match["tour"] or "").upper() == "ATP" and "GRAND_SLAM" in level else 3
+    best_of = 5 if detect_match_format({**dict(match), "level": level}) == "BO5" else 3
     return {"hold_a": hold_a, "hold_b": hold_b, "best_of": best_of, "tour": match["tour"]}
 
 

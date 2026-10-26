@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import upsert_history_observation
+
 from datetime import date, timedelta
 import logging
 
@@ -166,48 +168,33 @@ def ingest_historical_matches(start_date: str, end_date: str) -> int:
             None,
         )
         with get_connection() as conn:
-            conn.execute(
-                """
-                INSERT INTO player_match_history (
-                    provider_match_id, player_id, opponent_id, tour, match_date, surface,
-                    tournament_external_id, tournament_level, round, format, won,
-                    opponent_elo, hold_rate, break_rate, first_serve_points_won_pct,
-                    second_serve_points_won_pct, return_points_won_pct, tiebreak_won,
-                    deciding_set_won, lost_first_set, comeback_after_losing_first_set,
-                    source_provider, raw_response_id, created_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(source_provider, provider_match_id, player_id) DO UPDATE SET
-                    won = excluded.won,
-                    opponent_elo = excluded.opponent_elo,
-                    raw_response_id = excluded.raw_response_id
-                """,
-                (
-                    row["id"],
-                    player_id,
-                    opponent_id,
-                    row["tour"],
-                    row["match_date"],
-                    row.get("surface"),
-                    row["tournament_id"],
-                    row.get("tournament_level", "UNKNOWN"),
-                    row["round"],
-                    row.get("format", "BO3"),
-                    1 if row["won"] else 0,
-                    row.get("opponent_elo"),
-                    row.get("hold_rate"),
-                    row.get("break_rate"),
-                    row.get("first_serve_points_won_pct"),
-                    row.get("second_serve_points_won_pct"),
-                    row.get("return_points_won_pct"),
-                    1 if row.get("tiebreak_won") else 0,
-                    1 if row.get("deciding_set_won") else 0,
-                    1 if row.get("lost_first_set") else 0,
-                    1 if row.get("comeback_after_losing_first_set") else 0,
-                    provider.provider_name,
-                    raw_id,
-                    now,
-                ),
+            upsert_history_observation(
+                conn, {
+                    'provider_match_id': row["id"],
+                    'player_id': player_id,
+                    'opponent_id': opponent_id,
+                    'tour': row["tour"],
+                    'match_date': row["match_date"],
+                    'surface': row.get("surface"),
+                    'tournament_external_id': row["tournament_id"],
+                    'tournament_level': row.get("tournament_level", "UNKNOWN"),
+                    'round': row["round"],
+                    'format': row.get("format", "BO3"),
+                    'won': 1 if row["won"] else 0,
+                    'opponent_elo': row.get("opponent_elo"),
+                    'hold_rate': row.get("hold_rate"),
+                    'break_rate': row.get("break_rate"),
+                    'first_serve_points_won_pct': row.get("first_serve_points_won_pct"),
+                    'second_serve_points_won_pct': row.get("second_serve_points_won_pct"),
+                    'return_points_won_pct': row.get("return_points_won_pct"),
+                    'tiebreak_won': 1 if row.get("tiebreak_won") else 0,
+                    'deciding_set_won': 1 if row.get("deciding_set_won") else 0,
+                    'lost_first_set': 1 if row.get("lost_first_set") else 0,
+                    'comeback_after_losing_first_set': 1 if row.get("comeback_after_losing_first_set") else 0,
+                    'source_provider': provider.provider_name,
+                    'raw_response_id': raw_id,
+                    'created_at': now,
+                }, observed_at=now,
             )
         count += 1
     return count

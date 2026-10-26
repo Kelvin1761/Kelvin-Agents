@@ -21,6 +21,8 @@ used for the Sackmann files) so the later wiring is a join, not a re-derive.
 """
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+
 import time
 import math
 import re
@@ -481,7 +483,7 @@ def wta_serve_stats_health(conn, as_of_date: str) -> dict:
     """
     used = conn.execute(
         "SELECT MAX(match_date) FROM player_match_history "
-        "WHERE tour = 'WTA' AND ace_count IS NOT NULL AND match_date < ?",
+        f"WHERE tour = 'WTA' AND ace_count IS NOT NULL AND match_date < ? AND {history_active_clause(conn)}",
         (as_of_date,),
     ).fetchone()[0]
     held = None

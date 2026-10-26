@@ -12,6 +12,8 @@ the model that consumes this has to degrade rather than pretend.
 """
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+
 from dataclasses import dataclass
 from tennis_wc.features.history_values import clean_history_row
 
@@ -96,6 +98,7 @@ def serve_return_profile(
         SELECT id,{columns} FROM player_match_history
         WHERE player_id = ? AND match_date < ? AND typeof(hold_rate) IN ('integer','real') AND hold_rate BETWEEN 0 AND 1
           {guard_clause()}
+          AND {history_active_clause(conn)}
           {surface_clause}
         ORDER BY match_date DESC, id DESC
         LIMIT ?

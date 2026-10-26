@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+
 import json
 import re
 from datetime import date, timedelta
@@ -2430,7 +2432,7 @@ def _resolve_pending_from_player_history(match_date: str) -> int:
             JOIN players p ON p.id = h.player_id
             JOIN players op ON op.id = h.opponent_id
             WHERE h.match_date IN ({placeholders})
-              AND h.won = 1
+              AND h.won = 1 AND {history_active_clause(conn,"h")}
             """,
             dates,
         ).fetchall()

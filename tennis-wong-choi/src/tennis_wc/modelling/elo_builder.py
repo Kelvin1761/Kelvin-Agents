@@ -4,6 +4,7 @@ import json
 from collections import defaultdict
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.database.history_observations import history_active_clause
 from tennis_wc.features.elo import elo_probability
 from tennis_wc.ingestion.ingest_sackmann import HISTORY_PROVIDERS
 from tennis_wc.ingestion.ingest_tennisexplorer_history import (
@@ -35,6 +36,9 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
     validates. Pass a float ``k_factor`` to force a flat K.
     """
     with get_connection() as conn:
+        history_columns = {r["name"] for r in conn.execute("PRAGMA table_info(player_match_history)")}
+        source_order = ("COALESCE(source_match_ref,provider_match_id)"
+                        if "source_match_ref" in history_columns else "provider_match_id")
         rows = [
             dict(row)
             for row in conn.execute(
@@ -43,7 +47,8 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
                        match_date, surface
                 FROM player_match_history
                 WHERE source_provider IN ({_PROVIDER_PLACEHOLDERS}) AND won = 1
-                ORDER BY match_date, provider_match_id
+                  AND {history_active_clause(conn)}
+                ORDER BY match_date, {source_order}
                 """,
                 ELO_PROVIDERS,
             ).fetchall()

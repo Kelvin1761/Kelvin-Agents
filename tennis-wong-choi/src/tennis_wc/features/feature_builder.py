@@ -7,6 +7,7 @@ from typing import Any
 from tennis_wc.database.market_captures import current_market_clause, book_listing_clause
 from tennis_wc.ingestion.fixture_versions import active_fixture_clause
 from tennis_wc.database.db import get_connection
+from tennis_wc.database.history_observations import history_active_clause
 from tennis_wc.features.big_match import calculate_big_match_stats
 from tennis_wc.features.bo_format import calculate_bo_format_stats, detect_match_format
 from tennis_wc.features.common import datapoint, provenance, utc_now
@@ -65,11 +66,11 @@ def _raw_meta(raw_response_id: int | None) -> dict:
 def _latest_history_prov(player_id: int) -> dict:
     with get_connection() as conn:
         row = conn.execute(
-            """
+            f"""
             SELECT r.provider_name, r.endpoint, r.fetched_at, r.id
             FROM player_match_history h
             JOIN raw_api_responses r ON r.id = h.raw_response_id
-            WHERE h.player_id = ?
+            WHERE h.player_id = ? AND {history_active_clause(conn,"h")}
             ORDER BY r.fetched_at DESC
             LIMIT 1
             """,
@@ -271,6 +272,7 @@ def _rest_days(player_id: int, as_of_date: date, *, start_time: str | None = Non
             WHERE player_id = ?
               AND match_date < ?
               {guard_clause()}
+              AND {history_active_clause(conn)}
             """,
             (player_id, as_of_date.isoformat(), *guard_params(as_of_date.isoformat(), start_time)),
         ).fetchone()

@@ -1,6 +1,8 @@
 """Conservative research models for expandable player-prop families."""
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+
 from dataclasses import dataclass
 import math
 
@@ -186,6 +188,7 @@ def count_profile(
         FROM player_match_history
         WHERE player_id = ? AND match_date < ? AND typeof({column}) IN ('integer','real') AND {column}>=0 AND {column}=CAST({column} AS INTEGER)
           {guard_clause()}
+          AND {history_active_clause(conn)}
           {surface_sql}
         ORDER BY match_date DESC
         LIMIT ?

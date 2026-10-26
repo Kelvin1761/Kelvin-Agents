@@ -545,6 +545,8 @@ def _ensure_compat_columns(conn) -> None:
     }.items():
         if name not in history_columns:
             conn.execute(ddl)
+    from tennis_wc.database.history_observations import ensure_history_schema
+    ensure_history_schema(conn)
     result_columns = {row["name"] for row in conn.execute("PRAGMA table_info(match_results)").fetchall()}
     if "score_json" not in result_columns:
         conn.execute("ALTER TABLE match_results ADD COLUMN score_json TEXT")
