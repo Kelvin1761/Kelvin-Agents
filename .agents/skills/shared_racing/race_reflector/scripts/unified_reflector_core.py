@@ -876,6 +876,10 @@ def build_race_performances(
             continue
 
         actual_rows = structured_results.get(race_num, {}).get("results", [])
+        if not actual_rows:
+            # 冇賽果（腰斬、抽唔到）唔係失手：以前會當 Miss 兼寫「clean model failure」，
+            # 2026-10-23 Ballarat 得 2 場有賽果，報告就話 7 場 Miss。
+            continue
         actual_top3 = actual_rows[:3]
         prediction_list = prediction_rows.get(race_num, [])
         prediction_map = {row["horse_no"]: row for row in prediction_list}
@@ -1267,10 +1271,12 @@ def render_markdown_report(
     backtests: list[dict[str, Any]],
     evaluated_version: str | None = None,
     attribution_lines: list[str] | None = None,
+    no_result_races: list[int] | None = None,
 ) -> str:
     distribution = summarize_label_distribution(race_performances)
     shortlist = summarize_shortlist_metrics(race_performances)
     reflected_races = ", ".join(str(race.race_num) for race in race_performances) or "N/A"
+    unresulted = sorted(set(no_result_races or ()))
     lines = [
         f"# Unified {DOMAIN_LABELS[platform]} Race Reflector Report",
         "",
@@ -1279,6 +1285,7 @@ def render_markdown_report(
         f"- Meeting: `{meeting_dir.name}`",
         f"- 評估版本: {evaluated_version or '目錄現行版本（未揀賽前快照）'}",
         f"- Reflected races: `{reflected_races}`",
+        *([f"- 未有賽果、唔計入表現: `{', '.join(str(r) for r in unresulted)}`"] if unresulted else []),
         f"- Results file: `{results_file.name}`",
         f"- Approval gate: **任何 improvement suggestion 只供審批，不會自動改 code / matrix。**",
         "",
@@ -1519,6 +1526,11 @@ def run_unified_reflector(
         prediction_rows,
         target_races=race_filter,
     )
+    reflected = {race.race_num for race in races}
+    no_result_races = [
+        int(race["race_num"]) for race in meeting_stats.get("races", [])
+        if int(race["race_num"]) not in reflected and (not race_filter or int(race["race_num"]) in race_filter)
+    ]
     attribution_lines = None
     if platform == "hkjc":
         attribution_lines = _hkjc_dimension_attribution(resolved_meeting_dir, analysis_dir, structured_results,
@@ -1530,7 +1542,8 @@ def run_unified_reflector(
     final_report_path.parent.mkdir(parents=True, exist_ok=True)
     final_report_path.write_text(
         render_markdown_report(platform, resolved_meeting_dir, resolved_results_file, races, backtests,
-                               evaluated_version=evaluated_version, attribution_lines=attribution_lines),
+                               evaluated_version=evaluated_version, attribution_lines=attribution_lines,
+                               no_result_races=no_result_races),
         encoding="utf-8",
     )
     print(f"✅ Unified reflector report written: {final_report_path}")
