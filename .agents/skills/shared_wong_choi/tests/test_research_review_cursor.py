@@ -837,8 +837,10 @@ def test_supervisor_timeout_or_production_preemption_preserves_cursor(tmp_path, 
                     fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
                     handles.append(handle)
                 return production_active()
+            # Cold worker imports on archive disks can exceed one second.
+            # Allow startup while retaining the blocked-worker timeout/preemption assertions.
             return super().run(replace(invocation, argv=(sys.executable, '-c', program, invocation.argv[-1])),
-                               timeout_seconds=1, production_active=check)
+                               timeout_seconds=10, production_active=check)
     try:
         result = run(ResearchReviewCursorRunner(replace(runner.runtime, executor=Blocked()), runner.registry))
     finally:

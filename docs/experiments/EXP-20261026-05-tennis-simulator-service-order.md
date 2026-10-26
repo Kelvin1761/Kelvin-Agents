@@ -75,6 +75,10 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python scripts/evaluate_service_order.p
   --output "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/service_order_baseline.json"
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python scripts/evaluate_service_order.py \
   --db "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/tennis_research.db" \
-  --baseline "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/service_order_baseline.json" \  --candidate "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/service_order_candidate_kernel.py" \
+  --baseline "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/service_order_baseline.json" \
+  --candidate "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/service_order_candidate_kernel.py" \
   --output "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-refine-20261026/service_order_candidate.json"
 ```
+
+
+Correctness release `02b19954bf17c3dbdf18f3a94c98ac5e4c6c746e` 已經 full 16-suite gate／immutable quick recheck／merge／activation，scheduler runtime HEAD 已核對相同。無啟用新投注 family。

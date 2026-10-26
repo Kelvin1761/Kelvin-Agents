@@ -135,3 +135,94 @@ def test_list_failure_is_reported_not_raised(db):
 
     summary = _ingest(broken)
     assert summary["errors"][0]["stage"] == "list_tournaments"
+
+
+@pytest.mark.parametrize('changes,reason',[
+    ({'servgamesplayeda':5,'servgamesplayedb':4},'inconsistent_service_exposure'),
+    ({'ptswon1stserva':99},'invalid_count'),
+    ({'ptsplayed1stserva':99},'invalid_point_counts'),
+    ({'acesa':100},'invalid_point_counts'),
+])
+def test_invalid_totals_are_preserved_but_not_marked_usable(db,changes,reason):
+    from tennis_wc.ingestion.ingest_wta_stats import wta_serve_stats_health
+
+    class InvalidGetter(FakeGetter):
+        def __call__(self,url,params=None):
+            if url.endswith('/stats'):
+                return [{**TOTAL,**changes}]
+            return super().__call__(url,params)
+
+    result=_ingest(InvalidGetter())
+    assert result['matches_with_stats']==1, 'availability is distinct from validity'
+    assert result['matches_invalid_stats']==1
+    assert result['matches_with_valid_stats']==0
+    assert result['quality_issues'][reason]==1
+    assert [r[0] for r in db.execute('SELECT DISTINCT stats_status FROM wta_match_stats')]==['INVALID_STATS']
+    assert db.execute('SELECT MIN(raw_response_id) FROM wta_match_stats').fetchone()[0]>0
+    health=wta_serve_stats_health(db,'2026-10-14')
+    assert health['feed_latest'] is None
+    assert health['feed_status_counts']=={'INVALID_STATS':2}
+    retried=_ingest(FakeGetter())
+    assert retried['matches_with_valid_stats']==1, 'invalid totals must be retried, not cached forever'
+    assert [r[0] for r in db.execute('SELECT DISTINCT stats_status FROM wta_match_stats')]==['OK']
+
+
+def test_legacy_ok_label_with_invalid_raw_is_revalidated_and_retried(db):
+    class LegacyGetter(FakeGetter):
+        def __call__(self,url,params=None):
+            if url.endswith('/stats'):
+                return [{**TOTAL,'servgamesplayeda':5,'servgamesplayedb':4}]
+            return super().__call__(url,params)
+
+    _ingest(LegacyGetter())
+    db.execute("UPDATE wta_match_stats SET stats_status='OK'")
+    db.commit()
+    getter=FakeGetter()
+    result=_ingest(getter)
+    assert result['cached_invalid_retried']==1
+    assert result['matches_with_valid_stats']==1
+    assert any(url.endswith('/stats') for url in getter.calls)
+
+
+def test_complete_historical_advantage_set_is_valid(db):
+    class AdvantageGetter(FakeGetter):
+        def __call__(self,url,params=None):
+            body=super().__call__(url,params)
+            if url.endswith('/stats'):
+                return [{**TOTAL,'servgamesplayeda':13,'servgamesplayedb':13,'totservplayedb':70}]
+            if url.endswith('/matches'):
+                body['matches'][0]={**MATCH,'ScoreSet2A':'9','ScoreSet2B':'7','ScoreString':'6-4,9-7'}
+            return body
+
+    result=_ingest(AdvantageGetter())
+    assert result['matches_with_valid_stats']==1
+    assert not result['quality_issues']
+
+
+def test_failed_refresh_preserves_values_when_old_raw_evidence_is_missing(db):
+    _ingest(FakeGetter())
+    db.execute('UPDATE wta_match_stats SET raw_response_id=0')
+    db.commit()
+    before={r['side']:dict(r) for r in db.execute('SELECT * FROM wta_match_stats')}
+    result=_ingest(FakeGetter(with_stats=False))
+    assert result['existing_values_preserved']==1
+    after={r['side']:dict(r) for r in db.execute('SELECT * FROM wta_match_stats')}
+    for side,old in before.items():
+        assert after[side]=={**old,'stats_status':'UNVERIFIED_STATS'}
+    recovered=_ingest(FakeGetter())
+    assert recovered['matches_with_valid_stats']==1
+    assert [r[0] for r in db.execute('SELECT DISTINCT stats_status FROM wta_match_stats')]==['OK']
+
+
+def test_retired_match_is_partial_even_when_statistics_are_available(db):
+    class RetiredGetter(FakeGetter):
+        def __call__(self,url,params=None):
+            body=super().__call__(url,params)
+            if url.endswith('/matches'):
+                body['matches'][0]={**MATCH,'ScoreString':"6-4,1-0 Ret'd"}
+            return body
+
+    result=_ingest(RetiredGetter())
+    assert result['matches_partial_stats']==1
+    assert result['matches_with_valid_stats']==0
+    assert [r[0] for r in db.execute('SELECT DISTINCT stats_status FROM wta_match_stats')]==['PARTIAL_MATCH']
