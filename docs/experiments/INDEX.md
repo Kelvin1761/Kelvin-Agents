@@ -292,3 +292,6 @@
 - [EXP-20261026-09](EXP-20261026-09-nba-experiment-readiness-alerts.md)：NBA 實驗準備度通知：每日賽後計，星期一發進度總結，檢查點首次到期即刻提示（primary）；只讀。
 - [EXP-20261027-01](EXP-20261027-01-au-1016-bundle-forward-replay.md) — 10-16 改動整批 forward 回放（473 場／10 賽日，舊 6de9e625 vs 現行 c60bcb38）：Gold +1.48pp [+0.30,+2.72]、Good +0.63pp CI 跨零、首選上名 −2.75pp [−7.92,+1.33]；W43 下跌兩個引擎都有，唔係新 code 造成；≥30 賽日再跑
 - [EXP-20261027-04](EXP-20261027-04-au-race-time-going-results.md) — 用開跑時官方場地狀況重評（704／2,265 場評分場地 ≠ 開跑評級，多數轉乾 1 級）：v3 fixed_rule **REJECT / primary_regression**，Gold −0.18pp [−0.60,+0.21]、Good −0.04pp；差異場次差係場次本身難，唔係輸入過期
+
+- [EXP-20261027-07](EXP-20261027-07-tennis-game-share-strength.md)：Tennis 過往局數實力＋訓練 combiner，五段 dev 較準，但確認 1819 場 ΔLL CI 跨零；REJECT 上線，保留研究。
+- [EXP-20261027-08](EXP-20261027-08-tennis-continuous-rank-prior.md)：Tennis 直接排名先驗五段 dev 較準，確認 ΔLL −.005743 CI 不跨零；但8240場固定歷史價模擬 ROI −12.07%→−14.37%、仍輸去水市場，REJECT 盈利／上線；合併 games arm 未過 dev。
