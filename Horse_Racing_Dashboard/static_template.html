@@ -2515,7 +2515,13 @@ function tennisSelection(row){
   if(boolean&&String(row.market||row.market_key||'').startsWith('player_win_a_set')){
     return `${subject||'球員待核實'} · ${pick.trim().toLowerCase()==='yes'?'贏至少一盤':'一盤都唔贏'}`;
   }
-  return subject&&!pick.toLowerCase().includes(subject.toLowerCase())?`${subject} · ${pick}`:pick;
+  // Only these individual totals use the subject as the selected player's identity.
+  if(/^(over|under)\s+[+-]?\d+(?:\.\d+)?$/i.test(pick.trim())&&/^player_(aces|double_faults|total_games)(?:_|$)/.test(String(row.market||row.market_key||''))){
+    return `${subject||'球員待核實'} · ${pick}`;
+  }
+  // Spread subjects may be the model's reference player, not the selected side.
+  // Named source selections already identify the bet and must remain authoritative.
+  return pick;
 }
 function tennisMatchup(eventName, combo=false){
   const names=String(eventName||'').split(/\s+vs\.?\s+/i);
