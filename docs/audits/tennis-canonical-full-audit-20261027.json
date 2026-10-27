@@ -1,0 +1,722 @@
+{
+  "policy": "history-canonical-v1",
+  "counts": {
+    "raw_rows": 419769,
+    "selected_rows": 406202,
+    "held_rows": 13390,
+    "collapsed_extra_rows": 177,
+    "candidate_groups": 408527,
+    "held_unmapped_additional_observation": 5237,
+    "held_event_identity_unverified": 4258,
+    "held_source_facts_conflict": 470,
+    "held_self_pair": 3425
+  },
+  "examples": [
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        3709244
+      ],
+      "held": [
+        {
+          "id": 3414501,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        240709
+      ],
+      "held": [
+        {
+          "id": 107671,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        254800
+      ],
+      "held": [
+        {
+          "id": 243572,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        3709199
+      ],
+      "held": [
+        {
+          "id": 3337231,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        240716
+      ],
+      "held": [
+        {
+          "id": 118774,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        254633
+      ],
+      "held": [
+        {
+          "id": 129752,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        1673659
+      ],
+      "held": [
+        {
+          "id": 1391432,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        3412560
+      ],
+      "held": [
+        {
+          "id": 2977608,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        240677
+      ],
+      "held": [
+        {
+          "id": 101277,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        3969680
+      ],
+      "held": [
+        {
+          "id": 3930583,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        254775
+      ],
+      "held": [
+        {
+          "id": 137148,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        240663
+      ],
+      "held": [
+        {
+          "id": 101177,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        799743
+      ],
+      "held": [
+        {
+          "id": 540650,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        3969669
+      ],
+      "held": [
+        {
+          "id": 3891045,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        240579
+      ],
+      "held": [
+        {
+          "id": 100709,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        254789
+      ],
+      "held": [
+        {
+          "id": 137438,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        240592
+      ],
+      "held": [
+        {
+          "id": 100829,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        240695
+      ],
+      "held": [
+        {
+          "id": 105525,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        2565016
+      ],
+      "held": [
+        {
+          "id": 2079522,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        2574
+      ],
+      "held": [
+        {
+          "id": 97513,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        3969653
+      ],
+      "held": [
+        {
+          "id": 3851449,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        41616
+      ],
+      "held": [
+        {
+          "id": 41624,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        240575
+      ],
+      "held": [
+        {
+          "id": 100573,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        2564963
+      ],
+      "held": [
+        {
+          "id": 2010316,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        1358304
+      ],
+      "held": [
+        {
+          "id": 874073,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        254713
+      ],
+      "held": [
+        {
+          "id": 130184,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        2564859
+      ],
+      "held": [
+        {
+          "id": 1939758,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        799853
+      ],
+      "held": [
+        {
+          "id": 772752,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        1673725
+      ],
+      "held": [
+        {
+          "id": 1502882,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        3969629
+      ],
+      "held": [
+        {
+          "id": 3811579,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        1673697
+      ],
+      "held": [
+        {
+          "id": 1454618,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        2937981
+      ],
+      "held": [
+        {
+          "id": 2743257,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        687
+      ],
+      "held": [
+        {
+          "id": 87313,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        254579
+      ],
+      "held": [
+        {
+          "id": 129503,
+          "reason": "unmapped_additional_observation"
+        },
+        {
+          "id": 1186541,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [],
+      "held": [
+        {
+          "id": 5933,
+          "reason": "event_identity_unverified"
+        },
+        {
+          "id": 1048903,
+          "reason": "event_identity_unverified"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        3412650
+      ],
+      "held": [
+        {
+          "id": 3144859,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        3709183
+      ],
+      "held": [
+        {
+          "id": 3298991,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        240406
+      ],
+      "held": [
+        {
+          "id": 1156278,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        1358301
+      ],
+      "held": [
+        {
+          "id": 874076,
+          "reason": "unmapped_additional_observation"
+        },
+        {
+          "id": 1220549,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        50350
+      ],
+      "held": [
+        {
+          "id": 1135530,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        240313
+      ],
+      "held": [
+        {
+          "id": 1153055,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        240621
+      ],
+      "held": [
+        {
+          "id": 101045,
+          "reason": "unmapped_additional_observation"
+        },
+        {
+          "id": 1174673,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        3412637
+      ],
+      "held": [
+        {
+          "id": 3088678,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        2938055
+      ],
+      "held": [
+        {
+          "id": 2884848,
+          "reason": "unmapped_additional_observation"
+        },
+        {
+          "id": 2901741,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        3412591
+      ],
+      "held": [
+        {
+          "id": 2995741,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        2938058
+      ],
+      "held": [
+        {
+          "id": 2921406,
+          "reason": "unmapped_additional_observation"
+        },
+        {
+          "id": 2938512,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        3709262
+      ],
+      "held": [
+        {
+          "id": 3453770,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        254757
+      ],
+      "held": [
+        {
+          "id": 133770,
+          "reason": "unmapped_additional_observation"
+        },
+        {
+          "id": 1190877,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [],
+      "held": [
+        {
+          "id": 1373852,
+          "reason": "event_identity_unverified"
+        },
+        {
+          "id": 1376023,
+          "reason": "event_identity_unverified"
+        }
+      ],
+      "collapsed": []
+    },
+    {
+      "policy": "history-canonical-v1",
+      "selected_ids": [
+        1358245
+      ],
+      "held": [
+        {
+          "id": 815944,
+          "reason": "unmapped_additional_observation"
+        },
+        {
+          "id": 1219923,
+          "reason": "unmapped_additional_observation"
+        }
+      ],
+      "collapsed": []
+    }
+  ],
+  "limitations": [
+    "Diagnostic only; held rows are not declared false or deleted.",
+    "Different recorded dates and unmapped provider event namespaces remain unresolved.",
+    "This does not establish pricing-time availability or qualify a model promotion."
+  ],
+  "source": "/private/tmp/tennis-elo-source-projection-20261027.db",
+  "source_bytes": 177029120,
+  "implementation_sha256": "21aa5d77a44eeda4c6c913d5d39df567be2fbb456606b9677df2f5ff45d09445",
+  "complete_history_projection_manifest": {
+    "source": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-bugs-20261026/bug_research_baseline.db",
+    "source_sha256": "2e13a17a63871cbd5e108a4c258ec1c7193d1c032752ed74025f8f02249284ac",
+    "projection": "/private/tmp/tennis-elo-source-projection-20261027.db",
+    "sha256": "52476aac8f72950b9ed06d362b03484525c0773f2cdb1ac614198ffaba873c4c",
+    "bytes": 177029120,
+    "row_counts": {
+      "players": 25224,
+      "player_match_history": 419769
+    },
+    "limitations": [
+      "Only complete player/history tables; raw source bodies and unrelated tables are not copied. Not an evaluation corpus."
+    ]
+  },
+  "projection_source_sha256": "2e13a17a63871cbd5e108a4c258ec1c7193d1c032752ed74025f8f02249284ac",
+  "qualification": "Diagnostic candidates only; counts do not certify errors, safe merges or pricing-time availability."
+}
