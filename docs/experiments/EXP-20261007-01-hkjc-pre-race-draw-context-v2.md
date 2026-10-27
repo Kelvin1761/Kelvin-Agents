@@ -61,3 +61,14 @@ Implementation files:
 - `.agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_racing_engine/engine_core.py`
 - `.agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_shadow_monitor.py`
 - `.agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_daily_schedule.py`
+
+## 2026-10-27 — rollback review (`pre_race_draw_context_v1_generic`, 53/20 races)
+
+- **Rule (fixed before measuring)**: none was recorded here, so the shadow monitor's existing rollback gate is used:
+  legacy nets ≥ 2 races on Gold or Good with the other primary non-negative → recommend rollback; paired
+  day-level bootstrap CIs reported alongside.
+- **Data**: immutable pre-race snapshot ledger, 53 active races over 6 meetings (10-07 → 10-25), Top-4 changed in 18.
+- **Result (v1 − live v2)**: Gold net 0, Good net −2, champion net −1; top-3 capture −0.0063 [−0.0284, +0.0133];
+  NDCG@5 −0.0181 [−0.0393, −0.0018] (CI fully negative = live v2 better).
+- **Decision**: rollback not triggered, **keep v2**. "No reason to roll back", not a proven gain. The v1 shadow keeps
+  running as the emergency comparator.

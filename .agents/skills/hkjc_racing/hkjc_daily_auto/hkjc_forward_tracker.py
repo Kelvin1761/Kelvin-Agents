@@ -42,6 +42,7 @@ class ForwardTest:
     arm: str = ""
     state_key: str = ""
     action: str = "夠數之後要人手做 Stage 4 review"
+    decided: str = ""             # 人手判完寫低結論；之後只顯示，唔再提醒
     extra: dict = field(default_factory=dict)
 
 
@@ -60,10 +61,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("weight_refit_t02", "權重 refit t02", "EXP-20260928-10", "shadow_profile", 120,
                 profile="weight_refit_t02"),
     # race_shape_v3_hv 已經 experimental live（EXP-20260929-01），由 race_shape_v2_legacy_hv 做 rollback 對照。
-    ForwardTest("race_shape_v3_hv_t02", "跑馬地 V3＋t02（A+B）", "EXP-20260928-10", "shadow_profile", 80,
-                profile="race_shape_v3_hv_t02"),
+    # race_shape_v3_hv_t02（A+B）2026-10-27 撤走：跑馬地 V3 已經 live，weight_refit_t02 喺跑馬地
+    # 就等於 A+B，冇額外問題要答。佢亦唔喺 DEFAULT_SHADOW_PROFILES，由來冇記錄。
     ForwardTest("race_shape_v2_legacy_hv", "跑馬地 V3 rollback 對照", "EXP-20260929-01", "shadow_profile", 20,
-                profile="race_shape_v2_legacy_hv", action="夠數之後睇 legacy 有冇好過 live V3（rollback 對照）"),
+                profile="race_shape_v2_legacy_hv", action="夠數之後睇 legacy 有冇好過 live V3（rollback 對照）",
+                decided="2026-10-27 review：27 場舊版冇一項贏（Good −1、頭五捕捉／NDCG CI 全負）→ 維持 V3"),
     ForwardTest("race_shape_st_draw70", "沙田 draw70", "EXP-20260929-02", "shadow_profile", 80,
                 profile="race_shape_st_draw70"),
     ForwardTest("race_shape_legacy_unbounded", "形勢 winsor10 rollback 對照", "EXP-20261008-03", "shadow_profile", 80,
@@ -72,7 +74,8 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 profile="trainer_recency_st_early90"),
     # pre_race_draw_context_v2 已經上線（EXP-20261007-01），由 v1_generic 做 rollback 對照。
     ForwardTest("pre_race_draw_context_v1_generic", "賽前檔位 v1 rollback 對照", "EXP-20261007-01", "shadow_profile", 20,
-                profile="pre_race_draw_context_v1_generic", action="夠數之後睇 v1 有冇好過 live（rollback 對照）"),
+                profile="pre_race_draw_context_v1_generic", action="夠數之後睇 v1 有冇好過 live（rollback 對照）",
+                decided="2026-10-27 review：53 場舊版冇一項贏（Good −2、NDCG CI 全負）→ 維持 v2"),
 )
 
 STALLED_AFTER_ROWS = 20
@@ -131,6 +134,8 @@ def _ledger_summary(ledger_path: Path | None) -> dict:
 
 def progress(test: ForwardTest, *, root: Path, ledger: dict, state: dict) -> dict:
     """{count, minimum, status, note} — status: collecting | ready | stalled | decided | unknown."""
+    if test.decided:
+        return {"count": None, "minimum": test.minimum, "status": "decided", "note": test.decided}
     tracker = state.get(STATE_KEY) or {}
     judged = (tracker.get("judged") or {}).get(test.key)
     if judged:

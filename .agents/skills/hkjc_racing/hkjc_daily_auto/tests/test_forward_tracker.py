@@ -33,17 +33,19 @@ def _test(key):
 
 def test_shadow_profile_ready_collecting_and_stalled(tmp_path):
     ledger = tracker._ledger_summary(_ledger(tmp_path / "l.json", {
-        "pre_race_draw_context_v1_generic": {"active_races": 53, "races": 60},
+        "race_shape_legacy_unbounded": {"active_races": 81, "races": 90},
         "weight_refit_t02": {"active_races": 59, "races": 60},
-        "race_shape_v3_hv_t02": {"active_races": 0, "races": 0},
+        "trainer_recency_st_early90": {"active_races": 0, "races": 0},
         "race_shape_st_draw70": {"active_races": 0, "races": 30},
     }, [{"profile": "weight_refit_t02"}] * 25))
     get = lambda key: tracker.progress(_test(key), root=tmp_path, ledger=ledger, state={})
-    assert get("pre_race_draw_context_v1_generic")["status"] == "ready"
+    assert get("race_shape_legacy_unbounded")["status"] == "ready"
     assert get("weight_refit_t02")["status"] == "collecting"
-    assert get("race_shape_v3_hv_t02")["status"] == "stalled"      # 一場記錄都冇
-    assert get("race_shape_st_draw70")["status"] == "stalled"      # 有記錄但 0 active
-    assert get("trainer_recency_st_early90")["status"] == "unknown"
+    assert get("trainer_recency_st_early90")["status"] == "stalled"  # 一場記錄都冇
+    assert get("race_shape_st_draw70")["status"] == "stalled"        # 有記錄但 0 active
+    # 人手判咗嘅 rollback 對照只顯示結論，唔再提醒
+    assert get("race_shape_v2_legacy_hv")["status"] == "decided"
+    assert get("pre_race_draw_context_v1_generic")["status"] == "decided"
 
 
 def test_race_awt_and_trackwork_counts_respect_since(tmp_path):
@@ -57,20 +59,20 @@ def test_race_awt_and_trackwork_counts_respect_since(tmp_path):
 
 
 def test_remind_sends_once_per_status(tmp_path):
-    ledger_path = _ledger(tmp_path / "l.json", {"race_shape_v2_legacy_hv": {"active_races": 27}}, [])
+    ledger_path = _ledger(tmp_path / "l.json", {"race_shape_st_draw70": {"active_races": 81}}, [])
     sent: list[str] = []
     state: dict = {}
     tracker.remind(state, root=tmp_path, ledger_path=ledger_path, notify=lambda m: sent.append(m) or True)
-    assert len(sent) == 1 and "夠數" in sent[0] and "EXP-20260929-01" in sent[0]
+    assert len(sent) == 1 and "夠數" in sent[0] and "EXP-20260929-02" in sent[0]
     tracker.remind(state, root=tmp_path, ledger_path=ledger_path, notify=lambda m: sent.append(m) or True)
     assert len(sent) == 1
 
 
 def test_failed_telegram_is_retried_next_time(tmp_path):
-    ledger_path = _ledger(tmp_path / "l.json", {"race_shape_v2_legacy_hv": {"active_races": 27}}, [])
+    ledger_path = _ledger(tmp_path / "l.json", {"race_shape_st_draw70": {"active_races": 81}}, [])
     state: dict = {}
     tracker.remind(state, root=tmp_path, ledger_path=ledger_path, notify=lambda m: False)
-    assert "race_shape_v2_legacy_hv" not in state[tracker.STATE_KEY]["notified"]
+    assert "race_shape_st_draw70" not in state[tracker.STATE_KEY]["notified"]
 
 
 def _fake_run(deltas):
