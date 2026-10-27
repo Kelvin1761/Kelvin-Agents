@@ -43,3 +43,10 @@
 ## 唔准做嘅嘢
 
 睇完結果改分類字眼、改 B1 範圍、將 B2 當候選上線。
+
+## 附註（量度前，2026-10-28）
+
+睇 describe 嘅 title 樣本（未睇任何賽果判決）發現賽事名喺約 45 字截斷：「COUNTRY BOOSTED MAIDEN HANDI」、
+「CG&amp;E MAIDEN HA」被判成定磅。`classify_title` 補兩樣：先 unescape `&amp;`；長度 ≥ 40 而尾字係
+"handicap" 嘅前綴（≥ 2 字）當讓磅。另外語料有 4,359 匹賽事名係空白（舊 Logic），歸 `unknown`——
+B1 會當佢哋唔係讓磅（冇負磅代理），B2 照舊。兩個 arm 嘅分別因此亦包括呢批空白名。
