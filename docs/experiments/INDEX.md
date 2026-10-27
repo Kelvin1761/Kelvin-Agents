@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20260929-01](EXP-20260929-01-hkjc-hv-v3-experimental-live.md)／[EXP-20261007-01](EXP-20261007-01-hkjc-pre-race-draw-context-v2.md) | 2026-10-27 | HKJC | 兩個 rollback 對照夠數嘅人手 review（immutable ledger），規則借用 shadow monitor rollback gate | **兩個都維持 live**：跑馬地 V3 舊版 27 場 Good −1、捕捉／NDCG CI 全負；檔位 v1 舊版 53 場 Good −2、NDCG CI 全負。A+B（`race_shape_v3_hv_t02`）撤走：V3 已 live，t02 喺跑馬地就等於 A+B |
 | [EXP-20261027-13](EXP-20261027-13-hkjc-top-jockey-overlay-walk-forward.md) | 2026-10-27 | HKJC | 頂級騎師 overlay（今仗／換上）walk-forward 幅度＋換騎 −1.5 方向 ablation；同時交付 overlay registry | **全部 REJECT**：A1 walk-forward 次次揀 0；A2 Good −1.19pp [−2.35,−0.29]；B／A1+B Good −0.30 跨零。忠實度 50/50。掃描 +5.5pp 入位率落唔到頭四。registry 交付（全部 shadow、排名 bit-identical、`o` 欄匯出畀 refit／ML） |
 | [EXP-20261027-12](EXP-20261027-12-hkjc-situational-overlay-scan.md) | 2026-10-27 | HKJC | 10 個情境 pattern（換騎方向、騎練組合、狀態差＋換騎、快速回師、長休、馬重、負磅、練馬師手風）預先登記，賠率分層＋模型排名分層，Holm | **P1「換上頂級騎師」overlay 候選**：模型鏡頭 +5.5pp [+1.7,+9.2] Holm p 0.025，市場鏡頭 ≈0（市場已反映、模型漏咗）；拆解似「今仗頂級騎師」被低估＋換騎 −1.5 唔分方向。出擊組合（P4／P10）冇訊號。未改 live |
 | [EXP-20261027-06](EXP-20261027-06-tennis-stored-nudge-ablation.md) | 2026-10-27 | Tennis | 直接保存分項、方向及風險折扣作全nudge／9項消融 | **REJECT 移除候選**：1702場忠實誤差<=1e-6；全關 ΔLL +0.000638 CI跨零，EV>0紙上ROI −19.67%→−20.76%；單項無Holm改善。dev-only，無promotion，v1遺漏後處理明示保留。 |
