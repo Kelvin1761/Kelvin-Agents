@@ -969,6 +969,7 @@ class RacingEngine:
                 "form": getattr(self, "form_detail", {}) or {},
                 "consistency": getattr(self, "consistency_detail", {}) or {},
                 "performance_quality": getattr(self, "performance_quality_detail", {}) or {},
+                "form_quality": getattr(self, "form_quality_detail", {}) or {},
             },
             "pace_perf_detail": {
                 "pace": getattr(self, "pace_figure_detail", {}) or {},
@@ -5112,6 +5113,7 @@ class RacingEngine:
         mean = parse_float(summary.get("form_quality_field_mean"))
         stdev = parse_float(summary.get("form_quality_field_stdev")) or 0.0
         self.form_quality_detail = {"raw": raw, "run_count": runs, "field_count": count,
+                                    "field_mean": mean, "field_stdev": stdev,
                                     "runs": self.data.get("form_quality_runs") or []}
         if raw is None or runs < 2 or count < 3 or mean is None or stdev <= 0:
             self.form_quality_detail.update(final=round(composite, 2), fallback="form_and_quality_composite")
@@ -7246,15 +7248,17 @@ def _form_quality_digest(official_entries: list[dict], *, meeting_date: str = ""
             continue
         z_place = (0.5 - (finish - 1) / (starters - 1)) / FORM_QUALITY_SD_PCT
         z_prize = (math.log10(float(run["prize"])) - FORM_QUALITY_MU_LOG_PRIZE) / FORM_QUALITY_SD_LOG_PRIZE
-        values.append((run, (z_place + z_prize) / 2))
+        values.append((run, (z_place + z_prize) / 2, z_place, z_prize))
     if len(values) < 2:
         return {}
     weights = FORM_QUALITY_RECENCY_WEIGHTS[: len(values)]
-    raw = sum(v * w for (_r, v), w in zip(values, weights)) / sum(weights)
+    raw = sum(v * w for (_r, v, _zp, _zq), w in zip(values, weights)) / sum(weights)
     return {"raw": round(raw, 6), "run_count": len(values),
             "runs": [{"date": r.get("date"), "finish_pos": r.get("finish_pos"),
                       "starters": r.get("starters"), "prize": r.get("prize"),
-                      "distance": r.get("distance"), "value": round(v, 6)} for r, v in values]}
+                      "distance": r.get("distance"), "value": round(v, 6),
+                      "z_place": round(zp, 4), "z_prize": round(zq, 4), "weight": w}
+                     for (r, v, zp, zq), w in zip(values, weights)]}
 
 
 def refresh_trial_runs(logic_data: dict, facts_path: Path | None) -> int:

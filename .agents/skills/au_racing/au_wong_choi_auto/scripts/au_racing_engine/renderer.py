@@ -511,12 +511,48 @@ def _matrix_subscore_lines(key, auto):
     return out
 
 
+def _form_quality_detail_lines(d):
+    """近績質素分（EXP-20261016-06）逐仗拆解：名次 z、獎金級別 z、近期權重，再場內標準化。
+    只係將引擎已計好嘅數攤開，唔再計一次分。"""
+    if not d:
+        return []
+    if d.get("fallback"):
+        return [f"未有最少兩場完整往績或同場有值嘅馬少過 3 匹 → 沿用舊組合分 {float(d.get('final') or 60):.1f}"]
+    lines = ["每仗值 ＝（名次 z ＋ 獎金級別 z）÷ 2；名次 z 按出馬數換算百分位，獎金級別 z 用 log10 獎金"]
+    runs = d.get("runs") or []
+    for idx, r in enumerate(runs, start=1):
+        recency = "（最近）" if idx == 1 else ""
+        prize = f"${float(r['prize']):,.0f}" if r.get("prize") else "獎金未有資料"
+        dist = f" {int(float(r['distance']))}m" if r.get("distance") else ""
+        head = f"第{idx}仗{recency} {r.get('date', '')}{dist}：第{r.get('finish_pos')}名／{r.get('starters')}匹，{prize}"
+        if r.get("z_place") is not None and r.get("z_prize") is not None:
+            head += f" → 名次 z {float(r['z_place']):+.2f}、獎金級別 z {float(r['z_prize']):+.2f}"
+        head += f" → 本仗值 {float(r.get('value') or 0):+.2f}"
+        if r.get("weight") is not None:
+            head += f" × 近期權重 {float(r['weight']):.1f}"
+        lines.append(head)
+    if d.get("raw") is not None:
+        lines.append(f"加權平均 ＝ {float(d['raw']):+.3f}")
+    if d.get("z") is not None and d.get("field_mean") is not None:
+        lines.append(f"同場 {int(d.get('field_count') or 0)} 匹有值：平均 {float(d['field_mean']):+.3f}、"
+                     f"標準差 {float(d.get('field_stdev') or 0):.3f} → 場內 z {float(d['z']):+.2f}"
+                     f" → 60 ＋ 20z ＝ {float(d.get('final') or 0):.1f}（0-100 封頂）")
+    trip = d.get("trip_change")
+    if isinstance(trip, dict):
+        lines.append(f"大幅轉程：今場 {float(trip['today']):.0f}m 對上仗 {float(trip['last']):.0f}m"
+                     f"（相差 ≥400m）{float(trip['delta']):+.0f}")
+        lines.append(f"最終近績質素分 ＝ {clip_score(float(d.get('final') or 60) + float(trip['delta'])):.1f}")
+    return lines
+
+
 def _stability_detail_lines(auto, name):
     """近績分／穩定性分嘅完整評分構成（HK 式透明度）：
     基礎分、每項加減嘅分值同依據、逐仗底分×班次×近期權重，全部攤開。"""
     sd = auto.get("stability_detail")
     if not isinstance(sd, dict):
         return []
+    if name == "form_quality_score":
+        return _form_quality_detail_lines(sd.get("form_quality") or {})
     if name == "form_score":
         d = sd.get("form") or {}
         lines = []
