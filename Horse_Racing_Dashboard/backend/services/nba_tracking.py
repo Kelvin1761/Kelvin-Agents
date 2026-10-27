@@ -15,6 +15,7 @@ from .nba_published_analysis import verified_published_reports
 
 
 TRACKING_START_DATE = "2026-10-25"
+STEADY_POLICY = "banker-steady-b2-v1"  # mirrors nba_steady_policy.POLICY
 
 
 def _number(value):
@@ -61,6 +62,7 @@ def _research_card(sidecar, odds, day, tag, published):
         identity = hashlib.sha256(json.dumps(legs, sort_keys=True).encode()).hexdigest()[:16]
         return {'id':f'nba:{day}:{tag}:research:{identity}', 'event_name':tag.replace('_', ' @ '),
                 'odds':price, 'tracking_kind':'research', 'model_version':candidate['version'],
+                'model_probability':candidate.get('model_probability'),
                 'legs':[{**l, 'stat':l.get('category') or str(l.get('market')).upper()} for l in legs]}
     return None
 
@@ -115,16 +117,20 @@ def build_tracking(roots, ledger_root, firewall):
                 odds = json.loads(odds_path.read_text())
                 cards = _parse_nba_combos(text, day, tag, [])
                 _hydrate_nba_quotes(cards, text, sidecar)
+                # EXP-20261027-21: under the steady policy combo 1 IS the B2
+                # selection and carries a disclosed negative EV.
+                steady = sidecar.get('strategy_profile') == STEADY_POLICY
                 card = next((c for c in cards if c['id'].endswith(':combo:1')
                              and c.get('decision') == 'BET' and c.get('odds_status') == 'sportsbet_sgm_quoted'
                              and _number(c.get('odds')) and c['odds'] >= 2
                              and _number(c.get('metrics',{}).get('expected_value'))
-                             and c['metrics']['expected_value'] > 0), None)
+                             and (steady or c['metrics']['expected_value'] > 0)), None)
                 if card:
                     card['tracking_kind'] = 'formal'
-                # Track the current steady research arm when published alongside
-                # a legacy formal combo; one model selection per game, frozen.
-                card = _research_card(sidecar, odds, day, tag, published) or card
+                # Track the steady research arm when no steady formal combo was
+                # published (legacy EV-gated days, or a stop-loss pause).
+                if not (steady and card):
+                    card = _research_card(sidecar, odds, day, tag, published) or card
                 if not card:
                     continue
                 legs = []
@@ -150,6 +156,9 @@ def build_tracking(roots, ledger_root, firewall):
                                 'start_time_utc':odds.get('event_start_time'), 'published_at':published,
                                 'snapshot_id':report.parent.name, 'odds':card['odds'], 'stake':1,
                                 'tracking_kind':card['tracking_kind'], 'model_version':card.get('model_version'),
+                                # Stop-loss scope (EXP-20261027-21) is the formal policy in force at publication.
+                                'strategy_profile':sidecar.get('strategy_profile'),
+                                'model_probability':card.get('model_probability', card.get('metrics',{}).get('model_probability')),
                                 'state':state, 'profit':profit, 'legs':legs,
                                 'settled_at':max((l.get('settled_at') or '' for l in legs),default='') or None})
                 selected.add(tag)

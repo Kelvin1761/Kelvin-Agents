@@ -46,6 +46,7 @@ from nba_research_evidence import (  # noqa: E402
 )
 import nba_market_ledger as market_ledger  # noqa: E402
 import nba_combo_roi  # noqa: E402
+import nba_steady_policy as steady_policy  # noqa: E402
 import nba_reliability  # noqa: E402
 import nba_no_prediction as no_prediction  # noqa: E402
 
@@ -347,7 +348,7 @@ def _no_banker_diagnostics(snapshot: dict[str, Any]) -> str:
             edge += counts.get("nonnegative_edge", 0)
     summary = f"分析：{coverage.get('analysed_games', 0)}/{coverage.get('scheduled_games', 0)} 場；正式穩膽 0。"
     if found:
-        summary += f"\n穩膽 fallback 漏斗：近期命中率合格 {recent} 腿 → 同時非負 edge {edge} 腿；之後仍需波幅／陣容／合法組合／實價 EV 檢查。"
+        summary += f"\n穩膽 fallback 漏斗：近期命中率合格 {recent} 腿（其中非負 edge {edge} 腿；steady 唔要求）；之後仍需波幅／陣容／合法組合／真實組合價 ≥2.0。"
     else:
         summary += "\n原因：正式分析未有通過全部驗證嘅 NBA 組合；逐關診斷未齊，唔將原因一律歸咎門檻。"
     return summary
@@ -418,10 +419,12 @@ def nba_betting_message(target_date: str, snapshot: dict[str, Any]) -> str:
         raise ValueError("telegram_betting_card_blocked:valid:no_valid_bet_rows")
 
     if safe_no_bet:
+        paused = steady_policy.paused_reason()
         return (
             f"🏀 NBA 旺財投注卡｜{target_date}\n"
             "⛔ 今日 NO BET\n"
-            "正式策略：只保留穩膽；真實 SGM 價 ≥2.0，保留 EV 驗證。\n"
+            + (f"⛔ 正式穩膽停損暫停中：{paused}；恢復要你決定（{steady_policy.PROTOCOL}）。\n" if paused else "")
+            + "正式策略：steady 穩膽（B2）；真實 SGM 價 ≥2.0，冇 EV 閘，模型預期 EV 為負。\n"
             + _no_banker_diagnostics(snapshot)
             + "\n" + nba_reliability.selection_message(snapshot.get("selection_health") or {})
             + "\n零出手亦需檢查機率、門檻及市場價；唔等於已證明模型有盈利優勢。"
@@ -429,7 +432,7 @@ def nba_betting_message(target_date: str, snapshot: dict[str, Any]) -> str:
 
     bankers = [row for row in recommendations if row.get("category") == "banker"]
     combos = [row for row in recommendations if row.get("bet_type") == "combo"]
-    lines = [f"🏀 NBA 旺財投注卡｜{target_date}", "✅ 只列已驗證 BET"]
+    lines = [f"🏀 NBA 旺財投注卡｜{target_date}", "✅ 只列已驗證 BET", f"📌 {steady_policy.DISCLAIMER}"]
     for row in bankers:
         metrics = row.get("metrics") or {}
         lines.extend(
@@ -467,7 +470,7 @@ def nba_betting_message(target_date: str, snapshot: dict[str, Any]) -> str:
         [
             "",
             "⚠️ 賠率以訊息發出時嘅已抽取快照為準；落注前要再核對。",
-            "資金管理：只用預先設定注碼，模型唔保證盈利。",
+            "資金管理：固定 $1 平注；模型唔保證盈利，預期 EV 為負。",
         ]
     )
     return "\n".join(lines)
@@ -1431,6 +1434,42 @@ def _combo_roi_text(target_date: str, log: RunLog) -> str:
         return "📊 落注追蹤：今次計算失敗（已記錄），唔影響上面賽果摘要。"
 
 
+def _steady_stop_text(target_date: str, log: RunLog) -> str:
+    """EXP-20261027-21 stop-loss on the dashboard's tracking records.
+
+    Pauses formal steady bets once a pre-registered rule trips; never resumes
+    by itself, and a failed check leaves the state unchanged.
+    """
+    try:
+        from services.nba_tracking import export_tracking
+        tracking = export_tracking(PROJECT_ROOT)
+        if tracking.get("status") != "valid":
+            log.step("steady_stop", "skipped", reason=f"tracking_{tracking.get('status')}")
+            return "🛡️ 穩膽停損：追蹤記錄未齊，今次冇檢查；狀態不變。"
+        state, newly, metrics = steady_policy.check(tracking.get("records") or [])
+        log.step("steady_stop", state["status"], newly_paused=newly, bets=metrics["bets"],
+                 profit=metrics["profit"], roi_upper_ci=metrics["roi_upper_ci"])
+        if newly:
+            notify_once(
+                f"nba_steady_paused:{state.get('paused_at')}",
+                f"⛔ NBA 正式穩膽已自動暫停（{steady_policy.PROTOCOL}）\n原因：{state.get('reason')}\n"
+                f"之後正式組合 1 一律 NO BET；研究記錄照寫。唔會自動恢復。\n"
+                f"恢復：python3 .agents/skills/nba/nba_steady_policy.py --resume --actor <名> --reason \"…\"",
+            )
+        if metrics["review"]:
+            notify_once(
+                f"nba_steady_review:{steady_policy.POLICY}:{state.get('since') or 'start'}",
+                f"🔎 NBA 正式穩膽需要審查（{steady_policy.PROTOCOL} S3）：{metrics['review']}。"
+                "唔會自動暫停；模型可能高估命中率。",
+            )
+        status = f"⛔ 暫停（{state.get('reason')}）" if state["status"] == "paused" else "✅ 運行中"
+        return (f"🛡️ 正式穩膽 {steady_policy.POLICY}：{metrics['bets']} 注中 {metrics['hits']}，"
+                f"{metrics['profit']:+.2f}u；停損 {steady_policy.STOP_UNITS:g}u｜{status}")
+    except Exception as exc:  # noqa: BLE001 — a monitoring add-on must not fail postgame
+        log.step("steady_stop", "failed", error=f"{type(exc).__name__}: {exc}")
+        return "🛡️ 穩膽停損：今次檢查失敗（已記錄）；狀態不變。"
+
+
 def _reliability_text(target_date: str, log: RunLog) -> str:
     """Rolling calibration of the live probability; never blocks the postgame summary."""
     try:
@@ -1595,6 +1634,7 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         try:
             performance_message = postgame_message(target_date, archive)
             performance_message += "\n\n" + _combo_roi_text(target_date, log)
+            performance_message += "\n" + _steady_stop_text(target_date, log)
             performance_message += "\n\n" + _reliability_text(target_date, log)
         except ValueError as exc:
             warning = notify_once(

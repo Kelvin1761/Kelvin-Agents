@@ -118,7 +118,7 @@ def test_real_report_selection_uses_quote_before_rendering(monkeypatch, price, p
     now = datetime.now(timezone.utc)
     odds['event_start_time'] = (now + timedelta(hours=2)).isoformat()
     monkeypatch.setattr(r, 'build_leg_candidates', lambda *args, **kwargs: [])
-    monkeypatch.setattr(r, 'select_combo_1', lambda candidates: legs)
+    monkeypatch.setattr(r, 'select_combo_1', lambda candidates, **gates: legs)
     for name in ('select_combo_2', 'select_combo_3', 'select_combo_x_value_bomb'):
         monkeypatch.setattr(r, name, lambda candidates: [])
     monkeypatch.setattr(r, 'quote_combo', lambda source, selected: q.quote_combo(source, selected, now=now, post=post_price(price)))

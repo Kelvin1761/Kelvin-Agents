@@ -196,3 +196,41 @@ def test_upgraded_model_does_not_replace_first_game_selection_or_original_price(
     records=build(tmp_path)['records'];assert len(records)==1
     assert records[0]['odds']==2.4 and records[0]['snapshot_id']=='z-first'
     assert records[0]['model_version']=='banker-ev-shadow-v1'
+
+
+def _patch_sidecar(folder, **fields):
+    side=folder/f'Game_{TAG}_Full_Analysis.md.market_legs.json'
+    data=json.loads(side.read_text());data.update(fields);side.write_text(json.dumps(data))
+    manifest=folder/'manifest.json';meta=json.loads(manifest.read_text())
+    for row in meta['files']:
+        if row['name']==side.name:row.update(bytes=side.stat().st_size,sha256=hashlib.sha256(side.read_bytes()).hexdigest())
+    manifest.write_text(json.dumps(meta))
+
+
+def test_steady_policy_formal_combo_is_tracked_despite_disclosed_negative_ev(tmp_path):
+    # EXP-20261027-21: combo 1 IS the B2 selection, so negative EV no longer demotes it.
+    folder=research_publication(tmp_path)
+    _patch_sidecar(folder,strategy_profile='banker-steady-b2-v1')
+    results(tmp_path)
+    row=build(tmp_path)['records'][0]
+    assert row['tracking_kind']=='formal' and row['odds']==2.5 and row['profit']==1.5
+    assert row['strategy_profile']=='banker-steady-b2-v1' and row['model_probability']==.2
+
+
+def test_steady_policy_without_formal_combo_falls_back_to_research(tmp_path,monkeypatch):
+    # A stop-loss pause publishes no combo 1; the research record keeps the line measurable.
+    import services.nba_latest_analysis as latest
+    monkeypatch.setattr(latest,'_review_price',lambda candidate,odds:(2.4,'expired'))
+    folder=research_publication(tmp_path)
+    _patch_sidecar(folder,strategy_profile='banker-steady-b2-v1')
+    report=folder/f'Game_{TAG}_Full_Analysis.md'
+    text=report.read_text().replace('組合賠率 @2.5','組合賠率 待定');report.write_text(text)
+    side=folder/f'Game_{TAG}_Full_Analysis.md.market_legs.json'
+    data=json.loads(side.read_text());data['report_sha256']=hashlib.sha256(text.encode()).hexdigest();side.write_text(json.dumps(data))
+    manifest=folder/'manifest.json';meta=json.loads(manifest.read_text())
+    for row in meta['files']:
+        path=folder/row['name'];row.update(bytes=path.stat().st_size,sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+    manifest.write_text(json.dumps(meta))
+    results(tmp_path)
+    row=build(tmp_path)['records'][0]
+    assert row['tracking_kind']=='research' and row['strategy_profile']=='banker-steady-b2-v1'

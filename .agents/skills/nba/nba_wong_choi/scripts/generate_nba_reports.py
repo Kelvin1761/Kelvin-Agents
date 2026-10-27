@@ -39,6 +39,7 @@ from nba_schedule import canonical_team_abbr
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nba_prob_layer
 from nba_selection_policy import BANKER, BANKER_FALLBACK, VALUE, HIGH, BUILD_TOLERANCE, SelectedCombo, STRATEGY_PROFILE, description as policy_description
+import nba_steady_policy as steady_policy
 from nba_sgm_quote import quote_combo, quote_valid, quote_legs, legs_identity
 
 class MLModelUnavailable(RuntimeError):
@@ -2011,15 +2012,21 @@ def gen_player_card(card):
     return "\n".join(lines)
 
 
-def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
-    """Generate a complete combo section with pre-filled data."""
+def gen_combo_section(combo_name, combo_emoji, combo_desc, legs, steady=False):
+    """Generate a complete combo section with pre-filled data.
+
+    ``steady``: EXP-20261027-21 formal banker -- no EV gate, flat $1, and the
+    negative-EV disclaimer replaces Kelly sizing (Kelly is 0 there)."""
     lines = []
 
     if not legs or not getattr(legs, "quote", {}).get("status") == "ok":
         lines.append(f"### {combo_emoji} {combo_name}")
         if combo_desc:
             lines.append(f"> {combo_desc}")
-        lines.append(f"> ⚠️ 未能根據穩健 +EV 篩選條件搵到合適嘅 legs。此層級建議觀望，除非重新提取 Sportsbet 盤口後通過同一套 gate。")
+        if steady:
+            lines.append(f"> ⚠️ 今場冇穩膽：未有組合同時通過選腿規則同真實 Sportsbet SGM 報價 ≥2.0。此層級建議觀望。")
+        else:
+            lines.append(f"> ⚠️ 未能根據穩健 +EV 篩選條件搵到合適嘅 legs。此層級建議觀望，除非重新提取 Sportsbet 盤口後通過同一套 gate。")
         lines.append(f"")
         lines.append(f"---")
         return "\n".join(lines)
@@ -2170,10 +2177,16 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     kelly_prob = adj_joint_prob * 100
     kelly_f = kelly_fraction(kelly_prob, combo_odds_for_kelly)
     kelly_stake = round(kelly_f * 1000, 0)
-    lines.append(f"- **🎯 Kelly 注碼建議**: {kelly_f*100:.1f}% bankroll (Half-Kelly) → **${int(kelly_stake)}** / $1000")
+    if not steady:
+        lines.append(f"- **🎯 Kelly 注碼建議**: {kelly_f*100:.1f}% bankroll (Half-Kelly) → **${int(kelly_stake)}** / $1000")
     lines.append(f"- **🛡️ 組合核心邏輯**: {core_logic}")
     lines.append(f"- **⚠️ 主要風險**: {' / '.join(risk_factors)}")
-    lines.append(f"- **建議注碼**: 按同一相關性調整後機率及真實報價計算 Half-Kelly：{kelly_f*100:.1f}% bankroll；唔另加固定 units。")
+    if steady:
+        lines.append(f"- **建議注碼**: 固定 $1 平注（{steady_policy.PROTOCOL}）；唔用 Kelly。")
+        if combo_ev_pct <= 0:
+            lines.append(f"- **⚠️ 模型預期 EV 為負**: 按真實報價計 {combo_ev_pct}%；呢個係命中率產品線，唔係有優勢嘅注。")
+    else:
+        lines.append(f"- **建議注碼**: 按同一相關性調整後機率及真實報價計算 Half-Kelly：{kelly_f*100:.1f}% bankroll；唔另加固定 units。")
     lines.append(f"")
     lines.append(f"> ⚠️ EV／Kelly 按以上 Sportsbet SGM 報價及相關性調整後機率計算；報價只在短時間內有效，落注前須重新確認。")
     lines.append(f"")
@@ -2350,7 +2363,11 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     for c in candidates:
         c['_mc_lookup'] = mc_lookup
 
-    combo_1 = select_combo_1(candidates)
+    # EXP-20261027-21: formal combo 1 is the B2 selection (no EV gates); the
+    # pre-registered stop-loss can pause it, never the shadow arms.
+    steady_pause = steady_policy.paused_reason()
+    combo_1 = (SelectedCombo([], "steady_paused") if steady_pause
+               else select_combo_1(candidates, require_leg_ev=False, require_combo_ev=False))
     
     # F4: No cascading exclusion — each combo selects independently from full pool.
     # With multi-leg combos, overlap is acceptable and produces better results.
@@ -2368,13 +2385,15 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
         from nba_sgm_quote import legs_identity
         quote_cache[legs_identity(proposal)] = quoted
         quote_attempts[key] = quoted.quote
-        if (quote_valid(quoted.quote, quote_source, proposal) and _combo_passes_positive_ev_gate(quoted)
+        if (quote_valid(quoted.quote, quote_source, proposal)
+                and (key == "1" or _combo_passes_positive_ev_gate(quoted))
                 and quoted.quote["decimal_odds"] >= {"1": 2.0, "2": 3.0, "3": 8.0, "X": 1.0}[key]):
             priced[key] = quoted
         else:
             priced[key] = []
             if quoted.quote["status"] == "ok":
-                quote_attempts[key] = {**quoted.quote, "rejected": "actual_price_fails_ev_floor_or_expired"}
+                quote_attempts[key] = {**quoted.quote, "rejected": "actual_price_below_floor_or_expired" if key == "1"
+                                       else "actual_price_fails_ev_floor_or_expired"}
     combo_1, combo_2, combo_3, combo_x = (priced[key] for key in ("1", "2", "3", "X"))
     if quote_attempts:
         sections.append("**SGM 報價檢查**：" + "；".join(f"{key}: {value.get('rejected', value['status'])}" for key, value in quote_attempts.items()))
@@ -2399,7 +2418,10 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"")
     sections.append(f"> [!IMPORTANT]")
     sections.append(f"> 以下組合由 Python V5 短腿數 + Playoff Gate + Post-Reflector EV Gate 自動篩選。所有數學數據不可修改。")
-    sections.append(f"> Engine mode: **{engine_mode.upper()}**；任何 `Combo EV% <= 0` 或 Kelly = 0% 嘅組合會被 hard block。")
+    sections.append(f"> Engine mode: **{engine_mode.upper()}**")
+    sections.append(f"> 📌 正式穩膽政策：{steady_policy.POLICY} — {steady_policy.DISCLAIMER}")
+    if steady_pause:
+        sections.append(f"> ⛔ 正式穩膽停損暫停中（{steady_pause}）；今日 NO BET。恢復要用戶決定（{steady_policy.PROTOCOL}）。")
     for _l in ml_status_lines() + fit_status_lines():
         sections.append(_l)
     sections.append(f"")
@@ -2407,7 +2429,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(gen_combo_section(
         "組合 1: Banker SGM", "🛡️",
         policy_description("1", combo_1),
-        combo_1))
+        combo_1, steady=True))
     sections.append(f"")
 
     sections.append("正式策略：只保留穩膽；價值膽、高倍率及 Value Bomb 已退出新正式建議。")
@@ -2465,7 +2487,7 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
         capture["review_candidates"] = review
         capture["selection_diagnostics"] = diagnostics
     sections.append("## 📋 SGM 候選評估（分析用途）")
-    sections.append("以下候選未通過正式策略驗證，唔係正式投注建議；正式注維持上面同一套門檻。")
+    sections.append("以下係研究記錄（同正式組合 1 同一套 steady／B2 揀法，停損暫停期間照記錄），唔係額外投注建議；正式注只睇組合 1。")
     if review_error:
         sections.append(f"候選生成未完成（{review_error}）；正式選腿結果保留，需重試候選分析。")
     for item in review:

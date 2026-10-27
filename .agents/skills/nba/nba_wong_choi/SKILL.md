@@ -78,7 +78,7 @@ Orchestrator 會生成以下檔案：
 
 ## 正式策略範圍（2026-10-24）
 
-新正式輸出使用 `banker-only-v1`：只保留 combo 1 穩膽，真實 Sportsbet SGM 價至少 2.0，現有機率、選腿及正 EV 閘保留。價值膽／高倍率／Value Bomb 唔再成為新正式建議；舊紀錄仍可檢討及結算。
+新正式輸出使用 `banker-steady-b2-v1`（EXP-20261027-21，取代 `banker-only-v1`）：只保留 combo 1 穩膽，揀法 = B2 —— 同一套近期命中／波幅選腿，**冇單腿 edge 閘同組合 EV 閘**，真實 Sportsbet SGM 價至少 2.0，固定 $1 平注。模型預期 EV 為負，報告、投注卡同 dashboard 一定要講明；累計 −10u（或 60 注後 ROI 95% 上限 <0）自動暫停，要人手 `nba_steady_policy.py --resume` 先恢復。價值膽／高倍率／Value Bomb 唔再成為新正式建議；舊紀錄仍可檢討及結算。
 
 `banker-ev-shadow-v1` 嘅 B0/B1/B2 只做 forward EV 消融，維持 OBSERVE／無注碼，唔計入正式 ROI。協議見 `docs/experiments/EXP-20261024-02-nba-banker-only-ev-shadow.md`。連續三個完整可評估正式賽日零穩膽觸發策略審計提醒，唔自動降門檻。呢啲係工程及產品取捨，未證明可提高盈利。
 

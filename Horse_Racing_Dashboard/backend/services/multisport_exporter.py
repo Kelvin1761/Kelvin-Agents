@@ -199,6 +199,11 @@ def _parse_nba_leg_row(line: str) -> Optional[Dict[str, Any]]:
     }
 
 
+NBA_STEADY_MARKER = "正式穩膽政策：banker-steady-b2-v1"
+NBA_STEADY_INSIGHT = ("正式穩膽 = steady（B2，EXP-20261027-21）：命中率產品線，模型預期 EV 為負；"
+                      "固定 $1 平注；累計 −10u 或 60 注後 ROI 上限 <0 自動暫停。")
+
+
 def _parse_nba_combos(
     content: str,
     analysis_date: str,
@@ -254,7 +259,8 @@ def _parse_nba_combos(
                         )
                     ),
                 },
-                "insight": "由 NBA Wong Choi Python Auto-Selection 正式報告直接匯出。",
+                "insight": NBA_STEADY_INSIGHT if NBA_STEADY_MARKER in content
+                else "由 NBA Wong Choi Python Auto-Selection 正式報告直接匯出。",
                 "risk": risk,
                 "decision": "BET",
                 "confidence": None,

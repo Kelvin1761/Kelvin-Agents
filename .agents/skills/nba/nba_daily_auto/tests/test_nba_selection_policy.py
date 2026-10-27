@@ -50,7 +50,7 @@ def test_full_report_identifies_actual_c_source_and_avoids_false_safety_and_prov
     ext={'name':'Verified Star','advanced':{'USG_PCT':25},'gamelog':{'PTS':[20,22,18,24,26,20,23,19,21,25],'MIN':[32]*10}}
     card=r.build_player_card('Verified Star','BOS',{'lines':{'10':'1.8'}},ext,'points',engine_mode='legacy')
     for name in ('select_combo_1','select_combo_2','select_combo_3','select_combo_x_value_bomb'):
-        monkeypatch.setattr(r,name,lambda _:[])
+        monkeypatch.setattr(r,name,lambda _, **gates:[])
     text=r.gen_full_report({'away':{'abbr':'BOS'},'home':{'abbr':'LAL'}},{},{},{},{},[card],'fixture')
     version=card['line_analysis']['10']['probability_model_id'].split(':')[1]
     assert f'最終機率來源**: {version} 市場＋L10 校準層' in text

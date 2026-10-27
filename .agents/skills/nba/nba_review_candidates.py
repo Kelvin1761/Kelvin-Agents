@@ -156,11 +156,11 @@ def banker_shadow_review(rows):
     translations = {'quote_unverified': '未取得有效 Sportsbet 組合報價。',
                     'actual_price_below_2': '真實組合價低於穩膽最低2.0倍。',
                     'nonpositive_combo_ev': '模型組合 EV 非正。'}
-    reasons = ['穩膽影子候選：只通過近期命中／波幅等選腿規則，未驗證盈利；唔係正式建議。']
+    reasons = ['穩膽研究記錄：同正式組合 1（steady／B2）同一套揀法，用嚟追蹤；停損暫停期間照記錄。正式注以組合 1 為準。']
     reasons += [translations.get(reason, reason) for reason in proposal['reasons']]
     if proposal.get('expected_value') is not None and proposal['expected_value'] <= 0:
-        reasons.append('按真實組合價計算 EV 非正，正式策略維持 NO BET。')
-    return [{'candidate_id': 'steady', 'label': '穩膽影子候選', 'version': BANKER_SHADOW_VERSION,
+        reasons.append('按真實組合價計算模型 EV 非正：命中率產品線，見 EXP-20261027-21。')
+    return [{'candidate_id': 'steady', 'label': '穩膽研究記錄', 'version': BANKER_SHADOW_VERSION,
              'analysis_only': True, 'decision': 'OBSERVE', 'odds': proposal.get('sportsbet_sgm_price'),
              'sgm_quote': proposal.get('sgm_quote') or {},
              'quote_verified_at_generation': proposal.get('sportsbet_sgm_status') == 'ok',

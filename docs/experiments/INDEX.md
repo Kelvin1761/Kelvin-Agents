@@ -304,3 +304,4 @@
 
 - [EXP-20261027-09](EXP-20261027-09-tennis-opponent-adjusted-serve-return.md)：Tennis 對手校正S/R點數實力，五段勝未校正、只四段LL勝rank，REJECT；固定歷史價少蝕147.81u對rank、僅17.87u對原binary且CI跨零，仍輸市場；實際Sportsbet盈利未驗證。
 - [EXP-20261027-20](EXP-20261027-20-nba-version-alignment-audit.md)：NBA 版本一致性審計：Telegram ROI 改用 dashboard tracking（21:00 第一個發佈嘅穩膽）；MS 四個測試 epoch 改 10-27；readiness 警告用字；正式穩膽 vs 用戶實際跟嘅 steady 候選未統一，待用戶決定。
+- [EXP-20261027-21](EXP-20261027-21-nba-steady-b2-formal-banker-protocol.md) — NBA 正式穩膽改用 steady（B2）：冇 EV 閘、真價 ≥2.0、$1 平注；**模型預期 EV 為負**（基準 14 注 −1.57u、模型估 EV 約 −12%）；預先登記停損 S1 −10u／S2 60 注 CI／S3 命中率審查，暫停唔會自動恢復。產品決定，唔係模型改善。

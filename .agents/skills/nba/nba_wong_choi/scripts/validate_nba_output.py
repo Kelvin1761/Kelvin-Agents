@@ -331,6 +331,10 @@ def check_fw10_over_only(content: str) -> list:
     return issues
 
 
+STEADY_POLICY_MARKER = "正式穩膽政策：banker-steady-b2-v1"
+STEADY_NEGATIVE_EV_DISCLOSURE = "模型預期 EV 為負"
+
+
 def check_fw11_combo_gates(content: str) -> list:
     """FW-11: Enforce positive-EV combo gates in generated sections."""
     issues = []
@@ -345,6 +349,17 @@ def check_fw11_combo_gates(content: str) -> list:
             issues.append(
                 f"FW-11 ❌ BLOCK: {combo_name} 組合賠率 @{match.group(1)} < {floor}x 門檻"
             )
+
+    if STEADY_POLICY_MARKER in content:
+        # EXP-20261027-21: formal banker is B2 by policy, so non-positive EV
+        # and negative-edge legs are allowed -- but must be disclosed, and the
+        # report must not size by Kelly.
+        if (re.search(r'\*\*Combo EV%\*\*:\s*(-\d+(?:\.\d+)?|0(?:\.0+)?)%', content)
+                and STEADY_NEGATIVE_EV_DISCLOSURE not in content):
+            issues.append("FW-11 ❌ BLOCK: 正式穩膽 EV 非正但冇顯示「模型預期 EV 為負」")
+        if "Kelly 注碼建議" in content:
+            issues.append("FW-11 ❌ BLOCK: 正式穩膽只可固定 $1 平注，唔應該出 Kelly 注碼")
+        return issues
 
     leg_rows = [line for line in content.splitlines() if line.strip().startswith("| 🧩")]
     for line in leg_rows:
@@ -475,7 +490,8 @@ def check_fw13_sgm_quotes(content, filepath, odds_json_path, *, now=None):
                     or not math.isfinite(probability) or not 0 < probability < 1
                     or not 0 <= penalty <= .30
                     or not math.isclose(probability, naive * (1-penalty), abs_tol=1e-10)
-                    or probability * price <= 1):
+                    # EXP-20261027-21: the steady banker is disclosed negative EV (FW-11 checks the disclosure).
+                    or (probability * price <= 1 and STEADY_POLICY_MARKER not in content)):
                 raise ValueError('price/probability/EV mismatch')
     except (OSError, ValueError, TypeError, KeyError, IndexError, AttributeError) as exc:
         return [f'FW-13 ❌ BLOCK: SGM quote verification failed ({exc})']
