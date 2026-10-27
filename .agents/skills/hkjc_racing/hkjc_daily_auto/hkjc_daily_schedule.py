@@ -1812,7 +1812,8 @@ FIRST_SECTION_EXP_DOC = "docs/experiments/EXP-20261016-53-hkjc-first-section-own
 FIRST_SECTION_SINCE = "2026-10-17"
 FIRST_SECTION_FINAL_RACES = 150
 EVAL_HARNESS = PROJECT_ROOT / ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_eval_harness.py"
-FIRST_SECTION_ARM = PROJECT_ROOT / "docs/experiments/patches/hkjc_arm_no_first_section.py"
+# 2026-10-27 退回：live = 冇前速，arm = 有前速；判定器方向唔變（有 vs 冇）。
+FIRST_SECTION_ARM = PROJECT_ROOT / "docs/experiments/patches/hkjc_arm_with_first_section.py"
 FIRST_SECTION_JUDGE = PROJECT_ROOT / "docs/experiments/patches/hkjc_first_section_forward.py"
 _JUDGE_NUMBERS_RE = re.compile(
     r"races=(\d+)\s+頭2換馬淨上名=([+-]\d+)\s+Good Δ=([+-][\d.]+)pp\s+Gold Δ=([+-][\d.]+)pp")
@@ -1846,14 +1847,15 @@ def first_section_forward_section(state: dict, out_dir: Path | None = None) -> s
     try:
         out_dir = out_dir or HK_RACING / "Forward_Checks" / "EXP-20261016-53"
         out_dir.mkdir(parents=True, exist_ok=True)
-        live, cf = out_dir / "live.jsonl", out_dir / "counterfactual.jsonl"
+        live, cf = out_dir / "live_without.jsonl", out_dir / "with_first_section.jsonl"
         env = {"PYTHONDONTWRITEBYTECODE": "1"}
         steps = (
             ("live harness", [sys.executable, str(EVAL_HARNESS), "run",
                               "--since", FIRST_SECTION_SINCE, "--out", str(live)]),
-            ("反事實 harness", [sys.executable, str(EVAL_HARNESS), "run", "--since", FIRST_SECTION_SINCE,
-                               "--arm", str(FIRST_SECTION_ARM), "--out", str(cf)]),
-            ("判定器", [sys.executable, str(FIRST_SECTION_JUDGE), str(live), str(cf)]),
+            ("前速 arm harness", [sys.executable, str(EVAL_HARNESS), "run", "--since", FIRST_SECTION_SINCE,
+                                 "--arm", str(FIRST_SECTION_ARM), "--out", str(cf)]),
+            # 判定器第一個檔 = 有前速，第二個 = 冇前速
+            ("判定器", [sys.executable, str(FIRST_SECTION_JUDGE), str(cf), str(live)]),
         )
         output = ""
         for name, cmd in steps:
@@ -1871,12 +1873,14 @@ def first_section_forward_section(state: dict, out_dir: Path | None = None) -> s
         live_err, live_dead = _jsonl_dropped(live)
         cf_err, cf_dead = _jsonl_dropped(cf)
         if live_err or cf_err:
-            line += f"\n⚠️ score 失敗已剔除：live {live_err} 場、反事實 {cf_err} 場 —— 先查數據"
+            line += f"\n⚠️ score 失敗已剔除：live {live_err} 場、前速 arm {cf_err} 場 —— 先查數據"
         if live_dead or cf_dead:
-            line += f"\n⚠️ speed_score 死欄位已剔除：live {live_dead} 場、反事實 {cf_dead} 場"
+            line += f"\n⚠️ speed_score 死欄位已剔除：live {live_dead} 場、前速 arm {cf_dead} 場"
         if verdict_text.startswith("REVERT"):
-            line += (f"\n🛑 觸發預先登記退回條件。唔會自動退回 —— 你決定；做法見 {FIRST_SECTION_EXP_DOC}"
-                     "（四個 first_section_* 權重設 0，用 保存.sh 發佈）")
+            line += (f"\n🛑 forward 判定前速唔好（已經喺 2026-10-27 退回）—— 唔好重新上線；見 {FIRST_SECTION_EXP_DOC}")
+        elif verdict_text.startswith("KEEP"):
+            line += (f"\n✅ forward 夠 150 場同方向 —— 可以考慮重新上線（arm 權重寫返 scoring.py，用 保存.sh 發佈）；"
+                     f"見 {FIRST_SECTION_EXP_DOC}")
         if verdict_text.startswith("REVERT") or int(races) >= FIRST_SECTION_FINAL_RACES:
             state["first_section_forward_final"] = {"line": line, "decided_at": stamp()}
         return "\n\n" + line

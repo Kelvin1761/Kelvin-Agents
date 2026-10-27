@@ -46,8 +46,11 @@ def test_wait_line_and_pre_registered_invocation(tmp_path, monkeypatch):
     for cmd in (live_cmd, cf_cmd):
         assert cmd[cmd.index("--since") + 1] == "2026-10-17"
     assert "--arm" not in live_cmd
-    assert cf_cmd[cf_cmd.index("--arm") + 1].endswith("hkjc_arm_no_first_section.py")
+    assert cf_cmd[cf_cmd.index("--arm") + 1].endswith("hkjc_arm_with_first_section.py")
     assert judge_cmd[1].endswith("hkjc_first_section_forward.py")
+    # 2026-10-27 退回後：判定器第一個檔 = 有前速（arm），第二個 = live（冇前速）
+    assert judge_cmd[2] == cf_cmd[cf_cmd.index("--out") + 1]
+    assert judge_cmd[3] == live_cmd[live_cmd.index("--out") + 1]
     assert all(env == {"PYTHONDONTWRITEBYTECODE": "1"} for _, env in calls)
 
 
@@ -57,7 +60,7 @@ def test_revert_is_reported_not_applied_and_frozen(tmp_path, monkeypatch):
     monkeypatch.setattr(schedule, "run_cmd", fake)
     state: dict = {}
     text = schedule.first_section_forward_section(state, out_dir=tmp_path)
-    assert "🛑" in text and "EXP-20261016-53" in text and "唔會自動退回" in text
+    assert "🛑" in text and "EXP-20261016-53" in text and "唔好重新上線" in text
     assert state["first_section_forward_final"]["line"] in text
 
     def must_not_run(*_a, **_k):
@@ -74,7 +77,7 @@ def test_final_verdict_at_150_is_judged_once(tmp_path, monkeypatch):
     monkeypatch.setattr(schedule, "run_cmd", fake)
     state: dict = {}
     text = schedule.first_section_forward_section(state, out_dir=tmp_path)
-    assert "KEEP" in text and "🛑" not in text
+    assert "KEEP" in text and "🛑" not in text and "可以考慮重新上線" in text
     assert "first_section_forward_final" in state
 
 
@@ -91,7 +94,7 @@ def test_harness_failure_is_visible(tmp_path, monkeypatch):
     fake, calls = _fake_run("unused", fail_step=2)
     monkeypatch.setattr(schedule, "run_cmd", fake)
     text = schedule.first_section_forward_section({}, out_dir=tmp_path)
-    assert "⚠️" in text and "檢查失敗" in text and "反事實 harness exit=1" in text
+    assert "⚠️" in text and "檢查失敗" in text and "前速 arm harness exit=1" in text
     assert len(calls) == 2  # judge never runs on a half-written pair
 
 
@@ -109,8 +112,8 @@ def test_dropped_rows_are_flagged(tmp_path, monkeypatch):
                         live_rows=(ROW, bad, dead), cf_rows=(ROW, dead))
     monkeypatch.setattr(schedule, "run_cmd", fake)
     text = schedule.first_section_forward_section({}, out_dir=tmp_path)
-    assert "score 失敗已剔除：live 1 場、反事實 0 場" in text
-    assert "speed_score 死欄位已剔除：live 1 場、反事實 1 場" in text
+    assert "score 失敗已剔除：live 1 場、前速 arm 0 場" in text
+    assert "speed_score 死欄位已剔除：live 1 場、前速 arm 1 場" in text
 
 
 def test_weekly_message_carries_the_line(tmp_path, monkeypatch):
