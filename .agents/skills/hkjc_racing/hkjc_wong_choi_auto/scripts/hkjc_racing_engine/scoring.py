@@ -451,6 +451,10 @@ TRAINER_SIGNAL_CONTEXT_WEIGHTS = {
     "combo_trainer_share": 0.45,
 }
 
+# EXP-20261027-13 arm B：換騎 −1.5 唔分方向，連換上頂級騎師都扣（EXP-20261027-12 P1 對模型 +5.5pp）。
+# True = 換上賽日前 365 日頭 6 騎師就唔扣。現行 False；只有實驗 arm 會改。
+JOCKEY_CHANGE_SKIP_TOP_UPGRADE = False
+
 HORSE_HEALTH_CONTEXT_WEIGHTS = {
     "base": 68.0,
     "medical_clear_bonus": 2.0,

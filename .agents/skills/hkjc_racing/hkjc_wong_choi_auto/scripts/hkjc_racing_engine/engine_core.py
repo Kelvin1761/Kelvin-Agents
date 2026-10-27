@@ -1638,7 +1638,7 @@ class RacingEngine:
                     ),
                 })
 
-        if self._is_jockey_changed() is True:
+        if self._is_jockey_changed() is True and not self._is_top_jockey_upgrade_exempt():
             change_adj = self._jockey_change_adjustment(prior_stack.jockey_change)
             jockey_adj += change_adj
             if change_adj:
@@ -2172,6 +2172,14 @@ class RacingEngine:
         if keep["win_rate"] >= change["win_rate"] + 1.0 and keep["place_rate"] >= change["place_rate"] + 3.0:
             return scoring.TRAINER_SIGNAL_CONTEXT_WEIGHTS["jockey_change_negative"]
         return 0.0
+
+    def _is_top_jockey_upgrade_exempt(self):
+        """EXP-20261027-13 arm B switch: no change penalty when moving to a top-6 jockey."""
+        if not scoring.JOCKEY_CHANGE_SKIP_TOP_UPGRADE:
+            return False
+        from hkjc_racing_engine import overlays
+
+        return bool(overlays.evaluate_overlays(self)["top_jockey_upgrade"]["value"])
 
     def _is_jockey_changed(self):
         current_jockey = self._clean(self.horse_data.get("jockey", "") or self._current_declared_jockey())

@@ -42,6 +42,7 @@ from hkjc_racing_engine.scoring import (
     to_dimension_display,
     to_display_scale,
 )
+from hkjc_racing_engine import overlays as overlay_registry
 from hkjc_racing_engine.validation import validate_engine_scripts, validate_logic_data
 from wongchoi_paths import is_materialized_file
 
@@ -1066,6 +1067,8 @@ class HKJCAutoOrchestrator:
             
             engine = RacingEngine(h_obj, race_context)
             result = engine.analyze_horse()
+            # 情境 overlay：逐匹計（shadow 都計），加分喺全場 robustness 之後先做。
+            result["overlays"] = overlay_registry.overlay_record(overlay_registry.evaluate_overlays(engine))
             shadows = self._build_shadow_profiles(engine, result)
             for shadow in shadows:
                 result.setdefault("shadow_profiles", {})[shadow["profile"]] = shadow
@@ -1091,6 +1094,7 @@ class HKJCAutoOrchestrator:
             
         _apply_sip_enhancements(horses)
         self._apply_mainline_shape_robustness(horses)
+        self._apply_overlays(horses)
         _refresh_grade_transparency(horses)
         self._apply_7d_official_ranking(horses)
         # ensure_verdict owns the single deterministic ranking path, including
@@ -1354,6 +1358,19 @@ class HKJCAutoOrchestrator:
                 if not shadow:
                     continue
                 shadow["official_ranking_score"] = round(float(shadow.get("ability_score", 0.0)), 6)
+
+    @staticmethod
+    def _apply_overlays(horses):
+        """Add each live overlay's raw points (see hkjc_racing_engine.overlays)."""
+        for horse in horses.values():
+            auto = horse.get("python_auto") or {}
+            delta = overlay_registry.applied_total(auto)
+            if not delta:
+                continue
+            ability_raw = round(float(auto.get("ability_score_raw", 60.0)) + delta, 4)
+            auto["ability_score_raw"] = ability_raw
+            auto["ability_score"] = round(to_display_scale(ability_raw), 2)
+            auto["grade"] = compute_grade(auto["ability_score"])
 
     @staticmethod
     def _apply_mainline_shape_robustness(horses):

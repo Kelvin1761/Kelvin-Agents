@@ -214,10 +214,10 @@ Grade 只係一個閱讀標籤，排名純粹按分數高低，唔會因為 Grad
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-10-27 19:04 AEDT`
-- Git commit：`41773989`
+- 生成時間：`2026-10-27 19:33 AEDT`
+- Git commit：`87a0bf38`
 - Scoring contract：`HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1`
-- `scoring.py` 指紋：`e3f90e2b5747`
+- `scoring.py` 指紋：`4f5badb92d86`
 - `matrix_mapper.py` 指紋：`1da521a47df6`
 - `renderer.py` 指紋：`29b4af6424e9`
 - 實測樣本：**60 場、732 匹馬**，由 `2026-10-11_ShaTin` 到 `2026-10-28_ShaTin`（跳過 351 個舊格式檔案）
