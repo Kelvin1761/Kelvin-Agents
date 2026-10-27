@@ -1,0 +1,1525 @@
+{
+  "schema_version": "tennis-model-research/20261027",
+  "base_commit": "2e46fa52d535479174f65349376a9a51bca554b0",
+  "research_branch": "codex-tennis-score-model-20261027",
+  "research_code_commit": "27d86b12ad70b17849ebce61f4221dd836ab36c2",
+  "production_model_changed": false,
+  "promotion_decision": "REJECT: no profitability improvement evidence",
+  "holdout_status": "2025 reused research confirmation, NOT untouched holdout; no 2026 live holdout reads",
+  "leakage_status": "FLAG: source observation/publication/quote clocks unverified; 21-day delayed reconstruction only",
+  "game_strength": {
+    "experiment": "EXP-20261027-07",
+    "protocol_sha256": "6af8b8125e13d9e316650f43e7340382c4fdcb255bc60b470cfed9bb32aad655",
+    "code_sha256": "a2d4c6aa0c1256c5de17b4cd1e9864a66dfa092febc4f669cf6c8869d215071e",
+    "dataset_sha256": "76fabab1e4730121adccc5a80179560b3e51ac14a582f8a023f0460817b40a23",
+    "coverage": {
+      "raw_rows": 30879,
+      "incomplete_or_unsupported_score": 1156,
+      "out_of_scope": 2460,
+      "conflicting_keys": 0,
+      "accepted": 27263
+    },
+    "feature_matches": 25186,
+    "leakage_status": "FLAG: historical observation clocks unverified; delayed research reconstruction only",
+    "development": [
+      {
+        "window": [
+          "2023-01-01",
+          "2023-07-01"
+        ],
+        "train_n": 9097,
+        "test_n": 2843,
+        "max_training_label_available": "2022-12-05",
+        "control_coefficients": [
+          0.9993639724205837
+        ],
+        "candidate_coefficients": [
+          0.34558589637080356,
+          2.2248547466845534
+        ],
+        "metrics": {
+          "baseline": {
+            "log_loss": 0.6343350396751017,
+            "brier": 0.22243476186420744
+          },
+          "control": {
+            "log_loss": 0.6343270152120889,
+            "brier": 0.2224314615502968
+          },
+          "candidate": {
+            "log_loss": 0.6271493749642908,
+            "brier": 0.2194917237472729
+          }
+        },
+        "deltas": {
+          "baseline": {
+            "log_loss": {
+              "mean": -0.0071856647108109505
+            },
+            "brier": {
+              "mean": -0.0029430381169345305
+            }
+          },
+          "control": {
+            "log_loss": {
+              "mean": -0.007177640247798051
+            },
+            "brier": {
+              "mean": -0.002939737803023873
+            }
+          }
+        }
+      },
+      {
+        "window": [
+          "2023-07-01",
+          "2024-01-01"
+        ],
+        "train_n": 11609,
+        "test_n": 2051,
+        "max_training_label_available": "2023-06-19",
+        "control_coefficients": [
+          0.9836325513461127
+        ],
+        "candidate_coefficients": [
+          0.27287191316587744,
+          2.4396718702279565
+        ],
+        "metrics": {
+          "baseline": {
+            "log_loss": 0.624766984446489,
+            "brier": 0.21839637704295325
+          },
+          "control": {
+            "log_loss": 0.6247422856357886,
+            "brier": 0.21836899119356168
+          },
+          "candidate": {
+            "log_loss": 0.6182225187494751,
+            "brier": 0.2156144742469301
+          }
+        },
+        "deltas": {
+          "baseline": {
+            "log_loss": {
+              "mean": -0.006544465697013998
+            },
+            "brier": {
+              "mean": -0.0027819027960231646
+            }
+          },
+          "control": {
+            "log_loss": {
+              "mean": -0.006519766886313545
+            },
+            "brier": {
+              "mean": -0.0027545169466316093
+            }
+          }
+        }
+      },
+      {
+        "window": [
+          "2024-01-01",
+          "2024-07-01"
+        ],
+        "train_n": 13991,
+        "test_n": 2875,
+        "max_training_label_available": "2023-12-04",
+        "control_coefficients": [
+          0.9725048908410651
+        ],
+        "candidate_coefficients": [
+          0.22224368665620245,
+          2.576387680052214
+        ],
+        "metrics": {
+          "baseline": {
+            "log_loss": 0.6244810655154049,
+            "brier": 0.2181702072117738
+          },
+          "control": {
+            "log_loss": 0.6243364333543426,
+            "brier": 0.2180932467681514
+          },
+          "candidate": {
+            "log_loss": 0.6231039102374524,
+            "brier": 0.21751180052755398
+          }
+        },
+        "deltas": {
+          "baseline": {
+            "log_loss": {
+              "mean": -0.0013771552779525637
+            },
+            "brier": {
+              "mean": -0.0006584066842197853
+            }
+          },
+          "control": {
+            "log_loss": {
+              "mean": -0.0012325231168902769
+            },
+            "brier": {
+              "mean": -0.0005814462405974192
+            }
+          }
+        }
+      },
+      {
+        "window": [
+          "2024-07-01",
+          "2025-01-01"
+        ],
+        "train_n": 16546,
+        "test_n": 2229,
+        "max_training_label_available": "2024-06-17",
+        "control_coefficients": [
+          0.972025572884949
+        ],
+        "candidate_coefficients": [
+          0.267412922592679,
+          2.4193972539800597
+        ],
+        "metrics": {
+          "baseline": {
+            "log_loss": 0.6241457212223447,
+            "brier": 0.21826224608564646
+          },
+          "control": {
+            "log_loss": 0.6239986260580818,
+            "brier": 0.21816872726719813
+          },
+          "candidate": {
+            "log_loss": 0.6177037393851692,
+            "brier": 0.21535934458258746
+          }
+        },
+        "deltas": {
+          "baseline": {
+            "log_loss": {
+              "mean": -0.006441981837175538
+            },
+            "brier": {
+              "mean": -0.002902901503059013
+            }
+          },
+          "control": {
+            "log_loss": {
+              "mean": -0.006294886672912632
+            },
+            "brier": {
+              "mean": -0.002809382684610676
+            }
+          }
+        }
+      },
+      {
+        "window": [
+          "2025-01-01",
+          "2025-07-01"
+        ],
+        "train_n": 18921,
+        "test_n": 2828,
+        "max_training_label_available": "2024-12-16",
+        "control_coefficients": [
+          0.9660891277777311
+        ],
+        "candidate_coefficients": [
+          0.2401465671179271,
+          2.5066026664934453
+        ],
+        "metrics": {
+          "baseline": {
+            "log_loss": 0.6221430393984209,
+            "brier": 0.2164566001116987
+          },
+          "control": {
+            "log_loss": 0.6219255453175572,
+            "brier": 0.21639449453580228
+          },
+          "candidate": {
+            "log_loss": 0.6218427254038524,
+            "brier": 0.2160949788119991
+          }
+        },
+        "deltas": {
+          "baseline": {
+            "log_loss": {
+              "mean": -0.0003003139945683555
+            },
+            "brier": {
+              "mean": -0.000361621299699627
+            }
+          },
+          "control": {
+            "log_loss": {
+              "mean": -8.28199137046464e-05
+            },
+            "brier": {
+              "mean": -0.00029951572380317005
+            }
+          }
+        }
+      }
+    ],
+    "development_pass": true,
+    "confirmation_opened": true,
+    "decision": "REJECT",
+    "confirmation": {
+      "window": [
+        "2025-07-01",
+        "2026-01-01"
+      ],
+      "train_n": 21464,
+      "test_n": 1819,
+      "max_training_label_available": "2025-06-30",
+      "control_coefficients": [
+        0.9599771652591359
+      ],
+      "candidate_coefficients": [
+        0.2767357786297609,
+        2.355596440857648
+      ],
+      "metrics": {
+        "baseline": {
+          "log_loss": 0.6343273014747348,
+          "brier": 0.22266540592733475
+        },
+        "control": {
+          "log_loss": 0.6335772702572603,
+          "brier": 0.22235631959591637
+        },
+        "candidate": {
+          "log_loss": 0.6303871163623787,
+          "brier": 0.2209102775929532
+        }
+      },
+      "deltas": {
+        "baseline": {
+          "log_loss": {
+            "mean": -0.003940185112356195,
+            "ci95": [
+              -0.008046421648920426,
+              7.898975018465424e-05
+            ]
+          },
+          "brier": {
+            "mean": -0.0017551283343815343,
+            "ci95": [
+              -0.003490048140773465,
+              -3.0106887954526184e-05
+            ]
+          }
+        },
+        "control": {
+          "log_loss": {
+            "mean": -0.003190153894881733,
+            "ci95": [
+              -0.007106333024636041,
+              0.0006752959368878858
+            ]
+          },
+          "brier": {
+            "mean": -0.0014460420029631998,
+            "ci95": [
+              -0.003140459118859333,
+              0.00021886261889940317
+            ]
+          }
+        }
+      },
+      "cohorts": {
+        "tour": {
+          "ATP": {
+            "n": 958,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.6410879008780954,
+                "brier": 0.22623543789427433
+              },
+              "control": {
+                "log_loss": 0.6397687202831893,
+                "brier": 0.22568285633989904
+              },
+              "candidate": {
+                "log_loss": 0.6363805947554718,
+                "brier": 0.2243430114157475
+              }
+            }
+          },
+          "WTA": {
+            "n": 861,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.6268050549841201,
+                "brier": 0.2186931752370581
+              },
+              "control": {
+                "log_loss": 0.6266882933410701,
+                "brier": 0.21865501622688577
+              },
+              "candidate": {
+                "log_loss": 0.623718414503397,
+                "brier": 0.2170908130142808
+              }
+            }
+          }
+        },
+        "surface": {
+          "Clay": {
+            "n": 154,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.6777127974908986,
+                "brier": 0.24174784065955496
+              },
+              "control": {
+                "log_loss": 0.6768625944373255,
+                "brier": 0.24144126462416485
+              },
+              "candidate": {
+                "log_loss": 0.6739696759968057,
+                "brier": 0.240297294185634
+              }
+            }
+          },
+          "Hard": {
+            "n": 1665,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.6303144688101768,
+                "brier": 0.2209004239761264
+              },
+              "control": {
+                "log_loss": 0.6295737027355006,
+                "brier": 0.2205911054611715
+              },
+              "candidate": {
+                "log_loss": 0.6263560567925877,
+                "brier": 0.21911712410630285
+              }
+            }
+          }
+        },
+        "level": {
+          "A": {
+            "n": 509,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.6412828317814385,
+                "brier": 0.22672777902642094
+              },
+              "control": {
+                "log_loss": 0.6407876518293671,
+                "brier": 0.22643308662703154
+              },
+              "candidate": {
+                "log_loss": 0.638894548070755,
+                "brier": 0.2252889919797809
+              }
+            }
+          },
+          "F": {
+            "n": 30,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.5405594689360848,
+                "brier": 0.181158123426035
+              },
+              "control": {
+                "log_loss": 0.5435294239312066,
+                "brier": 0.1821043775474296
+              },
+              "candidate": {
+                "log_loss": 0.553978185189062,
+                "brier": 0.185835829014837
+              }
+            }
+          },
+          "G": {
+            "n": 239,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.5737668681142216,
+                "brier": 0.1957458828439634
+              },
+              "control": {
+                "log_loss": 0.5736882589867282,
+                "brier": 0.19569190850425486
+              },
+              "candidate": {
+                "log_loss": 0.5684997496488869,
+                "brier": 0.19340739958409836
+              }
+            }
+          },
+          "I": {
+            "n": 251,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.6333372052682757,
+                "brier": 0.22188518828006532
+              },
+              "control": {
+                "log_loss": 0.634221359906968,
+                "brier": 0.22219906915899512
+              },
+              "candidate": {
+                "log_loss": 0.6213708281855096,
+                "brier": 0.21638886192871298
+              }
+            }
+          },
+          "M": {
+            "n": 315,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.6718799902436181,
+                "brier": 0.23846346263275361
+              },
+              "control": {
+                "log_loss": 0.6687234235162097,
+                "brier": 0.23737603403533541
+              },
+              "candidate": {
+                "log_loss": 0.6635238117946145,
+                "brier": 0.23615560446534045
+              }
+            }
+          },
+          "P": {
+            "n": 154,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.6380382952656466,
+                "brier": 0.22322672337976265
+              },
+              "control": {
+                "log_loss": 0.6378697893328984,
+                "brier": 0.2232093454839398
+              },
+              "candidate": {
+                "log_loss": 0.6337175423542841,
+                "brier": 0.22123225575744815
+              }
+            }
+          },
+          "PM": {
+            "n": 321,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.6392947088424376,
+                "brier": 0.22498391204606866
+              },
+              "control": {
+                "log_loss": 0.6380977442352744,
+                "brier": 0.2244814657579686
+              },
+              "candidate": {
+                "log_loss": 0.64305132043916,
+                "brier": 0.2261428894563631
+              }
+            }
+          }
+        },
+        "best_of": {
+          "3": {
+            "n": 1700,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.6379696659056591,
+                "brier": 0.2241052061958217
+              },
+              "control": {
+                "log_loss": 0.637221158566328,
+                "brier": 0.22380924784993378
+              },
+              "candidate": {
+                "log_loss": 0.6343233046171787,
+                "brier": 0.22249927961514673
+              }
+            }
+          },
+          "5": {
+            "n": 119,
+            "metrics": {
+              "baseline": {
+                "log_loss": 0.5822935238901035,
+                "brier": 0.20209683066323528
+              },
+              "control": {
+                "log_loss": 0.5815217229848659,
+                "brier": 0.20160020168138248
+              },
+              "candidate": {
+                "log_loss": 0.5741558555795199,
+                "brier": 0.19821024870447412
+              }
+            }
+          }
+        }
+      }
+    },
+    "research_confirmation_pass": false
+  },
+  "continuous_rank": {
+    "experiment": "EXP-20261027-08",
+    "protocol_sha256": "dc79629698ed26fd8124c0be6f82c85b39fd880e65070402063ce6d2c89b2cc7",
+    "base_protocol_sha256": "6af8b8125e13d9e316650f43e7340382c4fdcb255bc60b470cfed9bb32aad655",
+    "code_sha256": "172c31af4e42cf21865dce9abea3579b5a45f0d119047ee43b5101791b132899",
+    "base_code_sha256": "a2d4c6aa0c1256c5de17b4cd1e9864a66dfa092febc4f669cf6c8869d215071e",
+    "dataset_sha256": "d231ff94d2162f54e21da13aa10ebbb04120339fa4d7ba88dfe9ac8630b3f000",
+    "rank_coverage": {
+      "ATP_present": 14235,
+      "ATP_missing": 38,
+      "WTA_present": 12917,
+      "WTA_missing": 73
+    },
+    "feature_matches": 25186,
+    "development": [
+      {
+        "window": [
+          "2023-01-01",
+          "2023-07-01"
+        ],
+        "train_n": 9097,
+        "test_n": 2843,
+        "max_training_label_available": "2022-12-05",
+        "rank_present_n": 2834,
+        "coefficients": {
+          "binary": [
+            0.9993639724205838
+          ],
+          "games": [
+            0.34558589637080284,
+            2.224854746684555
+          ],
+          "rank": [
+            0.5908747397328048,
+            0.30751933858072317
+          ],
+          "combined": [
+            0.07782152593738698,
+            1.8502567900389988,
+            0.28434763708874156
+          ]
+        },
+        "metrics": {
+          "binary": {
+            "log_loss": 0.6343270152120889,
+            "brier": 0.2224314615502968
+          },
+          "games": {
+            "log_loss": 0.6271493749642908,
+            "brier": 0.2194917237472729
+          },
+          "rank": {
+            "log_loss": 0.6273965334510438,
+            "brier": 0.2193612277040696
+          },
+          "combined": {
+            "log_loss": 0.6215821195093852,
+            "brier": 0.21694556305975016
+          },
+          "baseline": {
+            "log_loss": 0.6343350396751017,
+            "brier": 0.22243476186420744
+          }
+        },
+        "deltas": {
+          "rank_vs_binary": {
+            "log_loss": {
+              "mean": -0.006930481761045031
+            },
+            "brier": {
+              "mean": -0.0030702338462271876
+            }
+          },
+          "combined_vs_games": {
+            "log_loss": {
+              "mean": -0.005567255454905596
+            },
+            "brier": {
+              "mean": -0.002546160687522739
+            }
+          },
+          "combined_vs_rank": {
+            "log_loss": {
+              "mean": -0.005814413941658627
+            },
+            "brier": {
+              "mean": -0.002415664644319428
+            }
+          }
+        }
+      },
+      {
+        "window": [
+          "2023-07-01",
+          "2024-01-01"
+        ],
+        "train_n": 11609,
+        "test_n": 2051,
+        "max_training_label_available": "2023-06-19",
+        "rank_present_n": 2042,
+        "coefficients": {
+          "binary": [
+            0.9836325513461127
+          ],
+          "games": [
+            0.27287191316587844,
+            2.4396718702279534
+          ],
+          "rank": [
+            0.5897796644246972,
+            0.29413926139510765
+          ],
+          "combined": [
+            0.006917379346668874,
+            2.108003424893896,
+            0.2709503484663811
+          ]
+        },
+        "metrics": {
+          "binary": {
+            "log_loss": 0.6247422856357886,
+            "brier": 0.21836899119356168
+          },
+          "games": {
+            "log_loss": 0.6182225187494751,
+            "brier": 0.2156144742469301
+          },
+          "rank": {
+            "log_loss": 0.6212769613788203,
+            "brier": 0.21665957802564592
+          },
+          "combined": {
+            "log_loss": 0.615861418946907,
+            "brier": 0.21432245886824644
+          },
+          "baseline": {
+            "log_loss": 0.624766984446489,
+            "brier": 0.21839637704295325
+          }
+        },
+        "deltas": {
+          "rank_vs_binary": {
+            "log_loss": {
+              "mean": -0.003465324256968379
+            },
+            "brier": {
+              "mean": -0.0017094131679158018
+            }
+          },
+          "combined_vs_games": {
+            "log_loss": {
+              "mean": -0.0023610998025678943
+            },
+            "brier": {
+              "mean": -0.001292015378683654
+            }
+          },
+          "combined_vs_rank": {
+            "log_loss": {
+              "mean": -0.005415542431913052
+            },
+            "brier": {
+              "mean": -0.0023371191573994593
+            }
+          }
+        }
+      },
+      {
+        "window": [
+          "2024-01-01",
+          "2024-07-01"
+        ],
+        "train_n": 13991,
+        "test_n": 2875,
+        "max_training_label_available": "2023-12-04",
+        "rank_present_n": 2864,
+        "coefficients": {
+          "binary": [
+            0.9725048908410651
+          ],
+          "games": [
+            0.2222436866562024,
+            2.576387680052214
+          ],
+          "rank": [
+            0.5950859241172451,
+            0.283067269614239
+          ],
+          "combined": [
+            -0.028887707859852597,
+            2.2539741181676325,
+            0.2591214076051909
+          ]
+        },
+        "metrics": {
+          "binary": {
+            "log_loss": 0.6243364333543426,
+            "brier": 0.2180932467681514
+          },
+          "games": {
+            "log_loss": 0.6231039102374524,
+            "brier": 0.21751180052755398
+          },
+          "rank": {
+            "log_loss": 0.6164123683856141,
+            "brier": 0.21464194420470128
+          },
+          "combined": {
+            "log_loss": 0.615542858359597,
+            "brier": 0.2142084372621791
+          },
+          "baseline": {
+            "log_loss": 0.6244810655154049,
+            "brier": 0.2181702072117738
+          }
+        },
+        "deltas": {
+          "rank_vs_binary": {
+            "log_loss": {
+              "mean": -0.007924064968728571
+            },
+            "brier": {
+              "mean": -0.0034513025634501245
+            }
+          },
+          "combined_vs_games": {
+            "log_loss": {
+              "mean": -0.007561051877855474
+            },
+            "brier": {
+              "mean": -0.003303363265374825
+            }
+          },
+          "combined_vs_rank": {
+            "log_loss": {
+              "mean": -0.0008695100260171811
+            },
+            "brier": {
+              "mean": -0.00043350694252212063
+            }
+          }
+        }
+      },
+      {
+        "window": [
+          "2024-07-01",
+          "2025-01-01"
+        ],
+        "train_n": 16546,
+        "test_n": 2229,
+        "max_training_label_available": "2024-06-17",
+        "rank_present_n": 2227,
+        "coefficients": {
+          "binary": [
+            0.9720255728849491
+          ],
+          "games": [
+            0.2674129225926787,
+            2.4193972539800606
+          ],
+          "rank": [
+            0.6008272395883414,
+            0.28378460757444973
+          ],
+          "combined": [
+            0.012392004659664559,
+            2.112439481722739,
+            0.2637900154745528
+          ]
+        },
+        "metrics": {
+          "binary": {
+            "log_loss": 0.6239986260580819,
+            "brier": 0.21816872726719813
+          },
+          "games": {
+            "log_loss": 0.6177037393851692,
+            "brier": 0.21535934458258746
+          },
+          "rank": {
+            "log_loss": 0.6215809813673019,
+            "brier": 0.21680664328268578
+          },
+          "combined": {
+            "log_loss": 0.6156844270709764,
+            "brier": 0.2141923373665442
+          },
+          "baseline": {
+            "log_loss": 0.6241457212223447,
+            "brier": 0.21826224608564646
+          }
+        },
+        "deltas": {
+          "rank_vs_binary": {
+            "log_loss": {
+              "mean": -0.002417644690779973
+            },
+            "brier": {
+              "mean": -0.0013620839845123389
+            }
+          },
+          "combined_vs_games": {
+            "log_loss": {
+              "mean": -0.0020193123141927453
+            },
+            "brier": {
+              "mean": -0.001167007216043263
+            }
+          },
+          "combined_vs_rank": {
+            "log_loss": {
+              "mean": -0.005896554296325408
+            },
+            "brier": {
+              "mean": -0.002614305916141603
+            }
+          }
+        }
+      },
+      {
+        "window": [
+          "2025-01-01",
+          "2025-07-01"
+        ],
+        "train_n": 18921,
+        "test_n": 2828,
+        "max_training_label_available": "2024-12-16",
+        "rank_present_n": 2822,
+        "coefficients": {
+          "binary": [
+            0.9660891277777311
+          ],
+          "games": [
+            0.2401465671179268,
+            2.506602666493446
+          ],
+          "rank": [
+            0.6205488288335703,
+            0.26906363007186873
+          ],
+          "combined": [
+            -0.00024850814881432397,
+            2.2313866965421165,
+            0.2497114994836564
+          ]
+        },
+        "metrics": {
+          "binary": {
+            "log_loss": 0.6219255453175572,
+            "brier": 0.21639449453580228
+          },
+          "games": {
+            "log_loss": 0.6218427254038524,
+            "brier": 0.2160949788119991
+          },
+          "rank": {
+            "log_loss": 0.617571727724198,
+            "brier": 0.21442620900383863
+          },
+          "combined": {
+            "log_loss": 0.618190372104319,
+            "brier": 0.2145150563703089
+          },
+          "baseline": {
+            "log_loss": 0.6221430393984209,
+            "brier": 0.2164566001116987
+          }
+        },
+        "deltas": {
+          "rank_vs_binary": {
+            "log_loss": {
+              "mean": -0.004353817593359188
+            },
+            "brier": {
+              "mean": -0.0019682855319636317
+            }
+          },
+          "combined_vs_games": {
+            "log_loss": {
+              "mean": -0.003652353299533451
+            },
+            "brier": {
+              "mean": -0.001579922441690194
+            }
+          },
+          "combined_vs_rank": {
+            "log_loss": {
+              "mean": 0.0006186443801210936
+            },
+            "brier": {
+              "mean": 8.884736647026838e-05
+            }
+          }
+        }
+      }
+    ],
+    "eligible": [
+      "rank"
+    ],
+    "confirmation_opened": true,
+    "decision": "NEEDS FORWARD VALIDATION",
+    "leakage_status": "FLAG: reconstructed observation times; raw pre-tournament ranks not timestamp-verified. Research only.",
+    "confirmation": {
+      "window": [
+        "2025-07-01",
+        "2026-01-01"
+      ],
+      "train_n": 21464,
+      "test_n": 1819,
+      "max_training_label_available": "2025-06-30",
+      "rank_present_n": 1812,
+      "coefficients": {
+        "binary": [
+          0.9599771652591359
+        ],
+        "rank": [
+          0.6188494987243924,
+          0.26609369068683864
+        ]
+      },
+      "metrics": {
+        "binary": {
+          "log_loss": 0.6335772702572603,
+          "brier": 0.22235631959591637
+        },
+        "rank": {
+          "log_loss": 0.627834004066409,
+          "brier": 0.2196869894135449
+        },
+        "baseline": {
+          "log_loss": 0.6343273014747348,
+          "brier": 0.22266540592733475
+        }
+      },
+      "deltas": {
+        "rank_vs_binary": {
+          "log_loss": {
+            "mean": -0.005743266190851371,
+            "ci95": [
+              -0.010583859959587402,
+              -0.0009819789473227024
+            ]
+          },
+          "brier": {
+            "mean": -0.0026693301823714935,
+            "ci95": [
+              -0.004817954319391645,
+              -0.0005332811521469527
+            ]
+          }
+        }
+      },
+      "cohorts": {
+        "tour": {
+          "ATP": {
+            "n": 958,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.6397687202831893,
+                "brier": 0.22568285633989904
+              },
+              "rank": {
+                "log_loss": 0.6293921452970532,
+                "brier": 0.22083112006359615
+              },
+              "baseline": {
+                "log_loss": 0.6410879008780954,
+                "brier": 0.22623543789427433
+              }
+            }
+          },
+          "WTA": {
+            "n": 861,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.6266882933410701,
+                "brier": 0.21865501622688577
+              },
+              "rank": {
+                "log_loss": 0.6261003231152392,
+                "brier": 0.21841396134995716
+              },
+              "baseline": {
+                "log_loss": 0.6268050549841201,
+                "brier": 0.2186931752370581
+              }
+            }
+          }
+        },
+        "surface": {
+          "Clay": {
+            "n": 154,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.6768625944373255,
+                "brier": 0.24144126462416485
+              },
+              "rank": {
+                "log_loss": 0.6598454277319722,
+                "brier": 0.23330493920944237
+              },
+              "baseline": {
+                "log_loss": 0.6777127974908986,
+                "brier": 0.24174784065955496
+              }
+            }
+          },
+          "Hard": {
+            "n": 1665,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.6295737027355006,
+                "brier": 0.2205911054611715
+              },
+              "rank": {
+                "log_loss": 0.6248731877033479,
+                "brier": 0.2184274312942847
+              },
+              "baseline": {
+                "log_loss": 0.6303144688101768,
+                "brier": 0.2209004239761264
+              }
+            }
+          }
+        },
+        "level": {
+          "A": {
+            "n": 509,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.6407876518293671,
+                "brier": 0.22643308662703154
+              },
+              "rank": {
+                "log_loss": 0.6355776084565943,
+                "brier": 0.22398680086800463
+              },
+              "baseline": {
+                "log_loss": 0.6412828317814385,
+                "brier": 0.22672777902642094
+              }
+            }
+          },
+          "F": {
+            "n": 30,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.5435294239312066,
+                "brier": 0.1821043775474296
+              },
+              "rank": {
+                "log_loss": 0.5544829732884689,
+                "brier": 0.1868266573841931
+              },
+              "baseline": {
+                "log_loss": 0.5405594689360848,
+                "brier": 0.181158123426035
+              }
+            }
+          },
+          "G": {
+            "n": 239,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.5736882589867282,
+                "brier": 0.19569190850425486
+              },
+              "rank": {
+                "log_loss": 0.5627148235768953,
+                "brier": 0.1918644966421958
+              },
+              "baseline": {
+                "log_loss": 0.5737668681142216,
+                "brier": 0.1957458828439634
+              }
+            }
+          },
+          "I": {
+            "n": 251,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.634221359906968,
+                "brier": 0.22219906915899512
+              },
+              "rank": {
+                "log_loss": 0.6218928987962454,
+                "brier": 0.21624045979148698
+              },
+              "baseline": {
+                "log_loss": 0.6333372052682757,
+                "brier": 0.22188518828006532
+              }
+            }
+          },
+          "M": {
+            "n": 315,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.6687234235162097,
+                "brier": 0.23737603403533541
+              },
+              "rank": {
+                "log_loss": 0.6490534887699582,
+                "brier": 0.22797443717457566
+              },
+              "baseline": {
+                "log_loss": 0.6718799902436181,
+                "brier": 0.23846346263275361
+              }
+            }
+          },
+          "P": {
+            "n": 154,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.6378697893328984,
+                "brier": 0.2232093454839398
+              },
+              "rank": {
+                "log_loss": 0.6365777111809651,
+                "brier": 0.22225860011200693
+              },
+              "baseline": {
+                "log_loss": 0.6380382952656466,
+                "brier": 0.22322672337976265
+              }
+            }
+          },
+          "PM": {
+            "n": 321,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.6380977442352744,
+                "brier": 0.2244814657579686
+              },
+              "rank": {
+                "log_loss": 0.6505226933850353,
+                "brier": 0.2299838322352324
+              },
+              "baseline": {
+                "log_loss": 0.6392947088424376,
+                "brier": 0.22498391204606866
+              }
+            }
+          }
+        },
+        "best_of": {
+          "3": {
+            "n": 1700,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.637221158566328,
+                "brier": 0.22380924784993378
+              },
+              "rank": {
+                "log_loss": 0.6318865570858374,
+                "brier": 0.22128122417286036
+              },
+              "baseline": {
+                "log_loss": 0.6379696659056591,
+                "brier": 0.2241052061958217
+              }
+            }
+          },
+          "5": {
+            "n": 119,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.5815217229848659,
+                "brier": 0.20160020168138248
+              },
+              "rank": {
+                "log_loss": 0.5699403895031466,
+                "brier": 0.19691220713760954
+              },
+              "baseline": {
+                "log_loss": 0.5822935238901035,
+                "brier": 0.20209683066323528
+              }
+            }
+          }
+        },
+        "rank_present": {
+          "False": {
+            "n": 7,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.7539286836297031,
+                "brier": 0.2762025915245582
+              },
+              "rank": {
+                "log_loss": 0.7125852929232791,
+                "brier": 0.2590556792033977
+              },
+              "baseline": {
+                "log_loss": 0.7600297252890332,
+                "brier": 0.2785267565173924
+              }
+            }
+          },
+          "True": {
+            "n": 1812,
+            "metrics": {
+              "binary": {
+                "log_loss": 0.6331123365411417,
+                "brier": 0.22214830419663353
+              },
+              "rank": {
+                "log_loss": 0.6275065984251297,
+                "brier": 0.21953490286358412
+              },
+              "baseline": {
+                "log_loss": 0.6338416960847237,
+                "brier": 0.22244960600783673
+              }
+            }
+          }
+        }
+      }
+    },
+    "research_confirmation_pass": [
+      "rank"
+    ],
+    "simplest_research_candidate": "rank"
+  },
+  "market_diagnostic": {
+    "protocol_sha256": "5aff40c800dc0d439276a0e704e419631e24fb096132fa62b1430ca5c99dc3d5",
+    "code_sha256": "e431053021aa45d6ca96a4f8219c8d051d8c4ee6ea8e44dc3902c24e06c98f0e",
+    "predictions_sha256": "01db2a267997ac24e34d40d1e3e559208f2f3058c2a49977dc5b5eec43070d87",
+    "source_files": [
+      {
+        "path": "/Users/imac/Antigravity-repo/tennis-wong-choi/src/data/external/tennisdata_atp_2023.xlsx",
+        "sha256": "5789a33720cbd5da9c7909713cfca131927eedaf305ab2b111ec6f8dda842b29"
+      },
+      {
+        "path": "/Users/imac/Antigravity-repo/tennis-wong-choi/src/data/external/tennisdata_atp_2024.xlsx",
+        "sha256": "d92a4d4167cfece60b624e81ba8d6724d90a4704637341bb0bc87539a36c746a"
+      },
+      {
+        "path": "/Users/imac/Antigravity-repo/tennis-wong-choi/src/data/external/tennisdata_wta_2023.xlsx",
+        "sha256": "ea4c4556c841ad696cd417885015fe0c63b7a2414c94d856f9515a238f2fef2a"
+      },
+      {
+        "path": "/Users/imac/Antigravity-repo/tennis-wong-choi/src/data/external/tennisdata_wta_2024.xlsx",
+        "sha256": "0ce3a4e87c269253dd61e1ab4a3bbeb2d9acdd512f316189e5ad872c86c67b53"
+      }
+    ],
+    "coverage": {
+      "raw_sheet_rows": 10387,
+      "no_unique_match": 644,
+      "incomplete": 385,
+      "ambiguous_or_missing_name": 1079,
+      "invalid_price_or_row": 37,
+      "reused_prediction_rows_rejected": 2,
+      "joined": 8240
+    },
+    "metrics": {
+      "baseline": {
+        "n": 8240,
+        "log_loss": 0.6259635687939987,
+        "brier": 0.21879369220657102,
+        "bets": 6666,
+        "hypothetical_pnl": -818.0899999999983,
+        "hypothetical_roi": -0.12272577257725747
+      },
+      "binary": {
+        "n": 8240,
+        "log_loss": 0.6259056651106578,
+        "brier": 0.21875652475443486,
+        "bets": 6678,
+        "hypothetical_pnl": -806.1199999999983,
+        "hypothetical_roi": -0.12071278825995782
+      },
+      "rank": {
+        "n": 8240,
+        "log_loss": 0.6212115661946416,
+        "brier": 0.21655758355939875,
+        "bets": 6514,
+        "hypothetical_pnl": -936.0599999999976,
+        "hypothetical_roi": -0.1436997236720905
+      },
+      "market": {
+        "n": 8240,
+        "log_loss": 0.5880846047769864,
+        "brier": 0.20236597667002337
+      }
+    },
+    "comparisons": {
+      "rank_vs_baseline": {
+        "log_loss": {
+          "delta": -0.0047520025993570665,
+          "ci95": [
+            -0.0075385261722760435,
+            -0.0019464189043352455
+          ]
+        },
+        "brier": {
+          "delta": -0.0022361086471722733,
+          "ci95": [
+            -0.003481380128080643,
+            -0.0009697801876355748
+          ]
+        },
+        "profit_difference_per_match": {
+          "delta": -0.014316747572815534,
+          "ci95": [
+            -0.0292219963592233,
+            0.0004357706310679607
+          ]
+        }
+      },
+      "rank_vs_binary": {
+        "log_loss": {
+          "delta": -0.0046940989160162315,
+          "ci95": [
+            -0.007421107447700412,
+            -0.001897593355380163
+          ]
+        },
+        "brier": {
+          "delta": -0.0021989411950361147,
+          "ci95": [
+            -0.003431167909942964,
+            -0.0009397634462433475
+          ]
+        },
+        "profit_difference_per_match": {
+          "delta": -0.015769417475728156,
+          "ci95": [
+            -0.03093216019417476,
+            -0.0010284587378640757
+          ]
+        }
+      },
+      "rank_vs_market": {
+        "log_loss": {
+          "delta": 0.033126961417655185,
+          "ci95": [
+            0.02846722413906321,
+            0.03766713230117596
+          ]
+        },
+        "brier": {
+          "delta": 0.014191606889375367,
+          "ci95": [
+            0.012139461864871883,
+            0.016229847646946932
+          ]
+        }
+      }
+    },
+    "status": "DESCRIPTIVE ONLY: price observation/execution times unverified; not an executable ROI or CLV claim"
+  },
+  "corpus_audit": {
+    "schema_version": "wong-choi-sqlite-corpus-audit/v1",
+    "status": "ok",
+    "domain": "tennis",
+    "active": {
+      "path": "/Users/imac/Antigravity-repo/tennis-wong-choi/tennis_wc.db",
+      "quick_check": "ok",
+      "counts": {
+        "matches": 9748,
+        "match_results": 13016,
+        "odds_snapshots": 16750
+      }
+    },
+    "snapshot_count": 4,
+    "snapshots": [
+      {
+        "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/tennis/migration-db-snapshots/pre_pit_migration--baf42ed4c400/tennis_wc_pre_phase12_20260827.db",
+        "quick_check": "ok",
+        "counts": {
+          "matches": 4532,
+          "match_results": 5173,
+          "odds_snapshots": 9235
+        }
+      },
+      {
+        "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/tennis/migration-db-snapshots/pre_pit_migration--baf42ed4c400/tennis_wc_pre_pit_20260826.db",
+        "quick_check": "ok",
+        "counts": {
+          "matches": 4532,
+          "match_results": 5173,
+          "odds_snapshots": 9235
+        }
+      },
+      {
+        "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/tennis/migration-db-snapshots/pre_pit_migration--baf42ed4c400/tennis_wc_pre_rankfix_20260827.db",
+        "quick_check": "ok",
+        "counts": {
+          "matches": 4532,
+          "match_results": 5173,
+          "odds_snapshots": 9235
+        }
+      },
+      {
+        "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/tennis/db-snapshot/c7c5b0385bde/tennis_wc_pre_surface_20260829.db",
+        "quick_check": "ok",
+        "counts": {
+          "matches": 4690,
+          "match_results": 5552,
+          "odds_snapshots": 9503
+        }
+      }
+    ],
+    "watermarks": {
+      "matches": 4690,
+      "match_results": 5552,
+      "odds_snapshots": 9503
+    },
+    "catalog_status": "ok",
+    "runtime_snapshot_substitution_allowed": false
+  },
+  "artifact_root": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-score-model-20261027",
+  "artifact_manifest_sha256": "db207b53905b6c7a1beb91a587737aeabcb0542031edaef55cb23e4510c07e33",
+  "validation": {
+    "research_tests": {
+      "passed": 30
+    },
+    "quick_check": "pass",
+    "full_check": {
+      "status": "pass",
+      "command": "./檢查.sh",
+      "sandbox": "normal process permissions (require_escalated)",
+      "suites": [
+        "AU Wong Choi",
+        "AU daily auto",
+        "AU racing",
+        "HKJC Wong Choi",
+        "HKJC daily auto",
+        "HKJC extractor",
+        "HKJC reflector",
+        "Shared racing",
+        "Shared Wong Choi",
+        "Central Wong Choi",
+        "Race compliance QA",
+        "NBA Wong Choi",
+        "Agent scripts",
+        "Dashboard (python)",
+        "Tennis Wong Choi",
+        "Dashboard (node)"
+      ],
+      "log_sha256": "66b5600938e2cd29c48dc9e567e5d0427bf0d462a1b725421c0db84b202f0eeb",
+      "first_attempt": "4 existing NBA tests failed because sandbox denied ps; original and successful rerun logs preserved"
+    }
+  },
+  "research_files_sha256": {
+    "README.md": "2bffbb0d0ec5552047050ec83389856b49669287b083008e945d0d7b4e6dc4a3",
+    "market_diagnostic.py": "e431053021aa45d6ca96a4f8219c8d051d8c4ee6ea8e44dc3902c24e06c98f0e",
+    "market_protocol.json": "5aff40c800dc0d439276a0e704e419631e24fb096132fa62b1430ca5c99dc3d5",
+    "protocol.json": "6af8b8125e13d9e316650f43e7340382c4fdcb255bc60b470cfed9bb32aad655",
+    "rank_frozen_coefficients.json": "3988fe32a5ff46d714850586a3473d1464b6cf97fe95b43f4f5f5d3026c2e3f3",
+    "rank_prior.py": "172c31af4e42cf21865dce9abea3579b5a45f0d119047ee43b5101791b132899",
+    "rank_protocol.json": "dc79629698ed26fd8124c0be6f82c85b39fd880e65070402063ce6d2c89b2cc7",
+    "score_model.py": "a2d4c6aa0c1256c5de17b4cd1e9864a66dfa092febc4f669cf6c8869d215071e",
+    "test_market_diagnostic.py": "1fe1ac431ae795da8d064d53cca5a2673b422ee87375f35434d6a2ec640088f3",
+    "test_rank_prior.py": "18192c80f67b923fd58755ae34df15a115a9930865b857ae2ce7f304379d08f1",
+    "test_score_model.py": "6ab1e936bc594ed2d1ee2d98efcfd1a64b05da1d51aac93222b286859c63220f"
+  }
+}
