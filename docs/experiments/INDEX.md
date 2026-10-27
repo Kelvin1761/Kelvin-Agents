@@ -298,3 +298,5 @@
 - [EXP-20261016-09](EXP-20261016-09-au-form-quality-margin-results.md) — 近績質素分加負距（eq3／pen／gate_N6）：三個都唔合資格，保留 eq2_N6；跑包尾減少但唔顯著、Gold 輕微跌。記錄原本只喺分支 `claude-au-stability-20261016`，2026-10-27 補入 main。
 - [EXP-20261016-10](EXP-20261016-10-au-form-quality-placing-gate-results.md) — 名次先決定獎金加分（pg50／pg33／pgw_N6）：三個都唔合資格；pg33 點估計全部向好（Gold +0.13pp、跑包尾 −9）但 Holm p 0.795。同一 41 日窗第三個 family，轉 forward（EXP-20261027-09）。2026-10-27 補入 main。
 - [EXP-20261027-09](EXP-20261027-09-au-pg33-forward-protocol.md) — pg33_N6 forward 測試**預先登記同凍結**：10-28 起新賽日，夠 30 個賽日先開一次；B vs A `fixed_rule`，要 PRIMARY_WIN／RANKING_WIN，否則結案 REJECT。已宣告功效不足（預期效應 +0.13pp vs CI 約 ±1pp）。
+
+- [EXP-20261027-09](EXP-20261027-09-tennis-opponent-adjusted-serve-return.md)：Tennis 對手校正S/R點數實力，五段勝未校正、只四段LL勝rank，REJECT；固定歷史價少蝕147.81u對rank、僅17.87u對原binary且CI跨零，仍輸市場；實際Sportsbet盈利未驗證。
