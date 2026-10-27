@@ -41,10 +41,23 @@ LL差 +0.000638，95% CI [−0.001381,+0.002606]。同群市場LL 0.568570；關
 - Central corpus audit通過，4份登記snapshot完整性及watermark核對通過；冇以archive替換live DB。
 - 所有研究需要嘅8個table／全部rows由同一唯讀transaction投影，223MB，冇按outcome縮語料。SHA256：`b4fa1d2af45480f567e5e36a47bb52a2f1b7adaf15f6111fd35db3286d910aa7`。
 - 原始保存預測有15,681行；唔等於15,681個獨立、可下注及未看過結果嘅場次。
-- 現存實際報價只有Sportsbet，另外3行mock不入研究。未有獨立銳價；本地已記錄實盤prop單為0，不能申報實盤回報。
+- live DB內報價只有Sportsbet，另外3行mock不入研究。repo另有歷史多莊價格檔，見下節；尚未驗證為同步賽前參考價。本地已記錄實盤prop單為0，不能申報實盤回報。
 - 3,492場全部欠新制fixture frozen identity。opening quote同forecast時間相符只係必要條件，唔係身份／成交完整證明。今次冇倒填定價證據，唔將legacy數字當修正後新模型成績。
 - 全部結果已被其他審計看過，所以唔當新untouched holdout；原有600 floor、power、校準、CLV、ROI及分層閘全部保留。
 - 16組完整檢查全過（Tennis858）；新增研究防污染測試12項另行全過。正式source無改動。
+
+### 已有歷史多莊檔案，唔需要重複索取
+
+2026 cached workbook盤點（價欄兩邊均>1，未作時間／身份認證）：
+
+| 檔案 | Rows | Pinnacle PSW/PSL | Bet365 | Betfair BFEW/BFEL |
+|---|---:|---:|---:|---:|
+| ATP 2026 | 1728 | 71 | 1711 | 1624 |
+| WTA 2026 | 1673 | 101 | 1665 | 1558 |
+
+兩份正常日期均只到2026-07-26；WTA另有1行日期落在2029，已標待查，冇猜年份修正。檔案沒有可驗證嘅逐價capture clock，唔能夠將歷史價當成Sportsbet opening時已可取得嘅銳價。呢批檔案未入今次兩項實驗，唔影響上述結果。來源頁說明係歷史資料、按週更新，見 [Tennis-Data官方資料頁](https://www.tennis-data.co.uk/data.php)。
+
+下一輪可以先更新及驗證已有歷史資料，再評估同步前向報價；Pinnacle公開API限制唔等於repo完全冇歷史Pinnacle欄位。數量唔取代時間對齊、同事件身份及成交可用性。
 
 ## 4. 下一步值得投入邊度
 

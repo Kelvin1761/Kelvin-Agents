@@ -872,5 +872,39 @@
     "tennis_tests": 858,
     "production_model_changed": false
   },
-  "conclusion": "Neither fixed short-favourite filter nor removing logged nudges demonstrates deployable profitability improvement. All results legacy diagnostic or dev-only."
+  "conclusion": "Neither fixed short-favourite filter nor removing logged nudges demonstrates deployable profitability improvement. All results legacy diagnostic or dev-only.",
+  "cached_reference_inventory": [
+    {
+      "path": "tennis-wong-choi/src/data/external/tennisdata_atp_2026.xlsx",
+      "sha256": "49853f6389dbc98a0ea72b58d04f20bd6bcbceae2238bf5e0345b90ebada9782",
+      "rows": 1728,
+      "paired_prices": {
+        "Pinnacle": 71,
+        "Bet365": 1711,
+        "Betfair": 1624
+      },
+      "first_match_date": "2026-01-04",
+      "latest_match_date": "2026-07-26",
+      "future_or_wrong_year_rows": 0,
+      "latest_plausible_2026_date": "2026-07-26",
+      "quote_capture_clock_verified": false,
+      "qualification": "Historical workbook; date-only rows cannot establish synchronous, executable pre-match reference prices."
+    },
+    {
+      "path": "tennis-wong-choi/src/data/external/tennisdata_wta_2026.xlsx",
+      "sha256": "f6f913da3dabbb54add6e9edd167a1d33d669c9ede9741e63e9069f18b3977ba",
+      "rows": 1673,
+      "paired_prices": {
+        "Pinnacle": 101,
+        "Bet365": 1665,
+        "Betfair": 1558
+      },
+      "first_match_date": "2026-01-04",
+      "latest_match_date": "2029-07-20",
+      "future_or_wrong_year_rows": 1,
+      "latest_plausible_2026_date": "2026-07-26",
+      "quote_capture_clock_verified": false,
+      "qualification": "Historical workbook; date-only rows cannot establish synchronous, executable pre-match reference prices."
+    }
+  ]
 }
