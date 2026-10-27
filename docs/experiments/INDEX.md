@@ -4,6 +4,8 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261027-06](EXP-20261027-06-tennis-stored-nudge-ablation.md) | 2026-10-27 | Tennis | 直接保存分項、方向及風險折扣作全nudge／9項消融 | **REJECT 移除候選**：1702場忠實誤差<=1e-6；全關 ΔLL +0.000638 CI跨零，EV>0紙上ROI −19.67%→−20.76%；單項無Holm改善。dev-only，無promotion，v1遺漏後處理明示保留。 |
+| [EXP-20261027-05](EXP-20261027-05-tennis-profit-feasibility.md) | 2026-10-27 | Tennis | 固定<=1.6短賠熱門舊假設，用嚴格賽前語料覆核 | **NEEDS MORE TESTING／不採用收窄策略**：3492獨立場中269短賠未達600；原卡BET257單ROI−16.75%，收窄35單−24.58%；legacy無完整fixture身份，唔改正式模型。 |
 | [EXP-20261027-03](EXP-20261027-03-hkjc-awt-aptitude-pit-rebuild.md) | 2026-10-27 | HKJC | 沙田 AWT 適性：用 production parser＋profile cache 由存檔賽績重建 PIT 證據（忠實度 32/32、leakage 0），v2 路程殘差／場地殘差 w0.08 cap4 | **UNRESOLVABLE（唔上線）**：32 場 AWT 頭四只變 1／7 場；兩個訊號場內 AUC 0.518／0.470（模型 0.671）—— 適性分本身冇料。事後發現「冇 AWT 經驗」分層差 +12.7pp [+5.6,+21.1]（in-sample），由 10-28 起 forward 登記，≥30 場先判 |
 | [EXP-20261026-03](EXP-20261026-03-tennis-model-audit.md) | 2026-10-26 | Tennis | 全面資料／模型審計及既有 frozen Elo shadow 前向檢查 | **SHADOW／NEEDS MORE TESTING**：349 場相對現役 ΔLL −0.00792，仍輸市場；PIT paper ROI −15.93%。四類離線工具修正留審閱分支，WTA stale／重複 history／衝突結果／BO5 等另列；無模型 promotion。 |
 | [EXP-20261025-07](EXP-20261025-07-nba-prop-forward-training-evidence.md) | 2026-10-25 | NBA | 新機會量與80/80逐腿賽前輸入、C baseline及獨立Final targets接線 | **ENGINEERING／FORWARD PENDING**：native snapshot自動留來源、日期、GP與缺失；最新pretip export不回填舊features，舊ledger合格新資料0行；不fit、不改C／EV／selector。 |
