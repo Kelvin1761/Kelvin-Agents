@@ -2181,3 +2181,28 @@ test('an unavailable Tennis source is not presented as a zero-return dashboard',
  const html=api.renderSportsWorkspace('tennis');
  assert.match(html,/模型投注來源暫未能讀取/);assert.doesNotMatch(html,/class="tracking-dashboard"/);
 });
+
+test('Tennis cards separate both players from the pick and label simulated returns',()=>{
+ const api=loadTemplateFunctions();
+ const html=api.tennisRenderBets([{id:'card',event_name:'Daniel Milavsky vs Harry Wendelken',selection:'Harry Wendelken (+2.5)',market:'player_game_handicap',kind:'prop',state:'lost',point_in_time:false,odds:1.67,model_probability:0.551,legs:[]}]);
+ assert.match(html,/<h3>Daniel Milavsky<\/h3>/);assert.match(html,/<h3>Harry Wendelken<\/h3>/);
+ assert.match(html,/模型選擇/);assert.match(html,/球員局數讓分/);assert.match(html,/Harry Wendelken \(\+2.5\)/);
+ assert.match(html,/每 \$1 模擬損益/);assert.match(html,/未計入 ROI/);assert.doesNotMatch(html,/tennis-ball/);
+});
+
+test('Tennis ambiguous fixtures and combos never invent two player identities',()=>{
+ const api=loadTemplateFunctions();
+ for(const row of [{event_name:'A vs B vs C',kind:'prop'},{event_name:'? vs B',kind:'match'},{event_name:'A vs B',kind:'combo'}]){
+  const html=api.tennisRenderBets([{...row,selection:'<script>bad()</script>',state:'pending',legs:[]}]);
+  assert.doesNotMatch(html,/aria-label="對賽球員"/);assert.match(html,/tennis-fixture-label/);
+  assert.doesNotMatch(html,/<script>bad/);assert.match(html,/&lt;script&gt;/);
+ }
+});
+
+test('Tennis combo cards show each leg with its fixture and market before source details',()=>{
+ const api=loadTemplateFunctions();
+ const html=api.tennisRenderBets([{kind:'combo',event_name:'First source label',selection:'Over 0.5 + Over 0.5',state:'pending',legs:[{selection:'Over 0.5',market:'player_aces',event_name:'A vs B'},{selection:'Over 0.5',market:'player_double_faults',event_name:'C vs D'}]}]);
+ const visible=html.split('<details>')[0];
+ for(const text of ['2 腳跨場組合','A vs B','C vs D','球員 Ace 數','球員雙發失誤'])assert.ok(visible.includes(text));
+ assert.match(html,/來源標示 First source label/);
+});
