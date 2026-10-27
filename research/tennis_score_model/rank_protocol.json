@@ -1,0 +1,12 @@
+{
+  "experiment":"EXP-20261027-08",
+  "hypothesis":"A continuous pre-tournament log-rank prior improves a trained match-winner model beyond historical win/loss and game-share ratings.",
+  "previous":"EXP-20261027-07 remains rejected; new ranking signal was not part of that candidate. Current live ranking use selects opponent buckets, not a direct continuous strength prior.",
+  "scope":"Same frozen 2020-25 raw Sackmann corpus and 21-day delay; 2025 confirmation already read for EXP07 and earlier work, therefore ALL results are dev/research, not untouched holdout. No 2026/live holdout access.",
+  "arms":["binary_baseline","fitted_binary","fitted_binary_games","fitted_binary_rank","fitted_binary_games_rank"],
+  "rank_feature":"canonical player A vs B: log(rank_B/rank_A), both positive integers <=10000. Missing either -> 0 (neutral), missing coverage explicitly reported. Direct raw source key + winner/loser/date must match. Ranks are source pre-tournament fields, original publication clocks not verified, retain FLAG.",
+  "training":"No intercept; ridge=1; no scaler/hyperparameter search. Same 5 expanding dev folds and confirmation 2025H2 as protocol.json. Fit using labels available strictly before fold start.",
+  "decision":"Add rank only if fitted binary+rank improves BOTH LL/Brier vs fitted binary in ALL 5 dev folds; combined only if improves both metrics vs binary+games and binary+rank in all 5. Simpler accepted candidate takes precedence; no argmax. Fix candidates before reading outcomes. Open confirmation only for dev-eligible arms; paired CI vs direct control must exclude zero for both metrics and ATP/WTA nonworsening. NO PROMOTION even on pass: not fresh PIT holdout nor verified pre-match executable prices.",
+  "bootstrap":{"unit":"match","trials":4000,"seed":20260826,"confidence":0.95},
+  "stop":"No threshold/window/corpus edits, no additional combinations after outcomes. Preserve rejected arms off main."
+}

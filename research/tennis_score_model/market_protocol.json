@@ -1,0 +1,10 @@
+{
+ "purpose":"Fixed secondary economic diagnostic after EXP08 model selection; no tuning, no promotion inference",
+ "model":"Only frozen eligible rank prior; use existing expanding-fold predictions for 2023-24, no refit",
+ "source":"Existing immutable repo tennisdata_atp/wta_2023/2024.xlsx, BOTH B365W and B365L from same row/book; no fallback or future quote join",
+ "join":"Unique canonical-name pair, tour, surface, tournament-start <= sheet date < start+21d, identical completed-game totals for winner/loser; refuse name-to-ID ambiguity, duplicate candidates and reused rows",
+ "price_caveat":"Archived historical odds have no captured_at proof. Descriptive market benchmark and hypothetical P/L only; not executable ROI, CLV or opening-price advantage",
+ "metrics":"Model LL/Brier vs proportional no-vig price on identical joined rows; fixed 1 unit if max(p*odds-1)>0, no other selection or threshold; both baseline/control/rank side may choose independently. Report all bets and no-bet zeros in paired profit differences",
+ "bootstrap":{"unit":"match","trials":4000,"seed":20260826,"confidence":0.95},
+ "stop":"No changing parameters, decision thresholds, price book, periods, joins to rescue P/L; failures reported. Frozen ruler unchanged."
+}

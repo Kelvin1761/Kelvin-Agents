@@ -1,0 +1,15 @@
+{
+  "experiment": "EXP-20261027-08",
+  "status": "RESEARCH_ONLY_NOT_APPROVED_FOR_PRICING",
+  "formula": "sigmoid(beta_elo*binary_elo_logit + beta_rank*log(rank_b/rank_a)); no intercept",
+  "coefficients": [
+    0.6188494987243924,
+    0.26609369068683864
+  ],
+  "training_labels_available_strictly_before": "2025-07-01",
+  "training_n": 21464,
+  "protocol_sha256": "dc79629698ed26fd8124c0be6f82c85b39fd880e65070402063ce6d2c89b2cc7",
+  "dataset_sha256": "d231ff94d2162f54e21da13aa10ebbb04120339fa4d7ba88dfe9ac8630b3f000",
+  "economic_guard": "FAILED: market diagnostic loss and hypothetical profit; not a production candidate",
+  "input_contract": "Only matching reconstructed source-isolated 21-day-delayed binary ratings; NOT plug-compatible with current mixed-provider live Elo."
+}
