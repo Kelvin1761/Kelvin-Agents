@@ -1534,7 +1534,7 @@ def _tennis_verified_record(connection: sqlite3.Connection) -> Dict[str, Any]:
     }
 
 
-def export_tennis_snapshot(db_path: Path, target_date: Optional[str] = None) -> Dict[str, Any]:
+def _export_tennis_recommendations_snapshot(db_path: Path, target_date: Optional[str] = None) -> Dict[str, Any]:
     """Export only evidence-gated Tennis prop recommendations."""
     db_path = Path(db_path)
     run_id = f"tennis:{target_date or 'unavailable'}"
@@ -1589,6 +1589,14 @@ def export_tennis_snapshot(db_path: Path, target_date: Optional[str] = None) -> 
         "source_files": [str(db_path)],
         "warnings": [] if recommendations else ["no_eligible_tennis_recommendations"],
     }
+
+
+def export_tennis_snapshot(db_path: Path, target_date: Optional[str] = None) -> Dict[str, Any]:
+    from .tennis_tracking import export_tennis_tracking
+
+    snapshot = _export_tennis_recommendations_snapshot(db_path, target_date)
+    snapshot["tracking"] = export_tennis_tracking(db_path)
+    return snapshot
 
 
 def validate_multisport_feed(feed: Dict[str, Any]) -> List[str]:

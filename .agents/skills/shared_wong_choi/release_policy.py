@@ -187,6 +187,9 @@ def activation_plan(paths: Iterable[str]) -> dict:
             domains.update(("au", "hkjc", "tennis", "nba"))
         if lowered.startswith("horse_racing_dashboard/") or lowered == "deploy.sh":
             dashboard = True
+            # Every domain republishes from its own checkout. Leaving those
+            # publishers on old templates/exporters would undo a UI-only release.
+            domains.update(("au", "hkjc", "tennis", "nba"))
         if path in _APPROVED_ACTIVATION_INSTALLERS:
             if not unified_runtime or path == _PRODUCTION_RUNTIME_INSTALLER:
                 installers.append(path)

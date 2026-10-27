@@ -129,7 +129,7 @@ def test_activation_plan_marks_dashboard_and_launchd_installer() -> None:
     )
     assert plan["dashboard_deploy"] is True
     assert plan["manual_required"] is True
-    assert plan["production_sync_domains"] == ["nba"]
+    assert plan["production_sync_domains"] == ["au", "hkjc", "nba", "tennis"]
 
 
 def test_central_durability_installer_alone_requires_manual_activation() -> None:
@@ -177,3 +177,10 @@ def test_unified_runtime_installer_does_not_consume_au_or_unrelated_installer() 
         "launchd_install:.agents/skills/au_racing/au_daily_auto/install_macos_launchd.sh",
         "launchd_install:ops/install_macos_launchd.sh",
     ]
+
+
+def test_dashboard_only_release_updates_all_automatic_publishers() -> None:
+    plan = activation_plan(["Horse_Racing_Dashboard/static_template.html"])
+    assert plan["dashboard_deploy"] is True
+    assert plan["production_sync_domains"] == ["au", "hkjc", "nba", "tennis"]
+    assert plan["manual_required"] is False

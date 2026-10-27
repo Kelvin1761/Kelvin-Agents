@@ -750,6 +750,25 @@ def _merge_sports_feed(cached, fresh, today=None):
         for field in ('covered_dates', 'retained_dates'):
             if field in nba['tracking']:
                 nba['tracking'][field] = [day for day in nba['tracking'][field] if day >= TRACKING_START_DATE]
+    # Tennis model history has an independent authority from live BET gating.
+    previous = (cached_sports.get('tennis') or {}).get('tracking')
+    current = ((fresh or {}).get('sports', {}).get('tennis') or {}).get('tracking')
+    if current or previous:
+        tennis = merged['sports'].setdefault('tennis', {})
+        if current and current.get('status') == 'valid':
+            tennis['tracking'] = copy.deepcopy(current)
+            covered = set(current.get('covered_dates', []))
+            retained = [r for r in (previous or {}).get('records', []) if r.get('day') not in covered]
+            by_id = {r['id']: r for r in retained}
+            by_id.update({r['id']: r for r in current.get('records', [])})
+            tennis['tracking']['records'] = list(by_id.values())
+            if retained:
+                tennis['tracking']['retained_dates'] = sorted({r.get('day', '') for r in retained})
+            if previous and 'prop_live_bets' not in current.get('source_counts', {}):
+                tennis['tracking']['actual_bets'] = copy.deepcopy(previous.get('actual_bets', []))
+        elif previous:
+            tennis['tracking'] = copy.deepcopy(previous)
+            tennis['tracking']['status'] = 'stale'
     return merged
 
 
