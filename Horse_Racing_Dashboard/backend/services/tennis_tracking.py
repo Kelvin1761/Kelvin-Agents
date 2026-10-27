@@ -8,6 +8,7 @@ point-in-time model ROI. Actual D1 wagers remain a separate authority.
 from datetime import datetime, timezone
 import json
 import math
+import re
 from pathlib import Path
 import sqlite3
 from zoneinfo import ZoneInfo
@@ -47,6 +48,19 @@ def _state(value):
     return {"WON": "won", "LOST": "lost", "VOID": "void", "PUSH": "void", "PENDING": "pending"}.get(
         str(value or "PENDING").upper(), "unverified"
     )
+
+
+def _subject(row, match, players):
+    """Resolve only explicit subject identity belonging to this exact fixture."""
+    raw = row.get("subject_player_id")
+    if raw is None:
+        encoded = re.fullmatch(r"player_win_a_set_(\d+)", str(row.get("market_key") or ""))
+        raw = encoded.group(1) if encoded else None
+    identity = int(str(raw)) if str(raw).isdigit() else None
+    if identity not in (match.get("player_a_id"), match.get("player_b_id")):
+        identity = None
+    name = players.get(identity) if identity is not None else None
+    return {"subject_player_id": identity if name else None, "subject_player_name": name or None}
 
 
 def export_tennis_tracking(db_path):
@@ -135,6 +149,7 @@ def export_tennis_tracking(db_path):
                     event = row.get("match_label") or "賽事待核實"
                 clean_legs = [
                     {
+                        **_subject(l, matches.get(l.get("match_id"), {}), players),
                         "selection": l.get("selection") or l.get("selection_name") or "",
                         "market": l.get("market_key") or l.get("market") or "",
                         "match_id": l.get("match_id"),
@@ -149,6 +164,7 @@ def export_tennis_tracking(db_path):
                 ]
                 return {
                     "id": identity,
+                    **_subject(row, m, players),
                     "day": day,
                     "event_name": event,
                     "start_time_utc": start.isoformat() if start else None,

@@ -152,3 +152,34 @@ def test_read_only_and_missing_db_does_not_create_file(tmp_path):
     before = path.read_bytes()
     export_tennis_tracking(path)
     assert before == path.read_bytes()
+
+
+def test_boolean_player_props_export_verified_subject_for_both_fixture_sides(tmp_path):
+    path = tmp_path / "db"
+    c = database(path)
+    for i in range(1, 5):
+        prop(c, i)
+    c.execute("ALTER TABLE prop_tracker ADD COLUMN subject_player_id INTEGER")
+    c.execute("UPDATE prop_tracker SET selection='Yes',market_key='player_win_a_set_1'")
+    c.execute("UPDATE prop_tracker SET subject_player_id=2,market_key='player_win_a_set_2' WHERE id=2")
+    c.execute("UPDATE prop_tracker SET subject_player_id=999 WHERE id=3")
+    c.execute("UPDATE prop_tracker SET market_key='player_win_a_set_999' WHERE id=4")
+    c.commit()
+    c.close()
+    rows = export_tennis_tracking(path)["records"]
+    assert [r["subject_player_name"] for r in rows] == ["Player A", "Player B", None, None]
+    assert [r["subject_player_id"] for r in rows] == [1, 2, None, None]
+    assert all(r["selection"] == "Yes" for r in rows)  # raw saved selection is unchanged
+
+
+def test_combo_leg_subject_is_resolved_against_its_own_fixture(tmp_path):
+    path = tmp_path / "db"
+    c = database(path)
+    legs = [{"match_id": 1, "market_key": "player_win_a_set_2", "selection": "Yes"},
+            {"match_id": 999, "market_key": "player_win_a_set_1", "selection": "Yes"}]
+    c.execute("INSERT INTO combo_tracker VALUES(1,'c',1,'2026-10-26','A+B',?,3.,'PENDING','2026-10-26T20:00:00Z')", (json.dumps(legs),))
+    c.commit()
+    c.close()
+    row = export_tennis_tracking(path)["records"][0]
+    assert row["legs"][0]["subject_player_name"] == "Player B"
+    assert row["legs"][1]["subject_player_name"] is None

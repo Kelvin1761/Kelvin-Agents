@@ -2206,3 +2206,13 @@ test('Tennis combo cards show each leg with its fixture and market before source
  for(const text of ['2 腳跨場組合','A vs B','C vs D','球員 Ace 數','球員雙發失誤'])assert.ok(visible.includes(text));
  assert.match(html,/來源標示 First source label/);
 });
+
+test('Tennis player props name the subject and remove A/B marker spacing',()=>{
+ const api=loadTemplateFunctions();
+ const row={event_name:'Daniil Ostapenkov vs Patrick Maloney',selection:'Yes',market:'player_win_a_set_1988',subject_player_name:'Daniil Ostapenkov',kind:'prop',state:'pending',legs:[]};
+ const html=api.tennisRenderBets([row]);
+ assert.match(html,/Daniil Ostapenkov · 贏至少一盤/);assert.doesNotMatch(html,/tennis-player-marker/);assert.doesNotMatch(html,/>Yes</);
+ assert.match(api.tennisRenderBets([{...row,subject_player_name:'Patrick Maloney',selection:'No'}]),/Patrick Maloney · 一盤都唔贏/);
+ assert.match(api.tennisRenderBets([{...row,subject_player_name:null}]),/球員待核實 · 贏至少一盤/);
+ assert.match(api.tennisRenderBets([{...row,subject_player_name:'<script>bad</script>'}]),/&lt;script&gt;bad&lt;\/script&gt;/);
+});
