@@ -402,12 +402,14 @@ SPEED_MICRO_WEIGHTS = {
     "engine_mixed_low_conf_pen": -2.0,
     "engine_fast_slow_pen": -2.5,
     "engine_low_conf_pen": 0.0,
-    # 最快第一段（K=4 分段，EXP-20261016-52 預先登記；Kelvin 2026-10-16 決定上線，**未證實**，
-    # forward 退回條件見 EXP-20261016-53）
-    "first_section_fast_bonus": 4.0,
-    "first_section_quick_bonus": 2.0,
-    "first_section_slowish_pen": -1.0,
-    "first_section_slow_pen": -2.0,
+    # 最快第一段（K=4 分段，EXP-20261016-52 預先登記；Kelvin 2026-10-16 決定上線，**未證實**）。
+    # 2026-10-27 Kelvin 決定先退回：forward 30 場 Good Δ −3.33pp、頭2換馬淨上名 −1。
+    # Facts → Logic 接線同顯示保留；forward 照跑，arm = hkjc_arm_with_first_section.py（4／2／−1／−2），
+    # 證實咗先再上線。見 EXP-20261016-53。
+    "first_section_fast_bonus": 0.0,
+    "first_section_quick_bonus": 0.0,
+    "first_section_slowish_pen": 0.0,
+    "first_section_slow_pen": 0.0,
     "dist_match_bonus": 1.5,
     "dist_unproven_pen": -1.5,
     "overseas_g1_bonus": 6.0,
