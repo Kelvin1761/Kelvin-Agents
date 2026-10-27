@@ -51,3 +51,11 @@ live 嘅來源係 ESPN 傷停名單，經 `nba_availability.classify_injury_stat
 - forward 期間唔准改 γ、狀態處理、主力定義或者係數。
 - `dtd` 權重唔准因為睇完數據先調；要調就另開協議，用新數據。
 - KEEP 唔等於自動上線。
+
+## 修訂（2026-10-27，喺任何判決之前）：epoch 由 2026-10-26 改為 2026-10-27
+
+10-26 嘅比賽數據喺 S shadow 接線之前已經抽取咗，所以嗰日全部 S 腿都係 `no_season_log`／`no_team_recent`，令 S 覆蓋率得 59%，觸發咗 `INVALID_DATA` 守則。由 10-27 起覆蓋率係 100%。所以 epoch 改為 2026-10-27。
+
+- 只改咗 `epoch`，加咗 `epoch_amendment` 記錄原因；係數、檢查點、判決規則全部冇改。
+- 冇睇過任何表現數字去決定呢個修訂：10-27 只得 9 場，未去到任何檢查點。
+- 新嘅 `nba_ms_forward_v3.json` SHA256：`fcd604c6f68ed52a254dac9000ee640cdae5441d9dca5328ab75d228280e7d31`（測試已經更新釘住）。

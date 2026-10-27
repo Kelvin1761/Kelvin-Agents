@@ -105,13 +105,22 @@ def build(until: str, root: Path | None = None, analysis_roots: list[Path] | Non
     return {"until": until, "items": items}
 
 
+# A data-guard trip or a failed harm check is a problem to look at, not a checkpoint to read.
+WARNINGS = {"INVALID_DATA": "⚠️ {name}（{protocol}）數據守則觸發：唔可以判斷，要先查數據管線",
+            "REJECT_HARM": "⛔ {name}（{protocol}）傷害檢查不合格：候選明顯差過現役 C"}
+
+
 def due_alerts(report: dict) -> list[tuple[str, str]]:
     """(dedup key, line) for each checkpoint that is due; the scheduler sends each once."""
     out = []
     for item in report["items"]:
-        if item.get("checkpoint"):
-            out.append((f"{item['protocol']}:{item['name']}:{item['checkpoint']}",
-                        f"🔔 {item['name']}（{item['protocol']}）可以開始判斷：{item['checkpoint']}｜狀態 {item['status']}｜{item['progress']}"))
+        checkpoint = item.get("checkpoint")
+        if not checkpoint:
+            continue
+        head = WARNINGS.get(checkpoint, "🔔 {name}（{protocol}）可以開始判斷：{checkpoint}").format(
+            name=item["name"], protocol=item["protocol"], checkpoint=checkpoint)
+        out.append((f"{item['protocol']}:{item['name']}:{checkpoint}",
+                    f"{head}｜狀態 {item['status']}｜{item['progress']}"))
     return out
 
 

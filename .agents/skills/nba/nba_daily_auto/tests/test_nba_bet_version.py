@@ -77,3 +77,17 @@ def test_banker_shadow_bet_version_runs_across_days(tmp_path):
         (tmp_path / "ledger" / f"{day}.jsonl").write_text("")
     out = roi.banker_shadow("2026-10-26", tmp_path, model_id="m", version="bet")
     assert out["view"] == "bet" and out["arms"]["B2"]["combos"] == 0
+
+
+def test_telegram_roi_is_the_dashboard_tracking():
+    tracking = {"inception_date": "2026-10-25", "records": [
+        {"day": "2026-10-27", "state": "won", "profit": 1.88},
+        {"day": "2026-10-27", "state": "lost", "profit": -1},
+        {"day": "2026-10-27", "state": "pending", "profit": None},
+        {"day": "2026-10-26", "state": "unpriced", "profit": None},
+        {"day": "2026-10-26", "state": "lost", "profit": -1}]}
+    lines = roi.bet_tracking_lines(tracking, "2026-10-27")
+    assert "21:00" in lines[0]
+    assert lines[1] == "今日：1/2 中｜盈虧 +0.88u｜ROI +44%｜待結算 1"
+    assert lines[2].startswith("累計（由 2026-10-25 起）：1/3 中｜盈虧 -0.12u") and "void／冇賽前真價 1" in lines[2]
+    assert "Value Bomb" not in "\n".join(lines) and "B2" not in "\n".join(lines)

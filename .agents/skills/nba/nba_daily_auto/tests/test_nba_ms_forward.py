@@ -12,7 +12,7 @@ sys.path.insert(0, str(AUTO_DIR))
 import nba_ms_forward as f  # noqa: E402
 
 C_ID = "calibrated:C-2026-10-22:06bc5c856a67409ff1d097ebfdc934e8b31ac1b003021068013fead9dad8e1b4"
-FROZEN_SHA = "e4a1c1594e48bfcfacf7c2229259a93f5bfcfbb9bd910126e72a6fdd92f8f694"
+FROZEN_SHA = "7b70e2352178909392f22e9b39623226e96a09db1889cd2076ae274dbb23a5c4"
 
 
 def test_config_is_frozen():
@@ -111,7 +111,7 @@ def test_guards_block_judgement():
     assert f.analyse([], {}, "x")["status"] == "AWAITING_DATA"
 
 
-FROZEN_V2_SHA = "cbc78f1e03662d22bdd6aff39549482223ca758013189d398da54156f020f96a"
+FROZEN_V2_SHA = "4ee79eaf9a3ec7e6e54ea9aa2a8f5207be3d768de5733c29e6cca10d13fbfa72"
 
 
 def test_v2_config_is_frozen_and_reads_v2_fields(tmp_path):
@@ -133,7 +133,7 @@ def test_v2_config_is_frozen_and_reads_v2_fields(tmp_path):
 
 def test_reb3pm_subset_is_frozen_and_only_scores_its_stats(tmp_path):
     assert hashlib.sha256(f.CONFIG_V2_REB3PM_PATH.read_bytes()).hexdigest() == \
-        "be37d53912d9154e1f51b9b6c5b4b0156737dfad1a78b4b2900c1193565e5c5c"
+        "10225789868a7ec191ae940156fc731df138d0f1b5000a12d8ba9c9121cede70"
     cfg, _ = f.load_config(f.CONFIG_V2_REB3PM_PATH)
     assert cfg["stats"] == ["REB", "FG3M"] and cfg["coefficients"] == f.load_config(f.CONFIG_V2_PATH)[0]["coefficients"]
     d = "2026-10-28"
@@ -152,7 +152,7 @@ def test_reb3pm_subset_is_frozen_and_only_scores_its_stats(tmp_path):
 
 def test_v3_config_is_frozen_and_reads_v3_fields():
     assert hashlib.sha256(f.CONFIG_V3_PATH.read_bytes()).hexdigest() == \
-        "d4ff377b554367f3e9af95c12eaa54baa38d3534e374c462f8b7be4e3cfa9c8b"
+        "fcd604c6f68ed52a254dac9000ee640cdae5441d9dca5328ab75d228280e7d31"
     cfg, _ = f.load_config(f.CONFIG_V3_PATH)
     assert cfg["season_rate_version"] == "nba_season_rate_S_v3"
     assert cfg["season_rate_fields"]["prob"] == "season_rate_v3_prob_S" and "stats" not in cfg

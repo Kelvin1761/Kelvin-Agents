@@ -54,3 +54,11 @@ S_v2 嘅常數全部喺 2025-26 例行賽 TUNE（12-01 至 02-28）揀，冇用�
 cd .agents/skills/nba/nba_daily_auto
 PYTHONDONTWRITEBYTECODE=1 python3 nba_ms_forward.py --model v2 --until YYYY-MM-DD
 ```
+
+## 修訂（2026-10-27，喺任何判決之前）：epoch 由 2026-10-26 改為 2026-10-27
+
+10-26 嘅比賽數據喺 S shadow 接線之前已經抽取咗，所以嗰日全部 S 腿都係 `no_season_log`／`no_team_recent`，令 S 覆蓋率得 59%，觸發咗 `INVALID_DATA` 守則。由 10-27 起覆蓋率係 100%。所以 epoch 改為 2026-10-27。
+
+- 只改咗 `epoch`，加咗 `epoch_amendment` 記錄原因；係數、檢查點、判決規則全部冇改。
+- 冇睇過任何表現數字去決定呢個修訂：10-27 只得 9 場，未去到任何檢查點。
+- 新嘅 `nba_ms_forward_v2.json` SHA256：`4ee79eaf9a3ec7e6e54ea9aa2a8f5207be3d768de5733c29e6cca10d13fbfa72`（測試已經更新釘住）。

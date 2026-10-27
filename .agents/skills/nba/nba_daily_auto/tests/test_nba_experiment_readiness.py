@@ -56,3 +56,11 @@ def test_postgame_sends_digest_on_monday_and_each_alert_once(monkeypatch):
     monkeypatch.setattr(readiness, "build", lambda until: 1 / 0)
     schedule._experiment_readiness("2026-11-17", log)
     assert log.steps[-1][:2] == ("experiment_readiness", "failed")
+
+
+def test_guard_trips_are_warnings_not_ready_to_judge():
+    report = {"until": "2026-10-27", "items": [
+        {"name": "MS1", "protocol": "EXP-20261025-12", "status": "INVALID_DATA", "progress": "9 場／1 日",
+         "checkpoint": "INVALID_DATA"}]}
+    (key, line), = readiness.due_alerts(report)
+    assert line.startswith("⚠️ MS1") and "可以開始判斷" not in line and key.endswith(":INVALID_DATA")

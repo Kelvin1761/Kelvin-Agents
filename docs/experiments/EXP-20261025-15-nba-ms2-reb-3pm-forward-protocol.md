@@ -38,3 +38,11 @@ EXP-12（MS1 全部 stat）、EXP-14（MS2 全部 stat）同呢個 EXP-15 並行
 cd .agents/skills/nba/nba_daily_auto
 PYTHONDONTWRITEBYTECODE=1 python3 nba_ms_forward.py --model v2-reb3pm --until YYYY-MM-DD
 ```
+
+## 修訂（2026-10-27，喺任何判決之前）：epoch 由 2026-10-26 改為 2026-10-27
+
+10-26 嘅比賽數據喺 S shadow 接線之前已經抽取咗，所以嗰日全部 S 腿都係 `no_season_log`／`no_team_recent`，令 S 覆蓋率得 59%，觸發咗 `INVALID_DATA` 守則。由 10-27 起覆蓋率係 100%。所以 epoch 改為 2026-10-27。
+
+- 只改咗 `epoch`，加咗 `epoch_amendment` 記錄原因；係數、檢查點、判決規則全部冇改。
+- 冇睇過任何表現數字去決定呢個修訂：10-27 只得 9 場，未去到任何檢查點。
+- 新嘅 `nba_ms_forward_v2_reb3pm.json` SHA256：`10225789868a7ec191ae940156fc731df138d0f1b5000a12d8ba9c9121cede70`（測試已經更新釘住）。

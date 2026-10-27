@@ -1410,15 +1410,25 @@ def _record_settlement_evidence(archive: Path, target_date: str, log: RunLog) ->
 
 
 def _combo_roi_text(target_date: str, log: RunLog) -> str:
-    """Daily + cumulative combo ROI by type; never blocks the postgame summary."""
+    """Bet tracking exactly as the dashboard shows it; never blocks the postgame summary.
+
+    The research ROI files (combo types, B0/B1/B2, bet/latest views) are still written,
+    but the message reports only the dashboard's records so the two always agree.
+    """
     try:
         reports = nba_combo_roi.write_reports(target_date, market_ledger.ledger_root())
         log.step("combo_roi", "ok", combos=reports["daily"]["total"]["combos"],
                  settled=reports["daily"]["total"]["settled"])
-        return "\n".join(nba_combo_roi.message_lines(reports))
-    except Exception as exc:  # noqa: BLE001 — a reporting add-on must not fail postgame
+    except Exception as exc:  # noqa: BLE001 — research files must not fail postgame
         log.step("combo_roi", "failed", error=f"{type(exc).__name__}: {exc}")
-        return "📊 組合 ROI：今次計算失敗（已記錄），唔影響上面賽果摘要。"
+    try:
+        from services.nba_tracking import export_tracking
+        tracking = export_tracking(PROJECT_ROOT)
+        log.step("bet_tracking", str(tracking.get("status")), records=len(tracking.get("records") or []))
+        return "\n".join(nba_combo_roi.bet_tracking_lines(tracking, target_date))
+    except Exception as exc:  # noqa: BLE001 — a reporting add-on must not fail postgame
+        log.step("bet_tracking", "failed", error=f"{type(exc).__name__}: {exc}")
+        return "📊 落注追蹤：今次計算失敗（已記錄），唔影響上面賽果摘要。"
 
 
 def _reliability_text(target_date: str, log: RunLog) -> str:

@@ -302,3 +302,4 @@
 - [EXP-20261027-09](EXP-20261027-09-au-pg33-forward-protocol.md) — pg33_N6 forward 測試**預先登記同凍結**：10-28 起新賽日，夠 30 個賽日先開一次；B vs A `fixed_rule`，要 PRIMARY_WIN／RANKING_WIN，否則結案 REJECT。已宣告功效不足（預期效應 +0.13pp vs CI 約 ±1pp）。
 
 - [EXP-20261027-09](EXP-20261027-09-tennis-opponent-adjusted-serve-return.md)：Tennis 對手校正S/R點數實力，五段勝未校正、只四段LL勝rank，REJECT；固定歷史價少蝕147.81u對rank、僅17.87u對原binary且CI跨零，仍輸市場；實際Sportsbet盈利未驗證。
+- [EXP-20261027-20](EXP-20261027-20-nba-version-alignment-audit.md)：NBA 版本一致性審計：Telegram ROI 改用 dashboard tracking（21:00 第一個發佈嘅穩膽）；MS 四個測試 epoch 改 10-27；readiness 警告用字；正式穩膽 vs 用戶實際跟嘅 steady 候選未統一，待用戶決定。

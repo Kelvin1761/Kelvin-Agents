@@ -210,6 +210,36 @@ def write_reports(target_date: str, root: Path | None = None) -> dict:
     return {"daily": day, "cumulative": total, "banker_shadow": shadow}
 
 
+def bet_tracking_lines(tracking: Mapping[str, Any], target_date: str) -> list[str]:
+    """Telegram ROI = the dashboard's own tracking records (2026-10-27).
+
+    One record per game: the first verified publication (the 21:00 version the user
+    bets), formal 穩膽 or the steady banker candidate, $1 flat. Research shadows and
+    retired combo types stay in the report files only, so the message can never
+    disagree with the dashboard.
+    """
+    records = list(tracking.get("records") or [])
+
+    def summary(rows):
+        settled = [r for r in rows if r.get("state") in ("won", "lost")]
+        wins = sum(r["state"] == "won" for r in settled)
+        profit = sum(float(r.get("profit") or 0) for r in settled)
+        return (len(settled), wins, profit, sum(r.get("state") == "pending" for r in rows),
+                sum(r.get("state") == "unpriced" for r in rows))
+
+    lines = ["📊 落注追蹤（同 dashboard 一樣：每場第一個發佈、即 21:00 版本嘅穩膽；每注 $1）"]
+    for title, rows in (("今日", [r for r in records if r.get("day") == target_date]),
+                        (f"累計（由 {tracking.get('inception_date')} 起）", records)):
+        n, wins, profit, pending, unpriced = summary(rows)
+        extra = (f"｜待結算 {pending}" if pending else "") + (f"｜void／冇賽前真價 {unpriced}" if unpriced else "")
+        if not n:
+            lines.append(f"{title}：未有已結算注{extra}")
+            continue
+        lines.append(f"{title}：{wins}/{n} 中｜盈虧 {profit:+.2f}u｜ROI {profit / n * 100:+.0f}%{extra}")
+    lines.append("樣本細，唔等於有 edge；研究影子同已停用組合嘅 ROI 只保留喺 reports 檔案。")
+    return lines
+
+
 def _roi(b: Mapping[str, Any], basis: str) -> str:
     x = b.get(basis) or {}
     if x.get("roi") is None:

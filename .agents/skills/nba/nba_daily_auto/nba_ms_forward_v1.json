@@ -39,5 +39,6 @@
  },
  "comparator_probability_model_id": "calibrated:C-2026-10-22:06bc5c856a67409ff1d097ebfdc934e8b31ac1b003021068013fead9dad8e1b4",
  "season_rate_version": "nba_season_rate_S_v1",
- "epoch": "2026-10-26"
+ "epoch": "2026-10-27",
+ "epoch_amendment": "2026-10-27: moved from 2026-10-26 before any verdict; the 10-26 slate was extracted before the S shadow existed (all S legs no_season_log/no_team_recent), which tripped the coverage guard. No outcome was inspected for decisions."
 }

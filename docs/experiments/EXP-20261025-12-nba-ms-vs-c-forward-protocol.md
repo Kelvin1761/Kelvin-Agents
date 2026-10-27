@@ -76,3 +76,11 @@ PYTHONDONTWRITEBYTECODE=1 python3 nba_ms_forward.py --until YYYY-MM-DD [--output
 ```
 
 只讀 ledger，唔寫任何嘢，亦唔影響任何機率或選腿。
+
+## 修訂（2026-10-27，喺任何判決之前）：epoch 由 2026-10-26 改為 2026-10-27
+
+10-26 嘅比賽數據喺 S shadow 接線之前已經抽取咗，所以嗰日全部 S 腿都係 `no_season_log`／`no_team_recent`，令 S 覆蓋率得 59%，觸發咗 `INVALID_DATA` 守則。由 10-27 起覆蓋率係 100%。所以 epoch 改為 2026-10-27。
+
+- 只改咗 `epoch`，加咗 `epoch_amendment` 記錄原因；係數、檢查點、判決規則全部冇改。
+- 冇睇過任何表現數字去決定呢個修訂：10-27 只得 9 場，未去到任何檢查點。
+- 新嘅 `nba_ms_forward_v1.json` SHA256：`7b70e2352178909392f22e9b39623226e96a09db1889cd2076ae274dbb23a5c4`（測試已經更新釘住）。

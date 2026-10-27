@@ -46,9 +46,10 @@
   "version": "season_rate_v2_version",
   "inputs": "season_rate_v2_inputs"
  },
- "epoch": "2026-10-26",
+ "epoch": "2026-10-27",
  "stats": [
   "REB",
   "FG3M"
- ]
+ ],
+ "epoch_amendment": "2026-10-27: moved from 2026-10-26 before any verdict; the 10-26 slate was extracted before the S shadow existed (all S legs no_season_log/no_team_recent), which tripped the coverage guard. No outcome was inspected for decisions."
 }
