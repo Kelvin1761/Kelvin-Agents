@@ -1,0 +1,20 @@
+{
+  "experiment": "EXP-20261027-07",
+  "hypothesis": "Prior completed-match game share adds match-winner predictive information beyond a fitted binary-result Elo backbone.",
+  "source_commit": "2e46fa52d535479174f65349376a9a51bca554b0",
+  "source_db_sha256": "2e13a17a63871cbd5e108a4c258ec1c7193d1c032752ed74025f8f02249284ac",
+  "raw_response_ids": [1447,1448,1449,1450,1451,1452,1454,1455,1456,1457,1458,1459],
+  "scope": "Frozen Jeff Sackmann ATP/WTA main-tour 2020-2025; raw source identities, no history ordinal joins; no 2026 or live forecast holdout reads.",
+  "availability": "All source results become available strictly AFTER tournament_start +21 calendar days. Same rule for all arms. Synthetic conservative reconstruction, NOT verified historical observation timestamps.",
+  "exclude": ["levels outside A/M/G/F/I/P/PM/W", "non Hard/Clay/Grass/Carpet", "uncompleted or malformed score", "duplicate conflicting event identity", "self pair", "invalid date/identity"],
+  "arms": ["binary_elo_065_surface_baseline", "fitted_binary_only_control", "fitted_binary_plus_game_share_candidate"],
+  "features": "Binary and game-share Elo: identical decayed K=120/(n+5)^0.4, 1500 initialization, same pre-update expectations, surface initialized from overall, logit mix 0.65 surface +0.35 overall. Binary target=win; game target=observed fraction of completed games won. No odds/ranks/current-game scores enter prediction. No intercept to preserve player-swap symmetry.",
+  "fitting": "Expanding chronological logistic regression, ridge coefficient penalty 1.0, no hyperparameter search; training starts 2021, only labels with tournament_start+21d strictly before fold start; raw feature units fixed, no full-corpus scaling. Fit one pooled ATP/WTA model per arm.",
+  "development_folds": [["2023-01-01","2023-07-01"],["2023-07-01","2024-01-01"],["2024-01-01","2024-07-01"],["2024-07-01","2025-01-01"],["2025-01-01","2025-07-01"]],
+  "confirmation": ["2025-07-01","2026-01-01"],
+  "confirmation_caveat": "2025 outcomes have featured in earlier Elo research; NOT a fresh or untouched holdout. Candidate definition frozen before reading this experiment's outcomes.",
+  "decision": "Research advance only if candidate log loss and Brier improve vs BOTH baseline and fitted control in all 5 dev folds; then freeze coefficients trained before confirmation and open confirmation once. Confirmation paired CI must exclude zero for both metrics vs control, ATP/WTA each nonworsening point estimates. Otherwise REJECT/NEEDS MORE TESTING. No promotion: no verified historical executable odds or fresh forward holdout.",
+  "bootstrap": {"unit":"match","trials":4000,"seed":20260826,"confidence":0.95},
+  "report": ["coverage/exclusions", "all fold losses and coefficients", "tour/surface/level and best-of cohorts", "paired deltas vs both controls", "frozen source/code/protocol hashes", "no profitability claim without price evidence"],
+  "stop": "Do not add variants, change windows, rescue thresholds, or open confirmation on failed development. A failure is recorded and model code stays off main."
+}

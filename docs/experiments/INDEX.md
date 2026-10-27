@@ -295,3 +295,4 @@
 
 - [EXP-20261027-07](EXP-20261027-07-tennis-game-share-strength.md)：Tennis 過往局數實力＋訓練 combiner，五段 dev 較準，但確認 1819 場 ΔLL CI 跨零；REJECT 上線，保留研究。
 - [EXP-20261027-08](EXP-20261027-08-tennis-continuous-rank-prior.md)：Tennis 直接排名先驗五段 dev 較準，確認 ΔLL −.005743 CI 不跨零；但8240場固定歷史價模擬 ROI −12.07%→−14.37%、仍輸去水市場，REJECT 盈利／上線；合併 games arm 未過 dev。
+- [EXP-20261027-09](EXP-20261027-09-tennis-opponent-adjusted-serve-return.md)：Tennis 對手校正S/R點數實力，五段勝未校正、只四段LL勝rank，REJECT；固定歷史價少蝕147.81u對rank、僅17.87u對原binary且CI跨零，仍輸市場；實際Sportsbet盈利未驗證。
