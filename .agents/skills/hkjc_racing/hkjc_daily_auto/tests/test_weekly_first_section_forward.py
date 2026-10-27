@@ -127,6 +127,7 @@ def test_weekly_message_carries_the_line(tmp_path, monkeypatch):
     monkeypatch.setattr(schedule, "results_db_reconcile_section", lambda: "")
     monkeypatch.setattr(schedule, "first_section_forward_section", lambda state: "\n\n🏇 前速 forward：stub")
     monkeypatch.setattr(schedule, "official_injury_forward_section", lambda state: "")
+    monkeypatch.setattr(schedule, "forward_tracker_section", lambda state, path: "")
     monkeypatch.setattr(schedule, "notify", lambda message, **_k: sent.append(message) or True)
     code = schedule.run_weekly({}, tmp_path / "state.json", tmp_path / "gate.json")
     assert code == schedule.EXIT_OK

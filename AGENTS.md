@@ -36,6 +36,14 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
 - **失手體檢嘅結果唔准用嚟擇參、調權重或者揀 leaf。** EXP-20261013-01 已經證實
   失手共識搬去下一段 dev 會蝕。佢嘅用途係搵數據 bug。
 
+### Forward 測試一律登記入追蹤表
+
+HKJC 每個 forward／shadow 測試（「夠 N 場先判」）都要加入
+`.agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_forward_tracker.py` 嘅 `FORWARD_TESTS`。
+賽後第一次夠數（或者冇累積）會即刻 Telegram 一次；每週 review 列晒進度；規則完全預先登記嘅
+A/B（`harness_ab`）夠數會自動判一次並凍結結果。**永遠唔會自動改模型** —— 上唔上線係 Kelvin 決定。
+原因：2026-10-27 發現兩個 shadow 早就夠數（53/20、27/20）、一個由頭到尾冇記錄，冇人知。
+
 ### 大型暫存一律放外置碟
 
 Mac 內置碟淨 ~15GB。2026-10-12 一個 AU 消融實驗喺 `/private/tmp` 抄咗 7 份

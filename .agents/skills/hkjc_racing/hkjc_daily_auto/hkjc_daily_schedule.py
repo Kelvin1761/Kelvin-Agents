@@ -49,6 +49,9 @@ for item in (PROJECT_ROOT, SHARED_RACING, SHARED_WC):
         sys.path.insert(0, str(item))
 
 from racing_telegram import send_message  # noqa: E402
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+import hkjc_forward_tracker as forward_tracker  # noqa: E402
 from shared_wong_choi.contracts import Domain  # noqa: E402
 from shared_wong_choi.dashboard_publish_lock import serialized_publication  # noqa: E402
 from shared_wong_choi.domain_evidence import (  # noqa: E402
@@ -1607,6 +1610,8 @@ def run_postrace(state: dict, state_path: Path) -> int:
                 "正式賽果已對齊 pre-race prediction，forward corpus／Matrix review 已更新；"
                 "已由 Wong Choi dashboard 移除已完成賽日。"
             )
+        if completed:
+            forward_tracker_remind(state, state_path)
     if overall == EXIT_TEMPORARY:
         set_control_outcome("partial", reason="results_pending")
     else:
@@ -1724,8 +1729,6 @@ def process_candidate_gate(path: Path) -> tuple[str, str | None]:
     return "created", payload["pr_url"]
 
 
-GEAR_FORWARD_START = "2026-10-11"   # EXP-20261010-05 預先登記
-GEAR_FORWARD_RACES = 60
 
 
 def learning_lines(root: Path | None = None) -> list[str]:
@@ -1757,14 +1760,7 @@ def learning_lines(root: Path | None = None) -> list[str]:
             lines.append(f"賽道偏差 ledger：{progress} 個賽日（夠數先測賽道配置能否預測偏差）")
     except Exception:  # noqa: BLE001
         pass
-    try:
-        forward = [m for m in root.glob("20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]_*")
-                   if m.is_dir() and m.name[:10] >= GEAR_FORWARD_START and list(m.glob("*全日賽果.json"))]
-        races = sum(len(json.loads(next(m.glob("*全日賽果.json")).read_text(encoding="utf-8"))) for m in forward)
-        status = "✅ 夠數，可以開一次性確認（EXP-20261010-05）" if races >= GEAR_FORWARD_RACES else "累積中"
-        lines.append(f"配備「除去」−3 forward：{races}/{GEAR_FORWARD_RACES} 場（{status}）")
-    except Exception:  # noqa: BLE001
-        pass
+    # 配備「除去」−3 forward 進度已經搬去 forward 追蹤表（hkjc_forward_tracker），會自動判。
     return lines
 
 
@@ -1950,6 +1946,33 @@ def official_injury_forward_section(state: dict, out_dir: Path | None = None) ->
         return f"\n\n⚠️ {head} 檢查失敗，今個星期冇判定：{type(exc).__name__}: {exc}"
 
 
+def forward_tracker_remind(state: dict, state_path: Path) -> None:
+    """賽後：forward 測試第一次夠數（或者冇累積）就即刻 Telegram 一次。失敗唔影響覆盤。"""
+    try:
+        forward_tracker.remind(state, root=HK_RACING,
+                               ledger_path=state_path.parent / DEFAULT_SHADOW_LEDGER_NAME, notify=notify)
+        save_state(state_path, state)
+    except Exception as exc:  # noqa: BLE001
+        log(f"forward tracker reminder failed (non-blocking): {exc}")
+
+
+def forward_tracker_section(state: dict, state_path: Path) -> str:
+    """每週 review：先自動判已夠數嘅預先登記 A/B，再列晒所有 forward 測試進度。"""
+    text = ""
+    try:
+        judged = forward_tracker.judge_ready(
+            state, root=HK_RACING, run_cmd=run_cmd, harness=EVAL_HARNESS, python=sys.executable,
+            out_dir=HK_RACING / "Forward_Checks", stamp=stamp)
+        if judged:
+            text += "\n\n" + "\n".join(judged)
+        text += forward_tracker.section(state, root=HK_RACING,
+                                        ledger_path=state_path.parent / DEFAULT_SHADOW_LEDGER_NAME)
+    except Exception as exc:  # noqa: BLE001
+        log(f"forward tracker section failed: {exc}")
+        text += f"\n\n⚠️ Forward 測試進度表失敗：{type(exc).__name__}: {exc}"
+    return text
+
+
 def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     code, output = run_cmd([sys.executable, str(WEIGHT_REVIEW), "--json"])
     if code != 0:
@@ -1999,6 +2022,7 @@ def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     message += results_db_reconcile_section()
     message += first_section_forward_section(state)
     message += official_injury_forward_section(state)
+    message += forward_tracker_section(state, state_path)
     notify(message)
     state["last_weekly_review"] = stamp()
     save_state(state_path, state)
