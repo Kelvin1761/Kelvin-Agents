@@ -308,3 +308,4 @@
 - [EXP-20261028-11](EXP-20261028-11-au-form-quality-sample-size-results.md) — 近績質素分按場數收縮（k 0.80）／獎金 z 封頂 ±1.567／兩樣一齊：三個 REJECT（primary 點估計負；A1 兩個分層 CI 全負）。少場數馬喺頭 3 名冇被高估，低名次反而被低估。
 - [EXP-20261028-12](EXP-20261028-12-au-set-weight-proxy-results.md) — 定磅賽唔再用負磅代理（正面認讓磅，處理截斷名）：§7 正確性修正上線，**唔係已證實改善**。1,265 匹中招；定磅賽負磅代理 AUC 0.511，級數分 0.565。
 - [EXP-20261028-13](EXP-20261028-13-au-class-score-rule-audit-results.md) — 級數分逐條審計：只剷「≥15 場」三條（冇代價簡化，Gold +0.03／Good +0.07）；初出、降班剷走有害，留。級數分整體 AUC 0.570。順帶：處女賽懲罰喺「Maidens Ineligible」場都觸發。
+- [EXP-20261028-14](EXP-20261028-14-au-class-g5-bonus-magnitude-results.md) — 級數分「1–5 場、上仗頭 25%」加分幅度 walk-forward（網格 0–10）：REJECT，逐窗從未揀過大過 2.31，全紀錄曲線平（Gold 21.26–21.36%）。cohort 差距唔係可落分收益，維持 2.31。
