@@ -20,4 +20,4 @@
 
 **完成研究嘅定義**：每個候選有去向、每個實驗有事前協議及全部結果，或者有明確暫停原因。可以得出「冇候選值得升級」。模型實驗須依次通過資料及baseline前置閘，唔直接跳去訓練；研究進行中不等於準確度已改善。
 
-**目前判斷**：已按[資格澄清](docs/plans/tennis-research-eligibility-clarification-20261029.md)完成來源隔離cohort及38比較／76檢定鎖定；13,274場五段dev首輪未有合格候選。原publisher十二檔已完成identity join；26個矛盾事件於市場fit前連歷史輸入一併隔離。C02去水及C01 offset在同11,725場完成，四個新候選全部拒絕；C13只作training診斷，不改判失敗候選。計算及76檢定已獨立重現，無報價時鐘仍只屬dev。F01全量parser／F02歷史規則及真實時間／live provenance餘項照列；新forward及上線未啟動。
+**目前判斷**：已按[資格澄清](docs/plans/tennis-research-eligibility-clarification-20261029.md)完成來源隔離cohort及38比較／76檢定鎖定；13,274場五段dev首輪未有合格候選。原publisher十二檔已完成identity join；26個矛盾事件於市場fit前連歷史輸入一併隔離。C02去水及C01 offset在同11,725場完成，四個新候選全部拒絕；C13只作training診斷，不改判失敗候選。計算及76檢定已獨立重現，無報價時鐘仍只屬dev。F01已完成MCP及49站Slam全量審計、Slam2011–24規則明示；但發布時鐘未驗，來源augmentation不合資格。C14真實時間資格停止。餘項優先追live provenance／daily board；C09市場合約及候選依賴照留，新forward及上線未啟動。

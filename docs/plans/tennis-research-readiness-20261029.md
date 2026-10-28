@@ -4,6 +4,8 @@
 
 執行更新：EXP-20261029-03／04已完成27,263場cohort、24,880 feature rows、38比較／76檢定鎖，首輪13,274場、五段dev及獨立replay。下表保留原依賴及驗收；已完成部分以實際進度為準。原價格URL404其後查明目錄改動，全12個publisher檔已完成保守identity join，C02／C01於同11,725場完成、四個候選全拒絕；原76名額family不變。26個矛盾事件於fit前連歷史輸入隔離。無captured_at／quote type證據，ROI只係hypothetical，唔再將檔案缺失當目前理由。實際開／完賽時間、PIT及live來源資格仍未解決。
 
+來源批次更新：EXP06已全量審計MCP metadata／Overview及49站98份Slam單打檔，Slam歷年規則明示。3,902／1,872場身份點數一致但發布時鐘未驗，來源augmentation資格未過。C14全raw時鐘盤點已作STOP判決；唔再將全量capture未做當目前理由。
+
 ## 原前置工作及餘項（進度審計列最新完成狀態）
 
 | 次序／責任範圍 | 具體工作 | 驗收／停止條件 |
@@ -35,6 +37,6 @@
 - 正式採用仍須frozen tennis-v1及既有guardrails。定性／缺失門檻另作規則澄清，不能與候選一齊改尺。通過僅表示可進release review。
 - repo保存方法、精確來源URL／SHA、結果摘要及可重跑命令；大型raw／DB及prediction artifacts留喺已驗證外置run目錄。未完成／失敗模型只保存研究分支。
 
-**下一批餘項**：F01完整MCP／PBP parser及canonical coverage、F02歷史tournament/year規則、C14實際14日分鐘／完賽hours資格，以及C09各props市場／settlement合約。已失敗候選不重跑；無單項通過就不硬合併，新forward仍未啟動。
+**下一批餘項**：優先追實際runtime feature-provenance／daily board缺口。F01全量審計已完成，來源發布時鐘未驗、P05仍missing；F02已補Slam2011–24規則但legacy MC無年份輸入；C14實際14日／end clock資格停止，C09各props市場／settlement合約及合格serve候選依賴未齊。已失敗候選不重跑；無單項通過就不硬合併，新forward仍未啟動。
 
 **計劃驗收**：八個項目及C01–C17都有去向；依賴、控制、時間切分、消融、停止、判決及證據位置已寫清。**研究驗收另計**：各批有全部結果或有證據嘅暫停判決；只有真正通過新forward先可聲稱可採用嘅準確度改善。

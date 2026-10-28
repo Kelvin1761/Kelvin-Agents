@@ -2,6 +2,27 @@
 
 開始：2026-10-28 Sydney；跨午夜於 2026-10-29 繼續。用戶已授權實際執行 [統一計劃](../../tennis-research-execution-plan-20261028.md)，目標係提高分析準確度。**執行中，未證實模型改善，未更換正式模型。**
 
+## 2026-10-29來源批次更新：全量審計及時間停止判決
+
+[EXP-20261029-06](../experiments/EXP-20261029-06-tennis-source-qualification.md)完成MCP完整metadata／Overview及P08固定tree全部49站、98份adult main-draw singles配對檔；無新模型fit，原15個候選仍REJECT_DEV。**資料審計有進展，未證實準確度改善，未更換正式模型。** 本節取代下方較早F01只完成一站sample／F02無Slam歷年mapping嘅時點描述；發布時鐘及其他原有資格缺口仍在。
+
+- 新capture 272,359,879 bytes，98份全部驗bytes／Git blob／SHA256；重用兩份US Open原capture，同源鏡像不加樣本。完整spec、每檔receipt／URL／時間保存在`f01-full/slam-singles/`，無複製1.9GB snapshot。
+- MCP：全部30,879 raw作身份宇宙，含未完成／無效比分及146行unknown surface。3,902場身份及雙方點數同source一致（ATP2,377／WTA1,525），429場box衝突留置。Coverage ATP16.67%／WTA11.75%；Final ATP44.89%但R32 11.93%，crowdsourced選樣不能當隨機。缺chart發布時鐘，**C07 NOT_QUALIFIED_FOR_SOURCE_AUGMENTATION、training eligible0**。
+- Unknown surface另回查既有價格配對：寬鬆pair/day/format有一個重疊，但原BJK Cup RR與實際book1st Round不同，原identity合約已排除；寬鬆FLAG及實體核對PASS均保存，原價格cohort無改。
+- P08全10,513行metadata、1,922,136 points，無points orphan。v4有7,596場合法逐分重建，其中6,101場完整scoreboard亦驗；另1,495場缺部分供應scoreboard，不能稱全欄通過。1,872場另同canonical身份、terminal比分及雙方發球點數一致；2,880逐分矛盾、4,809年份外、911完整姓名缺失／歧義、32無效participants、5無points、3非完整contract、1原label hold。8,641未合格行全部保留。
+- 已驗IBM／Infosys明示schema：0／0X／0Y非比賽marker、跨盤累計GameNo、GAME終局token；空白不填0、缺點不插補。四版報告均留底，**最終可信版本`slam-audit-v4/`**；前三版只forensic，唔當immutable候選方法鎖。
+- 獨立script無import研究parser，重核98physical blobs、MCP全3,902配對及所有7,596場passing matches嘅逐局點數／發球，並核對1,872個canonical結果，PASS。MCP／Slam重疊424 keys、union5,350，唔重複算獨立場。
+- C16 Slam全量審計已完成但**來源augmentation資格未過，training eligible0**；P05 encoded字串原source404維持STOP_MISSING_SOURCE，冇換schema冒充完成。
+- F02明示2011–24四Slam adult singles歷年advantage／7@6／7@12／10@6規則，依官方公告及一般ITF發球law做正確性測試。其他年份／draw UNKNOWN；現有legacy MC仍無年份／point-level TB輸入，無production改動，數學通過唔係實證準確度。
+- C14全raw有28,376場正minutes、129零sentinel、2,374缺失，非空時間欄只有minutes／tourney_date，無end UTC。原context／+21日政策不能驗真實14日workload或rest-only控制。**STOP_INPUT_QUALIFICATION_C14**，五比較名額保留p=1、零fit；唔填假hours／minutes、不改fold。
+- 90項研究測試、最後quick及完整16組suite全部通過，無新增skip。九份CSV／JSON報告已export及驗hash；無candidate predictions所以performance／ROI／CLV明示N/A。
+
+證據：同一external run嘅`f01-full/`，含MCP、98份來源／receipts、四版Slam audit、獨立source replay／script、canonical-source-overlap、unknown-surface核對、workload資格及`report-export/`。Checkpoint manifest及保存後Git lineage另記；只保存non-main研究分支。
+
+本批checkpoint涵蓋254份artifact、320,896,379 bytes，manifest SHA256 `1298b07a4ffbbcc81f7976122813be3a0621509eabeed1f96294c20ad8aa4e2c`；六份stage manifest及最終方法hash均驗證。`final-source/`保存最終源碼，`final-method-archive.json`明示係事後歸檔、非候選prereg鎖；前三版診斷報告嘅end-of-run hash不冒充import-time immutable方法證據。最終v4方法未變，另有全量獨立replay。完整gate777秒通過。
+
+**餘項優先**：追查實際runtime嘅live feature-provenance／daily board缺口，不能以研究parser通過取代當時feature證據。C09聯合props仍受無合格serve候選及各family市場／settlement合約限制；Slam來源發布時鐘、P05 missing來源及C14完整時間不足照留。無合格候選就不組合、不開新forward；提高現役準確度目標仍未達成。
+
 ## 2026-10-29最新更新：市場批次完成，仍未有合格候選
 
 [EXP-20261029-05](../experiments/EXP-20261029-05-tennis-market-offset-devig.md)完成C02去水、C01固定市場offset及C13 training診斷。**power／Shin／inner去水／offset四個新候選全部REJECT_DEV；連同首輪共15個候選被拒絕，未啟動新forward或更換正式模型。** 本節取代下方較早「價格資格／市場比較尚待完成」嘅時點描述，舊checkpoint證據保留。

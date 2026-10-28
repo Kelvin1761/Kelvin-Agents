@@ -124,3 +124,40 @@ price edges; these are counted explicitly rather than changing policy after
 results. Full identity-universe audit, independent feature/probability/bootstrap
 replay and exact-round-trip Parquet/CSV exports are preserved under the external
 `market-phase/` evidence directory. No research runner is wired into production.
+
+## MCP and full Slam source qualification
+
+`mcp_qualification.py` reconciles every captured MCP metadata/Overview row
+against the complete raw identity universe before checking two-player Total
+point counts and source box scores. It retains unknown surfaces as potential
+ambiguities, holds all duplicate canonical charts, and reports population
+coverage by tour/surface/level/round. Per-set Overview rows never duplicate Total.
+
+`slam_capture.py` transfers the fixed 49-event/98-file singles roster, with
+size/Git-blob/SHA256 verification, per-file resumable receipts and reuse of the
+two original US Open captures. `slam_points.py` reconstructs legal point/game/
+set/match states and service order under the explicit 2011-24 event rules in
+`slam_rules.json`. Unknown event/year/draw rules have no modern fallback.
+`slam_qualification.py` checks the complete captured population, metadata and
+independent canonical outcomes. IBM/Infosys schema variants are explicit by
+event/year; blank scoreboard fields remain missing, and full scoreboard
+verification is separate from legal point replay. Initial markers never add
+points; gaps or contradictions are not interpolated.
+
+```bash
+python -m research.tennis_unified.mcp_qualification --manifest "$INITIAL_SOURCE_MANIFEST" --cohort "$CLEAN/cohort.json" --database "$SNAPSHOT" --output "$NEW_MCP_AUDIT"
+python -m research.tennis_unified.slam_capture --spec "$PINNED_98_FILE_SPEC" --previous-manifest "$INITIAL_SOURCE_MANIFEST" --output "$NEW_CAPTURE_OR_INCOMPLETE_RESUME"
+python -m research.tennis_unified.slam_qualification --manifest "$FULL_CAPTURE/source_manifest.json" --cohort "$CLEAN/cohort.json" --database "$SNAPSHOT" --output "$NEW_CREATE_ONLY_AUDIT"
+```
+
+EXP-20261029-06 records 3,902 MCP and 1,872 Slam matches whose identities/points
+agree with the source, with 424 overlapping canonical keys. Full point replay
+passed for 7,596 Slam matches, including 6,101 with complete supplied scoreboard
+verification. All 10,513 metadata and 1,922,136 point rows are accounted for.
+Independent physical-source and grouped-game replays passed. Training eligibility
+remains zero because publication clocks are unverified; the missing P05 encoded
+schema remains stopped. C14 workload is separately stopped: positive minutes
+exist, but actual end clocks and the original-context recent-14d availability do
+not. These source audits do not refit candidates or demonstrate accuracy gains.
+External `f01-full/slam-audit-v4/` is the final trusted audit; three earlier
+diagnostic parser versions are preserved for forensic comparison only.

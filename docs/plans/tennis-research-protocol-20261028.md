@@ -122,7 +122,7 @@ PYTHONDONTWRITEBYTECODE=1 "$TENNIS_RESEARCH_PY" tennis-wong-choi/scripts/audit_m
 
 `audit_model_data.py` 唯讀盤點唔代替 earliest-price／stored-parity harness。`tune_elo_backbone.py`、props evaluation scripts／過往研究分支可重用部件，先驗相同 eligibility／metric；唔跨 harness 直接比數字。`--quick` bootstrap 只掃描，唔判決。
 
-**研究 harness 現況**：snapshot／inventory、stored-parity、來源capture／初步qualification及kernel audit已實作，真實命令見[工具README](../../research/tennis_unified/README.md)，實際結果見進度審計。仍待完成canonical cohort／availability、grouped nested time splits、arm registry、paired rows／multiplicity、forward power/protocol lock及歷史規則／joint核對。各工具先驗help／schema、A/A／leakage fixtures；未實作嘅模型runner不提供假命令。
+**研究 harness 現況**：snapshot／inventory、stored-parity、來源capture／初步qualification及kernel audit已實作，真實命令見[工具README](../../research/tennis_unified/README.md)，實際結果見進度審計。其後EXP03–05已完成canonical cohort／synthetic availability、五段time splits、38比較／76檢定及全部15個候選結果，全部REJECT_DEV；EXP06完成完整MCP metadata／Overview、49站Slam單打審計及2011–24規則。來源發布時鐘／P05／C14時間仍不合資格，live feature-provenance及joint合約餘項未齊；無合格候選，forward power／protocol lock未啟動。各工具先驗help／schema、A/A／leakage fixtures；未實作嘅模型runner不提供假命令。
 
 - 大型實驗先 `df -h /System/Volumes/Data`，少過10GB停；驗證外置碟真係掛載。大型暫存／TMPDIR 用 `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-research-<run-id>/`；archive約0.8GB亦要計clone／解壓／複本後大小。
 - 一份 immutable corpus，arms順序跑、只存細 predictions/artifacts，不複製整庫。一個fold dry run量CPU/RAM/disk；空間不足停，唔轉內置碟。保留 raw/hash/protocol／失敗結果，清可重建大暫存。

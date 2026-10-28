@@ -318,3 +318,4 @@
 - [EXP-20261029-03](EXP-20261029-03-tennis-unified-feature-study.md) — Tennis五段13,274場，surface／serve七arms／對手強度／H2H合共10個候選全部REJECT_DEV；全量獨立replay通過，無promotion。
 - [EXP-20261029-04](EXP-20261029-04-tennis-fixed-feature-head.md) — 同七欄HGB對logistic，命中率升但LL／Brier退步、四段更差，REJECT_DEV；保存模型推論獨立重現。
 - [EXP-20261029-05](EXP-20261029-05-tennis-market-offset-devig.md) — 11,725場同書價格：power／Shin／inner及固定市場offset全拒絕；offset勝純網球但輸市場；無報價時鐘ROI只屬假設，四千次bootstrap／原76檢定獨立重現。
+- [EXP-20261029-06](EXP-20261029-06-tennis-source-qualification.md) — MCP完整metadata／Overview及49站98份Slam單打全量審計；3,902／1,872場點數與canonical一致，發布時鐘未驗所以零training eligible；歷年規則明示，C14時間資格停止，無新模型fit。
