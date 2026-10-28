@@ -178,6 +178,10 @@ def build_parser() -> argparse.ArgumentParser:
     reject.add_argument("--dry-run", action="store_true")
     reject.add_argument("--no-notify", action="store_true")
     reject.add_argument("--json", action="store_true")
+    reconciliation = sub.add_parser("reconcile-installation-preview")
+    reconciliation.add_argument("--source-commit", required=True)
+    reconciliation.add_argument("--target-commit", required=True)
+    reconciliation.add_argument("--json", action="store_true")
     bootstrap = sub.add_parser("bootstrap-models")
     bootstrap.add_argument("--commit", required=True)
     bootstrap.add_argument("--actor", required=True)
@@ -192,6 +196,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     repo = args.repo.expanduser().resolve()
     state_root = args.state_root.expanduser().resolve()
+    if args.command == "reconcile-installation-preview":
+        from shared_wong_choi.installation_reconciliation import preview_installation_reconciliation
+        from shared_wong_choi.release_automation import production_roots
+
+        result = preview_installation_reconciliation(
+            repo, state_root, source_commit=args.source_commit,
+            target_commit=args.target_commit, production_roots=production_roots())
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+        return 0 if result["status"] == "eligible_for_fresh_gate" else 1
     if args.command == "release":
         try:
             result = prepare_release(

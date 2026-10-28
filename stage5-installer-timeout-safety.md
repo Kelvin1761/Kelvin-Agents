@@ -69,7 +69,11 @@ Neither source in main nor an idle probe constitutes installer acceptance.
 No refresh/retry/downgrade was attempted: refresh explicitly refuses a release
 already contained in main, and activation correctly pins the old manifest SHA.
 
-See `stage5-forward-activation-reconciliation.md` for a proposed separately
-authorized forward-only reconciliation path. Until that decision (or a real
-external installation/acceptance change), retain all evidence and avoid costly
-repeat gates, duplicate alerts, invented source deltas or manual installation.
+See `stage5-forward-activation-reconciliation.md` for the forward-only path.
+Kelvin explicitly approved that workflow on 2026-10-28; the former decision
+hold is resolved. The read-only implementation checkpoint found changed
+installer/dependency bytes and missing four-domain exact-target deployment
+provenance at observed main/production `51ea46ef`. Kelvin also authorized one
+independent read-only subagent review. Retain all evidence; do not infer
+installation authority from source in main, a test pass or the review starting.
+No old activation retry, duplicate alert, invented source delta or manual install.

@@ -11,6 +11,33 @@ assert SPEC and SPEC.loader
 SPEC.loader.exec_module(cli)
 
 
+def test_installation_preview_cannot_approve_or_activate(tmp_path, monkeypatch):
+    from shared_wong_choi import installation_reconciliation, release_automation
+
+    captured = {}
+
+    def preview(repo, state_root, **kwargs):
+        captured.update(repo=repo, state_root=state_root, **kwargs)
+        return {"status": "blocked", "installation_authorized": False}
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("read-only preview entered release mutation path")
+
+    monkeypatch.setattr(installation_reconciliation, "preview_installation_reconciliation", preview)
+    monkeypatch.setattr(release_automation, "production_roots", lambda: {"au": tmp_path})
+    monkeypatch.setattr(cli, "prepare_release", forbidden)
+    monkeypatch.setattr(cli, "approve_release", forbidden)
+    monkeypatch.setattr(cli, "activate_release", forbidden)
+    assert cli.main([
+        "--repo", str(tmp_path), "--state-root", str(tmp_path / "state"),
+        "reconcile-installation-preview", "--source-commit", "a" * 40,
+        "--target-commit", "b" * 40, "--json",
+    ]) == 1
+    assert captured == {"repo": tmp_path, "state_root": tmp_path / "state",
+                        "source_commit": "a" * 40, "target_commit": "b" * 40,
+                        "production_roots": {"au": tmp_path}}
+
+
 def test_release_does_not_try_to_read_approve_only_arguments(tmp_path, monkeypatch):
     monkeypatch.setattr(
         cli,
