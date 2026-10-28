@@ -183,3 +183,36 @@ def test_combo_leg_subject_is_resolved_against_its_own_fixture(tmp_path):
     row = export_tennis_tracking(path)["records"][0]
     assert row["legs"][0]["subject_player_name"] == "Player B"
     assert row["legs"][1]["subject_player_name"] is None
+
+
+def test_combo_missing_leg_status_is_unverified_not_pending(tmp_path):
+    path = tmp_path / "db"
+    c = database(path)
+    legs = [{"match_id": 1, "selection": "A"},
+            {"match_id": 1, "selection": "B", "result_status": "LOST"},
+            {"match_id": 1, "selection": "C", "status": "WON"},
+            {"match_id": 1, "selection": "D", "status": "PENDING"}]
+    c.execute("INSERT INTO combo_tracker VALUES(1,'c',1,'2026-10-26','A+B',?,3.,'LOST','2026-10-26T20:00:00Z')", (json.dumps(legs),))
+    c.commit()
+    c.close()
+    row = export_tennis_tracking(path)["records"][0]
+    assert row["state"] == "lost"
+    assert [leg["state"] for leg in row["legs"]] == ["unverified", "lost", "won", "pending"]
+
+
+def test_inconsistent_settled_combo_is_flagged_without_rewriting_raw_financials(tmp_path):
+    path = tmp_path / "db"
+    c = database(path)
+    c.execute("ALTER TABLE combo_tracker ADD COLUMN stake_units REAL")
+    c.execute("ALTER TABLE combo_tracker ADD COLUMN profit_loss_units REAL")
+    legs = json.dumps([{"match_id": 1, "selection": "A"}])
+    for i, profit in ((1, 1.0), (2, 12.0)):
+        c.execute("INSERT INTO combo_tracker VALUES(?,?,1,'2026-10-26','A',?,3.,'WON','2026-10-26T20:00:00Z',6.,?)", (i, str(i), legs, profit))
+    c.commit()
+    c.close()
+    before = path.read_bytes()
+    bad, good = export_tennis_tracking(path)["records"]
+    assert bad["point_in_time"] is True and bad["state"] == "won"
+    assert bad["unit_profit"] is None and "待核實" in bad["integrity_note"]
+    assert good["unit_profit"] == 2.0 and not good.get("integrity_note")
+    assert before == path.read_bytes()

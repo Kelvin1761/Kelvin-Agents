@@ -144,6 +144,12 @@ def export_tennis_tracking(db_path):
                         unit = odds - 1 if state == "won" else -1 if state == "lost" else 0
                     elif state == "void":
                         unit = 0
+                integrity_note = ""
+                if kind == "combo" and state in ("won", "lost") and unit is not None:
+                    expected = stake * (odds - 1) if state == "won" else -stake
+                    if not math.isclose(pnl, expected, rel_tol=1e-6, abs_tol=0.02):
+                        unit = None
+                        integrity_note = "歷史注碼／盈虧待核實"
                 event = f"{players.get(m.get('player_a_id')) or '?'} vs {players.get(m.get('player_b_id')) or '?'}"
                 if not m:
                     event = row.get("match_label") or "賽事待核實"
@@ -153,7 +159,8 @@ def export_tennis_tracking(db_path):
                         "selection": l.get("selection") or l.get("selection_name") or "",
                         "market": l.get("market_key") or l.get("market") or "",
                         "match_id": l.get("match_id"),
-                        "state": _state(l.get("result_status") or l.get("status")),
+                        "state": _state(l.get("result_status") or l.get("status"))
+                        if l.get("result_status") or l.get("status") else "unverified",
                         "event_name": " vs ".join(
                             players.get(matches.get(l.get("match_id"), {}).get(key)) or "?"
                             for key in ("player_a_id", "player_b_id")
@@ -181,6 +188,7 @@ def export_tennis_tracking(db_path):
                     "odds": odds,
                     "state": state,
                     "unit_profit": unit,
+                    **({"integrity_note": integrity_note} if integrity_note else {}),
                     "point_in_time": timed,
                     "recorded_at": row.get("recorded_at") or row.get("created_at"),
                     "model_probability": _number(row.get("blended_prob", row.get("model_probability"))),
