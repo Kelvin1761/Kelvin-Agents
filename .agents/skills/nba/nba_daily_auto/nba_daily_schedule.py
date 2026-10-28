@@ -66,7 +66,7 @@ from racing_telegram import send_message  # noqa: E402
 
 DASHBOARD_BACKEND = PROJECT_ROOT / "Horse_Racing_Dashboard" / "backend"
 sys.path.insert(0, str(DASHBOARD_BACKEND))
-from services.multisport_exporter import export_nba_snapshot  # noqa: E402
+from services.multisport_exporter import export_nba_snapshot, nba_publication_firewall  # noqa: E402
 
 SHARED_WC_DIR = PROJECT_ROOT / ".agents" / "skills"
 sys.path.insert(0, str(SHARED_WC_DIR))
@@ -614,6 +614,23 @@ def snapshot_is_partial(snapshot: Path) -> bool:
     return snapshot_manifest(snapshot).get("completeness") == "partial"
 
 
+def card_firewall(snapshot: Path):
+    """Check the betting card at the freeze instant, as the dashboard does.
+
+    The card is built after the deploy, about a minute after the freeze; on
+    the wall clock a quote taken four minutes before the freeze had expired
+    by then and blocked the whole card (2026-10-29 00:40, PHI_IND).  A quote
+    captured after the freeze still fails, so live edits are not waved through.
+    """
+    try:
+        frozen_at = datetime.fromisoformat(str(snapshot_manifest(snapshot).get("created_at")))
+    except ValueError:
+        return nba_publication_firewall
+    if frozen_at.tzinfo is None:
+        return nba_publication_firewall
+    return lambda report, sportsbet=None: nba_publication_firewall(report, sportsbet, validation_time=frozen_at)
+
+
 def latest_snapshot(
     folder: Path,
     *,
@@ -1052,6 +1069,55 @@ def _freeze_partial_snapshot(
     return snapshot
 
 
+def send_partial_betting_card(
+    target_date: str, snapshot: Path, blocked_tags: list[str], log: Any
+) -> None:
+    """Send the frozen games' card now instead of waiting for the whole slate.
+
+    Late games' player markets often open after 21:00, and one unopened game
+    used to withhold every other game's card until all passed — on 2026-10-29
+    that meant no bets before the next morning.  Only games frozen in this
+    partial snapshot are listed; the blocked ones are named as pending and get
+    their card when a later run freezes the full slate.
+    """
+    blocked = set(blocked_tags)
+    exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date, firewall=card_firewall(snapshot))
+    # Row ids are ``nba:<date>:<GAME_TAG>:combo:<n>``.
+    recommendations = [
+        row for row in exported.get("recommendations") or []
+        if (str(row.get("id") or "").split(":") + ["", "", ""])[2] not in blocked | {""}
+    ]
+    warnings = [
+        value for value in exported.get("warnings") or []
+        if str(value).rsplit(":", 1)[-1] not in blocked
+    ]
+    exported.update(
+        recommendations=recommendations,
+        warnings=warnings,
+        validation_status=("valid" if not warnings else "partial") if recommendations else "blocked",
+    )
+    if not recommendations and not warnings:
+        exported["warnings"] = ["no_validated_nba_combos"]
+    try:
+        exported["selection_health"] = nba_reliability.selection_health(target_date)
+    except Exception:
+        exported["selection_health"] = {"status": "insufficient_data"}
+    try:
+        card = nba_betting_message(target_date, exported)
+    except ValueError as exc:
+        log.step("telegram_partial_betting_card", "blocked", reason=str(exc))
+        return
+    title, _, body = card.partition("\n")
+    card = f"{title}（部分場次）\n⏳ 未開盤／未通過：{', '.join(sorted(blocked))}；稍後完整卡會再發。\n{body}"
+    result = notify_once(f"pregame-card:{target_date}:{snapshot.name}", card, audience="content")
+    log.step(
+        "telegram_partial_betting_card",
+        str(result.get("status") or "unknown"),
+        recommendations=len(recommendations),
+        pending_games=sorted(blocked),
+    )
+
+
 def run_pregame(
     target_date: str,
     log: RunLog,
@@ -1157,8 +1223,11 @@ def run_pregame(
                 event_starts=event_starts if schedule_events is not None else None,
                 log=log,
             )
-            # Still a failure: no dashboard, no card, and the next run retries
-            # the blocked games.  The message is stable so Telegram dedupes it.
+            if (partial is not None and freshness_role is FreshnessRole.PRODUCTION
+                    and season_context["automation_mode"] != "shadow"):
+                send_partial_betting_card(target_date, partial, blocked.blocked, log)
+            # Still a failure: no dashboard, and the next run retries the
+            # blocked games.  The message is stable so Telegram dedupes it.
             raise TemporaryFailure(
                 f"games_blocked:{','.join(blocked.blocked)}"
                 + (":partial_snapshot_frozen" if partial else ":nothing_frozen")
@@ -1329,7 +1398,7 @@ def run_pregame(
         )
         return "shadow_complete"
 
-    exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date)
+    exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date, firewall=card_firewall(snapshot))
     try:
         exported["selection_health"] = nba_reliability.selection_health(target_date)
     except Exception as exc:

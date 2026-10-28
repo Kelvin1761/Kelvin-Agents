@@ -399,16 +399,39 @@ def report_inputs(sportsbet_json: str, extractor_json: str, legacy: bool) -> dic
     return inputs
 
 
+def report_quotes_current(report: str, sportsbet_json: str) -> bool:
+    """FW-13 passes now, after renewing expired quotes whose price is unchanged."""
+    from nba_wong_choi.scripts.validate_nba_output import check_fw13_sgm_quotes
+    from nba_sgm_quote import requote_sidecar
+    try:
+        content = Path(report).read_text(encoding="utf-8")
+        if not check_fw13_sgm_quotes(content, report, sportsbet_json):
+            return True
+        odds = json.loads(Path(sportsbet_json).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    return requote_sidecar(report, odds) and not check_fw13_sgm_quotes(content, report, sportsbet_json)
+
+
+def report_release_current(report: str, sportsbet_json: str) -> bool:
+    """The report would pass the release-time FW-13/FW-14 checks right now."""
+    from nba_wong_choi.scripts.validate_nba_output import check_fw14_availability
+    try:
+        if check_fw14_availability(Path(report).read_text(encoding="utf-8"), report):
+            return False
+    except OSError:
+        return False
+    return report_quotes_current(report, sportsbet_json)
+
+
 def report_cache_current(report: str, sportsbet_json: str, extractor_json: str, legacy: bool) -> bool:
     try:
         with open(report + ".inputs.json", encoding="utf-8") as source:
             cached = json.load(source)
-        from nba_wong_choi.scripts.validate_nba_output import check_fw13_sgm_quotes
-        with open(report, encoding="utf-8") as source:
-            if check_fw13_sgm_quotes(source.read(), report, sportsbet_json):
-                return False
+        # Inputs first: a report that must be regenerated is not worth a quote request.
         return (cached.get("inputs") == report_inputs(sportsbet_json, extractor_json, legacy)
-                and cached.get("report") == _file_digest(report))
+                and cached.get("report") == _file_digest(report)
+                and report_quotes_current(report, sportsbet_json))
     except (OSError, ValueError, AttributeError):
         return False
 
@@ -541,6 +564,8 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
 
     # ── Validation (防火牆) ──
     if os.path.exists(VALIDATE_OUTPUT):
+        # A slow generation under parallel load can outlive the quote it took.
+        report_quotes_current(analysis_md, sportsbet_json)
         print(f"\n🛡️ [{prefix}] Validation: 執行 validate_nba_output.py...")
         validate_ok = run_script(VALIDATE_OUTPUT, [analysis_md], label=f"{prefix} Validator", success_codes=(0, 2))
         if not validate_ok:
@@ -812,20 +837,21 @@ def main():
                 results["waiting"].append(tag)
 
     # The independently timestamped research audit is not rerun on quote refresh.
-    # A long slate can outlive an early game's quote. Reprice only reports
-    # whose exact-price check no longer passes, using the same cached inputs.
+    # A long slate can outlive an early game's quote. Same-price quotes are
+    # renewed in place (seconds); only a moved price or stale availability
+    # regenerates a report (minutes), and that can expire the others again, so
+    # every round re-checks the whole set right before release validation.
     if not args.debug_skip_extractor:
-        from nba_wong_choi.scripts.validate_nba_output import check_fw13_sgm_quotes
-        for game in games:
-            tag = game["tag"]
-            report = os.path.join(target_dir, f"Game_{tag}_Full_Analysis.md")
-            if tag not in results["passed"]:
-                continue
-            with open(report, encoding="utf-8") as source:
-                needs_price = bool(check_fw13_sgm_quotes(source.read(), report, game["sportsbet_json"]))
-            if needs_price and not process_single_game(tag, game["sportsbet_json"], target_dir, args.date, legacy=args.legacy):
-                results["passed"].remove(tag)
-                results["failed"].append(tag)
+        for _ in range(3):
+            stale = [game for game in games if game["tag"] in results["passed"] and not report_release_current(
+                os.path.join(target_dir, f"Game_{game['tag']}_Full_Analysis.md"), game["sportsbet_json"])]
+            if not stale:
+                break
+            for game in stale:
+                tag = game["tag"]
+                if not process_single_game(tag, game["sportsbet_json"], target_dir, args.date, legacy=args.legacy):
+                    results["passed"].remove(tag)
+                    results["failed"].append(tag)
 
     # ── Summary ──
     print(f"\n{'='*60}")

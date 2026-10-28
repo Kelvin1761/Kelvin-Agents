@@ -1,0 +1,382 @@
+{
+  "schema_version": "tennis-project-review-sources/v1",
+  "review_date": "2026-10-28",
+  "observed_at_utc": "2026-10-28 11:43:12 UTC",
+  "scope": "Read-only source inspection. No external code, notebooks or pickles executed; no full training corpus downloaded. Selected notebook code cells, saved stream outputs and one small match-metadata CSV sample inspected.",
+  "projects": [
+    {
+      "id": "P01",
+      "repository": "theayobamiakin/tennis-analytics-prediction",
+      "url": "https://github.com/theayobamiakin/tennis-analytics-prediction",
+      "branch": "main",
+      "observed_commit": "95052168faf5ea3acb6a603ef371271953d03b5b",
+      "commit_url": "https://github.com/theayobamiakin/tennis-analytics-prediction/commit/95052168faf5ea3acb6a603ef371271953d03b5b",
+      "scope": "Prior review retained; branch metadata observed in this batch",
+      "files": [],
+      "tree_truncated": null
+    },
+    {
+      "id": "P02",
+      "repository": "DanielTomaro13/Tennis-Modelling",
+      "url": "https://github.com/DanielTomaro13/Tennis-Modelling",
+      "branch": "main",
+      "observed_commit": "1d02888ce33fddb3afe4eac87254074f5a8af21d",
+      "commit_url": "https://github.com/DanielTomaro13/Tennis-Modelling/commit/1d02888ce33fddb3afe4eac87254074f5a8af21d",
+      "scope": "Prior review retained; branch metadata observed in this batch",
+      "files": [],
+      "tree_truncated": null
+    },
+    {
+      "id": "P03",
+      "repository": "coenensam/tennis-match-predictor",
+      "url": "https://github.com/coenensam/tennis-match-predictor",
+      "branch": "main",
+      "observed_commit": "f548d978e09b3ef1a0783a1d315ec1fce1b6f70f",
+      "commit_url": "https://github.com/coenensam/tennis-match-predictor/commit/f548d978e09b3ef1a0783a1d315ec1fce1b6f70f",
+      "scope": "README and all previously recorded file hashes rechecked",
+      "files": [
+        {
+          "path": "README.md",
+          "blob_sha": "135c12fb34845b0bd7008ce5ceca9b00c47938e2",
+          "url": "https://github.com/coenensam/tennis-match-predictor/blob/f548d978e09b3ef1a0783a1d315ec1fce1b6f70f/README.md",
+          "bytes": 6081,
+          "verified_against_observed_tree": true
+        }
+      ],
+      "tree_truncated": false
+    },
+    {
+      "id": "P04",
+      "repository": "saiompatro/tennis-match-predictor",
+      "url": "https://github.com/saiompatro/tennis-match-predictor",
+      "branch": "main",
+      "observed_commit": "a0b61a60e62f4a2f717d5d42594959e05d7ae808",
+      "commit_url": "https://github.com/saiompatro/tennis-match-predictor/commit/a0b61a60e62f4a2f717d5d42594959e05d7ae808",
+      "scope": "Selected source sections and metadata inspected",
+      "files": [
+        {
+          "path": "README.md",
+          "blob_sha": "e8d5d3e84a687775527036879663b3866b548fc7",
+          "url": "https://github.com/saiompatro/tennis-match-predictor/blob/a0b61a60e62f4a2f717d5d42594959e05d7ae808/README.md",
+          "bytes": 4492,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "prediction_engine.py",
+          "blob_sha": "fd90806ef109614e737c4fa7d7a090bf1cd92607",
+          "url": "https://github.com/saiompatro/tennis-match-predictor/blob/a0b61a60e62f4a2f717d5d42594959e05d7ae808/prediction_engine.py",
+          "bytes": 142166,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "backtest.py",
+          "blob_sha": "cbcb2989dae5e5f4b4e519ce70fa8fdca57efa98",
+          "url": "https://github.com/saiompatro/tennis-match-predictor/blob/a0b61a60e62f4a2f717d5d42594959e05d7ae808/backtest.py",
+          "bytes": 25033,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "test_prediction_engine.py",
+          "blob_sha": "fe4a961695dc49f712b102a360ad9f1a87884bcb",
+          "url": "https://github.com/saiompatro/tennis-match-predictor/blob/a0b61a60e62f4a2f717d5d42594959e05d7ae808/test_prediction_engine.py",
+          "bytes": 16981,
+          "verified_against_observed_tree": true
+        }
+      ],
+      "tree_truncated": false
+    },
+    {
+      "id": "P05",
+      "repository": "AlexMangiafico/tennis-predictor",
+      "url": "https://github.com/AlexMangiafico/tennis-predictor",
+      "branch": "master",
+      "observed_commit": "590e8a954bc4633febfc0fa05a9c343123eec60c",
+      "commit_url": "https://github.com/AlexMangiafico/tennis-predictor/commit/590e8a954bc4633febfc0fa05a9c343123eec60c",
+      "scope": "Selected source sections and metadata inspected",
+      "files": [
+        {
+          "path": "README.md",
+          "blob_sha": "0e994aad4708aa0c0ac033ca452202f8a8a77405",
+          "url": "https://github.com/AlexMangiafico/tennis-predictor/blob/590e8a954bc4633febfc0fa05a9c343123eec60c/README.md",
+          "bytes": 2675,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "train.py",
+          "blob_sha": "8a702c99aea7b4d146c426f427715967a05b5fb2",
+          "url": "https://github.com/AlexMangiafico/tennis-predictor/blob/590e8a954bc4633febfc0fa05a9c343123eec60c/train.py",
+          "bytes": 3243,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "src/model.py",
+          "blob_sha": "d76a57589ddd720637dc6c4025b7473dd19da5ca",
+          "url": "https://github.com/AlexMangiafico/tennis-predictor/blob/590e8a954bc4633febfc0fa05a9c343123eec60c/src/model.py",
+          "bytes": 1205,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "src/pbp.py",
+          "blob_sha": "b4ee88d1357b332e087ef04f0242a1d118da1297",
+          "url": "https://github.com/AlexMangiafico/tennis-predictor/blob/590e8a954bc4633febfc0fa05a9c343123eec60c/src/pbp.py",
+          "bytes": 9073,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "src/elo.py",
+          "blob_sha": "82825877496a8aaa8d03a2f427bd77e25e62db32",
+          "url": "https://github.com/AlexMangiafico/tennis-predictor/blob/590e8a954bc4633febfc0fa05a9c343123eec60c/src/elo.py",
+          "bytes": 2100,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "src/data.py",
+          "blob_sha": "4b3a4a4e5c2d1114d0fbaf6b59f17fdd1d77facf",
+          "url": "https://github.com/AlexMangiafico/tennis-predictor/blob/590e8a954bc4633febfc0fa05a9c343123eec60c/src/data.py",
+          "bytes": 4258,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "today.py",
+          "blob_sha": "e767421dc735cc5d0384ea8d5b76b253762b0d03",
+          "url": "https://github.com/AlexMangiafico/tennis-predictor/blob/590e8a954bc4633febfc0fa05a9c343123eec60c/today.py",
+          "bytes": 21280,
+          "verified_against_observed_tree": true
+        }
+      ],
+      "tree_truncated": false
+    },
+    {
+      "id": "P06",
+      "repository": "skemp15/Tennis-Betting-Model",
+      "url": "https://github.com/skemp15/Tennis-Betting-Model",
+      "branch": "main",
+      "observed_commit": "385e6f88c49a2091f5cac28dbf71dcaed28f417e",
+      "commit_url": "https://github.com/skemp15/Tennis-Betting-Model/commit/385e6f88c49a2091f5cac28dbf71dcaed28f417e",
+      "scope": "Selected source sections and metadata inspected",
+      "files": [
+        {
+          "path": "README.md",
+          "blob_sha": "70038bce46a19b25fc90393b46049b18da06a717",
+          "url": "https://github.com/skemp15/Tennis-Betting-Model/blob/385e6f88c49a2091f5cac28dbf71dcaed28f417e/README.md",
+          "bytes": 4556,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "1. Web Scraping.ipynb",
+          "blob_sha": "afee01259c3a5f9ca13e380a490e57df61fa93ca",
+          "url": "https://github.com/skemp15/Tennis-Betting-Model/blob/385e6f88c49a2091f5cac28dbf71dcaed28f417e/1.%20Web%20Scraping.ipynb",
+          "bytes": 52177,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "2. Process Match Data.ipynb",
+          "blob_sha": "d4265e9a7f7d6655b828d37a3d50fe38f87b71d3",
+          "url": "https://github.com/skemp15/Tennis-Betting-Model/blob/385e6f88c49a2091f5cac28dbf71dcaed28f417e/2.%20Process%20Match%20Data.ipynb",
+          "bytes": 53292,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "4. Create Additional Features.ipynb",
+          "blob_sha": "d604bfad620715a176418da57e97b4e0cd8228ad",
+          "url": "https://github.com/skemp15/Tennis-Betting-Model/blob/385e6f88c49a2091f5cac28dbf71dcaed28f417e/4.%20Create%20Additional%20Features.ipynb",
+          "bytes": 27714,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "5. Feature Selection.ipynb",
+          "blob_sha": "a3388b7b984a9902c5bddf76307624e9b7c92924",
+          "url": "https://github.com/skemp15/Tennis-Betting-Model/blob/385e6f88c49a2091f5cac28dbf71dcaed28f417e/5.%20Feature%20Selection.ipynb",
+          "bytes": 24227,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "6. Model Building.ipynb",
+          "blob_sha": "d9c0d2f5bc80b7d6671e2a31866036d522e84634",
+          "url": "https://github.com/skemp15/Tennis-Betting-Model/blob/385e6f88c49a2091f5cac28dbf71dcaed28f417e/6.%20Model%20Building.ipynb",
+          "bytes": 12329,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "8. Profit & Loss Analysis.ipynb",
+          "blob_sha": "6716d72504538378001a5e5f60a777237a6539d0",
+          "url": "https://github.com/skemp15/Tennis-Betting-Model/blob/385e6f88c49a2091f5cac28dbf71dcaed28f417e/8.%20Profit%20%26%20Loss%20Analysis.ipynb",
+          "bytes": 633485,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "repeatable_functions.py",
+          "blob_sha": "f78d1f5a9dcb35f624ff06384ce239b194b6583a",
+          "url": "https://github.com/skemp15/Tennis-Betting-Model/blob/385e6f88c49a2091f5cac28dbf71dcaed28f417e/repeatable_functions.py",
+          "bytes": 5773,
+          "verified_against_observed_tree": true
+        }
+      ],
+      "tree_truncated": false
+    },
+    {
+      "id": "P07",
+      "repository": "mjam03/tennisim",
+      "url": "https://github.com/mjam03/tennisim",
+      "branch": "main",
+      "observed_commit": "57869fd37b1e6deae390220690db5131264907b9",
+      "commit_url": "https://github.com/mjam03/tennisim/commit/57869fd37b1e6deae390220690db5131264907b9",
+      "scope": "Selected source sections and metadata inspected",
+      "files": [
+        {
+          "path": "README.md",
+          "blob_sha": "e0dcd601ab743a8f19c9ac8576bc319741135101",
+          "url": "https://github.com/mjam03/tennisim/blob/57869fd37b1e6deae390220690db5131264907b9/README.md",
+          "bytes": 3660,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "src/tennisim/sim.py",
+          "blob_sha": "414382b7199d8019e20bad3507da99d356d73287",
+          "url": "https://github.com/mjam03/tennisim/blob/57869fd37b1e6deae390220690db5131264907b9/src/tennisim/sim.py",
+          "bytes": 8768,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "src/tennisim/match.py",
+          "blob_sha": "91ffb165b3cb90c0f7a8604bc125a1972e3f2489",
+          "url": "https://github.com/mjam03/tennisim/blob/57869fd37b1e6deae390220690db5131264907b9/src/tennisim/match.py",
+          "bytes": 11632,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "src/tennisim/set.py",
+          "blob_sha": "2c2653faaeffd5e63574b26c80452e0d8e36cb00",
+          "url": "https://github.com/mjam03/tennisim/blob/57869fd37b1e6deae390220690db5131264907b9/src/tennisim/set.py",
+          "bytes": 8506,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "src/tennisim/tiebreak.py",
+          "blob_sha": "548731adf9f49e768505fd14bfa0943026afc484",
+          "url": "https://github.com/mjam03/tennisim/blob/57869fd37b1e6deae390220690db5131264907b9/src/tennisim/tiebreak.py",
+          "bytes": 10544,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "tests/test_match.py",
+          "blob_sha": "659cfdb696040d3ef4bda25d70205c8460d176f9",
+          "url": "https://github.com/mjam03/tennisim/blob/57869fd37b1e6deae390220690db5131264907b9/tests/test_match.py",
+          "bytes": 1927,
+          "verified_against_observed_tree": true
+        }
+      ],
+      "tree_truncated": false
+    },
+    {
+      "id": "P08",
+      "repository": "AngieXuAU/tennis-point-by-point-archive",
+      "url": "https://github.com/AngieXuAU/tennis-point-by-point-archive",
+      "branch": "main",
+      "observed_commit": "83733587353df8a41f2fd4f516147d5aa83f5a8d",
+      "commit_url": "https://github.com/AngieXuAU/tennis-point-by-point-archive/commit/83733587353df8a41f2fd4f516147d5aa83f5a8d",
+      "scope": "Selected source sections and metadata inspected",
+      "files": [
+        {
+          "path": "README.md",
+          "blob_sha": "bfe7212d252e8d850cd3bad0d265ae445f417516",
+          "url": "https://github.com/AngieXuAU/tennis-point-by-point-archive/blob/83733587353df8a41f2fd4f516147d5aa83f5a8d/README.md",
+          "bytes": 2344,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "slam_pointbypoint/data_dictionary.txt",
+          "blob_sha": "004ee40e35c6fd6af93470e159b84be2954a4cc9",
+          "url": "https://github.com/AngieXuAU/tennis-point-by-point-archive/blob/83733587353df8a41f2fd4f516147d5aa83f5a8d/slam_pointbypoint/data_dictionary.txt",
+          "bytes": 216,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "slam_pointbypoint/UPSTREAM_README.md",
+          "blob_sha": "2b1b729677e1cfcbcda73cd3bd9cc9efcc889122",
+          "url": "https://github.com/AngieXuAU/tennis-point-by-point-archive/blob/83733587353df8a41f2fd4f516147d5aa83f5a8d/slam_pointbypoint/UPSTREAM_README.md",
+          "bytes": 4343,
+          "verified_against_observed_tree": true
+        },
+        {
+          "path": "slam_pointbypoint/2024-usopen-matches.csv",
+          "blob_sha": "8d7f7ba88813b390838d99b568e7544e4d62d6ff",
+          "url": "https://github.com/AngieXuAU/tennis-point-by-point-archive/blob/83733587353df8a41f2fd4f516147d5aa83f5a8d/slam_pointbypoint/2024-usopen-matches.csv",
+          "bytes": 19104,
+          "verified_against_observed_tree": true
+        }
+      ],
+      "tree_truncated": false
+    }
+  ],
+  "coenensam_recheck": [
+    {
+      "path": "README.md",
+      "unchanged": true
+    },
+    {
+      "path": "src/tennis_predictor/config.py",
+      "unchanged": true
+    },
+    {
+      "path": "src/tennis_predictor/data.py",
+      "unchanged": true
+    },
+    {
+      "path": "src/tennis_predictor/elo.py",
+      "unchanged": true
+    },
+    {
+      "path": "src/tennis_predictor/features.py",
+      "unchanged": true
+    },
+    {
+      "path": "src/tennis_predictor/model.py",
+      "unchanged": true
+    },
+    {
+      "path": "src/tennis_predictor/clv.py",
+      "unchanged": true
+    },
+    {
+      "path": "src/tennis_predictor/predict.py",
+      "unchanged": true
+    },
+    {
+      "path": "src/tennis_predictor/pipeline.py",
+      "unchanged": true
+    },
+    {
+      "path": "tests/test_devig.py",
+      "unchanged": true
+    }
+  ],
+  "archive_metadata": {
+    "same": 470,
+    "changed": 0,
+    "missing_in_parent": 0,
+    "counts": {
+      "atp/": {
+        "csv": 174,
+        "bytes": 272204949
+      },
+      "wta/": {
+        "csv": 125,
+        "bytes": 199942934
+      },
+      "slam_pointbypoint/": {
+        "csv": 166,
+        "bytes": 324388381
+      }
+    },
+    "repository_blob_bytes": 796539569,
+    "basis": "Git tree metadata only; equality is Git blob SHA equality, not a full row/content quality audit; parent main observed during this batch.",
+    "parent_url": "https://github.com/Aneeshers/tennis-sackmann-archive",
+    "parent_tree": "83733587353df8a41f2fd4f516147d5aa83f5a8d"
+  },
+  "data_caveats": [
+    "Sackmann tennis_pointbypoint encoded strings and tennis_slam_pointbypoint event/point CSVs are distinct schemas.",
+    "2011–2024 Grand Slam range is not complete coverage; upstream notes AO/FO collection stopped after 2022.",
+    "Any later experiment must preserve immutable raw inputs, content digests, observation clocks and match-level splits."
+  ]
+}
