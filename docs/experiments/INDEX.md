@@ -315,3 +315,6 @@
 
 - [EXP-20261029-01](EXP-20261029-01-tennis-unified-baseline.md) — Tennis統一研究F00：完整40表snapshot／4份archive核對通過，1,743場完整保存概率parity仍輸市場；只有7場新fixture證據，資料健康有critical，未promotion。
 - [EXP-20261029-02](EXP-20261029-02-tennis-kernel-correctness.md) — Tennis F02：22個固定DP/MC cases全過；修正B方贏一盤API誤當贏比賽，9個比分回歸案例，模擬分佈完全不變；非live準確度改善聲明。
+- [EXP-20261029-03](EXP-20261029-03-tennis-unified-feature-study.md) — Tennis五段13,274場，surface／serve七arms／對手強度／H2H合共10個候選全部REJECT_DEV；全量獨立replay通過，無promotion。
+- [EXP-20261029-04](EXP-20261029-04-tennis-fixed-feature-head.md) — 同七欄HGB對logistic，命中率升但LL／Brier退步、四段更差，REJECT_DEV；保存模型推論獨立重現。
+- [EXP-20261029-05](EXP-20261029-05-tennis-market-offset-devig.md) — 11,725場同書價格：power／Shin／inner及固定市場offset全拒絕；offset勝純網球但輸市場；無報價時鐘ROI只屬假設，四千次bootstrap／原76檢定獨立重現。

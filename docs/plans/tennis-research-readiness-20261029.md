@@ -1,10 +1,10 @@
 # Tennis 統一研究：開工條件及交付清單
 
-2026-10-29 Sydney。呢份係[定稿計劃](../../tennis-research-execution-plan-20261028.md)嘅執行交接；以[詳細協議](tennis-research-protocol-20261028.md)為設計、[進度審計](../audits/tennis-unified-research-progress-20261028.md)為實際證據。**首輪來源隔離候選已訓練／評估，全部REJECT_DEV；未啟動新forward，未證實現役準確度改善。**
+2026-10-29 Sydney。呢份係[定稿計劃](../../tennis-research-execution-plan-20261028.md)嘅執行交接；以[詳細協議](tennis-research-protocol-20261028.md)為設計、[進度審計](../audits/tennis-unified-research-progress-20261028.md)為實際證據。**來源隔離feature／head及市場批次已訓練／評估，15個候選全部REJECT_DEV；未啟動新forward，未證實現役準確度改善。**
 
-執行更新：EXP-20261029-03／04已完成27,263場cohort、24,880 feature rows、38比較／76檢定鎖，首輪13,274場、五段dev及獨立replay。下表保留原依賴及驗收；已完成部分以實際進度為準。原價格URL404其後查明目錄改動，全12個publisher檔已取得但尚待identity／contract join，唔再將檔案缺失當目前理由。實際開／完賽時間、PIT及live來源資格仍未解決。
+執行更新：EXP-20261029-03／04已完成27,263場cohort、24,880 feature rows、38比較／76檢定鎖，首輪13,274場、五段dev及獨立replay。下表保留原依賴及驗收；已完成部分以實際進度為準。原價格URL404其後查明目錄改動，全12個publisher檔已完成保守identity join，C02／C01於同11,725場完成、四個候選全拒絕；原76名額family不變。26個矛盾事件於fit前連歷史輸入隔離。無captured_at／quote type證據，ROI只係hypothetical，唔再將檔案缺失當目前理由。實際開／完賽時間、PIT及live來源資格仍未解決。
 
-## 下一批先完成三件事
+## 原前置工作及餘項（進度審計列最新完成狀態）
 
 | 次序／責任範圍 | 具體工作 | 驗收／停止條件 |
 |---|---|---|
@@ -18,7 +18,7 @@
 
 | 批次 | 已定方向 | 尚需證明嘅輸入／限制 |
 |---|---|---|
-| F03 去水；F09市場offset | proportional對power／Shin；固定市場logit加網球修正 | 舊缺失已由原publisher新目錄補齊全12檔、六份cache逐位元相同；須完成canonical identity／價格合約／同場多book權重及時間資格再fit，無captured_at仍只作dev |
+| F03 去水；F09市場offset | proportional對power／Shin；固定市場logit加網球修正 | 已完成同11,725場／23,393報價比較，power／Shin／inner／offset全部REJECT_DEV；B365／PS成對，BFE合約未驗留置。無captured_at只作dev，PIT／正式採用未過 |
 | F04 surface Elo | `n/(n+20)`收縮，保留舊shadow | canonical surface歷史、當時overall／surface Elo與完整原控制。參數20只係固定待驗假設 |
 | F05 serve；F06對手強度；F08 H2H | recency／真實point exposure／prior七arms；最近10場對手當時Elo；H2H residual | 只讀forecast前可用歷史；同一cohort／head／fallback。與舊REJECT逐項去重，不能將重新擬合嘅收益歸功新feature |
 | F07 workload | 實際14日minutes／盤數及距上場結束hours | tournament start date加21日隔離，不能提供真實14日比賽時序；無實際日期／結束時間時暫停相關arm，不造hours或用盤數充minutes |
@@ -34,5 +34,7 @@
 - 最多一個候選／betting family進新forward；先凍結全部artifact及起點，再收集。每family至少600場，亦須滿足預定power；最多365日、一次正式判決。時間／樣本不足報不確定。
 - 正式採用仍須frozen tennis-v1及既有guardrails。定性／缺失門檻另作規則澄清，不能與候選一齊改尺。通過僅表示可進release review。
 - repo保存方法、精確來源URL／SHA、結果摘要及可重跑命令；大型raw／DB及prediction artifacts留喺已驗證外置run目錄。未完成／失敗模型只保存研究分支。
+
+**下一批餘項**：F01完整MCP／PBP parser及canonical coverage、F02歷史tournament/year規則、C14實際14日分鐘／完賽hours資格，以及C09各props市場／settlement合約。已失敗候選不重跑；無單項通過就不硬合併，新forward仍未啟動。
 
 **計劃驗收**：八個項目及C01–C17都有去向；依賴、控制、時間切分、消融、停止、判決及證據位置已寫清。**研究驗收另計**：各批有全部結果或有證據嘅暫停判決；只有真正通過新forward先可聲稱可採用嘅準確度改善。

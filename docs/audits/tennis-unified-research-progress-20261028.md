@@ -2,6 +2,27 @@
 
 開始：2026-10-28 Sydney；跨午夜於 2026-10-29 繼續。用戶已授權實際執行 [統一計劃](../../tennis-research-execution-plan-20261028.md)，目標係提高分析準確度。**執行中，未證實模型改善，未更換正式模型。**
 
+## 2026-10-29最新更新：市場批次完成，仍未有合格候選
+
+[EXP-20261029-05](../experiments/EXP-20261029-05-tennis-market-offset-devig.md)完成C02去水、C01固定市場offset及C13 training診斷。**power／Shin／inner去水／offset四個新候選全部REJECT_DEV；連同首輪共15個候選被拒絕，未啟動新forward或更換正式模型。** 本節取代下方較早「價格資格／市場比較尚待完成」嘅時點描述，舊checkpoint證據保留。
+
+- 27,795個publisher原始價格行 → 23,225個canonical match／46,169個同書報價；只用B365／PS，BFE及Max／Avg留置。26個唯一身份但winner／比分矛盾或無法核對事件，喺fit前**連所有歷史輸入**隔離，clean cohort 27,237場、features 24,857行；不重跑舊失敗候選救結果。
+- 額外身份scope audit使用全部30,879原始紀錄（含未完成／無效比分），全部可讀identity；23,225個已配對事件冇新歧義。實驗仍係unclocked quote conditional SEEN_DEV，唔係已證PIT。
+- `market-lock.json`於2026-10-28T23:00:14.440794Z鎖定，SHA `63e262a1df0f419946093afb2d5eee9cc8ca374e97a118ddbb8ec3534edbf092`；原38比較／76檢定family不變，舊raw p及拒絕照帶入。
+- 五fold同11,725場／23,393個book observations，N=2,592／1,896／2,596／1,943／2,698。先逐book算loss再同場平均，每場訓練權重合計1；不以平均概率代替平均loss。
+- Proportional市場LL .58497479／Brier .20106651；offset .58507150／.20117815，兩項相對市場退步，只3/5段不退步。Offset相對純網球 .62044135／.21615562較好，但只證明市場資訊有用，**唔係網球修正改善市場**；整體REJECT_DEV。
+- Power pooled LL gain+.00055089但CI跨0，Brier只有2/5段不退步；Shin LL gain+.00047621、未調整CI高於0，但Holm p=.755811，2025H1兩項退步。Inner五次選Power仍失敗。無改clip／fold／參數救結果。
+- Hypothetical加權offset ROI −8.6798%（−100.035u／1,152.5u），95%CI［−13.9392%,−3.4854%］；純網球 −10.2537%。無報價時鐘，不可稱真實盈利。純去水在PS嘅6個假設下注全屬固定[.02,.98]clip造成假edge，raw去水無正EV；輸出已逐arm列clipping-created計數，無事後修改政策。
+- 獨立script無import候選runner，重建24,857行七欄、五fold尺度／ridge gradient／inner選法、全部物理價格／概率／loss、4,000次bootstrap及76檢定，並重算ROI／假edge數，PASS。價格誤差0、最大概率1.84e−13、bootstrap3.47e−16。PIT FLAG仍在。
+- `market-phase/report-export/`九份報告含exact nested round-trip Parquet、paired metrics、subgroups、calibration、分book ROI、row-flow、exclusions及feature availability，hash全部通過。獨立source/report及原始結果不覆寫，shared model runtime無改。
+- 65項研究測試、quick及最終完整16組suite全通過（完整771秒）；無改／skip測試。結果只保存non-main研究分支，無release／activation。
+
+證據沿用同一external run嘅`market-phase/`：`qualified-inputs/`、`market-lock.json`、`development/`、`full-identity-universe-audit.json`、`independent-replay*`、`report-export/`、`checkpoint-manifest.json`及保存後`checkpoint-git.json`。原source price檔在`f03-f09/price-official-prefix/`，網址及SHA不丟失。
+
+本批checkpoint manifest涵蓋36份artifact，SHA256 `749dfeaf063b6113d8076ee9a1912d99aea31f2d48dedbb95367ab9ccff5b5fa`；三份stage manifest及原／新method lock全部核對未變。Git保存後SHA另記外置`checkpoint-git.json`，不以尚未產生嘅commit hash預填證據。
+
+**下一步**：F01完整MCP／PBP解析及身份／coverage、F02歷年規則mapping、C14真正14日分鐘與完賽hours時間資格、C09 props合約；現有0份qualified live feature projection及daily board警告另須追查。不重跑失敗模型／擅改把尺；全部研究及提高準確度目標仍未完成。
+
 ## 2026-10-29執行更新：已完成首輪真正模型比較
 
 [EXP-20261029-03](../experiments/EXP-20261029-03-tennis-unified-feature-study.md)完成來源隔離歷史cohort及F04／05／06／08；[EXP-20261029-04](../experiments/EXP-20261029-04-tennis-fixed-feature-head.md)完成相同features嘅非線性head。**今批10個特徵候選及1個head全部REJECT_DEV，未有合格候選入新forward。** 下方F00–02段保留初次checkpoint嘅時間及證據；當中價格缺失現況已由本節更新。

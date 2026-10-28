@@ -51,7 +51,8 @@ external archive path recorded in the progress audit. EXP-20261029-03/04 record
 the completed F04/05/06/08 and fixed-feature head comparisons. All failed the
 preregistered development conditions. Market experiments, historical source joins,
 joint props and new forward evidence remain subject to their applicable gates.
-Rejected old model arms are not rerun here.
+Rejected old model arms are not rerun here. EXP-20261029-05 subsequently completed
+the reserved market/de-vig comparisons; all four new candidates also failed.
 
 ## Source-isolated feature development
 
@@ -91,3 +92,35 @@ against the original saved control, mirrors training rows with half weights,
 and enforces probability swap symmetry. Its lock and results are create-only;
 locally generated pickle artifacts are hashed and are never loaded from an
 external model source. EXP-20261029-04 records its rejection.
+
+## Historical market development
+
+`prices.py` joins all twelve pinned original-publisher workbooks to source event
+identities before checking outcomes/scores. Ambiguities and conflicting facts are
+held. `market_cohort.py` removes the 26 disputed events from targets **and** every
+historical feature input, using the unchanged frozen feature algorithm. Original
+failed feature/head outputs remain immutable and are not refitted.
+
+`protocol_market.json` fills five already reserved comparisons in the same
+38-comparison/76-test family. `market_study.py` fits a fixed proportional-market
+logit offset plus the original seven tennis features, compares it against both
+market and matched tennis-only controls, and tests power/Shin/causal inner
+de-vig selection. Per-book losses are averaged within matches before paired
+inference; each training match has total book weight one. The existing worktree
+de-vig source is hash-locked. Set `PYTHONPATH=tennis-wong-choi/src:.` to ensure
+that exact source is loaded.
+
+```bash
+PYTHONPATH=tennis-wong-choi/src:. python -m research.tennis_unified.market_study lock --base-lock "$BASE_LOCK" --price-cohort "$CLEAN/price-cohort.json" --clean-directory "$CLEAN" --prior-summary "$HEAD_RESULTS/summary.json" --test-log "$PASSING_TEST_LOG" --output "$NEW_MARKET_LOCK"
+PYTHONPATH=tennis-wong-choi/src:. OPENBLAS_NUM_THREADS=1 python -m research.tennis_unified.market_study run --lock "$NEW_MARKET_LOCK" --output "$NEW_MARKET_RESULTS"
+```
+
+The completed phase covers 11,725 unique development matches/23,393 book
+observations. All candidates are rejected; winning against the weaker tennis-only
+control does not establish incremental value over the market. Quote capture
+clocks/types remain unverified, so ROI is hypothetical and cannot authorize
+promotion. The frozen final probability clipping can create spurious extreme
+price edges; these are counted explicitly rather than changing policy after
+results. Full identity-universe audit, independent feature/probability/bootstrap
+replay and exact-round-trip Parquet/CSV exports are preserved under the external
+`market-phase/` evidence directory. No research runner is wired into production.
