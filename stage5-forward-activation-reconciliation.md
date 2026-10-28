@@ -68,9 +68,10 @@ session's own inspection, main membership, an idle process probe or a full test
 pass as that independent review. No override flag or refreshed old manifest.
 
 Kelvin subsequently authorized one read-only independent subagent review.
-Reviewer Wegener (`01a1813b-719c-7b22-870f-7a2cd3cb31dd`) is assessing the
-exact e7 → 51ea dependency changes and provenance. Starting that review is not
-an approval result. Separately, direct provenance inspection found 51ea lacks
+Reviewer Wegener (`01a1813b-719c-7b22-870f-7a2cd3cb31dd`) assessed the
+exact e7 → 51ea dependency changes and returned BLOCKED for installation.
+It subsequently confirmed narrow source safety corrections below, without
+approving deployment. Separately, direct provenance inspection found 51ea lacks
 four-domain exact-SHA deployment verification; no new event was written to
 fill that gap. The final preview uses a conservative runtime-source superset,
 including domain engines and Tennis package imports used by native review.
@@ -103,6 +104,36 @@ preflights, snapshots, concurrency-safe restore and independent acceptance.
 5. Only perform a real cutover after exact-target provenance and the independently
    reviewed installer/dependency scope are satisfied, using existing controller
    locks, allowlist, preflights, acceptance and rollback controls.
+
+## Source checkpoint: no-op recovery and prior launchd state
+
+The real unified installer now captures a bound `.launchd-state.json` alongside
+its copied plists: exact20 non-AU labels, agents root/domain, file hashes/modes/
+absence and observed loaded/disabled flags. Damaged/legacy-missing proof,
+changed backup bytes and loaded jobs without restorable plists fail closed.
+No historical snapshot was modified or restored. The helper only reads launchd;
+its writes are new metadata inside the current controlled snapshot directory.
+
+An unchanged snapshot now returns without bootout/bootstrap/enable/disable.
+Changed-state recovery touches changed labels only, preserves prior unloaded/
+disabled flags, checks unload/copy/enable failures, enables before bootstrap and
+requires a final full state comparison before success. The independent reviewer
+confirmed these narrow corrections by inspection, not production acceptance.
+
+RED2 real-installer fixture failures: `wc-run-khop6wn8` (unnecessary job mutations,
+missing loaded-state proof). Stateful launchctl RED2: `wc-run-9ijdi4i0` (ignored
+bootout failure and bootstrap while disabled). Final installer/snapshot fixtures:
+**32 passed in 190.11 s**, `wc-run-_17sv_i7`; final quick passed
+`wc-run-g9ahdi67`, goldens unchanged and existing contract warnings retained.
+Native read-only grammar probe initially rejected macOS `enabled`/`disabled`
+tokens; parser was corrected and the repeated sanitized probe parsed successfully,
+with no owned labels disabled at that observation. That is not runtime acceptance.
+
+This remains incomplete source WIP. **Changed-plist ownership, shared cutover
+exclusion and complete active-run discovery are still open.** No new full or
+immutable release gate has approved this source; the earlier terminal94274
+full run predates it and must not be reused. Do not release/activate the installer
+while these findings and foreign-cadence/target-provenance restrictions remain.
 
 Keep this incomplete work on its non-main preservation branch. Do not release
 the preview as though it completes the approved workflow or cadence acceptance.

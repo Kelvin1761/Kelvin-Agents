@@ -59,7 +59,16 @@ def test_runtime_installer_snapshot_restore_is_exact_and_idempotent(
     agents.mkdir()
     snapshot = tmp_path / "snapshot"
     fake_launchctl = tmp_path / "launchctl"
-    fake_launchctl.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake_launchctl.write_text('''#!/bin/sh
+case "$1" in
+  print-disabled) printf 'disabled services = {\\n}\\n'; exit 0;;
+  print)
+    label="${2##*/}"
+    [ ! -f "$WC_LAUNCH_AGENTS_DIR/$label.plist" ] || exit 0
+    echo "Could not find service" >&2; exit 113;;
+esac
+exit 0
+''', encoding="utf-8")
     fake_launchctl.chmod(0o755)
     existing = agents / "com.antigravity.hkjc-wong-choi.prerace.plist"
     introduced = agents / "com.antigravity.nba-wong-choi.health.plist"
@@ -126,7 +135,17 @@ def test_runtime_pointer_restore_refuses_detected_concurrent_change(tmp_path, ch
     protected.write_bytes(b"newer-owner-value\n")
     marker = tmp_path / "launchctl-called"
     launchctl = tmp_path / "launchctl"
-    launchctl.write_text(f'#!/bin/sh\ntouch "{marker}"\nexit 0\n')
+    launchctl.write_text(f'''#!/bin/sh
+case "$1" in
+  print-disabled) printf 'disabled services = {{\\n}}\\n'; exit 0;;
+  print)
+    label="${{2##*/}}"
+    [ ! -f "$WC_LAUNCH_AGENTS_DIR/$label.plist" ] || exit 0
+    echo "Could not find service" >&2; exit 113;;
+esac
+touch "{marker}"
+exit 0
+''')
     launchctl.chmod(0o755)
     env = {**os.environ, "WC_LAUNCH_AGENTS_DIR": str(agents),
            "WC_LAUNCHCTL_BIN": str(launchctl), "WC_TENNIS_DB_POINTER": str(pointer),
@@ -205,6 +224,11 @@ from pathlib import Path
 root = Path(os.environ["WC_LAUNCH_AGENTS_DIR"])
 label = "com.antigravity.central-wong-choi.research-review"
 marker = root / "calendar-fault-injected"
+if sys.argv[1] == "print-disabled":
+    print("disabled services = {\\n}")
+if sys.argv[1] == "print" and not (root / (sys.argv[-1].rsplit("/", 1)[-1] + ".plist")).is_file():
+    print("Could not find service", file=sys.stderr)
+    raise SystemExit(113)
 if (os.environ["TEST_CALENDAR_MISMATCH"] == "1" and sys.argv[1] == "enable"
         and sys.argv[-1].endswith("/" + label) and not marker.exists()):
     path = root / (label + ".plist")

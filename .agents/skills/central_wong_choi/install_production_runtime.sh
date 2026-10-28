@@ -13,6 +13,7 @@ RUNTIME_CHECK="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_launchd.py"
 TENNIS_RUNTIME_ROOT="${WC_TENNIS_RUNTIME_ROOT:-$HOME/Antigravity-repo/tennis-wong-choi}"
 TENNIS_PYTHON_BIN="${TENNIS_PYTHON_BIN:-$TENNIS_RUNTIME_ROOT/.venv/bin/python}"
 TENNIS_DB_POINTER="${WC_TENNIS_DB_POINTER:-$HOME/.wongchoi_tennis_db}"
+SNAPSHOT_STATE="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_snapshot_state.py"
 
 LABELS=(
   com.antigravity.hkjc-wong-choi.intraday
@@ -101,8 +102,23 @@ restore_pointer() {
   return 0
 }
 
+runtime_state() {
+  local mode="$1" snapshot="$2" job="${3:-}" label
+  local args=(--mode "$mode" --snapshot "$snapshot" --agents "$AGENTS_DIR"
+    --launchctl "$LAUNCHCTL" --domain "$DOMAIN")
+  for label in $LABELS; do
+    args+=(--label "$label")
+  done
+  [ -z "$job" ] || args+=(--job "$job")
+  /usr/bin/python3 "$SNAPSHOT_STATE" "${args[@]}"
+}
+
 snapshot_runtime() {
   local destination="$1"
+  if [ -L "$destination" ] || { [ -e "$destination" ] && [ ! -d "$destination" ]; }; then
+    print -u2 -- "unsafe snapshot destination"
+    return 1
+  fi
   if [ -e "$destination" ] && [ -n "$(find "$destination" -mindepth 1 -maxdepth 1 -print -quit 2>/dev/null)" ]; then
     print -u2 -- "snapshot destination is not empty: $destination"
     return 1
@@ -111,8 +127,13 @@ snapshot_runtime() {
   snapshot_pointer "$destination" || return 1
   for label in $LABELS; do
     local source="$AGENTS_DIR/$label.plist"
+    if [ -L "$source" ] || { [ -e "$source" ] && [ ! -f "$source" ]; }; then
+      print -u2 -- "unsafe installed runtime plist: $label"
+      return 1
+    fi
     [ ! -f "$source" ] || cp -p "$source" "$destination/$label.plist"
   done
+  runtime_state capture "$destination" || return 1
   : > "$destination/.complete"
 }
 
@@ -122,20 +143,56 @@ restore_runtime() {
     print -u2 -- "invalid runtime snapshot: $source"
     return 1
   }
-  local failed=0
+  local failed=0 comparison=0 job_state was_loaded was_disabled changed_labels current_loaded
+  # A preflight deferral did not change external state. Recovery must not
+  # bootout live jobs just because the controller invokes --restore.
+  if runtime_state unchanged "$source"; then
+    restore_pointer "$source" || return 1
+    print -r -- "launchd state unchanged; no launchd mutation"
+    return 0
+  else
+    comparison=$?
+  fi
+  [ "$comparison" -eq 2 ] || return 1
+  changed_labels="$(runtime_state changed-jobs "$source")" || return 1
   restore_pointer "$source" || return 1
   mkdir -p "$AGENTS_DIR"
-  for label in $LABELS; do
+  # Unchanged labels may own an active domain run. Never stop them merely
+  # because another label needs recovery.
+  for label in ${(f)changed_labels}; do
     local target="$AGENTS_DIR/$label.plist"
-    "$LAUNCHCTL" bootout "$DOMAIN/$label" >/dev/null 2>&1 || true
+    job_state="$(runtime_state job-state "$source" "$label")" || return 1
+    was_loaded="${job_state%% *}"
+    was_disabled="${job_state##* }"
+    current_loaded="$(runtime_state loaded-now "$source" "$label")" || return 1
+    if [ "$current_loaded" -eq 1 ]; then
+      if ! "$LAUNCHCTL" bootout "$DOMAIN/$label" >/dev/null 2>&1; then
+        failed=1
+        continue
+      fi
+    fi
     if [ -f "$source/$label.plist" ]; then
-      cp -p "$source/$label.plist" "$target" || failed=1
-      "$LAUNCHCTL" bootstrap "$DOMAIN" "$target" >/dev/null 2>&1 || failed=1
-      "$LAUNCHCTL" enable "$DOMAIN/$label" >/dev/null 2>&1 || failed=1
+      if ! cp -p "$source/$label.plist" "$target"; then
+        failed=1
+        continue
+      fi
+      if [ "$was_loaded" -eq 1 ]; then
+        if ! "$LAUNCHCTL" enable "$DOMAIN/$label" >/dev/null 2>&1; then
+          failed=1
+          continue
+        fi
+        "$LAUNCHCTL" bootstrap "$DOMAIN" "$target" >/dev/null 2>&1 || failed=1
+      fi
     else
       rm -f "$target" || failed=1
     fi
+    if [ "$was_disabled" -eq 1 ]; then
+      "$LAUNCHCTL" disable "$DOMAIN/$label" >/dev/null 2>&1 || failed=1
+    else
+      "$LAUNCHCTL" enable "$DOMAIN/$label" >/dev/null 2>&1 || failed=1
+    fi
   done
+  runtime_state unchanged "$source" || failed=1
   return "$failed"
 }
 

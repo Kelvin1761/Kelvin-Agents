@@ -96,3 +96,22 @@ external state; pass fresh full gates and independent SHA rechecks; retain norma
 locks, preflights, snapshots and concurrency-safe rollback; verify all4 files,
 installed/loaded state, actual calendar and native receipt. Rebinding or new
 source means fresh review. Test success is not cadence or Stage5 acceptance.
+
+## Follow-up source correction: unchanged recovery / loaded flags
+
+The same authorized read-only reviewer inspected the new snapshot-state helper
+and unified installer changes. It confirmed unchanged-state recovery no longer
+mutates launchd, and missing/damaged proof, changed backup bytes and loaded jobs
+without restorable plists fail closed. It then identified ignored bootout failure
+and bootstrap-before-enable ordering; both were reproduced with a stateful fake
+launchctl and corrected. The reviewer confirmed those narrow corrections by
+inspection, without running tests or granting deployment authority.
+
+Final isolated installer/snapshot regression suite: **32 passed in 190.11 s**,
+`wc-run-_17sv_i7`; quick `wc-run-g9ahdi67` passed. Prior loaded/disabled flags are
+now recorded; changed-state recovery touches changed labels only, checks unload/
+copy/enable failures, enables before bootstrap and verifies final files and flags.
+This does not resolve concurrent ownership of changed plists or shared cutover
+exclusion/active-run discovery. It is unmerged WIP, not installed, and the earlier
+1891-second full run predates this source. No historical snapshot/event was
+rewritten and no live installer/job mutation occurred.
