@@ -1,6 +1,6 @@
 # Tennis Wong Choi：統一研究執行計劃
 
-2026-10-28 建立；2026-10-29 定稿。**計劃已完成；研究未完成，F00–F02進行中。** 目標係提高 Tennis Wong Choi 嘅賽前概率準確度；用相同賽事嘅 log loss／Brier 驗證增量，命中率作輔助。實際證據見[執行進度](docs/audits/tennis-unified-research-progress-20261028.md)，下一批工作見[開工條件及交付清單](docs/plans/tennis-research-readiness-20261029.md)。
+2026-10-28 建立；2026-10-29 定稿及執行更新。**計劃已完成；研究未完成。F04／05／06／08及C11首輪已跑，全部REJECT_DEV。** 目標係提高 Tennis Wong Choi 嘅賽前概率準確度；用相同賽事嘅 log loss／Brier 驗證增量，命中率作輔助。實際證據見[執行進度](docs/audits/tennis-unified-research-progress-20261028.md)，餘項見[開工條件及交付清單](docs/plans/tennis-research-readiness-20261029.md)。
 
 依據：[比較筆記](docs/plans/tennis-external-project-review-notes-20261028.md)、[URL／版本 manifest](docs/plans/tennis-external-project-sources-20261028.json)、[詳細協議](docs/plans/tennis-research-protocol-20261028.md)。沿用 frozen `tennis-v1`，唔改正式模型、下注政策或現有 shadow。
 
@@ -20,4 +20,4 @@
 
 **完成研究嘅定義**：每個候選有去向、每個實驗有事前協議及全部結果，或者有明確暫停原因。可以得出「冇候選值得升級」。模型實驗須依次通過資料及baseline前置閘，唔直接跳去訓練；研究進行中不等於準確度已改善。
 
-**目前判斷**：可以繼續資料修復、來源資格及研究工具工作；候選訓練仍欠自身cohort／控制資格及全比較清單鎖定，未到新forward或上線階段。已量過baseline及數學正確性，不將呢兩項當成模型改善。按[資格澄清](docs/plans/tennis-research-eligibility-clarification-20261029.md)逐項通過適用嘅F00–F02前置閘，再按第5–9步執行；缺價格／日期精度嘅arm明示暫停，唔換窗救結果。
+**目前判斷**：已按[資格澄清](docs/plans/tennis-research-eligibility-clarification-20261029.md)完成來源隔離cohort及38比較／76檢定鎖定；13,274場五段dev首輪未有合格候選。原publisher價格下載路徑已追查，2020–25 ATP/WTA十二檔取得；先完成價格identity／合約資格再跑原預留市場比較，不改判失敗候選。F01全量parser／F02歷史規則及真實時間／live provenance餘項照列；新forward及上線未啟動。

@@ -1,7 +1,7 @@
 # Tennis Wong Choi：外部項目比較及待辦研究筆記
 
 - 建立：2026-10-28（Australia/Sydney）。
-- 狀態：本批八項目比較及統一執行計劃已完成；用戶其後授權執行，[研究進行中](../audits/tennis-unified-research-progress-20261028.md)，未訓練或部署新候選模型。
+- 狀態：本批八項目比較及統一執行計劃已完成；用戶其後授權執行，[研究進行中](../audits/tennis-unified-research-progress-20261028.md)。EXP-20261029-03／04首輪離線候選已完成，全部REJECT_DEV；未部署新模型。
 - 用戶意圖：逐個外部項目一齊睇，累積到同一份筆記；完成比較後，統一安排改善及實驗。
 - 使用方式：每個項目新增一節，候選想法集中入下方清單；相似想法合併，保留來源及舊實驗判決。
 - 「一次過做」指統一規劃及安排執行；多項特徵不可只做一次合併測試，仍須逐項消融。
@@ -56,6 +56,8 @@ P02 config 及 P03 data module 版本見各項目章節。
 
 正式實驗開始前：保存外部 commit SHA、精確下載 URL／檔名、擷取 UTC、資料涵蓋期、來源授權、local path、row counts 及 SHA256；大型語料按 repo 外置碟規則處理。
 將來失效／轉 private 嘅入口要明示 missing，唔靜靜縮細 corpus 或換來源救結果。
+
+2026-10-29執行更新：Tennis-Data原下載目錄已改。原publisher可讀模式係`https://www.tennis-data.co.uk/hrjk-85HytOjkhth76j_ygh4jf7/{YYYY}{w_if_WTA}/{YYYY}.xlsx`；已逐個capture ATP/WTA2020–25十二檔，保存精確URL／SHA及全部早前404。目錄線索來自[固定版本公開metadata](https://github.com/narvall018/tennis_modele/blob/ae98457673a0cccda3527e37cd08180e2fe36599/models/wta_live_strategy/metadata.json)嘅原publisher2026 WTA連結，只讀URL線索，無採用該repo模型／收益。另有[固定ATP原檔鏡像](https://github.com/gmalbert/tennis-predictions/tree/99211a47c96a17221cb371a13367fe7f8ba93d18/data_files)用作來源核對，唔當額外獨立樣本。六份2022–24原publisher檔同原cache逐位元一致；ATP2025鏡像與當次原publisher不同，兩份保留、後續用原publisher固定capture，不挑對結果有利嘅版本。新source在`f03-f09/price-official-prefix/{source-spec,source-manifest,qualification}.json`；尚未用呢批價格fit市場模型，quote clock／合約／identity另驗。
 
 ## 訓練資料範圍（2026-10-28 用戶補充）
 

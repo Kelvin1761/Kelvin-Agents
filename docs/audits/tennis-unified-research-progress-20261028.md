@@ -2,6 +2,33 @@
 
 開始：2026-10-28 Sydney；跨午夜於 2026-10-29 繼續。用戶已授權實際執行 [統一計劃](../../tennis-research-execution-plan-20261028.md)，目標係提高分析準確度。**執行中，未證實模型改善，未更換正式模型。**
 
+## 2026-10-29執行更新：已完成首輪真正模型比較
+
+[EXP-20261029-03](../experiments/EXP-20261029-03-tennis-unified-feature-study.md)完成來源隔離歷史cohort及F04／05／06／08；[EXP-20261029-04](../experiments/EXP-20261029-04-tennis-fixed-feature-head.md)完成相同features嘅非線性head。**今批10個特徵候選及1個head全部REJECT_DEV，未有合格候選入新forward。** 下方F00–02段保留初次checkpoint嘅時間及證據；當中價格缺失現況已由本節更新。
+
+- 30,879 raw rows → 27,263 canonical完整賽事；24,880個2021起feature rows。176個season/calendar界線紀錄喺任何fit前由首版錯誤額外排除修正，兩版保留。27,131場有效雙方box scores；缺當場stats不剔走預測。
+- `study-lock.json`喺首個候選fit前鎖定38比較／76個LL/Brier檢定，SHA `a5eb5f8be49213ad7731adfd12e88198916c0b3fedc2075fe345719562c61b64`。同13,274獨立場，五段N=2,937／2,162／2,944／2,315／2,916；448場至少一方cold-start亦保留。
+- Surface收縮及serve R有細幅總增量，但有fold退步；R/E/S合併比原profile控制更差；opponent-strength及H2H亦未過穩定性。各serve candidate同000及B_simple比較，RES另有三個leave-one-out；無以較弱控制救失敗。
+- C11只用原七欄、預定HGB設定。Refit logistic同原simple逐場誤差0。命中率64.8862%→65.1273%，但LL .62016007→.62116061、Brier .21605694→.21637029，兩項僅1／5段不退步；拒絕改用命中率救候選。原76名額維持，不重設family。
+- 獨立script不import研究runner，重算全24,880行Elo／dynamic、全13,274場fitted probabilities／losses／bootstrap統計／76名額Holm，及固定seed100場raw serve/H2H，PASS。另一script核對五個自己產生嘅head model hashes／參數及全量推論，概率誤差0。證明計算一致，**historical publication-clock FLAG仍在，不能promotion**。
+- 已有逐fold模型／scaler、JSONL、4000次paired bootstrap、全部校準／分層／排除／feature availability。另以外置隔離PyArrow18.1.0輸出兩份13,274場`predictions.parquet`，讀回逐欄／逐概率完全相同；shared venv正常import path無新增套件。可信報告在`report-export/`，包括paired_metrics.json、subgroups.csv、calibration.csv及明示N/A嘅roi_by_book.csv。首版formatter在`parquet-export/`誤將自己嘅空manifest digest計入，已留底並以新目錄修正；新18份報告檔hash逐一核對通過，預測bytes相同，原模型結果及manifest未改。
+
+### 價格來源缺口已取得原檔；模型輸入資格尚待完成
+
+舊URL及non-www變體均404；追查[固定版本公開原站連結](https://github.com/narvall018/tennis_modele/blob/ae98457673a0cccda3527e37cd08180e2fe36599/models/wta_live_strategy/metadata.json)後確認publisher目錄改為`hrjk-85HytOjkhth76j_ygh4jf7/`。**2020–25 ATP/WTA十二份原publisher XLSX全200 capture，27,795 raw rows**。六份2022–24與既有原站cache逐位元相同。另先凍結ATP鏡像作對照，2025版本與當次原publisher不同，兩者保留；價格實驗將用原publisher固定capture，唔按結果揀版本或把鏡像當新樣本。
+
+原檔配對欄2020–24有B365／PS，2025另有BFE。新增價格類型／合約／commission尚未驗，不因欄存在就當普通可執行book價。部分實際Date跨season年界，inventory列出但唔直接當無效日期；後續canonical join按實際日期／賽事身份驗，不重犯檔名年份排除問題。Quote captured_at仍無證據；只能dev研究，Sportsbet forward不可由呢批價格替代。
+
+**下一步**：先完成原publisher價格cohort嘅identity、同書合約、quote type及時間資格，凍結新phase input recipe，才跑原預留C02／C01／C13比較。Workload仍欠實際時間資格；F01全量parser及F02歷年規則mapping未齊，joint props另受合約閘限制。全部失敗候選不改判；現有Elo shadow不重設。統一研究／目標均未完成。
+
+最新證據根目錄係同一external run下`f03-f09/`：`cohort-v2.json`、`features.json`、兩份lock、`development/`、`head-development/`、兩份independent-replay及其source、`report-export/`、保留嘅首版`parquet-export/`、`price-official-prefix/{source-spec,source-manifest,qualification}.json`、`price-mirror-atp/`、`price-nonwww/`。新snapshot冇複製；大型raw及自己訓練嘅模型只在外置碟。
+
+`checkpoint-manifest.json`記錄108個新artifact hashes，SHA256 `a8851f74bfb44bb86e09984bcde8388133fe171b880eab6c522cd4a4eb4777cc`；另外逐項驗證五個可信model/report manifest目錄及原method／head source lock均未變。Formatter runtime binaries另由pip install-report記wheel hash，唔當模型輸入。保存後Git lineage另記`checkpoint-git.json`；全部研究仍為non-main、未activate。
+
+價格phase須先鎖完整row-flow及身份規則：唔用winner／比分揀一個有利身份，應先有唯一event／round／format／pair對應，再核對label／比分；同場多book總權重1、切fold及bootstrap按match。各book先算loss再按match聚合，唔以平均概率代替平均loss。季檔名年份不代替實際日期；新增BFE合約未知先留置，唔暗中當普通book。
+
+44項研究測試、兩次scope quick及**最終完整16組suite全通過**（Shared1,757／Tennis875）。此前只含feature研究嘅完整16組亦通過，兩份log保留；無新增skip／改測試救候選。模型／測試進程均已完成，無新forward／模型activation；研究失敗code及記錄保存non-main研究分支。
+
 ## 可核實成果及目前界線
 
 - 已由四份**已安裝兼 loaded** Tennis launchd plist 確認 runtime：`/Users/imac/wongchoi-scheduler`，SHA `1f46514bf9f7ab3386e9054363da93baf9ad3d83`。四者同用主 checkout 嘅 live DB 及 venv interpreter；唔係 worktree 同名 DB。Daily 上次 exit=1，preclose=0；唔將「loaded」等同「最近成功」。

@@ -3,7 +3,8 @@
 Offline work for [the execution plan](../../tennis-research-execution-plan-20261028.md).
 Nothing in this directory is imported by production pricing. An accurate
 mathematical oracle, green tests or a coherent database is not model performance
-evidence. No candidate has been fitted or promoted at this checkpoint.
+evidence. Candidate development and qualification status are recorded separately
+in the progress audit and EXP-20261029-03; no candidate is promoted here.
 
 ## Reproduction
 
@@ -46,6 +47,47 @@ Use the research snapshot for offline model/warehouse audits instead.
   neither result establishes historical tournament/year eligibility or accuracy.
 
 Raw captures, output, source copies and method locks are outside Git at the
-external archive path recorded in the progress audit. F03–F10 model experiments,
-historical joins and new forward evidence remain to be executed after the
-applicable data/evidence gates. Rejected old model arms are not rerun here.
+external archive path recorded in the progress audit. EXP-20261029-03/04 record
+the completed F04/05/06/08 and fixed-feature head comparisons. All failed the
+preregistered development conditions. Market experiments, historical source joins,
+joint props and new forward evidence remain subject to their applicable gates.
+Rejected old model arms are not rerun here.
+
+## Source-isolated feature development
+
+`history.py` reads twelve fixed season responses from the verified snapshot;
+it retains every target with missing box scores, holds conflicting event facts,
+and records source URLs/body hashes, calendar boundaries and all exclusions.
+`features.py` releases results strictly after tournament-start+21 days, retains
+cold starts, and stores historical pre-match opponent/H2H expectations. That
+availability rule is a synthetic **SEEN_DEV** approximation, not verified PIT.
+
+```bash
+python -m research.tennis_unified.history --db "$SNAPSHOT" --output "$NEW_COHORT_JSON"
+python -m research.tennis_unified.study prepare --cohort "$NEW_COHORT_JSON" --output "$NEW_FEATURES_JSON"
+python -m pytest research/tennis_unified -q -p no:cacheprovider
+python -m research.tennis_unified.study lock --cohort "$NEW_COHORT_JSON" --features "$NEW_FEATURES_JSON" --test-log "$PASSING_TEST_LOG" --output "$NEW_LOCK_JSON"
+OPENBLAS_NUM_THREADS=1 python -m research.tennis_unified.study run --lock "$NEW_LOCK_JSON" --output "$NEW_RESULTS_DIRECTORY"
+```
+
+The lock records exact data, method and prerequisite-test hashes before fitting.
+The runner checks the population/labels again, uses all five preregistered time
+folds and saves every arm. All 38 comparisons and both metrics share one Holm
+family; missing/deferred arms retain their 76-test slots. Feature gains must be
+attributed against their direct matched controls. Live/market comparisons and
+ROI are explicitly unavailable in this isolated cohort; this runner cannot
+justify activation. Original output is lossless JSONL. The completed batches
+also have exact round-trip-verified Parquet and CSV/JSON report exports under
+the external `f03-f09/report-export/` directory. A pinned isolated PyArrow18.1.0
+formatter is kept on the archive; the shared model runtime was not changed.
+The earlier `parquet-export/` formatter attempt is retained for audit: its
+per-stage manifest incorrectly included its own empty digest. `report-export/`
+has independently verified non-self-referencing manifests and identical
+prediction bytes; original model-result manifests were not affected.
+
+`head.py` implements the single preregistered fixed-feature histogram-boosting
+comparison in its reserved test slot. It first proves refitted logistic parity
+against the original saved control, mirrors training rows with half weights,
+and enforces probability swap symmetry. Its lock and results are create-only;
+locally generated pickle artifacts are hashed and are never loaded from an
+external model source. EXP-20261029-04 records its rejection.

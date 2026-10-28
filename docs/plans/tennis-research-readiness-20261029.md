@@ -1,6 +1,8 @@
 # Tennis 統一研究：開工條件及交付清單
 
-2026-10-29 Sydney。呢份係[定稿計劃](../../tennis-research-execution-plan-20261028.md)嘅執行交接；以[詳細協議](tennis-research-protocol-20261028.md)為設計、[進度審計](../audits/tennis-unified-research-progress-20261028.md)為實際證據。**未訓練新候選、未啟動新forward、未證實準確度改善。**
+2026-10-29 Sydney。呢份係[定稿計劃](../../tennis-research-execution-plan-20261028.md)嘅執行交接；以[詳細協議](tennis-research-protocol-20261028.md)為設計、[進度審計](../audits/tennis-unified-research-progress-20261028.md)為實際證據。**首輪來源隔離候選已訓練／評估，全部REJECT_DEV；未啟動新forward，未證實現役準確度改善。**
+
+執行更新：EXP-20261029-03／04已完成27,263場cohort、24,880 feature rows、38比較／76檢定鎖，首輪13,274場、五段dev及獨立replay。下表保留原依賴及驗收；已完成部分以實際進度為準。原價格URL404其後查明目錄改動，全12個publisher檔已取得但尚待identity／contract join，唔再將檔案缺失當目前理由。實際開／完賽時間、PIT及live來源資格仍未解決。
 
 ## 下一批先完成三件事
 
@@ -16,7 +18,7 @@
 
 | 批次 | 已定方向 | 尚需證明嘅輸入／限制 |
 |---|---|---|
-| F03 去水；F09市場offset | proportional對power／Shin；固定市場logit加網球修正 | 2022–24已有六份book檔；2020／21／25原價格URL缺失。須補可驗來源，或將依賴arm列MISSING_SOURCE；TML賽果CSV沒有價格，不能當替代 |
+| F03 去水；F09市場offset | proportional對power／Shin；固定市場logit加網球修正 | 舊缺失已由原publisher新目錄補齊全12檔、六份cache逐位元相同；須完成canonical identity／價格合約／同場多book權重及時間資格再fit，無captured_at仍只作dev |
 | F04 surface Elo | `n/(n+20)`收縮，保留舊shadow | canonical surface歷史、當時overall／surface Elo與完整原控制。參數20只係固定待驗假設 |
 | F05 serve；F06對手強度；F08 H2H | recency／真實point exposure／prior七arms；最近10場對手當時Elo；H2H residual | 只讀forecast前可用歷史；同一cohort／head／fallback。與舊REJECT逐項去重，不能將重新擬合嘅收益歸功新feature |
 | F07 workload | 實際14日minutes／盤數及距上場結束hours | tournament start date加21日隔離，不能提供真實14日比賽時序；無實際日期／結束時間時暫停相關arm，不造hours或用盤數充minutes |
