@@ -2,7 +2,7 @@
 
 2026-10-28（Australia/Sydney）。**計劃完成；用戶其後授權執行，研究進行中**，見[實際進度及證據](../audits/tennis-unified-research-progress-20261028.md)。本文件定義順序及預設設計；data/code SHA、樣本、baseline 與 power 喺執行時填入 immutable manifest，先開始相應階段。計劃唔係績效報告。
 
-入口：[一頁主計劃](../../tennis-research-execution-plan-20261028.md)。來源：[八項目筆記](tennis-external-project-review-notes-20261028.md)、[來源及 frozen URL manifest](tennis-external-project-sources-20261028.json)。新項目可加筆記；已鎖定批次唔中途加 arms。
+入口：[一頁主計劃](../../tennis-research-execution-plan-20261028.md)；2026-10-29已補[開工條件及交付清單](tennis-research-readiness-20261029.md)。來源：[八項目筆記](tennis-external-project-review-notes-20261028.md)、[來源及 frozen URL manifest](tennis-external-project-sources-20261028.json)。新項目可加筆記；已鎖定批次唔中途加 arms。
 
 ## 1. 研究界線及權威
 
@@ -62,6 +62,10 @@ Stored replay 先重現 B_live 最終機率至 **≤1e−6**；EXP-20261027-06 �
 - 開發候選需 LL/Brier 對直接控制五段均不退步、pooled 兩項 gain 正且多重比較過關；失敗即 `REJECT_DEV`，不換窗／子群／單項救主候選。未贏市場或 CI 跨零可保留資訊診斷，不能稱盈利改善或直接 promotion。
 - 校準固定報 10 個等寬 bins、ECE、intercept/slope，沿用已批准數值 gate。分層 tour、surface、level、odds；另報雙方歷史數 0／1–4／5–19／20+、missing。分層只診斷，不事後開下注條件。
 
+**Fit實作約束（於候選結果前定稿）**：B_simple嘅差分欄只按training-fold尺度除，唔扣非零平均；零尺度用1。Missing/count亦用A−B差分，不能用不翻號嘅主效應破壞無截距模型嘅交換對稱。若需不變context，先以context乘差分，將完整swap map記入feature schema。Logistic／offset目標統一為`sum(w_i*NLL_i) + 0.5*||beta||²`；每個原始match總權重1，mirrored augmentation兩邊各半，不因多book／鏡像令有效penalty改變。Newton最多100次、最大參數步長<1e−10才收斂，未收斂停止該fit而非換optimizer救結果；實際依賴版本記入lock。概率輸出／loss共同裁至[.02,.98]，唔對不同arms用不同clipping。若原控制用另一scale／loss，另外保存並分清refit差異。
+
+Nonlinear head亦按同一swap map輸出`p_sym(x)=(f(x)+1−f(Tx))/2`，再共同clipping；比較時logistic／offset同樣驗`p(Tx)=1−p(x)`至1e−10。訓練鏡像不能當額外match或bootstrap單位。以上先做合成A/A／swap／常數及缺值測試，再鎖實際feature列，唔靠事後平均分數掩飾實作不對稱。
+
 ## 5. 實驗批次及 C01–C17 去向
 
 F 編號係研究批次，唔係 betting family。每批開始先搜尋 `docs/experiments/`，分配未用 `EXP-日期-編號`，鎖 arm／直接控制／資料 IDs／參數／停止條件及 SHA；未鎖不跑。設定係待驗假設，唔係聲稱最佳值。
@@ -118,7 +122,7 @@ PYTHONDONTWRITEBYTECODE=1 "$TENNIS_RESEARCH_PY" tennis-wong-choi/scripts/audit_m
 
 `audit_model_data.py` 唯讀盤點唔代替 earliest-price／stored-parity harness。`tune_elo_backbone.py`、props evaluation scripts／過往研究分支可重用部件，先驗相同 eligibility／metric；唔跨 harness 直接比數字。`--quick` bootstrap 只掃描，唔判決。
 
-**要實作嘅研究 harness**：snapshot/cohort export、完整parity、availability、grouped nested time splits、arm registry、paired rows／multiplicity、forward power/protocol lock、joint kernel checks。先提供 help／schema、A/A／leakage fixtures。本計劃未建立 CLI，唔提供假 runnable 命令。
+**研究 harness 現況**：snapshot／inventory、stored-parity、來源capture／初步qualification及kernel audit已實作，真實命令見[工具README](../../research/tennis_unified/README.md)，實際結果見進度審計。仍待完成canonical cohort／availability、grouped nested time splits、arm registry、paired rows／multiplicity、forward power/protocol lock及歷史規則／joint核對。各工具先驗help／schema、A/A／leakage fixtures；未實作嘅模型runner不提供假命令。
 
 - 大型實驗先 `df -h /System/Volumes/Data`，少過10GB停；驗證外置碟真係掛載。大型暫存／TMPDIR 用 `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-research-<run-id>/`；archive約0.8GB亦要計clone／解壓／複本後大小。
 - 一份 immutable corpus，arms順序跑、只存細 predictions/artifacts，不複製整庫。一個fold dry run量CPU/RAM/disk；空間不足停，唔轉內置碟。保留 raw/hash/protocol／失敗結果，清可重建大暫存。
