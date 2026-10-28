@@ -1,0 +1,22 @@
+{
+  "schema": "tennis-unified-kernel-audit/v1",
+  "batch": "F02",
+  "purpose": "Numerical/rule correctness only; no historical model performance or promotion claim",
+  "seed": 20260826,
+  "trials_per_case": 100000,
+  "family_alpha": 0.01,
+  "interval": "two-sided exact Clopper-Pearson with Bonferroni over all 22 cases",
+  "legacy_hold_pairs": [[0.5,0.5],[0.75,0.75],[0.85,0.65],[0.65,0.85],[0.97,0.31]],
+  "best_of": [3,5],
+  "point_pairs": [[0.5,0.5],[0.72,0.58],[0.58,0.72]],
+  "tiebreak_targets": [7,10],
+  "first_server_a": [true,false],
+  "rules_sources": [
+    "https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf",
+    "https://ausopen.com/articles/news/guide-scoring-tennis"
+  ],
+  "scope": "Legacy MC is compared against exact game-level DP under the SAME hold-ratio tie-break approximation. Point-level 7/10-point oracle is separately compared to point MC. Agreement does not validate legacy approximation against real tennis outcomes.",
+  "historical_rules": "Explicit tiebreak target required; tournament/year mapping remains a separate data contract, never infer modern rules for historical matches.",
+  "promotion_eligible": false,
+  "production_changes": false
+}

@@ -1,6 +1,6 @@
 # Tennis Wong Choi：統一研究執行計劃
 
-2026-10-28｜計劃已完成；以下工作未開始。目標係用八個外部項目嘅方法／資料，驗證有冇可重現嘅增量；唔預先聲稱改善。
+2026-10-28｜計劃已完成；用戶其後已授權執行，F00–F02進行中。實際完成證據及餘項見[執行進度](docs/audits/tennis-unified-research-progress-20261028.md)。目標係用八個外部項目嘅方法／資料，驗證有冇可重現嘅增量；唔預先聲稱改善。
 
 依據：[比較筆記](docs/plans/tennis-external-project-review-notes-20261028.md)、[URL／版本 manifest](docs/plans/tennis-external-project-sources-20261028.json)、[詳細協議](docs/plans/tennis-research-protocol-20261028.md)。沿用 frozen `tennis-v1`，唔改正式模型、下注政策或現有 shadow。
 
@@ -18,4 +18,4 @@
 
 允許其他莊家歷史賠率、逐場賽果及開發期 ROI 作訓練／研究；無報價時鐘嘅 ROI 唔當可執行回報。Sportsbet forward 另驗。同一場多 book／多 point 只算一個 match cluster。
 
-**完成研究嘅定義**：每個候選有去向、每個實驗有事前協議及全部結果，或者有明確暫停原因。可以得出「冇候選值得升級」。今次只交付計劃；下一步係第 1–3 項，唔係直接訓練。
+**完成研究嘅定義**：每個候選有去向、每個實驗有事前協議及全部結果，或者有明確暫停原因。可以得出「冇候選值得升級」。模型實驗須依次通過資料及baseline前置閘，唔直接跳去訓練；研究進行中不等於準確度已改善。

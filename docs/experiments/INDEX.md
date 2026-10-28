@@ -310,3 +310,6 @@
 - [EXP-20261028-13](EXP-20261028-13-au-class-score-rule-audit-results.md) — 級數分逐條審計：只剷「≥15 場」三條（冇代價簡化，Gold +0.03／Good +0.07）；初出、降班剷走有害，留。級數分整體 AUC 0.570。順帶：處女賽懲罰喺「Maidens Ineligible」場都觸發。
 - [EXP-20261028-14](EXP-20261028-14-au-class-g5-bonus-magnitude-results.md) — 級數分「1–5 場、上仗頭 25%」加分幅度 walk-forward（網格 0–10）：REJECT，逐窗從未揀過大過 2.31，全紀錄曲線平（Gold 21.26–21.36%）。cohort 差距唔係可落分收益，維持 2.31。
 - [EXP-20261028-15](EXP-20261028-15-au-career-starts-calibration-results.md) — 按生涯出賽數校準綜合分（九組 walk-forward）：REJECT，Gold −0.20pp、首選 20+ 仗 Gold CI 全負；3 仗 offset 穩定 +1.5 但換唔到前三，20+ 仗 offset 由正變負。出賽經驗唔需要校準。
+
+- [EXP-20261029-01](EXP-20261029-01-tennis-unified-baseline.md) — Tennis統一研究F00：完整40表snapshot／4份archive核對通過，1,743場完整保存概率parity仍輸市場；只有7場新fixture證據，資料健康有critical，未promotion。
+- [EXP-20261029-02](EXP-20261029-02-tennis-kernel-correctness.md) — Tennis F02：22個固定DP/MC cases全過；修正B方贏一盤API誤當贏比賽，9個比分回歸案例，模擬分佈完全不變；非live準確度改善聲明。

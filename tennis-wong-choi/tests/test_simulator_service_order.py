@@ -32,3 +32,19 @@ def test_service_rotation_carries_through_three_sets(monkeypatch):
     monkeypatch.setattr(model,'_play_set',controlled)
     model.simulate_match(.7,.7,trials=1)
     assert observed==[True,True,False]
+
+
+@pytest.mark.parametrize('sets_a,sets_b,expected_a,expected_b',[
+    (2,0,1.,0.), (2,1,1.,1.), (1,2,1.,1.), (0,2,0.,1.),
+    (3,0,1.,0.), (3,1,1.,1.), (3,2,1.,1.), (2,3,1.,1.), (0,3,0.,1.),
+])
+def test_winning_a_set_includes_the_player_who_loses_the_match(
+    sets_a,sets_b,expected_a,expected_b,
+):
+    distribution=model.MatchDistribution(
+        trials=1,games_a=[0],games_b=[0],sets_a=[sets_a],
+        first_set_a=[1],sets_b=[sets_b],
+        first_set_games_a=[0],first_set_games_b=[0],
+    )
+    assert distribution.player_wins_a_set('a')==expected_a
+    assert distribution.player_wins_a_set('b')==expected_b

@@ -1,0 +1,23 @@
+{
+  "schema": "tennis-unified-preflight/v1",
+  "batch": "F00",
+  "status": "pre-outcome-method",
+  "purpose": "Freeze complete corpus and quantify saved-forecast fidelity before new model experiments",
+  "candidate_arms": [],
+  "split": "SEEN_DEV",
+  "ruler": "tennis-v1",
+  "source_database": "resolve from all four installed Tennis launchd plists; must agree",
+  "snapshot": "SQLite backup of one pinned read transaction; all tables, rows and indexes; create-only external archive",
+  "forecast_policy": "existing tennis_wc.evaluation.match_corpus.prematch_outcomes; earliest agreed completed forecast",
+  "quote_policy": "MIN(id) match_winner quote per match; no later fallback; fetched_at <= created_at <= forecast_created_at < frozen_or_legacy_start; aware clocks required",
+  "parity": "saved Elo base + saved active nudge weights/probabilities, +/-1.2 nudge cap, .02/.98 raw clamp, saved selection side, saved segment risk shrink",
+  "parity_tolerance": 0.000001,
+  "cohorts": ["all_timed_quotes", "faithful_parity", "frozen_fixture_and_parity"],
+  "full_source_provenance": "not inferred from SQLite timing, fixture identity or parity; remains unverified until canonical frozen-bundle verifier succeeds",
+  "metrics": ["log_loss", "brier", "paired_market_minus_model_gain"],
+  "bootstrap": {"unit": "match", "trials": 4000, "confidence": 0.95, "seed": 20260826},
+  "outputs": ["run_manifest.json", "runtime_manifest.json", "warehouse_inventory.json", "baseline_summary.json", "baseline_rows.json", "excluded_rows.json"],
+  "promotion_eligible": false,
+  "production_model_changes": false,
+  "stop": "missing/corrupt catalog data, snapshot count mismatch, unmounted archive, missing runtime identity or conflicting runtime paths"
+}

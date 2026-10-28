@@ -158,9 +158,8 @@ class MatchDistribution:
         ) / self.trials
 
     def player_wins_a_set(self, player: str = "a") -> float:
-        if player == "a":
-            return sum(1 for value in self.sets_a if value >= 1) / self.trials
-        return sum(1 for value in self.sets_a if value <= 1) / self.trials
+        sets = self.sets_a if player == "a" else self.sets_b
+        return sum(1 for value in sets if value >= 1) / self.trials
 
     def game_handicap_cover(self, handicap: float, player: str = "a") -> float:
         """P(player's game margin + handicap > 0)."""
