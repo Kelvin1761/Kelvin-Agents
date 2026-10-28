@@ -2216,3 +2216,34 @@ test('Tennis player props name the subject and remove A/B marker spacing',()=>{
  assert.match(api.tennisRenderBets([{...row,subject_player_name:null}]),/球員待核實 · 贏至少一盤/);
  assert.match(api.tennisRenderBets([{...row,subject_player_name:'<script>bad</script>'}]),/&lt;script&gt;bad&lt;\/script&gt;/);
 });
+
+test('named Tennis handicap selections override a different model reference player',()=>{
+ const api=loadTemplateFunctions();
+ for(const [market,selection] of [
+  ['player_game_handicap_1.5','Juan Manuel La Serna (-1.5)'],
+  ['player_game_handicap_3.5','Juan Manuel La Serna (+3.5)'],
+  ['player_set_handicap_1.5','Juan Manuel La Serna (-1.5)'],
+  ['player_first_set_game_handicap_1.5','Juan Manuel La Serna (-1.5)'],
+  ['first_set_winner','Juan Manuel La Serna']]){
+  const row={event_name:'Nick Hardt vs Juan Manuel La Serna',selection,subject_player_name:'Nick Hardt',market,kind:'prop',state:'pending',legs:[]};
+  const html=api.tennisRenderBets([row]);
+  const pick=html.split('class="tennis-pick-panel"')[1].split('<dl')[0];
+  assert.ok(pick.includes(selection));assert.doesNotMatch(pick,/Nick Hardt/);
+ }
+});
+
+test('combo legs preserve named selections despite reference-player metadata',()=>{
+ const api=loadTemplateFunctions();
+ const html=api.tennisRenderBets([{kind:'combo',state:'pending',legs:[{selection:'Juan Manuel La Serna (-1.5)',subject_player_name:'Nick Hardt',market:'player_game_handicap_1.5',event_name:'Nick Hardt vs Juan Manuel La Serna'},{selection:'Yes',subject_player_name:'Daniil Ostapenkov',market:'player_win_a_set_1988',event_name:'Daniil Ostapenkov vs Patrick Maloney'}]}]);
+ assert.match(html,/<strong>Juan Manuel La Serna \(-1\.5\)<\/strong>/);
+ assert.match(html,/<strong>Daniil Ostapenkov · 贏至少一盤<\/strong>/);
+ assert.doesNotMatch(html,/Nick Hardt · Juan Manuel/);
+});
+
+test('unnamed individual totals retain subject context without adding one to match totals',()=>{
+ const api=loadTemplateFunctions();
+ const row={event_name:'Nick Hardt vs Juan Manuel La Serna',selection:'Under 12.5',subject_player_name:'Juan Manuel La Serna',kind:'prop',state:'pending',legs:[]};
+ assert.match(api.tennisRenderBets([{...row,market:'player_total_games_12.5'}]),/Juan Manuel La Serna · Under 12.5/);
+ const match=api.tennisRenderBets([{...row,market:'total_games'}]).split('class="tennis-pick-panel"')[1].split('<dl')[0];
+ assert.doesNotMatch(match,/Juan Manuel La Serna/);assert.match(match,/Under 12.5/);
+});
