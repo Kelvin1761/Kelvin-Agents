@@ -305,3 +305,6 @@
 - [EXP-20261027-09](EXP-20261027-09-tennis-opponent-adjusted-serve-return.md)：Tennis 對手校正S/R點數實力，五段勝未校正、只四段LL勝rank，REJECT；固定歷史價少蝕147.81u對rank、僅17.87u對原binary且CI跨零，仍輸市場；實際Sportsbet盈利未驗證。
 - [EXP-20261027-20](EXP-20261027-20-nba-version-alignment-audit.md)：NBA 版本一致性審計：Telegram ROI 改用 dashboard tracking（21:00 第一個發佈嘅穩膽）；MS 四個測試 epoch 改 10-27；readiness 警告用字；正式穩膽 vs 用戶實際跟嘅 steady 候選未統一，待用戶決定。
 - [EXP-20261027-21](EXP-20261027-21-nba-steady-b2-formal-banker-protocol.md) — NBA 正式穩膽改用 steady（B2）：冇 EV 閘、真價 ≥2.0、$1 平注；**模型預期 EV 為負**（基準 14 注 −1.57u、模型估 EV 約 −12%）；預先登記停損 S1 −10u／S2 60 注 CI／S3 命中率審查，暫停唔會自動恢復。產品決定，唔係模型改善。
+- [EXP-20261028-11](EXP-20261028-11-au-form-quality-sample-size-results.md) — 近績質素分按場數收縮（k 0.80）／獎金 z 封頂 ±1.567／兩樣一齊：三個 REJECT（primary 點估計負；A1 兩個分層 CI 全負）。少場數馬喺頭 3 名冇被高估，低名次反而被低估。
+- [EXP-20261028-12](EXP-20261028-12-au-set-weight-proxy-results.md) — 定磅賽唔再用負磅代理（正面認讓磅，處理截斷名）：§7 正確性修正上線，**唔係已證實改善**。1,265 匹中招；定磅賽負磅代理 AUC 0.511，級數分 0.565。
+- [EXP-20261028-13](EXP-20261028-13-au-class-score-rule-audit-results.md) — 級數分逐條審計：只剷「≥15 場」三條（冇代價簡化，Gold +0.03／Good +0.07）；初出、降班剷走有害，留。級數分整體 AUC 0.570。順帶：處女賽懲罰喺「Maidens Ineligible」場都觸發。
