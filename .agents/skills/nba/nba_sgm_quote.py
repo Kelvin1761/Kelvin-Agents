@@ -70,6 +70,42 @@ def quote_valid(quote, odds, legs, *, now=None):
                 and 0 <= (now - captured).total_seconds() < QUOTE_MAX_AGE_SECONDS)
 
 
+def requote_sidecar(report_path, odds, *, post=None, now=None):
+    """Renew a report's expired SGM quotes in place when the price is unchanged.
+
+    Regenerating a report to reprice it takes 1-5 minutes, so on a 9-game slate
+    the first repriced report had expired again before the release validator
+    reached it (2026-10-28: FW-13 blocked the 21:00 run three times running).
+    The report text is bound to the quoted price, so a fresh quote at the same
+    price only needs a new quote record. Any price move or failed quote returns
+    False and writes nothing; the caller must then regenerate the report.
+    """
+    sidecar_path = str(report_path) + ".market_legs.json"
+    try:
+        with open(report_path, encoding="utf-8") as source:
+            report_sha = hashlib.sha256(source.read().encode()).hexdigest()
+        with open(sidecar_path, encoding="utf-8") as source:
+            sidecar = json.load(source)
+        if sidecar.get("report_sha256") != report_sha:
+            return False
+        renewed = []
+        for row in sidecar["combos"]:
+            fresh = quote_combo(odds, row["legs"], post=post, now=now).quote
+            if (fresh.get("decimal_odds") != (row.get("sgm_quote") or {}).get("decimal_odds")
+                    or not quote_valid(fresh, odds, row["legs"], now=now)):
+                return False
+            renewed.append(fresh)
+        for row, fresh in zip(sidecar["combos"], renewed):
+            row["sgm_quote"] = fresh
+        temporary = sidecar_path + ".tmp"
+        with open(temporary, "w", encoding="utf-8") as target:
+            json.dump(sidecar, target, ensure_ascii=False)
+        os.replace(temporary, sidecar_path)
+        return True
+    except (OSError, ValueError, TypeError, KeyError, AttributeError):
+        return False
+
+
 def quote_combo(odds, legs, *, post=None, now=None):
     from nba_daily_auto.nba_market_ledger import sgm_price_request, _default_sgm_post
     captured = now or datetime.now(timezone.utc)

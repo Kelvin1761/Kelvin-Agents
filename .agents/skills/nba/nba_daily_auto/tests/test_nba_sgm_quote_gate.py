@@ -205,3 +205,54 @@ def test_publication_checks_availability_even_when_quote_is_valid(tmp_path):
     payload['availability']=None;sidecar.write_text(json.dumps(payload))
     assert v.check_fw14_availability(text,report,now=NOW)
     assert any('FW-14' in issue for issue in v.validate_file(str(report),str(source))['blocks'])
+
+
+def _quoted_report(tmp_path):
+    odds, legs = inputs()
+    quoted = q.quote_combo(odds, legs, now=NOW, post=post_price(2))
+    text = r.gen_combo_section('組合 1: test', '', '', quoted)
+    report = tmp_path/'Game_BOS_LAL_Full_Analysis.md'; report.write_text(text)
+    source = tmp_path/'Sportsbet_Odds_BOS_LAL.json'; source.write_text(json.dumps(odds))
+    sidecar = Path(str(report)+'.market_legs.json')
+    sidecar.write_text(json.dumps(r.build_market_eval_sidecar(text, odds, {}, [], {'combos': {'1': quoted}}, 'hybrid')))
+    return odds, text, report, source, sidecar
+
+
+def test_expired_quote_is_renewed_in_place_only_at_the_published_price(tmp_path):
+    odds, text, report, source, sidecar = _quoted_report(tmp_path)
+    later = NOW + timedelta(minutes=20)
+    assert v.check_fw13_sgm_quotes(text, report, source, now=later)
+    before = sidecar.read_text()
+    for moved in (2.1, 1.9):
+        assert not q.requote_sidecar(report, odds, post=post_price(moved), now=later)
+        assert sidecar.read_text() == before
+    assert not q.requote_sidecar(report, odds, post=lambda body: (500, {}), now=later)
+    assert sidecar.read_text() == before
+    assert q.requote_sidecar(report, odds, post=post_price(2), now=later)
+    assert report.read_text() == text
+    assert not v.check_fw13_sgm_quotes(text, report, source, now=later)
+    assert v.check_fw13_sgm_quotes(text, report, source, now=later + timedelta(minutes=6))
+
+
+def test_requote_refuses_a_report_that_no_longer_matches_its_sidecar(tmp_path):
+    odds, text, report, source, sidecar = _quoted_report(tmp_path)
+    report.write_text(text + 'edited')
+    before = sidecar.read_text()
+    assert not q.requote_sidecar(report, odds, post=post_price(2), now=NOW + timedelta(minutes=20))
+    assert sidecar.read_text() == before
+
+
+def test_report_cache_renews_same_price_quote_instead_of_regenerating(tmp_path, monkeypatch):
+    import nba_orchestrator as orchestrator
+    import nba_wong_choi.scripts.validate_nba_output as cache_validator
+    odds, text, report, source, _ = _quoted_report(tmp_path)
+    stats = tmp_path/'stats.json'; stats.write_text('{}')
+    monkeypatch.setattr(orchestrator, 'report_inputs', lambda *args: {'fixture': True})
+    Path(str(report)+'.inputs.json').write_text(json.dumps({'inputs': {'fixture': True}, 'report': hashlib.sha256(text.encode()).hexdigest()}))
+    later = NOW + timedelta(minutes=20)
+    real = cache_validator.check_fw13_sgm_quotes
+    monkeypatch.setattr(cache_validator, 'check_fw13_sgm_quotes', lambda *args: real(*args, now=later))
+    real_requote = q.requote_sidecar
+    for price, reused in ((2.2, False), (2, True)):
+        monkeypatch.setattr(q, 'requote_sidecar', lambda path, data, price=price: real_requote(path, data, post=post_price(price), now=later))
+        assert orchestrator.report_cache_current(str(report), str(source), str(stats), False) is reused
