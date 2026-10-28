@@ -285,6 +285,79 @@ def test_concurrent_unrelated_write_blocks_rollback_without_erasing_it(
     assert "unrelated production writes" in failure["detail"]["rollback_errors"][0]
 
 
+def test_concurrent_clean_production_advance_blocks_rollback(release_setup, monkeypatch):
+    repo, production, state, release = release_setup
+    advanced = []
+
+    def concurrent_commit(_source, target, _domain):
+        git(target, "config", "user.name", "Concurrent fixture")
+        git(target, "config", "user.email", "fixture@example.invalid")
+        (target / "concurrent.py").write_text("new owner work\n")
+        git(target, "add", "concurrent.py")
+        git(target, "commit", "-m", "concurrent clean advance")
+        advanced.append(git(target, "rev-parse", "HEAD"))
+        raise ReleaseError("fixture post-sync failure")
+
+    monkeypatch.setattr("shared_wong_choi.release_activation.verify_deployment", concurrent_commit)
+    with pytest.raises(ReleaseError, match="rollback incomplete"):
+        activate_release(repo, state, selector=release["commit"], actor="fixture",
+                         production_roots={"nba": production}, notify=False)
+    assert git(production, "rev-parse", "HEAD") == advanced[0]
+    assert (production / "concurrent.py").read_text() == "new owner work\n"
+    events = ReleaseEventStore(state / "release-events").list(release["release_id"])
+    failed = next(event for event in events if event["event_type"] == "activation_failed")
+    assert failed["detail"]["rollback_status"] == "blocked"
+    assert "production HEAD changed" in failed["detail"]["rollback_errors"][0]
+
+
+@pytest.mark.parametrize("operation", ["sync", "rollback"])
+def test_failed_git_status_cannot_authorize_checkout_mutation(release_setup, monkeypatch, operation):
+    from shared_wong_choi import release_activation as activation
+    repo, production, state, release = release_setup
+    base = git(production, "rev-parse", "HEAD")
+    if operation == "rollback":
+        _sync_checkout(production, release["commit"])
+    before = git(production, "rev-parse", "HEAD")
+    original = activation._run
+
+    def status_failure(root, *args, **kwargs):
+        if args[:2] == ("git", "status"):
+            return subprocess.CompletedProcess(args, 128, "", "fixture status failure")
+        return original(root, *args, **kwargs)
+
+    monkeypatch.setattr(activation, "_run", status_failure)
+    with pytest.raises(ReleaseError, match="status probe failed"):
+        if operation == "sync":
+            _sync_checkout(production, release["commit"])
+        else:
+            _rollback_checkout(production, base, expected_current=release["commit"])
+    assert git(production, "rev-parse", "HEAD") == before
+
+
+def test_whitespace_filename_does_not_become_an_allowed_runtime_path(release_setup):
+    repo, production, state, release = release_setup
+    relative = " .agents/scripts/hkjc_draw_stats.json "
+    tracked = repo / relative
+    tracked.parent.mkdir(parents=True)
+    tracked.write_bytes(b"tracked baseline\n")
+    git(repo, "add", relative)
+    git(repo, "commit", "-m", "tracked whitespace fixture")
+    git(repo, "push", "origin", "HEAD:main")
+    _sync_checkout(production, git(repo, "rev-parse", "HEAD"))
+    wrapper = repo / ".agents/skills/nba/nba_daily_auto/run_nba_daily_schedule.sh"
+    wrapper.write_text("#!/bin/sh\necho next fixture\n")
+    git(repo, "add", str(wrapper.relative_to(repo)))
+    git(repo, "commit", "-m", "next fixture")
+    git(repo, "push", "origin", "HEAD:main")
+    unrelated = production / relative
+    unrelated.write_bytes(b"another owner's bytes\n")
+    before = git(production, "rev-parse", "HEAD")
+    with pytest.raises(ReleaseError, match="unrelated dirty paths"):
+        _sync_checkout(production, git(repo, "rev-parse", "HEAD"))
+    assert git(production, "rev-parse", "HEAD") == before
+    assert unrelated.read_bytes() == b"another owner's bytes\n"
+
+
 def test_forward_sync_and_rollback_union_runtime_mapping(tmp_path: Path) -> None:
     remote = tmp_path / "remote.git"
     source = tmp_path / "source"
@@ -355,8 +428,9 @@ def test_forward_sync_and_rollback_union_runtime_mapping(tmp_path: Path) -> None
     assert runtime_draw_stats.read_text(encoding="utf-8") == '{"meeting": "today"}\n'
 
 
+@pytest.mark.parametrize("restore_mode", ["ok", "exit", "exception", "event-error", "restore-and-event-error", "success-event-error"])
 def test_deploy_failure_restores_installer_state_before_git_rollback(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch, restore_mode: str,
 ) -> None:
     remote = tmp_path / "remote.git"
     repo = tmp_path / "repo"
@@ -386,13 +460,15 @@ def test_deploy_failure_restores_installer_state_before_git_rollback(
         / ".agents/skills/central_wong_choi/install_production_runtime.sh"
     )
     installer.parent.mkdir(parents=True)
+    restore_action = ("exit 9" if restore_mode in {"exit", "restore-and-event-error"}
+                      else 'cp "$2/state" "$STATE"; exit 0')
     installer.write_text(
         "#!/bin/zsh\n"
         "set -eu\n"
         f"STATE='{external_state}'\n"
         "case \"${1:-}\" in\n"
         "  --snapshot) mkdir -p \"$2\"; cp \"$STATE\" \"$2/state\"; exit 0;;\n"
-        "  --restore) cp \"$2/state\" \"$STATE\"; exit 0;;\n"
+        f"  --restore) {restore_action};;\n"
         "  --status) exit 0;;\n"
         "esac\n"
         "print -r -- 'candidate' > \"$STATE\"\n",
@@ -400,6 +476,7 @@ def test_deploy_failure_restores_installer_state_before_git_rollback(
     )
     os.chmod(installer, 0o755)
     deploy.write_text(
+        "#!/bin/sh\nexit 0\n" if restore_mode == "success-event-error" else
         "#!/bin/sh\necho 'dashboard too large'\necho 'asset gate' >&2\nexit 9\n",
         encoding="utf-8",
     )
@@ -407,8 +484,7 @@ def test_deploy_failure_restores_installer_state_before_git_rollback(
         repo,
         paths=[
             str(installer.relative_to(repo)),
-            "deploy.sh",
-        ],
+        ] + ([] if restore_mode == "success-event-error" else ["deploy.sh"]),
         message="feat: transactional runtime installer",
         state_root=state / "releases",
         notify=False,
@@ -423,8 +499,42 @@ def test_deploy_failure_restores_installer_state_before_git_rollback(
     monkeypatch.setattr(
         "shared_wong_choi.release_activation.verify_deployment", _verify
     )
+    if restore_mode == "exception":
+        from shared_wong_choi import release_activation as activation
+        original_runner = activation._run_installer
 
-    with pytest.raises(ReleaseError, match="rollback complete"):
+        def restore_exec_failure(root, *args, **kwargs):
+            if "--restore" in args:
+                raise OSError("fixture restore exec failed")
+            return original_runner(root, *args, **kwargs)
+
+        monkeypatch.setattr(activation, "_run_installer", restore_exec_failure)
+    recovery_roots = []
+    event_error = restore_mode in {"event-error", "restore-and-event-error", "success-event-error"}
+    if event_error:
+        from shared_wong_choi import release_activation as activation
+        original_mkdtemp = activation.tempfile.mkdtemp
+        original_append = ReleaseEventStore.append
+
+        def record_snapshot_root(*args, **kwargs):
+            root = original_mkdtemp(*args, **kwargs)
+            if kwargs.get("prefix") == "wc-installer-snapshots-":
+                recovery_roots.append(Path(root))
+            return root
+
+        def failing_event(store, **kwargs):
+            failed_kind = "activation_succeeded" if restore_mode == "success-event-error" else "activation_failed"
+            if kwargs["event_type"] == failed_kind:
+                raise OSError("fixture event store unavailable")
+            return original_append(store, **kwargs)
+
+        monkeypatch.setattr(activation.tempfile, "mkdtemp", record_snapshot_root)
+        monkeypatch.setattr(ReleaseEventStore, "append", failing_event)
+
+    expected_error = ("success recording unavailable" if restore_mode == "success-event-error" else
+                      "failure event unavailable" if event_error else
+                      "rollback complete" if restore_mode == "ok" else "rollback incomplete")
+    with pytest.raises(ReleaseError, match=expected_error):
         activate_release(
             repo,
             state,
@@ -436,14 +546,40 @@ def test_deploy_failure_restores_installer_state_before_git_rollback(
             notify=False,
         )
 
-    assert external_state.read_text(encoding="utf-8") == "old\n"
-    assert git(production, "rev-parse", "HEAD") == base
+    assert external_state.read_text(encoding="utf-8") == ("old\n" if restore_mode in {"ok", "event-error"} else "candidate\n")
+    assert git(production, "rev-parse", "HEAD") == (release["commit"] if restore_mode == "success-event-error" else base)
+    if event_error:
+        assert len(recovery_roots) == 1
+        assert (recovery_roots[0] / "installer-0/state").read_bytes() == b"old\n"
+        context = json.loads((recovery_roots[0] / "recovery-context.json").read_text())
+        assert context["commit"] == release["commit"]
+        if restore_mode == "success-event-error":
+            assert context["phase"] == "runtime_actions_completed_unrecorded"
+            assert context["success_recorded"] is False
+            with pytest.raises(ReleaseError, match="outcome unresolved"):
+                activate_release(repo, state, selector=release["commit"], actor="fixture",
+                                 production_roots={name: production for name in ("au", "hkjc", "nba", "tennis")},
+                                 notify=False)
+        else:
+            assert context["rollback_status"] == ("blocked" if restore_mode == "restore-and-event-error" else "succeeded")
+            assert bool(context["external_rollback_errors"]) == (restore_mode == "restore-and-event-error")
+        return
     events = ReleaseEventStore(state / "release-events").list(release["release_id"])
     failure = next(item for item in events if item["event_type"] == "activation_failed")
     assert failure["detail"]["error"] == (
         "ReleaseError: dashboard deployment failed (exit 9); "
         "stdout=dashboard too large; stderr=asset gate"
     )
+    if restore_mode != "ok":
+        assert failure["detail"]["rollback_status"] == "blocked"
+        assert failure["detail"]["external_rollback_errors"]
+        recovery = failure["detail"]["recovery_snapshots"]
+        assert recovery["retained"] is True
+        assert Path(recovery["root"]).parent == state / "activation-recovery"
+        assert Path(recovery["root"]).stat().st_mode & 0o777 == 0o700
+        assert (Path(recovery["root"]) / "installer-0/state").read_bytes() == b"old\n"
+        assert json.loads((Path(recovery["root"]) / "recovery-context.json").read_text())["commit"] == release["commit"]
+        return
     assert failure["detail"]["external_rollback"] == [
         {
             "path": ".agents/skills/central_wong_choi/install_production_runtime.sh",
