@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import signal
@@ -77,16 +78,27 @@ def _command_failure(prefix: str, result) -> ReleaseError:
     return ReleaseError(f"{prefix} (exit {result.returncode}){suffix}")
 
 
+def _write_recovery_context(root: Path, payload: Mapping[str, Any]) -> None:
+    fd = os.open(root / "recovery-context.json",
+                 os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(fd, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, sort_keys=True)
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
 def _dirty_paths(root: Path) -> list[str]:
-    result = _run(root, "git", "status", "--porcelain", "-z", check=False)
+    result = _run(root, "git", "status", "--porcelain", "-z",
+                  "--untracked-files=all", "--no-renames", check=False)
+    if result.returncode != 0:
+        raise ReleaseError("production status probe failed; checkout cleanliness unverified")
     values = []
     for entry in result.stdout.split("\0"):
         if not entry:
             continue
-        value = entry[3:].strip()
-        if " -> " in value:
-            value = value.rsplit(" -> ", 1)[-1]
-        values.append(value)
+        # NUL porcelain contains raw paths. Whitespace is part of identity,
+        # and rename detection is disabled to avoid two-entry ambiguity.
+        values.append(entry[3:])
     return sorted(set(values))
 
 
@@ -186,7 +198,7 @@ def _sync_checkout(root: Path, commit: str) -> dict[str, Any]:
     return {"root": str(root), "before": current, "after": after, "status": "updated"}
 
 
-def _rollback_checkout(root: Path, commit: str) -> dict[str, Any]:
+def _rollback_checkout(root: Path, commit: str, *, expected_current: str | None = None) -> dict[str, Any]:
     """Reset one dedicated production checkout to its captured pre-activation SHA."""
     root = root.expanduser().resolve()
     if not (root / ".git").exists():
@@ -199,6 +211,8 @@ def _rollback_checkout(root: Path, commit: str) -> dict[str, Any]:
             "after": current,
             "status": "already_rolled_back",
         }
+    if expected_current is not None and current != expected_current:
+        raise ReleaseError("rollback blocked: production HEAD changed after activation")
     if not _is_ancestor(root, commit, current):
         raise ReleaseError(
             f"rollback target is not an ancestor of production HEAD: {root}"
@@ -212,6 +226,9 @@ def _rollback_checkout(root: Path, commit: str) -> dict[str, Any]:
 
     with tempfile.TemporaryDirectory(prefix="wc-production-rollback-") as raw:
         backups = _backup_mutable_paths(root, Path(raw))
+        if (expected_current is not None and
+                _run(root, "git", "rev-parse", "HEAD").stdout.strip() != expected_current):
+            raise ReleaseError("rollback blocked: production HEAD changed before reset")
         reset = _run(
             root,
             "git",
@@ -258,6 +275,9 @@ def activate_release(
             "release_id": manifest["release_id"],
             "commit": manifest["commit"],
         }
+    if effective["activation"] == "running":
+        # This is unresolved outcome, not proof a process is still alive.
+        raise ReleaseError("activation outcome unresolved; inspect retained recovery evidence before retry")
     if effective["status"] != "merged":
         raise ReleaseError("release must be merged before activation")
     plan = manifest.get("activation_plan") or {}
@@ -294,6 +314,15 @@ def activate_release(
         ).stdout.strip()
         for target in unique_targets.values()
     }
+    sync_results: list[dict[str, Any]] = []
+    installer_snapshots: list[dict[str, Any]] = []
+    recovery_parent = state_root / "activation-recovery"
+    if recovery_parent.is_symlink() or (recovery_parent.exists() and not recovery_parent.is_dir()):
+        raise ReleaseError("unsafe activation recovery directory")
+    recovery_parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    # New attempt backups live in control state, not OS-purgeable temp. No
+    # finalizer may remove them while recovery/event recording is incomplete.
+    snapshot_root = Path(tempfile.mkdtemp(prefix="wc-installer-snapshots-", dir=recovery_parent))
 
     events.append(
         release_id=manifest["release_id"],
@@ -304,12 +333,9 @@ def activate_release(
             "domains": domains,
             "targets": sorted(unique_targets),
             "checkpoints": checkpoints,
+            "recovery_snapshot_root": str(snapshot_root),
         },
     )
-    sync_results: list[dict[str, Any]] = []
-    installer_snapshots: list[dict[str, Any]] = []
-    snapshot_temp = tempfile.TemporaryDirectory(prefix="wc-installer-snapshots-")
-    snapshot_root = Path(snapshot_temp.name)
     try:
         for target in unique_targets.values():
             sync_results.append(_sync_checkout(target, manifest["commit"]))
@@ -431,48 +457,77 @@ def activate_release(
         # return to a commit from before that installer was introduced.
         for item in reversed(installer_snapshots):
             installer = Path(item["root"]) / item["path"]
-            restored = _run_installer(
-                Path(item["root"]),
-                "/bin/zsh",
-                str(installer),
-                "--restore",
-                item["snapshot"],
-                timeout=300,
-            )
-            if restored.returncode == 0:
-                external_rollback_results.append(
-                    {"path": item["path"], "status": "restored"}
+            try:
+                restored = _run_installer(
+                    Path(item["root"]),
+                    "/bin/zsh",
+                    str(installer),
+                    "--restore",
+                    item["snapshot"],
+                    timeout=300,
                 )
-            else:
+                if restored.returncode == 0:
+                    external_rollback_results.append(
+                        {"path": item["path"], "status": "restored"}
+                    )
+                else:
+                    external_rollback_errors.append(
+                        str(_command_failure(f"{item['path']}: installer state restore failed", restored))
+                    )
+            except Exception as restore_exc:
                 external_rollback_errors.append(
-                    str(_command_failure(f"{item['path']}: installer state restore failed", restored))
+                    f"{item['path']}: {type(restore_exc).__name__}: {restore_exc}"
                 )
         rollback_results: list[dict[str, Any]] = []
         rollback_errors: list[str] = []
         for raw_target, before in reversed(list(checkpoints.items())):
             target = Path(raw_target)
             try:
-                rollback_results.append(_rollback_checkout(target, before))
+                rollback_results.append(_rollback_checkout(
+                    target, before, expected_current=manifest["commit"]))
             except Exception as rollback_exc:  # preserve and report concurrent writes
                 rollback_errors.append(
                     f"{target}: {type(rollback_exc).__name__}: {rollback_exc}"
                 )
         all_rollback_errors = [*external_rollback_errors, *rollback_errors]
+        context = {"schema_version": "wong-choi-activation-recovery/v1",
+                   "release_id": manifest["release_id"], "commit": manifest["commit"],
+                   "checkpoints": checkpoints, "installers": installer_snapshots,
+                   "failure": f"{type(exc).__name__}: {exc}",
+                   "rollback_status": "blocked" if all_rollback_errors else "succeeded",
+                   "external_rollback": external_rollback_results,
+                   "external_rollback_errors": external_rollback_errors,
+                   "rollback": rollback_results, "rollback_errors": rollback_errors}
+        recovery_context_error = None
+        try:
+            _write_recovery_context(snapshot_root, context)
+        except (OSError, ValueError) as context_exc:
+            recovery_context_error = f"recovery context unavailable: {type(context_exc).__name__}"
+            all_rollback_errors.append(recovery_context_error)
         rollback_status = "succeeded" if not all_rollback_errors else "blocked"
-        failed = events.append(
-            release_id=manifest["release_id"],
-            commit=manifest["commit"],
-            event_type="activation_failed",
-            actor="central-wong-choi",
-            detail={
-                "error": f"{type(exc).__name__}: {exc}",
-                "rollback_status": rollback_status,
-                "rollback": rollback_results,
-                "rollback_errors": rollback_errors,
-                "external_rollback": external_rollback_results,
-                "external_rollback_errors": external_rollback_errors,
-            },
-        )
+        try:
+            failed = events.append(
+                release_id=manifest["release_id"],
+                commit=manifest["commit"],
+                event_type="activation_failed",
+                actor="central-wong-choi",
+                detail={
+                    "error": f"{type(exc).__name__}: {exc}",
+                    "rollback_status": rollback_status,
+                    "rollback": rollback_results,
+                    "rollback_errors": rollback_errors,
+                    "external_rollback": external_rollback_results,
+                    "external_rollback_errors": external_rollback_errors,
+                    "recovery_snapshots": {"root": str(snapshot_root),
+                                           "retained": bool(all_rollback_errors),
+                                           "context_error": recovery_context_error},
+                },
+            )
+        except Exception as event_exc:
+            raise ReleaseError(
+                f"activation failure event unavailable; rollback {rollback_status}; "
+                f"recovery snapshots retained at {snapshot_root}"
+            ) from event_exc
         if notify:
             _notify(
                 repo,
@@ -490,24 +545,43 @@ def activate_release(
             if not all_rollback_errors
             else "rollback incomplete: " + "; ".join(all_rollback_errors)
         )
-        snapshot_temp.cleanup()
+        if not all_rollback_errors:
+            shutil.rmtree(snapshot_root)
         raise ReleaseError(
             f"activation failed; {rollback_note}; event={failed['path']}: {exc}"
         ) from exc
 
-    snapshot_temp.cleanup()
-    completed = events.append(
-        release_id=manifest["release_id"],
-        commit=manifest["commit"],
-        event_type="activation_succeeded",
-        actor="central-wong-choi",
-        detail={
-            "sync": sync_results,
-            "verification": verification,
-            "installers": installer_results,
-            "deploy": deploy,
-        },
-    )
+    try:
+        completed = events.append(
+            release_id=manifest["release_id"],
+            commit=manifest["commit"],
+            event_type="activation_succeeded",
+            actor="central-wong-choi",
+            detail={
+                "sync": sync_results,
+                "verification": verification,
+                "installers": installer_results,
+                "deploy": deploy,
+            },
+        )
+    except Exception as event_exc:
+        context_error = None
+        try:
+            _write_recovery_context(snapshot_root, {
+                "schema_version": "wong-choi-activation-recovery/v1",
+                "release_id": manifest["release_id"], "commit": manifest["commit"],
+                "phase": "runtime_actions_completed_unrecorded", "success_recorded": False,
+                "checkpoints": checkpoints, "installers": installer_snapshots,
+                "sync": sync_results, "verification": verification,
+                "installer_results": installer_results, "deploy": deploy,
+            })
+        except (OSError, ValueError) as context_exc:
+            context_error = type(context_exc).__name__
+        raise ReleaseError(
+            "runtime actions completed; success recording unavailable; no automatic retry; "
+            f"recovery snapshots retained at {snapshot_root}"
+            + (f"; context unavailable: {context_error}" if context_error else "")
+        ) from event_exc
     result.update(
         {
             "status": "activated",
@@ -526,4 +600,5 @@ def activate_release(
             + ", ".join(domains or ["control-only"]),
             dry_run=False,
         )
+    shutil.rmtree(snapshot_root)
     return result
