@@ -2247,3 +2247,21 @@ test('unnamed individual totals retain subject context without adding one to mat
  const match=api.tennisRenderBets([{...row,market:'total_games'}]).split('class="tennis-pick-panel"')[1].split('<dl')[0];
  assert.doesNotMatch(match,/Juan Manuel La Serna/);assert.match(match,/Under 12.5/);
 });
+
+test('Tennis search includes every combo leg fixture and translated market',()=>{
+ const row={id:'combo',kind:'combo',day:'2026-01-01',event_name:'A vs B',selection:'Over 3.5',market:'跨場組合',state:'lost',legs:[{event_name:'Roberto Carballes Baena vs Stefano Travaglia',selection:'Over 3.5',market:'player_aces',state:'unverified'}]};
+ const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{tennis:{tracking:{status:'valid',records:[row]}}}}});
+ api.setSportsTabForTest('archive');
+ api.setTennisFilter('search','Roberto Carballes Baena');assert.equal(api.tennisSelectRows(false).length,1);
+ api.setTennisFilter('search','球員 Ace 數');assert.equal(api.tennisSelectRows(false).length,1);
+ api.setTennisFilter('search','unknown player xyz');assert.equal(api.tennisSelectRows(false).length,0);
+ const html=api.tennisRenderBets([row]);assert.match(html,/待核實/);assert.doesNotMatch(html,/待結算/);
+});
+
+test('Tennis financial inconsistencies remain visible with explicit ROI exclusion',()=>{
+ const api=loadTemplateFunctions();
+ const row={id:'bad',kind:'combo',state:'won',selection:'A',odds:3,point_in_time:true,unit_profit:null,integrity_note:'歷史注碼／盈虧待核實',legs:[]};
+ const html=api.tennisRenderBets([row]);
+ assert.match(html,/歷史注碼／盈虧待核實/);assert.match(html,/未計入 ROI/);
+ assert.equal(api.tennisStats([row]).done,0);
+});

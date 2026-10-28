@@ -2361,7 +2361,7 @@ function renderSportsHistory(sport) {
 }
 
 function sportsStatusLabel(status) {
-  return ({ pending: '⏳ 待結算', won: '✅ 贏', lost: '❌ 輸', void: '↩️ 取消' })[status] || status;
+  return ({ pending: '⏳ 待結算', won: '✅ 贏', lost: '❌ 輸', void: '↩️ 取消', unverified: '待核實' })[status] || status;
 }
 
 function renderSportsBets(sport) {
@@ -2499,7 +2499,11 @@ function tennisTrackingFeed(){return sportsFeedSnapshot('tennis')?.tracking||{st
 function tennisRows(){return tennisTrackingFeed().records||[];}
 function tennisPnl(r){return r.point_in_time===true&&['won','lost','void'].includes(r.state)&&Number.isFinite(r.odds)&&r.odds>1&&Number.isFinite(r.unit_profit)?r.unit_profit:null;}
 function tennisStats(rows){const done=rows.filter(r=>tennisPnl(r)!==null&&r.state!=='void'),profit=done.reduce((sum,r)=>sum+tennisPnl(r),0),wins=done.filter(r=>r.state==='won').length;return {n:rows.length,done:done.length,wins,profit,roi:done.length?profit/done.length*100:null,hit:done.length?wins/done.length*100:null,excluded:rows.filter(r=>r.point_in_time!==true).length,pending:rows.filter(r=>r.state==='pending').length};}
-function tennisSelectRows(todayOnly=false){const periods=nbaPeriodsNow(),start=periods[tennisPeriod]?.[0]||'0000',query=tennisSearch.trim().toLocaleLowerCase();return tennisRows().filter(r=>(todayOnly?r.day===sydneyToday():tennisPeriod==='all'||r.day>=start&&r.day<=sydneyToday())&&(tennisKind==='all'||r.kind===tennisKind)&&(tennisState==='all'||(tennisState==='unpriced'?!(Number.isFinite(r.odds)&&r.odds>1):r.state===tennisState))&&(!query||[r.event_name,r.selection,r.subject_player_name,r.market,tennisMarket(r.market),r.tour,r.tier,r.id].join(' ').toLocaleLowerCase().includes(query))).slice().sort((a,b)=>String(b.day).localeCompare(String(a.day))||String(b.recorded_at).localeCompare(String(a.recorded_at))||a.id.localeCompare(b.id));}
+function tennisSearchText(row){
+  const fields=r=>[r.event_name,r.selection,r.subject_player_name,r.market,tennisMarket(r.market),r.tour,r.tier,r.id];
+  return [...fields(row),...(Array.isArray(row.legs)?row.legs:[]).flatMap(fields)].join(' ').toLocaleLowerCase();
+}
+function tennisSelectRows(todayOnly=false){const periods=nbaPeriodsNow(),start=periods[tennisPeriod]?.[0]||'0000',query=tennisSearch.trim().toLocaleLowerCase();return tennisRows().filter(r=>(todayOnly?r.day===sydneyToday():tennisPeriod==='all'||r.day>=start&&r.day<=sydneyToday())&&(tennisKind==='all'||r.kind===tennisKind)&&(tennisState==='all'||(tennisState==='unpriced'?!(Number.isFinite(r.odds)&&r.odds>1):r.state===tennisState))&&(!query||tennisSearchText(r).includes(query))).slice().sort((a,b)=>String(b.day).localeCompare(String(a.day))||String(b.recorded_at).localeCompare(String(a.recorded_at))||a.id.localeCompare(b.id));}
 function setTennisFilter(key,value,position){if(key==='period'&&['week','month','all'].includes(value))tennisPeriod=value;else if(key==='kind'&&['all','prop','combo','match','market'].includes(value))tennisKind=value;else if(key==='state'&&['all','pending','won','lost','void','unverified','unpriced'].includes(value))tennisState=value;else if(key==='search')tennisSearch=String(value);else return;tennisLimit=50;tennisSyncUrl();render();const control=document.getElementById('tennis-'+key);control?.focus();if(key==='search'&&position!=null)control?.setSelectionRange(position,position);}
 function tennisLoadMore(){tennisLimit+=50;render();document.getElementById('tennis-more')?.focus();}
 function tennisResetFilters(){tennisPeriod='all';tennisKind='all';tennisState='all';tennisSearch='';tennisLimit=50;tennisSyncUrl();render();}
@@ -2538,8 +2542,8 @@ function tennisRenderBets(rows){
       ${r.kind==='combo'?`<div class="tennis-fixture-label">${r.legs?.length?r.legs.length+' 腳':''}跨場組合</div>`:tennisMatchup(r.event_name)}
       <div class="tennis-pick-panel"><div class="tennis-pick-label">${r.kind==='combo'?'模型組合':'模型選擇'}<span>${esc(tennisMarket(r.market))}</span></div>${r.kind==='combo'&&r.legs?.length?`<ol class="tennis-pick-legs">${r.legs.map(l=>`<li><strong>${esc(tennisSelection(l))}</strong><span>${esc(tennisMarket(l.market))}</span><small>${esc(l.event_name||'賽事待核實')}</small></li>`).join('')}</ol>`:`<strong>${esc(tennisSelection(r))}</strong>`}</div>
       <dl class="tennis-card-metrics"><div><dt>已記錄賠率</dt><dd>${Number.isFinite(r.odds)&&r.odds>1?r.odds.toFixed(2)+'<small> 倍</small>':'待核價'}</dd></div><div><dt>模型機率</dt><dd>${Number.isFinite(r.model_probability)?pct(r.model_probability):'—'}</dd></div><div><dt>每 $1 模擬損益</dt><dd class="${pnl>0?'pos':pnl<0?'neg':''}">${pnl==null?'—':nbaSigned(pnl)}</dd></div></dl>
-      <div class="tennis-card-evidence ${r.point_in_time?'':'tennis-unverified'}">${esc(r.evidence_note||'時間待核實')}${pnl==null&&['won','lost','void'].includes(r.state)?' · 未計入 ROI':''}</div>
-      <details><summary>查看${r.legs?.length?' '+r.legs.length+' 腳及':''}來源紀錄</summary>${r.legs?.length?`<ul class="tennis-legs">${r.legs.map(l=>`<li><strong>${esc(tennisSelection(l))}</strong>${tennisMatchup(l.event_name)}<small>${esc(tennisMarket(l.market))} · ${esc(sportsStatusLabel(l.state))}</small></li>`).join('')}</ul>`:''}<p class="tennis-provenance">${esc(r.tier||'模型候選')} · ${esc(r.id)}<br>${r.kind==='combo'?'來源標示 '+esc(r.event_name||'未記錄')+'<br>':''}保存時間 ${esc(r.recorded_at||'未記錄')}<br>模型追蹤紀錄，不代表正式放行或實際下注。</p></details>
+      <div class="tennis-card-evidence ${r.point_in_time?'':'tennis-unverified'}">${esc(r.evidence_note||'時間待核實')}${r.integrity_note?' · '+esc(r.integrity_note):''}${pnl==null&&['won','lost','void'].includes(r.state)?' · 未計入 ROI':''}</div>
+      <details><summary>查看${r.legs?.length?' '+r.legs.length+' 腳及':''}來源紀錄</summary>${r.legs?.length?`${r.legs.some(l=>l.state==='unverified')?'<p class="tennis-provenance">部分腳未有已保存結算結果，標示待核實；整體組合結果按原有紀錄顯示。</p>':''}<ul class="tennis-legs">${r.legs.map(l=>`<li><strong>${esc(tennisSelection(l))}</strong>${tennisMatchup(l.event_name)}<small>${esc(tennisMarket(l.market))} · ${esc(sportsStatusLabel(l.state))}</small></li>`).join('')}</ul>`:''}<p class="tennis-provenance">${esc(r.tier||'模型候選')} · ${esc(r.id)}<br>${r.kind==='combo'?'來源標示 '+esc(r.event_name||'未記錄')+'<br>':''}保存時間 ${esc(r.recorded_at||'未記錄')}<br>模型追蹤紀錄，不代表正式放行或實際下注。</p></details>
     </article>`;
   }).join('');
 }

@@ -944,7 +944,7 @@ def settle_combo_tracker_for_date(match_date: str) -> dict:
             """
             SELECT *
             FROM combo_tracker
-            WHERE match_date = ? AND result_status = 'PENDING'
+            WHERE match_date = ? AND result_status = 'PENDING' AND settled_at IS NULL
             """,
             (match_date,),
         ).fetchall()
@@ -985,15 +985,17 @@ def settle_combo_tracker_for_date(match_date: str) -> dict:
                 continue
             won = all(bool(result) for result in leg_results)
             status = "WON" if won else "LOST"
+            settled_legs = [dict(leg, result_status="WON" if result else "LOST")
+                            for leg, result in zip(legs, leg_results)]
             stake = float(row["stake_units"] or 0)
             profit = stake * (float(row["combo_odds"]) - 1) if won else -stake
             conn.execute(
                 """
                 UPDATE combo_tracker
-                SET result_status = ?, profit_loss_units = ?, updated_at = ?, settled_at = ?
+                SET result_status = ?, profit_loss_units = ?, legs_json = ?, updated_at = ?, settled_at = ?
                 WHERE id = ?
                 """,
-                (status, profit, now, now, row["id"]),
+                (status, profit, json.dumps(settled_legs, sort_keys=True), now, now, row["id"]),
             )
             settled += 1
     return {
@@ -1813,7 +1815,7 @@ def _upsert_combo_tracker(conn, combo: dict, match_date: str, now: str) -> int:
         return 0
     match_id = int(legs[0]["match_id"])
     combo_key = _combo_key(legs)
-    conn.execute(
+    cursor = conn.execute(
         """
         INSERT INTO combo_tracker (
             combo_key, match_id, match_date, match_label, tier, legs_json,
@@ -1829,6 +1831,8 @@ def _upsert_combo_tracker(conn, combo: dict, match_date: str, now: str) -> int:
             adjusted_edge = excluded.adjusted_edge,
             stake_units = excluded.stake_units,
             updated_at = excluded.updated_at
+        WHERE combo_tracker.result_status = 'PENDING'
+          AND combo_tracker.settled_at IS NULL
         """,
         (
             combo_key,
@@ -1845,7 +1849,7 @@ def _upsert_combo_tracker(conn, combo: dict, match_date: str, now: str) -> int:
             now,
         ),
     )
-    return 1
+    return cursor.rowcount
 
 
 def _combo_key(legs: list[dict]) -> str:
