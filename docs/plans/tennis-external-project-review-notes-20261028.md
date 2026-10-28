@@ -13,7 +13,29 @@
 |---|---|---|---|
 | P01 | [tennis-analytics-prediction](https://github.com/theayobamiakin/tennis-analytics-prediction) | 2026-10-28 | 已讀 README、advanced model、公開 metrics 及測試；未獨立重跑 |
 | P02 | [Tennis-Modelling](https://github.com/DanielTomaro13/Tennis-Modelling) | 2026-10-28 | 已讀 features／sim／evaluate／predict／ratings、config 及公開 backtest；未獨立重跑 |
-| P03 起 | 待用戶提供其他項目 | — | 待比較 |
+| P03 | [tennis-match-predictor](https://github.com/coenensam/tennis-match-predictor) | 2026-10-28 | 已讀 README、8 個核心 modules 及 test_devig；未下載語料或獨立重跑 |
+| P04 起 | 待用戶提供其他項目 | — | 待比較 |
+
+## 參考及原始資料 URL 登記表
+
+2026-10-28 用戶另要求保留 URL，方便之後實驗查 reference／data source。
+三個項目首頁已在上表；以下係從已讀程式／設定辨識嘅上游入口。呢次未下載原始語料，未驗證目前可存取性、完整性或授權適用範圍；入口存在唔等於已備妥實驗資料。
+
+| 類別 | URL／檔名規則 | 被邊個項目引用／研究用途 |
+|---|---|---|
+| ATP 歷史賽事 | [JeffSackmann/tennis_atp](https://github.com/JeffSackmann/tennis_atp)；`atp_matches_{YYYY}.csv`、`atp_matches_qual_chall_{YYYY}.csv` | P01／P03；賽果、排名、serve box scores，分清 main tour／qualifying／Challenger |
+| WTA 歷史賽事 | [JeffSackmann/tennis_wta](https://github.com/JeffSackmann/tennis_wta)；`wta_matches_{YYYY}.csv`、`wta_matches_qual_itf_{YYYY}.csv` | P01／P03；WTA main tour／qualifying／ITF，唔同完整度唔混為一談 |
+| Sackmann 歷史鏡像 | [Aneeshers/tennis-sackmann-archive](https://github.com/Aneeshers/tennis-sackmann-archive) | P01 ETL 指明嘅 June 2026 archive fallback；須檢查 snapshot 日期及原始 hash，唔當最新資料 |
+| 歷史莊家價格 | [Tennis-Data](http://www.tennis-data.co.uk/)；ATP `http://www.tennis-data.co.uk/{YYYY}/{YYYY}.xlsx`，WTA `http://www.tennis-data.co.uk/{YYYY}w/{YYYY}.xlsx` | P01／P02／P03；逐欄保留 book、opening／closing 語義及時間證據。MaxW／MaxL 跨 book 最高價唔等於單一可執行報價 |
+| 發接球 charted 子集 | [Match Charting Project](https://github.com/JeffSackmann/tennis_MatchChartingProject)；[原始 CSV 入口](https://raw.githubusercontent.com/JeffSackmann/tennis_MatchChartingProject/master/charting-m-matches.csv) | P02；ATP `charting-m-matches.csv`／`charting-m-stats-Overview.csv`，WTA 對應 `charting-w-*`；需身份／時間／coverage／選樣偏差核對 |
+| 即時莊家 API 候選 | [The Odds API](https://the-odds-api.com/)；API base `https://api.the-odds-api.com/v4` | P01；只登記參考，未訂閱、未新增 live provider，研究及費用另評估 |
+
+來源程式：[P01 etl_sackmann.py](https://github.com/theayobamiakin/tennis-analytics-prediction/blob/main/src/etl_sackmann.py) blob `aa398e58673bf4cea43aff9f17fb0c02bc8f6a5f`；
+[P01 odds_pipeline.py](https://github.com/theayobamiakin/tennis-analytics-prediction/blob/main/src/odds_pipeline.py) blob `063ede934409ac175b37b62b4aa6ceb43136a5a4`；
+P02 config 及 P03 data module 版本見各項目章節。
+
+正式實驗開始前：保存外部 commit SHA、精確下載 URL／檔名、擷取 UTC、資料涵蓋期、來源授權、local path、row counts 及 SHA256；大型語料按 repo 外置碟規則處理。
+將來失效／轉 private 嘅入口要明示 missing，唔靜靜縮細 corpus 或換來源救結果。
 
 ## 訓練資料範圍（2026-10-28 用戶補充）
 
@@ -135,6 +157,74 @@ Elo-only fallback ATP 2,843/7,368、WTA 3,271/6,934，serve stats 覆蓋唔完�
 保留 DP 引擎參考、曝光量／時間加權、MCP 來源及跨市場一致性研究；拒絕直接搬模型／參數。
 作者公開回測未贏市場，程式存在可辨識正確性問題；今次冇新 A/B 或改善證據。
 
+## P03：coenensam/tennis-match-predictor
+
+### 可核對來源及檢視範圍
+
+- [README](https://github.com/coenensam/tennis-match-predictor/blob/main/README.md)，blob `135c12fb34845b0bd7008ce5ceca9b00c47938e2`。
+- [config.py](https://github.com/coenensam/tennis-match-predictor/blob/main/src/tennis_predictor/config.py)，blob `0fc2bb63d367d1367bc3153f2add28ceae569619`。
+- [data.py](https://github.com/coenensam/tennis-match-predictor/blob/main/src/tennis_predictor/data.py)，blob `766a05d086b00779471cb7921f3ce05273006cb5`。
+- [elo.py](https://github.com/coenensam/tennis-match-predictor/blob/main/src/tennis_predictor/elo.py)，blob `6d4c5c6f925078d9bca91d8d977bdda5ffc45cbe`。
+- [features.py](https://github.com/coenensam/tennis-match-predictor/blob/main/src/tennis_predictor/features.py)，blob `2cc5ac3f5631c8abd3ce68b07dbd84c370d98ff4`。
+- [model.py](https://github.com/coenensam/tennis-match-predictor/blob/main/src/tennis_predictor/model.py)，blob `5f7c6ec8d93626bfd63d95eb3c6c6d6bc13ca845`。
+- [clv.py](https://github.com/coenensam/tennis-match-predictor/blob/main/src/tennis_predictor/clv.py)，blob `06d670d27894c756b5ef462420e536ba2a1d0ae3`。
+- [predict.py](https://github.com/coenensam/tennis-match-predictor/blob/main/src/tennis_predictor/predict.py)，blob `e20991c11dffbb4d251ad84e8901203e92cf8b75`。
+- [pipeline.py](https://github.com/coenensam/tennis-match-predictor/blob/main/src/tennis_predictor/pipeline.py)，blob `6ab9c1dcfe6388b82a1c2c11234a6432a9696284`。
+- [tests/test_devig.py](https://github.com/coenensam/tennis-match-predictor/blob/main/tests/test_devig.py)，blob `4115981ebfc295f7a0bf33b53bdebd0d5b13cb63`。
+- 網址及上游 raw data 入口均保存；未下載 801k corpus，未執行作者模型／測試，未獨立重現 README 數字。
+
+### 作者公開結果及正確比較群體
+
+README 自報 2000–2026 約 801k ATP/WTA 賽事，時間切分後約 132k 測試；原 Elo LL 0.5979、XGBoost LL 0.5825。
+呢個大群體包含 lower tiers，不能同另一個 2,409 場 tour odds-linked 群體直接互相比數字。
+
+| 同 2,409 場 tour-level odds-linked 群體（作者 README） | Log loss |
+|---|---:|
+| Pinnacle 去水市場 | 0.5980 |
+| Betfair Exchange（README 列出） | 0.5901 |
+| XGBoost | 0.6145 |
+| 原 Elo | 0.6271 |
+
+作者模型較 Elo 好，但仍落後市場。README 報 encompassing `b_close=1.128`／`b_model=−0.141`；本次冇取得該擬合嘅 row-level 證據或係數 CI。
+目前 `clv.py` headline 報 Pinnacle proportional／Shin、XGB、Elo，冇輸出 Betfair 列；README 嘅 exchange 數字不可當現行 module 已驗證重現。
+
+### 值得借鏡，同既有候選去重
+
+1. **學習特徵之間嘅非線性關係**：XGBoost 同時讀 Elo、排名、近期勝率、rest、H2H、serve／return、ace、break-save、對手排名等 18 欄。
+   呢個有別於我哋現役 Elo + 手定 nudges；可與同特徵簡單 logistic／ridge 做公平比較，唔因係 boosting 就當更準。
+   我哋 `fit_hold_ml.py` 曾量 boosted hold regressor，但目標係保發率；唔代表已做相同嘅勝負分類實驗。
+2. **對手賽程強度**：最近 20 場對手排名平均，再計雙方差；作為對手品質摘要，可同既有 opponent buckets／Elo 控制獨立量。
+   Rank 平均受極端排名、缺值及跨 tier 影響，必須看額外貢獻，而唔係只看 feature importance。
+3. **市場以外資訊診斷**：`outcome ~ market_logit + model_logit` 可補充 paired LL/Brier，問模型有冇條件增量。
+   係額外研究診斷，唔取代 frozen ruler；係數正負本身唔足以當證明，應以 match-level uncertainty、穩定性及未用資料驗證。
+4. **自適應場地權重**：`0.7 * n_surface/(n_surface+20)`，併入 C03，唔另開重複候選或直接搬 0.7／20。
+5. **薄資料旗標**：列出無排名對手往績、無 serve history、少於 10 場等具體原因；併入 C04 資料品質及推論一致性盤點。
+   作者薄資料旗標唔可以代替我哋投注 eligibility／證據閘。
+6. **長休 rating decay**：我哋 EXP-20261009-01 C3 已 REJECT；只記重疊，不因另一個 repo 有此功能就重試失敗 arm。
+
+### 程式核對見到嘅限制
+
+- `data.load_matches` 用 `tourney_date + round_ord * 1.3 days` 人工估比賽時間，原始排序仍係 `tourney_date/round_ord/match_num`。
+  呢個唔係已證實 actual start／result-available time；會影響 rest、排序同 train/test 邊界。先記洩漏風險，未量實際污染場數。
+- `predict.predict` 將 `rank_diff` 固定填 0，而訓練用實際雙方排名差；存在明確 train/inference 輸入差異。
+  其他欄位兩邊亦分開手寫，不能單憑 docstring 話「exactly same」就接受 parity。
+- `pipeline` bundle 保存整份資料 replay 後嘅最後 Elo／hist；`predict(match_date=...)` 只改計 rest／decay，唔重建該日之前 state。
+  所以不能攞此入口回到歷史日做 PIT 回測；向前預測亦要保存 state 的 trained-through／observed-through cutoff。
+- 只 randomise A/B 方向，未強制兩次交換調用嘅 `P(A,B)+P(B,A)=1`；tree model 需另做 player-swap 測試／設計。
+- `score_clean` 只供可選 margin 更新使用；WO／RET rows 仍會更新 Elo、form 及進入分類 label。需按研究目標及投注結算合約另定 eligibility，唔混用未完賽結果。
+- `_join_odds_to_preds` 只用無序姓名 pair + 最近日期（容忍 16 日），冇強制 tour／surface／event／round 一致；重賽、同名及多來源配對要審計。
+- 名叫 CLV 嘅 module 實際係對 close 做勝負評分及假設 ROI，冇 entry-price／entry-time 配對；不能當已量到真正 closing-line value。
+- ROI 用 Pinnacle 價判 edge，卻用 `MaxW/MaxL` 跨 book 最高價結算；可以標明做歷史研究，但唔係固定 Sportsbet 策略或可執行收益。
+  多 threshold t-stat 冇提供 paired／cluster bootstrap 或多重比較控制，唔直接搬作成功閘。
+- Encompassing regression 把兩邊鏡像當兩行 fit，冇係數 CI；負 `b_model` 亦唔係「無任何額外資訊」嘅充分證明，可能受共線／校準／反向訊號影響。
+- `train` 係單次 chronological 80/20，test 作 `eval_set`；現有 default 無 early stopping，不能因此直接稱訓練洩漏，但亦未見獨立 dev／calibration／多 fold 穩定性證據。
+- 已讀 tests 只涵蓋去水及兩組姓名 key，不足以證明時間安全、完整 odds linkage、inference parity 或盈利顯著性。
+
+### 本次結論
+
+保留非線性勝負 head、對手賽程強度、以及市場條件增量診斷；場地 shrink／資料品質歸併，長休 decay 保留舊 REJECT。
+模型輸市場同工程限制一併記錄。沒有新實驗、模型改動或表現改善宣稱。
+
 ## 已做研究：避免重複及改寫失敗判決
 
 | 方向 | 既有記錄 | 已知結果／約束 |
@@ -155,14 +245,17 @@ Elo-only fallback ATP 2,843/7,368、WTA 3,271/6,934，serve stats 覆蓋唔完�
 |---|---|---|---|---|
 | C01 | 勝負市場 fixed-logit offset + 網球特徵修正；可先用多 book 歷史訓練 | P01 + 用戶補充 | 查舊 residual 實驗；明示輸入 book，驗證只用 Sportsbet 輸入可行；同場比較及新 forward 證據 | 待整合，未開實驗 |
 | C02 | 勝負去水方法比較，分 book 研究再驗 Sportsbet | P01 + 用戶補充 | 每個 book 同一筆配對價；標 opening／closing，dev 選方法；獨立於 C01 | 待整合，未開實驗 |
-| C03 | 場地樣本量驅動嘅 Elo 收縮 | P01 | 同固定混合基準比較，須可靠場地及歷史樣本數；唔改已 frozen shadow | 待整合，未開實驗 |
-| C04 | 訓練／預測一致性及資料來源時間檢查 | P01／P02 | 核對日期、當時已知資料、報價、缺值及球員方向；先盤點現有修正 | 待整合，未開實作 |
+| C03 | 場地樣本量驅動嘅 Elo 收縮 | P01／P03 | 同固定混合基準比較，須可靠場地及歷史樣本數；唔改已 frozen shadow | 待整合，未開實驗 |
+| C04 | 訓練／預測一致性及資料來源時間檢查 | P01／P02／P03 | 核對日期、當時已知資料、報價、rank／serve 缺值、薄資料原因及 A/B 交換；先盤點現有修正 | 待整合，未開實作 |
 | C05 | 發接球／局數／排名候選歸併 | P01／P02 + EXP07/08/09 | 只記低重疊；新假設須解釋同失敗設計嘅實質分別，保留舊 REJECT | 去重清單，唔重跑舊候選 |
 | C06 | Serve profiles 時間衰減、按 points 曝光量加權及收縮 | P02 | 分開比較 recency／exposure／prior，每項及組合消融；與 EXP09 保持可辨識差異 | 待整合，未開實驗 |
 | C07 | MCP serve／return 資料可用性盤點 | P02 | 先量授權、日期、身份、覆蓋及選樣偏差；canonical match 去重，再考慮新 source A/B | 待整合，未抽資料 |
 | C08 | 精確 DP 取代或核對 Monte Carlo | P02 | 先做小範圍 kernel parity，正確 server／tie-break state；量速度、數值誤差，模型精度獨立量 | 待整合，未開實驗 |
 | C09 | Match-winner 與 props 聯合一致性／anchor | P02 | 不只配勝率；驗證總局、set score、handicap，避免單一目標過度約束；先查已有設計 | 待整合，未開實驗 |
 | C10 | 多 book 訓練資料及 ROI 診斷規格 | 用戶補充 | 保留來源、價格時間與市場合約；dev-only ROI，不挑最好 book，Sportsbet forward 另驗 | 已確認允許，待實驗規劃 |
+| C11 | 非線性 match-winner head（XGBoost 等）對照簡單 logistic | P03 | 先鎖相同賽前特徵／cohort；分離新特徵同 head 增量；time folds、缺值及 inference parity 要完整 | 待整合，未開實驗 |
+| C12 | 最近對手賽程強度摘要 | P03 | 與 Elo／排名／opponent buckets 控制比較；缺值及跨 tier 分層，獨立及組合消融 | 待整合，未開實驗 |
+| C13 | 市場條件增量／encompassing 診斷 | P03 | 同場 market＋model，match-level CI／穩定性驗證；不以係數符號取代 paired LL／Brier 或 frozen gate | 待整合，未實作診斷 |
 
 ## 完成項目比較後嘅統一執行框架
 
