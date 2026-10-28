@@ -115,3 +115,27 @@ This does not resolve concurrent ownership of changed plists or shared cutover
 exclusion/active-run discovery. It is unmerged WIP, not installed, and the earlier
 1891-second full run predates this source. No historical snapshot/event was
 rewritten and no live installer/job mutation occurred.
+
+## Separate core evidence/bookkeeping correction
+
+The same authorized reviewer confirmed new private persistent recovery roots,
+restore-exception bookkeeping and expected-current boundary checks. It found
+missing rollback diagnostics when event storage failed, and missing context/
+actionable paths when success recording failed. Both were corrected: failure
+context records rollback outcomes before event append; unrecorded completed
+actions preserve backups/context and block replay without claiming success or
+asserting that a process is alive. The reviewer found no further must-fix issue
+in that narrow core patch. HEAD checks remain non-atomic; lease/CAS are open.
+
+Final isolated core/process regressions: **24 passed in 69.83 s**,
+`wc-run-ukjp37fn`; quick `wc-run-gnpfw86p` passed. Source full/clean immutable
+approval gates for a proposed code-only release have not run at this checkpoint.
+Its allowed plan is four-domain code synchronization with no installer or
+Dashboard action. It must not activate the foreign NBA cadence or be described
+as reconciliation/cadence/Stage5 completion.
+
+Automatic safety review rejected a proposed temporary strict-parser reversion
+for an optional RED experiment. No guard was weakened and no workaround or
+indirect legacy execution followed. The safe alternative was to retain strict
+code and validate an isolated tracked-whitespace fixture. This is not counted
+as RED evidence and requires no extra user approval.

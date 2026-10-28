@@ -137,3 +137,39 @@ while these findings and foreign-cadence/target-provenance restrictions remain.
 
 Keep this incomplete work on its non-main preservation branch. Do not release
 the preview as though it completes the approved workflow or cadence acceptance.
+
+## Separate core recovery-evidence checkpoint
+
+Owned core changes in `release_activation.py` and its regression tests can be
+reviewed/released independently from the unfinished unified installer. They
+retain failed recovery snapshots under a private unique Control
+`activation-recovery` attempt directory, link that root in the start/failure
+events, persist rollback results/errors/status before recording failure, and
+continue Git recovery after restore-spawn exceptions. Unrecorded completed
+runtime actions retain context/backups and block automatic replay; they are not
+reported as a successful deployment.
+
+Production status probe failures now block sync/reset. Raw NUL path identity is
+preserved, including whitespace, with rename pairing disabled. Expected-current
+HEAD checks reject an observed concurrent clean commit at rollback boundaries;
+they are **not atomic** and do not replace the still-open shared lease/Git CAS.
+
+Actual RED evidence: restore exit/OSError `wc-run-bnr4cf6n`, clean concurrent
+HEAD `wc-run-y6uat9el`, failure-event outage `wc-run-z1hp0zmj`, status128
+`wc-run-8gjjjbqb`. The success-event fixture initially selected an unchanged
+deploy.sh and was corrected; that setup failure is not a RED reproduction.
+The original whitespace fixture already blocked an untracked directory. An
+optional attempt to revert the strict parser for RED was rejected by automatic
+safety review; no guard change was applied, no bypass or legacy execution
+followed. Strict guards stayed in place; only the isolated tracked-file fixture
+was improved. Final core/process tests: **24 passed in 69.83 s**,
+`wc-run-ukjp37fn`; quick `wc-run-gnpfw86p` passed. The same independent reviewer
+found no required correction in the narrow core patch, without approving release.
+
+Next safe delivery is an exact three-path **code-only** release (core, tests,
+standalone plan) from current main through normal full/immutable gates. Its
+activation plan must contain four-domain code sync and `installers: []`, no
+Dashboard deploy and no manual installer requirement. This is not a no-op delta
+or an old release replay. The unfinished preview/installer/ownership/lease/intent
+work stays on this preservation branch. Code synchronization does not prove the
+research calendar, native firing, pilot, model or Stage5 acceptance.
