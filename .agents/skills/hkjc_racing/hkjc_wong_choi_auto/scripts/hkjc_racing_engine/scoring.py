@@ -569,9 +569,10 @@ def score_band(score):
 # 引擎搵「進步」但 Facts 寫「📈改善中」，+5 由 2026-06-19 接線起從未觸發，上線嘅只係單邊 −5；
 # 同一個完成時間偏差已經由 SpeedScorer 嘅「步速修正等級」計分。
 
-# 配備訊號（2026-07-10 pit backtest，15 賽日 153 場）：
-#   除去配備 −3 於 TRAIN/TEST 齊升（FULL min +0.7、gold +0.7、single +0.6，
-#   零回退；−1/−2/−3 同方向、單調）→ 入分。
+# 配備訊號：全部只做顯示，唔入分。
+#   除去配備 −3（2026-07-10 用 v1 回測加入）已於 2026-10-29 剷走（EXP-20261010-05）：
+#   v3 dev 286 場 NDCG +0.0021 CI 清零（Holm p 0.016），預先登記 forward 59 場
+#   Gold／Good Δ 0、NDCG +0.0004 → 過關。
 #   初戴（任何/淨眼罩/晨操預演 gated）全部 NULL 或過擬合（TRAIN 升 TEST 唔升）
 #   → 只做顯示。詳見 memory hkjc-gear-module-spec。
 # 官方傷患記錄頁點入馬匹健康分（EXP-20261020-02 預先登記，未判決）。
@@ -580,10 +581,6 @@ def score_band(score):
 #   "no_clear" = 短評冇事故但有官方記錄 → 唔俾醫療清白 +2
 # 淨「表現」覆檢唔計。改呢個值 = 改模型，要跟判決。
 OFFICIAL_INJURY_SCORING = "off"
-
-GEAR_SIGNAL_WEIGHTS = {
-    "gear_removed_pen": -3.0,
-}
 
 TRACKWORK_MICRO_WEIGHTS = {
     # 1. LLM 綜合文字指標 (Text-based trend)

@@ -40,3 +40,17 @@
 - **判決規則**（預先寫死）：Gold 同 Good 嘅 Δ 都 ≥ 0，同埋 NDCG@5 Δ ≥ 0 → 剷走 `GEAR_SIGNAL_WEIGHTS["gear_removed_pen"]`。
   任何一項 < 0 → 維持 −3，記錄 forward 失敗。唔准換指標、換窗口或者重開。
 - 每週 Telegram review 會報 forward 進度，夠數就提示。
+
+## Forward 確認結果（2026-10-29 開，只開一次）
+
+- **命令**：同上面預先登記嘅三條，冇改；base 於 `origin/main` `244a7bb5`，`PYTHONDONTWRITEBYTECODE=1`。
+- **窗口**：2026-10-11 → 2026-10-28，6 個賽日，59 場配對（0 場剔除；8 場排名有變）。
+  `sample_hash 99cbe28759b46fd5d810a45dc5f3718756ad208e4222cce963097b476656862a`
+- **預先登記指標**：Gold Δ **0.00pp**、Good Δ **0.00pp**（6/6 塊都係 0）、NDCG@5 Δ **+0.0004**
+  [−0.0029, +0.0040] → 三項都 ≥ 0 → **過關，剷走**。
+- **照記嘅唔利資料（唔係判決指標）**：harness v3 判決係 REJECT `ranking_evidence_too_weak`；
+  top3_capture@5 −0.0056 [−0.0164, 0]、competitive_recall@5 −0.0034。即係 forward 靠「冇變」過關，
+  唔係靠贏；剷走嘅理由係 dev 有 CI 清零嘅 RANKING_WIN、forward 冇顯示有害、少一條手調規則。
+- **決定**：Kelvin 2026-10-29 批准剷走。`GEAR_SIGNAL_WEIGHTS` 刪除，`_apply_trainer_signal_v3`
+  變返 `clip_score(base)`（同 arm 逐字等價），配備變動只做顯示。golden 120 匹馬全部一致
+  （fixture 冇除去配備嘅馬）。
