@@ -12,7 +12,24 @@
 | 編號 | 項目 | 比較日期 | 狀態 |
 |---|---|---|---|
 | P01 | [tennis-analytics-prediction](https://github.com/theayobamiakin/tennis-analytics-prediction) | 2026-10-28 | 已讀 README、advanced model、公開 metrics 及測試；未獨立重跑 |
-| P02 起 | 待用戶提供其他項目 | — | 待比較 |
+| P02 | [Tennis-Modelling](https://github.com/DanielTomaro13/Tennis-Modelling) | 2026-10-28 | 已讀 features／sim／evaluate／predict／ratings、config 及公開 backtest；未獨立重跑 |
+| P03 起 | 待用戶提供其他項目 | — | 待比較 |
+
+## 訓練資料範圍（2026-10-28 用戶補充）
+
+用戶明確允許：可以用其他莊家嘅歷史資料及 ROI 做訓練用途／研究，資料不足時尤其有用。
+呢個更新取代本筆記之前「所有市場資料只用 Sportsbet」嘅限制；歷史實驗文件保留當時約束，唔倒改舊判決。
+
+- 可用逐場歷史賠率、賽果、可證明賽前嘅網球資料做模型訓練；開發期歷史 ROI 可作策略／門檻研究指標。
+  一個公開總 ROI 數字本身唔係逐場訓練資料，唔可直接當球員實力特徵；未來收益亦不可倒流入當場預測。
+- 凍結 book／quote type／timestamp／market contract／source／split；同一場多個 book 係相關觀察，唔當多場獨立樣本；切 train/dev/test 時同一場所有 book 必須留喺同一時間 fold。
+- 跨 book 嘅 closing 價可以標明做收市基準、研究或 auxiliary target；不能當我哋較早預測時已知嘅輸入。
+  無 timestamp 嘅資料只作有限歷史研究，唔冒充已驗證 PIT 或可執行回報。
+- 用多 book 資料訓練，不等於上線要多 book 同時有價；需驗證只提供 Sportsbet 可用輸入時仍可定價。
+  如果模型實際要新 book 價做輸入，方法論及資料依賴必須另行明示。
+- 其他 book 嘅開發期 ROI 不能代替 Sportsbet forward 表現；不以今日結果挑最好 book／年份／價型去救失敗候選。
+  同一預先鎖定候選同時報 LL／Brier、校準、coverage、分 book 結果及收益不確定性。
+- 已看過或已用來選參嘅資料全部標 dev；擴充 bookmaker 資料唔會令舊 holdout 再次變成 untouched。
 
 ## P01：tennis-analytics-prediction
 
@@ -56,6 +73,68 @@
 - 對方評估重點係 ATP/WTA main-tour 勝負，唔係我哋全部 Challenger／ITF／props。
 - 測試涵蓋去水及特徵翻轉，未足以單憑綠燈證明整條時間隔離安全。
 
+## P02：DanielTomaro13/Tennis-Modelling
+
+### 可核對來源及範圍
+
+- [README](https://github.com/DanielTomaro13/Tennis-Modelling/blob/main/README.md)：註明 September 2026 Actions 暫停，網站／資料停留最後 build；唔當當日 live forecast。
+- [features.py](https://github.com/DanielTomaro13/Tennis-Modelling/blob/main/src/features.py)，blob `311f8e0094e17dd1124e28a2703c2f572dc90d01`。
+- [sim.py](https://github.com/DanielTomaro13/Tennis-Modelling/blob/main/src/sim.py)，blob `17937451bd1e65fafbfcc7b7c314c77bc374d217`。
+- [evaluate.py](https://github.com/DanielTomaro13/Tennis-Modelling/blob/main/src/evaluate.py)，blob `e01c4aa7351f652a403484ce55d595feb79afa81`。
+- [predict.py](https://github.com/DanielTomaro13/Tennis-Modelling/blob/main/src/predict.py)，blob `56333b657533b94fc250c2ba9195bb599efc0c9b`。
+- [ratings.py](https://github.com/DanielTomaro13/Tennis-Modelling/blob/main/src/ratings.py)，blob `454a9c80a01a3a58608e1fd43ea3eba1d2d383c0`。
+- [config.yaml](https://github.com/DanielTomaro13/Tennis-Modelling/blob/main/config.yaml)，blob `bb44ada95b3802966e9a5a24aed9b1f3782d0e3b`。
+- [reports/backtest.json](https://github.com/DanielTomaro13/Tennis-Modelling/blob/main/reports/backtest.json)，blob `a0516c0f93b0030804b6b515277de5cbac63ae10`。
+- 只讀程式及公開結果，冇執行作者程式或模型；main 可變，正式重現仍需凍結 commit／raw data。
+
+### 公開結果：唔係已證明贏市場
+
+程式以 2024 起作測試；serve profiles 凍結喺 2024 之前，Elo 按歷史次序更新。
+公開報告如下，市場係 closing odds proportional 去水，唔係 Sportsbet 開盤價：
+
+| Tour | 全部 N | 有市場 N | 模型 LL（同有市場群體） | 市場 LL | 模型−市場 |
+|---|---:|---:|---:|---:|---:|
+| ATP | 7,368 | 7,362 | 0.6301 | 0.5946 | +0.0355 |
+| WTA | 6,934 | 6,927 | 0.6288 | 0.5905 | +0.0383 |
+
+兩邊都落後市場。全部樣本 blend 對 Elo-only：ATP LL 0.6300 vs 0.6310；WTA 0.6287 vs 0.6288，增量細且此報告冇 paired CI。
+Elo-only fallback ATP 2,843/7,368、WTA 3,271/6,934，serve stats 覆蓋唔完整。
+已讀 backtest 只驗勝負；不能由勝負 LL 推論 totals／handicap／ace 等 props 已過閘，亦冇從呢個檔案取得可核對盈利證據。
+
+### 值得學嘅設計，同我哋嘅差別
+
+1. **精確機率遞推引擎**：實際 `sim.py` 用 closed-form／dynamic programming，
+   每分→保發→單盤→全場，輸出同一個 joint distribution 嘅勝負、盤數、局數及讓局。
+   README／config 仍提 Monte Carlo，但現有單打程式唔係靠抽樣。
+   我哋已有 hold→set→match Monte Carlo，引擎換 DP 首先係消除抽樣誤差／工程速度候選，唔等於改善 hold estimate 或勝負辨識力。
+2. **時間衰減 + 發球分數曝光量加權**：`weight=2^(-age/half_life)`，再乘 service／return points；
+   樣本按加權 points 收縮，唔只按場數平均。對方 half-life=365、prior=250 points、min=60 係佢設定，唔直接搬。
+   我哋 serve profile 用最近 25 場及最少 5 場，呢個係可獨立消融嘅實質差別。
+3. **新資料來源**：Match Charting Project 的 Overview aggregates 可作 serve／return／ace／double-fault 資料候選。
+   它係被 charted 嘅子集，唔等於完整 tour；要量時間新鮮度、球員／場地覆蓋、選樣偏差及授權，避免同現有來源重複計同一場。
+4. **勝負同衍生盤一致性**：用 Elo／serve blend 勝率反求 point edge，再重算全本盤。
+   呢個係不同於現有 match-winner 與 props 各自輸出嘅設計，但一個勝率唔足以唯一決定兩位球員保發率或總局數；需保留 serve-level 證據及多市場驗證。
+5. **Ace／DF 建模用 rate × opportunities**：方向合理，但我哋已有 ace exposure 候選及研究工具；
+   不能當新模型即刻採用，更不能只因同一分佈輸出好多市場就自動開 family。
+
+### 程式檢視見到嘅問題／證據限制
+
+- `project_match`／`distributions` 按盤號固定 A、B、A 輪流首發，state 冇保存上一盤完結後 server。
+  例如首盤 6-4 有 10 局，下一盤應沿用同一首發方向；固定換人係可辨識嘅規則錯誤。
+  我哋同類修正已記 [EXP-20261026-05](../experiments/EXP-20261026-05-tennis-simulator-service-order.md)，唔應搬返呢個做法。
+- Ace／DF exposure 用 `exp_games_a`（A 贏嘅局數）乘 `game_expected_points(p_a)`，當成 A 發球 points。
+  贏局數唔等於發球局數，break 亦計入贏局；呢個量綱／計數錯配會污染 ace means。需追蹤真正服務局及 tie-break points，唔照抄。
+- `features._f` 缺失／非數字回傳 0；部分比例有分母保護但無完整值域／缺值旗標。不能假定缺 ace／serve count 就等於零。
+- Config 註解提到用 holdout testing 揀 Elo 比重；無獨立 untouched 分割／選參紀錄之前，唔因程式標榜 leakage-safe 就當完整 OOS 證據。
+- Backtest serve profiles 固定喺測試前，但 production 用更新後 profiles；係合法固定前期基準，但未完全重演每日更新嘅生產流程。
+- Elo 按日期排序逐行更新，無同日開賽時間／結果可用時間證據；同日多場次序需另驗，今次未量實際污染場數。
+- `anchor_to` 調整 point edge 只係令一個目標勝率相近，唔證明整個 props distribution 校準。缺 profile 用 league mean 亦要向用戶標明薄資料，唔當實際球員資料。
+
+### 本次結論
+
+保留 DP 引擎參考、曝光量／時間加權、MCP 來源及跨市場一致性研究；拒絕直接搬模型／參數。
+作者公開回測未贏市場，程式存在可辨識正確性問題；今次冇新 A/B 或改善證據。
+
 ## 已做研究：避免重複及改寫失敗判決
 
 | 方向 | 既有記錄 | 已知結果／約束 |
@@ -74,16 +153,21 @@
 
 | ID | 想法 | 來源 | 下一步／依賴 | 狀態 |
 |---|---|---|---|---|
-| C01 | Sportsbet 勝負：市場 fixed-logit offset + 網球特徵修正 | P01 | 查舊 residual 實驗；凍結同場現役／市場／候選對照；需要可信 PIT、資料量及新 forward 證據 | 待整合，未開實驗 |
-| C02 | Sportsbet 勝負去水方法獨立比較 | P01 | 用同一筆配對最早賽前價，dev 選方法；獨立於 C01，唔同時換模型及市場基準 | 待整合，未開實驗 |
+| C01 | 勝負市場 fixed-logit offset + 網球特徵修正；可先用多 book 歷史訓練 | P01 + 用戶補充 | 查舊 residual 實驗；明示輸入 book，驗證只用 Sportsbet 輸入可行；同場比較及新 forward 證據 | 待整合，未開實驗 |
+| C02 | 勝負去水方法比較，分 book 研究再驗 Sportsbet | P01 + 用戶補充 | 每個 book 同一筆配對價；標 opening／closing，dev 選方法；獨立於 C01 | 待整合，未開實驗 |
 | C03 | 場地樣本量驅動嘅 Elo 收縮 | P01 | 同固定混合基準比較，須可靠場地及歷史樣本數；唔改已 frozen shadow | 待整合，未開實驗 |
-| C04 | 訓練／預測一致性及資料來源時間檢查 | P01 | 核對日期、當時已知資料、報價、缺值及球員方向；先盤點現有修正 | 待整合，未開實作 |
-| C05 | 發接球／局數／排名候選歸併 | P01 + EXP07/08/09 | 只記低重疊；新假設須解釋同失敗設計嘅實質分別，保留舊 REJECT | 去重清單，唔重跑舊候選 |
+| C04 | 訓練／預測一致性及資料來源時間檢查 | P01／P02 | 核對日期、當時已知資料、報價、缺值及球員方向；先盤點現有修正 | 待整合，未開實作 |
+| C05 | 發接球／局數／排名候選歸併 | P01／P02 + EXP07/08/09 | 只記低重疊；新假設須解釋同失敗設計嘅實質分別，保留舊 REJECT | 去重清單，唔重跑舊候選 |
+| C06 | Serve profiles 時間衰減、按 points 曝光量加權及收縮 | P02 | 分開比較 recency／exposure／prior，每項及組合消融；與 EXP09 保持可辨識差異 | 待整合，未開實驗 |
+| C07 | MCP serve／return 資料可用性盤點 | P02 | 先量授權、日期、身份、覆蓋及選樣偏差；canonical match 去重，再考慮新 source A/B | 待整合，未抽資料 |
+| C08 | 精確 DP 取代或核對 Monte Carlo | P02 | 先做小範圍 kernel parity，正確 server／tie-break state；量速度、數值誤差，模型精度獨立量 | 待整合，未開實驗 |
+| C09 | Match-winner 與 props 聯合一致性／anchor | P02 | 不只配勝率；驗證總局、set score、handicap，避免單一目標過度約束；先查已有設計 | 待整合，未開實驗 |
+| C10 | 多 book 訓練資料及 ROI 診斷規格 | 用戶補充 | 保留來源、價格時間與市場合約；dev-only ROI，不挑最好 book，Sportsbet forward 另驗 | 已確認允許，待實驗規劃 |
 
 ## 完成項目比較後嘅統一執行框架
 
 1. 合併相同想法，標示已有工具、缺資料、已否決及真正新假設；先確認工程缺陷係咪仍存在。
-2. 以同一份凍結語料、同一可用時間及同一群體量 baseline；市場資料暫按既有偏好只用 Sportsbet。
+2. 以同一份凍結語料、同一可用時間及同一群體量 baseline；允許多 book 歷史訓練／開發期 ROI，分 book 報告，Sportsbet forward 可執行性另驗。
 3. 每個模型假設另寫 `docs/experiments/` 事前登記；沿用 frozen tennis ruler、舊 dev/holdout 規則，唔以已睇過嘅資料冒充全新 holdout。
 4. 工程正確性修正同模型候選分開量；多特徵須單項及組合消融，唔靠一個合併結果歸功。
 5. 報同場 paired LL／Brier、分層、coverage／缺值，以及可執行價格下嘅 P/L／ROI／CLV；未證實可執行就只報研究診斷。
