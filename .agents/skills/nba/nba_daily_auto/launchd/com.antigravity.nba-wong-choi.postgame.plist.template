@@ -2,7 +2,9 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>com.antigravity.nba-wong-choi.postgame</string>
-  <key>ProgramArguments</key><array><string>__RUNNER__</string><string>postgame</string></array>
+  <key>ProgramArguments</key><array><string>__RUNNER__</string><string>postgame</string><string>--incremental-results</string></array>
+  <!-- Cheap local wakeup; external calls are gated by each verified source tip time. -->
+  <key>StartInterval</key><integer>900</integer>
   <key>StartCalendarInterval</key><array>
     <dict><key>Hour</key><integer>18</integer><key>Minute</key><integer>30</integer></dict>
     <dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>30</integer></dict>

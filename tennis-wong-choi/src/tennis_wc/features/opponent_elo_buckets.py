@@ -3,6 +3,9 @@ from __future__ import annotations
 from datetime import date
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.database.history_observations import history_active_clause
+from tennis_wc.features.history_values import clean_history_row
+from tennis_wc.features.history_asof import guard_clause, guard_params
 from tennis_wc.features.common import rate, shrink_rate
 
 
@@ -45,6 +48,7 @@ def calculate_player_elo_bucket_stats(
     surface: str | None,
     as_of_date: date,
     time_window: str,
+    *, start_time: str | None = None,
 ) -> dict:
     start = "0001-01-01"
     if time_window == "LAST_52_WEEKS":
@@ -57,11 +61,13 @@ def calculate_player_elo_bucket_stats(
         WHERE player_id = ? AND match_date >= ? AND match_date < ?
     """
     params: list = [player_id, start, as_of_date.isoformat()]
+    query += guard_clause()
+    params.extend(guard_params(as_of_date.isoformat(), start_time))
     if surface:
         query += " AND lower(surface) = lower(?)"
         params.append(surface)
     with get_connection() as conn:
-        rows = [dict(row) for row in conn.execute(query, params).fetchall()]
+        rows = [clean_history_row(row) for row in conn.execute(query + f" AND {history_active_clause(conn)}", params).fetchall()]
     prior = rate(sum(1 for row in rows if row["won"]), len(rows)) or 0.5
     buckets = {bucket: [] for bucket in ELO_BUCKETS}
     for row in rows:

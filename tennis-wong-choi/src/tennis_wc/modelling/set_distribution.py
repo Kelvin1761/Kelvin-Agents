@@ -14,8 +14,9 @@ Key reality the iid model misses: straight-sets endings are far MORE common
 than independence predicts (form-of-the-day correlation between sets) — the
 old heuristic said up to 62% three-setters for coin-flips; reality ~38%.
 
-Live input is the model's match probability (externally validated as
-well-calibrated). Table is BO3 only — BO5 markets keep their old fallbacks.
+Live input is the caller's estimated match probability; selected live-market
+calibration requires independent evidence. The table supports BO3 only; the
+daily prop pipeline holds unsupported match formats.
 Rebuild with scripts/build_set_distribution.py after large history growth.
 """
 from __future__ import annotations

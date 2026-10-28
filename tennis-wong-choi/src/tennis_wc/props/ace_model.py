@@ -6,16 +6,19 @@ Pipeline for one match:
   2. Predict the match total-ace MEAN by blending both players' serve rate with
      the opponent's conceded rate (a good returner suppresses aces).
   3. Convert (line, predicted_mean) -> P(total >= line) via CALIBRATION_CURVE,
-     an empirical survival curve fit on 27,299 historical matches. Because it is
-     a realised frequency, P(over) is calibrated by construction (no Poisson /
-     Normal skew error -- both were rejected during the build).
+     a frozen historical survival curve. A historical frequency does not
+     establish calibration for the selected live-market population.
   4. Price each offered Sportsbet "N+" rung: de-vig the market, shrink the model
-     toward the market prior (we cannot yet backtest, so stay conservative),
+     toward the market prior using registered family reliability,
      compute edge + EV, and pick the NBA-style "line below form" anchor.
 
 All functions take an open sqlite connection so they are unit-testable.
 """
 from __future__ import annotations
+
+from tennis_wc.database.history_observations import history_active_clause
+
+from tennis_wc.features.history_values import clean_history_row, measurement
 
 from dataclasses import dataclass, field
 import math
@@ -145,6 +148,8 @@ class AceProfile:
     service_games_mean: float | None = None
     ace_rate: float | None = None
     conceded_ace_rate: float | None = None
+    history_ids: tuple[int,...] = ()
+    conceded_history_ids: tuple[int,...] = ()
 
 
 def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | None,
@@ -158,10 +163,11 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
     guard = guard_params(as_of_date, start_time)
     rows = conn.execute(
         f"""
-        SELECT h.match_date, h.surface, h.ace_count, h.service_games_played
+        SELECT h.id,h.match_date, h.surface, h.ace_count, h.service_games_played
         FROM player_match_history h
-        WHERE h.player_id = ? AND h.ace_count IS NOT NULL AND h.match_date < ?
+        WHERE h.player_id = ? AND typeof(h.ace_count) IN ('integer','real') AND h.ace_count>=0 AND h.ace_count=CAST(h.ace_count AS INTEGER) AND h.match_date < ?
           {guard_clause("h")}
+          AND {history_active_clause(conn,"h")}
           AND (
               SELECT COUNT(*)
               FROM player_match_history duplicate
@@ -169,12 +175,14 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
                 AND duplicate.opponent_id = h.opponent_id
                 AND duplicate.match_date = h.match_date
                 AND duplicate.ace_count IS NOT NULL
+                AND {history_active_clause(conn,"duplicate")}
           ) = 1
         ORDER BY match_date DESC
         LIMIT ?
         """,
         (player_id, as_of_date, *guard, last_n),
     ).fetchall()
+    rows = [clean_history_row(row) for row in rows]
     aces = [float(r["ace_count"]) for r in rows]
     surf_aces = [float(r["ace_count"]) for r in rows if (r["surface"] or "").lower() == surf]
     overall = sum(aces) / len(aces) if aces else _GLOBAL_ACE_FALLBACK
@@ -206,7 +214,7 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
     # aces this player conceded = opponent's aces in the player's recent matches
     conc_rows = conn.execute(
         f"""
-        SELECT o.ace_count AS opp_aces,
+        SELECT o.id,o.ace_count AS opp_aces,
                o.service_games_played AS opp_service_games
         FROM player_match_history p
         JOIN player_match_history o
@@ -214,9 +222,11 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
          AND o.source_provider = p.source_provider
          AND replace(replace(o.provider_match_id, '-winner', ''), '-loser', '')
              = replace(replace(p.provider_match_id, '-winner', ''), '-loser', '')
-        WHERE p.player_id = ? AND p.match_date < ? AND o.ace_count IS NOT NULL
+        WHERE p.player_id = ? AND p.match_date < ? AND typeof(o.ace_count) IN ('integer','real') AND o.ace_count>=0 AND o.ace_count=CAST(o.ace_count AS INTEGER)
           AND p.ace_count IS NOT NULL
           {guard_clause("p")}
+          {guard_clause("o")}
+          AND {history_active_clause(conn,"p")} AND {history_active_clause(conn,"o")}
           AND (
               SELECT COUNT(*)
               FROM player_match_history duplicate
@@ -224,11 +234,14 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
                 AND duplicate.opponent_id = p.opponent_id
                 AND duplicate.match_date = p.match_date
                 AND duplicate.ace_count IS NOT NULL
+                AND {history_active_clause(conn,"duplicate")}
           ) = 1
         ORDER BY p.match_date DESC LIMIT ?
         """,
-        (player_id, as_of_date, *guard, last_n),
+        (player_id, as_of_date, *guard, *guard, last_n),
     ).fetchall()
+    conc_rows = [{**dict(row), "opp_service_games": measurement(row["opp_service_games"])}
+                 for row in conc_rows]
     conc = [float(r["opp_aces"]) for r in conc_rows]
     conceded = sum(conc) / len(conc) if conc else None
     conc_exposed = [
@@ -249,6 +262,8 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
         ace_rate=round(ace_rate, 6) if ace_rate is not None else None,
         conceded_ace_rate=(round(conceded_rate, 6)
                            if conceded_rate is not None else None),
+        history_ids=tuple(int(r['id']) for r in rows),
+        conceded_history_ids=tuple(int(r['id']) for r in conc_rows),
     )
 
 

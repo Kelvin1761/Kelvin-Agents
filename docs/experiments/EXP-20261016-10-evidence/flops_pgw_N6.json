@@ -1,0 +1,1 @@
+{"label": "pgw_N6_vs_eq2_N6", "races": 2485, "top2_bottom_third_rate": {"base": 0.1455, "cand": 0.1445, "delta": -0.001, "ci": [-0.0043, 0.0023], "p": 0.623}, "longshot15_top2_bottom_count": {"base": 166, "cand": 161, "delta": -5, "ci": [-15, 5], "p": 0.373}, "top1_bottom_third_rate": {"base": 0.1304, "cand": 0.1276, "delta": -0.0028, "ci": [-0.0088, 0.0033], "p": 0.387}}

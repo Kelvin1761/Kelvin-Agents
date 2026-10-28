@@ -27,6 +27,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from tennis_wc.evaluation.corpus import point_in_time_clause
+from tennis_wc.database.result_consensus import result_agreement_clause
 from tennis_wc.props.registry import family_for_market
 
 MIN_SETTLED = 120
@@ -53,6 +54,8 @@ class FamilyReliability:
     model_weight: float
     model_brier: float | None
     market_brier: float | None
+    unverified_quality_rows: int = 0
+    contract_excluded_rows: int = 0
 
     @property
     def evidence_ratio(self) -> float:
@@ -90,99 +93,52 @@ def family_reliability(conn, family: str, as_of_date: str | None = None) -> Fami
     far smaller samples and more families sitting on DEFAULT_MODEL_WEIGHT, which
     is the honest state rather than a regression.
     """
-    # MIN over EVERY snapshot ever written was the pattern `snapshot_quality`
-    # was created to replace, and this call site was missed: it graded a match
-    # on the worst quality it had ever had, so no rebuild could ever return a
-    # row to the sample. The weight fit is the one place where losing rows to a
-    # stale score is least visible.
-    from tennis_wc.features.snapshot_quality import LATEST_QUALITY_CTE
+    from tennis_wc.props.pricing_evidence import read_evidence
 
-    try:
-        params: list = []
-        date_clause = ""
-        if as_of_date:
-            date_clause = "AND p.match_date < ?"
-            params.append(as_of_date)
-        rows = conn.execute(
-            f"""
-            WITH quality AS ({LATEST_QUALITY_CTE})
-            SELECT p.match_id, p.match_date, p.market_key, p.model_prob_raw,
-                   p.market_prob_fair, p.result_status,
-                   q.data_quality_score AS data_quality,
-                   p.subject_player_id, m.player_a_id, m.player_b_id
-            FROM prop_tracker p
-            JOIN matches m ON m.id=p.match_id
-            LEFT JOIN quality q ON q.match_id=p.match_id
-            WHERE p.result_status IN ('WON','LOST')
-              AND {point_in_time_clause('p')}
-              AND p.model_prob_raw IS NOT NULL
-              AND p.market_prob_fair IS NOT NULL
-              AND p.side='over'
-              AND (p.prop_scope!='player_first_set'
-                   OR p.subject_player_id=m.player_a_id)
-              {date_clause}
-            ORDER BY p.match_date,p.id
-            """,
-            tuple(params),
-        ).fetchall()
-    except Exception:
-        rows = []
-    serve_count_families = {
-        "player_aces", "match_total_aces", "player_double_faults"
-    }
-    serve_quality_cache: dict[tuple[int, str, str], float] = {}
-
-    def serve_quality(row, row_family: str) -> float:
-        if row_family == "match_total_aces":
-            player_ids = (row["player_a_id"], row["player_b_id"])
-            column = "ace_count"
-        elif row_family == "player_aces":
-            subject = row["subject_player_id"]
-            opponent = (
-                row["player_b_id"]
-                if subject == row["player_a_id"] else row["player_a_id"]
-            )
-            player_ids = (subject, opponent)
-            column = "ace_count"
-        else:
-            player_ids = (row["subject_player_id"],)
-            column = "double_fault_count"
-        counts = []
-        for player_id in player_ids:
-            if player_id is None:
-                return 0.0
-            key = (int(player_id), str(row["match_date"]), column)
-            if key not in serve_quality_cache:
-                serve_quality_cache[key] = conn.execute(
-                    f"SELECT COUNT(*) FROM (SELECT 1 FROM player_match_history "
-                    f"WHERE player_id=? AND match_date<? AND {column} IS NOT NULL "
-                    "ORDER BY match_date DESC LIMIT 15)",
-                    (player_id, row["match_date"]),
-                ).fetchone()[0] / 15.0
-            counts.append(serve_quality_cache[key])
-        return min(counts, default=0.0)
-
+    columns = {row['name'] for row in conn.execute('PRAGMA table_info(prop_tracker)')}
+    receipt = 'p.pricing_evidence_json' if 'pricing_evidence_json' in columns else 'NULL'
+    params: list = []
+    date_clause = ""
+    if as_of_date:
+        date_clause = "AND p.match_date < ? AND julianday(p.settled_at) < julianday(?)"
+        params.extend((as_of_date, as_of_date))
+    rows = conn.execute(
+        f"""
+        SELECT p.id,p.feed_market_name,p.match_id,p.match_date,p.market_key,p.model_prob_raw,
+               p.market_prob_fair,p.result_status,{receipt} AS pricing_evidence_json
+        FROM prop_tracker p
+        JOIN matches m ON m.id=p.match_id
+        WHERE p.result_status IN ('WON','LOST')
+          AND {point_in_time_clause('p')}
+          AND {result_agreement_clause('p')}
+          AND p.model_prob_raw IS NOT NULL AND p.market_prob_fair IS NOT NULL
+          AND p.side='over'
+          AND (p.prop_scope!='player_first_set' OR p.subject_player_id=m.player_a_id)
+          {date_clause}
+        ORDER BY p.match_date,p.id
+        """, tuple(params),
+    ).fetchall()
+    from tennis_wc.props.evidence_contract import verified_contract_rows
+    rows, contract_audit = verified_contract_rows(rows)
+    excluded = len(contract_audit['excluded']) if family == 'match_total_games' else 0
     sample = []
+    unverified = 0
     for row in rows:
-        row_family = family_for_market(row["market_key"])
-        if row_family != family:
+        if family_for_market(row['market_key']) != family:
             continue
-        quality = float(row["data_quality"] or 0)
-        if quality > 1:
-            quality /= 100
-        # Serve-count models use their own causal history profiles and do not
-        # consume the match feature snapshot.  Grade them on the exact serve
-        # history available before that match, not an unrelated quality score.
-        if (
-            serve_quality(row, row_family) >= 0.65
-            if row_family in serve_count_families else quality >= 0.65
-        ):
+        evidence = read_evidence(row['pricing_evidence_json'])
+        quality = evidence.get('source_quality') if evidence else None
+        # Legacy rows retain their raw scorecard, but later rebuilds cannot
+        # manufacture evidence of the quality actually used when priced.
+        if quality is None:
+            unverified += 1
+        if quality is not None and float(quality) >= 0.65:
             sample.append(row)
     n = len(sample)
     if not sample:
         return FamilyReliability(
             family, as_of_date, 0, DEFAULT_MODEL_WEIGHT, DEFAULT_MODEL_WEIGHT,
-            None, None,
+            None, None, unverified, excluded,
         )
     numerator = denominator = model_error = market_error = 0.0
     for row in sample:
@@ -207,6 +163,8 @@ def family_reliability(conn, family: str, as_of_date: str | None = None) -> Fami
         model_weight=round(model_weight, 6),
         model_brier=round(model_error / n, 6),
         market_brier=round(market_error / n, 6),
+        unverified_quality_rows=unverified,
+        contract_excluded_rows=excluded,
     )
 
 
@@ -222,7 +180,7 @@ def reliability_note(profile: FamilyReliability) -> str:
         state = "市場較可靠"
     return (
         f"{profile.family}: 模型權重 {profile.model_weight:.0%}｜"
-        f"先前已結算 {profile.settled}｜{state}"
+        f"先前已結算 {profile.settled}｜{state}｜品質證據未核實 {profile.unverified_quality_rows}"
     )
 
 

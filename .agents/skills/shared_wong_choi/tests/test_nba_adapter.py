@@ -115,3 +115,21 @@ def test_catch_up_slot_2145_is_production_not_unroled(tmp_path: Path) -> None:
     )
     command = adapter.execute(request).detail["command"]
     assert command[-2:] == ["--freshness-role", "production"]
+
+
+def test_incremental_postgame_statuses_are_explicit_and_keep_source_detail(tmp_path):
+    cases = {'not_due': RunState.DORMANT, 'no_prediction': RunState.DORMANT,
+             'updated': RunState.SUCCEEDED, 'unchanged': RunState.SUCCEEDED}
+    for status, expected in cases.items():
+        def runner(command):
+            return subprocess.CompletedProcess(command, 0, json.dumps({'status': status}), '')
+        adapter = NBAAdapter(REPO_ROOT, tmp_path / status, runner=runner)
+        request = RunRequest(
+            identity=RunIdentity(Domain.NBA, 'postgame', date(2026, 10, 26), '09:00'),
+            operation=Operation.SETTLE,
+        )
+        result = adapter.execute(request)
+        assert result.state is expected
+        manifest = RunManifest.load(Path(result.artifacts[0]))
+        assert manifest.payload['operations'][0]['status'] == status
+        assert not manifest.payload['errors']

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+
 import math
 from collections import defaultdict
 
@@ -112,16 +114,19 @@ def calibrate_sackmann_elo(
 
 def _winner_rows(start_date: str, end_date: str) -> list[dict]:
     with get_connection() as conn:
+        columns = {r["name"] for r in conn.execute("PRAGMA table_info(player_match_history)")}
+        source_order = ("COALESCE(source_match_ref,provider_match_id)"
+                        if "source_match_ref" in columns else "provider_match_id")
         return [
             dict(row)
             for row in conn.execute(
-                """
+                f"""
                 SELECT provider_match_id, player_id, opponent_id, tour, match_date, surface, tournament_level
                 FROM player_match_history
                 WHERE source_provider = 'jeff_sackmann'
-                  AND won = 1
+                  AND won = 1 AND {history_active_clause(conn)}
                   AND match_date BETWEEN ? AND ?
-                ORDER BY match_date, provider_match_id
+                ORDER BY match_date, {source_order}
                 """,
                 (start_date, end_date),
             ).fetchall()

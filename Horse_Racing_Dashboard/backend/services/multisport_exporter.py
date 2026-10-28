@@ -199,6 +199,11 @@ def _parse_nba_leg_row(line: str) -> Optional[Dict[str, Any]]:
     }
 
 
+NBA_STEADY_MARKER = "正式穩膽政策：banker-steady-b2-v1"
+NBA_STEADY_INSIGHT = ("正式穩膽 = steady（B2，EXP-20261027-21）：命中率產品線，模型預期 EV 為負；"
+                      "固定 $1 平注；累計 −10u 或 60 注後 ROI 上限 <0 自動暫停。")
+
+
 def _parse_nba_combos(
     content: str,
     analysis_date: str,
@@ -254,7 +259,8 @@ def _parse_nba_combos(
                         )
                     ),
                 },
-                "insight": "由 NBA Wong Choi Python Auto-Selection 正式報告直接匯出。",
+                "insight": NBA_STEADY_INSIGHT if NBA_STEADY_MARKER in content
+                else "由 NBA Wong Choi Python Auto-Selection 正式報告直接匯出。",
                 "risk": risk,
                 "decision": "BET",
                 "confidence": None,
@@ -266,6 +272,25 @@ def _parse_nba_combos(
             }
         )
     return recommendations
+
+
+def _hydrate_nba_quotes(combos, content, sidecar):
+    # The publication firewall verifies report hash, exact event/legs, price
+    # and freshness. Historical grading can deliberately bypass that gate.
+    import hashlib
+    if sidecar.get("report_sha256") == hashlib.sha256(content.encode()).hexdigest():
+        by_id = {str(row.get("combo_id")): row for row in sidecar.get("combos", [])}
+        for combo in combos:
+            row = by_id.get(combo["id"].rsplit(":", 1)[-1], {})
+            quote = row.get("sgm_quote", {})
+            if quote.get("status") == "ok" and quote.get("decimal_odds") == combo["odds"]:
+                combo["odds_status"] = "sportsbet_sgm_quoted"
+                combo["sgm_quote"] = quote
+                combo["quote_expires_at"] = quote.get("expires_at")
+                combo["metrics"].update(model_probability=row.get("adjusted_joint_prob"),
+                    expected_value=(row["adjusted_joint_prob"] * combo["odds"] - 1),
+                    correlation_penalty=row.get("correlation_penalty"),
+                    product_of_leg_prices=row.get("product_of_leg_prices"))
 
 
 def _product(values: Iterable[Optional[float]]) -> Optional[float]:
@@ -342,7 +367,7 @@ _NBA_VALIDATOR = _NBA_SKILLS_DIR / "nba_wong_choi" / "scripts" / "validate_nba_o
 
 
 def nba_publication_firewall(
-    report_path: Path, sportsbet_path: Optional[Path] = None
+    report_path: Path, sportsbet_path: Optional[Path] = None, *, validation_time=None
 ) -> Tuple[Optional[bool], List[str]]:
     """Run the NBA pipeline's own publication firewall on one report.
 
@@ -367,7 +392,8 @@ def nba_publication_firewall(
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)  # type: ignore[union-attr]
         result = module.validate_file(
-            str(report_path), str(sportsbet_path) if sportsbet_path else None
+            str(report_path), str(sportsbet_path) if sportsbet_path else None,
+            **({"now": validation_time} if validation_time is not None else {})
         )
     except Exception as exc:  # fail closed: an unreadable verdict is not a pass
         return None, [f"validator_error:{type(exc).__name__}"]
@@ -392,6 +418,7 @@ def export_nba_snapshot(
     target_date: Optional[str] = None,
     today: Optional[str] = None,
     firewall=nba_publication_firewall,
+    *, include_legacy_strategies: bool = False,
 ) -> Dict[str, Any]:
     """Export validated NBA combos from one orchestrator analysis directory."""
     analysis_dir, analysis_date = _find_nba_analysis_dir(Path(root), target_date)
@@ -414,10 +441,7 @@ def export_nba_snapshot(
             all_source_files.append(path.name)
 
     reports = sorted(analysis_dir.glob("Game_*_Full_Analysis.md"))
-    if not reports:
-        return _empty_snapshot("nba", run_id, "blocked", ["nba_full_analysis_not_found"])
-
-    warnings = []
+    warnings = [] if reports else ["nba_full_analysis_not_found"]
     recommendations = []
     for report in reports:
         match = NBA_REPORT_RE.match(report.name)
@@ -443,23 +467,12 @@ def export_nba_snapshot(
         source_files = [sportsbet_path.name, report.name]
         combos = _parse_nba_combos(content, analysis_date, game_tag, source_files)
         sidecar = _read_json(Path(str(report) + ".market_legs.json"))
-        # The publication firewall verifies report hash, exact event/legs, price
-        # and freshness. Historical grading can deliberately bypass that gate.
-        import hashlib
-        if sidecar.get("report_sha256") == hashlib.sha256(content.encode()).hexdigest():
-            by_id = {str(row.get("combo_id")): row for row in sidecar.get("combos", [])}
-            for combo in combos:
-                row = by_id.get(combo["id"].rsplit(":", 1)[-1], {})
-                quote = row.get("sgm_quote", {})
-                if quote.get("status") == "ok" and quote.get("decimal_odds") == combo["odds"]:
-                    combo["odds_status"] = "sportsbet_sgm_quoted"
-                    combo["sgm_quote"] = quote
-                    combo["quote_expires_at"] = quote.get("expires_at")
-                    combo["metrics"].update(model_probability=row.get("adjusted_joint_prob"),
-                        expected_value=(row["adjusted_joint_prob"] * combo["odds"] - 1),
-                        correlation_penalty=row.get("correlation_penalty"),
-                        product_of_leg_prices=row.get("product_of_leg_prices"))
-        game_recs = combos + _build_nba_bankers(combos)
+        _hydrate_nba_quotes(combos, content, sidecar)
+        # New formal publications are banker-only; legacy parsing stays available for history.
+        if not include_legacy_strategies:
+            combos = [row for row in combos if row["id"].endswith(":combo:1")]
+        # Banker-only means one SGM ticket, not an extra single-leg BET.
+        game_recs = combos + (_build_nba_bankers(combos) if include_legacy_strategies else [])
         # The page can only tell "today" from "yesterday" by date.  The tip-off
         # lets it stop offering 確認落注 on a game that has already started
         # (2026-10-21: BOS@DET tipped 06:00 and still showed the button at noon).
@@ -469,6 +482,35 @@ def export_nba_snapshot(
                 rec["start_time_utc"] = start_utc
         recommendations.extend(game_recs)
         all_source_files.extend(source_files)
+
+    analysis_cards = []
+    saved_reports = []
+    if firewall is nba_publication_firewall:
+        from .nba_published_analysis import verified_published_reports
+        live_ids = {row["id"] for row in recommendations}
+        saved_reports = verified_published_reports(analysis_dir, analysis_date, firewall)
+        for tag, report, odds_path, captured in saved_reports:
+            odds = _read_json(odds_path)
+            if not _valid_sportsbet_payload(odds, analysis_date):
+                continue
+            content = report.read_text(encoding="utf-8")
+            cards = _parse_nba_combos(content, analysis_date, tag,
+                                    [str(report.relative_to(analysis_dir)), str(odds_path.relative_to(analysis_dir))])
+            _hydrate_nba_quotes(cards, content, _read_json(Path(str(report) + ".market_legs.json")))
+            for card in cards:
+                if card["id"] in live_ids or card["odds_status"] != "sportsbet_sgm_quoted":
+                    continue
+                card.update(analysis_only=True, validation_status="analysis_only", decision="OBSERVE", category="published_analysis",
+                            published_at=captured, odds_status="published_snapshot_price",
+                            start_time_utc=_utc_iso(odds.get("event_start_time")))
+                card["risk"] = "已驗證賽前快照；報價／傷停須重新驗證，唔係即時 +EV 或可直接投注建議。"
+                analysis_cards.append(card)
+
+    from .nba_latest_analysis import build_latest_analysis
+    latest_saved = saved_reports
+    if firewall is nba_publication_firewall:
+        latest_saved = verified_published_reports(analysis_dir, analysis_date, firewall, include_warmup=True)
+    latest_analysis = build_latest_analysis(analysis_dir, analysis_date, firewall, latest_saved)
 
     if not recommendations:
         if not warnings:
@@ -482,6 +524,8 @@ def export_nba_snapshot(
         "generated_at": _utc_now(),
         "validation_status": status,
         "recommendations": recommendations,
+        "analysis_cards": analysis_cards,
+        "latest_analysis": latest_analysis,
         "source_files": sorted(set(all_source_files)),
         "warnings": list(dict.fromkeys(warnings)),
     }
@@ -1490,7 +1534,7 @@ def _tennis_verified_record(connection: sqlite3.Connection) -> Dict[str, Any]:
     }
 
 
-def export_tennis_snapshot(db_path: Path, target_date: Optional[str] = None) -> Dict[str, Any]:
+def _export_tennis_recommendations_snapshot(db_path: Path, target_date: Optional[str] = None) -> Dict[str, Any]:
     """Export only evidence-gated Tennis prop recommendations."""
     db_path = Path(db_path)
     run_id = f"tennis:{target_date or 'unavailable'}"
@@ -1547,6 +1591,14 @@ def export_tennis_snapshot(db_path: Path, target_date: Optional[str] = None) -> 
     }
 
 
+def export_tennis_snapshot(db_path: Path, target_date: Optional[str] = None) -> Dict[str, Any]:
+    from .tennis_tracking import export_tennis_tracking
+
+    snapshot = _export_tennis_recommendations_snapshot(db_path, target_date)
+    snapshot["tracking"] = export_tennis_tracking(db_path)
+    return snapshot
+
+
 def validate_multisport_feed(feed: Dict[str, Any]) -> List[str]:
     """Return contract errors without mutating the supplied feed."""
     errors = []
@@ -1558,6 +1610,13 @@ def validate_multisport_feed(feed: Dict[str, Any]) -> List[str]:
     seen = set()
     for sport in ("nba", "tennis"):
         snapshot = sports.get(sport) or {}
+        cards = snapshot.get("analysis_cards") or []
+        if not isinstance(cards, list):
+            errors.append(f"analysis_cards_must_be_array:{sport}")
+        elif any(not isinstance(card, dict) or card.get("analysis_only") is not True
+                 or card.get("decision") != "OBSERVE" or card.get("validation_status") != "analysis_only"
+                 for card in cards):
+            errors.append(f"unsafe_analysis_card:{sport}")
         recommendations = snapshot.get("recommendations") or []
         if not isinstance(recommendations, list):
             errors.append(f"recommendations_must_be_array:{sport}")
@@ -1594,6 +1653,8 @@ def build_multisport_feed(
             "tennis": export_tennis_snapshot(tennis_db, target_date=target_date),
         },
     }
+    from .nba_tracking import export_tracking
+    feed["sports"]["nba"]["tracking"] = export_tracking(repo_root)
     errors = validate_multisport_feed(feed)
     feed["validation_status"] = "valid" if not errors else "blocked"
     feed["validation_errors"] = errors

@@ -1,0 +1,916 @@
+{
+  "baseline_source_sha": "97eaa7f902747ace9fea28144c18ff35c36c78da",
+  "active_tennis_release": "063c8799e71098775c8f8284ca6dd1a7fee8cbdc",
+  "corpus_audit": {
+    "schema_version": "wong-choi-sqlite-corpus-audit/v1",
+    "status": "ok",
+    "domain": "tennis",
+    "active": {
+      "path": "/Users/imac/Antigravity-repo/tennis-wong-choi/tennis_wc.db",
+      "quick_check": "ok",
+      "counts": {
+        "matches": 9748,
+        "match_results": 13016,
+        "odds_snapshots": 16750
+      }
+    },
+    "snapshot_count": 4,
+    "snapshots": [
+      {
+        "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/tennis/migration-db-snapshots/pre_pit_migration--baf42ed4c400/tennis_wc_pre_phase12_20260827.db",
+        "quick_check": "ok",
+        "counts": {
+          "matches": 4532,
+          "match_results": 5173,
+          "odds_snapshots": 9235
+        }
+      },
+      {
+        "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/tennis/migration-db-snapshots/pre_pit_migration--baf42ed4c400/tennis_wc_pre_pit_20260826.db",
+        "quick_check": "ok",
+        "counts": {
+          "matches": 4532,
+          "match_results": 5173,
+          "odds_snapshots": 9235
+        }
+      },
+      {
+        "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/tennis/migration-db-snapshots/pre_pit_migration--baf42ed4c400/tennis_wc_pre_rankfix_20260827.db",
+        "quick_check": "ok",
+        "counts": {
+          "matches": 4532,
+          "match_results": 5173,
+          "odds_snapshots": 9235
+        }
+      },
+      {
+        "path": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/tennis/db-snapshot/c7c5b0385bde/tennis_wc_pre_surface_20260829.db",
+        "quick_check": "ok",
+        "counts": {
+          "matches": 4690,
+          "match_results": 5552,
+          "odds_snapshots": 9503
+        }
+      }
+    ],
+    "watermarks": {
+      "matches": 4690,
+      "match_results": 5552,
+      "odds_snapshots": 9503
+    },
+    "catalog_status": "ok",
+    "runtime_snapshot_substitution_allowed": false
+  },
+  "projection_manifest": {
+    "source": "/Users/imac/Antigravity-repo/tennis-wong-choi/tennis_wc.db",
+    "snapshot_at": "2026-10-27T05:26:20.328058+00:00",
+    "tables": {
+      "matches": 9748,
+      "predictions": 15681,
+      "odds_snapshots": 16750,
+      "match_results": 13016,
+      "result_observations": 13016,
+      "tournaments": 4114,
+      "tournament_levels": 4851,
+      "players": 25237
+    },
+    "projection": "/private/tmp/tennis-profit-corpus-20261027.db",
+    "bytes": 223174656,
+    "sha256": "b4fa1d2af45480f567e5e36a47bb52a2f1b7adaf15f6111fd35db3286d910aa7",
+    "method": "All columns and rows in all named tables, in one source read transaction; no outcome or cohort selection."
+  },
+  "short_favourite": {
+    "method": {
+      "odds_ceiling": 1.6,
+      "split": "2026-07-15",
+      "minimum_sample": 600,
+      "seed": 20260826,
+      "trials": 4000,
+      "unit": "match"
+    },
+    "eligibility_counts": {
+      "canonical_agreed_forecasts": 3774,
+      "opening_unverifiable_or_post_start": 282,
+      "eligible_unique_matches": 3492
+    },
+    "baseline_all_prices": {
+      "n": 3492,
+      "model_logloss": 0.6635992352540423,
+      "market_logloss": 0.5592298568770937,
+      "model_brier": 0.23516194035436638,
+      "market_brier": 0.18996653149146228,
+      "paired_ll_model_minus_market": {
+        "n": 3492,
+        "mean": 0.10436937837694914,
+        "ci95": [
+          0.09227452893735287,
+          0.11676039615432729
+        ]
+      },
+      "paired_brier_model_minus_market": {
+        "n": 3492,
+        "mean": 0.045195408862903484,
+        "ci95": [
+          0.04001861182581427,
+          0.05049764963718074
+        ]
+      }
+    },
+    "short_favourite": {
+      "n": 269,
+      "model_logloss": 0.6737982187509729,
+      "market_logloss": 0.6312119767925024,
+      "model_brier": 0.23590185197703356,
+      "market_brier": 0.2208850196736353,
+      "paired_ll_model_minus_market": {
+        "n": 269,
+        "mean": 0.04258624195847071,
+        "ci95": [
+          0.016497649260017972,
+          0.07001992321281734
+        ]
+      },
+      "paired_brier_model_minus_market": {
+        "n": 269,
+        "mean": 0.015016832303398113,
+        "ci95": [
+          0.00546008358221211,
+          0.024853052533158948
+        ]
+      }
+    },
+    "original_walk_forward": {
+      "before": {
+        "n": 7,
+        "model_logloss": 0.6403611439840182,
+        "market_logloss": 0.6541152237505348,
+        "model_brier": 0.22835233803414287,
+        "market_brier": 0.23181741718989576,
+        "paired_ll_model_minus_market": {
+          "n": 7,
+          "mean": -0.0137540797665164,
+          "ci95": [
+            -0.11033829409551228,
+            0.08928609980659116
+          ]
+        },
+        "paired_brier_model_minus_market": {
+          "n": 7,
+          "mean": -0.0034650791557528766,
+          "ci95": [
+            -0.04639681341114166,
+            0.042961618771482635
+          ]
+        }
+      },
+      "after": {
+        "n": 262,
+        "model_logloss": 0.6746915757103954,
+        "market_logloss": 0.6306000579806462,
+        "model_brier": 0.23610355654802684,
+        "market_brier": 0.22059293271709396,
+        "paired_ll_model_minus_market": {
+          "n": 262,
+          "mean": 0.04409151772974899,
+          "ci95": [
+            0.018405281984624735,
+            0.07264713074541669
+          ]
+        },
+        "paired_brier_model_minus_market": {
+          "n": 262,
+          "mean": 0.01551062383093268,
+          "ci95": [
+            0.006018474462542164,
+            0.025701013382510473
+          ]
+        }
+      }
+    },
+    "post_original_registration_descriptive": {
+      "n": 220,
+      "model_logloss": 0.701953930919816,
+      "market_logloss": 0.6424284686439447,
+      "model_brier": 0.24824633788064562,
+      "market_brier": 0.2263188307559812,
+      "paired_ll_model_minus_market": {
+        "n": 220,
+        "mean": 0.05952546227587097,
+        "ci95": [
+          0.030554474328137772,
+          0.09093467887670605
+        ]
+      },
+      "paired_brier_model_minus_market": {
+        "n": 220,
+        "mean": 0.021927507124664295,
+        "ci95": [
+          0.011262339271848415,
+          0.032866432841281504
+        ]
+      }
+    },
+    "paper_policy_comparison": {
+      "archived_BET_baseline": {
+        "bets": 257,
+        "pnl_units": -43.037000000000006,
+        "roi": {
+          "n": 257,
+          "mean": -0.16745914396887163,
+          "ci95": [
+            -0.30243190661478603,
+            -0.026743190661478598
+          ]
+        },
+        "drawdown_by_start_order": -48.52700000000001,
+        "timing_compatible_bets": 256,
+        "frozen_fixture_bets": 0,
+        "later_prestart_quote_bets": 42
+      },
+      "BET_and_short_candidate": {
+        "bets": 35,
+        "pnl_units": -8.602,
+        "roi": {
+          "n": 35,
+          "mean": -0.24577142857142859,
+          "ci95": [
+            -0.4837142857142857,
+            -0.01842857142857141
+          ]
+        },
+        "drawdown_by_start_order": -13.345,
+        "timing_compatible_bets": 35,
+        "frozen_fixture_bets": 0,
+        "later_prestart_quote_bets": 7
+      },
+      "paired_pnl_delta_per_eligible_match": {
+        "n": 3492,
+        "mean": 0.009861111111111116,
+        "ci95": [
+          -0.0004682130584192438,
+          0.019707331042382596
+        ]
+      }
+    },
+    "execution_compatible_policy_diagnostic": {
+      "archived_BET_baseline": {
+        "bets": 256,
+        "pnl_units": -42.037,
+        "roi": {
+          "n": 256,
+          "mean": -0.16420703125,
+          "ci95": [
+            -0.30601171875000005,
+            -0.024289062499999993
+          ]
+        },
+        "drawdown_by_start_order": -47.527,
+        "timing_compatible_bets": 256,
+        "frozen_fixture_bets": 0,
+        "later_prestart_quote_bets": 42
+      },
+      "BET_and_short_candidate": {
+        "bets": 35,
+        "pnl_units": -8.602,
+        "roi": {
+          "n": 35,
+          "mean": -0.24577142857142859,
+          "ci95": [
+            -0.4837142857142857,
+            -0.01842857142857141
+          ]
+        },
+        "drawdown_by_start_order": -13.345,
+        "timing_compatible_bets": 35,
+        "frozen_fixture_bets": 0,
+        "later_prestart_quote_bets": 7
+      },
+      "paired_pnl_delta_per_eligible_match": {
+        "n": 3481,
+        "mean": 0.009604998563631144,
+        "ci95": [
+          -0.0004323470267164608,
+          0.0197204826199368
+        ]
+      }
+    },
+    "evidence_coverage": {
+      "timing_compatible": 3481,
+      "frozen_fixture": 0,
+      "later_prestart_quote": 450
+    },
+    "promotion_eligible": false,
+    "qualification": "Legacy diagnostic, not post-repair untouched validation or live betting profit.",
+    "limitations": [
+      "No independent bookmaker reference; same-book movement is not a sharp-price edge.",
+      "Opening odds may not have been obtainable at forecast time; timing-compatible subset is reported separately.",
+      "Legacy fixture identity and changing engine versions remain unverified; no price orientation certification.",
+      "Drawdown uses match-start order, not verified cash settlement order."
+    ],
+    "research_verdict": "NEEDS MORE TESTING: sample below frozen 600 floor",
+    "dataset": "/private/tmp/tennis-profit-corpus-20261027.db",
+    "dataset_sha256": "b4fa1d2af45480f567e5e36a47bb52a2f1b7adaf15f6111fd35db3286d910aa7",
+    "implementation_sha256": "c90a2b9200b401334702bb2289d9f5448681dfef91a14540ceb6ac93b2f728c6"
+  },
+  "nudge_v2": {
+    "counts": {
+      "eligible_from_fixed_study": 3492,
+      "excluded_'elo_base_logit'": 92,
+      "excluded_no active Elo": 1694,
+      "excluded_nudge reconstruction mismatch": 4,
+      "faithful_same_subset": 1702
+    },
+    "baseline": {
+      "bets": 1393,
+      "pnl_units": -274.05600000000027,
+      "roi": -0.19673797559224715,
+      "logloss": 0.6612090843459649,
+      "brier": 0.23383787851032128
+    },
+    "market": {
+      "logloss": 0.5685698389766951,
+      "brier": 0.19364783989775808
+    },
+    "arms": {
+      "all_off": {
+        "summary": {
+          "bets": 1366,
+          "pnl_units": -283.56700000000023,
+          "roi": -0.2075893118594438,
+          "logloss": 0.6618472022321242,
+          "brier": 0.23411870616169822
+        },
+        "ll_delta": {
+          "mean": 0.0006381178861600024,
+          "ci95": [
+            -0.0013812349906633886,
+            0.002606320155449193
+          ],
+          "bootstrap_two_sided_p": 0.5453636590852287
+        },
+        "ll_holm_p": 1.0,
+        "brier_delta": {
+          "mean": 0.0002808276513767748,
+          "ci95": [
+            -0.0005972105445886715,
+            0.0011556300412131281
+          ],
+          "bootstrap_two_sided_p": 0.5378655336165958
+        },
+        "paired_pnl_delta_per_eligible_match": {
+          "mean": -0.005588131609870739,
+          "ci95": [
+            -0.019168625146886015,
+            0.007730904817861337
+          ],
+          "bootstrap_two_sided_p": 0.41639590102474383
+        },
+        "tour_descriptive": {
+          "ATP": {
+            "n": 652,
+            "ll_delta": 0.001679217940487039
+          },
+          "WTA": {
+            "n": 272,
+            "ll_delta": -0.0032974230800292027
+          },
+          "UNKNOWN": {
+            "n": 778,
+            "ll_delta": 0.0011415496437207182
+          }
+        }
+      },
+      "serve_return_edge": {
+        "summary": {
+          "bets": 1396,
+          "pnl_units": -272.65600000000023,
+          "roi": -0.19531232091690562,
+          "logloss": 0.6615810781681122,
+          "brier": 0.23398003079316862
+        },
+        "ll_delta": {
+          "mean": 0.00037199382214667267,
+          "ci95": [
+            -0.0001058089830183658,
+            0.0008306838678364631
+          ],
+          "bootstrap_two_sided_p": 0.12446888277930518
+        },
+        "ll_holm_p": 1.0,
+        "brier_delta": {
+          "mean": 0.0001421522828472221,
+          "ci95": [
+            -7.002856432205763e-05,
+            0.00034876108836832216
+          ],
+          "bootstrap_two_sided_p": 0.19345163709072732
+        },
+        "paired_pnl_delta_per_eligible_match": {
+          "mean": 0.0008225616921269093,
+          "ci95": [
+            -0.003319623971797885,
+            0.004952996474735604
+          ],
+          "bootstrap_two_sided_p": 0.6923269182704324
+        },
+        "tour_descriptive": {
+          "ATP": {
+            "n": 652,
+            "ll_delta": 0.0009210410601171242
+          },
+          "WTA": {
+            "n": 272,
+            "ll_delta": 0.00011990703712232276
+          },
+          "UNKNOWN": {
+            "n": 778,
+            "ll_delta": 0.0
+          }
+        }
+      },
+      "recent_form_edge": {
+        "summary": {
+          "bets": 1386,
+          "pnl_units": -278.7910000000004,
+          "roi": -0.20114790764790794,
+          "logloss": 0.6607930154087396,
+          "brier": 0.2336612191046682
+        },
+        "ll_delta": {
+          "mean": -0.00041606893722503013,
+          "ci95": [
+            -0.0009317159046788429,
+            0.00010889592796647076
+          ],
+          "bootstrap_two_sided_p": 0.12346913271682079
+        },
+        "ll_holm_p": 1.0,
+        "brier_delta": {
+          "mean": -0.0001766594056532716,
+          "ci95": [
+            -0.00040042533373815185,
+            5.2064511644774706e-05
+          ],
+          "bootstrap_two_sided_p": 0.12896775806048488
+        },
+        "paired_pnl_delta_per_eligible_match": {
+          "mean": -0.0027820211515863697,
+          "ci95": [
+            -0.008558754406580493,
+            0.0030287896592244416
+          ],
+          "bootstrap_two_sided_p": 0.3579105223694076
+        },
+        "tour_descriptive": {
+          "ATP": {
+            "n": 652,
+            "ll_delta": -0.0004473282580658663
+          },
+          "WTA": {
+            "n": 272,
+            "ll_delta": -0.0012171105973891067
+          },
+          "UNKNOWN": {
+            "n": 778,
+            "ll_delta": -0.00010981648381519184
+          }
+        }
+      },
+      "opponent_rank_bucket_edge": {
+        "summary": {
+          "bets": 1395,
+          "pnl_units": -284.26100000000025,
+          "roi": -0.20377132616487473,
+          "logloss": 0.6610381188959751,
+          "brier": 0.2337892725671911
+        },
+        "ll_delta": {
+          "mean": -0.0001709654499889281,
+          "ci95": [
+            -0.0010506167141789088,
+            0.000689716413478319
+          ],
+          "bootstrap_two_sided_p": 0.699325168707823
+        },
+        "ll_holm_p": 1.0,
+        "brier_delta": {
+          "mean": -4.8605943130191965e-05,
+          "ci95": [
+            -0.0004312104508430852,
+            0.0003247109818591466
+          ],
+          "bootstrap_two_sided_p": 0.8057985503624094
+        },
+        "paired_pnl_delta_per_eligible_match": {
+          "mean": -0.005995887191539365,
+          "ci95": [
+            -0.013445945945945947,
+            0.0019294947121034091
+          ],
+          "bootstrap_two_sided_p": 0.1284678830292427
+        },
+        "tour_descriptive": {
+          "ATP": {
+            "n": 652,
+            "ll_delta": -3.368652843384607e-05
+          },
+          "WTA": {
+            "n": 272,
+            "ll_delta": -0.0011452601375274817
+          },
+          "UNKNOWN": {
+            "n": 778,
+            "ll_delta": 5.4615910109494805e-05
+          }
+        }
+      },
+      "tournament_level_edge": {
+        "summary": {
+          "bets": 1399,
+          "pnl_units": -277.2760000000003,
+          "roi": -0.19819585418155847,
+          "logloss": 0.6611544650383173,
+          "brier": 0.23380270713234497
+        },
+        "ll_delta": {
+          "mean": -5.461930764717467e-05,
+          "ci95": [
+            -0.0004919444887766903,
+            0.00035652922785983827
+          ],
+          "bootstrap_two_sided_p": 0.8032991752061984
+        },
+        "ll_holm_p": 1.0,
+        "brier_delta": {
+          "mean": -3.517137797641922e-05,
+          "ci95": [
+            -0.00022949977106543191,
+            0.00014926874229042225
+          ],
+          "bootstrap_two_sided_p": 0.7088227943014247
+        },
+        "paired_pnl_delta_per_eligible_match": {
+          "mean": -0.0018918918918918916,
+          "ci95": [
+            -0.007535252643948296,
+            0.0038660399529964746
+          ],
+          "bootstrap_two_sided_p": 0.493376655836041
+        },
+        "tour_descriptive": {
+          "ATP": {
+            "n": 652,
+            "ll_delta": -0.0005105889723709585
+          },
+          "WTA": {
+            "n": 272,
+            "ll_delta": 3.166756628357378e-05
+          },
+          "UNKNOWN": {
+            "n": 778,
+            "ll_delta": 0.00029733723694247
+          }
+        }
+      },
+      "round_performance_edge": {
+        "summary": {
+          "bets": 1392,
+          "pnl_units": -274.9060000000003,
+          "roi": -0.19748994252873583,
+          "logloss": 0.6612042553885854,
+          "brier": 0.23383905555207968
+        },
+        "ll_delta": {
+          "mean": -4.828957379907321e-06,
+          "ci95": [
+            -5.32387288087948e-05,
+            3.845519145800757e-05
+          ],
+          "bootstrap_two_sided_p": 0.8487878030492377
+        },
+        "ll_holm_p": 1.0,
+        "brier_delta": {
+          "mean": 1.1770417583466497e-06,
+          "ci95": [
+            -1.7668910142092765e-05,
+            1.8989406282181872e-05
+          ],
+          "bootstrap_two_sided_p": 0.8682829292676831
+        },
+        "paired_pnl_delta_per_eligible_match": {
+          "mean": -0.0004994124559341951,
+          "ci95": [
+            -0.002438307873090482,
+            0.0008930669800235018
+          ],
+          "bootstrap_two_sided_p": 0.6183454136465883
+        },
+        "tour_descriptive": {
+          "ATP": {
+            "n": 652,
+            "ll_delta": 7.567887852564145e-05
+          },
+          "WTA": {
+            "n": 272,
+            "ll_delta": -0.00021162321418867827
+          },
+          "UNKNOWN": {
+            "n": 778,
+            "ll_delta": 0.0
+          }
+        }
+      },
+      "big_match_edge": {
+        "summary": {
+          "bets": 1389,
+          "pnl_units": -274.0460000000003,
+          "roi": -0.19729733621310316,
+          "logloss": 0.6611912997781153,
+          "brier": 0.23384662018297694
+        },
+        "ll_delta": {
+          "mean": -1.7784567849253104e-05,
+          "ci95": [
+            -0.00037686922861805634,
+            0.0003282031619895932
+          ],
+          "bootstrap_two_sided_p": 0.8882779305173707
+        },
+        "ll_holm_p": 1.0,
+        "brier_delta": {
+          "mean": 8.741672655758044e-06,
+          "ci95": [
+            -0.00015168147127427408,
+            0.00016065932992870885
+          ],
+          "bootstrap_two_sided_p": 0.944763809047738
+        },
+        "paired_pnl_delta_per_eligible_match": {
+          "mean": 5.875440658049489e-06,
+          "ci95": [
+            -0.0040951821386604,
+            0.004512338425381904
+          ],
+          "bootstrap_two_sided_p": 0.9742564358910273
+        },
+        "tour_descriptive": {
+          "ATP": {
+            "n": 652,
+            "ll_delta": -2.8680778254305875e-05
+          },
+          "WTA": {
+            "n": 272,
+            "ll_delta": -0.0002950143725016282
+          },
+          "UNKNOWN": {
+            "n": 778,
+            "ll_delta": 8.827049134038742e-05
+          }
+        }
+      },
+      "pressure_edge": {
+        "summary": {
+          "bets": 1387,
+          "pnl_units": -277.7560000000003,
+          "roi": -0.20025666906993533,
+          "logloss": 0.6611400657742713,
+          "brier": 0.23381638832891452
+        },
+        "ll_delta": {
+          "mean": -6.901857169214212e-05,
+          "ci95": [
+            -0.0004494324589083687,
+            0.00030218773385927883
+          ],
+          "bootstrap_two_sided_p": 0.7178205448637841
+        },
+        "ll_holm_p": 1.0,
+        "brier_delta": {
+          "mean": -2.1490181406797044e-05,
+          "ci95": [
+            -0.00019459038903472476,
+            0.0001467913935012857
+          ],
+          "bootstrap_two_sided_p": 0.804798800299925
+        },
+        "paired_pnl_delta_per_eligible_match": {
+          "mean": -0.0021739130434782613,
+          "ci95": [
+            -0.007112808460634549,
+            0.002786721504112808
+          ],
+          "bootstrap_two_sided_p": 0.4053986503374156
+        },
+        "tour_descriptive": {
+          "ATP": {
+            "n": 652,
+            "ll_delta": -7.2655150825134e-05
+          },
+          "WTA": {
+            "n": 272,
+            "ll_delta": 4.8984691705119734e-05
+          },
+          "UNKNOWN": {
+            "n": 778,
+            "ll_delta": -0.00010722658975042556
+          }
+        }
+      },
+      "head_to_head_edge": {
+        "summary": {
+          "bets": 1389,
+          "pnl_units": -276.9260000000003,
+          "roi": -0.19937077033837314,
+          "logloss": 0.6613688104169991,
+          "brier": 0.2338937692351796
+        },
+        "ll_delta": {
+          "mean": 0.00015972607103431987,
+          "ci95": [
+            -0.000412789926673994,
+            0.0007262163621108237
+          ],
+          "bootstrap_two_sided_p": 0.590852286928268
+        },
+        "ll_holm_p": 1.0,
+        "brier_delta": {
+          "mean": 5.5890724858452424e-05,
+          "ci95": [
+            -0.0002067334155040315,
+            0.00031855281721633106
+          ],
+          "bootstrap_two_sided_p": 0.6813296675831042
+        },
+        "paired_pnl_delta_per_eligible_match": {
+          "mean": -0.0016862514688601646,
+          "ci95": [
+            -0.005352526439482962,
+            0.0020035252643948297
+          ],
+          "bootstrap_two_sided_p": 0.36340914771307176
+        },
+        "tour_descriptive": {
+          "ATP": {
+            "n": 652,
+            "ll_delta": 0.0008941060459690852
+          },
+          "WTA": {
+            "n": 272,
+            "ll_delta": -0.0014359288504923685
+          },
+          "UNKNOWN": {
+            "n": 778,
+            "ll_delta": 0.0001021456018798112
+          }
+        }
+      },
+      "fatigue_edge": {
+        "summary": {
+          "bets": 1390,
+          "pnl_units": -280.30600000000027,
+          "roi": -0.20165899280575558,
+          "logloss": 0.6616083232292396,
+          "brier": 0.23400547545553507
+        },
+        "ll_delta": {
+          "mean": 0.0003992388832747738,
+          "ci95": [
+            8.326385199440736e-06,
+            0.0007859222673305861
+          ],
+          "bootstrap_two_sided_p": 0.04598850287428143
+        },
+        "ll_holm_p": 0.45988502874281434,
+        "brier_delta": {
+          "mean": 0.00016759694521377167,
+          "ci95": [
+            -1.0594183786959088e-05,
+            0.00034430489473325296
+          ],
+          "bootstrap_two_sided_p": 0.06448387903024244
+        },
+        "paired_pnl_delta_per_eligible_match": {
+          "mean": -0.003672150411280846,
+          "ci95": [
+            -0.008501762632197415,
+            0.0010728554641598117
+          ],
+          "bootstrap_two_sided_p": 0.12746813296675832
+        },
+        "tour_descriptive": {
+          "ATP": {
+            "n": 652,
+            "ll_delta": 1.761533286084583e-05
+          },
+          "WTA": {
+            "n": 272,
+            "ll_delta": 0.0003496874373176624
+          },
+          "UNKNOWN": {
+            "n": 778,
+            "ll_delta": 0.0007363809760385471
+          }
+        }
+      }
+    },
+    "method": {
+      "seed": 20260826,
+      "trials": 4000,
+      "unit": "match",
+      "fidelity_tolerance": 1e-06,
+      "holm_family": "10 LL ablations",
+      "parity": "recorded raw combiner, side and segment risk"
+    },
+    "promotion_eligible": false,
+    "qualification": "All outcomes previously inspected: dev-only; no untouched holdout, CLV or live profit claim.",
+    "verdict": "RESEARCH ONLY: decide whether all-off warrants a frozen prospective candidate, never select the best single ablation",
+    "dataset_sha256": "b4fa1d2af45480f567e5e36a47bb52a2f1b7adaf15f6111fd35db3286d910aa7",
+    "implementation_sha256": "a5c5471fd45121e34adf54e3d2fb05f6e5eb282c82f495f5d57b982ef3e39fe1"
+  },
+  "nudge_v1": {
+    "counts": {
+      "eligible_from_fixed_study": 3492,
+      "excluded_'elo_base_logit'": 92,
+      "excluded_no active Elo": 1694,
+      "excluded_nudge reconstruction mismatch": 4,
+      "excluded_shipped_probability_mismatch": 1376,
+      "faithful_same_subset": 326
+    },
+    "baseline": {
+      "bets": 242,
+      "pnl_units": -12.79600000000001,
+      "roi": -0.05287603305785128,
+      "logloss": 0.6486381819432477,
+      "brier": 0.226550627500792
+    },
+    "market": {
+      "logloss": 0.592399962514172,
+      "brier": 0.20403703877494656
+    },
+    "dataset_sha256": "b4fa1d2af45480f567e5e36a47bb52a2f1b7adaf15f6111fd35db3286d910aa7",
+    "implementation_sha256": "09f9b5a17d70085ab2b819a5855369a55765583c1cc7e23b3f118c6a7a3851bd"
+  },
+  "protocol_locks": {
+    "tennis-profit-protocol-lock.json": {
+      "locked_at": "2026-10-27T05:24:39.836618+00:00",
+      "path": "/private/tmp/codex-tennis-profit-research-20261027/docs/experiments/EXP-20261027-05-tennis-profit-feasibility.md",
+      "sha256": "f458f148ed6dc7b260962bba87b5863f976ee54537c5ccd394d11f754dc2e8fe"
+    },
+    "tennis-nudge-protocol-lock.json": {
+      "locked_at": "2026-10-27T05:34:26.125765+00:00",
+      "sha256": "1fbb2d443b59450554a35980c3dc373b7a9dd596b4159cd68229c4bb3abdc9a0"
+    },
+    "tennis-nudge-v2-protocol-lock.json": {
+      "locked_at": "2026-10-27T05:42:24.690203+00:00",
+      "sha256": "0f527629787206829ef6f9f3527cd37de0a6bb41dc6de8713e1f9a80fbeb31e5"
+    }
+  },
+  "archive": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-profit-20261027",
+  "validation": {
+    "controlled_tests": 12,
+    "full_suites": 16,
+    "tennis_tests": 858,
+    "production_model_changed": false
+  },
+  "conclusion": "Neither fixed short-favourite filter nor removing logged nudges demonstrates deployable profitability improvement. All results legacy diagnostic or dev-only.",
+  "research_commit": "61902276459403df6a6576800fac51b75976d986",
+  "research_branch": "codex-tennis-profit-research-20261027",
+  "python": "3.9.6",
+  "numpy": "2.0.2",
+  "archive_manifest_sha256": "46d29d8594ced8eb278f776613a3779f644011ebb7f302dba52c3101e837e610",
+  "cached_reference_inventory": [
+    {
+      "path": "tennis-wong-choi/src/data/external/tennisdata_atp_2026.xlsx",
+      "sha256": "49853f6389dbc98a0ea72b58d04f20bd6bcbceae2238bf5e0345b90ebada9782",
+      "rows": 1728,
+      "paired_prices": {
+        "Pinnacle": 71,
+        "Bet365": 1711,
+        "Betfair": 1624
+      },
+      "first_match_date": "2026-01-04",
+      "latest_match_date": "2026-07-26",
+      "future_or_wrong_year_rows": 0,
+      "latest_plausible_2026_date": "2026-07-26",
+      "quote_capture_clock_verified": false,
+      "qualification": "Historical workbook; date-only rows cannot establish synchronous, executable pre-match reference prices."
+    },
+    {
+      "path": "tennis-wong-choi/src/data/external/tennisdata_wta_2026.xlsx",
+      "sha256": "f6f913da3dabbb54add6e9edd167a1d33d669c9ede9741e63e9069f18b3977ba",
+      "rows": 1673,
+      "paired_prices": {
+        "Pinnacle": 101,
+        "Bet365": 1665,
+        "Betfair": 1558
+      },
+      "first_match_date": "2026-01-04",
+      "latest_match_date": "2029-07-20",
+      "future_or_wrong_year_rows": 1,
+      "latest_plausible_2026_date": "2026-07-26",
+      "quote_capture_clock_verified": false,
+      "qualification": "Historical workbook; date-only rows cannot establish synchronous, executable pre-match reference prices."
+    }
+  ],
+  "measurement_original_commit": "dd037ad602e203d6f8c7367bb81111c04cac0d6d"
+}

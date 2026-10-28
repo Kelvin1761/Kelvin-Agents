@@ -19,6 +19,8 @@ break-fests -2.9%). Center bucket normalised to 1.0; unknown hold = neutral.
 """
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+
 from tennis_wc.props.ace_model import price_two_way, TwoWayProp
 
 # E[total games] by (best_of, closeness bucket of 0.2). Fit on 19,406 matches.
@@ -76,8 +78,9 @@ def combined_hold(conn, player_a_id: int, player_b_id: int, as_of_date: str,
         rows = conn.execute(
             f"""
             SELECT hold_rate FROM player_match_history
-            WHERE player_id = ? AND hold_rate IS NOT NULL AND match_date < ?
+            WHERE player_id = ? AND typeof(hold_rate) IN ('integer','real') AND hold_rate BETWEEN 0 AND 1 AND match_date < ?
               {guard_clause()}
+          AND {history_active_clause(conn)}
             ORDER BY match_date DESC LIMIT ?
             """,
             (pid, as_of_date, *guard, _HOLD_WINDOW),

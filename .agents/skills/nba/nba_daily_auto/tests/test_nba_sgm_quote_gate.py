@@ -118,7 +118,7 @@ def test_real_report_selection_uses_quote_before_rendering(monkeypatch, price, p
     now = datetime.now(timezone.utc)
     odds['event_start_time'] = (now + timedelta(hours=2)).isoformat()
     monkeypatch.setattr(r, 'build_leg_candidates', lambda *args, **kwargs: [])
-    monkeypatch.setattr(r, 'select_combo_1', lambda candidates: legs)
+    monkeypatch.setattr(r, 'select_combo_1', lambda candidates, **gates: legs)
     for name in ('select_combo_2', 'select_combo_3', 'select_combo_x_value_bomb'):
         monkeypatch.setattr(r, name, lambda candidates: [])
     monkeypatch.setattr(r, 'quote_combo', lambda source, selected: q.quote_combo(source, selected, now=now, post=post_price(price)))
@@ -168,7 +168,9 @@ def test_dashboard_exports_frozen_sgm_price_and_adjusted_probability(tmp_path):
     assert combo['metrics']['model_probability'] == pytest.approx(.64)
     assert combo['metrics']['expected_value'] == pytest.approx(.28)
     assert combo['quote_expires_at'] == quoted.quote['expires_at']
-    banker = next(row for row in snapshot['recommendations'] if row['bet_type'] == 'single')
+    assert len(snapshot['recommendations']) == 1
+    legacy = export_nba_snapshot(tmp_path, target_date='2026-10-23', firewall=nba_no_firewall, include_legacy_strategies=True)
+    banker = next(row for row in legacy['recommendations'] if row['bet_type'] == 'single')
     assert banker['odds_status'] == 'sportsbet_extracted'
 
 
@@ -180,7 +182,7 @@ def test_publication_checks_availability_even_when_quote_is_valid(tmp_path):
     maps={team:availability.InjuryMap({},[leg['player'],*[f'Roster Member {i}' for i in range(4)]],NOW.isoformat())
           for team,leg in zip(('BOS','LAL'),legs)}
     packet=availability.apply_availability({'meta':{'date':odds['event_start_time'],'away':{'abbr':'BOS'},'home':{'abbr':'LAL'},
-        'statistics_contract':NBA_STATISTICS_CONTRACT},'players':{}},maps)
+        'statistics_contract':NBA_STATISTICS_CONTRACT,'defender_source':{'per_mode':'Totals','sample_unit':'total_attempts','observed_players':576}},'players':{}},maps)
     report=tmp_path/'Game_BOS_LAL_Full_Analysis.md';report.write_text(text)
     source=tmp_path/'odds.json';source.write_text(json.dumps(odds))
     payload=r.build_market_eval_sidecar(text,odds,{},[],{'combos':{'1':quoted},'availability':packet},'hybrid')
@@ -188,6 +190,16 @@ def test_publication_checks_availability_even_when_quote_is_valid(tmp_path):
     assert not v.check_fw13_sgm_quotes(text,report,source,now=NOW)
     assert not v.check_fw14_availability(text,report,now=NOW)
     assert v.check_fw14_availability(text,report,now=NOW+timedelta(minutes=31))
+    original_source=packet['meta']['defender_source']
+    for broken_source in (None,{},[],{**original_source,'observed_players':0},
+                          {**original_source,'observed_players':'576'},
+                          {**original_source,'observed_players':True},
+                          {**original_source,'per_mode':'PerGame'},
+                          {**original_source,'sample_unit':'per_game'}):
+        payload['availability']['meta']['defender_source']=broken_source
+        sidecar.write_text(json.dumps(payload))
+        assert v.check_fw14_availability(text,report,now=NOW)
+    payload['availability']['meta']['defender_source']=original_source
     payload['availability']['meta']['statistics_contract']=1;sidecar.write_text(json.dumps(payload))
     assert v.check_fw14_availability(text,report,now=NOW)
     payload['availability']=None;sidecar.write_text(json.dumps(payload))

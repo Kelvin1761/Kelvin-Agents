@@ -280,6 +280,51 @@ def horse_line(ref: dict, horse_num) -> str | None:
             + " · ".join(bits))
 
 
+# ── 首選早盤分歧（純顯示信心標記，Kelvin 2026-10-27）─────────────────────────
+# 我哋首選（發佈版，即證據厚度安全欄之後）喺最早賽前盤排第幾。量度：2,251 場
+# 賽前快照（2026-08-05→10-26，`Odds.json` 最早 snapshot、按贏盤價排），見
+# memory `au-regional-vs-metro-is-noise`。首選同早盤大熱一致嘅場次，首選上名
+# 同市場大熱差唔多；分歧越大首選越唔可靠。只係讀者用嘅信心提示 —— 唔郁排名、
+# 唔入評分（D1 紅線）。
+# (最高市場排名, 級別, 圖示, 首選上名率 %, 頭三全失率 %)
+DIVERGENCE_TIERS = (
+    (1, "一致", "✅", 69.5, 6.8),
+    (2, "輕微分歧", "➖", 57.5, 6.9),
+    (4, "分歧", "⚠️", 43.3, 11.5),
+    (999, "大分歧", "🚨", 26.9, 19.6),
+)
+DIVERGENCE_SAMPLE = "2,251 場（2026-08-05→10-26）"
+
+
+def divergence(ref: dict, top_pick) -> dict | None:
+    """首選嘅早盤市場排名 → 分歧級別；首選冇市場價就 None（唔扮知道）。"""
+    r = (ref or {}).get("runners", {}).get(str(top_pick))
+    if not r:
+        return None
+    rank = int(r["market_rank"])
+    _cap, level, icon, place_rate, zero_rate = next(t for t in DIVERGENCE_TIERS if rank <= t[0])
+    return {"level": level, "icon": icon, "market_rank": rank, "priced": ref.get("priced"),
+            "win_odds": r.get("win_odds"), "place_rate": place_rate, "zero_rate": zero_rate}
+
+
+def divergence_lines(ref: dict, top_pick, horse_name: str = "") -> list[str]:
+    """場次級提示；dashboard `parser_au._parse_au_market_divergence` 靠第一行格式讀。"""
+    d = divergence(ref, top_pick)
+    if d is None:
+        return []
+    odds = f"，${d['win_odds']:.2f}" if d.get("win_odds") else ""
+    name = f" {horse_name}" if horse_name else ""
+    versus = ("" if d["market_rank"] == 1
+              else f"（首選係早盤大熱嘅場次上名 {DIVERGENCE_TIERS[0][3]:.1f}%）")
+    return [
+        f"> **📊 市場分歧：{d['icon']} {d['level']}**（首選 #{top_pick}{name} "
+        f"喺{ref['source']} 排第 {d['market_rank']}/{d['priced']}{odds}）",
+        f"> 市場分歧參考：歷史 {DIVERGENCE_SAMPLE}，同級場次首選上名 {d['place_rate']:.1f}%、"
+        f"頭三全失 {d['zero_rate']:.1f}%{versus}。純顯示信心提示，唔入評分。",
+        "",
+    ]
+
+
 def method_note(ref: dict) -> str:
     """場次級一句方法說明（放喺第二部分開頭）。"""
     base = ("> 📊 **市場參考層**：純顯示，同模型分開、唔入任何評分或排名（D1）。"

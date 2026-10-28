@@ -15,6 +15,7 @@ from .full_time_speed import render_detail as render_full_time_detail
 from .matrix_mapper import MATRIX_FORMULAS
 # 市場參考層：純顯示（D1）。只有 renderer 可以 import，引擎／評分唔准。
 from .market_reference import build_market_reference, horse_line as _market_ref_line, method_note as _market_ref_note
+from .market_reference import divergence_lines as _market_divergence_lines
 
 
 ABILITY_LABEL = "綜合戰力分"
@@ -214,6 +215,9 @@ def render_race_markdown(logic_data: dict, meeting_dir: Path | None = None) -> s
     # 市場參考（D1）：喺排名**已經定咗之後**先計，只讀唔寫 —— 唔會郁到
     # python_auto、_data 或者 CSV。`meeting_dir` 用嚟搵 odds_history.json 最早快照。
     market_ref = build_market_reference(horses, meeting_dir, race.get("race_number"))
+    top_pick = (verdict.get("top4") or [{}])[0]
+    divergence = _market_divergence_lines(market_ref, top_pick.get("horse_number"),
+                                          top_pick.get("horse_name", "")) if top_pick else []
     encoded_registry = base64.b64encode(json.dumps(registry_snapshot(), sort_keys=True,
         separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode()).decode("ascii")
     time_metadata = {"schema": "au/full-time-v1", "race": race.get("full_time_speed"), "horses": {
@@ -224,7 +228,7 @@ def render_race_markdown(logic_data: dict, meeting_dir: Path | None = None) -> s
     lines = [
         f"<!-- wc-au-full-time:v1:{encoded_time} -->",
         f"<!-- wc-au-dimensions:v1:{encoded_registry} -->",
-        _panorama(race, verdict, horses),
+        _panorama(race, verdict, horses, divergence),
         "",
         "## [第二部分] 🛡️ 戰馬矩陣剖析",
         "",
@@ -234,7 +238,7 @@ def render_race_markdown(logic_data: dict, meeting_dir: Path | None = None) -> s
     for horse_num, horse in _horses_by_rank(horses):
         lines.extend(_render_horse_section(horse_num, horse, horse["python_auto"],
                                            market_line=_market_ref_line(market_ref, horse_num)))
-    lines.extend(_render_verdict(verdict, horses, race))
+    lines.extend(_render_verdict(verdict, horses, race, divergence))
     return "\n".join(lines).strip() + "\n"
 
 
@@ -398,7 +402,7 @@ def _decision_trace_text(verdict) -> str:
     return "矩陣＋已聲明 overlay 排名次序一致（冇隱藏後置 rerank）"
 
 
-def _panorama(race, verdict, horses):
+def _panorama(race, verdict, horses, divergence=()):
     race_number = race.get("race_number", "")
     distance = race.get("distance", "")
     race_class = race.get("race_class", "")
@@ -419,6 +423,7 @@ def _panorama(race, verdict, horses):
         f"| 排名審計 | {_decision_trace_text(verdict)} |",
         "",
         *_going_box_advisory(race),
+        *divergence,
         "**🏃 形勢推演**",
         "",
         *_shape_overview_lines(speed_map, horses),
@@ -506,12 +511,48 @@ def _matrix_subscore_lines(key, auto):
     return out
 
 
+def _form_quality_detail_lines(d):
+    """近績質素分（EXP-20261016-06）逐仗拆解：名次 z、獎金級別 z、近期權重，再場內標準化。
+    只係將引擎已計好嘅數攤開，唔再計一次分。"""
+    if not d:
+        return []
+    if d.get("fallback"):
+        return [f"未有最少兩場完整往績或同場有值嘅馬少過 3 匹 → 沿用舊組合分 {float(d.get('final') or 60):.1f}"]
+    lines = ["每仗值 ＝（名次 z ＋ 獎金級別 z）÷ 2；名次 z 按出馬數換算百分位，獎金級別 z 用 log10 獎金"]
+    runs = d.get("runs") or []
+    for idx, r in enumerate(runs, start=1):
+        recency = "（最近）" if idx == 1 else ""
+        prize = f"${float(r['prize']):,.0f}" if r.get("prize") else "獎金未有資料"
+        dist = f" {int(float(r['distance']))}m" if r.get("distance") else ""
+        head = f"第{idx}仗{recency} {r.get('date', '')}{dist}：第{r.get('finish_pos')}名／{r.get('starters')}匹，{prize}"
+        if r.get("z_place") is not None and r.get("z_prize") is not None:
+            head += f" → 名次 z {float(r['z_place']):+.2f}、獎金級別 z {float(r['z_prize']):+.2f}"
+        head += f" → 本仗值 {float(r.get('value') or 0):+.2f}"
+        if r.get("weight") is not None:
+            head += f" × 近期權重 {float(r['weight']):.1f}"
+        lines.append(head)
+    if d.get("raw") is not None:
+        lines.append(f"加權平均 ＝ {float(d['raw']):+.3f}")
+    if d.get("z") is not None and d.get("field_mean") is not None:
+        lines.append(f"同場 {int(d.get('field_count') or 0)} 匹有值：平均 {float(d['field_mean']):+.3f}、"
+                     f"標準差 {float(d.get('field_stdev') or 0):.3f} → 場內 z {float(d['z']):+.2f}"
+                     f" → 60 ＋ 20z ＝ {float(d.get('final') or 0):.1f}（0-100 封頂）")
+    trip = d.get("trip_change")
+    if isinstance(trip, dict):
+        lines.append(f"大幅轉程：今場 {float(trip['today']):.0f}m 對上仗 {float(trip['last']):.0f}m"
+                     f"（相差 ≥400m）{float(trip['delta']):+.0f}")
+        lines.append(f"最終近績質素分 ＝ {clip_score(float(d.get('final') or 60) + float(trip['delta'])):.1f}")
+    return lines
+
+
 def _stability_detail_lines(auto, name):
     """近績分／穩定性分嘅完整評分構成（HK 式透明度）：
     基礎分、每項加減嘅分值同依據、逐仗底分×班次×近期權重，全部攤開。"""
     sd = auto.get("stability_detail")
     if not isinstance(sd, dict):
         return []
+    if name == "form_quality_score":
+        return _form_quality_detail_lines(sd.get("form_quality") or {})
     if name == "form_score":
         d = sd.get("form") or {}
         lines = []
@@ -689,10 +730,15 @@ def _class_weight_detail_lines(auto, name):
     if name == "class_score":
         d = sd.get("class") or {}
         lines = [f"基礎分 {float(d['base']):.1f}"] if d.get("base") is not None else []
-        for n in d.get("notes") or []:
-            lines.append(str(n))
-        if d.get("final") is not None and d.get("notes"):
-            lines.append(f"級數分 ＝ {float(d['final']):.1f}")
+        adjustments = d.get("adjustments")
+        if adjustments is None:   # 舊 Logic 冇逐項加減，只有文字
+            lines.extend(str(n) for n in d.get("notes") or [])
+        else:
+            lines.extend(f"{a['factor']} {float(a['delta']):+.2f}" for a in adjustments)
+            if not adjustments:
+                lines.append("冇規則觸發（出賽 6 場或以上、冇降班、冇省轉都會）")
+        if d.get("final") is not None and (d.get("notes") or adjustments):
+            lines.append(f"級數分 ＝ {float(d['final']):.1f}（0-100 封頂）")
         return lines
     if name == "rating_score":
         d = sd.get("rating") or {}
@@ -972,11 +1018,12 @@ def _au_formline_table_lines(auto):
     return lines
 
 
-def _render_verdict(verdict, horses, race=None):
+def _render_verdict(verdict, horses, race=None, divergence=()):
     lines = [
         "## [第三部分] 🏆 Top 4 位置精選",
         "",
         *(_going_box_advisory(race) if race else []),
+        *divergence,
     ]
     labels = ("🥇", "🥈", "🥉", "🏅")
     text_labels = ("第一選", "第二選", "第三選", "第四選")

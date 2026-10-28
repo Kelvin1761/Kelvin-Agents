@@ -22,9 +22,14 @@ Snapshots taken at/after tip-off (``post_tip`` / ``late_write``) are flagged
 from __future__ import annotations
 
 import json
+import sys
 from collections import defaultdict
 from pathlib import Path
 from typing import Any, Iterable, Mapping
+
+NBA_SKILL = Path(__file__).resolve().parents[1]
+if str(NBA_SKILL) not in sys.path:
+    sys.path.insert(0, str(NBA_SKILL))
 
 import nba_market_ledger as ledger
 
@@ -50,12 +55,17 @@ def _price(value: Any) -> float | None:
     return number if number > 1.0 else None
 
 
-def _combo_rows(rows: list[dict]) -> list[dict]:
-    """One sgm_obs row per (game, combo): the latest clean published snapshot, else latest."""
+def _combo_rows(rows: list[dict], view: str = "latest") -> list[dict]:
+    """One sgm_obs row per (game, combo): the latest clean published snapshot, else latest.
+
+    view="bet" keeps only the 21:00 production publication the user actually bets.
+    """
     exclusions = ledger.no_prediction_exclusions(rows)
     best: dict[tuple, dict] = {}
     for row in rows:
         if row.get("row_type") != "sgm_obs" or row.get("snapshot_role") == "warmup":
+            continue
+        if view == "bet" and row.get("snapshot_role") != ledger.BET_ROLE:
             continue
         if ledger._excluded(row, exclusions):
             continue
@@ -90,18 +100,24 @@ def _sgm_price(rows: list[dict], combo: Mapping[str, Any]) -> float | None:
     return _price(max(quotes, key=lambda r: str(r.get("captured_at") or "")).get("sportsbet_sgm_price"))
 
 
-def settle_combos(rows: list[dict]) -> list[dict]:
+def settle_combos(rows: list[dict], view: str = "latest") -> list[dict]:
     outcomes: dict[tuple, str] = {}
     for row in rows:
         if row.get("row_type") == "settlement":
             outcomes.setdefault(_leg_key(row.get("game_tag"), row), str(row.get("outcome")))
     out = []
-    for combo in _combo_rows(rows):
+    for combo in _combo_rows(rows, view):
         results = [outcomes.get(_leg_key(combo.get("game_tag"), leg), "unresolved")
                    for leg in combo.get("legs") or []]
         if not results:
             continue
-        if any(r == "void" for r in results):
+        # A settled miss means the selection lost whatever the other legs did.
+        # Checking void first dropped known losses from ROI (bias upward). This
+        # assumes void legs are resettled on the remaining legs, not that one void
+        # refunds the whole SGM (Sportsbet's exact SGM void wording not yet verified).
+        if any(r == "miss" for r in results):
+            state = "loss"
+        elif any(r == "void" for r in results):
             state = "void"
         elif any(r == "unresolved" for r in results):
             state = "pending"
@@ -159,17 +175,24 @@ def summarise(combos: list[dict]) -> dict:
 
 def daily(target_date: str, root: Path | None = None) -> dict:
     root = root or ledger.ledger_root()
-    combos = settle_combos(ledger.read_rows(root, target_date))
-    return {"target_date": target_date, **summarise(combos), "rows": combos}
+    rows = ledger.read_rows(root, target_date)
+    combos = settle_combos(rows)
+    bet = settle_combos(rows, "bet")
+    return {"target_date": target_date, **summarise(combos), "rows": combos,
+            "bet_version": {**summarise(bet), "rows": bet}}
 
 
 def cumulative(root: Path | None = None, until: str | None = None) -> dict:
     root = root or ledger.ledger_root()
     combos: list[dict] = []
+    bet: list[dict] = []
     dates = ledger._iter_dates(None, until, root)
     for date in dates:
-        combos.extend(settle_combos(ledger.read_rows(root, date)))
-    return {"dates": dates, **summarise(combos), "rows": combos}
+        rows = ledger.read_rows(root, date)
+        combos.extend(settle_combos(rows))
+        bet.extend(settle_combos(rows, "bet"))
+    return {"dates": dates, **summarise(combos), "rows": combos,
+            "bet_version": {**summarise(bet), "rows": bet}}
 
 
 def write_reports(target_date: str, root: Path | None = None) -> dict:
@@ -181,7 +204,40 @@ def write_reports(target_date: str, root: Path | None = None) -> dict:
         json.dumps(day, ensure_ascii=False, indent=2), encoding="utf-8")
     (out / "combo_roi_cumulative.json").write_text(
         json.dumps(total, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"daily": day, "cumulative": total}
+    shadow = banker_shadow(target_date, root)
+    shadow["bet_version"] = banker_shadow(target_date, root, version="bet")
+    (out / "banker_shadow_latest.json").write_text(json.dumps(shadow, ensure_ascii=False, indent=2), encoding="utf-8")
+    return {"daily": day, "cumulative": total, "banker_shadow": shadow}
+
+
+def bet_tracking_lines(tracking: Mapping[str, Any], target_date: str) -> list[str]:
+    """Telegram ROI = the dashboard's own tracking records (2026-10-27).
+
+    One record per game: the first verified publication (the 21:00 version the user
+    bets), formal 穩膽 or the steady banker candidate, $1 flat. Research shadows and
+    retired combo types stay in the report files only, so the message can never
+    disagree with the dashboard.
+    """
+    records = list(tracking.get("records") or [])
+
+    def summary(rows):
+        settled = [r for r in rows if r.get("state") in ("won", "lost")]
+        wins = sum(r["state"] == "won" for r in settled)
+        profit = sum(float(r.get("profit") or 0) for r in settled)
+        return (len(settled), wins, profit, sum(r.get("state") == "pending" for r in rows),
+                sum(r.get("state") == "unpriced" for r in rows))
+
+    lines = ["📊 落注追蹤（同 dashboard 一樣：每場第一個發佈、即 21:00 版本嘅穩膽；每注 $1）"]
+    for title, rows in (("今日", [r for r in records if r.get("day") == target_date]),
+                        (f"累計（由 {tracking.get('inception_date')} 起）", records)):
+        n, wins, profit, pending, unpriced = summary(rows)
+        extra = (f"｜待結算 {pending}" if pending else "") + (f"｜void／冇賽前真價 {unpriced}" if unpriced else "")
+        if not n:
+            lines.append(f"{title}：未有已結算注{extra}")
+            continue
+        lines.append(f"{title}：{wins}/{n} 中｜盈虧 {profit:+.2f}u｜ROI {profit / n * 100:+.0f}%{extra}")
+    lines.append("樣本細，唔等於有 edge；研究影子同已停用組合嘅 ROI 只保留喺 reports 檔案。")
+    return lines
 
 
 def _roi(b: Mapping[str, Any], basis: str) -> str:
@@ -201,6 +257,11 @@ def _line(name: str, b: Mapping[str, Any]) -> str:
 
 def message_lines(reports: Mapping[str, Any]) -> list[str]:
     lines = ["📊 組合 ROI（每注 1u；樣本細，唔等於有 edge）"]
+    if all("bet_version" in reports[s] for s in ("daily", "cumulative")):
+        lines.append("🎯 21:00 落注版本：")
+        for scope, title in (("daily", "今日"), ("cumulative", "累計")):
+            lines.append("  " + _line(f"{title}合共", reports[scope]["bet_version"]["total"]))
+        lines.append("🔄 最新版本（包括朝早刷新）：")
     for scope, title in (("daily", "今日"), ("cumulative", "累計")):
         data = reports[scope]
         lines.append(_line(f"{title}合共", data["total"]))
@@ -211,7 +272,97 @@ def message_lines(reports: Mapping[str, Any]) -> list[str]:
     if unclean:
         lines.append(f"⚠️ 累計入面 {unclean} 個組合嚟自開賽後快照（唔係賽前價），ROI 只供參考。")
     lines.append("SGM 價未必每注都有；冇賽前 SGM 價嘅組合唔計入「Sportsbet SGM 價」一欄。")
+    shadow = reports.get("banker_shadow")
+    if shadow:
+        lines.append(f"🧪 穩膽 EV 影子比較：{shadow['opportunity_days']} 日；未驗證盈利，唔計正式 ROI。")
+        for arm, summary in shadow['arms'].items():
+            lines.append(f"  {arm}：真價已結算 {summary['sgm']['n']} 注，ROI {_roi(summary, 'sgm')}。")
     return lines
+
+
+def banker_shadow(until: str, root: Path | None = None, *, model_id: str | None = None,
+                  version: str = "latest") -> dict:
+    """Forward research only; reuse settlement/real-price ROI without adding BETs."""
+    import random
+    if model_id is None:
+        from nba_reliability import current_model_id
+        model_id = current_model_id()
+    root = root or ledger.ledger_root()
+    arms = ('B0', 'B1', 'B2')
+    items, opportunities, incomplete = [], [], 0
+    for day in ledger._iter_dates(None, until, root):
+        rows = ledger.read_rows(root, day)
+        exclusions = ledger.no_prediction_exclusions(rows)
+        rows = [r for r in rows if not ledger._excluded(r, exclusions) and r.get('season_phase') != 'PRESEASON']
+        models = defaultdict(list)
+        for row in rows:
+            if row.get('row_type') == 'model_obs':
+                models[row.get('game_tag')].append(row)
+        chosen = {}
+        for tag, observations in models.items():
+            snap = ledger._choose_view_snapshot(observations, version)
+            current = [r for r in observations if snap and r.get('snapshot_id') == snap]
+            if current and model_id and all(ledger.probability_model_id(r) == model_id for r in current):
+                chosen[tag] = snap
+        experiments = defaultdict(dict)
+        for row in rows:
+            if (row.get('row_type') == 'banker_shadow_obs' and row.get('version') == 'banker-ev-shadow-v1'
+                    and row.get('snapshot_id') == chosen.get(row.get('game_tag'))
+                    and row.get('probability_model_id') == model_id and ledger._pre_tip(row)):
+                experiments[row['game_tag']][row['arm']] = row
+        view = [r for r in rows if r.get('row_type') == 'settlement']
+        for tag, found in experiments.items():
+            if set(found) != set(arms):
+                incomplete += 1
+                continue
+            opportunities.append((day, tag))
+            for arm, row in found.items():
+                if row.get('eligible'):
+                    view.append(dict(row, row_type='sgm_obs', combo_id=arm))
+        items.extend(settle_combos(view))
+    clean = [r for r in items if r['clean']]
+    by_arm = {arm: _bucket(r for r in clean if r['combo_id'] == arm) for arm in arms}
+    daily_returns = {arm: defaultdict(lambda: [0.0, 0]) for arm in arms}
+    for item in clean:
+        if item['state'] in ('win', 'loss') and item['sgm_price']:
+            values = daily_returns[item['combo_id']][item['target_date']]
+            values[0] += item['sgm_price']-1 if item['state'] == 'win' else -1
+            values[1] += 1
+    days = sorted({day for day, _ in opportunities})
+    def interval(left, right=None):
+        if (sum(daily_returns[left][d][1] > 0 for d in days) < 2
+                or (right and sum(daily_returns[right][d][1] > 0 for d in days) < 2)):
+            return None
+        rng, values = random.Random(24), []
+        for _ in range(2000):
+            sampled = rng.choices(days, k=len(days))
+            def roi(arm):
+                profit = sum(daily_returns[arm][d][0] for d in sampled)
+                stakes = sum(daily_returns[arm][d][1] for d in sampled)
+                return profit/stakes if stakes else None
+            a = roi(left)
+            b = roi(right) if right else 0
+            if a is not None and b is not None:
+                values.append(a-b)
+        if not values:
+            return None
+        values.sort()
+        return [round(values[int(.025*(len(values)-1))], 4), round(values[int(.975*(len(values)-1))], 4)]
+    for arm, bucket in by_arm.items():
+        bucket['sgm_roi_ci95'] = interval(arm)
+        running, peak, drawdown = 0.0, 0.0, 0.0
+        for day in days:
+            running += daily_returns[arm][day][0]
+            peak = max(peak, running)
+            drawdown = max(drawdown, peak-running)
+        bucket['end_of_day_drawdown_units'] = round(drawdown, 4)
+    return {'version': 'banker-ev-shadow-v1', 'view': version, 'until': until, 'probability_model_id': model_id,
+            'status': 'NEEDS_MORE_TESTING', 'promotion_allowed': False,
+            'recorded_game_opportunities': len(opportunities), 'opportunity_days': len(days),
+            'incomplete_games': incomplete, 'arms': by_arm,
+            'paired_roi_delta_ci95': {'B1_minus_B0': interval('B1', 'B0'), 'B2_minus_B1': interval('B2', 'B1')},
+            'note': 'Diagnostic intervals only. No-bet ROI is undefined (not zero); absent comparisons remain null. '
+                    'No automatic promotion; independent power assessment and Holm adjustment required before any adoption.'}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -219,7 +370,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="NBA combo ROI by type")
     parser.add_argument("--date", required=True)
     parser.add_argument("--write", action="store_true")
+    parser.add_argument("--shadow", action="store_true", help="read-only banker EV forward experiment")
     args = parser.parse_args(argv)
+    if args.shadow:
+        print(json.dumps(banker_shadow(args.date), ensure_ascii=False, indent=2))
+        return 0
     reports = write_reports(args.date) if args.write else {
         "daily": daily(args.date), "cumulative": cumulative(until=args.date)}
     print("\n".join(message_lines(reports)))

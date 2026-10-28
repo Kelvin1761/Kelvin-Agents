@@ -419,6 +419,18 @@ def trend(rows: list[dict], week: str | None = None,
         verdict = _judge(source, current, history)
         if verdict:
             status, detail = verdict
+            provenance = next((r for r in series.get(("provenance", field), [])
+                               if r["week"] == week), {})
+            if source in {"leaf", "evidence"} and provenance.get("top_value") == "disabled_neutral":
+                share = provenance.get("top_share")
+                if share is not None:
+                    detail += f"；其中 {share:.1%} 係引擎明確停用（disabled_neutral），唔等於抽取缺失"
+            if source == "leaf":
+                evidence = next((r for r in series.get(("evidence", field), [])
+                                 if r["week"] == week), {})
+                weak = evidence.get("weak_rate")
+                if weak is not None:
+                    detail += f"；同期證據 fallback／missing {weak:.1%}"
             finding = {"week": week, "source": source, "field": field,
                        "status": status, "detail": detail, "n": current.get("n")}
             if status == "dead":

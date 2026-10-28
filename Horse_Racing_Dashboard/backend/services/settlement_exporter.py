@@ -376,7 +376,8 @@ def export_nba_settlements(analysis_dir: Path) -> Dict[str, Any]:
     # publication decision, so a later change to a firewall rule must not stop
     # a finished day from being graded.
     snapshot = export_nba_snapshot(
-        analysis_dir.parent, target_date=date_match.group(1), firewall=nba_no_firewall
+        analysis_dir.parent, target_date=date_match.group(1), firewall=nba_no_firewall,
+        include_legacy_strategies=True,
     )
     settlements: List[Dict[str, Any]] = []
     warnings: List[str] = []

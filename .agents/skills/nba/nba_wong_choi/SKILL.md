@@ -76,6 +76,12 @@ Orchestrator 會生成以下檔案：
 | `NBA_All_SGM_Report.txt` | 全日所有場次 SGM 組合完整分析 |
 | `NBA_Banker_Report.txt` | 穩膽報告 + 跨場 Parlay |
 
+## 正式策略範圍（2026-10-24）
+
+新正式輸出使用 `banker-steady-b2-v1`（EXP-20261027-21，取代 `banker-only-v1`）：只保留 combo 1 穩膽，揀法 = B2 —— 同一套近期命中／波幅選腿，**冇單腿 edge 閘同組合 EV 閘**，真實 Sportsbet SGM 價至少 2.0，固定 $1 平注。模型預期 EV 為負，報告、投注卡同 dashboard 一定要講明；累計 −10u（或 60 注後 ROI 95% 上限 <0）自動暫停，要人手 `nba_steady_policy.py --resume` 先恢復。價值膽／高倍率／Value Bomb 唔再成為新正式建議；舊紀錄仍可檢討及結算。
+
+`banker-ev-shadow-v1` 嘅 B0/B1/B2 只做 forward EV 消融，維持 OBSERVE／無注碼，唔計入正式 ROI。協議見 `docs/experiments/EXP-20261024-02-nba-banker-only-ev-shadow.md`。連續三個完整可評估正式賽日零穩膽觸發策略審計提醒，唔自動降門檻。呢啲係工程及產品取捨，未證明可提高盈利。
+
 ## Unattended Automation
 
 每日排程唯一入口：
@@ -124,3 +130,11 @@ compatibility 嘅 `strategy_phase`，唔係公開 lifecycle。
 - `resources/00_pipeline_and_execution.md` — 完整管線
 - `resources/engine_directives.md` — 硬性 XML 約束
 - `resources/02_quality_scan.md` — 品質掃描
+
+## Opt-in 真價搜尋審計（研究用途）
+
+```bash
+python3 .agents/skills/nba/nba_orchestrator.py --date YYYY-MM-DD --auto --banker-search-audit
+```
+
+`banker-search-v1` 獨立比較 Q0／Q1／Q2（報價前EV與有限多組合搜尋），每場最多12個新增報價，另有至多2個基準候選；輸出 `Game_TAG_Full_Analysis.md.banker_search.json`。正式機率／門檻與B0/B1/B2協議不變，預設與每日排程不啟用；此模式強制跳過Cloudflare部署，結果唔進BET／ROI／公開推薦。詳見 `docs/experiments/EXP-20261024-03-nba-actual-price-search.md`。模型估計正EV亦只係研究候選，未驗證盈利。

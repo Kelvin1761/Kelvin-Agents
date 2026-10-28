@@ -10,6 +10,8 @@ gives the subset the daily job should refuse to publish through.
 """
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+
 import re
 from dataclasses import dataclass, field
 
@@ -25,10 +27,7 @@ class CheckResult:
 
 
 def _rows(conn, sql: str, params: tuple = ()) -> list:
-    try:
-        return conn.execute(sql, params).fetchall()
-    except Exception:
-        return []
+    return conn.execute(sql, params).fetchall()
 
 
 def _count(conn, sql: str, params: tuple = ()) -> int:
@@ -131,12 +130,14 @@ def check_duplicate_identities(conn) -> CheckResult:
     A player split 70/8/0 across three ids is rejected by the ace model's
     ten-match minimum while the data exists.
     """
+    columns = {row["name"] for row in _rows(conn, "PRAGMA table_info(players)")}
+    unmerged = "WHERE canonical_player_id IS NULL" if "canonical_player_id" in columns else ""
     count = _count(
         conn,
-        """
+        f"""
         SELECT COUNT(*) FROM (
             SELECT LOWER(TRIM(name)) n FROM players
-            WHERE canonical_player_id IS NULL
+            {unmerged}
             GROUP BY 1 HAVING COUNT(*) > 1
         )
         """,
@@ -235,14 +236,14 @@ def check_settled_props_have_a_result(conn) -> CheckResult:
     """
     count = _count(
         conn,
-        """
+        f"""
         SELECT COUNT(*) FROM prop_tracker t
         JOIN matches m ON m.id = t.match_id
         WHERE t.result_status IN ('WON', 'LOST')
           AND NOT EXISTS (SELECT 1 FROM match_results r WHERE r.match_id = t.match_id)
           AND NOT EXISTS (
               SELECT 1 FROM player_match_history h
-              WHERE h.match_date = m.match_date
+              WHERE {history_active_clause(conn,"h")} AND h.match_date = m.match_date
                 AND h.player_id IN (m.player_a_id, m.player_b_id)
                 AND (h.ace_count IS NOT NULL OR h.double_fault_count IS NOT NULL)
           )
@@ -339,7 +340,19 @@ def check_new_props_are_recorded_before_the_match(conn) -> CheckResult:
     )
 
 
+def check_conflicting_results(conn) -> CheckResult:
+    from tennis_wc.database.result_consensus import conflicting_result_matches
+
+    conflicts = sorted(conflicting_result_matches(conn))
+    return CheckResult(
+        "conflicting_results", not conflicts, "critical",
+        f"{len(conflicts)} fixtures have disputed or invalid winners; settlement is held",
+        len(conflicts), conflicts[:10],
+    )
+
+
 ALL_CHECKS = (
+    check_conflicting_results,
     check_features_are_as_of,
     check_snapshot_before_match,
     check_no_self_matches,
@@ -357,7 +370,16 @@ ALL_CHECKS = (
 
 
 def run_checks(conn, checks=ALL_CHECKS) -> list[CheckResult]:
-    return [check(conn) for check in checks]
+    results = []
+    for check in checks:
+        try:
+            results.append(check(conn))
+        except Exception as exc:
+            results.append(CheckResult(
+                check.__name__.removeprefix("check_"), False, "critical",
+                f"check could not run: {type(exc).__name__}: {exc}",
+            ))
+    return results
 
 
 def critical_failures(results: list[CheckResult]) -> list[CheckResult]:

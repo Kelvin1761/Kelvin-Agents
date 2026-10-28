@@ -149,3 +149,31 @@ def test_the_stale_threshold_is_configurable_and_documented():
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__]))
+
+
+def test_unreadable_mirror_records_scan_error(tree, monkeypatch):
+    mirror, primary = tree
+    def denied(root, *, onerror):
+        onerror(PermissionError('File Provider access denied'))
+        return iter(())
+    monkeypatch.setattr(mc.os, 'walk', denied)
+    result = mc.scan(mirror, primary)
+    assert result['paired'] == 0
+    assert 'PermissionError' in result['errors'][0]
+
+
+@pytest.mark.parametrize('denied', [False, True])
+def test_empty_or_unreadable_scan_cannot_report_ok(tree, monkeypatch, capsys, denied):
+    mirror, primary = tree
+    monkeypatch.setattr(mc, 'PLATFORMS', {'au': ('AU', 'marker', str(primary))})
+    monkeypatch.setattr(mc, '_mirror_root', lambda marker: mirror)
+    monkeypatch.setattr(sys, 'argv', ['mirror_consistency.py', '--check'])
+    if denied:
+        def walk(root, *, onerror):
+            onerror(PermissionError('denied'))
+            return iter(())
+        monkeypatch.setattr(mc.os, 'walk', walk)
+    assert mc.main() == 2
+    output = capsys.readouterr().out
+    assert 'ERROR\tAU' in output
+    assert 'OK\t' not in output

@@ -1,0 +1,93 @@
+{
+  "runtime_sha": "41730c2f559c2a20d574eec9d37ee5cb4931d502",
+  "counts_preserved": {
+    "matches": 9748,
+    "predictions": 15681,
+    "prop_tracker": 26202,
+    "clv_tracker": 3681,
+    "match_results": 13016,
+    "odds_snapshots": 16750,
+    "market_odds_snapshots": 237399,
+    "feature_snapshots": 36938,
+    "player_match_history": 419843
+  },
+  "fixture_status": "DISPUTED",
+  "result_observations": {
+    "n": 13016,
+    "first_observation": "2026-10-26T23:35:30.422Z",
+    "last_observation": "2026-10-26T23:35:30.422Z"
+  },
+  "indexes": [
+    "idx_predictions_match_id",
+    "idx_odds_snapshots_match_id"
+  ],
+  "repair": {
+    "raw_fixture_rows_checked": 12516,
+    "keys_with_surviving_raw": 3810,
+    "legacy_identity_cases": 1,
+    "cases": [
+      {
+        "match_id": 21718,
+        "kind": "PAIR_CHANGED",
+        "current": {
+          "id": 21718,
+          "provider_match_id": "185138",
+          "market_event_id": "185138",
+          "tour": "ATP",
+          "match_date": "2026-10-27",
+          "tournament_id": 2323516,
+          "player_a_id": 35,
+          "player_b_id": 1,
+          "round": "Round 1",
+          "source_provider": "composite",
+          "raw_response_id": 24756,
+          "created_at": "2026-10-25T07:28:37Z",
+          "updated_at": "2026-10-26T07:22:17Z",
+          "start_time_utc": null
+        },
+        "trace": {
+          "first": {
+            "raw_id": 24636,
+            "fetched_at": "2026-10-25T07:28:37Z",
+            "pair": [
+              "2869",
+              "2946"
+            ],
+            "names": [
+              "Stefanos Tsitsipas",
+              "Taylor Fritz"
+            ]
+          },
+          "last": {
+            "raw_id": 24756,
+            "fetched_at": "2026-10-26T07:22:17Z",
+            "pair": [
+              "3716",
+              "2946"
+            ],
+            "names": [
+              "Rinky Hijikata",
+              "Taylor Fritz"
+            ]
+          },
+          "last_change": {
+            "raw_id": 24756,
+            "fetched_at": "2026-10-26T07:22:17Z",
+            "pair": [
+              "3716",
+              "2946"
+            ],
+            "names": [
+              "Rinky Hijikata",
+              "Taylor Fritz"
+            ]
+          },
+          "change_kind": "PAIR_CHANGED"
+        }
+      }
+    ],
+    "limitation": "Only surviving raw bodies and artifacts; no finding is not proof of a clean legacy identity chain.",
+    "quarantined": 1,
+    "backup": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-bugs-20261026/backups/tennis-before-identity-20261026T232919Z.db"
+  }
+}

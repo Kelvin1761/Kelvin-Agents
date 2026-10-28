@@ -39,6 +39,9 @@ NBA_SKILL_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA_SKILL_DIR))
 from nba_schedule import canonical_team_abbr, canonical_game_tag, event_sydney_date
 from nba_data_contract import NBA_STATISTICS_CONTRACT
+import nba_opportunities
+import nba_team_context
+import nba_official_injuries
 from nba_availability import compute_usage_redistribution
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
@@ -528,6 +531,31 @@ def compute_fit_inputs(df, game_season):
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
+SEASON_LOG_STATS = ("MIN", "PTS", "REB", "AST", "FG3M", "FGA", "FG3A", "FTA", "FGM", "FTM")
+
+
+def compact_season_log(df):
+    """Every fetched game (already cut before the event's US day), newest-first.
+
+    Feeds the shadow season-rate model (EXP-20261025-11), which needs more than
+    L10. Same fetch as L10, so no extra API calls. Never raises.
+    """
+    try:
+        import pandas as pd
+        dates = pd.to_datetime(df["GAME_DATE"], errors="coerce")
+        out = {"dates": [d.strftime("%Y-%m-%d") for d in dates],
+               "seasons": [str(x) for x in df["_season"]],
+               "season_types": [str(x) for x in df["_season_type"]]}
+        if "MATCHUP" in df:
+            # Team per game (first token of MATCHUP): S_v4 needs to know who moved.
+            out["teams"] = [str(m).split()[0] if str(m).split() else "" for m in df["MATCHUP"]]
+        for stat in SEASON_LOG_STATS:
+            out[stat] = [float(x) for x in pd.to_numeric(df[stat], errors="coerce").fillna(0)]
+        return out
+    except Exception as exc:  # shadow data must never break extraction
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+
 def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, include_previous=False, season_type="Regular Season"):
     """為單一球員提取 L10 完整 Box Score（Season-Agnostic: RS + Playoffs 合併）
     
@@ -657,6 +685,7 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
             "FTA": df_l10['FTA'].tolist(),
             "PLUS_MINUS": df_l10['PLUS_MINUS'].tolist(),
         }
+        record["season_log"] = compact_season_log(df)
         record["fit_inputs"] = compute_fit_inputs(
             df, nba_season_for_date(as_of) if as_of else history_season)
         # 計算統計量
@@ -904,6 +933,65 @@ def fetch_team_defense_vs_position(season=None, as_of=None):
 # ==========================================
 # 模塊 6：球隊進階數據 (DEF_RTG, OFF_RTG, PACE)
 # ==========================================
+def fetch_team_opponent_stats(season=None, as_of=None):
+    """Optional descriptive opponent totals; never substitutes missing values with zero."""
+    if not NBA_API_AVAILABLE:
+        return {}
+    season = season or nba_season_for_date(as_of)
+    cutoff = history_date_to(as_of)
+    id_to_abbr = {t['id']: t['abbreviation'] for t in teams.get_teams()}
+    modes = {}
+    for mode, unit in [('PerGame', 'per_game'), ('Per100Possessions', 'per_100_possessions')]:
+        try:
+            response = leaguedashteamstats.LeagueDashTeamStats(
+                measure_type_detailed_defense='Opponent', per_mode_detailed=mode,
+                season=season, season_type_all_star='Regular Season',
+                date_to_nullable=cutoff, timeout=15,
+            )
+            frame = response.get_data_frames()[0]
+            modes[unit] = ('available', frame)
+        except Exception:
+            modes[unit] = ('unavailable', None)
+        time.sleep(API_SLEEP)
+    fields = ('OPP_PTS', 'OPP_REB', 'OPP_AST', 'OPP_OREB', 'OPP_DREB', 'OPP_FGA', 'OPP_FGM', 'OPP_FG3A', 'OPP_FG3M')
+    result = {}
+    for unit, (status, frame) in modes.items():
+        if frame is None:
+            continue
+        for _, row in frame.iterrows():
+            abbr = id_to_abbr.get(row.get('TEAM_ID'))
+            if not abbr:
+                continue
+            record = result.setdefault(abbr, {
+                'source': 'NBA LeagueDashTeamStats/Opponent', 'season': season,
+                'season_type': 'Regular Season', 'history_date_to': cutoff,
+                'model_input_enabled': False,
+                'modes': {key: {'status': state, 'games': None, 'values': {}}
+                          for key, (state, _) in modes.items()},
+            })
+            def number(value):
+                try:
+                    value = float(value)
+                    return value if math.isfinite(value) and value >= 0 else None
+                except (TypeError, ValueError):
+                    return None
+            values = {field: number(row.get(field)) for field in fields}
+            gp = number(row.get('GP'))
+            complete = gp is not None and gp > 0 and all(v is not None for v in values.values())
+            record['captured_at'] = datetime.now(ZoneInfo('UTC')).isoformat()
+            record['modes'][unit] = {
+                'status': 'available' if complete else 'insufficient',
+                'games': int(gp) if gp is not None and gp.is_integer() else None,
+                'values': values,
+            }
+    # A successful endpoint can still omit an individual team.
+    for record in result.values():
+        for mode in record['modes'].values():
+            if mode['status'] == 'available' and not mode['values']:
+                mode['status'] = 'team_missing'
+    return result
+
+
 def fetch_team_advanced_stats(season=None, as_of=None):
     """全聯盟球隊進階數據"""
     if not NBA_API_AVAILABLE:
@@ -936,6 +1024,12 @@ def fetch_team_advanced_stats(season=None, as_of=None):
                 "PACE": round(row['PACE'], 2),
                 "NET_RATING": round(row['NET_RATING'], 1),
             }
+        opponent = fetch_team_opponent_stats(season, as_of)
+        for abbr, record in result.items():
+            record['opponent_stats'] = opponent.get(abbr, {
+                'status': 'unavailable', 'season': season or nba_season_for_date(as_of),
+                'history_date_to': history_date_to(as_of), 'model_input_enabled': False,
+            })
         print(f"  ✅ 獲取 {len(result)} 支球隊數據")
         return result
     except Exception as e:
@@ -1198,17 +1292,17 @@ def compute_correlation_warnings(players, team_abbr):
 # ==========================================
 # 主引擎：單場深度提取
 # ==========================================
-def key_defenders_for_team(defender_data, team_abbr):
+def key_defenders_for_team(defender_data, team_abbr, *, limit=8):
     """The existing 20-attempt sample floor applies to totals, never PerGame."""
     candidates = [row for row in defender_data.values()
                   if canonical_team_abbr(row.get('team', '')) == canonical_team_abbr(team_abbr)
                   and row.get('D_FGA_unit') == 'total_attempts'
                   and row.get('D_FGA', 0) >= 20]
-    return sorted(candidates, key=lambda row: row.get('PCT_PLUSMINUS', 0))[:8]
+    return sorted(candidates, key=lambda row: row.get('PCT_PLUSMINUS', 0))[:limit]
 
 
 def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stats, odds_data,
-                        data_sources=None):
+                        data_sources=None, opportunity_sources=None, team_context=None):
     """
     針對單場比賽提取雙方所有球員的深度數據。
     這是核心函數，輸出一個完整的 JSON 數據包。
@@ -1392,6 +1486,14 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
                 "h2h": h2h,
             }
             
+            if opportunity_sources is not None:
+                opp_team = home_abbr if side == "away" else away_abbr
+                nba_ids = {canonical_team_abbr(t['abbreviation']): t['id'] for t in teams.get_teams()} if NBA_API_AVAILABLE else {}
+                player_entry["opportunity_features"] = nba_opportunities.build_features(
+                    player_entry, abbr, nba_ids.get(canonical_team_abbr(opp_team)), opportunity_sources,
+                    tip=game_info['date'], season=statistics_season,
+                    cutoff=history_date_to(game_info['date']), opponent_stats=team_stats.get(opp_team, {}))
+
             # 🧠 Python Math Engine: 計算命中率、盤口線、Pace 調整、+EV
             opp_abbr = home_abbr if side == "away" else away_abbr
             opp_stats = team_stats.get(opp_abbr, {})
@@ -1408,7 +1510,9 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             package["players"][abbr].append(player_entry)
 
         # 防守者
-        package["key_defenders"][abbr] = key_defenders_for_team(defender_data, abbr)
+        # Availability must remove departed / unavailable players before the
+        # top-eight context cap, otherwise old-season leaders consume the pool.
+        package["key_defenders"][abbr] = key_defenders_for_team(defender_data, abbr, limit=None)
 
         # 🧠 Usage Redistribution (Module D1)
         usg_redist = compute_usage_redistribution(package["players"][abbr], abbr)
@@ -1420,6 +1524,22 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
         if corr_warnings:
             package.setdefault("correlation_warnings", {})[abbr] = corr_warnings
 
+    if opportunity_sources is not None:
+        package["meta"]["opportunity_health"] = nba_opportunities.summarize(package["players"])
+    if team_context is not None:
+        # Shadow S_v2 input (EXP-20261025-13): what each side's OPPONENT allowed per game.
+        try:
+            cutoff_day = history_cutoff_day(game_info.get('date'))
+            package["opponent_context"] = {
+                away_abbr: nba_team_context.opponent_context(team_context, home_abbr, cutoff_day),
+                home_abbr: nba_team_context.opponent_context(team_context, away_abbr, cutoff_day),
+            }
+            # Shadow S_v3 input (EXP-20261026-01): each side's own last-10 games.
+            package["team_recent"] = {
+                abbr: nba_team_context.team_recent(team_context, abbr, cutoff_day) for abbr in (away_abbr, home_abbr)
+            }
+        except Exception as exc:  # shadow data must never break extraction
+            package["opponent_context"] = {"error": f"{type(exc).__name__}: {exc}"}
     return apply_availability(package, availability_maps)
 
 
@@ -1512,6 +1632,22 @@ def build_game_info_from_tag(game_tag):
 # ==========================================
 # 主程式
 # ==========================================
+def attach_official_injuries(package, cache_dir):
+    """Supplementary league injury report for both teams of this game. Never raises."""
+    try:
+        meta = package.get("meta") or {}
+        game_day = history_cutoff_day(meta.get("date"))
+        bundle = nba_official_injuries.fetch_latest(
+            nba_season_for_date(meta.get("date")), Path(cache_dir) / "NBA_Official_Injuries.json")
+        teams = [(meta.get(side) or {}).get("abbr") for side in ("away", "home")]
+        package["official_injuries"] = {t: nba_official_injuries.for_team(bundle, t, game_day) for t in teams if t}
+        meta["official_injuries"] = {k: bundle.get(k) for k in ("status", "report_time", "url", "pdf_sha256",
+                                                                 "captured_at", "error")}
+    except Exception as exc:
+        package["official_injuries"] = {"error": f"{type(exc).__name__}: {exc}"}
+    return package
+
+
 def _write_verified_package(path, package):
     from datetime import timezone
     now = datetime.now(timezone.utc)
@@ -1544,6 +1680,7 @@ def main():
             with open(path, encoding="utf-8") as source:
                 package = json.load(source)
             package = refresh_availability(package, fetch=fetch_team_injuries)
+            package = attach_official_injuries(package, Path(path).resolve().parent)
         except RosterChanged as exc:
             print(f"⏳ {exc}")
             raise SystemExit(2)
@@ -1611,6 +1748,20 @@ def main():
     team_dvp, data_sources["team_dvp"] = fetch_with_season_fallback(
         fetch_team_defense_vs_position, statistics_season, stats_date, MIN_TEAM_ROWS, "team_dvp", fill_below=30)
 
+    # Research-only opportunity evidence: one league capture shared by game runs.
+    opportunity_sources = nba_opportunities.fetch_sources(
+        statistics_season, history_date_to(stats_date),
+        Path(args.output).resolve().parent / "NBA_Opportunity_Sources.json") if games else {"status": "no_official_games", "sources": {}}
+    try:  # shadow S_v2 input only; a failure here must never stop extraction
+        team_context = nba_team_context.fetch_bundle(
+            statistics_season, previous_nba_season(statistics_season), history_date_to(stats_date),
+            Path(args.output).resolve().parent / "NBA_Team_Context.json") if games else None
+    except Exception as exc:
+        print(f"⚠️ team context unavailable: {type(exc).__name__}: {exc}")
+        team_context = {"status": "error", "tables": {}}
+    print("📐 Opportunity sources: " + ", ".join(
+        f"{name}={source.get('status')}" for name, source in opportunity_sources.get('sources', {}).items()))
+
     # ── Step 3: 賠率 (Claw Code 主動提取) ──
     odds_data = fetch_action_network_odds(formatted_date)
     if not odds_data and THE_ODDS_API_KEY:
@@ -1652,7 +1803,8 @@ def main():
             sys.exit(1)
 
         package = extract_single_game(target_game, adv_stats, defender_data, team_dvp, team_stats, odds_data,
-                                      data_sources=data_sources)
+                                      data_sources=data_sources, opportunity_sources=opportunity_sources,
+                                      team_context=team_context)
 
         # 驗證數據品質 — 冇真實 gamelog 則 fail
         has_real_data = False
@@ -1669,6 +1821,8 @@ def main():
             print(f"\n❌ [品質檢查] 所有球員都冇 L10 gamelog 數據！")
             print(f"   可能原因: nba_api 未安裝 / API 限流 / 球隊 abbreviation 唔啱")
             sys.exit(1)
+
+        attach_official_injuries(package, Path(args.output).resolve().parent)
 
         # 儲存為 JSON
         output_path = args.output
@@ -1692,9 +1846,11 @@ def main():
         print("\n🏀 正在為每場比賽生成深度數據包...")
         for g in games:
             package = extract_single_game(g, adv_stats, defender_data, team_dvp, team_stats, odds_data,
-                                      data_sources=data_sources)
+                                      data_sources=data_sources, opportunity_sources=opportunity_sources,
+                                      team_context=team_context)
 
             json_path = f"nba_game_data_{g['tag']}.json"
+            attach_official_injuries(package, Path(json_path).resolve().parent)
             _write_verified_package(json_path, package)
             print(f"  ✅ {g['tag']} → {json_path}")
 

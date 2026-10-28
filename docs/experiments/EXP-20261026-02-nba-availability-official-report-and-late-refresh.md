@@ -1,0 +1,69 @@
+# EXP-20261026-02 傷停處理：NBA 官方傷停報告、狀態記錄、開波前刷新
+
+- **日期**：2026-10-26（Claude Code，用戶問 Day-To-Day／Questionable／GTD 點處理之後批准）
+- **性質**：數據來源同排程工程。**冇改任何機率或模型**；穩膽篩選只會更嚴，唔會放寬。
+- **唔影響**：S_v3（EXP-20261026-01）凍結咗用 ESPN 規則，官方報告唔會入 S_v3。
+
+## 點解要改
+
+| 問題 | 證據 |
+|---|---|
+| ESPN 名單只有 `Out`／`Day-To-Day`，Questionable、GTD、Probable 全部混埋一齊 | 10-24 ledger 樣本：Out 43、Day-To-Day 14 |
+| ESPN 會同官方唔一致 | 2026-10-25 08:15 ET 官方報告：Ben Sheppard 喺 ESPN 係 Day-To-Day，官方係 **Out**；Aaron Nesmith 喺 ESPN 係 Day-To-Day，官方係 **Probable** |
+| 最後一次更新太早 | 舊排程最後一次 final refresh 係 06:30 悉尼時間；今季 44 場入面大約 90% 喺 10:00–13:30 開波（美國轉冬令時間後會推遲一個鐘），即係離開波 3.5–7 個鐘 |
+| 冇記錄 DTD 最後有冇落場 | 所以冇數據校準任何部分權重 |
+
+## 改動
+
+1. **`nba_official_injuries.py`**：讀官方報告索引頁，攞最新一份 PDF（每 15 分鐘出一次，時間係美東時間），用 pdfplumber 按 x 座標分欄解析。
+   - 每頁標題同頁碼唔當資料行。
+   - 隊名同比賽會沿用到下一頁。
+   - 「NOT YET SUBMITTED」按**比賽日期**記錄。份報告會包括之後幾日嘅比賽，所以背靠背嘅球隊唔會撈錯場。
+   - 名字配對處理黏埋嘅後綴（`JacksonJr.`、`WalkerIV`），只會喺大楷後綴緊接細楷字母時先剪，唔會剪錯以 v 結尾嘅姓。
+   - 失敗一律記錄，唔會拋出錯誤；cache 10 分鐘。
+   - 實測 2026-10-25 08:15 ET 報告：41 行、全部有隊名；Out 29、Questionable 7、Probable 3、Doubtful 1、Available 1。
+2. **Extractor**：每次 extraction 同每次 `--refresh-availability`（final refresh 用）都寫入 `official_injuries`。
+3. **穩膽篩選（只會更嚴）**：腿嘅可用性 = ESPN 同官方兩者之中**較嚴**嗰個。
+   - ESPN DTD ＋ 官方 Out → 剔走。
+   - 官方 Questionable（ESPN 冇列）→ DTD，唔入穩膽。
+   - 官方 Probable **唔會**放寬 ESPN DTD。要放寬，一定要有下面第 4 點嘅數據支持，再另外批准。
+4. **`availability_obs`（ledger）**：每個快照為每個喺任何一份名單上嘅球員記錄 ESPN 同官方狀態。
+   - `nba_availability_outcomes.py` 只讀，會將最新賽前快照對返 Results_Brief 嘅實際上場分鐘，按狀態計上場率。
+5. **開波前刷新**：final refresh 由 06:30 一次，改為 06:30、08:30、10:00、11:30、13:00 五次，全部只刷新未開波嘅場次。
+   - 每次有自己嘅 control-plane slot。如果冇咗呢樣，後面幾次會當重複被跳過（10-23 試過 `duplicate_skipped`）。
+   - final refresh 嘅 Telegram 投注卡同營運通知改為按**推介內容**去重（賽事＋選擇＋決定，唔包括賠率）。只有推介真係改變先再發；21:00 production 行為不變。
+
+## 預期同未知
+
+- **預期**：穩膽唔會再揀官方已經列 Out／Questionable 嘅球員；傷停有變嘅場次會喺開波前 30–90 分鐘更新；Telegram 唔會因為賠率郁而多發卡。
+- **成本**：每日最多多四次 final refresh。每次重做未開波場次嘅分析，大約要 8 分鐘一場（並行處理），dashboard 每次有變都會重新部署。
+- **未知**：
+  - 官方報告抽取嘅長期穩定性（PDF 格式可能會改）。解析失敗只會令官方欄位留空，退返 ESPN 規則。
+  - Questionable／Probable 實際上場率要累積幾個星期先有。
+- **之後**：用 `nba_availability_outcomes.py` 睇上場率。如果 Probable 嘅上場率夠高，可以另開協議考慮放寬，並且考慮 S_v3b 用部分權重。
+
+## 執行
+
+```bash
+cd .agents/skills/nba/nba_daily_auto
+PYTHONDONTWRITEBYTECODE=1 python3 nba_availability_outcomes.py --since 2026-10-27
+```
+
+## 修正（2026-10-26 晚）：開波前刷新第一日冇生效
+
+10:00 同 11:30 嘅 final refresh 有行，但係報 `analysis already_snapshotted` 就跳過咗。原因係 `run_pregame` 只要見到當日有任何 final_refresh 快照，就當已經做完，冇理係邊個時段。
+
+修正：final_refresh 快照只會覆蓋佢自己嘅刷新時段。時段開始時間由 `schedule_policy` 嗰份時間表推算，同 launchd 同 control plane 用同一份，唔會再多寫一份。同一時段入面重試，仍然當已經做咗。測試覆蓋：06:55 重試算已做；10:00 同 13:01 一定要重新讀取來源；`created_at` 壞咗就當未做。
+
+## 改動（2026-10-26 晚）：以 21:00 落注版本為準
+
+用戶確認落注係跟 **21:00 production 發佈**嘅版本，唔係朝早刷新後嘅版本。所以做咗兩項改動：
+
+1. **朝早 final refresh 唔再重新發佈推介**：快照同 ledger 照樣更新，供模型評估用；但唔再重新部署 dashboard，亦唔再發新投注卡。只有 21:00 已發佈組合入面有球員被 ESPN 或官方報告列為 Out／Doubtful／Questionable／DTD 時，先發一條提示（`published_leg_availability_alert`，按內容去重）。原本為 final refresh 加嘅「按推介內容去重」功能已刪走，因為唔會再用到。
+2. **評估同時報兩個版本**：
+   - `nba_combo_roi` 嘅每日、累計同 B 系列 shadow，新增 `bet_version`，即最新嘅賽前 production 快照；原有欄位保持「最新版本」。
+   - Telegram 總結會先列 21:00 版本。
+   - `nba_early_season_guard_monitor.py` 預設用 `--view bet`。EXP-20261026-06 §6 嘅判斷就用呢個版本，喺任何 forward 數據之前更改。
+   - 模型校準同 MS forward 測試照舊用最新快照，因為佢哋量嘅係機率準唔準，而且協議已經凍結。
+
+**歷史限制**：B 系列 shadow 喺 10-25 冇 production 記錄（10-24 晚之後先部署），所以 10-25 嘅 B2 8 中 5 只有朝早版本；10-26 B2 21:00 版本係 7 中 2。兩個版本嘅歷史數字唔可以直接比較，由 10-27 開始先有完整嘅兩個版本。

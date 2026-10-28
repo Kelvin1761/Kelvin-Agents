@@ -1,6 +1,12 @@
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause, upsert_history_observation, KNOCKOUT
+from tennis_wc.features.round_labels import normalise_round
+
+from tennis_wc.features.history_values import clean_history_row
+
 import csv
+import re
 from datetime import datetime
 from io import StringIO
 from urllib.error import HTTPError
@@ -211,7 +217,7 @@ def _ingest_rows(
         )
         stats["ranking_rows"] += _upsert_rank(winner_id, match_date, tour, row.get("winner_rank"), row.get("winner_rank_points"), raw_id, now, provider)
         stats["ranking_rows"] += _upsert_rank(loser_id, match_date, tour, row.get("loser_rank"), row.get("loser_rank_points"), raw_id, now, provider)
-        if dedup_against_provider and _history_pair_exists(dedup_against_provider, winner_id, loser_id, match_date):
+        if dedup_against_provider and _history_pair_exists(dedup_against_provider, winner_id, loser_id, match_date, tour=tour, event=row):
             stats["skipped_duplicates"] += 1
             continue
         _insert_history_pair(tour, row, raw_id, winner_id, loser_id, match_date, now, provider)
@@ -228,36 +234,43 @@ def _has_valid_player_identities(row: dict) -> bool:
     )
 
 
-def _history_pair_exists(provider: str, winner_id: int, loser_id: int, match_date: str) -> bool:
-    """True when another provider already recorded this player pair NEARBY —
-    cross-provider dedup so overlapping season files never double-count a
-    match in Elo/feature stats. The window is ±10 days (not exact-date)
-    because the two sources use different date conventions: Sackmann stamps
-    every match with the tournament START date, TML main files carry the
-    actual per-day match date (verified: AO 2026 = 13 distinct TML dates vs 1
-    Sackmann date; exact-date dedup let 1,027 tour matches through twice).
-    A genuinely repeated pairing within 10 days is far rarer than the
-    double-count this prevents."""
+def _history_pair_exists(provider: str, winner_id: int, loser_id: int, match_date: str,
+                         *, tour: str | None = None, event: dict | None = None) -> bool:
+    """Deduplicate only an identified public knockout event, not a nearby pair.
+
+    Season files use different date conventions. Their shared tournament ID,
+    round, format and player pair identify an event without a date-window guess.
+    Missing identity is not proof of duplication; raw observations stay separate.
+    """
+    event = event or {}
+    stage = normalise_round(event.get("round"))
+    if (not tour or not re.match(r"^\d{4}-", str(event.get("tourney_id") or ""))
+            or stage not in KNOCKOUT or str(event.get("best_of")) not in {"3", "5"}):
+        return False
+    match_format = "BO5" if str(event.get("best_of")) == "5" else "BO3"
     with get_connection() as conn:
-        row = conn.execute(
-            """
-            SELECT 1 FROM player_match_history
-            WHERE source_provider = ? AND player_id = ? AND opponent_id = ?
-              AND match_date BETWEEN date(?, '-10 days') AND date(?, '+10 days')
-            LIMIT 1
-            """,
-            (provider, winner_id, loser_id, match_date, match_date),
-        ).fetchone()
-    return row is not None
+        rows = conn.execute(
+            f"""SELECT round, won FROM player_match_history
+                WHERE {history_active_clause(conn)} AND source_provider = ?
+                  AND player_id = ? AND opponent_id = ? AND tour = ?
+                  AND tournament_external_id = ? AND format = ?""",
+            (provider, winner_id, loser_id, tour, str(event["tourney_id"]), match_format),
+        ).fetchall()
+    identified = [row for row in rows if normalise_round(row["round"]) == stage]
+    if any(not row["won"] for row in identified):
+        raise ValueError("cross-provider winner conflict for identified history event")
+    return bool(identified)
 
 
 def _insert_history_pair(tour: str, row: dict, raw_id: int, winner_id: int, loser_id: int, match_date: str, now: str, provider: str = PROVIDER_NAME) -> None:
+    if winner_id == loser_id:
+        return
     tournament_level = _normalise_level(tour, row.get("tourney_level"))
     surface = _normalise_surface(row.get("surface"))
     match_format = f"BO{row.get('best_of') or 3}"
     base_match_id = f"{tour}-{row.get('tourney_id')}-{row.get('match_num')}"
-    winner_metrics = _metrics(row, "w", "l")
-    loser_metrics = _metrics(row, "l", "w")
+    winner_metrics = clean_history_row(_metrics(row, "w", "l"))
+    loser_metrics = clean_history_row(_metrics(row, "l", "w"))
     winner_deciding = _deciding_set_won(row.get("score"), won=True)
     loser_deciding = _deciding_set_won(row.get("score"), won=False)
     loser_lost_first = _lost_first_set(row.get("score"), won=False)
@@ -287,69 +300,40 @@ def _insert_history_pair(tour: str, row: dict, raw_id: int, winner_id: int, lose
                 **loser_metrics,
             },
         ):
-            conn.execute(
-                """
-                INSERT INTO player_match_history (
-                    provider_match_id, player_id, opponent_id, tour, match_date, surface,
-                    tournament_external_id, tournament_level, round, format, won,
-                    opponent_elo, hold_rate, break_rate, ace_count,
-                    service_games_played, double_fault_count,
-                    break_points_saved, break_points_faced, break_points_converted,
-                    break_points_chances, first_serve_points_won_pct,
-                    second_serve_points_won_pct, return_points_won_pct, tiebreak_won,
-                    deciding_set_won, lost_first_set, comeback_after_losing_first_set,
-                    source_provider, raw_response_id, created_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(source_provider, provider_match_id, player_id) DO UPDATE SET
-                    won = excluded.won,
-                    hold_rate = excluded.hold_rate,
-                    break_rate = excluded.break_rate,
-                    ace_count = excluded.ace_count,
-                    service_games_played = excluded.service_games_played,
-                    double_fault_count = excluded.double_fault_count,
-                    break_points_saved = excluded.break_points_saved,
-                    break_points_faced = excluded.break_points_faced,
-                    break_points_converted = excluded.break_points_converted,
-                    break_points_chances = excluded.break_points_chances,
-                    first_serve_points_won_pct = excluded.first_serve_points_won_pct,
-                    second_serve_points_won_pct = excluded.second_serve_points_won_pct,
-                    return_points_won_pct = excluded.return_points_won_pct,
-                    raw_response_id = excluded.raw_response_id
-                """,
-                (
-                    payload["provider_match_id"],
-                    payload["player_id"],
-                    payload["opponent_id"],
-                    tour,
-                    match_date,
-                    surface,
-                    row["tourney_id"],
-                    tournament_level,
-                    row.get("round") or "UNKNOWN",
-                    match_format,
-                    payload["won"],
-                    None,
-                    payload["hold_rate"],
-                    payload["break_rate"],
-                    payload["ace_count"],
-                    payload["service_games_played"],
-                    payload["double_fault_count"],
-                    payload["break_points_saved"],
-                    payload["break_points_faced"],
-                    payload["break_points_converted"],
-                    payload["break_points_chances"],
-                    payload["first_serve_points_won_pct"],
-                    payload["second_serve_points_won_pct"],
-                    payload["return_points_won_pct"],
-                    _bool_to_int(payload["tiebreak_won"]),
-                    _bool_to_int(payload["deciding_set_won"]),
-                    _bool_to_int(payload["lost_first_set"]),
-                    _bool_to_int(payload["comeback_after_losing_first_set"]),
-                    provider,
-                    raw_id,
-                    now,
-                ),
+            upsert_history_observation(
+                conn, {
+                    'provider_match_id': payload["provider_match_id"],
+                    'player_id': payload["player_id"],
+                    'opponent_id': payload["opponent_id"],
+                    'tour': tour,
+                    'match_date': match_date,
+                    'surface': surface,
+                    'tournament_external_id': row["tourney_id"],
+                    'tournament_level': tournament_level,
+                    'round': row.get("round") or "UNKNOWN",
+                    'format': match_format,
+                    'won': payload["won"],
+                    'opponent_elo': None,
+                    'hold_rate': payload["hold_rate"],
+                    'break_rate': payload["break_rate"],
+                    'ace_count': payload["ace_count"],
+                    'service_games_played': payload["service_games_played"],
+                    'double_fault_count': payload["double_fault_count"],
+                    'break_points_saved': payload["break_points_saved"],
+                    'break_points_faced': payload["break_points_faced"],
+                    'break_points_converted': payload["break_points_converted"],
+                    'break_points_chances': payload["break_points_chances"],
+                    'first_serve_points_won_pct': payload["first_serve_points_won_pct"],
+                    'second_serve_points_won_pct': payload["second_serve_points_won_pct"],
+                    'return_points_won_pct': payload["return_points_won_pct"],
+                    'tiebreak_won': _bool_to_int(payload["tiebreak_won"]),
+                    'deciding_set_won': _bool_to_int(payload["deciding_set_won"]),
+                    'lost_first_set': _bool_to_int(payload["lost_first_set"]),
+                    'comeback_after_losing_first_set': _bool_to_int(payload["comeback_after_losing_first_set"]),
+                    'source_provider': provider,
+                    'raw_response_id': raw_id,
+                    'created_at': now,
+                }, observed_at=now,
             )
 
 

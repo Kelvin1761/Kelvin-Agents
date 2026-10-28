@@ -479,15 +479,32 @@ def test_weekly_learning_lines_report_queue_and_rail_progress(tmp_path):
     assert any("跑馬地 1/60" in line for line in lines)
 
 
-def test_weekly_learning_lines_without_ledgers_only_reports_gear_forward(tmp_path):
-    assert schedule.learning_lines(tmp_path) == ["配備「除去」−3 forward：0/60 場（累積中）"]
+def test_weekly_learning_lines_without_ledgers_is_empty(tmp_path):
+    # 配備 forward 進度已經搬去 hkjc_forward_tracker（見 tests/test_forward_tracker.py）
+    assert schedule.learning_lines(tmp_path) == []
 
 
-def test_gear_forward_counts_only_meetings_from_start_date(tmp_path):
-    import json as _json
+def test_prerace_does_not_extract_after_all_pools_closed(tmp_path, monkeypatch):
+    meeting = {'date': '2026-10-25', 'venue': 'ShaTin', 'course': 'ST', 'url': 'fixture'}
+    monkeypatch.setattr(schedule, 'now_local', lambda: datetime(2026, 10, 25, 23, 30))
+    monkeypatch.setattr(schedule, 'meeting_dir_for', lambda *a, **k: tmp_path)
+    monkeypatch.setattr(schedule, 'capture_prerace_odds', lambda *a: {'status': 'closed'})
+    monkeypatch.setattr(schedule, 'collect_speedpro_best_effort', lambda *a: None)
+    with mock.patch.object(schedule, 'run_cmd') as command:
+        assert schedule.run_prerace({}, tmp_path / 'state.json', meeting=meeting) == schedule.EXIT_OK
+    command.assert_not_called()
+    assert schedule._CONTROL_OUTCOME['status'] == 'dormant'
+    assert schedule._CONTROL_OUTCOME['reason'] == 'meeting_pools_closed'
 
-    for name, races in (("2026-10-07_HappyValley", 9), ("2026-10-11_ShaTin", 10)):
-        m = tmp_path / name
-        m.mkdir()
-        (m / f"{name}_全日賽果.json").write_text(_json.dumps({str(i): {} for i in range(races)}), encoding="utf-8")
-    assert "10/60" in schedule.learning_lines(tmp_path)[-1]
+
+def test_lineup_does_not_scan_or_force_rerun_after_all_pools_closed(tmp_path, monkeypatch):
+    meeting = {'date': '2026-10-25', 'venue': 'ShaTin', 'course': 'ST', 'url': 'fixture'}
+    monkeypatch.setattr(schedule, 'now_local', lambda: datetime(2026, 10, 25, 23, 30))
+    monkeypatch.setattr(schedule, 'meeting_dir_for', lambda *a, **k: tmp_path)
+    monkeypatch.setattr(schedule, 'capture_prerace_odds', lambda *a: {'status': 'closed'})
+    monkeypatch.setattr(schedule, 'collect_speedpro_best_effort', lambda *a: None)
+    import scan_lineup
+    with mock.patch.object(scan_lineup, 'scan_race') as scan:
+        assert schedule.run_lineup({}, tmp_path / 'state.json', meeting=meeting) == schedule.EXIT_OK
+    scan.assert_not_called()
+    assert schedule._CONTROL_OUTCOME['reason'] == 'meeting_pools_closed'

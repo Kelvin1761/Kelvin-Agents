@@ -1,0 +1,214 @@
+{
+  "source_dataset": "2e13a17a63871cbd5e108a4c258ec1c7193d1c032752ed74025f8f02249284ac",
+  "projection_manifest": {
+    "source": "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-bugs-20261026/bug_research_baseline.db",
+    "source_sha256": "2e13a17a63871cbd5e108a4c258ec1c7193d1c032752ed74025f8f02249284ac",
+    "fixture_ids": [
+      10162,
+      12099,
+      13088,
+      13574,
+      15254,
+      16144,
+      16873,
+      17560,
+      18262,
+      19363,
+      20182,
+      21003
+    ],
+    "player_ids": [
+      17,
+      19,
+      29,
+      44,
+      71,
+      72,
+      153,
+      293,
+      337,
+      427,
+      541,
+      571,
+      575,
+      576,
+      578,
+      583,
+      653,
+      741,
+      844,
+      3484,
+      3551,
+      5093,
+      5457
+    ],
+    "rows": {
+      "player_match_history": 11050,
+      "players": 25224,
+      "matches": 9705,
+      "tournaments": 4106,
+      "tournament_levels": 4837,
+      "rankings_history": 125419,
+      "player_elo_history": 4413,
+      "player_elo_history_v2": 4413,
+      "raw_api_responses": 24611,
+      "odds_snapshots": 28,
+      "market_odds_snapshots": 826,
+      "feature_snapshots": 40
+    },
+    "projection": "/private/tmp/tennis-feature-projection-20261027.db",
+    "projection_sha256": "b4119900e1e44eaeb5602c86ac9a56276d333c6b029cde0419f6a7682a74e9c0",
+    "limitations": [
+      "Only for the fixed fixture feature/probability probe; not a replacement evaluation corpus.",
+      "Unused raw response bodies/request JSON omitted; provenance metadata retained.",
+      "Must verify full baseline feature payload equality before candidate comparisons."
+    ]
+  },
+  "projection_control": "All twelve complete feature payloads equal the full-source B3 combined arm.",
+  "component_comparison": [
+    {
+      "match_id": 10162,
+      "baseline_p_a": 0.7283644915127894,
+      "candidate_p_a": 0.7275269136313147,
+      "delta": -0.0008375778814746493
+    },
+    {
+      "match_id": 12099,
+      "baseline_p_a": 0.4977738185688962,
+      "candidate_p_a": 0.4977738185688962,
+      "delta": 0.0
+    },
+    {
+      "match_id": 13088,
+      "baseline_p_a": 0.4345304845271792,
+      "candidate_p_a": 0.4321019872721172,
+      "delta": -0.002428497255062001
+    },
+    {
+      "match_id": 13574,
+      "baseline_p_a": 0.5730584931685225,
+      "candidate_p_a": 0.5730584931685225,
+      "delta": 0.0
+    },
+    {
+      "match_id": 15254,
+      "baseline_p_a": 0.5489190537087106,
+      "candidate_p_a": 0.5489190537087106,
+      "delta": 0.0
+    },
+    {
+      "match_id": 16144,
+      "baseline_p_a": 0.36746169354233177,
+      "candidate_p_a": 0.36746169354233177,
+      "delta": 0.0
+    },
+    {
+      "match_id": 16873,
+      "baseline_p_a": 0.3453558859509437,
+      "candidate_p_a": 0.33972581566176485,
+      "delta": -0.0056300702891788346
+    },
+    {
+      "match_id": 17560,
+      "baseline_p_a": 0.3243062082536741,
+      "candidate_p_a": 0.3243062082536741,
+      "delta": 0.0
+    },
+    {
+      "match_id": 18262,
+      "baseline_p_a": 0.5946190862146699,
+      "candidate_p_a": 0.5952215614580479,
+      "delta": 0.0006024752433780867
+    },
+    {
+      "match_id": 19363,
+      "baseline_p_a": 0.6626908106441868,
+      "candidate_p_a": 0.6626908106441868,
+      "delta": 0.0
+    },
+    {
+      "match_id": 20182,
+      "baseline_p_a": 0.503744148364108,
+      "candidate_p_a": 0.503167252909353,
+      "delta": -0.0005768954547549221
+    },
+    {
+      "match_id": 21003,
+      "baseline_p_a": 0.4046497648108962,
+      "candidate_p_a": 0.40293016948758836,
+      "delta": -0.0017195953233078431
+    }
+  ],
+  "changed_matches": 6,
+  "maximum_absolute_probability_change": 0.0056300702891788346,
+  "final_equals_round_only_payloads": true,
+  "source_context_counts": {
+    "legacy_rows": 160768,
+    "header_matches_saved_source": 134421,
+    "unknown_source_date_or_round": 22245,
+    "unknown_player_mapping": 3154,
+    "unknown_raw_match": 860,
+    "proven_mismatches": 88
+  },
+  "issue_counts": {
+    "source_opponent_differs_from_stored_header": 24,
+    "source_round_differs_from_stored_header": 35,
+    "source_date_differs_from_stored_header": 49
+  },
+  "artifacts": {
+    "tennis-history-projection-b3-control.json": "a46c2f899675a50169483e3f0404140685373097a99371132e3585c44ff1d06b",
+    "tennis-history-projection-b4-final.json": "a3b723c25101e5d40ab3f4bae47917d8bac866b7c792719fd1dbc9e800f92152",
+    "tennis-canonical-examples-audit.json": "ff4e5356d88c2ee3e0ed4aca47eeda40ce5f8c65e5feda721118ebeca421fe01"
+  },
+  "limitations": [
+    "Diagnostic component effects only; no outcomes were used to select the twelve fixtures.",
+    "No Brier/ROI or profitability improvement is established.",
+    "Projection omits raw response bodies and cannot establish source-context audit evidence.",
+    "Cross-provider canonical selector remains diagnostic, not wired into scoring.",
+    "Generation changes are verified with controlled identity/revision tests; legacy data are not silently rewritten."
+  ],
+  "implementation_sha256": {
+    "tennis-wong-choi/src/tennis_wc/betting/ledger.py": "06a5f392837a0e76216b99a2f3ac9e777f42c2c7ceca1ece1369ce53b1b0fd59",
+    "tennis-wong-choi/src/tennis_wc/database/migrations.py": "02c537d061e62e566668b04a1a04913d2c406ddb611c1488818e75f372d7bd9e",
+    "tennis-wong-choi/src/tennis_wc/features/big_match.py": "5b40dce90077c80a44c69ec999ed1915e3dea8594ac0b7bc106abdb7c808d552",
+    "tennis-wong-choi/src/tennis_wc/features/bo_format.py": "c1d3c6484e01872af7e5b3ee454e26ed489f648c79e67d98576d97db4044e3c9",
+    "tennis-wong-choi/src/tennis_wc/features/feature_builder.py": "fee7d079cc572fd1510bb21a3c0d82da6fd2db4f2f215a1547d93d77a8044cff",
+    "tennis-wong-choi/src/tennis_wc/features/head_to_head.py": "8df788cb68a702eb553b3df99e8a07b5d2ae6c3452dac04b81a223d2dfa33beb",
+    "tennis-wong-choi/src/tennis_wc/features/opponent_elo_buckets.py": "7d9af283efdd6db63180a9cafd82f9f3e4fb54686e31b2687454791b38a52f67",
+    "tennis-wong-choi/src/tennis_wc/features/opponent_rank_buckets.py": "2da3ee6d2591ac1cae352cd31ffc10e1e2ec28a820d0c8fabe6b2049aa136fac",
+    "tennis-wong-choi/src/tennis_wc/features/pressure.py": "e719bd21f1dc62cef3f6b7ec37c97b3b7257ed5313bef28a9d603422cec9d48a",
+    "tennis-wong-choi/src/tennis_wc/features/round_performance.py": "3d1df34cb953f6d7f86dbace583ee364c7f8896e92347469804657fffc223bca",
+    "tennis-wong-choi/src/tennis_wc/features/serve_return.py": "908247c0b56abbe8651eeef0e4bd4c0a0f9660cdd2a5835e0fb60df64adac2f3",
+    "tennis-wong-choi/src/tennis_wc/features/tournament_level.py": "e9e05f8cc491c52bdcf843b98d5848fa0e5b383a3c6f493a693c59a583fdc929",
+    "tennis-wong-choi/src/tennis_wc/identity/player_identity.py": "f0871b4b737aff09012622cea9f29c1e6a7f5605973256b167fd4ec62694c5a8",
+    "tennis-wong-choi/src/tennis_wc/ingestion/entity_mapping.py": "ad3fb431185e8c7293aee41beef9c3fd78bf693f8fbf133cb6ee89f711cf1fc5",
+    "tennis-wong-choi/src/tennis_wc/ingestion/ingest_matches.py": "784d648cbc565cf32eb4ec07fb9dbb0e1acfa3850637ea8156c16a2a012ea374",
+    "tennis-wong-choi/src/tennis_wc/ingestion/ingest_sackmann.py": "23866be9f6caef7dfacc4e3bc6ddb874383f078d775933d4c27079ad655886b3",
+    "tennis-wong-choi/src/tennis_wc/ingestion/ingest_tennisexplorer_history.py": "012469a7cc280f557fc71466fe72d6ed9b36ce025d29bf522fe6db7bc3ce0ebc",
+    "tennis-wong-choi/src/tennis_wc/ingestion/ingest_wta_stats.py": "54ec8cf734d3ef186a3505eaf4eae51ec0bb957908026f4f92a60d548c54b1a5",
+    "tennis-wong-choi/src/tennis_wc/modelling/calibration.py": "499bef82c4725056cdedcca3fa80caad3cfaeacd7288b3759357f9ff55872c55",
+    "tennis-wong-choi/src/tennis_wc/modelling/elo_builder.py": "93d6d4739b8b0ff6096f2f2d4c2685754c905151bb1af628b39233c4e67d5247",
+    "tennis-wong-choi/src/tennis_wc/modelling/set_distribution.py": "6f9c7cc6a5195309e606aae19c55ec2e37d5409a01fceef4a16ce4585a8fb073",
+    "tennis-wong-choi/src/tennis_wc/props/ace_model.py": "f6e68a549a25604a56ed3aaf257d030b55566520a248b7560515f2213abee8ac",
+    "tennis-wong-choi/src/tennis_wc/props/games_model.py": "22e2dbb9d882316e0bf0f3f3b9d2f1454a4950c26400c5092c8e45dc23a735a8",
+    "tennis-wong-choi/src/tennis_wc/props/player_model.py": "7b7a1e31b20a92cba3902f435b84525a7e9638ab6d45b0026c489f319ba122ee",
+    "tennis-wong-choi/src/tennis_wc/props/registry.py": "c39ff94e08d05d982f63479220a2bd167fb4128863a8e11923c8762dcfd82298",
+    "tennis-wong-choi/src/tennis_wc/props/settlement.py": "5673872be94a38581f25ebebcb2c0a325841589ace6670cbc90dc66031e5c5b0",
+    "tennis-wong-choi/src/tennis_wc/props/strategy.py": "2c72c2e18ac563e2d96e9f324fbf8291332834d39f0dcc57e32b5347c9e255fb",
+    "tennis-wong-choi/src/tennis_wc/reports/daily_report.py": "3517bba2ba25480554a4d3c4484102ed0616bd88e746349a0ca9be5cbc5a110a",
+    "tennis-wong-choi/src/tennis_wc/reports/market_validation_report.py": "e8714e977d0e7b19e2ef0e29fd3a6188678d20afc4f1645b4dc4152848fd23c9",
+    "tennis-wong-choi/src/tennis_wc/validation/checks.py": "178dc5cf477d6d70e89c6ef60e6e937ec41305c6348ed37a2e4f26086e087ac2",
+    "tennis-wong-choi/scripts/audit_history_observations.py": "6573c379aaa4741ec626c91338332a3085a31d4c5fafc6f8699efa24b584c758",
+    "tennis-wong-choi/scripts/audit_legacy_history.py": "05302f4cf88d878f72f506cee5a9f00fbda40993b95299e6b882ebd35c1ab98a",
+    "tennis-wong-choi/scripts/generate_strategy_reference.py": "4f17130cef20dd77f878b473b1eed9b9330afa0697525e48056e38f80de1e384",
+    "tennis-wong-choi/src/tennis_wc/database/history_audit.py": "47f8750ba9b52cf3a7cdf30847c618e6ba0240fe404347c7221694fd9f70c668",
+    "tennis-wong-choi/src/tennis_wc/database/history_observations.py": "feda3abe879355a4a0035b9be275c3b51159094e8d3243bcc3ef68e7e867990a",
+    "tennis-wong-choi/src/tennis_wc/features/canonical_history.py": "21aa5d77a44eeda4c6c913d5d39df567be2fbb456606b9677df2f5ff45d09445",
+    "tennis-wong-choi/src/tennis_wc/features/round_labels.py": "f087105c399e45ac04d493d93ded886c43a4ae15b8620dec89adac93c946ff4f",
+    "tennis-wong-choi/tests/test_canonical_history.py": "98943cfa714917222617e62b6ff30561ff29abc4aed70d31cff454f4133814d6",
+    "tennis-wong-choi/tests/test_history_ingestion_identity.py": "d0bd9920cf1a0055c503c1a34cc1ed6e6f57cc742c11b2309d69761965a8383d",
+    "tennis-wong-choi/tests/test_history_report_cutoffs.py": "ea4636e206da6d21d1374bf30d5162896eff009ec270d7cc9befbe60531b972a",
+    "tennis-wong-choi/tests/test_legacy_history_audit.py": "96592e7d45924ee5d7cdef2b5fb5529e41dd8000d61972645d554a36e1e43fee",
+    "tennis-wong-choi/tests/test_round_normalization.py": "56c0549c331e9fd96afaccd2d6cc644edd186a7f73eee0a86501110f9c8bb4ee"
+  }
+}

@@ -49,6 +49,9 @@ for item in (PROJECT_ROOT, SHARED_RACING, SHARED_WC):
         sys.path.insert(0, str(item))
 
 from racing_telegram import send_message  # noqa: E402
+if str(HERE) not in sys.path:
+    sys.path.insert(0, str(HERE))
+import hkjc_forward_tracker as forward_tracker  # noqa: E402
 from shared_wong_choi.contracts import Domain  # noqa: E402
 from shared_wong_choi.dashboard_publish_lock import serialized_publication  # noqa: E402
 from shared_wong_choi.domain_evidence import (  # noqa: E402
@@ -902,7 +905,10 @@ def run_lineup(
     # 賽日每 30 分鐘一格，係最接近頭場嘅定期排程 —— 賠率快照放喺度。
     # 唔使等 Logic：賠率同我哋有冇分析過無關。
     if meeting_dir.is_dir():
-        capture_prerace_odds(state, state_path, meeting, meeting_dir, "lineup")
+        odds_capture = capture_prerace_odds(state, state_path, meeting, meeting_dir, "lineup")
+        if not force and meeting_date == today and (odds_capture or {}).get("status") == "closed":
+            set_control_outcome("dormant", reason="meeting_pools_closed", meeting=meeting["date"])
+            return EXIT_OK
     logic_files = sorted(meeting_dir.glob("Race_*_Logic.json"))
     if not logic_files:
         log(f"HKJC lineup skipped: {meeting_dir.name} 未分析過")
@@ -1026,7 +1032,11 @@ def run_prerace(
     meeting_dir = meeting_dir_for(meeting, create=True)
     # 賠率快照排喺 pipeline **之前**：抽取／評分失敗都照樣留到呢個時間點，
     # 而佢自己失敗亦唔會影響下面任何嘢（見 `capture_prerace_odds`）。
-    capture_prerace_odds(state, state_path, meeting, meeting_dir, "prerace")
+    odds_capture = capture_prerace_odds(state, state_path, meeting, meeting_dir, "prerace")
+    if not force and meeting_date == today and (odds_capture or {}).get("status") == "closed":
+        log(f"HKJC pre-race dormant: all betting pools closed for {meeting['date']}")
+        set_control_outcome("dormant", reason="meeting_pools_closed", meeting=meeting["date"])
+        return EXIT_OK
     # `field_change` 只會由 `run_lineup` 傳入：見 batch_extract 個閘度嘅說明，
     # 佢只鬆 starter PDF 一格（排位表同賽績照樣要 fresh）。
     code, output = run_cmd(
@@ -1600,6 +1610,8 @@ def run_postrace(state: dict, state_path: Path) -> int:
                 "正式賽果已對齊 pre-race prediction，forward corpus／Matrix review 已更新；"
                 "已由 Wong Choi dashboard 移除已完成賽日。"
             )
+        if completed:
+            forward_tracker_remind(state, state_path)
     if overall == EXIT_TEMPORARY:
         set_control_outcome("partial", reason="results_pending")
     else:
@@ -1717,8 +1729,6 @@ def process_candidate_gate(path: Path) -> tuple[str, str | None]:
     return "created", payload["pr_url"]
 
 
-GEAR_FORWARD_START = "2026-10-11"   # EXP-20261010-05 預先登記
-GEAR_FORWARD_RACES = 60
 
 
 def learning_lines(root: Path | None = None) -> list[str]:
@@ -1750,14 +1760,7 @@ def learning_lines(root: Path | None = None) -> list[str]:
             lines.append(f"賽道偏差 ledger：{progress} 個賽日（夠數先測賽道配置能否預測偏差）")
     except Exception:  # noqa: BLE001
         pass
-    try:
-        forward = [m for m in root.glob("20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]_*")
-                   if m.is_dir() and m.name[:10] >= GEAR_FORWARD_START and list(m.glob("*全日賽果.json"))]
-        races = sum(len(json.loads(next(m.glob("*全日賽果.json")).read_text(encoding="utf-8"))) for m in forward)
-        status = "✅ 夠數，可以開一次性確認（EXP-20261010-05）" if races >= GEAR_FORWARD_RACES else "累積中"
-        lines.append(f"配備「除去」−3 forward：{races}/{GEAR_FORWARD_RACES} 場（{status}）")
-    except Exception:  # noqa: BLE001
-        pass
+    # 配備「除去」−3 forward 進度已經搬去 forward 追蹤表（hkjc_forward_tracker），會自動判。
     return lines
 
 
@@ -1805,7 +1808,8 @@ FIRST_SECTION_EXP_DOC = "docs/experiments/EXP-20261016-53-hkjc-first-section-own
 FIRST_SECTION_SINCE = "2026-10-17"
 FIRST_SECTION_FINAL_RACES = 150
 EVAL_HARNESS = PROJECT_ROOT / ".agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_eval_harness.py"
-FIRST_SECTION_ARM = PROJECT_ROOT / "docs/experiments/patches/hkjc_arm_no_first_section.py"
+# 2026-10-27 退回：live = 冇前速，arm = 有前速；判定器方向唔變（有 vs 冇）。
+FIRST_SECTION_ARM = PROJECT_ROOT / "docs/experiments/patches/hkjc_arm_with_first_section.py"
 FIRST_SECTION_JUDGE = PROJECT_ROOT / "docs/experiments/patches/hkjc_first_section_forward.py"
 _JUDGE_NUMBERS_RE = re.compile(
     r"races=(\d+)\s+頭2換馬淨上名=([+-]\d+)\s+Good Δ=([+-][\d.]+)pp\s+Gold Δ=([+-][\d.]+)pp")
@@ -1839,14 +1843,15 @@ def first_section_forward_section(state: dict, out_dir: Path | None = None) -> s
     try:
         out_dir = out_dir or HK_RACING / "Forward_Checks" / "EXP-20261016-53"
         out_dir.mkdir(parents=True, exist_ok=True)
-        live, cf = out_dir / "live.jsonl", out_dir / "counterfactual.jsonl"
+        live, cf = out_dir / "live_without.jsonl", out_dir / "with_first_section.jsonl"
         env = {"PYTHONDONTWRITEBYTECODE": "1"}
         steps = (
             ("live harness", [sys.executable, str(EVAL_HARNESS), "run",
                               "--since", FIRST_SECTION_SINCE, "--out", str(live)]),
-            ("反事實 harness", [sys.executable, str(EVAL_HARNESS), "run", "--since", FIRST_SECTION_SINCE,
-                               "--arm", str(FIRST_SECTION_ARM), "--out", str(cf)]),
-            ("判定器", [sys.executable, str(FIRST_SECTION_JUDGE), str(live), str(cf)]),
+            ("前速 arm harness", [sys.executable, str(EVAL_HARNESS), "run", "--since", FIRST_SECTION_SINCE,
+                                 "--arm", str(FIRST_SECTION_ARM), "--out", str(cf)]),
+            # 判定器第一個檔 = 有前速，第二個 = 冇前速
+            ("判定器", [sys.executable, str(FIRST_SECTION_JUDGE), str(cf), str(live)]),
         )
         output = ""
         for name, cmd in steps:
@@ -1864,12 +1869,14 @@ def first_section_forward_section(state: dict, out_dir: Path | None = None) -> s
         live_err, live_dead = _jsonl_dropped(live)
         cf_err, cf_dead = _jsonl_dropped(cf)
         if live_err or cf_err:
-            line += f"\n⚠️ score 失敗已剔除：live {live_err} 場、反事實 {cf_err} 場 —— 先查數據"
+            line += f"\n⚠️ score 失敗已剔除：live {live_err} 場、前速 arm {cf_err} 場 —— 先查數據"
         if live_dead or cf_dead:
-            line += f"\n⚠️ speed_score 死欄位已剔除：live {live_dead} 場、反事實 {cf_dead} 場"
+            line += f"\n⚠️ speed_score 死欄位已剔除：live {live_dead} 場、前速 arm {cf_dead} 場"
         if verdict_text.startswith("REVERT"):
-            line += (f"\n🛑 觸發預先登記退回條件。唔會自動退回 —— 你決定；做法見 {FIRST_SECTION_EXP_DOC}"
-                     "（四個 first_section_* 權重設 0，用 保存.sh 發佈）")
+            line += (f"\n🛑 forward 判定前速唔好（已經喺 2026-10-27 退回）—— 唔好重新上線；見 {FIRST_SECTION_EXP_DOC}")
+        elif verdict_text.startswith("KEEP"):
+            line += (f"\n✅ forward 夠 150 場同方向 —— 可以考慮重新上線（arm 權重寫返 scoring.py，用 保存.sh 發佈）；"
+                     f"見 {FIRST_SECTION_EXP_DOC}")
         if verdict_text.startswith("REVERT") or int(races) >= FIRST_SECTION_FINAL_RACES:
             state["first_section_forward_final"] = {"line": line, "decided_at": stamp()}
         return "\n\n" + line
@@ -1939,6 +1946,33 @@ def official_injury_forward_section(state: dict, out_dir: Path | None = None) ->
         return f"\n\n⚠️ {head} 檢查失敗，今個星期冇判定：{type(exc).__name__}: {exc}"
 
 
+def forward_tracker_remind(state: dict, state_path: Path) -> None:
+    """賽後：forward 測試第一次夠數（或者冇累積）就即刻 Telegram 一次。失敗唔影響覆盤。"""
+    try:
+        forward_tracker.remind(state, root=HK_RACING,
+                               ledger_path=state_path.parent / DEFAULT_SHADOW_LEDGER_NAME, notify=notify)
+        save_state(state_path, state)
+    except Exception as exc:  # noqa: BLE001
+        log(f"forward tracker reminder failed (non-blocking): {exc}")
+
+
+def forward_tracker_section(state: dict, state_path: Path) -> str:
+    """每週 review：先自動判已夠數嘅預先登記 A/B，再列晒所有 forward 測試進度。"""
+    text = ""
+    try:
+        judged = forward_tracker.judge_ready(
+            state, root=HK_RACING, run_cmd=run_cmd, harness=EVAL_HARNESS, python=sys.executable,
+            out_dir=HK_RACING / "Forward_Checks", stamp=stamp)
+        if judged:
+            text += "\n\n" + "\n".join(judged)
+        text += forward_tracker.section(state, root=HK_RACING,
+                                        ledger_path=state_path.parent / DEFAULT_SHADOW_LEDGER_NAME)
+    except Exception as exc:  # noqa: BLE001
+        log(f"forward tracker section failed: {exc}")
+        text += f"\n\n⚠️ Forward 測試進度表失敗：{type(exc).__name__}: {exc}"
+    return text
+
+
 def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     code, output = run_cmd([sys.executable, str(WEIGHT_REVIEW), "--json"])
     if code != 0:
@@ -1988,6 +2022,7 @@ def run_weekly(state: dict, state_path: Path, candidate_gate: Path) -> int:
     message += results_db_reconcile_section()
     message += first_section_forward_section(state)
     message += official_injury_forward_section(state)
+    message += forward_tracker_section(state, state_path)
     notify(message)
     state["last_weekly_review"] = stamp()
     save_state(state_path, state)

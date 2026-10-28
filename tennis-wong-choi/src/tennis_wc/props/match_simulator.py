@@ -250,8 +250,9 @@ def simulate_match(
                 won_b += 1
                 if first_set_to_a is None:
                     first_set_to_a = 0
-            # Whoever received first in the last set serves first in the next.
-            a_serves_first = not a_serves_first
+            # Continue the service rotation; 7-6 includes the tie-break game.
+            if (set_a + set_b) % 2:
+                a_serves_first = not a_serves_first
         games_a.append(total_a)
         games_b.append(total_b)
         sets_a.append(won_a)

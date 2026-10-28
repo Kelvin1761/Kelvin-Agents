@@ -46,6 +46,7 @@ from nba_research_evidence import (  # noqa: E402
 )
 import nba_market_ledger as market_ledger  # noqa: E402
 import nba_combo_roi  # noqa: E402
+import nba_steady_policy as steady_policy  # noqa: E402
 import nba_reliability  # noqa: E402
 import nba_no_prediction as no_prediction  # noqa: E402
 
@@ -71,6 +72,7 @@ SHARED_WC_DIR = PROJECT_ROOT / ".agents" / "skills"
 sys.path.insert(0, str(SHARED_WC_DIR))
 from shared_wong_choi.schedule_policy import (  # noqa: E402
     FreshnessRole,
+    jobs_for,
     nba_pregame_role,
 )
 from shared_wong_choi.contracts import Domain  # noqa: E402
@@ -249,7 +251,12 @@ def archived_dirs(target_date: str) -> list[Path]:
     return sorted(NBA_ANALYSIS.glob(f"{target_date} NBA Analysis*"))
 
 
-def _run(command: list[str], *, timeout: int = 3600) -> subprocess.CompletedProcess[str]:
+ORCHESTRATOR_BUDGET_WARN = 0.5
+RUN_TIMEOUT = 7200
+
+# 預設 7200：orchestrator 全 slate 跑法要俾夠時間（2026-10-26 七場要 61 分鐘，
+# 舊嘅 3600 上限令 pregame 連日 TimeoutExpired）。要短嘅呼叫都有自己明確 timeout。
+def _run(command: list[str], *, timeout: int = RUN_TIMEOUT) -> subprocess.CompletedProcess[str]:
     # ⚠️ 一定要 encoding="utf-8", errors="replace"。`text=True` 係嚴格 UTF-8，
     # 而 launchd 底下 locale 可能係 POSIX（會退去 ASCII）。2026-09-09 實測：
     # 一個 shell 錯誤訊息入面嘅孤立 0xef 就令 HKJC prerace 同 Tennis card
@@ -327,6 +334,68 @@ def _odds(value: Any) -> str:
         return "@N/A"
 
 
+def _no_banker_diagnostics(snapshot: dict[str, Any]) -> str:
+    latest = snapshot.get("latest_analysis") or {}
+    coverage = latest.get("coverage") or {}
+    games = latest.get("games") or []
+    recent = edge = 0
+    found = False
+    for game in games:
+        counts = ((game.get("diagnostics") or {}).get("banker_funnel") or {}).get("fallback", {}).get("remaining", {})
+        if counts:
+            found = True
+            recent += counts.get("recent_hits", 0)
+            edge += counts.get("nonnegative_edge", 0)
+    summary = f"分析：{coverage.get('analysed_games', 0)}/{coverage.get('scheduled_games', 0)} 場；正式穩膽 0。"
+    if found:
+        summary += f"\n穩膽 fallback 漏斗：近期命中率合格 {recent} 腿（其中非負 edge {edge} 腿；steady 唔要求）；之後仍需波幅／陣容／合法組合／真實組合價 ≥2.0。"
+    else:
+        summary += "\n原因：正式分析未有通過全部驗證嘅 NBA 組合；逐關診斷未齊，唔將原因一律歸咎門檻。"
+    return summary
+
+
+def published_leg_availability_alert(folder: Path, target_date: str, *, root: Path | None = None) -> str | None:
+    """Warn when a player in a 21:00-published combo is now Out/Doubtful/Questionable.
+
+    Published = the latest pre-tip production sgm_obs per game in the ledger. Status = the
+    stricter of ESPN and the league report in the refreshed game file. Never raises.
+    """
+    try:
+        import nba_official_injuries as official
+        from nba_availability import classify_injury_status
+        rows = market_ledger.read_rows(root or market_ledger.ledger_root(), target_date)
+        published: dict[str, dict] = {}
+        for row in rows:
+            if (row.get("row_type") == "sgm_obs" and row.get("snapshot_role") == market_ledger.BET_ROLE
+                    and market_ledger._pre_tip(row)):
+                key = row.get("game_tag")
+                if key not in published or str(row.get("snapshot_created_at")) > str(published[key].get("snapshot_created_at")):
+                    published[key] = row
+        severity = {"ok": 0, "dtd": 1, "out": 2}
+        lines = []
+        for tag, combo in sorted(published.items()):
+            game = _read_json(folder / f"nba_game_data_{tag}.json", {})
+            espn, league = game.get("injuries") or {}, game.get("official_injuries") or {}
+            for leg in combo.get("legs") or []:
+                name, team = leg.get("player"), leg.get("team")
+                status = next((s for n, s in (espn.get(team) or {}).items()
+                               if official.name_key(n) == official.name_key(name)), "")
+                level = classify_injury_status(status)
+                league_level = official.level_for(league.get(team), name)
+                league_row = ((league.get(team) or {}).get("players") or {}).get(official.name_key(name)) or {}
+                if league_level and severity[league_level] > severity[level]:
+                    level = league_level
+                if level in ("out", "dtd"):
+                    shown = league_row.get("status") or status or level
+                    lines.append(f"{tag} {name} {str(leg.get('market', '')).upper()} {leg.get('line'):g}+：{shown}")
+        if not lines:
+            return None
+        return (f"⚠️ NBA {target_date} 21:00 已發佈組合有球員傷停變動\n" + "\n".join(lines)
+                + "\nOut 嘅腳通常會被 void；Questionable／DTD 有機會唔落場。推介冇重新發佈。")
+    except Exception:
+        return None
+
+
 def nba_betting_message(target_date: str, snapshot: dict[str, Any]) -> str:
     """Render a Telegram card from the validated Dashboard NBA contract only."""
     status = str(snapshot.get("validation_status") or "unavailable")
@@ -350,16 +419,20 @@ def nba_betting_message(target_date: str, snapshot: dict[str, Any]) -> str:
         raise ValueError("telegram_betting_card_blocked:valid:no_valid_bet_rows")
 
     if safe_no_bet:
+        paused = steady_policy.paused_reason()
         return (
             f"🏀 NBA 旺財投注卡｜{target_date}\n"
             "⛔ 今日 NO BET\n"
-            "原因：正式分析未有通過全部驗證嘅 NBA 組合。\n"
-            "紀律：唔為咗有飛而降低門檻。"
+            + (f"⛔ 正式穩膽停損暫停中：{paused}；恢復要你決定（{steady_policy.PROTOCOL}）。\n" if paused else "")
+            + "正式策略：steady 穩膽（B2）；真實 SGM 價 ≥2.0，冇 EV 閘，模型預期 EV 為負。\n"
+            + _no_banker_diagnostics(snapshot)
+            + "\n" + nba_reliability.selection_message(snapshot.get("selection_health") or {})
+            + "\n零出手亦需檢查機率、門檻及市場價；唔等於已證明模型有盈利優勢。"
         )
 
     bankers = [row for row in recommendations if row.get("category") == "banker"]
     combos = [row for row in recommendations if row.get("bet_type") == "combo"]
-    lines = [f"🏀 NBA 旺財投注卡｜{target_date}", "✅ 只列已驗證 BET"]
+    lines = [f"🏀 NBA 旺財投注卡｜{target_date}", "✅ 只列已驗證 BET", f"📌 {steady_policy.DISCLAIMER}"]
     for row in bankers:
         metrics = row.get("metrics") or {}
         lines.extend(
@@ -397,7 +470,7 @@ def nba_betting_message(target_date: str, snapshot: dict[str, Any]) -> str:
         [
             "",
             "⚠️ 賠率以訊息發出時嘅已抽取快照為準；落注前要再核對。",
-            "資金管理：只用預先設定注碼，模型唔保證盈利。",
+            "資金管理：固定 $1 平注；模型唔保證盈利，預期 EV 為負。",
         ]
     )
     return "\n".join(lines)
@@ -410,6 +483,13 @@ def postgame_message(target_date: str, archive: Path) -> str:
     if snapshot_path.is_file():
         with snapshot_path.open("r", encoding="utf-8", newline="") as handle:
             rows = list(csv.DictReader(handle))
+    run_summary = _read_json(archive / f"Reflector_Run_Summary_{target_date}.json", {})
+    if (not rows and snapshot_path.is_file() and isinstance(run_summary, dict)
+            and run_summary.get("verified_no_combos") is True
+            and run_summary.get("rows_recorded") == 0):
+        return (f"🏀 NBA 旺財賽後覆盤｜{target_date}\n"
+                "已驗證分析完成，今日冇組合通過選擇門檻；賽果已歸檔。\n"
+                "正式推薦：0｜命中率：N/A（冇推薦腿，唔計入命中率）。")
     if not rows:
         raise ValueError(f"postgame_training_snapshot_missing_or_empty:{snapshot_path}")
     settled = [row for row in rows if str(row.get("cleared") or "").strip() in {"0", "1"}]
@@ -425,7 +505,6 @@ def postgame_message(target_date: str, archive: Path) -> str:
         archive / f"Dashboard_Settlement_Proposal_{target_date}.json", {}
     )
     proposal_count = int(((proposal.get("summary") or {}).get("nba") or 0)) if isinstance(proposal, dict) else 0
-    run_summary = _read_json(archive / f"Reflector_Run_Summary_{target_date}.json", {})
     ml_summary = run_summary.get("ml_summary") or {} if isinstance(run_summary, dict) else {}
 
     lines = [
@@ -506,6 +585,31 @@ def snapshot_manifest(snapshot: Path) -> dict[str, Any]:
     return _read_json(snapshot / "manifest.json", {}) if snapshot.is_dir() else {}
 
 
+def final_refresh_slot_start(now: datetime) -> datetime:
+    """Start of the final-refresh slot `now` belongs to (schedule_policy times, Sydney)."""
+    local = now.astimezone(SYDNEY)
+    times = sorted(t for job in jobs_for(Domain.NBA) if job.freshness_role is FreshnessRole.FINAL_REFRESH
+                   for t in job.times)
+    due = [t for t in times if t <= local.time().replace(tzinfo=None)]
+    start = due[-1] if due else times[0]
+    return local.replace(hour=start.hour, minute=start.minute, second=0, microsecond=0)
+
+
+def snapshot_covers_final_refresh_slot(snapshot: Path, now: datetime) -> bool:
+    """A final_refresh snapshot only satisfies the slot it was taken in.
+
+    Without this, the 06:30 snapshot made every later refresh (08:30-13:00) report
+    "already_snapshotted" and skip the injury/odds re-read it exists for (2026-10-26).
+    """
+    try:
+        created = datetime.fromisoformat(str(snapshot_manifest(snapshot).get("created_at")))
+    except ValueError:
+        return False
+    if created.tzinfo is None:
+        return False
+    return created >= final_refresh_slot_start(now)
+
+
 def snapshot_is_partial(snapshot: Path) -> bool:
     return snapshot_manifest(snapshot).get("completeness") == "partial"
 
@@ -559,7 +663,8 @@ def create_prediction_snapshot(
     final = root / stamp
     temp.mkdir()
 
-    names = ["NBA_All_SGM_Report.txt", "NBA_Banker_Report.txt", "_nba_session_state.md"]
+    names = ["NBA_All_SGM_Report.txt", "NBA_Banker_Report.txt", "_nba_session_state.md",
+             "NBA_Opportunity_Sources.json"]
     for tag in tags:
         names.extend(
             [
@@ -815,8 +920,23 @@ def _run_orchestrator_refresh(
     blocked: set[str] = set()
     passed: set[str] = set()
     for command in commands:
-        result = _run(command)
         tag = command[-1] if "--game" in command else "all"
+        started = datetime.now()
+        try:
+            result = _run(command)
+        except subprocess.TimeoutExpired as exc:
+            # 逾時唔係「壞咗」：每場嘅 extractor／報告都有 cache，下一個 slot 會
+            # 由已完成嗰度續做。當 TemporaryFailure 重試，而唔係報 critical failed。
+            done = sorted(path.name[5:-17] for path in folder.glob("Game_*_Full_Analysis.md"))
+            log.step("orchestrator", "timeout", game=tag, timeout_seconds=exc.timeout,
+                     games_with_reports=done)
+            raise TemporaryFailure(
+                f"orchestrator_timeout:{tag}:{len(done)}_reports_cached") from exc
+        elapsed = (datetime.now() - started).total_seconds()
+        if elapsed > ORCHESTRATOR_BUDGET_WARN * RUN_TIMEOUT:
+            # 預警：用咗超過一半預算，下一個大 slate 就會逾時。
+            log.step("orchestrator_slow", "warning", game=tag, elapsed_seconds=round(elapsed),
+                     budget_seconds=RUN_TIMEOUT)
         game_markets = waiting_game_markets(result)
         waiting_games = game_markets or waiting_player_games(result)
         outcome = None if waiting_games else blocked_games_result(result)
@@ -846,6 +966,18 @@ def _run_orchestrator_refresh(
             raise TemporaryFailure(f"orchestrator_exit_{result.returncode}:{tag}")
         if tag != "all":
             passed.add(tag)
+    # Single-game runs each write an aggregate for their own scope. Rebuild the
+    # union once, after all refreshable games finish, without touching started games.
+    if len(commands) > 1 and passed - blocked:
+        compile_result = _run([
+            sys.executable, str(ORCHESTRATOR), "--date", target_date,
+            "--compile-only", "--games", *sorted(passed - blocked),
+            "--skip-cloudflare-deploy",
+        ])
+        log.step("compile_refreshed_games", "ok" if compile_result.returncode == 0 else "failed",
+                 game_tags=sorted(passed - blocked), exit_code=compile_result.returncode)
+        if compile_result.returncode != 0:
+            raise TemporaryFailure(f"compile_refreshed_games_exit_{compile_result.returncode}")
     if blocked:
         raise AnalysisGamesBlocked(sorted(blocked), sorted(passed - blocked))
 
@@ -976,6 +1108,9 @@ def run_pregame(
         return "dormant"
 
     snapshot = latest_snapshot(folder, role=freshness_role)
+    if (snapshot and freshness_role is FreshnessRole.FINAL_REFRESH
+            and not snapshot_covers_final_refresh_slot(snapshot, now)):
+        snapshot = None  # taken in an earlier refresh slot; this slot re-reads sources
     no_material_change = False
     if snapshot:
         tags = sportsbet_tags(folder, target_date)
@@ -1145,6 +1280,18 @@ def run_pregame(
         log.step("dashboard", "refresh_skipped_no_material_change")
         return "complete"
 
+    if freshness_role is FreshnessRole.FINAL_REFRESH:
+        # The user bets the 21:00 publication (2026-10-26). Morning refreshes keep the
+        # snapshot and ledger current for evaluation but never re-publish picks; they
+        # only warn when a player in a published combo is now ruled out or doubtful.
+        alert = published_leg_availability_alert(folder, target_date)
+        if alert:
+            sent = notify_once(f"pregame-availability:{target_date}:{hashlib.sha256(alert.encode()).hexdigest()[:16]}",
+                               alert, audience="content")
+            log.step("telegram_availability_alert", str(sent.get("status") or "unknown"))
+        log.step("dashboard", "final_refresh_not_republished")
+        return "complete"
+
     is_preseason = season_context["automation_mode"] == "shadow"
     deploy = (
         "shadow_skipped"
@@ -1183,6 +1330,11 @@ def run_pregame(
         return "shadow_complete"
 
     exported = export_nba_snapshot(PROJECT_ROOT, target_date=target_date)
+    try:
+        exported["selection_health"] = nba_reliability.selection_health(target_date)
+    except Exception as exc:
+        exported["selection_health"] = {"status": "insufficient_data"}
+        log.step("selection_health", "failed", error=f"{type(exc).__name__}: {exc}")
     try:
         card = nba_betting_message(target_date, exported)
     except ValueError as exc:
@@ -1261,15 +1413,61 @@ def _record_settlement_evidence(archive: Path, target_date: str, log: RunLog) ->
 
 
 def _combo_roi_text(target_date: str, log: RunLog) -> str:
-    """Daily + cumulative combo ROI by type; never blocks the postgame summary."""
+    """Bet tracking exactly as the dashboard shows it; never blocks the postgame summary.
+
+    The research ROI files (combo types, B0/B1/B2, bet/latest views) are still written,
+    but the message reports only the dashboard's records so the two always agree.
+    """
     try:
         reports = nba_combo_roi.write_reports(target_date, market_ledger.ledger_root())
         log.step("combo_roi", "ok", combos=reports["daily"]["total"]["combos"],
                  settled=reports["daily"]["total"]["settled"])
-        return "\n".join(nba_combo_roi.message_lines(reports))
-    except Exception as exc:  # noqa: BLE001 — a reporting add-on must not fail postgame
+    except Exception as exc:  # noqa: BLE001 — research files must not fail postgame
         log.step("combo_roi", "failed", error=f"{type(exc).__name__}: {exc}")
-        return "📊 組合 ROI：今次計算失敗（已記錄），唔影響上面賽果摘要。"
+    try:
+        from services.nba_tracking import export_tracking
+        tracking = export_tracking(PROJECT_ROOT)
+        log.step("bet_tracking", str(tracking.get("status")), records=len(tracking.get("records") or []))
+        return "\n".join(nba_combo_roi.bet_tracking_lines(tracking, target_date))
+    except Exception as exc:  # noqa: BLE001 — a reporting add-on must not fail postgame
+        log.step("bet_tracking", "failed", error=f"{type(exc).__name__}: {exc}")
+        return "📊 落注追蹤：今次計算失敗（已記錄），唔影響上面賽果摘要。"
+
+
+def _steady_stop_text(target_date: str, log: RunLog) -> str:
+    """EXP-20261027-21 stop-loss on the dashboard's tracking records.
+
+    Pauses formal steady bets once a pre-registered rule trips; never resumes
+    by itself, and a failed check leaves the state unchanged.
+    """
+    try:
+        from services.nba_tracking import export_tracking
+        tracking = export_tracking(PROJECT_ROOT)
+        if tracking.get("status") != "valid":
+            log.step("steady_stop", "skipped", reason=f"tracking_{tracking.get('status')}")
+            return "🛡️ 穩膽停損：追蹤記錄未齊，今次冇檢查；狀態不變。"
+        state, newly, metrics = steady_policy.check(tracking.get("records") or [])
+        log.step("steady_stop", state["status"], newly_paused=newly, bets=metrics["bets"],
+                 profit=metrics["profit"], roi_upper_ci=metrics["roi_upper_ci"])
+        if newly:
+            notify_once(
+                f"nba_steady_paused:{state.get('paused_at')}",
+                f"⛔ NBA 正式穩膽已自動暫停（{steady_policy.PROTOCOL}）\n原因：{state.get('reason')}\n"
+                f"之後正式組合 1 一律 NO BET；研究記錄照寫。唔會自動恢復。\n"
+                f"恢復：python3 .agents/skills/nba/nba_steady_policy.py --resume --actor <名> --reason \"…\"",
+            )
+        if metrics["review"]:
+            notify_once(
+                f"nba_steady_review:{steady_policy.POLICY}:{state.get('since') or 'start'}",
+                f"🔎 NBA 正式穩膽需要審查（{steady_policy.PROTOCOL} S3）：{metrics['review']}。"
+                "唔會自動暫停；模型可能高估命中率。",
+            )
+        status = f"⛔ 暫停（{state.get('reason')}）" if state["status"] == "paused" else "✅ 運行中"
+        return (f"🛡️ 正式穩膽 {steady_policy.POLICY}：{metrics['bets']} 注中 {metrics['hits']}，"
+                f"{metrics['profit']:+.2f}u；停損 {steady_policy.STOP_UNITS:g}u｜{status}")
+    except Exception as exc:  # noqa: BLE001 — a monitoring add-on must not fail postgame
+        log.step("steady_stop", "failed", error=f"{type(exc).__name__}: {exc}")
+        return "🛡️ 穩膽停損：今次檢查失敗（已記錄）；狀態不變。"
 
 
 def _reliability_text(target_date: str, log: RunLog) -> str:
@@ -1282,6 +1480,77 @@ def _reliability_text(target_date: str, log: RunLog) -> str:
     except Exception as exc:  # noqa: BLE001 — monitoring add-on must not fail postgame
         log.step("reliability", "failed", error=f"{type(exc).__name__}: {exc}")
         return "📐 機率校準：今次計算失敗（已記錄），唔影響上面賽果摘要。"
+
+
+def results_due(folder: Path, target_date: str, now: datetime, *, rows=None, attempts=None) -> list[str]:
+    """First poll tip+150m, then every 15m; settled games never need another fetch."""
+    rows = market_ledger.read_rows(market_ledger.ledger_root(), target_date) if rows is None else rows
+    attempts = attempts or {}
+    exclusions = market_ledger.no_prediction_exclusions(rows)
+    wanted, settled = {}, set()
+    for row in rows:
+        tag = row.get("game_tag")
+        if market_ledger._excluded(row, exclusions):
+            continue
+        if row.get("row_type") == "settlement" and row.get("outcome") in {"hit", "miss", "void"}:
+            settled.add(market_ledger._leg_key(row))
+        elif (row.get("row_type") in {"model_obs", "sgm_obs"}
+              and row.get("snapshot_role") in {"production", "final_refresh"}
+              and market_ledger._pre_tip(row)):
+            legs = row.get("legs", []) if row["row_type"] == "sgm_obs" else [row]
+            for leg in legs:
+                wanted.setdefault(tag, set()).add(market_ledger._leg_key({**leg, "game_tag":tag, "target_date":target_date}))
+    due = []
+    for path in folder.glob("Sportsbet_Odds_*.json"):
+        odds = _read_json(path, {})
+        tag = path.stem.removeprefix("Sportsbet_Odds_")
+        if not wanted.get(tag) or wanted[tag].issubset(settled):
+            continue
+        tip = market_ledger._aware(odds.get("event_start_time"))
+        if tip is None or now < tip + timedelta(minutes=150):
+            continue
+        # Postponed/missing games stay unresolved; nightly review handles late recovery.
+        if now > tip + timedelta(hours=8):
+            continue
+        previous = market_ledger._aware(attempts.get(tag+":"+market_ledger._iso(tip)))
+        if previous and now < previous + timedelta(minutes=15):
+            continue
+        due.append(tag)
+    return sorted(set(due))
+
+
+def run_results_refresh(target_date: str, log: RunLog) -> str:
+    """Incremental verified Final results only; never archive or touch D1 bets."""
+    folder = live_dir(target_date)
+    if not folder.is_dir() or latest_snapshot(folder) is None:
+        return "dormant"
+    if no_prediction.covers_date(folder):
+        return "no_prediction"
+    now = now_sydney()
+    state_path = STATE_DIR / f"results_attempts_{target_date}.json"
+    attempts = _read_json(state_path, {})
+    due = results_due(folder, target_date, now, attempts=attempts)
+    if not due:
+        return "not_due"
+    for tag in due:
+        odds = _read_json(folder / f"Sportsbet_Odds_{tag}.json", {})
+        tip = market_ledger._aware(odds.get("event_start_time"))
+        attempts[tag+":"+market_ledger._iso(tip)] = now.isoformat()
+    _write_json(state_path, attempts)
+    fetcher = NBA_SKILL / "nba_reflector" / "scripts" / "fetch_nba_results.py"
+    us_date = (date.fromisoformat(target_date) - timedelta(days=1)).isoformat()
+    result = _run([sys.executable, str(fetcher), "--date", us_date, "--dir", str(folder), "--games", ",".join(due)], timeout=600)
+    if result.returncode != 0:
+        raise TemporaryFailure("incremental_results_fetch_failed")
+    results = market_ledger.results_brief_for(folder, target_date)
+    if not results.is_file():
+        raise TemporaryFailure("incremental_results_brief_missing")
+    settled = market_ledger.settle(target_date, results, root=market_ledger.ledger_root())
+    log.step("incremental_results", "ok", **settled)
+    if settled.get("appended", 0):
+        log.step("dashboard", _deploy("NBA verified Final results update", folder))
+        return "updated"
+    return "unchanged"
 
 
 def run_postgame(target_date: str, log: RunLog) -> str:
@@ -1365,6 +1634,7 @@ def run_postgame(target_date: str, log: RunLog) -> str:
         try:
             performance_message = postgame_message(target_date, archive)
             performance_message += "\n\n" + _combo_roi_text(target_date, log)
+            performance_message += "\n" + _steady_stop_text(target_date, log)
             performance_message += "\n\n" + _reliability_text(target_date, log)
         except ValueError as exc:
             warning = notify_once(
@@ -1387,7 +1657,27 @@ def run_postgame(target_date: str, log: RunLog) -> str:
             log.step("telegram_performance", str(performance.get("status") or "unknown"))
     else:
         log.step("telegram_performance", "skipped", reason="archive_path_unavailable")
+    _experiment_readiness(target_date, log)
     return "archived"
+
+
+def _experiment_readiness(target_date: str, log: RunLog) -> None:
+    """Monday progress digest + a one-off alert when a frozen experiment's checkpoint is due.
+
+    Read-only; the experiments' own protocols decide verdicts. Never fails postgame.
+    """
+    try:
+        import nba_experiment_readiness as readiness
+        report = readiness.build(target_date)
+        alerts = readiness.due_alerts(report)
+        for key, line in alerts:
+            notify_once(f"experiment-ready:{key}", line, audience="primary")
+        if date.fromisoformat(target_date).weekday() == 0:
+            notify_once(f"experiment-progress:{target_date}", "\n".join(readiness.progress_lines(report)),
+                        audience="primary")
+        log.step("experiment_readiness", "ok", due=len(alerts), items=len(report["items"]))
+    except Exception as exc:  # noqa: BLE001 — a reporting add-on must not fail postgame
+        log.step("experiment_readiness", "failed", error=f"{type(exc).__name__}: {exc}")
 
 
 def health_payload(target_date: str) -> tuple[dict[str, Any], int]:
@@ -1515,6 +1805,7 @@ def main() -> int:
         choices=("pregame", "postgame", "health", "startup", "mark-no-prediction"),
         required=True,
     )
+    parser.add_argument("--incremental-results", action="store_true", help="Postgame: poll only due games (tip+150m, 15m retry); keep evening archive runs")
     parser.add_argument("--date", help="Override target Australia/Sydney date (YYYY-MM-DD)")
     parser.add_argument("--reason", help="mark-no-prediction: why this date/game has no prediction")
     parser.add_argument("--by", dest="marked_by", help="mark-no-prediction: who decided (e.g. Kelvin)")
@@ -1583,7 +1874,8 @@ def main() -> int:
                     schedule_events=load_espn_events(target_date),
                 )
             elif args.mode == "postgame":
-                status = run_postgame(target_date, log)
+                status = (run_results_refresh(target_date, log) if args.incremental_results and (now.hour, now.minute // 15) not in {(18, 2), (21, 2)}
+                          else run_postgame(target_date, log))
             elif args.mode == "startup":
                 status = run_startup(log)
             else:

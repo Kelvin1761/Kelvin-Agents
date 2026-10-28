@@ -648,7 +648,9 @@ def test_launchd_pregame_jobs_pin_each_freshness_role() -> None:
         # 21:45 re-runs production for games whose player markets were not open
         # at 21:00; a completed production is `already_snapshotted`, so it is free.
         "production": ([(21, 0), (21, 45)], "production"),
-        "final-refresh": ([(6, 30)], "final_refresh"),
+        # Late refreshes catch game-time decisions 30-90 min before tip; each has its own
+        # control-plane slot (see test_late_final_refreshes_get_their_own_slot_and_role).
+        "final-refresh": ([(6, 30), (8, 30), (10, 0), (11, 30), (13, 0)], "final_refresh"),
     }
     for name, (slots, role) in expected.items():
         payload = plistlib.loads(
@@ -666,3 +668,31 @@ def test_launchd_runner_dispatches_through_manifest_control_plane() -> None:
     runner = (Path(schedule.__file__).resolve().parent / "run_nba_daily_schedule.sh").read_text()
     assert "shared_wong_choi/control_plane.py" in runner
     assert "--domain nba --mode" in runner
+
+
+def test_postgame_message_accepts_verified_abstention_but_not_missing_legs(tmp_path):
+    import pytest
+    day = '2026-10-25'
+    (tmp_path / f'Reflector_Training_Snapshot_{day}.csv').write_text('cleared,status\n')
+    with pytest.raises(ValueError, match='missing_or_empty'):
+        schedule.postgame_message(day, tmp_path)
+    (tmp_path / f'Reflector_Run_Summary_{day}.json').write_text(json.dumps({
+        'verified_no_combos': True, 'rows_recorded': 0,
+    }))
+    text = schedule.postgame_message(day, tmp_path)
+    assert '正式推薦：0' in text
+    assert '命中率：N/A' in text
+
+
+def test_final_refresh_snapshot_only_satisfies_its_own_slot(tmp_path) -> None:
+    snap = tmp_path / "s1"
+    snap.mkdir()
+    (snap / "manifest.json").write_text(json.dumps({"created_at": "2026-10-26T06:49:27+11:00"}))
+    at = lambda h, m: datetime(2026, 10, 26, h, m, tzinfo=SYDNEY)
+    assert schedule.final_refresh_slot_start(at(10, 4)) == at(10, 0)
+    assert schedule.final_refresh_slot_start(at(5, 0)) == at(6, 30)
+    assert schedule.snapshot_covers_final_refresh_slot(snap, at(6, 55)) is True     # same 06:30 slot retry
+    assert schedule.snapshot_covers_final_refresh_slot(snap, at(10, 0)) is False    # 10:00 must re-read
+    assert schedule.snapshot_covers_final_refresh_slot(snap, at(13, 1)) is False
+    (snap / "manifest.json").write_text(json.dumps({"created_at": "not a time"}))
+    assert schedule.snapshot_covers_final_refresh_slot(snap, at(6, 55)) is False

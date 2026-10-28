@@ -1,0 +1,51 @@
+{
+ "experiment": "EXP-20261027-09",
+ "candidate": "pg33_N6 (EXP-20261016-10)",
+ "baseline": "eq2_N6 live 近績質素分 (EXP-20261016-06)",
+ "engine_commit": "c41a954575f1b17cfcd62632be7e5b97328155a6",
+ "valid_from": "2026-10-28",
+ "min_race_days": 30,
+ "one_look": true,
+ "mode": "fixed_rule",
+ "primary": [
+  "gold",
+  "good_positional"
+ ],
+ "ranking_metrics": [
+  "top3_capture_at5",
+  "ndcg_at5",
+  "competitive_recall_at5",
+  "mean_top3_model_rank"
+ ],
+ "bootstrap": {
+  "draws": 2000,
+  "seed": 7,
+  "blocks": 6,
+  "unit": "race day"
+ },
+ "rule": "B vs A evaluate_full_record(mode=fixed_rule) verdict PRIMARY_WIN or RANKING_WIN; anything else closes pg33_N6 as REJECT",
+ "inputs": "select_prerace_snapshot(platform=au) per meeting; results from Race_Results_Reflector.md",
+ "code_sha256": {
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/__init__.py": "7546bcfb74f5c53fe2718c51f1c61d522a51a0d94c8afb5389ea983e3e106f57",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/au_draw_bias_calculator.py": "55f27fbd114afaa880169f4fa6aa1e5dc27a6c182480a71a79e5adcd21cbc339",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/dimensions.py": "bc65613511f0872c7de6d0af06b0a335eb4e97ad33aa6de1e64583d2ddcf5235",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/engine_core.py": "a52c50e91d815f17cb9de1428a78d188aff0212375c5bf9dc1748b13761fb72f",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/full_time_speed.py": "cde29226058728e782b51250ea7126704209670a0e3dc2e94a38642e829e10d4",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/io_utils.py": "e797e808d6f64e97b29538cc580895e550a0b23a722b3f9b48ab010c3fab2307",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/market_reference.py": "bd5c8762f09ef2011afe9b780317d1483162f0869584f518185e8a704a8fe8f2",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/matrix_mapper.py": "7e081c69cdd9610caeb3172e499ea6fc65038a5914fff75e598239d989786fd1",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/pit.py": "2f1c747dd2ffa74430c1a9e06db1f1c703909e1be5e782c1f993235cd7d46bd4",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/preparation_cycle.py": "221b8c3a3d90553a82d4177b1b2bd4014284e2e53c41a7bae45ffa01b56014a4",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/renderer.py": "2687ee9ac577fd1653c95231d36b477112e9e51bb615035a6a30159bb2acfcbf",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/scoring.py": "00d83d15518b14c9ffb7af381e22f265986f24c04d675c8a05c3719dd5fd7c7b",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/source_alignment.py": "a8fb592ab72e49d8f31a69e2f9d1fa6216fb9ffbdbbd51d701db3c5a37f93a73",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/validation.py": "f11c76732b0523644a51cf308e0714e554f9e15dd1e3e33da07a6a290cb6233c",
+  ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_auto_orchestrator.py": "c59b77fa956085acd8d146722be4d028cb079b78c50b6192d65af96d081cf0c5",
+  ".agents/skills/shared_racing/model_evaluation_decision.py": "8be1249d72234bc3f016de72ae865a3dae6a2a402e18d6569bf2044f6ed897c1",
+  ".agents/skills/shared_racing/eval_metrics.py": "1bca1bf6911d6894484182bc4a0154ef3e0a335cb97ccceb7fea2169fb37b0f0",
+  ".agents/skills/shared_racing/race_reflector/scripts/unified_reflector_core.py": "360c188649cb1a0505b8696beff6589a450fc1f616beb5213773f4281b038f2d",
+  "docs/experiments/EXP-20261027-09-forward/pg33_forward.py": "f135c0e615b1ee1d4a54cbef99b7877a6eb0fbd1d230aa7407f8b8ddb0927653"
+ },
+ "frozen_at": "2026-10-27T19:01:38.857196+11:00",
+ "commit_note": "engine_commit is the parent of the commit that adds this file; code_sha256 is what is enforced"
+}

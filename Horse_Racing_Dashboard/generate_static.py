@@ -44,6 +44,7 @@ from services.race_display_metadata import (
 )
 from services.multisport_exporter import build_multisport_feed, sydney_today
 from services.au_display_policy import apply_au_display_policy
+from services.nba_tracking import TRACKING_START_DATE
 from services.au_market_odds import enrich_au_market_odds
 from models.race import AnalystName, Meeting, Region
 
@@ -663,6 +664,55 @@ def _merge_sports_feed(cached, fresh, today=None):
             and "no_validated_nba_combos" in [str(w) for w in (new.get("warnings") or [])]
             and _run_date(new) >= _run_date(old)
         )
+        old_latest = old.get("latest_analysis") or {}
+        new_latest = new.get("latest_analysis") or {}
+        # A domain-less checkout may publish racing; preserve already verified
+        # NBA analysis without restoring any formal BET recommendations.
+        if (sport == "nba" and old_latest.get("games") and not expired
+                and (not new_latest.get("games")
+                     or str(old_latest.get("event_date", "")) > str(new_latest.get("event_date", "")))):
+            new = copy.deepcopy(new)
+            new["latest_analysis"] = copy.deepcopy(old_latest)
+            new["analysis_run_id"] = old.get("analysis_run_id")
+            merged["sports"][sport] = new
+        # Code releases can run from an older same-day checkout. Keep each
+        # verified read-only report when that checkout has older inputs, while
+        # leaving the fresh formal recommendation/firewall decision untouched.
+        if (sport == "nba" and not expired and old_latest.get("games")
+                and old_latest.get("event_date") == new_latest.get("event_date")):
+            old_games = {g.get("game_tag"): g for g in old_latest["games"]}
+            games = []
+            for game in new_latest.get("games", []):
+                saved = old_games.get(game.get("game_tag"), {})
+                older_report = (game.get("status") == "analysed"
+                                and str(saved.get("analysis_time", "")) > str(game.get("analysis_time", "")))
+                missing_report = game.get("status") in {"awaiting_analysis", "waiting_player_markets", "data_insufficient"}
+                games.append(copy.deepcopy(saved if saved.get("status") == "analysed"
+                                           and (older_report or missing_report) else game))
+            if games != new_latest.get("games", []):
+                new = copy.deepcopy(new)
+                latest = copy.deepcopy(new_latest)
+                latest["games"] = games
+                analysed = sum(g.get("status") == "analysed" for g in games)
+                latest["coverage"] = {"scheduled_games": len(games), "analysed_games": analysed,
+                                      "pending_games": len(games) - analysed,
+                                      "review_candidates": sum(len(g.get("review_candidates", [])) for g in games),
+                                      "formal_sgm_count": sum(g.get("formal_sgm_count", 0) for g in games)}
+                new["latest_analysis"] = latest
+                merged["sports"][sport] = new
+        # Read-only, previously verified analysis survives a checkout without
+        # this domain's files. Never restore BET recommendations through here.
+        old_cards = [card for card in (old.get("analysis_cards") or [])
+                     if isinstance(card, dict) and card.get("analysis_only") is True
+                     and card.get("decision") == "OBSERVE"
+                     and card.get("validation_status") == "analysis_only"]
+        if (sport == "nba" and old_cards and not expired and not new.get("analysis_cards")
+                and _run_date(old) >= _run_date(new)):
+            new = copy.deepcopy(new)
+            new["analysis_cards"] = copy.deepcopy(old_cards)
+            if _run_date(old) > _run_date(new):
+                new["analysis_run_id"] = old["analysis_run_id"]
+            merged["sports"][sport] = new
         if (old_is_good and not expired and not firewall_blocked
                 and not no_validated_combos and (not new_is_good or older)):
             kept = copy.deepcopy(old)
@@ -674,6 +724,51 @@ def _merge_sports_feed(cached, fresh, today=None):
             merged["sports"][sport] = kept
             print(f"   ⚠️ Preserved valid {sport} feed from live snapshot; "
                   f"local view was {new_status or 'missing'} / {_run_date(new) or 'undated'}")
+    # Tracking has its own read-only evidence authority, independent of live BET status.
+    old_tracking = (cached_sports.get('nba') or {}).get('tracking')
+    fresh_tracking = ((fresh or {}).get('sports', {}).get('nba') or {}).get('tracking')
+    nba = merged['sports'].setdefault('nba', {})
+    if fresh_tracking and fresh_tracking.get('status') == 'valid':
+        nba['tracking'] = copy.deepcopy(fresh_tracking)
+        covered = set(fresh_tracking.get('covered_dates', []))
+        # A different domain's checkout, or later cold archival, must not erase
+        # already-published history. Locally covered dates remain authoritative.
+        retained = [r for r in (old_tracking or {}).get('records', [])
+                    if r.get('day') not in covered]
+        by_id = {r['id']: r for r in retained}
+        by_id.update({r['id']: r for r in fresh_tracking.get('records', [])})
+        nba['tracking']['records'] = list(by_id.values())
+        if retained:
+            nba['tracking']['retained_dates'] = sorted({r['day'] for r in retained})
+    elif old_tracking:
+        nba['tracking'] = copy.deepcopy(old_tracking)
+        nba['tracking']['status'] = 'stale'
+    if nba.get('tracking'):
+        nba['tracking']['inception_date'] = TRACKING_START_DATE
+        nba['tracking']['records'] = [r for r in nba['tracking'].get('records', [])
+                                      if isinstance(r.get('day'), str) and r['day'] >= TRACKING_START_DATE]
+        for field in ('covered_dates', 'retained_dates'):
+            if field in nba['tracking']:
+                nba['tracking'][field] = [day for day in nba['tracking'][field] if day >= TRACKING_START_DATE]
+    # Tennis model history has an independent authority from live BET gating.
+    previous = (cached_sports.get('tennis') or {}).get('tracking')
+    current = ((fresh or {}).get('sports', {}).get('tennis') or {}).get('tracking')
+    if current or previous:
+        tennis = merged['sports'].setdefault('tennis', {})
+        if current and current.get('status') == 'valid':
+            tennis['tracking'] = copy.deepcopy(current)
+            covered = set(current.get('covered_dates', []))
+            retained = [r for r in (previous or {}).get('records', []) if r.get('day') not in covered]
+            by_id = {r['id']: r for r in retained}
+            by_id.update({r['id']: r for r in current.get('records', [])})
+            tennis['tracking']['records'] = list(by_id.values())
+            if retained:
+                tennis['tracking']['retained_dates'] = sorted({r.get('day', '') for r in retained})
+            if previous and 'prop_live_bets' not in current.get('source_counts', {}):
+                tennis['tracking']['actual_bets'] = copy.deepcopy(previous.get('actual_bets', []))
+        elif previous:
+            tennis['tracking'] = copy.deepcopy(previous)
+            tennis['tracking']['status'] = 'stale'
     return merged
 
 
@@ -717,7 +812,7 @@ def generate_html(data):
     css_path = Path(__file__).resolve().parent / "frontend" / "src" / "index.css"
     css_content = css_path.read_text(encoding="utf-8") if css_path.exists() else ""
     
-    data_json = json.dumps(data, ensure_ascii=False, default=str)
+    data_json = json.dumps(data, ensure_ascii=False, default=str).replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
     generated_time = datetime.now().strftime("%Y-%m-%d %H:%M")
     
     html_template_path = Path(__file__).resolve().parent / "static_template.html"

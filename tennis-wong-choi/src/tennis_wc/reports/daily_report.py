@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+from tennis_wc.features.history_asof import guard_clause, guard_params
+from tennis_wc.features.bo_format import detect_match_format
+
 from itertools import combinations
 import json
 import math
@@ -13,6 +17,8 @@ from tennis_wc.betting.segment_risk import apply_segment_risk as _apply_segment_
 from tennis_wc.betting.segment_risk import segment_risk as _segment_risk
 from tennis_wc.betting.staking import kelly_stake_units
 from tennis_wc.config import get_settings
+from tennis_wc.database.market_captures import current_market_clause
+from tennis_wc.ingestion.fixture_versions import active_fixture_clause
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.common import utc_now
 from tennis_wc.features.market import implied_probability
@@ -33,7 +39,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 def latest_predictions_for_date(match_date: str) -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             WITH BestLevels AS (
                 SELECT *,
                        ROW_NUMBER() OVER (
@@ -77,7 +83,7 @@ def latest_predictions_for_date(match_date: str) -> list[dict]:
             JOIN BestLevels tl ON tl.tournament_id = m.tournament_id AND tl.tour = m.tour AND tl.rn = 1
             JOIN players pa ON pa.id = m.player_a_id
             JOIN players pb ON pb.id = m.player_b_id
-            WHERE m.match_date = ?
+            WHERE m.match_date = ? AND {active_fixture_clause(conn)}
               AND EXISTS (
                 SELECT 1
                 FROM odds_snapshots o
@@ -256,11 +262,11 @@ def source_status_for_date(match_date: str) -> dict:
             """
         ).fetchone()
         market_count = conn.execute(
-            """
+            f"""
             SELECT COUNT(*) AS rows, COUNT(DISTINCT market_key) AS markets
             FROM market_odds_snapshots mo
             JOIN matches m ON m.id = mo.match_id
-            WHERE m.match_date = ?
+            WHERE m.match_date = ? AND {current_market_clause(conn)}
               AND mo.id IN (
                 SELECT MAX(mo2.id)
                 FROM market_odds_snapshots mo2
@@ -310,16 +316,21 @@ def source_status_for_date(match_date: str) -> dict:
 
 
 def clear_pipeline_source_errors(match_date: str) -> None:
+    """Start a new run without erasing earlier failure observations."""
+    from tennis_wc.ingestion.raw_response_store import store_raw_response
+    store_raw_response('tennis_wc_pipeline', '/run-daily/start', {'date': match_date},
+                       {'mode': 'started', 'errors': []}, 200,
+                       'run_daily_source_errors', match_date)
+
+
+def latest_prop_pricing_error(match_date: str) -> str | None:
     with get_connection() as conn:
-        conn.execute(
-            """
-            DELETE FROM raw_api_responses
-            WHERE provider_name = 'tennis_wc_pipeline'
-              AND entity_type = 'run_daily_source_errors'
-              AND entity_external_id = ?
-            """,
-            (match_date,),
-        )
+        row = conn.execute("""SELECT response_json FROM raw_api_responses
+            WHERE provider_name='tennis_wc_pipeline' AND entity_type='prop_pricing_status'
+              AND entity_external_id=? ORDER BY id DESC LIMIT 1""", (match_date,)).fetchone()
+    if row is None:
+        return 'missing_prop_pricing_status'
+    return json.loads(row['response_json']).get('error')
 
 
 def _ranking_source_note(rows: dict) -> str:
@@ -472,7 +483,7 @@ def banker_market_predictions_for_date(match_date: str) -> list[dict]:
     _ensure_market_predictions_table()
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT
                 mp.*,
                 t.name AS tournament_name,
@@ -483,7 +494,7 @@ def banker_market_predictions_for_date(match_date: str) -> list[dict]:
             JOIN tournaments t ON t.id = m.tournament_id
             JOIN players p1 ON p1.id = m.player_a_id
             JOIN players p2 ON p2.id = m.player_b_id
-            WHERE m.match_date = ?
+            WHERE m.match_date = ? AND {active_fixture_clause(conn)}
             ORDER BY mp.match_id, mp.market_key, mp.line, mp.selection_name
             """,
             (match_date,),
@@ -525,7 +536,7 @@ def _ensure_market_predictions_table() -> None:
 def _market_odds_base_rows(match_date: str) -> list[dict]:
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             WITH BestLevels AS (
                 SELECT *,
                        ROW_NUMBER() OVER (
@@ -547,7 +558,7 @@ def _market_odds_base_rows(match_date: str) -> list[dict]:
             LEFT JOIN BestLevels tl ON tl.tournament_id = m.tournament_id AND tl.tour = m.tour AND tl.rn = 1
             JOIN players p1 ON p1.id = m.player_a_id
             JOIN players p2 ON p2.id = m.player_b_id
-            WHERE m.match_date = ?
+            WHERE m.match_date = ? AND {current_market_clause(conn)}
               AND mo.id IN (
                 SELECT MAX(mo2.id)
                 FROM market_odds_snapshots mo2
@@ -565,7 +576,8 @@ def _market_odds_base_rows(match_date: str) -> list[dict]:
 def _group_market_rows(rows: list[dict]) -> dict[tuple, list[dict]]:
     grouped: dict[tuple, list[dict]] = {}
     for row in rows:
-        key = (row["match_id"], row["market_key"], row["market_name"], row["line"])
+        key = (row["match_id"], row["market_key"], row["market_name"], row["line"],
+               str(row.get("bookmaker") or "").lower(),row.get("source_provider"))
         grouped.setdefault(key, []).append(row)
     return grouped
 
@@ -894,30 +906,36 @@ def _historical_ace_mean(match_id: int, player_id: int | None) -> float | None:
     with get_connection() as conn:
         if not _has_history_prop_columns(conn):
             return None
-        match = conn.execute("SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)).fetchone()
+        match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+        if not match:
+            return None
+        cutoff = str(match["match_date"])[:10]
+        history_params = (cutoff, *guard_params(cutoff, match["start_time_utc"]))
         if player_id is None:
             rows = conn.execute(
-                """
+                f"""
                 SELECT ace_count
                 FROM player_match_history
                 WHERE player_id IN (?, ?)
-                  AND ace_count IS NOT NULL
+                  AND ace_count >= 0 AND ace_count = CAST(ace_count AS INTEGER)
+                  AND match_date < ? {guard_clause()} AND {history_active_clause(conn)}
                 ORDER BY match_date DESC
                 LIMIT 40
                 """,
-                (match["player_a_id"], match["player_b_id"]),
+                (match["player_a_id"], match["player_b_id"], *history_params),
             ).fetchall()
         else:
             rows = conn.execute(
-                """
+                f"""
                 SELECT ace_count
                 FROM player_match_history
                 WHERE player_id = ?
-                  AND ace_count IS NOT NULL
+                  AND ace_count >= 0 AND ace_count = CAST(ace_count AS INTEGER)
+                  AND match_date < ? {guard_clause()} AND {history_active_clause(conn)}
                 ORDER BY match_date DESC
                 LIMIT 25
                 """,
-                (player_id,),
+                (player_id, *history_params),
             ).fetchall()
     values = [float(row["ace_count"]) for row in rows if row["ace_count"] is not None]
     if len(values) < 10:
@@ -1110,7 +1128,7 @@ def _match_games_context(match_id: int) -> dict | None:
     Returns None if hold history is unavailable for either player."""
     with get_connection() as conn:
         match = conn.execute(
-            "SELECT player_a_id, player_b_id, tour, tournament_id FROM matches WHERE id = ?",
+            "SELECT * FROM matches WHERE id = ?",
             (match_id,),
         ).fetchone()
         if not match:
@@ -1118,12 +1136,14 @@ def _match_games_context(match_id: int) -> dict | None:
 
         def avg_hold(player_id: int) -> float | None:
             row = conn.execute(
-                """
+                f"""
                 SELECT AVG(hold_rate) AS h
                 FROM player_match_history
-                WHERE player_id = ? AND hold_rate IS NOT NULL
+                WHERE player_id = ? AND hold_rate BETWEEN 0 AND 1
+                  AND match_date < ? {guard_clause()} AND {history_active_clause(conn)}
                 """,
-                (player_id,),
+                (player_id, str(match["match_date"])[:10],
+                 *guard_params(str(match["match_date"])[:10], match["start_time_utc"])),
             ).fetchone()
             return float(row["h"]) if row and row["h"] is not None else None
 
@@ -1137,7 +1157,7 @@ def _match_games_context(match_id: int) -> dict | None:
         return None
     # Only ATP Grand Slam main draw is best-of-5; everything else is best-of-3.
     level = str(level_row["level"] or "").upper() if level_row else ""
-    best_of = 5 if str(match["tour"] or "").upper() == "ATP" and "GRAND_SLAM" in level else 3
+    best_of = 5 if detect_match_format({**dict(match), "level": level}) == "BO5" else 3
     return {"hold_a": hold_a, "hold_b": hold_b, "best_of": best_of, "tour": match["tour"]}
 
 
@@ -1544,7 +1564,7 @@ def _integrity_warnings() -> list[str]:
         with get_connection() as conn:
             failures = checks.critical_failures(checks.run_checks(conn))
     except Exception:
-        return []
+        return ["⚠️ 資料完整性檢查未能完成，今次建議暫不適用。"]
     if not failures:
         return []
     lines = ["⚠️ 資料完整性檢查未過（下面嘅建議要打折扣睇）："]
@@ -1954,6 +1974,10 @@ def _reference_prop_board_lines(prop: dict | None) -> list[str]:
         if bd.predicted_games:
             header += f"｜預測總局數 ≈ {bd.predicted_games}"
         segment = [header]
+        if getattr(bd, "unsupported_reason", None):
+            from tennis_wc.props.daily import unsupported_prop_message
+
+            segment.append("⚠ " + unsupported_prop_message(bd.unsupported_reason))
         for tw in bd.match_ou:
             segment.append(_two_way_line("全場aces", tw, throwaway))
         for tw in bd.player_ou:
@@ -2515,30 +2539,43 @@ def _prop_source_quality(family: str, carrier, fallback):
 
 
 def _ace_prop_data(match_date: str) -> dict:
-    """Price the day's props ONCE and share the result between the merged daily
-    report (🎯 recommendations + reference board) and the legacy banker report.
-    Returns {'error': ...} instead of raising — the prop engine is experimental
-    and must never break the report."""
+    """Render failures visibly and retain a status for the readiness gate."""
+    conn = None
     try:
-        from tennis_wc.props.daily import price_ace_props_for_date
-        from tennis_wc.props.settlement import (
-            settle_props, prop_roi_report, model_vs_market_scorecard,
-        )
-        from tennis_wc.props import calibration, strategy
         conn = get_connection()
-        settle_props(conn)  # grade anything now settleable before we review
-        boards = price_ace_props_for_date(conn, match_date, log=True)
-        profiles = [
-            calibration.family_reliability(conn, family, as_of_date=match_date)
-            for family in sorted(strategy.SUPPORTED_FAMILIES)
-        ]
-        ev_note = "逐 family、只用賽前舊結果估權重：" + "；".join(
-            f"{profile.family} {profile.model_weight:.0%}(n={profile.settled})"
-            for profile in profiles
-        )
+        data = _build_ace_prop_data(match_date, conn)
+        conn.commit()
     except Exception as exc:
-        return {"error": str(exc), "boards": [], "value_legs": [], "combos": [],
+        if conn is not None:
+            conn.rollback()
+        data = {"error": str(exc), "boards": [], "value_legs": [], "combos": [],
                 "scorecard": None, "roi": None, "ev_note": None, "strategy": None}
+    finally:
+        if conn is not None:
+            conn.close()
+    from tennis_wc.ingestion.raw_response_store import store_raw_response
+    store_raw_response('tennis_wc_pipeline', '/prop-pricing', {'date': match_date},
+                       {'error': data.get('error'), 'boards': len(data.get('boards', []))},
+                       500 if data.get('error') else 200, 'prop_pricing_status', match_date)
+    return data
+
+
+def _build_ace_prop_data(match_date: str, conn) -> dict:
+    from tennis_wc.props.daily import price_ace_props_for_date
+    from tennis_wc.props.settlement import (
+        settle_props, prop_roi_report, model_vs_market_scorecard,
+    )
+    from tennis_wc.props import calibration, strategy
+    settle_props(conn)  # grade anything now settleable before we review
+    boards = price_ace_props_for_date(conn, match_date, log=True)
+    profiles = [
+        calibration.family_reliability(conn, family, as_of_date=match_date)
+        for family in sorted(strategy.SUPPORTED_FAMILIES)
+    ]
+    ev_note = "逐 family、只用賽前舊結果估權重：" + "；".join(
+        f"{profile.family} {profile.model_weight:.0%}(n={profile.settled})"
+        for profile in profiles
+    )
     value_legs: list[dict] = []
     # A pick you cannot place is not a pick. Until 2026-08-16 nothing in the
     # report or betting layer looked at `start_time_utc` at all, so 35.9% of
@@ -2782,17 +2819,14 @@ def _ace_prop_data(match_date: str) -> dict:
         # fixtures carry one, so an absent value must stay usable rather than
         # being read as "starts at the epoch" and silently dropped.
         leg["start_time_utc"] = start_time_by_match.get(int(leg["match_id"]))
-    try:
-        scorecard = model_vs_market_scorecard(conn, as_of_date=match_date)
-        roi = prop_roi_report(conn, as_of_date=match_date)
-        strategy_state = strategy.recommendation_gate(scorecard, roi)
-        for leg in value_legs:
-            leg["hit_probability"] = leg.get("prob")
-            leg["confidence_score"] = strategy.confidence_score(
-                leg, strategy_state
-            )
-    except Exception:
-        scorecard = roi = strategy_state = None
+    scorecard = model_vs_market_scorecard(conn, as_of_date=match_date)
+    roi = prop_roi_report(conn, as_of_date=match_date)
+    strategy_state = strategy.recommendation_gate(scorecard, roi)
+    for leg in value_legs:
+        leg["hit_probability"] = leg.get("prob")
+        leg["confidence_score"] = strategy.confidence_score(
+            leg, strategy_state
+        )
     return {"error": None, "boards": boards, "value_legs": value_legs,
             "combos": _prop_combos(value_legs), "scorecard": scorecard,
             "roi": roi, "ev_note": ev_note, "strategy": strategy_state}
@@ -2911,6 +2945,10 @@ def _ace_prop_lines(match_date: str) -> list[str]:
         if bd.predicted_games:
             hdr += f"｜預測總局數 ≈ {bd.predicted_games}"
         seg = [hdr]
+        if getattr(bd, "unsupported_reason", None):
+            from tennis_wc.props.daily import unsupported_prop_message
+
+            seg.append("⚠ " + unsupported_prop_message(bd.unsupported_reason))
         for tw in bd.match_ou:
             seg.append(_two_way_line("全場aces", tw, val_picks))
         for tw in bd.player_ou:
@@ -4475,7 +4513,7 @@ def market_odds_for_date(match_date: str) -> list[dict]:
     _ensure_market_predictions_table()
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             WITH BestLevels AS (
                 SELECT *,
                        ROW_NUMBER() OVER (
@@ -4516,7 +4554,7 @@ def market_odds_for_date(match_date: str) -> list[dict]:
                     GROUP BY match_id
                 ) latest ON latest.max_prediction_id = p1.id
             ) lp ON lp.match_id = m.id
-            WHERE m.match_date = ?
+            WHERE m.match_date = ? AND {current_market_clause(conn)}
               AND mo.id IN (
                 SELECT MAX(mo2.id)
                 FROM market_odds_snapshots mo2

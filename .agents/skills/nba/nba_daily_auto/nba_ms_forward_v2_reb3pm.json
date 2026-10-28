@@ -1,0 +1,55 @@
+{
+ "version": "MS2-REB3PM-2026-10-25",
+ "protocol_id": "EXP-20261025-15",
+ "protocol": "docs/experiments/EXP-20261025-15-nba-ms2-reb-3pm-forward-protocol.md",
+ "formula": "logit(p) = a_stat + b_market*logit(clip(1/price_at_model,0.02,0.98)) + b_s*logit(clip(season_rate_v2_prob_S,0.005,0.995))",
+ "fit": {
+  "corpus": "verified_dataset_v2 (sha256 16b378cd914d1d68...), 19 dev dates 2026-04-15..2026-05-15, playoffs/play-in; 5 terminal dates not used",
+  "season_rate_model": "nba_season_rate_S_v2 (constants chosen on 2025-26 regular season only)",
+  "estimator": "per-stat sklearn LogisticRegression C=1, ladder weights 1 per event-player-stat"
+ },
+ "clip_market": [
+  0.02,
+  0.98
+ ],
+ "clip_season_rate": [
+  0.005,
+  0.995
+ ],
+ "coefficients": {
+  "PTS": {
+   "intercept": -0.1909,
+   "beta_market": 0.749995,
+   "beta_season_rate": 0.093048
+  },
+  "REB": {
+   "intercept": -0.133882,
+   "beta_market": 0.382777,
+   "beta_season_rate": 0.609228
+  },
+  "AST": {
+   "intercept": -0.341627,
+   "beta_market": 0.786098,
+   "beta_season_rate": 0.076835
+  },
+  "FG3M": {
+   "intercept": -0.157023,
+   "beta_market": 0.456677,
+   "beta_season_rate": 0.559242
+  }
+ },
+ "comparator_probability_model_id": "calibrated:C-2026-10-22:06bc5c856a67409ff1d097ebfdc934e8b31ac1b003021068013fead9dad8e1b4",
+ "season_rate_version": "nba_season_rate_S_v2",
+ "season_rate_fields": {
+  "prob": "season_rate_v2_prob_S",
+  "status": "season_rate_v2_status",
+  "version": "season_rate_v2_version",
+  "inputs": "season_rate_v2_inputs"
+ },
+ "epoch": "2026-10-27",
+ "stats": [
+  "REB",
+  "FG3M"
+ ],
+ "epoch_amendment": "2026-10-27: moved from 2026-10-26 before any verdict; the 10-26 slate was extracted before the S shadow existed (all S legs no_season_log/no_team_recent), which tripped the coverage guard. No outcome was inspected for decisions."
+}

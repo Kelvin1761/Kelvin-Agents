@@ -174,6 +174,9 @@ class ValueProfile:
     market-blended one.  ``min_probability`` is a sizing/gate floor only --
     applying it to selection is what excluded the underdog segment.
     """
+    # Historical exploratory notes below predate the pricing-evidence fixes.
+    # Their ROI figures are not current qualified evidence or promotion proof.
+    # Registered runtime thresholds are unchanged by that audit.
     # 0.06, not the 0.04 this ran on until 2026-08-10. ROI rises monotonically
     # with the size of the model's disagreement, and the marginal band is the
     # only losing one -- over 1,633 settled bets:

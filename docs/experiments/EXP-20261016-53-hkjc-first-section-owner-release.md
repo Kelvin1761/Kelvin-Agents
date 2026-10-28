@@ -61,3 +61,16 @@ python3 docs/experiments/patches/hkjc_first_section_forward.py live.jsonl cf.jso
 - harness `--until 2026-10-10`：真 code vs EXP-52 K=4 arm，351 行**排名 0 場唔同**。
 - 端對端（2026-10-14 跑馬地 R6 複本，deploy 關閉）：Logic `_data.first_section_min_delta` 寫入 8／9 匹
   （4 號少過 2 仗有剖面 → 冇證據），報告「速度分」逐項顯示「最快第一段」。
+
+## 2026-10-27 — Kelvin 決定提早退回（owner decision，唔係觸發退回條件）
+
+- 當時 forward：**30 場**（10-19、10-21、10-25），頭2換馬淨上名 **−1**、Good Δ **−3.33pp**（= 1 場）、Gold Δ +0.00pp；
+  判定器 `WAIT（未夠 60 場）`，**未觸發**預先登記嘅退回條件。數字係噪音級，唔係「證實有害」。
+- 理由：前速由頭到尾都係「未證實」上線；Kelvin 選擇只用證實咗嘅嘢，等 forward 夠數先再上。
+- 做法：四個 `first_section_*` 權重設 0（Facts → Logic 接線同「頭段速度」顯示保留）。
+- 接線驗證：10-25 沙田 11 場，退回 vs 有前速 → **6 場**排名唔同。⚠️ HKJC 評分 golden 120 匹「全部一致」——
+  golden fixture 冇 `first_section_min_delta`，**睇唔到呢個部件**，唔可以當「冇影響」。
+- **Forward 照跑，判定規則唔變**（同一判定器、同一窗口由 2026-10-17 起、同一門檻）：
+  退回後 live = 冇前速，所以每週改為 `--arm hkjc_arm_with_first_section.py`（4／2／−1／−2）量「有前速」，
+  判定器第一個檔 = 有前速、第二個 = 冇前速，方向同之前一樣。
+  - ≥150 場判 KEEP → 可以考慮重新上線（再用 `保存.sh`）；REVERT → 唔好重新上線。

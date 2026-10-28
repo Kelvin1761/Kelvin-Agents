@@ -84,6 +84,10 @@ NBA_SKILL = HERE.parent
 MARKET_KEYS = {"points": "pts", "rebounds": "reb", "assists": "ast", "threes_made": "fg3m"}
 MODEL_VARIANTS = ("p_final", "p_hit_rate_10f", "p_ml", "p_monte_carlo")
 ROLE_PRIORITY = {"final_refresh": 3, "production": 2, "warmup": 1}
+# The user bets the 21:00 (production) publication, not the morning final refresh
+# (2026-10-26). Pick/ROI evaluation reports this "bet version" beside the latest one.
+BET_ROLE = "production"
+VIEWS = ("latest", "bet")
 
 # Power estimate defaults.  The mean is an ASSUMPTION, never the observed mean:
 # solving n from an observed mean is circular (it is exactly the quantity whose
@@ -165,6 +169,8 @@ def _row_key(row: Mapping[str, Any]) -> tuple:
         return (kind, row.get("snapshot_id"), *leg)
     if kind == "sgm_obs":
         return (kind, row.get("snapshot_id"), row.get("game_tag"), row.get("combo_id"))
+    if kind in {"banker_shadow_obs", "selection_obs"}:
+        return (kind, row.get("snapshot_id"), row.get("game_tag"), row.get("arm"))
     if kind == "model_missing":
         return (kind, row.get("snapshot_id"), row.get("game_tag"))
     if kind == "settlement":
@@ -174,6 +180,8 @@ def _row_key(row: Mapping[str, Any]) -> tuple:
                 row.get("captured_at"))
     if kind == "no_prediction":
         return (kind, row.get("game_tag"))
+    if kind == "availability_obs":
+        return (kind, row.get("snapshot_id"), row.get("game_tag"), row.get("team"), row.get("name_key"))
     return (kind, json.dumps(row, sort_keys=True))
 
 
@@ -348,6 +356,42 @@ def record_prices(
     return append_rows(root, target_date, rows)
 
 
+def availability_rows(availability: Mapping[str, Any] | None, base: dict, flags: dict) -> list[dict]:
+    """One row per player on either injury list (ESPN roster feed or league report) at this snapshot.
+
+    Recorded so day-to-day/questionable outcomes can be measured against box scores
+    later (does a "Questionable" player actually play?). Observation only.
+    """
+    if not isinstance(availability, dict):
+        return []
+    sys.path.insert(0, str(NBA_SKILL))
+    import nba_official_injuries as official
+    from nba_availability import classify_injury_status
+    espn = availability.get("injuries") or {}
+    league = availability.get("official") or {}
+    rows: dict[tuple, dict] = {}
+    for team, players in espn.items():
+        for name, status in (players or {}).items():
+            rows[(team, official.name_key(name))] = {"player": name, "espn_status": status,
+                                                    "espn_level": classify_injury_status(status)}
+    for team, report in league.items():
+        if not isinstance(report, dict):
+            continue
+        for key, entry in (report.get("players") or {}).items():
+            row = rows.setdefault((team, key), {"player": entry.get("player")})
+            row.update(official_status=entry.get("status"), official_level=entry.get("level"),
+                       official_reason=entry.get("reason"))
+    out = []
+    for (team, key), row in rows.items():
+        report = league.get(team) if isinstance(league.get(team), dict) else {}
+        out.append({"row_type": "availability_obs", **base, **flags, "team": team, "name_key": key,
+                    "espn_status": None, "espn_level": None, "official_status": None, "official_level": None,
+                    **row, "official_report_status": report.get("status"),
+                    "official_report_time": report.get("report_time"),
+                    "official_submitted": report.get("submitted")})
+    return out
+
+
 def record_snapshot(
     snapshot: Path,
     target_date: str,
@@ -407,6 +451,34 @@ def record_snapshot(
             continue
         model_captured = _aware(payload.get("odds_extraction_time"), naive_tz=SYDNEY)
         flags = _flags(tip, model_captured, now)
+        import nba_prop_training
+        training_source = nba_prop_training.snapshot_source(snapshot, manifest, tag, tip, tip_source=tip_source)
+        if payload.get("selection_diagnostics"):
+            rows.append({"row_type": "selection_obs", **base, **flags,
+                         "strategy_profile": payload.get("strategy_profile"),
+                         "diagnostics": payload["selection_diagnostics"],
+                         "snapshot_completeness": manifest.get("completeness"),
+                         "banker_formal": any(str(c.get("combo_id")) == "1" for c in payload.get("combos", []))})
+        for experiment in payload.get("banker_shadow") or []:
+            if experiment.get("version") != "banker-ev-shadow-v1" or experiment.get("arm") not in {"B0", "B1", "B2"}:
+                continue
+            sys.path.insert(0, str(NBA_SKILL))
+            from nba_sgm_quote import quote_valid
+            quote = experiment.get("sgm_quote") or {}
+            captured = _aware(quote.get("captured_at"))
+            legs = experiment.get("legs") or []
+            verified = bool(captured and captured <= now and quote_valid(quote, odds, legs, now=captured))
+            identities = {leg.get("probability_model_id") for leg in payload.get("legs", [])}
+            identity = next(iter(identities)) if len(identities) == 1 else None
+            price = _float(experiment.get("sportsbet_sgm_price"))
+            rows.append({**experiment, **base, **_flags(tip, captured, now),
+                         "row_type": "banker_shadow_obs", "analysis_only": True, "decision": "OBSERVE",
+                         "odds_captured_at": _iso(captured), "probability_model_id": identity,
+                         "eligible": bool(experiment.get("eligible") and verified and identity
+                                          and 2 <= len(legs) <= 4
+                                          and price == _float(quote.get("decimal_odds")) and price >= 2.0),
+                         "sportsbet_sgm_status": "ok" if verified else "unverified"})
+        rows.extend(availability_rows(payload.get("availability"), base, flags))
         for leg in payload.get("legs") or []:
             line = _float(leg.get("line"))
             price = _float(leg.get("price"))
@@ -427,7 +499,26 @@ def record_snapshot(
                 "shadow_fit_version": leg.get("shadow_fit_version"),
                 "shadow_fit_status": leg.get("shadow_fit_status"),
                 "shadow_fit_inputs": leg.get("shadow_fit_inputs"),
+                # SHADOW season-rate model S (EXP-20261025-11): same rule, not a MODEL_VARIANT.
+                "season_rate_prob_S": _float(leg.get("season_rate_prob_S")),
+                "season_rate_version": leg.get("season_rate_version"),
+                "season_rate_status": leg.get("season_rate_status"),
+                "season_rate_inputs": leg.get("season_rate_inputs"),
+                "season_rate_v2_prob_S": _float(leg.get("season_rate_v2_prob_S")),
+                "season_rate_v2_version": leg.get("season_rate_v2_version"),
+                "season_rate_v2_status": leg.get("season_rate_v2_status"),
+                "season_rate_v2_inputs": leg.get("season_rate_v2_inputs"),
+                "season_rate_v3_prob_S": _float(leg.get("season_rate_v3_prob_S")),
+                "season_rate_v3_version": leg.get("season_rate_v3_version"),
+                "season_rate_v3_status": leg.get("season_rate_v3_status"),
+                "season_rate_v3_inputs": leg.get("season_rate_v3_inputs"),
+                "season_rate_v4_prob_S": _float(leg.get("season_rate_v4_prob_S")),
+                "season_rate_v4_version": leg.get("season_rate_v4_version"),
+                "season_rate_v4_status": leg.get("season_rate_v4_status"),
+                "season_rate_v4_inputs": leg.get("season_rate_v4_inputs"),
+                "early_season_guard": leg.get("early_season_guard"),
                 "picked": bool(leg.get("picked")), "picked_in": leg.get("picked_in") or [],
+                "prop_training": nba_prop_training.observation(training_source, leg),
             })
         for combo in payload.get("combos") or []:
             rows.append({
@@ -781,6 +872,18 @@ def _choose_snapshot(rows: list[dict]) -> str | None:
     return best.get("snapshot_id")
 
 
+def _choose_view_snapshot(rows: list[dict], view: str = "latest") -> str | None:
+    """`latest`: the normal evaluation rule; `bet`: the latest pre-tip 21:00 publication."""
+    if view == "latest":
+        return _choose_snapshot(rows)
+    if view != "bet":
+        raise ValueError(f"unknown view: {view}")
+    eligible = [r for r in rows if _pre_tip(r) and r.get("snapshot_role") == BET_ROLE]
+    if not eligible:
+        return None
+    return max(eligible, key=lambda r: str(r.get("snapshot_created_at") or "")).get("snapshot_id")
+
+
 def probability_model_id(row: Mapping[str, Any]) -> str:
     identity = row.get("probability_model_id")
     if identity:
@@ -932,6 +1035,7 @@ def evaluate(
         out["clv_model_price_vs_close"] = {
             "n": len(model_clv), "mean": round(sum(model_clv) / len(model_clv), 5) if model_clv else None,
         }
+        out["settled_event_clusters"] = len({leg["key"][:2] for leg in settled if leg["p_final"] is not None})
         out["settled_clusters_player_game_market"] = len({leg["key"][:4] for leg in settled})
         devigged_settled = [leg for leg in settled if leg["market_devig_close"] is not None]
         out["devig_coverage"] = {
@@ -950,6 +1054,8 @@ def evaluate(
             "by_market": {market: section([leg for leg in legs if leg["probability_model_id"] == identity and leg["market"] == market])
                           for market in by_market},
             "picked": section([leg for leg in legs if leg["probability_model_id"] == identity and leg["picked"]]),
+            "picked_by_market": {market: section([leg for leg in legs if leg["probability_model_id"] == identity
+                                                  and leg["picked"] and leg["market"] == market]) for market in by_market},
         }
         for identity in sorted({leg["probability_model_id"] for leg in legs})
     }
@@ -1020,6 +1126,7 @@ def evaluate(
         verdict = "insufficient_n"
     else:
         verdict = "n_adequate_pending_review"
+    import nba_prop_training
     return {
         "schema": SCHEMA,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -1042,6 +1149,7 @@ def evaluate(
         "by_market": by_market,
         "by_picked": by_picked,
         "sgm": sgm,
+        "prop_training_evidence": nba_prop_training.summary(rows),
     }
 
 

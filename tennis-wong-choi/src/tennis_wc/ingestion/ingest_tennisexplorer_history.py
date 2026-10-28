@@ -14,6 +14,8 @@ how 864 duplicate identities happened the first time.
 """
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import upsert_history_observation
+
 from datetime import date, timedelta
 
 from tennis_wc.database.db import get_connection
@@ -114,23 +116,23 @@ def _store_history(conn, match_date: str, results: list[ParsedResult], raw_id: i
             (f"{base}-winner", winner_id, loser_id, 1),
             (f"{base}-loser", loser_id, winner_id, 0),
         ):
-            conn.execute(
-                """
-                INSERT INTO player_match_history
-                    (provider_match_id, player_id, opponent_id, tour, match_date,
-                     tournament_external_id, tournament_level, round, format, won,
-                     source_provider, raw_response_id, created_at, surface)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(source_provider, provider_match_id, player_id) DO UPDATE SET
-                    player_id = excluded.player_id,
-                    opponent_id = excluded.opponent_id,
-                    won = excluded.won
-                """,
-                (
-                    provider_match_id, player_id, opponent_id, tour, match_date,
-                    result.tournament_name, tier, "R",
-                    "BO3", won, PROVIDER_NAME, raw_id, now, None,
-                ),
+            upsert_history_observation(
+                conn, {
+                    'provider_match_id': provider_match_id,
+                    'player_id': player_id,
+                    'opponent_id': opponent_id,
+                    'tour': tour,
+                    'match_date': match_date,
+                    'tournament_external_id': result.tournament_name,
+                    'tournament_level': tier,
+                    'round': "R",
+                    'format': "BO3",
+                    'won': won,
+                    'source_provider': PROVIDER_NAME,
+                    'raw_response_id': raw_id,
+                    'created_at': now,
+                    'surface': None,
+                }, observed_at=now,
             )
             counts["rows"] += 1
         # A retirement still decides a winner, so it counts for Elo; the games

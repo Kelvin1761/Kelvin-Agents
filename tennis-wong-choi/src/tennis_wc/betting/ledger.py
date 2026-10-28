@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+
 import json
 import re
 from datetime import date, timedelta
@@ -11,6 +13,7 @@ from tennis_wc.features.common import utc_now
 from tennis_wc.ingestion.name_matching import match_pair_score, same_player_name
 from tennis_wc.providers import get_tennis_provider
 from tennis_wc.evaluation.corpus import tracker_point_in_time_clause
+from tennis_wc.database.result_consensus import conflicting_result_matches, result_agreement_clause
 
 # Gates and track records read only legs written before their match started;
 # see evaluation.corpus.tracker_point_in_time_clause.
@@ -687,7 +690,9 @@ def settle_bets_for_date(match_date: str, auto_refresh: bool = True) -> dict:
     now = utc_now()
     settled = 0
     pending = 0
+    held_conflicts = 0
     with get_connection() as conn:
+        conflicts = conflicting_result_matches(conn)
         bets = conn.execute(
             """
             SELECT b.*, r.winner_player_id
@@ -712,6 +717,10 @@ def settle_bets_for_date(match_date: str, auto_refresh: bool = True) -> dict:
             (match_date,),
         ).fetchall()
         for bet in bets:
+            if int(bet["match_id"]) in conflicts:
+                held_conflicts += 1
+                pending += 1
+                continue
             if bet["winner_player_id"] is None:
                 pending += 1
                 continue
@@ -732,6 +741,7 @@ def settle_bets_for_date(match_date: str, auto_refresh: bool = True) -> dict:
     return {
         "settled": settled,
         "pending_without_result": pending,
+        "held_conflicting_results": held_conflicts,
         "tracker_settlement": tracker_settlement,
         "combo_settlement": combo_settlement,
         "tier_roi": tier_roi_summary(),
@@ -822,13 +832,15 @@ def settle_clv_tracker_for_date(match_date: str) -> dict:
     unsupported = 0
     prop_linked_settled = 0
     prop_linked_voided = 0
+    held_conflicts: set[int] = set()
     with get_connection() as conn:
+        conflicts = conflicting_result_matches(conn)
         # Prop settlement has the exact synthetic market scope, subject and
         # retirement handling.  Copy its authoritative result instead of
         # trying to re-derive the same bet from the coarser CLV row.
         prop_rows = conn.execute(
             """
-            SELECT c.id, p.result_status, p.profit_loss_units
+            SELECT c.id, c.match_id, p.result_status, p.profit_loss_units
             FROM clv_tracker c
             JOIN prop_tracker p
               ON c.recommendation_type = 'PROP_RECOMMENDATION'
@@ -842,6 +854,9 @@ def settle_clv_tracker_for_date(match_date: str) -> dict:
             (match_date,),
         ).fetchall()
         for row in prop_rows:
+            if int(row["match_id"]) in conflicts:
+                held_conflicts.add(int(row["id"]))
+                continue
             status = str(row["result_status"])
             conn.execute(
                 """
@@ -885,6 +900,10 @@ def settle_clv_tracker_for_date(match_date: str) -> dict:
             (match_date,),
         ).fetchall()
         for row in rows:
+            if int(row["match_id"]) in conflicts:
+                held_conflicts.add(int(row["id"]))
+                pending += 1
+                continue
             if row["winner_player_id"] is None:
                 pending += 1
                 continue
@@ -909,6 +928,7 @@ def settle_clv_tracker_for_date(match_date: str) -> dict:
         "unsupported_market_results": unsupported,
         "prop_linked_settled": prop_linked_settled,
         "prop_linked_voided": prop_linked_voided,
+        "held_conflicting_results": len(held_conflicts),
     }
 
 
@@ -924,7 +944,7 @@ def settle_combo_tracker_for_date(match_date: str) -> dict:
             """
             SELECT *
             FROM combo_tracker
-            WHERE match_date = ? AND result_status = 'PENDING'
+            WHERE match_date = ? AND result_status = 'PENDING' AND settled_at IS NULL
             """,
             (match_date,),
         ).fetchall()
@@ -965,15 +985,17 @@ def settle_combo_tracker_for_date(match_date: str) -> dict:
                 continue
             won = all(bool(result) for result in leg_results)
             status = "WON" if won else "LOST"
+            settled_legs = [dict(leg, result_status="WON" if result else "LOST")
+                            for leg, result in zip(legs, leg_results)]
             stake = float(row["stake_units"] or 0)
             profit = stake * (float(row["combo_odds"]) - 1) if won else -stake
             conn.execute(
                 """
                 UPDATE combo_tracker
-                SET result_status = ?, profit_loss_units = ?, updated_at = ?, settled_at = ?
+                SET result_status = ?, profit_loss_units = ?, legs_json = ?, updated_at = ?, settled_at = ?
                 WHERE id = ?
                 """,
-                (status, profit, now, now, row["id"]),
+                (status, profit, json.dumps(settled_legs, sort_keys=True), now, now, row["id"]),
             )
             settled += 1
     return {
@@ -1793,7 +1815,7 @@ def _upsert_combo_tracker(conn, combo: dict, match_date: str, now: str) -> int:
         return 0
     match_id = int(legs[0]["match_id"])
     combo_key = _combo_key(legs)
-    conn.execute(
+    cursor = conn.execute(
         """
         INSERT INTO combo_tracker (
             combo_key, match_id, match_date, match_label, tier, legs_json,
@@ -1809,6 +1831,8 @@ def _upsert_combo_tracker(conn, combo: dict, match_date: str, now: str) -> int:
             adjusted_edge = excluded.adjusted_edge,
             stake_units = excluded.stake_units,
             updated_at = excluded.updated_at
+        WHERE combo_tracker.result_status = 'PENDING'
+          AND combo_tracker.settled_at IS NULL
         """,
         (
             combo_key,
@@ -1825,7 +1849,7 @@ def _upsert_combo_tracker(conn, combo: dict, match_date: str, now: str) -> int:
             now,
         ),
     )
-    return 1
+    return cursor.rowcount
 
 
 def _combo_key(legs: list[dict]) -> str:
@@ -1889,7 +1913,7 @@ def _combo_result_row(conn, leg: dict) -> dict | None:
     except (TypeError, ValueError):
         return None
     row = conn.execute(
-        """
+        f"""
         SELECT r.winner_player_id, r.score_json,
                m.player_a_id, m.player_b_id,
                pa.name AS player_a_name, pb.name AS player_b_name
@@ -1910,7 +1934,7 @@ def _combo_result_row(conn, leg: dict) -> dict | None:
                 r2.id DESC
             LIMIT 1
         )
-        WHERE m.id = ?
+        WHERE m.id = ? AND {result_agreement_clause('m', 'id')}
         """,
         (match_id,),
     ).fetchone()
@@ -2327,8 +2351,14 @@ def _resolve_pending_from_event_provider(match_date: str) -> dict:
     if not callable(fetch_event_result):
         return {"event_id_tracked": event_id_tracked, "event_result_imported": 0, "event_result_errors": []}
 
+    from tennis_wc.database.market_captures import bookmaker_event_for_match
+
+    with get_connection() as conn:
+        event_refs = {row['id']: bookmaker_event_for_match(conn, row['id'], provider.provider_name)
+                      for row in matches}
+    event_id_tracked = sum(bool(ref) for ref in event_refs.values())
     for match in matches:
-        event_id = match["market_event_id"]
+        event_id = event_refs[match['id']]
         if not event_id:
             continue
         try:
@@ -2406,7 +2436,7 @@ def _resolve_pending_from_player_history(match_date: str) -> int:
             JOIN players p ON p.id = h.player_id
             JOIN players op ON op.id = h.opponent_id
             WHERE h.match_date IN ({placeholders})
-              AND h.won = 1
+              AND h.won = 1 AND {history_active_clause(conn,"h")}
             """,
             dates,
         ).fetchall()

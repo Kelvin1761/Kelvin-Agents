@@ -1,0 +1,523 @@
+{
+ "races": 3015,
+ "shrink": {
+  "A1": {
+   "mu": 0.1105786579209294,
+   "k": 0.7986981045661975,
+   "sigma2_within": 0.2173432323398238,
+   "sigma2_between": 0.27212188322128417,
+   "horses": 9839,
+   "runs": 46076
+  },
+  "A3": {
+   "mu": 0.07460109959647607,
+   "k": 1.0501375692671204,
+   "sigma2_within": 0.19865792351551728,
+   "sigma2_between": 0.18917323723039306,
+   "horses": 9839,
+   "runs": 46076
+  }
+ },
+ "fq_dist_base": {
+  "2": {
+   "n": 2478,
+   "mean": 59.64,
+   "sd": 21.47,
+   "ge85": 0.136,
+   "le35": 0.156
+  },
+  "3": {
+   "n": 2014,
+   "mean": 60.08,
+   "sd": 20.12,
+   "ge85": 0.125,
+   "le35": 0.131
+  },
+  "4": {
+   "n": 1561,
+   "mean": 61.75,
+   "sd": 20.18,
+   "ge85": 0.138,
+   "le35": 0.115
+  },
+  "5": {
+   "n": 1568,
+   "mean": 61.67,
+   "sd": 19.41,
+   "ge85": 0.121,
+   "le35": 0.105
+  },
+  "6": {
+   "n": 15379,
+   "mean": 58.93,
+   "sd": 19.65,
+   "ge85": 0.096,
+   "le35": 0.129
+  }
+ },
+ "fq_dist_A1": {
+  "2": {
+   "n": 2478,
+   "mean": 59.11,
+   "sd": 20.72,
+   "ge85": 0.118,
+   "le35": 0.147
+  },
+  "3": {
+   "n": 2014,
+   "mean": 60.5,
+   "sd": 20.04,
+   "ge85": 0.124,
+   "le35": 0.128
+  },
+  "4": {
+   "n": 1561,
+   "mean": 62.28,
+   "sd": 20.25,
+   "ge85": 0.147,
+   "le35": 0.111
+  },
+  "5": {
+   "n": 1568,
+   "mean": 61.91,
+   "sd": 19.56,
+   "ge85": 0.128,
+   "le35": 0.106
+  },
+  "6": {
+   "n": 15379,
+   "mean": 58.88,
+   "sd": 19.76,
+   "ge85": 0.097,
+   "le35": 0.131
+  }
+ },
+ "fq_dist_A2": {
+  "2": {
+   "n": 2478,
+   "mean": 59.9,
+   "sd": 21.57,
+   "ge85": 0.142,
+   "le35": 0.156
+  },
+  "3": {
+   "n": 2014,
+   "mean": 59.96,
+   "sd": 20.18,
+   "ge85": 0.118,
+   "le35": 0.137
+  },
+  "4": {
+   "n": 1561,
+   "mean": 61.45,
+   "sd": 20.34,
+   "ge85": 0.13,
+   "le35": 0.121
+  },
+  "5": {
+   "n": 1568,
+   "mean": 60.95,
+   "sd": 19.5,
+   "ge85": 0.114,
+   "le35": 0.119
+  },
+  "6": {
+   "n": 15379,
+   "mean": 59.02,
+   "sd": 19.67,
+   "ge85": 0.095,
+   "le35": 0.129
+  }
+ },
+ "fq_dist_A3": {
+  "2": {
+   "n": 2478,
+   "mean": 58.91,
+   "sd": 20.61,
+   "ge85": 0.111,
+   "le35": 0.144
+  },
+  "3": {
+   "n": 2014,
+   "mean": 60.5,
+   "sd": 20.09,
+   "ge85": 0.119,
+   "le35": 0.133
+  },
+  "4": {
+   "n": 1561,
+   "mean": 62.27,
+   "sd": 20.45,
+   "ge85": 0.15,
+   "le35": 0.115
+  },
+  "5": {
+   "n": 1568,
+   "mean": 61.37,
+   "sd": 19.7,
+   "ge85": 0.124,
+   "le35": 0.119
+  },
+  "6": {
+   "n": 15379,
+   "mean": 58.99,
+   "sd": 19.8,
+   "ge85": 0.097,
+   "le35": 0.131
+  }
+ },
+ "A_residual_excess_by_rank_layer_and_runs": {
+  "1-3|2": {
+   "n": 904,
+   "excess": 0.139
+  },
+  "1-3|3": {
+   "n": 738,
+   "excess": 0.1945
+  },
+  "1-3|4": {
+   "n": 660,
+   "excess": 0.1729
+  },
+  "1-3|5": {
+   "n": 584,
+   "excess": 0.1372
+  },
+  "1-3|6": {
+   "n": 4572,
+   "excess": 0.1568
+  },
+  "1-3|fallback": {
+   "n": 1587,
+   "excess": 0.1545
+  },
+  "4-6|2": {
+   "n": 611,
+   "excess": -0.0124
+  },
+  "4-6|3": {
+   "n": 547,
+   "excess": 0.0524
+  },
+  "4-6|4": {
+   "n": 398,
+   "excess": 0.0417
+  },
+  "4-6|5": {
+   "n": 452,
+   "excess": 0.0002
+  },
+  "4-6|6": {
+   "n": 4688,
+   "excess": -0.0107
+  },
+  "4-6|fallback": {
+   "n": 2267,
+   "excess": -0.0451
+  },
+  "7+|2": {
+   "n": 963,
+   "excess": -0.0887
+  },
+  "7+|3": {
+   "n": 729,
+   "excess": -0.0697
+  },
+  "7+|4": {
+   "n": 503,
+   "excess": -0.1036
+  },
+  "7+|5": {
+   "n": 532,
+   "excess": -0.1072
+  },
+  "7+|6": {
+   "n": 6119,
+   "excess": -0.1212
+  },
+  "7+|fallback": {
+   "n": 2207,
+   "excess": -0.1423
+  }
+ },
+ "B_title_class_x_source": {
+  "unknown": {
+   "engine_sw=False|src=official": 3158,
+   "engine_sw=False|src=proxy_weight_only": 91,
+   "engine_sw=False|src=proxy_class_weight": 940
+  },
+  "handicap": {
+   "engine_sw=False|src=proxy_class_weight": 2640,
+   "engine_sw=False|src=official": 13777,
+   "engine_sw=False|src=proxy_weight_only": 46,
+   "engine_sw=False|src=proxy": 10
+  },
+  "set_weight": {
+   "engine_sw=True|src=proxy": 5104,
+   "engine_sw=False|src=proxy_class_weight": 892,
+   "engine_sw=False|src=official": 1820,
+   "engine_sw=False|src=proxy_weight_only": 373,
+   "engine_sw=False|src=proxy": 78,
+   "engine_sw=True|src=official": 132
+  }
+ },
+ "B_title_samples": {
+  "unknown": [
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   "",
+   ""
+  ],
+  "handicap": [
+   "INLAND PETROLEUM COUNTRY BOOSTED MAIDEN HANDI",
+   "AQUA WEST COUNTRY BOOSTED BENCHMARK 58 HANDIC",
+   "VALE COLIN MACKINTOSH BENCHMARK 58 HANDICAP",
+   "PRECISION HEALTH CARE CLASS 2 HANDICAP",
+   "LADBROKES PLACE EXTRA BENCHMARK 60 Handicap",
+   "LADBROKES BIG BETS COPY NOW BENCHMARK 65 Hand",
+   "KILCOY GLOBAL FOODS Maiden Handicap",
+   "LADBROKES SWITCH Class 1 Handicap",
+   "EXCHANGE HOTEL KILCOY RATINGS BAND 0 - 55 Han",
+   "NEXT RACE DAY - 20TH SEPTEMBER CG&amp;E MAIDEN HA",
+   "Dalton Consulting Engineers Handicap",
+   "Ladbrokes Pakenham Cup on sale Handicap",
+   "Duffy &amp; Simon Lawyers Handicap",
+   "Ray White Pakenham &amp; Officer Handicap",
+   "Brandt BM62 Handicap",
+   "Sportsbet Jockey Watch BM56 Handicap",
+   "Hygain Edge BM56 Handicap",
+   "Manhari BM62 Handicap",
+   "Hygain Edge BM62 Handicap",
+   "Sportsbet Race Replays BM62 Handicap",
+   "Hygain Edge BM56 Handicap",
+   "TAB COUNTRY BOOSTED BENCHMARK 58 HANDICAP",
+   "MULCAHY LAWYERS &amp; CONVEYANCERS MAIDEN HANDICA",
+   "LENNOX HOTEL BENCHMARK 66 HANDICAP",
+   "100.9 ZZZFM CLASS 2 BENCHMARK 62 HANDICAP"
+  ],
+  "set_weight": [
+   "ELDERS DUBBO RURAL MAIDEN PLATE",
+   "SOMERSET REGIONAL COUNCIL QTIS Three-Year-Old",
+   "THANK YOU BOB YOUNG COUNTRY BOOSTED MAIDEN PL",
+   "Ladbrokes Odds Surge 3YO Maiden Plate",
+   "Become a Southside Racing Member 3YO Maiden P",
+   "Hygain Edge Maiden Plate",
+   "Happy 50th RO'Ket Maiden Plate",
+   "Designer Coolrooms Maiden Plate",
+   "Global Turf Maiden Plate",
+   "Manhari Maiden Plate",
+   "Hygain Edge Maiden Plate",
+   "TAB COUNTRY BOOSTED MAIDEN PLATE",
+   "MCGRATH NORTHERN RIVERS CLASS 1 &amp; MAIDEN PLAT",
+   "BALLINA FAIR MAIDEN PLATE",
+   "RUGBY RACEDAY 31ST OCTOBER 2026 Maiden Plate",
+   "MITTYS RACING COLOURS Maiden Plate",
+   "HRC MOTEL MAIDEN PLATE",
+   "CLARENDON TAVERN 4YO&amp;UP MAIDEN PLATE",
+   "MEMBERSHIP AT BUNBURY TURF CLUB MAIDEN",
+   "GOMMES SHOES MAIDEN",
+   "REDINK HOMES SOUTHWEST MAIDEN",
+   "DUNCAN EQUINE GROUP MAIDEN",
+   "SWAN DRAUGHT MAIDEN",
+   "Cleaners World Maiden Plate",
+   "Able Maiden Plate"
+  ]
+ },
+ "B_diag_nonhandicap_proxy_races": {
+  "races": 310,
+  "weight_proxy": {
+   "pairs": 6405,
+   "auc": 0.5111
+  },
+  "age": {
+   "pairs": 6405,
+   "auc": 0.4693
+  },
+  "male": {
+   "pairs": 6405,
+   "auc": 0.5238
+  },
+  "class_score": {
+   "pairs": 6405,
+   "auc": 0.5649
+  }
+ },
+ "C_residual_excess": {
+  "G0|1-3|minus": {
+   "n": 223,
+   "excess": 0.2264
+  },
+  "G0|1-3|none": {
+   "n": 8822,
+   "excess": 0.1559
+  },
+  "G0|4-6|minus": {
+   "n": 717,
+   "excess": -0.0124
+  },
+  "G0|4-6|none": {
+   "n": 8246,
+   "excess": -0.0128
+  },
+  "G0|7+|minus": {
+   "n": 530,
+   "excess": -0.1195
+  },
+  "G0|7+|none": {
+   "n": 10523,
+   "excess": -0.1176
+  },
+  "G15|1-3|minus": {
+   "n": 759,
+   "excess": 0.0904
+  },
+  "G15|1-3|none": {
+   "n": 6950,
+   "excess": 0.1652
+  },
+  "G15|1-3|plus": {
+   "n": 1336,
+   "excess": 0.1562
+  },
+  "G15|4-6|minus": {
+   "n": 1418,
+   "excess": -0.0598
+  },
+  "G15|4-6|none": {
+   "n": 6552,
+   "excess": -0.0106
+  },
+  "G15|4-6|plus": {
+   "n": 993,
+   "excess": 0.0401
+  },
+  "G15|7+|minus": {
+   "n": 2895,
+   "excess": -0.1381
+  },
+  "G15|7+|none": {
+   "n": 7295,
+   "excess": -0.1159
+  },
+  "G15|7+|plus": {
+   "n": 863,
+   "excess": -0.064
+  },
+  "G5|1-3|minus": {
+   "n": 1255,
+   "excess": 0.1463
+  },
+  "G5|1-3|none": {
+   "n": 6516,
+   "excess": 0.145
+  },
+  "G5|1-3|plus": {
+   "n": 1274,
+   "excess": 0.2335
+  },
+  "G5|4-6|minus": {
+   "n": 1388,
+   "excess": -0.0329
+  },
+  "G5|4-6|none": {
+   "n": 7147,
+   "excess": -0.0121
+  },
+  "G5|4-6|plus": {
+   "n": 428,
+   "excess": 0.0403
+  },
+  "G5|7+|minus": {
+   "n": 1857,
+   "excess": -0.1589
+  },
+  "G5|7+|none": {
+   "n": 8948,
+   "excess": -0.111
+  },
+  "G5|7+|plus": {
+   "n": 248,
+   "excess": -0.0494
+  },
+  "GD|1-3|none": {
+   "n": 8557,
+   "excess": 0.1578
+  },
+  "GD|1-3|plus": {
+   "n": 488,
+   "excess": 0.154
+  },
+  "GD|4-6|none": {
+   "n": 8656,
+   "excess": -0.0141
+  },
+  "GD|4-6|plus": {
+   "n": 307,
+   "excess": 0.023
+  },
+  "GD|7+|none": {
+   "n": 10826,
+   "excess": -0.1176
+  },
+  "GD|7+|plus": {
+   "n": 227,
+   "excess": -0.1238
+  },
+  "GM|1-3|minus": {
+   "n": 436,
+   "excess": 0.1174
+  },
+  "GM|1-3|none": {
+   "n": 8609,
+   "excess": 0.1597
+  },
+  "GM|4-6|minus": {
+   "n": 533,
+   "excess": -0.0018
+  },
+  "GM|4-6|none": {
+   "n": 8430,
+   "excess": -0.0135
+  },
+  "GM|7+|minus": {
+   "n": 992,
+   "excess": -0.1167
+  },
+  "GM|7+|none": {
+   "n": 10061,
+   "excess": -0.1178
+  }
+ },
+ "C_class_score_auc": {
+  "pairs": 60076,
+  "auc": 0.5701
+ },
+ "replica_gaps": {
+  "form_quality_score": 0.0007570000000001187,
+  "class_score": 0.0,
+  "rating_score": 0.0,
+  "ability": 0.0037999999999982492,
+  "ability_rows_gt_1e-3": 37.0
+ }
+}

@@ -4,6 +4,17 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20260929-01](EXP-20260929-01-hkjc-hv-v3-experimental-live.md)／[EXP-20261007-01](EXP-20261007-01-hkjc-pre-race-draw-context-v2.md) | 2026-10-27 | HKJC | 兩個 rollback 對照夠數嘅人手 review（immutable ledger），規則借用 shadow monitor rollback gate | **兩個都維持 live**：跑馬地 V3 舊版 27 場 Good −1、捕捉／NDCG CI 全負；檔位 v1 舊版 53 場 Good −2、NDCG CI 全負。A+B（`race_shape_v3_hv_t02`）撤走：V3 已 live，t02 喺跑馬地就等於 A+B |
+| [EXP-20261027-13](EXP-20261027-13-hkjc-top-jockey-overlay-walk-forward.md) | 2026-10-27 | HKJC | 頂級騎師 overlay（今仗／換上）walk-forward 幅度＋換騎 −1.5 方向 ablation；同時交付 overlay registry | **全部 REJECT**：A1 walk-forward 次次揀 0；A2 Good −1.19pp [−2.35,−0.29]；B／A1+B Good −0.30 跨零。忠實度 50/50。掃描 +5.5pp 入位率落唔到頭四。registry 交付（全部 shadow、排名 bit-identical、`o` 欄匯出畀 refit／ML） |
+| [EXP-20261027-12](EXP-20261027-12-hkjc-situational-overlay-scan.md) | 2026-10-27 | HKJC | 10 個情境 pattern（換騎方向、騎練組合、狀態差＋換騎、快速回師、長休、馬重、負磅、練馬師手風）預先登記，賠率分層＋模型排名分層，Holm | **P1「換上頂級騎師」overlay 候選**：模型鏡頭 +5.5pp [+1.7,+9.2] Holm p 0.025，市場鏡頭 ≈0（市場已反映、模型漏咗）；拆解似「今仗頂級騎師」被低估＋換騎 −1.5 唔分方向。出擊組合（P4／P10）冇訊號。未改 live |
+| [EXP-20261027-06](EXP-20261027-06-tennis-stored-nudge-ablation.md) | 2026-10-27 | Tennis | 直接保存分項、方向及風險折扣作全nudge／9項消融 | **REJECT 移除候選**：1702場忠實誤差<=1e-6；全關 ΔLL +0.000638 CI跨零，EV>0紙上ROI −19.67%→−20.76%；單項無Holm改善。dev-only，無promotion，v1遺漏後處理明示保留。 |
+| [EXP-20261027-05](EXP-20261027-05-tennis-profit-feasibility.md) | 2026-10-27 | Tennis | 固定<=1.6短賠熱門舊假設，用嚴格賽前語料覆核 | **NEEDS MORE TESTING／不採用收窄策略**：3492獨立場中269短賠未達600；原卡BET257單ROI−16.75%，收窄35單−24.58%；legacy無完整fixture身份，唔改正式模型。 |
+| [EXP-20261027-03](EXP-20261027-03-hkjc-awt-aptitude-pit-rebuild.md) | 2026-10-27 | HKJC | 沙田 AWT 適性：用 production parser＋profile cache 由存檔賽績重建 PIT 證據（忠實度 32/32、leakage 0），v2 路程殘差／場地殘差 w0.08 cap4 | **UNRESOLVABLE（唔上線）**：32 場 AWT 頭四只變 1／7 場；兩個訊號場內 AUC 0.518／0.470（模型 0.671）—— 適性分本身冇料。事後發現「冇 AWT 經驗」分層差 +12.7pp [+5.6,+21.1]（in-sample），由 10-28 起 forward 登記，≥30 場先判 |
+| [EXP-20261026-03](EXP-20261026-03-tennis-model-audit.md) | 2026-10-26 | Tennis | 全面資料／模型審計及既有 frozen Elo shadow 前向檢查 | **SHADOW／NEEDS MORE TESTING**：349 場相對現役 ΔLL −0.00792，仍輸市場；PIT paper ROI −15.93%。四類離線工具修正留審閱分支，WTA stale／重複 history／衝突結果／BO5 等另列；無模型 promotion。 |
+| [EXP-20261025-07](EXP-20261025-07-nba-prop-forward-training-evidence.md) | 2026-10-25 | NBA | 新機會量與80/80逐腿賽前輸入、C baseline及獨立Final targets接線 | **ENGINEERING／FORWARD PENDING**：native snapshot自動留來源、日期、GP與缺失；最新pretip export不回填舊features，舊ledger合格新資料0行；不fit、不改C／EV／selector。 |
+| [EXP-20261025-05](EXP-20261025-05-nba-prop-opportunity-intake.md) | 2026-10-25 | NBA | 各prop專屬機會量來源與選中腿校準監測 | **DATA CONTRACT／MONITORING**：7未開賽場175 provider player-games，7來源成功、缺值明列；補opponent 3PA/3PM及picked監測盲點，不fit、不改C／EV。 |
+| [EXP-20261025-04](EXP-20261025-04-nba-price-free-opportunity-model.md) | 2026-10-25 | NBA | 市場獨立、逐stat公式與分鐘／角色／對手／賽程消融 | **NOT SHOWN BETTER／研究分支**：5,305列32場OOF，full Brier .176236、core .175155、市場 .171768；選中單腿+10.69%但CI極寬且高估近20pp；40/41資料類別擷取成功，不改C。 |
+| [EXP-20261025-03](EXP-20261025-03-nba-daily-multi-feasibility.md) | 2026-10-25 | NBA | 跨場兩張參考Multi及進階數據接線審計 | **DESCRIPTIVE／NEEDS MORE TESTING**：保留EV零張，研究2張但參考EV為負；修正離隊／Out防守名單，新增opponent描述collector，不改C／正式策略。 |
 | [EXP-20261021-05](EXP-20261021-05-nba-pregame-population-refit.md) | 2026-10-21 | NBA | 喺賽前可知 population（prior-10 MIN≥20、冇賽後過濾）重做擬合層，驗證可否過六條件校準門檻 | **PASSES（離線）：(A)(B)(C) 六條全過、bias 檢查通過**；增益主要係 Poisson/NB＋per-stat 重校準 (A)（slope .57→.92），7 個 live 項經擬合只剩 buffer／sip_n04 細幅貢獻（(B) 對 (A) ~−0.0006）；live 最終機率 (E) 最差（slope .446、p≥0.80 預測 .897 對實際 .767）。DNP 缺失 3–5%（最壞 +2pp 高估）。冇利潤／production 聲稱；只建議 shadow 設計（首選 (A)）。 |
 | [EXP-20261021-04](EXP-20261021-04-nba-adjustment-layer-refit.md) | 2026-10-21 | NBA | 喺 Poisson/NB 底上用 dev 擬合 logistic 調整層（含 7 個 live 項）代替逐項移除，驗證可否過 calibration 門檻 | **規則字面 (B)(C) passes、(A) not shown；但 passes 係賽後 MIN≥15 選擇偏差偽影（sip_n01 係數反向 −2.4×；bench 行 y−p +14pp）→ NEEDS MORE TESTING**：S1 賽前 population 下對 (c) 增益 ~0；(c)/(A) 已大勝 live base（slope .77→.90），live base 於 p≥0.70 高估 5–9pp。唔建議 shadow／production；下一步 EXP-05 用賽前 population 重做。冇利潤聲稱。 |
 | [EXP-20261021-03](EXP-20261021-03-nba-adjustment-ablation.md) | 2026-10-21 | NBA | live 可重現調整項（trend／cov／buffer／sip_n04／sip_n01／b2b／home_away）逐項 ablation：邊項令 base 機率更差 | **ABLATION／NEEDS MORE TESTING**：add-one H1 ΔBrier：cov +0.0077、sip_n01 +0.0043、buffer +0.0029、sip_n04 +0.0020、b2b +0.0006 → harmful；trend、home_away no evidence；0 項 helpful。害處 ~91% 係加法（單項總和 +0.0173 vs 聯合 +0.0190），重疊 pair ≤0.0007；主因係項多只減（Σadj 平均 −7.7pp）而 base 已低估 3pp。判決部分依賴 population（S1）。唔講利潤、冇改 production。 |
@@ -254,3 +265,48 @@
 - [EXP-20261021-06](EXP-20261021-06-nba-early-season-carryover.md) — 賽季初（同季第 1–10 場）用上季 rate carryover，frozen layer A 可否由第 1 場起出有效機率 | **冇任何 arm 被採納（NEEDS MORE TESTING）**：A0／A1／X1 六條全過但 selection-bias 預檢否決（20–30 分鐘桶 y−p −4pp，第 1 場 −8pp：賽季初實際分鐘低過 prior-10 4–11%）；carryover 令 count model 大勝 live base（H2 −0.011～−0.016，三季一致），frozen A slope 可轉移但水平高估；live final E 更差。建議 EXP-07 做賽季初分鐘校正；賽季初 shadow 維持 null。無利潤聲稱。
 - [EXP-20261023-06](EXP-20261023-06-nba-verified-temporal-ml-rebuild.md) — NBA v2 修正己隊／對手、Final／US 日期標籤、缺值及隨機逐盤切分；49 場實價資料、訓練 7,344／terminal 942 列；RF Brier .1822 輸現役 C .1711 → 不晉升，資料／訓練／推論／回測合約修正
 - [EXP-20261023-07](EXP-20261023-07-nba-context-wiring-ablation.md) — NBA blowout／傷停使用率／MC 單位／隊伍 pace 接線及防守 Totals 修正；9×50 captures、p_final／組合零變化；MC ΔBrier −.000688 CI 跨零，唔聲稱改善；官方防守覆蓋 0→523／576
+
+- [EXP-20261024-01](EXP-20261024-01-nba-latest-analysis-review-candidates.md) — NBA 最新逐場分析及 review-only SGM 候選；同源五場 305 個 p_final／正式 combos 不變，15 個真實 SGM 報價接線；工程驗證，無盈利聲稱，正式策略不晉升。
+
+- [EXP-20261024-02](EXP-20261024-02-nba-banker-only-ev-shadow.md) — 正式產品集中穩膽；EV 保留，新增逐關漏斗、零穩膽審計提醒及 B0/B1/B2 forward-only EV 消融；工程隔離驗證，未證明盈利改善。
+
+- [EXP-20261024-03](EXP-20261024-03-nba-actual-price-search.md)：NBA opt-in真價搜尋Q0/Q1/Q2，有限報價、正式策略不變；NEEDS MORE TESTING。
+
+- [EXP-20261025-02](EXP-20261025-02-nba-calibrated-accuracy-review.md)：同一真價搜尋集合的joint機率排序／最弱腿審計；已見6場重播4→5全中不作採用證據，角色資料不足不硬禁AST；正式selector／EV／C不變。
+
+- [EXP-20261025-08](EXP-20261025-08-hkjc-same-course-best-time-protocol.md)：HKJC 同程最佳時間（對全場，扣場地 variant）＋近 6 仗最快 L400 預先登記；篩選 ΔΔLL +0.008（5/5 fold）、對模型 ρ +0.29；fixed_rule 4 arm 全部 REJECT：同程時間將上名馬拉入頭 5（cap@5 +1.1pp）但推走首選（Good −1.6～−2.2pp）；最快 L400 打和，維持上仗 L400。結果見 [results](EXP-20261025-08-hkjc-same-course-best-time-results.md)。
+- [EXP-20261025-11](EXP-20261025-11-nba-season-rate-core.md)：獨立模型核心由L10換全季分鐘×產出率，OOF Brier 0.1752→0.1731（CI跨零，4/5 fold）；REB／AST／3PM追平市場、PTS落後；市場＋S vs C結構 −0.0004（CI跨零）；NEEDS MORE TESTING。
+
+- [EXP-20261025-12](EXP-20261025-12-nba-ms-vs-c-forward-protocol.md)：市場＋S（MS）對 Layer C 嘅 forward 判決協議，喺零數據時凍結；MS 係數只用歷史 dev fit；150 場傷害檢查／400 場主要／800 場最終，97.5% 比賽日 cluster CI；工具 nba_ms_forward.py 只讀。
+
+- [EXP-20261025-13](EXP-20261025-13-nba-season-rate-v2.md)：獨立模型 S_v2（對手調整、PTS 拆解、離散度、分鐘 half-life 3）；例行賽 VALID log-loss −0.0055 [−0.0071,−0.0039]；唔用價已同市場打和（REB／3PM 贏市場）；MS2 vs C_refit −0.0003 CI 跨零；未接線。
+- [EXP-20261025-14](EXP-20261025-14-nba-ms2-vs-c-forward-protocol.md)：MS2（市場＋S_v2）對 Layer C forward 判決協議，零數據時凍結；同 EXP-12 同一把尺並行；S_v2 shadow 同對手數據（每晚 1 次聯盟球隊 game log）同步接線。
+- [EXP-20261025-15](EXP-20261025-15-nba-ms2-reb-3pm-forward-protocol.md)：MS2 只用喺 REB＋3PM 對 C 嘅 forward 協議，零數據時預先登記；400 場 MDE 0.00069；三個並行測試切換前要 Holm 調整。
+- [EXP-20261025-16](EXP-20261025-16-nba-season-rate-v3-teammate-absence.md)：S_v3 候選（隊友缺陣，PTS γ0.2／AST γ0.15）；例行賽 VALID −0.0034（PTS −0.0091），屬洩漏上限；有價季後賽冇改善；NEEDS MORE TESTING，未接線。
+- [EXP-20261026-01](EXP-20261026-01-nba-s-v3-shadow-and-forward-protocol.md)：S_v3（賽前傷停名單：out／doubtful 權重 1、day-to-day 權重 0 另記 A_dtd、離隊唔計）以 shadow 接線；MS3 forward 協議零數據時凍結；四個並行測試要 Holm。
+- [EXP-20261026-02](EXP-20261026-02-nba-availability-official-report-and-late-refresh.md)：NBA 官方傷停報告做輔助來源（只會令穩膽更嚴）、availability_obs 記錄 ESPN／官方狀態同實際上場、final refresh 加 08:30／10:00／11:30／13:00；冇改機率。
+
+- [EXP-20261026-04](EXP-20261026-04-tennis-wta-fresh-history.md)：WTA 官方新 history 固定消融，114 場／300 props；A1 Brier 0.2645→0.2760，落後市場；REJECT，source 及 exposure 品質問題完整保存。
+- [EXP-20261026-05](EXP-20261026-05-tennis-simulator-service-order.md)：跨盤發球輪轉 correctness 修正；665 場／1,230 props，Brier 0.251512→0.251835（CI 跨零），未證明準確度提升；不 promotion 投注 family。
+- [EXP-20261026-06](EXP-20261026-06-nba-early-season-cross-season-l10.md)：季初 L10 大部分係上季時 AST −7.8pp、3PM −4.5pp（PTS／REB 冇影響），轉隊全部 stat −7～−9pp；季中 AST 同 PTS 一樣可信；live 穩膽區 AST 32 中 16；未改 code。
+- [EXP-20261026-07](EXP-20261026-07-nba-season-rate-v4-early-season-weight.md)：S_v4 季初上季比賽 0.25 權重（轉隊再減）；2024 季初揀、2025 季初驗證 −0.0061 [−0.0092,−0.0037]，AST −0.0090；季初 L10 失準係 C 嘅 L10 項造成，S 本身已校準；未接線。
+- EXP-20261026-02（補充）：用戶跟 21:00 版本落注 → 朝早 final refresh 唔再重新發佈推介，只發傷停提示；組合 ROI／B2 shadow／季初保護監察新增 21:00 落注版本。
+- [EXP-20261026-08](EXP-20261026-08-nba-s-v4-shadow-and-forward-protocol.md)：S_v4 shadow 接線（season_log 加每場球隊）；forward 只比較有上季比賽嘅腿（S_v4 對 S_v2），季初完結或 12-01 判一次；零數據時凍結。
+- [EXP-20261026-09](EXP-20261026-09-nba-experiment-readiness-alerts.md)：NBA 實驗準備度通知：每日賽後計，星期一發進度總結，檢查點首次到期即刻提示（primary）；只讀。
+- [EXP-20261027-01](EXP-20261027-01-au-1016-bundle-forward-replay.md) — 10-16 改動整批 forward 回放（473 場／10 賽日，舊 6de9e625 vs 現行 c60bcb38）：Gold +1.48pp [+0.30,+2.72]、Good +0.63pp CI 跨零、首選上名 −2.75pp [−7.92,+1.33]；W43 下跌兩個引擎都有，唔係新 code 造成；≥30 賽日再跑
+- [EXP-20261027-04](EXP-20261027-04-au-race-time-going-results.md) — 用開跑時官方場地狀況重評（704／2,265 場評分場地 ≠ 開跑評級，多數轉乾 1 級）：v3 fixed_rule **REJECT / primary_regression**，Gold −0.18pp [−0.60,+0.21]、Good −0.04pp；差異場次差係場次本身難，唔係輸入過期
+
+- [EXP-20261027-07](EXP-20261027-07-tennis-game-share-strength.md)：Tennis 過往局數實力＋訓練 combiner，五段 dev 較準，但確認 1819 場 ΔLL CI 跨零；REJECT 上線，保留研究。
+- [EXP-20261027-08](EXP-20261027-08-tennis-continuous-rank-prior.md)：Tennis 直接排名先驗五段 dev 較準，確認 ΔLL −.005743 CI 不跨零；但8240場固定歷史價模擬 ROI −12.07%→−14.37%、仍輸去水市場，REJECT 盈利／上線；合併 games arm 未過 dev。
+- [EXP-20261016-09](EXP-20261016-09-au-form-quality-margin-results.md) — 近績質素分加負距（eq3／pen／gate_N6）：三個都唔合資格，保留 eq2_N6；跑包尾減少但唔顯著、Gold 輕微跌。記錄原本只喺分支 `claude-au-stability-20261016`，2026-10-27 補入 main。
+- [EXP-20261016-10](EXP-20261016-10-au-form-quality-placing-gate-results.md) — 名次先決定獎金加分（pg50／pg33／pgw_N6）：三個都唔合資格；pg33 點估計全部向好（Gold +0.13pp、跑包尾 −9）但 Holm p 0.795。同一 41 日窗第三個 family，轉 forward（EXP-20261027-09）。2026-10-27 補入 main。
+- [EXP-20261027-09](EXP-20261027-09-au-pg33-forward-protocol.md) — pg33_N6 forward 測試**預先登記同凍結**：10-28 起新賽日，夠 30 個賽日先開一次；B vs A `fixed_rule`，要 PRIMARY_WIN／RANKING_WIN，否則結案 REJECT。已宣告功效不足（預期效應 +0.13pp vs CI 約 ±1pp）。
+
+- [EXP-20261027-09](EXP-20261027-09-tennis-opponent-adjusted-serve-return.md)：Tennis 對手校正S/R點數實力，五段勝未校正、只四段LL勝rank，REJECT；固定歷史價少蝕147.81u對rank、僅17.87u對原binary且CI跨零，仍輸市場；實際Sportsbet盈利未驗證。
+- [EXP-20261027-20](EXP-20261027-20-nba-version-alignment-audit.md)：NBA 版本一致性審計：Telegram ROI 改用 dashboard tracking（21:00 第一個發佈嘅穩膽）；MS 四個測試 epoch 改 10-27；readiness 警告用字；正式穩膽 vs 用戶實際跟嘅 steady 候選未統一，待用戶決定。
+- [EXP-20261027-21](EXP-20261027-21-nba-steady-b2-formal-banker-protocol.md) — NBA 正式穩膽改用 steady（B2）：冇 EV 閘、真價 ≥2.0、$1 平注；**模型預期 EV 為負**（基準 14 注 −1.57u、模型估 EV 約 −12%）；預先登記停損 S1 −10u／S2 60 注 CI／S3 命中率審查，暫停唔會自動恢復。產品決定，唔係模型改善。
+- [EXP-20261028-11](EXP-20261028-11-au-form-quality-sample-size-results.md) — 近績質素分按場數收縮（k 0.80）／獎金 z 封頂 ±1.567／兩樣一齊：三個 REJECT（primary 點估計負；A1 兩個分層 CI 全負）。少場數馬喺頭 3 名冇被高估，低名次反而被低估。
+- [EXP-20261028-12](EXP-20261028-12-au-set-weight-proxy-results.md) — 定磅賽唔再用負磅代理（正面認讓磅，處理截斷名）：§7 正確性修正上線，**唔係已證實改善**。1,265 匹中招；定磅賽負磅代理 AUC 0.511，級數分 0.565。
+- [EXP-20261028-13](EXP-20261028-13-au-class-score-rule-audit-results.md) — 級數分逐條審計：只剷「≥15 場」三條（冇代價簡化，Gold +0.03／Good +0.07）；初出、降班剷走有害，留。級數分整體 AUC 0.570。順帶：處女賽懲罰喺「Maidens Ineligible」場都觸發。
+- [EXP-20261028-14](EXP-20261028-14-au-class-g5-bonus-magnitude-results.md) — 級數分「1–5 場、上仗頭 25%」加分幅度 walk-forward（網格 0–10）：REJECT，逐窗從未揀過大過 2.31，全紀錄曲線平（Gold 21.26–21.36%）。cohort 差距唔係可落分收益，維持 2.31。
+- [EXP-20261028-15](EXP-20261028-15-au-career-starts-calibration-results.md) — 按生涯出賽數校準綜合分（九組 walk-forward）：REJECT，Gold −0.20pp、首選 20+ 仗 Gold CI 全負；3 仗 offset 穩定 +1.5 但換唔到前三，20+ 仗 offset 由正變負。出賽經驗唔需要校準。

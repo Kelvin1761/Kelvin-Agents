@@ -263,3 +263,23 @@ def test_legacy_midnight_production_run_still_targets_today(tmp_path, capsys) ->
     payload = json.loads(capsys.readouterr().out)
     assert code == 0
     assert payload["target_date"] == "2026-10-21"
+
+
+def test_late_final_refreshes_get_their_own_slot_and_role(tmp_path, capsys) -> None:
+    seen = []
+    for hour, minute, slot in ((10, 7, "10:00"), (13, 2, "13:00"), (5, 50, "06:30"), (8, 30, "08:30")):
+        code = M.main(
+            [
+                "--domain", "nba", "--mode", "pregame",
+                "--freshness-role", "final_refresh",
+                "--state-root", str(tmp_path / slot), "--dry-run",
+            ],
+            now=datetime(2026, 10, 21, hour, minute, tzinfo=SYDNEY),
+            repo_root=REPO_ROOT,
+        )
+        payload = json.loads(capsys.readouterr().out)
+        assert code == 0 and payload["scheduled_slot"] == slot
+        assert payload["target_date"] == "2026-10-21"
+        assert payload["detail"]["command"][-2:] == ["--freshness-role", "final_refresh"]
+        seen.append(payload["scheduled_slot"])
+    assert len(set(seen)) == 4   # never collapsed into one duplicate-skipped slot

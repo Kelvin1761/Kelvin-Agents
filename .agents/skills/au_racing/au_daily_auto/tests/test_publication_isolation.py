@@ -109,7 +109,7 @@ def test_only_complete_meetings_trigger_evening_publication_callback(tmp_path, m
     candidates = folders(tmp_path, 'Alpha', 'Beta')
     monkeypatch.setattr(S, 'api_next_events', lambda *a: [])
     monkeypatch.setattr(S, 'events_by_day', lambda *a: {'2026-10-24':{'Alpha':{},'Beta':{}}})
-    monkeypatch.setattr(S, 'api_day_meetings', lambda *a: [])
+    monkeypatch.setattr(S, 'api_day_meetings', lambda *a, **k: [])
     monkeypatch.setattr(S, 'fetch_date_index', lambda *a: {
         'alpha':{'meetingId':'1','races':['1']}, 'beta':{'meetingId':'2','races':['2']}})
     monkeypatch.setattr(S, 'analyse_one_meeting', Mock(side_effect=[(candidates[0],True,True),
@@ -125,7 +125,7 @@ def test_callback_failure_does_not_stop_next_meeting(tmp_path, monkeypatch):
     candidates = folders(tmp_path, 'Alpha', 'Beta')
     monkeypatch.setattr(S, 'api_next_events', lambda *a: [])
     monkeypatch.setattr(S, 'events_by_day', lambda *a: {'2026-10-24':{'Alpha':{},'Beta':{}}})
-    monkeypatch.setattr(S, 'api_day_meetings', lambda *a: [])
+    monkeypatch.setattr(S, 'api_day_meetings', lambda *a, **k: [])
     monkeypatch.setattr(S, 'fetch_date_index', lambda *a: {
         'alpha':{'meetingId':'1','races':['1']}, 'beta':{'meetingId':'2','races':['2']}})
     monkeypatch.setattr(S, 'analyse_one_meeting', Mock(side_effect=[(f,True,True) for f in candidates]))

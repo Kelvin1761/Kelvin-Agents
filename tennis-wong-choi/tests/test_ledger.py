@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 
 def test_ledger_summary_empty(tmp_path, monkeypatch):
     from conftest import configure_test_db
@@ -255,7 +257,13 @@ def test_settlement_block_reason_holds_retired_props_for_policy_review():
     assert _settle_market_leg(row) is None
 
 
-def test_cross_match_combo_settles_each_leg_against_its_own_result(tmp_path, monkeypatch):
+@pytest.mark.parametrize("second_winner,expected_status,expected_profit,leg_states", [
+    (4, "WON", 2.42, ["WON", "WON"]),
+    (3, "LOST", -1.0, ["WON", "LOST"]),
+])
+def test_cross_match_combo_settles_each_leg_against_its_own_result(
+    tmp_path, monkeypatch, second_winner, expected_status, expected_profit, leg_states
+):
     import json
 
     from conftest import configure_test_db
@@ -290,7 +298,8 @@ def test_cross_match_combo_settles_each_leg_against_its_own_result(tmp_path, mon
         # against match 10 (the old bug) incorrectly marked leg 2 as a loss.
         conn.execute(
             "INSERT INTO match_results (match_id,winner_player_id,source_provider,created_at) "
-            "VALUES (10,1,'test','now'),(20,4,'test','now')"
+            "VALUES (10,1,'test','now'),(20,?,'test','now')",
+            (second_winner,),
         )
         legs = [
             {
@@ -329,11 +338,14 @@ def test_cross_match_combo_settles_each_leg_against_its_own_result(tmp_path, mon
     summary = settle_combo_tracker_for_date("2026-07-30")
     with get_connection() as conn:
         row = conn.execute(
-            "SELECT result_status,profit_loss_units FROM combo_tracker WHERE combo_key='combo-1'"
+            "SELECT result_status,profit_loss_units,legs_json FROM combo_tracker WHERE combo_key='combo-1'"
         ).fetchone()
     assert summary["settled"] == 1
-    assert row["result_status"] == "WON"
-    assert round(row["profit_loss_units"], 2) == 2.42
+    assert row["result_status"] == expected_status
+    assert round(row["profit_loss_units"], 2) == expected_profit
+    settled = json.loads(row["legs_json"])
+    assert [leg["result_status"] for leg in settled] == leg_states
+    assert [leg["match_id"] for leg in settled] == [10, 20]
 
 
 def test_result_name_matching_requires_confident_pair_match(tmp_path, monkeypatch):

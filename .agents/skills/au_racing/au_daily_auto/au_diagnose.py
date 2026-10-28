@@ -137,7 +137,8 @@ def unfinished_meetings(run: dict) -> list[str]:
         name = str(meeting.get("meeting") or "").strip()
         if name:
             latest[name] = str(meeting.get("status") or "")
-    pending_states = {"pending_extraction", "refresh_deferred", "pending"}
+    pending_states = {"pending_extraction", "refresh_deferred", "pending",
+                      "awaiting_source"}
     return [name for name, status in latest.items() if status in pending_states]
 
 

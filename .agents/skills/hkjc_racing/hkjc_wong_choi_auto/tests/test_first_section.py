@@ -10,6 +10,8 @@ from hkjc_auto_orchestrator import _first_section_min_delta  # noqa: E402
 from hkjc_racing_engine import engine_core  # noqa: E402
 
 SpeedScorer = engine_core.SpeedScorer  # engine_core 用 top-level `speed`，要用同一個 class
+WITH_FIRST_SECTION = {"first_section_fast_bonus": 4.0, "first_section_quick_bonus": 2.0,
+                      "first_section_slowish_pen": -1.0, "first_section_slow_pen": -2.0}
 
 TWELVE = """### 馬號 1 — 甲
 📊 **全段速剖面 (Full Sectional Profile — 近 6 仗):**
@@ -51,12 +53,24 @@ class FirstSectionTests(unittest.TestCase):
         self.assertIsNone(_first_section_min_delta("### 馬號 3 — 丙\n冇剖面\n"))
 
     def test_bands(self):
+        # 2026-10-27 退回之後 live 權重係 0；分段邏輯用 forward arm 嘅權重測（EXP-20261016-53）。
+        from unittest import mock
+
+        from hkjc_racing_engine import scoring
+
+        with mock.patch.dict(scoring.SPEED_MICRO_WEIGHTS, WITH_FIRST_SECTION):
+            base, _ = SpeedScorer(horse(None), {}).compute()
+            for delta, expected in ((-0.5, 4.0), (-0.1, 2.0), (0.1, 0.0), (0.4, -1.0), (0.9, -2.0)):
+                scorer = SpeedScorer(horse(delta), {})
+                score, _ = scorer.compute()
+                self.assertAlmostEqual(score - base, expected, places=2, msg=delta)
+                self.assertIn("頭段速度", {d["factor"] for d in scorer.detail})
+
+    def test_live_weights_are_off_until_forward_proves_it(self):
         base, _ = SpeedScorer(horse(None), {}).compute()
-        for delta, expected in ((-0.5, 4.0), (-0.1, 2.0), (0.1, 0.0), (0.4, -1.0), (0.9, -2.0)):
-            scorer = SpeedScorer(horse(delta), {})
-            score, _ = scorer.compute()
-            self.assertAlmostEqual(score - base, expected, places=2, msg=delta)
-            self.assertIn("頭段速度", {d["factor"] for d in scorer.detail})
+        for delta in (-0.5, -0.1, 0.4, 0.9):
+            score, _ = SpeedScorer(horse(delta), {}).compute()
+            self.assertAlmostEqual(score, base, places=6, msg=delta)
 
     def test_missing_field_leaves_score_untouched(self):
         scorer = SpeedScorer(horse(None), {})

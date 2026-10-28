@@ -4,6 +4,7 @@ import json
 import re
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.database.history_observations import history_active_clause
 from tennis_wc.ingestion.raw_response_store import utc_now
 
 
@@ -40,7 +41,7 @@ def _canonical_player_row(conn, name: str, tour: str, exclude_id: int | None = N
     return conn.execute(
         f"""
         SELECT p.id, p.name, p.tour,
-               (SELECT COUNT(*) FROM player_match_history h WHERE h.player_id = p.id) AS history_rows,
+               (SELECT COUNT(*) FROM player_match_history h WHERE h.player_id = p.id AND {history_active_clause(conn,"h")}) AS history_rows,
                (SELECT COUNT(*) FROM provider_entities pe
                 WHERE pe.entity_type = 'player' AND pe.internal_entity_id = p.id) AS provider_links
         FROM players p
@@ -100,11 +101,23 @@ def get_or_create_player(
             (provider_name, provider_player_id),
         ).fetchone()
         if row:
+            from tennis_wc.ingestion.name_matching import normalise_player_name as identity_name
+
+            old_tokens=identity_name(row["name"]).split()
+            new_tokens=identity_name(name).split()
+            same_name=(set(old_tokens)==set(new_tokens) or (
+                len(old_tokens)>=2 and len(new_tokens)>=2 and old_tokens[1:]==new_tokens[1:]
+                and old_tokens[0][0]==new_tokens[0][0]
+                and (len(old_tokens[0])==1 or len(new_tokens[0])==1)))
+            same_tour=str(row["tour"] or "UNKNOWN").upper() in {"UNKNOWN",tour} or tour=="UNKNOWN"
+            if not same_name or not same_tour:
+                raise ValueError(f"provider player identity changed: {provider_name}/{provider_player_id}: "
+                                 f"{row['name']!r} -> {name!r}")
             player_id = int(row["internal_entity_id"])
             canonical = _canonical_player_row(conn, name, tour, exclude_id=player_id)
             if canonical is not None:
                 current_history = conn.execute(
-                    "SELECT COUNT(*) FROM player_match_history WHERE player_id = ?",
+                    f"SELECT COUNT(*) FROM player_match_history WHERE player_id = ? AND {history_active_clause(conn)}",
                     (player_id,),
                 ).fetchone()[0]
                 # Remap stale/empty provider aliases to the established entity.

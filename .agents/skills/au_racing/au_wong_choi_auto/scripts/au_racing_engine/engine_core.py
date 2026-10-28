@@ -667,6 +667,18 @@ def finite_pf_number(value, field):
     return number
 
 
+# EXP-20261028-12：讓磅賽認字。量度用嘅 `scratch/au_fq_weight_class_dump_20261028.py::classify_title`
+# 同呢度一致（handicap／hcp／benchmark／bm58／rating 0-64 組別，加截斷嘅 handicap 前綴）。
+_HANDICAP_TITLE_RE = re.compile(r"\b(?:handicap|hcp|hcap|h'cap|benchmark|bm\s*\d+|rst\s*\d+)\b"
+                                r"|\b(?:rating\s*)?\d{1,2}\s*-\s*\d{2,3}\b|\brating\s+\d", re.I)
+_TRUNCATED_HANDICAP_RE = re.compile(r"\bh(?:a(?:n(?:d(?:i(?:c(?:a(?:p)?)?)?)?)?)?)\s*$", re.I)
+
+
+def _is_handicap_title(title) -> bool:
+    text = " ".join(str(title or "").replace("&amp;", "&").split())
+    return bool(_HANDICAP_TITLE_RE.search(text)
+                or (len(text) >= 40 and _TRUNCATED_HANDICAP_RE.search(text)))
+
 class RacingEngine:
     def __init__(self, horse_data, race_context, facts_section="", facts_path=None):
         self.horse_data = horse_data
@@ -969,6 +981,7 @@ class RacingEngine:
                 "form": getattr(self, "form_detail", {}) or {},
                 "consistency": getattr(self, "consistency_detail", {}) or {},
                 "performance_quality": getattr(self, "performance_quality_detail", {}) or {},
+                "form_quality": getattr(self, "form_quality_detail", {}) or {},
             },
             "pace_perf_detail": {
                 "pace": getattr(self, "pace_figure_detail", {}) or {},
@@ -4298,55 +4311,48 @@ class RacingEngine:
         # 6 匹跑第 3 同 16 匹跑第 3 唔係同一回事。冇馬匹數就照舊用絕對名次。
         latest_field = (official_entries[0] or {}).get("field_size") if official_entries else None
         if latest_place is not None and latest_field and latest_field >= 2 and latest_place <= latest_field:
-            latest_pct = (latest_place - 1) / (latest_field - 1)
-            latest_good, latest_poor = latest_pct <= 0.25, latest_pct > 0.5
+            latest_good = (latest_place - 1) / (latest_field - 1) <= 0.25
         else:
             latest_good = latest_place is not None and latest_place <= 3
-            latest_poor = latest_place is not None and latest_place >= 6
         
         current_tier = self._venue_tier(self._meeting_intelligence().get("venue") or self._track_profile().get("venue") or "")
         latest_tier = self._venue_tier((official_entries[0] or {}).get("venue") if official_entries else "")
 
+        # 數值用 `CLASS_MICRO_WEIGHTS` 嘅 live 值；唔再寫 `.get(key, 預設)` —— 嗰啲預設
+        # （56／±2／+6／−3）同 live（57.7／+2.31／−0.82／+2.10／−5.48）唔同，曾經令報告講錯數。
         w = CLASS_MICRO_WEIGHTS
         score = 60.0
-        notes = []
-        cdetail = {"base": 60.0, "notes": [], "final": None}
+        adjustments = []
+        cdetail = {"base": 60.0, "notes": [], "adjustments": adjustments, "final": None}
         self.class_detail = cdetail
 
+        def add(delta, factor):
+            nonlocal score
+            score += delta
+            adjustments.append({"delta": round(delta, 2), "factor": factor})
+
         if career_starts == 0:
-            score = w.get("career0_base", 56.0)
-            notes.append("初出馬未有正式班際證明")
+            # 初出馬由 57.7 起步（即係 −2.3）；EXP-20261028-13 C1 證實剷走會傷排名。
+            add(w["career0_base"] - 60.0, "初出馬未有正式班際證明")
             if "2-y-o" in race_class.lower() or "2yo" in race_class.lower():
-                score += w.get("career0_2yo_bonus", 2.0)
-                notes.append("2歲馬初出常有爆發力")
+                add(w["career0_2yo_bonus"], "2歲馬初出常有爆發力")
         elif career_starts <= 5:
             if latest_good:
-                score += w.get("career5_placed_bonus", 2.0)
-                notes.append("出賽少但已上名，有進步空間")
+                add(w["career5_placed_bonus"], "出賽少但上仗跑入場內頭 25%，有進步空間")
             else:
-                score += w.get("career5_unplaced_pen", -2.0)
-                notes.append("經驗較薄且未證明實力")
-        elif career_starts >= 15:
-            if race_bucket == "maiden":
-                score += w.get("career15_maiden_pen", -4.0)
-                notes.append("多跑仍未能於處女馬賽勝出，班底已見底")
-            elif latest_poor:
-                score += w.get("career15_unplaced_pen", -2.0)
-                notes.append("多跑但近期未有表現，級數可能見頂")
-            elif latest_good:
-                score += w.get("career15_placed_bonus", 2.0)
-                notes.append("作戰經驗豐富且近況有承接")
+                add(w["career5_unplaced_pen"], "經驗較薄且上仗未跑入場內頭 25%")
+        # EXP-20261028-13 C3：「≥15 場」三條（處女賽 −6.79／上仗後半 −1.40／上仗頭 25% +5.42）已剷走。
+        # 冇代價簡化：v3 全紀錄 Gold +0.03pp、Good +0.07pp，冇 ranking 指標或分層 CI 全負。
 
         if "降班" in class_move:
-            score += w.get("class_drop_bonus", 6.0)
-            notes.append("班次有回落")
+            add(w["class_drop_bonus"], "班次有回落")
         if current_tier == "metro" and latest_tier == "provincial":
             if latest_rt is not None and latest_rt >= 68:
-                notes.append("省賽轉都會，但 RT 證明夠跑都會區")
+                adjustments.append({"delta": 0.0, "factor": "省賽轉都會，但 RT 證明夠跑都會區（唔扣）"})
             else:
-                score += w.get("metro_prov_pen", -3.0)
-                notes.append("省賽轉都會，鄉鎮賽績含金量成疑")
+                add(w["metro_prov_pen"], "省賽轉都會，鄉鎮賽績含金量成疑")
 
+        notes = [a["factor"] for a in adjustments]
         cdetail["notes"] = list(notes)
         cdetail["final"] = round(clip_score(score), 2)
         note_text = "；".join(notes) if notes else "班次資料未見鮮明傾向"
@@ -4467,7 +4473,7 @@ class RacingEngine:
         so it carries no ability signal and is refused. Same z×6 scale and ±12
         cap as the official-rating path, so both sources land on one ruler.
         """
-        if self._is_wfa_or_sw_race():
+        if not self._is_handicap_race():
             return None, ""
         # ⚠️ 一定要用**分配負磅**（`weight`），唔係 `carried_weight`。讓磅官先按
         # 能力派磅，見習減磅係之後因騎師而減 —— 減磅講嘅係騎師經驗，唔係馬嘅
@@ -4566,14 +4572,17 @@ class RacingEngine:
             note += " 少於三次 PF 證據，單次數值不代表穩定速度。"
         return score, note, "pf_l600_delta_field_relative"
 
-    def _is_wfa_or_sw_race(self):
-        text = self._race_class_text().lower()
-        # Providers often put only the race title in race_class. Maiden Plate
-        # is a set-weight condition even when the separate MDN-SW tag is lost.
-        # Match tokens so sponsors such as Ipswich/Swifts cannot imply SW.
-        return bool(re.search(
-            r"\b(?:wfa|sw)\b|\bweight[ -]+for[ -]+age\b|\bset[ -]+weights?\b"
-            r"|\b(?:maiden|mdn)\s+plate\b", text))
+    def _is_handicap_race(self):
+        """賽事名明確係讓磅賽先返 True（EXP-20261028-12，§7 正確性修正）。
+
+        負磅只有喺讓磅賽先係「讓磅官按能力派磅」。舊版反過嚟只認定磅字眼
+        （`maiden plate`／`wfa`／`sw`），淨係寫 PLATE／QUALITY／STAKES／MAIDEN 嘅場
+        全部漏網，照用負磅代理同寫「頂磅＝讓磅官評為能力最高」—— 但嗰啲場嘅負磅
+        係年齡同性別定，唔係能力（語料 1,265 匹中招，負磅代理喺嗰批場 AUC 0.511）。
+        而家正面認讓磅；認唔到（包括賽事名空白）一律唔當讓磅。賽事名約 45 字截斷
+        （「MAIDEN HANDI」「CG&E MAIDEN HA」），尾字係 handicap 前綴都算。
+        """
+        return _is_handicap_title(self._race_class_text())
 
     def _weight_score(self):
         weight = parse_float(self.horse_data.get("weight"))
@@ -4599,10 +4608,8 @@ class RacingEngine:
         wdetail["weight"] = round(float(weight), 1)
         notes = []
         class_move = self._class_move_display()
-        is_wfa_or_sw = self._is_wfa_or_sw_race()
-
-        if is_wfa_or_sw:
-            notes.append("定磅賽事，負磅中性")
+        if not self._is_handicap_race():
+            notes.append("非讓磅賽（定磅／WFA 或賽事條件不明），負磅由年齡性別等定，唔反映能力，負磅中性")
         else:
             if weight >= 60.0:
                 # topweight = handicapper rates it best; flag for context, no penalty
@@ -5112,6 +5119,7 @@ class RacingEngine:
         mean = parse_float(summary.get("form_quality_field_mean"))
         stdev = parse_float(summary.get("form_quality_field_stdev")) or 0.0
         self.form_quality_detail = {"raw": raw, "run_count": runs, "field_count": count,
+                                    "field_mean": mean, "field_stdev": stdev,
                                     "runs": self.data.get("form_quality_runs") or []}
         if raw is None or runs < 2 or count < 3 or mean is None or stdev <= 0:
             self.form_quality_detail.update(final=round(composite, 2), fallback="form_and_quality_composite")
@@ -7246,15 +7254,17 @@ def _form_quality_digest(official_entries: list[dict], *, meeting_date: str = ""
             continue
         z_place = (0.5 - (finish - 1) / (starters - 1)) / FORM_QUALITY_SD_PCT
         z_prize = (math.log10(float(run["prize"])) - FORM_QUALITY_MU_LOG_PRIZE) / FORM_QUALITY_SD_LOG_PRIZE
-        values.append((run, (z_place + z_prize) / 2))
+        values.append((run, (z_place + z_prize) / 2, z_place, z_prize))
     if len(values) < 2:
         return {}
     weights = FORM_QUALITY_RECENCY_WEIGHTS[: len(values)]
-    raw = sum(v * w for (_r, v), w in zip(values, weights)) / sum(weights)
+    raw = sum(v * w for (_r, v, _zp, _zq), w in zip(values, weights)) / sum(weights)
     return {"raw": round(raw, 6), "run_count": len(values),
             "runs": [{"date": r.get("date"), "finish_pos": r.get("finish_pos"),
                       "starters": r.get("starters"), "prize": r.get("prize"),
-                      "distance": r.get("distance"), "value": round(v, 6)} for r, v in values]}
+                      "distance": r.get("distance"), "value": round(v, 6),
+                      "z_place": round(zp, 4), "z_prize": round(zq, 4), "weight": w}
+                     for (r, v, zp, zq), w in zip(values, weights)]}
 
 
 def refresh_trial_runs(logic_data: dict, facts_path: Path | None) -> int:

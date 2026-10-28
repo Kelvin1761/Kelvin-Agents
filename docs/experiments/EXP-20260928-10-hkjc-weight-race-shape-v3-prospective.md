@@ -84,3 +84,10 @@ B 喺115場跑馬地 Gold +0.87pp、Good +3.48pp、NDCG +1.01pp；沙田逐項�
 `EXP-20260929-01` 接手：B 成為只限跑馬地標準馬匹嘅實驗主線；沙田、AWT、初出馬
 不變。舊 snapshot 仍按本文件原定規則結算，但新 snapshot 不再把 live V3 當自己嘅
 candidate；改收 `race_shape_v2_legacy_hv` rollback comparator。
+
+## 2026-10-27 — A+B（`race_shape_v3_hv_t02`）撤走
+
+- 由 2026-10-07 起唔喺 `DEFAULT_SHADOW_PROFILES`，ledger 一場記錄都冇。
+- 跑馬地 V3（B）已經 experimental live（EXP-20260929-01），而 `weight_refit_t02`（A）用 live 形勢分，
+  所以喺跑馬地 A 就等於 A+B。原本「A+B 有冇 interaction 額外邊際」嘅問題已經冇意義；A 照用 120 場門檻跟進。
+- forward 追蹤表（`hkjc_forward_tracker.py`）已經剔走呢項。

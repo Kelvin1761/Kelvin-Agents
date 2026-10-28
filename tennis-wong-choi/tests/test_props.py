@@ -634,7 +634,8 @@ def test_prop_settlement_voids_retired_matches(tmp_path, monkeypatch):
         "SELECT result_status, profit_loss_units FROM prop_tracker"
     ).fetchone()
     assert out == {"graded": 0, "voided": 1, "voided_abandoned": 0,
-                   "regraded_to_void": 0, "revived_from_void": 0, "still_pending": 0}
+                   "regraded_to_void": 0, "revived_from_void": 0, "still_pending": 0,
+                   "held_conflicting_results": 0, "conflicting_result_match_ids": []}
     # A retirement void is not an abandonment void: this match HAS a result.
     assert out["voided_abandoned"] == 0
     assert row["result_status"] == "VOID"
@@ -693,6 +694,7 @@ def test_scorecard_can_score_a_frozen_holdout_window(tmp_path, monkeypatch):
     )
     conn.commit()
     settlement.settle_props(conn)
+    conn.execute("UPDATE prop_tracker SET settled_at=match_date || 'T18:00:00Z'")
 
     train = settlement.model_vs_market_scorecard(
         conn, as_of_date="2026-07-01"
@@ -776,6 +778,7 @@ def test_family_reliability_is_quality_filtered_and_as_of_safe(tmp_path, monkeyp
             "VALUES (?,?,?, '{}','{}',65,'now')",
             (match_id, 1, "test"),
         )
+        monkeypatch.setattr(settlement, 'utc_now', lambda date=date: date + 'T09:00:00Z')
         settlement.record_prop(
             conn, match_id=match_id, match_date=date, match_label="A vs B",
             market_key="player_win_a_set_1", line=0.5, selection="Yes",
@@ -786,7 +789,7 @@ def test_family_reliability_is_quality_filtered_and_as_of_safe(tmp_path, monkeyp
             is_value=True,
         )
         conn.execute(
-            "UPDATE prop_tracker SET result_status='WON',profit_loss_units=.9 "
+            "UPDATE prop_tracker SET result_status='WON',profit_loss_units=.9, settled_at=match_date || 'T18:00:00Z' "
             "WHERE match_id=?", (match_id,),
         )
     _seed_match(conn, 99, 1, 2, date="2026-03-01")
@@ -795,6 +798,7 @@ def test_family_reliability_is_quality_filtered_and_as_of_safe(tmp_path, monkeyp
         "(match_id,player_id,feature_set_version,features_json,provenance_json,"
         "data_quality_score,created_at) VALUES (99,1,'test','{}','{}',65,'now')"
     )
+    monkeypatch.setattr(settlement, 'utc_now', lambda: '2026-03-01T09:00:00Z')
     settlement.record_prop(
         conn, match_id=99, match_date="2026-03-01", match_label="A vs B",
         market_key="player_win_a_set_1", line=0.5, selection="Yes",
@@ -805,7 +809,7 @@ def test_family_reliability_is_quality_filtered_and_as_of_safe(tmp_path, monkeyp
         is_value=True,
     )
     conn.execute(
-        "UPDATE prop_tracker SET result_status='LOST',profit_loss_units=-1 "
+        "UPDATE prop_tracker SET result_status='LOST',profit_loss_units=-1,settled_at='2026-03-01T18:00:00Z' "
         "WHERE match_id=99"
     )
     conn.commit()
@@ -845,6 +849,14 @@ def test_ace_reliability_uses_prematch_serve_history_not_match_quality(
             "VALUES (?,?,'test','{}','{}',?,'now')",
             (match_id, player_a, quality),
         )
+        from dataclasses import asdict
+        from tennis_wc.props.pricing_evidence import capture_context
+        from tennis_wc.props.ace_model import player_ace_profile
+        monkeypatch.setattr(settlement, 'utc_now', lambda: '2026-02-01T09:00:00Z')
+        context = capture_context(conn, match_id, '2026-02-01T09:00:00Z')
+        context['profiles']['aces'] = {
+            str(pid): asdict(player_ace_profile(conn, pid, '2026-02-01', 'hard'))
+            for pid in (player_a, player_b)}
         settlement.record_prop(
             conn, match_id=match_id, match_date="2026-02-01",
             match_label="test", market_key=f"total_player_{player_a}_aces_7_5",
@@ -853,10 +865,10 @@ def test_ace_reliability_uses_prematch_serve_history_not_match_quality(
             decimal_odds=1.9, model_prob=0.65, model_prob_raw=0.65,
             temper_strength=0.0, market_prob_fair=0.52, blended_prob=0.55,
             edge=0.03, ev=0.045, predicted_mean=8.0, stake_units=0.0,
-            is_value=False,
+            is_value=False, pricing_evidence=context,
         )
         conn.execute(
-            "UPDATE prop_tracker SET result_status='WON' WHERE match_id=?",
+            "UPDATE prop_tracker SET result_status='WON',settled_at='2026-02-01T18:00:00Z' WHERE match_id=?",
             (match_id,),
         )
     conn.commit()
@@ -1128,6 +1140,8 @@ def test_record_prop_idempotent(tmp_path, monkeypatch):
     from tennis_wc.props import settlement
     init_db()
     conn = get_connection()
+    _seed_player(conn, 1, "A"); _seed_player(conn, 2, "B")
+    _seed_match(conn, 1, 1, 2)
     for _ in range(3):
         _rec(conn, settlement, line=7.0, selection="7+", side="over", odds=1.5, model_p=0.7, market_p=0.72)
     conn.commit()
@@ -1852,6 +1866,7 @@ def test_roi_report_can_carve_out_a_holdout_window(tmp_path, monkeypatch):
             f"'over', 1.9, 0.6, 'over', 'player', 1, 1.0, 1, '{status}', {pnl}, "
             "'now', 'now', 1)"
         )
+    conn.execute("UPDATE prop_tracker SET settled_at=match_date || 'T18:00:00Z'")
     conn.commit()
 
     everything = prop_roi_report(conn)["overall"]
@@ -2499,3 +2514,25 @@ def test_a_retirement_void_is_never_revived(tmp_path, monkeypatch):
     assert out["revived_from_void"] == 0
     assert conn.execute(
         "SELECT result_status FROM prop_tracker").fetchone()["result_status"] == "VOID"
+
+
+def test_record_prop_rejects_missing_self_and_foreign_subject_fixtures(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.props import settlement
+    configure_test_db(tmp_path, monkeypatch); init_db()
+    with get_connection() as conn:
+        params=dict(line=7.0,selection='7+',side='over',odds=1.5,model_p=.7,market_p=.72)
+        with pytest.raises(ValueError,match='fixture not found'):
+            _rec(conn,settlement,**params)
+        _seed_player(conn,1,'A');_seed_player(conn,2,'B');_seed_match(conn,1,1,2)
+        with pytest.raises(ValueError,match='subject is outside'):
+            _rec(conn,settlement,subject=99,**params)
+        conn.execute("UPDATE matches SET fixture_status='DISPUTED' WHERE id=1")
+        with pytest.raises(ValueError,match='inactive'):
+            _rec(conn,settlement,**params)
+        conn.execute("UPDATE matches SET fixture_status='ACTIVE',player_b_id=1 WHERE id=1")
+        with pytest.raises(ValueError,match='same player twice'):
+            _rec(conn,settlement,**params)
+        assert conn.execute('SELECT COUNT(*) FROM prop_tracker').fetchone()[0]==0

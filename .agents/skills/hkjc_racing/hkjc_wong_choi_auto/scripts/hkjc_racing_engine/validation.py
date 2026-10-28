@@ -184,6 +184,14 @@ def _validate_auto_namespace(horse_num: str, auto: dict) -> list[str]:
             )
         except (AttributeError, TypeError, ValueError):
             errors.append(f"SCORE-006 horse {horse_num} invalid SIP flags")
+        try:
+            # 情境 overlay 亦係原始尺（見 hkjc_racing_engine.overlays）。
+            expected += sum(
+                float((item or {}).get("applied_delta", 0.0) or 0.0)
+                for item in (auto.get("overlays") or {}).values()
+            )
+        except (AttributeError, TypeError, ValueError):
+            errors.append(f"SCORE-009 horse {horse_num} invalid overlay record")
         if abs(float(ability_raw) - expected) > 0.05:
             errors.append(f"SCORE-004 horse {horse_num} ability formula mismatch: {ability_raw} != {expected:.2f}")
         # 顯示尺一定要真係由原始尺換算返出嚟，唔准兩個數各行各路。

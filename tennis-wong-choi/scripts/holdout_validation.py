@@ -30,39 +30,20 @@ from tennis_wc.evaluation.corpus import point_in_time_clause  # noqa: E402
 
 
 def _margin_rows(conn, before: str | None = None, since: str | None = None):
-    """(model probability, actual game margin) for settled, completed matches."""
-    where = ["r.winner_player_id IS NOT NULL", "m.player_a_id <> m.player_b_id"]
-    params: list = []
-    if before:
-        where.append("m.match_date < ?")
-        params.append(before)
-    if since:
-        where.append("m.match_date >= ?")
-        params.append(since)
-    rows = conn.execute(
-        f"""
-        SELECT r.score_json,
-               (SELECT CASE WHEN p.selection_player_id = m.player_a_id
-                            THEN p.model_probability ELSE 1.0 - p.model_probability END
-                  FROM predictions p WHERE p.match_id = m.id
-                 ORDER BY p.id DESC LIMIT 1) AS model_p
-        FROM matches m JOIN match_results r ON r.match_id = m.id
-        WHERE {" AND ".join(where)}
-        """,
-        tuple(params),
-    ).fetchall()
+    """One recorded pre-match probability and agreed game margin per fixture."""
+    from tennis_wc.evaluation.match_corpus import prematch_outcomes
+
+    rows = prematch_outcomes(conn, before=before, since=since)
     out = []
     for row in rows:
-        if row["model_p"] is None or not row["score_json"]:
-            continue
-        try:
-            score = json.loads(row["score_json"])
-        except (TypeError, ValueError):
-            continue
-        a, b = score.get("player_a_games"), score.get("player_b_games")
-        if a is None or b is None or score.get("retired"):
-            continue
-        out.append((float(row["model_p"]), float(a) - float(b)))
+        margins = set()
+        for result in row["result_rows"]:
+            score = json.loads(result["score_json"] or "{}")
+            a, b = score.get("player_a_games"), score.get("player_b_games")
+            if a is not None and b is not None and float(a) + float(b) > 0:
+                margins.add(float(a) - float(b))
+        if len(margins) == 1:
+            out.append((float(row["model_p"]), margins.pop()))
     return out
 
 
@@ -192,6 +173,10 @@ def main() -> int:
 
     train = _margin_rows(conn, before=args.split)
     test = _margin_rows(conn, since=args.split)
+    if not train or not test:
+        print(json.dumps({"status": "insufficient_evidence", "split": args.split,
+                          "train_matches": len(train), "test_matches": len(test)}, indent=2))
+        return 1
     train_slope, train_intercept, _ = _fit_slope(train)
     full_slope, _, _ = _fit_slope(train + test)
 

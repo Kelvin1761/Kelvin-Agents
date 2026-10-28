@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 import os
+import re
+from pathlib import Path
 os.environ.setdefault('PYTHONUTF8', '1')
 """
 nba_orchestrator.py — NBA Wong Choi Pipeline Orchestrator V3.1
@@ -92,6 +94,7 @@ def run_script(
     label: str = "Script",
     timeout: int = 1800,
     failure_codes: list[int] | None = None,
+    success_codes: tuple[int, ...] = (0,),
 ) -> bool:
     if not os.path.exists(script_path):
         if failure_codes is not None:
@@ -119,6 +122,11 @@ def run_script(
                 print(f"   {output}")
         return True
     except subprocess.CalledProcessError as e:
+        if e.returncode in success_codes:
+            print(f"⚠️ [{label}] 通過，有警告 (exit code: {e.returncode})")
+            if e.stdout:
+                print(e.stdout[-4000:])
+            return True
         if failure_codes is not None:
             failure_codes.append(e.returncode)
         print(f"⚠️ [{label}] 執行失敗 (exit code: {e.returncode})")
@@ -258,28 +266,34 @@ def _next_cmd(date_str: str, extra_args: str = "", skip_cloudflare_deploy: bool 
     print(f"\nNEXT_CMD: {cmd}")
 
 
-def _count_fill_residuals(target_dir: str) -> int:
+def _count_fill_residuals(target_dir: str, game_tags=None) -> int:
     """Count remaining [FILL] placeholders across all analysis files."""
     count = 0
-    for md in glob.glob(os.path.join(target_dir, "Game_*_Full_Analysis.md")):
+    reports = ([os.path.join(target_dir, f"Game_{tag}_Full_Analysis.md") for tag in game_tags]
+               if game_tags is not None else glob.glob(os.path.join(target_dir, "Game_*_Full_Analysis.md")))
+    for md in reports:
         with open(md, "r", encoding="utf-8") as f:
             count += f.read().count("[FILL]")
     return count
 
 
-def validate_reports_for_release(target_dir: str) -> bool:
-    reports = sorted(glob.glob(os.path.join(target_dir, "Game_*_Full_Analysis.md")))
+def validate_reports_for_release(target_dir: str, game_tags=None) -> bool:
+    reports = ([os.path.join(target_dir, f"Game_{tag}_Full_Analysis.md") for tag in game_tags]
+               if game_tags is not None else sorted(glob.glob(os.path.join(target_dir, "Game_*_Full_Analysis.md"))))
     if not reports:
         print("⛔ 冇任何 Game_*_Full_Analysis.md 可供編譯。")
         return False
-    if _count_fill_residuals(target_dir):
+    if any(not os.path.isfile(report) for report in reports):
+        print("⛔ 指定賽事缺少分析報告。")
+        return False
+    if any("[FILL]" in Path(report).read_text(encoding="utf-8") for report in reports):
         print("⛔ 報告仍有 [FILL]，唔可以編譯／發布。")
         return False
     if not os.path.exists(VALIDATE_OUTPUT):
         print(f"⛔ 防火牆 validator 不存在: {VALIDATE_OUTPUT}")
         return False
     return all(
-        run_script(VALIDATE_OUTPUT, [report], label="Compile Release Validator")
+        run_script(VALIDATE_OUTPUT, [report], label="Compile Release Validator", success_codes=(0, 2))
         for report in reports
     )
 
@@ -309,15 +323,8 @@ def extractor_cache_current(path: str) -> bool:
         with open(path, encoding="utf-8") as source:
             payload = json.load(source)
         meta = payload.get("meta", {})
-        from nba_data_contract import NBA_STATISTICS_CONTRACT
-        if meta.get("statistics_contract") != NBA_STATISTICS_CONTRACT:
-            return False
-        defender_source = meta.get("defender_source") or {}
-        if (defender_source.get("per_mode") != "Totals"
-                or defender_source.get("sample_unit") != "total_attempts"
-                or not isinstance(defender_source.get("observed_players"), int)
-                or isinstance(defender_source.get("observed_players"), bool)
-                or defender_source["observed_players"] <= 0):
+        from nba_data_contract import statistics_current
+        if not statistics_current(meta):
             return False
         groups = payload.get("players", {})
         if not isinstance(groups, dict):
@@ -409,7 +416,7 @@ def report_cache_current(report: str, sportsbet_json: str, extractor_json: str, 
 def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
                         date_str: str, game_num: int | None = None,
                         debug_skip_extractor: bool = False,
-                        legacy: bool = False) -> bool:
+                        legacy: bool = False, banker_search_audit: bool = False) -> bool:
     prefix = f"Game {game_num}" if game_num else game_tag
     print(f"\n{'='*60}")
     print(f"🏀 [{prefix}] {game_tag} — 開始 Pipeline")
@@ -440,7 +447,7 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
 
     # ── Check if already completed ──
     existing = check_skeleton_exists(target_dir, game_tag)
-    if existing and availability_ready and not debug_skip_extractor and extractor_cache_current(
+    if not banker_search_audit and existing and availability_ready and not debug_skip_extractor and extractor_cache_current(
         os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
     ) and report_cache_current(
         existing, sportsbet_json,
@@ -448,7 +455,7 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
     ):
         print(f"✅ [{prefix}] 已存在合格報告: {os.path.basename(existing)} ({os.path.getsize(existing)} bytes)")
         if os.path.exists(VALIDATE_OUTPUT):
-            validate_ok = run_script(VALIDATE_OUTPUT, [existing], label=f"{prefix} Existing Report Validator")
+            validate_ok = run_script(VALIDATE_OUTPUT, [existing], label=f"{prefix} Existing Report Validator", success_codes=(0, 2))
             if not validate_ok:
                 print(f"⛔ [{prefix}] 現有報告防火牆未通過，唔可以當完成。")
                 return False
@@ -480,10 +487,15 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
             return False
 
     if not debug_skip_extractor:
+        from nba_data_contract import statistics_current
         with open(extractor_json, encoding="utf-8") as source:
-            if not availability_current(json.load(source)):
-                print(f"⛔ [{prefix}] 傷停／陣容未驗證或已過期，保留重試，唔發布。")
-                return False
+            current_payload = json.load(source)
+        if not statistics_current(current_payload.get("meta")):
+            print(f"⛔ [{prefix}] 統計來源失敗或單位未驗證，保留重試，唔發布。")
+            return False
+        if not availability_current(current_payload):
+            print(f"⛔ [{prefix}] 傷停／陣容未驗證或已過期，保留重試，唔發布。")
+            return False
 
     # ── Phase 1A.5: JSON Schema Validation (Pre-flight for report gen) ──
     if os.path.exists(VALIDATE_SCHEMA):
@@ -508,6 +520,8 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
     ]
     if legacy:
         _report_args.append("--legacy")
+    if banker_search_audit:
+        _report_args.append("--banker-search-audit")
     try:
         inputs_before = report_inputs(sportsbet_json, extractor_json, legacy)
     except OSError as exc:
@@ -528,7 +542,7 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
     # ── Validation (防火牆) ──
     if os.path.exists(VALIDATE_OUTPUT):
         print(f"\n🛡️ [{prefix}] Validation: 執行 validate_nba_output.py...")
-        validate_ok = run_script(VALIDATE_OUTPUT, [analysis_md], label=f"{prefix} Validator")
+        validate_ok = run_script(VALIDATE_OUTPUT, [analysis_md], label=f"{prefix} Validator", success_codes=(0, 2))
         if not validate_ok:
             print(f"⛔ [{prefix}] 防火牆檢查未通過，唔可以發布。")
             return False
@@ -611,16 +625,32 @@ def main():
     parser.add_argument("--list", action="store_true", help="列出可用賽事後退出。")
     parser.add_argument("--status", action="store_true", help="顯示 pipeline 狀態後退出。")
     parser.add_argument("--compile-only", action="store_true", help="只執行最終 SGM 編譯。")
+    parser.add_argument("--games", nargs="+", help="Compile-only 指定多個已驗證賽事。")
     parser.add_argument("--auto", action="store_true",
                         help="自動模式 — 跳過確認閘門，用於 NEXT_CMD 循環。")
     parser.add_argument("--debug-skip-extractor", action="store_true",
                         help="⚠️ DEBUG ONLY: 跳過 nba_extractor.py（用 Sportsbet fallback）。"
                              "生成嘅報告標記為 DEBUG_ONLY_DO_NOT_BET。")
+    parser.add_argument("--banker-search-audit", action="store_true",
+                        help="Opt-in isolated true-price banker search; OBSERVE only")
     parser.add_argument("--legacy", action="store_true",
                         help="使用舊版 10-Factor 引擎（預設為 Hybrid）")
+    parser.add_argument("--workers", type=int,
+                        default=int(os.environ.get("NBA_PIPELINE_WORKERS", "3")),
+                        help="同時處理幾場賽事（預設 3；1 = 串行）。")
     parser.add_argument("--skip-cloudflare-deploy", action="store_true",
                         help="完成分析後唔更新 Cloudflare Dashboard。")
     args = parser.parse_args()
+
+    if args.banker_search_audit and (args.compile_only or args.debug_skip_extractor or args.legacy or args.status or args.list):
+        parser.error("--banker-search-audit requires a normal hybrid analysis run")
+    if args.banker_search_audit:
+        args.skip_cloudflare_deploy = True
+
+    if args.games and (not args.compile_only or args.game):
+        parser.error("--games requires --compile-only and cannot be combined with --game")
+    if args.games and any(not re.fullmatch(r"[A-Z]{2,4}_[A-Z]{2,4}", tag) for tag in args.games):
+        parser.error("Invalid game tag")
 
     if not args.date:
         args.date = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -655,9 +685,11 @@ def main():
     # Compile-only is a local release operation. It must never crawl new odds,
     # and every report must pass the publication firewall again after edits.
     if args.compile_only:
-        if not validate_reports_for_release(target_dir):
+        compile_games = args.games or ([args.game.upper()] if args.game else None)
+        if not validate_reports_for_release(target_dir, compile_games):
             sys.exit(1)
-        compile_ok = run_script(GENERATE_SGM, ["--dir", target_dir], label="SGM Master Report")
+        compile_args = ["--dir", target_dir] + (["--games", *compile_games] if compile_games else [])
+        compile_ok = run_script(GENERATE_SGM, compile_args, label="SGM Master Report")
         sgm_exists = os.path.exists(os.path.join(target_dir, "NBA_All_SGM_Report.txt"))
         if not compile_ok or not sgm_exists:
             print("⛔ Compile-only 失敗；Dashboard 唔會更新。")
@@ -749,14 +781,29 @@ def main():
     # ── Per-Game Pipeline ──
     results = {"passed": [], "failed": [], "waiting": []}
 
-    for idx, game in enumerate(games, 1):
+    # ⚠️ 逐場串行跑會超時：extractor 每場 ~6.5 分鐘（nba_api 逐個 call 之間 sleep
+    # 限流，大部分時間係等），7 場 slate 2026-10-26 要 61 分鐘，撞正 scheduler 嘅
+    # 3600s 上限（最後一場 20:01:15 先完，limit 20:00:03）。各場只寫自己個
+    # `*_{tag}.*` 檔，互不相干，所以用細 pool 並行。結果仍按場次次序收集。
+    def _run_game(item):
+        idx, game = item
+        return process_single_game(
+            game["tag"], game["sportsbet_json"], target_dir, args.date,
+            game_num=idx, debug_skip_extractor=args.debug_skip_extractor,
+            legacy=args.legacy, banker_search_audit=args.banker_search_audit
+        )
+
+    workers = max(1, min(args.workers, len(games) or 1))
+    if workers == 1:
+        outcomes = [_run_game(item) for item in enumerate(games, 1)]
+    else:
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=workers) as pool:
+            outcomes = list(pool.map(_run_game, enumerate(games, 1)))
+
+    for game, success in zip(games, outcomes):
         tag = game["tag"]
         sb_json = game["sportsbet_json"]
-        success = process_single_game(
-            tag, sb_json, target_dir, args.date,
-            game_num=idx, debug_skip_extractor=args.debug_skip_extractor,
-            legacy=args.legacy
-        )
         if success:
             results["passed"].append(tag)
         else:
@@ -764,6 +811,7 @@ def main():
             if not player_milestone_markets_available(_load_sportsbet_json(sb_json)):
                 results["waiting"].append(tag)
 
+    # The independently timestamped research audit is not rerun on quote refresh.
     # A long slate can outlive an early game's quote. Reprice only reports
     # whose exact-price check no longer passes, using the same cached inputs.
     if not args.debug_skip_extractor:
@@ -791,9 +839,9 @@ def main():
     sgm_ok = False
     if results["passed"] and os.path.exists(GENERATE_SGM):
         print(f"\n📋 生成 Master SGM + Banker 報告...")
-        sgm_ok = validate_reports_for_release(target_dir) and run_script(
+        sgm_ok = validate_reports_for_release(target_dir, results["passed"]) and run_script(
             GENERATE_SGM,
-            ["--dir", target_dir],
+            ["--dir", target_dir, "--games", *results["passed"]],
             label="SGM Master Report",
         )
 
@@ -813,7 +861,7 @@ def main():
     if results["failed"]:
         print(f"\n⚠️ {len(results['failed'])} 場失敗。修復後可重跑。")
 
-    fill_count = _count_fill_residuals(target_dir)
+    fill_count = _count_fill_residuals(target_dir, results["passed"])
     release_action = _pipeline_release_action(
         passed=bool(results["passed"]),
         failed=bool(results["failed"]) or not sgm_ok,

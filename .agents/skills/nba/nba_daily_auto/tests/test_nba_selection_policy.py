@@ -50,9 +50,25 @@ def test_full_report_identifies_actual_c_source_and_avoids_false_safety_and_prov
     ext={'name':'Verified Star','advanced':{'USG_PCT':25},'gamelog':{'PTS':[20,22,18,24,26,20,23,19,21,25],'MIN':[32]*10}}
     card=r.build_player_card('Verified Star','BOS',{'lines':{'10':'1.8'}},ext,'points',engine_mode='legacy')
     for name in ('select_combo_1','select_combo_2','select_combo_3','select_combo_x_value_bomb'):
-        monkeypatch.setattr(r,name,lambda _:[])
+        monkeypatch.setattr(r,name,lambda _, **gates:[])
     text=r.gen_full_report({'away':{'abbr':'BOS'},'home':{'abbr':'LAL'}},{},{},{},{},[card],'fixture')
     version=card['line_analysis']['10']['probability_model_id'].split(':')[1]
     assert f'最終機率來源**: {version} 市場＋L10 校準層' in text
     assert '(Low Risk)' not in text and 'MCP Playwright' not in text and 'DOM Snapshot' not in text
-    assert 'fallback ≥70%' in text and '3.0-5.0x' in text
+    assert 'fallback ≥70%' in text and '只保留穩膽' in text
+    assert '組合 2:' not in text and '組合 3:' not in text and '組合 X:' not in text
+
+
+def test_short_history_is_not_scored_by_layer_c_or_offered_as_a_leg(monkeypatch):
+    monkeypatch.setenv('NBA_WC_PROB_LAYER','1')
+    def card(pts):
+        ext={'name':'P','advanced':{'USG_PCT':25},'gamelog':{'PTS':pts,'MIN':[32]*len(pts)}}
+        return r.build_player_card('P','BOS',{'lines':{'20':'1.8'}},ext,'points',engine_mode='legacy')
+    short=card([22,25,24])                       # "3/3 = 100%" from three games
+    la=short['line_analysis']['20']
+    assert la['history_games']==3 and la['calibrated_prob'] is None
+    assert not la['probability_model_id'].startswith('calibrated:')
+    assert r.build_leg_candidates([short])==[]
+    enough=card([22,25,24,21,23])
+    assert enough['line_analysis']['20']['calibrated_prob'] is not None
+    assert len(r.build_leg_candidates([enough]))==1

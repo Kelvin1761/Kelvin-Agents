@@ -2,6 +2,21 @@
 from __future__ import annotations
 
 import json
+import sqlite3
+
+import pytest
+
+
+def test_a_failed_query_cannot_be_reported_as_zero_defects():
+    from tennis_wc.validation import checks
+
+    conn = sqlite3.connect(":memory:")
+    with pytest.raises(sqlite3.OperationalError):
+        checks.check_winner_is_a_player_in_the_match(conn)
+    results = checks.run_checks(conn, checks=(checks.check_winner_is_a_player_in_the_match,))
+    assert len(checks.critical_failures(results)) == 1
+    assert "could not run" in results[0].detail
+    conn.close()
 
 
 def _setup(tmp_path, monkeypatch):

@@ -67,3 +67,14 @@ PYTHONDONTWRITEBYTECODE=1 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 python3 \
 ```
 
 **決定**：USER-ACCEPTED EXPERIMENTAL LIVE；未 commit／未 push。
+
+## 2026-10-27 — rollback review（`race_shape_v2_legacy_hv`，27/20 場）
+
+- **規則（量度前定）**：呢份記錄冇寫判決規則，所以借用 shadow monitor 現成嘅 rollback gate：舊版喺 Gold 或 Good
+  淨多贏 ≥ 2 場、另一個 primary 唔係負數 → 建議 rollback；另報按賽日 bootstrap 嘅配對 CI。
+- **資料**：immutable 賽前快照 ledger（`HKJC_Weight_RaceShape_V3_Prospective.json`），跑馬地 active 27 場／3 個賽日
+  （10-07、10-14、10-21），頭四有變 17 場。
+- **結果（舊版 − live V3）**：Gold 淨 0、Good 淨 −1、頭馬淨 −2；頭五捕捉平均 −0.0494 [−0.0741, −0.0370]、
+  NDCG@5 −0.0679 [−0.1111, −0.0294]（兩個 CI 全負 = live V3 較好）。
+- **決定**：唔觸發 rollback，**維持 V3**。⚠️ 只得 3 個賽日，bootstrap 以日做單位好粗；呢個係「冇理由退」，
+  唔係「V3 已證實」。`race_shape_v2_legacy_hv` shadow 照計，做緊急對照。

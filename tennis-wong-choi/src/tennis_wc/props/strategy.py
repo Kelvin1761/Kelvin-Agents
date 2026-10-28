@@ -203,7 +203,8 @@ SUPPORTED_FAMILIES = {
 }
 # Match totals stay on the research scorecard, but the recommendation contract
 # is intentionally player-level.  This reflects both the product direction and
-# the current evidence: player aces beat the market Brier while match-total
+# historical exploratory evidence (not the current qualified scorecard):
+# player aces beat the market Brier while match-total
 # aces do not.
 RECOMMENDABLE_PLAYER_FAMILIES = SUPPORTED_FAMILIES - {"match_total_aces"}
 
@@ -304,18 +305,11 @@ def formal_stake_units(
 
 
 def recommendation_gate(scorecard: dict | None, roi: dict | None) -> dict:
-    """Return an auditable strategy state and the families allowed to bet.
+    """Return registered family tiers, evidence reasons and allowed families.
 
-    Fully validated recommendations require:
-      * enough odds-blind model outcomes;
-      * model Brier beating market Brier by a small fixed margin;
-      * enough settled bets in the specific market family; and
-      * positive realised family ROI.
-
-    A player-level family can enter the reversible EARLY_MAIN tier at 50
-    scorecard outcomes and three live-profile paper bets when the same Brier
-    advantage and positive ROI tests pass.  It is automatically removed from
-    the main card whenever either advantage disappears.
+    The executable predicates below include Brier, credible-profit and probe
+    routes, with separate sample, recency, drawdown and stake constraints.
+    The generated strategy reference extracts these predicates directly.
     """
     scorecard = scorecard or {}
     roi = roi or {}

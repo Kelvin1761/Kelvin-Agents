@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from tennis_wc.database.history_observations import history_active_clause
+from tennis_wc.features.history_asof import guard_clause, guard_params
+
 from tennis_wc.database.db import get_connection
 from tennis_wc.evaluation.corpus import tracker_point_in_time_clause
 
@@ -149,22 +152,23 @@ def _ace_player_id(row: dict) -> int | None:
 
 def _historical_ace_values(match_id: int, player_id: int | None) -> list[float]:
     with get_connection() as conn:
+        match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
+        if not match:
+            return []
+        day = str(match["match_date"])[:10]
+        def values(pid):
+            rows = conn.execute(
+                f"""SELECT ace_count FROM player_match_history
+                    WHERE player_id = ? AND ace_count >= 0
+                      AND ace_count = CAST(ace_count AS INTEGER)
+                      AND match_date < ? {guard_clause()} AND {history_active_clause(conn)}
+                    ORDER BY match_date DESC LIMIT 40""",
+                (pid, day, *guard_params(day, match["start_time_utc"])),
+            ).fetchall()
+            return [float(row["ace_count"]) for row in rows]
         if player_id is None:
-            match = conn.execute("SELECT player_a_id, player_b_id FROM matches WHERE id = ?", (match_id,)).fetchone()
-            a_rows = conn.execute(
-                "SELECT ace_count FROM player_match_history WHERE player_id = ? AND ace_count IS NOT NULL ORDER BY match_date DESC LIMIT 40",
-                (match["player_a_id"],),
-            ).fetchall()
-            b_rows = conn.execute(
-                "SELECT ace_count FROM player_match_history WHERE player_id = ? AND ace_count IS NOT NULL ORDER BY match_date DESC LIMIT 40",
-                (match["player_b_id"],),
-            ).fetchall()
-            return [float(a["ace_count"]) + float(b["ace_count"]) for a, b in zip(a_rows, b_rows)]
-        rows = conn.execute(
-            "SELECT ace_count FROM player_match_history WHERE player_id = ? AND ace_count IS NOT NULL ORDER BY match_date DESC LIMIT 40",
-            (player_id,),
-        ).fetchall()
-        return [float(row["ace_count"]) for row in rows]
+            return [a + b for a, b in zip(values(match["player_a_id"]), values(match["player_b_id"]))]
+        return values(player_id)
 
 
 def _market_status(

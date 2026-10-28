@@ -189,6 +189,9 @@ def run(args) -> int:
                             # leaf 分（EXP-20261019-03 內部份額研究用）
                             "f": {k: float(v) for block in ("feature_scores", "derived_feature_scores")
                                   for k, v in (auto.get(block) or {}).items() if isinstance(v, (int, float))},
+                            # 情境 overlay 訊號值（0／1），refit／ML 當獨立欄位用
+                            "o": {k: float((v or {}).get("value", 0.0))
+                                  for k, v in (auto.get("overlays") or {}).items()},
                         })
                     except (TypeError, ValueError):
                         continue

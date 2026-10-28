@@ -34,9 +34,12 @@ sys.path.insert(0, NBA_SKILL_DIR)
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
 from nba_availability import classify_injury_status, usage_from_injuries, usage_bonus_for
+import nba_official_injuries
+from nba_schedule import canonical_team_abbr
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nba_prob_layer
-from nba_selection_policy import BANKER, BANKER_FALLBACK, VALUE, HIGH, BUILD_TOLERANCE, SelectedCombo, description as policy_description
+from nba_selection_policy import BANKER, BANKER_FALLBACK, VALUE, HIGH, BUILD_TOLERANCE, SelectedCombo, STRATEGY_PROFILE, description as policy_description
+import nba_steady_policy as steady_policy
 from nba_sgm_quote import quote_combo, quote_valid, quote_legs, legs_identity
 
 class MLModelUnavailable(RuntimeError):
@@ -162,6 +165,73 @@ def compute_shadow_fit(ext_player, stat_key, line_val, layer=None):
                 "shadow_fit_status": "error", "shadow_fit_inputs": {"error": msg}}
 
 
+def season_rate_shadow_enabled():
+    return os.environ.get("NBA_SEASON_RATE_SHADOW_ENABLED", "1").strip().lower() not in {"0", "false", "no", "off"}
+
+
+V2_SHADOW_KEYS = ("season_rate_v2_prob_S", "season_rate_v2_version", "season_rate_v2_status", "season_rate_v2_inputs")
+V3_SHADOW_KEYS = ("season_rate_v3_prob_S", "season_rate_v3_version", "season_rate_v3_status", "season_rate_v3_inputs")
+V4_SHADOW_KEYS = ("season_rate_v4_prob_S", "season_rate_v4_version", "season_rate_v4_status", "season_rate_v4_inputs")
+
+
+def team_absence_context(ext_players, team_recent):
+    """Per-team S_v3 absence share from the pre-game injury list (EXP-20261026-01). Never raises."""
+    try:
+        import nba_season_rate
+        return {team: nba_season_rate.teammate_absence(players, (team_recent or {}).get(team),
+                                                       classify_injury_status)
+                for team, players in (ext_players or {}).items()}
+    except Exception as exc:
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+
+def compute_season_rate(ext_player, stat_key, line_val, opponent_context=None, absence_context=None,
+                        current_season=None, team=None):
+    """Season-rate model S shadow fields: v1 (EXP-20261025-11) and v2 (EXP-20261025-13).
+    Record only; never raises. v1 stays as-is because EXP-20261025-12 froze it."""
+    if not season_rate_shadow_enabled():
+        return {"season_rate_prob_S": None, "season_rate_version": None,
+                "season_rate_status": "disabled", "season_rate_inputs": None,
+                **dict(zip(V2_SHADOW_KEYS, (None, None, "disabled", None))),
+                **dict(zip(V3_SHADOW_KEYS, (None, None, "disabled", None))),
+                **dict(zip(V4_SHADOW_KEYS, (None, None, "disabled", None)))}
+    out = {}
+    log = ((ext_player or {}).get("gamelog") or {}).get("season_log")
+    try:
+        import nba_season_rate
+        prob, status, inputs = nba_season_rate.season_rate_prob(log, stat_key, line_val)
+        out.update({"season_rate_prob_S": prob,
+                    "season_rate_version": nba_season_rate.MODEL_ID if prob is not None else None,
+                    "season_rate_status": status, "season_rate_inputs": inputs})
+    except Exception as exc:  # isolation: never touch the live report
+        out.update({"season_rate_prob_S": None, "season_rate_version": None,
+                    "season_rate_status": "error", "season_rate_inputs": {"error": f"{type(exc).__name__}: {exc}"}})
+    try:
+        import nba_season_rate
+        prob, status, inputs = nba_season_rate.season_rate_prob_v2(log, stat_key, line_val, opponent_context)
+        out.update(zip(V2_SHADOW_KEYS, (prob, nba_season_rate.MODEL_ID_V2 if prob is not None else None,
+                                        status, inputs)))
+    except Exception as exc:
+        out.update(zip(V2_SHADOW_KEYS, (None, None, "error", {"error": f"{type(exc).__name__}: {exc}"})))
+    try:
+        import nba_season_rate
+        prob, status, inputs = nba_season_rate.season_rate_prob_v3(
+            log, stat_key, line_val, opponent_context, absence_context)
+        out.update(zip(V3_SHADOW_KEYS, (prob, nba_season_rate.MODEL_ID_V3 if prob is not None else None,
+                                        status, inputs)))
+    except Exception as exc:
+        out.update(zip(V3_SHADOW_KEYS, (None, None, "error", {"error": f"{type(exc).__name__}: {exc}"})))
+    try:
+        import nba_season_rate
+        prob, status, inputs = nba_season_rate.season_rate_prob_v4(
+            log, stat_key, line_val, opponent_context, current_season, team)
+        out.update(zip(V4_SHADOW_KEYS, (prob, nba_season_rate.MODEL_ID_V4 if prob is not None else None,
+                                        status, inputs)))
+    except Exception as exc:
+        out.update(zip(V4_SHADOW_KEYS, (None, None, "error", {"error": f"{type(exc).__name__}: {exc}"})))
+    return out
+
+
 def fit_status_lines():
     if not fit_layer_shadow_enabled():
         return []
@@ -233,6 +303,10 @@ def ml_status_lines():
     return lines
 
 L10_ORDER = "newest_first"
+# Layer C was fitted only on legs with >= 5 prior games (nba_banker_phase1/build_corpus.py).
+# Shorter histories (rookies, players back from injury after the early-season
+# prior-season backfill ends) turn 3/3 into "100%" and must not be scored or selected.
+MIN_HISTORY_GAMES = 5
 PLAYER_MARKET = "PLAYER_MILESTONE"
 TEAM_MARKET = "TEAM_MARKET"
 ENGINE_MODES = {"legacy", "ml", "hybrid"}
@@ -701,7 +775,8 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
                       usg_bonus=0, defender_impact=None, top_defender_name="",
                       opponent_abbr="", season_phase="MID_SEASON",
                       ml_predictor=None, team_stats=None, engine_mode="hybrid",
-                      ml_defender_pm=None):
+                      ml_defender_pm=None, opponent_context=None, absence_context=None,
+                      current_season=None):
     card = {
         "name": player_name,
         "team": team_abbr,
@@ -725,6 +800,9 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
         card["l10"] = l10
         card["history_seasons"] = gl.get("history_seasons", [])
         card["history_season_types"] = list(dict.fromkeys(gl.get("l10_season_types", [])))
+        # Per-game season and team of the L10 (early-season guard, EXP-20261026-06).
+        card["l10_seasons"] = list(gl.get("l10_seasons") or [])
+        card["l10_teams"] = [str(m).split()[0] for m in (gl.get("l10_matchups") or []) if str(m).split()]
         card["history_date_to"] = gl.get("history_date_to", "")
         card["position"] = ext_player.get("position", "?")
 
@@ -867,7 +945,9 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
         # EXP-20261022-03: calibrated, market-anchored probability replaces the legacy
         # engine output when enabled (resources/nba_prob_layer.json). legacy_prob is kept
         # for audit/comparison.
-        layer_prob = nba_prob_layer.calibrated_prob(stat_key, odds_str, hr_l10)
+        history_games = len(data_for_hr)
+        layer_prob = (nba_prob_layer.calibrated_prob(stat_key, odds_str, hr_l10)
+                      if history_games >= MIN_HISTORY_GAMES else None)
         if layer_prob is not None:
             final_prob = layer_prob
             final_engine = f"calibrated({final_engine})"
@@ -905,6 +985,8 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             "ml_prob": ml_prob,
             "ml_est_prob": ml_est_prob,
             **compute_shadow_fit(ext_player, stat_key, line_val),
+            **compute_season_rate(ext_player, stat_key, line_val, opponent_context, absence_context,
+                                  current_season, team_abbr),
             "ml_delta_pp": round(ml_delta, 1) if ml_delta is not None else None,
             "hybrid_adj_shadow_pp": hybrid_adj_shadow,
             "hybrid_adj_applied_pp": hybrid_adj,
@@ -917,6 +999,7 @@ def build_player_card(player_name, team_abbr, sportsbet_data, ext_player, catego
             "confidence_adjusted_ev_pct": final_conf_adj_ev,  # V8: confidence-discounted EV
             "edge_grade": edge_grade(final_edge),
             "hit_l10": hr_l10, "hit_l10_count": hr_l10_count,
+            "history_games": history_games,
             "hit_l5": hr_l5, "hit_l5_count": hr_l5_count,
             "hit_l3": hr_l3, "hit_l3_count": hr_l3_count,
             "misses": misses,
@@ -946,7 +1029,30 @@ def injury_status_for(injuries, team_abbr, player_name):
     return ""
 
 
-def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
+AVAILABILITY_SEVERITY = {"ok": 0, "dtd": 1, "out": 2}
+
+# EXP-20261026-06: with L10 mostly from last season, AST hit rate falls 7.8pp and 3PM 4.5pp
+# (PTS/REB unchanged); after a team change every stat falls 7-9pp. Banker eligibility only.
+EARLY_SEASON_PREV_GAMES = 6
+EARLY_SEASON_ROLE_STATS = ("AST", "3PM")
+NEW_TEAM_MIN_GAMES = 5
+
+
+def early_season_guard(card, stat_label, current_season):
+    """Reasons this leg must stay out of 穩膽 early in a season, or None. Never relaxes anything."""
+    reasons = []
+    seasons = card.get("l10_seasons") or []
+    if (current_season and stat_label in EARLY_SEASON_ROLE_STATS
+            and sum(1 for s in seasons if s != current_season) >= EARLY_SEASON_PREV_GAMES):
+        reasons.append("l10_mostly_previous_season")
+    team = canonical_team_abbr(card.get("team"))
+    teams = [canonical_team_abbr(t) for t in card.get("l10_teams") or []]
+    if teams and any(t != team for t in teams) and sum(t == team for t in teams) < NEW_TEAM_MIN_GAMES:
+        reasons.append("new_team_under_5_games")
+    return reasons or None
+
+
+def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None, official_injuries=None):
     """Build a flat list of all possible legs from player cards + team odds.
     V3.1: SIP-N01 bench minutes risk flag, SIP-N05 high CoV 3PM filter."""
     candidates = []
@@ -960,6 +1066,11 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
         player_name = card["name"]
         status = injury_status_for(injuries, team_abbr, player_name)
         injury_level = classify_injury_status(status)
+        # League injury report can only make a leg stricter than ESPN, never looser:
+        # e.g. ESPN "Day-To-Day" but league "Out" -> out; league "Probable" never clears ESPN DTD.
+        official_level = nba_official_injuries.level_for((official_injuries or {}).get(team_abbr), player_name)
+        if official_level and AVAILABILITY_SEVERITY[official_level] > AVAILABILITY_SEVERITY[injury_level]:
+            injury_level = official_level
 
         # ⚠️ Skip players who are out (or doubtful / suspended) so they do not pollute generated combos
         if injury_level == "out":
@@ -982,6 +1093,10 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
             # SIP-N05: Block high CoV 3PM legs from ALL combo pools
             # 3PM is inherently high variance; CoV > 0.5 makes it unpredictable
             if cl == "3PM" and card["cov"] > 0.5:
+                continue
+
+            # Fewer than MIN_HISTORY_GAMES prior games: outside Layer C's fitted population.
+            if la.get("history_games", len(card.get("l10", []))) < MIN_HISTORY_GAMES:
                 continue
 
             # SIP-N04: Compute L3 average for trend protection
@@ -1040,6 +1155,7 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None):
                 "l3_avg": l3_avg,
                 "l1_val": l1_val,
                 "day_to_day": is_day_to_day,
+                "early_season_guard": early_season_guard(card, cl, meta.get("roster_season")),
                 "season_phase": season_phase,
             })
 
@@ -1438,7 +1554,55 @@ def _passes_playoff_gate(leg, tier):
     return True
 
 
-def select_combo_1(candidates):
+def banker_pool(candidates, rule, *, require_leg_ev=True):
+    """Shared unchanged banker eligibility; callers choose formal or research EV."""
+    if rule == "banker":
+        def _has_buffer(c):
+            """Check if player's avg exceeds line by at least 15%."""
+            line_val = c.get("line_val", 0)
+            avg = c.get("avg", 0)
+            if line_val <= 0 or avg <= 0:
+                return True  # Can't verify, allow through
+            return (avg - line_val) / line_val >= 0.15
+
+        pool = [c for c in candidates
+                if _is_player_milestone(c)
+                and c["hit_l10"] >= BANKER.l10
+                and c.get("hit_l5", 0) >= BANKER.l5
+                and (not require_leg_ev or c["edge"] >= 0)  # False is forward-shadow only
+                and c["odds"] >= BANKER.min_odds  # V5.2: Remove 'almost free' legs — each leg should carry meaningful odds
+                and c.get("cov", 0) <= BANKER.max_cov
+                and not c.get("bench_minutes_risk", False)
+                and not c.get("day_to_day", False)
+                and not c.get("early_season_guard")
+                and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0)
+                and _has_buffer(c)
+                and _passes_playoff_gate(c, "banker")
+                and _post_reflector_leg_allowed(c, "banker")]
+        # F5: Prioritize L10 100% → 90% → 80% legs first, then by edge
+        pool.sort(key=lambda x: (-x["hit_l10"], -x["hit_l5"], -x["edge"], x["odds"]))
+
+        return pool
+    if rule != "banker_fallback":
+        raise ValueError("unknown banker rule")
+    pool = [c for c in candidates
+                    if _is_player_milestone(c)
+                    and c["hit_l10"] >= BANKER_FALLBACK.l10
+                    and c.get("hit_l5", 0) >= BANKER_FALLBACK.l5
+                    and (not require_leg_ev or c["edge"] >= 0)  # False is forward-shadow only
+                    and c["odds"] >= BANKER_FALLBACK.min_odds  # V5.2: Slightly relaxed from 1.20 for fallback
+                    and c.get("cov", 0) <= BANKER_FALLBACK.max_cov
+                    and not c.get("bench_minutes_risk", False)
+                    and not c.get("day_to_day", False)
+                    and not c.get("early_season_guard")
+                    and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0) * 0.85
+                    and _passes_playoff_gate(c, "banker")
+                    and _post_reflector_leg_allowed(c, "banker")]
+    pool.sort(key=lambda x: (-x["hit_l10"], -x["edge"], x["odds"]))
+    return pool
+
+
+def select_combo_1(candidates, *, require_leg_ev=True, require_combo_ev=True):
     """Banker selection with explicit strict/fallback policy; no safety guarantee.
     - L10 ≥ 80% AND L5 ≥ 80% (true recent consistency)
     - avg must exceed line by ≥ 15% (buffer safety)
@@ -1447,29 +1611,7 @@ def select_combo_1(candidates):
     - SIP-N04: L3 < Line banned
     - Numeric CoV cap; volatility grade is not a separate exclusion."""
 
-    def _has_buffer(c):
-        """Check if player's avg exceeds line by at least 15%."""
-        line_val = c.get("line_val", 0)
-        avg = c.get("avg", 0)
-        if line_val <= 0 or avg <= 0:
-            return True  # Can't verify, allow through
-        return (avg - line_val) / line_val >= 0.15
-
-    pool = [c for c in candidates
-            if _is_player_milestone(c)
-            and c["hit_l10"] >= BANKER.l10
-            and c.get("hit_l5", 0) >= BANKER.l5
-            and c["edge"] >= 0  # V5.3: FW-11 blocks negative EV legs — must be >= 0
-            and c["odds"] >= BANKER.min_odds  # V5.2: Remove 'almost free' legs — each leg should carry meaningful odds
-            and c.get("cov", 0) <= BANKER.max_cov
-            and not c.get("bench_minutes_risk", False)
-            and not c.get("day_to_day", False)
-            and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0)
-            and _has_buffer(c)
-            and _passes_playoff_gate(c, "banker")
-            and _post_reflector_leg_allowed(c, "banker")]
-    # F5: Prioritize L10 100% → 90% → 80% legs first, then by edge
-    pool.sort(key=lambda x: (-x["hit_l10"], -x["hit_l5"], -x["edge"], x["odds"]))
+    pool = banker_pool(candidates, "banker", require_leg_ev=require_leg_ev)
 
     def score_fn(combo, odds, avg_hit, total_edge):
         # F5: Bonus for near-perfect hit rate legs
@@ -1482,31 +1624,19 @@ def select_combo_1(candidates):
                            min_legs=BANKER.min_legs, max_legs=BANKER.max_legs,  # V5.3: Allow 4 legs to reach 2.0x target
                            score_fn=score_fn,
                            max_same_team_pts=2, max_same_team=3,
-                           tier="banker")
+                           tier="banker", require_positive_ev=require_combo_ev)
 
     rule = "banker"
     # Fallback: relax to L10 ≥ 70% if strict pool is too small
     if not result:
         rule = "banker_fallback"
-        pool_relaxed = [c for c in candidates
-                        if _is_player_milestone(c)
-                        and c["hit_l10"] >= BANKER_FALLBACK.l10
-                        and c.get("hit_l5", 0) >= BANKER_FALLBACK.l5
-                        and c["edge"] >= 0  # V5.3: FW-11 blocks negative EV legs
-                        and c["odds"] >= BANKER_FALLBACK.min_odds  # V5.2: Slightly relaxed from 1.20 for fallback
-                        and c.get("cov", 0) <= BANKER_FALLBACK.max_cov
-                        and not c.get("bench_minutes_risk", False)
-                        and not c.get("day_to_day", False)
-                        and c.get("l3_avg", c["avg"]) >= c.get("line_val", 0) * 0.85
-                        and _passes_playoff_gate(c, "banker")
-                        and _post_reflector_leg_allowed(c, "banker")]
-        pool_relaxed.sort(key=lambda x: (-x["hit_l10"], -x["edge"], x["odds"]))
+        pool_relaxed = banker_pool(candidates, "banker_fallback", require_leg_ev=require_leg_ev)
         result = _greedy_build(pool_relaxed,
                                target_min=BANKER_FALLBACK.target_min, target_max=BANKER_FALLBACK.target_max,  # V5.3: FW-11 floor is 2.0x
                                min_legs=BANKER_FALLBACK.min_legs, max_legs=BANKER_FALLBACK.max_legs,  # V5.3: Allow 4 legs
                                score_fn=score_fn,
                                max_same_team_pts=2, max_same_team=3,
-                               tier="banker")
+                               tier="banker", require_positive_ev=require_combo_ev)
 
     return SelectedCombo(result or [], rule)
 
@@ -1516,7 +1646,7 @@ def select_combo_1(candidates):
 
 def _greedy_build(pool, target_min, target_max, min_legs, max_legs,
                   score_fn=None, max_same_team_pts=2, max_same_team=4,
-                  tier="value"):
+                  tier="value", require_positive_ev=True):
     """Greedy capped SGM builder V5.
     
     Improvements over V4:
@@ -1592,10 +1722,10 @@ def _greedy_build(pool, target_min, target_max, min_legs, max_legs,
                 break  # Past minimum with extra leg cushion — stop
 
         final_odds = _combo_odds(combo)
-        if len(combo) >= min_legs and target_min <= final_odds <= target_max and _combo_passes_positive_ev_gate(combo, tier):
+        if len(combo) >= min_legs and target_min <= final_odds <= target_max and (not require_positive_ev or _combo_passes_positive_ev_gate(combo, tier)):
             return combo
         # If we overshot slightly, still accept if within 20% tolerance
-        if len(combo) >= min_legs and final_odds >= target_min and final_odds <= target_max * BUILD_TOLERANCE and _combo_passes_positive_ev_gate(combo, tier):
+        if len(combo) >= min_legs and final_odds >= target_min and final_odds <= target_max * BUILD_TOLERANCE and (not require_positive_ev or _combo_passes_positive_ev_gate(combo, tier)):
             return combo
         return None
 
@@ -1882,15 +2012,21 @@ def gen_player_card(card):
     return "\n".join(lines)
 
 
-def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
-    """Generate a complete combo section with pre-filled data."""
+def gen_combo_section(combo_name, combo_emoji, combo_desc, legs, steady=False):
+    """Generate a complete combo section with pre-filled data.
+
+    ``steady``: EXP-20261027-21 formal banker -- no EV gate, flat $1, and the
+    negative-EV disclaimer replaces Kelly sizing (Kelly is 0 there)."""
     lines = []
 
     if not legs or not getattr(legs, "quote", {}).get("status") == "ok":
         lines.append(f"### {combo_emoji} {combo_name}")
         if combo_desc:
             lines.append(f"> {combo_desc}")
-        lines.append(f"> ⚠️ 未能根據穩健 +EV 篩選條件搵到合適嘅 legs。此層級建議觀望，除非重新提取 Sportsbet 盤口後通過同一套 gate。")
+        if steady:
+            lines.append(f"> ⚠️ 今場冇穩膽：未有組合同時通過選腿規則同真實 Sportsbet SGM 報價 ≥2.0。此層級建議觀望。")
+        else:
+            lines.append(f"> ⚠️ 未能根據穩健 +EV 篩選條件搵到合適嘅 legs。此層級建議觀望，除非重新提取 Sportsbet 盤口後通過同一套 gate。")
         lines.append(f"")
         lines.append(f"---")
         return "\n".join(lines)
@@ -2041,10 +2177,16 @@ def gen_combo_section(combo_name, combo_emoji, combo_desc, legs):
     kelly_prob = adj_joint_prob * 100
     kelly_f = kelly_fraction(kelly_prob, combo_odds_for_kelly)
     kelly_stake = round(kelly_f * 1000, 0)
-    lines.append(f"- **🎯 Kelly 注碼建議**: {kelly_f*100:.1f}% bankroll (Half-Kelly) → **${int(kelly_stake)}** / $1000")
+    if not steady:
+        lines.append(f"- **🎯 Kelly 注碼建議**: {kelly_f*100:.1f}% bankroll (Half-Kelly) → **${int(kelly_stake)}** / $1000")
     lines.append(f"- **🛡️ 組合核心邏輯**: {core_logic}")
     lines.append(f"- **⚠️ 主要風險**: {' / '.join(risk_factors)}")
-    lines.append(f"- **建議注碼**: 按同一相關性調整後機率及真實報價計算 Half-Kelly：{kelly_f*100:.1f}% bankroll；唔另加固定 units。")
+    if steady:
+        lines.append(f"- **建議注碼**: 固定 $1 平注（{steady_policy.PROTOCOL}）；唔用 Kelly。")
+        if combo_ev_pct <= 0:
+            lines.append(f"- **⚠️ 模型預期 EV 為負**: 按真實報價計 {combo_ev_pct}%；呢個係命中率產品線，唔係有優勢嘅注。")
+    else:
+        lines.append(f"- **建議注碼**: 按同一相關性調整後機率及真實報價計算 Half-Kelly：{kelly_f*100:.1f}% bankroll；唔另加固定 units。")
     lines.append(f"")
     lines.append(f"> ⚠️ EV／Kelly 按以上 Sportsbet SGM 報價及相關性調整後機率計算；報價只在短時間內有效，落注前須重新確認。")
     lines.append(f"")
@@ -2078,13 +2220,14 @@ def mc_game_seed(meta):
 
 def gen_full_report(meta, odds, injuries, news, team_stats,
                     all_cards, sportsbet_time, season_phase="MID_SEASON",
-                    engine_mode="hybrid", capture=None, sportsbet_odds=None):
+                    engine_mode="hybrid", capture=None, sportsbet_odds=None, banker_search_audit=False,
+                    official_injuries=None):
     """Render the report.  ``capture`` (optional dict) receives the already
     computed MC results and combos for the market-evaluation sidecar; it is
     observation only and never feeds back into selection or rendering."""
     sections = []
     if capture is not None:
-        capture["availability"] = {"meta": dict(meta), "injuries": injuries}
+        capture["availability"] = {"meta": dict(meta), "injuries": injuries, "official": official_injuries}
 
     away_abbr = meta.get("away", {}).get("abbr", "?")
     home_abbr = meta.get("home", {}).get("abbr", "?")
@@ -2112,6 +2255,8 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     final_source="、".join(sorted(sources)) if sources else "無可評估盤口"
     sections.append(f"**odds_source**: SPORTSBET_LIVE ✅ | **引擎版本**: {engine_label}（運算／安全篩選模式）")
     sections.append(f"**最終機率來源**: {final_source}；ML shadow 訊號唔代表最終機率。")
+    from monte_carlo_nba import MC_MODEL_VERSION
+    sections.append(f"**MC_MODEL_VERSION**: {MC_MODEL_VERSION}（模擬診斷版本；最終機率來源見上）")
     public_phase = meta.get("season_phase", season_phase)
     postseason_type = meta.get("postseason_type") or "N/A"
     sections.append(
@@ -2208,7 +2353,8 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
         print(f"⚠️ Monte Carlo 預計算失敗: {e}")
 
     # ── Auto-Combo (placed FIRST for quick reference) ──
-    candidates = build_leg_candidates(all_cards, team_odds=odds, meta=meta, injuries=injuries)
+    candidates = build_leg_candidates(all_cards, team_odds=odds, meta=meta, injuries=injuries,
+                                      official_injuries=official_injuries)
 
     _pc = [c for c in candidates if c.get('market_type') == PLAYER_MARKET]
     print(f"  📊 SGM Pool: {len(all_cards)} cards → {len(candidates)} candidates ({len(_pc)} player)")
@@ -2217,29 +2363,37 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     for c in candidates:
         c['_mc_lookup'] = mc_lookup
 
-    combo_1 = select_combo_1(candidates)
+    # EXP-20261027-21: formal combo 1 is the B2 selection (no EV gates); the
+    # pre-registered stop-loss can pause it, never the shadow arms.
+    steady_pause = steady_policy.paused_reason()
+    combo_1 = (SelectedCombo([], "steady_paused") if steady_pause
+               else select_combo_1(candidates, require_leg_ev=False, require_combo_ev=False))
     
     # F4: No cascading exclusion — each combo selects independently from full pool.
     # With multi-leg combos, overlap is acceptable and produces better results.
-    combo_2 = select_combo_2(candidates)
-    combo_3 = select_combo_3(candidates)
-    combo_x = select_combo_x_value_bomb(candidates)
+    # Product focus: other strategies remain readable in historical artifacts.
+    combo_2, combo_3, combo_x = [], [], []
     priced = {}
     quote_attempts = {}
+    quote_cache = {}
     for key, proposal in {"1": combo_1, "2": combo_2, "3": combo_3, "X": combo_x or []}.items():
         if not proposal:
             priced[key] = []
             continue
         quote_source = sportsbet_odds if sportsbet_odds is not None else odds
         quoted = quote_combo(quote_source, proposal)
+        from nba_sgm_quote import legs_identity
+        quote_cache[legs_identity(proposal)] = quoted
         quote_attempts[key] = quoted.quote
-        if (quote_valid(quoted.quote, quote_source, proposal) and _combo_passes_positive_ev_gate(quoted)
+        if (quote_valid(quoted.quote, quote_source, proposal)
+                and (key == "1" or _combo_passes_positive_ev_gate(quoted))
                 and quoted.quote["decimal_odds"] >= {"1": 2.0, "2": 3.0, "3": 8.0, "X": 1.0}[key]):
             priced[key] = quoted
         else:
             priced[key] = []
             if quoted.quote["status"] == "ok":
-                quote_attempts[key] = {**quoted.quote, "rejected": "actual_price_fails_ev_floor_or_expired"}
+                quote_attempts[key] = {**quoted.quote, "rejected": "actual_price_below_floor_or_expired" if key == "1"
+                                       else "actual_price_fails_ev_floor_or_expired"}
     combo_1, combo_2, combo_3, combo_x = (priced[key] for key in ("1", "2", "3", "X"))
     if quote_attempts:
         sections.append("**SGM 報價檢查**：" + "；".join(f"{key}: {value.get('rejected', value['status'])}" for key, value in quote_attempts.items()))
@@ -2264,7 +2418,10 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(f"")
     sections.append(f"> [!IMPORTANT]")
     sections.append(f"> 以下組合由 Python V5 短腿數 + Playoff Gate + Post-Reflector EV Gate 自動篩選。所有數學數據不可修改。")
-    sections.append(f"> Engine mode: **{engine_mode.upper()}**；任何 `Combo EV% <= 0` 或 Kelly = 0% 嘅組合會被 hard block。")
+    sections.append(f"> Engine mode: **{engine_mode.upper()}**")
+    sections.append(f"> 📌 正式穩膽政策：{steady_policy.POLICY} — {steady_policy.DISCLAIMER}")
+    if steady_pause:
+        sections.append(f"> ⛔ 正式穩膽停損暫停中（{steady_pause}）；今日 NO BET。恢復要用戶決定（{steady_policy.PROTOCOL}）。")
     for _l in ml_status_lines() + fit_status_lines():
         sections.append(_l)
     sections.append(f"")
@@ -2272,27 +2429,72 @@ def gen_full_report(meta, odds, injuries, news, team_stats,
     sections.append(gen_combo_section(
         "組合 1: Banker SGM", "🛡️",
         policy_description("1", combo_1),
-        combo_1))
+        combo_1, steady=True))
     sections.append(f"")
 
-    sections.append(gen_combo_section(
-        "組合 2: 價值膽 Multi-Leg", "🔥",
-        policy_description("2", combo_2),
-        combo_2))
-    sections.append(f"")
+    sections.append("正式策略：只保留穩膽；價值膽、高倍率及 Value Bomb 已退出新正式建議。")
+    sections.append("")
 
-    sections.append(gen_combo_section(
-        "組合 3: 高倍率 SGM", "💎",
-        policy_description("3", combo_3),
-        combo_3))
-    sections.append(f"")
-
-    if combo_x:
-        sections.append(gen_combo_section(
-            "組合 X: 💣 Value Bomb", "💣",
-            "2-3 Legs | 基座 L10≥80%／L5≥70%；炸彈腿 Edge≥10%／L10≥60%／L5≥50%＋確認 gate | 單腿乘積≥5.0x；冇硬性上限",
-            combo_x))
-        sections.append(f"")
+    # Forward experiments never feed formal selection or Kelly sizing.
+    from nba_review_candidates import banker_funnel, build_banker_shadow
+    def cached_quote(source, legs):
+        from nba_sgm_quote import legs_identity
+        key = legs_identity(legs)
+        if key not in quote_cache:
+            quote_cache[key] = quote_combo(source, legs)
+        return quote_cache[key]
+    shadow_error = None
+    try:
+        shadow = build_banker_shadow(candidates, sportsbet_odds if sportsbet_odds is not None else odds,
+                                     select=select_combo_1, quote=cached_quote,
+                                     valid_quote=quote_valid, evaluate=compute_combo_ev)
+    except Exception as exc:
+        shadow, shadow_error = [], type(exc).__name__
+    if banker_search_audit and capture is not None:
+        from nba_banker_search import audit_search
+        capture["banker_search_audit"] = audit_search(
+            candidates, sportsbet_odds, pool=banker_pool, select=select_combo_1,
+            allowed=_combo_is_allowed, evaluate=compute_combo_ev,
+            quote=cached_quote, valid_quote=quote_valid)
+    funnel = banker_funnel(candidates, playoff=_passes_playoff_gate, reflector=_post_reflector_leg_allowed)
+    if shadow_error:
+        print(f"⚠️ banker_shadow_failed:{shadow_error}；正式穩膽結果保留。")
+        sections.append(f"⚠️ 穩膽影子比較未完成（{shadow_error}）；唔將缺實驗資料當成零出手機會。")
+    if capture is not None:
+        capture["banker_shadow"] = shadow
+        capture["strategy_profile"] = STRATEGY_PROFILE
+    # Review candidates are computed AFTER formal selection and never feed it.
+    review_error = None
+    try:
+        from nba_review_candidates import banker_shadow_review
+        review = banker_shadow_review(shadow)
+    except Exception as exc:
+        review = []
+        review_error = type(exc).__name__
+        print(f"⚠️ review_candidates_failed:{review_error}；正式選腿結果保留。")
+    diagnostics = {
+        "player_candidates": len(_pc),
+        "positive_edge_candidates": sum(c.get("edge", -1) >= 0 for c in _pc),
+        "positive_edge_and_l10_50": sum(c.get("edge", -1) >= 0 and c.get("hit_l10", 0) >= 50 for c in _pc),
+        "formal_combinations": sum(bool(c) for c in (combo_1, combo_2, combo_3, combo_x)),
+        "formal_quote_attempts": len(quote_attempts),
+        "review_error": review_error,
+        "banker_funnel": funnel,
+        "banker_shadow_error": shadow_error,
+        "strategy_profile": STRATEGY_PROFILE,
+    }
+    if capture is not None:
+        capture["review_candidates"] = review
+        capture["selection_diagnostics"] = diagnostics
+    sections.append("## 📋 SGM 候選評估（分析用途）")
+    sections.append("以下係研究記錄（同正式組合 1 同一套 steady／B2 揀法，停損暫停期間照記錄），唔係額外投注建議；正式注只睇組合 1。")
+    if review_error:
+        sections.append(f"候選生成未完成（{review_error}）；正式選腿結果保留，需重試候選分析。")
+    for item in review:
+        price = f"Sportsbet 組合價 @{item['odds']}" if item['odds'] else "組合價未驗證"
+        sections.append(f"- {item['label']}：{price}；" + "、".join(leg["selection"] for leg in item["legs"]))
+        sections.append("  " + "；".join(item["reasons"]))
+    sections.append("")
 
     # Summary
     # Find strongest/weakest legs across all combos
@@ -2450,6 +2652,8 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
                 "market": market,
                 "line": line,
                 "side": "over",
+                "early_season_guard": early_season_guard(card, cat_label.get(card["category"]),
+                                                         meta.get("roster_season")),
                 "price": float(la["odds"]),
                 "p_hit_rate_10f": _pct_to_prob(la.get("det_prob")),
                 "p_ml": _pct_to_prob(la["ml_prob"] * 100) if la.get("ml_prob") is not None else None,
@@ -2457,6 +2661,13 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
                 "shadow_fit_version": la.get("shadow_fit_version"),
                 "shadow_fit_status": la.get("shadow_fit_status"),
                 "shadow_fit_inputs": la.get("shadow_fit_inputs"),
+                "season_rate_prob_S": la.get("season_rate_prob_S"),
+                "season_rate_version": la.get("season_rate_version"),
+                "season_rate_status": la.get("season_rate_status"),
+                "season_rate_inputs": la.get("season_rate_inputs"),
+                **{key: la.get(key) for key in V2_SHADOW_KEYS},
+                **{key: la.get(key) for key in V3_SHADOW_KEYS},
+                **{key: la.get(key) for key in V4_SHADOW_KEYS},
                 "ml_delta_pp": la.get("ml_delta_pp"),
                 "hybrid_adj_shadow_pp": la.get("hybrid_adj_shadow_pp"),
                 "hybrid_adj_applied_pp": la.get("hybrid_adj_applied_pp"),
@@ -2484,6 +2695,10 @@ def build_market_eval_sidecar(report_text, sportsbet, meta, all_cards, capture, 
         "legs": legs_out,
         "combos": combos_out,
         "quote_attempts": capture.get("quote_attempts", {}),
+        "selection_diagnostics": capture.get("selection_diagnostics", {}),
+        "strategy_profile": capture.get("strategy_profile", STRATEGY_PROFILE),
+        "banker_shadow": capture.get("banker_shadow", []),
+        "review_candidates": capture.get("review_candidates", []),
         "availability": capture.get("availability"),
     }
 
@@ -2522,6 +2737,7 @@ def main():
     parser.add_argument("--sportsbet", required=True, help="Sportsbet odds JSON (from sportsbet_parser.py)")
     parser.add_argument("--extractor", required=True, help="nba_extractor.py output JSON")
     parser.add_argument("--output", required=True, help="Output skeleton .md path")
+    parser.add_argument("--banker-search-audit", action="store_true", help="Opt-in OBSERVE true-price search; never changes formal bets")
     parser.add_argument("--engine", choices=sorted(ENGINE_MODES), default=DEFAULT_ENGINE_MODE,
                         help="Probability engine: hybrid (default), ml, or legacy")
     parser.add_argument("--legacy", action="store_true", help="Deprecated alias for --engine legacy")
@@ -2623,6 +2839,9 @@ def main():
         top_name = top3[0].get("name", "") if top3 else ""
         return avg_impact, top_name
 
+    # Shadow S_v3: pre-game injury list -> teammate absence share, once per team.
+    absence_by_team = team_absence_context(ext_players, extractor.get("team_recent"))
+
     # Build all player cards
     all_cards = []
     meta["excluded_player_markets"] = {}
@@ -2666,7 +2885,10 @@ def main():
                 top_defender_name=top_def_name, opponent_abbr=opponent,
                 season_phase=season_phase,
                 ml_predictor=ml_predictor, team_stats=team_stats,
-                engine_mode=engine_mode, ml_defender_pm=ml_def_pm)
+                engine_mode=engine_mode, ml_defender_pm=ml_def_pm,
+                opponent_context=(extractor.get("opponent_context") or {}).get(team),
+                absence_context=absence_by_team.get(team),
+                current_season=meta.get("roster_season"))
             all_cards.append(card)
 
     # Summary
@@ -2686,7 +2908,23 @@ def main():
     capture = {}
     report = gen_full_report(meta, ex_odds, injuries, news, team_stats,
                              all_cards, sportsbet_time, season_phase=season_phase,
-                             engine_mode=engine_mode, capture=capture, sportsbet_odds=sportsbet)
+                             engine_mode=engine_mode, capture=capture, sportsbet_odds=sportsbet,
+                             banker_search_audit=args.banker_search_audit,
+                             official_injuries=extractor.get("official_injuries"))
+
+    # Research is separate from the formal sidecar and publication feed.
+    if args.banker_search_audit:
+        audit = capture["banker_search_audit"]
+        import hashlib
+        from nba_prob_layer import probability_model_id
+        input_sha256 = {}
+        for path in (args.sportsbet, args.extractor):
+            with open(path, "rb") as source:
+                input_sha256[str(path)] = hashlib.sha256(source.read()).hexdigest()
+        audit.update(probability_model_id=probability_model_id(), input_sha256=input_sha256)
+        os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+        with open(args.output + ".banker_search.json", "w", encoding="utf-8") as handle:
+            json.dump(audit, handle, ensure_ascii=False, indent=2, allow_nan=False)
 
     # Write
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)

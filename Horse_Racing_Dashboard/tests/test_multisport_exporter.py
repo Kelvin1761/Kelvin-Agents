@@ -62,23 +62,23 @@ class MultiSportExporterTests(unittest.TestCase):
 
             self.assertEqual(snapshot["validation_status"], "valid")
             self.assertEqual(snapshot["analysis_run_id"], "nba:2026-04-15")
-            self.assertEqual(len(snapshot["recommendations"]), 2)
+            self.assertEqual(len(snapshot["recommendations"]), 1)
             recommendation = next(
                 row for row in snapshot["recommendations"] if row["bet_type"] == "combo"
             )
-            banker = next(
-                row for row in snapshot["recommendations"] if row["category"] == "banker"
-            )
+            self.assertTrue(all(row["bet_type"] == "combo" and row["id"].endswith(":combo:1")
+                                for row in snapshot["recommendations"]))
+            banker_leg = recommendation["legs"][0]
             self.assertEqual(recommendation["odds"], 2.12)
             self.assertEqual(recommendation["odds_status"], "independent_leg_estimate")
             self.assertEqual(recommendation["bet_type"], "combo")
             self.assertEqual(len(recommendation["legs"]), 2)
             self.assertEqual(recommendation["legs"][0]["odds"], 1.72)
             self.assertIn("Sportsbet_Odds_CHI_WAS.json", recommendation["source_files"])
-            self.assertEqual(banker["selection"], "Zach LaVine 24+ PTS")
-            self.assertEqual(banker["metrics"]["model_probability"], 0.74)
-            self.assertEqual(banker["metrics"]["expected_value"], 0.051)
-            self.assertEqual(banker["metrics"]["l10_hit_rate"], 0.8)
+            self.assertEqual(banker_leg["selection"], "Zach LaVine 24+ PTS")
+            self.assertEqual(banker_leg["metrics"]["model_probability"], 0.74)
+            self.assertEqual(banker_leg["metrics"]["expected_value"], 0.051)
+            self.assertEqual(banker_leg["metrics"]["l10_hit_rate"], 0.8)
 
     def test_nba_exporter_blocks_analysis_without_matching_sportsbet_json(self):
         with tempfile.TemporaryDirectory() as tmp:

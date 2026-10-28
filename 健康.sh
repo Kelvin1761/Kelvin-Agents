@@ -80,7 +80,10 @@ if catalog_cold.get("status") == "ok":
 elif catalog_cold.get("known_artifacts"):
     print(f"  ⚠️  Artifact COLD：{catalog_cold.get('verified_artifacts')}/{catalog_cold.get('known_artifacts')} verified")
 if not cold.get("configured") and catalog_cold.get("status") != "ok":
-    print("  ⚠️  COLD Drive root未設定；外置碟目前只係一份copy，未可以批准刪本機原件")
+    if catalog_cold.get("verified_artifacts"):
+        print(f"  ⚠️  COLD 尚欠 {catalog_cold.get('unverified_artifacts', '?')} 份 artifact 第二副本驗證；已驗證副本有效，未齊嗰份唔可以刪本機原件")
+    else:
+        print("  ⚠️  COLD Drive root未設定，亦未有provider第二副本驗證；唔可以批准刪本機原件")
 elif cold.get("configured") and cold.get("status") != "available":
     print(f"  ⚠️  COLD Drive不可用：{cold.get('error') or 'unknown'}")
 PYEOF
@@ -205,9 +208,12 @@ else:
 # NBA off-season `dormant` is healthy. In season the immutable snapshot and
 # reflector ledger are separate liveness/evidence signals.
 nba_runs = []
-for root in (".agents/skills/nba/nba_daily_auto/logs",
+for root in ("/Users/imac/wongchoi-scheduler/.agents/skills/nba/nba_daily_auto/logs",
+             ".agents/skills/nba/nba_daily_auto/logs",
              "/Users/imac/Antigravity-repo/.agents/skills/nba/nba_daily_auto/logs"):
     nba_runs.extend(glob.glob(os.path.join(root, "run-*.json")))
+    if nba_runs:
+        break  # Prefer the producer's logs over copied/legacy checkout logs.
 if nba_runs:
     latest = max(set(nba_runs), key=os.path.getmtime)
     try:
@@ -215,7 +221,12 @@ if nba_runs:
         a = age_days(os.path.getmtime(latest))
         status = payload.get("status") or "unknown"
         target = payload.get("target_date") or "?"
-        healthy = status in {"complete", "dormant", "archived", "already_archived", "ok"}
+        sys.path.insert(0, os.path.join(os.getcwd(), ".agents/skills"))
+        from shared_wong_choi.contracts import normalize_run_state, RunState
+        try:
+            healthy = normalize_run_state(status) in {RunState.SUCCEEDED, RunState.DORMANT}
+        except ValueError:
+            healthy = False
         mark = "✅" if healthy and a < 2 else "⚠️ "
         print(f"  {mark} NBA: 最新排程 {target} / {status}（{a:.1f} 日前）")
     except (OSError, ValueError) as exc:
@@ -245,6 +256,7 @@ else:
     print("  ➖ NBA 校準：未有 reliability_latest.json（賽後 run 未寫過）")
 
 nba_db = next((candidate for candidate in (
+    os.path.expanduser("~/WongChoiData/NBA/nba_reflector.db"),
     "nba_reflector.db",
     "/Users/imac/Antigravity-repo/nba_reflector.db",
 ) if os.path.exists(candidate)), None)
@@ -314,6 +326,16 @@ for p in au hkjc; do
   else note_bad "$P 有欄位唔合格"; echo "$o" | sed -n '/唔合格/,/^$/p' | sed 's/^/      /'; fi
 done
 
+# ── HKJC 賽果庫追加 rows 有冇欄位變空 ──────────────────────────────────────
+# 2026-05-13 → 2026-10-25：快照之後追加嘅 rows 一直冇完成時間、檔位、負磅、HorseID，
+# 上面嘅數據合約睇 Logic 唔睇賽果庫，所以五個月冇警報。
+hdr "HKJC 賽果庫欄位覆蓋"
+o=$("$PY" .agents/scripts/build_comprehensive_stats.py --coverage-check 2>&1)
+s=$?
+if   [ $s -eq 0 ]; then ok "$(echo "$o" | head -1)，冇欄位變空"
+elif [ $s -eq 1 ]; then note_bad "HKJC 賽果庫有欄位靜靜變空"; echo "$o" | grep '❌' | sed 's/^/      /'
+else warn "HKJC 賽果庫讀唔到（跳過）"; fi
+
 # ── AU 語料有冇新嘅賽後抽場次 ──────────────────────────────────────────────
 # EXP-20261015-04：同日賽後抽嘅場次，頁面累積統計（Career/Track/Distance…）已計埋
 # 賽果。已知嗰 7 個喺 au_corpus_exclusions.json 排除；呢度捉「新出現、未排除」嗰啲。
@@ -361,7 +383,7 @@ echo "$mo" | while IFS=$'\t' read -r tag rest; do
   esac
 done
 if [ $ms -ne 0 ]; then
-  note_bad "Drive 鏡像有檔落後過本機正本 —— 補數：.agents/scripts/mirror_consistency.py --backfill"
+  note_bad "Drive 鏡像過期或未能完成檢查 —— 先處理上面錯誤；可讀後用 .agents/scripts/mirror_consistency.py --backfill 補數"
 fi
 
 # ── 中央30日SLO／evidence provenance ──────────────────────────────────────
@@ -399,21 +421,23 @@ LOG_SCAN=$("$PY" - <<'PYEOF'
 import glob
 import json
 import os
-import re
+import sys
 from datetime import datetime, timedelta
 from pathlib import Path
+sys.path.insert(0, str(Path(".agents/scripts").resolve()))
+from health_log_scan import recent_errors
 
 roots = (
     Path("/Users/imac/wongchoi-scheduler/.agents/skills/au_racing/au_daily_auto/logs"),
+    Path("/Users/imac/wongchoi-scheduler/.agents/skills/hkjc_racing/hkjc_daily_auto/logs"),
+    Path("/Users/imac/wongchoi-scheduler/.agents/skills/nba/nba_daily_auto/logs"),
+    Path("/Users/imac/Antigravity-repo/tennis-wong-choi/data/logs"),
     Path(".agents/skills/hkjc_racing/hkjc_daily_auto/logs"),
     Path(".agents/skills/nba/nba_daily_auto/logs"),
     Path("tennis-wong-choi/data/logs"),
 )
 cutoff = datetime.now() - timedelta(days=3)
-error_re = re.compile(
-    r"traceback|fatal|Operation not permitted|unbound variable|❌ \[", re.I
-)
-stamp_re = re.compile(r"\[?(20\d\d-\d\d-\d\d[T ][0-9:]+(?:[+-][0-9:]+)?)")
+runs_root = Path(os.environ.get("WONGCHOI_CONTROL_STATE_ROOT", str(Path.home() / "WongChoiData/WongChoiControl"))) / "runs"
 
 # A successful newer mirror run resolves older best-effort File Provider noise.
 mirror_step = None
@@ -441,6 +465,7 @@ if mirror_ok:
         f"copied {mirror_step.get('copied', 0)} / failed {mirror_step.get('failed', 0)}"
     )
 
+seen_logs = set()
 for root in roots:
     if not root.is_dir():
         continue
@@ -448,6 +473,10 @@ for root in roots:
     for pattern in ("*.log", "*.err", "*.out"):
         files.extend(root.glob(pattern))
     for path in sorted(set(files)):
+        resolved = path.resolve()
+        if resolved in seen_logs:
+            continue
+        seen_logs.add(resolved)
         if path.name in {"health.out", "health.err"}:
             continue
         try:
@@ -456,19 +485,11 @@ for root in roots:
             lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
             continue
-        current_time = None
+        candidates, undated = recent_errors(lines, cutoff, runs_root)
+        if undated:
+            print(f"UNDATED\t{path.name}\t{undated}")
         errors = []
-        for line in lines:
-            match = stamp_re.search(line)
-            if match:
-                try:
-                    current_time = datetime.fromisoformat(match.group(1)).replace(tzinfo=None)
-                except ValueError:
-                    current_time = None
-            if not error_re.search(line):
-                continue
-            if current_time is not None and current_time < cutoff:
-                continue
+        for line in candidates:
             lower = line.lower()
             resolved_mirror_noise = mirror_ok and (
                 "[mirror]" in lower or "鏡像" in line or "mirror 最近狀態" in line
@@ -486,6 +507,7 @@ while IFS=$'\t' read -r kind arg count; do
   case "$kind" in
     RECOVERED) ok "$arg" ;;
     WARN) warn "$arg: $count 行錯誤"; found=1 ;;
+    UNDATED) warn "$arg: $count 行錯誤缺執行時間，未計入近三日"; found=1 ;;
     LINE) printf '        %s\n' "$arg" ;;
   esac
 done <<< "$LOG_SCAN"

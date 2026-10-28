@@ -323,9 +323,7 @@ CLASS_MICRO_WEIGHTS = {
     "career0_2yo_bonus": 0.84,
     "career5_placed_bonus": 2.31,
     "career5_unplaced_pen": -0.82,
-    "career15_maiden_pen": -6.79,
-    "career15_unplaced_pen": -1.4,
-    "career15_placed_bonus": 5.42,
+    # career15_*（−6.79／−1.40／+5.42）已剷走：EXP-20261028-13 C3。
     "class_drop_bonus": 2.1,
     "metro_prov_pen": -5.48,
 }

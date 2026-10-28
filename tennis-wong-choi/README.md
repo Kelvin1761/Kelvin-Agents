@@ -25,53 +25,20 @@ The system refuses LLM-generated statistics. Numeric features must be backed by 
 
 ## Active Betting Strategy
 
-The active report uses a two-stage main card plus research:
+The report separates research prices from registered family recommendation tiers.
+The current rules are generated from the code in [the strategy reference](docs/generated_strategy_reference.md).
+Regenerate it after changing registered limits or gate predicates:
 
-- `EARLY_MAIN_SINGLE` / `EARLY_MAIN_2_LEG`
-- `VALIDATED_SINGLE`
-- `VALIDATED_2_LEG`
-- `RESEARCH_ONLY`
+```bash
+PYTHONPATH=src python scripts/generate_strategy_reference.py
+PYTHONPATH=src python scripts/generate_strategy_reference.py --check
+```
 
-The old Banker / Value / High-Odds categories are retired. Edge and expected
-value remain numeric requirements, not bet categories. New player-prop families
-are priced and paper-settled first. In this early product stage, a family may
-enter the reversible `EARLY_MAIN` card after 50 raw scorecard outcomes and 3
-eligible paper bets when its model Brier is at least 0.005 better than the
-de-vigged market and its eligible-profile ROI is positive. `EARLY_MAIN` is an
-early trend, not full validation: every single or two-leg combo is capped at
-0.5u and automatically drops back to `RESEARCH_ONLY` if ROI or the model's
-market advantage turns non-positive. Full `VALIDATED` status still requires
-120 scorecard outcomes and 50 eligible settled paper bets under the same skill
-and ROI tests. A formal combo is exactly two qualified player props from
-different matches with positive joint EV; there is no arbitrary requirement
-for total odds to exceed 2.00.
-
-Prop probabilities and formula confidence are deliberately separate:
-
-- `hit_probability` is the calibrated estimate that the selected outcome wins.
-  The raw model is shrunk toward the de-vigged market using only that family's
-  earlier settled outcomes; a new or weak family therefore stays close to the
-  market instead of manufacturing confidence.
-- `confidence_score` (0-100) measures whether that probability is trustworthy.
-  It combines source-specific data quality, family scorecard maturity, and the
-  family's Brier-score advantage over the market.
-
-Research value flags require at least 55% calibrated hit probability, odds from
-1.30 to 2.25, at least four percentage points of edge, and positive expected
-value. Formal recommendations are stricter: at least 58% hit probability,
-70/100 formula confidence, and 65/100 source quality. For aces and double
-faults, source quality comes from each player's available serve-count history;
-for derived games/set markets it comes from the match feature snapshot. Props
-outside these limits remain priced and settled for calibration, but cannot be
-recommended.
-
-Headline recommendations are player-level only. Match-total aces/games remain
-on the research scorecard but cannot graduate into `VALIDATED_SINGLE` or a
-formal combo. Paper ROI always uses flat 1u stakes so competing formulas remain
-comparable. A family that eventually graduates uses a formula-confidence-
-haircut tenth-Kelly stake, rounded to 0.5u and capped at 2u for a single or 1u
-for a two-leg combo. The weekly Tennis Reflector reports every family's current
-`EARLY_MAIN` / `VALIDATED` / `RESEARCH_ONLY` tier and the evidence behind it.
+`hit_probability` is a model estimate; `confidence_score` describes evidence quality.
+Neither the label nor a historical curve proves live calibration or profit.
+The evidence gate includes Brier, credible-profit and probe routes with sample,
+recency, drawdown and stake restrictions. Missing pricing-time quality receipts
+remain UNKNOWN. Paper results and manually recorded live bets stay separate.
 
 The embedded ace calibration curves are frozen on history strictly before
 2026-05-10, the first available evaluation slate. Rebuild them with
@@ -121,7 +88,7 @@ analysis:
 
 The betting message is built from the final report's `今日落注建議` section.
 It includes only formal `EARLY_MAIN` / `VALIDATED` recommendations and their
-listed odds, stake, calibrated hit probability and confidence. Watchlists,
+listed odds, stake, estimated hit probability and confidence. Watchlists,
 research-only rows and match-winner reference rows are never promoted into the
 message. A valid no-bet day sends an explicit no-bet conclusion to both
 recipients. Failed or incomplete analysis sends no betting card.
@@ -143,8 +110,9 @@ as separate ledgers; when no live bet has been recorded the message says so.
 - Tennis stats: `bsd_tennis` adapter targets BSD Tennis API (`https://tennis.bzzoiro.com/api`) because its docs currently list free JSON endpoints for tournaments, players, matches, live scores, predictions, and ATP/WTA rankings.
 - Historical backbone: `bootstrap-sackmann-history` imports Jeff Sackmann ATP/WTA CSV snapshots into local `player_match_history`, `rankings_history`, and tournament metadata tables. This is the preferred stable source for historical rank-bucket, tournament-level, round, serve/return, and sample-size features.
 - **Sackmann backbone is frozen (2026-10-14).** `JeffSackmann/tennis_atp` and `tennis_wta` both return 404 on GitHub; the last imported rows are ATP 2026-05-17 / WTA 2026-05-18 (tourney dates). ATP tour-level history stays fresh through TennisMyLife (`ATP_MAIN`, with serve stats), but **TML carries no WTA**, so **WTA history since ~2026-05 has no serve stats at all** — only tennisexplorer / composite (ESPN) results. Measured read-only on the live DB (distinct WTA matches with `ace_count` and `first_serve_points_won_pct` non-null / all WTA matches): 2026-01 524/778 (67.4%), 02 504/1452 (34.7%), 03 536/934 (57.4%), 04 354/1106 (32.0%), 05 306/876 (34.9%), 06 0/1394, 07 0/2319, 08 0/927, 09 0/2169, 10 0/510 (0.0%). Any WTA serve/return feature or serve-based prop is therefore running on history ≥5 months old. 404s are now stored as `raw_api_responses` rows (`entity_type='match_history_not_found'`, status 404) and surface in run-daily `source_warnings` and the daily health line (`來源錯誤 N · 降級 M`) instead of being dropped.
-- **WTA serve stats source (2026-10-14): official WTA API, landed but NOT yet wired.** `api.wtatennis.com` (the JSON behind wtatennis.com's public match centre, same host the WTA rankings already use; no login/token/CAPTCHA) serves per-match totals — aces, DFs, serve points, 1st in/won, total won on serve, break points, service games — for WTA tour, WTA 125 and Grand Slams, main draw **and qualifying**. **ITF women are not covered**: the API lists ITF events but their match feeds are empty, and no other legitimate source we can reach has them. `ingest-wta-stats --start --end` (provider `wta_official_stats`, `ingestion/ingest_wta_stats.py`) writes `wta_match_stats` with player_match_history-equivalent columns; the 18:00 daily run tops up the last 7 days. It is a separate table on purpose: a dozen feature readers count every player_match_history row without a provider filter (a third copy of WTA results would re-weight match-winner features), and feeding `ace_model` / `serve_return` / `hold_model` re-prices every WTA set/games prop — that is a model change and must pass the regression gate on a backfilled corpus first. Until then run-daily emits `source_warnings: wta_serve_stats / wta_serve_profiles_stale` (model serve date vs feed date) whenever the WTA serve rows the models read are > 30 days old. Today's behaviour, measured read-only 2026-10-14 on 1,361 WTA props since 2026-09-01: of 532 player-sides, 313 priced from serve rows > 90 days old (latest 2026-05-18) and 219 had no serve rows at all; `serve_return_profile` has no age bound, so ≥5 old rows count as "usable" and the hold model prices from them silently. Backfill 2026-06-01..now: `PYTHONPATH=src python -m tennis_wc.cli ingest-wta-stats --start 2026-06-01 --end <today>` (~0.5 s between requests).
-- **Sportsbet market restructure (2026-08-23, fixed 2026-10-15, EXP-20261015-05).** Three silent breaks at once, all "empty output, no error": (1) the event page stopped server-rendering every market tab except *Top Markets* — measured 2026-10-15, a WTA 1000 fixture advertised `numMarkets` 52 and rendered 4; weekly stored/advertised fell from 62–73% to 27–38%. `fetch_event_odds` now also reads each tab's `httpLink` (`/apigw/sportsbook-sports/...MarketGroupings/<id>/Markets`, skipping *Top Markets* and the single-game micro tabs), dedupes by market id, and writes `market_coverage` (advertised / page / added / failed tabs) into the stored raw response; live probe on 15 singles: 29% → 90% stored. Opt out with `TENNIS_SPORTSBET_MARKET_GROUPS=0`. (2) Handicap selections lost their brackets (`Name -3.5`, was `Name (-3.5)`), so no game / set / first-set handicap matched a player; `_spread_odds` now reads both, and for the unbracketed Alternative markets (both orientations of every line) keeps one pair per |line| — main market first, then the most balanced pair. (3) `<Player> Total Games 12.5` became `<Player> Total Games`; the registry required the trailing number, so player totals fell into `match_total_games` **and were priced there as match totals at a ~12.5 line** (125 such rows 08-23..10-15, 119 settled, never staked — they still sit in the match_total_games scorecard). Bracketed / old-key rows keep their old meaning (08-15 re-price is identical). *To win/lose 1st set and win match* is withdrawn by Sportsbet (no tab has it) — `player_first_set_match` is listed in `family_health.WITHDRAWN_FAMILIES`. run-daily now also emits `prop_family_absent` (a family with history that has written nothing inside the 28-day window — the silent check alone loses a family once it has been dead longer than its baseline) and `sportsbet_market_coverage` (< 60% of advertised markets stored, or most events with a failed tab). Bets: nothing about staking changed; the restored families go through the same gates as before.
+- **WTA serve stats source:** official WTA match statistics are collected separately. The direct fresh-history candidate was **rejected** in [EXP-20261026-04](../docs/experiments/EXP-20261026-04-tennis-wta-fresh-history.md); collecting more rows does not authorize wiring them into pricing. Legacy serve dates remain a coverage risk. Retain the current source until a separately registered same-corpus evaluation qualifies a replacement. `ingest-wta-stats` collects source observations; it does not promote a model.
+
+- **Sportsbet market restructure (2026-08-23, fixed 2026-10-15, EXP-20261015-05).** Three silent breaks at once, all "empty output, no error": (1) the event page stopped server-rendering every market tab except *Top Markets* — measured 2026-10-15, a WTA 1000 fixture advertised `numMarkets` 52 and rendered 4; weekly stored/advertised fell from 62–73% to 27–38%. `fetch_event_odds` now also reads each tab's `httpLink` (`/apigw/sportsbook-sports/...MarketGroupings/<id>/Markets`, skipping *Top Markets* and the single-game micro tabs), dedupes by market id, and writes `market_coverage` (advertised / page / added / failed tabs) into the stored raw response; live probe on 15 singles: 29% → 90% stored. Opt out with `TENNIS_SPORTSBET_MARKET_GROUPS=0`. (2) Handicap selections lost their brackets (`Name -3.5`, was `Name (-3.5)`), so no game / set / first-set handicap matched a player; `_spread_odds` now reads both, and for the unbracketed Alternative markets (both orientations of every line) keeps one pair per |line| — main market first, then the most balanced pair. (3) `<Player> Total Games 12.5` became `<Player> Total Games`; the registry required the trailing number, so player totals fell into `match_total_games` **and were priced there as match totals at a ~12.5 line** (125 such rows 08-23..10-15, 119 settled, never staked — legacy generic contracts without a saved feed market name are now reported as unverified and excluded by the versioned evidence contract; the original records remain intact). Bracketed / old-key rows keep their old meaning (08-15 re-price is identical). *To win/lose 1st set and win match* is withdrawn by Sportsbet (no tab has it) — `player_first_set_match` is listed in `family_health.WITHDRAWN_FAMILIES`. run-daily now also emits `prop_family_absent` (a family with history that has written nothing inside the 28-day window — the silent check alone loses a family once it has been dead longer than its baseline) and `sportsbet_market_coverage` (< 60% of advertised markets stored, or most events with a failed tab). Bets: nothing about staking changed; the restored families go through the same gates as before.
 - Odds: `sportsbet` adapter prefers a licensed/approved structured API. A scrape fallback exists only when explicitly enabled with `SPORTSBET_SOURCE_MODE=scrape` and `SPORTSBET_ALLOWED_SCRAPE_FALLBACK=true`; raw payloads are still stored and invalid/missing odds block betting output.
 - NBA Wong Choi reference applied: Python-first extraction, schema-normalised JSON, odds provenance, fake-data firewall, and deterministic math outside the LLM.
 

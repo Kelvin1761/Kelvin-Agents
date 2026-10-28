@@ -33,6 +33,7 @@ CALIBRATION_EPOCH = "2026-10-23"
 MIN_SETTLED = 100
 HIGH_BAND = 0.8
 MIN_HIGH_BAND = 30
+MIN_PICKED_EVENTS = 10  # monitoring guard; legs from one game are correlated
 ALERT_GAP = 0.10
 MARKET_LABELS = {"pts": "PTS", "reb": "REB", "ast": "AST", "3pm": "3PM", "fg3m": "3PM", "threes_made": "3PM", "stl": "STL", "blk": "BLK"}
 
@@ -61,10 +62,12 @@ def _section(root: Path, since: str, until: str, model_id: str | None = None) ->
         overall = report["overall"]
         picked = report["by_picked"].get("picked")
         by_market = report["by_market"]
+        picked_by_market = {}
     else:
         overall = report["by_probability_model"].get(model_id, empty)
         picked = overall.get("picked")
         by_market = overall.get("by_market", {})
+        picked_by_market = overall.get("picked_by_market", {})
     buckets = overall["variants"]["p_final"]["calibration"]
     return {
         "since": since, "until": until,
@@ -74,6 +77,9 @@ def _section(root: Path, since: str, until: str, model_id: str | None = None) ->
         "overall": _summ(buckets), "high_band": _high(buckets),
         "market_raw_close": _summ(overall.get("market_raw_close_calibration") or []),
         "picked": _summ(picked["variants"]["p_final"]["calibration"]) if picked else _summ([]),
+        "picked_event_clusters": (picked or {}).get("settled_event_clusters", 0),
+        "picked_by_stat": {MARKET_LABELS.get(m, m): _summ(sec["variants"]["p_final"]["calibration"])
+                           for m, sec in picked_by_market.items()},
         "by_stat": {MARKET_LABELS.get(m, m): _summ(sec["variants"]["p_final"]["calibration"])
                     for m, sec in by_market.items()},
         "buckets": buckets,
@@ -91,22 +97,30 @@ def build(until: str, root: Path | None = None, window_days: int = WINDOW_DAYS,
     cur = live or {"overall": _summ([]), "high_band": _summ([]), "market_raw_close": _summ([]),
                    "picked": _summ([]), "by_stat": {}, "buckets": [], "since": epoch, "until": until}
     total, high = cur["overall"], cur["high_band"]
+    picked = cur["picked"]
+    picked_events = cur.get("picked_event_clusters", 0)
+    picked_status = ("disabled" if model_id is None else
+                     "insufficient_n" if picked["n"] < MIN_SETTLED or picked_events < MIN_PICKED_EVENTS else
+                     "alert" if abs(picked["gap"]) > ALERT_GAP else "ok")
     if model_id is None:
         status = "disabled"
     elif total["n"] < MIN_SETTLED:
         status = "insufficient_n"
-    elif abs(total["gap"]) > ALERT_GAP or (high["n"] >= MIN_HIGH_BAND and abs(high["gap"]) > ALERT_GAP):
+    elif abs(total["gap"]) > ALERT_GAP or (high["n"] >= MIN_HIGH_BAND and abs(high["gap"]) > ALERT_GAP) or picked_status == "alert":
         status = "alert"
     else:
         status = "ok"
     return {
+        "selection_health": selection_health(until, root),
         "until": until, "since": cur["since"], "window_days": window_days, "epoch": epoch, "status": status,
         "min_settled": MIN_SETTLED, "alert_gap": ALERT_GAP,
         "probability_model_id": model_id,
         "excluded_model_legs": cur.get("excluded_model_legs", 0),
         "models_seen": cur.get("models_seen", {}),
         "overall": total, "high_band": high, "market_raw_close": cur["market_raw_close"],
-        "picked": cur["picked"], "by_stat": cur["by_stat"], "buckets": cur["buckets"],
+        "picked": picked, "picked_status": picked_status,
+        "picked_event_clusters": picked_events, "min_picked_events": MIN_PICKED_EVENTS,
+        "picked_by_stat": cur.get("picked_by_stat", {}), "by_stat": cur["by_stat"], "buckets": cur["buckets"],
         "all_engines_context": {k: legacy_mixed[k] for k in ("since", "overall", "high_band")},
         "note": "legs inside one game are correlated; n is legs, not independent clusters; "
                 "alert uses only latest pre-tip observations matching the current coefficient identity; "
@@ -131,12 +145,18 @@ def _pct(x: Any) -> str:
 
 def message_lines(report: dict) -> list[str]:
     o, h, m = report["overall"], report["high_band"], report["market_raw_close"]
+    health_line = selection_message(report.get("selection_health") or {})
+    picked = report.get("picked") or _summ([])
+    picked_line = (f"Selector選中腿：{picked['n']} 腿／{report.get('picked_event_clusters', 0)} 場"
+                   + (f"，預測 {_pct(picked['mean_p'])}／實際 {_pct(picked['hit_rate'])}" if picked['n'] else "，暫無已結算樣本")
+                   + ("；樣本未夠，未作判斷" if report.get("picked_status") == "insufficient_n" else "")
+                   + ("；⚠️ 選中腿校準警報" if report.get("picked_status") == "alert" else ""))
     head = f"📐 機率校準（現役模型，{report['since']} 起，已結算 {o['n']} 腿）"
     if report["status"] == "disabled":
         return [head, "校準層已刻意關閉；舊模型紀錄只作背景，唔會當成現役校準結果。"]
     if report["status"] == "insufficient_n":
-        return [head, f"樣本未夠（要 ≥{report['min_settled']} 腿）先判斷；暫時只記錄，唔作結論。"]
-    lines = [head, f"預測 {_pct(o['mean_p'])}／實際 {_pct(o['hit_rate'])}（差 {o['gap'] * 100:+.0f}pp）"
+        return [head, health_line, picked_line, f"樣本未夠（要 ≥{report['min_settled']} 腿）先判斷；暫時只記錄，唔作結論。"]
+    lines = [head, health_line, picked_line, f"預測 {_pct(o['mean_p'])}／實際 {_pct(o['hit_rate'])}（差 {o['gap'] * 100:+.0f}pp）"
              f"｜市場隱含 {_pct(m['mean_p'])}"]
     if h["n"]:
         lines.append(f"p≥80% 區：預測 {_pct(h['mean_p'])}／實際 {_pct(h['hit_rate'])}（{h['n']} 腿，差 {h['gap'] * 100:+.0f}pp）")
@@ -159,6 +179,55 @@ def main(argv: list[str] | None = None) -> int:
         write(report)
     print("\n".join(message_lines(report)))
     return 3 if report["status"] == "alert" else 75 if report["status"] == "disabled" else 0
+
+
+
+def selection_health(until: str, root: Path | None = None, window_days: int = 30) -> dict:
+    """Zero-bankers is an operational audit signal, never a parameter trigger."""
+    from collections import defaultdict
+    root = root or ledger.ledger_root()
+    since = max(CALIBRATION_EPOCH, (date.fromisoformat(until)-timedelta(days=window_days-1)).isoformat())
+    identity = current_model_id()
+    days = []
+    for day in ledger._iter_dates(since, until, root):
+        rows = ledger.read_rows(root, day)
+        exclusions = ledger.no_prediction_exclusions(rows)
+        rows = [r for r in rows if r.get('season_phase') != 'PRESEASON' and not ledger._excluded(r, exclusions)]
+        models = defaultdict(list)
+        expected = set()
+        for row in rows:
+            if row.get('row_type') == 'price_obs' and ledger._pre_tip(row):
+                expected.add(row.get('game_tag'))
+            if row.get('row_type') == 'model_obs':
+                models[row.get('game_tag')].append(row)
+        analysed, bankers = 0, 0
+        for tag, candidates in models.items():
+            chosen = ledger._choose_snapshot(candidates)
+            selected = [r for r in candidates if chosen and r.get('snapshot_id') == chosen]
+            if not selected or not identity or any(ledger.probability_model_id(r) != identity for r in selected):
+                continue
+            analysed += 1
+            bankers += int(any('1' in [str(x) for x in r.get('picked_in', [])] for r in selected))
+        complete = bool(expected) and analysed == len(expected)
+        days.append({'date': day, 'analysed_games': analysed, 'expected_priced_games': len(expected),
+                     'banker_games': bankers, 'coverage_complete': complete})
+    streak = 0
+    for day in reversed(days):
+        if not day['coverage_complete'] or day['banker_games']:
+            break
+        streak += 1
+    return {'status': 'review_required' if streak >= 3 else ('observing' if days else 'insufficient_data'),
+            'zero_banker_runs': streak, 'alert_after_runs': 3, 'days': days,
+            'probability_model_id': identity,
+            'note': 'Complete priced-game coverage only; missing/legacy/warmup data breaks the streak. No parameter changes.'}
+
+
+def selection_message(health: dict) -> str:
+    if health.get('status') == 'review_required':
+        return f"⚠️ 連續 {health['zero_banker_runs']} 個完整可評估賽日零穩膽：策略需審計，唔代表已證明成功避險。"
+    if health.get('status') == 'insufficient_data':
+        return '出手監察：正式逐日紀錄未足，唔判定策略正常或失效。'
+    return f"出手監察：連續 {health.get('zero_banker_runs', 0)} 個完整可評估賽日零穩膽；達3日觸發審計提醒。"
 
 
 if __name__ == "__main__":

@@ -3,36 +3,14 @@ from __future__ import annotations
 from datetime import date
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.database.history_observations import history_active_clause
+from tennis_wc.features.history_values import clean_history_row
+from tennis_wc.features.history_asof import guard_clause, guard_params
 from tennis_wc.features.common import avg, parse_date, rate, shrink_rate, utc_now
 from tennis_wc.features.opponent_rank_buckets import get_opponent_rank_at_match_date
 
 
-ROUND_MAP = {
-    "final": "F",
-    "atp 500 final": "F",
-    "semi final": "SF",
-    "semifinal": "SF",
-    "semifinals": "SF",
-    "quarter final": "QF",
-    "quarterfinal": "QF",
-    "quarterfinals": "QF",
-    "round of 16": "R16",
-    "r16": "R16",
-    "round of 32": "R32",
-    "r32": "R32",
-    "round of 64": "R64",
-    "r64": "R64",
-    "round of 128": "R128",
-    "r128": "R128",
-    "qualifying": "QUALIFYING",
-}
-
-
-def normalise_round(raw_round: str) -> str:
-    """
-    Convert API round names to standard values.
-    """
-    return ROUND_MAP.get(raw_round.strip().lower(), "UNKNOWN")
+from tennis_wc.features.round_labels import ROUND_MAP, normalise_round
 
 
 def calculate_round_stats(
@@ -42,6 +20,7 @@ def calculate_round_stats(
     surface: str | None,
     as_of_date: date,
     time_window: str,
+    *, persist: bool = True, start_time: str | None = None,
 ) -> dict:
     """
     Calculate round-specific player performance.
@@ -59,8 +38,10 @@ def calculate_round_stats(
         WHERE player_id = ? AND match_date >= ? AND match_date < ?
     """
     params: list = [player_id, start, as_of_date.isoformat()]
+    query += guard_clause()
+    params.extend(guard_params(as_of_date.isoformat(), start_time))
     with get_connection() as conn:
-        rows = [dict(row) for row in conn.execute(query, params).fetchall()]
+        rows = [clean_history_row(row) for row in conn.execute(query + f" AND {history_active_clause(conn)}", params).fetchall()]
     rows = [row for row in rows if normalise_round(row["round"]) == round_code]
     if tournament_level:
         level_rows = [row for row in rows if row["tournament_level"] == tournament_level]
@@ -91,6 +72,9 @@ def calculate_round_stats(
         "sample_size": matches,
         "warnings": ["low_sample"] if matches < 10 else [],
     }
+
+    if not persist:
+        return result
 
     now = utc_now()
     with get_connection() as conn:

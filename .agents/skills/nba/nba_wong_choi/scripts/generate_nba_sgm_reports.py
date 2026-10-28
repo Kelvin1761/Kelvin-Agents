@@ -148,6 +148,10 @@ def extract_banker_leg(content):
     return f'{desc} @{odds} (EV {ev:+.1f}%)'
 
 
+def quoted_combo_count(combos):
+    return sum("Sportsbet SGM 報價" in section and "**@" in section for section in combos.values())
+
+
 def generate_all_sgm_report(games_data, analysis_date):
     """Generate the All SGM Report with full leg analysis for every combo."""
     lines = []
@@ -166,16 +170,14 @@ def generate_all_sgm_report(games_data, analysis_date):
         lines.append('')
 
         # Add all combos with full analysis
-        for combo_num in sorted(game['combos'].keys(), key=lambda k: (0, k) if isinstance(k, int) else (1, k)):
+        for combo_num in (key for key in game['combos'] if str(key) == '1'):
             combo_content = game['combos'][combo_num]
             # Remove the leading ## to make it fit under the game section
             lines.append(combo_content)
             lines.append('')
 
         # Add Value Bomb if exists
-        if game.get('value_bomb'):
-            lines.append(game['value_bomb'])
-            lines.append('')
+        # Value/high/bomb strategies are retired from new formal reports.
 
         # Add summary
         if game.get('summary'):
@@ -188,10 +190,10 @@ def generate_all_sgm_report(games_data, analysis_date):
     lines.append('=' * 60)
     lines.append('# 📊 全日統計')
     lines.append('=' * 60)
-    total_combos = sum(len(g['combos']) for g in games_data)
+    total_combos = sum(quoted_combo_count(g['combos']) for g in games_data)
     total_vb = sum(1 for g in games_data if g.get('value_bomb'))
     lines.append(f'總場次: {len(games_data)}')
-    lines.append(f'總組合數: {total_combos}')
+    lines.append(f'已報價 SGM 組合數: {total_combos}')
     lines.append(f'Value Bomb: {total_vb} 場')
     lines.append('')
 
@@ -268,6 +270,7 @@ def main():
     parser = argparse.ArgumentParser(description='NBA Wong Choi SGM Report Generator')
     parser.add_argument('--dir', required=True, help='Path to the NBA Analysis directory')
     parser.add_argument('--date', default=None, help='Analysis date (auto-detected from dir name)')
+    parser.add_argument('--games', nargs='+', help='Only compile these validated game tags')
     args = parser.parse_args()
 
     target_dir = args.dir
@@ -288,6 +291,13 @@ def main():
     # Find all game analysis files
     pattern = os.path.join(target_dir, 'Game_*_Full_Analysis.md')
     files = sorted(glob.glob(pattern))
+
+    if args.games:
+        if any(not re.fullmatch(r'[A-Z]{2,4}_[A-Z]{2,4}', tag) for tag in args.games):
+            parser.error('Invalid game tag')
+        files = [os.path.join(target_dir, f'Game_{tag}_Full_Analysis.md') for tag in dict.fromkeys(args.games)]
+        if any(not os.path.isfile(path) for path in files):
+            parser.error('Selected game report is missing')
 
     if not files:
         print(f'⚠️ 搵唔到任何 Game_*_Full_Analysis.md 喺 {target_dir}')
@@ -311,7 +321,8 @@ def main():
         summary = extract_summary(content)
         banker_leg = extract_banker_leg(content)
 
-        print(f'    ✅ 組合: {len(combos)} 個 | Value Bomb: {"有" if value_bomb else "冇"} | Banker: {banker_leg[:40] if banker_leg else "N/A"}')
+        priced_count = quoted_combo_count(combos)
+        print(f'    ✅ 已報價 SGM: {priced_count} 個（分析欄目 {len(combos)} 個） | Value Bomb: {"有" if value_bomb else "冇"} | Banker: {banker_leg[:40] if banker_leg else "N/A"}')
 
         games_data.append({
             'tag': tag,

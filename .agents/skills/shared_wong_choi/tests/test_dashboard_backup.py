@@ -312,3 +312,50 @@ def test_remote_count_parser_accepts_single_scalar_row() -> None:
     query = dashboard_backup._count_query()
     assert "UNION" not in query
     assert query.count("SELECT COUNT(*)") == len(D1_TABLES)
+
+
+@pytest.mark.parametrize("failure", [
+    '{"error": {"code": 7403}}',
+    "The given account is not valid [code: 7403]",
+])
+def test_count_auth_failure_retries_read_only_probe(tmp_path, monkeypatch, failure):
+    dashboard = _dashboard(tmp_path)
+    delegate = FakeRunner([1, 1])
+    commands = []
+    waits = []
+    monkeypatch.setattr(dashboard_backup.time, "sleep", waits.append)
+
+    def runner(command, cwd):
+        commands.append(command)
+        if len(commands) <= 2:
+            return subprocess.CompletedProcess(command, 1, "", failure)
+        return delegate(command, cwd)
+
+    result = backup_d1_ledger(
+        dashboard, tmp_path / "state", warm_root=None, runner=runner,
+    )
+    assert result["status"] == "pass"
+    assert waits == [1, 2]
+    assert commands[0] == commands[1] == commands[2]
+    assert delegate.exports == 1
+    assert delegate.queries == 2
+
+
+@pytest.mark.parametrize("code, attempts", [(7403, 3), (10000, 1), (74030, 1)])
+def test_persistent_auth_failure_stays_failed_without_export(
+    tmp_path, monkeypatch, code, attempts,
+):
+    dashboard = _dashboard(tmp_path)
+    state = tmp_path / "state"
+    commands = []
+    monkeypatch.setattr(dashboard_backup.time, "sleep", lambda _: None)
+
+    def runner(command, cwd):
+        commands.append(command)
+        assert "execute" in command
+        return subprocess.CompletedProcess(command, 1, "", json.dumps({"code": code}))
+
+    with pytest.raises(DashboardBackupError, match="D1 row-count query failed"):
+        backup_d1_ledger(dashboard, state, warm_root=None, runner=runner)
+    assert len(commands) == attempts
+    assert not list((state / "dashboard_d1" / "snapshots").iterdir())

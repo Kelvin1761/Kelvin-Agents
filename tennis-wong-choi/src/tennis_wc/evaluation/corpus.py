@@ -61,10 +61,19 @@ UNVERIFIABLE = None
 # The one-off classifier for rows written before the column existed, and the
 # expression the migration uses. Kept beside the runtime predicate so the two
 # can never drift apart.
-CLASSIFY_SQL = """
+def timestamp_before_clause(captured: str, start: str) -> str:
+    def aware(column):
+        return (f"(julianday({column}) IS NOT NULL AND (substr({column},-1)='Z' OR "
+                f"(substr({column},-6,1) IN ('+','-') AND substr({column},-3,1)=':')))" )
+    return f"{aware(captured)} AND {aware(start)} AND julianday({captured})<julianday({start})"
+
+
+CLASSIFY_SQL = f"""
     CASE
-        WHEN m.start_time_utc IS NULL OR m.start_time_utc = '' THEN NULL
-        WHEN p.recorded_at < m.start_time_utc THEN 1
+        WHEN julianday(p.recorded_at) IS NULL OR julianday(m.start_time_utc) IS NULL THEN NULL
+        WHEN substr(p.recorded_at,-1)!='Z' AND NOT (substr(p.recorded_at,-6,1) IN ('+','-') AND substr(p.recorded_at,-3,1)=':') THEN NULL
+        WHEN substr(m.start_time_utc,-1)!='Z' AND NOT (substr(m.start_time_utc,-6,1) IN ('+','-') AND substr(m.start_time_utc,-3,1)=':') THEN NULL
+        WHEN {timestamp_before_clause('p.recorded_at','m.start_time_utc')} THEN 1
         ELSE 0
     END
 """
@@ -93,10 +102,13 @@ def tracker_point_in_time_clause(table: str = "clv_tracker") -> str:
     A correlated EXISTS rather than a JOIN, so the readers' unqualified column
     names (`match_date`, `updated_at`) stay unambiguous.
     """
+    from tennis_wc.database.result_consensus import result_agreement_clause
+
     return (
         f"EXISTS (SELECT 1 FROM matches pit_m WHERE pit_m.id = {table}.match_id "
         f"AND pit_m.start_time_utc IS NOT NULL AND pit_m.start_time_utc != '' "
-        f"AND {table}.recorded_at < pit_m.start_time_utc)"
+        f"AND {timestamp_before_clause(f'{table}.recorded_at','pit_m.start_time_utc')}) "
+        f"AND {result_agreement_clause(table)}"
     )
 
 
@@ -104,13 +116,21 @@ def classify_point_in_time(recorded_at: str | None,
                            start_time_utc: str | None) -> int | None:
     """Classify one row. Returns POINT_IN_TIME / POST_START / UNVERIFIABLE.
 
-    Both arguments are ISO-8601 UTC strings, which compare correctly as text
-    provided they carry the same shape -- they do, both come from `utc_now()`
-    or from the provider's own `start_time_utc`.
+    Compare instants, not spelling: offsets and fractional seconds may differ.
+    Malformed or timezone-free timestamps do not prove pre-match capture.
     """
+    from datetime import datetime
+
     if not start_time_utc or not recorded_at:
         return UNVERIFIABLE
-    return POINT_IN_TIME if str(recorded_at) < str(start_time_utc) else POST_START
+    try:
+        captured=datetime.fromisoformat(str(recorded_at).replace('Z','+00:00'))
+        start=datetime.fromisoformat(str(start_time_utc).replace('Z','+00:00'))
+    except (TypeError,ValueError):
+        return UNVERIFIABLE
+    if captured.tzinfo is None or start.tzinfo is None:
+        return UNVERIFIABLE
+    return POINT_IN_TIME if captured<start else POST_START
 
 
 def corpus_summary(conn) -> dict[str, int]:

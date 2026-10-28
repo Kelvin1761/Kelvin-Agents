@@ -138,3 +138,55 @@ def test_cached_player_outside_verified_roster_is_excluded_without_injury_donati
     assert updated['usage_redistribution']['BOS'][NAMES[1]]['bonus_USG']==30  # not 80
     assert departed['gamelog']==original['players']['BOS'][2]['gamelog']
     assert a.availability_current(updated,now=NOW)
+
+
+def test_refresh_validates_after_request_completion(monkeypatch):
+    clock=iter([NOW,NOW+timedelta(seconds=3)])
+    monkeypatch.setattr(a,'_utc_now',lambda:next(clock))
+    fresh=maps(NOW+timedelta(seconds=1))
+    updated=a.refresh_availability(package(NOW-timedelta(hours=1)),fetch=lambda team:fresh[team])
+    assert a.availability_current(updated,now=NOW+timedelta(seconds=3))
+
+
+def test_game_starting_during_refresh_cannot_be_published(monkeypatch):
+    old=package();old['meta']['date']=(NOW+timedelta(seconds=2)).isoformat()
+    before=copy.deepcopy(old);clock=iter([NOW,NOW+timedelta(seconds=3)])
+    monkeypatch.setattr(a,'_utc_now',lambda:next(clock))
+    fresh=maps(NOW+timedelta(seconds=1))
+    with pytest.raises(a.AvailabilityUnavailable,match='started during'):
+        a.refresh_availability(old,fetch=lambda team:fresh[team])
+    assert old==before
+
+
+def test_defender_context_excludes_departed_and_out_but_preserves_reference():
+    original=package();original['key_defenders']={'BOS':[{'name':'Former Defender'},{'name':NAMES[0]},{'name':NAMES[1]}],'LAL':[]}
+    before=copy.deepcopy(original);fresh=maps();fresh['BOS'][NAMES[1]]='Questionable'
+    updated=a.apply_availability(original,fresh)
+    assert [d['name'] for d in updated['key_defenders']['BOS']]==[NAMES[1]]
+    assert updated['key_defenders_reference']['BOS']==original['key_defenders']['BOS']
+    assert not updated['meta']['defender_availability']['actual_matchups_verified']
+    assert updated['meta']['defender_availability']['teams']['BOS']['excluded']==[
+        {'name':'Former Defender','reason':'not_on_verified_roster'},
+        {'name':NAMES[0],'reason':'known_unavailable'}]
+    assert original==before
+    assert a.apply_availability(updated,fresh)==updated
+    recovered=a.apply_availability(updated,maps(status='Active'))
+    assert [d['name'] for d in recovered['key_defenders']['BOS']]==[NAMES[0],NAMES[1]]
+
+
+def test_unverified_defender_roster_is_explicitly_unavailable():
+    original=package();original['key_defenders']={'BOS':[{'name':NAMES[1]}]}
+    updated=a.apply_availability(original,{'BOS':{},'LAL':{}})
+    assert updated['key_defenders']['BOS']==[]
+    assert updated['meta']['defender_availability']['teams']['BOS']['status']=='roster_unverified'
+    assert not a.availability_current(updated,now=NOW)
+
+
+def test_full_defender_reference_allows_filter_before_top_eight_limit():
+    data={str(i):{'name':f'Former {i}','team':'BOS','D_FGA_unit':'total_attempts','D_FGA':30,'PCT_PLUSMINUS':-.1+i*.001} for i in range(9)}
+    data['current']={'name':NAMES[1],'team':'BOS','D_FGA_unit':'total_attempts','D_FGA':30,'PCT_PLUSMINUS':.1}
+    assert len(extractor.key_defenders_for_team(data,'BOS'))==8
+    original=package();original['key_defenders']={'BOS':extractor.key_defenders_for_team(data,'BOS',limit=None)}
+    updated=a.apply_availability(original,maps())
+    assert [d['name'] for d in updated['key_defenders']['BOS']]==[NAMES[1]]
+    assert len(updated['key_defenders_reference']['BOS'])==10
