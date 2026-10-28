@@ -637,6 +637,56 @@ class NbaDailyScheduleTests(unittest.TestCase):
         self.assertIn("baseline 0.24｜ML 0.21", message)
 
 
+    def test_betting_card_is_validated_at_the_snapshot_freeze_instant(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            snapshot = Path(tmp)
+            frozen = "2026-10-29T00:39:10.407771+11:00"
+            (snapshot / "manifest.json").write_text(json.dumps({"created_at": frozen}))
+            with mock.patch.object(schedule, "nba_publication_firewall", return_value=(True, [])) as firewall:
+                self.assertEqual(schedule.card_firewall(snapshot)("report.md", "odds.json"), (True, []))
+            firewall.assert_called_once_with(
+                "report.md", "odds.json", validation_time=datetime.fromisoformat(frozen))
+            for manifest in ({}, {"created_at": "2026-10-29T00:39:10"}):
+                (snapshot / "manifest.json").write_text(json.dumps(manifest))
+                self.assertIs(schedule.card_firewall(snapshot), schedule.nba_publication_firewall)
+
+    def test_partial_snapshot_sends_card_for_frozen_games_only(self) -> None:
+        exported = {
+            "validation_status": "partial",
+            "recommendations": [
+                {"id": "nba:2026-10-29:DEN_NOP:combo:1"},
+                {"id": "nba:2026-10-29:LAL_LAC:combo:1"},
+            ],
+            "warnings": ["nba_firewall_blocked:LAL_LAC"],
+        }
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
+            schedule, "export_nba_snapshot", return_value=exported
+        ), mock.patch.object(
+            schedule, "nba_betting_message", return_value="TITLE\nBODY"
+        ) as message, mock.patch.object(
+            schedule, "notify_once", return_value={"ok": True, "status": "sent"}
+        ) as notify:
+            snapshot = Path(tmp) / "20261028-210500-000000"
+            schedule.send_partial_betting_card("2026-10-29", snapshot, ["LAL_LAC", "OKC_DAL"], _Log())
+        card_input = message.call_args.args[1]
+        self.assertEqual([row["id"] for row in card_input["recommendations"]], ["nba:2026-10-29:DEN_NOP:combo:1"])
+        self.assertEqual(card_input["warnings"], [])
+        self.assertEqual(card_input["validation_status"], "valid")
+        key, card = notify.call_args.args
+        self.assertEqual(key, "pregame-card:2026-10-29:20261028-210500-000000")
+        self.assertEqual(notify.call_args.kwargs, {"audience": "content"})
+        self.assertTrue(card.startswith("TITLE（部分場次）\n⏳ 未開盤／未通過：LAL_LAC, OKC_DAL"))
+        self.assertTrue(card.endswith("\nBODY"))
+
+    def test_partial_card_is_not_sent_when_frozen_games_fail_validation(self) -> None:
+        exported = {"validation_status": "partial", "recommendations": [{"id": "nba:2026-10-29:DEN_NOP:combo:1"}],
+                    "warnings": ["nba_firewall_blocked:GSW_MIN"]}
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.object(
+            schedule, "export_nba_snapshot", return_value=exported
+        ), mock.patch.object(schedule, "notify_once") as notify:
+            schedule.send_partial_betting_card("2026-10-29", Path(tmp) / "s", ["LAL_LAC"], _Log())
+        notify.assert_not_called()
+
 if __name__ == "__main__":
     unittest.main()
 # Role-specific launchd jobs preserve the intended slot even after sleep/wake
