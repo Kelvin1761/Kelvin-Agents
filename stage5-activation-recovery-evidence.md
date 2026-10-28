@@ -33,6 +33,13 @@ The independently authorized read-only reviewer found no must-fix issue in the
 two-file core patch; this is not immutable release approval. This standalone
 plan must also be checked before release.
 
+Preservation checkpoint3411dd0d is pushed on the isolated non-main branch.
+The authorized reviewer also checked this standalone plan without a required
+correction. Quick recheck wc-run-64iokybc passed. After the observed foreign
+release finished, disjoint main28f24137 was merged into this work branch;
+production was independently observed at that same SHA. These observations
+do not approve the foreign NBA work and do not replace fresh release gates.
+
 HEAD checks are boundary observations, not atomic serialization. Shared cutover
 lease/Git CAS and changed-plist ownership remain open. This release does not
 complete forward-only installation, research cadence, native firing, pilots,
