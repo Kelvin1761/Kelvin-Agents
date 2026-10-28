@@ -730,10 +730,15 @@ def _class_weight_detail_lines(auto, name):
     if name == "class_score":
         d = sd.get("class") or {}
         lines = [f"基礎分 {float(d['base']):.1f}"] if d.get("base") is not None else []
-        for n in d.get("notes") or []:
-            lines.append(str(n))
-        if d.get("final") is not None and d.get("notes"):
-            lines.append(f"級數分 ＝ {float(d['final']):.1f}")
+        adjustments = d.get("adjustments")
+        if adjustments is None:   # 舊 Logic 冇逐項加減，只有文字
+            lines.extend(str(n) for n in d.get("notes") or [])
+        else:
+            lines.extend(f"{a['factor']} {float(a['delta']):+.2f}" for a in adjustments)
+            if not adjustments:
+                lines.append("冇規則觸發（出賽 6 場或以上、冇降班、冇省轉都會）")
+        if d.get("final") is not None and (d.get("notes") or adjustments):
+            lines.append(f"級數分 ＝ {float(d['final']):.1f}（0-100 封頂）")
         return lines
     if name == "rating_score":
         d = sd.get("rating") or {}
