@@ -97,6 +97,11 @@ def load_engine(engine_dir: Path):
         "centred_weights": dict(getattr(scoring, "CENTRED_MATRIX_WEIGHTS", {}) or {}),
         "coefficient_model": hasattr(scoring, "compose_matrix_score"),
         "debut_weights": dict(getattr(scoring, "DEBUT_MATRIX_WEIGHTS", {}) or {}),
+        # 有權重但入分開關熄咗嘅維度（HKJC 晨操，EXP-20261029-02）：恆定 60，排名冇影響。
+        "retired_dimensions": (
+            {"trackwork": "EXP-20261029-02"}
+            if getattr(scoring, "TRACKWORK_SCORING", "on") != "on" else {}
+        ),
         "formulas": formulas,
         # AU stretches each dimension onto one ruler; HKJC does not have gains.
         "gains": dict(getattr(matrix_mapper, "MATRIX_DISPLAY_GAINS", {}) or {}),
@@ -401,6 +406,10 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
         names = "、".join(labels.get(k, k) for k in centred)
         A(f"ℹ️ **{names}** 係「以 60 為中心」嘅維度：貢獻 = 權重 ×（分 − 60），唔佔加埋等於 100% 嘅份額。")
         A("")
+    if model.get("retired_dimensions"):
+        names = "、".join(labels.get(k, k) for k in model["retired_dimensions"])
+        A(f"⚠️ **{names}** 已經退出排名：一律 60 分，上面嘅權重對排名冇影響（見第 2 節）。")
+        A("")
     if any(weights.get(k, 0.0) <= 0 for k in labels):
         dead = [labels.get(k, k) for k in labels if weights.get(k, 0.0) <= 0]
         A(f"⚠️ **{'、'.join(dead)}** 喺報告見到，但權重係 0 —— 佢完全唔影響排名，純粹俾你睇。")
@@ -416,8 +425,15 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
         head = f"### {name}　`{key}`　— {display_weight}"
         if weight <= 0:
             head += "（唔入排名）"
+        retired = (model.get("retired_dimensions") or {}).get(key)
+        if retired:
+            head += "（已退出排名）"
         A(head)
         A("")
+        if retired:
+            A(f"⚠️ 呢個維度已經退出排名（{retired}）：每匹馬一律 60 分，權重照留但對排名冇影響；"
+              "報告入面嘅內容只作顯示參考。下面嘅實測數字係退出之前嘅語料。")
+            A("")
         components = formulas.get(key, [])
         if not components:
             A("_（呢個維度冇喺配方表出現）_")

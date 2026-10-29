@@ -20,6 +20,15 @@ def score(trend_word, times):
 
 
 class TrackworkTrendTests(unittest.TestCase):
+    """舊讀法（TRACKWORK_SCORING="on"）嘅行為；live 預設係 off。"""
+
+    def setUp(self):
+        self._saved = scoring.TRACKWORK_SCORING
+        scoring.TRACKWORK_SCORING = "on"
+
+    def tearDown(self):
+        scoring.TRACKWORK_SCORING = self._saved
+
     def test_comparable_times_keep_trend(self):
         self.assertEqual(score("加強", [56.0, 55.0])[0], W["improving_base"])
         self.assertEqual(score("放緩", [55.0, 56.0])[0], W["slowing_base"])
@@ -30,6 +39,18 @@ class TrackworkTrendTests(unittest.TestCase):
 
     def test_missing_times_keep_label(self):
         self.assertEqual(score("加強", [])[0], W["improving_base"])
+
+
+class TrackworkRetiredTests(unittest.TestCase):
+    """EXP-20261029-02：晨操退出排名，leaf 同初出備戰分都係中性。"""
+
+    def test_live_default_is_off(self):
+        self.assertEqual(scoring.TRACKWORK_SCORING, "off")
+
+    def test_leaf_and_debut_prep_are_neutral(self):
+        self.assertEqual(score("加強", [56.0, 55.0])[0], 60.0)
+        horse = {"_data": {"trackwork_digest": "維持分85、備戰分100、復刻分98。"}}
+        self.assertEqual(RacingEngine(horse, {"venue": "沙田"})._prep_score(), 60.0)
 
 
 if __name__ == "__main__":

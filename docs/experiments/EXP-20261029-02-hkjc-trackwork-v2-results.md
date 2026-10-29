@@ -80,3 +80,14 @@ python3 $P walkforward $S/v2_base.jsonl --current --out $S/v2_cur.jsonl
 python3 $P walkforward $S/v2_base.jsonl --out $S/v2_wf.jsonl
 python3 $H compare $S/v2_cur.jsonl $S/v2_wf.jsonl --stage4 walk_forward_oos --leakage-audit-passed
 ```
+
+## 決定（2026-10-29，Kelvin）：晨操退出排名
+
+- `scoring.TRACKWORK_SCORING = "off"`：`trackwork_trend_score` 同初出馬 `_prep_score` 一律 60；舊讀法保留喺 `"on"`。
+  晨操分析、時間線、pattern 照顯示。
+- 核實：live 開關回放 404 場，picks 同第 1 節 `hkjc_arm_no_trackwork.py` **零差異** —— 上線嘅就係被量度嘅嗰個。
+- 預期影響：Gold／Good 0.00（第 1 節）。**係簡化，唔係改善**；判決器冇俾 WIN，係 Kelvin 揀咗「同樣結果下用簡單啲嘅模型」。
+- 連帶：`data_contract` 唔再閘 `trackwork_trend_score`（恆定 60 會被當死欄位攔發佈），HKJC 基準重新 calibrate；
+  模型說明生成器標明「已退出排名」。
+- 晨操維度權重（~1%）冇刪：恆定 60 對所有馬一樣，排名唔受影響；改權重要另做 refit。
+- 重新入分嘅條件：forward `trackwork_rescreen`（60 個賽日）或者抽到新資料（試閘名次／頭馬距離、更長歷史）之後過 Stage 4 v3。

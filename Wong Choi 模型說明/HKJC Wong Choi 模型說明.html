@@ -135,6 +135,7 @@ ul, ol { padding-left:1.5rem; }
 <p>呢個唔一定係錯，但值得查：通常代表某個維度嘅分數散開程度同當初調校時唔同咗</p>
 <p>（例如換咗數據源、或者有 leaf 退役），權重就冇再對應返佢真正嘅話事權。</p>
 <p>ℹ️ <strong>同程表現</strong> 係「以 60 為中心」嘅維度：貢獻 = 權重 ×（分 − 60），唔佔加埋等於 100% 嘅份額。</p>
+<p>⚠️ <strong>晨操狀態</strong> 已經退出排名：一律 60 分，上面嘅權重對排名冇影響（見第 2 節）。</p>
 <h2>2. 每個維度食緊咩</h2>
 <h3>檔位與走位（不含步速）　<code>race_shape</code>　— 權重 27.4%</h3>
 <table><thead><tr>
@@ -240,7 +241,8 @@ ul, ol { padding-left:1.5rem; }
 </tr>
 </tbody></table>
 <p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>12.08 分</strong>；<strong>17.5%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
-<h3>晨操狀態　<code>trackwork</code>　— 權重 1.0%</h3>
+<h3>晨操狀態　<code>trackwork</code>　— 權重 1.0%（已退出排名）</h3>
+<p>⚠️ 呢個維度已經退出排名（EXP-20261029-02）：每匹馬一律 60 分，權重照留但對排名冇影響；報告入面嘅內容只作顯示參考。下面嘅實測數字係退出之前嘅語料。</p>
 <table><thead><tr>
 <th>基礎分</th>
 <th>喺呢個維度佔</th>
@@ -438,10 +440,10 @@ ul, ol { padding-left:1.5rem; }
 </tr>
 </tbody></table>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-10-29 08:41 AEDT</code></li>
-<li>Git commit：<code>244a7bb5</code></li>
+<ul><li>生成時間：<code>2026-10-29 21:18 AEDT</code></li>
+<li>Git commit：<code>fadb6ed1</code></li>
 <li>Scoring contract：<code>HKJC_9D_CONTRACT_2026_10_10_REGISTRY_TRACKWORK_DISTANCE_FIT_RACE_SHAPE_ROBUST_WINSOR10_PIT_RAIL_DRAW_V2_DISTANCE_COMPONENT_V1</code></li>
-<li><code>scoring.py</code> 指紋：<code>a6aaf535c00e</code></li>
+<li><code>scoring.py</code> 指紋：<code>8cd601524cb3</code></li>
 <li><code>matrix_mapper.py</code> 指紋：<code>1da521a47df6</code></li>
 <li><code>renderer.py</code> 指紋：<code>29b4af6424e9</code></li>
 <li>實測樣本：<strong>60 場、732 匹馬</strong>，由 <code>2026-10-11_ShaTin</code> 到 <code>2026-10-28_ShaTin</code>（跳過 351 個舊格式檔案）</li></ul>

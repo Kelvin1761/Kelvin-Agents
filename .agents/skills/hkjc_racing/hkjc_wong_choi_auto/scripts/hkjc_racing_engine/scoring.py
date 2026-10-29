@@ -582,6 +582,12 @@ def score_band(score):
 # 淨「表現」覆檢唔計。改呢個值 = 改模型，要跟判決。
 OFFICIAL_INJURY_SCORING = "off"
 
+# 晨操入唔入排名（EXP-20261029-02，Kelvin 2026-10-29 決定退出）。
+#   "off" = 晨操 leaf 同初出馬備戰分一律中性 60，只顯示（live 預設）
+#   "on"  = 舊讀法（首尾快操比趨勢 + 課數活躍度）
+# 證據：剷走 135 場排名郁、Gold／Good 0.00；十六個新讀法冇一個贏。改呢個值 = 改模型。
+TRACKWORK_SCORING = "off"
+
 TRACKWORK_MICRO_WEIGHTS = {
     # 1. LLM 綜合文字指標 (Text-based trend)
     "rebound_base": 66.0,    # 翻案復刻

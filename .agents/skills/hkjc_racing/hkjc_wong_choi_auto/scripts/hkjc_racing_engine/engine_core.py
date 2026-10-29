@@ -733,6 +733,8 @@ class RacingEngine:
         return 60, "同程證據未算清晰，按中性處理。", "best_distance"
 
     def _trackwork_trend_score(self):
+        if scoring.TRACKWORK_SCORING != "on":
+            return 60.0, "晨操退出排名（EXP-20261029-02），只作顯示參考", "trackwork_digest"
         trackwork = self._trackwork_markers()
         classification = trackwork["classification"]
         trend = trackwork["trend"]
@@ -2981,6 +2983,9 @@ class RacingEngine:
 
 
     def _prep_score(self):
+        # 初出馬穩定性用嘅備戰分都係晨操；晨操退出排名就一齊中性（EXP-20261029-02）
+        if scoring.TRACKWORK_SCORING != "on":
+            return 60.0
         digest = self._value("trackwork_digest")
         numbers = re.findall(r"備戰分(\d+(?:\.\d+)?)", str(digest or ""))
         return float(numbers[-1]) if numbers else 60.0
