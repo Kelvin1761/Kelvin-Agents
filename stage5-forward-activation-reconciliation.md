@@ -210,3 +210,36 @@ changing the unowned state,41.16s, wc-run-cen8ops0. Quick passed
 wc-run-k5uon62w; it does not run these tests or certify installation safety.
 No expected-failure marker or relaxed assertion conceals these blockers.
 This checkpoint is deliberately incomplete non-main preservation, not delivery.
+
+## Actual candidate rendering source — 2026-10-30
+
+The four real domain/Central installers now expose side-effect-free
+`--render-only DEST` entrypoints. HKJC/NBA share their normal template loops,
+Tennis shares `install_one`, and Central durability/research use the same
+render functions as normal installation. Rendering skips launchctl, script
+chmod, runtime/repository log creation, research initialization and receipt
+writes. Tennis still checks that its configured runtime inputs exist; it does
+not open the fixture database or source provider configuration.
+
+The unified installer also has a render-only mode. It calls those real
+entrypoints, requires a new destination and checks exactly its20 allowlisted
+labels, plist structure/label, regular non-symlink files, size and mode. It does
+not run the ordinary installation path. This removes the need to invent
+candidate hashes from arbitrary observed installed bytes. It does not yet
+create an ownership journal, hold a shared cutover lease, authorize writes or
+complete a compare-and-swap operation. The three ownership REDs remain open.
+
+Actual render-entrypoint RED4 was reproduced before changing source. After
+implementation all5 miniature-checkout cases (four families plus unified20)
+pass without calling fake launchctl or modifying checkout/runtime files or
+creating log directories. Combined selected existing installer/snapshot tests:
+37passed,3known ownership cases explicitly deselected,252.20s,
+wc-run-q69ux1_n. This is not a claim that the entire WIP suite passes.
+Shell syntax checks and quick wc-run-iv8v2ijr pass; goldens unchanged.
+No full/immutable gate, release, installation, live job/configuration or model
+change was performed. This is unfinished non-main source preservation only.
+
+Next connect these authoritative rendered candidates to a before-write,
+attempt-bound journal, shared cutover exclusion and ownership-aware recovery.
+Do not accept current files as proof of our writes or publish rendering as the
+approved forward workflow. Retain the exact-target provenance/cadence limits.

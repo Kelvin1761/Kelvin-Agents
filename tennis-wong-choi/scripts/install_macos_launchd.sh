@@ -40,7 +40,7 @@ LABELS=(
 
 RENDER_ONLY=0
 if [ "${1:-}" = "--render-only" ]; then
-  [ -n "${2:-}" ] || { echo "--render-only requires a destination" >&2; exit 2; }
+  [ "$#" -eq 2 ] && [ -n "${2:-}" ] || { echo "--render-only requires a destination" >&2; exit 2; }
   DEST_DIR="$2"
   RENDER_ONLY=1
 elif [ "${1:-}" = "--recovery-only" ]; then
@@ -70,11 +70,14 @@ if [ ! -x "$TENNIS_PYTHON_BIN" ]; then
   exit 1
 fi
 
-mkdir -p "$DEST_DIR" "$TENNIS_LOG_DIR"
+mkdir -p "$DEST_DIR"
+if [ "$RENDER_ONLY" -eq 0 ]; then
+mkdir -p "$TENNIS_LOG_DIR"
 chmod +x "$PROJECT_DIR/scripts/run_tennis_daily_schedule.sh" \
          "$PROJECT_DIR/scripts/tennis_daily_schedule.py" \
          "$PROJECT_DIR/scripts/tennis_card_recovery.py" \
          "$PROJECT_DIR/scripts/tennis_preclose_refresh.py"
+fi
 
 install_one() {
   local label="$1"

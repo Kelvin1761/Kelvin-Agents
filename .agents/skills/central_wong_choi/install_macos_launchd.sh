@@ -8,7 +8,22 @@ LABEL="com.antigravity.central-wong-choi.durability"
 DEST="$HOME/Library/LaunchAgents/$LABEL.plist"
 UID_NUM="$(id -u)"
 
+render_durability() {
+  sed -e "s#__SCRIPT_DIR__#$SCRIPT_DIR#g" -e "s#__PROJECT_ROOT__#$PROJECT_ROOT#g" \
+    "$SKILL_DIR/launchd/$LABEL.plist.template" > "$1"
+  chmod 644 "$1"
+}
+
 case "${1:-}" in
+  --render-only)
+    [ "$#" -eq 2 ] && [ -n "$2" ] || exit 2
+    mkdir -p "$2"
+    render_durability "$2/$LABEL.plist"
+    if [ "${WC_INSTALL_RESEARCH_REVIEW:-0}" = "1" ]; then
+      /bin/zsh "$SKILL_DIR/install_research_review.sh" --render-only "$2"
+    fi
+    exit 0
+    ;;
   --status)
     launchctl print "gui/$UID_NUM/$LABEL" 2>/dev/null \
       | grep -E "state =|last exit code|program =|runs =" || print -r -- "(未安裝)"
@@ -31,9 +46,7 @@ fi
 mkdir -p "$HOME/Library/LaunchAgents" "$SCRIPT_DIR/logs"
 chmod +x "$SCRIPT_DIR/central_daily_maintenance.py" \
   "$SCRIPT_DIR/run_central_daily_maintenance.sh"
-sed -e "s#__SCRIPT_DIR__#$SCRIPT_DIR#g" -e "s#__PROJECT_ROOT__#$PROJECT_ROOT#g" \
-  "$SKILL_DIR/launchd/$LABEL.plist.template" > "$DEST"
-chmod 644 "$DEST"
+render_durability "$DEST"
 launchctl bootout "gui/$UID_NUM" "$DEST" 2>/dev/null || true
 launchctl bootstrap "gui/$UID_NUM" "$DEST"
 launchctl enable "gui/$UID_NUM/$LABEL"

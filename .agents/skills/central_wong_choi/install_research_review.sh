@@ -11,6 +11,35 @@ DEST="$AGENTS_DIR/$LABEL.plist"
 DOMAIN="gui/$(id -u)"
 TENNIS_ROOT="${WC_TENNIS_RUNTIME_ROOT:-$HOME/Antigravity-repo/tennis-wong-choi}"
 TENNIS_LOGS="${TENNIS_LOG_DIR:-$TENNIS_ROOT/data/logs}"
+render_candidate() {
+/usr/bin/python3 - "$SKILL_DIR/launchd/$LABEL.plist.template" "$1" "$SCRIPT_DIR" "$PROJECT_ROOT" "$TENNIS_ROOT" "$TENNIS_LOGS" <<'PY'
+import plistlib, sys
+source, target, scripts, repo, tennis, logs = sys.argv[1:]
+replacements = dict(zip(("__SCRIPT_DIR__", "__PROJECT_ROOT__", "__TENNIS_RUNTIME_ROOT__", "__TENNIS_LOG_DIR__"), (scripts, repo, tennis, logs)))
+def render(value):
+    if isinstance(value, str):
+        for token, replacement in replacements.items():
+            value = value.replace(token, replacement)
+        return value
+    if isinstance(value, list):
+        return [render(item) for item in value]
+    if isinstance(value, dict):
+        return {key: render(item) for key, item in value.items()}
+    return value
+with open(source, "rb") as handle:
+    payload = render(plistlib.load(handle))
+with open(target, "wb") as handle:
+    plistlib.dump(payload, handle)
+PY
+}
+if [ "${1:-}" = "--render-only" ]; then
+  [ "$#" -eq 2 ] && [ -n "$2" ] || exit 2
+  mkdir -p "$2"
+  render_candidate "$2/$LABEL.plist"
+  chmod 644 "$2/$LABEL.plist"
+  exit 0
+fi
+[ "$#" -eq 0 ] || { print -u2 -- "usage: $0 [--render-only DEST]"; exit 2; }
 TZ_NAME="$(readlink /etc/localtime | sed 's#.*/zoneinfo/##')"
 [ "$TZ_NAME" = "Australia/Sydney" ] || { print -u2 -- "Sydney timezone required"; exit 1; }
 TEMP_DIR="$(mktemp -d -t wc-research-install)"
@@ -63,25 +92,7 @@ export WC_PRIMARY_REPO_ROOT="$PROJECT_ROOT" WC_TENNIS_RUNTIME_ROOT="$TENNIS_ROOT
 RECEIPT="$(/usr/bin/python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["run_log"])' "$TEMP_DIR/pass.json")"
 /bin/zsh "$SCRIPT_DIR/run_central_research_review.sh" --status --receipt "$RECEIPT"
 # plistlib handles XML escaping in paths, including external disks with spaces.
-/usr/bin/python3 - "$SKILL_DIR/launchd/$LABEL.plist.template" "$TEMP_DIR/candidate.plist" "$SCRIPT_DIR" "$PROJECT_ROOT" "$TENNIS_ROOT" "$TENNIS_LOGS" <<'PY'
-import plistlib, sys
-source, target, scripts, repo, tennis, logs = sys.argv[1:]
-replacements = dict(zip(("__SCRIPT_DIR__", "__PROJECT_ROOT__", "__TENNIS_RUNTIME_ROOT__", "__TENNIS_LOG_DIR__"), (scripts, repo, tennis, logs)))
-def render(value):
-    if isinstance(value, str):
-        for token, replacement in replacements.items():
-            value = value.replace(token, replacement)
-        return value
-    if isinstance(value, list):
-        return [render(item) for item in value]
-    if isinstance(value, dict):
-        return {key: render(item) for key, item in value.items()}
-    return value
-with open(source, "rb") as handle:
-    payload = render(plistlib.load(handle))
-with open(target, "wb") as handle:
-    plistlib.dump(payload, handle)
-PY
+render_candidate "$TEMP_DIR/candidate.plist"
 plutil -lint "$TEMP_DIR/candidate.plist"
 mkdir -p "$AGENTS_DIR" "$SCRIPT_DIR/logs"
 # Prepare bytes on the destination filesystem before unloading the old job.

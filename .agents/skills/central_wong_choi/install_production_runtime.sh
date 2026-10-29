@@ -212,7 +212,42 @@ status_runtime() {
   /usr/bin/python3 "${args[@]}"
 }
 
+# Candidate bytes are rendered by the same entrypoints as installation. This
+# mode has no runtime side effects and grants no installation/rollback authority.
+render_runtime_candidates() {
+  local destination="$1" label
+  [ ! -e "$destination" ] && [ ! -L "$destination" ] || return 1
+  mkdir -m 700 -p "$destination"
+  /bin/bash "$PROJECT_ROOT/.agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh" --render-only "$destination" || return 1
+  /bin/bash "$PROJECT_ROOT/.agents/skills/nba/nba_daily_auto/install_macos_launchd.sh" --render-only "$destination" || return 1
+  WC_TENNIS_RUNTIME_ROOT="$TENNIS_RUNTIME_ROOT" TENNIS_PYTHON_BIN="$TENNIS_PYTHON_BIN" \
+    TENNIS_LOG_DIR="${TENNIS_LOG_DIR:-$TENNIS_RUNTIME_ROOT/data/logs}" \
+    /bin/zsh "$PROJECT_ROOT/tennis-wong-choi/scripts/install_macos_launchd.sh" --render-only "$destination" || return 1
+  WC_INSTALL_RESEARCH_REVIEW=1 WC_TENNIS_RUNTIME_ROOT="$TENNIS_RUNTIME_ROOT" \
+    TENNIS_LOG_DIR="${TENNIS_LOG_DIR:-$TENNIS_RUNTIME_ROOT/data/logs}" \
+    /bin/zsh "$PROJECT_ROOT/.agents/skills/central_wong_choi/install_macos_launchd.sh" --render-only "$destination" || return 1
+  /usr/bin/python3 - "$destination" "${LABELS[@]}" <<'CANDIDATES'
+import plistlib, sys
+from pathlib import Path
+root, *labels = sys.argv[1:]
+paths = list(Path(root).iterdir())
+if {p.name for p in paths} != {label + '.plist' for label in labels}:
+    raise SystemExit('candidate labels differ from unified allowlist')
+for path in paths:
+    if path.is_symlink() or not path.is_file() or path.stat().st_size > 2 * 1024 * 1024:
+        raise SystemExit('unsafe candidate plist')
+    payload = plistlib.loads(path.read_bytes())
+    if payload.get('Label') != path.stem or path.stat().st_mode & 0o777 != 0o644:
+        raise SystemExit('candidate label/mode mismatch')
+CANDIDATES
+}
+
 case "${1:-}" in
+  --render-only)
+    [ "$#" -eq 2 ] && [ -n "$2" ] || exit 2
+    render_runtime_candidates "$2"
+    exit $?
+    ;;
   --snapshot)
     [ -n "${2:-}" ] || { print -u2 -- "--snapshot requires a directory"; exit 2; }
     snapshot_runtime "$2"
@@ -228,7 +263,7 @@ case "${1:-}" in
     exit $?
     ;;
   "") ;;
-  *) print -u2 -- "usage: $0 [--snapshot DIR|--restore DIR|--status]"; exit 2 ;;
+  *) print -u2 -- "usage: $0 [--render-only DIR|--snapshot DIR|--restore DIR|--status]"; exit 2 ;;
 esac
 
 TZ_NAME="$(readlink /etc/localtime | sed 's#.*/zoneinfo/##')"

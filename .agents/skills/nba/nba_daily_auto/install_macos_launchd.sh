@@ -34,14 +34,22 @@ uninstall() {
   [ ! -e "$legacy_target" ] || mv "$legacy_target" "$legacy_target.disabled"
 }
 
+RENDER_ONLY=0
 case "${1:-}" in
+  --render-only)
+    [ "$#" -eq 2 ] && [ -n "$2" ] || exit 2
+    DEST_DIR="$2"
+    RENDER_ONLY=1
+    ;;
   --status) status; exit 0 ;;
   --uninstall) uninstall; exit 0 ;;
   "") ;;
   *) echo "Usage: $0 [--status|--uninstall]" >&2; exit 2 ;;
 esac
 
-mkdir -p "$LOG_DIR" "$DEST_DIR" "$HOME/WongChoiData/Wong Choi NBA Analysis"
+mkdir -p "$DEST_DIR"
+if [ "$RENDER_ONLY" -eq 0 ]; then
+mkdir -p "$LOG_DIR" "$HOME/WongChoiData/Wong Choi NBA Analysis"
 chmod +x "$RUNNER" "$SCRIPT_DIR/nba_daily_schedule.py"
 
 # Before 2026-08-26 all three pregame times shared one label.  Remove it first
@@ -50,11 +58,14 @@ legacy_target="$DEST_DIR/$LEGACY_PREGAME_LABEL.plist"
 launchctl bootout "$DOMAIN/$LEGACY_PREGAME_LABEL" >/dev/null 2>&1 || true
 [ ! -e "$legacy_target" ] || mv "$legacy_target" "$legacy_target.disabled"
 
+fi
+
 for template in "$SCRIPT_DIR"/launchd/*.plist.template; do
   name="$(basename "$template" .template)"
   target="$DEST_DIR/$name"
   sed -e "s|__RUNNER__|$RUNNER|g" -e "s|__LOG_DIR__|$LOG_DIR|g" "$template" > "$target"
   chmod 644 "$target"
+  [ "$RENDER_ONLY" -eq 0 ] || continue
   label="${name%.plist}"
   launchctl bootout "$DOMAIN/$label" >/dev/null 2>&1 || true
   launchctl bootstrap "$DOMAIN" "$target"
@@ -62,6 +73,7 @@ for template in "$SCRIPT_DIR"/launchd/*.plist.template; do
   echo "installed $label"
 done
 
+[ "$RENDER_ONLY" -eq 0 ] || exit 0
 echo
 echo "NBA Wong Choi automation installed:"
 echo "  warmup   19:00 (tomorrow; no publish/content card)"
