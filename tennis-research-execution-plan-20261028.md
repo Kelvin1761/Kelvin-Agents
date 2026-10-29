@@ -23,3 +23,5 @@
 **目前執行狀態**：已凍結一份 DB、重現 baseline、完成五段 dev 特徵／head 及多 book 市場比較、MCP／49站 Slam 全量審計與 kernel 正確性核對。歷史比較只屬 SEEN_DEV；15 個候選未過穩定性／市場增量要求。來源發布時鐘及實際 workload 結束時間未驗證，相關 arms 停止；未有合格 serve 候選／joint props 合約，故 C09／新 forward 未開始。完整失敗研究與證據已保存本 repo 非 main 分支 `codex-tennis-unified-research-20261028`（checkpoint `69f7674f3bd842e3871e3f98a183b10613e1d247`）；唔部署該分支模型。
 
 **下一步**：依序處理已重現嘅輸入缺口。已交付[被拒絕投影嘅原樣診斷保存](docs/audits/tennis-observation-diagnostics-20261029.md)，今次[修正 Toray 當屆 metadata](docs/audits/tennis-toray-metadata-20261029.md)並量度輸入影響；其餘 identity／資料過期問題按正常 run 證據逐項處理。修正資料唔自動證明準確度提升，原拒絕判決、Sportsbet forward 要求及 frozen ruler 均不變。
+
+**身份來源跟進**：[排名／canonical 目標修正](docs/audits/tennis-player-source-integrity-20261029.md)在固定 2,160 行真實來源上，原版只更新 77 行；修正可更新 2,153 行，7 行保持明確留置，來源仍報 partial/error。已重現及阻止錯 canonical 姓名返回、同批兩個來源身份覆蓋同一排名。無改寫 live legacy history／Elo，未證實模型準確度改善；舊混合身份仍須有原始證據、備份及 exact-plan 修復。

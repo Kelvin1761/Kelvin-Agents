@@ -19,6 +19,31 @@ _PLACEHOLDER_PLAYER_NAMES = {
 _MISSING_PROVIDER_IDS = {"", "none", "null", "tbd", "unknown"}
 
 
+class PlayerIdentityConflict(ValueError):
+    """A supplied identity disagrees with an existing mapping or merge target."""
+
+
+def _identity_agrees(row, name: str, tour: str, *, allow_middle_omission: bool = False) -> bool:
+    from tennis_wc.ingestion.name_matching import normalise_player_name as identity_name
+
+    old_tokens = identity_name(row["name"]).split()
+    new_tokens = identity_name(name).split()
+    same_name = (set(old_tokens) == set(new_tokens) or (
+        len(old_tokens) >= 2 and len(new_tokens) >= 2 and old_tokens[1:] == new_tokens[1:]
+        and old_tokens[0][0] == new_tokens[0][0]
+        and (len(old_tokens[0]) == 1 or len(new_tokens[0]) == 1)))
+    if not same_name and allow_middle_omission:
+        short, long = sorted((old_tokens, new_tokens), key=len)
+        # Existing merge targets often omit middle names (Taylor Harry Fritz /
+        # Taylor Fritz). Require the full first and last tokens to agree and
+        # every shorter-name token in order. No surname-only/initial fuzzy match.
+        remaining = iter(long)
+        same_name = (len(short) >= 2 and short[0] == long[0] and short[-1] == long[-1]
+                     and all(token in remaining for token in short))
+    same_tour = str(row["tour"] or "UNKNOWN").upper() in {"UNKNOWN", tour} or tour == "UNKNOWN"
+    return same_name and same_tour
+
+
 def valid_player_identity(provider_player_id: str | None, name: str | None) -> bool:
     """Return whether a provider supplied enough identity to persist a player.
 
@@ -55,7 +80,7 @@ def _canonical_player_row(conn, name: str, tour: str, exclude_id: int | None = N
     ).fetchone()
 
 
-def _terminal_player_id(conn, player_id: int) -> int:
+def _terminal_player_id(conn, player_id: int, name: str, tour: str) -> int:
     """Resolve through `players.canonical_player_id` before handing an id back.
 
     2026-08-27: fixtures dated 08-25 still pointed at ids merged away on 08-24,
@@ -67,7 +92,54 @@ def _terminal_player_id(conn, player_id: int) -> int:
     """
     from tennis_wc.identity.player_identity import terminal_canonical_id
 
-    return int(terminal_canonical_id(conn, player_id) or player_id)
+    terminal = int(terminal_canonical_id(conn, player_id) or player_id)
+    row = conn.execute("SELECT * FROM players WHERE id = ?", (terminal,)).fetchone()
+    # A compatible provider row is insufficient when its merge pointer lands
+    # on a different person. Raising inside the caller's transaction rolls
+    # back the tentative attributes/mapping as well as withholding the id.
+    if (row is None or dict(row).get("canonical_player_id") is not None
+            or not _identity_agrees(row, name, tour, allow_middle_omission=True)):
+        actual = row["name"] if row else None
+        raise PlayerIdentityConflict(
+            f"canonical player identity changed: {player_id} -> {terminal}: {name!r} -> {actual!r}"
+        )
+    return terminal
+
+
+def _existing_player_choice(conn, provider_name: str, provider_player_id: str, name: str, tour: str):
+    """The existing selection policy, without changing a player or alias."""
+    row = conn.execute(
+        """SELECT pe.internal_entity_id, p.name, p.tour FROM provider_entities pe
+        JOIN players p ON p.id = pe.internal_entity_id
+        WHERE pe.provider_name=? AND pe.entity_type='player' AND pe.provider_entity_id=?""",
+        (provider_name, provider_player_id),
+    ).fetchone()
+    if row is None:
+        matched = _canonical_player_row(conn, name, tour)
+        return None, int(matched["id"]) if matched else None
+    if not _identity_agrees(row, name, tour):
+        raise PlayerIdentityConflict(f"provider player identity changed: {provider_name}/{provider_player_id}: "
+                                     f"{row['name']!r} -> {name!r}")
+    player_id = int(row["internal_entity_id"])
+    canonical = _canonical_player_row(conn, name, tour, exclude_id=player_id)
+    if canonical is not None:
+        current_history = conn.execute(
+            f"SELECT COUNT(*) FROM player_match_history WHERE player_id=? AND {history_active_clause(conn)}",
+            (player_id,),
+        ).fetchone()[0]
+        if (str(row["tour"] or "UNKNOWN").upper() == "UNKNOWN"
+                or int(canonical["history_rows"] or 0) > int(current_history or 0)):
+            player_id = int(canonical["id"])
+    return row, player_id
+
+
+def existing_player_id(conn, provider_name: str, provider_player_id: str, name: str, tour: str) -> int | None:
+    """Read-only preflight using the same choice/terminal checks as ingestion."""
+    name = str(name).strip()
+    tour = str(tour or "UNKNOWN").strip().upper()
+    _, player_id = _existing_player_choice(conn, provider_name, str(provider_player_id).strip(),
+                                          name, tour)
+    return _terminal_player_id(conn, player_id, name, tour) if player_id is not None else None
 
 
 def get_or_create_player(
@@ -90,53 +162,14 @@ def get_or_create_player(
     tour = str(tour or "UNKNOWN").strip().upper()
     now = utc_now()
     with get_connection() as conn:
-        row = conn.execute(
-            """
-            SELECT pe.internal_entity_id, p.name, p.tour
-            FROM provider_entities pe
-            JOIN players p ON p.id = pe.internal_entity_id
-            WHERE pe.provider_name = ? AND pe.entity_type = 'player'
-              AND pe.provider_entity_id = ?
-            """,
-            (provider_name, provider_player_id),
-        ).fetchone()
+        row, player_id = _existing_player_choice(conn, provider_name, provider_player_id, name, tour)
         if row:
-            from tennis_wc.ingestion.name_matching import normalise_player_name as identity_name
-
-            old_tokens=identity_name(row["name"]).split()
-            new_tokens=identity_name(name).split()
-            same_name=(set(old_tokens)==set(new_tokens) or (
-                len(old_tokens)>=2 and len(new_tokens)>=2 and old_tokens[1:]==new_tokens[1:]
-                and old_tokens[0][0]==new_tokens[0][0]
-                and (len(old_tokens[0])==1 or len(new_tokens[0])==1)))
-            same_tour=str(row["tour"] or "UNKNOWN").upper() in {"UNKNOWN",tour} or tour=="UNKNOWN"
-            if not same_name or not same_tour:
-                raise ValueError(f"provider player identity changed: {provider_name}/{provider_player_id}: "
-                                 f"{row['name']!r} -> {name!r}")
-            player_id = int(row["internal_entity_id"])
-            canonical = _canonical_player_row(conn, name, tour, exclude_id=player_id)
-            if canonical is not None:
-                current_history = conn.execute(
-                    f"SELECT COUNT(*) FROM player_match_history WHERE player_id = ? AND {history_active_clause(conn)}",
-                    (player_id,),
-                ).fetchone()[0]
-                # Remap stale/empty provider aliases to the established entity.
-                # Never replace a history-rich mapped identity merely because
-                # another same-name player exists.
-                if (
-                    str(row["tour"] or "UNKNOWN").upper() == "UNKNOWN"
-                    or int(canonical["history_rows"] or 0) > int(current_history or 0)
-                ):
-                    player_id = int(canonical["id"])
-                    conn.execute(
-                        """
-                        UPDATE provider_entities
-                        SET internal_entity_id = ?, entity_name = ?, updated_at = ?
-                        WHERE provider_name = ? AND entity_type = 'player'
-                          AND provider_entity_id = ?
-                        """,
-                        (player_id, name, now, provider_name, provider_player_id),
-                    )
+            if player_id != int(row["internal_entity_id"]):
+                conn.execute(
+                    """UPDATE provider_entities SET internal_entity_id=?, entity_name=?, updated_at=?
+                    WHERE provider_name=? AND entity_type='player' AND provider_entity_id=?""",
+                    (player_id, name, now, provider_name, provider_player_id),
+                )
             conn.execute(
                 """
                 UPDATE players
@@ -157,11 +190,9 @@ def get_or_create_player(
                     player_id,
                 ),
             )
-            return _terminal_player_id(conn, player_id)
+            return _terminal_player_id(conn, player_id, name, tour)
 
-        matched_player = _canonical_player_row(conn, name, tour)
-        if matched_player:
-            player_id = int(matched_player["id"])
+        if player_id is not None:
             conn.execute(
                 """
                 UPDATE players
@@ -195,7 +226,7 @@ def get_or_create_player(
                 """,
                 (provider_name, provider_player_id, player_id, name, now, now),
             )
-            return _terminal_player_id(conn, player_id)
+            return _terminal_player_id(conn, player_id, name, tour)
 
         cursor = conn.execute(
             """
@@ -228,7 +259,7 @@ def get_or_create_player(
             """,
             (provider_name, provider_player_id, player_id, name, now, now),
         )
-        return _terminal_player_id(conn, player_id)
+        return _terminal_player_id(conn, player_id, name, tour)
 
 
 def normalise_player_name(name: str) -> str:
