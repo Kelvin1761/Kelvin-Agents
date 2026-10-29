@@ -674,7 +674,8 @@ def summarize_trackwork(horse: dict[str, Any], entries: list[dict[str, Any]],
             for e in entries[:5]
         ],
         "gear_training": sorted({e["gear"] for e in entries if e.get("gear")}),
-        "trial_sectional_signal": "strong" if trial_times else "unknown",
+        # 以前有試閘時間就寫 "strong"，冇睇過段速 —— 「試閘段速訊號強」係常數（EXP-20261029-02）。
+        "trial_sectional_signal": "timed" if trial_times else "unknown",
     }
 
 

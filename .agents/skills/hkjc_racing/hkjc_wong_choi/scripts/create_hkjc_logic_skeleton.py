@@ -867,7 +867,9 @@ def format_trackwork_trainer_line(trackwork):
     gear = "、".join(summary.get("gear_training", []) or []) or "無"
     flags = "、".join(digest.get("stability_positive_flags", []) or []) or "無"
     trial_signal = summary.get('trial_sectional_signal', 'unknown')
-    trial_signal_zh = {'strong': '強', 'medium': '中等', 'weak': '弱', 'unknown': '未明'}.get(str(trial_signal), str(trial_signal))
+    # 舊檔嘅 "strong" 只代表「有試閘時間」，唔係評級（EXP-20261029-02）
+    trial_signal_zh = {'strong': '有計時（未評級）', 'timed': '有計時（未評級）',
+                       'unknown': '未明'}.get(str(trial_signal), str(trial_signal))
     return (
         f"賽日騎師{race_jockey_text}直接參與操練；操練者身份：{rider_text}。"
         f"操練配備：{gear}；"

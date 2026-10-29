@@ -311,3 +311,4 @@
 - [EXP-20261028-14](EXP-20261028-14-au-class-g5-bonus-magnitude-results.md) — 級數分「1–5 場、上仗頭 25%」加分幅度 walk-forward（網格 0–10）：REJECT，逐窗從未揀過大過 2.31，全紀錄曲線平（Gold 21.26–21.36%）。cohort 差距唔係可落分收益，維持 2.31。
 - [EXP-20261028-15](EXP-20261028-15-au-career-starts-calibration-results.md) — 按生涯出賽數校準綜合分（九組 walk-forward）：REJECT，Gold −0.20pp、首選 20+ 仗 Gold CI 全負；3 仗 offset 穩定 +1.5 但換唔到前三，20+ 仗 offset 由正變負。出賽經驗唔需要校準。
 - [EXP-20261029-01](EXP-20261029-01-hkjc-trackwork-readiness-results.md) — HKJC 晨操深度審查：四個 §7 錯（比賽行冒充操練，35%「賽日騎師有參與操練」係假；賽後抽嘅檔包埋今仗；跑步機當快操）喺抽取層修正，**唔係已證實改善**（Good −0.29pp 一場，cohort 冇 CI 全負）。六個新讀法（試閘、距最後一課、上仗後負荷、同日同場地快操速度、同平時習慣比、騎師真係有操）Holm 後全部 UNRESOLVABLE，forward 夠 60 個賽日重跑。
+- [EXP-20261029-02](EXP-20261029-02-hkjc-trackwork-v2-results.md) — HKJC 晨操 v2：剷走晨操 135 場郁但 Gold／Good 0.00（冇貢獻）；四個新讀法（試閘速度、末段、快操加速、高質課數）冇一個過，試閘速度 OOS 顯著負；十特徵 walk-forward REJECT（Good −0.87pp）。「操得快跑輸」係非單調噪音。修「試閘段速訊號強」常數顯示。
