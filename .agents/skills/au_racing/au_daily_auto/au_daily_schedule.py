@@ -577,14 +577,20 @@ def api_next_events(runlog: RunLog) -> list[dict]:
     return [e for e in found if e.get("country") == "Australia"]
 
 
-def au_thoroughbred_meetings(payload: dict) -> list[str]:
-    """AllRacing payload → Australian thoroughbred meeting names.
+# Sportsbet 嘅 event statusCode：'R' = 有賽果，'B' = 取消。2026-10-29 Gatton 七場
+# 全部 'B'（場地取消），但 AllRacing 照列，健康檢查就當佢「未分析」、白白補跑一次；
+# 10-23 Sunshine Coast Poly、10-24 Doomben 一樣。全場 'B' 先剔，部分取消（'BR'）照留。
+ABANDONED_STATUS = "B"
 
-    Only the `horse` section counts (harness and greyhounds reuse venue names,
-    e.g. Newcastle harness), and only `regionName == "Australia"`, so NZ and
-    same-named overseas tracks (Perth UK, Newcastle UK) stay out.
-    """
-    names = []
+
+def meeting_is_abandoned(meeting: dict) -> bool:
+    """AllRacing meeting 入面每一場都係 'B'（取消）。冇 event 唔算。"""
+    codes = [str(e.get("statusCode") or "") for e in meeting.get("events") or []]
+    return bool(codes) and all(c == ABANDONED_STATUS for c in codes)
+
+
+def _au_horse_meetings(payload: dict):
+    """AllRacing payload → 澳洲純種馬 meeting dict（未剔取消）。"""
     for day in (payload or {}).get("dates") or []:
         for section in day.get("sections") or []:
             if str(section.get("raceType") or "").lower() != "horse":
@@ -593,30 +599,45 @@ def au_thoroughbred_meetings(payload: dict) -> list[str]:
                 if (meeting.get("regionName") == "Australia"
                         and not meeting.get("isInternational")
                         and str(meeting.get("name") or "").strip()):
-                    names.append(str(meeting["name"]).strip())
-    return sorted(set(names))
+                    yield meeting
+
+
+def au_abandoned_meetings(payload: dict) -> list[str]:
+    """成個 meeting 取消咗嘅澳洲純種馬場次名。"""
+    return sorted({str(m["name"]).strip() for m in _au_horse_meetings(payload)
+                   if meeting_is_abandoned(m)})
+
+
+def au_thoroughbred_meetings(payload: dict) -> list[str]:
+    """AllRacing payload → Australian thoroughbred meeting names.
+
+    Only the `horse` section counts (harness and greyhounds reuse venue names,
+    e.g. Newcastle harness), and only `regionName == "Australia"`, so NZ and
+    same-named overseas tracks (Perth UK, Newcastle UK) stay out.
+
+    Whole-meeting abandonments (every event 'B') are left out too: there is
+    nothing to analyse, and counting them made the healthcheck report them as
+    unanalysed and spend its one recovery run on them.
+    """
+    return sorted({str(m["name"]).strip() for m in _au_horse_meetings(payload)
+                   if not meeting_is_abandoned(m)})
 
 
 def au_meeting_first_starts(payload: dict) -> dict[str, int]:
     """AllRacing payload → {venue: first race start (epoch)} for the same meetings
     `au_thoroughbred_meetings` returns."""
     starts: dict[str, int] = {}
-    for day in (payload or {}).get("dates") or []:
-        for section in day.get("sections") or []:
-            if str(section.get("raceType") or "").lower() != "horse":
+    for meeting in _au_horse_meetings(payload):
+        if meeting_is_abandoned(meeting):
+            continue
+        name = str(meeting["name"]).strip()
+        for event in meeting.get("events") or []:
+            try:
+                when = int(event.get("startTime"))
+            except (TypeError, ValueError):
                 continue
-            for meeting in section.get("meetings") or []:
-                name = str(meeting.get("name") or "").strip()
-                if (meeting.get("regionName") != "Australia"
-                        or meeting.get("isInternational") or not name):
-                    continue
-                for event in meeting.get("events") or []:
-                    try:
-                        when = int(event.get("startTime"))
-                    except (TypeError, ValueError):
-                        continue
-                    if name not in starts or when < starts[name]:
-                        starts[name] = when
+            if name not in starts or when < starts[name]:
+                starts[name] = when
     return starts
 
 
@@ -637,6 +658,9 @@ def api_day_meetings(runlog: RunLog, day: str,
     if not payload:
         runlog.warn(f"AllRacing API 回空（{day}）")
         return []
+    abandoned = au_abandoned_meetings(payload)
+    if abandoned:
+        runlog.step("discover", "allracing-abandoned", day=day, venues=abandoned)
     if starts is not None:
         starts.update(au_meeting_first_starts(payload))
     return au_thoroughbred_meetings(payload)

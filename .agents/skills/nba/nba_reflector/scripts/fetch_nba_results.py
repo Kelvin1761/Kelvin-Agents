@@ -134,6 +134,9 @@ ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/
 _NBA_SKILL = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, _NBA_SKILL)
 from nba_schedule import canonical_team_abbr  # noqa: E402
+import nba_api_breaker  # noqa: E402
+
+nba_api_breaker.install()   # a blocked nba.com goes straight to ESPN
 
 
 def fetch_espn_events(game_date_file, timeout=15):
@@ -160,6 +163,7 @@ def espn_index(events):
             key = (canonical_team_abbr(teams["away"]["team"]["abbreviation"]),
                    canonical_team_abbr(teams["home"]["team"]["abbreviation"]))
             index[key] = {
+                "event_id": str(event.get("id") or ""),
                 "completed": bool(status.get("completed")) and status.get("name") == "STATUS_FINAL",
                 "status": status.get("name"),
                 "detail": status.get("detail"),
@@ -169,6 +173,129 @@ def espn_index(events):
         except (KeyError, IndexError, TypeError, ValueError):
             continue
     return index
+
+
+# ── ESPN fallback (2026-10-29) ───────────────────────────────────────────────
+# stats.nba.com (Akamai) blocks this machine's IP for hours at a time -- every
+# nba.com host answered 403 or hung on 10-28/29 -- and with no scoreboard the
+# whole reflector exited 1 ("postgame_exit_1"), every 15 minutes, all evening.
+# ESPN's scoreboard + summary carry every field the Results Brief needs, so a
+# blocked nba.com now falls back to them. Both are reshaped into the exact
+# ScoreboardV3 / BoxScoreTraditionalV3 dicts the rest of this file reads, so
+# finality, extraction and settlement are unchanged.
+ESPN_SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary"
+ESPN_ID_PREFIX = "espn:"
+
+
+def espn_scoreboard_games(events):
+    """ESPN events -> ScoreboardV3-shaped games. Scores stay None, so finality
+    is decided by ``decide_finality`` (ESPN completed + box-score match)."""
+    games = []
+    for event in events or []:
+        try:
+            comp = event["competitions"][0]
+            teams = {c["homeAway"]: c["team"] for c in comp["competitors"]}
+            status = ((event.get("status") or {}).get("type") or {})
+            games.append({
+                "gameId": ESPN_ID_PREFIX + str(event["id"]),
+                "gameStatusText": status.get("detail") or status.get("name") or "",
+                "homeTeam": {"teamTricode": canonical_team_abbr(teams["home"]["abbreviation"]),
+                             "teamName": teams["home"].get("name") or "?", "score": None},
+                "awayTeam": {"teamTricode": canonical_team_abbr(teams["away"]["abbreviation"]),
+                             "teamName": teams["away"].get("name") or "?", "score": None},
+            })
+        except (KeyError, IndexError, TypeError):
+            continue
+    return games
+
+
+def fetch_espn_summary(event_id, timeout=15):
+    try:
+        import requests
+        response = requests.get(f"{ESPN_SUMMARY}?event={event_id}", timeout=timeout)
+        response.raise_for_status()
+        return response.json()
+    except Exception as exc:
+        print(f"    ⚠️ ESPN box score 擷取失敗 ({event_id}): {exc}")
+        return None
+
+
+def _made_attempted(text):
+    made, _, attempted = str(text or "").partition("-")
+    try:
+        return int(made), int(attempted)
+    except ValueError:
+        return 0, 0
+
+
+def _int_stat(text):
+    try:
+        return int(float(str(text).replace("+", "")))
+    except (TypeError, ValueError):
+        return 0
+
+
+def espn_boxscore(summary):
+    """ESPN summary -> BoxScoreTraditionalV3-shaped dict, or None.
+
+    Team points are the SUM of player points, not ESPN's headline score, so
+    ``decide_finality``'s box-vs-scoreboard comparison is still a real check.
+    Only starters carry a position, as in V3 (``extract_player_stats`` reads
+    the starter flag from it); DNP players get minutes '' plus a comment.
+    """
+    try:
+        header = summary["header"]["competitions"][0]
+        sides = {str(c["team"]["id"]): c["homeAway"] for c in header["competitors"]}
+        out = {}
+        for team_block in summary["boxscore"]["players"]:
+            team = team_block["team"]
+            side = sides.get(str(team.get("id")))
+            if side not in ("home", "away"):
+                continue
+            stats = team_block["statistics"][0]
+            keys = stats["keys"]
+            players, points_total = [], 0
+            for athlete in stats.get("athletes") or []:
+                info = athlete.get("athlete") or {}
+                row = dict(zip(keys, athlete.get("stats") or []))
+                dnp = bool(athlete.get("didNotPlay")) or not row
+                fgm, fga = _made_attempted(row.get("fieldGoalsMade-fieldGoalsAttempted"))
+                tpm, tpa = _made_attempted(row.get("threePointFieldGoalsMade-threePointFieldGoalsAttempted"))
+                ftm, fta = _made_attempted(row.get("freeThrowsMade-freeThrowsAttempted"))
+                points = _int_stat(row.get("points"))
+                points_total += points
+                minutes = "" if dnp else f"{_int_stat(row.get('minutes'))}:00"
+                players.append({
+                    "name": info.get("displayName") or "?",
+                    "position": ((info.get("position") or {}).get("abbreviation") or "")
+                    if athlete.get("starter") else "",
+                    "starter": "1" if athlete.get("starter") else "",
+                    "comment": (athlete.get("reason") or "DNP") if dnp else "",
+                    "statistics": {
+                        "minutes": minutes, "points": points,
+                        "reboundsTotal": _int_stat(row.get("rebounds")),
+                        "assists": _int_stat(row.get("assists")),
+                        "threePointersMade": tpm, "threePointersAttempted": tpa,
+                        "fieldGoalsMade": fgm, "fieldGoalsAttempted": fga,
+                        "freeThrowsMade": ftm, "freeThrowsAttempted": fta,
+                        "steals": _int_stat(row.get("steals")),
+                        "blocks": _int_stat(row.get("blocks")),
+                        "turnovers": _int_stat(row.get("turnovers")),
+                        "foulsPersonal": _int_stat(row.get("fouls")),
+                        "plusMinusPoints": _int_stat(row.get("plusMinus")),
+                    },
+                })
+            out[f"{side}Team"] = {
+                "teamTricode": canonical_team_abbr(team.get("abbreviation")),
+                "teamName": team.get("name") or team.get("displayName") or "?",
+                "statistics": {"points": points_total, "minutes": ""},
+                "players": players,
+            }
+        if set(out) != {"homeTeam", "awayTeam"}:
+            return None
+        return {"boxScoreTraditional": out, "_source": "espn"}
+    except (KeyError, IndexError, TypeError):
+        return None
 
 
 def _team_minutes(boxscore, team_key):
@@ -330,7 +457,16 @@ def process_game(game, *, boxscore_may_settle=False, espn=None):
 
     # Fetch detailed box score
     print(f"  📊 擷取 {away_abbr} @ {home_abbr} Box Score...")
-    boxscore = fetch_boxscore(game_id)
+    boxscore = None
+    if not str(game_id).startswith(ESPN_ID_PREFIX):
+        boxscore = fetch_boxscore(game_id)
+    if boxscore is None:
+        event = (espn or {}).get((canonical_team_abbr(away_abbr), canonical_team_abbr(home_abbr)))
+        if event and event.get("event_id"):
+            summary = fetch_espn_summary(event["event_id"])
+            boxscore = espn_boxscore(summary) if summary else None
+            if boxscore:
+                print("    ↪️ 用 ESPN box score（stats.nba.com 唔通）")
 
     scoreboard_status = status
     status_source = "scoreboard"
@@ -401,6 +537,12 @@ def _parse_minutes(min_str):
     return 0
 
 
+def _matchup(row):
+    """Canonical (away, home) of a Results Brief row, whichever source wrote it."""
+    return (canonical_team_abbr((row.get('away') or {}).get('team')),
+            canonical_team_abbr((row.get('home') or {}).get('team')))
+
+
 def main():
     parser = argparse.ArgumentParser(description='NBA Reflector Results Fetcher')
     parser.add_argument('--date', required=True, 
@@ -431,11 +573,18 @@ def main():
     print(f"📅 擷取日期: {game_date_api}")
     print("=" * 60)
 
+    espn_events, espn_ok = fetch_espn_events(game_date_file)
+    espn = espn_index(espn_events) if espn_ok else None
+
     # Fetch scoreboard
     games = fetch_scoreboard(game_date_api)
-    
+
+    if not games and espn_events:
+        games = espn_scoreboard_games(espn_events)
+        print(f"  ↪️ stats.nba.com scoreboard 唔通，改用 ESPN：{len(games)} 場")
+
     if not games:
-        print("❌ 該日期冇 NBA 賽事，或 API 呼叫失敗")
+        print("❌ 該日期冇 NBA 賽事，或 API 呼叫失敗（stats.nba.com 同 ESPN 都冇）")
         sys.exit(1)
 
     # Process each game
@@ -447,8 +596,6 @@ def main():
     except ValueError:
         boxscore_may_settle = False
 
-    espn_events, espn_ok = fetch_espn_events(game_date_file)
-    espn = espn_index(espn_events) if espn_ok else None
     results = []
     seen_ids = set()
     requested = {tag.strip() for tag in args.games.split(',') if tag.strip()}
@@ -478,7 +625,10 @@ def main():
                 previous = json.load(existing)
             if previous.get('date') == game_date_file and previous.get('_version') == 'RESULTS_BRIEF_V1':
                 fetched = {row.get('game_id') for row in results}
-                results = [row for row in previous.get('games', []) if row.get('game_id') not in fetched] + results
+                matchups = {_matchup(row) for row in results}
+                results = [row for row in previous.get('games', [])
+                           if row.get('game_id') not in fetched
+                           and _matchup(row) not in matchups] + results
         except (OSError, ValueError, TypeError, AttributeError):
             pass
 

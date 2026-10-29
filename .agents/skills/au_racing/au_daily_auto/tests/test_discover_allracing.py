@@ -106,3 +106,41 @@ def test_evening_summary_names_the_unanalysed_meeting():
     assert "Newcastle" in text and "未有分析" in text
     only = R.evening({"races_added": [], "meetings_processed": run["meetings_processed"]})
     assert only and "Newcastle" in only
+
+
+# ── 2026-10-29: Gatton 七場全部 'B'（取消），健康檢查當「未分析」兼白白補跑 ──────
+def _coded(name, codes, start=100):
+    return {"name": name, "regionName": "Australia", "isInternational": False,
+            "events": [{"statusCode": c, "startTime": start + i}
+                       for i, c in enumerate(codes)]}
+
+
+ABANDON_PAYLOAD = {"dates": [{"sections": [{"raceType": "horse", "meetings": [
+    _coded("Gatton", "BBBBBBB"),
+    _coded("Ballarat", "BR"),          # 部分取消：照分析
+    _coded("Wyong", "RRRR"),
+]}]}]}
+
+
+def test_whole_meeting_abandonment_is_not_expected():
+    assert S.au_thoroughbred_meetings(ABANDON_PAYLOAD) == ["Ballarat", "Wyong"]
+    assert set(S.au_meeting_first_starts(ABANDON_PAYLOAD)) == {"Ballarat", "Wyong"}
+    assert S.au_abandoned_meetings(ABANDON_PAYLOAD) == ["Gatton"]
+
+
+def test_meeting_without_events_is_not_called_abandoned():
+    assert not S.meeting_is_abandoned({"events": []})
+    assert not S.meeting_is_abandoned({})
+
+
+def test_healthcheck_does_not_expect_an_abandoned_meeting(monkeypatch):
+    import au_healthcheck as H
+    day = "2026-10-29"
+    monkeypatch.setattr(S, "api_next_events", lambda runlog: [])
+    monkeypatch.setattr(S, "events_by_day", lambda events: {day: {
+        "Gatton": {"status_codes": ["B"]},
+        "Casino": {"status_codes": ["R"]},
+    }})
+    monkeypatch.setattr(S, "api_day_meetings",
+                        lambda runlog, d: S.au_thoroughbred_meetings(ABANDON_PAYLOAD))
+    assert H.au_venues_today(day) == {"Casino", "Ballarat", "Wyong"}

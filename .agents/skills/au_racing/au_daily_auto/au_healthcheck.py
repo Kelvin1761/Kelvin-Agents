@@ -80,7 +80,9 @@ def au_venues_today(day: str) -> set[str] | None:
 
         events = S.api_next_events(_Quiet())
         by_day = S.events_by_day(events)
-        venues = set(by_day.get(day) or [])
+        # 全場取消（每場 statusCode 'B'）冇嘢好分析，唔算「應該有」。
+        venues = {v for v, slot in (by_day.get(day) or {}).items()
+                  if slot.get("status_codes") != [S.ABANDONED_STATUS]}
         # NextEvents 只有最近約 30 場 —— 後面嘅場次（2026-10-26 Newcastle）唔喺
         # 度，用佢做「應該有咩」會令漏咗嘅場次睇落似冇漏。AllRacing 有成日名單。
         for name in S.api_day_meetings(_Quiet(), day):

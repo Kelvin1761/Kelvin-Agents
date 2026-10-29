@@ -66,6 +66,8 @@ try:
         playerdashboardbygeneralsplits,
     )
     from nba_api.stats.static import teams, players
+    import nba_api_breaker
+    nba_api_breaker.install()   # fail fast while stats.nba.com is blocking us
     NBA_API_AVAILABLE = True
 except ImportError:
     print("⚠️ nba_api 未安裝。請執行：pip install nba_api")
