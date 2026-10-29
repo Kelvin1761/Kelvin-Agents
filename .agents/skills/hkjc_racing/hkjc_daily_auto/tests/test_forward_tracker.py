@@ -134,6 +134,20 @@ def test_harness_ab_negative_delta_keeps_current_model(tmp_path):
     assert state[tracker.STATE_KEY]["judged"]["gear_removed"]["passed"] is False
 
 
+def test_additive_harness_ab_says_ship_not_remove(tmp_path):
+    """加入類 forward（EXP-20261029-30 評分差距）過咗要講「建議上線」，唔係「建議剷走」。"""
+    for i in range(6):
+        _meeting(tmp_path, f"2026-11-{1 + i:02d}_ShaTin", 11)
+    run, calls = _fake_run((0.01, 0.0, 0.001))
+    state: dict = {}
+    lines = tracker.judge_ready(state, root=tmp_path, run_cmd=run, harness=Path("h.py"), python="py",
+                                out_dir=tmp_path / "fc", stamp=lambda: "now")
+    rating = [line for line in lines if "官方評分差距" in line]
+    assert rating and "建議上線" in rating[0] and "剷走" not in rating[0]
+    assert state[tracker.STATE_KEY]["judged"]["weight_rating_gap"]["passed"] is True
+    assert any("hkjc_arm_weight_rating_gap.py" in " ".join(map(str, c)) for c in calls)
+
+
 def test_not_enough_races_runs_nothing(tmp_path):
     _meeting(tmp_path, "2026-10-11_ShaTin", 10)
     run, calls = _fake_run((0, 0, 0))

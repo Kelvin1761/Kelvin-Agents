@@ -99,3 +99,27 @@ EXP-20261010-05 量到 0.00，今次 −1.16pp：兩次都冇顯著，但方向�
 ```bash
 python3 docs/experiments/patches/hkjc_s7_strata.py base.jsonl a.jsonl
 ```
+
+## 後續：B 喺 live 模型重量 + 決定（2026-10-29 晚）
+
+A 上線（`aa209e01`）之後，喺 live 模型上面重跑 B（base ＝ `aa209e01`，候選 ＝ 同一個 arm）：
+
+| 指標 | Δ | CI | 時間塊 ≥0 |
+|---|---|---|---|
+| Gold | **+1.16pp** | [+0.29, +2.30]，p＝0.024 | 6/6 |
+| Good | −0.58pp | [−2.09, +0.89]，p＝0.596 | 3/6 |
+| NDCG@5 | +0.0021 | [−0.0025, +0.0065] | 5/6 |
+| 前三平均名次（低＝好） | −0.0135 | [−0.0321, +0.0039] | 2/6 |
+
+v3 照樣係 `primary_regression`（Good 點估計 < 0）。Gold 單計顯著，但同一個 family 有三個 arm，
+Holm 之後大約 p ≈ 0.07。冇分層 CI 全負。
+
+**決定（Kelvin 交我判）：唔上線，登記 forward。** 理由：
+1. 預先登記嘅閘兩次都判 REJECT（舊 main、live main），而且 Good 嘅跌幅由 −0.29 擴大到 −0.58pp。
+   Kelvin 最重視嘅係賽日穩定性（Good），唔係 Gold。
+2. 回放嘅 Gold 升幅冇過多重比較；用之後未睇過嘅賽事判一次，係唯一乾淨嘅確認方法。
+3. Forward 唔使郁 live 模型，成本係零。
+
+登記：`hkjc_forward_tracker.py` `FORWARD_TESTS` → `weight_rating_gap`（`harness_ab`，由 2026-10-30 起，
+夠 60 場自動判一次並凍結）。過關條件預先寫死：forward 期間 Gold、Good、NDCG@5 Δ 全部 ≥ 0
+→ 「建議上線（等你決定）」；否則維持宣佈負磅。
