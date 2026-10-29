@@ -173,3 +173,40 @@ Dashboard deploy and no manual installer requirement. This is not a no-op delta
 or an old release replay. The unfinished preview/installer/ownership/lease/intent
 work stays on this preservation branch. Code synchronization does not prove the
 research calendar, native firing, pilot, model or Stage5 acceptance.
+
+
+## Concurrent plist ownership reproduction — 2026-10-29
+
+The separate core delivery above is now complete:244a7bb54187bfc58d86be65fcca5e51451e7d29,
+full clean gate1687.25s, independent quick15.8s, approval/merge and code-only
+activation succeeded on2026-10-28 at18:53:50/18:53:52/18:54:06 UTC.
+No installer ran. This preservation branch is still unfinished and unapproved.
+
+Three new real-installer fixtures deliberately assert rejection before any
+launchctl mutation when an independent actor replaces, removes or creates an
+allowlisted plist after snapshot. They use isolated HOME, fake launchctl and
+unloaded jobs, so a loaded-without-plist guard cannot hide the ownership defect.
+These fixtures intentionally remain RED until ownership is implemented; do not
+release this WIP or treat its older green test count as current acceptance.
+
+The required fix must bind an attempt identity and snapshot proof hash to exact
+candidate plist bytes/absence and mode before any live mutation. Candidate
+bytes must come from the same trusted renderer used by the actual installers;
+observing arbitrary current bytes and claiming them afterwards is forbidden.
+Recovery may touch only that attempt's proved writes. Current state must match
+its owned postimage (or already match the original state), otherwise retain
+all evidence and stop before pointer restoration, bootout, overwrite or remove.
+
+Hash checks alone do not close the race. Rendering, ownership journal, install
+and recovery must participate in shared cutover exclusion with domain jobs;
+recheck under that exclusion immediately before each mutation. Test concurrent
+replacement/removal both before recovery entry and between verification and
+write. Do not call a pre-check plus later cp/rm an atomic CAS. No opportunistic
+adoption, forced job stop, external-actor rollback or target rebinding is allowed.
+An incomplete ownership helper must not be published as the complete workflow.
+
+Observed RED: all3 assertions failed because the real installer returned0 after
+changing the unowned state,41.16s, wc-run-cen8ops0. Quick passed
+wc-run-k5uon62w; it does not run these tests or certify installation safety.
+No expected-failure marker or relaxed assertion conceals these blockers.
+This checkpoint is deliberately incomplete non-main preservation, not delivery.

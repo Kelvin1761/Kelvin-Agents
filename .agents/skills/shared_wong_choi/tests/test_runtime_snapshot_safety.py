@@ -172,3 +172,31 @@ def test_restore_enables_before_bootstrap_then_restores_previous_flags(isolated_
     assert result.returncode == 0, result.stderr
     assert json.loads(loaded.read_text())[label] == {"loaded": True, "disabled": False}
     assert (agents / (label + ".plist")).read_bytes() == b"old plist\n"
+
+
+@pytest.mark.parametrize("concurrent_change", ["replace", "remove", "create"])
+def test_restore_refuses_unowned_concurrent_plist_change_before_any_mutation(
+    isolated_runtime, concurrent_change,
+):
+    agents, label, loaded, calls, env, snapshot = isolated_runtime
+    # No installation attempt has written a candidate or claimed these bytes.
+    # An independent actor changes a plist after our snapshot. A difference
+    # from the old snapshot alone is not evidence that recovery owns it.
+    loaded.write_text(json.dumps({label: {"loaded": False, "disabled": False}}))
+    assert invoke(env, "--snapshot", snapshot).returncode == 0
+    changed_label = ("com.antigravity.nba-wong-choi.health"
+                     if concurrent_change == "create" else label)
+    target = agents / (changed_label + ".plist")
+    if concurrent_change == "remove":
+        target.unlink()
+        expected = None
+    else:
+        expected = b"independent actor plist bytes\n"
+        target.write_bytes(expected)
+    states_before = loaded.read_bytes()
+    result = invoke(env, "--restore", snapshot)
+    assert result.returncode != 0, "snapshot difference must not authorize rollback ownership"
+    assert not calls.exists(), "ownership rejection must precede all launchd mutations"
+    assert (target.read_bytes() if target.exists() else None) == expected
+    assert loaded.read_bytes() == states_before
+    assert (snapshot / ".launchd-state.json").exists(), "retain recovery evidence"
