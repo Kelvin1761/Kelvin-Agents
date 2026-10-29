@@ -818,7 +818,8 @@ def hydrate_trackwork_jockey_involvement(trackwork, race_jockey):
         jockey_key in normalize_person_name(e.get("rider", ""))
         or jockey_key in normalize_person_name(e.get("details", ""))
         for e in entries
-        if isinstance(e, dict)
+        # 出賽行係比賽唔係操練（EXP-20261029-01）
+        if isinstance(e, dict) and str(e.get("type_raw") or "") != "出賽"
     )
     if not involved:
         return tw

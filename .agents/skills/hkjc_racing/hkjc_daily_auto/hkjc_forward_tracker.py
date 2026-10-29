@@ -56,8 +56,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 state_key="official_injury_forward_final", action="每週自動判，見傷患記錄一段"),
     ForwardTest("awt_experience", "冇泥地經驗（AWT）", "EXP-20261027-03", "awt_races", 30,
                 since="2026-10-28", action="夠數之後重跑分層加權差（預先登記），正數而且 CI 下界 > 0 先開排名候選"),
-    ForwardTest("trackwork_rescreen", "晨操細分訊號重新篩選", "EXP-20261010-11", "trackwork_meetings", 60,
-                action="夠數之後重跑晨操篩選；試閘次數 CI 下界 > 0 先做 arm"),
+    # EXP-20261029-01 喺 36 個賽日再篩六個訊號（試閘、距最後一課、上仗後負荷、同日同場地快操速度、
+    # 同平時習慣比、騎師真係有操），Holm 後全部 1.0 → UNRESOLVABLE；夠 60 個賽日用同一個腳本原封重跑。
+    ForwardTest("trackwork_rescreen", "晨操細分訊號重新篩選", "EXP-20261029-01", "trackwork_meetings", 60,
+                action="夠數之後原封重跑 docs/experiments/patches/hkjc_screen_trackwork_readiness.py"
+                       "（六個訊號、Holm）；Holm 後 CI 下界 > 0 先做 arm"),
     ForwardTest("weight_refit_t02", "權重 refit t02", "EXP-20260928-10", "shadow_profile", 120,
                 profile="weight_refit_t02"),
     # race_shape_v3_hv 已經 experimental live（EXP-20260929-01），由 race_shape_v2_legacy_hv 做 rollback 對照。
