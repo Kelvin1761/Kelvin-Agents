@@ -18,6 +18,9 @@ data/exports/*
 *.db.bak*
 *.db-wal
 *.db-shm
+# SQLite rollback journal: exists while a writer holds the DB, so the unsaved-work
+# audit kept flagging the main checkout whenever the tennis scheduler ran.
+*.db-journal
 
 # Local runtime state: launchd logs and the recovery/live snapshots.
 data/logs/
