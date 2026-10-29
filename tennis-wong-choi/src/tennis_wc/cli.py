@@ -63,6 +63,7 @@ from tennis_wc.reports.performance_report import prediction_summary
 from tennis_wc.config import get_settings
 from tennis_wc.pipeline_readiness import analysis_retry_reasons
 from tennis_wc.research_evidence import build_prediction_artifacts
+from tennis_wc.research_diagnostics import build_research_diagnostics
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SHARED_HOOK_DIR = REPO_ROOT / ".agents" / "skills" / "shared_racing" / "post_success_hooks" / "scripts"
@@ -714,17 +715,32 @@ def _record_daily_evidence(
     research = {"status": "blocked", "reason": "exact_pricing_observations_missing"}
     additional_files = {}
     if observations is not None:
+        raw_responses = {}
         try:
             expected = [item["id"] for item in predictions]
             observed = [item["prediction_id"] for item in observations]
             if not expected or len(expected) != len(set(expected)) or sorted(expected) != sorted(observed):
                 raise ValueError("Tennis research observation coverage incomplete")
+            raw_responses = _research_raw_responses(observations)
             additional_files = build_prediction_artifacts(
                 event_id=args.date, captured_at=cutoff, observations=observations,
-                raw_responses=_research_raw_responses(observations),
+                raw_responses=raw_responses,
             )
         except (ValueError, KeyError, TypeError, sqlite3.Error) as exc:
             research = {"status": "blocked", "reason": f"{type(exc).__name__}: {exc}"}
+            try:
+                additional_files, diagnostic = build_research_diagnostics(
+                    event_id=args.date, captured_at=cutoff, predictions=predictions,
+                    observations=observations, raw_responses=raw_responses,
+                    reason=research["reason"],
+                )
+            except (ValueError, KeyError, TypeError) as diagnostic_exc:
+                research["diagnostics"] = {
+                    "status": "failed",
+                    "reason": f"{type(diagnostic_exc).__name__}: {diagnostic_exc}",
+                }
+            else:
+                research["diagnostics"] = diagnostic
         else:
             research = {"status": "pregame_provenance_captured", "live_acceptance": "pending"}
     additional_files[f"Tennis_Research_Status_{args.date}.json"] = (

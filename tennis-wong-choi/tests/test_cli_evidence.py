@@ -269,3 +269,55 @@ def test_empty_native_card_is_not_a_verified_research_sample(tmp_path, monkeypat
     assert payload["research_evidence"]["status"] == "blocked"
     assert not list(Path(payload["prediction_snapshot"]).glob("Tennis_Feature_Evidence*"))
     assert report.read_text() == "native no matches"
+
+
+def test_rejected_projection_journals_all_memory_without_qualifying_partial_rows(tmp_path, monkeypatch):
+    import copy
+    import gzip
+    from tennis_wc import cli
+    from test_stage5_research_evidence import CUTOFF, EVENT, _observation, _raws
+
+    conn = _research_database(monkeypatch)
+    try:
+        observations = [_observation(), _observation()]
+        observations[1]["prediction_id"] = 202
+        observations[1]["pricing"]["model"]["components"][0]["warnings"] = ["missing_surface"]
+        original = copy.deepcopy(observations)
+        monkeypatch.setattr(cli, "datetime", SimpleNamespace(now=lambda _: CUTOFF))
+        monkeypatch.setattr(cli, "record_prediction_decision_if_configured", lambda **_: {"status": "migration_pending"})
+        report = tmp_path / "Daily.md"
+        report.write_text("native card")
+        predictions = [{"id": 101}, {"id": 202}]
+        payload = {}
+        cli._record_daily_evidence(Namespace(date=EVENT), payload, report, predictions, observations)
+        snapshot = Path(payload["prediction_snapshot"])
+        assert payload["research_evidence"]["status"] == "blocked"
+        assert "Tennis prediction 202" in payload["research_evidence"]["reason"]
+        assert not list(snapshot.glob("Tennis_Feature_Evidence_*"))
+        journal = json.loads(gzip.decompress((snapshot / f"Tennis_Research_Diagnostics_{EVENT}.json.gz").read_bytes()))
+        assert journal["observations"] == original == observations
+        assert journal["raw_responses"] == list(_raws().values())
+        assert journal["expected_prediction_ids"] == [101, 202]
+        assert journal["feature_availability_verified"] is False
+        assert json.loads((snapshot / "manifest.json").read_text())["recommendations"] == predictions
+        assert (snapshot / "Daily.md").read_text() == "native card"
+    finally:
+        conn.close()
+
+
+def test_diagnostic_failure_does_not_erase_native_card_or_projection_blocker(tmp_path, monkeypatch):
+    from tennis_wc import cli
+    monkeypatch.setattr(cli, "record_prediction_decision_if_configured", lambda **_: {"status": "migration_pending"})
+    def full_budget(**kwargs):
+        raise ValueError("diagnostic byte budget exceeded")
+    monkeypatch.setattr(cli, "build_research_diagnostics", full_budget)
+    report = tmp_path / "Daily.md"
+    report.write_text("native card")
+    payload = {}
+    cli._record_daily_evidence(Namespace(date="2026-09-01"), payload, report, [{"id": 101}], [])
+    assert payload["research_evidence"]["status"] == "blocked"
+    assert "coverage incomplete" in payload["research_evidence"]["reason"]
+    assert payload["research_evidence"]["diagnostics"]["status"] == "failed"
+    snapshot = Path(payload["prediction_snapshot"])
+    assert (snapshot / "Daily.md").read_text() == "native card"
+    assert not list(snapshot.glob("Tennis_Feature_Evidence_*"))
