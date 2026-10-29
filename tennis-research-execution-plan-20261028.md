@@ -1,6 +1,6 @@
 # Tennis Wong Choi：統一研究執行計劃
 
-2026-10-28｜計劃已完成；以下工作未開始。目標係用八個外部項目嘅方法／資料，驗證有冇可重現嘅增量；唔預先聲稱改善。
+2026-10-28 建立；2026-10-29 執行更新。**計劃已完成；研究執行中，暫時未證實準確度改善。** 八個外部項目嘅 URL／固定版本及資料用途已保存；已測 15 個候選全部 REJECT_DEV，無新候選入 forward。
 
 依據：[比較筆記](docs/plans/tennis-external-project-review-notes-20261028.md)、[URL／版本 manifest](docs/plans/tennis-external-project-sources-20261028.json)、[詳細協議](docs/plans/tennis-research-protocol-20261028.md)。沿用 frozen `tennis-v1`，唔改正式模型、下注政策或現有 shadow。
 
@@ -18,4 +18,8 @@
 
 允許其他莊家歷史賠率、逐場賽果及開發期 ROI 作訓練／研究；無報價時鐘嘅 ROI 唔當可執行回報。Sportsbet forward 另驗。同一場多 book／多 point 只算一個 match cluster。
 
-**完成研究嘅定義**：每個候選有去向、每個實驗有事前協議及全部結果，或者有明確暫停原因。可以得出「冇候選值得升級」。今次只交付計劃；下一步係第 1–3 項，唔係直接訓練。
+**完成研究嘅定義**：每個候選有去向、每個實驗有事前協議及全部結果，或者有明確暫停原因。可以得出「冇候選值得升級」。訓練及模型 promotion 各自須過相應資料／證據閘，唔將計劃完成當模型已改善。
+
+**目前執行狀態**：已凍結一份 DB、重現 baseline、完成五段 dev 特徵／head 及多 book 市場比較、MCP／49站 Slam 全量審計與 kernel 正確性核對。歷史比較只屬 SEEN_DEV；15 個候選未過穩定性／市場增量要求。來源發布時鐘及實際 workload 結束時間未驗證，相關 arms 停止；未有合格 serve 候選／joint props 合約，故 C09／新 forward 未開始。完整失敗研究與證據已保存本 repo 非 main 分支 `codex-tennis-unified-research-20261028`（checkpoint `69f7674f3bd842e3871e3f98a183b10613e1d247`）；唔部署該分支模型。
+
+**下一步**：依序處理已重現嘅輸入缺口。已交付[被拒絕投影嘅原樣診斷保存](docs/audits/tennis-observation-diagnostics-20261029.md)，今次[修正 Toray 當屆 metadata](docs/audits/tennis-toray-metadata-20261029.md)並量度輸入影響；其餘 identity／資料過期問題按正常 run 證據逐項處理。修正資料唔自動證明準確度提升，原拒絕判決、Sportsbet forward 要求及 frozen ruler 均不變。

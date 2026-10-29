@@ -39,7 +39,7 @@ def sportsbet_competition_meta(competition: str | None, match_date: str | None =
         return SportsbetCompetitionMeta("UNKNOWN", "UNKNOWN", "UNKNOWN", None, None, False, "missing_competition")
     if competition in CONFIRMED_COMPETITIONS:
         return CONFIRMED_COMPETITIONS[competition]
-    confirmed = confirmed_competition_meta(competition)
+    confirmed = confirmed_competition_meta(competition, match_date=match_date)
     if confirmed is not None:
         return SportsbetCompetitionMeta(
             confirmed.tour,

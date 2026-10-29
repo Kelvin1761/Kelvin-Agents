@@ -1,6 +1,6 @@
 # Tennis 統一研究：資料、對照、實驗及判決協議
 
-2026-10-28（Australia/Sydney）。**計劃完成，未執行**。本文件定義執行順序及預設設計；實際 data/code SHA、樣本、baseline 與 power 要喺執行時填入 immutable manifest，先開始相應階段。唔係已完成嘅事前登記或績效報告。
+2026-10-28（Australia/Sydney）凍結設計；2026-10-29 已進入執行，狀態見主計劃。本文件保留執行前定義嘅次序及預設設計；實際 data/code SHA、樣本、baseline 與 power 由各批 immutable manifest 記錄，先開始相應階段。唔因候選結果改本協議，亦唔將本文件當績效報告。
 
 入口：[一頁主計劃](../../tennis-research-execution-plan-20261028.md)。來源：[八項目筆記](tennis-external-project-review-notes-20261028.md)、[來源及 frozen URL manifest](tennis-external-project-sources-20261028.json)。新項目可加筆記；已鎖定批次唔中途加 arms。
 
@@ -11,7 +11,7 @@
 - Ruler 所記 baseline commits 係歷史依據，唔假定係今日 approved runtime。先由 release manifest／runtime 確認 production SHA、model release、feature/config 及資料根；不同就同時記錄並解釋，唔靜靜換基準。
 - `props/strategy.py` 嘅 recommendation tiers／profitability 替代路徑係營運選注邏輯，唔取代模型 promotion ruler。保留原政策，分開報告。現有 `elo-v2-start-of-day.surface-0.35` forward shadow 保持原版本／起點／計數，唔混入新試驗。
 - Calibration、ROI downside、CLV、coverage 嘅實際 gate 數值／缺值政策，須追溯已批准 contract 並凍結 hash。若只有定性要求或同 runtime 衝突，先開**獨立規則澄清紀錄**；未解決可審計資料，唔可以邊睇候選結果邊定數值或聲稱過 promotion。
-- 今次只完成計劃，未開始訓練、訂閱 API、改排程、落注或部署。後續研究可用其他莊家歷史資料／ROI，按用戶 2026-10-28 補充；唔倒改舊實驗約束及判決。
+- 計劃於 2026-10-28 凍結時未開始訓練、訂閱 API、改排程、落注或部署。其後執行進度／交付另記主計劃及 audit；研究可用其他莊家歷史資料／ROI，按用戶 2026-10-28 補充，唔倒改舊實驗約束及判決。
 
 ## 2. Gate 0–2：來源、語料及 baseline
 

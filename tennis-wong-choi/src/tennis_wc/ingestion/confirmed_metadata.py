@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
@@ -67,9 +68,23 @@ class ConfirmedTournamentMeta:
     source_url: str
     source_note: str
     aliases: tuple[str, ...]
+    valid_from: str | None = None
+    valid_until: str | None = None
 
 
 CONFIRMED_TOURNAMENTS: tuple[ConfirmedTournamentMeta, ...] = (
+    ConfirmedTournamentMeta(
+        tour="WTA",
+        tournament_name="Toray Pan Pacific Open Tennis",
+        level="WTA_500",
+        surface="Hard",
+        indoor_outdoor="outdoor",
+        source_url="https://www.wtatennis.com/tournaments/1056/tokyo/2026",
+        source_note="WTA official 2026 overview; main draw October 26–November 1 only",
+        aliases=("Toray Pan Pacific Open Tennis", "Toray Pan Pacific Open Tennis Tournament", "Toray Pan Pacific Open"),
+        valid_from="2026-10-26",
+        valid_until="2026-11-01",
+    ),
     ConfirmedTournamentMeta(
         tour="ATP",
         tournament_name="ATP Halle",
@@ -184,7 +199,28 @@ CONFIRMED_TOURNAMENTS: tuple[ConfirmedTournamentMeta, ...] = (
 )
 
 
-def confirmed_competition_meta(competition: str | None, tour: str | None = None) -> ConfirmedTournamentMeta | None:
+def _within_confirmed_dates(meta: ConfirmedTournamentMeta, match_date: str | None) -> bool:
+    if meta.valid_from is None and meta.valid_until is None:
+        return True
+    try:
+        stamp = date.fromisoformat(match_date or "")
+    except (TypeError, ValueError):
+        return False
+    return ((meta.valid_from is None or stamp >= date.fromisoformat(meta.valid_from))
+            and (meta.valid_until is None or stamp <= date.fromisoformat(meta.valid_until)))
+
+
+def outside_confirmed_metadata_dates(competition: str | None, tour: str | None, match_date: str | None) -> bool:
+    """Reject reuse of a persisted edition-specific row outside its dates."""
+    key = _metadata_key(competition)
+    scoped = [meta for meta in CONFIRMED_TOURNAMENTS
+              if (meta.valid_from or meta.valid_until)
+              and meta.tour == (tour or "").upper()
+              and key in {_metadata_key(alias) for alias in meta.aliases}]
+    return bool(scoped) and not any(_within_confirmed_dates(meta, match_date) for meta in scoped)
+
+
+def confirmed_competition_meta(competition: str | None, tour: str | None = None, *, match_date: str | None = None) -> ConfirmedTournamentMeta | None:
     key = _metadata_key(competition)
     if not key:
         return None
@@ -192,8 +228,14 @@ def confirmed_competition_meta(competition: str | None, tour: str | None = None)
     exact: list[ConfirmedTournamentMeta] = []
     fuzzy: list[ConfirmedTournamentMeta] = []
     for meta in CONFIRMED_TOURNAMENTS:
+        if not _within_confirmed_dates(meta, match_date):
+            continue
         if key in {_metadata_key(alias) for alias in meta.aliases}:
             exact.append(meta)
+            continue
+        # Dated editions require an explicit alias; a qualifying/doubles suffix
+        # must not inherit main-draw dates through generic token matching.
+        if meta.valid_from or meta.valid_until:
             continue
         # Token-subset: every token of a multi-word alias appears as a token in
         # the competition name. Catches sponsor-prefixed feeds, e.g. "VANDA
@@ -290,7 +332,7 @@ def backfill_confirmed_metadata_for_date(match_date: str) -> dict:
             match_tour = row["match_tour"]
             # Hand-verified curated list wins; the tennis-data index fills the
             # long tail of tour events the curated list does not cover.
-            meta = confirmed_competition_meta(name, match_tour)
+            meta = confirmed_competition_meta(name, match_tour, match_date=match_date)
             if meta is not None:
                 resolved_tour, level, surface, indoor = meta.tour, meta.level, meta.surface, meta.indoor_outdoor
                 source = CONFIRMED_METADATA_PROVIDER
@@ -419,6 +461,10 @@ def metadata_audit_for_date(match_date: str) -> dict:
     for row in rows:
         missing = []
         reliable_tournament_metadata = row["metadata_source"] in {CONFIRMED_METADATA_PROVIDER, TENNISDATA_METADATA_PROVIDER}
+        if row["metadata_source"] == CONFIRMED_METADATA_PROVIDER and outside_confirmed_metadata_dates(
+            row["tournament"], row["tour"], match_date
+        ):
+            reliable_tournament_metadata = False
         if not reliable_tournament_metadata or not _is_filled(row["level"]):
             missing.append("level")
             summary["missing_level"] += 1

@@ -6,6 +6,7 @@ from typing import Any
 
 from tennis_wc.database.market_captures import current_market_clause, book_listing_clause
 from tennis_wc.ingestion.fixture_versions import active_fixture_clause
+from tennis_wc.ingestion.confirmed_metadata import outside_confirmed_metadata_dates
 from tennis_wc.database.db import get_connection
 from tennis_wc.database.history_observations import history_active_clause
 from tennis_wc.features.big_match import calculate_big_match_stats
@@ -288,7 +289,14 @@ def _match_context(match: dict, tournament: dict, tournament_level: dict) -> dic
     level = tournament_level["level"]
     surface = tournament_level["surface"]
     indoor_outdoor = tournament_level["indoor_outdoor"]
-    if metadata_source not in RELIABLE_TOURNAMENT_METADATA_SOURCES:
+    outside_dates = metadata_source == "curated_tournament_metadata" and outside_confirmed_metadata_dates(
+        tournament["name"], match["tour"], match["match_date"]
+    )
+    if outside_dates:
+        tournament_prov = tournament_prov | {"warnings": sorted(set([
+            *tournament_prov.get("warnings", []), "tournament_metadata_outside_confirmed_dates",
+        ]))}
+    if metadata_source not in RELIABLE_TOURNAMENT_METADATA_SOURCES or outside_dates:
         level = "UNKNOWN"
         surface = None
         indoor_outdoor = None
