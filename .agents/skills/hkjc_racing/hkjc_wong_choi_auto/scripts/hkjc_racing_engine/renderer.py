@@ -941,13 +941,15 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
             ("上仗結果", last_result, 140),
         )
     if key == "class_advantage":
-        # 見習減磅：負磅係讓磅前分配磅，實揹=負磅−減磅（事實描述，未入評分）
+        # 見習減磅：`weight_carried` 已經係**實際負磅**（排位表負磅 − 減磅，orchestrator
+        # `_parse_racecard_meta`），所以宣佈負磅 = 實際 + 減磅。以前呢度再減一次，
+        # 印出「實揹 106 磅」而馬其實揹 113（EXP-20261018-06 只修咗計分）。
         allowance = data.get("jockey_allowance") or 0
         weight_bits = f"負磅={data.get('weight_carried')}" if data.get("weight_carried") not in (None, "") else ""
         try:
             if allowance and data.get("weight_carried") not in (None, ""):
-                eff = int(float(data.get("weight_carried"))) - int(allowance)
-                weight_bits = f"負磅={data.get('weight_carried')}（見習減{int(allowance)}磅，實揹{eff}磅）"
+                carried = int(float(data.get("weight_carried")))
+                weight_bits = f"實際負磅={carried}（見習減{int(allowance)}磅，宣佈負磅{carried + int(allowance)}）"
         except (TypeError, ValueError):
             pass
         record = _join_nonempty(
@@ -1187,7 +1189,7 @@ def _advantage_phrase(key: str, score: float) -> str:
         "draw_score": "排檔形勢",
         "distance_score": "路程適配",
         "track_going_score": "場地配合",
-        "weight_score": "負磅條件",
+        "weight_score": "讓磅官評價（負磅）",
         "consistency_score": "穩定度",
         "risk_score": "健康銜接",
         "confidence_score": "資料完整度",
@@ -1205,7 +1207,9 @@ def _risk_phrase(key: str, score: float) -> str:
         "draw_score": "排檔走位成本偏高",
         "distance_score": "今場路程證明仍然不足",
         "track_going_score": "場地適配仍未夠清晰",
-        "weight_score": "負磅條件略為吃力",
+        # 負磅分低 = 輕磅 = 讓磅官評分低（EXP-20260904-09 調轉方向）。以前寫「負磅條件
+        # 略為吃力」，即係將輕磅講成負擔：09-06 起 292 次，201 次落喺 54 分輕磅馬身上。
+        "weight_score": "讓磅官評價偏低（輕磅）",
         "consistency_score": "表現延續性未算穩陣",
         "risk_score": "健康銜接仍要再觀察",
         "confidence_score": "資料完整度未算特別高",

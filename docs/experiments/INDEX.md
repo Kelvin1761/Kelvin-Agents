@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261029-30](EXP-20261029-30-hkjc-weight-input-results.md) | 2026-10-29 | HKJC | 負磅分讀「讓磅官意見」：A 宣佈負磅（§7）／B 場內官方評分差距／D 剷 SIP-C 輕磅加分；同步修正倒轉嘅文字層 | **A 上線（§7，Gold +0.29／Good +0.58，冇分層負，未證實改善）；B REJECT（Good −0.29 primary_regression，前三平均名次顯著好）；D 唔上線（Good −1.16，交 Kelvin）** |
 | [EXP-20260929-01](EXP-20260929-01-hkjc-hv-v3-experimental-live.md)／[EXP-20261007-01](EXP-20261007-01-hkjc-pre-race-draw-context-v2.md) | 2026-10-27 | HKJC | 兩個 rollback 對照夠數嘅人手 review（immutable ledger），規則借用 shadow monitor rollback gate | **兩個都維持 live**：跑馬地 V3 舊版 27 場 Good −1、捕捉／NDCG CI 全負；檔位 v1 舊版 53 場 Good −2、NDCG CI 全負。A+B（`race_shape_v3_hv_t02`）撤走：V3 已 live，t02 喺跑馬地就等於 A+B |
 | [EXP-20261027-13](EXP-20261027-13-hkjc-top-jockey-overlay-walk-forward.md) | 2026-10-27 | HKJC | 頂級騎師 overlay（今仗／換上）walk-forward 幅度＋換騎 −1.5 方向 ablation；同時交付 overlay registry | **全部 REJECT**：A1 walk-forward 次次揀 0；A2 Good −1.19pp [−2.35,−0.29]；B／A1+B Good −0.30 跨零。忠實度 50/50。掃描 +5.5pp 入位率落唔到頭四。registry 交付（全部 shadow、排名 bit-identical、`o` 欄匯出畀 refit／ML） |
 | [EXP-20261027-12](EXP-20261027-12-hkjc-situational-overlay-scan.md) | 2026-10-27 | HKJC | 10 個情境 pattern（換騎方向、騎練組合、狀態差＋換騎、快速回師、長休、馬重、負磅、練馬師手風）預先登記，賠率分層＋模型排名分層，Holm | **P1「換上頂級騎師」overlay 候選**：模型鏡頭 +5.5pp [+1.7,+9.2] Holm p 0.025，市場鏡頭 ≈0（市場已反映、模型漏咗）；拆解似「今仗頂級騎師」被低估＋換騎 −1.5 唔分方向。出擊組合（P4／P10）冇訊號。未改 live |

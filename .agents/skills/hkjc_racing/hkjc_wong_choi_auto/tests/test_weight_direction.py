@@ -87,25 +87,63 @@ if __name__ == "__main__":
 
 
 class ApprenticeAllowance(unittest.TestCase):
-    """Logic 嘅負磅已經係實際負磅（已扣見習減磅），唔可以再扣（EXP-20261018-06）。
+    """負磅分用**宣佈負磅**：見習減磅係騎師嘅減磅，唔係讓磅官嘅意見（EXP-20261029-30）。
 
-    舊 test 當 `weight_carried` 係宣佈負磅；實測 327/335 個見習坐騎同賽果 actual_wt 一樣。
+    Logic `weight_carried` 係實際負磅（已扣減磅，EXP-20261018-06：327/335 同賽果 actual_wt
+    一樣），所以宣佈負磅 = 實際 + 減磅；orchestrator 由排位表直接寫 `declared_weight`。
     """
 
-    def _engine(self, carried, allowance):
+    def _engine(self, carried, allowance, declared=None):
         engine = RacingEngine.__new__(RacingEngine)
         engine.horse_data = {"weight_carried": carried}
         engine.data = {"jockey_allowance": allowance}
+        if declared is not None:
+            engine.data["declared_weight"] = declared
         engine.provenance = {}
         engine.race_analysis = {}
         return engine
 
-    def test_claim_is_not_subtracted_twice(self):
+    def test_claim_is_added_back_not_subtracted(self):
         score, note, _ = self._engine(123, 3)._weight_score({})
         self.assertEqual(score, scoring.WEIGHT_MICRO_WEIGHTS["base"])
-        self.assertIn("實際負磅123磅", note)
-        self.assertIn("已扣見習減磅 3", note)
+        self.assertIn("宣佈負磅126磅", note)
+        self.assertIn("實際負磅 123", note)
 
-    def test_light_band_uses_carried_weight(self):
+    def test_apprentice_does_not_turn_a_mid_weight_into_a_light_weight(self):
+        """120 實際 + 3 減磅 = 宣佈 123：讓磅官放佢喺中游，唔係輕磅。"""
         score, _note, _ = self._engine(120, 3)._weight_score({})
+        self.assertEqual(score, scoring.WEIGHT_MICRO_WEIGHTS["base"])
+
+    def test_apprentice_on_the_top_weight_keeps_the_top_weight_score(self):
+        score, _note, _ = self._engine(128, 5)._weight_score({})
+        self.assertEqual(score, scoring.WEIGHT_MICRO_WEIGHTS["heavy_weight_base"])
+
+    def test_racecard_declared_weight_wins(self):
+        score, note, _ = self._engine(113, 7, declared=120)._weight_score({})
         self.assertEqual(score, scoring.WEIGHT_MICRO_WEIGHTS["light_weight_base"])
+        self.assertIn("宣佈負磅120磅", note)
+
+
+class NarrativeFollowsScoreDirection(unittest.TestCase):
+    """文字方向要跟分數方向（2026-10-29）。
+
+    09-04 調轉咗分數，但 renderer 仲將低負磅分寫成「負磅條件略為吃力」——
+    低分而家係輕磅，即係將輕磅講成負擔。一個 leaf 嘅意思抄咗喺引擎 note、
+    矩陣描述、風險短語、事實行四處，兩次修正都只改咗一半。
+    """
+
+    def test_low_weight_score_is_not_described_as_a_burden(self):
+        from hkjc_racing_engine import renderer
+        light, _, _ = _score(113)
+        phrase = renderer._risk_phrase("weight_score", light)
+        for burden in ("吃力", "負擔", "重壓"):
+            self.assertNotIn(burden, phrase)
+        self.assertIn("輕磅", phrase)
+
+    def test_fact_line_does_not_subtract_the_claim_again(self):
+        from hkjc_racing_engine import renderer
+        horse = {"python_auto": {}, "_data": {"weight_carried": "113", "jockey_allowance": 7}}
+        lines = "\n".join(renderer._matrix_fact_lines("class_advantage", horse))
+        self.assertIn("實際負磅=113", lines)
+        self.assertIn("宣佈負磅120", lines)
+        self.assertNotIn("106", lines)

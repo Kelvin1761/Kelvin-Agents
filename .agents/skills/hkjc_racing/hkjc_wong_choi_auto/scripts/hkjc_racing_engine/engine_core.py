@@ -456,24 +456,26 @@ class RacingEngine:
     def _weight_score(self, _features):
         # 負磅分只計讓磅官嘅負磅（EXP-20261010-04）。馬匹體重趨勢係健康訊號，已經喺
         # risk_score 計，所以唔再重複計。
-        # Logic `weight` 已經係**實際負磅**（已扣見習減磅）：335 個見習騎師坐騎入面 327 個
-        # 同賽果 `actual_wt` 一樣、0 個等於「負磅＋減磅」。以前再扣一次減磅，令 90 匹（27%）
-        # 跌錯負磅分級（EXP-20261018-06，§7）。減磅只入說明。
+        # 負磅分讀嘅係讓磅官嘅意見，所以用**宣佈負磅**（排位表負磅，未扣見習減磅）。
+        # 見習減磅係騎師嘅減磅，唔係讓磅官對匹馬嘅評價（EXP-20261029-30，§7：
+        # Gold +0.29pp、Good +0.58pp，冇一個分層負）。Logic `weight` 係實際負磅
+        # （已扣減磅，EXP-20261018-06），冇 `declared_weight` 時用「實際＋減磅」還原。
         weight = parse_float(self._value("weight_carried") or self._value("weight"))
         if weight is None:
             return 60, "負磅資料不足，負磅分60分。", "missing_neutral"
         allowance = parse_float(self._value("jockey_allowance")) or 0.0
-        carried = weight
-        claim = f"（已扣見習減磅 {allowance:.0f}）" if allowance else ""
+        declared = parse_float(self._value("declared_weight"))
+        carried = declared if declared is not None else weight + allowance
+        claim = f"（見習減磅 {allowance:.0f}，實際負磅 {carried - allowance:.0f}）" if allowance else ""
         score = scoring.WEIGHT_MICRO_WEIGHTS.get("base", 64.0)
-        note = f"今仗實際負磅{carried:.0f}磅{claim}，屬中游負磅，讓磅官冇特別意見，負磅分{score:.0f}分。"
+        note = f"今仗宣佈負磅{carried:.0f}磅{claim}，屬中游負磅，讓磅官冇特別意見，負磅分{score:.0f}分。"
         if carried <= 120:
             score = scoring.WEIGHT_MICRO_WEIGHTS.get("light_weight_base", 54.0)
-            note = (f"今仗實際負磅{carried:.0f}磅{claim}較輕 —— 負磅係讓磅官嘅評分，輕磅即係"
+            note = (f"今仗宣佈負磅{carried:.0f}磅{claim}較輕 —— 負磅係讓磅官嘅評分，輕磅即係"
                     f"官方評分低，負磅分{score:.0f}分。")
         elif carried >= 132:
             score = scoring.WEIGHT_MICRO_WEIGHTS.get("heavy_weight_base", 70.0)
-            note = (f"今仗實際負磅{carried:.0f}磅{claim}屬頂磅 —— 讓磅官視佢為全場最好嘅馬，"
+            note = (f"今仗宣佈負磅{carried:.0f}磅{claim}屬頂磅 —— 讓磅官視佢為全場最好嘅馬，"
                     f"而實測加磅加得唔夠狠（0.389 分/kg vs 慣例 0.5），"
                     f"負磅分{score:.0f}分。")
         return clip_score(score), note, "weight_carried"

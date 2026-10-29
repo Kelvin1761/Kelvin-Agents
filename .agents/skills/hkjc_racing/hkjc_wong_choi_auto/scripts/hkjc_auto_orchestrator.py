@@ -785,6 +785,11 @@ def _align_runner_headers(logic_path, race_context, horses):
             for field in ("horse_code", "hkjc_horse_id", "horse_profile_url"):
                 if info.get(field):
                     horse_obj[field] = info[field]
+            if info.get("weight") is not None:
+                # 排位表負磅 = 讓磅官分配嘅宣佈負磅；`weight` 已扣見習減磅（EXP-20261029-30）。
+                horse_obj.setdefault("_data", {})["declared_weight"] = (
+                    int(info["weight"]) + int(info.get("jockey_claim") or 0)
+                )
             if info.get("rating") is not None:
                 data = horse_obj.setdefault("_data", {})
                 data["current_rating"] = info["rating"]
