@@ -30,3 +30,9 @@
 - **之後**：過咗先設計賽前用法，例如按配置調 race_shape 幅度，再行 Stage 4 v3 walk-forward。唔過就結案，檔位問題當作賽前不可預測。
 - **預計時間**：沙田大約要多 39 個賽日，跑馬地多 46 個，約一季。
 - `python3 .agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_rail_bias_ledger.py report`
+
+## 2026-10-29 — 登記入 forward 追蹤表
+
+之前冇喺 `hkjc_forward_tracker.py` 嘅 `FORWARD_TESTS`，夠數唔會自動提。而家登記做 `rail_bias`
+（kind `rail_ledger`）：逐場地數 ledger 嘅賽日，兩個場地都 ≥ 60 先算夠數，夠數 Telegram 一次。
+登記時：沙田 25、跑馬地 16 個賽日。測試規則（上面預先登記嘅 Kruskal–Wallis）冇改。

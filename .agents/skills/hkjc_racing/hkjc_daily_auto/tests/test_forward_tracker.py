@@ -58,6 +58,22 @@ def test_race_awt_and_trackwork_counts_respect_since(tmp_path):
     assert tracker._trackwork_meetings(tmp_path) == 2
 
 
+def test_rail_ledger_needs_both_venues(tmp_path):
+    test = _test("rail_bias")
+    get = lambda: tracker.progress(test, root=tmp_path, ledger={}, state={})
+    assert get()["status"] == "unknown"  # ledger 未有
+    rows = [{"meeting": f"2026-{i:03d}_ShaTin", "venue": "沙田", "race": r} for i in range(60) for r in (1, 2)]
+    rows += [{"meeting": f"2026-{i:03d}_HappyValley", "venue": "跑馬地", "race": 1} for i in range(59)]
+    path = tmp_path / tracker.RAIL_LEDGER_NAME
+    path.write_text("\n".join(json.dumps(r, ensure_ascii=False) for r in rows) + "\n", encoding="utf-8")
+    item = get()
+    assert (item["count"], item["status"]) == (59, "collecting")  # 逐場行唔係逐日；跑馬地差一日
+    assert "沙田 60" in item["note"] and "跑馬地 59" in item["note"]
+    with path.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps({"meeting": "2026-999_HappyValley", "venue": "跑馬地", "race": 1}) + "\n")
+    assert get()["status"] == "ready"
+
+
 def test_remind_sends_once_per_status(tmp_path):
     ledger_path = _ledger(tmp_path / "l.json", {"race_shape_st_draw70": {"active_races": 81}}, [])
     sent: list[str] = []

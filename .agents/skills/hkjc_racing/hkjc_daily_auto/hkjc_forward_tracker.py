@@ -35,7 +35,7 @@ class ForwardTest:
     key: str
     label: str
     experiment: str
-    kind: str                     # shadow_profile | harness_ab | awt_races | trackwork_meetings | state_judge
+    kind: str                     # shadow_profile | harness_ab | awt_races | trackwork_meetings | rail_ledger | state_judge
     minimum: int
     since: str = ""
     profile: str = ""
@@ -58,6 +58,9 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 since="2026-10-28", action="夠數之後重跑分層加權差（預先登記），正數而且 CI 下界 > 0 先開排名候選"),
     ForwardTest("trackwork_rescreen", "晨操細分訊號重新篩選", "EXP-20261010-11", "trackwork_meetings", 60,
                 action="夠數之後重跑晨操篩選；試閘次數 CI 下界 > 0 先做 arm"),
+    ForwardTest("rail_bias", "賽道配置 → 當日內檔偏差", "EXP-20261010-14", "rail_ledger", 60,
+                action="兩個場地都夠 60 個賽日：跑預先登記嘅 Kruskal–Wallis（配置 ≥ 5 日先比），p < 0.05 先設計賽前用法；"
+                       "`hkjc_rail_bias_ledger.py report`"),
     ForwardTest("weight_refit_t02", "權重 refit t02", "EXP-20260928-10", "shadow_profile", 120,
                 profile="weight_refit_t02"),
     # race_shape_v3_hv 已經 experimental live（EXP-20260929-01），由 race_shape_v2_legacy_hv 做 rollback 對照。
@@ -118,6 +121,25 @@ def _trackwork_meetings(root: Path) -> int:
     return sum(1 for m in _meetings(root) if _results_races(m) and any(m.glob("*晨操.json")))
 
 
+RAIL_LEDGER_NAME = "HKJC_Rail_Bias_Ledger.jsonl"  # hkjc_rail_bias_ledger.LEDGER_NAME
+
+
+def _rail_meetings(root: Path) -> dict[str, int] | None:
+    """Meetings per venue in the rail-bias ledger (EXP-20261010-14); None = ledger missing."""
+    path = root / RAIL_LEDGER_NAME
+    if not path.exists():
+        return None
+    meetings: dict[str, set] = {"沙田": set(), "跑馬地": set()}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue
+        if row.get("venue") in meetings:
+            meetings[row["venue"]].add(row.get("meeting"))
+    return {venue: len(names) for venue, names in meetings.items()}
+
+
 def _ledger_summary(ledger_path: Path | None) -> dict:
     if not ledger_path or not ledger_path.exists():
         return {}
@@ -171,6 +193,13 @@ def progress(test: ForwardTest, *, root: Path, ledger: dict, state: dict) -> dic
     elif test.kind == "trackwork_meetings":
         count = _trackwork_meetings(root)
         note = ""
+    elif test.kind == "rail_ledger":
+        per_venue = _rail_meetings(root)
+        if per_venue is None:
+            return {"count": None, "minimum": test.minimum, "status": "unknown",
+                    "note": f"搵唔到 {RAIL_LEDGER_NAME}"}
+        count = min(per_venue.values())  # 兩個場地都要夠數
+        note = "、".join(f"{venue} {n}" for venue, n in per_venue.items())
     else:
         return {"count": None, "minimum": test.minimum, "status": "unknown", "note": f"未知 kind {test.kind}"}
     status = "ready" if count >= test.minimum else "collecting"
