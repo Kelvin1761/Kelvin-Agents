@@ -9,6 +9,12 @@ from pathlib import Path
 
 import pytest
 
+
+@pytest.fixture(autouse=True)
+def isolated_cutover_control(tmp_path, monkeypatch):
+    monkeypatch.setenv("WONGCHOI_CONTROL_STATE_ROOT", str(tmp_path / "control-state"))
+    monkeypatch.delenv("WC_RUNTIME_CUTOVER_FD", raising=False)
+
 ROOT = Path(__file__).resolve().parents[4]
 INSTALLER = ROOT / ".agents/skills/central_wong_choi/install_production_runtime.sh"
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -200,3 +206,20 @@ def test_restore_refuses_unowned_concurrent_plist_change_before_any_mutation(
     assert (target.read_bytes() if target.exists() else None) == expected
     assert loaded.read_bytes() == states_before
     assert (snapshot / ".launchd-state.json").exists(), "retain recovery evidence"
+
+
+def test_shared_cutover_reader_blocks_real_snapshot_before_any_mutation(isolated_runtime):
+    import fcntl
+
+    _, _, _, calls, env, snapshot = isolated_runtime
+    control = snapshot.parent / 'control'
+    control.mkdir()
+    lease = control / 'runtime-cutover.lock'
+    env['WONGCHOI_CONTROL_STATE_ROOT'] = str(control)
+    with lease.open('w') as handle:
+        lease.chmod(0o600)
+        fcntl.flock(handle, fcntl.LOCK_SH | fcntl.LOCK_NB)
+        result = invoke(env, '--snapshot', snapshot)
+    assert result.returncode == 75, result.stderr
+    assert not snapshot.exists(), 'cutover exclusion must precede snapshot and pointer writes'
+    assert not calls.exists()

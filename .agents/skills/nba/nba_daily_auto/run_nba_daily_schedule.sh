@@ -3,6 +3,13 @@ set -u
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+
+  LEASE_HELPER="$REPO_ROOT/.agents/skills/shared_wong_choi/runtime_cutover_lease.py"
+  if [ -z "${WC_RUNTIME_CUTOVER_FD:-}" ]; then
+    exec /usr/bin/python3 "$LEASE_HELPER" --mode shared -- /bin/bash "$0" "$@"
+  fi
+  /usr/bin/python3 "$LEASE_HELPER" --mode shared --verify || exit $?
+
 CONTROL_PLANE="$REPO_ROOT/.agents/skills/shared_wong_choi/control_plane.py"
 MODE="${1:-health}"
 [ "$#" -gt 0 ] && shift

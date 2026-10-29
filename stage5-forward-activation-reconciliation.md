@@ -243,3 +243,55 @@ Next connect these authoritative rendered candidates to a before-write,
 attempt-bound journal, shared cutover exclusion and ownership-aware recovery.
 Do not accept current files as proof of our writes or publish rendering as the
 approved forward workflow. Retain the exact-target provenance/cadence limits.
+
+## Cooperative cutover lease source — 2026-10-30
+
+`runtime_cutover_lease.py` now implements a stable mode600, owner/inode-bound
+flock file in Control. It never unlinks the lock file. Normal domain jobs use
+shared locks; native snapshots, installation and recovery use exclusive locks.
+Busy acquisition returns75 before job/runtime mutation. Inherited exclusive
+ownership is verified against both file identity and kernel locking; a shared
+or unlocked descriptor cannot authorize an exclusive operation. Invalid proof
+fails closed. Child execution retains the descriptor, and the parent holds its
+lease until the leased command finishes.
+
+The unified native installer and all five subordinate installation entrypoints
+participate in exclusive exclusion. Pure rendering/status stay read-only.
+AU/HKJC/NBA/Tennis and Central scheduled shell launchers participate before
+configuration/self-update, with nine direct Python CLI entrypoints acquiring
+before imports (including Tennis preclose and Central review/durability).
+Existing domain daily/preclose locks remain separate and unchanged. The
+long-lived AU command bot is not given a lifetime shared lease: it is the
+approved controller caller and AU is not reinstalled. Finite AU daily/health
+work does participate. No process is force-stopped.
+
+A child created with subprocess close_fds can retain a stale environment FD.
+Only a proved EBADF marker is discarded by a scheduler; it must then acquire
+a fresh kernel shared lock, so an active exclusive cutover still returns75.
+This does not confer inherited exclusive authority. Descriptor identity errors
+and unsafe lock paths continue to block. Nested acceptance work that loses an
+exclusive descriptor must defer rather than run without protection; complete
+native acceptance remains required.
+
+This is cooperative exclusion, not protection against arbitrary nonparticipating
+writers or old jobs that started before these entrypoints existed. Complete
+active-run discovery and authoritative attempt/write ownership are still open;
+the three concurrent-plist ownership REDs are unchanged. No shared-lease source
+checkpoint may be called complete installation reconciliation or installation
+acceptance. No live installer or scheduler was run for these tests.
+
+Real shared-reader/native-snapshot RED: wc-run-k83umo6a,1failed before wiring.
+Kernel lease/real snapshot selected tests then18passed,3ownership cases
+explicitly deselected,63.70s,wc-run-nu0gfwep. Actual miniature Python-X,
+shell/standalone installer and renderer checks33passed,wc-run-6jqwziv3.
+Closed-parent-FD RED2 was reproduced, then fresh-shared reacquisition implemented.
+The combined selected run wc-run-vk1om9u9 produced66passed,2fixture setup
+failures,3known ownership cases deselected,180.61s. Two miniature research
+installer cases lacked the new lease helper. The fixture now copies the real
+helper and requires a native command boundary marker for every fault case,
+so setup errors cannot masquerade as recovery success. Corrected interruption,
+copy failure, bootstrap failure, concurrent writer and success cases all5pass,
+10.73s,wc-run-9u3ek8o0. These setup failures are not claimed as runtime REDs.
+Final quick wc-run-9vcd5n41 and modified-shell syntax checks pass; goldens
+unchanged. None of these results is a full immutable release gate. The3real
+ownership REDs remain and forbid installer release or installation acceptance.

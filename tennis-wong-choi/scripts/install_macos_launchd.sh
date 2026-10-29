@@ -23,6 +23,16 @@ set -eu
 # at the Google Drive path the repo left in the 2026-07-14 migration.
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+if [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
+  CUTOVER_REPO="$(cd "$PROJECT_DIR/.." && pwd)"
+  LEASE_HELPER="$CUTOVER_REPO/.agents/skills/shared_wong_choi/runtime_cutover_lease.py"
+  if [ -z "${WC_RUNTIME_CUTOVER_FD:-}" ]; then
+    exec /usr/bin/python3 "$LEASE_HELPER" --mode exclusive -- /bin/zsh "$0" "$@"
+  fi
+  /usr/bin/python3 "$LEASE_HELPER" --mode exclusive --verify || exit $?
+fi
+
 DEST_DIR="$HOME/Library/LaunchAgents"
 DOMAIN="gui/$(id -u)"
 TENNIS_RUNTIME_ROOT="${WC_TENNIS_RUNTIME_ROOT:-$PROJECT_DIR}"

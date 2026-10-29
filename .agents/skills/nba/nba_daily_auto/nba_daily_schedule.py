@@ -6,6 +6,15 @@ health and deployment.  It deliberately does not implement prediction logic.
 """
 from __future__ import annotations
 
+# Lock before imports that may probe output paths or initialize runtime state.
+if __name__ == "__main__":
+    import sys as _cutover_sys
+    from pathlib import Path as _CutoverPath
+    _cutover_sys.path.insert(0, str(_CutoverPath(__file__).resolve().parents[2]))
+    from shared_wong_choi.runtime_cutover_lease import scheduler_entry as _cutover_entry
+    _cutover_entry()
+
+
 import argparse
 import csv
 import fcntl

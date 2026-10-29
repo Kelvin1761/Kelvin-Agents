@@ -15,6 +15,16 @@ TENNIS_PYTHON_BIN="${TENNIS_PYTHON_BIN:-$TENNIS_RUNTIME_ROOT/.venv/bin/python}"
 TENNIS_DB_POINTER="${WC_TENNIS_DB_POINTER:-$HOME/.wongchoi_tennis_db}"
 SNAPSHOT_STATE="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_snapshot_state.py"
 
+# Pure rendering/status do not mutate runtime state. Every native snapshot,
+# install and restore holds the same exclusive lease through all descendants.
+if [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
+  LEASE_HELPER="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_cutover_lease.py"
+  if [ -z "${WC_RUNTIME_CUTOVER_FD:-}" ]; then
+    exec /usr/bin/python3 "$LEASE_HELPER" --mode exclusive -- /bin/zsh "$0" "$@"
+  fi
+  /usr/bin/python3 "$LEASE_HELPER" --mode exclusive --verify || exit $?
+fi
+
 LABELS=(
   com.antigravity.hkjc-wong-choi.intraday
   com.antigravity.hkjc-wong-choi.lineup

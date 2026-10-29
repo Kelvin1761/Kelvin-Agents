@@ -4,6 +4,13 @@ set -eu
 SCRIPT_DIR="${0:A:h}"
 PROJECT_ROOT="${SCRIPT_DIR:h:h:h:h}"
 
+  LEASE_HELPER="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_cutover_lease.py"
+  if [ -z "${WC_RUNTIME_CUTOVER_FD:-}" ]; then
+    exec /usr/bin/python3 "$LEASE_HELPER" --mode shared -- /bin/zsh "$0" "$@"
+  fi
+  /usr/bin/python3 "$LEASE_HELPER" --mode shared --verify || exit $?
+
+
 : "${WC_PRIMARY_REPO_ROOT:=$PROJECT_ROOT}"
 : "${WONGCHOI_CONTROL_STATE_ROOT:=$HOME/WongChoiData/WongChoiControl}"
 : "${WC_WARM_ARCHIVE_ROOT:=/Volumes/Kelvin Hardisk 1/WongChoi-Archive}"

@@ -3,6 +3,16 @@
 set -eu
 SKILL_DIR="${0:A:h}"
 PROJECT_ROOT="${SKILL_DIR:h:h:h}"
+
+if [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
+  CUTOVER_REPO="$PROJECT_ROOT"
+  LEASE_HELPER="$CUTOVER_REPO/.agents/skills/shared_wong_choi/runtime_cutover_lease.py"
+  if [ -z "${WC_RUNTIME_CUTOVER_FD:-}" ]; then
+    exec /usr/bin/python3 "$LEASE_HELPER" --mode exclusive -- /bin/zsh "$0" "$@"
+  fi
+  /usr/bin/python3 "$LEASE_HELPER" --mode exclusive --verify || exit $?
+fi
+
 SCRIPT_DIR="$SKILL_DIR/scripts"
 LABEL="com.antigravity.central-wong-choi.research-review"
 AGENTS_DIR="${WC_LAUNCH_AGENTS_DIR:-$HOME/Library/LaunchAgents}"

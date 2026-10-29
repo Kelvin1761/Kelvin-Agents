@@ -12,6 +12,12 @@ from pathlib import Path
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def isolated_cutover_control(tmp_path, monkeypatch):
+    monkeypatch.setenv("WONGCHOI_CONTROL_STATE_ROOT", str(tmp_path / "control-state"))
+    monkeypatch.delenv("WC_RUNTIME_CUTOVER_FD", raising=False)
+
+
 REPO_ROOT = Path(__file__).resolve().parents[4]
 INSTALLER = (
     REPO_ROOT
@@ -379,6 +385,10 @@ def test_research_installer_interruption_and_publication_rollback(tmp_path: Path
     skill = tmp_path / "repo/.agents/skills/central_wong_choi"
     (skill / "scripts").mkdir(parents=True)
     (skill / "launchd").mkdir()
+    shared = skill.parent / "shared_wong_choi"
+    shared.mkdir()
+    shutil.copyfile(REPO_ROOT / ".agents/skills/shared_wong_choi/runtime_cutover_lease.py",
+                    shared / "runtime_cutover_lease.py")
     installer = skill / "install_research_review.sh"
     shutil.copyfile(INSTALLER.parent / installer.name, installer)
     label = "com.antigravity.central-wong-choi.research-review"
@@ -405,6 +415,8 @@ once = root / "injected"
 dest = Path(os.environ["TEST_INSTALL_DEST"])
 fault = os.environ["TEST_INSTALL_FAULT"]
 op = sys.argv[1]
+with (root / "calls").open("a") as output:
+    output.write(op + "\\n")
 if op == "print":
     raise SystemExit(0 if loaded.exists() else 1)
 if op == "bootout":
@@ -435,6 +447,7 @@ raise SystemExit(subprocess.call(["/bin/cp", *sys.argv[1:]]))
            "WC_LAUNCH_AGENTS_DIR": str(agents), "WC_LAUNCHCTL_BIN": str(launchctl),
            "TEST_INSTALL_ROOT": str(tmp_path), "TEST_INSTALL_DEST": str(dest), "TEST_INSTALL_FAULT": fault}
     result = subprocess.run(["/bin/zsh", str(installer)], env=env, capture_output=True, text=True, timeout=30)
+    assert (tmp_path / "calls").exists(), "fixture must reach native command boundary"
     if fault == "none":
         assert result.returncode == 0, result.stderr
         assert plistlib.loads(dest.read_bytes())["Label"] == label

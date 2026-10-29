@@ -2,6 +2,16 @@
 set -eu
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+if [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
+  CUTOVER_REPO="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+  LEASE_HELPER="$CUTOVER_REPO/.agents/skills/shared_wong_choi/runtime_cutover_lease.py"
+  if [ -z "${WC_RUNTIME_CUTOVER_FD:-}" ]; then
+    exec /usr/bin/python3 "$LEASE_HELPER" --mode exclusive -- /bin/bash "$0" "$@"
+  fi
+  /usr/bin/python3 "$LEASE_HELPER" --mode exclusive --verify || exit $?
+fi
+
 RUNNER="$SCRIPT_DIR/run_hkjc_daily_schedule.sh"
 LOG_DIR="$SCRIPT_DIR/logs"
 AGENTS_DIR="$HOME/Library/LaunchAgents"

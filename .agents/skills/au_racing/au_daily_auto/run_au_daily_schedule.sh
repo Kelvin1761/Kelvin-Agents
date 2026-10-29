@@ -13,11 +13,18 @@
 #   WONGCHOI_AU_MIRROR_ROOT  Drive 鏡像，best-effort（launchd 底下寫唔入就 warn）
 set -u
 
+SCRIPT_DIR="${0:A:h}"
+PROJECT_ROOT="${SCRIPT_DIR:h:h:h:h}"
+
+  LEASE_HELPER="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_cutover_lease.py"
+  if [ -z "${WC_RUNTIME_CUTOVER_FD:-}" ]; then
+    exec /usr/bin/python3 "$LEASE_HELPER" --mode shared -- /bin/zsh "$0" "$@"
+  fi
+  /usr/bin/python3 "$LEASE_HELPER" --mode shared --verify || exit $?
+
 MODE="${1:-evening}"
 shift 2>/dev/null || true
 
-SCRIPT_DIR="${0:A:h}"
-PROJECT_ROOT="${SCRIPT_DIR:h:h:h:h}"
 CONTROL_PLANE="$PROJECT_ROOT/.agents/skills/shared_wong_choi/control_plane.py"
 NETWORK_READINESS="$PROJECT_ROOT/.agents/skills/shared_wong_choi/network_readiness.py"
 

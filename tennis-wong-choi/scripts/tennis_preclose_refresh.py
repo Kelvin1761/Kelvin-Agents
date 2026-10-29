@@ -20,6 +20,15 @@ tables the card never reads, under the 30s SQLite busy timeout.
 """
 from __future__ import annotations
 
+# Lock before imports that may probe output paths or initialize runtime state.
+if __name__ == "__main__":
+    import sys as _cutover_sys
+    from pathlib import Path as _CutoverPath
+    _cutover_sys.path.insert(0, str(_CutoverPath(__file__).resolve().parents[2] / '.agents' / 'skills'))
+    from shared_wong_choi.runtime_cutover_lease import scheduler_entry as _cutover_entry
+    _cutover_entry()
+
+
 import argparse
 import fcntl
 import json

@@ -9,6 +9,15 @@ TASK="${1:-}"
 SCRIPT_DIR="${0:A:h}"
 PROJECT_ROOT="${SCRIPT_DIR:h:h:h:h}"
 
+if [ "$TASK" != "bot" ]; then
+  LEASE_HELPER="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_cutover_lease.py"
+  if [ -z "${WC_RUNTIME_CUTOVER_FD:-}" ]; then
+    exec /usr/bin/python3 "$LEASE_HELPER" --mode shared -- /bin/zsh "$0" "$@"
+  fi
+  /usr/bin/python3 "$LEASE_HELPER" --mode shared --verify || exit $?
+fi
+
+
 # 中央旺財同四條 scheduler 共用呢個 dedicated production checkout。明確 export
 # 令 Telegram approval/activation 唔使估 runtime 喺邊，亦唔會掂開發中嘅主 worktree。
 : "${WC_PRIMARY_REPO_ROOT:=$PROJECT_ROOT}"
