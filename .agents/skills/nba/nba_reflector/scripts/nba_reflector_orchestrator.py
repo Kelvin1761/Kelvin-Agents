@@ -1157,7 +1157,12 @@ def main() -> None:
         )
     if not args.skip_pbp and (not os.path.exists(pbp_path) or not args.skip_fetch):
         if should_fetch_pbp(results_path, verification_path):
-            run_script(FETCH_PBP, ["--date", us_game_date, "--dir", target_dir], "Fetch PBP")
+            # PBP is stats.nba.com-only and optional (pbp_path is None without
+            # it). When nba.com blocks us it must not take settlement down with it.
+            try:
+                run_script(FETCH_PBP, ["--date", us_game_date, "--dir", target_dir], "Fetch PBP")
+            except RuntimeError as exc:
+                print(f"⚠️ PBP 擷取失敗，略過（唔影響結算）: {exc}")
         else:
             print("📉 PBP trigger not hit — skipping play-by-play fetch.")
 

@@ -1255,3 +1255,43 @@ def test_health_line_reports_abandoned_settlements_when_there_are_any(monkeypatc
         "cloudflare_deploy": {"attempted": True, "status": "deployed"},
     })
     assert "棄結" not in quiet
+
+
+# --------------------------------------------------------------------------- #
+# 2026-10-27..29: a failed enrichment source is not why tomorrow's book is empty
+# --------------------------------------------------------------------------- #
+def _identity_hold(source):
+    return {"source": source, "error": "provider player identity changed"}
+
+
+def test_enrichment_failure_on_a_closed_next_day_book_is_expected_empty():
+    """18:00 next-day passes were called BROKEN four nights running because a
+    rankings/history identity hold coincided with the book being closed."""
+    from tennis_wc.pipeline_readiness import (
+        SEVERITY_EXPECTED_EMPTY, analysis_readiness,
+    )
+
+    payload = _empty_board(fixtures=7)
+    payload["source_errors"] = [_identity_hold("rankings_atp"),
+                                _identity_hold("history_lowtier")]
+    readiness = analysis_readiness(payload, horizon="next_day")
+    assert readiness["severity"] == SEVERITY_EXPECTED_EMPTY
+    assert any("zero Sportsbet-priced" in r for r in readiness["observed"])
+
+
+def test_enrichment_failure_does_not_excuse_an_empty_same_day_board():
+    from tennis_wc.pipeline_readiness import SEVERITY_ERROR, analysis_readiness
+
+    payload = _empty_board(fixtures=7)
+    payload["source_errors"] = [_identity_hold("rankings_wta")]
+    assert analysis_readiness(payload, horizon="same_day")["severity"] == SEVERITY_ERROR
+
+
+def test_priced_matches_lost_after_any_source_failure_is_still_an_error():
+    from tennis_wc.pipeline_readiness import SEVERITY_ERROR, analysis_readiness
+
+    payload = _empty_board(fixtures=50, priced=40)
+    payload["source_errors"] = [_identity_hold("history_lowtier")]
+    readiness = analysis_readiness(payload, horizon="next_day")
+    assert readiness["severity"] == SEVERITY_ERROR
+    assert "zero matches after source failures" in readiness["reasons"]

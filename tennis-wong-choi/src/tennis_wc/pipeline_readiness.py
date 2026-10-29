@@ -147,8 +147,19 @@ def _pipeline_reasons(payload: dict[str, Any]) -> list[str]:
     source_errors = payload.get("source_errors") or []
     coverage = payload.get("odds_coverage") or {}
     priced = _intish(coverage.get("priced_matches"))
+    # A failed enrichment source (rankings, history) did not cause an empty
+    # board when there was nothing priced to model. From 2026-10-27 the new
+    # identity holds made rankings/history fail most evenings, and every 18:00
+    # next-day pass -- whose book is ALWAYS closed then -- was called BROKEN.
+    # Only a critical source, or prices we failed to turn into matches, can
+    # explain zero matches. An unlabelled source counts as critical.
+    blamed = [
+        error for error in source_errors
+        if str(error.get("source") or "unknown") in CRITICAL_SOURCES
+        or not error.get("source")
+    ]
     reasons: list[str] = []
-    if matches == 0 and source_errors:
+    if matches == 0 and (blamed or (source_errors and priced > 0)):
         reasons.append("zero matches after source failures")
     elif matches == 0 and priced > 0:
         reasons.append(f"{priced} priced matches produced zero model snapshots")
