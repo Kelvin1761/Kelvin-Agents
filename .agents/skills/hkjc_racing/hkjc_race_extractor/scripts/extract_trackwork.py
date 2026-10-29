@@ -265,6 +265,9 @@ def parse_horse_list(page_html: str) -> list[dict[str, Any]]:
 def normalize_work_type(value: str, details: str = "") -> str:
     text = f"{value} {details}".lower()
     zh = f"{value} {details}"
+    # 「馬匹跑步機」行嘅 details 會寫「快操／踱步」，以前被當咗真快操（EXP-20261029-01）
+    if "跑步機" in str(value or "") or "treadmill" in str(value or "").lower():
+        return "treadmill"
     if "試閘" in zh or "trial" in text:
         return "trial"
     if any(k in zh for k in ("快操", "快跳", "拍跳")) or "gallop" in text:
@@ -337,7 +340,9 @@ def parse_trackwork_rows(page_html: str, horse: dict[str, Any],
             continue
         if meeting_date and (meeting_date - date).days > window_days:
             continue
-        if meeting_date and date > meeting_date:
+        # 賽日當日嘅行（當朝踱步、今仗「出賽」連名次）live 賽前睇唔到；賽後先抽嘅檔案
+        # 以前會包埋（EXP-20261029-01），所以只留賽日之前嘅行。
+        if meeting_date and date >= meeting_date:
             continue
         work_type_raw = cells[1] if len(cells) > 1 else ""
         location = cells[2] if len(cells) > 2 else ""
@@ -503,8 +508,15 @@ def classify_trend(gallop_times: list[float], active_days: int, blank_days: int)
     return "stable"
 
 
+def is_race_row(entry: dict[str, Any]) -> bool:
+    """晨操表入面嘅「出賽」行係比賽，唔係操練。"""
+    return str(entry.get("type_raw") or "") == "出賽"
+
+
 def make_digest(horse: dict[str, Any], entries: list[dict[str, Any]],
                 window_days: int, race_jockey: str = "") -> dict[str, Any]:
+    # 出賽行唔計操練日、唔計「賽日騎師有參與操練」（以前 35% 呢個旗標係騎師喺比賽策騎過）
+    entries = [e for e in entries if not is_race_row(e)]
     counts = {
         "gallops": sum(1 for e in entries if e["type"] == "gallop"),
         "trials": sum(1 for e in entries if e["type"] == "trial"),
@@ -624,6 +636,7 @@ def build_instruction(category: str, maintenance_score: int | None,
 
 def summarize_trackwork(horse: dict[str, Any], entries: list[dict[str, Any]],
                         digest: dict[str, Any]) -> dict[str, Any]:
+    entries = [e for e in entries if not is_race_row(e)]
     gallop_times = [t for e in entries if e["type"] == "gallop" for t in [entry_trend_time(e)] if t is not None]
     trial_times = [t for e in entries if e["type"] == "trial" for t in [entry_trend_time(e)] if t is not None]
     gallop_sectionals = [e.get("sectionals", []) for e in entries if e["type"] == "gallop" and e.get("sectionals")]
