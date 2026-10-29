@@ -25,6 +25,7 @@ def main() -> int:
     from tennis_wc.database.db import get_connection
     from tennis_wc.database.migrations import init_db
     from tennis_wc.ingestion.ingest_sackmann import _float_or_none
+    from tennis_wc.database.payload_archive import read_payload
 
     init_db()
     conn = get_connection()
@@ -57,7 +58,7 @@ def main() -> int:
             continue
         if year < args.start_year:
             continue
-        payload = json.loads(snapshot["response_json"])
+        payload = json.loads(read_payload(conn, "raw_response", snapshot["id"], snapshot["response_json"]))
         if not isinstance(payload, list):
             continue
         provider = str(snapshot["provider_name"])

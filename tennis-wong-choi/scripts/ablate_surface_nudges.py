@@ -121,26 +121,25 @@ def _sigmoid(x: float) -> float:
 
 
 def _latest_snapshot(conn, match_id: int, player_id: int) -> dict | None:
-    """The newest surviving feature snapshot for one side.
-
-    Retention blanks superseded BODIES and keeps the rows, so a blanked body has
-    to be skipped rather than parsed.
-    """
-    row = conn.execute(
+    """Newest available body, including verified losslessly retained text."""
+    from tennis_wc.database.payload_archive import read_payload
+    rows = conn.execute(
         """
-        SELECT features_json FROM feature_snapshots
-        WHERE match_id = ? AND player_id = ? AND features_json != ''
-        ORDER BY id DESC LIMIT 1
+        SELECT id, features_json FROM feature_snapshots
+        WHERE match_id = ? AND player_id = ? ORDER BY id DESC
         """,
         (match_id, player_id),
-    ).fetchone()
-    if not row:
-        return None
-    try:
-        payload = json.loads(row[0])
-    except (TypeError, ValueError):
-        return None
-    return payload if isinstance(payload, dict) else None
+    )
+    for row in rows:
+        body = read_payload(conn, "feature_snapshot", row[0], row[1])
+        if not body:
+            continue  # legacy destructive prune has no recoverable receipt
+        try:
+            payload = json.loads(body)
+        except (TypeError, ValueError):
+            return None
+        return payload if isinstance(payload, dict) else None
+    return None
 
 
 DROP_ALL = "__ALL__"

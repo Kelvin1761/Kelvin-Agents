@@ -45,8 +45,7 @@ def _insert(conn, identifier, provider, endpoint, entity_type, days_ago, body):
 
 
 def test_the_newest_body_of_a_series_survives_any_retention_window():
-    """Every reader takes MAX(id) / ORDER BY id DESC LIMIT 1. Losing that row is
-    the only way this can break the pipeline, so it must be impossible."""
+    """The latest stays inline; older bodies must remain recoverable too."""
     conn = _connect()
     _insert(conn, 1, "composite", "/hist", "match_history", 400, "oldest")
     _insert(conn, 2, "composite", "/hist", "match_history", 200, "middle")
@@ -60,9 +59,8 @@ def test_the_newest_body_of_a_series_survives_any_retention_window():
 
 
 def test_rows_are_kept_so_provenance_still_resolves():
-    """feature_builder resolves a snapshot's origin by `WHERE id = ?`. Deleting
-    the row would degrade every historical feature snapshot to
-    `missing_raw_response`; blanking the body costs the reader nothing."""
+    """Source metadata AND original body survive, including older references."""
+    from tennis_wc.database.payload_archive import read_payload
     conn = _connect()
     _insert(conn, 1, "composite", "/hist", "match_history", 400, "oldest")
     _insert(conn, 2, "composite", "/hist", "match_history", 100, "newest")
@@ -75,6 +73,7 @@ def test_rows_are_kept_so_provenance_still_resolves():
     assert row is not None
     assert row["provider_name"] == "composite"
     assert row["endpoint"] == "/hist"
+    assert read_payload(conn, "raw_response", 1, "") == "oldest"
 
 
 def test_recent_bodies_are_kept_even_when_superseded():

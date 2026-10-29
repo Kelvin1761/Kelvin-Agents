@@ -12,6 +12,7 @@ from pathlib import Path
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.database.migrations import init_db
+from tennis_wc.database.payload_archive import read_payload
 from tennis_wc.diagnostics import run_network_check
 from tennis_wc.features.data_quality import validate_data_freshness
 from tennis_wc.features.feature_builder import (
@@ -677,7 +678,9 @@ def _research_raw_responses(observations: list[dict]) -> dict[int, dict]:
                 f"SELECT id, provider_name, endpoint, response_json, fetched_at, created_at "
                 f"FROM raw_api_responses WHERE id IN ({placeholders})", batch,
             ).fetchall():
-                rows[int(row["id"])] = dict(row)
+                restored = dict(row)
+                restored["response_json"] = read_payload(conn, "raw_response", row["id"], row["response_json"])
+                rows[int(row["id"])] = restored
     return rows
 
 

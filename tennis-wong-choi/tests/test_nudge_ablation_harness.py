@@ -26,8 +26,12 @@ measuring the shipped model.
 from __future__ import annotations
 
 import importlib.util
+import json
 import math
+import sqlite3
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 _spec = importlib.util.spec_from_file_location(
@@ -129,15 +133,42 @@ def test_dropping_every_nudge_leaves_the_elo_backbone():
 
 
 def test_a_blanked_snapshot_body_is_skipped_not_parsed():
-    """Retention blanks superseded bodies and keeps the rows."""
-    class Conn:
-        def execute(self, *_a, **_k):
-            class R:
-                def fetchone(self_inner):
-                    return ("",)
-            return R()
+    """An old destructive prune without a receipt remains unavailable."""
+    conn = _snapshot_connection()
+    conn.execute("INSERT INTO feature_snapshots VALUES (1,1,1,'')")
+    assert harness._latest_snapshot(conn, 1, 1) is None
+    conn.execute("INSERT INTO feature_snapshots VALUES (0,1,1,'{\"original\":true}')")
+    assert harness._latest_snapshot(conn, 1, 1) == {"original": True}
 
-    assert harness._latest_snapshot(Conn(), 1, 1) is None
+
+def _snapshot_connection():
+    conn = sqlite3.connect(":memory:")
+    conn.execute("CREATE TABLE feature_snapshots(id INTEGER PRIMARY KEY,match_id INTEGER,player_id INTEGER,features_json TEXT)")
+    return conn
+
+
+def test_retained_newer_snapshot_is_read_before_older_inline_version():
+    from tennis_wc.database.payload_archive import compact_payloads
+    conn = _snapshot_connection()
+    conn.execute("INSERT INTO feature_snapshots VALUES (1,1,1,?)", (json.dumps({"version": 1}),))
+    conn.execute("INSERT INTO feature_snapshots VALUES (2,1,1,?)", (json.dumps({"version": 2}),))
+    before = harness._latest_snapshot(conn, 1, 1)
+    compact_payloads(conn, "feature_snapshot", "id=2")
+    assert conn.execute("SELECT features_json FROM feature_snapshots WHERE id=2").fetchone()[0] == ""
+    assert harness._latest_snapshot(conn, 1, 1) == before == {"version": 2}
+
+
+def test_corrupt_retained_snapshot_cannot_silently_fall_back_to_older_body():
+    from tennis_wc.database.payload_archive import PayloadArchiveError, compact_payloads
+    conn = _snapshot_connection()
+    conn.execute("INSERT INTO feature_snapshots VALUES (1,1,1,'{\"version\":1}')")
+    conn.execute("INSERT INTO feature_snapshots VALUES (2,1,1,'{\"version\":2}')")
+    compact_payloads(conn, "feature_snapshot", "id=2")
+    # A corrupted storage copy, bypassing the normal append-only writer.
+    conn.execute("DROP TRIGGER retained_payload_blobs_no_update")
+    conn.execute("UPDATE retained_payload_blobs SET gzip_data=x'00'")
+    with pytest.raises(PayloadArchiveError):
+        harness._latest_snapshot(conn, 1, 1)
 
 
 def test_the_bootstrap_refuses_a_small_sample():

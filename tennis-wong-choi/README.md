@@ -23,6 +23,18 @@ This MVP implements Stage 1-5:
 
 The system refuses LLM-generated statistics. Numeric features must be backed by provenance from an API response or stored API snapshot.
 
+Superseded history response and feature bodies are retained losslessly as
+hash-verified gzip BLOBs in the same SQLite database. Recent/latest bodies stay
+inline. Use `tennis_wc.database.payload_archive.read_payload` to read either
+representation: an empty inline body alone does not prove missing source data.
+Full SQLite backups must include `retained_payload_blobs` and
+`retained_payload_refs`. Older readers do not understand this representation;
+restoring older code may require its matching full database backup. Legacy
+empty cells without a retention receipt remain missing. See the
+[retention audit](../docs/audits/tennis-lossless-retention-20261029.md) for the
+storage contract and full-corpus verification; compression grants no new
+point-in-time evidence eligibility.
+
 ## Active Betting Strategy
 
 The report separates research prices from registered family recommendation tiers.

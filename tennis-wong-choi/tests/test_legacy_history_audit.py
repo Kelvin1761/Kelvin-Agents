@@ -66,3 +66,18 @@ def test_history_observations_cannot_be_rewritten_or_deleted(tmp_path,monkeypatc
         for sql in ('DELETE FROM history_observations',"UPDATE history_observations SET observation_kind='safe'"):
             with pytest.raises(sqlite3.IntegrityError,match='append-only'):
                 c.execute(sql)
+
+
+def test_lossless_compaction_keeps_exact_source_context_audit(tmp_path, monkeypatch):
+    from tennis_wc.database.payload_archive import compact_payloads
+    configure_test_db(tmp_path, monkeypatch)
+    init_db()
+    with get_connection() as c:
+        seed(c)
+        before = audit_legacy_history(c)
+        original = dict(c.execute("SELECT * FROM raw_api_responses WHERE id=11").fetchone())
+        compact_payloads(c, "raw_response", "id=11")
+        assert c.execute("SELECT response_json FROM raw_api_responses WHERE id=11").fetchone()[0] == ""
+        assert audit_legacy_history(c) == before
+        after = dict(c.execute("SELECT * FROM raw_api_responses WHERE id=11").fetchone())
+        assert {k:v for k,v in after.items() if k!='response_json'} == {k:v for k,v in original.items() if k!='response_json'}

@@ -1072,9 +1072,12 @@ def analyse_next_day(match_date: str, *, today: str | None = None) -> None:
     try:
         pruned = run_cli_json("prune-raw-responses", "--keep-days", "7")
         if pruned.get("rows"):
+            if pruned.get("lossless") is not True:
+                raise ValueError("retention response did not attest lossless preservation")
             log(
-                f"Pruned {pruned['rows']} superseded API payloads "
-                f"({pruned['bytes_freed'] / 1024 ** 2:.0f}MB reclaimed in-file)."
+                f"Compacted {pruned['rows']} superseded API payloads losslessly "
+                f"({pruned['bytes_freed'] / 1024 ** 2:.1f}MB inline text; "
+                f"{pruned.get('gzip_bytes_added', 0) / 1024 ** 2:.1f}MB gzip added; no VACUUM)."
             )
     except Exception as exc:  # noqa: BLE001 - housekeeping must not lose the day
         log(f"Retention step skipped: {exc}")

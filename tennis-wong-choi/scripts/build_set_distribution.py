@@ -19,6 +19,7 @@ from urllib.request import Request, urlopen
 
 sys.path.insert(0, "src")
 from tennis_wc.database.db import get_connection
+from tennis_wc.database.payload_archive import read_payload
 
 CUTOFF = "2027-01-01"
 OUTCOMES = ("F20", "F21", "D21", "D20")
@@ -29,14 +30,14 @@ def _rows():
     out = []
     for r in conn.execute(
         """
-        SELECT endpoint, response_json FROM raw_api_responses
+        SELECT id, endpoint, response_json FROM raw_api_responses
         WHERE provider_name='jeff_sackmann' AND endpoint LIKE '%matches_20%'
           AND id IN (SELECT MAX(id) FROM raw_api_responses
                      WHERE provider_name='jeff_sackmann' AND endpoint LIKE '%matches_20%'
                      GROUP BY endpoint)
         """
     ).fetchall():
-        out.extend(json.loads(r["response_json"]))
+        out.extend(json.loads(read_payload(conn, "raw_response", r["id"], r["response_json"])))
     urls = [f"https://stats.tennismylife.org/data/{y}_challenger.csv" for y in range(2020, 2027)]
     urls += [f"https://stats.tennismylife.org/data/atp_quali/{y}_atp_quali.csv" for y in range(2020, 2027)]
     urls.append("https://stats.tennismylife.org/data/2026.csv")

@@ -240,8 +240,10 @@ def _cached_stats_valid(conn, raw_id: int, match_id: str, cache: dict) -> bool:
     """Old OK labels predate quality checks; verify their immutable raw body."""
     if raw_id not in cache:
         row=conn.execute('SELECT response_json FROM raw_api_responses WHERE id=?',(raw_id,)).fetchone()
+        from tennis_wc.database.payload_archive import read_payload
+        text = read_payload(conn, 'raw_response', raw_id, row[0]) if row else None
         try:
-            body=json.loads(row[0]) if row else {}
+            body=json.loads(text) if row else {}
             cache[raw_id]=(body.get('stats') or {},
                            {str(m['MatchID']):m for m in body.get('matches',[])})
         except (TypeError,ValueError,KeyError,AttributeError):

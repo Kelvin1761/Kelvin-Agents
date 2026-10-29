@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import pytest
 
 from scripts import tennis_daily_schedule as scheduler
 
@@ -262,7 +263,8 @@ def test_scheduled_analysis_prunes_superseded_payloads_every_run(monkeypatch):
     def fake_run_cli_json(*args):
         calls.append(args)
         if args[0] == "prune-raw-responses":
-            return {"rows": 12, "bytes_freed": 5 * 1024 ** 2}
+            return {"rows": 12, "bytes_freed": 5 * 1024 ** 2,
+                    "lossless": True, "gzip_bytes_added": 1024 ** 2}
         return {
             "matches_analysed": 40,
             "valid_feature_snapshots": 40,
@@ -280,15 +282,19 @@ def test_scheduled_analysis_prunes_superseded_payloads_every_run(monkeypatch):
     scheduler.analyse_next_day("2026-07-29")
 
     assert ("prune-raw-responses", "--keep-days", "7") in calls
-    assert any("Pruned 12 superseded API payloads" in line for line in logs)
+    assert any("Compacted 12 superseded API payloads losslessly" in line
+               and "5.0MB inline text" in line and "1.0MB gzip added" in line for line in logs)
 
 
-def test_a_failing_prune_never_costs_the_day(monkeypatch):
+@pytest.mark.parametrize("missing_attestation", [False, True])
+def test_a_failing_prune_never_costs_the_day(monkeypatch, missing_attestation):
     calls = []
 
     def fake_run_cli_json(*args):
         calls.append(args)
         if args[0] == "prune-raw-responses":
+            if missing_attestation:
+                return {"rows": 1, "bytes_freed": 100}
             raise RuntimeError("database is locked")
         return {
             "matches_analysed": 40,
@@ -306,7 +312,9 @@ def test_a_failing_prune_never_costs_the_day(monkeypatch):
 
     scheduler.analyse_next_day("2026-07-29")
 
-    assert any("Retention step skipped: database is locked" in line for line in logs)
+    expected = "did not attest lossless" if missing_attestation else "database is locked"
+    assert any("Retention step skipped:" in line and expected in line for line in logs)
+    assert not any("Compacted" in line for line in logs)
 
 
 def test_run_cli_logs_captured_output_before_raising(monkeypatch):

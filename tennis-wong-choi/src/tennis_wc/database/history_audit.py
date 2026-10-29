@@ -8,6 +8,7 @@ import re
 from tennis_wc.database.history_observations import ensure_history_schema, _observe
 from tennis_wc.features.round_labels import normalise_round
 from tennis_wc.ingestion.name_matching import normalise_player_name
+from tennis_wc.database.payload_archive import read_payload
 
 _REFERENCE = re.compile(r'^(ATP|WTA)-(.+)-([^-]+)-(winner|loser)$')
 def history_state(row):
@@ -48,7 +49,8 @@ def audit_legacy_history(conn):
             raw_id=h['raw_response_id'];index={}
             raw=conn.execute('SELECT provider_name,response_json FROM raw_api_responses WHERE id=?',(raw_id,)).fetchone()
             if raw and raw['provider_name']==h['source_provider']:
-                try:payload=json.loads(raw['response_json'])
+                body = read_payload(conn, 'raw_response', raw_id, raw['response_json'])
+                try:payload=json.loads(body)
                 except (ValueError,TypeError):payload=None
                 if isinstance(payload,list):
                     for item in payload:

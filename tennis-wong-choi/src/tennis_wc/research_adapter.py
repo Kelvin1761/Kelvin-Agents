@@ -14,6 +14,7 @@ from typing import Callable, Mapping, Sequence
 from urllib.parse import quote, unquote
 
 from tennis_wc.research_evidence import SETTLEMENT_INPUT_FIELDS
+from tennis_wc.database.payload_archive import read_payload
 
 # Match the existing frozen prediction consumer's file/bundle budgets.
 CAPTURE_MAX_FILES = 5000
@@ -298,6 +299,7 @@ def read_settlement_sources(
                 raise ValueError("canonical result or raw provenance missing")
             raw_id = row["raw_id"]
             raw = {field: row[f"raw_{field}"] for field in raw_fields}
+            raw["response_json"] = read_payload(connection, "raw_response", raw_id, raw["response_json"])
             if raw_id in raw_responses and raw_responses[raw_id] != raw:
                 raise ValueError("raw result changed during capture")
             raw_responses[raw_id] = raw

@@ -11,6 +11,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from shared_wong_choi.research_tennis_source import SourceLimitExceeded, TennisSourcePolicy, inspect_tennis_sources
+from shared_wong_choi.sqlite_payload_archive import compact_payloads
 
 
 def fixture(tmp_path, fault=None):
@@ -132,6 +133,43 @@ def test_inventory_pins_exporter_source_identity(tmp_path):
     db, policy = fixture(tmp_path)
     report = inspect_tennis_sources(db, policy).to_payload()
     assert report["exporter_sha256"] == hashlib.sha256(Path(source.__file__).read_bytes()).hexdigest()
+
+
+def test_lossless_storage_preserves_inventory_bytes_and_does_not_grant_pit_authority(tmp_path):
+    db, policy = fixture(tmp_path)
+    before = inspect_tennis_sources(db, policy).to_payload()
+    with sqlite3.connect(db) as conn:
+        compact_payloads(conn, "raw_response", "response_json!=''")
+        compact_payloads(conn, "feature_snapshot", "features_json!=''")
+    compacted_hash = hashlib.sha256(db.read_bytes()).hexdigest()
+    after = inspect_tennis_sources(db, policy).to_payload()
+    assert after == before
+    assert after["proposal_ready"] is False and after["pit_dataset_ready"] is False
+    assert hashlib.sha256(db.read_bytes()).hexdigest() == compacted_hash
+
+
+def test_retained_feature_expansion_obeys_whole_query_budget(tmp_path):
+    from shared_wong_choi.research_tennis_source import _Reader
+    db, policy = fixture(tmp_path)
+    with sqlite3.connect(db) as conn:
+        compact_payloads(conn, "feature_snapshot", "features_json!=''")
+    with sqlite3.connect(db.as_uri() + "?mode=ro", uri=True) as conn:
+        conn.row_factory = sqlite3.Row
+        # Each body fits individually; the combined expansion must not be
+        # accepted as a partial cohort or materialised without a total budget.
+        sizes = [r[0] for r in conn.execute("SELECT b.byte_length FROM retained_payload_refs r JOIN retained_payload_blobs b ON b.sha256=r.sha256 WHERE r.kind='feature_snapshot'")]
+        reader = _Reader(conn, replace(policy, max_raw_bytes=max(sizes) + 1), lambda: None)
+        with pytest.raises(SourceLimitExceeded, match="query expansion"):
+            reader.query("SELECT id,features_json FROM feature_snapshots ORDER BY id")
+
+
+def test_retained_body_cannot_bypass_original_per_json_budget(tmp_path):
+    db, policy = fixture(tmp_path)
+    with sqlite3.connect(db) as conn:
+        compact_payloads(conn, "raw_response", "response_json!=''")
+        compact_payloads(conn, "feature_snapshot", "features_json!=''")
+    with pytest.raises(SourceLimitExceeded, match="retained source"):
+        inspect_tennis_sources(db, replace(policy, max_json_bytes=1))
 
 
 @pytest.mark.parametrize(

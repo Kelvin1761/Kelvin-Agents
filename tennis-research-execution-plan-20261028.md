@@ -25,3 +25,7 @@
 **下一步**：依序處理已重現嘅輸入缺口。已交付[被拒絕投影嘅原樣診斷保存](docs/audits/tennis-observation-diagnostics-20261029.md)，今次[修正 Toray 當屆 metadata](docs/audits/tennis-toray-metadata-20261029.md)並量度輸入影響；其餘 identity／資料過期問題按正常 run 證據逐項處理。修正資料唔自動證明準確度提升，原拒絕判決、Sportsbet forward 要求及 frozen ruler 均不變。
 
 **身份來源跟進**：[排名／canonical 目標修正](docs/audits/tennis-player-source-integrity-20261029.md)在固定 2,160 行真實來源上，原版只更新 77 行；修正可更新 2,153 行，7 行保持明確留置，來源仍報 partial/error。已重現及阻止錯 canonical 姓名返回、同批兩個來源身份覆蓋同一排名。無改寫 live legacy history／Elo，未證實模型準確度改善；舊混合身份仍須有原始證據、備份及 exact-plan 修復。
+
+**來源保存跟進**：[無損 retention 修正](docs/audits/tennis-lossless-retention-20261029.md)以同一完整凍結 DB 核對 40 表／2,597,966 行。舊清理會抹走 220 份原文、約 240.5MB；修正以約 9.74MB gzip 保存全部原文，原有 logical hashes 及 native 來源審計完全一致。直接 SQL 舊 body 欄可為空，須用 accessor 讀取；legacy 已缺原文未恢復，亦無新增合格 forward 樣本。呢項防止後續研究證據繼續流失，唔構成準確率改善證據。
+
+**下一項優先處理**：[ATP 排名有效日期錯配](docs/audits/tennis-ranking-effective-date-20261029.md)。UTS 原頁顯示 2024-12-30，新擷取端點經現役 parser 後 2,160 行完全等同今晚 receipt，但被標成 requested 2026-10-30。已保存原頁／端點／native 對照及時鐘；入庫行數不能當新鮮度證據。修正須連 cached fallback、既有錯標 rows及 feature 消費一併審計，先備份、逐項 exact-plan，唔用今日資料改寫舊預測。

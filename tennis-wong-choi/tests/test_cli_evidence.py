@@ -8,6 +8,24 @@ from pathlib import Path
 from types import SimpleNamespace
 
 
+def test_exact_observation_raw_loader_resolves_retained_bytes_without_new_clocks(tmp_path, monkeypatch):
+    from conftest import configure_test_db
+    from tennis_wc import cli
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.database.payload_archive import compact_payloads
+    from tennis_wc.ingestion.raw_response_store import store_raw_response
+
+    configure_test_db(tmp_path, monkeypatch)
+    init_db()
+    raw_id = store_raw_response("source", "/history", {}, [{"name": "鄭欽文"}], 200, "match_history")
+    observations = [{"snapshot": {"provenance": {"raw_response_id": raw_id}}}]
+    before = cli._research_raw_responses(observations)
+    with get_connection() as conn:
+        compact_payloads(conn, "raw_response", "id=?", (raw_id,))
+    assert cli._research_raw_responses(observations) == before
+
+
 def test_manual_and_review_attach_research_without_changing_native_counters(monkeypatch):
     from tennis_wc import cli
     calls, output = [], []

@@ -20,6 +20,9 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .research_safety import ResearchSafetyError, _json
+from .sqlite_payload_archive import (
+    MAX_PAYLOAD_BYTES, PayloadArchiveError, PayloadArchiveLimit, read_payload, retained_byte_length,
+)
 
 
 _MATCH_COLUMNS = "id,market_event_id,match_date,player_a_id,player_b_id,start_time_utc"
@@ -165,8 +168,29 @@ class _Reader:
         if len(rows) > limit:
             raise SourceLimitExceeded("row limit exceeded; use a smaller explicit window")
         result = [dict(row) for row in rows]
+        unpacked_bytes = 0
+        try:
+            for row in result:
+                for field, kind in (("response_json", "raw_response"), ("features_json", "feature_snapshot")):
+                    if field in row and "id" in row:
+                        retained = retained_byte_length(self.conn, kind, row["id"])
+                        if retained is not None:
+                            unpacked_bytes += retained
+                            if unpacked_bytes > self.policy.max_raw_bytes:
+                                raise SourceLimitExceeded("retained query expansion exceeds inspection budget")
+                        row[field] = read_payload(self.conn, kind, row["id"], row[field],
+                                                  max_bytes=min(self.policy.max_json_bytes, MAX_PAYLOAD_BYTES))
+                if "byte_length" in row and "id" in row and row["byte_length"] == 0:
+                    retained = retained_byte_length(self.conn, "raw_response", row["id"])
+                    if retained is not None:
+                        row["byte_length"] = retained
+        except PayloadArchiveLimit as exc:
+            raise SourceLimitExceeded("retained source exceeds inspection budget") from exc
+        except PayloadArchiveError as exc:
+            raise SourceExcluded("invalid_retained_source") from exc
         # Bind inspected bad/missing inputs as well as successful rows. This is
-        # a digest of the exact queried projection, not a whole-DB backup hash.
+        # the logical projection (including verified retained bytes), not a
+        # whole-DB backup hash. Storage compaction grants no source eligibility.
         self.evidence.update(_digest({"query": sql, "args": args, "rows": result}).encode())
         return result
 

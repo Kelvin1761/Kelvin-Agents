@@ -1,30 +1,17 @@
-"""Bounded growth for the tables that have none.
+"""Lossless compaction of superseded payloads, retaining every source byte.
 
-`tennis_wc.db` reached 2.6GB by 2026-08-16 -- 1.3GB of it `raw_api_responses`
--- and the size became an operational failure, not merely untidy: the recovery
-job's `disk_headroom` gate demands two database-widths, so a 2.6GB database
-needs 5.2GB free, and on 2026-08-15 the volume had 3.7GB. Recovery deferred
-itself and the dashboard stayed a day stale with nothing to show for it.
-
-The bulk of that weight is one shape of waste. `entity_type='match_history'`
-rows are FULL-REPLACEMENT snapshots: every day the pipeline re-downloads the
-same complete historical dump (composite `/mock/historical-matches` alone was
-113 copies of a ~5.7MB payload) and appends another row. Every reader of these
-takes the newest and only the newest -- `ORDER BY id DESC LIMIT 1` in
-ingest_odds and source_status_for_date, `MAX(id) GROUP BY endpoint` in
-build_set_distribution. Nothing has ever read a superseded body.
-
-So this blanks superseded BODIES and keeps the ROWS. That distinction is the
-point: `feature_builder._provenance_for` resolves a snapshot's origin with
-`SELECT provider_name, endpoint, fetched_at ... WHERE id = ?`, and deleting the
-row would degrade every historical feature snapshot to `missing_raw_response`.
-Blanking the body costs nothing a reader can observe and keeps the audit trail
-whole.
+Original row IDs, timestamps and metadata remain unchanged. Bodies move to a
+hash-verified, compressed SQLite store in the same transaction; readers use
+payload_archive to resolve both inline and retained representations. Latest
+and recent bodies remain inline. This does not restore legacy destructive
+prunes, establish historical availability, or qualify model evidence.
 """
 
 from __future__ import annotations
 
 import sqlite3
+
+from tennis_wc.database.payload_archive import compact_payloads
 
 
 # Full-replacement payloads only. `sportsbet`/`odds` bodies are deliberately
@@ -40,14 +27,11 @@ def prune_raw_response_bodies(
     keep_days: int = 7,
     dry_run: bool = False,
 ) -> dict:
-    """Blank superseded full-replacement payloads.
-
-    A body is kept when it is the newest for its (provider_name, endpoint)
-    series -- always, at any age -- or when it was fetched within `keep_days`.
-    The newest-per-series floor is what makes this safe by construction: no
-    reader can lose the row it actually reads, however far retention is turned
-    down.
-    """
+    """Compact superseded history text without deleting its original content."""
+    if type(keep_days) is not int or keep_days < 0:
+        raise ValueError("keep_days must be a nonnegative integer")
+    if not entity_types or any(kind not in REPLACEABLE_ENTITY_TYPES for kind in entity_types):
+        raise ValueError("only match_history payload compaction is supported")
     placeholders = ",".join("?" for _ in entity_types)
     predicate = f"""
         entity_type IN ({placeholders})
@@ -60,24 +44,8 @@ def prune_raw_response_bodies(
           )
     """
     params = (*entity_types, f"-{int(keep_days)} day", *entity_types)
-    measured = conn.execute(
-        f"SELECT COUNT(*) AS rows, IFNULL(SUM(LENGTH(response_json)), 0) AS bytes "
-        f"FROM raw_api_responses WHERE {predicate}",
-        params,
-    ).fetchone()
-    result = {
-        "rows": int(measured["rows"]),
-        "bytes_freed": int(measured["bytes"]),
-        "keep_days": int(keep_days),
-        "dry_run": bool(dry_run),
-    }
-    if dry_run or not result["rows"]:
-        return result
-    conn.execute(
-        f"UPDATE raw_api_responses SET response_json = '' WHERE {predicate}", params
-    )
-    conn.commit()
-    return result
+    result = compact_payloads(conn, "raw_response", predicate, params, dry_run=dry_run)
+    return {**result, "keep_days": keep_days}
 
 
 def prune_superseded_feature_snapshots(
@@ -85,25 +53,9 @@ def prune_superseded_feature_snapshots(
     keep_days: int = 7,
     dry_run: bool = False,
 ) -> dict:
-    """Blank superseded feature bodies, keeping every row.
-
-    2026-08-26: `feature_snapshots` was 949MB of a 1.9GB database and had no
-    retention at all -- this module was written for `raw_api_responses` and the
-    second unbounded table was never added. It holds 30,028 rows over 6,390
-    distinct (match, player, version) triples: 4.7 copies each, 716MB of which
-    is superseded, at ~32KB of JSON per row.
-
-    Same shape as the raw-response prune and safe for the same reason: the
-    newest row per (match_id, player_id, feature_set_version) is kept at any
-    age, so no reader can lose the row it actually reads. `snapshot_quality`
-    and `daily_report` already resolve quality through `MAX(id)` per pair, and
-    `data_quality_score` is a column rather than a JSON field, so blanking a
-    body costs nothing any reader observes.
-
-    Rows are kept rather than deleted because `player_identity` remaps
-    `feature_snapshots.player_id` during a merge and `checks.py` counts them;
-    deleting would quietly shrink both.
-    """
+    """Keep superseded feature text losslessly; latest/recent remain inline."""
+    if type(keep_days) is not int or keep_days < 0:
+        raise ValueError("keep_days must be a nonnegative integer")
     predicate = """
         features_json != ''
           AND created_at < date('now', ?)
@@ -113,24 +65,8 @@ def prune_superseded_feature_snapshots(
           )
     """
     params = (f"-{int(keep_days)} day",)
-    measured = conn.execute(
-        f"SELECT COUNT(*) AS rows, IFNULL(SUM(LENGTH(features_json)), 0) AS bytes "
-        f"FROM feature_snapshots WHERE {predicate}",
-        params,
-    ).fetchone()
-    result = {
-        "rows": int(measured["rows"]),
-        "bytes_freed": int(measured["bytes"]),
-        "keep_days": int(keep_days),
-        "dry_run": bool(dry_run),
-    }
-    if dry_run or not result["rows"]:
-        return result
-    conn.execute(
-        f"UPDATE feature_snapshots SET features_json = '' WHERE {predicate}", params
-    )
-    conn.commit()
-    return result
+    result = compact_payloads(conn, "feature_snapshot", predicate, params, dry_run=dry_run)
+    return {**result, "keep_days": keep_days}
 
 
 def vacuum(conn: sqlite3.Connection) -> dict:
