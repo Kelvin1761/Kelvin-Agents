@@ -1,9 +1,8 @@
 <!-- Cross-platform compatibility note: this file is the primary repo-facing guide. -->
-<!-- `.agents/rules/GEMINI.md` is deprecated and kept only as a legacy compatibility note. -->
 
 # Antigravity Agent Guide
 
-> `GEMINI.md` 已 deprecated。新用戶同現役 workflow 請以 `SETUP.md` 同 `AGENTS.md` 為準。
+> 新用戶同現役 workflow 請以 `SETUP.md` 同 `AGENTS.md` 為準。（`GEMINI.md` 已於 2026-10-29 刪除。）
 
 ## 工作守則（Claude Code 同 Codex 一律適用）
 
@@ -592,19 +591,19 @@ Settlement 會先輸出本機 proposal；未獲明確批准前唔會自動 POST�
 
 ## Legacy And Deprecated Paths
 
-以下內容仲保留喺 repo，但唔係主線：
+2026-10-29 已剷走 LLM 年代同 SIP 嘅死 code（約 95 個檔：LangGraph `racing_graph_*`、
+`rating_engine_v2` / `grading_engine` / `compute_rating_matrix*`、`compile_analysis_template*`
+嘅 `{{LLM_FILL}}` 流程、`sip_engine` / `inject_sips` / `sip_conflict_scanner`、
+`preflight_environment_check`、`.agents/rules/GEMINI.md` 等）。判斷方法係由所有現役入口
+（orchestrator、排程、`檢查.sh`／`健康.sh`／`保存.sh`、launchd）做 import + 腳本路徑可達性掃描，
+冇一條路去到嘅先刪。要睇舊版就用 git history，或者：
 
-- `.agents/archive/wong_choi_legacy_snapshot_20260526/`
-- 某啲早期 LLM skeleton / compile scripts
-- 舊版 workflow 文檔內提到 Gemini / LLM 必須參與嘅描述
+- `.agents/archive/wong_choi_legacy_snapshot_20260526/`（只供比對）
+- 舊版 workflow 文檔（`resources/*.md`、部分 `SKILL.md`）仲有提到 Gemini / LLM 必須參與嘅描述
 
-用途主要係：
-
-- 做舊版比對
-- 檢查歷史決策
-- 支援 archive / calibration / migration
-
-唔應再將佢哋視為 HKJC / AU 目前嘅運行方式。
+注意名字有 skeleton 唔等於死 code：`create_hkjc_logic_skeleton.py`、`inject_hkjc_fact_anchors.py`
+係 HKJC 主線仲用緊。現役嘅 SIP 只剩 `hkjc_auto_orchestrator._apply_sip_enhancements` 入面嘅 SIP-C
+（EXP-20261029-30 決定保留）。
 
 ## Practical Rule Of Thumb
 
@@ -613,4 +612,3 @@ Settlement 會先輸出本機 proposal；未獲明確批准前唔會自動 POST�
 1. `SETUP.md` 負責安裝
 2. `AGENTS.md` 負責講清楚現役架構同主入口
 3. `HKJC Wong Choi` / `AU Wong Choi` 以 Python orchestrator 為準
-4. `.agents/rules/GEMINI.md` 只係 legacy compatibility note，唔係主線運行依據

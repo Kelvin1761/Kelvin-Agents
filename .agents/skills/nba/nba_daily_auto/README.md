@@ -104,7 +104,7 @@ NBA 由來冇同市場比過。`nba_market_ledger.py` 只做記錄同結算，**
   （class／competition／event external id 同每條 milestone 腿嘅 market／outcome external id）；
   排程每個非 warm-up snapshot 之後，對已經 render 咗嘅組合逐個報價，寫 `sgm_price_obs`（ok 或者點解冇價）。
   evaluate 用最近一次賽前報價做 `sportsbet_sgm_implied`；冇報價嘅組合就只可以同「腿價相乘」比。
-  SGM 價係單邊、含水，de-vig 唔到。舊 `nba_analyst/scripts/nba_report_generator.py` 係孤兒檔，冇用。
+  SGM 價係單邊、含水，de-vig 唔到。舊 `nba_analyst/scripts/nba_report_generator.py` 係孤兒檔，2026-10-29 已刪。
 - **指標**：Brier／logloss（每個模型 variant vs 市場）、calibration buckets、CLV、按 market 同
   picked／not-picked 分拆、SGM joint prob vs realised。
 

@@ -111,7 +111,6 @@ bootstrap 會問你 **`DATA_ROOT`** —— 即係啲大型「Wong Choi … Analy
 - 運行 HKJC / AU 主流程 **唔需要 Gemini 或其他 LLM**。
 - `NBA Wong Choi` 同 `tennis-wong-choi` 亦有實際可跑入口，但佢哋嘅架構同 HKJC / AU 並唔完全相同。
 - repo 而家已提供 root `requirements.txt`，方便 clone 後直接安裝主線依賴。
-- `.agents/rules/GEMINI.md` 已 deprecated，唔係新用戶 onboarding 入口。
 
 ## 2. Clone The Repository
 
@@ -303,7 +302,6 @@ cd tennis-wong-choi && PYTHONPATH=src python -m tennis_wc.cli --help
 python .agents/skills/hkjc_racing/hkjc_reflector/scripts/hkjc_reflector_orchestrator.py --help
 python .agents/skills/au_racing/au_reflector/scripts/au_reflector_orchestrator.py --help
 python Horse_Racing_Dashboard/generate_static.py --help
-python .agents/scripts/safe_file_writer.py --help
 ```
 
 如果以上都正常出 help text，而 `python -m playwright install chromium` 亦完成，基本環境就算 ready。

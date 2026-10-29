@@ -7,11 +7,7 @@ definitions, matrix structure, valid scores, legacy key
 blacklists, and content-quality word lists.
 
 ALL pipeline modules must import from here:
-  - hkjc_orchestrator.py
-  - compile_analysis_template_hkjc.py
   - create_hkjc_logic_skeleton.py
-  - validate_hkjc_logic_schema.py
-  - racing_graph_nodes.py
 
 Do NOT duplicate these constants inline.
 """

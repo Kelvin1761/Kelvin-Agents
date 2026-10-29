@@ -119,7 +119,6 @@ PYTHONPATH=src python -m tennis_wc.cli --help
 - repo 已提供 `requirements.txt` 同 `requirements-optional.txt`
 - `SETUP.md` 係目前最準確嘅安裝指南
 - `AGENTS.md` 係目前最準確嘅 HKJC / AU / NBA / tennis / reflector 架構導覽
-- `.agents/rules/GEMINI.md` 已 deprecated，只係為舊工具相容而保留
 - `CLOUDFLARE_DEPLOYMENT.md` 係目前最準確嘅 Cloudflare setup 指南
 - `WINDOWS_SETUP.md` 係 Windows workstation 嘅完整安裝指南
 - Windows 如要 deploy dashboard，建議用 `Git Bash`、`WSL` 或 `bash deploy.sh`

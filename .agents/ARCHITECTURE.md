@@ -235,48 +235,17 @@ skill-name/
 
 ---
 
-## � Scripts (2)
+## Scripts
 
-Master validation scripts that orchestrate skill-level scripts.
-
-### Master Scripts
-
-| Script          | Purpose                                 | When to Use              |
-| --------------- | --------------------------------------- | ------------------------ |
-| `checklist.py`  | Priority-based validation (Core checks) | Development, pre-commit  |
-| `verify_all.py` | Comprehensive verification (All checks) | Pre-deployment, releases |
-
-### Usage
+The old "Antigravity Kit" master scripts (`checklist.py`, `verify_all.py`) were
+retired on 2026-10-29 together with the rest of the LLM-era tooling. The repo's
+validation entry points are now at the repo root:
 
 ```bash
-# Quick validation during development
-python .agents/scripts/checklist.py .
-
-# Full verification before deployment
-python .agents/scripts/verify_all.py . --url http://localhost:3000
+./檢查.sh --quick     # after any code change
+./檢查.sh             # full gate incl. unit tests, before saving
+./健康.sh             # data / scheduler health
 ```
-
-### What They Check
-
-**checklist.py** (Core checks):
-
-- Security (vulnerabilities, secrets)
-- Code Quality (lint, types)
-- Schema Validation
-- Test Suite
-- UX Audit
-- SEO Check
-
-**verify_all.py** (Full suite):
-
-- Everything in checklist.py PLUS:
-- Lighthouse (Core Web Vitals)
-- Playwright E2E
-- Bundle Analysis
-- Mobile Audit
-- i18n Check
-
-For details, see [scripts/README.md](scripts/README.md)
 
 ---
 
@@ -287,7 +256,7 @@ For details, see [scripts/README.md](scripts/README.md)
 | **Total Agents**    | 15                            |
 | **Total Skills**    | 46                            |
 | **Total Workflows** | 16                            |
-| **Total Scripts**   | 2 (master) + 18 (skill-level) |
+| **Total Scripts**   | 18 (skill-level)              |
 | **Coverage**        | ~90% web/mobile + prediction  |
 
 ---
