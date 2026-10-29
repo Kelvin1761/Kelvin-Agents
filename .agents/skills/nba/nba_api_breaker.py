@@ -28,7 +28,7 @@ TRIP_AFTER = 3
 COOLDOWN_SECONDS = 30 * 60
 BLOCKING_STATUS = {403, 429}
 
-_state = {"consecutive": 0, "installed": False}
+_state = {"consecutive": 0, "installed": False, "failures": 0}
 
 
 class StatsNbaBlocked(ConnectionError):
@@ -73,7 +73,15 @@ def _clear() -> None:
         pass
 
 
+def failure_count() -> int:
+    """Network failures plus short-circuited calls in this process, ever.
+    A caller compares it before/after a fetch to tell an outage from a
+    genuinely empty answer."""
+    return _state["failures"]
+
+
 def record_failure(reason: str) -> None:
+    _state["failures"] += 1
     _state["consecutive"] += 1
     if _state["consecutive"] >= TRIP_AFTER:
         _trip(reason)
@@ -99,6 +107,7 @@ def guard(send):
         until = blocked_until()
         if until is not None or _state["consecutive"] >= TRIP_AFTER:
             when = time.strftime("%H:%M", time.localtime(until)) if until else "this run"
+            _state["failures"] += 1
             raise StatsNbaBlocked(
                 f"stats.nba.com blocked (circuit open until {when}); skipped {endpoint}")
         try:

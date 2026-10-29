@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261030-01](EXP-20261030-01-nba-nbacom-outage-fallback.md) | 2026-10-30 | NBA | stats.nba.com 封 IP 時用 ESPN 陣容／賽績 + 一日內聯盟數據快照；冇快照 fail closed | **KEEP（數據後備，非模型改動）**：L10 逐場一樣 358/378（94.7%），餘下係 1 分鐘捨入／1 助攻更正／尾段舊季後賽；修 Play-In 混入常規賽；nba.com 正常時零改變 |
 | [EXP-20261029-30](EXP-20261029-30-hkjc-weight-input-results.md) | 2026-10-29 | HKJC | 負磅分讀「讓磅官意見」：A 宣佈負磅（§7）／B 場內官方評分差距／D 剷 SIP-C 輕磅加分；同步修正倒轉嘅文字層 | **A 上線（§7，Gold +0.29／Good +0.58，冇分層負，未證實改善）；B REJECT（live 重量 Gold +1.16 [+0.29,+2.30]／Good −0.58）→ forward 60 場 `weight_rating_gap`；D 唔上線（Good −1.16，交 Kelvin）** |
 | [EXP-20260929-01](EXP-20260929-01-hkjc-hv-v3-experimental-live.md)／[EXP-20261007-01](EXP-20261007-01-hkjc-pre-race-draw-context-v2.md) | 2026-10-27 | HKJC | 兩個 rollback 對照夠數嘅人手 review（immutable ledger），規則借用 shadow monitor rollback gate | **兩個都維持 live**：跑馬地 V3 舊版 27 場 Good −1、捕捉／NDCG CI 全負；檔位 v1 舊版 53 場 Good −2、NDCG CI 全負。A+B（`race_shape_v3_hv_t02`）撤走：V3 已 live，t02 喺跑馬地就等於 A+B |
 | [EXP-20261027-13](EXP-20261027-13-hkjc-top-jockey-overlay-walk-forward.md) | 2026-10-27 | HKJC | 頂級騎師 overlay（今仗／換上）walk-forward 幅度＋換騎 −1.5 方向 ablation；同時交付 overlay registry | **全部 REJECT**：A1 walk-forward 次次揀 0；A2 Good −1.19pp [−2.35,−0.29]；B／A1+B Good −0.30 跨零。忠實度 50/50。掃描 +5.5pp 入位率落唔到頭四。registry 交付（全部 shadow、排名 bit-identical、`o` 欄匯出畀 refit／ML） |

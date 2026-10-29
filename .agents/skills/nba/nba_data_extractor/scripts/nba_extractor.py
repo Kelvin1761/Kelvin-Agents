@@ -45,6 +45,9 @@ import nba_official_injuries
 from nba_availability import compute_usage_redistribution
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
+import nba_api_breaker
+import nba_espn_stats
+import nba_league_snapshot
 from nba_availability import (AvailabilityUnavailable, RosterChanged, apply_availability,
                               availability_current, aware_time, fetch_team_availability, refresh_availability)
 
@@ -66,7 +69,6 @@ try:
         playerdashboardbygeneralsplits,
     )
     from nba_api.stats.static import teams, players
-    import nba_api_breaker
     nba_api_breaker.install()   # fail fast while stats.nba.com is blocking us
     NBA_API_AVAILABLE = True
 except ImportError:
@@ -378,6 +380,16 @@ MIN_PLAYER_ROWS = 100
 ALWAYS_FILL = 10 ** 9   # player-level feeds have no fixed 'complete' size
 
 
+def missing_league_tables(data_sources, outage_failures):
+    """League tables that came back empty during an nba.com outage.
+
+    Empty with no outage is a genuinely empty feed (handled by the season
+    fallback); empty during one means we would analyse blind."""
+    if not outage_failures:
+        return []
+    return sorted(label for label, info in data_sources.items() if not info.get("rows"))
+
+
 def fetch_with_season_fallback(fetch_fn, season, as_of, min_rows=1, label="", fill_below=None):
     """Call ``fetch_fn(season, as_of)``; use last season when empty/thin, and fill gaps.
 
@@ -460,8 +472,59 @@ def fetch_nba_news(team_abbr, limit=5):
 # ==========================================
 # 模塊 2：nba_api — 全員 L10 完整 Box Score
 # ==========================================
+# NBA PLAYER_ID -> ESPN athlete id, filled per team by fetch_team_roster. The
+# game-log fallback needs it (ESPN game logs are keyed by ESPN id).
+ESPN_IDS: dict = {}
+
+
+def _nba_id_lookup(team_abbr, season):
+    """{player_name_key: NBA PLAYER_ID} for resolving an ESPN roster: the last
+    saved nba.com roster for this team first, then nba_api's offline player
+    list (no request). Ambiguous names are left out, never guessed."""
+    lookup = {}
+    saved, _ = nba_league_snapshot.load(f"roster_{team_abbr}", season,
+                                        datetime.now().strftime("%m/%d/%Y"), max_age_days=30)
+    for row in (saved or {}).values():
+        lookup.setdefault(player_name_key(row.get("name", "")), row.get("player_id"))
+    seen = {}
+    for row in players.get_active_players() if NBA_API_AVAILABLE else []:
+        key = player_name_key(row.get("full_name", ""))
+        seen[key] = None if key in seen else row.get("id")
+    for key, pid in seen.items():
+        if pid is not None:
+            lookup.setdefault(key, pid)
+    return lookup
+
+
+def _link_espn_ids(team_abbr, roster):
+    """Record each roster player's ESPN id (one ESPN request per team)."""
+    try:
+        espn_rows = nba_espn_stats.espn_roster(team_abbr)
+    except Exception as exc:  # the fallback is optional; never break the roster
+        print(f"    ⚠️ ESPN roster ids unavailable ({team_abbr}): {exc}")
+        return
+    by_name = {player_name_key(row["name"]): row["espn_id"] for row in espn_rows}
+    for row in roster:
+        espn_id = by_name.get(player_name_key(row["name"]))
+        if espn_id and row.get("player_id") is not None:
+            ESPN_IDS[row["player_id"]] = espn_id
+
+
+def espn_team_roster(team_abbr, season):
+    """Roster from ESPN when nba.com is unreachable. Players whose NBA id
+    cannot be resolved are dropped and named, never given a guessed id."""
+    rows = nba_espn_stats.espn_roster(team_abbr, name_to_nba_id=_nba_id_lookup(team_abbr, season))
+    unresolved = [row["name"] for row in rows if row["player_id"] is None]
+    if unresolved:
+        print(f"    ⚠️ ESPN roster: {len(unresolved)} 名球員搵唔到 NBA id，略過: {unresolved}")
+    resolved = [row for row in rows if row["player_id"] is not None]
+    for row in resolved:
+        ESPN_IDS[row["player_id"]] = row["espn_id"]
+    return resolved
+
+
 def fetch_team_roster(team_nickname, season=None):
-    """從 nba_api 獲取球隊完整陣容"""
+    """從 nba_api 獲取球隊完整陣容；stats.nba.com 唔通就用 ESPN。"""
     if not NBA_API_AVAILABLE:
         return []
     all_teams = teams.get_teams()
@@ -470,11 +533,10 @@ def fetch_team_roster(team_nickname, season=None):
         print(f"⚠️ 找不到球隊: {team_nickname}")
         return []
     team_id = match[0]['id']
+    team_abbr = match[0]['abbreviation']
+    season = season or nba_season_for_date(None)
     try:
-        roster = commonteamroster.CommonTeamRoster(
-            team_id=team_id,
-            season=season or nba_season_for_date(None),
-        )
+        roster = commonteamroster.CommonTeamRoster(team_id=team_id, season=season)
         df = roster.get_data_frames()[0]
         time.sleep(API_SLEEP)
         result = []
@@ -487,10 +549,19 @@ def fetch_team_roster(team_nickname, season=None):
                 "num": row.get('NUM', ''),
                 "experience": str(row.get('EXP', '')).strip(),
             })
+        nba_league_snapshot.save(f"roster_{team_abbr}", season, datetime.now().strftime("%m/%d/%Y"),
+                                 {str(row["player_id"]): row for row in result})
+        _link_espn_ids(team_abbr, result)
         return result
     except Exception as e:
         print(f"⚠️ Roster 提取失敗 ({team_nickname}): {e}")
-        return []
+        try:
+            result = espn_team_roster(team_abbr, season)
+        except Exception as exc:
+            print(f"⚠️ ESPN roster 都失敗 ({team_abbr}): {exc}")
+            return []
+        print(f"  ↪️ 改用 ESPN roster ({team_abbr}): {len(result)} 人")
+        return result
 
 
 def fetch_team_injuries(team_abbr):
@@ -558,6 +629,25 @@ def compact_season_log(df):
         return {"error": f"{type(exc).__name__}: {exc}"}
 
 
+def player_log_frame(player_id, season, date_to, season_type):
+    """PlayerGameLog frame from stats.nba.com, or the same frame from ESPN when
+    nba.com fails on the network. Any other failure, or no ESPN id, re-raises
+    exactly as before. Returns ``(frame, source)``."""
+    try:
+        log = playergamelog.PlayerGameLog(
+            player_id=player_id, season=season, date_to_nullable=date_to,
+            season_type_all_star=season_type,
+        )
+        return log.get_data_frames()[0], "nba"
+    except Exception as exc:
+        espn_id = ESPN_IDS.get(player_id)
+        if not espn_id or not (isinstance(exc, nba_api_breaker.StatsNbaBlocked)
+                               or nba_api_breaker._is_network_failure(exc)):
+            raise
+        day = datetime.strptime(date_to, "%m/%d/%Y").date() if date_to else None
+        return nba_espn_stats.espn_gamelog_frame(espn_id, season, season_type, day), "espn"
+
+
 def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, include_previous=False, season_type="Regular Season"):
     """為單一球員提取 L10 完整 Box Score（Season-Agnostic: RS + Playoffs 合併）
     
@@ -569,18 +659,15 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
     try:
         import pandas as pd
         all_dfs = []
+        sources = set()
         history_season = season or nba_season_for_date(as_of)
         date_to = history_date_to(as_of)
 
         if season_type == "Regular Season":
             # 1. Fetch playoff history from the explicitly selected season.
             try:
-                log_po = playergamelog.PlayerGameLog(
-                    player_id=player_id,
-                    season=history_season, date_to_nullable=date_to,
-                    season_type_all_star='Playoffs'
-                )
-                df_po = log_po.get_data_frames()[0]
+                df_po, source = player_log_frame(player_id, history_season, date_to, 'Playoffs')
+                sources.add(source)
                 time.sleep(API_SLEEP)
                 if not df_po.empty:
                     df_po = df_po.copy()
@@ -594,11 +681,8 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
         rs_success = False
         for attempt in range(2):
             try:
-                log_rs = playergamelog.PlayerGameLog(
-                    player_id=player_id, season=history_season, date_to_nullable=date_to,
-                    season_type_all_star=season_type,
-                )
-                df_rs = log_rs.get_data_frames()[0]
+                df_rs, source = player_log_frame(player_id, history_season, date_to, season_type)
+                sources.add(source)
                 time.sleep(API_SLEEP)
                 if not df_rs.empty:
                     df_rs = df_rs.copy()
@@ -626,11 +710,8 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
             prior = previous_nba_season(history_season)
             for kind in ["Playoffs", "Regular Season"]:
                 try:
-                    endpoint = playergamelog.PlayerGameLog(
-                        player_id=player_id, season=prior, date_to_nullable=date_to,
-                        season_type_all_star=kind,
-                    )
-                    frame = endpoint.get_data_frames()[0]
+                    frame, source = player_log_frame(player_id, prior, date_to, kind)
+                    sources.add(source)
                     time.sleep(API_SLEEP)
                     if not frame.empty:
                         frame = frame.copy()
@@ -687,6 +768,9 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
             "FTA": df_l10['FTA'].tolist(),
             "PLUS_MINUS": df_l10['PLUS_MINUS'].tolist(),
         }
+        # Which feed the numbers came from: "espn" means nba.com was unreachable
+        # (ESPN has no PLUS_MINUS; every other L10 stat is the same box score).
+        record["source"] = "espn" if "espn" in sources else "nba"
         record["season_log"] = compact_season_log(df)
         record["fit_inputs"] = compute_fit_inputs(
             df, nba_season_for_date(as_of) if as_of else history_season)
@@ -721,12 +805,7 @@ def fetch_player_h2h(player_id, player_name, opp_abbr, season=None, as_of=None):
             # Fetch both Regular Season and Playoffs for each season
             for season_type in ['Regular Season', 'Playoffs']:
                 try:
-                    log = playergamelog.PlayerGameLog(
-                        player_id=player_id, season=season,
-                        date_to_nullable=history_date_to(as_of),
-                        season_type_all_star=season_type
-                    )
-                    df = log.get_data_frames()[0]
+                    df, _source = player_log_frame(player_id, season, history_date_to(as_of), season_type)
                     time.sleep(API_SLEEP)
                     if as_of:
                         dates = pd.to_datetime(df['GAME_DATE'], errors='coerce')
@@ -855,9 +934,17 @@ def fetch_player_splits(player_id, player_name, season=None, as_of=None):
                 }
             result["rest_splits"] = rest_data
 
+        nba_league_snapshot.save_entry("player_splits", season or nba_season_for_date(as_of),
+                                       history_date_to(as_of), player_id, result)
         return result
     except Exception as e:
         print(f"  ⚠️ {player_name} splits 失敗: {e}")
+        if isinstance(e, nba_api_breaker.StatsNbaBlocked) or nba_api_breaker._is_network_failure(e):
+            cached, age = nba_league_snapshot.load_entry(
+                "player_splits", season or nba_season_for_date(as_of), history_date_to(as_of), player_id)
+            if cached:
+                # Recorded so a stale split is never mistaken for today's.
+                return {**cached, "snapshot_age_days": age}
         return None
 
 
@@ -1542,7 +1629,24 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             }
         except Exception as exc:  # shadow data must never break extraction
             package["opponent_context"] = {"error": f"{type(exc).__name__}: {exc}"}
+    package["meta"]["nbacom_fallback"] = nbacom_fallback_summary(package)
     return apply_availability(package, availability_maps)
+
+
+def nbacom_fallback_summary(package):
+    """How much of this package stood in for an unreachable stats.nba.com.
+
+    ESPN game logs match nba_api's L10 exactly for 358/378 players
+    (EXP-20261030-01); the rest differ by a rounded minute or a deep-tail
+    playoff game. Recorded so a fallback slate is never mistaken for a normal one."""
+    rows = [p for team in (package.get("players") or {}).values() for p in team]
+    espn_logs = sum(1 for p in rows if (p.get("gamelog") or {}).get("source") == "espn")
+    stale_splits = sum(1 for p in rows if "snapshot_age_days" in (p.get("splits") or {}))
+    snapshots = sorted(label for label, info in (package["meta"].get("data_sources") or {}).items()
+                       if info.get("snapshot"))
+    return {"active": bool(espn_logs or stale_splits or snapshots),
+            "espn_gamelog_players": espn_logs, "players": len(rows),
+            "snapshot_splits_players": stale_splits, "snapshot_league_tables": snapshots}
 
 
 # ==========================================
@@ -1741,14 +1845,33 @@ def main():
     statistics_season = statistics_season_for_game(stats_date, analysis_game)
     print(f"📚 歷史數據球季: {statistics_season} | 截止: {history_date_to(stats_date)}")
     data_sources = {}
+    league_fetchers = {
+        label: nba_league_snapshot.backed(fn, label, nba_api_breaker.failure_count, history_date_to)
+        for label, fn in (("team_stats", fetch_team_advanced_stats),
+                          ("player_advanced", fetch_all_player_advanced_stats),
+                          ("key_defenders", fetch_defender_impact),
+                          ("team_dvp", fetch_team_defense_vs_position))
+    }
     team_stats, data_sources["team_stats"] = fetch_with_season_fallback(
-        fetch_team_advanced_stats, statistics_season, stats_date, MIN_TEAM_ROWS, "team_stats", fill_below=30)
+        league_fetchers["team_stats"], statistics_season, stats_date, MIN_TEAM_ROWS, "team_stats", fill_below=30)
     adv_stats, data_sources["player_advanced"] = fetch_with_season_fallback(
-        fetch_all_player_advanced_stats, statistics_season, stats_date, MIN_PLAYER_ROWS, "player_advanced", fill_below=ALWAYS_FILL)
+        league_fetchers["player_advanced"], statistics_season, stats_date, MIN_PLAYER_ROWS, "player_advanced", fill_below=ALWAYS_FILL)
     defender_data, data_sources["key_defenders"] = fetch_with_season_fallback(
-        fetch_defender_impact, statistics_season, stats_date, MIN_PLAYER_ROWS, "key_defenders", fill_below=ALWAYS_FILL)
+        league_fetchers["key_defenders"], statistics_season, stats_date, MIN_PLAYER_ROWS, "key_defenders", fill_below=ALWAYS_FILL)
     team_dvp, data_sources["team_dvp"] = fetch_with_season_fallback(
-        fetch_team_defense_vs_position, statistics_season, stats_date, MIN_TEAM_ROWS, "team_dvp", fill_below=30)
+        league_fetchers["team_dvp"], statistics_season, stats_date, MIN_TEAM_ROWS, "team_dvp", fill_below=30)
+    for label, fetcher in league_fetchers.items():
+        if fetcher.used:   # stale copy stood in for an unreachable nba.com
+            data_sources[label].update({"fallback_used": True, "snapshot": fetcher.used})
+    # Fail closed. With ESPN game logs the per-game L10 check below no longer
+    # catches an nba.com outage, so a package built WITHOUT the league tables
+    # (no team pace/defence, no USG, no defenders) would sail through to bets.
+    # Without a recent snapshot that is not a degraded analysis, it is none.
+    missing = missing_league_tables(data_sources, nba_api_breaker.failure_count()) if games else []
+    if missing:
+        print(f"❌ league_tables_unavailable: {missing} — stats.nba.com 唔通，而 "
+              f"{nba_league_snapshot.MAX_AGE_DAYS} 日內冇快照；唔會用空白聯盟數據出分析")
+        sys.exit(1)
 
     # Research-only opportunity evidence: one league capture shared by game runs.
     opportunity_sources = nba_opportunities.fetch_sources(
