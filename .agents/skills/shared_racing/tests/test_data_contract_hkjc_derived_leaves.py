@@ -4,6 +4,9 @@
 （8%）同 `trackwork_trend_score` 存喺 `python_auto.derived_feature_scores`。
 閘門只讀 `feature_scores`，所以三個死咗都一樣綠燈發佈 —— 同 AU 2026-08-22
 `pace_figure_score` 靜靜死咗 12.2% 權重同一個形狀。
+
+2026-10-29：晨操退出排名（EXP-20261029-02），`trackwork_trend_score` 恆定 60，
+唔再入分 → 唔再閘（閘佢會當死欄位攔住每次發佈）。
 """
 from __future__ import annotations
 
@@ -18,8 +21,8 @@ sys.path.insert(0, str(ROOT / ".agents" / "skills" / "shared_racing" / "scripts"
 
 from data_contract import PLATFORMS, check, observe  # noqa: E402
 
-SCORED_DERIVED = ("race_shape_context_score", "formline_strength_score",
-                  "trackwork_trend_score")
+SCORED_DERIVED = ("race_shape_context_score", "formline_strength_score")
+RETIRED_DERIVED = ("trackwork_trend_score",)
 
 
 def _race(dead: str | None = None, horses: int = 8) -> dict:
@@ -27,6 +30,7 @@ def _race(dead: str | None = None, horses: int = 8) -> dict:
     for i in range(1, horses + 1):
         derived = {key: 50.0 + 4 * i for key in SCORED_DERIVED}
         derived["margin_trend_score"] = 60.0          # 展示用，唔應該被收
+        derived["trackwork_trend_score"] = 60.0       # 已退出排名，恆定 60
         if dead:
             derived[dead] = 60.0
         out[str(i)] = {"python_auto": {
@@ -52,6 +56,8 @@ class HkjcDerivedLeafTests(unittest.TestCase):
         for key in SCORED_DERIVED:
             self.assertIn(key, fields)
         self.assertNotIn("margin_trend_score", fields)
+        for key in RETIRED_DERIVED:
+            self.assertNotIn(key, fields)
 
     def test_au_does_not_pick_up_hkjc_blocks(self):
         with tempfile.TemporaryDirectory() as t:

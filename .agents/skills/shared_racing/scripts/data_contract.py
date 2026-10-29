@@ -62,11 +62,11 @@ PLATFORMS = {
         # race_shape（27.4% 權重）、賽績線（8%）、晨操。2026-10-10 之前呢個閘門
         # 完全睇唔到佢哋 —— 死咗一樣綠燈發佈，同 AU 08-22 `pace_figure` 同一個形狀。
         # 只收入分嘅 key；`margin_trend_score`／`same_distance_signal_score` 係展示用。
+        # 晨操 2026-10-29 退出排名（EXP-20261029-02，恆定 60）—— 留喺度會被當死欄位攔發佈。
         "extra_score_blocks": {
             "derived_feature_scores": (
                 "race_shape_context_score",
                 "formline_strength_score",
-                "trackwork_trend_score",
             ),
         },
     },
