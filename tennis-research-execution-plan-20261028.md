@@ -37,3 +37,5 @@
 **Card 身份爭議診斷**：[2026-10-30 賽事配對](docs/audits/tennis-card-fixture-conflict-20261030.md)。部署前當日 card 被 `DISPUTED` fixture 擋住；44 筆已留存配對衝突中，兩筆相同 event ID 呈現姓名省略中間名，其餘 42 筆 event ID 不同。只讀保存全部原始紀錄及外部核實線索，沒有解除爭議或修改配對；不能以少數例子改規則，下一步須先做完整正反例與 identity 驗證。
 
 **Sportsbet event 回應跟進**：[完整來源及 native 重播](docs/experiments/EXP-20261030-20-tennis-event-response-identity.md)。9,988 份凍結回應有 299 份 event ID 與直接 URL 不符；修正入口時保留來源並拒絕不符回應，不錯誤隔離原 fixture。既有歷史仍有 217 份錯 event odds snapshot 被連結；native earliest market reader 在五個受影響賽日讀到 84 個 match／888 行，尚未重新評估實際模型結果。歷史市場／close／研究讀取器的隔離和受影響研究重跑是後續優先工作；不能用較後價代替真正 `MIN(id)` 開盤。
+
+**歷史來源影響**：[close 及 tracker 只讀追蹤](docs/audits/tennis-historical-event-source-20261030.md)。217 場受影響的最新 stored close 均連到錯 event；native close 讀取器會返回其中 104 場。104 場內有 4 行相關 CLV tracker，現役選價重播有 3 行選到錯 event；102 行 prop price log 重播則選到其他來源。舊 tracker 沒有 raw ID，不能單憑價錢和時間證明歷史 lineage；亦不能把 match-level 數量當受影響注單或 ROI。入口修正不會清理舊資料，下一步按原始來源和時間分流讀取，再分路徑量度影響。
