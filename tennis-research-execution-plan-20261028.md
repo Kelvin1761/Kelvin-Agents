@@ -31,3 +31,5 @@
 **排名日期跟進**：[ATP 排名有效日期錯配](docs/audits/tennis-ranking-effective-date-20261029.md)和[修正審計](docs/audits/tennis-ranking-date-fix-20261029.md)保存了 UTS 實際來源日期、完整官方 ATP 榜、凍結語料、對照及失敗入庫證據。新榜日期／原始 PDF 可追溯；舊錯標來源、cache、球員排名與對手排名一併核對。第一輪整批入庫曾因鎖定中斷，暴露單筆球員及排名寫入不是原子操作；修正為單筆 transaction 並保留失敗紀錄。整批重現及正式 gate 的實際結果以實驗記錄和 release manifest 為準。歷史資料來源日期不等於已知發布時鐘，修正資料亦不自動證明準確度提高。
 
 **接續優先次序**：完成全量入庫及固定版本驗證後，先依原始證據處理 canonical 混合身份及 153 筆缺 match context 的 prediction；記錄未能證實的 Elo lineage 和歷史發布時鐘。只有新資料符合來源及時間合約，才可在不改 frozen ruler／舊 REJECT 判決的前提下預先登記新實驗和獨立 forward。其他莊家歷史資料只按已存協議用於訓練或研究；缺報價時鐘的 ROI 不當成可執行回報。
+
+**備份追查**：[204 份 feature 原文保存](docs/audits/tennis-orphan-recovery-20261030.md)。153 筆缺 context 的 prediction 涉及 63 個 match ID；已從 2026-08-26 舊備份尋回 204 份原文並驗證完整性，但已檢查的六份備份均沒有這 63 個 match，且舊 provenance 指向 mock odds。原文作研究證據保留，63 場仍列 unresolved，不計入訓練標籤、準確率或 ROI。新 ATP PDF 的一次完整擷取及 normalized receipt 實驗 export 約 3.1 MiB；須另行研究無損去重，並保留每次來源擷取時間，不可直接刪除來源證據。
