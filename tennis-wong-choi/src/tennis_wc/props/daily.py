@@ -277,6 +277,7 @@ def _rows_for_date(conn, match_date: str, earliest_only: bool = False):
     the evidence base is built from.
     """
     from tennis_wc.database.market_captures import current_market_clause
+    from tennis_wc.ingestion.fixture_versions import active_fixture_clause
 
     earliest_filter = (
         """
@@ -289,7 +290,10 @@ def _rows_for_date(conn, match_date: str, earliest_only: bool = False):
         )
         """
         if earliest_only
-        else f" AND {current_market_clause(conn)}"
+        # A DISPUTED fixture is quarantined: its odds may belong to another
+        # event, so the live card never prices it (the slate audit no longer
+        # blocks the whole card on its account).
+        else f" AND {current_market_clause(conn)} AND {active_fixture_clause(conn)}"
     )
     return conn.execute(
         f"""

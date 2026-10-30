@@ -14,6 +14,7 @@ from tennis_wc.ingestion.name_matching import match_pair_score, same_player_name
 from tennis_wc.providers import get_tennis_provider
 from tennis_wc.evaluation.corpus import tracker_point_in_time_clause
 from tennis_wc.database.result_consensus import conflicting_result_matches, result_agreement_clause
+from tennis_wc.ingestion.fixture_versions import active_fixture_clause
 
 # Gates and track records read only legs written before their match started;
 # see evaluation.corpus.tracker_point_in_time_clause.
@@ -257,11 +258,11 @@ def sync_clv_tracker_for_date(match_date: str) -> dict:
     synced = 0
     with get_connection() as conn:
         predictions = conn.execute(
-            """
+            f"""
             SELECT p.*, m.match_date, m.player_a_id, m.player_b_id
             FROM predictions p
             JOIN matches m ON m.id = p.match_id
-            WHERE m.match_date = ?
+            WHERE m.match_date = ? AND {active_fixture_clause(conn)}
               AND p.decision = 'BET'
               AND p.id IN (SELECT MAX(id) FROM predictions GROUP BY match_id)
             """,
@@ -338,6 +339,7 @@ def sync_clv_tracker_for_date(match_date: str) -> dict:
         synced += props["synced"]
         prop_prices = _log_prop_prices(conn, match_date, now)
         pruned = _prune_pending_tracker_duplicates(conn, match_date)
+        pruned += _prune_pending_disputed_fixtures(conn, match_date)
     updated_clv = update_clv_tracker_for_date(match_date)
     return {
         "synced": synced,
@@ -555,6 +557,25 @@ def _prune_pending_tracker_duplicates(conn, match_date: str) -> int:
     placeholders = ",".join("?" for _ in ids)
     conn.execute(f"DELETE FROM clv_tracker WHERE id IN ({placeholders})", ids)
     return len(ids)
+
+
+def _prune_pending_disputed_fixtures(conn, match_date: str) -> int:
+    """An earlier pass may have tracked a fixture that a later pass quarantined.
+
+    The card no longer carries it, so its still-PENDING rows must not be settled
+    or counted either. Settled rows are history and stay.
+    """
+    if active_fixture_clause(conn) == '1=1':
+        return 0
+    cursor = conn.execute(
+        """
+        DELETE FROM clv_tracker
+        WHERE match_date = ? AND result_status = 'PENDING'
+          AND match_id IN (SELECT id FROM matches WHERE fixture_status = 'DISPUTED')
+        """,
+        (match_date,),
+    )
+    return int(cursor.rowcount or 0)
 
 
 def sync_combo_tracker_for_date(match_date: str) -> dict:
