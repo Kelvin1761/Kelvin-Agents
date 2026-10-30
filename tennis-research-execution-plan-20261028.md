@@ -35,3 +35,5 @@
 **備份追查**：[204 份 feature 原文保存](docs/audits/tennis-orphan-recovery-20261030.md)。153 筆缺 context 的 prediction 涉及 63 個 match ID；已從 2026-08-26 舊備份尋回 204 份原文並驗證完整性，但已檢查的六份備份均沒有這 63 個 match，且舊 provenance 指向 mock odds。原文作研究證據保留，63 場仍列 unresolved，不計入訓練標籤、準確率或 ROI。新 ATP PDF 的一次完整擷取及 normalized receipt 實驗 export 約 3.1 MiB；須另行研究無損去重，並保留每次來源擷取時間，不可直接刪除來源證據。
 
 **Card 身份爭議診斷**：[2026-10-30 賽事配對](docs/audits/tennis-card-fixture-conflict-20261030.md)。部署前當日 card 被 `DISPUTED` fixture 擋住；44 筆已留存配對衝突中，兩筆相同 event ID 呈現姓名省略中間名，其餘 42 筆 event ID 不同。只讀保存全部原始紀錄及外部核實線索，沒有解除爭議或修改配對；不能以少數例子改規則，下一步須先做完整正反例與 identity 驗證。
+
+**Sportsbet event 回應跟進**：[完整來源及 native 重播](docs/experiments/EXP-20261030-20-tennis-event-response-identity.md)。9,988 份凍結回應有 299 份 event ID 與直接 URL 不符；修正入口時保留來源並拒絕不符回應，不錯誤隔離原 fixture。既有歷史仍有 217 份錯 event odds snapshot 被連結；native earliest market reader 在五個受影響賽日讀到 84 個 match／888 行，尚未重新評估實際模型結果。歷史市場／close／研究讀取器的隔離和受影響研究重跑是後續優先工作；不能用較後價代替真正 `MIN(id)` 開盤。

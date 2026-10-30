@@ -543,6 +543,23 @@ def test_preclose_refresh_reports_missing_event_ref_and_respects_cap(db, monkeyp
     assert sleeps == [], "no pause before the first real fetch"
 
 
+def test_preclose_rejected_identity_is_not_reported_as_refreshed(db, monkeypatch):
+    from datetime import datetime, timezone
+    from tennis_wc.betting.ledger import _ensure_tracking_schema
+    from tennis_wc.ingestion import ingest_odds
+    _match(db, 20)
+    _prop(db, 20, is_value=0, stake=0.0, match_id=20)
+    db.commit()
+    _ensure_tracking_schema()
+    monkeypatch.setattr(ingest_odds, "_latest_sportsbet_event_refs", lambda d: [
+        {"match_id": 20, "event_id": "E20", "event_url": "https://x/e20"}])
+    summary = ingest_odds.refresh_pre_start_markets(
+        "2026-08-11", now=datetime(2026, 8, 11, 11, 0, tzinfo=timezone.utc),
+        fetcher=lambda ref, mid: 0, sleeper=lambda s: None)
+    assert summary["refreshed"] == 0 and summary["failed"] == 1
+    assert summary["errors"][0]["error"] == "event_identity_rejected"
+
+
 def test_preclose_tick_covers_today_and_tomorrow():
     import importlib.util
     import sys

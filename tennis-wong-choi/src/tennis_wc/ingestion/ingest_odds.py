@@ -4,6 +4,7 @@ from datetime import date as date_type, datetime, timezone, timedelta
 import re
 import logging
 from zoneinfo import ZoneInfo
+from urllib.parse import urlparse
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.ingestion.entity_mapping import get_or_create_player, upsert_tournament
@@ -605,6 +606,7 @@ def ingest_event_odds(event_id: str, match_id: int | None = None, *, preclose: b
         "odds_preclose" if preclose else "odds",
         event_id,
     )
+    _validate_sportsbet_event_response(provider.provider_name, event_id, row)
     if preclose:
         return _store_preclose_event(row, match_id, provider.provider_name, raw_id)
     now = utc_now()
@@ -640,6 +642,21 @@ def ingest_event_odds(event_id: str, match_id: int | None = None, *, preclose: b
             )
         _insert_market_odds(conn, row, match_id, provider.provider_name, raw_id, now)
     return 1
+
+
+def _validate_sportsbet_event_response(provider_name: str, event_ref: str, row: dict) -> None:
+    """A direct Sportsbet URL identifies the requested event, not a redirect's event."""
+    if provider_name != "sportsbet":
+        return
+    parsed = urlparse(str(event_ref))
+    if parsed.scheme not in {"http", "https"} or parsed.hostname not in {"sportsbet.com.au", "www.sportsbet.com.au"}:
+        return
+    requested = re.search(r"-(\d+)$", parsed.path.rstrip("/"))
+    if not requested:
+        return
+    received = str(row.get("event_id") or "").strip() if isinstance(row, dict) else ""
+    if received != requested.group(1):
+        raise ValueError(f"sportsbet_event_response_mismatch: requested={requested.group(1)} received={received or 'missing'}")
 
 
 def _store_preclose_event(row: dict, match_id: int | None, provider_name: str, raw_id: int) -> int:
@@ -770,7 +787,8 @@ def refresh_pre_start_markets(
             sleep(pause_seconds)
         fetched_any = True
         try:
-            fetch(event_ref, int(match["id"]))
+            if fetch(event_ref, int(match["id"])) == 0:
+                raise ValueError("event_identity_rejected")
             refreshed += 1
         except Exception as exc:  # noqa: BLE001 -- one bad page must not stop the tick
             errors.append({"match_id": match["id"],
@@ -826,7 +844,8 @@ def enrich_sportsbet_event_markets(match_date: str) -> dict:
     for row in rows:
         event_ref = row["event_url"] or row["event_id"]
         try:
-            ingest_event_odds(event_ref, int(row["match_id"]) if row["match_id"] is not None else None)
+            if ingest_event_odds(event_ref, int(row["match_id"]) if row["match_id"] is not None else None) == 0:
+                raise ValueError("event_identity_rejected")
             enriched += 1
         except Exception as exc:  # noqa: BLE001
             failed.append({"row": row, "event_id": row["event_id"], "event_url": row["event_url"], "error": _classify_sportsbet_probe_error(str(exc))})
@@ -841,7 +860,8 @@ def enrich_sportsbet_event_markets(match_date: str) -> dict:
             row = item["row"]
             event_ref = row["event_url"] or row["event_id"]
             try:
-                ingest_event_odds(event_ref, int(row["match_id"]) if row["match_id"] is not None else None)
+                if ingest_event_odds(event_ref, int(row["match_id"]) if row["match_id"] is not None else None) == 0:
+                    raise ValueError("event_identity_rejected")
                 enriched += 1
             except Exception as exc:  # noqa: BLE001
                 still.append({"row": row, "event_id": row["event_id"], "event_url": row["event_url"], "error": _classify_sportsbet_probe_error(str(exc))})

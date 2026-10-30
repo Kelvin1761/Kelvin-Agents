@@ -188,3 +188,92 @@ def test_provisional_book_event_reuse_creates_new_pair_version(fixture_feed):
     with get_connection() as c:
         assert tuple(c.execute('SELECT player_a_id,player_b_id FROM matches WHERE id=?',(first,)).fetchone())==original
         assert c.execute('SELECT supersedes_match_id FROM matches WHERE id=?',(second,)).fetchone()[0]==first
+
+
+@pytest.mark.parametrize('preclose', [False, True])
+@pytest.mark.parametrize('same_pair', [False, True])
+def test_wrong_sportsbet_response_id_is_retained_but_never_attached_or_quarantined(fixture_feed, monkeypatch, preclose, same_pair):
+    import json
+    fixture_feed.rows=[fixture_row()]
+    ingest_matches.ingest_upcoming_matches('2026-10-26')
+    page=dict(event_id='185139',player_a_name='Stefanos Tsitsipas' if same_pair else 'Rinky Hijikata',
+              player_b_name='Taylor Fritz',bookmaker='Sportsbet',market='match_winner',
+              player_a_odds=2.1,player_b_odds=1.8)
+    class Book:
+        provider_name='sportsbet'
+        def fetch_event_odds(self,*args): return page
+    monkeypatch.setattr(ingest_odds,'get_odds_provider',lambda: Book())
+    ref='https://www.sportsbet.com.au/betting/tennis/event-185138'
+    with get_connection() as c:
+        mid=c.execute('SELECT id FROM matches').fetchone()[0]
+    with pytest.raises(ValueError,match='sportsbet_event_response_mismatch: requested=185138 received=185139'):
+        ingest_odds.ingest_event_odds(ref,mid,preclose=preclose)
+    with get_connection() as c:
+        assert c.execute('SELECT fixture_status FROM matches WHERE id=?',(mid,)).fetchone()[0]=='ACTIVE'
+        for table in ('odds_snapshots','market_odds_snapshots','preclose_odds_snapshots','preclose_market_odds_snapshots'):
+            assert c.execute(f'SELECT COUNT(*) FROM {table}').fetchone()[0]==0
+        receipt=c.execute("SELECT * FROM raw_api_responses WHERE endpoint=? ORDER BY id DESC LIMIT 1",
+                          ('/event-odds-preclose' if preclose else '/event-odds',)).fetchone()
+        assert receipt['status_code']==200 and json.loads(receipt['response_json'])==page
+        assert json.loads(receipt['request_params_json'])['event_id']==ref
+        assert c.execute("SELECT COUNT(*) FROM fixture_observations WHERE observation_kind='EVENT_PAIR_CONFLICT'").fetchone()[0]==0
+
+
+def test_matching_event_id_still_quarantines_wrong_pair(fixture_feed, monkeypatch):
+    fixture_feed.rows=[fixture_row()]
+    ingest_matches.ingest_upcoming_matches('2026-10-26')
+    class Book:
+        provider_name='sportsbet'
+        def fetch_event_odds(self,*args):
+            return dict(event_id='185138',player_a_name='Rinky Hijikata',player_b_name='Taylor Fritz',
+                        bookmaker='Sportsbet',market='match_winner',player_a_odds=2.1,player_b_odds=1.8)
+    monkeypatch.setattr(ingest_odds,'get_odds_provider',lambda: Book())
+    with get_connection() as c: mid=c.execute('SELECT id FROM matches').fetchone()[0]
+    assert ingest_odds.ingest_event_odds('https://www.sportsbet.com.au/betting/tennis/event-185138',mid)==0
+    with get_connection() as c:
+        assert c.execute('SELECT fixture_status FROM matches WHERE id=?',(mid,)).fetchone()[0]=='DISPUTED'
+
+
+def test_matching_sportsbet_event_and_swapped_pair_remains_usable(fixture_feed, monkeypatch):
+    fixture_feed.rows=[fixture_row()]
+    ingest_matches.ingest_upcoming_matches('2026-10-26')
+    class Book:
+        provider_name='sportsbet'
+        def fetch_event_odds(self,*args):
+            return dict(event_id='185138',player_a_name='Taylor Fritz',player_b_name='Stefanos Tsitsipas',
+                        bookmaker='Sportsbet',market='match_winner',player_a_odds=1.8,player_b_odds=2.1)
+    monkeypatch.setattr(ingest_odds,'get_odds_provider',lambda: Book())
+    with get_connection() as c: mid=c.execute('SELECT id FROM matches').fetchone()[0]
+    assert ingest_odds.ingest_event_odds('https://www.sportsbet.com.au/betting/tennis/event-185138?x=1',mid)==1
+    with get_connection() as c:
+        assert c.execute('SELECT fixture_status FROM matches WHERE id=?',(mid,)).fetchone()[0]=='ACTIVE'
+        odds=c.execute('SELECT player_a_odds,player_b_odds FROM odds_snapshots').fetchone()
+        assert tuple(odds)==(2.1,1.8)
+
+
+def test_unverifiable_reference_does_not_invent_an_event_id():
+    ingest_odds._validate_sportsbet_event_response('sportsbet','123',{'event_id':'different-namespace'})
+    ingest_odds._validate_sportsbet_event_response('sportsbet','https://example.com/event-123',{'event_id':'456'})
+    ingest_odds._validate_sportsbet_event_response('mock','https://www.sportsbet.com.au/event-123',{'event_id':'456'})
+    with pytest.raises(ValueError,match='received=missing'):
+        ingest_odds._validate_sportsbet_event_response('sportsbet','https://www.sportsbet.com.au/event-123',{})
+
+
+def test_rejected_enrichment_is_not_counted_as_a_success(fixture_feed, monkeypatch):
+    from tennis_wc.ingestion.raw_response_store import store_raw_response
+    fixture_feed.rows=[fixture_row()]
+    ingest_matches.ingest_upcoming_matches('2026-10-26')
+    event={'event_id':'185138','event_url':'https://www.sportsbet.com.au/betting/tennis/event-185138'}
+    raw=store_raw_response('sportsbet','/mock/odds',{},[event],200,'odds','2026-10-26')
+    with get_connection() as c:
+        mid=c.execute('SELECT id FROM matches').fetchone()[0]
+        c.execute("""INSERT INTO odds_snapshots(event_id,match_id,bookmaker,market,player_a_odds,player_b_odds,
+                     source_provider,raw_response_id,fetched_at,created_at)
+                     VALUES ('185138',?,'Sportsbet','match_winner',1.9,1.9,'sportsbet',?,'now','now')""",(mid,raw))
+    class Book:
+        def fetch_event_odds(self,*args): return {}
+    monkeypatch.setattr(ingest_odds,'get_odds_provider',lambda: Book())
+    monkeypatch.setattr(ingest_odds,'ingest_event_odds',lambda *a, **kw: 0)
+    result=ingest_odds.enrich_sportsbet_event_markets('2026-10-26')
+    assert result['events']==1 and result['enriched']==0 and result['failed']==1
+    assert result['errors'][0]['error']=='event_identity_rejected'
