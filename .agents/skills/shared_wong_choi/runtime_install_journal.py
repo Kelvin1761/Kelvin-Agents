@@ -18,7 +18,7 @@ if not __package__:
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from shared_wong_choi.runtime_cutover_lease import inherited_lease, lease_path
 from shared_wong_choi.runtime_snapshot_state import (
-    LABELS, MAX_PLIST_BYTES, _digest, file_state, load_observation, observe,
+    LABELS, MAX_PLIST_BYTES, _digest, _probe, disabled_jobs, job_loaded, file_state, load_observation, observe,
 )
 
 SCHEMA = 'wong-choi-runtime-write-plan/v1'
@@ -186,13 +186,56 @@ def _begin_record(root, plan, label):
         raise OwnershipError('write intent binding mismatch')
 
 
+def _job_current(agents: Path, domain: str, launchctl: str, label: str):
+    registry = _probe(launchctl, 'print-disabled', domain)
+    if registry.returncode:
+        raise OwnershipError('cannot observe native flags')
+    value = {'file': file_state(agents / (label + '.plist')),
+             'loaded': job_loaded(launchctl, domain, label),
+             'disabled': disabled_jobs(registry.stdout).get(label, False)}
+    if value['loaded'] and not value['file']['exists']:
+        raise OwnershipError('loaded job has no restorable plist')
+    return value
+
+
+def verify_unchanged(snapshot: Path, agents: Path, *, domain: str, launchctl: str):
+    _exclusive()
+    _safe_root(snapshot, private=True)
+    ownership = snapshot / DIRECTORY
+    if ownership.exists() or ownership.is_symlink():
+        if verify_recovery(snapshot, agents, domain=domain, launchctl=launchctl):
+            raise OwnershipError('owned jobs have not returned to original state')
+        pointer = _pointer(snapshot)
+        if pointer and file_state(Path(pointer['target'])) != pointer['before']:
+            raise OwnershipError('owned pointer has not returned to original state')
+        return
+    before = load_observation(snapshot, agents, domain=domain, labels=tuple(sorted(LABELS)))
+    if observe(agents, launchctl=launchctl, domain=domain, labels=tuple(sorted(LABELS))) != before:
+        raise OwnershipError('no write proof for changed runtime')
+    pointer = _pointer(snapshot)
+    if pointer and file_state(Path(pointer['target'])) != pointer['before']:
+        raise OwnershipError('no write proof for changed pointer')
+
+
+def verify_job(snapshot: Path, agents: Path, *, domain: str, launchctl: str, label: str):
+    if label not in LABELS:
+        raise OwnershipError('unallowlisted job')
+    root, plan, before = _context(snapshot, agents, domain)
+    _begin_record(root, plan, label)
+    old = before['jobs'][label]
+    current = _job_current(agents, domain, launchctl, label)
+    if (current['file'] not in (old['file'], plan['candidates'][label])
+            or current['disabled'] not in (old['disabled'], False)):
+        raise OwnershipError('unowned job state; recovery blocked')
+
+
 def begin_job(snapshot: Path, agents: Path, *, domain: str, launchctl: str, label: str):
     """Record intent before any native unload, file publication or flag change."""
     if label not in LABELS:
         raise OwnershipError('unallowlisted job')
     root, plan, before = _context(snapshot, agents, domain)
-    current = observe(agents, launchctl=launchctl, domain=domain, labels=tuple(sorted(LABELS)))
-    if current['jobs'][label] != before['jobs'][label]:
+    current = _job_current(agents, domain, launchctl, label)
+    if current != before['jobs'][label]:
         raise OwnershipError('unowned state appeared before write intent')
     _append(root / (label + '.begin.json'), {'schema_version': BEGIN_SCHEMA,
             'label': label, 'attempt_id': plan['attempt_id'], 'plan_hash': _digest(plan)})
@@ -292,22 +335,48 @@ def verify_recovery(snapshot: Path, agents: Path, *, domain: str, launchctl: str
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--mode', choices=('prepare', 'begin-job', 'publish-job',
-                        'begin-pointer', 'publish-pointer', 'verify-recovery'), required=True)
+                        'begin-pointer', 'publish-pointer', 'verify-job', 'verify-unchanged', 'verify-recovery'), required=True)
     parser.add_argument('--snapshot', type=Path, required=True)
     parser.add_argument('--agents', type=Path, required=True)
     parser.add_argument('--domain', required=True)
     parser.add_argument('--launchctl', required=True)
     parser.add_argument('--commit')
+    parser.add_argument('--repo', type=Path)
+    parser.add_argument('--expected-commit')
     parser.add_argument('--label')
     args = parser.parse_args(argv)
     binding = {'domain': args.domain}
     try:
+        pointer = _pointer(args.snapshot)
+        expected_pointer = os.environ.get('WC_TENNIS_DB_POINTER') or str(Path.home() / '.wongchoi_tennis_db')
+        if pointer and pointer['target'] != expected_pointer:
+            raise OwnershipError('pointer configuration changed since snapshot')
+        if args.expected_commit and not args.repo:
+            raise OwnershipError('expected source requires a bound checkout')
+        if args.repo:
+            actual = subprocess.run(['git', '-C', str(args.repo), 'rev-parse', 'HEAD'],
+                                    text=True, capture_output=True, timeout=10, check=False)
+            current = actual.stdout.strip()
+            if actual.returncode or not re.fullmatch('[0-9a-f]{40}', current):
+                raise OwnershipError('current checkout source unverified')
+            if args.expected_commit and current != args.expected_commit:
+                raise OwnershipError('checkout differs from immutable activation target')
+            if args.mode == 'prepare' and current != args.commit:
+                raise OwnershipError('planned source differs from current checkout')
+            proof = args.snapshot / DIRECTORY / 'plan.json'
+            if proof.exists() or proof.is_symlink():
+                if _load(proof).get('commit') != current:
+                    raise OwnershipError('attempt belongs to a different checkout source')
         if args.mode == 'prepare':
             prepare(args.snapshot, args.agents, **binding, launchctl=args.launchctl, commit=args.commit or '')
         elif args.mode == 'begin-job':
             begin_job(args.snapshot, args.agents, **binding, launchctl=args.launchctl, label=args.label)
         elif args.mode == 'publish-job':
             publish_job(args.snapshot, args.agents, **binding, label=args.label)
+        elif args.mode == 'verify-job':
+            verify_job(args.snapshot, args.agents, **binding, launchctl=args.launchctl, label=args.label)
+        elif args.mode == 'verify-unchanged':
+            verify_unchanged(args.snapshot, args.agents, **binding, launchctl=args.launchctl)
         elif args.mode == 'begin-pointer':
             begin_pointer(args.snapshot, args.agents, **binding)
         elif args.mode == 'publish-pointer':

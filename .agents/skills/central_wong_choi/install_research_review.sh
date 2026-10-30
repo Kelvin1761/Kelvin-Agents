@@ -13,6 +13,11 @@ if [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
   /usr/bin/python3 "$LEASE_HELPER" --mode exclusive --verify || exit $?
 fi
 
+if [ -n "${WC_RUNTIME_INSTALL_SNAPSHOT:-}" ] && [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
+  [ "$#" -eq 0 ] || { echo "bound installation accepts no alternate mode" >&2; exit 2; }
+  . "$CUTOVER_REPO/.agents/skills/shared_wong_choi/runtime_install_journal.sh"
+fi
+
 SCRIPT_DIR="$SKILL_DIR/scripts"
 LABEL="com.antigravity.central-wong-choi.research-review"
 AGENTS_DIR="${WC_LAUNCH_AGENTS_DIR:-$HOME/Library/LaunchAgents}"
@@ -63,8 +68,11 @@ cleanup() {
   local outcome=$?
   trap - EXIT HUP INT TERM
   if [ "$COMPLETE" -ne 1 ] && [ "$CHANGED" -eq 1 ]; then
-    # A concurrent writer owns its bytes. Never overwrite it during rollback.
-    if ! cmp -s "$DEST" "$TEMP_DIR/candidate.plist" &&
+    # Bound attempts have one recovery owner and one original-state proof.
+    # Local cleanup must not bypass that owner's SHA/intent/loaded-state gates.
+    if [ -n "${WC_RUNTIME_INSTALL_SNAPSHOT:-}" ]; then
+      print -u2 -- "bound research installation failed; unified attempt owns recovery"
+    elif ! cmp -s "$DEST" "$TEMP_DIR/candidate.plist" &&
        ! { [ -f "$TEMP_DIR/previous.plist" ] && cmp -s "$DEST" "$TEMP_DIR/previous.plist"; } &&
        ! { [ ! -e "$DEST" ] && [ ! -L "$DEST" ] && [ ! -f "$TEMP_DIR/previous.plist" ]; }; then
       print -u2 -- "CRITICAL: concurrent research plist write; rollback blocked"
@@ -115,6 +123,10 @@ if [ -f "$TEMP_DIR/previous.plist" ]; then
 else
   [ ! -e "$DEST" ] && [ ! -L "$DEST" ] || { print -u2 -- "CRITICAL: research plist appeared before installation"; exit 1; }
 fi
+if [ -n "${WC_RUNTIME_INSTALL_SNAPSHOT:-}" ]; then
+  cmp -s "$TEMP_DIR/candidate.plist" "$WC_RUNTIME_INSTALL_SNAPSHOT/candidates/$LABEL.plist" || exit 1
+  wc_runtime_journal "$WC_RUNTIME_INSTALL_SNAPSHOT" begin-job "$LABEL"
+fi
 # Set the recovery boundary BEFORE launchctl can unload or receive a signal.
 CHANGED=1
 "$LAUNCHCTL" bootout "$DOMAIN/$LABEL" >/dev/null 2>&1 || true
@@ -123,7 +135,12 @@ if [ -f "$TEMP_DIR/previous.plist" ]; then
 else
   [ ! -e "$DEST" ] && [ ! -L "$DEST" ] || { print -u2 -- "CRITICAL: research plist appeared during unload"; exit 1; }
 fi
-mv "$STAGED" "$DEST"
+if [ -n "${WC_RUNTIME_INSTALL_SNAPSHOT:-}" ]; then
+  wc_runtime_journal "$WC_RUNTIME_INSTALL_SNAPSHOT" publish-job "$LABEL"
+  rm -f -- "$STAGED"
+else
+  mv "$STAGED" "$DEST"
+fi
 STAGED=""
 "$LAUNCHCTL" bootstrap "$DOMAIN" "$DEST"
 "$LAUNCHCTL" enable "$DOMAIN/$LABEL"

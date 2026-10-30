@@ -14,8 +14,13 @@ if [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
   /usr/bin/python3 "$LEASE_HELPER" --mode exclusive --verify || exit $?
 fi
 
+if [ -n "${WC_RUNTIME_INSTALL_SNAPSHOT:-}" ] && [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
+  [ "$#" -eq 0 ] || { echo "bound installation accepts no alternate mode" >&2; exit 2; }
+  . "$CUTOVER_REPO/.agents/skills/shared_wong_choi/runtime_install_journal.sh"
+fi
+
 LABEL="com.antigravity.central-wong-choi.durability"
-DEST="$HOME/Library/LaunchAgents/$LABEL.plist"
+DEST="${WC_LAUNCH_AGENTS_DIR:-$HOME/Library/LaunchAgents}/$LABEL.plist"
 UID_NUM="$(id -u)"
 
 render_durability() {
@@ -53,13 +58,18 @@ if [ "$TZ_NAME" != "Australia/Sydney" ]; then
   exit 1
 fi
 
-mkdir -p "$HOME/Library/LaunchAgents" "$SCRIPT_DIR/logs"
+mkdir -p "${WC_LAUNCH_AGENTS_DIR:-$HOME/Library/LaunchAgents}" "$SCRIPT_DIR/logs"
 chmod +x "$SCRIPT_DIR/central_daily_maintenance.py" \
   "$SCRIPT_DIR/run_central_daily_maintenance.sh"
-render_durability "$DEST"
-launchctl bootout "gui/$UID_NUM" "$DEST" 2>/dev/null || true
-launchctl bootstrap "gui/$UID_NUM" "$DEST"
-launchctl enable "gui/$UID_NUM/$LABEL"
+if [ -n "${WC_RUNTIME_INSTALL_SNAPSHOT:-}" ]; then
+  wc_runtime_journal "$WC_RUNTIME_INSTALL_SNAPSHOT" begin-job "$LABEL"
+  wc_runtime_journal "$WC_RUNTIME_INSTALL_SNAPSHOT" publish-job "$LABEL"
+else
+  render_durability "$DEST"
+fi
+"${WC_LAUNCHCTL_BIN:-launchctl}" bootout "gui/$UID_NUM" "$DEST" 2>/dev/null || true
+"${WC_LAUNCHCTL_BIN:-launchctl}" bootstrap "gui/$UID_NUM" "$DEST"
+"${WC_LAUNCHCTL_BIN:-launchctl}" enable "gui/$UID_NUM/$LABEL"
 print -r -- "已安裝 ${LABEL}：每日悉尼時間 03:20 D1 verified backup；失敗會喺 05:20 自動補跑"
 # Unified cutover owns the snapshot/rollback for both Central labels. Ordinary
 # durability installation must not implicitly initialize research state.

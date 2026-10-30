@@ -51,6 +51,7 @@ def prepared(tmp_path, monkeypatch):
             return SimpleNamespace(returncode=0, stdout='disabled services = {}', stderr='')
         return SimpleNamespace(returncode=113, stdout='', stderr='Could not find service')
     monkeypatch.setattr(state, '_probe', probe)
+    monkeypatch.setattr(journal, '_probe', probe)
     pointer = home / '.wongchoi_tennis_db'
     pointer.write_bytes(b'original fixture database path\n')
     pointer.chmod(0o640)
@@ -140,6 +141,8 @@ def test_damaged_begin_is_not_ignored_even_when_runtime_is_unchanged(prepared):
     path.write_text(json.dumps(value))
     with pytest.raises(journal.OwnershipError):
         journal.verify_recovery(snapshot, agents, domain=domain, launchctl='fake')
+    with pytest.raises(journal.OwnershipError):
+        journal.verify_unchanged(snapshot, agents, domain=domain, launchctl='fake')
 
 
 def test_no_inherited_exclusive_authority_no_journal_mutation(prepared, monkeypatch):
@@ -194,3 +197,37 @@ def test_symlink_begin_proof_is_not_read(prepared):
     (root / (LABEL + '.begin.json')).symlink_to(root / 'plan.json')
     with pytest.raises(OSError):
         journal.verify_recovery(snapshot, agents, domain=domain, launchctl='fake')
+
+
+def test_checkout_advance_after_plan_blocks_actual_publisher_cli(prepared):
+    snapshot, agents, domain, _ = prepared
+    repo = snapshot.parent / 'source-repo'
+    repo.mkdir()
+    def git(*args):
+        return subprocess.check_output(['git', '-C', str(repo), *args], text=True, stderr=subprocess.DEVNULL).strip()
+    git('init')
+    git('config', 'user.name', 'Ownership Fixture')
+    git('config', 'user.email', 'fixture@example.test')
+    git('config', 'commit.gpgSign', 'false')
+    git('config', 'core.hooksPath', '/dev/null')
+    (repo / 'source').write_text('approved fixture source')
+    git('add', 'source')
+    git('commit', '-m', 'fixture base')
+    original_commit = git('rev-parse', 'HEAD')
+    bound = snapshot.parent / 'bound-snapshot'
+    shutil.copytree(snapshot, bound, ignore=shutil.ignore_patterns(journal.DIRECTORY))
+    journal.prepare(bound, agents, domain=domain, launchctl='fake', commit=original_commit)
+    journal.begin_job(bound, agents, domain=domain, launchctl='fake', label=LABEL)
+    (repo / 'source').write_text('independent fixture source advance')
+    git('add', 'source')
+    git('commit', '-m', 'fixture advance')
+    target = agents / (LABEL + '.plist')
+    before = target.read_bytes()
+    result = subprocess.run([sys.executable, str(REPO / '.agents/skills/shared_wong_choi/runtime_install_journal.py'),
+        '--mode', 'publish-job', '--snapshot', str(bound), '--agents', str(agents),
+        '--domain', domain, '--launchctl', 'fake', '--label', LABEL,
+        '--repo', str(repo), '--expected-commit', original_commit],
+        pass_fds=(int(os.environ[FD_ENV]),), capture_output=True, text=True, timeout=10)
+    assert result.returncode != 0
+    assert target.read_bytes() == before
+    assert not list(agents.glob('.wc-owned-publication-*'))

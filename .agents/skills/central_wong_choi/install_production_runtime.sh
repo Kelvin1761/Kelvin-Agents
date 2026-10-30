@@ -25,6 +25,9 @@ if [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
   /usr/bin/python3 "$LEASE_HELPER" --mode exclusive --verify || exit $?
 fi
 
+CUTOVER_REPO="$PROJECT_ROOT"
+. "$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_install_journal.sh"
+
 LABELS=(
   com.antigravity.hkjc-wong-choi.intraday
   com.antigravity.hkjc-wong-choi.lineup
@@ -90,7 +93,8 @@ restore_pointer() {
   if [ -e "$TENNIS_DB_POINTER" ]; then
     [ -f "$TENNIS_DB_POINTER" ] || return 1
     [ "$(wc -c < "$TENNIS_DB_POINTER")" -le 4096 ] || return 1
-    if [ -f "$source/.tennis-db-pointer-original" ] && cmp -s "$TENNIS_DB_POINTER" "$source/.tennis-db-pointer-original"; then
+    if [ -f "$source/.tennis-db-pointer-original" ] && cmp -s "$TENNIS_DB_POINTER" "$source/.tennis-db-pointer-original" &&
+       /usr/bin/python3 -c 'import os,stat,sys; raise SystemExit(0 if stat.S_IMODE(os.stat(sys.argv[1]).st_mode) == stat.S_IMODE(os.stat(sys.argv[2]).st_mode) else 1)' "$TENNIS_DB_POINTER" "$source/.tennis-db-pointer-original"; then
       return 0
     fi
     cmp -s "$TENNIS_DB_POINTER" "$source/.tennis-db-pointer-candidate" || {
@@ -133,7 +137,7 @@ snapshot_runtime() {
     print -u2 -- "snapshot destination is not empty: $destination"
     return 1
   fi
-  mkdir -p "$destination"
+  mkdir -m 700 -p "$destination"
   snapshot_pointer "$destination" || return 1
   for label in $LABELS; do
     local source="$AGENTS_DIR/$label.plist"
@@ -149,22 +153,18 @@ snapshot_runtime() {
 
 restore_runtime() {
   local source="$1"
-  [ -f "$source/.complete" ] || {
+  [ -f "$source/.complete" ] && [ ! -L "$source/.complete" ] || {
     print -u2 -- "invalid runtime snapshot: $source"
     return 1
   }
-  local failed=0 comparison=0 job_state was_loaded was_disabled changed_labels current_loaded
-  # A preflight deferral did not change external state. Recovery must not
-  # bootout live jobs just because the controller invokes --restore.
-  if runtime_state unchanged "$source"; then
-    restore_pointer "$source" || return 1
-    print -r -- "launchd state unchanged; no launchd mutation"
+  local failed=0 job_state was_loaded was_disabled changed_labels current_loaded
+  if [ ! -e "$source/.write-ownership" ] && [ ! -L "$source/.write-ownership" ]; then
+    # A deferred attempt with no write intent may only verify an exact no-op.
+    wc_runtime_journal "$source" verify-unchanged || return 1
+    print -r -- "launchd and pointer unchanged; no runtime mutation"
     return 0
-  else
-    comparison=$?
   fi
-  [ "$comparison" -eq 2 ] || return 1
-  changed_labels="$(runtime_state changed-jobs "$source")" || return 1
+  changed_labels="$(wc_runtime_journal "$source" verify-recovery)" || return 1
   restore_pointer "$source" || return 1
   mkdir -p "$AGENTS_DIR"
   # Unchanged labels may own an active domain run. Never stop them merely
@@ -174,6 +174,7 @@ restore_runtime() {
     job_state="$(runtime_state job-state "$source" "$label")" || return 1
     was_loaded="${job_state%% *}"
     was_disabled="${job_state##* }"
+    wc_runtime_journal "$source" verify-job "$label" || return 1
     current_loaded="$(runtime_state loaded-now "$source" "$label")" || return 1
     if [ "$current_loaded" -eq 1 ]; then
       if ! "$LAUNCHCTL" bootout "$DOMAIN/$label" >/dev/null 2>&1; then
@@ -181,28 +182,32 @@ restore_runtime() {
         continue
       fi
     fi
+    wc_runtime_journal "$source" verify-job "$label" || return 1
     if [ -f "$source/$label.plist" ]; then
       if ! cp -p "$source/$label.plist" "$target"; then
         failed=1
         continue
       fi
       if [ "$was_loaded" -eq 1 ]; then
+        wc_runtime_journal "$source" verify-job "$label" || return 1
         if ! "$LAUNCHCTL" enable "$DOMAIN/$label" >/dev/null 2>&1; then
           failed=1
           continue
         fi
+        wc_runtime_journal "$source" verify-job "$label" || return 1
         "$LAUNCHCTL" bootstrap "$DOMAIN" "$target" >/dev/null 2>&1 || failed=1
       fi
     else
       rm -f "$target" || failed=1
     fi
+    wc_runtime_journal "$source" verify-job "$label" || return 1
     if [ "$was_disabled" -eq 1 ]; then
       "$LAUNCHCTL" disable "$DOMAIN/$label" >/dev/null 2>&1 || failed=1
     else
       "$LAUNCHCTL" enable "$DOMAIN/$label" >/dev/null 2>&1 || failed=1
     fi
   done
-  runtime_state unchanged "$source" || failed=1
+  wc_runtime_journal "$source" verify-unchanged || failed=1
   return "$failed"
 }
 
@@ -252,7 +257,20 @@ for path in paths:
 CANDIDATES
 }
 
+EXTERNAL_SNAPSHOT=""
+EXPECTED_COMMIT=""
 case "${1:-}" in
+  --install-from-snapshot)
+    [ "$#" -eq 4 ] && [ -n "$2" ] && [ "$3" = "--expected-commit" ] || exit 2
+    EXTERNAL_SNAPSHOT="$2"
+    EXPECTED_COMMIT="$4"
+    [ -f "$EXTERNAL_SNAPSHOT/.complete" ] && [ ! -L "$EXTERNAL_SNAPSHOT/.complete" ] || {
+      print -u2 -- "incomplete external runtime snapshot"
+      exit 1
+    }
+    [ "${#EXPECTED_COMMIT}" -eq 40 ] || exit 2
+    case "$EXPECTED_COMMIT" in *[!0-9a-f]*) exit 2;; esac
+    ;;
   --render-only)
     [ "$#" -eq 2 ] && [ -n "$2" ] || exit 2
     render_runtime_candidates "$2"
@@ -273,8 +291,15 @@ case "${1:-}" in
     exit $?
     ;;
   "") ;;
-  *) print -u2 -- "usage: $0 [--render-only DIR|--snapshot DIR|--restore DIR|--status]"; exit 2 ;;
+  *) print -u2 -- "usage: $0 [--install-from-snapshot DIR --expected-commit SHA|--render-only DIR|--snapshot DIR|--restore DIR|--status]"; exit 2 ;;
 esac
+
+if [ -n "$EXPECTED_COMMIT" ]; then
+  [ "$(git -C "$PROJECT_ROOT" rev-parse HEAD)" = "$EXPECTED_COMMIT" ] || {
+    print -u2 -- "activation checkout differs from immutable expected commit"
+    exit 1
+  }
+fi
 
 TZ_NAME="$(readlink /etc/localtime | sed 's#.*/zoneinfo/##')"
 [ "$TZ_NAME" = "Australia/Sydney" ] || {
@@ -350,8 +375,21 @@ raise SystemExit(0 if any(value.startswith(expected) for value in values) else 1
 done
 
 print -r -- "runtime cutover stage: snapshot"
-SNAPSHOT="$(mktemp -d -t wc-runtime-cutover)"
-snapshot_runtime "$SNAPSHOT"
+if [ -n "$EXTERNAL_SNAPSHOT" ]; then
+  SNAPSHOT="$EXTERNAL_SNAPSHOT"
+else
+  SNAPSHOT="$(/usr/bin/python3 - <<'PRIVATE_SNAPSHOT'
+import os, tempfile
+from pathlib import Path
+root = Path(os.environ.get('WONGCHOI_CONTROL_STATE_ROOT') or Path.home() / 'WongChoiData/WongChoiControl') / 'activation-recovery'
+if any(p.is_symlink() for p in (root, *root.parents)):
+    raise SystemExit('unsafe native recovery root')
+root.mkdir(parents=True, mode=0o700, exist_ok=True)
+print(tempfile.mkdtemp(prefix='wc-native-attempt-', dir=root))
+PRIVATE_SNAPSHOT
+)"
+  snapshot_runtime "$SNAPSHOT"
+fi
 COMPLETED=0
 POINTER_TMP=""
 cleanup() {
@@ -362,7 +400,11 @@ cleanup() {
     restore_runtime "$SNAPSHOT" || print -u2 -- "CRITICAL: launchd plist restore failed"
   fi
   [ -z "$POINTER_TMP" ] || rm -f -- "$POINTER_TMP"
-  rm -rf -- "$SNAPSHOT"
+  if [ "$COMPLETED" -eq 1 ] && [ -z "$EXTERNAL_SNAPSHOT" ]; then
+    rm -rf -- "$SNAPSHOT"
+  elif [ "$COMPLETED" -ne 1 ]; then
+    print -u2 -- "native recovery evidence retained: $SNAPSHOT"
+  fi
   exit "$original_status"
 }
 trap cleanup EXIT
@@ -370,16 +412,16 @@ trap 'exit 129' HUP
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-# Publish configuration only after every preflight and with rollback armed.
-if [ -f "$SNAPSHOT/.tennis-db-pointer-original" ]; then
-  cmp -s "$TENNIS_DB_POINTER" "$SNAPSHOT/.tennis-db-pointer-original" || exit 1
-else
-  [ ! -e "$TENNIS_DB_POINTER" ] && [ ! -L "$TENNIS_DB_POINTER" ] || exit 1
-fi
-POINTER_TMP="$(mktemp "${TENNIS_DB_POINTER}.publish.XXXXXX")"
-cp "$SNAPSHOT/.tennis-db-pointer-candidate" "$POINTER_TMP"
-chmod 644 "$POINTER_TMP"
-mv -f -- "$POINTER_TMP" "$TENNIS_DB_POINTER"
+# Bind the original observation and exact renderer bytes before ANY native write.
+if ! render_runtime_candidates "$SNAPSHOT/candidates"; then exit 1; fi
+SOURCE_COMMIT="$(git -C "$PROJECT_ROOT" rev-parse HEAD)"
+if [ -n "$EXPECTED_COMMIT" ] && [ "$SOURCE_COMMIT" != "$EXPECTED_COMMIT" ]; then exit 1; fi
+export WC_RUNTIME_EXPECTED_COMMIT="${EXPECTED_COMMIT:-$SOURCE_COMMIT}"
+if ! wc_runtime_journal "$SNAPSHOT" prepare "" "$SOURCE_COMMIT"; then exit 1; fi
+export WC_RUNTIME_INSTALL_SNAPSHOT="$SNAPSHOT"
+export WC_LAUNCH_AGENTS_DIR="$AGENTS_DIR" WC_LAUNCHCTL_BIN="$LAUNCHCTL"
+if ! wc_runtime_journal "$SNAPSHOT" begin-pointer; then exit 1; fi
+if ! wc_runtime_journal "$SNAPSHOT" publish-pointer; then exit 1; fi
 
 print -r -- "runtime cutover stage: HKJC installer"
 /bin/bash "$PROJECT_ROOT/.agents/skills/hkjc_racing/hkjc_daily_auto/install_macos_launchd.sh"
@@ -388,11 +430,11 @@ print -r -- "runtime cutover stage: NBA installer"
 print -r -- "runtime cutover stage: Tennis installer"
 WC_TENNIS_RUNTIME_ROOT="$TENNIS_RUNTIME_ROOT" \
   TENNIS_PYTHON_BIN="$TENNIS_PYTHON_BIN" \
-  TENNIS_LOG_DIR="$TENNIS_RUNTIME_ROOT/data/logs" \
+  TENNIS_LOG_DIR="${TENNIS_LOG_DIR:-$TENNIS_RUNTIME_ROOT/data/logs}" \
   TENNIS_ANALYSIS_OUTPUT_ROOT="${TENNIS_ANALYSIS_OUTPUT_ROOT:-/Users/imac/Library/CloudStorage/GoogleDrive-kelvin1761@gmail.com/我的雲端硬碟/Antigravity Shared/Antigravity}" \
   /bin/zsh "$PROJECT_ROOT/tennis-wong-choi/scripts/install_macos_launchd.sh"
 print -r -- "runtime cutover stage: Central installer"
-WC_INSTALL_RESEARCH_REVIEW=1 \
+WC_INSTALL_RESEARCH_REVIEW=1 WC_TENNIS_RUNTIME_ROOT="$TENNIS_RUNTIME_ROOT" \
   WC_LAUNCH_AGENTS_DIR="$AGENTS_DIR" WC_LAUNCHCTL_BIN="$LAUNCHCTL" \
   /bin/zsh "$PROJECT_ROOT/.agents/skills/central_wong_choi/install_macos_launchd.sh"
 print -r -- "runtime cutover stage: calendar verification"
@@ -402,5 +444,6 @@ print -r -- "runtime cutover stage: calendar verification"
 print -r -- "runtime cutover stage: loaded runtime verification"
 status_runtime
 
+[ "$(git -C "$PROJECT_ROOT" rev-parse HEAD)" = "$WC_RUNTIME_EXPECTED_COMMIT" ] || exit 1
 COMPLETED=1
 print -r -- "production runtime cutover verified: AU/HKJC/NBA/Tennis/Central aligned"

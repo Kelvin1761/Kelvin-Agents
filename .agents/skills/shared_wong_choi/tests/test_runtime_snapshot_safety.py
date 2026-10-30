@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from _runtime_owned_test_helpers import owned_cli, owned_publication
+
 
 @pytest.fixture(autouse=True)
 def isolated_cutover_control(tmp_path, monkeypatch):
@@ -119,7 +121,7 @@ def test_restore_keeps_prior_unloaded_disabled_state_and_leaves_other_jobs_alone
     loaded.write_text(json.dumps({label: {"loaded": False, "disabled": True},
                                  other: {"loaded": True, "disabled": False}}))
     assert invoke(env, "--snapshot", snapshot).returncode == 0
-    (agents / (label + ".plist")).write_bytes(b"candidate plist\n")
+    owned_publication(env, snapshot, label)
     result = invoke(env, "--restore", snapshot)
     assert result.returncode == 0, result.stderr
     commands = [json.loads(line) for line in calls.read_text().splitlines()]
@@ -158,9 +160,9 @@ def test_failed_bootout_never_reports_success_or_overwrites_loaded_job(isolated_
     agents, label, loaded, calls, env, snapshot = isolated_runtime
     loaded.write_text(json.dumps({label: {"loaded": False, "disabled": False}}))
     assert invoke(env, "--snapshot", snapshot).returncode == 0
+    owned_publication(env, snapshot, label)
+    candidate = (agents / (label + ".plist")).read_bytes()
     loaded.write_text(json.dumps({label: {"loaded": True, "disabled": False}}))
-    candidate = b"candidate still loaded\n"
-    (agents / (label + ".plist")).write_bytes(candidate)
     env["TEST_BOOTOUT_FAIL"] = label
     result = invoke(env, "--restore", snapshot)
     assert result.returncode != 0
@@ -171,12 +173,15 @@ def test_failed_bootout_never_reports_success_or_overwrites_loaded_job(isolated_
 
 def test_restore_enables_before_bootstrap_then_restores_previous_flags(isolated_runtime):
     agents, label, loaded, _, env, snapshot = isolated_runtime
+    # A loaded but disabled original job must be enabled for bootstrap, then
+    # returned to its original disabled flag. No foreign disable is adopted.
+    loaded.write_text(json.dumps({label: {"loaded": True, "disabled": True}}))
     assert invoke(env, "--snapshot", snapshot).returncode == 0
+    owned_publication(env, snapshot, label)
     loaded.write_text(json.dumps({label: {"loaded": False, "disabled": True}}))
-    (agents / (label + ".plist")).write_bytes(b"candidate\n")
     result = invoke(env, "--restore", snapshot)
     assert result.returncode == 0, result.stderr
-    assert json.loads(loaded.read_text())[label] == {"loaded": True, "disabled": False}
+    assert json.loads(loaded.read_text())[label] == {"loaded": True, "disabled": True}
     assert (agents / (label + ".plist")).read_bytes() == b"old plist\n"
 
 
@@ -222,4 +227,22 @@ def test_shared_cutover_reader_blocks_real_snapshot_before_any_mutation(isolated
         result = invoke(env, '--snapshot', snapshot)
     assert result.returncode == 75, result.stderr
     assert not snapshot.exists(), 'cutover exclusion must precede snapshot and pointer writes'
+    assert not calls.exists()
+
+
+def test_owned_pointer_with_identical_bytes_restores_original_mode_without_job_mutation(isolated_runtime):
+    _, _, _, calls, env, snapshot = isolated_runtime
+    pointer = Path(env["WC_TENNIS_DB_POINTER"])
+    pointer.write_text(str(Path(env["WC_TENNIS_RUNTIME_ROOT"]) / "tennis_wc.db") + "\n")
+    pointer.chmod(0o640)
+    original = pointer.read_bytes()
+    assert invoke(env, "--snapshot", snapshot).returncode == 0
+    owned_cli(env, snapshot, "begin-pointer")
+    owned_cli(env, snapshot, "publish-pointer")
+    assert pointer.read_bytes() == original
+    assert pointer.stat().st_mode & 0o777 == 0o644
+    result = invoke(env, "--restore", snapshot)
+    assert result.returncode == 0, result.stderr
+    assert pointer.read_bytes() == original
+    assert pointer.stat().st_mode & 0o777 == 0o640
     assert not calls.exists()

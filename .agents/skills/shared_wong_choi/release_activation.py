@@ -409,10 +409,16 @@ def activate_release(
                     "snapshot": str(snapshot),
                 }
             )
+            install_arguments = (
+                ("--install-from-snapshot", str(snapshot), "--expected-commit", manifest["commit"])
+                if relative == ".agents/skills/central_wong_choi/install_production_runtime.sh"
+                else ()
+            )
             installed = _run_installer(
                 installer_root,
                 "/bin/zsh",
                 str(installer),
+                *install_arguments,
                 timeout=300,
             )
             if installed.returncode != 0:

@@ -470,6 +470,8 @@ def test_deploy_failure_restores_installer_state_before_git_rollback(
         "  --snapshot) mkdir -p \"$2\"; cp \"$STATE\" \"$2/state\"; exit 0;;\n"
         f"  --restore) {restore_action};;\n"
         "  --status) exit 0;;\n"
+        "  --install-from-snapshot) [ \"$#\" -eq 4 ] && [ \"$3\" = \"--expected-commit\" ] && [ \"$4\" = \"$(git rev-parse HEAD)\" ] && [ -f \"$2/state\" ] && cmp -s \"$STATE\" \"$2/state\" || exit 12; print -r -- \"$2\" > \"$STATE.bound-snapshot\";;\n"
+        "  *) exit 12;;\n"
         "esac\n"
         "print -r -- 'candidate' > \"$STATE\"\n",
         encoding="utf-8",
@@ -546,6 +548,9 @@ def test_deploy_failure_restores_installer_state_before_git_rollback(
             notify=False,
         )
 
+    bound = Path(Path(str(external_state) + ".bound-snapshot").read_text().strip())
+    assert bound.name == "installer-0"
+    assert bound.parent.parent == state / "activation-recovery"
     assert external_state.read_text(encoding="utf-8") == ("old\n" if restore_mode in {"ok", "event-error"} else "candidate\n")
     assert git(production, "rev-parse", "HEAD") == (release["commit"] if restore_mode == "success-event-error" else base)
     if event_error:

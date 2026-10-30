@@ -33,7 +33,12 @@ if [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
   /usr/bin/python3 "$LEASE_HELPER" --mode exclusive --verify || exit $?
 fi
 
-DEST_DIR="$HOME/Library/LaunchAgents"
+if [ -n "${WC_RUNTIME_INSTALL_SNAPSHOT:-}" ] && [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
+  [ "$#" -eq 0 ] || { echo "bound installation accepts no alternate mode" >&2; exit 2; }
+  . "$CUTOVER_REPO/.agents/skills/shared_wong_choi/runtime_install_journal.sh"
+fi
+
+DEST_DIR="${WC_LAUNCH_AGENTS_DIR:-$HOME/Library/LaunchAgents}"
 DOMAIN="gui/$(id -u)"
 TENNIS_RUNTIME_ROOT="${WC_TENNIS_RUNTIME_ROOT:-$PROJECT_DIR}"
 DATABASE_PATH="$TENNIS_RUNTIME_ROOT/tennis_wc.db"
@@ -101,6 +106,10 @@ install_one() {
   python_escaped="$(printf '%s' "$TENNIS_PYTHON_BIN" | sed 's/[&#]/\\&/g')"
   logs_escaped="$(printf '%s' "$TENNIS_LOG_DIR" | sed 's/[&#]/\\&/g')"
   output_escaped="$(printf '%s' "$TENNIS_ANALYSIS_OUTPUT_ROOT" | sed 's/[&#]/\\&/g')"
+  if [ "$RENDER_ONLY" -eq 0 ] && [ -n "${WC_RUNTIME_INSTALL_SNAPSHOT:-}" ]; then
+    wc_runtime_journal "$WC_RUNTIME_INSTALL_SNAPSHOT" begin-job "$label"
+    wc_runtime_journal "$WC_RUNTIME_INSTALL_SNAPSHOT" publish-job "$label"
+  else
   sed -e "s#__PROJECT_DIR__#$project_escaped#g" \
       -e "s#__DATABASE_URL__#$database_escaped#g" \
       -e "s#__TENNIS_ENV_FILE__#$env_file_escaped#g" \
@@ -108,13 +117,14 @@ install_one() {
       -e "s#__TENNIS_LOG_DIR__#$logs_escaped#g" \
       -e "s#__TENNIS_ANALYSIS_OUTPUT_ROOT__#$output_escaped#g" "$template" > "$dest"
   chmod 644 "$dest"
+  fi
   if [ "$RENDER_ONLY" -eq 1 ]; then
     echo "  rendered $label"
     return
   fi
-  launchctl bootout "$DOMAIN" "$dest" 2>/dev/null || true
-  launchctl bootstrap "$DOMAIN" "$dest"
-  launchctl enable "$DOMAIN/$label"
+  "${WC_LAUNCHCTL_BIN:-launchctl}" bootout "$DOMAIN" "$dest" 2>/dev/null || true
+  "${WC_LAUNCHCTL_BIN:-launchctl}" bootstrap "$DOMAIN" "$dest"
+  "${WC_LAUNCHCTL_BIN:-launchctl}" enable "$DOMAIN/$label"
   echo "  installed $label"
 }
 
@@ -137,5 +147,5 @@ echo
 if [ "$RENDER_ONLY" -eq 1 ]; then
   echo "Rendered only; launchd was not changed."
 else
-  echo "Verify with:  launchctl list | grep tennis-wong-choi"
+  echo "Verify with:  "${WC_LAUNCHCTL_BIN:-launchctl}" list | grep tennis-wong-choi"
 fi

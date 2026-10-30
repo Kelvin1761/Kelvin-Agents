@@ -12,9 +12,14 @@ if [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
   /usr/bin/python3 "$LEASE_HELPER" --mode exclusive --verify || exit $?
 fi
 
+if [ -n "${WC_RUNTIME_INSTALL_SNAPSHOT:-}" ] && [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
+  [ "$#" -eq 0 ] || { echo "bound installation accepts no alternate mode" >&2; exit 2; }
+  . "$CUTOVER_REPO/.agents/skills/shared_wong_choi/runtime_install_journal.sh"
+fi
+
 RUNNER="$SCRIPT_DIR/run_nba_daily_schedule.sh"
 LOG_DIR="$SCRIPT_DIR/logs"
-DEST_DIR="$HOME/Library/LaunchAgents"
+DEST_DIR="${WC_LAUNCH_AGENTS_DIR:-$HOME/Library/LaunchAgents}"
 DOMAIN="gui/$(id -u)"
 LEGACY_PREGAME_LABEL="com.antigravity.nba-wong-choi.pregame"
 
@@ -35,12 +40,12 @@ uninstall() {
   for template in "$SCRIPT_DIR"/launchd/*.plist.template; do
     label="$(basename "$template" .plist.template)"
     target="$DEST_DIR/$label.plist"
-    launchctl bootout "$DOMAIN/$label" >/dev/null 2>&1 || true
+    "${WC_LAUNCHCTL_BIN:-launchctl}" bootout "$DOMAIN/$label" >/dev/null 2>&1 || true
     [ ! -e "$target" ] || mv "$target" "$target.disabled"
     echo "uninstalled $label"
   done
   legacy_target="$DEST_DIR/$LEGACY_PREGAME_LABEL.plist"
-  launchctl bootout "$DOMAIN/$LEGACY_PREGAME_LABEL" >/dev/null 2>&1 || true
+  "${WC_LAUNCHCTL_BIN:-launchctl}" bootout "$DOMAIN/$LEGACY_PREGAME_LABEL" >/dev/null 2>&1 || true
   [ ! -e "$legacy_target" ] || mv "$legacy_target" "$legacy_target.disabled"
 }
 
@@ -65,21 +70,31 @@ chmod +x "$RUNNER" "$SCRIPT_DIR/nba_daily_schedule.py"
 # Before 2026-08-26 all three pregame times shared one label.  Remove it first
 # so upgrading cannot leave the legacy job firing beside the role-specific jobs.
 legacy_target="$DEST_DIR/$LEGACY_PREGAME_LABEL.plist"
-launchctl bootout "$DOMAIN/$LEGACY_PREGAME_LABEL" >/dev/null 2>&1 || true
-[ ! -e "$legacy_target" ] || mv "$legacy_target" "$legacy_target.disabled"
+if [ -n "${WC_RUNTIME_INSTALL_SNAPSHOT:-}" ]; then
+  [ ! -e "$legacy_target" ] && [ ! -L "$legacy_target" ] || exit 1
+else
+  "${WC_LAUNCHCTL_BIN:-launchctl}" bootout "$DOMAIN/$LEGACY_PREGAME_LABEL" >/dev/null 2>&1 || true
+  [ ! -e "$legacy_target" ] || mv "$legacy_target" "$legacy_target.disabled"
+fi
 
 fi
 
 for template in "$SCRIPT_DIR"/launchd/*.plist.template; do
   name="$(basename "$template" .template)"
   target="$DEST_DIR/$name"
+  label="${name%.plist}"
+  if [ "$RENDER_ONLY" -eq 0 ] && [ -n "${WC_RUNTIME_INSTALL_SNAPSHOT:-}" ]; then
+    wc_runtime_journal "$WC_RUNTIME_INSTALL_SNAPSHOT" begin-job "$label"
+    wc_runtime_journal "$WC_RUNTIME_INSTALL_SNAPSHOT" publish-job "$label"
+  else
   sed -e "s|__RUNNER__|$RUNNER|g" -e "s|__LOG_DIR__|$LOG_DIR|g" "$template" > "$target"
   chmod 644 "$target"
+  fi
   [ "$RENDER_ONLY" -eq 0 ] || continue
   label="${name%.plist}"
-  launchctl bootout "$DOMAIN/$label" >/dev/null 2>&1 || true
-  launchctl bootstrap "$DOMAIN" "$target"
-  launchctl enable "$DOMAIN/$label"
+  "${WC_LAUNCHCTL_BIN:-launchctl}" bootout "$DOMAIN/$label" >/dev/null 2>&1 || true
+  "${WC_LAUNCHCTL_BIN:-launchctl}" bootstrap "$DOMAIN" "$target"
+  "${WC_LAUNCHCTL_BIN:-launchctl}" enable "$DOMAIN/$label"
   echo "installed $label"
 done
 

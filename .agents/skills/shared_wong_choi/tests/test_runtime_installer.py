@@ -11,6 +11,8 @@ from pathlib import Path
 
 import pytest
 
+from _runtime_owned_test_helpers import owned_cli, owned_publication
+
 
 @pytest.fixture(autouse=True)
 def isolated_cutover_control(tmp_path, monkeypatch):
@@ -101,9 +103,10 @@ exit 0
         capture_output=True,
         check=True,
     )
-    existing.write_text("candidate plist\n", encoding="utf-8")
-    introduced.write_text("new plist\n", encoding="utf-8")
-    pointer.write_text(str(runtime / "tennis_wc.db") + "\n", encoding="utf-8")
+    owned_publication(env, snapshot, existing.stem)
+    owned_publication(env, snapshot, introduced.stem)
+    owned_cli(env, snapshot, "begin-pointer")
+    owned_cli(env, snapshot, "publish-pointer")
 
     for _attempt in range(2):
         subprocess.run(
@@ -121,12 +124,13 @@ exit 0
         else:
             assert not pointer.exists()
 
-    # A pre-change snapshot has no pointer proof; never guess what it contained.
+    # Removing metadata from a bound attempt is damage, not a legacy downgrade.
     for metadata in snapshot.glob(".tennis-db-pointer-*"):
         metadata.unlink()
     pointer.write_bytes(b"newer-config-outside-legacy-snapshot\n")
-    subprocess.run(["/bin/zsh", str(INSTALLER), "--restore", str(snapshot)],
-                   env=env, capture_output=True, text=True, check=True)
+    damaged = subprocess.run(["/bin/zsh", str(INSTALLER), "--restore", str(snapshot)],
+                             env=env, capture_output=True, text=True)
+    assert damaged.returncode != 0
     assert pointer.read_bytes() == b"newer-config-outside-legacy-snapshot\n"
 
 
@@ -203,10 +207,13 @@ def test_runtime_pointer_snapshot_rejects_unsafe_config(tmp_path, unsafe):
     assert protected.read_bytes() == b"untouched\n"
 
 
-@pytest.mark.parametrize("active_run,acceptance,calendar_ok", [
-    (False, True, True), (True, True, True), (False, False, True), (False, True, False),
+@pytest.mark.parametrize("active_run,acceptance,calendar_ok,attempt", [
+    (False, True, True, "internal"), (True, True, True, "internal"),
+    (False, False, True, "internal"), (False, True, False, "internal"),
+    (False, True, True, "outer"), (False, True, True, "outer-conflict"),
+    (False, True, True, "bound-bootstrap-failure"),
 ])
-def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path, active_run: bool, acceptance: bool, calendar_ok: bool) -> None:
+def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path, active_run: bool, acceptance: bool, calendar_ok: bool, attempt: str) -> None:
     home = tmp_path / "home"
     agents = home / "Library" / "LaunchAgents"
     agents.mkdir(parents=True)
@@ -225,16 +232,21 @@ def test_runtime_installer_full_cutover_in_isolated_home(tmp_path: Path, active_
     fake_bin.mkdir()
     fake_launchctl = fake_bin / "launchctl"
     fake_launchctl.write_text('''#!/usr/bin/python3
-import os, plistlib, sys
+import json, os, plistlib, sys
 from pathlib import Path
 root = Path(os.environ["WC_LAUNCH_AGENTS_DIR"])
 label = "com.antigravity.central-wong-choi.research-review"
 marker = root / "calendar-fault-injected"
+with open(os.environ["TEST_LAUNCHCTL_CALLS"], "a") as output:
+    output.write(json.dumps({"op": sys.argv[1], "after_foreign_write": marker.exists()}) + "\\n")
 if sys.argv[1] == "print-disabled":
     print("disabled services = {\\n}")
 if sys.argv[1] == "print" and not (root / (sys.argv[-1].rsplit("/", 1)[-1] + ".plist")).is_file():
     print("Could not find service", file=sys.stderr)
     raise SystemExit(113)
+if (os.environ.get("TEST_BOUND_BOOTSTRAP_FAILURE") == "1" and sys.argv[1] == "bootstrap"
+        and Path(sys.argv[-1]).stem == label):
+    raise SystemExit(9)
 if (os.environ["TEST_CALENDAR_MISMATCH"] == "1" and sys.argv[1] == "enable"
         and sys.argv[-1].endswith("/" + label) and not marker.exists()):
     path = root / (label + ".plist")
@@ -323,14 +335,29 @@ raise SystemExit(0 if accepted else 1)
             "WC_RESEARCH_PYTHON_BIN": str(research_python),
             "TEST_RESEARCH_ACCEPTANCE": "1" if acceptance else "0",
             "TEST_CALENDAR_MISMATCH": "0" if calendar_ok else "1",
+            "TEST_LAUNCHCTL_CALLS": str(tmp_path / "native-calls.jsonl"),
+            "TEST_BOUND_BOOTSTRAP_FAILURE": "1" if attempt == "bound-bootstrap-failure" else "0",
             "WONGCHOI_CONTROL_STATE_ROOT": str(tmp_path / "control"),
             "WC_WARM_ARCHIVE_ROOT": str(warm),
             "WONGCHOI_AU_DATA_ROOT": str(tmp_path / "au"),
         }
     )
 
+    install_arguments = []
+    outer = tmp_path / "outer-snapshot"
+    outer_proof = None
+    foreign = agents / "com.antigravity.hkjc-wong-choi.prerace.plist"
+    if attempt.startswith("outer"):
+        captured = subprocess.run(["/bin/zsh", str(INSTALLER), "--snapshot", str(outer)],
+                                  env=env, text=True, capture_output=True, timeout=30)
+        assert captured.returncode == 0, captured.stderr
+        outer_proof = (outer / ".launchd-state.json").read_bytes()
+        expected_commit = subprocess.check_output(["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"], text=True).strip()
+        install_arguments = ["--install-from-snapshot", str(outer), "--expected-commit", expected_commit]
+        if attempt == "outer-conflict":
+            foreign.write_bytes(plistlib.dumps({"Label": foreign.stem, "ProgramArguments": ["/foreign/owner"]}))
     result = subprocess.run(
-        ["/bin/zsh", str(INSTALLER)],
+        ["/bin/zsh", str(INSTALLER), *install_arguments],
         env=env,
         text=True,
         capture_output=True,
@@ -340,6 +367,26 @@ raise SystemExit(0 if accepted else 1)
     assert "runtime cutover stage: interpreter preflight" in result.stdout
     assert "runtime cutover stage: active-run preflight" in result.stdout
 
+    if attempt == "outer-conflict":
+        assert result.returncode != 0
+        assert plistlib.loads(foreign.read_bytes())["ProgramArguments"] == ["/foreign/owner"]
+        assert pointer.read_bytes() == original_pointer
+        assert (outer / ".launchd-state.json").read_bytes() == outer_proof
+        assert not (outer / ".write-ownership").exists()
+        assert "native recovery evidence retained:" in result.stderr
+        calls = [json.loads(line) for line in (tmp_path / "native-calls.jsonl").read_text().splitlines()]
+        assert not any(row["op"] in {"bootout", "bootstrap", "enable", "disable"} for row in calls)
+        return
+    if attempt == "bound-bootstrap-failure":
+        assert result.returncode != 0
+        assert "unified attempt owns recovery" in result.stderr
+        assert "CRITICAL:" not in result.stderr
+        assert pointer.read_bytes() == original_pointer
+        assert {p.stem for p in agents.glob("*.plist")} == set(au_labels)
+        retained = list((tmp_path / "control/activation-recovery").glob("wc-native-attempt-*"))
+        assert len(retained) == 1
+        assert len(list((retained[0] / ".write-ownership").glob("*.begin.json"))) == 21
+        return
     if active_run:
         assert result.returncode != 0
         assert "automation run is active; cutover deferred" in result.stderr
@@ -359,8 +406,21 @@ raise SystemExit(0 if accepted else 1)
         assert result.returncode != 0
         assert "installed research calendar differs" in result.stdout
         assert "runtime cutover failed" in result.stderr
-        assert {p.stem for p in agents.glob("*.plist")} == set(au_labels)
-        assert pointer.read_bytes() == original_pointer
+        # The fake native actor changed the published plist to an UNOWNED
+        # calendar. Recovery must preserve it and all evidence, not erase it.
+        foreign = agents / "com.antigravity.central-wong-choi.research-review.plist"
+        assert plistlib.loads(foreign.read_bytes())["StartCalendarInterval"] == {"Hour": 7, "Minute": 10}
+        assert "CRITICAL: launchd plist restore failed" in result.stderr
+        assert "native recovery evidence retained:" in result.stderr
+        snapshots = list((tmp_path / "control/activation-recovery").glob("wc-native-attempt-*"))
+        assert len(snapshots) == 1
+        assert (snapshots[0] / ".write-ownership/plan.json").exists()
+        assert (snapshots[0] / ".launchd-state.json").exists()
+        assert (snapshots[0] / ".tennis-db-pointer-original").read_bytes() == original_pointer
+        assert pointer.read_text().strip() == str(runtime / "tennis_wc.db")
+        calls = [json.loads(line) for line in (tmp_path / "native-calls.jsonl").read_text().splitlines()]
+        assert not any(row["after_foreign_write"] and row["op"] in {"bootout", "bootstrap", "enable", "disable"}
+                       for row in calls)
         return
     assert result.returncode == 0, result.stdout + result.stderr
     stages = [line.removeprefix("runtime cutover stage: ")
@@ -374,6 +434,12 @@ raise SystemExit(0 if accepted else 1)
     template = plistlib.loads((INSTALLER.parent / "launchd/com.antigravity.central-wong-choi.research-review.plist.template").read_bytes())
     assert installed["StartCalendarInterval"] == template["StartCalendarInterval"]
     assert "production runtime cutover verified" in result.stdout
+    if attempt == "outer":
+        assert (outer / ".launchd-state.json").read_bytes() == outer_proof
+        plan = json.loads((outer / ".write-ownership/plan.json").read_text())
+        assert plan["snapshot_root"] == str(outer.resolve())
+        assert len(list((outer / ".write-ownership").glob("*.begin.json"))) == 21
+        assert not list((tmp_path / "control/activation-recovery").glob("wc-native-attempt-*"))
     assert (home / ".wongchoi_tennis_db").read_text(encoding="utf-8").strip() == str(
         runtime / "tennis_wc.db"
     )
@@ -472,3 +538,29 @@ def test_active_run_guard_does_not_confuse_release_scope_paths_with_running_jobs
     assert re.search(python_pattern,'/Framework/Python -u /repo/tennis_daily_schedule.py --mode daily')
     assert not re.search(python_pattern,'/usr/bin/python3 /repo/scoped_release.py --path .agents/skills/nba/nba_daily_auto/nba_daily_schedule.py')
     assert not re.search(python_pattern,'python3 -m pytest tests/test_nba_daily_schedule.py')
+
+
+@pytest.mark.parametrize("defect", ["missing-marker", "symlink-marker", "wrong-sha", "missing-sha"])
+def test_bound_native_attempt_rejects_invalid_marker_or_sha_before_preflights(tmp_path, defect):
+    home = tmp_path / "home"
+    home.mkdir()
+    snapshot = tmp_path / "snapshot"
+    snapshot.mkdir(mode=0o700)
+    protected = tmp_path / "protected"
+    protected.write_bytes(b"unrelated evidence")
+    if defect == "symlink-marker":
+        (snapshot / ".complete").symlink_to(protected)
+    elif defect not in {"missing-marker"}:
+        (snapshot / ".complete").touch()
+    commit = subprocess.check_output(["git", "-C", str(REPO_ROOT), "rev-parse", "HEAD"], text=True).strip()
+    args = ["--install-from-snapshot", str(snapshot)]
+    if defect != "missing-sha":
+        args += ["--expected-commit", "0" * 40 if defect == "wrong-sha" else commit]
+    env = {**os.environ, "HOME": str(home), "WONGCHOI_CONTROL_STATE_ROOT": str(tmp_path / "control")}
+    result = subprocess.run(["/bin/zsh", str(INSTALLER), *args], env=env,
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode != 0
+    assert "runtime cutover stage:" not in result.stdout
+    assert not (home / "Library/LaunchAgents").exists()
+    assert protected.read_bytes() == b"unrelated evidence"
+    assert not (snapshot / ".write-ownership").exists()

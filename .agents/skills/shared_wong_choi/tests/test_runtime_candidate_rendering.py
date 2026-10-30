@@ -39,6 +39,10 @@ def test_candidate_render_uses_real_templates_without_runtime_side_effects(tmp_p
     if family in {'central', 'unified'}:
         shutil.copyfile(ROOT / relative / 'install_research_review.sh', skill / 'install_research_review.sh')
     if family == 'unified':
+        shared = repo / '.agents/skills/shared_wong_choi'
+        shared.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / '.agents/skills/shared_wong_choi/runtime_install_journal.sh',
+                        shared / 'runtime_install_journal.sh')
         shutil.copyfile(ROOT / relative / 'install_macos_launchd.sh', skill / 'install_macos_launchd.sh')
         for name, (subrelative, _) in FAMILIES.items():
             if name in {'central', 'unified'}:

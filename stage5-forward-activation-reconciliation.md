@@ -342,3 +342,52 @@ controller's outer snapshot to the same attempt; cover pointer and job changes
 before every mutation and retain inner backups when recovery is blocked.
 Complete old/nonparticipating active-run discovery and independently review
 exact source before any normal full/immutable release gates or native acceptance.
+
+
+## Native ownership integration — 2026-10-30 (unfinished source)
+
+The unified installer and all five subordinate installers now consume the real
+journal: prepare from actual rendered candidates, begin before native mutation,
+and publish only the prebound bytes. The Central activation controller passes
+its exact outer snapshot and immutable expected SHA to the unified installer.
+The installer rechecks checkout SHA before preparation and completion; journal
+commands reject a different checkout. This binds separate snapshot/install calls
+to one attempt, without claiming a controller-wide exclusive lease.
+
+Recovery verifies every job and pointer before any native mutation, rejects
+unknown postimages and damaged/missing intents, then rechecks each changed job
+before its mutations. A snapshot with no journal can only verify an exact no-op.
+Failed attempts retain backups, including blocked recovery. Bound research
+installer cleanup delegates recovery to the unified owner instead of executing
+its standalone rollback around that owner's gates. No legacy NBA label outside
+the allowlist is stopped by a bound attempt.
+
+The three original actual-installer concurrent replace/remove/create REDs now
+pass without relaxed assertions. Snapshot/journal final selection passed31 in
+130.68s (wc-run-vt6xzbld). A new real pointer test first failed because identical
+bytes with a changed mode skipped restoration; recovery now checks the original
+mode and verifies pointer plus jobs before success. Controller snapshot/SHA
+selection passed6 in11.07s (wc-run-l3cy28o7). The actual installer outer-attempt
+success/conflict fixtures passed2 in119.47s (wc-run-rzou9b13), preserving foreign
+bytes and evidence before native mutation on conflict. The foreign-calendar
+fixture passed with unknown bytes retained and recovery blocked; this is a
+safety result, not installation acceptance. Other selected regressions passed67
+with11 explicitly deselected native fixture cases (wc-run-5n57nx9o).
+
+All native tests use isolated HOME and fake launchctl/acceptance; no live native
+installation, release, merge, model/data/history mutation or full immutable gate
+was performed. Full source gates have not been claimed. The before-write checks
+and atomic replacement are still cooperative, not POSIX conditional CAS against
+arbitrary nonparticipants. Complete discovery of old/nonparticipating active
+runs remains open. Next integrate that real active-run guard, then finish the
+append-only forward intent/gate/executor and independent exact-source review.
+Exact target deployment provenance and the foreign cadence hold remain required;
+this unfinished source must stay on its owned nonmain WIP branch.
+
+Final bound bootstrap-failure integration passed1 with28deselected in360.58s
+(wc-run-0n3x2ao1). It requires unified recovery ownership, exact original pointer,
+only prior AU plists, retained native snapshot and all21 pre-write intents.
+This six-minute isolated fixture does not establish production activation or
+rollback deadline compliance; timing/timeout recovery remains to be assessed
+without weakening existing deadlines. Final quick wc-run-mw6wdzbt passed, all
+modified shell syntax checks passed and git diff --check passed. No full gate.
