@@ -31,7 +31,10 @@ def _ensure_player(provider_name: str, provider_player_id: str, raw_id: int, emb
             provider_name,
             provider_player_id,
             embedded["name"],
-            embedded.get("tour") or "ATP",
+            # UNKNOWN, not ATP: a guessed tour on a new player is what the
+            # identity checks later compare against, and a wrong one holds
+            # that player's ranking rows every day.
+            embedded.get("tour") or "UNKNOWN",
             raw_id,
             current_rank=embedded.get("current_rank"),
         )
@@ -59,7 +62,7 @@ def _ensure_player(provider_name: str, provider_player_id: str, raw_id: int, emb
         provider_name,
         provider_player_id,
         resolved_name,
-        profile.get("tour") or "ATP",
+        profile.get("tour") or "UNKNOWN",
         player_raw_id,
         current_rank=profile.get("current_rank"),
         overall_elo=stats.get("overall_elo"),

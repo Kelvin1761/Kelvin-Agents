@@ -175,11 +175,18 @@ def _resolve_player(conn, full_name: str) -> int | None:
 
     Read-only on purpose: creating players from this feed is the wiring step's
     decision, and a wrong merge is worse than an unresolved row."""
+    from tennis_wc.identity.player_identity import terminal_canonical_id
+
     rows = conn.execute(
-        "SELECT id FROM players WHERE tour = 'WTA' AND lower(trim(name)) = lower(trim(?)) LIMIT 2",
+        "SELECT id FROM players WHERE tour = 'WTA' AND lower(trim(name)) = lower(trim(?))",
         (full_name,),
     ).fetchall()
-    return int(rows[0]["id"]) if len(rows) == 1 else None
+    # Unique PERSON, not unique row: a merged duplicate keeps its name, and
+    # once tours were repaired (2026-10-30) duplicates that had been mislabelled
+    # ATP turned WTA and made 848 names look ambiguous. Ids that merge into one
+    # player are one answer, and it is the canonical id.
+    people = {terminal_canonical_id(conn, int(row[0])) for row in rows}
+    return people.pop() if len(people) == 1 else None
 
 
 def _match_date(match: dict, tournament: dict) -> str:

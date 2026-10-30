@@ -28,7 +28,10 @@ def _identity_agrees(row, name: str, tour: str, *, allow_middle_omission: bool =
 
     old_tokens = identity_name(row["name"]).split()
     new_tokens = identity_name(name).split()
-    same_name = (set(old_tokens) == set(new_tokens) or (
+    # "Ye Xin Ma" / "Yexin Ma" / "Ye-Xin Ma": the WTA feed respelled one
+    # official id three ways in 2026, and each respelling held her ranking.
+    # Same letters in the same order is the same name.
+    same_name = ("".join(old_tokens) == "".join(new_tokens) or set(old_tokens) == set(new_tokens) or (
         len(old_tokens) >= 2 and len(new_tokens) >= 2 and old_tokens[1:] == new_tokens[1:]
         and old_tokens[0][0] == new_tokens[0][0]
         and (len(old_tokens[0]) == 1 or len(new_tokens[0]) == 1)))
@@ -173,7 +176,14 @@ def get_or_create_player(
             conn.execute(
                 """
                 UPDATE players
-                SET name = ?, tour = ?, current_rank = COALESCE(?, current_rank),
+                SET name = ?,
+                    -- A known tour is never replaced by a row label here: a
+                    -- disagreeing label has already raised in
+                    -- `_identity_agrees`, and an UNKNOWN one used to erase it.
+                    -- Corrections go through scripts/repair_player_tours.py.
+                    tour = CASE WHEN tour IS NULL OR UPPER(tour) IN ('', 'UNKNOWN')
+                                THEN ? ELSE tour END,
+                    current_rank = COALESCE(?, current_rank),
                     overall_elo = COALESCE(?, overall_elo),
                     surface_elo_json = COALESCE(?, surface_elo_json),
                     raw_response_id = ?, updated_at = ?

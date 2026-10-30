@@ -42,6 +42,7 @@ def test_low_tier_history_skips_rows_with_missing_provider_identity():
         "ranking_rows": 0,
         "skipped_duplicates": 0,
         "skipped_invalid_identities": 1,
+        "held": [],
     }
     assert _has_valid_player_identities(
         {

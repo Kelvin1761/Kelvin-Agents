@@ -40,6 +40,11 @@ class ParsedResult:
     sets: list[dict] = field(default_factory=list)
     retired: bool = False
     row_id: str = ""
+    # From the tournament header, never from the name: the page links every
+    # header to `/<event>/<year>/atp-men/` or `/wta-women/`. The name alone
+    # says "Bastad ITF" for both draws, which is how every women's ITF match
+    # came to be stored as ATP (157k rows by 2026-10-30).
+    tour: str | None = None
 
     @property
     def winner_name(self) -> str:
@@ -74,14 +79,20 @@ class ParsedResult:
         return payload
 
 
+_TOUR_MARKERS = (("/atp-men/", "ATP"), ("/wta-women/", "WTA"))
+# Unlinked headers ("Futures 2026") carry only the draw icon.
+_TOUR_ICON_PREFIXES = (("type-men", "ATP"), ("type-women", "WTA"))
+
+
 class _ResultsTableParser(HTMLParser):
-    """Collect (row id, row class, [(cell class, cell text)]) for every <tr>."""
+    """Collect (row id, row class, [(cell class, cell text)], tour) for every <tr>."""
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
-        self.rows: list[tuple[str, str, list[tuple[str, str]]]] = []
+        self.rows: list[tuple[str, str, list[tuple[str, str]], str | None]] = []
         self._row_id = ""
         self._row_class = ""
+        self._row_tour: str | None = None
         self._cells: list[tuple[str, str]] = []
         self._cell_class: str | None = None
         self._cell_text: list[str] = []
@@ -91,7 +102,15 @@ class _ResultsTableParser(HTMLParser):
         if tag == "tr":
             self._row_id = values.get("id") or ""
             self._row_class = values.get("class") or ""
+            self._row_tour = None
             self._cells = []
+        elif tag == "a" and self._row_tour is None:
+            href = values.get("href") or ""
+            self._row_tour = next((tour for marker, tour in _TOUR_MARKERS if marker in href), None)
+        elif tag == "span" and self._row_tour is None:
+            classes = (values.get("class") or "").split()
+            self._row_tour = next((tour for css in classes for prefix, tour in _TOUR_ICON_PREFIXES
+                                   if css.startswith(prefix)), None)
         elif tag == "td":
             self._cell_class = values.get("class") or ""
             self._cell_text = []
@@ -107,9 +126,10 @@ class _ResultsTableParser(HTMLParser):
             self._cell_class = None
             self._cell_text = []
         elif tag == "tr":
-            self.rows.append((self._row_id, self._row_class, self._cells))
+            self.rows.append((self._row_id, self._row_class, self._cells, self._row_tour))
             self._row_id = ""
             self._row_class = ""
+            self._row_tour = None
             self._cells = []
 
 
@@ -154,12 +174,17 @@ def parse_results_page(html: str) -> tuple[list[ParsedResult], int]:
     parser = _ResultsTableParser()
     parser.feed(html)
     tournament = ""
-    pending: dict[str, tuple[str, list[tuple[str, str]]]] = {}
+    tour: str | None = None
+    pending: dict[str, tuple[str, list[tuple[str, str]], str | None]] = {}
     results: list[ParsedResult] = []
     skipped = 0
-    for row_id, row_class, cells in parser.rows:
+    for row_id, row_class, cells, row_tour in parser.rows:
         if "head" in row_class.split() and "flags" in row_class.split():
-            tournament = _player_name(cells) or tournament
+            name = _player_name(cells)
+            if name:
+                # A header without a marker must not inherit the previous
+                # tournament's tour.
+                tournament, tour = name, row_tour
             continue
         if not row_id.startswith("r"):
             continue
@@ -168,14 +193,15 @@ def parse_results_page(html: str) -> tuple[list[ParsedResult], int]:
             if first is None:
                 skipped += 1
                 continue
-            first_tournament, first_cells = first
+            first_tournament, first_cells, first_tour = first
             parsed = _build_result(first_tournament, first_cells, cells, row_id[:-1])
             if parsed is None:
                 skipped += 1
             else:
+                parsed.tour = first_tour
                 results.append(parsed)
         else:
-            pending[row_id] = (tournament, cells)
+            pending[row_id] = (tournament, cells, tour)
     # Any first row never followed by its partner is an unparsed match.
     skipped += len(pending)
     return results, skipped

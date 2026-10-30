@@ -13,7 +13,12 @@ from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from tennis_wc.database.db import get_connection
-from tennis_wc.ingestion.entity_mapping import get_or_create_player, upsert_tournament, valid_player_identity
+from tennis_wc.ingestion.entity_mapping import (
+    PlayerIdentityConflict,
+    get_or_create_player,
+    upsert_tournament,
+    valid_player_identity,
+)
 from tennis_wc.ingestion.raw_response_store import store_raw_response, utc_now
 
 
@@ -43,6 +48,25 @@ TML_LOW_TIER_URLS = {
 HISTORY_PROVIDERS = (PROVIDER_NAME, TML_PROVIDER_NAME)
 
 
+class HistoryIdentityHoldError(RuntimeError):
+    """Every safe row was imported; some rows were held on an identity conflict.
+
+    Raised after the import, like ``RankingIdentityHoldError``, so the source
+    still reports partial. It used to be the conflict itself that escaped, from
+    the middle of the file: from 2026-10-28 one TML row (KE64, Toby Samuel ->
+    Stefan Kozlov) aborted ``history_lowtier`` every day and every row after it
+    -- the rest of the Challenger file and both later files -- was dropped.
+    """
+
+    def __init__(self, report: dict):
+        self.report = report
+        held = report["held"]
+        super().__init__(
+            f"history identity holds: matches={report['matches']} held={len(held)}; "
+            f"first: {held[0]['error']}"
+        )
+
+
 def ingest_sackmann_history(start_year: int, end_year: int, tours: list[str] | None = None) -> dict:
     """
     Import Jeff Sackmann match CSVs into local historical snapshots.
@@ -59,6 +83,7 @@ def ingest_sackmann_history(start_year: int, end_year: int, tours: list[str] | N
         "player_rows": 0,
         "ranking_rows": 0,
         "skipped_invalid_identities": 0,
+        "held": [],
         "errors": [],
     }
     for tour in wanted_tours:
@@ -92,6 +117,9 @@ def ingest_sackmann_history(start_year: int, end_year: int, tours: list[str] | N
             imported["player_rows"] += stats["player_rows"]
             imported["ranking_rows"] += stats["ranking_rows"]
             imported["skipped_invalid_identities"] += stats["skipped_invalid_identities"]
+            imported["held"].extend(stats["held"])
+    if imported["held"]:
+        raise HistoryIdentityHoldError(imported)
     return imported
 
 
@@ -129,6 +157,7 @@ def ingest_tml_low_tier_history(start_year: int, end_year: int, include_quali: b
         "ranking_rows": 0,
         "skipped_duplicates": 0,
         "skipped_invalid_identities": 0,
+        "held": [],
         "errors": [],
     }
     for kind in kinds:
@@ -164,6 +193,9 @@ def ingest_tml_low_tier_history(start_year: int, end_year: int, include_quali: b
             imported["ranking_rows"] += stats["ranking_rows"]
             imported["skipped_duplicates"] += stats.get("skipped_duplicates", 0)
             imported["skipped_invalid_identities"] += stats["skipped_invalid_identities"]
+            imported["held"].extend(stats["held"])
+    if imported["held"]:
+        raise HistoryIdentityHoldError(imported)
     return imported
 
 
@@ -181,6 +213,7 @@ def _ingest_rows(
         "ranking_rows": 0,
         "skipped_duplicates": 0,
         "skipped_invalid_identities": 0,
+        "held": [],
     }
     for row in rows:
         if not _has_valid_player_identities(row):
@@ -199,22 +232,30 @@ def _ingest_rows(
             _normalise_surface(row.get("surface")),
             None,
         )
-        winner_id = get_or_create_player(
-            provider,
-            str(row["winner_id"]),
-            row.get("winner_name") or f"Player {row['winner_id']}",
-            tour,
-            raw_id,
-            current_rank=_int_or_none(row.get("winner_rank")),
-        )
-        loser_id = get_or_create_player(
-            provider,
-            str(row["loser_id"]),
-            row.get("loser_name") or f"Player {row['loser_id']}",
-            tour,
-            raw_id,
-            current_rank=_int_or_none(row.get("loser_rank")),
-        )
+        # One conflicting row is held, not raised: raising here abandoned the
+        # rest of the file (see HistoryIdentityHoldError).
+        try:
+            winner_id = get_or_create_player(
+                provider,
+                str(row["winner_id"]),
+                row.get("winner_name") or f"Player {row['winner_id']}",
+                tour,
+                raw_id,
+                current_rank=_int_or_none(row.get("winner_rank")),
+            )
+            loser_id = get_or_create_player(
+                provider,
+                str(row["loser_id"]),
+                row.get("loser_name") or f"Player {row['loser_id']}",
+                tour,
+                raw_id,
+                current_rank=_int_or_none(row.get("loser_rank")),
+            )
+        except PlayerIdentityConflict as exc:
+            stats["held"].append({"tourney_id": row.get("tourney_id"), "match_num": row.get("match_num"),
+                                  "winner_id": row.get("winner_id"), "loser_id": row.get("loser_id"),
+                                  "error": str(exc)})
+            continue
         stats["ranking_rows"] += _upsert_rank(winner_id, match_date, tour, row.get("winner_rank"), row.get("winner_rank_points"), raw_id, now, provider)
         stats["ranking_rows"] += _upsert_rank(loser_id, match_date, tour, row.get("loser_rank"), row.get("loser_rank_points"), raw_id, now, provider)
         if dedup_against_provider and _history_pair_exists(dedup_against_provider, winner_id, loser_id, match_date, tour=tour, event=row):

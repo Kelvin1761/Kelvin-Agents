@@ -43,12 +43,21 @@ def _tier_of(tournament_name: str | None) -> str:
 
 
 def _tour_of(tournament_name: str | None, tour_hint: str | None) -> str:
+    """The parser's header marker, else a name marker, else UNKNOWN.
+
+    Never a default of ATP. The scoreboard prints "Bastad ITF" for the men's
+    and the women's draw alike, so the old fallback labelled every women's ITF
+    match ATP; the identity resolver then filtered candidates by that label
+    and attached women's results to men ("Stakusic M.").
+    """
     if tour_hint:
         return str(tour_hint).upper()
     name = str(tournament_name or "").upper()
     if any(token in name for token in (" W15", " W35", " W50", " W75", " W100", "WTA")):
         return "WTA"
-    return "ATP"
+    if any(token in name for token in (" M15", " M25", "ATP")):
+        return "ATP"
+    return "UNKNOWN"
 
 
 def _date_range(start_date: str, end_date: str) -> list[str]:

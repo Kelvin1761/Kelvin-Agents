@@ -6,6 +6,23 @@ from tennis_wc.providers.tennis_provider_base import TennisProvider
 
 logger = logging.getLogger(__name__)
 
+def _competition_tour(competition: dict, scoreboard_tour: str) -> str:
+    """The draw's own tour, not the scoreboard it was listed on.
+
+    Joint events (Beijing, the Slams) list women's matches on the `atp`
+    scoreboard too: measured on one 2026-10 history pull, 20 women's
+    competitions came back from both scoreboards. Labelling by scoreboard
+    stored Swiatek and Zheng under ATP, and `get_or_create_player` copied that
+    label onto the players. `type.slug` ("womens-singles") is per competition.
+    """
+    slug = str((competition.get('type') or {}).get('slug') or '').lower()
+    if slug.startswith('womens-') or slug.startswith('women'):
+        return 'WTA'
+    if slug.startswith('mens-') or slug.startswith('men'):
+        return 'ATP'
+    return scoreboard_tour
+
+
 class EspnTennisProvider(TennisProvider):
     provider_name = 'espn'
 
@@ -109,6 +126,7 @@ class EspnTennisProvider(TennisProvider):
         return infer_tournament_metadata(name, match_date)
 
     def _normalise_match(self, event: dict, competition: dict, tour: str) -> dict | None:
+        tour = _competition_tour(competition, tour)
         competitors = competition.get('competitors', [])
         if len(competitors) < 2:
             return None
@@ -157,7 +175,7 @@ class EspnTennisProvider(TennisProvider):
             rows.append(
                 {
                     'id': f"{competition.get('id')}-{idx + 1}",
-                    'tour': tour,
+                    'tour': match['tour'],
                     'match_date': match['match_date'],
                     'player_id': str(competitor.get('id')),
                     'opponent_id': str(opponent.get('id')),
