@@ -44,6 +44,9 @@ CREATE TABLE IF NOT EXISTS players (
     updated_at TEXT NOT NULL
 );
 
+CREATE INDEX IF NOT EXISTS idx_players_lower_name_tour
+ON players(lower(trim(name)), tour);
+
 CREATE TABLE IF NOT EXISTS tournaments (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,

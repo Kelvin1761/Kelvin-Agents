@@ -9,6 +9,7 @@ from tennis_wc.ingestion.fixture_versions import active_fixture_clause
 from tennis_wc.ingestion.confirmed_metadata import outside_confirmed_metadata_dates
 from tennis_wc.database.db import get_connection
 from tennis_wc.database.history_observations import history_active_clause
+from tennis_wc.database.ranking_reads import PUBLISHED_RANKING_SOURCES, RankingReader
 from tennis_wc.features.big_match import calculate_big_match_stats
 from tennis_wc.features.bo_format import calculate_bo_format_stats, detect_match_format
 from tennis_wc.features.common import datapoint, provenance, utc_now
@@ -124,6 +125,14 @@ def _build_player_payload(conn, player_id: int, opponent_id: int,
 
     player_prov = _raw_meta(player["raw_response_id"])
     history_prov = _latest_history_prov(player_id)
+    reader = RankingReader(conn)
+    rank_info = _rank_details(conn, player_id, as_of_date, player, reader=reader)
+    rank_prov = _raw_meta(rank_info.get("raw_response_id"))
+    rank_prov = {**rank_prov, "ranking_date": rank_info.get("ranking_date"),
+                 "ranking_source_origin": rank_info.get("source_provider"),
+                 "ranking_date_kind": ("publication" if rank_info.get("source_provider") in PUBLISHED_RANKING_SOURCES
+                                       else "historical_or_unverified_reference"),
+                 "warnings": sorted(set([*rank_prov.get("warnings", []), *rank_info.get("warnings", [])]))}
     surface = match_context["surface"]["value"]
     level = match_context["level"]["value"]
     round_name = match_context["round"]["value"]
@@ -151,12 +160,15 @@ def _build_player_payload(conn, player_id: int, opponent_id: int,
         overall_elo = player["overall_elo"]
         surface_elo = get_surface_elo(player["surface_elo_json"], surface, overall_elo)
     elo_prov = _elo_provenance(player_prov, dict(player))
+    if not elo_as_of and _unverified_rank_seed(conn, player_id, player, reader=reader):
+        overall_elo = surface_elo = None
+        elo_prov = {**elo_prov, "warnings": [*elo_prov.get("warnings", []), "rank_seed_source_date_unverified"]}
     if not elo_as_of and overall_elo is not None:
         elo_prov = {**elo_prov, "warnings": [*elo_prov.get("warnings", []), "elo_not_as_of"]}
     return {
         "id": datapoint(player_id, player_prov),
         "name": player["name"],
-        "current_rank": datapoint(_rank_as_of(conn, player_id, as_of_date, player), player_prov),
+        "current_rank": datapoint(rank_info["rank"], rank_prov),
         "overall_elo": datapoint(overall_elo, elo_prov),
         "surface_elo": datapoint(surface_elo, elo_prov),
         "serve_return": {
@@ -178,6 +190,12 @@ def _build_player_payload(conn, player_id: int, opponent_id: int,
         "fatigue": {"status": "KNOWN" if rest_days is not None else "UNKNOWN", "rest_days": datapoint(rest_days, history_prov), "provenance": history_prov},
         "injury": {"risk": "UNKNOWN", "provenance": history_prov},
     }
+
+
+def _unverified_rank_seed(conn, player_id, player, *, reader=None):
+    from tennis_wc.ingestion.ingest_rankings import _rank_seed_elo
+    reader = reader or RankingReader(conn)
+    return reader.unverified_seed(player, _rank_seed_elo)
 
 
 def _elo_provenance(player_prov: dict, player: dict) -> dict:
@@ -237,20 +255,19 @@ def _rank_as_of(conn, player_id: int, as_of_date, player) -> int | None:
     refresh has not landed; a rebuilt historical snapshot gets None and says so,
     which is the honest input and the one the model should be graded on.
     """
+    return _rank_details(conn, player_id, as_of_date, player)["rank"]
+
+
+def _rank_details(conn, player_id, as_of_date, player, *, reader=None):
     stamp = as_of_date.isoformat() if hasattr(as_of_date, "isoformat") else str(as_of_date)
-    row = conn.execute(
-        """
-        SELECT rank FROM rankings_history
-        WHERE player_id = ? AND ranking_date < ? AND rank IS NOT NULL
-        ORDER BY ranking_date DESC LIMIT 1
-        """,
-        (player_id, stamp),
-    ).fetchone()
-    if row:
-        return int(row[0])
-    if not _is_effectively_now(stamp):
-        return None
-    return player["current_rank"]
+    reader = reader or RankingReader(conn)
+    result = reader.select(player_id, stamp)
+    if result["rank"] is not None:
+        return result
+    if _is_effectively_now(stamp) and reader.current_fallback_allowed(player_id, player):
+        return {"rank": player["current_rank"], "raw_response_id": player["raw_response_id"],
+                "warnings": [*result["warnings"], "ranking_current_fallback_unverified"]}
+    return result
 
 
 def _is_effectively_now(stamp: str) -> bool:
@@ -261,7 +278,7 @@ def _is_effectively_now(stamp: str) -> bool:
         as_of = date.fromisoformat(str(stamp)[:10])
     except ValueError:
         return False
-    return (date.today() - as_of).days <= CURRENT_RANK_FALLBACK_DAYS
+    return 0 <= (as_of-date.today()).days <= CURRENT_RANK_FALLBACK_DAYS
 
 
 def _rest_days(player_id: int, as_of_date: date, *, start_time: str | None = None) -> int | None:

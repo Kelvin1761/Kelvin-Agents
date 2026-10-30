@@ -5,6 +5,7 @@ from datetime import date
 from io import StringIO
 from urllib.request import Request, urlopen
 from tennis_wc.providers.tennis_provider_base import TennisProvider
+from tennis_wc.ranking_dates import normalise_ranking_date
 
 logger = logging.getLogger(__name__)
 
@@ -77,12 +78,15 @@ class SackmannRankingProvider(TennisProvider):
                     'ranking_date': ranking_date,
                     'rank': rank,
                     'ranking_points': _int_or_none(row.get('ranking_points') or row.get('points')),
-                    'raw': row
+                    'raw': {'source': 'sackmann_ranking', 'source_ranking_date': ranking_date,
+                            'source_url': url, 'csv_row': row}
                     }
                 )
             if not results:
                 raise RankingFetchError(f'No parseable ranking rows found in {url} for {ranking_date}')
-            return sorted(results, key=lambda item: item['rank'])[:500]
+            if len(results) > 5000:
+                raise RankingFetchError('Sackmann ranking source exceeds the 5000-row safety limit')
+            return sorted(results, key=lambda item: item['rank'])
         except Exception as e:
             logger.error(f'Failed to fetch rankings: {e}')
             raise RankingFetchError(str(e)) from e
@@ -106,8 +110,7 @@ class SackmannRankingProvider(TennisProvider):
             return None
         if cutoff:
             eligible = [value for value in dates if value <= cutoff]
-            if eligible:
-                return eligible[-1]
+            return eligible[-1] if eligible else None
         return dates[-1]
 
     def _fetch_csv_text(self, url: str, timeout: int) -> str:
@@ -147,12 +150,7 @@ def _year_from_date(value: str | None) -> int | None:
 
 
 def _normalise_date(value: str | None) -> str | None:
-    if not value:
-        return None
-    value = str(value).strip()
-    if len(value) == 8 and value.isdigit():
-        return f'{value[:4]}-{value[4:6]}-{value[6:8]}'
-    return value
+    return normalise_ranking_date(value)
 
 
 def _int_or_none(value) -> int | None:

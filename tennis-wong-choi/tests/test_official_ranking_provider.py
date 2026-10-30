@@ -62,7 +62,7 @@ def test_parse_atp_uts_rankings():
         ]
     }
 
-    rows = _parse_atp_uts_rankings(payload, "2026-06-23")
+    rows = _parse_atp_uts_rankings(payload, "2026-06-23", source_date="2026-06-22")
 
     assert rows == [
         {
@@ -70,11 +70,12 @@ def test_parse_atp_uts_rankings():
             "name": "Jannik Sinner",
             "player_name": "Jannik Sinner",
             "tour": "ATP",
-            "ranking_date": "2026-06-23",
+            "ranking_date": "2026-06-22",
             "rank": 1,
             "ranking_points": 11830,
             "raw": {
                 "source": "ultimate_tennis_statistics",
+                "source_ranking_date": "2026-06-22",
                 "player_id": 50810,
                 "country": "ITA",
             },
@@ -137,6 +138,8 @@ def test_parse_wta_api_rankings():
             "ranking_points": 9090,
             "raw": {
                 "source": "wta_ranked_players_api",
+                "source_ranking_date": "2026-06-22",
+                "ranked_at": "2026-06-22T00:00:00Z",
                 "player_id": 320760,
                 "country": "BLR",
                 "tournaments_played": 18,

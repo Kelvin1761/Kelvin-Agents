@@ -10,6 +10,7 @@ from .news_provider_base import NewsProvider
 from .odds_provider_base import OddsProvider
 from .sportsbet_provider import SportsbetOddsProvider
 from .tennis_provider_base import TennisProvider
+from tennis_wc.ranking_dates import validate_ranking_rows
 
 logger = logging.getLogger(__name__)
 
@@ -44,15 +45,27 @@ class CompositeTennisProvider(TennisProvider):
         return self.espn.fetch_player_stats(player_id)
 
     def fetch_rankings(self, tour: str, date: str | None = None) -> list[dict]:
-        official_error: OfficialRankingFetchError | None = None
+        self.ranking_source_evidence = []
+        self.ranking_source_failures = []
+        official_error = None
+        rows = None
         try:
-            return self.official_rankings.fetch_rankings(tour, date)
-        except OfficialRankingFetchError as exc:
+            rows = self.official_rankings.fetch_rankings(tour, date)
+            return validate_ranking_rows(rows, date, max_age_hours=get_settings().data_max_staleness_hours_rankings)
+        except (OfficialRankingFetchError, ValueError) as exc:
             official_error = exc
+            self.ranking_source_failures.append({"source": "official_rankings", "error": str(exc),
+                                                 "rows": rows})
             logger.info("Official rankings unavailable for %s: %s", tour, exc)
+        finally:
+            self.ranking_source_evidence.extend(getattr(self.official_rankings, "ranking_source_evidence", []))
+            self.ranking_source_failures.extend(getattr(self.official_rankings, "ranking_source_failures", []))
+        fallback_rows = None
         try:
-            return self.sackmann.fetch_rankings(tour, date)
+            fallback_rows = self.sackmann.fetch_rankings(tour, date)
+            return validate_ranking_rows(fallback_rows, date, max_age_hours=get_settings().data_max_staleness_hours_rankings)
         except Exception as exc:  # noqa: BLE001 - rankings are advisory for daily runs.
+            self.ranking_source_failures.append({"source": "sackmann_ranking", "error": str(exc), "rows": fallback_rows})
             logger.warning("Sackmann rankings unavailable for %s: %s", tour, exc)
             raise OfficialRankingFetchError(
                 f"All ranking providers unavailable for {tour}: official={official_error}; sackmann={exc}"

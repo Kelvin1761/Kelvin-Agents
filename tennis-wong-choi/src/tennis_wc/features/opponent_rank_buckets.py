@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 from datetime import date
+from contextlib import closing
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.database.ranking_reads import RankingReader
 from tennis_wc.database.history_observations import history_active_clause
 from tennis_wc.features.history_values import clean_history_row
 from tennis_wc.features.history_asof import guard_clause, guard_params
@@ -17,18 +19,8 @@ def get_opponent_rank_at_match_date(opponent_id: int, match_date: date) -> int |
     Look up the opponent's historical ranking at the date of the match.
     Use nearest ranking date before or on match_date. Never substitute current ranking.
     """
-    with get_connection() as conn:
-        row = conn.execute(
-            """
-            SELECT rank
-            FROM rankings_history
-            WHERE player_id = ? AND ranking_date <= ?
-            ORDER BY ranking_date DESC
-            LIMIT 1
-            """,
-            (opponent_id, match_date.isoformat()),
-        ).fetchone()
-    return int(row["rank"]) if row else None
+    with closing(get_connection()) as conn:
+        return RankingReader(conn).select(opponent_id, match_date.isoformat(), inclusive=True)["rank"]
 
 
 def classify_rank_bucket(rank: int | None) -> str:
@@ -102,12 +94,17 @@ def calculate_player_rank_bucket_stats(
     prior = rate(total_wins, len(rows)) or 0.5
     buckets = {bucket: [] for bucket in RANK_BUCKETS}
     missing = 0
-    for row in rows:
-        rank = get_opponent_rank_at_match_date(row["opponent_id"], parse_date(row["match_date"]))
-        if rank is None:
-            missing += 1
-        for bucket in nested_rank_buckets(rank):
-            buckets[bucket].append((row, rank))
+    source_warnings = set()
+    with closing(get_connection()) as rank_conn:
+        reader = RankingReader(rank_conn)
+        for row in rows:
+            info = reader.select(row["opponent_id"], parse_date(row["match_date"]).isoformat(), inclusive=True)
+            rank = info["rank"]
+            source_warnings.update(info["warnings"])
+            if rank is None:
+                missing += 1
+            for bucket in nested_rank_buckets(rank):
+                buckets[bucket].append((row, rank))
 
     results: dict[str, dict] = {}
     now = utc_now()
@@ -119,7 +116,7 @@ def calculate_player_rank_bucket_stats(
             shrinked = shrink_rate(raw_rate, matches, prior) if raw_rate is not None else None
             ranks = [rank for _, rank in bucket_rows if rank is not None]
             avg_elo = avg(row.get("opponent_elo") for row, _ in bucket_rows)
-            warnings = []
+            warnings = sorted(source_warnings)
             if matches < 10:
                 warnings.append("low_sample")
             if missing:

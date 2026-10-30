@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from contextlib import nullcontext
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.database.history_observations import history_active_clause
@@ -151,6 +152,8 @@ def get_or_create_player(
     current_rank: int | None = None,
     overall_elo: float | None = None,
     surface_elo: dict | None = None,
+    *,
+    connection=None,
 ) -> int:
     if not valid_player_identity(provider_player_id, name):
         raise ValueError(
@@ -161,7 +164,7 @@ def get_or_create_player(
     name = str(name).strip()
     tour = str(tour or "UNKNOWN").strip().upper()
     now = utc_now()
-    with get_connection() as conn:
+    with nullcontext(connection) if connection is not None else get_connection() as conn:
         row, player_id = _existing_player_choice(conn, provider_name, provider_player_id, name, tour)
         if row:
             if player_id != int(row["internal_entity_id"]):

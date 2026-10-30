@@ -33,14 +33,14 @@ def _atp_payload(n: int) -> dict:
 def test_the_atp_parser_no_longer_stops_at_five_hundred():
     """Lifting the REQUEST cap alone changed nothing: the payload arrived with
     all 2,161 rows and the parser still returned 500."""
-    rows = orp._parse_atp_uts_rankings(_atp_payload(2161))
+    rows = orp._parse_atp_uts_rankings(_atp_payload(2161), source_date="2026-06-22")
     assert len(rows) == 2161
     assert max(r["rank"] for r in rows) == 2161
 
 
 def test_the_parser_keeps_a_runaway_guard_and_says_when_it_bites(caplog):
     with caplog.at_level(logging.WARNING):
-        rows = orp._parse_atp_uts_rankings(_atp_payload(orp.MAX_RANKING_ROWS + 50))
+        rows = orp._parse_atp_uts_rankings(_atp_payload(orp.MAX_RANKING_ROWS + 50), source_date="2026-06-22")
     assert len(rows) == orp.MAX_RANKING_ROWS
     assert "guard" in caplog.text, "silent truncation is the defect, not the cap"
 

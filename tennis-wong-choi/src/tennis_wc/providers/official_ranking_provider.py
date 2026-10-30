@@ -1,15 +1,19 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import base64
 import logging
 import re
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from html import unescape
 from io import BytesIO
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from tennis_wc.providers.tennis_provider_base import TennisProvider
+from tennis_wc.ranking_dates import RankingDateError, normalise_ranking_date, validate_ranking_rows
+from tennis_wc.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -40,28 +44,83 @@ class OfficialRankingProvider(TennisProvider):
     provider_name = "official_rankings"
 
     ATP_UTS_RANKINGS_URL = "https://www.ultimatetennisstatistics.com/rankingsTableTable"
+    ATP_UTS_DATE_URL = "https://www.ultimatetennisstatistics.com/rankingsDate?rankType=RANK"
+    ATP_NUMERIC_PDF_URL = "https://www.protennislive.com/posting/ramr/singles_entry_numerical.pdf"
     WTA_RANKED_PLAYERS_API_URL = "https://api.wtatennis.com/tennis/players/ranked"
     WTA_NUMERIC_PDF_URL = "https://wtafiles.wtatennis.com/pdf/rankings/Singles_Numeric.pdf"
     WTA_RANKINGS_URL = "https://www.wtatennis.com/rankings/singles"
+
+    def __init__(self):
+        self.ranking_source_evidence = []
+        self.ranking_source_failures = []
+
+    def _capture_text(self, url, **kwargs):
+        try:
+            text = self._fetch_text(url, **kwargs)
+        except Exception as exc:
+            self.ranking_source_evidence.append({"url": url, "received_at": datetime.now(timezone.utc).isoformat(),
+                                                  "error": f"{type(exc).__name__}: {exc}"})
+            raise
+        self.ranking_source_evidence.append({
+            "url": url, "received_at": datetime.now(timezone.utc).isoformat(),
+            "decoded_utf8_sha256": hashlib.sha256(text.encode("utf-8")).hexdigest(), "text": text,
+        })
+        return text
 
     def healthcheck(self) -> bool:
         return True
 
     def fetch_rankings(self, tour: str, date_str: str | None = None) -> list[dict]:
+        self.ranking_source_evidence = []
+        self.ranking_source_failures = []
         tour = tour.upper()
-        if tour == "WTA":
-            try:
-                return self._fetch_wta_api(date_str)
-            except OfficialRankingFetchError as exc:
-                logger.info("WTA API rankings unavailable, falling back to PDF: %s", exc)
-            try:
-                return self._fetch_wta_numeric_pdf(date_str)
-            except OfficialRankingFetchError as exc:
-                logger.info("WTA PDF rankings unavailable, falling back to official HTML: %s", exc)
-                return self._fetch_wta_html(date_str)
         if tour == "ATP":
-            return self._fetch_atp_uts(date_str)
-        raise OfficialRankingFetchError(f"Unsupported official ranking tour: {tour}")
+            sources = [("atp_official_numeric_pdf", self._fetch_atp_numeric_pdf),
+                       ("ultimate_tennis_statistics", self._fetch_atp_uts)]
+        elif tour == "WTA":
+            sources = [("wta_ranked_players_api", self._fetch_wta_api),
+                       ("wta_numeric_pdf", self._fetch_wta_numeric_pdf), ("wta_rankings_html", self._fetch_wta_html)]
+        else:
+            raise OfficialRankingFetchError(f"Unsupported official ranking tour: {tour}")
+        for name, fetch in sources:
+            rows = None
+            try:
+                rows = fetch(date_str)
+                if not rows:
+                    raise OfficialRankingFetchError("empty ranking source")
+                return validate_ranking_rows(rows, date_str, max_age_hours=get_settings().data_max_staleness_hours_rankings)
+            except (OfficialRankingFetchError, RankingDateError, OSError) as exc:
+                self.ranking_source_failures.append({"source": name, "error": str(exc), "rows": rows})
+                logger.info("Ranking source %s unavailable: %s", name, exc)
+        raise OfficialRankingFetchError(f"All official {tour} ranking sources rejected: " +
+                                         "; ".join(f"{x['source']}: {x['error']}" for x in self.ranking_source_failures))
+
+    def _capture_pdf(self, url):
+        try:
+            data = self._fetch_bytes(url, timeout=30)
+        except Exception as exc:
+            self.ranking_source_evidence.append({"url": url, "received_at": datetime.now(timezone.utc).isoformat(),
+                                                  "error": f"{type(exc).__name__}: {exc}"})
+            raise
+        self.ranking_source_evidence.append({"url": url, "received_at": datetime.now(timezone.utc).isoformat(),
+            "sha256": hashlib.sha256(data).hexdigest(), "content_base64": base64.b64encode(data).decode("ascii")})
+        return data
+
+    def _fetch_atp_numeric_pdf(self, date_str):
+        try:
+            import pdfplumber
+        except ImportError as exc:
+            raise OfficialRankingFetchError("pdfplumber is required for the ATP official PDF") from exc
+        data = self._capture_pdf(self.ATP_NUMERIC_PDF_URL)
+        try:
+            with pdfplumber.open(BytesIO(data)) as pdf:
+                pages = [p.extract_text(x_tolerance=1, y_tolerance=3) or "" for p in pdf.pages]
+        except Exception as exc:
+            raise OfficialRankingFetchError(f"Invalid ATP official PDF: {exc}") from exc
+        rows = _parse_atp_numeric_pdf_pages(pages, date_str)
+        for row in rows:
+            row["raw"]["source_pdf_sha256"] = hashlib.sha256(data).hexdigest()
+        return rows
 
     # The whole ladder, not the first page of it. 2026-08-27: this asked for
     # 500 rows while the endpoint held 2,161 (deepest rank 2,162), and the WTA
@@ -80,6 +139,13 @@ class OfficialRankingProvider(TennisProvider):
     WTA_MAX_PAGES = 40
 
     def _fetch_atp_uts(self, date_str: str | None) -> list[dict]:
+        try:
+            date_text = self._capture_text(self.ATP_UTS_DATE_URL, timeout=30, accept="application/json")
+            source_date = normalise_ranking_date(json.loads(date_text))
+        except (ValueError, TypeError, OSError) as exc:
+            raise OfficialRankingFetchError("ATP UTS source date request failed") from exc
+        if source_date is None:
+            raise OfficialRankingFetchError("ATP UTS endpoint did not expose a valid source ranking date")
         params = {
             "current": "1",
             "rowCount": str(self.ATP_ROW_COUNT),
@@ -87,11 +153,13 @@ class OfficialRankingProvider(TennisProvider):
             "searchPhrase": "",
             "rankType": "RANK",
             "season": "",
-            "date": "",
+            # UTS current is the Bootgrid page number. Pin the data date using
+            # its documented dd-MM-yyyy parameter, independently of card date.
+            "date": datetime.strptime(source_date, "%Y-%m-%d").strftime("%d-%m-%Y"),
             "_": "1",
         }
         try:
-            text = self._fetch_text(
+            text = self._capture_text(
                 f"{self.ATP_UTS_RANKINGS_URL}?{urlencode(params)}",
                 timeout=30,
                 accept="application/json,text/javascript,*/*;q=0.8",
@@ -103,7 +171,10 @@ class OfficialRankingProvider(TennisProvider):
             payload = json.loads(text)
         except json.JSONDecodeError as exc:
             raise OfficialRankingFetchError("ATP UTS rankings endpoint returned invalid JSON") from exc
-        rows = _parse_atp_uts_rankings(payload, date_str)
+        rows = _parse_atp_uts_rankings(payload, date_str, source_date=source_date)
+        for row in rows:
+            row["raw"].update(source_date_url=self.ATP_UTS_DATE_URL,
+                              source_date_sha256=hashlib.sha256(date_text.encode()).hexdigest())
         if not rows:
             raise OfficialRankingFetchError("ATP UTS rankings endpoint returned no parseable rows")
         # The endpoint reports its own total, so a truncated answer is
@@ -138,7 +209,7 @@ class OfficialRankingProvider(TennisProvider):
                 "nationality": "",
             }
             try:
-                text = self._fetch_text(
+                text = self._capture_text(
                     f"{self.WTA_RANKED_PLAYERS_API_URL}?{urlencode(params)}",
                     timeout=30,
                     accept="application/json,*/*;q=0.8",
@@ -176,9 +247,12 @@ class OfficialRankingProvider(TennisProvider):
         except Exception as exc:
             raise OfficialRankingFetchError("pdfplumber is required to parse WTA official rankings PDF") from exc
 
-        data = self._fetch_bytes(self.WTA_NUMERIC_PDF_URL, timeout=30)
-        with pdfplumber.open(BytesIO(data)) as pdf:
-            text = "\n".join(page.extract_text(x_tolerance=1, y_tolerance=3) or "" for page in pdf.pages)
+        data = self._capture_pdf(self.WTA_NUMERIC_PDF_URL)
+        try:
+            with pdfplumber.open(BytesIO(data)) as pdf:
+                text = "\n".join(page.extract_text(x_tolerance=1, y_tolerance=3) or "" for page in pdf.pages)
+        except Exception as exc:
+            raise OfficialRankingFetchError(f"Invalid WTA official PDF: {exc}") from exc
         rows = _parse_wta_numeric_pdf_text(text, date_str)
         if not rows:
             raise OfficialRankingFetchError("WTA official rankings PDF returned no parseable rows")
@@ -186,7 +260,7 @@ class OfficialRankingProvider(TennisProvider):
 
     def _fetch_wta_html(self, date_str: str | None) -> list[dict]:
         try:
-            text = self._fetch_text(self.WTA_RANKINGS_URL, timeout=30, accept="text/html,*/*;q=0.8")
+            text = self._capture_text(self.WTA_RANKINGS_URL, timeout=30, accept="text/html,*/*;q=0.8")
         except Exception as exc:
             raise OfficialRankingFetchError("WTA official rankings page request failed") from exc
         rows = _parse_wta_rankings_html(text, date_str)
@@ -203,7 +277,10 @@ class OfficialRankingProvider(TennisProvider):
             },
         )
         with urlopen(request, timeout=timeout) as response:
-            return response.read()
+            data = response.read(8 * 1024 * 1024 + 1)
+        if len(data) > 8 * 1024 * 1024:
+            raise OfficialRankingFetchError("ranking PDF exceeds the 8MiB source limit")
+        return data
 
     def _fetch_text(
         self,
@@ -243,6 +320,67 @@ class OfficialRankingProvider(TennisProvider):
         return []
 
 
+def _parse_atp_numeric_pdf_pages(pages, requested_date=None):
+    """Complete numerical singles publication; page/date/row loss rejects it."""
+    if not pages:
+        raise OfficialRankingFetchError("empty ATP PDF")
+    rows, dates = [], set()
+    for number, text in enumerate(pages, 1):
+        footers = re.findall(r"Page\s+(\d+)\s+of\s+(\d+)", text)
+        if footers != [(str(number), str(len(pages)))]:
+            raise OfficialRankingFetchError("ATP PDF page coverage/order is incomplete")
+        if not re.search(r"Rankings/\s*Numerical Order/\s*Complete/\s*Singles", text):
+            raise OfficialRankingFetchError("ATP PDF is not the complete singles numerical publication")
+        headers = re.findall(r"Rankings Date:\s*([A-Za-z]+\s+\d{1,2},\s*\d{4})", text)
+        if len(headers) != 1:
+            raise OfficialRankingFetchError("ATP PDF must expose one ranking date on every page")
+        effective = _parse_display_date(headers[0], "%b %d, %Y")
+        if effective is None:
+            raise OfficialRankingFetchError("invalid ATP PDF ranking date")
+        dates.add(effective)
+        if len(dates) != 1:
+            raise OfficialRankingFetchError("ATP PDF contains conflicting ranking dates")
+        page_rows = 0
+        for line in text.splitlines():
+            if not re.match(r"^\s*\d+(?:T)?\s+", line):
+                continue
+            match = re.fullmatch(r"\s*(\d+)(T)?\s+(.+?)\s+((?:[0-9,]+\s+){6}[0-9,]+)\s*", line)
+            if not match:
+                raise OfficialRankingFetchError(f"Unparsed ATP ranking row on page {number}: {line}")
+            rank = int(match.group(1))
+            label = match.group(3).strip()
+            country = re.search(r"\s+\(([A-Z]{3})\)$", label)
+            name = label[:country.start()].strip() if country else label
+            if name.count(",") != 1:
+                raise OfficialRankingFetchError("ATP PDF player name is not surname-first")
+            values = [int(v.replace(",", "")) for v in match.group(4).split()]
+            if values[0] != sum(values[1:4]):
+                raise OfficialRankingFetchError("ATP PDF points columns are inconsistent")
+            player = _normalise_wta_name(name)
+            rows.append({"player_id": f"atp_pdf:{_name_key(player)}", "name": player, "player_name": player,
+                         "tour": "ATP", "ranking_date": effective, "rank": rank, "ranking_points": values[0],
+                         "raw": {"source": "atp_official_numeric_pdf", "source_ranking_date": effective,
+                                 "source_url": OfficialRankingProvider.ATP_NUMERIC_PDF_URL,
+                                 "nationality": country.group(1) if country else None,
+                                 "tied": bool(match.group(2)), "page": number, "line": line}})
+            page_rows += 1
+        if not page_rows:
+            raise OfficialRankingFetchError(f"ATP PDF page {number} has no ranking rows")
+    if len(rows) > MAX_RANKING_ROWS:
+        raise OfficialRankingFetchError("ATP PDF exceeds the row safety limit; refusing truncation")
+    previous = None
+    for ordinal, row in enumerate(rows, 1):
+        if row["rank"] != previous and row["rank"] != ordinal:
+            raise OfficialRankingFetchError("ATP PDF rank sequence indicates missing/reordered rows")
+        if previous is not None and row["rank"] < previous:
+            raise OfficialRankingFetchError("ATP PDF rank order is invalid")
+        previous = row["rank"]
+    requested = normalise_ranking_date(requested_date)
+    if requested and rows[0]["ranking_date"] > requested:
+        raise OfficialRankingFetchError("ATP PDF source ranking date is after requested date")
+    return rows
+
+
 def _parse_wta_numeric_pdf_text(text: str, requested_date: str | None = None) -> list[dict]:
     ranking_date = _extract_ranking_date(text)
     if not ranking_date:
@@ -265,8 +403,13 @@ def _parse_wta_numeric_pdf_text(text: str, requested_date: str | None = None) ->
     return rows
 
 
-def _parse_atp_uts_rankings(payload: dict, requested_date: str | None = None) -> list[dict]:
-    ranking_date = _normalise_date(requested_date) or date.today().isoformat()
+def _parse_atp_uts_rankings(payload: dict, requested_date: str | None = None, *, source_date=None) -> list[dict]:
+    ranking_date = normalise_ranking_date(source_date)
+    if ranking_date is None:
+        raise OfficialRankingFetchError("ATP UTS rankings require an independently observed source date")
+    requested = normalise_ranking_date(requested_date)
+    if requested and ranking_date > requested:
+        raise OfficialRankingFetchError("ATP UTS source ranking date is after requested date")
     rows: list[dict] = []
     for row in payload.get("rows") or []:
         rank = _int_or_none(row.get("rank"))
@@ -287,6 +430,7 @@ def _parse_atp_uts_rankings(payload: dict, requested_date: str | None = None) ->
                 "ranking_points": points,
                 "raw": {
                     "source": "ultimate_tennis_statistics",
+                    "source_ranking_date": ranking_date,
                     "player_id": row.get("playerId"),
                     "country": country.get("id") or country.get("name"),
                 },
@@ -303,7 +447,6 @@ def _parse_atp_uts_rankings(payload: dict, requested_date: str | None = None) ->
 def _parse_wta_api_rankings(payload: list | dict, requested_date: str | None = None) -> list[dict]:
     ranking_rows = payload if isinstance(payload, list) else payload.get("rows") or payload.get("items") or []
     requested = _normalise_date(requested_date)
-    fallback_date = requested or date.today().isoformat()
     rows: list[dict] = []
     for row in ranking_rows:
         if not isinstance(row, dict):
@@ -315,13 +458,15 @@ def _parse_wta_api_rankings(payload: list | dict, requested_date: str | None = N
         player_name = _strip_html(str(player_name or "")).strip()
         rank = _int_or_none(row.get("ranking"))
         points = _int_or_none(row.get("points"))
-        ranking_date = _normalise_ranked_at(row.get("rankedAt")) or fallback_date
+        if not rank or not player_name:
+            continue
+        ranking_date = _normalise_ranked_at(row.get("rankedAt"))
+        if not ranking_date:
+            raise OfficialRankingFetchError("WTA ranked player is missing a valid rankedAt source date")
         if requested and ranking_date > requested:
             raise OfficialRankingFetchError(
                 f"WTA official rankings date {ranking_date} is after requested date {requested_date}"
             )
-        if not rank or not player_name:
-            continue
         external_id = player.get("id") or _name_key(player_name)
         rows.append(
             {
@@ -334,6 +479,8 @@ def _parse_wta_api_rankings(payload: list | dict, requested_date: str | None = N
                 "ranking_points": points,
                 "raw": {
                     "source": "wta_ranked_players_api",
+                    "source_ranking_date": ranking_date,
+                    "ranked_at": row.get("rankedAt"),
                     "player_id": player.get("id"),
                     "country": player.get("countryCode"),
                     "tournaments_played": _int_or_none(row.get("tournamentsPlayed")),
@@ -350,7 +497,9 @@ def _parse_wta_api_rankings(payload: list | dict, requested_date: str | None = N
 
 
 def _parse_wta_rankings_html(text: str, requested_date: str | None = None) -> list[dict]:
-    ranking_date = _extract_wta_html_date(text) or _normalise_date(requested_date) or date.today().isoformat()
+    ranking_date = _extract_wta_html_date(text)
+    if not ranking_date:
+        raise OfficialRankingFetchError("WTA HTML did not expose a source ranking date")
     requested = _normalise_date(requested_date)
     if requested and ranking_date > requested:
         raise OfficialRankingFetchError(
@@ -395,6 +544,7 @@ def _parse_wta_rankings_html(text: str, requested_date: str | None = None) -> li
                 "ranking_points": points,
                 "raw": {
                     "source": "wta_rankings_html",
+                    "source_ranking_date": ranking_date,
                     "player_id": player_id,
                 },
             }
@@ -434,6 +584,7 @@ def _parse_wta_numeric_line(line: str, ranking_date: str) -> dict | None:
         "ranking_points": points,
         "raw": {
             "source": "wta_numeric_pdf",
+            "source_ranking_date": ranking_date,
             "line": line,
             "nationality": match.group("nationality"),
             "tournaments": _int_or_none(match.group("tournaments")),
@@ -503,7 +654,7 @@ def _normalise_ranked_at(value) -> str | None:
     value = str(value).strip()
     if "T" in value:
         value = value.split("T", 1)[0]
-    return _normalise_date(value)
+    return normalise_ranking_date(value)
 
 
 def _normalise_date(value: str | None) -> str | None:

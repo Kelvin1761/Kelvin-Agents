@@ -14,7 +14,7 @@ requires-python = ">=3.9"
 # which Sportsbet's Cloudflare bot-protection blocks intermittently (esp. on
 # the many per-event multi-market requests) — the "only match-winner captured
 # / DNS / 0 matches" failures traced 2026-07-22. Keep it installed in the venv.
-dependencies = ["curl_cffi>=0.6"]
+dependencies = ["curl_cffi>=0.6", "pdfplumber==0.11.8"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]

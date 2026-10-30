@@ -154,7 +154,15 @@ def validate_data_freshness(feature_snapshot: dict) -> dict:
                     warning_penalty += 5
             elif age_hours * 60 > settings.data_max_staleness_minutes_odds:
                 errors.append(f"stale odds at {path}")
-        if "ranking" in path and age_hours > settings.data_max_staleness_hours_rankings:
+        ranking_age_hours = age_hours
+        if path.endswith("current_rank") and prov.get("ranking_date"):
+            try:
+                effective = datetime.fromisoformat(prov["ranking_date"]).replace(tzinfo=timezone.utc)
+                ranking_age_hours = ((match_day if is_backfill else now)-effective).total_seconds()/3600
+            except (TypeError, ValueError):
+                warnings.append(f"invalid ranking date at {path}")
+                warning_penalty += 5
+        if ("ranking" in path or path.endswith("current_rank")) and ranking_age_hours > settings.data_max_staleness_hours_rankings:
             warnings.append(f"stale ranking data at {path}")
             warning_penalty += 5
         for warning in prov.get("warnings", []):
