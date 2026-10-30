@@ -295,3 +295,50 @@ copy failure, bootstrap failure, concurrent writer and success cases all5pass,
 Final quick wc-run-9vcd5n41 and modified-shell syntax checks pass; goldens
 unchanged. None of these results is a full immutable release gate. The3real
 ownership REDs remain and forbid installer release or installation acceptance.
+
+## Attempt-bound journal and publisher API — 2026-10-30
+
+`runtime_install_journal.py` now implements a pre-write plan under the verified
+exclusive cutover lease. It requires a private owner-bound snapshot, its valid
+20-job original-state proof, exactly20 real rendered candidate plists, a full
+source-SHA metadata field and an unchanged current observation. The source SHA
+is binding metadata; it is not approval or evidence that deployment occurred.
+A unique attempt ID, snapshot/agents/domain roots, original proof hash and
+candidate hashes/modes are stored in a new mode600 append-only plan, with file
+and directory fsync. Existing records are rejected rather than rewritten.
+
+Each job needs a separately bound begin record BEFORE a caller unloads it,
+publishes a file or changes flags. Publication reads only the prebound renderer
+output, verifies the original target, writes a staged file, rechecks the lease
+and target identity, then uses atomic replacement and directory fsync. A target
+change detected before replacement retains the staged evidence. These are
+cooperative-lease checks, not a POSIX atomic conditional swap against arbitrary
+nonparticipating writers. That limitation remains material.
+
+The API also binds the snapshot's existing Tennis pointer path, prior bytes/mode
+and candidate bytes, with separate pre-write pointer intent and publication.
+It never opens or moves the database. Recovery verification checks every changed
+job and pointer before any caller mutation, rejects missing/damaged/unknown or
+cross-attempt intent records and unowned postimages, and never silently skips
+a damaged record merely because the runtime currently matches its old state.
+A begin record is planned write intent, not a native-command execution receipt.
+
+Validation uses actual four-family/unified rendering to produce all20 candidate
+files in isolated HOME, a fake read-only launchctl observer and real kernel
+leases. Core+lease+renderer selection50passed in7.56s,wc-run-qv2ovujr.
+After enforcing private snapshot/journal directories, final15 journal cases
+passed in5.76s,wc-run-3uwvj16p; quick wc-run-hsc9y5le passed, goldens unchanged.
+Fixtures cover unknown replace/remove/create, changed candidate, missing begin,
+foreign writes before/after pointer publication, cross-snapshot and symlink/
+damaged proofs, no inherited EX authority and positive prebound publication.
+
+IMPORTANT: this API/CLI is not yet wired into the native installer mutation and
+recovery paths. No actual installation, release/full immutable gate, historical
+proof mutation or deployment was performed. The existing3 real-installer
+ownership REDs therefore remain unresolved. This checkpoint must not be
+released or represented as an accepted forward workflow. Next wire journal
+preparation/begin/publication/recovery into real installers and bind the
+controller's outer snapshot to the same attempt; cover pointer and job changes
+before every mutation and retain inner backups when recovery is blocked.
+Complete old/nonparticipating active-run discovery and independently review
+exact source before any normal full/immutable release gates or native acceptance.
