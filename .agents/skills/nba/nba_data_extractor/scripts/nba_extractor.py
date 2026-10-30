@@ -70,6 +70,11 @@ try:
     )
     from nba_api.stats.static import teams, players
     nba_api_breaker.install()   # fail fast while stats.nba.com is blocking us
+    # One line per run, so the scheduler log shows how much nba.com we hit.
+    import atexit
+    atexit.register(lambda: print(
+        f"📡 stats.nba.com: {nba_api_breaker._state['network_calls']} 次網絡請求，"
+        f"{nba_api_breaker._state['cache_hits']} 次用 cache"))
     NBA_API_AVAILABLE = True
 except ImportError:
     print("⚠️ nba_api 未安裝。請執行：pip install nba_api")

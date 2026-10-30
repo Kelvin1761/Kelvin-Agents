@@ -85,3 +85,97 @@ def test_marker_expires_by_itself(monkeypatch):
     B._trip("test")
     assert B.blocked_until() is not None
     assert B.blocked_until(now=time.time() + B.COOLDOWN_SECONDS + 1) is None
+
+
+# ── 2026-10-31: request cache and escalating cooldown ──────────────────────
+
+class _Body:
+    def __init__(self, text, status=200, url="u"):
+        self._response, self._status_code, self._url = text, status, url
+
+
+CLOSED = {"DateTo": "10/20/2026", "PlayerID": 1}
+
+
+def _counting(text='{"resultSets": []}', status=200):
+    calls = []
+
+    def send(self, endpoint, parameters, *a, **k):
+        calls.append((endpoint, dict(parameters)))
+        return _Body(text, status)
+    return calls, send
+
+
+def test_closed_window_is_fetched_once_across_processes(tmp_path, monkeypatch):
+    monkeypatch.setenv("WC_NBA_HTTP_CACHE_DIR", str(tmp_path / "http"))
+    B._memo.clear()
+    calls, send = _counting()
+    guarded = B.guard(send)
+    first = guarded(None, "playergamelog", dict(CLOSED))
+    again = guarded(None, endpoint="playergamelog", parameters=dict(CLOSED))
+    assert len(calls) == 1 and again._response == first._response
+    B._memo.clear()                      # a fresh process reads the disk copy
+    guarded(None, "playergamelog", dict(CLOSED))
+    assert len(calls) == 1
+    guarded(None, "playergamelog", {**CLOSED, "PlayerID": 2})
+    assert len(calls) == 2, "different parameters are a different request"
+
+
+def test_open_or_undated_windows_always_go_to_the_network(tmp_path, monkeypatch):
+    monkeypatch.setenv("WC_NBA_HTTP_CACHE_DIR", str(tmp_path / "http"))
+    B._memo.clear()
+    calls, send = _counting()
+    guarded = B.guard(send)
+    today = time.strftime("%m/%d/%Y")
+    for params in ({"TeamID": 1}, {"DateTo": today}, {"DateTo": ""}):
+        guarded(None, "x", dict(params))
+        guarded(None, "x", dict(params))
+    assert len(calls) == 6
+
+
+def test_window_closes_at_six_am_eastern_the_next_day():
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    et = ZoneInfo("America/New_York")
+    before = datetime(2026, 10, 30, 5, 59, tzinfo=et).timestamp()
+    after = datetime(2026, 10, 30, 6, 0, tzinfo=et).timestamp()
+    assert not B._window_closed("10/29/2026", before)
+    assert B._window_closed("10/29/2026", after)
+
+
+def test_errors_and_non_json_are_never_cached(tmp_path, monkeypatch):
+    monkeypatch.setenv("WC_NBA_HTTP_CACHE_DIR", str(tmp_path / "http"))
+    for text, status in (('{"a": 1}', 500), ("<html>blocked</html>", 200)):
+        B._memo.clear()
+        calls, send = _counting(text, status)
+        guarded = B.guard(send)
+        guarded(None, "x", dict(CLOSED))
+        guarded(None, "x", dict(CLOSED))
+        assert len(calls) == 2
+
+
+def test_cached_answer_is_served_while_the_circuit_is_open(tmp_path, monkeypatch):
+    monkeypatch.setenv("WC_NBA_HTTP_CACHE_DIR", str(tmp_path / "http"))
+    B._memo.clear()
+    calls, send = _counting()
+    B.guard(send)(None, "x", dict(CLOSED))
+    B._trip("test")
+    assert B.guard(send)(None, "x", dict(CLOSED))._status_code == 200
+    with pytest.raises(B.StatsNbaBlocked):
+        B.guard(send)(None, "x", {"TeamID": 1})
+    assert len(calls) == 1
+
+
+def test_cooldown_doubles_while_the_block_persists_and_resets_on_success(monkeypatch):
+    clock = {"now": 1_000_000.0}
+    monkeypatch.setattr(B.time, "time", lambda: clock["now"])
+    cooldowns = []
+    for _ in range(6):
+        B._trip("blocked")
+        marker = B._read_marker()
+        cooldowns.append(marker["cooldown_seconds"])
+        clock["now"] = marker["until"] + 60      # probe just after it expires
+    assert cooldowns == [1800, 3600, 7200, 14400, 21600, 21600]
+    B.record_success()
+    B._trip("blocked again")
+    assert B._read_marker()["cooldown_seconds"] == 1800
