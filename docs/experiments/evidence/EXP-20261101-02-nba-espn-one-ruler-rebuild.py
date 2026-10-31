@@ -35,6 +35,7 @@ from build_nba_ml_dataset import extract_game_data
 from nba_ml_features import FEATURE_COLS, FEATURE_CONTRACT
 from nba_ml_pit import sha
 nba_api_breaker.install()
+X.API_SLEEP = 0   # nba.com pacing; ESPN spacing lives in nba_espn_http and repeats hit the cache
 
 manifest = json.loads((corpus / "strict_priced_manifest.json").read_text())
 v2 = list(csv.DictReader(open(corpus / "verified_dataset_v2/dataset.csv")))
