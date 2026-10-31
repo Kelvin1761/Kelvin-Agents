@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
+import zlib from "node:zlib";
 
 
 const EMPTY_DASHBOARD_DATA = {
@@ -25,6 +26,10 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
   };
   const context = vm.createContext({
     AbortSignal,
+    Blob,
+    DecompressionStream,
+    Response,
+    atob,
     Date,
     Headers,
     JSON,
@@ -59,6 +64,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
   });
   const source = `${scriptMatch[1]}
     globalThis.__dashboardTest = {
+      unpackDashboardData, tennisRows, tennisTrackingFeed,
       restoreTennisView, tennisStats, tennisPnl, tennisSelectRows, tennisRenderBets, tennisLoadMore, setTennisFilter, renderTennisWorkspace, loadSportsBetLedger,
       setTennisQueryForTest: (query) => { tennisSearch = query; },
       setTennisLimitForTest: (limit) => { tennisLimit = limit; },
@@ -2264,4 +2270,40 @@ test('Tennis financial inconsistencies remain visible with explicit ROI exclusio
  const html=api.tennisRenderBets([row]);
  assert.match(html,/歷史注碼／盈虧待核實/);assert.match(html,/未計入 ROI/);
  assert.equal(api.tennisStats([row]).done,0);
+});
+
+// 2026-10-31: tennis history and per-horse prose now travel gzip-packed
+// (generate_static.pack_for_transport) to stay under Cloudflare's 25 MiB
+// per-file limit. The page must restore them losslessly before rendering.
+const pack = (value) => zlib.gzipSync(Buffer.from(JSON.stringify(value), "utf8")).toString("base64");
+
+test("packed horse fields and tennis tracking are restored before render", async () => {
+  const readout = [{label: "段速", text: "末段 22.1 秒"}];
+  const data = {
+    meetings: [], consensus: {}, roi: {},
+    races: {"2026-10-31|Randwick": {
+      horse_fields_gzip: pack({"Kelvin|AU|0|1": {raw_text: "### No.2\n完整分析", data_readout: readout}}),
+      races_by_analyst: {"Kelvin|AU": [{race_number: 1, horses: [{horse_number: 1}, {horse_number: 2, score: 80}]}]},
+    }},
+    sports_feed: {sports: {tennis: {tracking: {status: "valid", records_count: 2,
+      records_gzip: pack([{id: "a", state: "won"}, {id: "b", state: "lost"}])}}}},
+  };
+  const api = loadTemplateFunctions(data);
+  await api.unpackDashboardData();          // the page's own DASHBOARD_DATA
+  assert.deepEqual(api.tennisRows().map(r => r.id), ["a", "b"]);
+  await api.unpackDashboardData(data);
+  const horse = data.races["2026-10-31|Randwick"].races_by_analyst["Kelvin|AU"][0].horses[1];
+  assert.equal(horse.raw_text, "### No.2\n完整分析");
+  assert.deepEqual(horse.data_readout, readout);
+  assert.equal(horse.score, 80);
+  assert.equal("horse_fields_gzip" in data.races["2026-10-31|Randwick"], false);
+});
+
+test("corrupt packed tennis tracking surfaces a warning instead of an empty ledger", async () => {
+  const data = {meetings: [], races: {}, consensus: {}, roi: {},
+    sports_feed: {sports: {tennis: {tracking: {status: "valid", records_gzip: "bm90LWd6aXA="}}}}};
+  const api = loadTemplateFunctions(data);
+  await api.unpackDashboardData();
+  assert.equal(api.tennisRows().length, 0);
+  assert.ok(api.tennisTrackingFeed().warnings.includes("tracking_records_unpack_failed"));
 });

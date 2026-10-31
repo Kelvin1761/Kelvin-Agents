@@ -909,6 +909,52 @@ if (typeof DASHBOARD_DATA === 'string') {
 }
 
 // ═══════════════════════════════════════════════
+// Packed transport fields
+// ═══════════════════════════════════════════════
+// generate_static.pack_for_transport ships bulky read-only content as one gzip
+// blob per owner, so a big Saturday card stays under Cloudflare's 25 MiB
+// per-file limit (2026-10-31: seven AU meetings were refused while tennis
+// history and per-horse prose travelled as plain JSON). Everything is restored
+// before the first render, so no renderer needs to know it was ever packed.
+async function gunzipJson(encoded) {
+  const bytes = Uint8Array.from(atob(encoded), ch => ch.charCodeAt(0));
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+  return JSON.parse(await new Response(stream).text());
+}
+
+async function unpackDashboardData(data = DASHBOARD_DATA) {
+  const jobs = [];
+  for (const [key, entry] of Object.entries(data.races || {})) {
+    if (typeof entry?.horse_fields_gzip !== 'string') continue;
+    const encoded = entry.horse_fields_gzip;
+    delete entry.horse_fields_gzip;
+    jobs.push(gunzipJson(encoded).then(bundle => {
+      // Key is "analyst|race_index|horse_index"; the analyst name may contain '|'.
+      for (const [ref, fields] of Object.entries(bundle)) {
+        const cut = ref.lastIndexOf('|'), mid = ref.lastIndexOf('|', cut - 1);
+        const race = entry.races_by_analyst?.[ref.slice(0, mid)]?.[Number(ref.slice(mid + 1, cut))];
+        const horse = race?.horses?.[Number(ref.slice(cut + 1))];
+        if (horse) Object.assign(horse, fields);
+      }
+    }).catch(err => console.warn('packed horse fields failed', key, err)));
+  }
+  const tracking = data.sports_feed?.sports?.tennis?.tracking;
+  if (tracking && typeof tracking.records_gzip === 'string') {
+    const encoded = tracking.records_gzip;
+    delete tracking.records_gzip;
+    jobs.push(gunzipJson(encoded)
+      .then(records => { tracking.records = Array.isArray(records) ? records : []; })
+      .catch(err => {
+        // Surface it through the existing "部分來源暫未能讀取" notice, not an empty ledger.
+        console.warn('packed tennis tracking failed', err);
+        tracking.records = [];
+        tracking.warnings = [...(tracking.warnings || []), 'tracking_records_unpack_failed'];
+      }));
+  }
+  await Promise.all(jobs);
+}
+
+// ═══════════════════════════════════════════════
 // State
 // ═══════════════════════════════════════════════
 let selectedMeeting = null;
@@ -6855,7 +6901,8 @@ async function checkForNewSnapshot() {
 }
 
 // Init
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+  await unpackDashboardData();
   primeSyncedBettingStateFromLocal();
   if (DASHBOARD_DATA.meetings.length) {
     selectedMeeting = DASHBOARD_DATA.meetings[0];

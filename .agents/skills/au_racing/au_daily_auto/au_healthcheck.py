@@ -38,18 +38,41 @@ MORNING_ODDS_READY_HOUR = int(os.environ.get("WC_AU_MORNING_ODDS_READY_HOUR", "1
 
 
 
+# Cloudflare Pages 拒收任何超過 25 MiB 嘅單一檔案。2026-10-31 snapshot 去到
+# 25.7–26.9 MiB，16 個 AU 場次只上咗 9 個；「逼近上限」警告由 10-27 起已經
+# 喺 run log 出現，但淨係寫 log，冇人睇到。所以 live snapshot 一過上限 60% 就
+# 喺健康通知出聲 —— 打包之後一個 17 場次嘅星期六係 11 MiB，到 15 MiB 即係有
+# 嘢喺度只增唔減，要喺爆之前搵出嚟。
+CLOUDFLARE_ASSET_LIMIT = 25 * 1024 * 1024
+SNAPSHOT_HEADROOM_WARN = float(os.environ.get("WC_SNAPSHOT_HEADROOM_WARN", "0.60"))
+_live_snapshot_bytes: int | None = None
+
+
 def read_live_dashboard() -> dict | None:
     """⚠️ 一定要繞開 CDN cache，否則會攞到舊副本而誤判成「冇發佈」。"""
+    global _live_snapshot_bytes
     url = f"{LIVE_URL}?cb={int(datetime.now().timestamp() * 1000)}"
     req = urllib.request.Request(url, headers={
         "User-Agent": "WongChoi-Healthcheck/1.0",
         "Cache-Control": "no-cache, max-age=0", "Pragma": "no-cache"})
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
-            d = json.loads(r.read())
+            body = r.read()
+        d = json.loads(body)
     except Exception:  # noqa: BLE001
         return None
+    _live_snapshot_bytes = len(body)
     return d if isinstance(d, dict) else None
+
+
+def snapshot_headroom_advisories(size: int | None = None) -> list[str]:
+    """Live snapshot 對住 Cloudflare 單檔上限嘅餘裕；唔夠就預警。"""
+    size = _live_snapshot_bytes if size is None else size
+    if not size or size < CLOUDFLARE_ASSET_LIMIT * SNAPSHOT_HEADROOM_WARN:
+        return []
+    return [f"dashboard snapshot {size / 1048576:.1f} MiB，已用 Cloudflare 單檔 25 MiB "
+            f"上限嘅 {size / CLOUDFLARE_ASSET_LIMIT:.0%} —— 再大啲就會有場次被拒發佈"
+            f"（2026-10-31 就係咁漏咗 7 個場次）。睇 deploy log 嘅「最大嘅部份」"]
 
 
 def live_meetings() -> set[str] | None:
@@ -468,6 +491,7 @@ def quality_issues(day: str) -> tuple[list[str], list[str]]:
     # 尋日嘅早更 —— 做 advisory 唔做 blocking，因為嗰日完咗補唔到，而 `degraded`
     # 要留返畀「今日仲救得到」嘅嘢。但一定要出聲：呢個係排程靜靜失效嘅唯一證據。
     advisories.extend(yesterday_odds_advisories(day))
+    advisories.extend(snapshot_headroom_advisories())
     return blocking, advisories
 
 
