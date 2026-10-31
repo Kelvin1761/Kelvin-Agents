@@ -47,6 +47,7 @@ from nba_season import classify_nba_season
 from nba_identity import player_name_key
 import nba_api_breaker
 import nba_espn_stats
+import nba_espn_league
 import nba_league_snapshot
 from nba_availability import (AvailabilityUnavailable, RosterChanged, apply_availability,
                               availability_current, aware_time, fetch_team_availability, refresh_availability)
@@ -385,6 +386,13 @@ MIN_PLAYER_ROWS = 100
 ALWAYS_FILL = 10 ** 9   # player-level feeds have no fixed 'complete' size
 
 
+# Tracking tables (Second Spectrum, via stats.nba.com only) with no free
+# stand-in. During an outage they may be empty: team_dvp has no reader
+# downstream, and key_defenders only feeds the defender term, which the v2
+# model treats as missing natively (EXP-20261031-01 measured the effect).
+TRACKING_ONLY_TABLES = ("key_defenders", "team_dvp")
+
+
 def missing_league_tables(data_sources, outage_failures):
     """League tables that came back empty during an nba.com outage.
 
@@ -392,7 +400,46 @@ def missing_league_tables(data_sources, outage_failures):
     fallback); empty during one means we would analyse blind."""
     if not outage_failures:
         return []
-    return sorted(label for label, info in data_sources.items() if not info.get("rows"))
+    return sorted(label for label, info in data_sources.items()
+                  if not info.get("rows") and label not in TRACKING_ONLY_TABLES)
+
+
+def espn_league_fallback(season, as_of, data_sources, team_stats, adv_stats, *, get=None):
+    """Fill team_stats / player_advanced from ESPN box scores during an outage.
+
+    Only runs when stats.nba.com failed on the network in this process and the
+    table is still empty after the nba.com call and the snapshot. Returns the
+    (possibly filled) ``team_stats`` and ``adv_stats``; ``data_sources`` records
+    ``source: espn_box`` so the substitute is never silent. Point-in-time: the
+    same ``history_date_to`` window the nba_api calls use.
+    """
+    need = [label for label in ("team_stats", "player_advanced")
+            if not data_sources.get(label, {}).get("rows")]
+    if not need or not nba_api_breaker.failure_count():
+        return team_stats, adv_stats
+    date_to = history_date_to(as_of)
+    try:
+        games = nba_espn_league.season_games(season, date_to, get=get)
+    except Exception as exc:  # ESPN down too: stay empty, the gate fails closed
+        print(f"  ⛔ ESPN 賽果都攞唔到：{exc}")
+        return team_stats, adv_stats
+    computed = {}
+    if "team_stats" in need:
+        team_stats = nba_espn_league.team_advanced(games)
+        for record in team_stats.values():
+            record["opponent_stats"] = {"status": "unavailable", "season": season,
+                                        "history_date_to": date_to, "model_input_enabled": False}
+        computed["team_stats"] = team_stats
+    if "player_advanced" in need:
+        adv_stats = nba_espn_league.player_advanced(games, nba_espn_league.nba_name_index())
+        computed["player_advanced"] = adv_stats
+    for label, table in computed.items():
+        data_sources[label].update({
+            "data_season": season, "rows": len(table), "fallback_used": True,
+            "source": nba_espn_league.SOURCE, "espn_games": len(games),
+        })
+        print(f"  🔁 {label}: stats.nba.com 唔通，用 ESPN {len(games)} 場賽果計（{len(table)} 行）")
+    return team_stats, adv_stats
 
 
 def fetch_with_season_fallback(fetch_fn, season, as_of, min_rows=1, label="", fill_below=None):
@@ -1647,11 +1694,15 @@ def nbacom_fallback_summary(package):
     rows = [p for team in (package.get("players") or {}).values() for p in team]
     espn_logs = sum(1 for p in rows if (p.get("gamelog") or {}).get("source") == "espn")
     stale_splits = sum(1 for p in rows if "snapshot_age_days" in (p.get("splits") or {}))
-    snapshots = sorted(label for label, info in (package["meta"].get("data_sources") or {}).items()
-                       if info.get("snapshot"))
-    return {"active": bool(espn_logs or stale_splits or snapshots),
+    sources = package["meta"].get("data_sources") or {}
+    snapshots = sorted(label for label, info in sources.items() if info.get("snapshot"))
+    espn_tables = sorted(label for label, info in sources.items()
+                         if info.get("source") == nba_espn_league.SOURCE)
+    missing = sorted(label for label, info in sources.items() if info.get("unavailable"))
+    return {"active": bool(espn_logs or stale_splits or snapshots or espn_tables or missing),
             "espn_gamelog_players": espn_logs, "players": len(rows),
-            "snapshot_splits_players": stale_splits, "snapshot_league_tables": snapshots}
+            "snapshot_splits_players": stale_splits, "snapshot_league_tables": snapshots,
+            "espn_league_tables": espn_tables, "unavailable_tables": missing}
 
 
 # ==========================================
@@ -1868,14 +1919,20 @@ def main():
     for label, fetcher in league_fetchers.items():
         if fetcher.used:   # stale copy stood in for an unreachable nba.com
             data_sources[label].update({"fallback_used": True, "snapshot": fetcher.used})
+    if games:
+        team_stats, adv_stats = espn_league_fallback(
+            statistics_season, stats_date, data_sources, team_stats, adv_stats)
+    for label in TRACKING_ONLY_TABLES:
+        if nba_api_breaker.failure_count() and not data_sources[label].get("rows"):
+            data_sources[label]["unavailable"] = "stats_nba_tracking_only"
     # Fail closed. With ESPN game logs the per-game L10 check below no longer
     # catches an nba.com outage, so a package built WITHOUT the league tables
     # (no team pace/defence, no USG, no defenders) would sail through to bets.
     # Without a recent snapshot that is not a degraded analysis, it is none.
     missing = missing_league_tables(data_sources, nba_api_breaker.failure_count()) if games else []
     if missing:
-        print(f"❌ league_tables_unavailable: {missing} — stats.nba.com 唔通，而 "
-              f"{nba_league_snapshot.MAX_AGE_DAYS} 日內冇快照；唔會用空白聯盟數據出分析")
+        print(f"❌ league_tables_unavailable: {missing} — stats.nba.com 唔通，"
+              f"{nba_league_snapshot.MAX_AGE_DAYS} 日內冇快照，ESPN 亦計唔到；唔會用空白聯盟數據出分析")
         sys.exit(1)
 
     # Research-only opportunity evidence: one league capture shared by game runs.

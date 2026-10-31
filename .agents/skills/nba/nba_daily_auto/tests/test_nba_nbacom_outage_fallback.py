@@ -189,6 +189,13 @@ def test_fallback_summary_marks_a_fallback_slate():
                                    {"gamelog": {"source": "nba"}, "splits": {}}]}}
     assert X.nbacom_fallback_summary(package) == {
         "active": True, "espn_gamelog_players": 1, "players": 2,
-        "snapshot_splits_players": 1, "snapshot_league_tables": ["team_stats"]}
+        "snapshot_splits_players": 1, "snapshot_league_tables": ["team_stats"],
+        "espn_league_tables": [], "unavailable_tables": []}
+    espn = {"meta": {"data_sources": {"team_stats": {"rows": 30, "source": "espn_box"},
+                                      "key_defenders": {"rows": 0, "unavailable": "stats_nba_tracking_only"}}},
+            "players": {"CLE": [{"gamelog": {"source": "espn"}}]}}
+    summary = X.nbacom_fallback_summary(espn)
+    assert summary["espn_league_tables"] == ["team_stats"]
+    assert summary["unavailable_tables"] == ["key_defenders"] and summary["active"] is True
     normal = {"meta": {"data_sources": {}}, "players": {"CLE": [{"gamelog": {"source": "nba"}}]}}
     assert X.nbacom_fallback_summary(normal)["active"] is False

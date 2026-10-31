@@ -49,6 +49,7 @@ import nba_combo_roi  # noqa: E402
 import nba_steady_policy as steady_policy  # noqa: E402
 import nba_reliability  # noqa: E402
 import nba_no_prediction as no_prediction  # noqa: E402
+import nba_api_breaker  # noqa: E402
 
 HOOK_DIR = (
     PROJECT_ROOT
@@ -1794,6 +1795,54 @@ def health_payload(target_date: str) -> tuple[dict[str, Any], int]:
     return payload, 0 if snapshot else 1
 
 
+STATS_NBA_STATUS_LOG = STATE_DIR / "stats_nba_status.jsonl"
+
+
+def track_stats_nba_source(target_date: str, log: "RunLog", *, now: datetime | None = None) -> dict[str, Any]:
+    """Daily record of whether stats.nba.com answers, and a message when it flips.
+
+    While it is blocked the extractor runs on ESPN (game logs, rosters, and the
+    team/player advanced tables computed from box scores); it switches back by
+    itself on the first successful nba.com call. This line is how Kelvin knows
+    which source the slate used, day by day, and a weekly count says how long.
+    """
+    status = nba_api_breaker.source_status()
+    now = now or now_sydney()
+    rows = []
+    try:
+        rows = [json.loads(line) for line in STATS_NBA_STATUS_LOG.read_text(encoding="utf-8").splitlines() if line.strip()]
+    except (OSError, ValueError):
+        rows = []
+    previous = rows[-1]["state"] if rows else None
+    if not rows or rows[-1].get("date") != target_date:
+        try:
+            STATS_NBA_STATUS_LOG.parent.mkdir(parents=True, exist_ok=True)
+            with STATS_NBA_STATUS_LOG.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps({"date": target_date, **status}, ensure_ascii=False) + "\n")
+            rows.append({"date": target_date, **status})
+        except OSError:
+            pass
+    week = [row for row in rows if row.get("date", "") > (now.date() - timedelta(days=7)).isoformat()]
+    status["blocked_days_7d"] = sum(row.get("state") == "blocked" for row in week)
+    if previous is not None and previous != status["state"]:
+        message = (
+            f"✅ stats.nba.com 已恢復｜{target_date}\nNBA 已自動切返 nba.com 數據。"
+            if status["state"] == "ok" else
+            f"⚠️ stats.nba.com 封鎖中｜{target_date}\n由 {status.get('blocked_since')} 起；"
+            "NBA 暫時用 ESPN 數據（主力防守球員／對位防守冇得用）。"
+        )
+        sent = notify_once(f"stats_nba:{status['state']}:{target_date}", message)
+        log.step("telegram_stats_nba", str(sent.get("status") or "unknown"))
+    if now.weekday() == 0 and week:
+        sent = notify_once(
+            f"stats_nba:weekly:{target_date}",
+            f"📡 stats.nba.com 每週狀態｜過去 7 日封鎖 {status['blocked_days_7d']}/{len(week)} 日；"
+            f"而家：{'封鎖中（用 ESPN）' if status['state'] == 'blocked' else '正常（用 nba.com）'}",
+        )
+        log.step("telegram_stats_nba_weekly", str(sent.get("status") or "unknown"))
+    return status
+
+
 def mark_no_prediction(
     target_date: str,
     *,
@@ -1949,6 +1998,7 @@ def main() -> int:
                 status = run_startup(log)
             else:
                 health, code = health_payload(target_date)
+                health["stats_nba"] = track_stats_nba_source(target_date, log)
                 health_detail = {key: value for key, value in health.items() if key != "status"}
                 log.step("health", health["status"], **health_detail)
                 if code != 0:

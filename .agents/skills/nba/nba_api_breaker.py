@@ -95,7 +95,8 @@ def _trip(reason: str) -> None:
         level = 0
     cooldown = min(COOLDOWN_SECONDS * (2 ** level), MAX_COOLDOWN_SECONDS)
     payload = {"until": now + cooldown, "tripped_at": now, "level": level,
-               "cooldown_seconds": cooldown, "reason": reason[:300]}
+               "cooldown_seconds": cooldown, "reason": reason[:300],
+               "blocked_since": previous.get("blocked_since") or previous.get("tripped_at") or now}
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(".tmp")
@@ -127,10 +128,43 @@ def record_failure(reason: str) -> None:
         _trip(reason)
 
 
+def last_ok_path() -> Path:
+    return marker_path().with_name("stats_nba_last_ok.json")
+
+
 def record_success() -> None:
     # An expired marker is kept as the escalation history; a success ends it.
     if _state["consecutive"] or marker_path().exists():
         _clear()
+    if not _state.get("noted_ok"):      # once per process is enough
+        _state["noted_ok"] = True
+        try:
+            last_ok_path().write_text(json.dumps({"at": time.time()}), encoding="utf-8")
+        except OSError:
+            pass
+
+
+def source_status(now: float | None = None) -> dict:
+    """Is stats.nba.com answering us? For the daily health line.
+
+    A marker that exists -- even expired -- means no request has succeeded
+    since the block began, because a success deletes it.
+    """
+    now = now if now is not None else time.time()
+    marker = _read_marker()
+    try:
+        last_ok = float(json.loads(last_ok_path().read_text(encoding="utf-8"))["at"])
+    except (OSError, ValueError, KeyError, TypeError):
+        last_ok = None
+    status = {"state": "blocked" if marker else "ok",
+              "last_ok": time.strftime("%Y-%m-%d %H:%M", time.localtime(last_ok)) if last_ok else None}
+    if marker:
+        since = float(marker.get("blocked_since") or marker.get("tripped_at") or now)
+        status.update({"blocked_since": time.strftime("%Y-%m-%d %H:%M", time.localtime(since)),
+                       "blocked_hours": round((now - since) / 3600, 1),
+                       "level": int(marker.get("level") or 0),
+                       "next_probe": time.strftime("%Y-%m-%d %H:%M", time.localtime(float(marker.get("until") or now)))})
+    return status
 
 
 def _is_network_failure(exc: BaseException) -> bool:
