@@ -529,15 +529,53 @@ raise SystemExit(subprocess.call(["/bin/cp", *sys.argv[1:]]))
 
 
 
+@pytest.mark.parametrize("command", [
+    "python3 hkjc_daily_schedule.py --mode prerace",
+    "/usr/bin/python3 -X dev ./nba_daily_schedule.py --mode postgame",
+    "/Framework/Python -W ignore -u /repo/tennis_preclose_refresh.py",
+    "python3 -m tennis_daily_schedule --mode daily",
+    "python3 ./central_daily_maintenance.py",
+    "python3 -X faulthandler ./central_research_review.py",
+    "python3 ./au_daily_schedule.py",
+    "python3 ./au_healthcheck.py",
+    "/bin/zsh ./run_central_research_review.sh",
+    "/bin/bash -e ./run_hkjc_daily_schedule.sh",
+])
+def test_active_run_guard_covers_scheduled_entrypoints(command):
+    import re
+    script = INSTALLER.read_text()
+    pattern = re.search(r"if pgrep -f '([^']+)'", script).group(1)
+    pattern = pattern.replace('[[:space:]]', r'\s').replace('[^[:space:]]', r'\S')
+    assert re.search(pattern, command), command
+
+
 def test_active_run_guard_does_not_confuse_release_scope_paths_with_running_jobs():
     import re
-    script=INSTALLER.read_text()
-    pattern=re.search(r"if pgrep -f '([^']+)'",script).group(1)
-    python_pattern=pattern.replace('[[:space:]]',r'\s').replace('[^[:space:]]',r'\S')
-    assert re.search(python_pattern,'/usr/bin/python3 /repo/.agents/skills/nba/nba_daily_auto/nba_daily_schedule.py --mode postgame')
-    assert re.search(python_pattern,'/Framework/Python -u /repo/tennis_daily_schedule.py --mode daily')
-    assert not re.search(python_pattern,'/usr/bin/python3 /repo/scoped_release.py --path .agents/skills/nba/nba_daily_auto/nba_daily_schedule.py')
-    assert not re.search(python_pattern,'python3 -m pytest tests/test_nba_daily_schedule.py')
+    pattern = re.search(r"if pgrep -f '([^']+)'", INSTALLER.read_text()).group(1)
+    pattern = pattern.replace('[[:space:]]', r'\s').replace('[^[:space:]]', r'\S')
+    for command in (
+        '/usr/bin/python3 /repo/scoped_release.py --path .agents/skills/nba/nba_daily_auto/nba_daily_schedule.py',
+        'python3 -m pytest tests/test_nba_daily_schedule.py',
+        'python3 unrelated.py /repo/central_research_review.py',
+        '/bin/zsh /repo/保存.sh --path /repo/run_hkjc_daily_schedule.sh',
+    ):
+        assert not re.search(pattern, command), command
+
+
+@pytest.mark.parametrize("probe_status", [0, 1, 2, 127])
+def test_native_active_preflight_fails_closed_on_probe_error(tmp_path, probe_status):
+    script = INSTALLER.read_text()
+    start = script.index('print -r -- "runtime cutover stage: active-run preflight"')
+    end = script.index('# AU must already', start)
+    probe = tmp_path / 'pgrep'
+    probe.write_text('#!/bin/sh\nexit ' + str(probe_status) + '\n')
+    probe.chmod(0o755)
+    result = subprocess.run(['/bin/zsh', '-c', 'set -eu\n' + script[start:end]],
+                            env={**os.environ, 'PATH': str(tmp_path) + ':/usr/bin:/bin'},
+                            text=True, capture_output=True)
+    assert (result.returncode == 0) == (probe_status == 1), result.stderr
+    if probe_status not in (0, 1):
+        assert 'process discovery failed' in result.stderr
 
 
 @pytest.mark.parametrize("defect", ["missing-marker", "symlink-marker", "wrong-sha", "missing-sha"])
@@ -564,3 +602,43 @@ def test_bound_native_attempt_rejects_invalid_marker_or_sha_before_preflights(tm
     assert not (home / "Library/LaunchAgents").exists()
     assert protected.read_bytes() == b"unrelated evidence"
     assert not (snapshot / ".write-ownership").exists()
+
+
+@pytest.mark.parametrize("command,expected", [
+    ("python3 -X dev ./nba_daily_schedule.py", True),
+    ("python3 -Xdev -W ignore ./tennis_preclose_refresh.py", True),
+    ("python3 -u -m package.central_research_review", True),
+    ("/bin/zsh -f ./run_central_daily_maintenance.sh", True),
+    ("python3 -- ./au_healthcheck.py", True),
+    ("python3 scoped_release.py --path ./nba_daily_schedule.py", False),
+    ("python3 -m pytest tests/test_tennis_preclose_refresh.py", False),
+    ("/bin/zsh 保存.sh --path ./run_nba_daily_schedule.sh", False),
+])
+def test_native_guard_pattern_uses_real_extended_regex(command, expected):
+    import re
+    pattern = re.search(r"if pgrep -f '([^']+)'", INSTALLER.read_text()).group(1)
+    result = subprocess.run(['/usr/bin/grep', '-E', pattern], input=command + '\n',
+                            text=True, capture_output=True)
+    assert result.returncode in (0, 1), result.stderr
+    assert (result.returncode == 0) == expected
+
+
+def test_actual_native_preflight_detects_owned_relative_x_process(tmp_path):
+    # This is a harmless owned sleeper, never a real scheduler or launchd job.
+    import time
+    sleeper = tmp_path / 'central_research_review.py'
+    sleeper.write_text('import time\ntime.sleep(60)\n')
+    process = subprocess.Popen([sys.executable, '-X', 'dev', './' + sleeper.name], cwd=tmp_path)
+    try:
+        time.sleep(0.1)
+        assert process.poll() is None
+        script = INSTALLER.read_text()
+        start = script.index('print -r -- "runtime cutover stage: active-run preflight"')
+        end = script.index('# AU must already', start)
+        result = subprocess.run(['/bin/zsh', '-c', 'set -eu\n' + script[start:end]],
+                                text=True, capture_output=True)
+        assert result.returncode != 0
+        assert 'automation run is active; cutover deferred' in result.stderr
+    finally:
+        process.terminate()
+        process.wait(timeout=10)

@@ -391,3 +391,40 @@ This six-minute isolated fixture does not establish production activation or
 rollback deadline compliance; timing/timeout recovery remains to be assessed
 without weakening existing deadlines. Final quick wc-run-mw6wdzbt passed, all
 modified shell syntax checks passed and git diff --check passed. No full gate.
+
+
+## Native active-run preflight gaps — 2026-10-31 (unfinished source)
+
+The actual installer preflight now recognizes all nine scheduled Python CLI
+entrypoints and seven scheduled shell launchers, including relative script
+operands, Python -X/-W options and module invocation. Matching is anchored at
+the executable and script/module operand so release --path arguments and pytest
+filenames do not become running jobs. A process-discovery error now blocks:
+only pgrep status1 proves the probe found no match; statuses2/127 no longer
+fall through to cutover. The AU long-lived Telegram poller remains excluded;
+finite AU jobs are covered. No existing native deadline or lease was weakened.
+
+Before implementation,12 REDs reproduced10 missed commands and2 fail-open
+probe errors (3 other tests passed, wc-run-a1x_5sa_). Final24 targeted cases pass
+in3.74s (wc-run-jg_0qs5u), including real macOS extended-regex execution and the
+actual native preflight detecting an owned harmless relative Python -X sleeper.
+The sleeper is a temporary test process; no real scheduler or launchd job runs.
+
+This closes the enumerated command forms, NOT the full old/nonparticipant
+exclusion requirement. pgrep observes flattened command text, so arbitrary
+quoted paths, dynamic shell/-c invocation and observation-to-mutation races
+remain unproven. The next implementation needs exact kernel argv and process
+identity/probe failure handling, integrated into native install/recovery rather
+than more parallel helper-only evidence. Local SDK sysctl.h confirms CTL_KERN1,
+KERN_ARGMAX8 and KERN_PROCARGS2=49; no kernel argv code is implemented yet.
+Preserve fail-closed discovery and negative release-scope checks during that
+replacement. Timeout/cancellation recovery and production deadline compliance
+also remain open; do not lengthen deadlines to make the six-minute fixture pass.
+No full source/immutable gate, release, merge, activation or installation
+acceptance is claimed by this WIP. All earlier provenance/foreign-cadence holds
+and Tasks6–10/latches remain unchanged.
+
+Final affected installer regressions40passed12deselected in48.29s
+(wc-run-keq08vga); final quick wc-run-xl4ega70 passed, native shell syntax
+and diff checks passed. Original source goldens remain unchanged. Full source
+and immutable approval gates remain unrun for this unfinished workflow.

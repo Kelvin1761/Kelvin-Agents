@@ -347,9 +347,15 @@ PY
 # Refuse to boot out a live domain run. The Telegram poller is intentionally
 # excluded because it is the caller and AU is not reinstalled.
 print -r -- "runtime cutover stage: active-run preflight"
-if pgrep -f '(^|/)([Pp]ython[0-9.]*)([[:space:]]+-[A-Za-z]+)*[[:space:]]+[^[:space:]]*/(hkjc_daily_schedule.py|nba_daily_schedule.py|tennis_daily_schedule.py|tennis_card_recovery.py)([[:space:]]|$)' >/dev/null 2>&1; then
-  print -u2 -- "a HKJC/NBA/Tennis automation run is active; cutover deferred"
+if pgrep -f '^([^[:space:]]*/)?(([Pp]ython[0-9.]*|pypy[0-9.]*)([[:space:]]+(-[XW][[:space:]]+[^[:space:]]+|-[XW][^[:space:]]+|--check-hash-based-pycs[[:space:]]+[^[:space:]]+|-[a-zA-Z]+))*[[:space:]]+(--[[:space:]]+)?(([^[:space:]]*/)?(au_daily_schedule|au_healthcheck|hkjc_daily_schedule|nba_daily_schedule|tennis_daily_schedule|tennis_card_recovery|tennis_preclose_refresh|central_daily_maintenance|central_research_review)\.py|-m[[:space:]]+([a-zA-Z_][a-zA-Z_0-9]*\.)*(au_daily_schedule|au_healthcheck|hkjc_daily_schedule|nba_daily_schedule|tennis_daily_schedule|tennis_card_recovery|tennis_preclose_refresh|central_daily_maintenance|central_research_review))|((ba|z|k|da)?sh)([[:space:]]+-[a-zA-Z]+)*[[:space:]]+(--[[:space:]]+)?([^[:space:]]*/)?(run_au_daily_schedule|run_au_auxiliary|run_hkjc_daily_schedule|run_nba_daily_schedule|run_tennis_daily_schedule|run_central_daily_maintenance|run_central_research_review)\.sh)([[:space:]]|$)' >/dev/null 2>&1; then
+  print -u2 -- "an AU/HKJC/NBA/Tennis/Central automation run is active; cutover deferred"
   exit 1
+else
+  discovery_status=$?
+  if [ "$discovery_status" -ne 1 ]; then
+    print -u2 -- "runtime process discovery failed; cutover blocked (status $discovery_status)"
+    exit 1
+  fi
 fi
 
 # AU must already be on this checkout. This proves we can leave its bot loaded
