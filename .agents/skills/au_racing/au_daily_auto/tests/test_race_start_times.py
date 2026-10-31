@@ -39,6 +39,7 @@ def allracing(*meetings, greyhounds=()):
 class Log:
     def __init__(self):
         self.warnings = []
+        self.data = {}
 
     def warn(self, message):
         self.warnings.append(message)
@@ -97,6 +98,21 @@ class RaceStartTimesTests(unittest.TestCase):
             self.assertFalse(S.record_race_start_times(log, Path(tmp), "Flemington", starts))
             self.assertFalse(S.record_race_start_times(log, Path(tmp) / "gone", "Randwick", starts))
         self.assertEqual(len(log.warnings), 1)          # the unwritable folder is reported
+
+    def test_new_or_retimed_timetable_marks_the_meeting_for_republish(self):
+        # 2026-11-01: meetings with no analysis change were never re-merged, so
+        # their times never reached the board.
+        starts = S.au_race_start_times(self.payload)
+        with tempfile.TemporaryDirectory() as tmp:
+            log = Log()
+            S.record_race_start_times(log, Path(tmp), "Randwick", starts)
+            self.assertEqual(log.data["timetables_changed"], [tmp])
+            again = Log()
+            S.record_race_start_times(again, Path(tmp), "Randwick", starts)
+            self.assertNotIn("timetables_changed", again.data)      # unchanged: no republish
+            starts["Randwick"]["races"]["1"] += 120
+            S.record_race_start_times(again, Path(tmp), "Randwick", starts)
+            self.assertEqual(again.data["timetables_changed"], [tmp])
 
 
 if __name__ == "__main__":
