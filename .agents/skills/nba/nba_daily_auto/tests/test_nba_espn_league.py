@@ -127,3 +127,22 @@ def test_source_status_reports_blocked_until_a_success(tmp_path, monkeypatch):
     assert status["state"] == "blocked" and status["blocked_since"]
     B.record_success()
     assert B.source_status()["state"] == "ok" and B.source_status()["last_ok"]
+
+
+def test_splits_from_gamelog_match_nba_groups_with_preseason_spacing():
+    # EXP-20261031-01: 518/549 players identical to nba.com's splits; nba.com
+    # counts rest from any previous game, preseason included.
+    import pandas as pd
+    cols = ["GAME_DATE", "MATCHUP", "PTS", "REB", "AST", "MIN"]
+    rs = pd.DataFrame([["OCT 21, 2026", "CHA vs. WAS", 10, 4, 2, 30],
+                       ["OCT 23, 2026", "CHA @ MIA", 20, 6, 4, 34],
+                       ["OCT 24, 2026", "CHA vs. ATL", 30, 8, 6, 36]], columns=cols)
+    pre = pd.DataFrame([["OCT 17, 2026", "CHA vs. NYK", 5, 1, 1, 20]], columns=cols)
+    got = X.splits_from_gamelog(rs, pre)
+    assert got["Home_PPG"] == 20.0 and got["Road_PPG"] == 20.0 and got["Home_MPG"] == 33.0
+    assert got["rest_splits"] == {"3 Days Rest": {"PPG": 10.0, "RPG": 4.0, "GP": 1},
+                                  "1 Days Rest": {"PPG": 20.0, "RPG": 6.0, "GP": 1},
+                                  "0 Days Rest": {"PPG": 30.0, "RPG": 8.0, "GP": 1}}
+    without_pre = X.splits_from_gamelog(rs)
+    assert "3 Days Rest" not in without_pre["rest_splits"], "an opener with no earlier game has no rest group"
+    assert X.splits_from_gamelog(rs.iloc[0:0]) is None

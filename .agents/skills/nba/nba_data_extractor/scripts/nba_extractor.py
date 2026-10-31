@@ -38,7 +38,7 @@ from pathlib import Path
 NBA_SKILL_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA_SKILL_DIR))
 from nba_schedule import canonical_team_abbr, canonical_game_tag, event_sydney_date
-from nba_data_contract import NBA_STATISTICS_CONTRACT
+from nba_data_contract import NBA_STATISTICS_CONTRACT, TRACKING_UNAVAILABLE
 import nba_opportunities
 import nba_team_context
 import nba_official_injuries
@@ -949,6 +949,52 @@ def fetch_all_player_advanced_stats(season=None, as_of=None):
 # ==========================================
 # 模塊 4：nba_api — Home/Away & Rest Day Splits
 # ==========================================
+def splits_from_gamelog(regular, preseason=None):
+    """PlayerDashboardByGeneralSplits' Home/Road and rest-day groups, from game logs.
+
+    Used while stats.nba.com is blocked (game logs then come from ESPN).
+    nba.com counts rest from the previous game of ANY type -- a season opener
+    after a preseason game four days earlier is '4 Days Rest' -- so preseason
+    dates are read for spacing only, never for the averages.
+    """
+    import pandas as pd
+    if regular is None or regular.empty:
+        return None
+    rs = regular.copy()
+    rs["_d"] = pd.to_datetime(rs["GAME_DATE"], format="%b %d, %Y", errors="coerce")
+    rs = rs.dropna(subset=["_d"]).sort_values("_d")
+    if rs.empty:
+        return None
+    result = {}
+    home = rs["MATCHUP"].astype(str).str.contains(" vs. ", regex=False)
+    for group, rows in (("Home", rs[home]), ("Road", rs[~home])):
+        if rows.empty:
+            continue
+        gp = len(rows)
+        for stat, key in (("PTS", "PPG"), ("REB", "RPG"), ("AST", "APG"), ("MIN", "MPG")):
+            result[f"{group}_{key}"] = round(float(pd.to_numeric(rows[stat], errors="coerce").fillna(0).sum()) / gp, 1)
+    played = list(rs["_d"])
+    if preseason is not None and not preseason.empty:
+        played += list(pd.to_datetime(preseason["GAME_DATE"], format="%b %d, %Y", errors="coerce").dropna())
+    played = sorted(set(played))
+    groups = {}
+    for _, row in rs.iterrows():
+        before = [d for d in played if d < row["_d"]]
+        if not before:
+            continue
+        rest = (row["_d"] - before[-1]).days - 1
+        label = "6+ Days Rest" if rest >= 6 else f"{rest} Days Rest"
+        groups.setdefault(label, []).append(row)
+    rest_data = {}
+    for label, rows in groups.items():
+        gp = len(rows)
+        rest_data[label] = {"PPG": round(sum(float(r["PTS"]) for r in rows) / gp, 1),
+                            "RPG": round(sum(float(r["REB"]) for r in rows) / gp, 1), "GP": gp}
+    if rest_data:
+        result["rest_splits"] = rest_data
+    return result or None
+
+
 def fetch_player_splits(player_id, player_name, season=None, as_of=None):
     """提取球員 Home/Away 及 Rest Day Splits"""
     if not NBA_API_AVAILABLE:
@@ -997,6 +1043,19 @@ def fetch_player_splits(player_id, player_name, season=None, as_of=None):
             if cached:
                 # Recorded so a stale split is never mistaken for today's.
                 return {**cached, "snapshot_age_days": age}
+            try:   # no snapshot: same groups from the (ESPN) game logs
+                season_key = season or nba_season_for_date(as_of)
+                date_to = history_date_to(as_of)
+                regular, source = player_log_frame(player_id, season_key, date_to, "Regular Season")
+                try:
+                    preseason, _ = player_log_frame(player_id, season_key, date_to, "Pre Season")
+                except Exception:
+                    preseason = None
+                derived = splits_from_gamelog(regular, preseason)
+                if derived:
+                    return {**derived, "source": source}
+            except Exception as derive_exc:
+                print(f"  ⚠️ {player_name} splits 由賽績計都失敗: {derive_exc}")
         return None
 
 
@@ -1478,7 +1537,10 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
                                 "observed_players": len(defender_data),
                                 "qualified_players": sum(row.get('D_FGA_unit') == 'total_attempts'
                                                          and row.get('D_FGA', 0) >= 20
-                                                         for row in defender_data.values())},
+                                                         for row in defender_data.values()),
+                                **({"unavailable": TRACKING_UNAVAILABLE}
+                                   if not defender_data and ((data_sources or {}).get("key_defenders") or {}).get("unavailable")
+                                   else {})},
             "fallback_used": any(v.get("fallback_used") for v in (data_sources or {}).values()),
             "away": {"name": away_name, "abbr": away_abbr},
             "home": {"name": home_name, "abbr": home_abbr},
@@ -1924,7 +1986,7 @@ def main():
             statistics_season, stats_date, data_sources, team_stats, adv_stats)
     for label in TRACKING_ONLY_TABLES:
         if nba_api_breaker.failure_count() and not data_sources[label].get("rows"):
-            data_sources[label]["unavailable"] = "stats_nba_tracking_only"
+            data_sources[label]["unavailable"] = TRACKING_UNAVAILABLE
     # Fail closed. With ESPN game logs the per-game L10 check below no longer
     # catches an nba.com outage, so a package built WITHOUT the league tables
     # (no team pace/defence, no USG, no defenders) would sail through to bets.

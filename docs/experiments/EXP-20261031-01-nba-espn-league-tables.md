@@ -46,6 +46,13 @@ stats.nba.com 由 2026-10-29 21:00 起拒絕本機嘅程式請求（換 IP 都�
 ## 結論
 ESPN 計嘅兩張表同 nba_api 好接近，完整後備只令 2.5% 腿嘅機率有細微變化；追蹤數據缺咗對輸出零影響。**決定：KEEP（數據來源後備）**——nba.com 唔通先用，每一輪都先試 nba.com，一通即自動切返；健康檢查每日記錄、狀態轉變同每週一 Telegram。
 
+## 補遺（2026-10-31 晚）：上線後 11-01 七場仍然全部被攔
+- **原因**：`nba_data_contract.statistics_current` 要求 `defender_source.observed_players > 0`。上面已證實冇追蹤數據對輸出零影響，但閘門冇跟住改，所以 19:00／19:13／19:23 三輪 11-01 七場全部「統計來源失敗或單位未驗證」。
+- **修正**：只接受**明確標記** `unavailable: stats_nba_tracking_only`（只會喺 breaker 記錄到 nba.com 失敗、而表係空嘅時候寫）嘅空防守表；冇標記嘅空表照舊攔（測試釘死）。
+- **順帶**：球員 Home/Road／休息日 splits 冇快照時改由（ESPN）賽績計，休息日計法跟 nba.com（季前賽只計間距、唔入平均）。前一個 session 對 nba.com splits 量到 549 人中 518 人一樣；今次冇重跑呢個比對。
+- **schema**：ESPN 計唔到逐個球員嘅 OFF/DEF_RATING、PACE（要在場回合），容許 `null`。
+- **驗證**：隔離 worktree 用排程同一份 11-01 賠率重跑 POR_UTA：extractor → 報告 → validator → SGM 全過，24/24 球員有 splits。
+
 ## 重跑
 ```bash
 # 證據腳本喺 docs/experiments/evidence/EXP-20261031-01-*；ESPN cache 用 WC_NBA_ESPN_BOX_DIR 指去暫存目錄
