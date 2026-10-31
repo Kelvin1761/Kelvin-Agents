@@ -52,3 +52,14 @@
 - QLD：Eagle Farm、Doomben 係都會；SEQ 省級會所係 Gold Coast、Sunshine Coast、Ipswich、Toowoomba。
 - **未核實**：WA 嘅省級名單（搵唔到 RWWA 逐個場地列出，用咗 Racing Australia Meeting Type）、
   TAS 嘅 Devonport、ACT 嘅 Canberra。
+
+## 2026-11-01 跟進
+
+- **時間上唔到 dashboard（AU）**：寫開跑時間落 folder 唔等於會發佈。分析冇改動嘅場次唔會被重新合併，
+  所以時間永遠上唔到去。而家早更會將 `timetables_changed`（時間係新嘅或者改咗）嘅場次加入合併名單。
+- **手機睇唔到新功能**：頁面係 service worker cache 優先，賽馬 tab 以前淨係出「更新」pill，
+  唔撳就一直用舊版。而家賽馬頁會好似 NBA 咁，每分鐘檢查一次，有新版就自動 reload，
+  reload 之後返去原本嘅場次／時間線／分析頁。條件係冇輸入緊賠率、冇未同步嘅投注、冇開住 dialog，
+  同一個版本只會 reload 一次。
+- **Race board 格仔**：開跑時間做主角，倒數係角落標籤，下一場用框突出，已開跑淡化；
+  10 場分 5+5（手機 2 或 3 格一行），唔會有孤兒格。

@@ -656,9 +656,29 @@ def au_race_start_times(payload: dict) -> dict[str, dict]:
 
 def record_race_start_times(runlog: RunLog, folder: Path | None,
                             venue: str, starts: dict[str, dict]) -> bool:
-    """Write one meeting's start times beside its analysis; never fails a run."""
-    return write_race_start_times(folder, venue, find_venue(starts, venue, key=_venue_key),
-                                  warn=runlog.warn)
+    """Write one meeting's start times beside its analysis; never fails a run.
+
+    A meeting whose timetable is new or changed is listed in
+    `timetables_changed`: the dashboard only shows times once that meeting is
+    merged again, and a meeting with no analysis change was never re-merged
+    (2026-11-01: three AU meetings published with no times at all).
+    """
+    path = Path(folder) / RACE_START_TIMES_FILE if folder is not None else None
+    try:
+        before = path.read_text(encoding="utf-8") if path is not None and path.exists() else None
+    except OSError:
+        before = None
+    ok = write_race_start_times(folder, venue, find_venue(starts, venue, key=_venue_key),
+                                warn=runlog.warn)
+    try:
+        changed = ok and path.read_text(encoding="utf-8") != before
+    except OSError:
+        changed = False
+    if changed:
+        listed = runlog.data.setdefault("timetables_changed", [])
+        if str(folder) not in listed:
+            listed.append(str(folder))
+    return ok
 
 
 def api_day_meetings(runlog: RunLog, day: str,
@@ -4032,6 +4052,12 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
             runlog.error("fill-today", f"{type(exc).__name__}: {exc}")
             temporary = True
 
+    # A new or re-timed timetable only reaches the board when its meeting is
+    # merged again, even if nothing in the analysis changed.
+    for raw in runlog.data.get("timetables_changed") or []:
+        folder = Path(raw)
+        if folder.is_dir() and folder.parent != ARCHIVE_ROOT and folder not in updated:
+            updated.append(folder)
     evidence_ok = step_prediction_evidence(runlog, updated)
     if not evidence_ok:
         temporary = True

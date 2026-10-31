@@ -4641,35 +4641,43 @@ a:hover {
 
 /* ─── Race board tiles (HKJC + AU) — renderRaceCard ─── */
 .rboard {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px;
+  display: grid; grid-template-columns: repeat(var(--rb-cols, 5), minmax(0, 1fr)); gap: 10px;
   margin: 0 0 var(--space-xl);
 }
 .rcard {
-  position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 2px; min-width: 0; padding: 10px 12px 11px;
   border: 1px solid var(--color-border); border-radius: var(--radius-m); background: var(--color-surface);
-  box-shadow: var(--shadow-sm); cursor: pointer;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  cursor: pointer; transition: border-color var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast);
 }
 .rcard:hover { border-color: var(--color-primary-light); box-shadow: var(--shadow-card-hover); }
 .rcard:focus-visible { outline: 3px solid var(--color-primary-100); outline-offset: 2px; }
-.rcard__top { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
-.rcard__num { color: var(--color-primary-700); font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em; }
-.rcard__time { color: var(--color-text); font-size: var(--text-sm); font-weight: 700; font-variant-numeric: tabular-nums; }
-.rcard__meta { overflow: hidden; color: var(--color-text-muted); font-size: var(--text-xs); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
-.rcard--past { background: var(--color-surface-alt); box-shadow: none; }
-.rcard--past .rcard__num, .rcard--past .rcard__time { color: var(--color-text-muted); }
-.rcard--off { opacity: 0.5; }
-.rcard--off .rcard__time { color: var(--rating-d); }
-.rcard__dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; }
+.rcard__top { display: flex; align-items: center; gap: 6px; min-height: 20px; }
+.rcard__num { color: var(--color-text-secondary); font-size: var(--text-xs); font-weight: 800; letter-spacing: 0.02em; }
+.rcard__dot { width: 6px; height: 6px; border-radius: 50%; }
 .rcard__dot--bet { background: var(--consensus-agree); }
 .rcard__dot--pending { background: #f59e0b; }
 .rcard__dot--skip { background: var(--color-text-muted); }
-.rcard__dot ~ .rcard__top .rcard__time { margin-right: 6px; }
+.rcard__tag {
+  margin-left: auto; padding: 1px 7px; border-radius: var(--radius-full); background: var(--color-primary-50);
+  color: var(--color-primary-700); font-size: 0.66rem; font-weight: 700; white-space: nowrap;
+}
+.rcard__tag--off { background: var(--rating-d-bg); color: var(--rating-d); }
+.rcard__time {
+  color: var(--color-text); font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums; line-height: 1.2;
+}
+.rcard__meta { overflow: hidden; color: var(--color-text-muted); font-size: var(--text-xs); text-overflow: ellipsis; white-space: nowrap; }
+.rcard--next { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-50); }
+.rcard--next .rcard__num { color: var(--color-primary-700); }
+.rcard--past, .rcard--off { opacity: 0.45; }
+.rcard--past:hover, .rcard--off:hover { opacity: 0.8; }
+@media (max-width: 900px) {
+  .rboard { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+}
 @media (max-width: 640px) {
-  .rboard { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-  .rcard { padding: 8px 9px; }
-  .rcard__num { font-size: 0.95rem; }
-  .rcard__time { font-size: var(--text-xs); }
+  .rboard { grid-template-columns: repeat(var(--rb-cols-sm, 3), minmax(0, 1fr)); gap: 8px; }
+  .rcard { padding: 8px 10px 9px; }
+  .rcard__time { font-size: 1.1rem; }
 }
 
 /* 已投注 step: two rows (status + 改賠率／退出, then 名次 1 2 3 X), one type size. */
@@ -4686,4 +4694,3 @@ a:hover {
   .bh-step--bet .br-group { max-width: none; }
   .bh-step--bet .br { height: 40px; min-height: 40px; }
 }
-.rcard__soon { color: var(--color-primary-700); font-weight: 700; }
