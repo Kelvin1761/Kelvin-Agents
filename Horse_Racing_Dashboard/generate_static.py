@@ -376,6 +376,133 @@ def _attach_track_geometry(meeting_data):
     return meeting_data
 
 
+# ── 場次分級（AU）同開跑時間（AU + HKJC，dashboard 顯示用）──────────────────
+# 星期六十幾個場次一齊出，首頁冇得分邊個係都會場、邊個幾點開跑（2026-10-31：
+# 16 張一模一樣嘅卡）。分級來自各州官方定義，見 backend/services/au_venue_tiers.json；
+# 開跑時間：AU 由排程喺抓 Sportsbet AllRacing 時寫落 Race_Start_Times.json
+# （shared_racing/scripts/sportsbet_race_times.py）；HKJC 直接讀馬會排位表嘅「時間:」。
+# 兩樣都喺讀完 cache 之後先貼（同 _attach_track_geometry 一樣）：時間會改，
+# 但改時間唔應該觸發重新 parse 分析。
+AU_VENUE_TIERS_PATH = Path(__file__).resolve().parent / "backend" / "services" / "au_venue_tiers.json"
+RACE_START_TIMES_FILE = "Race_Start_Times.json"
+_AU_VENUE_TIERS = None
+
+
+def _au_venue_key(venue):
+    """Engine's venue slug (with its alias table), so no second alias copy."""
+    lookup = _track_geometry_lookup()          # also puts the engine on sys.path
+    if lookup:
+        try:
+            from au_racing_engine.engine_core import _track_geometry_key
+            return _track_geometry_key(venue)
+        except Exception:  # noqa: BLE001
+            pass
+    return re.sub(r"[^a-z0-9]+", "-", str(venue or "").lower()).strip("-")
+
+
+def au_venue_profile(venue):
+    """{"state": "NSW", "tier": "metro" | "provincial" | "country"} for an AU venue."""
+    global _AU_VENUE_TIERS
+    if _AU_VENUE_TIERS is None:
+        try:
+            raw = json.loads(AU_VENUE_TIERS_PATH.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            print(f"   ⚠️ 讀唔到 AU 場地分級（{type(exc).__name__}: {exc}）—— 全部當鄉鎮")
+            raw = {}
+        tables = {"state": {}, "tier": {}}
+        for state, keys in (raw.get("states") or {}).items():
+            tables["state"].update(dict.fromkeys(keys, state))
+        for tier, field in (("provincial", "provincial"), ("metro", "metropolitan")):
+            for state, keys in (raw.get(field) or {}).items():
+                for key in keys:
+                    tables["tier"][key] = tier
+                    tables["state"].setdefault(key, state)
+        _AU_VENUE_TIERS = tables
+    key = _au_venue_key(venue)
+    return {"state": _AU_VENUE_TIERS["state"].get(key, ""),
+            "tier": _AU_VENUE_TIERS["tier"].get(key, "country")}
+
+
+_HKJC_RACECARD_RE = re.compile(r"Race (\d+) 排位表\.md$")
+
+
+def _read_hkjc_racecard_times(meeting):
+    """HKJC jump times straight from the club's racecard (`日期:` / `時間:` in
+    each `… Race N 排位表.md`, Hong Kong time). The HKJC pipeline already
+    extracts these, so the board needs no extra request and no Sportsbet."""
+    from zoneinfo import ZoneInfo
+    hong_kong = ZoneInfo("Asia/Hong_Kong")
+    starts = {}
+    for folder in (getattr(meeting, "folder_paths", None) or {}).values():
+        try:
+            cards = sorted(Path(folder).glob("*排位表.md"))
+        except OSError:
+            continue
+        for card in cards:
+            number = _HKJC_RACECARD_RE.search(card.name)
+            if not number or number.group(1) in starts:
+                continue
+            try:
+                head = card.read_text(encoding="utf-8")[:1500]
+            except OSError:
+                continue
+            day = re.search(r"^日期:\s*(\d{4}-\d{2}-\d{2})", head, re.M)
+            clock = re.search(r"^時間:\s*(\d{1,2}):(\d{2})", head, re.M)
+            if day and clock:
+                local = datetime.strptime(f"{day.group(1)} {clock.group(1)}:{clock.group(2)}",
+                                          "%Y-%m-%d %H:%M").replace(tzinfo=hong_kong)
+                starts[number.group(1)] = int(local.timestamp())
+        if starts:
+            break
+    return starts, set()
+
+
+def _read_race_start_times(meeting):
+    """→ ({"race number": epoch}, {abandoned race numbers}); empty when absent.
+    AU: Race_Start_Times.json (Sportsbet, written by the scheduler). HKJC: the
+    club's own racecard."""
+    if getattr(meeting, "region", None) == Region.HKJC:
+        return _read_hkjc_racecard_times(meeting)
+    for folder in (getattr(meeting, "folder_paths", None) or {}).values():
+        try:
+            body = json.loads((Path(folder) / RACE_START_TIMES_FILE).read_text(encoding="utf-8"))
+            starts = {str(k): int(v) for k, v in (body.get("races") or {}).items()}
+            return starts, {str(n) for n in body.get("abandoned") or []}
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue
+    return {}, set()
+
+
+def _attach_meeting_context(meeting, meeting_data, races_data):
+    """`start_time` (epoch) on each race, both regions; state / tier for AU."""
+    if str(meeting_data.get("region") or "").lower() in {"au", "australia"}:
+        meeting_data.update(au_venue_profile(meeting_data.get("venue")))
+    starts, abandoned = _read_race_start_times(meeting)
+    for races in (races_data.get("races_by_analyst") or {}).values():
+        for race in races:
+            number = str(race.get("race_number"))
+            race.pop("start_time", None)
+            race.pop("abandoned", None)
+            if number in starts:
+                race["start_time"] = starts[number]
+            elif number in abandoned:
+                race["abandoned"] = True
+    if starts:
+        meeting_data["first_start"] = min(starts.values())
+    else:
+        meeting_data.pop("first_start", None)
+
+
+def _ensure_au_venue_profiles(data):
+    """Tier depends only on the venue, so every build fills meetings that were
+    merged before tiers existed; start times need the folder and are not guessed."""
+    for meeting_data in data.get("meetings") or []:
+        if (str(meeting_data.get("region") or "").lower() in {"au", "australia"}
+                and "tier" not in meeting_data):
+            meeting_data.update(au_venue_profile(meeting_data.get("venue")))
+    return data
+
+
 def _collect_meeting(meeting):
     meeting_data = {
         "date": meeting.date,
@@ -466,6 +593,7 @@ def collect_incremental_au_data(base_snapshot_path, meeting_dir):
     data = load_snapshot(base_snapshot_path)
     meeting = _meeting_from_directory(meeting_dir)
     meeting_data, meeting_key, races_data, consensus = _collect_meeting(meeting)
+    _attach_meeting_context(meeting, meeting_data, races_data)
 
     data["meetings"] = [
         item
@@ -590,6 +718,7 @@ def collect_all_data(cache_path=DEFAULT_CACHE_PATH):
                 "consensus": consensus,
             }
         updated_entries[key] = entry
+        _attach_meeting_context(m, entry["meeting"], entry["races_data"])
         result["meetings"].append(_attach_track_geometry(entry["meeting"]))
         result["races"][entry["meeting_key"]] = entry["races_data"]
         result["consensus"].update(entry["consensus"])
@@ -1267,6 +1396,7 @@ def main():
     
     apply_au_display_policy(data)
     _ensure_region_side_roi(data)
+    _ensure_au_venue_profiles(data)
     meeting_count = len(data["meetings"])
     race_count = sum(
         len(races) 

@@ -1,0 +1,277 @@
+{
+  "purpose": "Dashboard display only: groups AU meetings as 都會 / 省級 / 鄉鎮 by racecourse. The scoring engine has its own per-meeting classification (au_track_geometry.json) and does not read this file.",
+  "compiled": "2026-10-31",
+  "rule": "Venues listed under metropolitan or provincial for their state take that tier; every other venue is country. Keys are au_racing_engine.engine_core._track_geometry_key slugs, so the engine's alias table (Rosehill Gardens, Randwick-Kensington, Illawarra Grange ...) applies without a second copy.",
+  "sources": {
+    "NSW": "Racing NSW: four Sydney metropolitan tracks (Australian Turf Club) and the five PRANSW provincial clubs - https://www.racingnsw.com.au/nsw-race-clubs/provincial-clubs/",
+    "VIC": "Racing Victoria apprentice-claim classification from 1 Aug 2023: all racetracks at Flemington, Caulfield, The Valley and Sandown are Metropolitan; Provincial is Bendigo, Cranbourne, Geelong, Mornington, Sale, Ballarat (turf), Pakenham (turf) and Warrnambool; everything else is Other - https://www.racingandsports.com.au/news/racing/news/2023-07-13/updated-claiming-system-for-vic-apprentices/619404",
+    "QLD": "Brisbane Racing Club (Eagle Farm, Doomben) meetings are Metropolitan in Racing Australia notices; Racing Queensland's SEQ provincial clubs are Gold Coast, Sunshine Coast, Ipswich and Toowoomba (RQ Thoroughbred Handicapping Procedure 2025: Provincial One = SEQ provincial meetings). Matches Racing Australia Acceptances 'Meeting Type'.",
+    "SA": "Racing SA Local Rules: Metropolitan = South Australian Jockey Club (Morphettville) and Oakbank; Provincial = Balaklava, Strathalbyn, Gawler, Murray Bridge; Port Lincoln and Mount Gambier reclassified to Country from 2026/27 - https://racingsa.com.au/files/20684_updated_local_rules_250823.pdf",
+    "WA": "Perth Racing is WA's only metropolitan club (Ascot, Belmont Park) - https://www.rwwa.com.au/clubs/perth-racing-ascot/ ; provincial venues from Racing Australia Acceptances 'Meeting Type' (no RWWA venue list found).",
+    "TAS": "Racing Australia IER study: two metropolitan clubs in Tasmania (Tasmanian Racing Club, Hobart; Tasmanian Turf Club, Launceston). Devonport is treated as provincial: Racing Australia Acceptances label some Devonport meetings Metropolitan, so it is not country, but it is not one of the two metropolitan clubs.",
+    "ACT": "Canberra: Racing Australia Acceptances 'Meeting Type' Provincial.",
+    "NT": "No metropolitan or provincial venue published; all NT venues are country."
+  },
+  "unverified": [
+    "WA provincial list",
+    "TAS Devonport",
+    "ACT Canberra"
+  ],
+  "metropolitan": {
+    "NSW": [
+      "randwick",
+      "kensington",
+      "rosehill-gardens",
+      "canterbury",
+      "warwick-farm"
+    ],
+    "VIC": [
+      "flemington",
+      "caulfield",
+      "caulfield-heath",
+      "moonee-valley",
+      "the-valley",
+      "sandown",
+      "sandown-lakeside"
+    ],
+    "QLD": [
+      "eagle-farm",
+      "doomben"
+    ],
+    "SA": [
+      "morphettville",
+      "morphettville-parks",
+      "oakbank"
+    ],
+    "WA": [
+      "ascot",
+      "belmont"
+    ],
+    "TAS": [
+      "hobart",
+      "launceston"
+    ]
+  },
+  "provincial": {
+    "NSW": [
+      "gosford",
+      "hawkesbury",
+      "kembla-grange",
+      "newcastle",
+      "wyong"
+    ],
+    "VIC": [
+      "bendigo",
+      "cranbourne",
+      "geelong",
+      "mornington",
+      "sale",
+      "ballarat",
+      "pakenham",
+      "warrnambool"
+    ],
+    "QLD": [
+      "gold-coast",
+      "gold-coast-poly",
+      "sunshine-coast",
+      "sunshine-coast-poly",
+      "ipswich",
+      "toowoomba"
+    ],
+    "SA": [
+      "balaklava",
+      "strathalbyn",
+      "gawler",
+      "murray-bridge"
+    ],
+    "WA": [
+      "pinjarra",
+      "pinjarra-scarpside",
+      "bunbury",
+      "northam",
+      "york",
+      "geraldton"
+    ],
+    "TAS": [
+      "devonport"
+    ],
+    "ACT": [
+      "canberra"
+    ]
+  },
+  "states": {
+    "NSW": [
+      "albury",
+      "armidale",
+      "ballina",
+      "bathurst",
+      "bowraville",
+      "canterbury",
+      "casino",
+      "coffs-harbour",
+      "coonabarabran",
+      "coonamble",
+      "cootamundra",
+      "corowa",
+      "dubbo",
+      "gosford",
+      "goulburn",
+      "grafton",
+      "griffith",
+      "gundagai",
+      "gunnedah",
+      "hawkesbury",
+      "kembla-grange",
+      "kempsey",
+      "kensington",
+      "leeton",
+      "lismore",
+      "moree",
+      "moruya",
+      "mudgee",
+      "murwillumbah",
+      "muswellbrook",
+      "narrandera",
+      "narromine",
+      "newcastle",
+      "nowra",
+      "orange",
+      "port-macquarie",
+      "queanbeyan",
+      "quirindi",
+      "randwick",
+      "rosehill-gardens",
+      "scone",
+      "tamworth",
+      "taree",
+      "tuncurry",
+      "wagga",
+      "warwick-farm",
+      "wellington",
+      "wyong"
+    ],
+    "VIC": [
+      "avoca",
+      "bairnsdale",
+      "ballarat",
+      "ballarat-synthetic",
+      "bendigo",
+      "casterton",
+      "caulfield",
+      "caulfield-heath",
+      "coleraine",
+      "cranbourne",
+      "donald",
+      "echuca",
+      "flemington",
+      "geelong",
+      "gunbower",
+      "hamilton",
+      "horsham",
+      "kilmore",
+      "kyneton",
+      "manangatang",
+      "mildura",
+      "moe",
+      "moonee-valley",
+      "mornington",
+      "mortlake",
+      "murtoa",
+      "pakenham",
+      "pakenham-synthetic",
+      "sale",
+      "sandown",
+      "sandown-lakeside",
+      "seymour",
+      "st-arnaud",
+      "swan-hill",
+      "tatura",
+      "the-valley",
+      "traralgon",
+      "wangaratta",
+      "warracknabeal",
+      "warrnambool",
+      "wodonga",
+      "wycheproof",
+      "yarra-valley"
+    ],
+    "QLD": [
+      "beaudesert",
+      "birdsville",
+      "bowen",
+      "cairns",
+      "cloncurry",
+      "dalby",
+      "doomben",
+      "eagle-farm",
+      "emerald",
+      "ewan",
+      "gatton",
+      "gold-coast",
+      "gold-coast-poly",
+      "gympie",
+      "innisfail",
+      "ipswich",
+      "kilcoy",
+      "longreach",
+      "mackay",
+      "mt-isa",
+      "rockhampton",
+      "roma",
+      "sunshine-coast",
+      "sunshine-coast-poly",
+      "thangool",
+      "toowoomba",
+      "townsville",
+      "warwick",
+      "yeppoon"
+    ],
+    "SA": [
+      "balaklava",
+      "bordertown",
+      "gawler",
+      "halidon",
+      "morphettville",
+      "morphettville-parks",
+      "mount-gambier",
+      "murray-bridge",
+      "oakbank",
+      "penola",
+      "port-augusta",
+      "port-lincoln",
+      "strathalbyn"
+    ],
+    "WA": [
+      "albany",
+      "ascot",
+      "belmont",
+      "broome",
+      "bunbury",
+      "carnarvon",
+      "collie",
+      "geraldton",
+      "kalgoorlie",
+      "laverton",
+      "leinster",
+      "narrogin",
+      "northam",
+      "pinjarra",
+      "pinjarra-scarpside",
+      "toodyay",
+      "york"
+    ],
+    "TAS": [
+      "devonport",
+      "hobart",
+      "launceston"
+    ],
+    "NT": [
+      "alice-springs",
+      "darwin",
+      "katherine"
+    ],
+    "ACT": [
+      "canberra"
+    ]
+  }
+}

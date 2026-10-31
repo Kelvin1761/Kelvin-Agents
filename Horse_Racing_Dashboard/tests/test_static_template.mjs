@@ -65,6 +65,9 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
   const source = `${scriptMatch[1]}
     globalThis.__dashboardTest = {
       unpackDashboardData, tennisRows, tennisTrackingFeed,
+      renderAuMeetingList, renderTimeline, auDefaultMeeting, renderRaceCard, renderDashboard: typeof renderDashboard === 'function' ? renderDashboard : null,
+      setNowForTest: (ms) => { dashboardNow = () => ms; },
+      setTimelineFilter, toggleTimelinePast, toggleAuPin,
       restoreTennisView, tennisStats, tennisPnl, tennisSelectRows, tennisRenderBets, tennisLoadMore, setTennisFilter, renderTennisWorkspace, loadSportsBetLedger,
       setTennisQueryForTest: (query) => { tennisSearch = query; },
       setTennisLimitForTest: (limit) => { tennisLimit = limit; },
@@ -344,7 +347,7 @@ test("cache-first navigation is paired with an eviction on manual reload", () =>
   assert.match(sw, /const CACHE_VERSION = "wongchoi-v\d+"/);
 });
 
-test("dashboard overview keeps an eleven-race meeting in the dense desktop layout", () => {
+test("dashboard overview renders every race of an eleven-race meeting as a race card", () => {
   const meeting = { date: "2026-07-15", venue: "HappyValley", region: "hkjc", analysts: ["Kelvin"] };
   const races = Array.from({ length: 11 }, (_, index) => ({
     race_number: index + 1,
@@ -379,9 +382,11 @@ test("dashboard overview keeps an eleven-race meeting in the dense desktop layou
   assert.doesNotMatch(html, />Kelvin</);
   assert.match(html, /race-overview-header/);
   assert.match(html, /全部 11 場 · 點擊查看詳細分析/);
-  assert.match(html, /race-board race-board--eleven/);
-  assert.equal((html.match(/race-tile__runner-count/g) || []).length, 11);
-  assert.equal((html.match(/race-tile__cta/g) || []).length, 11);
+  // 2026-10-31: centred tiles became left-aligned cards that wrap (the class
+  // line was cut to "1500m T…" when eleven tiles shared one row).
+  assert.match(html, /class="rboard"/);
+  assert.equal((html.match(/class="rcard[ "]/g) || []).length, 11);
+  assert.match(html, /第11班/);
 });
 
 test("battlefield overview removes auto-position summary and trims ranking columns", () => {
@@ -1031,7 +1036,7 @@ test("HKJC and AU racing tabs each list only their own meetings", () => {
   assert.match(html, /Randwick/);
   assert.doesNotMatch(html, /ShaTin|HappyValley/);
   // selectMeeting(i) indexes the full meetings array, so the AU card must keep index 1.
-  assert.match(html, /selectMeeting\(1\)/);
+  assert.match(html, /selectMeeting\(1(, true)?\)/);
 });
 
 test("portfolio workspace is backed by the D1 portfolio endpoint", () => {
@@ -2314,4 +2319,106 @@ test("corrupt packed tennis tracking surfaces a warning instead of an empty ledg
   await api.unpackDashboardData();
   assert.equal(api.tennisRows().length, 0);
   assert.ok(api.tennisTrackingFeed().warnings.includes("tracking_records_unpack_failed"));
+});
+
+// 2026-10-31: a Saturday carried 16 AU meetings as identical cards in publish
+// order. AU now groups by official tier and sorts by first jump; a separate
+// 即將開跑 tab lists every race by start time.
+const T0 = Date.parse("2026-10-31T02:00:00Z") / 1000;          // 13:00 Sydney (AEDT)
+function auRace(number, start, extra = {}) {
+  return {race_number: number, start_time: start, distance: "1200m", race_class: "BM64", horses_count: 10,
+          top_picks: [{horse_number: number, horse_name: `Pick ${number}`, grade: "A-"}], horses: [], ...extra};
+}
+function auData() {
+  const meetings = [
+    {date: "2026-10-31", venue: "Dubbo", region: "au", state: "NSW", tier: "country"},
+    {date: "2026-10-31", venue: "Randwick", region: "au", state: "NSW", tier: "metro"},
+    {date: "2026-10-31", venue: "Newcastle", region: "au", state: "NSW", tier: "provincial"},
+    {date: "2026-10-31", venue: "Flemington", region: "au", state: "VIC", tier: "metro"},
+  ];
+  const races = {
+    "2026-10-31|Dubbo": {races_by_analyst: {Kelvin: [auRace(1, T0 - 3600), auRace(2, T0 + 600), auRace(3, null, {abandoned: true})]}},
+    "2026-10-31|Randwick": {races_by_analyst: {Kelvin: [auRace(1, T0 + 1200), auRace(2, T0 + 3000)]}},
+    "2026-10-31|Newcastle": {races_by_analyst: {Kelvin: [auRace(1, T0 + 900)]}},
+    "2026-10-31|Flemington": {races_by_analyst: {Kelvin: [auRace(1, T0 + 300)]}},
+  };
+  return {meetings, races, consensus: {}, roi: {}};
+}
+function auApi() {
+  const api = loadTemplateFunctions(auData());
+  api.setNowForTest(T0 * 1000);
+  api.setActiveRegionForTest("au");
+  return api;
+}
+
+test("AU meetings are grouped 都會 / 省級 / 鄉鎮 and sorted by first jump", () => {
+  const api = auApi();
+  const html = api.renderAuMeetingList(auData().meetings);
+  const labels = [...html.matchAll(/au-group__label">([^<]+)</g)].map(m => m[1]);
+  assert.deepEqual(labels, ["都會", "省級", "鄉鎮"]);
+  const venues = [...html.matchAll(/au-meet__venue">([^<]+)</g)].map(m => m[1]);
+  assert.deepEqual(venues, ["Flemington", "Randwick", "Newcastle", "Dubbo"]);
+  assert.match(html, /下一場 R2/);                    // Dubbo has started
+});
+
+test("pinned meetings move into their own group at the top", () => {
+  const api = auApi();
+  api.toggleAuPin("Dubbo");
+  const html = api.renderAuMeetingList(auData().meetings);
+  const labels = [...html.matchAll(/au-group__label">([^<]+)</g)].map(m => m[1]);
+  assert.equal(labels[0], "⭐ 釘選");
+  assert.ok(!labels.includes("鄉鎮"));
+});
+
+test("the default AU meeting is the top row, not the first one published", () => {
+  const api = auApi();
+  assert.equal(api.auDefaultMeeting(auData().meetings).venue, "Flemington");
+});
+
+test("timeline lists upcoming races by start time and marks the next one", () => {
+  const api = auApi();
+  const html = api.renderTimeline();
+  const rows = [...html.matchAll(/tl-row tl-row--(\w+)[\s\S]*?tl-venue">([^<]+)<\/span><span class="tl-race">R(\d+)/g)]
+    .map(m => `${m[1]}:${m[2]} R${m[3]}`);
+  assert.deepEqual(rows, ["next:Flemington R1", "upcoming:Dubbo R2", "upcoming:Newcastle R1",
+                          "upcoming:Randwick R1", "upcoming:Randwick R2"]);
+  assert.match(html, /5 分鐘後/);
+  assert.match(html, /已開跑／取消（2）/);           // Dubbo R1 ran, Dubbo R3 abandoned
+});
+
+test("timeline filter and past toggle", () => {
+  const api = auApi();
+  api.setTimelineFilter("metro");
+  let html = api.renderTimeline();
+  assert.equal((html.match(/class="tl-row /g) || []).length, 3);
+  api.setTimelineFilter("all");
+  api.toggleTimelinePast();
+  html = api.renderTimeline();
+  assert.match(html, /tl-row--abandoned/);
+  assert.match(html, /取消/);
+});
+
+test("a race stays on 即將開跑 until one minute after its advertised start", () => {
+  const api = auApi();
+  api.setNowForTest((T0 + 300 + 30) * 1000);         // Flemington R1 was due 30s ago
+  let html = api.renderTimeline();
+  assert.match(html, /tl-row tl-row--next[\s\S]*?Flemington<\/span><span class="tl-race">R1/);
+  assert.match(html, /到開跑時間/);
+  api.setNowForTest((T0 + 300 + 61) * 1000);         // 61s late: off the list
+  html = api.renderTimeline();
+  assert.doesNotMatch(html.split("tl-past-toggle")[0], /Flemington<\/span><span class="tl-race">R1/);
+});
+
+test("HKJC race tiles show Hong Kong time, a last-hour countdown and grey out once run", () => {
+  const api = loadTemplateFunctions({meetings: [], races: {}, consensus: {}, roi: {}});
+  const hv = {date: "2026-11-01", venue: "HappyValley", region: "hkjc", analysts: ["Kelvin"]};
+  const start = Date.parse("2026-11-01T04:45:00Z") / 1000;   // 12:45 HKT, 15:45 AEDT
+  api.setNowForTest((start - 20 * 60) * 1000);
+  let html = api.renderRaceCard(hv, {race_number: 1, start_time: start, distance: "1200m", horses_count: 12}, false);
+  assert.match(html, /rcard__time">12:45</);
+  assert.match(html, /20 分鐘後/);
+  api.setNowForTest((start + 61) * 1000);
+  html = api.renderRaceCard(hv, {race_number: 1, start_time: start, distance: "1200m", horses_count: 12}, false);
+  assert.match(html, /rcard rcard--past/);
+  assert.doesNotMatch(html, /分鐘後/);
 });

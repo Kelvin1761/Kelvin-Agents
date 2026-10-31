@@ -4495,3 +4495,195 @@ a:hover {
 
 .dim-part .runs,
 .dim-sub .runs { overflow-x: auto; }
+
+/* ═══════════════════════════════════════════════
+   AU meeting list (grouped by tier) + 即將開跑 timeline
+   A Saturday carries 15+ AU meetings; one compact row each, grouped
+   都會 / 省級 / 鄉鎮, sorted by first jump. See renderAuMeetingList.
+   ═══════════════════════════════════════════════ */
+.au-meetings { display: flex; flex-direction: column; gap: var(--space-xl); }
+.au-day__head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-m);
+  margin-bottom: var(--space-s);
+}
+.au-day__title { font-size: var(--text-xl); font-weight: 800; letter-spacing: -0.02em; color: var(--color-text); }
+.au-day__count { font-size: var(--text-xs); font-weight: 600; color: var(--color-text-muted); white-space: nowrap; }
+
+.au-group { margin-top: var(--space-s); }
+.au-group__head {
+  display: flex; align-items: center; gap: var(--space-s); width: 100%;
+  padding: 6px 2px; border: 0; background: none; cursor: pointer;
+  font: inherit; color: var(--color-text-secondary); text-align: left;
+}
+.au-group__label { font-size: var(--text-sm); font-weight: 800; letter-spacing: 0.02em; }
+.au-group__count {
+  min-width: 22px; padding: 1px 7px; border-radius: var(--radius-full);
+  background: var(--color-surface-alt); font-size: var(--text-xs); font-weight: 700; text-align: center;
+}
+.au-group__chev { margin-left: auto; font-size: 0.8rem; color: var(--color-text-muted); }
+.au-group--metro .au-group__label { color: var(--au-accent); }
+.au-group--provincial .au-group__label { color: #0f766e; }
+.au-group--pinned .au-group__label { color: #b45309; }
+
+.au-group__list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: var(--space-s);
+}
+.au-meet {
+  --tier: var(--color-text-muted);
+  display: grid; grid-template-columns: 44px minmax(0, 1fr) auto 36px; align-items: center; gap: var(--space-m);
+  min-height: 60px; padding: 8px 6px 8px 12px;
+  border: 1px solid var(--color-border); border-left: 4px solid var(--tier); border-radius: var(--radius-m);
+  background: var(--color-surface); box-shadow: var(--shadow-card); cursor: pointer;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+}
+.au-meet--metro { --tier: var(--au-accent); }
+.au-meet--provincial { --tier: #14b8a6; }
+.au-meet--country { --tier: #cbd5e1; }
+.au-meet:hover { box-shadow: var(--shadow-card-hover); border-color: color-mix(in srgb, var(--tier) 45%, var(--color-border)); }
+.au-meet:focus-visible { outline: 3px solid var(--color-primary-100); outline-offset: 2px; }
+.au-meet--selected { background: var(--au-bg); border-color: var(--au-accent); }
+.au-meet--done { opacity: 0.62; }
+.au-meet__state {
+  justify-self: start; padding: 2px 6px; border-radius: var(--radius-s);
+  background: var(--color-surface-alt); color: var(--color-text-secondary);
+  font-size: 0.68rem; font-weight: 800; letter-spacing: 0.04em;
+}
+.au-meet__main { display: flex; flex-direction: column; min-width: 0; }
+.au-meet__venue {
+  overflow: hidden; color: var(--color-text); font-size: var(--text-lg); font-weight: 800;
+  letter-spacing: -0.015em; text-overflow: ellipsis; white-space: nowrap;
+}
+.au-meet__meta { color: var(--color-text-muted); font-size: var(--text-xs); font-weight: 600; }
+.au-meet__status { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.au-meet__status-main { color: var(--color-text); font-size: var(--text-sm); font-weight: 800; font-variant-numeric: tabular-nums; }
+.au-meet__status-sub { color: var(--color-text-muted); font-size: 0.68rem; font-weight: 600; }
+.au-meet--live .au-meet__status-main { color: #b45309; }
+.au-meet__pin {
+  width: 36px; height: 36px; border: 0; border-radius: 50%; background: none; cursor: pointer;
+  color: var(--color-text-muted); font-size: 1.15rem; line-height: 1;
+}
+.au-meet__pin:hover { background: var(--color-surface-alt); }
+.au-meet__pin--on { color: #f59e0b; }
+
+/* ── Timeline ── */
+.tl { display: flex; flex-direction: column; gap: var(--space-m); }
+.tl-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-m); }
+.tl-head__title { font-size: var(--text-xl); font-weight: 800; letter-spacing: -0.02em; }
+.tl-head__sub { color: var(--color-text-muted); font-size: var(--text-xs); font-weight: 500; margin-top: 2px; }
+.tl-days, .tl-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.tl-chip {
+  display: inline-flex; align-items: center; gap: 5px; min-height: 30px; padding: 4px 11px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-full); background: var(--color-surface);
+  color: var(--color-text-secondary); font: inherit; font-size: var(--text-xs); font-weight: 700; cursor: pointer;
+}
+.tl-chip:hover { border-color: var(--color-primary-light); color: var(--color-text); }
+.tl-chip--on { background: var(--color-primary); border-color: var(--color-primary); color: var(--color-text-inverse); }
+.tl-chip__n { font-weight: 600; opacity: 0.75; }
+.tl-list { display: flex; flex-direction: column; gap: 18px; }
+.tl-section { margin-top: var(--space-s); color: var(--color-text-muted); font-size: var(--text-sm); font-weight: 800; }
+.tl-item {
+  display: flex; flex-direction: column; overflow: hidden;
+  border: 1px solid var(--color-border); border-radius: var(--radius-l); background: var(--color-surface);
+  box-shadow: var(--shadow-sm);
+}
+.tl-item--next { border-color: var(--color-primary-light); box-shadow: 0 0 0 3px var(--color-primary-50); }
+.tl-item--past, .tl-item--abandoned { opacity: 0.6; }
+.tl-row {
+  display: grid; grid-template-columns: 58px minmax(0, 1fr); align-items: center; gap: var(--space-m);
+  padding: 10px 14px; cursor: pointer; transition: background var(--transition-fast);
+}
+.tl-row:hover { background: var(--color-surface-alt); }
+.tl-row:focus-visible { outline: 3px solid var(--color-primary-100); outline-offset: -3px; }
+.tl-time { display: flex; flex-direction: column; }
+.tl-time__clock { color: var(--color-text); font-size: var(--text-lg); font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.15; }
+.tl-time__sub { color: var(--color-text-muted); font-size: 0.66rem; font-weight: 600; }
+.tl-row--next .tl-time__sub { color: var(--color-primary-700); }
+.tl-row--abandoned .tl-time__clock { color: var(--rating-d); font-size: var(--text-sm); }
+.tl-body { min-width: 0; }
+.tl-title { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.tl-tier {
+  flex: none; padding: 0 5px; border-radius: var(--radius-s); font-size: 0.62rem; font-weight: 700; line-height: 1.6;
+  background: var(--color-surface-alt); color: var(--color-text-secondary);
+}
+.tl-tier--metro { background: var(--au-bg); color: var(--au-accent); }
+.tl-tier--provincial { background: #ccfbf1; color: #0f766e; }
+.tl-venue { overflow: hidden; font-size: var(--text-md); font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.tl-race { flex: none; font-size: var(--text-md); font-weight: 800; color: var(--color-primary-700); }
+.tl-state { flex: none; color: var(--color-text-muted); font-size: 0.64rem; font-weight: 600; }
+.tl-sub { overflow: hidden; margin-top: 1px; color: var(--color-text-muted); font-size: 0.7rem; text-overflow: ellipsis; white-space: nowrap; }
+.tl-bets { padding: 0 10px 2px; }
+.tl-bets__empty { padding: 8px; color: var(--color-text-muted); font-size: var(--text-xs); text-align: center; }
+.tl-empty {
+  padding: var(--space-xl); border: 1px dashed var(--color-border); border-radius: var(--radius-m);
+  color: var(--color-text-muted); font-size: var(--text-sm); font-weight: 600; text-align: center;
+}
+.tl-past-toggle {
+  align-self: center; margin-top: var(--space-s); padding: 6px 14px; border: 1px solid var(--color-border);
+  border-radius: var(--radius-full); background: var(--color-surface); color: var(--color-text-secondary);
+  font: inherit; font-size: var(--text-xs); font-weight: 700; cursor: pointer;
+}
+
+@media (max-width: 640px) {
+  .au-group__list { grid-template-columns: 1fr; }
+  .au-meet { grid-template-columns: 38px minmax(0, 1fr) auto 32px; gap: var(--space-s); padding: 6px 4px 6px 10px; min-height: 56px; }
+  .au-meet__venue { font-size: var(--text-md); }
+  .tl-list { gap: 14px; }
+  .tl-row { grid-template-columns: 50px minmax(0, 1fr); gap: var(--space-s); padding: 9px 10px; }
+  .tl-time__clock { font-size: var(--text-md); }
+  .tl-venue, .tl-race { font-size: var(--text-base); }
+  .tl-bets { padding: 0 6px 6px; }
+}
+  .tl-pick__item { font-size: var(--text-xs); }
+  .tl-venue, .tl-race { font-size: var(--text-md); }
+}
+/* Race-detail betting panel now sits above the analysis (see renderRaceDetail). */
+.bp--race { margin: 0 0 24px; }
+
+/* ─── Race board tiles (HKJC + AU) — renderRaceCard ─── */
+.rboard {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px;
+  margin: 0 0 var(--space-xl);
+}
+.rcard {
+  position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 10px 12px;
+  border: 1px solid var(--color-border); border-radius: var(--radius-m); background: var(--color-surface);
+  box-shadow: var(--shadow-sm); cursor: pointer;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.rcard:hover { border-color: var(--color-primary-light); box-shadow: var(--shadow-card-hover); }
+.rcard:focus-visible { outline: 3px solid var(--color-primary-100); outline-offset: 2px; }
+.rcard__top { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; }
+.rcard__num { color: var(--color-primary-700); font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em; }
+.rcard__time { color: var(--color-text); font-size: var(--text-sm); font-weight: 700; font-variant-numeric: tabular-nums; }
+.rcard__meta { overflow: hidden; color: var(--color-text-muted); font-size: var(--text-xs); font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.rcard--past { background: var(--color-surface-alt); box-shadow: none; }
+.rcard--past .rcard__num, .rcard--past .rcard__time { color: var(--color-text-muted); }
+.rcard--off { opacity: 0.5; }
+.rcard--off .rcard__time { color: var(--rating-d); }
+.rcard__dot { position: absolute; top: 6px; right: 6px; width: 7px; height: 7px; border-radius: 50%; }
+.rcard__dot--bet { background: var(--consensus-agree); }
+.rcard__dot--pending { background: #f59e0b; }
+.rcard__dot--skip { background: var(--color-text-muted); }
+.rcard__dot ~ .rcard__top .rcard__time { margin-right: 6px; }
+@media (max-width: 640px) {
+  .rboard { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .rcard { padding: 8px 9px; }
+  .rcard__num { font-size: 0.95rem; }
+  .rcard__time { font-size: var(--text-xs); }
+}
+
+/* 已投注 step: two rows (status + 改賠率／退出, then 名次 1 2 3 X), one type size. */
+.bh-step--bet .bh-step-heading { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
+.bh-step--bet .bh-step-label { margin: 0; color: var(--consensus-agree); font-size: 0.72rem; font-weight: 800; white-space: nowrap; }
+.bh-step-actions { display: flex; gap: 4px; flex: none; }
+.bb.bb--sm { min-height: 26px; padding: 2px 8px; border-radius: 6px; font-size: 0.68rem; }
+.bh-step--bet .bh-step-row--result { display: flex; align-items: center; justify-content: flex-start; flex-wrap: nowrap; gap: 6px; }
+.bh-result-label { flex: none; color: var(--color-text-muted); font-size: 0.72rem; font-weight: 700; }
+.bh-step--bet .br-group { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; flex: 1; max-width: 200px; }
+.bh-step--bet .br { width: auto; height: 30px; min-height: 30px; font-size: 0.72rem; }
+@media (max-width: 640px) {
+  .bh-step--bet .bh-step-actions .bb { min-height: 36px; }
+  .bh-step--bet .br-group { max-width: none; }
+  .bh-step--bet .br { height: 40px; min-height: 40px; }
+}
+.rcard__soon { color: var(--color-primary-700); font-weight: 700; }

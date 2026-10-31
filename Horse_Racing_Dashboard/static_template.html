@@ -654,6 +654,13 @@
     .audit-item__top { display:flex; justify-content:space-between; gap:10px; color:#334155; font-size:.7rem; font-weight:850; }
     .audit-item__meta { margin-top:4px; color:#64748B; font-size:.64rem; }
     .audit-item__change { margin-top:7px; color:#475569; font-size:.68rem; line-height:1.45; }
+    /* The AU tab has a third nav pill (⏱ 即將開跑). Between the 840px wrap point
+       and ~1050px the one-row header then overflowed by ~40px; tighten the
+       horizontal padding instead of dropping a label. */
+    @media (min-width: 841px) and (max-width: 1180px) {
+      .sport-switch { padding-inline: 10px; gap: 6px; }
+      .nav-pill { padding: 6px 11px; }
+    }
     @media (max-width: 840px) {
       /* Desktop centres the header as one group with a 32px gap, which on a phone
          leaves the title and the refresh chip floating mid-row with a hole between
@@ -833,6 +840,7 @@
       </nav>
       <nav class="app-header__nav-capsule" id="horse-nav">
         <a href="#" id="nav-races" class="nav-pill nav-pill--active" onclick="showDashboard(); return false;">📋 賽事</a>
+        <a href="#" id="nav-timeline" class="nav-pill" style="display:none" onclick="showTimeline(); return false;">⏱ 即將開跑</a>
         <a href="#" id="nav-roi" class="nav-pill" onclick="showROI(); return false;">📊 ROI</a>
       </nav>
       <!-- Always-available way to reload. In standalone (PWA) mode there is no
@@ -986,7 +994,7 @@ function setActiveRegion(region) {
   const meetings = regionMeetings();
   const stillThere = selectedMeeting && meetings.some(m => m.date === selectedMeeting.date && m.venue === selectedMeeting.venue);
   if (!stillThere) {
-    selectedMeeting = meetings[0] || null;
+    selectedMeeting = (activeRegion === 'au' ? auDefaultMeeting(meetings) : meetings[0]) || null;
     loadBettingState();
     collapsedBetRaces.clear();
   }
@@ -1541,24 +1549,51 @@ function primeSyncedBettingStateFromLocal() {
   });
 }
 
-function loadBettingState() {
-  if (!selectedMeeting) return;
-  const k = meetingStorageKey(selectedMeeting);
+function readMeetingBettingState(meeting) {
   let localState = {};
-  try { localState = JSON.parse(localStorage.getItem(k) || '{}'); } catch(e) { localState = {}; }
-  const syncedState = extractMeetingState(syncedBettingState, selectedMeeting);
-  bettingState = mergeBetStateMaps(localState, syncedState);
+  try { localState = JSON.parse(localStorage.getItem(meetingStorageKey(meeting)) || '{}'); } catch(e) { localState = {}; }
+  return mergeBetStateMaps(localState, extractMeetingState(syncedBettingState, meeting));
 }
 
-function saveBettingState({ sync = true } = {}) {
+function loadBettingState() {
   if (!selectedMeeting) return;
-  const k = meetingStorageKey(selectedMeeting);
-  try { localStorage.setItem(k, JSON.stringify(bettingState)); } catch(e) {}
+  otherMeetingBetStates.delete(meetingStorageKey(selectedMeeting));
+  bettingState = readMeetingBettingState(selectedMeeting);
+}
+
+function saveMeetingBettingState(meeting, state, { sync = true } = {}) {
+  if (!meeting) return;
+  try { localStorage.setItem(meetingStorageKey(meeting), JSON.stringify(state)); } catch(e) {}
   if (!sync) return;
-  syncedBettingState = setMeetingStateInStore(syncedBettingState, selectedMeeting, bettingState);
+  syncedBettingState = setMeetingStateInStore(syncedBettingState, meeting, state);
   hasPendingCommittedChanges = true;
   syncMutationVersion += 1;
   scheduleBettingSync();
+}
+
+function saveBettingState({ sync = true } = {}) {
+  saveMeetingBettingState(selectedMeeting, bettingState, { sync });
+}
+
+// The 即將開跑 timeline shows bet cards for many meetings at once, but
+// `bettingState` only ever holds the selected meeting. Every bet action already
+// carries (date, venue), so resolve the state map by meeting: the selected one
+// keeps using `bettingState`, others are read on demand into this cache and
+// saved through the same local + cloud path. Cleared whenever cloud state lands.
+const otherMeetingBetStates = new Map();
+function isSelectedMeetingKey(date, venue) {
+  return !!selectedMeeting && selectedMeeting.date === date && selectedMeeting.venue === venue;
+}
+function betStateMap(date, venue) {
+  if (isSelectedMeetingKey(date, venue)) return bettingState;
+  const meeting = { date, venue };
+  const key = meetingStorageKey(meeting);
+  if (!otherMeetingBetStates.has(key)) otherMeetingBetStates.set(key, readMeetingBettingState(meeting));
+  return otherMeetingBetStates.get(key);
+}
+function saveBetStateMap(date, venue, opts) {
+  if (isSelectedMeetingKey(date, venue)) saveBettingState(opts);
+  else saveMeetingBettingState({ date, venue }, betStateMap(date, venue), opts);
 }
 
 function scheduleBettingSync(delay = BET_SYNC_DEBOUNCE_MS) {
@@ -1587,6 +1622,7 @@ async function pushBettingStateToCloud() {
     if (!res.ok || !payload.success) throw new Error(payload.error || `HTTP ${res.status}`);
     if (payload.state && typeof payload.state === 'object') {
       syncedBettingState = payload.state;
+      otherMeetingBetStates.clear();
       if (selectedMeeting) {
         const remoteMeetingState = extractMeetingState(syncedBettingState, selectedMeeting);
         bettingState = mergeBetStateMaps(bettingState, remoteMeetingState);
@@ -1625,7 +1661,13 @@ async function pullBettingStateFromCloud(renderAfterSync = true) {
     const mergedSerialized = JSON.stringify(mergedMeetingState);
     syncedBettingState = setMeetingStateInStore(remote, selectedMeeting, mergedMeetingState);
     lastSyncedSerialized = JSON.stringify(syncedBettingState);
-    if (currentSerialized === mergedSerialized) return;
+    // Other meetings' cards (timeline) re-read the fresh cloud state.
+    const hadOthers = otherMeetingBetStates.size > 0;
+    otherMeetingBetStates.clear();
+    if (currentSerialized === mergedSerialized) {
+      if (hadOthers && renderAfterSync && currentView === 'timeline' && !isOddsInputActive()) render();
+      return;
+    }
     bettingState = mergedMeetingState;
     try { localStorage.setItem(k, mergedSerialized); } catch(e) {}
     updateSyncStatus('saved');
@@ -1643,13 +1685,13 @@ function startBettingSyncPolling() {
 }
 
 function getBetState(date, venue, race, horse) {
-  return bettingState[betKey(date,venue,race,horse)] || { odds: null, oddsConfirmed: false, confirmed: false, skipped: false, scratched: false, result: null };
+  return betStateMap(date, venue)[betKey(date,venue,race,horse)] || { odds: null, oddsConfirmed: false, confirmed: false, skipped: false, scratched: false, result: null };
 }
 
 function setBetState(date, venue, race, horse, patch) {
   const k = betKey(date,venue,race,horse);
-  bettingState[k] = { ...getBetState(date,venue,race,horse), ...patch, updatedAt: Date.now() };
-  saveBettingState();
+  betStateMap(date, venue)[k] = { ...getBetState(date,venue,race,horse), ...patch, updatedAt: Date.now() };
+  saveBetStateMap(date, venue);
   render();
 }
 
@@ -1686,10 +1728,10 @@ function isEmptySection(text) {
 // Betting action functions
 function setOddsValue(date, venue, race, horse, val) {
   const k = betKey(date,venue,race,horse);
-  bettingState[k] = { ...getBetState(date,venue,race,horse), odds: parseFloat(val) || null, updatedAt: Date.now() };
+  betStateMap(date, venue)[k] = { ...getBetState(date,venue,race,horse), odds: parseFloat(val) || null, updatedAt: Date.now() };
   // Keep a partial input as a local draft.  It is committed to shared state
   // only when the user confirms the odds, avoiding one KV write per keystroke.
-  saveBettingState({ sync: false });
+  saveBetStateMap(date, venue, { sync: false });
 }
 
 function lockOdds(date, venue, race, horse) {
@@ -1701,7 +1743,7 @@ function lockOdds(date, venue, race, horse) {
   let odds = s.odds;
   if (!odds || odds < 1) {
     const el = document.querySelector(
-      `input.bh-odds-input[name="odds-${race}-${horse}"]`);
+      `input.bh-odds-input[name="${oddsInputName(date, venue, race, horse)}"]`);
     const typed = parseFloat(el?.value);
     if (typed >= 1) {
       odds = typed;
@@ -1865,6 +1907,8 @@ function showSport(sport) {
   if (!TOP_LEVEL_TABS.includes(sport) && sport !== 'horses') return;
   sport = normaliseSportKey(sport);
   syncSportUrl(sport);
+  syncTimelineUrl(false);
+  raceReturnView = 'dashboard';
   if (sport === 'hkjc' || sport === 'au') {
     activeSport = 'horses';
     setActiveRegion(sport);
@@ -3170,6 +3214,8 @@ async function openBetAudit(encodedId) {
 function showDashboard() {
   activeSport = 'horses';
   currentView = 'dashboard';
+  raceReturnView = 'dashboard';
+  syncTimelineUrl(false);
   setActiveRegion(activeRegion);
   render();
 }
@@ -3180,8 +3226,8 @@ function renderDashboard() {
   const regionLabel = activeRegion === 'hkjc' ? '香港' : '澳洲';
   if (!meetings.length) return `<div class="empty-state"><div class="empty-state__icon">🏇</div><div class="empty-state__text">暫無${regionLabel}賽事數據</div></div>`;
 
-  let html = '<div class="meeting-selector">';
-  meetings.forEach(m => {
+  let html = activeRegion === 'au' ? renderAuMeetingList(meetings) : '<div class="meeting-selector">';
+  if (activeRegion !== 'au') meetings.forEach(m => {
     const i = allMeetings.indexOf(m);
     const sel = selectedMeeting && m.date === selectedMeeting.date && m.venue === selectedMeeting.venue ? 'selected' : '';
     const meetingRaceCount = getMergedRaces(getRacesData(m)).length;
@@ -3205,7 +3251,7 @@ function renderDashboard() {
       <div class="meeting-card__arrow" aria-hidden="true">→</div>
     </div>`;
   });
-  html += '</div>';
+  if (activeRegion !== 'au') html += '</div>';
 
   if (selectedMeeting) {
     const racesData = getRacesData(selectedMeeting);
@@ -3215,21 +3261,11 @@ function renderDashboard() {
       const isDualAnalyst = (selectedMeeting.analysts?.length > 1);
       const analystNote = isDualAnalyst ? `<span class="race-overview-analysts">${selectedMeeting.analysts.map(esc).join(' + ')} 分析</span>` : '';
 
-      html += `<div class="race-overview-header">
+      html += `<div class="race-overview-header" id="race-overview">
         <h2 class="race-overview-title">${flag} ${esc(formatVenueDisplay(selectedMeeting.venue))} · ${esc(selectedMeeting.date)}${analystNote}</h2>
-        <div class="race-overview-summary">全部 ${merged.length} 場 · 點擊查看詳細分析</div>
+        <div class="race-overview-summary">全部 ${merged.length} 場${merged.some(r => Number.isFinite(r.start_time)) ? ` · ${raceClockZone(selectedMeeting)}` : ''} · 點擊查看詳細分析</div>
       </div>`;
-      const raceBoardClass = merged.length === 11 ? ' race-board--eleven' : '';
-      html += `<div class="race-board${raceBoardClass}">`;
-      merged.forEach(race => {
-        html += `<div class="race-tile card--clickable" onclick="showRace(${race.race_number})">
-          <div class="race-tile__number">R${race.race_number}</div>
-          <div class="race-tile__info">${esc(race.distance || '\u2014')} ${esc(race.race_class || '')}</div>
-          <div class="race-tile__runner-count">\ud83d\udc34 ${race.horses_count || race.horses?.length || 0} \u5339\u99ac</div>
-          <div class="race-tile__cta">\u67e5\u770b\u5206\u6790 \u2192</div>
-        </div>`;
-      });
-      html += '</div>';
+      html += `<div class="rboard">${merged.map(race => renderRaceCard(selectedMeeting, race, isDualAnalyst)).join('')}</div>`;
 
       // Betting panel — consolidated list below all race tiles
       html += renderDashboardBettingPanel(selectedMeeting, merged, isDualAnalyst);
@@ -3238,13 +3274,405 @@ function renderDashboard() {
   return html;
 }
 
-function selectMeeting(index) {
+// Bet progress for one race, from the same candidates the betting panel shows.
+function raceBetSummary(meeting, race, isDualAnalyst) {
+  let candidates = [];
+  try { candidates = getRaceBettingCandidates(meeting, race.race_number, isDualAnalyst); } catch (_) { return null; }
+  const states = candidates.map(c => getBetState(meeting.date, meeting.venue, race.race_number, c.horse_number));
+  const bet = states.filter(st => st.confirmed && !st.scratched).length;
+  const decided = states.filter(st => st.confirmed || st.skipped || st.scratched).length;
+  if (bet) return { cls: 'bet', label: `已投 ${bet}` };
+  if (candidates.length && decided === candidates.length) return { cls: 'skip', label: '已決定' };
+  if (states.some(st => st.oddsConfirmed)) return { cls: 'pending', label: '待決定' };
+  return null;
+}
+
+// Race board tile (HKJC and AU): two quiet lines -- race + jump time, then
+// distance + field. The class name lives in the tooltip; squeezing it into the
+// tile is what produced "1500m T…" before. Bet progress is a small dot.
+function renderRaceCard(meeting, race, isDualAnalyst) {
+  const timed = Number.isFinite(race.start_time);
+  const past = raceHasStarted(race);
+  const status = raceBetSummary(meeting, race, isDualAnalyst);
+  const runners = race.horses_count || race.horses?.length || 0;
+  const cls = race.abandoned ? ' rcard--off' : (past ? ' rcard--past' : '');
+  const title = [race.race_class, race.distance].filter(Boolean).join(' · ');
+  const time = timed ? raceClock(meeting, race.start_time) : (race.abandoned ? '取消' : '');
+  // Countdown in the last hour (and through the late-start grace), like the timeline.
+  const now = dashboardNow() / 1000;
+  const soon = timed && !past && !race.abandoned && race.start_time - now <= 3600
+    ? timelineCountdown(race.start_time, now) : '';
+  return `<div class="rcard${cls}" role="button" tabindex="0" title="${esc(title)}" onclick="showRace(${race.race_number})"
+      onkeydown="if(event.key==='Enter'){showRace(${race.race_number})}">
+    ${status ? `<span class="rcard__dot rcard__dot--${status.cls}" title="${esc(status.label)}" aria-label="${esc(status.label)}"></span>` : ''}
+    <div class="rcard__top"><span class="rcard__num">R${race.race_number}</span>${time ? `<span class="rcard__time">${time}</span>` : ''}</div>
+    <div class="rcard__meta">${soon ? `<span class="rcard__soon">${soon}</span> · ` : ''}${[race.distance, runners ? `${runners} 匹` : ''].filter(Boolean).map(esc).join(' · ') || '—'}</div>
+  </div>`;
+}
+
+function selectMeeting(index, scrollToRaces = false) {
   selectedMeeting = DASHBOARD_DATA.meetings[index];
   loadBettingState();
   pullBettingStateFromCloud(true);
   collapsedBetRaces.clear();
   render();
+  if (scrollToRaces) document.getElementById('race-overview')?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
 }
+
+// ═══════════════════════════════════════════════
+// AU meeting list (grouped) + 即將開跑 timeline
+// ═══════════════════════════════════════════════
+// A Saturday has 15+ AU meetings. The old grid showed them as identical cards in
+// publish order, with no tier, no time and the race board four phone screens
+// below (2026-10-31). Tiers come from each state's official classification
+// (backend/services/au_venue_tiers.json); start times from Sportsbet AllRacing,
+// written per meeting by the scheduler (Race_Start_Times.json).
+const AU_TIERS = [
+  { key: 'metro', label: '都會' },
+  { key: 'provincial', label: '省級' },
+  { key: 'country', label: '鄉鎮' },
+];
+const AU_TIER_LABEL = { metro: '都會', provincial: '省級', country: '鄉鎮' };
+const AU_PIN_KEY = 'wc_au_pinned_venues';
+const AU_COLLAPSE_KEY = 'wc_au_collapsed_groups';
+const AU_TIMELINE_KEY = 'wc_au_timeline_prefs';
+let raceReturnView = 'dashboard';
+let timelineDate = null;
+let timelineShowPast = false;
+
+function dashboardNow() { return Date.now(); }
+
+// AU races often jump a minute or two late, so a race stays "upcoming" (and on
+// the 即將開跑 list) until this long after its advertised start.
+const RACE_START_GRACE_SECONDS = 60;
+function raceHasStarted(race, nowSeconds = dashboardNow() / 1000) {
+  return Number.isFinite(race?.start_time) && race.start_time + RACE_START_GRACE_SECONDS <= nowSeconds;
+}
+
+function readPref(key, fallback) {
+  try { const v = JSON.parse(localStorage.getItem(key) || 'null'); return v ?? fallback; }
+  catch (_) { return fallback; }
+}
+function writePref(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch (_) { /* private mode */ }
+}
+
+const SYDNEY_TIME = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Sydney', hour: '2-digit', minute: '2-digit', hour12: false });
+const SYDNEY_DAY = new Intl.DateTimeFormat('en-CA', { timeZone: 'Australia/Sydney', year: 'numeric', month: '2-digit', day: '2-digit' });
+function sydneyClock(epochSeconds) { return SYDNEY_TIME.format(new Date(epochSeconds * 1000)); }
+// HKJC races read in Hong Kong time, like the club's own racecard; AU in Sydney time.
+const HK_TIME = new Intl.DateTimeFormat('en-AU', { timeZone: 'Asia/Hong_Kong', hour: '2-digit', minute: '2-digit', hour12: false });
+function raceClock(meeting, epochSeconds) {
+  return (meeting?.region === 'hkjc' ? HK_TIME : SYDNEY_TIME).format(new Date(epochSeconds * 1000));
+}
+function raceClockZone(meeting) { return meeting?.region === 'hkjc' ? '香港時間' : '悉尼時間'; }
+function sydneyDayOf(ms) { return SYDNEY_DAY.format(new Date(ms)); }
+
+function auDayLabel(day) {
+  const today = sydneyDayOf(dashboardNow());
+  const tomorrow = sydneyDayOf(dashboardNow() + 86400000);
+  const d = new Date(`${day}T12:00:00`);
+  const weekday = isNaN(d) ? '' : '星期' + '日一二三四五六'[d.getDay()];
+  const short = day.slice(5).replace('-', '/');
+  if (day === today) return `今日 · ${weekday} ${short}`;
+  if (day === tomorrow) return `明日 · ${weekday} ${short}`;
+  return `${weekday} ${short}`;
+}
+
+function auPinned() { return new Set(readPref(AU_PIN_KEY, [])); }
+function toggleAuPin(venue, evt) {
+  evt?.stopPropagation?.();
+  const pins = auPinned();
+  if (pins.has(venue)) pins.delete(venue); else pins.add(venue);
+  writePref(AU_PIN_KEY, [...pins]);
+  render();
+}
+
+function auMeetingTier(m) { return AU_TIER_LABEL[m.tier] ? m.tier : 'country'; }
+
+// Per-meeting timetable from its races: {races, starts, next, started, done}.
+function auMeetingSchedule(m) {
+  const races = getMergedRaces(getRacesData(m));
+  const now = dashboardNow() / 1000;
+  const timed = races.filter(r => Number.isFinite(r.start_time));
+  const upcoming = timed.filter(r => !raceHasStarted(r, now));
+  return {
+    races,
+    first: timed.length ? Math.min(...timed.map(r => r.start_time)) : (Number.isFinite(m.first_start) ? m.first_start : null),
+    next: upcoming.sort((a, b) => a.start_time - b.start_time)[0] || null,
+    started: timed.some(r => raceHasStarted(r, now)),
+    done: timed.length > 0 && upcoming.length === 0,
+  };
+}
+
+function auMeetingStatus(sched) {
+  if (sched.done) return { cls: 'done', html: '<span class="au-meet__status-main">已全部開跑</span>' };
+  if (sched.started && sched.next) {
+    return { cls: 'live', html: `<span class="au-meet__status-main">下一場 R${sched.next.race_number}</span><span class="au-meet__status-sub">${sydneyClock(sched.next.start_time)}</span>` };
+  }
+  if (sched.first) return { cls: 'upcoming', html: `<span class="au-meet__status-main">${sydneyClock(sched.first)}</span><span class="au-meet__status-sub">首場開跑</span>` };
+  return { cls: 'unknown', html: '<span class="au-meet__status-sub">未有開跑時間</span>' };
+}
+
+function renderAuMeetingRow(m, pins) {
+  const i = DASHBOARD_DATA.meetings.indexOf(m);
+  const sched = auMeetingSchedule(m);
+  const status = auMeetingStatus(sched);
+  const sel = selectedMeeting && m.date === selectedMeeting.date && m.venue === selectedMeeting.venue;
+  const going = (sched.next || sched.races[0] || {}).going || '';
+  const pinned = pins.has(m.venue);
+  const tier = auMeetingTier(m);
+  return `<div class="au-meet au-meet--${tier}${sel ? ' au-meet--selected' : ''} au-meet--${status.cls}" role="button" tabindex="0"
+      onclick="selectMeeting(${i}, true)" onkeydown="if(event.key==='Enter'){selectMeeting(${i}, true)}">
+    <span class="au-meet__state">${esc(m.state || 'AU')}</span>
+    <span class="au-meet__main">
+      <span class="au-meet__venue">${esc(formatVenueDisplay(m.venue))}</span>
+      <span class="au-meet__meta">${sched.races.length} 場${going ? ` · ${esc(going)}` : ''}</span>
+    </span>
+    <span class="au-meet__status">${status.html}</span>
+    <button type="button" class="au-meet__pin${pinned ? ' au-meet__pin--on' : ''}" aria-pressed="${pinned}"
+      aria-label="${pinned ? '取消釘選' : '釘選'} ${esc(m.venue)}" onclick="toggleAuPin(${esc(JSON.stringify(m.venue))}, event)">${pinned ? '★' : '☆'}</button>
+  </div>`;
+}
+
+function auGroupCollapsed(groupId, count, total) {
+  const saved = readPref(AU_COLLAPSE_KEY, {});
+  if (groupId in saved) return !!saved[groupId];
+  // Default: a big card folds the country group so metro/provincial fit one screen.
+  return groupId.endsWith('|country') && total > 8 && count > 0;
+}
+function toggleAuGroup(groupId) {
+  const saved = readPref(AU_COLLAPSE_KEY, {});
+  const el = document.querySelector(`[data-au-group="${CSS.escape ? CSS.escape(groupId) : groupId}"]`);
+  saved[groupId] = !(el ? el.classList.contains('au-group--collapsed') : false);
+  writePref(AU_COLLAPSE_KEY, saved);
+  render();
+}
+
+function sortByFirstStart(list) {
+  return list.slice().sort((a, b) => {
+    const fa = auMeetingSchedule(a).first ?? Infinity, fb = auMeetingSchedule(b).first ?? Infinity;
+    return fa - fb || String(a.venue).localeCompare(String(b.venue));
+  });
+}
+
+// The list shows pinned, then 都會 / 省級 / 鄉鎮, each by first jump; the
+// default selection must be the row at the top, not whichever meeting was
+// published first (which could sit inside the folded 鄉鎮 group).
+function auDefaultMeeting(meetings) {
+  if (!meetings.length) return null;
+  const day = meetings.map(m => m.date).sort()[0];
+  const pins = auPinned();
+  const order = m => (pins.has(m.venue) ? 0 : 1 + AU_TIERS.findIndex(t => t.key === auMeetingTier(m)));
+  return sortByFirstStart(meetings.filter(m => m.date === day))
+    .sort((a, b) => order(a) - order(b))[0];
+}
+
+function renderAuMeetingList(meetings) {
+  const pins = auPinned();
+  const byDay = new Map();
+  meetings.forEach(m => { if (!byDay.has(m.date)) byDay.set(m.date, []); byDay.get(m.date).push(m); });
+  const days = [...byDay.keys()].sort();
+  let html = '<div class="au-meetings">';
+  days.forEach(day => {
+    const list = byDay.get(day);
+    const totalRaces = list.reduce((n, m) => n + getMergedRaces(getRacesData(m)).length, 0);
+    html += `<section class="au-day"><header class="au-day__head"><h2 class="au-day__title">${esc(auDayLabel(day))}</h2>
+      <span class="au-day__count">${list.length} 個場次 · ${totalRaces} 場</span></header>`;
+    const groups = [];
+    const pinnedList = list.filter(m => pins.has(m.venue));
+    if (pinnedList.length) groups.push({ id: `${day}|pinned`, label: '⭐ 釘選', tier: 'pinned', items: pinnedList });
+    AU_TIERS.forEach(t => {
+      const items = list.filter(m => !pins.has(m.venue) && auMeetingTier(m) === t.key);
+      if (items.length) groups.push({ id: `${day}|${t.key}`, label: t.label, tier: t.key, items });
+    });
+    groups.forEach(g => {
+      const collapsed = auGroupCollapsed(g.id, g.items.length, list.length);
+      html += `<div class="au-group au-group--${g.tier}${collapsed ? ' au-group--collapsed' : ''}" data-au-group="${esc(g.id)}">
+        <button type="button" class="au-group__head" aria-expanded="${!collapsed}" onclick="toggleAuGroup(${esc(JSON.stringify(g.id))})">
+          <span class="au-group__label">${g.label}</span><span class="au-group__count">${g.items.length}</span>
+          <span class="au-group__chev" aria-hidden="true">${collapsed ? '▸' : '▾'}</span>
+        </button>`;
+      if (!collapsed) html += `<div class="au-group__list">${sortByFirstStart(g.items).map(m => renderAuMeetingRow(m, pins)).join('')}</div>`;
+      html += '</div>';
+    });
+    html += '</section>';
+  });
+  return html + '</div>';
+}
+
+// ── 即將開跑 timeline ──
+function showTimeline() {
+  activeSport = 'horses';
+  setActiveRegion('au');
+  currentView = 'timeline';
+  syncTimelineUrl(true);
+  render();
+  window.scrollTo(0, 0);
+}
+
+function syncTimelineUrl(on) {
+  if (!window.history?.replaceState) return;
+  try {
+    const url = new URL(window.location.href || 'https://dashboard.local/');
+    if (on) { url.searchParams.set('sport', 'au'); url.searchParams.set('view', 'timeline'); }
+    else url.searchParams.delete('view');
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`);
+  } catch (_) { /* file:// */ }
+}
+
+function timelineRaces() {
+  const rows = [];
+  regionMeetings().filter(m => m.region === 'au').forEach(m => {
+    getMergedRaces(getRacesData(m)).forEach(race => {
+      const day = Number.isFinite(race.start_time) ? sydneyDayOf(race.start_time * 1000) : m.date;
+      rows.push({ meeting: m, race, day });
+    });
+  });
+  return rows;
+}
+
+function timelineDays(rows) {
+  return [...new Set(rows.map(r => r.day))].sort();
+}
+
+function pickTimelineDay(rows) {
+  const days = timelineDays(rows);
+  if (timelineDate && days.includes(timelineDate)) return timelineDate;
+  const now = dashboardNow() / 1000;
+  const live = days.find(d => rows.some(r => r.day === d && Number.isFinite(r.race.start_time) && !raceHasStarted(r.race, now)));
+  return live || days[days.length - 1] || null;
+}
+
+function setTimelineDay(day) { timelineDate = day; render(); }
+function setTimelineFilter(value) {
+  writePref(AU_TIMELINE_KEY, { ...readPref(AU_TIMELINE_KEY, {}), filter: value });
+  render();
+}
+function toggleTimelinePast() { timelineShowPast = !timelineShowPast; render(); }
+
+function timelineCountdown(start, now) {
+  if (start <= now) return now - start < RACE_START_GRACE_SECONDS ? '到開跑時間' : '已開跑';
+  const mins = Math.max(1, Math.round((start - now) / 60));
+  if (mins < 60) return `${mins} 分鐘後`;
+  const h = Math.floor(mins / 60), mm = mins % 60;
+  return mm ? `${h} 小時 ${mm} 分後` : `${h} 小時後`;
+}
+
+function openTimelineRace(meetingIndex, raceNumber) {
+  selectedMeeting = DASHBOARD_DATA.meetings[meetingIndex];
+  loadBettingState();
+  collapsedBetRaces.clear();
+  raceReturnView = 'timeline';
+  showRace(raceNumber);
+}
+
+function renderTimelineRow(row, now, isNext) {
+  const { meeting: m, race } = row;
+  const i = DASHBOARD_DATA.meetings.indexOf(m);
+  const tier = auMeetingTier(m);
+  const timed = Number.isFinite(race.start_time);
+  const past = raceHasStarted(race, now);
+  const cls = race.abandoned ? 'abandoned' : (past ? 'past' : (isNext ? 'next' : 'upcoming'));
+  const when = race.abandoned ? '取消' : (timed ? sydneyClock(race.start_time) : '—');
+  const sub = race.abandoned ? '' : (timed ? timelineCountdown(race.start_time, now) : '未有時間');
+  // Every race carries its top-two bet cards (synced with the race page's 投注面板).
+  const bets = race.abandoned ? '' : renderTimelineBets(m, race);
+  return `<div class="tl-item tl-item--${cls}"><div class="tl-row tl-row--${cls}" role="button" tabindex="0"
+      onclick="openTimelineRace(${i}, ${race.race_number})" onkeydown="if(event.key==='Enter'){openTimelineRace(${i}, ${race.race_number})}">
+    <div class="tl-time"><span class="tl-time__clock">${when}</span><span class="tl-time__sub">${sub}</span></div>
+    <div class="tl-body">
+      <div class="tl-title"><span class="tl-tier tl-tier--${tier}">${AU_TIER_LABEL[tier]}</span>
+        <span class="tl-venue">${esc(formatVenueDisplay(m.venue))}</span><span class="tl-race">R${race.race_number}</span>
+        <span class="tl-state">${esc(m.state || '')}</span></div>
+      <div class="tl-sub">${[race.distance, race.race_class].filter(Boolean).map(esc).join(' · ')}${race.horses_count ? ` · ${race.horses_count} 匹` : ''}</div>
+    </div>
+  </div>${bets}</div>`;
+}
+
+// Bet cards for one race inside the timeline: the same cards (and the same
+// synced state) as the race page's 投注面板, for whichever meeting the race is in.
+function renderTimelineBets(m, race) {
+  let candidates = [];
+  try { candidates = getRaceBettingCandidates(m, race.race_number, (m.analysts || []).length > 1); } catch (_) { candidates = []; }
+  if (!candidates.length) return '<div class="tl-bets"><div class="tl-bets__empty">本場冇候選馬</div></div>';
+  return `<div class="tl-bets">${candidates.map(c => renderBetCard(c, m, race.race_number)).join('')}</div>`;
+}
+
+// Open a race of any meeting (bet cards in the timeline belong to many meetings).
+function openMeetingRace(date, venue, raceNumber) {
+  const index = DASHBOARD_DATA.meetings.findIndex(x => x.date === date && x.venue === venue);
+  if (index < 0) return;
+  if (currentView === 'timeline' || raceReturnView === 'timeline') { openTimelineRace(index, raceNumber); return; }
+  if (!isSelectedMeetingKey(date, venue)) {
+    selectedMeeting = DASHBOARD_DATA.meetings[index];
+    loadBettingState();
+    collapsedBetRaces.clear();
+  }
+  showRace(raceNumber);
+}
+
+function renderTimeline() {
+  const all = timelineRaces();
+  if (!all.length) return '<div class="empty-state"><div class="empty-state__icon">⏱</div><div class="empty-state__text">暫無澳洲賽事</div></div>';
+  const day = pickTimelineDay(all);
+  const days = timelineDays(all);
+  const filter = readPref(AU_TIMELINE_KEY, {}).filter || 'all';
+  const pins = auPinned();
+  const now = dashboardNow() / 1000;
+  const inDay = all.filter(r => r.day === day);
+  const shown = inDay.filter(r => filter === 'all' || (filter === 'pinned' ? pins.has(r.meeting.venue) : auMeetingTier(r.meeting) === filter));
+  const byTime = (a, b) => (a.race.start_time ?? Infinity) - (b.race.start_time ?? Infinity)
+    || a.meeting.venue.localeCompare(b.meeting.venue) || a.race.race_number - b.race.race_number;
+  // An abandoned race has no start time; it belongs with 已開跑／取消, not 未有開跑時間.
+  const timed = shown.filter(r => Number.isFinite(r.race.start_time) || r.race.abandoned).sort(byTime);
+  const untimed = shown.filter(r => !Number.isFinite(r.race.start_time) && !r.race.abandoned);
+  const upcoming = timed.filter(r => !r.race.abandoned && !raceHasStarted(r.race, now));
+  const past = timed.filter(r => r.race.abandoned || raceHasStarted(r.race, now));
+  const nextStart = upcoming.length ? upcoming[0].race.start_time : null;
+
+  let html = '<div class="tl">';
+  html += `<header class="tl-head"><div><h2 class="tl-head__title">⏱ 即將開跑</h2>
+    <div class="tl-head__sub">悉尼時間 · ${inDay.length} 場 · 撳一場睇分析</div></div>`;
+  if (days.length > 1) {
+    html += `<div class="tl-days" role="group" aria-label="賽日">${days.map(d =>
+      `<button type="button" class="tl-chip${d === day ? ' tl-chip--on' : ''}" aria-pressed="${d === day}" onclick="setTimelineDay('${esc(d)}')">${esc(auDayLabel(d))}</button>`).join('')}</div>`;
+  }
+  html += '</header>';
+  const counts = { all: inDay.length, pinned: inDay.filter(r => pins.has(r.meeting.venue)).length };
+  AU_TIERS.forEach(t => { counts[t.key] = inDay.filter(r => auMeetingTier(r.meeting) === t.key).length; });
+  const chips = [['all', '全部'], ...AU_TIERS.map(t => [t.key, t.label]), ['pinned', '⭐ 釘選']];
+  html += `<div class="tl-filters" role="group" aria-label="篩選">${chips.filter(([k]) => k === 'all' || counts[k]).map(([k, label]) =>
+    `<button type="button" class="tl-chip${filter === k ? ' tl-chip--on' : ''}" aria-pressed="${filter === k}" onclick="setTimelineFilter('${k}')">${label}<span class="tl-chip__n">${counts[k]}</span></button>`).join('')}</div>`;
+
+  if (!shown.length) {
+    html += `<div class="tl-empty">${filter === 'pinned' ? '未有釘選場次 —— 喺「賽事」頁撳 ☆ 釘選' : '呢個篩選冇賽事'}</div>`;
+  } else if (!upcoming.length && !timelineShowPast && past.length) {
+    html += '<div class="tl-empty">今日全部已開跑</div>';
+  }
+  if (upcoming.length) {
+    html += `<div class="tl-list">${upcoming.map(r => renderTimelineRow(r, now, r.race.start_time === nextStart)).join('')}</div>`;
+  }
+  if (untimed.length) {
+    html += `<h3 class="tl-section">未有開跑時間</h3><div class="tl-list">${untimed.map(r => renderTimelineRow(r, now, false)).join('')}</div>`;
+  }
+  if (past.length) {
+    html += `<button type="button" class="tl-past-toggle" aria-expanded="${timelineShowPast}" onclick="toggleTimelinePast()">
+      ${timelineShowPast ? '收埋' : '顯示'}已開跑／取消（${past.length}）</button>`;
+    // Most recent first; abandoned races (no start time) after the ones that ran.
+    const ordered = [...past.filter(r => !r.race.abandoned).reverse(), ...past.filter(r => r.race.abandoned)];
+    if (timelineShowPast) html += `<div class="tl-list tl-list--past">${ordered.map(r => renderTimelineRow(r, now, false)).join('')}</div>`;
+  }
+  return html + '</div>';
+}
+
+// Countdown and "next" move with the clock; refresh the view while it is open.
+setInterval(() => {
+  if (document.visibilityState === 'hidden' || isOddsInputActive()) return;
+  const boardHasTimes = currentView === 'dashboard' && selectedMeeting
+    && getMergedRaces(getRacesData(selectedMeeting)).some(r => Number.isFinite(r.start_time));
+  if (currentView === 'timeline' || boardHasTimes) render();
+}, 30000);
 
 // ═══════════════════════════════════════════════
 // Race Detail View
@@ -3298,7 +3726,10 @@ function renderRaceDetail() {
   // Only get consensus if both analysts have data for this race
   const consensus = raceAnalysts.length > 1 ? getConsensus(m, raceNum) : null;
 
-  let html = `<div style="font-size:0.8rem;color:#64748B;margin-bottom:12px"><a href="#" onclick="showDashboard();return false">🏠 Dashboard</a> → ${esc(m.venue)} ${esc(m.date)} → Race ${raceNum}</div>`;
+  const backLink = raceReturnView === 'timeline'
+    ? '<a href="#" onclick="showTimeline();return false">⏱ 即將開跑</a>'
+    : '<a href="#" onclick="showDashboard();return false">🏠 Dashboard</a>';
+  let html = `<div style="font-size:0.8rem;color:#64748B;margin-bottom:12px">${backLink} → ${esc(m.venue)} ${esc(m.date)} → Race ${raceNum}</div>`;
 
   // Race pills
   if (allMeetingRaces.length > 1) {
@@ -3331,6 +3762,15 @@ function renderRaceDetail() {
     html += '</div>';
   }
   html += '</div>';
+
+  // Betting panel first (HKJC and AU): it is used on every visit, while the
+  // analysis below is read far less often. It used to sit after the blind spots.
+  try {
+    html += renderBettingPanel(m, raceNum, raceAnalysts.length > 1, consensus);
+  } catch (e) {
+    html += `<div class="card" style="margin-bottom:24px"><h3 style="color:red">⚠️ 投注區域匯入失敗</h3><pre style="font-size:0.75rem">${esc(e.message)}</pre></div>`;
+    console.error('BettingPanel error:', e);
+  }
 
   if (m.region === 'au') html += renderAuFullTimeStatus(analysis);
 
@@ -3378,15 +3818,12 @@ function renderRaceDetail() {
     html += `<div class="card" style="margin-top:24px"><h3 style="font-size:1rem;font-weight:700;margin-bottom:8px">🔮 盲區分析</h3><div style="font-size:0.85rem;color:#475569;line-height:1.7;white-space:pre-wrap">${formatAnalysis(analysis.blind_spots.slice(0, 1000))}</div></div>`;
   }
 
-  // Betting panel
-  try {
-    html += renderBettingPanel(m, raceNum, raceAnalysts.length > 1, consensus);
-  } catch (e) {
-    html += `<div class="card" style="margin-top:24px"><h3 style="color:red">⚠️ 投注區域匯入失敗</h3><pre style="font-size:0.75rem">${e.message}</pre></div>`;
-    console.error('BettingPanel error:', e);
-  }
-
   return html;
+}
+
+// Unique across meetings: the timeline shows R1 #2 of several venues at once.
+function oddsInputName(date, venue, race, horse) {
+  return `odds-${String(date)}-${String(venue).replace(/[^A-Za-z0-9]+/g, '_')}-${race}-${horse}`;
 }
 
 function renderBetCard(c, m, raceNum) {
@@ -3416,7 +3853,7 @@ function renderBetCard(c, m, raceNum) {
           ? {label:'待決定', cls:'decision'}
           : {label:'輸入賠率', cls:'draft'};
   h += `<div class="bh-grades"><span class="bh-status bh-status--${statusMeta.cls}">${statusMeta.label}</span>${ratingBadge(String(c.kelvin_grade||c.grade||''))}${c.heison_grade?' '+ratingBadge(String(c.heison_grade)):''}`;
-  h += `<button type="button" class="bh-analysis" onclick="showRace(${raceNum})">查看分析\u2192</button>`;
+  h += `<button type="button" class="bh-analysis" onclick="openMeetingRace(${A.split(',').slice(0, 3).join(',')})">查看分析\u2192</button>`;
   const profit = calcProfit(s);
   if (profit !== null) {
     h += `<span class="bh-profit ${profit >= 0 ? 'bh-profit--win' : 'bh-profit--loss'}">${profit >= 0 ? '+' : ''}$${profit.toFixed(2)}</span>`;
@@ -3434,19 +3871,18 @@ function renderBetCard(c, m, raceNum) {
     h += `<button type="button" class="bb bb-reopen" onclick="reopenBet(${A})">\ud83d\udd04 \u91cd\u65b0\u8003\u616e</button>`;
     h += `</div></div>`;
   } else if (s.confirmed) {
-    h += `<div class="bh-step">`;
-    h += `<div class="bh-step-heading"><div class="bh-step-label">\ud83d\udcb0 \u5df2\u6295\u6ce8 \u00b7 \u8ce0\u7387 @${s.odds}</div>`;
-    h += `<button type="button" class="bb bb-edit bb-edit--inline" onclick="unlockOdds(${A})">\u270f\ufe0f \u6539\u8ce0\u7387</button></div>`;
-    h += `<div class="bh-step-row bh-step-row--result">`;
-    h += `<span style="font-size:0.72rem;color:#94A3B8;margin-right:4px">\u540d\u6b21:</span>`;
+    // Two rows, one type size: status + actions, then the result buttons.
+    h += `<div class="bh-step bh-step--bet">`;
+    h += `<div class="bh-step-heading"><div class="bh-step-label">\ud83d\udcb0 \u5df2\u6295 @${s.odds}</div>`;
+    h += `<div class="bh-step-actions"><button type="button" class="bb bb-edit bb--sm" aria-label="\u6539\u8ce0\u7387" onclick="unlockOdds(${A})">\u270f\ufe0f<span class="bb-text"> \u6539\u8ce0\u7387</span></button>`;
+    h += `<button type="button" class="bb bb-scratch bb--sm" aria-label="\u5df2\u9000\u51fa" onclick="scratchHorse(${A})">\ud83d\udeab<span class="bb-text"> \u9000\u51fa</span></button></div></div>`;
+    h += `<div class="bh-step-row bh-step-row--result"><span class="bh-result-label">\u540d\u6b21</span>`;
     h += `<div class="br-group">`;
     ;[1,2,3].forEach(p => {
       h += `<button type="button" class="br${s.result===p?' br--on':''}" aria-label="第${p}名" onclick="setResult(${A},${p})">${p}</button>`;
     });
     h += `<button type="button" class="br br--x${s.result===0?' br--x-on':''}" aria-label="未能入位" onclick="setResult(${A},0)">X</button>`;
-    h += `</div>`;
-    h += `<button type="button" class="bb bb-scratch" onclick="scratchHorse(${A})" style="margin-left:8px">\ud83d\udeab \u5df2\u9000\u51fa</button>`;
-    h += `</div></div>`;
+    h += `</div></div></div>`;
   } else if (s.oddsConfirmed) {
     h += `<div class="bh-step">`;
     h += `<div class="bh-step-label">\u8ce0\u7387\u5df2\u78ba\u8a8d @${s.odds} \u2014 \u662f\u5426\u6295\u6ce8\uff1f</div>`;
@@ -3457,10 +3893,10 @@ function renderBetCard(c, m, raceNum) {
     h += `</div></div>`;
   } else {
     h += `<div class="bh-step">`;
-    const oddsLabelId = `odds-label-${raceNum}-${c.horse_number}`;
+    const oddsLabelId = `label-${oddsInputName(m.date, m.venue, raceNum, c.horse_number)}`;
     h += `<div class="bh-step-label" id="${oddsLabelId}">\u2460 \u8f38\u5165\u8ce0\u7387</div>`;
     h += `<div class="bh-step-row">`;
-    h += `<input class="bh-odds-input" type="number" name="odds-${raceNum}-${c.horse_number}" inputmode="decimal" autocomplete="off" step="0.1" min="1" placeholder="例如 2.5…" aria-labelledby="${oddsLabelId}" value="${s.odds ?? getMarketOdds(c, m, raceNum).place ?? ''}" oninput="setOddsValue(${A},this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();lockOdds(${A})}">`;
+    h += `<input class="bh-odds-input" type="number" name="${oddsInputName(m.date, m.venue, raceNum, c.horse_number)}" inputmode="decimal" autocomplete="off" step="0.1" min="1" placeholder="例如 2.5…" aria-labelledby="${oddsLabelId}" value="${s.odds ?? getMarketOdds(c, m, raceNum).place ?? ''}" oninput="setOddsValue(${A},this.value)" onkeydown="if(event.key==='Enter'){event.preventDefault();lockOdds(${A})}">`;
     h += `<button type="button" class="bb bb-lock" onclick="lockOdds(${A})">\ud83d\udd12 \u78ba\u8a8d\u8ce0\u7387</button>`;
     h += `</div></div>`;
   }
@@ -3733,7 +4169,7 @@ function renderBettingPanel(meeting, raceNum, isDualAnalyst, consensus) {
   const candidates = getRaceBettingCandidates(meeting, raceNum, isDualAnalyst);
   const m = meeting;
 
-  let html = `<div class="bp" style="margin-top:24px">
+  let html = `<div class="bp bp--race">
     <div class="bp-hdr"><div class="bp-title">\ud83c\udfaf R${raceNum} \u6295\u6ce8\u9762\u677f</div>
     <div class="bp-header-meta">${renderSyncStatus()}<span class="bp-sub">$1 \u5e73\u6ce8\u5236</span></div></div>`;
 
@@ -6723,14 +7159,22 @@ function renderNow(main) {
   // Update nav active state
   const racesNav = document.getElementById('nav-races');
   const roiNav = document.getElementById('nav-roi');
-  if (racesNav) racesNav.className = currentView !== 'roi' ? 'nav-pill nav-pill--active' : 'nav-pill';
+  const timelineNav = document.getElementById('nav-timeline');
+  const onTimeline = currentView === 'timeline' || (currentView === 'race' && raceReturnView === 'timeline');
+  if (racesNav) racesNav.className = currentView !== 'roi' && !onTimeline ? 'nav-pill nav-pill--active' : 'nav-pill';
   if (roiNav) roiNav.className = currentView === 'roi' ? 'nav-pill nav-pill--active' : 'nav-pill';
+  if (timelineNav) {
+    timelineNav.style.display = activeRegion === 'au' ? '' : 'none';
+    timelineNav.className = onTimeline ? 'nav-pill nav-pill--active' : 'nav-pill';
+  }
   if (currentView === 'race') {
     main.innerHTML = renderRaceDetail();
     // The mobile switcher is a one-row scroller, so on R7 of 9 the active pill starts
     // off-screen to the right. Bring it into view without scrolling the page itself.
     const activePill = main.querySelector('.race-pill--active');
     if (activePill?.scrollIntoView) activePill.scrollIntoView({ inline: 'center', block: 'nearest' });
+  } else if (currentView === 'timeline') {
+    main.innerHTML = renderTimeline();
   } else if (currentView === 'roi') {
     main.innerHTML = renderROI();
   } else if (currentView === 'sports') {
@@ -6909,7 +7353,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   await unpackDashboardData();
   primeSyncedBettingStateFromLocal();
   if (DASHBOARD_DATA.meetings.length) {
-    selectedMeeting = DASHBOARD_DATA.meetings[0];
+    selectedMeeting = getInitialSportFromUrl() === 'au'
+      ? auDefaultMeeting(DASHBOARD_DATA.meetings.filter(m => m.region === 'au')) || DASHBOARD_DATA.meetings[0]
+      : DASHBOARD_DATA.meetings[0];
     loadBettingState();
     collapsedBetRaces.clear();
   }
@@ -6918,7 +7364,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadRoiLedger().then(() => { if (currentView === 'roi') render(); });
   loadSportsBetLedger();
   const initialSport = getInitialSportFromUrl();
+  // Read before showSport(), which clears `view` from the URL.
+  const initialTimeline = initialSport === 'au' && /[?&]view=timeline\b/.test(String(window.location?.search || ''));
   showSport(initialSport);
+  if (initialTimeline) showTimeline();
   if (initialSport === 'nba') restoreNbaTrackingView();
   renderSnapshotStamp();
   // Also check on first load, not just on foreground: a cold launch can be served
