@@ -130,7 +130,7 @@ class _Boom:
 def test_player_log_frame_falls_back_to_espn_when_nbacom_times_out(monkeypatch):
     monkeypatch.setattr(X.playergamelog, "PlayerGameLog", _Boom(requests.exceptions.ReadTimeout("t")))
     monkeypatch.setitem(X.ESPN_IDS, 203507, "3032977")
-    monkeypatch.setattr(E, "_get_json", lambda url, get=None, timeout=15: GAMELOG)
+    monkeypatch.setattr(E, "_get_json", lambda url, get=None, timeout=15, fresh_after=None: GAMELOG)
     E._GAMELOG_CACHE.clear()
     frame, source = X.player_log_frame(203507, "2026-27", "10/27/2026", "Regular Season")
     assert source == "espn"

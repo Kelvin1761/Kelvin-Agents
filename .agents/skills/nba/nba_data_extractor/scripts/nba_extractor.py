@@ -76,6 +76,8 @@ try:
     atexit.register(lambda: print(
         f"📡 stats.nba.com: {nba_api_breaker._state['network_calls']} 次網絡請求，"
         f"{nba_api_breaker._state['cache_hits']} 次用 cache"))
+    import nba_espn_http
+    atexit.register(lambda: print(nba_espn_http.summary()))
     NBA_API_AVAILABLE = True
 except ImportError:
     print("⚠️ nba_api 未安裝。請執行：pip install nba_api")

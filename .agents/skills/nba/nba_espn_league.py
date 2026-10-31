@@ -53,12 +53,8 @@ def cache_root() -> Path:
 
 
 def _get_json(url, get=None, timeout=20):
-    if get is None:
-        import requests
-        get = requests.get
-    response = get(url, timeout=timeout)
-    response.raise_for_status()
-    return response.json()
+    import nba_espn_http
+    return nba_espn_http.get_json(url, get=get, timeout=timeout)
 
 
 def _read(path: Path):

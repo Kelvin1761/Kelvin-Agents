@@ -1979,6 +1979,11 @@ def main() -> int:
         log = RunLog(args.mode, target_date)
         try:
             if args.mode == "pregame":
+                # ESPN injuries/depth charts exist only as "today"; one capture a
+                # day (research input, never read by the live pipeline).
+                import nba_espn_snapshots
+                snap = nba_espn_snapshots.take_daily()
+                log.step("espn_daily_snapshot", snap.pop("status"), **snap)
                 role = (
                     nba_pregame_role(now)
                     if args.freshness_role == "auto"
