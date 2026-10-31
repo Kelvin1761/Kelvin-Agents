@@ -65,7 +65,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
   const source = `${scriptMatch[1]}
     globalThis.__dashboardTest = {
       unpackDashboardData, tennisRows, tennisTrackingFeed,
-      renderAuMeetingList, renderTimeline, auDefaultMeeting, renderRaceCard, renderDashboard: typeof renderDashboard === 'function' ? renderDashboard : null,
+      renderAuMeetingList, renderTimeline, auDefaultMeeting, renderRaceCard, raceBoardColumns, raceBoardColumnsPhone, renderDashboard: typeof renderDashboard === 'function' ? renderDashboard : null,
       setNowForTest: (ms) => { dashboardNow = () => ms; },
       setTimelineFilter, toggleTimelinePast, toggleAuPin,
       restoreTennisView, tennisStats, tennisPnl, tennisSelectRows, tennisRenderBets, tennisLoadMore, setTennisFilter, renderTennisWorkspace, loadSportsBetLedger,
@@ -2416,9 +2416,22 @@ test("HKJC race tiles show Hong Kong time, a last-hour countdown and grey out on
   api.setNowForTest((start - 20 * 60) * 1000);
   let html = api.renderRaceCard(hv, {race_number: 1, start_time: start, distance: "1200m", horses_count: 12}, false);
   assert.match(html, /rcard__time">12:45</);
-  assert.match(html, /20 分鐘後/);
+  assert.match(html, /rcard__tag">20 分鐘</);
   api.setNowForTest((start + 61) * 1000);
   html = api.renderRaceCard(hv, {race_number: 1, start_time: start, distance: "1200m", horses_count: 12}, false);
   assert.match(html, /rcard rcard--past/);
-  assert.doesNotMatch(html, /分鐘後/);
+  assert.doesNotMatch(html, /rcard__tag/);
+});
+
+test("race board rows are balanced: ten races sit five and five, never one orphan", () => {
+  const api = loadTemplateFunctions({meetings: [], races: {}, consensus: {}, roi: {}});
+  assert.equal(api.raceBoardColumns(10), 5);
+  assert.equal(api.raceBoardColumns(11), 6);
+  assert.equal(api.raceBoardColumns(9), 5);
+  assert.equal(api.raceBoardColumns(6), 6);
+  // Phones: three a row unless that strands one tile.
+  assert.equal(api.raceBoardColumnsPhone(10), 2);
+  assert.equal(api.raceBoardColumnsPhone(7), 2);
+  assert.equal(api.raceBoardColumnsPhone(9), 3);
+  assert.equal(api.raceBoardColumnsPhone(11), 3);
 });

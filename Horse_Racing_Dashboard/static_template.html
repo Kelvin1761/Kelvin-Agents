@@ -3265,7 +3265,9 @@ function renderDashboard() {
         <h2 class="race-overview-title">${flag} ${esc(formatVenueDisplay(selectedMeeting.venue))} · ${esc(selectedMeeting.date)}${analystNote}</h2>
         <div class="race-overview-summary">全部 ${merged.length} 場${merged.some(r => Number.isFinite(r.start_time)) ? ` · ${raceClockZone(selectedMeeting)}` : ''} · 點擊查看詳細分析</div>
       </div>`;
-      html += `<div class="rboard">${merged.map(race => renderRaceCard(selectedMeeting, race, isDualAnalyst)).join('')}</div>`;
+      const nextRace = merged.find(r => Number.isFinite(r.start_time) && !r.abandoned && !raceHasStarted(r));
+      html += `<div class="rboard" style="--rb-cols:${raceBoardColumns(merged.length)};--rb-cols-sm:${raceBoardColumnsPhone(merged.length)}">${merged.map(race =>
+        renderRaceCard(selectedMeeting, race, isDualAnalyst, race === nextRace)).join('')}</div>`;
 
       // Betting panel — consolidated list below all race tiles
       html += renderDashboardBettingPanel(selectedMeeting, merged, isDualAnalyst);
@@ -3287,27 +3289,41 @@ function raceBetSummary(meeting, race, isDualAnalyst) {
   return null;
 }
 
-// Race board tile (HKJC and AU): two quiet lines -- race + jump time, then
-// distance + field. The class name lives in the tooltip; squeezing it into the
-// tile is what produced "1500m T…" before. Bet progress is a small dot.
-function renderRaceCard(meeting, race, isDualAnalyst) {
+// Race board tile (HKJC and AU). The jump time is the hero; race number on
+// top, distance + field underneath, countdown as a small tag in the corner so
+// it never squeezes the distance. The next race is outlined; races that have
+// run fade. The class name lives in the tooltip.
+function renderRaceCard(meeting, race, isDualAnalyst, isNext = false) {
   const timed = Number.isFinite(race.start_time);
   const past = raceHasStarted(race);
   const status = raceBetSummary(meeting, race, isDualAnalyst);
   const runners = race.horses_count || race.horses?.length || 0;
-  const cls = race.abandoned ? ' rcard--off' : (past ? ' rcard--past' : '');
-  const title = [race.race_class, race.distance].filter(Boolean).join(' · ');
-  const time = timed ? raceClock(meeting, race.start_time) : (race.abandoned ? '取消' : '');
-  // Countdown in the last hour (and through the late-start grace), like the timeline.
   const now = dashboardNow() / 1000;
-  const soon = timed && !past && !race.abandoned && race.start_time - now <= 3600
-    ? timelineCountdown(race.start_time, now) : '';
+  const cls = race.abandoned ? ' rcard--off' : past ? ' rcard--past' : isNext ? ' rcard--next' : '';
+  const title = [race.race_class, race.distance].filter(Boolean).join(' · ');
+  let tag = '';
+  if (race.abandoned) tag = '<span class="rcard__tag rcard__tag--off">取消</span>';
+  else if (timed && !past && race.start_time - now <= 3600) {
+    const mins = Math.max(1, Math.round((race.start_time - now) / 60));
+    tag = `<span class="rcard__tag">${race.start_time <= now ? '到時間' : `${mins} 分鐘`}</span>`;
+  }
+  const hero = timed ? raceClock(meeting, race.start_time) : esc(race.distance || '—');
+  const meta = [timed ? race.distance : '', runners ? `${runners} 匹` : ''].filter(Boolean).map(esc).join(' · ');
   return `<div class="rcard${cls}" role="button" tabindex="0" title="${esc(title)}" onclick="showRace(${race.race_number})"
       onkeydown="if(event.key==='Enter'){showRace(${race.race_number})}">
-    ${status ? `<span class="rcard__dot rcard__dot--${status.cls}" title="${esc(status.label)}" aria-label="${esc(status.label)}"></span>` : ''}
-    <div class="rcard__top"><span class="rcard__num">R${race.race_number}</span>${time ? `<span class="rcard__time">${time}</span>` : ''}</div>
-    <div class="rcard__meta">${soon ? `<span class="rcard__soon">${soon}</span> · ` : ''}${[race.distance, runners ? `${runners} 匹` : ''].filter(Boolean).map(esc).join(' · ') || '—'}</div>
+    <div class="rcard__top"><span class="rcard__num">R${race.race_number}</span>${status ? `<span class="rcard__dot rcard__dot--${status.cls}" title="${esc(status.label)}" aria-label="${esc(status.label)}"></span>` : ''}${tag}</div>
+    <div class="rcard__time">${hero}</div>
+    <div class="rcard__meta">${meta || '&nbsp;'}</div>
   </div>`;
+}
+
+// Even rows: 10 races → 5 + 5, 11 → 6 + 5, never one orphan tile on a row.
+function raceBoardColumns(count) {
+  return count <= 6 ? Math.max(count, 1) : Math.ceil(count / 2);
+}
+// Phones fit three tiles a row; where that would strand one (7, 10 races), use two.
+function raceBoardColumnsPhone(count) {
+  return count > 4 && count % 3 === 1 ? 2 : 3;
 }
 
 function selectMeeting(index, scrollToRaces = false) {
