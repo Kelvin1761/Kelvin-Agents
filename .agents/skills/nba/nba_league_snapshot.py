@@ -74,6 +74,9 @@ def save(label: str, season: str, date_to: str | None, data) -> Path | None:
 
 def load(label: str, season: str, date_to: str | None, max_age_days: int = MAX_AGE_DAYS):
     """Newest usable copy as ``(data, info)``, or ``(None, None)``."""
+    from nba_data_contract import primary_source
+    if primary_source() == "espn":
+        return None, None   # nba.com tables never stand in for the ESPN ruler
     wanted = _window_day(date_to)
     folder = snapshot_root() / label / str(season)
     if wanted is None or not folder.is_dir():
@@ -126,6 +129,9 @@ def load_entry(label: str, season: str, date_to: str | None, key,
                max_age_days: int = MAX_AGE_DAYS):
     """Newest usable per-player copy as ``(value, age_days)``, same
     point-in-time and age rules as ``load``."""
+    from nba_data_contract import primary_source
+    if primary_source() == "espn":
+        return None, None
     wanted = _window_day(date_to)
     folder = snapshot_root() / label / str(season)
     if wanted is None or not folder.is_dir():

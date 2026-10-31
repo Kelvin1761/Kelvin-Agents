@@ -138,8 +138,16 @@ def _wait_turn() -> None:
         time.sleep(MIN_INTERVAL_SECONDS)   # no lock file: still never burst
 
 
+def responses_root() -> Path:
+    """Where cached answers live. A historical backfill may point this at the
+    external disk (``WC_NBA_ESPN_HTTP_RESPONSES_DIR``; one season of summaries is
+    ~650 MB) while spacing and circuit stay shared with every other process."""
+    override = os.environ.get("WC_NBA_ESPN_HTTP_RESPONSES_DIR")
+    return Path(override) if override else cache_root() / "responses"
+
+
 def _cache_path(url: str) -> Path:
-    return cache_root() / "responses" / f"{hashlib.sha256(url.encode()).hexdigest()}.json"
+    return responses_root() / f"{hashlib.sha256(url.encode()).hexdigest()}.json"
 
 
 def cached(url: str, fresh_after: datetime | None):

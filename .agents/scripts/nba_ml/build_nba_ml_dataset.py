@@ -211,6 +211,7 @@ def extract_game_data(filepath, *, sportsbet=None, odds_path=None, provenance=No
     from nba_schedule import canonical_team_abbr, canonical_game_tag
     from nba_identity import player_name_key
     from nba_availability import usage_from_injuries, usage_bonus_for
+    from nba_data_contract import stat_source
     path=Path(filepath)
     data=json.loads(path.read_text())
     meta=data.get('meta') or {}
@@ -233,7 +234,8 @@ def extract_game_data(filepath, *, sportsbet=None, odds_path=None, provenance=No
         return result
     players_by_team=normalize(data.get('players') or {})
     team_stats=normalize(data.get('team_stats') or {})
-    defenders=normalize(data.get('key_defenders') or {})
+    # Legacy packages carry no stat_source: derive it the way the extractor does.
+    source_kind=meta.get('stat_source') or stat_source(data)
     injuries=normalize(data.get('injuries') or {})
     usage=usage_from_injuries(players_by_team,injuries)
     categories={'PTS':'points','REB':'rebounds','AST':'assists','FG3M':'threes_made'}
@@ -245,8 +247,6 @@ def extract_game_data(filepath, *, sportsbet=None, odds_path=None, provenance=No
     for team in (away,home):
         opponent=away if team==home else home
         context=team_stats.get(opponent) or {}
-        defender_rows=defenders.get(opponent) or []
-        defender_pm=defender_rows[0].get('PCT_PLUSMINUS') if defender_rows else None
         for player in players_by_team.get(team,[]):
             name=player.get('name','');key=player_name_key(name)
             if not key:raise ValueError('player identity missing')
@@ -267,10 +267,10 @@ def extract_game_data(filepath, *, sportsbet=None, odds_path=None, provenance=No
                 for line,price in lines:
                     features=build_features(player,stat,line,int(team==home),opponent,
                         opp_def_rating=context.get('DEF_RATING'),opp_def_rank=context.get('DEF_RANK'),
-                        opp_pace=context.get('PACE'),defender_pm=defender_pm,
+                        opp_pace=context.get('PACE'),
                         usg_bonus_pct=usage_bonus_for(usage,team,name) if team in injuries else None)
                     rows.append({
-                        'feature_contract':FEATURE_CONTRACT,'population':'priced_milestone' if price is not None else 'template_ladder',
+                        'feature_contract':FEATURE_CONTRACT,'stat_source':source_kind,'population':'priced_milestone' if price is not None else 'template_ladder',
                         'game_date':evidence['game_date'],'game_group':evidence['game_date']+':'+tag,
                         'game_tag':tag,'player':name,'player_key':key,'team':team,'opponent':opponent,'position':player.get('position',''),
                         'stat_category':stat,**features,'market_price':price,'n_history':len(arr),

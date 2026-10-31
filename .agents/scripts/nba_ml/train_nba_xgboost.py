@@ -32,6 +32,7 @@ from nba_ml_features import FEATURE_COLS, FEATURE_CONTRACT
 
 # Try XGBoost first (needs libomp on macOS), fallback to RandomForest
 USE_XGBOOST = False
+ALLOW_MIXED_SOURCES = False   # --allow-mixed-sources; one ruler per training window by default
 try:
     import xgboost as xgb
     # Quick check that it loads
@@ -63,7 +64,7 @@ def load_and_prepare(path):
     df=pd.read_csv(path)
     labeled=df[df['hit'].notna()].copy()
     required=set(FEATURE_COLS)|{'feature_contract','population','game_date','game_group','player_key',
-        'stat_category','line_value','actual_value','pit_status','result_status','event_start','captured_at',
+        'stat_category','line_value','actual_value','pit_status','result_status','event_start','captured_at','stat_source',
         'source_game_path','source_game_sha256','source_odds_path','source_odds_sha256',
         'source_result_path','source_result_sha256','source_provenance','market_price'}
     if required-set(labeled):raise ValueError('unverified legacy dataset: rebuild v2 from pre-tip priced sources')
@@ -76,6 +77,9 @@ def load_and_prepare(path):
     if (labeled.groupby('game_group')['game_date'].nunique()!=1).any():raise ValueError('event spans multiple game dates')
     key=['game_group','player_key','stat_category','line_value']
     if labeled.duplicated(key).any():raise ValueError('duplicate player/stat/line events; resolve earliest verified capture before training')
+    from nba_ml_features import check_single_source
+    share=check_single_source(labeled['stat_source'],allow_mixed=ALLOW_MIXED_SOURCES)
+    print(f'Stat sources: {share}')
     y=pd.to_numeric(labeled['hit'],errors='raise').astype(float)
     actual=pd.to_numeric(labeled['actual_value'],errors='raise')
     threshold=pd.to_numeric(labeled['line_value'],errors='raise')
@@ -97,6 +101,7 @@ def load_and_prepare(path):
         for _,row in group.iterrows():
             source=expected.get((row['player_key'],row['stat_category'],row['line_value']))
             if source is None:raise ValueError('priced row not present in source artifacts')
+            if row['stat_source']!=source['stat_source']:raise ValueError('feature/source mismatch: stat_source')
             for feature in [*FEATURE_COLS,"market_price"]:
                 left,right=row[feature],source[feature]
                 if pd.isna(left) and right is None:continue
@@ -280,7 +285,11 @@ def main():
     parser.add_argument("--dataset", default=DATASET_PATH, help="Path to dataset CSV")
     parser.add_argument("--output-dir", default=DEFAULT_OUTPUT, help="Output directory")
     parser.add_argument("--skip-shap", action="store_true", help="Skip SHAP analysis")
+    parser.add_argument("--allow-mixed-sources", action="store_true",
+                        help="Train on a corpus mixing nba.com and ESPN numbers (refused by default)")
     args = parser.parse_args()
+    global ALLOW_MIXED_SOURCES
+    ALLOW_MIXED_SOURCES = args.allow_mixed_sources
 
     output_dir = args.output_dir
     os.makedirs(output_dir, exist_ok=False)

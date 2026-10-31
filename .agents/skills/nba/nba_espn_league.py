@@ -18,9 +18,10 @@ Two honest differences from nba.com, measured in EXP-20261031-01:
 * nba.com's usage and assist rates use the team's numbers *while the player
   was on court*; a box score only has whole-game team totals.
 
-Player OFF/DEF/NET rating and player PACE need on-court possessions, and PIE
-did not reproduce (median |error| 4.5 points); all are left ``None`` --
-nothing downstream reads them. Key defenders and team
+Player OFF/DEF/NET rating and player PACE need on-court possessions: they are
+filled from play-by-play lineups (``nba_espn_lineups``, EXP-20261101-01) by
+``fill_on_court_ratings``. PIE did not reproduce (median |error| 4.5 points)
+and stays ``None`` -- nothing downstream reads it. Key defenders and team
 defence-vs-position are tracking data with no ESPN equivalent; they are not
 computed here.
 
@@ -180,7 +181,10 @@ def _game(event_id: str, day: date, get=None) -> dict | None:
     cached = _read(path)
     if cached is not None:
         return cached
-    game = parse_summary(_get_json(f"{SITE}/summary?event={event_id}", get=get), day)
+    # One request per game, ever: the raw summary is cached by
+    # nba_espn_lineups.fetch_summary, which also builds the lineups from it.
+    import nba_espn_lineups
+    game = parse_summary(nba_espn_lineups.fetch_summary(event_id, day, get=get), day)
     if game is not None:
         _write(path, game)
     return game
@@ -289,6 +293,21 @@ def player_advanced(games: list[dict], name_to_nba_id: dict) -> dict:
             "source": SOURCE,
         }
     return result
+
+
+def fill_on_court_ratings(table: dict, ratings: dict) -> int:
+    """Fill the on-court fields ``player_advanced`` leaves None from
+    ``nba_espn_lineups.player_ratings`` (same NBA ids). Returns rows filled."""
+    filled = 0
+    for nba_id, row in table.items():
+        rating = ratings.get(nba_id)
+        if not rating:
+            continue
+        for key in ("OFF_RATING", "DEF_RATING", "NET_RATING", "PACE"):
+            row[key] = rating[key]
+        row["on_court_source"] = rating["source"]
+        filled += 1
+    return filled
 
 
 def nba_name_index() -> dict:

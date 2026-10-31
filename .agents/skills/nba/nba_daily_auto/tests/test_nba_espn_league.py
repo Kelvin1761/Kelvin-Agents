@@ -105,6 +105,10 @@ def test_extractor_fills_only_during_an_outage(monkeypatch):
     game = L.parse_summary(SUMMARY, DAY)
     monkeypatch.setattr(L, "season_games", lambda *a, **k: [game])
     monkeypatch.setattr(L, "nba_name_index", lambda: {"giannis antetokounmpo": 203507})
+    lineup_game = {"players": {"3032977": {"name": "Giannis Antetokounmpo", "minutes": 31,
+                                           "off_poss": 64, "def_poss": 63, "pts_for": 70,
+                                           "pts_against": 66}}}
+    monkeypatch.setattr(X.nba_espn_lineups, "season_lineups", lambda *a, **k: [lineup_game])
     sources = {"team_stats": {"rows": 0}, "player_advanced": {"rows": 0},
                "key_defenders": {"rows": 0}, "team_dvp": {"rows": 0}}
     monkeypatch.setattr(B, "failure_count", lambda: 0)
@@ -113,12 +117,15 @@ def test_extractor_fills_only_during_an_outage(monkeypatch):
     monkeypatch.setattr(B, "failure_count", lambda: 3)
     ts, adv = X.espn_league_fallback("2026-27", "2026-10-29", sources, {}, {})
     assert set(ts) == {"MIA", "ATL"} and list(adv) == [203507]
+    assert adv[203507]["DEF_RATING"] == round(100 * 66 / (63 * 1.016), 1), "on-court rating from lineups"
+    assert sources["player_advanced"]["on_court_filled"] == 1
     assert sources["team_stats"]["source"] == "espn_box" and sources["team_stats"]["rows"] == 2
     assert X.missing_league_tables(sources, 3) == [], "tracking-only tables may be empty"
     assert X.missing_league_tables({**sources, "team_stats": {"rows": 0}}, 3) == ["team_stats"]
 
 
 def test_source_status_reports_blocked_until_a_success(tmp_path, monkeypatch):
+    monkeypatch.setenv("WC_NBA_STAT_SOURCE", "nbacom")
     monkeypatch.setenv("WC_NBA_API_BREAKER_FILE", str(tmp_path / "breaker.json"))
     monkeypatch.setitem(B._state, "noted_ok", False)
     assert B.source_status()["state"] == "ok"

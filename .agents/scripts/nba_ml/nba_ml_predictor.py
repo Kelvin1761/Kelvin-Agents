@@ -141,7 +141,7 @@ class MLPropPredictor:
         if getattr(self,'feature_contract','legacy-unverified')==FEATURE_CONTRACT:
             return build_features(player_data,stat,line_value,is_home,opp_abbr,
                 opp_def_rating=opp_def_rating,opp_def_rank=opp_def_rank,opp_pace=opp_pace,
-                defender_pm=defender_pm,usg_bonus_pct=usg_bonus_pct)
+                usg_bonus_pct=usg_bonus_pct)   # v3 has no defender_pm (legacy models still take it)
         opp_pace = 98.0 if opp_pace is None else opp_pace
         gl = player_data.get("gamelog") or {}
         gl_stats = gl.get(f"{stat}_stats") or {}

@@ -25,6 +25,9 @@ class _Resp:
 
 @pytest.fixture(autouse=True)
 def isolated(monkeypatch, tmp_path):
+    # These pin the nba.com-first path (WC_NBA_STAT_SOURCE=nbacom); the ESPN
+    # stand-down is tested on its own below.
+    monkeypatch.setenv("WC_NBA_STAT_SOURCE", "nbacom")
     monkeypatch.setenv("WC_NBA_API_BREAKER_FILE", str(tmp_path / "breaker.json"))
     monkeypatch.setitem(B._state, "consecutive", 0)
     yield
@@ -179,3 +182,15 @@ def test_cooldown_doubles_while_the_block_persists_and_resets_on_success(monkeyp
     B.record_success()
     B._trip("blocked again")
     assert B._read_marker()["cooldown_seconds"] == 1800
+
+
+def test_espn_primary_never_calls_out_and_never_replays_nba_com(monkeypatch):
+    monkeypatch.setenv("WC_NBA_STAT_SOURCE", "espn")
+    calls = []
+    guarded = B.guard(lambda self, endpoint, *a, **k: calls.append(endpoint))
+    before = B.failure_count()
+    with pytest.raises(B.StatsNbaBlocked):
+        guarded(None, "playergamelog", {"DateTo": "10/20/2026", "PlayerID": 1})
+    assert calls == [] and B.failure_count() == before + 1, "counted, so every ESPN path takes over"
+    assert B.marker_path().exists() is False, "a stand-down is not a block"
+    assert B.source_status() == {"state": "not_used", "primary": "espn"}
