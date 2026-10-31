@@ -1994,6 +1994,14 @@ test("NBA dashboard embeds periods and counts only verified paper results", () =
   assert.match(html,/&lt;script&gt;/);assert.doesNotMatch(html,/示範結算/);
 });
 
+test("tonight's NBA cards for tomorrow's games show before midnight, later days do not",()=>{
+  const shift=n=>{const d=new Date(new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Sydney'}).format(new Date())+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+  const row=(id,day)=>({id,day,event_name:'POR @ UTA',stake:1,odds:2.75,state:'pending',legs:[{player:'Jrue Holiday',stat:'REB',line:4,state:'pending'}]});
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records:[row('today',shift(0)),row('tomorrow',shift(1)),row('later',shift(2))]}}}}});
+  assert.equal(api.nbaSelectRows('day').map(r=>r.id).sort().join(),'today,tomorrow');
+  assert.equal(api.nbaSelectRows('all').map(r=>r.id).sort().join(),'today,tomorrow');
+});
+
 test("missing NBA evidence shows unavailable rather than a zero-return claim",()=>{
   const api=loadTemplateFunctions(EMPTY_DASHBOARD_DATA),html=api.renderSportsWorkspace('nba');
   assert.match(html,/紀錄暫未能讀取/);assert.doesNotMatch(html,/ROI<\/span>/);
