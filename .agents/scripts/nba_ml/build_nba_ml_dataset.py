@@ -7,7 +7,7 @@ build_nba_ml_dataset.py — NBA ML Dataset Builder V2
 
 What it does:
 1. Scan all Wong Choi NBA Analysis/ folders for nba_game_data_*.json (features)
-2. For each date, fetch Results_Brief via nba_api (labels / box scores)
+2. For each date, fetch Results_Brief via the reflector's ESPN path (labels / box scores)
 3. Build consolidated feature + label dataset → NBA_ML_Dataset/
 4. Save every raw Results_Brief permanently in NBA_ML_Dataset/results_brief/
 
@@ -31,7 +31,6 @@ import json
 import csv
 import math
 import argparse
-import time
 import io
 
 if __name__ == '__main__' and sys.stdout.encoding != 'utf-8' and hasattr(sys.stdout, 'buffer'):
@@ -57,60 +56,8 @@ SPORTSBET_LINES = {
     "FG3M": [1, 2, 3, 4, 5, 6],
 }
 
-API_SLEEP = 0.8
-
-try:
-    from nba_api.stats.endpoints import scoreboardv2, boxscoretraditionalv2
-    NBA_API_OK = True
-except ImportError:
-    NBA_API_OK = False
-
-
-# ─── Results Fetching (built-in, avoids broken reflector imports) ───
-
-def _int(v, default=0):
-    """Convert to int, handling None and non-numeric values."""
-    if v is None:
-        return default
-    try:
-        return int(v)
-    except (ValueError, TypeError):
-        return default
-
-def fetch_boxscore(game_id):
-    """Fetch box score for a specific game using BoxScoreTraditionalV2."""
-    try:
-        box = boxscoretraditionalv2.BoxScoreTraditionalV2(game_id=game_id)
-        time.sleep(API_SLEEP)
-        data = box.get_dict()
-        players = []
-        for rs in data.get('resultSets', []):
-            if rs.get('name') == 'PlayerStats':
-                headers = rs['headers']
-                h_idx = {h: i for i, h in enumerate(headers)}
-                for row in rs.get('rowSet', []):
-                    players.append({
-                        'name': row[h_idx.get('PLAYER_NAME', 0)],
-                        'team': row[h_idx.get('TEAM_ABBREVIATION', 0)],
-                        'position': row[h_idx.get('START_POSITION', 0)] or '',
-                        'starter': bool(row[h_idx.get('START_POSITION', 0)]),
-                        'minutes': row[h_idx.get('MIN', 0)] or '0',
-                        'pts': _int(row[h_idx['PTS']]),
-                        'reb': _int(row[h_idx['REB']]),
-                        'ast': _int(row[h_idx['AST']]),
-                        'fg3m': _int(row[h_idx['FG3M']]),
-                        'stl': _int(row[h_idx['STL']]),
-                        'blk': _int(row[h_idx['BLK']]),
-                        'tov': _int(row[h_idx['TO']]),
-                        'fgm': _int(row[h_idx['FGM']]),
-                        'fga': _int(row[h_idx['FGA']]),
-                        'ftm': _int(row[h_idx['FTM']]),
-                        'plus_minus': _int(row[h_idx['PLUS_MINUS']]),
-                    })
-        return {'players': players}
-    except Exception as e:
-        print(f"    ⚠️ BoxScore error ({game_id}): {e}")
-        return None
+# Results come from the reflector (ESPN only, EXP-20261101-60); no box-score
+# fetching of its own.
 
 
 def parse_minutes(value):
@@ -151,16 +98,17 @@ def fetch_results_for_date(game_date):
     spec=importlib.util.spec_from_file_location('_nba_ml_verified_results',script)
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
     day=datetime.strptime(game_date,'%Y-%m-%d').date()
-    games=module.fetch_scoreboard(day.strftime('%m/%d/%Y'))
-    if not games:return None
     events,reachable=module.fetch_espn_events(game_date)
-    espn=module.espn_index(events) if reachable else None
+    if not reachable:return None
+    games=module.fetch_scoreboard(game_date,events)
+    if not games:return None
+    espn=module.espn_index(events)
     safely_past=(datetime.now(timezone.utc).date()-day).days>=2
     results=[];seen=set()
     for game in games:
         if game.get('gameId') in seen:continue
         seen.add(game.get('gameId'))
-        results.append(module.process_game(game,boxscore_may_settle=safely_past,espn=espn))
+        results.append(module.process_game(game,boxscore_may_settle=safely_past,espn=espn,day=day))
     payload={'_version':'RESULTS_BRIEF_V2','date':game_date,'games':results,
              'total_games':len(results),'source':'shared NBA reflector finality','retrieved_at':datetime.now(timezone.utc).isoformat()}
     temporary=Path(str(verified)+'.tmp')

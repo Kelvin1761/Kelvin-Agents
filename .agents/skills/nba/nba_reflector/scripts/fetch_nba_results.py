@@ -7,148 +7,65 @@ if hasattr(sys.stdout, 'reconfigure'):
 """
 fetch_nba_results.py — NBA Reflector 賽果擷取器
 
-用 nba_api 自動擷取指定日期嘅所有 NBA 賽果，生成結構化 JSON 供 Reflector 消費。
+由 ESPN（scoreboard + summary）擷取指定美國日期嘅所有 NBA 賽果，生成結構化 JSON
+供 Reflector 消費。ESPN 係唯一來源（EXP-20261101-60）；所有請求都經
+``nba_espn_http``（限速、熔斷、完場日永久 cache）。
 
 輸出:
-  Results_Brief_{DATE}.json — 包含每場賽事嘅最終比分、每節比分、球員 Box Score
+  Results_Brief_{DATE}.json — 包含每場賽事嘅最終比分、球員 Box Score
 
 Usage:
   python fetch_nba_results.py --date 2026-04-07 --dir "2026-04-08 NBA Analysis"
 
   (--date 係美國日期，即澳洲日期 -1)
-
-Version: 1.0.0
 """
 
 import argparse
 import json
 import io
-import time
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-API_SLEEP = 0.8  # Rate limit protection
-
-try:
-    from nba_api.stats.endpoints import (
-        boxscoretraditionalv3,
-        leaguegamefinder,
-    )
-    try:
-        from nba_api.stats.endpoints import scoreboardv3
-        SCOREBOARD_VERSION = 'v3'
-    except ImportError:
-        from nba_api.stats.endpoints import scoreboardv2
-        SCOREBOARD_VERSION = 'v2'
-    from nba_api.stats.static import teams as nba_teams
-    NBA_API_OK = True
-except ImportError:
-    NBA_API_OK = False
-    print("❌ nba_api 未安裝。請執行: pip install nba_api")
-    sys.exit(1)
-
-
-def fetch_scoreboard(game_date):
-    """Fetch all games on a given date using ScoreboardV3."""
-    print(f"📅 擷取 {game_date} 嘅 NBA 賽程...")
-    try:
-        if SCOREBOARD_VERSION == 'v3':
-            sb = scoreboardv3.ScoreboardV3(game_date=game_date)
-            time.sleep(API_SLEEP)
-            data = sb.get_dict()
-            games = data.get('scoreboard', {}).get('games', [])
-        else:
-            sb = scoreboardv2.ScoreboardV2(game_date=game_date)
-            time.sleep(API_SLEEP)
-            games = _convert_scoreboard_v2(sb.get_dict())
-        time.sleep(API_SLEEP)
-        print(f"  ✅ 搵到 {len(games)} 場賽事")
-        return games
-    except Exception as e:
-        print(f"  ❌ Scoreboard{SCOREBOARD_VERSION.upper()} 失敗: {e}")
-        return []
-
-
-def _result_set_map(data):
-    """Map nba_api resultSets into {name: [row dicts]}."""
-    mapped = {}
-    for result_set in data.get('resultSets', []):
-        headers = result_set.get('headers', [])
-        mapped[result_set.get('name', '')] = [
-            dict(zip(headers, row)) for row in result_set.get('rowSet', [])
-        ]
-    return mapped
-
-
-def _convert_scoreboard_v2(data):
-    """Convert ScoreboardV2 rows into the ScoreboardV3-like shape used below."""
-    sets = _result_set_map(data)
-    game_headers = sets.get('GameHeader', [])
-    line_scores = sets.get('LineScore', [])
-    line_by_game = {}
-    for row in line_scores:
-        line_by_game.setdefault(row.get('GAME_ID'), []).append(row)
-
-    games = []
-    for header in game_headers:
-        game_id = header.get('GAME_ID')
-        home_team_id = header.get('HOME_TEAM_ID')
-        teams = line_by_game.get(game_id, [])
-        home_row = next((r for r in teams if r.get('TEAM_ID') == home_team_id), {})
-        away_row = next((r for r in teams if r.get('TEAM_ID') != home_team_id), {})
-        games.append({
-            'gameId': game_id,
-            'gameStatusText': header.get('GAME_STATUS_TEXT', ''),
-            'homeTeam': {
-                'teamId': home_row.get('TEAM_ID'),
-                'teamTricode': home_row.get('TEAM_ABBREVIATION', '?'),
-                'teamName': home_row.get('TEAM_CITY_NAME', '?'),
-                'score': home_row.get('PTS', 0),
-            },
-            'awayTeam': {
-                'teamId': away_row.get('TEAM_ID'),
-                'teamTricode': away_row.get('TEAM_ABBREVIATION', '?'),
-                'teamName': away_row.get('TEAM_CITY_NAME', '?'),
-                'score': away_row.get('PTS', 0),
-            },
-        })
-    return games
-
-
 
 # ── Finality ─────────────────────────────────────────────────────────────────
-# ScoreboardV3 never reports a final for this feed (gameStatus None, scores
-# None, statusText = tip-off time, every date checked 2026-10-11..20), so a
-# game's finality is decided here, in order:
-#   1. ESPN scoreboard event (completed / STATUS_FINAL) matched by canonical
-#      team abbreviations; ESPN says NOT completed => the game stays non-final,
-#      whatever the box score looks like.
-#   2. only when ESPN is unreachable / has no matching event: the box-score
-#      completeness rule (box_score_is_complete).
-#   3. last resort: the legacy >= 2-day rule.
-# In every case the scores must come from a box score that actually carries
-# player stats; a game is never settled from nothing.
-ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard"
+# A game is final only when the ESPN scoreboard event says completed /
+# STATUS_FINAL AND the box score's summed player points equal ESPN's score.
+# ESPN unreachable => no games at all (exit 1); a game is never settled from
+# nothing. ``box_score_is_complete`` and the >= 2-day rule stay for callers
+# that hand in a box score with no ESPN event (tests, archived briefs).
+SITE = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
 _NBA_SKILL = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, _NBA_SKILL)
 from nba_schedule import canonical_team_abbr  # noqa: E402
-import nba_api_breaker  # noqa: E402
+import nba_espn_http  # noqa: E402
+import nba_espn_lineups  # noqa: E402
 
-nba_api_breaker.install()   # a blocked nba.com goes straight to ESPN
+
+def _us_day(game_date_file):
+    try:
+        return date.fromisoformat(str(game_date_file))
+    except ValueError:
+        return None
 
 
 def fetch_espn_events(game_date_file, timeout=15):
-    """ESPN events for a US date (YYYY-MM-DD). Returns (events, reachable)."""
+    """ESPN events for a US date (YYYY-MM-DD). Returns (events, reachable).
+
+    A closed day (06:00 ET the next morning) is cached for good; today's
+    board is always asked again.
+    """
+    day = _us_day(game_date_file)
+    fresh = None
+    if day is not None:
+        closes = nba_espn_lineups.day_close(day)
+        fresh = closes if datetime.now(nba_espn_lineups.US_EASTERN) >= closes else None
     try:
-        import requests
-        url = f"{ESPN_SCOREBOARD}?dates={game_date_file.replace('-', '')}"
-        response = requests.get(url, timeout=timeout)
-        response.raise_for_status()
-        return response.json().get("events") or [], True
+        url = f"{SITE}/scoreboard?dates={game_date_file.replace('-', '')}&limit=50"
+        return nba_espn_http.get_json(url, timeout=timeout, fresh_after=fresh).get("events") or [], True
     except Exception as exc:
-        print(f"  ⚠️ ESPN 賽果核對失敗（改用 box score 完整性規則）: {exc}")
+        print(f"  ❌ ESPN scoreboard 擷取失敗: {exc}")
         return [], False
 
 
@@ -175,15 +92,6 @@ def espn_index(events):
     return index
 
 
-# ── ESPN fallback (2026-10-29) ───────────────────────────────────────────────
-# stats.nba.com (Akamai) blocks this machine's IP for hours at a time -- every
-# nba.com host answered 403 or hung on 10-28/29 -- and with no scoreboard the
-# whole reflector exited 1 ("postgame_exit_1"), every 15 minutes, all evening.
-# ESPN's scoreboard + summary carry every field the Results Brief needs, so a
-# blocked nba.com now falls back to them. Both are reshaped into the exact
-# ScoreboardV3 / BoxScoreTraditionalV3 dicts the rest of this file reads, so
-# finality, extraction and settlement are unchanged.
-ESPN_SUMMARY = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary"
 ESPN_ID_PREFIX = "espn:"
 
 
@@ -209,15 +117,23 @@ def espn_scoreboard_games(events):
     return games
 
 
-def fetch_espn_summary(event_id, timeout=15):
+def fetch_espn_summary(event_id, day=None):
+    """The raw ESPN summary (cached for good once ``day`` has closed), or None."""
     try:
-        import requests
-        response = requests.get(f"{ESPN_SUMMARY}?event={event_id}", timeout=timeout)
-        response.raise_for_status()
-        return response.json()
+        return nba_espn_lineups.fetch_summary(str(event_id), day) if day else \
+            nba_espn_http.get_json(f"{SITE}/summary?event={event_id}", timeout=20)
     except Exception as exc:
         print(f"    ⚠️ ESPN box score 擷取失敗 ({event_id}): {exc}")
         return None
+
+
+def fetch_scoreboard(game_date_file, events=None):
+    """ESPN games for a US date, in the ScoreboardV3 shape the rest of this file reads."""
+    if events is None:
+        events, _ = fetch_espn_events(game_date_file)
+    games = espn_scoreboard_games(events)
+    print(f"  ✅ 搵到 {len(games)} 場賽事（ESPN）")
+    return games
 
 
 def _made_attempted(text):
@@ -285,6 +201,19 @@ def espn_boxscore(summary):
                         "plusMinusPoints": _int_stat(row.get("plusMinus")),
                     },
                 })
+            # nba.com listed inactive players with a comment (-> VOID_DNP); ESPN's
+            # box leaves them out and names the Out ones under ``injuries``.
+            listed = {p["name"] for p in players}
+            for block in summary.get("injuries") or []:
+                if str((block.get("team") or {}).get("id")) != str(team.get("id")):
+                    continue
+                for entry in block.get("injuries") or []:
+                    name = (entry.get("athlete") or {}).get("displayName")
+                    if name and name not in listed and str(entry.get("status") or "").lower() == "out":
+                        listed.add(name)
+                        players.append({"name": name, "position": "", "starter": "",
+                                        "comment": "Inactive (ESPN injuries: Out)",
+                                        "statistics": {"minutes": "", "points": 0}})
             out[f"{side}Team"] = {
                 "teamTricode": canonical_team_abbr(team.get("abbreviation")),
                 "teamName": team.get("name") or team.get("displayName") or "?",
@@ -353,16 +282,12 @@ def decide_finality(away_abbr, home_abbr, boxscore, espn, boxscore_may_settle):
     return False, None, "unresolved"
 
 
-def fetch_boxscore(game_id):
-    """Fetch box score for a specific game."""
-    try:
-        box = boxscoretraditionalv3.BoxScoreTraditionalV3(game_id=game_id)
-        time.sleep(API_SLEEP)
-        data = box.get_dict()
-        return data
-    except Exception as e:
-        print(f"    ⚠️ BoxScore 擷取失敗 ({game_id}): {e}")
+def fetch_boxscore(game_id, day=None):
+    """ESPN box score for an ``espn:<id>`` game, in the BoxScoreTraditionalV3 shape."""
+    if not str(game_id).startswith(ESPN_ID_PREFIX):
         return None
+    summary = fetch_espn_summary(str(game_id)[len(ESPN_ID_PREFIX):], day)
+    return espn_boxscore(summary) if summary else None
 
 
 def _player_display_name(player):
@@ -434,16 +359,12 @@ def _boxscore_points(boxscore, team_key):
     return points if isinstance(points, (int, float)) else None
 
 
-def process_game(game, *, boxscore_may_settle=False, espn=None):
-    """Process a single game from the scoreboard.
+def process_game(game, *, boxscore_may_settle=False, espn=None, day=None):
+    """Process a single game from the ESPN scoreboard.
 
-    ScoreboardV2 can stay stale for days (2026-10-10 preseason: every game
-    still "6:30 pm ET" with PTS null on 10-15) while BoxScoreTraditionalV3
-    already has the final.  When the scoreboard has no score and the caller
-    says the game date is safely in the past (``boxscore_may_settle``), the
-    box score's team points are used and the status is marked
-    ``Final (boxscore)``.  Otherwise a missing score stays unresolved: the
-    status keeps the scoreboard text, which downstream treats as not final.
+    Scores always come from ``decide_finality``: ESPN completed + the box
+    score's summed points equal to ESPN's score. Otherwise the status keeps
+    the scoreboard text, which downstream treats as not final.
     """
     game_id = game.get('gameId', '')
     home = game.get('homeTeam', {})
@@ -457,16 +378,12 @@ def process_game(game, *, boxscore_may_settle=False, espn=None):
 
     # Fetch detailed box score
     print(f"  📊 擷取 {away_abbr} @ {home_abbr} Box Score...")
-    boxscore = None
-    if not str(game_id).startswith(ESPN_ID_PREFIX):
-        boxscore = fetch_boxscore(game_id)
+    boxscore = fetch_boxscore(game_id, day=day)
     if boxscore is None:
         event = (espn or {}).get((canonical_team_abbr(away_abbr), canonical_team_abbr(home_abbr)))
         if event and event.get("event_id"):
-            summary = fetch_espn_summary(event["event_id"])
+            summary = fetch_espn_summary(event["event_id"], day)
             boxscore = espn_boxscore(summary) if summary else None
-            if boxscore:
-                print("    ↪️ 用 ESPN box score（stats.nba.com 唔通）")
 
     scoreboard_status = status
     status_source = "scoreboard"
@@ -575,16 +492,10 @@ def main():
 
     espn_events, espn_ok = fetch_espn_events(game_date_file)
     espn = espn_index(espn_events) if espn_ok else None
-
-    # Fetch scoreboard
-    games = fetch_scoreboard(game_date_api)
-
-    if not games and espn_events:
-        games = espn_scoreboard_games(espn_events)
-        print(f"  ↪️ stats.nba.com scoreboard 唔通，改用 ESPN：{len(games)} 場")
+    games = fetch_scoreboard(game_date_file, espn_events)
 
     if not games:
-        print("❌ 該日期冇 NBA 賽事，或 API 呼叫失敗（stats.nba.com 同 ESPN 都冇）")
+        print("❌ 該日期冇 NBA 賽事，或 ESPN 呼叫失敗")
         sys.exit(1)
 
     # Process each game
@@ -606,7 +517,7 @@ def main():
         if game.get('gameId') in seen_ids:      # ScoreboardV3 lists every game twice
             continue
         seen_ids.add(game.get('gameId'))
-        result = process_game(game, boxscore_may_settle=boxscore_may_settle, espn=espn)
+        result = process_game(game, boxscore_may_settle=boxscore_may_settle, espn=espn, day=_us_day(game_date_file))
         results.append(result)
         
         score = result['final_score']

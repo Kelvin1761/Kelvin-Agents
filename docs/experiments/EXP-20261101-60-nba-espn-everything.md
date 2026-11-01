@@ -50,4 +50,26 @@ Neither release touches C coefficients, refits or windows.
 
 ## Results
 
-(to be filled in)
+### R1 (2026-11-01)
+
+**R1-1 settlement parity** (`evidence/EXP-20261101-60-nba-results-settlement-parity.py`): 9 US dates that have a stored Results_Brief (10-20..10-28, 10-31; 7 nba.com, 2 already ESPN). All 81 final scores match, game by game.
+
+| | Legs |
+|---|---|
+| Settled with the stored brief | 14,814 |
+| Settled with the ESPN brief | 15,648 |
+| **Identical** | **14,695** |
+| Only ESPN settles (stored brief fetched before the game ended: 10-27 US date stored had 1 final, ESPN 4) | 890 (253 hit + 637 miss; no outcome difference, stored was incomplete) |
+| Stored void, ESPN PLAYER_NOT_FOUND (unsettled) | 56 (3 players) |
+| Actual value differs | 58 legs / 11 players; **outcome flips 5** (4 hit→miss, 1 miss→hit) |
+
+Explained case by case:
+- **Inactive players**: nba.com's box listed inactives (comment → VOID_DNP), ESPN's box leaves them out. First run 120 legs / 7 players were unsettled → fixed: ESPN `injuries` players with `status: Out` join the box as inactive (comment, minutes empty → VOID_DNP; summed score unchanged, tested). Down to 56 legs / 3 players (Malik Monk, Kyrie Irving, Ausar Thompson): **nowhere in the ESPN summary, not even under injuries** → stay PLAYER_NOT_FOUND (held, not guessed; void legs are excluded from evaluation anyway, so metrics are unchanged).
+- **Stat differences**: ESPN and nba.com credit a different player for the same play (e.g. 10-25 MEM@SAC: Cameron Boozer ESPN 14 pts / nba.com 16; Jaylen Wells reb 7/5; Ty Jerome ast 7/6). Final scores match on both sides, so this is how points/rebounds/assists were attributed (stat corrections), not missing data. 5/14,695 = 0.03% outcome flips. Which side is right can't be checked against a third source; from now on ESPN is the single source.
+- Verdict: per the pre-registered rule every difference has an explanation → **R1-1 PASS**.
+
+**R1-2 PBP**: `PBP_Brief` schema keys identical to the stored 10-27 brief (top and game level); on 10-27 BKN@BOS (OT) quarter_breakdown is digit-for-digit the same as the nba.com version. Quarter totals vs box-score final: 25/26 games match; POR@LAL ESPN PBP final 138-129 but box/scoreboard 136-129 (inconsistency inside ESPN; descriptive only, doesn't feed settlement). Fixed along the way: an existing bug where quarters were string-sorted so OT1 came before Q1 and Q1 came out negative (nba.com had the same bug).
+
+**R1-4 labels** (`evidence/EXP-20261101-60-nba-label-parity.py`): 49-event corpus 8,286 labelled rows, 24 dates. Rows ESPN can re-label: **7,464/7,464 `hit` and `actual_value` 100% identical**. 822 rows (5 playoff events: 04-25 NYK@ATL, 04-27 OKC@PHX, 04-30 DEN@MIN, 05-07 and 05-13 CLE@DET) can't be re-labelled because the **ESPN summary 404s** (the same 8-game gap as in EXP-20261101-02); `fetch_results_for_date` reuses the existing final brief first and never overwrites it, so the existing corpus loses no labels. Limitation: a corpus rebuilt from zero would be missing these 5 events.
+
+**R1-3**: `nba_backtester.py` deleted (no caller; doc pointer changed to the reflector).
