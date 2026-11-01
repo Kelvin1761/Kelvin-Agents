@@ -1,11 +1,17 @@
-"""Shared v2 NBA training/serving features; missing evidence stays missing."""
+"""Shared NBA training/serving features; missing evidence stays missing.
+
+v3 (2026-11-01): ESPN is the one source. ``defender_pm`` (nba.com tracking
+data, no ESPN equivalent, zero measured effect in EXP-20261031-01) is out of
+the table, and every row names its ``stat_source``; a training corpus mixing
+two sources is refused (``check_single_source``).
+"""
 from __future__ import annotations
 import math
 
-FEATURE_CONTRACT = 'nba-ml-features/v2'
+FEATURE_CONTRACT = 'nba-ml-features/v3'
 FEATURE_COLS = [
     'l10_avg','l10_sd','l10_cov','l10_med','l5_avg','l3_avg','min_avg','pace_projected',
-    'usg_pct','ts_pct','def_rtg','opp_def_rating','opp_def_rank','opp_pace','defender_pm',
+    'usg_pct','ts_pct','def_rtg','opp_def_rating','opp_def_rank','opp_pace',
     'usg_bonus_pct','b2b_flag','b2b_ppg_diff_pct','rest_days','is_home','home_ppg','away_ppg',
     'hit_rate_l10','hit_rate_l5','hit_rate_l3','amc','line_value',
 ]
@@ -40,8 +46,8 @@ def hit_features(values,line):
 
 
 def build_features(player,stat,line,is_home,opp_abbr=None,*,opp_def_rating=None,opp_def_rank=None,
-                   opp_pace=None,defender_pm=None,usg_bonus_pct=None):
-    """27 numeric features, with no labels, current-game stats or market prices.
+                   opp_pace=None,usg_bonus_pct=None):
+    """26 numeric features, with no labels, current-game stats or market prices.
 
     Context callers resolve the *opponent*, never the player's own team. All
     optional unknowns remain None for the persisted training-only imputer.
@@ -60,7 +66,7 @@ def build_features(player,stat,line,is_home,opp_abbr=None,*,opp_def_rating=None,
         'min_avg':round(sum(mins)/len(mins),1) if mins else None,'pace_projected':pace_projected,
         'usg_pct':number(adv.get('USG_PCT')),'ts_pct':number(adv.get('TS_PCT')),'def_rtg':number(adv.get('DEF_RATING')),
         'opp_def_rating':number(opp_def_rating),'opp_def_rank':number(opp_def_rank),'opp_pace':pace,
-        'defender_pm':number(defender_pm),'usg_bonus_pct':number(usg_bonus_pct),
+        'usg_bonus_pct':number(usg_bonus_pct),
         'b2b_flag':int(fatigue['is_b2b']) if isinstance(fatigue.get('is_b2b'),bool) else None,
         'b2b_ppg_diff_pct':round((b2b-normal)/normal,4) if normal is not None and normal>0 and b2b is not None else None,
         'rest_days':number(fatigue.get('rest_days')),'is_home':int(is_home) if is_home in (True,False,0,1) else None,
@@ -69,3 +75,18 @@ def build_features(player,stat,line,is_home,opp_abbr=None,*,opp_def_rating=None,
     }
     if set(features)!=set(FEATURE_COLS):raise AssertionError('feature contract mismatch')
     return features
+
+
+def check_single_source(sources,allow_mixed=False):
+    """Refuse a corpus that mixes stat sources, unless explicitly opted in.
+
+    ``sources`` is the per-row ``stat_source``. Returns the share of each, which
+    callers print so a mixed run is never silent.
+    """
+    counts={}
+    for source in sources:counts[str(source)]=counts.get(str(source),0)+1
+    total=sum(counts.values()) or 1
+    share={key:round(value/total,4) for key,value in sorted(counts.items())}
+    if (len(counts)!=1 or 'mixed' in counts) and not allow_mixed:
+        raise ValueError(f'mixed stat sources {share}: one ruler per training window (--allow-mixed-sources to override)')
+    return share

@@ -20,7 +20,7 @@ import nba_ml_predictor as predictor
 
 FEATURES = ['l10_avg', 'l10_sd', 'l10_cov', 'l10_med', 'l5_avg', 'l3_avg', 'min_avg',
             'pace_projected', 'usg_pct', 'ts_pct', 'def_rtg', 'opp_def_rating',
-            'opp_def_rank', 'opp_pace', 'defender_pm', 'usg_bonus_pct', 'b2b_flag',
+            'opp_def_rank', 'opp_pace', 'usg_bonus_pct', 'b2b_flag',
             'b2b_ppg_diff_pct', 'rest_days', 'is_home', 'home_ppg', 'away_ppg',
             'hit_rate_l10', 'hit_rate_l5', 'hit_rate_l3', 'amc', 'line_value']
 
@@ -75,11 +75,10 @@ def training_row(data, line):
 def live_features(player, line):
     """v2 serving resolves the same true opponent and verified injury map."""
     p = predictor.MLPropPredictor.__new__(predictor.MLPropPredictor)  # no model needed
-    p.feature_contract = "nba-ml-features/v2"
+    p.feature_contract = "nba-ml-features/v3"
     return p.build_features(
         player, "PTS", line, 1, "BOS",
         opp_def_rating=111.7, opp_def_rank=4, opp_pace=95.58,
-        defender_pm=-0.031,      # actual opponent BOS top defender
         usg_bonus_pct=0)        # no confirmed absences; stale precomputed bonus ignored
 
 
@@ -115,9 +114,10 @@ class ParityTests(unittest.TestCase):
         self.assertEqual(row["team"], "DET")
         self.assertEqual(row["opponent"], "BOS")
         self.assertEqual(row["opp_pace"], 95.58)
-        self.assertEqual(row["defender_pm"], -0.031)
+        self.assertNotIn("defender_pm", row)   # nba.com tracking data, out with the ESPN switch
+        self.assertEqual(row["stat_source"], "nbacom")   # legacy package: no ESPN source recorded
         self.assertEqual(row["usg_bonus_pct"], 0)
-        self.assertEqual(row["feature_contract"], "nba-ml-features/v2")
+        self.assertEqual(row["feature_contract"], "nba-ml-features/v3")
         self.assertEqual(row["pit_status"], "unverified")  # this synthetic fixture has no immutable snapshot
 
 

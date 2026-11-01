@@ -65,7 +65,8 @@ def test_temporal_folds_keep_events_together_and_imputer_never_sees_terminal(dat
         assert set(fold['validation_dates']).isdisjoint(metrics['terminal_diagnostic_dates'])
     assert max(metrics['dev_dates'])<min(metrics['terminal_diagnostic_dates'])
     assert model.named_steps['imputer'].statistics_[FEATURE_COLS.index('home_ppg')]==10
-    assert model.named_steps['imputer'].statistics_[FEATURE_COLS.index('defender_pm')]==0
+    assert 'defender_pm' not in FEATURE_COLS, 'nba.com tracking data left the table with the ESPN switch'
+    assert model.named_steps['imputer'].statistics_[FEATURE_COLS.index('def_rtg')]==0, 'all-missing feature -> 0'
     assert metrics['deployment_eligible'] is False
     assert len(X_test)==18 and len(prob)==18
 
@@ -197,3 +198,16 @@ def test_capture_order_uses_evidenced_market_time_and_actual_utc_offset():
     assert capture_order(earlier)<capture_order(later)  # lexical ISO order would reverse it
     later['source_provenance']=json.dumps({'odds_modified_at':'2026-05-03T13:00:00Z'})
     assert capture_order(later)<capture_order(earlier)  # earliest market, not freshest features
+
+
+def test_training_refuses_a_corpus_mixing_stat_sources(dataset,tmp_path,monkeypatch):
+    frame=pd.read_csv(dataset)
+    assert set(frame['stat_source'])=={'nbacom'}
+    from nba_ml_features import check_single_source
+    assert check_single_source(['espn']*3)=={'espn':1.0}
+    with pytest.raises(ValueError,match='mixed stat sources'):check_single_source(['espn','nbacom'])
+    with pytest.raises(ValueError,match='mixed stat sources'):check_single_source(['mixed'])
+    assert check_single_source(['espn','nbacom','nbacom','nbacom'],allow_mixed=True)=={'espn':.25,'nbacom':.75}
+    frame.loc[frame.index[:3],'stat_source']='espn'
+    mixed=tmp_path/'mixed.csv';frame.to_csv(mixed,index=False)
+    with pytest.raises(ValueError,match='mixed stat sources'):trainer.load_and_prepare(mixed)
