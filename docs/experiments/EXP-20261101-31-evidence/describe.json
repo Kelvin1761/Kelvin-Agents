@@ -1,0 +1,33 @@
+{
+ "stats": {
+  "S": {
+   "runs": 202169,
+   "replaced": 184748,
+   "unreliable_or_no_fit": 2319,
+   "unmatched": 15102
+  },
+  "S0": {
+   "runs": 202169,
+   "replaced": 184748,
+   "unreliable_or_no_fit": 2319,
+   "unmatched": 15102
+  }
+ },
+ "leaf_auc_base": 0.60759,
+ "leaf_auc_S": {
+  "delta": 0.00721,
+  "ci": [
+   0.00092,
+   0.01334
+  ],
+  "p": 0.027
+ },
+ "leaf_auc_S0": {
+  "delta": 0.00664,
+  "ci": [
+   0.00161,
+   0.01159
+  ],
+  "p": 0.013
+ }
+}
