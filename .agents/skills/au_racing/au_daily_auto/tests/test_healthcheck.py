@@ -795,3 +795,19 @@ class HealDiagnosticTests(unittest.TestCase):
     def test_adapter_failure_keeps_error(self):
         raw = '{"detail":{"error":"adapter timeout"},"state":"failed"}'
         self.assertEqual(H.heal_failure_detail(raw, ""), "adapter timeout")
+
+
+class SnapshotHeadroomTests(unittest.TestCase):
+    """2026-10-31：snapshot 撞 25 MiB 上限，7 個場次冇發佈；警告只喺 log。"""
+
+    def test_small_snapshot_is_quiet(self):
+        self.assertEqual(H.snapshot_headroom_advisories(11 * 1024 * 1024), [])
+
+    def test_snapshot_near_the_limit_is_an_advisory(self):
+        [msg] = H.snapshot_headroom_advisories(16 * 1024 * 1024)
+        self.assertIn("16.0 MiB", msg)
+        self.assertIn("64%", msg)
+
+    def test_unknown_size_is_quiet(self):
+        with unittest.mock.patch.object(H, "_live_snapshot_bytes", None):
+            self.assertEqual(H.snapshot_headroom_advisories(), [])

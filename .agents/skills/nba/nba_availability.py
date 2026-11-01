@@ -91,8 +91,8 @@ def aware_time(value):
 
 def fetch_team_availability(team, *, get=None, now=None):
     if get is None:
-        import requests
-        get = requests.get
+        import nba_espn_http
+        get = nba_espn_http.response_get
     espn_alias = {canonical: alias for alias, canonical in TEAM_ALIASES.items()}
     source_team = espn_alias.get(canonical_team_abbr(team), team)
     url = f"https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams/{source_team}/roster"

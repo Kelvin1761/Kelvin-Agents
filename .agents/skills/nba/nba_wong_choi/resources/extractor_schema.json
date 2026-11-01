@@ -157,9 +157,9 @@
           "properties": {
             "USG_PCT": { "type": "number" },
             "TS_PCT": { "type": "number" },
-            "OFF_RATING": { "type": "number" },
-            "DEF_RATING": { "type": "number" },
-            "PACE": { "type": "number" }
+            "OFF_RATING": { "type": ["number", "null"], "description": "null when computed from ESPN box scores (needs on-court possessions)" },
+            "DEF_RATING": { "type": ["number", "null"] },
+            "PACE": { "type": ["number", "null"] }
           }
         },
         "splits": { "type": "object" },

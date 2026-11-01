@@ -6,8 +6,9 @@ from typing import Any
 
 MIN_PRICED_RATIO = 0.35
 MIN_FIXTURES_FOR_RATIO_CHECK = 10
+# slate_integrity is not here: a held fixture is quarantined and left off the
+# card, so it is a warning about that fixture, not about the board.
 CRITICAL_SOURCES = {
-    "slate_integrity",
     "prop_pricing",
     "odds",
     "event_markets",

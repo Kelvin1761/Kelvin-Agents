@@ -58,6 +58,11 @@ from wongchoi_paths import AU_RACING, AU_RACING_MIRROR  # noqa: E402
 SHARED_WC = PROJECT_ROOT / ".agents" / "skills"
 if str(SHARED_WC) not in sys.path:
     sys.path.insert(0, str(SHARED_WC))
+SHARED_RACING_SCRIPTS = SHARED_WC / "shared_racing" / "scripts"
+if str(SHARED_RACING_SCRIPTS) not in sys.path:
+    sys.path.insert(0, str(SHARED_RACING_SCRIPTS))
+from sportsbet_race_times import (  # noqa: E402
+    RACE_START_TIMES_FILE, find_venue, race_times_by_venue, write_race_start_times)
 from shared_wong_choi.contracts import Domain  # noqa: E402
 from shared_wong_choi.dashboard_publish_lock import serialized_publication  # noqa: E402
 from shared_wong_choi.domain_evidence import (  # noqa: E402
@@ -641,11 +646,91 @@ def au_meeting_first_starts(payload: dict) -> dict[str, int]:
     return starts
 
 
+def au_race_start_times(payload: dict) -> dict[str, dict]:
+    """AllRacing payload → {venue: {"races": {"1": epoch}, "abandoned": [3]}}
+    for AU meetings. Feeds the dashboard's jump times and 即將開跑 timeline; it
+    comes from the AllRacing call this run already makes, so it costs no extra
+    request, and the morning run rewrites it, so a re-timed race is picked up."""
+    return race_times_by_venue(_au_horse_meetings(payload))
+
+
+def record_race_start_times(runlog: RunLog, folder: Path | None,
+                            venue: str, starts: dict[str, dict]) -> bool:
+    """Write one meeting's start times beside its analysis; never fails a run.
+
+    A meeting whose timetable is new or changed is listed in
+    `timetables_changed`: the dashboard only shows times once that meeting is
+    merged again, and a meeting with no analysis change was never re-merged
+    (2026-11-01: three AU meetings published with no times at all).
+    """
+    path = Path(folder) / RACE_START_TIMES_FILE if folder is not None else None
+    try:
+        before = path.read_text(encoding="utf-8") if path is not None and path.exists() else None
+    except OSError:
+        before = None
+    ok = write_race_start_times(folder, venue, find_venue(starts, venue, key=_venue_key),
+                                warn=runlog.warn)
+    try:
+        changed = ok and path.read_text(encoding="utf-8") != before
+    except OSError:
+        changed = False
+    if changed:
+        listed = runlog.data.setdefault("timetables_changed", [])
+        if str(folder) not in listed:
+            listed.append(str(folder))
+    return ok
+
+
+def step_race_start_times(runlog: RunLog, day: date) -> list[Path]:
+    """Write today's timetable beside every live meeting folder, first thing.
+
+    One AllRacing request, independent of analysis: the copy written inside
+    step_analyse_next_day sits behind the sportsbetform index page (the host
+    that blocks us) and never runs on the midday pass (--skip-analysis), so a
+    blocked index page or a re-timed race used to leave the board with no
+    times (2026-11-01: five AU meetings, zero timetables by 10:16).
+    Returns the folders whose timetable is new or changed."""
+    target = day.isoformat()
+    try:
+        folders = sorted(f for f in AU_RACING.iterdir()
+                         if f.is_dir() and f.name.startswith(target))
+    except OSError as exc:
+        runlog.warn(f"開跑時間：讀唔到場次目錄（{type(exc).__name__}: {exc}）")
+        return []
+    if not folders:
+        runlog.step("race-start-times", "no-meetings", race_day=target)
+        return []
+    race_starts: dict[str, dict] = {}
+    api_day_meetings(runlog, target, race_starts=race_starts)
+    before = set(runlog.data.get("timetables_changed") or [])
+    timed, missing = [], []
+    for folder in folders:
+        # "2026-11-01 Gold Coast Poly Race 1-8" → "Gold Coast Poly": exact
+        # match, so Gold Coast turf never takes the Poly card's times.
+        name = re.sub(r"\s+Race\s+\d+(?:-\d+)?$", "", folder.name[len(target):]).strip(" _")
+        venue = next((v for v in race_starts if _venue_key(v) == _venue_key(name)), None)
+        if venue and record_race_start_times(runlog, folder, venue, race_starts):
+            timed.append(folder.name)
+        else:
+            missing.append(folder.name)
+    changed = [Path(f) for f in runlog.data.get("timetables_changed") or []
+               if f not in before]
+    runlog.step("race-start-times", "ok" if timed and not missing else
+                ("partial" if timed else "none"), race_day=target,
+                timed=len(timed), missing=missing, changed=len(changed))
+    if missing:
+        runlog.warn(f"開跑時間：{len(missing)} 個場次 AllRacing 配唔到 —— "
+                    f"dashboard 唔會有時間：{missing}")
+    return changed
+
+
 def api_day_meetings(runlog: RunLog, day: str,
-                     starts: dict[str, int] | None = None) -> list[str]:
+                     starts: dict[str, int] | None = None,
+                     race_starts: dict[str, dict] | None = None) -> list[str]:
     """AU thoroughbred meetings for one date from AllRacing. [] on failure (logged).
 
-    `starts`, when given, is filled with {venue: first race start epoch}."""
+    `starts`, when given, is filled with {venue: first race start epoch};
+    `race_starts` with every race's start (see au_race_start_times)."""
     from claw_sportsbet_form import SportsbetFormFetcher
     fetcher = SportsbetFormFetcher(delay=fetch_delay(), use_cache=False,
                                    verbose=False, cache_only=False)
@@ -663,6 +748,8 @@ def api_day_meetings(runlog: RunLog, day: str,
         runlog.step("discover", "allracing-abandoned", day=day, venues=abandoned)
     if starts is not None:
         starts.update(au_meeting_first_starts(payload))
+    if race_starts is not None:
+        race_starts.update(au_race_start_times(payload))
     return au_thoroughbred_meetings(payload)
 
 
@@ -1604,7 +1691,9 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
     # NextEvents is truncated (~30 races): add every AU meeting AllRacing lists for
     # the day, without going (racecard going is used until NextEvents reaches it).
     first_starts: dict[str, int] = {}
-    day_list = api_day_meetings(runlog, target, starts=first_starts)
+    race_starts: dict[str, dict] = {}
+    day_list = api_day_meetings(runlog, target, starts=first_starts,
+                                race_starts=race_starts)
     added = [name for name in day_list
              if not any(_venue_key(name) == _venue_key(v) for v in api_venues)]
     for name in added:
@@ -1673,6 +1762,14 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
                     f"{dropped}（唔係靜靜咁截，記低喺 log）")
         planned = planned[:max_meetings]
 
+    # Timetable for every meeting already on disk, including ones this run
+    # skips as already analysed: the morning pass is how a re-timed race lands.
+    timed = [p["venue"] for p in planned
+             if record_race_start_times(runlog, find_meeting_dir(target, p["venue"]),
+                                        p["venue"], race_starts)]
+    runlog.step("race-start-times", "ok" if timed else "none", race_day=target,
+                meetings=len(timed), planned=len(planned))
+
     # 實測（2026-08-05）：一個冷卻窗大約夠抽**一個**場次，之後個站又拒絕。所以
     # 「gate 一 trip 就放棄餘下場次」對一個 22:00 通宵 job 嚟講太早收工 ——
     # 由 22:00 到早更 10:00 有十二個鐘，等一陣再續係免費嘅。每一輪之間 gate 會
@@ -1706,6 +1803,7 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
                 runlog.error("analyse-next-day", f"{plan['venue']}: {exc}")
                 continue
             progress = progress or gained
+            record_race_start_times(runlog, folder, plan["venue"], race_starts)
             if folder is not None and folder not in analysed:
                 analysed.append(folder)
             if complete and folder is not None and on_complete is not None:
@@ -3956,6 +4054,13 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
             runlog.error("morning-review", f"{type(exc).__name__}: {exc}")
             temporary = True
 
+    # Before the slow refresh: times must not wait on (or die with) analysis.
+    if not args.skip_refresh:
+        try:
+            step_race_start_times(runlog, today)
+        except Exception as exc:  # noqa: BLE001 - never fails the run
+            runlog.warn(f"開跑時間：{type(exc).__name__}: {exc}")
+
     if args.skip_refresh:
         # 唔出網。把 dashboard 上嘅場次由本機重新合併一次就算 —— 用嚟把已經改好
         # 但未發佈嘅分析推上去，唔會為咗觸發發佈而重抽幾十版。
@@ -3997,6 +4102,12 @@ def run_morning(runlog: RunLog, args, today: date) -> int:
             runlog.error("fill-today", f"{type(exc).__name__}: {exc}")
             temporary = True
 
+    # A new or re-timed timetable only reaches the board when its meeting is
+    # merged again, even if nothing in the analysis changed.
+    for raw in runlog.data.get("timetables_changed") or []:
+        folder = Path(raw)
+        if folder.is_dir() and folder.parent != ARCHIVE_ROOT and folder not in updated:
+            updated.append(folder)
     evidence_ok = step_prediction_evidence(runlog, updated)
     if not evidence_ok:
         temporary = True

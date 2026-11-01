@@ -38,7 +38,7 @@ from pathlib import Path
 NBA_SKILL_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA_SKILL_DIR))
 from nba_schedule import canonical_team_abbr, canonical_game_tag, event_sydney_date
-from nba_data_contract import NBA_STATISTICS_CONTRACT
+from nba_data_contract import NBA_STATISTICS_CONTRACT, TRACKING_UNAVAILABLE
 import nba_opportunities
 import nba_team_context
 import nba_official_injuries
@@ -47,6 +47,7 @@ from nba_season import classify_nba_season
 from nba_identity import player_name_key
 import nba_api_breaker
 import nba_espn_stats
+import nba_espn_league
 import nba_league_snapshot
 from nba_availability import (AvailabilityUnavailable, RosterChanged, apply_availability,
                               availability_current, aware_time, fetch_team_availability, refresh_availability)
@@ -70,6 +71,13 @@ try:
     )
     from nba_api.stats.static import teams, players
     nba_api_breaker.install()   # fail fast while stats.nba.com is blocking us
+    # One line per run, so the scheduler log shows how much nba.com we hit.
+    import atexit
+    atexit.register(lambda: print(
+        f"📡 stats.nba.com: {nba_api_breaker._state['network_calls']} 次網絡請求，"
+        f"{nba_api_breaker._state['cache_hits']} 次用 cache"))
+    import nba_espn_http
+    atexit.register(lambda: print(nba_espn_http.summary()))
     NBA_API_AVAILABLE = True
 except ImportError:
     print("⚠️ nba_api 未安裝。請執行：pip install nba_api")
@@ -380,6 +388,13 @@ MIN_PLAYER_ROWS = 100
 ALWAYS_FILL = 10 ** 9   # player-level feeds have no fixed 'complete' size
 
 
+# Tracking tables (Second Spectrum, via stats.nba.com only) with no free
+# stand-in. During an outage they may be empty: team_dvp has no reader
+# downstream, and key_defenders only feeds the defender term, which the v2
+# model treats as missing natively (EXP-20261031-01 measured the effect).
+TRACKING_ONLY_TABLES = ("key_defenders", "team_dvp")
+
+
 def missing_league_tables(data_sources, outage_failures):
     """League tables that came back empty during an nba.com outage.
 
@@ -387,7 +402,46 @@ def missing_league_tables(data_sources, outage_failures):
     fallback); empty during one means we would analyse blind."""
     if not outage_failures:
         return []
-    return sorted(label for label, info in data_sources.items() if not info.get("rows"))
+    return sorted(label for label, info in data_sources.items()
+                  if not info.get("rows") and label not in TRACKING_ONLY_TABLES)
+
+
+def espn_league_fallback(season, as_of, data_sources, team_stats, adv_stats, *, get=None):
+    """Fill team_stats / player_advanced from ESPN box scores during an outage.
+
+    Only runs when stats.nba.com failed on the network in this process and the
+    table is still empty after the nba.com call and the snapshot. Returns the
+    (possibly filled) ``team_stats`` and ``adv_stats``; ``data_sources`` records
+    ``source: espn_box`` so the substitute is never silent. Point-in-time: the
+    same ``history_date_to`` window the nba_api calls use.
+    """
+    need = [label for label in ("team_stats", "player_advanced")
+            if not data_sources.get(label, {}).get("rows")]
+    if not need or not nba_api_breaker.failure_count():
+        return team_stats, adv_stats
+    date_to = history_date_to(as_of)
+    try:
+        games = nba_espn_league.season_games(season, date_to, get=get)
+    except Exception as exc:  # ESPN down too: stay empty, the gate fails closed
+        print(f"  ⛔ ESPN 賽果都攞唔到：{exc}")
+        return team_stats, adv_stats
+    computed = {}
+    if "team_stats" in need:
+        team_stats = nba_espn_league.team_advanced(games)
+        for record in team_stats.values():
+            record["opponent_stats"] = {"status": "unavailable", "season": season,
+                                        "history_date_to": date_to, "model_input_enabled": False}
+        computed["team_stats"] = team_stats
+    if "player_advanced" in need:
+        adv_stats = nba_espn_league.player_advanced(games, nba_espn_league.nba_name_index())
+        computed["player_advanced"] = adv_stats
+    for label, table in computed.items():
+        data_sources[label].update({
+            "data_season": season, "rows": len(table), "fallback_used": True,
+            "source": nba_espn_league.SOURCE, "espn_games": len(games),
+        })
+        print(f"  🔁 {label}: stats.nba.com 唔通，用 ESPN {len(games)} 場賽果計（{len(table)} 行）")
+    return team_stats, adv_stats
 
 
 def fetch_with_season_fallback(fetch_fn, season, as_of, min_rows=1, label="", fill_below=None):
@@ -897,6 +951,52 @@ def fetch_all_player_advanced_stats(season=None, as_of=None):
 # ==========================================
 # 模塊 4：nba_api — Home/Away & Rest Day Splits
 # ==========================================
+def splits_from_gamelog(regular, preseason=None):
+    """PlayerDashboardByGeneralSplits' Home/Road and rest-day groups, from game logs.
+
+    Used while stats.nba.com is blocked (game logs then come from ESPN).
+    nba.com counts rest from the previous game of ANY type -- a season opener
+    after a preseason game four days earlier is '4 Days Rest' -- so preseason
+    dates are read for spacing only, never for the averages.
+    """
+    import pandas as pd
+    if regular is None or regular.empty:
+        return None
+    rs = regular.copy()
+    rs["_d"] = pd.to_datetime(rs["GAME_DATE"], format="%b %d, %Y", errors="coerce")
+    rs = rs.dropna(subset=["_d"]).sort_values("_d")
+    if rs.empty:
+        return None
+    result = {}
+    home = rs["MATCHUP"].astype(str).str.contains(" vs. ", regex=False)
+    for group, rows in (("Home", rs[home]), ("Road", rs[~home])):
+        if rows.empty:
+            continue
+        gp = len(rows)
+        for stat, key in (("PTS", "PPG"), ("REB", "RPG"), ("AST", "APG"), ("MIN", "MPG")):
+            result[f"{group}_{key}"] = round(float(pd.to_numeric(rows[stat], errors="coerce").fillna(0).sum()) / gp, 1)
+    played = list(rs["_d"])
+    if preseason is not None and not preseason.empty:
+        played += list(pd.to_datetime(preseason["GAME_DATE"], format="%b %d, %Y", errors="coerce").dropna())
+    played = sorted(set(played))
+    groups = {}
+    for _, row in rs.iterrows():
+        before = [d for d in played if d < row["_d"]]
+        if not before:
+            continue
+        rest = (row["_d"] - before[-1]).days - 1
+        label = "6+ Days Rest" if rest >= 6 else f"{rest} Days Rest"
+        groups.setdefault(label, []).append(row)
+    rest_data = {}
+    for label, rows in groups.items():
+        gp = len(rows)
+        rest_data[label] = {"PPG": round(sum(float(r["PTS"]) for r in rows) / gp, 1),
+                            "RPG": round(sum(float(r["REB"]) for r in rows) / gp, 1), "GP": gp}
+    if rest_data:
+        result["rest_splits"] = rest_data
+    return result or None
+
+
 def fetch_player_splits(player_id, player_name, season=None, as_of=None):
     """提取球員 Home/Away 及 Rest Day Splits"""
     if not NBA_API_AVAILABLE:
@@ -945,6 +1045,19 @@ def fetch_player_splits(player_id, player_name, season=None, as_of=None):
             if cached:
                 # Recorded so a stale split is never mistaken for today's.
                 return {**cached, "snapshot_age_days": age}
+            try:   # no snapshot: same groups from the (ESPN) game logs
+                season_key = season or nba_season_for_date(as_of)
+                date_to = history_date_to(as_of)
+                regular, source = player_log_frame(player_id, season_key, date_to, "Regular Season")
+                try:
+                    preseason, _ = player_log_frame(player_id, season_key, date_to, "Pre Season")
+                except Exception:
+                    preseason = None
+                derived = splits_from_gamelog(regular, preseason)
+                if derived:
+                    return {**derived, "source": source}
+            except Exception as derive_exc:
+                print(f"  ⚠️ {player_name} splits 由賽績計都失敗: {derive_exc}")
         return None
 
 
@@ -1426,7 +1539,10 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
                                 "observed_players": len(defender_data),
                                 "qualified_players": sum(row.get('D_FGA_unit') == 'total_attempts'
                                                          and row.get('D_FGA', 0) >= 20
-                                                         for row in defender_data.values())},
+                                                         for row in defender_data.values()),
+                                **({"unavailable": TRACKING_UNAVAILABLE}
+                                   if not defender_data and ((data_sources or {}).get("key_defenders") or {}).get("unavailable")
+                                   else {})},
             "fallback_used": any(v.get("fallback_used") for v in (data_sources or {}).values()),
             "away": {"name": away_name, "abbr": away_abbr},
             "home": {"name": home_name, "abbr": home_abbr},
@@ -1642,11 +1758,15 @@ def nbacom_fallback_summary(package):
     rows = [p for team in (package.get("players") or {}).values() for p in team]
     espn_logs = sum(1 for p in rows if (p.get("gamelog") or {}).get("source") == "espn")
     stale_splits = sum(1 for p in rows if "snapshot_age_days" in (p.get("splits") or {}))
-    snapshots = sorted(label for label, info in (package["meta"].get("data_sources") or {}).items()
-                       if info.get("snapshot"))
-    return {"active": bool(espn_logs or stale_splits or snapshots),
+    sources = package["meta"].get("data_sources") or {}
+    snapshots = sorted(label for label, info in sources.items() if info.get("snapshot"))
+    espn_tables = sorted(label for label, info in sources.items()
+                         if info.get("source") == nba_espn_league.SOURCE)
+    missing = sorted(label for label, info in sources.items() if info.get("unavailable"))
+    return {"active": bool(espn_logs or stale_splits or snapshots or espn_tables or missing),
             "espn_gamelog_players": espn_logs, "players": len(rows),
-            "snapshot_splits_players": stale_splits, "snapshot_league_tables": snapshots}
+            "snapshot_splits_players": stale_splits, "snapshot_league_tables": snapshots,
+            "espn_league_tables": espn_tables, "unavailable_tables": missing}
 
 
 # ==========================================
@@ -1863,14 +1983,20 @@ def main():
     for label, fetcher in league_fetchers.items():
         if fetcher.used:   # stale copy stood in for an unreachable nba.com
             data_sources[label].update({"fallback_used": True, "snapshot": fetcher.used})
+    if games:
+        team_stats, adv_stats = espn_league_fallback(
+            statistics_season, stats_date, data_sources, team_stats, adv_stats)
+    for label in TRACKING_ONLY_TABLES:
+        if nba_api_breaker.failure_count() and not data_sources[label].get("rows"):
+            data_sources[label]["unavailable"] = TRACKING_UNAVAILABLE
     # Fail closed. With ESPN game logs the per-game L10 check below no longer
     # catches an nba.com outage, so a package built WITHOUT the league tables
     # (no team pace/defence, no USG, no defenders) would sail through to bets.
     # Without a recent snapshot that is not a degraded analysis, it is none.
     missing = missing_league_tables(data_sources, nba_api_breaker.failure_count()) if games else []
     if missing:
-        print(f"❌ league_tables_unavailable: {missing} — stats.nba.com 唔通，而 "
-              f"{nba_league_snapshot.MAX_AGE_DAYS} 日內冇快照；唔會用空白聯盟數據出分析")
+        print(f"❌ league_tables_unavailable: {missing} — stats.nba.com 唔通，"
+              f"{nba_league_snapshot.MAX_AGE_DAYS} 日內冇快照，ESPN 亦計唔到；唔會用空白聯盟數據出分析")
         sys.exit(1)
 
     # Research-only opportunity evidence: one league capture shared by game runs.

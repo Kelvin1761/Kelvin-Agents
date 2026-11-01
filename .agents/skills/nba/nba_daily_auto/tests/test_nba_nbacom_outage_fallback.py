@@ -130,7 +130,7 @@ class _Boom:
 def test_player_log_frame_falls_back_to_espn_when_nbacom_times_out(monkeypatch):
     monkeypatch.setattr(X.playergamelog, "PlayerGameLog", _Boom(requests.exceptions.ReadTimeout("t")))
     monkeypatch.setitem(X.ESPN_IDS, 203507, "3032977")
-    monkeypatch.setattr(E, "_get_json", lambda url, get=None, timeout=15: GAMELOG)
+    monkeypatch.setattr(E, "_get_json", lambda url, get=None, timeout=15, fresh_after=None: GAMELOG)
     E._GAMELOG_CACHE.clear()
     frame, source = X.player_log_frame(203507, "2026-27", "10/27/2026", "Regular Season")
     assert source == "espn"
@@ -189,6 +189,13 @@ def test_fallback_summary_marks_a_fallback_slate():
                                    {"gamelog": {"source": "nba"}, "splits": {}}]}}
     assert X.nbacom_fallback_summary(package) == {
         "active": True, "espn_gamelog_players": 1, "players": 2,
-        "snapshot_splits_players": 1, "snapshot_league_tables": ["team_stats"]}
+        "snapshot_splits_players": 1, "snapshot_league_tables": ["team_stats"],
+        "espn_league_tables": [], "unavailable_tables": []}
+    espn = {"meta": {"data_sources": {"team_stats": {"rows": 30, "source": "espn_box"},
+                                      "key_defenders": {"rows": 0, "unavailable": "stats_nba_tracking_only"}}},
+            "players": {"CLE": [{"gamelog": {"source": "espn"}}]}}
+    summary = X.nbacom_fallback_summary(espn)
+    assert summary["espn_league_tables"] == ["team_stats"]
+    assert summary["unavailable_tables"] == ["key_defenders"] and summary["active"] is True
     normal = {"meta": {"data_sources": {}}, "players": {"CLE": [{"gamelog": {"source": "nba"}}]}}
     assert X.nbacom_fallback_summary(normal)["active"] is False

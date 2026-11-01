@@ -921,9 +921,14 @@ def run_daily(args: argparse.Namespace) -> None:
     from tennis_wc.validation.current_slate import audit_current_slate
     with get_connection() as conn:
         slate_integrity = audit_current_slate(conn, args.date, apply=True)
+    # Held fixtures are quarantined (DISPUTED) before any snapshot is built, and
+    # every card path reads ACTIVE fixtures only, so a hold removes that one
+    # fixture -- it no longer withholds the whole card. As a critical error it
+    # did: one disputed fixture blocked the 2026-10-28 and 2026-10-30 cards
+    # (14 BETs on 10-30) through the 09:00 pass and both recoveries.
     if slate_integrity['held']:
-        source_errors.append({'source': 'slate_integrity',
-                              'error': f"held fixtures: {slate_integrity['held']}"})
+        source_warnings.append({'source': 'slate_integrity',
+                                'warning': f"held fixtures (excluded from card): {slate_integrity['held']}"})
     snapshots = _run_timed_stage(
         "feature_snapshots",
         lambda: build_sportsbet_feature_snapshots_for_date(args.date),

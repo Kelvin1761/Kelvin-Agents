@@ -21,7 +21,7 @@ numbers against nba_api-built packages.
 """
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from nba_identity import player_name_key
@@ -46,13 +46,29 @@ GAMELOG_COLUMNS = ("GAME_DATE", "MATCHUP", "WL", "MIN", "FGM", "FGA", "FG_PCT",
                    "AST", "STL", "BLK", "TOV", "PF", "PTS", "PLUS_MINUS")
 
 
-def _get_json(url, get=None, timeout=15):
-    if get is None:
-        import requests
-        get = requests.get
-    response = get(url, timeout=timeout)
-    response.raise_for_status()
-    return response.json()
+def _get_json(url, get=None, timeout=15, fresh_after=None):
+    import nba_espn_http
+    return nba_espn_http.get_json(url, get=get, timeout=timeout, fresh_after=fresh_after)
+
+
+US_EASTERN = ZoneInfo("America/New_York")
+
+
+def gamelog_fresh_after(espn_year: int, date_to=None, *, now=None):
+    """Earliest fetch time whose game log already holds every game up to ``date_to``.
+
+    A finished season (ESPN names it by the year it ends) is closed once the
+    Finals are over; otherwise the window closes at 06:00 ET the day after
+    ``date_to``. ``None`` = still open, do not reuse a cached copy.
+    """
+    now = now or datetime.now(US_EASTERN)
+    season_end = datetime(espn_year, 7, 15, tzinfo=US_EASTERN)
+    if now >= season_end:
+        return season_end
+    if date_to is None:
+        return None
+    closes = datetime(date_to.year, date_to.month, date_to.day, 6, tzinfo=US_EASTERN) + timedelta(days=1)
+    return closes if now >= closes else None
 
 
 def espn_season_year(nba_season: str) -> int:
@@ -173,7 +189,8 @@ def espn_gamelog_frame(espn_id, nba_season, season_type="Regular Season",
     key = (str(espn_id), espn_season_year(nba_season))
     payload = _GAMELOG_CACHE.get(key) if get is None else None
     if payload is None:
-        payload = _get_json(f"{WEB}/athletes/{key[0]}/gamelog?season={key[1]}", get=get)
+        payload = _get_json(f"{WEB}/athletes/{key[0]}/gamelog?season={key[1]}", get=get,
+                            fresh_after=gamelog_fresh_after(key[1], date_to))
         if get is None:
             _GAMELOG_CACHE[key] = payload
     rows = gamelog_rows(payload, season_type, date_to)

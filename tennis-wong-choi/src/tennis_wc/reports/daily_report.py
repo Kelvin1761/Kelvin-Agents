@@ -559,6 +559,7 @@ def _market_odds_base_rows(match_date: str) -> list[dict]:
             JOIN players p1 ON p1.id = m.player_a_id
             JOIN players p2 ON p2.id = m.player_b_id
             WHERE m.match_date = ? AND {current_market_clause(conn)}
+              AND {active_fixture_clause(conn)}
               AND mo.id IN (
                 SELECT MAX(mo2.id)
                 FROM market_odds_snapshots mo2
@@ -2157,7 +2158,7 @@ def _match_winner_bet_legs(match_date: str) -> list[Leg]:
     """
     with get_connection() as conn:
         rows = conn.execute(
-            """
+            f"""
             SELECT p.match_id, p.selection_name, p.selection_player_id,
                    p.current_market_odds, p.model_probability, p.no_vig_market_probability,
                    p.edge, p.confidence, p.pricing_json,
@@ -2166,7 +2167,7 @@ def _match_winner_bet_legs(match_date: str) -> list[Leg]:
             JOIN matches m ON m.id = p.match_id
             JOIN players pa ON pa.id = m.player_a_id
             JOIN players pb ON pb.id = m.player_b_id
-            WHERE m.match_date = ?
+            WHERE m.match_date = ? AND {active_fixture_clause(conn)}
               AND p.decision = 'BET'
               AND p.id IN (SELECT MAX(id) FROM predictions GROUP BY match_id)
             """,
@@ -4555,6 +4556,7 @@ def market_odds_for_date(match_date: str) -> list[dict]:
                 ) latest ON latest.max_prediction_id = p1.id
             ) lp ON lp.match_id = m.id
             WHERE m.match_date = ? AND {current_market_clause(conn)}
+              AND {active_fixture_clause(conn)}
               AND mo.id IN (
                 SELECT MAX(mo2.id)
                 FROM market_odds_snapshots mo2

@@ -33,3 +33,5 @@
 - 舊十五個 REJECT_DEV 不變。完成其他受影響讀取器與來源資格核對後，才可重跑受影響的研究；不得用補位賠率、未證實身份、或未知時鐘 ROI 當準確率／盈利證據。
 
 最終 `result.json` SHA-256：`1ce1bd538af3f619b13e8ba270e41b03e90db4922f5e640f66bebc2b0e66aad4`；完整原始 DB 與索引副本在重播後雜湊均保持不變。
+
+整合 2026-11-01 最新主線的 fixture 隔離邏輯後，另以 `historical-reader-guard-v2/` 保存完整重播：所有數量及保留值一致，來源及工作副本雜湊不變。v2 `result.json` SHA-256：`33e7e6887a643f26407ceea26424bb8ffa72a8cd1fcfb6c8b0b37ff78d110a3e`。完整整合測試以另存的 merged gate 紀錄為準。

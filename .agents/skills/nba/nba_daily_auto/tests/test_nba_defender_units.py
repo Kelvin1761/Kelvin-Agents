@@ -75,3 +75,16 @@ def test_new_extraction_checks_statistics_before_schema_or_report(tmp_path,monke
     assert (o.VALIDATE_SCHEMA in calls) is valid
     assert len(calls)==(2 if valid else 1)
     assert target.read_text()==json.dumps(payload)  # diagnostic input is retained
+
+
+def test_empty_defenders_pass_only_when_marked_unavailable_in_an_outage():
+    # EXP-20261031-01: no defender table during an nba.com outage changes no
+    # probability, so an explicitly marked empty source may publish.
+    from nba_data_contract import TRACKING_UNAVAILABLE, statistics_current
+    base = {'statistics_contract': NBA_STATISTICS_CONTRACT,
+            'defender_source': {'per_mode': 'Totals', 'sample_unit': 'total_attempts', 'observed_players': 0}}
+    assert not statistics_current(base), 'silently empty still blocks'
+    marked = {**base, 'defender_source': {**base['defender_source'], 'unavailable': TRACKING_UNAVAILABLE}}
+    assert statistics_current(marked)
+    wrong = {**base, 'defender_source': {**base['defender_source'], 'unavailable': 'anything'}}
+    assert not statistics_current(wrong)

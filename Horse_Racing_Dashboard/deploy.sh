@@ -196,8 +196,10 @@ if grep -q "data-analysis-lazy" "$HTML_OUT"; then
 fi
 
 # 資料層：JSON 要真係帶到新欄位，唔淨係模板有 (報告要用新版 code 生成)
+# data_readout 由 2026-10-31 起打包入每個場次嘅 horse_fields_gzip
+# （generate_static.pack_for_transport），grep 唔到原名，所以見到包就當有。
 for field in "rating_matrix" "data_readout"; do
-    if ! grep -q "\"$field\"" "$JSON_OUT" 2>/dev/null; then
+    if ! grep -q -e "\"$field\"" -e '"horse_fields_gzip"' "$JSON_OUT" 2>/dev/null; then
         echo "   ⚠️ dashboard-data.json 未見 $field —— 報告可能係舊版 code 生成，請重新 re-score"
     fi
 done

@@ -376,6 +376,134 @@ def _attach_track_geometry(meeting_data):
     return meeting_data
 
 
+# ── 場次分級（AU）同開跑時間（AU + HKJC，dashboard 顯示用）──────────────────
+# 星期六十幾個場次一齊出，首頁冇得分邊個係都會場、邊個幾點開跑（2026-10-31：
+# 16 張一模一樣嘅卡）。分級來自各州官方定義，見 backend/services/au_venue_tiers.json；
+# 開跑時間：AU 由排程喺抓 Sportsbet AllRacing 時寫落 Race_Start_Times.json
+# （shared_racing/scripts/sportsbet_race_times.py）；HKJC 直接讀馬會排位表嘅「時間:」。
+# 兩樣都喺讀完 cache 之後先貼（同 _attach_track_geometry 一樣）：時間會改，
+# 但改時間唔應該觸發重新 parse 分析。
+AU_VENUE_TIERS_PATH = Path(__file__).resolve().parent / "backend" / "services" / "au_venue_tiers.json"
+RACE_START_TIMES_FILE = "Race_Start_Times.json"
+_AU_VENUE_TIERS = None
+
+
+def _au_venue_key(venue):
+    """Engine's venue slug (with its alias table), so no second alias copy."""
+    lookup = _track_geometry_lookup()          # also puts the engine on sys.path
+    if lookup:
+        try:
+            from au_racing_engine.engine_core import _track_geometry_key
+            return _track_geometry_key(venue)
+        except Exception:  # noqa: BLE001
+            pass
+    return re.sub(r"[^a-z0-9]+", "-", str(venue or "").lower()).strip("-")
+
+
+def au_venue_profile(venue):
+    """{"state": "NSW", "tier": "metro" | "provincial" | "country"} for an AU venue."""
+    global _AU_VENUE_TIERS
+    if _AU_VENUE_TIERS is None:
+        try:
+            raw = json.loads(AU_VENUE_TIERS_PATH.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            print(f"   ⚠️ 讀唔到 AU 場地分級（{type(exc).__name__}: {exc}）—— 全部當鄉鎮")
+            raw = {}
+        tables = {"state": {}, "tier": {}}
+        for state, keys in (raw.get("states") or {}).items():
+            tables["state"].update(dict.fromkeys(keys, state))
+        for tier, field in (("provincial", "provincial"), ("metro", "metropolitan")):
+            for state, keys in (raw.get(field) or {}).items():
+                for key in keys:
+                    tables["tier"][key] = tier
+                    tables["state"].setdefault(key, state)
+        _AU_VENUE_TIERS = tables
+    key = _au_venue_key(venue)
+    return {"state": _AU_VENUE_TIERS["state"].get(key, ""),
+            "tier": _AU_VENUE_TIERS["tier"].get(key, "country")}
+
+
+_HKJC_RACECARD_RE = re.compile(r"Race (\d+) 排位表\.md$")
+
+
+def _read_hkjc_racecard_times(meeting):
+    """HKJC jump times straight from the club's racecard (`日期:` / `時間:` in
+    each `… Race N 排位表.md`, Hong Kong time). The HKJC pipeline already
+    extracts these, so the board needs no extra request and no Sportsbet."""
+    from zoneinfo import ZoneInfo
+    hong_kong = ZoneInfo("Asia/Hong_Kong")
+    starts = {}
+    for folder in (getattr(meeting, "folder_paths", None) or {}).values():
+        try:
+            cards = sorted(Path(folder).glob("*排位表.md"))
+        except OSError:
+            continue
+        for card in cards:
+            number = _HKJC_RACECARD_RE.search(card.name)
+            if not number or number.group(1) in starts:
+                continue
+            try:
+                head = card.read_text(encoding="utf-8")[:1500]
+            except OSError:
+                continue
+            day = re.search(r"^日期:\s*(\d{4}-\d{2}-\d{2})", head, re.M)
+            clock = re.search(r"^時間:\s*(\d{1,2}):(\d{2})", head, re.M)
+            if day and clock:
+                local = datetime.strptime(f"{day.group(1)} {clock.group(1)}:{clock.group(2)}",
+                                          "%Y-%m-%d %H:%M").replace(tzinfo=hong_kong)
+                starts[number.group(1)] = int(local.timestamp())
+        if starts:
+            break
+    return starts, set()
+
+
+def _read_race_start_times(meeting):
+    """→ ({"race number": epoch}, {abandoned race numbers}); empty when absent.
+    AU: Race_Start_Times.json (Sportsbet, written by the scheduler). HKJC: the
+    club's own racecard."""
+    if getattr(meeting, "region", None) == Region.HKJC:
+        return _read_hkjc_racecard_times(meeting)
+    for folder in (getattr(meeting, "folder_paths", None) or {}).values():
+        try:
+            body = json.loads((Path(folder) / RACE_START_TIMES_FILE).read_text(encoding="utf-8"))
+            starts = {str(k): int(v) for k, v in (body.get("races") or {}).items()}
+            return starts, {str(n) for n in body.get("abandoned") or []}
+        except (OSError, ValueError, TypeError, AttributeError):
+            continue
+    return {}, set()
+
+
+def _attach_meeting_context(meeting, meeting_data, races_data):
+    """`start_time` (epoch) on each race, both regions; state / tier for AU."""
+    if str(meeting_data.get("region") or "").lower() in {"au", "australia"}:
+        meeting_data.update(au_venue_profile(meeting_data.get("venue")))
+    starts, abandoned = _read_race_start_times(meeting)
+    for races in (races_data.get("races_by_analyst") or {}).values():
+        for race in races:
+            number = str(race.get("race_number"))
+            race.pop("start_time", None)
+            race.pop("abandoned", None)
+            if number in starts:
+                race["start_time"] = starts[number]
+            elif number in abandoned:
+                race["abandoned"] = True
+    if starts:
+        meeting_data["first_start"] = min(starts.values())
+    else:
+        meeting_data.pop("first_start", None)
+
+
+def _ensure_au_venue_profiles(data):
+    """State and tier depend only on the venue, so every build recomputes them:
+    a fix to au_venue_tiers.json reaches meetings already published (2026-11-01:
+    Naracoorte kept an empty state after SA gained it). Start times need the
+    folder and are not guessed."""
+    for meeting_data in data.get("meetings") or []:
+        if str(meeting_data.get("region") or "").lower() in {"au", "australia"}:
+            meeting_data.update(au_venue_profile(meeting_data.get("venue")))
+    return data
+
+
 def _collect_meeting(meeting):
     meeting_data = {
         "date": meeting.date,
@@ -466,6 +594,7 @@ def collect_incremental_au_data(base_snapshot_path, meeting_dir):
     data = load_snapshot(base_snapshot_path)
     meeting = _meeting_from_directory(meeting_dir)
     meeting_data, meeting_key, races_data, consensus = _collect_meeting(meeting)
+    _attach_meeting_context(meeting, meeting_data, races_data)
 
     data["meetings"] = [
         item
@@ -590,6 +719,7 @@ def collect_all_data(cache_path=DEFAULT_CACHE_PATH):
                 "consensus": consensus,
             }
         updated_entries[key] = entry
+        _attach_meeting_context(m, entry["meeting"], entry["races_data"])
         result["meetings"].append(_attach_track_geometry(entry["meeting"]))
         result["races"][entry["meeting_key"]] = entry["races_data"]
         result["consensus"].update(entry["consensus"])
@@ -812,7 +942,8 @@ def generate_html(data):
     css_path = Path(__file__).resolve().parent / "frontend" / "src" / "index.css"
     css_content = css_path.read_text(encoding="utf-8") if css_path.exists() else ""
     
-    data_json = json.dumps(data, ensure_ascii=False, default=str).replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+    # The page restores packed fields before its first render (unpackDashboardData).
+    data_json = json.dumps(pack_for_transport(data), ensure_ascii=False, default=str).replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
     generated_time = datetime.now().strftime("%Y-%m-%d %H:%M")
     
     html_template_path = Path(__file__).resolve().parent / "static_template.html"
@@ -939,28 +1070,57 @@ CLOUDFLARE_ASSET_LIMIT = 25 * 1024 * 1024
 CLOUDFLARE_WARN_AT = 20 * 1024 * 1024
 
 
-def _check_upload_size(path: Path, label: str) -> None:
+def _size_breakdown(payload, limit=6):
+    """Largest sections of a transport payload, for the size gate's message.
+
+    The message used to hard-code "the biggest target is raw_text". On
+    2026-10-31 it was tennis tracking (12.2 MiB), so the hint sent the reader
+    after the wrong field. Measure instead of guessing.
+    """
+    def size(value):
+        return len(json.dumps(value, ensure_ascii=False, separators=(",", ":"),
+                              default=str).encode("utf-8"))
+    if not isinstance(payload, dict):
+        return []
+    sections = {k: size(v) for k, v in payload.items() if k not in ("races", "sports_feed")}
+    for key, entry in (payload.get("races") or {}).items():
+        sections[f"races/{key}"] = size(entry)
+    for sport, feed in (((payload.get("sports_feed") or {}).get("sports")) or {}).items():
+        sections[f"sports_feed/{sport}"] = size(feed)
+    return sorted(sections.items(), key=lambda kv: -kv[1])[:limit]
+
+
+def _check_upload_size(path: Path, label: str, payload=None) -> None:
     """Report an artifact's size against the Cloudflare per-file limit.
 
     ⚠️ Must be called for the HTML too, not just the JSON snapshot. The HTML
-    inlines the snapshot on top of the template, so it is ALWAYS the larger of
-    the two — measured 2026-08-22: JSON 15.08 MiB, HTML 15.63 MiB. Checking only
+    inlines the snapshot on top of the template, so it can be the larger of the
+    two — measured 2026-08-22: JSON 15.08 MiB, HTML 15.63 MiB. Checking only
     the JSON (as this did until then) meant the warning fired when the HTML was
     already at ~24.3 MiB, with essentially no room left to act.
+
+    `payload` (the packed transport form, or a callable producing it) lets the message name what is
+    actually large once the warning threshold is reached.
     """
     size = path.stat().st_size
     pct = size / CLOUDFLARE_ASSET_LIMIT * 100
     print(f"   {label}: {size / (1024 * 1024):.2f} MiB "
           f"({pct:.0f}% of Cloudflare's 25 MiB per-file limit)")
+    if size < CLOUDFLARE_WARN_AT:
+        return
+    if callable(payload):       # deferred: packing a copy is only worth it here
+        payload = payload()
+    biggest = "、".join(f"{name} {n / (1024 * 1024):.2f} MiB"
+                        for name, n in _size_breakdown(payload)) or "（冇 payload 可量）"
     if size >= CLOUDFLARE_ASSET_LIMIT:
         raise SystemExit(
             f"❌ {path.name} 係 {size / (1024 * 1024):.2f} MiB，超過 Cloudflare "
             f"單檔 25 MiB 上限 —— 上傳一定會被拒。唔好白推一次：先瘦身。\n"
-            f"   最大標的係 raw_text（實測佔 snapshot 77.3%，每匹馬 13.78 KiB）。"
+            f"   最大嘅部份：{biggest}\n"
+            f"   只增唔減嘅內容要入 pack_for_transport（見 PACKED_HORSE_FIELDS）。"
         )
-    if size >= CLOUDFLARE_WARN_AT:
-        print(f"   ⚠️ 逼近 25 MiB 上限（{pct:.0f}%）—— 再多幾個場次就會被拒收，"
-              f"而 2026-08-07 就係咁死咗三晚")
+    print(f"   ⚠️ 逼近 25 MiB 上限（{pct:.0f}%）—— 再多幾個場次就會被拒收，"
+          f"而 2026-08-07 同 2026-10-31 就係咁死。最大嘅部份：{biggest}")
 
 
 def _write_analysis_bundles(directory: Path, bundles):
@@ -994,34 +1154,136 @@ def _snapshot_horses(payload):
                 yield from race.get("horses") or []
 
 
-def load_snapshot(path):
-    """Read legacy or compressed snapshots, restoring complete analysis text.
+# ── Transport packing ────────────────────────────────────────────────────────
+# Cloudflare Pages refuses any single file over 25 MiB, and both the snapshot
+# JSON and the HTML are single files. Everything below exists because content
+# that only ever grows was stored as plain JSON inside them:
+#
+#   2026-08-07  32.5 MiB, nine meetings -> deploy refused three nights running
+#   2026-10-17  full Saturday card over 25 MiB even with duplicates slimmed
+#   2026-10-31  7 of 16 AU meetings refused: tennis tracking alone was
+#               14,350 records / 12.2 MiB, and per-horse raw_text gzip could
+#               not share a dictionary across horses (5.78 MiB for 812 horses)
+#
+# So the rule is: bulky, read-only content travels as ONE gzip blob per owner
+# (per meeting for horse prose, per feed for tennis history), and the readers --
+# load_snapshot here, unpackDashboardData() in the page -- restore it before
+# anything looks at it. Scores, race numbers, odds and metadata stay as plain
+# JSON, because the scheduler validates them with a bare json.loads.
+# Measured on the 2026-10-31 live snapshot: horse prose 8.92 -> 2.32 MiB,
+# tennis tracking 12.20 -> 0.57 MiB.
+PACKED_HORSE_FIELDS = ("raw_text", "data_readout", "dimension_details")
 
-    Keep scores and metadata as ordinary JSON for scheduler validation. Only
-    raw_text is encoded; the renderer restores it before creating lazy bundles.
-    Invalid compressed text raises rather than publishing incomplete analysis.
+
+def _gzip_b64(value):
+    body = json.dumps(value, ensure_ascii=False, separators=(",", ":"),
+                      default=str).encode("utf-8")
+    return base64.b64encode(gzip.compress(body, 9, mtime=0)).decode("ascii")
+
+
+def _gunzip_b64(encoded):
+    try:
+        return json.loads(gzip.decompress(base64.b64decode(encoded, validate=True)))
+    except (ValueError, OSError, EOFError, TypeError) as exc:
+        raise ValueError(f"packed snapshot field is corrupt: {exc}") from exc
+
+
+def _pack_meeting_horse_fields(payload):
+    """Move PACKED_HORSE_FIELDS of every horse into one blob per meeting.
+
+    Mutates `payload`; callers hand it a copy. Keys are positional
+    ("analyst|race_index|horse_index") so they cannot collide even if a card
+    repeats a horse number.
+    """
+    for entry in (payload.get("races") or {}).values():
+        bundle = {}
+        for analyst, races in (entry.get("races_by_analyst") or {}).items():
+            for ri, race in enumerate(races or []):
+                for hi, horse in enumerate(race.get("horses") or []):
+                    fields = {f: horse.pop(f) for f in PACKED_HORSE_FIELDS if f in horse}
+                    if fields:
+                        bundle[f"{analyst}|{ri}|{hi}"] = fields
+        if bundle:
+            entry["horse_fields_gzip"] = _gzip_b64(bundle)
+    return payload
+
+
+def _unpack_meeting_horse_fields(payload):
+    for key, entry in (payload.get("races") or {}).items():
+        encoded = entry.pop("horse_fields_gzip", None)
+        if encoded is None:
+            continue
+        bundle = _gunzip_b64(encoded)
+        try:
+            for ref, fields in bundle.items():
+                analyst, ri, hi = ref.rsplit("|", 2)
+                horse = entry["races_by_analyst"][analyst][int(ri)]["horses"][int(hi)]
+                horse.update(fields)
+        except (KeyError, IndexError, ValueError, AttributeError) as exc:
+            raise ValueError(f"{key}: horse_fields_gzip does not match its races: {exc}") from exc
+    return payload
+
+
+def _tennis_tracking(payload):
+    sports = ((payload or {}).get("sports_feed") or {}).get("sports") or {}
+    tracking = (sports.get("tennis") or {}).get("tracking")
+    return tracking if isinstance(tracking, dict) else None
+
+
+def _pack_tennis_tracking(payload):
+    """Return `payload` with tennis tracking records packed; never mutates it.
+
+    The history is deliberately uncapped (every model pick stays auditable),
+    so it grows every day; packing keeps it at ~1/21 of its plain size.
+    """
+    tracking = _tennis_tracking(payload)
+    if tracking is None or not isinstance(tracking.get("records"), list):
+        return payload
+    packed = {k: v for k, v in tracking.items() if k != "records"}
+    packed["records_gzip"] = _gzip_b64(tracking["records"])
+    packed["records_count"] = len(tracking["records"])
+    # Copy only the path down to `tracking`; the races stay shared.
+    feed = dict(payload["sports_feed"])
+    feed["sports"] = dict(feed["sports"])
+    feed["sports"]["tennis"] = dict(feed["sports"]["tennis"], tracking=packed)
+    return dict(payload, sports_feed=feed)
+
+
+def _unpack_tennis_tracking(payload):
+    tracking = _tennis_tracking(payload)
+    if tracking is None or "records_gzip" not in tracking:
+        return payload
+    records = _gunzip_b64(tracking.pop("records_gzip"))
+    expected = tracking.pop("records_count", None)
+    if not isinstance(records, list) or (expected is not None and len(records) != expected):
+        raise ValueError("tennis tracking records_gzip is truncated")
+    tracking["records"] = records
+    return payload
+
+
+def pack_for_transport(payload):
+    """Packed copy of a snapshot for the JSON file or the page; input untouched."""
+    if not isinstance(payload, dict) or "races" not in payload:
+        return payload
+    packed = dict(_pack_tennis_tracking(payload), races=copy.deepcopy(payload["races"]))
+    return _pack_meeting_horse_fields(packed)
+
+
+def load_snapshot(path):
+    """Read legacy or packed snapshots, restoring every packed field.
+
+    Invalid packed data raises rather than publishing incomplete analysis or
+    silently dropping tracking history from the next merge base.
     """
     payload = json.loads(Path(path).read_text(encoding="utf-8"))
     for horse in _snapshot_horses(payload):
+        # Per-horse format written until 2026-10-31; still readable.
         encoded = horse.pop("raw_text_gzip", None)
         if encoded is not None:
             horse["raw_text"] = gzip.decompress(
                 base64.b64decode(encoded, validate=True)).decode("utf-8")
-    return payload
-
-
-def _compress_snapshot_text(payload):
-    # Do not mutate the renderer's data or the caller's merge base. A complete
-    # Saturday card exceeded 25 MiB on 2026-10-17, even with duplicate prose
-    # removed. Lossless text compression preserves every meeting and analysis.
-    packed = copy.deepcopy(payload)
-    for horse in _snapshot_horses(packed):
-        raw = horse.get("raw_text")
-        if raw:
-            horse["raw_text_gzip"] = base64.b64encode(
-                gzip.compress(raw.encode("utf-8"), mtime=0)).decode("ascii")
-            del horse["raw_text"]
-    return packed
+    _unpack_meeting_horse_fields(payload)
+    return _unpack_tennis_tracking(payload)
 
 
 def _write_json(path: Path, payload):
@@ -1029,14 +1291,14 @@ def _write_json(path: Path, payload):
     payload, dropped = _slim_for_transport(payload)
     # ⚠️ No indent, compact separators. Pretty-printing this snapshot cost
     # 4 MiB of pure whitespace against a 25 MiB hard limit.
-    transport = _compress_snapshot_text(payload) if isinstance(payload, dict) else payload
+    transport = pack_for_transport(payload)
     body = json.dumps(transport, ensure_ascii=False, separators=(",", ":"),
                       default=str)
     path.write_text(body, encoding="utf-8")
     if dropped:
         print(f"   Slimmed {dropped} duplicate core_analysis fields")
     if "races" in (payload if isinstance(payload, dict) else {}):
-        _check_upload_size(path, "Snapshot JSON")
+        _check_upload_size(path, "Snapshot JSON", transport)
 
 
 def parse_args():
@@ -1135,6 +1397,7 @@ def main():
     
     apply_au_display_policy(data)
     _ensure_region_side_roi(data)
+    _ensure_au_venue_profiles(data)
     meeting_count = len(data["meetings"])
     race_count = sum(
         len(races) 
@@ -1171,7 +1434,8 @@ def main():
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(html, encoding="utf-8")
     # The HTML is the biggest artifact we upload — check it, not just the JSON.
-    _check_upload_size(output_path, "Dashboard HTML")
+    _check_upload_size(output_path, "Dashboard HTML",
+                       lambda: pack_for_transport(html_payload))
 
     analysis_dir = Path(args.output_analysis_dir or (output_path.parent / "analysis"))
     written = _write_analysis_bundles(analysis_dir, analysis_bundles)
