@@ -73,3 +73,34 @@ Explained case by case:
 **R1-4 labels** (`evidence/EXP-20261101-60-nba-label-parity.py`): 49-event corpus 8,286 labelled rows, 24 dates. Rows ESPN can re-label: **7,464/7,464 `hit` and `actual_value` 100% identical**. 822 rows (5 playoff events: 04-25 NYK@ATL, 04-27 OKC@PHX, 04-30 DEN@MIN, 05-07 and 05-13 CLE@DET) can't be re-labelled because the **ESPN summary 404s** (the same 8-game gap as in EXP-20261101-02); `fetch_results_for_date` reuses the existing final brief first and never overwrites it, so the existing corpus loses no labels. Limitation: a corpus rebuilt from zero would be missing these 5 events.
 
 **R1-3**: `nba_backtester.py` deleted (no caller; doc pointer changed to the reflector).
+
+R1 shipped as `37c4d8f4` (2026-11-01, Kelvin approved), scheduler synced.
+
+### R2 (2026-11-02, Kelvin pre-approved: "R2批准 ... just go after r1")
+
+**Changes**
+- `nba_extractor.py`: deleted every stats.nba.com branch (roster `CommonTeamRoster`, `PlayerGameLog`, `PlayerDashboardByGeneralSplits`, `LeagueDashPlayerStats/TeamStats`, `LeagueDashPtDefend/PtTeamDefend`, Opponent table, synthetic game). Roster / game logs / splits / league tables are ESPN only; `espn_league_tables` is the same computation as the old ESPN fallback, now unconditional; the season-start `fetch_with_season_fallback` (thin current season → last season / missing teams filled) is kept and now feeds on ESPN tables. Fails closed when ESPN can't compute the league tables.
+- **IDs**: `player_id` = ESPN athlete id, every player row has `player_id_source: "espn"`; `nba_espn_league.player_advanced` / lineups keyed by ESPN id; `nba_name_index` (nba_api static table) deleted. `nba_prop_training` ledger rows now carry `player_id_source` (rows without the field are old nba.com ids, never mixed).
+- `player_id` reader audit: everything downstream matches by `player_name_key` (reports, verification, settlement, ML features, ledger), and the dashboard's `player_id` hits are all tennis. Actual readers: extractor, `nba_espn_*`, `nba_opportunities` (see below), `nba_prop_training` (field added). No unresolved readers.
+- Retired: `nba_api_breaker.py`, `nba_league_snapshot.py`, `nba_official_injuries.py`, `nba_stat_source.json` (nbacom mode), the schedule's `track_stats_nba_source` / `stats_nba_status.jsonl` Telegram, `meta.nbacom_fallback`; the `nba_api` dependency (requirements / SETUP). The defender table / DvP keys stay in the package, empty and marked `stats_nba_tracking_only`.
+- Official injury report removed: bankers back to ESPN-only (Out → removed; Day-To-Day → not a banker); the morning alert only looks at ESPN. `availability_name_key` moved into `nba_identity`, so `availability_obs.name_key` keeps its values.
+- `meta.fallback_used` changes from True (the old ESPN "fallback" label) to False; side effect: the Monte Carlo section no longer wrongly prints "Pace/防守來自上季".
+
+**R2-5/7 re-extraction gate** (`evidence/EXP-20261101-60-nba-r2-reextraction.py`): 2026-11-03 Sydney slate OKC@CLE, SAC@DAL; before = main `fcaa49b0` (23:19), after = R2 code (same ESPN cache).
+
+| | Value |
+|---|---|
+| Matched players (by name) | 37 |
+| Model fields with differences (gamelog / splits / advanced / h2h / prop_analytics / fatigue / position / status / age) | **0** |
+| C-layer cells (37 players × 26 milestones × 4 prices) | 3,848, **0 changed** |
+| team_stats / injuries / key_defenders / team_dvp | identical |
+| opponent_context / team_recent | values identical (only `captured_at` and the hash that contains it differ) |
+| Players only in after | **20** (0 only in before) |
+
+The 20 added players are all the ones the old path dropped silently because the nba_api offline roster couldn't resolve an NBA id (2025/2026 draft: Cooper Flagg, Darius Acuff Jr., Bennett Stirtz, Aday Mara…). With ESPN ids they now get L10 / advanced; `usage_redistribution` / `correlation_warnings` change with them. **This is the one behaviour change in R2**: these players' legs now enter the candidate pool (C coefficients unchanged, their L10 is the same ESPN game log as everyone else). → **PASS** (matched rows 0 changes; added players explained by the ID switch).
+
+**R2-6 opportunity Base tables** (`evidence/EXP-20261101-60-nba-opportunity-parity.py`, vs nba.com captures with cutoffs 10/24–10/27): player per-game FGA/FGM/FG3A/FG3M/FTA/FTM median |Δ| **0.0** (p90 0.0), GP 0.0; **MIN median 0.2 at 10/24** (0.1 at the other three; ESPN only has whole minutes); team per-100 FGA 0.6–0.95 (possession estimate). Pre-registered bar ≤ 0.1 → **MIN fails at 1/4 cutoffs → not shipped**: the rebuild code stays in the evidence script, and in production every opportunity source is `unavailable` / `retired_tracking` (same as the actual state since the 10-29 block; descriptive only, `model_input_enabled: False`). Not rescued by changing the bar after the fact.
+
+**R2-8 official injury report**: historical effect see the table above (5 days, 0 published bankers/SGMs changed) → removed as Kelvin decided.
+
+Limitation: the EXP-20261101-01/02 evidence scripts used `nba_api_breaker` / `nba_name_index`, which no longer exist after R2; to reproduce them check out `9711607e`.
