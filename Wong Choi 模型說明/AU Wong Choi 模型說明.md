@@ -42,6 +42,12 @@
 
 ### 額外場內 ranking overlay
 
+| Overlay | 公式 | 缺資料處理 |
+|---|---|---|
+| 濕地往績調整 `wet_form_feature` | 黏／大爛地日：今日地況往績入位率對先驗（全份）＋另一種濕地（半份），按場數收縮，有上下限 | 乾地日 = 0；冇濕地往績 = 先驗（中性） |
+| 逐駒全程情境速度 `full_time_speed_feature` | 1.5 × 場內全程情境速度 z-score × 證據權重 | 缺逐駒資料／來源未在預測前可用時 = 0；不使用試閘或頭馬代理 |
+| 高班實績證明 `proven_class_feature` | 0.5 × 場內 proven-class z-score | 缺資料或少於 3 匹可比較時 = 0（中性） |
+
 **「權重」同「實測影響力」有咩分別？**  權重係配方上寫死嘅數。實測影響力係
 實際跑落去，呢個維度喺同一場馬入面真係拉開幾多分距離 —— 一個權重好高但成場馬
 都畀差唔多分數嘅維度，其實冇乜影響力。兩者差得遠，就代表個維度「有名無實」。
@@ -181,12 +187,12 @@ R1 Benter combiner 量到模型對最早賽前市場冇增量資訊）。
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-11-01 14:40 AEDT`
-- Git commit：`afbf8547`
+- 生成時間：`2026-11-01 17:32 AEDT`
+- Git commit：`18badd84`
 - Scoring contract：`au/raw-matrix-preparation-v2`
-- `scoring.py` 指紋：`71e0b2ec2c5a`
+- `scoring.py` 指紋：`5565357b91a4`
 - `matrix_mapper.py` 指紋：`7e081c69cdd9`
-- `renderer.py` 指紋：`b4a80a96a5bc`
+- `renderer.py` 指紋：`66612c0ef187`
 - `dimensions.py` 指紋：`bc65613511f0`
 - `full_time_speed.py` 指紋：`cde292260587`
 - `engine_core.py` 指紋：`916e0c11a363`

@@ -86,6 +86,12 @@
     .dim-strip__driver .down { color: #B91C1C; }
     .dim-row__meta { font-size: 0.66rem; color: #64748B; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .dim-row__meta b { color: #475569; font-weight: 700; }
+    .dim-overlays { margin-top: 10px; padding-top: 8px; border-top: 1px dashed #CBD5E1; font-size: 0.72rem; color: #475569; }
+    .dim-overlays__title { font-weight: 700; margin-bottom: 4px; }
+    .dim-overlays__row { display: flex; justify-content: space-between; gap: 12px; padding: 2px 0; font-variant-numeric: tabular-nums; }
+    .dim-overlays__dim { color: #94A3B8; }
+    .dim-overlays__note { color: #64748B; padding: 2px 0; }
+    .dim-overlays__total { margin-top: 4px; font-variant-numeric: tabular-nums; }
     /* Phone: the four-column row squeezed the track to nothing -- the bars,
        the whole point of the strip, were invisible on the device this gets
        read on. Give the bar its own line under the name. */
@@ -5163,6 +5169,8 @@ function renderDimensionStrip(horse) {
     h += `<div class="dim-strip__total">原始總分 <b>${Number(horse.score_raw_total).toFixed(2)}</b> ＝ ${baseText} ${sum >= 0 ? '+' : '−'} 各維度影響 ${Math.abs(sum).toFixed(2)}${adjText ? '　＋　' + adjText : ''}</div>`;
   }
 
+  h += renderScoreOverlays(horse);
+
   if (reference.length) {
     // Printed by the engine, explicitly 參考·不入排名. Shown rather than hidden:
     // the dashboard used to display 5 of the 7 dimensions in the file with
@@ -5172,6 +5180,30 @@ function renderDimensionStrip(horse) {
       `<span class="dim-ref__item"><b>${esc(d.name)}</b> ${d.score != null ? d.score.toFixed(1) : '—'} ${d.symbol || ''}</span>`
     ).join('　·　') + '</div>';
   }
+  return h + '</div>';
+}
+
+
+// AU 綜合分 = 七維矩陣 + overlay（EXP-20261101-38）。Overlay 唔屬任何維度嘅權重，但每個都答緊
+// 某個維度嘅題目，所以標明相關維度；總分要可以喺畫面加返出嚟。數值全部由報告帶過嚟，唔喺 UI 重算。
+function renderScoreOverlays(horse) {
+  const so = horse.score_overlays;
+  if (!so || !Array.isArray(so.overlays) || so.pure_7d_score == null || so.ability_score == null) return '';
+  const fmt = v => `${v >= 0 ? '+' : '−'}${Math.abs(v).toFixed(2)}`;
+  const total = so.overlays.reduce((acc, o) => acc + Number(o.value || 0), 0);
+  let h = '<div class="dim-overlays">';
+  h += '<div class="dim-overlays__title">額外調整（唔入維度權重，直接加落總分）</div>';
+  so.overlays.forEach(o => {
+    const v = Number(o.value || 0);
+    const colour = v > 0 ? '#059669' : v < 0 ? '#DC2626' : '#94A3B8';
+    h += `<div class="dim-overlays__row"><span>${esc(o.label)} <span class="dim-overlays__dim">· ${esc(o.dimension)}</span></span>`
+      + `<b style="color:${colour}">${v === 0 ? '0.00' : fmt(v)}</b></div>`;
+  });
+  if (so.trip_change) {
+    h += `<div class="dim-overlays__note">距離轉變：今場 ${esc(so.trip_change.today)}m 對上仗 ${esc(Math.round(so.trip_change.last))}m，`
+      + `已喺${esc(so.trip_change.dimension || '狀態與穩定性')}扣 ${esc(Math.abs(so.trip_change.delta))} 分（唔再另加）</div>`;
+  }
+  h += `<div class="dim-overlays__total">原始總分 <b>${Number(so.ability_score).toFixed(2)}</b> ＝ 七維 ${Number(so.pure_7d_score).toFixed(2)} ${fmt(total)} 調整</div>`;
   return h + '</div>';
 }
 

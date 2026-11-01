@@ -26,12 +26,21 @@ def test_raw_overlay_and_production_safety_are_preserved():
     assert p==before and result['ranking']==['1','2','3','4']
 
 
-def test_thin_evidence_swap_is_not_replaced_by_sorting_scores():
+def test_thin_evidence_swap_is_not_replaced_by_sorting_scores(monkeypatch):
+    from au_racing_engine import renderer
     from au_racing_engine.renderer import THIN_EVIDENCE_SCORED_LEAVES
+    monkeypatch.setattr(renderer, 'THIN_EVIDENCE_RAIL', True)   # 安全欄停用中（EXP-20261101-38），測重開時嘅路徑
     p=projection();p['rows']['1']['feature_scores']={k:60 for k in THIN_EVIDENCE_SCORED_LEAVES}
     result=replay_projection(p,dict(MATRIX_WEIGHTS))
     assert result['ability']['1']>result['ability']['2']
     assert result['ranking'][:2]==['2','1']
+
+
+def test_rail_off_ranking_follows_scores():
+    from au_racing_engine.renderer import THIN_EVIDENCE_SCORED_LEAVES
+    p=projection();p['rows']['1']['feature_scores']={k:60 for k in THIN_EVIDENCE_SCORED_LEAVES}
+    result=replay_projection(p,dict(MATRIX_WEIGHTS))
+    assert result['ranking'][:2]==['1','2']
 
 
 def test_weight_state_uses_exact_six_dimensions():

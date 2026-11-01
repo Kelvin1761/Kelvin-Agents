@@ -109,6 +109,27 @@ ul, ol { padding-left:1.5rem; }
 </tr>
 </tbody></table>
 <h3>額外場內 ranking overlay</h3>
+<table><thead><tr>
+<th>Overlay</th>
+<th>公式</th>
+<th>缺資料處理</th>
+</tr></thead><tbody>
+<tr>
+<td>濕地往績調整 <code>wet_form_feature</code></td>
+<td>黏／大爛地日：今日地況往績入位率對先驗（全份）＋另一種濕地（半份），按場數收縮，有上下限</td>
+<td>乾地日 = 0；冇濕地往績 = 先驗（中性）</td>
+</tr>
+<tr>
+<td>逐駒全程情境速度 <code>full_time_speed_feature</code></td>
+<td>1.5 × 場內全程情境速度 z-score × 證據權重</td>
+<td>缺逐駒資料／來源未在預測前可用時 = 0；不使用試閘或頭馬代理</td>
+</tr>
+<tr>
+<td>高班實績證明 <code>proven_class_feature</code></td>
+<td>0.5 × 場內 proven-class z-score</td>
+<td>缺資料或少於 3 匹可比較時 = 0（中性）</td>
+</tr>
+</tbody></table>
 <p><strong>「權重」同「實測影響力」有咩分別？</strong>  權重係配方上寫死嘅數。實測影響力係</p>
 <p>實際跑落去，呢個維度喺同一場馬入面真係拉開幾多分距離 —— 一個權重好高但成場馬</p>
 <p>都畀差唔多分數嘅維度，其實冇乜影響力。兩者差得遠，就代表個維度「有名無實」。</p>
@@ -329,12 +350,12 @@ ul, ol { padding-left:1.5rem; }
 <li>推算前三／前四：由市場勝率經 discounted Harville（λ 0.754／0.649／0.549）推出，係<strong>市場推算，唔係模型預測</strong></li></ul>
 <p>去水用共用 <code>shared_racing/scripts/devig.py</code>；實作喺 <code>au_racing_engine/market_reference.py</code>。</p>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-11-01 14:40 AEDT</code></li>
-<li>Git commit：<code>afbf8547</code></li>
+<ul><li>生成時間：<code>2026-11-01 17:32 AEDT</code></li>
+<li>Git commit：<code>18badd84</code></li>
 <li>Scoring contract：<code>au/raw-matrix-preparation-v2</code></li>
-<li><code>scoring.py</code> 指紋：<code>71e0b2ec2c5a</code></li>
+<li><code>scoring.py</code> 指紋：<code>5565357b91a4</code></li>
 <li><code>matrix_mapper.py</code> 指紋：<code>7e081c69cdd9</code></li>
-<li><code>renderer.py</code> 指紋：<code>b4a80a96a5bc</code></li>
+<li><code>renderer.py</code> 指紋：<code>66612c0ef187</code></li>
 <li><code>dimensions.py</code> 指紋：<code>bc65613511f0</code></li>
 <li><code>full_time_speed.py</code> 指紋：<code>cde292260587</code></li>
 <li><code>engine_core.py</code> 指紋：<code>916e0c11a363</code></li>
