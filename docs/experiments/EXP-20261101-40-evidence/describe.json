@@ -1,0 +1,17 @@
+{
+ "rq_holdout_races": 1397,
+ "rq_spearman_current": 0.5987,
+ "rq_spearman_position": 0.9099,
+ "fallback_dates": 14,
+ "races_changed": 2533,
+ "final_beta": {
+  "const": -0.3332,
+  "margin": 0.1636,
+  "margin2": 0.0001,
+  "p400": -0.2435,
+  "p800": -0.7406,
+  "p400xm": -0.0163,
+  "finish": 0.1552,
+  "no_pos": 0.1112
+ }
+}

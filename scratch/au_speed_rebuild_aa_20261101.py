@@ -203,7 +203,7 @@ def main():
                 for run_ in runs_:
                     if run_.get("run_date") and str(run_["run_date"]) >= date:
                         raise SystemExit(f"PF run not before race: {meeting_dir.name} R{race_no} #{hnum_} {run_.get('run_date')}")
-                pf_field[str(hnum_)] = [{k: run_.get(k) for k in ("l600_delta", "margin", "run_date", "distance", "source")}
+                pf_field[str(hnum_)] = [{k: run_.get(k) for k in ("l600_delta", "margin", "run_date", "distance", "source", "pos_800", "pos_400", "finish", "starters", "winning_time")}
                                         for run_ in runs_]
             from au_racing_engine import speed as _speed
             _field = {}

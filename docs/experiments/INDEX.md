@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261101-40](EXP-20261101-40-au-position-aware-l600-results.md) | 2026-11-01 | AU | 速度重建 2b：用 RQ 真值學嘅 800m／400m 位置估算式取代「輸距 × 0.17」估本駒末段 600m | **REJECT**：估算準好多（場內 Spearman 0.599→0.910），但預測力差（leaf AUC −0.0157 CI 全負、逐匹 logistic CI 全負、v3 Gold −0.25pp、§8 both_arms_reject、後上首選 Gold 全負）。現行分有用係因為佢實質係「輸頭馬幾遠」；速度能力應該以全程表現做核心 |
 | [EXP-20261101-25](EXP-20261101-25-tennis-public-point-input-inventory.md) | 2026-11-01 | Tennis | Sackmann／TML被history引用的raw point denominators唯讀盤點 | **輸入診斷／無fit**：160900 sides全留，145539通過raw連結、15361暫扣；72686雙側group未跨provider去重，不是訓練／PIT／準確度認證 |
 | [EXP-20261101-24](EXP-20261101-24-tennis-point-input-feasibility.md) | 2026-11-01 | Tennis | point kernel輸入可行性，WTA-only盤點 | **輸入診斷**：966 sides中302（151場）通過本次cutoff欄位檢查，185玩家中5人≥5場；不代表all-provider coverage，未fit／未改訓練資格 |
 | [EXP-20261101-39](EXP-20261101-39-au-speed-information-ceiling.md) | 2026-11-01 | AU | 用 3,246 場逐匹 walk-forward logistic 答：準咗嘅 L600 標準（G）同埋權重適當 fit 之後，有冇多咗預測力？ | **診斷**：冇 —— G vs 現行 log-likelihood Δ −0.00000 [−0.0011,+0.0011]、AUC Δ −0.0001；新標準嘅「準」係模型已有嘅資訊。速度權重唔支持郁（fit 權重排名反而差 −0.0017）。Sportsbet 冇逐駒分段；唯一未用來源係 RQ 逐駒 200m（之前只測過 6 場）。§8 refit baseline 9 窗 6 窗 fallback |
