@@ -31,7 +31,6 @@ nba_extractor.py — NBA Wong Choi Claw Code V3 (究極版)
 import json
 import math
 import argparse
-import time
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from pathlib import Path
@@ -320,7 +319,7 @@ def parse_espn_events(events):
 
 
 def nba_season_for_date(date_value):
-    """Return nba_api season label for an event/analysis date."""
+    """Return the NBA season label (e.g. 2026-27) for an event/analysis date."""
     text = str(date_value or "")[:10]
     try:
         parsed = datetime.strptime(text, "%Y-%m-%d")
@@ -356,6 +355,67 @@ def history_date_to(date_value):
     if not date_value:
         return ""
     return (history_cutoff_day(date_value) - timedelta(days=1)).strftime("%m/%d/%Y")
+
+
+# League-level feeds need roughly a full league to be usable. After game 1 of a
+# new season only the teams that have played return rows, so "non-empty" is not
+# enough to trust the current season.
+MIN_TEAM_ROWS = 25
+MIN_PLAYER_ROWS = 100
+ALWAYS_FILL = 10 ** 9   # player-level feeds have no fixed 'complete' size
+
+
+def fetch_with_season_fallback(fetch_fn, season, as_of, min_rows=1, label="", fill_below=None):
+    """Call ``fetch_fn(season, as_of)``; use last season when empty/thin, and fill gaps.
+
+    Two cases, both bounded by ``as_of`` (no game on or after the event's US day is read):
+
+    * whole feed empty/thin (< ``min_rows``): use last season entirely;
+    * feed usable but incomplete: keep the current-season rows and fill each MISSING
+      key (team / player) from last season.  2026-10-23: after opening night the
+      league feed returned 28 teams (>= MIN_TEAM_ROWS) so it was trusted as-is, and
+      DEN / CLE - who had not yet played - got no team or advanced data, so their game
+      had no combos.  ``fill_below`` (e.g. 30 teams) is the row count at which the
+      current feed counts as complete; at or above it no extra request is made.
+      ``None`` (default) never fills.
+
+    Returns ``(data, info)``; ``info`` records which season the numbers really come from.
+    """
+    data = fetch_fn(season, as_of)
+    rows = len(data) if data else 0
+    info = {
+        "label": label,
+        "requested_season": season,
+        "data_season": season,
+        "fallback_used": False,
+        "rows": rows,
+    }
+    prior = previous_nba_season(season)
+    if rows < min_rows:
+        print(f"  ↩️ {label or 'data'}: {season} 得 {rows} 行 (<{min_rows})，改用 {prior}")
+        prior_data = fetch_fn(prior, as_of)
+        prior_rows = len(prior_data) if prior_data else 0
+        if prior_rows > rows:
+            info.update({"data_season": prior, "fallback_used": True,
+                         "rows": prior_rows, "current_rows": rows})
+            return prior_data, info
+        info["fallback_failed"] = True
+        return data, info
+    if isinstance(data, dict) and fill_below is not None and rows < fill_below:
+        prior_data = fetch_fn(prior, as_of)
+        if isinstance(prior_data, dict):
+            missing = [key for key in prior_data if key not in data]
+            if missing:
+                merged = dict(data)
+                merged.update({key: prior_data[key] for key in missing})
+                print(f"  ↩️ {label or 'data'}: {season} 缺 {len(missing)} 項，由 {prior} 補上")
+                info.update({
+                    "fallback_used": True, "fallback_partial": True, "current_rows": rows,
+                    "rows": len(merged), "filled_from": prior, "filled_count": len(missing),
+                    "filled_keys": [str(key) for key in missing[:40]],
+                })
+                return merged, info
+    return data, info
 
 
 # Key defenders and team defence-vs-position were Second Spectrum tracking
@@ -433,7 +493,7 @@ def fetch_nba_news(team_abbr, limit=5):
 
 
 # ==========================================
-# 模塊 2：nba_api — 全員 L10 完整 Box Score
+# 模塊 2：ESPN — 全員 L10 完整 Box Score
 # ==========================================
 def fetch_team_roster(team_abbr, season=None):
     """ESPN team roster; ``player_id`` is the ESPN athlete id."""
@@ -651,7 +711,7 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
 
 
 # ==========================================
-# 模塊 2.5：nba_api — H2H 歷史對戰數據
+# 模塊 2.5：ESPN — H2H 歷史對戰數據
 # ==========================================
 def fetch_player_h2h(player_id, player_name, opp_abbr, season=None, as_of=None):
     """提取球員對住特定球隊的歷史對戰數據 (當季 + 上季, RS + Playoffs)"""
@@ -1413,8 +1473,23 @@ def main():
     stats_date = analysis_game['date'] if analysis_game else formatted_date
     statistics_season = statistics_season_for_game(stats_date, analysis_game)
     print(f"📚 歷史數據球季: {statistics_season} | 截止: {history_date_to(stats_date)}")
-    data_sources = {}
-    team_stats, adv_stats = espn_league_tables(statistics_season, stats_date, data_sources) if games else ({}, {})
+    tables = {}   # one ESPN computation per season, shared by both feeds
+
+    def league(season_, as_of_):
+        if season_ not in tables:
+            sources_ = {}
+            tables[season_] = (*espn_league_tables(season_, as_of_, sources_), sources_)
+        return tables[season_]
+    team_stats, adv_stats, data_sources = {}, {}, {}
+    if games:
+        # Season start: thin current feeds use / fill from last season, as before.
+        team_stats, team_info = fetch_with_season_fallback(
+            lambda s_, a_: league(s_, a_)[0], statistics_season, stats_date, MIN_TEAM_ROWS, "team_stats", fill_below=30)
+        adv_stats, adv_info = fetch_with_season_fallback(
+            lambda s_, a_: league(s_, a_)[1], statistics_season, stats_date, MIN_PLAYER_ROWS, "player_advanced")
+        data_sources = dict(league(statistics_season, stats_date)[2])
+        data_sources["team_stats"] = {**data_sources["team_stats"], **team_info}
+        data_sources["player_advanced"] = {**data_sources["player_advanced"], **adv_info}
     defender_data, team_dvp = {}, {}   # tracking tables, retired with stats.nba.com
     # Fail closed: a package without team pace/defence and player usage is not
     # a degraded analysis, it is none.

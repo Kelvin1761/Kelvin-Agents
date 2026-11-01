@@ -1,4 +1,4 @@
-"""League tables from ESPN box scores while stats.nba.com is blocked (2026-10-31).
+"""League tables from ESPN box scores (2026-10-31; the only source since EXP-20261101-60).
 
 EXP-20261031-01 measured the box-score tables against nba_api's: team pace
 within 0.65 (median), defensive rating within 0.85, DEF_RANK within one place,
@@ -17,7 +17,6 @@ NBA_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA_ROOT))
 sys.path.insert(0, str(NBA_ROOT / "nba_data_extractor" / "scripts"))
 import nba_espn_league as L  # noqa: E402
-import nba_api_breaker as B  # noqa: E402
 import nba_extractor as X  # noqa: E402
 
 SUMMARY = json.loads((Path(__file__).parent / "fixtures" / "espn_summary_mia_atl_20261028.json")
@@ -61,14 +60,14 @@ def test_team_table_matches_hand_arithmetic():
     assert mia["MIN"] == atl["MIN"] == 240
 
 
-def test_player_table_keys_by_nba_id_and_drops_unresolved_names():
+def test_player_table_keys_by_espn_athlete_id():
     game = L.parse_summary(SUMMARY, DAY)
-    table = L.player_advanced([game], {"giannis antetokounmpo": 203507})
-    assert list(table) == [203507]
-    row = table[203507]
+    table = L.player_advanced([game])
+    row = table["3032977"]
+    assert all(key.isdigit() for key in table), "keyed by ESPN athlete id"
     assert row["TS_PCT"] == round(100 * 24 / (2 * (18 + 0.44 * 5)), 1)
     assert row["EFG_PCT"] == round(100 * 11 / 18, 1)       # 0 threes made
-    assert row["OFF_RATING"] is None and row["PIE"] is None   # not reproducible from a box
+    assert row["OFF_RATING"] is None and row["PIE"] is None   # filled from lineups, PIE never
 
 
 def test_season_games_reads_only_the_window_and_caches_closed_days():
@@ -101,39 +100,23 @@ def test_season_games_reads_only_the_window_and_caches_closed_days():
     assert len(calls) == first, "closed days and final games are never fetched twice"
 
 
-def test_extractor_fills_only_during_an_outage(monkeypatch):
+def test_extractor_league_tables_come_from_espn(monkeypatch):
     game = L.parse_summary(SUMMARY, DAY)
     monkeypatch.setattr(L, "season_games", lambda *a, **k: [game])
-    monkeypatch.setattr(L, "nba_name_index", lambda: {"giannis antetokounmpo": 203507})
     lineup_game = {"players": {"3032977": {"name": "Giannis Antetokounmpo", "minutes": 31,
                                            "off_poss": 64, "def_poss": 63, "pts_for": 70,
                                            "pts_against": 66}}}
     monkeypatch.setattr(X.nba_espn_lineups, "season_lineups", lambda *a, **k: [lineup_game])
-    sources = {"team_stats": {"rows": 0}, "player_advanced": {"rows": 0},
-               "key_defenders": {"rows": 0}, "team_dvp": {"rows": 0}}
-    monkeypatch.setattr(B, "failure_count", lambda: 0)
-    ts, adv = X.espn_league_fallback("2026-27", "2026-10-29", sources, {}, {})
-    assert ts == {} and adv == {}, "no outage: an empty feed stays empty"
-    monkeypatch.setattr(B, "failure_count", lambda: 3)
-    ts, adv = X.espn_league_fallback("2026-27", "2026-10-29", sources, {}, {})
-    assert set(ts) == {"MIA", "ATL"} and list(adv) == [203507]
-    assert adv[203507]["DEF_RATING"] == round(100 * 66 / (63 * 1.016), 1), "on-court rating from lineups"
+    sources = {}
+    ts, adv = X.espn_league_tables("2026-27", "2026-10-29", sources)
+    assert set(ts) == {"MIA", "ATL"} and "3032977" in adv
+    assert adv["3032977"]["DEF_RATING"] == round(100 * 66 / (63 * 1.016), 1), "on-court rating from lineups"
     assert sources["player_advanced"]["on_court_filled"] == 1
     assert sources["team_stats"]["source"] == "espn_box" and sources["team_stats"]["rows"] == 2
-    assert X.missing_league_tables(sources, 3) == [], "tracking-only tables may be empty"
-    assert X.missing_league_tables({**sources, "team_stats": {"rows": 0}}, 3) == ["team_stats"]
-
-
-def test_source_status_reports_blocked_until_a_success(tmp_path, monkeypatch):
-    monkeypatch.setenv("WC_NBA_STAT_SOURCE", "nbacom")
-    monkeypatch.setenv("WC_NBA_API_BREAKER_FILE", str(tmp_path / "breaker.json"))
-    monkeypatch.setitem(B._state, "noted_ok", False)
-    assert B.source_status()["state"] == "ok"
-    B._trip("blocked")
-    status = B.source_status()
-    assert status["state"] == "blocked" and status["blocked_since"]
-    B.record_success()
-    assert B.source_status()["state"] == "ok" and B.source_status()["last_ok"]
+    assert not sources["team_stats"]["fallback_used"], "ESPN is the source, not a fallback"
+    assert sources["key_defenders"]["unavailable"] == "stats_nba_tracking_only"
+    monkeypatch.setattr(L, "season_games", lambda *a, **k: (_ for _ in ()).throw(TimeoutError()))
+    assert X.espn_league_tables("2026-27", "2026-10-29", {}) == ({}, {}), "ESPN down: empty, caller fails closed"
 
 
 def test_splits_from_gamelog_match_nba_groups_with_preseason_spacing():
@@ -155,7 +138,7 @@ def test_splits_from_gamelog_match_nba_groups_with_preseason_spacing():
     assert X.splits_from_gamelog(rs.iloc[0:0]) is None
 
 
-def test_team_context_in_espn_mode_never_calls_nba_com(tmp_path, monkeypatch):
+def test_team_context_comes_from_espn_box_scores(tmp_path, monkeypatch):
     """S_v2/S_v3 opponent context comes from the same ESPN box scores (2026-11-01).
 
     Before this, nba_team_context still asked stats.nba.com's LeagueGameLog, so
@@ -163,7 +146,6 @@ def test_team_context_in_espn_mode_never_calls_nba_com(tmp_path, monkeypatch):
     forward tests read INVALID_DATA.
     """
     import nba_team_context as tc
-    monkeypatch.setenv("WC_NBA_STAT_SOURCE", "espn")
 
     class Resp:
         def __init__(self, payload):
@@ -183,11 +165,6 @@ def test_team_context_in_espn_mode_never_calls_nba_com(tmp_path, monkeypatch):
             return Resp({"events": events})  # 2025-10-28 stands in for last season's league average
         return Resp(SUMMARY)
 
-    def nba_com(**_):
-        raise AssertionError("stats.nba.com must not be called in ESPN mode")
-
-    import nba_api.stats.endpoints.leaguegamelog as lgl
-    monkeypatch.setattr(lgl, "LeagueGameLog", nba_com)
     bundle = tc.fetch_bundle("2026-27", "2025-26", "10/28/2026", tmp_path / "ctx.json", get=get)
     regular = bundle["tables"]["Regular Season"]
     assert regular["status"] == "available" and regular["source"] == "espn_box"

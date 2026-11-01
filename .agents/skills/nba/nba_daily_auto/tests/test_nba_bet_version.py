@@ -55,16 +55,14 @@ def _ledger(tmp_path, rows):
     (tmp_path / "ledger" / f"{D}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
 
 
-def test_morning_alert_names_published_players_now_out_or_doubtful(tmp_path):
+def test_morning_alert_names_published_players_now_out_or_day_to_day(tmp_path):
     _ledger(tmp_path, ROWS)
     folder = tmp_path / "game"; folder.mkdir()
-    game = {"injuries": {"PHI": {}},
-            "official_injuries": {"PHI": {"status": "available", "players": {
-                "jaylenbrown": {"player": "Brown,Jaylen", "status": "Questionable", "level": "dtd", "reason": ""}}}}}
+    game = {"injuries": {"PHI": {"Jaylen Brown": "Day-To-Day"}}}
     (folder / "nba_game_data_DET_PHI.json").write_text(json.dumps(game))
     text = schedule.published_leg_availability_alert(folder, D, root=tmp_path)
-    assert "Jaylen Brown" in text and "Questionable" in text and "LeBron" not in text   # only the bet version
-    game["official_injuries"]["PHI"]["players"] = {}
+    assert "Jaylen Brown" in text and "Day-To-Day" in text and "LeBron" not in text   # only the bet version
+    game["injuries"]["PHI"] = {}
     (folder / "nba_game_data_DET_PHI.json").write_text(json.dumps(game))
     assert schedule.published_leg_availability_alert(folder, D, root=tmp_path) is None
     assert schedule.published_leg_availability_alert(tmp_path / "missing", D, root=tmp_path / "nope") is None

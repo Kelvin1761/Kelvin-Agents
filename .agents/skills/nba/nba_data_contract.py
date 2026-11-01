@@ -1,8 +1,5 @@
 """Version and source receipts required before using NBA statistics."""
 
-import json
-import os
-from pathlib import Path
 
 # v2: defender sample size is total attempts, not per-game.
 # v3 (2026-11-01, ESPN as the one source): no defender table is required --
@@ -12,28 +9,9 @@ NBA_STATISTICS_CONTRACT = 3
 STAT_SOURCES = ("espn", "nbacom", "mixed")
 
 
-_PRIMARY_CONFIG = Path(__file__).resolve().parent / "nba_wong_choi" / "resources" / "nba_stat_source.json"
-
-
-def primary_source() -> str:
-    """'espn' (default since 2026-11-01) or 'nbacom'.
-
-    In 'espn' mode stats.nba.com is never called and its snapshots are never
-    read, so every number in a package comes from one ruler.
-    """
-    override = os.environ.get("WC_NBA_STAT_SOURCE", "").strip().lower()
-    if override in ("espn", "nbacom"):
-        return override
-    try:
-        value = json.loads(_PRIMARY_CONFIG.read_text(encoding="utf-8")).get("primary")
-    except (OSError, ValueError):
-        value = None
-    return value if value in ("espn", "nbacom") else "espn"
-
-
-# Marker the extractor writes when stats.nba.com was unreachable and the
-# defender table (tracking data, nba.com only) came back empty. EXP-20261031-01:
-# removing key_defenders changed no probability across 13,376 replayed legs.
+# Marker on the retired tracking tables (defenders, DvP: stats.nba.com only).
+# EXP-20261031-01: removing key_defenders changed no probability across 13,376
+# replayed legs; EXP-20261101-60 retired them with stats.nba.com.
 TRACKING_UNAVAILABLE = "stats_nba_tracking_only"
 
 

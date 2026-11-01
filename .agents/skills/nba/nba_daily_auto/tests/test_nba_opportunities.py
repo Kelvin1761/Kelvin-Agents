@@ -118,15 +118,21 @@ def test_cache_reuses_only_same_hash_matched_season_cutoff_and_age(tmp_path):
     assert fetch.call_count == 7 and result['sources']['passing']['status'] == 'unavailable'
 
 
-def test_request_preserves_all_fields_and_failure_is_explicit():
-    payload = {'resultSets': [{'headers': ['PLAYER_ID', 'TEAM_ID', 'TEAM_ABBREVIATION', 'GP', 'MIN', 'POTENTIAL_AST'],
-                               'rowSet': [[1, 10, 'GSW', 2, 30, 12]]}]}
-    api = mock.Mock(return_value=mock.Mock(get_dict=lambda: payload))
-    source = op.request_table('passing', '2026-27', CUTOFF, api)
-    assert source['rows'][0]['POTENTIAL_AST'] == 12
-    assert source['params']['date_to_nullable'] == CUTOFF
-    assert source['params']['per_mode_simple'] == 'PerGame'
-    assert op.request_table('passing', '2026-27', CUTOFF, mock.Mock(side_effect=TimeoutError()))['status'] == 'unavailable'
+def test_base_tables_come_from_espn_box_and_tracking_is_retired():
+    game = {'date': '2026-10-24', 'teams': {
+        'GSW': {'MIN': 240, 'FGA': 90, 'FGM': 40, 'OREB': 10, 'FTA': 20, 'TOV': 12},
+        'LAL': {'MIN': 240, 'FGA': 85, 'FGM': 42, 'OREB': 8, 'FTA': 25, 'TOV': 14}},
+        'players': [{'espn_id': '3975', 'team': 'GSW', 'MIN': 30, 'FGA': 20, 'FGM': 10, 'FG3A': 6,
+                     'FG3M': 2, 'FTA': 4, 'FTM': 3}, {'espn_id': '', 'team': 'GSW', 'MIN': 5}]}
+    player = op.request_table('player_base', '2026-27', CUTOFF, lambda season, cutoff: [game])
+    assert player['status'] == 'available' and player['source'] == 'espn_box'
+    assert player['rows'] == [{'PLAYER_ID': '3975', 'TEAM_ID': 'GSW', 'TEAM_ABBREVIATION': 'GSW', 'GP': 1,
+                               'MIN': 30.0, 'FGA': 20.0, 'FGM': 10.0, 'FG3A': 6.0, 'FG3M': 2.0, 'FTA': 4.0, 'FTM': 3.0}]
+    team = op.request_table('team_base', '2026-27', CUTOFF, lambda season, cutoff: [game])
+    gsw = next(row for row in team['rows'] if row['TEAM_ID'] == 'GSW')
+    assert gsw['MIN'] == 48.0 and gsw['FGA'] > 90, 'per 100 possessions, not per game'
+    assert op.request_table('passing', '2026-27', CUTOFF)['status'] == 'retired_tracking'
+    assert op.request_table('player_base', '2026-27', CUTOFF, mock.Mock(side_effect=TimeoutError()))['status'] == 'unavailable'
 
 
 def test_disabling_new_capture_does_not_call_endpoints_or_write_cache(tmp_path, monkeypatch):

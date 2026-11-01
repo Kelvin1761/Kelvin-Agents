@@ -4,14 +4,13 @@ import hashlib
 import json
 import math
 import os
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from nba_schedule import canonical_team_abbr
 
-CONTRACT = 'nba-opportunities/v1'
+CONTRACT = 'nba-opportunities/v2'   # v2: ESPN box tables, tracking retired (EXP-20261101-60)
 CACHE_SECONDS = 1800
 TRACKING = {'passing': 'Passing', 'rebounding': 'Rebounding', 'possessions': 'Possessions',
             'catch_shoot': 'CatchShoot', 'pull_up': 'PullUpShot'}
@@ -40,39 +39,66 @@ def digest(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, allow_nan=False).encode()).hexdigest()
 
 
+def _espn_rows(name, games):
+    """ESPN box-score stand-ins for the two nba.com Base tables (EXP-20261101-60).
+
+    ``player_base``: per-game box averages per ESPN athlete id (team = the
+    player's latest team). ``team_base``: per-100-possession team totals, with
+    possessions as in ``nba_espn_league``. TEAM_ID is the canonical team abbr.
+    """
+    import nba_espn_league
+    if name == 'team_base':
+        acc = {}
+        for game in games:
+            for abbr, team in game['teams'].items():
+                row = acc.setdefault(abbr, {'GP': 0, 'MIN': 0.0, 'FGA': 0.0, 'FGM': 0.0, 'OREB': 0.0, 'poss': 0.0})
+                row['GP'] += 1
+                row['MIN'] += team['MIN'] / 5
+                for key in ('FGA', 'FGM', 'OREB'):
+                    row[key] += team[key]
+                row['poss'] += nba_espn_league.possessions(team)
+        return [{'TEAM_ID': abbr, 'TEAM_ABBREVIATION': abbr, 'GP': row['GP'],
+                 'MIN': round(row['MIN'] / row['GP'], 1),
+                 **{key: round(100 * row[key] / row['poss'], 1) for key in ('FGA', 'FGM', 'OREB')}}
+                for abbr, row in sorted(acc.items()) if row['poss'] > 0]
+    acc = {}
+    for game in sorted(games, key=lambda g: g['date']):
+        for line in game['players']:
+            if not line.get('espn_id') or line['MIN'] <= 0:
+                continue
+            row = acc.setdefault(line['espn_id'], {'GP': 0, **dict.fromkeys(
+                ('MIN', 'FGA', 'FGM', 'FG3A', 'FG3M', 'FTA', 'FTM'), 0.0)})
+            row['team'] = line['team']
+            row['GP'] += 1
+            for key in ('MIN', 'FGA', 'FGM', 'FG3A', 'FG3M', 'FTA', 'FTM'):
+                row[key] += line[key]
+    return [{'PLAYER_ID': espn_id, 'TEAM_ID': row['team'], 'TEAM_ABBREVIATION': row['team'], 'GP': row['GP'],
+             **{key: round(row[key] / row['GP'], 1) for key in ('MIN', 'FGA', 'FGM', 'FG3A', 'FG3M', 'FTA', 'FTM')}}
+            for espn_id, row in sorted(acc.items())]
+
+
 def request_table(name, season, cutoff, fetch=None):
+    """One source table. ``fetch(season, cutoff)`` returns ESPN games (tests inject it).
+
+    The five Second Spectrum tracking tables were stats.nba.com only and are
+    retired (status ``retired_tracking``); nothing is relabelled in their place.
+    """
     unit = 'Per100Possessions' if name == 'team_base' else 'PerGame'
-    params = {'season': season, 'season_type_all_star': 'Regular Season', 'date_to_nullable': cutoff, 'timeout': 10}
-    record = {'season': season, 'history_date_to': cutoff, 'unit': unit, 'status': 'unavailable'}
+    record = {'season': season, 'history_date_to': cutoff, 'unit': unit, 'status': 'unavailable',
+              'source': 'espn_box'}
+    if name in TRACKING:
+        record.update(status='retired_tracking', source='stats_nba_tracking_only')
+        record['captured_at'] = datetime.now(timezone.utc).isoformat()
+        return record
     try:
-        if name == 'team_base':
-            if fetch is None:
-                from nba_api.stats.endpoints.leaguedashteamstats import LeagueDashTeamStats
-                fetch = LeagueDashTeamStats
-            params.update(measure_type_detailed_defense='Base', per_mode_detailed=unit)
-        elif name == 'player_base':
-            if fetch is None:
-                from nba_api.stats.endpoints.leaguedashplayerstats import LeagueDashPlayerStats
-                fetch = LeagueDashPlayerStats
-            params.update(measure_type_detailed_defense='Base', per_mode_detailed=unit)
-        else:
-            if fetch is None:
-                from nba_api.stats.endpoints.leaguedashptstats import LeagueDashPtStats
-                fetch = LeagueDashPtStats
-            params.update(player_or_team='Player', pt_measure_type=TRACKING[name], per_mode_simple=unit)
-        record['params'] = params
-        payload = fetch(**params).get_dict()
-        tables = payload.get('resultSets', [])
-        if not isinstance(tables, list) or len(tables) != 1:
-            raise ValueError('ambiguous source tables')
-        headers, rows = tables[0]['headers'], tables[0]['rowSet']
-        if len(headers) != len(set(headers)) or any(len(row) != len(headers) for row in rows):
-            raise ValueError('malformed source schema')
+        if fetch is None:
+            import nba_espn_league
+            fetch = nba_espn_league.season_games
+        rows = _espn_rows(name, fetch(season, cutoff))
         required = {'TEAM_ID', 'GP', 'MIN'} | ({'PLAYER_ID', 'TEAM_ABBREVIATION'} if name != 'team_base' else {'FGA', 'FGM'})
-        if not required <= set(headers):
+        if rows and not required <= set(rows[0]):
             raise ValueError('source identity/sample columns missing')
-        record.update(status='available' if rows else 'empty', rows=[dict(zip(headers, row)) for row in rows],
-                      source_sha256=digest(payload))
+        record.update(status='available' if rows else 'empty', rows=rows, source_sha256=digest(rows))
     except Exception as exc:
         record['error_type'] = type(exc).__name__
     record['captured_at'] = datetime.now(timezone.utc).isoformat()
@@ -96,8 +122,14 @@ def fetch_sources(season, cutoff, cache_path, *, now=None, fetchers=None):
     except (OSError, ValueError, KeyError, TypeError):
         pass
     names = [*PLAYER_SOURCES, 'team_base']
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        values = list(pool.map(lambda name: request_table(name, season, cutoff, (fetchers or {}).get(name)), names))
+    memo = {}
+
+    def shared(season_, cutoff_):   # both ESPN tables read one season of games
+        if 'games' not in memo:
+            import nba_espn_league
+            memo['games'] = nba_espn_league.season_games(season_, cutoff_)
+        return memo['games']
+    values = [request_table(name, season, cutoff, (fetchers or {}).get(name) or shared) for name in names]
     sources = dict(zip(names, values))
     bundle = {'contract': CONTRACT, 'season': season, 'history_date_to': cutoff,
               'captured_at': datetime.now(timezone.utc).isoformat(), 'sources': sources,

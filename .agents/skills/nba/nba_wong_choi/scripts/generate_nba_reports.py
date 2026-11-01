@@ -34,7 +34,6 @@ sys.path.insert(0, NBA_SKILL_DIR)
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
 from nba_availability import classify_injury_status, usage_from_injuries, usage_bonus_for
-import nba_official_injuries
 from nba_schedule import canonical_team_abbr
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import nba_prob_layer
@@ -1066,11 +1065,8 @@ def build_leg_candidates(all_cards, team_odds=None, meta=None, injuries=None, of
         player_name = card["name"]
         status = injury_status_for(injuries, team_abbr, player_name)
         injury_level = classify_injury_status(status)
-        # League injury report can only make a leg stricter than ESPN, never looser:
-        # e.g. ESPN "Day-To-Day" but league "Out" -> out; league "Probable" never clears ESPN DTD.
-        official_level = nba_official_injuries.level_for((official_injuries or {}).get(team_abbr), player_name)
-        if official_level and AVAILABILITY_SEVERITY[official_level] > AVAILABILITY_SEVERITY[injury_level]:
-            injury_level = official_level
+        # ESPN is the only availability source (the official.nba.com report was
+        # retired in EXP-20261101-60; over 5 days it changed 0 published bankers).
 
         # ⚠️ Skip players who are out (or doubtful / suspended) so they do not pollute generated combos
         if injury_level == "out":

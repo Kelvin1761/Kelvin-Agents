@@ -365,14 +365,14 @@ def availability_rows(availability: Mapping[str, Any] | None, base: dict, flags:
     if not isinstance(availability, dict):
         return []
     sys.path.insert(0, str(NBA_SKILL))
-    import nba_official_injuries as official
+    from nba_identity import availability_name_key as name_key
     from nba_availability import classify_injury_status
     espn = availability.get("injuries") or {}
     league = availability.get("official") or {}
     rows: dict[tuple, dict] = {}
     for team, players in espn.items():
         for name, status in (players or {}).items():
-            rows[(team, official.name_key(name))] = {"player": name, "espn_status": status,
+            rows[(team, name_key(name))] = {"player": name, "espn_status": status,
                                                     "espn_level": classify_injury_status(status)}
     for team, report in league.items():
         if not isinstance(report, dict):

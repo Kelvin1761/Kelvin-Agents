@@ -1,8 +1,8 @@
 """One polite HTTP path to ESPN, shared across processes.
 
-ESPN became the NBA pipeline's primary source after stats.nba.com blocked this
-machine (2026-10-29). nba_api_breaker records why that block most likely
-happened: our own volume -- ~13 pregame runs a day, each re-fetching every
+ESPN became the NBA pipeline's only source after stats.nba.com blocked this
+machine (2026-10-29; EXP-20261101-60). The block most likely came from our own
+volume -- ~13 pregame runs a day, each re-fetching every
 player's game logs. Until 2026-11-01 the ESPN path repeated the pattern: seven
 call sites each doing a bare ``requests.get``, ~300 game-log calls per run and
 ~20 runs a day while a slate kept failing.
