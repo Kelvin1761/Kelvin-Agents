@@ -49,3 +49,5 @@
 **2026-11-01 source guard 已交付／凍結 observation 盤點**：[完整紀錄](docs/audits/tennis-frozen-observation-readiness-20261101.md)。`04469fba` 已 gate、合併並對齊 Tennis runtime。canonical 129 個 bundle 中 127 完整，但 qualified feature prediction 仍為 0；259 個保留 observation 的單筆診斷有 33 通過現有 projector，原整批 card 仍未合格，不計正式 forward。主要先查場地 metadata、as-of Elo/history 及排名來源，不移除 warning 或放寬資格來製造樣本；十五個 REJECT_DEV 不變，未證實準確度提升。
 
 **2026-11-01 排名警告歸屬候選**：[事前固定、原文核對及全量對照](docs/experiments/EXP-20261101-21-tennis-ranking-warning-attribution.md)。發現所選官方 PDF 被另一被拒來源的警告誤標；26,272 玩家 rank／IDs／日期零改動，1,445 個 warning 重新歸屬並保存 3,029 條拒絕診斷。46 個針對測試通過，完整 gate 及下游 decision/stake 影響仍待驗證；未部署、未證實準確度改善。
+
+**排名候選下游比較**：259 份原樣 observation、原 decision 時計下作局部歸屬敏感度比較；73 份警告內容改變，pricing 全份相同，decision／stake／confidence／risk／quality score 零變化（17 BET／242 NO_BET）。並非歷史 pipeline 重建，也不保證未來全無影響；完整 gate／正式交付尚待完成，準確度仍未獲改善證據。

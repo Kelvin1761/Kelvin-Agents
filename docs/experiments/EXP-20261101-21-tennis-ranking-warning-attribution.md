@@ -1,6 +1,6 @@
 # EXP-20261101-21：排名所選來源與被拒候選警告歸屬
 
-狀態：研究候選，未部署。來源正確性比較通過；完整專案 gate／下游決策影響仍待完成，未證實準確度或 ROI 改善。
+狀態：研究候選，未部署。來源正確性比較通過；完整專案 gate 尚待完成；已完成下游固定輸入敏感度比較，未證實準確度或 ROI 改善。
 
 ## 問題與事前固定
 
@@ -42,3 +42,19 @@
 `full-selection-input/baseline/result.json` SHA-256：`645c7d9de9dd944cd952c24d89cffe0ab399567aeae4da572b59055ebce49a4d`。
 
 `full-selection-input/candidate-v2/result.json` SHA-256：`22706d42076509107be97b90e69a5fb901a53148a47a5ae71ae85288d6a3c1e9`。
+
+## 259 份保留輸入的下游影響（2026-11-01）
+
+另在改動前固定 protocol，對全部 259 份原樣 diagnostic observations，以每份原 prediction_created_at 固定 data-quality 時計；只對原始 receipt 已逐筆驗證的 fresh published current_rank 點作警告歸屬的反事實診斷。123 個點、73 份 observation 受影響。每份前後都以同一現役 model/pricing/filter code 重新計算，不拿兩個不同版本互相比。
+
+全份 pricing payload 前後完全相同；decision、stake_units、confidence、risk、hard_no_bet_reasons、risk_adjustments 及 quality score 均零變化，前後均 17 BET／242 NO_BET。73 份 filter payload 的差異只在警告內容。這不保證未來任何輸入均不改 decision：目前的 warning penalty cap／其他 gate 也可遮住差異。
+
+不以當前排名資料假扮過去原生 Reader 執行、不捏造原始 rejected history ID、不修改 canonical observation 或認列新樣本；這是已保存記憶體輸入上的局部影響隔離，非整條歷史 pipeline 重建，未使用 outcomes／ROI。第一版 trace 有一個欄位誤名（實際比 pricing 卻叫 filter），完整紀錄保留並另存 v2 更正；主要配對比較結果一致。
+
+證據：同一外置來源審計目錄的 `downstream-warning-sensitivity-v2/`。完整專案 gate 仍以運行中的 log／最終結果為準；尚未部署此排名候選。
+
+`downstream-warning-sensitivity-v2/protocol.json` SHA-256：`4860c6df83aa5ded4d492904c5b731a0d5fce784359249edfbce689afacb76f8`。
+
+`downstream-warning-sensitivity-v2/result.json` SHA-256：`45ea62a55f4d45072887a3b47afb437acfc87886774ef9340a52a6a600f5bef3`。
+
+`downstream-warning-sensitivity-v2/all-observation-comparisons.jsonl.gz` SHA-256：`635e358bfe15211002adb234b68bf46c916164ca3b2178cd9192c108091b99d8`。
