@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261101-21](EXP-20261101-21-tennis-ranking-warning-attribution.md) | 2026-11-01 | Tennis | fresh valid published ranking 不應掛棄用來源的 warning | **研究候選／未部署**：26,272 玩家所選值/ID/date 零改動，1,445 個 warning 另歸屬並保留 3,029 rejection；46 針對測試過，full gate／下游判決待驗證，無準確率結論 |
 | [EXP-20261101-20](EXP-20261101-20-tennis-historical-source-readers.md) | 2026-11-01 | Tennis | 同一完整來源核對兩個歷史讀取器，錯 event 不補位 | **來源正確性**：124 日 earliest 84014→83126（扣起888行／84場）；6585 close match 中扣起104。保留行相同，無準確率／ROI結論；其他讀取器仍待驗證 |
 | [EXP-20261030-20](EXP-20261030-20-tennis-event-response-identity.md) | 2026-10-30 | Tennis | Sportsbet 單場回應必須匹配所請求 event ID；拒絕不等於隔離正確 fixture | **來源正確性修正／非準確率結論**：凍結 9,988 份，299 不符；44 宗隔離重播中 42 宗錯 event 回應被拒絕、2 宗同 ID 身份爭議仍隔離。歷史 217 份已連結 snapshot 未修復；native earliest market reader 暴露 84 場／888 行，須獨立追查 |
 | [EXP-20261030-01](EXP-20261030-01-nba-nbacom-outage-fallback.md) | 2026-10-30 | NBA | stats.nba.com 封 IP 時用 ESPN 陣容／賽績 + 一日內聯盟數據快照；冇快照 fail closed | **KEEP（數據後備，非模型改動）**：L10 逐場一樣 358/378（94.7%），餘下係 1 分鐘捨入／1 助攻更正／尾段舊季後賽；修 Play-In 混入常規賽；nba.com 正常時零改變 |

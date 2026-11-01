@@ -47,3 +47,5 @@
 **2026-11-01 ledger 全量基線及更正**：[結果](docs/audits/tennis-ledger-baseline-20261101.md)。2,962 行非勝負盤 tracker 中，2,196 行返回同 ID 來源、766 無 snapshot，未發現錯 event。先前三個已知錯 close tracker 實為 match_winner，現 guard 重播均返回 None；舊 CLV 值未改寫。後續先驗證 close writer 及模型語料依賴，不能將推介類型當市場分類。
 
 **2026-11-01 source guard 已交付／凍結 observation 盤點**：[完整紀錄](docs/audits/tennis-frozen-observation-readiness-20261101.md)。`04469fba` 已 gate、合併並對齊 Tennis runtime。canonical 129 個 bundle 中 127 完整，但 qualified feature prediction 仍為 0；259 個保留 observation 的單筆診斷有 33 通過現有 projector，原整批 card 仍未合格，不計正式 forward。主要先查場地 metadata、as-of Elo/history 及排名來源，不移除 warning 或放寬資格來製造樣本；十五個 REJECT_DEV 不變，未證實準確度提升。
+
+**2026-11-01 排名警告歸屬候選**：[事前固定、原文核對及全量對照](docs/experiments/EXP-20261101-21-tennis-ranking-warning-attribution.md)。發現所選官方 PDF 被另一被拒來源的警告誤標；26,272 玩家 rank／IDs／日期零改動，1,445 個 warning 重新歸屬並保存 3,029 條拒絕診斷。46 個針對測試通過，完整 gate 及下游 decision/stake 影響仍待驗證；未部署、未證實準確度改善。

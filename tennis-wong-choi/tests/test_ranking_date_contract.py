@@ -123,6 +123,34 @@ def test_compact_calendar_date_is_read_without_backwriting_history():
     assert conn.execute("SELECT ranking_date FROM rankings_history WHERE id=2").fetchone()[0] == "20260105"
 
 
+def test_publication_label_without_receipt_date_cannot_clear_rejected_source_warning():
+    conn = connection()
+    conn.execute("UPDATE rankings_history SET source_provider='ultimate_tennis_statistics' WHERE id=2")
+    result = RankingReader(conn).select(1, "2026-10-29")
+    assert result["rank"] == 333
+    assert result["warnings"] == ["ranking_source_date_unverified"]
+    assert "selection_diagnostics" not in result
+
+
+def test_rejected_ranking_diagnostics_do_not_become_feature_input_sources(monkeypatch):
+    from tennis_wc import cli
+    conn = sqlite3.connect(":memory:")
+    conn.row_factory = sqlite3.Row
+    conn.execute("""CREATE TABLE raw_api_responses(id INTEGER PRIMARY KEY,provider_name TEXT,
+                   endpoint TEXT,response_json TEXT,fetched_at TEXT,created_at TEXT)""")
+    conn.executemany("INSERT INTO raw_api_responses VALUES (?,'feed','/rankings','[]','now','now')",
+                     [(1,), (2,)])
+    monkeypatch.setattr(cli, "get_connection", lambda: conn)
+    snapshot = {"player_a": {"current_rank": {"value": 20, "provenance": {
+        "raw_response_id": 1, "ranking_selection_diagnostics": {"rejected_sources": [{
+            "rejected_raw_response_id": 2, "issue": "ranking_source_date_unverified",
+        }]},
+    }}}}
+    captured = cli._research_raw_responses([{"snapshot": snapshot}])
+    assert set(captured) == {1}
+    assert snapshot["player_a"]["current_rank"]["provenance"]["ranking_selection_diagnostics"]["rejected_sources"][0]["rejected_raw_response_id"] == 2
+
+
 def test_cache_uses_only_valid_recent_sources_and_cannot_resurrect_bad_feed():
     conn = connection()
     rows = cached_rankings(conn, "ATP", "2026-10-30", max_age_hours=168, today=date(2026, 10, 29))
@@ -144,7 +172,15 @@ def test_actual_publication_is_preferred_over_later_tournament_rank_reference():
     conn.execute("INSERT INTO raw_api_responses VALUES (3,'composite',?)", (json.dumps(evidence),))
     conn.execute("INSERT INTO raw_api_responses VALUES (4,'composite',?)", (json.dumps(normalized),))
     conn.execute("INSERT INTO rankings_history VALUES (3,1,'2026-10-26','ATP',200,NULL,'atp_official_numeric_pdf',4)")
-    assert RankingReader(conn).select(1, "2026-10-29")["rank"] == 200
+    selected = RankingReader(conn).select(1, "2026-10-29")
+    assert selected["rank"] == 200
+    assert selected["raw_response_id"] == 4
+    assert selected["warnings"] == []
+    assert selected["selection_diagnostics"]["rejected_sources"] == [{
+        "ranking_history_id": 1, "rejected_raw_response_id": 1,
+        "source_provider": "composite", "ranking_date": "2026-10-28",
+        "issue": "ranking_source_date_unverified",
+    }]
     assert cached_rankings(conn, "ATP", "2026-10-29", max_age_hours=168, today=date(2026, 10, 29))[0]["rank"] == 200
     conn.execute("UPDATE raw_api_responses SET response_json='{}' WHERE id=3")
     result = RankingReader(conn).select(1, "2026-10-29")

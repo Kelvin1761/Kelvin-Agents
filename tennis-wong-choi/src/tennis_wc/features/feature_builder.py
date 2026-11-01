@@ -133,6 +133,8 @@ def _build_player_payload(conn, player_id: int, opponent_id: int,
                  "ranking_date_kind": ("publication" if rank_info.get("source_provider") in PUBLISHED_RANKING_SOURCES
                                        else "historical_or_unverified_reference"),
                  "warnings": sorted(set([*rank_prov.get("warnings", []), *rank_info.get("warnings", [])]))}
+    if rank_info.get("selection_diagnostics"):
+        rank_prov["ranking_selection_diagnostics"] = rank_info["selection_diagnostics"]
     surface = match_context["surface"]["value"]
     level = match_context["level"]["value"]
     round_name = match_context["round"]["value"]

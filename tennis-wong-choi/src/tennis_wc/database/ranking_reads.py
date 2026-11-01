@@ -156,25 +156,45 @@ class RankingReader:
         if player_id is None:
             return {"rank": None, "warnings": ["missing_ranking_player_id"]}
         warnings = set()
+        rejected_sources = []
         fallback = None
         max_age = get_settings().data_max_staleness_hours_rankings
         for row in self.rows(player_id=player_id, cutoff=cutoff, inclusive=inclusive):
             effective = normalise_ranking_date(row["ranking_date"])
             if effective is None:
-                warnings.add("ranking_date_invalid"); continue
+                warnings.add("ranking_date_invalid")
+                rejected_sources.append({"ranking_history_id": row["id"],
+                    "rejected_raw_response_id": row["raw_response_id"], "source_provider": row["source_provider"],
+                    "ranking_date": row["ranking_date"], "issue": "ranking_date_invalid"})
+                continue
             age = (date.fromisoformat(normalise_ranking_date(cutoff))-date.fromisoformat(effective)).days*24
             if fallback is not None and age > max_age:
                 break
             issue = self.receipt_issue(row["raw_response_id"], row["source_provider"], effective)
             if issue:
-                warnings.add(issue); continue
+                warnings.add(issue)
+                rejected_sources.append({"ranking_history_id": row["id"],
+                    "rejected_raw_response_id": row["raw_response_id"], "source_provider": row["source_provider"],
+                    "ranking_date": row["ranking_date"], "issue": issue})
+                continue
             info = {**dict(row), "ranking_date": effective}
             if fallback is None:
                 fallback = info
             # A tournament entry-rank reference can be dated after the weekly
             # publication. It must not override a fresh actual ranking list.
             if row["source_provider"] in PUBLISHED_RANKING_SOURCES and age <= max_age:
-                return {**info, "warnings": sorted(warnings)}
+                # Some legacy receipt shapes have no verifiable source date.
+                # A registry name alone cannot make those independent proof.
+                observed = self.receipts.get((row["raw_response_id"], row["source_provider"]), (None, None))[1]
+                if observed != effective:
+                    return {**info, "warnings": sorted(warnings)}
+                # These issues describe rows we rejected, not this validated
+                # publication. Their diagnostic IDs are not input-source IDs:
+                # retaining them must not fetch every discarded body per card.
+                result = {**info, "warnings": []}
+                if rejected_sources:
+                    result["selection_diagnostics"] = {"rejected_sources": rejected_sources}
+                return result
             if age > max_age:
                 break
         if fallback is not None:
