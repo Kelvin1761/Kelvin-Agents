@@ -901,6 +901,10 @@ def test_l600_comparison_replaces_the_sentence():
     pattern = _re.compile(match.group(1).replace('\\\\', '\\'))
     assert pattern.search("近9場所在賽事嘅 L600 平均慢過基準 0.92 秒；同場平均慢過基準 0.94 秒")
     assert pattern.search("近7場所在賽事嘅 L600 平均快過基準 0.13 秒；同場平均慢過基準 0.97 秒")
+    # 近期加權（EXP-20261101-30）之後嘅寫法 —— 舊 regex 對唔到，比較圖靜靜消失過
+    assert pattern.search("近5場所在賽事嘅 L600 近期加權平均慢過基準 1.97 秒；同場平均慢過基準 2.24 秒")
+    assert pattern.search("近5場本駒末段估算（近期加權）慢過基準 1.97 秒；同場平均慢過基準 2.24 秒")
+    assert pattern.search("近5場所在賽事 L600（近期加權）快過基準 0.10 秒；同場平均慢過基準 0.30 秒")
 
 
 # ── HKJC breakdown shape ───────────────────────────────────────────────────

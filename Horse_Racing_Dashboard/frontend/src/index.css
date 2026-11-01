@@ -2943,6 +2943,10 @@ a:hover {
 .runs__no { font-weight: 700; color: #64748b; }
 .runs__when { color: #94a3b8; }
 
+/* 速度分逐仗證據（renderSpeedEvidence） */
+.runs__table .runs__num { text-align: right; }
+.runs__foot { margin-top: 3px; font-size: 0.6rem; color: #94a3b8; line-height: 1.6; }
+
 /* Strike rate against the national benchmark. */
 .rate { margin-top: 6px; }
 .rate__volume { font-size: 0.66rem; color: #94a3b8; margin-bottom: 4px; }

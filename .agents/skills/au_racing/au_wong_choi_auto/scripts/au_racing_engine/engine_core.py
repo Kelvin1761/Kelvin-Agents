@@ -14,6 +14,7 @@ from pathlib import Path
 from .preparation_cycle import preparation_cycle
 from .full_time_speed import contribution as full_time_contribution
 from . import pit as _pit
+from . import speed as _speed
 from .dimensions import DIMENSION_SPECS, RATING_SCORE_SHARE
 
 from .matrix_mapper import (
@@ -2876,26 +2877,20 @@ class RacingEngine:
 
         return " ".join(part for part in (assessment, frank, " ".join(details)) if part)
 
-    def _l600_speed_brief(self):
-        """原始 L600 速度（m/s）作跑法識別 — 各馬得分觸底但速度不同，畀用家分辨。"""
-        data = self.data
-        avg = parse_float(data.get("timing_600m_avg_speed"))
-        best = parse_float(data.get("timing_600m_best_speed"))
-        recent = parse_float(data.get("timing_600m_recent_speed"))
-        if avg is None and best is None and recent is None:
-            return ""
+    def _speed_evidence_brief(self):
+        """L600 環境分每一仗用咗乜（speed.evidence）：賽事 L600 對基準、輸距、本駒估算、權重。"""
+        metrics = self._pf_metrics() or {}
+        source = str((metrics.get("pf_aggregates") or {}).get("source") or "")
         parts = []
-        if avg is not None:
-            parts.append(f"平均 {avg:.2f}")
-        if best is not None:
-            parts.append(f"最快 {best:.2f}")
-        if recent is not None:
-            parts.append(f"近仗 {recent:.2f}")
-        trend = str(data.get("timing_600m_trend") or "").strip()
-        count = data.get("timing_l600_entries_count")
-        tail = f"；趨勢 {trend}" if trend else ""
-        cnt = f"（{count} 場樣本）" if count else ""
-        return f"{' / '.join(parts)} m/s{tail}{cnt}"
+        for run in _speed.evidence(metrics.get("pf_runs") or [], source):
+            where = " ".join(str(x) for x in (run["date"], run.get("venue"),
+                                               f"{run['distance']}m" if run.get("distance") else None) if x)
+            if run["own"] is not None:
+                body = f"賽事 {run['race']:+.2f}s、輸 {float(run['margin']):.1f}L → 本駒 {run['own']:+.2f}s"
+            else:
+                body = f"賽事 {run['race']:+.2f}s"
+            parts.append(f"{where}：{body}（×{run['weight']:.2f}）")
+        return "；".join(parts)
 
     def _matrix_anchor_lines(self, key):
         if key == "stability":
@@ -2910,15 +2905,10 @@ class RacingEngine:
                 ("試閘交代", self._trial_summary_text()),
             )
         if key == "pace_perf":
-            pf_agg = (self._pf_metrics() or {}).get("pf_aggregates") or {}
-            l600d = pf_agg.get("l600_delta_avg")
-            pf_line = (f"對基準差（近期加權）{float(l600d):+.2f}s（{int(pf_agg.get('pf_run_count') or 0)} 場樣本，負數=快過基準）"
-                       if l600d is not None else "")
             # 逐項計法已喺評分構成 detail 攤開，錨點只留原始證據
             return self._anchor_lines(
-                ("實測 L600（主訊號）", pf_line),
+                ("逐仗證據（新→舊，負數＝快過基準）", self._speed_evidence_brief()),
                 ("近段 PI 走勢", self._sectional_trend_brief()),
-                ("L600 原速（識別用·未入排名）", self._l600_speed_brief()),
                 ("試閘交代", self._trial_summary_text()),
             )
         if key == "race_shape":
@@ -4520,17 +4510,17 @@ class RacingEngine:
         # 場均／場內標準差**一定要**同分子攞同一個量，否則個 z 冇意義。
         # 兩者都齊先用，唔係就原封不動退返 race-level —— 舊 formguide
         # 冇 `margin:` 嘅 2.2% 往績行由呢條路走。
-        value = finite_pf_number(pf_agg.get("own_l600_delta_avg"), "own_l600_delta_avg")
-        count = int(field.get("own_l600_delta_field_count") or 0)
-        basis = "own"
-        if value is None or count < 3:
-            value = finite_pf_number(pf_agg.get("l600_delta_avg"), "l600_delta_avg")
-            count = int(field.get("l600_delta_field_count") or 0)
-            basis = "race"
-        detail["basis"] = basis
-        if value is None or count < 3:
+        picked = _speed.choose(
+            finite_pf_number(pf_agg.get("own_l600_delta_avg"), "own_l600_delta_avg"),
+            int(field.get("own_l600_delta_field_count") or 0),
+            finite_pf_number(pf_agg.get("l600_delta_avg"), "l600_delta_avg"),
+            int(field.get("l600_delta_field_count") or 0),
+        )
+        detail["basis"] = picked[0] if picked else "race"
+        if picked is None:
             detail["state"] = "no_pf"
             return 60, "無往績賽事 L600 環境數據，L600 環境分中性 60。", "missing_neutral"
+        basis, value = picked
         prefix = "own_l600_delta" if basis == "own" else "l600_delta"
         mean = finite_pf_number(field.get(f"{prefix}_field_mean"), f"{prefix}_field_mean")
         stdev = finite_pf_number(field.get(f"{prefix}_field_stdev"), f"{prefix}_field_stdev") or 0.0
@@ -4538,7 +4528,7 @@ class RacingEngine:
             detail["state"] = "no_spread"
             return 60, "同場 L600 環境數據無有效分散，L600 環境分中性處理。", "no_spread"
         z = (float(value) - mean) / stdev
-        score = clip_score(60 - z * 20.0)  # faster-than-benchmark (negative delta/z) → higher
+        score = _speed.score(float(value), mean, stdev)
         detail.update({"value": round(float(value), 2), "mean": round(mean, 2),
                        "stdev": round(stdev, 2), "z": round(z, 2),
                        "final": round(score, 1), "state": "ok"})
@@ -4551,11 +4541,18 @@ class RacingEngine:
         field_dir = "快過" if mean < 0 else "慢過"
         gap = float(value) - mean          # >0 = 慢過場均（l600_delta 越細越快）
         rel = "慢過" if gap > 0 else "快過"
-        if source == "sportsbet_race_context":
-            note = (f"近{detail['runs']}場所在賽事嘅 L600 近期加權平均{direction}基準 "
+        if source == "sportsbet_race_context" and basis == "own":
+            # own = 賽事 L600 對基準 + 本駒輸距 × 0.17 秒（speed.run_values）；即係「嗰場跑得幾快」
+            # 加「本駒輸幾多」。唔係本駒實測末段 —— 實測末段越準預測越差（EXP-20261101-40／42）。
+            note = (f"近{detail['runs']}場本駒末段估算（近期加權）{direction}基準 "
+                    f"{abs(float(value)):.2f} 秒；同場平均{field_dir}基準 {abs(mean):.2f} 秒，"
+                    f"即係{rel}今場馬匹平均 {abs(gap):.2f} 秒（估算＝賽事 L600 對基準＋輸距×0.17 秒）；"
+                    f"L600 環境分 {score:.1f}。")
+        elif source == "sportsbet_race_context":
+            note = (f"近{detail['runs']}場所在賽事 L600（近期加權）{direction}基準 "
                     f"{abs(float(value)):.2f} 秒；同場平均{field_dir}基準 {abs(mean):.2f} 秒，"
                     f"即係其往績速度環境{rel}今場馬匹平均 {abs(gap):.2f} 秒；"
-                    "Sportsbet 數值係 race-level，唔係本駒個體 split，"
+                    "同場有輸距嘅馬少過三匹，用 race-level 賽事數（唔係本駒個體），"
                     f"L600 環境分 {score:.1f}。")
         elif source.startswith("racenet_"):
             note = (f"近{detail['runs']}場逐駒 L600 benchmark 近期加權平均{direction}基準 "
@@ -5597,24 +5594,13 @@ def _formguide_text(facts_path: Path) -> str:
         return ""
 
 
-_PF_SPLIT_KEYS = (
-    "race_time_diff",
-    "l800_delta",
-    "l600_delta",
-    "l400_delta",
-    "l200_delta",
-    "runner_time",
-    "l600_time",
-    # 個體化 L600（2026-08-31）。上面除 `l600_delta` 之外全部係 Racenet 遺留，
-    # 實測 73,806 條 pf_runs 非空率 0.0% —— 睇 EXP-20260831-03。
-    "own_l600_delta",
-)
+# 速度分用嘅兩個逐仗量。`_parse_pf_token` 仲識讀 Racenet 年代其餘十個欄位（舊歸檔），但 2026-08 起
+# 0% 有值、冇分數讀佢哋，所以唔再聚合（EXP-20260831-03；速度重建 2026-11-01）。
+_PF_SPLIT_KEYS = ("l600_delta", "own_l600_delta")
 
-# 秒 / 馬位。教科書常數（賽馬通用 ≈0.17s），**唔係喺呢個語料擬合出嚟**，
-# 所以唔算用 holdout 調參。
-_SEC_PER_LENGTH = 0.17
-# L600 環境分逐仗近期權重（EXP-20261101-30 R）；EXP-20261016-01 D3c 原值，冇由數據 fit。
-L600_RECENCY_DECAY = 0.8
+# 常數住喺 speed.py；呢度保留名俾舊 import 用。
+_SEC_PER_LENGTH = _speed.SEC_PER_LENGTH
+L600_RECENCY_DECAY = _speed.RECENCY_DECAY
 
 
 def _pf_aggregates(runs: list[dict], source: str) -> dict:
@@ -5624,69 +5610,23 @@ def _pf_aggregates(runs: list[dict], source: str) -> dict:
     if not runs:
         return {}
 
-    # ── 個體化 L600（2026-08-31）────────────────────────────────────
-    # `l600_delta` 係 **race-level**：同一場歷史賽事嘅每匹馬拎同一個數，
-    # 描述「面對過幾快嘅速度考驗」，唔係本駒自己跑幾快（見
-    # `_pace_figure_score` docstring）。加返本駒喺嗰場輸咗幾多秒，
-    # 就由「賽事有幾快」變成「本駒有幾快」嘅一階估計。
-    # 實測場內 AUC 0.5326 → 0.5924（+0.0598，配對 bootstrap
-    # [+0.0504,+0.0688]，1,000 場）—— EXP-20260831-03。
-    #
-    # ⚠️ 只對 Sportsbet 嘅 L600 做。兩個來源唔係同一個量：
-    #   Sportsbet `L600 Delta` = 嗰場**最後 600m** vs 基準 → 加返本駒輸嘅秒數
-    #                            = 本駒最後 600m 有幾快。啱。
-    #   Racenet   `Last600`    = 到 600m 標記為止嘅**累計時間**（見
-    #                            `_parse_pf_token` 註釋），全程輸嘅馬位大部分
-    #                            喺嗰個標記之後先產生 → 加落去係語意錯。
-    # 實測（784 場 Racenet 年代）：照加落去係 −0.0019 [−0.0050, +0.0011]，
-    # 而同一個改動喺 998 場 Sportsbet 年代係 +0.0040 [−0.0005, +0.0088]。
-    # live 數據 100% 係 Sportsbet（Racenet 2026-08 已剷），所以呢個分流
-    # 對將來每一場都係唯一正確嘅行為，唔係為咗個數字揀窗。
-    sportsbet_l600 = source == "sportsbet_race_context"
+    # 速度分嘅逐仗值同近期加權全部喺 `speed.py`（唯一計算位置）。own_l600_delta 寫返落每仗
+    # 俾顯示用；Racenet `Last600` 唔係末段 split，所以只有 Sportsbet 來源先有 own（見 speed.run_values）。
     for run in runs:
-        base = run.get("l600_delta")
-        margin = run.get("margin")
-        run_source = str(run.get("source") or source)
-        if (
-            sportsbet_l600
-            and run_source == "sportsbet_race_context"
-            and base is not None
-            and margin is not None
-        ):
-            run["own_l600_delta"] = round(
-                float(base) + float(margin) * _SEC_PER_LENGTH, 4
-            )
+        own, _race = _speed.run_values(run, source)
+        if own is not None:
+            run["own_l600_delta"] = own
 
     def values(key):
         return [run[key] for run in runs if run.get(key) is not None]
 
     aggregates: dict = {}
-    for key in _PF_SPLIT_KEYS:
-        samples = values(key)
-        if samples:
-            aggregates[f"{key}_avg"] = round(sum(samples) / len(samples), 3)
-            aggregates[f"{key}_best"] = round(min(samples), 3)
-    # ── L600 近期加權（EXP-20261101-30 R，用戶 2026-11-01 決定上線）──────
-    # 最近一仗權重 1，之後每仗 ×0.8（k 按 run_date 由新到舊、計晒全部傳入嘅行）。
-    # leaf AUC +0.0053 [+0.0022,+0.0084]；排名冇顯著改善（v3 Gold −0.18pp、
-    # Good +0.28pp，CI 跨零；§8 both_arms_reject）—— 用戶接受 Good 升 Gold 跌。
-    # 只覆蓋 L600 環境分用嘅兩個 `_avg`；場均／場內 SD 經 field summary 讀同一個值。
-    ordered = sorted(runs, key=lambda run: str(run.get("run_date") or ""), reverse=True)
-    for key in ("l600_delta", "own_l600_delta"):
-        weighted = [(L600_RECENCY_DECAY ** k, run[key])
-                    for k, run in enumerate(ordered) if run.get(key) is not None]
-        if weighted:
-            aggregates[f"{key}_avg"] = round(
-                sum(w * float(v) for w, v in weighted) / sum(w for w, _ in weighted), 3)
-    tempo = values("tempo_qrank")
-    if tempo:
-        aggregates["tempo_qrank_avg"] = round(sum(tempo) / len(tempo), 4)
-    ratings = values("rt_rating")
-    if ratings:
-        aggregates["rt_rating_avg"] = round(sum(ratings) / len(ratings), 3)
-        aggregates["rt_rating_best"] = round(max(ratings), 3)
-    aggregates["latest_early_runner_pace"] = runs[0].get("early_runner_pace")
-    aggregates["latest_early_race_pace"] = runs[0].get("early_race_pace")
+    # 近期加權平均（EXP-20261101-30 R）；場均／場內 SD 經 field summary 讀同一個值。
+    horse = _speed.horse_speed(runs, source)
+    if horse.own is not None:
+        aggregates["own_l600_delta_avg"] = horse.own
+    if horse.race is not None:
+        aggregates["l600_delta_avg"] = horse.race
     aggregates["pf_run_count"] = len(runs)
     aggregates["trial_run_count"] = sum(run.get("run_kind") == "trial" for run in runs)
     aggregates["formal_run_count"] = sum(run.get("run_kind") == "formal" for run in runs)
@@ -5702,10 +5642,12 @@ def _pf_aggregates(runs: list[dict], source: str) -> dict:
 _RUN_POSITION_RE = re.compile(r"\b(\d{1,2})(?:st|nd|rd|th)@(800m|400m|Settled)\b")
 _RUN_FINISH_RE = re.compile(r"\bfinish:(\d{1,2})/(\d{1,2})\b")
 _RUN_WINNING_TIME_RE = re.compile(r"\bWinningTime:(?:(\d+):)?(\d{1,3}(?:\.\d+)?)\b")
+_RUN_RACE_L600_RE = re.compile(r"\bRaceL600:(\d{2}(?:\.\d+)?)\b")
+_RUN_VENUE_RE = re.compile(r"^\s*(?:[-*]\s*)?(.+?)\s+R\d{1,2}\s+\d{4}-\d{2}-\d{2}\b")
 
 
 def _formguide_run_context(line: str) -> dict:
-    """Ordinal positions, finish/starters and the winner's time on one form line.
+    """Ordinal positions, finish/starters, winner's time, race L600 seconds and venue on one form line.
 
     Recorded on each PF run as data only — no score reads them yet. They are
     what a field-size-aware or speed-aware L600 needs, and positions are ordinal:
@@ -5722,6 +5664,12 @@ def _formguide_run_context(line: str) -> dict:
     if winning:
         minutes = int(winning.group(1) or 0)
         out["winning_time"] = round(minutes * 60 + float(winning.group(2)), 3)
+    race_l600 = _RUN_RACE_L600_RE.search(line)
+    if race_l600:
+        out["race_l600"] = float(race_l600.group(1))
+    venue = _RUN_VENUE_RE.match(line)
+    if venue:
+        out["venue"] = venue.group(1).strip()
     return out
 
 

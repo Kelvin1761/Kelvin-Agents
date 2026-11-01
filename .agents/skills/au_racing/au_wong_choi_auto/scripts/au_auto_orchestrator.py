@@ -354,18 +354,8 @@ def _build_field_summary(horses):
     # 班次代理（2026-07-31）：逐匹馬近仗獎金水平嘅場內中位數，供 `_form_score`
     # 做場內相對班次調整。同下面 pf_fields 嘅場內 mean/stdev 同一個 pattern。
     prize_levels = []
-    pf_fields = {
-        "race_time_diff": [],
-        "l800_delta": [],
-        "l600_delta": [],
-        "l400_delta": [],
-        "l200_delta": [],
-        "tempo_qrank": [],
-        # 個體化 L600（2026-08-31）。`_pace_figure_score` 個 z 要同分子同一個量，
-        # 所以場均／場內標準差一定要喺呢度一齊出。
-        "own_l600_delta": [],
-    }
-    complete_profiles = 0
+    # 速度分（speed.py）嘅場均／場內標準差。z 一定要同分子同一個量，所以 own 同 race 各出一套。
+    pf_fields = {"l600_delta": [], "own_l600_delta": []}
     for horse in horses.values():
         try:
             weight = float(horse.get("weight"))
@@ -417,16 +407,10 @@ def _build_field_summary(horses):
             if value is None:
                 continue
             values.append(finite_pf_number(value, f"{key}_avg"))
-        if all(
-            pf_agg.get(f"{key}_avg") is not None
-            for key in ("l800_delta", "l600_delta", "l400_delta", "l200_delta")
-        ):
-            complete_profiles += 1
     if not horses:
         return {}
     ratings_sorted = sorted(ratings, reverse=True)
     summary = {
-        "pf_complete_profile_field_count": complete_profiles,
         "count": len(horses),
         "min_weight": min(weights) if weights else 0.0,
         "max_weight": max(weights) if weights else 0.0,

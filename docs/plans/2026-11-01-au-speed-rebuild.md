@@ -68,12 +68,13 @@ Dashboard：逐仗證據（日期、場地、估算末段、對標準差）。
 | 步 | 內容 | 判斷 |
 |---|---|---|
 | 0 | 盤點（本文件） | — |
-| 1 | `au_racing_engine/speed.py`：最簡單嘅純函數，1:1 重現現行 `pace_figure_score` | A/A：全語料逐匹 0 差 |
-| 2a | 存原始 L600 秒數（抽取層），標準可以重算 | 正確性修正（§7），排名唔變 |
+| 1 | `au_racing_engine/speed.py`：最簡單嘅純函數，1:1 重現現行 `pace_figure_score` | A/A：全語料逐匹 0 差；**2026-11-01 已切換**：引擎聚合同計分都叫 speed.py，全語料 4,049 場重評 byte-identical |
+| 2a | 存原始 L600 秒數（抽取層），標準可以重算 | **已做**：Formguide 往績行加 `RaceL600:`，引擎 parse 做數據欄（`race_l600`），排名唔變 |
 | 2b | 末段估算式（RQ 學，point-in-time） | **已測：REJECT（EXP-40）**，改為顯示用途 |
 | 2c | 全程速度做能力核心（頭馬時間 + 輸距，全國；取代 L600） | **已測：REJECT（EXP-41）** —— leaf AUC +0.013 但同狀態／穩定性／班次重疊，排名差；一半一半版（S2）等 forward |
 | 2c′ | 逐駒 L800／L600／L400／L200（RQ 真值診斷） | **已測（EXP-42）**：單獨全部輸畀完成時間；疊加微量、AUC 冇升；Sportsbet 冇呢啲數據。只做顯示 |
 | 2d | 標準（point-in-time，只扣路面） | 預先登記（EXP-39：單獨換標準唔會加分，要同 2b 一齊睇） |
 | 2e | 聚合方法（能力取向） | 預先登記 |
-| 3 | 生產 shadow 並行 + forward 監察 | 證實同樣或者更好先切換 |
-| 4 | 拆舊 code | 切換之後 |
+| 3′ | 收尾（2026-11-01）：剷 Racenet 死聚合（`_best`／十個 0% 欄位／tempo／rt／early pace／complete profile）、剷死顯示行「L600 原速」、修「實測 L600」顯示錯數（顯示 race 但計分用 own）、修 dashboard 比較圖（近期加權改咗句子，regex 對唔到）、加逐仗證據表 | 全語料重評 byte-identical |
+| 3 | 生產 shadow 並行 + forward 監察 | 唔需要：A/A 證實一樣 |
+| 4 | 拆舊 code | 已隨 3′ 完成；Racenet backfill（`WC_PF_BACKFILL`）留低，舊歸檔重評要用 |

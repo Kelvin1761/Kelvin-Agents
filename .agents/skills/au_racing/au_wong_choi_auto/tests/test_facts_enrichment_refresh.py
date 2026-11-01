@@ -490,7 +490,7 @@ class FactsSectionRefreshTests(unittest.TestCase):
         pf = enriched["horses"]["7"]["_data"]["pf_metrics"]
         self.assertEqual(pf["pf_aggregates"]["source"], "racenet_formguide_cfb")
         self.assertEqual(pf["pf_aggregates"]["l600_delta_avg"], -1.25)
-        self.assertEqual(pf["pf_aggregates"]["runner_time_avg"], 84.2)
+        self.assertEqual(pf["pf_runs"][0]["runner_time"], 84.2)  # 逐仗仲有；2026-11-01 起唔再聚合死欄位
 
     def test_stale_cross_horse_formguide_digest_is_replaced_atomically(self) -> None:
         logic = {

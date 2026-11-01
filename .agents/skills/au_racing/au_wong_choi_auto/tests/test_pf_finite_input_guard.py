@@ -12,7 +12,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 import au_auto_orchestrator as auto  # noqa: E402
 from au_racing_engine.engine_core import RacingEngine  # noqa: E402
 
-FIELDS = ("race_time_diff", "l800_delta", "l600_delta", "l400_delta", "l200_delta", "tempo_qrank", "own_l600_delta")
+# 速度分只聚合兩個量（2026-11-01 起 Racenet 死欄位唔再入 field summary）
+FIELDS = ("l600_delta", "own_l600_delta")
 BAD = ("broken", "", float("nan"), "NaN", float("inf"), -float("inf"), True, False, [], {})
 
 
@@ -60,7 +61,6 @@ def test_direct_pace_scoring_refuses_invalid_precomputed_field(key, value):
 def test_missing_and_finite_numeric_values_preserve_existing_semantics(value):
     data = horses(value)
     summary = auto._build_field_summary(copy.deepcopy(data))
-    assert summary["pf_complete_profile_field_count"] == (3 if value is None else 4)
     assert summary["l600_delta_field_count"] == (3 if value is None else 4)
     engine = RacingEngine(data["4"], {"field_summary": summary})
     score, _, _ = engine._pace_figure_score()

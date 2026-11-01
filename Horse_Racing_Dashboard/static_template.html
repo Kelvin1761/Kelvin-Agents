@@ -5518,6 +5518,23 @@ function kvDropList(dimensionTitle) {
 // "第1仗(24/06/2026 跑馬地 2200): 沿途位=3-4-6-10-6-3, XW=…, 名次=3, 距離=1-1/4"
 const HK_RUN_RE = /^第(\d+)仗\s*[（(]([^）)]*)[）)]\s*[:：]\s*(.+)$/;
 
+// 速度分逐仗證據（engine `_speed_evidence_brief`，2026-11-01）：
+//   "2026-10-08 Ascot 1454m：賽事 +1.41s、輸 4.5L → 本駒 +2.17s（×1.00）；…"
+// 一句講晒五仗太難睇，拆成表：本駒 = 賽事 L600 對基準 ＋ 輸距 × 0.17 秒，權重 = 近期加權。
+const SPEED_EV_RE = /^(\d{4}-\d{2}-\d{2})\s*(.*?)：賽事\s*([+\-][\d.]+)s(?:、輸\s*([\d.]+)L\s*→\s*本駒\s*([+\-][\d.]+)s)?（×([\d.]+)）$/;
+
+function renderSpeedEvidence(value) {
+  const rows = value.split('；').map(part => SPEED_EV_RE.exec(part.trim())).filter(Boolean);
+  if (!rows.length) return '';
+  return `<div class="runs"><table class="runs__table"><thead><tr>`
+    + `<th>日期</th><th>場地／路程</th><th class="runs__num">賽事 L600</th>`
+    + `<th class="runs__num">輸距</th><th class="runs__num">本駒估算</th><th class="runs__num">權重</th>`
+    + `</tr></thead><tbody>${rows.map(m => `<tr><td>${esc(m[1].slice(2))}</td><td>${esc(m[2])}</td>`
+      + `<td class="runs__num">${esc(m[3])}s</td><td class="runs__num">${m[4] ? esc(m[4]) + 'L' : '—'}</td>`
+      + `<td class="runs__num"><b>${m[5] ? esc(m[5]) + 's' : '—'}</b></td><td class="runs__num">×${esc(m[6])}</td></tr>`).join('')}`
+    + `</tbody></table><div class="runs__foot">本駒估算 ＝ 賽事 L600 對基準 ＋ 輸距 × 0.17 秒；負數＝快過基準</div></div>`;
+}
+
 function renderRunRecords(nodes) {
   const rows = nodes.map(n => {
     const m = HK_RUN_RE.exec(n.text);
@@ -5669,6 +5686,10 @@ function renderKvGrid(nodes, dimensionTitle) {
       continue;
     }
     if (!value) continue;
+    if (/^逐仗證據/.test(key)) {
+      const table = renderSpeedEvidence(value);
+      if (table) { groups += `<div class="kv-group"><div class="kv-group__title">${esc(key)}</div>${table}</div>`; continue; }
+    }
     if (seen.has(value)) continue;
     seen.add(value);
     simple.push({ k: key, v: value });
@@ -5897,7 +5918,9 @@ function renderSubScoreDetails(children, captionText) {
 // Two bars off a shared baseline say it at a glance. 908 of 908 captions in
 // today's corpus use one of the two phrasings below; anything else falls
 // through and the sentence is shown as before.
-const L600_RE = /近\d+場所在賽事嘅 L600 平均(快|慢)過基準\s*([\d.]+)\s*秒；同場平均(快|慢)過基準\s*([\d.]+)\s*秒/;
+// 2026-11-01：近期加權上線之後句子改咗（「L600 近期加權平均」），舊 regex 對唔到，個比較圖靜靜消失。
+// 而家接受三種寫法：舊報告、本駒末段估算（own）、賽事數（race）。
+const L600_RE = /近\d+場(?:所在賽事嘅 L600 (?:近期加權)?平均|本駒末段估算（近期加權）|所在賽事 L600（近期加權）)(快|慢)過基準\s*([\d.]+)\s*秒；同場平均(快|慢)過基準\s*([\d.]+)\s*秒/;
 
 function renderL600Compare(source) {
   const m = L600_RE.exec(source || '');
@@ -5921,9 +5944,9 @@ function renderL600Compare(source) {
   };
   return `<div class="l600">
     <div class="l600__axis"><span>← 快過基準</span><span>基準</span><span>慢過基準 →</span></div>
-    ${bar(ours, '本駒往績環境', faster ? 'good' : 'bad')}
+    ${bar(ours, '本駒近仗', faster ? 'good' : 'bad')}
     ${bar(field, '今場對手平均', 'field')}
-    <div class="l600__note">本駒往績所處嘅速度環境，${faster ? '<b class="l600__good">快過</b>' : '<b class="l600__bad">慢過</b>'}今場對手平均 <b>${Math.abs(field - ours).toFixed(2)}s</b></div>
+    <div class="l600__note">本駒近仗速度，${faster ? '<b class="l600__good">快過</b>' : '<b class="l600__bad">慢過</b>'}今場對手平均 <b>${Math.abs(field - ours).toFixed(2)}s</b></div>
   </div>`;
 }
 

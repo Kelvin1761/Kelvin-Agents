@@ -344,3 +344,4 @@
 - [EXP-20261031-01](EXP-20261031-01-nba-espn-league-tables.md) — NBA：stats.nba.com 封鎖期間用 ESPN 賽果計球隊／球員進階數據（回合數 ×0.98 後 PACE 中位差 0.65、DEF_RANK 1 位、TS/eFG 一樣、USG 0.6）；同環境重跑 13,376 條腿：拎走追蹤數據零變化，完整後備 2.5% 腿有變、最多 7pp。**KEEP（數據後備）**，nba.com 一通自動切返。
 - [EXP-20261101-41](EXP-20261101-41-au-whole-race-speed-core-results.md) — AU 速度重建 2c：全程速度（頭馬時間＋輸距，情境標準）取代 L600 做速度分。leaf AUC 0.6196 vs 0.6063，但 v3 Gold −0.79pp／Good −0.91pp、§8 both_arms_reject。原因：同 form／consistency／class 重疊（ρ 0.356 vs 0.237）。只用 08-05→10-16，保護 S2 forward。**REJECT**。
 - [EXP-20261101-42](EXP-20261101-42-au-l800-l600-l400-results.md) — AU 逐駒 L800／L600／L400／L200（RQ 真值，2,458 場）：單獨全部輸畀完成時間（AUC −0.010 到 −0.024，CI 全負）；疊加 log-lik 微量正但 AUC 冇升，係數負（收腳快但輸 = 被高估）。Sportsbet 冇逐駒段速。**結案，只做顯示**。
+- [EXP-20261101-43](EXP-20261101-43-au-speed-wrapup.md) — AU 速度重建收尾：速度分全部改叫 `speed.py`、剷 Racenet 死聚合、往績行存原始 `RaceL600`、修說明（own 唔再寫成賽事數）、修 dashboard 比較圖（近期加權改句令 regex 失效）、加逐仗證據表。全語料 4,049 場重評 byte-identical。**結構交付，排名零變化**。

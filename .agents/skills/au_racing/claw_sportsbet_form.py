@@ -809,6 +809,10 @@ def run_line(run):
     # normalization；絕對唔喺呢度直接當成個體速度加分。
     if run.get("winning_time"):
         tail += f" WinningTime:{run['winning_time']}"
+    # 賽事 L600 原始秒數（速度重建 2a，2026-11-01）。之前只寫 `L600 Delta`（減咗標準表之後嘅差），
+    # 標準一改歷史就錯，而且查唔到標準嘅場地成條數消失。原秒照存，標準可以隨時重算。
+    if run.get("l600"):
+        tail += f" RaceL600:{run['l600']}"
     delta = _l600_delta(run.get("l600"), track, dist)
     if delta is not None and not non_standard:
         # ⚠️ 個 key **一定要**係 `L600 Delta:`，唔係 `Last600:`。

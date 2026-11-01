@@ -1,9 +1,12 @@
-"""AU 速度部分（重建中，docs/plans/2026-11-01-au-speed-rebuild.md）。
+"""AU 速度分（L600 環境分，維度 `pace_perf`）—— 唯一計算位置。
 
-第 1 步：用最簡單嘅純函數 1:1 重現現行 `pace_figure_score`（L600 環境分），A/A 逐匹一樣先至改公式。
-未接入排名；排名仍然用 `RacingEngine._pace_figure_score`。
+`engine_core._pf_aggregates`（每匹馬）同 `RacingEngine._pace_figure_score`（同場）都只係叫呢度。
+計劃同已測過嘅改動：docs/plans/2026-11-01-au-speed-rebuild.md（EXP-20261101-30 至 42）。
 
-現行公式（逐字照搬，唔修 bug —— bug 喺計劃文件度逐條登記，之後逐個改、逐個量）：
+點解係 L600 而唔係全程時間：全程速度單獨更準，但同狀態／穩定性／班次重疊，放入矩陣排名差咗
+（EXP-41）；L600 帶住「嗰場跑得快定慢」呢份其他維度冇嘅資訊。逐駒末段估算越準越差（EXP-40／42）。
+
+公式：
 
     每仗（只限正式賽）：
         race_i = l600_delta                       Sportsbet 賽事 L600 − 標準
@@ -74,6 +77,35 @@ def horse_speed(runs: list[dict], horse_source: str) -> HorseSpeed:
     return HorseSpeed(weighted_mean(own), weighted_mean(race), len(runs))
 
 
+def evidence(runs: list[dict], horse_source: str, limit: int = 5) -> list[dict]:
+    """逐仗證據（顯示用），次序同權重同 `horse_speed` 一樣：由新到舊，第 k 仗權重 0.8^k。"""
+    ordered = sorted(runs, key=lambda run: str(run.get("run_date") or ""), reverse=True)
+    out = []
+    for k, run in enumerate(ordered[:limit]):
+        own, race = run_values(run, horse_source)
+        if race is None:
+            continue
+        out.append({"date": str(run.get("run_date") or ""), "venue": run.get("venue"),
+                    "distance": run.get("distance"), "race": race, "margin": run.get("margin"),
+                    "own": own, "weight": round(RECENCY_DECAY ** k, 2)})
+    return out
+
+
+def choose(own: float | None, own_count: int, race: float | None, race_count: int) -> tuple[str, float] | None:
+    """own 有 ≥3 匹就用 own，否則 race；都唔夠 → None（中性）。"""
+    if own is not None and own_count >= MIN_FIELD:
+        return "own", own
+    if race is not None and race_count >= MIN_FIELD:
+        return "race", race
+    return None
+
+
+def score(value: float, mean: float, stdev: float) -> float:
+    """越快（值越細）分越高；60 = 場均。"""
+    z = (value - mean) / stdev
+    return max(0.0, min(100.0, NEUTRAL - z * POINTS_PER_SD))
+
+
 def _field_stats(values: list[float]) -> tuple[float, float]:
     mean = sum(values) / len(values) if values else 0.0
     stdev = (sum((v - mean) ** 2 for v in values) / len(values)) ** 0.5 if len(values) >= 2 else 0.0
@@ -88,17 +120,14 @@ def field_scores(field: dict[str, HorseSpeed]) -> dict[str, SpeedScore]:
     race_mean, race_sd = _field_stats(race)
     out = {}
     for number, horse in field.items():
-        if horse.own is not None and len(own) >= MIN_FIELD:
-            basis, value, mean, sd = "own", horse.own, own_mean, own_sd
-        else:
-            basis, value, mean, sd = "race", horse.race, race_mean, race_sd
-            if value is None or len(race) < MIN_FIELD:
-                out[number] = SpeedScore(NEUTRAL, "no_pf", basis, None, None, None)
-                continue
+        picked = choose(horse.own, len(own), horse.race, len(race))
+        if picked is None:
+            out[number] = SpeedScore(NEUTRAL, "no_pf", "race", None, None, None)
+            continue
+        basis, value = picked
+        mean, sd = (own_mean, own_sd) if basis == "own" else (race_mean, race_sd)
         if sd <= 0:
             out[number] = SpeedScore(NEUTRAL, "no_spread", basis, value, mean, sd)
             continue
-        z = (value - mean) / sd
-        score = max(0.0, min(100.0, NEUTRAL - z * POINTS_PER_SD))
-        out[number] = SpeedScore(score, "ok", basis, value, mean, sd)
+        out[number] = SpeedScore(score(value, mean, sd), "ok", basis, value, mean, sd)
     return out

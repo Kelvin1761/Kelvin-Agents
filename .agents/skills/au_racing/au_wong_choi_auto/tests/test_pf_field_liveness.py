@@ -5,8 +5,8 @@
 `_pf_aggregates` 為咗嗰十個欄位計 `_avg` / `_best` / `tempo` / `rt_rating` /
 `early pace`，實際上係喺一個場級數字上面空轉。
 
-呢個 suite 唔係要求刪走佢哋（Racenet 格式喺舊歸檔仲讀得到），係要**釘住呢件事
-係已知嘅**，唔好再有人（包括我）睇住個欄位清單以為呢個特徵好豐富。
+2026-11-01 速度重建：`_pf_aggregates` 唔再聚合佢哋（冇分數讀）；`_parse_pf_token` 仲識讀，
+因為 Racenet 格式喺舊歸檔仲有。呢個 suite 釘住兩樣：live 只有兩個聚合，死欄位唔會返嚟。
 """
 from __future__ import annotations
 
@@ -61,16 +61,17 @@ class AggregateLivenessTests(unittest.TestCase):
         live = {k for k in agg if k.endswith(("_avg", "_best"))}
         self.assertEqual(
             live,
-            {"l600_delta_avg", "l600_delta_best",
-             "own_l600_delta_avg", "own_l600_delta_best"},
+            {"l600_delta_avg", "own_l600_delta_avg"},
             "Sportsbet feed 應該只出 l600_delta 同個體化版；"
             "多咗嘢就係上游變咗，要重新量 coverage",
         )
 
-    def test_split_keys_still_lists_the_dormant_racenet_fields(self) -> None:
-        """佢哋留喺度係為咗舊歸檔，唔係因為 live 有數據。"""
+    def test_dormant_racenet_fields_are_parsed_but_not_aggregated(self) -> None:
+        """2026-11-01 速度重建：佢哋仲 parse 得到（舊歸檔），但冇分數讀，唔再聚合。"""
+        parsed = _parse_pf_token(RACENET_TOKEN)
+        self.assertEqual(parsed["runner_time"], 64.88)
         for key in ("l800_delta", "l400_delta", "l200_delta", "runner_time"):
-            self.assertIn(key, _PF_SPLIT_KEYS)
+            self.assertNotIn(key, _PF_SPLIT_KEYS)
 
 
 if __name__ == "__main__":

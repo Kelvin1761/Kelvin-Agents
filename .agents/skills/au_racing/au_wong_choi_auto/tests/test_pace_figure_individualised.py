@@ -74,7 +74,6 @@ class IndividualisationTests(unittest.TestCase):
         # 06-01（0.0）權重 1、01-01（2.0）權重 0.8 → 1.6 / 1.8 = 0.889
         self.assertAlmostEqual(agg["l600_delta_avg"], 0.889, places=3)
         self.assertAlmostEqual(agg["own_l600_delta_avg"], 0.889, places=3)
-        self.assertAlmostEqual(agg["l600_delta_best"], 0.0, places=3)
 
     def test_winner_run_is_unchanged(self) -> None:
         """輸 0 馬位 → 本駒 L600 就係嗰場 L600。"""

@@ -48,6 +48,20 @@ class InRunningCheckpointTest(unittest.TestCase):
         self.assertIn("WinningTime:2:05.790", line)
         self.assertIn("RaceClass:[3Y BM72]", line)
 
+    def test_raw_race_l600_seconds_are_written_and_parsed(self):
+        """速度重建 2a：原秒同 `L600 Delta` 一齊存，標準改咗都可以重算；引擎 parse 返做數據欄。"""
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+        from au_racing_engine.engine_core import _formguide_run_context
+
+        run = parse_race(_history("Settled 3rd, 800m 5th, 400m 7th"))["runs"][0]
+        line, _ = run_line(run)
+        self.assertIn("RaceL600:35.110", line)
+        ctx = _formguide_run_context(line)
+        self.assertEqual(ctx["race_l600"], 35.11)
+        self.assertEqual(ctx["venue"], "Randwick")
+
     def test_a_400m_only_position_is_still_kept(self):
         run = parse_race(_history("400m 2nd"))["runs"][0]
         self.assertEqual(run["p400"], "2nd")

@@ -670,10 +670,12 @@ def _pace_perf_detail_lines(auto, name):
                 rank_word = "慢過場內大多數對手"
             else:
                 rank_word = "屬全場最慢嗰批"
-            lines = [
-                f"本駒近績所處賽事平均{vs_bench(d.get('value'))}；今場其他馬近績環境平均{vs_bench(d.get('mean'))}",
-                f"環境對比：{rank_word} → {_as_float(d.get('final'), 60):.1f} 分（60 為中性；唔係個體末段）",
-            ]
+            if d.get("basis") == "own":
+                first = (f"本駒近仗末段估算{vs_bench(d.get('value'))}（賽事 L600 對基準＋輸距×0.17 秒）；"
+                         f"今場其他馬平均{vs_bench(d.get('mean'))}")
+            else:
+                first = f"本駒近績所處賽事平均{vs_bench(d.get('value'))}；今場其他馬近績環境平均{vs_bench(d.get('mean'))}"
+            lines = [first, f"環境對比：{rank_word} → {_as_float(d.get('final'), 60):.1f} 分（60 為中性）"]
             if d.get("trial_runs"):
                 dates = ", ".join(d.get("run_dates") or []) or "日期未明"
                 lines.append(f"PF 來源：{d['trial_runs']} 課試閘、{d.get('formal_runs', 0)} 場正式賽；日期：{dates}")

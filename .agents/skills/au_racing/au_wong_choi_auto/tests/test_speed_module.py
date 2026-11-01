@@ -1,6 +1,7 @@
-"""速度重建第 1 步：`au_racing_engine.speed` 一定要同現行 `_pf_aggregates` + `_pace_figure_score` 一樣。
+"""`au_racing_engine.speed` 係速度分唯一計算位置；`_pf_aggregates` 同 `_pace_figure_score` 都叫佢。
 
-全語料 A/A（`scratch/au_speed_rebuild_aa_20261101.py`）證明逐匹一樣；呢度釘住細節，令之後改公式時知道自己郁咗乜。
+切換前全語料 A/A（`scratch/au_speed_rebuild_aa_20261101.py`）39,745 匹逐匹一樣；呢度釘住細節，
+令之後改公式時知道自己郁咗乜。
 """
 from __future__ import annotations
 
@@ -71,6 +72,36 @@ class FieldScores(unittest.TestCase):
     def test_score_is_clipped(self):
         field = {"1": self._h(-100.0), **{str(i): self._h(0.0) for i in range(2, 12)}}
         self.assertEqual(speed.field_scores(field)["1"].score, 100.0)
+
+
+class Evidence(unittest.TestCase):
+    def test_evidence_matches_aggregate_order_and_weights(self):
+        runs = [_run(0.4, 1.0, "2026-05-01"), _run(-0.2, None, "2026-09-01"), _run(1.1, 3.5, "2026-07-01")]
+        ev = speed.evidence(runs, SB)
+        self.assertEqual([e["date"] for e in ev], ["2026-09-01", "2026-07-01", "2026-05-01"])
+        self.assertEqual([e["weight"] for e in ev], [1.0, 0.8, 0.64])
+        self.assertIsNone(ev[0]["own"])                     # 冇輸距 → 只有賽事數
+        self.assertAlmostEqual(ev[1]["own"], 1.1 + 3.5 * 0.17, places=4)
+
+    def test_evidence_limit(self):
+        runs = [_run(0.1, 0.0, f"2026-0{m}-01") for m in range(1, 9)]
+        self.assertEqual(len(speed.evidence(runs, SB, limit=5)), 5)
+
+
+class EngineUsesSpeedModule(unittest.TestCase):
+    def test_pace_figure_score_equals_speed_score(self):
+        from au_racing_engine.engine_core import RacingEngine
+        horse = {"horse_name": "X", "_data": {"pf_metrics": {"pf_aggregates": {
+            "pf_run_count": 3, "own_l600_delta_avg": -0.4, "l600_delta_avg": 0.1,
+            "source": SB}}}}
+        field = {"own_l600_delta_field_count": 5, "own_l600_delta_field_mean": 0.2,
+                 "own_l600_delta_field_stdev": 0.5, "l600_delta_field_count": 5,
+                 "l600_delta_field_mean": 0.0, "l600_delta_field_stdev": 0.3}
+        engine = RacingEngine(horse, {"field_summary": field})
+        score, note, _ = engine._pace_figure_score()
+        self.assertAlmostEqual(score, speed.score(-0.4, 0.2, 0.5))
+        self.assertEqual(engine.pace_figure_detail["basis"], "own")
+        self.assertIn("本駒末段估算", note)
 
 
 if __name__ == "__main__":
