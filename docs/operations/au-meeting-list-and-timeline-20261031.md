@@ -83,3 +83,19 @@
 新或者改咗嘅時間照舊入 `timetables_changed`，令嗰個場次重新合併上 dashboard。
 場次名由 folder 名抽出嚟再精確配對，所以 Gold Coast 草地唔會攞 Gold Coast Poly
 嘅時間。配唔到嘅場次會 warn。`--skip-refresh`（唔出網）就唔會行。
+
+## 2026-11-01 跟進（三）：都會先做、失手即刻推
+
+- **次序**：`step_analyse_next_day` 用 `priority_order()` 排：都會 → 省級 → 鄉鎮，同級就早開跑嗰個先。
+  分級同 dashboard 用同一份 `au_venue_tiers.json`（`venue_tier()`，連引擎 alias）。
+  以前按 sportsbetform slug 字母排；冷卻窗大約只夠抽一個場次，所以排頭位 = 最大機會做得成。
+  重試輪次照用 `rotate_for_fairness`，一個卡死嘅場次唔會餓死後面。`--max-meetings` 截嘅係排完之後嘅尾。
+- **即刻推（`alert_now`）**，唔再等 run 完先喺總結度講：
+  - ❌ 一個場次分析拋錯（今次唔會再試）
+  - ⏳ 一輪之後有場次暫時做唔到（每輪一條，只列新延誤，會講幾耐後再試）
+  - ✅ 之前延誤嘅場次補返
+  - ❌ 用晒重試輪次仍然做唔完（列晒每個場次同原因）
+  - ❌ API 有、sportsbetform 索引頁冇嘅場次
+  - ❌ 分析做好但上唔到 dashboard（`reject_publication`）
+  - ❌ 晚更成個下一賽日做唔到（索引頁／API 名單攞唔到）
+- `--no-notify` 之下唔推；推送失敗唔會令 run 失敗。每條都記喺 run JSON 嘅 `alerts`。
