@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-02 持久化／native接線**：[EXP-20261102-04](docs/experiments/EXP-20261102-04-tennis-indexed-shadow-native-readers.md)以424823行public revisions驗證正式feature builder與serve／ace／double-fault／games同版本讀取；凍結來源全部4個fixture去向保存、3個組裝及rollback數值還原。輸出固定unqualified，live ingestion producer／定價與canonical保存、資格及準確度驗證仍未完成；未改正式模型或重開15個REJECT_DEV。
+
 **2026-11-02 隔離版本實作**：[EXP-20261102-03](docs/experiments/EXP-20261102-03-tennis-memory-elo-generations.md)抽出共用Elo核心，401046行四臂保留全部原輸出；45場memory generation實際時間切換／refresh／回退及47針對測試通過。研究code先存非main分支，未接production、未正式修身份；persistent store／native reader／來源資格及準確度評估仍未完成。
 
 **2026-11-02 身份／Elo 跟進**：[受控 cache 重播](docs/experiments/EXP-20261102-02-tennis-identity-elo-cache.md)確認只改 history 再重跑不足：舊 legacy cache 會保留既有值。接續按[資料／Elo generation 合約](docs/plans/tennis-identity-elo-generation-20261102.md)處理 event 與 knowledge 兩個 cutoff、完整衍生輸出、原子切換及回退；本輪未改 live 身份或評分，尚未證實準確度改善。

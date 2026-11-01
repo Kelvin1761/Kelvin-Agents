@@ -12,6 +12,8 @@ the model that consumes this has to degrade rather than pretend.
 """
 from __future__ import annotations
 
+from tennis_wc.database.db import history_connection_for
+
 from tennis_wc.database.history_observations import history_active_clause
 
 from dataclasses import dataclass
@@ -84,6 +86,7 @@ def serve_return_profile(
     treating it as a filter would empty the window for half the board; it is an
     adjustment on a pooled rate, never a gate.
     """
+    conn = history_connection_for(conn)
     from tennis_wc.features.history_asof import guard_clause, guard_params
 
     columns = ", ".join((*_SERVE_COLUMNS, *_RETURN_COLUMNS, "opponent_elo"))

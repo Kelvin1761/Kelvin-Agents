@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date
 from contextlib import closing
 
-from tennis_wc.database.db import get_connection
+from tennis_wc.database.db import get_history_connection as get_connection
 from tennis_wc.database.ranking_reads import RankingReader
 from tennis_wc.database.history_observations import history_active_clause
 from tennis_wc.features.history_values import clean_history_row

@@ -19,6 +19,8 @@ break-fests -2.9%). Center bucket normalised to 1.0; unknown hold = neutral.
 """
 from __future__ import annotations
 
+from tennis_wc.database.db import history_connection_for
+
 from tennis_wc.database.history_observations import history_active_clause
 
 from tennis_wc.props.ace_model import price_two_way, TwoWayProp
@@ -70,6 +72,7 @@ def combined_hold(conn, player_a_id: int, player_b_id: int, as_of_date: str,
     """Sum of both players' mean hold rate over their last N matches strictly
     before the match date (walk-forward safe). None unless both have >= 5
     hold samples — unknown must stay neutral, not penalised."""
+    conn = history_connection_for(conn)
     from tennis_wc.features.history_asof import guard_clause, guard_params
 
     sums: list[float] = []

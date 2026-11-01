@@ -16,6 +16,8 @@ All functions take an open sqlite connection so they are unit-testable.
 """
 from __future__ import annotations
 
+from tennis_wc.database.db import history_connection_for
+
 from tennis_wc.database.history_observations import history_active_clause
 
 from tennis_wc.features.history_values import clean_history_row, measurement
@@ -157,6 +159,7 @@ def player_ace_profile(conn, player_id: int, as_of_date: str, surface: str | Non
     """Serve-ace form from the player's matches STRICTLY BEFORE as_of_date,
     point-in-time guarded (features.history_asof): same-event rows count only
     if ingested before `start_time`."""
+    conn = history_connection_for(conn)
     from tennis_wc.features.history_asof import guard_clause, guard_params
 
     surf = (surface or "hard").lower()

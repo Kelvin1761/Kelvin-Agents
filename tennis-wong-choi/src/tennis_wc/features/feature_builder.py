@@ -7,7 +7,7 @@ from typing import Any
 from tennis_wc.database.market_captures import current_market_clause, book_listing_clause
 from tennis_wc.ingestion.fixture_versions import active_fixture_clause
 from tennis_wc.ingestion.confirmed_metadata import outside_confirmed_metadata_dates
-from tennis_wc.database.db import get_connection
+from tennis_wc.database.db import get_connection, get_history_connection, get_history_scope
 from tennis_wc.database.history_observations import history_active_clause
 from tennis_wc.database.ranking_reads import PUBLISHED_RANKING_SOURCES, RankingReader
 from tennis_wc.features.big_match import calculate_big_match_stats
@@ -66,6 +66,8 @@ def _raw_meta(raw_response_id: int | None) -> dict:
 
 
 def _latest_history_prov(player_id: int) -> dict:
+    if get_history_scope() is not None:
+        return get_history_scope()
     with get_connection() as conn:
         row = conn.execute(
             f"""
@@ -108,7 +110,7 @@ def _player_payload(player_id: int, opponent_id: int, match_context: dict, as_of
     # One connection for the whole payload, closed on the way out: the as-of
     # lookups below run per player per match, so a connection each would be
     # both slow and a handle leak.
-    conn = get_connection()
+    conn = get_history_connection()
     try:
         return _build_player_payload(
             conn, player_id, opponent_id, match_context, as_of_date,persist_derived=persist_derived
@@ -119,6 +121,8 @@ def _player_payload(player_id: int, opponent_id: int, match_context: dict, as_of
 
 def _build_player_payload(conn, player_id: int, opponent_id: int,
                           match_context: dict, as_of_date: date, *, persist_derived: bool = True) -> dict:
+    if get_history_scope() is not None and persist_derived:
+        raise ValueError('shadow generation cannot persist derived features')
     player = conn.execute("SELECT * FROM players WHERE id = ?", (player_id,)).fetchone()
     if player is None:
         raise ValueError(f"Player not found: {player_id}")
@@ -158,10 +162,10 @@ def _build_player_payload(conn, player_id: int, opponent_id: int,
     # fall back to the mutable column only when no history exists for the
     # player, and mark the datapoint so the fallback is visible downstream.
     overall_elo, surface_elo, elo_as_of = _elo_as_of(conn, player_id, as_of_date, surface)
-    if overall_elo is None:
+    if overall_elo is None and get_history_scope() is None:
         overall_elo = player["overall_elo"]
         surface_elo = get_surface_elo(player["surface_elo_json"], surface, overall_elo)
-    elo_prov = _elo_provenance(player_prov, dict(player))
+    elo_prov = get_history_scope() or _elo_provenance(player_prov, dict(player))
     if not elo_as_of and _unverified_rank_seed(conn, player_id, player, reader=reader):
         overall_elo = surface_elo = None
         elo_prov = {**elo_prov, "warnings": [*elo_prov.get("warnings", []), "rank_seed_source_date_unverified"]}
@@ -284,7 +288,7 @@ def _is_effectively_now(stamp: str) -> bool:
 
 
 def _rest_days(player_id: int, as_of_date: date, *, start_time: str | None = None) -> int | None:
-    with get_connection() as conn:
+    with get_history_connection() as conn:
         row = conn.execute(
             f"""
             SELECT MAX(match_date) AS last_match_date
@@ -438,6 +442,8 @@ def assemble_match_feature_snapshot(match_id: int, *, persist_derived: bool = Fa
     reuse the same assembly. This is read-only and safe to call repeatedly
     (e.g. from backtests) because it never writes to feature_snapshots.
     """
+    if get_history_scope() is not None and persist_derived:
+        raise ValueError('shadow generation cannot persist feature snapshots')
     with get_connection() as conn:
         match = conn.execute("SELECT * FROM matches WHERE id = ?", (match_id,)).fetchone()
         if not match:
@@ -484,6 +490,11 @@ def assemble_match_feature_snapshot(match_id: int, *, persist_derived: bool = Fa
         "match_raw_response_id": match["raw_response_id"],
         "tournament_raw_response_id": tournament_level["raw_response_id"],
     }
+    if get_history_scope() is not None:
+        snapshot['history_generation'] = get_history_scope()
+        snapshot['feature_set_version'] += '+unqualified-generation'
+        snapshot['data_quality'] = dict(quality, is_valid=False, score=0,
+            errors=[*quality['errors'], 'unqualified_history_generation'])
     return snapshot, dict(tournament_level)
 
 
@@ -503,7 +514,7 @@ def _shadow_backbone(player_a_id: int, player_b_id: int, context: dict, as_of_da
             surface = surface.get("value")
         surface = (str(surface or "").strip().lower()) or None
         stamp = as_of_date.isoformat()
-        with get_connection() as conn:
+        with get_history_connection() as conn:
             exists = conn.execute(
                 "SELECT 1 FROM sqlite_master WHERE type='table' AND name='player_elo_history_v2'"
             ).fetchone()

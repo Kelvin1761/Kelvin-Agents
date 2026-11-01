@@ -1,6 +1,8 @@
 """Conservative research models for expandable player-prop families."""
 from __future__ import annotations
 
+from tennis_wc.database.db import history_connection_for
+
 from tennis_wc.database.history_observations import history_active_clause
 
 from dataclasses import dataclass
@@ -173,6 +175,7 @@ def count_profile(
     last_n: int = 25,
     start_time: str | None = None,
 ) -> CountProfile:
+    conn = history_connection_for(conn)
     if column not in {"double_fault_count"}:
         raise ValueError(f"unsupported count column: {column}")
     from tennis_wc.features.history_asof import guard_clause, guard_params
