@@ -746,3 +746,24 @@ def test_final_refresh_snapshot_only_satisfies_its_own_slot(tmp_path) -> None:
     assert schedule.snapshot_covers_final_refresh_slot(snap, at(13, 1)) is False
     (snap / "manifest.json").write_text(json.dumps({"created_at": "not a time"}))
     assert schedule.snapshot_covers_final_refresh_slot(snap, at(6, 55)) is False
+
+
+def test_postgame_catches_up_unarchived_days_with_a_prediction(tmp_path):
+    """2026-10-29: both same-day postgame runs failed and the day was never reviewed again."""
+    dirs = {d: tmp_path / d for d in ("2026-10-29", "2026-10-30", "2026-10-31")}
+    for path in dirs.values():
+        path.mkdir()
+    snapshots = {"2026-10-29": tmp_path / "snap"}  # 10-30 / 10-31: blocked, no prediction
+    reviewed, log = [], _Log()
+
+    def postgame(day, _log):
+        reviewed.append(day)
+        if day == "2026-10-31":
+            raise schedule.TemporaryFailure("never reached")
+        return "archived"
+
+    with mock.patch.object(schedule, "live_dir", side_effect=lambda d: dirs.get(d, tmp_path / "missing")), \
+            mock.patch.object(schedule, "latest_snapshot", side_effect=lambda f: snapshots.get(f.name)), \
+            mock.patch.object(schedule, "run_postgame", side_effect=postgame):
+        assert schedule.catch_up_postgame("2026-11-02", log) == ["2026-10-29"]
+    assert reviewed == ["2026-10-29"]  # days without a snapshot are left to mark-no-prediction

@@ -153,3 +153,46 @@ def test_splits_from_gamelog_match_nba_groups_with_preseason_spacing():
     without_pre = X.splits_from_gamelog(rs)
     assert "3 Days Rest" not in without_pre["rest_splits"], "an opener with no earlier game has no rest group"
     assert X.splits_from_gamelog(rs.iloc[0:0]) is None
+
+
+def test_team_context_in_espn_mode_never_calls_nba_com(tmp_path, monkeypatch):
+    """S_v2/S_v3 opponent context comes from the same ESPN box scores (2026-11-01).
+
+    Before this, nba_team_context still asked stats.nba.com's LeagueGameLog, so
+    during the block 22% of MS2/MS3 legs had no opponent context and all three
+    forward tests read INVALID_DATA.
+    """
+    import nba_team_context as tc
+    monkeypatch.setenv("WC_NBA_STAT_SOURCE", "espn")
+
+    class Resp:
+        def __init__(self, payload):
+            self.payload = payload
+
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return self.payload
+
+    def get(url, timeout=None):
+        if "scoreboard" in url:
+            day = url.split("dates=")[1][:8]
+            events = [{"id": "401909881", "season": {"type": 2},
+                       "status": {"type": {"completed": True}}}] if day in ("20261028", "20251028") else []
+            return Resp({"events": events})  # 2025-10-28 stands in for last season's league average
+        return Resp(SUMMARY)
+
+    def nba_com(**_):
+        raise AssertionError("stats.nba.com must not be called in ESPN mode")
+
+    import nba_api.stats.endpoints.leaguegamelog as lgl
+    monkeypatch.setattr(lgl, "LeagueGameLog", nba_com)
+    bundle = tc.fetch_bundle("2026-27", "2025-26", "10/28/2026", tmp_path / "ctx.json", get=get)
+    regular = bundle["tables"]["Regular Season"]
+    assert regular["status"] == "available" and regular["source"] == "espn_box"
+    assert sorted(r["TEAM_ABBREVIATION"] for r in regular["rows"]) == ["ATL", "MIA"]
+    context = tc.opponent_context(bundle, "ATL", date(2026, 10, 29))
+    assert context["status"] == "available"
+    assert context["allowed"]["PTS"] == [129.0]  # what ATL allowed = MIA's points
+    assert tc.opponent_context(bundle, "ATL", DAY)["allowed"]["PTS"] == []  # strictly before the cutoff day
