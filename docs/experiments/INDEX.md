@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261101-24](EXP-20261101-24-tennis-point-input-feasibility.md) | 2026-11-01 | Tennis | point kernel輸入可行性，WTA-only唯讀盤點 | **輸入診斷／研究分支備份**：966 sides中302（151場）通過本次cutoff檢查，185玩家中5人≥5場；不代表all-provider coverage，未fit／未改訓練資格／未證實準確度 |
 | [EXP-20261101-30](EXP-20261101-30-au-l600-recency-distance-results.md) | 2026-11-01 | AU | L600 環境分聚合：近期加權 0.8^k（R）／路程相近度（P）／兩樣（RP），用戶問「速度應唔應該好似狀態咁近期加權」 | **REJECT ×3**：R leaf AUC +0.0053 [+0.0022,+0.0084] 重現 D3c，但 v3 Gold −0.18pp、§8 both_arms_reject；P leaf 都冇改善；RP top3@5 CI 全負。Trend 斜率單獨 AUC 0.520。現行平均保留，冇上線 |
 | [EXP-20261101-22](EXP-20261101-22-tennis-rule-aware-kernel-protocol.md) | 2026-11-01 | Tennis | F02 point/rule kernel：明示年份／決勝盤規則，重用已審計oracle | **來源及負例已核對／未接線**：現役7–6不符合WB2019決勝盤或advantage規則；255 comparisons事前固定但未跑，不宣稱準確度或promotion |
 | [EXP-20261101-21](EXP-20261101-21-tennis-ranking-warning-attribution.md) | 2026-11-01 | Tennis | fresh valid published ranking 不應掛棄用來源的 warning | **研究候選／未部署**：26,272 玩家所選值/ID/date 零改動，1,445 個 warning 另歸屬並保留 3,029 rejection；46 針對測試過，full gate／下游判決待驗證，無準確率結論 |
