@@ -1565,6 +1565,22 @@ def step_l600_recency_forward(runlog: RunLog) -> bool:
     return True
 
 
+def step_forward_tracker(runlog: RunLog) -> bool:
+    """所有 AU forward 測試（`au_forward_tracker.FORWARD_TESTS`）：記進度，第一次夠數即刻 Telegram。
+    研究用，失敗唔阻 live 分析，永遠唔會改模型。"""
+    try:
+        sys.path.insert(0, str(HERE))
+        import au_forward_tracker
+
+        report = au_forward_tracker.check(work_dir=WORK_DIR, push=lambda text: alert_now(runlog, text))
+    except Exception as exc:  # noqa: BLE001
+        runlog.warn(f"forward 追蹤表更新失敗（唔影響 live）：{type(exc).__name__}: {exc}")
+        runlog.step("forward-tracker", "failed", detail=str(exc))
+        return False
+    runlog.step("forward-tracker", "ok", summary=au_forward_tracker.summary_line(report))
+    return True
+
+
 def step_speed_shadow(runlog: RunLog) -> bool:
     """Advance the blind EXP-20260927-02 terminal without changing live ranks.
 
@@ -4175,6 +4191,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_speed_shadow(runlog)
         step_speed_recency_shadow(runlog)
         step_l600_recency_forward(runlog)
+        step_forward_tracker(runlog)
     publisher = None
     progressive = (not args.skip_deploy and not args.skip_analysis
                    and os.environ.get("WC_AU_PROGRESSIVE_PUBLISH", "1") != "0")
