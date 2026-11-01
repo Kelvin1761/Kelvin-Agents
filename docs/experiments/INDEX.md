@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261101-22](EXP-20261101-22-tennis-rule-aware-kernel-protocol.md) | 2026-11-01 | Tennis | F02 point/rule kernel：明示年份／決勝盤規則，重用已審計oracle | **來源及負例已核對／未接線**：現役7–6不符合WB2019決勝盤或advantage規則；255 comparisons事前固定但未跑，不宣稱準確度或promotion |
 | [EXP-20261101-21](EXP-20261101-21-tennis-ranking-warning-attribution.md) | 2026-11-01 | Tennis | fresh valid published ranking 不應掛棄用來源的 warning | **研究候選／未部署**：26,272 玩家所選值/ID/date 零改動，1,445 個 warning 另歸屬並保留 3,029 rejection；46 針對測試過，full gate／下游判決待驗證，無準確率結論 |
 | [EXP-20261101-20](EXP-20261101-20-tennis-historical-source-readers.md) | 2026-11-01 | Tennis | 同一完整來源核對兩個歷史讀取器，錯 event 不補位 | **來源正確性**：124 日 earliest 84014→83126（扣起888行／84場）；6585 close match 中扣起104。保留行相同，無準確率／ROI結論；其他讀取器仍待驗證 |
 | [EXP-20261030-20](EXP-20261030-20-tennis-event-response-identity.md) | 2026-10-30 | Tennis | Sportsbet 單場回應必須匹配所請求 event ID；拒絕不等於隔離正確 fixture | **來源正確性修正／非準確率結論**：凍結 9,988 份，299 不符；44 宗隔離重播中 42 宗錯 event 回應被拒絕、2 宗同 ID 身份爭議仍隔離。歷史 217 份已連結 snapshot 未修復；native earliest market reader 暴露 84 場／888 行，須獨立追查 |

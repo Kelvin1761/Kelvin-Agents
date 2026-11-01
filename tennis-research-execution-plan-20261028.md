@@ -53,3 +53,5 @@
 **排名候選下游比較**：259 份原樣 observation、原 decision 時計下作局部歸屬敏感度比較；73 份警告內容改變，pricing 全份相同，decision／stake／confidence／risk／quality score 零變化（17 BET／242 NO_BET）。並非歷史 pipeline 重建，也不保證未來全無影響；完整 gate／正式交付尚待完成，準確度仍未獲改善證據。
 
 **逐項驗收更新**：[九項要求及 C01–C17 證據矩陣](docs/audits/tennis-unified-research-completion-audit-20261101.md)。重驗32個artifact檔案及15個REJECT_DEV；明示 kernel 22 synthetic pass 尚未建立現役 tournament/year 規則映射，workload/joint props/新forward 仍未齊。排名候選完整測試全綠（Tennis989），但尚未正式部署；整體準確度目標未完成。
+
+**排名候選已交付／F02新邊界**：`6b01f07f` 已正式gate、合併及Tennis runtime對齊。[F02明示規則協議與可重現負例](docs/experiments/EXP-20261101-22-tennis-rule-aware-kernel-protocol.md)保存官方來源限制及新255比較設計；新kernel尚未實作／接線，現役模型數學不變。C08其餘規則工作、C09依賴及真正準確度證據仍未完成。

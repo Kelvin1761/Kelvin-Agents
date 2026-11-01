@@ -60,3 +60,5 @@
 `downstream-warning-sensitivity-v2/all-observation-comparisons.jsonl.gz` SHA-256：`635e358bfe15211002adb234b68bf46c916164ca3b2178cd9192c108091b99d8`。
 
 **完整測試更新**：`./檢查.sh` 已全數通過，Tennis 989 passed。正式 immutable release gate 及 activation 仍需另查最終 manifest；未以此宣告已部署。
+
+**正式交付**：`6b01f07f51bc6fbdd6f50af44a74a79240d21483` full immutable gate 通過（813.6s）、自動合併／activation completed。已直接讀取 `/Users/imac/wongchoi-scheduler` HEAD核對同SHA；排名值不變／下游配對結果不等於準確率改善。
