@@ -52,6 +52,18 @@ class TestRatingProxy:
         assert src == "class_proxy"
         assert score == pytest.approx(66.0 - K * 6.0)
 
+    def test_set_weights_big_race_does_not_claim_most_horses_unrated(self):
+        """2026-11-02：Golden Rose 等 27 場大賽，場內得一兩匹進口馬冇評分、定磅冇負磅可借，
+        舊句寫「呢場多數馬未有官方讓磅分」。分數唔變，講法要啱。"""
+        eng = rating_engine(None, {"rated_count": 11}, weight_proxy=(None, ""))
+        eng._is_handicap_race = lambda: False
+        score, note, src = eng._rating_score()
+        assert src == "class_proxy"
+        assert score == pytest.approx(66.0 - K * 6.0)
+        lines = " ".join(eng.rating_detail["lines"])
+        assert "多數馬未有" not in lines and "多見於處女賽" not in note
+        assert "11 匹有官方讓磅分" in lines and "定磅" in lines
+
 
 class TestOfficialRatingNoHandTunedTerms:
     @pytest.mark.parametrize("race_class", ["BM58 Handicap", "Maiden Plate", "Class 3 Handicap"])

@@ -167,7 +167,18 @@ def matches_venue(ra_venue: str, other: str) -> bool:
     a, b = norm(ra_venue), norm(other)
     if not a or not b:
         return False
-    return a == b or a.endswith(b) or b in a or a in b
+    names = {b} | ({VENUE_ALIASES[b]} if b in VENUE_ALIASES else set())
+    return any(a == n or a.endswith(n) or n in a or a in n for n in names)
+
+
+# RA 用馬場名，Sportsbet／我哋用城市名。2026-11-02 查實：Alice Springs 三個場次、
+# Mt Isa、Cairns 由頭到尾配唔到 —— RA 叫佢哋 `Ladbrokes Pioneer Park`、
+# `Sportsbet Mount Isa`、Cannon Park（Cairns 嘅馬場；RA cache 未見過，配錯都冇害，原名照試）。
+VENUE_ALIASES = {
+    "alicesprings": "pioneerpark",
+    "mtisa": "mountisa",
+    "cairns": "cannonpark",
+}
 
 
 def _page_url(page: str, key: str) -> str:
@@ -243,7 +254,13 @@ def acceptances(key: str, fetcher: Fetcher | None = None,
                 "hcp_rating": float(rating) if re.fullmatch(r"\d+(?:\.\d+)?", rating) else None,
                 "last10": val("Last 10"),
             })
-    return {k: v for k, v in out.items() if v["runners"]}
+    result = {k: v for k, v in out.items() if v["runners"]}
+    if not result and not force:
+        # Acceptances 頁永久 cache：RA 偶然俾個淨導航、冇內容嘅殼（2026-10-23 Sunshine Coast
+        # 28KB 冇 `Hcp Rating`），cache 咗就永遠「parse 唔到」。實測 Darwin、Swan Hill、
+        # Grafton、Tatura 同一個形狀，之後重抓全部 parse 到。所以空就強制重抓一次。
+        return acceptances(key, f, force=True)
+    return result
 
 
 def scratchings(key: str, fetcher: Fetcher | None = None,

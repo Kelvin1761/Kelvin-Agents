@@ -1209,3 +1209,19 @@ def test_grid_children_can_shrink():
     css = _stylesheet()
     assert '.dim-parts > .dim-part,' in css and 'min-width: 0;' in css
     assert 'overflow-wrap: anywhere;' in css
+
+
+def test_official_rating_parity(parsed_meeting):
+    """2026-11-02：引擎每匹有評分嘅馬都寫「今場官方 rating 為 N」，但 `rating` 從來冇填，
+    dashboard 冇一處顯示評分。"""
+    _, horses, blocks = parsed_meeting
+    in_file = sum(1 for b in blocks if re.search(r"今場官方 rating 為\s*\d", b))
+    parsed = sum(1 for h in horses if h.rating is not None)
+    if in_file == 0:
+        pytest.skip("no rated horse in this meeting")
+    assert parsed == in_file
+
+
+def test_official_rating_is_shown_on_the_horse_card():
+    text = (Path(__file__).resolve().parents[2] / "static_template.html").read_text(encoding="utf-8")
+    assert "horse.rating != null" in text and "評分 ${" in text

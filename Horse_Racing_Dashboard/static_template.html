@@ -5362,6 +5362,7 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
   if (horse.trainer) html += `<span> · 🏠 ${esc(horse.trainer)}</span>`;
   if (horse.weight) { const w = esc(horse.weight); html += `<span title="負磅/排位體重"> · ⚖️ 負磅: ${w.includes('磅') ? w : w + '磅'}</span>`; }
   if (horse.barrier) html += `<span> · 檔${horse.barrier}</span>`;
+  if (horse.rating != null) html += `<span title="Racing Australia 官方讓磅分"> · 🎯 評分 ${esc(String(horse.rating))}</span>`;
   html += '</div></div></div>';
   if (officialHorseUrl) {
     html += `<a class="horse-card__official-link" href="${esc(officialHorseUrl)}" target="_blank" rel="noopener noreferrer" aria-label="在新分頁開啟${esc(horse.horse_name || '')}官方馬匹資料">官方馬匹資料 <span aria-hidden="true">↗</span></a>`;

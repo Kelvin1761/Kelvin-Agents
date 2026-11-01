@@ -111,3 +111,25 @@ def test_calendar_miss_without_a_saved_key_still_reports_the_miss(tmp_path, monk
     monkeypatch.setattr(ra_fields, "meetings_for", lambda day, f: [])
     out = ra_fields.apply_to_meeting(tmp_path, "2026-10-02", "Cranbourne", _Page())
     assert not out["ok"] and "RA 冇" in out["reason"]
+
+
+def test_ra_track_names_match_our_town_names():
+    """2026-11-02：Alice Springs、Mt Isa、Cairns 由頭到尾配唔到 —— RA 用馬場名。"""
+    assert ra_fields.matches_venue("Ladbrokes Pioneer Park", "Alice Springs")
+    assert ra_fields.matches_venue("Sportsbet Mount Isa", "Mt Isa")
+    assert ra_fields.matches_venue("Cannon Park", "Cairns")
+    assert not ra_fields.matches_venue("Ladbrokes Pioneer Park", "Darwin")
+
+
+def test_cached_empty_acceptances_shell_is_refetched_once():
+    """RA 偶然俾個冇內容嘅殼，永久 cache 咗就永遠 parse 唔到（10-23 Sunshine Coast）。"""
+    calls = []
+
+    class _ShellThenPage(_Page):
+        def get(self, url, force=False, max_age=None):
+            calls.append(force)
+            return PAGE if force else "<html><body>Racing Australia</body></html>"
+
+    races = ra_fields.acceptances("2026Oct23,QLD,Sunshine Coast", _ShellThenPage())
+    assert calls == [False, True]
+    assert {1, 2} <= set(races)

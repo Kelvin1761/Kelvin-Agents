@@ -4389,6 +4389,20 @@ class RacingEngine:
             if weight_proxy is None:
                 score = clip_score(class_proxy - class_once)
                 rdetail["source"] = "proxy"
+                if rating is None and rated_count >= 2:
+                    # 2026-11-02：定磅／齡磅大賽（Golden Rose、Furious Stakes…）負磅唔反映能力，
+                    # 冇評分嗰一兩匹（多數係進口馬）落到呢度。舊句寫死「呢場多數馬未有」——
+                    # 27 場大賽印咗句假話。分數唔變，只改講法。
+                    why = ("場內負磅差太細／資料唔夠，借唔到負磅代理" if self._is_handicap_race()
+                           else "定磅／齡磅賽負磅唔反映能力，冇得借負磅代理")
+                    rdetail["lines"] = [
+                        f"今場 {rated_count} 匹有官方讓磅分，本駒冇（多見於進口馬／首戰）",
+                        why,
+                        f"改以級數分 {class_proxy:.1f} 作能力代理（唔死當中性）",
+                    ]
+                    note = (f"本駒未有官方讓磅分（同場 {rated_count} 匹有），{why}，"
+                            f"改以級數分 {class_proxy:.1f} 作能力代理。")
+                    return score, note, "class_proxy"
                 rdetail["lines"] = [
                     "呢場多數馬未有官方讓磅分（處女／未評分賽事常見）",
                     f"改以級數分 {class_proxy:.1f} 作能力代理（唔死當中性）",

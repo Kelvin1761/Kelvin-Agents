@@ -801,6 +801,11 @@ def parse_au_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAn
 
     market_ref = _parse_au_market_reference(block)
 
+    # 官方讓磅分（RA）：引擎寫「今場官方 rating 為 84.0」。2026-11-02 之前 `rating` 從來冇填，
+    # dashboard 冇一處顯示評分。冇評分（處女／進口馬）就留 None。
+    _rm = re.search(r"今場官方 rating 為\s*(\d+(?:\.\d+)?)", block)
+    official_rating = int(round(float(_rm.group(1)))) if _rm else None
+
     ability_score, rank = _parse_au_scoreline(block)
     evidence_dims, evidence_total = _parse_au_evidence_confidence(block)
 
@@ -820,6 +825,7 @@ def parse_au_horse_block(horse_num: int, horse_name: str, block: str) -> HorseAn
         trainer=header_info.get('trainer'),
         weight=header_info.get('weight'),
         barrier=header_info.get('barrier'),
+        rating=official_rating,
         recent_form=recent_form,
         horse_profile=horse_profile,
         core_analysis=core_analysis,

@@ -344,6 +344,41 @@ RE_SILK_NUMBER_THEN_IMAGE = re.compile(
 )
 
 
+def existing_ratings(rc_path):
+    """{正規化馬名: 讓磅分字串}，由**現有** Racecard 讀返已經補咗嘅官方讓磅分。
+
+    Sportsbet 個 rating 欄 0% 有值，數字全部係 `ra_fields` 之後由 RA 補。賽日早更
+    重抓 Racecard 會寫返 `Rating: -`，再補又要靠 RA 州曆仲列住個場次 —— 2026-10-02
+    Cranbourne 76 個讓磅分就係咁冇咗。讓磅分喺接受報名嗰刻就定咗，賽日唔會變，
+    所以重寫之前沿用返，唔使靠網絡。
+    """
+    out = {}
+    try:
+        lines = Path(rc_path).read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return out
+    for i, line in enumerate(lines[1:], start=1):
+        if "| Rating:" not in line:
+            continue
+        head = re.match(r"\s*\d+\.\s*(?P<horse>[^(]+)", lines[i - 1])
+        value = line.rsplit("Rating:", 1)[1].strip()
+        if head and re.fullmatch(r"\d+(?:\.\d+)?", value):
+            out[_rating_key(head.group("horse"))] = value
+    return out
+
+
+def _rating_key(name):
+    return "".join(ch for ch in str(name).lower() if ch.isalnum())
+
+
+def rating_for_card(sportsbet_value, kept):
+    """Sportsbet 有數就用 Sportsbet；冇（`-`／空）就用返舊 Racecard 個數，都冇就照寫原值。"""
+    text = str(sportsbet_value or "").strip()
+    if re.fullmatch(r"\d+(?:\.\d+)?", text):
+        return text
+    return kept or text
+
+
 def parse_silks(html):
     """賽事頁 → {馬號: 綵衣 SVG URL}。
 
@@ -1148,6 +1183,7 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
         by_name = {b["name"].lower(): b for b in blocks}
         rc_path = out / f"{mm_dd} Race {race_no} Racecard.md"
         fg_path = out / f"{mm_dd} Race {race_no} Formguide.md"
+        kept_ratings = existing_ratings(rc_path)
         with open(rc_path, "w", encoding="utf-8") as f_rc, \
                 open(fg_path, "w", encoding="utf-8") as f_fg:
             for f in (f_rc, f_fg):
@@ -1175,7 +1211,7 @@ def write_meeting(races, out_dir, date_str, venue, verbose=True,
                 f_rc.write(f"Trainer: {ov.get('trainer','')} | Jockey: {ov.get('jockey','')} "
                            f"| Weight: {format_weight_field(st.get('Weight','?'), blk.get('jockey_allowance_kg'))} "
                            f"| Age: {ov.get('age_sex','')} "
-                           f"| Rating: {ov.get('rating','')}\n")
+                           f"| Rating: {rating_for_card(ov.get('rating', ''), kept_ratings.get(_rating_key(name)))}\n")
                 f_rc.write(f"Career: {ov.get('career','')} | Win: {ov.get('win_pct','')} "
                            f"| Place: {ov.get('place_pct','')}\n")
                 # 配備變更（2026-08-26）。同 `Silk:` 一樣擺喺 meta 區塊**之後** ——
