@@ -1,0 +1,22 @@
+{
+ "races": 3246,
+ "swaps": 464,
+ "top_pick_place": {
+  "without": 0.5628,
+  "with_rail": 0.5511,
+  "delta": -0.0117,
+  "ci": [
+   -0.0234,
+   -0.0003
+  ]
+ },
+ "top_pick_win": {
+  "without": 0.2434,
+  "with_rail": 0.2391,
+  "delta": -0.0043,
+  "ci": [
+   -0.0128,
+   0.0039
+  ]
+ }
+}
