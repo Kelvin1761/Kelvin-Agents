@@ -61,9 +61,20 @@ class MarginFormatTests(unittest.TestCase):
 class IndividualisationTests(unittest.TestCase):
     def test_own_delta_adds_beaten_seconds(self) -> None:
         agg = _pf_aggregates(_runs((0.5, 2.0), (0.5, 0.0)), "sportsbet_race_context")
-        # (0.5 + 2×0.17) + (0.5 + 0) = 0.84 + 0.5 → 平均 0.67
-        self.assertAlmostEqual(agg["own_l600_delta_avg"], 0.67, places=3)
+        # (0.5 + 2×0.17) = 0.84（最近，權重 1）、0.5（權重 0.8，EXP-20261101-30）
+        # → (0.84 + 0.4) / 1.8 = 0.689
+        self.assertAlmostEqual(agg["own_l600_delta_avg"], 0.689, places=3)
         self.assertAlmostEqual(agg["l600_delta_avg"], 0.5, places=3)
+
+    def test_recency_weight_follows_run_date_not_list_order(self) -> None:
+        """EXP-20261101-30：k 由 run_date 決定（新到舊），唔係傳入次序。"""
+        runs = [{"l600_delta": 2.0, "margin": 0.0, "source": "sportsbet_race_context", "run_date": "2026-01-01"},
+                {"l600_delta": 0.0, "margin": 0.0, "source": "sportsbet_race_context", "run_date": "2026-06-01"}]
+        agg = _pf_aggregates(runs, "sportsbet_race_context")
+        # 06-01（0.0）權重 1、01-01（2.0）權重 0.8 → 1.6 / 1.8 = 0.889
+        self.assertAlmostEqual(agg["l600_delta_avg"], 0.889, places=3)
+        self.assertAlmostEqual(agg["own_l600_delta_avg"], 0.889, places=3)
+        self.assertAlmostEqual(agg["l600_delta_best"], 0.0, places=3)
 
     def test_winner_run_is_unchanged(self) -> None:
         """輸 0 馬位 → 本駒 L600 就係嗰場 L600。"""
@@ -99,12 +110,13 @@ class FallbackTests(unittest.TestCase):
         """冇 margin 唔可以變中性 60 —— 一定要照用 race-level 個值。"""
         agg = _pf_aggregates(_runs((0.5, None), (0.9, None)), "sportsbet_race_context")
         self.assertIsNone(agg.get("own_l600_delta_avg"))
-        self.assertAlmostEqual(agg["l600_delta_avg"], 0.7, places=4)
+        # 近期加權（EXP-20261101-30）：(0.5 + 0.9×0.8) / 1.8 = 0.678
+        self.assertAlmostEqual(agg["l600_delta_avg"], 0.678, places=4)
 
     def test_partial_margin_coverage_only_averages_what_exists(self) -> None:
         agg = _pf_aggregates(_runs((0.5, 2.0), (0.9, None)), "sportsbet_race_context")
         self.assertAlmostEqual(agg["own_l600_delta_avg"], 0.84, places=3)
-        self.assertAlmostEqual(agg["l600_delta_avg"], 0.7, places=4)
+        self.assertAlmostEqual(agg["l600_delta_avg"], 0.678, places=4)
 
 
 if __name__ == "__main__":

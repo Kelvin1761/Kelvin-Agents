@@ -104,6 +104,8 @@ SPEED_SHADOW_MONITOR = (AU_SKILL / "au_wong_choi_auto" / "scripts"
                         / "au_speed_shadow_monitor.py")
 SPEED_RECENCY_SHADOW = (AU_SKILL / "au_wong_choi_auto" / "scripts"
                         / "au_speed_recency_shadow.py")
+L600_RECENCY_FORWARD = (AU_SKILL / "au_wong_choi_auto" / "scripts"
+                        / "au_l600_recency_forward.py")
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
 DEPLOY_SH = DASHBOARD_DIR / "deploy.sh"
 
@@ -1531,6 +1533,35 @@ def step_speed_recency_shadow(runlog: RunLog) -> bool:
     if status.get("outcomes_visible"):
         runlog.warn(f"速度第二盲測組（EXP-20261009-05）已揭盲：{evaluation.get('verdict')} "
                     f"（{evaluation.get('reason')}）；live 唔會自動改，要 /approve SHA。")
+    return True
+
+
+def step_l600_recency_forward(runlog: RunLog) -> bool:
+    """EXP-20261101-30 forward 確認：L600 近期加權上線版 vs 每仗一樣重（反事實）。
+    夠 600 場先判一次並凍結；之前只記場數。研究用，失敗唔阻 live 分析，永遠唔會自動改模型。"""
+    status_path = WORK_DIR / "au-l600-recency-forward-status.json"
+    rc, out = run_cmd([sys.executable, str(L600_RECENCY_FORWARD), "--data-root", str(AU_RACING),
+                       "--output", str(status_path)], timeout=1800)
+    if rc != 0 or not status_path.exists():
+        detail = error_excerpt(out, rc)
+        runlog.warn(f"L600 近期加權 forward 更新失敗（唔影響 live 排名）：{detail}")
+        runlog.step("l600-recency-forward", "failed", detail=detail)
+        return False
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        runlog.step("l600-recency-forward", "failed", detail=str(exc))
+        return False
+    evaluation = status.get("evaluation") or {}
+    runlog.step("l600-recency-forward", status.get("state", "unknown"),
+                races=status.get("races_collected", 0), target=status.get("target_races"),
+                keep=evaluation.get("keep"))
+    if evaluation and not status.get("notified"):
+        verdict = "保留" if evaluation.get("keep") else "Gold／Good 有一項點估計負 → 提請 Kelvin 決定係咪還原"
+        runlog.warn(f"L600 近期加權 forward（EXP-20261101-30）{status.get('target_races')} 場已判：{verdict}；"
+                    "live 唔會自動改。")
+        status["notified"] = True
+        status_path.write_text(json.dumps(status, ensure_ascii=False, indent=1), encoding="utf-8")
     return True
 
 
@@ -4028,6 +4059,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
     if not getattr(args, "skip_speed_shadow", False):
         step_speed_shadow(runlog)
         step_speed_recency_shadow(runlog)
+        step_l600_recency_forward(runlog)
     publisher = None
     progressive = (not args.skip_deploy and not args.skip_analysis
                    and os.environ.get("WC_AU_PROGRESSIVE_PUBLISH", "1") != "0")

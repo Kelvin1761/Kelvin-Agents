@@ -2912,7 +2912,7 @@ class RacingEngine:
         if key == "pace_perf":
             pf_agg = (self._pf_metrics() or {}).get("pf_aggregates") or {}
             l600d = pf_agg.get("l600_delta_avg")
-            pf_line = (f"對基準差 {float(l600d):+.2f}s（{int(pf_agg.get('pf_run_count') or 0)} 場樣本，負數=快過基準）"
+            pf_line = (f"對基準差（近期加權）{float(l600d):+.2f}s（{int(pf_agg.get('pf_run_count') or 0)} 場樣本，負數=快過基準）"
                        if l600d is not None else "")
             # 逐項計法已喺評分構成 detail 攤開，錨點只留原始證據
             return self._anchor_lines(
@@ -4552,18 +4552,18 @@ class RacingEngine:
         gap = float(value) - mean          # >0 = 慢過場均（l600_delta 越細越快）
         rel = "慢過" if gap > 0 else "快過"
         if source == "sportsbet_race_context":
-            note = (f"近{detail['runs']}場所在賽事嘅 L600 平均{direction}基準 "
+            note = (f"近{detail['runs']}場所在賽事嘅 L600 近期加權平均{direction}基準 "
                     f"{abs(float(value)):.2f} 秒；同場平均{field_dir}基準 {abs(mean):.2f} 秒，"
                     f"即係其往績速度環境{rel}今場馬匹平均 {abs(gap):.2f} 秒；"
                     "Sportsbet 數值係 race-level，唔係本駒個體 split，"
                     f"L600 環境分 {score:.1f}。")
         elif source.startswith("racenet_"):
-            note = (f"近{detail['runs']}場逐駒 L600 benchmark 平均{direction}基準 "
+            note = (f"近{detail['runs']}場逐駒 L600 benchmark 近期加權平均{direction}基準 "
                     f"{abs(float(value)):.2f} 秒；同場平均{field_dir}基準 {abs(mean):.2f} 秒，"
                     f"即係本駒個體 benchmark {rel}場均 {abs(gap):.2f} 秒；"
                     f"L600 環境分 {score:.1f}。")
         else:
-            note = (f"近{detail['runs']}場 L600 平均{direction}基準 {abs(float(value)):.2f} 秒；"
+            note = (f"近{detail['runs']}場 L600 近期加權平均{direction}基準 {abs(float(value)):.2f} 秒；"
                     f"來源語意未明，唔當作逐駒實測；L600 環境分 {score:.1f}。")
         if detail["trial_runs"]:
             note += (f" 來源含 {detail['trial_runs']} 課試閘、{detail['formal_runs']} 場正式賽；"
@@ -5613,6 +5613,8 @@ _PF_SPLIT_KEYS = (
 # 秒 / 馬位。教科書常數（賽馬通用 ≈0.17s），**唔係喺呢個語料擬合出嚟**，
 # 所以唔算用 holdout 調參。
 _SEC_PER_LENGTH = 0.17
+# L600 環境分逐仗近期權重（EXP-20261101-30 R）；EXP-20261016-01 D3c 原值，冇由數據 fit。
+L600_RECENCY_DECAY = 0.8
 
 
 def _pf_aggregates(runs: list[dict], source: str) -> dict:
@@ -5664,6 +5666,18 @@ def _pf_aggregates(runs: list[dict], source: str) -> dict:
         if samples:
             aggregates[f"{key}_avg"] = round(sum(samples) / len(samples), 3)
             aggregates[f"{key}_best"] = round(min(samples), 3)
+    # ── L600 近期加權（EXP-20261101-30 R，用戶 2026-11-01 決定上線）──────
+    # 最近一仗權重 1，之後每仗 ×0.8（k 按 run_date 由新到舊、計晒全部傳入嘅行）。
+    # leaf AUC +0.0053 [+0.0022,+0.0084]；排名冇顯著改善（v3 Gold −0.18pp、
+    # Good +0.28pp，CI 跨零；§8 both_arms_reject）—— 用戶接受 Good 升 Gold 跌。
+    # 只覆蓋 L600 環境分用嘅兩個 `_avg`；場均／場內 SD 經 field summary 讀同一個值。
+    ordered = sorted(runs, key=lambda run: str(run.get("run_date") or ""), reverse=True)
+    for key in ("l600_delta", "own_l600_delta"):
+        weighted = [(L600_RECENCY_DECAY ** k, run[key])
+                    for k, run in enumerate(ordered) if run.get(key) is not None]
+        if weighted:
+            aggregates[f"{key}_avg"] = round(
+                sum(w * float(v) for w, v in weighted) / sum(w for w, _ in weighted), 3)
     tempo = values("tempo_qrank")
     if tempo:
         aggregates["tempo_qrank_avg"] = round(sum(tempo) / len(tempo), 4)
