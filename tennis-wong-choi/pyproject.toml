@@ -26,6 +26,9 @@ tennis-wc = "tennis_wc.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+"tennis_wc.research_kernel" = ["slam_rules.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
