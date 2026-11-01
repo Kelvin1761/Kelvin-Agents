@@ -4,7 +4,8 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
-| [EXP-20261101-30](EXP-20261101-30-au-l600-recency-distance-results.md) | 2026-11-01 | AU | L600 環境分聚合：近期加權 0.8^k（R）／路程相近度（P）／兩樣（RP），用戶問「速度應唔應該好似狀態咁近期加權」 | **REJECT ×3**：R leaf AUC +0.0053 [+0.0022,+0.0084] 重現 D3c，但 v3 Gold −0.18pp、§8 both_arms_reject；P leaf 都冇改善；RP top3@5 CI 全負。Trend 斜率單獨 AUC 0.520。現行平均保留，冇上線 |
+| [EXP-20261101-31](EXP-20261101-31-au-l600-pit-standard-results.md) | 2026-11-01 | AU | L600 標準由手寫表（36 場地、冇地況；59% 賽事後備 +0.82 秒、大爛地 +1.98 秒）改為 point-in-time 情境標準（S）／冇同日修正（S0） | **REJECT ×2**：leaf AUC S +0.0072 [+0.0009,+0.0133]，但 v3 Gold −0.31pp、Good −0.52pp；§8 refit Gold −1.03pp CI 全負；S0 首選 $1–3 Gold CI 全負。速度分同近績／場地 leaf 重疊升（ρ 0.300→0.336、0.070→0.115）。舊表保留 |
+| [EXP-20261101-30](EXP-20261101-30-au-l600-recency-distance-results.md) | 2026-11-01 | AU | L600 環境分聚合：近期加權 0.8^k（R）／路程相近度（P）／兩樣（RP），用戶問「速度應唔應該好似狀態咁近期加權」 | **REJECT ×3**：R leaf AUC +0.0053 [+0.0022,+0.0084] 重現 D3c，但 v3 Gold −0.18pp、§8 both_arms_reject；P leaf 都冇改善；RP top3@5 CI 全負。Trend 斜率單獨 AUC 0.520。**R 其後用戶決定上線**（[ship](EXP-20261101-30-au-l600-recency-ship.md)，`1c7e1794`，600 場 forward 監察） |
 | [EXP-20261101-22](EXP-20261101-22-tennis-rule-aware-kernel-protocol.md) | 2026-11-01 | Tennis | F02 point/rule kernel：明示年份／決勝盤規則，重用已審計oracle | **來源及負例已核對／未接線**：現役7–6不符合WB2019決勝盤或advantage規則；255 comparisons事前固定但未跑，不宣稱準確度或promotion |
 | [EXP-20261101-21](EXP-20261101-21-tennis-ranking-warning-attribution.md) | 2026-11-01 | Tennis | fresh valid published ranking 不應掛棄用來源的 warning | **研究候選／未部署**：26,272 玩家所選值/ID/date 零改動，1,445 個 warning 另歸屬並保留 3,029 rejection；46 針對測試過，full gate／下游判決待驗證，無準確率結論 |
 | [EXP-20261101-20](EXP-20261101-20-tennis-historical-source-readers.md) | 2026-11-01 | Tennis | 同一完整來源核對兩個歷史讀取器，錯 event 不補位 | **來源正確性**：124 日 earliest 84014→83126（扣起888行／84場）；6585 close match 中扣起104。保留行相同，無準確率／ROI結論；其他讀取器仍待驗證 |
