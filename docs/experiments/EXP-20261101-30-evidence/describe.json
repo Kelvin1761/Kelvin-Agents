@@ -1,0 +1,43 @@
+{
+ "replica_gaps": {
+  "pace_figure_score": 0.0,
+  "ability": 9.999999999621423e-05,
+  "rows_gt_1e-3": 0,
+  "rows": 31246
+ },
+ "races": 3246,
+ "leaf_auc": {
+  "R": {
+   "delta": 0.00527,
+   "ci": [
+    0.00217,
+    0.0084
+   ],
+   "p": 0.002
+  },
+  "P": {
+   "delta": 0.00047,
+   "ci": [
+    -0.00221,
+    0.00318
+   ],
+   "p": 0.742
+  },
+  "RP": {
+   "delta": 0.00344,
+   "ci": [
+    -0.00025,
+    0.00697
+   ],
+   "p": 0.071
+  },
+  "base_level": 0.60233
+ },
+ "trend_slope_auc": 0.52032,
+ "trend_coverage": 0.8248,
+ "races_top3_order_changed": {
+  "R": 628,
+  "P": 508,
+  "RP": 800
+ }
+}
