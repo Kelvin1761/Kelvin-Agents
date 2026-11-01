@@ -345,7 +345,7 @@ def write_csv(rows, filepath):
 def main():
     parser = argparse.ArgumentParser(description="NBA ML Dataset Builder V2")
     parser.add_argument("--skip-fetch", action="store_true",
-                        help="Skip fetching Results_Brief from nba_api")
+                        help="Skip fetching Results_Brief (ESPN)")
     parser.add_argument("--skip-verify", action="store_true",
                         help="Deprecated compatibility flag; mandatory source/Final validation is never skipped")
     parser.add_argument("--output-dir", required=True, help="New dataset directory; existing outputs are never overwritten")

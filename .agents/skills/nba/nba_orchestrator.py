@@ -11,7 +11,7 @@ Unified orchestrator merging Skills V2 pipeline + Scripts V9 features + AU NEXT_
 
 Pipeline:
   Phase 0:  claw_sportsbet_odds.py  → Sportsbet Odds JSON
-  Phase 1A: nba_extractor.py        → nba_game_data_{TAG}.json (L10 from nba_api)
+  Phase 1A: nba_extractor.py        → nba_game_data_{TAG}.json (L10 from ESPN)
   Phase 1B: generate_nba_reports.py → Game_{TAG}_Full_Analysis.md (pre-filled skeleton)
   Phase 2:  LLM Analyst fills [FILL] fields (if any)
   Phase 3:  generate_nba_sgm_reports.py → Master SGM + Banker reports
@@ -505,7 +505,7 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
 
         if not extractor_ok or not os.path.exists(extractor_json):
             print(f"❌ [{prefix}] nba_extractor.py 失敗！無 L10 數據。")
-            print(f"   可能原因: nba_api 未安裝 / API 限流 / ESPN 日期轉換問題")
+            print(f"   可能原因: ESPN 唔通／熔斷中 / ESPN 日期轉換問題")
             print(f"   ⛔ 跳過此賽事 — 冇真實 L10 gamelog 不進行分析。")
             return False
 
@@ -806,7 +806,7 @@ def main():
     # ── Per-Game Pipeline ──
     results = {"passed": [], "failed": [], "waiting": []}
 
-    # ⚠️ 逐場串行跑會超時：extractor 每場 ~6.5 分鐘（nba_api 逐個 call 之間 sleep
+    # ⚠️ 逐場串行跑會超時：extractor 每場 ~6.5 分鐘（舊 nba_api 逐個 call 之間 sleep
     # 限流，大部分時間係等），7 場 slate 2026-10-26 要 61 分鐘，撞正 scheduler 嘅
     # 3600s 上限（最後一場 20:01:15 先完，limit 20:00:03）。各場只寫自己個
     # `*_{tag}.*` 檔，互不相干，所以用細 pool 並行。結果仍按場次次序收集。
