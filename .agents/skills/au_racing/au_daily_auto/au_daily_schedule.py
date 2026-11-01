@@ -2875,6 +2875,42 @@ def market_odds_from_formguide(folder: Path, race_no: int) -> dict[int, str]:
     return out
 
 
+def confirm_unchanged_going(folder: Path, going: str) -> list[int]:
+    """早更核實咗場地冇變 → 照樣喺 Logic 寫 `going_refresh` audit，唔重評分。
+
+    2026-11-01 Albany：早更重抓七場全部 Soft 5、同晚更一樣，行咗「unchanged」
+    路徑；而 audit 只喺重評分（`au_auto_orchestrator --going`）先寫，於是體檢
+    報「going_refresh audit 缺 R1-7」。其餘場次係因為有退出馬先順手寫到。
+    場地同存檔一樣 = 評分唔會變，所以只補 audit，schema 同 `apply_going_refresh` 一致。
+    """
+    from datetime import timezone
+    applied_at = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    confirmed: list[int] = []
+    for path in sorted(folder.glob("Race_*_Logic.json")):
+        m = re.search(r"Race_(\d+)_Logic\.json$", path.name)
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        race = data.get("race_analysis")
+        if not m or not isinstance(race, dict):
+            continue
+        previous = str(race.get("going") or "").strip()
+        # 只核實「一樣」嘅場次；唔同嘅一定要經重評分路徑，唔可以喺度靜靜改。
+        if normalise_going(previous) != going:
+            continue
+        race["going_refresh"] = {
+            "previous": previous, "applied": previous,
+            "changed": False, "family_changed": False,
+            "applied_at": applied_at, "rescored": False,
+        }
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+        os.replace(tmp, path)
+        confirmed.append(int(m.group(1)))
+    return confirmed
+
+
 def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
     stored = stored_race_state(folder)
     if not stored:
@@ -2927,7 +2963,9 @@ def refresh_one_meeting(runlog: RunLog, folder: Path, api: dict) -> bool:
              "change": [sorted(stored_going), going]})
 
     if not changes and not going_moved:
-        runlog.meeting(folder.name, "unchanged", races=len(stored))
+        confirmed = confirm_unchanged_going(folder, going) if going else []
+        runlog.meeting(folder.name, "unchanged", races=len(stored),
+                       going_confirmed=going or None, audited=confirmed)
         return False
 
     # ⚠️ 兩條唔同嘅路，睇變動係邊一層：

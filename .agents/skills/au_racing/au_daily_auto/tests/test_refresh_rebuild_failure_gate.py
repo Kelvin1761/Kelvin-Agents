@@ -111,3 +111,28 @@ def test_actual_refresh_and_rebuild_chain_propagates_failure(tmp_path):
     assert not any(e[0] == 'meeting' and e[1][1] == 'rescored' for e in log.events)
     after_snapshot.assert_not_called()
     assert old.read_bytes() == original
+
+
+def test_unchanged_meeting_still_records_going_audit(tmp_path):
+    # 2026-11-01 Albany：早更核實場地冇變，冇重評分，但體檢要見到 audit。
+    folder = tmp_path / '2026-08-05 Fixture Race 1-2'
+    folder.mkdir()
+    for rno, going in ((1, 'Soft 5'), (2, 'Good 4')):
+        (folder / f'Race_{rno}_Logic.json').write_text(json.dumps(
+            {'race_analysis': {'race_number': rno, 'going': going}, 'horses': {}}))
+    log = RunLog()
+    stored = {1: {'going': 'Soft 5', 'field': []}, 2: {'going': 'Good 4', 'field': []}}
+    with patch.object(S, 'stored_race_state', return_value=stored), \
+         patch.object(S, 'diff_race_state', return_value={}), \
+         patch.object(S, 'mapping_key_for', return_value='fixture'), \
+         patch.object(S, 'market_drift'), \
+         patch.object(S, 'record_odds_from_cache', return_value=2), \
+         patch.object(S, 'run_cmd') as commands, \
+         patch.object(S, 'live_race_state', return_value=({1: {}}, 'Soft 5')):
+        assert S.refresh_one_meeting(log, folder, {}) is False
+    commands.assert_not_called()
+    audit = json.loads((folder / 'Race_1_Logic.json').read_text())['race_analysis']['going_refresh']
+    assert audit['applied'] == 'Soft 5' and audit['changed'] is False and audit['rescored'] is False
+    # 存檔場地同核實值唔一樣嘅場次唔准靜靜蓋，要留俾重評分路徑。
+    assert 'going_refresh' not in json.loads((folder / 'Race_2_Logic.json').read_text())['race_analysis']
+    assert ('meeting', (folder.name, 'unchanged')) in [(e[0], e[1]) for e in log.events]
