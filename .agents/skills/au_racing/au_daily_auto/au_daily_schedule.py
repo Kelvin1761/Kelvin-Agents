@@ -1693,6 +1693,85 @@ def classify_unclaimed(target: str, first_start: int | None,
 
 
 # ── 步驟 2：分析下一個賽日 ─────────────────────────────────────────────────
+AU_VENUE_TIERS = DASHBOARD_DIR / "backend" / "services" / "au_venue_tiers.json"
+TIER_ORDER = {"metro": 0, "provincial": 1, "country": 2}
+_TIER_TABLE: dict[str, str] | None = None
+
+
+def venue_tier(venue: str) -> str:
+    """都會／省級／鄉鎮，同 dashboard 用同一份表（au_venue_tiers.json）。
+
+    Key 係引擎嘅 `_track_geometry_key`（連 alias，例如 Randwick-Kensington →
+    kensington）。表讀唔到就全部當鄉鎮 —— 次序變返原本咁，唔會令分析失敗。
+    """
+    global _TIER_TABLE
+    if _TIER_TABLE is None:
+        table: dict[str, str] = {}
+        try:
+            raw = json.loads(AU_VENUE_TIERS.read_text(encoding="utf-8"))
+            for tier, field in (("provincial", "provincial"), ("metro", "metropolitan")):
+                for keys in (raw.get(field) or {}).values():
+                    table.update(dict.fromkeys(keys, tier))
+        except (OSError, ValueError) as exc:
+            log(f"⚠️ 讀唔到場地分級（{type(exc).__name__}: {exc}）—— 分析次序唔分級")
+        _TIER_TABLE = table
+    slug = re.sub(r"[^a-z0-9]+", "-", str(venue or "").lower()).strip("-")
+    try:
+        scripts = str(AU_SKILL / "au_wong_choi_auto" / "scripts")
+        if scripts not in sys.path:
+            sys.path.insert(0, scripts)
+        from au_racing_engine.engine_core import TRACK_GEOMETRY_ALIASES
+        slug = TRACK_GEOMETRY_ALIASES.get(slug, slug)
+    except Exception:  # noqa: BLE001 - alias table is a nicety, not a requirement
+        pass
+    return _TIER_TABLE.get(slug, "country")
+
+
+def tier_label(venue: str) -> str:
+    return {"metro": "都會", "provincial": "省級"}.get(venue_tier(venue), "鄉鎮")
+
+
+def priority_order(planned: list[dict], first_starts: dict[str, int]) -> list[dict]:
+    """都會先、省級次、鄉鎮最後；同級就早開跑嗰個先。
+
+    Kelvin 主要睇都會場（2026-11-01）。冷卻窗大約只夠抽一個場次，所以排頭位
+    = 最大機會今晚做得成；以前按 slug 字母排，星期六 Randwick 可以排喺七個
+    鄉鎮場後面。重試輪次仍然用 `rotate_for_fairness`，一個卡死嘅場次唔會餓死後面。
+    """
+    def key(plan: dict) -> tuple:
+        return (TIER_ORDER.get(venue_tier(plan["venue"]), 2),
+                first_starts.get(plan["venue"]) or float("inf"), plan["venue"])
+    return sorted(planned, key=key)
+
+
+ALERT_TITLE = "🏇 AU 分析"
+
+
+def alert_now(runlog: RunLog, text: str) -> None:
+    """場次做唔成就**即刻**推，唔等成個 run 完先喺總結度講。
+
+    2026-11-01 Kelvin：「唔好淨係 skip 咗，等晒全部完先話我知」—— 晚更可以
+    冷卻六輪、行十幾個鐘，總結到嘅時候已經冇得補救。⚠️ 推送失敗唔可以令
+    run 失敗；`--no-notify` 之下唔出聲（同 `RunLog.notify` 一樣）。
+    """
+    data = getattr(runlog, "data", None)
+    if isinstance(data, dict):
+        data.setdefault("alerts", []).append({"at": stamp(), "text": text})
+    log(f"🚨 {text}")
+    if hasattr(runlog, "flush"):
+        runlog.flush()
+    if not getattr(runlog, "notify_enabled", True):
+        return
+    try:
+        sys.path.insert(0, str(HERE))
+        import au_notify
+
+        sent = au_notify.push(f"{ALERT_TITLE}\n\n{text}")
+        log(f"[alert] {'; '.join(sent) or '冇推送渠道'}")
+    except Exception as exc:  # noqa: BLE001
+        log(f"[alert] 送唔出（{type(exc).__name__}: {exc}）—— run 結果不受影響")
+
+
 def step_analyse_next_day(runlog: RunLog, review_day: date, *,
                           max_meetings: int = 0, rounds: int = 1,
                           round_gap: int = 900,
@@ -1785,8 +1864,14 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
                 detail="Sportsbet API 有呢個場次，但 sportsbetform 索引頁冇列出 —— "
                        "未有任何分析" + ("；之後每個排程會再試" if status == "awaiting_source"
                                           else "；場次已開跑，唔會再有賽前分析"))
+        alert_now(runlog, f"❌ {target}：{len(unclaimed)} 個場次冇分析（sportsbetform 索引頁冇列出）\n"
+                          + "\n".join(f"· {v}（{tier_label(v)}）" for v in unclaimed)
+                          + "\n之後每個排程會再試；場次開跑咗就唔會再有賽前分析")
     if not planned:
         raise TemporaryFailure(f"{target} 索引頁一個澳洲場次都配唔到")
+    planned = priority_order(planned, first_starts)
+    runlog.step("analyse-next-day", "order", race_day=target,
+                meetings=[f"{p['venue']}（{tier_label(p['venue'])}）" for p in planned])
     if max_meetings and len(planned) > max_meetings:
         dropped = [p["venue"] for p in planned[max_meetings:]]
         runlog.warn(f"--max-meetings={max_meetings}：略過 {len(dropped)} 個場次 "
@@ -1809,9 +1894,13 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
     remaining = list(planned)
     dry_rounds = 0
     gap = round_gap
+    # 做唔成嘅場次即刻推，每輪最多一條：新延誤、補返各一次，放棄喺最後一次。
+    delayed: dict[str, str] = {}
     for round_no in range(1, max(1, rounds) + 1):
         if not remaining:
             break
+        newly_delayed: list[str] = []
+        recovered: list[str] = []
         if round_no > 1:
             runlog.step("analyse-next-day", "cooldown", round_no=round_no,
                         sleep_seconds=gap, dry_rounds=dry_rounds,
@@ -1827,11 +1916,18 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
                 runlog.meeting(f"{target} {plan['venue']}", "pending_extraction",
                                detail=str(exc), round_no=round_no)
                 still.append(plan)
+                if plan["venue"] not in delayed:
+                    delayed[plan["venue"]] = str(exc)
+                    newly_delayed.append(plan["venue"])
                 continue
             except Exception as exc:  # noqa: BLE001
                 runlog.meeting(f"{target} {plan['venue']}", "failed",
                                detail=f"{type(exc).__name__}: {exc}")
                 runlog.error("analyse-next-day", f"{plan['venue']}: {exc}")
+                delayed.pop(plan["venue"], None)
+                alert_now(runlog, f"❌ {target} {plan['venue']}（{tier_label(plan['venue'])}）"
+                                  f"分析失敗，今次唔會再試：\n{type(exc).__name__}: "
+                                  f"{str(exc)[:300]}")
                 continue
             progress = progress or gained
             record_race_start_times(runlog, folder, plan["venue"], race_starts)
@@ -1846,6 +1942,12 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
             if not complete:
                 # 半份抽取 —— 留喺清單，下一輪補齊剩低嘅場次。
                 still.append(plan)
+                if plan["venue"] not in delayed:
+                    delayed[plan["venue"]] = "只抽到部分場次"
+                    newly_delayed.append(plan["venue"])
+            elif plan["venue"] in delayed:
+                recovered.append(plan["venue"])
+                delayed.pop(plan["venue"])
         # ⚠️ 「進展」要係**真嘅多咗場次**，唔係「冇拋 exception」。三個版本嘅坑：
         #   1. `not analysed`      —— 第一輪抽到一個之後就永遠唔 fire。
         #   2. len(still)==len(remaining) —— 半份場次留喺清單，個數一樣但有進展。
@@ -1858,6 +1960,14 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
         else:
             dry_rounds = 0
             gap = round_gap
+        last_round = round_no >= max(1, rounds) or dry_rounds >= 3
+        if newly_delayed and not last_round:
+            alert_now(runlog, f"⏳ {target}：{len(newly_delayed)} 個場次暫時做唔到，"
+                              f"約 {max(1, gap // 60)} 分鐘後再試\n"
+                              + "\n".join(f"· {v}（{tier_label(v)}）：{delayed[v][:160]}"
+                                           for v in newly_delayed))
+        if recovered:
+            alert_now(runlog, f"✅ {target}：補返 " + "、".join(recovered))
         remaining = still
         remaining = rotate_for_fairness(remaining)
         if dry_rounds >= 3:
@@ -1868,6 +1978,10 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
         runlog.step("analyse-next-day", "still-pending",
                     meetings=[p["venue"] for p in remaining],
                     detail="下一次排程會續，已抽嘅場次全部 cache 命中唔會重打")
+        alert_now(runlog, f"❌ {target}：{len(remaining)} 個場次今次做唔完，交下一次排程\n"
+                          + "\n".join(f"· {p['venue']}（{tier_label(p['venue'])}）："
+                                       f"{delayed.get(p['venue'], '未完成')[:160]}"
+                                       for p in remaining))
     runlog.step("analyse-next-day", "done", race_day=target,
                 planned=len(planned), analysed=len(analysed),
                 pending=len(remaining))
@@ -3211,6 +3325,7 @@ def unpublished_local_meetings(payload: dict, already: list[Path],
 def reject_publication(runlog: RunLog, folder: Path, reason: str) -> None:
     runlog.data.setdefault("publication_rejected", {})[folder.name] = reason
     runlog.error("publication-quarantine", f"{folder.name}: {reason}")
+    alert_now(runlog, f"❌ {folder.name} 分析做好但上唔到 dashboard：{reason[:300]}")
 
 
 def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
@@ -4076,6 +4191,8 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
                 analysed = step_analyse_next_day(runlog, review_day, **kwargs)
             except TemporaryFailure as exc:
                 runlog.error("analyse-next-day", f"暫時性：{exc}")
+                alert_now(runlog, f"❌ 下一個賽日成日做唔到分析：{str(exc)[:300]}\n"
+                                  f"早更 10:00 會再試")
                 temporary = True
 
         if publisher is not None:
