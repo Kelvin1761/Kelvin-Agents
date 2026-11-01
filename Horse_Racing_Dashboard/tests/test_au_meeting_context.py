@@ -109,6 +109,11 @@ class MeetingContextTests(unittest.TestCase):
         self.assertEqual(data["meetings"][0]["tier"], "metro")
         self.assertNotIn("tier", data["meetings"][1])
 
+    def test_a_corrected_venue_table_reaches_published_meetings(self):
+        data = {"meetings": [{"venue": "Randwick", "region": "au", "state": "", "tier": "country"}]}
+        generate_static._ensure_au_venue_profiles(data)
+        self.assertEqual((data["meetings"][0]["state"], data["meetings"][0]["tier"]), ("NSW", "metro"))
+
 
 if __name__ == "__main__":
     unittest.main()

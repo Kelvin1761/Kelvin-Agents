@@ -494,11 +494,12 @@ def _attach_meeting_context(meeting, meeting_data, races_data):
 
 
 def _ensure_au_venue_profiles(data):
-    """Tier depends only on the venue, so every build fills meetings that were
-    merged before tiers existed; start times need the folder and are not guessed."""
+    """State and tier depend only on the venue, so every build recomputes them:
+    a fix to au_venue_tiers.json reaches meetings already published (2026-11-01:
+    Naracoorte kept an empty state after SA gained it). Start times need the
+    folder and are not guessed."""
     for meeting_data in data.get("meetings") or []:
-        if (str(meeting_data.get("region") or "").lower() in {"au", "australia"}
-                and "tier" not in meeting_data):
+        if str(meeting_data.get("region") or "").lower() in {"au", "australia"}:
             meeting_data.update(au_venue_profile(meeting_data.get("venue")))
     return data
 
