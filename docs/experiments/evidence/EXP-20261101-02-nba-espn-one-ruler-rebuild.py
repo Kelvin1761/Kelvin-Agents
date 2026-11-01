@@ -85,12 +85,16 @@ for case in manifest["cases"]:
     package = copy.deepcopy(original)
     package["team_stats"] = team_tbl
     package["key_defenders"], package["team_dvp"] = {}, {}
-    seen = matched = 0
+    seen = matched = ids_resolved = 0
     for team, players in package["players"].items():
         for player in players:
             seen += 1
             key = player_name_key(player["name"])
-            pid = int(player["player_id"])
+            # The 2026 corpus packages carry no player_id: resolve it by name with
+            # the same offline index the ESPN tables use; unresolved names get an
+            # ESPN game log but no advanced row (never a guess).
+            pid = player.get("player_id") or index.get(key) or f"name:{key}"
+            ids_resolved += not str(pid).startswith("name:")
             espn = espn_ids.get((X.canonical_team_abbr(team), key))
             if espn is None and len(by_name.get(key, ())) == 1:
                 espn = next(iter(by_name[key]))
@@ -98,7 +102,7 @@ for case in manifest["cases"]:
                 player.pop(field, None)
             player["advanced"] = adv_tbl.get(pid, {})
             original_adv = next((p.get("advanced") for p in original["players"][team]
-                                 if p.get("player_id") == player["player_id"]), None)
+                                 if player_name_key(p.get("name", "")) == key), None)
             if original_adv and player["advanced"]:
                 advanced_pairs[(date_to, pid)] = (original_adv, player["advanced"])
             player["position"] = positions.get(espn, "") if espn else ""
@@ -126,6 +130,7 @@ for case in manifest["cases"]:
     base = extract_game_data(game_path, odds_path=odds_path, provenance=prov)
     cand = extract_game_data(target, odds_path=odds_path, provenance=prov)
     coverage.append({"case": case["case_id"], "players": seen, "espn_gamelog": matched,
+                     "nba_id_resolved": ids_resolved,
                      "stat_source": package["meta"]["stat_source"],
                      "baseline_rows": len(base), "espn_rows": len(cand)})
     rows_nb += base
