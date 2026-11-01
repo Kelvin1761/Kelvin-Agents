@@ -63,6 +63,10 @@ Mac 內置碟淨 ~15GB。2026-10-12 一個 AU 消融實驗喺 `/private/tmp` 抄
   否則個 `/Volumes/...` 路徑會靜靜寫返落 Mac 內置碟。
 - 消融唔好逐個 arm 抄一份完整語料；一個 arm 跑完、結果寫入之後，就刪咗嗰份複本先開下一個。
 - 開大型實驗之前先 `df -h /System/Volumes/Data`；**少過 10GB 就唔好開**。
+- `~/WongChoiData` 入面 3 日以上嘅檔，每晚 durability job 會轉做 APFS 透明壓縮
+  （`.agents/scripts/compress_data_root.py`）。路徑、內容、mtime 唔變，讀檔照讀；
+  `du` 睇到嘅係壓縮後大細，`st_size` 照舊。**唔好用 symlink 將資料根或
+  `_prediction_snapshots` 搬去外置碟** —— reader 全部寫死本機路徑，拔碟 = 靜靜讀空。
 
 ### commit 同 push
 

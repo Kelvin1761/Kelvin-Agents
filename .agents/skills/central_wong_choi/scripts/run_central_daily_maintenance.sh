@@ -27,4 +27,12 @@ cd "$PROJECT_ROOT"
 # 個 wrapper 會 ff** —— 其餘四個更新 code 全靠 AU 啱啱好有開工帶挈。AU 一停，
 # 佢哋就無限期跑舊 code 而冇任何嘢會投訴。失敗唔會阻開工（見個 script 頭）。
 /usr/bin/python3 "$PROJECT_ROOT/.agents/scripts/wongchoi_self_update.py" "$PROJECT_ROOT" || true
-exec /usr/bin/python3 "$SCRIPT_DIR/central_daily_maintenance.py"
+rc=0
+/usr/bin/python3 "$SCRIPT_DIR/central_daily_maintenance.py" || rc=$?
+
+# 備份做完先至壓縮：3 日以上嘅資料檔轉 APFS 透明壓縮（路徑、內容、mtime 唔變，
+# 讀檔 code 唔使改）。2026-11-01 內置碟淨 4.8GB —— snapshot 每次成份複製，
+# 一個月加 7GB。夠鐘就停、下次續做；失敗唔影響 durability 嘅退出碼。
+/usr/bin/python3 "$PROJECT_ROOT/.agents/scripts/compress_data_root.py" \
+  "$HOME/WongChoiData" --time-budget 1500 || true
+exit $rc

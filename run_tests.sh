@@ -34,6 +34,9 @@ if [ "$(uname -s)" = "Darwin" ] && [ -z "${WC_TEST_TMPDIR:-}" ]; then
   esac
 fi
 TEST_TEMP_PARENT="$(cd "$TEST_TEMP_PARENT" && pwd -P)" || exit 1
+# 失敗或者被中斷嘅 run 會留低 wct.*（見 cleanup_test_temp），之前冇人清：
+# 2026-11-01 搵到 134 份、2.6GB，一日加 60 幾份。一日以上嘅一定唔係跑緊嗰個。
+find "$TEST_TEMP_PARENT" -maxdepth 1 -type d -name 'wct.*' -mtime +0 -exec rm -rf {} + 2>/dev/null
 TEST_TEMP_ROOT="$(mktemp -d "$TEST_TEMP_PARENT/wct.XXXXXX")" || exit 1
 TEST_SUITE_NUMBER=0
 cleanup_test_temp() {
