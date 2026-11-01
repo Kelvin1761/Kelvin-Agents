@@ -17,6 +17,8 @@
 
 queue是有程序在等鎖，不是用戶未批准；用戶已授權自動發佈。不得人手重做另一份b184 release。若自動replay，驗證新SHA及`replayed_from`；若manifest過期，按AGENTS refresh流程處理。
 
+最新補充：排隊270秒後，main／runtime已到`10f664defe68a29e9689d2aa370bae6cc383d78e`。同一live session57993已自動replay，新候選`37df3367b71f`正重跑full gate，日誌為`/var/folders/h1/br6y1s5j0nb07gfb5rjqxk6r0000gn/T/wc-release-gate-logs/37df3367b71f-full-sdxc6hs9.log`。不要重啟舊b184流程；同一handle會返回最終automation結果。此時尚未證實新候選merge／activation。
+
 ## 證據位置及接續
 
 根：`/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-unified-20261028/kernel-f02-rules-20261101/`，含resolver-v1／point-input-feasibility-v1及v2／native-feature-current-20261101T072544Z。hash與完整方法見EXP-23／EXP-24；原生feature inventory仍129 records／127 bundle／0 verified feature predictions。
