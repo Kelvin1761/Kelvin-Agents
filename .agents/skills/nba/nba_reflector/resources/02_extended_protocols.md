@@ -127,8 +127,8 @@
   - `read_query` / `list_tables` — SQLite 歷史數據查詢(查等過往 Parlay 命中率、球員 Props 歷史表現)
   - `create_entities` / `create_relations` — 將覆盤發現寫入 Knowledge Graph(傷兵更新、防守效果、SIP 觸發模式)
 - **Scripts (v2.2.0 — P22 Python-First)**:
-  - `scripts/fetch_nba_results.py` — **主引擎** Box Score 擷取 (nba_api ScoreboardV3 + BoxScoreTraditionalV3)
-  - `scripts/fetch_nba_pbp.py` — Play-by-Play 擷取 (nba_api PlayByPlayV3)（條件觸發）
+  - `scripts/fetch_nba_results.py` — **主引擎** Box Score 擷取（ESPN scoreboard + summary，唯一來源）
+  - `scripts/fetch_nba_pbp.py` — Play-by-Play 擷取（ESPN play-by-play）（條件觸發）
   - `scripts/verify_props_hits.py` — Props 命中自動驗證器（每次覆盤強制執行）
 - **Resources**:
   - `resources/01_report_template.md` — 覆盤報告格式 + SIP Changelog

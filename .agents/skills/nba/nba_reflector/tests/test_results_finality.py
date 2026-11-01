@@ -114,7 +114,7 @@ def test_espn_abbreviations_are_canonicalised():
 
 # ── process_game: stale scoreboard + ESPN final ─────────────────────────────
 def test_stale_scoreboard_with_espn_final_gives_final_brief_with_provenance(monkeypatch):
-    monkeypatch.setattr(f, "fetch_boxscore", lambda game_id: box())
+    monkeypatch.setattr(f, "fetch_boxscore", lambda game_id, day=None: box())
     result = f.process_game(copy.deepcopy(STALE_GAME), boxscore_may_settle=False, espn=ESPN)
     assert result["status"] == "Final" and result["status_source"] == "espn"
     assert result["scoreboard_status_text"] == "3:00 pm ET"
@@ -123,14 +123,14 @@ def test_stale_scoreboard_with_espn_final_gives_final_brief_with_provenance(monk
 
 
 def test_stale_scoreboard_live_game_stays_non_final(monkeypatch):
-    monkeypatch.setattr(f, "fetch_boxscore", lambda game_id: box(minutes="231:30"))
+    monkeypatch.setattr(f, "fetch_boxscore", lambda game_id, day=None: box(minutes="231:30"))
     result = f.process_game(copy.deepcopy(STALE_GAME), boxscore_may_settle=False, espn=None)
     assert "final" not in result["status"].lower() and result["status_source"] == "unresolved"
     assert result["away"]["score"] is None
 
 
 def test_scoreboard_with_scores_is_untouched(monkeypatch):
-    monkeypatch.setattr(f, "fetch_boxscore", lambda game_id: box())
+    monkeypatch.setattr(f, "fetch_boxscore", lambda game_id, day=None: box())
     game = copy.deepcopy(STALE_GAME)
     game["gameStatusText"] = "Final"
     game["homeTeam"]["score"], game["awayTeam"]["score"] = 121, 113
@@ -140,7 +140,7 @@ def test_scoreboard_with_scores_is_untouched(monkeypatch):
 
 # ── the ledger now settles on such a brief (scratch ledger only) ─────────────
 def test_ledger_settles_legs_from_a_final_brief(tmp_path, monkeypatch):
-    monkeypatch.setattr(f, "fetch_boxscore", lambda game_id: box())
+    monkeypatch.setattr(f, "fetch_boxscore", lambda game_id, day=None: box())
     game = f.process_game(copy.deepcopy(STALE_GAME), boxscore_may_settle=False, espn=ESPN)
     brief = tmp_path / "Results_Brief_2026-10-20.json"
     brief.write_text(json.dumps({"_version": "RESULTS_BRIEF_V1", "games": [game]}), encoding="utf-8")
@@ -157,7 +157,7 @@ def test_ledger_settles_legs_from_a_final_brief(tmp_path, monkeypatch):
 
 
 def test_ledger_skips_a_non_final_brief(tmp_path, monkeypatch):
-    monkeypatch.setattr(f, "fetch_boxscore", lambda game_id: box(minutes="231:30"))
+    monkeypatch.setattr(f, "fetch_boxscore", lambda game_id, day=None: box(minutes="231:30"))
     game = f.process_game(copy.deepcopy(STALE_GAME), boxscore_may_settle=False, espn=None)
     brief = tmp_path / "Results_Brief_2026-10-20.json"
     brief.write_text(json.dumps({"_version": "RESULTS_BRIEF_V1", "games": [game]}), encoding="utf-8")
@@ -174,7 +174,7 @@ def test_incremental_cli_fetches_only_due_game_and_preserves_other_cached_finals
     brief.write_text(json.dumps(previous))
     games=[{'gameId':'due','awayTeam':{'teamTricode':'BOS'},'homeTeam':{'teamTricode':'NYK'}},
            {'gameId':'future','awayTeam':{'teamTricode':'GSW'},'homeTeam':{'teamTricode':'CLE'}}]
-    monkeypatch.setattr(f,'fetch_scoreboard',lambda day:games)
+    monkeypatch.setattr(f,"fetch_scoreboard",lambda day,events=None:games)
     monkeypatch.setattr(f,'fetch_espn_events',lambda day:([],True))
     calls=[]
     def process(game,**kwargs):
