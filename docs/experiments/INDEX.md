@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261101-44](EXP-20261101-44-tennis-source-split-and-te-retention.md) | 2026-11-01 | Tennis | source-owned Christian／Jumpei拆分proposal及TE原文可追溯性 | **唯讀／未apply**：4來源pairs／8視角＋2 mapping擬改，5 fixtures的引用擴到10 predictions／26 snapshots；全240146 TE history來源232766空／7380僅summary，先修未來raw保存，未量準確度 |
 | [EXP-20261101-29](EXP-20261101-29-tennis-recorded-history-clock.md) | 2026-11-01 | Tennis | immutable after-images 能否阻止身份修正倒填舊回測 | **研究投影器／未接 live**：28 新測試；424823 IDs 全量 row-flow，2025 cutoff 0、11-01 recorded4980／hold130全屬Challenger；132個Elo drift保留原值，固定修補／rollback反例不再倒填，未量準確度 |
 | [EXP-20261101-28](EXP-20261101-28-tennis-memory-identity-split.md) | 2026-11-01 | Tennis | memory-only 雙側 generation 修補及回退 | **研究機制／未接 live**：28 targeted tests；固定來源 pair apply 後仍僅 2 ACTIVE，可冪等回退；揭示舊 reader 可讀入 cutoff 後的身份修正，正式整合仍被阻擋，未量準確度 |
 | [EXP-20261101-27](EXP-20261101-27-tennis-source-owner-repair-readiness.md) | 2026-11-01 | Tennis | source-owned 身份修補能否直接重入現有 history API | **修補前置／未 apply**：628 行 current cluster 唯讀 capture；記憶體雙側 upsert 後 2→4 ACTIVE、舊行未退役；明列 proposal／collision／clock／rollback 合約，未量準確度 |

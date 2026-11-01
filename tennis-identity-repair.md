@@ -20,3 +20,5 @@
 開工free已約16GiB，上一階段磁碟阻擋不再適用；資料／身份／prediction lineage閘保持。新的當下snapshot只能支援未來可用性，不能回填歷史資格。
 
 下一步身份線索：`primary-identity-bridge-v1/`保存UTS `playerProfile?playerId=44614` 的 Christian Sigsgaard／DEN header，對上target19626的`composite/uts:44614`；ATP SY00頁可讀姓名但直接DOB等欄位仍動態placeholder，Jumpei H2H直接頁大部分亦是placeholder。這是部分獨立namespace／name證據，不是完整DOB、mapping／fixture closure或live apply授權；勿將搜尋節錄當完整原文。
+
+EXP-20261101-44已建立四個Christian來源pair／八視角＋兩個mapping的review-only proposal；五個fixtures的match scope有10 predictions／26 feature snapshots，未判受污染／改寫。78行TE查證暴露原文缺口，完整240146行TE的來源232766空、7380僅summary；現行runtime ingester相同。**下一步先修未來按日HTML／fetch時計保存及parse-failure留證，不能用重抓追認舊來源**，再完成persistent identity clock／collision／derived Elo遷移。原live fixture原文匯出被auto-review拒絕，安全替代只存引用counts／IDs／hashes，已完成彙總。
