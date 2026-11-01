@@ -58,3 +58,5 @@
 `downstream-warning-sensitivity-v2/result.json` SHA-256：`45ea62a55f4d45072887a3b47afb437acfc87886774ef9340a52a6a600f5bef3`。
 
 `downstream-warning-sensitivity-v2/all-observation-comparisons.jsonl.gz` SHA-256：`635e358bfe15211002adb234b68bf46c916164ca3b2178cd9192c108091b99d8`。
+
+**完整測試更新**：`./檢查.sh` 已全數通過，Tennis 989 passed。正式 immutable release gate 及 activation 仍需另查最終 manifest；未以此宣告已部署。
