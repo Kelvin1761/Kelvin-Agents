@@ -77,6 +77,13 @@ _HKJC_ROOT_RUNTIME_PATHS = frozenset(
     }
 )
 
+# NBA's ML prop predictor lives under the repo-level `.agents/scripts/nba_ml/`
+# and is imported at runtime by `generate_nba_reports.py`.  The directory is
+# NBA-only, so a prefix is safe here (unlike the HKJC files above, which sit
+# beside shared tooling).  Release b84d747c touched only this directory and
+# activated nothing, leaving the NBA scheduler on old code.
+_NBA_ROOT_RUNTIME_PREFIXES = (".agents/scripts/nba_ml/",)
+
 
 def _normalise(path: str) -> str:
     raw = path.replace("\\", "/")
@@ -172,6 +179,8 @@ def activation_plan(paths: Iterable[str]) -> dict:
         if lowered.startswith("tennis-wong-choi/"):
             domains.add("tennis")
         if ".agents/skills/nba/" in lowered:
+            domains.add("nba")
+        if lowered.startswith(_NBA_ROOT_RUNTIME_PREFIXES):
             domains.add("nba")
         if any(
             marker in lowered

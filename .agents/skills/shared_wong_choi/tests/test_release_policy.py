@@ -114,6 +114,47 @@ def test_activation_plan_routes_hkjc_root_runtime_files(path: str) -> None:
     assert plan["dashboard_deploy"] is False
 
 
+@pytest.mark.parametrize(
+    "path",
+    [
+        ".agents/scripts/nba_ml/nba_ml_features.py",
+        ".agents/scripts/nba_ml/nba_ml_predictor.py",
+        ".agents/scripts/nba_ml/train_nba_xgboost.py",
+    ],
+)
+def test_activation_plan_routes_nba_ml_root_runtime_files(path: str) -> None:
+    plan = activation_plan([path])
+
+    assert plan["production_sync_domains"] == ["nba"]
+    assert plan["dashboard_deploy"] is False
+
+
+def test_activation_plan_routes_b84d747c_scope_to_nba() -> None:
+    # The 2026-11-01 release that merged but synced nothing.
+    plan = activation_plan(
+        [
+            ".agents/scripts/nba_ml/build_nba_ml_dataset.py",
+            ".agents/scripts/nba_ml/nba_ml_features.py",
+            ".agents/scripts/nba_ml/nba_ml_predictor.py",
+            ".agents/scripts/nba_ml/train_nba_xgboost.py",
+            ".agents/skills/nba/nba_daily_auto/tests/test_nba_ml_temporal_contract.py",
+        ]
+    )
+
+    assert plan["production_sync_domains"] == ["nba"]
+
+
+def test_activation_plan_nba_ml_docs_and_tests_do_not_activate() -> None:
+    plan = activation_plan(
+        [
+            ".agents/scripts/nba_ml/README.md",
+            ".agents/scripts/nba_ml/tests/test_nba_ml_train_serve_parity.py",
+        ]
+    )
+
+    assert plan["production_sync_domains"] == []
+
+
 def test_activation_plan_does_not_guess_for_unlisted_root_script() -> None:
     plan = activation_plan([".agents/scripts/unrelated_utility.py"])
 
