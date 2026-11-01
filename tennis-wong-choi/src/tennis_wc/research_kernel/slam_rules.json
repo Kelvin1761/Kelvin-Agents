@@ -1,0 +1,36 @@
+{
+  "schema": "tennis-historical-slam-singles-rules/v1",
+  "scope": "2011-2024 adult main-draw singles only, matching the pinned P08 archive; other dates/events/draws UNKNOWN, never inherit modern rules",
+  "nondeciding_set": {"tiebreak_games": 6, "tiebreak_points": 7},
+  "deciding_set": {
+    "ausopen": [
+      {"first_year": 2011, "last_year": 2018, "tiebreak_games": null, "tiebreak_points": null},
+      {"first_year": 2019, "last_year": 2024, "tiebreak_games": 6, "tiebreak_points": 10}
+    ],
+    "frenchopen": [
+      {"first_year": 2011, "last_year": 2021, "tiebreak_games": null, "tiebreak_points": null},
+      {"first_year": 2022, "last_year": 2024, "tiebreak_games": 6, "tiebreak_points": 10}
+    ],
+    "wimbledon": [
+      {"first_year": 2011, "last_year": 2018, "tiebreak_games": null, "tiebreak_points": null},
+      {"first_year": 2019, "last_year": 2021, "tiebreak_games": 12, "tiebreak_points": 7},
+      {"first_year": 2022, "last_year": 2024, "tiebreak_games": 6, "tiebreak_points": 10}
+    ],
+    "usopen": [
+      {"first_year": 2011, "last_year": 2021, "tiebreak_games": 6, "tiebreak_points": 7},
+      {"first_year": 2022, "last_year": 2024, "tiebreak_games": 6, "tiebreak_points": 10}
+    ]
+  },
+  "best_of": {"ATP": 5, "WTA": 3},
+  "laws": "Advantage games: first to four points by two; sets first to six games by two except explicit tiebreak trigger; tiebreak first to target by two, server order1-2-2; next set first server is receiver of first tiebreak point",
+  "sources": [
+    {"url": "https://ausopen.com/articles/news/final-set-tiebreaks-australian-open-2019", "published": "2018-12-21", "supports": "AO stopped advantage final sets in2019; explicit main-draw maleBO5/femaleBO3, nonfinal7@6, final10@6"},
+    {"url": "https://www.wtatennis.com/news/1438560/wimbledon-announces-final-set-tiebreak-from-2019", "published": "2018-10-19", "supports": "AELTC announcement:2019 first deciding7@12, win by two; previous deciding advantage"},
+    {"url": "https://www.usopen.org/en_US/news/articles/2022-03-16/us_open_to_join_all_grand_slams_in_playing_10point_final_set_tiebreak.html", "published": "2022-03-16", "supports": "Grand Slam Board change startsRolandGarros2022;10@6 deciding singles, not a replacement match-tiebreak set"},
+    {"url": "https://www.usopen.org/en_US/news/articles/2020-09-02/the_us_open_introduced_the_tiebreak_set_50_years_ago_today.html", "published": "2020-09-02", "supports": "US Open pre2022 standard seven-point win-by-two tiebreak history"},
+    {"url": "https://ausopen.com/articles/news/guide-scoring-tennis", "supports": "Retrospective AO2019 and all-majors uniform law fromRolandGarros2022; distinguishes singles from doubles match-tiebreak"},
+    {"url": "https://www.itftennis.com/media/7221/2026-rules-of-tennis-english.pdf", "supports": "Rules5/6/7/14: game/set/match termination and service order; used for general point law, not historical event assignments"}
+  ],
+  "publication_clock_verified_for_data": false,
+  "production_changes": false
+}
