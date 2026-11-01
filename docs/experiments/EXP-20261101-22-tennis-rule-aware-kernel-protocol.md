@@ -1,6 +1,6 @@
 # EXP-20261101-22：F02 明示規則 point kernel 協議及語義負例
 
-狀態：官方來源及現役語義負例已核對；新 kernel 尚未實作／接線，255 個 probability comparisons 尚未執行。沒有改現役模型數學、正式判決規則或投注 family。
+狀態：研究 kernel 已實作，固定255個解析／獨立MC比較全部通過；沒有接入現役。tournament/year/draw resolver及整合影響驗收仍未完成，F02不能標全部完成。沒有改現役模型數學、正式判決規則或投注 family。
 
 ## 可重現的缺口
 
@@ -51,3 +51,31 @@ Advantage set需保存解析geometric tail及終局規律，不能截斷後假�
 `semantic-negative-control/protocol.json` SHA-256：`b8a590d25177c72cf46e309911d8b5e6ea600ff5c6a936fdbe9e4b02b4166807`。
 
 `semantic-negative-control/result.json` SHA-256：`e0fa0f663df758155b27805b568390b6f14f5f6b3cb9011c206a0a4bc551cce0`。
+
+## 執行結果（固定協議，非預測表現）
+
+研究程式位於 `tennis-wong-choi/src/tennis_wc/research_kernel/`，獨立 runner 為 `scripts/validate_rule_kernel_research.py`。reference.py逐byte沿用上述pinned oracle；新核心明示point probability與set rule，沒有從hold反推point skill。長盤尾部保存解析geometric分佈，不截斷後重新正規化。正式pricing沒有import此package。
+
+正式MC前另記RNG細節：單一NumPy default_rng seed20260826，按照runner固定case次序，每case順序十批10,000。事前細節、runner hash、Python／NumPy／SciPy版本、grid hash保存到metadata；此前只做DP檢查，未看MC結果。第一次DP探索結果保留於tmp，正式有metadata的DP v2及MC另外存檔。
+
+| 驗證 | 結果 |
+|---|---|
+| 針對性單元測試 | 18 passed（0.24秒） |
+| 解析DP固定grid | 255/255 invariants通過，source hash前後一致 |
+| 獨立MC | 255/255 simultaneous intervals包含DP；每case100,000，共25,500,000 trials，無失敗／丟棄case |
+| 耗時／peak RSS | DP各case計時合計0.038秒／102,449,152 bytes；MC20.090秒／98,385,920 bytes；RSS為各自process累積峰值，非每case獨立增量 |
+| repo gate | 原基線quick通過，AU三項稀疏欄位警告保留；完整gate由Central發佈流程執行，成功與否及確切SHA以immutable release manifest為準 |
+
+MC的game及tie-break使用自己的point/service轉移；set/match以局作抽樣單位，局勝率使用共同的解析hold公式，**不是整場逐point的完全獨立oracle**。game層另有三個point MC比較；這種有限獨立性不應寫成所有公式均獨立重建。未知年份、draw或賽事仍未有resolver可認證；本次測試只接受明示規則。
+
+永久證據目錄為上述 `point-rule-kernel-v1/validation-20261101/`，含dp/mc的metadata、逐case JSONL、完整result、MC前紀錄及全部研究source快照（378,027 bytes，12個被manifest追蹤的檔案）。
+
+- DP result SHA-256：`56f22dbeb55981136cea9a9a69c482033fbd4bd4f0cde6f24cce84ab56f50499`。
+- MC result SHA-256：`64e4e0dfca02dbdd6038897ab1f8f3a536395212a1cbf4d975db3f059cf01b39`。
+- artifact-manifest SHA-256：`a42c7ff12c389020c2d851f2ed0e49510b5a1d983c23c6711613d35f9065d72d`。
+
+重跑方式（在tennis-wong-choi目錄、每次指定新輸出目錄）：`PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src <venv-python> scripts/validate_rule_kernel_research.py --mode mc --output <new-directory>`；DP用`--mode dp`。本次interpreter為`/Users/imac/Antigravity-repo/tennis-wong-choi/.venv/bin/python`。
+
+結論維持`SYNTHETIC_CORRECTNESS_ONLY`。沒有LL/Brier／ROI比較，沒有新forward或model promotion，十五個REJECT_DEV均不變。
+
+發佈準備期間main已有其他AU／NBA更新，原工作分支的完整gate已明示取消，不能當成功紀錄。現有分支由5edea8c9快進4163b0e5後恢復exact-scope改動（無衝突），研究source hash前後不變；發佈流程必須對同步後版本重新完整檢查。

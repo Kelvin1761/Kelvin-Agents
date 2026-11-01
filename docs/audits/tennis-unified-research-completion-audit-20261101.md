@@ -31,7 +31,7 @@
 | C05 | 去重 | 保留舊重複／失敗設計排除，沒有重開救援 arm |
 | C06 | F05 | R/E/S/RE/RS/ES/RES 七個候選全部 REJECT_DEV |
 | C07 | F01 | MCP 品質／來源盤點完成；原固定窗 publication clock 未證實、training eligible 0，不自動接 feature |
-| C08 | F02 | 22 synthetic case 通過；legacy MC 與其同一 hold-ratio tie-break 近似相符；現役 point/year/tournament 規則映射未完成 |
+| C08 | F02 | 舊22 case只驗同一hold-ratio近似；新明示規則研究kernel的255個DP/MC比較及18測試通過（EXP-20261101-22）。未接現役，year/tournament/draw resolver與整合未完成 |
 | C09 | F10 | 暫停，沒有合格 serve/exposure 候選及完整 joint-market 合約 |
 | C10 | F00/F03/F09 | 多 book 歷史訓練／開發 ROI 研究已做；不挑最有利 book、不當 Sportsbet 可執行收益 |
 | C11 | F09 | HGB 對固定同特徵 logistic REJECT_DEV |
@@ -46,8 +46,8 @@
 
 ## 下一個可驗證步驟
 
-1. 完成排名警告歸屬候選的正式 gate；已驗證所有 26,272 玩家選取值/ID/date 不變及 259 保留輸入配對定價／decision/stake 不變。其 source receipt/date 正確性不等於所有 player identity 或完整預測可用性已認證。
-2. 按 F02 原要求先核對 runtime kernel 的真正 point-level tie-break 輸入及 tournament/year 映射，將「同近似相符」與「符合規則」分開；新 correctness work 不當獲利候選，也不與排名修正一起更改模型數學。
+1. 排名警告歸屬正式gate已通過，6b01f07f已部署；26,272 玩家選取值/ID/date不變及259保留輸入配對定價／decision/stake不變。其source receipt/date正確性不等於所有player identity或完整預測可用性已認證。
+2. F02明示規則研究kernel已通過固定255個DP/MC比較，現役仍用原kernel。下一步是按官方來源限定year/tournament/draw resolver，未知值明示unsupported，再做整合影響驗收；不因synthetic pass直接換正式模型或稱獲利候選。
 3. 在保持 frozen ruler 下繼續改善有直接原始證據的輸入／捕捉缺口。不得用改樣本窗、忽略 warning、選出已看結果的33行或移除低質 forecast 來製造 forward。
 4. 所有允許單項已被拒絕或依賴不足時，誠實保留拒絕／不確定；要達成實際準確率改善，仍需可重現、有來源資格及獨立比較證據，本文不將「研究已有結果」改寫為「模型已改善」。
 
