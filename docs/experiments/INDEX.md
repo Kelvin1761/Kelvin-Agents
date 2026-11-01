@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261101-32](EXP-20261101-32-au-l600-standard-absorbs-field-quality.md) | 2026-11-01 | AU | 點解 point-in-time L600 標準 leaf 準咗但排名差：場地標準係路面快慢定馬匹質素？ | **診斷**：同一匹馬跨場地估純路面效應，場地平均效應 SD 0.96 秒得 0.65 秒係路面；對獎金水平斜率 −1.72 秒／10 倍得 −0.42 係路面（被吸收部分相關 −0.88）。Flemington 標準快 1.81 秒其中 1.17 秒係好馬。按場地平均嘅標準抹走能力差異；下一步應該只除純路面效應 |
 | [EXP-20261101-31](EXP-20261101-31-au-l600-pit-standard-results.md) | 2026-11-01 | AU | L600 標準由手寫表（36 場地、冇地況；59% 賽事後備 +0.82 秒、大爛地 +1.98 秒）改為 point-in-time 情境標準（S）／冇同日修正（S0） | **REJECT ×2**：leaf AUC S +0.0072 [+0.0009,+0.0133]，但 v3 Gold −0.31pp、Good −0.52pp；§8 refit Gold −1.03pp CI 全負；S0 首選 $1–3 Gold CI 全負。速度分同近績／場地 leaf 重疊升（ρ 0.300→0.336、0.070→0.115）。舊表保留 |
 | [EXP-20261101-30](EXP-20261101-30-au-l600-recency-distance-results.md) | 2026-11-01 | AU | L600 環境分聚合：近期加權 0.8^k（R）／路程相近度（P）／兩樣（RP），用戶問「速度應唔應該好似狀態咁近期加權」 | **REJECT ×3**：R leaf AUC +0.0053 [+0.0022,+0.0084] 重現 D3c，但 v3 Gold −0.18pp、§8 both_arms_reject；P leaf 都冇改善；RP top3@5 CI 全負。Trend 斜率單獨 AUC 0.520。**R 其後用戶決定上線**（[ship](EXP-20261101-30-au-l600-recency-ship.md)，`1c7e1794`，600 場 forward 監察） |
 | [EXP-20261101-22](EXP-20261101-22-tennis-rule-aware-kernel-protocol.md) | 2026-11-01 | Tennis | F02 point/rule kernel：明示年份／決勝盤規則，重用已審計oracle | **來源及負例已核對／未接線**：現役7–6不符合WB2019決勝盤或advantage規則；255 comparisons事前固定但未跑，不宣稱準確度或promotion |

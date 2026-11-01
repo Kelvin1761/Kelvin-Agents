@@ -1,0 +1,171 @@
+{
+ "D1": {
+  "tracks": 112,
+  "runs": 87847,
+  "sd_pooled": 0.9632216068458823,
+  "sd_within": 0.6544339304062244,
+  "corr_pooled_within": 0.9030015675820422,
+  "slope_pooled_on_logprize": -1.7226771598311206,
+  "slope_within_on_logprize": -0.4217116188292525,
+  "slope_absorbed_on_logprize": -1.3009655410018681,
+  "corr_absorbed_logprize": -0.8842159467722105
+ },
+ "D1_extremes": [
+  {
+   "track": "Flemington",
+   "n": 1411,
+   "pooled": -1.8059634838624783,
+   "within": -0.6411536694783421,
+   "absorbed": -1.164809814384136,
+   "log_prize": 5.176091259055681,
+   "in_table": true
+  },
+  {
+   "track": "Randwick",
+   "n": 2222,
+   "pooled": -1.414550331711081,
+   "within": -0.3031822003209477,
+   "absorbed": -1.1113681313901334,
+   "log_prize": 5.204119982655925,
+   "in_table": true
+  },
+  {
+   "track": "Caulfield",
+   "n": 2204,
+   "pooled": -1.0131642176320705,
+   "within": 0.07602565216016642,
+   "absorbed": -1.0891898697922369,
+   "log_prize": 5.113943352306837,
+   "in_table": true
+  },
+  {
+   "track": "Rosehill",
+   "n": 1900,
+   "pooled": -1.4430514930017875,
+   "within": -0.42844180919199865,
+   "absorbed": -1.0146096838097889,
+   "log_prize": 5.204119982655925,
+   "in_table": true
+  },
+  {
+   "track": "Sandown",
+   "n": 1528,
+   "pooled": -1.5689677920427298,
+   "within": -0.6925330887993931,
+   "absorbed": -0.8764347032433367,
+   "log_prize": 4.698970004336019,
+   "in_table": true
+  },
+  {
+   "track": "Warwick Farm",
+   "n": 926,
+   "pooled": -1.635468466895135,
+   "within": -0.8027982147182845,
+   "absorbed": -0.8326702521768504,
+   "log_prize": 4.778151250383644,
+   "in_table": true
+  },
+  {
+   "track": "Kensington",
+   "n": 530,
+   "pooled": -1.225978964722207,
+   "within": -0.39652231458029596,
+   "absorbed": -0.8294566501419111,
+   "log_prize": 4.778151250383644,
+   "in_table": true
+  },
+  {
+   "track": "Canterbury",
+   "n": 850,
+   "pooled": -0.9412091769150621,
+   "within": -0.1356772534131189,
+   "absorbed": -0.8055319235019432,
+   "log_prize": 4.778151250383644,
+   "in_table": true
+  },
+  {
+   "track": "Hamilton",
+   "n": 371,
+   "pooled": 0.07153143610957369,
+   "within": -0.030096351697611986,
+   "absorbed": 0.10162778780718568,
+   "log_prize": 4.431363764158987,
+   "in_table": false
+  },
+  {
+   "track": "Devonport",
+   "n": 223,
+   "pooled": -0.5511529937522287,
+   "within": -0.6588647711880501,
+   "absorbed": 0.10771177743582139,
+   "log_prize": 4.3979400086720375,
+   "in_table": false
+  },
+  {
+   "track": "Narromine",
+   "n": 211,
+   "pooled": 1.0117752245396705,
+   "within": 0.8626634608138937,
+   "absorbed": 0.14911176372577684,
+   "log_prize": 4.431363764158987,
+   "in_table": false
+  },
+  {
+   "track": "Casterton",
+   "n": 227,
+   "pooled": 0.2086705603392579,
+   "within": 0.027201471670799688,
+   "absorbed": 0.1814690886684582,
+   "log_prize": 4.431363764158987,
+   "in_table": false
+  },
+  {
+   "track": "Kilcoy",
+   "n": 449,
+   "pooled": 0.9213933368242849,
+   "within": 0.7319155865014918,
+   "absorbed": 0.18947775032279313,
+   "log_prize": 4.301029995663981,
+   "in_table": false
+  },
+  {
+   "track": "Carnarvon",
+   "n": 279,
+   "pooled": 0.646667338741583,
+   "within": 0.45562215040017223,
+   "absorbed": 0.19104518834141077,
+   "log_prize": 4.301029995663981,
+   "in_table": false
+  },
+  {
+   "track": "Queanbeyan",
+   "n": 331,
+   "pooled": -0.4086514085233019,
+   "within": -0.6131903404193458,
+   "absorbed": 0.20453893189604394,
+   "log_prize": 4.431363764158987,
+   "in_table": false
+  },
+  {
+   "track": "Narrandera",
+   "n": 180,
+   "pooled": 0.8213991844816445,
+   "within": 0.5843211342604635,
+   "absorbed": 0.237078050221181,
+   "log_prize": 4.204119982655925,
+   "in_table": false
+  }
+ ],
+ "D2": {
+  "base": {
+   "auc_raw": 0.6043,
+   "auc_unique": 0.54641,
+   "r2_explained_by_other_leaves": 0.12
+  },
+  "S": {
+   "auc_raw": 0.61085,
+   "auc_unique": 0.54953,
+   "r2_explained_by_other_leaves": 0.1402
+  }
+ }
+}
