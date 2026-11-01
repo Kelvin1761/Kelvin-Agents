@@ -182,7 +182,7 @@ def test_publication_checks_availability_even_when_quote_is_valid(tmp_path):
     maps={team:availability.InjuryMap({},[leg['player'],*[f'Roster Member {i}' for i in range(4)]],NOW.isoformat())
           for team,leg in zip(('BOS','LAL'),legs)}
     packet=availability.apply_availability({'meta':{'date':odds['event_start_time'],'away':{'abbr':'BOS'},'home':{'abbr':'LAL'},
-        'statistics_contract':NBA_STATISTICS_CONTRACT,'defender_source':{'per_mode':'Totals','sample_unit':'total_attempts','observed_players':576}},'players':{}},maps)
+        'statistics_contract':2,'defender_source':{'per_mode':'Totals','sample_unit':'total_attempts','observed_players':576}},'players':{}},maps)
     report=tmp_path/'Game_BOS_LAL_Full_Analysis.md';report.write_text(text)
     source=tmp_path/'odds.json';source.write_text(json.dumps(odds))
     payload=r.build_market_eval_sidecar(text,odds,{},[],{'combos':{'1':quoted},'availability':packet},'hybrid')

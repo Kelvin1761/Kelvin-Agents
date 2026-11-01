@@ -72,7 +72,15 @@ def test_espn_season_naming():
 @pytest.fixture
 def snapdir(monkeypatch, tmp_path):
     monkeypatch.setenv("WC_NBA_LEAGUE_SNAPSHOT_DIR", str(tmp_path))
+    monkeypatch.setenv("WC_NBA_STAT_SOURCE", "nbacom")   # snapshots belong to nba.com-first mode
     return tmp_path
+
+
+def test_espn_primary_never_reads_an_nba_com_snapshot(snapdir, monkeypatch):
+    S.save("team_stats", "2026-27", "10/27/2026", {"BOS": {"PACE": 99}})
+    assert S.load("team_stats", "2026-27", "10/28/2026")[0]
+    monkeypatch.setenv("WC_NBA_STAT_SOURCE", "espn")
+    assert S.load("team_stats", "2026-27", "10/28/2026") == (None, None)
 
 
 def test_snapshot_round_trip_restores_int_player_ids(snapdir):

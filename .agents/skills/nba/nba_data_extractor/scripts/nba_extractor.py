@@ -38,7 +38,7 @@ from pathlib import Path
 NBA_SKILL_DIR = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA_SKILL_DIR))
 from nba_schedule import canonical_team_abbr, canonical_game_tag, event_sydney_date
-from nba_data_contract import NBA_STATISTICS_CONTRACT, TRACKING_UNAVAILABLE
+from nba_data_contract import NBA_STATISTICS_CONTRACT, TRACKING_UNAVAILABLE, stat_source
 import nba_opportunities
 import nba_team_context
 import nba_official_injuries
@@ -48,6 +48,7 @@ from nba_identity import player_name_key
 import nba_api_breaker
 import nba_espn_stats
 import nba_espn_league
+import nba_espn_lineups
 import nba_league_snapshot
 from nba_availability import (AvailabilityUnavailable, RosterChanged, apply_availability,
                               availability_current, aware_time, fetch_team_availability, refresh_availability)
@@ -433,7 +434,18 @@ def espn_league_fallback(season, as_of, data_sources, team_stats, adv_stats, *, 
                                         "history_date_to": date_to, "model_input_enabled": False}
         computed["team_stats"] = team_stats
     if "player_advanced" in need:
-        adv_stats = nba_espn_league.player_advanced(games, nba_espn_league.nba_name_index())
+        index = nba_espn_league.nba_name_index()
+        adv_stats = nba_espn_league.player_advanced(games, index)
+        # On-court OFF/DEF/NET rating and PACE from play-by-play lineups
+        # (EXP-20261101-01); a failure leaves them None as before, never guessed.
+        try:
+            lineup_games = nba_espn_lineups.season_lineups(season, date_to, get=get)
+            filled = nba_espn_league.fill_on_court_ratings(
+                adv_stats, nba_espn_lineups.player_ratings(lineup_games, index))
+            data_sources["player_advanced"]["espn_pbp_games"] = len(lineup_games)
+            data_sources["player_advanced"]["on_court_filled"] = filled
+        except Exception as exc:
+            print(f"  ⚠️ ESPN 陣容（OFF/DEF rating）計唔到：{exc}")
         computed["player_advanced"] = adv_stats
     for label, table in computed.items():
         data_sources[label].update({
@@ -1746,6 +1758,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
         except Exception as exc:  # shadow data must never break extraction
             package["opponent_context"] = {"error": f"{type(exc).__name__}: {exc}"}
     package["meta"]["nbacom_fallback"] = nbacom_fallback_summary(package)
+    package["meta"]["stat_source"] = stat_source(package)
     return apply_availability(package, availability_maps)
 
 

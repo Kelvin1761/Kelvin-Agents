@@ -151,6 +151,9 @@ def source_status(now: float | None = None) -> dict:
     since the block began, because a success deletes it.
     """
     now = now if now is not None else time.time()
+    from nba_data_contract import primary_source
+    if primary_source() == "espn":
+        return {"state": "not_used", "primary": "espn"}
     marker = _read_marker()
     try:
         last_ok = float(json.loads(last_ok_path().read_text(encoding="utf-8"))["at"])
@@ -261,6 +264,13 @@ def _replay(self, hit):
 def guard(send):
     """Wrap an nba_api ``send_api_request``."""
     def guarded(self, endpoint, *args, **kwargs):
+        from nba_data_contract import primary_source
+        if primary_source() == "espn":
+            # ESPN is the one source: no request, and no cached nba.com answer
+            # either (that would mix two rulers). Counted as a failure so every
+            # ESPN fallback path takes over, exactly as during the block.
+            _state["failures"] += 1
+            raise StatsNbaBlocked(f"ESPN is the primary source; stats.nba.com not called ({endpoint})")
         parameters = args[0] if args else kwargs.get("parameters")
         key = _cache_key(endpoint, parameters)
         hit = _cache_get(key) if key else None

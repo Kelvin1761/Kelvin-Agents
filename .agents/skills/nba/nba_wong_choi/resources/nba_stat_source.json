@@ -1,0 +1,4 @@
+{
+  "primary": "espn",
+  "decided": "2026-11-01 plan docs/plans/2026-11-01-nba-espn-as-primary-source.md §6.3: ESPN is the one source; nba.com is not switched back to automatically even if it unblocks (one ruler per training window). 'nbacom' restores the old nba.com-first behaviour; env WC_NBA_STAT_SOURCE overrides for one run."
+}

@@ -44,10 +44,11 @@ def test_twenty_attempt_floor_rejects_per_game_or_unlabelled_values_and_sorts():
     assert e.key_defenders_for_team(data,'GS')==[data[2],data[1]]
 
 
+# v2 packages (before the ESPN switch) keep their own defender rule.
 @pytest.mark.parametrize('contract,mode,count,valid',[(None,'Totals',576,False),(1,'Totals',576,False),
-    (NBA_STATISTICS_CONTRACT,'PerGame',576,False),(NBA_STATISTICS_CONTRACT,'Totals',0,False),(NBA_STATISTICS_CONTRACT,'Totals','576',False),
-    (NBA_STATISTICS_CONTRACT,'Totals',True,False),
-    (NBA_STATISTICS_CONTRACT,'Totals',576,True)])
+    (2,'PerGame',576,False),(2,'Totals',0,False),(2,'Totals','576',False),
+    (2,'Totals',True,False),
+    (2,'Totals',576,True)])
 def test_cache_reextracts_old_unit_or_source_failure(tmp_path,contract,mode,count,valid):
     payload={'meta':{'statistics_contract':contract,'defender_source':{'per_mode':mode,'sample_unit':'total_attempts','observed_players':count},
                      'season_phase':'REGULAR_SEASON'},
@@ -60,7 +61,7 @@ def test_cache_reextracts_old_unit_or_source_failure(tmp_path,contract,mode,coun
 def test_new_extraction_checks_statistics_before_schema_or_report(tmp_path,monkeypatch,count,valid):
     odds=tmp_path/'odds.json';odds.write_text('{}')
     target=tmp_path/'nba_game_data_BOS_LAL.json';calls=[]
-    payload={'meta':{'statistics_contract':NBA_STATISTICS_CONTRACT,
+    payload={'meta':{'statistics_contract':2,
                      'defender_source':{'per_mode':'Totals','sample_unit':'total_attempts','observed_players':count}}}
     monkeypatch.setattr(o,'player_milestone_markets_available',lambda _:True)
     monkeypatch.setattr(o,'availability_current',lambda _:True)
@@ -81,10 +82,33 @@ def test_empty_defenders_pass_only_when_marked_unavailable_in_an_outage():
     # EXP-20261031-01: no defender table during an nba.com outage changes no
     # probability, so an explicitly marked empty source may publish.
     from nba_data_contract import TRACKING_UNAVAILABLE, statistics_current
-    base = {'statistics_contract': NBA_STATISTICS_CONTRACT,
+    base = {'statistics_contract': 2,
             'defender_source': {'per_mode': 'Totals', 'sample_unit': 'total_attempts', 'observed_players': 0}}
     assert not statistics_current(base), 'silently empty still blocks'
     marked = {**base, 'defender_source': {**base['defender_source'], 'unavailable': TRACKING_UNAVAILABLE}}
     assert statistics_current(marked)
     wrong = {**base, 'defender_source': {**base['defender_source'], 'unavailable': 'anything'}}
     assert not statistics_current(wrong)
+
+
+@pytest.mark.parametrize('meta,valid',[
+    ({'stat_source':'espn'},True),({'stat_source':'nbacom'},True),({'stat_source':'mixed'},True),
+    ({},False),({'stat_source':'nba'},False),
+    # v3 needs no defender table at all: tracking data is nba.com-only.
+    ({'stat_source':'espn','defender_source':{'observed_players':0}},True)])
+def test_v3_contract_names_its_source_and_needs_no_defenders(meta,valid):
+    from nba_data_contract import statistics_current
+    assert NBA_STATISTICS_CONTRACT == 3
+    assert statistics_current({'statistics_contract':NBA_STATISTICS_CONTRACT,**meta}) is valid
+
+
+def test_stat_source_reads_game_logs_and_league_tables():
+    from nba_data_contract import stat_source
+    def package(log_sources,table_source):
+        return {'players':{'BOS':[{'gamelog':{'source':s}} for s in log_sources]},
+                'meta':{'data_sources':{'team_stats':{'rows':30,**({'source':table_source} if table_source else {})},
+                                        'key_defenders':{'rows':0}}}}
+    assert stat_source(package(['espn','espn'],'espn_box'))=='espn'
+    assert stat_source(package(['nba','nba'],None))=='nbacom'
+    assert stat_source(package(['espn','nba'],'espn_box'))=='mixed'
+    assert stat_source(package(['espn'],None))=='mixed', 'an nba.com table beside ESPN logs is two rulers'

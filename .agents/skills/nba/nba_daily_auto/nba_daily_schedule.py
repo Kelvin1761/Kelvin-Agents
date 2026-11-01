@@ -1824,6 +1824,8 @@ def track_stats_nba_source(target_date: str, log: "RunLog", *, now: datetime | N
             pass
     week = [row for row in rows if row.get("date", "") > (now.date() - timedelta(days=7)).isoformat()]
     status["blocked_days_7d"] = sum(row.get("state") == "blocked" for row in week)
+    if status["state"] == "not_used":
+        return status   # ESPN is the one source: nothing flips, nothing to report
     if previous is not None and previous != status["state"]:
         message = (
             f"✅ stats.nba.com 已恢復｜{target_date}\nNBA 已自動切返 nba.com 數據。"
