@@ -2,6 +2,8 @@
 
 狀態：完成串流唯讀盤點；未fit、未改正式pricing、未量準確度、未改任何訓練資格／REJECT判決。它補充[WTA-only盤點](EXP-20261101-24-tennis-point-input-feasibility.md)，不是可部署point-skill模型。
 
+後續語義覆核見[EXP-26](EXP-20261101-26-tennis-source-owner-identity-audit.md)：在原145539個LINKED中，2153個source-name與terminal標籤不一致，另1個terminal tour UNKNOWN；原數字及artifact沒有改寫，也沒有把新policy agreement當成獨立人物資格。確認raw點數存在不等於球員歸屬正確。
+
 ## 完整範圍及方法
 
 使用同一凍結`ranking-date-contract/source.sqlite`，1,943,166,976 bytes；重新完整驗SHA-256 `fb5638c6ad30476ea0a4d5aceb5462f20c271d6c9ee0ebc0f8a00b273f90f9fe`。指定兩provider的全部160900個stored history sides均保留結果：Sackmann66738、TML94162，沒有只挑有stats的行。

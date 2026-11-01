@@ -27,7 +27,7 @@
 | C01 | F09 | offset 整體 REJECT_DEV；不能只引用勝 tennis-only 的一項對照 |
 | C02 | F03 | power／Shin／inner-selected devig 三個候選 REJECT_DEV |
 | C03 | F04 | surface_dynamic REJECT_DEV；既有 frozen shadow 不因本批而換模型 |
-| C04 | F00 | 已盤點／部分來源修正交付；完整歷史 identity/clock/lineage 仍未齊 |
+| C04 | F00 | 已盤點／部分來源修正交付；EXP-26全量owner檢查另找2153原LINKED標籤衝突，reader probe可讀入衝突記錄。完整identity/clock/lineage未齊，未repair或當作實際bet污染證據 |
 | C05 | 去重 | 保留舊重複／失敗設計排除，沒有重開救援 arm |
 | C06 | F05 | R/E/S/RE/RS/ES/RES 七個候選全部 REJECT_DEV |
 | C07 | F01 | MCP 品質／來源盤點完成；原固定窗 publication clock 未證實、training eligible 0，不自動接 feature |
@@ -49,6 +49,7 @@
 1. 排名警告歸屬正式gate已通過，6b01f07f已部署；26,272 玩家選取值/ID/date不變及259保留輸入配對定價／decision/stake不變。其source receipt/date正確性不等於所有player identity或完整預測可用性已認證。
 2. F02 kernel255個DP/MC比較及resolver110支援／2取消、1980接線比較已過，研究工具37df3367已同步，pricing仍用原kernel。EXP-24/25證明原始point denominators並非完全缺失：WTA302核實sides、public history145539通過raw連結；仍缺跨source去重、精確可用性與完整forecast-time capture，不能直接改訓練資格或接正式模型。內置free低於10GB，暫停新大型實驗。
 3. 在保持 frozen ruler 下繼續改善有直接原始證據的輸入／捕捉缺口。不得用改樣本窗、忽略 warning、選出已看結果的33行或移除低質 forecast 來製造 forward。
+   EXP-26已將原3729個ID旗標分開：live2849結構收斂但部分UNKNOWN tour、880未解釋（856 ACTIVE）；全量點數可連結不保證owner正確。下一步先核對provider-ID及alias來源，提出可rollback的source-owned修補；不能盲目跟隨當前mapping或直接merge／rename。大型A/B仍等free≥10GB，未量準確度。
 4. 所有允許單項已被拒絕或依賴不足時，誠實保留拒絕／不確定；要達成實際準確率改善，仍需可重現、有來源資格及獨立比較證據，本文不將「研究已有結果」改寫為「模型已改善」。
 
 逐項核對 `result.json` SHA-256：`09c183cd969bcd155f98e7a7f306f8bd44201629e3dfef4daf3e04bf270d07da`。

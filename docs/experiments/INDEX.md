@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261101-26](EXP-20261101-26-tennis-source-owner-identity-audit.md) | 2026-11-01 | Tennis | raw點數連結以外的source-owner語義檢查及reader路徑 | **唯讀診斷／未修資料**：3729個ID旗標live2849結構收斂／880未解釋；全160900條另找2153個原LINKED label衝突；live reader可用25場profile含7個來源標籤衝突，非實際投注證據 |
 | [EXP-20261101-25](EXP-20261101-25-tennis-public-point-input-inventory.md) | 2026-11-01 | Tennis | Sackmann／TML被history引用的raw point denominators唯讀盤點 | **輸入診斷／無fit**：160900 sides全留，145539通過raw連結、15361暫扣；72686雙側group未跨provider去重，不是訓練／PIT／準確度認證 |
 | [EXP-20261101-24](EXP-20261101-24-tennis-point-input-feasibility.md) | 2026-11-01 | Tennis | point kernel輸入可行性，WTA-only盤點 | **輸入診斷**：966 sides中302（151場）通過本次cutoff欄位檢查，185玩家中5人≥5場；不代表all-provider coverage，未fit／未改訓練資格 |
 | [EXP-20261101-38](EXP-20261101-38-au-overlay-audit-results.md) | 2026-11-01 | AU | 唔喺 dashboard 顯示嘅 overlay／後置調整逐個消融（濕地、班次證明、全程速度、距離轉變罰分、證據厚度安全欄） | 濕地 overlay **有幫助**（拎走 Good −0.77pp CI 全負）；距離轉變罰分有幫助（頭 5 AUC CI 全負）；班次證明弱幫助；全程速度量唔到。**證據厚度安全欄有害**：首選上名 −1.17pp [−2.34,−0.03]，6 段 5 段蝕，觸發清單過時（track／人馬配搭停 60 好平常）→ 建議剷走 |
