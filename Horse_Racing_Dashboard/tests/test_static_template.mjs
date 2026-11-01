@@ -2008,6 +2008,19 @@ test("tonight's NBA cards for tomorrow's games show before midnight, later days 
   assert.equal(api.nbaSelectRows('all').map(r=>r.id).sort().join(),'today,tomorrow');
 });
 
+test("today's settled NBA cards leave 今日投注 once tomorrow's slate is out, but stay while any is open",()=>{
+  const shift=n=>{const d=new Date(new Intl.DateTimeFormat('en-CA',{timeZone:'Australia/Sydney'}).format(new Date())+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10);};
+  const row=(id,day,state)=>({id,day,event_name:'POR @ UTA',stake:1,odds:2.75,state,legs:[{player:'Jrue Holiday',stat:'REB',line:4,state:state==='pending'?'pending':state}]});
+  const load=records=>loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records}}}}});
+  let api=load([row('a',shift(0),'lost'),row('b',shift(0),'won'),row('c',shift(1),'pending')]);
+  assert.equal(api.nbaSelectRows('day').map(r=>r.id).sort().join(),'c');
+  assert.equal(api.nbaSelectRows('all').map(r=>r.id).sort().join(),'a,b,c');
+  api=load([row('a',shift(0),'lost'),row('b',shift(0),'pending'),row('c',shift(1),'pending')]);
+  assert.equal(api.nbaSelectRows('day').map(r=>r.id).sort().join(),'a,b,c');
+  api=load([row('a',shift(0),'lost'),row('b',shift(0),'won')]);
+  assert.equal(api.nbaSelectRows('day').map(r=>r.id).sort().join(),'a,b');
+});
+
 test("missing NBA evidence shows unavailable rather than a zero-return claim",()=>{
   const api=loadTemplateFunctions(EMPTY_DASHBOARD_DATA),html=api.renderSportsWorkspace('nba');
   assert.match(html,/紀錄暫未能讀取/);assert.doesNotMatch(html,/ROI<\/span>/);
