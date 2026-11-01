@@ -2,6 +2,8 @@
 
 狀態：研究規則解析器已實作；110個支援情境、1980個接線比較通過，2個已取消情境拒絕。正式pricing未接入，未證實準確度／ROI改善，F02完整整合仍未完成。
 
+發佈核對：原候選b18478aed7639fea975c3900a885be3ef31890a3完整gate通過（1329.8秒）；排隊期間main更新，Central自動重放為37df3367b71fd3eb1294329da0527037a474f17a，對新SHA重跑完整gate（929.056秒）後merge／activation成功，runtime HEAD已直接核對一致。Tennis1065項測試通過；原候選manifest由自動流程supersede，沒有另開重複release。證據另存`resolver-v1/release-37df3367b71f/`；研究程式已同步不等於正式pricing使用它。
+
 ## 輸入、範圍及來源
 
 只接受canonical event `ausopen/frenchopen/wimbledon/usopen`、嚴格整數edition year 2011–2024、明示ATP/WTA、draw=`adult_singles_main`。不接受別名／模糊名稱、qualifying、doubles、juniors、不從球員名字推tour、不以終局比分推BO3/5。這些欄位是caller的明示assertion，不代表解析器已認證fixture身份。

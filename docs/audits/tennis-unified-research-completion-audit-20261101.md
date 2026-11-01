@@ -8,10 +8,10 @@
 
 | 項目 | 現有直接證據 | 判斷／未完成部分 |
 |---|---|---|
-| 1 baseline/runtime/ruler | run_manifest、preflight_lock；來源修正 04469fba runtime 對齊；排名候選另存研究分支 | 研究基準有保存；現役來源修正與 model promotion 分開，不能將現在的程式冒充每份舊預測版本 |
+| 1 baseline/runtime/ruler | run_manifest、preflight_lock；來源04469fba、排名6b01f07f已部署；研究resolver37df3367完整gate／runtime已核對 | 研究基準有保存；工程／研究工具發佈與 model promotion 分開，不能將現在程式冒充每份舊預測版本 |
 | 2 完整語料及分流 | warehouse 全表凍結／row-flow；多 book 11,725 matches／23,393 book rows；後續來源及身份審計 | SEEN_DEV，歷史來源發布時鐘及個別身份仍未證實；不是全量 PIT-qualified corpus |
 | 3 完整 baseline／簡單控制 | saved prediction/component replay；head matched-control independent replay PASS | 現有 artifacts 可重現計算；歷史 15,896 prediction 缺所檢查的精確 feature/market 連結，不能稱完整 B_live 歷史重建 |
-| 4 MCP/PBP 及 kernel | MCP／49站 Slam 多輪審計，採 final slam-audit-v4；kernel v2 22 case 全過 | 有品質盤點，但原固定窗 training eligibility 為 0。kernel 缺實際 tournament/year tie-break mapping；synthetic pass 不等於現役 kernel 符合所有年代規則 |
+| 4 MCP/PBP 及 kernel | MCP／49站Slam採v4；新kernel255個DP/MC比較；2011–24 resolver110支援／2取消及1980接線比較 | 原固定窗training eligibility仍0；Sackmann/TML及WTA補充raw點數盤點不能代替歷史PIT資格；現役pricing仍未接研究kernel |
 | 5 有限單項實驗 | 五段 dev、13,274 matches，10 個 feature 候選均 REJECT_DEV；去水市場另三個 REJECT_DEV | 有全部失敗結果；workload 因 input qualification 停止，不能補假 minutes/hours 或改窗救回 |
 | 6 同特徵 heads／市場增量 | HGB vs matched logistic REJECT_DEV；offset 對市場 REJECT_DEV、對 tennis-only ADVANCE_DEV_ONLY | offset 整體仍 REJECT_DEV。沒有同時通過必要控制的候選，不啟動救援組合或重調已見 holdout |
 | 7 joint props | F02 合格 serve/exposure 及市場/settlement 合約是依賴 | 未開始／依賴未齊。不能以 winner 一個 marginal 推論 joint props 已識別或合格 |
@@ -47,7 +47,7 @@
 ## 下一個可驗證步驟
 
 1. 排名警告歸屬正式gate已通過，6b01f07f已部署；26,272 玩家選取值/ID/date不變及259保留輸入配對定價／decision/stake不變。其source receipt/date正確性不等於所有player identity或完整預測可用性已認證。
-2. F02明示規則研究kernel已通過固定255個DP/MC比較；歷史resolver亦已完成110支援／2取消及1980接線比較。現役仍用原kernel；下一步要解決可識別point skill與fixture/draw輸入合約，才可做正式整合影響驗收，不因synthetic pass直接換模型或稱獲利候選。
+2. F02 kernel255個DP/MC比較及resolver110支援／2取消、1980接線比較已過，研究工具37df3367已同步，pricing仍用原kernel。EXP-24/25證明原始point denominators並非完全缺失：WTA302核實sides、public history145539通過raw連結；仍缺跨source去重、精確可用性與完整forecast-time capture，不能直接改訓練資格或接正式模型。內置free低於10GB，暫停新大型實驗。
 3. 在保持 frozen ruler 下繼續改善有直接原始證據的輸入／捕捉缺口。不得用改樣本窗、忽略 warning、選出已看結果的33行或移除低質 forecast 來製造 forward。
 4. 所有允許單項已被拒絕或依賴不足時，誠實保留拒絕／不確定；要達成實際準確率改善，仍需可重現、有來源資格及獨立比較證據，本文不將「研究已有結果」改寫為「模型已改善」。
 
