@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+最新跟進：以[逐項驗收矩陣](docs/audits/tennis-unified-research-completion-audit-20261101.md)為當前狀態，以下較早跟進段落保留其當時狀態。EXP-28／29 的修補及 observation 時鐘工具先保存研究分支，未接 live；固定反例已能阻止今日身份修正倒填2025，但原 main-tour serve／prediction lineage資格仍不足。磁碟free已回復約16GiB，現階段不再以磁碟不足阻擋新大型實驗；資料及 frozen ruler 閘不變，整體準確度目標未完成。
+
 2026-10-28 建立；2026-10-29 執行更新。**計劃已完成；研究執行中，暫時未證實準確度改善。** 八個外部項目嘅 URL／固定版本及資料用途已保存；已測 15 個候選全部 REJECT_DEV，無新候選入 forward。
 
 依據：[比較筆記](docs/plans/tennis-external-project-review-notes-20261028.md)、[URL／版本 manifest](docs/plans/tennis-external-project-sources-20261028.json)、[詳細協議](docs/plans/tennis-research-protocol-20261028.md)。沿用 frozen `tennis-v1`，唔改正式模型、下注政策或現有 shadow。

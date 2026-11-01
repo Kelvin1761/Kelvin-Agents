@@ -9,3 +9,14 @@
 - [x] 用合成反例及 EXP-27 固定來源 pair 做隔離重播，28 targeted tests、quick 及完整 repo checks（Tennis 1093 passed）通過；按未完成研究規則 exact-scope commit／push 自己分支，未 release／接 live。
 
 正式 live apply 仍依賴獨立 provider-ID 身份證明、mapping／fixture 全範圍 closure、歷史 reader clock 合約；大型模型 A/B 仍受 ≥10GB 空間門檻限制。
+
+## 接續：recorded history clock（EXP-20261101-29）
+
+- [x] 新增獨立 research projector，只採 cutoff 前 immutable after-images，不填今日可變欄位。
+- [x] 28 新測試及原 pair apply／rollback 均阻止倒填2025；所有424823 IDs／6515 observations完整盤點。
+- [x] 明列4980 recorded snapshots不等於runtime parity；130 hold rows全Challenger，main-tour serve資格未補足；132 opponent Elo drift保留原值。
+- [x] 完整 repo gate通過（Tennis 1121 passed），連同測試／證據 exact-scope保存研究分支，未接live。
+
+開工free已約16GiB，上一階段磁碟阻擋不再適用；資料／身份／prediction lineage閘保持。新的當下snapshot只能支援未來可用性，不能回填歷史資格。
+
+下一步身份線索：`primary-identity-bridge-v1/`保存UTS `playerProfile?playerId=44614` 的 Christian Sigsgaard／DEN header，對上target19626的`composite/uts:44614`；ATP SY00頁可讀姓名但直接DOB等欄位仍動態placeholder，Jumpei H2H直接頁大部分亦是placeholder。這是部分獨立namespace／name證據，不是完整DOB、mapping／fixture closure或live apply授權；勿將搜尋節錄當完整原文。

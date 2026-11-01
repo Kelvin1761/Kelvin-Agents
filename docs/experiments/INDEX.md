@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261101-29](EXP-20261101-29-tennis-recorded-history-clock.md) | 2026-11-01 | Tennis | immutable after-images 能否阻止身份修正倒填舊回測 | **研究投影器／未接 live**：28 新測試；424823 IDs 全量 row-flow，2025 cutoff 0、11-01 recorded4980／hold130全屬Challenger；132個Elo drift保留原值，固定修補／rollback反例不再倒填，未量準確度 |
 | [EXP-20261101-28](EXP-20261101-28-tennis-memory-identity-split.md) | 2026-11-01 | Tennis | memory-only 雙側 generation 修補及回退 | **研究機制／未接 live**：28 targeted tests；固定來源 pair apply 後仍僅 2 ACTIVE，可冪等回退；揭示舊 reader 可讀入 cutoff 後的身份修正，正式整合仍被阻擋，未量準確度 |
 | [EXP-20261101-27](EXP-20261101-27-tennis-source-owner-repair-readiness.md) | 2026-11-01 | Tennis | source-owned 身份修補能否直接重入現有 history API | **修補前置／未 apply**：628 行 current cluster 唯讀 capture；記憶體雙側 upsert 後 2→4 ACTIVE、舊行未退役；明列 proposal／collision／clock／rollback 合約，未量準確度 |
 | [EXP-20261101-26](EXP-20261101-26-tennis-source-owner-identity-audit.md) | 2026-11-01 | Tennis | raw點數連結以外的source-owner語義檢查及reader路徑 | **唯讀診斷／未修資料**：3729個ID旗標live2849結構收斂／880未解釋；全160900條另找2153個原LINKED label衝突；live reader可用25場profile含7個來源標籤衝突，非實際投注證據 |
