@@ -7,11 +7,12 @@ cached for good; this script adds 1 s after each network call on top. It stops
 at the first EspnBlocked.
 """
 import sys, time
+import requests
 from datetime import date, timedelta
 sys.path.insert(0, sys.argv[1])
 import nba_espn_league as L, nba_espn_lineups as P, nba_espn_http as H
 first, last = date.fromisoformat(sys.argv[2]), date.fromisoformat(sys.argv[3])
-day, n = first, 0
+day, n, missing = first, 0, []
 def pause(before):
     if H._state['network_calls'] > before:
         time.sleep(1.0)
@@ -23,8 +24,14 @@ try:
         for e in events:
             if e['season_type'] in (2, 3, 5) and e['final']:
                 before = H._state['network_calls']
-                L._game(e['id'], day)
-                P.game_lineups(e['id'], day)
+                try:
+                    L._game(e['id'], day)
+                    P.game_lineups(e['id'], day)
+                except requests.HTTPError as exc:   # ESPN has no summary for a few playoff games
+                    if exc.response is None or exc.response.status_code != 404:
+                        raise
+                    missing.append(e['id'])
+                    print('404', day, e['id'], flush=True)
                 pause(before)
                 n += 1
         if day.day == 1:
@@ -32,4 +39,4 @@ try:
         day += timedelta(days=1)
 except H.EspnBlocked as exc:
     print('STOPPED', exc)
-print('done', n, H.summary())
+print('done', n, 'summary 404:', missing, H.summary())
