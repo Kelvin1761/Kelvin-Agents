@@ -51,6 +51,7 @@
 3. 在保持 frozen ruler 下繼續改善有直接原始證據的輸入／捕捉缺口。不得用改樣本窗、忽略 warning、選出已看結果的33行或移除低質 forecast 來製造 forward。
    EXP-26已將原3729個ID旗標分開：live2849結構收斂但部分UNKNOWN tour、880未解釋（856 ACTIVE）；全量點數可連結不保證owner正確。下一步先核對provider-ID及alias來源，提出可rollback的source-owned修補；不能盲目跟隨當前mapping或直接merge／rename。大型A/B仍等free≥10GB，未量準確度。
    [EXP-27](../experiments/EXP-20261101-27-tennis-source-owner-repair-readiness.md)另固定capture兩組current cluster共628行；624有frozen對照（192僅opponent_elo變動）、4新增未審。雙側記憶體重播證明普通upsert留下2→4 ACTIVE，故先實作獨立、可rollback的雙側generation遷移及collision／source-ID資格檢查，不能直接重入live資料。
+   [EXP-28](../experiments/EXP-20261101-28-tennis-memory-identity-split.md)已實作 memory-only 研究 API，28 targeted tests 及固定來源雙側 apply／rollback 通過，ACTIVE 維持2。但既有 reader 仍在2025 cutoff讀到本輪新建的2021身份修正行；人物獨立證明、全 live mapping／fixture closure及歷史availability合約未齊，禁止直接整合，也未量準確度。
 4. 所有允許單項已被拒絕或依賴不足時，誠實保留拒絕／不確定；要達成實際準確率改善，仍需可重現、有來源資格及獨立比較證據，本文不將「研究已有結果」改寫為「模型已改善」。
 
 逐項核對 `result.json` SHA-256：`09c183cd969bcd155f98e7a7f306f8bd44201629e3dfef4daf3e04bf270d07da`。
