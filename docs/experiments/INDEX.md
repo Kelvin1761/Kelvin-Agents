@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261102-03](EXP-20261102-03-tennis-memory-elo-generations.md) | 2026-11-02 | Tennis | 共用原Elo核心及雙時計memory generation | **隔離工程／未接production**：401046行三份全投影逐byte相同；45場版本切換／refresh／回退通過，47針對測試及full gate（Tennis1114）通過；UTS DOB／namespace補強，來源資格及正式接線未完成 |
 | [EXP-20261102-02](EXP-20261102-02-tennis-identity-elo-cache.md) | 2026-11-02 | Tennis | 身份修正與 legacy Elo cache warm／cold 對照 | **工程診斷／未改 live**：全401046行／四臂對照通過；warm保留391099舊key，同修正輸入cold有175個legacy key差>1 Elo。保留差幅／中斷紀錄及generation合約；full gate全綠，未量準確度 |
 | [EXP-20261102-01](EXP-20261102-01-tennis-te-source-capture.md) | 2026-11-02 | Tennis | history按日保存真正scoreboard，parse失敗留原文 | **來源工程已交付41cad292／非模型改善**：Tennis1080 full gate，28針對測試；同HTML311場／622視角／522玩家及兩版592行Elo相同，無損retention通過。runtime code對齊；首批實際receipt待核實，舊summary不追認 |
 | [EXP-20261101-60](EXP-20261101-60-nba-espn-everything.md) | 2026-11-01 | NBA | ESPN for everything: remove every nba.com dependency (R1 reflector shipped, R2 extractor pending) | **R1 shipped (Kelvin approved)**: settlement 14,695 legs identical, 5 outcome flips = stat attribution, 3 players ESPN doesn't list stay unsettled; labels 7,464/7,464 identical (5 playoff events ESPN 404); PBP 25/26 quarter totals = final. Official injury report over 5 days changed 0 bankers/SGMs |

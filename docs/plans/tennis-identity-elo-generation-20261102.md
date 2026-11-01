@@ -1,6 +1,6 @@
 # Tennis 身份修復及 Elo generation 執行合約
 
-2026-11-02；接續統一研究計劃，工程設計／未部署。實驗證據見 [EXP-20261102-02](../experiments/EXP-20261102-02-tennis-identity-elo-cache.md)。模型準確度尚未證實改善。
+2026-11-02；接續統一研究計劃，隔離prototype已實作／未部署。實驗證據見 [EXP-20261102-02](../experiments/EXP-20261102-02-tennis-identity-elo-cache.md)。模型準確度尚未證實改善。
 
 ## 已確認的問題
 
@@ -20,13 +20,17 @@ history 的 ACTIVE 篩選與 Elo 的 as-of 讀取是兩條路。只為新 histor
 
 1. **固定 baseline 與影響範圍（隔離四臂已完成）**：保存同一 frozen input 的未修正 cold／warm control、八行修正 warm／cold；記錄實際寫入行與唯一 key 數，四條輸出逐項比對。全量 replay 仍不能代替 live cache beforeimage 或完整 runtime 重建。
 2. **來源及身份資格**：對四場逐對保存原文 hash、來源 namespace、雙方身份及 target registry 證據。只接受雙側一致與精確 beforeimage；任何不符整批停止。全 provider mapping、所有 Elo 對手依賴及 current player cache 須列入影響範圍；fixture 不靠共享 player ID 推斷一起搬移。
-3. **隔離 generation 實作**：新增 immutable generation metadata／版本化 Elo rows／activation observations；builder 在非 active generation 寫入。完整 input digest 相同時可重現；更改 input 必須產生新 generation。更動的預計模組為 `database/history_observations.py`、`history/elo_history.py`、`modelling/elo_builder.py`、`features/feature_builder.py` 及其直接 consumers；實際改動前重新掃描 import／SQL readers。
+3. **隔離 generation 實作（memory prototype已驗證，persistent及native接線未完成）**：新增 immutable generation metadata／版本化 Elo rows／activation observations；builder 在非 active generation 寫入。完整 input digest 相同時可重現；更改 input 必須產生新 generation。更動的預計模組為 `database/history_observations.py`、`history/elo_history.py`、`modelling/elo_builder.py`、`features/feature_builder.py` 及其直接 consumers；實際改動前重新掃描 import／SQL readers。
 4. **時間及失敗測試**：修正前一瞬不能讀到修正後身份／Elo；切換後可讀；同日 event cutoff 不變；refresh、source reference 改變及再次 ingestion 不能抹走 availability；失敗 build 不切 active pointer；rollback 保留時間；歷史 fallback 必須 fail closed。對手後續 Elo 依賴也要驗證，不能只測兩名主角。
 5. **同語料工程比較**：未修正 legacy cold control 對修正 legacy cold，另與實際舊 cache 分開報告。保留完整 lineage／row-flow／受影響與未受影響數，不能把 cache 政策改變的差異算成身份改善；清 bytecode、執行 repo quick／full gate。
 6. **正式資料 apply**：先 dry-run exact-plan，驗證 live source／beforeimage 及 runtime SHA；所有新 rows、mapping、generation pointer 與 rollback 記錄必須有一致 transaction／可復原邊界。失敗不留半份已搬身份。正式動作仍經現有 Central gate，不以本設計文件代替通過證據。
 7. **量度準確度**：只有來源／決策時鐘合格的新資料才可預先登記新候選，在固定 tennis-v1、同樣本／時間 folds／paired LL、Brier 及市場控制下評估。holdout 只最後確認；十五個 REJECT_DEV 不變。合格樣本不足就累積 forward，不能降低資格或挑選成功子集。
 
 其他莊家的歷史 odds／回報可按已保存協議作 training／研究，但 ROI 是模型／選注／賠率共同結果，不能單獨當成球員實力標籤。必須有當時可得的賠率、賽果及選注定義；訓練窗算出的 ROI 不能洩漏進驗證窗。Sportsbet 的正式 out-of-sample／forward 評估另行保留。
+
+## 當前執行證據
+
+[EXP-20261102-03](../experiments/EXP-20261102-03-tennis-memory-elo-generations.md)：共用核心在401046行四臂對照保留全部原投影；memory generation在45場公開cluster以實際時計切換／refresh／回退，47針對測試通過。這沒有完成第2步live來源資格、第3步persistent indexed store／native接線、第4步production ingestion覆蓋，或第6–7步正式apply／準確度判決。
 
 ## 完成定義
 

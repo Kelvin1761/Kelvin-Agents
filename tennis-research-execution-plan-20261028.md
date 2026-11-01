@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-02 隔離版本實作**：[EXP-20261102-03](docs/experiments/EXP-20261102-03-tennis-memory-elo-generations.md)抽出共用Elo核心，401046行四臂保留全部原輸出；45場memory generation實際時間切換／refresh／回退及47針對測試通過。研究code先存非main分支，未接production、未正式修身份；persistent store／native reader／來源資格及準確度評估仍未完成。
+
 **2026-11-02 身份／Elo 跟進**：[受控 cache 重播](docs/experiments/EXP-20261102-02-tennis-identity-elo-cache.md)確認只改 history 再重跑不足：舊 legacy cache 會保留既有值。接續按[資料／Elo generation 合約](docs/plans/tennis-identity-elo-generation-20261102.md)處理 event 與 knowledge 兩個 cutoff、完整衍生輸出、原子切換及回退；本輪未改 live 身份或評分，尚未證實準確度改善。
 
 **2026-11-02來源保存跟進**：[TE按日原文修正及隔離對照](docs/experiments/EXP-20261102-01-tennis-te-source-capture.md)實作request URL／fetch時計／HTML receipt，parse失敗保留source。28針對測試及公開同HTML311場的數值／身份／兩版Elo比較通過；正式gate及activation由immutable release manifest記錄。此改動不追認舊summary／空body、未證明準確度改善；身份／availability工具及整體未完成研究仍保存於`codex-tennis-point-input-delivery-20261101`，原15個REJECT_DEV／frozen ruler不變。
