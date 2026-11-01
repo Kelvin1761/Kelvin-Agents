@@ -8,13 +8,14 @@ nba_extractor.py — NBA Wong Choi Claw Code V3 (究極版)
 
 全自動數據提取引擎，為 NBA Wong Choi Analyst 提供 100% 真實、零幻覺的數據包。
 
-模塊清單：
-  1. ESPN API — 賽程、傷病
-  2. nba_api — 全員 L10 Box Score、進階數據、Home/Away Splits、Rest Day Splits
-  3. nba_api — 球員級別防守影響力 (DvP)
-  4. nba_api — 球隊進階防守/進攻/節奏
-  5. The Odds API — Sportsbet 精確賠率 (需 API Key)
-  6. Claw Code (curl_cffi) — Action Network 備用賠率
+模塊清單（ESPN 係唯一數據來源，EXP-20261101-60）：
+  1. ESPN API — 賽程、傷病、陣容
+  2. ESPN — 全員 L10 Box Score、Home/Away Splits、Rest Day Splits
+  3. ESPN box score／play-by-play — 球隊同球員進階數據
+  4. The Odds API — Sportsbet 精確賠率 (需 API Key)
+  5. Claw Code (curl_cffi) — Action Network 備用賠率
+
+  球員一律用 ESPN athlete id（package 寫 ``player_id_source: espn``）。
 
 用法：
   # 提取今日所有賽事概覽
@@ -24,7 +25,7 @@ nba_extractor.py — NBA Wong Choi Claw Code V3 (究極版)
   python nba_extractor.py --date 20260402 --game PHX_CHA --output .agents.agents/tmp/nba_game_data_PHX_CHA.json
 
 安裝依賴：
-  pip install nba_api requests curl-cffi
+  pip install requests curl-cffi
 """
 
 import json
@@ -41,15 +42,12 @@ from nba_schedule import canonical_team_abbr, canonical_game_tag, event_sydney_d
 from nba_data_contract import NBA_STATISTICS_CONTRACT, TRACKING_UNAVAILABLE, stat_source
 import nba_opportunities
 import nba_team_context
-import nba_official_injuries
 from nba_availability import compute_usage_redistribution
 from nba_season import classify_nba_season
 from nba_identity import player_name_key
-import nba_api_breaker
 import nba_espn_stats
 import nba_espn_league
 import nba_espn_lineups
-import nba_league_snapshot
 from nba_availability import (AvailabilityUnavailable, RosterChanged, apply_availability,
                               availability_current, aware_time, fetch_team_availability, refresh_availability)
 
@@ -60,29 +58,9 @@ except ImportError:
     print("❌ 缺少核心依賴庫。請執行：pip install curl-cffi requests")
     sys.exit(1)
 
-try:
-    from nba_api.stats.endpoints import (
-        playergamelog,
-        commonteamroster,
-        leaguedashplayerstats,
-        leaguedashteamstats,
-        leaguedashptdefend,
-        leaguedashptteamdefend,
-        playerdashboardbygeneralsplits,
-    )
-    from nba_api.stats.static import teams, players
-    nba_api_breaker.install()   # fail fast while stats.nba.com is blocking us
-    # One line per run, so the scheduler log shows how much nba.com we hit.
-    import atexit
-    atexit.register(lambda: print(
-        f"📡 stats.nba.com: {nba_api_breaker._state['network_calls']} 次網絡請求，"
-        f"{nba_api_breaker._state['cache_hits']} 次用 cache"))
-    import nba_espn_http
-    atexit.register(lambda: print(nba_espn_http.summary()))
-    NBA_API_AVAILABLE = True
-except ImportError:
-    print("⚠️ nba_api 未安裝。請執行：pip install nba_api")
-    NBA_API_AVAILABLE = False
+import atexit
+import nba_espn_http
+atexit.register(lambda: print(nba_espn_http.summary()))
 
 # ==========================================
 # 配置
@@ -106,7 +84,6 @@ TEAM_ABBR_ESPN_MAP = {
 # 設定方式: export THE_ODDS_API_KEY="你的key"
 THE_ODDS_API_KEY = os.environ.get("THE_ODDS_API_KEY", "")
 
-API_SLEEP = 0.8  # nba_api rate limit 保護 (increased from 0.6 to prevent RS timeout failures)
 
 # ==========================================
 # 工具函數
@@ -381,132 +358,52 @@ def history_date_to(date_value):
     return (history_cutoff_day(date_value) - timedelta(days=1)).strftime("%m/%d/%Y")
 
 
-# League-level feeds need roughly a full league to be usable. After game 1 of a
-# new season only the teams that have played return rows, so "non-empty" is not
-# enough to trust the current season.
-MIN_TEAM_ROWS = 25
-MIN_PLAYER_ROWS = 100
-ALWAYS_FILL = 10 ** 9   # player-level feeds have no fixed 'complete' size
-
-
-# Tracking tables (Second Spectrum, via stats.nba.com only) with no free
-# stand-in. During an outage they may be empty: team_dvp has no reader
-# downstream, and key_defenders only feeds the defender term, which the v2
-# model treats as missing natively (EXP-20261031-01 measured the effect).
+# Key defenders and team defence-vs-position were Second Spectrum tracking
+# tables, on stats.nba.com only. They are retired (EXP-20261101-60): the keys
+# stay in the package, empty and marked, so old readers see "unavailable".
 TRACKING_ONLY_TABLES = ("key_defenders", "team_dvp")
 
 
-def missing_league_tables(data_sources, outage_failures):
-    """League tables that came back empty during an nba.com outage.
+def espn_league_tables(season, as_of, data_sources, *, get=None):
+    """Team and player advanced tables from ESPN box scores and play-by-play.
 
-    Empty with no outage is a genuinely empty feed (handled by the season
-    fallback); empty during one means we would analyse blind."""
-    if not outage_failures:
-        return []
-    return sorted(label for label, info in data_sources.items()
-                  if not info.get("rows") and label not in TRACKING_ONLY_TABLES)
-
-
-def espn_league_fallback(season, as_of, data_sources, team_stats, adv_stats, *, get=None):
-    """Fill team_stats / player_advanced from ESPN box scores during an outage.
-
-    Only runs when stats.nba.com failed on the network in this process and the
-    table is still empty after the nba.com call and the snapshot. Returns the
-    (possibly filled) ``team_stats`` and ``adv_stats``; ``data_sources`` records
-    ``source: espn_box`` so the substitute is never silent. Point-in-time: the
-    same ``history_date_to`` window the nba_api calls use.
+    Point-in-time: games up to ``history_date_to(as_of)``. Returns
+    ``(team_stats, adv_stats)``; empty tables when ESPN cannot answer, and the
+    caller fails closed. ``data_sources`` records where each table came from.
     """
-    need = [label for label in ("team_stats", "player_advanced")
-            if not data_sources.get(label, {}).get("rows")]
-    if not need or not nba_api_breaker.failure_count():
-        return team_stats, adv_stats
     date_to = history_date_to(as_of)
+    team_stats, adv_stats = {}, {}
     try:
         games = nba_espn_league.season_games(season, date_to, get=get)
-    except Exception as exc:  # ESPN down too: stay empty, the gate fails closed
-        print(f"  ⛔ ESPN 賽果都攞唔到：{exc}")
-        return team_stats, adv_stats
-    computed = {}
-    if "team_stats" in need:
+    except Exception as exc:
+        print(f"  ⛔ ESPN 賽果攞唔到：{exc}")
+        games = []
+    if games:
         team_stats = nba_espn_league.team_advanced(games)
         for record in team_stats.values():
             record["opponent_stats"] = {"status": "unavailable", "season": season,
                                         "history_date_to": date_to, "model_input_enabled": False}
-        computed["team_stats"] = team_stats
-    if "player_advanced" in need:
-        index = nba_espn_league.nba_name_index()
-        adv_stats = nba_espn_league.player_advanced(games, index)
+        adv_stats = nba_espn_league.player_advanced(games)
+    for label, table in (("team_stats", team_stats), ("player_advanced", adv_stats)):
+        data_sources[label] = {"label": label, "requested_season": season, "data_season": season,
+                               "fallback_used": False, "rows": len(table),
+                               "source": nba_espn_league.SOURCE, "espn_games": len(games)}
+    if adv_stats:
         # On-court OFF/DEF/NET rating and PACE from play-by-play lineups
-        # (EXP-20261101-01); a failure leaves them None as before, never guessed.
+        # (EXP-20261101-01); a failure leaves them None, never guessed.
         try:
             lineup_games = nba_espn_lineups.season_lineups(season, date_to, get=get)
             filled = nba_espn_league.fill_on_court_ratings(
-                adv_stats, nba_espn_lineups.player_ratings(lineup_games, index))
+                adv_stats, nba_espn_lineups.player_ratings(lineup_games))
             data_sources["player_advanced"]["espn_pbp_games"] = len(lineup_games)
             data_sources["player_advanced"]["on_court_filled"] = filled
         except Exception as exc:
             print(f"  ⚠️ ESPN 陣容（OFF/DEF rating）計唔到：{exc}")
-        computed["player_advanced"] = adv_stats
-    for label, table in computed.items():
-        data_sources[label].update({
-            "data_season": season, "rows": len(table), "fallback_used": True,
-            "source": nba_espn_league.SOURCE, "espn_games": len(games),
-        })
-        print(f"  🔁 {label}: stats.nba.com 唔通，用 ESPN {len(games)} 場賽果計（{len(table)} 行）")
+    for label in TRACKING_ONLY_TABLES:
+        data_sources[label] = {"label": label, "requested_season": season, "data_season": season,
+                               "fallback_used": False, "rows": 0, "unavailable": TRACKING_UNAVAILABLE}
+    print(f"  📊 ESPN 聯盟數據：{len(games)} 場 → 球隊 {len(team_stats)}、球員 {len(adv_stats)}")
     return team_stats, adv_stats
-
-
-def fetch_with_season_fallback(fetch_fn, season, as_of, min_rows=1, label="", fill_below=None):
-    """Call ``fetch_fn(season, as_of)``; use last season when empty/thin, and fill gaps.
-
-    Two cases, both bounded by ``as_of`` (no game on or after the event's US day is read):
-
-    * whole feed empty/thin (< ``min_rows``): use last season entirely;
-    * feed usable but incomplete: keep the current-season rows and fill each MISSING
-      key (team / player) from last season.  2026-10-23: after opening night the
-      league feed returned 28 teams (>= MIN_TEAM_ROWS) so it was trusted as-is, and
-      DEN / CLE - who had not yet played - got no team or advanced data, so their game
-      had no combos.  ``fill_below`` (e.g. 30 teams) is the row count at which the
-      current feed counts as complete; at or above it no extra request is made.
-      ``None`` (default) never fills.
-
-    Returns ``(data, info)``; ``info`` records which season the numbers really come from.
-    """
-    data = fetch_fn(season, as_of)
-    rows = len(data) if data else 0
-    info = {
-        "label": label,
-        "requested_season": season,
-        "data_season": season,
-        "fallback_used": False,
-        "rows": rows,
-    }
-    prior = previous_nba_season(season)
-    if rows < min_rows:
-        print(f"  ↩️ {label or 'data'}: {season} 得 {rows} 行 (<{min_rows})，改用 {prior}")
-        prior_data = fetch_fn(prior, as_of)
-        prior_rows = len(prior_data) if prior_data else 0
-        if prior_rows > rows:
-            info.update({"data_season": prior, "fallback_used": True,
-                         "rows": prior_rows, "current_rows": rows})
-            return prior_data, info
-        info["fallback_failed"] = True
-        return data, info
-    if isinstance(data, dict) and fill_below is not None and rows < fill_below:
-        prior_data = fetch_fn(prior, as_of)
-        if isinstance(prior_data, dict):
-            missing = [key for key in prior_data if key not in data]
-            if missing:
-                merged = dict(data)
-                merged.update({key: prior_data[key] for key in missing})
-                print(f"  ↩️ {label or 'data'}: {season} 缺 {len(missing)} 項，由 {prior} 補上")
-                info.update({
-                    "fallback_used": True, "fallback_partial": True, "current_rows": rows,
-                    "rows": len(merged), "filled_from": prior, "filled_count": len(missing),
-                    "filled_keys": [str(key) for key in missing[:40]],
-                })
-                return merged, info
-    return data, info
 
 
 def detect_season_phase(date_str, game_info=None):
@@ -538,96 +435,13 @@ def fetch_nba_news(team_abbr, limit=5):
 # ==========================================
 # 模塊 2：nba_api — 全員 L10 完整 Box Score
 # ==========================================
-# NBA PLAYER_ID -> ESPN athlete id, filled per team by fetch_team_roster. The
-# game-log fallback needs it (ESPN game logs are keyed by ESPN id).
-ESPN_IDS: dict = {}
-
-
-def _nba_id_lookup(team_abbr, season):
-    """{player_name_key: NBA PLAYER_ID} for resolving an ESPN roster: the last
-    saved nba.com roster for this team first, then nba_api's offline player
-    list (no request). Ambiguous names are left out, never guessed."""
-    lookup = {}
-    saved, _ = nba_league_snapshot.load(f"roster_{team_abbr}", season,
-                                        datetime.now().strftime("%m/%d/%Y"), max_age_days=30)
-    for row in (saved or {}).values():
-        lookup.setdefault(player_name_key(row.get("name", "")), row.get("player_id"))
-    seen = {}
-    for row in players.get_active_players() if NBA_API_AVAILABLE else []:
-        key = player_name_key(row.get("full_name", ""))
-        seen[key] = None if key in seen else row.get("id")
-    for key, pid in seen.items():
-        if pid is not None:
-            lookup.setdefault(key, pid)
-    return lookup
-
-
-def _link_espn_ids(team_abbr, roster):
-    """Record each roster player's ESPN id (one ESPN request per team)."""
+def fetch_team_roster(team_abbr, season=None):
+    """ESPN team roster; ``player_id`` is the ESPN athlete id."""
     try:
-        espn_rows = nba_espn_stats.espn_roster(team_abbr)
-    except Exception as exc:  # the fallback is optional; never break the roster
-        print(f"    ⚠️ ESPN roster ids unavailable ({team_abbr}): {exc}")
-        return
-    by_name = {player_name_key(row["name"]): row["espn_id"] for row in espn_rows}
-    for row in roster:
-        espn_id = by_name.get(player_name_key(row["name"]))
-        if espn_id and row.get("player_id") is not None:
-            ESPN_IDS[row["player_id"]] = espn_id
-
-
-def espn_team_roster(team_abbr, season):
-    """Roster from ESPN when nba.com is unreachable. Players whose NBA id
-    cannot be resolved are dropped and named, never given a guessed id."""
-    rows = nba_espn_stats.espn_roster(team_abbr, name_to_nba_id=_nba_id_lookup(team_abbr, season))
-    unresolved = [row["name"] for row in rows if row["player_id"] is None]
-    if unresolved:
-        print(f"    ⚠️ ESPN roster: {len(unresolved)} 名球員搵唔到 NBA id，略過: {unresolved}")
-    resolved = [row for row in rows if row["player_id"] is not None]
-    for row in resolved:
-        ESPN_IDS[row["player_id"]] = row["espn_id"]
-    return resolved
-
-
-def fetch_team_roster(team_nickname, season=None):
-    """從 nba_api 獲取球隊完整陣容；stats.nba.com 唔通就用 ESPN。"""
-    if not NBA_API_AVAILABLE:
+        return nba_espn_stats.espn_roster(team_abbr)
+    except Exception as exc:
+        print(f"⚠️ ESPN roster 失敗 ({team_abbr}): {exc}")
         return []
-    all_teams = teams.get_teams()
-    match = [t for t in all_teams if t['nickname'] == team_nickname or t['abbreviation'] == team_nickname or team_nickname.lower() in t['full_name'].lower()]
-    if not match:
-        print(f"⚠️ 找不到球隊: {team_nickname}")
-        return []
-    team_id = match[0]['id']
-    team_abbr = match[0]['abbreviation']
-    season = season or nba_season_for_date(None)
-    try:
-        roster = commonteamroster.CommonTeamRoster(team_id=team_id, season=season)
-        df = roster.get_data_frames()[0]
-        time.sleep(API_SLEEP)
-        result = []
-        for _, row in df.iterrows():
-            result.append({
-                "player_id": row['PLAYER_ID'],
-                "name": row['PLAYER'],
-                "position": row.get('POSITION') or '',
-                "age": row.get('AGE', ''),
-                "num": row.get('NUM', ''),
-                "experience": str(row.get('EXP', '')).strip(),
-            })
-        nba_league_snapshot.save(f"roster_{team_abbr}", season, datetime.now().strftime("%m/%d/%Y"),
-                                 {str(row["player_id"]): row for row in result})
-        _link_espn_ids(team_abbr, result)
-        return result
-    except Exception as e:
-        print(f"⚠️ Roster 提取失敗 ({team_nickname}): {e}")
-        try:
-            result = espn_team_roster(team_abbr, season)
-        except Exception as exc:
-            print(f"⚠️ ESPN roster 都失敗 ({team_abbr}): {exc}")
-            return []
-        print(f"  ↪️ 改用 ESPN roster ({team_abbr}): {len(result)} 人")
-        return result
 
 
 def fetch_team_injuries(team_abbr):
@@ -696,22 +510,10 @@ def compact_season_log(df):
 
 
 def player_log_frame(player_id, season, date_to, season_type):
-    """PlayerGameLog frame from stats.nba.com, or the same frame from ESPN when
-    nba.com fails on the network. Any other failure, or no ESPN id, re-raises
-    exactly as before. Returns ``(frame, source)``."""
-    try:
-        log = playergamelog.PlayerGameLog(
-            player_id=player_id, season=season, date_to_nullable=date_to,
-            season_type_all_star=season_type,
-        )
-        return log.get_data_frames()[0], "nba"
-    except Exception as exc:
-        espn_id = ESPN_IDS.get(player_id)
-        if not espn_id or not (isinstance(exc, nba_api_breaker.StatsNbaBlocked)
-                               or nba_api_breaker._is_network_failure(exc)):
-            raise
-        day = datetime.strptime(date_to, "%m/%d/%Y").date() if date_to else None
-        return nba_espn_stats.espn_gamelog_frame(espn_id, season, season_type, day), "espn"
+    """PlayerGameLog-shaped frame from ESPN (``player_id`` = ESPN athlete id).
+    Returns ``(frame, source)``."""
+    day = datetime.strptime(date_to, "%m/%d/%Y").date() if date_to else None
+    return nba_espn_stats.espn_gamelog_frame(player_id, season, season_type, day), "espn"
 
 
 def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, include_previous=False, season_type="Regular Season"):
@@ -720,8 +522,6 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
     Explicit season/date queries keep historical shadow data distinct from current-season data.
     Merge completed RS + playoff games chronologically; never include event-day results.
     """
-    if not NBA_API_AVAILABLE:
-        return None
     try:
         import pandas as pd
         all_dfs = []
@@ -734,7 +534,6 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
             try:
                 df_po, source = player_log_frame(player_id, history_season, date_to, 'Playoffs')
                 sources.add(source)
-                time.sleep(API_SLEEP)
                 if not df_po.empty:
                     df_po = df_po.copy()
                     df_po["_season_type"] = "Playoffs"
@@ -749,7 +548,6 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
             try:
                 df_rs, source = player_log_frame(player_id, history_season, date_to, season_type)
                 sources.add(source)
-                time.sleep(API_SLEEP)
                 if not df_rs.empty:
                     df_rs = df_rs.copy()
                     df_rs["_season_type"] = season_type
@@ -760,7 +558,6 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
             except Exception as e:
                 if attempt == 0:
                     print(f"    ⚠️ RS gamelog retry ({player_name}): {e}")
-                    time.sleep(2.0)  # Longer backoff before retry
                 else:
                     print(f"    ❌ RS gamelog 失敗 ({player_name}): {e}")
 
@@ -778,7 +575,6 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
                 try:
                     frame, source = player_log_frame(player_id, prior, date_to, kind)
                     sources.add(source)
-                    time.sleep(API_SLEEP)
                     if not frame.empty:
                         frame = frame.copy()
                         frame["_season_type"] = kind
@@ -834,9 +630,8 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
             "FTA": df_l10['FTA'].tolist(),
             "PLUS_MINUS": df_l10['PLUS_MINUS'].tolist(),
         }
-        # Which feed the numbers came from: "espn" means nba.com was unreachable
-        # (ESPN has no PLUS_MINUS; every other L10 stat is the same box score).
-        record["source"] = "espn" if "espn" in sources else "nba"
+        # ESPN is the only feed (it has no PLUS_MINUS; written as 0).
+        record["source"] = "espn"
         record["season_log"] = compact_season_log(df)
         record["fit_inputs"] = compute_fit_inputs(
             df, nba_season_for_date(as_of) if as_of else history_season)
@@ -860,9 +655,6 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
 # ==========================================
 def fetch_player_h2h(player_id, player_name, opp_abbr, season=None, as_of=None):
     """提取球員對住特定球隊的歷史對戰數據 (當季 + 上季, RS + Playoffs)"""
-    # V3: Re-enabled (was previously disabled)
-    if not NBA_API_AVAILABLE:
-        return None
     try:
         import pandas as pd
         h2h_games = []
@@ -872,7 +664,6 @@ def fetch_player_h2h(player_id, player_name, opp_abbr, season=None, as_of=None):
             for season_type in ['Regular Season', 'Playoffs']:
                 try:
                     df, _source = player_log_frame(player_id, season, history_date_to(as_of), season_type)
-                    time.sleep(API_SLEEP)
                     if as_of:
                         dates = pd.to_datetime(df['GAME_DATE'], errors='coerce')
                         df = df[dates < pd.Timestamp(history_cutoff_day(as_of))]
@@ -923,50 +714,11 @@ def fetch_player_h2h(player_id, player_name, opp_abbr, season=None, as_of=None):
 
 
 # ==========================================
-# 模塊 3：nba_api — 進階球員數據
-# ==========================================
-def fetch_all_player_advanced_stats(season=None, as_of=None):
-    """提取全聯盟球員進階數據 (USG%, TS%, DEF_RTG 等)"""
-    if not NBA_API_AVAILABLE:
-        return {}
-    print("📊 [Module 3] 全聯盟球員進階數據 (USG%, TS%, DEF_RTG)...")
-    try:
-        stats = leaguedashplayerstats.LeagueDashPlayerStats(
-            measure_type_detailed_defense='Advanced',
-            per_mode_detailed='PerGame',
-            season=season or nba_season_for_date(as_of),
-            date_to_nullable=history_date_to(as_of),
-        )
-        df = stats.get_data_frames()[0]
-        time.sleep(API_SLEEP)
-
-        result = {}
-        for _, row in df.iterrows():
-            result[row['PLAYER_ID']] = {
-                "USG_PCT": round(row.get('USG_PCT', 0) * 100, 1),
-                "TS_PCT": round(row.get('TS_PCT', 0) * 100, 1),
-                "OFF_RATING": round(row.get('OFF_RATING', 0), 1),
-                "DEF_RATING": round(row.get('DEF_RATING', 0), 1),
-                "NET_RATING": round(row.get('NET_RATING', 0), 1),
-                "PACE": round(row.get('PACE', 0), 1),
-                "PIE": round(row.get('PIE', 0) * 100, 1),
-                "AST_PCT": round(row.get('AST_PCT', 0) * 100, 1),
-                "EFG_PCT": round(row.get('EFG_PCT', 0) * 100, 1),
-            }
-        print(f"  ✅ 獲取 {len(result)} 位球員進階數據")
-        return result
-    except Exception as e:
-        print(f"  ⚠️ 進階數據失敗: {e}")
-        return {}
-
-
-# ==========================================
-# 模塊 4：nba_api — Home/Away & Rest Day Splits
+# 模塊 4：Home/Away & Rest Day Splits（由 ESPN 賽績計）
 # ==========================================
 def splits_from_gamelog(regular, preseason=None):
     """PlayerDashboardByGeneralSplits' Home/Road and rest-day groups, from game logs.
 
-    Used while stats.nba.com is blocked (game logs then come from ESPN).
     nba.com counts rest from the previous game of ANY type -- a season opener
     after a preseason game four days earlier is '4 Days Rest' -- so preseason
     dates are read for spacing only, never for the averages.
@@ -1010,245 +762,20 @@ def splits_from_gamelog(regular, preseason=None):
 
 
 def fetch_player_splits(player_id, player_name, season=None, as_of=None):
-    """提取球員 Home/Away 及 Rest Day Splits"""
-    if not NBA_API_AVAILABLE:
-        return None
+    """Home/Road and rest-day splits from the player's ESPN game logs."""
+    season_key = season or nba_season_for_date(as_of)
+    date_to = history_date_to(as_of)
     try:
-        splits = playerdashboardbygeneralsplits.PlayerDashboardByGeneralSplits(
-            player_id=player_id, season=season or nba_season_for_date(as_of),
-            date_to_nullable=history_date_to(as_of),
-        )
-        dfs = splits.get_data_frames()
-        time.sleep(API_SLEEP)
-
-        result = {}
-
-        # DF[1] = Home/Road splits
-        if len(dfs) > 1 and not dfs[1].empty:
-            for _, row in dfs[1].iterrows():
-                gp = row.get('GP', 1) or 1
-                group = row.get('GROUP_VALUE', '')
-                result[f"{group}_PPG"] = round(row.get('PTS', 0) / gp, 1)
-                result[f"{group}_RPG"] = round(row.get('REB', 0) / gp, 1)
-                result[f"{group}_APG"] = round(row.get('AST', 0) / gp, 1)
-                result[f"{group}_MPG"] = round(row.get('MIN', 0) / gp, 1)
-
-        # DF[6] = Rest Day splits
-        if len(dfs) > 6 and not dfs[6].empty:
-            rest_data = {}
-            for _, row in dfs[6].iterrows():
-                gp = row.get('GP', 1) or 1
-                group = row.get('GROUP_VALUE', '')
-                rest_data[group] = {
-                    "PPG": round(row.get('PTS', 0) / gp, 1),
-                    "RPG": round(row.get('REB', 0) / gp, 1),
-                    "GP": gp
-                }
-            result["rest_splits"] = rest_data
-
-        nba_league_snapshot.save_entry("player_splits", season or nba_season_for_date(as_of),
-                                       history_date_to(as_of), player_id, result)
-        return result
-    except Exception as e:
-        print(f"  ⚠️ {player_name} splits 失敗: {e}")
-        if isinstance(e, nba_api_breaker.StatsNbaBlocked) or nba_api_breaker._is_network_failure(e):
-            cached, age = nba_league_snapshot.load_entry(
-                "player_splits", season or nba_season_for_date(as_of), history_date_to(as_of), player_id)
-            if cached:
-                # Recorded so a stale split is never mistaken for today's.
-                return {**cached, "snapshot_age_days": age}
-            try:   # no snapshot: same groups from the (ESPN) game logs
-                season_key = season or nba_season_for_date(as_of)
-                date_to = history_date_to(as_of)
-                regular, source = player_log_frame(player_id, season_key, date_to, "Regular Season")
-                try:
-                    preseason, _ = player_log_frame(player_id, season_key, date_to, "Pre Season")
-                except Exception:
-                    preseason = None
-                derived = splits_from_gamelog(regular, preseason)
-                if derived:
-                    return {**derived, "source": source}
-            except Exception as derive_exc:
-                print(f"  ⚠️ {player_name} splits 由賽績計都失敗: {derive_exc}")
-        return None
-
-
-# ==========================================
-# 模塊 5：nba_api — 防守影響力
-# ==========================================
-def fetch_defender_impact(season=None, as_of=None):
-    """全聯盟球員級別防守壓制力 (D_FG%, PCT_PLUSMINUS)"""
-    if not NBA_API_AVAILABLE:
-        return {}
-    print("🛡️ [Module 5] 球員防守影響力數據...")
-    try:
-        dvp = leaguedashptdefend.LeagueDashPtDefend(
-            defense_category='Overall',
-            per_mode_simple='Totals',
-            season=season or nba_season_for_date(as_of),
-            date_to_nullable=history_date_to(as_of),
-        )
-        df = dvp.get_data_frames()[0]
-        time.sleep(API_SLEEP)
-
-        result = {}
-        for _, row in df.iterrows():
-            pid = row['CLOSE_DEF_PERSON_ID']
-            result[pid] = {
-                "name": row['PLAYER_NAME'],
-                "team": row.get('PLAYER_LAST_TEAM_ABBREVIATION', ''),
-                "position": row.get('PLAYER_POSITION', ''),
-                "D_FGA": row.get('D_FGA', 0),
-                "D_FGA_unit": "total_attempts",
-                "GP": row.get('GP', 0),
-                "D_FG_PCT": round(row.get('D_FG_PCT', 0), 3),
-                "NORMAL_FG_PCT": round(row.get('NORMAL_FG_PCT', 0), 3),
-                "PCT_PLUSMINUS": round(row.get('PCT_PLUSMINUS', 0), 3),
-            }
-        print(f"  ✅ 獲取 {len(result)} 位球員防守數據")
-        return result
-    except Exception as e:
-        print(f"  ⚠️ 防守數據失敗: {e}")
-        return {}
-
-
-def fetch_team_defense_vs_position(season=None, as_of=None):
-    """球隊級別 DvP"""
-    if not NBA_API_AVAILABLE:
-        return {}
-    print("🛡️ [Module 5b] 球隊 DvP...")
-    try:
-        tdvp = leaguedashptteamdefend.LeagueDashPtTeamDefend(
-            defense_category='Overall',
-            per_mode_simple='PerGame',
-            season=season or nba_season_for_date(as_of),
-            date_to_nullable=history_date_to(as_of),
-        )
-        df = tdvp.get_data_frames()[0]
-        time.sleep(API_SLEEP)
-        result = {}
-        for _, row in df.iterrows():
-            abbr = row.get('TEAM_ABBREVIATION', '')
-            if not abbr:
-                # Fallback: map team name to abbreviation
-                all_t = teams.get_teams()
-                name_map = {t['full_name']: t['abbreviation'] for t in all_t}
-                abbr = name_map.get(row.get('TEAM_NAME', ''), '')
-            result[abbr] = {
-                "D_FG_PCT": round(row.get('D_FG_PCT', 0), 3),
-                "PCT_PLUSMINUS": round(row.get('PCT_PLUSMINUS', 0), 3),
-            }
-        return result
-    except Exception as e:
-        print(f"  ⚠️ Team DvP 失敗: {e}")
-        return {}
-
-
-# ==========================================
-# 模塊 6：球隊進階數據 (DEF_RTG, OFF_RTG, PACE)
-# ==========================================
-def fetch_team_opponent_stats(season=None, as_of=None):
-    """Optional descriptive opponent totals; never substitutes missing values with zero."""
-    if not NBA_API_AVAILABLE:
-        return {}
-    season = season or nba_season_for_date(as_of)
-    cutoff = history_date_to(as_of)
-    id_to_abbr = {t['id']: t['abbreviation'] for t in teams.get_teams()}
-    modes = {}
-    for mode, unit in [('PerGame', 'per_game'), ('Per100Possessions', 'per_100_possessions')]:
+        regular, source = player_log_frame(player_id, season_key, date_to, "Regular Season")
         try:
-            response = leaguedashteamstats.LeagueDashTeamStats(
-                measure_type_detailed_defense='Opponent', per_mode_detailed=mode,
-                season=season, season_type_all_star='Regular Season',
-                date_to_nullable=cutoff, timeout=15,
-            )
-            frame = response.get_data_frames()[0]
-            modes[unit] = ('available', frame)
+            preseason, _ = player_log_frame(player_id, season_key, date_to, "Pre Season")
         except Exception:
-            modes[unit] = ('unavailable', None)
-        time.sleep(API_SLEEP)
-    fields = ('OPP_PTS', 'OPP_REB', 'OPP_AST', 'OPP_OREB', 'OPP_DREB', 'OPP_FGA', 'OPP_FGM', 'OPP_FG3A', 'OPP_FG3M')
-    result = {}
-    for unit, (status, frame) in modes.items():
-        if frame is None:
-            continue
-        for _, row in frame.iterrows():
-            abbr = id_to_abbr.get(row.get('TEAM_ID'))
-            if not abbr:
-                continue
-            record = result.setdefault(abbr, {
-                'source': 'NBA LeagueDashTeamStats/Opponent', 'season': season,
-                'season_type': 'Regular Season', 'history_date_to': cutoff,
-                'model_input_enabled': False,
-                'modes': {key: {'status': state, 'games': None, 'values': {}}
-                          for key, (state, _) in modes.items()},
-            })
-            def number(value):
-                try:
-                    value = float(value)
-                    return value if math.isfinite(value) and value >= 0 else None
-                except (TypeError, ValueError):
-                    return None
-            values = {field: number(row.get(field)) for field in fields}
-            gp = number(row.get('GP'))
-            complete = gp is not None and gp > 0 and all(v is not None for v in values.values())
-            record['captured_at'] = datetime.now(ZoneInfo('UTC')).isoformat()
-            record['modes'][unit] = {
-                'status': 'available' if complete else 'insufficient',
-                'games': int(gp) if gp is not None and gp.is_integer() else None,
-                'values': values,
-            }
-    # A successful endpoint can still omit an individual team.
-    for record in result.values():
-        for mode in record['modes'].values():
-            if mode['status'] == 'available' and not mode['values']:
-                mode['status'] = 'team_missing'
-    return result
-
-
-def fetch_team_advanced_stats(season=None, as_of=None):
-    """全聯盟球隊進階數據"""
-    if not NBA_API_AVAILABLE:
-        return {}
-    print("📊 [Module 6] 球隊進階數據 (Pace, Off RTG, Def RTG)...")
-    try:
-        stats = leaguedashteamstats.LeagueDashTeamStats(
-            measure_type_detailed_defense='Advanced',
-            per_mode_detailed='PerGame',
-            season=season or nba_season_for_date(as_of),
-            date_to_nullable=history_date_to(as_of),
-        )
-        df = stats.get_data_frames()[0]
-        time.sleep(API_SLEEP)
-
-        # 建立 team_id -> abbreviation 映射
-        all_teams = teams.get_teams()
-        id_to_abbr = {t['id']: t['abbreviation'] for t in all_teams}
-
-        df = df.sort_values(by='DEF_RATING', ascending=True)
-        result = {}
-        for rank, (_, row) in enumerate(df.iterrows(), 1):
-            team_id = row['TEAM_ID']
-            abbr = id_to_abbr.get(team_id, '')
-            result[abbr] = {
-                "name": row['TEAM_NAME'],
-                "DEF_RATING": round(row['DEF_RATING'], 1),
-                "DEF_RANK": rank,
-                "OFF_RATING": round(row['OFF_RATING'], 1),
-                "PACE": round(row['PACE'], 2),
-                "NET_RATING": round(row['NET_RATING'], 1),
-            }
-        opponent = fetch_team_opponent_stats(season, as_of)
-        for abbr, record in result.items():
-            record['opponent_stats'] = opponent.get(abbr, {
-                'status': 'unavailable', 'season': season or nba_season_for_date(as_of),
-                'history_date_to': history_date_to(as_of), 'model_input_enabled': False,
-            })
-        print(f"  ✅ 獲取 {len(result)} 支球隊數據")
-        return result
-    except Exception as e:
-        print(f"  ⚠️ Team Stats 失敗: {e}")
-        return {}
+            preseason = None
+        derived = splits_from_gamelog(regular, preseason)
+        return {**derived, "source": source} if derived else None
+    except Exception as exc:
+        print(f"  ⚠️ {player_name} splits 失敗: {exc}")
+        return None
 
 
 # ==========================================
@@ -1608,10 +1135,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
     availability_maps = {}
     for side, abbr, full_name in [("away", away_abbr, away_name), ("home", home_abbr, home_name)]:
         print(f"\n📋 [{abbr}] 提取 {full_name} 陣容...")
-        roster = fetch_team_roster(full_name, target_season)
-        if not roster:
-            # 嘗試用縮寫
-            roster = fetch_team_roster(abbr, target_season)
+        roster = fetch_team_roster(abbr, target_season)
 
         print(f"  👥 陣容人數: {len(roster)}")
 
@@ -1694,6 +1218,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
                 "name": pname,
                 "status": p_status,
                 "player_id": int(pid),
+                "player_id_source": "espn",
                 "position": p.get('position') or '',
                 "age": p.get('age', ''),
                 "advanced": adv,
@@ -1705,9 +1230,8 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             
             if opportunity_sources is not None:
                 opp_team = home_abbr if side == "away" else away_abbr
-                nba_ids = {canonical_team_abbr(t['abbreviation']): t['id'] for t in teams.get_teams()} if NBA_API_AVAILABLE else {}
                 player_entry["opportunity_features"] = nba_opportunities.build_features(
-                    player_entry, abbr, nba_ids.get(canonical_team_abbr(opp_team)), opportunity_sources,
+                    player_entry, abbr, canonical_team_abbr(opp_team), opportunity_sources,
                     tip=game_info['date'], season=statistics_season,
                     cutoff=history_date_to(game_info['date']), opponent_stats=team_stats.get(opp_team, {}))
 
@@ -1757,29 +1281,8 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             }
         except Exception as exc:  # shadow data must never break extraction
             package["opponent_context"] = {"error": f"{type(exc).__name__}: {exc}"}
-    package["meta"]["nbacom_fallback"] = nbacom_fallback_summary(package)
     package["meta"]["stat_source"] = stat_source(package)
     return apply_availability(package, availability_maps)
-
-
-def nbacom_fallback_summary(package):
-    """How much of this package stood in for an unreachable stats.nba.com.
-
-    ESPN game logs match nba_api's L10 exactly for 358/378 players
-    (EXP-20261030-01); the rest differ by a rounded minute or a deep-tail
-    playoff game. Recorded so a fallback slate is never mistaken for a normal one."""
-    rows = [p for team in (package.get("players") or {}).values() for p in team]
-    espn_logs = sum(1 for p in rows if (p.get("gamelog") or {}).get("source") == "espn")
-    stale_splits = sum(1 for p in rows if "snapshot_age_days" in (p.get("splits") or {}))
-    sources = package["meta"].get("data_sources") or {}
-    snapshots = sorted(label for label, info in sources.items() if info.get("snapshot"))
-    espn_tables = sorted(label for label, info in sources.items()
-                         if info.get("source") == nba_espn_league.SOURCE)
-    missing = sorted(label for label, info in sources.items() if info.get("unavailable"))
-    return {"active": bool(espn_logs or stale_splits or snapshots or espn_tables or missing),
-            "espn_gamelog_players": espn_logs, "players": len(rows),
-            "snapshot_splits_players": stale_splits, "snapshot_league_tables": snapshots,
-            "espn_league_tables": espn_tables, "unavailable_tables": missing}
 
 
 # ==========================================
@@ -1818,75 +1321,8 @@ def generate_overview_md(games, team_stats, odds_data):
 
 
 # ==========================================
-# 繞過 ESPN：直接從 game tag 建構 game_info
-# ==========================================
-def build_game_info_from_tag(game_tag):
-    """當 ESPN 搵唔到賽事時，直接從 game tag 建構 game_info。
-    用 nba_api.stats.static.teams 查兩隊嘅 full name 同 team_id。"""
-    parts = game_tag.split("_")
-    if len(parts) < 2:
-        print(f"❌ 無效嘅 game tag: {game_tag}")
-        return None
-    away_abbr, home_abbr = parts[0], parts[1]
-
-    if not NBA_API_AVAILABLE:
-        print("❌ nba_api 未安裝，無法建構 game_info。")
-        return None
-
-    all_t = teams.get_teams()
-    abbr_map = {t['abbreviation']: t for t in all_t}
-
-    away_team = abbr_map.get(away_abbr)
-    home_team = abbr_map.get(home_abbr)
-
-    if not away_team:
-        print(f"⚠️ nba_api 搵唔到球隊: {away_abbr}")
-        return None
-    if not home_team:
-        print(f"⚠️ nba_api 搵唔到球隊: {home_abbr}")
-        return None
-
-    print(f"🔧 [build_game_info_from_tag] 繞過 ESPN，直接建構: {away_team['full_name']} @ {home_team['full_name']}")
-    return {
-        "game_id": f"synthetic_{game_tag}",
-        "name": f"{away_team['full_name']} at {home_team['full_name']}",
-        "date": datetime.now().isoformat(),
-        "short_name": f"{away_abbr} @ {home_abbr}",
-        "away": {
-            "id": away_team["id"],
-            "name": away_team["full_name"],
-            "abbreviation": away_abbr,
-            "home_away": "away",
-        },
-        "home": {
-            "id": home_team["id"],
-            "name": home_team["full_name"],
-            "abbreviation": home_abbr,
-            "home_away": "home",
-        },
-        "tag": game_tag,
-    }
-
-
-# ==========================================
 # 主程式
 # ==========================================
-def attach_official_injuries(package, cache_dir):
-    """Supplementary league injury report for both teams of this game. Never raises."""
-    try:
-        meta = package.get("meta") or {}
-        game_day = history_cutoff_day(meta.get("date"))
-        bundle = nba_official_injuries.fetch_latest(
-            nba_season_for_date(meta.get("date")), Path(cache_dir) / "NBA_Official_Injuries.json")
-        teams = [(meta.get(side) or {}).get("abbr") for side in ("away", "home")]
-        package["official_injuries"] = {t: nba_official_injuries.for_team(bundle, t, game_day) for t in teams if t}
-        meta["official_injuries"] = {k: bundle.get(k) for k in ("status", "report_time", "url", "pdf_sha256",
-                                                                 "captured_at", "error")}
-    except Exception as exc:
-        package["official_injuries"] = {"error": f"{type(exc).__name__}: {exc}"}
-    return package
-
-
 def _write_verified_package(path, package):
     from datetime import timezone
     now = datetime.now(timezone.utc)
@@ -1919,7 +1355,7 @@ def main():
             with open(path, encoding="utf-8") as source:
                 package = json.load(source)
             package = refresh_availability(package, fetch=fetch_team_injuries)
-            package = attach_official_injuries(package, Path(path).resolve().parent)
+            package.pop("official_injuries", None)   # retired (EXP-20261101-60)
         except RosterChanged as exc:
             print(f"⏳ {exc}")
             raise SystemExit(2)
@@ -1969,7 +1405,7 @@ def main():
             print(f"   - {g['tag']}: {g['name']}")
     print()
 
-    # ── Step 2: 全聯盟預載 (nba_api — 只拉一次) ──
+    # ── Step 2: 全聯盟預載 (ESPN — 只計一次) ──
     analysis_game = next(
         (game for game in games if args.game and canonical_game_tag(game['tag']) == canonical_game_tag(args.game)),
         min(games, key=lambda game: game['date']) if games else None,
@@ -1978,38 +1414,12 @@ def main():
     statistics_season = statistics_season_for_game(stats_date, analysis_game)
     print(f"📚 歷史數據球季: {statistics_season} | 截止: {history_date_to(stats_date)}")
     data_sources = {}
-    league_fetchers = {
-        label: nba_league_snapshot.backed(fn, label, nba_api_breaker.failure_count, history_date_to)
-        for label, fn in (("team_stats", fetch_team_advanced_stats),
-                          ("player_advanced", fetch_all_player_advanced_stats),
-                          ("key_defenders", fetch_defender_impact),
-                          ("team_dvp", fetch_team_defense_vs_position))
-    }
-    team_stats, data_sources["team_stats"] = fetch_with_season_fallback(
-        league_fetchers["team_stats"], statistics_season, stats_date, MIN_TEAM_ROWS, "team_stats", fill_below=30)
-    adv_stats, data_sources["player_advanced"] = fetch_with_season_fallback(
-        league_fetchers["player_advanced"], statistics_season, stats_date, MIN_PLAYER_ROWS, "player_advanced", fill_below=ALWAYS_FILL)
-    defender_data, data_sources["key_defenders"] = fetch_with_season_fallback(
-        league_fetchers["key_defenders"], statistics_season, stats_date, MIN_PLAYER_ROWS, "key_defenders", fill_below=ALWAYS_FILL)
-    team_dvp, data_sources["team_dvp"] = fetch_with_season_fallback(
-        league_fetchers["team_dvp"], statistics_season, stats_date, MIN_TEAM_ROWS, "team_dvp", fill_below=30)
-    for label, fetcher in league_fetchers.items():
-        if fetcher.used:   # stale copy stood in for an unreachable nba.com
-            data_sources[label].update({"fallback_used": True, "snapshot": fetcher.used})
-    if games:
-        team_stats, adv_stats = espn_league_fallback(
-            statistics_season, stats_date, data_sources, team_stats, adv_stats)
-    for label in TRACKING_ONLY_TABLES:
-        if nba_api_breaker.failure_count() and not data_sources[label].get("rows"):
-            data_sources[label]["unavailable"] = TRACKING_UNAVAILABLE
-    # Fail closed. With ESPN game logs the per-game L10 check below no longer
-    # catches an nba.com outage, so a package built WITHOUT the league tables
-    # (no team pace/defence, no USG, no defenders) would sail through to bets.
-    # Without a recent snapshot that is not a degraded analysis, it is none.
-    missing = missing_league_tables(data_sources, nba_api_breaker.failure_count()) if games else []
-    if missing:
-        print(f"❌ league_tables_unavailable: {missing} — stats.nba.com 唔通，"
-              f"{nba_league_snapshot.MAX_AGE_DAYS} 日內冇快照，ESPN 亦計唔到；唔會用空白聯盟數據出分析")
+    team_stats, adv_stats = espn_league_tables(statistics_season, stats_date, data_sources) if games else ({}, {})
+    defender_data, team_dvp = {}, {}   # tracking tables, retired with stats.nba.com
+    # Fail closed: a package without team pace/defence and player usage is not
+    # a degraded analysis, it is none.
+    if games and (not team_stats or not adv_stats):
+        print("❌ league_tables_unavailable: ESPN 計唔到球隊／球員進階數據；唔會用空白聯盟數據出分析")
         sys.exit(1)
 
     # Research-only opportunity evidence: one league capture shared by game runs.
@@ -2083,10 +1493,8 @@ def main():
 
         if not has_real_data:
             print(f"\n❌ [品質檢查] 所有球員都冇 L10 gamelog 數據！")
-            print(f"   可能原因: nba_api 未安裝 / API 限流 / 球隊 abbreviation 唔啱")
+            print(f"   可能原因: ESPN 唔通／熔斷中 / 球隊 abbreviation 唔啱")
             sys.exit(1)
-
-        attach_official_injuries(package, Path(args.output).resolve().parent)
 
         # 儲存為 JSON
         output_path = args.output
@@ -2099,7 +1507,7 @@ def main():
     else:
         # 概覽模式
         if not games:
-            print("❌ ESPN 同 nba_api 都搵唔到賽事。")
+            print("❌ ESPN 搵唔到賽事。")
             sys.exit(1)
 
         overview = generate_overview_md(games, team_stats, odds_data)
@@ -2114,7 +1522,6 @@ def main():
                                       team_context=team_context)
 
             json_path = f"nba_game_data_{g['tag']}.json"
-            attach_official_injuries(package, Path(json_path).resolve().parent)
             _write_verified_package(json_path, package)
             print(f"  ✅ {g['tag']} → {json_path}")
 
