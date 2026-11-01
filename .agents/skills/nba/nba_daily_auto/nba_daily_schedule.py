@@ -1731,6 +1731,34 @@ def run_postgame(target_date: str, log: RunLog) -> str:
     return "archived"
 
 
+CATCH_UP_DAYS = 7
+
+
+def catch_up_postgame(target_date: str, log: RunLog) -> list[str]:
+    """Re-run postgame for earlier days that kept a prediction but were never archived.
+
+    A day is only reviewed by its own 18:30 / 21:30 runs. On 2026-10-29 both
+    failed (results fetch, stats.nba.com blocked) and nothing ever came back to
+    it: nine tracked cards stayed pending. Days without a prediction snapshot
+    are left to mark-no-prediction; a failure here is logged, never raised.
+    """
+    done = []
+    today = date.fromisoformat(target_date)
+    for back in range(CATCH_UP_DAYS, 0, -1):
+        day = (today - timedelta(days=back)).isoformat()
+        folder = live_dir(day)
+        if not folder.is_dir() or latest_snapshot(folder) is None:
+            continue
+        try:
+            status = run_postgame(day, log)
+        except TemporaryFailure as exc:
+            log.step("postgame_catch_up", "failed", date=day, error=str(exc))
+            continue
+        log.step("postgame_catch_up", status, date=day)
+        done.append(day)
+    return done
+
+
 def _experiment_readiness(target_date: str, log: RunLog) -> None:
     """Monday progress digest + a one-off alert when a frozen experiment's checkpoint is due.
 
@@ -1999,8 +2027,11 @@ def main() -> int:
                     schedule_events=load_espn_events(target_date),
                 )
             elif args.mode == "postgame":
-                status = (run_results_refresh(target_date, log) if args.incremental_results and (now.hour, now.minute // 15) not in {(18, 2), (21, 2)}
-                          else run_postgame(target_date, log))
+                if args.incremental_results and (now.hour, now.minute // 15) not in {(18, 2), (21, 2)}:
+                    status = run_results_refresh(target_date, log)
+                else:
+                    catch_up_postgame(target_date, log)
+                    status = run_postgame(target_date, log)
             elif args.mode == "startup":
                 status = run_startup(log)
             else:

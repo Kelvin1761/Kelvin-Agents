@@ -46,7 +46,35 @@ def _table(season, season_type, cutoff, fetch=None):
     return record
 
 
-def fetch_bundle(season, previous_season, cutoff, cache_path, *, now=None, fetch=None):
+def _espn_table(season, season_type, cutoff, get=None):
+    """The same rows as LeagueGameLog's team table, built from ESPN box scores (one ruler since 2026-11-01).
+
+    ESPN's scoreboard does not separate the play-in from the playoffs, so both
+    arrive under 'Playoffs' and 'PlayIn' is recorded as empty.
+    """
+    import nba_espn_league
+    record = {'season': season, 'season_type': season_type, 'history_date_to': cutoff,
+              'status': 'unavailable', 'source': nba_espn_league.SOURCE}
+    try:
+        if season_type == 'PlayIn':
+            record.update(status='available', rows=[])
+        else:
+            if not cutoff:  # the previous season, whole: its regular season ends in April
+                cutoff = f'05/01/{int(str(season)[:4]) + 1}'
+            kind = nba_espn_league.REGULAR_SEASON if season_type == 'Regular Season' else nba_espn_league.POSTSEASON
+            rows = []
+            for game in nba_espn_league.season_games(season, cutoff, get=get, season_types=(kind,)):
+                for abbr, totals in game['teams'].items():
+                    rows.append({'GAME_ID': game['event_id'], 'GAME_DATE': game['date'], 'TEAM_ID': abbr,
+                                 'TEAM_ABBREVIATION': abbr, **{s: totals[s] for s in STATS}})
+            record.update(status='available', rows=rows, source_sha256=digest(rows))
+    except Exception as exc:  # recorded, never raised: shadow data only
+        record['error_type'] = type(exc).__name__
+    record['captured_at'] = datetime.now(timezone.utc).isoformat()
+    return record
+
+
+def fetch_bundle(season, previous_season, cutoff, cache_path, *, now=None, fetch=None, get=None):
     now = now or datetime.now(timezone.utc)
     path = Path(cache_path)
     if os.environ.get('WC_NBA_TEAM_CONTEXT', '1') == '0':
@@ -61,8 +89,13 @@ def fetch_bundle(season, previous_season, cutoff, cache_path, *, now=None, fetch
             return cached
     except (OSError, ValueError, KeyError, TypeError):
         pass
-    tables = {kind: _table(season, kind, cutoff, fetch) for kind in SEASON_TYPES}
-    tables['previous_regular'] = _table(previous_season, 'Regular Season', '', fetch)
+    from nba_data_contract import primary_source
+    if fetch is None and primary_source() == 'espn':  # stats.nba.com is never called in ESPN mode
+        table = lambda s, kind, c: _espn_table(s, kind, c, get)  # noqa: E731
+    else:
+        table = lambda s, kind, c: _table(s, kind, c, fetch)  # noqa: E731
+    tables = {kind: table(season, kind, cutoff) for kind in SEASON_TYPES}
+    tables['previous_regular'] = table(previous_season, 'Regular Season', '')
     bundle = {'contract': CONTRACT, 'season': season, 'history_date_to': cutoff,
               'captured_at': datetime.now(timezone.utc).isoformat(), 'tables': tables,
               'tables_sha256': digest(tables), 'status': 'captured'}

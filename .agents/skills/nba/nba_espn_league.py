@@ -42,6 +42,7 @@ from nba_schedule import canonical_team_abbr
 SITE = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
 US_EASTERN = ZoneInfo("America/New_York")
 REGULAR_SEASON = 2
+POSTSEASON = 3
 SOURCE = "espn_box"
 POSSESSION_SCALE = 0.98
 
@@ -190,11 +191,11 @@ def _game(event_id: str, day: date, get=None) -> dict | None:
     return game
 
 
-def season_games(season: str, date_to, *, get=None) -> list[dict]:
-    """Final regular-season games of ``season`` ('2026-27') on or before ``date_to``.
+def season_games(season: str, date_to, *, get=None, season_types=(REGULAR_SEASON,)) -> list[dict]:
+    """Final games of ``season`` ('2026-27') on or before ``date_to``, regular season by default.
 
     Point-in-time by construction: only US dates <= ``date_to`` are read, the
-    same window the nba_api calls use.
+    same window the nba_api calls use. Each game carries its ESPN ``event_id``.
     """
     last = _window_day(date_to)
     if last is None:
@@ -203,10 +204,10 @@ def season_games(season: str, date_to, *, get=None) -> list[dict]:
     games = []
     while day <= last:
         for event in _scoreboard_events(day, get=get):
-            if event["season_type"] == REGULAR_SEASON and event["final"]:
+            if event["season_type"] in season_types and event["final"]:
                 game = _game(event["id"], day, get=get)
                 if game is not None:
-                    games.append(game)
+                    games.append({**game, "event_id": event["id"], "season_type": event["season_type"]})
         day += timedelta(days=1)
     return games
 
