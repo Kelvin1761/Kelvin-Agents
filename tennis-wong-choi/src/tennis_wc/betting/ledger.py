@@ -3,6 +3,7 @@ from __future__ import annotations
 from tennis_wc.database.history_observations import history_active_clause
 
 import json
+import logging
 import re
 from datetime import date, timedelta
 from pathlib import Path
@@ -14,6 +15,9 @@ from tennis_wc.ingestion.name_matching import match_pair_score, same_player_name
 from tennis_wc.providers import get_tennis_provider
 from tennis_wc.evaluation.corpus import tracker_point_in_time_clause
 from tennis_wc.database.result_consensus import conflicting_result_matches, result_agreement_clause
+from tennis_wc.database.odds_source_reads import OddsSourceReader
+
+_LOGGER = logging.getLogger(__name__)
 
 # Gates and track records read only legs written before their match started;
 # see evaluation.corpus.tracker_point_in_time_clause.
@@ -198,14 +202,14 @@ def fetch_closing_odds_for_date(match_date: str) -> int:
     return count
 
 
-def _match_winner_close(conn, match_id: int):
+def _match_winner_close(conn, match_id: int, *, source_reader=None, source_diagnostics=None):
     """The newest stored close for a match that is provably pre-start.
 
     Re-checks the start time instead of trusting `close_status`, because rows
     written before 2026-10-14 carry no status and many of them are in-running
     prices. A NO_CLOSE row has NULL odds and is never returned.
     """
-    return conn.execute(
+    row = conn.execute(
         """
         SELECT co.*
         FROM closing_odds_snapshots co
@@ -220,6 +224,15 @@ def _match_winner_close(conn, match_id: int):
         """,
         (match_id,),
     ).fetchone()
+    if row is None:
+        return None
+    status, blocked = (source_reader or OddsSourceReader(conn)).assess(row["raw_response_id"])
+    if source_diagnostics is not None:
+        source_diagnostics[status] += 1
+    if status not in {"matched_event_id", "outside_direct_event_scope"}:
+        _LOGGER.warning("match winner close source identity match=%s: %s", match_id, status)
+    # An older valid quote is not the true close. Never substitute it.
+    return None if blocked else row
 
 
 def update_open_bets_clv() -> int:

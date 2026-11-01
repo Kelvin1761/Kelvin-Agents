@@ -7,7 +7,9 @@ passes the strategy gate.
 """
 from __future__ import annotations
 
+import logging
 import re
+from collections import Counter
 from dataclasses import dataclass, field, asdict
 
 from tennis_wc.props import ace_model
@@ -18,6 +20,9 @@ from tennis_wc.features import snapshot_quality
 from tennis_wc.props import strategy
 from tennis_wc.props.settlement import record_prop
 from tennis_wc.modelling import set_distribution
+from tennis_wc.database.odds_source_reads import OddsSourceReader
+
+_LOGGER = logging.getLogger(__name__)
 
 _LADDER_MARKET = "total_aces_in_the_match"
 # 2026-08-23 Sportsbet renamed the ace markets: the whole-match N+ ladder became
@@ -264,7 +269,7 @@ def _strip_structured_value(prop):
     return prop
 
 
-def _rows_for_date(conn, match_date: str, earliest_only: bool = False):
+def _rows_for_date(conn, match_date: str, earliest_only: bool = False, *, source_reader=None, source_diagnostics=None):
     """Offered markets for the date.
 
     ``earliest_only`` keeps the FIRST snapshot of each selection instead of the
@@ -291,7 +296,7 @@ def _rows_for_date(conn, match_date: str, earliest_only: bool = False):
         if earliest_only
         else f" AND {current_market_clause(conn)}"
     )
-    return conn.execute(
+    selected = conn.execute(
         f"""
         SELECT mo.match_id, mo.market_key, mo.market_name, mo.selection_name,
                mo.line, mo.odds, mo.id,mo.bookmaker,mo.source_provider,mo.raw_response_id,mo.fetched_at
@@ -314,6 +319,21 @@ def _rows_for_date(conn, match_date: str, earliest_only: bool = False):
         """,
         (match_date, _LADDER_MARKET),
     ).fetchall()
+    # Select first, then reject: never promote a later quote as the opening.
+    reader = source_reader or OddsSourceReader(conn)
+    counts = Counter()
+    retained = []
+    for row in selected:
+        status, blocked = reader.assess(row["raw_response_id"])
+        counts[status] += 1
+        if not blocked:
+            retained.append(row)
+    if source_diagnostics is not None:
+        source_diagnostics.update(counts)
+    warnings = {k: v for k, v in counts.items() if k not in {"matched_event_id", "outside_direct_event_scope"}}
+    if warnings:
+        _LOGGER.warning("market source identity %s: %s", match_date, warnings)
+    return retained
 
 
 def _serve_based_player_games(conn, meta, subject_id, line, p_side, total_mean):

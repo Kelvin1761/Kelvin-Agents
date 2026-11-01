@@ -4,9 +4,9 @@ from datetime import date as date_type, datetime, timezone, timedelta
 import re
 import logging
 from zoneinfo import ZoneInfo
-from urllib.parse import urlparse
 
 from tennis_wc.database.db import get_connection
+from tennis_wc.event_source_identity import direct_event_response_issue
 from tennis_wc.ingestion.entity_mapping import get_or_create_player, upsert_tournament
 from tennis_wc.ingestion.fixture_versions import (
     upsert_fixture, ensure_fixture_schema, active_fixture_clause, quarantine_fixture,
@@ -646,17 +646,9 @@ def ingest_event_odds(event_id: str, match_id: int | None = None, *, preclose: b
 
 def _validate_sportsbet_event_response(provider_name: str, event_ref: str, row: dict) -> None:
     """A direct Sportsbet URL identifies the requested event, not a redirect's event."""
-    if provider_name != "sportsbet":
-        return
-    parsed = urlparse(str(event_ref))
-    if parsed.scheme not in {"http", "https"} or parsed.hostname not in {"sportsbet.com.au", "www.sportsbet.com.au"}:
-        return
-    requested = re.search(r"-(\d+)$", parsed.path.rstrip("/"))
-    if not requested:
-        return
-    received = str(row.get("event_id") or "").strip() if isinstance(row, dict) else ""
-    if received != requested.group(1):
-        raise ValueError(f"sportsbet_event_response_mismatch: requested={requested.group(1)} received={received or 'missing'}")
+    issue = direct_event_response_issue(provider_name, event_ref, row)
+    if issue:
+        raise ValueError(issue)
 
 
 def _store_preclose_event(row: dict, match_id: int | None, provider_name: str, raw_id: int) -> int:
