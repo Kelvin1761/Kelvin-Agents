@@ -4,6 +4,8 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261101-02](EXP-20261101-02-nba-espn-one-ruler.md) | 2026-11-01 | NBA | ESPN 做唯一數據來源：用 ESPN 重建 49 個賽事訓練語料（一把尺），C 層 non-inferior；剷 `defender_pm`／DvP | **KEEP（未上線，待 Kelvin）**：8,286 腿 C 層 ΔBrier −0.000003 [−0.000009, 0]，只 2 腿郁（最多 1.5pp）；`hit_rate_l10` 99.98% 一樣；RF 剷防守者 +0.0002、換尺 +0.0001 CI 跨零；全季球員 DEF_RATING 中位差 0.7 |
+| [EXP-20261101-01](EXP-20261101-01-nba-pbp-lineup-parity.md) | 2026-11-01 | NBA | ESPN PBP 還原場上陣容計球員 OFF/DEF rating、在場 PACE | **KEEP（數據來源）**：0/979 節解析失敗；球隊 0.7–0.8；球員回合 ×1.016（dev 定、test 驗）後 DEF 中位差 1.5、r 0.98、≥100 分鐘 0.9 |
 | [EXP-20261030-20](EXP-20261030-20-tennis-event-response-identity.md) | 2026-10-30 | Tennis | Sportsbet 單場回應必須匹配所請求 event ID；拒絕不等於隔離正確 fixture | **來源正確性修正／非準確率結論**：凍結 9,988 份，299 不符；44 宗隔離重播中 42 宗錯 event 回應被拒絕、2 宗同 ID 身份爭議仍隔離。歷史 217 份已連結 snapshot 未修復；native earliest market reader 暴露 84 場／888 行，須獨立追查 |
 | [EXP-20261030-01](EXP-20261030-01-nba-nbacom-outage-fallback.md) | 2026-10-30 | NBA | stats.nba.com 封 IP 時用 ESPN 陣容／賽績 + 一日內聯盟數據快照；冇快照 fail closed | **KEEP（數據後備，非模型改動）**：L10 逐場一樣 358/378（94.7%），餘下係 1 分鐘捨入／1 助攻更正／尾段舊季後賽；修 Play-In 混入常規賽；nba.com 正常時零改變 |
 | [EXP-20261029-30](EXP-20261029-30-hkjc-weight-input-results.md) | 2026-10-29 | HKJC | 負磅分讀「讓磅官意見」：A 宣佈負磅（§7）／B 場內官方評分差距／D 剷 SIP-C 輕磅加分；同步修正倒轉嘅文字層 | **A 上線（§7，Gold +0.29／Good +0.58，冇分層負，未證實改善）；B REJECT（live 重量 Gold +1.16 [+0.29,+2.30]／Good −0.58）→ forward 60 場 `weight_rating_gap`；D 唔上線（Good −1.16，交 Kelvin）** |
