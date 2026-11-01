@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261101-27](EXP-20261101-27-tennis-source-owner-repair-readiness.md) | 2026-11-01 | Tennis | source-owned 身份修補能否直接重入現有 history API | **修補前置／未 apply**：628 行 current cluster 唯讀 capture；記憶體雙側 upsert 後 2→4 ACTIVE、舊行未退役；明列 proposal／collision／clock／rollback 合約，未量準確度 |
 | [EXP-20261101-26](EXP-20261101-26-tennis-source-owner-identity-audit.md) | 2026-11-01 | Tennis | raw點數連結以外的source-owner語義檢查及reader路徑 | **唯讀診斷／未修資料**：3729個ID旗標live2849結構收斂／880未解釋；全160900條另找2153個原LINKED label衝突；live reader可用25場profile含7個來源標籤衝突，非實際投注證據 |
 | [EXP-20261101-25](EXP-20261101-25-tennis-public-point-input-inventory.md) | 2026-11-01 | Tennis | Sackmann／TML被history引用的raw point denominators唯讀盤點 | **輸入診斷／無fit**：160900 sides全留，145539通過raw連結、15361暫扣；72686雙側group未跨provider去重，不是訓練／PIT／準確度認證 |
 | [EXP-20261101-24](EXP-20261101-24-tennis-point-input-feasibility.md) | 2026-11-01 | Tennis | point kernel輸入可行性，WTA-only盤點 | **輸入診斷**：966 sides中302（151場）通過本次cutoff欄位檢查，185玩家中5人≥5場；不代表all-provider coverage，未fit／未改訓練資格 |
