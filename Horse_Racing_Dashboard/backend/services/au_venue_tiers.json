@@ -1,22 +1,17 @@
 {
   "purpose": "Dashboard display only: groups AU meetings as 都會 / 省級 / 鄉鎮 by racecourse. The scoring engine has its own per-meeting classification (au_track_geometry.json) and does not read this file.",
-  "compiled": "2026-10-31",
+  "compiled": "2026-11-01",
   "rule": "Venues listed under metropolitan or provincial for their state take that tier; every other venue is country. Keys are au_racing_engine.engine_core._track_geometry_key slugs, so the engine's alias table (Rosehill Gardens, Randwick-Kensington, Illawarra Grange ...) applies without a second copy.",
   "sources": {
     "NSW": "Racing NSW: four Sydney metropolitan tracks (Australian Turf Club) and the five PRANSW provincial clubs - https://www.racingnsw.com.au/nsw-race-clubs/provincial-clubs/",
     "VIC": "Racing Victoria apprentice-claim classification from 1 Aug 2023: all racetracks at Flemington, Caulfield, The Valley and Sandown are Metropolitan; Provincial is Bendigo, Cranbourne, Geelong, Mornington, Sale, Ballarat (turf), Pakenham (turf) and Warrnambool; everything else is Other - https://www.racingandsports.com.au/news/racing/news/2023-07-13/updated-claiming-system-for-vic-apprentices/619404",
     "QLD": "Brisbane Racing Club (Eagle Farm, Doomben) meetings are Metropolitan in Racing Australia notices; Racing Queensland's SEQ provincial clubs are Gold Coast, Sunshine Coast, Ipswich and Toowoomba (RQ Thoroughbred Handicapping Procedure 2025: Provincial One = SEQ provincial meetings). Matches Racing Australia Acceptances 'Meeting Type'.",
     "SA": "Racing SA Local Rules: Metropolitan = South Australian Jockey Club (Morphettville) and Oakbank; Provincial = Balaklava, Strathalbyn, Gawler, Murray Bridge; Port Lincoln and Mount Gambier reclassified to Country from 2026/27 - https://racingsa.com.au/files/20684_updated_local_rules_250823.pdf",
-    "WA": "Perth Racing is WA's only metropolitan club (Ascot, Belmont Park) - https://www.rwwa.com.au/clubs/perth-racing-ascot/ ; provincial venues from Racing Australia Acceptances 'Meeting Type' (no RWWA venue list found).",
-    "TAS": "Racing Australia IER study: two metropolitan clubs in Tasmania (Tasmanian Racing Club, Hobart; Tasmanian Turf Club, Launceston). Devonport is treated as provincial: Racing Australia Acceptances label some Devonport meetings Metropolitan, so it is not country, but it is not one of the two metropolitan clubs.",
-    "ACT": "Canberra: Racing Australia Acceptances 'Meeting Type' Provincial.",
+    "WA": "Perth Racing is WA's only metropolitan club (Ascot, Belmont Park) - https://www.rwwa.com.au/clubs/perth-racing-ascot/ ; provincial = venues whose Racing Australia results pages give 'Meeting Type: Provincial' (checked 2026-11-01 on up to three recent meetings each: Albany, Bunbury, Geraldton, Kalgoorlie, Northam, Pinjarra Park, Pinjarra Scarpside, York; Kalgoorlie's Cup day is labelled Metro). Broome, Carnarvon, Collie, Laverton, Leinster and Toodyay are labelled Country.",
+    "TAS": "Racing Australia results pages label Hobart, Launceston and Devonport Tapeta Synthetic meetings 'Meeting Type: Metro' (checked 2026-11-01, three recent meetings each), so all three are metropolitan.",
+    "ACT": "Canberra: Racing Australia results pages give 'Meeting Type: Country' (checked 2026-11-01, three recent meetings).",
     "NT": "No metropolitan or provincial venue published; all NT venues are country."
   },
-  "unverified": [
-    "WA provincial list",
-    "TAS Devonport",
-    "ACT Canberra"
-  ],
   "metropolitan": {
     "NSW": [
       "randwick",
@@ -49,7 +44,8 @@
     ],
     "TAS": [
       "hobart",
-      "launceston"
+      "launceston",
+      "devonport"
     ]
   },
   "provincial": {
@@ -90,13 +86,9 @@
       "bunbury",
       "northam",
       "york",
-      "geraldton"
-    ],
-    "TAS": [
-      "devonport"
-    ],
-    "ACT": [
-      "canberra"
+      "geraldton",
+      "albany",
+      "kalgoorlie"
     ]
   },
   "states": {

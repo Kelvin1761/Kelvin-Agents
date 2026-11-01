@@ -38,6 +38,10 @@ class VenueTierTests(unittest.TestCase):
             # Racing SA: Port Lincoln reclassified to country from 2026/27.
             "Port Lincoln": ("SA", "country"),
             "Ascot": ("WA", "metro"), "Hobart": ("TAS", "metro"),
+            # Racing Australia results pages' "Meeting Type" (checked 2026-11-01).
+            "Albany": ("WA", "provincial"), "Kalgoorlie": ("WA", "provincial"),
+            "Collie": ("WA", "country"), "Devonport": ("TAS", "metro"),
+            "Canberra": ("ACT", "country"),
             "Alice Springs": ("NT", "country"),
         }
         for venue, (state, tier) in cases.items():
