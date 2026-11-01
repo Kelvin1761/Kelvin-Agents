@@ -63,3 +63,19 @@
   同一個版本只會 reload 一次。
 - **Race board 格仔**：開跑時間做主角，倒數係角落標籤，下一場用框突出，已開跑淡化；
   10 場分 5+5（手機 2 或 3 格一行），唔會有孤兒格。
+
+## 2026-11-01 跟進（二）：開跑時間唔再等分析
+
+10:16 五個場次仲係零個 `Race_Start_Times.json`。時間只喺 `step_analyse_next_day`
+入面寫，而嗰步：
+
+- 要等成個 refresh 行完（早更大約 15–20 分鐘）先開始；
+- 開頭要讀 sportsbetform 索引頁（即係會封我哋嗰個站）—— 索引頁一失敗就成步
+  `TemporaryFailure`，一個時間都寫唔到；
+- 12:00 嗰更用 `--skip-analysis`，所以改咗時間嘅場次永遠唔會更新。
+
+而家 `run_morning` 喺 refresh **之前**行 `step_race_start_times`：一個 AllRacing
+請求（`www.sportsbet.com.au`，唔係 sportsbetform），寫晒當日每個 live 場次 folder；
+新或者改咗嘅時間照舊入 `timetables_changed`，令嗰個場次重新合併上 dashboard。
+場次名由 folder 名抽出嚟再精確配對，所以 Gold Coast 草地唔會攞 Gold Coast Poly
+嘅時間。配唔到嘅場次會 warn。`--skip-refresh`（唔出網）就唔會行。

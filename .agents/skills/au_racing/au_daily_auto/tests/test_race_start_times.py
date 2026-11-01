@@ -115,5 +115,38 @@ class RaceStartTimesTests(unittest.TestCase):
             self.assertEqual(again.data["timetables_changed"], [tmp])
 
 
+    def test_morning_writes_every_live_meeting_before_and_without_analysis(self):
+        # 2026-11-01: times only came from the analysis step, behind the
+        # sportsbetform index page, and never on the --skip-analysis midday run.
+        payload = allracing(
+            meeting("Gold Coast", [event(1, 1793409000)]),
+            meeting("Gold Coast Poly", [event(1, 1793412000)]),
+            meeting("Randwick", [event(1, 1793409600)]),
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for name in ("2026-11-01 Gold Coast Poly Race 1-8", "2026-11-01 Randwick Race 1-9",
+                         "2026-11-01 Bendigo Race 1-7", "2026-10-31 Randwick Race 1-9"):
+                (root / name).mkdir()
+            log = Log()
+            log.step = lambda *a, **k: setattr(log, "last_step", (a, k))
+            original_root, original_api = S.AU_RACING, S.api_day_meetings
+            S.AU_RACING = root
+            S.api_day_meetings = lambda _log, _day, race_starts=None, **_: \
+                race_starts.update(S.au_race_start_times(payload)) or []
+            try:
+                changed = S.step_race_start_times(log, S.date(2026, 11, 1))
+            finally:
+                S.AU_RACING, S.api_day_meetings = original_root, original_api
+            poly = json.loads((root / "2026-11-01 Gold Coast Poly Race 1-8"
+                               / S.RACE_START_TIMES_FILE).read_text())
+            self.assertEqual(poly["races"], {"1": 1793412000})        # not Gold Coast turf
+            self.assertTrue((root / "2026-11-01 Randwick Race 1-9" / S.RACE_START_TIMES_FILE).exists())
+            self.assertFalse((root / "2026-10-31 Randwick Race 1-9" / S.RACE_START_TIMES_FILE).exists())
+            self.assertEqual(len(changed), 2)                          # both go back on the board
+            self.assertEqual(log.last_step[1]["missing"], ["2026-11-01 Bendigo Race 1-7"])
+            self.assertEqual(len(log.warnings), 1)                     # the unmatched one is reported
+
+
 if __name__ == "__main__":
     unittest.main()

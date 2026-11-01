@@ -3572,7 +3572,7 @@ function timelineCountdown(start, now) {
   const mins = Math.max(1, Math.round((start - now) / 60));
   if (mins < 60) return `${mins} 分鐘後`;
   const h = Math.floor(mins / 60), mm = mins % 60;
-  return mm ? `${h} 小時 ${mm} 分後` : `${h} 小時後`;
+  return mm ? `${h}小時${mm}分後` : `${h}小時後`;
 }
 
 function openTimelineRace(meetingIndex, raceNumber) {
@@ -3596,13 +3596,14 @@ function renderTimelineRow(row, now, isNext) {
   const bets = race.abandoned ? '' : renderTimelineBets(m, race);
   return `<div class="tl-item tl-item--${cls}"><div class="tl-row tl-row--${cls}" role="button" tabindex="0"
       onclick="openTimelineRace(${i}, ${race.race_number})" onkeydown="if(event.key==='Enter'){openTimelineRace(${i}, ${race.race_number})}">
-    <div class="tl-time"><span class="tl-time__clock">${when}</span><span class="tl-time__sub">${sub}</span></div>
+    <div class="tl-time"><span class="tl-time__clock">${when}</span></div>
     <div class="tl-body">
       <div class="tl-title"><span class="tl-tier tl-tier--${tier}">${AU_TIER_LABEL[tier]}</span>
         <span class="tl-venue">${esc(formatVenueDisplay(m.venue))}</span><span class="tl-race">R${race.race_number}</span>
         <span class="tl-state">${esc(m.state || '')}</span></div>
       <div class="tl-sub">${[race.distance, race.race_class].filter(Boolean).map(esc).join(' · ')}${race.horses_count ? ` · ${race.horses_count} 匹` : ''}</div>
     </div>
+    ${sub ? `<span class="tl-count">${sub}</span>` : ''}
   </div>${bets}</div>`;
 }
 
