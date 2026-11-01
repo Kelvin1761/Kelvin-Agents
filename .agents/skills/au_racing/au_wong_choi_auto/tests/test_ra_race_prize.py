@@ -88,3 +88,26 @@ def test_builder_still_reads_class_and_prize_from_stamped_header(tmp_path):
     assert race_class == "Sportsbet Sir Rupert Clarke Stakes"
     assert distance == "1400m"
     assert prize == 1_000_000
+
+
+def test_race_day_calendar_miss_reuses_the_previous_nights_meeting_key(tmp_path, monkeypatch):
+    """2026-10-02 Cranbourne：晚更補咗讓磅分，早更重抓 Racecard 寫返 `Rating: -`，州曆又唔再列呢個場次
+    → 全場行 fallback。前一晚配到嘅 key 要記低，賽日用返（Acceptances 頁永久 cache）。"""
+    card = tmp_path / "10-02 Race 2 Racecard.md"
+    blank = "RACE 2 — 1400m | Memsie\n1. Delta (1)\nJ: x | T: y | Rating: -\n2. Echo (2)\nJ: x | T: y | Rating: -\n"
+    card.write_text(blank, encoding="utf-8")
+    calendar = [[{"venue": "Southside Cranbourne", "key": "2026Oct02,VIC,Southside Cranbourne"}], []]
+    monkeypatch.setattr(ra_fields, "meetings_for", lambda day, f: calendar.pop(0))
+
+    first = ra_fields.apply_to_meeting(tmp_path, "2026-10-02", "Cranbourne", _Page())
+    assert first["ok"] and first["filled"] == 2
+    card.write_text(blank, encoding="utf-8")            # 早更重抓 Racecard
+    second = ra_fields.apply_to_meeting(tmp_path, "2026-10-02", "Cranbourne", _Page())
+    assert second["ok"] and second["filled"] == 2
+    assert "Rating: 116" in card.read_text(encoding="utf-8")
+
+
+def test_calendar_miss_without_a_saved_key_still_reports_the_miss(tmp_path, monkeypatch):
+    monkeypatch.setattr(ra_fields, "meetings_for", lambda day, f: [])
+    out = ra_fields.apply_to_meeting(tmp_path, "2026-10-02", "Cranbourne", _Page())
+    assert not out["ok"] and "RA 冇" in out["reason"]

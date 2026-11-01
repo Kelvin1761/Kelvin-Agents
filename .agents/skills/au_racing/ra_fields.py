@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import sys
@@ -46,6 +47,8 @@ MIN_BYTES = 5000
 # 州曆嘅 URL 唔變但內容日日變 —— 六個鐘之後就要重抓，唔可以食舊 cache。
 # 一日跑一次嘅排程即係每次都會攞新版；同一個 run 入面八個州唔會重複出網。
 CALENDAR_MAX_AGE = 6 * 3600
+# 配到嘅 RA 場次（venue + key）寫喺 meeting folder，賽日州曆查唔到時用返（見 apply_to_meeting）。
+RA_MEETING_FILE = ".ra_meeting.json"
 
 _MONTHS = ("Jan", "Feb", "Mar", "Apr", "May", "Jun",
            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
@@ -297,12 +300,24 @@ def apply_to_meeting(folder: Path, day: str, ra_venue_hint: str,
     f = fetcher or Fetcher()
     meets = meetings_for(day, f)
     match = next((m for m in meets if matches_venue(m["venue"], ra_venue_hint)), None)
+    saved = folder / RA_MEETING_FILE
+    if not match and saved.exists():
+        # 賽日朝早 RA 州曆唔再列呢個場次（已轉去賽果），但前一晚配到嘅 Acceptances 頁永久 cache 咗。
+        # 2026-10-02 Cranbourne：晚更補咗 76 個讓磅分，早更重抓 Racecard 寫返 `Rating: -`，再查州曆
+        # 查唔到 → 全場行 fallback。記低前一晚個 key 就唔會再咁。
+        try:
+            match = json.loads(saved.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            match = None
     if not match:
         return {"ok": False, "reason": f"RA 冇 {day} {ra_venue_hint}",
                 "candidates": [m["venue"] for m in meets]}
     races = acceptances(match["key"], f)
     if not races:
         return {"ok": False, "reason": "Acceptances 頁 parse 唔到"}
+    if not dry_run:
+        saved.write_text(json.dumps({"venue": match["venue"], "key": match["key"]},
+                                    ensure_ascii=False), encoding="utf-8")
 
     def norm(s):
         return "".join(ch for ch in str(s).lower() if ch.isalnum())
