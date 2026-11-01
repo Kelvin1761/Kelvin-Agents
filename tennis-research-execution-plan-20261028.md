@@ -2,6 +2,8 @@
 
 **2026-11-02來源保存跟進**：[TE按日原文修正及隔離對照](docs/experiments/EXP-20261102-01-tennis-te-source-capture.md)實作request URL／fetch時計／HTML receipt，parse失敗保留source。28針對測試及公開同HTML311場的數值／身份／兩版Elo比較通過；正式gate及activation由immutable release manifest記錄。此改動不追認舊summary／空body、未證明準確度改善；身份／availability工具及整體未完成研究仍保存於`codex-tennis-point-input-delivery-20261101`，原15個REJECT_DEV／frozen ruler不變。
 
+**TE source正式交付**：41cad292 single-clean full gate通過（Tennis1080），origin/main包含source commit，append-only activation_succeeded事件及Tennis runtime HEAD／source bytes均核對。部署後實際receipt尚待run驗證；整體準確度目標未完成，接續處理source-owned身份／Elo lineage與新輸入資格。
+
 2026-10-28 建立；2026-10-29 執行更新。**計劃已完成；研究執行中，暫時未證實準確度改善。** 八個外部項目嘅 URL／固定版本及資料用途已保存；已測 15 個候選全部 REJECT_DEV，無新候選入 forward。
 
 依據：[比較筆記](docs/plans/tennis-external-project-review-notes-20261028.md)、[URL／版本 manifest](docs/plans/tennis-external-project-sources-20261028.json)、[詳細協議](docs/plans/tennis-research-protocol-20261028.md)。沿用 frozen `tennis-v1`，唔改正式模型、下注政策或現有 shadow。

@@ -6,6 +6,6 @@
 - [x] 每日先存source，再parse／寫history；parse失敗仍可追溯，沒有source則不寫history。
 - [x] 28針對測試：跨日source IDs、重跑、空日、壞fetch／parse、UTC／URL、body hash、retention及舊raw link不追認。
 - [x] 同公開HTML311場作baseline／candidate比對，622雙側facts／522玩家／兩版592行Elo相同；原文體積及限制記入EXP-20261102-01。
-- [ ] quick／完整gate、exact-scope保存；工程source修正與準確度改善分開。
+- [x] quick／single-clean完整gate、exact-scope保存；41cad292已merge並核對Tennis runtime對齊，Tennis1080 tests通過。工程source修正與準確度改善分開，下一批實際receipt尚待運行驗證。
 
 前置證據在研究分支 `codex-tennis-point-input-delivery-20261101` 的 EXP-20261101-44；不把該分支未完成研究工具帶入這次release。

@@ -4,7 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
-| [EXP-20261102-01](EXP-20261102-01-tennis-te-source-capture.md) | 2026-11-02 | Tennis | history按日保存真正scoreboard，parse失敗留原文 | **來源工程／非模型改善**：28針對測試，公開固定HTML311場／622視角／522玩家數值及兩版592行Elo相同；兩份HTML無損retention通過，舊summary不追認，正式交付以release manifest為準 |
+| [EXP-20261102-01](EXP-20261102-01-tennis-te-source-capture.md) | 2026-11-02 | Tennis | history按日保存真正scoreboard，parse失敗留原文 | **來源工程已交付41cad292／非模型改善**：Tennis1080 full gate，28針對測試；同HTML311場／622視角／522玩家及兩版592行Elo相同，無損retention通過。runtime code對齊；首批實際receipt待核實，舊summary不追認 |
 | [EXP-20261101-60](EXP-20261101-60-nba-espn-everything.md) | 2026-11-01 | NBA | ESPN for everything: remove every nba.com dependency (R1 reflector shipped, R2 extractor pending) | **R1 shipped (Kelvin approved)**: settlement 14,695 legs identical, 5 outcome flips = stat attribution, 3 players ESPN doesn't list stay unsettled; labels 7,464/7,464 identical (5 playoff events ESPN 404); PBP 25/26 quarter totals = final. Official injury report over 5 days changed 0 bankers/SGMs |
 | [EXP-20261101-27](EXP-20261101-27-tennis-source-owner-repair-readiness.md) | 2026-11-01 | Tennis | source-owned 身份修補能否直接重入現有 history API | **修補前置／未 apply**：628 行 current cluster 唯讀 capture；記憶體雙側 upsert 後 2→4 ACTIVE、舊行未退役；明列 proposal／collision／clock／rollback 合約，未量準確度 |
 | [EXP-20261101-26](EXP-20261101-26-tennis-source-owner-identity-audit.md) | 2026-11-01 | Tennis | raw點數連結以外的source-owner語義檢查及reader路徑 | **唯讀診斷／未修資料**：3729個ID旗標live2849結構收斂／880未解釋；全160900條另找2153個原LINKED label衝突；live reader可用25場profile含7個來源標籤衝突，非實際投注證據 |

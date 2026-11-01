@@ -67,3 +67,11 @@ HTML首次擷取時間就是本輪實際時間；**沒有把它回填成10-31或
 public HTML SHA：10-31 `c6a22510db0373f4b6730e1ef936b58cde3fbefabe3097c3da4cd4e3257982a0`；11-01 `98ce33842a2d2844d34d40c185771965eff60d2bffe02c60132e3b5eec62fa06`。public-parity manifest SHA `dec00b524af0e2e05cb9a1d04aff8881fdb69c31895a6c11896750af4e0c4cbc`。
 
 `./檢查.sh --quick`已通過。正式full／release必須完成才交付；預期影響只限可追溯來源保存與失敗證據，運行效果及下一批實際receipt仍需按部署後證據驗證。
+
+## 正式交付核對
+
+`41cad292cede34a6e3797cbeac80ba8e08b90968` 的 single-clean full gate通過（855.387秒，unit suites851秒、Tennis1080 passed），已確認在origin/main；2026-11-01 13:33:27 UTC的append-only event為`activation_succeeded`。Tennis runtime `/Users/imac/wongchoi-scheduler` HEAD及兩個修改source檔逐byte相同，新ResultsPage API亦從runtime路徑成功import。
+
+immutable初始manifest：`/Users/imac/WongChoiData/WongChoiControl/releases/wc-release%3A41cad292cede%3A2026-11-01T133312.937821_0000.json`。其初始status是pushed／activation not_started，不能單靠該靜態值判最終結果；最終merged／activation_succeeded事件在同release ID的`release-events/`，未改寫原manifest。測試／manifest／events另存外置證據根`release-41cad292cede/`。
+
+這只證明工程交付及已安裝code對齊，未宣稱部署後已實際擷取第一批新receipt、四線run health或模型準確度改善。後續仍須核實實際run及處理舊identity／Elo lineage。
