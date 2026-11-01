@@ -35,7 +35,15 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
 - **失手體檢嘅結果唔准用嚟擇參、調權重或者揀 leaf。** EXP-20261013-01 已經證實
   失手共識搬去下一段 dev 會蝕。佢嘅用途係搵數據 bug。
 
-### Forward 測試一律登記入追蹤表
+### Forward 測試一律登記入追蹤表（夠數一定要 Telegram）
+
+**規則：每個 forward／shadow 測試（「夠 N 場／N 日先判」），第一次夠數可以做實驗嗰刻一定要推 Telegram 俾 Kelvin。**
+新開 forward 測試嘅同一個改動入面就要登記，唔准淨係寫喺實驗記錄或者 `runlog.warn`（AU `au_notify.send` 唔推 warning）。
+
+- **AU**：加入 `.agents/skills/au_racing/au_daily_auto/au_forward_tracker.py` 嘅 `FORWARD_TESTS`
+  （`status_file` 讀狀態檔，或者加新 `kind`）。scheduler `step_forward_tracker` 每晚更新，第一次夠數
+  經 `alert_now` 推一次（state 記喺 `work/au-forward-tracker-state.json`）。原因：2026-11-01 發現 AU 三個
+  forward 測試冇一個會推 Telegram，S2 forward（EXP-20261016-03）連 scheduler step 都冇。
 
 HKJC 每個 forward／shadow 測試（「夠 N 場先判」）都要加入
 `.agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_forward_tracker.py` 嘅 `FORWARD_TESTS`。
