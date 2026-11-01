@@ -66,7 +66,14 @@ Mac 內置碟淨 ~15GB。2026-10-12 一個 AU 消融實驗喺 `/private/tmp` 抄
 - `~/WongChoiData` 入面 3 日以上嘅檔，每晚 durability job 會轉做 APFS 透明壓縮
   （`.agents/scripts/compress_data_root.py`）。路徑、內容、mtime 唔變，讀檔照讀；
   `du` 睇到嘅係壓縮後大細，`st_size` 照舊。**唔好用 symlink 將資料根或
-  `_prediction_snapshots` 搬去外置碟** —— reader 全部寫死本機路徑，拔碟 = 靜靜讀空。
+  `_prediction_snapshots` 搬去外置碟** —— 拔碟 = 靜靜讀空。
+- AU `Archive/` 入面 14 日以上嘅 `_prediction_snapshots`，每晚會搬去
+  `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/prediction-snapshots/`
+  （`.agents/scripts/offload_prediction_snapshots.py`），場次留低
+  `_prediction_snapshots.offloaded.json` 做標記。**讀快照一律經
+  `wongchoi_paths.prediction_snapshot_dir(meeting)`**：本機冇就跟標記去外置碟，
+  碟冇插就拋 `SnapshotArchiveOffline`。自己 `meeting / "_prediction_snapshots"` 會
+  睇到空資料夾 —— `test_offload_prediction_snapshots.py` 會攔。要攞返一個場次：`--restore <場次名>`。
 
 ### commit 同 push
 

@@ -51,6 +51,7 @@ Usage from any script:
 """
 from __future__ import annotations
 
+import json
 import os
 import stat as stat_module
 from pathlib import Path
@@ -166,6 +167,58 @@ def au_historical_results_csv(root: Path | None = None) -> Path:
     if not candidates:
         return canonical
     return max(candidates, key=lambda item: (item[0], item[1]))[2]
+
+
+# Settled meetings' pre-race snapshots move to the external disk (2026-11-02,
+# `.agents/scripts/offload_prediction_snapshots.py`) — they were 3.1GB of the
+# Mac's 6.5GB data root. The meeting keeps a marker file in place of the
+# folder. Never a symlink: an unplugged disk would make every reader see an
+# empty folder and silently skip the meeting.
+SNAPSHOT_ARCHIVE_ROOT: Path = Path(
+    os.environ.get("WC_SNAPSHOT_ARCHIVE_ROOT")
+    or "/Volumes/Kelvin Hardisk 1/WongChoi-Archive/prediction-snapshots"
+)
+SNAPSHOT_OFFLOAD_SUFFIX = ".offloaded.json"
+
+
+class SnapshotArchiveOffline(RuntimeError):
+    """A meeting's snapshots were offloaded but the archive cannot be read."""
+
+
+def snapshot_offload_marker(meeting_dir: Path, name: str = "_prediction_snapshots") -> Path:
+    return Path(meeting_dir) / f"{name}{SNAPSHOT_OFFLOAD_SUFFIX}"
+
+
+def prediction_snapshot_dir(
+    meeting_dir: Path,
+    name: str = "_prediction_snapshots",
+    archive_root: Path | None = None,
+) -> Path:
+    """Where a meeting's prediction snapshots live: local, or on the archive disk.
+
+    Every reader of `<meeting>/_prediction_snapshots` goes through here.
+    A meeting that never had snapshots gets its (missing) local path back, so
+    callers keep their own "no snapshots" handling. An offloaded meeting whose
+    archive copy is unreachable raises instead — that is a missing disk, not
+    a meeting without snapshots.
+    """
+    local = Path(meeting_dir) / name
+    marker = snapshot_offload_marker(meeting_dir, name)
+    if local.is_dir() or not marker.is_file():
+        return local
+    try:
+        relpath = json.loads(marker.read_text(encoding="utf-8"))["archive_relpath"]
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        raise SnapshotArchiveOffline(f"unreadable offload marker {marker}: {exc}") from exc
+    rel = Path(relpath)
+    if rel.is_absolute() or ".." in rel.parts or not rel.parts:
+        raise SnapshotArchiveOffline(f"unsafe archive path in {marker}: {relpath!r}")
+    target = Path(archive_root or SNAPSHOT_ARCHIVE_ROOT) / rel
+    if not target.is_dir():
+        raise SnapshotArchiveOffline(
+            f"{Path(meeting_dir).name}: 快照已搬去外置碟 {target}，但讀唔到（外置碟未掛載？）"
+        )
+    return target
 
 
 def au_racing_is_relocated() -> bool:

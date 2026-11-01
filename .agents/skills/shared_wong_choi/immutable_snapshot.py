@@ -79,6 +79,13 @@ def create_immutable_snapshot(
         ).encode("utf-8")
     ).hexdigest()
     root = source_dir / root_name
+    # Old snapshots moved to the archive disk (wongchoi_paths.SNAPSHOT_OFFLOAD_SUFFIX).
+    # A new local folder would shadow them: readers prefer the local one.
+    if (source_dir / f"{root_name}.offloaded.json").exists():
+        raise RuntimeError(
+            f"{source_dir.name}: snapshots are offloaded to the archive disk; "
+            "restore first with .agents/scripts/offload_prediction_snapshots.py --restore"
+        )
     if root.exists():
         for manifest_path in sorted(root.glob("*/manifest.json"), reverse=True):
             try:

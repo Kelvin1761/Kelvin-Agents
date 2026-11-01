@@ -22,6 +22,7 @@ from unittest.mock import patch
 
 import au_daily_schedule as S
 import au_progressive_publish as P
+from wongchoi_paths import prediction_snapshot_dir
 
 
 def benchmark(data_root, base_snapshot, output, day, upload_delay=2.0, analysis_delay=.15):
@@ -29,7 +30,7 @@ def benchmark(data_root, base_snapshot, output, day, upload_delay=2.0, analysis_
         raise RuntimeError('less than 10 GiB free; do not start a replay')
     sources = []
     for folder in sorted(data_root.glob(f'{day} *')):
-        snapshots = sorted((folder / '_prediction_snapshots').glob('*/manifest.json'))
+        snapshots = sorted(prediction_snapshot_dir(folder).glob('*/manifest.json'))
         if snapshots:
             sources.append((folder.name, snapshots[-1].parent))
     if not sources:

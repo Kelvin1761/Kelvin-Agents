@@ -47,7 +47,7 @@ sys.path.insert(0, str(REPO))
 
 from corpus_paths import meeting_dirs  # noqa: E402
 from eval_metrics import race_metrics  # noqa: E402
-from wongchoi_paths import AU_RACING, au_historical_results_csv  # noqa: E402
+from wongchoi_paths import AU_RACING, au_historical_results_csv, prediction_snapshot_dir  # noqa: E402
 
 sys.path.insert(0, str(SCRIPT_DIR))
 from au_racing_engine.engine_core import _track_classification  # noqa: E402
@@ -137,7 +137,7 @@ def snapshot_time(name: str) -> datetime | None:
 
 def pick_snapshot(meeting: Path, day: str) -> tuple[Path | None, str, str]:
     """→ (snapshot_dir, rule, local_time)。rule ∈ pre_cutoff / late / none。"""
-    base = meeting / "_prediction_snapshots"
+    base = prediction_snapshot_dir(meeting)
     if not base.is_dir():
         return None, "none", ""
     stamped = []
@@ -457,7 +457,7 @@ def load_start_times(mapping_path: Path | None, cache_dir: Path | None):
 
 
 def stamped_snapshots(meeting: Path) -> list[tuple[datetime, Path]]:
-    base = meeting / "_prediction_snapshots"
+    base = prediction_snapshot_dir(meeting)
     if not base.is_dir():
         return []
     out = [(t, child) for child in base.iterdir()

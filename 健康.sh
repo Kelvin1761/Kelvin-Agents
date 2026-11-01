@@ -46,6 +46,30 @@ if df -g | grep -q "Kelvin Hardisk"; then
 else
   warn "外置碟未掛載 —— 封存／ML 資料攞唔到（唔影響每日流程）"
 fi
+# 舊場次快照搬咗去外置碟（offload_prediction_snapshots.py）：每個標記都要搵到齊件副本。
+OFFLOAD_JSON=$("$PY" .agents/scripts/offload_prediction_snapshots.py --verify 2>/dev/null || true)
+OFFLOAD_MSG=$("$PY" - "$OFFLOAD_JSON" "$(df -g | grep -c 'Kelvin Hardisk' || true)" <<'PYEOF'
+import json, sys
+try:
+    payload = json.loads(sys.argv[1])
+except (IndexError, ValueError):
+    print("warn\t外置碟快照核對跑唔到"); raise SystemExit
+n, problems, mounted = payload["offloaded_meetings"], payload["problems"], sys.argv[2] != "0"
+if not n:
+    raise SystemExit
+if not mounted:
+    print(f"warn\t{n} 個舊場次快照喺外置碟 —— 未掛載期間 window review／舊場次覆盤會明確報錯停低")
+elif problems:
+    print(f"bad\t外置碟快照有 {len(problems)} 個場次唔齊：{problems[0]}")
+else:
+    print(f"ok\t{n} 個舊場次快照喺外置碟，全部對得上")
+PYEOF
+)
+case "$OFFLOAD_MSG" in
+  ok*)   ok "${OFFLOAD_MSG#*	}" ;;
+  warn*) warn "${OFFLOAD_MSG#*	}" ;;
+  bad*)  note_bad "${OFFLOAD_MSG#*	}" ;;
+esac
 STORAGE_JSON=$(WC_RESEARCH_REPO_ROOT="${WC_RESEARCH_REPO_ROOT:-/Users/imac/Antigravity-repo}" \
   "$PY" .agents/skills/central_wong_choi/scripts/central_wong_choi.py \
   storage --scan --json 2>/dev/null || true)

@@ -18,7 +18,7 @@ from datetime import datetime, timedelta, timezone
 
 PROJECT_ROOT = Path(__file__).resolve().parents[5]
 import sys as _sys; _sys.path.insert(0, str(PROJECT_ROOT))
-from wongchoi_paths import AU_RACING, HK_RACING
+from wongchoi_paths import AU_RACING, HK_RACING, prediction_snapshot_dir
 SHARED_ROOT = Path(__file__).resolve().parent
 AU_REFLECTOR_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "au_racing" / "au_reflector" / "scripts"
 HKJC_REFLECTOR_SCRIPTS = PROJECT_ROOT / ".agents" / "skills" / "hkjc_racing" / "hkjc_reflector" / "scripts"
@@ -174,7 +174,7 @@ def select_prerace_snapshot(meeting_dir: Path, platform: str = "hkjc") -> tuple[
     post = first_post_time(meeting_dir) if platform == "hkjc" else au_prerace_cutoff(meeting_dir)
     best = None
     for name in SNAPSHOT_DIRS:
-        for manifest in (meeting_dir / name).glob("*/manifest.json"):
+        for manifest in prediction_snapshot_dir(meeting_dir, name).glob("*/manifest.json"):
             try:
                 created = datetime.fromisoformat(json.loads(manifest.read_text(encoding="utf-8"))["created_at"])
             except (OSError, ValueError, KeyError, TypeError):
