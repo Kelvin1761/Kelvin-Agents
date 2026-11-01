@@ -50,8 +50,12 @@
   人造跑道算鄉鎮。
 - SA：Racing SA Local Rules。Port Lincoln、Mount Gambier 由 2026/27 季起改為鄉鎮。
 - QLD：Eagle Farm、Doomben 係都會；SEQ 省級會所係 Gold Coast、Sunshine Coast、Ipswich、Toowoomba。
-- **未核實**：WA 嘅省級名單（搵唔到 RWWA 逐個場地列出，用咗 Racing Australia Meeting Type）、
-  TAS 嘅 Devonport、ACT 嘅 Canberra。
+- WA／TAS／ACT（2026-11-01 核實）：用 Racing Australia 賽果頁嘅「Meeting Type」，每個場地睇最近最多三場。
+  - WA 省級 = Albany、Bunbury、Geraldton、Kalgoorlie、Northam、Pinjarra Park、Pinjarra Scarpside、York。
+    Albany 同 Kalgoorlie 之前錯當鄉鎮（Kalgoorlie Cup 日標 Metro，平日係 Provincial）。
+    Broome、Carnarvon、Collie、Laverton、Leinster、Toodyay 係 Country。
+  - TAS：Devonport（Tapeta Synthetic）三場都係 **Metro**，之前錯當省級；而家同 Hobart、Launceston 一樣係都會。
+  - ACT：Canberra 三場都係 **Country**，之前錯當省級。
 
 ## 2026-11-01 跟進
 
