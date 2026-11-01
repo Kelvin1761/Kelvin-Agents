@@ -1,0 +1,20 @@
+{
+ "races": 2534,
+ "runners": 24419,
+ "asb_coverage": 21048,
+ "races_changed_W": 2309,
+ "g0_audit": {
+  "form_lines": 464497,
+  "page_has_wt": 217372,
+  "parsed_wt": 217368,
+  "trial_or_nonstandard": 134697,
+  "no_wt_or_margin": 112370,
+  "formguide_name_unparsed": 3,
+  "conflict_events": 69,
+  "events": 27737
+ },
+ "auc_same_horses": {
+  "pace_figure": 0.6063,
+  "asb": 0.6196
+ }
+}
