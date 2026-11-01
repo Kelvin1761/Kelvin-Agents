@@ -34,6 +34,24 @@ class _Stub:
     def fetch_results_for_date(self, match_date):
         return (self.by_date.get(match_date, []), 0)
 
+    def fetch_results_page_for_date(self, match_date):
+        from datetime import date, datetime, timezone
+        from html import escape
+        from tennis_wc.providers.tennisexplorer_provider import RESULTS_URL, ResultsPage
+
+        results, _ = self.fetch_results_for_date(match_date)
+        pieces = ['<table><!-- source fixture: 原文 -->']
+        for i, result in enumerate(results):
+            pieces.append('<tr class="head flags"><td class="t-name">'+escape(result.tournament_name)+'</td></tr>')
+            for suffix, name, sets, key in [('',result.player_a_name,result.player_a_sets,'player_a_games'),
+                                          ('b',result.player_b_name,result.player_b_sets,'player_b_games')]:
+                scores=''.join(f'<td class="score">{r[key]}</td>' for r in result.sets)
+                pieces.append(f'<tr id="r{i}{suffix}" class="one"><td class="t-name">{escape(name)}</td><td class="result">{sets}</td>{scores}</tr>')
+        pieces.append('</table>')
+        d=date.fromisoformat(match_date)
+        return ResultsPage(match_date,RESULTS_URL.format(year=d.year,month=d.month,day=d.day),
+                           datetime.now(timezone.utc).replace(microsecond=0).isoformat(),''.join(pieces))
+
 
 def test_both_sides_of_every_match_are_stored(tmp_path, monkeypatch):
     """Elo needs the loser's row too, not just the winner's."""
@@ -112,14 +130,14 @@ def test_a_bad_day_does_not_end_the_corpus_build(tmp_path, monkeypatch):
 
     _setup(tmp_path, monkeypatch)
 
-    class _Flaky:
+    class _Flaky(_Stub):
         def fetch_results_for_date(self, match_date):
             if match_date == "2026-03-02":
                 raise RuntimeError("scoreboard timeout")
             return ([_result("ITF M15 Monastir", f"W {match_date}", f"L {match_date}")], 0)
 
     summary = corpus.ingest_tennisexplorer_history(
-        "2026-03-01", "2026-03-03", provider=_Flaky()
+        "2026-03-01", "2026-03-03", provider=_Flaky({})
     )
     assert summary["dates"] == 2
     assert summary["matches"] == 2

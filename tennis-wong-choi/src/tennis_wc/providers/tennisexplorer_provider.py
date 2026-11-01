@@ -20,14 +20,28 @@ rather than as quietly missing results.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timezone
 from html.parser import HTMLParser
 import re
+import hashlib
 
 RESULTS_URL = "https://www.tennisexplorer.com/results/?type=all&year={year}&month={month:02d}&day={day:02d}"
 # A finished best-of-three needs two won sets, best-of-five needs three.  A
 # winner short of that did not finish the match on court.
 _SETS_TO_WIN = {3: 2, 5: 3}
+
+
+@dataclass(frozen=True)
+class ResultsPage:
+    """A successfully fetched decoded response, before result parsing."""
+    match_date: str
+    requested_url: str
+    fetched_at: str
+    html: str
+
+    @property
+    def decoded_html_sha256(self) -> str:
+        return hashlib.sha256(self.html.encode('utf-8')).hexdigest()
 
 
 @dataclass
@@ -248,9 +262,14 @@ class TennisExplorerResultsProvider:
             return False
 
     def fetch_results_for_date(self, match_date: str) -> tuple[list[ParsedResult], int]:
+        return parse_results_page(self.fetch_results_page_for_date(match_date).html)
+
+    def fetch_results_page_for_date(self, match_date: str) -> ResultsPage:
         day = date.fromisoformat(match_date)
         url = RESULTS_URL.format(year=day.year, month=day.month, day=day.day)
-        return parse_results_page(self._fetch_html(url))
+        html = self._fetch_html(url)
+        fetched_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+        return ResultsPage(day.isoformat(), url, fetched_at, html)
 
     def _fetch_html(self, url: str) -> str:
         # Same impersonation the Sportsbet scrape needs; plain urlopen gets

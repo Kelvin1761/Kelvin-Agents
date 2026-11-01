@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from tennis_wc.database.history_observations import upsert_history_observation
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
+from dataclasses import asdict
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.common import utc_now
@@ -25,7 +26,10 @@ from tennis_wc.ingestion.name_matching import normalise_player_name
 from tennis_wc.ingestion.raw_response_store import store_raw_response
 from tennis_wc.providers.tennisexplorer_provider import (
     ParsedResult,
+    ResultsPage,
+    RESULTS_URL,
     TennisExplorerResultsProvider,
+    parse_results_page,
 )
 
 PROVIDER_NAME = "tennisexplorer"
@@ -151,22 +155,40 @@ def ingest_tennisexplorer_history(
         "dates": 0, "matches": 0, "rows": 0, "players_created": 0,
         "skipped": 0, "parse_skipped": 0, "errors": [],
     }
-    raw_id = store_raw_response(
-        PROVIDER_NAME,
-        "tennisexplorer/results",
-        {"start_date": start_date, "end_date": end_date or start_date},
-        {"summary": "Lower-tier match corpus for Elo; ATP/WTA files carry no ITF."},
-        200,
-        "match_history",
-        PROVIDER_NAME,
-    )
     with get_connection() as conn:
         player_identity.ensure_identity_schema(conn)
+        # Release any bootstrap schema transaction before the source store's
+        # own connection commits its receipt. A failed parse must not erase it.
+        conn.commit()
         for match_date in _date_range(start_date, end_date or start_date):
+            raw_id = None
+            phase = 'fetch'
             try:
-                results, parse_skipped = provider.fetch_results_for_date(match_date)
+                page = provider.fetch_results_page_for_date(match_date)
+                if not isinstance(page, ResultsPage) or not isinstance(page.html, str):
+                    raise ValueError('TennisExplorer history requires a ResultsPage with original decoded HTML')
+                phase = 'source_store'
+                raw_id = store_raw_response(
+                    PROVIDER_NAME, 'tennisexplorer/results',
+                    {'match_date': match_date, 'requested_url': page.requested_url},
+                    {'format': 'tennisexplorer-results-html-v1', **asdict(page),
+                     'decoded_html_sha256': page.decoded_html_sha256},
+                    200, 'match_history', match_date,
+                )
+                # Preserve even a rejected response before validating/ parsing.
+                phase = 'source_validation'
+                day = date.fromisoformat(match_date)
+                expected_url = RESULTS_URL.format(year=day.year, month=day.month, day=day.day)
+                fetched_at = datetime.fromisoformat(page.fetched_at.replace('Z', '+00:00'))
+                if (page.match_date != match_date or page.requested_url != expected_url
+                        or not page.html.strip() or fetched_at.tzinfo is None
+                        or fetched_at > datetime.now(timezone.utc)):
+                    raise ValueError('TennisExplorer source date/URL/clock/content is invalid')
+                phase = 'parse'
+                results, parse_skipped = parse_results_page(page.html)
             except Exception as exc:  # one bad day must not end the corpus build
-                summary["errors"].append({"date": match_date, "error": str(exc)})
+                summary["errors"].append({'date': match_date, 'phase': phase,
+                                          'raw_response_id': raw_id, 'error': str(exc)})
                 continue
             counts = _store_history(conn, match_date, results, raw_id)
             conn.commit()
