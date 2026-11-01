@@ -41,3 +41,7 @@
 **歷史來源影響**：[close 及 tracker 只讀追蹤](docs/audits/tennis-historical-event-source-20261030.md)。217 場受影響的最新 stored close 均連到錯 event；native close 讀取器會返回其中 104 場。104 場內有 4 行相關 CLV tracker，現役選價重播有 3 行選到錯 event；102 行 prop price log 重播則選到其他來源。舊 tracker 沒有 raw ID，不能單憑價錢和時間證明歷史 lineage；亦不能把 match-level 數量當受影響注單或 ROI。入口修正不會清理舊資料，下一步按原始來源和時間分流讀取，再分路徑量度影響。
 
 **2026-11-01 歷史讀取器比較**：[完整結果](docs/experiments/EXP-20261101-20-tennis-historical-source-readers.md)。124 日 earliest market 扣起 888 行／84 場，close 讀取扣起 104 場，所有保留值與基線一致，原始完整 DB 雜湊不變。current 模式另行全量核對，並無補位價。其他 close writer、非 match-winner CLV 及模型讀取器仍待驗證；目前仍未證明分析準確度改善。
+
+**下一階段已預先鎖定**：[ledger 其餘來源讀取器協議](docs/plans/tennis-ledger-source-readers-protocol-20261101.md)，涵蓋 close writer、非 match-winner CLV、prop price log，三個獨立候選及八 arm 全量比較，完成後才重跑受影響的模型研究。
+
+**2026-11-01 ledger 全量基線及更正**：[結果](docs/audits/tennis-ledger-baseline-20261101.md)。2,962 行非勝負盤 tracker 中，2,196 行返回同 ID 來源、766 無 snapshot，未發現錯 event。先前三個已知錯 close tracker 實為 match_winner，現 guard 重播均返回 None；舊 CLV 值未改寫。後續先驗證 close writer 及模型語料依賴，不能將推介類型當市場分類。

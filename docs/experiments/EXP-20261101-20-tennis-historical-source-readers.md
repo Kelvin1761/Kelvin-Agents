@@ -29,9 +29,13 @@
 - helper 只驗證 Sportsbet 直接數字 event URL 的回應 ID；ID 相符不能證明球員、發布時鐘或整份資料 PIT 合格。
 - 缺 receipt／不支援 namespace 仍明示未驗證，保留原操作行為；可辨識 event request 的缺失／損壞 body 則扣起。其他 provider／endpoint 屬範圍外。
 - 未改寫或刪除 live 歷史資料，未解除 42 個舊錯誤隔離或兩個同 ID 姓名爭議。
-- `fetch_closing_odds_for_date` writer、非 match-winner `_tracker_close`、`_log_prop_prices` 及其他模型／報告讀取器仍須獨立驗證；之前追蹤到的三行非 match-winner CLV 不能宣稱已修復。
+- `fetch_closing_odds_for_date` writer、非 match-winner `_tracker_close`、`_log_prop_prices` 及其他模型／報告讀取器仍須獨立驗證；先前將三行 `MARKET_LEG` 誤稱為非 match-winner，2026-11-01 已依原始 `market_key` 更正：三行都是 match_winner，今次 guard 的 native 重播已返回 None；舊保存值未改寫。
 - 舊十五個 REJECT_DEV 不變。完成其他受影響讀取器與來源資格核對後，才可重跑受影響的研究；不得用補位賠率、未證實身份、或未知時鐘 ROI 當準確率／盈利證據。
 
 最終 `result.json` SHA-256：`1ce1bd538af3f619b13e8ba270e41b03e90db4922f5e640f66bebc2b0e66aad4`；完整原始 DB 與索引副本在重播後雜湊均保持不變。
 
 整合 2026-11-01 最新主線的 fixture 隔離邏輯後，另以 `historical-reader-guard-v2/` 保存完整重播：所有數量及保留值一致，來源及工作副本雜湊不變。v2 `result.json` SHA-256：`33e7e6887a643f26407ceea26424bb8ffa72a8cd1fcfb6c8b0b37ff78d110a3e`。完整整合測試以另存的 merged gate 紀錄為準。
+
+`320442e2` 整合版本完整 `./檢查.sh` 已全部通過，Tennis 987 passed。其後只整合不重疊的 AU 主線更新；正式發佈仍須由 Central 對最終 immutable SHA 重新 gate，本文不宣稱已部署。餘下路徑協議見 `docs/plans/tennis-ledger-source-readers-protocol-20261101.md`。
+
+分類更正依完整原始四行及 native 重播，見 `docs/audits/tennis-ledger-baseline-20261101.md`。含舊文字的候選 `6e14f89507f7` gate 已人手終止（exit -15），wrapper 確認未 stage／未發佈；此為撤回錯誤文檔候選，不是已通過發佈。

@@ -20,3 +20,5 @@
 2. 原有 earliest `MIN(id)` 先按現行完整群體選出，再檢查該行來源；錯誤就標缺失，**不**挑後一行冒充開盤。Close 只用有證據的 pre-start 來源；若原本選中錯來源，標未知，不把較早 quote 宣稱為 close。
 3. 分開檢查 live card、歷史 props、match winner、preclose、已物化 close、tracker／研究 evaluator 等全部消費者；修讀取器不代表已清除歷史 tracker，也不代表既有實驗有效或無效。每一路保留完整 row-flow、缺值及原始 source。
 4. 每項修正用相同凍結語料逐行配對，比對無錯來源不變、錯來源不被使用、名稱／event 重用及空來源反例；針對多個讀取路徑分別做 ablation。任何時間與 source 未證實的資料不提升為 PIT 或 forward。修復 42 個 fixture 須另行完整備份、驗證及逐項 exact plan。
+
+2026-11-01 分類補充：上述三行 `MARKET_LEG` 的 `market_key` 均是 `match_winner`，不是非勝負盤。現役研究候選的 `_tracker_close` 已透過 `_match_winner_close` guard 讓這三行返回 None；第四行仍 2.4。原始保存值／歷史 lineage 沒有改寫。全量非勝負盤基線及逐筆更正見 [ledger baseline](tennis-ledger-baseline-20261101.md)。
