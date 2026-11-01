@@ -82,3 +82,11 @@ raw fetched_at屬於那份已存summary，不證明缺失的scoreboard內容曾�
 三份script原位於`/private/tmp/tennis-christian-source-repair-proposal-20261101.py`、`tennis-christian-match-closure-20261101.py`、`tennis-te-history-source-inventory-20261101.py`，均另存各自source.py；重播須使用新輸出目錄，live後續會變，不能把新資料倒填為舊結果。
 
 今輪repo只改筆記；沿用已驗證相同source的e933c1cb完整gate（Tennis1121 passed，1630秒），沒有為文件重跑模型或改判決。研究／來源修補未完成，保存自己的非main研究分支，未release／activate。
+
+## 2026-11-02接續證據
+
+未來TE來源保存已另在fresh-main worktree實作並交付41cad292，詳見[EXP-20261102-01](EXP-20261102-01-tennis-te-source-capture.md)。source code single-clean full gate／runtime alignment已驗，沒有帶入本分支的memory-only身份工具，也未修上文的live identity資料。
+
+另用允許的in-memory normalized labels方法逐個讀五個fixture的exact event ID／兩方姓名欄，5/5為`NORMALIZED_JUMPEI_LABEL_SUPPORTED`；只輸出分類計數及source hash，未匯出原文、payload、prices或stakes。這不是independent HTTP／報價身份證明，但支持先保留原fixture／forecast IDs，而將Christian四個public-history來源pairs獨立處理。
+
+證據在同根`christian-fixture-label-audit-v1/`，含執行前protocol、source.py、完整五個enum／hash結果及manifest。當前table capture的TE own-player perspectives均屬2110（39行、Jan4–Oct30），沒有據此宣稱它們的原scoreboard已核實。未因此解除proposal blockers或增加合格forward。

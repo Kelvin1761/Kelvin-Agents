@@ -22,3 +22,7 @@
 下一步身份線索：`primary-identity-bridge-v1/`保存UTS `playerProfile?playerId=44614` 的 Christian Sigsgaard／DEN header，對上target19626的`composite/uts:44614`；ATP SY00頁可讀姓名但直接DOB等欄位仍動態placeholder，Jumpei H2H直接頁大部分亦是placeholder。這是部分獨立namespace／name證據，不是完整DOB、mapping／fixture closure或live apply授權；勿將搜尋節錄當完整原文。
 
 EXP-20261101-44已建立四個Christian來源pair／八視角＋兩個mapping的review-only proposal；五個fixtures的match scope有10 predictions／26 feature snapshots，未判受污染／改寫。78行TE查證暴露原文缺口，完整240146行TE的來源232766空、7380僅summary；現行runtime ingester相同。**下一步先修未來按日HTML／fetch時計保存及parse-failure留證，不能用重抓追認舊來源**，再完成persistent identity clock／collision／derived Elo遷移。原live fixture原文匯出被auto-review拒絕，安全替代只存引用counts／IDs／hashes，已完成彙總。
+
+2026-11-02接續：未來TE history按日原文保存已由獨立fresh-main worktree交付41cad292（main full gate Tennis1080，runtime source bytes相同）。報告EXP-20261102-01從已合併f0c7f36d原件同步到本研究筆記；本研究分支的未完成identity／clock工具未隨該release發佈。實際首批新receipt仍待run驗證，舊summary不追認。
+
+`christian-fixture-label-audit-v1/`再以in-memory normalized DTO檢查五個fixture的exact event ID及兩方姓名欄，5/5有完整Jumpei標籤支持；只輸出分類／hash，沒有原文／價格／注碼匯出。此結果支持保持fixture IDs而非整體rename為Christian，但不是原HTTP回應身份、報價有效性或完整人物認證。下一步回到四個source pairs的persistent availability／collision與衍生Elo遷移，不改寫舊predictions／ledger。

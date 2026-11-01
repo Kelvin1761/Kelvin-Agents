@@ -54,6 +54,7 @@
    [EXP-28](../experiments/EXP-20261101-28-tennis-memory-identity-split.md)已實作 memory-only 研究 API，28 targeted tests 及固定來源雙側 apply／rollback 通過，ACTIVE 維持2。但既有 reader 仍在2025 cutoff讀到本輪新建的2021身份修正行；人物獨立證明、全 live mapping／fixture closure及歷史availability合約未齊，禁止直接整合，也未量準確度。
    [EXP-29](../experiments/EXP-20261101-29-tennis-recorded-history-clock.md)新增只用immutable after-images的研究投影器；固定修補及rollback在2025 cutoff均0，全424823 IDs／6515 observations保留row-flow。11-01 recorded4980之中hold130全Challenger，132個opponent Elo已漂移，不冒充main-tour serve資格或runtime parity。開工free約16GiB，磁碟閘解除；identity、clock／prediction lineage資格及真正準確度證據仍未齊。
    [EXP-44](../experiments/EXP-20261101-44-tennis-source-split-and-te-retention.md)已列Christian四個source pairs／8視角及2 mapping的review-only proposal，沒有搬動群組其他來源；direct player引用不是全部影響，5 fixtures的match scope另見10 predictions／26 snapshots。追查78 TE視角後擴至全240146 TE history：232766 raw logical body空、7380只有summary；已核對runtime仍行相同ingester。下一步先保存未來每日期的真實HTML／時計，避免繼續失去來源；不追認舊raw或放行未完成的身份遷移。
+   2026-11-02 [TE source修正](../experiments/EXP-20261102-01-tennis-te-source-capture.md)已交付41cad292，main gate Tennis1080、runtime source對齊；同公開HTML311場numeric parity、raw retention通過。首批實際run未宣稱成功。五個fixture normalized source均支持Jumpei，沒有匯出private payload；source-owned資料遷移、原HTTP／完整lineage及真正準確度改善仍未完成。
 4. 所有允許單項已被拒絕或依賴不足時，誠實保留拒絕／不確定；要達成實際準確率改善，仍需可重現、有來源資格及獨立比較證據，本文不將「研究已有結果」改寫為「模型已改善」。
 
 逐項核對 `result.json` SHA-256：`09c183cd969bcd155f98e7a7f306f8bd44201629e3dfef4daf3e04bf270d07da`。
