@@ -41,7 +41,10 @@ _EVALUATION_MARKERS = (
     "_eval.py",
     "backtest",
     "golden_scoring",
-    "data_contract.py",
+    # Anchored to the shared racing ruler: a bare "data_contract.py" also
+    # matched NBA's runtime stat-source receipts (nba/nba_data_contract.py),
+    # which then could not ship with the NBA model code that imports them.
+    "shared_racing/scripts/data_contract.py",
     "evaluation_ruler",
 )
 _AUTOMATION_MARKERS = (

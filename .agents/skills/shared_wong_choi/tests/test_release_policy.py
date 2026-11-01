@@ -54,6 +54,28 @@ def test_risky_scope_pushes_but_never_auto_merges(path: str, risk: ReleaseRisk) 
     assert policy.auto_activate is False
 
 
+def test_shared_racing_data_contract_is_the_evaluation_ruler() -> None:
+    policy = classify_release([".agents/skills/shared_racing/scripts/data_contract.py"])
+    assert policy.risk is ReleaseRisk.EVALUATION
+
+
+def test_nba_data_contract_is_runtime_code_not_evaluation() -> None:
+    policy = classify_release([".agents/skills/nba/nba_data_contract.py"])
+    assert policy.risk is ReleaseRisk.CODE
+
+
+def test_nba_data_contract_can_ship_with_nba_model_code() -> None:
+    # 2026-11-01 the ESPN work had to split into two releases because this
+    # pair raised "evaluation ruler and candidate model must use a separate release".
+    policy = classify_release(
+        [
+            ".agents/skills/nba/nba_data_contract.py",
+            ".agents/scripts/nba_ml/nba_ml_predictor.py",
+        ]
+    )
+    assert policy.risk is ReleaseRisk.MODEL
+
+
 def test_highest_risk_wins_for_mixed_scope() -> None:
     policy = classify_release(
         ["docs/readme.md", "tests/test_x.py", "Horse_Racing_Dashboard/deploy.sh"]
