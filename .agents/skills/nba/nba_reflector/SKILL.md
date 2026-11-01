@@ -116,7 +116,7 @@ python .agents/skills/nba/nba_reflector/scripts/verify_props_hits.py \
 > 以此作為 REF-DA01 6 角度分析嘅 **事實基礎**。嚴禁 LLM 自行用肉眼覈對盤口。
 
 ### Step 2d: Fallback（API 失敗時）
-若 `fetch_nba_results.py` 失敗（API 維護/日期太舊/nba_api 未安裝）:
+若 `fetch_nba_results.py` 失敗（ESPN 唔通／熔斷中）:
 → 退回 `resources/02_search_protocol.md` 嘅 search_web 手動搜索
 → 標記 `DATA_SOURCE: SEARCH_WEB (FALLBACK)`
 → Props 命中判定需 LLM 手動進行（⚠️ 較慢且有幻覺風險）

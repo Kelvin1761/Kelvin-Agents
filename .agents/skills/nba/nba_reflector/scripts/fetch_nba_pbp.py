@@ -7,105 +7,35 @@ if hasattr(sys.stdout, 'reconfigure'):
 """
 fetch_nba_pbp.py — NBA Play-by-Play 擷取器
 
-用 nba_api 擷取指定賽事嘅 Play-by-Play 數據,生成結構化 JSON 供 Reflector 深度覆盤。
-重點提取:球員上場時間分段、得分分布、Blowout 時間點、關鍵 lineup 變化。
+由 ESPN summary 嘅 play-by-play（同陣容引擎共用，每場一世只抓一次）生成結構化
+JSON 供 Reflector 深度覆盤：每節比分、得分分布、Blowout 時間點、換人數目。
+ESPN 係唯一來源（EXP-20261101-60）；輸出 schema 同 nba.com 年代一樣。
 
 Usage:
   python fetch_nba_pbp.py --date 2026-04-07 --dir "2026-04-08 NBA Analysis"
-  python fetch_nba_pbp.py --date 2026-04-07 --dir "..." --games "0022501050,0022501051"
-
-Version: 1.0.0
+  python fetch_nba_pbp.py --date 2026-04-07 --dir "..." --games "BOS_NYK,espn:401809842"
 """
 
 import argparse
 import json
 import io
-import time
 import re
 from collections import defaultdict
+from datetime import date
 
 if sys.stdout.encoding != 'utf-8':
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
-API_SLEEP = 0.8
-
-try:
-    from nba_api.stats.endpoints import (
-        playbyplayv3,
-    )
-    try:
-        from nba_api.stats.endpoints import scoreboardv3
-        SCOREBOARD_VERSION = 'v3'
-    except ImportError:
-        from nba_api.stats.endpoints import scoreboardv2
-        SCOREBOARD_VERSION = 'v2'
-    NBA_API_OK = True
-except ImportError:
-    NBA_API_OK = False
-    print("❌ nba_api 未安裝。請執行: pip install nba_api")
-    sys.exit(1)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fetch_nba_results as results  # noqa: E402  (also puts the NBA skill on sys.path)
+from nba_schedule import canonical_team_abbr  # noqa: E402
+import nba_espn_lineups  # noqa: E402
 
 
-def fetch_scoreboard(game_date):
-    """Fetch all games on a given date."""
-    try:
-        if SCOREBOARD_VERSION == 'v3':
-            sb = scoreboardv3.ScoreboardV3(game_date=game_date)
-            time.sleep(API_SLEEP)
-            data = sb.get_dict()
-            return data.get('scoreboard', {}).get('games', [])
-        sb = scoreboardv2.ScoreboardV2(game_date=game_date)
-        time.sleep(API_SLEEP)
-        return _convert_scoreboard_v2(sb.get_dict())
-    except Exception as e:
-        print(f"  ❌ Scoreboard{SCOREBOARD_VERSION.upper()} 失敗: {e}")
-        return []
-
-
-def _result_set_map(data):
-    """Map nba_api resultSets into {name: [row dicts]}."""
-    mapped = {}
-    for result_set in data.get('resultSets', []):
-        headers = result_set.get('headers', [])
-        mapped[result_set.get('name', '')] = [
-            dict(zip(headers, row)) for row in result_set.get('rowSet', [])
-        ]
-    return mapped
-
-
-def _convert_scoreboard_v2(data):
-    """Convert ScoreboardV2 rows into the ScoreboardV3-like shape used below."""
-    sets = _result_set_map(data)
-    game_headers = sets.get('GameHeader', [])
-    line_scores = sets.get('LineScore', [])
-    line_by_game = {}
-    for row in line_scores:
-        line_by_game.setdefault(row.get('GAME_ID'), []).append(row)
-
-    games = []
-    for header in game_headers:
-        game_id = header.get('GAME_ID')
-        home_team_id = header.get('HOME_TEAM_ID')
-        teams = line_by_game.get(game_id, [])
-        home_row = next((r for r in teams if r.get('TEAM_ID') == home_team_id), {})
-        away_row = next((r for r in teams if r.get('TEAM_ID') != home_team_id), {})
-        games.append({
-            'gameId': game_id,
-            'gameStatusText': header.get('GAME_STATUS_TEXT', ''),
-            'homeTeam': {
-                'teamId': home_row.get('TEAM_ID'),
-                'teamTricode': home_row.get('TEAM_ABBREVIATION', '?'),
-                'teamName': home_row.get('TEAM_CITY_NAME', '?'),
-                'score': home_row.get('PTS', 0),
-            },
-            'awayTeam': {
-                'teamId': away_row.get('TEAM_ID'),
-                'teamTricode': away_row.get('TEAM_ABBREVIATION', '?'),
-                'teamName': away_row.get('TEAM_CITY_NAME', '?'),
-                'score': away_row.get('PTS', 0),
-            },
-        })
-    return games
+def fetch_scoreboard(game_date_file):
+    """ESPN games for a US date (YYYY-MM-DD), ScoreboardV3-shaped."""
+    events, _ = results.fetch_espn_events(game_date_file)
+    return results.espn_scoreboard_games(events)
 
 
 def parse_clock(clock_str):
@@ -125,18 +55,55 @@ def parse_period(period):
     return f"OT{period - 4}"
 
 
-def fetch_pbp(game_id):
-    """Fetch play-by-play for a specific game."""
+def espn_actions(summary):
+    """ESPN plays -> the PlayByPlayV3-style actions ``analyze_pbp`` reads."""
+    names, tricode = {}, {}
+    for block in (summary.get("boxscore") or {}).get("players") or []:
+        team = block.get("team") or {}
+        tricode[str(team.get("id"))] = canonical_team_abbr(team.get("abbreviation"))
+        for athlete in ((block.get("statistics") or [{}])[0].get("athletes") or []):
+            info = athlete.get("athlete") or {}
+            names[str(info.get("id"))] = info.get("displayName") or ""
+    actions = []
+    for play in summary.get("plays") or []:
+        kind = (play.get("type") or {}).get("text") or ""
+        value = int(play.get("scoreValue") or 0)
+        made = bool(play.get("scoringPlay"))
+        people = [str((x.get("athlete") or {}).get("id")) for x in play.get("participants") or []]
+        if kind == "Substitution":
+            action_type = "substitution"
+        elif "Free Throw" in kind:
+            action_type = "freethrow"
+        elif play.get("shootingPlay"):
+            action_type = "3pt" if value == 3 or "three point" in str(play.get("text") or "").lower() else "2pt"
+        else:
+            action_type = kind.lower()
+        actions.append({
+            "period": int((play.get("period") or {}).get("number") or 0),
+            "clock": (play.get("clock") or {}).get("displayValue") or "",
+            "actionType": action_type,
+            "subType": "Made" if made else ("in" if action_type == "substitution" else "Missed"),
+            "playerNameI": names.get(people[0], "") if people else "",
+            "teamTricode": tricode.get(str((play.get("team") or {}).get("id")), ""),
+            "description": ("" if made else "MISS ") + str(play.get("text") or ""),
+            "scoreHome": str(play.get("homeScore", "")),
+            "scoreAway": str(play.get("awayScore", "")),
+        })
+    return actions
+
+
+def fetch_pbp(game_id, day=None):
+    """Play-by-play actions for an ``espn:<id>`` game (cached for good once the day closed)."""
     print(f"  📋 擷取 Play-by-Play (game_id: {game_id})...")
+    event_id = str(game_id).removeprefix(results.ESPN_ID_PREFIX)
     try:
-        pbp = playbyplayv3.PlayByPlayV3(game_id=game_id)
-        time.sleep(API_SLEEP)
-        data = pbp.get_dict()
-        actions = data.get('game', {}).get('actions', [])
+        summary = nba_espn_lineups.fetch_summary(event_id, day) if day else \
+            results.nba_espn_http.get_json(f"{results.SITE}/summary?event={event_id}", timeout=20)
+        actions = espn_actions(summary)
         print(f"    ✅ 擷取到 {len(actions)} 個 actions")
         return actions
     except Exception as e:
-        print(f"    ❌ PlayByPlayV3 失敗: {e}")
+        print(f"    ❌ ESPN play-by-play 失敗: {e}")
         return []
 
 
@@ -249,7 +216,9 @@ def analyze_pbp(actions, home_team, away_team):
         prev_away = max(prev_away, entry['away_score'])
 
     # Compute quarter-by-quarter differentials
-    periods_seen = sorted(set(e['period'] for e in score_margin_timeline))
+    # Q1..Q4 then OT1..: a plain string sort put OT1 first and made Q1 negative.
+    periods_seen = sorted(set(e['period'] for e in score_margin_timeline),
+                          key=lambda label: (label.startswith('OT'), int(re.sub(r'\D', '', label) or 0)))
     quarter_breakdown = {}
     prev_h, prev_a = 0, 0
     for p in periods_seen:
@@ -296,39 +265,29 @@ def main():
                         help='Comma-separated game IDs (optional — if omitted, fetches all)')
     args = parser.parse_args()
 
-    # Normalize date
-    game_date = args.date
-    if '-' in game_date and len(game_date) == 10:
-        parts = game_date.split('-')
-        game_date_api = f"{parts[1]}/{parts[2]}/{parts[0]}"
-    else:
-        game_date_api = game_date
+    game_date_api = args.date
+    day = results._us_day(args.date)
 
     target_dir = args.dir
     os.makedirs(target_dir, exist_ok=True)
 
     print("=" * 60)
-    print("🏀 NBA Reflector — Play-by-Play 擷取器 V1")
+    print("🏀 NBA Reflector — Play-by-Play 擷取器（ESPN）")
     print(f"📅 日期: {game_date_api}")
     print("=" * 60)
 
-    # Determine which games to fetch
+    scoreboard_games = fetch_scoreboard(args.date)
     if args.games:
-        game_ids = [g.strip() for g in args.games.split(',')]
-        print(f"🎯 指定 {len(game_ids)} 場賽事")
-        # Still need scoreboard for team info
-        scoreboard_games = fetch_scoreboard(game_date_api)
-        games_to_process = []
-        for game in scoreboard_games:
-            if game.get('gameId') in game_ids:
-                games_to_process.append(game)
-        if not games_to_process:
-            # If scoreboard fails, create minimal game entries
-            games_to_process = [{'gameId': gid} for gid in game_ids]
+        wanted = {g.strip() for g in args.games.split(',') if g.strip()}
+        print(f"🎯 指定 {len(wanted)} 場賽事")
+        games_to_process = [
+            game for game in scoreboard_games
+            if game.get('gameId') in wanted
+            or str(game.get('gameId')).removeprefix(results.ESPN_ID_PREFIX) in wanted
+            or f"{game['awayTeam']['teamTricode']}_{game['homeTeam']['teamTricode']}" in wanted]
     else:
-        scoreboard_games = fetch_scoreboard(game_date_api)
         if not scoreboard_games:
-            print("❌ 該日期冇 NBA 賽事")
+            print("❌ 該日期冇 NBA 賽事（或 ESPN 唔通）")
             sys.exit(1)
         games_to_process = scoreboard_games
 
@@ -344,7 +303,7 @@ def main():
 
         print(f"\n🏀 {away_team} @ {home_team} (ID: {game_id})")
 
-        actions = fetch_pbp(game_id)
+        actions = fetch_pbp(game_id, day)
         if not actions:
             print(f"  ⚠️ 無法擷取 PBP，跳過")
             continue

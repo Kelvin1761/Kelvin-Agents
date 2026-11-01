@@ -98,6 +98,6 @@ Playwright MCP 已非必需 — Sportsbet 盤口由 Python 腳本自動提取。
 ## Step 6: Day 2 覆盤與回測階段 (Embedded Backtester)
 
 當遇到回測或對答案需求:
-1. 啟動腳本: `python .agents/skills/nba/nba_data_extractor/scripts/nba_backtester.py --date {YYYY-MM-DD}`
+1. 覆盤由 NBA Reflector 做：`python .agents/skills/nba/nba_reflector/scripts/nba_reflector_orchestrator.py --date {YYYY-MM-DD}`（舊 `nba_backtester.py` 冇 caller，2026-11-01 已刪，EXP-20261101-60）
 2. 匯報命中率及反思。
 3. 執行 Instinct 評估 (P35): `python .agents/scripts/instinct_evaluator.py "{TARGET_DIR}" --domain nba`
