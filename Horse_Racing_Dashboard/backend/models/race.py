@@ -92,6 +92,7 @@ class HorseAnalysis(BaseModel):
     
     # HKJC-specific sections
     full_time_speed: Optional[dict] = None  # AU report-captured full-time evidence
+    score_overlays: Optional[dict] = None  # AU 綜合分 = 七維 + overlay（EXP-20261101-38）
     speed_forensics: Optional[str] = None  # 🔬 段速法醫
     eem_energy: Optional[str] = None  # ⚡ 形勢與走位 (legacy field name kept for compat)
     forgiveness_file: Optional[str] = None  # 📋 寬恕檔案

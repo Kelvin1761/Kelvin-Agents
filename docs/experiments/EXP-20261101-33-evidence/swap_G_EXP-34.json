@@ -1,0 +1,44 @@
+{
+ "promoted": {
+  "n": 710,
+  "placed_rate": 0.3239,
+  "market_implied_place": 0.3648,
+  "median_sp": 10.0,
+  "form_rank_median": 4.0,
+  "speed_rank_base_median": 7.0,
+  "speed_rank_cand_median": 4.0,
+  "speed_shift_mean": 14.21,
+  "rating_rank_median": 5.0,
+  "market_rank_median": 5
+ },
+ "demoted": {
+  "n": 710,
+  "placed_rate": 0.2958,
+  "market_implied_place": 0.3628,
+  "median_sp": 10.0,
+  "form_rank_median": 4.5,
+  "speed_rank_base_median": 4.0,
+  "speed_rank_cand_median": 6.0,
+  "speed_shift_mean": -13.16,
+  "rating_rank_median": 5.0,
+  "market_rank_median": 5
+ },
+ "speed_vs_form": {
+  "cand_speed_top3_form_top3": {
+   "n": 4926,
+   "placed_rate": 0.526
+  },
+  "base_speed_top3_form_top3": {
+   "n": 4571,
+   "placed_rate": 0.5242
+  },
+  "base_speed_top3_form_not": {
+   "n": 5167,
+   "placed_rate": 0.3269
+  },
+  "cand_speed_top3_form_not": {
+   "n": 4812,
+   "placed_rate": 0.3456
+  }
+ }
+}

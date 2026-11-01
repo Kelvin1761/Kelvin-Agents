@@ -42,8 +42,42 @@ REPORT_BANS = ("[FILL]", "PLACEHOLDER", "待補", "分析中")
 # 證據厚度安全欄嘅門檻。3 個或以上喺 654 場只觸發 5 次（太罕），2 個觸發 44 次
 # （6.7%）而效應最大，所以定 2。
 THIN_EVIDENCE_MIN_DEFAULTS = 2
+# EXP-20261101-38（用戶 2026-11-01 同意剷走）：安全欄而家有害 —— 3,246 場乾淨窗加上佢首選上名率
+# −1.17pp [−2.34, −0.03]，6 段時間 5 段蝕；觸發率由 6.7% 升到 14.3%，主要係 track_score／
+# jockey_horse_fit_score 停喺 60（冇喺呢個場地跑過、未同呢個騎師合作過），唔等於能力冇證據。
+# 只停對調；`_default_leaf_count` 同觸發清單保留畀 miss_autopsy 標記證據薄嘅馬。
+THIN_EVIDENCE_RAIL = False
 # 只數**計分**嘅 leaf。0% 權重嘅 leaf（sectional/consistency/distance/...）
 # 停留喺預設唔代表個排名分建基於空氣，所以唔應該數入去。
+
+
+# 綜合分 = 七維矩陣 + 下面三個 overlay（EXP-20261101-38 消融後保留）。逐匹畀 dashboard 顯示，
+# 令總分可以喺畫面加返出嚟；每個 overlay 標明佢屬於邊個維度嘅題目。距離轉變罰分已經喺
+# 近績質素分入面（狀態與穩定性），唔再加多次，只係標明有冇觸發。
+OVERLAYS = (
+    ("wet_form", "wet_form_feature", "濕地往績調整", "track"),
+    ("proven_class", "proven_class_feature", "班次證明", "class_weight"),
+    ("full_time_speed", "full_time_speed_feature", "逐駒全程速度", "pace_perf"),
+)
+
+
+def overlay_metadata(horses: dict) -> dict:
+    out = {}
+    for number, horse in horses.items():
+        auto = (horse or {}).get("python_auto") or {}
+        if not auto:
+            continue
+        trip = ((auto.get("stability_detail") or {}).get("form_quality") or {}).get("trip_change")
+        out[str(number)] = {
+            "name": horse.get("horse_name"),
+            "pure_7d_score": auto.get("pure_7d_score"),
+            "ability_score": auto.get("ability_score"),
+            "overlays": [{"key": key, "label": label, "dimension": MATRIX_LABELS.get(dim, dim),
+                          "value": round(float(auto.get(field) or 0.0), 4)}
+                         for key, field, label, dim in OVERLAYS],
+            "trip_change": ({"dimension": MATRIX_LABELS.get("stability"), **trip} if isinstance(trip, dict) else None),
+        }
+    return {"schema": "au/overlays-v1", "horses": out}
 
 
 def _default_leaf_count(auto: dict) -> int:
@@ -130,7 +164,7 @@ def ensure_verdict(logic_data: dict) -> dict:
     if len(ranked) >= 2:
         top_auto = horses[ranked[0]["horse_number"]].get("python_auto") or {}
         n_default = _default_leaf_count(top_auto)
-        if n_default >= THIN_EVIDENCE_MIN_DEFAULTS:
+        if THIN_EVIDENCE_RAIL and n_default >= THIN_EVIDENCE_MIN_DEFAULTS:
             ranked[0], ranked[1] = ranked[1], ranked[0]
             thin_swap = {
                 "demoted": pre_rank_order[0],
@@ -225,8 +259,11 @@ def render_race_markdown(logic_data: dict, meeting_dir: Path | None = None) -> s
         for n, h in horses.items()}}
     encoded_time = base64.b64encode(json.dumps(time_metadata, sort_keys=True,
         separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode()).decode("ascii")
+    encoded_overlays = base64.b64encode(json.dumps(overlay_metadata(horses), sort_keys=True,
+        separators=(",", ":"), ensure_ascii=True, allow_nan=False).encode()).decode("ascii")
     lines = [
         f"<!-- wc-au-full-time:v1:{encoded_time} -->",
+        f"<!-- wc-au-overlays:v1:{encoded_overlays} -->",
         f"<!-- wc-au-dimensions:v1:{encoded_registry} -->",
         _panorama(race, verdict, horses, divergence),
         "",

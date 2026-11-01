@@ -1,0 +1,410 @@
+{
+ "top2_in": {
+  "n": 531,
+  "placed": 0.401,
+  "won": 0.156,
+  "speed_base": 60.0,
+  "speed_cand": 74.693,
+  "form_rank": 3,
+  "market_rank": 3.0,
+  "pf_runs": 6,
+  "career": 10,
+  "days": 21.0,
+  "past_prize_vs_field": 1.0,
+  "gap_to_K": 0.998
+ },
+ "top2_out": {
+  "n": 531,
+  "placed": 0.465,
+  "won": 0.168,
+  "speed_base": 74.704,
+  "speed_cand": 62.859,
+  "form_rank": 3,
+  "market_rank": 3.0,
+  "pf_runs": 5,
+  "career": 6,
+  "days": 20,
+  "past_prize_vs_field": 1.0,
+  "gap_to_K": 0.0
+ },
+ "top5_in": {
+  "n": 648,
+  "placed": 0.327,
+  "won": 0.096,
+  "speed_base": 53.588,
+  "speed_cand": 65.793,
+  "form_rank": 5.0,
+  "market_rank": 5,
+  "pf_runs": 6.0,
+  "career": 11.0,
+  "days": 20,
+  "past_prize_vs_field": 1.0,
+  "gap_to_K": 0.989
+ },
+ "top5_out": {
+  "n": 648,
+  "placed": 0.272,
+  "won": 0.082,
+  "speed_base": 65.656,
+  "speed_cand": 55.171,
+  "form_rank": 5.0,
+  "market_rank": 6.0,
+  "pf_runs": 6.0,
+  "career": 8.0,
+  "days": 20.0,
+  "past_prize_vs_field": 1.0,
+  "gap_to_K": 0.0
+ },
+ "top2_groups": {
+  "pf_runs=1-2": {
+   "in_n": 90,
+   "in_placed": 0.411,
+   "out_n": 116,
+   "out_placed": 0.5
+  },
+  "pf_runs=3-5": {
+   "in_n": 133,
+   "in_placed": 0.421,
+   "out_n": 158,
+   "out_placed": 0.43
+  },
+  "pf_runs=6+": {
+   "in_n": 308,
+   "in_placed": 0.39,
+   "out_n": 257,
+   "out_placed": 0.471
+  },
+  "form_rank=1-2": {
+   "in_n": 242,
+   "in_placed": 0.417,
+   "out_n": 207,
+   "out_placed": 0.473
+  },
+  "form_rank=3-4": {
+   "in_n": 207,
+   "in_placed": 0.353,
+   "out_n": 235,
+   "out_placed": 0.485
+  },
+  "form_rank=5+": {
+   "in_n": 82,
+   "in_placed": 0.476,
+   "out_n": 89,
+   "out_placed": 0.393
+  },
+  "market_rank=1-2": {
+   "in_n": 194,
+   "in_placed": 0.567,
+   "out_n": 201,
+   "out_placed": 0.597
+  },
+  "market_rank=3-4": {
+   "in_n": 186,
+   "in_placed": 0.387,
+   "out_n": 163,
+   "out_placed": 0.515
+  },
+  "market_rank=5+": {
+   "in_n": 150,
+   "in_placed": 0.2,
+   "out_n": 166,
+   "out_placed": 0.259
+  },
+  "market_rank=None": {
+   "in_n": 1,
+   "in_placed": 1,
+   "out_n": 1,
+   "out_placed": 0
+  },
+  "past_prize_vs_field=None": {
+   "in_n": 16,
+   "in_placed": 0.312,
+   "out_n": 39,
+   "out_placed": 0.615
+  },
+  "past_prize_vs_field=higher": {
+   "in_n": 127,
+   "in_placed": 0.417,
+   "out_n": 106,
+   "out_placed": 0.377
+  },
+  "past_prize_vs_field=lower": {
+   "in_n": 44,
+   "in_placed": 0.5,
+   "out_n": 40,
+   "out_placed": 0.575
+  },
+  "past_prize_vs_field=similar": {
+   "in_n": 344,
+   "in_placed": 0.387,
+   "out_n": 346,
+   "out_placed": 0.462
+  },
+  "speed_jump=big(>15)": {
+   "in_n": 218,
+   "in_placed": 0.408,
+   "out_n": 0,
+   "out_placed": null
+  },
+  "speed_jump=drop": {
+   "in_n": 3,
+   "in_placed": 0.667,
+   "out_n": 186,
+   "out_placed": 0.441
+  },
+  "speed_jump=small": {
+   "in_n": 310,
+   "in_placed": 0.394,
+   "out_n": 345,
+   "out_placed": 0.478
+  },
+  "days=22-60": {
+   "in_n": 114,
+   "in_placed": 0.342,
+   "out_n": 107,
+   "out_placed": 0.514
+  },
+  "days=61+": {
+   "in_n": 121,
+   "in_placed": 0.339,
+   "out_n": 102,
+   "out_placed": 0.412
+  },
+  "days=<=21": {
+   "in_n": 283,
+   "in_placed": 0.456,
+   "out_n": 310,
+   "out_placed": 0.461
+  },
+  "days=None": {
+   "in_n": 13,
+   "in_placed": 0.308,
+   "out_n": 12,
+   "out_placed": 0.583
+  },
+  "class_move=same/unknown": {
+   "in_n": 478,
+   "in_placed": 0.404,
+   "out_n": 477,
+   "out_placed": 0.468
+  },
+  "class_move=升班": {
+   "in_n": 21,
+   "in_placed": 0.524,
+   "out_n": 28,
+   "out_placed": 0.393
+  },
+  "class_move=降班": {
+   "in_n": 32,
+   "in_placed": 0.281,
+   "out_n": 26,
+   "out_placed": 0.5
+  },
+  "style=前置": {
+   "in_n": 106,
+   "in_placed": 0.481,
+   "out_n": 103,
+   "out_placed": 0.437
+  },
+  "style=多變": {
+   "in_n": 79,
+   "in_placed": 0.468,
+   "out_n": 96,
+   "out_placed": 0.458
+  },
+  "style=守中": {
+   "in_n": 208,
+   "in_placed": 0.365,
+   "out_n": 207,
+   "out_placed": 0.493
+  },
+  "style=後上": {
+   "in_n": 127,
+   "in_placed": 0.362,
+   "out_n": 117,
+   "out_placed": 0.444
+  },
+  "style=未知": {
+   "in_n": 11,
+   "in_placed": 0.273,
+   "out_n": 8,
+   "out_placed": 0.5
+  }
+ },
+ "top5_groups": {
+  "pf_runs=1-2": {
+   "in_n": 129,
+   "in_placed": 0.256,
+   "out_n": 176,
+   "out_placed": 0.25
+  },
+  "pf_runs=3-5": {
+   "in_n": 126,
+   "in_placed": 0.357,
+   "out_n": 131,
+   "out_placed": 0.313
+  },
+  "pf_runs=6+": {
+   "in_n": 393,
+   "in_placed": 0.341,
+   "out_n": 341,
+   "out_placed": 0.267
+  },
+  "form_rank=1-2": {
+   "in_n": 34,
+   "in_placed": 0.471,
+   "out_n": 39,
+   "out_placed": 0.282
+  },
+  "form_rank=3-4": {
+   "in_n": 180,
+   "in_placed": 0.328,
+   "out_n": 162,
+   "out_placed": 0.241
+  },
+  "form_rank=5+": {
+   "in_n": 434,
+   "in_placed": 0.316,
+   "out_n": 447,
+   "out_placed": 0.282
+  },
+  "market_rank=1-2": {
+   "in_n": 88,
+   "in_placed": 0.591,
+   "out_n": 85,
+   "out_placed": 0.518
+  },
+  "market_rank=3-4": {
+   "in_n": 153,
+   "in_placed": 0.425,
+   "out_n": 134,
+   "out_placed": 0.41
+  },
+  "market_rank=5+": {
+   "in_n": 406,
+   "in_placed": 0.234,
+   "out_n": 429,
+   "out_placed": 0.179
+  },
+  "market_rank=None": {
+   "in_n": 1,
+   "in_placed": 0,
+   "out_n": 0,
+   "out_placed": null
+  },
+  "past_prize_vs_field=None": {
+   "in_n": 42,
+   "in_placed": 0.238,
+   "out_n": 101,
+   "out_placed": 0.257
+  },
+  "past_prize_vs_field=higher": {
+   "in_n": 92,
+   "in_placed": 0.348,
+   "out_n": 100,
+   "out_placed": 0.27
+  },
+  "past_prize_vs_field=lower": {
+   "in_n": 73,
+   "in_placed": 0.452,
+   "out_n": 92,
+   "out_placed": 0.25
+  },
+  "past_prize_vs_field=similar": {
+   "in_n": 441,
+   "in_placed": 0.311,
+   "out_n": 355,
+   "out_placed": 0.282
+  },
+  "speed_jump=big(>15)": {
+   "in_n": 276,
+   "in_placed": 0.304,
+   "out_n": 0,
+   "out_placed": null
+  },
+  "speed_jump=drop": {
+   "in_n": 1,
+   "in_placed": 0,
+   "out_n": 253,
+   "out_placed": 0.292
+  },
+  "speed_jump=small": {
+   "in_n": 371,
+   "in_placed": 0.345,
+   "out_n": 395,
+   "out_placed": 0.258
+  },
+  "days=22-60": {
+   "in_n": 145,
+   "in_placed": 0.29,
+   "out_n": 124,
+   "out_placed": 0.25
+  },
+  "days=61+": {
+   "in_n": 124,
+   "in_placed": 0.306,
+   "out_n": 114,
+   "out_placed": 0.263
+  },
+  "days=<=21": {
+   "in_n": 338,
+   "in_placed": 0.361,
+   "out_n": 372,
+   "out_placed": 0.28
+  },
+  "days=None": {
+   "in_n": 41,
+   "in_placed": 0.244,
+   "out_n": 38,
+   "out_placed": 0.289
+  },
+  "class_move=same/unknown": {
+   "in_n": 586,
+   "in_placed": 0.321,
+   "out_n": 584,
+   "out_placed": 0.276
+  },
+  "class_move=升班": {
+   "in_n": 32,
+   "in_placed": 0.469,
+   "out_n": 39,
+   "out_placed": 0.231
+  },
+  "class_move=降班": {
+   "in_n": 30,
+   "in_placed": 0.3,
+   "out_n": 25,
+   "out_placed": 0.24
+  },
+  "style=前置": {
+   "in_n": 101,
+   "in_placed": 0.327,
+   "out_n": 107,
+   "out_placed": 0.299
+  },
+  "style=多變": {
+   "in_n": 103,
+   "in_placed": 0.33,
+   "out_n": 122,
+   "out_placed": 0.246
+  },
+  "style=守中": {
+   "in_n": 222,
+   "in_placed": 0.356,
+   "out_n": 247,
+   "out_placed": 0.279
+  },
+  "style=後上": {
+   "in_n": 190,
+   "in_placed": 0.305,
+   "out_n": 142,
+   "out_placed": 0.254
+  },
+  "style=未知": {
+   "in_n": 32,
+   "in_placed": 0.25,
+   "out_n": 30,
+   "out_placed": 0.3
+  }
+ }
+}

@@ -185,6 +185,9 @@ def compose_matrix_score(matrix_scores, weights=None):
 PROVEN_CLASS_Z_WEIGHT = 0.5
 PROVEN_CLASS_DECAY = (1.0, 0.8, 0.6, 0.4)
 RANKING_OVERLAYS = (
+    {"key": "wet_form_feature", "label": "濕地往績調整",
+     "formula": "黏／大爛地日：今日地況往績入位率對先驗（全份）＋另一種濕地（半份），按場數收縮，有上下限",
+     "missing": "乾地日 = 0；冇濕地往績 = 先驗（中性）"},
     {"key": "full_time_speed_feature", "label": "逐駒全程情境速度",
      "formula": f"{FULL_TIME_SPEED_GAIN:g} × 場內全程情境速度 z-score × 證據權重",
      "missing": "缺逐駒資料／來源未在預測前可用時 = 0；不使用試閘或頭馬代理"},

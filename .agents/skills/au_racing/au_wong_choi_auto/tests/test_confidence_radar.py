@@ -86,12 +86,41 @@ if __name__ == "__main__":
     unittest.main()
 
 
-class ThinEvidenceRailTests(unittest.TestCase):
-    """證據厚度安全欄：首選有 ≥2 個計分 leaf 停留預設 60 → 同第 2 位對調。
+class ThinEvidenceRailOffTests(unittest.TestCase):
+    """EXP-20261101-38：安全欄已停用（3,246 場首選上名 −1.17pp [−2.34, −0.03]）。"""
 
-    根據：654 場乾淨語料，首選 ≥2 個預設嘅 19/44 上名 = 43.18% vs 基準 58.72%
+    def test_default_config_never_swaps(self):
+        from au_racing_engine import renderer
+        self.assertFalse(renderer.THIN_EVIDENCE_RAIL)
+        scored = tuple(THIN_EVIDENCE_SCORED_LEAVES)
+        horses = {}
+        for i, (ability, n_def) in enumerate([(70.0, 3), (69.0, 0), (68.0, 0)], start=1):
+            fs = {k: 70.0 for k in scored}
+            for k in list(scored)[:n_def]:
+                fs[k] = 60.0
+            horses[str(i)] = {"horse_name": f"H{i}",
+                              "python_auto": {"ability_score": ability, "grade": "B", "feature_scores": fs}}
+        v = ensure_verdict({"horses": horses})
+        self.assertEqual([i["horse_number"] for i in v["ranking"]], ["1", "2", "3"])
+        self.assertIsNone(v["decision_trace"]["thin_evidence_swap"])
+        self.assertFalse(v["decision_trace"]["changed"])
+
+
+class ThinEvidenceRailTests(unittest.TestCase):
+    """證據厚度安全欄（停用中，`THIN_EVIDENCE_RAIL = True` 先生效）：首選有 ≥2 個計分 leaf
+    停留預設 60 → 同第 2 位對調。保留測試令重新開嘅時候行為唔會走樣。
+
+    原本根據：654 場乾淨語料，首選 ≥2 個預設嘅 19/44 上名 = 43.18% vs 基準 58.72%
     （二項 p = 0.027）；配對 bootstrap 首選上名 +1.70pp [+0.15, +3.36]。
     """
+
+    def setUp(self):
+        from au_racing_engine import renderer
+        self._renderer, self._saved = renderer, renderer.THIN_EVIDENCE_RAIL
+        renderer.THIN_EVIDENCE_RAIL = True
+
+    def tearDown(self):
+        self._renderer.THIN_EVIDENCE_RAIL = self._saved
 
     # 呢個以前係手抄 `renderer.THIN_EVIDENCE_SCORED_LEAVES` 嘅。安全欄改咗
     # 之後測試就會靜靜咁測緊另一組 leaf，仲要照樣綠。攞返同一份。

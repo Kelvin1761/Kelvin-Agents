@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Optional
 from .au_dimension_registry import read_registry_metadata
 from .au_full_time_metadata import read_time_metadata
+from .au_overlay_metadata import read_overlay_metadata
 
 
 def _parse_data_readout(block: str) -> Optional[list]:
@@ -1324,6 +1325,7 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
             return None
     
     time_metadata, text = read_time_metadata(text)
+    overlay_metadata, text = read_overlay_metadata(text)
     dimension_registry, text = read_registry_metadata(text)
 
     race_num_m = re.search(r'Race\s+(\d+)', path.name, re.IGNORECASE)
@@ -1380,6 +1382,12 @@ def parse_au_analysis(filepath: str) -> Optional[RaceAnalysis]:
             clean = lambda value: re.sub(r"[^a-z0-9]", "", re.sub(r"\([^)]*\)", "", str(value or "").lower()))
             if clean(captured.get("name")) == clean(horse.horse_name):
                 horse.full_time_speed = captured.get("detail")
+    if overlay_metadata:
+        clean_name = lambda value: re.sub(r"[^a-z0-9]", "", re.sub(r"\([^)]*\)", "", str(value or "").lower()))
+        for horse in horses:
+            captured = (overlay_metadata.get("horses") or {}).get(str(horse.horse_number)) or {}
+            if captured and clean_name(captured.get("name")) == clean_name(horse.horse_name):
+                horse.score_overlays = {k: captured.get(k) for k in ("pure_7d_score", "ability_score", "overlays", "trip_change")}
     return RaceAnalysis(
         full_time_speed=time_metadata.get("race") if time_metadata else None,
         race_number=race_number,

@@ -1,0 +1,38 @@
+{
+ "stats": {
+  "SH": {
+   "runs": 202169,
+   "replaced": 184748,
+   "unreliable_or_no_fit": 2319,
+   "unmatched": 15102
+  },
+  "G": {
+   "runs": 202169,
+   "replaced": 184748,
+   "unreliable_or_no_fit": 2319,
+   "unmatched": 15102
+  }
+ },
+ "leaf_auc_base": 0.60759,
+ "rho_pf_form_quality": {
+  "base": 0.3056,
+  "SH": 0.3586,
+  "G": 0.3643
+ },
+ "leaf_auc_SH": {
+  "delta": 0.00859,
+  "ci": [
+   0.00201,
+   0.01531
+  ],
+  "p": 0.008
+ },
+ "leaf_auc_G": {
+  "delta": 0.01304,
+  "ci": [
+   0.00737,
+   0.01837
+  ],
+  "p": 0.0
+ }
+}

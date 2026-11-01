@@ -350,9 +350,6 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
         else:
             A(f"| {name} `{key}` | {display_weight} | {bar(weight / sum(weights.values()) if coefficients else weight)} |")
     A("")
-    if overlays:
-        A("### 額外場內 ranking overlay")
-        A("")
     if adjustments:
         A("### 額外 ranking adjustment")
         A("")
@@ -365,6 +362,11 @@ def render_markdown(platform: str, model: dict, stats: dict | None, engine_dir: 
                 f"{adjustment.get('formula', '')} | "
                 f"{adjustment.get('missing', '')} |"
             )
+        A("")
+    # 2026-11-01：overlay 表以前錯咗縮排喺 `if adjustments:` 入面 —— AU 冇 adjustment，
+    # 於是模型說明只印標題、冇表，三個直接加落總分嘅 overlay 一個都睇唔到。
+    if overlays:
+        A("### 額外場內 ranking overlay")
         A("")
         A("| Overlay | 公式 | 缺資料處理 |")
         A("|---|---|---|")

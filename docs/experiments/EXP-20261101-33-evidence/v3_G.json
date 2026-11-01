@@ -1,0 +1,255 @@
+{
+ "races": 3246,
+ "verdict": "REJECT",
+ "reason": "primary_regression",
+ "primary": {
+  "gold": {
+   "delta": -0.0009242144177449168,
+   "ci_low": -0.007903780068728522,
+   "ci_high": 0.005723370429252782,
+   "p_value": 0.825
+  },
+  "good_positional": {
+   "delta": -0.005237215033887862,
+   "ci_low": -0.012832852101379532,
+   "ci_high": 0.0021014710297208045,
+   "p_value": 0.179
+  }
+ },
+ "ranking": {
+  "top3_capture_at5": {
+   "delta": 0.0036968576709796685,
+   "ci_low": 0.0005121901249743904,
+   "ci_high": 0.007038381172330362,
+   "p_value": 0.025
+  },
+  "ndcg_at5": {
+   "delta": 0.0008770377919951322,
+   "ci_low": -0.0016033363965185315,
+   "ci_high": 0.003213625222932149,
+   "p_value": 0.494
+  },
+  "top5_pairwise_auc": {
+   "delta": 0.0012804184021293467,
+   "ci_low": -0.0013393246461335597,
+   "ci_high": 0.004014741300412395,
+   "p_value": 0.347
+  }
+ },
+ "counts_base": {
+  "gold": 21.13370301910043,
+  "gold_strict": 7.825015403573629,
+  "good_positional": 26.12446087492298,
+  "pass": 49.32224276032039,
+  "champion": 24.337646333949476,
+  "winner_in_top3": 57.67097966728281,
+  "winner_in_top5": 77.75723967960568,
+  "t3prec": 49.086054631341135
+ },
+ "counts_cand": {
+  "gold": 21.04128157732594,
+  "gold_strict": 7.6709796672828094,
+  "good_positional": 25.600739371534196,
+  "pass": 49.07578558225509,
+  "champion": 24.152803450400494,
+  "winner_in_top3": 57.73259396179914,
+  "winner_in_top5": 78.03450400492915,
+  "t3prec": 49.199014171287736
+ },
+ "cohorts": {
+  "field:13+:gold": {
+   "n": 298,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -2.01,
+    2.15
+   ]
+  },
+  "field:13+:good_positional": {
+   "n": 298,
+   "delta_pp": -1.01,
+   "ci_pp": [
+    -3.47,
+    1.53
+   ]
+  },
+  "field:9-12:gold": {
+   "n": 1917,
+   "delta_pp": 0.05,
+   "ci_pp": [
+    -0.86,
+    0.92
+   ]
+  },
+  "field:9-12:good_positional": {
+   "n": 1917,
+   "delta_pp": -0.26,
+   "ci_pp": [
+    -1.29,
+    0.72
+   ]
+  },
+  "field:<=8:gold": {
+   "n": 1031,
+   "delta_pp": -0.39,
+   "ci_pp": [
+    -1.49,
+    0.67
+   ]
+  },
+  "field:<=8:good_positional": {
+   "n": 1031,
+   "delta_pp": -0.87,
+   "ci_pp": [
+    -2.35,
+    0.5
+   ]
+  },
+  "top_pick_sp:$1-3:gold": {
+   "n": 1092,
+   "delta_pp": -0.27,
+   "ci_pp": [
+    -1.22,
+    0.61
+   ]
+  },
+  "top_pick_sp:$1-3:good_positional": {
+   "n": 1092,
+   "delta_pp": -0.37,
+   "ci_pp": [
+    -1.59,
+    0.86
+   ]
+  },
+  "top_pick_sp:$3-6:gold": {
+   "n": 1208,
+   "delta_pp": 0.17,
+   "ci_pp": [
+    -1.07,
+    1.3
+   ]
+  },
+  "top_pick_sp:$3-6:good_positional": {
+   "n": 1208,
+   "delta_pp": -0.33,
+   "ci_pp": [
+    -1.55,
+    0.79
+   ]
+  },
+  "top_pick_sp:$6+:gold": {
+   "n": 939,
+   "delta_pp": -0.21,
+   "ci_pp": [
+    -1.33,
+    0.86
+   ]
+  },
+  "top_pick_sp:$6+:good_positional": {
+   "n": 939,
+   "delta_pp": -1.06,
+   "ci_pp": [
+    -2.42,
+    0.2
+   ]
+  },
+  "top_pick_sp:unknown:gold": {
+   "n": 7,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:unknown:good_positional": {
+   "n": 7,
+   "delta_pp": 14.29,
+   "ci_pp": [
+    0.0,
+    20.0
+   ]
+  },
+  "distance:1201-1600:gold": {
+   "n": 1326,
+   "delta_pp": -0.08,
+   "ci_pp": [
+    -1.32,
+    1.12
+   ]
+  },
+  "distance:1201-1600:good_positional": {
+   "n": 1326,
+   "delta_pp": -0.23,
+   "ci_pp": [
+    -1.46,
+    1.03
+   ]
+  },
+  "distance:<=1200:gold": {
+   "n": 1410,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -1.08,
+    0.99
+   ]
+  },
+  "distance:<=1200:good_positional": {
+   "n": 1410,
+   "delta_pp": -0.71,
+   "ci_pp": [
+    -2.09,
+    0.6
+   ]
+  },
+  "distance:>1600:gold": {
+   "n": 510,
+   "delta_pp": -0.39,
+   "ci_pp": [
+    -1.99,
+    1.14
+   ]
+  },
+  "distance:>1600:good_positional": {
+   "n": 510,
+   "delta_pp": -0.78,
+   "ci_pp": [
+    -2.45,
+    0.8
+   ]
+  },
+  "fallback_share:high:gold": {
+   "n": 1625,
+   "delta_pp": 0.18,
+   "ci_pp": [
+    -0.75,
+    1.1
+   ]
+  },
+  "fallback_share:high:good_positional": {
+   "n": 1625,
+   "delta_pp": -0.25,
+   "ci_pp": [
+    -1.3,
+    0.8
+   ]
+  },
+  "fallback_share:low:gold": {
+   "n": 1621,
+   "delta_pp": -0.37,
+   "ci_pp": [
+    -1.48,
+    0.7
+   ]
+  },
+  "fallback_share:low:good_positional": {
+   "n": 1621,
+   "delta_pp": -0.8,
+   "ci_pp": [
+    -2.0,
+    0.3
+   ]
+  }
+ },
+ "cohort_ci_all_negative": [],
+ "changed_races": 3228
+}
