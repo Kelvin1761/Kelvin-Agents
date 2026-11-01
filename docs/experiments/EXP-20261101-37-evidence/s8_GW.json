@@ -1,0 +1,491 @@
+{
+ "label": "GW",
+ "races": 2243,
+ "meeting_days": 57,
+ "alignment": {
+  "base_only": 0,
+  "cand_only": 0
+ },
+ "algorithm_hashes": [
+  "6e4f7999a5a7ddc7f9a9fbf0e7b5aaa4df120fc1810e4de47bca229b936da59b",
+  "6e4f7999a5a7ddc7f9a9fbf0e7b5aaa4df120fc1810e4de47bca229b936da59b"
+ ],
+ "anchor_weights": {
+  "base": {
+   "stability": 0.37099725005319806,
+   "pace_perf": 0.11389390231594383,
+   "jockey_trainer": 0.6626585553070451,
+   "class_weight": 0.3826193901797637,
+   "track": 0.14114297066700832,
+   "preparation": 0.25244110196132946
+  },
+  "cand": {
+   "stability": 0.37099725005319806,
+   "pace_perf": 0.11389390231594383,
+   "jockey_trainer": 0.6626585553070451,
+   "class_weight": 0.3826193901797637,
+   "track": 0.14114297066700832,
+   "preparation": 0.25244110196132946
+  }
+ },
+ "windows_fallback": {
+  "base": [
+   "consensus_failed_gate",
+   "consensus_failed_gate",
+   "no_consensus",
+   "consensus_failed_gate",
+   "no_consensus",
+   null,
+   null,
+   "no_consensus",
+   null
+  ],
+  "cand": [
+   null,
+   null,
+   null,
+   null,
+   null,
+   "consensus_failed_gate",
+   null,
+   null,
+   "consensus_failed_gate"
+  ]
+ },
+ "counts": {
+  "A0": {
+   "gold": 21.533660276415514,
+   "gold_strict": 8.292465448060634,
+   "good_positional": 26.705305394560856,
+   "pass": 50.64645563976817,
+   "champion": 25.18947837717343,
+   "winner_in_top3": 58.849754792688366,
+   "winner_in_top5": 78.42175657601426,
+   "t3prec": 50.21548521325606
+  },
+  "B0": {
+   "gold": 21.444493981275077,
+   "gold_strict": 8.247882300490415,
+   "good_positional": 26.83905483727151,
+   "pass": 50.691038787338385,
+   "champion": 25.14489522960321,
+   "winner_in_top3": 58.89433794025858,
+   "winner_in_top5": 78.5109228711547,
+   "t3prec": 50.200624164065985
+  },
+  "A1": {
+   "gold": 21.533660276415514,
+   "gold_strict": 7.846633972358449,
+   "good_positional": 26.437806509139545,
+   "pass": 50.468123049487296,
+   "champion": 25.100312082032993,
+   "winner_in_top3": 58.67142220240749,
+   "winner_in_top5": 78.42175657601426,
+   "t3prec": 49.99256947540496
+  },
+  "B1": {
+   "gold": 21.221578243423984,
+   "gold_strict": 8.069549710209541,
+   "good_positional": 26.393223361569326,
+   "pass": 50.37895675434686,
+   "champion": 25.50156041016496,
+   "winner_in_top3": 58.849754792688366,
+   "winner_in_top5": 78.55550601872493,
+   "t3prec": 50.11145786892555
+  }
+ },
+ "formal": {
+  "verdict": "REJECT",
+  "reason": "leakage_audit_failed",
+  "detail": {}
+ },
+ "research_diagnostic": {
+  "verdict": "REJECT",
+  "reason": "both_arms_reject",
+  "package": null,
+  "detail": {
+   "arms": {
+    "fixed": {
+     "verdict": "REJECT",
+     "reason": "primary_regression",
+     "detail": {
+      "mode": "fixed_rule",
+      "races": 2243,
+      "meeting_days": 57,
+      "blocks_required_nonnegative": 4,
+      "primary": {
+       "gold": {
+        "delta": 0.0,
+        "ci_low": -0.008994708994708995,
+        "ci_high": 0.009446693657219974,
+        "p_value": 1.0,
+        "block_deltas": [
+         0.0,
+         -0.021505376344086023,
+         0.012987012987012988,
+         -0.01875,
+         0.008438818565400843,
+         0.015772870662460567
+        ],
+        "higher_is_better": true
+       },
+       "good_positional": {
+        "delta": -0.0026749888542131075,
+        "ci_low": -0.012742382271468145,
+        "ci_high": 0.007009345794392523,
+        "p_value": 0.591,
+        "block_deltas": [
+         -0.024,
+         -0.002688172043010753,
+         -0.01038961038961039,
+         -0.00625,
+         0.02109704641350211,
+         0.0
+        ],
+        "higher_is_better": true
+       }
+      },
+      "ranking": {
+       "top3_capture_at5": {
+        "delta": 0.0016347154109080104,
+        "ci_low": -0.0020824656393169504,
+        "ci_high": 0.005383384257238472,
+        "p_value": 0.416,
+        "block_deltas": [
+         -0.003555555555555554,
+         0.002688172043010753,
+         -1.4418480839287747e-19,
+         0.009375,
+         -0.0007032348804500719,
+         0.004206098843322819
+        ],
+        "higher_is_better": true
+       },
+       "ndcg_at5": {
+        "delta": -0.00036965241562620055,
+        "ci_low": -0.003412651691339791,
+        "ci_high": 0.002859675946120762,
+        "p_value": 0.839,
+        "block_deltas": [
+         0.0024550302636721856,
+         -0.0038589019953745862,
+         -0.0017023132678957644,
+         0.005604943509917781,
+         -0.004264873022236647,
+         0.0017952786203755697
+        ],
+        "higher_is_better": true
+       },
+       "top5_pairwise_auc": {
+        "delta": 1.341592744960258e-05,
+        "ci_low": -0.0031647816622502093,
+        "ci_high": 0.003461670753220542,
+        "p_value": 0.947,
+        "block_deltas": [
+         -0.005053025808821563,
+         -0.001603113988196476,
+         -0.0019521195710704529,
+         0.006691179163747602,
+         0.00213844607180944,
+         0.0003725560618670287
+        ],
+        "higher_is_better": true
+       }
+      },
+      "metrics": [
+       "good_positional"
+      ]
+     }
+    },
+    "refit": {
+     "verdict": "REJECT",
+     "reason": "primary_regression",
+     "detail": {
+      "mode": "walk_forward_oos",
+      "races": 2243,
+      "meeting_days": 57,
+      "blocks_required_nonnegative": 4,
+      "primary": {
+       "gold": {
+        "delta": -0.002229157378510923,
+        "ci_low": -0.010921799912625601,
+        "ci_high": 0.006491027109583811,
+        "p_value": 0.635,
+        "block_deltas": [
+         -0.005333333333333333,
+         -0.005376344086021506,
+         0.0025974025974025974,
+         -0.0125,
+         0.006329113924050633,
+         -0.0031545741324921135
+        ],
+        "higher_is_better": true
+       },
+       "good_positional": {
+        "delta": -0.004458314757021846,
+        "ci_low": -0.016833245660178853,
+        "ci_high": 0.007602862254025045,
+        "p_value": 0.458,
+        "block_deltas": [
+         -0.02666666666666667,
+         0.005376344086021506,
+         -0.023376623376623377,
+         -0.00625,
+         0.023206751054852322,
+         -0.006309148264984227
+        ],
+        "higher_is_better": true
+       }
+      },
+      "ranking": {
+       "top3_capture_at5": {
+        "delta": 0.0025263783623123786,
+        "ci_low": -0.0023870417732310316,
+        "ci_high": 0.007462686567164182,
+        "p_value": 0.29,
+        "block_deltas": [
+         -0.0026666666666666666,
+         0.005376344086021504,
+         -0.005194805194805195,
+         0.009375000000000001,
+         0.0028129395218002805,
+         0.007360672975814931
+        ],
+        "higher_is_better": true
+       },
+       "ndcg_at5": {
+        "delta": 0.000543914878495684,
+        "ci_low": -0.0027086551182711827,
+        "ci_high": 0.003577295140108594,
+        "p_value": 0.709,
+        "block_deltas": [
+         -0.001565849259122984,
+         -0.0016039541086714357,
+         0.0010602507139636573,
+         0.002499593803093468,
+         0.0004181421215016606,
+         0.0031470017842429236
+        ],
+        "higher_is_better": true
+       },
+       "top5_pairwise_auc": {
+        "delta": 0.0003121389475826331,
+        "ci_low": -0.0030971700641838212,
+        "ci_high": 0.003891882019558286,
+        "p_value": 0.869,
+        "block_deltas": [
+         -0.004776049390751237,
+         -0.0008885019997155924,
+         -0.001820555869675655,
+         0.004915634086758226,
+         0.0035871915698488716,
+         0.0007862814599618087
+        ],
+        "higher_is_better": true
+       }
+      },
+      "metrics": [
+       "gold",
+       "good_positional"
+      ]
+     }
+    }
+   },
+   "live_guard": {
+    "verdict": "REJECT",
+    "reason": "primary_regression",
+    "detail": {
+     "mode": "walk_forward_oos",
+     "races": 2243,
+     "meeting_days": 57,
+     "blocks_required_nonnegative": 4,
+     "primary": {
+      "gold": {
+       "delta": -0.003120820329915292,
+       "ci_low": -0.011673151750972763,
+       "ci_high": 0.006075334143377886,
+       "p_value": 0.511,
+       "block_deltas": [
+        -0.005333333333333333,
+        -0.005376344086021506,
+        0.0025974025974025974,
+        -0.0125,
+        0.0,
+        0.0
+       ],
+       "higher_is_better": true
+      },
+      "good_positional": {
+       "delta": -0.003120820329915292,
+       "ci_low": -0.015546918378678512,
+       "ci_high": 0.008921933085501859,
+       "p_value": 0.592,
+       "block_deltas": [
+        -0.02666666666666667,
+        0.005376344086021506,
+        -0.023376623376623377,
+        -0.003125,
+        0.027426160337552744,
+        -0.006309148264984227
+       ],
+       "higher_is_better": true
+      }
+     },
+     "ranking": {
+      "top3_capture_at5": {
+       "delta": 0.0022291573785109225,
+       "ci_low": -0.0025025025025025025,
+       "ci_high": 0.0070719434244526065,
+       "p_value": 0.338,
+       "block_deltas": [
+        -0.0026666666666666666,
+        0.005376344086021504,
+        -0.005194805194805195,
+        0.007291666666666667,
+        0.0035161744022503515,
+        0.006309148264984226
+       ],
+       "higher_is_better": true
+      },
+      "ndcg_at5": {
+       "delta": 0.0006822421582998259,
+       "ci_low": -0.002649700214638102,
+       "ci_high": 0.0038902062031027267,
+       "p_value": 0.661,
+       "block_deltas": [
+        -0.001565849259122984,
+        -0.0016039541086714357,
+        0.0010602507139636573,
+        0.002904576245307321,
+        0.001090595916628474,
+        0.002711451652388501
+       ],
+       "higher_is_better": true
+      },
+      "top5_pairwise_auc": {
+       "delta": 0.0003090155107897676,
+       "ci_low": -0.0029827035904418904,
+       "ci_high": 0.0036606075737246344,
+       "p_value": 0.875,
+       "block_deltas": [
+        -0.004776049390751237,
+        -0.0008885019997155924,
+        -0.001820555869675655,
+        0.004842426759149863,
+        0.0036726884424324695,
+        0.0007102403195947867
+       ],
+       "higher_is_better": true
+      }
+     },
+     "metrics": [
+      "gold",
+      "good_positional"
+     ]
+    }
+   },
+   "baseline_weights_stale": false,
+   "stale_check": {
+    "verdict": "REJECT",
+    "reason": "primary_regression",
+    "detail": {
+     "mode": "walk_forward_oos",
+     "races": 2243,
+     "meeting_days": 57,
+     "blocks_required_nonnegative": 4,
+     "primary": {
+      "gold": {
+       "delta": -0.0008916629514043691,
+       "ci_low": -0.002938706968933669,
+       "ci_high": 0.0008661758336942399,
+       "p_value": 0.609,
+       "block_deltas": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.006329113924050633,
+        0.0031545741324921135
+       ],
+       "higher_is_better": true
+      },
+      "good_positional": {
+       "delta": 0.0013374944271065537,
+       "ci_low": 0.0,
+       "ci_high": 0.0031545741324921135,
+       "p_value": 0.081,
+       "block_deltas": [
+        0.0,
+        0.0,
+        0.0,
+        0.003125,
+        0.004219409282700422,
+        0.0
+       ],
+       "higher_is_better": true
+      }
+     },
+     "ranking": {
+      "top3_capture_at5": {
+       "delta": -0.00029722098380145643,
+       "ci_low": -0.0008658008658008659,
+       "ci_high": 0.0002866150759529951,
+       "p_value": 0.243,
+       "block_deltas": [
+        0.0,
+        0.0,
+        0.0,
+        -0.0020833333333333337,
+        0.0007032348804500703,
+        -0.0010515247108307045
+       ],
+       "higher_is_better": true
+      },
+      "ndcg_at5": {
+       "delta": 0.00013832727980414168,
+       "ci_low": -0.00033010753636173313,
+       "ci_high": 0.0006595095334355492,
+       "p_value": 0.604,
+       "block_deltas": [
+        0.0,
+        0.0,
+        0.0,
+        0.0004049824422138488,
+        0.0006724537951268134,
+        -0.0004355501318544206
+       ],
+       "higher_is_better": true
+      },
+      "top5_pairwise_auc": {
+       "delta": -3.1234367928656915e-06,
+       "ci_low": -0.0003616554646813035,
+       "ci_high": 0.00040199184534009917,
+       "p_value": 0.946,
+       "block_deltas": [
+        0.0,
+        0.0,
+        0.0,
+        -7.320732760836678e-05,
+        8.549687258359816e-05,
+        -7.604114036702177e-05
+       ],
+       "higher_is_better": true
+      }
+     },
+     "metrics": [
+      "gold"
+     ]
+    }
+   },
+   "arm_p_values": {
+    "fixed": 1.0,
+    "refit": 1.0
+   },
+   "arm_p_holm": {
+    "fixed": 1.0,
+    "refit": 1.0
+   },
+   "refit_procedure_hash": "6e4f7999a5a7ddc7f9a9fbf0e7b5aaa4df120fc1810e4de47bca229b936da59b"
+  }
+ }
+}
