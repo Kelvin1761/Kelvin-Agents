@@ -1,0 +1,72 @@
+{
+  "clip": [
+    0.01,
+    0.99
+  ],
+  "count_model": {
+    "AST": {
+      "alpha": 0.0,
+      "family": "poisson"
+    },
+    "FG3M": {
+      "alpha": 0.0,
+      "family": "poisson"
+    },
+    "PTS": {
+      "alpha": 0.19714961024606556,
+      "family": "negbin"
+    },
+    "REB": {
+      "alpha": 0.0,
+      "family": "poisson"
+    }
+  },
+  "created_at": "2026-10-21",
+  "data_sha256": {
+    "2024-25": "320455e052599988d11342b4871c53450314453a5298da8df2a4f8cff7cd1f8a",
+    "2025-26": "43523d9699e848913754edec4e8504cd5f602a78d7e3462bb1b82e0290f986a6"
+  },
+  "description": "Poisson/NB count model (mu = season stat-per-minute x prior-10 mean MIN) + per-stat logistic recalibration. Offline candidate (A) of EXP-20261021-05, frozen exactly as dev-fitted. SHADOW use only.",
+  "dev_window": {
+    "date_lt": "2026-01-01",
+    "season": "2025-26"
+  },
+  "fit_command": [
+    "python3 -W ignore docs/experiments/patches/nba_calibration_exp20261021_02/nba_pregame.py build --raw <raw> --out <out5>",
+    "python3 -W ignore docs/experiments/patches/nba_calibration_exp20261021_02/nba_pregame.py run --out <out5>",
+    "python3 docs/experiments/patches/nba_calibration_exp20261021_02/make_fit_layer_artifact.py --scratch <scratch> --repo <repo>"
+  ],
+  "harness_commit": "4b14b8e6d6c0c7be2098ab749b98ef22e6e26899",
+  "line_domain": "integer milestone N>=1, outcome = stat >= N",
+  "model_id": "nba_fit_layer_A_v1",
+  "mu_definition": "max(0.05, season_stat_total / season_minutes_total * prior10_mean_min); season totals over games with MIN>0 strictly before the game date",
+  "negbin_parameterisation": "Var = mu + alpha*mu^2; r = 1/alpha; p = 1/(1+alpha*mu); P(X>=N) = 1 - sum_{k<N} pmf(k)",
+  "notes": [
+    "Not refit on H1/H2 or on newer data.",
+    "Offline calibration only: no profit claim; lines near the player's mean.",
+    "Lines far from the prior-10 mean are outside the validated population."
+  ],
+  "population": "pre-game knowable: >=10 prior games same season (strictly earlier date), prior-10 mean MIN >= 20",
+  "recalibration": {
+    "AST": {
+      "a": -0.057749463736780804,
+      "b": 0.8641293725184428
+    },
+    "FG3M": {
+      "a": -0.11287702527867159,
+      "b": 0.8889537205756254
+    },
+    "PTS": {
+      "a": 0.05311207878748262,
+      "b": 0.8071370413434176
+    },
+    "REB": {
+      "a": -0.04002830593761647,
+      "b": 0.874620394772148
+    }
+  },
+  "recalibration_formula": "p = sigmoid(a_s + b_s * logit(clip(p_count, 0.01, 0.99))); final p clipped to [0.01, 0.99]",
+  "results_json_sha256": "ddff920d3a157bfad4229a397e84cc4abd69ea52c143ad57845efd41f2601065",
+  "source_experiment": "EXP-20261021-05",
+  "source_record": "docs/experiments/EXP-20261021-05-nba-pregame-population-refit.md"
+}

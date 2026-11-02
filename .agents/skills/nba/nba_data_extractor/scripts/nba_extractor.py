@@ -484,6 +484,40 @@ def fetch_team_injuries(team_abbr):
         return {}
 
 
+FIT_STATS = ("PTS", "REB", "AST", "FG3M")
+
+
+def compute_fit_inputs(df, game_season):
+    """Point-in-time inputs for the shadow fit layer (EXP-20261021-05).
+
+    ``df`` is the player's full fetched log, already cut at the event's US day
+    and sorted newest-first. Only SAME-season regular-season games with MIN > 0
+    count: prior-season carryover, preseason and playoff rows are excluded, so
+    an early-season fallback can never masquerade as season-to-date totals.
+    Never raises: failure is recorded as ``{"error": ...}``.
+    """
+    try:
+        import pandas as pd
+        same = df[(df["_season"] == game_season) & (df["_season_type"] == "Regular Season")]
+        mins = pd.to_numeric(same["MIN"], errors="coerce").fillna(0)
+        same = same[mins > 0]
+        mins = mins[mins > 0]
+        last10 = same.head(10)
+        out = {
+            "season": game_season,
+            "same_season_rs_games": int(len(same)),
+            "totals": {stat: float(pd.to_numeric(same[stat], errors="coerce").fillna(0).sum()) for stat in FIT_STATS},
+            "minutes_total": float(mins.sum()),
+            "prior10_games": int(len(last10)),
+            "prior10_mean_min": round(float(pd.to_numeric(last10["MIN"], errors="coerce").mean()), 3) if len(last10) else None,
+            "prior10_mean": {stat: round(float(pd.to_numeric(last10[stat], errors="coerce").mean()), 3) if len(last10) else None
+                             for stat in FIT_STATS},
+        }
+        return out
+    except Exception as exc:  # shadow data must never break extraction
+        return {"error": f"{type(exc).__name__}: {exc}"}
+
+
 def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, include_previous=False, season_type="Regular Season"):
     """為單一球員提取 L10 完整 Box Score（Season-Agnostic: RS + Playoffs 合併）
     
@@ -613,6 +647,8 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
             "FTA": df_l10['FTA'].tolist(),
             "PLUS_MINUS": df_l10['PLUS_MINUS'].tolist(),
         }
+        record["fit_inputs"] = compute_fit_inputs(
+            df, nba_season_for_date(as_of) if as_of else history_season)
         # 計算統計量
         for stat in ["PTS", "REB", "AST", "STL", "BLK", "MIN", "FG3M"]:
             s = calc_stats(record[stat])

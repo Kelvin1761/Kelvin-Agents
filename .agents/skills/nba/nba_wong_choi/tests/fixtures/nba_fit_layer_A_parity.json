@@ -1,0 +1,3606 @@
+{
+"source": "EXP-20261021-05 rows.csv sample (seed 20261021, n=400); inputs recomputed from raw logs, harness_A = nba_refit.recal_pred on nba_calib.cand_probs (clipped to [0.01,0.99])",
+"rows_csv_sha256": "e8b25930c90c8ea5568524134200fbc6a1e192cd388c6b4918feb7c43d9e128e",
+"units": [
+{
+"stat": "PTS",
+"line": 6,
+"season_stat_total": 63.0,
+"season_minutes_total": 209.0,
+"prior10_mean_min": 20.9,
+"harness_p_count": 0.5247087823164108,
+"harness_A": 0.5331887792235759
+},
+{
+"stat": "PTS",
+"line": 28,
+"season_stat_total": 291.0,
+"season_minutes_total": 372.0,
+"prior10_mean_min": 34.8,
+"harness_p_count": 0.432437078762263,
+"harness_A": 0.45850555121998204
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 32.0,
+"season_minutes_total": 342.0,
+"prior10_mean_min": 29.0,
+"harness_p_count": 0.7537699087730476,
+"harness_A": 0.707174964329694
+},
+{
+"stat": "PTS",
+"line": 20,
+"season_stat_total": 245.0,
+"season_minutes_total": 404.0,
+"prior10_mean_min": 29.0,
+"harness_p_count": 0.3601273724312151,
+"harness_A": 0.39871085187175986
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 28.0,
+"season_minutes_total": 342.0,
+"prior10_mean_min": 24.3,
+"harness_p_count": 0.32047444633662386,
+"harness_A": 0.330212868837174
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 22.0,
+"season_minutes_total": 382.0,
+"prior10_mean_min": 38.2,
+"harness_p_count": 0.3772862500036837,
+"harness_A": 0.36393709964480014
+},
+{
+"stat": "PTS",
+"line": 15,
+"season_stat_total": 177.0,
+"season_minutes_total": 414.0,
+"prior10_mean_min": 34.9,
+"harness_p_count": 0.4619535399537004,
+"harness_A": 0.4825169668796202
+},
+{
+"stat": "PTS",
+"line": 11,
+"season_stat_total": 126.0,
+"season_minutes_total": 294.0,
+"prior10_mean_min": 21.7,
+"harness_p_count": 0.3529854982094044,
+"harness_A": 0.39270262383622656
+},
+{
+"stat": "PTS",
+"line": 26,
+"season_stat_total": 419.0,
+"season_minutes_total": 555.0,
+"prior10_mean_min": 36.1,
+"harness_p_count": 0.4943209043348594,
+"harness_A": 0.5086931380051745
+},
+{
+"stat": "REB",
+"line": 7,
+"season_stat_total": 109.0,
+"season_minutes_total": 578.0,
+"prior10_mean_min": 34.3,
+"harness_p_count": 0.4684843681739778,
+"harness_A": 0.4624628792013188
+},
+{
+"stat": "PTS",
+"line": 29,
+"season_stat_total": 483.0,
+"season_minutes_total": 538.0,
+"prior10_mean_min": 33.4,
+"harness_p_count": 0.48207462030916204,
+"harness_A": 0.4988035807029485
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 91.0,
+"season_minutes_total": 427.0,
+"prior10_mean_min": 26.1,
+"harness_p_count": 0.8052608007329755,
+"harness_A": 0.7687914639335255
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 30.0,
+"season_minutes_total": 424.0,
+"prior10_mean_min": 24.4,
+"harness_p_count": 0.24976550722085886,
+"harness_A": 0.2673374216791682
+},
+{
+"stat": "PTS",
+"line": 12,
+"season_stat_total": 179.0,
+"season_minutes_total": 354.0,
+"prior10_mean_min": 27.0,
+"harness_p_count": 0.5656764193611106,
+"harness_A": 0.5662049243527876
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 63.0,
+"season_minutes_total": 486.0,
+"prior10_mean_min": 24.1,
+"harness_p_count": 0.818632976442677,
+"harness_A": 0.7763621759175795
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 18.0,
+"season_minutes_total": 509.0,
+"prior10_mean_min": 26.4,
+"harness_p_count": 0.06850129897414971,
+"harness_A": 0.09004569813734749
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 26.0,
+"season_minutes_total": 527.0,
+"prior10_mean_min": 24.4,
+"harness_p_count": 0.12133693792737256,
+"harness_A": 0.14571914468043337
+},
+{
+"stat": "PTS",
+"line": 16,
+"season_stat_total": 243.0,
+"season_minutes_total": 508.0,
+"prior10_mean_min": 30.9,
+"harness_p_count": 0.4039108987311831,
+"harness_A": 0.4351124191058612
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 16.0,
+"season_minutes_total": 422.0,
+"prior10_mean_min": 25.0,
+"harness_p_count": 0.6124332932599125,
+"harness_A": 0.5836158490275555
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 44.0,
+"season_minutes_total": 554.0,
+"prior10_mean_min": 24.3,
+"harness_p_count": 0.30437475693220245,
+"harness_A": 0.2999275369401181
+},
+{
+"stat": "AST",
+"line": 8,
+"season_stat_total": 194.0,
+"season_minutes_total": 811.0,
+"prior10_mean_min": 35.6,
+"harness_p_count": 0.6164585830645799,
+"harness_A": 0.5871794625157862
+},
+{
+"stat": "REB",
+"line": 2,
+"season_stat_total": 49.0,
+"season_minutes_total": 402.0,
+"prior10_mean_min": 26.6,
+"harness_p_count": 0.8342352525016291,
+"harness_A": 0.7979145498742803
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 47.0,
+"season_minutes_total": 545.0,
+"prior10_mean_min": 34.0,
+"harness_p_count": 0.33756187188976144,
+"harness_A": 0.3475834551312637
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 75.0,
+"season_minutes_total": 546.0,
+"prior10_mean_min": 24.5,
+"harness_p_count": 0.43406039287774806,
+"harness_A": 0.42873696189506544
+},
+{
+"stat": "PTS",
+"line": 16,
+"season_stat_total": 350.0,
+"season_minutes_total": 694.0,
+"prior10_mean_min": 31.2,
+"harness_p_count": 0.4517747217825126,
+"harness_A": 0.474255020370584
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 41.0,
+"season_minutes_total": 490.0,
+"prior10_mean_min": 27.2,
+"harness_p_count": 0.3975652899689572,
+"harness_A": 0.4004625610062039
+},
+{
+"stat": "PTS",
+"line": 21,
+"season_stat_total": 524.0,
+"season_minutes_total": 674.0,
+"prior10_mean_min": 27.0,
+"harness_p_count": 0.45925000460684123,
+"harness_A": 0.4803242400421024
+},
+{
+"stat": "PTS",
+"line": 8,
+"season_stat_total": 94.0,
+"season_minutes_total": 306.0,
+"prior10_mean_min": 25.0,
+"harness_p_count": 0.4548102382471522,
+"harness_A": 0.47672072920160663
+},
+{
+"stat": "PTS",
+"line": 8,
+"season_stat_total": 221.0,
+"season_minutes_total": 536.0,
+"prior10_mean_min": 21.7,
+"harness_p_count": 0.5594885326780384,
+"harness_A": 0.5612133156906141
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 90.0,
+"season_minutes_total": 546.0,
+"prior10_mean_min": 30.4,
+"harness_p_count": 0.5614328042333918,
+"harness_A": 0.5388396932657441
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 19.0,
+"season_minutes_total": 343.0,
+"prior10_mean_min": 23.7,
+"harness_p_count": 0.1458517905380642,
+"harness_A": 0.15655134989631256
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 60.0,
+"season_minutes_total": 725.0,
+"prior10_mean_min": 31.4,
+"harness_p_count": 0.732348644946279,
+"harness_A": 0.6860934320979629
+},
+{
+"stat": "REB",
+"line": 8,
+"season_stat_total": 175.0,
+"season_minutes_total": 786.0,
+"prior10_mean_min": 30.0,
+"harness_p_count": 0.3536336809651238,
+"harness_A": 0.36181017284283895
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 39.0,
+"season_minutes_total": 340.0,
+"prior10_mean_min": 20.2,
+"harness_p_count": 0.9014369489621864,
+"harness_A": 0.8646923359884963
+},
+{
+"stat": "REB",
+"line": 7,
+"season_stat_total": 87.0,
+"season_minutes_total": 384.0,
+"prior10_mean_min": 28.6,
+"harness_p_count": 0.4702750361874931,
+"harness_A": 0.4640264351152828
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 97.0,
+"season_minutes_total": 829.0,
+"prior10_mean_min": 33.3,
+"harness_p_count": 0.7463173263050449,
+"harness_A": 0.6998037143864481
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 38.0,
+"season_minutes_total": 839.0,
+"prior10_mean_min": 30.4,
+"harness_p_count": 0.1609424032108451,
+"harness_A": 0.17068977644393588
+},
+{
+"stat": "PTS",
+"line": 8,
+"season_stat_total": 98.0,
+"season_minutes_total": 354.0,
+"prior10_mean_min": 23.0,
+"harness_p_count": 0.32990168538160425,
+"harness_A": 0.37312135842640365
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 95.0,
+"season_minutes_total": 897.0,
+"prior10_mean_min": 33.9,
+"harness_p_count": 0.6955321705712846,
+"harness_A": 0.650559205772258
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 61.0,
+"season_minutes_total": 745.0,
+"prior10_mean_min": 33.0,
+"harness_p_count": 0.5068685964250105,
+"harness_A": 0.47790139812264
+},
+{
+"stat": "PTS",
+"line": 15,
+"season_stat_total": 268.0,
+"season_minutes_total": 687.0,
+"prior10_mean_min": 35.3,
+"harness_p_count": 0.40103763792151303,
+"harness_A": 0.4327436784775895
+},
+{
+"stat": "PTS",
+"line": 7,
+"season_stat_total": 142.0,
+"season_minutes_total": 428.0,
+"prior10_mean_min": 23.9,
+"harness_p_count": 0.5703437912508145,
+"harness_A": 0.569971979828256
+},
+{
+"stat": "REB",
+"line": 5,
+"season_stat_total": 81.0,
+"season_minutes_total": 515.0,
+"prior10_mean_min": 22.4,
+"harness_p_count": 0.2789249757541251,
+"harness_A": 0.29509971027529286
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 48.0,
+"season_minutes_total": 714.0,
+"prior10_mean_min": 22.0,
+"harness_p_count": 0.18589837723229694,
+"harness_A": 0.20850357031565275
+},
+{
+"stat": "PTS",
+"line": 22,
+"season_stat_total": 587.0,
+"season_minutes_total": 874.0,
+"prior10_mean_min": 32.1,
+"harness_p_count": 0.4427137032912563,
+"harness_A": 0.4668847469637143
+},
+{
+"stat": "PTS",
+"line": 20,
+"season_stat_total": 332.0,
+"season_minutes_total": 604.0,
+"prior10_mean_min": 32.2,
+"harness_p_count": 0.36500427431814825,
+"harness_A": 0.40280114868053485
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 62.0,
+"season_minutes_total": 816.0,
+"prior10_mean_min": 33.0,
+"harness_p_count": 0.9185163539779208,
+"harness_A": 0.8849828046352913
+},
+{
+"stat": "REB",
+"line": 6,
+"season_stat_total": 166.0,
+"season_minutes_total": 903.0,
+"prior10_mean_min": 33.4,
+"harness_p_count": 0.5765338986103532,
+"harness_A": 0.5572096493999431
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 88.0,
+"season_minutes_total": 566.0,
+"prior10_mean_min": 22.9,
+"harness_p_count": 0.6901842223748011,
+"harness_A": 0.659378480202384
+},
+{
+"stat": "PTS",
+"line": 14,
+"season_stat_total": 351.0,
+"season_minutes_total": 755.0,
+"prior10_mean_min": 28.9,
+"harness_p_count": 0.43642711889866886,
+"harness_A": 0.46176158611437185
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 70.0,
+"season_minutes_total": 924.0,
+"prior10_mean_min": 29.2,
+"harness_p_count": 0.6483748830155769,
+"harness_A": 0.6156237954426668
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 52.0,
+"season_minutes_total": 666.0,
+"prior10_mean_min": 27.6,
+"harness_p_count": 0.6343141825176819,
+"harness_A": 0.6030493185050272
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 174.0,
+"season_minutes_total": 1017.0,
+"prior10_mean_min": 35.4,
+"harness_p_count": 0.7224529778301587,
+"harness_A": 0.6832894381117093
+},
+{
+"stat": "REB",
+"line": 7,
+"season_stat_total": 177.0,
+"season_minutes_total": 892.0,
+"prior10_mean_min": 34.7,
+"harness_p_count": 0.5330982554530895,
+"harness_A": 0.5189746114519583
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 105.0,
+"season_minutes_total": 836.0,
+"prior10_mean_min": 36.9,
+"harness_p_count": 0.6798969491957036,
+"harness_A": 0.6499505195039018
+},
+{
+"stat": "PTS",
+"line": 7,
+"season_stat_total": 223.0,
+"season_minutes_total": 763.0,
+"prior10_mean_min": 26.3,
+"harness_p_count": 0.5498783894396424,
+"harness_A": 0.5534658691951974
+},
+{
+"stat": "PTS",
+"line": 14,
+"season_stat_total": 417.0,
+"season_minutes_total": 862.0,
+"prior10_mean_min": 30.7,
+"harness_p_count": 0.5120443061403813,
+"harness_A": 0.5229850945853382
+},
+{
+"stat": "PTS",
+"line": 20,
+"season_stat_total": 658.0,
+"season_minutes_total": 999.0,
+"prior10_mean_min": 33.1,
+"harness_p_count": 0.5281089270135216,
+"harness_A": 0.5359276962631176
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 109.0,
+"season_minutes_total": 775.0,
+"prior10_mean_min": 27.1,
+"harness_p_count": 0.5288617723300935,
+"harness_A": 0.5152593709947394
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 66.0,
+"season_minutes_total": 1240.0,
+"prior10_mean_min": 35.8,
+"harness_p_count": 0.5678073882868849,
+"harness_A": 0.5444029335992383
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 20.0,
+"season_minutes_total": 357.0,
+"prior10_mean_min": 28.6,
+"harness_p_count": 0.7985554046323218,
+"harness_A": 0.7524030663767219
+},
+{
+"stat": "PTS",
+"line": 7,
+"season_stat_total": 280.0,
+"season_minutes_total": 922.0,
+"prior10_mean_min": 32.6,
+"harness_p_count": 0.7068473224452764,
+"harness_A": 0.6821110674589149
+},
+{
+"stat": "PTS",
+"line": 22,
+"season_stat_total": 701.0,
+"season_minutes_total": 1087.0,
+"prior10_mean_min": 32.9,
+"harness_p_count": 0.4299985087489056,
+"harness_A": 0.4565138120542125
+},
+{
+"stat": "AST",
+"line": 6,
+"season_stat_total": 262.0,
+"season_minutes_total": 1194.0,
+"prior10_mean_min": 37.1,
+"harness_p_count": 0.8213301409427141,
+"harness_A": 0.7790916659130729
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 89.0,
+"season_minutes_total": 778.0,
+"prior10_mean_min": 32.3,
+"harness_p_count": 0.7137175718036921,
+"harness_A": 0.681124605842137
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 52.0,
+"season_minutes_total": 419.0,
+"prior10_mean_min": 20.1,
+"harness_p_count": 0.45477803219583807,
+"harness_A": 0.45049521069790427
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 35.0,
+"season_minutes_total": 646.0,
+"prior10_mean_min": 26.9,
+"harness_p_count": 0.4278271303381897,
+"harness_A": 0.4233659644877452
+},
+{
+"stat": "PTS",
+"line": 20,
+"season_stat_total": 448.0,
+"season_minutes_total": 753.0,
+"prior10_mean_min": 34.9,
+"harness_p_count": 0.48995039067192325,
+"harness_A": 0.5051653314491036
+},
+{
+"stat": "PTS",
+"line": 19,
+"season_stat_total": 434.0,
+"season_minutes_total": 795.0,
+"prior10_mean_min": 33.1,
+"harness_p_count": 0.42200033623800187,
+"harness_A": 0.449971278880279
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 31.0,
+"season_minutes_total": 380.0,
+"prior10_mean_min": 25.7,
+"harness_p_count": 0.8771239244524307,
+"harness_A": 0.8367628413786226
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 91.0,
+"season_minutes_total": 1178.0,
+"prior10_mean_min": 33.5,
+"harness_p_count": 0.4785186872393399,
+"harness_A": 0.4528139234646538
+},
+{
+"stat": "REB",
+"line": 7,
+"season_stat_total": 198.0,
+"season_minutes_total": 647.0,
+"prior10_mean_min": 24.5,
+"harness_p_count": 0.6215282656490848,
+"harness_A": 0.5972015606495403
+},
+{
+"stat": "PTS",
+"line": 24,
+"season_stat_total": 657.0,
+"season_minutes_total": 954.0,
+"prior10_mean_min": 33.2,
+"harness_p_count": 0.41863042556767843,
+"harness_A": 0.44720991499699647
+},
+{
+"stat": "FG3M",
+"line": 5,
+"season_stat_total": 102.0,
+"season_minutes_total": 1251.0,
+"prior10_mean_min": 35.3,
+"harness_p_count": 0.1646990570157434,
+"harness_A": 0.17418591955808949
+},
+{
+"stat": "PTS",
+"line": 21,
+"season_stat_total": 685.0,
+"season_minutes_total": 1241.0,
+"prior10_mean_min": 34.3,
+"harness_p_count": 0.3780510379776386,
+"harness_A": 0.4136967310438865
+},
+{
+"stat": "REB",
+"line": 6,
+"season_stat_total": 112.0,
+"season_minutes_total": 452.0,
+"prior10_mean_min": 24.5,
+"harness_p_count": 0.5656237828124568,
+"harness_A": 0.5475774556557969
+},
+{
+"stat": "FG3M",
+"line": 4,
+"season_stat_total": 55.0,
+"season_minutes_total": 577.0,
+"prior10_mean_min": 29.1,
+"harness_p_count": 0.30224589593946766,
+"harness_A": 0.29805046810515157
+},
+{
+"stat": "REB",
+"line": 5,
+"season_stat_total": 170.0,
+"season_minutes_total": 975.0,
+"prior10_mean_min": 36.3,
+"harness_p_count": 0.7566006738843096,
+"harness_A": 0.721498496941031
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 89.0,
+"season_minutes_total": 859.0,
+"prior10_mean_min": 35.0,
+"harness_p_count": 0.8768743821302042,
+"harness_A": 0.8373543690627394
+},
+{
+"stat": "FG3M",
+"line": 5,
+"season_stat_total": 131.0,
+"season_minutes_total": 939.0,
+"prior10_mean_min": 32.2,
+"harness_p_count": 0.4664201813653938,
+"harness_A": 0.4421451326621082
+},
+{
+"stat": "PTS",
+"line": 8,
+"season_stat_total": 339.0,
+"season_minutes_total": 853.0,
+"prior10_mean_min": 22.7,
+"harness_p_count": 0.5650633700363571,
+"harness_A": 0.5657102649292117
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 54.0,
+"season_minutes_total": 779.0,
+"prior10_mean_min": 22.4,
+"harness_p_count": 0.4596752017382644,
+"harness_A": 0.45080066175159755
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 95.0,
+"season_minutes_total": 1221.0,
+"prior10_mean_min": 31.9,
+"harness_p_count": 0.7089849559168926,
+"harness_A": 0.6707816819292652
+},
+{
+"stat": "PTS",
+"line": 18,
+"season_stat_total": 731.0,
+"season_minutes_total": 1596.0,
+"prior10_mean_min": 38.5,
+"harness_p_count": 0.4462861479987071,
+"harness_A": 0.4697924682796477
+},
+{
+"stat": "REB",
+"line": 9,
+"season_stat_total": 291.0,
+"season_minutes_total": 867.0,
+"prior10_mean_min": 28.8,
+"harness_p_count": 0.6283996751835219,
+"harness_A": 0.6033540458500243
+},
+{
+"stat": "PTS",
+"line": 9,
+"season_stat_total": 371.0,
+"season_minutes_total": 873.0,
+"prior10_mean_min": 25.5,
+"harness_p_count": 0.6076651524529085,
+"harness_A": 0.6001862587674938
+},
+{
+"stat": "PTS",
+"line": 28,
+"season_stat_total": 875.0,
+"season_minutes_total": 1258.0,
+"prior10_mean_min": 35.7,
+"harness_p_count": 0.35869723279498655,
+"harness_A": 0.3975094877919762
+},
+{
+"stat": "PTS",
+"line": 15,
+"season_stat_total": 647.0,
+"season_minutes_total": 1353.0,
+"prior10_mean_min": 32.7,
+"harness_p_count": 0.4976816354771572,
+"harness_A": 0.5114047899042127
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 80.0,
+"season_minutes_total": 920.0,
+"prior10_mean_min": 23.7,
+"harness_p_count": 0.6102191098951484,
+"harness_A": 0.5816576969523528
+},
+{
+"stat": "PTS",
+"line": 24,
+"season_stat_total": 252.0,
+"season_minutes_total": 320.0,
+"prior10_mean_min": 32.0,
+"harness_p_count": 0.4965718617814985,
+"harness_A": 0.510509450917486
+},
+{
+"stat": "PTS",
+"line": 10,
+"season_stat_total": 392.0,
+"season_minutes_total": 925.0,
+"prior10_mean_min": 25.9,
+"harness_p_count": 0.5426219807155089,
+"harness_A": 0.5476187328351666
+},
+{
+"stat": "PTS",
+"line": 22,
+"season_stat_total": 866.0,
+"season_minutes_total": 1436.0,
+"prior10_mean_min": 31.9,
+"harness_p_count": 0.3533336619455995,
+"harness_A": 0.3929960407722791
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 86.0,
+"season_minutes_total": 1124.0,
+"prior10_mean_min": 30.9,
+"harness_p_count": 0.6836905636225463,
+"harness_A": 0.6475547437392811
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 52.0,
+"season_minutes_total": 1000.0,
+"prior10_mean_min": 24.0,
+"harness_p_count": 0.7129216201542985,
+"harness_A": 0.6672403093404483
+},
+{
+"stat": "REB",
+"line": 2,
+"season_stat_total": 101.0,
+"season_minutes_total": 1031.0,
+"prior10_mean_min": 25.2,
+"harness_p_count": 0.7062128090041363,
+"harness_A": 0.6741613368252622
+},
+{
+"stat": "PTS",
+"line": 24,
+"season_stat_total": 871.0,
+"season_minutes_total": 1433.0,
+"prior10_mean_min": 37.8,
+"harness_p_count": 0.42250984608647585,
+"harness_A": 0.45038852813455077
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 102.0,
+"season_minutes_total": 1433.0,
+"prior10_mean_min": 38.0,
+"harness_p_count": 0.7522119978708951,
+"harness_A": 0.7056306922778961
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 57.0,
+"season_minutes_total": 590.0,
+"prior10_mean_min": 20.6,
+"harness_p_count": 0.5913267817192592,
+"harness_A": 0.5650063826230207
+},
+{
+"stat": "PTS",
+"line": 9,
+"season_stat_total": 394.0,
+"season_minutes_total": 1316.0,
+"prior10_mean_min": 29.0,
+"harness_p_count": 0.4538993052794334,
+"harness_A": 0.47598096104089177
+},
+{
+"stat": "REB",
+"line": 1,
+"season_stat_total": 141.0,
+"season_minutes_total": 1514.0,
+"prior10_mean_min": 37.0,
+"harness_p_count": 0.9681219896470197,
+"harness_A": 0.9500474030454638
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 144.0,
+"season_minutes_total": 1476.0,
+"prior10_mean_min": 31.2,
+"harness_p_count": 0.8073137890156648,
+"harness_A": 0.7614566154655217
+},
+{
+"stat": "PTS",
+"line": 14,
+"season_stat_total": 640.0,
+"season_minutes_total": 1728.0,
+"prior10_mean_min": 37.1,
+"harness_p_count": 0.45337500663669483,
+"harness_A": 0.47555511265087874
+},
+{
+"stat": "PTS",
+"line": 8,
+"season_stat_total": 303.0,
+"season_minutes_total": 747.0,
+"prior10_mean_min": 24.8,
+"harness_p_count": 0.636548197993301,
+"harness_A": 0.6237374905498055
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 67.0,
+"season_minutes_total": 1075.0,
+"prior10_mean_min": 31.0,
+"harness_p_count": 0.5753018139649534,
+"harness_A": 0.5391533455270433
+},
+{
+"stat": "REB",
+"line": 2,
+"season_stat_total": 116.0,
+"season_minutes_total": 1362.0,
+"prior10_mean_min": 25.0,
+"harness_p_count": 0.6278422318907981,
+"harness_A": 0.6028544208453861
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 97.0,
+"season_minutes_total": 888.0,
+"prior10_mean_min": 20.6,
+"harness_p_count": 0.8946245113291651,
+"harness_A": 0.8569903337152689
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 144.0,
+"season_minutes_total": 1245.0,
+"prior10_mean_min": 36.7,
+"harness_p_count": 0.7956205929959452,
+"harness_A": 0.7592746733969784
+},
+{
+"stat": "PTS",
+"line": 20,
+"season_stat_total": 667.0,
+"season_minutes_total": 1297.0,
+"prior10_mean_min": 33.3,
+"harness_p_count": 0.34000891554686646,
+"harness_A": 0.381726817917546
+},
+{
+"stat": "PTS",
+"line": 11,
+"season_stat_total": 267.0,
+"season_minutes_total": 618.0,
+"prior10_mean_min": 22.7,
+"harness_p_count": 0.3903711790629557,
+"harness_A": 0.42392749856037
+},
+{
+"stat": "PTS",
+"line": 12,
+"season_stat_total": 362.0,
+"season_minutes_total": 799.0,
+"prior10_mean_min": 24.2,
+"harness_p_count": 0.4047604456410277,
+"harness_A": 0.4358123168073086
+},
+{
+"stat": "PTS",
+"line": 9,
+"season_stat_total": 363.0,
+"season_minutes_total": 1124.0,
+"prior10_mean_min": 26.9,
+"harness_p_count": 0.45431090843812316,
+"harness_A": 0.476315241621944
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 70.0,
+"season_minutes_total": 1099.0,
+"prior10_mean_min": 27.5,
+"harness_p_count": 0.5226057329259695,
+"harness_A": 0.4918906142684236
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 52.0,
+"season_minutes_total": 1519.0,
+"prior10_mean_min": 34.8,
+"harness_p_count": 0.6961770268677809,
+"harness_A": 0.6511747022305615
+},
+{
+"stat": "PTS",
+"line": 13,
+"season_stat_total": 485.0,
+"season_minutes_total": 1025.0,
+"prior10_mean_min": 24.5,
+"harness_p_count": 0.38417887984294236,
+"harness_A": 0.41879204720213425
+},
+{
+"stat": "PTS",
+"line": 12,
+"season_stat_total": 564.0,
+"season_minutes_total": 981.0,
+"prior10_mean_min": 21.4,
+"harness_p_count": 0.4896459583136209,
+"harness_A": 0.5049195354771102
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 185.0,
+"season_minutes_total": 1220.0,
+"prior10_mean_min": 27.7,
+"harness_p_count": 0.6046725134062734,
+"harness_A": 0.5767587607139126
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 53.0,
+"season_minutes_total": 1698.0,
+"prior10_mean_min": 36.3,
+"harness_p_count": 0.6779469093578592,
+"harness_A": 0.6338613056035644
+},
+{
+"stat": "REB",
+"line": 9,
+"season_stat_total": 277.0,
+"season_minutes_total": 1606.0,
+"prior10_mean_min": 36.6,
+"harness_p_count": 0.18667140545829758,
+"harness_A": 0.20960934856033878
+},
+{
+"stat": "FG3M",
+"line": 4,
+"season_stat_total": 117.0,
+"season_minutes_total": 1135.0,
+"prior10_mean_min": 28.4,
+"harness_p_count": 0.33654713682071513,
+"harness_A": 0.32822429101309
+},
+{
+"stat": "AST",
+"line": 10,
+"season_stat_total": 404.0,
+"season_minutes_total": 1628.0,
+"prior10_mean_min": 35.9,
+"harness_p_count": 0.4005834550278105,
+"harness_A": 0.39986598620433683
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 89.0,
+"season_minutes_total": 1293.0,
+"prior10_mean_min": 32.0,
+"harness_p_count": 0.6460704294614484,
+"harness_A": 0.6135579358607187
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 74.0,
+"season_minutes_total": 799.0,
+"prior10_mean_min": 25.7,
+"harness_p_count": 0.9074702700836467,
+"harness_A": 0.8717722916018167
+},
+{
+"stat": "PTS",
+"line": 8,
+"season_stat_total": 195.0,
+"season_minutes_total": 444.0,
+"prior10_mean_min": 20.3,
+"harness_p_count": 0.5570924425999043,
+"harness_A": 0.5592811603159554
+},
+{
+"stat": "PTS",
+"line": 8,
+"season_stat_total": 265.0,
+"season_minutes_total": 628.0,
+"prior10_mean_min": 22.3,
+"harness_p_count": 0.5932229700378258,
+"harness_A": 0.5884712112896425
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 310.0,
+"season_minutes_total": 1535.0,
+"prior10_mean_min": 27.9,
+"harness_p_count": 0.6630560274551578,
+"harness_A": 0.6288337222164613
+},
+{
+"stat": "FG3M",
+"line": 4,
+"season_stat_total": 186.0,
+"season_minutes_total": 1775.0,
+"prior10_mean_min": 36.1,
+"harness_p_count": 0.5230049354321662,
+"harness_A": 0.4922461371305415
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 70.0,
+"season_minutes_total": 1408.0,
+"prior10_mean_min": 28.4,
+"harness_p_count": 0.7563279020113578,
+"harness_A": 0.7152474507777777
+},
+{
+"stat": "PTS",
+"line": 12,
+"season_stat_total": 469.0,
+"season_minutes_total": 887.0,
+"prior10_mean_min": 22.2,
+"harness_p_count": 0.4548844899925633,
+"harness_A": 0.4767810226546387
+},
+{
+"stat": "REB",
+"line": 2,
+"season_stat_total": 178.0,
+"season_minutes_total": 1416.0,
+"prior10_mean_min": 25.9,
+"harness_p_count": 0.8359379101324154,
+"harness_A": 0.7996525630687296
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 176.0,
+"season_minutes_total": 1308.0,
+"prior10_mean_min": 25.1,
+"harness_p_count": 0.655874510826054,
+"harness_A": 0.6223611152039736
+},
+{
+"stat": "PTS",
+"line": 10,
+"season_stat_total": 545.0,
+"season_minutes_total": 1325.0,
+"prior10_mean_min": 26.8,
+"harness_p_count": 0.5456690226620039,
+"harness_A": 0.5500737819066948
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 57.0,
+"season_minutes_total": 817.0,
+"prior10_mean_min": 22.9,
+"harness_p_count": 0.7976334088344593,
+"harness_A": 0.7553703902542598
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 231.0,
+"season_minutes_total": 1811.0,
+"prior10_mean_min": 36.7,
+"harness_p_count": 0.6873516582598036,
+"harness_A": 0.6508967100308576
+},
+{
+"stat": "REB",
+"line": 6,
+"season_stat_total": 204.0,
+"season_minutes_total": 1006.0,
+"prior10_mean_min": 28.1,
+"harness_p_count": 0.5047149099010998,
+"harness_A": 0.494117073602097
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 112.0,
+"season_minutes_total": 1317.0,
+"prior10_mean_min": 28.8,
+"harness_p_count": 0.44309200202453697,
+"harness_A": 0.43651721038065466
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 157.0,
+"season_minutes_total": 1094.0,
+"prior10_mean_min": 28.4,
+"harness_p_count": 0.5811747292047358,
+"harness_A": 0.5613136788905274
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 243.0,
+"season_minutes_total": 897.0,
+"prior10_mean_min": 24.3,
+"harness_p_count": 0.7854557123698752,
+"harness_A": 0.7433917590680335
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 106.0,
+"season_minutes_total": 1842.0,
+"prior10_mean_min": 34.8,
+"harness_p_count": 0.5946990212581263,
+"harness_A": 0.5567470689304685
+},
+{
+"stat": "REB",
+"line": 11,
+"season_stat_total": 539.0,
+"season_minutes_total": 1848.0,
+"prior10_mean_min": 36.0,
+"harness_p_count": 0.47926187158632466,
+"harness_A": 0.4718742438278191
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 237.0,
+"season_minutes_total": 1848.0,
+"prior10_mean_min": 33.2,
+"harness_p_count": 0.6152088885028764,
+"harness_A": 0.5860725724394489
+},
+{
+"stat": "PTS",
+"line": 19,
+"season_stat_total": 1051.0,
+"season_minutes_total": 1723.0,
+"prior10_mean_min": 30.9,
+"harness_p_count": 0.45503721759794985,
+"harness_A": 0.47690503660766137
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 105.0,
+"season_minutes_total": 1876.0,
+"prior10_mean_min": 34.7,
+"harness_p_count": 0.3076735561481592,
+"harness_A": 0.3028348514781568
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 95.0,
+"season_minutes_total": 1360.0,
+"prior10_mean_min": 25.0,
+"harness_p_count": 0.5210027441849225,
+"harness_A": 0.5037223392172931
+},
+{
+"stat": "PTS",
+"line": 24,
+"season_stat_total": 996.0,
+"season_minutes_total": 1326.0,
+"prior10_mean_min": 33.9,
+"harness_p_count": 0.5048652640334208,
+"harness_A": 0.5171982910653207
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 92.0,
+"season_minutes_total": 1292.0,
+"prior10_mean_min": 26.7,
+"harness_p_count": 0.5666028271915468,
+"harness_A": 0.5313005501355242
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 97.0,
+"season_minutes_total": 1540.0,
+"prior10_mean_min": 28.3,
+"harness_p_count": 0.531945714417842,
+"harness_A": 0.5132024494463328
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 79.0,
+"season_minutes_total": 1456.0,
+"prior10_mean_min": 25.8,
+"harness_p_count": 0.1664690671094233,
+"harness_A": 0.17583014852155568
+},
+{
+"stat": "REB",
+"line": 2,
+"season_stat_total": 127.0,
+"season_minutes_total": 1322.0,
+"prior10_mean_min": 26.4,
+"harness_p_count": 0.7200422829411572,
+"harness_A": 0.6870149285719929
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 167.0,
+"season_minutes_total": 1486.0,
+"prior10_mean_min": 33.3,
+"harness_p_count": 0.7216607153807797,
+"harness_A": 0.6885255340023164
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 154.0,
+"season_minutes_total": 1812.0,
+"prior10_mean_min": 32.9,
+"harness_p_count": 0.5296249322764728,
+"harness_A": 0.5159284858762291
+},
+{
+"stat": "REB",
+"line": 2,
+"season_stat_total": 101.0,
+"season_minutes_total": 968.0,
+"prior10_mean_min": 22.6,
+"harness_p_count": 0.6823150354767423,
+"harness_A": 0.6521626184855212
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 151.0,
+"season_minutes_total": 1366.0,
+"prior10_mean_min": 25.1,
+"harness_p_count": 0.3024162514704581,
+"harness_A": 0.3143189133741848
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 106.0,
+"season_minutes_total": 1880.0,
+"prior10_mean_min": 30.5,
+"harness_p_count": 0.8208766941974417,
+"harness_A": 0.7786322255035496
+},
+{
+"stat": "REB",
+"line": 7,
+"season_stat_total": 297.0,
+"season_minutes_total": 1880.0,
+"prior10_mean_min": 30.5,
+"harness_p_count": 0.2117667168179163,
+"harness_A": 0.2333394991445977
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 206.0,
+"season_minutes_total": 1949.0,
+"prior10_mean_min": 36.4,
+"harness_p_count": 0.5361446937378448,
+"harness_A": 0.5216475091815845
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 152.0,
+"season_minutes_total": 1396.0,
+"prior10_mean_min": 26.1,
+"harness_p_count": 0.7759495441951012,
+"harness_A": 0.7341314450649755
+},
+{
+"stat": "PTS",
+"line": 20,
+"season_stat_total": 910.0,
+"season_minutes_total": 1528.0,
+"prior10_mean_min": 35.5,
+"harness_p_count": 0.5041229824823538,
+"harness_A": 0.516599804126209
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 132.0,
+"season_minutes_total": 1230.0,
+"prior10_mean_min": 27.7,
+"harness_p_count": 0.7967342941879069,
+"harness_A": 0.7544813225912167
+},
+{
+"stat": "FG3M",
+"line": 4,
+"season_stat_total": 102.0,
+"season_minutes_total": 1367.0,
+"prior10_mean_min": 24.6,
+"harness_p_count": 0.11448771103184283,
+"harness_A": 0.12659474862231593
+},
+{
+"stat": "PTS",
+"line": 26,
+"season_stat_total": 1567.0,
+"season_minutes_total": 2123.0,
+"prior10_mean_min": 35.7,
+"harness_p_count": 0.46713625714973206,
+"harness_A": 0.4867173044641598
+},
+{
+"stat": "PTS",
+"line": 8,
+"season_stat_total": 218.0,
+"season_minutes_total": 676.0,
+"prior10_mean_min": 24.8,
+"harness_p_count": 0.48271784891809166,
+"harness_A": 0.4993233968918487
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 120.0,
+"season_minutes_total": 1666.0,
+"prior10_mean_min": 29.4,
+"harness_p_count": 0.6249022008677847,
+"harness_A": 0.5843975646511615
+},
+{
+"stat": "PTS",
+"line": 5,
+"season_stat_total": 301.0,
+"season_minutes_total": 1098.0,
+"prior10_mean_min": 21.9,
+"harness_p_count": 0.6120015862973992,
+"harness_A": 0.6037109290821997
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 278.0,
+"season_minutes_total": 1632.0,
+"prior10_mean_min": 33.2,
+"harness_p_count": 0.6661768156419854,
+"harness_A": 0.6316531124296635
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 233.0,
+"season_minutes_total": 1564.0,
+"prior10_mean_min": 25.5,
+"harness_p_count": 0.3319451460046748,
+"harness_A": 0.34026308904971087
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 149.0,
+"season_minutes_total": 1505.0,
+"prior10_mean_min": 22.3,
+"harness_p_count": 0.6473209423747486,
+"harness_A": 0.6146787261517129
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 299.0,
+"season_minutes_total": 1996.0,
+"prior10_mean_min": 34.3,
+"harness_p_count": 0.7538304999126136,
+"harness_A": 0.7128647843411543
+},
+{
+"stat": "PTS",
+"line": 14,
+"season_stat_total": 840.0,
+"season_minutes_total": 1962.0,
+"prior10_mean_min": 30.5,
+"harness_p_count": 0.4150048435194196,
+"harness_A": 0.4442357350567411
+},
+{
+"stat": "PTS",
+"line": 10,
+"season_stat_total": 392.0,
+"season_minutes_total": 943.0,
+"prior10_mean_min": 27.4,
+"harness_p_count": 0.5686555054662523,
+"harness_A": 0.568609140045573
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 117.0,
+"season_minutes_total": 1718.0,
+"prior10_mean_min": 33.8,
+"harness_p_count": 0.6695751036748422,
+"harness_A": 0.6259682438548528
+},
+{
+"stat": "PTS",
+"line": 9,
+"season_stat_total": 396.0,
+"season_minutes_total": 961.0,
+"prior10_mean_min": 26.8,
+"harness_p_count": 0.6201946076740783,
+"harness_A": 0.610380367310922
+},
+{
+"stat": "PTS",
+"line": 15,
+"season_stat_total": 810.0,
+"season_minutes_total": 2026.0,
+"prior10_mean_min": 31.4,
+"harness_p_count": 0.3328759078558692,
+"harness_A": 0.37565904626178775
+},
+{
+"stat": "REB",
+"line": 15,
+"season_stat_total": 636.0,
+"season_minutes_total": 1555.0,
+"prior10_mean_min": 31.0,
+"harness_p_count": 0.29255598661606175,
+"harness_A": 0.30739628571435623
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 140.0,
+"season_minutes_total": 1664.0,
+"prior10_mean_min": 31.3,
+"harness_p_count": 0.7390015753705663,
+"harness_A": 0.6926064887972124
+},
+{
+"stat": "PTS",
+"line": 19,
+"season_stat_total": 1065.0,
+"season_minutes_total": 1854.0,
+"prior10_mean_min": 34.5,
+"harness_p_count": 0.49434737115159466,
+"harness_A": 0.5087144966226052
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 199.0,
+"season_minutes_total": 1531.0,
+"prior10_mean_min": 30.1,
+"harness_p_count": 0.7487795486786424,
+"harness_A": 0.7140542164449498
+},
+{
+"stat": "REB",
+"line": 8,
+"season_stat_total": 206.0,
+"season_minutes_total": 848.0,
+"prior10_mean_min": 25.5,
+"harness_p_count": 0.2832147974992314,
+"harness_A": 0.29897678064138994
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 55.0,
+"season_minutes_total": 1147.0,
+"prior10_mean_min": 23.1,
+"harness_p_count": 0.10113363212660154,
+"harness_A": 0.11355147583234507
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 219.0,
+"season_minutes_total": 1697.0,
+"prior10_mean_min": 30.2,
+"harness_p_count": 0.5462224073055804,
+"harness_A": 0.5304978348291541
+},
+{
+"stat": "REB",
+"line": 7,
+"season_stat_total": 304.0,
+"season_minutes_total": 2313.0,
+"prior10_mean_min": 39.1,
+"harness_p_count": 0.25840391288525316,
+"harness_A": 0.2764531731097808
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 120.0,
+"season_minutes_total": 1547.0,
+"prior10_mean_min": 31.9,
+"harness_p_count": 0.7074225050316847,
+"harness_A": 0.6693372519899191
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 149.0,
+"season_minutes_total": 1753.0,
+"prior10_mean_min": 30.5,
+"harness_p_count": 0.731146560645275,
+"harness_A": 0.6849197985878829
+},
+{
+"stat": "PTS",
+"line": 14,
+"season_stat_total": 195.0,
+"season_minutes_total": 368.0,
+"prior10_mean_min": 24.8,
+"harness_p_count": 0.41976712110376857,
+"harness_A": 0.4481416698728057
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 124.0,
+"season_minutes_total": 1984.0,
+"prior10_mean_min": 23.4,
+"harness_p_count": 0.4295460924019111,
+"harness_A": 0.4097313314333016
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 292.0,
+"season_minutes_total": 1881.0,
+"prior10_mean_min": 34.9,
+"harness_p_count": 0.6295240708724821,
+"harness_A": 0.5987815646493919
+},
+{
+"stat": "PTS",
+"line": 14,
+"season_stat_total": 991.0,
+"season_minutes_total": 1967.0,
+"prior10_mean_min": 30.1,
+"harness_p_count": 0.5276912905145353,
+"harness_A": 0.5355912830932547
+},
+{
+"stat": "PTS",
+"line": 14,
+"season_stat_total": 968.0,
+"season_minutes_total": 1534.0,
+"prior10_mean_min": 23.8,
+"harness_p_count": 0.5204397492996861,
+"harness_A": 0.5297497164044497
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 103.0,
+"season_minutes_total": 1407.0,
+"prior10_mean_min": 27.8,
+"harness_p_count": 0.8693339129182368,
+"harness_A": 0.8280348402473848
+},
+{
+"stat": "PTS",
+"line": 11,
+"season_stat_total": 628.0,
+"season_minutes_total": 1689.0,
+"prior10_mean_min": 28.6,
+"harness_p_count": 0.4487830322368447,
+"harness_A": 0.4718232882445983
+},
+{
+"stat": "PTS",
+"line": 9,
+"season_stat_total": 463.0,
+"season_minutes_total": 1189.0,
+"prior10_mean_min": 24.8,
+"harness_p_count": 0.5287130900565024,
+"harness_A": 0.5364143579452961
+},
+{
+"stat": "REB",
+"line": 10,
+"season_stat_total": 383.0,
+"season_minutes_total": 1176.0,
+"prior10_mean_min": 25.6,
+"harness_p_count": 0.32602390699154576,
+"harness_A": 0.3373337745422973
+},
+{
+"stat": "REB",
+"line": 11,
+"season_stat_total": 717.0,
+"season_minutes_total": 2041.0,
+"prior10_mean_min": 34.4,
+"harness_p_count": 0.6615835079445131,
+"harness_A": 0.633272375923082
+},
+{
+"stat": "AST",
+"line": 12,
+"season_stat_total": 777.0,
+"season_minutes_total": 2452.0,
+"prior10_mean_min": 35.1,
+"harness_p_count": 0.4353697990328773,
+"harness_A": 0.42986506843805034
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 85.0,
+"season_minutes_total": 1420.0,
+"prior10_mean_min": 28.6,
+"harness_p_count": 0.5104633011788212,
+"harness_A": 0.4946058094318507
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 74.0,
+"season_minutes_total": 2307.0,
+"prior10_mean_min": 33.5,
+"harness_p_count": 0.09451344660116236,
+"harness_A": 0.10700812724878948
+},
+{
+"stat": "PTS",
+"line": 17,
+"season_stat_total": 997.0,
+"season_minutes_total": 1869.0,
+"prior10_mean_min": 29.8,
+"harness_p_count": 0.4115628740315113,
+"harness_A": 0.4414088914631226
+},
+{
+"stat": "PTS",
+"line": 14,
+"season_stat_total": 937.0,
+"season_minutes_total": 2337.0,
+"prior10_mean_min": 34.1,
+"harness_p_count": 0.4495919054339147,
+"harness_A": 0.47248092645643286
+},
+{
+"stat": "REB",
+"line": 2,
+"season_stat_total": 241.0,
+"season_minutes_total": 1706.0,
+"prior10_mean_min": 21.5,
+"harness_p_count": 0.80634263583368,
+"harness_A": 0.7698644988153007
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 189.0,
+"season_minutes_total": 1353.0,
+"prior10_mean_min": 33.8,
+"harness_p_count": 0.6936882175815201,
+"harness_A": 0.6626001816218194
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 123.0,
+"season_minutes_total": 1231.0,
+"prior10_mean_min": 26.3,
+"harness_p_count": 0.48854270833243313,
+"harness_A": 0.47998109534687505
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 116.0,
+"season_minutes_total": 2072.0,
+"prior10_mean_min": 30.2,
+"harness_p_count": 0.8156157881820314,
+"harness_A": 0.7701091380111826
+},
+{
+"stat": "REB",
+"line": 6,
+"season_stat_total": 323.0,
+"season_minutes_total": 1924.0,
+"prior10_mean_min": 34.1,
+"harness_p_count": 0.5091507234335252,
+"harness_A": 0.49799723730999346
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 55.0,
+"season_minutes_total": 1129.0,
+"prior10_mean_min": 26.0,
+"harness_p_count": 0.36130186943114395,
+"harness_A": 0.3658505753150525
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 216.0,
+"season_minutes_total": 999.0,
+"prior10_mean_min": 22.0,
+"harness_p_count": 0.853308999988408,
+"harness_A": 0.8175741051023708
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 264.0,
+"season_minutes_total": 2575.0,
+"prior10_mean_min": 35.0,
+"harness_p_count": 0.29133517418726174,
+"harness_A": 0.3045166710424629
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 136.0,
+"season_minutes_total": 1972.0,
+"prior10_mean_min": 26.9,
+"harness_p_count": 0.5533768846417779,
+"harness_A": 0.5318205288513592
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 127.0,
+"season_minutes_total": 1755.0,
+"prior10_mean_min": 27.6,
+"harness_p_count": 0.32258328871230885,
+"harness_A": 0.31595709043989595
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 71.0,
+"season_minutes_total": 1311.0,
+"prior10_mean_min": 30.0,
+"harness_p_count": 0.4830153196734542,
+"harness_A": 0.45678443396832047
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 59.0,
+"season_minutes_total": 1688.0,
+"prior10_mean_min": 27.7,
+"harness_p_count": 0.6202291383488112,
+"harness_A": 0.5905220848558423
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 71.0,
+"season_minutes_total": 1697.0,
+"prior10_mean_min": 23.5,
+"harness_p_count": 0.07723833501085679,
+"harness_A": 0.08965092733824771
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 30.0,
+"season_minutes_total": 490.0,
+"prior10_mean_min": 20.9,
+"harness_p_count": 0.7218491917710996,
+"harness_A": 0.6827264499619856
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 311.0,
+"season_minutes_total": 2542.0,
+"prior10_mean_min": 37.7,
+"harness_p_count": 0.8386745403184133,
+"harness_A": 0.802452720806695
+},
+{
+"stat": "REB",
+"line": 5,
+"season_stat_total": 492.0,
+"season_minutes_total": 2551.0,
+"prior10_mean_min": 34.0,
+"harness_p_count": 0.7826792305336221,
+"harness_A": 0.7466198474337061
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 15.0,
+"season_minutes_total": 318.0,
+"prior10_mean_min": 31.8,
+"harness_p_count": 0.7768698398515702,
+"harness_A": 0.7350246213627765
+},
+{
+"stat": "PTS",
+"line": 26,
+"season_stat_total": 252.0,
+"season_minutes_total": 333.0,
+"prior10_mean_min": 33.3,
+"harness_p_count": 0.4310825018409767,
+"harness_A": 0.4573993486202952
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 45.0,
+"season_minutes_total": 313.0,
+"prior10_mean_min": 31.3,
+"harness_p_count": 0.657704044165409,
+"harness_A": 0.6297555314252231
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 25.0,
+"season_minutes_total": 210.0,
+"prior10_mean_min": 21.0,
+"harness_p_count": 0.7127025048163542,
+"harness_A": 0.674223849094489
+},
+{
+"stat": "REB",
+"line": 8,
+"season_stat_total": 83.0,
+"season_minutes_total": 328.0,
+"prior10_mean_min": 29.8,
+"harness_p_count": 0.48133752570770105,
+"harness_A": 0.47368708804473797
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 39.0,
+"season_minutes_total": 210.0,
+"prior10_mean_min": 21.0,
+"harness_p_count": 0.746874897370216,
+"harness_A": 0.7122471620021249
+},
+{
+"stat": "PTS",
+"line": 18,
+"season_stat_total": 172.0,
+"season_minutes_total": 301.0,
+"prior10_mean_min": 30.1,
+"harness_p_count": 0.42690580573985026,
+"harness_A": 0.4539858048683639
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 19.0,
+"season_minutes_total": 284.0,
+"prior10_mean_min": 24.5,
+"harness_p_count": 0.805842289031645,
+"harness_A": 0.7635233781885551
+},
+{
+"stat": "REB",
+"line": 9,
+"season_stat_total": 111.0,
+"season_minutes_total": 352.0,
+"prior10_mean_min": 32.0,
+"harness_p_count": 0.677322993716255,
+"harness_A": 0.6475984598327127
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 24.0,
+"season_minutes_total": 399.0,
+"prior10_mean_min": 33.2,
+"harness_p_count": 0.8642570806758205,
+"harness_A": 0.8223969015925526
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 42.0,
+"season_minutes_total": 275.0,
+"prior10_mean_min": 24.0,
+"harness_p_count": 0.4986131279025126,
+"harness_A": 0.48436928890703873
+},
+{
+"stat": "PTS",
+"line": 15,
+"season_stat_total": 206.0,
+"season_minutes_total": 409.0,
+"prior10_mean_min": 31.1,
+"harness_p_count": 0.49899493824277197,
+"harness_A": 0.5124642132041803
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 24.0,
+"season_minutes_total": 450.0,
+"prior10_mean_min": 34.1,
+"harness_p_count": 0.5426940817903009,
+"harness_A": 0.5098251875991442
+},
+{
+"stat": "PTS",
+"line": 17,
+"season_stat_total": 219.0,
+"season_minutes_total": 466.0,
+"prior10_mean_min": 37.2,
+"harness_p_count": 0.48507901150662985,
+"harness_A": 0.5012311577681091
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 20.0,
+"season_minutes_total": 340.0,
+"prior10_mean_min": 24.8,
+"harness_p_count": 0.42829979031472754,
+"harness_A": 0.40863787969615895
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 27.0,
+"season_minutes_total": 369.0,
+"prior10_mean_min": 22.8,
+"harness_p_count": 0.4968434172658473,
+"harness_A": 0.4828416421711801
+},
+{
+"stat": "REB",
+"line": 9,
+"season_stat_total": 92.0,
+"season_minutes_total": 306.0,
+"prior10_mean_min": 25.7,
+"harness_p_count": 0.36937750104289124,
+"harness_A": 0.3756970862438498
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 48.0,
+"season_minutes_total": 450.0,
+"prior10_mean_min": 27.4,
+"harness_p_count": 0.3354480414933093,
+"harness_A": 0.3433258246132854
+},
+{
+"stat": "PTS",
+"line": 9,
+"season_stat_total": 117.0,
+"season_minutes_total": 273.0,
+"prior10_mean_min": 21.9,
+"harness_p_count": 0.508729463498311,
+"harness_A": 0.5203134219398348
+},
+{
+"stat": "PTS",
+"line": 12,
+"season_stat_total": 208.0,
+"season_minutes_total": 433.0,
+"prior10_mean_min": 26.2,
+"harness_p_count": 0.5063824760251001,
+"harness_A": 0.5184214904057696
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 35.0,
+"season_minutes_total": 502.0,
+"prior10_mean_min": 27.3,
+"harness_p_count": 0.2971939727036256,
+"harness_A": 0.3097043028798205
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 37.0,
+"season_minutes_total": 363.0,
+"prior10_mean_min": 22.7,
+"harness_p_count": 0.901112664751241,
+"harness_A": 0.8642912522393563
+},
+{
+"stat": "PTS",
+"line": 23,
+"season_stat_total": 310.0,
+"season_minutes_total": 504.0,
+"prior10_mean_min": 30.4,
+"harness_p_count": 0.2975225422121456,
+"harness_A": 0.34517461923331444
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 75.0,
+"season_minutes_total": 655.0,
+"prior10_mean_min": 34.5,
+"harness_p_count": 0.5567764908451228,
+"harness_A": 0.5347811238341982
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 55.0,
+"season_minutes_total": 353.0,
+"prior10_mean_min": 23.5,
+"harness_p_count": 0.4977764767896372,
+"harness_A": 0.48364704421977167
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 70.0,
+"season_minutes_total": 639.0,
+"prior10_mean_min": 34.4,
+"harness_p_count": 0.5200263946662145,
+"harness_A": 0.5028772610012419
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 25.0,
+"season_minutes_total": 376.0,
+"prior10_mean_min": 21.4,
+"harness_p_count": 0.17205639516878102,
+"harness_A": 0.18100809726761363
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 79.0,
+"season_minutes_total": 492.0,
+"prior10_mean_min": 29.5,
+"harness_p_count": 0.6960678083508134,
+"harness_A": 0.6647911784330903
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 56.0,
+"season_minutes_total": 606.0,
+"prior10_mean_min": 31.4,
+"harness_p_count": 0.3307456691602611,
+"harness_A": 0.3392136708064811
+},
+{
+"stat": "PTS",
+"line": 28,
+"season_stat_total": 490.0,
+"season_minutes_total": 493.0,
+"prior10_mean_min": 29.8,
+"harness_p_count": 0.50089606895017,
+"harness_A": 0.513997612396816
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 48.0,
+"season_minutes_total": 585.0,
+"prior10_mean_min": 29.7,
+"harness_p_count": 0.9125705482835037,
+"harness_A": 0.8775045495760295
+},
+{
+"stat": "PTS",
+"line": 31,
+"season_stat_total": 579.0,
+"season_minutes_total": 698.0,
+"prior10_mean_min": 35.8,
+"harness_p_count": 0.4188927574498315,
+"harness_A": 0.44742497953428745
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 39.0,
+"season_minutes_total": 438.0,
+"prior10_mean_min": 24.3,
+"harness_p_count": 0.8851006360857376,
+"harness_A": 0.8463812067753511
+},
+{
+"stat": "PTS",
+"line": 7,
+"season_stat_total": 79.0,
+"season_minutes_total": 303.0,
+"prior10_mean_min": 22.6,
+"harness_p_count": 0.373796872658992,
+"harness_A": 0.41015124254326807
+},
+{
+"stat": "REB",
+"line": 8,
+"season_stat_total": 180.0,
+"season_minutes_total": 532.0,
+"prior10_mean_min": 24.2,
+"harness_p_count": 0.5729550094966094,
+"harness_A": 0.5540475589434571
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 73.0,
+"season_minutes_total": 540.0,
+"prior10_mean_min": 26.3,
+"harness_p_count": 0.2850493696227856,
+"harness_A": 0.2989379068450678
+},
+{
+"stat": "PTS",
+"line": 10,
+"season_stat_total": 280.0,
+"season_minutes_total": 713.0,
+"prior10_mean_min": 29.4,
+"harness_p_count": 0.5780955700215908,
+"harness_A": 0.576232988445881
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 60.0,
+"season_minutes_total": 777.0,
+"prior10_mean_min": 31.2,
+"harness_p_count": 0.6935710221508551,
+"harness_A": 0.6565889060923646
+},
+{
+"stat": "REB",
+"line": 7,
+"season_stat_total": 150.0,
+"season_minutes_total": 734.0,
+"prior10_mean_min": 33.8,
+"harness_p_count": 0.5363955790023062,
+"harness_A": 0.5218676816139148
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 30.0,
+"season_minutes_total": 452.0,
+"prior10_mean_min": 24.5,
+"harness_p_count": 0.8033060270126504,
+"harness_A": 0.757304509314219
+},
+{
+"stat": "AST",
+"line": 8,
+"season_stat_total": 158.0,
+"season_minutes_total": 797.0,
+"prior10_mean_min": 34.9,
+"harness_p_count": 0.38917342700038327,
+"harness_A": 0.3900056139512564
+},
+{
+"stat": "REB",
+"line": 2,
+"season_stat_total": 37.0,
+"season_minutes_total": 749.0,
+"prior10_mean_min": 27.9,
+"harness_p_count": 0.40063104561016866,
+"harness_A": 0.40314996423613414
+},
+{
+"stat": "REB",
+"line": 9,
+"season_stat_total": 174.0,
+"season_minutes_total": 700.0,
+"prior10_mean_min": 33.4,
+"harness_p_count": 0.4495689631495976,
+"harness_A": 0.44594648379432944
+},
+{
+"stat": "PTS",
+"line": 21,
+"season_stat_total": 504.0,
+"season_minutes_total": 664.0,
+"prior10_mean_min": 29.3,
+"harness_p_count": 0.504949990734105,
+"harness_A": 0.5172666024740228
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 36.0,
+"season_minutes_total": 528.0,
+"prior10_mean_min": 20.9,
+"harness_p_count": 0.7594915367916579,
+"harness_A": 0.7128621061125533
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 17.0,
+"season_minutes_total": 413.0,
+"prior10_mean_min": 26.4,
+"harness_p_count": 0.0969164980323264,
+"harness_A": 0.12063228395991804
+},
+{
+"stat": "PTS",
+"line": 16,
+"season_stat_total": 178.0,
+"season_minutes_total": 294.0,
+"prior10_mean_min": 27.3,
+"harness_p_count": 0.4896093800766724,
+"harness_A": 0.504890001958647
+},
+{
+"stat": "PTS",
+"line": 23,
+"season_stat_total": 403.0,
+"season_minutes_total": 519.0,
+"prior10_mean_min": 28.3,
+"harness_p_count": 0.42172076784887824,
+"harness_A": 0.4497423060961432
+},
+{
+"stat": "PTS",
+"line": 24,
+"season_stat_total": 694.0,
+"season_minutes_total": 885.0,
+"prior10_mean_min": 34.8,
+"harness_p_count": 0.5594174106604448,
+"harness_A": 0.5611559591323807
+},
+{
+"stat": "PTS",
+"line": 12,
+"season_stat_total": 354.0,
+"season_minutes_total": 986.0,
+"prior10_mean_min": 31.2,
+"harness_p_count": 0.42042176371237466,
+"harness_A": 0.44867813194403106
+},
+{
+"stat": "PTS",
+"line": 27,
+"season_stat_total": 685.0,
+"season_minutes_total": 974.0,
+"prior10_mean_min": 36.6,
+"harness_p_count": 0.4171328816423887,
+"harness_A": 0.4459818552466336
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 70.0,
+"season_minutes_total": 583.0,
+"prior10_mean_min": 22.4,
+"harness_p_count": 0.5038089531185637,
+"harness_A": 0.4933247726689838
+},
+{
+"stat": "PTS",
+"line": 12,
+"season_stat_total": 398.0,
+"season_minutes_total": 800.0,
+"prior10_mean_min": 25.9,
+"harness_p_count": 0.5236683654036989,
+"harness_A": 0.5323506657288184
+},
+{
+"stat": "REB",
+"line": 8,
+"season_stat_total": 186.0,
+"season_minutes_total": 957.0,
+"prior10_mean_min": 35.1,
+"harness_p_count": 0.37477553378672757,
+"harness_A": 0.3804486062112428
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 99.0,
+"season_minutes_total": 1007.0,
+"prior10_mean_min": 34.0,
+"harness_p_count": 0.6490573422912287,
+"harness_A": 0.6067661624031377
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 16.0,
+"season_minutes_total": 445.0,
+"prior10_mean_min": 27.3,
+"harness_p_count": 0.6252788140599407,
+"harness_A": 0.5847444927018212
+},
+{
+"stat": "FG3M",
+"line": 4,
+"season_stat_total": 114.0,
+"season_minutes_total": 767.0,
+"prior10_mean_min": 33.1,
+"harness_p_count": 0.7235187090565236,
+"harness_A": 0.6774945698466525
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 21.0,
+"season_minutes_total": 586.0,
+"prior10_mean_min": 35.3,
+"harness_p_count": 0.7177655201886229,
+"harness_A": 0.6719188483504805
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 44.0,
+"season_minutes_total": 570.0,
+"prior10_mean_min": 23.1,
+"harness_p_count": 0.26487321373897255,
+"harness_A": 0.28093153910012525
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 92.0,
+"season_minutes_total": 969.0,
+"prior10_mean_min": 28.5,
+"harness_p_count": 0.9331886533571487,
+"harness_A": 0.9020957075477481
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 76.0,
+"season_minutes_total": 652.0,
+"prior10_mean_min": 26.7,
+"harness_p_count": 0.6014870337404661,
+"harness_A": 0.5629329860663754
+},
+{
+"stat": "REB",
+"line": 7,
+"season_stat_total": 222.0,
+"season_minutes_total": 926.0,
+"prior10_mean_min": 32.6,
+"harness_p_count": 0.6635824650145098,
+"harness_A": 0.6350866225684327
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 101.0,
+"season_minutes_total": 952.0,
+"prior10_mean_min": 32.7,
+"harness_p_count": 0.45671167286577635,
+"harness_A": 0.448248040012561
+},
+{
+"stat": "REB",
+"line": 5,
+"season_stat_total": 93.0,
+"season_minutes_total": 508.0,
+"prior10_mean_min": 27.1,
+"harness_p_count": 0.5526759927219242,
+"harness_A": 0.5361727085061408
+},
+{
+"stat": "REB",
+"line": 6,
+"season_stat_total": 93.0,
+"season_minutes_total": 498.0,
+"prior10_mean_min": 33.5,
+"harness_p_count": 0.5945196178212939,
+"harness_A": 0.57313965030594
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 60.0,
+"season_minutes_total": 908.0,
+"prior10_mean_min": 25.7,
+"harness_p_count": 0.24231170635470456,
+"harness_A": 0.26059127121983994
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 32.0,
+"season_minutes_total": 464.0,
+"prior10_mean_min": 20.7,
+"harness_p_count": 0.41765299110820975,
+"harness_A": 0.41459554438173835
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 16.0,
+"season_minutes_total": 419.0,
+"prior10_mean_min": 34.8,
+"harness_p_count": 0.7352259032440855,
+"harness_A": 0.6952514484213635
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 136.0,
+"season_minutes_total": 1266.0,
+"prior10_mean_min": 34.3,
+"harness_p_count": 0.7119644562542659,
+"harness_A": 0.6735398589910058
+},
+{
+"stat": "PTS",
+"line": 14,
+"season_stat_total": 434.0,
+"season_minutes_total": 918.0,
+"prior10_mean_min": 26.8,
+"harness_p_count": 0.392511747848413,
+"harness_A": 0.4256997062975157
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 29.0,
+"season_minutes_total": 739.0,
+"prior10_mean_min": 26.4,
+"harness_p_count": 0.08703994641953162,
+"harness_A": 0.0995524620327576
+},
+{
+"stat": "PTS",
+"line": 7,
+"season_stat_total": 315.0,
+"season_minutes_total": 898.0,
+"prior10_mean_min": 20.6,
+"harness_p_count": 0.5087555190887679,
+"harness_A": 0.5203344240454124
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 91.0,
+"season_minutes_total": 886.0,
+"prior10_mean_min": 23.9,
+"harness_p_count": 0.7032879347135175,
+"harness_A": 0.6655213819519118
+},
+{
+"stat": "PTS",
+"line": 12,
+"season_stat_total": 446.0,
+"season_minutes_total": 1039.0,
+"prior10_mean_min": 28.6,
+"harness_p_count": 0.48804950365736693,
+"harness_A": 0.5036304302818302
+},
+{
+"stat": "PTS",
+"line": 16,
+"season_stat_total": 566.0,
+"season_minutes_total": 1136.0,
+"prior10_mean_min": 29.5,
+"harness_p_count": 0.39964409802048506,
+"harness_A": 0.43159392401921726
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 49.0,
+"season_minutes_total": 596.0,
+"prior10_mean_min": 33.5,
+"harness_p_count": 0.9363397309559932,
+"harness_A": 0.9069543522646022
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 62.0,
+"season_minutes_total": 840.0,
+"prior10_mean_min": 21.8,
+"harness_p_count": 0.2189822855835907,
+"harness_A": 0.22386612766342462
+},
+{
+"stat": "PTS",
+"line": 22,
+"season_stat_total": 426.0,
+"season_minutes_total": 654.0,
+"prior10_mean_min": 30.5,
+"harness_p_count": 0.3782112542711294,
+"harness_A": 0.41383012547937736
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 75.0,
+"season_minutes_total": 1236.0,
+"prior10_mean_min": 35.3,
+"harness_p_count": 0.8825790915080867,
+"harness_A": 0.8429332348759767
+},
+{
+"stat": "REB",
+"line": 8,
+"season_stat_total": 296.0,
+"season_minutes_total": 1407.0,
+"prior10_mean_min": 32.1,
+"harness_p_count": 0.36455043018641525,
+"harness_A": 0.3714440664178086
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 110.0,
+"season_minutes_total": 1149.0,
+"prior10_mean_min": 34.9,
+"harness_p_count": 0.6487738044052818,
+"harness_A": 0.6065021562816687
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 46.0,
+"season_minutes_total": 387.0,
+"prior10_mean_min": 31.9,
+"harness_p_count": 0.5248220023793783,
+"harness_A": 0.5070292392598534
+},
+{
+"stat": "AST",
+"line": 10,
+"season_stat_total": 236.0,
+"season_minutes_total": 1048.0,
+"prior10_mean_min": 32.2,
+"harness_p_count": 0.1958564111813445,
+"harness_A": 0.21784955833409092
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 137.0,
+"season_minutes_total": 772.0,
+"prior10_mean_min": 23.8,
+"harness_p_count": 0.6089471912199875,
+"harness_A": 0.5859702992330688
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 18.0,
+"season_minutes_total": 351.0,
+"prior10_mean_min": 22.7,
+"harness_p_count": 0.1128229159299312,
+"harness_A": 0.12497926612812069
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 63.0,
+"season_minutes_total": 538.0,
+"prior10_mean_min": 26.5,
+"harness_p_count": 0.37586680363511765,
+"harness_A": 0.3814086173911409
+},
+{
+"stat": "PTS",
+"line": 12,
+"season_stat_total": 425.0,
+"season_minutes_total": 1019.0,
+"prior10_mean_min": 25.6,
+"harness_p_count": 0.38551903994107695,
+"harness_A": 0.419904605072808
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 15.0,
+"season_minutes_total": 340.0,
+"prior10_mean_min": 20.0,
+"harness_p_count": 0.5861919008226301,
+"harness_A": 0.5604969540811479
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 19.0,
+"season_minutes_total": 392.0,
+"prior10_mean_min": 21.6,
+"harness_p_count": 0.08913472886603001,
+"harness_A": 0.10165000785869421
+},
+{
+"stat": "AST",
+"line": 7,
+"season_stat_total": 293.0,
+"season_minutes_total": 1516.0,
+"prior10_mean_min": 34.5,
+"harness_p_count": 0.49972677977156027,
+"harness_A": 0.4853307474354311
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 96.0,
+"season_minutes_total": 1272.0,
+"prior10_mean_min": 24.6,
+"harness_p_count": 0.8437977713238056,
+"harness_A": 0.8021570005435371
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 170.0,
+"season_minutes_total": 1528.0,
+"prior10_mean_min": 33.1,
+"harness_p_count": 0.5022073275763225,
+"harness_A": 0.48747268531414745
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 36.0,
+"season_minutes_total": 421.0,
+"prior10_mean_min": 27.4,
+"harness_p_count": 0.4153290064822525,
+"harness_A": 0.4125913883420387
+},
+{
+"stat": "REB",
+"line": 2,
+"season_stat_total": 78.0,
+"season_minutes_total": 652.0,
+"prior10_mean_min": 20.2,
+"harness_p_count": 0.6951480187004737,
+"harness_A": 0.6639439848492916
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 37.0,
+"season_minutes_total": 776.0,
+"prior10_mean_min": 24.0,
+"harness_p_count": 0.3171655229512587,
+"harness_A": 0.3111920512311264
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 102.0,
+"season_minutes_total": 1491.0,
+"prior10_mean_min": 28.2,
+"harness_p_count": 0.5744846343838076,
+"harness_A": 0.5384147094447227
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 79.0,
+"season_minutes_total": 1099.0,
+"prior10_mean_min": 30.7,
+"harness_p_count": 0.8899504308224138,
+"harness_A": 0.8517614734857641
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 37.0,
+"season_minutes_total": 507.0,
+"prior10_mean_min": 23.0,
+"harness_p_count": 0.23711258855942838,
+"harness_A": 0.25586932958522624
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 138.0,
+"season_minutes_total": 1493.0,
+"prior10_mean_min": 36.6,
+"harness_p_count": 0.6569669055958292,
+"harness_A": 0.6141453953993496
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 82.0,
+"season_minutes_total": 966.0,
+"prior10_mean_min": 30.4,
+"harness_p_count": 0.728834284696193,
+"harness_A": 0.6892529935007459
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 94.0,
+"season_minutes_total": 616.0,
+"prior10_mean_min": 27.4,
+"harness_p_count": 0.7872590766388174,
+"harness_A": 0.7451572370183159
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 167.0,
+"season_minutes_total": 1610.0,
+"prior10_mean_min": 36.6,
+"harness_p_count": 0.7305209633378804,
+"harness_A": 0.6908334258200591
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 146.0,
+"season_minutes_total": 1370.0,
+"prior10_mean_min": 36.0,
+"harness_p_count": 0.5339529256271298,
+"harness_A": 0.5149431253259004
+},
+{
+"stat": "PTS",
+"line": 15,
+"season_stat_total": 458.0,
+"season_minutes_total": 825.0,
+"prior10_mean_min": 29.9,
+"harness_p_count": 0.5427772153153819,
+"harness_A": 0.5477438011172361
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 71.0,
+"season_minutes_total": 1261.0,
+"prior10_mean_min": 28.0,
+"harness_p_count": 0.7933082169725284,
+"harness_A": 0.7511004400599675
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 124.0,
+"season_minutes_total": 1249.0,
+"prior10_mean_min": 31.5,
+"harness_p_count": 0.8190759511053441,
+"harness_A": 0.7737365717133309
+},
+{
+"stat": "REB",
+"line": 7,
+"season_stat_total": 232.0,
+"season_minutes_total": 1342.0,
+"prior10_mean_min": 26.9,
+"harness_p_count": 0.1886842377856522,
+"harness_A": 0.21152888218551977
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 45.0,
+"season_minutes_total": 1238.0,
+"prior10_mean_min": 29.4,
+"harness_p_count": 0.6565312434439505,
+"harness_A": 0.6137382047509587
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 51.0,
+"season_minutes_total": 1107.0,
+"prior10_mean_min": 24.5,
+"harness_p_count": 0.3114741895750958,
+"harness_A": 0.32230298109963534
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 76.0,
+"season_minutes_total": 791.0,
+"prior10_mean_min": 25.5,
+"harness_p_count": 0.44331487096338074,
+"harness_A": 0.436709179855568
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 281.0,
+"season_minutes_total": 1741.0,
+"prior10_mean_min": 33.4,
+"harness_p_count": 0.6252168773980993,
+"harness_A": 0.5949506793307705
+},
+{
+"stat": "REB",
+"line": 6,
+"season_stat_total": 150.0,
+"season_minutes_total": 626.0,
+"prior10_mean_min": 22.3,
+"harness_p_count": 0.44407533530147947,
+"harness_A": 0.4411486116023511
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 130.0,
+"season_minutes_total": 857.0,
+"prior10_mean_min": 30.9,
+"harness_p_count": 0.6883100989713314,
+"harness_A": 0.6576575492268688
+},
+{
+"stat": "PTS",
+"line": 9,
+"season_stat_total": 196.0,
+"season_minutes_total": 458.0,
+"prior10_mean_min": 23.9,
+"harness_p_count": 0.5685148530068511,
+"harness_A": 0.5684956121533715
+},
+{
+"stat": "PTS",
+"line": 10,
+"season_stat_total": 302.0,
+"season_minutes_total": 827.0,
+"prior10_mean_min": 25.7,
+"harness_p_count": 0.43062101597933855,
+"harness_A": 0.45702238441699905
+},
+{
+"stat": "PTS",
+"line": 12,
+"season_stat_total": 439.0,
+"season_minutes_total": 1058.0,
+"prior10_mean_min": 29.1,
+"harness_p_count": 0.4757718026388096,
+"harness_A": 0.4937075492297606
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 76.0,
+"season_minutes_total": 1265.0,
+"prior10_mean_min": 27.5,
+"harness_p_count": 0.8083671377051285,
+"harness_A": 0.7660443630747769
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 133.0,
+"season_minutes_total": 1444.0,
+"prior10_mean_min": 26.3,
+"harness_p_count": 0.9112887371689428,
+"harness_A": 0.876307304569409
+},
+{
+"stat": "AST",
+"line": 6,
+"season_stat_total": 323.0,
+"season_minutes_total": 1759.0,
+"prior10_mean_min": 32.0,
+"harness_p_count": 0.5342139270848308,
+"harness_A": 0.515169511795403
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 73.0,
+"season_minutes_total": 512.0,
+"prior10_mean_min": 21.8,
+"harness_p_count": 0.20323423185146178,
+"harness_A": 0.22472778694753706
+},
+{
+"stat": "AST",
+"line": 7,
+"season_stat_total": 201.0,
+"season_minutes_total": 1547.0,
+"prior10_mean_min": 29.3,
+"harness_p_count": 0.09154074900621541,
+"harness_A": 0.11497544215477346
+},
+{
+"stat": "PTS",
+"line": 10,
+"season_stat_total": 725.0,
+"season_minutes_total": 1774.0,
+"prior10_mean_min": 27.8,
+"harness_p_count": 0.5668933591141588,
+"harness_A": 0.5671869430863568
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 73.0,
+"season_minutes_total": 661.0,
+"prior10_mean_min": 23.1,
+"harness_p_count": 0.4692350781173444,
+"harness_A": 0.459036158232552
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 144.0,
+"season_minutes_total": 1328.0,
+"prior10_mean_min": 27.2,
+"harness_p_count": 0.17630687855086188,
+"harness_A": 0.19942898263669717
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 185.0,
+"season_minutes_total": 1625.0,
+"prior10_mean_min": 30.0,
+"harness_p_count": 0.6632183655522614,
+"harness_A": 0.6347560576938654
+},
+{
+"stat": "FG3M",
+"line": 4,
+"season_stat_total": 96.0,
+"season_minutes_total": 1020.0,
+"prior10_mean_min": 22.7,
+"harness_p_count": 0.1683036232175473,
+"harness_A": 0.17753233015287392
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 127.0,
+"season_minutes_total": 1589.0,
+"prior10_mean_min": 32.6,
+"harness_p_count": 0.7336827620373174,
+"harness_A": 0.6938008627600661
+},
+{
+"stat": "PTS",
+"line": 7,
+"season_stat_total": 329.0,
+"season_minutes_total": 1160.0,
+"prior10_mean_min": 23.4,
+"harness_p_count": 0.45184216790220816,
+"harness_A": 0.4743098237184759
+},
+{
+"stat": "PTS",
+"line": 4,
+"season_stat_total": 294.0,
+"season_minutes_total": 1171.0,
+"prior10_mean_min": 24.6,
+"harness_p_count": 0.7458863267458469,
+"harness_A": 0.7154963458110217
+},
+{
+"stat": "PTS",
+"line": 17,
+"season_stat_total": 551.0,
+"season_minutes_total": 1308.0,
+"prior10_mean_min": 33.7,
+"harness_p_count": 0.3267275164021841,
+"harness_A": 0.3704079650590173
+},
+{
+"stat": "PTS",
+"line": 7,
+"season_stat_total": 297.0,
+"season_minutes_total": 950.0,
+"prior10_mean_min": 21.5,
+"harness_p_count": 0.46032249756876353,
+"harness_A": 0.4811942347162625
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 150.0,
+"season_minutes_total": 1583.0,
+"prior10_mean_min": 31.7,
+"harness_p_count": 0.35361728984931423,
+"harness_A": 0.3591691655622917
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 238.0,
+"season_minutes_total": 1542.0,
+"prior10_mean_min": 24.7,
+"harness_p_count": 0.7330876760390842,
+"harness_A": 0.6932418751034982
+},
+{
+"stat": "PTS",
+"line": 12,
+"season_stat_total": 532.0,
+"season_minutes_total": 1166.0,
+"prior10_mean_min": 25.3,
+"harness_p_count": 0.4425288967039575,
+"harness_A": 0.4667342581776404
+},
+{
+"stat": "REB",
+"line": 6,
+"season_stat_total": 128.0,
+"season_minutes_total": 557.0,
+"prior10_mean_min": 24.7,
+"harness_p_count": 0.5010033075421291,
+"harness_A": 0.4908714523819764
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 94.0,
+"season_minutes_total": 1749.0,
+"prior10_mean_min": 26.4,
+"harness_p_count": 0.4146634474056483,
+"harness_A": 0.41201736046793436
+},
+{
+"stat": "FG3M",
+"line": 2,
+"season_stat_total": 194.0,
+"season_minutes_total": 1903.0,
+"prior10_mean_min": 31.2,
+"harness_p_count": 0.8262595010531595,
+"harness_A": 0.7813087503656438
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 94.0,
+"season_minutes_total": 1460.0,
+"prior10_mean_min": 22.4,
+"harness_p_count": 0.7635909663620771,
+"harness_A": 0.7222029200111154
+},
+{
+"stat": "PTS",
+"line": 20,
+"season_stat_total": 1355.0,
+"season_minutes_total": 2141.0,
+"prior10_mean_min": 34.5,
+"harness_p_count": 0.5292777430626492,
+"harness_A": 0.5368691922897284
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 199.0,
+"season_minutes_total": 2045.0,
+"prior10_mean_min": 30.2,
+"harness_p_count": 0.5629545583111946,
+"harness_A": 0.5280136430257727
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 65.0,
+"season_minutes_total": 996.0,
+"prior10_mean_min": 26.0,
+"harness_p_count": 0.24192891309786424,
+"harness_A": 0.26024408013957606
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 95.0,
+"season_minutes_total": 1579.0,
+"prior10_mean_min": 26.8,
+"harness_p_count": 0.21985426871522884,
+"harness_A": 0.2400905770876284
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 120.0,
+"season_minutes_total": 1221.0,
+"prior10_mean_min": 27.4,
+"harness_p_count": 0.28433755157161433,
+"harness_A": 0.2983052740172164
+},
+{
+"stat": "PTS",
+"line": 12,
+"season_stat_total": 352.0,
+"season_minutes_total": 726.0,
+"prior10_mean_min": 24.7,
+"harness_p_count": 0.46969505763454816,
+"harness_A": 0.48878963895386995
+},
+{
+"stat": "PTS",
+"line": 14,
+"season_stat_total": 819.0,
+"season_minutes_total": 1706.0,
+"prior10_mean_min": 25.9,
+"harness_p_count": 0.3785945983165062,
+"harness_A": 0.41414925526935115
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 285.0,
+"season_minutes_total": 1990.0,
+"prior10_mean_min": 35.6,
+"harness_p_count": 0.5766154623407328,
+"harness_A": 0.5521040499501686
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 82.0,
+"season_minutes_total": 625.0,
+"prior10_mean_min": 21.1,
+"harness_p_count": 0.5229606283504205,
+"harness_A": 0.5054173397265795
+},
+{
+"stat": "AST",
+"line": 1,
+"season_stat_total": 47.0,
+"season_minutes_total": 1095.0,
+"prior10_mean_min": 22.4,
+"harness_p_count": 0.6176661836622663,
+"harness_A": 0.5882495259787822
+},
+{
+"stat": "REB",
+"line": 1,
+"season_stat_total": 39.0,
+"season_minutes_total": 336.0,
+"prior10_mean_min": 21.5,
+"harness_p_count": 0.91754773130008,
+"harness_A": 0.8876896780233564
+},
+{
+"stat": "FG3M",
+"line": 4,
+"season_stat_total": 153.0,
+"season_minutes_total": 1970.0,
+"prior10_mean_min": 32.8,
+"harness_p_count": 0.2526050053841498,
+"harness_A": 0.25403919291669913
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 189.0,
+"season_minutes_total": 2153.0,
+"prior10_mean_min": 28.1,
+"harness_p_count": 0.44762829719791647,
+"harness_A": 0.4404244626986248
+},
+{
+"stat": "PTS",
+"line": 20,
+"season_stat_total": 1171.0,
+"season_minutes_total": 1650.0,
+"prior10_mean_min": 27.6,
+"harness_p_count": 0.44398622022734263,
+"harness_A": 0.4679207766658711
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 152.0,
+"season_minutes_total": 1061.0,
+"prior10_mean_min": 26.8,
+"harness_p_count": 0.7374073430488979,
+"harness_A": 0.7032973105263592
+},
+{
+"stat": "AST",
+"line": 5,
+"season_stat_total": 365.0,
+"season_minutes_total": 2320.0,
+"prior10_mean_min": 33.7,
+"harness_p_count": 0.6108000190695173,
+"harness_A": 0.5821712934312124
+},
+{
+"stat": "AST",
+"line": 7,
+"season_stat_total": 432.0,
+"season_minutes_total": 1679.0,
+"prior10_mean_min": 27.5,
+"harness_p_count": 0.5614975802475026,
+"harness_A": 0.538896183547941
+},
+{
+"stat": "PTS",
+"line": 9,
+"season_stat_total": 659.0,
+"season_minutes_total": 1682.0,
+"prior10_mean_min": 26.1,
+"harness_p_count": 0.5683748985769052,
+"harness_A": 0.568382649386459
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 89.0,
+"season_minutes_total": 1321.0,
+"prior10_mean_min": 24.8,
+"harness_p_count": 0.8119138944133174,
+"harness_A": 0.7662422117416362
+},
+{
+"stat": "REB",
+"line": 5,
+"season_stat_total": 250.0,
+"season_minutes_total": 1544.0,
+"prior10_mean_min": 33.5,
+"harness_p_count": 0.6305531576520376,
+"harness_A": 0.6052850229508199
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 203.0,
+"season_minutes_total": 1531.0,
+"prior10_mean_min": 26.5,
+"harness_p_count": 0.6816823403585591,
+"harness_A": 0.6515835868311759
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 208.0,
+"season_minutes_total": 1897.0,
+"prior10_mean_min": 30.2,
+"harness_p_count": 0.6428445819452888,
+"harness_A": 0.6163333868710104
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 18.0,
+"season_minutes_total": 372.0,
+"prior10_mean_min": 20.4,
+"harness_p_count": 0.2594944187304524,
+"harness_A": 0.2761032713413352
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 81.0,
+"season_minutes_total": 1120.0,
+"prior10_mean_min": 24.6,
+"harness_p_count": 0.5309178839688272,
+"harness_A": 0.5123113274802762
+},
+{
+"stat": "PTS",
+"line": 9,
+"season_stat_total": 700.0,
+"season_minutes_total": 1810.0,
+"prior10_mean_min": 21.4,
+"harness_p_count": 0.4203574512391316,
+"harness_A": 0.4486254344785975
+},
+{
+"stat": "PTS",
+"line": 19,
+"season_stat_total": 1202.0,
+"season_minutes_total": 1992.0,
+"prior10_mean_min": 29.8,
+"harness_p_count": 0.41819358441549004,
+"harness_A": 0.4468517446245896
+},
+{
+"stat": "REB",
+"line": 13,
+"season_stat_total": 666.0,
+"season_minutes_total": 1726.0,
+"prior10_mean_min": 29.9,
+"harness_p_count": 0.3712780612546037,
+"harness_A": 0.37737055449181556
+},
+{
+"stat": "AST",
+"line": 4,
+"season_stat_total": 119.0,
+"season_minutes_total": 1589.0,
+"prior10_mean_min": 28.0,
+"harness_p_count": 0.16077468187785732,
+"harness_A": 0.18456771989363469
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 147.0,
+"season_minutes_total": 2141.0,
+"prior10_mean_min": 34.8,
+"harness_p_count": 0.4275065013808043,
+"harness_A": 0.42308964880024896
+},
+{
+"stat": "AST",
+"line": 7,
+"season_stat_total": 225.0,
+"season_minutes_total": 1219.0,
+"prior10_mean_min": 30.1,
+"harness_p_count": 0.32274992181087864,
+"harness_A": 0.3322092095641368
+},
+{
+"stat": "AST",
+"line": 3,
+"season_stat_total": 248.0,
+"season_minutes_total": 1873.0,
+"prior10_mean_min": 21.6,
+"harness_p_count": 0.5447273106282372,
+"harness_A": 0.52429725681142
+},
+{
+"stat": "PTS",
+"line": 15,
+"season_stat_total": 503.0,
+"season_minutes_total": 1141.0,
+"prior10_mean_min": 24.7,
+"harness_p_count": 0.23707773003245558,
+"harness_A": 0.2910594895240054
+},
+{
+"stat": "PTS",
+"line": 19,
+"season_stat_total": 1526.0,
+"season_minutes_total": 2563.0,
+"prior10_mean_min": 33.3,
+"harness_p_count": 0.49469150799204453,
+"harness_A": 0.5089922084965346
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 94.0,
+"season_minutes_total": 1766.0,
+"prior10_mean_min": 22.9,
+"harness_p_count": 0.7044486834903507,
+"harness_A": 0.6590905835301257
+},
+{
+"stat": "PTS",
+"line": 8,
+"season_stat_total": 213.0,
+"season_minutes_total": 592.0,
+"prior10_mean_min": 20.2,
+"harness_p_count": 0.4171442678843626,
+"harness_A": 0.4459911947565115
+},
+{
+"stat": "REB",
+"line": 4,
+"season_stat_total": 323.0,
+"season_minutes_total": 2466.0,
+"prior10_mean_min": 34.4,
+"harness_p_count": 0.6586746419717,
+"harness_A": 0.6306348984012609
+},
+{
+"stat": "AST",
+"line": 6,
+"season_stat_total": 260.0,
+"season_minutes_total": 2011.0,
+"prior10_mean_min": 29.8,
+"harness_p_count": 0.19230852764942563,
+"harness_A": 0.21452817494236542
+},
+{
+"stat": "REB",
+"line": 3,
+"season_stat_total": 180.0,
+"season_minutes_total": 1428.0,
+"prior10_mean_min": 31.8,
+"harness_p_count": 0.7631254129444546,
+"harness_A": 0.7277392781796287
+},
+{
+"stat": "PTS",
+"line": 19,
+"season_stat_total": 1538.0,
+"season_minutes_total": 2435.0,
+"prior10_mean_min": 33.2,
+"harness_p_count": 0.5382169635365961,
+"harness_A": 0.544069971294626
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 154.0,
+"season_minutes_total": 1580.0,
+"prior10_mean_min": 27.6,
+"harness_p_count": 0.7495424466886247,
+"harness_A": 0.7087841406437109
+},
+{
+"stat": "AST",
+"line": 2,
+"season_stat_total": 28.0,
+"season_minutes_total": 550.0,
+"prior10_mean_min": 23.5,
+"harness_p_count": 0.33605803543917695,
+"harness_A": 0.3438588794755589
+},
+{
+"stat": "FG3M",
+"line": 4,
+"season_stat_total": 192.0,
+"season_minutes_total": 2161.0,
+"prior10_mean_min": 27.1,
+"harness_p_count": 0.22290357395784316,
+"harness_A": 0.2274045790846433
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 71.0,
+"season_minutes_total": 1364.0,
+"prior10_mean_min": 25.0,
+"harness_p_count": 0.7278276158284076,
+"harness_A": 0.6816843621863621
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 157.0,
+"season_minutes_total": 1724.0,
+"prior10_mean_min": 31.3,
+"harness_p_count": 0.5424744959546389,
+"harness_A": 0.50962863408954
+},
+{
+"stat": "PTS",
+"line": 8,
+"season_stat_total": 523.0,
+"season_minutes_total": 1754.0,
+"prior10_mean_min": 26.5,
+"harness_p_count": 0.47440396645117017,
+"harness_A": 0.49260097767499766
+},
+{
+"stat": "FG3M",
+"line": 1,
+"season_stat_total": 74.0,
+"season_minutes_total": 1769.0,
+"prior10_mean_min": 33.5,
+"harness_p_count": 0.7537373669943006,
+"harness_A": 0.7071426890287492
+},
+{
+"stat": "FG3M",
+"line": 3,
+"season_stat_total": 135.0,
+"season_minutes_total": 1909.0,
+"prior10_mean_min": 20.7,
+"harness_p_count": 0.18213630509280676,
+"harness_A": 0.19030455215487985
+},
+{
+"stat": "REB",
+"line": 6,
+"season_stat_total": 156.0,
+"season_minutes_total": 608.0,
+"prior10_mean_min": 23.8,
+"harness_p_count": 0.5712838543225177,
+"harness_A": 0.5525718454945556
+},
+{
+"stat": "PTS",
+"line": 10,
+"season_stat_total": 366.0,
+"season_minutes_total": 885.0,
+"prior10_mean_min": 20.6,
+"harness_p_count": 0.3626955045309555,
+"harness_A": 0.40086599814671514
+}
+]
+}
