@@ -41,3 +41,10 @@ def test_proven_class_rewards_uk_group_winner_over_au_class_one_winner():
     uk = HEADER + row(1, "Royal Ascot", "1/12", "CL1") + row(2, "Ascot", "2/10", "CL1")
     au = HEADER + row(1, "Kembla Grange", "1/12", "CL1") + row(2, "Ascot", "2/10", "CL1")
     assert horse_proven_class_level(uk) > horse_proven_class_level(au)
+
+
+def test_mostly_europe_needs_half_of_recent_runs():
+    assert overseas.mostly_europe(["goodwood", "ascot", "newbury", "caulfield"])
+    assert not overseas.mostly_europe(["caulfield", "flemington", "randwick", "goodwood"])
+    assert not overseas.mostly_europe(["sha tin", "sha tin", "happy valley"])   # 香港獎金高，唔替代
+    assert not overseas.mostly_europe([])

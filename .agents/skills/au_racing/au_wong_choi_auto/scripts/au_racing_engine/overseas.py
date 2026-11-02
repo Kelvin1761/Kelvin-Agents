@@ -15,6 +15,7 @@ Sportsbet 將英國、愛爾蘭、香港、法國嘅班次照當地寫法印 `CL
 """
 from __future__ import annotations
 
+import os
 import re
 
 OVERSEAS_VENUES = frozenset(v.lower() for v in (
@@ -59,3 +60,24 @@ def normalise_class(label, venue, horse_overseas):
         return label
     m = _CLASS_RE.search(str(label))
     return CLASS_EQUIVALENT[int(m.group(1))] if m else label
+
+
+# ── 近績質素分：英愛法往績為主嘅馬改用官方讓磅分推算（EXP-20261102-12，USER-ACCEPTED） ──
+# 近績質素分一半係「賽事獎金級別」。英愛法同級賽獎金結構上細過澳洲（Enfjaar Goodwood Group 3 $202k，
+# z 2.03；Kingswood Caulfield Stakes $1M，z 3.99），而 Sportsbet 嘅 `CL1` 分唔出 Group 1 定 Listed，
+# 所以呢啲馬嘅近績質素分冇得同澳洲馬比。官方讓磅分（Racing Australia 用同一把尺評外地馬）先係可比嘅證據。
+# 推算：近績質素 z = 0.43 × 場內評分 z（0.43 = 08-05 起 2,389 場場內 corr(近績質素分, 評分分) 平均；冇用賽果擬合）。
+# 即時回退：WC_AU_OVERSEAS_RATING_PROXY=0。
+RATING_PROXY_LIVE = os.environ.get("WC_AU_OVERSEAS_RATING_PROXY", "1") != "0"
+EUROPE_VENUES = OVERSEAS_VENUES - {"sha tin", "happy valley"}
+RATING_TO_FORM_QUALITY = 0.43
+EUROPE_SHARE = 0.5
+
+
+def mostly_europe(venues):
+    """最近正式往績（venues，新到舊）有一半或以上喺英愛法 → True。同名澳洲場地按 `is_overseas` 規則。"""
+    if not venues or not RATING_PROXY_LIVE:
+        return False
+    abroad = horse_has_overseas(venues)
+    europe = sum(1 for v in venues if v in EUROPE_VENUES or (abroad and v in AMBIGUOUS_VENUES))
+    return europe / len(venues) >= EUROPE_SHARE

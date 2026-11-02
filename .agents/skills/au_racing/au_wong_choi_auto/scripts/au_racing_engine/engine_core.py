@@ -789,7 +789,8 @@ class RacingEngine:
         feature_notes["form_quality_score"] = fq_note
         self.provenance["form_quality_score"] = fq_source
         self.evidence_state["form_quality_score"] = (
-            "observed" if fq_source == "form_quality_field_relative" else "fallback")
+            "observed" if fq_source == "form_quality_field_relative"
+            else "derived" if fq_source == "form_quality_overseas_rating_proxy" else "fallback")
 
         # Export the same precision consumed by the matrix. This makes a saved
         # feature vector replayable by ML/refit without hidden rounding drift.
@@ -4523,6 +4524,23 @@ class RacingEngine:
             f"{fq_note}今場 {today_trip}m 對上仗 {last_trip:.0f}m 大幅{change}"
             f"（≥{FORM_QUALITY_TRIP_CHANGE_M:.0f}m），近績參考價值打折 {FORM_QUALITY_TRIP_CHANGE_PEN:+.0f}。")
 
+    def _overseas_form_quality_proxy(self):
+        """英愛法往績為主 → 近績質素分改由官方讓磅分推算（`overseas.py`）；唔適用 → None。"""
+        venues = [_overseas.venue_name(e.get("venue")) for e in self._official_entries()[:6]]
+        if not _overseas.mostly_europe(venues):
+            return None
+        rating = self._horse_rating()
+        field = self._field_summary()
+        avg = parse_float(field.get("avg_rating"))
+        sd = parse_float(field.get("rating_stdev")) or 0.0
+        if rating is None or int(field.get("rated_count") or 0) < 3 or avg is None or sd < 0.5:
+            return None
+        z = _overseas.RATING_TO_FORM_QUALITY * (rating - avg) / sd
+        score = clip_score(60.0 + 20.0 * z)
+        self.form_quality_detail.update(z=round(z, 4), final=round(score, 2), overseas_rating_proxy=True)
+        return score, (f"最近往績以英愛法為主（獎金同班次標籤冇得同澳洲比），近績質素改由官方讓磅分 {rating:.0f}"
+                       f"（場均 {avg:.1f}）推算：0.43 × 場內評分 z → {score:.1f}。"), "form_quality_overseas_rating_proxy"
+
     def _merged_form_quality(self, feature_scores):
         """近績質素分：名次同賽事質素合併（EXP-20261016-06）。
 
@@ -4541,6 +4559,9 @@ class RacingEngine:
         self.form_quality_detail = {"raw": raw, "run_count": runs, "field_count": count,
                                     "field_mean": mean, "field_stdev": stdev,
                                     "runs": self.data.get("form_quality_runs") or []}
+        proxy = self._overseas_form_quality_proxy()
+        if proxy is not None:
+            return proxy
         if raw is None or runs < 2 or count < 3 or mean is None or stdev <= 0:
             self.form_quality_detail.update(final=round(composite, 2), fallback="form_and_quality_composite")
             return composite, (f"未有最少兩場完整往績（名次、出馬數、獎金），沿用近績分 {form:.1f} 同"
