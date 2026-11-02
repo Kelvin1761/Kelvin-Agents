@@ -623,12 +623,15 @@ def test_native_guard_pattern_uses_real_extended_regex(command, expected):
     assert (result.returncode == 0) == expected
 
 
-def test_actual_native_preflight_detects_owned_relative_x_process(tmp_path):
+@pytest.mark.parametrize("script_dir", [".", "folder with spaces"])
+def test_actual_native_preflight_detects_owned_relative_x_process(tmp_path, script_dir):
     # This is a harmless owned sleeper, never a real scheduler or launchd job.
     import time
-    sleeper = tmp_path / 'central_research_review.py'
+    folder = tmp_path / script_dir
+    folder.mkdir(exist_ok=True)
+    sleeper = folder / 'central_research_review.py'
     sleeper.write_text('import time\ntime.sleep(60)\n')
-    process = subprocess.Popen([sys.executable, '-X', 'dev', './' + sleeper.name], cwd=tmp_path)
+    process = subprocess.Popen([sys.executable, '-X', 'dev', './' + str(sleeper.relative_to(tmp_path))], cwd=tmp_path)
     try:
         time.sleep(0.1)
         assert process.poll() is None

@@ -15,6 +15,11 @@ TENNIS_PYTHON_BIN="${TENNIS_PYTHON_BIN:-$TENNIS_RUNTIME_ROOT/.venv/bin/python}"
 TENNIS_DB_POINTER="${WC_TENNIS_DB_POINTER:-$HOME/.wongchoi_tennis_db}"
 SNAPSHOT_STATE="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_snapshot_state.py"
 
+ACTIVE_RUN_GUARD="$PROJECT_ROOT/.agents/skills/shared_wong_choi/runtime_active_runs.py"
+runtime_active_guard() {
+  /usr/bin/python3 "$ACTIVE_RUN_GUARD"
+}
+
 # Pure rendering/status do not mutate runtime state. Every native snapshot,
 # install and restore holds the same exclusive lease through all descendants.
 if [ "${1:-}" != "--render-only" ] && [ "${1:-}" != "--status" ]; then
@@ -165,6 +170,7 @@ restore_runtime() {
     return 0
   fi
   changed_labels="$(wc_runtime_journal "$source" verify-recovery)" || return 1
+  runtime_active_guard || return 1
   restore_pointer "$source" || return 1
   mkdir -p "$AGENTS_DIR"
   # Unchanged labels may own an active domain run. Never stop them merely
@@ -357,6 +363,8 @@ else
     exit 1
   fi
 fi
+
+runtime_active_guard || exit $?
 
 # AU must already be on this checkout. This proves we can leave its bot loaded
 # while the approval command completes.
