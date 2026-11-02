@@ -37,8 +37,16 @@ def read_json(path: Path, default=None):
         return default
 
 
-def freeze_meeting(source: Path, destination: Path, *, meeting_name: str | None = None) -> tuple[str, int]:
-    """Only top-level publication inputs, never corpus/snapshots/cache trees."""
+def freeze_meeting(source: Path, destination: Path, *, meeting_name: str | None = None,
+                   live_extras: tuple[Path, ...] = ()) -> tuple[str, int]:
+    """Only top-level publication inputs, never corpus/snapshots/cache trees.
+
+    `live_extras` are display-only files taken from the live folder rather than
+    the immutable evidence snapshot: the timetable is written after analysis and
+    rewritten when a race is re-timed, so the snapshot never has it. Without it
+    every evening merge wiped the board's AU start times (2026-11-03: 16
+    meetings, every card 未有開跑時間, until the next morning run).
+    """
     if (source / ".analysis_pending").exists():
         raise ValueError(f"{source.name}: analysis validation is pending")
     match = re.search(r" Race 1-(\d+)$", meeting_name or source.name)
@@ -50,8 +58,14 @@ def freeze_meeting(source: Path, destination: Path, *, meeting_name: str | None 
                 if p.is_file() and not p.is_symlink()}
         if not expected or have != expected:
             raise ValueError(f"{source.name}: incomplete {suffix}: {sorted(have)}")
-    files = sorted(p for p in source.iterdir()
-                   if p.is_file() and not p.is_symlink() and p.suffix in COPY_SUFFIXES)
+    by_name = {p.name: p for p in source.iterdir()
+               if p.is_file() and not p.is_symlink() and p.suffix in COPY_SUFFIXES}
+    live_names = set()
+    for extra in live_extras:
+        if extra.is_file() and not extra.is_symlink() and extra.suffix in COPY_SUFFIXES:
+            by_name[extra.name] = extra
+            live_names.add(extra.name)
+    files = [by_name[name] for name in sorted(by_name)]
     size = sum(p.stat().st_size for p in files)
     if size > MAX_MEETING_BYTES:
         raise ValueError(f"{source.name}: publication inputs exceed 64 MiB")
@@ -62,7 +76,8 @@ def freeze_meeting(source: Path, destination: Path, *, meeting_name: str | None 
     actual_size = 0
     for path in files:
         content = path.read_bytes()
-        if path.name in expected_hashes and hashlib.sha256(content).hexdigest() != expected_hashes[path.name]:
+        if (path.name in expected_hashes and path.name not in live_names
+                and hashlib.sha256(content).hexdigest() != expected_hashes[path.name]):
             raise ValueError(f"{source.name}: immutable evidence hash changed: {path.name}")
         actual_size += len(content)
         if actual_size > MAX_MEETING_BYTES:
@@ -143,7 +158,9 @@ class ProgressivePublisher:
         started = time.monotonic()
         job_id = f"{len(self.queue['jobs']) + 1:04d}"
         target = self.root / "inputs" / job_id / folder.name
-        digest, copied = freeze_meeting(snapshot, target, meeting_name=folder.name)
+        digest, copied = freeze_meeting(
+            snapshot, target, meeting_name=folder.name,
+            live_extras=(folder / self.schedule.RACE_START_TIMES_FILE,))
         self.copy_seconds += time.monotonic() - started
         self.copy_bytes += copied
         self.queue["jobs"].append({"id": job_id, "meeting": folder.name,

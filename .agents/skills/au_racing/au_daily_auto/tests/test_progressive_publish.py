@@ -425,3 +425,49 @@ def test_parent_rejects_a_finished_result_that_omits_a_queued_meeting(tmp_path, 
     monkeypatch.setattr(publisher, '_start', lambda: None)
     result = publisher.finish()
     assert not result['complete'] and result['pending'] == [source.name]
+
+
+def test_live_timetable_is_frozen_with_the_evidence_snapshot(tmp_path):
+    """2026-11-03：快照冇 Race_Start_Times.json，晚更每次合併都洗走 dashboard 開跑時間。"""
+    import shutil
+    source = meeting(tmp_path)
+    evidence = tmp_path / 'prediction-snapshot'
+    shutil.copytree(source, evidence)
+    timetable = source / S.RACE_START_TIMES_FILE
+    timetable.write_text('{"races": {"1": 1793676300, "2": 1793680440}}')
+    (source / 'Race_1_Auto_Analysis.md').write_text('mutated after evidence registration')
+    target = tmp_path / 'frozen' / source.name
+    digest, _size = P.freeze_meeting(evidence, target, meeting_name=source.name,
+                                     live_extras=(timetable,))
+    assert (target / S.RACE_START_TIMES_FILE).read_text() == timetable.read_text()
+    assert (target / 'Race_1_Auto_Analysis.md').read_text() == 'original analysis'
+    assert digest == P.meeting_digest(target), 'publish_batch would reject the job'
+
+
+def test_missing_live_timetable_is_not_an_error(tmp_path):
+    source = meeting(tmp_path)
+    target = tmp_path / 'frozen' / source.name
+    P.freeze_meeting(source, target, live_extras=(source / S.RACE_START_TIMES_FILE,))
+    assert not (target / S.RACE_START_TIMES_FILE).exists()
+
+
+def test_submit_freezes_the_live_timetable(tmp_path, monkeypatch):
+    import shutil
+    source = meeting(tmp_path)
+    evidence = tmp_path / 'evidence' / source.name
+    shutil.copytree(source, evidence)
+    (source / S.RACE_START_TIMES_FILE).write_text('{"races": {"1": 1793676300}}')
+
+    def evidence_receipt(log, folders):
+        log.step("prediction-evidence", "ok", meetings=[
+            {"meeting": f.name, "snapshot": str(evidence)} for f in folders])
+        return True
+
+    monkeypatch.setattr(S, 'step_prediction_evidence', evidence_receipt)
+    log = S.RunLog('evening', S.date(2026, 11, 3), tmp_path / 'run.json', notify=False)
+    publisher = P.ProgressivePublisher(S, log, [])
+    monkeypatch.setattr(publisher, '_start', lambda: None)
+    publisher.submit(source)
+    frozen = Path(publisher.queue['jobs'][0]['folder'])
+    assert (frozen / S.RACE_START_TIMES_FILE).exists()
+    assert P.meeting_digest(frozen) == publisher.queue['jobs'][0]['digest']
