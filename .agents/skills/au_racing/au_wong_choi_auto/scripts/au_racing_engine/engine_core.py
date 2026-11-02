@@ -4224,8 +4224,18 @@ class RacingEngine:
 
     def _track_score(self):
         """場地分：見 `track_going`。呢度只砌說明。"""
-        score, same_parts, going_parts = _track.track_score(
-            self._same_track_stats(), self._going_stats(), self._today_going())
+        if _track.SPECIALISM_ARM in ("SP", "SPW"):
+            score, parts = _track.specialism_score(
+                self.data.get("track_stats_line"), self.data.get("going_stats_line"),
+                self.data.get("career_record_line"), self._today_going())
+            same_parts, going_parts = parts, []
+        else:
+            going_stats = self._going_stats()
+            if _track.SPECIALISM_ARM == "SPG":
+                s_, p_ = _track.going_record(self.data.get("going_stats_line"), "好地")
+                going_stats["好地"] = {"starts": s_, "wins": 0, "places": p_}
+            score, same_parts, going_parts = _track.track_score(
+                self._same_track_stats(), going_stats, self._today_going())
         notes = [text for _, text in same_parts]
         tdetail = {"base": 60.0, "final": None}
         self.track_detail = tdetail

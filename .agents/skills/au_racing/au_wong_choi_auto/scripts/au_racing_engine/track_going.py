@@ -22,12 +22,19 @@
 """
 from __future__ import annotations
 
+import os
 import re
 
 from .scoring import (TRACK_MICRO_WEIGHTS, WET_FORM_PRIOR, WET_FORM_SHRINK_A, _parse_going_segment, _parse_wet_record,
                       clip_score, wet_form_feature)
 
 NEUTRAL = 60.0
+
+# EXP-20261103-01（實驗中，預設關）：""＝現行；SPG＝好地日讀好地往績（現行規則）；
+# SP＝相對生涯專長；SPW＝SP＋剷濕地 overlay。常數預先登記，唔准睇結果改。
+SPECIALISM_ARM = os.environ.get("WC_AU_TRACK_SPECIALISM_ARM", "")
+SPEC_K, SPEC_P0, SPEC_SCALE = 4.0, 0.3715, 50.0
+_RECORD = re.compile(r"(\d+)\s*:\s*(\d+)-(\d+)-(\d+)")
 
 
 def wet_state(going):
@@ -82,6 +89,45 @@ def going_parts(going_stats, bucket):
     return []
 
 
+def record(text):
+    """`21 : 8-3-0` → (出賽, 上名)；讀唔到 → (0, 0)。"""
+    m = _RECORD.search(str(text or ""))
+    if not m:
+        return 0, 0
+    s, w, a, b = map(int, m.groups())
+    return s, w + a + b
+
+
+def going_record(going_stats_line, bucket):
+    """好地 = 第一段（冇標籤）；軟地／重地 = 有標籤嗰段。"""
+    line = str(going_stats_line or "")
+    if bucket == "好地":
+        return record(line.split("|", 1)[0])
+    m = re.search(rf"{bucket}:\s*([^|]+)", line)
+    return record(m.group(1)) if m else (0, 0)
+
+
+def specialism(rec, career_rate):
+    """相對生涯：(上名 + K·c)/(出賽 + K) − c；冇出賽 → 0。"""
+    starts, places = rec
+    return (places + SPEC_K * career_rate) / (starts + SPEC_K) - career_rate if starts else 0.0
+
+
+def specialism_score(track_stats_line, going_stats_line, career_record_line, going):
+    """EXP-20261103-01 SP：→ (分數, parts)。"""
+    cs, cp = record(career_record_line)
+    c = (cp + SPEC_K * SPEC_P0) / (cs + SPEC_K)
+    bucket = going_bucket(going)
+    same = record(str(track_stats_line or "").split("|", 1)[0])
+    today = going_record(going_stats_line, bucket)
+    parts = []
+    for label, rec in (("同場", same), (f"今日{bucket}", today)):
+        if rec[0]:
+            delta = SPEC_SCALE * specialism(rec, c)
+            parts.append((delta, f"{label} {rec[1]}／{rec[0]} 上名，對比生涯上名率 {c:.0%} → {delta:+.1f}"))
+    return clip_score(NEUTRAL + sum(d for d, _ in parts)), parts
+
+
 def track_score(same_stats, going_stats, going):
     """→ (分數, 同場 parts, 地況 parts)。"""
     st = same_track_parts(same_stats)
@@ -95,6 +141,8 @@ def track_score(same_stats, going_stats, going):
 
 
 def wet_overlay(going, going_stats_line):
+    if SPECIALISM_ARM == "SPW":
+        return 0.0
     return wet_form_feature(going, going_stats_line)
 
 
