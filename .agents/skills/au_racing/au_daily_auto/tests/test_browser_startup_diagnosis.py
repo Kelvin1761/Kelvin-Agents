@@ -33,3 +33,29 @@ def test_partial_run_diagnoses_startup_failure_from_structured_gate_steps(messag
 def test_ordinary_page_timeout_keeps_its_existing_diagnosis():
     match = D.primary_known_match("Page.goto: Timeout 90000ms exceeded")
     assert "個別頁面 hang 咗" in match[0]
+
+
+def test_odds_only_partial_is_a_known_pattern():
+    """2026-11-03 07:35：全部場次分析完，淨係 Sunshine Coast 未開盤 —— 以前報「新嘢，要人睇」。"""
+    run = {"mode": "evening", "review_day": "2026-11-02", "status": "partial",
+           "started_at": "2026-11-03T07:35:11+11:00", "errors": [], "warnings": [],
+           "meetings_processed": [{"meeting": "2026-11-03 Darwin Race 1-6",
+                                   "status": "skipped_already_analysed"}],
+           "steps": [{"step": "outcome", "status": "odds-degraded", "meetings": [],
+                      "display_issues": ["2026-11-03|Sunshine Coast R1: dashboard "
+                                         "win/place odds 0/7 runners"]},
+                     {"step": "outcome", "status": "partial",
+                      "detail": "下一次排程會接住做"}]}
+    with patch.object(D, "log_context", return_value=""):
+        report = D.diagnose(run, [run])
+    assert "對唔上任何已知模式" not in report
+    assert "賽前賠率未有" in report
+
+
+def test_odds_pattern_never_outranks_a_real_failure():
+    match = D.primary_known_match(
+        "開唔到真 Chrome（TimeoutError）\nRandwick R1: dashboard win/place odds 0/11 runners")
+    assert "Chrome／Playwright 啟動失敗" in match[0]
+    match = D.primary_known_match(
+        "ERR_NETWORK_CHANGED\nRandwick R1: dashboard win/place odds 0/11 runners")
+    assert "本機網絡斷咗" in match[0]

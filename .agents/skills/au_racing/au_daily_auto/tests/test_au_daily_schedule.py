@@ -125,6 +125,35 @@ class TestVenueMatch(unittest.TestCase):
         for slug in ("aquis_park_gold_coast_poly", "gold_coast_poly"):
             self.assertIsNone(S.match_venue(slug, ["Gold Coast"]))
 
+    def _plan(self, slug, venue, n):
+        return {"slug": slug, "venue": venue, "meetingId": slug,
+                "races": [str(i) for i in range(n)], "going": ""}
+
+    def test_two_slugs_on_one_venue_keep_the_exact_name(self):
+        """2026-11-03：sunshine_coast（7）同 sunshine_coast_poly（5）都配到 Sunshine Coast。"""
+        turf = self._plan("sunshine_coast", "Sunshine Coast", 7)
+        poly = self._plan("sunshine_coast_poly", "Sunshine Coast", 5)
+        other = self._plan("doomben", "Doomben", 10)
+        kept, dropped = S.drop_venue_collisions([poly, other, turf])
+        self.assertEqual(kept, [other, turf])
+        self.assertEqual(dropped, ["sunshine_coast_poly"])
+
+    def test_collision_without_exact_name_uses_api_race_count(self):
+        a = self._plan("kensington", "Randwick-Kensington", 8)
+        b = self._plan("kensington_x", "Randwick-Kensington", 6)
+        starts = {"Randwick-Kensington": {"races": {str(i): 0 for i in range(1, 9)}}}
+        kept, dropped = S.drop_venue_collisions([a, b], starts)
+        self.assertEqual(kept, [a])
+        self.assertEqual(dropped, ["kensington_x"])
+
+    def test_unresolvable_collision_drops_both(self):
+        """分唔開就唔揀 —— 之後 unclaimed 檢查會報呢個馬場冇分析。"""
+        a = self._plan("kensington", "Randwick-Kensington", 8)
+        b = self._plan("kensington_x", "Randwick-Kensington", 8)
+        kept, dropped = S.drop_venue_collisions([a, b])
+        self.assertEqual(kept, [])
+        self.assertEqual(dropped, ["kensington", "kensington_x"])
+
     def test_exact_and_abbreviated(self):
         self.assertEqual(S.match_venue("belmont", self.AU), "Belmont")
         # 索引頁用縮寫，API 出全名。

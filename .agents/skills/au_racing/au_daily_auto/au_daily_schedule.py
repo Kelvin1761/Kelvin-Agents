@@ -355,6 +355,37 @@ def _venue_key(name: str) -> str:
     return key
 
 
+def drop_venue_collisions(planned: list[dict],
+                          race_starts: dict[str, dict] | None = None
+                          ) -> tuple[list[dict], list[str]]:
+    """一個 API 馬場只可以有一張 card。回 (保留, 被剔走嘅 slug)。
+
+    ⚠️ 2026-11-03：索引頁有 `sunshine_coast`（7 場）同 `sunshine_coast_poly`
+    （5 場），API 淨係有 `Sunshine Coast`（7 場，冇 Poly）。前綴配對令兩個 slug
+    都變咗「Sunshine Coast」，共用同一個資料夾 —— 嗰晚 poly 排第二所以被當
+    「已分析」跳過；排第一就會將一張 Sportsbet 冇開嘅 5 場 card 寫入去。
+    揀法：名字完全對得上嘅優先，再睇場數同 API 對唔對得上；仲係分唔開就全部剔走
+    —— 配錯馬場比冇數據差。
+    """
+    groups: dict[str, list[dict]] = {}
+    for plan in planned:
+        groups.setdefault(plan["venue"], []).append(plan)
+    keep_ids: set[int] = set()
+    for venue, group in groups.items():
+        if len(group) == 1:
+            keep_ids.add(id(group[0]))
+            continue
+        pick = [p for p in group if _venue_key(p["slug"]) == _venue_key(venue)]
+        if len(pick) != 1:
+            n_api = len(((race_starts or {}).get(venue) or {}).get("races") or {})
+            pick = [p for p in group if n_api and len(p["races"]) == n_api]
+        if len(pick) == 1:
+            keep_ids.add(id(pick[0]))
+    kept = [p for p in planned if id(p) in keep_ids]
+    dropped = [p["slug"] for p in planned if id(p) not in keep_ids]
+    return kept, dropped
+
+
 def match_venue(slug: str, api_venues: list[str]) -> str | None:
     """索引頁嘅 slug → API 個馬場名。配唔到回 None。
 
@@ -1928,6 +1959,10 @@ def step_analyse_next_day(runlog: RunLog, review_day: date, *,
         planned.append({"slug": slug, "venue": match,
                         "meetingId": meta["meetingId"], "races": meta["races"],
                         "going": normalise_going(api_venues[match].get("going"))})
+    planned, collided = drop_venue_collisions(planned, race_starts)
+    if collided:
+        runlog.step("discover", "duplicate-venue-dropped", meetings=collided,
+                    reason="兩個索引頁 slug 配到同一個 API 馬場；留低名同場數對得上嗰個")
     if excluded:
         runlog.step("discover", "non-au-excluded", meetings=excluded,
                     reason="API 澳洲名單冇呢啲馬場")

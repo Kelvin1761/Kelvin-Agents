@@ -97,6 +97,13 @@ KNOWN = [
      "賽果未出，或者場次腰斷",
      "腰斷偵測睇馬匹往績有冇當日出賽；兩日上限兜底",
      None),
+    # ⚠️ 排最尾：分析同發佈都做完，淨係賠率未有。2026-11-03 07:35 晚更報「對唔上
+    # 任何已知模式」，其實係 Sunshine Coast 七場 Sportsbet 自己仲係 PENDING（未開盤），
+    # 其他場次全部 PRICED。outcome step 以前唔喺 haystack 入面，所以配唔到。
+    (r"dashboard win/place odds 0/|odds-degraded",
+     "賽前賠率未有（多數係 Sportsbet 未開盤），分析同發佈已經完成",
+     "早更會再影賠率；開跑前一個鐘仍然冇價先要查 sportsbetform 賠率",
+     None),
 ]
 
 
@@ -203,7 +210,10 @@ def diagnose(run: dict, history: list[dict]) -> str:
            for m in (run.get("meetings_processed") or [])]
         + [f"{s.get('where') or ''} {s.get('stop_reason') or ''} {s.get('network_reason') or ''}"
            f" {s.get('launch_reason') or ''}"
-           for s in steps if s.get("step") in {"site-gate", "local-gate", "browser"}])
+           for s in steps if s.get("step") in {"site-gate", "local-gate", "browser"}]
+        + [f"{s.get('status')} {' '.join(map(str, s.get('display_issues') or []))}"
+           f" {' '.join(map(str, s.get('meetings') or []))}"
+           for s in steps if s.get("step") == "outcome"])
     haystack = error_haystack if errs else fallback_haystack
     matched = primary_known_match(haystack)
     same_needle = msg[:40]
