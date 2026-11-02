@@ -67,13 +67,15 @@ Mac 內置碟淨 ~15GB。2026-10-12 一個 AU 消融實驗喺 `/private/tmp` 抄
   （`.agents/scripts/compress_data_root.py`）。路徑、內容、mtime 唔變，讀檔照讀；
   `du` 睇到嘅係壓縮後大細，`st_size` 照舊。**唔好用 symlink 將資料根或
   `_prediction_snapshots` 搬去外置碟** —— 拔碟 = 靜靜讀空。
-- AU `Archive/` 入面 14 日以上嘅 `_prediction_snapshots`，每晚會搬去
-  `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/prediction-snapshots/`
+- 14 日以上嘅場次快照（AU `Archive/<場次>/_prediction_snapshots`、HKJC
+  `<場次>/Prediction_Snapshots`）每晚會搬去
+  `/Volumes/Kelvin Hardisk 1/WongChoi-Archive/prediction-snapshots/<au|hkjc>/`
   （`.agents/scripts/offload_prediction_snapshots.py`），場次留低
-  `_prediction_snapshots.offloaded.json` 做標記。**讀快照一律經
-  `wongchoi_paths.prediction_snapshot_dir(meeting)`**：本機冇就跟標記去外置碟，
-  碟冇插就拋 `SnapshotArchiveOffline`。自己 `meeting / "_prediction_snapshots"` 會
-  睇到空資料夾 —— `test_offload_prediction_snapshots.py` 會攔。要攞返一個場次：`--restore <場次名>`。
+  `<快照資料夾>.offloaded.json` 做標記。**讀快照一律經
+  `wongchoi_paths.prediction_snapshot_dir(meeting, name)`**：本機冇就跟標記去外置碟，
+  碟冇插就拋 `SnapshotArchiveOffline`；研究覆核嘅證據路徑亦跟同一個標記。自己
+  `meeting / "Prediction_Snapshots"` 會睇到空資料夾 —— `test_offload_prediction_snapshots.py`
+  會攔。要攞返一個場次：`--restore <場次名>`（同名就加 `--platform`）。
 
 ### commit 同 push
 

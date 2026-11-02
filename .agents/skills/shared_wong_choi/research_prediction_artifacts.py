@@ -1,7 +1,9 @@
 """Read-only resolution of immutable prediction bundles after meeting relocation.
 
 An explicit relocation root may recover an artifact only at
-``ROOT / event_id / <original path below the event folder>``. There is no
+``ROOT / event_id / <original path below the event folder>``, and a snapshot
+folder moved to the archive disk is found only through the offload marker
+left in its meeting (``wongchoi_paths.prediction_snapshot_dir``). There is no
 basename/hash search and no source repair. Bundle integrity is a prerequisite,
 not point-in-time feature provenance, a settled sample, or model authority.
 """
@@ -12,6 +14,7 @@ import json
 import os
 import re
 import stat
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Callable
@@ -20,6 +23,13 @@ from urllib.parse import quote, unquote
 from .contracts import Domain
 from .evidence import ArtifactRef, EvidenceRecord, RecordKind
 from .research_index import _Reader, _at, _encoded, _hash, _hashed, _safe
+
+_REPO = Path(__file__).resolve().parents[3]
+if str(_REPO) not in sys.path:
+    sys.path.append(str(_REPO))
+from wongchoi_paths import SnapshotArchiveOffline, prediction_snapshot_dir  # noqa: E402
+
+SNAPSHOT_FOLDERS = ("_prediction_snapshots", "Prediction_Snapshots")
 
 
 SCHEMA = "wong-choi-prediction-artifact-resolution/v1"
@@ -126,6 +136,22 @@ def _relative_candidate(original: Path, event_id: str, relocation_root: Path) ->
     return _safe(relocation_root / event_id / Path(*suffix))
 
 
+def _offloaded_candidate(original: Path) -> Path | None:
+    """The same file inside an offloaded snapshot folder, or None."""
+    positions = [index for index, part in enumerate(original.parts) if part in SNAPSHOT_FOLDERS]
+    if len(positions) != 1:
+        return None
+    index = positions[0]
+    meeting, name = Path(*original.parts[:index]), original.parts[index]
+    try:
+        folder = prediction_snapshot_dir(meeting, name)
+    except SnapshotArchiveOffline:
+        return None
+    if folder == meeting / name:
+        return None
+    return _safe(folder / Path(*original.parts[index + 1:]))
+
+
 def _attempt(refs: tuple[ArtifactRef, ...], paths: tuple[Path | None, ...],
              status: str, blobs: _Blobs) -> tuple[list[tuple], int, int]:
     resolved, valid, invalid = [], 0, 0
@@ -157,6 +183,13 @@ def _resolve_bundle(refs: tuple[ArtifactRef, ...], event_id: str,
     best, best_valid, direct_invalid = _attempt(refs, originals, "direct", blobs)
     if best_valid == len(refs):
         return best, direct_invalid
+    paths = tuple(_offloaded_candidate(path) for path in originals)
+    if any(paths):
+        candidate, valid, _invalid = _attempt(refs, paths, "relocated", blobs)
+        if valid == len(refs):
+            return candidate, direct_invalid
+        if valid > best_valid:
+            best, best_valid = candidate, valid
     for root in roots:
         paths = tuple(_relative_candidate(path, event_id, root) for path in originals)
         candidate, valid, _invalid = _attempt(refs, paths, "relocated", blobs)
