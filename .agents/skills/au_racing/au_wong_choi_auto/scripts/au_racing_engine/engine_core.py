@@ -17,6 +17,7 @@ from . import pit as _pit
 from . import speed as _speed
 from . import class_rating as _class
 from . import draw as _draw
+from . import track_going as _track
 from .dimensions import DIMENSION_SPECS, RATING_SCORE_SHARE
 
 from .matrix_mapper import (
@@ -49,7 +50,6 @@ from .scoring import (
     CONSISTENCY_MICRO_WEIGHTS,
     SECTIONAL_MICRO_WEIGHTS,
     TRIAL_MICRO_WEIGHTS,
-    TRACK_MICRO_WEIGHTS,
     FIT_MICRO_WEIGHTS,
     PROVEN_CLASS_DECAY,
     PROVEN_CLASS_Z_WEIGHT,
@@ -62,7 +62,6 @@ from .scoring import (
     parse_record_line,
     parse_recent_finishes,
     safe_ratio,
-    wet_form_feature,
 )
 
 TRACK_RESOURCE_DIR = Path(__file__).resolve().parents[3] / "au_horse_analyst" / "resources"
@@ -806,7 +805,7 @@ class RacingEngine:
         # Wet-form going-suitability feature: 0 on dry going, folded into ability on
         # Soft/Heavy. base_7d_score stays pure 7D; 綜合戰力分 (ability_score) becomes
         # wet-aware on wet tracks. Walk-forward validated (Soft box-trifecta +2.2pp OOS).
-        wet_form_feat = wet_form_feature(self._today_going(), self.data.get("going_stats_line"))
+        wet_form_feat = _track.wet_overlay(self._today_going(), self.data.get("going_stats_line"))
         class_proof_feat, class_proof_detail = self._proven_class_feature()
         base_ability = round(pure_7d_score + wet_form_feat + class_proof_feat, 4)
         full_time_detail = self.horse_data.get("full_time_speed") or {}
@@ -3377,19 +3376,7 @@ class RacingEngine:
         return normalise_synthetic_going(venue, going)
 
     def _wet_state(self):
-        going = self._today_going()
-        number_match = re.search(r"(Soft|Heavy)\s*([0-9]+)", going, re.I)
-        if not number_match:
-            return ""
-        kind = number_match.group(1).lower()
-        level = int(number_match.group(2))
-        if kind == "heavy":
-            return "heavy"
-        if level >= 7:
-            return "soft7plus"
-        if level >= 5:
-            return "soft56"
-        return ""
+        return _track.wet_state(self._today_going())
 
     def _track_context(self):
         if self._track_context_cache is not None:
@@ -4226,54 +4213,24 @@ class RacingEngine:
         return score, f"{note_text}，路程分 {clip_score(score):.1f}。", "engine_line+target_distance_line+sectional_trend+record_table"
 
     def _track_score(self):
-        track_stats = self._same_track_stats()
-        going_stats = self._going_stats()
-        track_context = self._track_context()
-        wet_state = self._wet_state()
-        going_bucket = track_context.get("going_bucket", "")
-
-        w = TRACK_MICRO_WEIGHTS
-        score = w.get("base", 60.0)
-        notes = []
-        tdetail = {"base": round(float(score), 1), "final": None}
+        """場地分：見 `track_going`。呢度只砌說明。"""
+        score, same_parts, going_parts = _track.track_score(
+            self._same_track_stats(), self._going_stats(), self._today_going())
+        notes = [text for _, text in same_parts]
+        tdetail = {"base": 60.0, "final": None}
         self.track_detail = tdetail
+        if going_parts:
+            total = sum(d for d, _ in going_parts)
+            sign = "＋" if total >= 0 else "−"
+            notes.append(f"地況適應：{'、'.join(text for _, text in going_parts)}（合計 {sign}{abs(total):.1f}）")
+            tdetail["going_adjustment"] = round(total, 2)
+            texts = {text for _, text in going_parts}
+            if "重地曾奪冠" in texts:
+                self.reason_codes.append("proven_heavy_specialist")
+            if "重地多戰全無表現" in texts:
+                self.risk_flags.append("poor_heavy_performance")
 
-        if track_stats["places"] > 0:
-            score += min(9, track_stats["places"] * w.get("same_track_place_bonus", 3.0) + track_stats["wins"] * w.get("same_track_win_bonus", 2.0))
-            notes.append("同場有實際上名支持")
-        elif track_stats["starts"] >= 2 and track_stats["places"] == 0:
-            score += w.get("same_track_poor_pen1", -3.0)
-            notes.append("同場已有多次出賽但仍未交到成績")
-        elif track_stats["starts"] > 0 and track_stats["places"] == 0:
-            # 2026-08-02：試過加重呢個罰分（−0.81 → −2.0 / −3.0 / −4.5）。
-            # cohort 實測的確話「1 戰零上名」超額 −2.6 而唔係 −0.81 應有嘅輕微，
-            # 但 A/B **全部唔過關**：holdout 三檔都係逐項 0.00，dev 喺 −3.0/−4.5
-            # 見 pass1 −0.66/−0.50、winT3 −0.50/−0.33、mrr −0.27/−0.28。
-            # 即係嗰 −2.6 已經由其他 leaf（近績、穩定性）講咗，喺呢度再罰一次
-            # 係重複計算。保留 −0.81。
-            score += w.get("same_track_poor_pen2", -2.0)
-            notes.append("有同場出賽紀錄但仍未交到成績")
-
-        # 去重實驗（2026-09-01，env-gated）：`track_score` 同濕地 overlay
-        # （`wet_form_feature`）嘅場內 z 相關 **ρ = +0.3066** —— 佢同任何嘢嘅相關
-        # 都冇咁高。下面兩個區塊（going 往績 + 濕地專項）同 overlay 量緊同一樣嘢。
-        # `WC_TRACK_NO_GOING=1` 只保留同場往績，把場地狀況判斷完全交俾 overlay。
-        #
-        # ⚠️ **實測 REJECT（2026-09-01，1,804 場）。** 去重確實有效
-        # （ρ 0.3067 → 0.1064），但 `track_score` 自己嘅 AUC **跌** 0.5434 → 0.5375，
-        # 而 gold terminal −0.0038（原 gain）／−0.0057（重算 gain）。即係 going 部分
-        # 雖然同 overlay 相關，但**帶真訊號**，唔係純重複。flag 保留只為將來重測
-        # （語料長大之後），**唔應該開**。
-        _skip_going = os.environ.get("WC_TRACK_NO_GOING") == "1"
-        if not _skip_going:
-            going_parts, going_note = self._going_adjustment(going_stats, going_bucket, wet_state)
-            for going_delta, _text in going_parts:   # 逐項加，次序同以前一樣 → 逐位元相同
-                score += going_delta
-            if going_note:
-                notes.append(going_note)
-                tdetail["going_adjustment"] = round(sum(d for d, _ in going_parts), 2)
-
-        # 場地／地狀往績記錄行先（用戶要求）：一眼睇到同場、好/軟/重地實績
+        # 場地／地狀往績記錄行先：一眼睇到同場、好/軟/重地實績
         rec_bits = []
         same = re.match(r"\s*(\d+:\d+-\d+-\d+)", str(self.data.get("track_stats_line") or ""))
         if same and same.group(1) != "0:0-0-0":
@@ -4287,55 +4244,10 @@ class RacingEngine:
             if mm and mm.group(1) != "0:0-0-0":
                 rec_bits.append(f"{lab} {mm.group(1)}")
         rec_prefix = ("；".join(rec_bits) + "；") if rec_bits else ""
-        tdetail["final"] = round(clip_score(score), 2)
+        tdetail["final"] = round(score, 2)
         tdetail["notes"] = ([f"往績 {' / '.join(rec_bits)}"] if rec_bits else []) + list(notes)
         body = f"{rec_prefix}{'；'.join(notes) if notes else '場地資料未見鮮明優劣'}"
-        return clip_score(score), f"{body}。場地分 {clip_score(score):.1f}。", "track_stats+going_stats+wet_track"
-
-    def _going_adjustment(self, going_stats, going_bucket, wet_state):
-        """地況／濕地適應：**一個**調整、**一句**說明（EXP-20261016-72 A，用戶 2026-10-16 要求集中）。
-
-        以前分兩處計：② 今場地況往績（上名加分／0 上名扣分）同 ③ 爛地專項（未驗證 −6.4、
-        重地曾贏／曾上名／多戰 0 上名）。用戶接受各項分數，但要同一份證據喺同一處扣。
-        各項數值同次序完全唔變（逐匹逐位元相同），只係合併成一個總數同一句說明。
-        → (parts, note)：parts = [(delta, 說明)]，由 caller 逐項加；冇觸發 → ([], "")。
-        """
-        w = TRACK_MICRO_WEIGHTS
-        sample = going_stats.get(going_bucket, {})
-        wet_bucket = going_bucket in {"軟地", "重地"}
-        parts = []   # (delta, 說明)
-
-        if sample.get("starts", 0) > 0 and sample.get("places", 0) > 0:
-            parts.append((min(10, sample["places"] * w.get("going_place_bonus", 3.0)),
-                          f"{going_bucket}有上名（{sample['places']}／{sample['starts']}）"))
-            if sample.get("wins", 0) > 0 and wet_bucket:
-                parts.append((w.get("going_win_bonus", 2.0), f"{going_bucket}曾贏"))
-        elif sample.get("starts", 0) >= 2 and sample.get("places", 0) == 0:
-            parts.append((w.get("going_poor_pen1_wet", -5.0) if wet_bucket else w.get("going_poor_pen1_dry", -4.0),
-                          f"{going_bucket} {sample['starts']} 戰未有前列"))
-        elif sample.get("starts", 0) > 0 and sample.get("places", 0) == 0:
-            parts.append((w.get("going_poor_pen2_wet", -4.0) if wet_bucket else w.get("going_poor_pen2_dry", -3.0),
-                          f"{going_bucket} 1 戰未有成績"))
-
-        if wet_state in {"soft7plus", "heavy"}:
-            if not self._has_verified_wet_place():
-                parts.append((w.get("wet_unverified_pen", -5.0), "爛地實績未經驗證"))
-            elif wet_state == "heavy":
-                heavy_stats = going_stats.get("重地", {})
-                if heavy_stats.get("wins", 0) > 0:
-                    parts.append((w.get("heavy_win_bonus", 3.0), "重地曾奪冠"))
-                    self.reason_codes.append("proven_heavy_specialist")
-                elif heavy_stats.get("places", 0) > 0:
-                    parts.append((w.get("heavy_place_bonus", 2.0), "具備重地作戰能力"))
-                elif heavy_stats.get("starts", 0) >= 2 and heavy_stats.get("places", 0) == 0:
-                    parts.append((w.get("heavy_poor_pen", -3.0), "重地多戰全無表現"))
-                    self.risk_flags.append("poor_heavy_performance")
-
-        if not parts:
-            return [], ""
-        total = sum(d for d, _ in parts)
-        sign = "＋" if total >= 0 else "−"
-        return parts, f"地況適應：{'、'.join(text for _, text in parts)}（合計 {sign}{abs(total):.1f}）"
+        return score, f"{body}。場地分 {score:.1f}。", "track_stats+going_stats+wet_track"
 
     def _formline_future_wins(self):
         rows = self._formline_rows()

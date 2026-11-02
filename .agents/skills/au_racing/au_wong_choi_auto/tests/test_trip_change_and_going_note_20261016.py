@@ -35,6 +35,8 @@ def test_no_runs_no_change():
 def test_wet_adjustments_reported_once_with_same_total():
     line = "好地: 3:1-0-0 | 軟地: 2:0-0-0 | 重地: 0:0-0-0"
     eng = engine(going="Soft 7", going_line=line)
-    parts, note = eng._going_adjustment(eng._going_stats(), "軟地", "soft7plus")
+    from au_racing_engine import track_going
+    parts = track_going.going_parts(eng._going_stats(), "軟地", "soft7plus")
     assert [d for d, _ in parts] == [W["going_poor_pen1_wet"], W["wet_unverified_pen"]]
+    _score, note, _src = eng._track_score()
     assert note.count("地況適應") == 1 and "爛地實績未經驗證" in note
