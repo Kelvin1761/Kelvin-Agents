@@ -3591,6 +3591,19 @@ function openTimelineRace(meetingIndex, raceNumber) {
   showRace(raceNumber);
 }
 
+// 睇直播: a plain https link to the Sportsbet race page (Sky Racing streams
+// there for account holders). On a phone with the Sportsbet app it opens the
+// app (universal links), so it must stay a real <a> the user taps — not
+// window.location — and must not bubble into the row's own click.
+function raceWatchLink(race, label = '') {
+  const w = race && race.watch;
+  if (!w || !/^https:\/\/www\.sportsbet\.com\.au\//.test(w.url || '') || race.abandoned) return '';
+  const channel = w.sky ? `Sky ${esc(w.sky)}` : '直播';
+  return `<a class="watch-btn" href="${esc(w.url)}" target="_blank" rel="noopener noreferrer"
+      title="去 Sportsbet 睇直播（手機有 app 會直接開 app）" aria-label="Sportsbet 直播 ${channel}"
+      onclick="event.stopPropagation()" onkeydown="event.stopPropagation()">▶ ${label ? `${label} · ` : ''}${channel}</a>`;
+}
+
 function renderTimelineRow(row, now, isNext) {
   const { meeting: m, race } = row;
   const i = DASHBOARD_DATA.meetings.indexOf(m);
@@ -3611,7 +3624,7 @@ function renderTimelineRow(row, now, isNext) {
         <span class="tl-state">${esc(m.state || '')}</span></div>
       <div class="tl-sub">${[race.distance, race.race_class].filter(Boolean).map(esc).join(' · ')}${race.horses_count ? ` · ${race.horses_count} 匹` : ''}</div>
     </div>
-    ${sub ? `<span class="tl-count">${sub}</span>` : ''}
+    <div class="tl-side">${sub ? `<span class="tl-count">${sub}</span>` : ''}${past ? '' : raceWatchLink(race)}</div>
   </div>${bets}</div>`;
 }
 
@@ -3775,6 +3788,7 @@ function renderRaceDetail() {
     <div>
       <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;margin-bottom:4px">🏇 Race ${raceNum}${analysis.race_name ? `<span style="font-size:1rem;font-weight:600;color:#475569;margin-left:12px">${esc(analysis.race_name)}</span>` : ''}</h1>
       <div style="font-size:0.8rem;color:#64748B;line-height:1.6">${[analysis.distance, analysis.race_class, analysis.track || analysis.venue, analysis.going].filter(Boolean).map(esc).join(' · ')}</div>
+      ${raceWatchLink(analysis, '睇直播') ? `<div style="margin-top:8px">${raceWatchLink(analysis, '睇直播')}</div>` : ''}
     </div>`;
 
   // View mode tabs — only show if both analysts have data for THIS race

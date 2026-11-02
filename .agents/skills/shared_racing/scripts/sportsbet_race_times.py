@@ -6,7 +6,13 @@ The dashboard shows jump times, countdowns and greys out races that have run
 `Race_Start_Times.json` into the meeting folder:
 
     {"source": "sportsbet-allracing", "venue": ..., "fetched_at": ...,
-     "races": {"1": <epoch>, ...}, "abandoned": [3, ...]}
+     "races": {"1": <epoch>, ...}, "abandoned": [3, ...],
+     "events": {"1": {"id": <Sportsbet event id>, "sky": "1"}, ...}}
+
+`events` feeds the dashboard's 睇直播 link: the Sportsbet race page opens by
+event id alone (venue slug and region segment are ignored) and, on a phone
+with the Sportsbet app, the https link opens the app (universal links).
+`sky` is the Sky Racing channel AllRacing lists for that race, when it does.
 
 AllRacing lists every meeting of a date, Australian and international (Happy
 Valley / Sha Tin included), on `www.sportsbet.com.au`, which has never blocked
@@ -45,16 +51,28 @@ def horse_meetings(payload: dict, *, region: str | None = None):
                     yield meeting
 
 
+def _sky_channel(event: dict) -> str | None:
+    live = ((event.get("streaming") or {}).get("liveStream") or {})
+    channel = str(live.get("channel") or "").strip()
+    return channel if str(live.get("provider") or "").lower() == "sky" and channel else None
+
+
 def race_times_by_venue(meetings) -> dict[str, dict]:
-    """→ {venue: {"races": {"1": epoch}, "abandoned": [3]}}."""
+    """→ {venue: {"races": {"1": epoch}, "abandoned": [3], "events": {"1": {...}}}}."""
     out: dict[str, dict] = {}
     for meeting in meetings:
-        slot = out.setdefault(str(meeting["name"]).strip(), {"races": {}, "abandoned": []})
+        slot = out.setdefault(str(meeting["name"]).strip(),
+                              {"races": {}, "abandoned": [], "events": {}})
         for event in meeting.get("events") or []:
             try:
                 number = int(event.get("raceNumber"))
             except (TypeError, ValueError):
                 continue
+            try:
+                slot["events"][str(number)] = {"id": int(event.get("id")),
+                                               "sky": _sky_channel(event)}
+            except (TypeError, ValueError):
+                pass
             if str(event.get("statusCode") or "") == "B":
                 slot["abandoned"].append(number)
                 continue
@@ -79,11 +97,14 @@ def write_race_start_times(folder: Path | None, venue: str, found: dict | None,
     body = {"source": "sportsbet-allracing", "venue": venue,
             "fetched_at": datetime.now().astimezone().isoformat(timespec="seconds"),
             "races": dict(sorted(found["races"].items(), key=lambda kv: int(kv[0]))),
-            "abandoned": sorted(found.get("abandoned") or [])}
+            "abandoned": sorted(found.get("abandoned") or []),
+            "events": dict(sorted((found.get("events") or {}).items(),
+                                  key=lambda kv: int(kv[0])))}
     path = Path(folder) / RACE_START_TIMES_FILE
     try:
         old = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
-        if (old.get("races"), old.get("abandoned")) == (body["races"], body["abandoned"]):
+        if ((old.get("races"), old.get("abandoned"), old.get("events") or {})
+                == (body["races"], body["abandoned"], body["events"])):
             return True                     # unchanged: keep the folder mtime still
         tmp = path.with_suffix(".tmp")
         tmp.write_text(json.dumps(body, ensure_ascii=False, indent=1), encoding="utf-8")

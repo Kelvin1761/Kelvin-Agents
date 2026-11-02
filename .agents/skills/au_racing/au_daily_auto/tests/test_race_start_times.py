@@ -58,10 +58,10 @@ class RaceStartTimesTests(unittest.TestCase):
     def test_every_race_start_and_every_abandoned_race_is_kept(self):
         starts = S.au_race_start_times(self.payload)
         self.assertEqual(starts["Randwick"], {"races": {"1": 1793409000, "2": 1793411100},
-                                              "abandoned": []})
+                                              "abandoned": [], "events": {}})
         self.assertEqual(starts["Traralgon"]["races"], {"1": 1793412960})
         self.assertEqual(starts["Traralgon"]["abandoned"], [4, 5])
-        self.assertEqual(starts["Yeppoon"], {"races": {}, "abandoned": [1]})
+        self.assertEqual(starts["Yeppoon"], {"races": {}, "abandoned": [1], "events": {}})
         # NZ and greyhound meetings never reach the AU timeline.
         self.assertEqual(set(starts), {"Randwick", "Traralgon", "Yeppoon"})
 
@@ -146,6 +146,38 @@ class RaceStartTimesTests(unittest.TestCase):
             self.assertEqual(len(changed), 2)                          # both go back on the board
             self.assertEqual(log.last_step[1]["missing"], ["2026-11-01 Bendigo Race 1-7"])
             self.assertEqual(len(log.warnings), 1)                     # the unmatched one is reported
+
+
+class WatchLiveEventTests(unittest.TestCase):
+    """睇直播掣：Sportsbet race page 只靠 event id 開，Sky 頻道由 AllRacing 逐場列。"""
+
+    def _event(self, number, event_id, channel=None, provider="sky"):
+        out = {"raceNumber": number, "startTime": 1793672940, "statusCode": "O",
+               "id": event_id}
+        if channel is not None:
+            out["streaming"] = {"liveStream": {"provider": provider, "channel": channel}}
+        return out
+
+    def test_event_id_and_sky_channel_are_kept(self):
+        payload = allracing(meeting("Sunshine Coast", [
+            self._event(1, 11113186, "1"), self._event(2, 11113187, "2"),
+            self._event(3, 11113188), self._event(4, 11113189, "1", provider="other")]))
+        events = S.au_race_start_times(payload)["Sunshine Coast"]["events"]
+        self.assertEqual(events["1"], {"id": 11113186, "sky": "1"})
+        self.assertEqual(events["2"], {"id": 11113187, "sky": "2"})
+        self.assertEqual(events["3"], {"id": 11113188, "sky": None})   # no stream listed
+        self.assertEqual(events["4"]["sky"], None)                     # not a Sky stream
+
+    def test_new_events_rewrite_an_otherwise_unchanged_timetable(self):
+        """Folders written before this change must gain events on the next run."""
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / S.RACE_START_TIMES_FILE
+            path.write_text(json.dumps({"races": {"1": 1793672940}, "abandoned": []}))
+            found = {"races": {"1": 1793672940}, "abandoned": [],
+                     "events": {"1": {"id": 11113186, "sky": "1"}}}
+            from sportsbet_race_times import write_race_start_times
+            self.assertTrue(write_race_start_times(Path(tmp), "Sunshine Coast", found))
+            self.assertEqual(json.loads(path.read_text())["events"]["1"]["id"], 11113186)
 
 
 if __name__ == "__main__":

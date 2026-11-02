@@ -2466,3 +2466,23 @@ test("racing tabs reload onto a new snapshot only when nothing is in flight", ()
   api.setVisibilityForTest("hidden");
   assert.equal(api.racingShouldAutoRefresh("v2"), false);
 });
+
+test("timeline 睇直播 links to the Sportsbet race page, only for races still to run", () => {
+  const data = auData();
+  const watch = (id, sky) => ({url: `https://www.sportsbet.com.au/horse-racing/australia-nz/x/race-1-${id}`, sky});
+  data.races["2026-10-31|Flemington"].races_by_analyst.Kelvin[0].watch = watch(111, "1");
+  data.races["2026-10-31|Newcastle"].races_by_analyst.Kelvin[0].watch = watch(222, null);
+  data.races["2026-10-31|Dubbo"].races_by_analyst.Kelvin[0].watch = watch(333, "2");     // already run
+  data.races["2026-10-31|Randwick"].races_by_analyst.Kelvin[0].watch =
+    {url: "https://evil.example/stream.m3u8", sky: "1"};                                 // never an arbitrary host
+  const api = loadTemplateFunctions(data);
+  api.setNowForTest(T0 * 1000);
+  api.setActiveRegionForTest("au");
+  api.toggleTimelinePast();
+  const html = api.renderTimeline();
+  assert.match(html, /<a class="watch-btn" href="https:\/\/www\.sportsbet\.com\.au\/[^"]*race-1-111" target="_blank" rel="noopener noreferrer"[\s\S]*?▶ Sky 1<\/a>/);
+  assert.match(html, /race-1-222"[\s\S]*?▶ 直播<\/a>/);
+  assert.doesNotMatch(html, /race-1-333/);
+  assert.doesNotMatch(html, /evil\.example/);
+  assert.match(html, /onclick="event\.stopPropagation\(\)"/);   // tapping it never opens the race row
+});

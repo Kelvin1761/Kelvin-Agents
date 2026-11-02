@@ -81,6 +81,17 @@ class MeetingContextTests(unittest.TestCase):
         # No timetable entry and not abandoned: stale values from a base snapshot go.
         self.assertEqual(races[2], {"race_number": 5})
 
+    def test_watch_link_opens_the_sportsbet_race_page_by_event_id(self):
+        meeting_data, races = self._attach({
+            "venue": "Traralgon", "races": {"1": 1793412960, "5": 1793420000}, "abandoned": [4],
+            "events": {"1": {"id": 11113186, "sky": "1"}, "4": {"id": 11113189, "sky": "2"},
+                       "5": {"id": 11113190, "sky": None}}})
+        self.assertEqual(races[0]["watch"], {
+            "url": "https://www.sportsbet.com.au/horse-racing/australia-nz/traralgon/race-1-11113186",
+            "sky": "1"})
+        self.assertNotIn("watch", races[1])                       # abandoned: nothing to watch
+        self.assertEqual(races[2]["watch"]["sky"], None)          # link still works, channel unknown
+
     def test_missing_timetable_clears_rather_than_guesses(self):
         meeting_data, races = self._attach(None)
         self.assertNotIn("first_start", meeting_data)
