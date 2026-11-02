@@ -111,7 +111,8 @@ class Dataset:
         self.n = start
         self.wet = np.array([float(r["wet"] or 0.0) for r in self.rows])
         self.fixed_overlays = np.array(
-            [float(r.get("proven_class") or 0.0) + float(r.get("full_time", r.get("full_time_speed_feature", 0)) or 0.0) for r in self.rows]
+            [float(r.get("proven_class") or 0.0) + float(r.get("full_time", r.get("full_time_speed_feature", 0)) or 0.0)
+             + float(r.get("draw", r.get("draw_feature", 0)) or 0.0) for r in self.rows]
         )
         self.engine_ability = np.array([float(r["ability"]) for r in self.rows])
         # raw[k] = clip(60 + Σ inner·(leaf−60))，即係食 gain 之前嘅維度分。
@@ -138,6 +139,7 @@ class Dataset:
                 "features": row.get("features", row.get("feature_scores", {})),
                 "wet": row.get("wet", row.get("wet_form_feature", 0.0)),
                 "full_time": row.get("full_time", row.get("full_time_speed_feature", 0.0)),
+                "draw": row.get("draw", row.get("draw_feature", 0.0)),
                 "proven_class": row.get(
                     "proven_class", row.get("proven_class_feature", 0.0)
                 ),
@@ -222,6 +224,7 @@ def cmd_verify(ds, _args):
         + float(r["wet"] or 0.0)
         + float(r.get("proven_class") or 0.0)
         + float(r.get("full_time", r.get("full_time_speed_feature", 0)) or 0.0)
+        + float(r.get("draw", r.get("draw_feature", 0)) or 0.0)
         for r in ds.rows])
     for label, ref in (("真引擎存檔 ability", ds.engine_ability),
                        ("map_features_to_matrix_scores", slow)):

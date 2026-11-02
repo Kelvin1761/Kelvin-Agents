@@ -197,6 +197,9 @@ RANKING_OVERLAYS = (
         "formula": "0.5 × 場內 proven-class z-score",
         "missing": "缺資料或少於 3 匹可比較時 = 0（中性）",
     },
+    {"key": "draw_feature", "label": "大場次檔位（用戶接受嘅實驗性上線）",
+     "formula": "出賽 ≥ 8 匹：1.4274 × 場內檔位排名 z（越內越高）",
+     "missing": "少過 8 匹或者有馬冇檔位 = 0；`WC_AU_DRAW_LIVE=0` 即時回退"},
 )
 
 # ── Wet-form 7D feature (gated to Soft/Heavy races) ──

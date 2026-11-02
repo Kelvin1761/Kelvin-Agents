@@ -92,7 +92,7 @@ def exact_score(row, weights) -> float:
                                       weights), 4)
     base = round(pure + float(row.get("wet") or 0.0)
                  + float(row.get("proven_class") or 0.0), 4)
-    return round(base + float(row.get("full_time") or 0.0), 4)
+    return round(base + float(row.get("full_time") or 0.0) + float(row.get("draw") or 0.0), 4)
 
 
 # ── numpy proposal accelerator（只用嚟篩 draws）────────────────────────────
@@ -103,7 +103,7 @@ class Matrix:
         self.mx = np.array([[m[k] for k in DIMS] for m in mapped], dtype=float)
         self.wet_class = np.array([float(r.get("wet") or 0) + float(r.get("proven_class") or 0)
                                    for r in rows])
-        self.full_time = np.array([float(r.get("full_time") or 0) for r in rows])
+        self.full_time = np.array([float(r.get("full_time") or 0) + float(r.get("draw") or 0) for r in rows])
         self.slices = []
         start = 0
         for race in races:

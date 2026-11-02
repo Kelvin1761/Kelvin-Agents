@@ -129,6 +129,11 @@ ul, ol { padding-left:1.5rem; }
 <td>0.5 × 場內 proven-class z-score</td>
 <td>缺資料或少於 3 匹可比較時 = 0（中性）</td>
 </tr>
+<tr>
+<td>大場次檔位（用戶接受嘅實驗性上線） <code>draw_feature</code></td>
+<td>出賽 ≥ 8 匹：1.4274 × 場內檔位排名 z（越內越高）</td>
+<td>少過 8 匹或者有馬冇檔位 = 0；<code>WC_AU_DRAW_LIVE=0</code> 即時回退</td>
+</tr>
 </tbody></table>
 <p><strong>「權重」同「實測影響力」有咩分別？</strong>  權重係配方上寫死嘅數。實測影響力係</p>
 <p>實際跑落去，呢個維度喺同一場馬入面真係拉開幾多分距離 —— 一個權重好高但成場馬</p>
@@ -350,15 +355,15 @@ ul, ol { padding-left:1.5rem; }
 <li>推算前三／前四：由市場勝率經 discounted Harville（λ 0.754／0.649／0.549）推出，係<strong>市場推算，唔係模型預測</strong></li></ul>
 <p>去水用共用 <code>shared_racing/scripts/devig.py</code>；實作喺 <code>au_racing_engine/market_reference.py</code>。</p>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-11-02 12:39 AEDT</code></li>
-<li>Git commit：<code>29309d9b</code></li>
+<ul><li>生成時間：<code>2026-11-02 14:35 AEDT</code></li>
+<li>Git commit：<code>1bffe1da</code></li>
 <li>Scoring contract：<code>au/raw-matrix-preparation-v2</code></li>
-<li><code>scoring.py</code> 指紋：<code>311837c1b1b3</code></li>
+<li><code>scoring.py</code> 指紋：<code>1a29a96ddab1</code></li>
 <li><code>matrix_mapper.py</code> 指紋：<code>7e081c69cdd9</code></li>
-<li><code>renderer.py</code> 指紋：<code>016cb8c231d2</code></li>
+<li><code>renderer.py</code> 指紋：<code>03f26d6635b7</code></li>
 <li><code>dimensions.py</code> 指紋：<code>bc65613511f0</code></li>
 <li><code>full_time_speed.py</code> 指紋：<code>cde292260587</code></li>
-<li><code>engine_core.py</code> 指紋：<code>b5677c461574</code></li>
+<li><code>engine_core.py</code> 指紋：<code>c904b2de2beb</code></li>
 <li>實測樣本：<strong>500 場、4873 匹馬</strong>，由 <code>2026-10-24 Ascot Race 1-10</code> 到 <code>2026-11-02 Corowa Race 1-7</code>（跳過 0 個舊格式檔案）</li></ul>
 <p>重新生成：</p>
 <pre><code>

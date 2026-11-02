@@ -412,6 +412,8 @@ def _build_field_summary(horses):
     ratings_sorted = sorted(ratings, reverse=True)
     summary = {
         "count": len(horses),
+        # 大場次檔位分（draw.py）：同場全部馬嘅檔位，任何一匹冇就唔計。
+        "barriers": [horse.get("barrier") for horse in horses.values()],
         "min_weight": min(weights) if weights else 0.0,
         "max_weight": max(weights) if weights else 0.0,
         "avg_weight": (sum(weights) / len(weights)) if weights else 0.0,

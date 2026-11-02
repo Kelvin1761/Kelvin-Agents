@@ -47,6 +47,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "EXP-20261101-30", "status_file", 600, "場",
                 "scheduler 夠數會自動判一次並凍結；Gold／Good 有一項點估計負就交你決定係咪還原",
                 status_file="au-l600-recency-forward-status.json"),
+    ForwardTest("draw_big_field", "大場次檔位分（≥8 匹，β 1.4274，用戶接受嘅實驗性上線）",
+                "EXP-20261102-08", "status_file", 1000, "場",
+                "scheduler 夠數會自動判一次（v3 fixed_rule：有檔位 vs 冇檔位）並凍結；睇 au-draw-forward-status.json，"
+                "keep=false 就建議 WC_AU_DRAW_LIVE=0 回退",
+                status_file="au-draw-forward-status.json"),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")

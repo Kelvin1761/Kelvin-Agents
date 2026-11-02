@@ -58,6 +58,7 @@ OVERLAYS = (
     ("wet_form", "wet_form_feature", "濕地往績調整", "track"),
     ("proven_class", "proven_class_feature", "班次證明", "class_weight"),
     ("full_time_speed", "full_time_speed_feature", "逐駒全程速度", "pace_perf"),
+    ("draw", "draw_feature", "大場次檔位", "race_shape"),
 )
 
 
@@ -297,6 +298,7 @@ def render_race_csv(logic_data: dict) -> str:
         "wet_form_feature",
         "proven_class_feature",
         "full_time_speed_feature",
+        "draw_feature",
         "grade",
         "model_pick_status",
         "watchlist_level",
@@ -322,6 +324,7 @@ def render_race_csv(logic_data: dict) -> str:
             "wet_form_feature": auto.get("wet_form_feature", ""),
             "proven_class_feature": auto.get("proven_class_feature", ""),
             "full_time_speed_feature": auto.get("full_time_speed_feature", 0),
+            "draw_feature": auto.get("draw_feature", 0),
             "grade": auto.get("grade", ""),
             "model_pick_status": auto.get("model_pick_status", ""),
             "watchlist_level": auto.get("watchlist_level", ""),
@@ -1097,7 +1100,7 @@ def _render_verdict(verdict, horses, race=None, divergence=()):
         "## [第四部分] 分析盲區(緊隨第三部分)",
         "",
         f"- ranking 以 `ability_score`（綜合戰力分）排序；`base_7d_score` 係兼容舊檔名，只作{_ranking_dimension_label()}基礎分解釋。",
-        "- 單一評分：`綜合戰力分` = `ability_score` = `final_rank_score` = `pure_7d_score + wet_form_feature + proven_class_feature + full_time_speed_feature`；額外項目缺證據時都係中性 0。",
+        "- 單一評分：`綜合戰力分` = `ability_score` = `final_rank_score` = `pure_7d_score + wet_form_feature + proven_class_feature + full_time_speed_feature + draw_feature`（大場次檔位，≥8 匹先有）；額外項目缺證據時都係中性 0。",
         "- Rank 4-6 danger watchlist 只係提醒候選，不會交換 Top3 或 Top4 排名。",
         "- 初出馬若正式賽績空白，會較依賴試閘、馬房、走位結構與路程投影，信心不會無上限放大。",
         "- 如 Facts / Logic 更新，應重新執行 AU Auto orchestrator。",

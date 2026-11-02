@@ -16,6 +16,7 @@ from .full_time_speed import contribution as full_time_contribution
 from . import pit as _pit
 from . import speed as _speed
 from . import class_rating as _class
+from . import draw as _draw
 from .dimensions import DIMENSION_SPECS, RATING_SCORE_SHARE
 
 from .matrix_mapper import (
@@ -912,7 +913,9 @@ class RacingEngine:
         full_time_feature = full_time_contribution(self.horse_data, self.race_context)
         if not math.isfinite(full_time_feature):
             raise ValueError("non-finite AU full-time contribution")
-        ability_score = round(base_ability + full_time_feature, 4)
+        draw_feature = round(_draw.horse_adjustment(
+            self.horse_data.get("barrier"), self._field_summary().get("barriers")), 4)
+        ability_score = round(base_ability + full_time_feature + draw_feature, 4)
         grade = compute_grade(ability_score)
 
         data_coverage = self._data_coverage()
@@ -929,6 +932,7 @@ class RacingEngine:
             feature_notes=feature_notes,
             class_proof_feature=class_proof_feat,
             full_time_speed_feature=full_time_feature,
+            draw_feature=draw_feature,
         )
 
         return {
@@ -942,6 +946,7 @@ class RacingEngine:
             "proven_class_feature": round(class_proof_feat, 4),
             "full_time_speed_feature": full_time_feature,
             "full_time_speed_detail": full_time_detail,
+            "draw_feature": draw_feature,
             # EXP-20261009-04 回退影子：class_score 入 class_weight 對綜合分嘅貢獻。
             # 舊公式分數 = 綜合分 − 呢個數（矩陣冇 clip 嗰陣逐位一樣）。
             "class_score_live_delta": round(
@@ -2998,7 +3003,8 @@ class RacingEngine:
     def _au_grade_computation_transparency(self, matrix_scores, matrix_bands, feature_scores,
                                            base_7d_score, ability_score, grade,
                                            feature_notes=None,
-                                           class_proof_feature=0.0, full_time_speed_feature=0.0):
+                                           class_proof_feature=0.0, full_time_speed_feature=0.0,
+                                           draw_feature=0.0):
         """Generate the six-dimension ranking walkthrough.
 
         ``base_7d_score`` is retained as a legacy archive field name.  The live
@@ -3029,6 +3035,7 @@ class RacingEngine:
             f"**→ 60 ＋ 各項貢獻 = {base_7d_score:.2f} 分；"
             f"高班實績證明 {float(class_proof_feature):+.2f}；"
             f"逐駒全程速度 {float(full_time_speed_feature):+.4f}；"
+            f"大場次檔位 {float(draw_feature):+.2f}；"
             f"綜合戰力分 = {ability_score:.2f} 分 → Grade = [{grade}]**"
         )
         # 有計但唔直接入六維公式嘅分數 — 一併展示，唔收埋

@@ -109,7 +109,8 @@ def race_rows(logic, result_rows):
         row = {"n": int(number) if str(number).isdigit() else 999, "pos": int(result["pos"]),
                "sp": result.get("sp"), "wet": auto.get("wet_form_feature") or 0.0,
                "proven_class": auto.get("proven_class_feature") or 0.0,
-               "full_time": auto.get("full_time_speed_feature") or 0.0}
+               "full_time": auto.get("full_time_speed_feature") or 0.0,
+               "draw": auto.get("draw_feature") or 0.0}
         live_row = {**row, "features": {**features, "pace_figure_score": live_pf.get(str(number), 60.0)}}
         base_row = {**row, "features": {**features, "pace_figure_score": base_pf.get(str(number), 60.0)}}
         live_row["ability"] = exact_score(live_row, MATRIX_WEIGHTS)
