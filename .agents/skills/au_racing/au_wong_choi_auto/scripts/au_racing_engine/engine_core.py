@@ -808,6 +808,7 @@ class RacingEngine:
         # Soft/Heavy. base_7d_score stays pure 7D; 綜合戰力分 (ability_score) becomes
         # wet-aware on wet tracks. Walk-forward validated (Soft box-trifecta +2.2pp OOS).
         wet_form_feat = _track.wet_overlay(self._today_going(), self.data.get("going_stats_line"))
+        wet_form_detail = _track.wet_overlay_detail(self._today_going(), self.data.get("going_stats_line"))
         class_proof_feat, class_proof_detail = self._proven_class_feature()
         base_ability = round(pure_7d_score + wet_form_feat + class_proof_feat, 4)
         full_time_detail = self.horse_data.get("full_time_speed") or {}
@@ -831,6 +832,7 @@ class RacingEngine:
         grade_transparency = self._au_grade_computation_transparency(
             matrix_scores, matrix, feature_scores, base_7d_score, ability_score, grade,
             feature_notes=feature_notes,
+            wet_form_feature=wet_form_feat,
             class_proof_feature=class_proof_feat,
             full_time_speed_feature=full_time_feature,
             draw_feature=draw_feature,
@@ -844,6 +846,7 @@ class RacingEngine:
             "ability_score": ability_score,
             "rank_score": ability_score,
             "wet_form_feature": round(wet_form_feat, 4),
+            "wet_form_detail": wet_form_detail,
             "proven_class_feature": round(class_proof_feat, 4),
             "full_time_speed_feature": full_time_feature,
             "full_time_speed_detail": full_time_detail,
@@ -2736,7 +2739,7 @@ class RacingEngine:
 
     def _au_grade_computation_transparency(self, matrix_scores, matrix_bands, feature_scores,
                                            base_7d_score, ability_score, grade,
-                                           feature_notes=None,
+                                           feature_notes=None, wet_form_feature=0.0,
                                            class_proof_feature=0.0, full_time_speed_feature=0.0,
                                            draw_feature=0.0):
         """Generate the six-dimension ranking walkthrough.
@@ -2767,6 +2770,7 @@ class RacingEngine:
         summary = (
             f"{table}\n\n"
             f"**→ 60 ＋ 各項貢獻 = {base_7d_score:.2f} 分；"
+            f"濕地往績調整 {float(wet_form_feature):+.2f}；"
             f"高班實績證明 {float(class_proof_feature):+.2f}；"
             f"逐駒全程速度 {float(full_time_speed_feature):+.4f}；"
             f"大場次檔位 {float(draw_feature):+.2f}；"

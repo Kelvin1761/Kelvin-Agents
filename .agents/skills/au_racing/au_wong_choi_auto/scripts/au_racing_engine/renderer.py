@@ -13,6 +13,7 @@ from pathlib import Path
 from .scoring import clip_score, score_band
 from .full_time_speed import render_detail as render_full_time_detail
 from .matrix_mapper import MATRIX_FORMULAS
+from . import track_going as _track
 # 市場參考層：純顯示（D1）。只有 renderer 可以 import，引擎／評分唔准。
 from .market_reference import build_market_reference, horse_line as _market_ref_line, method_note as _market_ref_note
 from .market_reference import divergence_lines as _market_divergence_lines
@@ -981,6 +982,8 @@ def _render_horse_section(horse_num, horse, auto, market_line=None):
                     # EXP-20261016-77：試閘證據集中喺試閘備戰；之前呢個維度冇細項分支。
                     for dline in _jt_detail_lines(auto, name):
                         lines.append(f"      - {dline}")
+        if key == "track" and auto.get("wet_form_detail"):
+            lines.append(f"  - **濕地往績調整（唔改呢個維度分）：** {_track.wet_overlay_line(auto['wet_form_detail'])}")
         reasoning_text = str(reason_bundle.get("text") or "").strip()
         lines.append(f"  - **判讀：** {reasoning_text}" if reasoning_text
                      else f"  - **判讀：** {_matrix_why(key, score, auto)}")

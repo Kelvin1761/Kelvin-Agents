@@ -24,7 +24,8 @@ from __future__ import annotations
 
 import re
 
-from .scoring import TRACK_MICRO_WEIGHTS, clip_score, wet_form_feature
+from .scoring import (TRACK_MICRO_WEIGHTS, WET_FORM_PRIOR, WET_FORM_SHRINK_A, _parse_going_segment, _parse_wet_record,
+                      clip_score, wet_form_feature)
 
 NEUTRAL = 60.0
 
@@ -95,3 +96,34 @@ def track_score(same_stats, going_stats, going):
 
 def wet_overlay(going, going_stats_line):
     return wet_form_feature(going, going_stats_line)
+
+
+def wet_overlay_detail(going, going_stats_line):
+    """濕地 overlay 嘅報告明細；乾地 → None。數字同 `wet_form_feature` 一樣。"""
+    g = str(going or "").lower()
+    if "soft" not in g and "heavy" not in g:
+        return None
+    starts, places = _parse_wet_record(going, going_stats_line)
+    rate = (places + WET_FORM_SHRINK_A * WET_FORM_PRIOR) / (starts + WET_FORM_SHRINK_A)
+    heavy_today = "heavy" in g
+    buckets = [("重地", _parse_going_segment(going_stats_line, "重地")),
+               ("軟地", _parse_going_segment(going_stats_line, "軟地"))]
+    if not heavy_today:
+        buckets.reverse()
+    return {"going": str(going), "starts": round(starts, 1), "places": round(places, 1),
+            "today_bucket": buckets[0][0], "other_bucket": buckets[1][0],
+            "today_record": list(buckets[0][1]), "other_record": list(buckets[1][1]),
+            "rate": round(rate, 4), "prior": WET_FORM_PRIOR,
+            "value": wet_form_feature(going, going_stats_line)}
+
+
+def wet_overlay_line(detail):
+    """→ 一句人話；None → ""。"""
+    if not detail:
+        return ""
+    if not detail["starts"]:
+        return f"今日 {detail['going']}，本駒未有濕地出賽，濕地往績調整 +0.00（中性）。"
+    (ts, tp), (os_, op) = detail["today_record"], detail["other_record"]
+    return (f"今日 {detail['going']}：{detail['today_bucket']} {ts} 戰 {tp} 上名（全計）、"
+            f"{detail['other_bucket']} {os_} 戰 {op} 上名（半計），收縮後上名率 {detail['rate']:.1%} 對比"
+            f"平均 {detail['prior']:.1%} → 濕地往績調整 {detail['value']:+.2f}，直接加落綜合戰力分。")
