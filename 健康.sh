@@ -223,6 +223,27 @@ if nba_runs:
 else:
     print("  ⚠️  NBA: 未有 daily automation run log")
 
+# Rolling probability reliability (written by the NBA postgame run). A stale or
+# alerting file is a signal; "insufficient_n" is honest, not healthy.
+nba_rel = os.path.expanduser("~/WongChoiData/NBA_Market_Eval/reports/reliability_latest.json")
+if os.path.exists(nba_rel):
+    try:
+        rel = json.load(open(nba_rel, encoding="utf-8"))
+        a = age_days(os.path.getmtime(nba_rel))
+        o, h = rel.get("overall") or {}, rel.get("high_band") or {}
+        if rel.get("status") == "alert":
+            print(f"  ⚠️  NBA 校準警報：近 {rel.get('window_days')} 日預測 {o.get('mean_p')} / 實際 {o.get('hit_rate')}；"
+                  f"p≥80% 區 {h.get('mean_p')} / {h.get('hit_rate')}（{h.get('n')} 腿）。先查數據管線再考慮模型")
+        elif rel.get("status") == "insufficient_n":
+            print(f"  ➖ NBA 校準：樣本未夠（{o.get('n')} 腿 < {rel.get('min_settled')}），暫時只記錄")
+        else:
+            mark = "✅" if a < 3 else "⚠️ "
+            print(f"  {mark} NBA 校準：近 {rel.get('window_days')} 日預測 {o.get('mean_p')} / 實際 {o.get('hit_rate')}（{a:.1f} 日前更新）")
+    except (OSError, ValueError) as exc:
+        print(f"  ⚠️  NBA 校準檔讀唔到（{exc.__class__.__name__}）")
+else:
+    print("  ➖ NBA 校準：未有 reliability_latest.json（賽後 run 未寫過）")
+
 nba_db = next((candidate for candidate in (
     "nba_reflector.db",
     "/Users/imac/Antigravity-repo/nba_reflector.db",
