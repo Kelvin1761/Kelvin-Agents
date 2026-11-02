@@ -15,6 +15,7 @@ from .preparation_cycle import preparation_cycle
 from .full_time_speed import contribution as full_time_contribution
 from . import pit as _pit
 from . import speed as _speed
+from . import class_rating as _class
 from .dimensions import DIMENSION_SPECS, RATING_SCORE_SHARE
 
 from .matrix_mapper import (
@@ -699,7 +700,6 @@ class RacingEngine:
         self._formline_row_cache = None
         self._track_context_cache = None
         self._track_family_cache = None
-        self._latest_l600_rt_cache = None
         self._sectional_breakdown_cache = None
         self._formguide_shape_cache = None
         self._pf_metrics_cache = None
@@ -1011,38 +1011,24 @@ class RacingEngine:
         }
 
     def _proven_class_feature(self) -> tuple[float, dict]:
-        """Locked field-relative exact-class overlay from EXP-20260825-03.
-
-        ``_build_field_summary`` calculates the runner raw values before any
-        horse is scored. Missing evidence is neutral; a field needs at least
-        three comparable runners and genuine spread before this can move a
-        ranking. This is the production form of the research-only
-        ``proven_class, k=0.5`` candidate.
-        """
+        """高班實績 overlay（EXP-20260825-03）：0.5 × 場內 z；見 class_rating。"""
         raw = parse_float(self.data.get("proven_class_raw"))
         summary = self.race_context.get("field_summary") or {}
-        count = int(summary.get("proven_class_field_count") or 0)
+        z_score = self._proven_z()
+        adjustment = _class.proven_class_overlay(z_score)
         mean = parse_float(summary.get("proven_class_field_mean"))
         stdev = parse_float(summary.get("proven_class_field_stdev"))
+        r4 = lambda v: round(v, 4) if v is not None else None  # noqa: E731
         detail = {
-            "raw": round(raw, 4) if raw is not None else None,
-            "field_count": count,
-            "field_mean": round(mean, 4) if mean is not None else None,
-            "field_stdev": round(stdev, 4) if stdev is not None else None,
-            "z_score": None,
+            "raw": r4(raw),
+            "field_count": int(summary.get("proven_class_field_count") or 0),
+            "field_mean": r4(mean),
+            "field_stdev": r4(stdev),
+            "z_score": r4(z_score),
             "weight": PROVEN_CLASS_Z_WEIGHT,
-            "adjustment": 0.0,
-            "state": "missing_neutral",
-        }
-        if raw is None or count < 3 or mean is None or stdev is None or stdev <= 0:
-            return 0.0, detail
-        z_score = (raw - mean) / stdev
-        adjustment = PROVEN_CLASS_Z_WEIGHT * z_score
-        detail.update({
-            "z_score": round(z_score, 4),
             "adjustment": round(adjustment, 4),
-            "state": "observed_field_relative",
-        })
+            "state": "observed_field_relative" if z_score is not None else "missing_neutral",
+        }
         return adjustment, detail
 
     def _score_features(self):
@@ -2776,44 +2762,32 @@ class RacingEngine:
         return " ".join(part for part in (combo, assessment) if part)
 
     def _describe_class_weight_matrix(self, score, feature_scores):
-        """短而狠：今場班次/負磅一句定調 → 一句能力對位結論。
-        逐項計法（含 rating 缺失代理）喺評分構成 detail 攤開。"""
+        """一句今場班次／負磅 → 一句能力對位結論。逐項計法喺評分構成 detail 攤開。"""
         class_move = self._class_move_display()
         weight = parse_float(self.horse_data.get("weight"))
-        race_class = self._race_class_text()
         cs = feature_scores["class_score"]
         rs = feature_scores["rating_score"]
-        ws = feature_scores["weight_score"]
 
-        head = f"今仗 {race_class}"
+        head = f"今仗 {self._race_class_text()}"
         if weight is not None:
             head += f"，負 {weight:.1f}kg{self._weight_allowance_suffix()}"
-        if class_move and "降班" in class_move:
-            head += "，降班係實際著數"
-        elif class_move and "升班" in class_move:
-            head += "，升班挑戰要打折睇"
+        if "降班" in class_move:
+            head += "，今場班次較上仗低"
+        elif "升班" in class_move:
+            head += "，今場班次較上仗高"
         head += "。"
 
-        # 呢個維度嘅排名分**只由 rating_score 驅動**（2026-08-01：weight_score 因
-        # AUC 0.480 退出排名；class_score 早於 2026-07-29 退出）。判語照住實際
-        # gradient 講，唔好再用 ws >= 68 呢類永遠唔會成立嘅門檻（負磅分上限 63）。
+        # 維度 = 0.70 評分分 + 0.15 級數分（class_rating）；負磅分只做顯示。
         if rs >= 66:
             verdict = "官方讓磅分對位高過場均，能力面有實質支持。"
         elif rs <= 54:
             verdict = "官方讓磅分對位低過場均，能力面要靠其他維度補。"
         else:
             verdict = "能力對位貼近場均，未見明顯阻力亦未見甜頭。"
-        context = []
         if cs <= 56:
-            context.append(f"級數分 {cs:.0f} 偏低")
+            verdict += f" 級數分 {cs:.0f} 偏低。"
         elif cs >= 65:
-            context.append(f"級數分 {cs:.0f} 偏高")
-        if ws <= 57:
-            context.append(f"負磅分 {ws:.0f}（爛地重磅／升班高磅）")
-        elif ws >= 63:
-            context.append(f"負磅分 {ws:.0f}（降班配輕磅）")
-        if context:
-            verdict += f" 參考（不入排名）：{'、'.join(context)}。"
+            verdict += f" 級數分 {cs:.0f} 偏高。"
         return head + " " + verdict
 
     def _describe_track_matrix(self, score, feature_scores):
@@ -2944,7 +2918,6 @@ class RacingEngine:
                 ("Rating 對位", self._field_rating_brief()),
                 ("負磅", self._weight_text()),
                 ("場內磅差", self._field_weight_brief()),
-                ("最新PF/RT", self._latest_l600_rt_brief()),
                 ("生涯背景", str(self.data.get("career_record_line") or "").strip()),
                 ("上仗結果(Racecard)", str(self.data.get("last_finish_line") or "").strip()),
                 ("最近正式賽果", self._latest_record_summary("正式")),
@@ -3346,32 +3319,6 @@ class RacingEngine:
             "l400_trend": l400_line.group(2).strip() if l400_line else "",
         }
         return self._sectional_trend_cache
-
-    def _latest_l600_rt_metrics(self):
-        if self._latest_l600_rt_cache is not None:
-            return self._latest_l600_rt_cache
-        latest = self._official_entries()[0] if self._official_entries() else {}
-        text = str(latest.get("l600_rt") or "").strip()
-        l600_match = re.search(r"([+-]?\d+(?:\.\d+)?)", text)
-        rt_match = re.search(r"RT\s*([+-]?\d+(?:\.\d+)?)", text, re.I)
-        self._latest_l600_rt_cache = {
-            "raw": text,
-            "l600": float(l600_match.group(1)) if l600_match else None,
-            "rt": float(rt_match.group(1)) if rt_match else None,
-        }
-        return self._latest_l600_rt_cache
-
-    def _latest_l600_rt_brief(self):
-        metrics = self._latest_l600_rt_metrics()
-        if not metrics.get("raw") or metrics["raw"] == "-":
-            return ""
-        parts = []
-        if metrics.get("l600") is not None:
-            sign = "+" if metrics["l600"] > 0 else ""
-            parts.append(f"L600 {sign}{metrics['l600']}")
-        if metrics.get("rt") is not None:
-            parts.append(f"RT {metrics['rt']}")
-        return " / ".join(parts)
 
     def _entry_note_flags(self, entry):
         text = " ".join(
@@ -3952,8 +3899,7 @@ class RacingEngine:
         「上上仗 → 上一仗」—— 錯位一場。2026-09-09→10-08 實測 1,870 匹（15%）
         因此被寫成「降班」（例：Sir Rupert Clarke Stakes（一級賽）入面上仗跑
         Memsie 嘅馬），其中冇官方評分嗰 366 匹經 rating proxy 食咗 +6。
-        今場獎金自 2026-08 轉 Sportsbet 之後冇來源（Racecard 冇獎金行），所以
-        live 會一律係未知 —— 寧願講唔知，都唔好講錯。
+        今場獎金由 Racecard 標題行（`| $28,000`）嚟；任何一邊冇就係未知 —— 寧願講唔知，都唔好講錯。
         """
         entries = self._official_entries()
         latest_prize = entries[0].get("prize") if entries else None
@@ -4289,64 +4235,46 @@ class RacingEngine:
             parts.insert(0, "試閘")
         return " | ".join(parts)
 
+    def _latest_run_good(self):
+        """上仗跑入場內頭 25%（EXP-20261016-18 R4x）；冇馬匹數就用絕對名次 ≤3。冇上仗 → False。"""
+        entries = self._official_entries()
+        if not entries:
+            return False
+        place = parse_placing((entries[0] or {}).get("placing"))
+        field = (entries[0] or {}).get("field_size")
+        if place is not None and field and field >= 2 and place <= field:
+            return (place - 1) / (field - 1) <= 0.25
+        return place is not None and place <= 3
+
+    def _metro_from_provincial(self):
+        entries = self._official_entries()
+        current = self._venue_tier(self._meeting_intelligence().get("venue") or self._track_profile().get("venue") or "")
+        latest = self._venue_tier((entries[0] or {}).get("venue") if entries else "")
+        return current == "metro" and latest == "provincial"
+
+    def _proven_z(self):
+        summary = self.race_context.get("field_summary") or {}
+        return _class.proven_class_z(parse_float(self.data.get("proven_class_raw")),
+                                     int(summary.get("proven_class_field_count") or 0),
+                                     parse_float(summary.get("proven_class_field_mean")),
+                                     parse_float(summary.get("proven_class_field_stdev")))
+
     def _class_score(self):
-        career_starts = self._career_starts()
-        class_move = self._class_move_today()
-        official_entries = self._official_entries()
-        race_class = self._race_class_text()
-        race_bucket = self._race_class_bucket()
-        latest_rt = self._latest_l600_rt_metrics().get("rt")
-        latest_place = parse_placing((official_entries[0] or {}).get("placing")) if official_entries else None
-        # EXP-20261016-18 R4x（§7）：上仗「上名／冇表現」改按場內百分位（同 `_form_score` 2026-07-31 修正一樣）：
-        # 6 匹跑第 3 同 16 匹跑第 3 唔係同一回事。冇馬匹數就照舊用絕對名次。
-        latest_field = (official_entries[0] or {}).get("field_size") if official_entries else None
-        if latest_place is not None and latest_field and latest_field >= 2 and latest_place <= latest_field:
-            latest_good = (latest_place - 1) / (latest_field - 1) <= 0.25
-        else:
-            latest_good = latest_place is not None and latest_place <= 3
-        
-        current_tier = self._venue_tier(self._meeting_intelligence().get("venue") or self._track_profile().get("venue") or "")
-        latest_tier = self._venue_tier((official_entries[0] or {}).get("venue") if official_entries else "")
-
-        # 數值用 `CLASS_MICRO_WEIGHTS` 嘅 live 值；唔再寫 `.get(key, 預設)` —— 嗰啲預設
-        # （56／±2／+6／−3）同 live（57.7／+2.31／−0.82／+2.10／−5.48）唔同，曾經令報告講錯數。
-        w = CLASS_MICRO_WEIGHTS
-        score = 60.0
-        adjustments = []
-        cdetail = {"base": 60.0, "notes": [], "adjustments": adjustments, "final": None}
-        self.class_detail = cdetail
-
-        def add(delta, factor):
-            nonlocal score
-            score += delta
-            adjustments.append({"delta": round(delta, 2), "factor": factor})
-
-        if career_starts == 0:
-            # 初出馬由 57.7 起步（即係 −2.3）；EXP-20261028-13 C1 證實剷走會傷排名。
-            add(w["career0_base"] - 60.0, "初出馬未有正式班際證明")
-            if "2-y-o" in race_class.lower() or "2yo" in race_class.lower():
-                add(w["career0_2yo_bonus"], "2歲馬初出常有爆發力")
-        elif career_starts <= 5:
-            if latest_good:
-                add(w["career5_placed_bonus"], "出賽少但上仗跑入場內頭 25%，有進步空間")
-            else:
-                add(w["career5_unplaced_pen"], "經驗較薄且上仗未跑入場內頭 25%")
-        # EXP-20261028-13 C3：「≥15 場」三條（處女賽 −6.79／上仗後半 −1.40／上仗頭 25% +5.42）已剷走。
-        # 冇代價簡化：v3 全紀錄 Gold +0.03pp、Good +0.07pp，冇 ranking 指標或分層 CI 全負。
-
-        if "降班" in class_move:
-            add(w["class_drop_bonus"], "班次有回落")
-        if current_tier == "metro" and latest_tier == "provincial":
-            if latest_rt is not None and latest_rt >= 68:
-                adjustments.append({"delta": 0.0, "factor": "省賽轉都會，但 RT 證明夠跑都會區（唔扣）"})
-            else:
-                add(w["metro_prov_pen"], "省賽轉都會，鄉鎮賽績含金量成疑")
-
-        notes = [a["factor"] for a in adjustments]
-        cdetail["notes"] = list(notes)
-        cdetail["final"] = round(clip_score(score), 2)
+        race_class = self._race_class_text().lower()
+        score, adjustments = _class.class_score(
+            self._career_starts(),
+            "2-y-o" in race_class or "2yo" in race_class,
+            self._latest_run_good(),
+            "降班" in self._class_move_today(),
+            self._metro_from_provincial(),
+            self._proven_z(),
+        )
+        notes = [factor for _, factor in adjustments]
+        self.class_detail = {"base": 60.0, "notes": list(notes),
+                             "adjustments": [{"delta": round(d, 2), "factor": f} for d, f in adjustments],
+                             "final": round(score, 2)}
         note_text = "；".join(notes) if notes else "班次資料未見鮮明傾向"
-        return clip_score(score), f"{note_text}，級數分 {clip_score(score):.1f}。", "class_move+record_table+formline_followups"
+        return score, f"{note_text}，級數分 {score:.1f}。", "class_move+record_table+formline_followups"
 
     def _rating_score(self):
         rating = self._horse_rating()
@@ -4354,147 +4282,69 @@ class RacingEngine:
         rated_count = int(field.get("rated_count") or 0)
         rdetail = {"lines": [], "source": ""}
         self.rating_detail = rdetail
-        if rating is None or rated_count < 2:
-            # 處女/未評分馬（全場多數冇官方讓磅分）：唔好死中性 60 令成 70% 塌陷，
-            # 改為借用級數分做代理（班次/升降/RT 仍有能力訊號）。
-            # A/B（2026-07-11）：A窗 100→101、gold 微升、其餘持平、無倒退。
-            #
-            # 2026-08-01 加入場內負磅代理：呢 27% 嘅馬正正就係「讓磅官點睇」完全
-            # 冇入過模型嘅一批 —— 官方 rating 冇，而負磅（讓磅賽由能力定磅）就係
-            # 讓磅官唯一嘅公開判斷。負磅嘅能力訊號平時同 rating 重複（所以
-            # weight_score 已退出排名），但喺 rating 缺失嗰度佢完全唔重複。
-            # 實測（710 場，2,230 對 within-race pair，只計呢個 fallback 子集）：
-            #   級數分單獨      AUC 0.5787
-            #   場內負磅單獨    AUC 0.5769
-            #   兩者 50/50 混合 AUC 0.6078   ← α 0.3–0.7 全部 ≈0.607，闊平台唔係尖峰
-            # 兩個訊號互補而唔係疊加，所以混合贏過任何一邊單獨用。
-            class_proxy = clip_score(self._class_score()[0])
-            weight_proxy, weight_line = self._handicap_weight_proxy()
-            # EXP-20261016-18 R2x：class_score 已經自己以 0.15 入維度；代理再用佢就計兩次
-            # （代理馬維度 = 0.50 級數 + 0.35 負磅，有評分馬級數只佔 0.15）。扣返多計嗰份。
-            class_once = ((CLASS_SCORE_LIVE_WEIGHT / RATING_SCORE_SHARE) * (class_proxy - 60.0)
-                          if CLASS_SCORE_LIVE else 0.0)
-            # EXP-20261016-18 R1x：同一場有 ≥2 匹有評分，冇評分嗰啲改用負磅代理單獨
-            # （同評分一樣 z×6、±12 嘅尺），唔再同評分馬用兩把尺比較。
-            if rating is None and rated_count >= 2 and weight_proxy is not None:
-                score = clip_score(weight_proxy - class_once)
-                rdetail["source"] = "proxy_weight_only"
-                rdetail["lines"] = [
-                    "今場其他馬有官方讓磅分，本駒冇",
-                    weight_line,
-                    f"用負磅代理（同評分同一把尺）{score:.1f}（60 為中性）",
-                ]
-                note = f"本駒未有官方讓磅分，改用場內負磅代理 {score:.1f}（同場評分馬同一把尺）。"
-                return score, note, "weight_proxy_mixed_field"
-            if weight_proxy is None:
-                score = clip_score(class_proxy - class_once)
-                rdetail["source"] = "proxy"
-                if rating is None and rated_count >= 2:
-                    # 2026-11-02：定磅／齡磅大賽（Golden Rose、Furious Stakes…）負磅唔反映能力，
-                    # 冇評分嗰一兩匹（多數係進口馬）落到呢度。舊句寫死「呢場多數馬未有」——
-                    # 27 場大賽印咗句假話。分數唔變，只改講法。
-                    why = ("場內負磅差太細／資料唔夠，借唔到負磅代理" if self._is_handicap_race()
-                           else "定磅／齡磅賽負磅唔反映能力，冇得借負磅代理")
-                    rdetail["lines"] = [
-                        f"今場 {rated_count} 匹有官方讓磅分，本駒冇（多見於進口馬／首戰）",
-                        why,
-                        f"改以級數分 {class_proxy:.1f} 作能力代理（唔死當中性）",
-                    ]
-                    note = (f"本駒未有官方讓磅分（同場 {rated_count} 匹有），{why}，"
-                            f"改以級數分 {class_proxy:.1f} 作能力代理。")
-                    return score, note, "class_proxy"
-                rdetail["lines"] = [
-                    "呢場多數馬未有官方讓磅分（處女／未評分賽事常見）",
-                    f"改以級數分 {class_proxy:.1f} 作能力代理（唔死當中性）",
-                ]
-                note = (f"未有足夠官方讓磅分（多見於處女賽），"
-                        f"改以級數分 {class_proxy:.1f} 作能力代理。")
-                return score, note, "class_proxy"
-            score = clip_score(0.5 * class_proxy + 0.5 * weight_proxy - class_once)
-            rdetail["source"] = "proxy_class_weight"
+        if rating is not None and rated_count >= 2:
+            avg_rating = parse_float(field.get("avg_rating"))
+            score, adjustment, z_value = _class.official_rating_score(
+                rating, avg_rating, parse_float(field.get("rating_stdev")) or 0.0)
+            notes = [f"今場官方 rating 為 {rating:.1f}"]
+            if avg_rating is not None:
+                if z_value is not None:
+                    notes.append("高於場均逾一個標準差" if z_value >= 1.0 else "高於場均" if z_value >= 0.4
+                                 else "低於場均逾一個標準差" if z_value <= -1.0 else "低於場均" if z_value <= -0.4
+                                 else "與場均接近")
+                else:
+                    delta = rating - avg_rating
+                    notes.append("高於場均" if delta > 0.8 else "低於場均" if delta < -0.8 else "與場均接近")
+            top3_cutoff = parse_float(field.get("top3_rating_cutoff"))
+            if top3_cutoff is not None and rating >= top3_cutoff:
+                notes.append("rating 已達場內前三門檻")
+            vs = "高過場均" if adjustment > 0.5 else "低過場均" if adjustment < -0.5 else "同場均接近"
+            rdetail["source"] = "official"
             rdetail["lines"] = [
-                "呢場多數馬未有官方讓磅分（處女／未評分賽事常見）",
-                f"級數分代理 {class_proxy:.1f}",
-                weight_line,
-                f"兩者各半合成能力代理 {score:.1f}（60 為中性）",
+                f"官方讓磅分 {rating:.1f}" + (f"，場均 {avg_rating:.1f}" if avg_rating is not None else ""),
+                f"{vs} → 對位修正 {adjustment:+.1f} 分（60 為中性）",
             ]
-            note = (f"未有足夠官方讓磅分（多見於處女賽），改以級數分 "
-                    f"{class_proxy:.1f} ＋ 場內負磅代理 {weight_proxy:.1f} "
-                    f"各半合成 {score:.1f}。")
-            return score, note, "class_weight_proxy"
+            return score, f"{'；'.join(notes)}，Rating 分 {score:.1f}。", "racecard_rating+field_relative"
 
-        avg_rating = parse_float(field.get("avg_rating"))
-        stdev = parse_float(field.get("rating_stdev")) or 0.0
-        top3_cutoff = parse_float(field.get("top3_rating_cutoff"))
-        notes = [f"今場官方 rating 為 {rating:.1f}"]
-
-        adjustment = 0.0
-        if avg_rating is not None:
-            delta = rating - avg_rating
-            if stdev >= 0.5:
-                z_value = delta / stdev
-                adjustment += max(-12.0, min(12.0, z_value * 6.0))
-                if z_value >= 1.0:
-                    notes.append("高於場均逾一個標準差")
-                elif z_value >= 0.4:
-                    notes.append("高於場均")
-                elif z_value <= -1.0:
-                    notes.append("低於場均逾一個標準差")
-                elif z_value <= -0.4:
-                    notes.append("低於場均")
-                else:
-                    notes.append("與場均接近")
-            else:
-                adjustment += max(-6.0, min(6.0, delta * 1.5))
-                if delta > 0.8:
-                    notes.append("高於場均")
-                elif delta < -0.8:
-                    notes.append("低於場均")
-                else:
-                    notes.append("與場均接近")
-
-        # EXP-20261016-18：前三門檻 ±1.5／−1.0（R5b，剷走 Gold +0.40pp [+0.08, +0.73]）同
-        # BM ×0.9／處女 ×0.8（R5a，primary 不變、ranking 證據支持）都係 2026-05 人手值、冇 A/B，已剷走。
-        if top3_cutoff is not None and rating >= top3_cutoff:
-            notes.append("rating 已達場內前三門檻")
-
-        score = clip_score(60.0 + adjustment)
-        rdetail["source"] = "official"
-        vs = ("高過場均" if adjustment > 0.5 else "低過場均" if adjustment < -0.5 else "同場均接近")
-        rdetail["lines"] = [
-            f"官方讓磅分 {rating:.1f}"
-            + (f"，場均 {avg_rating:.1f}" if avg_rating is not None else ""),
-            f"{vs} → 對位修正 {adjustment:+.1f} 分（60 為中性）",
-        ]
-        return score, f"{'；'.join(notes)}，Rating 分 {score:.1f}。", "racecard_rating+field_relative"
+        # 冇評分（處女／進口馬），或者場內少過 2 匹有：唔死當中性，用代理（見 class_rating）。
+        class_proxy = clip_score(self._class_score()[0])
+        weight_proxy, weight_line = self._handicap_weight_proxy()
+        mixed = rating is None and rated_count >= 2
+        score, kind = _class.proxy_rating_score(class_proxy, weight_proxy, mixed)
+        if kind == "weight_only":
+            rdetail["source"] = "proxy_weight_only"
+            rdetail["lines"] = ["今場其他馬有官方讓磅分，本駒冇", weight_line,
+                                f"用負磅代理（同評分同一把尺）{score:.1f}（60 為中性）"]
+            return score, f"本駒未有官方讓磅分，改用場內負磅代理 {score:.1f}（同場評分馬同一把尺）。", "weight_proxy_mixed_field"
+        if kind == "class_only":
+            rdetail["source"] = "proxy"
+            if mixed:
+                # 定磅／齡磅大賽冇負磅代理，冇評分嗰一兩匹（多數係進口馬）落到呢度（2026-11-02）。
+                why = ("場內負磅差太細／資料唔夠，借唔到負磅代理" if self._is_handicap_race()
+                       else "定磅／齡磅賽負磅唔反映能力，冇得借負磅代理")
+                rdetail["lines"] = [f"今場 {rated_count} 匹有官方讓磅分，本駒冇（多見於進口馬／首戰）", why,
+                                    f"改以級數分 {class_proxy:.1f} 作能力代理（唔死當中性）"]
+                return score, (f"本駒未有官方讓磅分（同場 {rated_count} 匹有），{why}，"
+                               f"改以級數分 {class_proxy:.1f} 作能力代理。"), "class_proxy"
+            rdetail["lines"] = ["呢場多數馬未有官方讓磅分（處女／未評分賽事常見）",
+                                f"改以級數分 {class_proxy:.1f} 作能力代理（唔死當中性）"]
+            return score, f"未有足夠官方讓磅分（多見於處女賽），改以級數分 {class_proxy:.1f} 作能力代理。", "class_proxy"
+        rdetail["source"] = "proxy_class_weight"
+        rdetail["lines"] = ["呢場多數馬未有官方讓磅分（處女／未評分賽事常見）", f"級數分代理 {class_proxy:.1f}",
+                            weight_line, f"兩者各半合成能力代理 {score:.1f}（60 為中性）"]
+        return score, (f"未有足夠官方讓磅分（多見於處女賽），改以級數分 {class_proxy:.1f} ＋ 場內負磅代理 "
+                       f"{weight_proxy:.1f} 各半合成 {score:.1f}。"), "class_weight_proxy"
 
     def _handicap_weight_proxy(self):
-        """(score, human line) for 「讓磅官點睇本駒」, or (None, "") when unusable.
-
-        Only meaningful in a HANDICAP: there weight is assigned by ability, so a
-        field-relative weight z-score is the handicapper's own ranking. In a
-        weight-for-age / set-weights race weight comes from age and sex instead,
-        so it carries no ability signal and is refused. Same z×6 scale and ±12
-        cap as the official-rating path, so both sources land on one ruler.
-        """
-        if not self._is_handicap_race():
-            return None, ""
-        # ⚠️ 一定要用**分配負磅**（`weight`），唔係 `carried_weight`。讓磅官先按
-        # 能力派磅，見習減磅係之後因騎師而減 —— 減磅講嘅係騎師經驗，唔係馬嘅
-        # 能力。用實負磅會將「見習騎師」誤當「讓磅官睇低呢匹馬」。EXP-20261014-02。
+        """(分數, 說明) 或 (None, "")：讓磅賽先有（負磅由能力定），見 class_rating.weight_proxy。"""
         weight = parse_float(self.horse_data.get("weight"))
         field = self._field_summary()
         avg_weight = parse_float(field.get("avg_weight"))
-        stdev = parse_float(field.get("weight_stdev")) or 0.0
-        counted = int(field.get("weighted_count") or 0)
-        # < 0.3kg spread means the handicapper barely separated the field
-        # (common in maidens); a z-score off that is noise amplification.
-        if weight is None or not avg_weight or counted < 4 or stdev < 0.3:
+        score = _class.weight_proxy(self._is_handicap_race(), weight, avg_weight,
+                                    parse_float(field.get("weight_stdev")) or 0.0, int(field.get("weighted_count") or 0))
+        if score is None:
             return None, ""
-        z_value = (weight - avg_weight) / stdev
-        adjustment = max(-12.0, min(12.0, z_value * 6.0))
-        score = clip_score(60.0 + adjustment)
-        direction = "重過" if z_value > 0 else "輕過"
+        direction = "重過" if weight > avg_weight else "輕過"
         line = (f"場內負磅代理 {score:.1f}：負 {weight:.1f}kg，{direction}場均 "
                 f"{abs(weight - avg_weight):.1f}kg（讓磅賽由能力定磅，"
                 f"頂磅＝讓磅官評為能力最高）")
@@ -4596,86 +4446,18 @@ class RacingEngine:
         return _is_handicap_title(self._race_class_text())
 
     def _weight_score(self):
+        """顯示用（2026-07-30 退出排名；評分已經包含負磅嘅能力訊號，2026-11-02 第三次重測確認）。"""
         weight = parse_float(self.horse_data.get("weight"))
-        wdetail = {"base": 62.0, "weight": None, "notes": [], "final": None}
-        self.weight_detail = wdetail
+        move = self._class_move_display()
+        score, notes = _class.weight_score(weight, self._is_handicap_race(), "降班" in move, "升班" in move)
+        self.weight_detail = {"base": 60.0, "weight": round(float(weight), 1) if weight is not None else None,
+                              "notes": list(notes), "final": round(score, 2)}
         if weight is None:
-            wdetail["final"] = 60.0
-            return 60, "負磅資料不足，負磅分中性處理。", "missing_neutral"
-
-        # DIRECTION FIX 2026-07-24 (dead-weight/inversion audit): the old logic
-        # rewarded light weight (score 68) and penalised topweight (56) on the
-        # physics intuition "less to carry = faster". In AU HANDICAPS that is
-        # backwards — the handicapper assigns weight BY ABILITY, so topweights
-        # are the better horses. Empirically light-weighted horses finish top-3
-        # 23.2% vs topweights 34.3% (710-race archive). The old narrative
-        # ("負輕磅有明顯優勢") was therefore factually wrong. The ability signal in
-        # weight is already carried by rating_score, so weight_score stays NEUTRAL
-        # by default and only applies the genuinely orthogonal situational nudges
-        # (real burden in wet going; class-move weight relief). Ranking impact is
-        # a validated wash (Δgp/g2/miss 0, 5/5 folds) — this is a correctness /
-        # narrative-truth fix, not a performance claim.
-        score = 60
-        wdetail["weight"] = round(float(weight), 1)
-        notes = []
-        class_move = self._class_move_display()
-        if not self._is_handicap_race():
-            notes.append("非讓磅賽（定磅／WFA 或賽事條件不明），負磅由年齡性別等定，唔反映能力，負磅中性")
-        else:
-            if weight >= 60.0:
-                # topweight = handicapper rates it best; flag for context, no penalty
-                self.risk_flags.append("top_weight")
-                notes.append("頂磅：讓磅官評為本場能力最高之列")
-
-            # DIRECTION FIX 2026-09-05 (EXP-20260905-04)：**剷走**。呢個 −4 建基於
-            # 「爛地孭重磅 = 體能消耗」嘅物理直覺，但實測係反嘅 —— 同上面兩次
-            # 方向修正一樣，讓磅官係**按能力**派磅，所以爛地嘅高磅馬一樣係嗰場
-            # 較好嗰批。
-            #
-            # 2026-08-13→09-04、7,851 匹有出賽、入位率按當場派彩位數／馬匹數校正：
-            #     冇中任何分支（60 分）  n=6,072  超額 +0.5pp [−0.6, +1.7]
-            #     中呢個分支（56 分）    n=  671  超額 **+3.5pp [+0.1, +6.9]**
-            # 即係被罰嗰批跑贏基準 3.0pp，CI 過零。
-            #
-            # ⚠️ 呢個唔係新發現：舊註釋寫住當時量到 +2.98pp [−0.40, +6.30]，
-            # 判斷「唔夠顯著所以唔郁」。今次獨立重量，同號同幅度、樣本更大、
-            # CI 收窄到過零 —— 所以由「未夠證據」變成「有證據，而且係反嘅」。
-            #
-            # 排名影響 = 0：`weight_score` 2026-07-30 已經退出 MATRIX_FORMULAS
-            # （`class_weight` 而家只有 `rating_score × 0.70`）。呢個純粹係
-            # **敘述真確性**修正 —— 報告唔可以一路講「體能消耗顯著」一路扣分，
-            # 而嗰批馬實際跑贏。合乎評估合約第 7 節。
-
-            # DIRECTION FIX 2026-08-26 (EXP-20260826-03).  This nudge used to be
-            # `+3` with the narrative "降班配輕磅，實際任務下降".  Measured on 16,253
-            # runners it is backwards, and significantly so: the cohort that trips it
-            # finishes top-3 **−5.64pp** below its field-size baseline
-            # (n=1050, 95% bootstrap [−8.21, −3.10]).
-            #
-            # Same root cause as the 2026-07-24 base-score audit directly above: the
-            # handicapper assigns weight BY ABILITY.  "Dropping in class AND still let
-            # in light" is the handicapper saying it rates the horse poorly — it is not
-            # an easier task, it is a worse horse.  The old narrative told the user the
-            # opposite of what the data says.
-            #
-            # Magnitude is NOT calibrated (this leaf is display-only since 2026-07-30,
-            # so it cannot move a ranking); only the sign is evidence-backed, and −3
-            # simply mirrors the old +3.
-            #
-            # 同期量過嘅另外兩項：升班兼高負磅 +2.50pp [−0.29, +5.39]（仍然唔顯著，
-            # 保留）；爛地孭重磅 +2.98pp [−0.40, +6.30] —— 嗰個 2026-09-05 重量到
-            # +3.5pp [+0.1, +6.9]（n=671，CI 過零）之後**已經剷走**，見上面。
-            if "降班" in class_move and weight <= 56.5:
-                score -= 3
-                notes.append("降班仍只獲輕磅，讓磅官對佢評價偏低")
-            elif "升班" in class_move and weight >= 58.0:
-                score -= 3
-                notes.append("升班兼高負磅，雙重打擊")
-
-        wdetail["notes"] = list(notes)
-        wdetail["final"] = round(clip_score(score), 2)
+            return score, "負磅資料不足，負磅分中性處理。", "missing_neutral"
+        if weight >= 60.0 and self._is_handicap_race():
+            self.risk_flags.append("top_weight")
         note_text = "；".join(notes) if notes else f"今場負磅 {weight:.1f}kg"
-        return clip_score(score), f"{note_text}，負磅分 {clip_score(score):.1f}。", "weight+wet_track+class_move"
+        return score, f"{note_text}，負磅分 {score:.1f}。", "weight+wet_track+class_move"
 
     def _distance_score(self):
         line = str(self.data.get("engine_line") or "")
