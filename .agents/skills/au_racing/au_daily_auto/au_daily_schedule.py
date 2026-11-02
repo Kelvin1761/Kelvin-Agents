@@ -3481,6 +3481,22 @@ def build_snapshot(runlog: RunLog, meeting_dirs: list[Path],
 
 # Cloudflare Pages 硬性拒收超過 25 MiB 嘅單一檔案。喺 24 就收手，留一格緩衝。
 MAX_SNAPSHOT_MIB = 24.0
+MAX_UPLOAD_SNAPSHOT_MIB = 25.0
+
+
+def repack_snapshot(snapshot: Path) -> Path:
+    """Refresh legacy transport encoding without dropping meetings or content."""
+    from Horse_Racing_Dashboard.generate_static import load_snapshot, pack_for_transport
+
+    payload = load_snapshot(snapshot)
+    body = json.dumps(pack_for_transport(payload), ensure_ascii=False,
+                      separators=(",", ":"), default=str).encode("utf-8")
+    if len(body) >= snapshot.stat().st_size:
+        return snapshot
+    out = WORK_DIR / f"repacked-{snapshot.stem}.json"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_bytes(body)
+    return out
 
 
 def shrink_to_fit(runlog: RunLog, snapshot: Path, today: date) -> Path:
@@ -3497,6 +3513,14 @@ def shrink_to_fit(runlog: RunLog, snapshot: Path, today: date) -> Path:
     size = snapshot.stat().st_size / 1048576
     if size <= MAX_SNAPSHOT_MIB:
         return snapshot
+    original_size = size
+    snapshot = repack_snapshot(snapshot)
+    size = snapshot.stat().st_size / 1048576
+    if size < original_size:
+        runlog.step("dashboard-repack", "ok", before_mib=round(original_size, 2),
+                    after_mib=round(size, 2))
+    if size <= MAX_SNAPSHOT_MIB:
+        return snapshot
     try:
         payload = json.loads(snapshot.read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -3505,9 +3529,12 @@ def shrink_to_fit(runlog: RunLog, snapshot: Path, today: date) -> Path:
             if (m.get("region") or "").upper() == "AU"
             and (m.get("date") or "9999-12-31") < today.isoformat()]
     if not past:
-        runlog.error("dashboard",
-                     f"snapshot {size:.1f} MiB 超過 {MAX_SNAPSHOT_MIB} MiB，但冇"
-                     f"已跑完嘅場次可以讓路 —— 全部都係當日或將來賽事，唔會剪")
+        message = (f"snapshot {size:.1f} MiB 超過 {MAX_SNAPSHOT_MIB} MiB 警戒線，但冇"
+                   "已跑完嘅場次可以讓路 —— 全部都係當日或將來賽事，唔會剪")
+        if size >= MAX_UPLOAD_SNAPSHOT_MIB:
+            runlog.error("dashboard", message)
+        else:
+            runlog.warn(message)
         return snapshot
     runlog.warn(f"snapshot {size:.1f} MiB 超過 {MAX_SNAPSHOT_MIB} MiB —— 剪走 "
                 f"{len(past)} 個已跑完場次讓路（本機正本冇動）：{past}")
@@ -3525,9 +3552,12 @@ def shrink_to_fit(runlog: RunLog, snapshot: Path, today: date) -> Path:
     runlog.step("dashboard-shrink", "ok", before_mib=round(size, 1),
                 after_mib=round(after, 1), dropped=past)
     if after > MAX_SNAPSHOT_MIB:
-        runlog.error("dashboard",
-                     f"剪走所有已跑完場次之後仲有 {after:.1f} MiB —— "
-                     f"單日賽事本身已經超標，要縮細每匹馬嘅 payload")
+        message = (f"剪走所有已跑完場次之後仲有 {after:.1f} MiB —— "
+                   "仍然超過警戒線，要縮細每匹馬嘅 payload")
+        if after >= MAX_UPLOAD_SNAPSHOT_MIB:
+            runlog.error("dashboard", message)
+        else:
+            runlog.warn(message)
     return out
 
 
@@ -3738,6 +3768,9 @@ def step_dashboard(runlog: RunLog, meeting_dirs: list[Path],
         return False
 
     snapshot = shrink_to_fit(runlog, snapshot, date.today())
+    if snapshot.stat().st_size >= MAX_UPLOAD_SNAPSHOT_MIB * 1048576:
+        runlog.error("dashboard", "snapshot 達到 25 MiB 單檔上限 —— 唔發佈")
+        return False
     validation = validate_snapshot(runlog, snapshot, expect_absent)
     if not validation["ok"]:
         runlog.error("dashboard", "驗證唔過 —— 唔發佈")

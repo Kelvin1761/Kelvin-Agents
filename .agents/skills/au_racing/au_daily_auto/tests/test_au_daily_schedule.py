@@ -911,6 +911,7 @@ class TestShrinkToFit(unittest.TestCase):
         with contextlib.ExitStack() as stack:
             stack.enter_context(unittest.mock.patch.object(S, "WORK_DIR", Path(tmp)))
             stack.enter_context(unittest.mock.patch.object(S, "run_cmd", fake_run_cmd))
+            stack.enter_context(unittest.mock.patch.object(S, "repack_snapshot", lambda p: p))
             S.shrink_to_fit(runlog, snap, today or S.date(2026, 8, 9))
         return calls, runlog
 
@@ -944,6 +945,14 @@ class TestShrinkToFit(unittest.TestCase):
             calls, runlog = self._run(tmp, meetings, size_mib=26)
         self.assertEqual(calls, [])
         self.assertTrue(runlog.error.called)
+
+    def test_warning_margin_below_upload_ceiling_is_not_a_failed_run(self):
+        meetings = [{"date": "2026-08-09", "venue": "Today", "region": "AU"}]
+        with tempfile.TemporaryDirectory() as tmp:
+            calls, runlog = self._run(tmp, meetings, size_mib=24.9)
+        self.assertEqual(calls, [])
+        self.assertFalse(runlog.error.called)
+        self.assertTrue(runlog.warn.called)
 
 
 class TestCodeVersion(unittest.TestCase):
