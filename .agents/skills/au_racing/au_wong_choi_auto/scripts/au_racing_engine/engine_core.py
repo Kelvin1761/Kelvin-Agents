@@ -17,6 +17,7 @@ from . import pit as _pit
 from . import speed as _speed
 from . import class_rating as _class
 from . import draw as _draw
+from . import overseas as _overseas
 from . import track_going as _track
 from .dimensions import DIMENSION_SPECS, RATING_SCORE_SHARE
 
@@ -2985,7 +2986,9 @@ class RacingEngine:
         if self._record_entry_cache is not None:
             return self._record_entry_cache
         entries = []
-        for cols in _record_rows(self.facts_section):
+        rows = _record_rows(self.facts_section)
+        abroad = _overseas.horse_has_overseas([_overseas.venue_name(cols[3]) for cols in rows])
+        for cols in rows:
             entries.append({
                 "kind": cols[1],
                 # New Facts use HCnn.  Legacy BMnn is deliberately not coerced:
@@ -3023,7 +3026,9 @@ class RacingEngine:
                 # Sportsbet 原始往績班次（2026-08-25）：保留 raw label；正式排名
                 # 只經 locked `proven_class` field-relative overlay 使用，絕不駁入
                 # 舊 `entry['class']` multiplier，避免同獎金 proxy 重複計票。
-                "source_race_class": cols[19] if len(cols) > 19 and cols[19] != "-" else "",
+                # EXP-20261102-11：英愛港法 `CLn` 係「1 最高」，先換成澳洲對等標籤。
+                "source_race_class": _overseas.normalise_class(
+                    cols[19], _overseas.venue_name(cols[3]), abroad) if len(cols) > 19 and cols[19] != "-" else "",
             })
         self._record_entry_cache = entries
         return entries
@@ -6150,10 +6155,13 @@ def horse_proven_class_level(facts_section) -> float | None:
     low score.  This reproduces the locked research ``proven_class`` feature.
     """
     recent = []
-    for cols in _record_rows(facts_section or ""):
+    rows = _record_rows(facts_section or "")
+    abroad = _overseas.horse_has_overseas([_overseas.venue_name(cols[3]) for cols in rows])
+    for cols in rows:
         if "試閘" in cols[1]:
             continue
-        source_class = cols[19] if len(cols) > 19 and cols[19] != "-" else ""
+        source_class = (_overseas.normalise_class(cols[19], _overseas.venue_name(cols[3]), abroad)
+                        if len(cols) > 19 and cols[19] != "-" else "")
         level = exact_race_class_level(source_class)
         if level is None:
             continue
