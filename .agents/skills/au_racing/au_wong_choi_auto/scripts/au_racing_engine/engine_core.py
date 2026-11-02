@@ -659,14 +659,14 @@ class RacingEngine:
         # 否則「同場 1 戰冇上名」（62.09 → 59.19）會開始觸發，靜靜改排名（實測 114 場）。
         if feature_scores.get("consistency_score", 60) >= 72 and ts < TRACK_WEAK_THRESHOLD:
             feature_scores["consistency_score"] = feature_scores["consistency_score"] - 4
-            feature_notes["consistency_score"] = feature_notes.get("consistency_score", "") + "；場地往績偏弱／濕地未經驗證，穩定性分小收 −4"
+            feature_notes["consistency_score"] = feature_notes.get("consistency_score", "") + "；場地往績偏弱，穩定性分小收 −4"
             cd = getattr(self, "consistency_detail", None)
             if isinstance(cd, dict):
                 cd["adjustments"].append({"delta": -4.0, "factor": "[環境] 場地往績偏弱收回",
                                           # 條件係 track_score < 57.1（base 60 減 2.9）。
                                           # track 冇證據係 60（唔會觸發）；低過門檻只會係
-                                          # 往績差、或者濕地未經驗證（−6.4）。
-                                          "evidence": "穩定度偏高但場地往績分低於中性（往績偏弱或濕地未經驗證）"})
+                                          # 同場／地況往績差。
+                                          "evidence": "穩定度偏高但場地往績分低於中性（同場或地況往績偏弱）"})
                 cd["final"] = round(clip_score(feature_scores["consistency_score"]), 2)
         # Complete class-adjusted margin evidence replaces the old consistency
         # leaf inside the stability matrix.  Where that evidence is unavailable,
@@ -2530,7 +2530,7 @@ class RacingEngine:
         else:
             verdict = "場地適應有基礎，應付到今日地狀。"
         if wet_state in {"soft7plus", "heavy"} and not self._has_verified_wet_place():
-            verdict += " 但爛地實績未經驗證，轉場風險高。"
+            verdict += " 爛地實績未經驗證（唔扣分：未跑過濕地嘅馬實測只差 −1.2pp）。"
         return verdict
 
     def _describe_form_line_matrix(self, score, feature_scores):
@@ -4224,11 +4224,6 @@ class RacingEngine:
             sign = "＋" if total >= 0 else "−"
             notes.append(f"地況適應：{'、'.join(text for _, text in going_parts)}（合計 {sign}{abs(total):.1f}）")
             tdetail["going_adjustment"] = round(total, 2)
-            texts = {text for _, text in going_parts}
-            if "重地曾奪冠" in texts:
-                self.reason_codes.append("proven_heavy_specialist")
-            if "重地多戰全無表現" in texts:
-                self.risk_flags.append("poor_heavy_performance")
 
         # 場地／地狀往績記錄行先：一眼睇到同場、好/軟/重地實績
         rec_bits = []

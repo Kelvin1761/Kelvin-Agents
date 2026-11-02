@@ -407,13 +407,7 @@ TRACK_MICRO_WEIGHTS = {
     # 2026-07-11 修：乾地「1 戰零上名」原本 −7.08，罰得重過「2 戰零上名」(−3.46)，
     # 非單調（樣本越少罰越重，不合理，ML 殘骸）。改 −3.0，令 1 戰 ≤ 2 戰。A/B rank-neutral。
     "going_poor_pen2_dry": -3.0,
-    "wet_unverified_pen": -6.4,
-    "heavy_win_bonus": 3.87,
-    # 2026-07-11 修：heavy_place_bonus 原本 −2.88（符號反轉——重地曾上名嘅馬反被扣分，
-    # 而 note 竟寫「具備重地作戰能力」；同 best_formal_mult 同款 ML 殘骸）。改 +2.0，
-    # 令重地階梯單調：曾贏 +3.87 > 曾上名 +2.0 > 零上名 −5.94。A/B rank-neutral（Heavy good↔pass 互抵）。
-    "heavy_place_bonus": 2.0,
-    "heavy_poor_pen": -5.94
+    # wet_unverified_pen（−6.4）、heavy_win_bonus／heavy_place_bonus／heavy_poor_pen 已剷：EXP-20261102-10 逐條消融。
 }
 
 # PACE_MICRO_WEIGHTS（舊逐場地檔位矩陣嘅修正幅度）已剷走：檔位分改由 draw.py（EXP-20261102-09）。

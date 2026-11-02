@@ -197,7 +197,8 @@ class AuAutoOutputTests(unittest.TestCase):
             _race_context("Heavy 8"),
         )
 
-        self.assertGreater(verified["feature_scores"]["track_score"], unverified["feature_scores"]["track_score"])
+        # EXP-20261102-10：場地分唔再有爛地專項；濕地往績經濕地 overlay 入綜合分。
+        self.assertGreater(verified["wet_form_feature"], unverified["wet_form_feature"])
 
     def test_higher_class_followups_boost_formline_score(self) -> None:
         higher = _analyze(_horse(), _race_context())

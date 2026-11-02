@@ -1,0 +1,385 @@
+{
+ "races": 3283,
+ "verdict": "REJECT",
+ "reason": "primary_regression",
+ "primary": {
+  "gold": {
+   "delta": -0.0024367956137678953,
+   "ci_low": -0.0065832784726793945,
+   "ci_high": 0.001488095238095238,
+   "p_value": 0.264,
+   "block_deltas": [
+    -0.007339449541284404,
+    -0.002183406113537118,
+    -0.008710801393728223,
+    0.0,
+    0.006745362563237774,
+    -0.0036036036036036037
+   ]
+  },
+  "good_positional": {
+   "delta": -0.0003045994517209869,
+   "ci_low": -0.0037572254335260114,
+   "ci_high": 0.003348961821835231,
+   "p_value": 0.973,
+   "block_deltas": [
+    -0.001834862385321101,
+    0.0,
+    0.0017421602787456446,
+    -0.012544802867383513,
+    0.0016863406408094434,
+    0.009009009009009009
+   ]
+  }
+ },
+ "ranking": {
+  "top3_capture_at5": {
+   "delta": 0.0011168646563102856,
+   "ci_low": -0.0008336310587114448,
+   "ci_high": 0.0029585798816568042,
+   "p_value": 0.25
+  },
+  "ndcg_at5": {
+   "delta": -9.107404545758732e-05,
+   "ci_low": -0.0014623071526686346,
+   "ci_high": 0.0011880662027950596,
+   "p_value": 0.901
+  },
+  "top5_pairwise_auc": {
+   "delta": -0.000184586867728697,
+   "ci_low": -0.0013025169906248902,
+   "ci_high": 0.0008783245943913758,
+   "p_value": 0.76
+  }
+ },
+ "counts_base": {
+  "gold": 20.865062442887602,
+  "gold_strict": 7.67590618336887,
+  "good_positional": 26.165092902832775,
+  "pass": 49.68017057569296,
+  "champion": 24.85531526043253,
+  "winner_in_top3": 57.81297593664331,
+  "winner_in_top5": 77.82515991471216,
+  "t3prec": 49.385724439029346
+ },
+ "counts_cand": {
+  "gold": 20.62138288151081,
+  "gold_strict": 7.614986293024672,
+  "good_positional": 26.134632957660678,
+  "pass": 49.80201035638136,
+  "champion": 24.672555589399938,
+  "winner_in_top3": 57.995735607675904,
+  "winner_in_top5": 77.97745964057265,
+  "t3prec": 49.45679764443091
+ },
+ "cohorts": {
+  "field:13+:gold": {
+   "n": 298,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "field:13+:good_positional": {
+   "n": 298,
+   "delta_pp": 0.67,
+   "ci_pp": [
+    -0.61,
+    2.05
+   ]
+  },
+  "field:9-12:gold": {
+   "n": 1939,
+   "delta_pp": -0.21,
+   "ci_pp": [
+    -0.78,
+    0.35
+   ]
+  },
+  "field:9-12:good_positional": {
+   "n": 1939,
+   "delta_pp": -0.1,
+   "ci_pp": [
+    -0.53,
+    0.38
+   ]
+  },
+  "field:<=8:gold": {
+   "n": 1046,
+   "delta_pp": -0.38,
+   "ci_pp": [
+    -1.08,
+    0.2
+   ]
+  },
+  "field:<=8:good_positional": {
+   "n": 1046,
+   "delta_pp": -0.1,
+   "ci_pp": [
+    -0.58,
+    0.39
+   ]
+  },
+  "going:good/other:gold": {
+   "n": 1608,
+   "delta_pp": -0.31,
+   "ci_pp": [
+    -0.98,
+    0.31
+   ]
+  },
+  "going:good/other:good_positional": {
+   "n": 1608,
+   "delta_pp": -0.06,
+   "ci_pp": [
+    -0.64,
+    0.52
+   ]
+  },
+  "going:heavy:gold": {
+   "n": 187,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "going:heavy:good_positional": {
+   "n": 187,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "going:soft5-6:gold": {
+   "n": 1247,
+   "delta_pp": -0.4,
+   "ci_pp": [
+    -0.99,
+    0.17
+   ]
+  },
+  "going:soft5-6:good_positional": {
+   "n": 1247,
+   "delta_pp": -0.08,
+   "ci_pp": [
+    -0.54,
+    0.41
+   ]
+  },
+  "going:soft7+:gold": {
+   "n": 241,
+   "delta_pp": 0.83,
+   "ci_pp": [
+    0.0,
+    2.18
+   ]
+  },
+  "going:soft7+:good_positional": {
+   "n": 241,
+   "delta_pp": 0.41,
+   "ci_pp": [
+    -1.13,
+    2.62
+   ]
+  },
+  "top_pick_sp:$1-3:gold": {
+   "n": 1125,
+   "delta_pp": -0.53,
+   "ci_pp": [
+    -1.42,
+    0.37
+   ]
+  },
+  "top_pick_sp:$1-3:good_positional": {
+   "n": 1125,
+   "delta_pp": -0.09,
+   "ci_pp": [
+    -0.72,
+    0.54
+   ]
+  },
+  "top_pick_sp:$3-6:gold": {
+   "n": 1222,
+   "delta_pp": -0.08,
+   "ci_pp": [
+    -0.67,
+    0.42
+   ]
+  },
+  "top_pick_sp:$3-6:good_positional": {
+   "n": 1222,
+   "delta_pp": -0.08,
+   "ci_pp": [
+    -0.66,
+    0.58
+   ]
+  },
+  "top_pick_sp:$6+:gold": {
+   "n": 929,
+   "delta_pp": -0.11,
+   "ci_pp": [
+    -0.6,
+    0.34
+   ]
+  },
+  "top_pick_sp:$6+:good_positional": {
+   "n": 929,
+   "delta_pp": 0.11,
+   "ci_pp": [
+    -0.44,
+    0.69
+   ]
+  },
+  "top_pick_sp:unknown:gold": {
+   "n": 7,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:unknown:good_positional": {
+   "n": 7,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "distance:1201-1600:gold": {
+   "n": 1340,
+   "delta_pp": -0.3,
+   "ci_pp": [
+    -0.93,
+    0.28
+   ]
+  },
+  "distance:1201-1600:good_positional": {
+   "n": 1340,
+   "delta_pp": -0.15,
+   "ci_pp": [
+    -0.64,
+    0.39
+   ]
+  },
+  "distance:<=1200:gold": {
+   "n": 1428,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.52,
+    0.51
+   ]
+  },
+  "distance:<=1200:good_positional": {
+   "n": 1428,
+   "delta_pp": 0.07,
+   "ci_pp": [
+    -0.43,
+    0.61
+   ]
+  },
+  "distance:>1600:gold": {
+   "n": 515,
+   "delta_pp": -0.78,
+   "ci_pp": [
+    -1.76,
+    0.18
+   ]
+  },
+  "distance:>1600:good_positional": {
+   "n": 515,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.76,
+    0.78
+   ]
+  },
+  "top_style:前置:gold": {
+   "n": 680,
+   "delta_pp": -0.15,
+   "ci_pp": [
+    -1.08,
+    0.72
+   ]
+  },
+  "top_style:前置:good_positional": {
+   "n": 680,
+   "delta_pp": -0.59,
+   "ci_pp": [
+    -1.56,
+    0.33
+   ]
+  },
+  "top_style:多變:gold": {
+   "n": 554,
+   "delta_pp": 0.18,
+   "ci_pp": [
+    -0.38,
+    0.87
+   ]
+  },
+  "top_style:多變:good_positional": {
+   "n": 554,
+   "delta_pp": 0.36,
+   "ci_pp": [
+    -0.52,
+    1.31
+   ]
+  },
+  "top_style:守中:gold": {
+   "n": 1269,
+   "delta_pp": -0.63,
+   "ci_pp": [
+    -1.26,
+    -0.08
+   ]
+  },
+  "top_style:守中:good_positional": {
+   "n": 1269,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.45,
+    0.44
+   ]
+  },
+  "top_style:後上:gold": {
+   "n": 745,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.9,
+    0.83
+   ]
+  },
+  "top_style:後上:good_positional": {
+   "n": 745,
+   "delta_pp": 0.13,
+   "ci_pp": [
+    -0.58,
+    0.82
+   ]
+  },
+  "top_style:未知:gold": {
+   "n": 35,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:未知:good_positional": {
+   "n": 35,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "cohort_ci_all_negative": [
+  "top_style:守中:gold"
+ ],
+ "changed_races": 2954
+}

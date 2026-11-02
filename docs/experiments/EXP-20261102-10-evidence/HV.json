@@ -1,0 +1,383 @@
+{
+ "races": 3283,
+ "verdict": "REJECT",
+ "reason": "ranking_evidence_too_weak",
+ "primary": {
+  "gold": {
+   "delta": 0.0,
+   "ci_low": -0.0008995502248875562,
+   "ci_high": 0.0008675534991324465,
+   "p_value": 1.0,
+   "block_deltas": [
+    0.001834862385321101,
+    -0.002183406113537118,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "good_positional": {
+   "delta": 0.0,
+   "ci_low": -0.0012077294685990338,
+   "ci_high": 0.0012523481527864746,
+   "p_value": 1.0,
+   "block_deltas": [
+    0.0,
+    0.0,
+    0.0,
+    0.0017921146953405018,
+    0.0,
+    -0.0018018018018018018
+   ]
+  }
+ },
+ "ranking": {
+  "top3_capture_at5": {
+   "delta": 0.0001015331505736623,
+   "ci_low": -4.9667000803392034e-20,
+   "ci_high": 0.00033277870216306157,
+   "p_value": 0.754
+  },
+  "ndcg_at5": {
+   "delta": 0.0001250448134296382,
+   "ci_low": -0.00015157109293810874,
+   "ci_high": 0.0004285466428142491,
+   "p_value": 0.379
+  },
+  "top5_pairwise_auc": {
+   "delta": 1.6677222123425388e-07,
+   "ci_low": -0.00016341375561372502,
+   "ci_high": 0.00015638743629064344,
+   "p_value": 0.972
+  }
+ },
+ "counts_base": {
+  "gold": 20.865062442887602,
+  "gold_strict": 7.67590618336887,
+  "good_positional": 26.165092902832775,
+  "pass": 49.68017057569296,
+  "champion": 24.85531526043253,
+  "winner_in_top3": 57.81297593664331,
+  "winner_in_top5": 77.82515991471216,
+  "t3prec": 49.385724439029346
+ },
+ "counts_cand": {
+  "gold": 20.865062442887602,
+  "gold_strict": 7.67590618336887,
+  "good_positional": 26.165092902832775,
+  "pass": 49.68017057569296,
+  "champion": 24.824855315260432,
+  "winner_in_top3": 57.81297593664331,
+  "winner_in_top5": 77.88607980505635,
+  "t3prec": 49.37557112397198
+ },
+ "cohorts": {
+  "field:13+:gold": {
+   "n": 298,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "field:13+:good_positional": {
+   "n": 298,
+   "delta_pp": 0.34,
+   "ci_pp": [
+    0.0,
+    1.13
+   ]
+  },
+  "field:9-12:gold": {
+   "n": 1939,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "field:9-12:good_positional": {
+   "n": 1939,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.15,
+    0.15
+   ]
+  },
+  "field:<=8:gold": {
+   "n": 1046,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.28,
+    0.26
+   ]
+  },
+  "field:<=8:good_positional": {
+   "n": 1046,
+   "delta_pp": -0.1,
+   "ci_pp": [
+    -0.3,
+    0.0
+   ]
+  },
+  "going:good/other:gold": {
+   "n": 1608,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "going:good/other:good_positional": {
+   "n": 1608,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "going:heavy:gold": {
+   "n": 187,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -1.6,
+    1.6
+   ]
+  },
+  "going:heavy:good_positional": {
+   "n": 187,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -2.21,
+    2.12
+   ]
+  },
+  "going:soft5-6:gold": {
+   "n": 1247,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "going:soft5-6:good_positional": {
+   "n": 1247,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "going:soft7+:gold": {
+   "n": 241,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "going:soft7+:good_positional": {
+   "n": 241,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$1-3:gold": {
+   "n": 1125,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$1-3:good_positional": {
+   "n": 1125,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.27,
+    0.27
+   ]
+  },
+  "top_pick_sp:$3-6:gold": {
+   "n": 1222,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.24,
+    0.23
+   ]
+  },
+  "top_pick_sp:$3-6:good_positional": {
+   "n": 1222,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.24,
+    0.24
+   ]
+  },
+  "top_pick_sp:$6+:gold": {
+   "n": 929,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$6+:good_positional": {
+   "n": 929,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:unknown:gold": {
+   "n": 7,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:unknown:good_positional": {
+   "n": 7,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "distance:1201-1600:gold": {
+   "n": 1340,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "distance:1201-1600:good_positional": {
+   "n": 1340,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.22,
+    0.23
+   ]
+  },
+  "distance:<=1200:gold": {
+   "n": 1428,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.21,
+    0.2
+   ]
+  },
+  "distance:<=1200:good_positional": {
+   "n": 1428,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.21,
+    0.21
+   ]
+  },
+  "distance:>1600:gold": {
+   "n": 515,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "distance:>1600:good_positional": {
+   "n": 515,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:前置:gold": {
+   "n": 680,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:前置:good_positional": {
+   "n": 680,
+   "delta_pp": 0.15,
+   "ci_pp": [
+    0.0,
+    0.48
+   ]
+  },
+  "top_style:多變:gold": {
+   "n": 554,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:多變:good_positional": {
+   "n": 554,
+   "delta_pp": -0.18,
+   "ci_pp": [
+    -0.59,
+    0.0
+   ]
+  },
+  "top_style:守中:gold": {
+   "n": 1269,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.24,
+    0.22
+   ]
+  },
+  "top_style:守中:good_positional": {
+   "n": 1269,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    -0.23,
+    0.24
+   ]
+  },
+  "top_style:後上:gold": {
+   "n": 745,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:後上:good_positional": {
+   "n": 745,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:未知:gold": {
+   "n": 35,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:未知:good_positional": {
+   "n": 35,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "cohort_ci_all_negative": [],
+ "changed_races": 169
+}
