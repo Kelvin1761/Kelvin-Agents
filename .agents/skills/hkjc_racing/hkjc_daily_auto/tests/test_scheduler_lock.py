@@ -165,6 +165,52 @@ def test_main_alerts_once_the_starvation_threshold_is_reached(tmp_path):
         held.close()
 
 
+def test_alert_names_the_current_holder_after_a_handover(tmp_path):
+    """2026-11-03：等緊嗰陣 recovery 交咗畀 prerace，舊訊息照報 recovery。"""
+    state_file = tmp_path / "hkjc_daily_state.json"
+    lock = state_file.with_suffix(".lock")
+    lock.write_text("", encoding="utf-8")
+    holder_file = sched._holder_path(lock)
+    holder_file.write_text(json.dumps({"mode": "recovery", "pid": 66276,
+                                       "since": sched.now_local().isoformat()}),
+                           encoding="utf-8")
+
+    def _handover(_lock, _timeout):
+        holder_file.write_text(json.dumps({"mode": "prerace", "pid": 70001,
+                                           "since": sched.now_local().isoformat()}),
+                               encoding="utf-8")
+        return None
+
+    with (
+        mock.patch.object(sched, "_acquire_lock", _handover),
+        mock.patch.object(sched, "LOCK_STARVE_ALERT_AFTER", 1),
+        mock.patch.object(sched, "notify") as notify,
+        mock.patch.object(sched, "emit_control_outcome", side_effect=lambda _a, c: c),
+    ):
+        _main("intraday", state_file)
+    message = notify.call_args[0][0]
+    assert "而家霸住嘅係：prerace（pid 70001）" in message
+    assert "66276" in message, "換手前嗰個都要講"
+    assert "唔係 run 卡死" in message
+
+
+def test_same_holder_all_along_still_says_check_for_a_stuck_run(tmp_path):
+    state_file = tmp_path / "hkjc_daily_state.json"
+    lock = state_file.with_suffix(".lock")
+    held = _hold(lock, "recovery")
+    try:
+        with (
+            mock.patch.object(sched, "LOCK_WAIT_SECONDS", 0),
+            mock.patch.object(sched, "LOCK_STARVE_ALERT_AFTER", 1),
+            mock.patch.object(sched, "notify") as notify,
+            mock.patch.object(sched, "emit_control_outcome", side_effect=lambda _a, c: c),
+        ):
+            _main("intraday", state_file)
+        assert "係咪卡住" in notify.call_args[0][0]
+    finally:
+        held.close()
+
+
 def test_main_records_the_holder_in_the_control_outcome(tmp_path):
     state_file = tmp_path / "hkjc_daily_state.json"
     lock = state_file.with_suffix(".lock")

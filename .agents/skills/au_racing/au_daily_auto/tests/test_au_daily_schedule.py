@@ -2152,6 +2152,42 @@ class TestLocalNetworkGate(unittest.TestCase):
         self.assertEqual(runlog.outbound_gate_kind, "network")
         self.assertEqual(runlog.data["steps"][-1]["step"], "network-gate")
 
+    def test_chrome_launch_failure_is_local_not_site_refusal(self):
+        """2026-11-03：主動重開時 Chrome 180 秒開唔到，Telegram 話 12 個馬場被拒。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            bf = self._fetcher(tmp)
+
+            def _fail(_s):
+                raise TimeoutError("BrowserType.launch_persistent_context: "
+                                   "Timeout 180000ms exceeded.")
+
+            with unittest.mock.patch.object(type(bf), "_ensure_page", _fail):
+                self.assertIsNone(bf.get(
+                    "https://www.sportsbetform.com.au/454885/3464023/"))
+            self.assertIsNone(bf.stop_reason)
+            self.assertIn("開唔到真 Chrome", bf.launch_reason)
+            bf.reset_gate()
+            self.assertIsNone(bf.launch_reason)
+
+    def test_fetch_page_records_a_local_gate_with_honest_message(self):
+        runlog = S.RunLog("test", date(2026, 11, 3),
+                          Path(tempfile.mkdtemp()) / "run.json")
+        runlog.browser_session = types.SimpleNamespace(
+            get=lambda *_a, **_k: None,
+            stop_reason=None,
+            network_reason=None,
+            launch_reason="開唔到真 Chrome（TimeoutError）",
+        )
+        self.assertIsNone(S.fetch_page(runlog, "https://example.invalid/x",
+                                       where="Randwick R4"))
+        self.assertTrue(runlog.site_refusing)
+        self.assertEqual(runlog.outbound_gate_kind, "local")
+        self.assertEqual(runlog.data["steps"][-1]["step"], "local-gate")
+        message = S.outbound_gate_message(runlog, "個站今次 run 已經明確拒絕",
+                                          "本機網絡今輪未恢復")
+        self.assertIn("唔係個站拒絕", message)
+        self.assertNotIn("明確拒絕", message)
+
     def test_round_reset_clears_fetcher_gate_before_retry(self):
         session = types.SimpleNamespace(reset_gate=unittest.mock.Mock())
         runlog = types.SimpleNamespace(
