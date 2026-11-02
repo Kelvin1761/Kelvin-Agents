@@ -439,14 +439,6 @@ VENUE_STATE_MAP = {
 TRACK_WEAK_THRESHOLD = 57.1
 
 
-METRO_VENUE_TOKENS = (
-    "randwick", "rosehill", "warwick farm", "canterbury",
-    "flemington", "caulfield", "sandown", "moonee valley",
-    "eagle farm", "doomben",
-    # EXP-20261016-18 R6x（§7）：阿德萊德同珀斯都會一直漏咗 —— Belmont／Morphettville 被當省賽，
-    # 喺嗰度比賽永遠唔算「今場都會」，由嗰度去 Flemington 又會被錯扣「省賽轉都會」。
-    "morphettville", "ascot", "belmont", "the valley",
-)
 
 
 def _normalize_identity_text(value) -> str:
@@ -3990,10 +3982,6 @@ class RacingEngine:
             "to_bottom": (weight - min_weight) if min_weight is not None else None,
         }
 
-    def _venue_tier(self, venue: str):
-        text = self._clean_identity(venue).lower()
-        return "metro" if any(token in text for token in METRO_VENUE_TOKENS) else ("provincial" if text else "")
-
     def _weight_allowance_suffix(self):
         """`（見習減 1.5kg，實負 59.5kg）`／`（超磅 0.5kg，實負 53.5kg）`；冇調整回空字串。"""
         allowance = parse_float(self.horse_data.get("jockey_allowance_kg")) or 0.0
@@ -4246,12 +4234,6 @@ class RacingEngine:
             return (place - 1) / (field - 1) <= 0.25
         return place is not None and place <= 3
 
-    def _metro_from_provincial(self):
-        entries = self._official_entries()
-        current = self._venue_tier(self._meeting_intelligence().get("venue") or self._track_profile().get("venue") or "")
-        latest = self._venue_tier((entries[0] or {}).get("venue") if entries else "")
-        return current == "metro" and latest == "provincial"
-
     def _proven_z(self):
         summary = self.race_context.get("field_summary") or {}
         return _class.proven_class_z(parse_float(self.data.get("proven_class_raw")),
@@ -4260,15 +4242,8 @@ class RacingEngine:
                                      parse_float(summary.get("proven_class_field_stdev")))
 
     def _class_score(self):
-        race_class = self._race_class_text().lower()
         score, adjustments = _class.class_score(
-            self._career_starts(),
-            "2-y-o" in race_class or "2yo" in race_class,
-            self._latest_run_good(),
-            "降班" in self._class_move_today(),
-            self._metro_from_provincial(),
-            self._proven_z(),
-        )
+            self._career_starts(), self._latest_run_good(), "降班" in self._class_move_today())
         notes = [factor for _, factor in adjustments]
         self.class_detail = {"base": 60.0, "notes": list(notes),
                              "adjustments": [{"delta": round(d, 2), "factor": f} for d, f in adjustments],

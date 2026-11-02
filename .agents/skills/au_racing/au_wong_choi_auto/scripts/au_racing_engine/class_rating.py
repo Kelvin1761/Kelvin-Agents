@@ -15,10 +15,13 @@
         混合場（場內 ≥2 匹有評分）兼有負磅代理 → 負磅代理
         冇負磅代理                           → 級數分
         其餘（多數冇評分嘅讓磅賽）          → ½ 級數分 + ½ 負磅代理
-        代理用咗級數分就扣返 (0.15/0.70) × (級數分 − 60)，等級數分喺維度入面只計一次（R2x）。
+        代理用咗級數分就扣返 (0.15/0.70) × (級數分 − 60)，等級數分喺維度入面只計一次（R2x）；
+        淨用負磅代理冇用級數分，唔扣（EXP-20261102-04 F1：舊版照扣，令呢批馬維度入面嘅級數份額變零）。
 
-級數分（60 起計）：初出馬 57.7（兩歲初出 +0.84）；出賽 1–5 場、上仗跑入場內頭 25% +2.31，否則 −0.82；
-    今場獎金 ≤ 上仗 0.7 倍（降班）+2.1；上仗非都會、今場都會 −5.48。clip 0–100。
+級數分（60 起計）：初出馬 57.7；出賽 1–5 場、上仗跑入場內頭 25% +2.31，否則 −0.82；
+    今場獎金 ≤ 上仗 0.7 倍（降班）+2.1。clip 0–100。逐條消融（EXP-20261102-04）：剷走呢三條任何一條都會令
+    primary 跌或者分層 CI 全負；全部剷走 top3 capture CI 全負。「兩歲初出 +0.84」（3,283 場只郁 1 場）同
+    「省賽轉都會 −5.48」（剷走 Gold、Good 都 +0.03pp）已剷。
 
 高班實績 overlay = 0.5 × z(proven_class)（場內 ≥3 匹有值兼有分散；proven_class 喺 `engine_core`
 `horse_proven_class_level` 由往績真班次 × 嗰仗場內名次百分位計）。
@@ -26,8 +29,6 @@
 負磅分只做顯示（2026-07-30 退出排名）：60；讓磅賽「降班仍輕磅（≤56.5）」或「升班兼高磅（≥58）」−3。
 """
 from __future__ import annotations
-
-import os
 
 from .dimensions import CLASS_SCORE_LIVE, CLASS_SCORE_LIVE_WEIGHT, RATING_SCORE_SHARE
 from .scoring import CLASS_MICRO_WEIGHTS, PROVEN_CLASS_Z_WEIGHT, clip_score
@@ -42,32 +43,20 @@ WEIGHT_MIN_RUNNERS = 4
 WEIGHT_MIN_SD = 0.3
 PROVEN_MIN_FIELD = 3
 
-# EXP-20261102-04 判決用 arm 開關（F1／C1／C2，逗號分隔）；判完會拆走。
-ARMS = frozenset(a for a in os.environ.get("WC_AU_CLASS_ARM", "").upper().split(",") if a)
-# C2：高班實績搬入級數分；8.712 = 0.5 ÷ (0.3826194 × 0.15)，有評分馬綜合分貢獻同 overlay 一樣。
-PROVEN_IN_CLASS_K = 0.5 / (0.3826193901797637 * CLASS_SCORE_LIVE_WEIGHT)
 
-
-def class_score(career_starts, is_2yo, latest_good, class_drop, metro_from_provincial, proven_z=None):
+def class_score(career_starts, latest_good, class_drop):
     """→ (分數, [(加減, 原因)])。"""
     w = CLASS_MICRO_WEIGHTS
     adjustments = []
     if career_starts == 0:
         adjustments.append((w["career0_base"] - NEUTRAL, "初出馬未有正式班際證明"))
-        if is_2yo:
-            adjustments.append((w["career0_2yo_bonus"], "2歲馬初出常有爆發力"))
     elif career_starts <= 5:
         if latest_good:
             adjustments.append((w["career5_placed_bonus"], "出賽少但上仗跑入場內頭 25%，有進步空間"))
         else:
             adjustments.append((w["career5_unplaced_pen"], "經驗較薄且上仗未跑入場內頭 25%"))
-    if "C1" not in ARMS:
-        if class_drop:
-            adjustments.append((w["class_drop_bonus"], "班次有回落"))
-        if metro_from_provincial:
-            adjustments.append((w["metro_prov_pen"], "省賽轉都會，鄉鎮賽績含金量成疑"))
-    if "C2" in ARMS and proven_z is not None:
-        adjustments.append((PROVEN_IN_CLASS_K * proven_z, "高班實績（往績班次 × 跑得點，同場比較）"))
+    if class_drop:
+        adjustments.append((w["class_drop_bonus"], "班次有回落"))
     score = NEUTRAL
     for delta, _ in adjustments:
         score += delta
@@ -101,11 +90,10 @@ def weight_proxy(is_handicap, weight, avg_weight, stdev, counted):
 
 def proxy_rating_score(class_proxy, w_proxy, mixed_field):
     """冇評分嘅馬 → (分數, 來源)。來源：weight_only／class_only／class_weight。"""
+    if mixed_field and w_proxy is not None:
+        return clip_score(w_proxy), "weight_only"
     class_once = ((CLASS_SCORE_LIVE_WEIGHT / RATING_SCORE_SHARE) * (class_proxy - NEUTRAL)
                   if CLASS_SCORE_LIVE else 0.0)
-    if mixed_field and w_proxy is not None:
-        # F1：代理冇用級數分，唔使扣（扣咗＝清走佢維度入面嘅級數份額）。
-        return clip_score(w_proxy if "F1" in ARMS else w_proxy - class_once), "weight_only"
     if w_proxy is None:
         return clip_score(class_proxy - class_once), "class_only"
     return clip_score(0.5 * class_proxy + 0.5 * w_proxy - class_once), "class_weight"
@@ -118,7 +106,7 @@ def proven_class_z(raw, count, mean, stdev):
 
 
 def proven_class_overlay(z):
-    if z is None or "C2" in ARMS:
+    if z is None:
         return 0.0
     return PROVEN_CLASS_Z_WEIGHT * z
 

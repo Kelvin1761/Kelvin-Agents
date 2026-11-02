@@ -775,7 +775,7 @@ def _class_weight_detail_lines(auto, name):
         else:
             lines.extend(f"{a['factor']} {float(a['delta']):+.2f}" for a in adjustments)
             if not adjustments:
-                lines.append("冇規則觸發（出賽 6 場或以上、冇降班、冇省轉都會）")
+                lines.append("冇規則觸發（出賽 6 場或以上、冇降班）")
         if d.get("final") is not None and (d.get("notes") or adjustments):
             lines.append(f"級數分 ＝ {float(d['final']):.1f}（0-100 封頂）")
         return lines

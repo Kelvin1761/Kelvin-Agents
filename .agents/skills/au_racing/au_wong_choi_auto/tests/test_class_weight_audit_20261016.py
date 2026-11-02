@@ -36,7 +36,8 @@ class TestRatingProxy:
         eng = rating_engine(None, {"rated_count": 6})
         score, _note, src = eng._rating_score()
         assert src == "weight_proxy_mixed_field"
-        assert score == pytest.approx(70.0 - K * (66.0 - 60.0))
+        # EXP-20261102-04 F1：負磅代理冇用級數分，唔扣 class_once（舊版扣咗，令級數份額變零）。
+        assert score == pytest.approx(70.0)
 
     def test_unrated_field_class_counted_once(self):
         eng = rating_engine(None, {"rated_count": 0})
@@ -76,13 +77,22 @@ class TestOfficialRatingNoHandTunedTerms:
         assert score == pytest.approx(60.0 + 1.5 * 6.0)   # 冇前三門檻、冇 BM／處女乘數
 
 
-class TestVenueTier:
-    @pytest.mark.parametrize("venue", ["Morphettville", "Ascot", "Belmont", "The Valley", "Flemington"])
-    def test_metro(self, venue):
-        assert engine()._venue_tier(venue) == "metro"
+class TestRemovedClassRules:
+    """EXP-20261102-04：「省賽轉都會 −5.48」同「兩歲初出 +0.84」已剷走。"""
 
-    def test_country_is_provincial(self):
-        assert engine()._venue_tier("Kalgoorlie") == "provincial"
+    def test_country_to_metro_is_not_penalised(self):
+        eng = engine("BM78 Handicap", "Flemington")
+        eng._career_starts = lambda: 12
+        eng._class_move_today = lambda: "="
+        eng._official_entry_cache = [{"placing": "6/10", "field_size": 10, "venue": "Kalgoorlie", "is_trial": False}]
+        assert eng._class_score()[0] == 60.0
+
+    def test_two_year_old_debut_is_plain_first_starter(self):
+        eng = engine("2YO Maiden Plate")
+        eng._career_starts = lambda: 0
+        eng._class_move_today = lambda: ""
+        eng._official_entry_cache = []
+        assert eng._class_score()[0] == pytest.approx(57.7)
 
 
 class TestClassScoreRelativePlacing:

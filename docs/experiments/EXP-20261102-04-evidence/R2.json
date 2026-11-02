@@ -1,0 +1,399 @@
+{
+ "races": 3283,
+ "verdict": "REJECT",
+ "reason": "ranking_evidence_too_weak",
+ "primary": {
+  "gold": {
+   "delta": 0.0,
+   "ci_low": 0.0,
+   "ci_high": 0.0,
+   "p_value": 1.0,
+   "block_deltas": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  },
+  "good_positional": {
+   "delta": 0.0,
+   "ci_low": 0.0,
+   "ci_high": 0.0,
+   "p_value": 1.0,
+   "block_deltas": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "ranking": {
+  "top3_capture_at5": {
+   "delta": 0.0,
+   "ci_low": 0.0,
+   "ci_high": 0.0,
+   "p_value": 1.0
+  },
+  "ndcg_at5": {
+   "delta": 0.0,
+   "ci_low": 0.0,
+   "ci_high": 0.0,
+   "p_value": 1.0
+  },
+  "top5_pairwise_auc": {
+   "delta": 0.0,
+   "ci_low": 0.0,
+   "ci_high": 0.0,
+   "p_value": 1.0
+  }
+ },
+ "counts_base": {
+  "gold": 21.13920194943649,
+  "gold_strict": 7.828205909229363,
+  "good_positional": 26.165092902832775,
+  "pass": 49.37557112397198,
+  "champion": 24.39841608285105,
+  "winner_in_top3": 57.69113615595492,
+  "winner_in_top5": 77.76424002436795,
+  "t3prec": 49.111584932480454
+ },
+ "counts_cand": {
+  "gold": 21.13920194943649,
+  "gold_strict": 7.828205909229363,
+  "good_positional": 26.165092902832775,
+  "pass": 49.37557112397198,
+  "champion": 24.39841608285105,
+  "winner_in_top3": 57.69113615595492,
+  "winner_in_top5": 77.76424002436795,
+  "t3prec": 49.111584932480454
+ },
+ "cohorts": {
+  "field:13+:gold": {
+   "n": 298,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "field:13+:good_positional": {
+   "n": 298,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "field:9-12:gold": {
+   "n": 1939,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "field:9-12:good_positional": {
+   "n": 1939,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "field:<=8:gold": {
+   "n": 1046,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "field:<=8:good_positional": {
+   "n": 1046,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$1-3:gold": {
+   "n": 1104,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$1-3:good_positional": {
+   "n": 1104,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$3-6:gold": {
+   "n": 1222,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$3-6:good_positional": {
+   "n": 1222,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$6+:gold": {
+   "n": 950,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:$6+:good_positional": {
+   "n": 950,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:unknown:gold": {
+   "n": 7,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_pick_sp:unknown:good_positional": {
+   "n": 7,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "distance:1201-1600:gold": {
+   "n": 1340,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "distance:1201-1600:good_positional": {
+   "n": 1340,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "distance:<=1200:gold": {
+   "n": 1428,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "distance:<=1200:good_positional": {
+   "n": 1428,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "distance:>1600:gold": {
+   "n": 515,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "distance:>1600:good_positional": {
+   "n": 515,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:前置:gold": {
+   "n": 692,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:前置:good_positional": {
+   "n": 692,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:多變:gold": {
+   "n": 545,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:多變:good_positional": {
+   "n": 545,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:守中:gold": {
+   "n": 1279,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:守中:good_positional": {
+   "n": 1279,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:後上:gold": {
+   "n": 733,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:後上:good_positional": {
+   "n": 733,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:未知:gold": {
+   "n": 34,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "top_style:未知:good_positional": {
+   "n": 34,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "handicap:False:gold": {
+   "n": 1406,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "handicap:False:good_positional": {
+   "n": 1406,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "handicap:True:gold": {
+   "n": 1877,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "handicap:True:good_positional": {
+   "n": 1877,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "rating_mix:all_rated:gold": {
+   "n": 2030,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "rating_mix:all_rated:good_positional": {
+   "n": 2030,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "rating_mix:majority_unrated:gold": {
+   "n": 1102,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "rating_mix:majority_unrated:good_positional": {
+   "n": 1102,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "rating_mix:mixed:gold": {
+   "n": 151,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  },
+  "rating_mix:mixed:good_positional": {
+   "n": 151,
+   "delta_pp": 0.0,
+   "ci_pp": [
+    0.0,
+    0.0
+   ]
+  }
+ },
+ "cohort_ci_all_negative": [],
+ "changed_races": 1
+}
