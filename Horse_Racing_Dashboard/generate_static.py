@@ -473,16 +473,50 @@ def _read_race_start_times(meeting):
     return {}, set()
 
 
+SPORTSBET_RACE_URL = "https://www.sportsbet.com.au/horse-racing/australia-nz/{slug}/race-{number}-{event_id}"
+
+
+def _read_race_watch(meeting):
+    """→ {"race number": {"url", "sky"}} from the timetable's Sportsbet events.
+
+    The race page opens by event id alone (slug and region segment are
+    ignored; checked 2026-11-03), and on a phone with the Sportsbet app the
+    https link opens the app, where Sky Racing streams for account holders.
+    No stream is embedded here: Sky Racing is licensed, so we only link out."""
+    for folder in (getattr(meeting, "folder_paths", None) or {}).values():
+        try:
+            body = json.loads((Path(folder) / RACE_START_TIMES_FILE).read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError):
+            continue
+        slug = re.sub(r"[^a-z0-9]+", "-", str(body.get("venue") or "").lower()).strip("-") or "race"
+        out = {}
+        for number, event in (body.get("events") or {}).items():
+            try:
+                event_id = int((event or {}).get("id"))
+            except (TypeError, ValueError):
+                continue
+            out[str(number)] = {
+                "url": SPORTSBET_RACE_URL.format(slug=slug, number=number, event_id=event_id),
+                "sky": str(event.get("sky")) if event.get("sky") else None,
+            }
+        return out
+    return {}
+
+
 def _attach_meeting_context(meeting, meeting_data, races_data):
     """`start_time` (epoch) on each race, both regions; state / tier for AU."""
     if str(meeting_data.get("region") or "").lower() in {"au", "australia"}:
         meeting_data.update(au_venue_profile(meeting_data.get("venue")))
     starts, abandoned = _read_race_start_times(meeting)
+    watch = _read_race_watch(meeting)
     for races in (races_data.get("races_by_analyst") or {}).values():
         for race in races:
             number = str(race.get("race_number"))
             race.pop("start_time", None)
             race.pop("abandoned", None)
+            race.pop("watch", None)
+            if number in watch and number not in abandoned:
+                race["watch"] = watch[number]
             if number in starts:
                 race["start_time"] = starts[number]
             elif number in abandoned:
