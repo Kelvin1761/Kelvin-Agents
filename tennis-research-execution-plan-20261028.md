@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-02 排名證據格式修正**：[EXP-20261102-06](docs/experiments/EXP-20261102-06-tennis-rank-reference-contract.md)確認新增rank annotations與原六欄point格式不相容；改為pre-pricing無損移到ranking_reference，未改writer／shared v3 reader／ruler。全113個fixture保留去向，112個memory pair的數值、警告、時計、完整pricing及quality不變；格式必要條件3→6，但quality仍0合格、forward仍0，未量準確度。82 targeted及完整gate（Tennis1166）通過，研究分支保存後再隔離交付main，不將格式通過當作模型改善。
+
 **2026-11-02 預測前公開 capture**：[EXP-20261102-05](docs/experiments/EXP-20261102-05-tennis-public-preprice-capture.md)從hot source以3.24秒唯讀交易保存427117行history及排名／cache；獨立cold revision已供native feature／pricing診斷，全部5個相關fixture中3個組裝定價、2個維持DISPUTED。新增預設關閉的預測前producer，仍只存研究分支；完整runtime／canonical證據、資格及準確度未完成，不把工程通過算改善。
 
 **2026-11-02 持久化／native接線**：[EXP-20261102-04](docs/experiments/EXP-20261102-04-tennis-indexed-shadow-native-readers.md)以424823行public revisions驗證正式feature builder與serve／ace／double-fault／games同版本讀取；凍結來源全部4個fixture去向保存、3個組裝及rollback數值還原。輸出固定unqualified，live ingestion producer／定價與canonical保存、資格及準確度驗證仍未完成；未改正式模型或重開15個REJECT_DEV。

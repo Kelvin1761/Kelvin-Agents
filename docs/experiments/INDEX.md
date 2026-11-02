@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261102-06](EXP-20261102-06-tennis-rank-reference-contract.md) | 2026-11-02 | Tennis | rank annotations無損對齊原六欄evidence point | **研究修正／未部署**：113個fixture，112組memory pair pricing／quality／逆還原相同；writer／v3 reader／ruler不變，格式必要條件3→6但quality／forward仍0；82 targeted及full gate（Tennis1166） |
 | [EXP-20261102-05](EXP-20261102-05-tennis-public-preprice-capture.md) | 2026-11-02 | Tennis | hot-source公開capture及預測前研究producer | **研究分支／未部署**：3.24秒、427117行history、rank pinning；全5個fixture中3個組裝定價／2 disputed，36針對測試及full gate（Tennis1150）；來源／整批資格及準確度仍未完成 |
 | [EXP-20261102-04](EXP-20261102-04-tennis-indexed-shadow-native-readers.md) | 2026-11-02 | Tennis | 持久化public revisions及native／props同版本讀取 | **研究接線／未部署**：424823行兩版本、Elo全量parity；全4個fixture各3組裝／1 disputed，rollback還原；四pure reader source-history SELECT 0，17新測試及full gate（Tennis1131）；live producer及準確度仍未完成 |
 | [EXP-20261102-03](EXP-20261102-03-tennis-memory-elo-generations.md) | 2026-11-02 | Tennis | 共用原Elo核心及雙時計memory generation | **隔離工程／未接production**：401046行三份全投影逐byte相同；45場版本切換／refresh／回退通過，47針對測試及full gate（Tennis1114）通過；UTS DOB／namespace補強，來源資格及正式接線未完成 |

@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from tennis_wc.config import get_settings
+from tennis_wc.features.rank_reference import ranking_effective_date
 
 
 def _parse_time(value: str | None) -> datetime | None:
@@ -155,9 +156,10 @@ def validate_data_freshness(feature_snapshot: dict) -> dict:
             elif age_hours * 60 > settings.data_max_staleness_minutes_odds:
                 errors.append(f"stale odds at {path}")
         ranking_age_hours = age_hours
-        if path.endswith("current_rank") and prov.get("ranking_date"):
+        effective_date = ranking_effective_date(feature_snapshot,path,prov)
+        if path.endswith("current_rank") and effective_date:
             try:
-                effective = datetime.fromisoformat(prov["ranking_date"]).replace(tzinfo=timezone.utc)
+                effective = datetime.fromisoformat(effective_date).replace(tzinfo=timezone.utc)
                 ranking_age_hours = ((match_day if is_backfill else now)-effective).total_seconds()/3600
             except (TypeError, ValueError):
                 warnings.append(f"invalid ranking date at {path}")

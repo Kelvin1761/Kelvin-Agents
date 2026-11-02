@@ -15,6 +15,7 @@ from tennis_wc.features.bo_format import calculate_bo_format_stats, detect_match
 from tennis_wc.features.common import datapoint, provenance, utc_now
 from tennis_wc.features.history_asof import guard_clause, guard_params
 from tennis_wc.features.data_quality import validate_data_freshness
+from tennis_wc.features.rank_reference import canonical_rank_references
 from tennis_wc.features.head_to_head import calculate_head_to_head_stats
 from tennis_wc.features.opponent_elo_buckets import calculate_player_elo_bucket_stats
 from tennis_wc.features.opponent_rank_buckets import calculate_player_rank_bucket_stats
@@ -479,6 +480,7 @@ def assemble_match_feature_snapshot(match_id: int, *, persist_derived: bool = Fa
         "market": _market(match_id),
         "entity_mapping_complete": True,
     }
+    snapshot = canonical_rank_references(snapshot)
     quality = validate_data_freshness(snapshot)
     snapshot["data_quality"] = quality
     # Plain numbers, not datapoints: the shadow must not move data quality,
