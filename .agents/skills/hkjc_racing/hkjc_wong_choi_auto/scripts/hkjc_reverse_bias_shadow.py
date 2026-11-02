@@ -14,10 +14,16 @@ import json
 import math
 import os
 import re
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+PROJECT_ROOT = Path(__file__).resolve().parents[5]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from wongchoi_paths import prediction_snapshot_dir, snapshot_offload_marker  # noqa: E402
 
 CONTRACT_VERSION = "HKJC_REVERSE_BIAS_SHADOW_V1"
 MIN_PRIOR_SAME_SURFACE_RACES = 2
@@ -456,7 +462,9 @@ def main() -> int:
     args = parser.parse_args()
 
     meeting_dir = args.meeting_dir.resolve()
-    snapshot_dir = args.snapshot_dir or meeting_dir / "Prediction_Snapshots" / "Reverse_Bias"
+    snapshot_dir = args.snapshot_dir or (
+        prediction_snapshot_dir(meeting_dir, "Prediction_Snapshots") / "Reverse_Bias"
+    )
     results_path = args.results_file or _find_results(meeting_dir)
     if results_path is None or not results_path.exists():
         print(json.dumps({"status": "no_results", "meeting": meeting_dir.name}, ensure_ascii=False))
@@ -472,6 +480,9 @@ def main() -> int:
         print(json.dumps(payload, ensure_ascii=False, indent=2))
         return 0
 
+    if snapshot_offload_marker(meeting_dir, "Prediction_Snapshots").is_file():
+        # A new local folder would hide the offloaded one from every reader.
+        raise RuntimeError(f"{meeting_dir.name}: snapshots are offloaded; restore before writing")
     snapshot = build_snapshot(meeting_dir, results_path)
     path, created = persist_snapshot(snapshot, snapshot_dir)
     risk_targets = [

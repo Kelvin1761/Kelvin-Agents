@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
-"""Move settled AU meetings' pre-race snapshots to the external disk.
+"""Move settled meetings' pre-race snapshots to the external disk.
 
-`<AU_RACING>/Archive/<meeting>/_prediction_snapshots/` is 3.1GB of the Mac's
-6.5GB data root (2026-11-02) and only grows. Each offload:
+`<AU_RACING>/Archive/<meeting>/_prediction_snapshots/` was 3.1GB of the Mac's
+6.5GB data root (2026-11-02) and only grows; `<HK_RACING>/<meeting>/
+Prediction_Snapshots/` adds ~50MB a meeting. Each offload:
 
-  1. copies the folder to `<archive>/au/<meeting>/_prediction_snapshots/`
+  1. copies the folder to `<archive>/<platform>/<meeting>/<snapshot folder>/`
      through a staging name, then compares every file's name, size and sha256
      against the source;
-  2. writes `<meeting>/_prediction_snapshots.offloaded.json` (the marker that
+  2. writes `<meeting>/<snapshot folder>.offloaded.json` (the marker that
      `wongchoi_paths.prediction_snapshot_dir` follows);
   3. only then deletes the local folder.
 
@@ -15,9 +16,10 @@ Readers never see a gap: until step 3 the local folder wins, after it the
 marker does. With the disk unplugged they raise `SnapshotArchiveOffline`
 instead of reading an empty folder.
 
-Only meetings already under `Archive/` qualify: those are settled, and their
-production evidence paths already point at the pre-Archive location, so moving
-them breaks no direct reference that worked before. `--verify` checks every
+AU: only meetings already under `Archive/` qualify: those are settled, and
+their production evidence paths already point at the pre-Archive location.
+HKJC meetings never move, so their evidence paths do point at the snapshots;
+`research_prediction_artifacts` follows the same marker. `--verify` checks every
 marker still resolves to a complete copy (健康.sh runs it); `--restore`
 brings one meeting back.
 """
@@ -33,6 +35,7 @@ import shutil
 import subprocess
 import sys
 import time
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -41,13 +44,23 @@ sys.path.insert(0, str(REPO))
 
 from wongchoi_paths import (  # noqa: E402
     AU_RACING,
+    HK_RACING,
     SNAPSHOT_ARCHIVE_ROOT,
     snapshot_offload_marker,
 )
 
-NAME = "_prediction_snapshots"
+@dataclass(frozen=True)
+class Platform:
+    key: str      # archive subfolder and --platform value
+    name: str     # snapshot folder inside a meeting
+    subdir: str   # where settled meetings live, below the platform's data root
+
+
+AU = Platform("au", "_prediction_snapshots", "Archive")
+HKJC = Platform("hkjc", "Prediction_Snapshots", "")
+PLATFORMS = {p.key: p for p in (AU, HKJC)}
 SCHEMA = "wong-choi-snapshot-offload/v1"
-DATE_PREFIX = re.compile(r"^(\d{4}-\d{2}-\d{2})\b")
+DATE_PREFIX = re.compile(r"^(\d{4}-\d{2}-\d{2})(?!\d)")  # not \b: HKJC is "2026-09-06_ShaTin"
 MIN_ARCHIVE_FREE = 20 * 1024**3
 
 
@@ -86,24 +99,25 @@ def archive_ready(archive_root: Path) -> str | None:
     return None
 
 
-def candidates(au_root: Path, min_age_days: int, today: date) -> list[Path]:
+def candidates(root: Path, min_age_days: int, today: date, plat: Platform = AU) -> list[Path]:
     cutoff = today - timedelta(days=min_age_days)
     out = []
-    archive = au_root / "Archive"
-    if not archive.is_dir():
+    meetings = root / plat.subdir
+    if not meetings.is_dir():
         return out
-    for meeting in sorted(archive.iterdir()):
+    for meeting in sorted(meetings.iterdir()):
         m = DATE_PREFIX.match(meeting.name)
-        if not m or not (meeting / NAME).is_dir() or (meeting / NAME).is_symlink():
+        local = meeting / plat.name
+        if not m or not local.is_dir() or local.is_symlink():
             continue
         if date.fromisoformat(m.group(1)) <= cutoff:
             out.append(meeting)
     return out
 
 
-def offload(meeting: Path, archive_root: Path) -> dict:
-    local = meeting / NAME
-    relpath = Path("au") / meeting.name / NAME
+def offload(meeting: Path, archive_root: Path, plat: Platform = AU) -> dict:
+    local = meeting / plat.name
+    relpath = Path(plat.key) / meeting.name / plat.name
     dest = archive_root / relpath
     source = tree_digest(local)
     if dest.exists():
@@ -111,7 +125,7 @@ def offload(meeting: Path, archive_root: Path) -> dict:
         if tree_digest(dest) != source:
             shutil.rmtree(dest)
     if not dest.exists():
-        staging = dest.with_name(f".{NAME}.partial-{os.getpid()}")
+        staging = dest.with_name(f".{plat.name}.partial-{os.getpid()}")
         if staging.exists():
             shutil.rmtree(staging)
         staging.parent.mkdir(parents=True, exist_ok=True)
@@ -123,7 +137,7 @@ def offload(meeting: Path, archive_root: Path) -> dict:
         os.replace(staging, dest)
     if tree_digest(local) != source:
         raise RuntimeError(f"{meeting.name}: source changed during offload; left in place")
-    marker = snapshot_offload_marker(meeting, NAME)
+    marker = snapshot_offload_marker(meeting, plat.name)
     payload = {
         "schema_version": SCHEMA,
         "archive_relpath": relpath.as_posix(),
@@ -133,19 +147,19 @@ def offload(meeting: Path, archive_root: Path) -> dict:
     temp = marker.with_name(marker.name + ".tmp")
     temp.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     os.replace(temp, marker)
-    trash = meeting / f".{NAME}.offload-trash"
+    trash = meeting / f".{plat.name}.offload-trash"
     os.replace(local, trash)
     shutil.rmtree(trash)
     return payload
 
 
-def markers(au_root: Path) -> list[Path]:
-    return sorted((au_root / "Archive").glob(f"*/{NAME}.offloaded.json"))
+def markers(root: Path, plat: Platform = AU) -> list[Path]:
+    return sorted((root / plat.subdir).glob(f"*/{plat.name}.offloaded.json"))
 
 
-def verify(au_root: Path, archive_root: Path, deep: bool) -> list[str]:
+def verify(root: Path, archive_root: Path, deep: bool, plat: Platform = AU) -> list[str]:
     problems = []
-    for marker in markers(au_root):
+    for marker in markers(root, plat):
         meeting = marker.parent
         try:
             payload = json.loads(marker.read_text(encoding="utf-8"))
@@ -168,14 +182,14 @@ def verify(au_root: Path, archive_root: Path, deep: bool) -> list[str]:
     return problems
 
 
-def restore(meeting: Path, archive_root: Path) -> None:
-    marker = snapshot_offload_marker(meeting, NAME)
+def restore(meeting: Path, archive_root: Path, plat: Platform = AU) -> None:
+    marker = snapshot_offload_marker(meeting, plat.name)
     payload = json.loads(marker.read_text(encoding="utf-8"))
     dest = archive_root / payload["archive_relpath"]
-    local = meeting / NAME
+    local = meeting / plat.name
     if local.exists():
         raise RuntimeError(f"{local} already exists")
-    staging = meeting / f".{NAME}.restore-{os.getpid()}"
+    staging = meeting / f".{plat.name}.restore-{os.getpid()}"
     subprocess.run(["ditto", str(dest), str(staging)], check=True)
     if tree_digest(staging)["tree_sha256"] != payload["tree_sha256"]:
         shutil.rmtree(staging)
@@ -186,7 +200,9 @@ def restore(meeting: Path, archive_root: Path) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--platform", choices=["all", *PLATFORMS], default="all")
     ap.add_argument("--au-root", type=Path, default=AU_RACING)
+    ap.add_argument("--hk-root", type=Path, default=HK_RACING)
     ap.add_argument("--archive-root", type=Path, default=SNAPSHOT_ARCHIVE_ROOT)
     ap.add_argument("--min-age-days", type=int, default=14)
     ap.add_argument("--time-budget", type=float, default=1800, help="seconds; stop starting new meetings after this")
@@ -196,20 +212,32 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--restore", metavar="MEETING", help="bring one meeting's snapshots back to the Mac")
     args = ap.parse_args(argv)
     archive_root = args.archive_root
+    roots = {"au": args.au_root, "hkjc": args.hk_root}
+    plats = list(PLATFORMS.values()) if args.platform == "all" else [PLATFORMS[args.platform]]
 
     if args.verify:
-        problems = verify(args.au_root, archive_root, args.deep)
-        n = len(markers(args.au_root))
-        print(json.dumps({"offloaded_meetings": n, "problems": problems}, ensure_ascii=False))
+        problems, counts = [], {}
+        for plat in plats:
+            problems += [f"{plat.key} {p}" for p in verify(roots[plat.key], archive_root, args.deep, plat)]
+            counts[plat.key] = len(markers(roots[plat.key], plat))
+        print(json.dumps({"offloaded_meetings": sum(counts.values()), "by_platform": counts,
+                          "problems": problems}, ensure_ascii=False))
         return 1 if problems else 0
     if args.restore:
-        restore(args.au_root / "Archive" / args.restore, archive_root)
-        print(f"restored {args.restore}")
+        found = [(plat, roots[plat.key] / plat.subdir / args.restore) for plat in plats
+                 if snapshot_offload_marker(roots[plat.key] / plat.subdir / args.restore, plat.name).is_file()]
+        if len(found) != 1:
+            print(f"{args.restore}: {len(found)} offloaded matches; pass --platform", file=sys.stderr)
+            return 1
+        plat, meeting = found[0]
+        restore(meeting, archive_root, plat)
+        print(f"restored {plat.key} {args.restore}")
         return 0
 
-    todo = candidates(args.au_root, args.min_age_days, date.today())
+    todo = [(plat, m) for plat in plats
+            for m in candidates(roots[plat.key], args.min_age_days, date.today(), plat)]
     if args.dry_run:
-        size = sum(p.stat().st_size for m in todo for p in (m / NAME).rglob("*") if p.is_file())
+        size = sum(p.stat().st_size for plat, m in todo for p in (m / plat.name).rglob("*") if p.is_file())
         print(json.dumps({"eligible_meetings": len(todo), "eligible_gib": round(size / 1024**3, 2)}))
         return 0
     reason = archive_ready(archive_root)
@@ -218,14 +246,14 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     started = time.monotonic()
     done, failed, moved = 0, [], 0
-    for meeting in todo:
+    for plat, meeting in todo:
         if time.monotonic() - started > args.time_budget:
             break
         try:
-            moved += offload(meeting, archive_root)["bytes"]
+            moved += offload(meeting, archive_root, plat)["bytes"]
             done += 1
         except (OSError, RuntimeError, subprocess.CalledProcessError) as exc:
-            failed.append(f"{meeting.name}: {exc}")
+            failed.append(f"{plat.key} {meeting.name}: {exc}")
     print(json.dumps({"offloaded": done, "remaining": len(todo) - done - len(failed),
                       "moved_gib": round(moved / 1024**3, 2), "failed": failed}, ensure_ascii=False))
     return 1 if failed else 0

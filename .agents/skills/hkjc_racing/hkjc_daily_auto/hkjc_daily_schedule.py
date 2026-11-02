@@ -59,7 +59,12 @@ from shared_wong_choi.domain_evidence import (  # noqa: E402
     record_settlement_for_event,
 )
 from shared_wong_choi.evidence import DecisionState  # noqa: E402
-from wongchoi_paths import HK_RACING, HK_RACING_MIRROR, is_materialized_file  # noqa: E402
+from wongchoi_paths import (  # noqa: E402
+    HK_RACING,
+    HK_RACING_MIRROR,
+    is_materialized_file,
+    snapshot_offload_marker,
+)
 
 
 TIMEZONE = "Australia/Sydney"
@@ -373,6 +378,12 @@ SNAPSHOT_PATTERNS = (
 
 def create_prediction_snapshot(meeting_dir: Path, *, at: datetime | None = None) -> Path:
     """Create an immutable pre-race snapshot; identical reruns reuse the last one."""
+    if snapshot_offload_marker(meeting_dir, "Prediction_Snapshots").is_file():
+        # A new local folder would hide the offloaded one from every reader.
+        raise RuntimeError(
+            f"{meeting_dir.name}: snapshots are offloaded; restore first with "
+            ".agents/scripts/offload_prediction_snapshots.py --restore"
+        )
     files = sorted({
         path
         for pattern in SNAPSHOT_PATTERNS

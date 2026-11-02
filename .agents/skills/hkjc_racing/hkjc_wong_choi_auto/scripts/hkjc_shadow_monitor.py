@@ -20,10 +20,12 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[5]
 SHARED_RACING = PROJECT_ROOT / ".agents" / "skills" / "shared_racing"
 
-if str(SHARED_RACING) not in sys.path:
-    sys.path.insert(0, str(SHARED_RACING))
+for _path in (SHARED_RACING, PROJECT_ROOT):
+    if str(_path) not in sys.path:
+        sys.path.insert(0, str(_path))
 
 from eval_metrics import race_metrics  # noqa: E402
+from wongchoi_paths import prediction_snapshot_dir  # noqa: E402
 
 
 PROFILE_MINIMUMS = {
@@ -56,7 +58,7 @@ def _sha256(path: Path) -> str:
 
 
 def _latest_snapshot(meeting_dir: Path) -> tuple[Path, dict[str, Any]]:
-    manifests = sorted((meeting_dir / "Prediction_Snapshots").glob("*/manifest.json"))
+    manifests = sorted(prediction_snapshot_dir(meeting_dir, "Prediction_Snapshots").glob("*/manifest.json"))
     if not manifests:
         raise RuntimeError("immutable prediction snapshot missing")
     manifest_path = manifests[-1]

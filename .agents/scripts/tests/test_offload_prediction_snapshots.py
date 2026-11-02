@@ -117,6 +117,89 @@ class OffloadTest(unittest.TestCase):
                 wr.stamped_snapshots(self.meeting)
 
 
+@unittest.skipUnless(shutil.which("ditto"), "macOS ditto only")
+class HkjcOffloadTest(unittest.TestCase):
+    """HKJC meetings never move to Archive/, so their evidence paths point straight at the snapshots."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        base = Path(self.tmp.name).resolve()  # research paths refuse /var -> /private/var
+        self.hk = base / "HK_Racing"
+        self.archive = base / "archive"
+        self.archive.mkdir()
+        self.meeting = self.hk / "2026-09-06_ShaTin"
+        self.snap = self.meeting / "Prediction_Snapshots" / "20260905T214945+1000"
+        self.snap.mkdir(parents=True)
+        logic = self.snap / "Race_1_Logic.json"
+        logic.write_text('{"race": 1}')
+        digest = __import__("hashlib").sha256(logic.read_bytes()).hexdigest()
+        (self.snap / "manifest.json").write_text(json.dumps({
+            "immutable_prediction_snapshot": True,
+            "files": [{"name": logic.name, "sha256": digest}]}))
+        rb = self.meeting / "Prediction_Snapshots" / "Reverse_Bias"
+        rb.mkdir()
+        (rb / "reverse_bias_after_R2_abc.json").write_text("{}")
+        self.patch = mock.patch.object(wongchoi_paths, "SNAPSHOT_ARCHIVE_ROOT", self.archive)
+        self.patch.start()
+
+    def tearDown(self) -> None:
+        self.patch.stop()
+        self.tmp.cleanup()
+
+    def test_candidates_are_old_dated_meetings_with_snapshots(self) -> None:
+        (self.hk / "2026-10-28_ShaTin" / "Prediction_Snapshots").mkdir(parents=True)
+        (self.hk / "2026-04-01_ShaTin_AWT_覆盤報告.md").write_text("x")
+        (self.hk / "2026-05-03_ShaTin").mkdir()
+        self.assertEqual(ops.candidates(self.hk, 14, date(2026, 11, 2), ops.HKJC), [self.meeting])
+
+    def test_offload_and_readers_follow_marker(self) -> None:
+        ops.offload(self.meeting, self.archive, ops.HKJC)
+        self.assertFalse((self.meeting / "Prediction_Snapshots").exists())
+        dest = self.archive / "hkjc" / self.meeting.name / "Prediction_Snapshots"
+        self.assertEqual(prediction_snapshot_dir(self.meeting, "Prediction_Snapshots"), dest)
+        self.assertEqual(ops.verify(self.hk, self.archive, True, ops.HKJC), [])
+
+        sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts"))
+        import hkjc_shadow_monitor
+        folder, manifest = hkjc_shadow_monitor._latest_snapshot(self.meeting)
+        self.assertEqual(folder, dest / self.snap.name)
+        self.assertTrue(manifest["immutable_prediction_snapshot"])
+
+    def test_research_evidence_paths_follow_marker(self) -> None:
+        sys.path.insert(0, str(REPO / ".agents/skills"))
+        from shared_wong_choi.research_prediction_artifacts import _offloaded_candidate
+
+        original = self.snap / "Race_1_Logic.json"
+        self.assertIsNone(_offloaded_candidate(original))  # still local: direct read wins
+        ops.offload(self.meeting, self.archive, ops.HKJC)
+        got = _offloaded_candidate(original)
+        self.assertEqual(got, self.archive / "hkjc" / self.meeting.name / "Prediction_Snapshots"
+                         / self.snap.name / "Race_1_Logic.json")
+        self.assertTrue(got.is_file())
+        self.patch.stop()
+        with mock.patch.object(wongchoi_paths, "SNAPSHOT_ARCHIVE_ROOT", Path(self.tmp.name) / "gone"):
+            self.assertIsNone(_offloaded_candidate(original))  # unavailable, not a crash
+        self.patch.start()
+
+    def test_writers_refuse_offloaded_meeting(self) -> None:
+        ops.offload(self.meeting, self.archive, ops.HKJC)
+        sys.path.insert(0, str(REPO / ".agents/skills/hkjc_racing/hkjc_daily_auto"))
+        import hkjc_daily_schedule
+        with self.assertRaisesRegex(RuntimeError, "offloaded"):
+            hkjc_daily_schedule.create_prediction_snapshot(self.meeting)
+        self.assertFalse((self.meeting / "Prediction_Snapshots").exists())
+
+    def test_cli_restore_and_verify_cover_both_platforms(self) -> None:
+        ops.offload(self.meeting, self.archive, ops.HKJC)
+        au = Path(self.tmp.name) / "AU_Racing"
+        common = ["--au-root", str(au), "--hk-root", str(self.hk), "--archive-root", str(self.archive)]
+        with mock.patch("sys.stdout"):
+            self.assertEqual(ops.main(["--verify", *common]), 0)
+            self.assertEqual(ops.main(["--restore", self.meeting.name, *common]), 0)
+        self.assertTrue((self.snap / "Race_1_Logic.json").is_file())
+        self.assertFalse(wongchoi_paths.snapshot_offload_marker(self.meeting, "Prediction_Snapshots").exists())
+
+
 # Every place production code names a snapshot folder. A new reader must call
 # `wongchoi_paths.prediction_snapshot_dir` — joining the name itself would see
 # an empty folder once a meeting is offloaded and silently skip it.
@@ -126,11 +209,11 @@ ALLOWED = {
     ".agents/skills/shared_wong_choi/immutable_snapshot.py": "writer; new snapshots are always local",
     ".agents/skills/shared_racing/race_reflector/scripts/unified_reflector_core.py": "names passed to the resolver",
     ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/engine_core.py": "compares a folder name; same in either location",
-    ".agents/skills/shared_wong_choi/research_prediction_artifacts.py": "matches recorded paths for relocation",
-    # Not offloaded: the mover only walks AU_RACING/Archive. Wire these first if that changes.
-    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_shadow_monitor.py": "HKJC",
-    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_reverse_bias_shadow.py": "HKJC",
-    ".agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_daily_schedule.py": "HKJC",
+    ".agents/skills/shared_wong_choi/research_prediction_artifacts.py": "names passed to the resolver",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_shadow_monitor.py": "name passed to the resolver",
+    ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_reverse_bias_shadow.py": "resolver for reads; writes refuse an offloaded meeting",
+    ".agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_daily_schedule.py": "writer for today's meeting; refuses an offloaded one",
+    # Not offloaded: the mover only walks AU Archive/ and HKJC meetings. Wire these first if that changes.
     ".agents/skills/nba/nba_daily_auto/nba_daily_schedule.py": "NBA",
     ".agents/skills/nba/nba_daily_auto/nba_no_prediction.py": "NBA",
     ".agents/scripts/nba_ml/nba_ml_pit.py": "NBA",
