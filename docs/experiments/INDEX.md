@@ -359,3 +359,4 @@
 - [EXP-20261102-12](EXP-20261102-12-au-overseas-form-quality-rating-proxy.md) — 英愛法往績為主嘅馬：近績質素分（獎金冇得同澳洲比）改由官方讓磅分推算（0.43 × 場內評分 z）。08-05 起只郁 29 場，Gold／Good 各 −1 場、名次誤差 3.60 → 3.37 —— 樣本太細判唔到。**USER-ACCEPTED EXPERIMENTAL LIVE**（`WC_AU_OVERSEAS_RATING_PROXY=0` 回退）。
 - [EXP-20261103-01](EXP-20261103-01-au-track-specialism-results.md) — AU 場地與地況適性改「相對生涯」專長（＋好地往績）：SPG／SP／SPW 全部 REJECT。SP 最接近：排序指標兩個 CI 全正、Gold +0.27pp，但 Good −0.03pp（約 1 場）觸發 primary_regression；SPW 證實濕地 overlay 仲有用。leaf AUC +0.019 冇轉化成場數指標。研究碼喺分支 `claude-track-specialism-exp-20261103`，live 冇改。
 - [EXP-20261103-02](EXP-20261103-02-au-track-module-simplify.md) — AU 場地模組簡化：單一 parser／常數 dict、剷由來冇觸發嘅乾地扣分；全語料 40,216 匹分數零差異。搵到截斷紀錄兩個讀法唔同（改正 Good −0.12pp 顯著）同「同場同程: 1:」字串比對入分。
+- [EXP-20261103-03](EXP-20261103-03-au-truncated-wet-record-fix.md) — AU 濕地 overlay：2026-08 截斷紀錄（`7:`，上名數唔知）唔再當「0 上名」。good_positional −0.12pp CI 全負、§7 唔過；**USER-ACCEPTED**（反映真實能力）。只改 2026-08 歷史語料，live 唔郁。

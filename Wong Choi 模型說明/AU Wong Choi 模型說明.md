@@ -188,8 +188,8 @@ R1 Benter combiner 量到模型對最早賽前市場冇增量資訊）。
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-11-03 09:05 AEDT`
-- Git commit：`ae49f30a`
+- 生成時間：`2026-11-03 09:42 AEDT`
+- Git commit：`301a9189`
 - Scoring contract：`au/raw-matrix-preparation-v2`
 - `scoring.py` 指紋：`cbaa93ac0281`
 - `matrix_mapper.py` 指紋：`7e081c69cdd9`

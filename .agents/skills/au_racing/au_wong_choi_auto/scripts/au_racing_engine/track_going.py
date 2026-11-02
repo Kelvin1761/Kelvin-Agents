@@ -12,9 +12,10 @@
              有上名 → min(10, 0.8 × 上名)，曾贏再 +3.77；≥2 戰 0 上名 → −4.75；1 戰 0 上名 → −4.14
     好地日   唔計地況段。好地往績只做報告：2026-08 A/B（`39155166d`）同 EXP-20261103-01 SPG 都過唔到閘。
 
-截斷紀錄（2026-08 Sportsbet 舊 Facts，例如 `7:`，連生涯都冇贏亞季）：場地分當冇紀錄；
-濕地 overlay 照舊當「7 戰 0 上名」。後者明知唔啱，但 EXP-20261103-02 改正之後 good_positional
-−0.12pp [−0.25, −0.03] 顯著負，過唔到 §7，所以保留。2026-09 起 live 冇截斷紀錄。
+截斷紀錄（2026-08 Sportsbet 舊 Facts，例如 `7:`，連生涯都冇贏亞季）：場地分同濕地 overlay 都當冇紀錄。
+以前 overlay 當「7 戰 0 上名」（最多 −5 分）。改正喺 3,302 場 good_positional −0.12pp [−0.25, −0.03]，
+過唔到 §7；**USER-ACCEPTED**（Kelvin 2026-11-03：「main aim is to have wong choi reflects true ability」），
+見 EXP-20261103-03。2026-09 起 live 冇截斷紀錄，所以只改歷史語料。
 
 濕地 overlay（直接加落綜合分，唔改呢個維度分）：今日 soft／heavy 先開；
     今日嗰個濕地 bucket 全份、另一個半份；率 = (上名 + 4 × 0.3758) ÷ (出賽 + 4)；
@@ -129,7 +130,7 @@ def has_wet_place(recs):
 
 def _wet_buckets(going, going_stats_line):
     """→ ((今日 bucket, 紀錄), (另一個, 紀錄))；今日唔係重地就當軟地。"""
-    recs = records("", going_stats_line)
+    recs = {k: r if r["complete"] else record("") for k, r in records("", going_stats_line).items()}
     order = ("重地", "軟地") if "heavy" in str(going or "").lower() else ("軟地", "重地")
     return tuple((label, recs[label]) for label in order)
 
