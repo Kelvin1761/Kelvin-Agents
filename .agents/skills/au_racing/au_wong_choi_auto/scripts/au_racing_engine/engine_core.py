@@ -2532,6 +2532,8 @@ class RacingEngine:
             verdict = "同場/今日地狀有實績支持，場地唔會成為絆腳石。"
         elif ts <= 54:
             verdict = "場地/地狀往績未見支持，發揮要打折睇。"
+        elif not any(_track.track_score(self._track_records(), self._today_going())[1:]):
+            verdict = "冇同場／今日地況往績，場地分維持中性。"
         else:
             verdict = "場地適應有基礎，應付到今日地狀。"
         if wet_state in {"soft7plus", "heavy"} and not self._has_verified_wet_place():
@@ -3354,17 +3356,8 @@ class RacingEngine:
         self._formline_row_cache = rows
         return rows
 
-    def _same_track_stats(self):
-        # ``track_stats_line`` is a compound Facts row:
-        #   1:0-0-0 | 同程: 27:3-5-4 | 同場同程: 0:0-0-0
-        # Parse the first segment only.  Older Sportsbet Facts truncated the
-        # first record to ``1:``; feeding the whole row to ``parse_record_line``
-        # turned the next segment's 27 starts into 27 same-track wins.
-        text = str(self.data.get("track_stats_line") or "")
-        return self._parse_record_stats(text.split("|", 1)[0].strip())
-
-    def _going_stats(self):
-        return self._parse_going_stats(self.data.get("going_stats_line") or "")
+    def _track_records(self):
+        return _track.records(self.data.get("track_stats_line"), self.data.get("going_stats_line"))
 
     def _meeting_intelligence(self):
         data = self.race_context.get("meeting_intelligence")
@@ -3460,18 +3453,6 @@ class RacingEngine:
             return stats
         return {"starts": 0, "wins": 0, "seconds": 0, "thirds": 0, "places": 0}
 
-    def _parse_going_stats(self, text):
-        # Keep the established ranking contract: the leading Good segment is
-        # report evidence, while explicit Soft/Heavy records drive going fit.
-        # Activating the previously stripped Good segment was separately A/B
-        # tested and failed the terminal performance gate, so a data-alignment
-        # fix must not silently introduce that new scoring rule.
-        output = {}
-        for label in ("好地", "軟地", "重地"):
-            match = re.search(rf"{label}:\s*([^|]+)", text)
-            output[label] = self._parse_record_stats(match.group(1).strip() if match else "")
-        return output
-
     def _distance_m(self):
         match = re.search(r"(\d+)", str(self.race_context.get("distance") or ""))
         return int(match.group(1)) if match else 0
@@ -3536,8 +3517,7 @@ class RacingEngine:
         return "；".join(bits)
 
     def _has_verified_wet_place(self):
-        stats = self._going_stats()
-        return any(stats[label]["places"] > 0 for label in ("軟地", "重地"))
+        return _track.has_wet_place(self._track_records())
 
     def _style_confidence(self):
         return str(self.data.get("style_confidence_line") or self._speed_map_field("style_confidence") or "").strip()
@@ -3681,10 +3661,14 @@ class RacingEngine:
         return ""
 
     def _repeatability_brief(self):
-        track_stats = self._same_track_stats()
+        # ⚠️ 入分（跑法穩定性「重複交代獎勵」+2）。「同場同程: 1:」只認啱啱 1 戰、唔理有冇上名 ——
+        # 已知怪，但改佢係模型改動，要另行 A/B（EXP-20261103-02 記錄）。
         track_line = str(self.data.get("track_record_line") or "")
         if "同場同程: 1:" in track_line:
             return "同場同程已有直接對位"
+        track_stats = self._track_records()["同場"]
+        if not track_stats["complete"]:
+            return ""  # 截斷紀錄（2026-08 舊 Facts）：同舊 parser 一樣當冇紀錄
         if track_stats["starts"] >= 2 and track_stats["places"] >= 2:
             return "同場樣本已形成重覆前列交代"
         if track_stats["starts"] >= 2 and track_stats["places"] == 0:
@@ -4224,34 +4208,22 @@ class RacingEngine:
 
     def _track_score(self):
         """場地分：見 `track_going`。呢度只砌說明。"""
-        score, same_parts, going_parts = _track.track_score(
-            self._same_track_stats(), self._going_stats(), self._today_going())
+        recs = self._track_records()
+        score, same_parts, going_parts = _track.track_score(recs, self._today_going())
         notes = [text for _, text in same_parts]
-        tdetail = {"base": 60.0, "final": None}
-        self.track_detail = tdetail
+        tdetail = {"base": _track.NEUTRAL, "final": round(score, 2)}
         if going_parts:
             total = sum(d for d, _ in going_parts)
             sign = "＋" if total >= 0 else "−"
             notes.append(f"地況適應：{'、'.join(text for _, text in going_parts)}（合計 {sign}{abs(total):.1f}）")
             tdetail["going_adjustment"] = round(total, 2)
-
-        # 場地／地狀往績記錄行先：一眼睇到同場、好/軟/重地實績
-        rec_bits = []
-        same = re.match(r"\s*(\d+:\d+-\d+-\d+)", str(self.data.get("track_stats_line") or ""))
-        if same and same.group(1) != "0:0-0-0":
-            rec_bits.append(f"同場 {same.group(1)}")
-        gsl = str(self.data.get("going_stats_line") or "")
-        gm = re.match(r"\s*(\d+:\d+-\d+-\d+)", gsl)
-        if gm and gm.group(1) != "0:0-0-0":
-            rec_bits.append(f"好地 {gm.group(1)}")
-        for lab, key in (("軟地", "軟地"), ("重地", "重地")):
-            mm = re.search(rf"{key}:\s*(\d+:\d+-\d+-\d+)", gsl)
-            if mm and mm.group(1) != "0:0-0-0":
-                rec_bits.append(f"{lab} {mm.group(1)}")
-        rec_prefix = ("；".join(rec_bits) + "；") if rec_bits else ""
-        tdetail["final"] = round(score, 2)
-        tdetail["notes"] = ([f"往績 {' / '.join(rec_bits)}"] if rec_bits else []) + list(notes)
-        body = f"{rec_prefix}{'；'.join(notes) if notes else '場地資料未見鮮明優劣'}"
+        # 往績記錄行先：一眼睇到同場、好/軟/重地實績
+        rec_bits = [f"{label} {r['starts']}:{r['wins']}-{r['seconds']}-{r['thirds']}"
+                    for label, r in recs.items() if r["starts"] and r["complete"]]
+        tdetail["notes"] = ([f"往績 {' / '.join(rec_bits)}"] if rec_bits else []) + notes
+        self.track_detail = tdetail
+        prefix = "；".join(rec_bits) + "；" if rec_bits else ""
+        body = f"{prefix}{'；'.join(notes) if notes else '場地資料未見鮮明優劣'}"
         return score, f"{body}。場地分 {score:.1f}。", "track_stats+going_stats+wet_track"
 
     def _formline_future_wins(self):

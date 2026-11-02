@@ -219,10 +219,12 @@ class BuilderEnricherParityTests(unittest.TestCase):
             "going_stats_line": "18:3-2-2 | 軟地: 20:1-4-4 | 重地: 7:1-1-1",
         }
 
-        self.assertEqual(engine._same_track_stats()["places"], 0)
-        going = engine._going_stats()
-        self.assertEqual(going["好地"]["starts"], 0)
-        self.assertEqual(going["好地"]["places"], 0)
+        recs = engine._track_records()
+        self.assertFalse(recs["同場"]["complete"])  # 截斷嘅 `1:` 唔入場地分
+        self.assertEqual(recs["同場"]["places"], 0)
+        going = recs
+        self.assertEqual(going["好地"]["starts"], 18)  # 報告用；好地日唔入分
+        self.assertEqual(going["好地"]["places"], 7)
         self.assertEqual(going["軟地"]["places"], 9)
         self.assertEqual(going["重地"]["places"], 3)
 

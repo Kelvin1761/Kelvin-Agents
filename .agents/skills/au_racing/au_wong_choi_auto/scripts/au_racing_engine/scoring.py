@@ -266,17 +266,6 @@ WET_FORM_MAX_ABS = 6.1818       # 5.49 ×1.1260；clamp the feature to a sane ±
 # 真乾淨 403 場好過唔調（pass +0.74→+1.24、winT3 +0.50→+0.99、mrr −0.18→+0.02）。
 
 
-def _parse_going_segment(going_stats_line, label):
-    """Career starts & places for ONE going bucket (軟地 or 重地)."""
-    match = re.search(rf"{label}:\s*([^|]+)", going_stats_line or "")
-    if not match:
-        return 0, 0
-    nums = [int(n) for n in re.findall(r"\d+", match.group(1))]
-    if len(nums) >= 4:
-        return nums[0], nums[1] + nums[2] + nums[3]
-    return (nums[0] if nums else 0), 0
-
-
 # 今日地況以外嗰個濕地 bucket 只算半份證據。
 # 2026-08-23：原本兩個 bucket **1:1 溝埋**，唔理今日實際跑咩地。實例
 # （Randwick R1，掛牌 Soft 6）：Clear Proof 軟地 7:2-2-0（4 上名 / 7 = 57%）
@@ -300,28 +289,10 @@ def _parse_going_segment(going_stats_line, label):
 WET_OTHER_BUCKET_WEIGHT = 0.5
 
 
-def _parse_wet_record(going, going_stats_line):
-    """Wet starts & places, weighted by whether the bucket matches today's going."""
-    soft = _parse_going_segment(going_stats_line, "軟地")
-    heavy = _parse_going_segment(going_stats_line, "重地")
-    primary, secondary = (heavy, soft) if "heavy" in str(going or "").lower() else (soft, heavy)
-    w = WET_OTHER_BUCKET_WEIGHT
-    return primary[0] + w * secondary[0], primary[1] + w * secondary[1]
-
-
 def wet_form_feature(going, going_stats_line):
-    """Per-horse wet-going-suitability contribution to ability_score (綜合戰力分).
-
-    Returns 0.0 on dry (Good/Firm) going so the score stays == pure 7D. On Soft/Heavy
-    going, returns scale·(shrunk_wet_place_rate − prior), clamped to ±WET_FORM_MAX_ABS.
-    A horse with no wet starts shrinks to the prior → 0 (neutral)."""
-    g = str(going or "").lower()
-    if "soft" not in g and "heavy" not in g:
-        return 0.0
-    starts, places = _parse_wet_record(going, going_stats_line)
-    rate = (places + WET_FORM_SHRINK_A * WET_FORM_PRIOR) / (starts + WET_FORM_SHRINK_A)
-    value = WET_FORM_FEATURE_SCALE * (rate - WET_FORM_PRIOR)
-    return round(max(-WET_FORM_MAX_ABS, min(WET_FORM_MAX_ABS, value)), 4)
+    """濕地往績調整（直接加落綜合戰力分）；計法喺 `track_going.wet_overlay`，呢度只係舊入口。"""
+    from .track_going import wet_overlay
+    return wet_overlay(going, going_stats_line)
 
 # 2026-07-11 修：career5_unplaced_pen 由 +0.82（語義反轉——變數叫「懲罰」卻加分，
 # ML 殘骸）改為 −0.82 對稱。
@@ -391,24 +362,7 @@ SECTIONAL_MICRO_WEIGHTS = {
     "forgiveness_bonus": 7.46        # 原 9.89
 }
 
-TRACK_MICRO_WEIGHTS = {
-    # EXP-20261016-70 T5x（§7 顯示正確性）：62.9 → 60.0。62.9 令冇任何場地證據嘅馬都顯示「場地分稍好」，
-    # 而全部馬 ability 靜靜 +0.41。場內常數平移，排名逐匹不變（3,288 場只得 1 場因 4 位小數捨入打和調位）。
-    "base": 60.0,
-    "same_track_place_bonus": 5.0,
-    "same_track_win_bonus": 2.4,
-    "same_track_poor_pen1": -8.81,
-    "same_track_poor_pen2": -0.81,
-    "going_place_bonus": 0.8,
-    "going_win_bonus": 3.77,
-    "going_poor_pen1_wet": -4.75,
-    "going_poor_pen1_dry": -3.46,
-    "going_poor_pen2_wet": -4.14,
-    # 2026-07-11 修：乾地「1 戰零上名」原本 −7.08，罰得重過「2 戰零上名」(−3.46)，
-    # 非單調（樣本越少罰越重，不合理，ML 殘骸）。改 −3.0，令 1 戰 ≤ 2 戰。A/B rank-neutral。
-    "going_poor_pen2_dry": -3.0,
-    # wet_unverified_pen（−6.4）、heavy_win_bonus／heavy_place_bonus／heavy_poor_pen 已剷：EXP-20261102-10 逐條消融。
-}
+# TRACK_MICRO_WEIGHTS 已搬入 `track_going.py`（EXP-20261103-02）；乾地扣分 −3.46／−3.0 由來冇觸發過，已剷。
 
 # PACE_MICRO_WEIGHTS（舊逐場地檔位矩陣嘅修正幅度）已剷走：檔位分改由 draw.py（EXP-20261102-09）。
 # ── micro adjustment 家族審查（2026-08-04，718 場 runtime ablation）──────

@@ -1,36 +1,48 @@
-"""AU 場地與地況適性（維度 `track`）＋ 濕地 overlay —— 唯一計算位置（EXP-20261102-10）。
+"""AU 場地與地況適性（維度 `track`）＋ 濕地 overlay —— 唯一計算位置。
 
-`RacingEngine._track_score`／`_going_adjustment`／`_wet_state` 同綜合分嘅濕地 overlay 只係叫呢度。
+輸入只有三樣（全部賽前 Facts）：
+    track_stats_line   `3:1-0-1 | 同程: … | 同場同程: …`   → 第一段 = 同場
+    going_stats_line   `12:2-1-3 | 軟地: 7:1-2-0 | 重地: 3:0-0-1` → 第一段 = 好地（冇標籤）
+    今日掛牌地況       → bucket 好地／軟地／重地
 
-今場地況分級（`wet_state`）：Heavy → heavy；Soft 7+ → soft7plus；Soft 5–6 → soft56；其他（包括冇數字）→ ""。
-地況 bucket：Heavy／重 → 重地；Soft／軟 → 軟地；其餘 → 好地。
+場地分 = clip(60 + 同場 + 今日濕地, 0, 100)：
 
-場地分 = 60 + 同場往績 + 地況往績，clip 0–100：
+    同場     有上名 → min(9, 5.0 × 上名 + 2.4 × 贏)；≥2 戰 0 上名 → −8.81；1 戰 0 上名 → −0.81
+    今日濕地 （今日軟地／重地先計，用返嗰個 bucket 嘅往績）
+             有上名 → min(10, 0.8 × 上名)，曾贏再 +3.77；≥2 戰 0 上名 → −4.75；1 戰 0 上名 → −4.14
+    好地日   唔計地況段。好地往績只做報告：2026-08 A/B（`39155166d`）同 EXP-20261103-01 SPG 都過唔到閘。
 
-    同場：有上名 → min(9, 上名 × 5.0 + 贏 × 2.4)；≥2 戰 0 上名 → −8.81；1 戰 0 上名 → −0.81
-    今場地況 bucket：有上名 → min(10, 上名 × 0.8)（濕地兼曾贏 +3.77）；
-                    ≥2 戰 0 上名 → 濕 −4.75／乾 −3.46；1 戰 0 上名 → 濕 −4.14／乾 −3.0
-                    （好地 bucket 永遠冇數：Facts 第一段冇「好地:」標籤，好地往績只做報告）
+截斷紀錄（2026-08 Sportsbet 舊 Facts，例如 `7:`，連生涯都冇贏亞季）：場地分當冇紀錄；
+濕地 overlay 照舊當「7 戰 0 上名」。後者明知唔啱，但 EXP-20261103-02 改正之後 good_positional
+−0.12pp [−0.25, −0.03] 顯著負，過唔到 §7，所以保留。2026-09 起 live 冇截斷紀錄。
 
-逐條消融（EXP-20261102-10，3,283 場）：同場兩個 0 上名扣分有訊號（剷走 Gold −0.18pp，CI 全負）；
-「爛地未經驗證 −6.4」同「重地專項三條」剷走冇代價（合併 Gold +0.03pp、Good 0），已剷。
-地況往績 ② 剷走排序指標 CI 全正但 Good −0.03pp（1 場），照登記規則保留，另行跟進。
-
-濕地 overlay（直接加落綜合分；`scoring.wet_form_feature`）：今日地況含 soft／heavy 先開；
+濕地 overlay（直接加落綜合分，唔改呢個維度分）：今日 soft／heavy 先開；
     今日嗰個濕地 bucket 全份、另一個半份；率 = (上名 + 4 × 0.3758) ÷ (出賽 + 4)；
-    14.852 × (率 − 0.3758)，封頂 ±6.1818。冇濕地出賽 = 0。
+    14.852 × (率 − 0.3758)，封頂 ±6.1818。冇濕地出賽 = 0。常數同歷史喺 `scoring.py`。
+
+歷史：EXP-20261102-10 逐條消融 —— 同場兩個 0 上名扣分有訊號（剷走 Gold −0.18pp，CI 全負）；
+「爛地未經驗證 −6.4」同「重地專項三條」剷走冇代價，已剷。EXP-20261103-02 簡化：剷走由來冇觸發過嘅
+乾地扣分（−3.46／−3.0：好地 bucket 永遠冇紀錄）同重複嘅紀錄 parser。
 """
 from __future__ import annotations
 
 import re
 
-from .scoring import (TRACK_MICRO_WEIGHTS, WET_FORM_PRIOR, WET_FORM_SHRINK_A, _parse_going_segment, _parse_wet_record,
-                      clip_score, wet_form_feature)
+from .scoring import (WET_FORM_FEATURE_SCALE, WET_FORM_MAX_ABS, WET_FORM_PRIOR, WET_FORM_SHRINK_A,
+                      WET_OTHER_BUCKET_WEIGHT, clip_score, parse_record_line)
 
 NEUTRAL = 60.0
+# 一個 dict：`au_runtime_micro_ablation` 喺 runtime 逐個 key 改做 0 嚟消融，所以計分時先讀。
+WEIGHTS = {
+    "same_place": 5.0, "same_win": 2.4, "same_cap": 9.0, "same_nil_many": -8.81, "same_nil_one": -0.81,
+    "wet_place": 0.8, "wet_place_cap": 10.0, "wet_win": 3.77, "wet_nil_many": -4.75, "wet_nil_one": -4.14,
+}
+
+_FULL_RECORD = re.compile(r"\d+\s*:\s*\d+\s*-\s*\d+\s*-\s*\d+")
 
 
 def wet_state(going):
+    """Heavy → heavy；Soft 7+ → soft7plus；Soft 5–6 → soft56；其他（包括冇數字）→ ""。"""
     m = re.search(r"(Soft|Heavy)\s*([0-9]+)", str(going or ""), re.I)
     if not m:
         return ""
@@ -49,72 +61,100 @@ def going_bucket(going):
     return "好地"
 
 
-def same_track_parts(stats):
-    """stats：{starts, wins, places}（同場）→ [(加減, 說明)]。"""
-    w = TRACK_MICRO_WEIGHTS
-    if stats["places"] > 0:
-        return [(min(9, stats["places"] * w["same_track_place_bonus"] + stats["wins"] * w["same_track_win_bonus"]),
-                 "同場有實際上名支持")]
-    if stats["starts"] >= 2:
-        return [(w["same_track_poor_pen1"], "同場已有多次出賽但仍未交到成績")]
-    if stats["starts"] > 0:
-        return [(w["same_track_poor_pen2"], "有同場出賽紀錄但仍未交到成績")]
-    return []
+def record(text):
+    """`3:1-0-1` → {starts, wins, seconds, thirds, places, complete}。
+    截斷 `7:` → starts 7、其餘 0、complete False；`N/A`／空 → 全 0。"""
+    text = str(text or "").strip()
+    if _FULL_RECORD.search(text):
+        return {**parse_record_line(text), "complete": True}
+    m = re.match(r"(\d+)\s*:", text)
+    return {**parse_record_line(""), "starts": int(m.group(1)) if m else 0, "complete": False}
 
 
-def going_parts(going_stats, bucket):
-    """今場地況 bucket 往績 → [(加減, 說明)]。going_stats：{好地／軟地／重地: stats}。"""
-    w = TRACK_MICRO_WEIGHTS
-    sample = going_stats.get(bucket, {})
-    wet_bucket = bucket in {"軟地", "重地"}
-    if sample.get("starts", 0) > 0 and sample.get("places", 0) > 0:
-        parts = [(min(10, sample["places"] * w["going_place_bonus"]),
-                  f"{bucket}有上名（{sample['places']}／{sample['starts']}）")]
-        if sample.get("wins", 0) > 0 and wet_bucket:
-            parts.append((w["going_win_bonus"], f"{bucket}曾贏"))
+def records(track_stats_line, going_stats_line):
+    """→ {同場, 好地, 軟地, 重地: record}。"""
+    going = str(going_stats_line or "")
+    out = {"同場": record(str(track_stats_line or "").split("|", 1)[0]),
+           "好地": record(going.split("|", 1)[0])}
+    for label in ("軟地", "重地"):
+        m = re.search(rf"{label}:\s*([^|]+)", going)
+        out[label] = record(m.group(1) if m else "")
+    return out
+
+
+def _same_part(r):
+    w = WEIGHTS
+    if not r["complete"]:
+        return None
+    if r["places"]:
+        return min(w["same_cap"], w["same_place"] * r["places"] + w["same_win"] * r["wins"]), "同場有實際上名支持"
+    if r["starts"] >= 2:
+        return w["same_nil_many"], "同場已有多次出賽但仍未交到成績"
+    if r["starts"]:
+        return w["same_nil_one"], "有同場出賽紀錄但仍未交到成績"
+    return None
+
+
+def _wet_parts(r, bucket):
+    w = WEIGHTS
+    if not r["complete"]:
+        return []
+    if r["places"]:
+        parts = [(min(w["wet_place_cap"], w["wet_place"] * r["places"]), f"{bucket}有上名（{r['places']}／{r['starts']}）")]
+        if r["wins"]:
+            parts.append((w["wet_win"], f"{bucket}曾贏"))
         return parts
-    if sample.get("starts", 0) >= 2 and sample.get("places", 0) == 0:
-        return [(w["going_poor_pen1_wet"] if wet_bucket else w["going_poor_pen1_dry"],
-                 f"{bucket} {sample['starts']} 戰未有前列")]
-    if sample.get("starts", 0) > 0 and sample.get("places", 0) == 0:
-        return [(w["going_poor_pen2_wet"] if wet_bucket else w["going_poor_pen2_dry"],
-                 f"{bucket} 1 戰未有成績")]
+    if r["starts"] >= 2:
+        return [(w["wet_nil_many"], f"{bucket} {r['starts']} 戰未有前列")]
+    if r["starts"]:
+        return [(w["wet_nil_one"], f"{bucket} 1 戰未有成績")]
     return []
 
 
-def track_score(same_stats, going_stats, going):
-    """→ (分數, 同場 parts, 地況 parts)。"""
-    st = same_track_parts(same_stats)
-    gp = going_parts(going_stats, going_bucket(going))
+def track_score(recs, going):
+    """recs = `records(...)` → (分數, 同場 parts, 地況 parts)；parts = [(加減, 說明)]。"""
+    same = _same_part(recs["同場"])
+    same_parts = [same] if same else []
+    bucket = going_bucket(going)
+    going_parts = _wet_parts(recs[bucket], bucket) if bucket != "好地" else []
     score = NEUTRAL
-    for delta, _ in st:
+    for delta, _ in same_parts + going_parts:
         score += delta
-    for delta, _ in gp:
-        score += delta
-    return clip_score(score), st, gp
+    return clip_score(score), same_parts, going_parts
+
+
+def has_wet_place(recs):
+    return bool(recs["軟地"]["places"] or recs["重地"]["places"])
+
+
+def _wet_buckets(going, going_stats_line):
+    """→ ((今日 bucket, 紀錄), (另一個, 紀錄))；今日唔係重地就當軟地。"""
+    recs = records("", going_stats_line)
+    order = ("重地", "軟地") if "heavy" in str(going or "").lower() else ("軟地", "重地")
+    return tuple((label, recs[label]) for label in order)
 
 
 def wet_overlay(going, going_stats_line):
-    return wet_form_feature(going, going_stats_line)
+    """濕地往績調整（綜合分加減）；乾地 → 0。"""
+    detail = wet_overlay_detail(going, going_stats_line)
+    return detail["value"] if detail else 0.0
 
 
 def wet_overlay_detail(going, going_stats_line):
-    """濕地 overlay 嘅報告明細；乾地 → None。數字同 `wet_form_feature` 一樣。"""
-    g = str(going or "").lower()
-    if "soft" not in g and "heavy" not in g:
+    """濕地 overlay 嘅明細；乾地 → None。"""
+    g = str(going or "")
+    if "soft" not in g.lower() and "heavy" not in g.lower():
         return None
-    starts, places = _parse_wet_record(going, going_stats_line)
+    (today, t), (other, o) = _wet_buckets(going, going_stats_line)
+    w = WET_OTHER_BUCKET_WEIGHT
+    starts = t["starts"] + w * o["starts"]
+    places = t["places"] + w * o["places"]
     rate = (places + WET_FORM_SHRINK_A * WET_FORM_PRIOR) / (starts + WET_FORM_SHRINK_A)
-    heavy_today = "heavy" in g
-    buckets = [("重地", _parse_going_segment(going_stats_line, "重地")),
-               ("軟地", _parse_going_segment(going_stats_line, "軟地"))]
-    if not heavy_today:
-        buckets.reverse()
-    return {"going": str(going), "starts": round(starts, 1), "places": round(places, 1),
-            "today_bucket": buckets[0][0], "other_bucket": buckets[1][0],
-            "today_record": list(buckets[0][1]), "other_record": list(buckets[1][1]),
-            "rate": round(rate, 4), "prior": WET_FORM_PRIOR,
-            "value": wet_form_feature(going, going_stats_line)}
+    value = max(-WET_FORM_MAX_ABS, min(WET_FORM_MAX_ABS, WET_FORM_FEATURE_SCALE * (rate - WET_FORM_PRIOR)))
+    return {"going": g, "starts": round(starts, 1), "places": round(places, 1),
+            "today_bucket": today, "other_bucket": other,
+            "today_record": [t["starts"], t["places"]], "other_record": [o["starts"], o["places"]],
+            "rate": round(rate, 4), "prior": WET_FORM_PRIOR, "value": round(value, 4)}
 
 
 def wet_overlay_line(detail):
