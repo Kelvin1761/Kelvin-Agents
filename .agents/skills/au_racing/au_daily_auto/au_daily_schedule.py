@@ -107,6 +107,7 @@ SPEED_RECENCY_SHADOW = (AU_SKILL / "au_wong_choi_auto" / "scripts"
 L600_RECENCY_FORWARD = (AU_SKILL / "au_wong_choi_auto" / "scripts"
                         / "au_l600_recency_forward.py")
 DRAW_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_draw_forward.py"
+OVERSEAS_PROXY_FORWARD = AU_SKILL / "au_wong_choi_auto" / "scripts" / "au_overseas_proxy_forward.py"
 GENERATE_STATIC = DASHBOARD_DIR / "generate_static.py"
 DEPLOY_SH = DASHBOARD_DIR / "deploy.sh"
 
@@ -1559,6 +1560,31 @@ def step_draw_forward(runlog: RunLog) -> bool:
                 target=status.get("target_races"), keep=(status.get("evaluation") or {}).get("keep"),
                 gold_with_draw=(interim.get("with_draw") or {}).get("gold"),
                 gold_without_draw=(interim.get("without_draw") or {}).get("gold"))
+    return True
+
+
+def step_overseas_proxy_forward(runlog: RunLog) -> bool:
+    """EXP-20261102-12 forward 監察：英愛法往績馬近績質素分由官方讓磅分推算（實驗性上線）有代理 vs 冇代理。
+    只計有代理馬嘅場次；未夠數每晚寫累計描述（interim）；夠 100 場判一次並凍結，夠數由 forward tracker 推
+    Telegram。失敗唔阻 live 分析，永遠唔會自動改模型。"""
+    status_path = WORK_DIR / "au-overseas-proxy-forward-status.json"
+    rc, out = run_cmd([sys.executable, str(OVERSEAS_PROXY_FORWARD), "--data-root", str(AU_RACING),
+                       "--output", str(status_path)], timeout=1800)
+    if rc != 0 or not status_path.exists():
+        detail = error_excerpt(out, rc)
+        runlog.warn(f"外地馬讓磅分代理 forward 更新失敗（唔影響 live 排名）：{detail}")
+        runlog.step("overseas-proxy-forward", "failed", detail=detail)
+        return False
+    try:
+        status = json.loads(status_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        runlog.step("overseas-proxy-forward", "failed", detail=str(exc))
+        return False
+    interim = status.get("interim") or {}
+    runlog.step("overseas-proxy-forward", status.get("state", "unknown"), races=status.get("races_collected", 0),
+                target=status.get("target_races"), keep=(status.get("evaluation") or {}).get("keep"),
+                rank_error_with=(interim.get("with_proxy") or {}).get("proxy_rank_error"),
+                rank_error_without=(interim.get("without_proxy") or {}).get("proxy_rank_error"))
     return True
 
 
@@ -4251,6 +4277,7 @@ def run_evening(runlog: RunLog, args, review_day: date) -> int:
         step_speed_recency_shadow(runlog)
         step_l600_recency_forward(runlog)
         step_draw_forward(runlog)
+        step_overseas_proxy_forward(runlog)
         step_forward_tracker(runlog)
     publisher = None
     progressive = (not args.skip_deploy and not args.skip_analysis

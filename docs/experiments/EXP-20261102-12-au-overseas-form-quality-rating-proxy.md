@@ -29,4 +29,4 @@ Kingswood Caulfield Stakes $1,000,000 → z 3.99），而 Sportsbet `CL1` 分唔
 ## 冇做
 
 - 海外段速（中性 60）、外地騎師（中性 60 ≈ 大賽中位）：冇資料源，維持。
-- 冇登記 forward 測試：英愛法往績馬一年得幾十匹，「夠 N 場先判」要等一年以上；改為每個春季嘉年華後人手覆盤。
+- Forward 測試（2026-11-02 Kelvin 要求登記）：`au_overseas_proxy_forward.py`，scheduler `step_overseas_proxy_forward`，tracker `overseas_rating_proxy`。只計有代理馬嘅已完賽場次，counterfactual = 代理馬近績質素分換返賽前記低嘅冇代理值（`stability_detail.form_quality`）。每晚寫 interim（代理馬平均名次差距、Gold／Good 場數）；**夠 100 場**用 v3 fixed_rule 判一次並凍結，Telegram 通知。英愛法往績馬一年得幾十匹，預計要一年以上；100 場功效仍然低，判唔到唔等於冇效。反事實已用 10-17 Caulfield Cup 開／關 flag 實測 3/3 匹一致。

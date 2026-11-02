@@ -52,6 +52,11 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 "scheduler 夠數會自動判一次（v3 fixed_rule：有檔位 vs 冇檔位）並凍結；睇 au-draw-forward-status.json，"
                 "keep=false 就建議 WC_AU_DRAW_LIVE=0 回退",
                 status_file="au-draw-forward-status.json"),
+    ForwardTest("overseas_rating_proxy", "英愛法往績馬近績質素分由官方讓磅分推算（×0.43，用戶接受嘅實驗性上線）",
+                "EXP-20261102-12", "status_file", 100, "場",
+                "scheduler 夠數會自動判一次（v3 fixed_rule：有代理 vs 冇代理）並凍結；睇 au-overseas-proxy-forward-status.json，"
+                "keep=false 就建議 WC_AU_OVERSEAS_RATING_PROXY=0 回退",
+                status_file="au-overseas-proxy-forward-status.json"),
 )
 
 _S2_DAYS = re.compile(r"forward days with snapshot \+ results:\s*(\d+)\s*/\s*(\d+)")
