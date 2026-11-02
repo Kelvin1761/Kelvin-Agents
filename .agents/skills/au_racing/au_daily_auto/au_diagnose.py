@@ -202,7 +202,8 @@ def diagnose(run: dict, history: list[dict]) -> str:
         + [f"{m.get('status')} {m.get('detail') or ''} {m.get('reason') or ''}"
            for m in (run.get("meetings_processed") or [])]
         + [f"{s.get('where') or ''} {s.get('stop_reason') or ''} {s.get('network_reason') or ''}"
-           for s in steps if s.get("step") in {"site-gate", "browser"}])
+           f" {s.get('launch_reason') or ''}"
+           for s in steps if s.get("step") in {"site-gate", "local-gate", "browser"}])
     haystack = error_haystack if errs else fallback_haystack
     matched = primary_known_match(haystack)
     same_needle = msg[:40]

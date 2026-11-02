@@ -151,7 +151,7 @@ def main() -> int:
                 if done % 10 == 0:
                     print(f"   {done}/{len(todo)}", flush=True)
                 continue
-            print(f"⛔ 停手：{bf.stop_reason}", flush=True)
+            print(f"⛔ 停手：{bf.stop_reason or bf.launch_reason}", flush=True)
             break
     print(f"完成 {done}/{len(todo)}", flush=True)
 

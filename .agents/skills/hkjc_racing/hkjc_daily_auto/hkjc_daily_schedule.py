@@ -2191,6 +2191,13 @@ def _describe_holder(lock_path: Path) -> str:
     return f"{mode}（pid {data.get('pid')}）霸住{held}"
 
 
+def _holder_pid(lock_path: Path):
+    try:
+        return json.loads(_holder_path(lock_path).read_text(encoding="utf-8")).get("pid")
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
 def _acquire_lock(lock, timeout: float) -> float | None:
     """等到攞到為止，最多等 `timeout` 秒。回等咗幾耐；攞唔到回 None。"""
     deadline = time.monotonic() + timeout
@@ -2251,18 +2258,30 @@ def main(argv: list[str] | None = None) -> int:
     lock_path = args.state_file.with_suffix(".lock")
     with lock_path.open("a", encoding="utf-8") as lock:
         holder = _describe_holder(lock_path)
+        first_pid = _holder_pid(lock_path)
         waited = _acquire_lock(lock, LOCK_WAIT_SECONDS)
         if waited is None:
+            # ⚠️ 要喺等完之後重新讀。2026-11-03：開始等嗰陣係 recovery 66276，
+            # 00:41 已經交咗畀 prerace，但 Telegram 照報 66276「霸住」，叫人去查
+            # 一個已經收工嘅 run。換過手 = 排程擠，唔係卡死。
+            before = holder
+            holder = _describe_holder(lock_path)
+            handed_over = first_pid is not None and _holder_pid(lock_path) != first_pid
+            if handed_over:
+                holder = f"{holder}（等緊嗰陣換過手，之前係 {before}）"
             skips = _record_skip(lock_path, args.mode, holder)
             log(f"HKJC {args.mode} 等咗 {LOCK_WAIT_SECONDS}s 都攞唔到鎖：{holder}"
                 f"（連續第 {skips} 次被擋）")
             # 連續被擋就係餓死，唔係一次巧合。`watch` 一日得四格、`postrace`
             # 一日一格 —— 靜靜跳過幾次就等於嗰個 mode 實質停咗。
             if skips >= LOCK_STARVE_ALERT_AFTER:
+                verdict = ("鎖有換手，唔係 run 卡死 —— 係幾個長 run 輪住霸，"
+                           "排程太擠" if handed_over else
+                           "成段時間都係同一個 run 霸住，要睇下佢係咪卡住。")
                 notify(
                     f"⚠️ HKJC `{args.mode}` 連續 {skips} 次攞唔到排程鎖\n"
-                    f"霸住嘅係：{holder}\n"
-                    f"呢個 mode 實質停咗，要睇下係咪有 run 卡住。"
+                    f"而家霸住嘅係：{holder}\n"
+                    f"{verdict}"
                 )
             set_control_outcome("blocked", reason="scheduler_locked", holder=holder,
                                 consecutive_skips=skips)

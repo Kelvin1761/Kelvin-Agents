@@ -79,6 +79,11 @@ class BrowserFetcher:
         # 本機 DNS／Wi-Fi 故障同遠端拒絕係兩種狀態。兩者都會暫停今輪請求，
         # 但診斷、通知同下一輪恢復策略唔可以混埋一齊。
         self.network_reason: str | None = None
+        # 本機開唔到 Chrome（launch timeout、profile 鎖死、記憶體唔夠）。第三種
+        # 狀態：個站冇收過請求，網絡亦冇證據話斷咗。2026-11-03 實測：每 25 版
+        # 主動重開時 swap 用到 8.9/10 GB，新 Chrome 180 秒都開唔到，舊 code 寫入
+        # `stop_reason`，於是 Telegram 話 12 個馬場「個站明確拒絕」。
+        self.launch_reason: str | None = None
         # 單版失敗（唔 trip circuit breaker）同連續 timeout 計數。
         self.last_page_error: str | None = None
         self.timeout_streak = 0
@@ -236,6 +241,7 @@ class BrowserFetcher:
         """冷卻窗完結後容許一次真正重試，而唔係沿用上一輪嘅 sticky gate。"""
         self.stop_reason = None
         self.network_reason = None
+        self.launch_reason = None
         self.last_page_error = None
         self.timeout_streak = 0
 
@@ -283,7 +289,7 @@ class BrowserFetcher:
             if self.verbose:
                 self.log(f"（cache）{url}")
             return target.read_text(encoding="utf-8")
-        if self.stop_reason or self.network_reason:
+        if self.stop_reason or self.network_reason or self.launch_reason:
             return None
         if not url.startswith(BASE):
             raise ValueError(f"只可以攞 {BASE} 嘅頁：{url}")
@@ -299,8 +305,9 @@ class BrowserFetcher:
             except BrowserRefused:
                 return None
             except Exception as exc:  # noqa: BLE001 — 開唔到瀏覽器 = 今次做唔到
-                self.stop_reason = f"開唔到真 Chrome（{type(exc).__name__}: {exc}）"
-                self.log(f"⛔ {self.stop_reason}")
+                # ⚠️ 唔係 `stop_reason`：個站一個請求都未收過，唔可以當佢拒絕。
+                self.launch_reason = f"開唔到真 Chrome（{type(exc).__name__}: {exc}）"
+                self.log(f"⛔ {self.launch_reason}")
                 return None
 
             self._pace()

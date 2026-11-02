@@ -227,6 +227,19 @@ class RunLog:
                                    "at": stamp(), "where": where})
         self.flush()
 
+    def trip_local_gate(self, where: str) -> None:
+        if self.site_refusing:
+            return
+        # 同 network gate 一樣：今輪唔再出網，冷卻後全新 session 再試。
+        self.site_refusing = True
+        self.outbound_gate_kind = "local"
+        self.network_unavailable_reason = None
+        self.warn(f"本機開唔到 Chrome，喺 {where} 停低 —— 唔係 sportsbetform 拒絕；"
+                  f"今輪暫停出網，冷卻後用全新 session 再試")
+        self.data["steps"].append({"step": "local-gate", "status": "tripped",
+                                   "at": stamp(), "where": where})
+        self.flush()
+
     def retry(self, what: str, attempt: int, reason: str) -> None:
         self.data["retries"].append({"at": stamp(), "what": what,
                                      "attempt": attempt, "reason": reason})
@@ -505,7 +518,8 @@ def close_browser(runlog: RunLog) -> None:
         return
     runlog.step("browser", "closed", requests_made=session.requests_made,
                 stop_reason=session.stop_reason,
-                network_reason=getattr(session, "network_reason", None))
+                network_reason=getattr(session, "network_reason", None),
+                launch_reason=getattr(session, "launch_reason", None))
     session.close()
     runlog.browser_session = None
 
@@ -526,6 +540,8 @@ def fetch_page(runlog: RunLog, url: str, *, force: bool = False,
         runlog.trip_network_gate(
             f"{where or url}（{session.network_reason}）"
         )
+    elif html is None and getattr(session, "launch_reason", None):
+        runlog.trip_local_gate(f"{where or url}（{session.launch_reason}）")
     elif html is None and session.stop_reason:
         runlog.trip_site_gate(f"{where or url}（{session.stop_reason}）")
     return html
@@ -543,7 +559,13 @@ def reset_outbound_gate(runlog: RunLog) -> None:
 
 def outbound_gate_message(runlog: RunLog, site: str, network: str) -> str:
     """所有用戶可見錯誤都按 typed gate 講真實原因。"""
-    return network if getattr(runlog, "outbound_gate_kind", None) == "network" else site
+    kind = getattr(runlog, "outbound_gate_kind", None)
+    if kind == "local":
+        return LOCAL_GATE_MESSAGE
+    return network if kind == "network" else site
+
+
+LOCAL_GATE_MESSAGE = "本機開唔到 Chrome（多數係記憶體唔夠），唔係個站拒絕；冷卻後再試"
 
 
 def api_next_events(runlog: RunLog) -> list[dict]:
