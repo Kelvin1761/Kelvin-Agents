@@ -18,11 +18,11 @@ def test_truncated_record_is_flagged():
     assert tg.record("7:1-2-0")["places"] == 3 and tg.record("7:1-2-0")["complete"]
 
 
-def test_truncated_records_keep_legacy_behaviour():
+def test_truncated_records_are_no_record():
     # 場地分：截斷 = 冇紀錄
     assert tg.track_score(tg.records("4:", "12: | 軟地: 7: | 重地: 3:"), "Soft 6")[0] == 60.0
-    # 濕地 overlay：截斷 = 「7 戰 0 上名」（改正過唔到 §7，見 EXP-20261103-02）
-    assert wet_form_feature("Soft 6", "12: | 軟地: 7: | 重地: 3:") == pytest.approx(-3.7953)
+    # 濕地 overlay：截斷都當冇紀錄（以前當「7 戰 0 上名」→ −3.80；EXP-20261103-03 用戶接受改正）
+    assert wet_form_feature("Soft 6", "12: | 軟地: 7: | 重地: 3:") == 0.0
 
 
 def test_good_going_never_scores():
