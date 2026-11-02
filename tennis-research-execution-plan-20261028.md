@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-02 預測前公開 capture**：[EXP-20261102-05](docs/experiments/EXP-20261102-05-tennis-public-preprice-capture.md)從hot source以3.24秒唯讀交易保存427117行history及排名／cache；獨立cold revision已供native feature／pricing診斷，全部5個相關fixture中3個組裝定價、2個維持DISPUTED。新增預設關閉的預測前producer，仍只存研究分支；完整runtime／canonical證據、資格及準確度未完成，不把工程通過算改善。
+
 **2026-11-02 持久化／native接線**：[EXP-20261102-04](docs/experiments/EXP-20261102-04-tennis-indexed-shadow-native-readers.md)以424823行public revisions驗證正式feature builder與serve／ace／double-fault／games同版本讀取；凍結來源全部4個fixture去向保存、3個組裝及rollback數值還原。輸出固定unqualified，live ingestion producer／定價與canonical保存、資格及準確度驗證仍未完成；未改正式模型或重開15個REJECT_DEV。
 
 **2026-11-02 隔離版本實作**：[EXP-20261102-03](docs/experiments/EXP-20261102-03-tennis-memory-elo-generations.md)抽出共用Elo核心，401046行四臂保留全部原輸出；45場memory generation實際時間切換／refresh／回退及47針對測試通過。研究code先存非main分支，未接production、未正式修身份；persistent store／native reader／來源資格及準確度評估仍未完成。

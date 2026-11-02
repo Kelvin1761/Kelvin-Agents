@@ -929,6 +929,16 @@ def run_daily(args: argparse.Namespace) -> None:
     if slate_integrity['held']:
         source_warnings.append({'source': 'slate_integrity',
                                 'warning': f"held fixtures (excluded from card): {slate_integrity['held']}"})
+    # Explicit research option only. A requested capture must complete before
+    # features/prices; failures do not silently create an uncaptured card.
+    public_shadow = None
+    if getattr(args, 'shadow_public_input_dir', None) is not None:
+        from tennis_wc.research_public_capture import prepare_public_shadow
+        public_shadow = _run_timed_stage(
+            'research_public_inputs',
+            lambda: prepare_public_shadow(args.shadow_public_input_dir, source=get_settings().sqlite_path),
+            stage_timings,
+        )
     snapshots = _run_timed_stage(
         "feature_snapshots",
         lambda: build_sportsbet_feature_snapshots_for_date(args.date),
@@ -1021,6 +1031,8 @@ def run_daily(args: argparse.Namespace) -> None:
         "mode": "mvp_snapshot" if args.mvp_snapshot else "live_full",
         "research_capture_errors": research_capture_errors,
     }
+    if public_shadow is not None:
+        payload['research_public_inputs'] = public_shadow
     try:
         _run_timed_stage(
             "prediction_evidence",
@@ -1264,6 +1276,8 @@ def main(argv: list[str] | None = None) -> None:
     p.add_argument("--date", default=date.today().isoformat())
     p.add_argument("--mvp-snapshot", action="store_true", help="Use existing Sportsbet/local snapshots without live source refresh.")
     p.add_argument("--skip-cloudflare-deploy", action="store_true", help="Do not refresh the Cloudflare dashboard after a successful daily run.")
+    p.add_argument("--shadow-public-input-dir", type=Path,
+                   help="Opt-in public input capture before features; research only, no model activation. Parent must exist.")
     p.set_defaults(func=run_daily)
 
     p = sub.add_parser("predict-daily")

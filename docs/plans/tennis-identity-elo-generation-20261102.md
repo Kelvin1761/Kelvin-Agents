@@ -36,4 +36,6 @@ history 的 ACTIVE 篩選與 Elo 的 as-of 讀取是兩條路。只為新 histor
 
 ## 完成定義
 
+[EXP-20261102-05](../experiments/EXP-20261102-05-tennis-public-preprice-capture.md)補上hot-source公開capture及預設關閉的run-daily pre-feature producer。427117行history與排名／舊cache在3.24秒唯讀交易固定，341MiB cold revision的native feature／pure pricing診斷維持unqualified；5個fixture全留去向。這仍不是完整production forecast接線、wire body驗證或合格forward，來源及準確度驗收沒有勾完。
+
 來源與時間合約、可重現 generation、實際安全交付及準確度判決是四個分開的驗收。測試通過、身份修好或 cache 能重建，均不自動代表準確度提高。若新候選不過 frozen gate，記錄失敗，保持 known-good production。

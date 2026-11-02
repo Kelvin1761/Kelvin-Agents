@@ -1,7 +1,7 @@
 """Public, indexed, immutable revision files plus an append-only shadow registry.
 
-No live ingestion hook or promotion exists. Sources must be read-only frozen
-SQLite files. Only public player/history/registry tables are copied; private
+No live ingestion hook or promotion exists. Inputs must be read-only frozen
+SQLite files, including sealed public captures. Only public tables are copied; private
 fixtures, quotes, predictions, ledgers and raw bodies are never copied.
 """
 from __future__ import annotations
@@ -27,6 +27,38 @@ REGISTRY_ID = 0x54475231
 SNAPSHOT_ID = 0x54475331
 PUBLIC_TABLES = ('players', 'player_match_history', 'provider_entities', 'player_aliases')
 SOURCE_VIEWS = ('rankings_history', 'raw_api_responses', 'retained_payload_refs', 'retained_payload_blobs')
+
+
+def _check_origin(info):
+    source = Path(info['source_path'])
+    if info.get('source_mode') == 'public_capture':
+        if _source_identity(source)[:2] != info['source_identity']:
+            raise ValueError('source file was replaced; raw IDs are not portable')
+    else:
+        if source.stat().st_mode & 0o222:
+            raise ValueError('source is no longer frozen')
+        if _source_identity(source) != info['source_identity']:
+            raise ValueError('source file was replaced; raw IDs are not portable')
+
+
+def _check_headers(conn):
+    from tennis_wc.research_public_capture import RAW_HEADER_COLUMNS, _header_hash
+    import time
+    expires = time.monotonic() + 5
+    conn.create_function('capture_header_hash', len(RAW_HEADER_COLUMNS), _header_hash)
+    conn.set_progress_handler(lambda: int(time.monotonic() >= expires), 1000)
+    try:
+        header = ','.join('r.' + col for col in RAW_HEADER_COLUMNS)
+        changed = conn.execute(f'''SELECT COUNT(*) FROM main.capture_raw_headers h
+            LEFT JOIN original.raw_api_responses r ON r.id=h.raw_response_id
+            WHERE (h.missing=1 AND r.id IS NOT NULL) OR
+                (h.missing=0 AND (r.id IS NULL OR h.header_sha256!=capture_header_hash({header})))''').fetchone()[0]
+        if time.monotonic() >= expires:
+            raise TimeoutError('raw header verification deadline')
+        if changed:
+            raise ValueError('captured raw header changed')
+    finally:
+        conn.set_progress_handler(None, 0)
 
 
 def file_sha(path: Path) -> str:
@@ -88,6 +120,14 @@ def build_public_snapshot(destination: Path, *, source: Path, source_receipts: l
     _new_file(destination)
     # A failed build remains an unsealed file. Registration rejects it.
     with closing(_readonly(source, immutable=True)) as original:
+        from tennis_wc.research_public_capture import CAPTURE_ID
+        captured = None
+        if original.execute('PRAGMA application_id').fetchone()[0] == CAPTURE_ID:
+            captured = json.loads(original.execute('SELECT metadata FROM public_capture_manifest').fetchone()[0])
+            if captured['qualification'] != QUALIFICATION or _clock(captured['captured_at']) > started:
+                raise ValueError('invalid public capture qualification or clock')
+            _check_origin(dict(source_path=captured['source_path'], source_mode='public_capture',
+                               source_identity=captured['source_origin']))
         public = {}
         source_tables = {r[0] for r in original.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         missing_optional = []
@@ -119,6 +159,34 @@ def build_public_snapshot(destination: Path, *, source: Path, source_receipts: l
                 conn.execute(f'INSERT INTO {table} (' + ','.join(keys) + ') VALUES (' +
                              ','.join('?' for _ in keys) + ')', list(row.values()))
             counts[table] = len(public[table])
+        extras = set()
+        if captured is not None:
+            # Pin rankings too. Old live caches are evidence only, never builder inputs.
+            with closing(_readonly(source, immutable=True)) as original:
+                for table, target in [('rankings_history','rankings_history'),
+                                      ('capture_raw_headers','capture_raw_headers'),
+                                      ('player_elo_history','generation_input_legacy_elo'),
+                                      ('player_elo_history_v2','generation_input_shadow_elo')]:
+                    if table not in source_tables:
+                        continue
+                    cols = [r['name'] for r in original.execute(f'PRAGMA table_info({table})')]
+                    expected = ({'raw_response_id','header_sha256','missing'} if table == 'capture_raw_headers'
+                                else {r['name'] for r in conn.execute(f'PRAGMA table_info({table})')})
+                    if set(cols) != expected:
+                        raise ValueError(f'unreviewed capture columns in {table}')
+                    if target != 'rankings_history':
+                        schema = ','.join('"'+c+'"' for c in cols)
+                        conn.execute(f'CREATE TABLE {target} ({schema})')
+                    placeholders = ','.join('?' for _ in cols)
+                    names = ','.join('"'+c+'"' for c in cols)
+                    input_digest.update(table.encode())
+                    count = 0
+                    for row in original.execute(f'SELECT * FROM {table} ORDER BY {names}'):
+                        input_digest.update((_json(dict(row))+'\n').encode())
+                        conn.execute(f'INSERT INTO {target} ({names}) VALUES ({placeholders})', tuple(row))
+                        count += 1
+                    counts[target] = count
+                    extras.add(target)
         # Preserve original mutable cache fields separately for exact input provenance.
         conn.execute('''CREATE TABLE generation_input_player_elo AS
             SELECT id,overall_elo,surface_elo_json FROM players''')
@@ -159,6 +227,10 @@ def build_public_snapshot(destination: Path, *, source: Path, source_receipts: l
                         public_counts=counts, missing_optional_tables=missing_optional,
                         counterfactual=amend is not None,
                         cold_cache_policy='first pre-match legacy; last post-match shadow; no mutable fallback')
+        if captured is not None:
+            metadata.update(source_mode='public_capture', capture_path=str(source),
+                            capture_identity=source_identity, capture=captured,
+                            source_path=captured['source_path'], source_identity=captured['source_origin'])
         if _source_identity(source) != source_identity:
             raise ValueError('frozen source changed during build')
         if metadata['available_at'] < started:
@@ -169,7 +241,7 @@ def build_public_snapshot(destination: Path, *, source: Path, source_receipts: l
         conn.execute('PRAGMA user_version=1')
         # No copied private table or retained raw payload may have data.
         allowed = set(PUBLIC_TABLES) | {'player_elo_history','player_elo_history_v2',
-            'generation_input_player_elo','generation_input_opponent_elo','history_generation_manifest'}
+            'generation_input_player_elo','generation_input_opponent_elo','history_generation_manifest'} | extras
         for row in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"):
             if row[0] not in allowed and conn.execute(f'SELECT 1 FROM "{row[0]}" LIMIT 1').fetchone():
                 raise ValueError('non-public table in snapshot')
@@ -279,20 +351,21 @@ class ShadowGenerationRegistry:
             if max(row['registered_at'], info['available_at']) > chosen[1]:
                 raise ValueError('activation precedes durable availability')
         source = Path(info['source_path'])
-        if source.stat().st_mode & 0o222:
-            raise ValueError('source is no longer frozen')
-        if _source_identity(source) != info['source_identity']:
-            raise ValueError('source file was replaced; raw IDs are not portable')
+        _check_origin(info)
         conn = sqlite3.connect('file:' + quote(row['path']) + '?mode=ro&immutable=1', uri=True)
         conn.row_factory = sqlite3.Row
         try:
             conn.execute('ATTACH DATABASE ? AS original', ('file:'+quote(str(source))+'?mode=ro',))
             names = {r[0] for r in conn.execute("SELECT name FROM original.sqlite_master WHERE type='table'")}
             for table in SOURCE_VIEWS:
+                if table == 'rankings_history' and info.get('source_mode') == 'public_capture':
+                    continue
                 if table in names:
                     conn.execute(f'CREATE TEMP VIEW {table} AS SELECT * FROM original.{table}')
             conn.commit()
             conn.execute('PRAGMA query_only=ON')
+            if info.get('source_mode') == 'public_capture':
+                _check_headers(conn)
             prov = dict(source_provider='unqualified_history_generation',
                         source_endpoint=f'shadow-generation:{chosen[0]}',
                         source_timestamp=chosen[1], raw_response_id=None,
@@ -302,7 +375,8 @@ class ShadowGenerationRegistry:
                         knowledge_at=stamp)
             with readonly_history_scope(conn, source_path=source, provenance=prov):
                 yield prov
-                if _source_identity(source) != info['source_identity'] or source.stat().st_mode & 0o222:
-                    raise ValueError('source changed during native read')
+                if info.get('source_mode') == 'public_capture':
+                    _check_headers(conn)
+                _check_origin(info)
         finally:
             conn.close()
