@@ -235,7 +235,7 @@ python -m playwright install chromium
 - HKJC PDF / starter data：`pdfplumber`
 - Dashboard backend：`fastapi`、`uvicorn`、`watchdog`
 - HKJC `.numbers` parsing：`numbers-parser`
-- NBA extractor / NBA reflector：`nba_api`
+- NBA extractor / NBA reflector：`requests`、`curl-cffi`（ESPN 係唯一數據來源，唔再需要 `nba_api`）
 
 如果你只係想先跑 HKJC / AU 主流程，以上 command 已經係目前最接近「完整主線 runtime 依賴」嘅安裝方式。
 
@@ -460,7 +460,7 @@ python .agents/skills/nba/nba_orchestrator.py --date 2026-05-27 --status
 目前 `NBA Wong Choi` 有實際 orchestrator 同自動腳本鏈，但 repo 內仍然保留咗一啲舊描述，例如檔頭提及 pre-filled skeleton / analyst phase。對新用戶嚟講，最重要係：
 
 - 主入口已存在並可直接運行
-- `nba_api` 係必要依賴之一
+- 數據全部嚟自 ESPN（EXP-20261101-60），唔再需要 `nba_api`
 - 分析輸出會寫入 `{YYYY-MM-DD} NBA Analysis/`
 
 ## 10. Run HKJC / AU Reflector
@@ -641,12 +641,6 @@ HKJC / AU 主 orchestrator 成功完成後，預設會自動嘗試 Cloudflare de
 ```bash
 python -V
 python -m pip list
-```
-
-### `nba_api` not installed
-
-```bash
-pip install nba_api
 ```
 
 ### Playwright browser not installed

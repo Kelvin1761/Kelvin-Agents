@@ -27,6 +27,18 @@ import validate_nba_output as firewall
 from nba_identity import player_name_key
 
 
+@contextlib.contextmanager
+def espn_log(**kwargs):
+    """The old PlayerGameLog fixtures, served through the ESPN game-log path."""
+    api = mock.Mock(**kwargs)
+
+    def frame(player_id, season, date_to, season_type):
+        return api(player_id=player_id, season=season, date_to_nullable=date_to,
+                   season_type_all_star=season_type).get_data_frames()[0], 'espn'
+    with mock.patch.object(extractor, 'player_log_frame', side_effect=frame):
+        yield api
+
+
 def box_score(day, points, matchup='HOU @ DAL'):
     row = dict.fromkeys(['REB', 'AST', 'STL', 'BLK', 'TOV', 'MIN', 'FGM', 'FGA',
                          'FG_PCT', 'FG3M', 'FG3A', 'FTM', 'FTA', 'PLUS_MINUS'], 0)
@@ -48,7 +60,7 @@ class PreseasonHistoryTests(unittest.TestCase):
         def endpoint(**kwargs):
             frame = playoff if kwargs.get('season_type_all_star') == 'Playoffs' else regular
             return mock.Mock(get_data_frames=mock.Mock(return_value=[frame]))
-        with mock.patch.object(extractor.playergamelog, 'PlayerGameLog', side_effect=endpoint) as api, mock.patch.object(extractor.time, 'sleep'):
+        with espn_log(side_effect=endpoint) as api:
             log = extractor.fetch_player_gamelog(201142, 'Kevin Durant', n=3,
                                                 season='2025-26', as_of='2026-10-09T12:10:00Z')
         self.assertEqual(log['PTS'], [27, 31, 19])
@@ -62,7 +74,7 @@ class PreseasonHistoryTests(unittest.TestCase):
 
     def test_no_history_for_rookie_does_not_invent_data(self):
         endpoint = mock.Mock(get_data_frames=mock.Mock(return_value=[pd.DataFrame()]))
-        with mock.patch.object(extractor.playergamelog, 'PlayerGameLog', return_value=endpoint), mock.patch.object(extractor.time, 'sleep'):
+        with espn_log(return_value=endpoint):
             self.assertIsNone(extractor.fetch_player_gamelog(1, 'Rookie', season='2025-26', as_of='2026-10-09'))
 
     def test_regular_source_failure_cannot_silently_use_partial_playoffs(self):
@@ -70,7 +82,7 @@ class PreseasonHistoryTests(unittest.TestCase):
             if kwargs.get('season_type_all_star') == 'Playoffs':
                 return mock.Mock(get_data_frames=mock.Mock(return_value=[pd.DataFrame([box_score('2026-04-20', 27)])]))
             raise TimeoutError('regular-season source unavailable')
-        with mock.patch.object(extractor.playergamelog, 'PlayerGameLog', side_effect=endpoint), mock.patch.object(extractor.time, 'sleep'):
+        with espn_log(side_effect=endpoint):
             self.assertIsNone(extractor.fetch_player_gamelog(201142, 'Kevin Durant', season='2025-26', as_of='2026-10-09'))
 
     def test_current_roster_with_explicit_prior_history_provenance(self):
@@ -84,16 +96,10 @@ class PreseasonHistoryTests(unittest.TestCase):
         self.assertEqual(package['meta']['history_mode'], 'previous_season_reference')
         self.assertEqual(package['meta']['automation_mode'], 'shadow')
 
-    def test_statistics_endpoints_get_same_explicit_season_and_cutoff(self):
-        pairs = [(extractor.fetch_all_player_advanced_stats, extractor.leaguedashplayerstats, 'LeagueDashPlayerStats'),
-                 (extractor.fetch_team_advanced_stats, extractor.leaguedashteamstats, 'LeagueDashTeamStats'),
-                 (extractor.fetch_defender_impact, extractor.leaguedashptdefend, 'LeagueDashPtDefend'),
-                 (extractor.fetch_team_defense_vs_position, extractor.leaguedashptteamdefend, 'LeagueDashPtTeamDefend')]
-        for fn, module, name in pairs:
-            with self.subTest(endpoint=name), mock.patch.object(module, name, side_effect=TimeoutError('offline fixture')) as api:
-                self.assertEqual(fn('2025-26', '2026-10-09'), {})
-                self.assertEqual(api.call_args.kwargs['season'], '2025-26')
-                self.assertEqual(api.call_args.kwargs['date_to_nullable'], '10/07/2026')
+    def test_league_tables_get_same_explicit_season_and_cutoff(self):
+        with mock.patch.object(extractor.nba_espn_league, 'season_games', return_value=[]) as games:
+            self.assertEqual(extractor.espn_league_tables('2025-26', '2026-10-09', {}), ({}, {}))
+        self.assertEqual(games.call_args.args[:2], ('2025-26', '10/07/2026'))
 
     def test_shadow_banner_in_game_and_both_master_reports(self):
         fixture = NBA_ROOT / 'nba_wong_choi/tests/fixtures/valid_game.json'
@@ -227,7 +233,7 @@ class RegularOpenerHistoryTests(unittest.TestCase):
         def endpoint(**kwargs):
             rows = [] if kwargs['season'] == '2026-27' else [box_score('2026-04-10', 31)]
             return mock.Mock(get_data_frames=mock.Mock(return_value=[pd.DataFrame(rows)]))
-        with mock.patch.object(extractor.playergamelog, 'PlayerGameLog', side_effect=endpoint), mock.patch.object(extractor.time, 'sleep'):
+        with espn_log(side_effect=endpoint):
             log = extractor.fetch_player_gamelog(201142, 'Kevin Durant', season='2026-27', as_of='2026-10-21', include_previous=True)
         self.assertEqual(log['PTS'], [31])
         self.assertEqual(log['history_seasons'], ['2025-26'])
@@ -237,7 +243,7 @@ class RegularOpenerHistoryTests(unittest.TestCase):
         def endpoint(**kwargs):
             rows = [box_score('2026-10-21', 24)] if kwargs['season'] == '2026-27' else [box_score('2026-04-10', 31)]
             return mock.Mock(get_data_frames=mock.Mock(return_value=[pd.DataFrame(rows)]))
-        with mock.patch.object(extractor.playergamelog, 'PlayerGameLog', side_effect=endpoint), mock.patch.object(extractor.time, 'sleep'):
+        with espn_log(side_effect=endpoint):
             log = extractor.fetch_player_gamelog(201142, 'Kevin Durant', season='2026-27', as_of='2026-10-23', include_previous=True)
         self.assertEqual(log['PTS'], [24, 31])
         self.assertEqual(log['history_seasons'], ['2026-27', '2025-26'])
@@ -246,13 +252,13 @@ class RegularOpenerHistoryTests(unittest.TestCase):
         def endpoint(**kwargs):
             rows = [box_score(f'2026-11-{i:02}', i + 20) for i in range(1, 11)]
             return mock.Mock(get_data_frames=mock.Mock(return_value=[pd.DataFrame(rows)]))
-        with mock.patch.object(extractor.playergamelog, 'PlayerGameLog', side_effect=endpoint) as api, mock.patch.object(extractor.time, 'sleep'):
+        with espn_log(side_effect=endpoint) as api:
             log = extractor.fetch_player_gamelog(201142, 'Kevin Durant', season='2026-27', as_of='2026-11-15', include_previous=True)
         self.assertEqual(len(log['PTS']), 10)
         self.assertTrue(all(c.kwargs['season'] == '2026-27' for c in api.call_args_list))
 
     def test_failed_current_api_does_not_masquerade_as_empty_season(self):
-        with mock.patch.object(extractor.playergamelog, 'PlayerGameLog', side_effect=TimeoutError('current season unavailable')) as api, mock.patch.object(extractor.time, 'sleep'):
+        with espn_log(side_effect=TimeoutError('current season unavailable')) as api:
             self.assertIsNone(extractor.fetch_player_gamelog(201142, 'Kevin Durant', season='2026-27', as_of='2026-10-21', include_previous=True))
         self.assertTrue(all(c.kwargs['season'] == '2026-27' for c in api.call_args_list))
 
@@ -285,17 +291,17 @@ class USGameDateCutoffTests(unittest.TestCase):
     def test_api_rows_on_target_us_day_are_removed_even_if_provider_ignores_cutoff(self):
         rows = pd.DataFrame([box_score('2026-10-08', 50), box_score('2026-10-07', 27)])
         endpoint = mock.Mock(get_data_frames=mock.Mock(return_value=[rows]))
-        with mock.patch.object(extractor.playergamelog, 'PlayerGameLog', return_value=endpoint), mock.patch.object(extractor.time, 'sleep'):
+        with espn_log(return_value=endpoint):
             log = extractor.fetch_player_gamelog(201142, 'Kevin Durant', season='2026-27', as_of='2026-10-09T02:30:00Z')
         self.assertEqual(log['PTS'], [27])
         self.assertEqual(log['history_date_to'], '10/07/2026')
 
     def test_unknown_official_game_never_uses_synthetic_fallback(self):
         argv = ['nba_extractor.py', '--date', '20261009', '--game', 'HOU_DAL']
-        with mock.patch.object(sys, 'argv', argv), mock.patch.object(extractor, 'fetch_espn_scoreboard', return_value=[]), mock.patch.object(extractor, 'fetch_team_advanced_stats', return_value={}), mock.patch.object(extractor, 'fetch_all_player_advanced_stats', return_value={}), mock.patch.object(extractor, 'fetch_defender_impact', return_value={}), mock.patch.object(extractor, 'fetch_team_defense_vs_position', return_value={}), mock.patch.object(extractor, 'fetch_action_network_odds', return_value={'dummy': {}}), mock.patch.object(extractor, 'build_game_info_from_tag') as synthetic, self.assertRaises(SystemExit) as exc:
+        with mock.patch.object(sys, 'argv', argv), mock.patch.object(extractor, 'fetch_espn_scoreboard', return_value=[]), mock.patch.object(extractor, 'espn_league_tables', return_value=({}, {})), mock.patch.object(extractor, 'fetch_action_network_odds', return_value={'dummy': {}}), self.assertRaises(SystemExit) as exc:
             extractor.main()
         self.assertEqual(exc.exception.code, 1)
-        synthetic.assert_not_called()
+        self.assertFalse(hasattr(extractor, 'build_game_info_from_tag'), 'no synthetic game path exists')
 
 
 if __name__ == '__main__':

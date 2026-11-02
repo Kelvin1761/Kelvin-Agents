@@ -21,7 +21,7 @@ HERE = Path(__file__).resolve().parent
 PROJECT_ROOT = HERE.parents[3]
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(HERE.parent))
-import nba_official_injuries as official  # noqa: E402
+from nba_identity import availability_name_key  # noqa: E402
 
 FINAL = re.compile(r"final(?:/\d*ot|\s+\([^()]+\))?")
 
@@ -67,7 +67,7 @@ def outcomes(root: Path, analysis_roots: list[Path], since: str | None, until: s
             if game is None or not FINAL.fullmatch(str(game.get("status") or "").strip().lower()):
                 continue
             players = [p for p in game.get("players") or []
-                       if official.name_key(p.get("name")) == key and p.get("team") == team]
+                       if availability_name_key(p.get("name")) == key and p.get("team") == team]
             minutes = _minutes(players[0].get("minutes")) if len(players) == 1 else None
             out.append({"date": day, "game_tag": tag, "team": team, "player": obs.get("player"),
                         "espn_status": obs.get("espn_status"), "official_status": obs.get("official_status"),

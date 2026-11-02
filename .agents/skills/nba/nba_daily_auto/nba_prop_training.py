@@ -112,6 +112,8 @@ def _observation(source, leg):
     if len(mins) != 10 or any(v is None or v < 0 for v in mins):
         mins = None
     result.update(status='base_only', prop=stat, player_id=player.get('id') or player.get('player_id'),
+                  # 'espn' since EXP-20261101-60; older rows (no field) hold nba.com ids.
+                  player_id_source=player.get('player_id_source') or 'nbacom',
                   source={k: source[k] for k in ('artifact', 'sha256', 'available_at', 'tip_off', 'tip_source')},
                   eligible_80_80=h10 >= .8 and h5 >= .8,
                   inputs={'l10_values': values, 'l10_dates': [d.isoformat() for d in days],

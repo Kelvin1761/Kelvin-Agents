@@ -1,15 +1,13 @@
-"""ESPN stand-ins for the stats.nba.com player endpoints (2026-10-30).
+"""ESPN player endpoints: roster and game logs (ESPN is the only source).
 
-stats.nba.com (Akamai) blocked this machine for 12+ hours on 10-29/30 and the
-whole slate went without analysis: no roster, no L10, every game exited 1.
-ESPN serves the same box-score lines, so when nba.com is unreachable the
-extractor reads them from here instead.
+Introduced 2026-10-30 as stand-ins while stats.nba.com (Akamai) blocked this
+machine; since EXP-20261101-60 they are the only player feed, and players are
+keyed by the ESPN athlete id everywhere.
 
-Both helpers return exactly the shapes the nba_api calls return:
+Both helpers return the shapes the old nba_api calls returned:
 
-* ``espn_roster(team)``      -> CommonTeamRoster-style rows, keyed by the NBA
-  PLAYER_ID where it can be resolved (advanced stats, splits and h2h are all
-  keyed by it), plus the ESPN id the game log needs.
+* ``espn_roster(team)``      -> CommonTeamRoster-style rows; ``player_id`` is
+  the ESPN athlete id (``player_id_source: espn``).
 * ``espn_gamelog_frame(...)`` -> a PlayerGameLog DataFrame (GAME_DATE,
   MATCHUP, WL, PTS ... FTA, PLUS_MINUS), so ``fetch_player_gamelog`` keeps all
   of its own cut-off, dedup and L10 logic unchanged.
@@ -24,7 +22,6 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
-from nba_identity import player_name_key
 from nba_schedule import TEAM_ALIASES, canonical_team_abbr
 
 SITE = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
@@ -76,29 +73,31 @@ def espn_season_year(nba_season: str) -> int:
     return int(str(nba_season)[:4]) + 1
 
 
-def espn_roster(team_abbr: str, *, get=None, name_to_nba_id=None):
-    """ESPN team roster as CommonTeamRoster-style rows.
+def espn_roster(team_abbr: str, *, get=None):
+    """ESPN team roster as CommonTeamRoster-style rows keyed by ESPN athlete id.
 
-    ``player_id`` is the NBA id resolved by name through ``name_to_nba_id``
-    (``{player_name_key: nba_id}``); a player that cannot be resolved keeps
-    ``player_id=None`` so callers can see and report it rather than guess.
+    ``experience`` is ``"R"`` for a rookie (0 years), as nba.com wrote it.
     """
     team = _ESPN_TEAM.get(canonical_team_abbr(team_abbr), team_abbr)
     payload = _get_json(f"{SITE}/teams/{team.lower()}/roster", get=get)
-    lookup = name_to_nba_id or {}
     rows = []
     for athlete in payload.get("athletes") or []:
         name = str(athlete.get("fullName") or athlete.get("displayName") or "").strip()
         if not name:
             continue
+        espn_id = str(athlete.get("id") or "")
+        if not espn_id:
+            continue
+        years = (athlete.get("experience") or {}).get("years", "")
         rows.append({
-            "player_id": lookup.get(player_name_key(name)),
-            "espn_id": str(athlete.get("id") or ""),
+            "player_id": espn_id,
+            "player_id_source": "espn",
+            "espn_id": espn_id,
             "name": name,
             "position": ((athlete.get("position") or {}).get("abbreviation") or ""),
             "age": athlete.get("age", ""),
             "num": athlete.get("jersey", ""),
-            "experience": str((athlete.get("experience") or {}).get("years", "")),
+            "experience": "R" if years == 0 else str(years),
             "source": "espn",
         })
     return rows

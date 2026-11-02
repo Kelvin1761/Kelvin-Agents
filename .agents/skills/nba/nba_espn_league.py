@@ -1,12 +1,10 @@
 """League tables computed from ESPN box scores (2026-10-31).
 
 Team advanced stats (pace, offensive/defensive rating) and player advanced
-stats (usage, true shooting, assist rate, PIE) exist on stats.nba.com only,
-and stats.nba.com has refused this machine's scripted requests since
-2026-10-29 21:00 -- every slate since went without analysis because the
-extractor fails closed without them. Both tables are arithmetic on box-score
-totals, which ESPN serves, so when nba.com is unreachable they are computed
-here instead.
+stats (usage, true shooting, assist rate) used to come from stats.nba.com,
+which refused this machine's scripted requests from 2026-10-29. Both tables
+are arithmetic on box-score totals, which ESPN serves; since EXP-20261101-60
+ESPN is the only source and players are keyed by ESPN athlete id.
 
 Two honest differences from nba.com, measured in EXP-20261031-01:
 
@@ -253,13 +251,8 @@ def team_advanced(games: list[dict]) -> dict:
     return result
 
 
-def player_advanced(games: list[dict], name_to_nba_id: dict) -> dict:
-    """``fetch_all_player_advanced_stats``-shaped table, keyed by NBA PLAYER_ID.
-
-    A player whose ESPN name does not resolve to exactly one NBA id is left
-    out rather than guessed.
-    """
-    from nba_identity import player_name_key
+def player_advanced(games: list[dict]) -> dict:
+    """``fetch_all_player_advanced_stats``-shaped table, keyed by ESPN athlete id."""
     acc: dict[str, dict] = {}
     for game in games:
         teams = game["teams"]
@@ -267,7 +260,9 @@ def player_advanced(games: list[dict], name_to_nba_id: dict) -> dict:
             team = teams.get(line["team"])
             if team is None or line["MIN"] <= 0:
                 continue
-            row = acc.setdefault(line["espn_id"] or line["name"], {"name": line["name"], **{
+            if not line["espn_id"]:
+                continue
+            row = acc.setdefault(line["espn_id"], {"name": line["name"], **{
                 k: 0.0 for k in ("MIN", "PTS", "FGM", "FGA", "FG3M", "FTA", "TOV", "AST",
                                  "usage_den", "ast_den", "tm_min")}})
             for key in ("MIN", "PTS", "FGM", "FGA", "FG3M", "FTA", "TOV", "AST"):
@@ -276,12 +271,9 @@ def player_advanced(games: list[dict], name_to_nba_id: dict) -> dict:
             row["usage_den"] += (team["FGA"] + 0.44 * team["FTA"] + team["TOV"]) * line["MIN"] / (team["MIN"] / 5)
             row["ast_den"] += line["MIN"] / (team["MIN"] / 5) * team["FGM"] - line["FGM"]
     result = {}
-    for row in acc.values():
-        nba_id = name_to_nba_id.get(player_name_key(row["name"]))
-        if nba_id is None:
-            continue
+    for espn_id, row in acc.items():
         shots = row["FGA"] + 0.44 * row["FTA"]
-        result[nba_id] = {
+        result[espn_id] = {
             "USG_PCT": round(100 * (shots + row["TOV"]) / row["usage_den"], 1) if row["usage_den"] > 0 else 0.0,
             "TS_PCT": round(100 * row["PTS"] / (2 * shots), 1) if shots > 0 else 0.0,
             "OFF_RATING": None,
@@ -298,10 +290,10 @@ def player_advanced(games: list[dict], name_to_nba_id: dict) -> dict:
 
 def fill_on_court_ratings(table: dict, ratings: dict) -> int:
     """Fill the on-court fields ``player_advanced`` leaves None from
-    ``nba_espn_lineups.player_ratings`` (same NBA ids). Returns rows filled."""
+    ``nba_espn_lineups.player_ratings`` (same ESPN ids). Returns rows filled."""
     filled = 0
-    for nba_id, row in table.items():
-        rating = ratings.get(nba_id)
+    for espn_id, row in table.items():
+        rating = ratings.get(espn_id)
         if not rating:
             continue
         for key in ("OFF_RATING", "DEF_RATING", "NET_RATING", "PACE"):
@@ -309,17 +301,3 @@ def fill_on_court_ratings(table: dict, ratings: dict) -> int:
         row["on_court_source"] = rating["source"]
         filled += 1
     return filled
-
-
-def nba_name_index() -> dict:
-    """{player_name_key: NBA id} from nba_api's offline player list (no request).
-
-    Names shared by two players map to nothing, so they are dropped, not guessed.
-    """
-    from nba_api.stats.static import players
-    from nba_identity import player_name_key
-    index: dict = {}
-    for player in players.get_players():
-        key = player_name_key(player["full_name"])
-        index[key] = None if key in index else player["id"]
-    return {key: value for key, value in index.items() if value is not None}

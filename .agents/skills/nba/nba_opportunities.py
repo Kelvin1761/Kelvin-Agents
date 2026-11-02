@@ -4,14 +4,13 @@ import hashlib
 import json
 import math
 import os
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from pathlib import Path
 
 from nba_schedule import canonical_team_abbr
 
-CONTRACT = 'nba-opportunities/v1'
+CONTRACT = 'nba-opportunities/v2'   # v2: no stats.nba.com capture (EXP-20261101-60)
 CACHE_SECONDS = 1800
 TRACKING = {'passing': 'Passing', 'rebounding': 'Rebounding', 'possessions': 'Possessions',
             'catch_shoot': 'CatchShoot', 'pull_up': 'PullUpShot'}
@@ -41,42 +40,19 @@ def digest(value):
 
 
 def request_table(name, season, cutoff, fetch=None):
+    """Every source table was a stats.nba.com feed; none is captured any more.
+
+    The five Second Spectrum tracking tables have no ESPN equivalent and are
+    retired. The two Base tables have an ESPN box-score rebuild
+    (``docs/experiments/evidence/EXP-20261101-60-nba-opportunity-parity.py``)
+    that missed its pre-registered parity bar on minutes (ESPN has whole
+    minutes only), so it is not shipped (EXP-20261101-60). Descriptive data
+    only: ``model_input_enabled`` is False and no probability reads it.
+    """
     unit = 'Per100Possessions' if name == 'team_base' else 'PerGame'
-    params = {'season': season, 'season_type_all_star': 'Regular Season', 'date_to_nullable': cutoff, 'timeout': 10}
-    record = {'season': season, 'history_date_to': cutoff, 'unit': unit, 'status': 'unavailable'}
-    try:
-        if name == 'team_base':
-            if fetch is None:
-                from nba_api.stats.endpoints.leaguedashteamstats import LeagueDashTeamStats
-                fetch = LeagueDashTeamStats
-            params.update(measure_type_detailed_defense='Base', per_mode_detailed=unit)
-        elif name == 'player_base':
-            if fetch is None:
-                from nba_api.stats.endpoints.leaguedashplayerstats import LeagueDashPlayerStats
-                fetch = LeagueDashPlayerStats
-            params.update(measure_type_detailed_defense='Base', per_mode_detailed=unit)
-        else:
-            if fetch is None:
-                from nba_api.stats.endpoints.leaguedashptstats import LeagueDashPtStats
-                fetch = LeagueDashPtStats
-            params.update(player_or_team='Player', pt_measure_type=TRACKING[name], per_mode_simple=unit)
-        record['params'] = params
-        payload = fetch(**params).get_dict()
-        tables = payload.get('resultSets', [])
-        if not isinstance(tables, list) or len(tables) != 1:
-            raise ValueError('ambiguous source tables')
-        headers, rows = tables[0]['headers'], tables[0]['rowSet']
-        if len(headers) != len(set(headers)) or any(len(row) != len(headers) for row in rows):
-            raise ValueError('malformed source schema')
-        required = {'TEAM_ID', 'GP', 'MIN'} | ({'PLAYER_ID', 'TEAM_ABBREVIATION'} if name != 'team_base' else {'FGA', 'FGM'})
-        if not required <= set(headers):
-            raise ValueError('source identity/sample columns missing')
-        record.update(status='available' if rows else 'empty', rows=[dict(zip(headers, row)) for row in rows],
-                      source_sha256=digest(payload))
-    except Exception as exc:
-        record['error_type'] = type(exc).__name__
-    record['captured_at'] = datetime.now(timezone.utc).isoformat()
-    return record
+    return {'season': season, 'history_date_to': cutoff, 'unit': unit,
+            'status': 'retired_tracking' if name in TRACKING else 'unavailable',
+            'source': 'stats_nba_only', 'captured_at': datetime.now(timezone.utc).isoformat()}
 
 
 def fetch_sources(season, cutoff, cache_path, *, now=None, fetchers=None):
@@ -96,8 +72,7 @@ def fetch_sources(season, cutoff, cache_path, *, now=None, fetchers=None):
     except (OSError, ValueError, KeyError, TypeError):
         pass
     names = [*PLAYER_SOURCES, 'team_base']
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        values = list(pool.map(lambda name: request_table(name, season, cutoff, (fetchers or {}).get(name)), names))
+    values = [request_table(name, season, cutoff, (fetchers or {}).get(name)) for name in names]
     sources = dict(zip(names, values))
     bundle = {'contract': CONTRACT, 'season': season, 'history_date_to': cutoff,
               'captured_at': datetime.now(timezone.utc).isoformat(), 'sources': sources,

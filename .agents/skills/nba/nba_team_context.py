@@ -24,12 +24,10 @@ MIN_LEAGUE_TEAM_GAMES = 100
 REQUIRED = {'GAME_ID', 'GAME_DATE', 'TEAM_ID', 'TEAM_ABBREVIATION', *STATS}
 
 
-def _table(season, season_type, cutoff, fetch=None):
+def _table(season, season_type, cutoff, fetch):
+    """A LeagueGameLog-shaped payload from an injected ``fetch`` (tests and replays)."""
     record = {'season': season, 'season_type': season_type, 'history_date_to': cutoff, 'status': 'unavailable'}
     try:
-        if fetch is None:
-            from nba_api.stats.endpoints.leaguegamelog import LeagueGameLog
-            fetch = LeagueGameLog
         payload = fetch(season=season, season_type_all_star=season_type, player_or_team_abbreviation='T',
                         date_to_nullable=cutoff, timeout=15).get_dict()
         tables = payload.get('resultSets', [])
@@ -89,8 +87,7 @@ def fetch_bundle(season, previous_season, cutoff, cache_path, *, now=None, fetch
             return cached
     except (OSError, ValueError, KeyError, TypeError):
         pass
-    from nba_data_contract import primary_source
-    if fetch is None and primary_source() == 'espn':  # stats.nba.com is never called in ESPN mode
+    if fetch is None:   # ESPN is the only source (EXP-20261101-60)
         table = lambda s, kind, c: _espn_table(s, kind, c, get)  # noqa: E731
     else:
         table = lambda s, kind, c: _table(s, kind, c, fetch)  # noqa: E731

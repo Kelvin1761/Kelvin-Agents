@@ -118,15 +118,10 @@ def test_cache_reuses_only_same_hash_matched_season_cutoff_and_age(tmp_path):
     assert fetch.call_count == 7 and result['sources']['passing']['status'] == 'unavailable'
 
 
-def test_request_preserves_all_fields_and_failure_is_explicit():
-    payload = {'resultSets': [{'headers': ['PLAYER_ID', 'TEAM_ID', 'TEAM_ABBREVIATION', 'GP', 'MIN', 'POTENTIAL_AST'],
-                               'rowSet': [[1, 10, 'GSW', 2, 30, 12]]}]}
-    api = mock.Mock(return_value=mock.Mock(get_dict=lambda: payload))
-    source = op.request_table('passing', '2026-27', CUTOFF, api)
-    assert source['rows'][0]['POTENTIAL_AST'] == 12
-    assert source['params']['date_to_nullable'] == CUTOFF
-    assert source['params']['per_mode_simple'] == 'PerGame'
-    assert op.request_table('passing', '2026-27', CUTOFF, mock.Mock(side_effect=TimeoutError()))['status'] == 'unavailable'
+def test_no_source_is_captured_and_tracking_is_marked_retired():
+    assert op.request_table('passing', '2026-27', CUTOFF)['status'] == 'retired_tracking'
+    base = op.request_table('player_base', '2026-27', CUTOFF)
+    assert base['status'] == 'unavailable' and 'rows' not in base
 
 
 def test_disabling_new_capture_does_not_call_endpoints_or_write_cache(tmp_path, monkeypatch):
