@@ -32,7 +32,6 @@ from au_racing_engine.matrix_mapper import (  # noqa: E402
 )
 from au_racing_engine.scoring import (  # noqa: E402
     MATRIX_WEIGHTS,
-    PACE_MICRO_WEIGHTS,
     SECTIONAL_MICRO_WEIGHTS,
     WET_FORM_FEATURE_SCALE,
     WET_FORM_MAX_ABS,
@@ -105,13 +104,11 @@ class TestSectionalNeutralBase:
 class TestPaceMapNeutralBase:
     """檔位形勢：好檔位一定要讀得出「高過中性」。"""
 
-    def test_base_is_neutral_sixty(self):
-        assert PACE_MICRO_WEIGHTS["base"] == 60.0
-
     def test_favourable_draw_can_exceed_neutral(self):
-        """舊 base 55.7 ＋ 上限 +4.05 → 全庫最高 59.75，即係永遠出唔到「著數」。"""
-        ceiling = PACE_MICRO_WEIGHTS["base"] + PACE_MICRO_WEIGHTS["modifier_cap_max"]
-        assert ceiling > 60.0
+        """檔位分（draw.py）：大場次最內檔一定高過中性 60，最外檔一定低過。"""
+        from au_racing_engine.draw import adjustments
+        adj = adjustments(list(range(1, 13)))
+        assert 60.0 + adj[0] > 60.0 > 60.0 + adj[-1]
 
     def test_race_shape_reports_its_actual_leaf_score(self):
         scores = map_features_to_matrix_scores({"pace_map_score": 64.0})

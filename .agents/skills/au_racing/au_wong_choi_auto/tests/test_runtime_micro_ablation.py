@@ -41,13 +41,13 @@ class RuntimeMicroAblationTests(unittest.TestCase):
         self.assertEqual(weights, {"bonus": 4.0})
 
     def test_family_filter_keeps_baseline_and_selected_micro_only(self):
-        variants = variant_patches("individual", {"pace"})
+        variants = variant_patches("individual", {"class"})
         names = [name for name, _patches in variants]
         self.assertEqual(names[0], "revised_current")
-        self.assertEqual(len(names), 1 + len(MICRO_FAMILIES["pace"]))
+        self.assertEqual(len(names), 1 + len(MICRO_FAMILIES["class"]))
         self.assertTrue(
             all(
-                name == "revised_current" or name.startswith("drop_micro:pace.")
+                name == "revised_current" or name.startswith("drop_micro:class.")
                 for name in names
             )
         )
@@ -55,14 +55,14 @@ class RuntimeMicroAblationTests(unittest.TestCase):
     def test_micro_key_filter_builds_individual_and_combined_variants(self):
         variants = variant_patches(
             "all",
-            {"pace"},
-            {"pace.modifier_multiplier", "pace.modifier_cap_max"},
+            {"class"},
+            {"class.career5_placed_bonus", "class.class_drop_bonus"},
         )
         patches = {name: values for name, values in variants}
-        self.assertEqual(len(patches["drop_group:pace"]), 2)
+        self.assertEqual(len(patches["drop_group:class"]), 2)
         self.assertEqual(len(patches["drop_group:all_micro"]), 2)
-        self.assertIn("drop_micro:pace.modifier_multiplier", patches)
-        self.assertIn("drop_micro:pace.modifier_cap_max", patches)
+        self.assertIn("drop_micro:class.career5_placed_bonus", patches)
+        self.assertIn("drop_micro:class.class_drop_bonus", patches)
 
     def test_score_diagnostics_distinguish_score_and_rank_changes(self):
         baseline = [[

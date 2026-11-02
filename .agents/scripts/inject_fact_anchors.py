@@ -1795,7 +1795,7 @@ def _classify_pace_v2(n_leaders: int, n_on_pace: int, field_size: int,
     # 0×2.5 + pressers×0.3 永遠 < 1.5 → 一律「極慢」。2026-09-09→10-08 實測
     # 653/653 場「極慢」都係 leaders=0，佔全部 53% 場次 —— 一半報告寫住極慢步速，
     # 其實係我哋唔知邊匹會帶。純報告欄位：race_shape 冇排名權重，
-    # pace bias 修正預設關閉（WC_PACE_BIAS），所以唔郁排名。
+    # 步速形勢修正（WC_PACE_BIAS）已經剷走，所以唔郁排名。
     if n_leaders == 0:
         return '未明'
 

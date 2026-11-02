@@ -272,7 +272,7 @@ def new_analysis_dir(sport: str, label: str) -> Path:
 # Used by the bootstrap preflight so a new machine finds out NOW, rather than
 # mid-scoring-run, that its Google Drive folder is not actually synced.
 REQUIRED_DATA_FILES = {
-    # AU: read by racing_engine/au_draw_bias_calculator.py
+    # AU: canonical results corpus (au_results_ingest, reflectors, evaluation harnesses)
     "AU draw bias (historical)": au_historical_results_csv(),
     "AU draw bias (backfill)": AU_RACING / "AU_Backfill_Race_Results.csv",
 }

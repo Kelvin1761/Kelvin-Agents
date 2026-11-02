@@ -52,7 +52,7 @@ import claw_sportsbet_form  # noqa: E402
 import inject_fact_anchors  # noqa: E402
 import sb_horse_index  # noqa: E402
 import sb_people_stats  # noqa: E402
-from au_racing_engine import au_draw_bias_calculator, engine_core  # noqa: E402
+from au_racing_engine import engine_core  # noqa: E402
 
 D_DATE = "2026-08-01"
 F_DATE = "2026-08-22"          # 未來場次：同馬場、同一班馬、同一班騎練
@@ -285,7 +285,7 @@ def _write_csv(path, fields, rows):
 # ─────────────────────────────── 生產流程 ───────────────────────────────
 
 SOURCES = ("form_runs", "form_runs_raw", "form_stats", "people_cache", "horse_index",
-           "draw_matrix", "jt_combo", "jt_ratings", "pf_backfill")
+           "jt_combo", "jt_ratings", "pf_backfill")
 
 
 def _inject_raw_future_lines(formguide: Path) -> None:
@@ -312,7 +312,6 @@ def _reset_engine_caches():
     engine_core.TRAINER_TRACK_CACHE = None
     engine_core.JOCKEY_RATINGS_CACHE = None
     engine_core.TRAINER_RATINGS_CACHE = None
-    engine_core.DRAW_BIAS_MATRIX_CACHE = None
     engine_core._PF_BACKFILL_CACHE = None
     inject_fact_anchors._SB_INDEX_CACHE.clear()
 
@@ -335,15 +334,7 @@ def score_meeting_d(work: Path, future: frozenset, *, people_empty: bool = False
     _write_csv(res / "trainer.csv", RATING_FIELDS,
                rating_rows("trainer", future="jt_ratings" in future))
     results_csv = res / "results.csv"
-    _write_csv(results_csv, RESULT_FIELDS, results_rows(future="draw_matrix" in future))
-    matrix_path = res / "au_draw_bias_matrix.json"
-    # 檔位矩陣用**生產**嘅 calculator 由結果 CSV 重建 —— 佢冇 as-of 參數。
-    with mock.patch.object(au_draw_bias_calculator, "CSV_PATH", str(results_csv)), \
-            mock.patch.object(au_draw_bias_calculator, "BACKFILL_CSV_PATH",
-                              str(res / "no_backfill.csv")), \
-            mock.patch.object(au_draw_bias_calculator, "OUTPUT_JSON", str(matrix_path)), \
-            contextlib.redirect_stdout(io.StringIO()):
-        assert au_draw_bias_calculator.main() == 0
+    _write_csv(results_csv, RESULT_FIELDS, results_rows(future=False))
     index_path = res / "sb_horse_index.json"
     sb_horse_index.save(horse_index(future="horse_index" in future), index_path)
     people = {} if people_empty else people_cache(future="people_cache" in future)
@@ -379,7 +370,6 @@ def score_meeting_d(work: Path, future: frozenset, *, people_empty: bool = False
         mock.patch.object(engine_core, "JOCKEY_TRAINER_COMBO_STATS_PATH", res / "combo.csv"),
         mock.patch.object(engine_core, "JOCKEY_RATINGS_PATH", res / "jockey.csv"),
         mock.patch.object(engine_core, "TRAINER_RATINGS_PATH", res / "trainer.csv"),
-        mock.patch.object(engine_core, "DRAW_BIAS_MATRIX_PATH", matrix_path),
         mock.patch.object(sb_horse_index, "DEFAULT_INDEX", index_path),
         # `inject_fact_anchors.main()` 會 set 模組級 `_AS_OF`；唔還原會令同一個
         # pytest process 之後嘅測試靜靜帶住 D 做時點上限。
@@ -559,19 +549,6 @@ class FutureAppendInvarianceTests(unittest.TestCase):
         self.assertTrue(any(r["date"] > D_DATE for r in future["duchess-zou"]["runs"]))
         self._assert_invariant("horse_index")
 
-    def test_draw_bias_matrix(self):
-        """已修（EXP-20261015-04）。原本 LEAK（memory「檔位矩陣洩漏入回測」）：
-
-        `au_draw_bias_calculator.main()` 用**全份**結果 CSV（主 CSV + backfill）
-        建矩陣，冇 as-of 參數；引擎讀單一靜態 `au_draw_bias_matrix.json`。
-        fixture 量度：`pace_map_score` 60.0 → 64.05（四匹）。`race_shape` 已退役
-        （權重 0），所以綜合分同排名今日唔郁 —— 但任何重新啟用 pace_map 嘅
-        候選喺回放都會食到未來。
-        修法：calculator 另寫逐場 sidecar `au_draw_bias_races.json`；歷史場次
-        由 `Date < D` 嘅場次用同一個 `build_matrix()` 重砌。
-        """
-        self._assert_invariant("draw_matrix")
-
     def test_jockey_trainer_combo_stats(self):
         """`AU_Jockey_Trainer_Combo_Stats.csv` 全期累積、冇日期欄 —— 但今日只係
         display-only（`add(0.0, …)`），所以 leaf 唔郁。報告文字會郁。
@@ -654,11 +631,6 @@ class PointInTimeModeTests(unittest.TestCase):
             self.assertIsNone(engine._rating_known_at_race(undated))
         with mock.patch.dict(os.environ, {"WC_AU_PIT_TODAY": D_DATE}):   # live：照舊
             self.assertIs(engine._rating_known_at_race(undated), undated)
-
-    def test_historical_draw_matrix_without_sidecar_is_empty(self):
-        with tempfile.TemporaryDirectory() as tmp, \
-                mock.patch.object(engine_core, "DRAW_BIAS_MATRIX_PATH", Path(tmp) / "m.json"):
-            self.assertEqual(engine_core._load_draw_bias_matrix_as_of(D_DATE), {})
 
     def test_post_race_page_is_historical_even_on_race_day(self):
         """同日賽後重跑：今日 = D，但頁面已經有 D 當日往績行 → 嗰場當歷史。"""

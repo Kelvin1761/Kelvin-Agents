@@ -133,9 +133,8 @@ def runner_draw(meeting: Path) -> dict:
         2026-07            52.7%
         2026-08            **0.0%**（9,809 行零檔位）
 
-    而 `au_draw_bias_calculator` 靠呢個 CSV 建逐場地／逐距離檔位偏差表，即係
-    `pace_map_score` 唯一嘅經驗基礎。個表最後成功建於 2026-08-22；今日重建
-    會塌到只剩 backfill CSV 嘅 703 行。
+    （當時 `au_draw_bias_calculator` 靠呢個 CSV 建檔位偏差表；2026-11-02 已剷走，
+    檔位分改由 draw.py 用今場檔位排名計，唔再讀 CSV。檔位欄仍然係研究同評估要用。）
 
     同 `Time` 唔同，檔位係揾得返嘅 —— 場次資料夾自己嘅 Logic.json 就有。呢度帶
     stored Logic 可能已被 serving 正規化。此 helper 的 barrier 不獲授予 raw-draw
@@ -170,7 +169,7 @@ def runner_draw(meeting: Path) -> dict:
             out[key] = {
                 "Barrier": "" if barrier in (None, "") else str(int(float(barrier))),
                 "Weight": "" if weight in (None, "") else str(weight),
-                # 距離用純數字 —— 同 `au_draw_bias_calculator.canonical_distance`
+                # 距離用純數字 —— 同舊 `au_draw_bias_calculator.canonical_distance`（已剷）
                 # 同 `_pace_map_score` 嘅查表寫法一致。
                 "Distance": distance,
                 "Condition": condition,

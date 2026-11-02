@@ -50,7 +50,6 @@ from .scoring import (
     SECTIONAL_MICRO_WEIGHTS,
     TRIAL_MICRO_WEIGHTS,
     TRACK_MICRO_WEIGHTS,
-    PACE_MICRO_WEIGHTS,
     FIT_MICRO_WEIGHTS,
     PROVEN_CLASS_DECAY,
     PROVEN_CLASS_Z_WEIGHT,
@@ -171,32 +170,7 @@ JOCKEY_TRAINER_COMBO_CACHE: dict[tuple[str, str, str], dict] | None = None
 TRAINER_TRACK_CACHE: dict[tuple[str, str], dict] | None = None
 JOCKEY_RATINGS_CACHE: dict[str, dict] | None = None
 TRAINER_RATINGS_CACHE: dict[str, dict] | None = None
-DRAW_BIAS_MATRIX_CACHE: dict | None = None
-DRAW_BIAS_MATRIX_PATH = Path(__file__).resolve().parent / "au_draw_bias_matrix.json"
 # Historical PF sectionals live beside the archive, newest cache first.
-# Draw-bias cascade acceptance thresholds. Overridable so the granularity question
-# can be re-tested cheaply; the defaults are the measured optimum.
-#
-# 2026-08-17, asked whether a per-racecourse table is too granular to be reliable.
-# It is not — end-to-end over 721 races, LESS granularity is worse at every level:
-#
-#     threshold        gold  champ  winT3    mrr  ndcg5      pace_map SD
-#     10 / 30 (now)     116  25.24  55.76  46.18  55.60             2.28
-#     40 / 150          109  23.99  54.37  44.96  54.72             1.79
-#     global only       110  23.86  53.95  44.67  54.75             1.20
-#
-# Why thin cells are safe: the empirical-Bayes shrinkage (shrinkage_k = 25) keeps only
-# n/(n+25) of the raw modifier, so an n=10 cell contributes 29% of its apparent edge and
-# an n=20 cell 44%. The granularity supplies the shape; the shrinkage supplies the
-# caution. That makes `shrinkage_k` the parameter worth tuning here, not these gates.
-#
-# ⚠️ A split-half stability test on the same cells reports r = +0.02 and reads like
-# proof the per-track cells are noise. It is not: the median accepted cell holds ~20
-# runners, so halving it leaves n=10 per side, where a win rate carries a +/-18.6pp
-# 95% CI. That test cannot detect stability even when it exists — it was underpowered
-# by construction. Trust the end-to-end A/B above, not the proxy.
-_DRAW_MIN_TRACK_DIST = int(os.environ.get("WC_DRAW_MIN_TRACK_DIST", "10"))
-_DRAW_MIN_TRACK = int(os.environ.get("WC_DRAW_MIN_TRACK", "30"))
 PF_BACKFILL_FILENAMES = ("AU_PF_Historical_Backfill_Cache_2026-07-13.json",)
 _PF_BACKFILL_CACHE: dict | None = None
 
@@ -520,80 +494,6 @@ def _load_jockey_trainer_combo_stats():
     JOCKEY_TRAINER_COMBO_CACHE = combo_cache
     TRAINER_TRACK_CACHE = trainer_cache
     return combo_cache, trainer_cache
-def _draw_pool_baseline(peer_cells, fallback):
-    """Overall win rate of the cell-set a draw-bias cell was drawn from.
-
-    winners / runners over the sibling buckets. This is what a bucket has to beat
-    to count as a genuinely good draw. Comparing it to `1/today's field size`
-    instead compares two different denominators whenever the level is not
-    field-size bucketed — which is 96.2% of usable cells. Falls back to the
-    caller's value when the pool is empty or degenerate.
-    """
-    if not isinstance(peer_cells, dict):
-        return fallback
-    runners = 0
-    winners = 0.0
-    for cell in peer_cells.values():
-        if not isinstance(cell, dict):
-            continue
-        size = cell.get("sample_size") or 0
-        if size <= 0:
-            continue
-        runners += size
-        winners += (cell.get("win_rate") or 0.0) * size
-    if runners <= 0 or winners <= 0:
-        return fallback
-    return winners / runners
-
-
-DRAW_BIAS_RACES_FILENAME = "au_draw_bias_races.json"
-_DRAW_ASOF_CACHE: dict = {}
-
-
-def _load_draw_bias_matrix_as_of(race_date: str) -> dict:
-    """歷史場次用：只由 `Date < race_date` 嘅賽果重砌檔位矩陣（EXP-20261015-04）。
-
-    `au_draw_bias_matrix.json` 係由**全份**結果 CSV 砌，冇 as-of —— live 冇事
-    （賽果全部早過今場），但回放舊場次就食咗之後嘅賽果（memory「檔位矩陣洩漏入
-    回測」）。calculator 而家另寫一份逐場 sidecar（`au_draw_bias_races.json`，
-    同矩陣同一個目錄），呢度按日期過濾再用**同一個** `build_matrix()` 砌。
-    冇 sidecar → 空矩陣（引擎跌返中性），唔准跌返未過濾嘅全期表。
-    cache key 包埋 sidecar 路徑同 mtime，換咗檔唔會讀到舊結果。
-    """
-    sidecar = DRAW_BIAS_MATRIX_PATH.with_name(DRAW_BIAS_RACES_FILENAME)
-    try:
-        st = sidecar.stat()
-    except OSError:
-        return {}
-    key = (str(sidecar), st.st_mtime_ns, st.st_size, race_date)
-    if key not in _DRAW_ASOF_CACHE:
-        try:
-            from .au_draw_bias_calculator import build_matrix
-            payload = json.loads(sidecar.read_text(encoding="utf-8"))
-            races = [r for r in (payload.get("races") or [])
-                     if str(r.get("date") or "") and str(r["date"]) < race_date]
-            _DRAW_ASOF_CACHE[key] = build_matrix(races) if races else {}
-        except Exception as e:  # noqa: BLE001
-            print(f"Error building as-of Draw Bias Matrix: {e}")
-            _DRAW_ASOF_CACHE[key] = {}
-    return _DRAW_ASOF_CACHE[key]
-
-
-def _load_draw_bias_matrix():
-    global DRAW_BIAS_MATRIX_CACHE
-    if DRAW_BIAS_MATRIX_CACHE is None:
-        if DRAW_BIAS_MATRIX_PATH.exists():
-            try:
-                with open(DRAW_BIAS_MATRIX_PATH, "r", encoding="utf-8") as f:
-                    DRAW_BIAS_MATRIX_CACHE = json.load(f)
-            except Exception as e:
-                print(f"Error loading Draw Bias Matrix: {e}")
-                DRAW_BIAS_MATRIX_CACHE = {}
-        else:
-            DRAW_BIAS_MATRIX_CACHE = {}
-    return DRAW_BIAS_MATRIX_CACHE
-
-
 def _load_named_rating_stats():
     global JOCKEY_RATINGS_CACHE, TRAINER_RATINGS_CACHE
     if JOCKEY_RATINGS_CACHE is not None and TRAINER_RATINGS_CACHE is not None:
@@ -1679,187 +1579,23 @@ class RacingEngine:
 
         return score, "；".join(notes) + f"。段速分 {clip_score(score):.1f}。" if notes else "段速實證有限，段速分中性處理。", "engine_line+sectional_trend+record_table+pf_metrics+formguide_notes"
     def _pace_map_score(self):
-        w = PACE_MICRO_WEIGHTS
-        barrier = parse_float(self.horse_data.get("barrier"))
-        score = w.get("base", 60.0)
-        notes = []
-        detail = {"base": round(float(score), 1), "lines": []}
-        self.pace_map_detail = detail
-        if barrier is not None:
-            if barrier <= 4:
-                bucket = "inside"
-            elif barrier <= 8:
-                bucket = "middle"
-            elif barrier <= 12:
-                bucket = "outside"
-            else:
-                bucket = "wide"
+        """檔位分 = 60 + 大場次檔位分（`draw.py`，同入綜合分嗰個 `draw_feature` 一樣）。
 
-            # BUGFIX 2026-07-03: race_context has no "track" key in the live pipeline
-            # (venue lives in meeting_intelligence/track_profile) and distance carries
-            # an "m" suffix while the matrix keys are bare digits — both locks meant
-            # the per-track draw-bias stats NEVER matched and every race fell to the
-            # global bucket. Resolve venue via _current_venue_name and strip units.
-            track = str(self.race_context.get("track") or self._current_venue_name() or "").title()
-            distance = re.sub(r"[^0-9]", "", str(self.race_context.get("distance", "")))
-            field_size = int(self._field_summary().get("count") or 10)
-
-            if field_size <= 8:
-                f_cat = "field_1_8"
-                expected_wr = 1.0 / max(field_size, 1)
-            elif field_size <= 12:
-                f_cat = "field_9_12"
-                expected_wr = 1.0 / max(field_size, 1)
-            else:
-                f_cat = "field_13_plus"
-                expected_wr = 1.0 / max(field_size, 1)
-
-            race_date = self._race_date()
-            matrix = (_load_draw_bias_matrix_as_of(race_date)
-                      if _pit.is_historical(race_date) else _load_draw_bias_matrix())
-            stats = None
-            source_level = ""
-            peer_cells = None
-
-            # Cascading lookup
-            if track in matrix.get("tracks", {}):
-                trk_data = matrix["tracks"][track]
-                if distance in trk_data.get("distances", {}):
-                    d_stats = trk_data["distances"][distance].get(bucket, {})
-                    if d_stats.get("sample_size", 0) >= _DRAW_MIN_TRACK_DIST:
-                        stats = d_stats
-                        peer_cells = trk_data["distances"][distance]
-                        source_level = f"{track} {distance}m"
-                if not stats:
-                    t_stats = trk_data.get("track_general", {}).get(bucket, {})
-                    if t_stats.get("sample_size", 0) >= _DRAW_MIN_TRACK:
-                        stats = t_stats
-                        peer_cells = trk_data.get("track_general", {})
-                        source_level = f"{track} 總體"
-
-            if not stats:
-                stats = matrix.get("global_general", {}).get(f_cat, {}).get(bucket, {})
-                peer_cells = matrix.get("global_general", {}).get(f_cat, {})
-                source_level = f"全澳 {f_cat} 總體"
-
-            # BASELINE FIX 2026-08-16（用戶提出：「Ballarat 總體統計勝率 10.9%
-            # （基準 14.3%）」睇落唔對路 —— 佢啱）。
-            # 舊做法拿 cell 勝率同 `1/今日馬匹數` 比。但只有 **global** 嗰層按馬匹數
-            # 分桶（field_1_8 / 9_12 / 13_plus）；track 同 track+distance 兩層冇分桶，
-            # 係跨唔同馬匹數 pool 出嚟。實測全部可用 cell 之中 **96.2%** 落喺呢兩層
-            # （track+distance 77.7%、track 總體 18.6%），即係絕大多數情況兩邊分母
-            # 根本唔同。連符號都會反：Ballarat 內檔 10.9% 對 1/7=14.3% → −3.72（罰），
-            # 對 Ballarat 自己個 pool 9.5% → +1.59（賞）。同一個 cell 喺 6 匹場 −6.34、
-            # 14 匹場 +4.13 —— 10.5 分擺動全部由今日馬匹數決定，同檔位好壞無關，
-            # 等於偷偷加咗「細場次一律扣分、大場次一律加分」。
-            # 改為攞同一個 pool 嘅整體勝率（winners/runners）做基準，兩邊分母一致。
-            # global 嗰層本身已經對得上（field_1_8 pool = 14.2% ≈ 1/7），所以幾乎冇變。
-            expected_wr = _draw_pool_baseline(peer_cells, expected_wr)
-
-            bucket_zh = {"inside": "內檔", "middle": "中檔", "outside": "外檔", "wide": "大外檔"}.get(bucket, bucket)
-            if stats and stats.get("sample_size", 0) > 0:
-                win_rate = stats.get("win_rate", expected_wr)
-                raw_modifier = (win_rate - expected_wr) * 100 * w.get("modifier_multiplier", 1.0)
-                # Empirical-Bayes 收縮（2026-07-17）：細樣本 cell（例如 Rosehill 1200m
-                # 內檔 n=16 錄得 0 勝）純隨機都好常見，之前直接食 cap_min 一巴 −9.4。
-                # 修正按樣本量 n/(n+k) 收縮向 0：n=16 → 39%、n=112 → 82%、n=1499 → 98%。
-                # 710 場 walk-forward 驗證聚合非倒退（scratch/au_draw_bias_fix_test.py）。
-                shrink_k = w.get("shrinkage_k", 25.0)
-                n_samples = stats.get("sample_size", 0)
-                raw_modifier *= n_samples / (n_samples + shrink_k)
-                # 對稱化：勝率統計嘅波幅（尤其細樣本）用 cap 收窄，避免單一檔位被過度加減。
-                cap_min, cap_max = w.get("modifier_cap_min", -6.0), w.get("modifier_cap_max", 6.0)
-                modifier = max(cap_min, min(cap_max, raw_modifier))
-                score += modifier
-                # 內部 bucket/f_cat 係 lookup key（"inside"/"field_1_8" 等），唔應該直
-                # 接印出嚟畀人睇 —— 呢度加返中文顯示名，內部 lookup 邏輯完全冇改。
-                source_level_zh = re.sub(r"field_(\d+)_(\d+|plus)",
-                                          lambda m: (f"{m.group(1)}-{m.group(2)}騎陣容" if m.group(2) != "plus"
-                                                     else f"{m.group(1)}騎以上陣容"),
-                                          source_level)
-                n_samp = int(stats.get("sample_size", 0))
-                detail["lines"] = [
-                    f"檔位 {int(barrier)}（{bucket_zh}）→ {source_level_zh}：歷史勝率 {win_rate * 100:.0f}%，"
-                    f"場均基準 {expected_wr * 100:.0f}%（{n_samp} 場樣本，樣本收縮係數 {n_samples / (n_samples + shrink_k):.2f}）",
-                    f"勝率差 → 檔位修正 {modifier:+.1f} 分" + (
-                        f"（原始 {raw_modifier:+.1f}，因樣本波幅封頂於 {modifier:+.1f}）"
-                        if abs(raw_modifier - modifier) > 0.05 else ""),
-                ]
-                notes.append(f"檔位 {int(barrier)}（{bucket_zh}）據 {source_level_zh} 統計勝率為 {win_rate*100:.1f}%（基準 {expected_wr*100:.1f}%）")
-                if modifier > 2:
-                    notes.append("排位具統計優勢")
-                elif modifier < -2:
-                    notes.append("排位具統計劣勢")
-            else:
-                # 冇統計就維持中性；舊內檔/外檔硬編碼 fallback 喺 710 場、
-                # 5 folds 同 terminal holdout 全部 0-score，唔再以猜測代替數據。
-                detail["lines"] = [f"檔位 {int(barrier)}（{bucket_zh}）無足夠統計數據 → 維持中性基礎分"]
-
-        # ── Pace-bias term (uses already-parsed speed_map roles + predicted_pace) ──
-        # Racing prior (the model's own collapse_point rule): a slow/controlled tempo
-        # advantages on-pace/leader runners and compromises closers; a hot/fast tempo
-        # does the reverse. Previously the parsed role buckets were ignored here, so the
-        # race_shape dimension carried only a thin draw-bias signal. This adds a small,
-        # capped, deterministic pace adjustment from data we already extract.
-        pace_adj, pace_note = self._pace_bias_adjustment()
-        if abs(pace_adj) >= 0.01:
-            score += pace_adj
-            notes.append(pace_note)
-            detail["lines"].append(f"步速形勢修正 {pace_adj:+.1f}")
-
-        detail["final"] = round(clip_score(score), 2)
-        return score, "；".join(notes) + f"。檔位分 {clip_score(score):.1f}。" if notes else "檔位中性，分數不變。", "barrier+empirical_bias+pace_role"
-
-    def _pace_bias_adjustment(self):
-        """Return (modifier, note) from this horse's pace role vs predicted tempo.
-        Modifier is capped at ±4 and only fires when the speed map is confident
-        enough (a recognised role and a non-neutral predicted pace)."""
-        # Shadow / opt-in only. A clean A/B over the Flemington+Randwick archive
-        # (336 races) showed this term is a wash-to-slightly-negative on the
-        # headline Good rate (39.58%→38.39%) while raising perfect-race Gold
-        # (10→14) — it does NOT pass the improvement gate, so it is OFF by default.
-        # Enable for further tuning/experiments with WC_PACE_BIAS=1.
-        if os.environ.get("WC_PACE_BIAS", "0") != "1":
-            return 0.0, ""
-        speed_map = self._speed_map()
-        if not speed_map:
-            return 0.0, ""
-        horse_num = int(parse_float(self.horse_data.get("horse_number") or self.horse_data.get("number")) or 0)
-        if not horse_num:
-            return 0.0, ""
-
-        def bucket(name):
-            return {int(x) for x in (speed_map.get(name) or []) if str(x).strip().isdigit() or isinstance(x, int)}
-
-        role = None
-        for name in ("leaders", "on_pace", "pressers", "mid_pack", "closers"):
-            if horse_num in bucket(name):
-                role = name
-                break
-        if role is None:
-            return 0.0, ""
-
-        pace = str(speed_map.get("predicted_pace") or speed_map.get("expected_pace") or "")
-        n_lead = len(bucket("leaders"))
-        n_press = len(bucket("pressers"))
-        # Classify tempo: slow/controlled vs hot/fast vs neutral.
-        slow = any(t in pace for t in ("極慢", "慢", "controlled", "slow")) or (n_lead == 0 and n_press <= 1)
-        fast = any(t in pace for t in ("極快", "快", "hot", "fast", "genuine")) or (n_lead + n_press >= 5)
-        if slow == fast:  # neutral or ambiguous → no adjustment
-            return 0.0, ""
-
-        if slow:
-            table = {"leaders": 3.0, "on_pace": 3.0, "pressers": 1.5, "mid_pack": 0.0, "closers": -3.0}
-            tempo = "慢步速"
+        呢個 leaf 唔入維度權重（`race_shape` 係數 None），只係令報告「檔位形勢」顯示真正入分嗰個數。
+        舊逐場地檔位矩陣（`au_draw_bias_matrix.json`）已剷走：EXP-20260821-04／20260901-03 證實佢訊號太細，
+        EXP-20261102-07 嘅簡單場內檔位排名先有方向一致嘅正數（EXP-20261102-09）。
+        """
+        e = _draw.explain(self.horse_data.get("barrier"), self._field_summary().get("barriers"))
+        score = 60.0 + e["adj"]
+        if e["applies"]:
+            line = (f"檔位 {self.horse_data.get('barrier')}：{e['n']} 匹入面第 {e['rank']} 內（場內 z {e['z']:+.2f}）"
+                    f"→ 檔位分 {e['adj']:+.2f}（直接加落綜合分）")
         else:
-            table = {"closers": 3.0, "mid_pack": 1.0, "pressers": -1.0, "on_pace": -2.0, "leaders": -3.0}
-            tempo = "快步速"
-        adj = max(-4.0, min(4.0, table.get(role, 0.0)))
-        if abs(adj) < 0.01:
-            return 0.0, ""
-        role_zh = {"leaders": "領放", "on_pace": "貼前", "pressers": "跟前", "mid_pack": "守中", "closers": "後上"}
-        sign = "受惠" if adj > 0 else "受制"
-        return adj, f"步速形勢: 預測{tempo}，本馬屬{role_zh.get(role, role)}{sign} ({adj:+.1f})"
+            line = f"檔位 {self.horse_data.get('barrier') or '-'}：{e['reason']}"
+        self.pace_map_detail = {"base": 60.0, "lines": [line], "final": round(clip_score(score), 2)}
+        note = (f"{e['n']} 匹入面第 {e['rank']} 內，檔位分 {e['adj']:+.2f}。" if e["applies"]
+                else f"{e['reason']}，檔位分中性。")
+        return score, note, "barrier_rank_big_field"
 
     def _race_date(self) -> str:
         """賽事日期（YYYY-MM-DD）；攞唔到回 ""（= 當 live，唔改行為）。"""
@@ -2704,24 +2440,21 @@ class RacingEngine:
         return " ".join(part for part in (opener, assessment) if part)
 
     def _describe_race_shape_matrix(self, score, feature_scores):
-        """短而狠：檔位一句定調 → 場地紀錄一句 → 一句形勢結論。
-        逐項計法喺評分構成 detail 攤開，判讀唔覆述。"""
+        """一句檔位（同入綜合分嘅大場次檔位分一致）＋預期跑法。"""
         style = self._running_style()
         style_parts = [p.strip() for p in str(style).split("/")]
         if len(style_parts) > 1 and len(set(style_parts)) == 1:
             style = style_parts[0]
         barrier = self.horse_data.get("barrier")
-        pm = feature_scores["pace_map_score"]
-
-        # 門檻同 `_pace_map_score` 內部嘅 ±2 分修正判定對齊（2026-08-01 base 移到 60
-        # 之後重新對位）。舊門檻 pm >= 68 喺舊尺（上限 59.75）永遠唔會成立 ——
-        # 「檔位著數」呢句判語從來冇出過，正係用戶覺得呢一格淨係識講中性/差嘅原因。
-        if pm >= 62:
-            draw_v = f"排 {barrier} 檔據場地統計係著數位"
-        elif pm <= 58:
-            draw_v = f"排 {barrier} 檔據場地統計偏蝕，走位容錯較低"
+        e = _draw.explain(barrier, self._field_summary().get("barriers"))
+        if not e["applies"]:
+            draw_v = f"排 {barrier} 檔（{e['reason']}）"
+        elif e["adj"] >= 0.5:
+            draw_v = f"排 {barrier} 檔，{e['n']} 匹入面屬內檔，有利（{e['adj']:+.1f}）"
+        elif e["adj"] <= -0.5:
+            draw_v = f"排 {barrier} 檔，{e['n']} 匹入面屬外檔，蝕位（{e['adj']:+.1f}）"
         else:
-            draw_v = f"排 {barrier} 檔屬中性"
+            draw_v = f"排 {barrier} 檔，{e['n']} 匹入面屬中間（{e['adj']:+.1f}）"
         if style:
             draw_v += f"，預期「{style}」跑法"
         return draw_v + "。"

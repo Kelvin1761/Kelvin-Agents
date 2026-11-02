@@ -53,3 +53,28 @@ def horse_adjustment(barrier, field_barriers):
     except (TypeError, ValueError):
         return 0.0
     return adjustments(field)[i]
+
+
+def explain(barrier, field_barriers):
+    """報告用：{applies, n, rank（1 = 最內）, z, adj, reason}。同 `horse_adjustment` 同一套數。"""
+    field = list(field_barriers or [])
+    n = len(field)
+    out = {"applies": False, "n": n, "rank": None, "z": None, "adj": 0.0, "reason": ""}
+    b = _clean(field)
+    try:
+        own = float(barrier)
+    except (TypeError, ValueError):
+        own = None
+    if own is None or b is None or own not in b:
+        out["reason"] = "檔位資料唔齊"
+        return out
+    if n < MIN_FIELD:
+        out["reason"] = f"得 {n} 匹（少過 {MIN_FIELD} 匹），檔位唔計分"
+        return out
+    if not DRAW_LIVE:
+        out["reason"] = "檔位分已關（WC_AU_DRAW_LIVE=0）"
+        return out
+    i = b.index(own)
+    adj = adjustments(b)[i]
+    out.update(applies=True, rank=sorted(b).index(own) + 1, z=round(adj / BETA, 2), adj=round(adj, 4))
+    return out

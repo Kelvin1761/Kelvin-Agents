@@ -41,7 +41,6 @@ from au_racing_engine.scoring import (
     CLASS_MICRO_WEIGHTS,
     CONSISTENCY_MICRO_WEIGHTS,
     FIT_MICRO_WEIGHTS,
-    PACE_MICRO_WEIGHTS,
     TRIAL_MICRO_WEIGHTS,
     TRACK_MICRO_WEIGHTS,
 )
@@ -58,7 +57,6 @@ MICRO_FAMILIES = {
     "trial": TRIAL_MICRO_WEIGHTS,
     "consistency": CONSISTENCY_MICRO_WEIGHTS,
     "track": TRACK_MICRO_WEIGHTS,
-    "pace": PACE_MICRO_WEIGHTS,
     "jockey_horse_fit": FIT_MICRO_WEIGHTS,
 }
 
