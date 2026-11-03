@@ -18,6 +18,7 @@ refit arm Gold +1.89pp [+0.73, +3.12]、Good +1.75pp [+0.14, +3.55]。
 from __future__ import annotations
 
 import math
+import os
 
 from .scoring import clip_score
 
@@ -29,6 +30,14 @@ MIN_RUNS = 2
 MIN_FIELD = 3
 TRIP_CHANGE_M = 400.0
 TRIP_CHANGE_PEN = -5.0
+LOW_TAIL = os.environ.get("WC_AU_FQ_LOW_TAIL") == "1"   # EXP-20261103-12 研究開關（分支）
+
+
+def z_score(z):
+    """場內 z → 分數；EXP-20261103-12 候選：z < −1 斜率加倍。"""
+    if LOW_TAIL and z < -1.0:
+        return clip_score(40.0 + 40.0 * (z + 1.0))
+    return clip_score(60.0 + 20.0 * z)
 
 
 def digest(runs):
@@ -77,7 +86,7 @@ def score_without_proxy(features, detail):
     z = field_z(detail.get("raw"), int(detail.get("run_count") or 0), int(detail.get("field_count") or 0),
                 detail.get("field_mean"), detail.get("field_stdev") or 0.0)
     score = (composite(features.get("form_score", 60), features.get("performance_quality_score", 60))
-             if z is None else clip_score(60.0 + 20.0 * z))
+             if z is None else z_score(z))
     if detail.get("trip_change"):
         score = clip_score(score + TRIP_CHANGE_PEN)
     return round(score, 6)

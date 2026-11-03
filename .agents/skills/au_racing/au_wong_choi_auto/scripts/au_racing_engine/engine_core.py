@@ -4028,7 +4028,7 @@ class RacingEngine:
             self.form_quality_detail.update(final=round(composite, 2), fallback="form_and_quality_composite")
             return composite, (f"未有最少兩場完整往績（名次、出馬數、獎金），沿用近績分 {form:.1f} 同"
                                f"表現質素分 {quality:.1f} 嘅組合 {composite:.1f}。"), "form_quality_fallback_composite"
-        score = clip_score(60.0 + 20.0 * z)
+        score = _stab.z_score(z)
         self.form_quality_detail.update(z=round(z, 4), final=round(score, 2))
         return score, (f"近 {runs} 場按名次（場內百分位）同賽事獎金級別合併，"
                        f"場內標準分 {score:.1f}。"), "form_quality_field_relative"
