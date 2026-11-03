@@ -47,3 +47,7 @@
   - 對手表用 11-03 嘅 `NBA_Team_Context.json`（ESPN，history_date_to 11-01）經 `nba_team_context.opponent_context(bundle, 對手, cutoff_day)` —— 函數本身按 cutoff_day 過濾，所以等同當日 as-of。
   - 洩漏檢查：截斷後最大日期一定 < cutoff_day（harness assert）；box score 終場數字唔會事後改。限制：只有喺最新 package 出現過嘅球員先有 log（轉隊／離隊球員可能缺），C／B2 照用歸檔 package 原值。
 - 重建後 S 喺有歸檔 S_v4 嘅腿上要同歸檔值一致（parity），唔一致就唔准用。
+
+## 修訂 2（2026-11-03，跑 holdout 之前）
+- 修訂 1 嘅重建 S 同歸檔 S_v4 唔係逐腿一致（10-29 抽查：330 個球員 59 個 ESPN 賽績多咗／少咗一場、38 個數字有更正；機率最大差 0.0227）。原因係 ESPN 事後修訂，唔係 code。按修訂 1 自己嘅規則，重建值唔可以取代歸檔值。
+- **改法**：有歸檔 S_v4 嘅腿用歸檔值（即 live 當時見到嘅數）；冇嘅（10-22～10-27、11-01、11-02）先用重建值。重疊腿嘅重建誤差（median／p95／max）同結果一齊報。arm、指標、切分、判決不變。

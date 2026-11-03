@@ -50,24 +50,53 @@ for sc in root.glob("* NBA Analysis/Game_*_Full_Analysis.md.market_legs.json"):
             probs[(day, tag, leg["player"], STAT[leg["market"]], float(leg["line"]))] = (
                 leg.get("p_final"), leg.get("season_rate_v4_prob_S"))
 
-# S recomputed with nba_engine.model from each day's ESPN game data (bit-identical to the
-# archived S_v4 where both exist, parity_model.py); the archive only has S from 10-26.
-sys.path.insert(0, str(Path(__file__).resolve().parents[4] / ".agents/skills/nba"))
+# S from as-of rebuilt ESPN inputs (protocol amendment 1): each player's newest season_log
+# cut to games before the game's US day; opponent table from the 11-03 ESPN team bundle,
+# whose opponent_context() filters by the same cutoff day.
+NBA = Path(__file__).resolve().parents[4] / ".agents/skills/nba"
+sys.path[:0] = [str(NBA), str(NBA / "nba_data_extractor/scripts")]
+from datetime import date, datetime  # noqa: E402
+from zoneinfo import ZoneInfo  # noqa: E402
 from nba_engine import model  # noqa: E402
 from nba_identity import player_name_key  # noqa: E402
-_gd = {}
+import nba_team_context  # noqa: E402
+
+BUNDLE = json.loads((root / "2026-11-03 NBA Analysis" / "NBA_Team_Context.json").read_text())
+LOGS = {}   # (team, name key) -> newest season_log carrying per-game teams
+for f in root.glob("* NBA Analysis/nba_game_data_*.json"):
+    for team, ps in json.loads(f.read_text())["players"].items():
+        for p in ps:
+            log = (p.get("gamelog") or {}).get("season_log") or {}
+            if not log.get("dates") or not log.get("teams"):
+                continue
+            k = (team, player_name_key(p["name"]))
+            if k not in LOGS or (log["dates"][0], len(log["dates"])) > (LOGS[k]["dates"][0], len(LOGS[k]["dates"])):
+                LOGS[k] = log
+CUTOFF, OPP = {}, {}
+def game_context(day, tag):
+    if (day, tag) not in CUTOFF:
+        sb = json.loads((root / f"{day} NBA Analysis" / f"Sportsbet_Odds_{tag}.json").read_text())
+        start = datetime.fromisoformat(str(sb["event_start_time"]).replace("Z", "+00:00"))
+        CUTOFF[(day, tag)] = start.astimezone(ZoneInfo("America/New_York")).date()
+    return CUTOFF[(day, tag)]
+
+def truncated(log, cutoff):
+    keep = [i for i, d in enumerate(log["dates"]) if date.fromisoformat(d) < cutoff]
+    out = {k: ([v[i] for i in keep] if isinstance(v, list) and len(v) == len(log["dates"]) else v)
+           for k, v in log.items()}
+    assert all(date.fromisoformat(d) < cutoff for d in out["dates"])
+    return out
+
 def s_new(day, tag, team, player, stat, line):
-    if (day, tag) not in _gd:
-        f = root / f"{day} NBA Analysis" / f"nba_game_data_{tag}.json"
-        _gd[(day, tag)] = json.loads(f.read_text()) if f.exists() else None
-    gd = _gd[(day, tag)]
-    if not gd:
+    log = LOGS.get((team, player_name_key(player)))
+    if log is None:
         return None
-    p = next((p for p in gd["players"].get(team, []) if player_name_key(p["name"]) == player_name_key(player)), None)
-    if p is None:
-        return None
-    return model.s_prob((p.get("gamelog") or {}).get("season_log"), stat, line,
-                        (gd.get("opponent_context") or {}).get(team), gd["meta"].get("roster_season"), team)
+    cutoff = game_context(day, tag)
+    a, h = tag.split("_")
+    opp = h if team == a else a
+    if (opp, cutoff) not in OPP:
+        OPP[(opp, cutoff)] = nba_team_context.opponent_context(BUNDLE, opp, cutoff)
+    return model.s_prob(truncated(log, cutoff), stat, line, OPP[(opp, cutoff)], "2026-27", team)
 
 # --- legacy candidates + B2 -------------------------------------------------
 rows, b2 = [], defaultdict(list)
@@ -78,12 +107,23 @@ for f in replay_dir.glob("*.jsonl"):
             continue
         key = (r["day"], r["game"], r["player"], STAT.get(r["category"], r["category"]), float(r["line_val"]))
         c, _ = probs.get(key, (None, None))
-        s = s_new(r["day"], r["game"], r["team"], r["player"], key[3], key[4])
+        s_rebuilt = s_new(r["day"], r["game"], r["team"], r["player"], key[3], key[4])
+        s_arch = probs.get(key, (None, None))[1]
+        s = s_arch if s_arch is not None else s_rebuilt   # amendment 2
+        r["S_rebuilt"], r["S_archived"] = s_rebuilt, s_arch
         r.update(key=key, y=y.get(key), C=c, S=s, M=1 / r["odds"])
         rows.append(r)
         if r["b2_pick"]:
             b2[(r["day"], r["game"])].append(r)
 games = sorted({(r["day"], r["game"]) for r in rows})
+_d = sorted(abs(r["S_rebuilt"] - r["S_archived"]) for r in rows
+            if r["S_rebuilt"] is not None and r["S_archived"] is not None)
+if _d:
+    print(f"S rebuild vs archived S_v4: legs={len(_d)} median|diff|={_d[len(_d)//2]:.4f} "
+          f"p95={_d[int(.95*len(_d))]:.4f} max={_d[-1]:.4f} exact(<1e-4)={sum(x < 1e-4 for x in _d)/len(_d):.1%}")
+print(f"S source: archived={sum(r['S_archived'] is not None for r in rows)} "
+      f"rebuilt-only={sum(r['S_archived'] is None and r['S_rebuilt'] is not None for r in rows)} "
+      f"none={sum(r['S'] is None for r in rows)}")
 print(f"rows={len(rows)} settled={sum(r['y'] in ('hit','miss') for r in rows)} games={len(games)} "
       f"with C={sum(r['C'] is not None for r in rows)} with S={sum(r['S'] is not None for r in rows)}")
 
