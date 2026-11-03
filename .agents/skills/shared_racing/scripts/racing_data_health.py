@@ -274,7 +274,11 @@ def _overseas_fallback_issues(meeting_dir: Path) -> list[dict]:
         except (OSError, UnicodeError, ValueError):
             continue
         counts = payload.get("status_counts") or {}
-        unresolved = sum(v for k, v in counts.items() if k not in ("ok", "not_listed"))
+        # `not_found`（fsc 404）唔算缺：2026-05～11 實測 1,761 個 404 匹次全部係
+        # starter PDF 本身都冇列嘅馬（自購新馬／未出過賽）。真係要人睇嘅係
+        # 網絡錯誤（`error:*`）同冇烙號（`no_brand`，多數係訪港馬）。
+        unresolved = sum(v for k, v in counts.items()
+                         if k.startswith("error") or k == "no_brand")
         detail = "、".join(f"{k} {v}" for k, v in sorted(counts.items())) or "冇馬"
         item = {
             "severity": "warning",
@@ -282,7 +286,7 @@ def _overseas_fallback_issues(meeting_dir: Path) -> list[dict]:
             else "OVERSEAS_FORM_MISSING",
             "message": (
                 f"海外往績冇用 starter PDF（{payload.get('mode')}）：{detail}"
-                + (f"；{unresolved} 匹冇資料（訪港馬／fsc 搵唔到）" if unresolved else "")
+                + (f"；{unresolved} 匹攞唔到（網絡錯誤／冇烙號嘅訪港馬）" if unresolved else "")
             ),
         }
         if payload.get("race"):

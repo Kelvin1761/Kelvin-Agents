@@ -385,7 +385,8 @@ def test_hkjc_health_warns_but_does_not_block_on_soft_pdf_failure(tmp_path: Path
     )
     (meeting / "Overseas_Fallback_R1.json").write_text(
         json.dumps({"mode": "fsc_fallback", "race": 1,
-                    "status_counts": {"ok": 2, "not_listed": 7, "no_brand": 1}}),
+                    "status_counts": {"ok": 2, "not_listed": 7, "not_found": 3,
+                                      "no_brand": 1, "error:TimeoutError": 1}}),
         encoding="utf-8",
     )
     report = scan_meeting("hkjc", meeting)
@@ -394,7 +395,8 @@ def test_hkjc_health_warns_but_does_not_block_on_soft_pdf_failure(tmp_path: Path
     assert "HTTP 404" in by_code["STARTER_PDF_MISSING"]["message"]
     fallback = by_code["OVERSEAS_FORM_FALLBACK"]
     assert fallback["severity"] == "warning" and fallback["race"] == 1
-    assert "1 匹冇資料" in fallback["message"]
+    # 404（冇 fsc）係正常；網絡錯誤同冇烙號先算攞唔到。
+    assert "2 匹攞唔到" in fallback["message"]
     assert not any(i["code"] in {"STARTER_PDF_MISSING", "OVERSEAS_FORM_FALLBACK"}
                    and i["severity"] == "error" for i in report["issues"])
 
