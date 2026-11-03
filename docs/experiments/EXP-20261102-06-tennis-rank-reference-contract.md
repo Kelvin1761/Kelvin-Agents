@@ -59,3 +59,5 @@ dry-run前main新增AU／health修正`348049dc6a7812c4189b9e1683eb0cfec19c999f`�
 正式gate前另被remote namespace preflight攔住：既有remote branch名為`codex`，Git不能同時建立`codex/...`。只將同一工作分支改名`codex-tennis-rank-reference-release-20261102`，HEAD／內容保持不變；沒有刪除remote branch或新開分支繞過過期manifest。當時尚未有candidate commit／manifest；原blocked結果保留。
 
 本節在immutable release建立前記錄交付範圍；正式gate、commit、merge及activation結果由Central append-only manifest／event證明，不以研究分支的1166項結果冒充main隔離gate。下一步仍要驗actual run，及處理來源／完整card／fresh evidence後的新實驗；不宣稱準確度提升。
+
+**2026-11-03補證**：[正式交付及真實新card核對](../audits/tennis-rank-reference-release-20261103.md)：`1011c649`已合併／Tennis activation成功，main full gate1096項及已安裝程式唯讀smoke通過。三份部署後新bundle均完整，但兩份空card、另一份55／55原始observations仍因Elo／有效warnings整批被拒；新格式確實保存於65個rank points，qualified forward仍0，沒有準確度判決。
