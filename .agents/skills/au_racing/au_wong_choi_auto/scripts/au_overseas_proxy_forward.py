@@ -26,8 +26,7 @@ sys.path.insert(0, str(SCRIPT_DIR))
 sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing"))
 sys.path.insert(0, str(SCRIPT_DIR.parents[2] / "shared_racing" / "scripts"))
 
-from au_racing_engine.engine_core import FORM_QUALITY_TRIP_CHANGE_PEN  # noqa: E402
-from au_racing_engine.scoring import clip_score  # noqa: E402
+from au_racing_engine.stability import score_without_proxy  # noqa: E402
 
 EXPERIMENT_ID = "EXP-20261102-12"
 START_DATE = "2026-11-02"      # 98ed99c5 上線日；之前嘅 Logic 冇 stability_detail.form_quality，重算唔到
@@ -36,19 +35,8 @@ PROXY_SOURCE = "form_quality_overseas_rating_proxy"
 
 
 def without_proxy_score(features: dict, detail: dict) -> float:
-    """冇代理時嘅近績質素分，同 `engine_core._merged_form_quality` + `_trip_change_adjustment` 一樣。"""
-    raw, mean = detail.get("raw"), detail.get("field_mean")
-    stdev = detail.get("field_stdev") or 0.0
-    if raw is None or int(detail.get("run_count") or 0) < 2 or int(detail.get("field_count") or 0) < 3 \
-            or mean is None or stdev <= 0:
-        form = clip_score(features.get("form_score", 60))
-        quality = clip_score(features.get("performance_quality_score", 60))
-        score = clip_score(60.0 + 0.6 * (form - 60.0) + 0.4 * (quality - 60.0))
-    else:
-        score = clip_score(60.0 + 20.0 * (raw - mean) / stdev)
-    if detail.get("trip_change"):
-        score = clip_score(score + FORM_QUALITY_TRIP_CHANGE_PEN)
-    return round(score, 6)
+    """冇代理時嘅近績質素分（`stability.score_without_proxy`）。"""
+    return score_without_proxy(features, detail)
 
 
 def race_rows(logic, result_rows):

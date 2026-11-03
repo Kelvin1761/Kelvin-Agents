@@ -17,6 +17,7 @@ from . import pit as _pit
 from . import speed as _speed
 from . import class_rating as _class
 from . import draw as _draw
+from . import stability as _stab
 from . import overseas as _overseas
 from . import track_going as _track
 from . import jockey_trainer as _jt
@@ -81,12 +82,6 @@ def _bm_tier(rating):
     if rating >= 64: return 6
     return 7
 
-
-# EXP-20261016-71 F2：今場路程同最近一場合資格往績相差 ≥ 400m → 近績質素分 −5。
-# 模型名次層內實測剩餘超額 −5.8pp [−7.6, −4.1]（大幅縮程最明顯）。v3 RANKING_WIN（Gold ±0、Good +0.28pp、
-# NDCG CI 全正）；§8 fixed arm OOS RANKING_WIN，跨 arm Holm p 0.096 —— 冇代價嘅修正，唔係已證實改善。
-FORM_QUALITY_TRIP_CHANGE_M = 400.0
-FORM_QUALITY_TRIP_CHANGE_PEN = -5.0
 
 # EXP-20261016-13 A/B 開關：False = 舊行為（讀唔存在嘅 `entry["class"]`）。
 FORM_ENTRY_CLASS_TIER = True
@@ -411,7 +406,6 @@ VENUE_STATE_MAP = {
 
 # `track_score` 偏弱門檻（consistency −4 規則用）。EXP-20261016-70 將 track base 由 62.9 改 60，
 # 門檻跟住由 60 改 57.1，維持原本「只有往績差或濕地未驗證先觸發」。
-TRACK_WEAK_THRESHOLD = 57.1
 
 
 
@@ -642,33 +636,7 @@ class RacingEngine:
             feature_notes.setdefault(key, "資料不足，以中性 60 分處理。")
             self.provenance.setdefault(key, "missing_neutral")
 
-        # ── Mild context mismatch penalties ──
-        cs = feature_scores.get("class_score", 60)
-        ts = feature_scores.get("track_score", 60)
-        if feature_scores.get("form_score", 60) >= 72 and cs < 60:
-            feature_scores["form_score"] = feature_scores["form_score"] - 4
-            feature_notes["form_score"] = feature_notes.get("form_score", "") + "；級數偏弱，近績分小收 −4"
-            fd = getattr(self, "form_detail", None)
-            if isinstance(fd, dict):
-                fd["bonus"].append({"delta": -4.0, "factor": "[環境] 級數偏弱收回",
-                                    "evidence": (
-                                        f"近績分 {feature_scores['form_score'] + 4:.1f} ≥72，"
-                                        f"級數分 {cs:.1f} <60：近績評分高，但班次證據偏弱"
-                                    )})
-                fd["final"] = round(clip_score(feature_scores["form_score"]), 2)
-        # EXP-20261016-70 T5x：track base 62.9 → 60 係常數平移，呢條門檻要跟住移（60 → 57.1），
-        # 否則「同場 1 戰冇上名」（62.09 → 59.19）會開始觸發，靜靜改排名（實測 114 場）。
-        if feature_scores.get("consistency_score", 60) >= 72 and ts < TRACK_WEAK_THRESHOLD:
-            feature_scores["consistency_score"] = feature_scores["consistency_score"] - 4
-            feature_notes["consistency_score"] = feature_notes.get("consistency_score", "") + "；場地往績偏弱，穩定性分小收 −4"
-            cd = getattr(self, "consistency_detail", None)
-            if isinstance(cd, dict):
-                cd["adjustments"].append({"delta": -4.0, "factor": "[環境] 場地往績偏弱收回",
-                                          # 條件係 track_score < 57.1（base 60 減 2.9）。
-                                          # track 冇證據係 60（唔會觸發）；低過門檻只會係
-                                          # 同場／地況往績差。
-                                          "evidence": "穩定度偏高但場地往績分低於中性（同場或地況往績偏弱）"})
-                cd["final"] = round(clip_score(feature_scores["consistency_score"]), 2)
+        # 兩條「−4」情境扣分（近績分／級數、穩定性分／場地）已剷：重複計分（EXP-20261103-10）。
         # Complete class-adjusted margin evidence replaces the old consistency
         # leaf inside the stability matrix.  Where that evidence is unavailable,
         # copy the already-context-adjusted consistency score exactly so legacy
@@ -4003,19 +3971,19 @@ class RacingEngine:
         return score, f"試閘個體 L600 {raw:+.2f} 秒，{rel}同場試閘均值 {mean:+.2f} 秒，試閘 L600 分 {score:.1f}。"
 
     def _trip_change_adjustment(self, fq, fq_note):
-        """EXP-20261016-71 F2：大幅增程／縮程（同最近一場合資格往績差 ≥ 400m）→ 近績質素分 −5。"""
+        """大幅增程／縮程 → 近績質素分 −5（`stability.trip_change`）。"""
         trip_runs = self.data.get("form_quality_runs") or []
         last_trip = parse_float(trip_runs[0].get("distance")) if trip_runs else None
         today_trip = self._distance_m()
-        if not (last_trip and today_trip and abs(today_trip - last_trip) >= FORM_QUALITY_TRIP_CHANGE_M):
+        delta, change = _stab.trip_change(today_trip, last_trip)
+        if not delta:
             return fq, fq_note
-        change = "增程" if today_trip > last_trip else "縮程"
         detail = getattr(self, "form_quality_detail", None)
         if isinstance(detail, dict):
-            detail["trip_change"] = {"today": today_trip, "last": last_trip, "delta": FORM_QUALITY_TRIP_CHANGE_PEN}
-        return clip_score(fq + FORM_QUALITY_TRIP_CHANGE_PEN), (
+            detail["trip_change"] = {"today": today_trip, "last": last_trip, "delta": delta}
+        return clip_score(fq + delta), (
             f"{fq_note}今場 {today_trip}m 對上仗 {last_trip:.0f}m 大幅{change}"
-            f"（≥{FORM_QUALITY_TRIP_CHANGE_M:.0f}m），近績參考價值打折 {FORM_QUALITY_TRIP_CHANGE_PEN:+.0f}。")
+            f"（≥{_stab.TRIP_CHANGE_M:.0f}m），近績參考價值打折 {delta:+.0f}。")
 
     def _overseas_form_quality_proxy(self):
         """英愛法往績為主 → 近績質素分改由官方讓磅分推算（`overseas.py`）；唔適用 → None。"""
@@ -4042,7 +4010,7 @@ class RacingEngine:
         """
         form = clip_score(feature_scores.get("form_score", 60))
         quality = clip_score(feature_scores.get("performance_quality_score", 60))
-        composite = clip_score(60.0 + 0.6 * (form - 60.0) + 0.4 * (quality - 60.0))
+        composite = _stab.composite(form, quality)
         raw = parse_float(self.data.get("form_quality_raw"))
         runs = int(parse_float(self.data.get("form_quality_run_count")) or 0)
         summary = self.race_context.get("field_summary") or {}
@@ -4055,20 +4023,17 @@ class RacingEngine:
         proxy = self._overseas_form_quality_proxy()
         if proxy is not None:
             return proxy
-        if raw is None or runs < 2 or count < 3 or mean is None or stdev <= 0:
+        z = _stab.field_z(raw, runs, count, mean, stdev)
+        if z is None:
             self.form_quality_detail.update(final=round(composite, 2), fallback="form_and_quality_composite")
             return composite, (f"未有最少兩場完整往績（名次、出馬數、獎金），沿用近績分 {form:.1f} 同"
                                f"表現質素分 {quality:.1f} 嘅組合 {composite:.1f}。"), "form_quality_fallback_composite"
-        z = (raw - mean) / stdev
         score = clip_score(60.0 + 20.0 * z)
         self.form_quality_detail.update(z=round(z, 4), final=round(score, 2))
         return score, (f"近 {runs} 場按名次（場內百分位）同賽事獎金級別合併，"
                        f"場內標準分 {score:.1f}。"), "form_quality_field_relative"
 
     def _performance_quality_score(self):
-        if os.environ.get("WC_DISABLE_AU_PERFORMANCE_QUALITY") == "1":
-            self.performance_quality_detail = {"disabled": True, "final": None}
-            return 60.0, "表現質素分已停用，稍後沿用跑法穩定性分。", "consistency_fallback"
         raw = parse_float(self.data.get("performance_quality_raw"))
         recovered_score = parse_float(
             self.data.get("sportsbet_performance_quality_score")
@@ -6131,42 +6096,10 @@ _PERFORMANCE_QUALITY_RECENCY_WEIGHTS = (1.0, 0.8, 0.6, 0.4)
 _PERFORMANCE_QUALITY_CLASS_CREDIT = 4.0
 _PERFORMANCE_QUALITY_REFERENCE_PRIZE = 50000.0
 
-# ── 近績質素分（EXP-20261016-06 eq2_N6，用戶 2026-10-16 批准上線）─────────────
-# 每場往績 = 名次（場內百分位）同賽事質素（log10 獎金）兩個 z 嘅平均；最近 6 場
-# 完整正式賽（同表現質素分同一個揀選規則），權重 1.0／0.8／0.6／0.4／0.3／0.2，
-# 最少 2 場，再場內標準化。取代 stability 入面近績分 0.6 + 表現質素分 0.4。
-# 常數只用 run_date < 2026-08-05 嘅 41,647 條往績計（冇賽果標籤），**凍結，唔准調**。
-# 研究證據（來源 FLAG，唔係正式 v3 WIN）：§8 fixed arm Gold +1.62pp [+0.14, +3.30]，
-# refit arm Gold +1.89pp [+0.73, +3.12]、Good +1.75pp [+0.14, +3.55]。
-FORM_QUALITY_RECENCY_WEIGHTS = (1.0, 0.8, 0.6, 0.4, 0.3, 0.2)
-FORM_QUALITY_SD_PCT = 0.3190854842046987
-FORM_QUALITY_MU_LOG_PRIZE = 4.586282737969997
-FORM_QUALITY_SD_LOG_PRIZE = 0.35441149811378186
-
-
 def _form_quality_digest(official_entries: list[dict], *, meeting_date: str = "") -> dict:
-    """Raw 近績質素 = recency-weighted mean of per-run (z_placing + z_prize) / 2."""
-    runs = _performance_quality_digest(
-        official_entries, meeting_date=meeting_date,
-        max_runs=len(FORM_QUALITY_RECENCY_WEIGHTS)).get("runs", [])
-    values = []
-    for run in runs:
-        finish, starters = int(run.get("finish_pos") or 0), int(run.get("starters") or 0)
-        if not (starters >= 2 and 1 <= finish <= starters):
-            continue
-        z_place = (0.5 - (finish - 1) / (starters - 1)) / FORM_QUALITY_SD_PCT
-        z_prize = (math.log10(float(run["prize"])) - FORM_QUALITY_MU_LOG_PRIZE) / FORM_QUALITY_SD_LOG_PRIZE
-        values.append((run, (z_place + z_prize) / 2, z_place, z_prize))
-    if len(values) < 2:
-        return {}
-    weights = FORM_QUALITY_RECENCY_WEIGHTS[: len(values)]
-    raw = sum(v * w for (_r, v, _zp, _zq), w in zip(values, weights)) / sum(weights)
-    return {"raw": round(raw, 6), "run_count": len(values),
-            "runs": [{"date": r.get("date"), "finish_pos": r.get("finish_pos"),
-                      "starters": r.get("starters"), "prize": r.get("prize"),
-                      "distance": r.get("distance"), "value": round(v, 6),
-                      "z_place": round(zp, 4), "z_prize": round(zq, 4), "weight": w}
-                     for (r, v, zp, zq), w in zip(values, weights)]}
+    """近績質素 raw（`stability.digest`）；往績揀選同表現質素分一樣。"""
+    return _stab.digest(_performance_quality_digest(
+        official_entries, meeting_date=meeting_date, max_runs=len(_stab.RECENCY_WEIGHTS)).get("runs", []))
 
 
 def refresh_trial_runs(logic_data: dict, facts_path: Path | None) -> int:

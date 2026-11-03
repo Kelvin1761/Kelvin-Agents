@@ -52,9 +52,9 @@ def with_form_quality(features):
     """
     if not isinstance(features, dict) or "form_quality_score" in features:
         return features
-    form = clip_score(features.get("form_score", 60))
-    quality = clip_score(features.get("performance_quality_score", 60))
-    return {**features, "form_quality_score": clip_score(60.0 + 0.6 * (form - 60.0) + 0.4 * (quality - 60.0))}
+    from .stability import composite
+    return {**features, "form_quality_score": composite(features.get("form_score", 60),
+                                                         features.get("performance_quality_score", 60))}
 
 
 def map_features_to_matrix_scores(features):

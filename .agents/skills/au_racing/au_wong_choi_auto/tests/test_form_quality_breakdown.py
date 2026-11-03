@@ -12,7 +12,8 @@ ROOT = Path(__file__).resolve().parents[5]
 ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_racing_engine"
 sys.path.insert(0, str(ENGINE_DIR.parent))
 
-from au_racing_engine.engine_core import FORM_QUALITY_RECENCY_WEIGHTS, _form_quality_digest
+from au_racing_engine.engine_core import _form_quality_digest
+from au_racing_engine.stability import RECENCY_WEIGHTS as FORM_QUALITY_RECENCY_WEIGHTS
 from au_racing_engine.renderer import _stability_detail_lines
 
 

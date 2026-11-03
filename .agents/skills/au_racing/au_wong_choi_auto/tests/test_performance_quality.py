@@ -1,11 +1,9 @@
 from __future__ import annotations
 
 import math
-import os
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[5]
 ENGINE_DIR = ROOT / ".agents" / "skills" / "au_racing" / "au_wong_choi_auto" / "scripts" / "au_racing_engine"
@@ -212,32 +210,6 @@ class PerformanceQualityTests(unittest.TestCase):
         score, _note, source = RacingEngine(horse, context)._performance_quality_score()
         self.assertEqual(score, 100.0)
         self.assertEqual(source, "class_adjusted_margin_field_relative")
-
-    def test_disable_flag_is_rank_exact_fallback(self) -> None:
-        horse = {
-            "horse_name": "Switchable",
-            "horse_number": "1",
-            "barrier": 4,
-            "_data": {
-                "performance_quality_raw": 5.0,
-                "performance_quality_run_count": 3,
-            },
-        }
-        context = {
-            "field_summary": {
-                "count": 8,
-                "performance_quality_field_count": 5,
-                "performance_quality_field_mean": 0.0,
-                "performance_quality_field_stdev": 2.0,
-            }
-        }
-        with patch.dict(os.environ, {"WC_DISABLE_AU_PERFORMANCE_QUALITY": "1"}):
-            auto = RacingEngine(horse, context).analyze_horse()
-        self.assertEqual(
-            auto["feature_scores"]["performance_quality_score"],
-            auto["feature_scores"]["consistency_score"],
-        )
-        self.assertTrue(auto["stability_detail"]["performance_quality"]["disabled"])
 
 
 if __name__ == "__main__":

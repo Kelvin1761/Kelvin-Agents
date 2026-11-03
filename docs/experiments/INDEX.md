@@ -365,3 +365,5 @@
 - [EXP-20261103-06](EXP-20261103-06-au-thin-jockey-and-trainer-evidence.md) — §7：LY 少過 10 場嘅騎師由另一把尺（prior 0.365／spread 100）改為中性 60（同練馬師一致；96 匹，Gold／Good 0.00）；練馬師證據標籤以前永遠 observed，改為只限統一率／tier。
 - [EXP-20261103-07](EXP-20261103-07-au-fit-class-rule-results.md) — 「人馬配搭 ≥72 兼級數分 <58 → −3」（日常 Agent 更新加嘅手寫規則）全語料 0 匹觸發：配搭分 ≥72 得 25 匹、冇一匹級數分 <58（初出馬先會 <58，但佢哋去唔到 72）。已剷，分數零差。
 - [EXP-20261103-08](EXP-20261103-08-au-flemington-straight-draw-results.md) — AU Flemington 直路賽（≤1200m）檔位分歸零：直路冇彎，內檔機制唔存在（最內五分位上名 20.6% vs 其他場地 32.1%）。67 場郁、乾淨窗口 12 場；Gold 0、Good +0.06、ndcg +0.006；**USER-ACCEPTED 機制修正，上線**。
+- [EXP-20261103-09](EXP-20261103-09-au-stability-module-simplify.md) — AU 狀態與穩定性簡化：`stability.py` 唯一計算位置；後備組合三份複本合一；剷 `WC_DISABLE_AU_PERFORMANCE_QUALITY`。全語料 40,216 匹零差。後備組合佔語料 36.8%（live ~10%），live 後備實質係 0.6 近績 + 0.4 穩定性。
+- [EXP-20261103-10](EXP-20261103-10-au-stability-minus4-rules-results.md) — §7：剷「近績分 ≥72 兼級數 <60 → −4」同「穩定性分 ≥72 兼場地 <57.1 → −4」（日常 Agent 更新加、重複計分）。809 匹郁；Gold +0.06、Good −0.03，CI 全跨零 → 上線。
