@@ -967,14 +967,12 @@ class RacingEngine:
         if name == "jockey_score":
             return "observed" if source in {
                 "unified_place_rate",
-                "jockey_ly_stats",
                 "jockey_rating_db",
             } else "fallback"
         if name == "trainer_score":
-            detail = getattr(self, "trainer_detail", {}) or {}
-            has_stats = bool(detail.get("ly_line") or detail.get("adjustments"))
-            known_tier = "資料庫無記錄" not in str(detail.get("base_label") or "")
-            return "observed" if has_stats or known_tier else "fallback"
+            # 統一率或者資料庫 tier 先算有證據（EXP-20261103-06）。舊判斷靠一句由來冇出現過嘅字串，所以永遠 observed。
+            source = (getattr(self, "trainer_detail", {}) or {}).get("source")
+            return "observed" if source in {"unified", "db"} else "fallback"
         if name == "jockey_horse_fit_score":
             detail = self.jt_fit_detail or {}
             return "derived" if detail.get("adjustments") else "fallback"
@@ -1660,21 +1658,12 @@ class RacingEngine:
                 detail["lines"].append(f"去年官方：{int(runs)} 騎、{int(wins or 0)} 冠 {int(places)} 上名"
                                        f"（勝率 {(wins or 0) / runs * 100:.0f}%、上名率 {places / runs * 100:.0f}%）")
             return score, f"{note}，騎師分 {clip_score(score):.1f}。", "jockey_rating_db"
-        thin = _jt.thin_jockey_score(ly)
-        if thin is not None:
-            score, rate, rides, places = thin
-            prior = _jt.THIN_JOCKEY_PRIOR
-            detail["source"] = "ly"
-            detail["lines"] = [
-                f"去年官方全季：{rides} 騎、上名 {int(places)} 次（原始上名率 {places / rides * 100:.0f}%）",
-                f"樣本收縮（樣本越少越拉向基準）後 {rate * 100:.0f}%，全國基準 {prior * 100:.0f}%",
-                f"高過基準加分、低過扣分 → {clip_score(score):.1f} 分（60 為中性）",
-            ]
-            return score, (f"{jockey} 去年官方 {rides} 騎、上名 {int(places)} 次"
-                           f"（收縮後上名率 {rate * 100:.0f}%，全國基準 {prior * 100:.0f}%），"
-                           f"騎師分 {clip_score(score):.1f}。"), "jockey_ly_stats"
+        # LY 少過 10 場同練馬師一樣當中性（EXP-20261103-06）：以前用另一把尺（prior 0.365、spread 100），
+        # 例如 John Velazquez 去年澳洲 1 騎 0 上名 → 58.3。
+        runs, _wins, places = _jt.ly_record(ly)
         detail["source"] = "neutral"
-        detail["lines"] = ["資料庫／官方統計均無記錄 → 中性 60 分"]
+        detail["lines"] = [f"去年官方僅 {int(runs)} 騎、上名 {int(places)} 次，未達 {_jt.MIN_RUNS} 場可信門檻 → 中性 60 分" if runs
+                           else "資料庫／官方統計均無記錄 → 中性 60 分"]
         return 60, f"{jockey or '騎師資料'} 屬中性配置，騎師分 60.0。", "jockey_missing_neutral"
 
     def _trainer_score(self):
@@ -1696,6 +1685,7 @@ class RacingEngine:
                           f"未達 {_jt.MIN_RUNS} 場可信門檻，按中性處理" if runs
                           else "Sportsbet 官方統計未有可用記錄，中性起步")
         detail = {"base": round(float(score), 1), "base_label": base_label, "adjustments": [],
+                  "source": "unified" if unified is not None else "db" if rating else "neutral",
                   "final": round(clip_score(score), 2), "base_evidence": base_evidence,
                   "ly_line": (f"去年官方：{int(runs)} 場、{int(wins or 0)} 冠 {int(places)} 上名"
                               f"（勝率 {(wins or 0) / runs * 100:.0f}%、上名率 {places / runs * 100:.0f}%）" if runs else "")}

@@ -7,10 +7,8 @@
     LY ≥ 10 場（統一率）：
         騎師   勝率   r = (冠 + 20 × 0.1271) ÷ (場 + 20)   → 60 + 247 × (r − 0.1271)   （冇冠數 → 用下面上名率式）
         練馬師 上名率 r = (上名 + 20 × 0.3673) ÷ (場 + 20) → 60 + 140 × (r − 0.3673)   （騎師上名率 prior 0.3564）
-    LY 少過 10 場：
-        騎練資料庫 tier（`as_of` 早過賽日）→ tier 嘅 base_score
-        騎師再冇 tier 而 LY 有場數 → (上名 + 20 × 0.365) ÷ (場 + 20) → 60 + 100 × (r − 0.365)
-    其餘 → 60
+    LY 少過 10 場：騎練資料庫 tier（`as_of` 早過賽日）→ tier 嘅 base_score
+    其餘 → 60（騎師薄樣本以前用另一把尺，EXP-20261103-06 改為同練馬師一樣中性）
 
     點解騎師用勝率、練馬師用上名率：2026-08-05，713 場場內 AUC 騎師勝率 0.5943 > 上名率 0.5885；
     練馬師以冠軍數為基礎嘅變體全部用 gold 換 champ，所以留上名率。
@@ -41,7 +39,6 @@ SHRINK_K = 20.0
 JOCKEY_WIN_PRIOR, JOCKEY_WIN_SPREAD = 0.1271, 247.0
 PLACE_PRIOR = {"jockey": 0.3564, "trainer": 0.3673}
 PLACE_SPREAD = 140.0
-THIN_JOCKEY_PRIOR, THIN_JOCKEY_SPREAD = 0.365, 100.0
 FIT_NO_EVIDENCE = 58.0
 
 # 一個 dict：`au_runtime_micro_ablation` 喺 runtime 逐個 key 改做 0 嚟消融，所以計分時先讀。
@@ -99,15 +96,6 @@ def rate_score(kind, ly):
     score = clip_score(NEUTRAL + (shrunk - prior) * PLACE_SPREAD)
     return score, (f"去年官方 {int(runs)} 場、上名 {int(places)} 次（原始 {places / runs * 100:.0f}%，"
                    f"收縮後 {shrunk * 100:.0f}%，全國基準 {prior * 100:.0f}%）")
-
-
-def thin_jockey_score(ly):
-    """騎師 LY 少過 10 場（而冇 tier）→ (分數, 收縮率, 場, 上名)；冇場數 → None。"""
-    runs, _wins, places = ly_record(ly)
-    if runs <= 0:
-        return None
-    rate = (places + SHRINK_K * THIN_JOCKEY_PRIOR) / (runs + SHRINK_K)
-    return clip_score(NEUTRAL + (rate - THIN_JOCKEY_PRIOR) * THIN_JOCKEY_SPREAD), rate, int(runs), places
 
 
 def venue_note(stats):

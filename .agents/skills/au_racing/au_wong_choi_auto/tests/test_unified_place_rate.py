@@ -69,18 +69,23 @@ class TestSingleSource:
 
 
 class TestThinSampleGuard:
-    def test_thin_last_year_declines_the_unified_path(self):
-        """5 騎太薄，統一上名率唔接。
-
-        ⚠️ 已知不一致：跌落去嘅 `jockey_trainer.thin_jockey_score` fallback **冇**最低場數
-        guard，所以最終仍然會由 5 騎推出一個非中性分（實測 56.7）。
-        嗰條路徑係之前 A/B 調校過（prior .365 / spread 100），冇新證據之前
-        唔改佢；呢個測試只鎖住「統一路徑會拒絕薄樣本」。
-        """
+    def test_thin_last_year_is_neutral(self):
+        """5 騎太薄：同練馬師一樣中性 60（EXP-20261103-06；以前跌落另一把尺，5 騎 1 上名 → 56.7）。"""
         eng = engine(jockey="Zzz Nobody", jockey_ly={"rides": 5, "places": 1})
         assert jt.rate_score("jockey", {"rides": 5, "places": 1}) is None
-        _score, _note, src = eng._jockey_score()
-        assert src == "jockey_ly_stats"
+        score, _note, src = eng._jockey_score()
+        assert score == 60 and src == "jockey_missing_neutral"
+        assert "未達 10 場" in eng.jockey_detail["lines"][0]
+        assert eng._feature_evidence_state("jockey_score", src) == "fallback"
+
+    def test_trainer_without_record_is_not_evidence(self):
+        """練馬師冇統一率又冇 tier → fallback（以前永遠 observed）。"""
+        eng = engine(trainer="Zzz Unlisted Stable", trainer_ly={"rides": 4, "places": 1})
+        _s, _n, src = eng._trainer_score()
+        assert eng._feature_evidence_state("trainer_score", src) == "fallback"
+        big = engine(trainer="Big Stable", trainer_ly={"rides": 900, "places": 450})
+        _s, _n, src = big._trainer_score()
+        assert big._feature_evidence_state("trainer_score", src) == "observed"
 
     def test_thin_sample_cannot_masquerade_as_elite(self):
         """4 場 100% 上名係噪音。以前呢個 case 由 Racenet profile 餵入，
