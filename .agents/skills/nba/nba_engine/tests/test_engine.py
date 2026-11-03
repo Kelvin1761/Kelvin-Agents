@@ -202,3 +202,19 @@ def test_early_season_and_new_team_flags():
     moved = {"l10_seasons": ["2026-27"] * 10, "l10_matchups": ["LAL vs. NYK"] * 7 + ["BOS @ MIA"] * 3}
     assert "new_team" in _flags("REB", moved, "BOS", "2026-27", 30.0)
     assert "bench_minutes" in _flags("REB", moved, "BOS", "2026-27", 22.0)
+
+
+def test_paused_or_underpriced_b2_is_still_recorded_for_tracking():
+    odds, package = game()
+    ok = lambda o, legs: Quoted({"status": "ok", "decimal_odds": 2.1})  # noqa: E731
+    low = lambda o, legs: Quoted({"status": "ok", "decimal_odds": 1.9})  # noqa: E731
+    for quote, paused in ((ok, "S1"), (low, None)):
+        legs, combo, q, diag = analyse(odds, package, quote=quote, valid=lambda *a: True, paused=paused)
+        assert combo == []
+        payload = report.sidecar("text", odds, package, legs, combo, q, diag)
+        research = payload["review_candidates"][0]
+        assert research["candidate_id"] == "steady" and research["decision"] == "OBSERVE"
+        assert research["version"] == report.RESEARCH_VERSION and 2 <= len(research["legs"]) <= 4
+        assert research["odds"] == q["decimal_odds"] and "research" not in payload["selection_diagnostics"]
+    _, combo, q, diag = analyse(odds, package, quote=ok, valid=lambda *a: False)
+    assert combo == [] and report.research_record([], q, False)["odds"] is None

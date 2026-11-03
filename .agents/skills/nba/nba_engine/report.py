@@ -80,7 +80,37 @@ def render(odds, package, legs, combo, quote, diagnostics, paused=None) -> str:
     return "\n".join(out)
 
 
+# Contract strings the dashboard tracking reads (nba_tracking._research_card,
+# nba_latest_analysis): candidate_id 'steady' and this version allow 2-4 legs.
+RESEARCH_VERSION = "banker-ev-shadow-v1"
+
+
+def research_record(proposal, quote, verified, paused=None) -> dict:
+    """The B2 pick as an OBSERVE record, bet or not, with its real SGM quote."""
+    p = joint(proposal)
+    price = (quote or {}).get("decimal_odds") if verified else None
+    reasons = ["穩膽研究記錄：同正式組合 1（steady／B2）同一套揀法，用嚟追蹤；停損暫停期間照記錄。正式注以組合 1 為準。"]
+    if not verified:
+        reasons.append("未取得有效 Sportsbet 組合報價。")
+    elif price < 2.0:
+        reasons.append("真實組合價低於穩膽最低2.0倍。")
+    if paused:
+        reasons.append(f"正式穩膽停損暫停中（{paused}）。")
+    ev = round(p * price - 1, 6) if price else None
+    if ev is not None and ev <= 0:
+        reasons.append("按真實組合價計算模型 EV 非正：命中率產品線，見 EXP-20261027-21。")
+    return {"candidate_id": "steady", "label": "穩膽研究記錄", "version": RESEARCH_VERSION,
+            "analysis_only": True, "decision": "OBSERVE", "odds": price, "sgm_quote": quote or {},
+            "quote_verified_at_generation": bool(verified), "model_probability": round(p, 6),
+            "expected_value": ev, "reasons": reasons,
+            "legs": [{"player": l.player, "team": l.team, "market": MARKET[l.stat], "category": l.label,
+                      "line": l.line, "side": "over", "price": l.price, "odds": l.price, "selection": l.desc,
+                      "model_probability": round(l.p_final, 4), "l10_hit_rate": l.hit_l10} for l in proposal]}
+
+
 def sidecar(report_text, odds, package, legs, combo, quote, diagnostics) -> dict:
+    diagnostics = dict(diagnostics)
+    research = diagnostics.pop("research", None)
     meta = package.get("meta") or {}
     model_id = model.probability_model_id()
     picked = {(l.player, l.stat, l.line) for l in combo}
@@ -114,6 +144,7 @@ def sidecar(report_text, odds, package, legs, combo, quote, diagnostics) -> dict
                   "picked_in": ["1"] if (l.player, l.stat, l.line) in picked else []} for l in legs],
         "combos": combos,
         "quote_attempts": {"1": quote} if quote else {},
+        "review_candidates": [research] if research else [],
         "selection_diagnostics": diagnostics,
         "availability": {"meta": dict(meta), "injuries": package.get("injuries") or {}},
     }

@@ -34,26 +34,34 @@ def quote_payload(legs):
 
 def analyse(odds: dict, package: dict, *, quote=quote_combo, valid=quote_valid, paused=None):
     """(legs, combo, quote or None, diagnostics). The combo is non-empty only with a valid
-    Sportsbet SGM quote >= 2.0 and the steady stop-loss not paused."""
+    Sportsbet SGM quote >= 2.0 and the steady stop-loss not paused.
+
+    The B2 pick is quoted even when it cannot be bet (stop-loss pause, quote under 2.0):
+    diagnostics["research"] carries it as the OBSERVE record dashboard tracking follows
+    (EXP-20261027-21 keeps counting B2 while paused).
+    """
     legs, skipped = build_legs(odds, package)
     phase = (package.get("meta") or {}).get("season_phase")
-    combo, rule = select_b2(legs, phase)
+    proposal, rule = select_b2(legs, phase)
     diagnostics = {"rule": rule, "skipped": skipped, "candidates": len(legs), "banker_pool": pool_sizes(legs, phase),
                    "flags": dict(Counter(f for l in legs for f in l.flags))}
-    q = None
-    if (package.get("meta") or {}).get("season_phase") == "PRESEASON":
-        combo, diagnostics["no_bet_reason"] = [], "preseason_shadow_only"
-    elif paused:
-        combo, diagnostics["no_bet_reason"] = [], f"steady_paused:{paused}"
-    elif not combo:
+    if phase == "PRESEASON":
+        diagnostics["no_bet_reason"] = "preseason_shadow_only"
+        return legs, [], None, diagnostics
+    if not proposal:
         diagnostics["no_bet_reason"] = "no_b2_combo"
-    else:
-        payload = quote_payload(combo)
-        q = quote(odds, payload).quote
-        if not valid(q, odds, payload) or (q.get("decimal_odds") or 0) < MIN_SGM_PRICE:
-            diagnostics["no_bet_reason"] = f"quote_rejected:{q.get('status')}:{q.get('decimal_odds')}"
-            combo = []
-    return legs, combo, q, diagnostics
+        return legs, [], None, diagnostics
+    payload = quote_payload(proposal)
+    q = quote(odds, payload).quote
+    verified = bool(valid(q, odds, payload))
+    diagnostics["research"] = report.research_record(proposal, q, verified, paused)
+    if paused:
+        diagnostics["no_bet_reason"] = f"steady_paused:{paused}"
+        return legs, [], q, diagnostics
+    if not verified or (q.get("decimal_odds") or 0) < MIN_SGM_PRICE:
+        diagnostics["no_bet_reason"] = f"quote_rejected:{q.get('status')}:{q.get('decimal_odds')}"
+        return legs, [], q, diagnostics
+    return legs, proposal, q, diagnostics
 
 
 def main(argv=None) -> int:
