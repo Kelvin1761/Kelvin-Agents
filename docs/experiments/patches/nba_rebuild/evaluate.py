@@ -1,4 +1,4 @@
-"""EXP-20261103-13 evaluation, exactly as pre-registered in the protocol.
+"""EXP-20261103-15 evaluation, exactly as pre-registered in the protocol.
 
 Inputs: replay JSONL (legacy candidates + B2 picks), archived sidecar legs (C and S_v4
 probabilities), ledger settlements. One run, prints every arm.

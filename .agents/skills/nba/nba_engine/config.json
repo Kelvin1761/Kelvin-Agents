@@ -19,7 +19,7 @@
     ]
   },
   "ms_layer": {
-    "_source": "EXP-20261103-13 (fit on 2026-10-22..10-28 dev legs only; holdout dlogloss vs C -0.0039 [-0.0049,-0.0026])",
+    "_source": "EXP-20261103-15 (fit on 2026-10-22..10-28 dev legs only; holdout dlogloss vs C -0.0039 [-0.0049,-0.0026])",
     "intercepts": {
       "PTS": -0.4057,
       "REB": -0.2735,

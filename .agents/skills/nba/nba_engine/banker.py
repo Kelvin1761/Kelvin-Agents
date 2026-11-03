@@ -1,6 +1,6 @@
 """The formal banker rule (steady B2, EXP-20261027-21), rewritten without the old engine.
 
-EXP-20261103-13 tested simpler selectors (highest joint probability) against B2 and could
+EXP-20261103-15 tested simpler selectors (highest joint probability) against B2 and could
 not tell them apart on 59-79 games, so the pre-registered fallback keeps B2's rules:
 
 strict pool    L10 and L5 hit rate >= 80%, price >= 1.20, CoV <= 0.65, L3 average >= line,

@@ -1,9 +1,9 @@
-# EXP-20261103-14 NBA forward／shadow 測試全部收咗（隨 nba_engine 重寫）
+# EXP-20261103-16 NBA forward／shadow 測試全部收咗（隨 nba_engine 重寫）
 
 - **日期**：2026-11-03
 - **平台**：NBA
 - **決定人**：Kelvin（2026-11-03：「全部收咗，記錄結果」）
-- **原因**：重寫成 `nba_engine`（EXP-20261103-13）之後，live 唔再計 ML、MC、fit layer A、S_v1／v2／v3 shadow 欄位，亦冇 B0／B1 shadow；冇一個測試接近判決點，繼續養住佢哋要將舊引擎大半複雜度搬返過嚟。
+- **原因**：重寫成 `nba_engine`（EXP-20261103-15）之後，live 唔再計 ML、MC、fit layer A、S_v1／v2／v3 shadow 欄位，亦冇 B0／B1 shadow；冇一個測試接近判決點，繼續養住佢哋要將舊引擎大半複雜度搬返過嚟。
 - **冇任何一個測試有判決**：以下全部係「中止、冇結論」，**唔准當作 REJECT 或 KEEP 引用**。
 
 ## 中止時進度（`nba_experiment_readiness` 2026-11-03 輸出，最後一次）
@@ -20,10 +20,10 @@
 | B0／B1／B2 穩膽 EV shadow | EXP-20261024-02 | 停寫 | — | — |
 | fit layer A shadow | EXP-20261023-05 | 停寫 | — | — |
 
-MS2／MS3 嘅 INVALID_DATA 係 11-01／11-02 ESPN 轉換期對手表 `source_unavailable` 造成（EXP-20261103-13 修訂 1 有記）。
+MS2／MS3 嘅 INVALID_DATA 係 11-01／11-02 ESPN 轉換期對手表 `source_unavailable` 造成（EXP-20261103-15 修訂 1 有記）。
 
 ## 後續
-- 「市場＋S」呢條路線嘅問題，EXP-20261103-13 用今季已有數據直接答咗：MS（S_v4 版）holdout 贏 C，已經上線做 `p_final`。即係 MS1–MS3 想答嘅嘢，有一個較早、較細樣本嘅答案；要更大樣本，ledger 每晚照記 `p_ms`／`p_c`／`p_s`，隨時可以重跑 EXP-20261103-13 嘅 `evaluate.py`。
+- 「市場＋S」呢條路線嘅問題，EXP-20261103-15 用今季已有數據直接答咗：MS（S_v4 版）holdout 贏 C，已經上線做 `p_final`。即係 MS1–MS3 想答嘅嘢，有一個較早、較細樣本嘅答案；要更大樣本，ledger 每晚照記 `p_ms`／`p_c`／`p_s`，隨時可以重跑 EXP-20261103-15 嘅 `evaluate.py`。
 - 季初穩膽保護嘅旗標（`l10_mostly_previous_season`、`new_team`）照樣喺 B2 擋腿（行為不變），只係唔再有監測。
 - 歷史 ledger 行（`banker_shadow_obs`、`shadow_fit_*`、`season_rate_v*`）原封不動保留喺 `~/WongChoiData/NBA_Market_Eval/ledger/`。
 

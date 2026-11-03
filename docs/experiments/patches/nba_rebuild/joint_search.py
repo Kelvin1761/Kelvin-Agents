@@ -1,4 +1,4 @@
-"""EXP-20261103-13 K arms: highest-joint-probability banker search (NOT adopted; B2 kept).
+"""EXP-20261103-15 K arms: highest-joint-probability banker search (NOT adopted; B2 kept).
 
 Moved out of nba_engine after the verdict; kept here so the evaluation re-runs.
 
@@ -19,7 +19,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 
-# Exactly the exclusions EXP-20261103-13 evaluated; the early-season flags are reported,
+# Exactly the exclusions EXP-20261103-15 evaluated; the early-season flags are reported,
 # not used (that selector was not the one measured).
 EXCLUDE_FLAGS = {"bench_minutes", "volatile_3pm"}
 

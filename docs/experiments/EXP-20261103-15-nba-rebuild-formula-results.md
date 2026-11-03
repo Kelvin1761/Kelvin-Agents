@@ -1,8 +1,8 @@
-# EXP-20261103-13 結果：「模型先揀腿」唔贏市場錨定；機率層換 MS，揀腿保留 B2（乾淨重寫）
+# EXP-20261103-15 結果：「模型先揀腿」唔贏市場錨定；機率層換 MS，揀腿保留 B2（乾淨重寫）
 
 - **日期**：2026-11-03
 - **平台**：NBA
-- **協議**：`EXP-20261103-13-nba-rebuild-formula-protocol.md`（commit `da82be32`，修訂 1–3：`46bd0b44`、`5fa1475c`、`7257c01c`，全部喺跑 holdout 之前）
+- **協議**：`EXP-20261103-15-nba-rebuild-formula-protocol.md`（commit `da82be32`，修訂 1–3：`46bd0b44`、`5fa1475c`、`7257c01c`，全部喺跑 holdout 之前）
 - **評估 commit**：`6f1871f8`；holdout 只跑咗一次。
 
 ## 語料

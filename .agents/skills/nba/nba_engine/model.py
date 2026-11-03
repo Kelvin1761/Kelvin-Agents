@@ -6,7 +6,7 @@ Every number here is frozen by an experiment; the constants live in config.json.
 * C       = logit p = a_stat + beta*logit(market) + gamma*logit(L10 hit rate)   (EXP-20261022-03)
 * S       = P(X >= line), X ~ NB(mu, k);  mu = projected minutes x per-minute rate x opponent
             factor; previous-season games down-weighted early in a season    (EXP-20261025-13, -26-07)
-* MS      = logit p = a_stat + beta*logit(market) + gamma*logit(S)            (EXP-20261103-13)
+* MS      = logit p = a_stat + beta*logit(market) + gamma*logit(S)            (EXP-20261103-15)
             the published probability; C stands in when S cannot be computed
 
 All inputs are ESPN: the per-game ``season_log`` and the opponent ``allowed`` table the

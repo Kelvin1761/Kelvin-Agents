@@ -47,7 +47,7 @@ def render(odds, package, legs, combo, quote, diagnostics, paused=None) -> str:
            f"> SPORTSBET_LIVE | 賠率擷取 {odds.get('extraction_time')} | 開賽 {odds.get('event_start_time')}",
            f"> season_phase: {meta.get('season_phase')} | roster_season: {meta.get('roster_season')} | "
            f"L10_ORDER:newest_first | SPORTSBET_MILESTONE_OVER_ONLY",
-           f"> 引擎版本: {ENGINE_ID} | 機率 = 市場 + 季度產出率（MS，EXP-20261103-13）| 數據來源: ESPN", "",
+           f"> 引擎版本: {ENGINE_ID} | 機率 = 市場 + 季度產出率（MS，EXP-20261103-15）| 數據來源: ESPN", "",
            "## 🎰 SGM Parlay 組合 (Python Auto-Selection)", "",
            f"> 📌 {STEADY_MARKER} — {DISCLAIMER}"]
     if paused:

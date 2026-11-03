@@ -465,7 +465,7 @@ Deploy wrapper：
 `NBA Wong Choi` 目前有自己嘅 orchestrator，會串連 Sportsbet odds extraction、ESPN 數據抽取、
 `nba_engine` 分析、發佈防火牆同 SGM compile。**數據來源只有 ESPN**（stats.nba.com 已於 EXP-20261101-60 退役）。
 
-### 引擎：`.agents/skills/nba/nba_engine/`（EXP-20261103-13 重寫）
+### 引擎：`.agents/skills/nba/nba_engine/`（EXP-20261103-15 重寫）
 
 | 檔 | 做咩 |
 |---|---|
@@ -478,7 +478,7 @@ Deploy wrapper：
 
 - 冇 ML、冇 Monte Carlo、冇 10 因子調整、冇 shadow 欄位。舊引擎逐場 replay 對比：腿 16,934/16,934 一樣、B2 89 場 88 場一樣。
 - 改 `config.json` 嘅係數 = 改模型，要過 `model-regression-gate`；`docs/experiments/patches/nba_rebuild/evaluate.py` 可以用 ledger 重跑同一把尺。
-- 所有 forward／shadow 測試已於 EXP-20261103-14 中止（冇判決）。
+- 所有 forward／shadow 測試已於 EXP-20261103-16 中止（冇判決）。
 
 ### Supported inputs
 

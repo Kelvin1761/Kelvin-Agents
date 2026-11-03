@@ -40,7 +40,7 @@ cd .agents/skills/nba && python3 -m nba_engine.run \
 - **p_final = MS** = `a_stat + 0.926·logit(1/價) + 0.110·logit(S)`；S 計唔到就用 C
 - **S**：預計分鐘 × 每分鐘產出 × 對手因子，NB 分佈；上季比賽季初降權
 - **C**：`a_stat + 0.755·logit(1/價) + 0.140·logit(L10 命中率)`
-- 證據：EXP-20261103-13（唔睇價嘅 S 單獨用會輸市場，所以只做修正項）
+- 證據：EXP-20261103-15（唔睇價嘅 S 單獨用會輸市場，所以只做修正項）
 
 ## 正式穩膽（`nba_engine/banker.py`）
 
