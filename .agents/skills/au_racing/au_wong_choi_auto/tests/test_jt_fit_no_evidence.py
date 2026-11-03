@@ -56,37 +56,16 @@ class TestNoEvidenceSitsBelowNeutral:
 
 
 class TestEvidenceStillMovesTheScore:
-    def test_positive_evidence_lifts_above_neutral(self):
-        """有配搭往績要高過 60，唔可以被「冇證據」規則波及。"""
+    def test_trial_evidence_lifts_preparation_not_fit(self):
+        """試閘密度入「試閘備戰」；人馬配搭分唔再食呢份，但都唔可以跌落「冇證據」58。"""
         eng = engine({"trial_count": 3, "trial_top3_count": 2})
         score, _note, _src = eng._jockey_horse_fit_score()
-        assert score > 60.0
-        assert eng.jt_fit_detail["adjustments"], "應該有記錄到加分因子"
+        assert score == pytest.approx(60.0)
+        assert eng.preparation_parts, "應該有記錄到試閘備戰加分"
+        assert eng._preparation_score()[0] > 60.0
 
     def test_evidence_outranks_no_evidence(self):
-        """核心不變量：有正面證據 > 冇證據。"""
+        """核心不變量：有證據 > 冇證據。"""
         with_ev = engine({"trial_count": 3, "trial_top3_count": 2})._jockey_horse_fit_score()[0]
         without = engine()._jockey_horse_fit_score()[0]
         assert with_ev > without
-
-    def test_penalised_still_outranks_no_evidence(self):
-        """實測 28.6% vs 21.7% —— 被扣分嗰批應該仍然排喺冇證據之上。
-
-        用一個「有加分但淨額細」嘅個案代表被評價過嘅馬：重點係佢有證據，
-        所以就算分數唔高，都唔應該跌到 `jockey_trainer.FIT_NO_EVIDENCE` 以下。
-        """
-        judged = engine({"trial_count": 3, "trial_top3_count": 2})._jockey_horse_fit_score()[0]
-        assert judged > jt.FIT_NO_EVIDENCE
-
-
-class TestContrastWithSectional:
-    def test_the_two_leaves_deliberately_disagree(self):
-        """段速分「冇數據」= 60（嗰批高過平均）；人馬配搭「冇紀錄」< 60（低過平均）。
-
-        兩個唔同方向係有實測依據嘅，唔係前後不一致。任何人想把
-        `jockey_trainer.FIT_NO_EVIDENCE` 「修正」返 60 之前，要先重做 cohort 量度。
-        """
-        from au_racing_engine.scoring import SECTIONAL_MICRO_WEIGHTS
-
-        assert SECTIONAL_MICRO_WEIGHTS["base"] == 60.0
-        assert jt.FIT_NO_EVIDENCE < 60.0

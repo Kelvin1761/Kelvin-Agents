@@ -116,7 +116,8 @@ def test_preparation_is_separate_without_double_counting():
     auto = engine.analyze_horse()
     features = auto['feature_scores']
     assert features['preparation_score'] > 60
-    assert features['jockey_horse_fit_score'] + features['preparation_score'] - 60 == pytest.approx(before)
+    # 試閘密度一開始就分開計（EXP-20261103-13），人馬配搭分 leaf 本身已經唔包佢。
+    assert features['jockey_horse_fit_score'] == pytest.approx(before)
     # EXP-20261016-77：試閘備戰 = 0.5 試閘密度 + 0.5 試閘速度（用戶決定，§8 評估過），所以搬去試閘備戰
     # 唔再係「總分不變」；改為鎖住新公式。
     prep_dim = map_features_to_matrix_scores(features)['preparation']

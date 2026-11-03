@@ -581,6 +581,7 @@ class RacingEngine:
         self.evidence_state = {}
         # 人馬配搭分逐項調整紀錄（因子、加減分、原始數據）— 供報告完整追溯
         self.jt_fit_detail = None
+        self.preparation_parts = []
         self._record_entry_cache = None
         self._official_entry_cache = None
         self._sectional_trend_cache = None
@@ -720,27 +721,6 @@ class RacingEngine:
                     elif fl_weak:
                         feature_scores["formline_score"] = clip_score(fl_score - 2)
                         feature_notes["formline_score"] = feature_notes.get("formline_score", "") + "；[級數] 升班 × 弱賽績線 → 有保留"
-
-        # Reclassify the existing trial-density contribution after the legacy
-        # context adjustments, so those conditions keep their tested behaviour.
-        # The same contribution now has its own feature and matrix coefficient.
-        preparation = feature_scores.get("preparation_score", 60.0) - 60.0
-        if preparation:
-            feature_scores["jockey_horse_fit_score"] = clip_score(
-                feature_scores["jockey_horse_fit_score"] - preparation)
-            moved = [a for a in self.jt_fit_detail.get("adjustments", [])
-                     if a.get("factor") in _jt.PREPARATION_FACTORS]
-            self.preparation_detail = {"base": 60.0, "adjustments": moved,
-                                       "final": feature_scores["preparation_score"]}
-            self.jt_fit_detail["adjustments"] = [a for a in self.jt_fit_detail.get("adjustments", [])
-                                                 if a not in moved]
-            self.jt_fit_detail["final"] = feature_scores["jockey_horse_fit_score"]
-            note = feature_notes.get("jockey_horse_fit_score", "")
-            note = "；".join(part for part in note.split("；")
-                            if not any(f in part for f in _jt.PREPARATION_FACTORS))
-            feature_notes["jockey_horse_fit_score"] = re.sub(
-                r"人馬配搭分 \d+(?:\.\d+)?",
-                f"人馬配搭分 {feature_scores['jockey_horse_fit_score']:.1f}", note)
 
         # 近績質素分 (EXP-20261016-06) after every form / PQ context adjustment, so
         # its fallback is exactly the old stability composite of the final leaves.
@@ -939,8 +919,8 @@ class RacingEngine:
             source = (getattr(self, "trainer_detail", {}) or {}).get("source")
             return "observed" if source in {"unified", "db"} else "fallback"
         if name == "jockey_horse_fit_score":
-            detail = self.jt_fit_detail or {}
-            return "derived" if detail.get("adjustments") else "fallback"
+            # 試閘備戰嗰兩項分開計分，但照舊算人馬配搭有證據。
+            return "derived" if (self.jt_fit_detail or {}).get("adjustments") or self.preparation_parts else "fallback"
         if name == "class_score":
             has_class_evidence = bool(
                 self._official_entries()
@@ -1672,11 +1652,13 @@ class RacingEngine:
         return score, f"{head}，練馬師分 {clip_score(score):.1f}。", "trainer_name+trainer_track_stats"
 
     def _preparation_score(self):
-        adjustments = (getattr(self, "jt_fit_detail", None) or {}).get("adjustments", [])
-        selected = [a for a in adjustments if a.get("factor") in _jt.PREPARATION_FACTORS]
-        delta = sum(float(a["delta"]) for a in selected)
+        """試閘備戰分 = 60 + 試閘密度兩項（由 `jockey_trainer.fit_parts` 出，喺人馬配搭分度分開）。"""
+        selected = self.preparation_parts
+        score = 60.0 + sum(a["delta"] for a in selected)
+        if selected:
+            self.preparation_detail = {"base": 60.0, "adjustments": selected, "final": clip_score(score)}
         note = "；".join(a.get("evidence") or a["factor"] for a in selected)
-        return 60.0 + delta, note or "未有額外試閘備戰證據", "trial_preparation"
+        return score, note or "未有額外試閘備戰證據", "trial_preparation"
 
     def _formguide_trial_counts(self):
         """(試閘課數, 前列課數)：前列 = 試閘場內百分位 ≤ 40%；冇馬匹數就照舊絕對 ≤ 3（EXP-20261016-75 P2）。"""
@@ -1710,6 +1692,10 @@ class RacingEngine:
             "current_trial_top3": self._current_jockey_trial_top3(), "change_signal": signal,
         })
         signal_factors = ("沿用歷來最佳人馬配搭", "試閘手接手，備戰線完整")
+        prep = [p for p in parts if p[1] in _jt.PREPARATION_FACTORS]
+        parts = [p for p in parts if p[1] not in _jt.PREPARATION_FACTORS]
+        self.preparation_parts = [{"factor": f, "delta": round(float(d), 2), "evidence": str(e or "").strip()}
+                                  for d, f, e in prep if d]
         notes = [factor for _, factor, _ in parts if factor not in signal_factors]
 
         # 唔入分嘅敘述（次序同報告一樣）。
@@ -1765,7 +1751,7 @@ class RacingEngine:
         score = 60.0
         for delta, _, _ in parts:
             score += float(delta)
-        if not adjustments:
+        if not adjustments and not self.preparation_parts:
             score = _jt.FIT_NO_EVIDENCE
             notes.append("並無任何人馬配搭紀錄（新配搭／輕出賽馬），按實測低於中性處理")
         self.jt_fit_detail = {"base": 60.0, "final": round(clip_score(score), 2), "adjustments": adjustments}
@@ -2358,12 +2344,6 @@ class RacingEngine:
         if status and (compact_trend == status or compact_trend in status or status in compact_trend):
             return ""
         return trend
-
-    def _tactical_position_text(self):
-        plan = self.horse_data.get("tactical_plan")
-        if isinstance(plan, dict):
-            return str(plan.get("expected_position") or "").strip()
-        return ""
 
     def _tactical_scenario_text(self):
         plan = self.horse_data.get("tactical_plan")
@@ -4154,8 +4134,6 @@ class RacingEngine:
         return score, f"可用分析錨點 {anchors}/13，並按 style confidence、正式樣本、jockey history 同 source 校正後，信心分 {clip_score(score):.1f}。", "data_coverage+style_meta+formline+jockey_history"
 
     def _health_score(self):
-        if os.environ.get("WC_DISABLE_AU_HEALTH_SCORE") == "1":
-            return 60.0, "健康/備戰分以 validation flag 暫作中性 60。", "disabled_neutral"
         # ⚠️ **呢個 leaf 唯一活住嘅輸入係「距上仗日數」。** 個名同標籤講「健康」，
         # 但 2026-09-07 實測 8,224 匹：分數只有 59 / 60 / 61 三個值，而每一個
         # 都嚟自下面嗰個 spell 分支 —— 冇一個健康分支中過。原因唔係我哋解析失敗，
@@ -5388,13 +5366,6 @@ def normalise_field_barriers(logic_data: dict) -> int:
         block = data.get("facts_section", "") if isinstance(data, dict) else ""
         horse["tactical_plan"] = _build_tactical_plan(rank, block)
     return changed
-
-
-def _merge_if_missing(target, key, value):
-    if value in (None, "", "Unknown"):
-        return
-    if target.get(key) in (None, "", 0, "Unknown"):
-        target[key] = value
 
 
 def _merge_prefer_clean(target, key, value):
