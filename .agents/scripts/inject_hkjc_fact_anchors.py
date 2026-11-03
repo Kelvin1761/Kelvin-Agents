@@ -693,6 +693,54 @@ def get_pdf_path(formguide_path: str) -> Optional[Path]:
     return None
 
 
+_OVERSEAS_MARKER_RE = re.compile(r'Overseas\s+Form\s+of\s+\d{2}/\d{2}', re.IGNORECASE)
+
+
+def starter_pdf_has_overseas_section(pdf_path: Optional[Path]) -> bool:
+    """starter PDF 喺度而且解得出海外往績嗰節，先算「主來源可用」。"""
+    if not pdf_path:
+        return False
+    try:
+        return bool(_OVERSEAS_MARKER_RE.search(Path(pdf_path).read_text(encoding='utf-8')))
+    except (OSError, UnicodeError):
+        return False
+
+
+def _load_overseas_formsheet():
+    """`hkjc_overseas_formsheet` 同呢個檔同一個資料夾；用檔案路徑 load，
+    因為測試同 replay 會用 `spec_from_file_location` 載入本檔，sys.path 未必有呢度。"""
+    import importlib.util
+    path = Path(__file__).resolve().parent / 'hkjc_overseas_formsheet.py'
+    spec = importlib.util.spec_from_file_location('hkjc_overseas_formsheet', path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+# fallback 由呢個賽日起生效。之前嘅場次（2026-05-24 之前個 PDF 本身係截斷版，
+# 冇海外往績節）重跑 Facts 時維持當日原貌，唔會因為補咗 fsc 而郁舊 baseline／回測。
+FSC_FALLBACK_SINCE = '2026-11-03'
+
+
+def overseas_source_mode(pdf_path: Optional[Path], as_of_date: Optional[str]) -> str:
+    """`starter_pdf`（主來源）／`fsc_fallback`／`none`。
+
+    starter PDF 2026-11-03 起唔再係發佈閘硬條件（見 batch_extract）。佢唔喺度、或者
+    解唔到海外往績嗰節，就逐匹馬改用 fsc「來港前賽績記錄」PDF，砌返同一個 shape。
+
+    `WC_HKJC_FSC_FALLBACK`：`0` 關；預設只對 `FSC_FALLBACK_SINCE` 或之後嘅賽日開；
+    `force` 任何賽日都開（對照測試用）。冇賽日（display-only caller）一律唔做。
+    """
+    if starter_pdf_has_overseas_section(pdf_path):
+        return 'starter_pdf'
+    setting = os.environ.get('WC_HKJC_FSC_FALLBACK', '1').strip().lower()
+    if not as_of_date or setting == '0':
+        return 'none'
+    if setting != 'force' and as_of_date < FSC_FALLBACK_SINCE:
+        return 'none'
+    return 'fsc_fallback'
+
+
 def parse_pdf_overseas_races(pdf_path: Path, brand_no: str, horse_name: str) -> list:
     """Parse the official PDF's dedicated Overseas Form section.
 
@@ -984,6 +1032,9 @@ def parse_hkjc_formguide(filepath: str, as_of_date: Optional[str] = None) -> dic
 
     brand_mapping, gear_mapping, trainer_mapping = load_brand_mapping(filepath)
     pdf_path = get_pdf_path(filepath)
+    overseas_mode = overseas_source_mode(pdf_path, as_of_date)
+    overseas_formsheet = _load_overseas_formsheet() if overseas_mode == 'fsc_fallback' else None
+    overseas_fallback_log = []
 
     text = Path(filepath).read_text(encoding='utf-8')
     
@@ -1170,8 +1221,15 @@ def parse_hkjc_formguide(filepath: str, as_of_date: Optional[str] = None) -> dic
 
         # Extract PDF Overseas Races
         pdf_overseas_races = []
-        if pdf_path:
+        if overseas_mode == 'starter_pdf':
             pdf_overseas_races = parse_pdf_overseas_races(pdf_path, brand_no, horse_name)
+        elif overseas_formsheet is not None:
+            pdf_overseas_races, fsc_status = overseas_formsheet.fallback_overseas_rows(
+                brand_no, as_of_date)
+            overseas_fallback_log.append({
+                'num': horse_num, 'name': horse_name, 'brand_no': brand_no,
+                'status': fsc_status, 'rows': len(pdf_overseas_races),
+            })
         
         horses.append({
             'num': horse_num,
@@ -1190,7 +1248,46 @@ def parse_hkjc_formguide(filepath: str, as_of_date: Optional[str] = None) -> dic
 
     horses, reconciliations = _reconcile_racecard(filepath, horses)
     return {'race_info': race_info, 'horses': horses,
-            'source_reconciliations': reconciliations}
+            'source_reconciliations': reconciliations,
+            'overseas_source': {'mode': overseas_mode,
+                                'starter_pdf': str(pdf_path) if pdf_path else '',
+                                'horses': overseas_fallback_log}}
+
+
+def overseas_fallback_sidecar_path(out_dir: Path, race_num: int, stem: str = '') -> Path:
+    label = f'R{race_num}' if race_num else re.sub(r'[^0-9A-Za-z_-]+', '_', stem)[:40]
+    return Path(out_dir) / f'Overseas_Fallback_{label}.json'
+
+
+def record_overseas_source(overseas_source: dict, out_dir: Path, race_num: int,
+                           stem: str = '', race_date: str = '') -> Optional[Path]:
+    """starter PDF 冇用到就留低一個 sidecar，`racing_data_health` 會報 warning；
+    starter PDF 用返就刪走舊 sidecar，等警告自己消失。唔會靜靜 fallback。
+
+    `FSC_FALLBACK_SINCE` 之前嘅賽日（重跑舊場次）唔寫：嗰陣嘅 PDF 本身冇海外節，
+    唔係今次出事。"""
+    path = overseas_fallback_sidecar_path(out_dir, race_num, stem)
+    mode = (overseas_source or {}).get('mode')
+    if mode == 'starter_pdf':
+        if path.exists():
+            path.unlink()
+        return None
+    if mode != 'fsc_fallback' and race_date and race_date < FSC_FALLBACK_SINCE:
+        return None
+    counts = {}
+    for item in overseas_source.get('horses') or []:
+        counts[item['status']] = counts.get(item['status'], 0) + 1
+    payload = {
+        'schema_version': 1,
+        'generated_at': datetime.now().astimezone().isoformat(timespec='seconds'),
+        'mode': mode,
+        'race': race_num,
+        'starter_pdf': overseas_source.get('starter_pdf', ''),
+        'status_counts': counts,
+        'horses': overseas_source.get('horses') or [],
+    }
+    _atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=1))
+    return path
 
 
 def normalize_venue_surface(value: str) -> str:
@@ -3063,6 +3160,20 @@ def main():
     if not data['horses']:
         print("❌ No horses found in Formguide", file=sys.stderr)
         sys.exit(1)
+
+    overseas_source = data.get('overseas_source') or {}
+    if overseas_source.get('mode') == 'fsc_fallback' or (
+            overseas_source.get('mode') == 'none' and race_date >= FSC_FALLBACK_SINCE):
+        counts = {}
+        for item in overseas_source.get('horses') or []:
+            counts[item['status']] = counts.get(item['status'], 0) + 1
+        print(f"   ⚠️ starter PDF 海外往績用唔到（mode={overseas_source.get('mode')}）"
+              f"—— 改用 fsc 來港前賽績：{counts or '冇馬'}", file=sys.stderr)
+    record_overseas_source(
+        overseas_source,
+        Path(output_path).parent if output_path else Path(fg_path).parent,
+        race_num, Path(output_path or fg_path).stem, race_date=race_date,
+    )
     
     # Auto-detect race context
     text = Path(fg_path).read_text(encoding='utf-8')
