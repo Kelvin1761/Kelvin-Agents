@@ -39,3 +39,11 @@
 
 ## 結果
 見 `EXP-20261103-13-nba-rebuild-formula-results.md`（跑完先寫）。
+
+## 修訂 1（2026-11-03，跑 holdout 之前；只睇過 dev-only 除錯輸出）
+- **發現**：歸檔 package 只有 10-28、10-29、11-03（同 10-27 部分）先計得到 S：10-22～10-26 冇存 `season_log`，10-27 冇逐場球隊欄，11-01／11-02 對手表係 `source_unavailable`（ESPN 轉換期）。照原協議 S／MS／K-S 只有 3 日數據，冇功效。
+- **改法（只改 S 嘅輸入來源，唔改 arm、指標、切分、判決）**：S 一律用 as-of 重建輸入：
+  - 每個球員嘅 `season_log` 取所有歸檔 package 入面最新、最長嗰份（ESPN），截到該場 `history_cutoff_day`（美東比賽日）之前；
+  - 對手表用 11-03 嘅 `NBA_Team_Context.json`（ESPN，history_date_to 11-01）經 `nba_team_context.opponent_context(bundle, 對手, cutoff_day)` —— 函數本身按 cutoff_day 過濾，所以等同當日 as-of。
+  - 洩漏檢查：截斷後最大日期一定 < cutoff_day（harness assert）；box score 終場數字唔會事後改。限制：只有喺最新 package 出現過嘅球員先有 log（轉隊／離隊球員可能缺），C／B2 照用歸檔 package 原值。
+- 重建後 S 喺有歸檔 S_v4 嘅腿上要同歸檔值一致（parity），唔一致就唔准用。
