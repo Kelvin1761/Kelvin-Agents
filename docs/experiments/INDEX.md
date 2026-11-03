@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261103-14](EXP-20261103-14-tennis-te-draw-tour-coverage.md) | 2026-11-03 UTC | Tennis | 固定33日TE來源／全39人候選，核對draw與tour分類 | **輸入缺陷重現／未部署**：30新頁及32profiles，34結果版本14325 parsed；單打5116 tour推斷不符、2542雙打送history迴圈。23人profile全名吻合但39人tour UNKNOWN，ownership仍0；115檔封存、離線全量parity，四臂修正協議已固定，未量準確度 |
 | [EXP-20261102-06](EXP-20261102-06-tennis-rank-reference-contract.md) | 2026-11-02 | Tennis | rank annotations無損對齊原六欄evidence point | **1011c649已部署／非模型改善**：main full Tennis1096及runtime smoke；112組memory pair不改pricing／quality。真實新card65個rank points用新格式，但兩份空card、55行非空card仍受Elo／warning攔截，qualified forward0；[交付補證](../audits/tennis-rank-reference-release-20261103.md) |
 | [EXP-20261102-03](EXP-20261102-03-au-rating-trend-results.md) | 2026-11-02 | AU | 官方評分趨勢（上仗 → 今場評分差）做能力訊號 | **REJECT（診斷，唔開排名候選）**：1,946 場，趨勢單獨 AUC 0.5792 [0.5679,0.5902]、升≥3 上名 39.7% vs 跌≥3 20.9%；但同 form ρ +0.43，加入模型測試 ΔLL +0.00176 [−0.00001,+0.00339] 唔全正、ΔAUC −0.0012。協議預先登記 |
 | [EXP-20261102-02](EXP-20261102-02-tennis-identity-elo-cache.md) | 2026-11-02 | Tennis | 身份修正與 legacy Elo cache warm／cold 對照 | **工程診斷／未改 live**：全401046行／四臂對照通過；warm保留391099舊key，同修正輸入cold有175個legacy key差>1 Elo。保留差幅／中斷紀錄及generation合約；full gate全綠，未量準確度 |

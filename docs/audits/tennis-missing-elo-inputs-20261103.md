@@ -88,3 +88,6 @@ winner edges 使用實際 runtime `ELO_PROVIDERS`：`jeff_sackmann`、`tennismyl
 ## 本次交付驗證
 
 在基底 `e0798a0cc75cb24cf57c2ef28193150cd3f4deea`、僅上述文件改動的 worktree 跑 `./檢查.sh`，terminal exit0；16 suites全過，Tennis1096 passed／45.49秒，Shared1798 passed。ruff、AU/HKJC golden、模型說明及資料合約亦通過；既有Agent scripts兩個expected failures仍明示保留。這是repo程式驗證，不是四線營運健康或準確度評估。完整本次log SHA256 `efbc1a22e6e16416edd12d7bd82ba3993f8931afc2e2ed2933a3ee55a11d8c71`；來源及診斷的長期可重現檔案按上列四個artifact manifest保存。
+
+
+2026-11-03 UTC／悉尼11-04接續：[固定33日來源pilot及draw／tour缺口](../experiments/EXP-20261103-14-tennis-te-draw-tour-coverage.md)已取得30日缺頁、核對32個source profiles，完成離線parity，重現兩項新history入口分類問題；全39人仍沒有獨立ownership確認，沒有回填舊card或聲稱準確度提高。下一輪修正前四臂比較已固定。
