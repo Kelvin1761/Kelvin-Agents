@@ -82,7 +82,39 @@ Data_Health 唔將 404 當「攞唔到」，只將網絡錯誤同冇烙號（訪
 
 ## 對照 3：成條 pipeline A/B
 
-ABAB_PLACEHOLDER
+每個場次抄兩份（排位表、賽績、晨操、檔位統計、profile cache），A 保留 PDF，B 刪走 PDF ＋
+`WC_HKJC_FSC_FALLBACK=force`；兩份同時跑 `run_prerace_pipeline.py --skip-std-times --skip-draw
+--skip-stats` → `create_hkjc_logic_skeleton.py --all-horses` → `hkjc_auto_orchestrator.py`
+（`ab_meeting.sh`／`ab_compare.py`，喺本資料夾）。
+
+| 場次 | 馬 | 排名＋綜合分完全一樣 | 有海外往績嘅馬（A／B） | 海外 rows（A／B） | B fallback 狀態 |
+|---|---|---|---|---|---|
+| 2026-10-14 跑馬地 | 100 | **100** | 31 ／ 31 | 136 ／ 136 | ok 31、not_found 32、not_listed 37、no_brand 1 |
+| 2026-10-25 沙田 | 140 | **138** | 47 ／ 47 | 225 ／ 226 | ok 47、not_found 56、not_listed 37 |
+| 2026-11-04 跑馬地 | 108 | **108** | 37 ／ 37 | 156 ／ 156 | ok 37、not_found 38、not_listed 33 |
+
+Facts 嘅差異：10-14 同 11-04 全部喺 🌍 海外賽績表入面（中文馬場名／類別文字，顯示用）。
+10-25 另有 20 行喺「賽績線」表 —— 兩份各自上網查對手賽果，有幾次「查冊失敗／賽果查詢
+失敗」，同 PDF 無關。
+
+10-25 嘅 2 匹分數唔同、5 個名次對調，逐匹解釋：
+
+| 場 | 馬 | A → B | 原因 |
+|---|---|---|---|
+| R8 | #6 贏得自然 | 綜合分 62.34 → 59.97；名次 11 → 13 | 冇海外往績（A／B 都 0 行）。B 個賽績線查冊失敗（R8 綜合評估 8/9 極強 → 4/7 強）。R8 #11、#12 名次跟住郁 |
+| R9 | #4 超輕鬆 | 69.20 → 71.02；7 → 6 | 海外 7 行逐欄一樣；A 個賽績線有兩仗「賽果查詢失敗」（4/8 → 4/5）。#10 晒冷跟住由 6 → 7 |
+| R9 | #10 晒冷（K369） | 綜合分 70.31 = 70.31 | B 多咗 25/9/2024 嗰仗（PDF 寫 `*2/8` 被 parser 跌咗），分數冇郁 |
+
+結論：PDF 喺度 → 主來源，行為不變（golden 一致）；PDF 唔喺度 → 348 匹馬入面 346 匹排名同
+綜合分逐位一樣，剩低 2 匹係網絡查冊噪音，唔係 fallback。
+
+`no_brand 1`＝10-14 R5 日出東方：已退出，排位表馬名變咗「日出東方 (退出)」對唔到烙號；
+佢唔出賽，冇影響。Data_Health 喺 B 版每場出 `OVERSEAS_FORM_FALLBACK` warning，`deploy_allowed`
+仍然係 True。
+
+注意：10-14 B 版係喺「Race_Type 剔走賽事名」修正之前跑嘅（當時非分級賽個類別字帶住
+英文賽事名，例如「- HSH PRINCESS CHARLENE BIG CAP」）；排名照樣全部一樣。10-25 同 11-04
+係最終版 code。
 
 ## Golden
 
