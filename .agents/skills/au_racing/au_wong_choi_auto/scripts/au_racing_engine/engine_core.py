@@ -705,10 +705,7 @@ class RacingEngine:
             detail["consistency_anchor"] = round(float(consistency), 2)
             detail["final"] = round(feature_scores["performance_quality_score"], 2)
             self.performance_quality_detail = detail
-        jt_fit = feature_scores.get("jockey_horse_fit_score", 60)
-        if jt_fit >= 72 and cs < 58:
-            feature_scores["jockey_horse_fit_score"] = jt_fit - 3
-            feature_notes["jockey_horse_fit_score"] = feature_notes.get("jockey_horse_fit_score", "") + "；[環境] 級數偏弱，騎練加成已收回"
+        # 「人馬配搭 ≥72 兼級數分 <58 → −3」已剷：結構上觸發唔到（EXP-20261103-07）。
         # ── Class/form interaction: class_move × form_line ──
         entries = self._official_entries()
         if entries and len(entries) >= 2:

@@ -363,3 +363,4 @@
 - [EXP-20261103-04](EXP-20261103-04-au-track-specialism-s8-results.md) — AU 場地 SP 用 §8 兩邊 refit 重測（短名單得 SP：其餘「準咗但被食」候選已用 §8 測過或者冇權重）：**REJECT / both_arms_reject**。fixed Gold +0.30 Good +0.04 但排序 CI 跨零；refit Good −0.09；stale 重配權重 Good −0.30，搵唔返截斷修正嗰 −0.12pp。
 - [EXP-20261103-05](EXP-20261103-05-au-jockey-trainer-module-simplify.md) — AU 騎練訊號簡化：`jockey_trainer.py` 唯一計算位置；剷由來冇觸發嘅練馬師 empirical fill、研究開關、六個 0.0 key；全語料 40,216 匹分數零差、797 匹報告文字零差。搵到薄樣本騎師另一把尺同練馬師證據標籤永遠 observed。
 - [EXP-20261103-06](EXP-20261103-06-au-thin-jockey-and-trainer-evidence.md) — §7：LY 少過 10 場嘅騎師由另一把尺（prior 0.365／spread 100）改為中性 60（同練馬師一致；96 匹，Gold／Good 0.00）；練馬師證據標籤以前永遠 observed，改為只限統一率／tier。
+- [EXP-20261103-07](EXP-20261103-07-au-fit-class-rule-results.md) — 「人馬配搭 ≥72 兼級數分 <58 → −3」（日常 Agent 更新加嘅手寫規則）全語料 0 匹觸發：配搭分 ≥72 得 25 匹、冇一匹級數分 <58（初出馬先會 <58，但佢哋去唔到 72）。已剷，分數零差。
