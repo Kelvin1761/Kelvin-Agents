@@ -23,7 +23,8 @@ sys.path.insert(0, str(SCRIPTS))
 
 import pytest  # noqa: E402
 
-from au_racing_engine import engine_core  # noqa: E402
+from au_racing_engine import data_prep  # noqa: E402  backfill 喺 data_prep（EXP-20261103-14）
+from au_racing_engine import engine_core  # noqa: E402,F401
 from au_racing_engine.engine_core import RacingEngine, backfill_pf_metrics  # noqa: E402
 from au_racing_engine.matrix_mapper import (  # noqa: E402
     MATRIX_DISPLAY_GAINS,
@@ -343,14 +344,14 @@ class TestPfBackfillIsOptIn:
         def explode(*a, **k):
             raise AssertionError("預設 OFF，唔應該去到 cache lookup")
 
-        monkeypatch.setattr(engine_core, "_pf_backfill_for_race", explode)
+        monkeypatch.setattr(data_prep, "_pf_backfill_for_race", explode)
         assert backfill_pf_metrics(self._logic(), tmp_path / "Race_1_Logic.json") == 0
 
     def test_opt_in_reaches_the_cache_lookup(self, tmp_path, monkeypatch):
         """`WC_PF_BACKFILL=1` → gate 唔應該擋，要真係行到 lookup。"""
         monkeypatch.setenv("WC_PF_BACKFILL", "1")
         reached = []
-        monkeypatch.setattr(engine_core, "_pf_backfill_for_race",
+        monkeypatch.setattr(data_prep, "_pf_backfill_for_race",
                             lambda *a, **k: reached.append(a) or {})
         backfill_pf_metrics(self._logic(), tmp_path / "Race_1_Logic.json")
         assert reached, "開咗 flag 就應該行到 cache lookup"

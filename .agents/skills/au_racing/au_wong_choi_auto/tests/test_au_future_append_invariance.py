@@ -53,6 +53,7 @@ import inject_fact_anchors  # noqa: E402
 import sb_horse_index  # noqa: E402
 import sb_people_stats  # noqa: E402
 from au_racing_engine import engine_core  # noqa: E402
+from au_racing_engine import data_prep  # noqa: E402
 
 D_DATE = "2026-08-01"
 F_DATE = "2026-08-22"          # 未來場次：同馬場、同一班馬、同一班騎練
@@ -312,7 +313,7 @@ def _reset_engine_caches():
     engine_core.TRAINER_TRACK_CACHE = None
     engine_core.JOCKEY_RATINGS_CACHE = None
     engine_core.TRAINER_RATINGS_CACHE = None
-    engine_core._PF_BACKFILL_CACHE = None
+    data_prep._PF_BACKFILL_CACHE = None   # 喺 data_prep（EXP-20261103-14）
     inject_fact_anchors._SB_INDEX_CACHE.clear()
 
 
