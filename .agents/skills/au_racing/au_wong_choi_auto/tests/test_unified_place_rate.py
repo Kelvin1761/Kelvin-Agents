@@ -24,6 +24,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 import pytest  # noqa: E402
 
+from au_racing_engine import jockey_trainer as jt  # noqa: E402
 from au_racing_engine.engine_core import RacingEngine  # noqa: E402
 
 CTX = {"distance": "1400m", "field_summary": {"count": 10},
@@ -64,28 +65,27 @@ class TestSingleSource:
 
     def test_no_record_leaves_the_unified_path_alone(self):
         """冇記錄唔可以砌一個分出嚟 —— 呢個係 `_PLACE_RATE_PRIOR` 之外嘅事。"""
-        assert engine(jockey="Zzz Nobody")._place_rate_score("jockey") is None
+        assert jt.rate_score("jockey", {}) is None
 
 
 class TestThinSampleGuard:
     def test_thin_last_year_declines_the_unified_path(self):
         """5 騎太薄，統一上名率唔接。
 
-        ⚠️ 已知不一致：跌落去嘅舊 `_jockey_ly_score` fallback **冇**最低場數
+        ⚠️ 已知不一致：跌落去嘅 `jockey_trainer.thin_jockey_score` fallback **冇**最低場數
         guard，所以最終仍然會由 5 騎推出一個非中性分（實測 56.7）。
         嗰條路徑係之前 A/B 調校過（prior .365 / spread 100），冇新證據之前
         唔改佢；呢個測試只鎖住「統一路徑會拒絕薄樣本」。
         """
         eng = engine(jockey="Zzz Nobody", jockey_ly={"rides": 5, "places": 1})
-        assert eng._place_rate_score("jockey") is None
+        assert jt.rate_score("jockey", {"rides": 5, "places": 1}) is None
         _score, _note, src = eng._jockey_score()
         assert src == "jockey_ly_stats"
 
     def test_thin_sample_cannot_masquerade_as_elite(self):
         """4 場 100% 上名係噪音。以前呢個 case 由 Racenet profile 餵入，
         而家由 LY 餵入 —— 門檻要照樣擋住佢。"""
-        eng = engine(jockey="Thin Rider", jockey_ly={"rides": 4, "places": 4})
-        assert eng._place_rate_score("jockey") is None
+        assert jt.rate_score("jockey", {"rides": 4, "places": 4}) is None
 
 
 class TestTrainerIntegration:
@@ -95,28 +95,12 @@ class TestTrainerIntegration:
         assert eng.trainer_detail["base_label"] == "統一上名率"
         assert "去年官方" in eng.trainer_detail["base_evidence"]
 
-    def test_empirical_fill_does_not_double_count(self):
-        """統一上名率已經食咗 LY，`_trainer_empirical_base` 唔可以再加一次。"""
+    def test_no_second_last_year_term(self):
+        """統一上名率已經食咗 LY；唔可以再有第二條 LY 加減分（舊 empirical fill 已剷）。"""
         eng = engine(trainer="Zzz Unlisted Stable",
                      trainer_ly={"rides": 60, "wins": 10, "places": 24})
         eng._trainer_score()
-        factors = [a["factor"] for a in eng.trainer_detail["adjustments"]]
-        assert "去年實證班底水準" not in factors
-
-    def test_ly_off_switch_still_works(self):
-        """`_TRAINER_LY_MAGNITUDE = 0` 一直係「關掉去年記錄影響」嘅 A/B 開關。
-
-        ⚠️ 剷走 Racenet 分支之後呢個開關嘅覆蓋面**闊咗** —— 以前 profile
-        來源唔受它管，而家冇 profile 來源，所以佢等於關掉整個騎練基準。
-        呢個係剷分支嘅直接後果，記住咗，唔係 bug。
-        """
-        class Off(RacingEngine):
-            _TRAINER_LY_MAGNITUDE = 0.0
-
-        horse = {"horse_name": "T", "horse_number": "1", "barrier": 5,
-                 "jockey": "Nobody", "trainer": "Zzz Unlisted Stable",
-                 "_data": {"trainer_ly": {"rides": 60, "wins": 10, "places": 24}}}
-        assert Off(horse, dict(CTX))._trainer_score()[0] == pytest.approx(60.0, abs=0.1)
+        assert all(a["delta"] == 0.0 for a in eng.trainer_detail["adjustments"])
 
 
 class TestNarrativeTruth:

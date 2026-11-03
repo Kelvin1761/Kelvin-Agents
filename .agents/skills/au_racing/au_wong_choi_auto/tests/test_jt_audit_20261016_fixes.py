@@ -16,6 +16,7 @@ sys.path.insert(0, str(SCRIPTS))
 import pytest  # noqa: E402
 
 from au_racing_engine import engine_core as ec  # noqa: E402
+from au_racing_engine import jockey_trainer as jt  # noqa: E402
 from au_racing_engine.engine_core import RacingEngine  # noqa: E402
 
 
@@ -59,6 +60,6 @@ class TestSameJockeySignalNotScored:
     def test_same_jockey_alone_is_no_evidence(self):
         eng = self.engine()
         score, note, _src = eng._jockey_horse_fit_score()
-        assert score == pytest.approx(RacingEngine._JT_FIT_NO_EVIDENCE)
+        assert score == pytest.approx(jt.FIT_NO_EVIDENCE)
         assert eng.jt_fit_detail["adjustments"] == []
         assert "不入分" in note

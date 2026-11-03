@@ -19,6 +19,7 @@ from . import class_rating as _class
 from . import draw as _draw
 from . import overseas as _overseas
 from . import track_going as _track
+from . import jockey_trainer as _jt
 from .dimensions import DIMENSION_SPECS, RATING_SCORE_SHARE
 
 from .matrix_mapper import (
@@ -51,7 +52,6 @@ from .scoring import (
     CONSISTENCY_MICRO_WEIGHTS,
     SECTIONAL_MICRO_WEIGHTS,
     TRIAL_MICRO_WEIGHTS,
-    FIT_MICRO_WEIGHTS,
     PROVEN_CLASS_DECAY,
     PROVEN_CLASS_Z_WEIGHT,
     SPORTSBET_PQ_RECOVERY_ALPHA,
@@ -764,7 +764,7 @@ class RacingEngine:
             feature_scores["jockey_horse_fit_score"] = clip_score(
                 feature_scores["jockey_horse_fit_score"] - preparation)
             moved = [a for a in self.jt_fit_detail.get("adjustments", [])
-                     if a.get("factor") in self._PREPARATION_FACTORS]
+                     if a.get("factor") in _jt.PREPARATION_FACTORS]
             self.preparation_detail = {"base": 60.0, "adjustments": moved,
                                        "final": feature_scores["preparation_score"]}
             self.jt_fit_detail["adjustments"] = [a for a in self.jt_fit_detail.get("adjustments", [])
@@ -772,7 +772,7 @@ class RacingEngine:
             self.jt_fit_detail["final"] = feature_scores["jockey_horse_fit_score"]
             note = feature_notes.get("jockey_horse_fit_score", "")
             note = "；".join(part for part in note.split("；")
-                            if not any(f in part for f in self._PREPARATION_FACTORS))
+                            if not any(f in part for f in _jt.PREPARATION_FACTORS))
             feature_notes["jockey_horse_fit_score"] = re.sub(
                 r"人馬配搭分 \d+(?:\.\d+)?",
                 f"人馬配搭分 {feature_scores['jockey_horse_fit_score']:.1f}", note)
@@ -1636,434 +1636,88 @@ class RacingEngine:
         _, trainer_cache = _load_named_rating_stats()
         return self._rating_known_at_race(trainer_cache.get(_normalize_rating_identity(trainer)))
 
-    def _rating_tier_text(self, tier: str, kind: str):
-        if kind == "jockey":
-            mapping = {
-                "T1": "Tier 1 頂級騎師",
-                "T2": "Tier 2 主力騎師",
-                "T3": "Tier 3 發展型騎師",
-            }
-        else:
-            mapping = {
-                "T1": "Tier 1 精英馬房",
-                "T2": "Tier 2 主力馬房",
-                "T3": "Tier 3 標準馬房",
-            }
-        return mapping.get(str(tier or "").strip(), "中性級別")
-
-    # LY（去年官方全季）收縮參數：prior=archive 池化騎師上名率（702場實測 0.365 —
-    # 唔好用 0.30 直覺值，會全體抬高）、k=收縮樣本、spread=映射斜率。
-    # A/B（2026-07-11，702場，修正 regex 後真數據）：LY 全面取代 curated DB → A窗蝕
-    # （96 vs 100）；「DB 命中用 DB、冇先用 LY 補」@prior .365/s100 = GGP 475→478、
-    # A窗 100、B窗 37→40，champ +0.9pp、box4 +0.5pp，全指標零倒退，同時擊敗
-    # 「非 DB 歸中性」(476) → LY 普及層（鄉村/新面孔騎師）有真訊號。
-    _JOCKEY_LY_PRIOR = 0.365
-    _JOCKEY_LY_K = 20.0
-    _JOCKEY_LY_SPREAD = 100.0
-
-    # ── 統一上名率（2026-08-01，用戶提出）──────────────────────────────
-    # 舊做法：jockey_score 優先用**自己 DB 嘅 tier**（build_comprehensive_stats，
-    # 由 63 日 archive 推導），LY 只做 fallback；trainer_ly 更加完全冇入分。
-    # 即係主力靠一個薄 DB。
-    #
-    # Racenet profile 頁有全庫、實時嘅 placePercentage（生涯），而
-    # `*_ly` 本身就係「場數 / 冠亞季」—— 兩者量緊同一樣嘢（上名率），
-    # 只係生涯 vs 去年。所以砌一個統一特徵：有 profile 用生涯（樣本大、穩），
-    # 冇就用 LY，兩者用**同一個 prior 同同一條收縮公式** → 同一把標尺、100% 覆蓋。
-    #
-    # ⚠️ 一定要統一標尺：只用 profile 嘅話覆蓋率得 64%/57%，同一場入面部分馬
-    # 換咗新標尺、部分冇，場內比較就唔一致 —— 實測嗰個版本 dev Gold −3。
-    # 要靠純 profile 做到全覆蓋要 1,041 個 profile（≈3,100 個請求），唔值得。
-    #
-    # prior 由 713 場池化實測（唔好用直覺值，用錯會全體平移）。
-    # A/B（713 場，dev 606 / 未碰過 holdout 107，spread 140）：
-    #   練馬師：dev Gold +1、champ +1.16、any2 +0.33、compet +0.83；holdout Gold −1、good_pos +0.94
-    #   兩邊　：dev 大致平；holdout good_pos +0.94、champ +0.93、winT3 +1.87、mrr +0.01
-    # 2026-08-05 練馬師 prior 修正 0.3946 → 0.3673。
-    # prior 嘅定義係「令分數分佈中心落喺 60」，所以要用**逐 runner 平均上名率**，
-    # 唔係池化 Σ上名/Σ場次（大馬房出賽量會主導池化值）。713 場、≥10 場門檻實測：
-    #                 逐 runner 平均   池化      舊 prior   分數平均   >60 比例
-    #   練馬師           36.73%      38.84%     39.46%      56.2      40.1%   ← 錯
-    #   騎師             35.62%      36.28%     35.64%      60.0      49.2%   ← 本來就對
-    # 騎師 prior 一直等於逐 runner 平均，校準完美；練馬師嗰個高咗 2.73pp
-    # （≈3.8 分），於是每個練馬師都被判低於中性，Chris Waller（2,736 場、
-    # 39.14% 上名）都只得 59.6。
-    #
-    # ⚠️ 呢個唔止係「顯示偏低」。改 prior 對**有數據**嘅馬係一個場內常數平移
-    # （唔影響排名），但**冇數據**嘅馬釘死喺中性 60 —— 舊 prior 之下佢哋等於
-    # 排喺「平均練馬師」（56.2）之上，即係「唔知」贏「普通」。呢個正正係
-    # [[au-neutral-point-is-per-leaf]] 講嘅病。
-    #
-    # Rollback: {"jockey": 0.3564, "trainer": 0.3946}
-    _PLACE_RATE_PRIOR = {"jockey": 0.3564, "trainer": 0.3673}
-    _PLACE_RATE_K = 20.0
-    _PLACE_RATE_SPREAD = 140.0
-    # 薄樣本下限：沿用 `_trainer_empirical_base` 已經 A/B 調校過嘅 10 場門檻
-    # ——「10 場以下講唔到嘢」。少過呢個數就唔用統一上名率，跌返落原本嘅
-    # DB tier / empirical fill 路徑（嗰邊有自己嘅溫和化同 cap）。
-    # 少咗呢個 guard 會令一個 5 場 1 上名嘅練馬師由中性 60 變 54.6，
-    # 即係用噪音製造訊號 —— test_trainer_empirical_fill 正正鎖住呢個行為。
-    _PLACE_RATE_MIN_RUNS = 10
-
-    def _unified_place_rate(self, kind: str):
-        """(places, runs, source)：騎練上名率，來源一律係 Sportsbet 個人頁。
-
-        以前呢度有一個 Racenet 生涯分支排喺前面。2026-08-04 實測佢**從來冇行到**
-        ——`AU_Profile_Stats_Cache.json` 152 個人物冇一個夠
-        `_PLACE_RATE_MIN_RUNS`，604 場分析檔「Racenet 生涯」出現 0 次、
-        「去年官方」（Sportsbet）34,766 次。Racenet 亦已全封，個 cache 永遠
-        refresh 唔到，所以整條分支連同 `au_profile_stats` 一併剷走。
-
-        ⚠️ 要提高覆蓋就補 Sportsbet 個人頁（`sb_people_stats.py`），
-        **唔好**降低 `_PLACE_RATE_MIN_RUNS` —— 門檻係擋樣本太細嘅人物，
-        唔係擋來源。
-        """
-        ly = self.data.get(f"{kind}_ly") or {}
-        runs = parse_float(ly.get("rides"))
-        if runs and runs >= self._PLACE_RATE_MIN_RUNS:
-            return float(parse_float(ly.get("places")) or 0.0), runs, "ly"
-        return None
-
-    # ── 2026-08-05 指標更換（`WC_AU_PEOPLE_METRIC` 控制，預設 `measured`）──
-    # 713 場、場內 AUC 實測邊個訊號真正預測上名（0.500 = 冇資訊）：
-    #   騎師 勝率     0.5943  ← 最強
-    #   騎師 上名率   0.5885     （舊做法）
-    #   騎師 總冠軍   0.5501
-    #   騎師 出賽量   0.5011     （純噪音）
-    #   練馬師 總冠軍 0.5740  ← 最強
-    #   練馬師 上名率 0.5699     （舊做法）
-    #   練馬師 出賽量 0.5678
-    #   練馬師 勝率   0.5598
-    # 所以騎師改用**勝率**，練馬師改用**總冠軍**（log1p 之後 z-score）。
-    # 總冠軍係 volume × quality 嘅合成，所以大馬房（Chris Waller）唔會再被
-    # 「每匹馬上名率」攤薄 —— 呢個亦係 Kelvin 講「Waller 應該最高分」嘅點。
-    #
-    # ⚠️ 兩個新指標嘅 spread 都特意校到令**語料庫 dataset** 嘅 leaf SD 等於舊值
-    # （騎師 9.04、練馬師 8.48），咁 A/B 量到嘅係**訊號**而唔係尺度改變。
-    # 第一次校準用咗 Logic 存檔嘅 SD（6.70/5.57），但 dataset 係用現行引擎重算
-    # 嘅，兩者唔同 —— 結果候選 SD 細咗三成，等於偷偷減咗 jockey_trainer 嘅影響力。
-    # `WC_AU_PEOPLE_METRIC=place` 可以還原舊行為做對照。
-    _JOCKEY_WIN_PRIOR = 0.1271        # 713 場逐 runner 平均勝率
-    _JOCKEY_WIN_SPREAD = 247.0        # 令 dataset SD ≈ 9.04（同舊指標一致）
-    _TRAINER_LOGWINS_MEAN = 3.887     # log1p(去年冠軍) 平均
-    _TRAINER_LOGWINS_SD = 1.365
-    _TRAINER_LOGWINS_SPREAD = 6.26    # 每單位 log1p → 分；令 dataset SD ≈ 8.48
-    # `WC_AU_PEOPLE_METRIC=trainer_win`：練馬師改用**勝率**（同騎師一致）。
-    # 713 場逐 runner 平均勝率 13.14%、SD 4.15pp；spread 校到令 dataset SD ≈ 8.48。
-    _TRAINER_WIN_PRIOR = 0.1314
-    _TRAINER_WIN_SPREAD = 204.3
-
-    def _people_metric_mode(self):
-        import os
-        return os.environ.get("WC_AU_PEOPLE_METRIC", "measured")
-
-    def _place_rate_score(self, kind: str):
-        """騎練基礎分 → 60-中性。回傳 (score, evidence, source) 或 None。"""
-        found = self._unified_place_rate(kind)
-        if not found:
-            return None
-        places, runs, source = found
-        ly = self.data.get(f"{kind}_ly") or {}
-        wins = parse_float(ly.get("wins"))
-        mode = self._people_metric_mode()
-
-        # 預設（`measured`）：**只有騎師**換用勝率。練馬師留返上名率 ——
-        # 每個以冠軍數為基礎嘅練馬師變體都用 gold 換 champ，而 gold 係 Kelvin
-        # 嘅追逐目標，所以唔可以靜靜咁換。`WC_AU_PEOPLE_METRIC=wins` 可以開
-        # 練馬師嘅「上名率 + log 冠軍各半」變體（實測見下面註）。
-        if mode == "trainer_win" and kind == "trainer" and wins is not None:
-            prior = self._TRAINER_WIN_PRIOR
-            shrunk = (wins + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
-            score = clip_score(60.0 + (shrunk - prior) * self._TRAINER_WIN_SPREAD)
-            return score, (f"去年官方 {int(runs)} 場、{int(wins)} 冠"
-                           f"（勝率 {wins / runs * 100:.0f}%，收縮後 "
-                           f"{shrunk * 100:.0f}%，全國基準 {prior * 100:.0f}%）"), source
-
-        if mode not in ("place",) and wins is not None and (
-                kind == "jockey" or mode == "wins"):
-            if kind == "jockey":
-                prior = self._JOCKEY_WIN_PRIOR
-                shrunk = (wins + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
-                score = clip_score(60.0 + (shrunk - prior) * self._JOCKEY_WIN_SPREAD)
-                return score, (f"去年官方 {int(runs)} 場、{int(wins)} 冠"
-                               f"（勝率 {wins / runs * 100:.0f}%，收縮後 "
-                               f"{shrunk * 100:.0f}%，全國基準 {prior * 100:.0f}%）"), source
-            # 練馬師：上名率（效率）同 log 總冠軍（規模×質素）**各半混合**。
-            # ⚠️ 唔可以純用總冠軍。實測：一個 60 場、40% 上名率、10 冠嘅細馬房，
-            # 純總冠軍之下由高於中性跌到 50.7 —— 因為平均 runner 嘅馬房去年約
-            # 48 冠，所以純冠軍數係系統性偏向大馬房。混合保住細馬房嘅效率訊號，
-            # 同時令 Chris Waller 唔再被「每匹馬上名率」攤薄。
-            # 先例：讓磅分 fallback 亦係「級數 0.5787 + 負磅 0.5769 → 混合 0.6078」，
-            # 兩個互補訊號混合贏過任何一邊單獨用。
-            import math
-            prior = self._PLACE_RATE_PRIOR[kind]
-            shrunk = (places + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
-            rate_part = 60.0 + (shrunk - prior) * self._PLACE_RATE_SPREAD
-            lw = math.log1p(float(wins))
-            wins_part = 60.0 + (lw - self._TRAINER_LOGWINS_MEAN) * self._TRAINER_LOGWINS_SPREAD
-            score = clip_score(0.5 * rate_part + 0.5 * wins_part)
-            return score, (f"去年官方 {int(runs)} 場、{int(wins)} 冠 {int(places)} 上名"
-                           f"（上名率 {places / runs * 100:.0f}%，收縮後 {shrunk * 100:.0f}%；"
-                           f"冠軍數全國第 {self._logwins_pct(lw):.0f} 百分位）"), source
-
-        prior = self._PLACE_RATE_PRIOR[kind]
-        shrunk = (places + self._PLACE_RATE_K * prior) / (runs + self._PLACE_RATE_K)
-        score = clip_score(60.0 + (shrunk - prior) * self._PLACE_RATE_SPREAD)
-        return score, (f"去年官方 {int(runs)} 場、上名 {int(places)} 次"
-                       f"（原始 {places / runs * 100:.0f}%，收縮後 {shrunk * 100:.0f}%，"
-                       f"全國基準 {prior * 100:.0f}%）"), source
-
-    def _logwins_pct(self, lw: float) -> float:
-        """log1p(冠軍) → 大約百分位（用常態近似，純粹為咗個說明好讀）。"""
-        import math
-        z = (lw - self._TRAINER_LOGWINS_MEAN) / (self._TRAINER_LOGWINS_SD or 1.0)
-        return 100.0 * 0.5 * (1.0 + math.erf(z / math.sqrt(2.0)))
-
-    def _jockey_ly_score(self):
-        ly = self.data.get("jockey_ly") or {}
-        rides = parse_float(ly.get("rides"))
-        if not rides or rides <= 0:
-            return None
-        places = float(parse_float(ly.get("places")) or 0)
-        rate = (places + self._JOCKEY_LY_K * self._JOCKEY_LY_PRIOR) / (rides + self._JOCKEY_LY_K)
-        score = clip_score(60.0 + (rate - self._JOCKEY_LY_PRIOR) * self._JOCKEY_LY_SPREAD)
-        return score, rate, int(rides), places
-
     def _jockey_score(self):
+        """騎師分：見 `jockey_trainer`。呢度只砌說明。"""
         jockey = self._clean_identity(self.horse_data.get("jockey"))
+        ly = self.data.get("jockey_ly") or {}
         detail = {"lines": [], "source": ""}
         self.jockey_detail = detail
-
-        # 統一上名率優先（2026-08-01）—— 取代舊嘅「薄 DB tier 優先、LY 做 fallback」。
-        # 見 `_place_rate_score` 註釋：Sportsbet LY 統計用同一把標尺建立高覆蓋。
-        unified = self._place_rate_score("jockey")
+        unified = _jt.rate_score("jockey", ly)
         if unified is not None:
-            score, evidence, _source = unified
+            score, evidence = unified
             detail["source"] = "unified_place_rate"
-            detail["lines"] = [evidence,
-                               f"高過基準加分、低過扣分 → {clip_score(score):.1f} 分（60 為中性）"]
+            detail["lines"] = [evidence, f"高過基準加分、低過扣分 → {clip_score(score):.1f} 分（60 為中性）"]
             return score, f"{jockey} {evidence}，騎師分 {clip_score(score):.1f}。", "unified_place_rate"
-
         rating = self._jockey_rating_profile(jockey)
         if rating:
             score = rating["base_score"]
-            tier_text = self._rating_tier_text(rating.get("tier"), "jockey")
-            note = f"{jockey} · {tier_text}"
-            if rating.get("confidence") == "provisional":
-                note += "（暫定補名）"
+            tier = _jt.tier_text(rating.get("tier"), "jockey")
+            note = f"{jockey} · {tier}" + ("（暫定補名）" if rating.get("confidence") == "provisional" else "")
             detail["source"] = "db"
-            detail["lines"] = [f"{tier_text} → {clip_score(score):.0f} 分"]
-            jly = self.data.get("jockey_ly") or {}
-            if jly.get("rides"):
-                rides = int(jly["rides"]); places = int(jly.get("places") or 0); wins = int(jly.get("wins") or 0)
-                detail["lines"].append(
-                    f"去年官方：{rides} 騎、{wins} 冠 {places} 上名"
-                    f"（勝率 {wins / rides * 100:.0f}%、上名率 {places / rides * 100:.0f}%）")
+            detail["lines"] = [f"{tier} → {clip_score(score):.0f} 分"]
+            runs, wins, places = _jt.ly_record(ly)
+            if runs:
+                detail["lines"].append(f"去年官方：{int(runs)} 騎、{int(wins or 0)} 冠 {int(places)} 上名"
+                                       f"（勝率 {(wins or 0) / runs * 100:.0f}%、上名率 {places / runs * 100:.0f}%）")
             return score, f"{note}，騎師分 {clip_score(score):.1f}。", "jockey_rating_db"
-
-        # 普及覆蓋層（2026-07-11）：DB 冇名（尤其鄉村/外州騎師）用 LY 官方全季統計，
-        # 上名率經樣本收縮 — 細樣本鄉村好成績會被拉返向平均，唔會亂畀高分。
-        ly = self._jockey_ly_score()
-        if ly is not None:
-            score, rate, rides, places = ly
-            raw_rate = places / rides if rides else 0
+        thin = _jt.thin_jockey_score(ly)
+        if thin is not None:
+            score, rate, rides, places = thin
+            prior = _jt.THIN_JOCKEY_PRIOR
             detail["source"] = "ly"
             detail["lines"] = [
-                f"去年官方全季：{rides} 騎、上名 {int(places)} 次（原始上名率 {raw_rate * 100:.0f}%）",
-                f"樣本收縮（樣本越少越拉向基準）後 {rate * 100:.0f}%，全國基準 {self._JOCKEY_LY_PRIOR * 100:.0f}%",
+                f"去年官方全季：{rides} 騎、上名 {int(places)} 次（原始上名率 {places / rides * 100:.0f}%）",
+                f"樣本收縮（樣本越少越拉向基準）後 {rate * 100:.0f}%，全國基準 {prior * 100:.0f}%",
                 f"高過基準加分、低過扣分 → {clip_score(score):.1f} 分（60 為中性）",
             ]
             return score, (f"{jockey} 去年官方 {rides} 騎、上名 {int(places)} 次"
-                           f"（收縮後上名率 {rate * 100:.0f}%，全國基準 {self._JOCKEY_LY_PRIOR * 100:.0f}%），"
+                           f"（收縮後上名率 {rate * 100:.0f}%，全國基準 {prior * 100:.0f}%），"
                            f"騎師分 {clip_score(score):.1f}。"), "jockey_ly_stats"
-
-        # DB 同官方去年統計都冇資料時維持中性。舊硬編碼名單 fallback
-        # 喺 445 場 runtime ablation（development、terminal、5 folds）
-        # 全部精確零影響，亦會令同一騎師因缺失資料而得到不一致待遇。
-        score = 60
         detail["source"] = "neutral"
         detail["lines"] = ["資料庫／官方統計均無記錄 → 中性 60 分"]
-        return score, f"{jockey or '騎師資料'} 屬中性配置，騎師分 {clip_score(score):.1f}。", "jockey_missing_neutral"
+        return 60, f"{jockey or '騎師資料'} 屬中性配置，騎師分 60.0。", "jockey_missing_neutral"
 
     def _trainer_score(self):
+        """練馬師分：見 `jockey_trainer`。場館往績只做報告（delta 0）。"""
         trainer = self._clean_identity(self.horse_data.get("trainer"))
-        # 統一上名率做基礎分（2026-08-01）—— 舊做法係薄 DB tier 做 base，而
-        # `trainer_ly` 更加完全冇入分（淨係顯示）。而家 Sportsbet LY 直接做主來源。
-        # 之後嘅 micro adjustment（場館成績、Waller 首戰…）照舊疊喺上面。
-        unified = self._place_rate_score("trainer")
-        # `_TRAINER_LY_MAGNITUDE = 0` 一直係「關掉所有去年記錄影響」嘅 A/B 開關。
-        # 統一上名率令 LY 由「fill delta」變成「base」，如果唔喺度都尊重個開關，
-        # 將來有人 toggle 佢做 A/B 就會攞到誤導結果。
-        if unified is not None and unified[2] == "ly" and not self._TRAINER_LY_MAGNITUDE:
-            unified = None
-        rating = self._trainer_rating_profile(trainer)
+        ly = self.data.get("trainer_ly") or {}
+        unified = _jt.rate_score("trainer", ly)
+        rating = None if unified is not None else self._trainer_rating_profile(trainer)
+        runs, wins, places = _jt.ly_record(ly)
         if unified is not None:
-            score, base_evidence, _source = unified
+            score, base_evidence = unified
             base_label = "統一上名率"
+        elif rating:
+            score, base_evidence = rating["base_score"], ""
+            base_label = _jt.tier_text(rating.get("tier"), "trainer")
         else:
-            score = rating["base_score"] if rating else 60
-            base_label = ""
-            base_evidence = ""
-        detail = {"base": round(float(score), 1), "base_label": base_label,
-                  "adjustments": [], "final": None, "ly_line": "",
-                  "base_evidence": base_evidence}
+            score, base_evidence = 60, ""
+            base_label = (f"去年官方僅 {int(runs)} 場、{int(wins or 0)} 冠 {int(places)} 上名，"
+                          f"未達 {_jt.MIN_RUNS} 場可信門檻，按中性處理" if runs
+                          else "Sportsbet 官方統計未有可用記錄，中性起步")
+        detail = {"base": round(float(score), 1), "base_label": base_label, "adjustments": [],
+                  "final": round(clip_score(score), 2), "base_evidence": base_evidence,
+                  "ly_line": (f"去年官方：{int(runs)} 場、{int(wins or 0)} 冠 {int(places)} 上名"
+                              f"（勝率 {(wins or 0) / runs * 100:.0f}%、上名率 {places / runs * 100:.0f}%）" if runs else "")}
         self.trainer_detail = detail
-        tly = self.data.get("trainer_ly") or {}
-        thin_sample_evidence = ""
-        if tly.get("rides"):
-            _r = int(tly["rides"]); _p = int(tly.get("places") or 0); _w = int(tly.get("wins") or 0)
-            detail["ly_line"] = (f"去年官方：{_r} 場、{_w} 冠 {_p} 上名"
-                                 f"（勝率 {_w / _r * 100:.0f}%、上名率 {_p / _r * 100:.0f}%）")
-            if _r < self._PLACE_RATE_MIN_RUNS and unified is None and rating is None:
-                thin_sample_evidence = (
-                    f"去年官方僅 {_r} 場、{_w} 冠 {_p} 上名，"
-                    f"未達 {self._PLACE_RATE_MIN_RUNS} 場可信門檻，按中性處理"
-                )
         notes = []
-
-        def add(delta, factor, evidence=""):
-            nonlocal score
-            score += delta
-            detail["adjustments"].append({"delta": round(float(delta), 2),
-                                          "factor": factor, "evidence": evidence})
-            notes.append(factor)
-
         if rating:
-            tier_text = self._rating_tier_text(rating.get("tier"), "trainer")
-            tier_note = tier_text
-            if rating.get("confidence") == "provisional":
-                tier_note += "（暫定補名）"
-            # 敘述真實：base 由邊度嚟就寫邊度。統一上名率接手咗 base 之後，
-            # 再寫「Tier 1 精英馬房」做 base_label 就係講錯數字點嚟。
-            # Tier 仍然值得顯示（分析師分級），所以降做 note。
-            if unified is None:
-                detail["base_label"] = tier_text
-                notes.append(tier_note)
-            # ⚠️ 2026-08-05：統一上名率做 base 嗰陣**唔再**寫 Tier 標籤入 note。
-            # 舊行為令 Chris Waller 個 one-liner 讀成「Tier 1 精英馬房，練馬師分
-            # 59.6」——一個唔再驅動分數嘅遺留標籤，配一個同佢矛盾嘅數字。
-            # Kelvin 明確要求剷走，改出真實統計行（見下面 note 組成）。
-            # tier 仍然留喺 `_trainer_rating_profile`，將來想用就有，只係唔顯示。
-        else:
-            # EMPIRICAL FILL 2026-07-25: the curated ratings CSV lists only ~57
-            # trainers, so ~39% of runners previously fell through to a flat
-            # neutral 60 — the biggest coverage hole in the matrix. The engine
-            # already carries trainer_ly (last-year official rides/wins/places)
-            # but used it only for narrative. Unlisted trainers are now scored
-            # from their OWN last-year place rate, empirical-Bayes shrunk toward
-            # the field norm so thin samples stay neutral.
-            # Magnitude is _TRAINER_LY_MAGNITUDE below, tuned by isolated A/B
-            # (score once, recompute ability with the fill toggled) over 708
-            # archive races + split-half stability.
-            # 統一上名率已經食咗同一個 LY 訊號做 base，再加呢個 fill 就係
-            # **雙重計算**（2026-08-01 整合時踩過呢個坑，由
-            # test_magnitude_zero_disables_the_fill_cleanly 捉返）。
-            empirical = None if unified is not None else self._trainer_empirical_base(tly)
-            if empirical is not None:
-                base_delta, ev = empirical
-                add(base_delta, "去年實證班底水準", ev)
-                detail["base_label"] = f"名單外，改用去年實證（{ev}）"
-            elif unified is None:
-                # 有 Sportsbet 官方紀錄但樣本薄，唔可以誤寫成「未有官方記錄」。
-                # 呢個係 confidence gate，唔係 name/ID mapping failure。
-                detail["base_label"] = (
-                    thin_sample_evidence or "Sportsbet 官方統計未有可用記錄，中性起步"
-                )
-        # 2026-08-04：`TRAINER_MICRO_WEIGHTS` 整族剷走。
-        #
-        # 剷走之前量過 —— 呢個係條件，唔係假設。718 場 runtime ablation：
-        # **改動場次 0、排名改動場次 0**，dev 同 holdout 兩邊 Gold / Good位 /
-        # any2 / winT3 / 前三精準全部 ±0.00，5/5 fold 非退步。即係佢哋喺現行
-        # 門檻之下從來冇觸發過。
-        #
-        # 順帶剷走嘅 `"Waller" in trainer` 硬寫馬房名：初出馬 +bonus 呢個條件
-        # 除咗係手調之外，仲係一個會過期嘅事實（馬房會變）。佢個 reason code
-        # `waller_debut_positive` 全 repo 冇任何消費者，所以一併走。
-        #
-        # ⚠️ 下面三個場館觀察保留成 **display-only**（`add(0.0, …)`）——
-        # 同 2026-07-11 combo/misc 大剪裁一樣嘅處理。佢哋唔再入排名，但
-        # 「馬房同場館 N 次、上名率 X%」對讀報告嘅人係真資訊，剷走等於
-        # 為咗 tidy 一個權重表而扔走一段有內容嘅敘述。
-        track_stats = self._trainer_track_stats()
-        track_ev = (f"馬房同場館 {int(track_stats.get('runs', 0))} 次、"
-                    f"上名率 {track_stats.get('place_rate', 0.0) * 100:.0f}%")
-        if track_stats.get("runs", 0) >= 20 and track_stats.get("place_rate", 0.0) >= 0.44:
-            add(0.0, "今場場館高密度高上名", track_ev)
-        elif track_stats.get("runs", 0) >= 12 and track_stats.get("place_rate", 0.0) >= 0.40:
-            add(0.0, "今場場館穩定上名", track_ev)
-        elif track_stats.get("runs", 0) >= 8 and track_stats.get("place_rate", 0.0) >= 0.32:
-            add(0.0, "今場場館有基本對位", track_ev)
-        detail["final"] = round(clip_score(score), 2)
-        # 說明以**實際統計**為主（同騎師分同一個格式），tier 標籤唔再出現。
-        # 「反映馬房部署基礎」只留返真正冇任何數據嗰批 —— 嗰句本身冇資訊，
-        # 但至少冇講錯數字點嚟。
+            notes.append(base_label + ("（暫定補名）" if rating.get("confidence") == "provisional" else ""))
+        venue = _jt.venue_note(self._trainer_track_stats())
+        if venue:
+            detail["adjustments"].append({"delta": 0.0, "factor": venue[0], "evidence": venue[1]})
+            notes.append(venue[0])
+        thin = base_label if unified is None and rating is None and runs else ""
         head = f"{trainer} {base_evidence}" if (trainer and base_evidence) else \
-            (base_evidence or
-             (f"{trainer} {thin_sample_evidence}" if trainer and thin_sample_evidence else "") or
-             "；".join(notes) or
+            (base_evidence or (f"{trainer} {thin}" if trainer and thin else "") or "；".join(notes) or
              f"{trainer or '練馬師資料'} Sportsbet 官方統計未有可用記錄")
         if base_evidence and notes:
             head += "；" + "；".join(notes)
         return score, f"{head}，練馬師分 {clip_score(score):.1f}。", "trainer_name+trainer_track_stats"
 
-    # Field-wide AU last-year place rate (~30% of runners place). Trainers are
-    # scored relative to this norm; SHRINK_K keeps thin samples near neutral.
-    _TRAINER_LY_NORM = 0.30
-    _TRAINER_LY_SHRINK_K = 40.0
-    _TRAINER_LY_SCALE = 34.0   # score points per unit of place-rate deviation
-    _TRAINER_LY_CAP = 9.0      # bounded either way; never dominates the feature
-    # Overall magnitude multiplier (0 = fill disabled, 1 = raw scale above).
-    # Tuned by ISOLATED A/B on 708 archive races (3,314/7,521 runners = 44%
-    # affected; identical scoring run, only this multiplier toggled):
-    #   0.00  any-2 277 (39.1%) | winner-in-top3 51.7% | top-pick-wins 22.6%
-    #   0.25  any-2 281 (39.7%) | winner-in-top3 51.6% | top-pick-wins 22.6%
-    #   1.00  any-2 281 (39.7%) | winner-in-top3 50.8% | top-pick-wins 22.3%
-    #   2.00  any-2 283 (40.0%) | winner-in-top3 50.3% | top-pick-wins 21.8%
-    # Full magnitude buys any-2 races by shaving winner-finding; 0.25 keeps the
-    # any-2 gain (+4 races, +2/+2 across both halves) at no measurable cost to
-    # winner-finding, and every unlisted trainer still carries a real score
-    # instead of a silent neutral 60. Confidence gating (|delta| thresholds) and
-    # positive-only variants were also tested and recovered nothing.
-    _TRAINER_LY_MAGNITUDE = 0.25
-
-    def _trainer_empirical_base(self, tly):
-        """(delta, evidence) from a trainer's own last-year record, or None.
-
-        Only fires for trainers absent from the curated ratings CSV, so it fills
-        the coverage hole without overriding analyst tiers.
-        """
-        try:
-            rides = int(tly.get("rides") or 0)
-            places = int(tly.get("places") or 0)
-        except (TypeError, ValueError):
-            return None
-        if rides < 10:
-            return None  # too thin to say anything
-        # `places` is already wins + seconds + thirds (see build_au_logic).
-        # Adding wins again inflated every trainer's official place rate.
-        place_rate = places / rides if places else 0.0
-        shrunk = (place_rate * rides + self._TRAINER_LY_NORM * self._TRAINER_LY_SHRINK_K) / (
-            rides + self._TRAINER_LY_SHRINK_K)
-        raw = (shrunk - self._TRAINER_LY_NORM) * self._TRAINER_LY_SCALE
-        raw = max(-self._TRAINER_LY_CAP, min(self._TRAINER_LY_CAP, raw))
-        # Floor is checked on the raw deviation, not the scaled one, so lowering
-        # the magnitude tempers the fill without silently shrinking coverage.
-        if not self._TRAINER_LY_MAGNITUDE or abs(raw) < 0.05:
-            return None  # magnitude 0 = fill disabled; tiny raw = nothing to say
-        delta = raw * self._TRAINER_LY_MAGNITUDE
-        ev = (f"去年 {rides} 場、上名率 {place_rate * 100:.0f}%"
-              f"（收縮後 {shrunk * 100:.0f}%、基準 {self._TRAINER_LY_NORM * 100:.0f}%）")
-        return round(delta, 2), ev
-
-    # 「完全冇人馬配搭紀錄」嘅點位（見 `_jockey_horse_fit_score` 尾部註釋）。
-    # 唔係中性 60 —— 嗰批馬實測前三率 21.7%，低過樣本平均 28.3%。
-    _JT_FIT_NO_EVIDENCE = 58.0
-
-    _PREPARATION_FACTORS = frozenset({"試閘交代密度足夠", "備戰同騎練配置方向一致"})
-
     def _preparation_score(self):
         adjustments = (getattr(self, "jt_fit_detail", None) or {}).get("adjustments", [])
-        selected = [a for a in adjustments if a.get("factor") in self._PREPARATION_FACTORS]
+        selected = [a for a in adjustments if a.get("factor") in _jt.PREPARATION_FACTORS]
         delta = sum(float(a["delta"]) for a in selected)
         note = "；".join(a.get("evidence") or a["factor"] for a in selected)
         return 60.0 + delta, note or "未有額外試閘備戰證據", "trial_preparation"
@@ -2081,216 +1735,87 @@ class RacingEngine:
         return len(trials), good
 
     def _jockey_horse_fit_score(self):
+        """人馬配搭分：入分項見 `jockey_trainer.fit_parts`；呢度砌數字同唔入分嘅敘述。"""
         jockey = self._clean_identity(self.horse_data.get("jockey"))
         trainer = self._clean_identity(self.horse_data.get("trainer"))
-        score = 60
-        notes = []
-        weight = parse_float(self.horse_data.get("weight"))
         trial_count = int(parse_float(self.data.get("trial_count")) or len(self._trial_places()))
-        trial_top3 = int(parse_float(self.data.get("trial_top3_count")) or sum(1 for place in self._trial_places() if place <= 3))
-        status_cycle = self._status_cycle_text()
-        stage_stats = self._stage_stats()
-        top_jockey = self._is_top_jockey(jockey)
-        top_trainer = self._is_top_trainer(trainer)
-        # EXP-20261016-75 P2（§7）：試閘「入前三」改按試閘場內百分位（前 40%），4 匹跑第 3 同
-        # 10 匹跑第 3 唔再一樣。試閘馬匹數只喺 Formguide 有，由 `refresh_trial_runs` 寫入。
+        trial_top3 = int(parse_float(self.data.get("trial_top3_count"))
+                         or sum(1 for place in self._trial_places() if place <= 3))
+        # EXP-20261016-75 P2（§7）：試閘「入前三」按試閘場內百分位（前 40%）。
         if self.data.get("fg_trials") is not None:
             trial_count, trial_top3 = self._formguide_trial_counts()
-        current_formal_rides = self._current_jockey_formal_rides()
-        current_formal_places = self._current_jockey_formal_places()
-        current_formal_wins = self._current_jockey_formal_wins()
-        current_trial_rides = self._current_jockey_trial_rides()
-        current_trial_top3 = self._current_jockey_trial_top3()
-        latest_official_jockey = self._latest_official_jockey()
-        latest_official_rides = self._latest_official_jockey_formal_rides()
-        latest_official_places = self._latest_official_jockey_formal_places()
-        latest_official_wins = self._latest_official_jockey_formal_wins()
-        best_formal_jockey = self._best_formal_jockey()
-        best_formal_rides = self._best_formal_jockey_rides()
-        best_formal_places = self._best_formal_jockey_places()
-        best_formal_wins = self._best_formal_jockey_wins()
-        current_vs_best = self._current_vs_best_jockey_brief()
-        jockey_change_signal = self._jockey_change_signal()
-        combo_stats = self._current_track_combo_stats()
-        trainer_track_stats = self._trainer_track_stats()
-        current_place_rate = safe_ratio(current_formal_places, current_formal_rides)
-        latest_official_place_rate = safe_ratio(latest_official_places, latest_official_rides)
+        signal = self._jockey_change_signal() or ""
+        rides, places = self._current_jockey_formal_rides(), self._current_jockey_formal_places()
+        parts = _jt.fit_parts({
+            "jockey": jockey, "trial_count": trial_count, "trial_top3": trial_top3,
+            "top_jt": self._is_top_jockey(jockey) or self._is_top_trainer(trainer),
+            "current_rides": rides, "current_places": places, "current_wins": self._current_jockey_formal_wins(),
+            "current_trial_rides": self._current_jockey_trial_rides(),
+            "current_trial_top3": self._current_jockey_trial_top3(), "change_signal": signal,
+        })
+        signal_factors = ("沿用歷來最佳人馬配搭", "試閘手接手，備戰線完整")
+        notes = [factor for _, factor, _ in parts if factor not in signal_factors]
 
-        # 逐項加減分都經 add() 記錄（因子＋原始數據），令報告可以完整追溯人馬配搭分。
-        adjustments = []
-        base_score = float(score)
-
-        def add(delta, note_text, evidence=""):
-            nonlocal score
-            delta = float(delta)
-            score += delta
-            notes.append(note_text)
-            if delta:
-                adjustments.append({
-                    "factor": note_text,
-                    "delta": round(delta, 2),
-                    "evidence": str(evidence or "").strip(),
-                })
-
-        # debut_top_trainer / young_top_jt 權重已被 ML 歸零 — 死支 2026-07-11 刪除，
-        # 免報告出「有講冇分」嘅因子。
-        # EXP-20261016-75：試閘數嚟自往績表全部試閘（唔係「近期」）—— 只數今次備戰嘅版本（P1）
-        # 排名指標 CI 全負，舊試閘一樣有資訊；只俾初出／首仗／二出（P4）亦 REJECT。
-        if trial_count >= 2 and trial_top3 >= 2:
-            add(FIT_MICRO_WEIGHTS.get("trial_ok_bonus", 4.0), "試閘交代密度足夠",
-                f"往績表試閘{trial_count}課、{trial_top3}課跑入試閘前列")
-            if top_jockey or top_trainer:
-                add(FIT_MICRO_WEIGHTS.get("trial_ok_top_jt_bonus", 2.0), "備戰同騎練配置方向一致",
-                    "試閘密度足夠且配頂級騎/練")
-        if current_formal_rides > 0:
-            # formal_places is W+2nd+3rd (see _summarize_formguide_section).
-            # Adding formal_wins again double-counts every win and inflates the
-            # same jockey/horse partnership signal.
-            add(min(FIT_MICRO_WEIGHTS.get("current_formal_cap", 6.0), current_formal_places * FIT_MICRO_WEIGHTS.get("current_formal_mult", 2.0)),
-                f"現役騎師曾策騎此駒 {current_formal_rides} 次正式賽",
-                f"{jockey}策此駒{current_formal_rides}次：{current_formal_wins}勝{current_formal_places}上名")
-            if current_formal_places * 2 >= max(1, current_formal_rides):
-                add(FIT_MICRO_WEIGHTS.get("current_basic_fit_bonus", 2.0), "現役騎師對此駒有基本交代",
-                    f"上名{current_formal_places}次／{current_formal_rides}騎")
-            if current_formal_rides >= 2 and current_place_rate >= 0.66:
-                add(FIT_MICRO_WEIGHTS.get("current_high_fit_bonus", 2.0), "現役騎師對此駒配合率偏高",
-                    f"配合率{current_place_rate * 100:.0f}%（{current_formal_rides}騎)")
-        elif current_trial_rides > 0 and current_trial_top3 > 0:
-            add(min(FIT_MICRO_WEIGHTS.get("current_trial_cap", 4.0), current_trial_top3 * FIT_MICRO_WEIGHTS.get("current_trial_mult", 2.0)),
-                "現役騎師已透過試閘熟習此駒",
-                f"{jockey}試閘策此駒{current_trial_rides}次、{current_trial_top3}次入前三")
-        # 「歷來最佳配搭」family 2026-07-11 退出計分：best_formal_mult 被 ML search 推成
-        # 負數（−0.06 — 沿用最佳配搭反而扣分，語義反轉 bug），成族 ablation 移除後
-        # GGP +2／A窗 +1／B窗平 → 移除係贏。歷來最佳配搭資料仍喺數據錨點顯示。
-        if best_formal_jockey and best_formal_rides > 0 and current_vs_best:
-            notes.append(current_vs_best)
-        # 上仗騎師同此駒嘅往績 —— 連續分級項（2026-08-04）。
-        # 呢個唔限於「換咗騎師」：`lo_rate` 量緊嘅係**呢匹馬喺最近嗰位騎師手上
-        # 交到幾多**，而唔係配搭連續性。條件化量度話呢個變數單調預測，
-        # 而舊嗰兩個門檻項只碰單邊。mult = 0 即係唔啟用。
-        _lo_mult = FIT_MICRO_WEIGHTS.get("latest_jockey_record_mult", 0.0)
-        if _lo_mult and latest_official_rides > 0:
-            _cap = FIT_MICRO_WEIGHTS.get("latest_jockey_record_cap", 5.0)
-            _d = max(-_cap, min(_cap, _lo_mult * (latest_official_place_rate - 0.457)))
-            if _d:
-                add(_d, "上仗騎師對此駒往績",
-                    f"{latest_official_jockey or '上仗騎師'}策此駒 {latest_official_rides} 次、"
-                    f"上名率 {latest_official_place_rate * 100:.0f}%（全體平均 46%）")
-        if latest_official_jockey and latest_official_jockey != jockey and latest_official_rides > 0:
-            # latest_upgrade_bonus 權重已被 ML 歸零 — 死支刪除（2026-07-11），
-            # 免報告出現「有講冇分」嘅因子。
-            #
-            # ── 騎師連續性兩項退出計分（2026-09-01）────────────────────────────
-            # `leave_proven_jockey_pen` (−2.98) 同 `latest_downgrade_pen` (−4.11)
-            # 嘅符號**同實際方向相反**。2026-08-04 已經用 `au_adjustment_audit`
-            # 揾到，但當時四個修法失敗，正確診斷係「cohort 超額 ≠ 因果貢獻」——
-            # 「離開已證明配搭」嘅馬按定義冇「曾策騎此駒」加分，個罰分疊喺一個
-            # 本來已低嘅分上，所以要**條件化量度**才判得到。當時標住「未解決」。
-            #
-            # 2026-09-01 用 1,820 場（當時 718 場）控制「曾策騎此駒」次數：
-            #
-            #   離開上仗已證明配搭  0 次層   觸發 +4.09pp  vs 冇觸發 −2.96pp  差 **+7.05pp**
-            #   未及上仗騎師       0 次層   觸發 +4.08pp  vs 冇觸發 −0.59pp  差 **+4.67pp**
-            #   未及上仗騎師       3+ 次層  觸發 +0.35pp  vs 冇觸發 +3.18pp  差 −2.83pp
-            #
-            # **倒退喺同一分層之內倖存** → 唔係混淆造成，符號真係反。
-            #
-            # 剷走之後 `jockey_horse_fit_score` 場內 AUC **0.5467 → 0.5668**，
-            # 而 `gold` dev **+0.0023** / terminal **+0.0019**（兩邊正）。
-            # ⚠️ `good_positional` terminal −0.0057（512 場 ≈ 3 場，噪音範圍）——
-            # Stage 4 v2 會判 REJECT，Kelvin 2026-09-01 明確裁定呢個係**修 bug**
-            # （符號證明係反），按契約 §7 correctness 上線。
-            #
-            # ⚠️ **唔准重算 `MATRIX_DISPLAY_GAINS["jockey_trainer"]`。** 剷走噪音項令
-            # 維度 raw SD 由 6.87 跌到 5.20；實測把 gain 拉返「目標 SD 11」會令結果
-            # 變差（terminal −0.0095 vs 保持原 gain +0.0000）。清噪音之後應該讓維度
-            # 影響力**自然下降**，唔係重新充氣 —— 呢個係對
-            # [[au-dimension-scale-weight-lockstep]] 嘅補充：gain 同權重要一齊動
-            # 嘅前提係「離散度變化係真訊號」。
-            #
-            # 保留敘述（不入分），因為呢兩個情境對讀者有意義。
-            if current_formal_rides == 0 and latest_official_place_rate >= 0.50:
-                notes.append(
-                    f"今場離開上仗已證明配搭（上仗{latest_official_jockey}對此駒上名率"
-                    f"{latest_official_place_rate * 100:.0f}%，實測此群反而超額 +4.1pp，不入分）"
-                )
-            elif current_formal_rides > 0 and latest_official_place_rate > current_place_rate + 0.20:
-                notes.append(
-                    f"今場騎師對此駒往績未及上仗騎師（今場上名率{current_place_rate * 100:.0f}%"
-                    f" vs 上仗{latest_official_jockey} {latest_official_place_rate * 100:.0f}%，不入分）"
-                )
-        # 同場館騎練組合 family 2026-07-11 退出計分（display-only）：成族逐項 ablation
-        # 全指標零變化（觸發率太低/幅度太細）— 統計照喺 note 同錨點交代，唔再入分。
-        combo_evidence = (f"{jockey}×{trainer}同場館{int(combo_stats.get('runs', 0))}次，"
-                          f"上名率{combo_stats.get('place_rate', 0.0) * 100:.0f}%、勝率{combo_stats.get('win_rate', 0.0) * 100:.0f}%")
-        if combo_stats.get("runs", 0) >= 5:
-            if combo_stats.get("place_rate", 0.0) >= 0.45:
+        # 唔入分嘅敘述（次序同報告一樣）。
+        if self._best_formal_jockey() and self._best_formal_jockey_rides() > 0:
+            vs_best = self._current_vs_best_jockey_brief()
+            if vs_best:
+                notes.append(vs_best)
+        latest = self._latest_official_jockey()
+        latest_rides = self._latest_official_jockey_formal_rides()
+        latest_rate = safe_ratio(self._latest_official_jockey_formal_places(), latest_rides)
+        if latest and latest != jockey and latest_rides > 0:
+            if rides == 0 and latest_rate >= 0.50:
+                notes.append(f"今場離開上仗已證明配搭（上仗{latest}對此駒上名率"
+                             f"{latest_rate * 100:.0f}%，實測此群反而超額 +4.1pp，不入分）")
+            elif rides > 0 and latest_rate > safe_ratio(places, rides) + 0.20:
+                notes.append(f"今場騎師對此駒往績未及上仗騎師（今場上名率{safe_ratio(places, rides) * 100:.0f}%"
+                             f" vs 上仗{latest} {latest_rate * 100:.0f}%，不入分）")
+        combo = self._current_track_combo_stats()
+        if combo.get("runs", 0) >= 5:
+            combo_evidence = (f"{jockey}×{trainer}同場館{int(combo.get('runs', 0))}次，"
+                              f"上名率{combo.get('place_rate', 0.0) * 100:.0f}%、勝率{combo.get('win_rate', 0.0) * 100:.0f}%")
+            if combo.get("place_rate", 0.0) >= 0.45:
                 notes.append(f"今場場館騎練組合已有穩定上名輸出（{combo_evidence}，不入分）")
-            elif combo_stats.get("place_rate", 0.0) < 0.15:
+            elif combo.get("place_rate", 0.0) < 0.15:
                 notes.append(f"今場場館騎練組合過往交代偏淡（{combo_evidence}，不入分）")
-        if jockey_change_signal:
-            if "沿用歷來最佳配搭" in jockey_change_signal:
-                add(FIT_MICRO_WEIGHTS.get("signal_best_jockey_bonus", 4.0), "沿用歷來最佳人馬配搭", jockey_change_signal)
-            elif "較強騎師" in jockey_change_signal or "換下較高級騎師" in jockey_change_signal:
-                # 之前 generic Facts signal 令呢兩支永遠行唔到。修正 alignment 後
-                # 710 場測試會改 286 場排名，但 folds/terminal 方向互相衝突；
-                # 因此保留準確描述，唔用未泛化嘅大額微調入分。
-                notes.append(f"{jockey_change_signal}（評級變化只作背景，不入分）")
-            elif "沿用上仗騎師" in jockey_change_signal:
-                # `signal_same_jockey_bonus` (+2.00) 退出計分（EXP-20261016-12，§7）：手寫值、
-                # 從來冇 fit 過，條件化量度（控制「曾策騎此駒」次數）方向反 ——
-                # 1–2 次層 −3.7pp、3+ 次層 −6.7pp，加權差 −4.2pp [−6.1, −2.4]。
-                # 同 2026-09-01「回配」同一個家族、同一種錯。
-                notes.append(f"{jockey_change_signal}（實測此群低於同層 3.7–6.7pp，不入分）")
-            elif "試閘手接手" in jockey_change_signal:
-                add(FIT_MICRO_WEIGHTS.get("signal_trial_rider_bonus", 2.0),
-                    "試閘手接手，備戰線完整", jockey_change_signal)
-            elif "回配" in jockey_change_signal:
-                # `signal_reunite_bonus` (+2.00) 退出計分（2026-09-01）：符號同實際
-                # 方向相反，而且**每一層都錯** —— 條件化量度（控制「曾策騎此駒」次數）
-                # 0 次層 −3.55pp、1-2 次層 −1.19pp、3+ 次層 **−7.49pp**。
-                # 同上面兩項一齊剷；詳見上面嗰段註釋。
-                notes.append(f"{jockey_change_signal}（實測此群反而低於同層 1.2–7.5pp，不入分）")
-        # 雜項硬編碼調整 family 2026-07-11 退出計分（display-only）：成族 ablation
-        # 全指標零變化。有意思嘅背景（減磅/週期/首仗二出往績）保留做 note。
+        if signal:
+            if "沿用歷來最佳配搭" in signal or ("試閘手接手" in signal and not any(
+                    k in signal for k in ("較強騎師", "換下較高級騎師", "沿用上仗騎師"))):
+                notes += [factor for _, factor, _ in parts if factor in signal_factors]
+            elif "較強騎師" in signal or "換下較高級騎師" in signal:
+                notes.append(f"{signal}（評級變化只作背景，不入分）")
+            elif "沿用上仗騎師" in signal:
+                notes.append(f"{signal}（實測此群低於同層 3.7–6.7pp，不入分）")
+            elif "回配" in signal:
+                notes.append(f"{signal}（實測此群反而低於同層 1.2–7.5pp，不入分）")
+        status_cycle = self._status_cycle_text()
+        stage_stats = self._stage_stats()
         if status_cycle in {"First-up", "久休復出"} and stage_stats["first_up"]["places"] > 0:
-            notes.append(f"過往首仗上陣有基本交代（{stage_stats['first_up'].get('runs', '')}次{stage_stats['first_up']['places']}上名，不入分）")
+            notes.append(f"過往首仗上陣有基本交代（{stage_stats['first_up'].get('runs', '')}次"
+                         f"{stage_stats['first_up']['places']}上名，不入分）")
         if status_cycle in {"Second-up", "二出"} and stage_stats["second_up"]["places"] > 0:
-            notes.append(f"二出歷史有承接（{stage_stats['second_up'].get('runs', '')}次{stage_stats['second_up']['places']}上名，不入分）")
-        # 舊條件係 `"(a)" in jockey` —— 但 Sportsbet 嘅減磅寫喺 `(a-1.5)`，而且
-        # 抽取層一直剝走，所以幾乎從來冇觸發（Formguide 只 0.5% 騎師名帶標記）。
-        # 而家減磅由 Racecard `Weight:` 括號帶入（EXP-20261014-02）。純 note，不入分。
+            notes.append(f"二出歷史有承接（{stage_stats['second_up'].get('runs', '')}次"
+                         f"{stage_stats['second_up']['places']}上名，不入分）")
         claim = -float(self.horse_data.get("jockey_allowance_kg") or 0.0)
+        weight = parse_float(self.horse_data.get("weight"))
         if claim > 0 and weight:
             notes.append(f"見習減磅 {claim:g}kg（分配 {weight:.1f}kg → 實負 {weight - claim:.1f}kg，不入分）")
         if trainer in {"", "Unknown"}:
             notes.append("馬房資料不完整")
 
-        # 「完全冇人馬配搭證據」唔係中性（2026-08-01）。實測 713 場 / 7,547 匹：
-        #     高過 60（有正面配搭證據）  n=5,301  前三率 30.0%
-        #     低過 60（被扣分）          n=  838  前三率 28.6%
-        #     恰好 60（冇任何證據）      n=1,408  前三率 **21.7%**  ← 樣本平均 28.3%
-        # 即係排序反咗：被扣分嗰批實際好過冇證據嗰批，但分數排喺佢下面。
-        # 「冇配搭紀錄」係一個真訊號（新／陌生騎師、輕出賽馬），唔係缺數據。
-        #
-        # ⚠️ 呢個同 `sectional_score` 個案**方向相反** —— 嗰邊「冇 PI 數據」前三率
-        # 30.1% 高過平均，所以要由 35.8 抬去 60。所以「60 = 冇證據」唔可以當通則
-        # 照搬，每個 leaf 都要睇返自己嘅 cohort 實測。
-        #
-        # 點位掃過 58/56/54/52：只有 58 喺 holdout 完全唔傷（每個指標剛好 0.00），
-        # dev champ +0.50、winT3 +0.33、compet +0.33、blowout −0.16、good_pos −0.17。
-        # 再低（54/52）dev gold +2 但 holdout gold −1、good_pos −0.94 → 唔採用。
+        adjustments = [{"factor": factor, "delta": round(float(delta), 2), "evidence": str(evidence or "").strip()}
+                       for delta, factor, evidence in parts if delta]
+        score = 60.0
+        for delta, _, _ in parts:
+            score += float(delta)
         if not adjustments:
-            score = self._JT_FIT_NO_EVIDENCE
+            score = _jt.FIT_NO_EVIDENCE
             notes.append("並無任何人馬配搭紀錄（新配搭／輕出賽馬），按實測低於中性處理")
-
-        self.jt_fit_detail = {
-            "base": round(base_score, 2),
-            "final": round(clip_score(score), 2),
-            "adjustments": adjustments,
-        }
+        self.jt_fit_detail = {"base": 60.0, "final": round(clip_score(score), 2), "adjustments": adjustments}
         note = "；".join(notes) if notes else "未見特別人馬部署訊號"
-        return score, f"{note}。人馬配搭分 {clip_score(score):.1f}。", "jockey_trainer_fit+stage_stats+trial_continuity+formguide_jockey_history+track_combo_stats"
+        return score, f"{note}。人馬配搭分 {clip_score(score):.1f}。", \
+            "jockey_trainer_fit+stage_stats+trial_continuity+formguide_jockey_history+track_combo_stats"
 
     def _matrix_reasoning(self, matrix_scores, feature_scores, feature_notes):
         return {

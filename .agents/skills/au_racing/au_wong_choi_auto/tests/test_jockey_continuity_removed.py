@@ -19,34 +19,26 @@ ROOT = Path(__file__).resolve().parents[1] / "scripts"
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from au_racing_engine.scoring import FIT_MICRO_WEIGHTS  # noqa: E402
+from au_racing_engine.jockey_trainer import FIT_WEIGHTS  # noqa: E402
 
-ENGINE_SRC = (ROOT / "au_racing_engine" / "engine_core.py").read_text(encoding="utf-8")
+ENGINE_SRC = ((ROOT / "au_racing_engine" / "engine_core.py").read_text(encoding="utf-8")
+              + (ROOT / "au_racing_engine" / "jockey_trainer.py").read_text(encoding="utf-8"))
 REMOVED = ("leave_proven_jockey_pen", "latest_downgrade_pen", "signal_reunite_bonus")
 # `add()` 呼叫用過嘅 factor 名。⚠️ 「回配」嗰支而家用 `jockey_change_signal`
 # 原文出敘述（因為原文本身已經寫住「回配…」），所以字面 factor 名唔再喺 source。
 FACTORS = ("今場離開上仗已證明配搭", "今場騎師對此駒往績未及上仗騎師", "回配熟手騎師")
 # 敘述仍然應該存在嘅字眼（唔係 factor 名，係佢哋喺 source 剩返嘅痕跡）。
-NARRATIVE = ("今場離開上仗已證明配搭", "今場騎師對此駒往績未及上仗騎師", '"回配" in jockey_change_signal')
+NARRATIVE = ("今場離開上仗已證明配搭", "今場騎師對此駒往績未及上仗騎師", '"回配" in signal')
 
 
 class TestJockeyContinuityRemoved(unittest.TestCase):
-    def test_constants_are_zero_not_deleted(self):
-        """要留 key 做文獻。`engine_core` 原本用 `.get(key, <default>)` ——
-        key 唔喺度嘅話，將來有人駁返個 `.get()` 就會令 hard-coded default
-        （−4.0 / −3.0 / 2.0）靜靜復活。"""
-        for key in REMOVED:
-            self.assertIn(key, FIT_MICRO_WEIGHTS, f"{key} 唔可以刪 key，要留 0.0 做文獻")
-            self.assertEqual(FIT_MICRO_WEIGHTS[key], 0.0, f"{key} 應該係 0.0")
-
-    def test_no_scoring_call_remains(self):
-        """真正嘅守衛：source 入面唔可以再有 `add(...)` 把呢三項入分。"""
-        for key in REMOVED:
-            self.assertNotRegex(
-                ENGINE_SRC,
-                rf"add\(\s*FIT_MICRO_WEIGHTS\.get\(\s*[\"']{key}[\"']",
-                f"{key} 又被駁返入分 —— 佢符號實測係反嘅",
-            )
+    def test_removed_terms_have_no_weight(self):
+        """EXP-20261103-05：入分只喺 `jockey_trainer.fit_parts`，用 `w[key]` 直接讀（冇 `.get` default），
+        所以退出計分嘅 key 連同分支一齊剷，唔會靜靜復活。"""
+        for key in REMOVED + ("signal_same_jockey_bonus", "latest_jockey_record_mult"):
+            self.assertNotIn(key, FIT_WEIGHTS)
+        self.assertNotIn(".get(", (ROOT / "au_racing_engine" / "jockey_trainer.py").read_text(encoding="utf-8")
+                         .split("def fit_parts", 1)[1])
 
     def test_factors_are_not_added_by_any_route(self):
         """連 `add(<literal>, \"今場離開上仗…\")` 咁樣繞路都唔准。"""

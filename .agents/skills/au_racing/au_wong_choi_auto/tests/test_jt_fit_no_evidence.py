@@ -23,6 +23,7 @@ sys.path.insert(0, str(SCRIPTS))
 
 import pytest  # noqa: E402
 
+from au_racing_engine import jockey_trainer as jt  # noqa: E402
 from au_racing_engine.engine_core import RacingEngine  # noqa: E402
 
 CTX = {"race_class": "BM62, Handicap", "distance": "1400m",
@@ -42,7 +43,7 @@ class TestNoEvidenceSitsBelowNeutral:
         """冇試閘、冇同一騎師往績、冇任何訊號 → 唔應該係中性 60。"""
         eng = engine()
         score, note, _src = eng._jockey_horse_fit_score()
-        assert score == pytest.approx(RacingEngine._JT_FIT_NO_EVIDENCE)
+        assert score == pytest.approx(jt.FIT_NO_EVIDENCE)
         assert score < 60.0
         assert "並無任何人馬配搭紀錄" in note
 
@@ -51,7 +52,7 @@ class TestNoEvidenceSitsBelowNeutral:
         eng._jockey_horse_fit_score()
         assert eng.jt_fit_detail["adjustments"] == []
         assert eng.jt_fit_detail["final"] == pytest.approx(
-            RacingEngine._JT_FIT_NO_EVIDENCE)
+            jt.FIT_NO_EVIDENCE)
 
 
 class TestEvidenceStillMovesTheScore:
@@ -72,10 +73,10 @@ class TestEvidenceStillMovesTheScore:
         """實測 28.6% vs 21.7% —— 被扣分嗰批應該仍然排喺冇證據之上。
 
         用一個「有加分但淨額細」嘅個案代表被評價過嘅馬：重點係佢有證據，
-        所以就算分數唔高，都唔應該跌到 `_JT_FIT_NO_EVIDENCE` 以下。
+        所以就算分數唔高，都唔應該跌到 `jockey_trainer.FIT_NO_EVIDENCE` 以下。
         """
         judged = engine({"trial_count": 3, "trial_top3_count": 2})._jockey_horse_fit_score()[0]
-        assert judged > RacingEngine._JT_FIT_NO_EVIDENCE
+        assert judged > jt.FIT_NO_EVIDENCE
 
 
 class TestContrastWithSectional:
@@ -83,9 +84,9 @@ class TestContrastWithSectional:
         """段速分「冇數據」= 60（嗰批高過平均）；人馬配搭「冇紀錄」< 60（低過平均）。
 
         兩個唔同方向係有實測依據嘅，唔係前後不一致。任何人想把
-        `_JT_FIT_NO_EVIDENCE` 「修正」返 60 之前，要先重做 cohort 量度。
+        `jockey_trainer.FIT_NO_EVIDENCE` 「修正」返 60 之前，要先重做 cohort 量度。
         """
         from au_racing_engine.scoring import SECTIONAL_MICRO_WEIGHTS
 
         assert SECTIONAL_MICRO_WEIGHTS["base"] == 60.0
-        assert RacingEngine._JT_FIT_NO_EVIDENCE < 60.0
+        assert jt.FIT_NO_EVIDENCE < 60.0

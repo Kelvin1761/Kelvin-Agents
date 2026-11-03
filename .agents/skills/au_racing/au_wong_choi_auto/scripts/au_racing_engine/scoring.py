@@ -422,75 +422,7 @@ TRIAL_MICRO_WEIGHTS = {
     "mid_trial_bonus": 2.0,
 }
 
-FIT_MICRO_WEIGHTS = {
-    "trial_ok_bonus": 3.38,
-    "trial_ok_top_jt_bonus": 1.0,
-    "current_formal_cap": 4.05,
-    "current_formal_mult": 0.31,
-    "current_basic_fit_bonus": 0.65,
-    "current_high_fit_bonus": 1.47,
-    "current_trial_cap": 2.57,
-    "current_trial_mult": 3.8,
-    # ── 退出計分（2026-09-01）——符號實測同方向相反 ─────────────────────────
-    # Rollback: "latest_downgrade_pen": -4.11, "leave_proven_jockey_pen": -2.98,
-    #           "signal_reunite_bonus": 2.0（見下面）。
-    #
-    # 條件化量度（1,820 場，控制「曾策騎此駒」次數）—— 倒退喺同一分層之內倖存：
-    #   離開上仗已證明配搭  0 次層  觸發 +4.09pp vs 冇觸發 −2.96pp  差 **+7.05pp**
-    #   未及上仗騎師       0 次層  觸發 +4.08pp vs 冇觸發 −0.59pp  差 **+4.67pp**
-    #   回配熟手騎師       每一層都錯（−3.55 / −1.19 / **−7.49pp**）
-    #
-    # 剷走三項：`jockey_horse_fit_score` 場內 AUC **0.5467 → 0.5668**，
-    # `gold` dev +0.0023 / terminal +0.0019。`good_positional` terminal −0.0057
-    # （≈3 場，噪音範圍）令 Stage 4 v2 判 REJECT；Kelvin 2026-09-01 裁定係修 bug
-    # （符號證明係反），按契約 §7 上線。
-    #
-    # ⚠️ 三個 key **要留喺呢度做文獻**，唔可以淨係刪 —— `engine_core` 原本用
-    # `FIT_MICRO_WEIGHTS.get(key, <default>)`，如果將來有人加返個 `.get()` 而 key
-    # 唔喺度，個 hard-coded default（−4.0 / −3.0 / 2.0）就會靜靜咁復活。
-    # 而家值係 0.0，所以就算駁返都係中性。
-    "latest_downgrade_pen": 0.0,
-    "leave_proven_jockey_pen": 0.0,
-    # 2026-08-04 新增：上仗騎師同呢匹馬嘅往績，做**連續分級項**。
-    #
-    # 點解要新加一項而唔係改上面兩個。上面兩個係**單邊門檻**：
-    # 「上仗騎師上名率 ≥50% 而今場換人」扣 2.98。但 718 場條件化量度顯示，
-    # 同一個分岔點之下低嗰半邊（<50%）跑 **−6.8pp**、高嗰半邊跑 **+4.8pp**，
-    # 而現行 code **淨係碰高嗰半邊**，低嗰半邊乜都冇畀。所以反符號都救唔到
-    # ——實測反符號八個 AUC 區間全部跨 0。要兩邊都出力先得。
-    #
-    # 逐段實測（6,812 匹、92.4% 覆蓋、已修正馬群大細）：
-    #     lo_rate 0.00       n=2,899   **−6.4pp**
-    #             0.20–0.34  n=  311   −4.7
-    #             0.50–0.67  n=1,149   +3.1
-    #             0.67–1.00  n=2,411   **+8.0**
-    # 完全單調，跨度 14.4pp。
-    #
-    # ⚠️⚠️ **實測落唔到分，所以係 0.0（關閉）。** 呢條路徑留住係因為佢係
-    # 目前為止最乾淨嘅一個「量到但用唔到」嘅訊號，而唔係因為佢有用。
-    #
-    # 測過嘅：mult 4 / 8 / 12、加埋反 SAME、再把佢抽做獨立維度掃
-    # w = .03/.05/.08/.12/.16。**全部 ability AUC 區間跨 0**（點估計一致係正，
-    # Good位 一致係負）。連同反符號、歸零，一共 13 個變體、4 種設計，
-    # 冇一個改善排名。
-    #
-    # 點解一個 14.4pp 單調嘅變數會冇用：佢喺 `form_score` 分層之內仲保住
-    # +11.8 / +4.9 / +8.8 / +4.1pp，即係**唔係**近績代理 —— 但好可能係
-    # 現有 leaf **組合**嘅代理（我只分層咗 form_score 一個）。
-    #
-    # 對一個亂咗嘅 leaf，正確反應係**少信佢**而唔係修佢個公式 ——
-    # 而嗰個已經做咗（jockey_horse_fit 內部權重 .52 → .381）。
-    "latest_jockey_record_mult": 0.0,
-    "latest_jockey_record_cap": 5.0,
-    "signal_best_jockey_bonus": 3.85,
-    # 2026-08-04：以下三項本來係函數入面硬寫嘅 `add(2, …)`。提升成有名參數，
-    # 因為一個 ablation 掃唔到嘅魔術數字比一個調得太多嘅參數更難升級。
-    # 退出計分（EXP-20261016-12，§7）：方向反，見 engine_core「沿用上仗騎師」分支。
-    # Rollback: 2.0。留 key 做文獻，理由同上面 latest_downgrade_pen。
-    "signal_same_jockey_bonus": 0.0,
-    "signal_trial_rider_bonus": 2.0,
-    "signal_reunite_bonus": 0.0,   # 退出計分 2026-09-01，見上面 leave_proven 註釋
-}
+# FIT_MICRO_WEIGHTS 已搬入 `jockey_trainer.FIT_WEIGHTS`（EXP-20261103-05）；退出計分嗰六個 0.0 key 連同佢哋嘅分支已剷。
 
 # 2026-08-01（較後）矩陣重新配權之後嘅實測分佈（7,547 匹）：
 #   之前  max 88.0  mean 64.59   A+ 11 / A 45 / A− 157 / B+ 584

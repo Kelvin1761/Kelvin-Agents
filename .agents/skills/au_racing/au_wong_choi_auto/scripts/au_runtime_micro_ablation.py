@@ -40,10 +40,10 @@ from au_racing_engine.io_utils import write_json_atomic, write_text_atomic
 from au_racing_engine.scoring import (
     CLASS_MICRO_WEIGHTS,
     CONSISTENCY_MICRO_WEIGHTS,
-    FIT_MICRO_WEIGHTS,
     TRIAL_MICRO_WEIGHTS,
 )
 from au_racing_engine.track_going import WEIGHTS as TRACK_MICRO_WEIGHTS
+from au_racing_engine.jockey_trainer import FIT_WEIGHTS as FIT_MICRO_WEIGHTS
 
 
 # 2026-08-04：`form_line` 同 `trainer` 兩族已經由 `scoring.py` 剷走 ——

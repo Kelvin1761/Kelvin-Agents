@@ -25,36 +25,29 @@ def _score(trainer: str, ly: dict) -> float:
     return score
 
 
-class TrainerEmpiricalFillTests(unittest.TestCase):
-    """Unlisted trainers (~44% of runners) are scored from their own last-year
-    record instead of falling through to a flat neutral 60. Magnitude is tuned
-    at 0.25 by isolated A/B over 708 archive races; these tests lock the
-    behaviour that tuning depends on rather than the exact numbers."""
+class TrainerLastYearTests(unittest.TestCase):
+    """練馬師分由自己去年官方紀錄計（≥10 場，`jockey_trainer.rate_score`）；薄樣本中性。
+
+    舊「empirical fill」（名單外練馬師 × 0.25）喺統一上名率之後由來冇觸發過（EXP-20261103-05：
+    要 ≥10 場，而 ≥10 場已經行統一率），已剷。"""
 
     UNLISTED = "Zzz Unlisted Smalltime Trainer"
 
     def test_unlisted_trainer_is_scored_from_own_record(self) -> None:
         strong = _score(self.UNLISTED, {"rides": 60, "wins": 10, "places": 24})
         weak = _score(self.UNLISTED, {"rides": 60, "wins": 1, "places": 4})
-        self.assertGreater(strong, 60.0)   # 40% -> above the 30% norm after shrink
+        self.assertGreater(strong, 60.0)
         self.assertLess(weak, 60.0)
         self.assertGreater(strong, weak)
 
     def test_places_already_includes_wins(self) -> None:
-        eng = RacingEngine(
-            {"horse_name": "T", "horse_number": "1", "trainer": self.UNLISTED},
-            _ctx(),
-        )
-        # Official places is W+2nd+3rd. A 30/100 record is exactly neutral even
-        # when 20 of those places were wins; wins must not be counted twice.
-        self.assertIsNone(
-            eng._trainer_empirical_base(
-                {"rides": 100, "wins": 20, "places": 30}
-            )
-        )
+        # 官方上名 = 冠＋亞＋季；冠軍唔可以再加一次。上名率啱啱等於 prior → 60。
+        from au_racing_engine import jockey_trainer as jt
+        runs = 100
+        places = jt.PLACE_PRIOR["trainer"] * runs
+        self.assertAlmostEqual(jt.rate_score("trainer", {"rides": runs, "wins": 20, "places": places})[0], 60.0)
 
     def test_thin_or_missing_record_stays_neutral(self) -> None:
-        # under 10 rides says nothing; shrinkage must not manufacture a signal
         for ly in ({"rides": 5, "wins": 2, "places": 1}, {"rides": 0}, {}):
             self.assertAlmostEqual(_score(self.UNLISTED, ly), 60.0, places=1)
 
@@ -70,35 +63,6 @@ class TrainerEmpiricalFillTests(unittest.TestCase):
         self.assertIn("去年官方僅 6 場", note)
         self.assertIn("未達 10 場可信門檻", note)
         self.assertNotIn("未有官方記錄", note)
-
-    def test_fill_is_bounded_and_tempered_by_magnitude(self) -> None:
-        eng = RacingEngine({"horse_name": "T", "horse_number": "1", "trainer": self.UNLISTED}, _ctx())
-        extreme = eng._trainer_empirical_base({"rides": 400, "wins": 200, "places": 150})
-        self.assertIsNotNone(extreme)
-        # cap * magnitude is the hard ceiling — the fill can never dominate the feature
-        self.assertLessEqual(abs(extreme[0]),
-                             eng._TRAINER_LY_CAP * eng._TRAINER_LY_MAGNITUDE + 1e-6)
-        self.assertLess(abs(extreme[0]), eng._TRAINER_LY_CAP)
-
-    def test_magnitude_zero_disables_the_fill_cleanly(self) -> None:
-        # the tuning knob must be a real off-switch, not a near-zero nudge
-        class _Off(RacingEngine):
-            _TRAINER_LY_MAGNITUDE = 0.0
-        horse = {"horse_name": "T", "horse_number": "1", "barrier": 5,
-                 "trainer": self.UNLISTED, "_data": {"trainer_ly": {"rides": 60, "wins": 10, "places": 24}}}
-        self.assertAlmostEqual(_Off(horse, _ctx())._trainer_score()[0], 60.0, places=1)
-
-    def test_coverage_decision_is_magnitude_independent(self) -> None:
-        # a trainer who earns a fill at full magnitude must still earn one when
-        # tempered — otherwise lowering the knob silently re-opens the data hole
-        ly = {"rides": 30, "wins": 3, "places": 6}
-        eng = RacingEngine({"horse_name": "T", "horse_number": "1", "trainer": self.UNLISTED}, _ctx())
-
-        class _Full(RacingEngine):
-            _TRAINER_LY_MAGNITUDE = 1.0
-        full = _Full({"horse_name": "T", "horse_number": "1", "trainer": self.UNLISTED}, _ctx())
-        self.assertEqual(eng._trainer_empirical_base(ly) is None,
-                         full._trainer_empirical_base(ly) is None)
 
 
 class ComboStatsResilienceTests(unittest.TestCase):
