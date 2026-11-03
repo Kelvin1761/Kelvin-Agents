@@ -47,3 +47,6 @@
 沒有匯出原始私人snapshot、價格、raw body、env或credentials；原native report留本機，外置只存hash-bound去路徑metadata projection。smoke原私人輸入只在記憶體；真實三份card的原輸入仍留原本受保護immutable bundle，沒有改寫。
 
 本輪只驗Tennis程式交付／證據，不將其當其他domain營運健康、D1或完整HOT/WARM/COLD審計；release沒有對Dashboard／D1／投注資料做變更。下一步先以55個原輸入及預測前已保存公開資料，分清缺Elo是資料不足、source／identity routing還是衍生cache問題；再核實missing surface來源。不能用調權重、補假值、改窗或放寬qualified條件代替。
+
+
+2026-11-03接續：[缺 Elo 全量輸入、routing 及真實 TE receipt 審計](tennis-missing-elo-inputs-20261103.md)已完成診斷；結果與下一個固定39-player coverage／identity pilot見該文。沒有回填舊forecast、改whole-card資格或宣稱準確度提升。

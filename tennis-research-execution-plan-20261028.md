@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-03 缺 Elo／真實來源跟進**：[全量診斷及下一輪固定協議](docs/audits/tennis-missing-elo-inputs-20261103.md)：原55-card的40個缺Elo sides／39位球員，在預測前公開snapshot均沒有對應history或warm/cold cache；現時38位仍無賽日前history/cache，未找到已登記別名可直接補回。TE每日覆盤已有接線，兩份修正後真實HTML receipt及531／423場parse核對通過，不能再標成「首次新receipt未驗證」。下一步先按全部39位及固定2026-10-01至11-02窗做source coverage／獨立identity pilot，不補假值、不回填舊forward、不改原15個REJECT_DEV；準確度目標仍未完成。
+
 **2026-11-03 正式交付／真實新card核對**：[完整證據](docs/audits/tennis-rank-reference-release-20261103.md)確認`1011c649`已main合併／Tennis activation成功，獨立full gate Tennis1096；已安裝程式五檔與release相同，唯讀smoke通過。部署後三份新bundle中兩份空card，一份55／55原始observations完整；65個rank points已用新格式，但28個缺Elo／component、27個有有效warning，qualified forward仍0。下一步查原輸入的Elo資料／identity／cache及surface來源，未證實準確度提升；不以格式交付當研究完成。
 
 **2026-11-02 排名證據格式接線**：[EXP-20261102-06](docs/experiments/EXP-20261102-06-tennis-rank-reference-contract.md)將有效rank annotations無損保留在ranking_reference，回復既有六欄point介面；writer／shared v3 reader／frozen ruler及模型計算不變。研究113個fixture中112組memory pair的完整pricing／quality／逆還原相同，quality及forward仍0合格。今次從最新main獨立交付必要格式修正，generation／capture研究模型仍留研究分支；正式交付狀態以Central immutable manifest／activation event為準，未證實準確度提升。
