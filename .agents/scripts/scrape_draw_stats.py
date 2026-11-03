@@ -59,10 +59,11 @@ def parse_race_header(header_text: str) -> dict:
     elif '全天候' in header_text:
         info['surface'] = '全天候'
 
-    # Course
-    m = re.search(r'"([A-Z]+)"\s*賽道', header_text)
+    # Course —— 一定要食埋 "+N"：舊 regex `"([A-Z]+)"` 遇到 "C+3" 對唔上，
+    # 2026-09-27 沙田、2026-10-07 跑馬地成日 course 變 None，賽道守衛就靜靜失效。
+    m = re.search(r'"\s*([A-Z](?:\s*\+\s*\d+)?)\s*"\s*賽道', header_text)
     if m:
-        info['course'] = m.group(1)
+        info['course'] = re.sub(r'\s+', '', m.group(1))
 
     return info
 
