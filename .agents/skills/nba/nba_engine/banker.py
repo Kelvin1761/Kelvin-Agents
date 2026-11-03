@@ -137,6 +137,11 @@ def build(p, lo, hi):
     return best
 
 
+def pool_sizes(legs, phase=None) -> dict:
+    """How many legs pass each pool's single-leg rules (the NO BET explanation)."""
+    return {"strict": len(pool(legs, STRICT, phase)), "fallback": len(pool(legs, FALLBACK, phase))}
+
+
 def select_b2(legs: list[Leg], phase: str | None = None) -> tuple[list[Leg], str]:
     """(combo, rule): rule is 'banker', 'banker_fallback' or 'none'."""
     combo = build(pool(legs, STRICT, phase), *STRICT["target"])

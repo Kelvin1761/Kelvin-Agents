@@ -334,42 +334,25 @@ def test_snapshot_copies_optional_market_sidecar(tmp_path):
 
 # ── generator sidecar ───────────────────────────────────────────────────────
 
-def test_generator_sidecar_observes_without_changing_values():
-    scripts = AUTO_DIR.parent / "nba_wong_choi" / "scripts"
-    sys.path.insert(0, str(scripts))
-    import generate_nba_reports as gen
+def test_engine_sidecar_carries_the_fields_the_ledger_records():
+    sys.path.insert(0, str(AUTO_DIR.parent))
+    from nba_engine import report
+    from nba_engine.legs import Leg
 
-    card = {
-        "name": "Jayson Tatum", "team": "BOS", "category": "points",
-        "line_analysis": {
-            "20": {"line": 20.0, "line_display": "20+", "odds": "1.8", "det_prob": 64.0,
-                   "ml_prob": 0.55, "estimated_prob": 61.0, "hit_l10": 70.0, "engine": "hybrid"},
-            "25": {"line": 25.0, "line_display": "25+", "odds": "3.2", "det_prob": 30.0,
-                   "ml_prob": None, "estimated_prob": 30.0, "hit_l10": 30.0, "engine": "legacy"},
-        },
-    }
-    combo_leg = {"market_type": gen.PLAYER_MARKET, "player": "Jayson Tatum", "team": "BOS",
-                 "category": "PTS", "line_val": 20.0, "odds": 1.8, "estimated_prob": 61.0,
-                 "desc": "Jayson Tatum (BOS) PTS 20+"}
-    capture = {
-        "mc_results": [{"player": "Jayson Tatum", "team": "BOS", "category": "PTS",
-                        "line_display": "20+", "mc_prob": 66.0}],
-        "combos": {"1": [], "2": [combo_leg], "3": [], "X": []},
-        "sgm_sim": {"2": {"sim_status": "ok", "sim_joint_prob": 0.6, "sim_correlation_lift": 1.1}},
-    }
-    payload = gen.build_market_eval_sidecar("report", {"extraction_time": "x"}, {}, [card], capture, "hybrid")
-    by_line = {leg["line"]: leg for leg in payload["legs"]}
-    assert by_line[20.0]["p_hit_rate_10f"] == 0.64
-    assert by_line[20.0]["p_ml"] == 0.55
-    assert by_line[20.0]["p_final"] == 0.61
-    assert by_line[20.0]["p_monte_carlo"] == 0.66
-    assert by_line[20.0]["picked"] is True and by_line[20.0]["picked_in"] == ["2"]
-    assert by_line[25.0]["p_ml"] is None and by_line[25.0]["picked"] is False
-    assert payload["combos"][0]["sportsbet_sgm_status"] == "missing"
-    assert payload["combos"][0]["sportsbet_sgm_price"] is None
-    assert payload["combos"][0]["sim_joint_prob"] == 0.6
-    assert payload["combos"][0]["sim_scaled_joint_prob"] == round(0.61 * 1.1, 4)
-    assert payload["report_sha256"] == hashlib.sha256(b"report").hexdigest()
+    def leg(line, price, p_ms):
+        return Leg(player="Jayson Tatum", team="BOS", opponent="LAL", stat="PTS", line=line, price=price,
+                   l10=[25.0] * 10, minutes_l10=36.0, hit_l10=0.7, hit_l5=0.8, hit_l3=1.0, avg=25.0,
+                   median=25.0, l3_avg=25.0, cov=0.2, market=1 / price, p_c=0.61, p_s=0.66, p_ms=p_ms,
+                   availability="ok", flags=[])
+    legs = [leg(20.0, 1.8, 0.63), leg(25.0, 3.2, None)]
+    odds = {"away_team": "BOS", "home_team": "LAL", "extraction_time": "x"}
+    payload = report.sidecar("report", odds, {}, legs, [], None, {})
+    by_line = {row["line"]: row for row in payload["legs"]}
+    assert by_line[20.0]["p_final"] == 0.63 and by_line[25.0]["p_final"] == 0.61   # MS, else C
+    assert by_line[20.0]["p_l10_base_rate"] == 0.7 and by_line[20.0]["side"] == "over"
+    assert by_line[20.0]["market"] == "pts" and by_line[20.0]["picked"] is False
+    assert by_line[20.0]["probability_model_id"].startswith("nba_engine:ms:")
+    assert payload["combos"] == [] and payload["report_sha256"] == hashlib.sha256(b"report").hexdigest()
 
 
 # ── two-way (Over/Under) de-vig ─────────────────────────────────────────────

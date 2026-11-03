@@ -22,7 +22,7 @@ from nba_sgm_quote import quote_combo, quote_valid  # noqa: E402
 import nba_steady_policy  # noqa: E402
 
 from . import report  # noqa: E402
-from .banker import select_b2  # noqa: E402
+from .banker import pool_sizes, select_b2  # noqa: E402
 from .legs import MARKET, build_legs  # noqa: E402
 
 MIN_SGM_PRICE = 2.0
@@ -36,11 +36,14 @@ def analyse(odds: dict, package: dict, *, quote=quote_combo, valid=quote_valid, 
     """(legs, combo, quote or None, diagnostics). The combo is non-empty only with a valid
     Sportsbet SGM quote >= 2.0 and the steady stop-loss not paused."""
     legs, skipped = build_legs(odds, package)
-    combo, rule = select_b2(legs, (package.get("meta") or {}).get("season_phase"))
-    diagnostics = {"rule": rule, "skipped": skipped, "candidates": len(legs),
+    phase = (package.get("meta") or {}).get("season_phase")
+    combo, rule = select_b2(legs, phase)
+    diagnostics = {"rule": rule, "skipped": skipped, "candidates": len(legs), "banker_pool": pool_sizes(legs, phase),
                    "flags": dict(Counter(f for l in legs for f in l.flags))}
     q = None
-    if paused:
+    if (package.get("meta") or {}).get("season_phase") == "PRESEASON":
+        combo, diagnostics["no_bet_reason"] = [], "preseason_shadow_only"
+    elif paused:
         combo, diagnostics["no_bet_reason"] = [], f"steady_paused:{paused}"
     elif not combo:
         diagnostics["no_bet_reason"] = "no_b2_combo"

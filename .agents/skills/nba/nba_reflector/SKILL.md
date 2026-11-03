@@ -27,7 +27,6 @@ ag_kit_skills:
 在開始任何覆盤工作前,你必須首先讀取以下資源檔案:
 - `resources/01_report_template.md` — 覆盤報告格式 + SIP Changelog 格式 [必讀]
 - `resources/02_search_protocol.md` — 數據搜索規則 + 深度比對框架（API 失敗時嘅 Fallback）[必讀]
-- `../nba_wong_choi/resources/engine_directives.md` — 包含機讀 `<xml>` 標籤之 P23 嚴格約束協議 [必讀]
 
 讀取一次後保留在記憶中,嚴禁每場賽事重複讀取。
 

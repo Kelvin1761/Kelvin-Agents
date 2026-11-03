@@ -10,43 +10,29 @@ import pytest
 
 NBA = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA))
-sys.path.insert(0, str(NBA / 'nba_wong_choi/scripts'))
+import nba_availability as availability
 import nba_sgm_quote as q
-import generate_nba_reports as r
-import validate_nba_output as v
+from nba_engine import publish, report as engine_report
+from nba_engine.legs import Leg
 
 NOW = datetime(2026, 10, 23, 1, tzinfo=timezone.utc)
+PLAYERS = [('Jayson Tatum', 'BOS'), ('LeBron James', 'LAL')]
 
 
 def inputs():
-    legs = [dict(market_type=r.PLAYER_MARKET, player=name, team=team, category='REB', line_val=5,
-                 line_display='5+', odds=1.8, estimated_prob=80, hit_l10=80, hit_l10_count='8/10',
-                 hit_l5=80, hit_l3=100, implied_prob=55.6, edge=24.4, ev_pct=44, cov=.2, cov_grade='穩定',
-                 avg=8, med=8, sd=1.6, l10=[8,9,4,7,10,8,9,4,8,9], base_rate=80,
-                 edge_grade='正值', desc=f'{name} ({team}) REB 5+', det_prob=78,
-                 engine='calibrated', probability_model_id='calibrated:fixture', adj_line='10-Factor 診斷')
-            for name, team in [('Jayson Tatum', 'BOS'), ('LeBron James', 'LAL')]]
-    odds = {'event_start_time': (NOW + timedelta(hours=2)).isoformat(), 'sgm_pricing': {
-        'class_external_id': 16, 'competition_external_id': 1, 'event_external_id': 2,
-        'outcomes': {'rebounds': {leg['player']: {'5': {'market_external_id': 10+i, 'outcome_external_id': 20+i}}
-                                  for i, leg in enumerate(legs)}}}}
+    legs = [dict(player=name, team=team, market='reb', line=5.0, side='over') for name, team in PLAYERS]
+    odds = {'away_team': 'BOS', 'home_team': 'LAL', 'event_start_time': (NOW + timedelta(hours=2)).isoformat(),
+            'extraction_time': NOW.isoformat(),
+            'player_props': {'rebounds': {name: {'lines': {'5': '1.8'}} for name, _ in PLAYERS}},
+            'sgm_pricing': {'class_external_id': 16, 'competition_external_id': 1, 'event_external_id': 2,
+                            'outcomes': {'rebounds': {leg['player']: {'5': {'market_external_id': 10 + i,
+                                                                            'outcome_external_id': 20 + i}}
+                                                      for i, leg in enumerate(legs)}}}}
     return odds, legs
 
 
 def post_price(price):
     return lambda body: (200, {'price': {'numerator': price - 1, 'denominator': 1, 'quoteId': 'q-fixture'}})
-
-
-def test_actual_sgm_price_can_reverse_positive_product_ev():
-    odds, legs = inputs()
-    assert r._combo_passes_positive_ev_gate(legs)
-    quoted = q.quote_combo(odds, legs, now=NOW, post=post_price(1.4))
-    assert q.quote_valid(quoted.quote, odds, legs, now=NOW)
-    ev = r.compute_combo_ev(quoted)
-    assert ev['product_of_leg_prices'] == 3.24
-    assert ev['combo_decimal_odds'] == 1.4
-    assert ev['combo_ev_pct'] == pytest.approx(-10.4)
-    assert not r._combo_passes_positive_ev_gate(quoted)
 
 
 def test_quote_binds_exact_event_and_legs_with_bounded_lifetime():
@@ -60,7 +46,7 @@ def test_quote_binds_exact_event_and_legs_with_bounded_lifetime():
     assert not q.quote_valid(quoted.quote, changed, legs, now=NOW)
     assert not q.quote_valid(quoted.quote, odds, legs[:1], now=NOW)
     changed_legs = copy.deepcopy(legs)
-    changed_legs[0]['line_val'] = 6
+    changed_legs[0]['line'] = 6.0
     assert not q.quote_valid(quoted.quote, odds, changed_legs, now=NOW)
 
 
@@ -82,146 +68,77 @@ def test_missing_ids_started_game_and_duplicate_legs_do_not_make_requests():
         assert q.quote_combo(source, selected, now=now, post=fail).quote['status'] != 'ok'
 
 
-def test_render_and_sidecar_use_identical_actual_price_probability_and_kelly(tmp_path):
+def engine_legs():
+    return [Leg(player=name, team=team, opponent='LAL' if team == 'BOS' else 'BOS', stat='REB', line=5.0,
+                price=1.8, l10=[8.0] * 10, minutes_l10=34.0, hit_l10=0.8, hit_l5=0.8, hit_l3=1.0, avg=8.0,
+                median=8.0, l3_avg=8.0, cov=0.2, market=1 / 1.8, p_c=0.8, p_s=0.8, p_ms=0.8,
+                availability='ok', flags=[]) for name, team in PLAYERS]
+
+
+def package(odds):
+    from nba_data_contract import NBA_STATISTICS_CONTRACT
+    maps = {team: availability.InjuryMap({}, [name, *[f'Roster Member {i}' for i in range(4)]], NOW.isoformat())
+            for name, team in PLAYERS}
+    packet = availability.apply_availability({'meta': {
+        'date': odds['event_start_time'], 'away': {'abbr': 'BOS'}, 'home': {'abbr': 'LAL'},
+        'statistics_contract': NBA_STATISTICS_CONTRACT, 'stat_source': 'espn'}, 'players': {}}, maps)
+    return {'meta': packet['meta'], 'injuries': packet.get('injuries') or {}}
+
+
+def _quoted_report(tmp_path, folder=None):
     odds, legs = inputs()
     quoted = q.quote_combo(odds, legs, now=NOW, post=post_price(2))
-    text = r.gen_combo_section('組合 1: 穩膽 SGM (Low Risk)', '🛡️', '', quoted)
-    assert '組合賠率 @2.0' in text and '**$100 回報**: **$200**' in text
-    assert '**Combo EV%**: +28.0%' in text
-    assert '14.0% bankroll' in text
-    assert '8-Factor' not in text and 'calibrated:fixture' in text
-    assert '→ 10-Factor 診斷: 78%' in text
-    sidecar = r.build_market_eval_sidecar(text, odds, {}, [], {'combos': {'1': quoted}}, 'hybrid')
-    assert sidecar['combos'][0]['sportsbet_sgm_price'] == 2
-    assert sidecar['combos'][0]['product_of_leg_prices'] == 3.24
-    report = tmp_path / 'Game_BOS_LAL_Full_Analysis.md'
-    report.write_text(text)
-    sidecar_path = Path(str(report)+'.market_legs.json')
-    sidecar_path.write_text(json.dumps(sidecar))
-    source = tmp_path/'odds.json'; source.write_text(json.dumps(odds))
-    assert not v.check_fw13_sgm_quotes(text, report, source, now=NOW)
-    assert v.check_fw13_sgm_quotes(text, report, source, now=NOW+timedelta(minutes=6))
-    assert v.check_fw13_sgm_quotes(text+'changed', report, source, now=NOW)
-    sidecar['combos'][0]['sportsbet_sgm_price'] = 3.24
-    sidecar_path.write_text(json.dumps(sidecar))
-    assert v.check_fw13_sgm_quotes(text, report, source, now=NOW)
+    combo, pkg = engine_legs(), package(odds)
+    diag = {'rule': 'banker'}
+    text = engine_report.render(odds, pkg, combo, combo, quoted.quote, diag)
+    folder = folder or tmp_path
+    report = folder/'Game_BOS_LAL_Full_Analysis.md'
+    source = folder/'Sportsbet_Odds_BOS_LAL.json'; source.write_text(json.dumps(odds))
+    engine_report.write(str(report), text, engine_report.sidecar(text, odds, pkg, combo, combo, quoted.quote, diag))
+    return odds, text, report, source, Path(str(report)+'.market_legs.json')
 
 
-def test_unquoted_combo_cannot_render_formal_recommendation():
-    _, legs = inputs()
-    assert '組合賠率 @' not in r.gen_combo_section('組合 1: test', '', '', legs)
+def test_publication_needs_a_live_quote_and_current_availability(tmp_path):
+    odds, text, report, source, sidecar = _quoted_report(tmp_path)
+    assert publish.validate(report, source, now=NOW) == (True, [])
+    passed, blocks = publish.validate(report, source, now=NOW + timedelta(minutes=6))
+    assert not passed and any('quote' in b for b in blocks)
+    payload = json.loads(sidecar.read_text())
+    payload['availability'] = None
+    sidecar.write_text(json.dumps(payload))
+    passed, blocks = publish.validate(report, source, now=NOW)
+    assert not passed and any('availability' in b for b in blocks)
 
 
-@pytest.mark.parametrize('price,published', [(2.0, True), (1.4, False)])
-def test_real_report_selection_uses_quote_before_rendering(monkeypatch, price, published):
-    odds, legs = inputs()
-    now = datetime.now(timezone.utc)
-    odds['event_start_time'] = (now + timedelta(hours=2)).isoformat()
-    monkeypatch.setattr(r, 'build_leg_candidates', lambda *args, **kwargs: [])
-    monkeypatch.setattr(r, 'select_combo_1', lambda candidates, **gates: legs)
-    for name in ('select_combo_2', 'select_combo_3', 'select_combo_x_value_bomb'):
-        monkeypatch.setattr(r, name, lambda candidates: [])
-    monkeypatch.setattr(r, 'quote_combo', lambda source, selected: q.quote_combo(source, selected, now=now, post=post_price(price)))
-    capture = {}
-    meta = {'away': {'abbr': 'BOS', 'name': 'Boston'}, 'home': {'abbr': 'LAL', 'name': 'LA'}}
-    text = r.gen_full_report(meta, {}, {}, {}, {}, [], now.isoformat(), capture=capture, sportsbet_odds=odds)
-    assert bool(capture['combos']['1']) is published
-    assert ('組合賠率 @2.0' in text) is published
-    assert capture['quote_attempts']['1']['decimal_odds'] == price
+def test_publication_rejects_a_leg_sportsbet_no_longer_offers(tmp_path):
+    odds, text, report, source, _ = _quoted_report(tmp_path)
+    odds['player_props']['rebounds']['LeBron James']['lines'] = {'6': '2.4'}
+    source.write_text(json.dumps(odds))
+    passed, blocks = publish.validate(report, source, now=NOW)
+    assert not passed and any('LeBron James' in b for b in blocks)
 
 
-def test_live_cache_reprices_expired_sgm_without_changing_stat_inputs(tmp_path, monkeypatch):
-    import nba_orchestrator as orchestrator
-    odds, legs = inputs()
-    quoted = q.quote_combo(odds, legs, now=NOW, post=post_price(2))
-    text = r.gen_combo_section('組合 1: test', '', '', quoted)
-    report = tmp_path/'Game_BOS_LAL_Full_Analysis.md'; report.write_text(text)
-    source = tmp_path/'Sportsbet_Odds_BOS_LAL.json'; source.write_text(json.dumps(odds))
-    stats = tmp_path/'stats.json'; stats.write_text('{}')
-    Path(str(report)+'.market_legs.json').write_text(json.dumps(r.build_market_eval_sidecar(text, odds, {}, [], {'combos': {'1': quoted}}, 'hybrid')))
-    monkeypatch.setattr(orchestrator, 'report_inputs', lambda *args: {'fixture': True})
-    Path(str(report)+'.inputs.json').write_text(json.dumps({'inputs': {'fixture': True}, 'report': hashlib.sha256(text.encode()).hexdigest()}))
-    # Expiry is tested against a fixed future clock in the cache's actual verifier.
-    import nba_wong_choi.scripts.validate_nba_output as cache_validator
-    real = cache_validator.check_fw13_sgm_quotes
-    monkeypatch.setattr(cache_validator, 'check_fw13_sgm_quotes', lambda *args: real(*args, now=NOW+timedelta(minutes=6)))
-    assert not orchestrator.report_cache_current(str(report), str(source), str(stats), False)
-
-
-def test_dashboard_exports_frozen_sgm_price_and_adjusted_probability(tmp_path):
+def test_dashboard_exports_frozen_sgm_price_and_probability(tmp_path):
     sys.path.insert(0, str(NBA.parents[2] / 'Horse_Racing_Dashboard/backend'))
     from services.multisport_exporter import export_nba_snapshot, nba_no_firewall
-    odds, legs = inputs()
-    odds.update(target_analysis_date='2026-10-23', game_tag='BOS_LAL', source='sportsbet.com.au',
-                player_props={'points': {'Jayson Tatum': {'lines': {'20': '1.8'}}}})
-    quoted = q.quote_combo(odds, legs, now=NOW, post=post_price(2))
-    text = ('**odds_source**: SPORTSBET_LIVE\nPython Auto-Selection\n' +
-            r.gen_combo_section('組合 1: test', '', '', quoted) + '\n未填寫項目 殘留: 0')
     folder = tmp_path/'2026-10-23 NBA Analysis'; folder.mkdir()
-    report = folder/'Game_BOS_LAL_Full_Analysis.md'; report.write_text(text)
-    (folder/'Sportsbet_Odds_BOS_LAL.json').write_text(json.dumps(odds))
-    Path(str(report)+'.market_legs.json').write_text(json.dumps(r.build_market_eval_sidecar(text, odds, {}, [], {'combos': {'1': quoted}}, 'hybrid')))
-    # Historical parser opt-out: the publication verifier is tested above.
+    _, _, report, source, sidecar = _quoted_report(tmp_path, folder)
+    odds = json.loads(source.read_text())
+    odds.update(target_analysis_date='2026-10-23', game_tag='BOS_LAL', source='sportsbet.com.au')
+    source.write_text(json.dumps(odds))
     snapshot = export_nba_snapshot(tmp_path, target_date='2026-10-23', firewall=nba_no_firewall)
     combo = next(row for row in snapshot['recommendations'] if row['bet_type'] == 'combo')
     assert combo['odds'] == 2 and combo['odds_status'] == 'sportsbet_sgm_quoted'
     assert combo['metrics']['model_probability'] == pytest.approx(.64)
     assert combo['metrics']['expected_value'] == pytest.approx(.28)
-    assert combo['quote_expires_at'] == quoted.quote['expires_at']
-    assert len(snapshot['recommendations']) == 1
-    legacy = export_nba_snapshot(tmp_path, target_date='2026-10-23', firewall=nba_no_firewall, include_legacy_strategies=True)
-    banker = next(row for row in legacy['recommendations'] if row['bet_type'] == 'single')
-    assert banker['odds_status'] == 'sportsbet_extracted'
-
-
-def test_publication_checks_availability_even_when_quote_is_valid(tmp_path):
-    import nba_availability as availability
-    from nba_data_contract import NBA_STATISTICS_CONTRACT
-    odds,legs=inputs();quoted=q.quote_combo(odds,legs,now=NOW,post=post_price(2))
-    text=r.gen_combo_section('組合 1: test','','',quoted)
-    maps={team:availability.InjuryMap({},[leg['player'],*[f'Roster Member {i}' for i in range(4)]],NOW.isoformat())
-          for team,leg in zip(('BOS','LAL'),legs)}
-    packet=availability.apply_availability({'meta':{'date':odds['event_start_time'],'away':{'abbr':'BOS'},'home':{'abbr':'LAL'},
-        'statistics_contract':2,'defender_source':{'per_mode':'Totals','sample_unit':'total_attempts','observed_players':576}},'players':{}},maps)
-    report=tmp_path/'Game_BOS_LAL_Full_Analysis.md';report.write_text(text)
-    source=tmp_path/'odds.json';source.write_text(json.dumps(odds))
-    payload=r.build_market_eval_sidecar(text,odds,{},[],{'combos':{'1':quoted},'availability':packet},'hybrid')
-    sidecar=Path(str(report)+'.market_legs.json');sidecar.write_text(json.dumps(payload))
-    assert not v.check_fw13_sgm_quotes(text,report,source,now=NOW)
-    assert not v.check_fw14_availability(text,report,now=NOW)
-    assert v.check_fw14_availability(text,report,now=NOW+timedelta(minutes=31))
-    original_source=packet['meta']['defender_source']
-    for broken_source in (None,{},[],{**original_source,'observed_players':0},
-                          {**original_source,'observed_players':'576'},
-                          {**original_source,'observed_players':True},
-                          {**original_source,'per_mode':'PerGame'},
-                          {**original_source,'sample_unit':'per_game'}):
-        payload['availability']['meta']['defender_source']=broken_source
-        sidecar.write_text(json.dumps(payload))
-        assert v.check_fw14_availability(text,report,now=NOW)
-    payload['availability']['meta']['defender_source']=original_source
-    payload['availability']['meta']['statistics_contract']=1;sidecar.write_text(json.dumps(payload))
-    assert v.check_fw14_availability(text,report,now=NOW)
-    payload['availability']=None;sidecar.write_text(json.dumps(payload))
-    assert v.check_fw14_availability(text,report,now=NOW)
-    assert any('FW-14' in issue for issue in v.validate_file(str(report),str(source))['blocks'])
-
-
-def _quoted_report(tmp_path):
-    odds, legs = inputs()
-    quoted = q.quote_combo(odds, legs, now=NOW, post=post_price(2))
-    text = r.gen_combo_section('組合 1: test', '', '', quoted)
-    report = tmp_path/'Game_BOS_LAL_Full_Analysis.md'; report.write_text(text)
-    source = tmp_path/'Sportsbet_Odds_BOS_LAL.json'; source.write_text(json.dumps(odds))
-    sidecar = Path(str(report)+'.market_legs.json')
-    sidecar.write_text(json.dumps(r.build_market_eval_sidecar(text, odds, {}, [], {'combos': {'1': quoted}}, 'hybrid')))
-    return odds, text, report, source, sidecar
+    assert combo['quote_expires_at'] == json.loads(sidecar.read_text())['combos'][0]['sgm_quote']['expires_at']
+    assert [leg['player'] for leg in combo['legs']] == [name for name, _ in PLAYERS]
 
 
 def test_expired_quote_is_renewed_in_place_only_at_the_published_price(tmp_path):
     odds, text, report, source, sidecar = _quoted_report(tmp_path)
     later = NOW + timedelta(minutes=20)
-    assert v.check_fw13_sgm_quotes(text, report, source, now=later)
+    assert not publish.validate(report, source, now=later)[0]
     before = sidecar.read_text()
     for moved in (2.1, 1.9):
         assert not q.requote_sidecar(report, odds, post=post_price(moved), now=later)
@@ -230,8 +147,8 @@ def test_expired_quote_is_renewed_in_place_only_at_the_published_price(tmp_path)
     assert sidecar.read_text() == before
     assert q.requote_sidecar(report, odds, post=post_price(2), now=later)
     assert report.read_text() == text
-    assert not v.check_fw13_sgm_quotes(text, report, source, now=later)
-    assert v.check_fw13_sgm_quotes(text, report, source, now=later + timedelta(minutes=6))
+    renewed = json.loads(sidecar.read_text())['combos'][0]
+    assert q.quote_valid(renewed['sgm_quote'], odds, renewed['legs'], now=later)
 
 
 def test_requote_refuses_a_report_that_no_longer_matches_its_sidecar(tmp_path):
@@ -244,14 +161,13 @@ def test_requote_refuses_a_report_that_no_longer_matches_its_sidecar(tmp_path):
 
 def test_report_cache_renews_same_price_quote_instead_of_regenerating(tmp_path, monkeypatch):
     import nba_orchestrator as orchestrator
-    import nba_wong_choi.scripts.validate_nba_output as cache_validator
     odds, text, report, source, _ = _quoted_report(tmp_path)
     stats = tmp_path/'stats.json'; stats.write_text('{}')
     monkeypatch.setattr(orchestrator, 'report_inputs', lambda *args: {'fixture': True})
     Path(str(report)+'.inputs.json').write_text(json.dumps({'inputs': {'fixture': True}, 'report': hashlib.sha256(text.encode()).hexdigest()}))
     later = NOW + timedelta(minutes=20)
-    real = cache_validator.check_fw13_sgm_quotes
-    monkeypatch.setattr(cache_validator, 'check_fw13_sgm_quotes', lambda *args: real(*args, now=later))
+    real = publish.validate
+    monkeypatch.setattr(publish, 'validate', lambda r, s, **kw: real(r, s, now=later))
     real_requote = q.requote_sidecar
     for price, reused in ((2.2, False), (2, True)):
         monkeypatch.setattr(q, 'requote_sidecar', lambda path, data, price=price: real_requote(path, data, post=post_price(price), now=later))

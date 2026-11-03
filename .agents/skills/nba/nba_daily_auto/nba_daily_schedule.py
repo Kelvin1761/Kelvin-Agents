@@ -338,17 +338,18 @@ def _no_banker_diagnostics(snapshot: dict[str, Any]) -> str:
     latest = snapshot.get("latest_analysis") or {}
     coverage = latest.get("coverage") or {}
     games = latest.get("games") or []
-    recent = edge = 0
+    strict = fallback = 0
     found = False
     for game in games:
-        counts = ((game.get("diagnostics") or {}).get("banker_funnel") or {}).get("fallback", {}).get("remaining", {})
+        counts = (game.get("diagnostics") or {}).get("banker_pool") or {}
         if counts:
             found = True
-            recent += counts.get("recent_hits", 0)
-            edge += counts.get("nonnegative_edge", 0)
+            strict += counts.get("strict", 0)
+            fallback += counts.get("fallback", 0)
     summary = f"分析：{coverage.get('analysed_games', 0)}/{coverage.get('scheduled_games', 0)} 場；正式穩膽 0。"
     if found:
-        summary += f"\n穩膽 fallback 漏斗：近期命中率合格 {recent} 腿（其中非負 edge {edge} 腿；steady 唔要求）；之後仍需波幅／陣容／合法組合／真實組合價 ≥2.0。"
+        summary += (f"\n穩膽合格腿：主門檻 {strict} 條、fallback {fallback} 條；"
+                    "之後仍需合法組合（每場 2–4 腿、單腿價乘積 ≥2.0）同真實組合價 ≥2.0。")
     else:
         summary += "\n原因：正式分析未有通過全部驗證嘅 NBA 組合；逐關診斷未齊，唔將原因一律歸咎門檻。"
     return summary
@@ -1720,7 +1721,6 @@ def run_postgame(target_date: str, log: RunLog) -> str:
             log.step("telegram_performance", str(performance.get("status") or "unknown"))
     else:
         log.step("telegram_performance", "skipped", reason="archive_path_unavailable")
-    _experiment_readiness(target_date, log)
     return "archived"
 
 
@@ -1750,25 +1750,6 @@ def catch_up_postgame(target_date: str, log: RunLog) -> list[str]:
         log.step("postgame_catch_up", status, date=day)
         done.append(day)
     return done
-
-
-def _experiment_readiness(target_date: str, log: RunLog) -> None:
-    """Monday progress digest + a one-off alert when a frozen experiment's checkpoint is due.
-
-    Read-only; the experiments' own protocols decide verdicts. Never fails postgame.
-    """
-    try:
-        import nba_experiment_readiness as readiness
-        report = readiness.build(target_date)
-        alerts = readiness.due_alerts(report)
-        for key, line in alerts:
-            notify_once(f"experiment-ready:{key}", line, audience="primary")
-        if date.fromisoformat(target_date).weekday() == 0:
-            notify_once(f"experiment-progress:{target_date}", "\n".join(readiness.progress_lines(report)),
-                        audience="primary")
-        log.step("experiment_readiness", "ok", due=len(alerts), items=len(report["items"]))
-    except Exception as exc:  # noqa: BLE001 — a reporting add-on must not fail postgame
-        log.step("experiment_readiness", "failed", error=f"{type(exc).__name__}: {exc}")
 
 
 def health_payload(target_date: str) -> tuple[dict[str, Any], int]:

@@ -15,6 +15,7 @@ bad data.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 from functools import lru_cache
@@ -27,6 +28,15 @@ LOG_FIELDS = ("MIN", "PTS", "REB", "AST", "FG3M", "FGA", "FG3A", "FTA", "FGM", "
 @lru_cache(maxsize=None)
 def config(path: str | None = None) -> dict:
     return json.loads(Path(path or Path(__file__).with_name("config.json")).read_text(encoding="utf-8"))
+
+
+def probability_model_id(cfg: dict | None = None) -> str:
+    """Identity of the published probability: every coefficient, no descriptive notes."""
+    c = cfg or config()
+    numbers = {name: {k: v for k, v in c[name].items() if not k.startswith("_")}
+               for name in ("c_layer", "ms_layer", "season_rate")}
+    raw = json.dumps(numbers, sort_keys=True, allow_nan=False).encode()
+    return f"nba_engine:ms:{hashlib.sha256(raw).hexdigest()[:16]}"
 
 
 def _logit(p: float) -> float:

@@ -12,6 +12,7 @@ import json
 import math
 import os
 
+from . import model
 from .legs import MARKET, Leg
 
 SCHEMA = "nba-market-eval-legs/v1"
@@ -51,6 +52,8 @@ def render(odds, package, legs, combo, quote, diagnostics, paused=None) -> str:
            f"> 📌 {STEADY_MARKER} — {DISCLAIMER}"]
     if paused:
         out.append(f"> ⛔ 正式穩膽停損暫停中（{paused}）；今日 NO BET。")
+    if meta.get("season_phase") == "PRESEASON":
+        out.append("> ⛔ NO BET — PRESEASON SHADOW ONLY：季前賽只作分析，禁止投注。")
     out.append("")
     price = (quote or {}).get("decimal_odds")
     if combo and price:
@@ -79,6 +82,7 @@ def render(odds, package, legs, combo, quote, diagnostics, paused=None) -> str:
 
 def sidecar(report_text, odds, package, legs, combo, quote, diagnostics) -> dict:
     meta = package.get("meta") or {}
+    model_id = model.probability_model_id()
     picked = {(l.player, l.stat, l.line) for l in combo}
     combos = []
     if combo and quote and quote.get("status") == "ok":
@@ -105,7 +109,7 @@ def sidecar(report_text, odds, package, legs, combo, quote, diagnostics) -> dict
                   "price": l.price, "p_final": _round(l.p_final), "p_market": _round(l.market),
                   "p_c": _round(l.p_c), "p_s": _round(l.p_s), "p_ms": _round(l.p_ms),
                   "p_l10_base_rate": l.hit_l10, "hit_l5": l.hit_l5, "availability": l.availability,
-                  "flags": l.flags, "engine": ENGINE_ID,
+                  "flags": l.flags, "engine": ENGINE_ID, "probability_model_id": model_id,
                   "picked": (l.player, l.stat, l.line) in picked,
                   "picked_in": ["1"] if (l.player, l.stat, l.line) in picked else []} for l in legs],
         "combos": combos,

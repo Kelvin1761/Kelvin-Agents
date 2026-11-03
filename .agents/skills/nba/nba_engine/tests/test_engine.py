@@ -152,6 +152,9 @@ def test_analyse_bets_only_on_a_valid_quote_at_or_above_two():
     assert combo == [] and diag["no_bet_reason"].startswith("quote_rejected")
     _, combo, _, diag = analyse(odds, package, quote=ok, valid=lambda q, o, l: True, paused="S1")
     assert combo == [] and diag["no_bet_reason"] == "steady_paused:S1"
+    package["meta"]["season_phase"] = "PRESEASON"
+    _, combo, _, diag = analyse(odds, package, quote=ok, valid=lambda q, o, l: True)
+    assert combo == [] and diag["no_bet_reason"] == "preseason_shadow_only"
 
 
 def test_report_and_sidecar_are_bound_and_parse_like_the_dashboard(tmp_path):
@@ -180,3 +183,22 @@ def test_firewall_blocks_a_report_edited_after_writing(tmp_path):
     out.write_text(text + "\nedited")
     passed, blocks = publish.validate(out, tmp_path / "Sportsbet_Odds_AAA_BBB.json")
     assert not passed and "does not belong" in blocks[0]
+
+
+def test_player_identity_normalises_accents_and_suffixes_but_never_guesses():
+    from nba_engine.legs import _find
+    players = [{"name": "Luka Dončić"}, {"name": "Gary Payton Jr."}]
+    assert _find(players, "Luka Doncic")["name"] == "Luka Dončić"
+    assert _find(players, "Dončić") is None
+    assert _find(players, "Gary Payton Sr.") is None
+    assert _find([{"name": "Luka Dončić"}, {"name": "Luka Doncic"}], "Luka Doncic") is None
+
+
+def test_early_season_and_new_team_flags():
+    from nba_engine.legs import _flags
+    previous = {"l10_seasons": ["2026-27"] * 3 + ["2025-26"] * 7, "l10_matchups": ["BOS vs. NYK"] * 10}
+    assert "l10_mostly_previous_season" in _flags("AST", previous, "BOS", "2026-27", 30.0)
+    assert "l10_mostly_previous_season" not in _flags("PTS", previous, "BOS", "2026-27", 30.0)
+    moved = {"l10_seasons": ["2026-27"] * 10, "l10_matchups": ["LAL vs. NYK"] * 7 + ["BOS @ MIA"] * 3}
+    assert "new_team" in _flags("REB", moved, "BOS", "2026-27", 30.0)
+    assert "bench_minutes" in _flags("REB", moved, "BOS", "2026-27", 22.0)
