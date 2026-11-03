@@ -78,12 +78,23 @@ GRADE_CODES = {"一級": "G1", "二級": "G2", "三級": "G3", "表列": "L"}
 # 場地（草地）。全天候跑道喺 fsc 寫成「膠沙地 (Polytrack)-標準」，個括號就係
 # starter PDF 用嘅字，另外處理。
 TURF_GOING_CODES = {
-    "快地": "F", "好地至快地": "GF", "好地": "G", "好地至黏地": "GS", "黏地": "Y",
-    "黏地至軟地": "YS", "軟地": "S", "軟地至大爛地": "SH", "大爛地": "H", "爛地": "H",
-    "好至快地": "GF", "好至黏地": "GS",
+    "快地": "F", "好地至快地": "GF", "好地": "G", "好地至軟地": "GS", "好地至黏地": "GY",
+    "黏地": "Y", "黏地至軟地": "YS", "軟地": "S", "軟地至大爛地": "SH", "爛地": "SH",
+    "大爛地": "H", "沙地": "Sand",
+}
+# 同一個中文字，各地 starter PDF 用嘅英文碼唔同（法國「爛地」寫 VS）。只影響顯示。
+TURF_GOING_BY_REGION = {("FR", "爛地"): "VS"}
+# 冇括號嘅「膠沙地」：starter PDF 多數寫 Synthetic（紐西蘭劍橋等），英國有啲寫
+# Polytrack／Tapeta。Surface 一樣係 SYNTHETIC，所以只係顯示字唔同。
+BARE_ALL_WEATHER = "Synthetic"
+# 2026-09～11 語料實際對到嘅英／愛全天候跑道（只收對得上嘅，唔估）。
+BARE_ALL_WEATHER_BY_COURSE = {
+    ("IRE", "鄧多克"): "Polytrack", ("GB", "金頓"): "Polytrack",
+    ("GB", "嶺飛"): "Polytrack", ("GB", "湛士福城"): "Polytrack", ("GB", "紐卡素"): "Tapeta",
 }
 MARGIN_WORDS = {
-    "馬頭": "Hd", "短馬頭": "SH", "馬頸": "Nk", "馬鼻": "Ns",
+    "馬頭": "Hd", "短馬頭": "SH", "馬頸": "Nk", "馬鼻": "Nose", "長馬頭": "LHd",
+    "長馬頸": "LNk", "平頭": "DH", "Head": "Head",
     "頭位": "Hd", "短頭位": "SH", "頸位": "Nk", "鼻位": "Ns", "短馬頭位": "SH",
     "平頭馬": "DH", "多個馬位": "Dist",
 }
@@ -91,12 +102,13 @@ AGE_RE = re.compile(r"(\d)歲(及以上)?")
 
 ROW_START_RE = re.compile(r"^\s*(\d{1,2})\.(\d{1,2})\.(\d{4})\s")
 ROW_RE = re.compile(
-    r"^\s*(?P<date>\d{1,2}\.\d{1,2}\.\d{4})\s+(?P<course>.+?)\s+(?P<dir>右|左|直)\s+"
+    r"^\s*(?P<date>\d{1,2}\.\d{1,2}\.\d{4})\s+(?P<course>.+?)(?:\s+(?P<dir>右|左|直))?\s+"
     r"(?P<dist>\d{3,4})\s+(?P<mid>.+?)\s+(?P<grade>一級|二級|三級|表列|-)\s+"
-    r"(?P<place>\d+)\s*/\s*(?P<field>\d+)\s+(?P<barrier>\S+)\s+(?P<wt>\d+)(?:\([+-]?\d+\))?\s+"
+    r"(?P<place>\d+)\s*/\s*(?P<field>\d+)(?:\s*\(平頭\))?\s+(?P<barrier>\S+)\s+(?P<wt>\d+)(?:\([+-]?\d+\))?\s+"
     r"(?P<odds>\S+)\s+(?P<rest>.+)$"
 )
-TIME_RE = re.compile(r"^\d{1,2}\.\d{2}\.\d{2}$")
+# 「1.3.02R」呢類手民之誤都見過（J215）：分鐘後面嗰格補返兩位。
+TIME_RE = re.compile(r"^(\d{1,2})\.(\d{1,2})\.(\d{2})R?$")
 ALL_WEATHER_RE = re.compile(r"^(?P<word>\S*地)\s*\((?P<code>[A-Za-z][A-Za-z ]*)\)(?:-\S+)?\s*")
 
 
@@ -165,16 +177,27 @@ def split_run_blocks(text: str) -> list[tuple[datetime, str, str]]:
     return [(dt, first, cont) for dt, first, cont in blocks]
 
 
-def _going_and_class(mid: str) -> tuple[str, str]:
-    """`mid` = 「場地 賽事名稱/類別」。回傳 (starter PDF 場地碼, 類別文字)。"""
+def _going_and_class(mid: str, cont: str = "") -> tuple[str, str]:
+    """`mid` = 「場地 賽事名稱/類別」。回傳 (starter PDF 場地碼, 類別文字)。
+
+    場地字有時會斷開兩行（「好地至」＋續行「快地」、「好地至黏」＋「地」），
+    所以認唔到就試埋續行第一個字。
+    """
     mid = mid.strip()
     aw = ALL_WEATHER_RE.match(mid)
     if aw:
         code = aw.group("code").strip()
         return code, mid[aw.end():].strip()
     head, _, tail = mid.partition(" ")
+    if head == "膠沙地":
+        return BARE_ALL_WEATHER, tail.strip()
     if head in TURF_GOING_CODES:
         return TURF_GOING_CODES[head], tail.strip()
+    cont_tokens = re.sub(r"^\([^)]*\)\s*", "", cont or "").split()
+    if cont_tokens:
+        for key, code in TURF_GOING_CODES.items():
+            if key.startswith(head) and cont_tokens[0].startswith(key[len(head):]):
+                return code, tail.strip()
     if head.startswith("泥地"):
         return "Dirt", tail.strip()
     return head, tail.strip()
@@ -202,6 +225,11 @@ def _margin(token: str) -> str:
     return token
 
 
+def _finish_time(token: str) -> str:
+    match = TIME_RE.match(token)
+    return f"{match.group(1)}.{int(match.group(2)):02d}.{match.group(3)}" if match else token
+
+
 def _is_margin(token: str) -> bool:
     body = token.lstrip("+-")
     return body.endswith("馬位") or body in MARGIN_WORDS
@@ -220,10 +248,19 @@ def parse_run(dt: datetime, first: str, cont: str = "") -> Optional[dict]:
     match = ROW_RE.match(first)
     if not match:
         return None
+    direction = match.group("dir")
+    if not direction:
+        # 方向偶然斷咗落續行：「(三) 右 ( - ) …」
+        wrapped = re.match(r"^\([^)]*\)\s+(右|左|直)\b", cont or "")
+        direction = wrapped.group(1) if wrapped else ""
     course_tokens = match.group("course").split()
     region = REGION_CODES.get(course_tokens[0], course_tokens[0]) if course_tokens else ""
     racecourse = " ".join(course_tokens[1:]) if len(course_tokens) > 1 else ""
-    going, class_text = _going_and_class(match.group("mid"))
+    going, class_text = _going_and_class(match.group("mid"), cont)
+    going_word = match.group("mid").split()[0] if match.group("mid").split() else ""
+    going = TURF_GOING_BY_REGION.get((region, going_word), going)
+    if going == BARE_ALL_WEATHER:
+        going = BARE_ALL_WEATHER_BY_COURSE.get((region, racecourse), going)
     rest = match.group("rest").split()
     time_idx = next((i for i, tok in enumerate(rest) if TIME_RE.match(tok)), None)
     margin_idx = next((i for i, tok in enumerate(rest) if _is_margin(tok)), None)
@@ -240,7 +277,7 @@ def parse_run(dt: datetime, first: str, cont: str = "") -> Optional[dict]:
         "Date": f"{dt.day}/{dt.month}/{dt.year}",
         "Region": region,
         "Racecourse": racecourse,
-        "Direction": DIRECTION_CODES[match.group("dir")],
+        "Direction": DIRECTION_CODES.get(direction, ""),
         "Distance": int(match.group("dist")),
         "Going": going,
         "Surface": _surface(going),
@@ -248,7 +285,7 @@ def parse_run(dt: datetime, first: str, cont: str = "") -> Optional[dict]:
         "Field_Size": int(match.group("field")),
         "Race_Type": race_type,
         "Weight": int(match.group("wt")),
-        "Finish_Time_Raw": rest[time_idx],
+        "Finish_Time_Raw": _finish_time(rest[time_idx]),
         "Margin": _margin(rest[margin_idx]),
         "Gear": " ".join(gear_tokens),
         "Is_PDF_Overseas": True,
