@@ -1,5 +1,7 @@
 # EXP-20261103-14：TE 固定窗口來源覆蓋、draw／tour 缺口
 
+**2026-11-04 更正**：原source-shape helper會對無連結Futures head沿用前一個URL，原「全部有明示URL／無unresolved」歸因已撤回。見[獨立source-spec修正](EXP-20261104-01-tennis-header-source-correction.md)：9367版本有URL、4958只有當前head icon，1857個可對照head一致；統計數字重算後相同不恢復舊歸因。URL-only候選被4958個未知攔住，未驗收／未部署；原115檔artifact及失敗比較均保留。
+
 採集／分析日期2026-11-03 UTC，悉尼已跨至11-04。接續[缺Elo全量診斷](../audits/tennis-missing-elo-inputs-20261103.md)及[統一計劃](../../tennis-research-execution-plan-20261028.md)。**本輪完成公開資料採集與輸入診斷；未改live資料、入口、模型或資格，未量度準確度。** 原十五個REJECT_DEV與tennis-v1不變。
 
 ## 固定範圍及取得的資料
@@ -33,7 +35,7 @@
 
 ## 兩項可重現的入口缺陷
 
-來源head links明文帶`/atp-men/`、`/wta-women/`及`?type=double`；雙打每邊是`/doubles-team/`連結，單打每邊是`/player/`。用同一source header、雙側相同context及對應side links核對，34版本內所有14,325個parsed results均可分流，無餘下unresolved draw。
+**原版本段來源歸因有誤，已撤回。** 舊helper未清除無連結head的前URL；真正9367版本有當前URL、4958需另核實當前icon。[獨立重驗](EXP-20261104-01-tennis-header-source-correction.md)重新支持下表數字，但不支持原版「全部有明示URL」的證據鏈；不能拿舊helper為新資料資格背書。
 
 | source所示類別 | 賽果版本 |
 |---|---:|

@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 先更正來源審計**：[EXP-20261104-01](docs/experiments/EXP-20261104-01-tennis-header-source-correction.md)撤回原helper在無link Futures head沿用上一URL的歸因。獨立重驗9367版本有URL、4958只有當前gender icon，1857個head對照一致；先登記新source-spec，URL缺失仍保留None，不從名字或前head猜。現URL-only候選47／1115 tests過但真實矩陣停於4958未知，full已取消143，未驗收／未部署；接續改候選後重新全量比較及full，不改模型ruler／舊REJECT或回填forward。
+
 **2026-11-03 UTC／悉尼11-04 source pilot**：[EXP-20261103-14](docs/experiments/EXP-20261103-14-tennis-te-draw-tour-coverage.md)完成固定33日原文與全39人候選盤點，115檔／2.8MB封存及離線parity。重現source draw／tour流失：14325賽果版本中2542雙打仍送history迴圈，11783單打中5116 tour推斷與source明示不符；不是實際live受影響數。23人來源全名吻合但全部39人tour UNKNOWN，仍無獨立ownership。下一步先照已登記C／D／T／DT四臂驗新入口分類與identity guards，未改live、ruler或十五個REJECT_DEV，準確度目標仍未完成。
 
 **2026-11-03 缺 Elo／真實來源跟進**：[全量診斷及下一輪固定協議](docs/audits/tennis-missing-elo-inputs-20261103.md)：原55-card的40個缺Elo sides／39位球員，在預測前公開snapshot均沒有對應history或warm/cold cache；現時38位仍無賽日前history/cache，未找到已登記別名可直接補回。TE每日覆盤已有接線，兩份修正後真實HTML receipt及531／423場parse核對通過，不能再標成「首次新receipt未驗證」。下一步先按全部39位及固定2026-10-01至11-02窗做source coverage／獨立identity pilot，不補假值、不回填舊forward、不改原15個REJECT_DEV；準確度目標仍未完成。
