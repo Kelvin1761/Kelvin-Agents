@@ -71,7 +71,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       restoreTennisView, tennisStats, tennisPnl, tennisSelectRows, tennisRenderBets, tennisLoadMore, setTennisFilter, renderTennisWorkspace, loadSportsBetLedger,
       setTennisQueryForTest: (query) => { tennisSearch = query; },
       setTennisLimitForTest: (limit) => { tennisLimit = limit; },
-      nbaStats, nbaRecords, nbaDashboard, nbaSelectRows, nbaShortDate, nbaJersey,
+      nbaStats, nbaRecords, nbaDashboard, nbaSelectRows, nbaPeriodsNow, nbaPeriodRange, nbaRenderMonths, nbaShortDate, nbaJersey,
       nbaShouldAutoRefresh, racingShouldAutoRefresh, checkForNewSnapshot,
       setPendingBetSyncForTest: (value) => { hasPendingCommittedChanges = value; }, reloadSnapshot, restoreNbaTrackingView,
       getSportsTabForTest: () => activeSportsTab,
@@ -2485,4 +2485,27 @@ test("timeline 睇直播 links to the Sportsbet race page, only for races still 
   assert.doesNotMatch(html, /race-1-333/);
   assert.doesNotMatch(html, /evil\.example/);
   assert.match(html, /onclick="event\.stopPropagation\(\)"/);   // tapping it never opens the race row
+});
+
+test("NBA week is Monday–Sunday and month is the calendar month, with past months comparable",()=>{
+  const api=loadTemplateFunctions(EMPTY_DASHBOARD_DATA),p=api.nbaPeriodsNow();
+  const dow=d=>new Date(d+'T12:00:00Z').getUTCDay();
+  assert.equal(dow(p.week[0]),1);assert.equal(dow(p.week[2]),0);
+  assert.equal(p.month[0].slice(8),'01');
+  const next=new Date(p.month[2]+'T12:00:00Z');next.setUTCDate(next.getUTCDate()+1);assert.equal(next.getUTCDate(),1);
+  assert.deepEqual([...api.nbaPeriodRange('m:2026-02')].filter((_,i)=>i!==1),['2026-02-01','2026-02-28']);
+  assert.equal(api.nbaPeriodRange('m:2026-13'),undefined);
+});
+
+test("a void NBA slip stays on the list but is not counted as a bet or in ROI",()=>{
+  const leg=state=>({player:'Jrue Holiday',stat:'REB',line:4,state});
+  const records=[{id:'v',day:'2026-10-26',event_name:'TOR @ LAC',stake:1,odds:3,state:'void',legs:[leg('void'),leg('won')]},
+    {id:'w',day:'2026-10-26',event_name:'POR @ UTA',stake:1,odds:2.5,state:'won',legs:[leg('won')]},
+    {id:'l',day:'2026-11-01',event_name:'BOS @ HOU',stake:1,odds:2.5,state:'lost',legs:[leg('lost')]}];
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records}}}}});
+  const s=api.nbaStats(api.nbaSelectRows('all'));
+  assert.equal(s.n,2);assert.equal(s.voids,1);assert.equal(s.decided,2);assert.equal(s.roi,25);
+  const oct=api.nbaStats(api.nbaSelectRows('m:2026-10'));assert.equal(oct.n,1);assert.equal(oct.roi,150);
+  const html=api.nbaRenderMonths('m:2026-10');
+  assert.match(html,/每月 ROI 比較/);assert.match(html,/2026 年 10 月/);assert.match(html,/2026 年 11 月/);assert.match(html,/1 作廢/);
 });
