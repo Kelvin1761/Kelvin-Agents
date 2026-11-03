@@ -2086,10 +2086,11 @@ test("research candidates including unquoted legs are tracked without invented R
 });
 
 
-test("NBA jerseys use a sleeveless court cut and safe automatic team wordmarks",()=>{
+test("NBA jerseys are shaded vests with each club's wordmark and colours",()=>{
  const api=loadTemplateFunctions(EMPTY_DASHBOARD_DATA);
- assert.match(api.nbaJersey('LAL'),/LAKERS/);assert.match(api.nbaJersey('BOS'),/BOSTON/);
- assert.match(api.nbaJersey('NYK'),/NEW YORK/);assert.match(api.nbaJersey('ORL'),/opacity=".3"/);
+ assert.match(api.nbaJersey('LAL'),/LAKERS/);assert.match(api.nbaJersey('BOS'),/CELTICS/);
+ assert.match(api.nbaJersey('NYK'),/NEW YORK/);assert.match(api.nbaJersey('LAL'),/#FDB927/);
+ assert.match(api.nbaJersey('BOS'),/id="nba-kit-BOS-b"/);assert.doesNotMatch(api.nbaJersey('LAL'),/nba-kit-BOS/);
  assert.match(api.nbaJersey('<script>'),/NBA 球衣/);assert.doesNotMatch(api.nbaJersey('<script>'),/<script>|https?:/);
 });
 
@@ -2260,7 +2261,7 @@ test('named Tennis handicap selections override a different model reference play
   ['first_set_winner','Juan Manuel La Serna']]){
   const row={event_name:'Nick Hardt vs Juan Manuel La Serna',selection,subject_player_name:'Nick Hardt',market,kind:'prop',state:'pending',legs:[]};
   const html=api.tennisRenderBets([row]);
-  const pick=html.split('class="tennis-pick-panel"')[1].split('<dl')[0];
+  const pick=html.split('class="tennis-pick-panel"')[1].split('class="tennis-card-evidence')[0];
   assert.ok(pick.includes(selection));assert.doesNotMatch(pick,/Nick Hardt/);
  }
 });
@@ -2277,7 +2278,7 @@ test('unnamed individual totals retain subject context without adding one to mat
  const api=loadTemplateFunctions();
  const row={event_name:'Nick Hardt vs Juan Manuel La Serna',selection:'Under 12.5',subject_player_name:'Juan Manuel La Serna',kind:'prop',state:'pending',legs:[]};
  assert.match(api.tennisRenderBets([{...row,market:'player_total_games_12.5'}]),/Juan Manuel La Serna · Under 12.5/);
- const match=api.tennisRenderBets([{...row,market:'total_games'}]).split('class="tennis-pick-panel"')[1].split('<dl')[0];
+ const match=api.tennisRenderBets([{...row,market:'total_games'}]).split('class="tennis-pick-panel"')[1].split('class="tennis-card-evidence')[0];
  assert.doesNotMatch(match,/Juan Manuel La Serna/);assert.match(match,/Under 12.5/);
 });
 
