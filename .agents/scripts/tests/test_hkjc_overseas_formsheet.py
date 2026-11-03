@@ -268,3 +268,12 @@ def test_sidecar_is_written_on_fallback_and_cleared_when_pdf_returns(tmp_path):
     # 舊場次重跑：唔寫警告檔。
     assert facts.record_overseas_source({'mode': 'none'}, tmp_path, 3, race_date='2026-05-17') is None
     assert not os.path.exists(path)
+
+
+@pytest.mark.parametrize('brand', ['L109', 'L267', 'L193'])
+def test_race_names_never_leak_into_race_type(brand):
+    """「BURRADON S. - 3歲 表列」：賽事名唔入 Race_Type —— 引擎用子字串搵 G1/G2/G3。"""
+    import re
+    for row in fsc.rows_from_text(_fixture(brand), '2026-11-04'):
+        leftover = re.sub(r'\d?yo\+?|G[123]|\bL\b|^-', '', row['Race_Type'])
+        assert not re.search(r'[A-Za-z]', leftover), row['Race_Type']

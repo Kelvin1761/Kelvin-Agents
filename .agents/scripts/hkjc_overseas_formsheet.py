@@ -272,7 +272,12 @@ def parse_run(dt: datetime, first: str, cont: str = "") -> Optional[dict]:
         gear_tokens[-1] += cont_gear.group(1)
     grade = GRADE_CODES.get(match.group("grade"), "")
     age = _age_code(match.group("mid"), cont)
-    race_type = " ".join(part for part in (age, grade or class_text) if part)
+    # 賽事名（多數係英文，例如「GOLDEN GATE S. - 3歲 二班讓磅賽」）唔入 Race_Type：
+    # starter PDF 都冇，而且引擎用子字串搵 G1/G2/G3，賽事名入面有呢啲字就會誤中。
+    class_text = AGE_RE.sub("", class_text.rsplit(" - ", 1)[-1]).replace("及", "").strip()
+    if re.search(r"[A-Za-z]", class_text):
+        class_text = ""
+    race_type = " ".join(part for part in (age, grade or class_text or "-") if part)
     return {
         "Date": f"{dt.day}/{dt.month}/{dt.year}",
         "Region": region,
