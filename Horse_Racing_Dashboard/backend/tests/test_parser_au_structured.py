@@ -552,7 +552,9 @@ def test_shorthand_covers_every_sentence_the_engine_can_emit():
     """
     if not ENGINE_CORE.exists():
         pytest.skip("au engine_core.py not reachable from here")
-    source = ENGINE_CORE.read_text(encoding="utf-8")
+    # 報告句子由 2026-11-04 起喺 narrative.py（EXP-20261104-02），兩個檔一齊讀。
+    source = "".join(p.read_text(encoding="utf-8") for p in (ENGINE_CORE, ENGINE_CORE.with_name("narrative.py"))
+                     if p.exists())
     sentences = (set(re.findall(r'items\.append\("([^"]+)"\)', source))
                  | set(re.findall(r'or \["([^"]+)"\]', source)))
     # only the advantage/risk vocabulary, which is what the chips shorten

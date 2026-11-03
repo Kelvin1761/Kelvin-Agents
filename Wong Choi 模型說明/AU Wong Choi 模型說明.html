@@ -184,7 +184,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>18.67 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>18.66 分</strong>；<strong>0.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>試閘備戰　<code>preparation</code>　— 合成係數 0.2524</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -199,7 +199,7 @@ ul, ol { padding-left:1.5rem; }
 <td>50.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.90 分</strong>；<strong>60.3%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.89 分</strong>；<strong>60.5%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>場地與地況適性　<code>track</code>　— 合成係數 0.1411</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -210,7 +210,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>4.90 分</strong>；<strong>22.9%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>4.88 分</strong>；<strong>22.6%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>速度考驗背景　<code>pace_perf</code>　— 合成係數 0.1139</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -221,7 +221,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>19.07 分</strong>；<strong>7.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>19.06 分</strong>；<strong>7.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>賽績線　<code>form_line</code>　— 合成係數 0.0000（唔入排名）</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -232,7 +232,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>12.11 分</strong>；<strong>6.3%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>12.10 分</strong>；<strong>6.4%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h3>檔位形勢　<code>race_shape</code>　— 合成係數 0.0000（唔入排名）</h3>
 <table><thead><tr>
 <th>基礎分</th>
@@ -243,7 +243,7 @@ ul, ol { padding-left:1.5rem; }
 <td>100.0%</td>
 </tr>
 </tbody></table>
-<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.45 分</strong>；<strong>4.0%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
+<p>實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 <strong>1.43 分</strong>；<strong>4.7%</strong> 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。</p>
 <h2>3. 個分點樣讀</h2>
 <p><strong>60 分永遠代表「中性 / 冇證據」</strong>，唔係「合格」。高過 60 = 有正面證據，低過 60 = 有負面證據。</p>
 <h3>報告入面嘅符號</h3>
@@ -355,16 +355,32 @@ ul, ol { padding-left:1.5rem; }
 <li>推算前三／前四：由市場勝率經 discounted Harville（λ 0.754／0.649／0.549）推出，係<strong>市場推算，唔係模型預測</strong></li></ul>
 <p>去水用共用 <code>shared_racing/scripts/devig.py</code>；實作喺 <code>au_racing_engine/market_reference.py</code>。</p>
 <h2>呢份文件由邊度嚟</h2>
-<ul><li>生成時間：<code>2026-11-04 09:37 AEDT</code></li>
-<li>Git commit：<code>274d0277</code></li>
+<ul><li>生成時間：<code>2026-11-04 10:26 AEDT</code></li>
+<li>Git commit：<code>be4138f9</code></li>
 <li>Scoring contract：<code>au/raw-matrix-preparation-v2</code></li>
-<li><code>scoring.py</code> 指紋：<code>9fffaa304414</code></li>
-<li><code>matrix_mapper.py</code> 指紋：<code>270277b4a3a1</code></li>
-<li><code>renderer.py</code> 指紋：<code>ee283996e7c2</code></li>
+<li><code>__init__.py</code> 指紋：<code>7546bcfb74f5</code></li>
+<li><code>class_rating.py</code> 指紋：<code>a821caa05380</code></li>
+<li><code>data_prep.py</code> 指紋：<code>fa411269c674</code></li>
 <li><code>dimensions.py</code> 指紋：<code>bc65613511f0</code></li>
+<li><code>draw.py</code> 指紋：<code>fdd62d01acdd</code></li>
+<li><code>engine_core.py</code> 指紋：<code>b859650e4ba8</code></li>
 <li><code>full_time_speed.py</code> 指紋：<code>cde292260587</code></li>
-<li><code>engine_core.py</code> 指紋：<code>47d54f36fde3</code></li>
-<li>實測樣本：<strong>500 場、4884 匹馬</strong>，由 <code>2026-10-25 Townsville Race 1-9</code> 到 <code>2026-11-04 Port Lincoln Race 1-9</code>（跳過 0 個舊格式檔案）</li></ul>
+<li><code>io_utils.py</code> 指紋：<code>e797e808d6f6</code></li>
+<li><code>jockey_trainer.py</code> 指紋：<code>49652509d61f</code></li>
+<li><code>market_reference.py</code> 指紋：<code>bd5c8762f09e</code></li>
+<li><code>matrix_mapper.py</code> 指紋：<code>270277b4a3a1</code></li>
+<li><code>narrative.py</code> 指紋：<code>e8bf9e66dd91</code></li>
+<li><code>overseas.py</code> 指紋：<code>b0211a36381d</code></li>
+<li><code>pit.py</code> 指紋：<code>2f1c747dd2ff</code></li>
+<li><code>preparation_cycle.py</code> 指紋：<code>221b8c3a3d90</code></li>
+<li><code>renderer.py</code> 指紋：<code>ee283996e7c2</code></li>
+<li><code>scoring.py</code> 指紋：<code>9fffaa304414</code></li>
+<li><code>source_alignment.py</code> 指紋：<code>a8fb592ab72e</code></li>
+<li><code>speed.py</code> 指紋：<code>c928d5f4c771</code></li>
+<li><code>stability.py</code> 指紋：<code>1e5a99fcaa3c</code></li>
+<li><code>track_going.py</code> 指紋：<code>cad196ff0290</code></li>
+<li><code>validation.py</code> 指紋：<code>87915194a043</code></li>
+<li>實測樣本：<strong>500 場、4827 匹馬</strong>，由 <code>2026-10-25 Townsville Race 1-9</code> 到 <code>2026-11-04 Port Lincoln Race 1-9</code>（跳過 0 個舊格式檔案）</li></ul>
 <p>重新生成：</p>
 <pre><code>
 python3 .agents/skills/shared_racing/scripts/explain_model.py --platform au
