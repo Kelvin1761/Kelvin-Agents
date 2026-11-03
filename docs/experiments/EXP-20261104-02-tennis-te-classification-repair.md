@@ -1,6 +1,6 @@
 # EXP-20261104-02：TE 來源分類與 history 寫入防護
 
-2026-11-04 Sydney。工程候選已完成公開資料隔離驗證；正式 full gate／合併／activation 尚待 Central immutable release 結果。**未評估亦未證實模型準確度提升。**
+2026-11-04 Sydney。公開資料隔離驗證完成；`5ff76919` full gate exit0、已合併及Tennis activation成功，見[正式交付補證](../audits/tennis-source-classification-release-20261104.md)。**未評估亦未證實模型準確度提升。**
 
 ## 問題、規格及範圍
 
@@ -41,10 +41,10 @@ v3 保留 optional `match_source_ref`；history 必須有唯一官方 detail ID�
 
 ## 驗證、封存及重現
 
-71項 TE parser／history／receipt／classification 針對測試通過；quick通過。曾錯寫不存在的測試檔名，該次no-tests不算pass，已以實際四檔重跑。完整 repo gate 尚待正式 release，之前取消的full不能冒用。
+71項 TE parser／history／receipt／classification 針對測試通過；quick通過。曾錯寫不存在的測試檔名，該次no-tests不算pass，已以實際四檔重跑。正式single-clean full gate在5ff76919通過（exit0，785.905秒），merged及activation_succeeded事件已核實；原暫存gate log已清除，不另聲稱逐suite數目。之前取消的full不能冒用。
 
 公開證據包：`/Volumes/Kelvin Hardisk 1/WongChoi-Archive/scratch/tennis-unified-20261028/kernel-f02-rules-20261101/classification-repair-v3-20261104/`；49檔／105,176,557 bytes，全部hash重驗並設唯讀。manifest SHA256 `35c895bc1372e27966df49a45594922adb3845d4815de2ac75495490706e8bdf`。包內保存v2 source／DB／歧義詳情與失敗資格、v3完整source／protocol／DB／diff、全34版比較、獨立detail-ID audit及測試log；無私人fixture、賠率、投注payload。
 
 重播：對封存包先核對manifest及原source manifest；將各run.py複製到全新輸出目錄，設定其work路徑到與candidate-source逐檔SHA相同的checkout，再以本機venv Python及 `PYTHONDONTWRITEBYTECODE=1` 執行。native harness拒絕已有DB、檢查外置碟／內置空間、在執行前寫protocol並於結尾重驗程式hash。不能以舊result當新候選結果。
 
-結論：來源工程驗證通過，準確度與ownership仍未通過。下一步先驗正式gate／實際新receipt留置，再處理 source-owned身份及可重建 Elo generation，維持原時間切分與Sportsbet獨立forward；其他book只按既定training-only協議使用。
+結論：來源工程驗證通過，準確度與ownership仍未通過。正式gate／activation已驗；啟用後尚無新TE history receipt，下一步驗實際新receipt留置，再處理 source-owned身份及可重建 Elo generation，維持原時間切分與Sportsbet獨立forward；其他book只按既定training-only協議使用。
