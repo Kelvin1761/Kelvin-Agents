@@ -54,10 +54,16 @@ def test_partial_results_are_not_a_settled_win(tmp_path):
     assert [l['state'] for l in row['legs']]==['won','pending']
 
 
-def test_void_requires_repricing_never_assumed_refund(tmp_path):
+def test_void_leg_voids_the_slip_never_assumed_refund(tmp_path):
     publication(tmp_path);results(tmp_path,('hit','void'))
     row=build(tmp_path)['records'][0]
-    assert row['state']=='unpriced' and row['profit'] is None
+    assert row['state']=='void' and row['profit'] is None
+
+
+def test_void_leg_voids_the_slip_even_beside_a_lost_leg(tmp_path):
+    publication(tmp_path);results(tmp_path,('void','miss'))
+    row=build(tmp_path)['records'][0]
+    assert row['state']=='void' and row['profit'] is None
 
 
 def test_warmup_late_and_corrupt_publications_are_not_bets(tmp_path):

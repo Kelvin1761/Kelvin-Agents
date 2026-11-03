@@ -28,7 +28,7 @@ def test_missing_field_size_keeps_absolute_rule():
 def test_two_front_trials_earn_the_bonus_with_honest_wording():
     eng = engine([{"finish_pos": 1, "starters": 8}, {"finish_pos": 2, "starters": 8}])
     eng._jockey_horse_fit_score()
-    factors = [a for a in eng.jt_fit_detail["adjustments"] if a["factor"] == "試閘交代密度足夠"]
+    factors = [a for a in eng.preparation_parts if a["factor"] == "試閘交代密度足夠"]
     assert factors and "往績表試閘" in factors[0]["evidence"] and "近期" not in factors[0]["evidence"]
 
 
@@ -37,4 +37,4 @@ def test_without_formguide_trials_old_rule_applies():
     eng.data["trial_count"] = 3
     eng.data["trial_top3_count"] = 2
     eng._jockey_horse_fit_score()
-    assert any(a["factor"] == "試閘交代密度足夠" for a in eng.jt_fit_detail["adjustments"])
+    assert any(a["factor"] == "試閘交代密度足夠" for a in eng.preparation_parts)

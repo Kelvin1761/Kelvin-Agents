@@ -987,6 +987,8 @@ def generate_html(data):
     html = template.replace("/* __CSS_PLACEHOLDER__ */", css_content)
     html = html.replace('"__DATA_PLACEHOLDER__"', data_json)
     html = html.replace("__GENERATED_TIME__", generated_time)
+    sprite = Path(__file__).resolve().parent / "assets" / "nba_team_logos.svg"
+    html = html.replace("<!-- __NBA_LOGO_SPRITE__ -->", sprite.read_text(encoding="utf-8") if sprite.exists() else "")
     
     return html
 

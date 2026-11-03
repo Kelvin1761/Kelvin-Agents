@@ -149,8 +149,11 @@ def build_tracking(roots, ledger_root, firewall):
                 states = [leg['state'] for leg in legs]
                 if not states:
                     continue
-                state = ('unpriced' if not _number(card.get('odds')) or 'void' in states else 'lost' if 'lost' in states
-                         else 'pending' if 'pending' in states else 'won')
+                # Any void leg makes the whole slip 作廢, even beside a lost leg: kept
+                # as a record, never counted as a bet (no assumed refund, no repriced
+                # win) — Kelvin 2026-11-03.
+                state = ('unpriced' if not _number(card.get('odds')) else 'void' if 'void' in states
+                         else 'lost' if 'lost' in states else 'pending' if 'pending' in states else 'won')
                 profit = round(card['odds']-1, 2) if state=='won' else -1 if state=='lost' else None
                 records.append({'id':card['id'], 'day':day, 'event_name':card['event_name'], 'game_tag':tag,
                                 'start_time_utc':odds.get('event_start_time'), 'published_at':published,

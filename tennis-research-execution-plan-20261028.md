@@ -1,5 +1,15 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 來源分類候選驗證**：[EXP-20261104-02](docs/experiments/EXP-20261104-02-tennis-te-classification-repair.md)完成同34版C／D／T／DT，原比分／winner完整相同；33日公開隔離入庫22712雙側行，兩個不同detail ID對應相同球員／比分的歧義版本整組留置。71針對測試及quick通過；正式full／activation待驗。39位缺Elo目標仍無已確認ownership，模型準確度目標未完成。下方記錄保留當時狀態，不將舊取消full當成功。
+
+**2026-11-04 先更正來源審計**：[EXP-20261104-01](docs/experiments/EXP-20261104-01-tennis-header-source-correction.md)撤回原helper在無link Futures head沿用上一URL的歸因。獨立重驗9367版本有URL、4958只有當前gender icon，1857個head對照一致；先登記新source-spec，URL缺失仍保留None，不從名字或前head猜。現URL-only候選47／1115 tests過但真實矩陣停於4958未知，full已取消143，未驗收／未部署；接續改候選後重新全量比較及full，不改模型ruler／舊REJECT或回填forward。
+
+**2026-11-03 UTC／悉尼11-04 source pilot**：[EXP-20261103-14](docs/experiments/EXP-20261103-14-tennis-te-draw-tour-coverage.md)完成固定33日原文與全39人候選盤點，115檔／2.8MB封存及離線parity。重現source draw／tour流失：14325賽果版本中2542雙打仍送history迴圈，11783單打中5116 tour推斷與source明示不符；不是實際live受影響數。23人來源全名吻合但全部39人tour UNKNOWN，仍無獨立ownership。下一步先照已登記C／D／T／DT四臂驗新入口分類與identity guards，未改live、ruler或十五個REJECT_DEV，準確度目標仍未完成。
+
+**2026-11-03 缺 Elo／真實來源跟進**：[全量診斷及下一輪固定協議](docs/audits/tennis-missing-elo-inputs-20261103.md)：原55-card的40個缺Elo sides／39位球員，在預測前公開snapshot均沒有對應history或warm/cold cache；現時38位仍無賽日前history/cache，未找到已登記別名可直接補回。TE每日覆盤已有接線，兩份修正後真實HTML receipt及531／423場parse核對通過，不能再標成「首次新receipt未驗證」。下一步先按全部39位及固定2026-10-01至11-02窗做source coverage／獨立identity pilot，不補假值、不回填舊forward、不改原15個REJECT_DEV；準確度目標仍未完成。
+
+**2026-11-03 正式交付／真實新card核對**：[完整證據](docs/audits/tennis-rank-reference-release-20261103.md)確認`1011c649`已main合併／Tennis activation成功，獨立full gate Tennis1096；已安裝程式五檔與release相同，唯讀smoke通過。部署後三份新bundle中兩份空card，一份55／55原始observations完整；65個rank points已用新格式，但28個缺Elo／component、27個有有效warning，qualified forward仍0。下一步查原輸入的Elo資料／identity／cache及surface來源，未證實準確度提升；不以格式交付當研究完成。
+
 **2026-11-02 排名證據格式接線**：[EXP-20261102-06](docs/experiments/EXP-20261102-06-tennis-rank-reference-contract.md)將有效rank annotations無損保留在ranking_reference，回復既有六欄point介面；writer／shared v3 reader／frozen ruler及模型計算不變。研究113個fixture中112組memory pair的完整pricing／quality／逆還原相同，quality及forward仍0合格。今次從最新main獨立交付必要格式修正，generation／capture研究模型仍留研究分支；正式交付狀態以Central immutable manifest／activation event為準，未證實準確度提升。
 
 **2026-11-02 身份／Elo 跟進**：[受控 cache 重播](docs/experiments/EXP-20261102-02-tennis-identity-elo-cache.md)確認只改 history 再重跑不足：舊 legacy cache 會保留既有值。接續按[資料／Elo generation 合約](docs/plans/tennis-identity-elo-generation-20261102.md)處理 event 與 knowledge 兩個 cutoff、完整衍生輸出、原子切換及回退；本輪未改 live 身份或評分，尚未證實準確度改善。

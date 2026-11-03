@@ -4,7 +4,10 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
-| [EXP-20261102-06](EXP-20261102-06-tennis-rank-reference-contract.md) | 2026-11-02 | Tennis | rank annotations無損對齊原六欄evidence point | **工程接線，正式交付以Central為準**：113個fixture，112組memory pair pricing／quality／逆還原相同；writer／v3 reader／ruler不變，格式必要條件3→6但quality／forward仍0；研究full Tennis1166，main隔離gate另記 |
+| [EXP-20261104-02](EXP-20261104-02-tennis-te-classification-repair.md) | 2026-11-04 | Tennis | TE 明示tour／draw與fixture歧義防護 | **工程隔離驗證**：34版完整比分parity；33日22712雙側rows、歧義2全留置；71 tests，full／activation待驗。39人ownership仍0，準確度未證實 |
+| [EXP-20261104-01](EXP-20261104-01-tennis-header-source-correction.md) | 2026-11-04 | Tennis | 獨立更正無link head沿用舊URL的source audit錯誤 | **原歸因撤回／候選未驗收**：9367 URL／4958當前icon；1857 head男女一致。failed matrix及取消full143照保留；先登記明示icon規格，再改候選；未改ruler或證明準確度 |
+| [EXP-20261103-14](EXP-20261103-14-tennis-te-draw-tour-coverage.md) | 2026-11-03 UTC | Tennis | 固定33日TE來源／全39人候選，核對draw與tour分類 | **輸入缺陷重現／未部署**：30新頁及32profiles，34結果版本14325 parsed；單打5116 tour推斷不符、2542雙打送history迴圈。23人profile全名吻合但39人tour UNKNOWN，ownership仍0；115檔封存、離線全量parity，四臂修正協議已固定，未量準確度 |
+| [EXP-20261102-06](EXP-20261102-06-tennis-rank-reference-contract.md) | 2026-11-02 | Tennis | rank annotations無損對齊原六欄evidence point | **1011c649已部署／非模型改善**：main full Tennis1096及runtime smoke；112組memory pair不改pricing／quality。真實新card65個rank points用新格式，但兩份空card、55行非空card仍受Elo／warning攔截，qualified forward0；[交付補證](../audits/tennis-rank-reference-release-20261103.md) |
 | [EXP-20261102-03](EXP-20261102-03-au-rating-trend-results.md) | 2026-11-02 | AU | 官方評分趨勢（上仗 → 今場評分差）做能力訊號 | **REJECT（診斷，唔開排名候選）**：1,946 場，趨勢單獨 AUC 0.5792 [0.5679,0.5902]、升≥3 上名 39.7% vs 跌≥3 20.9%；但同 form ρ +0.43，加入模型測試 ΔLL +0.00176 [−0.00001,+0.00339] 唔全正、ΔAUC −0.0012。協議預先登記 |
 | [EXP-20261102-02](EXP-20261102-02-tennis-identity-elo-cache.md) | 2026-11-02 | Tennis | 身份修正與 legacy Elo cache warm／cold 對照 | **工程診斷／未改 live**：全401046行／四臂對照通過；warm保留391099舊key，同修正輸入cold有175個legacy key差>1 Elo。保留差幅／中斷紀錄及generation合約；full gate全綠，未量準確度 |
 | [EXP-20261102-01](EXP-20261102-01-tennis-te-source-capture.md) | 2026-11-02 | Tennis | history按日保存真正scoreboard，parse失敗留原文 | **來源工程已交付41cad292／非模型改善**：Tennis1080 full gate，28針對測試；同HTML311場／622視角／522玩家及兩版592行Elo相同，無損retention通過。runtime code對齊；首批實際receipt待核實，舊summary不追認 |
@@ -371,3 +374,5 @@
 - [EXP-20261103-12](EXP-20261103-12-au-form-quality-low-tail-results.md) — AU 近績質素分低端加斜（z < −1 斜率加倍）：**REJECT**。fixed Gold −0.18pp CI 全負、三個分層 CI 全負（含首選 $1–3）；§8 both_arms_reject。最低 10% −7.65pp 嘅 cohort 殘差落唔到排名，方向唔好再試。
 - [EXP-20261103-15](EXP-20261103-15-nba-rebuild-formula-results.md) — NBA 重寫：唔睇價嘅 ESPN 季度模型 S 做主機率 holdout 顯著輸 C（+0.0051）；**MS（市場 0.93＋S 0.11）KEEP**（−0.0039 [−0.0049,−0.0026]）；「聯合機率最高」揀腿同 B2 分唔出（CI ±15pp）→ B2 保留但乾淨重寫（88/89 場一樣）；新 `nba_engine` 取代 generate_nba_reports／MC／ML／fit／prob layer
 - [EXP-20261103-16](EXP-20261103-16-nba-forward-tests-closed.md) — NBA 全部 forward／shadow 測試（MS1–3、S_v4、季初保護、Q/P 上場率、落注時間、B0/B1 shadow、fit A）隨 nba_engine 重寫中止，**冇判決**；記低中止時進度
+- [EXP-20261103-13](EXP-20261103-13-au-engine-dead-code-and-preparation-split.md) — AU 引擎清理：剷 2 個 0 引用 function 同 `WC_DISABLE_AU_HEALTH_SCORE`；試閘備戰由「加入配搭分再搬出」改為一開始分開計。全語料 40,216 匹零差；順手修好 27 匹人馬配搭說明被刪成空字串嘅顯示 bug。
+- [EXP-20261014-11](EXP-20261014-11-hkjc-official-draw-stats.md) — **REJECT ×2**（HKJC 官方檔位統計入分）：官方頁窗口 = 今季+前兩季，用 rail_draw_results 逐格 PIT 重建，26/27 季九份存檔頁 437/478 格（91.4%）五個數全同（其餘多數只差冇完成嘅馬）；05-31 頁 0%（缺 2023/24）。取代／對半混合現行 draw_score：F 窗口（85 場，重建=live）primary 點估計負，但連成個 draw leaf 都細過 MDE（UNRESOLVABLE）；S 窗口（~200 場）replace ndcg@5 −2.81 CI 全負。場內 ρ≈0.3 正交但逐檔位格太嘈

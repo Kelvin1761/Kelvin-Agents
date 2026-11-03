@@ -16,8 +16,20 @@ def _setup(tmp_path, monkeypatch):
 def _result(tournament, winner, loser):
     from tennis_wc.providers.tennisexplorer_provider import ParsedResult
 
+    from tennis_wc.ingestion.name_matching import normalise_player_name
+
+    tour = "WTA" if any(label in tournament for label in ("W15", "W35")) else "ATP"
+    source_path = "wta-women" if tour == "WTA" else "atp-men"
     return ParsedResult(
         tournament_name=tournament,
+        tour=tour,
+        match_source_ref="https://www.tennisexplorer.com/match-detail/?id=1",
+        draw_kind="SINGLES",
+        tour_source_kind="tournament_url",
+        tournament_source_label=tournament,
+        tournament_source_url=f"https://www.tennisexplorer.com/fixture/2026/{source_path}/",
+        player_a_source_ref="https://www.tennisexplorer.com/player/" + normalise_player_name(winner).replace(" ", "-") + "/",
+        player_b_source_ref="https://www.tennisexplorer.com/player/" + normalise_player_name(loser).replace(" ", "-") + "/",
         player_a_name=winner,
         player_b_name=loser,
         player_a_sets=2,
@@ -41,12 +53,21 @@ class _Stub:
 
         results, _ = self.fetch_results_for_date(match_date)
         pieces = ['<table><!-- source fixture: 原文 -->']
+        date_number = int(match_date.replace('-', ''))
         for i, result in enumerate(results):
-            pieces.append('<tr class="head flags"><td class="t-name">'+escape(result.tournament_name)+'</td></tr>')
+            title = escape(result.tournament_name)
+            if result.tournament_source_url:
+                title = f'<a href="{escape(result.tournament_source_url)}">{title}</a>'
+            pieces.append('<tr class="head flags"><td class="t-name">'+title+'</td></tr>')
             for suffix, name, sets, key in [('',result.player_a_name,result.player_a_sets,'player_a_games'),
                                           ('b',result.player_b_name,result.player_b_sets,'player_b_games')]:
                 scores=''.join(f'<td class="score">{r[key]}</td>' for r in result.sets)
-                pieces.append(f'<tr id="r{i}{suffix}" class="one"><td class="t-name">{escape(name)}</td><td class="result">{sets}</td>{scores}</tr>')
+                href = result.player_a_source_ref if not suffix else result.player_b_source_ref
+                player = escape(name)
+                if href:
+                    player = f'<a href="{escape(href)}">{player}</a>'
+                detail = f'<td><a href="/match-detail/?id={date_number*1000+i+1}">Detail</a></td>' if not suffix else ''
+                pieces.append(f'<tr id="r{i}{suffix}" class="one"><td class="t-name">{player}</td><td class="result">{sets}</td>{scores}{detail}</tr>')
         pieces.append('</table>')
         d=date.fromisoformat(match_date)
         return ResultsPage(match_date,RESULTS_URL.format(year=d.year,month=d.month,day=d.day),

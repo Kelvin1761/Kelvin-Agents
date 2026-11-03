@@ -88,12 +88,16 @@ def step1_sync_standard_times() -> dict:
     return run_script("scrape_standard_times.py", label="Step 1: Standard Times Sync")
 
 
-def step2_scrape_draw_stats() -> dict:
+def step2_scrape_draw_stats(output: Optional[Path] = None) -> dict:
     """Scrape draw stats (always refresh — data changes per meeting).
 
+    `output` 畀咗就抽落嗰度（本場 meeting folder），唔再寫 repo 入面嗰份全域
+    hkjc_draw_stats.json —— 排程 worktree 每抽一次就髒一次，而且全域檔一次只
+    服侍到一個賽日。
     Exit code 3 係 scrape_draw_stats.py 講「今次 0 場，舊檔留返」，唔算失敗。
     """
-    result = run_script("scrape_draw_stats.py", label="Step 2: Draw Stats Scrape")
+    args = ["--output", str(output)] if output else None
+    result = run_script("scrape_draw_stats.py", args=args, label="Step 2: Draw Stats Scrape")
     if result.get("returncode") == 3:
         result["status"] = "NO_DATA_KEPT_PREVIOUS"
         result["error"] = None
@@ -132,7 +136,7 @@ def step2c_rebuild_stats() -> dict:
                       label="Step 2c: Rebuild Jockey/Trainer Stats")
 
 
-def check_draw_stats_freshness(meeting_dir: Path) -> dict:
+def check_draw_stats_freshness(meeting_dir: Path, path: Optional[Path] = None) -> dict:
     """Loudly warn if hkjc_draw_stats.json doesn't match THIS meeting.
 
     Draw stats are per-meeting (racing.hkjc.com 檔位頁). If the scrape returned 0
@@ -142,7 +146,7 @@ def check_draw_stats_freshness(meeting_dir: Path) -> dict:
     not hidden. Advisory only: never blocks the run, just makes staleness visible.
     """
     try:
-        with open(DRAW_STATS_JSON, 'r', encoding='utf-8') as f:
+        with open(path or DRAW_STATS_JSON, 'r', encoding='utf-8') as f:
             meta = json.load(f).get("meta", {})
     except Exception:
         print("   ⚠️ 檔位統計檔案缺失/讀取失敗 — 下游將顯示「數據不可用」並 fallback 位置先驗。")
@@ -184,7 +188,9 @@ def check_draw_stats_freshness(meeting_dir: Path) -> dict:
 MEETING_DRAW_STATS_NAME = "Draw_Stats.json"
 
 
-def snapshot_draw_stats(meeting_dir: Path, freshness: dict) -> Optional[Path]:
+def snapshot_draw_stats(
+    meeting_dir: Path, freshness: dict, source: Optional[Path] = None
+) -> Optional[Path]:
     """Keep this meeting's own copy of the draw table beside its artifacts.
 
     一份全域 hkjc_draw_stats.json 服侍唔到兩個賽日：下一個賽日一抽，上一個賽日
@@ -194,7 +200,7 @@ def snapshot_draw_stats(meeting_dir: Path, freshness: dict) -> Optional[Path]:
     if (freshness or {}).get("status") != "FRESH":
         return None
     try:
-        payload = DRAW_STATS_JSON.read_text(encoding="utf-8")
+        payload = (source or DRAW_STATS_JSON).read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         print(f"   ⚠️ 檔位統計影唔到本場副本: {exc}")
         return None
@@ -206,6 +212,41 @@ def snapshot_draw_stats(meeting_dir: Path, freshness: dict) -> Optional[Path]:
         return None
     print(f"   💾 檔位統計已影一份落本場: {target.name}")
     return target
+
+
+FETCHED_DRAW_STATS_NAME = "Draw_Stats.fetched.json"
+
+
+def refresh_meeting_draw_stats(meeting_dir: Path, skip_scrape: bool = False) -> tuple[dict, dict]:
+    """抽今日檔位頁落本場，對得上本賽日先變成本場嘅 Draw_Stats.json。
+
+    Best-effort：抽唔到、對唔上都唔會攔 pipeline，只會喺 freshness 講清楚。
+    檔位頁只顯示**下一個**賽日；賽日過咗再重跑，頁面已經轉咗去下一場，所以
+    對唔上就保留本場之前影低嗰份（如果佢本身係本賽日嘅）。
+    """
+    fetched = meeting_dir / FETCHED_DRAW_STATS_NAME
+    try:
+        step2 = {"status": "SKIPPED"} if skip_scrape else step2_scrape_draw_stats(output=fetched)
+        freshness = (
+            check_draw_stats_freshness(meeting_dir, fetched)
+            if fetched.exists()
+            else {"status": "NOT_FETCHED"}
+        )
+        if freshness.get("status") == "FRESH":
+            snapshot_draw_stats(meeting_dir, freshness, source=fetched)
+            return step2, freshness
+        existing = resolve_meeting_draw_stats(meeting_dir)
+        if existing:
+            kept = check_draw_stats_freshness(meeting_dir, existing)
+            if kept.get("status") == "FRESH":
+                kept["source"] = "meeting_copy_kept"
+                return step2, kept
+        return step2, freshness
+    finally:
+        try:
+            fetched.unlink()
+        except OSError:
+            pass
 
 
 def resolve_meeting_draw_stats(meeting_dir: Path) -> Optional[Path]:
@@ -394,12 +435,8 @@ def main():
     # Step 1: Standard Times
     step1 = {"status": "SKIPPED"} if args.skip_std_times else step1_sync_standard_times()
 
-    # Step 2: Draw Stats
-    step2 = {"status": "SKIPPED"} if args.skip_draw else step2_scrape_draw_stats()
-
-    # Step 2b: verify the (possibly kept) draw stats actually match THIS meeting
-    draw_freshness = check_draw_stats_freshness(meeting_dir)
-    snapshot_draw_stats(meeting_dir, draw_freshness)
+    # Step 2 + 2b: 抽檔位頁落本場，驗證係咪本賽日；對得上先寫 Draw_Stats.json
+    step2, draw_freshness = refresh_meeting_draw_stats(meeting_dir, skip_scrape=args.skip_draw)
 
     # Step 2c: rebuild jockey/trainer stats so ratings/priors are current
     step2c = {"status": "SKIPPED"} if args.skip_stats else step2c_rebuild_stats()

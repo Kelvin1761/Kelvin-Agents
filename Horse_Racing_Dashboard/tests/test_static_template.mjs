@@ -71,7 +71,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       restoreTennisView, tennisStats, tennisPnl, tennisSelectRows, tennisRenderBets, tennisLoadMore, setTennisFilter, renderTennisWorkspace, loadSportsBetLedger,
       setTennisQueryForTest: (query) => { tennisSearch = query; },
       setTennisLimitForTest: (limit) => { tennisLimit = limit; },
-      nbaStats, nbaRecords, nbaDashboard, nbaSelectRows, nbaShortDate, nbaJersey,
+      nbaStats, nbaRecords, nbaDashboard, nbaSelectRows, nbaPeriodsNow, nbaPeriodRange, nbaRenderMonths, nbaShortDate, nbaJersey,
       nbaShouldAutoRefresh, racingShouldAutoRefresh, checkForNewSnapshot,
       setPendingBetSyncForTest: (value) => { hasPendingCommittedChanges = value; }, reloadSnapshot, restoreNbaTrackingView,
       getSportsTabForTest: () => activeSportsTab,
@@ -2086,10 +2086,11 @@ test("research candidates including unquoted legs are tracked without invented R
 });
 
 
-test("NBA jerseys use a sleeveless court cut and safe automatic team wordmarks",()=>{
+test("NBA jerseys are shaded vests with each club's wordmark and colours",()=>{
  const api=loadTemplateFunctions(EMPTY_DASHBOARD_DATA);
- assert.match(api.nbaJersey('LAL'),/LAKERS/);assert.match(api.nbaJersey('BOS'),/BOSTON/);
- assert.match(api.nbaJersey('NYK'),/NEW YORK/);assert.match(api.nbaJersey('ORL'),/opacity=".3"/);
+ assert.match(api.nbaJersey('LAL'),/LAKERS/);assert.match(api.nbaJersey('BOS'),/CELTICS/);
+ assert.match(api.nbaJersey('NYK'),/NEW YORK/);assert.match(api.nbaJersey('LAL'),/#FDB927/);
+ assert.match(api.nbaJersey('BOS'),/id="nba-kit-BOS-b"/);assert.doesNotMatch(api.nbaJersey('LAL'),/nba-kit-BOS/);
  assert.match(api.nbaJersey('<script>'),/NBA 球衣/);assert.doesNotMatch(api.nbaJersey('<script>'),/<script>|https?:/);
 });
 
@@ -2260,7 +2261,7 @@ test('named Tennis handicap selections override a different model reference play
   ['first_set_winner','Juan Manuel La Serna']]){
   const row={event_name:'Nick Hardt vs Juan Manuel La Serna',selection,subject_player_name:'Nick Hardt',market,kind:'prop',state:'pending',legs:[]};
   const html=api.tennisRenderBets([row]);
-  const pick=html.split('class="tennis-pick-panel"')[1].split('<dl')[0];
+  const pick=html.split('class="tennis-pick-panel"')[1].split('class="tennis-card-evidence')[0];
   assert.ok(pick.includes(selection));assert.doesNotMatch(pick,/Nick Hardt/);
  }
 });
@@ -2277,7 +2278,7 @@ test('unnamed individual totals retain subject context without adding one to mat
  const api=loadTemplateFunctions();
  const row={event_name:'Nick Hardt vs Juan Manuel La Serna',selection:'Under 12.5',subject_player_name:'Juan Manuel La Serna',kind:'prop',state:'pending',legs:[]};
  assert.match(api.tennisRenderBets([{...row,market:'player_total_games_12.5'}]),/Juan Manuel La Serna · Under 12.5/);
- const match=api.tennisRenderBets([{...row,market:'total_games'}]).split('class="tennis-pick-panel"')[1].split('<dl')[0];
+ const match=api.tennisRenderBets([{...row,market:'total_games'}]).split('class="tennis-pick-panel"')[1].split('class="tennis-card-evidence')[0];
  assert.doesNotMatch(match,/Juan Manuel La Serna/);assert.match(match,/Under 12.5/);
 });
 
@@ -2485,4 +2486,27 @@ test("timeline 睇直播 links to the Sportsbet race page, only for races still 
   assert.doesNotMatch(html, /race-1-333/);
   assert.doesNotMatch(html, /evil\.example/);
   assert.match(html, /onclick="event\.stopPropagation\(\)"/);   // tapping it never opens the race row
+});
+
+test("NBA week is Monday–Sunday and month is the calendar month, with past months comparable",()=>{
+  const api=loadTemplateFunctions(EMPTY_DASHBOARD_DATA),p=api.nbaPeriodsNow();
+  const dow=d=>new Date(d+'T12:00:00Z').getUTCDay();
+  assert.equal(dow(p.week[0]),1);assert.equal(dow(p.week[2]),0);
+  assert.equal(p.month[0].slice(8),'01');
+  const next=new Date(p.month[2]+'T12:00:00Z');next.setUTCDate(next.getUTCDate()+1);assert.equal(next.getUTCDate(),1);
+  assert.deepEqual([...api.nbaPeriodRange('m:2026-02')].filter((_,i)=>i!==1),['2026-02-01','2026-02-28']);
+  assert.equal(api.nbaPeriodRange('m:2026-13'),undefined);
+});
+
+test("a void NBA slip stays on the list but is not counted as a bet or in ROI",()=>{
+  const leg=state=>({player:'Jrue Holiday',stat:'REB',line:4,state});
+  const records=[{id:'v',day:'2026-10-26',event_name:'TOR @ LAC',stake:1,odds:3,state:'void',legs:[leg('void'),leg('won')]},
+    {id:'w',day:'2026-10-26',event_name:'POR @ UTA',stake:1,odds:2.5,state:'won',legs:[leg('won')]},
+    {id:'l',day:'2026-11-01',event_name:'BOS @ HOU',stake:1,odds:2.5,state:'lost',legs:[leg('lost')]}];
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,sports_feed:{sports:{nba:{tracking:{status:'valid',records}}}}});
+  const s=api.nbaStats(api.nbaSelectRows('all'));
+  assert.equal(s.n,2);assert.equal(s.voids,1);assert.equal(s.decided,2);assert.equal(s.roi,25);
+  const oct=api.nbaStats(api.nbaSelectRows('m:2026-10'));assert.equal(oct.n,1);assert.equal(oct.roi,150);
+  const html=api.nbaRenderMonths('m:2026-10');
+  assert.match(html,/每月 ROI 比較/);assert.match(html,/2026 年 10 月/);assert.match(html,/2026 年 11 月/);assert.match(html,/1 作廢/);
 });

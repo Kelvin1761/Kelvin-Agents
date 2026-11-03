@@ -31,6 +31,7 @@ from hkjc_racing_engine import scoring as auto_scoring
 from hkjc_racing_engine import live_priors
 import rescore_backtest
 import review_auto_weighting
+import inject_hkjc_fact_anchors as inject_facts
 import run_prerace_pipeline
 from hkjc_racing_engine.engine_core import RacingEngine
 from hkjc_racing_engine.renderer import _shadow_flag_candidates, render_race_csv
@@ -86,6 +87,210 @@ class PipelineIntegrityTests(unittest.TestCase):
                     1, "沙田", 1200, expected_date="2026-05-31"
                 )
             )
+
+    def test_facts_layer_rejects_draw_stats_from_another_meeting(self) -> None:
+        """2026-09-06 印咗 2026-05-31 沙田 "B" 賽道嘅檔位表。
+
+        Logic 層一直有賽日守衛（見上面 skeleton 個 test），Facts 層冇 ——
+        所以評分冇事，但每份報告都講錯數。呢個 test 釘住 Facts 層都有守衛。
+        """
+        fixture = {
+            "meta": {"meeting": "沙田 31/05/2026", "scraped_at": "2026-05-31 12:45:21"},
+            "races": [
+                {
+                    "race": 1,
+                    "distance": 1200,
+                    "surface": "草地",
+                    "course": "B",
+                    "avg_place_pct": 22.9,
+                    "draws": [
+                        {"draw": 1, "starts": 30, "place_pct": 57.0, "win_pct": 17.0,
+                         "quinella_pct": 50.0, "verdict": "✅有利"},
+                    ],
+                }
+            ],
+        }
+        with mock.patch.object(inject_facts, "load_draw_stats", return_value=fixture):
+            inject_facts.set_expected_draw_meeting("2026-09-06", "A")
+            try:
+                self.assertEqual(
+                    inject_facts._resolve_draw_stats_race(1, "沙田", 1200), {}
+                )
+                self.assertIn("2026-09-06", inject_facts.draw_stats_reject_reason())
+                self.assertEqual(
+                    inject_facts.get_draw_summary_block(
+                        1, expected_venue="沙田", expected_distance=1200
+                    ),
+                    "",
+                )
+                self.assertEqual(
+                    inject_facts.get_draw_detail(
+                        1, 1, expected_venue="沙田", expected_distance=1200
+                    ),
+                    {},
+                )
+                # 同一個賽日、但賽道唔同：檔位頁一個賽日只有一條賽道，所以
+                # 對唔上就係攞錯表。
+                inject_facts.set_expected_draw_meeting("2026-05-31", "A")
+                self.assertEqual(
+                    inject_facts._resolve_draw_stats_race(1, "沙田", 1200), {}
+                )
+                self.assertIn("course", inject_facts.draw_stats_reject_reason())
+                # 本賽日自己嗰份表照用。
+                inject_facts.set_expected_draw_meeting("2026-05-31", "B")
+                self.assertTrue(
+                    inject_facts._resolve_draw_stats_race(1, "沙田", 1200)
+                )
+                self.assertIn(
+                    "31/05/2026",
+                    inject_facts.get_draw_summary_block(
+                        1, expected_venue="沙田", expected_distance=1200
+                    ),
+                )
+            finally:
+                inject_facts.set_expected_draw_meeting("", "")
+
+    def test_main_orchestrator_refreshes_draw_stats(self) -> None:
+        """`--skip-draw` 硬寫死令檔位統計由 2026-05-31 凍到 2026-09-06。"""
+        calls: list[list[str]] = []
+        with mock.patch.object(main, "_run", side_effect=lambda cmd, label: calls.append(cmd)):
+            main._generate_facts(Path("/tmp/2026-09-06_ShaTin"), skip_facts=False, workers=2)
+        self.assertEqual(len(calls), 1)
+        self.assertNotIn("--skip-draw", calls[0])
+        # 標準時間入段速分，刷新 = 改分，所以呢個要繼續 skip。
+        self.assertIn("--skip-std-times", calls[0])
+
+    def test_pipeline_summary_records_freshness_verdicts(self) -> None:
+        """判決以前只 print 去 stdout，排程只留 control-plane JSON = 冇人見到。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            meeting = Path(tmp) / "2026-09-06_ShaTin"
+            meeting.mkdir()
+            stale = {"status": "STALE", "meeting": "沙田 31/05/2026",
+                     "scraped_at": "2026-05-31 12:45:21", "expected": "沙田 06/09/2026"}
+            summary = run_prerace_pipeline.generate_summary(
+                meeting, {"status": "SKIPPED"}, {"status": "OK"}, [], None,
+                draw_freshness=stale,
+            )
+            on_disk = json.loads(
+                (meeting / "pipeline_summary.json").read_text(encoding="utf-8")
+            )
+        self.assertEqual(summary["freshness"]["draw_stats"], stale)
+        self.assertEqual(on_disk["freshness"]["draw_stats"]["status"], "STALE")
+        self.assertIn("standard_times", on_disk["freshness"])
+
+    def test_meeting_keeps_its_own_draw_table(self) -> None:
+        """一份全域檔服侍唔到兩個賽日：下一個賽日一抽，舊場次就冇檔位判讀。"""
+        with tempfile.TemporaryDirectory() as tmp:
+            shared = Path(tmp) / "hkjc_draw_stats.json"
+            shared.write_text(
+                json.dumps({"meta": {"meeting": "沙田 06/09/2026"}, "races": [{"race": 1}]},
+                           ensure_ascii=False),
+                encoding="utf-8",
+            )
+            meeting = Path(tmp) / "2026-09-06_ShaTin"
+            meeting.mkdir()
+            with mock.patch.object(run_prerace_pipeline, "DRAW_STATS_JSON", shared):
+                # 對唔上本賽日就唔留副本，免得下次重跑攞到錯嘅表當成本場。
+                self.assertIsNone(
+                    run_prerace_pipeline.snapshot_draw_stats(meeting, {"status": "STALE"})
+                )
+                self.assertIsNone(run_prerace_pipeline.resolve_meeting_draw_stats(meeting))
+
+                snapshot = run_prerace_pipeline.snapshot_draw_stats(
+                    meeting, {"status": "FRESH"}
+                )
+            self.assertIsNotNone(snapshot)
+            self.assertEqual(snapshot.name, "Draw_Stats.json")
+            self.assertEqual(
+                run_prerace_pipeline.resolve_meeting_draw_stats(meeting), snapshot
+            )
+            # 全域檔之後被下一個賽日覆蓋，本場副本照樣讀得返。
+            shared.write_text(
+                json.dumps({"meta": {"meeting": "跑馬地 09/09/2026"}, "races": []},
+                           ensure_ascii=False),
+                encoding="utf-8",
+            )
+            inject_facts.set_draw_stats_path(snapshot)
+            try:
+                self.assertEqual(
+                    inject_facts.load_draw_stats()["meta"]["meeting"], "沙田 06/09/2026"
+                )
+            finally:
+                inject_facts.set_draw_stats_path(None)
+
+    def test_empty_draw_scrape_is_not_a_failure(self) -> None:
+        """休季 0 場唔算 FAILED，而且唔准覆蓋舊檔。"""
+        with mock.patch.object(
+            run_prerace_pipeline, "run_script",
+            return_value={"script": "scrape_draw_stats.py", "status": "FAILED",
+                          "returncode": 3, "error": "boom"},
+        ):
+            result = run_prerace_pipeline.step2_scrape_draw_stats()
+        self.assertEqual(result["status"], "NO_DATA_KEPT_PREVIOUS")
+        self.assertIsNone(result["error"])
+
+    def test_draw_refresh_writes_meeting_copy_not_repo_json(self) -> None:
+        """2026-10-07 個 commit 靜靜將 `--skip-draw` 加返，檔位表又凍喺 31/05/2026。
+
+        而家抽落本場 meeting folder：對得上本賽日先寫 Draw_Stats.json；頁面已經轉去
+        下一個賽日（賽後重跑）就保留本場之前嗰份；repo 入面嗰份全域檔唔再郁。
+        """
+        def fake_scrape(meeting_text):
+            def _run(script, args=None, label=""):
+                out = Path(args[args.index("--output") + 1])
+                out.write_text(json.dumps(
+                    {"meta": {"meeting": meeting_text, "scraped_at": "2026-10-14 09:00:00"},
+                     "races": [{"race": 1}]}, ensure_ascii=False), encoding="utf-8")
+                return {"script": script, "status": "OK", "returncode": 0, "error": None}
+            return _run
+
+        with tempfile.TemporaryDirectory() as tmp:
+            shared = Path(tmp) / "hkjc_draw_stats.json"
+            shared.write_text('{"meta": {"meeting": "沙田 31/05/2026"}, "races": []}', encoding="utf-8")
+            meeting = Path(tmp) / "2026-10-14_HappyValley"
+            meeting.mkdir()
+            with mock.patch.object(run_prerace_pipeline, "DRAW_STATS_JSON", shared):
+                with mock.patch.object(run_prerace_pipeline, "run_script",
+                                       side_effect=fake_scrape("跑馬地 14/10/2026")):
+                    _step, fresh = run_prerace_pipeline.refresh_meeting_draw_stats(meeting)
+                self.assertEqual(fresh["status"], "FRESH")
+                copy = meeting / "Draw_Stats.json"
+                self.assertIn("14/10/2026", copy.read_text(encoding="utf-8"))
+                self.assertFalse((meeting / "Draw_Stats.fetched.json").exists())
+                self.assertIn("31/05/2026", shared.read_text(encoding="utf-8"))
+
+                # 賽後重跑：頁面已經係下一個賽日 → 唔覆蓋，照用本場嗰份
+                with mock.patch.object(run_prerace_pipeline, "run_script",
+                                       side_effect=fake_scrape("沙田 18/10/2026")):
+                    _step, kept = run_prerace_pipeline.refresh_meeting_draw_stats(meeting)
+                self.assertEqual(kept["status"], "FRESH")
+                self.assertEqual(kept.get("source"), "meeting_copy_kept")
+                self.assertIn("14/10/2026", copy.read_text(encoding="utf-8"))
+
+                # 抽唔到（網絡斷）都唔准攔 pipeline
+                other = Path(tmp) / "2026-10-18_ShaTin"
+                other.mkdir()
+                with mock.patch.object(run_prerace_pipeline, "run_script",
+                                       return_value={"status": "FAILED", "returncode": 1}):
+                    _step, missing = run_prerace_pipeline.refresh_meeting_draw_stats(other)
+                self.assertEqual(missing["status"], "NOT_FETCHED")
+                self.assertFalse((other / "Draw_Stats.json").exists())
+
+    def test_draw_page_course_keeps_plus_rail(self) -> None:
+        """舊 regex 令 "C+3" 賽道 course 變 None，賽道守衛靜靜失效。"""
+        import scrape_draw_stats
+
+        self.assertEqual(
+            scrape_draw_stats.parse_race_header('第 1 場  1200米  草地  "C+3" 賽道')["course"],
+            "C+3",
+        )
+        self.assertEqual(
+            scrape_draw_stats.parse_race_header('第 2 場  1650米  草地  "A" 賽道')["course"],
+            "A",
+        )
+        self.assertNotIn(
+            "course", scrape_draw_stats.parse_race_header("第 3 場  1650米  全天候")
+        )
 
     def test_full_meeting_cli_smoke_from_prepared_facts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
