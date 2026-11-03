@@ -367,3 +367,4 @@
 - [EXP-20261103-08](EXP-20261103-08-au-flemington-straight-draw-results.md) — AU Flemington 直路賽（≤1200m）檔位分歸零：直路冇彎，內檔機制唔存在（最內五分位上名 20.6% vs 其他場地 32.1%）。67 場郁、乾淨窗口 12 場；Gold 0、Good +0.06、ndcg +0.006；**USER-ACCEPTED 機制修正，上線**。
 - [EXP-20261103-09](EXP-20261103-09-au-stability-module-simplify.md) — AU 狀態與穩定性簡化：`stability.py` 唯一計算位置；後備組合三份複本合一；剷 `WC_DISABLE_AU_PERFORMANCE_QUALITY`。全語料 40,216 匹零差。後備組合佔語料 36.8%（live ~10%），live 後備實質係 0.6 近績 + 0.4 穩定性。
 - [EXP-20261103-10](EXP-20261103-10-au-stability-minus4-rules-results.md) — §7：剷「近績分 ≥72 兼級數 <60 → −4」同「穩定性分 ≥72 兼場地 <57.1 → −4」（日常 Agent 更新加、重複計分）。809 匹郁；Gold +0.06、Good −0.03，CI 全跨零 → 上線。
+- [EXP-20261103-11](EXP-20261103-11-au-stability-fallback-calibration.md) — 診斷：近績質素分後備組合有冇偏差。08-05 起後備馬被高估 −2.11pp，但全部係 8 月舊 Formguide 冇出馬數嘅語料問題；09 起（代表 live）後備 +0.06pp [−1.21, +1.41]，同主路對齊 → **唔修**。
