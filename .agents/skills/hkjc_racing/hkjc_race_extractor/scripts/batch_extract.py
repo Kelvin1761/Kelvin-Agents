@@ -219,9 +219,9 @@ def extract_starter_pdf(date_yyyymmdd, output_dir, date_prefix):
     """Extract the starter PDF (once per meeting).
 
     Returns ``(fresh_ok, error, state)`` — same three-way contract as
-    `_keep_valid_candidate`, because `starter_pdf_ready` is a **hard** term in
-    the publish gate (`ready = pdf_ok and racecards and formguides`), so a
-    transient PDF failure blocks the whole meeting on its own.
+    `_keep_valid_candidate`.  Since 2026-11-03 `starter_pdf_ready` is **not**
+    part of the publish gate any more (see `main`): a missing PDF is recorded
+    as a warning and the overseas form falls back to the per-horse fsc PDFs.
 
     ⚠️ 2026-09-05: this function used to unpack two values here while
     `_keep_valid_candidate` had been changed to return three.  The `ValueError`
@@ -344,8 +344,8 @@ def main():
     if pdf_ok:
         print(f"   ✅ Starter PDF saved")
     else:
-        print(f"   ❌ Starter PDF failed ({pdf_state}): {pdf_err}")
-        print(f"   ⏳ PDF 未 ready；先完成其餘來源探測，整批會標記 WAITING_SOURCE。")
+        print(f"   ⚠️ Starter PDF failed ({pdf_state}): {pdf_err}")
+        print(f"   ↪ PDF 唔再卡發佈閘：海外往績會逐匹改用 fsc 來港前賽績（只係警告）。")
     print()
 
     # Step 2: Extract 晨操 (trackwork) — all races in one shot, fail-soft
@@ -400,40 +400,39 @@ def main():
     if pdf_ok:
         print(f"   ✅ Starter PDF: OK")
     else:
-        # 冇呢個 else，一個**硬阻塞**條件失敗喺 summary 度係完全睇唔到嘅。
-        print(f"   ❌ Starter PDF: {pdf_state} —— {pdf_err or '冇記錄原因'}")
+        # PDF 唔再阻塞，但一定要印出嚟 —— 靜靜 fallback 等於冇人知。
+        print(f"   ⚠️ Starter PDF: {pdf_state} —— {pdf_err or '冇記錄原因'}"
+              f"（唔阻塞；海外往績改用 fsc 後備）")
     if tw_results['ok']:
         print(f"   ✅ 晨操 Trackwork: {tw_ok_count}/{len(races)} races")
     else:
         print(f"   ⚠️ 晨操 Trackwork: {tw_ok_count}/{len(races)} races (fallback)")
     print(f"   📁 All files saved to: {output_dir}")
 
-    # 發佈閘。預設（`strict`）要每個來源今次都刷新成功。
+    # 發佈閘：排位表同賽績要今次刷新成功（fresh）。
     #
-    # `WC_HKJC_GATE=field_change` 係為「名單有變，要攞走退出馬」嗰種重跑而設，
-    # 只鬆**一格**：starter PDF 由 `fresh` 放寬到 `valid`（fresh 或 kept）。
-    # 排位表同賽績照樣要 fresh —— 佢哋決定名單（賽績尤其：Facts 個馬匹迴圈
-    # 食嘅就係佢），鬆咗就會由舊檔重建，隻退出馬返晒嚟。
+    # starter PDF 2026-11-03 起由硬條件降做**警告**。佢喺評分入面嘅唯一用途係
+    # 自購馬嘅海外往績，而每匹自購馬另有一份靜態嘅 fsc「來港前賽績記錄」PDF，
+    # `inject_hkjc_fact_anchors` 喺 PDF 冇海外節時會逐匹改用佢（同一個 row shape、
+    # 1,426 匹次對照 1,410 完全一致，見 docs/audits/hkjc-starter-pdf-soft-gate-20261103.md）。
+    # 以前 PDF 一斷就卡死成個場次：2026-09-06 沙田 22 次 run 有 20 次卡喺 PDF。
     #
-    # 點解 PDF 鬆得：佢係一份**賽前**文件，自己聲明咗截止時間。實測 2026-09-06
-    # 沙田嘅 `最終版本` 截止喺 09-05 上午 11:30 —— 即係定義上永遠早過賽事，
-    # 冇可能載到賽日嘅退出馬。而 `初版`→`最終版本` 2,347 行入面只有 3 行抬頭
-    # 唔同，2,344 行數據逐位元一樣。用一份 `kept` PDF 去做「攞走退出馬」嘅
-    # 重跑，資訊上同 `fresh` 冇分別。
+    # PDF 仍然係主來源：佢喺度就用佢，排名唔郁；佢唔喺度就喺 readiness、digest
+    # 同 Data_Health 出警告（`starter_pdf_soft_fail`）。
     #
-    # 支撐嘅唔對稱：板上掛住一隻唔跑嘅馬做首選係主動出錯；用一份今朝嘅 PDF
-    # 分析（數據同下午嗰份一樣）係良性。
+    # `WC_HKJC_GATE` 照樣讀同記錄（scheduler 會傳 `field_change`）。以前佢只係鬆
+    # PDF 嗰一格；PDF 唔再入閘之後，兩個模式嘅 `ready` 條式一樣 —— 排位表同
+    # 賽績照樣要 fresh，退出馬照樣會被攞走。
     gate_mode = os.environ.get("WC_HKJC_GATE", "strict").strip().lower()
-    if gate_mode == "field_change":
-        pdf_gate = pdf_state in ("fresh", "kept")
-    else:
-        if gate_mode != "strict":
-            print(f"   ⚠️ 唔認得嘅 WC_HKJC_GATE={gate_mode!r}，當 strict 處理")
-        pdf_gate = pdf_ok
-    ready = pdf_gate and total_rc == len(races) and total_fg == len(races)
-    if gate_mode == "field_change" and pdf_gate and not pdf_ok:
-        print(f"   ℹ️ 名單變動模式：PDF 用碟上有效檔（{pdf_state}）過閘 —— "
-              f"PDF 截止時間必定早過賽事，唔會載到賽日退出馬。")
+    if gate_mode not in ("strict", "field_change"):
+        print(f"   ⚠️ 唔認得嘅 WC_HKJC_GATE={gate_mode!r}，當 strict 處理")
+        gate_mode = "strict"
+    pdf_valid = pdf_state in ("fresh", "kept")
+    ready = total_rc == len(races) and total_fg == len(races)
+    starter_pdf_soft_fail = not pdf_ok
+    if starter_pdf_soft_fail:
+        how = "用碟上舊有效檔" if pdf_valid else "海外往績改用 fsc 後備"
+        print(f"   ⚠️ starter PDF 今次未刷新成功（{pdf_state}）—— 唔阻塞發佈，{how}。")
     readiness = {
         "schema_version": 1,
         "generated_at": datetime.now().astimezone().isoformat(timespec='seconds'),
@@ -441,10 +440,11 @@ def main():
         "meeting_date": date_raw,
         "expected_races": len(races),
         "starter_pdf_ready": pdf_ok,
-        # `starter_pdf_ready` 係 `ready` 嘅硬條件，所以佢失敗會單獨卡死成個場次。
-        # 之前 readiness 完全冇記低原因，`hkjc_daily_schedule.readiness_digest`
-        # 亦冇任何一行講 PDF —— 於是 2026-09-06 沙田連續 22 次 run 都過唔到閘，
-        # 而通知每次都指住幾場「賽績」，即係指錯地方。
+        # 2026-11-03 起 `starter_pdf_ready` 唔再入 `ready`；失敗只係
+        # `starter_pdf_soft_fail` 警告（digest／Data_Health 會講）。原因同狀態照記，
+        # 因為 2026-09-06 個教訓係：冇記低原因，通知就會指錯地方。
+        "starter_pdf_gate": "soft",
+        "starter_pdf_soft_fail": starter_pdf_soft_fail,
         "starter_pdf_state": pdf_state,
         "gate_mode": gate_mode,
         "starter_pdf_error": pdf_err or "",

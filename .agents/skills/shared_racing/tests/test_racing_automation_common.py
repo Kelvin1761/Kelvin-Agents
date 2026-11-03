@@ -371,6 +371,34 @@ def test_hkjc_health_blocks_incomplete_extraction_manifest(tmp_path: Path) -> No
     assert "INCOMPLETE_RACE_SET" in codes
 
 
+def test_hkjc_health_warns_but_does_not_block_on_soft_pdf_failure(tmp_path: Path) -> None:
+    """starter PDF 2026-11-03 起係軟閘：Data_Health 要有 warning，但唔可以攔 deploy。"""
+    meeting = _meeting(tmp_path)
+    (meeting / "Extraction_Readiness.json").write_text(
+        json.dumps({
+            "status": "ready", "expected_races": 1, "racecards_ready": 1,
+            "formguides_ready": 1, "starter_pdf_ready": False,
+            "starter_pdf_gate": "soft", "starter_pdf_soft_fail": True,
+            "starter_pdf_state": "missing", "starter_pdf_error": "HTTP 404",
+        }),
+        encoding="utf-8",
+    )
+    (meeting / "Overseas_Fallback_R1.json").write_text(
+        json.dumps({"mode": "fsc_fallback", "race": 1,
+                    "status_counts": {"ok": 2, "not_listed": 7, "no_brand": 1}}),
+        encoding="utf-8",
+    )
+    report = scan_meeting("hkjc", meeting)
+    by_code = {issue["code"]: issue for issue in report["issues"]}
+    assert by_code["STARTER_PDF_MISSING"]["severity"] == "warning"
+    assert "HTTP 404" in by_code["STARTER_PDF_MISSING"]["message"]
+    fallback = by_code["OVERSEAS_FORM_FALLBACK"]
+    assert fallback["severity"] == "warning" and fallback["race"] == 1
+    assert "1 匹冇資料" in fallback["message"]
+    assert not any(i["code"] in {"STARTER_PDF_MISSING", "OVERSEAS_FORM_FALLBACK"}
+                   and i["severity"] == "error" for i in report["issues"])
+
+
 def test_telegram_dry_run_and_chunking() -> None:
     parts = _chunks("a" * 5000)
     assert [len(part) for part in parts] == [4096, 904]
