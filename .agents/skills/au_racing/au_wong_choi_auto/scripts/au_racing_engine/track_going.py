@@ -27,6 +27,7 @@
 """
 from __future__ import annotations
 
+import os
 import re
 
 from .scoring import (WET_FORM_FEATURE_SCALE, WET_FORM_MAX_ABS, WET_FORM_PRIOR, WET_FORM_SHRINK_A,
@@ -38,6 +39,10 @@ WEIGHTS = {
     "same_place": 5.0, "same_win": 2.4, "same_cap": 9.0, "same_nil_many": -8.81, "same_nil_one": -0.81,
     "wet_place": 0.8, "wet_place_cap": 10.0, "wet_win": 3.77, "wet_nil_many": -4.75, "wet_nil_one": -4.14,
 }
+
+# EXP-20261103-04（實驗中，預設關）：SP = 相對生涯專長取代同場段＋地況段。常數預先登記，唔准睇結果改。
+SPECIALISM_ARM = os.environ.get("WC_AU_TRACK_SPECIALISM_ARM", "")
+SPEC_K, SPEC_P0, SPEC_SCALE = 4.0, 0.3715, 50.0
 
 _FULL_RECORD = re.compile(r"\d+\s*:\s*\d+\s*-\s*\d+\s*-\s*\d+")
 
@@ -122,6 +127,24 @@ def track_score(recs, going):
     for delta, _ in same_parts + going_parts:
         score += delta
     return clip_score(score), same_parts, going_parts
+
+
+def specialism_score(recs, career_record_line, going):
+    """EXP-20261103-04 SP：→ (分數, parts)。紀錄唔齊當冇紀錄；生涯唔齊 → c = P0。"""
+    career = record(career_record_line)
+    cs, cp = (career["starts"], career["places"]) if career["complete"] else (0, 0)
+    c = (cp + SPEC_K * SPEC_P0) / (cs + SPEC_K)
+    bucket = going_bucket(going)
+    parts = []
+    for label, r in (("同場", recs["同場"]), (f"今日{bucket}", recs[bucket])):
+        if r["complete"] and r["starts"]:
+            rel = (r["places"] + SPEC_K * c) / (r["starts"] + SPEC_K) - c
+            delta = SPEC_SCALE * rel
+            parts.append((delta, f"{label} {r['places']}／{r['starts']} 上名，對比生涯上名率 {c:.0%} → {delta:+.1f}"))
+    score = NEUTRAL
+    for delta, _ in parts:
+        score += delta
+    return clip_score(score), parts
 
 
 def has_wet_place(recs):

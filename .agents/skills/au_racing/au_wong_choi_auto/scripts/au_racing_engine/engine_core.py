@@ -4209,7 +4209,11 @@ class RacingEngine:
     def _track_score(self):
         """場地分：見 `track_going`。呢度只砌說明。"""
         recs = self._track_records()
-        score, same_parts, going_parts = _track.track_score(recs, self._today_going())
+        if _track.SPECIALISM_ARM == "SP":
+            score, same_parts = _track.specialism_score(recs, self.data.get("career_record_line"), self._today_going())
+            going_parts = []
+        else:
+            score, same_parts, going_parts = _track.track_score(recs, self._today_going())
         notes = [text for _, text in same_parts]
         tdetail = {"base": _track.NEUTRAL, "final": round(score, 2)}
         if going_parts:
