@@ -1,11 +1,37 @@
 {
   "c_layer": {
     "_source": "EXP-20261022-03 (fit on 2025-26 playoff ladders, dev split only)",
-    "intercepts": {"PTS": -0.295, "REB": -0.160, "AST": -0.320, "FG3M": -0.287},
+    "intercepts": {
+      "PTS": -0.295,
+      "REB": -0.16,
+      "AST": -0.32,
+      "FG3M": -0.287
+    },
     "beta_market": 0.755,
-    "gamma_l10": 0.140,
-    "clip_market": [0.02, 0.98],
-    "clip_l10": [0.05, 0.95]
+    "gamma_l10": 0.14,
+    "clip_market": [
+      0.02,
+      0.98
+    ],
+    "clip_l10": [
+      0.05,
+      0.95
+    ]
+  },
+  "ms_layer": {
+    "_source": "EXP-20261103-13 (fit on 2026-10-22..10-28 dev legs only; holdout dlogloss vs C -0.0039 [-0.0049,-0.0026])",
+    "intercepts": {
+      "PTS": -0.4057,
+      "REB": -0.2735,
+      "AST": -0.4232,
+      "FG3M": -0.0624
+    },
+    "beta_market": 0.9264,
+    "gamma_s": 0.1099,
+    "clip": [
+      0.02,
+      0.98
+    ]
   },
   "season_rate": {
     "_source": "EXP-20261025-13 (S_v2) + EXP-20261026-07 (S_v4 previous-season weight)",
@@ -14,10 +40,67 @@
     "rate_half_life": 20.0,
     "prior_minutes": 30.0,
     "opponent_shrink_games": 10.0,
-    "dispersion_k": {"PTS": 6.2792, "REB": 10.1371, "AST": 10.1828, "FG3M": 8.0216},
-    "dispersion": {"PTS": [1.25, 1.0], "REB": [1.6, 0.0], "AST": [1.6, 0.5], "FG3M": [0.8, 0.0]},
-    "dispersion_ref": {"PTS": 15.0, "REB": 6.0, "AST": 4.0, "FG3M": 2.0},
-    "efficiency_prior": {"two": [0.54, 100.0], "three": [0.36, 100.0], "ft": [0.78, 50.0]},
-    "previous_season_weight": {"PTS": [0.25, 0.25], "REB": [0.25, 1.0], "AST": [0.25, 0.5], "FG3M": [0.25, 1.0]}
+    "dispersion_k": {
+      "PTS": 6.2792,
+      "REB": 10.1371,
+      "AST": 10.1828,
+      "FG3M": 8.0216
+    },
+    "dispersion": {
+      "PTS": [
+        1.25,
+        1.0
+      ],
+      "REB": [
+        1.6,
+        0.0
+      ],
+      "AST": [
+        1.6,
+        0.5
+      ],
+      "FG3M": [
+        0.8,
+        0.0
+      ]
+    },
+    "dispersion_ref": {
+      "PTS": 15.0,
+      "REB": 6.0,
+      "AST": 4.0,
+      "FG3M": 2.0
+    },
+    "efficiency_prior": {
+      "two": [
+        0.54,
+        100.0
+      ],
+      "three": [
+        0.36,
+        100.0
+      ],
+      "ft": [
+        0.78,
+        50.0
+      ]
+    },
+    "previous_season_weight": {
+      "PTS": [
+        0.25,
+        0.25
+      ],
+      "REB": [
+        0.25,
+        1.0
+      ],
+      "AST": [
+        0.25,
+        0.5
+      ],
+      "FG3M": [
+        0.25,
+        1.0
+      ]
+    }
   }
 }

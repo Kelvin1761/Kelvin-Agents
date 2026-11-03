@@ -369,3 +369,4 @@
 - [EXP-20261103-10](EXP-20261103-10-au-stability-minus4-rules-results.md) — §7：剷「近績分 ≥72 兼級數 <60 → −4」同「穩定性分 ≥72 兼場地 <57.1 → −4」（日常 Agent 更新加、重複計分）。809 匹郁；Gold +0.06、Good −0.03，CI 全跨零 → 上線。
 - [EXP-20261103-11](EXP-20261103-11-au-stability-fallback-calibration.md) — 診斷：近績質素分後備組合有冇偏差。08-05 起後備馬被高估 −2.11pp，但全部係 8 月舊 Formguide 冇出馬數嘅語料問題；09 起（代表 live）後備 +0.06pp [−1.21, +1.41]，同主路對齊 → **唔修**。
 - [EXP-20261103-12](EXP-20261103-12-au-form-quality-low-tail-results.md) — AU 近績質素分低端加斜（z < −1 斜率加倍）：**REJECT**。fixed Gold −0.18pp CI 全負、三個分層 CI 全負（含首選 $1–3）；§8 both_arms_reject。最低 10% −7.65pp 嘅 cohort 殘差落唔到排名，方向唔好再試。
+- [EXP-20261103-13](EXP-20261103-13-nba-rebuild-formula-results.md) — NBA 重寫：唔睇價嘅 ESPN 季度模型 S 做主機率 holdout 顯著輸 C（+0.0051）；**MS（市場 0.93＋S 0.11）KEEP**（−0.0039 [−0.0049,−0.0026]）；「聯合機率最高」揀腿同 B2 分唔出（CI ±15pp）→ B2 保留但乾淨重寫（88/89 場一樣）；新 `nba_engine` 取代 generate_nba_reports／MC／ML／fit／prob layer

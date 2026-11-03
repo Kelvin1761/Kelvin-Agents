@@ -200,7 +200,8 @@ def allowed(combo):
 def price(combo):
     return math.prod(r["odds"] for r in combo)
 
-from nba_engine.select import Policy, best_combo  # noqa: E402  (the live selector's search)
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from joint_search import Policy, best_combo  # noqa: E402  (was nba_engine/select.py at 6f1871f8)
 POLICY = Policy()
 
 def pick(game_rows, arm, value_check=False):

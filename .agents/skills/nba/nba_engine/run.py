@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections import Counter
 from pathlib import Path
 
 if __package__ in (None, ""):          # `python3 nba_engine/run.py` as well as `-m`
@@ -21,30 +22,32 @@ from nba_sgm_quote import quote_combo, quote_valid  # noqa: E402
 import nba_steady_policy  # noqa: E402
 
 from . import report  # noqa: E402
+from .banker import select_b2  # noqa: E402
 from .legs import MARKET, build_legs  # noqa: E402
-from .select import Policy, select  # noqa: E402
 
-POLICY = Policy()
+MIN_SGM_PRICE = 2.0
 
 
 def quote_payload(legs):
     return [{"player": l.player, "market": MARKET[l.stat], "line": l.line, "side": "over"} for l in legs]
 
 
-def analyse(odds: dict, package: dict, policy: Policy = POLICY, *, quote=quote_combo, valid=quote_valid,
-            paused=None):
+def analyse(odds: dict, package: dict, *, quote=quote_combo, valid=quote_valid, paused=None):
+    """(legs, combo, quote or None, diagnostics). The combo is non-empty only with a valid
+    Sportsbet SGM quote >= 2.0 and the steady stop-loss not paused."""
     legs, skipped = build_legs(odds, package)
-    combo, diagnostics = select(legs, policy)
-    diagnostics["skipped"] = skipped
+    combo, rule = select_b2(legs, (package.get("meta") or {}).get("season_phase"))
+    diagnostics = {"rule": rule, "skipped": skipped, "candidates": len(legs),
+                   "flags": dict(Counter(f for l in legs for f in l.flags))}
     q = None
     if paused:
         combo, diagnostics["no_bet_reason"] = [], f"steady_paused:{paused}"
     elif not combo:
-        diagnostics["no_bet_reason"] = "no_combo_in_price_range"
+        diagnostics["no_bet_reason"] = "no_b2_combo"
     else:
         payload = quote_payload(combo)
         q = quote(odds, payload).quote
-        if not valid(q, odds, payload) or (q.get("decimal_odds") or 0) < policy.min_price:
+        if not valid(q, odds, payload) or (q.get("decimal_odds") or 0) < MIN_SGM_PRICE:
             diagnostics["no_bet_reason"] = f"quote_rejected:{q.get('status')}:{q.get('decimal_odds')}"
             combo = []
     return legs, combo, q, diagnostics
@@ -58,11 +61,12 @@ def main(argv=None) -> int:
     args, _ = parser.parse_known_args(argv)   # tolerate the old generator's extra flags
     odds = json.loads(Path(args.sportsbet).read_text(encoding="utf-8"))
     package = json.loads(Path(args.extractor).read_text(encoding="utf-8"))
-    legs, combo, q, diagnostics = analyse(odds, package, paused=nba_steady_policy.paused_reason())
-    text = report.render(odds, package, legs, combo, q, POLICY, diagnostics, paused=nba_steady_policy.paused_reason())
-    report.write(args.output, text, report.sidecar(text, odds, package, legs, combo, q, POLICY, diagnostics))
-    print(f"{odds['away_team']}@{odds['home_team']}: {len(legs)} legs, "
-          f"banker={'NO BET (' + diagnostics.get('no_bet_reason', '') + ')' if not combo else ' + '.join(l.desc for l in combo)}")
+    paused = nba_steady_policy.paused_reason()
+    legs, combo, q, diagnostics = analyse(odds, package, paused=paused)
+    text = report.render(odds, package, legs, combo, q, diagnostics, paused=paused)
+    report.write(args.output, text, report.sidecar(text, odds, package, legs, combo, q, diagnostics))
+    banker = " + ".join(l.desc for l in combo) if combo else f"NO BET ({diagnostics['no_bet_reason']})"
+    print(f"{odds['away_team']}@{odds['home_team']}: {len(legs)} legs, banker={banker}")
     return 0
 
 

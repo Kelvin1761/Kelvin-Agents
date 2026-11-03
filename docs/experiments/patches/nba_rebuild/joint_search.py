@@ -1,4 +1,8 @@
-"""Banker selection: the 2-4 leg same-game multi most likely to land, priced >= 2.0.
+"""EXP-20261103-13 K arms: highest-joint-probability banker search (NOT adopted; B2 kept).
+
+Moved out of nba_engine after the verdict; kept here so the evaluation re-runs.
+
+Banker selection: the 2-4 leg same-game multi most likely to land, priced >= 2.0.
 
 1. Pool: every leg with a model probability, minus availability / role risks.
 2. Value check (optional): keep a leg only when the model rates it at least the price does.
@@ -14,7 +18,6 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 
-from .legs import Leg
 
 # Exactly the exclusions EXP-20261103-13 evaluated; the early-season flags are reported,
 # not used (that selector was not the one measured).
@@ -72,7 +75,7 @@ def best_combo(items, prob, price, player, team, is_pts, policy: Policy):
     return best, (best_p if best else None)
 
 
-def eligible(leg: Leg, policy: Policy) -> str | None:
+def eligible(leg, policy: Policy) -> str | None:
     """Why a leg is out of the banker pool, or None."""
     p = getattr(leg, policy.probability)
     if p is None:
@@ -86,7 +89,7 @@ def eligible(leg: Leg, policy: Policy) -> str | None:
     return None
 
 
-def select(legs: list[Leg], policy: Policy = Policy()) -> tuple[list[Leg], dict]:
+def select(legs, policy: Policy = Policy()):
     """(best combo or [], funnel diagnostics)."""
     reasons = Counter(eligible(leg, policy) or "eligible" for leg in legs)
     pool = [leg for leg in legs if eligible(leg, policy) is None]

@@ -38,13 +38,19 @@ class Leg:
     hit_l5: float
     hit_l3: float
     avg: float
+    median: float
     l3_avg: float
     cov: float
     market: float                # 1/price
     p_c: float | None            # C layer
     p_s: float | None            # season-rate model, price-free
+    p_ms: float | None           # market + S: the published probability
     availability: str            # ok / dtd   (out players never become legs)
     flags: list[str] = field(default_factory=list)
+
+    @property
+    def p_final(self) -> float | None:
+        return self.p_ms if self.p_ms is not None else self.p_c
 
     @property
     def label(self) -> str:
@@ -55,7 +61,7 @@ class Leg:
         return f"{self.player} ({self.team}) {self.label} {self.line:g}+"
 
     def to_dict(self) -> dict:
-        return {**asdict(self), "label": self.label, "desc": self.desc}
+        return {**asdict(self), "p_final": self.p_final, "label": self.label, "desc": self.desc}
 
 
 def _rate(values, line):
@@ -63,12 +69,15 @@ def _rate(values, line):
 
 
 def _stats(values):
+    """(mean, median, coefficient of variation)."""
     n = len(values)
     if not n:
-        return 0.0, 0.0
+        return 0.0, 0.0, 0.0
     avg = sum(values) / n
+    s = sorted(values)
+    median = (s[n // 2 - 1] + s[n // 2]) / 2 if n % 2 == 0 else s[n // 2]
     sd = math.sqrt(sum((v - avg) ** 2 for v in values) / n)
-    return avg, (sd / avg if avg else 0.0)
+    return avg, median, (sd / avg if avg else 0.0)
 
 
 def _find(players, name):
@@ -124,24 +133,25 @@ def build_legs(odds: dict, package: dict) -> tuple[list[Leg], dict]:
                 continue
             mins = [float(m) for m in gamelog.get("MIN") or []]
             minutes = sum(mins) / len(mins) if mins else 0.0
-            avg, cov = _stats(l10)
+            avg, median, cov = _stats(l10)
             l3 = l10[:3]
             opponent = home if team == away else away
             opp_ctx = (package.get("opponent_context") or {}).get(team)
             flags = _flags(stat, gamelog, team, season, minutes)
-            if stat == "FG3M" and cov > 0.5:
+            if stat == "FG3M" and round(cov, 3) > 0.5:
                 flags.append("volatile_3pm")
             for line_text, price_text in (entry.get("lines") or {}).items():
                 line, price = float(line_text), float(price_text)
                 if not line.is_integer() or price < 1.01:
                     continue
                 hit10 = _rate(l10, line)
+                p_s = model.s_prob(gamelog.get("season_log"), stat, line, opp_ctx, season, team)
                 legs.append(Leg(
                     player=name, team=team, opponent=opponent, stat=stat, line=line, price=price,
                     l10=l10, minutes_l10=round(minutes, 1), hit_l10=hit10, hit_l5=_rate(l10[:5], line),
-                    hit_l3=_rate(l3, line), avg=round(avg, 2), l3_avg=round(sum(l3) / len(l3), 2),
+                    hit_l3=_rate(l3, line), avg=round(avg, 2), median=median, l3_avg=round(sum(l3) / len(l3), 2),
                     cov=round(cov, 3), market=1.0 / price,
                     p_c=model.c_prob(stat, price, hit10),
-                    p_s=model.s_prob(gamelog.get("season_log"), stat, line, opp_ctx, season, team),
+                    p_s=p_s, p_ms=model.ms_prob(stat, price, p_s),
                     availability=level, flags=list(flags)))
     return legs, skipped

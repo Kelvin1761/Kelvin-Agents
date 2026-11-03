@@ -6,6 +6,8 @@ Every number here is frozen by an experiment; the constants live in config.json.
 * C       = logit p = a_stat + beta*logit(market) + gamma*logit(L10 hit rate)   (EXP-20261022-03)
 * S       = P(X >= line), X ~ NB(mu, k);  mu = projected minutes x per-minute rate x opponent
             factor; previous-season games down-weighted early in a season    (EXP-20261025-13, -26-07)
+* MS      = logit p = a_stat + beta*logit(market) + gamma*logit(S)            (EXP-20261103-13)
+            the published probability; C stands in when S cannot be computed
 
 All inputs are ESPN: the per-game ``season_log`` and the opponent ``allowed`` table the
 extractor writes. Functions return None when a leg cannot be scored; they never raise on
@@ -56,6 +58,16 @@ def c_prob(stat: str, price, hit_l10: float | None, cfg: dict | None = None) -> 
     z = (c["intercepts"][stat] + c["beta_market"] * _logit(_clip(m, *c["clip_market"]))
          + c["gamma_l10"] * _logit(_clip(hit_l10, *c["clip_l10"])))
     return _sigmoid(z)
+
+
+def ms_prob(stat: str, price, s: float | None, cfg: dict | None = None) -> float | None:
+    """MS layer: the market anchored, corrected by the price-free season-rate model."""
+    c = (cfg or config())["ms_layer"]
+    m = market_prob(price)
+    if m is None or s is None or stat not in c["intercepts"]:
+        return None
+    return _sigmoid(c["intercepts"][stat] + c["beta_market"] * _logit(_clip(m, *c["clip"]))
+                    + c["gamma_s"] * _logit(_clip(s, *c["clip"])))
 
 
 def nb_tail(line: float, mu: float, k: float) -> float:

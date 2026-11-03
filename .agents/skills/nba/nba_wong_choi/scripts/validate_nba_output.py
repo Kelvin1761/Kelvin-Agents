@@ -25,6 +25,7 @@ def find_odds_json(report_path):
 
 def validate_file(filepath, odds_json_path=None, *, now=None):
     passed, blocks = validate(filepath, odds_json_path or find_odds_json(filepath), now=now)
+    blocks = [f"❌ BLOCK: {block}" for block in blocks]   # the exporter's log format
     return {"file": filepath, "passed": passed, "blocks": blocks, "warnings": [], "total_issues": len(blocks)}
 
 

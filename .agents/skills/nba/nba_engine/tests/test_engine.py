@@ -1,6 +1,5 @@
 """nba_engine: model maths, leg building, selection search and the publication firewall."""
 import hashlib
-import itertools
 import json
 import math
 import sys
@@ -13,13 +12,13 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from nba_engine import model, publish, report  # noqa: E402
 from nba_engine.legs import Leg, build_legs  # noqa: E402
 from nba_engine.run import analyse  # noqa: E402
-from nba_engine.select import Policy, best_combo, select  # noqa: E402
+from nba_engine import banker  # noqa: E402
 
 
 def leg(player, team="AAA", stat="REB", line=5.0, price=1.5, p=0.7, **kw):
     base = dict(player=player, team=team, opponent="BBB", stat=stat, line=line, price=price, l10=[6.0] * 10,
-                minutes_l10=32.0, hit_l10=0.9, hit_l5=1.0, hit_l3=1.0, avg=6.0, l3_avg=6.0, cov=0.2,
-                market=1 / price, p_c=p, p_s=p, availability="ok", flags=[])
+                minutes_l10=32.0, hit_l10=0.9, hit_l5=1.0, hit_l3=1.0, avg=6.0, median=6.0, l3_avg=6.0, cov=0.2,
+                market=1 / price, p_c=p, p_s=p, p_ms=None, availability="ok", flags=[])
     base.update(kw)
     return Leg(**base)
 
@@ -74,61 +73,46 @@ def test_opponent_that_allows_more_raises_the_mean():
     assert model.s_prob(season_log(), "REB", 7, soft, "2026-27", "AAA") > model.s_prob(season_log(), "REB", 7, OPP, "2026-27", "AAA")
 
 
-# --- selection ----------------------------------------------------------------
-def brute_force(legs, policy):
-    best, best_p = [], 0.0
-    for n in range(policy.min_legs, policy.max_legs + 1):
-        for combo in itertools.combinations(legs, n):
-            product = math.prod(l.price for l in combo)
-            teams = [l.team for l in combo]
-            pts = [l.team for l in combo if l.stat == "PTS"]
-            if (policy.min_price <= product <= policy.max_price and len({l.player for l in combo}) == n
-                    and max(teams.count(t) for t in teams) <= 3 and all(pts.count(t) <= 2 for t in pts)):
-                p = math.prod(l.p_c for l in combo)
-                if p > best_p:
-                    best, best_p = list(combo), p
-    return best_p
+# --- MS layer ---------------------------------------------------------------
+def test_ms_layer_matches_frozen_formula_and_falls_back_to_c():
+    c = model.config()["ms_layer"]
+    z = c["intercepts"]["REB"] + c["beta_market"] * math.log(0.6 / 0.4) + c["gamma_s"] * math.log(0.7 / 0.3)
+    assert model.ms_prob("REB", 1 / 0.6, 0.7) == pytest.approx(1 / (1 + math.exp(-z)))
+    assert model.ms_prob("REB", 1.5, None) is None
+    assert leg("A", p=0.7, p_ms=None).p_final == 0.7
+    assert leg("A", p=0.7, p_ms=0.66).p_final == 0.66
 
 
-def test_branch_and_bound_equals_brute_force():
-    import random
-    rng = random.Random(7)
-    for _ in range(40):
-        legs = [leg(f"P{i % 9}", team=rng.choice("AB"), stat=rng.choice(["PTS", "REB", "AST"]),
-                    line=float(i), price=round(rng.uniform(1.05, 2.6), 2), p=rng.uniform(0.3, 0.97))
-                for i in range(14)]
-        combo, joint = best_combo(legs, lambda l: l.p_c, lambda l: l.price, lambda l: l.player,
-                                  lambda l: l.team, lambda l: l.stat == "PTS", Policy())
-        assert (joint or 0.0) == pytest.approx(brute_force(legs, Policy()))
-        if combo:
-            assert 2.0 <= math.prod(l.price for l in combo) <= 4.0
+# --- B2 banker ---------------------------------------------------------------
+def test_strict_pool_rules():
+    good = dict(hit_l10=0.9, hit_l5=0.8, price=1.5, cov=0.3, l3_avg=7.0, avg=7.0, line=6.0)
+    assert banker.pool([leg("A", **good)], banker.STRICT)
+    for change in (dict(hit_l10=0.7), dict(hit_l5=0.6), dict(price=1.15), dict(cov=0.7), dict(l3_avg=5.0),
+                   dict(avg=6.5), dict(availability="dtd"), dict(flags=["bench_minutes"]), dict(flags=["new_team"])):
+        assert not banker.pool([leg("A", **{**good, **change})], banker.STRICT), change
 
 
-def test_structural_rules_hold():
-    legs = [leg("A", stat="PTS", price=1.5, p=0.95), leg("B", stat="PTS", price=1.5, p=0.94),
-            leg("C", stat="PTS", price=1.5, p=0.93), leg("A", stat="REB", line=8.0, price=1.5, p=0.92)]
-    combo, _ = select(legs)
-    assert len({l.player for l in combo}) == len(combo)
-    assert sum(l.stat == "PTS" for l in combo) <= 2
+def test_ast_at_or_above_median_needs_season_model_edge():
+    base = dict(stat="AST", line=4.0, median=4.0, price=1.5, avg=5.0, l3_avg=5.0)
+    assert not banker.ast_guard_ok(leg("A", p_s=None, **base))
+    assert not banker.ast_guard_ok(leg("A", p_s=0.68, **base))           # 1.5 -> 66.7% market, +1.3pp
+    assert banker.ast_guard_ok(leg("A", p_s=0.71, **base))
+    assert banker.ast_guard_ok(leg("A", p_s=None, **{**base, "median": 5.0}))
 
 
-def test_excluded_and_unavailable_legs_never_selected():
-    legs = [leg("A", price=1.5, p=0.99, flags=["bench_minutes"]), leg("B", price=1.5, p=0.98, availability="dtd"),
-            leg("C", price=1.45, p=0.8), leg("D", price=1.45, p=0.79)]
-    combo, diag = select(legs)
-    assert {l.player for l in combo} == {"C", "D"}
-    assert diag["funnel"]["bench_minutes"] == 1 and diag["funnel"]["availability"] == 1
+def test_b2_builds_to_the_price_target_with_structural_rules():
+    legs = [leg(f"P{i}", team="AB"[i % 2], stat=["PTS", "REB", "AST"][i % 3], price=1.35 + 0.05 * i,
+                hit_l10=1.0 if i < 2 else 0.9, avg=8.0, l3_avg=8.0, line=6.0) for i in range(8)]
+    combo, rule = banker.select_b2(legs)
+    assert rule == "banker" and 2 <= len(combo) <= 4
+    assert 2.0 <= banker.product(combo) <= 3.5 * banker.TOLERANCE
+    assert banker.allowed(combo) and len({l.player for l in combo}) == len(combo)
 
 
-def test_value_check_drops_legs_rated_below_price():
-    legs = [leg("A", price=1.5, p=0.6), leg("B", price=1.5, p=0.9), leg("C", price=1.5, p=0.85)]
-    combo, _ = select(legs, Policy(value_check=True))
-    assert "A" not in {l.player for l in combo}
-
-
-def test_no_combo_reaching_the_floor_is_no_bet():
-    combo, diag = select([leg("A", price=1.1), leg("B", price=1.1)])
-    assert combo == [] and diag["joint_probability"] is None
+def test_b2_falls_back_then_gives_up():
+    legs = [leg(f"P{i}", hit_l10=0.7, hit_l5=0.7, price=1.5, avg=6.2, l3_avg=6.0, line=6.0) for i in range(3)]
+    assert banker.select_b2(legs)[1] == "banker_fallback"
+    assert banker.select_b2([leg("A", hit_l10=0.5)]) == ([], "none")
 
 
 # --- end to end ------------------------------------------------------------------
@@ -150,7 +134,7 @@ def test_build_legs_skips_decimal_lines_and_out_players():
     legs, skipped = build_legs(*game())
     assert {l.line for l in legs} == {6.0, 10.0}
     assert "BBB Star2" not in {l.player for l in legs} and skipped["out"] == 1
-    assert all(l.p_c is not None and l.p_s is not None for l in legs)
+    assert all(l.p_c is not None and l.p_s is not None and l.p_final == l.p_ms for l in legs)
 
 
 class Quoted:
@@ -174,8 +158,8 @@ def test_report_and_sidecar_are_bound_and_parse_like_the_dashboard(tmp_path):
     odds, package = game()
     ok = lambda o, legs: Quoted({"status": "ok", "decimal_odds": 2.1})  # noqa: E731
     legs, combo, quote, diag = analyse(odds, package, quote=ok, valid=lambda q, o, l: True)
-    text = report.render(odds, package, legs, combo, quote, Policy(), diag)
-    payload = report.sidecar(text, odds, package, legs, combo, quote, Policy(), diag)
+    text = report.render(odds, package, legs, combo, quote, diag)
+    payload = report.sidecar(text, odds, package, legs, combo, quote, diag)
     assert payload["report_sha256"] == hashlib.sha256(text.encode()).hexdigest()
     assert publish.HEADING.findall(text) == [("1", "2.1")]
     rows = [r for r in text.splitlines() if r.startswith("| 🧩")]
@@ -188,9 +172,9 @@ def test_report_and_sidecar_are_bound_and_parse_like_the_dashboard(tmp_path):
 def test_firewall_blocks_a_report_edited_after_writing(tmp_path):
     odds, package = game()
     legs, combo, quote, diag = analyse(odds, package)   # no network under pytest -> NO BET
-    text = report.render(odds, package, legs, combo, quote, Policy(), diag)
+    text = report.render(odds, package, legs, combo, quote, diag)
     out = tmp_path / "Game_AAA_BBB_Full_Analysis.md"
-    report.write(str(out), text, report.sidecar(text, odds, package, legs, combo, quote, Policy(), diag))
+    report.write(str(out), text, report.sidecar(text, odds, package, legs, combo, quote, diag))
     (tmp_path / "Sportsbet_Odds_AAA_BBB.json").write_text(json.dumps(odds))
     assert publish.validate(out, tmp_path / "Sportsbet_Odds_AAA_BBB.json") == (True, [])
     out.write_text(text + "\nedited")
