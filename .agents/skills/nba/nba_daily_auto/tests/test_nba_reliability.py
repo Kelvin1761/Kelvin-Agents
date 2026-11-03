@@ -105,14 +105,6 @@ def test_choose_latest_snapshot_before_filtering_model_identity(tmp_path):
     assert report["excluded_model_legs"] == 100
 
 
-def test_deliberately_disabled_current_layer_is_explicit(tmp_path, monkeypatch):
-    _legs(tmp_path, 100, 0.6, 60)
-    monkeypatch.setenv("NBA_WC_PROB_LAYER", "0")
-    report = rel.build(DAY, tmp_path, epoch="2026-10-01")
-    assert report["status"] == "disabled" and report["overall"]["n"] == 0
-    assert "刻意關閉" in "\n".join(rel.message_lines(report))
-
-
 def _picked_population(root, events=10, per_event=10):
     rows = []
     for picked, p, hits in [(True, .7, 4), (False, .3, 6)]:

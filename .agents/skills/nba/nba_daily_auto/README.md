@@ -84,7 +84,7 @@ NBA 由來冇同市場比過。`nba_market_ledger.py` 只做記錄同結算，**
   球隊得分／球員角色因子；`sim_independent_prob`、`sim_correlation_lift`、
   `sim_scaled_joint_prob`＝p_final 相乘 × lift；seed 每場固定）。shadow 只記錄，**唔改發佈邊條 SGM**；
   未有足夠已結算 n 之前唔准講模型 vs 市場。概率嚟自
-  `generate_nba_reports.py` 同一次 run 寫嘅 `Game_<TAG>_Full_Analysis.md.market_legs.json`（綁住報告 SHA-256，
+  `nba_engine/run.py` 同一次 run 寫嘅 `Game_<TAG>_Full_Analysis.md.market_legs.json`（綁住報告 SHA-256，
   對唔上就記 `model_missing`）。
 - **結算**：postgame 歸檔後用 reflector 嘅 `Results_Brief_<US日期>.json` box score（同 `verify_props_hits`
   一樣嘅配對／DNP void 規則）；每條腿第一次結算為準，唔覆寫。

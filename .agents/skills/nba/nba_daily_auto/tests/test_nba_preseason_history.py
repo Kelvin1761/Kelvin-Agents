@@ -17,14 +17,9 @@ import pandas as pd
 NBA_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA_ROOT))
 sys.path.insert(0, str(NBA_ROOT / 'nba_data_extractor' / 'scripts'))
-sys.path.insert(0, str(NBA_ROOT / 'nba_wong_choi' / 'scripts'))
 import nba_extractor as extractor
 import nba_orchestrator as orchestrator
-import generate_nba_reports as reports
-import generate_nba_sgm_reports as sgm
 import claw_sportsbet_odds as claw
-import validate_nba_output as firewall
-from nba_identity import player_name_key
 
 
 @contextlib.contextmanager
@@ -101,17 +96,6 @@ class PreseasonHistoryTests(unittest.TestCase):
             self.assertEqual(extractor.espn_league_tables('2025-26', '2026-10-09', {}), ({}, {}))
         self.assertEqual(games.call_args.args[:2], ('2025-26', '10/07/2026'))
 
-    def test_shadow_banner_in_game_and_both_master_reports(self):
-        fixture = NBA_ROOT / 'nba_wong_choi/tests/fixtures/valid_game.json'
-        meta = json.loads(fixture.read_text())['meta']
-        meta.update(season_phase='PRESEASON', automation_mode='shadow', statistics_season='2025-26',
-                    roster_season='2026-27', history_mode='previous_season_reference', history_date_to='10/08/2026')
-        text = reports.gen_full_report(meta, {}, {}, {}, {}, [], '2026-10-09 12:00', season_phase='EARLY_SEASON')
-        self.assertIn('NO BET — PRESEASON SHADOW ONLY', text)
-        self.assertIn('statistics_season**: 2025-26', text)
-        game = {'tag': 'HOU_DAL', 'shadow': True, 'combos': {}, 'summary': ''}
-        self.assertIn('NO BET — PRESEASON SHADOW ONLY', sgm.generate_all_sgm_report([game], '2026-10-09'))
-        self.assertIn('NO BET — PRESEASON SHADOW ONLY', sgm.generate_banker_report([game], '2026-10-09'))
 
     def test_failed_child_stdout_retained_in_orchestrator(self):
         error = subprocess.CalledProcessError(1, ['extractor'], output='All players have no L10; season=2026-27', stderr='warning')
@@ -154,78 +138,6 @@ class LiveMarketContractTests(unittest.TestCase):
                 payload = {'player_props': {'points': {'Kevin Durant': {'lines': lines}}}}
                 self.assertEqual(orchestrator.player_milestone_markets_available(payload), expected)
 
-    def test_nullable_history_does_not_crash_card_builder(self):
-        card = reports.build_player_card('Rookie', 'LAL', {'lines': {}},
-                                         {'gamelog': None}, 'points', engine_mode='legacy')
-        self.assertEqual(card['l10'], [])
-
-
-class PlayerIdentityAndShadowCoverageTests(unittest.TestCase):
-    def test_full_name_normalizes_accents_without_surname_or_suffix_collision(self):
-        self.assertEqual(player_name_key('Luka Dončić'), player_name_key('Luka Doncic'))
-        self.assertEqual(player_name_key('Gary Payton Jr.'), player_name_key('Gary Payton Jr'))
-        self.assertNotEqual(player_name_key('Gary Payton Jr.'), player_name_key('Gary Payton Sr.'))
-        players = {'LAL': [{'name': 'Luka Dončić'}, {'name': 'Gary Payton Jr.'}]}
-        self.assertEqual(reports.find_player_in_extractor(players, 'Luka Doncic', 'LAL')['name'], 'Luka Dončić')
-        self.assertIsNone(reports.find_player_in_extractor(players, 'Dončić', 'LAL'))
-        self.assertIsNone(reports.find_player_in_extractor(players, 'Gary Payton Sr.', 'LAL'))
-
-    def test_ambiguous_full_names_are_rejected(self):
-        players = {'LAL': [{'name': 'Luka Dončić'}, {'name': 'Luka Doncic'}]}
-        self.assertIsNone(reports.find_player_in_extractor(players, 'Luka Doncic', 'LAL'))
-
-    def source_files(self, tmp, phase='PRESEASON', with_history=True):
-        odds = Path(tmp) / 'Sportsbet_Odds_SAC_LAL.json'
-        odds.write_text(json.dumps({'player_props': {'points': {
-            name: {'lines': {'10': '1.72'}} for name in ['Austin Reaves', 'Luka Doncic', 'Darius Acuff Jr.']}}}))
-        data = {'meta': {'season_phase': phase, 'automation_mode': 'shadow' if phase == 'PRESEASON' else 'production'},
-                'players': {'LAL': [{'name': 'Austin Reaves', 'gamelog': {'PTS': [22]} if with_history else None},
-                                   {'name': 'Luka Dončić', 'gamelog': {'PTS': [31]} if with_history else None}]}}
-        odds.with_name('nba_game_data_SAC_LAL.json').write_text(json.dumps(data))
-        return str(odds)
-
-    def test_shadow_requires_all_available_priced_players_not_news_mentions(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            odds = self.source_files(tmp)
-            text = 'NO BET — PRESEASON SHADOW ONLY\n#### Austin Reaves (#1, LAL) — PTS\n#### Luka Doncic (#77, LAL) — PTS'
-            self.assertEqual(firewall.check_fw06_real_players(text, odds), [])
-            news_only = text.replace('#### Luka Doncic (#77, LAL) — PTS', 'Injury news: Luka Doncic is day-to-day')
-            self.assertIn('BLOCK', firewall.check_fw06_real_players(news_only, odds)[0])
-            self.assertIn('BLOCK', firewall.check_fw06_real_players(text.replace('NO BET — PRESEASON SHADOW ONLY', ''), odds)[0])
-
-    def test_shadow_without_real_history_is_blocked_even_with_all_names(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            odds = self.source_files(tmp, with_history=False)
-            text = 'NO BET — PRESEASON SHADOW ONLY\n#### Austin Reaves (#1, LAL) — PTS\n#### Luka Doncic (#77, LAL) — PTS'
-            self.assertIn('BLOCK', firewall.check_fw06_real_players(text, odds)[0])
-
-    def test_production_minimum_coverage_is_preserved(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            odds = self.source_files(tmp, phase='EARLY_REGULAR')
-            text = '#### Austin Reaves (#1, LAL) — PTS\n#### Luka Doncic (#77, LAL) — PTS\nNews: Darius Acuff Jr.'
-            self.assertIn('要求 ≥3', firewall.check_fw06_real_players(text, odds)[0])
-
-    def test_invalid_source_json_fails_closed(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            odds = Path(tmp) / 'Sportsbet_Odds_SAC_LAL.json'
-            odds.write_text('{')
-            self.assertIn('BLOCK', firewall.check_fw06_real_players('Luka Doncic', str(odds))[0])
-
-
-class LocalModelConfigurationTests(unittest.TestCase):
-    def test_explicit_local_model_is_loaded_without_cloud_dataset(self):
-        with tempfile.TemporaryDirectory() as tmp:
-            local = Path(tmp) / 'local-model'
-            local.mkdir()
-            (local / 'model.pkl').write_bytes(pickle.dumps({'fixture_model': True}))
-            (local / 'feature_names.json').write_text(json.dumps({'features': ['pts']}))
-            code = "import sys; sys.path.insert(0, sys.argv[1]); from nba_ml_predictor import MLPropPredictor; p=MLPropPredictor(); assert p.model == {'fixture_model': True}; assert p.feature_names == ['pts']"
-            repo = NBA_ROOT.parents[2]
-            result = subprocess.run([sys.executable, '-c', code, str(repo / '.agents/scripts/nba_ml')],
-                                    env={**os.environ, 'NBA_WC_MODEL_DIR': str(local),
-                                         'WONGCHOI_DATA_ROOT': str(Path(tmp) / 'absent-cloud-dataset'),
-                                         'PYTHONDONTWRITEBYTECODE': '1'}, capture_output=True, text=True, timeout=30)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 class RegularOpenerHistoryTests(unittest.TestCase):

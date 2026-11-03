@@ -462,7 +462,23 @@ Deploy wrapper：
 
 ### What it does
 
-`NBA Wong Choi` 目前有自己嘅 orchestrator，會串連 Sportsbet odds extraction、NBA data extraction、report generation、validation 同 SGM compile。
+`NBA Wong Choi` 目前有自己嘅 orchestrator，會串連 Sportsbet odds extraction、ESPN 數據抽取、
+`nba_engine` 分析、發佈防火牆同 SGM compile。**數據來源只有 ESPN**（stats.nba.com 已於 EXP-20261101-60 退役）。
+
+### 引擎：`.agents/skills/nba/nba_engine/`（EXP-20261103-15 重寫）
+
+| 檔 | 做咩 |
+|---|---|
+| `model.py` + `config.json` | 三條公式：C（市場＋L10）、S（季度產出率，NB 分佈，唔睇價）、**MS（市場＋S，發佈用嘅 `p_final`）**；S 計唔到就用 C |
+| `legs.py` | Sportsbet milestone 線 + ESPN package → 每條腿一行 |
+| `banker.py` | 正式穩膽 = steady B2 規則（L10/L5 ≥80%、緩衝、CoV…，fallback 70%），真 SGM 報價 ≥2.0 先出注 |
+| `report.py` | 寫 `Game_<tag>_Full_Analysis.md` + `.market_legs.json`（ledger／reflector／dashboard 讀 sidecar） |
+| `publish.py` | 發佈防火牆：sidecar 對得上報告、報價有效 ≥2.0、腿仲喺盤、傷停名單新鮮 |
+| `run.py` | 單場入口（同舊 `generate_nba_reports.py` 一樣嘅參數） |
+
+- 冇 ML、冇 Monte Carlo、冇 10 因子調整、冇 shadow 欄位。舊引擎逐場 replay 對比：腿 16,934/16,934 一樣、B2 89 場 88 場一樣。
+- 改 `config.json` 嘅係數 = 改模型，要過 `model-regression-gate`；`docs/experiments/patches/nba_rebuild/evaluate.py` 可以用 ledger 重跑同一把尺。
+- 所有 forward／shadow 測試已於 EXP-20261103-16 中止（冇判決）。
 
 ### Supported inputs
 
@@ -495,7 +511,8 @@ Settlement 會先輸出本機 proposal；未獲明確批准前唔會自動 POST�
 
 ### Current reality
 
-`NBA Wong Choi` 有實際可跑入口，但 repo 內仍保留一啲較舊嘅 skeleton / analyst wording。對新用戶嚟講，以 orchestrator 同實際輸出為準。
+Stage 2 未做：dashboard 仍然 parse Markdown（`multisport_exporter._parse_nba_combos`）、`generate_nba_sgm_reports.py`
+仍然由 Markdown 砌匯總、extractor／orchestrator／scheduler 未重寫。改呢幾樣之前要保持 `report.py` 嘅標題同腿表格格式。
 
 ## tennis-wong-choi
 

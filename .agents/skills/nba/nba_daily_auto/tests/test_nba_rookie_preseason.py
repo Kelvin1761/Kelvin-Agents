@@ -9,10 +9,8 @@ import pytest
 NBA = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(NBA))
 sys.path.insert(0, str(NBA / 'nba_data_extractor/scripts'))
-sys.path.insert(0, str(NBA / 'nba_wong_choi/scripts'))
 import nba_extractor as x
 import nba_orchestrator as o
-import generate_nba_reports as reports
 
 
 def row(day, points):
@@ -61,18 +59,6 @@ def test_stale_preseason_cache_requires_reextraction(tmp_path,meta,valid):
     assert o.extractor_cache_current(str(p)) is valid
 
 
-def test_report_explicitly_discloses_real_small_sample():
-    card={'name':'Rookie','team':'MEM','category':'points','jersey':'27','l10':[16,11],'avg':13.5,'med':13.5,'sd':2.5,'cov':0.185,'cov_grade':'低','trend':'樣本不足','history_seasons':['2026-27'],'history_season_types':['Pre Season'],'history_date_to':'10/08/2026'}
-    text=reports.gen_player_card(card)
-    assert '真實樣本 2 場' in text
-    assert '2026-27 / Pre Season' in text
-    note=reports.preseason_sample_note([dict(card,category=category) for category in ['points','rebounds','assists','threes_made']] * 2)
-    assert '唔代表完整 L10' in note
-    assert 'NO BET' in note
-    assert note.count('Rookie 2 場')==1
-    import validate_nba_output as firewall
-    combined=note+'\n'+'\n'.join(reports.gen_player_card(dict(card,category=category)) for category in ['points','rebounds','assists','threes_made'])
-    assert firewall.check_fw04_padding(combined)==[]
 
 
 def test_official_roster_null_position_remains_unknown():

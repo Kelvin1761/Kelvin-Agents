@@ -72,7 +72,6 @@ ag_kit_skills:
 - `resources/02_data_card_template.md` — 14 項數據卡格式定義 [必讀]
 - `resources/03_defensive_profiles.md` — 防守大閘分類標準與知名球員清單 [必讀]
 - `resources/04_sportsbet_extraction.md` — Sportsbet MCP Playwright 盤口提取協議 [必讀]
-- `../nba_wong_choi/resources/engine_directives.md` — 包含機讀 `<xml>` 標籤之 P23 嚴格約束協議 [必讀]
 
 讀取一次後保留在記憶中,嚴禁每批次重複讀取。
 

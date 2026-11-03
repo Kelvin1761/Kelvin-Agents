@@ -9,52 +9,48 @@ from datetime import datetime, timedelta, timezone
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 import nba_orchestrator as o
 
+def write_report(report, text):
+    """A NO BET report with its bound sidecar (the firewall's only requirement then)."""
+    import hashlib
+    report.write_text(text)
+    Path(str(report) + ".market_legs.json").write_text(json.dumps(
+        {"report_sha256": hashlib.sha256(text.encode()).hexdigest(), "combos": []}))
+
+
 @pytest.fixture
 def inputs(tmp_path, monkeypatch):
     # Cache hashing tests isolate the independently tested availability gate.
     monkeypatch.setattr(o, "availability_current", lambda payload: True)
-    for name in ("NBA_WC_ENGINE", "NBA_WC_PROB_LAYER", "NBA_HYBRID_ML_ADJUST_ENABLED", "NBA_FIT_LAYER_SHADOW_ENABLED"):
-        monkeypatch.delenv(name, raising=False)
-    monkeypatch.setenv("NBA_WC_MODEL_DIR", str(tmp_path / "model"))
-    (tmp_path / "model").mkdir()
-    (tmp_path / "model" / "model.pkl").write_bytes(b"fixture model")
-    (tmp_path / "model" / "feature_names.json").write_text("[]")
+    engine = tmp_path / "engine"
+    engine.mkdir()
+    (engine / "model.py").write_text("# fixture engine")
+    monkeypatch.setattr(o, "ENGINE_DIR", str(engine))
     odds = tmp_path / "Sportsbet_Odds_MEM_CHI.json"
     odds.write_text(json.dumps({"player_props":{"points":{"Fixture Player":{"lines":{"15":"1.74"}}}}}))
     extractor = tmp_path / "nba_game_data_MEM_CHI.json"
     extractor.write_text(json.dumps({"meta":{"season_phase":"PRESEASON","preseason_rookie_history_contract":1,"statistics_contract":2,"defender_source":{"per_mode":"Totals","sample_unit":"total_attempts","observed_players":20}},"players":{}}))
     report = tmp_path / "Game_MEM_CHI_Full_Analysis.md"
-    report.write_text("verified synthetic report\n" + "x" * 6000)
+    write_report(report, "verified synthetic report\n" + "x" * 6000)
     cache = Path(str(report) + ".inputs.json")
     cache.write_text(json.dumps({"inputs":o.report_inputs(str(odds), str(extractor), False), "report":o._file_digest(str(report))}))
     return odds, extractor, report, cache
 
-@pytest.mark.parametrize("change", ["odds", "extractor", "report", "model", "features", "legacy", "malformed", "absent"])
+@pytest.mark.parametrize("change", ["odds", "extractor", "report", "engine", "new_engine_file", "malformed", "absent"])
 def test_changed_inputs_or_report_cannot_reuse(inputs, change):
     odds, extractor, report, cache = inputs
+    assert o.report_cache_current(str(report), str(odds), str(extractor), False)
+    engine = Path(o.ENGINE_DIR)
     if change in ("odds", "extractor", "report"):
         path = {"odds":odds, "extractor":extractor, "report":report}[change]
         path.write_text(path.read_text() + " ")
-    elif change in ("model", "features"):
-        name = "model.pkl" if change == "model" else "feature_names.json"
-        (odds.parent / "model" / name).write_bytes(b"changed fixture")
+    elif change == "engine":
+        (engine / "model.py").write_text("# changed engine")
+    elif change == "new_engine_file":
+        (engine / "config.json").write_text("{}")
     elif change == "malformed":
         cache.write_text("[]")
     elif change == "absent":
         cache.unlink()
-    assert not o.report_cache_current(str(report), str(odds), str(extractor), change == "legacy")
-
-
-@pytest.mark.parametrize("name,value", [
-    ("NBA_WC_ENGINE", "ml"),
-    ("NBA_WC_PROB_LAYER", "0"),
-    ("NBA_HYBRID_ML_ADJUST_ENABLED", "1"),
-    ("NBA_FIT_LAYER_SHADOW_ENABLED", "0"),
-])
-def test_runtime_model_switch_invalidates_report(inputs, monkeypatch, name, value):
-    odds, extractor, report, _cache = inputs
-    assert o.report_cache_current(str(report), str(odds), str(extractor), False)
-    monkeypatch.setenv(name, value)
     assert not o.report_cache_current(str(report), str(odds), str(extractor), False)
 
 
@@ -72,7 +68,7 @@ def test_changed_odds_regenerates_and_binds_verified_inputs(inputs, mutate_durin
     odds.write_text(odds.read_text().replace("1.74", "1.85"))
     def run(script, args, **kwargs):
         if script == o.GENERATE_REPORTS:
-            report.write_text("refreshed synthetic report\n" + "y" * 6000)
+            write_report(report, "refreshed synthetic report\n" + "y" * 6000)
             if mutate_during_generation:
                 odds.write_text(odds.read_text().replace("1.85", "1.95"))
         return True
@@ -105,7 +101,7 @@ def test_stale_availability_is_refreshed_before_cache_reuse(inputs, monkeypatch)
             updated["injuries"]["MEM"] = {"Fixture Player": "Out"}
             extractor.write_text(json.dumps(updated))
         if script == o.GENERATE_REPORTS:
-            report.write_text("refreshed availability report\n" + "x" * 6000)
+            write_report(report, "refreshed availability report\n" + "x" * 6000)
         return True
     with mock.patch.object(o, "run_script", side_effect=run) as calls:
         assert o.process_single_game("MEM_CHI", str(odds), str(odds.parent), "2026-10-11")
@@ -143,7 +139,7 @@ def test_roster_change_reextracts_history_before_generating_a_report(inputs, mon
             extractor.write_text(json.dumps(payload))
         if script == o.GENERATE_REPORTS:
             assert "new signing" in json.loads(extractor.read_text())["meta"]["availability"]["rosters"]["MEM"]
-            report.write_text("new roster report\n" + "x" * 6000)
+            write_report(report, "new roster report\n" + "x" * 6000)
         return True
     with mock.patch.object(o, "run_script", side_effect=run) as calls:
         assert o.process_single_game("MEM_CHI", str(odds), str(odds.parent), "2026-10-11")

@@ -1,7 +1,7 @@
 ---
 name: NBA Wong Choi
 description: 專門負責分析 NBA 球員盤口嘅 V3 Python-First 引擎。嚴格執行 Python Orchestrator Pipeline。
-skills: nba_wong_choi, nba_analyst, betting_accountant
+skills: nba_wong_choi, betting_accountant
 ---
 # NBA Wong Choi (NBA 旺財)
 
@@ -60,7 +60,7 @@ python .agents/skills/nba/nba_orchestrator.py --date {YYYY-MM-DD}
 Orchestrator 會自動串連以下 Python 腳本，你**唔需要手動行**：
 - `claw_sportsbet_odds.py` — Sportsbet 盤口爬取
 - `nba_extractor.py` — 球員 L10/Advanced/H2H 數據
-- `generate_nba_reports.py` — Full Analysis 報告（含 10-Factor、MC、SGM 組合）
+- `nba_engine/run.py` — Full Analysis 報告（MS 機率 + B2 穩膽，EXP-20261103-15）
 - `validate_nba_output.py` — 防火牆驗證
 - `generate_nba_sgm_reports.py` — 全日 Master SGM + Banker 報告
 

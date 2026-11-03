@@ -21,8 +21,8 @@ from typing import Any
 
 import nba_market_ledger as ledger
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "nba_wong_choi" / "scripts"))
-import nba_prob_layer
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from nba_engine import model as engine_model
 
 WINDOW_DAYS = 30
 # First analysis date whose ledger rows carry the calibrated probability layer
@@ -52,7 +52,7 @@ def _high(buckets: list[dict]) -> dict:
 
 
 def current_model_id() -> str | None:
-    return nba_prob_layer.probability_model_id()
+    return engine_model.probability_model_id()
 
 
 def _section(root: Path, since: str, until: str, model_id: str | None = None) -> dict:

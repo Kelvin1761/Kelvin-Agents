@@ -46,7 +46,8 @@ SKILLS_DIR = SCRIPT_DIR  # .agents/skills/nba/
 
 CLAW_SPORTSBET = os.path.join(SKILLS_DIR, "nba_data_extractor", "scripts", "claw_sportsbet_odds.py")
 NBA_EXTRACTOR = os.path.join(SKILLS_DIR, "nba_data_extractor", "scripts", "nba_extractor.py")
-GENERATE_REPORTS = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "generate_nba_reports.py")
+ENGINE_DIR = os.path.join(SKILLS_DIR, "nba_engine")
+GENERATE_REPORTS = os.path.join(ENGINE_DIR, "run.py")
 VALIDATE_OUTPUT = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "validate_nba_output.py")
 VALIDATE_SCHEMA = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "validate_json_schema.py")
 GENERATE_SGM = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "generate_nba_sgm_reports.py")
@@ -360,67 +361,40 @@ def _file_digest(path: str) -> str:
         return hashlib.sha256(source.read()).hexdigest()
 
 
-def report_inputs(sportsbet_json: str, extractor_json: str, legacy: bool) -> dict:
-    inputs = {
-        "schema_version": 2,
-        "sportsbet": _file_digest(sportsbet_json),
-        "extractor": _file_digest(extractor_json),
-        "renderer": _file_digest(GENERATE_REPORTS),
-        "prob_layer": {
-            name: _file_digest(os.path.join(os.path.dirname(GENERATE_REPORTS), rel))
-            for name, rel in (("code", "nba_prob_layer.py"), ("config", "../resources/nba_prob_layer.json"))
-            if os.path.isfile(os.path.join(os.path.dirname(GENERATE_REPORTS), rel))
-        },
-        "legacy": legacy,
-        "runtime_flags": {
-            name: os.environ.get(name, default)
-            for name, default in (
-                ("NBA_WC_ENGINE", "hybrid"),
-                ("NBA_WC_PROB_LAYER", ""),
-                ("NBA_HYBRID_ML_ADJUST_ENABLED", "0"),
-                ("NBA_FIT_LAYER_SHADOW_ENABLED", "1"),
-            )
-        },
-    }
+def report_inputs(sportsbet_json: str, extractor_json: str, legacy: bool = False) -> dict:
+    """What a report depends on: both input files and every engine source file."""
+    engine = {name: _file_digest(os.path.join(ENGINE_DIR, name))
+              for name in sorted(os.listdir(ENGINE_DIR)) if name.endswith((".py", ".json"))}
+    inputs = {"schema_version": 3, "sportsbet": _file_digest(sportsbet_json),
+              "extractor": _file_digest(extractor_json), "engine": engine}
     revision = subprocess.run(
         ["git", "-C", WORKSPACE_ROOT, "rev-parse", "HEAD"],
         capture_output=True, text=True, check=False,
     )
     inputs["code_revision"] = revision.stdout.strip() if revision.returncode == 0 else None
-    sys.path.insert(0, WORKSPACE_ROOT)
-    from wongchoi_paths import NBA_ML_DATASET
-    model_dir = os.environ.get("NBA_WC_MODEL_DIR") or str(NBA_ML_DATASET / "models" / "v3")
-    if not legacy:
-        inputs["model"] = {
-            name: _file_digest(os.path.join(model_dir, name))
-            if os.path.isfile(os.path.join(model_dir, name)) else None
-            for name in ("model.pkl", "feature_names.json")
-        }
     return inputs
 
 
+def _publishable(report: str, sportsbet_json: str) -> bool:
+    from nba_engine.publish import validate
+    return validate(report, sportsbet_json)[0]
+
+
 def report_quotes_current(report: str, sportsbet_json: str) -> bool:
-    """FW-13 passes now, after renewing expired quotes whose price is unchanged."""
-    from nba_wong_choi.scripts.validate_nba_output import check_fw13_sgm_quotes
+    """The report passes the publication firewall now, after renewing expired quotes
+    whose price is unchanged."""
     from nba_sgm_quote import requote_sidecar
+    if _publishable(report, sportsbet_json):
+        return True
     try:
-        content = Path(report).read_text(encoding="utf-8")
-        if not check_fw13_sgm_quotes(content, report, sportsbet_json):
-            return True
         odds = json.loads(Path(sportsbet_json).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
-    return requote_sidecar(report, odds) and not check_fw13_sgm_quotes(content, report, sportsbet_json)
+    return requote_sidecar(report, odds) and _publishable(report, sportsbet_json)
 
 
 def report_release_current(report: str, sportsbet_json: str) -> bool:
-    """The report would pass the release-time FW-13/FW-14 checks right now."""
-    from nba_wong_choi.scripts.validate_nba_output import check_fw14_availability
-    try:
-        if check_fw14_availability(Path(report).read_text(encoding="utf-8"), report):
-            return False
-    except OSError:
-        return False
+    """The report would pass the release-time firewall right now."""
     return report_quotes_current(report, sportsbet_json)
 
 
@@ -535,16 +509,12 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
     # ── Phase 1B: generate_nba_reports.py (Full Analysis) ──
     debug_prefix = "[DEBUG]_" if debug_skip_extractor else ""
     analysis_md = os.path.join(target_dir, f"{debug_prefix}Game_{game_tag}_Full_Analysis.md")
-    print(f"\n📊 [{prefix}] Phase 1B: 執行 generate_nba_reports.py 生成分析報告...")
+    print(f"\n📊 [{prefix}] Phase 1B: 執行 nba_engine 生成分析報告...")
     _report_args = [
         "--sportsbet", sportsbet_json,
         "--extractor", extractor_json,
         "--output", analysis_md,
     ]
-    if legacy:
-        _report_args.append("--legacy")
-    if banker_search_audit:
-        _report_args.append("--banker-search-audit")
     try:
         inputs_before = report_inputs(sportsbet_json, extractor_json, legacy)
     except OSError as exc:

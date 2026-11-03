@@ -376,3 +376,5 @@
 - [EXP-20261014-11](EXP-20261014-11-hkjc-official-draw-stats.md) — **REJECT ×2**（HKJC 官方檔位統計入分）：官方頁窗口 = 今季+前兩季，用 rail_draw_results 逐格 PIT 重建，26/27 季九份存檔頁 437/478 格（91.4%）五個數全同（其餘多數只差冇完成嘅馬）；05-31 頁 0%（缺 2023/24）。取代／對半混合現行 draw_score：F 窗口（85 場，重建=live）primary 點估計負，但連成個 draw leaf 都細過 MDE（UNRESOLVABLE）；S 窗口（~200 場）replace ndcg@5 −2.81 CI 全負。場內 ρ≈0.3 正交但逐檔位格太嘈
 - [EXP-20261103-14](EXP-20261103-14-au-engine-core-split-data-prep.md) — `engine_core.py` 拆出 `data_prep.py`（7,161 → 4,734 行）；145 個舊名 re-export。全語料分數零差、報告文字完全一樣、入口鏈同 dashboard 核對通過。
 - [EXP-20261104-01](EXP-20261104-01-au-dashboard-display-fixes.md) — AU dashboard 顯示修正：試閘備戰加判讀同證據、leaf 標籤由 registry 推導（以前印英文 key）、直路賽劇本冇「首彎」。分數零差，文字只改預期三處。
+- [EXP-20261103-15](EXP-20261103-15-nba-rebuild-formula-results.md) — NBA 重寫：唔睇價嘅 ESPN 季度模型 S 做主機率 holdout 顯著輸 C（+0.0051）；**MS（市場 0.93＋S 0.11）KEEP**（−0.0039 [−0.0049,−0.0026]）；「聯合機率最高」揀腿同 B2 分唔出（CI ±15pp）→ B2 保留但乾淨重寫（88/89 場一樣）；新 `nba_engine` 取代 generate_nba_reports／MC／ML／fit／prob layer
+- [EXP-20261103-16](EXP-20261103-16-nba-forward-tests-closed.md) — NBA 全部 forward／shadow 測試（MS1–3、S_v4、季初保護、Q/P 上場率、落注時間、B0/B1 shadow、fit A）隨 nba_engine 重寫中止，**冇判決**；記低中止時進度
