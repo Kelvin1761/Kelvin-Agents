@@ -208,7 +208,7 @@ ALLOWED = {
     ".agents/scripts/offload_prediction_snapshots.py": "the mover",
     ".agents/skills/shared_wong_choi/immutable_snapshot.py": "writer; new snapshots are always local",
     ".agents/skills/shared_racing/race_reflector/scripts/unified_reflector_core.py": "names passed to the resolver",
-    ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/engine_core.py": "compares a folder name; same in either location",
+    ".agents/skills/au_racing/au_wong_choi_auto/scripts/au_racing_engine/data_prep.py": "compares a folder name; same in either location (moved from engine_core, EXP-20261103-14)",
     ".agents/skills/shared_wong_choi/research_prediction_artifacts.py": "names passed to the resolver",
     ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_shadow_monitor.py": "name passed to the resolver",
     ".agents/skills/hkjc_racing/hkjc_wong_choi_auto/scripts/hkjc_reverse_bias_shadow.py": "resolver for reads; writes refuse an offloaded meeting",
