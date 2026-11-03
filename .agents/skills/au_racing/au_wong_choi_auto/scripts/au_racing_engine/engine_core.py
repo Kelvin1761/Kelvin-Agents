@@ -813,7 +813,7 @@ class RacingEngine:
         if not math.isfinite(full_time_feature):
             raise ValueError("non-finite AU full-time contribution")
         draw_feature = round(_draw.horse_adjustment(
-            self.horse_data.get("barrier"), self._field_summary().get("barriers")), 4)
+            self.horse_data.get("barrier"), self._field_summary().get("barriers"), self._straight_course()), 4)
         ability_score = round(base_ability + full_time_feature + draw_feature, 4)
         grade = compute_grade(ability_score)
 
@@ -1584,7 +1584,8 @@ class RacingEngine:
         舊逐場地檔位矩陣（`au_draw_bias_matrix.json`）已剷走：EXP-20260821-04／20260901-03 證實佢訊號太細，
         EXP-20261102-07 嘅簡單場內檔位排名先有方向一致嘅正數（EXP-20261102-09）。
         """
-        e = _draw.explain(self.horse_data.get("barrier"), self._field_summary().get("barriers"))
+        e = _draw.explain(self.horse_data.get("barrier"), self._field_summary().get("barriers"),
+                          self._straight_course())
         score = 60.0 + e["adj"]
         if e["applies"]:
             line = (f"檔位 {self.horse_data.get('barrier')}：{e['n']} 匹入面第 {e['rank']} 內（場內 z {e['z']:+.2f}）"
@@ -1962,7 +1963,7 @@ class RacingEngine:
         if len(style_parts) > 1 and len(set(style_parts)) == 1:
             style = style_parts[0]
         barrier = self.horse_data.get("barrier")
-        e = _draw.explain(barrier, self._field_summary().get("barriers"))
+        e = _draw.explain(barrier, self._field_summary().get("barriers"), self._straight_course())
         if not e["applies"]:
             draw_v = f"排 {barrier} 檔（{e['reason']}）"
         elif e["adj"] >= 0.5:
@@ -2878,6 +2879,10 @@ class RacingEngine:
     def _track_profile(self):
         data = self.race_context.get("track_profile")
         return data if isinstance(data, dict) else {}
+
+    def _straight_course(self):
+        venue = self._meeting_intelligence().get("venue") or self._track_profile().get("venue") or ""
+        return _draw.is_straight(venue, self._distance_from_text(self.race_context.get("distance")))
 
     def _today_going(self):
         going = str(

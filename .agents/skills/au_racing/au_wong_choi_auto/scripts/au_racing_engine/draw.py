@@ -9,6 +9,9 @@ Kelvin：「i want to have something live and keep monitoring」。即時回退�
 
 β = Z8 walk-forward 最後一日（2026-08-05 → 10-31 全部賽果），單位 = 綜合分。用 z 唔用檔位格數：
 20 匹同 8 匹最內／最外同一個範圍（R8 格數版證據較弱）；長短途 β 差唔多（1.32／1.52／1.48），唔分路程。
+
+直路賽（EXP-20261103-08，USER-ACCEPTED）：Flemington ≤1200m 冇彎，內欄路程短嘅機制唔存在 → 0。
+實測最內五分位上名率 20.6%（其他場地 ≤1200m 32.1%）；乾淨窗口得 12 場，冇功效。其他場地嘅直路資料冇標記，唔加。
 """
 from __future__ import annotations
 
@@ -18,6 +21,7 @@ import os
 DRAW_LIVE = os.environ.get("WC_AU_DRAW_LIVE", "1") != "0"
 BETA = 1.4274
 MIN_FIELD = 8
+STRAIGHT_MAX_M = {"flemington": 1200}
 
 
 def _clean(values):
@@ -43,9 +47,15 @@ def adjustments(barriers, beta=BETA, min_field=MIN_FIELD):
     return [0.0 if sd <= 0 else beta * -(r - mean) / sd for r in rank]
 
 
-def horse_adjustment(barrier, field_barriers):
-    """一匹馬嘅檔位分；`field_barriers` = 同場全部馬（包括本駒）。上線開關關咗 → 0。"""
-    if not DRAW_LIVE or not field_barriers:
+def is_straight(venue, distance_m):
+    """直路賽（冇彎）→ True。"""
+    v = str(venue or "").lower()
+    return bool(distance_m) and any(k in v and distance_m <= m for k, m in STRAIGHT_MAX_M.items())
+
+
+def horse_adjustment(barrier, field_barriers, straight=False):
+    """一匹馬嘅檔位分；`field_barriers` = 同場全部馬（包括本駒）。上線開關關咗或者直路賽 → 0。"""
+    if not DRAW_LIVE or straight or not field_barriers:
         return 0.0
     field = list(field_barriers)
     try:
@@ -55,7 +65,7 @@ def horse_adjustment(barrier, field_barriers):
     return adjustments(field)[i]
 
 
-def explain(barrier, field_barriers):
+def explain(barrier, field_barriers, straight=False):
     """報告用：{applies, n, rank（1 = 最內）, z, adj, reason}。同 `horse_adjustment` 同一套數。"""
     field = list(field_barriers or [])
     n = len(field)
@@ -73,6 +83,9 @@ def explain(barrier, field_barriers):
         return out
     if not DRAW_LIVE:
         out["reason"] = "檔位分已關（WC_AU_DRAW_LIVE=0）"
+        return out
+    if straight:
+        out["reason"] = "直路賽（冇彎），檔位唔計分"
         return out
     i = b.index(own)
     adj = adjustments(b)[i]

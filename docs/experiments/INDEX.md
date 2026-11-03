@@ -364,3 +364,4 @@
 - [EXP-20261103-05](EXP-20261103-05-au-jockey-trainer-module-simplify.md) — AU 騎練訊號簡化：`jockey_trainer.py` 唯一計算位置；剷由來冇觸發嘅練馬師 empirical fill、研究開關、六個 0.0 key；全語料 40,216 匹分數零差、797 匹報告文字零差。搵到薄樣本騎師另一把尺同練馬師證據標籤永遠 observed。
 - [EXP-20261103-06](EXP-20261103-06-au-thin-jockey-and-trainer-evidence.md) — §7：LY 少過 10 場嘅騎師由另一把尺（prior 0.365／spread 100）改為中性 60（同練馬師一致；96 匹，Gold／Good 0.00）；練馬師證據標籤以前永遠 observed，改為只限統一率／tier。
 - [EXP-20261103-07](EXP-20261103-07-au-fit-class-rule-results.md) — 「人馬配搭 ≥72 兼級數分 <58 → −3」（日常 Agent 更新加嘅手寫規則）全語料 0 匹觸發：配搭分 ≥72 得 25 匹、冇一匹級數分 <58（初出馬先會 <58，但佢哋去唔到 72）。已剷，分數零差。
+- [EXP-20261103-08](EXP-20261103-08-au-flemington-straight-draw-results.md) — AU Flemington 直路賽（≤1200m）檔位分歸零：直路冇彎，內檔機制唔存在（最內五分位上名 20.6% vs 其他場地 32.1%）。67 場郁、乾淨窗口 12 場；Gold 0、Good +0.06、ndcg +0.006；**USER-ACCEPTED 機制修正，上線**。

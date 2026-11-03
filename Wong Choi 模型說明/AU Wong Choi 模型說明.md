@@ -99,7 +99,7 @@
 |---|---:|
 | 同場／地況往績分 `track_score` | 100.0% |
 
-實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 **4.95 分**；**23.3%** 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。
+實測：同一場馬入面呢個維度嘅分數差距（標準差）平均 **4.95 分**；**23.4%** 嘅馬喺呢個維度攞到恰好 60 分（即係冇證據）。
 
 ### 速度考驗背景　`pace_perf`　— 合成係數 0.1139
 
@@ -188,15 +188,15 @@ R1 Benter combiner 量到模型對最早賽前市場冇增量資訊）。
 
 ## 呢份文件由邊度嚟
 
-- 生成時間：`2026-11-03 12:57 AEDT`
-- Git commit：`a5cf9f09`
+- 生成時間：`2026-11-03 15:50 AEDT`
+- Git commit：`0c2c1166`
 - Scoring contract：`au/raw-matrix-preparation-v2`
 - `scoring.py` 指紋：`9fffaa304414`
 - `matrix_mapper.py` 指紋：`7e081c69cdd9`
 - `renderer.py` 指紋：`ee283996e7c2`
 - `dimensions.py` 指紋：`bc65613511f0`
 - `full_time_speed.py` 指紋：`cde292260587`
-- `engine_core.py` 指紋：`7479cbccdb03`
+- `engine_core.py` 指紋：`11816e125d03`
 - 實測樣本：**500 場、4892 匹馬**，由 `2026-10-25 Northam Race 1-10` 到 `2026-11-03 Wangaratta Race 1-6`（跳過 0 個舊格式檔案）
 
 重新生成：
