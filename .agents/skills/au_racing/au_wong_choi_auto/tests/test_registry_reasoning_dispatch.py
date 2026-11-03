@@ -6,6 +6,7 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
 
 from au_racing_engine import engine_core
+from au_racing_engine import narrative
 from au_racing_engine.dimensions import DIMENSION_SPECS, DimensionSpec
 
 class Probe:
@@ -23,7 +24,7 @@ def test_registered_reasoning_includes_preparation_and_legacy_context():
 
 def test_plugin_reasoning_uses_spec_without_dispatch_edit(monkeypatch):
     fake = DimensionSpec("audit_fake", "測試維度", (("form_score", 1.0),))
-    monkeypatch.setattr(engine_core, "DIMENSION_SPECS", DIMENSION_SPECS + (fake,))
+    monkeypatch.setattr(narrative, "DIMENSION_SPECS", DIMENSION_SPECS + (fake,))  # 報告文字喺 narrative（EXP-20261104-02）
     values = {s.key: 60 for s in DIMENSION_SPECS}
     values["audit_fake"] = 19.5
     actual = engine_core.RacingEngine._matrix_reasoning(Probe(), values, {}, {})

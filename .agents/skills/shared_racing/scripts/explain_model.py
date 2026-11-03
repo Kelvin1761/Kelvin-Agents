@@ -229,9 +229,10 @@ def influence(weights, spread):
 
 def fingerprint(engine_dir: Path):
     entries = []
-    names = FINGERPRINT_FILES + (("dimensions.py", "full_time_speed.py") if engine_dir.name == "au_racing_engine" and (engine_dir / "dimensions.py").exists() else ())
+    names = FINGERPRINT_FILES
     if engine_dir.name == "au_racing_engine":
-        names += ("engine_core.py",)
+        # 成個 package：維度模組、data_prep、narrative 改咗都要令說明過期（2026-11-04）。
+        names = tuple(sorted(p.name for p in engine_dir.glob("*.py")))
     for name in names:
         path = engine_dir / name
         if not path.exists():
