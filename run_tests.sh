@@ -85,6 +85,7 @@ run_suite "Shared Wong Choi"   "$REPO_ROOT" .agents/skills/shared_wong_choi/test
 run_suite "Central Wong Choi"  "$REPO_ROOT" .agents/skills/central_wong_choi/tests
 run_suite "Race compliance QA"  "$REPO_ROOT" .agents/skills/race_compliance_qa/tests
 run_suite "NBA Wong Choi"       "$REPO_ROOT" \
+  .agents/skills/nba/nba_engine/tests \
   .agents/skills/nba/nba_wong_choi/tests \
   .agents/skills/nba/nba_daily_auto/tests \
   .agents/skills/nba/nba_reflector/tests
