@@ -21,7 +21,7 @@ from . import stability as _stab
 from . import overseas as _overseas
 from . import track_going as _track
 from . import jockey_trainer as _jt
-from .dimensions import DIMENSION_SPECS, RATING_SCORE_SHARE
+from .dimensions import DIMENSION_SPECS, LEAF_SPECS, RATING_SCORE_SHARE
 
 from .matrix_mapper import (
     MATRIX_ADVANTAGE_CUTOFF,
@@ -648,6 +648,9 @@ def _is_handicap_title(title) -> bool:
     text = " ".join(str(title or "").replace("&amp;", "&").split())
     return bool(_HANDICAP_TITLE_RE.search(text)
                 or (len(text) >= 40 and _TRUNCATED_HANDICAP_RE.search(text)))
+
+_LEAF_LABELS = {spec.key: spec.label for spec in LEAF_SPECS}
+
 
 class RacingEngine:
     def __init__(self, horse_data, race_context, facts_section="", facts_path=None):
@@ -1889,6 +1892,7 @@ class RacingEngine:
             "class_weight": self._describe_class_weight_matrix,
             "track": self._describe_track_matrix,
             "form_line": self._describe_form_line_matrix,
+            "preparation": self._describe_preparation_matrix,
         }
         describer = describers.get(key)
         if describer:
@@ -2218,6 +2222,17 @@ class RacingEngine:
                 ("跑法/檔位配套", self._track_fit_brief()),
                 ("最近正式賽果", self._latest_record_summary("正式")),
             )
+        if key == "preparation":
+            ts = getattr(self, "trial_speed_detail", None) or {}
+            return self._anchor_lines(
+                ("試閘交代", self._trial_summary_text()),
+                ("試閘密度加分", "、".join(f"{a['factor']} {a['delta']:+.2f}（{a['evidence']}）"
+                                        for a in self.preparation_parts)),
+                ("試閘 L600", "" if ts.get("raw") is None else
+                 f"本駒 {ts['raw']:+.2f} 秒，同場 {ts.get('field_count', 0)} 匹均值 {ts.get('mean'):+.2f} 秒"
+                 if ts.get("mean") is not None else f"本駒 {ts['raw']:+.2f} 秒（同場可比少過 3 匹）"),
+                ("狀態週期", self._status_cycle_display()),
+            )
         if key == "form_line":
             return self._anchor_lines(
                 ("賽績線級別", self._formline_level()),
@@ -2226,6 +2241,21 @@ class RacingEngine:
                 ("最近正式賽果", self._latest_record_summary("正式")),
             )
         return []
+
+    def _describe_preparation_matrix(self, score, feature_scores):
+        """一句講試閘密度同試閘速度各自點計（EXP-20261104-01：以前冇判讀，dashboard 只見罐頭句）。"""
+        parts = self.preparation_parts
+        dens = ("試閘密度：" + "、".join(f"{a['factor']}（{a['delta']:+.1f}）" for a in parts)) if parts \
+            else "試閘密度未見加分（試閘課數或前列次數唔夠）"
+        ts = getattr(self, "trial_speed_detail", None) or {}
+        ts_score = feature_scores.get("trial_speed_score", 60)
+        if not ts.get("applies", True):
+            speed = "正式賽已有 6 場或以上，試閘速度唔計"
+        elif ts.get("z") is None:
+            speed = "試閘 L600 數據唔夠，試閘速度中性"
+        else:
+            speed = f"試閘 L600 {'快過' if ts['z'] < 0 else '慢過'}同場（試閘 L600 分 {ts_score:.1f}）"
+        return f"{dens}；{speed}。"
 
     def _anchor_lines(self, *items):
         lines = []
@@ -2256,26 +2286,8 @@ class RacingEngine:
         }.get(key, key)
 
     def _feature_label(self, key):
-        return {
-            "form_score": "近績分",
-            "trial_score": "試閘分",
-            "sectional_score": "段速分",
-            "pace_figure_score": "L600 環境分",
-            "pace_map_score": "檔位分",
-            "jockey_score": "騎師分",
-            "trainer_score": "練馬師分",
-            "jockey_horse_fit_score": "人馬配搭分",
-            "class_score": "級數分",
-            "rating_score": "Rating 分",
-            "weight_score": "負磅分",
-            "distance_score": "路程分",
-            "track_score": "同場／地況往績分",
-            "formline_score": "賽績線分",
-            "consistency_score": "穩定性分",
-            "performance_quality_score": "表現質素分",
-            "health_score": "健康分",
-            "confidence_score": "信心分",
-        }.get(key, key)
+        """leaf 中文名一律由 `dimensions.LEAF_SPECS` 攞（唯一真源；以前手抄漏咗三個新 leaf）。"""
+        return _LEAF_LABELS.get(key, key)
 
     def _matrix_summary(self, key, score):
         label = self._matrix_label(key)
@@ -2428,9 +2440,13 @@ class RacingEngine:
 
     def _tactical_scenario_text(self):
         plan = self.horse_data.get("tactical_plan")
-        if isinstance(plan, dict):
-            return self._neutralize_pace_assumption(str(plan.get("race_scenario") or "").strip())
-        return ""
+        if not isinstance(plan, dict):
+            return ""
+        text = self._neutralize_pace_assumption(str(plan.get("race_scenario") or "").strip())
+        if self._straight_course():
+            # 劇本喺數據準備階段已經砌好，唔知係直路賽；直路冇彎（EXP-20261104-01）。
+            text = text.replace("首彎前", "早段").replace("入直路前", "末段")
+        return text
 
     def _neutralize_pace_assumption(self, text: str) -> str:
         clean = str(text or "").strip()
