@@ -249,7 +249,9 @@ def verify(races, procedure=PROCEDURE):
     max_metric = float(np.max(np.abs(table - canon_v)))
     return {"max_abs_exact_vs_engine": max_engine, "max_abs_numpy_vs_exact": max_fast,
             "max_abs_metric_table_vs_canonical": max_metric,
-            "ok": max_engine < 5.1e-5 and max_fast < 5.1e-5 and max_metric < 1e-8}
+            # 1.01e-4 = 一個 4 位小數捨入單位：dump 將 leaf 存到 6 位，偶然令最後一位打和翻轉
+            # （EXP-20261103-04：33k 匹得 1 匹，59.3944 vs 59.3943）。numpy 對 production 仍然要求一致。
+            "ok": max_engine < 1.01e-4 and max_fast < 5.1e-5 and max_metric < 1e-8}
 
 
 # ── judging helpers ───────────────────────────────────────────────────────
