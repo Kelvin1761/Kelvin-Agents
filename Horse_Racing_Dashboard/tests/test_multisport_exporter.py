@@ -15,6 +15,7 @@ from services.multisport_exporter import (  # noqa: E402
     nba_no_firewall,
     nba_publication_firewall,
     _export_tennis_reference_singles,
+    _find_nba_analysis_dir,
     export_nba_snapshot,
     export_tennis_snapshot,
     validate_multisport_feed,
@@ -208,6 +209,31 @@ class MultiSportExporterTests(unittest.TestCase):
             self.assertEqual(snapshot["validation_status"], "expired")
             self.assertEqual(snapshot["recommendations"], [])
             self.assertIn("nba_latest_analysis_expired:2026-10-15", snapshot["warnings"])
+
+    def test_nba_auto_select_sees_archived_days_over_a_stranded_live_folder(self):
+        # 2026-11-04: 10-23's postgame never archived it, every later day was
+        # archived, so the page called a 10-23 card the latest analysis.
+        with tempfile.TemporaryDirectory() as live, tempfile.TemporaryDirectory() as archive:
+            self._write_nba_day(Path(live), "2026-10-23")
+            self._write_nba_day(Path(archive), "2026-11-03")
+
+            snapshot = export_nba_snapshot(
+                Path(live), today="2026-11-04", firewall=nba_no_firewall,
+                archive_root=Path(archive),
+            )
+
+            self.assertEqual(snapshot["validation_status"], "expired")
+            self.assertIn("nba_latest_analysis_expired:2026-11-03", snapshot["warnings"])
+
+    def test_nba_auto_select_prefers_live_folder_when_archive_has_same_date(self):
+        with tempfile.TemporaryDirectory() as live, tempfile.TemporaryDirectory() as archive:
+            self._write_nba_day(Path(live), "2026-10-21")
+            self._write_nba_day(Path(archive), "2026-10-21")
+
+            found, analysis_date = _find_nba_analysis_dir(Path(live), None, Path(archive))
+
+            self.assertEqual(analysis_date, "2026-10-21")
+            self.assertEqual(found.parent, Path(live))
 
     def test_tennis_reference_picks_come_from_model_edge_bets_not_recommendations(self):
         connection = sqlite3.connect(":memory:")

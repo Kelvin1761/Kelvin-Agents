@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -69,17 +70,40 @@ def _empty_snapshot(sport: str, analysis_run_id: str, status: str, warnings: Ite
     }
 
 
-def _find_nba_analysis_dir(root: Path, target_date: Optional[str]) -> Tuple[Optional[Path], Optional[str]]:
+def _nba_archive_root() -> Optional[Path]:
+    """Where postgame moves finished NBA days (same default as the scheduler).
+
+    Tests get no archive unless they set the env var, so they never read
+    production data.
+    """
+    configured = os.environ.get("WONGCHOI_NBA_DATA_ROOT")
+    if configured:
+        return Path(configured)
+    if "pytest" in sys.modules:
+        return None
+    return Path.home() / "WongChoiData" / "Wong Choi NBA Analysis"
+
+
+def _find_nba_analysis_dir(
+    root: Path, target_date: Optional[str], archive_root: Optional[Path] = None
+) -> Tuple[Optional[Path], Optional[str]]:
     root = Path(root)
     if target_date:
         candidate = root / f"{target_date} NBA Analysis"
         return (candidate, target_date) if candidate.is_dir() else (None, target_date)
+    # Postgame moves each finished day to the archive, so the repo root alone
+    # only ever holds today's live folder plus days whose archiving failed.
+    # On 2026-11-04 (no games) that made a stranded 2026-10-23 folder the
+    # "latest analysis" the page reported, eleven days after 11-03's card.
+    # Live folders win a date tie (rank 1 sorts after the archive's 0).
     candidates = []
-    if root.is_dir():
-        for item in root.iterdir():
+    for rank, base in ((1, root), (0, archive_root)):
+        if not base or not Path(base).is_dir():
+            continue
+        for item in Path(base).iterdir():
             match = NBA_DIR_RE.match(item.name)
             if item.is_dir() and match:
-                candidates.append((match.group(1), item))
+                candidates.append((match.group(1), rank, item))
     if not candidates:
         return None, None
     # The newest folder is often one the scheduler created but could not
@@ -88,11 +112,11 @@ def _find_nba_analysis_dir(root: Path, target_date: Optional[str]) -> Tuple[Opti
     # forever: on 2026-10-20 the page still showed 10-15 preseason combos as
     # today's picks, five days later.  Prefer the newest folder that actually
     # has a Full Analysis; staleness is judged by the caller.
-    ordered = sorted(candidates, reverse=True)
-    for analysis_date, directory in ordered:
+    ordered = sorted(candidates, key=lambda row: row[:2], reverse=True)
+    for analysis_date, _rank, directory in ordered:
         if any(directory.glob("Game_*_Full_Analysis.md")):
             return directory, analysis_date
-    analysis_date, directory = ordered[0]
+    analysis_date, _rank, directory = ordered[0]
     return directory, analysis_date
 
 
@@ -419,9 +443,10 @@ def export_nba_snapshot(
     today: Optional[str] = None,
     firewall=nba_publication_firewall,
     *, include_legacy_strategies: bool = False,
+    archive_root: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Export validated NBA combos from one orchestrator analysis directory."""
-    analysis_dir, analysis_date = _find_nba_analysis_dir(Path(root), target_date)
+    analysis_dir, analysis_date = _find_nba_analysis_dir(Path(root), target_date, archive_root)
     run_id = f"nba:{analysis_date or target_date or 'unavailable'}"
     if not analysis_dir:
         return _empty_snapshot("nba", run_id, "unavailable", ["nba_analysis_directory_not_found"])
@@ -1649,7 +1674,9 @@ def build_multisport_feed(
         "schema_version": SCHEMA_VERSION,
         "generated_at": _utc_now(),
         "sports": {
-            "nba": export_nba_snapshot(repo_root, target_date=target_date),
+            "nba": export_nba_snapshot(
+                repo_root, target_date=target_date, archive_root=_nba_archive_root()
+            ),
             "tennis": export_tennis_snapshot(tennis_db, target_date=target_date),
         },
     }
