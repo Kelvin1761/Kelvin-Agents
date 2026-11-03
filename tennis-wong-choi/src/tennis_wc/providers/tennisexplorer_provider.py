@@ -19,11 +19,12 @@ rather than as quietly missing results.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timezone
 from html.parser import HTMLParser
 import re
 import hashlib
+from urllib.parse import parse_qs, urljoin, urlsplit
 
 RESULTS_URL = "https://www.tennisexplorer.com/results/?type=all&year={year}&month={month:02d}&day={day:02d}"
 # A finished best-of-three needs two won sets, best-of-five needs three.  A
@@ -54,6 +55,15 @@ class ParsedResult:
     sets: list[dict] = field(default_factory=list)
     retired: bool = False
     row_id: str = ""
+    tour: str | None = None
+    draw_kind: str | None = None
+    tournament_source_url: str | None = None
+    player_a_source_ref: str | None = None
+    player_b_source_ref: str | None = None
+    classification_warnings: tuple[str, ...] = ()
+    tour_source_kind: str | None = None
+    tournament_source_label: str | None = None
+    match_source_ref: str | None = None
 
     @property
     def winner_name(self) -> str:
@@ -88,6 +98,15 @@ class ParsedResult:
         return payload
 
 
+@dataclass(frozen=True)
+class _RowSource:
+    tournament_links: tuple[str, ...]
+    side_links: tuple[str, ...]
+    tour_icons: tuple[str, ...] = ()
+    tournament_label: str = ""
+    match_links: tuple[str, ...] = ()
+
+
 class _ResultsTableParser(HTMLParser):
     """Collect (row id, row class, [(cell class, cell text)]) for every <tr>."""
 
@@ -99,6 +118,16 @@ class _ResultsTableParser(HTMLParser):
         self._cells: list[tuple[str, str]] = []
         self._cell_class: str | None = None
         self._cell_text: list[str] = []
+        self.row_sources: list[_RowSource] = []
+        self._tournament_links: tuple[str, ...] = ()
+        self._row_links: list[str] = []
+        self._row_tournament_links: tuple[str, ...] = ()
+        self._tournament_icons: tuple[str, ...] = ()
+        self._tournament_label = ""
+        self._row_icons: list[str] = []
+        self._row_tournament_icons: tuple[str, ...] = ()
+        self._row_tournament_label = ""
+        self._row_match_links: list[str] = []
 
     def handle_starttag(self, tag: str, attrs: list) -> None:
         values = dict(attrs)
@@ -106,9 +135,30 @@ class _ResultsTableParser(HTMLParser):
             self._row_id = values.get("id") or ""
             self._row_class = values.get("class") or ""
             self._cells = []
+            self._row_links = []
+            self._row_tournament_links = self._tournament_links
+            self._row_icons = []
+            self._row_tournament_icons = self._tournament_icons
+            self._row_tournament_label = self._tournament_label
+            self._row_match_links = []
         elif tag == "td":
             self._cell_class = values.get("class") or ""
             self._cell_text = []
+        elif tag == "a":
+            href = values.get("href") or ""
+            if "t-name" in (self._cell_class or "").split():
+                self._row_links.append(href)
+            if "match-detail" in href:
+                try:
+                    path = urlsplit(urljoin("https://www.tennisexplorer.com", href)).path
+                except ValueError:
+                    path = ""
+                if path.rstrip("/") == "/match-detail":
+                    self._row_match_links.append(href)
+        elif (tag == "span" and {"head", "flags"}.issubset(self._row_class.split())
+              and "t-name" in (self._cell_class or "").split()):
+            self._row_icons.extend(css for css in (values.get("class") or "").split()
+                                   if css.startswith("type-"))
 
     def handle_data(self, data: str) -> None:
         if self._cell_class is not None:
@@ -122,9 +172,126 @@ class _ResultsTableParser(HTMLParser):
             self._cell_text = []
         elif tag == "tr":
             self.rows.append((self._row_id, self._row_class, self._cells))
+            links = tuple(dict.fromkeys(self._row_links))
+            if {"head", "flags"}.issubset(self._row_class.split()):
+                # A header without links must clear the previous context.
+                self._tournament_links = links
+                self._tournament_icons = tuple(dict.fromkeys(self._row_icons))
+                self._tournament_label = _player_name(self._cells)
+            self.row_sources.append(_RowSource(self._row_tournament_links, links,
+                                               self._row_tournament_icons,
+                                               self._row_tournament_label,
+                                               tuple(dict.fromkeys(self._row_match_links))))
             self._row_id = ""
             self._row_class = ""
             self._cells = []
+
+
+def _source_url(href: str) -> str | None:
+    try:
+        url = urljoin("https://www.tennisexplorer.com", href)
+        parsed = urlsplit(url)
+    except ValueError:
+        return None
+    if (parsed.scheme != "https" or parsed.netloc != "www.tennisexplorer.com"
+            or parsed.fragment or not href):
+        return None
+    return url
+
+
+_ICON_TOURS = {"type-men2": "ATP", "type-men4": "ATP",
+               "type-women2": "WTA", "type-women4": "WTA"}
+
+
+def _classify_result(first: _RowSource, second: _RowSource) -> dict:
+    """Use only the current header; an icon never manufactures a missing URL."""
+    warnings = []
+    tour = draw = declared_draw = tournament_url = source_kind = None
+    label = first.tournament_label
+    if (first.tournament_links != second.tournament_links
+            or first.tour_icons != second.tour_icons
+            or label != second.tournament_label):
+        warnings.append("conflicting_tournament_sources")
+    else:
+        if not label:
+            warnings.append("missing_current_tournament_label")
+        icon_tours = {_ICON_TOURS[css] for css in first.tour_icons if css in _ICON_TOURS}
+        unknown_icons = any(css not in _ICON_TOURS for css in first.tour_icons)
+        if unknown_icons:
+            warnings.append("unsupported_tour_icon")
+        if len(icon_tours) > 1:
+            warnings.append("conflicting_tour_sources")
+        icon_tour = next(iter(icon_tours)) if len(icon_tours) == 1 else None
+        if len(first.tournament_links) > 1:
+            warnings.append("ambiguous_tournament_source")
+        elif first.tournament_links:
+            tournament_url = _source_url(first.tournament_links[0])
+            parsed = urlsplit(tournament_url or "")
+            parts = parsed.path.strip("/").split("/")
+            if (len(parts) == 3 and len(parts[1]) == 4 and parts[1].isdigit()
+                    and parts[2] in {"atp-men", "wta-women"}):
+                url_tour = "ATP" if parts[2] == "atp-men" else "WTA"
+                if (icon_tour and icon_tour != url_tour) or len(icon_tours) > 1:
+                    warnings.append("conflicting_tour_sources")
+                else:
+                    tour = url_tour
+                    source_kind = "tournament_url+header_icon" if icon_tour else "tournament_url"
+                query = parse_qs(parsed.query, keep_blank_values=True)
+                if not query:
+                    declared_draw = "SINGLES"
+                elif query == {"type": ["double"]}:
+                    declared_draw = "DOUBLES"
+                else:
+                    warnings.append("unsupported_draw_query")
+            else:
+                warnings.append("unsupported_tournament_source")
+        elif icon_tour and not unknown_icons:
+            tour = icon_tour
+            source_kind = "header_icon"
+        else:
+            warnings.append("missing_tour_source")
+    refs, side_kinds = [], []
+    for side in (first, second):
+        ref = _source_url(side.side_links[0]) if len(side.side_links) == 1 else None
+        parsed = urlsplit(ref or "")
+        parts = parsed.path.strip("/").split("/")
+        kind = None
+        if ref and not parsed.query:
+            if len(parts) == 2 and parts[0] == "player":
+                kind = "SINGLES"
+            elif len(parts) == 3 and parts[0] == "doubles-team":
+                kind = "DOUBLES"
+        if kind is None:
+            warnings.append("unknown_side_source_kind")
+            ref = None
+        refs.append(ref)
+        side_kinds.append(kind)
+    if side_kinds[0] is not None and side_kinds[0] == side_kinds[1]:
+        draw = side_kinds[0]
+    else:
+        warnings.append("side_source_kind_mismatch")
+    if declared_draw and declared_draw != draw:
+        warnings.append("header_side_draw_conflict")
+    if refs[0] is not None and refs[0] == refs[1]:
+        warnings.append("same_source_actor_on_both_sides")
+    match_refs = set()
+    for href in first.match_links + second.match_links:
+        url = _source_url(href)
+        parsed = urlsplit(url or "")
+        values = parse_qs(parsed.query, keep_blank_values=True).get("id", [])
+        if (not url or len(values) != 1 or not values[0].isascii()
+                or not values[0].isdigit() or len(values[0]) > 20 or int(values[0]) <= 0):
+            warnings.append("invalid_match_source")
+        else:
+            match_refs.add("https://www.tennisexplorer.com/match-detail/?id="
+                           + str(int(values[0])))
+    if len(match_refs) > 1:
+        warnings.append("conflicting_match_sources")
+    return dict(tour=tour, draw_kind=draw, tournament_source_url=tournament_url,
+                player_a_source_ref=refs[0], player_b_source_ref=refs[1],
+                tour_source_kind=source_kind, tournament_source_label=label or None,
+                match_source_ref=next(iter(match_refs)) if len(match_refs) == 1 else None,
+                classification_warnings=tuple(dict.fromkeys(warnings)))
 
 
 def _cell_values(cells: list[tuple[str, str]], wanted: str) -> list[str]:
@@ -168,10 +335,10 @@ def parse_results_page(html: str) -> tuple[list[ParsedResult], int]:
     parser = _ResultsTableParser()
     parser.feed(html)
     tournament = ""
-    pending: dict[str, tuple[str, list[tuple[str, str]]]] = {}
+    pending: dict[str, tuple[str, list[tuple[str, str]], _RowSource]] = {}
     results: list[ParsedResult] = []
     skipped = 0
-    for row_id, row_class, cells in parser.rows:
+    for (row_id, row_class, cells), source in zip(parser.rows, parser.row_sources):
         if "head" in row_class.split() and "flags" in row_class.split():
             tournament = _player_name(cells) or tournament
             continue
@@ -182,14 +349,14 @@ def parse_results_page(html: str) -> tuple[list[ParsedResult], int]:
             if first is None:
                 skipped += 1
                 continue
-            first_tournament, first_cells = first
+            first_tournament, first_cells, first_source = first
             parsed = _build_result(first_tournament, first_cells, cells, row_id[:-1])
             if parsed is None:
                 skipped += 1
             else:
-                results.append(parsed)
+                results.append(replace(parsed, **_classify_result(first_source, source)))
         else:
-            pending[row_id] = (tournament, cells)
+            pending[row_id] = (tournament, cells, source)
     # Any first row never followed by its partner is an unparsed match.
     skipped += len(pending)
     return results, skipped

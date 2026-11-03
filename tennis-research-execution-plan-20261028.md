@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 來源分類候選驗證**：[EXP-20261104-02](docs/experiments/EXP-20261104-02-tennis-te-classification-repair.md)完成同34版C／D／T／DT，原比分／winner完整相同；33日公開隔離入庫22712雙側行，兩個不同detail ID對應相同球員／比分的歧義版本整組留置。71針對測試及quick通過；正式full／activation待驗。39位缺Elo目標仍無已確認ownership，模型準確度目標未完成。下方記錄保留當時狀態，不將舊取消full當成功。
+
 **2026-11-04 先更正來源審計**：[EXP-20261104-01](docs/experiments/EXP-20261104-01-tennis-header-source-correction.md)撤回原helper在無link Futures head沿用上一URL的歸因。獨立重驗9367版本有URL、4958只有當前gender icon，1857個head對照一致；先登記新source-spec，URL缺失仍保留None，不從名字或前head猜。現URL-only候選47／1115 tests過但真實矩陣停於4958未知，full已取消143，未驗收／未部署；接續改候選後重新全量比較及full，不改模型ruler／舊REJECT或回填forward。
 
 **2026-11-03 UTC／悉尼11-04 source pilot**：[EXP-20261103-14](docs/experiments/EXP-20261103-14-tennis-te-draw-tour-coverage.md)完成固定33日原文與全39人候選盤點，115檔／2.8MB封存及離線parity。重現source draw／tour流失：14325賽果版本中2542雙打仍送history迴圈，11783單打中5116 tour推斷與source明示不符；不是實際live受影響數。23人來源全名吻合但全部39人tour UNKNOWN，仍無獨立ownership。下一步先照已登記C／D／T／DT四臂驗新入口分類與identity guards，未改live、ruler或十五個REJECT_DEV，準確度目標仍未完成。
