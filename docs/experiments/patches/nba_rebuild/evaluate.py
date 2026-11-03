@@ -4,9 +4,9 @@ Inputs: replay JSONL (legacy candidates + B2 picks), archived sidecar legs (C an
 probabilities), ledger settlements. One run, prints every arm.
 
 Harness details fixed before results (not in the protocol table, recorded here):
-* K arms enumerate every 2-4 leg combination of the 15 highest-probability eligible legs
-  per game (all combinations would be identical in practice: the joint-prob maximiser
-  never reaches below the top 15).
+* K arms use nba_engine.select.best_combo -- the live selector's exact branch-and-bound
+  search over every eligible leg (amendment 3: the first harness cut the pool to the top
+  15 by probability, which made the 2.0 floor unreachable; bug, fixed before holdout).
 * Eligible = player milestone over leg with a settlement, not day-to-day, not bench-risk
   (the same availability facts B2 uses), price > 1.
 * A combo with any void leg is dropped from that arm's count.
@@ -200,19 +200,16 @@ def allowed(combo):
 def price(combo):
     return math.prod(r["odds"] for r in combo)
 
+from nba_engine.select import Policy, best_combo  # noqa: E402  (the live selector's search)
+POLICY = Policy()
+
 def pick(game_rows, arm, value_check=False):
     pool = [r for r in game_rows if r[arm] is not None and r["y"] in ("hit", "miss", "void")
             and not r.get("day_to_day") and not r.get("bench_minutes_risk") and r["odds"] > 1
             and (not value_check or r[arm] >= r["M"])]
-    pool = sorted(pool, key=lambda r: -r[arm])[:15]
-    best, best_p = None, -1
-    for n in (2, 3, 4):
-        for combo in itertools.combinations(pool, n):
-            if 2.0 <= price(combo) <= 4.0 and allowed(combo):
-                p = math.prod(r[arm] for r in combo)
-                if p > best_p:
-                    best, best_p = list(combo), p
-    return best
+    combo, _ = best_combo(pool, lambda r: r[arm], lambda r: r["odds"], lambda r: r["player"],
+                          lambda r: r["team"], lambda r: r["key"][3] == "PTS", POLICY)
+    return combo or None
 
 by_game = defaultdict(list)
 for r in rows:
