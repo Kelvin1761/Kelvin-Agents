@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -15,12 +17,48 @@ sys.path.insert(0, str(PACKAGE_ROOT.parent))
 from shared_wong_choi.release_activation import (  # noqa: E402
     _command_failure,
     _rollback_checkout,
+    _run_installer,
     _sync_checkout,
     activate_release,
 )
 from shared_wong_choi.release_approval import approve_release  # noqa: E402
 from shared_wong_choi.release_events import ReleaseEventStore  # noqa: E402
 from shared_wong_choi.release_manager import ReleaseError, prepare_release  # noqa: E402
+
+
+def test_installer_timeout_releases_descendant_lock_and_retains_evidence(tmp_path):
+    # A child inherits the installer's lock and would keep recovery blocked
+    # if cancellation stopped only the parent.
+    installer = """
+import fcntl, os, subprocess, sys
+from pathlib import Path
+
+with open("lease", "w") as lease:
+    fcntl.flock(lease, fcntl.LOCK_EX)
+    subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(30)"],
+        pass_fds=(lease.fileno(),),
+    )
+    Path("attempt-evidence").write_text("candidate recorded")
+    print("native publication started", flush=True)
+    import time
+    time.sleep(30)
+"""
+    result = _run_installer(tmp_path, sys.executable, "-c", installer, timeout=2)
+    assert result.returncode == 124
+    assert "installer timed out" in result.stderr
+    assert "native publication started" in result.stdout
+    assert (tmp_path / "attempt-evidence").read_text() == "candidate recorded"
+    with (tmp_path / "lease").open() as lease:
+        deadline = time.monotonic() + 2
+        while True:
+            try:
+                fcntl.flock(lease, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    pytest.fail("installer descendant still holds the recovery lease")
+                time.sleep(0.02)
 
 
 def git(repo: Path, *args: str) -> str:
