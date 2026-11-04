@@ -570,7 +570,7 @@ def test_native_active_preflight_fails_closed_on_probe_error(tmp_path, probe_sta
     probe = tmp_path / 'pgrep'
     probe.write_text('#!/bin/sh\nexit ' + str(probe_status) + '\n')
     probe.chmod(0o755)
-    result = subprocess.run(['/bin/zsh', '-c', 'set -eu\n' + script[start:end]],
+    result = subprocess.run(['/bin/zsh', '-c', 'set -eu\nruntime_active_guard() { :; }\n' + script[start:end]],
                             env={**os.environ, 'PATH': str(tmp_path) + ':/usr/bin:/bin'},
                             text=True, capture_output=True)
     assert (result.returncode == 0) == (probe_status == 1), result.stderr
@@ -638,7 +638,12 @@ def test_actual_native_preflight_detects_owned_relative_x_process(tmp_path, scri
         script = INSTALLER.read_text()
         start = script.index('print -r -- "runtime cutover stage: active-run preflight"')
         end = script.index('# AU must already', start)
-        result = subprocess.run(['/bin/zsh', '-c', 'set -eu\n' + script[start:end]],
+        guard_path = INSTALLER.parent.parent / 'shared_wong_choi/runtime_active_runs.py'
+        guard_start = script.index('runtime_active_guard() {')
+        guard_end = script.index('\n}', guard_start) + 2
+        preflight = script[guard_start:guard_end] + '\n' + script[start:end]
+        result = subprocess.run(['/bin/zsh', '-c', 'set -eu\nACTIVE_RUN_GUARD=$1\n' + preflight,
+                                 'preflight-test', str(guard_path)],
                                 text=True, capture_output=True)
         assert result.returncode != 0
         assert 'automation run is active; cutover deferred' in result.stderr
