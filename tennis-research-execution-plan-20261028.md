@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 舊收據重連**。126個倒序引用對到116個無版本觀測嘅legacy ID。舊writer可覆寫點數及原文ID而保留建立時間，支持逐版本原文驗證。[EXP-22](docs/experiments/EXP-20261104-22-tennis-legacy-receipt-relink.md)
+
 **2026-11-04 完成比分收據**。9場198個版本引用全部原文抓取早於定價，但126個現存履歷入庫時間更早，不能代替對應原文版本抓取時間。仍缺逐場完場時計。[EXP-21](docs/experiments/EXP-20261104-21-tennis-terminal-receipt-clocks.md)
 
 **2026-11-04 原發球 profile 重播**。9場18份已存 profile 全部按固定引用重現。F05 用真實曝光加權，兩種發球率最大絕對差分別3.324及4.550百分點，未測準確度或取得逐場完場時間。[EXP-20](docs/experiments/EXP-20261104-20-tennis-serve-profile-parity.md)
