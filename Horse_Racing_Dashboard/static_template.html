@@ -1030,6 +1030,69 @@
 .hkjc-insights .ins-tag{font-style:normal;font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;background:#f2f4f8;color:#475467;white-space:nowrap}
 .hkjc-insights .ins-tag--inner{background:#e8f6ef;color:#11845b}.hkjc-insights .ins-tag--outer{background:#fdf0ee;color:#c8463f}
 .hkjc-insights .ins-tag--front{background:#eef2ff;color:#3b4fd1}.hkjc-insights .ins-tag--back{background:#f4f0fe;color:#6b46c1}
+.hkjc-insights .ins-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.hkjc-insights .ins-stat-name{font-size:22px!important}
+.hkjc-insights .ins-lists{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}
+.hkjc-insights .ins-list{padding:14px 14px 10px}
+.hkjc-insights .ins-list-head,.hkjc-insights .ins-list li{display:grid;grid-template-columns:20px minmax(0,1fr) auto 58px 64px;gap:8px;align-items:center}
+.hkjc-insights .ins-list-head{font-size:10px;color:#98a2b3;font-weight:600;padding:8px 0 4px;border-bottom:1px solid var(--i-line)}
+.hkjc-insights .ins-list-head span:nth-child(n+4){text-align:right}
+.hkjc-insights .ins-places-head{letter-spacing:.55em;padding-left:4px}
+.hkjc-insights .ins-list ol{list-style:none;margin:0;padding:0}
+.hkjc-insights .ins-list li{padding:7px 0;border-top:1px solid #f0f2f6}
+.hkjc-insights .ins-list li:first-child{border-top:0}
+.hkjc-insights .ins-list li.ins-thin{opacity:.6}
+.hkjc-insights .ins-list .ins-rank{font-size:12px}
+.hkjc-insights .ins-list li:nth-child(-n+3) .ins-rank{color:var(--i-gold)}
+.hkjc-insights .ins-list .ins-name{font-size:14px;display:flex;flex-direction:column;line-height:1.25}
+.hkjc-insights .ins-list .ins-name small{font-size:10px;font-weight:400;color:#98a2b3}
+.hkjc-insights .ins-list .ins-places{gap:3px}
+.hkjc-insights .ins-list .ins-place{min-width:22px;padding:2px 0;font-size:12px;font-weight:700;border-radius:6px;display:block;text-align:center}
+.hkjc-insights .ins-place--1{background:#fdf5df;color:#9a6b00}.hkjc-insights .ins-place--3{color:#8a4b22}
+.hkjc-insights .ins-win{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+.hkjc-insights .ins-win b{font-size:13px}.hkjc-insights .ins-win small{font-size:10px;color:#98a2b3}
+.hkjc-insights .ins-tonight{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;font-weight:700;color:#475467;line-height:1.2;white-space:nowrap}
+.hkjc-insights .ins-tonight small{font-size:10px;font-weight:400;color:#98a2b3}
+.hkjc-insights .ins-tonight--hot{color:#11845b}
+.hkjc-insights .ins-tonight--none{color:#c0c6d1}
+.hkjc-insights .ins-list .ins-more{margin-top:8px;width:100%}
+.hkjc-insights .ins-bias-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.hkjc-insights .ins-bias-grid:has(> .ins-card:only-child){grid-template-columns:1fr}
+.hkjc-insights .ins-bias .ins-card-head{gap:10px;flex-wrap:wrap}
+.hkjc-insights .ins-bias select{font-size:12px;min-height:32px;padding:5px 12px;max-width:100%}
+.hkjc-insights .ins-bias-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.hkjc-insights .ins-bias-row{grid-template-columns:72px 1fr 64px auto!important;gap:8px!important}
+.hkjc-insights .ins-bias .ins-bar i{background:var(--i-accent)}
+.hkjc-insights .ins-bias-num{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+.hkjc-insights .ins-bias-num b{font-size:13px}.hkjc-insights .ins-bias-num small{font-size:10px;color:#98a2b3}
+.hkjc-insights .ins-bias-now{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;color:#667085;line-height:1.2;min-width:44px}
+.hkjc-insights .ins-bias-now b{font-size:14px;color:var(--i-ink)}
+.hkjc-insights .ins-bias-now small{font-size:9px;color:#98a2b3}
+.hkjc-insights .ins-bias-now--hot b{color:#11845b}
+.hkjc-insights .ins-results-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
+.hkjc-insights .ins-results-head h2{font-size:18px;margin:0}.hkjc-insights .ins-results-head span{font-size:12px;color:var(--i-muted)}
+.hkjc-insights .ins-races{margin-top:0}
+@media(max-width:1100px){.hkjc-insights .ins-lists{grid-template-columns:1fr 1fr}.hkjc-insights .ins-bias-grid{grid-template-columns:1fr}}
+@media(max-width:760px){
+.hkjc-insights .ins-summary{grid-template-columns:1fr 1fr}
+.hkjc-insights .ins-lists{grid-template-columns:1fr}
+.hkjc-insights .ins-bias-cols{grid-template-columns:1fr}
+.hkjc-insights .ins-tabs{width:max-content}.hkjc-insights .ins-tabs button{flex:none;padding:8px 22px}
+}
+.hkjc-insights .ins-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:20px 0 14px}.hkjc-insights .ins-nav .ins-tabs{margin:0}.hkjc-insights .ins-days{max-width:100%;overflow-x:auto}.hkjc-insights .ins-list .ins-name{display:block!important;overflow-wrap:anywhere}
+.hkjc-insights .ins-days button{display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:6px 12px}
+.hkjc-insights .ins-days button small{font-size:10px;font-weight:500;color:#98a2b3}
+.hkjc-insights .ins-list-head,.hkjc-insights .ins-list li{grid-template-columns:20px minmax(0,1fr) auto 62px!important}
+.hkjc-insights .ins-places-head{display:flex;gap:3px;letter-spacing:0;padding:0}
+.hkjc-insights .ins-places-head i{font-style:normal;min-width:22px;text-align:center}
+.hkjc-insights .ins-place--zero{opacity:.35}
+.hkjc-insights .ins-list li.ins-thin{opacity:.45}
+.hkjc-insights .ins-rides{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;color:#667085;line-height:1.2}
+.hkjc-insights .ins-rides b{font-size:14px;color:var(--i-ink)}
+.hkjc-insights .ins-rides small{font-size:9px;color:#98a2b3}
+.hkjc-insights .ins-bias{margin-top:0}
+.hkjc-insights .ins-bias-row{grid-template-columns:80px 1fr 58px!important}
+.hkjc-insights .ins-bias-num b small{font-size:11px;font-weight:600}
 .hkjc-insights .ins-foot{font-size:11px;color:#98a2b3;margin-top:22px;line-height:1.6}
 @media(max-width:760px){
 .hkjc-insights{padding:16px 14px 90px}
@@ -7545,16 +7608,15 @@ function renderNow(main) {
 }
 
 // ═══════════════════════════════════════════════
-// HKJC 即場形勢 (display only: counts of placings, never odds or returns)
+// HKJC 即場形勢 (display only: counts of placings on ONE race day, never odds or returns)
+// One-page overview for live decisions; race-by-race results on the second tab.
 // ═══════════════════════════════════════════════
-let insPeriod = 'season', insVenue = 'all', insTab = 'jockeys', insBiasKey = '', insShowAll = false;
-const INS_PERIODS = [['meeting', '最近賽日'], ['d30', '近 30 日'], ['season', '本季'], ['all', '全部']];
-const INS_VENUES = [['all', '全部'], ['ST', '沙田'], ['HV', '跑馬地']];
-const INS_TABS = [['jockeys', '騎師'], ['trainers', '練馬師'], ['combos', '騎練合作'], ['bias', '場地偏差'], ['latest', '賽日走勢']];
+let insTab = 'overview', insDay = '', insExpanded = {};
+const INS_TABS = [['overview', '總覽'], ['results', '賽果']];
 const INS_BUCKETS = [['inner', '內檔 1–4'], ['middle', '中檔 5–8'], ['outer', '外檔 9+']];
-const INS_STYLES = [['front', '放頭（首段頭 3）'], ['middle', '守中'], ['back', '後上（尾三分一）']];
+const INS_STYLES = [['front', '放頭'], ['middle', '守中'], ['back', '後上']];
 const INS_VENUE_NAME = { ST: '沙田', HV: '跑馬地' };
-const INS_SMALL = 10;
+const INS_TOP = 8;
 function hkjcInsights() { return DASHBOARD_DATA.hkjc_insights || { status: 'unavailable' }; }
 function showInsights() {
   activeSport = 'horses';
@@ -7564,76 +7626,48 @@ function showInsights() {
   window.scrollTo(0, 0);
 }
 function setInsights(key, value) {
-  if (key === 'period' && INS_PERIODS.some(([k]) => k === value)) insPeriod = value;
-  else if (key === 'venue' && INS_VENUES.some(([k]) => k === value)) { insVenue = value; insBiasKey = ''; }
-  else if (key === 'tab' && INS_TABS.some(([k]) => k === value)) { insTab = value; insShowAll = false; }
-  else if (key === 'bias') insBiasKey = String(value);
-  else if (key === 'all') insShowAll = !insShowAll;
+  const days = (hkjcInsights().meetings || []).map(m => m.day);
+  if (key === 'tab' && INS_TABS.some(([k]) => k === value)) insTab = value;
+  else if (key === 'day' && days.includes(value)) { insDay = value; insExpanded = {}; }
+  else if (key === 'expand' && ['jockeys', 'trainers', 'combos'].includes(value)) insExpanded[value] = !insExpanded[value];
   else return;
   render();
 }
-const insPct = (n, d) => d ? Math.round(n / d * 1000) / 10 : null;
-const insPctText = v => v == null ? '—' : v.toFixed(1) + '%';
-function insPills(items, current, key) {
-  return `<div class="ins-pills" role="group">${items.map(([k, label]) => `<button type="button" aria-pressed="${k === current}" onclick="setInsights('${key}','${k}')">${label}</button>`).join('')}</div>`;
-}
+function insMeeting(data) { return (data.meetings || []).find(m => m.day === insDay) || (data.meetings || [])[0]; }
 function insPlaces(w) {
-  return `<span class="ins-places">${['冠', '亞', '季', '殿'].map((label, i) => `<span class="ins-place ins-place--${i + 1}"><small>${label}</small><b>${w[i]}</b></span>`).join('')}</span>`;
+  return `<span class="ins-places">${w.map((n, i) => `<span class="ins-place ins-place--${i + 1}${n ? '' : ' ins-place--zero'}" title="${['冠', '亞', '季', '殿'][i]}">${n}</span>`).join('')}</span>`;
 }
-function insRateBar(value, max = 40, label = '') {
-  return `<span class="ins-rate" data-label="${label}"><i style="width:${value == null ? 0 : Math.min(100, value / max * 100)}%"></i><b>${insPctText(value)}</b></span>`;
-}
-function insStandings(rows, kind) {
-  if (!rows?.length) return '<div class="ins-empty">呢個時段未有紀錄。</div>';
-  const shown = insShowAll ? rows : rows.slice(0, 30);
+function insListCard(kind, title, rows) {
+  const expanded = !!insExpanded[kind], all = rows || [], shown = expanded ? all : all.slice(0, INS_TOP);
   const name = r => kind === 'combos' ? `${esc(r.name[0])}<span class="ins-x">×</span>${esc(r.name[1])}` : esc(r.name);
-  return `<div class="ins-table" role="table"><div class="ins-row ins-row--head" role="row"><span>#</span><span>${kind === 'combos' ? '騎師 × 練馬師' : kind === 'trainers' ? '練馬師' : '騎師'}</span><span>出賽</span><span>冠・亞・季・殿</span><span>勝率</span><span>上名率</span><span>入四率</span></div>${shown.map((r, i) => {
-    const win = insPct(r.w[0], r.starts), top3 = insPct(r.top3, r.starts), top4 = insPct(r.top4, r.starts);
-    return `<div class="ins-row${r.starts < INS_SMALL ? ' ins-row--thin' : ''}" role="row"><span class="ins-rank">${i + 1}</span><span class="ins-name">${name(r)}${r.starts < INS_SMALL ? '<em>樣本少</em>' : ''}</span><span class="ins-starts">${r.starts}</span>${insPlaces(r.w)}${insRateBar(win, 40, '勝率 ')}${insRateBar(top3, 70, '上名 ')}<span class="ins-plain" data-label="入四 ">${insPctText(top4)}</span></div>`;
-  }).join('')}</div>${rows.length > 30 ? `<button type="button" class="ins-more" onclick="setInsights('all',1)">${insShowAll ? '只顯示頭 30 位' : '顯示全部 ' + rows.length + ' 位'}</button>` : ''}`;
+  const list = shown.map((r, i) => `<li class="${r.top4 ? '' : 'ins-thin'}"><span class="ins-rank">${i + 1}</span><span class="ins-name">${name(r)}</span>${insPlaces(r.w)}<span class="ins-rides"><span><b>${r.top3}</b>/${r.starts}</span></span></li>`).join('');
+  return `<article class="ins-card ins-list"><div class="ins-card-head"><h3>${title}</h3><span>${all.length} ${kind === 'combos' ? '對' : '位'}</span></div><div class="ins-list-head"><span>#</span><span></span><span class="ins-places-head"><i>冠</i><i>亞</i><i>季</i><i>殿</i></span><span>上名/騎</span></div>${list ? `<ol>${list}</ol>` : '<div class="ins-empty">未有賽果。</div>'}${all.length > INS_TOP ? `<button type="button" class="ins-more" onclick="setInsights('expand','${kind}')">${expanded ? '收起' : '顯示全部 ' + all.length + (kind === 'combos' ? ' 對' : ' 位')}</button>` : ''}</article>`;
 }
-function insBiasBars(group, labels) {
-  const rates = labels.map(([k]) => insPct(group[k].w[0], group[k].starts));
-  const best = Math.max(...rates.filter(v => v != null));
-  return labels.map(([k, label], i) => {
-    const t = group[k], win = rates[i], top3 = insPct(t.top3, t.starts);
-    return `<div class="ins-bias-row${win === best && t.starts ? ' ins-bias-row--best' : ''}"><span class="ins-bias-label">${label}<small>${t.starts} 匹</small></span><span class="ins-bias-bars"><span class="ins-bar ins-bar--win"><i style="width:${Math.min(100, (win || 0) / 30 * 100)}%"></i></span><b>${insPctText(win)}</b><span class="ins-bar ins-bar--top3"><i style="width:${Math.min(100, (top3 || 0) / 60 * 100)}%"></i></span><b>${insPctText(top3)}</b></span><span class="ins-bias-wins">${t.w[0]} 冠</span></div>`;
+function insBiasRows(group, labels, races) {
+  const most = Math.max(...labels.map(([k]) => group[k].w[0]));
+  return labels.map(([k, label]) => {
+    const t = group[k];
+    return `<div class="ins-bias-row${t.w[0] && t.w[0] === most ? ' ins-bias-row--best' : ''}"><span class="ins-bias-label">${label}<small>${t.starts} 匹出賽</small></span><span class="ins-bar"><i style="width:${races ? t.w[0] / races * 100 : 0}%"></i></span><span class="ins-bias-num"><b>${t.w[0]}<small> 冠</small></b><small>${t.top3} 上名</small></span></div>`;
   }).join('');
 }
-function insBiasCard(cell, title) {
-  return `<article class="ins-card"><div class="ins-card-head"><h3>${title}</h3><span>${cell.races} 場</span></div><div class="ins-bias-legend"><span><i class="win"></i>勝率</span><span><i class="top3"></i>上名率（頭 3）</span></div><h4>檔位</h4>${insBiasBars(cell.draw, INS_BUCKETS)}<h4>跑法</h4>${insBiasBars(cell.style, INS_STYLES)}</article>`;
+function insSummary(m) {
+  const winners = m.races.map(r => r.placed.find(p => p.pos === 1)).filter(Boolean), n = winners.length;
+  const count = (field, value) => winners.filter(w => w[field] === value).length;
+  const hot = m.jockeys[0], hotTrainer = m.trainers[0], rails = [...new Set(m.races.map(r => r.rail === 'AWT' ? '全天候' : r.rail ? r.rail + ' 跑道' : ''))].filter(Boolean).join('、');
+  return `<div class="ins-summary"><div class="ins-stat"><span>已完成</span><strong>${m.races.length}<small>場</small></strong><p>${esc(m.day)} ${INS_VENUE_NAME[m.venue] || ''} · ${esc(rails)}</p></div><div class="ins-stat"><span>頭馬放頭</span><strong>${count('style', 'front')}<small>/ ${n} 場</small></strong><p>守中 ${count('style', 'middle')} · 後上 ${count('style', 'back')}</p></div><div class="ins-stat"><span>頭馬內檔</span><strong>${count('bucket', 'inner')}<small>/ ${n} 場</small></strong><p>中檔 ${count('bucket', 'middle')} · 外檔 ${count('bucket', 'outer')}</p></div><div class="ins-stat"><span>最旺騎師</span><strong class="ins-stat-name">${hot ? esc(hot.name) : '—'}</strong><p>${hot ? `${hot.w[0]} 冠 ${hot.w[1]} 亞 ${hot.w[2]} 季 · ${hot.starts} 騎` : '未有賽果'}${hotTrainer ? ` · 練馬師 ${esc(hotTrainer.name)} ${hotTrainer.w[0]} 冠` : ''}</p></div></div>`;
 }
-function insBias(table) {
-  const cells = table.bias || [];
-  const venues = insVenue === 'all' ? ['ST', 'HV'] : [insVenue];
-  return venues.map(v => {
-    const overall = cells.find(c => c.venue === v && c.rail === 'all');
-    if (!overall) return '';
-    const options = cells.filter(c => c.venue === v && c.rail !== 'all' && c.races >= 3).sort((a, b) => b.races - a.races);
-    const key = insBiasKey.startsWith(v + '|') ? insBiasKey : (options[0] ? `${v}|${options[0].rail}|${options[0].distance}` : '');
-    const chosen = options.find(c => `${v}|${c.rail}|${c.distance}` === key);
-    const label = c => (c.rail === 'AWT' ? '全天候' : `${c.rail} 跑道`) + ` · ${c.distance}米`;
-    return `<section class="ins-venue"><div class="ins-section-head"><h2>${INS_VENUE_NAME[v]}</h2><label>跑道・距離<select onchange="setInsights('bias',this.value)">${options.map(c => `<option value="${v}|${c.rail}|${c.distance}" ${`${v}|${c.rail}|${c.distance}` === key ? 'selected' : ''}>${label(c)}（${c.races} 場）</option>`).join('')}</select></label></div><div class="ins-grid">${insBiasCard(overall, '全部跑道・距離')}${chosen ? insBiasCard(chosen, label(chosen)) : ''}</div></section>`;
-  }).join('') || '<div class="ins-empty">呢個時段未有場地紀錄。</div>';
-}
-function insLatest(data) {
-  const races = data.latest_meeting || [];
-  if (!races.length) return '<div class="ins-empty">未有賽果。</div>';
-  const winners = races.map(r => r.placed.find(p => p.pos === 1)).filter(Boolean);
-  const count = (key, value) => winners.filter(w => w[key] === value).length;
-  const meeting = data.tables?.[`meeting:all`] || {};
-  const top = (rows, n = 5) => (rows || []).filter(r => r.w[0] || r.w[1] || r.w[2]).slice(0, n).map(r => `<li><span>${esc(Array.isArray(r.name) ? r.name.join(' × ') : r.name)}</span><b>${r.w[0]} 冠 ${r.w[1]} 亞 ${r.w[2]} 季</b><small>${r.starts} 騎</small></li>`).join('') || '<li class="ins-empty">未有上名</li>';
-  const styleName = { front: '放頭', middle: '守中', back: '後上' }, bucketName = { inner: '內檔', middle: '中檔', outer: '外檔' };
-  return `<div class="ins-live-summary"><div class="ins-stat"><span>已完成</span><strong>${races.length}<small>場</small></strong><p>${esc(data.latest_day)} ${INS_VENUE_NAME[data.latest_venue] || ''}</p></div><div class="ins-stat"><span>頭馬跑法</span><strong>${count('style', 'front')}<small>/ ${winners.length} 放頭</small></strong><p>守中 ${count('style', 'middle')} · 後上 ${count('style', 'back')}</p></div><div class="ins-stat"><span>頭馬檔位</span><strong>${count('bucket', 'inner')}<small>/ ${winners.length} 內檔</small></strong><p>中檔 ${count('bucket', 'middle')} · 外檔 ${count('bucket', 'outer')}</p></div></div><div class="ins-grid"><article class="ins-card"><div class="ins-card-head"><h3>當日騎師</h3></div><ol class="ins-top">${top(meeting.jockeys)}</ol></article><article class="ins-card"><div class="ins-card-head"><h3>當日練馬師</h3></div><ol class="ins-top">${top(meeting.trainers)}</ol></article></div><div class="ins-races">${races.map(r => `<article class="ins-race"><div class="ins-race-head"><b>第 ${r.race} 場</b><span>${r.distance || '—'}米 · ${r.rail === 'AWT' ? '全天候' : (r.rail || '—') + ' 跑道'} · ${esc(r.class || '')} · ${esc(r.going || '')}</span></div><ol>${r.placed.map(p => `<li class="ins-pos-${p.pos}"><span class="ins-pos">${p.pos}</span><span class="ins-horse">${esc(p.horse.replace(/\([A-Z]\d+\)$/, ''))}<small>${esc(p.jockey)} / ${esc(p.trainer)}</small></span><span class="ins-tags"><i class="ins-tag ins-tag--${p.bucket || 'na'}">${p.draw ?? '—'} 檔</i><i class="ins-tag ins-tag--${p.style || 'na'}">${styleName[p.style] || '—'}</i></span></li>`).join('')}</ol></article>`).join('')}</div>`;
+function insResults(m) {
+  if (!m.races.length) return '<div class="ins-empty">未有賽果。</div>';
+  const styleName = { front: '放頭', middle: '守中', back: '後上' };
+  return `<div class="ins-races">${m.races.map(r => `<article class="ins-race"><div class="ins-race-head"><b>第 ${r.race} 場</b><span>${r.distance || '—'}米 · ${r.rail === 'AWT' ? '全天候' : (r.rail || '—') + ' 跑道'} · ${esc(r.class || '')} · ${esc(r.going || '')}</span></div><ol>${r.placed.map(p => `<li class="ins-pos-${p.pos}"><span class="ins-pos">${p.pos}</span><span class="ins-horse">${esc(p.horse.replace(/\([A-Z]\d+\)$/, ''))}<small>${esc(p.jockey)} / ${esc(p.trainer)}</small></span><span class="ins-tags"><i class="ins-tag ins-tag--${p.bucket || 'na'}">${p.draw ?? '—'} 檔</i><i class="ins-tag ins-tag--${p.style || 'na'}">${styleName[p.style] || '—'}</i></span></li>`).join('')}</ol></article>`).join('')}</div>`;
 }
 function renderHkjcInsights() {
-  const data = hkjcInsights();
-  if (data.status !== 'valid') return `<section class="hkjc-insights"><div class="ins-empty">即場形勢數據暫未能讀取，稍後更新。</div></section>`;
-  const table = data.tables?.[`${insPeriod}:${insVenue}`] || {};
-  const since = { meeting: `${data.latest_day} 賽日`, d30: `${data.since.d30} 起`, season: `${data.since.season.slice(0, 4)}/${String(Number(data.since.season.slice(2, 4)) + 1).padStart(2, '0')} 季`, all: `${data.first_day} 起` }[insPeriod];
-  const body = insTab === 'bias' ? insBias(table) : insTab === 'latest' ? insLatest(data) : insStandings(table[insTab], insTab);
-  const filters = insTab === 'latest' ? '' : `<div class="ins-filters">${insPills(INS_PERIODS, insPeriod, 'period')}${insPills(INS_VENUES, insVenue, 'venue')}<span class="ins-scope">${since} · ${table.meetings || 0} 個賽日 · ${table.races || 0} 場</span></div>`;
-  return `<section class="hkjc-insights"><div class="ins-head"><div><div class="ins-eyebrow">WONG CHOI / HKJC</div><h1>即場形勢</h1><p>騎師・練馬師・騎練合作排名・檔位與跑法偏差</p></div><div class="ins-date"><strong>${esc(data.latest_day)}</strong>最新賽果${data.latest_is_today ? '<br>今晚即場更新' : ''}</div></div><nav class="ins-tabs" aria-label="即場形勢分頁">${INS_TABS.map(([k, label]) => `<button type="button" aria-pressed="${insTab === k}" onclick="setInsights('tab','${k}')">${k === 'latest' && data.latest_is_today ? '今晚走勢' : label}</button>`).join('')}</nav>${filters}${body}<p class="ins-foot">數據來自馬會賽果：只計名次次數，唔計賠率或回報；唔會餵入評分模型。檔位分內（1–4）、中（5–8）、外（9+）；跑法按第一個沿途位置：頭 3 位為放頭、尾三分一為後上。</p></section>`;
+  const data = hkjcInsights(), m = data.status === 'valid' ? insMeeting(data) : null;
+  if (!m) return `<section class="hkjc-insights"><div class="ins-empty">即場形勢數據暫未能讀取，稍後更新。</div></section>`;
+  const live = data.latest_is_today && m === data.meetings[0];
+  const days = `<div class="ins-pills ins-days" role="group" aria-label="賽日">${data.meetings.map((d, i) => `<button type="button" aria-pressed="${d === m}" onclick="setInsights('day','${d.day}')">${i === 0 && data.latest_is_today ? '今晚' : nbaShortDate(d.day)}<small>${INS_VENUE_NAME[d.venue] || ''}</small></button>`).join('')}</div>`;
+  const body = insTab === 'results' ? insResults(m) : `${insSummary(m)}<div class="ins-lists">${insListCard('jockeys', '騎師', m.jockeys)}${insListCard('trainers', '練馬師', m.trainers)}${insListCard('combos', '騎練合作', m.combos)}</div><article class="ins-card ins-bias"><div class="ins-card-head"><h3>場地偏差</h3><span>${m.races.length} 場頭馬來自邊度</span></div><div class="ins-bias-cols"><div><h4>檔位</h4>${insBiasRows(m.bias.draw, INS_BUCKETS, m.races.length)}</div><div><h4>跑法</h4>${insBiasRows(m.bias.style, INS_STYLES, m.races.length)}</div></div></article>`;
+  return `<section class="hkjc-insights"><div class="ins-head"><div><div class="ins-eyebrow">WONG CHOI / HKJC</div><h1>即場形勢</h1><p>${live ? '今晚' : '當日'}騎師・練馬師・騎練合作・檔位與跑法</p></div><div class="ins-date"><strong>${esc(m.day)}</strong>${INS_VENUE_NAME[m.venue] || ''}${live ? '<br>今晚即場更新' : ''}</div></div><div class="ins-nav"><nav class="ins-tabs" aria-label="即場形勢分頁">${INS_TABS.map(([k, label]) => `<button type="button" aria-pressed="${insTab === k}" onclick="setInsights('tab','${k}')">${label}</button>`).join('')}</nav>${days}</div>${body}<p class="ins-foot">只計所揀賽日：數據來自馬會賽果，只計名次次數，唔計賠率或回報；唔會餵入評分模型。檔位分內（1–4）、中（5–8）、外（9+）；跑法按第一個沿途位置：頭 3 位為放頭、尾三分一為後上。</p></section>`;
 }
 
 // Chart tooltip functions

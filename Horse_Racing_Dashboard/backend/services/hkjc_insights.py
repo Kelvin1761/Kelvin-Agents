@@ -1,10 +1,11 @@
-"""HKJC jockey / trainer / partnership standings and track-bias tables for the dashboard.
+"""HKJC 即場形勢: race-day jockey / trainer / partnership standings and track bias.
 
 Display only: nothing here feeds scoring or selection. Every number is a count
-of finishing places taken from the official results database
+of finishing places on ONE race day, taken from the official results database
 (`HKJC_Race_Results_Database/hkjc results YYYY YY/<date>/full_day_results.json`);
-no odds, no returns. Tables are pre-aggregated per (period, venue) so the page
-carries a few hundred KB instead of every runner row.
+no odds, no returns, no season aggregates (Kelvin 2026-11-04: "everything is
+just for that day's race only"). The last few race days are kept so the page
+can look back one meeting at a time.
 """
 from __future__ import annotations
 
@@ -18,16 +19,9 @@ VENUES = {"沙田": "ST", "ShaTin": "ST", "跑馬地": "HV", "HappyValley": "HV"
 NOT_STARTED = re.compile(r"^(WV|WX|WXNR)", re.I)
 DRAW_BUCKETS = (("inner", 1, 4), ("middle", 5, 8), ("outer", 9, 99))
 STYLES = ("front", "middle", "back")
-PERIODS = ("meeting", "d30", "season", "all")
-COMBO_MIN_STARTS = 3
+MEETINGS_KEPT = 8
 TABLE_LIMIT = 80
 HK = timezone(timedelta(hours=8))
-
-
-def season_start(day: date) -> date:
-    """HK seasons open in September; August belongs to the season about to start."""
-    year = day.year if day.month >= 8 else day.year - 1
-    return date(year, 8, 1)
 
 
 def _int(value):
@@ -96,7 +90,7 @@ def _tally(rows):
     return {"starts": starts, "w": counts, "top3": sum(counts[:3]), "top4": sum(counts)}
 
 
-def _standings(rows, key, minimum=1):
+def _standings(rows, key):
     groups = defaultdict(list)
     for row in rows:
         name = key(row)
@@ -104,8 +98,6 @@ def _standings(rows, key, minimum=1):
             groups[name].append(row)
     table = []
     for name, group in groups.items():
-        if len(group) < minimum:
-            continue
         table.append({"name": list(name) if isinstance(name, tuple) else name, **_tally(group)})
     # 馬會排法：冠、亞、季、殿次數，再按出賽少者先。
     table.sort(key=lambda t: (*(-n for n in t["w"]), t["starts"]))
@@ -113,25 +105,11 @@ def _standings(rows, key, minimum=1):
 
 
 def _bias(rows):
-    """Draw buckets and running styles per venue × rail × distance, plus a venue total."""
-    cells = defaultdict(lambda: {"draw": defaultdict(list), "style": defaultdict(list)})
-    for row in rows:
-        for cell_key in ((row["venue"], "all", 0), (row["venue"], row["rail"] or "?", row["distance"] or 0)):
-            bucket, style = draw_bucket(row["draw"]), run_style(row["early"], row["field"])
-            if bucket:
-                cells[cell_key]["draw"][bucket].append(row)
-            if style:
-                cells[cell_key]["style"][style].append(row)
-    out = []
-    for (venue, rail, distance), cell in cells.items():
-        races = len({(r["day"], r["race"]) for group in cell["draw"].values() for r in group})
-        out.append({
-            "venue": venue, "rail": rail, "distance": distance, "races": races,
-            "draw": {b: _tally(cell["draw"][b]) for b, _, _ in DRAW_BUCKETS},
-            "style": {s: _tally(cell["style"][s]) for s in STYLES},
-        })
-    out.sort(key=lambda c: (c["venue"], c["rail"] != "all", c["rail"], c["distance"]))
-    return out
+    """Where tonight's placings came from: draw bucket and run style, counted not rated."""
+    return {
+        "draw": {b: _tally([r for r in rows if draw_bucket(r["draw"]) == b]) for b, _, _ in DRAW_BUCKETS},
+        "style": {s: _tally([r for r in rows if run_style(r["early"], r["field"]) == s]) for s in STYLES},
+    }
 
 
 def _meeting_races(rows):
@@ -154,47 +132,28 @@ def _meeting_races(rows):
     return out
 
 
-def build_insights(results_root: Path, *, today: date | None = None) -> dict:
+def build_insights(results_root: Path, *, today: date | None = None, keep: int = MEETINGS_KEPT) -> dict:
     runners = load_runners(results_root)
     if not runners:
         return {"status": "unavailable", "generated_at": datetime.now(timezone.utc).isoformat()}
-    latest = max(r["day"] for r in runners)
-    latest_day = date.fromisoformat(latest)
     today = today or datetime.now(HK).date()
-    since = {
-        "meeting": latest,
-        "d30": (latest_day - timedelta(days=30)).isoformat(),
-        "season": season_start(latest_day).isoformat(),
-        "all": "0000-00-00",
-    }
-    tables = {}
-    for period in PERIODS:
-        scoped = [r for r in runners if r["day"] >= since[period]]
-        for venue in ("all", "ST", "HV"):
-            rows = [r for r in scoped if venue == "all" or r["venue"] == venue]
-            if not rows:
-                continue
-            tables[f"{period}:{venue}"] = {
-                "races": len({(r["day"], r["race"]) for r in rows}),
-                "meetings": len({r["day"] for r in rows}),
-                "jockeys": _standings(rows, lambda r: r["jockey"]),
-                "trainers": _standings(rows, lambda r: r["trainer"]),
-                "combos": _standings(rows, lambda r: (r["jockey"], r["trainer"]),
-                                     minimum=1 if period == "meeting" else COMBO_MIN_STARTS),
-                "bias": _bias(rows),
-            }
-    meeting_rows = [r for r in runners if r["day"] == latest]
+    days = sorted({r["day"] for r in runners}, reverse=True)[:keep]
+    meetings = []
+    for day in days:
+        rows = [r for r in runners if r["day"] == day]
+        meetings.append({
+            "day": day, "venue": rows[0]["venue"],
+            "races": _meeting_races(rows),
+            "jockeys": _standings(rows, lambda r: r["jockey"]),
+            "trainers": _standings(rows, lambda r: r["trainer"]),
+            "combos": _standings(rows, lambda r: (r["jockey"], r["trainer"])),
+            "bias": _bias(rows),
+        })
     return {
         "status": "valid",
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "first_day": min(r["day"] for r in runners),
-        "latest_day": latest,
-        "latest_venue": meeting_rows[0]["venue"],
-        "latest_is_today": latest == today.isoformat(),
-        "since": since,
-        "runner_count": len(runners),
-        "tables": tables,
-        "latest_meeting": _meeting_races(meeting_rows),
+        "latest_is_today": days[0] == today.isoformat(),
+        "meetings": meetings,
     }
 
 
