@@ -55,3 +55,17 @@ def test_style_and_draw_buckets():
 
 def test_missing_database_is_unavailable(tmp_path):
     assert build_insights(tmp_path)['status'] == 'unavailable'
+
+
+def test_live_capture_feeds_tonight_and_canonical_wins_per_race(tmp_path):
+    meeting(tmp_path, '2026-11-04', '跑馬地', [[runner('1', '正式', 'T1', 1, '1 1 1'), runner('2', '乙', 'T2', 5, '4 3 2'), runner('3', '丙', 'T1', 9, '9 8 3')]])
+    live = tmp_path / '_live'
+    live.mkdir()
+    race = lambda n, winner: {'racedate': '2026-11-04', 'race_no': n, 'venue': '跑馬地', 'results': [
+        runner('1', winner, 'T1', 2, '2 2 1'), runner('2', '乙', 'T2', 6, '5 4 2'), runner('3', '丙', 'T1', 10, '10 9 3')]}
+    (live / '2026-11-04.json').write_text(json.dumps({'1': race(1, '即場版'), '2': race(2, '即場'), }, ensure_ascii=False))
+    (live / '2026-11-04.state.json').write_text('{"1": {"captured_at": "x"}}')
+    day = build_insights(tmp_path, today=date(2026, 11, 4))['meetings'][0]
+    assert [r['race'] for r in day['races']] == [1, 2]
+    names = {r['name'] for r in day['jockeys']}
+    assert '正式' in names and '即場' in names and '即場版' not in names

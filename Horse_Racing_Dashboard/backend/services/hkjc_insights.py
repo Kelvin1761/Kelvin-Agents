@@ -40,18 +40,34 @@ def _race_conditions(race: dict) -> dict:
     return {"distance": distance, "going": going, "rail": rail, "class": klass}
 
 
+def _result_files(results_root: Path):
+    """Canonical full-day files, then tonight's per-race live captures (`_live/<date>.json`).
+
+    The live file is written race by race by hkjc_live_results.py; a race already in
+    the canonical file is always taken from there.
+    """
+    root = Path(results_root)
+    for path in sorted(root.glob("hkjc results */*/full_day_results.json")):
+        yield path.parent.name[:10], path
+    for path in sorted((root / "_live").glob("????-??-??.json")):
+        yield path.stem, path
+
+
 def load_runners(results_root: Path) -> list[dict]:
     """One row per starter across every saved meeting."""
-    runners = []
-    for path in sorted(Path(results_root).glob("hkjc results */*/full_day_results.json")):
+    runners, seen = [], set()
+    for day, path in _result_files(results_root):
         try:
             meeting = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        day = path.parent.name[:10]
         for race in meeting.values() if isinstance(meeting, dict) else []:
             if not isinstance(race, dict):
                 continue
+            key = (str(race.get("racedate") or day)[:10], _int(race.get("race_no")))
+            if key in seen:
+                continue
+            seen.add(key)
             venue = VENUES.get(str(race.get("venue") or ""))
             starters = [r for r in race.get("results") or [] if not NOT_STARTED.match(str(r.get("pos") or ""))]
             if not venue or not starters:
