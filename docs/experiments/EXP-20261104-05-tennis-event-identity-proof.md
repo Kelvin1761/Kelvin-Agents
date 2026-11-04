@@ -39,3 +39,7 @@
 - `book-tour-owner-rejection-v1-20261104/`：16檔／118489 bytes，manifest `c1e014bd485b79c7ac2984009e1c4563bd306bc4924ca987e7da42656c3ebf2c`。反例、公開profile proof、兩人beforeimages／proposal、候選取消、Central拒絕及未部署核對均保留。初次封存因驗證helper預期event名稱`rejected`而失敗；修正為Central實際schema的`approval_rejected`後核對，沒有放寬source／SHA／ancestry條件。
 
 重跑需新輸出目錄，先驗所有公開manifest和原private receipt的hash；私人source仍只准在記憶體。新public頁的取得時鐘晚於原forecast，不能回填為原先已知；事件吻合亦不取代Elo generation資格及獨立模型驗證。
+
+原核對使用研究commit `b7a7cc32cceb090875d51e4ea6c0031b34370e63` 的book classifier、name normalizer及start-time helper；其中明示tour解讀未部署。重播必須使用同SHA的隔離checkout／相同source bytes，再調整腳本的source root，不能用main舊prefix路徑重跑後當成同一個結果。原生對照的實際source亦在EXP-04候選封存包保留。
+
+這兩人是另一份prospective source-binding proposal，不取代原Sigsgaard四場／八行的修補範圍，兩條假設及baseline分開。下一個入口修正先驗：相同首字母／姓氏但不同source actor不得接入；穩定source ref須優先；legacy未綁定actor明示留置；新actor、既有binding及雙側失敗都要核對。未完成前不重試原tour-only release。
