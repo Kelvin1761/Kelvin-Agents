@@ -514,8 +514,9 @@ Settlement 會先輸出本機 proposal；未獲明確批准前唔會自動 POST�
 **sidecar（`.market_legs.json`）係唯一機器介面**（EXP-20261104-04）：dashboard（`multisport_exporter.nba_combos`、
 `nba_tracking`）、發佈防火牆同 `generate_nba_sgm_reports.py` 只讀 sidecar，而且要 `report_sha256` 對得上報告先信。
 組合標題喺 sidecar 嘅 `heading`；舊引擎（11-04 之前）冇呢欄，用 `NBA_LEGACY_TITLES`。舊 sidecar 冇存 CoV，所以歷史腿嘅
-`coefficient_of_variation` 係 null。**仍然讀 Markdown 嘅只剩 reflector**（`nba_reflector_orchestrator.parse_combo_table_rows`、
-`verify_props_hits`）—— 改 `report.py` 嘅 `| 🧩 n |` 腿表格之前要先搬佢去讀 sidecar。extractor／orchestrator／scheduler 未重寫。
+`coefficient_of_variation` 係 null。Reflector（`verify_props_hits.bound_sidecar`、`nba_reflector_orchestrator.sidecar_rows`）
+亦只讀 sidecar（EXP-20261104-06），所以 **`report.py` 嘅 Markdown 而家係純顯示，冇嘢 parse 佢**。舊 Markdown 先有嘅
+L10 次數／avg／med／SD／CoV 標籤，喺 reflector 行係 None。extractor／orchestrator／scheduler 未重寫。
 
 ## tennis-wong-choi
 

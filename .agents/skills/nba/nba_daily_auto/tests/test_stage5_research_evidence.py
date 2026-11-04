@@ -172,15 +172,25 @@ def test_official_schedule_validation_fails_closed(tmp_path: Path, fault: str) -
         )
 
 
+def _write_report(report: Path, text: str, combo_ids: list[str]) -> None:
+    """A report plus its bound sidecar: recommendation legs come only from the sidecar."""
+    import hashlib
+
+    report.write_text(text)
+    leg = {"player": "Player Alpha", "market": "pts", "line": 20.0, "price": 1.85, "p_final": 0.6}
+    Path(f"{report}.market_legs.json").write_text(json.dumps({
+        "report_sha256": hashlib.sha256(text.encode()).hexdigest(),
+        "combos": [{"combo_id": cid, "legs": [leg]} for cid in combo_ids],
+    }))
+
+
 def test_scheduler_snapshot_attaches_verified_projection(tmp_path: Path) -> None:
     import nba_daily_schedule as schedule
 
     folder = tmp_path / f"{EVENT} NBA Analysis"
     folder.mkdir()
     start = _scheduled_sources(folder)
-    (folder / f"Game_{TAG}_Full_Analysis.md").write_text(
-        "### 🛡️ Combo 1\nLeg 1: Player Alpha PTS 20+ @1.85\n" + "A" * 2500
-    )
+    _write_report(folder / f"Game_{TAG}_Full_Analysis.md", "### 🛡️ Combo 1\n" + "A" * 2500, ["1"])
     (folder / "NBA_All_SGM_Report.txt").write_text("SGM")
     (folder / "NBA_Banker_Report.txt").write_text("BANKER")
     with mock.patch.object(schedule, "datetime") as clock:
@@ -285,10 +295,7 @@ def test_scheduler_snapshot_attaches_verified_projection(tmp_path: Path) -> None
 
 def test_native_repeated_combo_legs_have_one_monitoring_identity(tmp_path: Path) -> None:
     report = tmp_path / f"Game_{TAG}_Full_Analysis.md"
-    report.write_text(
-        "### 🛡️ Combo 1\nLeg 1: Player Alpha PTS 20+ @1.85\n"
-        "### 🔥 Combo 2\nLeg 1: Player Alpha PTS 20+ @1.85\n"
-    )
+    _write_report(report, "### 🛡️ Combo 1\n### 🔥 Combo 2\n", ["1", "2"])
     before = report.read_bytes()
     raw = build_recommendation_projection(
         source_folder=tmp_path, event_id=EVENT, game_tags=[TAG], source_cutoff_at=CUTOFF,
