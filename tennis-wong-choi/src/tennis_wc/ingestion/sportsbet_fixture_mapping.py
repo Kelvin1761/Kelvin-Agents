@@ -3,7 +3,10 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-from tennis_wc.ingestion.confirmed_metadata import confirmed_competition_meta
+from tennis_wc.ingestion.confirmed_metadata import (
+    confirmed_competition_meta,
+    sportsbet_name_competition_meta,
+)
 
 
 @dataclass(frozen=True)
@@ -64,6 +67,15 @@ def sportsbet_competition_meta(competition: str | None, match_date: str | None =
         reason = "competition_metadata_not_confirmed"
 
     tour = "WTA" if lowered.startswith(("wta", "ladies")) else "ATP" if lowered.startswith(("atp", "mens")) else "UNKNOWN"
+    if tour == "UNKNOWN":
+        women = bool(re.search(r"\bwomen'?s?\b|\bladies\b|\bwta\b", lowered))
+        men = bool(re.search(r"\bmen'?s?\b|\batp\b", lowered))
+        # Match the later metadata stage before creating player rows. A missing
+        # or conflicting source marker must never become a default tour.
+        if women != men:
+            inferred = sportsbet_name_competition_meta(competition, None)
+            if inferred and inferred["tour"] in {"ATP", "WTA"}:
+                tour = inferred["tour"]
     level = "UNKNOWN"
     surface = None
     if "challenger" in lowered:

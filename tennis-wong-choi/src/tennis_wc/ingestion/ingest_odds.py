@@ -348,7 +348,8 @@ def resync_selection_sides(conn, match_id: int) -> int:
     return changed
 
 
-def _ensure_provisional_tournament_for_odds(provider_name: str, match_date: str, row: dict, raw_id: int) -> int | None:
+def _ensure_provisional_tournament_for_odds(provider_name: str, match_date: str, row: dict, raw_id: int,
+                                             *, connection=None) -> int | None:
     if provider_name != "sportsbet":
         return None
     meta = sportsbet_competition_meta(row.get("competition"), match_date)
@@ -361,6 +362,7 @@ def _ensure_provisional_tournament_for_odds(provider_name: str, match_date: str,
         meta.level,
         meta.surface,
         meta.indoor_outdoor,
+        connection=connection,
     )
 
 
@@ -372,23 +374,27 @@ def _create_provisional_match_for_odds(provider_name: str, match_date: str, row:
         return None
 
     provider_match_id = f"sportsbet-{row['event_id']}"
-    player_a_id = get_or_create_player(
-        provider_name,
-        f"player-{sportsbet_slug(row['player_a_name'])}",
-        row["player_a_name"],
-        meta.tour,
-        raw_id,
-    )
-    player_b_id = get_or_create_player(
-        provider_name,
-        f"player-{sportsbet_slug(row['player_b_name'])}",
-        row["player_b_name"],
-        meta.tour,
-        raw_id,
-    )
-    tournament_id = _ensure_provisional_tournament_for_odds(provider_name, match_date, row, raw_id)
     now = utc_now()
     with get_connection() as conn:
+        player_a_id = get_or_create_player(
+            provider_name,
+            f"player-{sportsbet_slug(row['player_a_name'])}",
+            row["player_a_name"],
+            meta.tour,
+            raw_id,
+            connection=conn,
+        )
+        player_b_id = get_or_create_player(
+            provider_name,
+            f"player-{sportsbet_slug(row['player_b_name'])}",
+            row["player_b_name"],
+            meta.tour,
+            raw_id,
+            connection=conn,
+        )
+        tournament_id = _ensure_provisional_tournament_for_odds(
+            provider_name, match_date, row, raw_id, connection=conn,
+        )
         return upsert_fixture(conn, {
             "provider_match_id": provider_match_id, "market_event_id": str(row["event_id"]),
             "tour": meta.tour, "match_date": match_date, "tournament_id": tournament_id,

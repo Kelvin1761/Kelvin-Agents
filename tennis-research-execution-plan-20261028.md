@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 明示tour入庫候選**：[EXP-20261104-04](docs/experiments/EXP-20261104-04-tennis-book-tour-entry.md)量出早期prefix與later分類接線不同；相同60來源記憶體原生對照，原39人由全UNKNOWN變13 ATP／8 WTA／18 UNKNOWN，身份配對及非tour欄位相同。原20人預期失敗因current pointer漏算同receipt另一人，已保留及獨立更正，未換cohort或ruler。另修雙側player／tournament／fixture同交易回滾，110針對測試通過；正式full／交付待驗，準確度未證實。
+
 **2026-11-04 正式交付補證**：[5ff76919](docs/audits/tennis-source-classification-release-20261104.md) full gate exit0／main合併／Tennis activation已核實，兩個現役source bytes一致，四個排程loaded。啟用後尚無新TE history receipt，實際留置率待正常入庫；[全39人tour接線](docs/experiments/EXP-20261104-03-tennis-target-tour-lineage.md)找到21人stored tour已知但主表UNKNOWN，38人normalized receipt亦缺tour。這些只係資料線索，身份／Elo／準確度目標未完成，原ruler及REJECT不變。
 
 **2026-11-04 來源分類候選驗證**：[EXP-20261104-02](docs/experiments/EXP-20261104-02-tennis-te-classification-repair.md)完成同34版C／D／T／DT，原比分／winner完整相同；33日公開隔離入庫22712雙側行，兩個不同detail ID對應相同球員／比分的歧義版本整組留置。71針對測試及quick通過；5ff76919正式full／activation已核對，詳見上方補證。39位缺Elo目標仍無已確認ownership，模型準確度目標未完成。下方記錄保留當時狀態，不將舊取消full當成功。

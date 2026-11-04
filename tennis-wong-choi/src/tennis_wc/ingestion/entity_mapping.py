@@ -291,9 +291,11 @@ def upsert_tournament(
     level: str,
     surface: str | None,
     indoor_outdoor: str | None,
+    *,
+    connection=None,
 ) -> int:
     now = utc_now()
-    with get_connection() as conn:
+    with nullcontext(connection) if connection is not None else get_connection() as conn:
         cursor = conn.execute(
             """
             INSERT INTO tournaments (name, tour, external_id, source_provider, raw_response_id, created_at, updated_at)
