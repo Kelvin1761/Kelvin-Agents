@@ -45,6 +45,7 @@ from services.race_display_metadata import (
 from services.multisport_exporter import build_multisport_feed, sydney_today
 from services.au_display_policy import apply_au_display_policy
 from services.nba_tracking import TRACKING_START_DATE
+from services.hkjc_insights import export_insights as export_hkjc_insights
 from services.au_market_odds import enrich_au_market_odds
 from models.race import AnalystName, Meeting, Region
 
@@ -960,6 +961,17 @@ def generate_html(data):
             "sports": {},
         }
         data["sports_feed"] = _merge_sports_feed(cached_feed, blocked_feed)
+    # HKJC 騎練・場地數據: rebuilt from the results database on every deploy; on failure
+    # the snapshot keeps the previous tables marked stale rather than dropping the page.
+    try:
+        insights = export_hkjc_insights(Path(__file__).resolve().parent.parent)
+        if insights.get("status") == "valid" or not data.get("hkjc_insights"):
+            data["hkjc_insights"] = insights
+    except Exception as exc:
+        print(f"   ⚠️ HKJC insights not available: {exc}")
+        if data.get("hkjc_insights"):
+            data["hkjc_insights"]["status"] = "valid"
+            data["hkjc_insights"]["stale"] = True
     history_path = Path(__file__).resolve().parent / "data" / "multisport_history.json"
     if "sports_history" not in data:
         try:
