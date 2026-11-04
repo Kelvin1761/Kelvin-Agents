@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261104-15](EXP-20261104-15-tennis-official-match-reconciliation.md) | 2026-11-04 | Tennis | 跨來源官方逐場核對 | 4場身份及賽事日確認，2場雙側點數核實，合格0 |
 | [EXP-20261104-14](EXP-20261104-14-tennis-cross-provider-point-overlap.md) | 2026-11-04 | Tennis | 全量發球點數跨來源重疊 | 17同日線索有衝突，4個賽事版本key日期不同，合格0 |
 | [EXP-20261104-13](EXP-20261104-13-tennis-joint-law-math.md) | 2026-11-04 | Tennis | 聯合比分及無限加時原型 | 192合成規則與逐局模擬通過，F10定價仍待資料資格 |
 | [EXP-20261104-12](EXP-20261104-12-tennis-scheduler-sigterm.md) | 2026-11-04 | Tennis | SIGTERM及復原接線 | `fb72eca5` 正式完整閘、合併及runtime通過，實際新入庫待驗 |
