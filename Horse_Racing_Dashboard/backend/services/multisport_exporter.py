@@ -3,7 +3,8 @@
 The dashboard must not calculate betting recommendations in the browser.  This
 module only normalises artifacts already produced by the domain pipelines:
 
-* NBA: validated Sportsbet JSON + deterministic Full Analysis markdown.
+* NBA: validated Sportsbet JSON + each Full Analysis report's ``.market_legs.json``
+  sidecar (the Markdown itself is for people and is never parsed).
 * Tennis: evidence-gated ``prop_tracker`` / ``combo_tracker`` rows in
   tennis_wc.db.
 
@@ -26,10 +27,6 @@ from zoneinfo import ZoneInfo
 SCHEMA_VERSION = 2
 NBA_DIR_RE = re.compile(r"^(\d{4}-\d{2}-\d{2}) NBA Analysis$")
 NBA_REPORT_RE = re.compile(r"^Game_(.+?)_Full_Analysis\.md$")
-NBA_COMBO_HEADING_RE = re.compile(
-    r"^###\s+.*?組合\s+(\d+|X).*?組合賠率\s*@\s*(\d+(?:\.\d+)?)",
-    re.MULTILINE,
-)
 
 
 def sydney_today() -> str:
@@ -126,171 +123,148 @@ def _valid_sportsbet_payload(payload: Dict[str, Any], target_date: str) -> bool:
     return not source or "sportsbet" in source
 
 
-def _parse_nba_leg_row(line: str) -> Optional[Dict[str, Any]]:
-    if not line.lstrip().startswith("|") or "🧩" not in line:
-        return None
-    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-    if len(cells) < 3:
-        return None
-    odds_match = re.search(r"@?\s*(\d+(?:\.\d+)?)", cells[2])
-    if not odds_match:
-        return None
-    odds = _safe_float(odds_match.group(1))
-    if odds is None or odds <= 1:
-        return None
-    selection = cells[1]
+NBA_SIDECAR_SCHEMA = "nba-market-eval-legs/v1"
+NBA_SIDECAR_SUFFIX = ".market_legs.json"
+NBA_STEADY_POLICY = "banker-steady-b2-v1"
+NBA_STEADY_INSIGHT = ("正式穩膽 = steady（B2，EXP-20261027-21）：命中率產品線，模型預期 EV 為負；"
+                      "固定 $1 平注；累計 −10u 或 60 注後 ROI 上限 <0 自動暫停。")
+NBA_STAT_LABELS = {"pts": "PTS", "reb": "REB", "ast": "AST", "fg3m": "3PM"}
+# Combo titles of reports written before the sidecar carried its own heading
+# (old engine, frozen).  Key: (combo_id, combo has selection_rule).
+NBA_LEGACY_TITLES = {
+    ("1", False): "🛡️ 組合 1: 穩膽 SGM (Low Risk)",
+    ("2", False): "🔥 組合 2: 價值膽 Multi-Leg (Mid Risk)",
+    ("3", False): "💎 組合 3: 高倍率 (High Return)",
+    ("X", False): "💣 組合 X: 💣 Value Bomb (莊家低估)",
+    ("1", True): "🛡️ 組合 1: Banker SGM",
+    ("2", True): "🔥 組合 2: 價值膽 Multi-Leg",
+    ("3", True): "💎 組合 3: 高倍率 SGM",
+}
 
-    def percent_at(index: int) -> Optional[float]:
-        if index >= len(cells):
-            return None
-        match = re.search(r"([+-]?\d+(?:\.\d+)?)\s*%", cells[index])
-        return _safe_float(float(match.group(1)) / 100) if match else None
 
-    l10_hit_rate = percent_at(3)
-    model_probability = percent_at(4)
-    if len(cells) >= 8:
-        edge = percent_at(5)
-        expected_value = percent_at(6)
-        cov_match = re.search(r"(\d+(?:\.\d+)?)", cells[7])
-    else:
-        edge = None
-        expected_value = percent_at(5)
-        cov_match = None
+def nba_report_sidecar(report: Path) -> Dict[str, Any]:
+    """The report's machine-readable sidecar, or {} when missing or not bound to it.
 
-    player = ""
-    stat = ""
-    line_value = None
-    patterns = [
-        re.compile(
-            r"^(?P<player>.+?)(?:\s+\([A-Z]{2,4}\))?\s+"
-            r"(?P<stat>PTS|REB|AST|3PM|PRA|PR|PA|RA|STL|BLK|TOV)\s+"
-            r"(?P<line>\d+(?:\.\d+)?)\+",
-            re.IGNORECASE,
-        ),
-        re.compile(
-            r"^(?P<player>.+?)(?:\s+\([A-Z]{2,4}\))?\s+"
-            r"(?P<line>\d+(?:\.\d+)?)\+\s+"
-            r"(?P<stat>PTS|REB|AST|3PM|PRA|PR|PA|RA|STL|BLK|TOV)",
-            re.IGNORECASE,
-        ),
-    ]
-    for pattern in patterns:
-        parsed = pattern.search(selection)
-        if parsed:
-            player = parsed.group("player").strip()
-            stat = parsed.group("stat").upper()
-            line_value = _safe_float(parsed.group("line"))
-            break
+    The sidecar is the only machine interface of an NBA report; the Markdown is
+    for people.  ``report_sha256`` binds the pair so an edited report (or a
+    sidecar from another run) is never read as this report's data.
+    """
+    import hashlib
+    sidecar = _read_json(Path(str(report) + NBA_SIDECAR_SUFFIX))
+    try:
+        digest = hashlib.sha256(Path(report).read_bytes()).hexdigest()
+    except OSError:
+        return {}
+    return sidecar if sidecar.get("report_sha256") == digest else {}
+
+
+def _nba_leg(leg: Dict[str, Any], reference: Dict[str, Any]) -> Dict[str, Any]:
+    price = _safe_float(leg.get("price"))
+    probability = _safe_float(leg.get("p_final"))
+    market_probability = reference.get("p_market")
+    if market_probability is None and price:
+        # Old-engine sidecars carry no p_market; their reports printed the
+        # edge against the implied probability rounded to 4 places.
+        market_probability = round(1 / price, 4)
+    stat = NBA_STAT_LABELS.get(str(leg.get("market") or "").lower(), str(leg.get("market") or "").upper())
+
+    def rounded(value):
+        return None if value is None else _safe_float(round(value, 4))
+
     return {
-        "selection": selection,
+        "selection": leg.get("desc") or "",
         "market": f"Player {stat}" if stat else "NBA player/team milestone",
-        "odds": odds,
-        "player": player,
+        "odds": price,
+        "player": leg.get("player") or "",
         "stat": stat,
-        "line": line_value,
+        "line": _safe_float(leg.get("line")),
         "metrics": {
-            "l10_hit_rate": l10_hit_rate,
-            "model_probability": model_probability,
-            "edge": edge,
-            "expected_value": expected_value,
-            "coefficient_of_variation": _safe_float(cov_match.group(1)) if cov_match else None,
+            "l10_hit_rate": _safe_float(reference.get("p_l10_base_rate")),
+            "model_probability": probability,
+            "edge": rounded(probability - market_probability)
+            if probability is not None and market_probability is not None else None,
+            "expected_value": rounded(probability * price - 1) if probability is not None and price else None,
+            "coefficient_of_variation": _safe_float(reference.get("cov")),
         },
-        "source_row": line.strip(),
     }
 
 
-NBA_STEADY_MARKER = "正式穩膽政策：banker-steady-b2-v1"
-NBA_STEADY_INSIGHT = ("正式穩膽 = steady（B2，EXP-20261027-21）：命中率產品線，模型預期 EV 為負；"
-                      "固定 $1 平注；累計 −10u 或 60 注後 ROI 上限 <0 自動暫停。")
-
-
-def _parse_nba_combos(
-    content: str,
+def nba_combos(
+    sidecar: Dict[str, Any],
     analysis_date: str,
     game_tag: str,
     source_files: List[str],
 ) -> List[Dict[str, Any]]:
-    matches = list(NBA_COMBO_HEADING_RE.finditer(content))
+    """Dashboard combo rows built from a verified report sidecar.
+
+    A combo is shown at the price the report printed: the Sportsbet SGM quote
+    when one was taken, else the product of the leg prices.  Only a quote with
+    status ok at that price makes the row ``sportsbet_sgm_quoted``; publication
+    (quote freshness, legs, availability) is the firewall's job, not this one.
+    """
+    references = {
+        (row.get("player"), row.get("market"), row.get("line")): row
+        for row in sidecar.get("legs") or [] if isinstance(row, dict)
+    }
+    insight = (NBA_STEADY_INSIGHT if sidecar.get("strategy_profile") == NBA_STEADY_POLICY
+               else "由 NBA Wong Choi Python Auto-Selection 正式報告直接匯出。")
     recommendations = []
-    for index, match in enumerate(matches):
-        end = matches[index + 1].start() if index + 1 < len(matches) else len(content)
-        section = content[match.start():end]
-        # Stop before the next level-two section when this is the final combo.
-        level_two = re.search(r"^##\s+", section[len(match.group(0)):], re.MULTILINE)
-        if level_two:
-            section = section[: len(match.group(0)) + level_two.start()]
-        legs = []
-        for line in section.splitlines():
-            leg = _parse_nba_leg_row(line)
-            if leg:
-                legs.append(leg)
+    for combo in sidecar.get("combos") or []:
+        legs = [
+            _nba_leg(leg, references.get((leg.get("player"), leg.get("market"), leg.get("line")), {}))
+            for leg in combo.get("legs") or [] if isinstance(leg, dict)
+        ]
         if not legs:
             continue
-        combo_key = match.group(1)
-        combined_odds = _safe_float(match.group(2))
-        heading = match.group(0).lstrip("# ").strip()
-        risk_match = re.search(r"\((Low|Mid|High)[^)]*\)", heading, re.IGNORECASE)
-        risk = risk_match.group(1).title() if risk_match else ""
-        recommendations.append(
-            {
-                "id": f"nba:{analysis_date}:{game_tag}:combo:{combo_key}",
-                "sport": "nba",
-                "category": "sgm",
-                "event_date": analysis_date,
-                "event_name": game_tag.replace("_", " @ "),
-                "market": "Same Game Multi",
-                "selection": heading,
-                "odds": combined_odds,
-                "odds_status": "independent_leg_estimate",
-                "bet_type": "combo",
-                "legs": legs,
-                "metrics": {
-                    "leg_count": len(legs),
-                    "model_probability": _safe_float(
-                        _product(
-                            leg.get("metrics", {}).get("model_probability")
-                            for leg in legs
-                        )
-                    ),
-                    "average_edge": _safe_float(
-                        _mean(
-                            leg.get("metrics", {}).get("edge")
-                            for leg in legs
-                        )
-                    ),
-                },
-                "insight": NBA_STEADY_INSIGHT if NBA_STEADY_MARKER in content
-                else "由 NBA Wong Choi Python Auto-Selection 正式報告直接匯出。",
-                "risk": risk,
-                "decision": "BET",
-                "confidence": None,
-                "outcome": "pending",
-                "actual": "待賽果",
-                "provenance": f"NBA Wong Choi · Game_{game_tag}_Full_Analysis.md",
-                "source_files": source_files,
-                "validation_status": "valid",
-            }
+        combo_key = str(combo.get("combo_id"))
+        combined_odds = _safe_float(combo.get("sportsbet_sgm_price") or combo.get("product_of_leg_prices"))
+        heading = combo.get("heading") or (
+            f"{NBA_LEGACY_TITLES.get((combo_key, 'selection_rule' in combo), f'組合 {combo_key}')}"
+            f" — 組合賠率 @{combined_odds}"
         )
+        risk_match = re.search(r"\((Low|Mid|High)[^)]*\)", heading, re.IGNORECASE)
+        row = {
+            "id": f"nba:{analysis_date}:{game_tag}:combo:{combo_key}",
+            "sport": "nba",
+            "category": "sgm",
+            "event_date": analysis_date,
+            "event_name": game_tag.replace("_", " @ "),
+            "market": "Same Game Multi",
+            "selection": heading,
+            "odds": combined_odds,
+            "odds_status": "independent_leg_estimate",
+            "bet_type": "combo",
+            "legs": legs,
+            "metrics": {
+                "leg_count": len(legs),
+                "model_probability": _safe_float(
+                    _product(leg["metrics"]["model_probability"] for leg in legs)
+                ),
+                "average_edge": _safe_float(_mean(leg["metrics"]["edge"] for leg in legs)),
+            },
+            "insight": insight,
+            "risk": risk_match.group(1).title() if risk_match else "",
+            "decision": "BET",
+            "confidence": None,
+            "outcome": "pending",
+            "actual": "待賽果",
+            "provenance": f"NBA Wong Choi · Game_{game_tag}_Full_Analysis.md",
+            "source_files": source_files,
+            "validation_status": "valid",
+        }
+        quote = combo.get("sgm_quote") or {}
+        if quote.get("status") == "ok" and quote.get("decimal_odds") == combined_odds:
+            joint = combo.get("adjusted_joint_prob")
+            row.update(odds_status="sportsbet_sgm_quoted", sgm_quote=quote,
+                       quote_expires_at=quote.get("expires_at"))
+            row["metrics"].update(
+                model_probability=joint,
+                expected_value=None if joint is None else joint * combined_odds - 1,
+                correlation_penalty=combo.get("correlation_penalty"),
+                product_of_leg_prices=combo.get("product_of_leg_prices"),
+            )
+        recommendations.append(row)
     return recommendations
-
-
-def _hydrate_nba_quotes(combos, content, sidecar):
-    # The publication firewall verifies report hash, exact event/legs, price
-    # and freshness. Historical grading can deliberately bypass that gate.
-    import hashlib
-    if sidecar.get("report_sha256") == hashlib.sha256(content.encode()).hexdigest():
-        by_id = {str(row.get("combo_id")): row for row in sidecar.get("combos", [])}
-        for combo in combos:
-            row = by_id.get(combo["id"].rsplit(":", 1)[-1], {})
-            quote = row.get("sgm_quote", {})
-            if quote.get("status") == "ok" and quote.get("decimal_odds") == combo["odds"]:
-                combo["odds_status"] = "sportsbet_sgm_quoted"
-                combo["sgm_quote"] = quote
-                combo["quote_expires_at"] = quote.get("expires_at")
-                combo["metrics"].update(model_probability=row.get("adjusted_joint_prob"),
-                    expected_value=(row["adjusted_joint_prob"] * combo["odds"] - 1),
-                    correlation_penalty=row.get("correlation_penalty"),
-                    product_of_leg_prices=row.get("product_of_leg_prices"))
 
 
 def _product(values: Iterable[Optional[float]]) -> Optional[float]:
@@ -452,9 +426,8 @@ def export_nba_snapshot(
         if not sportsbet_path:
             warnings.append("missing_matching_sportsbet_json")
             continue
-        content = report.read_text(encoding="utf-8", errors="replace")
-        required_markers = ["SPORTSBET_LIVE", "Python Auto-Selection", "未填寫項目 殘留: 0"]
-        if any(marker not in content for marker in required_markers) or "[FILL]" in content:
+        sidecar = nba_report_sidecar(report)
+        if sidecar.get("schema_version") != NBA_SIDECAR_SCHEMA:
             warnings.append(f"nba_report_validation_failed:{game_tag}")
             continue
         passed, blocks = firewall(report, sportsbet_path)
@@ -465,10 +438,8 @@ def export_nba_snapshot(
             warnings.append(f"nba_firewall_blocked:{game_tag}")
             continue
         source_files = [sportsbet_path.name, report.name]
-        combos = _parse_nba_combos(content, analysis_date, game_tag, source_files)
-        sidecar = _read_json(Path(str(report) + ".market_legs.json"))
-        _hydrate_nba_quotes(combos, content, sidecar)
-        # New formal publications are banker-only; legacy parsing stays available for history.
+        combos = nba_combos(sidecar, analysis_date, game_tag, source_files)
+        # New formal publications are banker-only; older strategies stay available for history.
         if not include_legacy_strategies:
             combos = [row for row in combos if row["id"].endswith(":combo:1")]
         # Banker-only means one SGM ticket, not an extra single-leg BET.
@@ -493,10 +464,8 @@ def export_nba_snapshot(
             odds = _read_json(odds_path)
             if not _valid_sportsbet_payload(odds, analysis_date):
                 continue
-            content = report.read_text(encoding="utf-8")
-            cards = _parse_nba_combos(content, analysis_date, tag,
-                                    [str(report.relative_to(analysis_dir)), str(odds_path.relative_to(analysis_dir))])
-            _hydrate_nba_quotes(cards, content, _read_json(Path(str(report) + ".market_legs.json")))
+            cards = nba_combos(nba_report_sidecar(report), analysis_date, tag,
+                               [str(report.relative_to(analysis_dir)), str(odds_path.relative_to(analysis_dir))])
             for card in cards:
                 if card["id"] in live_ids or card["odds_status"] != "sportsbet_sgm_quoted":
                     continue

@@ -39,13 +39,17 @@ def test_selected_release_ignores_unrelated_started_or_unfinished_report(tmp_pat
 
 def test_master_compile_respects_explicit_game_scope(tmp_path):
     import subprocess
-    (tmp_path/'Game_BKN_CLE_Full_Analysis.md').write_text('# BKN @ CLE\n')
-    (tmp_path/'Game_BOS_LAL_Full_Analysis.md').write_text('# stale game\nUNRELATED_STALE_REPORT')
+    import hashlib, json
+    for tag,text,reason in (('BKN_CLE','# BKN @ CLE\n','no_b2_combo'),('BOS_LAL','# stale game\n','UNRELATED_STALE_REPORT')):
+        report=tmp_path/f'Game_{tag}_Full_Analysis.md';report.write_text(text)
+        (tmp_path/f'Game_{tag}_Full_Analysis.md.market_legs.json').write_text(json.dumps(
+            {'report_sha256':hashlib.sha256(text.encode()).hexdigest(),'combos':[],
+             'selection_diagnostics':{'no_bet_reason':reason}}))
     result=subprocess.run([sys.executable,o.GENERATE_SGM,'--dir',str(tmp_path),'--games','BKN_CLE'],capture_output=True,text=True)
-    assert result.returncode==0,result.stderr
+    assert result.returncode==0,result.stdout+result.stderr
     assert 'UNRELATED_STALE_REPORT' not in (tmp_path/'NBA_All_SGM_Report.txt').read_text()
-    assert 'Game_BOS_LAL_Full_Analysis.md' not in result.stdout
-    assert '已報價 SGM: 0 個' in result.stdout
+    assert 'BOS_LAL' not in result.stdout
+    assert '已報價 SGM 組合數: 0' in (tmp_path/'NBA_All_SGM_Report.txt').read_text()
 
 
 @pytest.mark.parametrize('compile_code',[0,1])

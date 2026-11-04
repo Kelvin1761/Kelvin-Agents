@@ -14,7 +14,7 @@ Pipeline:
   Phase 1A: nba_extractor.py        → nba_game_data_{TAG}.json (L10 from ESPN)
   Phase 1B: generate_nba_reports.py → Game_{TAG}_Full_Analysis.md (pre-filled skeleton)
   Phase 2:  LLM Analyst fills [FILL] fields (if any)
-  Phase 3:  generate_nba_sgm_reports.py → Master SGM + Banker reports
+  Phase 3:  generate_nba_sgm_reports.py → Master SGM + Banker reports (from the sidecars)
 
 Usage:
   python nba_orchestrator.py --date 2026-04-16

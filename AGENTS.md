@@ -472,7 +472,7 @@ Deploy wrapper：
 | `model.py` + `config.json` | 三條公式：C（市場＋L10）、S（季度產出率，NB 分佈，唔睇價）、**MS（市場＋S，發佈用嘅 `p_final`）**；S 計唔到就用 C |
 | `legs.py` | Sportsbet milestone 線 + ESPN package → 每條腿一行 |
 | `banker.py` | 正式穩膽 = steady B2 規則（L10/L5 ≥80%、緩衝、CoV…，fallback 70%），真 SGM 報價 ≥2.0 先出注 |
-| `report.py` | 寫 `Game_<tag>_Full_Analysis.md` + `.market_legs.json`（ledger／reflector／dashboard 讀 sidecar） |
+| `report.py` | 寫 `Game_<tag>_Full_Analysis.md`（人睇）+ `.market_legs.json`（機器讀，見下面 Current reality） |
 | `publish.py` | 發佈防火牆：sidecar 對得上報告、報價有效 ≥2.0、腿仲喺盤、傷停名單新鮮 |
 | `run.py` | 單場入口（同舊 `generate_nba_reports.py` 一樣嘅參數） |
 
@@ -511,8 +511,11 @@ Settlement 會先輸出本機 proposal；未獲明確批准前唔會自動 POST�
 
 ### Current reality
 
-Stage 2 未做：dashboard 仍然 parse Markdown（`multisport_exporter._parse_nba_combos`）、`generate_nba_sgm_reports.py`
-仍然由 Markdown 砌匯總、extractor／orchestrator／scheduler 未重寫。改呢幾樣之前要保持 `report.py` 嘅標題同腿表格格式。
+**sidecar（`.market_legs.json`）係唯一機器介面**（EXP-20261104-04）：dashboard（`multisport_exporter.nba_combos`、
+`nba_tracking`）、發佈防火牆同 `generate_nba_sgm_reports.py` 只讀 sidecar，而且要 `report_sha256` 對得上報告先信。
+組合標題喺 sidecar 嘅 `heading`；舊引擎（11-04 之前）冇呢欄，用 `NBA_LEGACY_TITLES`。舊 sidecar 冇存 CoV，所以歷史腿嘅
+`coefficient_of_variation` 係 null。**仍然讀 Markdown 嘅只剩 reflector**（`nba_reflector_orchestrator.parse_combo_table_rows`、
+`verify_props_hits`）—— 改 `report.py` 嘅 `| 🧩 n |` 腿表格之前要先搬佢去讀 sidecar。extractor／orchestrator／scheduler 未重寫。
 
 ## tennis-wong-choi
 

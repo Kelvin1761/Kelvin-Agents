@@ -157,19 +157,21 @@ def test_analyse_bets_only_on_a_valid_quote_at_or_above_two():
     assert combo == [] and diag["no_bet_reason"] == "preseason_shadow_only"
 
 
-def test_report_and_sidecar_are_bound_and_parse_like_the_dashboard(tmp_path):
+def test_report_and_sidecar_are_bound_and_the_sidecar_carries_what_the_dashboard_shows(tmp_path):
     odds, package = game()
     ok = lambda o, legs: Quoted({"status": "ok", "decimal_odds": 2.1})  # noqa: E731
     legs, combo, quote, diag = analyse(odds, package, quote=ok, valid=lambda q, o, l: True)
     text = report.render(odds, package, legs, combo, quote, diag)
     payload = report.sidecar(text, odds, package, legs, combo, quote, diag)
     assert payload["report_sha256"] == hashlib.sha256(text.encode()).hexdigest()
-    assert publish.HEADING.findall(text) == [("1", "2.1")]
+    (combo_row,) = payload["combos"]
+    assert combo_row["heading"].endswith("組合賠率 @2.1") and f"### {combo_row['heading']}" in text
+    assert combo_row["sportsbet_sgm_price"] == 2.1
+    assert all(row.get("cov") is not None and row.get("p_market") for row in payload["legs"])
+    # The reflector still reads the leg rows (see report.py); keep them matching the sidecar.
     rows = [r for r in text.splitlines() if r.startswith("| 🧩")]
-    assert [r.split("|")[2].strip() for r in rows] == [l["desc"] for l in payload["combos"][0]["legs"]]
+    assert [r.split("|")[2].strip() for r in rows] == [l["desc"] for l in combo_row["legs"]]
     assert sum(l["picked"] for l in payload["legs"]) == len(combo)
-    for marker in ("SPORTSBET_LIVE", "Python Auto-Selection", "未填寫項目 殘留: 0", report.STEADY_MARKER):
-        assert marker in text
 
 
 def test_firewall_blocks_a_report_edited_after_writing(tmp_path):

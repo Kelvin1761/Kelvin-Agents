@@ -68,7 +68,7 @@ def _research_card(sidecar, odds, day, tag, published):
 
 
 def build_tracking(roots, ledger_root, firewall):
-    from .multisport_exporter import _parse_nba_combos, _hydrate_nba_quotes
+    from .multisport_exporter import nba_combos, nba_report_sidecar
     ledger_root = Path(ledger_root)
     folders = {}
     warnings = []
@@ -112,11 +112,10 @@ def build_tracking(roots, ledger_root, firewall):
             if tag in selected or tag in excluded:
                 continue
             try:
-                text = report.read_text(encoding='utf-8')
                 sidecar = json.loads(Path(str(report)+'.market_legs.json').read_text())
                 odds = json.loads(odds_path.read_text())
-                cards = _parse_nba_combos(text, day, tag, [])
-                _hydrate_nba_quotes(cards, text, sidecar)
+                # Formal combos only from a sidecar bound to this exact report.
+                cards = nba_combos(sidecar, day, tag, []) if nba_report_sidecar(report) else []
                 # EXP-20261027-21: under the steady policy combo 1 IS the B2
                 # selection and carries a disclosed negative EV.
                 steady = sidecar.get('strategy_profile') == STEADY_POLICY
