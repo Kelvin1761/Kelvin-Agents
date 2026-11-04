@@ -8,24 +8,16 @@ nba_extractor.py — NBA Wong Choi Claw Code V3 (究極版)
 
 全自動數據提取引擎，為 NBA Wong Choi Analyst 提供 100% 真實、零幻覺的數據包。
 
-模塊清單（ESPN 係唯一數據來源，EXP-20261101-60）：
+模塊清單（ESPN 係唯一數據來源，EXP-20261101-60；賠率只嚟自 Sportsbet JSON，唔喺呢度）：
   1. ESPN API — 賽程、傷病、陣容
-  2. ESPN — 全員 L10 Box Score、Home/Away Splits、Rest Day Splits
+  2. ESPN — 全員 L10 Box Score 同季度 game log
   3. ESPN box score／play-by-play — 球隊同球員進階數據
-  4. The Odds API — Sportsbet 精確賠率 (需 API Key)
-  5. Claw Code (curl_cffi) — Action Network 備用賠率
 
   球員一律用 ESPN athlete id（package 寫 ``player_id_source: espn``）。
 
-用法：
-  # 提取今日所有賽事概覽
-  python nba_extractor.py --date 20260402
-
-  # 針對單場比賽深度提取 (推薦用法，配合 Game-by-Game 分析)
-  python nba_extractor.py --date 20260402 --game PHX_CHA --output .agents.agents/tmp/nba_game_data_PHX_CHA.json
-
-安裝依賴：
-  pip install requests curl-cffi
+用法（orchestrator 就係咁叫）：
+  python nba_extractor.py --date 20260402 --game PHX_CHA --output <dir>/nba_game_data_PHX_CHA.json
+  python nba_extractor.py --refresh-availability <dir>/nba_game_data_PHX_CHA.json
 """
 
 import json
@@ -52,9 +44,8 @@ from nba_availability import (AvailabilityUnavailable, RosterChanged, apply_avai
 
 try:
     import requests
-    from curl_cffi import requests as cffi_requests
 except ImportError:
-    print("❌ 缺少核心依賴庫。請執行：pip install curl-cffi requests")
+    print("❌ 缺少核心依賴庫。請執行：pip install requests")
     sys.exit(1)
 
 import atexit
@@ -64,11 +55,6 @@ atexit.register(lambda: print(nba_espn_http.summary()))
 # ==========================================
 # 配置
 # ==========================================
-CFFI_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "application/json, text/plain, */*",
-}
-
 TEAM_ABBR_ESPN_MAP = {
     "GSW": "GS",
     "NOP": "NO",
@@ -81,7 +67,6 @@ TEAM_ABBR_ESPN_MAP = {
 # The Odds API (免費 500 次/月)
 # 註冊: https://the-odds-api.com → 免費帳號 → 複製 API Key
 # 設定方式: export THE_ODDS_API_KEY="你的key"
-THE_ODDS_API_KEY = os.environ.get("THE_ODDS_API_KEY", "")
 
 
 # ==========================================
@@ -113,158 +98,6 @@ def cov_label(cov):
 
 
 # Sportsbet 標準盤口階梯 (Player Props)
-SPORTSBET_LINES = {
-    "PTS": [4.5, 9.5, 14.5, 19.5, 24.5, 29.5, 34.5, 39.5],
-    "REB": [2.5, 4.5, 6.5, 8.5, 10.5, 12.5, 14.5],
-    "AST": [1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5],
-    "STL": [0.5, 1.5, 2.5, 3.5],
-    "BLK": [0.5, 1.5, 2.5, 3.5],
-    "FG3M": [0.5, 1.5, 2.5, 3.5, 4.5, 5.5],
-}
-
-LEAGUE_AVG_PACE = 100.0  # 聯盟平均節奏 (每季微調)
-
-
-def compute_prop_analytics(gamelog, opp_team_stats, player_splits, is_home):
-    """
-    🧠 Python Math Engine — 所有數學運算由 Python 執行，零 LLM 參與。
-    
-    計算項目：
-    1. 命中率 (Hit Rate) — 針對每個 Sportsbet 盤口階梯
-    2. 穩膽線 (Banker Line) = AVG - 0.5*SD
-    3. 價值線 (Value Line) = MED + 正面加成
-    4. Pace-Adjusted Projection
-    5. +EV 預計算 (基於 1.90 基準賠率)
-    6. AMC (Average Margin of Clearing)
-    """
-    if not gamelog:
-        return None
-    
-    analytics = {}
-    
-    for stat_key in ["PTS", "REB", "AST", "STL", "BLK", "FG3M"]:
-        arr = gamelog.get(stat_key, [])
-        if not arr:
-            continue
-            
-        stats = gamelog.get(f"{stat_key}_stats", calc_stats(arr))
-        avg = stats["avg"]
-        sd = stats["sd"]
-        med = stats["med"]
-        cov = stats["cov"]
-        
-        # L5 和 L3 均值
-        l5 = arr[:5]
-        l3 = arr[:3]
-        l5_avg = round(sum(l5) / len(l5), 1) if l5 else 0
-        l3_avg = round(sum(l3) / len(l3), 1) if l3 else 0
-        
-        # 穩膽線 & 價值線
-        banker_line = round(avg - 0.5 * sd, 1)
-        value_line = round(med + 0.5 * sd, 1)
-        
-        # Pace-Adjusted Projection
-        opp_pace = opp_team_stats.get("PACE", LEAGUE_AVG_PACE)
-        pace_adj = round((opp_pace - LEAGUE_AVG_PACE) / LEAGUE_AVG_PACE * avg, 1) if avg > 0 else 0
-        pace_projected = round(avg + pace_adj, 1)
-        
-        # Home/Away 調整
-        location_key = "Home" if is_home else "Road"
-        location_ppg = 0
-        if player_splits:
-            split_key = f"{location_key}_PPG" if stat_key == "PTS" else (
-                f"{location_key}_RPG" if stat_key == "REB" else (
-                    f"{location_key}_APG" if stat_key == "AST" else None
-                )
-            )
-            if split_key:
-                location_ppg = player_splits.get(split_key, 0)
-        
-        # 針對每個 Sportsbet 盤口階梯計算命中率
-        lines = SPORTSBET_LINES.get(stat_key, [])
-        line_analytics = []
-        for line in lines:
-            # 過線場次
-            hits_l10 = sum(1 for x in arr if x > line)
-            hits_l5 = sum(1 for x in l5 if x > line)
-            hits_l3 = sum(1 for x in l3 if x > line)
-            
-            hit_rate_l10 = round(hits_l10 / len(arr) * 100, 0) if arr else 0
-            hit_rate_l5 = round(hits_l5 / len(l5) * 100, 0) if l5 else 0
-            hit_rate_l3 = round(hits_l3 / len(l3) * 100, 0) if l3 else 0
-            
-            # AMC (Average Margin of Clearing) — 過線場次的平均超過幅度
-            clearing_margins = [x - line for x in arr if x > line]
-            amc = round(sum(clearing_margins) / len(clearing_margins), 1) if clearing_margins else 0
-            
-            # 未過線場次的平均差距
-            miss_margins = [line - x for x in arr if x <= line]
-            avg_miss = round(sum(miss_margins) / len(miss_margins), 1) if miss_margins else 0
-            
-            # +EV 計算 — 動態賠率估算模型
-            # 根據盤口相對球員均值的位置估算市場賠率
-            # ratio = line / avg: <0.5 = very easy (低賠), ~1.0 = coin flip (~1.85), >1.2 = hard (高賠)
-            if avg > 0:
-                ratio = line / avg
-                if ratio <= 0.3:
-                    est_odds = 1.08  # 極低線，幾乎必達
-                elif ratio <= 0.5:
-                    est_odds = round(1.10 + (ratio - 0.3) * 2.0, 2)  # 1.10-1.50
-                elif ratio <= 0.75:
-                    est_odds = round(1.50 + (ratio - 0.5) * 1.6, 2)  # 1.50-1.90
-                elif ratio <= 1.0:
-                    est_odds = round(1.90 + (ratio - 0.75) * 2.8, 2)  # 1.90-2.60
-                elif ratio <= 1.3:
-                    est_odds = round(2.60 + (ratio - 1.0) * 6.0, 2)  # 2.60-4.40
-                else:
-                    est_odds = round(4.40 + (ratio - 1.3) * 8.0, 2)  # 4.40+
-            else:
-                est_odds = 1.90
-            
-            implied_prob = round(1 / est_odds * 100, 1)
-            estimated_prob = hit_rate_l10  # 用 L10 命中率作為預估勝率
-            edge = round(estimated_prob - implied_prob, 1)
-            
-            # 判斷是否符合穩膽/價值線標準
-            is_banker = hit_rate_l10 >= 80
-            is_value = hit_rate_l10 >= 75 and not is_banker
-            tier = "🛡️ 穩膽" if is_banker else ("💎 價值" if is_value else "")
-            
-            line_analytics.append({
-                "line": line,
-                "direction": "Over",
-                "hit_rate_L10": hit_rate_l10,
-                "hit_rate_L5": hit_rate_l5,
-                "hit_rate_L3": hit_rate_l3,
-                "hits": f"{hits_l10}/{len(arr)}",
-                "AMC": amc,
-                "avg_miss": avg_miss,
-                "est_odds": est_odds,
-                "implied_prob": implied_prob,
-                "estimated_prob": estimated_prob,
-                "edge": edge,
-                "tier": tier,
-            })
-            
-        analytics[stat_key] = {
-            "raw": arr,
-            "avg": avg,
-            "med": med,
-            "sd": sd,
-            "cov": cov,
-            "cov_label": cov_label(cov),
-            "l5_avg": l5_avg,
-            "l3_avg": l3_avg,
-            "banker_line": banker_line,
-            "value_line": value_line,
-            "pace_adj": pace_adj,
-            "pace_projected": pace_projected,
-            "location": location_key,
-            "location_avg": location_ppg,
-            "sportsbet_lines": line_analytics,
-        }
-    
-    return analytics
 
 
 # ==========================================
@@ -464,32 +297,6 @@ def espn_league_tables(season, as_of, data_sources, *, get=None):
                                "fallback_used": False, "rows": 0, "unavailable": TRACKING_UNAVAILABLE}
     print(f"  📊 ESPN 聯盟數據：{len(games)} 場 → 球隊 {len(team_stats)}、球員 {len(adv_stats)}")
     return team_stats, adv_stats
-
-
-def detect_season_phase(date_str, game_info=None):
-    return classify_nba_season(date_str, game_info)["season_phase"]
-
-
-def fetch_nba_news(team_abbr, limit=5):
-    """從 ESPN API 獲取特定球隊的最新的 NBA 新聞"""
-    espn_abbr = TEAM_ABBR_ESPN_MAP.get(team_abbr, team_abbr)
-    print(f"📰 [Module 1c] 嘗試獲取 {team_abbr} (ESPN:{espn_abbr}) 即日新聞...")
-    try:
-        url = f"http://site.api.espn.com/apis/site/v2/sports/basketball/nba/news?team={espn_abbr}"
-        r = requests.get(url, timeout=10)
-        if r.status_code == 200:
-            articles = r.json().get('articles', [])
-            news_list = []
-            for a in articles[:limit]:
-                news_list.append({
-                    "headline": a.get("headline", ""),
-                    "description": a.get("description", "")
-                })
-            return news_list
-        return []
-    except Exception as e:
-        print(f"  ⚠️ 獲取新聞失敗: {e}")
-        return []
 
 
 # ==========================================
@@ -711,358 +518,6 @@ def fetch_player_gamelog(player_id, player_name, n=10, season=None, as_of=None, 
 
 
 # ==========================================
-# 模塊 2.5：ESPN — H2H 歷史對戰數據
-# ==========================================
-def fetch_player_h2h(player_id, player_name, opp_abbr, season=None, as_of=None):
-    """提取球員對住特定球隊的歷史對戰數據 (當季 + 上季, RS + Playoffs)"""
-    try:
-        import pandas as pd
-        h2h_games = []
-        current_season = season or nba_season_for_date(None)
-        for season in [current_season, previous_nba_season(current_season)]:
-            # Fetch both Regular Season and Playoffs for each season
-            for season_type in ['Regular Season', 'Playoffs']:
-                try:
-                    df, _source = player_log_frame(player_id, season, history_date_to(as_of), season_type)
-                    if as_of:
-                        dates = pd.to_datetime(df['GAME_DATE'], errors='coerce')
-                        df = df[dates < pd.Timestamp(history_cutoff_day(as_of))]
-                    vs_opp = df[df['MATCHUP'].str.contains(opp_abbr)]
-                    for _, row in vs_opp.iterrows():
-                        h2h_games.append({
-                            "date": row['GAME_DATE'],
-                            "matchup": row['MATCHUP'],
-                            "WL": row['WL'],
-                            "PTS": int(row['PTS']),
-                            "REB": int(row['REB']),
-                            "AST": int(row['AST']),
-                            "STL": int(row['STL']),
-                            "BLK": int(row['BLK']),
-                            "MIN": int(row['MIN']),
-                            "FGM": int(row['FGM']),
-                            "FGA": int(row['FGA']),
-                            "FG3M": int(row['FG3M']),
-                            "PLUS_MINUS": int(row['PLUS_MINUS']),
-                        })
-                except Exception:
-                    pass
-        
-        if not h2h_games:
-            return None
-        
-        # 計算 H2H 均值
-        pts_arr = [g['PTS'] for g in h2h_games]
-        reb_arr = [g['REB'] for g in h2h_games]
-        ast_arr = [g['AST'] for g in h2h_games]
-        
-        return {
-            "opponent": opp_abbr,
-            "total_games": len(h2h_games),
-            "games": h2h_games,
-            "PTS_avg": round(sum(pts_arr) / len(pts_arr), 1),
-            "REB_avg": round(sum(reb_arr) / len(reb_arr), 1),
-            "AST_avg": round(sum(ast_arr) / len(ast_arr), 1),
-            "PTS_high": max(pts_arr),
-            "PTS_low": min(pts_arr),
-            # H2H 對線命中率 (用 Banker Line 來檢測)
-            "PTS_arr": pts_arr,
-            "REB_arr": reb_arr,
-            "AST_arr": ast_arr,
-        }
-    except Exception as e:
-        return None
-
-
-# ==========================================
-# 模塊 4：Home/Away & Rest Day Splits（由 ESPN 賽績計）
-# ==========================================
-def splits_from_gamelog(regular, preseason=None):
-    """PlayerDashboardByGeneralSplits' Home/Road and rest-day groups, from game logs.
-
-    nba.com counts rest from the previous game of ANY type -- a season opener
-    after a preseason game four days earlier is '4 Days Rest' -- so preseason
-    dates are read for spacing only, never for the averages.
-    """
-    import pandas as pd
-    if regular is None or regular.empty:
-        return None
-    rs = regular.copy()
-    rs["_d"] = pd.to_datetime(rs["GAME_DATE"], format="%b %d, %Y", errors="coerce")
-    rs = rs.dropna(subset=["_d"]).sort_values("_d")
-    if rs.empty:
-        return None
-    result = {}
-    home = rs["MATCHUP"].astype(str).str.contains(" vs. ", regex=False)
-    for group, rows in (("Home", rs[home]), ("Road", rs[~home])):
-        if rows.empty:
-            continue
-        gp = len(rows)
-        for stat, key in (("PTS", "PPG"), ("REB", "RPG"), ("AST", "APG"), ("MIN", "MPG")):
-            result[f"{group}_{key}"] = round(float(pd.to_numeric(rows[stat], errors="coerce").fillna(0).sum()) / gp, 1)
-    played = list(rs["_d"])
-    if preseason is not None and not preseason.empty:
-        played += list(pd.to_datetime(preseason["GAME_DATE"], format="%b %d, %Y", errors="coerce").dropna())
-    played = sorted(set(played))
-    groups = {}
-    for _, row in rs.iterrows():
-        before = [d for d in played if d < row["_d"]]
-        if not before:
-            continue
-        rest = (row["_d"] - before[-1]).days - 1
-        label = "6+ Days Rest" if rest >= 6 else f"{rest} Days Rest"
-        groups.setdefault(label, []).append(row)
-    rest_data = {}
-    for label, rows in groups.items():
-        gp = len(rows)
-        rest_data[label] = {"PPG": round(sum(float(r["PTS"]) for r in rows) / gp, 1),
-                            "RPG": round(sum(float(r["REB"]) for r in rows) / gp, 1), "GP": gp}
-    if rest_data:
-        result["rest_splits"] = rest_data
-    return result or None
-
-
-def fetch_player_splits(player_id, player_name, season=None, as_of=None):
-    """Home/Road and rest-day splits from the player's ESPN game logs."""
-    season_key = season or nba_season_for_date(as_of)
-    date_to = history_date_to(as_of)
-    try:
-        regular, source = player_log_frame(player_id, season_key, date_to, "Regular Season")
-        try:
-            preseason, _ = player_log_frame(player_id, season_key, date_to, "Pre Season")
-        except Exception:
-            preseason = None
-        derived = splits_from_gamelog(regular, preseason)
-        return {**derived, "source": source} if derived else None
-    except Exception as exc:
-        print(f"  ⚠️ {player_name} splits 失敗: {exc}")
-        return None
-
-
-# ==========================================
-# 模塊 7：The Odds API (Sportsbet 精確賠率)
-# ==========================================
-def fetch_odds_api(sport='basketball_nba'):
-    """使用 The Odds API 獲取包含 Sportsbet 的精確賠率"""
-    if not THE_ODDS_API_KEY:
-        print("💰 [Module 7] The Odds API: 未設定 API Key，跳過。")
-        print("   📝 設定方式: export THE_ODDS_API_KEY='你的key'")
-        print("   📝 註冊免費帳號: https://the-odds-api.com")
-        return {}
-
-    print("💰 [Module 7] The Odds API: 正在抓取 Sportsbet 賠率...")
-    url = f"https://api.the-odds-api.com/v4/sports/{sport}/odds/"
-    params = {
-        "apiKey": THE_ODDS_API_KEY,
-        "regions": "au",  # 澳洲區域 (包含 Sportsbet)
-        "markets": "spreads,totals,h2h",
-        "oddsFormat": "decimal",
-        "bookmakers": "sportsbet",
-    }
-    try:
-        r = requests.get(url, params=params, timeout=10)
-        if r.status_code == 200:
-            data = r.json()
-            remaining = r.headers.get('x-requests-remaining', '?')
-            print(f"  ✅ 獲取 {len(data)} 場賽事賠率 | 剩餘配額: {remaining}")
-            result = {}
-            for game in data:
-                away = game.get('away_team', '')
-                home = game.get('home_team', '')
-                bookmakers = game.get('bookmakers', [])
-                if bookmakers:
-                    bk = bookmakers[0]
-                    markets = {}
-                    for mkt in bk.get('markets', []):
-                        key = mkt['key']
-                        outcomes = {o['name']: o.get('price', 0) for o in mkt.get('outcomes', [])}
-                        if key == 'spreads':
-                            for o in mkt.get('outcomes', []):
-                                outcomes[o['name'] + '_point'] = o.get('point', 0)
-                        if key == 'totals':
-                            for o in mkt.get('outcomes', []):
-                                outcomes[o['name'] + '_point'] = o.get('point', 0)
-                        markets[key] = outcomes
-                    result[f"{away} vs {home}"] = {
-                        "bookmaker": bk.get('title', 'Sportsbet'),
-                        "markets": markets
-                    }
-            return result
-        else:
-            print(f"  ⚠️ API 回傳 {r.status_code}: {r.text[:200]}")
-            return {}
-    except Exception as e:
-        print(f"  ⚠️ The Odds API 失敗: {e}")
-        return {}
-
-
-# ==========================================
-# 模塊 8：Action Network 備用賠率 (Claw Code)
-# ==========================================
-def fetch_action_network_odds(date_str):
-    """使用 curl_cffi 從 Action Network V2 API 提取真實賠率"""
-    print("💰 [Module 8] Action Network 賠率 (curl_cffi Claw Code)...")
-    try:
-        clean_date = date_str.replace('-', '')
-        url = f"https://api.actionnetwork.com/web/v2/scoreboard/nba?date={clean_date}&bookIds=15,30,76,68,69,75,123"
-        r = cffi_requests.get(url, headers=CFFI_HEADERS, impersonate="chrome120")
-        if r.status_code == 200:
-            data = r.json()
-            games = data.get('games', [])
-            result = {}
-            for g in games:
-                teams_list = g.get('teams', [])
-                if len(teams_list) < 2:
-                    continue
-                away_abbr = teams_list[0].get('abbr', '')
-                home_abbr = teams_list[1].get('abbr', '')
-                game_key = f"{away_abbr}_{home_abbr}"
-                
-                # 解析 markets 結構 (V2 格式: markets -> book_id -> event -> spread/total)
-                markets = g.get('markets', {})
-                spread_val = None
-                total_val = None
-                ml_away = None
-                ml_home = None
-                book_name = "Consensus"
-                
-                # 優先用 book_id=15 (Sportsbet)，fallback 到任何可用
-                for bid in ['68', '15', '30', '76', '69', '75', '123']:
-                    bk = markets.get(bid, {})
-                    if not bk:
-                        continue
-                    evt = bk.get('event', {})
-                    spreads = evt.get('spread', [])
-                    totals = evt.get('total', [])
-                    moneylines = evt.get('moneyline', [])
-                    
-                    if spreads:
-                        for s in spreads:
-                            if s.get('side') == 'away':
-                                spread_val = s.get('value')
-                        book_name = "Sportsbet" if bid == '68' else f"Book_{bid}"
-                    if totals:
-                        for t in totals:
-                            if t.get('side') == 'over':
-                                total_val = t.get('value')
-                    if moneylines:
-                        for m in moneylines:
-                            if m.get('side') == 'away':
-                                ml_away = m.get('odds')
-                            elif m.get('side') == 'home':
-                                ml_home = m.get('odds')
-                    if spread_val is not None:
-                        break  # 找到就停
-                
-                result[game_key] = {
-                    "spread_away": spread_val,
-                    "total": total_val,
-                    "ml_away": ml_away,
-                    "ml_home": ml_home,
-                    "book": book_name,
-                    "standings": {
-                        away_abbr: f"{teams_list[0].get('standings',{}).get('win',0)}-{teams_list[0].get('standings',{}).get('loss',0)}",
-                        home_abbr: f"{teams_list[1].get('standings',{}).get('win',0)}-{teams_list[1].get('standings',{}).get('loss',0)}",
-                    }
-                }
-                print(f"  ✅ {game_key}: Spread={spread_val} | Total={total_val} | Book={book_name}")
-            
-            print(f"  ✅ 獲取 {len(result)} 場賠率")
-            return result
-        else:
-            print(f"  ⚠️ API 回傳 {r.status_code}")
-            return {}
-    except Exception as e:
-        print(f"  ⚠️ Action Network 失敗: {e}")
-        return {}
-
-
-# ==========================================
-# 模塊 D1：Usage Redistribution (傷缺紅利自動計算)
-# ==========================================
-# ==========================================
-# 模塊 D2：Rest Day Fatigue Model
-# ==========================================
-def nba_local_game_date(game_date):
-    """Calendar date (YYYY-MM-DD) of a game in US local time.
-
-    ESPN gives tip-off in UTC (e.g. 2026-10-22T02:00Z for a 10pm-ET/7pm-PT game
-    on Oct 21).  Game logs carry the US local date, so comparing against the raw
-    UTC date made every late West-Coast game look a day further from its last
-    game than it was.  US Pacific local date matches the NBA's own game date
-    for every tip-off slot."""
-    text = str(game_date or "")
-    if "T" in text:
-        try:
-            from datetime import datetime, timezone
-            from zoneinfo import ZoneInfo
-            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=timezone.utc)
-            return parsed.astimezone(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
-        except Exception:
-            pass
-    return text[:10]
-
-
-def compute_rest_info(gamelog, game_date=None):
-    """rest_days / is_b2b for the game being analysed, from the player's own game log.
-
-    Independent of rest splits: early in a season (or for a rookie) the splits are
-    missing, and B2B used to be silently unknown.  `rest_days` keeps its historical
-    meaning (calendar days since the last game, floored at 0) because the ML
-    feature uses it; `is_b2b` is True when the last game was yesterday."""
-    l10_dates = (gamelog or {}).get("l10_dates", [])
-    if not (l10_dates and game_date):
-        return {"rest_days": 1, "is_b2b": False, "rest_known": False}
-    try:
-        from datetime import datetime
-        cur = datetime.strptime(nba_local_game_date(game_date), "%Y-%m-%d")
-        last_game = datetime.strptime(l10_dates[0].title(), "%b %d, %Y")
-        delta = (cur - last_game).days
-        return {"rest_days": max(0, delta), "is_b2b": delta <= 1, "rest_known": True}
-    except Exception:
-        return {"rest_days": 1, "is_b2b": False, "rest_known": False}
-
-
-def compute_fatigue_adjustment(player_splits, gamelog, game_date=None):
-    """
-    根據休息日數自動調整預期值。
-    如果 0 Days Rest (B2B) 的 PPG 顯著低於 1+ Days Rest，生成警告。
-    同時計算當前比賽嘅 rest_days 同 is_b2b（唔再依賴 rest_splits，新季冇 splits 都計到）。
-    """
-    rest = compute_rest_info(gamelog, game_date)
-    rest_splits = (player_splits or {}).get('rest_splits', {})
-    b2b = rest_splits.get('0 Days Rest', {}) if rest_splits else {}
-    normal = rest_splits.get('1 Days Rest', {}) if rest_splits else {}
-
-    if not (b2b and normal):
-        if not rest["rest_known"]:
-            return None
-        return {
-            "b2b_ppg": 0, "normal_ppg": 0, "fatigue_drop": 0, "fatigue_pct": 0,
-            "rest_days": rest["rest_days"], "is_b2b": rest["is_b2b"], "rest_known": True,
-            "warning": "",
-        }
-
-    b2b_ppg = b2b.get('PPG', 0)
-    normal_ppg = normal.get('PPG', 0)
-
-    fatigue_drop = round(normal_ppg - b2b_ppg, 1) if normal_ppg > 0 else 0
-    fatigue_pct = round(fatigue_drop / normal_ppg * 100, 1) if normal_ppg > 0 else 0
-
-    return {
-        "b2b_ppg": b2b_ppg,
-        "normal_ppg": normal_ppg,
-        "fatigue_drop": fatigue_drop,
-        "fatigue_pct": fatigue_pct,
-        "rest_days": rest["rest_days"],
-        "is_b2b": rest["is_b2b"],
-        "rest_known": rest["rest_known"],
-        "warning": f"⚠️ B2B 疲勞警告: PPG 下降 {fatigue_pct}%" if fatigue_pct > 10 else ""
-    }
-
-
-# ==========================================
 # 模塊 D3：Correlation Warning System
 # ==========================================
 def compute_correlation_warnings(players, team_abbr):
@@ -1102,7 +557,7 @@ def key_defenders_for_team(defender_data, team_abbr, *, limit=8):
     return sorted(candidates, key=lambda row: row.get('PCT_PLUSMINUS', 0))[:limit]
 
 
-def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stats, odds_data,
+def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stats,
                         data_sources=None, opportunity_sources=None, team_context=None):
     """
     針對單場比賽提取雙方所有球員的深度數據。
@@ -1155,38 +610,10 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             away_abbr: team_dvp.get(away_abbr, {}),
             home_abbr: team_dvp.get(home_abbr, {}),
         },
-        "odds": {},
-        "news": {away_abbr: [], home_abbr: []},
         "players": {away_abbr: [], home_abbr: []},
         "key_defenders": {away_abbr: [], home_abbr: []},
         "injuries": {away_abbr: {}, home_abbr: {}},
     }
-
-    # 賠率 — 嘗試多種 key 組合以匹配 Action Network 格式
-    # Action Network 用 home_away 順序 + 標準縮寫 (WAS, UTA, GSW, NOP)
-    # ESPN 用 away_home 順序 + ESPN 縮寫 (WSH, UTAH, GS, NO)
-    ESPN_TO_STANDARD = {v: k for k, v in TEAM_ABBR_ESPN_MAP.items()}  # reverse map
-    away_std = ESPN_TO_STANDARD.get(away_abbr, away_abbr)
-    home_std = ESPN_TO_STANDARD.get(home_abbr, home_abbr)
-    odds_candidates = [
-        f"{away_abbr}_{home_abbr}",     # ESPN away_home
-        f"{home_abbr}_{away_abbr}",     # ESPN home_away
-        f"{away_std}_{home_std}",       # Standard away_home
-        f"{home_std}_{away_std}",       # Standard home_away (AN format)
-        f"{away_std}_{home_abbr}",      # Mixed
-        f"{away_abbr}_{home_std}",      # Mixed
-        f"{home_std}_{away_abbr}",      # Mixed
-        f"{home_abbr}_{away_std}",      # Mixed
-    ]
-    matched_odds = {}
-    for candidate in odds_candidates:
-        if candidate in odds_data:
-            matched_odds = odds_data[candidate]
-            print(f"  💰 賠率匹配成功: {candidate}")
-            break
-    if not matched_odds:
-        print(f"  ⚠️ 賠率匹配失敗 — 嘗試過: {odds_candidates[:4]}")
-    package["odds"] = matched_odds
 
     if season_context["season_phase"] == "PRESEASON":
         package["meta"]["preseason_rookie_history_contract"] = 1
@@ -1203,10 +630,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
         injury_map = fetch_team_injuries(abbr)
         availability_maps[abbr] = injury_map
         package["injuries"][abbr] = injury_map
-        
-        # 抓取球隊新聞
-        team_news = fetch_nba_news(abbr, limit=5)
-        package["news"][abbr] = team_news
+
 
         # 篩選核心球員 (有進階數據 = 有上場紀錄)
         core_players = []
@@ -1248,31 +672,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
             if rookie_preseason and gamelog:
                 package["meta"]["history_mode"] = "previous_season_reference_with_current_preseason_rookies"
 
-            # Home/Away & Rest Splits
-            splits = fetch_player_splits(
-                pid, pname, season=statistics_season, as_of=game_info.get('date'),
-            )
-            splits_season = statistics_season
-            if not splits and season_context["season_phase"] != "PRESEASON":
-                prior_splits = fetch_player_splits(
-                    pid, pname, season=previous_nba_season(statistics_season),
-                    as_of=game_info.get('date'),
-                )
-                if prior_splits:
-                    splits, splits_season = prior_splits, previous_nba_season(statistics_season)
-
-            # 進階數據
             adv = adv_stats.get(pid, {})
-            
-            # H2H 歷史對戰 (只拉取核心球員 USG > 15%)
-            h2h = None
-            if adv.get('USG_PCT', 0) > 15:
-                opp_abbr_for_h2h = home_abbr if side == "away" else away_abbr
-                h2h = fetch_player_h2h(
-                    pid, pname, opp_abbr_for_h2h, target_season, as_of=game_info.get('date')
-                )
-                if h2h:
-                    print(f"    🎯 H2H vs {opp_abbr_for_h2h}: {h2h['total_games']} 場 | PTS AVG: {h2h['PTS_avg']}")
 
             player_entry = {
                 "name": pname,
@@ -1282,10 +682,7 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
                 "position": p.get('position') or '',
                 "age": p.get('age', ''),
                 "advanced": adv,
-                "splits": splits,
-                "splits_season": splits_season if splits else None,
                 "gamelog": gamelog,
-                "h2h": h2h,
             }
             
             if opportunity_sources is not None:
@@ -1295,19 +692,6 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
                     tip=game_info['date'], season=statistics_season,
                     cutoff=history_date_to(game_info['date']), opponent_stats=team_stats.get(opp_team, {}))
 
-            # 🧠 Python Math Engine: 計算命中率、盤口線、Pace 調整、+EV
-            opp_abbr = home_abbr if side == "away" else away_abbr
-            opp_stats = team_stats.get(opp_abbr, {})
-            is_home = (side == "home")
-            prop_analytics = compute_prop_analytics(gamelog, opp_stats, splits, is_home)
-            if prop_analytics:
-                player_entry["prop_analytics"] = prop_analytics
-            
-            # 🧠 Fatigue Model
-            fatigue = compute_fatigue_adjustment(splits, gamelog, game_info.get('date'))
-            if fatigue:
-                player_entry["fatigue"] = fatigue
-            
             package["players"][abbr].append(player_entry)
 
         # 防守者
@@ -1346,41 +730,6 @@ def extract_single_game(game_info, adv_stats, defender_data, team_dvp, team_stat
 
 
 # ==========================================
-# Markdown 報告生成 (概覽版)
-# ==========================================
-def generate_overview_md(games, team_stats, odds_data):
-    """生成今日賽事概覽 Markdown"""
-    lines = []
-    lines.append("📋 NBA Meeting Intelligence Package (Claw Code V3)")
-    lines.append(f"- 數據更新時間: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-
-    lines.append("🏀 今日賽程：")
-    for g in games:
-        away = g['away']
-        home = g['home']
-        a_stats = team_stats.get(away['abbreviation'], {})
-        h_stats = team_stats.get(home['abbreviation'], {})
-        
-        # Get team spread
-        game_odds = odds_data.get(g['tag']) if odds_data else None
-        spread = game_odds.get('spread') if game_odds else None
-        blowout_warn = ""
-        if spread is not None:
-            if abs(spread) >= 8.5:
-                blowout_warn = f"\n- ⚠️ **[BLOWOUT RISK 大炒高危]**: 讓分為 {spread}，主力球員上場時間可能縮減！謹慎操作 PTS Over，改買苦工/籃板/助攻。"
-            else:
-                blowout_warn = f"\n- ⚖️ [膠著分差]: 讓分為 {spread}，正常操作所有盤口。"
-
-        lines.append(f"### {g['name']} ({g['tag']})")
-        lines.append(f"- 開賽時間: {g['date']}")
-        lines.append(f"- {away['abbreviation']} DEF: 第{a_stats.get('DEF_RANK','?')} | PACE: {a_stats.get('PACE','?')}")
-        lines.append(f"- {home['abbreviation']} DEF: 第{h_stats.get('DEF_RANK','?')} | PACE: {h_stats.get('PACE','?')}{blowout_warn}")
-        lines.append("")
-
-    return "\n".join(lines)
-
-
-# ==========================================
 # 主程式
 # ==========================================
 def _write_verified_package(path, package):
@@ -1405,9 +754,11 @@ def main():
     parser = argparse.ArgumentParser(description="NBA Wong Choi Claw Code V3 Extractor")
     parser.add_argument("--date", type=str, help="YYYYMMDD (AEST)", default=None)
     parser.add_argument("--game", type=str, help="Game tag e.g. PHX_CHA", default=None)
-    parser.add_argument("--output", type=str, help="Output path", default="NBA_Data_Package_Auto.md")
+    parser.add_argument("--output", type=str, help="Output path (default nba_game_data_<TAG>.json)", default=None)
     parser.add_argument("--refresh-availability", help="Refresh only verified injuries/roster in a cached game JSON")
     args = parser.parse_args()
+    if not args.refresh_availability and not args.game:
+        parser.error("--game is required (one game per run, as the orchestrator calls it)")
 
     if args.refresh_availability:
         path = args.refresh_availability
@@ -1497,108 +848,81 @@ def main():
         print("❌ league_tables_unavailable: ESPN 計唔到球隊／球員進階數據；唔會用空白聯盟數據出分析")
         sys.exit(1)
 
+    output_dir = Path(args.output).resolve().parent if args.output else Path.cwd()
     # Research-only opportunity evidence: one league capture shared by game runs.
     opportunity_sources = nba_opportunities.fetch_sources(
         statistics_season, history_date_to(stats_date),
-        Path(args.output).resolve().parent / "NBA_Opportunity_Sources.json") if games else {"status": "no_official_games", "sources": {}}
+        output_dir / "NBA_Opportunity_Sources.json") if games else {"status": "no_official_games", "sources": {}}
     try:  # shadow S_v2 input only; a failure here must never stop extraction
         team_context = nba_team_context.fetch_bundle(
             statistics_season, previous_nba_season(statistics_season), history_date_to(stats_date),
-            Path(args.output).resolve().parent / "NBA_Team_Context.json") if games else None
+            output_dir / "NBA_Team_Context.json") if games else None
     except Exception as exc:
         print(f"⚠️ team context unavailable: {type(exc).__name__}: {exc}")
         team_context = {"status": "error", "tables": {}}
     print("📐 Opportunity sources: " + ", ".join(
         f"{name}={source.get('status')}" for name, source in opportunity_sources.get('sources', {}).items()))
 
-    # ── Step 3: 賠率 (Claw Code 主動提取) ──
-    odds_data = fetch_action_network_odds(formatted_date)
-    if not odds_data and THE_ODDS_API_KEY:
-        odds_data = fetch_odds_api()
+    # ── Step 3: 單場深度提取 ──
+    target_game = None
+    game_tag_input = args.game.upper().replace(" ", "_").replace("@", "_")
 
-    # ── Step 4: 單場模式 (--game) ──
-    if args.game:
-        target_game = None
-        game_tag_input = args.game.upper().replace(" ", "_").replace("@", "_")
+    # 建立 ESPN abbreviation 映射版本
+    mapped_tags = [game_tag_input]
+    if '_' in game_tag_input:
+        parts = game_tag_input.split('_')
+        m_away = TEAM_ABBR_ESPN_MAP.get(parts[0], parts[0])
+        m_home = TEAM_ABBR_ESPN_MAP.get(parts[1], parts[1])
+        espn_tag = f"{m_away}_{m_home}"
+        if espn_tag != game_tag_input:
+            mapped_tags.append(espn_tag)
+        # 亦嘗試反向映射
+        ESPN_TO_STD = {v: k for k, v in TEAM_ABBR_ESPN_MAP.items()}
+        std_away = ESPN_TO_STD.get(parts[0], parts[0])
+        std_home = ESPN_TO_STD.get(parts[1], parts[1])
+        std_tag = f"{std_away}_{std_home}"
+        if std_tag != game_tag_input:
+            mapped_tags.append(std_tag)
 
-        # 建立 ESPN abbreviation 映射版本
-        mapped_tags = [game_tag_input]
-        if '_' in game_tag_input:
-            parts = game_tag_input.split('_')
-            m_away = TEAM_ABBR_ESPN_MAP.get(parts[0], parts[0])
-            m_home = TEAM_ABBR_ESPN_MAP.get(parts[1], parts[1])
-            espn_tag = f"{m_away}_{m_home}"
-            if espn_tag != game_tag_input:
-                mapped_tags.append(espn_tag)
-            # 亦嘗試反向映射
-            ESPN_TO_STD = {v: k for k, v in TEAM_ABBR_ESPN_MAP.items()}
-            std_away = ESPN_TO_STD.get(parts[0], parts[0])
-            std_home = ESPN_TO_STD.get(parts[1], parts[1])
-            std_tag = f"{std_away}_{std_home}"
-            if std_tag != game_tag_input:
-                mapped_tags.append(std_tag)
-
-        # 喺 ESPN 搵到嘅 games 度匹配
-        for g in games:
-            for mt in mapped_tags:
-                if g['tag'] == mt or mt in g['tag'] or mt in g['name']:
-                    target_game = g
-                    break
-            if target_game:
+    # 喺 ESPN 搵到嘅 games 度匹配
+    for g in games:
+        for mt in mapped_tags:
+            if g['tag'] == mt or mt in g['tag'] or mt in g['name']:
+                target_game = g
                 break
+        if target_game:
+            break
 
-        if not target_game:
-            print(f"❌ official_game_not_found: {game_tag_input}，唔會以 synthetic game/date 代替官方賽程。")
-            sys.exit(1)
+    if not target_game:
+        print(f"❌ official_game_not_found: {game_tag_input}，唔會以 synthetic game/date 代替官方賽程。")
+        sys.exit(1)
 
-        package = extract_single_game(target_game, adv_stats, defender_data, team_dvp, team_stats, odds_data,
-                                      data_sources=data_sources, opportunity_sources=opportunity_sources,
-                                      team_context=team_context)
+    package = extract_single_game(target_game, adv_stats, defender_data, team_dvp, team_stats,
+                                  data_sources=data_sources, opportunity_sources=opportunity_sources,
+                                  team_context=team_context)
 
-        # 驗證數據品質 — 冇真實 gamelog 則 fail
-        has_real_data = False
-        for team_key in [target_game['away']['abbreviation'], target_game['home']['abbreviation']]:
-            for p in package.get('players', {}).get(team_key, []):
-                gl = p.get('gamelog')
-                if gl and gl.get('PTS') and len(gl['PTS']) > 0:
-                    has_real_data = True
-                    break
-            if has_real_data:
+    # 驗證數據品質 — 冇真實 gamelog 則 fail
+    has_real_data = False
+    for team_key in [target_game['away']['abbreviation'], target_game['home']['abbreviation']]:
+        for p in package.get('players', {}).get(team_key, []):
+            gl = p.get('gamelog')
+            if gl and gl.get('PTS') and len(gl['PTS']) > 0:
+                has_real_data = True
                 break
+        if has_real_data:
+            break
 
-        if not has_real_data:
-            print(f"\n❌ [品質檢查] 所有球員都冇 L10 gamelog 數據！")
-            print(f"   可能原因: ESPN 唔通／熔斷中 / 球隊 abbreviation 唔啱")
-            sys.exit(1)
+    if not has_real_data:
+        print(f"\n❌ [品質檢查] 所有球員都冇 L10 gamelog 數據！")
+        print(f"   可能原因: ESPN 唔通／熔斷中 / 球隊 abbreviation 唔啱")
+        sys.exit(1)
 
-        # 儲存為 JSON
-        output_path = args.output
-        if output_path.endswith('.md'):
-            output_path = f"nba_game_data_{target_game['tag']}.json"
+    # 儲存為 JSON
+    output_path = args.output or f"nba_game_data_{target_game['tag']}.json"
 
-        _write_verified_package(output_path, package)
-        print(f"\n✅ 單場深度數據已儲存至: {output_path}")
+    _write_verified_package(output_path, package)
+    print(f"\n✅ 單場深度數據已儲存至: {output_path}")
 
-    else:
-        # 概覽模式
-        if not games:
-            print("❌ ESPN 搵唔到賽事。")
-            sys.exit(1)
-
-        overview = generate_overview_md(games, team_stats, odds_data)
-        with open(args.output, "w", encoding="utf-8") as f:
-            f.write(overview)
-        print(f"\n✅ 賽事概覽已儲存至: {args.output}")
-
-        print("\n🏀 正在為每場比賽生成深度數據包...")
-        for g in games:
-            package = extract_single_game(g, adv_stats, defender_data, team_dvp, team_stats, odds_data,
-                                      data_sources=data_sources, opportunity_sources=opportunity_sources,
-                                      team_context=team_context)
-
-            json_path = f"nba_game_data_{g['tag']}.json"
-            _write_verified_package(json_path, package)
-            print(f"  ✅ {g['tag']} → {json_path}")
 
     print("\n🏁 提取完成！")
 

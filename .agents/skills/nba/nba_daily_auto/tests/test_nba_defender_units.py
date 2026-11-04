@@ -41,7 +41,7 @@ def test_cache_reextracts_old_unit_or_source_failure(tmp_path,contract,mode,coun
 
 
 @pytest.mark.parametrize('count,valid',[(0,False),(None,False),('576',False),(True,False),(576,True)])
-def test_new_extraction_checks_statistics_before_schema_or_report(tmp_path,monkeypatch,count,valid):
+def test_new_extraction_checks_statistics_before_report(tmp_path,monkeypatch,count,valid):
     odds=tmp_path/'odds.json';odds.write_text('{}')
     target=tmp_path/'nba_game_data_BOS_LAL.json';calls=[]
     payload={'meta':{'statistics_contract':2,
@@ -52,11 +52,11 @@ def test_new_extraction_checks_statistics_before_schema_or_report(tmp_path,monke
         calls.append(script)
         if script==o.NBA_EXTRACTOR:
             target.write_text(json.dumps(payload));return True
-        return False  # the valid receipt reaches schema; no report is generated
+        return False  # the valid receipt reaches the report generator, which fails here
     monkeypatch.setattr(o,'run_script',run)
     assert not o.process_single_game('BOS_LAL',str(odds),str(tmp_path),'2026-10-24')
     assert calls[0]==o.NBA_EXTRACTOR
-    assert (o.VALIDATE_SCHEMA in calls) is valid
+    assert (o.GENERATE_REPORTS in calls) is valid
     assert len(calls)==(2 if valid else 1)
     assert target.read_text()==json.dumps(payload)  # diagnostic input is retained
 

@@ -156,13 +156,8 @@ def test_normal_extractor_attaches_features_and_coverage_without_changing_advanc
     advanced = {1: {'USG_PCT': 25}}
     with mock.patch.object(extractor, 'fetch_team_roster', side_effect=lambda name, *args, **kwargs: roster if 'Golden State' in name or name == 'GSW' else []), \
          mock.patch.object(extractor, 'fetch_team_injuries', return_value={}), \
-         mock.patch.object(extractor, 'fetch_nba_news', return_value=[]), \
-         mock.patch.object(extractor, 'fetch_player_gamelog', return_value=player()['gamelog']), \
-         mock.patch.object(extractor, 'fetch_player_splits', return_value={}), \
-         mock.patch.object(extractor, 'fetch_player_h2h', return_value=None), \
-         mock.patch.object(extractor, 'compute_prop_analytics', return_value={}), \
-         mock.patch.object(extractor, 'compute_fatigue_adjustment', return_value={}):
-        package = extractor.extract_single_game(game, advanced, {}, {}, {}, {}, opportunity_sources=bundle())
+         mock.patch.object(extractor, 'fetch_player_gamelog', return_value=player()['gamelog']):
+        package = extractor.extract_single_game(game, advanced, {}, {}, {}, opportunity_sources=bundle())
     entry = package['players']['GSW'][0]
     assert entry['opportunity_features']['props']['AST']['potential_ast_per_min'] == .4
     assert entry['advanced'] == advanced[1]

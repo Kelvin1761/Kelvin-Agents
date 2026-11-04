@@ -32,13 +32,13 @@ def inputs(tmp_path, monkeypatch):
     report = tmp_path / "Game_MEM_CHI_Full_Analysis.md"
     write_report(report, "verified synthetic report\n" + "x" * 6000)
     cache = Path(str(report) + ".inputs.json")
-    cache.write_text(json.dumps({"inputs":o.report_inputs(str(odds), str(extractor), False), "report":o._file_digest(str(report))}))
+    cache.write_text(json.dumps({"inputs":o.report_inputs(str(odds), str(extractor)), "report":o._file_digest(str(report))}))
     return odds, extractor, report, cache
 
 @pytest.mark.parametrize("change", ["odds", "extractor", "report", "engine", "new_engine_file", "malformed", "absent"])
 def test_changed_inputs_or_report_cannot_reuse(inputs, change):
     odds, extractor, report, cache = inputs
-    assert o.report_cache_current(str(report), str(odds), str(extractor), False)
+    assert o.report_cache_current(str(report), str(odds), str(extractor))
     engine = Path(o.ENGINE_DIR)
     if change in ("odds", "extractor", "report"):
         path = {"odds":odds, "extractor":extractor, "report":report}[change]
@@ -51,7 +51,7 @@ def test_changed_inputs_or_report_cannot_reuse(inputs, change):
         cache.write_text("[]")
     elif change == "absent":
         cache.unlink()
-    assert not o.report_cache_current(str(report), str(odds), str(extractor), False)
+    assert not o.report_cache_current(str(report), str(odds), str(extractor))
 
 
 def test_unchanged_report_reuses_with_firewall(inputs):
@@ -76,7 +76,7 @@ def test_changed_odds_regenerates_and_binds_verified_inputs(inputs, mutate_durin
         result = o.process_single_game("MEM_CHI", str(odds), str(odds.parent), "2026-10-11")
     assert any(c.args[0] == o.GENERATE_REPORTS for c in calls.call_args_list)
     assert result is (not mutate_during_generation)
-    assert o.report_cache_current(str(report), str(odds), str(extractor), False) is result
+    assert o.report_cache_current(str(report), str(odds), str(extractor)) is result
 
 
 def _availability_payload(extractor, captured):
@@ -93,7 +93,7 @@ def test_stale_availability_is_refreshed_before_cache_reuse(inputs, monkeypatch)
     odds, extractor, report, cache = inputs
     payload = _availability_payload(extractor, datetime.now(timezone.utc) - timedelta(hours=2))
     extractor.write_text(json.dumps(payload))
-    cache.write_text(json.dumps({"inputs": o.report_inputs(str(odds), str(extractor), False),
+    cache.write_text(json.dumps({"inputs": o.report_inputs(str(odds), str(extractor)),
                                  "report": o._file_digest(str(report))}))
     def run(script, args, **kwargs):
         if "--refresh-availability" in args:

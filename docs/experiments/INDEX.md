@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261104-07](EXP-20261104-07-nba-extractor-orchestrator-simplify.md) | 2026-11-04 | NBA | extractor／orchestrator 剷死 code（第三方賠率、新聞、h2h、splits、prop_analytics、fatigue、--legacy／debug／[FILL]、schema 驗證） | **工程簡化，模型不變**：11-05 全 14 場 408 球員 nba_game_data 逐欄一樣（除時間戳同刻意剷走嘅 7 欄）；orchestrator 11-05 乾跑 12 場全流程通過、2 場正確等盤；extractor 1611→935 行 |
 | [EXP-20261104-06](EXP-20261104-06-nba-reflector-sidecar-only.md) | 2026-11-04 | NBA | Reflector／verify_props_hits 只讀 sidecar，剷走 Markdown 腿解析 | **工程重構，結算不變**：12 日 Props_Verification 逐字一樣（282 腿、174 中）；reflector 行只有舊 Markdown 先有嘅 L10 次數／avg／med／SD／CoV 標籤變 None、model_version 變 legacy:hybrid。Markdown 而家冇人 parse |
 | [EXP-20261104-06](EXP-20261104-06-hkjc-live-track-and-connections-prereg.md) | 2026-11-04 | HKJC | 當晚已完成場次嘅檔位／跑法偏差同騎師、練馬師、騎練合作手風，可唔可以幫後面場次排名 | **預先登記，收集中**：即場 job 逐場記錄賽果＋captured_at；forward tracker 60 個完整賽晚提醒；判法（洩漏審查、逐訊號、Holm）已固定，冇改模型 |
 | [EXP-20261104-05](EXP-20261104-05-tennis-event-identity-proof.md) | 2026-11-04 | Tennis | 全39人公開事件及source身份proof | **proposal未apply**：全32profile／14詳情，精確雙方＋tour＋UTC start只1場／2人，保存beforeimages；37人保留未確認，forward未新增 |

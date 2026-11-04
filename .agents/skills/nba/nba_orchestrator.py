@@ -5,16 +5,14 @@ import re
 from pathlib import Path
 os.environ.setdefault('PYTHONUTF8', '1')
 """
-nba_orchestrator.py — NBA Wong Choi Pipeline Orchestrator V3.1
-================================================================
-Unified orchestrator merging Skills V2 pipeline + Scripts V9 features + AU NEXT_CMD pattern.
-
-Pipeline:
-  Phase 0:  claw_sportsbet_odds.py  → Sportsbet Odds JSON
-  Phase 1A: nba_extractor.py        → nba_game_data_{TAG}.json (L10 from ESPN)
-  Phase 1B: generate_nba_reports.py → Game_{TAG}_Full_Analysis.md (pre-filled skeleton)
-  Phase 2:  LLM Analyst fills [FILL] fields (if any)
-  Phase 3:  generate_nba_sgm_reports.py → Master SGM + Banker reports (from the sidecars)
+nba_orchestrator.py — NBA Wong Choi pipeline orchestrator
+==========================================================
+Pipeline (per game, in parallel):
+  Phase 0:  claw_sportsbet_odds.py  → Sportsbet_Odds_{TAG}.json
+  Phase 1A: nba_extractor.py        → nba_game_data_{TAG}.json (ESPN only)
+  Phase 1B: nba_engine/run.py       → Game_{TAG}_Full_Analysis.md + .market_legs.json
+  Firewall: validate_nba_output.py  (nba_engine.publish)
+  Phase 3:  generate_nba_sgm_reports.py → NBA_All_SGM_Report.txt + NBA_Banker_Report.txt
 
 Usage:
   python nba_orchestrator.py --date 2026-04-16
@@ -22,9 +20,7 @@ Usage:
   python nba_orchestrator.py --date 2026-04-16 --list
   python nba_orchestrator.py --date 2026-04-16 --status
   python nba_orchestrator.py --date 2026-04-16 --compile-only
-  python nba_orchestrator.py --date 2026-04-16 --auto
-
-Version: 3.1.0
+  python nba_orchestrator.py --date 2026-04-16 --auto   # what the scheduler runs (--auto is a no-op)
 """
 import argparse
 import datetime
@@ -49,7 +45,6 @@ NBA_EXTRACTOR = os.path.join(SKILLS_DIR, "nba_data_extractor", "scripts", "nba_e
 ENGINE_DIR = os.path.join(SKILLS_DIR, "nba_engine")
 GENERATE_REPORTS = os.path.join(ENGINE_DIR, "run.py")
 VALIDATE_OUTPUT = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "validate_nba_output.py")
-VALIDATE_SCHEMA = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "validate_json_schema.py")
 GENERATE_SGM = os.path.join(SKILLS_DIR, "nba_wong_choi", "scripts", "generate_nba_sgm_reports.py")
 SHARED_HOOK_DIR = os.path.join(
     WORKSPACE_ROOT, ".agents", "skills", "shared_racing", "post_success_hooks", "scripts"
@@ -254,30 +249,6 @@ def write_state(target_dir: str, game_tags: list, phase: str):
         fh.write(f"   Games: {', '.join(game_tags)}\n")
 
 
-# ─── NEXT_CMD Auto-Loop (AU Pattern) ────────────────────────────────────
-
-def _next_cmd(date_str: str, extra_args: str = "", skip_cloudflare_deploy: bool = False):
-    """Print machine-readable re-run command for LLM auto-execution."""
-    rel_path = os.path.relpath(os.path.abspath(__file__), WORKSPACE_ROOT)
-    cmd = f"{PYTHON} {rel_path} --date {date_str} --auto"
-    if extra_args:
-        cmd += f" {extra_args}"
-    if skip_cloudflare_deploy:
-        cmd += " --skip-cloudflare-deploy"
-    print(f"\nNEXT_CMD: {cmd}")
-
-
-def _count_fill_residuals(target_dir: str, game_tags=None) -> int:
-    """Count remaining [FILL] placeholders across all analysis files."""
-    count = 0
-    reports = ([os.path.join(target_dir, f"Game_{tag}_Full_Analysis.md") for tag in game_tags]
-               if game_tags is not None else glob.glob(os.path.join(target_dir, "Game_*_Full_Analysis.md")))
-    for md in reports:
-        with open(md, "r", encoding="utf-8") as f:
-            count += f.read().count("[FILL]")
-    return count
-
-
 def validate_reports_for_release(target_dir: str, game_tags=None) -> bool:
     reports = ([os.path.join(target_dir, f"Game_{tag}_Full_Analysis.md") for tag in game_tags]
                if game_tags is not None else sorted(glob.glob(os.path.join(target_dir, "Game_*_Full_Analysis.md"))))
@@ -286,9 +257,6 @@ def validate_reports_for_release(target_dir: str, game_tags=None) -> bool:
         return False
     if any(not os.path.isfile(report) for report in reports):
         print("⛔ 指定賽事缺少分析報告。")
-        return False
-    if any("[FILL]" in Path(report).read_text(encoding="utf-8") for report in reports):
-        print("⛔ 報告仍有 [FILL]，唔可以編譯／發布。")
         return False
     if not os.path.exists(VALIDATE_OUTPUT):
         print(f"⛔ 防火牆 validator 不存在: {VALIDATE_OUTPUT}")
@@ -299,21 +267,9 @@ def validate_reports_for_release(target_dir: str, game_tags=None) -> bool:
     )
 
 
-def _pipeline_release_action(
-    *,
-    passed: bool,
-    failed: bool,
-    fill_count: int,
-    sgm_exists: bool,
-) -> str:
-    """Return the only safe next action after an NBA pipeline run."""
-    if failed or not passed:
-        return "blocked"
-    if fill_count > 0:
-        return "fill"
-    if not sgm_exists:
-        return "compile"
-    return "deploy"
+def _release_action(*, passed: bool, failed: bool, sgm_ok: bool) -> str:
+    """Deploy only when every game passed and the SGM summary was written."""
+    return "deploy" if passed and not failed and sgm_ok else "blocked"
 
 
 # ─── Per-Game Pipeline ──────────────────────────────────────────────────
@@ -361,7 +317,7 @@ def _file_digest(path: str) -> str:
         return hashlib.sha256(source.read()).hexdigest()
 
 
-def report_inputs(sportsbet_json: str, extractor_json: str, legacy: bool = False) -> dict:
+def report_inputs(sportsbet_json: str, extractor_json: str) -> dict:
     """What a report depends on: both input files and every engine source file."""
     engine = {name: _file_digest(os.path.join(ENGINE_DIR, name))
               for name in sorted(os.listdir(ENGINE_DIR)) if name.endswith((".py", ".json"))}
@@ -393,17 +349,12 @@ def report_quotes_current(report: str, sportsbet_json: str) -> bool:
     return requote_sidecar(report, odds) and _publishable(report, sportsbet_json)
 
 
-def report_release_current(report: str, sportsbet_json: str) -> bool:
-    """The report would pass the release-time firewall right now."""
-    return report_quotes_current(report, sportsbet_json)
-
-
-def report_cache_current(report: str, sportsbet_json: str, extractor_json: str, legacy: bool) -> bool:
+def report_cache_current(report: str, sportsbet_json: str, extractor_json: str) -> bool:
     try:
         with open(report + ".inputs.json", encoding="utf-8") as source:
             cached = json.load(source)
         # Inputs first: a report that must be regenerated is not worth a quote request.
-        return (cached.get("inputs") == report_inputs(sportsbet_json, extractor_json, legacy)
+        return (cached.get("inputs") == report_inputs(sportsbet_json, extractor_json)
                 and cached.get("report") == _file_digest(report)
                 and report_quotes_current(report, sportsbet_json))
     except (OSError, ValueError, AttributeError):
@@ -411,9 +362,7 @@ def report_cache_current(report: str, sportsbet_json: str, extractor_json: str, 
 
 
 def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
-                        date_str: str, game_num: int | None = None,
-                        debug_skip_extractor: bool = False,
-                        legacy: bool = False, banker_search_audit: bool = False) -> bool:
+                        date_str: str, game_num: int | None = None) -> bool:
     prefix = f"Game {game_num}" if game_num else game_tag
     print(f"\n{'='*60}")
     print(f"🏀 [{prefix}] {game_tag} — 開始 Pipeline")
@@ -444,11 +393,8 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
 
     # ── Check if already completed ──
     existing = check_skeleton_exists(target_dir, game_tag)
-    if not banker_search_audit and existing and availability_ready and not debug_skip_extractor and extractor_cache_current(
-        os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
-    ) and report_cache_current(
-        existing, sportsbet_json,
-        os.path.join(target_dir, f"nba_game_data_{game_tag}.json"), legacy,
+    if existing and availability_ready and extractor_cache_current(extractor_json) and report_cache_current(
+        existing, sportsbet_json, extractor_json,
     ):
         print(f"✅ [{prefix}] 已存在合格報告: {os.path.basename(existing)} ({os.path.getsize(existing)} bytes)")
         if os.path.exists(VALIDATE_OUTPUT):
@@ -461,14 +407,8 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
 
     # ── Phase 1A: nba_extractor.py (球員深度數據) ──
     ext_date = date_str.replace("-", "")
-    extractor_json = os.path.join(target_dir, f"nba_game_data_{game_tag}.json")
-
     if availability_ready and os.path.exists(extractor_json) and extractor_cache_current(extractor_json):
         print(f"✅ [{prefix}] Extractor JSON 已存在: {os.path.basename(extractor_json)}")
-    elif debug_skip_extractor:
-        print(f"⚠️ [{prefix}] --debug-skip-extractor: 建立 DEBUG fallback JSON...")
-        print(f"   ❌ 此數據包無 L10 gamelog — 生成嘅報告 **不可用於真實下注**")
-        _create_minimal_extractor_json(sportsbet_json, extractor_json, game_tag)
     else:
         print(f"\n📡 [{prefix}] Phase 1A: 執行 nba_extractor.py 提取球員數據...")
         extractor_ok = run_script(NBA_EXTRACTOR, [
@@ -483,32 +423,18 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
             print(f"   ⛔ 跳過此賽事 — 冇真實 L10 gamelog 不進行分析。")
             return False
 
-    if not debug_skip_extractor:
-        from nba_data_contract import statistics_current
-        with open(extractor_json, encoding="utf-8") as source:
-            current_payload = json.load(source)
-        if not statistics_current(current_payload.get("meta")):
-            print(f"⛔ [{prefix}] 統計來源失敗或單位未驗證，保留重試，唔發布。")
-            return False
-        if not availability_current(current_payload):
-            print(f"⛔ [{prefix}] 傷停／陣容未驗證或已過期，保留重試，唔發布。")
-            return False
+    from nba_data_contract import statistics_current
+    with open(extractor_json, encoding="utf-8") as source:
+        current_payload = json.load(source)
+    if not statistics_current(current_payload.get("meta")):
+        print(f"⛔ [{prefix}] 統計來源失敗或單位未驗證，保留重試，唔發布。")
+        return False
+    if not availability_current(current_payload):
+        print(f"⛔ [{prefix}] 傷停／陣容未驗證或已過期，保留重試，唔發布。")
+        return False
 
-    # ── Phase 1A.5: JSON Schema Validation (Pre-flight for report gen) ──
-    if os.path.exists(VALIDATE_SCHEMA):
-        print(f"\n📋 [{prefix}] Phase 1A.5: JSON Schema 驗證...")
-        schema_ok = run_script(VALIDATE_SCHEMA, [
-            "--extractor", extractor_json,
-            "--sportsbet", sportsbet_json,
-            "--strict",
-        ], label=f"{prefix} Schema Validator")
-        if not schema_ok:
-            print(f"⛔ [{prefix}] Schema 驗證未通過，停止呢場分析。")
-            return False
-
-    # ── Phase 1B: generate_nba_reports.py (Full Analysis) ──
-    debug_prefix = "[DEBUG]_" if debug_skip_extractor else ""
-    analysis_md = os.path.join(target_dir, f"{debug_prefix}Game_{game_tag}_Full_Analysis.md")
+    # ── Phase 1B: nba_engine (Full Analysis + sidecar) ──
+    analysis_md = os.path.join(target_dir, f"Game_{game_tag}_Full_Analysis.md")
     print(f"\n📊 [{prefix}] Phase 1B: 執行 nba_engine 生成分析報告...")
     _report_args = [
         "--sportsbet", sportsbet_json,
@@ -516,7 +442,7 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
         "--output", analysis_md,
     ]
     try:
-        inputs_before = report_inputs(sportsbet_json, extractor_json, legacy)
+        inputs_before = report_inputs(sportsbet_json, extractor_json)
     except OSError as exc:
         print(f"⛔ [{prefix}] 無法核對報告輸入：{exc}")
         return False
@@ -543,7 +469,7 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
             return False
 
     try:
-        if report_inputs(sportsbet_json, extractor_json, legacy) != inputs_before:
+        if report_inputs(sportsbet_json, extractor_json) != inputs_before:
             print(f"⛔ [{prefix}] 報告生成期間輸入已改變，保留重試，唔發布。")
             return False
         cache_path = analysis_md + ".inputs.json"
@@ -557,38 +483,6 @@ def process_single_game(game_tag: str, sportsbet_json: str, target_dir: str,
 
     print(f"\n🎉 [{prefix}] {game_tag} Pipeline 完成！")
     return True
-
-
-def _create_minimal_extractor_json(sportsbet_json: str, output_path: str, game_tag: str) -> bool:
-    try:
-        with open(sportsbet_json, 'r', encoding='utf-8') as f:
-            sb = json.load(f)
-        parts = game_tag.split("_")
-        away_abbr = parts[0] if len(parts) >= 2 else "?"
-        home_abbr = parts[1] if len(parts) >= 2 else "?"
-        unique_players = set()
-        for cat, players in sb.get("player_props", {}).items():
-            for p_name in players.keys():
-                unique_players.add(p_name)
-        minimal = {
-            "meta": {"date": sb.get("extraction_time", ""),
-                     "away": {"name": away_abbr, "abbr": away_abbr},
-                     "home": {"name": home_abbr, "abbr": home_abbr}},
-            "odds": sb.get("game_lines", {}),
-            "injuries": {}, "news": {}, "team_stats": {},
-            "players": {away_abbr: [{"name": p} for p in unique_players], home_abbr: []},
-            "key_defenders": {}, "usage_redistribution": {},
-            "correlation_warnings": {},
-            "_fallback_mode": True,
-            "_note": "Fallback JSON — Sportsbet data only, no L10 gamelog."
-        }
-        with open(output_path, 'w', encoding='utf-8') as f:
-            json.dump(minimal, f, ensure_ascii=False, indent=2)
-        print(f"✅ Fallback extractor JSON: {os.path.basename(output_path)}")
-        return True
-    except Exception as e:
-        print(f"❌ Fallback JSON 建立失敗: {e}")
-        return False
 
 
 # ─── Status Report ──────────────────────────────────────────────────────
@@ -612,8 +506,7 @@ def main():
     if hasattr(sys.stdout, 'reconfigure'):
         sys.stdout.reconfigure(encoding='utf-8', errors='replace')
     parser = argparse.ArgumentParser(
-        description="NBA Wong Choi Pipeline Orchestrator V3.1 — "
-                    "Sportsbet Claw → Extractor → Report → Validator → SGM"
+        description="NBA Wong Choi pipeline: Sportsbet → ESPN extractor → nba_engine → firewall → SGM summary"
     )
     parser.add_argument("--date", help="分析日期 (YYYY-MM-DD)。預設為今日。")
     parser.add_argument("--game", help="只分析指定賽事 (e.g., ATL_NYK)。")
@@ -622,25 +515,13 @@ def main():
     parser.add_argument("--compile-only", action="store_true", help="只執行最終 SGM 編譯。")
     parser.add_argument("--games", nargs="+", help="Compile-only 指定多個已驗證賽事。")
     parser.add_argument("--auto", action="store_true",
-                        help="自動模式 — 跳過確認閘門，用於 NEXT_CMD 循環。")
-    parser.add_argument("--debug-skip-extractor", action="store_true",
-                        help="⚠️ DEBUG ONLY: 跳過 nba_extractor.py（用 Sportsbet fallback）。"
-                             "生成嘅報告標記為 DEBUG_ONLY_DO_NOT_BET。")
-    parser.add_argument("--banker-search-audit", action="store_true",
-                        help="Opt-in isolated true-price banker search; OBSERVE only")
-    parser.add_argument("--legacy", action="store_true",
-                        help="使用舊版 10-Factor 引擎（預設為 Hybrid）")
+                        help="接受但冇作用：排程一直傳呢個 flag（舊 NEXT_CMD 循環）。")
     parser.add_argument("--workers", type=int,
                         default=int(os.environ.get("NBA_PIPELINE_WORKERS", "3")),
                         help="同時處理幾場賽事（預設 3；1 = 串行）。")
     parser.add_argument("--skip-cloudflare-deploy", action="store_true",
                         help="完成分析後唔更新 Cloudflare Dashboard。")
     args = parser.parse_args()
-
-    if args.banker_search_audit and (args.compile_only or args.debug_skip_extractor or args.legacy or args.status or args.list):
-        parser.error("--banker-search-audit requires a normal hybrid analysis run")
-    if args.banker_search_audit:
-        args.skip_cloudflare_deploy = True
 
     if args.games and (not args.compile_only or args.game):
         parser.error("--games requires --compile-only and cannot be combined with --game")
@@ -651,20 +532,10 @@ def main():
         args.date = datetime.datetime.now().strftime("%Y-%m-%d")
 
     print("=" * 60)
-    print("🏀 NBA Wong Choi Pipeline Orchestrator V3.1")
+    print("🏀 NBA Wong Choi Pipeline Orchestrator")
     print(f"📅 目標日期: {args.date}")
     if args.game:
         print(f"🎯 指定賽事: {args.game}")
-    if args.auto:
-        print(f"⚡ 自動模式 (NEXT_CMD)")
-    if args.debug_skip_extractor:
-        print(f"")
-        print(f"{'⚠️'*10}")
-        print(f"⚠️ DEBUG MODE: --debug-skip-extractor 啟用")
-        print(f"❌ 此模式產出嘅報告 **不可用於真實下注**")
-        print(f"📋 原因: Sportsbet-only fallback 無 L10 gamelog, 違反數據完整性要求")
-        print(f"{'⚠️'*10}")
-        print(f"")
     print("=" * 60)
 
     # ── Preflight ──
@@ -782,11 +653,7 @@ def main():
     # `*_{tag}.*` 檔，互不相干，所以用細 pool 並行。結果仍按場次次序收集。
     def _run_game(item):
         idx, game = item
-        return process_single_game(
-            game["tag"], game["sportsbet_json"], target_dir, args.date,
-            game_num=idx, debug_skip_extractor=args.debug_skip_extractor,
-            legacy=args.legacy, banker_search_audit=args.banker_search_audit
-        )
+        return process_single_game(game["tag"], game["sportsbet_json"], target_dir, args.date, game_num=idx)
 
     workers = max(1, min(args.workers, len(games) or 1))
     if workers == 1:
@@ -811,17 +678,16 @@ def main():
     # renewed in place (seconds); only a moved price or stale availability
     # regenerates a report (minutes), and that can expire the others again, so
     # every round re-checks the whole set right before release validation.
-    if not args.debug_skip_extractor:
-        for _ in range(3):
-            stale = [game for game in games if game["tag"] in results["passed"] and not report_release_current(
-                os.path.join(target_dir, f"Game_{game['tag']}_Full_Analysis.md"), game["sportsbet_json"])]
-            if not stale:
-                break
-            for game in stale:
-                tag = game["tag"]
-                if not process_single_game(tag, game["sportsbet_json"], target_dir, args.date, legacy=args.legacy):
-                    results["passed"].remove(tag)
-                    results["failed"].append(tag)
+    for _ in range(3):
+        stale = [game for game in games if game["tag"] in results["passed"] and not report_quotes_current(
+            os.path.join(target_dir, f"Game_{game['tag']}_Full_Analysis.md"), game["sportsbet_json"])]
+        if not stale:
+            break
+        for game in stale:
+            tag = game["tag"]
+            if not process_single_game(tag, game["sportsbet_json"], target_dir, args.date):
+                results["passed"].remove(tag)
+                results["failed"].append(tag)
 
     # ── Summary ──
     print(f"\n{'='*60}")
@@ -853,35 +719,15 @@ def main():
     # ── Status ──
     print_status(target_dir, [g["tag"] for g in games])
 
-    # ── NEXT_CMD for auto-loop (state-aware) ──
     if results["failed"]:
         print(f"\n⚠️ {len(results['failed'])} 場失敗。修復後可重跑。")
-
-    fill_count = _count_fill_residuals(target_dir, results["passed"])
-    release_action = _pipeline_release_action(
-        passed=bool(results["passed"]),
-        failed=bool(results["failed"]) or not sgm_ok,
-        fill_count=fill_count,
-        sgm_exists=os.path.exists(os.path.join(target_dir, "NBA_All_SGM_Report.txt")),
-    )
+    release_action = _release_action(passed=bool(results["passed"]), failed=bool(results["failed"]), sgm_ok=sgm_ok)
     if release_action == "blocked":
         print(
             "\n⛔ NBA 分析未完整通過，Cloudflare Dashboard 唔會更新。"
             "請先修復失敗場次再重跑。"
         )
-    elif release_action == "fill":
-        # Phase 2: LLM needs to fill [FILL] fields
-        print(f"\n📋 [Phase 2] 有 {fill_count} 個 [FILL] 需要 LLM 填寫。")
-        print(f"  👉 讀取每份 Game_*_Full_Analysis.md 並填寫 [FILL] 欄位")
-        print(f"  🔒 嚴禁修改 Python 預填嘅數學數據")
-        print(f"  完成後重新執行 orchestrator:")
-        _next_cmd(args.date, "--compile-only", args.skip_cloudflare_deploy)
-    elif release_action == "compile":
-        # Phase 3: Compile needed
-        print(f"\n📋 所有報告已完成，需要編譯 SGM 匯總。")
-        _next_cmd(args.date, "--compile-only", args.skip_cloudflare_deploy)
-    elif release_action == "deploy":
-        # Pipeline fully complete — no NEXT_CMD
+    else:
         print(f"\n🎉 Pipeline 完全完成！無需進一步操作。")
         run_post_success_cloudflare_deploy(
             source="NBA Wong Choi",
@@ -890,7 +736,7 @@ def main():
         )
 
     completion = "未完成" if release_action == "blocked" else "完成"
-    print(f"\n🎯 [Orchestrator V3.1] Pipeline {completion}！")
+    print(f"\n🎯 [Orchestrator] Pipeline {completion}！")
     print(f"所有報告位於: {target_dir}")
     if release_action == "blocked":
         waiting_only = bool(results["waiting"]) and set(results["waiting"]) == set(results["failed"])
