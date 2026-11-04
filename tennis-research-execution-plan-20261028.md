@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 賽前來源與排程**。仁川次級快照捕捉到3場預定開賽前的單打，仍待完整身份與Sportsbet對應。實際卡入庫缺口對應`running` manifest與`duplicate_active`復原阻擋。唯讀核實鎖無持有人，隔離重播證實只有終局才可走下一次attempt。優先處理中斷收尾，再驗完整賽前樣本。[EXP-11](docs/experiments/EXP-20261104-11-tennis-schedule-capture-run-gap.md)
+
 **2026-11-04 官方場地來源**。7場缺場地的Incheon fixture明示W100，但主表tour為UNKNOWN。當屆官方資料為室外硬地，仍待逐場賽前綁定。Maanshan錯週及同週Heraklion異材質反例已保存。直接原文取得未通過，合格fixture仍為0。[EXP-10](docs/experiments/EXP-20261104-10-tennis-itf-edition-surface.md)
 
 **2026-11-04 場地缺口核對**。現役11月3日58場中54場缺場地，兩套現有resolver都未提供補值。14份公開詳情中5份只有室內標記，1份有材質但身份未對上。唯一精確配對缺場地，新增合格樣本0。[EXP-09](docs/experiments/EXP-20261104-09-tennis-fixture-surface-gap.md)

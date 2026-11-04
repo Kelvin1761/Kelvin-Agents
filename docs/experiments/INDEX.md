@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261104-11](EXP-20261104-11-tennis-schedule-capture-run-gap.md) | 2026-11-04 | Tennis | 仁川賽程實際取得及排程復原重播 | 3場預定賽前單打，Sportsbet入庫0；running manifest與duplicate_active重播已核對 |
 | [EXP-20261104-10](EXP-20261104-10-tennis-itf-edition-surface.md) | 2026-11-04 | Tennis | 官方當屆場地及錯配反例 | 7場Incheon W100候選待逐場綁定，Maanshan錯週與Heraklion同週異材質留證，合格0 |
 | [EXP-20261104-09](EXP-20261104-09-tennis-fixture-surface-gap.md) | 2026-11-04 | Tennis | 現役場地缺口及公開詳情核對 | 58場中54場缺場地，14份公開詳情無同時確認精確event及材質的證據 |
 | [EXP-20261104-08](EXP-20261104-08-tennis-source-native-elo-generation.md) | 2026-11-04 | Tennis | 全量身份群組及來源 namespace Elo 重建 | **兩次冷建置一致**。101527場、四份輸出hash相同。304日來源上下文已核對，889組身份連結待核實，仍待正式來源資格及準確度評估 |
