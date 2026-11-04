@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 發球點數重疊及排程交付**。72,686個雙側組全查，17組同日跨來源線索全部有事實差異。另按匯入賽事版本key找到4組，日期全不同、3組點數不同。仍待逐場來源資格。SIGTERM修正 `fb72eca5` 已完整閘、合併及驗證runtime，續驗實際新賽前入庫。[點數盤點](docs/experiments/EXP-20261104-14-tennis-cross-provider-point-overlap.md) · [排程交付](docs/experiments/EXP-20261104-12-tennis-scheduler-sigterm.md)
+
 **2026-11-04 F10 數學前提**。同一聯合分佈可重現勝負、盤比分、總局數及讓局，192組合成規則及兩組逐局模擬通過。相同勝率的兩組假設得出不同總局數，獨立serve/exposure證據仍是必要條件。F10定價、結算及準確度驗收未開始。[EXP-13](docs/experiments/EXP-20261104-13-tennis-joint-law-math.md)
 
 **2026-11-04 排程中斷修正候選**。SIGTERM隔離重現可留下running紀錄，修正後實際Tennis control-plane測試將attempt 1記為failed並可開attempt 2。23項針對測試及quick通過，完整檢查進行中。現役中斷原因及舊manifest收尾另外核實。[EXP-12](docs/experiments/EXP-20261104-12-tennis-scheduler-sigterm.md)
