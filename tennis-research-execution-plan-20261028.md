@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 官方場地來源**。7場缺場地的Incheon fixture明示W100，但主表tour為UNKNOWN。當屆官方資料為室外硬地，仍待逐場賽前綁定。Maanshan錯週及同週Heraklion異材質反例已保存。直接原文取得未通過，合格fixture仍為0。[EXP-10](docs/experiments/EXP-20261104-10-tennis-itf-edition-surface.md)
+
 **2026-11-04 場地缺口核對**。現役11月3日58場中54場缺場地，兩套現有resolver都未提供補值。14份公開詳情中5份只有室內標記，1份有材質但身份未對上。唯一精確配對缺場地，新增合格樣本0。[EXP-09](docs/experiments/EXP-20261104-09-tennis-fixture-surface-gap.md)
 
 **2026-11-04 身份群組及 Elo 重建**。889個身份群組待核實，28行配對異常對應同日9場來源event。使用獨立actor URI namespace及原生公式，101527場兩次隔離Elo冷建置通過完整性核對，四份輸出hash一致。全304日原文重播，65922場可追到來源賽事網址。來源時鐘、跨provider身份及獨立Sportsbet forward仍須驗收。[EXP-08](docs/experiments/EXP-20261104-08-tennis-source-native-elo-generation.md)
