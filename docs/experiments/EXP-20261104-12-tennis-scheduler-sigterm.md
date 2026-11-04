@@ -17,3 +17,5 @@ Quick檢查全綠。此checkpoint時完整檢查仍運行，候選只存研究�
 從當時主線 `82abbc1c` 建立獨立發佈worktree，只套用 runner及測試兩檔。Central dry-run確認code/full政策及四線同步，沒有installer或Dashboard deploy。新worktree的quick閘通過，正式發佈完整閘已啟動。合併及啟用以其terminal結果及不可變release證據為準。
 
 外置預演及盤點 `tennis-scheduler-release-preflight-v1-20261104/`，manifest SHA256 `ce38f4a79eb6c7e8625c384e8bc60823c9a75c50a3f90dda7b825fd175a3d848`。
+
+三份既有attempt再逐一核對原始hash及鎖，預演前後均未見已知Tennis runner。每份在臨時副本經原生API轉failed，`--force`從attempt 1改選attempt 2。正式manifest未寫入，沒有舊卡重跑。外置預演 `tennis-run-closure-preview-v1-20261104/`，manifest `7a5b933c5f92cb6625d34134b25d7da169024f47f21c7b8f798cb7ae4b98357a`。

@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 F10 數學前提**。同一聯合分佈可重現勝負、盤比分、總局數及讓局，192組合成規則及兩組逐局模擬通過。相同勝率的兩組假設得出不同總局數，獨立serve/exposure證據仍是必要條件。F10定價、結算及準確度驗收未開始。[EXP-13](docs/experiments/EXP-20261104-13-tennis-joint-law-math.md)
+
 **2026-11-04 排程中斷修正候選**。SIGTERM隔離重現可留下running紀錄，修正後實際Tennis control-plane測試將attempt 1記為failed並可開attempt 2。23項針對測試及quick通過，完整檢查進行中。現役中斷原因及舊manifest收尾另外核實。[EXP-12](docs/experiments/EXP-20261104-12-tennis-scheduler-sigterm.md)
 
 **2026-11-04 賽前來源與排程**。仁川次級快照捕捉到3場預定開賽前的單打，仍待完整身份與Sportsbet對應。實際卡入庫缺口對應`running` manifest與`duplicate_active`復原阻擋。唯讀核實鎖無持有人，隔離重播證實只有終局才可走下一次attempt。優先處理中斷收尾，再驗完整賽前樣本。[EXP-11](docs/experiments/EXP-20261104-11-tennis-schedule-capture-run-gap.md)

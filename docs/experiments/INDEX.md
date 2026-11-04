@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261104-13](EXP-20261104-13-tennis-joint-law-math.md) | 2026-11-04 | Tennis | 聯合比分及無限加時原型 | 192合成規則與逐局模擬通過，F10定價仍待資料資格 |
 | [EXP-20261104-12](EXP-20261104-12-tennis-scheduler-sigterm.md) | 2026-11-04 | Tennis | SIGTERM及復原接線 | 真訊號及隔離Tennis入口通過，完整檢查進行中，研究候選 |
 | [EXP-20261104-11](EXP-20261104-11-tennis-schedule-capture-run-gap.md) | 2026-11-04 | Tennis | 仁川賽程實際取得及排程復原重播 | 3場預定賽前單打，Sportsbet入庫0；running manifest與duplicate_active重播已核對 |
 | [EXP-20261104-10](EXP-20261104-10-tennis-itf-edition-surface.md) | 2026-11-04 | Tennis | 官方當屆場地及錯配反例 | 7場Incheon W100候選待逐場綁定，Maanshan錯週與Heraklion同週異材質留證，合格0 |
