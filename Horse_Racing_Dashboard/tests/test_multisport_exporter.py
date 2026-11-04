@@ -1,3 +1,4 @@
+import hashlib
 import json
 import sqlite3
 import sys
@@ -21,6 +22,26 @@ from services.multisport_exporter import (  # noqa: E402
 )
 
 
+def write_nba_report(analysis_dir, tag, price=2.12):
+    """A Full Analysis report plus the bound sidecar the exporter reads."""
+    report = Path(analysis_dir) / f"Game_{tag}_Full_Analysis.md"
+    text = "# 🏀 NBA Wong Choi\n人睇嘅報告；exporter 只讀 sidecar。\n"
+    report.write_text(text, encoding="utf-8")
+    legs = [("Zach LaVine", "CHI", "pts", 24.0, 1.72, 0.74, 0.8), ("Jordan Poole", "WAS", "ast", 4.0, 1.23, 0.82, 0.9)]
+    sidecar = {
+        "schema_version": "nba-market-eval-legs/v1",
+        "report_sha256": hashlib.sha256(text.encode()).hexdigest(),
+        "legs": [{"player": p, "team": t, "market": m, "line": line, "price": o, "p_final": q,
+                  "p_l10_base_rate": l10, "cov": 0.2} for p, t, m, line, o, q, l10 in legs],
+        "combos": [{"combo_id": "1", "heading": f"🛡️ 組合 1: 穩膽 SGM (Low Risk) — 組合賠率 @{price}",
+                    "product_of_leg_prices": price,
+                    "legs": [{"player": p, "team": t, "market": m, "line": line, "price": o, "p_final": q,
+                              "desc": f"{p} ({t}) {m.upper()} {line:g}+"} for p, t, m, line, o, q, _ in legs]}],
+    }
+    Path(str(report) + ".market_legs.json").write_text(json.dumps(sidecar), encoding="utf-8")
+    return report
+
+
 class MultiSportExporterTests(unittest.TestCase):
     def test_nba_exporter_requires_verified_sportsbet_source_and_parses_combo_legs(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -42,21 +63,7 @@ class MultiSportExporterTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            (analysis_dir / "Game_CHI_WAS_Full_Analysis.md").write_text(
-                """# 🏀 NBA Wong Choi — Chicago Bulls @ Washington Wizards
-**日期**: 2026-04-15
-**odds_source**: SPORTSBET_LIVE ✅
-## 🎰 SGM Parlay 組合 (Python Auto-Selection V5)
-### 🛡️ 組合 1: 穩膽 SGM (Low Risk) — 組合賠率 @2.12
-| Leg | 選擇 | 賠率 | L10 | 調整命中率 | EV |
-|---|---|---:|---:|---:|---:|
-| 🧩 1 | Zach LaVine 24+ PTS | @1.72 | 80% | 74% | +5.1% |
-| 🧩 2 | Jordan Poole 4+ AST | @1.23 | 90% | 82% | +2.0% |
-## 📊 球員盤口詳細分析 (Appendix)
-✅ Python 預填完成 | 組合數: 1 | 未填寫項目 殘留: 0 個
-""",
-                encoding="utf-8",
-            )
+            write_nba_report(analysis_dir, "CHI_WAS")
 
             snapshot = export_nba_snapshot(root, target_date="2026-04-15", firewall=nba_no_firewall)
 
@@ -75,10 +82,27 @@ class MultiSportExporterTests(unittest.TestCase):
             self.assertEqual(len(recommendation["legs"]), 2)
             self.assertEqual(recommendation["legs"][0]["odds"], 1.72)
             self.assertIn("Sportsbet_Odds_CHI_WAS.json", recommendation["source_files"])
-            self.assertEqual(banker_leg["selection"], "Zach LaVine 24+ PTS")
+            self.assertEqual(banker_leg["selection"], "Zach LaVine (CHI) PTS 24+")
+            self.assertEqual((banker_leg["player"], banker_leg["stat"], banker_leg["line"]), ("Zach LaVine", "PTS", 24.0))
             self.assertEqual(banker_leg["metrics"]["model_probability"], 0.74)
-            self.assertEqual(banker_leg["metrics"]["expected_value"], 0.051)
+            self.assertEqual(banker_leg["metrics"]["expected_value"], 0.2728)
             self.assertEqual(banker_leg["metrics"]["l10_hit_rate"], 0.8)
+            self.assertEqual(banker_leg["metrics"]["coefficient_of_variation"], 0.2)
+            self.assertEqual(recommendation["risk"], "Low")
+
+    def test_nba_report_whose_sidecar_does_not_match_is_not_exported(self):
+        # The sidecar is the only machine interface; an edited report (or a
+        # sidecar from another run) must never be read as this report's data.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._write_nba_day(root, "2026-10-21")
+            report = root / "2026-10-21 NBA Analysis" / "Game_CHI_WAS_Full_Analysis.md"
+            report.write_text(report.read_text(encoding="utf-8") + "edited\n", encoding="utf-8")
+
+            snapshot = export_nba_snapshot(root, today="2026-10-21", firewall=nba_no_firewall)
+
+            self.assertEqual(snapshot["recommendations"], [])
+            self.assertIn("nba_report_validation_failed:CHI_WAS", snapshot["warnings"])
 
     def test_nba_exporter_blocks_analysis_without_matching_sportsbet_json(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -108,15 +132,7 @@ class MultiSportExporterTests(unittest.TestCase):
         (analysis_dir / f"Sportsbet_Odds_{tag}.json").write_text(
             json.dumps(odds), encoding="utf-8",
         )
-        (analysis_dir / f"Game_{tag}_Full_Analysis.md").write_text(
-            "**odds_source**: SPORTSBET_LIVE ✅\n"
-            "## 🎰 SGM Parlay 組合 (Python Auto-Selection V5)\n"
-            "### 🛡️ 組合 1: 穩膽 SGM (Low Risk) — 組合賠率 @2.12\n"
-            "| 🧩 1 | Zach LaVine 24+ PTS | @1.72 | 80% | 74% | +5.1% |\n"
-            "| 🧩 2 | Jordan Poole 4+ AST | @1.23 | 90% | 82% | +2.0% |\n"
-            "未填寫項目 殘留: 0 個\n",
-            encoding="utf-8",
-        )
+        write_nba_report(analysis_dir, tag)
 
     def test_nba_report_blocked_by_the_publication_firewall_is_not_exported(self):
         # 2026-10-21: all three opening-night reports were BLOCKED by FW-04 and the

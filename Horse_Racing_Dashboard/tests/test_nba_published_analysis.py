@@ -99,14 +99,7 @@ def test_export_recovers_proven_analysis_with_original_joint_probability(tmp_pat
     from services import multisport_exporter as exporter
     folder, dest, meta = snapshot(tmp_path)
     report = dest/'Game_BKN_CLE_Full_Analysis.md'
-    content = '''# NBA
-**odds_source**: SPORTSBET_LIVE
-Python Auto-Selection
-### 🛡️ 組合 1: Banker SGM — 組合賠率 @3.5
-| 🧩 1 | First Player 20+ PTS | @1.8 | 90% | 80% | +10% | +20% |
-| 🧩 2 | Second Player 5+ AST | @2.0 | 80% | 70% | +10% | +20% |
-未填寫項目 殘留: 0
-'''
+    content = '# NBA\n人睇嘅報告；exporter 只讀 sidecar。\n'
     report.write_text(content)
     odds = dest/'Sportsbet_Odds_BKN_CLE.json'
     odds.write_text(json.dumps({'target_analysis_date':'2026-10-25','game_tag':'BKN_CLE',
@@ -114,7 +107,10 @@ Python Auto-Selection
                                'event_start_time':(NOW+timedelta(days=1)).isoformat()}))
     sidecar = dest/'Game_BKN_CLE_Full_Analysis.md.market_legs.json'
     sidecar.write_text(json.dumps({'report_sha256':hashlib.sha256(content.encode()).hexdigest(),
-      'combos':[{'combo_id':'1','adjusted_joint_prob':0.4,'sgm_quote':{'status':'ok','decimal_odds':3.5}}]}))
+      'schema_version':'nba-market-eval-legs/v1',
+      'combos':[{'combo_id':'1','adjusted_joint_prob':0.4,'sportsbet_sgm_price':3.5,'sgm_quote':{'status':'ok','decimal_odds':3.5},
+                 'legs':[{'player':'First Player','market':'pts','line':20.0,'price':1.8,'p_final':0.8,'desc':'First Player PTS 20+'},
+                         {'player':'Second Player','market':'ast','line':5.0,'price':2.0,'p_final':0.7,'desc':'Second Player AST 5+'}]}]}))
     for row in meta['files']:
         path=dest/row['name']
         row.update(bytes=path.stat().st_size,sha256=hashlib.sha256(path.read_bytes()).hexdigest())

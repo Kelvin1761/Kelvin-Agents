@@ -1,3 +1,4 @@
+import hashlib
 import json
 import sqlite3
 import sys
@@ -111,20 +112,18 @@ class SettlementExporterTests(unittest.TestCase):
                 ),
                 encoding="utf-8",
             )
-            (analysis_dir / "Game_CHI_WAS_Full_Analysis.md").write_text(
-                """# 🏀 NBA Wong Choi — Chicago Bulls @ Washington Wizards
-**odds_source**: SPORTSBET_LIVE ✅
-## 🎰 SGM Parlay 組合 (Python Auto-Selection V5)
-### 🛡️ 組合 1: 穩膽 SGM (Low Risk) — 組合賠率 @2.12
-| Leg | 選擇 | 賠率 | L10 | 調整命中率 | EV |
-|---|---|---:|---:|---:|---:|
-| 🧩 1 | Zach LaVine PTS 24+ | @1.72 | 80% | 74% | +5.1% |
-| 🧩 2 | Jordan Poole AST 4+ | @1.23 | 90% | 82% | +2.0% |
-## 📊 球員盤口詳細分析 (Appendix)
-✅ Python 預填完成 | 組合數: 1 | 未填寫項目 殘留: 0 個
-""",
-                encoding="utf-8",
-            )
+            text = "# 🏀 NBA Wong Choi — Chicago Bulls @ Washington Wizards\n"
+            (analysis_dir / "Game_CHI_WAS_Full_Analysis.md").write_text(text, encoding="utf-8")
+            legs = [{"player": "Zach LaVine", "team": "CHI", "market": "pts", "line": 24.0, "price": 1.72,
+                     "p_final": 0.74, "desc": "Zach LaVine (CHI) PTS 24+"},
+                    {"player": "Jordan Poole", "team": "WAS", "market": "ast", "line": 4.0, "price": 1.23,
+                     "p_final": 0.82, "desc": "Jordan Poole (WAS) AST 4+"}]
+            (analysis_dir / "Game_CHI_WAS_Full_Analysis.md.market_legs.json").write_text(json.dumps({
+                "schema_version": "nba-market-eval-legs/v1",
+                "report_sha256": hashlib.sha256(text.encode()).hexdigest(),
+                "legs": legs,
+                "combos": [{"combo_id": "1", "product_of_leg_prices": 2.12, "legs": legs}],
+            }), encoding="utf-8")
             (analysis_dir / "Results_Brief_2026-04-14.json").write_text(
                 json.dumps(
                     {

@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261104-04](EXP-20261104-04-nba-sidecar-only-interface.md) | 2026-11-04 | NBA | Stage 2：dashboard／防火牆／SGM 匯總改為只讀 sidecar，唔再解析 Markdown | **工程重構，模型不變**：27 日 × 3 條匯出路徑 + 55 條 tracking，推薦／價／狀態／腿完全一樣；差異只有 source_row 冇咗、舊腿 CoV→null（舊 sidecar 冇存）、3 條腿 EV 差 1e-4、10-10～15 季前賽冇 sidecar 唔再匯出。Reflector 仍讀 Markdown |
 | [EXP-20261104-03](EXP-20261104-03-tennis-target-tour-lineage.md) | 2026-11-04 | Tennis | 全39人UNKNOWN tour的source接線診斷 | **只讀線索／未修身份**：21人stored tour已知、18人未知；10人來源全名及stored tour同向但仍非ownership。38人normalized receipt亦無已知tour，1人shape未判；13檔已封存 |
 | [EXP-20261104-02](EXP-20261104-02-tennis-te-classification-repair.md) | 2026-11-04 | Tennis | TE 明示tour／draw與fixture歧義防護 | **工程隔離驗證**：34版完整比分parity；33日22712雙側rows、歧義2全留置；71 tests；5ff76919 full0／main／activation已驗，啟用後新receipt0待正常入庫。39人ownership仍0，準確度未證實 |
 | [EXP-20261104-01](EXP-20261104-01-tennis-header-source-correction.md) | 2026-11-04 | Tennis | 獨立更正無link head沿用舊URL的source audit錯誤 | **原歸因撤回／候選未驗收**：9367 URL／4958當前icon；1857 head男女一致。failed matrix及取消full143照保留；先登記明示icon規格，再改候選；未改ruler或證明準確度 |

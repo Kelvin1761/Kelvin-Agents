@@ -1,359 +1,172 @@
 #!/usr/bin/env python3
-import os
-os.environ.setdefault('PYTHONUTF8', '1')
-import sys
-if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+"""NBA_All_SGM_Report.txt + NBA_Banker_Report.txt: the day's formal combos, from the sidecars.
+
+Each game's data comes from ``Game_<tag>_Full_Analysis.md.market_legs.json``, and only when
+its ``report_sha256`` binds it to that report; the Markdown itself is never parsed.
+Nothing machine-reads these two files: people read them, the scheduler snapshot copies them.
+
+  1. NBA_All_SGM_Report.txt — every game: combo 1 (or NO BET and why) + the steady research record
+  2. NBA_Banker_Report.txt  — Top Banker leg per game (highest-EV leg of combo 1) + combo 1 per game
+
+usage: python generate_nba_sgm_reports.py --dir "2026-11-05 NBA Analysis" [--games AAA_BBB ...]
+exit 1 when a selected game has no sidecar bound to its report.
 """
-generate_nba_sgm_reports.py — NBA Wong Choi 最終報告生成器 V3
-
-從 Game_*_Full_Analysis.md 提取組合分析區塊，自動合併生成兩份最終報告：
-  1. NBA_All_SGM_Report.txt — 全日所有場次、所有組合嘊完整 Leg 分析
-  2. NBA_Banker_Report.txt  — 每場組合 1 (穩膽) 完整分析 + Top Banker 速覽 + 跨場 Parlay
-
-V3: Updated for V5 short-leg SGM format (組合 1-3 + 組合 X)
-
-Usage:
-  python generate_nba_sgm_reports.py --dir "2026-04-08 NBA Analysis"
-
-Version: 3.0.0
-"""
-
 import argparse
-import glob
+import hashlib
+import json
+import os
 import re
-import io
+import sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
-from nba_engine.banker import MAX_LEGS, MIN_LEGS
 
-if sys.stdout.encoding != 'utf-8':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-
-def extract_matchup_from_filename(filename):
-    """Extract matchup tag (e.g., 'CHA_BOS') from Game_*_Full_Analysis.md filename."""
-    base = os.path.basename(filename)
-    match = re.search(r'Game_(.+?)_Full_Analysis\.md', base)
-    if match:
-        return match.group(1)
-    return base
+SIDECAR_SUFFIX = ".market_legs.json"
+LABELS = {"pts": "PTS", "reb": "REB", "ast": "AST", "fg3m": "3PM"}
 
 
-def extract_game_header(content):
-    """Extract the game header section (title + 賽事情報)."""
-    lines = content.split('\n')
-    header_lines = []
-    in_header = False
-    for line in lines:
-        if line.startswith('# 🏀') or line.startswith('# '):
-            in_header = True
-        if in_header:
-            header_lines.append(line)
-            if line.strip() == '---' and len(header_lines) > 3:
-                break
-    return '\n'.join(header_lines) if header_lines else ''
-
-
-def extract_combos(content):
-    """Extract all combo sections (### ... 組合 N or 組合 X) with their full leg analysis."""
-    combos = {}
-    lines = content.split('\n')
-    current_combo = None
-    current_lines = []
-    # Match both 組合 1/2/3 and 組合 X (Value Bomb)
-    combo_pattern = re.compile(r'^### .*組合 (\d+|X)')
-
-    for line in lines:
-        m = combo_pattern.match(line)
-        if m:
-            # Save previous combo
-            if current_combo is not None:
-                combos[current_combo] = '\n'.join(current_lines).rstrip()
-            raw_key = m.group(1)
-            current_combo = int(raw_key) if raw_key.isdigit() else raw_key
-            current_lines = [line]
-        elif current_combo is not None:
-            # Check for end markers (next section)
-            if (line.startswith('## ') and not line.startswith('## 🎰')) or line.startswith('# '):
-                combos[current_combo] = '\n'.join(current_lines).rstrip()
-                current_combo = None
-                current_lines = []
-            else:
-                current_lines.append(line)
-
-    # Save last combo
-    if current_combo is not None:
-        combos[current_combo] = '\n'.join(current_lines).rstrip()
-
-    return combos
-
-
-def extract_value_bomb(content):
-    """Extract the Value Bomb section if it exists (### or ## level)."""
-    lines = content.split('\n')
-    bomb_lines = []
-    in_bomb = False
-    for line in lines:
-        if '組合 X' in line and ('💣' in line or 'Value Bomb' in line):
-            in_bomb = True
-        elif in_bomb and (line.startswith('## ') or line.startswith('# ')):
-            # Don't break on ### (same level sub-headings within the bomb section)
-            if not line.startswith('### '):
-                break
-        if in_bomb:
-            bomb_lines.append(line)
-    return '\n'.join(bomb_lines) if bomb_lines else ''
-
-
-def extract_summary(content):
-    """Extract the 總結 section."""
-    lines = content.split('\n')
-    summary_lines = []
-    in_summary = False
-    for line in lines:
-        if '總結' in line and line.startswith('## '):
-            in_summary = True
-        elif in_summary and line.startswith('## '):
-            break
-        if in_summary:
-            summary_lines.append(line)
-    return '\n'.join(summary_lines) if summary_lines else ''
-
-
-def extract_banker_leg(content):
-    """Highest-EV leg inside combo 1 (穩膽), same pick as the dashboard banker.
-
-    The old version searched the summary for "最強一關", a label the report
-    never prints (it writes "最強關"), so the 速覽 table was N/A on every row.
-    "最強關" is also the best leg of the whole game, often a @7.5 long shot, so
-    it must not stand in for the 穩膽 leg — read combo 1's own table instead.
-    """
-    section = extract_combos(content).get(1)
-    if not section:
+def load_game(report: Path):
+    """The report's sidecar, or None when it is missing or not bound to this report."""
+    try:
+        payload = json.loads(Path(str(report) + SIDECAR_SUFFIX).read_text(encoding="utf-8"))
+        digest = hashlib.sha256(report.read_bytes()).hexdigest()
+    except (OSError, ValueError):
         return None
-    best = None
-    for line in section.split('\n'):
-        row = re.match(
-            r'\|\s*🧩\s*\d+\s*\|\s*(.+?)\s*\|\s*@([\d.]+)\s*\|.*\|\s*\+?(-?[\d.]+)%\s*\|[^|]*\|\s*$',
-            line)
-        if not row:
+    return payload if isinstance(payload, dict) and payload.get("report_sha256") == digest else None
+
+
+def _pct(value):
+    return "—" if value is None else f"{100 * value:.1f}%"
+
+
+def _desc(leg):
+    return leg.get("desc") or leg.get("selection") or (
+        f"{leg.get('player')} {LABELS.get(leg.get('market'), leg.get('market'))} {leg.get('line'):g}+")
+
+
+def formal_combo(sidecar):
+    return next((c for c in sidecar.get("combos") or [] if str(c.get("combo_id")) == "1"), None)
+
+
+def banker_leg(sidecar):
+    """Highest-EV leg of combo 1 — the same leg the dashboard calls the banker."""
+    combo = formal_combo(sidecar)
+    legs = [l for l in (combo or {}).get("legs") or [] if l.get("p_final") is not None and l.get("price")]
+    if not legs:
+        return None
+    best = max(legs, key=lambda l: l["p_final"] * l["price"] - 1)
+    return f"{_desc(best)} @{best['price']:g} (EV {100 * (best['p_final'] * best['price'] - 1):+.1f}%)"
+
+
+def combo_lines(sidecar):
+    combo = formal_combo(sidecar)
+    if not combo:
+        reason = (sidecar.get("selection_diagnostics") or {}).get("no_bet_reason", "no_combo")
+        return [f"🛡️ 組合 1: NO BET — {reason}"]
+    price = combo.get("sportsbet_sgm_price") or combo.get("product_of_leg_prices")
+    joint = combo.get("adjusted_joint_prob")
+    out = [combo.get("heading") or f"🛡️ 組合 1 — 組合賠率 @{price}",
+           f"   模型組合命中率 {_pct(joint)} | 真實 SGM 報價 @{price} | 模型 EV "
+           + ("—" if joint is None or not price else f"{100 * (joint * price - 1):+.1f}%")]
+    reference = {(l.get("player"), l.get("market"), l.get("line")): l for l in sidecar.get("legs") or []}
+    for i, leg in enumerate(combo.get("legs") or [], 1):
+        l10 = reference.get((leg.get("player"), leg.get("market"), leg.get("line")), {}).get("p_l10_base_rate")
+        out.append(f"   🧩 {i} {_desc(leg)} @{leg.get('price'):g} | 模型 {_pct(leg.get('p_final'))} | L10 {_pct(l10)}")
+    return out
+
+
+def research_lines(sidecar):
+    out = []
+    for item in sidecar.get("review_candidates") or []:
+        if not isinstance(item, dict) or item.get("candidate_id") != "steady":
             continue
-        desc, odds, ev = row.group(1), row.group(2), float(row.group(3))
-        if best is None or ev > best[0]:
-            best = (ev, desc, odds)
-    if best is None:
-        return None
-    ev, desc, odds = best
-    return f'{desc} @{odds} (EV {ev:+.1f}%)'
+        price = "未報價" if item.get("odds") is None else f"@{item['odds']:g}"
+        out.append(f"   📎 {item.get('label', '研究記錄')}（OBSERVE，唔係投注）{price} | "
+                   f"模型 {_pct(item.get('model_probability'))} | "
+                   + "、".join(_desc(leg) for leg in item.get("legs") or []))
+    return out
 
 
-def quoted_combo_count(combos):
-    return sum("Sportsbet SGM 報價" in section and "**@" in section for section in combos.values())
+def display(tag):
+    return tag.replace("_", " @ ")
 
 
-def generate_all_sgm_report(games_data, analysis_date):
-    """Generate the All SGM Report with full leg analysis for every combo."""
-    lines = []
-    lines.append(f'# 🏀 NBA Wong Choi 全日 SGM 完整分析報告 (V5 Short-Leg)')
-    lines.append(f'# 📅 日期: {analysis_date} | 總場次: {len(games_data)}')
-    if any(game.get('shadow') for game in games_data):
-        lines.append('# ⛔ NO BET — PRESEASON SHADOW ONLY：歷史參考組合，禁止投注。')
-    lines.append(f'# 📋 此報告包含每個 Leg 嘊完整數理引擎 + 邏輯引擎分析')
-    lines.append('')
-
-    for game in games_data:
-        tag = game['tag']
-        lines.append('=' * 60)
-        lines.append(f'## {tag.replace("_", " @ ")}')
-        lines.append('=' * 60)
-        lines.append('')
-
-        # Add all combos with full analysis
-        for combo_num in (key for key in game['combos'] if str(key) == '1'):
-            combo_content = game['combos'][combo_num]
-            # Remove the leading ## to make it fit under the game section
-            lines.append(combo_content)
-            lines.append('')
-
-        # Add Value Bomb if exists
-        # Value/high/bomb strategies are retired from new formal reports.
-
-        # Add summary
-        if game.get('summary'):
-            lines.append(game['summary'])
-            lines.append('')
-
-        lines.append('')
-
-    # Footer stats
-    lines.append('=' * 60)
-    lines.append('# 📊 全日統計')
-    lines.append('=' * 60)
-    total_combos = sum(quoted_combo_count(g['combos']) for g in games_data)
-    total_vb = sum(1 for g in games_data if g.get('value_bomb'))
-    lines.append(f'總場次: {len(games_data)}')
-    lines.append(f'已報價 SGM 組合數: {total_combos}')
-    lines.append(f'Value Bomb: {total_vb} 場')
-    lines.append('')
-
-    return '\n'.join(lines)
+def all_sgm_report(games, analysis_date):
+    lines = ["# 🏀 NBA Wong Choi 全日 SGM 報告", f"# 📅 日期: {analysis_date} | 總場次: {len(games)}"]
+    if any(g["sidecar"].get("season_phase") == "PRESEASON" for g in games):
+        lines.append("# ⛔ NO BET — PRESEASON SHADOW ONLY：歷史參考組合，禁止投注。")
+    lines.append("")
+    for game in games:
+        lines += ["=" * 60, f"## {display(game['tag'])}", "=" * 60]
+        lines += combo_lines(game["sidecar"]) + research_lines(game["sidecar"]) + [""]
+    quoted = sum(bool(formal_combo(g["sidecar"])) for g in games)
+    lines += ["=" * 60, "# 📊 全日統計", "=" * 60, f"總場次: {len(games)}", f"已報價 SGM 組合數: {quoted}", ""]
+    return "\n".join(lines)
 
 
-def generate_banker_report(games_data, analysis_date):
-    """Generate the Banker Report with combo 1 full analysis + top banker table."""
-    lines = []
-    lines.append(f'# 🛡️ NBA Wong Choi 全日穩膽 Banker 完整分析報告 (V5 Short-Leg)')
-    lines.append(f'# 📅 日期: {analysis_date} | 總場次: {len(games_data)}')
-    if any(game.get('shadow') for game in games_data):
-        lines.append('# ⛔ NO BET — PRESEASON SHADOW ONLY：歷史參考組合，禁止投注。')
-    lines.append(f'# 策略: 收錄每場組合 1 (Banker SGM {MIN_LEGS}-{MAX_LEGS} Legs，含明示 fallback) 嘊完整 Leg 分析')
-    lines.append('')
-
-    # Section 1: Top Banker Legs quick reference
-    lines.append('=' * 60)
-    lines.append('## 📋 全日 Top Banker Legs 速覽')
-    lines.append('=' * 60)
-    lines.append('')
-    lines.append('| # | 場次 | Banker Leg | 來源 |')
-    lines.append('|---|------|-----------|------|')
-
-    for i, game in enumerate(games_data, 1):
-        tag_display = tag_to_display(game['tag'])
-        banker = game.get('banker_leg', 'N/A')
-        lines.append(f'| {i} | {tag_display} | {banker} | 組合 1 |')
-
-    lines.append('')
-
-    # Section 2: Full combo 1 analysis per game
-    lines.append('=' * 60)
-    lines.append('## 🏆 逐場穩膽 SGM 完整分析')
-    lines.append('=' * 60)
-    lines.append('')
-
-    for game in games_data:
-        tag = game['tag']
-        lines.append('-' * 50)
-        lines.append(f'### {tag.replace("_", " @ ")}')
-        lines.append('-' * 50)
-        lines.append('')
-
-        if 1 in game['combos']:
-            lines.append(game['combos'][1])
-        else:
-            lines.append('⚠️ 本場冇組合 1 (穩膽) 數據')
-        lines.append('')
-
-    # Section 3: Risk notes
-    lines.append('=' * 60)
-    lines.append('## ⚠️ 全日風險提示')
-    lines.append('=' * 60)
-    lines.append('')
-    for game in games_data:
-        summary = game.get('summary', '')
-        if '風險' in summary or 'Risk' in summary or '⚠️' in summary:
-            lines.append(f'- {tag_to_display(game["tag"])}: 見完整分析')
-
-    lines.append('')
-    return '\n'.join(lines)
-
-
-def tag_to_display(tag):
-    """Convert CHA_BOS to CHA@BOS."""
-    parts = tag.split('_')
-    if len(parts) == 2:
-        return f'{parts[0]}@{parts[1]}'
-    return tag
+def banker_report(games, analysis_date):
+    lines = ["# 🛡️ NBA Wong Choi 全日穩膽 Banker 報告", f"# 📅 日期: {analysis_date} | 總場次: {len(games)}"]
+    if any(g["sidecar"].get("season_phase") == "PRESEASON" for g in games):
+        lines.append("# ⛔ NO BET — PRESEASON SHADOW ONLY：歷史參考組合，禁止投注。")
+    lines += ["", "=" * 60, "## 📋 全日 Top Banker Legs 速覽", "=" * 60, "",
+              "| # | 場次 | Banker Leg | 來源 |", "|---|------|-----------|------|"]
+    for i, game in enumerate(games, 1):
+        lines.append(f"| {i} | {game['tag'].replace('_', '@')} | {banker_leg(game['sidecar']) or 'N/A'} | 組合 1 |")
+    lines += ["", "=" * 60, "## 🏆 逐場穩膽 SGM", "=" * 60, ""]
+    for game in games:
+        lines += ["-" * 50, f"### {display(game['tag'])}", "-" * 50] + combo_lines(game["sidecar"]) + [""]
+    return "\n".join(lines)
 
 
 def main():
-    parser = argparse.ArgumentParser(description='NBA Wong Choi SGM Report Generator')
-    parser.add_argument('--dir', required=True, help='Path to the NBA Analysis directory')
-    parser.add_argument('--date', default=None, help='Analysis date (auto-detected from dir name)')
-    parser.add_argument('--games', nargs='+', help='Only compile these validated game tags')
+    parser = argparse.ArgumentParser(description="NBA Wong Choi SGM summary reports (from sidecars)")
+    parser.add_argument("--dir", required=True, help="Path to the NBA Analysis directory")
+    parser.add_argument("--date", default=None, help="Analysis date (default: from the directory name)")
+    parser.add_argument("--games", nargs="+", help="Only compile these validated game tags")
     args = parser.parse_args()
 
-    target_dir = args.dir
-    if not os.path.isdir(target_dir):
-        print(f'❌ 目錄不存在: {target_dir}')
-        sys.exit(1)
-
-    # Auto-detect date from directory name
-    analysis_date = args.date
-    if not analysis_date:
-        dir_name = os.path.basename(os.path.normpath(target_dir))
-        date_match = re.match(r'(\d{4}-\d{2}-\d{2})', dir_name)
-        if date_match:
-            analysis_date = date_match.group(1)
-        else:
-            analysis_date = 'Unknown'
-
-    # Find all game analysis files
-    pattern = os.path.join(target_dir, 'Game_*_Full_Analysis.md')
-    files = sorted(glob.glob(pattern))
+    target = Path(args.dir)
+    if not target.is_dir():
+        print(f"❌ 目錄不存在: {target}")
+        return 1
+    match = re.match(r"(\d{4}-\d{2}-\d{2})", target.resolve().name)
+    analysis_date = args.date or (match.group(1) if match else "Unknown")
 
     if args.games:
-        if any(not re.fullmatch(r'[A-Z]{2,4}_[A-Z]{2,4}', tag) for tag in args.games):
-            parser.error('Invalid game tag')
-        files = [os.path.join(target_dir, f'Game_{tag}_Full_Analysis.md') for tag in dict.fromkeys(args.games)]
-        if any(not os.path.isfile(path) for path in files):
-            parser.error('Selected game report is missing')
+        if any(not re.fullmatch(r"[A-Z]{2,4}_[A-Z]{2,4}", tag) for tag in args.games):
+            parser.error("Invalid game tag")
+        reports = [target / f"Game_{tag}_Full_Analysis.md" for tag in dict.fromkeys(args.games)]
+        if any(not path.is_file() for path in reports):
+            parser.error("Selected game report is missing")
+    else:
+        reports = sorted(target.glob("Game_*_Full_Analysis.md"))
+    if not reports:
+        print(f"⚠️ 搵唔到任何 Game_*_Full_Analysis.md 喺 {target}")
+        return 1
 
-    if not files:
-        print(f'⚠️ 搵唔到任何 Game_*_Full_Analysis.md 喺 {target_dir}')
-        sys.exit(1)
+    games, unbound = [], []
+    for report in reports:
+        tag = re.match(r"Game_(.+?)_Full_Analysis\.md$", report.name).group(1)
+        sidecar = load_game(report)
+        if sidecar is None:
+            unbound.append(tag)
+            continue
+        games.append({"tag": tag, "sidecar": sidecar})
+        print(f"  📖 {tag}: {'組合 1 已報價' if formal_combo(sidecar) else 'NO BET'} | Banker: {banker_leg(sidecar) or 'N/A'}")
+    if unbound:
+        print(f"⛔ sidecar 缺失或者對唔上報告: {', '.join(unbound)}；唔生成匯總報告。")
+        return 1
 
-    print(f'📂 掃描目錄: {target_dir}')
-    print(f'📅 分析日期: {analysis_date}')
-    print(f'📄 搵到 {len(files)} 場賽事分析')
-
-    # Process each game file
-    games_data = []
-    for fpath in files:
-        tag = extract_matchup_from_filename(fpath)
-        print(f'  📖 讀取: {os.path.basename(fpath)}')
-
-        with open(fpath, 'r', encoding='utf-8') as f:
-            content = f.read()
-
-        combos = extract_combos(content)
-        value_bomb = extract_value_bomb(content)
-        summary = extract_summary(content)
-        banker_leg = extract_banker_leg(content)
-
-        priced_count = quoted_combo_count(combos)
-        print(f'    ✅ 已報價 SGM: {priced_count} 個（分析欄目 {len(combos)} 個） | Value Bomb: {"有" if value_bomb else "冇"} | Banker: {banker_leg[:40] if banker_leg else "N/A"}')
-
-        games_data.append({
-            'tag': tag,
-            'shadow': '**season_phase**: PRESEASON' in content,
-            'combos': combos,
-            'value_bomb': value_bomb,
-            'summary': summary,
-            'banker_leg': banker_leg or 'N/A',
-        })
-
-    # Generate reports
-    print(f'\n📝 生成報告中...')
-
-    # All SGM Report
-    all_sgm = generate_all_sgm_report(games_data, analysis_date)
-    all_sgm_path = os.path.join(target_dir, 'NBA_All_SGM_Report.txt')
-    with open(all_sgm_path, 'w', encoding='utf-8') as f:
-        f.write(all_sgm)
-    print(f'  ✅ NBA_All_SGM_Report.txt ({len(all_sgm)} bytes)')
-
-    # Banker Report
-    banker = generate_banker_report(games_data, analysis_date)
-    banker_path = os.path.join(target_dir, 'NBA_Banker_Report.txt')
-    with open(banker_path, 'w', encoding='utf-8') as f:
-        f.write(banker)
-    print(f'  ✅ NBA_Banker_Report.txt ({len(banker)} bytes)')
-
-    print(f'\n🏆 完成！報告已生成至:')
-    print(f'  📄 {all_sgm_path}')
-    print(f'  📄 {banker_path}')
+    for name, text in (("NBA_All_SGM_Report.txt", all_sgm_report(games, analysis_date)),
+                       ("NBA_Banker_Report.txt", banker_report(games, analysis_date))):
+        path = target / name
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, path)
+        print(f"  ✅ {name} ({len(text.encode())} bytes)")
+    return 0
 
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,8 +1,10 @@
 """Write one game's analysis: Game_<tag>_Full_Analysis.md and its .market_legs.json sidecar.
 
-The sidecar is the machine contract (ledger, reflector, dashboard read it); the Markdown is
-for people. The Markdown keeps the headings and leg-row shape the dashboard parses:
-``### 🛡️ 組合 1 ... 組合賠率 @<SGM price>`` and ``| 🧩 1 | <desc> | @<price> | ...``.
+The sidecar is the machine contract: the dashboard, publication firewall, ledger and SGM
+summary read only it (bound to the report by ``report_sha256``). The Markdown is for people.
+One exception remains: the reflector (``nba_reflector_orchestrator.parse_combo_table_rows``,
+``verify_props_hits``) still reads the ``| 🧩 1 | <desc> | @<price> | ...`` leg rows, so keep
+that row shape until it reads the sidecar too.
 Every probability shown is ``Leg.p_final`` (MS, or C when S is unavailable).
 """
 from __future__ import annotations
@@ -41,6 +43,11 @@ def leg_row(i: int, leg: Leg) -> str:
             f"{100 * (p - leg.market):+.1f}% | {100 * (p * leg.price - 1):+.1f}% | CoV {leg.cov:.2f} |")
 
 
+def heading(combo, price) -> str:
+    """Combo 1's title line; the sidecar carries it so nobody parses it from the Markdown."""
+    return f"🛡️ 組合 1: Banker SGM（{len(combo)} Legs）— 組合賠率 @{price:g}"
+
+
 def render(odds, package, legs, combo, quote, diagnostics, paused=None) -> str:
     meta = package.get("meta") or {}
     out = [f"# 🏀 {odds['away_team']} @ {odds['home_team']} — NBA Wong Choi", "",
@@ -58,7 +65,7 @@ def render(odds, package, legs, combo, quote, diagnostics, paused=None) -> str:
     price = (quote or {}).get("decimal_odds")
     if combo and price:
         p = joint(combo)
-        out += [f"### 🛡️ 組合 1: Banker SGM（{len(combo)} Legs）— 組合賠率 @{price:g}", "",
+        out += [f"### {heading(combo, price)}", "",
                 f"揀法：{diagnostics.get('rule')} | 模型組合命中率 {_pct(p)} | 真實 SGM 報價 @{price:g} | "
                 f"模型 EV {100 * (p * price - 1):+.1f}%" + ("（模型預期 EV 為負）" if p * price <= 1 else ""), "",
                 "| # | 選項 | 賠率 | L10 命中 | 模型機率 | Edge | EV | 波幅 |",
@@ -119,6 +126,7 @@ def sidecar(report_text, odds, package, legs, combo, quote, diagnostics) -> dict
         p = round(joint(combo), 10)
         combos.append({
             "combo_id": "1", "selection_rule": diagnostics.get("rule"),
+            "heading": heading(combo, quote["decimal_odds"]),
             "legs": [{"market_type": "PLAYER_MILESTONE", "player": l.player, "team": l.team,
                       "market": MARKET[l.stat], "line": l.line, "side": "over", "price": l.price,
                       "p_final": round(l.p_final, 4), "desc": l.desc} for l in combo],
@@ -138,7 +146,7 @@ def sidecar(report_text, odds, package, legs, combo, quote, diagnostics) -> dict
         "legs": [{"player": l.player, "team": l.team, "market": MARKET[l.stat], "line": l.line, "side": "over",
                   "price": l.price, "p_final": _round(l.p_final), "p_market": _round(l.market),
                   "p_c": _round(l.p_c), "p_s": _round(l.p_s), "p_ms": _round(l.p_ms),
-                  "p_l10_base_rate": l.hit_l10, "hit_l5": l.hit_l5, "availability": l.availability,
+                  "p_l10_base_rate": l.hit_l10, "hit_l5": l.hit_l5, "cov": l.cov, "availability": l.availability,
                   "flags": l.flags, "engine": ENGINE_ID, "probability_model_id": model_id,
                   "picked": (l.player, l.stat, l.line) in picked,
                   "picked_in": ["1"] if (l.player, l.stat, l.line) in picked else []} for l in legs],

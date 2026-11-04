@@ -15,16 +15,13 @@ TAG='BOS_NYK'
 def publication(root, name='first', price=2.5, probability=.6, role='production', created='2026-10-24T09:00:00+00:00',day=DAY):
     folder=root/f'{day} NBA Analysis'/'_prediction_snapshots'/name
     folder.mkdir(parents=True)
-    text=f'''SPORTSBET_LIVE Python Auto-Selection
-### 組合 1: 穩膽 SGM — 組合賠率 @{price}
-| 🧩 1 | First Player 20+ PTS | @1.5 | 80% | 80% | +10% | +20% |
-| 🧩 2 | Second Player 6+ REB | @1.5 | 80% | 80% | +10% | +20% |
-未填寫項目 殘留: 0
-'''
+    text=f'# {name} report (people read this; tracking reads the sidecar)\n'
+    legs=[{'player':p,'market':m,'line':line,'price':1.5,'p_final':.8,'desc':f'{p} {m.upper()} {line}+'}
+          for p,m,line in (('First Player','pts',20.0),('Second Player','reb',6.0))]
     files={f'Game_{TAG}_Full_Analysis.md':text,
            f'Sportsbet_Odds_{TAG}.json':json.dumps({'event_start_time':'2026-10-24T23:00:00+00:00'}),
            f'nba_game_data_{TAG}.json':'{}',
-           f'Game_{TAG}_Full_Analysis.md.market_legs.json':json.dumps({'report_sha256':hashlib.sha256(text.encode()).hexdigest(),'combos':[{'combo_id':'1','adjusted_joint_prob':probability,'sgm_quote':{'status':'ok','decimal_odds':price},'legs':[]}]})}
+           f'Game_{TAG}_Full_Analysis.md.market_legs.json':json.dumps({'report_sha256':hashlib.sha256(text.encode()).hexdigest(),'combos':[{'combo_id':'1','adjusted_joint_prob':probability,'sportsbet_sgm_price':price,'sgm_quote':{'status':'ok','decimal_odds':price},'legs':legs}]})}
     for filename,content in files.items():(folder/filename).write_text(content)
     (folder/'manifest.json').write_text(json.dumps({'sport':'nba','target_date':day,'append_only':True,'snapshot_role':role,'created_at':created,'game_tags':[TAG],'files':[{'name':k,'bytes':len(v.encode()),'sha256':hashlib.sha256(v.encode()).hexdigest()} for k,v in files.items()]}))
     return folder
@@ -229,10 +226,8 @@ def test_steady_policy_without_formal_combo_falls_back_to_research(tmp_path,monk
     monkeypatch.setattr(latest,'_review_price',lambda candidate,odds:(2.4,'expired'))
     folder=research_publication(tmp_path)
     _patch_sidecar(folder,strategy_profile='banker-steady-b2-v1')
-    report=folder/f'Game_{TAG}_Full_Analysis.md'
-    text=report.read_text().replace('組合賠率 @2.5','組合賠率 待定');report.write_text(text)
     side=folder/f'Game_{TAG}_Full_Analysis.md.market_legs.json'
-    data=json.loads(side.read_text());data['report_sha256']=hashlib.sha256(text.encode()).hexdigest();side.write_text(json.dumps(data))
+    data=json.loads(side.read_text());data['combos']=[];side.write_text(json.dumps(data))
     manifest=folder/'manifest.json';meta=json.loads(manifest.read_text())
     for row in meta['files']:
         path=folder/row['name'];row.update(bytes=path.stat().st_size,sha256=hashlib.sha256(path.read_bytes()).hexdigest())
