@@ -207,13 +207,35 @@ def bet_list(day: str, which: str = "first") -> str | None:
     return head + "\n\n" + "\n\n".join(blocks)
 
 
+# 退出馬扣減（EXP-20261104-10 揸到）：落注之後先退出嘅馬，Sportsbet 定額注中咗要按佢扣減派彩。
+# 真實扣減表冇喺 repo，用近似 = 退出馬隱含機率（位注：1/位賠 ÷ 派位數），上限 75%，
+# 報告標明係估算。唔扣嘅話，有遲退出嘅場次 ROI 會報好過實際（研究入面令早價 value 注假 +18%）。
+DEDUCTION_CAP = 0.75
+
+
+def scratch_deduction(prices: dict, finished: dict, places: int) -> float:
+    """落注嗰刻價表入面、但賽果冇嘅馬 = 遲退出 → 位注派彩扣減比例（0–DEDUCTION_CAP）。"""
+    idx = 0 if MODE == "win" else 1
+    total = 0.0
+    for num, p in prices.items():
+        if num in finished:
+            continue
+        try:
+            odds = float(p[idx])
+        except (TypeError, ValueError, IndexError):
+            continue
+        if odds > 1.0:
+            total += 1.0 / odds
+    return min(DEDUCTION_CAP, total / max(1, places))
+
+
 def settle(day: str) -> str | None:
     # ⚠️ 用 `last`（當朝）嘅價結算 —— 因為落注時機係當朝。用晚更價結算會報一個
     # 你實際上冇落到嘅價。
 
     """結算：命中、ROI（全日同逐個馬場）。⚠️ 用賽果檔嘅 SP，所以係精確嘅。"""
     rows, tot_stake, tot_ret = [], 0.0, 0.0
-    refunds, unsettled, stale_tags = [], [], set()
+    refunds, unsettled, stale_tags, deducted = [], [], set(), []
     for folder in _folders(day):
         res = folder / "Race_Results_Reflector.md"
         if not res.exists():
@@ -234,6 +256,8 @@ def settle(day: str) -> str | None:
         for r in race_rows:
             pays = _R.places_paid(_R.field_size(folder, r["race"]))
             placings = finish.get(r["race"]) or {}
+            ded = scratch_deduction(odds_at(folder, r["race"], "last")[1], placings, pays) \
+                if placings and MODE != "win" else 0.0
             for num, name, odds in r["bets"]:
                 # ⚠️ 賽果檔冇呢隻馬 ≠ 佢跑輸咗。兩個成因要分開，因為一個要退錢，
                 # 另一個係我哋唔知結果：
@@ -255,7 +279,9 @@ def settle(day: str) -> str | None:
                 if hit:
                     # ⚠️ 派彩用**落注嗰刻捕捉嘅位賠**（固定賠率），唔係 SP。
                     got = sp.get(r["race"], {}).get(num, odds) if MODE == "win" \
-                        else odds
+                        else 1.0 + (odds - 1.0) * (1.0 - ded)
+                    if ded:
+                        deducted.append((r["race"], name, ded))
                     m_ret += STAKE * got
                     hits.append((r["race"], name, got, fin))
         if not m_stake:
@@ -279,6 +305,10 @@ def settle(day: str) -> str | None:
                    + ("…" if len(refunds) > 4 else ""))
     if unsettled:
         out.append(f"⏳ {len(unsettled)} 注仲未有賽果，未計入")
+    if deducted:
+        out.append(f"✂️ {len(deducted)} 注中咗但有遲退出馬，派彩已扣減（估算）："
+                   + "、".join(f"R{a} {b} −{100 * c:.0f}%" for a, b, c in deducted[:4])
+                   + ("…" if len(deducted) > 4 else ""))
     if stale_tags:
         out.append(f"⚠️ 部分場次用緊非早更快照（{'、'.join(sorted(stale_tags))}）"
                    " —— 即係話呢批注嘅價其實係前一晚嘅")

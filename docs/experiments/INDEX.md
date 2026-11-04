@@ -387,3 +387,4 @@
 - [EXP-20261103-16](EXP-20261103-16-nba-forward-tests-closed.md) — NBA 全部 forward／shadow 測試（MS1–3、S_v4、季初保護、Q/P 上場率、落注時間、B0/B1 shadow、fit A）隨 nba_engine 重寫中止，**冇判決**；記低中止時進度
 - [EXP-20261104-02](EXP-20261104-02-au-engine-core-split-narrative.md) — `engine_core.py` 拆出 `narrative.py`（64 個純報告 method，AST 呼叫圖證實評分路徑去唔到；4,734 → 3,557 行）；引擎指紋改為包晒成個 AU package（以前漏咗 6 個維度模組）並重新 calibrate。分數、文字、dashboard payload 全部零差。
 - [EXP-20261104-10](EXP-20261104-10-au-betting-edge-results.md) — AU 點樣贏錢：模型對市場**冇**額外資訊（6 個市場 Δlogloss CI 全部跨零）；Sportsbet 定額乜規則都蝕（熱門 −5% 至 −11%），Betfair BSP 同樣規則 ≈ 打和；冇場次類型要避開；Kelly = 0。揸到退出馬扣減陷阱（未扣時假 +18%）同 `au_betting` 結算冇扣減。
+- [EXP-20261104-12](EXP-20261104-12-au-betting-settlement-scratch-deductions.md) — §7：`au_betting.settle` 加退出馬扣減（估算：Σ1/退出馬位賠 ÷ 派位數）。08-13..11-03 共 1,896 注，106 注中咗有遲退出；ROI −21.82% → −23.59%，以前每日結算報好咗 1.8pp。
