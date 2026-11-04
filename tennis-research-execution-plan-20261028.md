@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-05 現役排程終局核對**。正常18:00 daily 喺 settle 收到終止後正式落 failed。新 TE 收據有424條現存雙側履歷行，未出新賽前卡，訊號來源待查。[EXP-01](docs/experiments/EXP-20261105-01-tennis-scheduled-termination-verification.md)
+
 **2026-11-04 舊收據重連**。126個倒序引用對到116個無版本觀測嘅legacy ID。舊writer可覆寫點數及原文ID而保留建立時間，支持逐版本原文驗證。[EXP-22](docs/experiments/EXP-20261104-22-tennis-legacy-receipt-relink.md)
 
 **2026-11-04 完成比分收據**。9場198個版本引用全部原文抓取早於定價，但126個現存履歷入庫時間更早，不能代替對應原文版本抓取時間。仍缺逐場完場時計。[EXP-21](docs/experiments/EXP-20261104-21-tennis-terminal-receipt-clocks.md)

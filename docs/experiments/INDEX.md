@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261105-01](EXP-20261105-01-tennis-scheduled-termination-verification.md) | 2026-11-05 | Tennis | 現役排程真實中斷終局 | 18:00 settle 中斷正確落 failed，有 TE receipt，無新卡 |
 | [EXP-20261104-22](EXP-20261104-22-tennis-legacy-receipt-relink.md) | 2026-11-04 | Tennis | 舊履歷收據重連 | 116個倒序ID全屬無觀測legacy，定位舊writer機制 |
 | [EXP-20261104-21](EXP-20261104-21-tennis-terminal-receipt-clocks.md) | 2026-11-04 | Tennis | 完成比分收據時間 | 198引用抓取早於定價，126入庫時鐘早於現存收據 |
 | [EXP-20261104-20](EXP-20261104-20-tennis-serve-profile-parity.md) | 2026-11-04 | Tennis | 原發球 profile 聚合重播 | 9場18份逐欄一致，曝光差已量，合格0 |
