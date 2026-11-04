@@ -8,7 +8,8 @@ off-season/preseason states.
 from __future__ import annotations
 
 import json
-from datetime import datetime
+import sys
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,7 @@ LEGACY_PHASE_MAP = {
 
 
 def load_season_config() -> dict[str, Any]:
+    """Hand-written fallback, used only when ESPN's calendar cannot be read."""
     path = Path(__file__).resolve().parent / "nba_wong_choi" / "resources" / "nba_season_config.json"
     try:
         return json.loads(path.read_text(encoding="utf-8"))
@@ -39,10 +41,79 @@ def load_season_config() -> dict[str, Any]:
         return {}
 
 
-def _parse_date(value: Any) -> datetime:
-    text = str(value or "")[:10]
+# ESPN publishes each season's official windows (core API season "types"). Times are
+# US-midnight boundaries in UTC; a Sydney date D carries the US games of D - 1.
+ESPN_TYPE_URL = "https://sports.core.api.espn.com/v2/sports/basketball/leagues/nba/seasons/{year}/types/{type_id}"
+ESPN_TYPES = {"preseason": 1, "regular": 2, "playoffs": 3, "play_in": 5}
+EARLY_REGULAR_DAYS = 26     # first ~4 weeks of the regular season are EARLY_REGULAR
+LATE_REGULAR_DAYS = 18      # last ~2.5 weeks are LATE_REGULAR
+CALENDAR_MAX_AGE = timedelta(days=7)
+_ESPN_MEMO: dict[int, dict[str, Any] | None] = {}
+
+
+def _sydney_window(payload: dict[str, Any]) -> tuple[date, date]:
+    """(first, last) Sydney game date of one ESPN season type."""
+    from zoneinfo import ZoneInfo
+    eastern = ZoneInfo("America/New_York")
+    parse = lambda text: datetime.fromisoformat(str(text).replace("Z", "+00:00"))  # noqa: E731
+    first_us = (parse(payload["startDate"]) + timedelta(hours=12)).astimezone(eastern).date()
+    last_us = (parse(payload["endDate"]) - timedelta(hours=12)).astimezone(eastern).date()
+    return first_us + timedelta(days=1), last_us + timedelta(days=1)
+
+
+def espn_season_config(day: datetime, *, get=None) -> dict[str, Any] | None:
+    """Season dates from ESPN for the season ``day`` falls in, in the config's shape.
+
+    Answers are cached on disk for a week (nba_espn_http) and per process. Returns
+    None when ESPN cannot be read -- the caller then uses the hand-written config.
+    Tests never reach the network unless they inject ``get``.
+    """
+    year = day.year + 1 if day.month >= 8 else day.year      # ESPN names a season by its end year
+    if get is None and year in _ESPN_MEMO:
+        return _ESPN_MEMO[year]
+    if get is None and "pytest" in sys.modules:
+        return None
     try:
-        return datetime.strptime(text, "%Y-%m-%d")
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from nba_espn_http import get_json
+        windows = {}
+        for name, type_id in ESPN_TYPES.items():
+            payload = get_json(ESPN_TYPE_URL.format(year=year, type_id=type_id), get=get,
+                               fresh_after=datetime.now(timezone.utc) - CALENDAR_MAX_AGE)
+            windows[name] = _sydney_window(payload)
+        regular_first, regular_last = windows["regular"]
+        iso = lambda d: d.isoformat()  # noqa: E731
+        config = {
+            "season": f"{year - 1}-{str(year)[2:]}", "source": "espn_calendar",
+            "preseason_start": iso(windows["preseason"][0]), "preseason_end": iso(windows["preseason"][1]),
+            "regular_season_start": iso(regular_first), "regular_season_end": iso(regular_last),
+            "early_regular_end": iso(regular_first + timedelta(days=EARLY_REGULAR_DAYS)),
+            "late_regular_start": iso(regular_last - timedelta(days=LATE_REGULAR_DAYS)),
+            "late_regular_end": iso(regular_last),
+            "play_in_start": iso(windows["play_in"][0]), "play_in_end": iso(windows["play_in"][1]),
+            "playoffs_start": iso(windows["playoffs"][0]), "playoffs_end": iso(windows["playoffs"][1]),
+        }
+    except Exception:  # noqa: BLE001 -- any ESPN failure falls back to the hand config
+        config = None
+    if get is None:
+        _ESPN_MEMO[year] = config
+    return config
+
+
+def _parse_date(value: Any) -> datetime:
+    """The Sydney date a value refers to. A tip-off timestamp ('2026-10-20T23:30Z', what
+    the extractor passes) is converted; a plain date is already a Sydney target date."""
+    text = str(value or "")
+    try:
+        stamp = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        stamp = None
+    if stamp is not None and stamp.tzinfo is not None:
+        from zoneinfo import ZoneInfo
+        local = stamp.astimezone(ZoneInfo("Australia/Sydney")).date()
+        return datetime(local.year, local.month, local.day)
+    try:
+        return datetime.strptime(text[:10], "%Y-%m-%d")
     except ValueError:
         return datetime.now()
 
@@ -151,8 +222,12 @@ def classify_nba_season(date_value: Any, metadata: dict[str, Any] | None = None)
     source = "metadata"
     if phase_info is None:
         day = _parse_date(date_value)
-        phase_info = _phase_from_config(day, load_season_config())
-        source = "season_config"
+        espn = espn_season_config(day)
+        phase_info = _phase_from_config(day, espn) if espn else None
+        source = "espn_calendar"
+        if phase_info is None:
+            phase_info = _phase_from_config(day, load_season_config())
+            source = "season_config"
         if phase_info is None:
             phase_info = _generic_phase(day)
             source = "calendar_fallback"
