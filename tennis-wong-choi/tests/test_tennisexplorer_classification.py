@@ -139,6 +139,16 @@ def test_new_classification_does_not_duplicate_or_resurrect_history(
     conn = _setup(tmp_path, monkeypatch)
     _seed_player(conn, 1, 'Source One', 'WTA')
     _seed_player(conn, 2, 'Source Two', 'WTA')
+    # Ownership is a separate precondition: these tests exercise the later
+    # history-collision/retirement guards after explicit actor resolution.
+    for pid, slug, name in [(1, 'one', 'Source One'), (2, 'two', 'Source Two')]:
+        conn.execute(
+            "INSERT INTO provider_entities(provider_name,entity_type,provider_entity_id,"
+            "internal_entity_id,entity_name,confidence_score,created_at,updated_at) "
+            "VALUES('tennisexplorer','player',?,?,?,1,"
+            "'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')",
+            ('https://www.tennisexplorer.com/player/' + slug + '/', pid, name),
+        )
     conn.commit()
     raw = corpus.store_raw_response('tennisexplorer', 'tennisexplorer/results', {},
                                     {'summary': 'old source'}, 200)

@@ -22,7 +22,10 @@ from dataclasses import asdict
 from tennis_wc.database.db import get_connection
 from tennis_wc.features.common import utc_now
 from tennis_wc.identity import player_identity
-from tennis_wc.ingestion.name_matching import normalise_player_name, player_name_score
+from tennis_wc.ingestion.name_matching import normalise_player_name
+from tennis_wc.identity.tennisexplorer_actors import (
+    SourceActorHold, canonical_actor_ref, resolve_source_actor,
+)
 from tennis_wc.ingestion.raw_response_store import store_raw_response
 from tennis_wc.providers.tennisexplorer_provider import (
     ParsedResult,
@@ -104,45 +107,9 @@ class _ExistingHistory:
                 raise _HistoryHold("existing_history_facts_conflict")
 
 
-def _get_or_create_player(conn, name: str, tour: str, created: list) -> int:
-    """Canonical id for ``name``, creating a player only as a last resort."""
-    if not name or player_identity.is_placeholder(name):
-        raise _HistoryHold("placeholder_player")
-    tokens = normalise_player_name(name).split()
-    if not tokens:
-        raise _HistoryHold("invalid_player_name")
-    existing = player_identity.resolve_player_id(conn, name, tour)
-    if existing is not None:
-        row = conn.execute("SELECT tour FROM players WHERE id=?", (existing,)).fetchone()
-        existing_tour = str(row[0] or "").upper() if row else ""
-        if existing_tour not in {"ATP", "WTA"}:
-            raise _HistoryHold("unknown_target_tour")
-        if existing_tour != tour:
-            raise _HistoryHold("target_tour_conflict")
-        return existing
-    # None can mean ambiguous, not unseen. Do not mint another spelling to
-    # bypass a resolver that deliberately refused to choose between people.
-    surname = tokens[-1]
-    candidates = conn.execute(
-        "SELECT name FROM players WHERE LOWER(name) LIKE ? OR LOWER(name) LIKE ?",
-        (f"%{surname}%", f"%{surname[:4]}%"),
-    )
-    if any(player_name_score(name, row[0]) >= 0.92 for row in candidates):
-        raise _HistoryHold("unresolved_existing_player")
-    now = utc_now()
-    cursor = conn.execute(
-        "INSERT INTO players (name, tour, source_provider, created_at, updated_at) "
-        "VALUES (?, ?, ?, ?, ?)",
-        (name, tour, PROVIDER_NAME, now, now),
-    )
-    player_id = int(cursor.lastrowid)
-    conn.execute(
-        "INSERT OR IGNORE INTO player_aliases "
-        "(alias_norm, canonical_player_id, source, created_at) VALUES (?, ?, ?, ?)",
-        (normalise_player_name(name), player_id, PROVIDER_NAME, now),
-    )
-    created.append(player_id)
-    return player_id
+def _get_or_create_player(conn, name: str, tour: str, created: list,
+                          *, source_actor_ref: str | None = None) -> int:
+    return resolve_source_actor(conn, source_actor_ref, name, tour, created)
 
 
 def _store_history(conn, match_date: str, results: list[ParsedResult], raw_id: int) -> dict:
@@ -157,7 +124,8 @@ def _store_history(conn, match_date: str, results: list[ParsedResult], raw_id: i
 
     def source_key(result):
         return (result.tournament_source_url or result.tournament_source_label,
-                tuple(sorted((result.player_a_source_ref, result.player_b_source_ref))))
+                tuple(sorted(canonical_actor_ref(ref) or ref for ref in
+                             (result.player_a_source_ref, result.player_b_source_ref))))
 
     for result in results:
         if (result.draw_kind != "SINGLES" or result.classification_warnings
@@ -214,16 +182,20 @@ def _store_history(conn, match_date: str, results: list[ParsedResult], raw_id: i
             hold("ambiguous_source_fixture")
             continue
         winner_name = result.winner_name
-        loser_name = (
-            result.player_b_name if winner_name == result.player_a_name
-            else result.player_a_name
+        loser_name = result.loser_name
+        a_wins = result.player_a_sets > result.player_b_sets
+        winner_ref, loser_ref = (
+            (result.player_a_source_ref, result.player_b_source_ref) if a_wins
+            else (result.player_b_source_ref, result.player_a_source_ref)
         )
         tour = result.tour
         created_before = len(created)
         conn.execute("SAVEPOINT te_history_match")
         try:
-            winner_id = _get_or_create_player(conn, winner_name, tour, created)
-            loser_id = _get_or_create_player(conn, loser_name, tour, created)
+            winner_id = _get_or_create_player(conn, winner_name, tour, created,
+                                              source_actor_ref=winner_ref)
+            loser_id = _get_or_create_player(conn, loser_name, tour, created,
+                                             source_actor_ref=loser_ref)
             if winner_id == loser_id:
                 raise _HistoryHold("same_resolved_player")
             base = (
@@ -259,7 +231,7 @@ def _store_history(conn, match_date: str, results: list[ParsedResult], raw_id: i
             conn.execute("ROLLBACK TO te_history_match")
             conn.execute("RELEASE te_history_match")
             del created[created_before:]
-            if isinstance(exc, _HistoryHold):
+            if isinstance(exc, (_HistoryHold, SourceActorHold)):
                 hold(str(exc))
                 continue
             raise

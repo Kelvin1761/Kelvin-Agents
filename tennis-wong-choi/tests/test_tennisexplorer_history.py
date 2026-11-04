@@ -114,8 +114,8 @@ def test_a_rerun_updates_rather_than_duplicating(tmp_path, monkeypatch):
     ).fetchone()[0] == 2
 
 
-def test_a_known_player_is_reused_instead_of_duplicated(tmp_path, monkeypatch):
-    """The corpus must not recreate the 864-duplicate problem it exists to fix."""
+def test_a_source_bound_player_is_reused_instead_of_duplicated(tmp_path, monkeypatch):
+    """Reuse a verified source key, not an initial/surname guess."""
     from tennis_wc.ingestion import ingest_tennisexplorer_history as corpus
     from tennis_wc.identity import player_identity
 
@@ -124,6 +124,12 @@ def test_a_known_player_is_reused_instead_of_duplicated(tmp_path, monkeypatch):
     conn.execute(
         "INSERT INTO players (id, name, tour, source_provider, created_at, updated_at) "
         "VALUES (1, 'Denislava Glushkova', 'WTA', 'sackmann', 'now', 'now')"
+    )
+    conn.execute(
+        "INSERT INTO provider_entities(provider_name,entity_type,provider_entity_id,"
+        "internal_entity_id,entity_name,confidence_score,created_at,updated_at) "
+        "VALUES('tennisexplorer','player','https://www.tennisexplorer.com/player/d-glushkova/',"
+        "1,'Denislava Glushkova',1,'2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')"
     )
     conn.commit()
 
