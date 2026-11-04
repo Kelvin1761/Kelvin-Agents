@@ -947,169 +947,122 @@
 }
 </style>
 <style id="hkjc-insights">
-.hkjc-insights{--i-ink:#0b1220;--i-muted:#667085;--i-line:#e6eaf1;--i-accent:#2f5bea;--i-soft:#f4f6fa;--i-gold:#c99a1c;--i-shadow:0 1px 2px rgba(16,24,40,.04),0 10px 28px -16px rgba(16,24,40,.14);max-width:1180px;margin:0 auto;padding:22px 20px 40px;color:var(--i-ink);font-feature-settings:"tnum" 1}
-.hkjc-insights .ins-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
-.hkjc-insights .ins-eyebrow{font-size:11px;letter-spacing:.14em;font-weight:700;color:var(--i-accent);margin-bottom:6px}
-.hkjc-insights h1{font-size:28px;font-weight:700;letter-spacing:-.025em;line-height:1.2;margin:0}
-.hkjc-insights .ins-head p{color:var(--i-muted);font-size:14px;margin:4px 0 0}
-.hkjc-insights .ins-date{background:#fff;border:1px solid var(--i-line);border-radius:12px;padding:8px 14px;text-align:right;font-size:12px;color:var(--i-muted);box-shadow:var(--i-shadow)}
-.hkjc-insights .ins-date strong{display:block;font-size:15px;color:var(--i-ink)}
-.hkjc-insights .ins-tabs{display:flex;gap:4px;background:#e9edf4;padding:4px;border-radius:14px;margin:22px 0 14px;width:max-content;max-width:100%;overflow-x:auto}
-.hkjc-insights .ins-tabs button,.hkjc-insights .ins-pills button{border:0;background:none;border-radius:10px;padding:8px 16px;font:inherit;font-size:14px;font-weight:600;color:#475467;cursor:pointer;white-space:nowrap;min-height:38px}
-.hkjc-insights .ins-tabs button[aria-pressed=true],.hkjc-insights .ins-pills button[aria-pressed=true]{background:#fff;color:var(--i-ink);box-shadow:0 1px 3px rgba(16,24,40,.14)}
-.hkjc-insights .ins-filters{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:16px}
-.hkjc-insights .ins-pills{display:flex;gap:2px;background:#eef1f6;border-radius:12px;padding:3px}
-.hkjc-insights .ins-pills button{font-size:13px;padding:6px 12px;min-height:32px}
-.hkjc-insights .ins-scope{font-size:12px;color:var(--i-muted);margin-left:auto}
-.hkjc-insights .ins-table{background:#fff;border:1px solid var(--i-line);border-radius:18px;box-shadow:var(--i-shadow);overflow:hidden}
-.hkjc-insights .ins-row{display:grid;grid-template-columns:36px minmax(140px,1.6fr) 56px minmax(176px,1.4fr) minmax(110px,1fr) minmax(110px,1fr) 64px;gap:12px;align-items:center;padding:11px 18px;border-top:1px solid #f0f2f6;font-size:14px}
-.hkjc-insights .ins-row--head{border-top:0;background:#fafbfc;color:var(--i-muted);font-size:12px;font-weight:600}
-.hkjc-insights .ins-row--thin{color:#98a2b3}
-.hkjc-insights .ins-rank{font-weight:800;color:#98a2b3}
-.hkjc-insights .ins-row:not(.ins-row--head):nth-child(-n+4) .ins-rank{color:var(--i-gold)}
-.hkjc-insights .ins-name{font-weight:700;min-width:0;overflow-wrap:anywhere}
-.hkjc-insights .ins-name em{font-style:normal;font-size:10px;font-weight:700;color:#98a2b3;background:#f2f4f8;border-radius:999px;padding:1px 6px;margin-left:6px}
-.hkjc-insights .ins-x{color:#98a2b3;margin:0 6px;font-weight:400}
-.hkjc-insights .ins-starts,.hkjc-insights .ins-plain{color:#475467}
-.hkjc-insights .ins-places{display:flex;gap:6px}
-.hkjc-insights .ins-place{display:flex;flex-direction:column;align-items:center;min-width:38px;border-radius:9px;padding:3px 0;background:#f4f6fa;line-height:1.15}
-.hkjc-insights .ins-place small{font-size:10px;color:var(--i-muted)}
-.hkjc-insights .ins-place b{font-size:15px}
-.hkjc-insights .ins-place--1{background:#fdf5df}.hkjc-insights .ins-place--1 b{color:#9a6b00}
-.hkjc-insights .ins-place--2{background:#eef1f6}.hkjc-insights .ins-place--3{background:#f8efe8}.hkjc-insights .ins-place--3 b{color:#8a4b22}
-.hkjc-insights .ins-rate{display:flex;align-items:center;gap:8px}
-.hkjc-insights .ins-rate i{display:block;height:6px;border-radius:3px;background:var(--i-accent);max-width:70px}
-.hkjc-insights .ins-rate b{font-size:13px}
-.hkjc-insights .ins-more{display:block;margin:12px auto 0;border:1px solid var(--i-line);background:#fff;border-radius:999px;padding:8px 18px;font:inherit;font-size:13px;cursor:pointer}
-.hkjc-insights .ins-empty{padding:28px;text-align:center;color:var(--i-muted);background:#fff;border:1px dashed var(--i-line);border-radius:16px}
-.hkjc-insights .ins-venue{margin-bottom:22px}
-.hkjc-insights .ins-section-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:6px 0 12px}
-.hkjc-insights .ins-section-head h2{font-size:18px;font-weight:700;margin:0}
-.hkjc-insights .ins-section-head label{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--i-muted)}
-.hkjc-insights select{border:1px solid var(--i-line);border-radius:999px;background:#fff;padding:7px 14px;font:inherit;font-size:13px;min-height:36px}
-.hkjc-insights .ins-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.hkjc-insights .ins-card{background:#fff;border:1px solid var(--i-line);border-radius:18px;box-shadow:var(--i-shadow);padding:16px 18px}
-.hkjc-insights .ins-card-head{display:flex;justify-content:space-between;align-items:baseline}
-.hkjc-insights .ins-card-head h3{font-size:15px;font-weight:700;margin:0}
+.hkjc-insights{--i-ink:#0b1220;--i-text:#334155;--i-muted:#64748b;--i-faint:#94a3b8;--i-line:#e6eaf1;--i-soft:#f5f7fb;--i-win:#3b5bdb;--i-win-soft:#eef2ff;--i-place:#4cc38a;--i-place-ink:#15803d;--i-place-soft:#ecfbf3;--i-gold:#c9971c;--i-shadow:0 1px 2px rgba(15,23,42,.04),0 12px 32px -18px rgba(15,23,42,.18);max-width:1180px;margin:0 auto;padding:22px 20px 48px;color:var(--i-ink);font-family:'Noto Sans HK','PingFang HK',sans-serif;font-feature-settings:"tnum" 1}
+.hkjc-insights *{box-sizing:border-box}
+.hkjc-insights .ins-hero{position:relative;overflow:hidden;border-radius:24px;padding:26px 28px 22px;color:var(--i-ink);background:radial-gradient(90% 120% at 100% 0%,#e3ebff 0%,rgba(227,235,255,0) 60%),radial-gradient(70% 90% at 0% 100%,#e9f9f1 0%,rgba(233,249,241,0) 55%),linear-gradient(180deg,#ffffff 0%,#f7f9fd 100%);border:1px solid var(--i-line);box-shadow:var(--i-shadow)}
+.hkjc-insights .ins-hero-top{position:relative;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.hkjc-insights .ins-eyebrow{font-size:11px;letter-spacing:.2em;font-weight:700;color:var(--i-win);margin-bottom:8px}
+.hkjc-insights h1{font-size:30px;font-weight:700;letter-spacing:-.01em;line-height:1.15;margin:0}
+.hkjc-insights .ins-hero p{color:var(--i-muted);font-size:14px;margin:6px 0 0}
+.hkjc-insights .ins-date{display:flex;flex-direction:column;align-items:flex-end;gap:4px;text-align:right;font-size:13px;color:var(--i-muted)}
+.hkjc-insights .ins-date strong{font-size:20px;color:var(--i-ink);font-weight:700;letter-spacing:.01em}
+.hkjc-insights .ins-live{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--i-place-ink);background:var(--i-place-soft);border:1px solid #c6eed8;border-radius:999px;padding:4px 11px;margin-bottom:4px}
+.hkjc-insights .ins-live i{width:7px;height:7px;border-radius:50%;background:#4cc38a;box-shadow:0 0 0 0 rgba(76,195,138,.6);animation:ins-pulse 1.8s ease-out infinite}
+@keyframes ins-pulse{0%{box-shadow:0 0 0 0 rgba(76,195,138,.55)}70%{box-shadow:0 0 0 8px rgba(76,195,138,0)}100%{box-shadow:0 0 0 0 rgba(76,195,138,0)}}
+.hkjc-insights .ins-progress{position:relative;display:flex;align-items:center;gap:18px;margin-top:22px;padding-top:18px;border-top:1px solid var(--i-line)}
+.hkjc-insights .ins-progress-text{display:flex;align-items:baseline;gap:6px;white-space:nowrap}
+.hkjc-insights .ins-progress-text span{font-size:12px;color:var(--i-muted);font-weight:600;margin-right:4px}
+.hkjc-insights .ins-progress-text b{font-size:30px;font-weight:700;line-height:1}
+.hkjc-insights .ins-progress-text small{font-size:14px;color:var(--i-muted)}
+.hkjc-insights .ins-chips{display:flex;flex-wrap:wrap;gap:6px}
+.hkjc-insights .ins-chip{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--i-faint);border:1px dashed #cfd8e6;background:#fff}
+.hkjc-insights .ins-chip--done{color:#fff;background:var(--i-win);border:1px solid var(--i-win);box-shadow:0 4px 10px -4px rgba(59,91,219,.55)}
+.hkjc-insights .ins-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:18px 0 16px}
+.hkjc-insights .ins-tabs,.hkjc-insights .ins-pills{display:flex;gap:4px;background:#eaeef5;padding:4px;border-radius:14px;max-width:100%;overflow-x:auto}
+.hkjc-insights .ins-tabs button,.hkjc-insights .ins-pills button{border:0;background:none;border-radius:10px;padding:8px 22px;font:inherit;font-size:14px;font-weight:600;color:#475569;cursor:pointer;white-space:nowrap;min-height:38px;transition:background-color .15s ease,color .15s ease}
+.hkjc-insights .ins-tabs button[aria-pressed=true],.hkjc-insights .ins-pills button[aria-pressed=true]{background:#fff;color:var(--i-ink);box-shadow:0 1px 3px rgba(15,23,42,.14)}
+.hkjc-insights .ins-days button{display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:6px 12px;font-size:13px}
+.hkjc-insights .ins-days button small{font-size:10px;font-weight:500;color:var(--i-faint)}
+.hkjc-insights .ins-card{background:#fff;border:1px solid var(--i-line);border-radius:20px;box-shadow:var(--i-shadow);padding:18px 20px}
+.hkjc-insights .ins-card-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.hkjc-insights .ins-card-head h3{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:700;margin:0}
 .hkjc-insights .ins-card-head span{font-size:12px;color:var(--i-muted)}
-.hkjc-insights .ins-card h4{font-size:12px;color:var(--i-muted);font-weight:700;margin:14px 0 6px}
-.hkjc-insights .ins-bias-legend{display:flex;gap:14px;font-size:11px;color:var(--i-muted);margin-top:6px}
-.hkjc-insights .ins-bias-legend i{display:inline-block;width:10px;height:6px;border-radius:3px;margin-right:4px}
-.hkjc-insights .ins-bias-legend .win,.hkjc-insights .ins-bar--win i{background:var(--i-accent)}
-.hkjc-insights .ins-bias-legend .top3,.hkjc-insights .ins-bar--top3 i{background:#9db3f5}
-.hkjc-insights .ins-bias-row{display:grid;grid-template-columns:116px 1fr 44px;gap:10px;align-items:center;padding:6px 8px;border-radius:10px}
-.hkjc-insights .ins-bias-row--best{background:#f3f6ff}
-.hkjc-insights .ins-bias-label{font-size:13px;font-weight:600;display:flex;flex-direction:column;line-height:1.2}
-.hkjc-insights .ins-bias-label small{font-size:10px;color:#98a2b3;font-weight:400}
-.hkjc-insights .ins-bias-bars{display:grid;grid-template-columns:1fr 48px 1fr 48px;gap:6px;align-items:center}
-.hkjc-insights .ins-bias-bars b{font-size:12px}
-.hkjc-insights .ins-bar{height:8px;border-radius:4px;background:#eef1f5;overflow:hidden}
-.hkjc-insights .ins-bar i{display:block;height:100%;border-radius:4px}
-.hkjc-insights .ins-bias-wins{font-size:11px;color:var(--i-muted);text-align:right}
-.hkjc-insights .ins-live-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:14px}
-.hkjc-insights .ins-stat{background:#fff;border:1px solid var(--i-line);border-radius:16px;padding:14px 16px;box-shadow:var(--i-shadow)}
-.hkjc-insights .ins-stat span{font-size:12px;color:var(--i-muted);font-weight:600}
-.hkjc-insights .ins-stat strong{display:block;font-size:28px;font-weight:700;letter-spacing:-.02em;margin:4px 0}
-.hkjc-insights .ins-stat strong small{font-size:13px;color:var(--i-muted);font-weight:600;margin-left:5px}
-.hkjc-insights .ins-stat p{font-size:12px;color:var(--i-muted);margin:0}
-.hkjc-insights .ins-top{list-style:none;margin:10px 0 0;padding:0}
-.hkjc-insights .ins-top li{display:grid;grid-template-columns:1fr auto 44px;gap:10px;padding:7px 0;border-top:1px solid #f0f2f6;font-size:14px}
-.hkjc-insights .ins-top li:first-child{border-top:0}
-.hkjc-insights .ins-top b{font-size:13px}.hkjc-insights .ins-top small{color:var(--i-muted);text-align:right}
-.hkjc-insights .ins-races{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
-.hkjc-insights .ins-race{background:#fff;border:1px solid var(--i-line);border-radius:16px;box-shadow:var(--i-shadow);padding:12px 16px}
-.hkjc-insights .ins-race-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-bottom:6px}
+.hkjc-insights .ins-card h4{font-size:11px;letter-spacing:.12em;color:var(--i-faint);font-weight:700;margin:16px 0 6px}
+.hkjc-insights .ins-empty{padding:28px;text-align:center;color:var(--i-muted);background:var(--i-soft);border:1px dashed var(--i-line);border-radius:14px;font-size:13px}
+.hkjc-insights .ins-leaders{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}
+.hkjc-insights .ins-leader{position:relative;background:#fff;border:1px solid var(--i-line);border-radius:20px;box-shadow:var(--i-shadow);padding:16px 20px 16px 22px;overflow:hidden}
+.hkjc-insights .ins-leader::before{content:'';position:absolute;left:0;top:16px;bottom:16px;width:3px;border-radius:0 3px 3px 0;background:linear-gradient(#e7c35a,var(--i-gold))}
+.hkjc-insights .ins-leader span{font-size:12px;color:var(--i-muted);font-weight:600}
+.hkjc-insights .ins-leader strong{display:block;font-size:22px;font-weight:700;margin:6px 0 4px;line-height:1.25;overflow-wrap:anywhere}
+.hkjc-insights .ins-leader p{font-size:12px;color:var(--i-muted);margin:0}
+.hkjc-insights .ins-leader--empty strong{color:#cbd5e1}
+.hkjc-insights .ins-x{color:var(--i-faint);margin:0 5px;font-weight:400}
+.hkjc-insights .ins-lists{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}
+.hkjc-insights .ins-list{padding:16px 16px 12px}
+.hkjc-insights .ins-list-head,.hkjc-insights .ins-list li{display:grid;grid-template-columns:22px minmax(0,1fr) auto 52px;gap:8px;align-items:center}
+.hkjc-insights .ins-list-head{font-size:10px;color:var(--i-faint);font-weight:600;padding:10px 0 6px;border-bottom:1px solid var(--i-line)}
+.hkjc-insights .ins-list-head span:last-child{text-align:right}
+.hkjc-insights .ins-places-head{display:flex;gap:3px}
+.hkjc-insights .ins-places-head i{font-style:normal;min-width:24px;text-align:center}
+.hkjc-insights .ins-list ol{list-style:none;margin:0;padding:0}
+.hkjc-insights .ins-list li{padding:8px 0;border-top:1px solid #f1f4f8}
+.hkjc-insights .ins-list li:first-child{border-top:0}
+.hkjc-insights .ins-list li.ins-thin{opacity:.5}
+.hkjc-insights .ins-rank{font-size:12px;font-weight:800;color:var(--i-faint);text-align:center}
+.hkjc-insights .ins-list li:nth-child(-n+3):not(.ins-thin) .ins-rank{color:var(--i-gold)}
+.hkjc-insights .ins-name{font-size:14px;font-weight:600;min-width:0;overflow-wrap:anywhere;line-height:1.3}
+.hkjc-insights .ins-places{display:flex;gap:3px}
+.hkjc-insights .ins-place{min-width:24px;padding:3px 0;font-size:12px;font-weight:700;border-radius:7px;text-align:center;background:var(--i-soft);color:#475569}
+.hkjc-insights .ins-place--1{background:#fdf3d7;color:#8a6100}
+.hkjc-insights .ins-place--2{background:#eef1f6;color:#475569}
+.hkjc-insights .ins-place--3{background:#fbeee4;color:#8a4b22}
+.hkjc-insights .ins-place--zero{background:transparent;color:#cbd5e1;font-weight:500}
+.hkjc-insights .ins-rides{text-align:right;font-size:12px;color:var(--i-muted);white-space:nowrap}
+.hkjc-insights .ins-rides b{font-size:14px;color:var(--i-ink)}
+.hkjc-insights .ins-more{display:block;width:100%;margin:10px 0 0;border:1px solid var(--i-line);background:var(--i-soft);border-radius:12px;padding:9px 18px;font:inherit;font-size:13px;font-weight:600;color:#475569;cursor:pointer}
+.hkjc-insights .ins-more:hover{background:#eef2f8}
+.hkjc-insights .ins-bias-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.hkjc-insights .ins-dot{width:10px;height:10px;border-radius:3px;display:inline-block}
+.hkjc-insights .ins-bias--win .ins-dot{background:var(--i-win)}
+.hkjc-insights .ins-bias--place .ins-dot{background:var(--i-place)}
+.hkjc-insights .ins-bias-cols{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.hkjc-insights .ins-bias-row{display:grid;grid-template-columns:78px minmax(0,1fr) 46px;gap:10px;align-items:center;padding:7px 8px;margin:0 -8px;border-radius:10px}
+.hkjc-insights .ins-bias--win .ins-bias-row--best{background:var(--i-win-soft)}
+.hkjc-insights .ins-bias--place .ins-bias-row--best{background:var(--i-place-soft)}
+.hkjc-insights .ins-bias-label{font-size:13px;font-weight:600;display:flex;flex-direction:column;line-height:1.25}
+.hkjc-insights .ins-bias-label small{font-size:10px;color:var(--i-faint);font-weight:400}
+.hkjc-insights .ins-bar{height:9px;border-radius:5px;background:#edf1f6;overflow:hidden}
+.hkjc-insights .ins-bar i{display:block;height:100%;border-radius:5px;transition:width .4s ease}
+.hkjc-insights .ins-bar--win i{background:linear-gradient(90deg,#6d86f0,var(--i-win))}
+.hkjc-insights .ins-bar--place i{background:linear-gradient(90deg,#9be3bd,var(--i-place))}
+.hkjc-insights .ins-bias-num{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+.hkjc-insights .ins-bias-num b{font-size:15px}
+.hkjc-insights .ins-bias-num small{font-size:10px;color:var(--i-faint)}
+.hkjc-insights .ins-bias--win .ins-bias-row--best .ins-bias-num b{color:var(--i-win)}
+.hkjc-insights .ins-bias--place .ins-bias-row--best .ins-bias-num b{color:var(--i-place-ink)}
+.hkjc-insights .ins-races{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.hkjc-insights .ins-race{background:#fff;border:1px solid var(--i-line);border-radius:20px;box-shadow:var(--i-shadow);padding:16px 18px 10px}
+.hkjc-insights .ins-race-head{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin-bottom:8px}
+.hkjc-insights .ins-race-head b{font-size:13px;color:var(--i-win);background:var(--i-win-soft);border-radius:8px;padding:3px 10px}
 .hkjc-insights .ins-race-head span{font-size:12px;color:var(--i-muted)}
 .hkjc-insights .ins-race ol{list-style:none;margin:0;padding:0}
-.hkjc-insights .ins-race li{display:grid;grid-template-columns:26px 1fr auto;gap:10px;align-items:center;padding:6px 0;border-top:1px solid #f0f2f6}
-.hkjc-insights .ins-pos{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;background:#f2f4f8;color:#475467}
-.hkjc-insights .ins-pos-1 .ins-pos{background:#f5c542;color:#4a3500}.hkjc-insights .ins-pos-2 .ins-pos{background:#d7dde7}.hkjc-insights .ins-pos-3 .ins-pos{background:#e9c2a6;color:#5a2f12}
-.hkjc-insights .ins-horse{font-weight:700;font-size:14px;display:flex;flex-direction:column;line-height:1.3}
+.hkjc-insights .ins-race li{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 0;border-top:1px solid #f1f4f8}
+.hkjc-insights .ins-pos{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:800;background:#f1f4f8;color:#475569}
+.hkjc-insights .ins-pos-1 .ins-pos{background:linear-gradient(135deg,#f8d873,#e2ad2b);color:#4a3500}
+.hkjc-insights .ins-pos-2 .ins-pos{background:linear-gradient(135deg,#eef1f5,#cfd6e1);color:#334155}
+.hkjc-insights .ins-pos-3 .ins-pos{background:linear-gradient(135deg,#f3d2b8,#d99a6c);color:#4a230b}
+.hkjc-insights .ins-horse{font-weight:700;font-size:14px;display:flex;flex-direction:column;line-height:1.3;min-width:0}
 .hkjc-insights .ins-horse small{font-weight:400;font-size:12px;color:var(--i-muted)}
 .hkjc-insights .ins-tags{display:flex;gap:4px}
-.hkjc-insights .ins-tag{font-style:normal;font-size:11px;font-weight:700;border-radius:6px;padding:2px 7px;background:#f2f4f8;color:#475467;white-space:nowrap}
+.hkjc-insights .ins-tag{font-style:normal;font-size:11px;font-weight:700;border-radius:7px;padding:3px 8px;background:var(--i-soft);color:#475569;white-space:nowrap}
 .hkjc-insights .ins-tag--inner{background:#e8f6ef;color:#11845b}.hkjc-insights .ins-tag--outer{background:#fdf0ee;color:#c8463f}
 .hkjc-insights .ins-tag--front{background:#eef2ff;color:#3b4fd1}.hkjc-insights .ins-tag--back{background:#f4f0fe;color:#6b46c1}
-.hkjc-insights .ins-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
-.hkjc-insights .ins-stat-name{font-size:22px!important}
-.hkjc-insights .ins-lists{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:14px}
-.hkjc-insights .ins-list{padding:14px 14px 10px}
-.hkjc-insights .ins-list-head,.hkjc-insights .ins-list li{display:grid;grid-template-columns:20px minmax(0,1fr) auto 58px 64px;gap:8px;align-items:center}
-.hkjc-insights .ins-list-head{font-size:10px;color:#98a2b3;font-weight:600;padding:8px 0 4px;border-bottom:1px solid var(--i-line)}
-.hkjc-insights .ins-list-head span:nth-child(n+4){text-align:right}
-.hkjc-insights .ins-places-head{letter-spacing:.55em;padding-left:4px}
-.hkjc-insights .ins-list ol{list-style:none;margin:0;padding:0}
-.hkjc-insights .ins-list li{padding:7px 0;border-top:1px solid #f0f2f6}
-.hkjc-insights .ins-list li:first-child{border-top:0}
-.hkjc-insights .ins-list li.ins-thin{opacity:.6}
-.hkjc-insights .ins-list .ins-rank{font-size:12px}
-.hkjc-insights .ins-list li:nth-child(-n+3) .ins-rank{color:var(--i-gold)}
-.hkjc-insights .ins-list .ins-name{font-size:14px;display:flex;flex-direction:column;line-height:1.25}
-.hkjc-insights .ins-list .ins-name small{font-size:10px;font-weight:400;color:#98a2b3}
-.hkjc-insights .ins-list .ins-places{gap:3px}
-.hkjc-insights .ins-list .ins-place{min-width:22px;padding:2px 0;font-size:12px;font-weight:700;border-radius:6px;display:block;text-align:center}
-.hkjc-insights .ins-place--1{background:#fdf5df;color:#9a6b00}.hkjc-insights .ins-place--3{color:#8a4b22}
-.hkjc-insights .ins-win{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
-.hkjc-insights .ins-win b{font-size:13px}.hkjc-insights .ins-win small{font-size:10px;color:#98a2b3}
-.hkjc-insights .ins-tonight{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;font-weight:700;color:#475467;line-height:1.2;white-space:nowrap}
-.hkjc-insights .ins-tonight small{font-size:10px;font-weight:400;color:#98a2b3}
-.hkjc-insights .ins-tonight--hot{color:#11845b}
-.hkjc-insights .ins-tonight--none{color:#c0c6d1}
-.hkjc-insights .ins-list .ins-more{margin-top:8px;width:100%}
-.hkjc-insights .ins-bias-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.hkjc-insights .ins-bias-grid:has(> .ins-card:only-child){grid-template-columns:1fr}
-.hkjc-insights .ins-bias .ins-card-head{gap:10px;flex-wrap:wrap}
-.hkjc-insights .ins-bias select{font-size:12px;min-height:32px;padding:5px 12px;max-width:100%}
-.hkjc-insights .ins-bias-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.hkjc-insights .ins-bias-row{grid-template-columns:72px 1fr 64px auto!important;gap:8px!important}
-.hkjc-insights .ins-bias-stack{display:flex;flex-direction:column;gap:4px}
-.hkjc-insights .ins-bias-num{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
-.hkjc-insights .ins-bias-num b{font-size:13px}.hkjc-insights .ins-bias-num small{font-size:10px;color:#98a2b3}
-.hkjc-insights .ins-bias-now{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;color:#667085;line-height:1.2;min-width:44px}
-.hkjc-insights .ins-bias-now b{font-size:14px;color:var(--i-ink)}
-.hkjc-insights .ins-bias-now small{font-size:9px;color:#98a2b3}
-.hkjc-insights .ins-bias-now--hot b{color:#11845b}
-.hkjc-insights .ins-results-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px}
-.hkjc-insights .ins-results-head h2{font-size:18px;margin:0}.hkjc-insights .ins-results-head span{font-size:12px;color:var(--i-muted)}
-.hkjc-insights .ins-races{margin-top:0}
+.hkjc-insights .ins-foot{font-size:11px;color:var(--i-faint);margin-top:24px;line-height:1.7}
 @media(max-width:1100px){.hkjc-insights .ins-lists{grid-template-columns:1fr 1fr}.hkjc-insights .ins-bias-grid{grid-template-columns:1fr}}
 @media(max-width:760px){
-.hkjc-insights .ins-summary{grid-template-columns:1fr 1fr}
-.hkjc-insights .ins-lists{grid-template-columns:1fr}
-.hkjc-insights .ins-bias-cols{grid-template-columns:1fr}
-.hkjc-insights .ins-tabs{width:max-content}.hkjc-insights .ins-tabs button{flex:none;padding:8px 22px}
-}
-.hkjc-insights .ins-nav{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin:20px 0 14px}.hkjc-insights .ins-nav .ins-tabs{margin:0}.hkjc-insights .ins-days{max-width:100%;overflow-x:auto}.hkjc-insights .ins-list .ins-name{display:block!important;overflow-wrap:anywhere}
-.hkjc-insights .ins-days button{display:flex;flex-direction:column;align-items:center;line-height:1.15;padding:6px 12px}
-.hkjc-insights .ins-days button small{font-size:10px;font-weight:500;color:#98a2b3}
-.hkjc-insights .ins-list-head,.hkjc-insights .ins-list li{grid-template-columns:20px minmax(0,1fr) auto 62px!important}
-.hkjc-insights .ins-places-head{display:flex;gap:3px;letter-spacing:0;padding:0}
-.hkjc-insights .ins-places-head i{font-style:normal;min-width:22px;text-align:center}
-.hkjc-insights .ins-place--zero{opacity:.35}
-.hkjc-insights .ins-list li.ins-thin{opacity:.45}
-.hkjc-insights .ins-rides{display:flex;flex-direction:column;align-items:flex-end;font-size:12px;color:#667085;line-height:1.2}
-.hkjc-insights .ins-rides b{font-size:14px;color:var(--i-ink)}
-.hkjc-insights .ins-rides small{font-size:9px;color:#98a2b3}
-.hkjc-insights .ins-bias{margin-top:0}
-.hkjc-insights .ins-bias-row{grid-template-columns:80px 1fr 58px!important}
-.hkjc-insights .ins-bias-num b small{font-size:11px;font-weight:600}
-.hkjc-insights .ins-foot{font-size:11px;color:#98a2b3;margin-top:22px;line-height:1.6}
-@media(max-width:760px){
-.hkjc-insights{padding:16px 14px 90px}
-.hkjc-insights h1{font-size:22px}
-.hkjc-insights .ins-head{align-items:flex-start}
-.hkjc-insights .ins-tabs{width:100%}.hkjc-insights .ins-tabs button{flex:1;padding:8px 10px;font-size:13px}
-.hkjc-insights .ins-scope{margin-left:0;width:100%}
-.hkjc-insights .ins-row{grid-template-columns:24px minmax(0,1fr) auto;gap:4px 10px;padding:12px 14px}
-.hkjc-insights .ins-row--head{display:none}
-.hkjc-insights .ins-row .ins-starts{grid-column:3;grid-row:1;font-size:12px}.hkjc-insights .ins-row .ins-starts::after{content:' 騎'}
-.hkjc-insights .ins-row .ins-places{grid-column:2/4}
-.hkjc-insights .ins-row .ins-rate,.hkjc-insights .ins-row .ins-plain{grid-column:2/4;font-size:12px}
-.hkjc-insights .ins-row .ins-rate::before,.hkjc-insights .ins-row .ins-plain::before{content:attr(data-label);color:var(--i-muted);min-width:34px}.hkjc-insights .ins-row .ins-rate i{max-width:120px;flex:0 0 auto}
-.hkjc-insights .ins-grid,.hkjc-insights .ins-races{grid-template-columns:1fr}
-.hkjc-insights .ins-live-summary{grid-template-columns:1fr 1fr}.hkjc-insights .ins-live-summary .ins-stat:first-child{grid-column:1/-1}
-.hkjc-insights .ins-section-head{flex-direction:column;align-items:flex-start}
-.hkjc-insights .ins-bias-row{grid-template-columns:88px 1fr 38px}
+.hkjc-insights{padding:14px 14px 90px}
+.hkjc-insights .ins-hero{padding:20px 18px 18px;border-radius:20px}
+.hkjc-insights h1{font-size:24px}
+.hkjc-insights .ins-hero-top{flex-direction:column;gap:12px}
+.hkjc-insights .ins-date{align-items:flex-start;text-align:left}
+.hkjc-insights .ins-progress{flex-direction:column;align-items:flex-start;gap:12px}
+.hkjc-insights .ins-chips{gap:5px}.hkjc-insights .ins-chip{width:26px;height:26px;border-radius:8px;font-size:11px}
+.hkjc-insights .ins-date strong{font-size:18px}
+.hkjc-insights .ins-tabs{width:100%}.hkjc-insights .ins-tabs button{flex:1;padding:8px 10px}
+.hkjc-insights .ins-leaders{grid-template-columns:1fr}
+.hkjc-insights .ins-leader strong{font-size:20px}
+.hkjc-insights .ins-lists,.hkjc-insights .ins-races{grid-template-columns:1fr}
+.hkjc-insights .ins-bias-cols{grid-template-columns:1fr;gap:4px}
 }
 </style>
 </head>
@@ -7609,7 +7562,7 @@ function renderNow(main) {
 
 // ═══════════════════════════════════════════════
 // HKJC 即場形勢 (display only: counts of placings on ONE race day, never odds or returns)
-// One-page overview for live decisions; race-by-race results on the second tab.
+// The newest meeting only: leaders, standings and track bias on one page, results on the second tab.
 // ═══════════════════════════════════════════════
 let insTab = 'overview', insDay = '', insExpanded = {};
 const INS_TABS = [['overview', '總覽'], ['results', '賽果']];
@@ -7634,42 +7587,52 @@ function setInsights(key, value) {
   render();
 }
 function insMeeting(data) { return (data.meetings || []).find(m => m.day === insDay) || (data.meetings || [])[0]; }
+function insName(kind, r) { return kind === 'combos' ? `${esc(r.name[0])}<span class="ins-x">×</span>${esc(r.name[1])}` : esc(r.name); }
 function insPlaces(w) {
   return `<span class="ins-places">${w.map((n, i) => `<span class="ins-place ins-place--${i + 1}${n ? '' : ' ins-place--zero'}" title="${['冠', '亞', '季', '殿'][i]}">${n}</span>`).join('')}</span>`;
 }
+function insHero(m, live) {
+  const done = new Set(m.races.map(r => r.race)), total = Math.max(m.scheduled || 0, m.races.length);
+  const chips = Array.from({ length: total }, (_, i) => `<span class="ins-chip${done.has(i + 1) ? ' ins-chip--done' : ''}" title="第 ${i + 1} 場">${i + 1}</span>`).join('');
+  const rails = [...new Set(m.races.map(r => r.rail === 'AWT' ? '全天候' : r.rail ? r.rail + ' 跑道' : ''))].filter(Boolean).join('、');
+  return `<header class="ins-hero"><div class="ins-hero-top"><div><div class="ins-eyebrow">WONG CHOI · HKJC</div><h1>即場形勢</h1><p>${live ? '今晚' : '當日'}騎師・練馬師・騎練合作・檔位與跑法</p></div><div class="ins-date">${live ? '<span class="ins-live"><i></i>今晚即場更新</span>' : ''}<strong>${esc(m.day)}</strong><span>${INS_VENUE_NAME[m.venue] || ''}${rails ? ' · ' + esc(rails) : ''}</span></div></div><div class="ins-progress"><div class="ins-progress-text"><span>已完成</span><b>${m.races.length}</b><small>/ ${total} 場</small></div><div class="ins-chips">${chips}</div></div></header>`;
+}
+function insLeader(label, kind, rows) {
+  const r = rows && rows[0] && rows[0].top4 ? rows[0] : null;
+  return `<div class="ins-leader${r ? '' : ' ins-leader--empty'}"><span>${label}</span><strong>${r ? insName(kind, r) : '—'}</strong><p>${r ? `${r.w[0]} 冠 ${r.w[1]} 亞 ${r.w[2]} 季 · ${r.starts} ${kind === 'jockeys' ? '騎' : '匹出賽'}` : '未有賽果'}</p></div>`;
+}
 function insListCard(kind, title, rows) {
   const expanded = !!insExpanded[kind], all = rows || [], shown = expanded ? all : all.slice(0, INS_TOP);
-  const name = r => kind === 'combos' ? `${esc(r.name[0])}<span class="ins-x">×</span>${esc(r.name[1])}` : esc(r.name);
-  const list = shown.map((r, i) => `<li class="${r.top4 ? '' : 'ins-thin'}"><span class="ins-rank">${i + 1}</span><span class="ins-name">${name(r)}</span>${insPlaces(r.w)}<span class="ins-rides"><span><b>${r.top3}</b>/${r.starts}</span></span></li>`).join('');
+  const list = shown.map((r, i) => `<li class="${r.top4 ? '' : 'ins-thin'}"><span class="ins-rank">${i + 1}</span><span class="ins-name">${insName(kind, r)}</span>${insPlaces(r.w)}<span class="ins-rides"><b>${r.top3}</b>/${r.starts}</span></li>`).join('');
   return `<article class="ins-card ins-list"><div class="ins-card-head"><h3>${title}</h3><span>${all.length} ${kind === 'combos' ? '對' : '位'}</span></div><div class="ins-list-head"><span>#</span><span></span><span class="ins-places-head"><i>冠</i><i>亞</i><i>季</i><i>殿</i></span><span>上名/騎</span></div>${list ? `<ol>${list}</ol>` : '<div class="ins-empty">未有賽果。</div>'}${all.length > INS_TOP ? `<button type="button" class="ins-more" onclick="setInsights('expand','${kind}')">${expanded ? '收起' : '顯示全部 ' + all.length + (kind === 'combos' ? ' 對' : ' 位')}</button>` : ''}</article>`;
 }
-// Two bars per row: share of the night's winners, and share of its 冠亞季 placings (3 per race).
-function insBiasRows(group, labels, races) {
-  const most = Math.max(...labels.map(([k]) => group[k].w[0]));
-  const pct = (n, of) => of ? Math.min(100, n / of * 100) : 0;
+// 頭馬 counts winners out of the races run; 上名 counts 冠亞季 out of the three places each race gives.
+function insBiasRows(group, labels, key, of) {
+  const value = t => key === 'win' ? t.w[0] : t.top3;
+  const most = Math.max(0, ...labels.map(([k]) => value(group[k])));
   return labels.map(([k, label]) => {
-    const t = group[k];
-    return `<div class="ins-bias-row${t.w[0] && t.w[0] === most ? ' ins-bias-row--best' : ''}"><span class="ins-bias-label">${label}<small>${t.starts} 匹出賽</small></span><span class="ins-bias-stack"><span class="ins-bar ins-bar--win" title="頭馬"><i style="width:${pct(t.w[0], races)}%"></i></span><span class="ins-bar ins-bar--top3" title="上名（冠亞季）"><i style="width:${pct(t.top3, races * 3)}%"></i></span></span><span class="ins-bias-num"><b>${t.w[0]}<small> 冠</small></b><small>${t.top3} 上名</small></span></div>`;
+    const t = group[k], n = value(t), share = of ? Math.min(100, n / of * 100) : 0;
+    return `<div class="ins-bias-row${n && n === most ? ' ins-bias-row--best' : ''}"><span class="ins-bias-label">${label}<small>${t.starts} 匹出賽</small></span><span class="ins-bar ins-bar--${key}" title="${key === 'win' ? '頭馬' : '上名（冠亞季）'}"><i style="width:${share}%"></i></span><span class="ins-bias-num"><b>${n}</b><small>${Math.round(share)}%</small></span></div>`;
   }).join('');
 }
-function insSummary(m) {
-  const winners = m.races.map(r => r.placed.find(p => p.pos === 1)).filter(Boolean), n = winners.length;
-  const count = (field, value) => winners.filter(w => w[field] === value).length;
-  const hot = m.jockeys[0] && m.jockeys[0].top4 ? m.jockeys[0] : null, hotTrainer = m.trainers[0] && m.trainers[0].w[0] ? m.trainers[0] : null, rails = [...new Set(m.races.map(r => r.rail === 'AWT' ? '全天候' : r.rail ? r.rail + ' 跑道' : ''))].filter(Boolean).join('、');
-  return `<div class="ins-summary"><div class="ins-stat"><span>已完成</span><strong>${m.races.length}<small>${m.scheduled > m.races.length ? ` / ${m.scheduled} ` : ''}場</small></strong><p>${esc(m.day)} ${INS_VENUE_NAME[m.venue] || ''} · ${esc(rails)}</p></div><div class="ins-stat"><span>頭馬放頭</span><strong>${count('style', 'front')}<small>/ ${n} 場</small></strong><p>守中 ${count('style', 'middle')} · 後上 ${count('style', 'back')}</p></div><div class="ins-stat"><span>頭馬內檔</span><strong>${count('bucket', 'inner')}<small>/ ${n} 場</small></strong><p>中檔 ${count('bucket', 'middle')} · 外檔 ${count('bucket', 'outer')}</p></div><div class="ins-stat"><span>最旺騎師</span><strong class="ins-stat-name">${hot ? esc(hot.name) : '—'}</strong><p>${hot ? `${hot.w[0]} 冠 ${hot.w[1]} 亞 ${hot.w[2]} 季 · ${hot.starts} 騎` : '未有賽果'}${hotTrainer ? ` · 練馬師 ${esc(hotTrainer.name)} ${hotTrainer.w[0]} 冠` : ''}</p></div></div>`;
+function insBiasCard(m, key) {
+  const races = m.races.length, of = key === 'win' ? races : races * 3;
+  const head = key === 'win' ? `<h3><i class="ins-dot"></i>場地偏差 · 頭馬</h3><span>${races} 場頭馬來自邊度</span>` : `<h3><i class="ins-dot"></i>場地偏差 · 上名</h3><span>${races} 場冠亞季（共 ${of} 個位）來自邊度</span>`;
+  return `<article class="ins-card ins-bias ins-bias--${key}"><div class="ins-card-head">${head}</div><div class="ins-bias-cols"><div><h4>檔位</h4>${insBiasRows(m.bias.draw, INS_BUCKETS, key, of)}</div><div><h4>跑法</h4>${insBiasRows(m.bias.style, INS_STYLES, key, of)}</div></div></article>`;
 }
 function insResults(m) {
   if (!m.races.length) return '<div class="ins-empty">未有賽果。</div>';
   const styleName = { front: '放頭', middle: '守中', back: '後上' };
-  return `<div class="ins-races">${m.races.map(r => `<article class="ins-race"><div class="ins-race-head"><b>第 ${r.race} 場</b><span>${r.distance || '—'}米 · ${r.rail === 'AWT' ? '全天候' : (r.rail || '—') + ' 跑道'} · ${esc(r.class || '')} · ${esc(r.going || '')}</span></div><ol>${r.placed.map(p => `<li class="ins-pos-${p.pos}"><span class="ins-pos">${p.pos}</span><span class="ins-horse">${esc(p.horse.replace(/\([A-Z]\d+\)$/, ''))}<small>${esc(p.jockey)} / ${esc(p.trainer)}</small></span><span class="ins-tags"><i class="ins-tag ins-tag--${p.bucket || 'na'}">${p.draw ?? '—'} 檔</i><i class="ins-tag ins-tag--${p.style || 'na'}">${styleName[p.style] || '—'}</i></span></li>`).join('')}</ol></article>`).join('')}</div>`;
+  return `<div class="ins-races">${m.races.map(r => `<article class="ins-race"><div class="ins-race-head"><b>第 ${r.race} 場</b><span>${r.distance || '—'}米 · ${r.rail === 'AWT' ? '全天候' : (r.rail || '—') + ' 跑道'} · ${esc(r.class || '')} · ${esc(r.going || '')}</span></div><ol>${r.placed.map(p => `<li class="ins-pos-${p.pos}"><span class="ins-pos">${p.pos}</span><span class="ins-horse">${esc(p.horse.replace(/\s*\([A-Z]\d+\)$/, ''))}<small>${esc(p.jockey)} / ${esc(p.trainer)}</small></span><span class="ins-tags"><i class="ins-tag ins-tag--${p.bucket || 'na'}">${p.draw ?? '—'} 檔</i><i class="ins-tag ins-tag--${p.style || 'na'}">${styleName[p.style] || '—'}</i></span></li>`).join('')}</ol></article>`).join('')}</div>`;
 }
 function renderHkjcInsights() {
   const data = hkjcInsights(), m = data.status === 'valid' ? insMeeting(data) : null;
   if (!m) return `<section class="hkjc-insights"><div class="ins-empty">即場形勢數據暫未能讀取，稍後更新。</div></section>`;
   const live = data.latest_is_today && m === data.meetings[0];
   const days = data.meetings.length < 2 ? '' : `<div class="ins-pills ins-days" role="group" aria-label="賽日">${data.meetings.map((d, i) => `<button type="button" aria-pressed="${d === m}" onclick="setInsights('day','${d.day}')">${i === 0 && data.latest_is_today ? '今晚' : nbaShortDate(d.day)}<small>${INS_VENUE_NAME[d.venue] || ''}</small></button>`).join('')}</div>`;
-  const body = insTab === 'results' ? insResults(m) : `${insSummary(m)}<div class="ins-lists">${insListCard('jockeys', '騎師', m.jockeys)}${insListCard('trainers', '練馬師', m.trainers)}${insListCard('combos', '騎練合作', m.combos)}</div><article class="ins-card ins-bias"><div class="ins-card-head"><h3>場地偏差</h3><span>${m.races.length} 場頭馬同上名來自邊度</span><span class="ins-bias-legend"><span><i class="win"></i>頭馬</span><span><i class="top3"></i>上名（冠亞季）</span></span></div><div class="ins-bias-cols"><div><h4>檔位</h4>${insBiasRows(m.bias.draw, INS_BUCKETS, m.races.length)}</div><div><h4>跑法</h4>${insBiasRows(m.bias.style, INS_STYLES, m.races.length)}</div></div></article>`;
-  return `<section class="hkjc-insights"><div class="ins-head"><div><div class="ins-eyebrow">WONG CHOI / HKJC</div><h1>即場形勢</h1><p>${live ? '今晚' : '當日'}騎師・練馬師・騎練合作・檔位與跑法</p></div><div class="ins-date"><strong>${esc(m.day)}</strong>${INS_VENUE_NAME[m.venue] || ''}${live ? '<br>今晚即場更新' : ''}</div></div><div class="ins-nav"><nav class="ins-tabs" aria-label="即場形勢分頁">${INS_TABS.map(([k, label]) => `<button type="button" aria-pressed="${insTab === k}" onclick="setInsights('tab','${k}')">${label}</button>`).join('')}</nav>${days}</div>${body}<p class="ins-foot">只計所揀賽日：數據來自馬會賽果，只計名次次數，唔計賠率或回報；唔會餵入評分模型。檔位分內（1–4）、中（5–8）、外（9+）；跑法按第一個沿途位置：頭 3 位為放頭、尾三分一為後上。</p></section>`;
+  const tabs = `<nav class="ins-tabs" aria-label="即場形勢分頁">${INS_TABS.map(([k, label]) => `<button type="button" aria-pressed="${insTab === k}" onclick="setInsights('tab','${k}')">${label}</button>`).join('')}</nav>`;
+  const body = insTab === 'results' ? insResults(m) : `<div class="ins-leaders">${insLeader('最旺騎師', 'jockeys', m.jockeys)}${insLeader('最旺練馬師', 'trainers', m.trainers)}${insLeader('最旺騎練', 'combos', m.combos)}</div><div class="ins-lists">${insListCard('jockeys', '騎師', m.jockeys)}${insListCard('trainers', '練馬師', m.trainers)}${insListCard('combos', '騎練合作', m.combos)}</div><div class="ins-bias-grid">${insBiasCard(m, 'win')}${insBiasCard(m, 'place')}</div>`;
+  return `<section class="hkjc-insights">${insHero(m, live)}<div class="ins-nav">${tabs}${days}</div>${body}<p class="ins-foot">只計所揀賽日：數據來自馬會賽果，只計名次次數，唔計賠率或回報；唔會餵入評分模型。上名 = 冠亞季。檔位分內（1–4）、中（5–8）、外（9+）；跑法按第一個沿途位置：頭 3 位為放頭、尾三分一為後上；臨時賽果未有沿途位置，跑法要等正式賽果。</p></section>`;
 }
 
 // Chart tooltip functions

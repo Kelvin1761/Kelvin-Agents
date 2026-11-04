@@ -2517,28 +2517,35 @@ test("HKJC 即場形勢 is a one-page race-day overview with results on a second
   const data={status:'valid',latest_is_today:true,meetings:[day('2026-11-04','HV'),{...day('2026-11-01','ST'),jockeys:[{name:'舊騎師',...tally(1,[1,0,0,0])}]}]};
   const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,hkjc_insights:data});
   let html=api.renderHkjcInsights();
-  for(const text of ['即場形勢','今晚','騎師','練馬師','騎練合作','場地偏差','頭馬放頭','潘頓','伍鵬志','內檔 1–4','放頭'])assert.ok(html.includes(text),text);
+  for(const text of ['即場形勢','今晚','騎師','練馬師','騎練合作','最旺騎師','最旺練馬師','場地偏差 · 頭馬','場地偏差 · 上名','潘頓','伍鵬志','內檔 1–4','放頭'])assert.ok(html.includes(text),text);
+  assert.doesNotMatch(html,/頭馬放頭|頭馬內檔/);
   assert.match(html,/潘頓<span class="ins-x">×<\/span>伍鵬志/);assert.doesNotMatch(html,/<b>x<\/b>/);
   assert.doesNotMatch(html,/ROI|win_odds|\$\d|本季|近 30 日/);assert.doesNotMatch(html,/舊騎師/);
   api.setInsights('day','2026-11-01');html=api.renderHkjcInsights();assert.match(html,/舊騎師/);assert.doesNotMatch(html,/今晚即場更新/);
-  api.setInsights('tab','results');html=api.renderHkjcInsights();assert.match(html,/第 1 場/);assert.match(html,/靖哥哥/);assert.doesNotMatch(html,/頭馬放頭/);
+  api.setInsights('tab','results');html=api.renderHkjcInsights();assert.match(html,/第 1 場/);assert.match(html,/靖哥哥/);assert.doesNotMatch(html,/最旺騎師/);
   assert.match(loadTemplateFunctions(EMPTY_DASHBOARD_DATA).renderHkjcInsights(),/暫未能讀取/);
 });
 
-test("HKJC 即場形勢 bias rows carry a win bar and a place bar; an analysed card shows at zero before results",()=>{
+test("HKJC 即場形勢 splits 場地偏差 into a 頭馬 card and a 上名 card; an analysed card shows at zero before results",()=>{
   const tally=(starts,w)=>({starts,w,top3:w[0]+w[1]+w[2],top4:w[0]+w[1]+w[2]+w[3]});
   const zero=tally(0,[0,0,0,0]);
   const bias=(inner)=>({draw:{inner,middle:zero,outer:zero},style:{front:inner,middle:zero,back:zero}});
   const raced={day:'2026-11-01',venue:'HV',scheduled:2,jockeys:[{name:'潘頓',...tally(2,[2,0,0,0]),rides:2}],trainers:[],combos:[],bias:bias(tally(6,[2,1,0,0])),races:[{race:1,placed:[]},{race:2,placed:[]}]};
   let api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,hkjc_insights:{status:'valid',latest_is_today:false,meetings:[raced]}});
   let html=api.renderHkjcInsights();
-  // 2 of 2 winners → full win bar; 3 places of the 6 available → half place bar.
-  assert.match(html,/ins-bar--win" title="頭馬"><i style="width:100%"/);assert.match(html,/ins-bar--top3" title="上名（冠亞季）"><i style="width:50%"/);
-  assert.match(html,/上名（冠亞季）<\/span>/);
+  const win=html.slice(html.indexOf('ins-bias--win'),html.indexOf('ins-bias--place'));const place=html.slice(html.indexOf('ins-bias--place'));
+  // 2 of 2 winners from the inside → full win bar; 3 of the 6 places → half the place bar.
+  assert.match(win,/ins-bar--win" title="頭馬"><i style="width:100%"/);assert.doesNotMatch(win,/ins-bar--place/);
+  assert.match(place,/ins-bar--place" title="上名（冠亞季）"><i style="width:50%"/);assert.doesNotMatch(place,/ins-bar--win/);
+  assert.match(place,/共 6 個位/);
   assert.doesNotMatch(html,/ins-days/); // one meeting only: no race-day switcher
+  assert.match(html,/最旺騎師<\/span><strong>潘頓/);
   const tonight={day:'2026-11-04',venue:'HV',scheduled:9,jockeys:[{name:'布文',...zero,rides:7}],trainers:[{name:'方嘉柏',...zero,rides:5}],combos:[{name:['布文','方嘉柏'],...zero,rides:2}],bias:bias(zero),races:[]};
   api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,hkjc_insights:{status:'valid',latest_is_today:true,meetings:[tonight,raced]}});
   html=api.renderHkjcInsights();
-  assert.match(html,/今晚即場更新/);assert.match(html,/布文/);assert.match(html,/0<small> \/ 9 場<\/small>/);
+  assert.match(html,/今晚即場更新/);assert.match(html,/布文/);assert.match(html,/<b>0<\/b><small>\/ 9 場<\/small>/);
+  assert.equal((html.match(/class="ins-chip"/g)||[]).length,9);
+  // Nobody has a place yet, so no leader is named.
+  assert.match(html,/ins-leader--empty"><span>最旺騎師<\/span><strong>—/);
   assert.doesNotMatch(html,/NaN|Infinity/);assert.match(html,/未有賽果/);
 });
