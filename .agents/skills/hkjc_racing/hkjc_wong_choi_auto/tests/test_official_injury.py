@@ -87,6 +87,28 @@ class EngineTests(unittest.TestCase):
         self.assertTrue(any("關節鏡手術" in line for line in flagged["health_readout"]["lines"]))
         self.assertIn("賽會傷患記錄", flagged["matrix_reasoning"]["horse_health"]["text"])
 
+    def test_health_box_does_not_say_clean_next_to_an_official_record(self):
+        # 2026-11-05：大千赤風一格「⚠️ 賽會傷患記錄：左前腿橈骨受傷」同「✅ 無醫療事故記錄」
+        # 擺埋一齊；風險分說明仲夾住冇入分嘅「檔位分偏低、同程紀錄未見上名」。
+        from hkjc_racing_engine.renderer import _matrix_fact_lines
+        horse = _horse(self.RECORD)
+        flagged = RacingEngine(json.loads(json.dumps(horse)), dict(self.CTX)).analyze_horse()
+        note = flagged["score_breakdown"]["risk_score"]["note"]
+        self.assertIn("賽會傷患記錄有紀錄（未入分", note)
+        self.assertNotIn("檔位分偏低", note)
+        self.assertNotIn("同程紀錄", note)
+        facts = "\n".join(str(f) for f in _matrix_fact_lines("horse_health", horse))
+        self.assertNotIn("✅ 無醫療事故記錄", facts)
+        self.assertIn("但有賽會傷患記錄", facts)
+        self.assertNotIn("關節鏡手術", facts)   # 已經喺健康解讀列咗，唔再重複
+
+    def test_clean_horse_without_official_record_still_reads_clean(self):
+        from hkjc_racing_engine.renderer import _matrix_fact_lines
+        plain = RacingEngine(json.loads(json.dumps(_horse())), dict(self.CTX)).analyze_horse()
+        self.assertTrue(plain["score_breakdown"]["risk_score"]["note"].startswith("賽事短評未見事故；"))
+        facts = "\n".join(str(f) for f in _matrix_fact_lines("horse_health", _horse()))
+        self.assertIn("✅ 無醫療事故記錄", facts)
+
     def test_arms_lower_health_only_when_switched_on(self):
         scores = {}
         for mode in ("off", "no_clear", "issue"):

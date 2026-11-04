@@ -725,17 +725,20 @@ def _matrix_lines(horse: dict, auto: dict) -> list[str]:
     return lines
 
 
-def _official_injury_fact(data: dict) -> str:
-    """官方傷患記錄頁（display-only）：「07-16 左前球節接受關節鏡手術（10-06 通過）」。"""
-    records = data.get("official_injury_records") if isinstance(data, dict) else None
-    if not isinstance(records, list):
-        return ""
-    bits = []
-    for rec in sorted((r for r in records if isinstance(r, dict)),
-                      key=lambda r: r.get("incident_date") or "", reverse=True):
-        passed = f"（{rec['passed_date']} 通過）" if rec.get("passed_date") else ""
-        bits.append(f"{rec.get('incident_date', '')} {rec.get('detail', '')}{passed}")
-    return "；".join(bits)
+def _medical_scan_fact(data: dict) -> str:
+    """健康掃描（賽事短評關鍵字）：有賽會傷患記錄時唔可以淨係寫「✅ 無醫療事故記錄」。
+
+    2026-11-05：大千赤風一格入面「⚠️ 賽會傷患記錄：左前腿橈骨受傷」同「✅ 無醫療事故
+    記錄」擺埋一齊。短評掃描只睇到賽日事故，馬房傷患要靠官方記錄。
+    """
+    medical = str((data or {}).get("medical_flags") or "")
+    records = (data or {}).get("official_injury_records")
+    has_official = isinstance(records, list) and any(
+        isinstance(r, dict) and not r.get("performance_only") for r in records
+    )
+    if "無醫療事故" in medical and has_official:
+        return "賽事短評未見事故（但有賽會傷患記錄，見健康解讀）"
+    return medical
 
 
 def _race_shape_detail_lines(auto: dict) -> list[str]:
@@ -941,10 +944,10 @@ def _matrix_fact_lines(key: str, horse: dict) -> list[str]:
             f"體重趨勢: {data.get('weight_trend')}" if data.get("weight_trend") else "",
             sep=", ",
         )
+        # 賽會傷患記錄已經喺「健康解讀」逐條列（連距今日數），呢度唔再重複一次。
         return _compact_fact_lines(
             ("休賽 / 體重趨勢", rest_weight, 260),
-            ("健康掃描", data.get("medical_flags"), 120),
-            ("賽會傷患記錄", _official_injury_fact(data), 260),
+            ("健康掃描", _medical_scan_fact(data), 120),
         )
     if key == "form_line":
         last_result = _join_nonempty(
