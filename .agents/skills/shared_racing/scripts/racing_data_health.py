@@ -310,6 +310,39 @@ def _pipeline_freshness_issues(meeting_dir: Path) -> list[dict]:
     return issues
 
 
+def _overseas_fallback_issues(meeting_dir: Path) -> list[dict]:
+    """`inject_hkjc_fact_anchors` 用唔到 starter PDF 海外往績時留低嘅 sidecar
+    （`Overseas_Fallback_R{n}.json`）→ 每場一個 warning，講明有幾多匹搵唔到。"""
+    found: list[dict] = []
+    for path in sorted(meeting_dir.glob("Overseas_Fallback_*.json")):
+        if not is_materialized_file(path):
+            continue
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, ValueError):
+            continue
+        counts = payload.get("status_counts") or {}
+        # `not_found`（fsc 404）唔算缺：2026-05～11 實測 1,761 個 404 匹次全部係
+        # starter PDF 本身都冇列嘅馬（自購新馬／未出過賽）。真係要人睇嘅係
+        # 網絡錯誤（`error:*`）同冇烙號（`no_brand`，多數係訪港馬）。
+        unresolved = sum(v for k, v in counts.items()
+                         if k.startswith("error") or k == "no_brand")
+        detail = "、".join(f"{k} {v}" for k, v in sorted(counts.items())) or "冇馬"
+        item = {
+            "severity": "warning",
+            "code": "OVERSEAS_FORM_FALLBACK" if payload.get("mode") == "fsc_fallback"
+            else "OVERSEAS_FORM_MISSING",
+            "message": (
+                f"海外往績冇用 starter PDF（{payload.get('mode')}）：{detail}"
+                + (f"；{unresolved} 匹攞唔到（網絡錯誤／冇烙號嘅訪港馬）" if unresolved else "")
+            ),
+        }
+        if payload.get("race"):
+            item["race"] = payload["race"]
+        found.append(item)
+    return found
+
+
 def scan_meeting(platform: str, meeting_dir: Path) -> dict:
     platform = platform.lower()
     if platform not in EXPECTED_FEATURES:
@@ -334,6 +367,18 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
                         f"starter_pdf={readiness.get('starter_pdf_ready', False)}"
                     ),
                 })
+            # starter PDF 2026-11-03 起唔再入發佈閘（見 batch_extract），但出事
+            # 一定要喺 Data_Health 睇得到：海外往績改用 fsc 後備、官方傷患記錄缺。
+            if readiness.get("starter_pdf_soft_fail"):
+                issues.append({
+                    "severity": "warning",
+                    "code": "STARTER_PDF_MISSING",
+                    "message": (
+                        f"starter PDF {readiness.get('starter_pdf_state', '?')}："
+                        f"{(readiness.get('starter_pdf_error') or '冇記錄原因')[:120]}"
+                        "（唔阻塞；海外往績改用 fsc 來港前賽績）"
+                    ),
+                })
         except (OSError, UnicodeError, ValueError, TypeError, json.JSONDecodeError) as exc:
             issues.append({
                 "severity": "error",
@@ -342,6 +387,7 @@ def scan_meeting(platform: str, meeting_dir: Path) -> dict:
             })
     if platform == "hkjc":
         issues.extend(_pipeline_freshness_issues(meeting_dir))
+        issues.extend(_overseas_fallback_issues(meeting_dir))
     logic_paths = sorted(
         (
             path

@@ -65,3 +65,27 @@ def test_missing_or_unreadable_file_never_blocks_the_notice(tmp_path):
     assert readiness_digest(tmp_path) == ""
     (tmp_path / "Extraction_Readiness.json").write_text("not json", encoding="utf-8")
     assert readiness_digest(tmp_path) == ""
+
+
+# ───────────── starter PDF：2026-11-03 起係軟閘 ─────────────
+# PDF 唔再卡住場次（海外往績改用 fsc 來港前賽績），但 digest 一定要講出嚟，
+# 而且要講明「唔阻塞」—— 唔可以靜靜 fallback，亦唔可以嚇人話卡死。
+
+def test_soft_pdf_failure_is_a_warning_not_a_blocker(tmp_path):
+    digest = readiness_digest(_write(
+        tmp_path, formguides_ready=10, starter_pdf_ready=False,
+        starter_pdf_gate="soft", starter_pdf_soft_fail=True,
+        starter_pdf_state="missing", starter_pdf_error="HTTP 404",
+        races=[{"race": n, "racecard_ok": True, "formguide_ok": True} for n in range(1, 11)]))
+    lines = digest.splitlines()
+    assert lines[0].endswith("PDF ⚠️")
+    assert "唔阻塞" in lines[1] and "fsc" in lines[1] and "HTTP 404" in lines[1]
+    assert "卡住" not in digest
+
+
+def test_old_hard_gate_readiness_still_says_it_blocked(tmp_path):
+    """舊 readiness 檔（冇 `starter_pdf_gate`）嗰陣 PDF 真係硬條件，照講卡住。"""
+    digest = readiness_digest(_write(
+        tmp_path, starter_pdf_ready=False, starter_pdf_state="missing"))
+    assert digest.splitlines()[0].endswith("PDF ❌")
+    assert "卡住成個場次" in digest
