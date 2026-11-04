@@ -9,6 +9,17 @@ MODE="${1:-watch}"
 
 cd "$REPO_ROOT" || exit 1
 
+# `live` wakes every minute on race nights to fetch each race 5 minutes after its
+# start (hkjc_live_results.py). It skips the self-update below (the other jobs keep
+# the worktree current) and the control plane (it is a results collector, not a
+# prediction run), and it never sends Telegram.
+if [ "$MODE" = "live" ]; then
+  NOTIFY_ENV="${WC_NOTIFY_ENV_FILE:-$HOME/.wongchoi_notify.env}"
+  [ -f "$NOTIFY_ENV" ] && source "$NOTIFY_ENV"
+  export PYTHONPATH="$REPO_ROOT${PYTHONPATH:+:$PYTHONPATH}"
+  exec /usr/bin/python3 "$SCRIPT_DIR/hkjc_live_results.py" "$@"
+fi
+
 # Pull the shared scheduler worktree forward before starting.  Failure is
 # deliberately non-fatal: the run can continue on the currently checked-out
 # version and the helper emits the operational warning.

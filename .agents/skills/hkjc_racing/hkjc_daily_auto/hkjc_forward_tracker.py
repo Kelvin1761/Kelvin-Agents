@@ -35,7 +35,7 @@ class ForwardTest:
     key: str
     label: str
     experiment: str
-    kind: str                     # shadow_profile | harness_ab | awt_races | trackwork_meetings | rail_ledger | state_judge
+    kind: str                     # shadow_profile | harness_ab | awt_races | trackwork_meetings | rail_ledger | live_nights | state_judge
     minimum: int
     since: str = ""
     profile: str = ""
@@ -70,6 +70,14 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     ForwardTest("rail_bias", "賽道配置 → 當日內檔偏差", "EXP-20261010-14", "rail_ledger", 60,
                 action="兩個場地都夠 60 個賽日：跑預先登記嘅 Kruskal–Wallis（配置 ≥ 5 日先比），p < 0.05 先設計賽前用法；"
                        "`hkjc_rail_bias_ledger.py report`"),
+    # 即場形勢（hkjc_live_results.py）由 2026-11-04 起逐場記錄賽果同 captured_at。研究問題：
+    # 當晚已完成場次嘅場地偏差（檔位、跑法）同騎師／練馬師／騎練合作嘅當晚手風，
+    # 可唔可以幫後面場次排名。只數完整賽晚。
+    ForwardTest("live_track_bias", "即場走勢＋騎練手風入評分（研究）", "EXP-20261104-06", "live_nights", 60,
+                since="2026-11-04",
+                action="夠數之後：用 captured_at 重建每場開跑前已知嘅當晚檔位／跑法偏差同騎師、練馬師、騎練合作戰績，"
+                       "先做 leakage audit，再逐個訊號按 model-regression-gate 量（同 reverse-bias shadow 比較，Holm 校正）；"
+                       "上唔上線由 Kelvin 決定"),
     ForwardTest("weight_refit_t02", "權重 refit t02", "EXP-20260928-10", "shadow_profile", 120,
                 profile="weight_refit_t02"),
     # race_shape_v3_hv 已經 experimental live（EXP-20260929-01），由 race_shape_v2_legacy_hv 做 rollback 對照。
@@ -102,6 +110,26 @@ def _results_races(meeting_dir: Path) -> dict:
     except (OSError, ValueError):
         return {}
     return {k: v for k, v in payload.items() if isinstance(v, dict) and v.get("results")}
+
+
+def _live_nights(root: Path, since: str = "") -> tuple[int, int]:
+    """Race nights the live job captured completely (every race has `captured_at`), and partial ones."""
+    complete = partial = 0
+    for path in sorted((root / "HKJC_Race_Results_Database" / "_live").glob("????-??-??.state.json")):
+        if path.name[:10] < since:
+            continue
+        try:
+            races = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        records = [r for r in races.values() if isinstance(r, dict)] if isinstance(races, dict) else []
+        if not records:
+            continue
+        if all(r.get("captured_at") for r in records):
+            complete += 1
+        elif all(r.get("captured_at") or r.get("gave_up") for r in records):
+            partial += 1
+    return complete, partial
 
 
 def _meetings(root: Path, since: str = "") -> list[Path]:
@@ -202,6 +230,9 @@ def progress(test: ForwardTest, *, root: Path, ledger: dict, state: dict) -> dic
     elif test.kind == "trackwork_meetings":
         count = _trackwork_meetings(root)
         note = ""
+    elif test.kind == "live_nights":
+        count, partial = _live_nights(root, test.since)
+        note = f"另有 {partial} 晚唔完整（有場次 90 分鐘內抓唔到）" if partial else ""
     elif test.kind == "rail_ledger":
         per_venue = _rail_meetings(root)
         if per_venue is None:

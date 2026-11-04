@@ -161,3 +161,15 @@ def test_section_lists_every_test_and_frozen_state_judges(tmp_path):
     text = tracker.section(state, root=tmp_path, ledger_path=None)
     assert text.count("\n") >= len(tracker.FORWARD_TESTS)
     assert "✅ 頭段速度（已退回）" in text and "REVERT" in text
+
+
+def test_live_nights_count_only_complete_race_nights(tmp_path):
+    live = tmp_path / "HKJC_Race_Results_Database" / "_live"
+    live.mkdir(parents=True)
+    (live / "2026-11-01.state.json").write_text(json.dumps({"1": {"captured_at": "x"}}))          # before since
+    (live / "2026-11-04.state.json").write_text(json.dumps({"1": {"captured_at": "x"}, "2": {"captured_at": "y"}}))
+    (live / "2026-11-08.state.json").write_text(json.dumps({"1": {"captured_at": "x"}, "2": {"gave_up": "y"}}))
+    (live / "2026-11-11.state.json").write_text(json.dumps({"1": {"captured_at": "x"}, "2": {"attempts": 3}}))  # still running
+    assert tracker._live_nights(tmp_path, "2026-11-04") == (1, 1)
+    item = tracker.progress(_test("live_track_bias"), root=tmp_path, ledger={}, state={})
+    assert item["count"] == 1 and item["status"] == "collecting" and "1 晚唔完整" in item["note"]

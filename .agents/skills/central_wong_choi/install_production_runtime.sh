@@ -17,6 +17,7 @@ TENNIS_DB_POINTER="${WC_TENNIS_DB_POINTER:-$HOME/.wongchoi_tennis_db}"
 LABELS=(
   com.antigravity.hkjc-wong-choi.intraday
   com.antigravity.hkjc-wong-choi.lineup
+  com.antigravity.hkjc-wong-choi.live
   com.antigravity.hkjc-wong-choi.postrace
   com.antigravity.hkjc-wong-choi.prerace
   com.antigravity.hkjc-wong-choi.recovery

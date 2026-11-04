@@ -71,7 +71,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       restoreTennisView, tennisStats, tennisPnl, tennisSelectRows, tennisRenderBets, tennisLoadMore, setTennisFilter, renderTennisWorkspace, loadSportsBetLedger,
       setTennisQueryForTest: (query) => { tennisSearch = query; },
       setTennisLimitForTest: (limit) => { tennisLimit = limit; },
-      nbaStats, nbaRecords, nbaDashboard, nbaSelectRows, nbaPeriodsNow, nbaPeriodRange, nbaRenderMonths, nbaShortDate, nbaJersey,
+      renderHkjcInsights, setInsights, nbaStats, nbaRecords, nbaDashboard, nbaSelectRows, nbaPeriodsNow, nbaPeriodRange, nbaRenderMonths, nbaShortDate, nbaJersey,
       nbaShouldAutoRefresh, racingShouldAutoRefresh, checkForNewSnapshot,
       setPendingBetSyncForTest: (value) => { hasPendingCommittedChanges = value; }, reloadSnapshot, restoreNbaTrackingView,
       getSportsTabForTest: () => activeSportsTab,
@@ -2509,4 +2509,18 @@ test("a void NBA slip stays on the list but is not counted as a bet or in ROI",(
   const oct=api.nbaStats(api.nbaSelectRows('m:2026-10'));assert.equal(oct.n,1);assert.equal(oct.roi,150);
   const html=api.nbaRenderMonths('m:2026-10');
   assert.match(html,/每月 ROI 比較/);assert.match(html,/2026 年 10 月/);assert.match(html,/2026 年 11 月/);assert.match(html,/1 作廢/);
+});
+
+test("HKJC 即場形勢 is a one-page race-day overview with results on a second tab, no odds or returns",()=>{
+  const tally=(starts,w)=>({starts,w,top3:w[0]+w[1]+w[2],top4:w[0]+w[1]+w[2]+w[3]});
+  const day=(d,venue)=>({day:d,venue,jockeys:[{name:'潘頓',...tally(3,[2,1,0,0])},{name:'<b>x</b>',...tally(1,[0,0,1,0])}],trainers:[{name:'伍鵬志',...tally(3,[1,0,1,0])}],combos:[{name:['潘頓','伍鵬志'],...tally(2,[1,0,0,0])}],bias:{draw:{inner:tally(4,[1,1,0,0]),middle:tally(3,[0,0,0,1]),outer:tally(2,[0,0,1,0])},style:{front:tally(3,[1,0,0,0]),middle:tally(3,[0,1,0,1]),back:tally(3,[0,0,1,0])}},races:[{race:1,distance:1200,rail:'C+3',going:'好地',class:'第四班',field:12,placed:[{pos:1,horse:'靖哥哥(K503)',jockey:'潘頓',trainer:'伍鵬志',draw:1,bucket:'inner',style:'front'}]}]});
+  const data={status:'valid',latest_is_today:true,meetings:[day('2026-11-04','HV'),{...day('2026-11-01','ST'),jockeys:[{name:'舊騎師',...tally(1,[1,0,0,0])}]}]};
+  const api=loadTemplateFunctions({...EMPTY_DASHBOARD_DATA,hkjc_insights:data});
+  let html=api.renderHkjcInsights();
+  for(const text of ['即場形勢','今晚','騎師','練馬師','騎練合作','場地偏差','頭馬放頭','潘頓','伍鵬志','內檔 1–4','放頭'])assert.ok(html.includes(text),text);
+  assert.match(html,/潘頓<span class="ins-x">×<\/span>伍鵬志/);assert.doesNotMatch(html,/<b>x<\/b>/);
+  assert.doesNotMatch(html,/ROI|win_odds|\$\d|本季|近 30 日/);assert.doesNotMatch(html,/舊騎師/);
+  api.setInsights('day','2026-11-01');html=api.renderHkjcInsights();assert.match(html,/舊騎師/);assert.doesNotMatch(html,/今晚即場更新/);
+  api.setInsights('tab','results');html=api.renderHkjcInsights();assert.match(html,/第 1 場/);assert.match(html,/靖哥哥/);assert.doesNotMatch(html,/頭馬放頭/);
+  assert.match(loadTemplateFunctions(EMPTY_DASHBOARD_DATA).renderHkjcInsights(),/暫未能讀取/);
 });
