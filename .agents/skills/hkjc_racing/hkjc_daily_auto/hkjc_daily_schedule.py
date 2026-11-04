@@ -1281,7 +1281,8 @@ def live_results_prefix(meeting_date: date) -> dict:
         return {}
     prefix = {}
     race = 1
-    while isinstance(captured, dict) and str(race) in captured:
+    # A provisional top four (no running positions) is for the dashboard only.
+    while isinstance(captured, dict) and str(race) in captured and not captured[str(race)].get("provisional"):
         prefix[str(race)] = captured[str(race)]
         race += 1
     return prefix

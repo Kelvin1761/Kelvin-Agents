@@ -32,9 +32,9 @@ def _official(race):
         for p in range(1, 6)]}
 
 
-def _run(root, now, fetch, deploy):
+def _run(root, now, fetch, deploy, provisional=lambda day, race, venue, meeting_dir: None):
     with mock.patch.object(live, "HK_RACING", root), mock.patch.object(live, "log"):
-        return live.tick(now, fetch=fetch, deploy=deploy)
+        return live.tick(now, fetch=fetch, deploy=deploy, provisional=provisional)
 
 
 def test_waits_five_minutes_then_retries_one_then_two_minutes_apart(tmp_path):
@@ -85,3 +85,49 @@ def test_intraday_shadow_reads_live_capture_instead_of_refetching(tmp_path):
     with mock.patch.object(schedule, "HK_RACING", tmp_path):
         prefix = schedule.live_results_prefix(datetime(2026, 11, 4).date())
     assert list(prefix) == ["1", "2"]                          # contiguous from R1 only
+
+
+# HKJC 2026-11-04 R1 about ten minutes after the race: only the top four, four columns.
+PROVISIONAL_HTML = """<table><tr><td>第 1 場 (158)</td></tr><tr><td>第五班 - 1000米 - (40-0)</td><td>場地狀況 :</td><td>好地</td></tr>
+<tr><td>加寧讓賽</td><td>賽道 :</td><td>草地 - "A" 賽道</td></tr></table>
+<table class="f_tac table_bd"><tr><td>名次</td><td>馬號</td><td>馬名</td><td>騎師</td></tr>
+<tr><td>1</td><td>2</td><td>燊輝之星 (L067)</td><td>鍾易禮</td></tr><tr><td>2</td><td>7</td><td>喆喆友福 (J345)</td><td>周俊樂</td></tr>
+<tr><td>3</td><td>10</td><td>飈誌 (J504)</td><td>奧爾民</td></tr><tr><td>4</td><td>1</td><td>天下寵兒 (J359)</td><td>袁幸堯</td></tr></table>"""
+CARD = {"1": {"horse_name": "天下寵兒", "jockey": "袁幸堯", "trainer": "廖康銘", "barrier": 7},
+        "2": {"horse_name": "燊輝之星", "jockey": "鍾易禮", "trainer": "告東尼", "barrier": 3},
+        "5": {"horse_name": "第五", "jockey": "潘頓", "trainer": "呂健威", "barrier": 1}}
+
+
+def test_provisional_top_four_takes_trainer_and_draw_from_the_card():
+    rows = live.parse_provisional(PROVISIONAL_HTML, CARD)
+    assert [(r["pos"], r["horse_no"], r["jockey"]) for r in rows[:4]] == [
+        ("1", "2", "鍾易禮"), ("2", "7", "周俊樂"), ("3", "10", "奧爾民"), ("4", "1", "袁幸堯")]
+    assert rows[0]["trainer"] == "告東尼" and rows[0]["draw"] == "3" and rows[1]["trainer"] == ""
+    # The rest of the card ran unplaced; no running positions until the full result.
+    assert rows[4] == {"pos": "", "horse_no": "5", "horse_name": "第五", "jockey": "潘頓", "trainer": "呂健威",
+                       "draw": "1", "running_positions": ""}
+    assert live.parse_provisional("<table><tr><td>派彩</td></tr></table>", CARD) is None
+
+
+def test_provisional_is_shown_at_once_then_replaced_by_the_full_result(tmp_path):
+    _meeting(tmp_path)
+    deploys = []
+    deploy = lambda: deploys.append(1) or 0
+    early = {"racedate": "2026-11-04", "race_no": 1, "venue": "跑馬地", "provisional": True,
+             "results": [{"pos": str(p), "jockey": f"J{p}", "running_positions": ""} for p in range(1, 5)]}
+    first = _run(tmp_path, START + timedelta(minutes=5), lambda d, r, v: None, deploy, lambda d, r, v, m: early)
+    assert first["captured"] == ["2026-11-04 R1"] and first["pending"] == ["2026-11-04 R1"] and deploys == [1]
+    path = tmp_path / "HKJC_Race_Results_Database/_live/2026-11-04.json"
+    assert json.loads(path.read_text())["1"]["provisional"]
+    # Still due: keeps asking for the full table, and does not redeploy the same top four.
+    again = _run(tmp_path, START + timedelta(minutes=6), lambda d, r, v: None, deploy,
+                 lambda d, r, v, m: (_ for _ in ()).throw(AssertionError("refetched provisional")))
+    assert again["pending"] == ["2026-11-04 R1"] and deploys == [1]
+    # The intraday shadow never sees a provisional race.
+    with mock.patch.object(schedule, "HK_RACING", tmp_path):
+        assert schedule.live_results_prefix(START.date()) == {}
+    full = _run(tmp_path, START + timedelta(minutes=7), lambda d, r, v: _official(r), deploy)
+    assert full["captured"] == ["2026-11-04 R1"] and deploys == [1, 1]
+    assert "provisional" not in json.loads(path.read_text())["1"]
+    state = json.loads((tmp_path / "HKJC_Race_Results_Database/_live/2026-11-04.state.json").read_text())
+    assert state["1"]["captured_at"] and state["1"]["provisional_at"]

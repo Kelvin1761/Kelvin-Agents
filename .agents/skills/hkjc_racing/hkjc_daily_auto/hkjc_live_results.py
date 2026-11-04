@@ -9,6 +9,10 @@ window it exits at once. For each race of tonight's meeting:
 * no result yet (late start, inquiry) -> retry every minute for the first ten
   minutes, then every two minutes, and give up at start + 90 minutes (the 08:30
   postrace run still extracts the full day);
+* minutes after the race HKJC posts only a provisional top four (名次・馬號・馬名・
+  騎師, no trainer, draw or running positions); that is captured at once, trainer and
+  draw filled from tonight's card, and replaced when the full table appears (first
+  seen 2026-11-04: R1's full table was still missing 14 minutes after the start);
 * each captured race is written to
   `HKJC_Race_Results_Database/_live/<date>.json`, the same per-race shape as
   `fast_extract_results.py`, then the dashboard is redeployed once per tick.
@@ -96,6 +100,63 @@ def is_official(race: dict | None) -> bool:
     return len(placed) >= 3 and any(str(r.get("running_positions") or "").strip() for r in rows)
 
 
+def _card(meeting_dir: Path, race: int) -> dict:
+    """Horse number -> {horse_name, jockey, trainer, barrier} from that race's Logic.json."""
+    horses = _read(meeting_dir / f"Race_{race}_Logic.json").get("horses")
+    return horses if isinstance(horses, dict) else {}
+
+
+def parse_provisional(html: str, card: dict) -> list[dict] | None:
+    """The 名次・馬號・馬名・騎師 table HKJC shows before the full result, or None."""
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(html, "html.parser")
+    for table in soup.find_all("table"):
+        rows = [[c.get_text(" ", strip=True) for c in tr.find_all(["td", "th"])] for tr in table.find_all("tr")]
+        if not rows or rows[0][:4] != ["名次", "馬號", "馬名", "騎師"]:
+            continue
+        placed = [r for r in rows[1:] if len(r) >= 4 and re.match(r"^\d+", r[0])]
+        if len(placed) < 3:
+            return None
+        results, seen = [], set()
+        for pos, number, name, jockey, *_ in placed:
+            horse = card.get(number) or {}
+            seen.add(number)
+            results.append({"pos": pos, "horse_no": number, "horse_name": name, "jockey": jockey,
+                            "trainer": str(horse.get("trainer") or ""), "draw": str(horse.get("barrier") or ""),
+                            "running_positions": ""})
+        # Everyone else on the card ran unplaced as far as tonight's counts go.
+        for number, horse in card.items():
+            if number not in seen and isinstance(horse, dict):
+                results.append({"pos": "", "horse_no": number, "horse_name": str(horse.get("horse_name") or ""),
+                                "jockey": str(horse.get("jockey") or ""), "trainer": str(horse.get("trainer") or ""),
+                                "draw": str(horse.get("barrier") or ""), "running_positions": ""})
+        return results
+    return None
+
+
+def fetch_provisional(day: str, race: int, venue_zh: str, meeting_dir: Path) -> dict | None:
+    """Same per-race shape as fast_extract_results, flagged provisional; race header rows keep the conditions."""
+    from bs4 import BeautifulSoup
+    from curl_cffi import requests as cffi_requests
+    url = ("https://racing.hkjc.com/racing/information/Chinese/Racing/LocalResults.aspx"
+           f"?RaceDate={day.replace('-', '/')}&RaceNo={race}")
+    try:
+        resp = cffi_requests.get(url, impersonate="chrome120", timeout=30)
+    except Exception as exc:  # noqa: BLE001 - network faults are a retry, not a crash
+        log(f"{day} R{race} 臨時賽果抓唔到：{exc}")
+        return None
+    if resp.status_code != 200:
+        return None
+    results = parse_provisional(resp.text, _card(meeting_dir, race))
+    if not results:
+        return None
+    header = next((t for t in BeautifulSoup(resp.text, "html.parser").find_all("table")
+                   if f"第 {race} 場" in t.get_text(" ", strip=True)[:20]), None)
+    conditions = [[c.get_text(" ", strip=True) for c in tr.find_all("td")] for tr in header.find_all("tr")] if header else []
+    return {"racedate": day, "race_no": race, "venue": venue_zh, "results": results,
+            "sectional_times": conditions, "provisional": True}
+
+
 def due(race: int, start: datetime, progress: dict, now: datetime) -> bool:
     record = progress.get(str(race)) or {}
     if record.get("captured_at") or record.get("gave_up") or now < start + FIRST_TRY:
@@ -124,10 +185,11 @@ def _write(path: Path, payload: dict) -> None:
     os.replace(temp, path)
 
 
-def tick(now: datetime, *, fetch=None, deploy=None) -> dict:
+def tick(now: datetime, *, fetch=None, deploy=None, provisional=None) -> dict:
     """One pass over every live meeting; returns what happened (for logs and tests)."""
     if fetch is None:
         from fast_extract_results import extract_race_data as fetch
+    provisional = provisional or fetch_provisional
     summary = {"captured": [], "pending": [], "gave_up": [], "deployed": False}
     for meeting_dir in meeting_dirs(now):
         day, venue = meeting_dir.name[:10], next(v for v in VENUE_ZH if v in meeting_dir.name)
@@ -139,7 +201,7 @@ def tick(now: datetime, *, fetch=None, deploy=None) -> dict:
         changed = False
         for race, start in starts.items():
             record = progress.setdefault(str(race), {})
-            if str(race) in results and not record.get("captured_at"):
+            if str(race) in results and not results[str(race)].get("provisional") and not record.get("captured_at"):
                 record["captured_at"] = now.isoformat()
             if now > start + GIVE_UP and not record.get("captured_at") and not record.get("gave_up"):
                 record["gave_up"] = now.isoformat()
@@ -157,6 +219,15 @@ def tick(now: datetime, *, fetch=None, deploy=None) -> dict:
                 record["captured_at"] = now.isoformat()
                 summary["captured"].append(f"{day} R{race}")
                 log(f"{day} R{race} 賽果已抓（第 {record['attempts']} 次，開跑後 {int((now - start).total_seconds() // 60)} 分鐘）")
+            elif str(race) in results:
+                summary["pending"].append(f"{day} R{race}")
+                log(f"{day} R{race} 已有臨時頭四名，等正式賽果，第 {record['attempts']} 次")
+            elif (early := provisional(day, race, VENUE_ZH[venue], meeting_dir)):
+                results[str(race)] = early
+                record["provisional_at"] = now.isoformat()
+                summary["captured"].append(f"{day} R{race}")
+                summary["pending"].append(f"{day} R{race}")
+                log(f"{day} R{race} 臨時頭四名已抓（第 {record['attempts']} 次），練馬師／檔位由排位表補；繼續等正式賽果")
             else:
                 summary["pending"].append(f"{day} R{race}")
                 log(f"{day} R{race} 未有賽果，第 {record['attempts']} 次")
