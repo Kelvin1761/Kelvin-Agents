@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 全304日來源／舊history核對**：[EXP-07](docs/experiments/EXP-20261104-07-tennis-legacy-source-reconstruction.md)完成271新頁＋33舊receipt，全244088行公開beforeimage兩遍hash一致。來源圖101559個單打event refs，24個歧義留置；legacy對照發現42090行對到雙打、95583行tour不符（可重疊），527個舊ID連多actor keys，未批准或apply。審計v1的NULL分組錯誤明示撤回，v2同語料重跑／封存。下一步全群組來源核實及隔離generation，不能只補alias／重跑cache當改善，準確度目標仍未完成。
+
 **2026-11-04 來源身份四臂完成／僅研究**：[EXP-06](docs/experiments/EXP-20261104-06-tennis-source-actor-guard.md)在固定33日、全39人對照，tour-only原writer會錯接6行；source-key候選在該反例錯接0，兩個proposal只作shadow且未批准。80針對測試及完整gate全綠（Tennis1156），但正式庫0個來源binding／244088舊history行，guard直接部署會留置舊目標，故僅保存研究分支。下一步完整304日來源重建／legacy reconciliation／Elo generation，未證實準確度改善，原15 REJECT及ruler不變。
 
 **2026-11-04 跨入庫反例／候選拒絕**：[EXP-04](docs/experiments/EXP-20261104-04-tennis-book-tour-entry.md)雖然明示tour接線、110測試及初次full通過，但會讓TE首字母resolver將Shaurya接到Siddharth21144；已取消refresh並由Central拒絕，b7／3cf均未入main或runtime，不能交付此版本。[EXP-05](docs/experiments/EXP-20261104-05-tennis-event-identity-proof.md)對原39人、32profile及14公開詳情逐一核對，UTC精確start留下1場／2人proposal，未apply。下一步先做source actor namespace／beforeimage／generation驗證，不重開15 REJECT、不改ruler或挑subset，準確度目標仍未完成。

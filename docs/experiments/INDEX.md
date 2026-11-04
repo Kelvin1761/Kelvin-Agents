@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261104-07](EXP-20261104-07-tennis-legacy-source-reconstruction.md) | 2026-11-04 | Tennis | 全304日公開來源圖與244088舊行對照 | **研究完成／未修身份**：兩遍beforeimage一致；42090行雙打／95583 tour不符可重疊，527舊ID對多actor keys；v1 NULL分組錯誤撤回，v2全量封存；0 apply、未量準確度 |
 | [EXP-20261104-06](EXP-20261104-06-tennis-source-actor-guard.md) | 2026-11-04 | Tennis | source actor key取代全域首字母owner選擇 | **研究通過反例／未可部署**：固定33日四臂，錯接6→0；80針對／full Tennis1156過。正式244088舊行來源binding0，需完整遷移；兩人proposal未批准、未量準確度 |
 | [EXP-20261104-05](EXP-20261104-05-tennis-event-identity-proof.md) | 2026-11-04 | Tennis | 全39人公開事件及source身份proof | **proposal未apply**：全32profile／14詳情，精確雙方＋tour＋UTC start只1場／2人，保存beforeimages；37人保留未確認，forward未新增 |
 | [EXP-20261104-04](EXP-20261104-04-tennis-book-tour-entry.md) | 2026-11-04 | Tennis | 明示tour早期接線及provisional交易 | **REJECT_INPUT_OWNER**：110針對／初次full過仍觸發錯人。Shaurya來源在tour修正後會接入Siddharth21144；b7研究分支保留、3cf refresh取消，Central已拒絕，未合併／啟用 |
