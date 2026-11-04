@@ -4,7 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
-| [EXP-20261104-08](EXP-20261104-08-tennis-source-native-elo-generation.md) | 2026-11-04 | Tennis | 全量身份群組及來源 namespace Elo 重建 | **研究進行中**。889組身份連結待核實，28行配對異常對應9場。101527場進入兩次原生Elo冷建置，驗收進行中 |
+| [EXP-20261104-08](EXP-20261104-08-tennis-source-native-elo-generation.md) | 2026-11-04 | Tennis | 全量身份群組及來源 namespace Elo 重建 | **兩次冷建置一致**。101527場、四份輸出hash相同。304日來源上下文已核對，889組身份連結待核實，仍待正式來源資格及準確度評估 |
 | [EXP-20261104-07](EXP-20261104-07-tennis-legacy-source-reconstruction.md) | 2026-11-04 | Tennis | 全304日公開來源圖與244088舊行對照 | **研究完成／未修身份**：兩遍beforeimage一致；42090行雙打／95583 tour不符可重疊，527舊ID對多actor keys；v1 NULL分組錯誤撤回，v2全量封存；0 apply、未量準確度 |
 | [EXP-20261104-06](EXP-20261104-06-tennis-source-actor-guard.md) | 2026-11-04 | Tennis | source actor key取代全域首字母owner選擇 | **研究通過反例／未可部署**：固定33日四臂，錯接6→0；80針對／full Tennis1156過。正式244088舊行來源binding0，需完整遷移；兩人proposal未批准、未量準確度 |
 | [EXP-20261104-05](EXP-20261104-05-tennis-event-identity-proof.md) | 2026-11-04 | Tennis | 全39人公開事件及source身份proof | **proposal未apply**：全32profile／14詳情，精確雙方＋tour＋UTC start只1場／2人，保存beforeimages；37人保留未確認，forward未新增 |

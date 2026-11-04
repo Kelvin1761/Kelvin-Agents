@@ -1,6 +1,6 @@
 # Tennis Wong Choi：統一研究執行計劃
 
-**2026-11-04 身份群組及 Elo 重建**。全量核對得到889個待核實群組，28行配對異常對應同日9場來源event。使用獨立actor URI namespace及原生公式，101527場進入兩次隔離Elo冷建置。結果須過完整性及四份輸出一致性核對，再用實際封存時計驗證後續讀取。準確度驗收尚待完成。[EXP-08](docs/experiments/EXP-20261104-08-tennis-source-native-elo-generation.md)
+**2026-11-04 身份群組及 Elo 重建**。889個身份群組待核實，28行配對異常對應同日9場來源event。使用獨立actor URI namespace及原生公式，101527場兩次隔離Elo冷建置通過完整性核對，四份輸出hash一致。全304日原文重播，65922場可追到來源賽事網址。來源時鐘、跨provider身份及獨立Sportsbet forward仍須驗收。[EXP-08](docs/experiments/EXP-20261104-08-tennis-source-native-elo-generation.md)
 
 **2026-11-04 全304日來源／舊history核對**：[EXP-07](docs/experiments/EXP-20261104-07-tennis-legacy-source-reconstruction.md)完成271新頁＋33舊receipt，全244088行公開beforeimage兩遍hash一致。來源圖101559個單打event refs，24個歧義留置；legacy對照發現42090行對到雙打、95583行tour不符（可重疊），527個舊ID連多actor keys，未批准或apply。審計v1的NULL分組錯誤明示撤回，v2同語料重跑／封存。下一步全群組來源核實及隔離generation，不能只補alias／重跑cache當改善，準確度目標仍未完成。
 
