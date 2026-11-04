@@ -5360,6 +5360,20 @@ function dimFactorLabel(d) {
   return '';
 }
 
+// Kelvin 2026-11-05: 預計跑法 label，參考用，唔入評分。同即場形勢一樣嘅放頭／守中／後上；
+// 近 3 仗第一個沿途位多數決（backend parser_hkjc.run_style_outlook）。「多變」= 冇多數，唔出 label。
+function renderRunStyleOutlook(outlook) {
+  if (!outlook || !Array.isArray(outlook.runs) || !outlook.runs.length) return '';
+  const runs = outlook.runs.map(r => `${esc(r.style)}(${esc(String(r.first_call))})`).join('／');
+  const hit = Number.isFinite(outlook.hit_rate) ? `，歷史命中 ${outlook.hit_rate.toFixed(1)}%` : '';
+  const tip = `近${outlook.runs.length}仗第一個沿途位：${outlook.runs.map(r => `${r.date} 第${r.first_call}位`).join('、')}`
+    + `${hit}。參考用，唔入評分。`;
+  const head = outlook.label
+    ? `預計跑法: <strong>${esc(outlook.label)}</strong> · ${esc(outlook.consistency)}`
+    : '預計跑法: <strong>多變</strong>';
+  return `<div class="horse-card__run-style" title="${esc(tip)}">🏃 ${head}（近仗 ${runs}）</div>`;
+}
+
 // Kelvin 2026-10-10: show trackwork in detail. Every fast gallop and barrier
 // trial in the last 21 days with time, splits and rider; easy work summarised;
 // a stay at 從化 shown as one line. Display only — scoring lives in 晨操狀態.
@@ -5672,6 +5686,7 @@ function renderHorseCard(horse, topPickRank, marketRanks, analysisRef) {
     if (horse.form_cycle) formLine += `狀態週期: ${esc(cleanText(horse.form_cycle))}`;
     if (cleanForm || horse.form_cycle) html += `<div>${formLine}</div>`;
   }
+  html += renderRunStyleOutlook(horse.run_style_outlook);
   html += renderMarketLine(horse, marketRanks);
   html += renderDimensionStrip(horse);
   const timeEvidence = horse.full_time_speed;

@@ -108,6 +108,7 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       renderAuFullTimeStatus,
       renderDimensionStrip: typeof renderDimensionStrip === "function" ? renderDimensionStrip : null,
       renderTrackworkTimeline: typeof renderTrackworkTimeline === "function" ? renderTrackworkTimeline : null,
+      renderRunStyleOutlook: typeof renderRunStyleOutlook === "function" ? renderRunStyleOutlook : null,
       buildHorseAnalysisSections,
       parseChronologySeries,
       renderChronologySeries,
@@ -2548,4 +2549,22 @@ test("HKJC 即場形勢 splits 場地偏差 into a 頭馬 card and a 上名 card
   // Nobody has a place yet, so no leader is named.
   assert.match(html,/ins-leader--empty"><span>最旺騎師<\/span><strong>—/);
   assert.doesNotMatch(html,/NaN|Infinity/);assert.match(html,/未有賽果/);
+});
+
+test("horse card shows the 預計跑法 label with runs and hit rate (reference only)", () => {
+  const { renderRunStyleOutlook } = loadTemplateFunctions();
+  const html = renderRunStyleOutlook({
+    label: "放頭", consistency: "穩定", hit_rate: 69.5, field: 12,
+    runs: [{ date: "28/10/2026", first_call: 2, style: "放頭" }, { date: "07/10/2026", first_call: 3, style: "放頭" },
+           { date: "16/09/2026", first_call: 1, style: "放頭" }],
+  });
+  assert.match(html, /預計跑法: <strong>放頭<\/strong> · 穩定/);
+  assert.match(html, /近仗 放頭\(2\)／放頭\(3\)／放頭\(1\)/);
+  assert.match(html, /歷史命中 69\.5%/);
+  assert.match(html, /唔入評分/);
+  const variable = renderRunStyleOutlook({ label: null, consistency: "多變", hit_rate: null,
+    runs: [{ date: "01/10/2026", first_call: 1, style: "放頭" }, { date: "01/09/2026", first_call: 7, style: "守中" }] });
+  assert.match(variable, /預計跑法: <strong>多變<\/strong>/);
+  assert.doesNotMatch(variable, /命中|null|undefined/);
+  assert.equal(renderRunStyleOutlook(null), "");
 });

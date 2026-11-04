@@ -969,6 +969,73 @@ def _csv_scoring_payload(row: dict) -> dict:
     return {key: value for key, value in payload.items() if value}
 
 
+# 預計跑法（參考 label，唔入評分；Kelvin 2026-11-05）。分類同即場形勢一樣
+# （hkjc_insights.run_style）：第一個沿途位 ≤ 3 = 放頭，> 出馬數 × 2/3 = 後上，其他 = 守中。
+# 近 3 仗多數決；3/3 同類 = 穩定，2/3 = 大致，冇多數 = 多變（唔出 label）。往績馬數用今仗出賽馬數代替。
+# 命中率：賽果庫 2025-01-01 → 2026-10-10，16,568 匹，同一條規則（EXP-20261105-04 篩選）。
+RUN_STYLE_HIT_RATE = {
+    ("放頭", "穩定"): 69.5, ("放頭", "大致"): 50.3,
+    ("後上", "穩定"): 60.7, ("後上", "大致"): 50.2,
+    ("守中", "穩定"): 50.0, ("守中", "大致"): 45.6,
+}
+_POSITION_RUN = re.compile(r"第(\d+)仗\((\d{2}/\d{2}/\d{4})[^)]*\):\s*沿途位=(\d+)")
+
+
+def run_style_outlook(position_window, field) -> Optional[dict]:
+    """近 3 仗第一個沿途位 → 預計跑法 label；少過 2 仗有沿途位 → None。"""
+    if not field:
+        return None
+    runs = sorted(
+        ((int(n), date, int(first)) for n, date, first in _POSITION_RUN.findall(str(position_window or ""))),
+        key=lambda item: item[0],
+    )[:3]
+    if len(runs) < 2:
+        return None
+
+    def style(first):
+        return "放頭" if first <= 3 else ("後上" if first > field * 2 / 3 else "守中")
+
+    styles = [style(first) for _n, _date, first in runs]
+    label, count = max(((s, styles.count(s)) for s in ("放頭", "守中", "後上")), key=lambda item: item[1])
+    if count < 2:
+        label, consistency = None, "多變"
+    else:
+        consistency = "穩定" if count == len(styles) else "大致"
+    return {
+        "label": label,
+        "consistency": consistency,
+        "runs": [{"date": date, "first_call": first, "style": s}
+                 for (_n, date, first), s in zip(runs, styles)],
+        "hit_rate": RUN_STYLE_HIT_RATE.get((label, consistency)),
+        "field": field,
+    }
+
+
+def _load_run_style_map(analysis_path: Path) -> dict[int, dict]:
+    logic_path = analysis_path.with_name(
+        analysis_path.name.replace("_Auto_Analysis.md", "_Logic.json"))
+    if not logic_path.exists():
+        return {}
+    try:
+        payload = json.loads(logic_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    horses = payload.get("horses") or {}
+    field = sum(1 for h in horses.values()
+                if isinstance(h, dict) and "退出" not in str(h.get("horse_name") or ""))
+    mapping = {}
+    for raw_number, horse in horses.items():
+        try:
+            number = int(raw_number)
+        except (TypeError, ValueError):
+            continue
+        data = (horse or {}).get("_data") or {}
+        outlook = run_style_outlook(data.get("position_window"), field)
+        if outlook:
+            mapping[number] = outlook
+    return mapping
+
+
 def _load_logic_scoring_map(analysis_path: Path) -> dict[int, dict]:
     """Read the canonical engine score objects for the dashboard score ledger."""
     logic_path = analysis_path.with_name(
@@ -1176,6 +1243,9 @@ def parse_hkjc_analysis(filepath: str) -> Optional[RaceAnalysis]:
     is_auto = path.name.endswith("_Auto_Analysis.md")
     auto_scoring = _load_auto_scoring_map(path) if is_auto else {}
     logic_scoring = _load_logic_scoring_map(path) if is_auto else {}
+    run_styles = _load_run_style_map(path) if is_auto else {}
+    for horse in horses:
+        horse.run_style_outlook = run_styles.get(horse.horse_number)
     matrix_details = _load_matrix_details(path) if is_auto else {}
     for horse in horses:
         details = matrix_details.get(horse.horse_number)
