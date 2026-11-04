@@ -598,6 +598,72 @@
        contradict each other. */
     .scope-note { display: flex; gap: 9px; margin-bottom: 14px; padding: 10px 13px; border: 1px solid #DBEAFE; border-radius: 10px; background: #F5F9FF; color: #1E3A8A; font-size: .68rem; line-height: 1.55; }
     .scope-note strong { font-weight: 900; }
+    /* ROI page v2 (2026-11-05) — same visual language as 即場形勢 (.hkjc-insights). */
+    .roi-page { --r-ink:#0b1220; --r-text:#334155; --r-muted:#64748b; --r-faint:#94a3b8; --r-line:#e6eaf1; --r-soft:#f5f7fb; --r-up:#0f9f6e; --r-up-soft:#ecfbf3; --r-down:#d14343; --r-down-soft:#fdf0f0; --r-accent:#3b5bdb; --r-shadow:0 1px 2px rgba(15,23,42,.04),0 12px 32px -18px rgba(15,23,42,.18); max-width:1180px; margin:0 auto; color:var(--r-ink); font-family:'Noto Sans HK','PingFang HK',sans-serif; font-feature-settings:"tnum" 1; }
+    .roi-page .is-up { color: var(--r-up); } .roi-page .is-down { color: var(--r-down); }
+    .roi-head { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; flex-wrap:wrap; margin:4px 0 16px; }
+    .roi-eyebrow { font-size:.66rem; font-weight:800; letter-spacing:.16em; color:var(--r-faint); margin-bottom:4px; }
+    .roi-head h1 { font-size:1.55rem; font-weight:900; letter-spacing:-.02em; display:flex; align-items:center; gap:8px; margin:0; }
+    .roi-switch { display:inline-flex; padding:4px; gap:4px; background:var(--r-soft); border:1px solid var(--r-line); border-radius:14px; }
+    .roi-switch__btn { display:flex; flex-direction:column; align-items:center; min-width:76px; min-height:44px; justify-content:center; padding:6px 12px; border:0; border-radius:10px; background:transparent; color:var(--r-muted); font:inherit; font-weight:800; font-size:.8rem; cursor:pointer; transition:background-color .15s ease,color .15s ease,box-shadow .15s ease; }
+    .roi-switch__btn small { font-size:.62rem; font-weight:600; color:var(--r-faint); }
+    .roi-switch__btn.is-on { background:#fff; color:var(--r-ink); box-shadow:0 1px 2px rgba(15,23,42,.08),0 4px 12px -6px rgba(15,23,42,.25); }
+    .roi-switch__btn:focus-visible, .roi-season-toggle:focus-visible, .roi-more:focus-visible { outline:2px solid var(--r-accent); outline-offset:2px; }
+    .roi-kpis { display:grid; grid-template-columns:minmax(0,1.6fr) repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:14px; }
+    .roi-hero, .roi-kpi { background:#fff; border:1px solid var(--r-line); border-radius:16px; box-shadow:var(--r-shadow); padding:16px 18px; }
+    .roi-hero { background:linear-gradient(135deg,#fff 0%,var(--r-soft) 100%); position:relative; overflow:hidden; }
+    .roi-hero::after { content:""; position:absolute; inset:auto -40px -60px auto; width:180px; height:180px; border-radius:50%; background:currentColor; opacity:.05; }
+    .roi-hero__label { font-size:.72rem; font-weight:800; color:var(--r-muted); letter-spacing:.04em; }
+    .roi-hero__value { font-size:2.4rem; font-weight:900; letter-spacing:-.03em; line-height:1.1; margin:6px 0 4px; }
+    .roi-hero__sub { font-size:.74rem; color:var(--r-muted); } .roi-hero__sub b { color:inherit; }
+    .roi-kpi { display:flex; flex-direction:column; gap:4px; }
+    .roi-kpi span { font-size:.7rem; font-weight:800; color:var(--r-muted); }
+    .roi-kpi strong { font-size:1.45rem; font-weight:900; letter-spacing:-.02em; }
+    .roi-kpi small { font-size:.68rem; color:var(--r-faint); }
+    .roi-chart { margin-bottom:6px; } .roi-chart > .card { border-radius:16px; border:1px solid var(--r-line); box-shadow:var(--r-shadow); }
+    .roi-chart svg { height:auto !important; max-height:320px; } /* inline 320px left a blank band on phones */
+    .roi-section-head { display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap; margin:22px 0 10px; }
+    .roi-section-head h2 { font-size:1.02rem; font-weight:900; margin:0; } .roi-section-head span { font-size:.7rem; color:var(--r-faint); }
+    .roi-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-items:start; }
+    .roi-card { background:#fff; border:1px solid var(--r-line); border-radius:18px; box-shadow:var(--r-shadow); padding:16px 18px 14px; }
+    .roi-card__head { display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap; margin-bottom:6px; }
+    .roi-card__head h3 { font-size:.92rem; font-weight:900; margin:0; } .roi-card__head span { font-size:.68rem; color:var(--r-faint); }
+    .roi-card__note { font-size:.68rem; color:var(--r-faint); margin:8px 0 0; }
+    .roi-card ol { list-style:none; margin:0; padding:0; }
+    .roi-card li.is-thin { opacity:.45; }
+    .roi-board__colhead, .roi-board li { display:grid; grid-template-columns:22px minmax(0,1fr) 52px 70px 64px; gap:8px; align-items:center; }
+    .roi-board__colhead { font-size:.62rem; font-weight:700; color:var(--r-faint); padding:8px 0 6px; border-bottom:1px solid var(--r-line); }
+    .roi-board__colhead span:nth-child(n+3) { text-align:right; }
+    .roi-board li { padding:9px 0; border-top:1px solid #f1f4f8; } .roi-board li:first-child { border-top:0; }
+    .roi-board__rank { font-size:.74rem; font-weight:900; color:var(--r-faint); text-align:center; }
+    .roi-board li:nth-child(-n+3):not(.is-thin) .roi-board__rank { color:#c9971c; }
+    .roi-board__name { font-size:.88rem; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .roi-board__hit { text-align:right; font-size:.72rem; color:var(--r-muted); } .roi-board__hit b { color:var(--r-ink); font-size:.82rem; }
+    .roi-board__pnl { text-align:right; font-size:.8rem; font-weight:800; }
+    .roi-pill { justify-self:end; font-size:.72rem; font-weight:900; padding:3px 8px; border-radius:999px; background:var(--r-soft); }
+    .roi-pill.is-up { background:var(--r-up-soft); } .roi-pill.is-down { background:var(--r-down-soft); }
+    .roi-bars li { display:grid; grid-template-columns:minmax(0,1fr) 44px minmax(60px,1.2fr) 58px 64px; gap:8px; align-items:center; padding:8px 0; border-top:1px solid #f1f4f8; }
+    .roi-bars li:first-child { border-top:0; }
+    .roi-bar__name { font-size:.84rem; font-weight:800; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .roi-bar__n { text-align:right; font-size:.8rem; font-weight:700; } .roi-bar__n small { font-size:.62rem; color:var(--r-faint); margin-left:2px; }
+    .roi-bar__track { position:relative; height:8px; border-radius:999px; background:var(--r-soft); }
+    .roi-bar__track::after { content:""; position:absolute; left:50%; top:-3px; bottom:-3px; width:1px; background:#cbd5e1; }
+    .roi-bar__track i { position:absolute; top:0; bottom:0; border-radius:999px; }
+    .roi-bar__track i.up { left:50%; background:var(--r-up); } .roi-bar__track i.down { right:50%; background:var(--r-down); }
+    .roi-bar__roi { text-align:right; font-size:.8rem; font-weight:900; } .roi-bar__pnl { text-align:right; font-size:.72rem; font-weight:700; }
+    .roi-more { display:block; width:100%; margin-top:10px; min-height:40px; padding:0 12px; border:1px solid var(--r-line); border-radius:12px; background:var(--r-soft); color:#475569; font:inherit; font-size:.76rem; font-weight:700; cursor:pointer; }
+    .roi-more:hover { background:#eef2f8; }
+    .roi-hero__vs { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:10px; padding-top:10px; border-top:1px dashed var(--r-line); font-size:.7rem; color:var(--r-muted); }
+    .roi-hero__vs b { font-weight:900; } .roi-hero__vs em { font-style:normal; font-weight:800; padding:2px 8px; border-radius:999px; background:#fff; border:1px solid var(--r-line); }
+    @media (max-width: 760px) {
+      .roi-kpis { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; } .roi-hero { grid-column:1 / -1; }
+      .roi-kpi { padding:12px; } .roi-kpi strong { font-size:1.15rem; } .roi-kpi span, .roi-kpi small { font-size:.62rem; }
+      .roi-grid { grid-template-columns:minmax(0,1fr); }
+      .roi-bars li { grid-template-columns:minmax(0,1fr) 38px minmax(48px,1fr) 56px; } .roi-bar__pnl { display:none; }
+      .roi-board__colhead, .roi-board li { grid-template-columns:20px minmax(0,1fr) 46px 62px 58px; gap:6px; }
+      .roi-switch { width:100%; } .roi-switch__btn { flex:1; min-width:0; }
+    }
+    @media (prefers-reduced-motion: reduce) { .roi-page * { transition:none !important; } }
     .sports-diagnostics { margin-bottom: 14px; border: 1px solid #E2E8F0; border-radius: 10px; background: #FFFFFF; }
     .sports-diagnostics__summary { padding: 10px 13px; color: #64748B; font-size: .67rem; font-weight: 800; cursor: pointer; list-style: none; }
     .sports-diagnostics__summary::-webkit-details-marker { display: none; }
@@ -7075,7 +7141,7 @@ function toggleSession(key) {
   render();
 }
 
-function getFilteredROI() {
+function getFilteredROI(season = null) {
   const roi = DASHBOARD_DATA.roi || {};
   // The permanent ROI ledger is authoritative.  Tombstones suppress matching
   // records in the pre-baked snapshot, and local panel drafts never overwrite
@@ -7094,8 +7160,11 @@ function getFilteredROI() {
   const allBets = Object.values(baseMap);
   allBets.sort((a,b) => (a.date||'').localeCompare(b.date||''));
 
-  // Apply region filter
-  const bets = roiRegionFilter ? allBets.filter(b => b.region === roiRegionFilter) : allBets;
+  // Apply region filter, then (optionally) one racing season.
+  const regionBets = roiRegionFilter ? allBets.filter(b => b.region === roiRegionFilter) : allBets;
+  const bets = season && season !== 'all'
+    ? regionBets.filter(b => roiSeasonOf(b.date, b.region) === season)
+    : regionBets;
 
   // Recompute totals
   const totalStake = bets.reduce((s,b) => s + (b.stake||0), 0);
@@ -7111,8 +7180,9 @@ function getFilteredROI() {
   // Daily breakdown
   const dm = {};
   bets.forEach(b => {
-    const k = `${b.date}-${b.venue}`;
-    if (!dm[k]) dm[k] = {date:b.date,venue:b.venue,region:b.region,bets:0,stake:0,payout:0,profit:0,wins:0};
+    // 「HappyValley」（App）同「Happy Valley」（舊匯入）係同一個賽日，唔好分開兩行。
+    const k = `${b.date}-${roiVenueKey(b.venue)}`;
+    if (!dm[k]) dm[k] = {date:b.date,venue:b.venue,venue_key:roiVenueKey(b.venue),region:b.region,bets:0,stake:0,payout:0,profit:0,wins:0};
     dm[k].bets++; dm[k].stake += b.stake||0; dm[k].payout += b.payout||0; dm[k].profit += b.net_profit||0;
     if (b.status==='won') dm[k].wins++;
   });
@@ -7123,7 +7193,284 @@ function getFilteredROI() {
   // silently disagree about how many bets you have made.
   const ledgerCount = bets.filter(b => fromLedger.has(b._ledger_key || `${b.date}|${b.venue}|${b.race_number}|${b.horse_number}`)).length;
   const sources = {ledger: ledgerCount, snapshot: bets.length - ledgerCount};
-  return {total_bets:bets.length,total_stake:Math.round(totalStake*100)/100,total_payout:Math.round(totalPayout*100)/100,total_profit:Math.round(totalProfit*100)/100,roi_pct:roiPct,win_rate:winRate,wins,losses,running_profit:rp,daily_breakdown:db,side_roi:roi.side_roi,bets,sources};
+  return {total_bets:bets.length,total_stake:Math.round(totalStake*100)/100,total_payout:Math.round(totalPayout*100)/100,total_profit:Math.round(totalProfit*100)/100,roi_pct:roiPct,win_rate:winRate,wins,losses,running_profit:rp,daily_breakdown:db,side_roi:roi.side_roi,bets,sources,season:season||'all',region_bets:regionBets};
+}
+
+// ═══════════════════════════════════════════════
+// ROI page v2 (Kelvin 2026-11-05): season scope, collapsible breakdowns
+// computed from every bet (snapshot + App ledger), premium layout.
+// ═══════════════════════════════════════════════
+let roiSeasonScope = (() => { try { return localStorage.getItem('wc.roiSeasonScope') || 'current'; } catch (e) { return 'current'; } })();
+const roiOpenSeasons = new Set();
+const roiAllPeople = new Set();
+
+// 馬季由 8 月 1 日起計：HKJC 9 月開鑼、7 月中閉幕（8 月休季歸下一季），AU 本身就係 8 月 1 日。
+function roiSeasonOf(date) {
+  const y = Number(String(date || '').slice(0, 4)), m = Number(String(date || '').slice(5, 7));
+  if (!y || !m) return 'unknown';
+  const first = m >= 8 ? y : y - 1;
+  return `${first}/${String((first + 1) % 100).padStart(2, '0')}`;
+}
+// 今季／上季／更早嘅馬季：上季 = 今季之前最近一季（唔係「第二新」，因為今季可能未有注）。
+function roiSeasonName(season, current, seasons) {
+  if (season === current) return '今季';
+  return season === seasons.filter(s => s < current).sort().reverse()[0] ? '上季' : '往季';
+}
+function roiVenueKey(v) {
+  const t = String(v || '').replace(/[\s_]+/g, '').toLowerCase();
+  if (t === '沙田' || t === 'st') return 'shatin';
+  if (t === '跑馬地' || t === 'hv') return 'happyvalley';
+  return t;
+}
+const ROI_VENUE_ZH = { shatin: '沙田', happyvalley: '跑馬地' };
+function roiVenueName(v, region) {
+  return region === 'hkjc' ? (ROI_VENUE_ZH[roiVenueKey(v)] || String(v || '').trim()) : String(v || '').trim();
+}
+const ROI_CLASS_ORDER = ['一級賽', '二級賽', '三級賽', '第一班', '第二班', '第三班', '第四班', '第五班', '新馬賽'];
+function roiClassName(c) {
+  const t = String(c || '').trim();
+  if (!t) return '';
+  let m = t.match(/^(?:C|Class\s*)([1-5])$/i);
+  if (m) return ROI_CLASS_ORDER[Number(m[1]) + 2];
+  m = t.match(/^(?:G|Group\s*)([1-3])$/i);
+  if (m) return ROI_CLASS_ORDER[Number(m[1]) - 1];
+  m = t.match(/^([一二三])級賽/);
+  if (m) return `${m[1]}級賽`;
+  m = t.match(/^第([一二三四五])班/);
+  if (m) return `第${m[1]}班`;
+  if (/^(GR|Griffin|新馬)/i.test(t)) return '新馬賽';
+  return t;
+}
+const ROI_TRACK_ORDER = ['草地 A', '草地 A+3', '草地 B', '草地 B+2', '草地 C', '草地 C+3', '草地', '全天候'];
+function roiTrackName(t) {
+  const s = String(t || '');
+  if (!s.trim()) return '';
+  if (/全天候|泥地|AWT/i.test(s)) return '全天候';
+  const m = s.match(/"([ABC](?:\+\d)?)"/) || s.match(/草地\s+([ABC](?:\+\d)?)\b/) || s.match(/^([ABC](?:\+\d)?)$/);
+  return m ? `草地 ${m[1]}` : (/草地|turf/i.test(s) ? '草地' : s.trim());
+}
+function roiDistanceName(d) {
+  const m = String(d || '').match(/\d{3,4}/);
+  return m ? `${Number(m[0])}米` : '';
+}
+// Snapshot rows carry these fields; App-ledger rows do not, so the race and
+// runner are looked up in the snapshot's hkjc_race_meta (generate_static).
+function roiBetMeta(b) {
+  const hk = b.region === 'hkjc';
+  const meta = hk ? (DASHBOARD_DATA.roi?.hkjc_race_meta || {})[`${b.date}|${roiVenueKey(b.venue)}|${Number(b.race_number)}`] : null;
+  const runner = meta?.h?.[String(b.horse_number)] || [];
+  return {
+    venue: roiVenueName(b.venue, b.region),
+    distance: roiDistanceName(b.distance || meta?.d),
+    race_class: hk ? roiClassName(b.race_class || meta?.c) : String(b.race_class || '').trim(),
+    track: hk ? roiTrackName(b.track_type || meta?.t) : String(b.track_type || '').trim(),
+    jockey: String(b.jockey || runner[0] || '').trim(),
+    trainer: String(b.trainer || runner[1] || '').trim(),
+  };
+}
+const ROI_DIMS = [
+  { key: 'venue', title: '馬場', icon: '🏟️', order: v => ['沙田', '跑馬地'].indexOf(v) },
+  { key: 'distance', title: '路程', icon: '📏', order: v => parseInt(v, 10) || 9999 },
+  { key: 'race_class', title: '班次', icon: '🏆', order: v => { const i = ROI_CLASS_ORDER.indexOf(v); return i < 0 ? 99 : i; } },
+  { key: 'track', title: '賽道', icon: '🛤️', order: v => { const i = ROI_TRACK_ORDER.indexOf(v); return i < 0 ? 99 : i; } },
+  { key: 'jockey', title: '騎師', icon: '🏇', people: true },
+  { key: 'trainer', title: '練馬師', icon: '🏠', people: true },
+];
+const ROI_PEOPLE_MIN = 3;
+function roiGroupStats(bets) {
+  const s = { n: bets.length, wins: 0, losses: 0, stake: 0, profit: 0 };
+  bets.forEach(b => {
+    if (b.status === 'won') s.wins++; else if (b.status === 'lost') s.losses++;
+    s.stake += b.stake || 0; s.profit += b.net_profit || 0;
+  });
+  s.profit = Math.round(s.profit * 100) / 100;
+  s.roi = s.stake > 0 ? Math.round(s.profit / s.stake * 1000) / 10 : null;
+  s.win_rate = (s.wins + s.losses) ? Math.round(s.wins / (s.wins + s.losses) * 1000) / 10 : null;
+  return s;
+}
+function roiBreakdowns(bets) {
+  const metas = bets.map(b => [b, roiBetMeta(b)]);
+  return ROI_DIMS.map(dim => {
+    const groups = new Map();
+    let covered = 0;
+    metas.forEach(([b, m]) => {
+      const v = m[dim.key];
+      if (!v) return;
+      covered++;
+      if (!groups.has(v)) groups.set(v, []);
+      groups.get(v).push(b);
+    });
+    let rows = [...groups].map(([name, list]) => ({ name, ...roiGroupStats(list) }));
+    rows.sort(dim.people ? ((a, b) => b.n - a.n || b.profit - a.profit) : ((a, b) => dim.order(a.name) - dim.order(b.name) || b.n - a.n));
+    const ranked = rows.filter(r => r.n >= (dim.people ? ROI_PEOPLE_MIN : 3) && r.roi != null);
+    const best = ranked.length ? ranked.reduce((a, b) => (b.roi > a.roi ? b : a)) : null;
+    const worst = ranked.length > 1 ? ranked.reduce((a, b) => (b.roi < a.roi ? b : a)) : null;
+    return { ...dim, rows, covered, total: bets.length, best, worst: worst && worst !== best ? worst : null };
+  });
+}
+function roiMoney(v) { const n = Number(v || 0); return `${n >= 0 ? '+' : '−'}$${Math.abs(n).toFixed(2)}`; }
+function roiPctText(v) { return v == null ? '—' : `${v > 0 ? '+' : ''}${v}%`; }
+function roiTone(v) { return v == null ? '' : v >= 0 ? 'is-up' : 'is-down'; }
+
+function setRoiSeasonScope(scope) {
+  roiSeasonScope = scope;
+  try { localStorage.setItem('wc.roiSeasonScope', scope); } catch (e) { /* private mode */ }
+  render();
+}
+function toggleRoiSeason(key) { roiOpenSeasons.has(key) ? roiOpenSeasons.delete(key) : roiOpenSeasons.add(key); render(); }
+function toggleRoiAllPeople(key) { roiAllPeople.has(key) ? roiAllPeople.delete(key) : roiAllPeople.add(key); render(); }
+
+function roiResolveScope(seasons, current) {
+  if (roiSeasonScope === 'all') return 'all';
+  if (roiSeasonScope === 'previous') return seasons.filter(s => s < current).sort().reverse()[0] || seasons[0] || 'all';
+  if (seasons.includes(roiSeasonScope)) return roiSeasonScope;
+  return seasons.includes(current) ? current : (seasons[0] || 'all');
+}
+
+function renderRoiSeasonSwitch(seasons, current, selected) {
+  const opts = seasons.map(s => ({ key: s, label: roiSeasonName(s, current, seasons), sub: s }));
+  opts.push({ key: 'all', label: '全部', sub: seasons.length > 1 ? `${seasons[seasons.length - 1].slice(0, 4)}–` : '' });
+  return `<div class="roi-switch" role="tablist" aria-label="統計範圍">${opts.map(o =>
+    `<button type="button" role="tab" aria-selected="${o.key === selected}" class="roi-switch__btn${o.key === selected ? ' is-on' : ''}" onclick="setRoiSeasonScope('${o.key}')"><span>${o.label}</span>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</button>`
+  ).join('')}</div>`;
+}
+
+function renderRoiKpis(roi, scopeLabel, prev = null) {
+  const settled = roi.wins + roi.losses;
+  const avgWinOdds = (() => { const w = roi.bets.filter(b => b.status === 'won' && Number(b.odds)); return w.length ? (w.reduce((t, b) => t + Number(b.odds), 0) / w.length).toFixed(2) : '—'; })();
+  return `<div class="roi-kpis">
+    <div class="roi-hero ${roiTone(roi.total_profit)}">
+      <div class="roi-hero__label">${esc(scopeLabel)} · 回報率</div>
+      <div class="roi-hero__value">${roiPctText(roi.roi_pct)}</div>
+      <div class="roi-hero__sub"><b>${roiMoney(roi.total_profit)}</b> 淨利 · 投入 $${roi.total_stake.toFixed(2)} → 回報 $${roi.total_payout.toFixed(2)}</div>
+      ${prev && prev.total_bets ? `<div class="roi-hero__vs"><span>${esc(prev.label)}</span><b class="${roiTone(prev.roi_pct)}">${roiPctText(prev.roi_pct)}</b><em class="${roiTone(roi.roi_pct - prev.roi_pct)}">${roi.roi_pct - prev.roi_pct >= 0 ? '▲' : '▼'} ${Math.abs(Math.round((roi.roi_pct - prev.roi_pct) * 10) / 10)} 個百分點</em></div>` : ''}
+    </div>
+    <div class="roi-kpi"><span>投注</span><strong>${roi.total_bets}</strong><small>${settled} 已結算</small></div>
+    <div class="roi-kpi"><span>命中率</span><strong>${roi.win_rate}%</strong><small>${roi.wins} 中 · ${roi.losses} 唔中</small></div>
+    <div class="roi-kpi"><span>平均中注賠率</span><strong>${avgWinOdds}</strong><small>打和要命中 ${avgWinOdds === '—' ? '—' : (100 / Number(avgWinOdds)).toFixed(1) + '%'}</small></div>
+  </div>`;
+}
+
+const ROI_BOARD_TOP = 5;
+// 細分項（馬場／路程／班次／賽道）行數少，一直顯示；ROI 條以 0 為中心，正數向右綠、負數向左紅。
+function renderRoiBarCard(d) {
+  const maxAbs = Math.max(1, ...d.rows.map(r => Math.abs(r.roi || 0)));
+  const rows = d.rows.map(r => {
+    const w = r.roi == null ? 0 : Math.min(50, Math.abs(r.roi) / maxAbs * 50);
+    const thin = r.n < 3;
+    return `<li class="${thin ? 'is-thin' : ''}"><span class="roi-bar__name">${esc(r.name)}</span><span class="roi-bar__n">${r.n}<small>注</small></span>
+      <span class="roi-bar__track" aria-hidden="true"><i class="${r.roi >= 0 ? 'up' : 'down'}" style="width:${w}%"></i></span>
+      <b class="roi-bar__roi ${roiTone(r.roi)}">${roiPctText(r.roi)}</b><span class="roi-bar__pnl ${roiTone(r.profit)}">${roiMoney(r.profit)}</span></li>`;
+  }).join('');
+  const cov = d.covered < d.total ? ` · ${d.covered}/${d.total} 注有資料` : '';
+  return `<article class="roi-card roi-bars"><div class="roi-card__head"><h3>${d.icon} ${d.title}</h3><span>${d.rows.length} 組${cov}</span></div><ol>${rows}</ol></article>`;
+}
+// 騎師／練馬師：好似即場形勢咁做排行榜，頭五先，撳「顯示全部」展開；少過 3 注嘅淡色排最尾。
+function renderRoiBoard(d) {
+  const ranked = d.rows.filter(r => r.n >= ROI_PEOPLE_MIN).sort((a, b) => b.profit - a.profit || b.n - a.n);
+  const thin = d.rows.filter(r => r.n < ROI_PEOPLE_MIN).sort((a, b) => b.profit - a.profit);
+  const all = [...ranked, ...thin];
+  const expanded = roiAllPeople.has(d.key);
+  const shown = expanded ? all : ranked.slice(0, ROI_BOARD_TOP);
+  const list = shown.map((r, i) => `<li class="${r.n < ROI_PEOPLE_MIN ? 'is-thin' : ''}"><span class="roi-board__rank">${r.n < ROI_PEOPLE_MIN ? '·' : i + 1}</span><span class="roi-board__name">${esc(r.name)}</span>
+    <span class="roi-board__hit"><b>${r.wins}</b>/${r.n}</span><span class="roi-board__pnl ${roiTone(r.profit)}">${roiMoney(r.profit)}</span><span class="roi-pill ${roiTone(r.roi)}">${roiPctText(r.roi)}</span></li>`).join('');
+  const cov = d.covered < d.total ? `<p class="roi-card__note">${d.covered}/${d.total} 注配對到${d.title}</p>` : '';
+  return `<article class="roi-card roi-board"><div class="roi-card__head"><h3>${d.icon} ${d.title}榜</h3><span>按淨利排 · ${ranked.length} 位 ≥${ROI_PEOPLE_MIN} 注</span></div>
+    <div class="roi-board__colhead" aria-hidden="true"><span>#</span><span></span><span>中/注</span><span>淨利</span><span>ROI</span></div>
+    ${list ? `<ol>${list}</ol>` : `<div class="roi-card__note">未有 ${ROI_PEOPLE_MIN} 注或以上嘅${d.title}。</div>`}${cov}
+    ${all.length > ROI_BOARD_TOP ? `<button type="button" class="roi-more" onclick="toggleRoiAllPeople('${d.key}')">${expanded ? '收起' : `顯示全部 ${all.length} 位`}</button>` : ''}</article>`;
+}
+function renderRoiBreakdowns(bets) {
+  const dims = roiBreakdowns(bets).filter(d => d.rows.length);
+  if (!dims.length) return '';
+  const bars = dims.filter(d => !d.people), people = dims.filter(d => d.people);
+  return `${people.length ? `<div class="roi-section-head"><h2>騎練榜</h2><span>頭 ${ROI_BOARD_TOP} 名 · 撳「顯示全部」睇晒</span></div><div class="roi-grid">${people.map(renderRoiBoard).join('')}</div>` : ''}
+    ${bars.length ? `<div class="roi-section-head"><h2>分項分析</h2><span>淡色 = 少過 3 注，參考價值低</span></div><div class="roi-grid">${bars.map(renderRoiBarCard).join('')}</div>` : ''}`;
+}
+
+function roiMonthLabel(key) {
+  const [y, m] = String(key).split('-');
+  return y && m ? `${y}年${Number(m)}月` : key;
+}
+
+function renderRoiSessionBets(sBets) {
+  let html = '<div style="border-top:1px solid #F1F5F9;padding:12px 16px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.75rem"><thead><tr style="border-bottom:1px solid #E2E8F0;color:#94A3B8"><th style="padding:4px 8px;text-align:left">場次</th><th style="padding:4px 8px;text-align:left">馬匹</th><th style="padding:4px 8px;text-align:left">賠率</th><th style="padding:4px 8px;text-align:left">名次</th><th style="padding:4px 8px;text-align:left">狀態</th><th style="padding:4px 8px;text-align:right">淨利</th><th style="padding:4px 8px;text-align:right">操作</th></tr></thead><tbody>';
+  sBets.forEach(b => {
+    const bc = b.net_profit>0?'#059669':b.net_profit<0?'#DC2626':'#94A3B8';
+    const stBg = b.status==='won'?'#D1FAE5':b.status==='lost'?'#FEE2E2':'#FEF3C7';
+    const stCol = b.status==='won'?'#059669':b.status==='lost'?'#DC2626':'#D97706';
+    const stLabel = b.status==='won'?'✅':b.status==='lost'?'❌':'⏳';
+    const encodedKey = b._ledger_key ? encodeRoiKey(b._ledger_key) : '';
+    const actions = encodedKey
+      ? `<div class="roi-record-actions"><button class="roi-record-action roi-record-action--edit" type="button" onclick="editRoiRecord('${encodedKey}')">編輯</button><button class="roi-record-action" type="button" onclick="openBetAudit('${encodeURIComponent(`horse:${b._ledger_key}`)}')">紀錄</button><button class="roi-record-action roi-record-action--delete" type="button" onclick="deleteRoiRecord('${encodedKey}')">刪除</button></div>`
+      : '<span style="color:#CBD5E1">—</span>';
+    html += `<tr style="border-bottom:1px solid #F8FAFC"><td style="padding:4px 8px">R${b.race_number}</td><td style="padding:4px 8px"><strong>#${b.horse_number}</strong> ${esc(b.horse_name)}</td><td style="padding:4px 8px">${b.odds||'—'}</td><td style="padding:4px 8px">${b.result_position??'—'}</td><td style="padding:4px 8px"><span style="background:${stBg};color:${stCol};padding:1px 6px;border-radius:999px;font-size:0.65rem;font-weight:700">${stLabel}</span></td><td style="padding:4px 8px;text-align:right;font-weight:700;color:${bc}">${b.net_profit!=null?`${b.net_profit>0?'+':''}$${Number(b.net_profit).toFixed(2)}`:'—'}</td><td style="padding:4px 8px;text-align:right">${actions}</td></tr>`;
+  });
+  return html + '</tbody></table></div>';
+}
+
+// 每日明細按馬季分組：今季（或所揀嗰季）攤開；其他季收埋，只顯示總注數、淨利同 ROI。
+// 季度入面嘅月份同賽日用返原本嘅樣式（Kelvin 2026-11-05：呢部分保留原設計）。
+function renderRoiSeasonLedger(allRoi, current, selected) {
+  const sessions = allRoi.daily_breakdown || [];
+  if (!sessions.length) return '';
+  const bets = allRoi.bets || [];
+  const bySeason = new Map();
+  sessions.forEach(s => {
+    const k = roiSeasonOf(s.date, s.region);
+    if (!bySeason.has(k)) bySeason.set(k, []);
+    bySeason.get(k).push(s);
+  });
+  const seasons = [...bySeason.keys()].sort().reverse();
+  let html = '<div style="margin-top:16px"><h3 style="font-size:0.9rem;font-weight:700;margin-bottom:12px;color:#475569">📅 每日投注明細</h3>';
+  seasons.forEach(season => {
+    const list = bySeason.get(season).sort((a, b) => b.date.localeCompare(a.date));
+    const st = roiGroupStats(bets.filter(b => roiSeasonOf(b.date, b.region) === season));
+    const defaultOpen = selected === 'all' ? season === current : season === selected;
+    const open = roiOpenSeasons.has(season) ? !defaultOpen : defaultOpen;
+    const up = st.profit >= 0;
+    html += `<div class="card" style="margin-bottom:12px;padding:0;overflow:hidden">
+      <button type="button" class="roi-season-toggle" aria-expanded="${open}" onclick="toggleRoiSeason('${season}')" style="width:100%;padding:12px 16px;background:#F1F5F9;border:none;cursor:pointer;text-align:left;font-family:inherit;display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span style="font-size:0.9rem;font-weight:800;color:#1E293B">🏇 ${roiSeasonName(season, current, seasons)} ${esc(season)}</span><span style="font-size:0.7rem;color:#94A3B8">${list.length} 個賽日 · ${st.n} 注</span></div>
+        <div style="display:flex;align-items:center;gap:10px"><span style="font-size:0.8rem;font-weight:700;color:${up ? '#059669' : '#DC2626'}">${roiPctText(st.roi)}</span><span style="font-weight:800;font-size:0.9rem;color:${up ? '#059669' : '#DC2626'}">${up ? '+' : '-'}$${Math.abs(st.profit).toFixed(2)}</span><span style="font-size:0.7rem;color:#94A3B8">${open ? '▲' : '▼'}</span></div>
+      </button>`;
+    if (open) {
+      html += '<div style="padding:12px">';
+      const groups = [];
+      list.forEach(s => {
+        const mk = s.date.slice(0, 7);
+        let g = groups[groups.length - 1];
+        if (!g || g.key !== mk) { g = { key: mk, sessions: [], totalProfit: 0, totalBets: 0, totalStake: 0 }; groups.push(g); }
+        g.sessions.push(s); g.totalProfit += s.profit || 0; g.totalBets += s.bets || 0; g.totalStake += s.stake || 0;
+      });
+      groups.forEach(g => {
+        const isUp = g.totalProfit >= 0;
+        const mRoi = g.totalStake > 0 ? Math.round(g.totalProfit / g.totalStake * 1000) / 10 : null;
+        html += `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#F8FAFC;border-radius:8px;margin-bottom:6px">
+          <div style="display:flex;align-items:center;gap:8px"><span style="font-size:0.85rem;font-weight:700;color:#334155">📆 ${esc(roiMonthLabel(g.key))}</span><span style="font-size:0.7rem;color:#94A3B8">${g.totalBets} 注</span></div>
+          <div style="display:flex;align-items:center;gap:10px"><span style="font-size:0.75rem;font-weight:700;color:${isUp ? '#059669' : '#DC2626'}">${roiPctText(mRoi)}</span><span style="font-weight:800;font-size:0.85rem;color:${isUp ? '#059669' : '#DC2626'}">${isUp ? '+' : ''}$${g.totalProfit.toFixed(2)}</span></div></div>`;
+        g.sessions.forEach(s => {
+          const vkey = s.venue_key || roiVenueKey(s.venue);
+          const key = `${s.date}-${vkey}`;
+          const isExp = expandedSession === key;
+          const p = s.profit || 0;
+          const dRoi = s.stake > 0 ? Math.round(p / s.stake * 1000) / 10 : null;
+          const sBets = bets.filter(b => b.date === s.date && roiVenueKey(b.venue) === vkey);
+          html += `<div class="card" style="margin-bottom:4px;padding:0;overflow:hidden">
+            <button onclick="toggleSession('${key}')" style="width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:Inter,sans-serif;display:flex;justify-content:space-between;align-items:center">
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-weight:600;font-size:0.8rem;color:#334155;min-width:80px">${esc(s.date)}</span><span class="badge badge--region-${s.region}">${esc(roiVenueName(s.venue, s.region))}</span><span style="color:#94A3B8;font-size:0.7rem">${s.bets} 注</span></div>
+              <div style="display:flex;align-items:center;gap:10px"><span style="font-size:0.75rem;font-weight:700;min-width:52px;text-align:right;color:${p >= 0 ? '#059669' : '#DC2626'}">${roiPctText(dRoi)}</span><span style="font-weight:800;font-size:0.85rem;min-width:62px;text-align:right;color:${p >= 0 ? '#059669' : '#DC2626'}">${p >= 0 ? '+' : ''}$${p.toFixed(2)}</span><span style="font-size:0.7rem;color:#94A3B8">${isExp ? '▲' : '▼'}</span></div>
+            </button>`;
+          if (isExp && sBets.length) html += renderRoiSessionBets(sBets);
+          html += '</div>';
+        });
+        html += '</div>';
+      });
+      html += '</div>';
+    }
+    html += '</div>';
+  });
+  return html + '</div>';
 }
 
 function renderROI() {
@@ -7134,57 +7481,50 @@ function renderROI() {
     </div>
     <div class="empty-state" style="margin-top:40px"><div class="empty-state__icon">📊</div><div class="empty-state__text">暫無投注數據</div></div>`;
   }
-  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;flex-wrap:wrap;gap:12px">
-    <h1 style="font-size:1.5rem;font-weight:800;letter-spacing:-0.02em">📊 ${regionFlagSvg(activeRegion)} ${activeRegion === 'hkjc' ? '香港' : '澳洲'} ROI 分析</h1>
-  </div>`;
-  html += renderRoiScopeNote(roi);
-  html += renderStatsCards(roi);
-  if (roi.running_profit?.length > 0) html += renderProfitChart(roi.running_profit);
-  // Side breakdowns are computed per region by generate_static (side_roi_by_region);
-  // the combined side_roi only applies when no region filter is set.
-  const sideRoi = roiRegionFilter
-    ? (DASHBOARD_DATA.roi?.side_roi_by_region || {})[roiRegionFilter]
-    : roi.side_roi;
-  if (sideRoi) html += renderSideBreakdowns(sideRoi);
-  if (roi.daily_breakdown?.length > 0) html += renderMonthlyBreakdown(roi.daily_breakdown, roi.bets || []);
-  return html;
+  // `roi` covers every season; the page shows one season (or all) at a time.
+  const seasons = [...new Set(roi.bets.map(b => roiSeasonOf(b.date)))].filter(s => s !== 'unknown').sort().reverse();
+  const current = roiSeasonOf(new Date().toISOString().slice(0, 10));
+  const selected = roiResolveScope(seasons, current);
+  const view = selected === 'all' ? roi : getFilteredROI(selected);
+  const scopeLabel = selected === 'all' ? '全部馬季' : `${roiSeasonName(selected, current, seasons)} ${selected}`;
+  let html = `<div class="roi-page">
+    <header class="roi-head">
+      <div><div class="roi-eyebrow">WONG CHOI · ${activeRegion === 'hkjc' ? 'HKJC' : 'AU'} ROI</div>
+        <h1>${regionFlagSvg(activeRegion)} ${activeRegion === 'hkjc' ? '香港' : '澳洲'}投注回報</h1></div>
+      ${renderRoiSeasonSwitch(seasons, current, selected)}
+    </header>`;
+  html += renderRoiScopeNote(view, scopeLabel);
+  if (!view.total_bets) {
+    html += `<div class="empty-state" style="margin-top:24px"><div class="empty-state__icon">📊</div><div class="empty-state__text">${esc(scopeLabel)} 暫無投注</div></div>`;
+  } else {
+    const prevKey = selected === 'all' ? null : seasons.filter(x => x < selected).sort().reverse()[0];
+    const prev = prevKey ? { ...getFilteredROI(prevKey), label: `對比${roiSeasonName(prevKey, current, seasons)} ${prevKey}` } : null;
+    html += renderRoiKpis(view, scopeLabel, prev);
+    if (view.running_profit?.length > 1) html += `<div class="roi-chart">${renderProfitChart(view.running_profit)}</div>`;
+    html += renderRoiBreakdowns(view.bets);
+  }
+  html += renderRoiSeasonLedger(roi, current, selected);
+  return html + '</div>';
 }
 
 // The ROI tab and the Portfolio tab count different books, so each has to say which.
 // ROI = the baked historical snapshot merged with the permanent ledger, horses only.
 // Portfolio = the D1 ledger alone, across all three sports. Both are correct; showing
 // them unlabelled just makes you distrust whichever you read second.
-function renderRoiScopeNote(roi) {
+function renderRoiScopeNote(roi, scopeLabel = '') {
   const s = roi.sources || {ledger: 0, snapshot: 0};
   const parts = [];
-  if (s.snapshot) parts.push(`歷史記錄 ${s.snapshot} 注`);
-  if (s.ledger) parts.push(`App 記錄 ${s.ledger} 注`);
-  const breakdown = parts.length > 1 ? `（${parts.join(' + ')}）` : '';
+  if (s.snapshot) parts.push(`匯入舊記錄 ${s.snapshot}`);
+  if (s.ledger) parts.push(`App 記錄 ${s.ledger}`);
   const scope = roiRegionFilter ? (roiRegionFilter === 'hkjc' ? 'HKJC' : 'AU') : '全部馬場';
   return `<div class="scope-note">
     <span>📋</span>
-    <span><strong>統計範圍：</strong>${scope}賽馬投注，共 ${roi.total_bets} 注${breakdown}。
-    包含匯入嘅歷史記錄，所以數字會大過「📈 Portfolio」—— Portfolio 只計經 App 寫入 database 嘅投注，但跨 Horses／NBA／Tennis 三個運動。</span>
+    <span><strong>統計範圍：</strong>${scope} ${esc(scopeLabel)} · ${roi.total_bets} 注${parts.length ? `（${parts.join(' + ')}）` : ''}。
+    包括匯入嘅舊記錄，所以同「📈 Portfolio」（只計 App 記錄、跨三個運動）唔同。</span>
   </div>`;
 }
 
 
-function renderStatsCards(roi) {
-  const p = roi.total_profit||0;
-  const isUp = p >= 0;
-  const cards = [
-    {icon:'🎯',val:roi.total_bets,label:'總投注數'},
-    {icon:'💵',val:`$${roi.total_stake}`,label:'總投入'},
-    {icon:'💰',val:`$${roi.total_payout}`,label:'總回報'},
-    {icon:isUp?'📈':'📉',val:`${isUp?'+':''}$${p}`,label:'總淨利',color:isUp?'#059669':'#DC2626'},
-    {icon:'📊',val:`${roi.roi_pct}%`,label:'ROI',color:roi.roi_pct>=0?'#059669':'#DC2626',hl:true},
-    {icon:'🏆',val:`${roi.win_rate}%`,label:'勝率'},
-    {icon:'⚖️',val:`${roi.wins}/${roi.losses}`,label:'勝/負'},
-  ];
-  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:16px">${cards.map(c =>
-    `<div class="card" style="padding:12px;text-align:center${c.hl?';border:2px solid '+(c.color||'#2563EB'):''}"><div style="font-size:1.4rem;margin-bottom:4px">${c.icon}</div><div style="font-size:${c.hl?'1.3rem':'1.1rem'};font-weight:800;color:${c.color||'#0F172A'};letter-spacing:-0.01em">${c.val}</div><div style="font-size:0.7rem;color:#94A3B8;margin-top:2px">${c.label}</div></div>`
-  ).join('')}</div>`;
-}
 
 function renderProfitChart(data) {
   if (!data.length) return '';
@@ -7257,59 +7597,7 @@ function renderProfitChart(data) {
     </svg></div>`;
 }
 
-function renderSideBreakdowns(side) {
-  const sections = [
-    {key:'by_venue',title:'🏟️ 馬場分析',label:'馬場'},
-    {key:'by_distance',title:'📏 路程分析',label:'路程'},
-    {key:'by_class',title:'🏆 班次分析',label:'班次'},
-  ];
-  if (side.by_track?.length > 0) sections.push({key:'by_track',title:'🛤️ 賽道分析',label:'賽道'});
-  if (side.by_jockey?.length > 0) sections.push({key:'by_jockey',title:'🏇 騎師分析',label:'騎師'});
-  if (side.by_trainer?.length > 0) sections.push({key:'by_trainer',title:'🏠 練馬師分析',label:'練馬師'});
-  const has = sections.some(s => (side[s.key]||[]).length > 0);
-  if (!has) return '';
-  let html = '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px;margin-bottom:16px">';
-  sections.forEach(({key,title,label}) => {
-    let items = [...(side[key] || [])];
-    if (!items.length) return;
-    items.sort((a,b) => b.total_profit - a.total_profit);
-    html += `<div class="card" style="padding:16px"><h3 style="font-size:0.85rem;font-weight:700;margin-bottom:10px;color:#475569">${title}</h3>
-      <table style="width:100%;border-collapse:collapse;font-size:0.75rem"><thead><tr style="border-bottom:1px solid #E2E8F0;color:#94A3B8">
-        <th style="padding:4px 6px;text-align:left">${label}</th><th style="padding:4px 6px;text-align:right">注數</th><th style="padding:4px 6px;text-align:right">勝率</th><th style="padding:4px 6px;text-align:right">淨利</th><th style="padding:4px 6px;text-align:right">ROI</th>
-      </tr></thead><tbody>`;
-    items.forEach(it => {
-      const isUp = it.total_profit >= 0;
-      html += `<tr style="border-bottom:1px solid #F8FAFC"><td style="padding:4px 6px;font-weight:600">${esc(it.name)}</td>
-        <td style="padding:4px 6px;text-align:right;color:#64748B">${it.total_bets||'-'}</td>
-        <td style="padding:4px 6px;text-align:right;color:#64748B">${it.win_rate!=null?it.win_rate+'%':'-'}</td>
-        <td style="padding:4px 6px;text-align:right;font-weight:700;color:${isUp?'#059669':'#DC2626'}">${isUp?'+':''}$${it.total_profit}</td>
-        <td style="padding:4px 6px;text-align:right;color:${it.roi_pct>=0?'#059669':'#DC2626'}">${it.roi_pct}%</td></tr>`;
-    });
-    html += '</tbody></table></div>';
-  });
-  html += '</div>';
-  return html;
-}
 
-function normalizeDate(ds) {
-  if (!ds) return '';
-  if (ds.includes('-') && ds.length >= 8) return ds;
-  if (ds.includes('.')) { const [m,d] = ds.split('.'); return `2026-${m.padStart(2,'0')}-${(d||'01').padStart(2,'0')}`; }
-  return ds;
-}
-function getMonthKey(ds) {
-  if (!ds) return 'unknown';
-  if (ds.includes('-') && ds.length >= 7) return ds.substring(0,7);
-  if (ds.includes('.')) return `2026-${ds.split('.')[0].padStart(2,'0')}`;
-  return 'unknown';
-}
-function getMonthLabel(ds) {
-  const names = {'01':'January','02':'February','03':'March','04':'April','05':'May','06':'June','07':'July','08':'August','09':'September','10':'October','11':'November','12':'December'};
-  let m='',y='';
-  if (ds?.includes('-') && ds.length >= 7) { const p=ds.split('-'); m=p[1]; y=p[0].slice(-2); }
-  else if (ds?.includes('.')) { m=ds.split('.')[0].padStart(2,'0'); y='26'; }
-  return `${names[m]||m} '${y}`;
-}
 
 let editingRoiKey = null;
 let editingRoiBaseRecord = null;
@@ -7438,53 +7726,6 @@ async function deleteRoiRecord(encodedKey) {
   }
 }
 
-function renderMonthlyBreakdown(sessions, bets) {
-  const sorted = [...sessions].sort((a,b) => normalizeDate(b.date).localeCompare(normalizeDate(a.date)));
-  const groups = [];
-  let curMonth = '', curGroup = null;
-  for (const s of sorted) {
-    const mk = getMonthKey(s.date);
-    if (mk !== curMonth) { curMonth = mk; curGroup = {key:mk,label:getMonthLabel(s.date),sessions:[],totalProfit:0,totalBets:0}; groups.push(curGroup); }
-    curGroup.sessions.push(s); curGroup.totalProfit += s.profit||0; curGroup.totalBets += s.bets||0;
-  }
-  let html = '<div style="margin-top:16px"><h3 style="font-size:0.9rem;font-weight:700;margin-bottom:12px;color:#475569">📅 每日投注明細</h3>';
-  groups.forEach(g => {
-    const isUp = g.totalProfit >= 0;
-    html += `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#F8FAFC;border-radius:8px;margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:8px"><span style="font-size:0.85rem;font-weight:700;color:#334155">📆 ${esc(g.label)}</span><span style="font-size:0.7rem;color:#94A3B8">${g.totalBets} 注</span></div>
-      <span style="font-weight:800;font-size:0.85rem;color:${isUp?'#059669':'#DC2626'}">${isUp?'+':''}$${g.totalProfit.toFixed(2)}</span></div>`;
-    g.sessions.forEach(s => {
-      const key = `${s.date}-${s.venue}`;
-      const isExp = expandedSession === key;
-      const p = s.profit||0;
-      const sBets = bets.filter(b => b.date===s.date && b.venue===s.venue);
-      html += `<div class="card" style="margin-bottom:4px;padding:0;overflow:hidden">
-        <button onclick="toggleSession('${key}')" style="width:100%;padding:12px 16px;background:none;border:none;cursor:pointer;text-align:left;font-family:Inter,sans-serif;display:flex;justify-content:space-between;align-items:center">
-          <div style="display:flex;align-items:center;gap:10px"><span style="font-weight:600;font-size:0.8rem;color:#334155;min-width:80px">${esc(s.date)}</span><span class="badge badge--region-${s.region}">${esc(s.venue)}</span><span style="color:#94A3B8;font-size:0.7rem">${s.bets} 注</span></div>
-          <div style="display:flex;align-items:center;gap:10px"><span style="font-weight:800;font-size:0.85rem;color:${p>=0?'#059669':'#DC2626'}">${p>=0?'+':''}$${p.toFixed(2)}</span><span style="font-size:0.7rem;color:#94A3B8">${isExp?'▲':'▼'}</span></div>
-        </button>`;
-      if (isExp && sBets.length) {
-        html += '<div style="border-top:1px solid #F1F5F9;padding:12px 16px;overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:0.75rem"><thead><tr style="border-bottom:1px solid #E2E8F0;color:#94A3B8"><th style="padding:4px 8px;text-align:left">場次</th><th style="padding:4px 8px;text-align:left">馬匹</th><th style="padding:4px 8px;text-align:left">賠率</th><th style="padding:4px 8px;text-align:left">名次</th><th style="padding:4px 8px;text-align:left">狀態</th><th style="padding:4px 8px;text-align:right">淨利</th><th style="padding:4px 8px;text-align:right">操作</th></tr></thead><tbody>';
-        sBets.forEach(b => {
-          const bc = b.net_profit>0?'#059669':b.net_profit<0?'#DC2626':'#94A3B8';
-          const stBg = b.status==='won'?'#D1FAE5':b.status==='lost'?'#FEE2E2':'#FEF3C7';
-          const stCol = b.status==='won'?'#059669':b.status==='lost'?'#DC2626':'#D97706';
-          const stLabel = b.status==='won'?'✅':b.status==='lost'?'❌':'⏳';
-          const encodedKey = b._ledger_key ? encodeRoiKey(b._ledger_key) : '';
-          const actions = encodedKey
-            ? `<div class="roi-record-actions"><button class="roi-record-action roi-record-action--edit" type="button" onclick="editRoiRecord('${encodedKey}')">編輯</button><button class="roi-record-action" type="button" onclick="openBetAudit('${encodeURIComponent(`horse:${b._ledger_key}`)}')">紀錄</button><button class="roi-record-action roi-record-action--delete" type="button" onclick="deleteRoiRecord('${encodedKey}')">刪除</button></div>`
-            : '<span style="color:#CBD5E1">—</span>';
-          html += `<tr style="border-bottom:1px solid #F8FAFC"><td style="padding:4px 8px">R${b.race_number}</td><td style="padding:4px 8px"><strong>#${b.horse_number}</strong> ${esc(b.horse_name)}</td><td style="padding:4px 8px">${b.odds||'—'}</td><td style="padding:4px 8px">${b.result_position??'—'}</td><td style="padding:4px 8px"><span style="background:${stBg};color:${stCol};padding:1px 6px;border-radius:999px;font-size:0.65rem;font-weight:700">${stLabel}</span></td><td style="padding:4px 8px;text-align:right;font-weight:700;color:${bc}">${b.net_profit!=null?`${b.net_profit>0?'+':''}$${Number(b.net_profit).toFixed(2)}`:'—'}</td><td style="padding:4px 8px;text-align:right">${actions}</td></tr>`;
-        });
-        html += '</tbody></table></div>';
-      }
-      html += '</div>';
-    });
-    html += '</div>';
-  });
-  html += '</div>';
-  return html;
-}
 
 // ═══════════════════════════════════════════════
 // Render

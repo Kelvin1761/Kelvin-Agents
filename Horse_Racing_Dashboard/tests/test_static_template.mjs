@@ -104,6 +104,13 @@ function loadTemplateFunctions(dashboardData = EMPTY_DASHBOARD_DATA) {
       normaliseSportKey: typeof normaliseSportKey === "function" ? normaliseSportKey : null,
       setLocalStorageForTest: (key, value) => { localStorage.setItem(key, JSON.stringify(value)); },
       getFilteredROI,
+      roiSeasonOf: typeof roiSeasonOf === "function" ? roiSeasonOf : null,
+      roiClassName: typeof roiClassName === "function" ? roiClassName : null,
+      roiTrackName: typeof roiTrackName === "function" ? roiTrackName : null,
+      roiBreakdowns: typeof roiBreakdowns === "function" ? roiBreakdowns : null,
+      renderRoiSeasonLedger: typeof renderRoiSeasonLedger === "function" ? renderRoiSeasonLedger : null,
+      renderRoiBoard: typeof renderRoiBoard === "function" ? renderRoiBoard : null,
+      toggleRoiAllPeople: typeof toggleRoiAllPeople === "function" ? toggleRoiAllPeople : null,
       renderHorseCard,
       renderAuFullTimeStatus,
       renderDimensionStrip: typeof renderDimensionStrip === "function" ? renderDimensionStrip : null,
@@ -2567,4 +2574,96 @@ test("horse card shows the 預計跑法 label with runs and hit rate (reference 
   assert.match(variable, /預計跑法: <strong>多變<\/strong>/);
   assert.doesNotMatch(variable, /命中|null|undefined/);
   assert.equal(renderRunStyleOutlook(null), "");
+});
+
+// ROI page v2 (2026-11-05): seasons, one row per meeting, breakdowns from every bet.
+function roiFixture() {
+  const bet = (date, venue, race, horse, status, extra = {}) => ({
+    date, venue, region: "hkjc", race_number: race, horse_number: horse, horse_name: `馬${horse}`,
+    stake: 1, odds: 3, payout: status === "won" ? 3 : 0, net_profit: status === "won" ? 2 : -1, status, ...extra,
+  });
+  return {
+    meetings: [], races: {}, consensus: {},
+    roi: {
+      bets: [
+        // last season, imported rows already carry the race fields
+        bet("2026-07-12", "Sha Tin", 1, 1, "won", { distance: "1200.0", race_class: "第三班（條件限制）", track_type: '草地, "C+3" 賽道', jockey: "潘頓", trainer: "蔡約翰" }),
+        bet("2026-07-12", "Sha Tin", 2, 4, "lost", { distance: "1200.0", race_class: "第四班", track_type: '草地 - "C+3" 賽道', jockey: "潘頓", trainer: "蔡約翰" }),
+        // this season, App rows: no race fields, the same meeting spelt two ways
+        bet("2026-11-04", "HappyValley", 1, 7, "won"),
+        bet("2026-11-04", "Happy Valley", 2, 3, "lost"),
+      ],
+      hkjc_race_meta: {
+        "2026-11-04|happyvalley|1": { d: "1000", c: "C5", t: "草地 A", h: { 7: ["周俊樂", "沈集成"] } },
+        "2026-11-04|happyvalley|2": { d: "1650", c: "第四班", t: "全天候", h: { 3: ["潘頓", "蔡約翰"] } },
+      },
+    },
+  };
+}
+
+test("ROI seasons start on 1 August; HKJC July meetings belong to the season that is ending", () => {
+  const { roiSeasonOf } = loadTemplateFunctions();
+  assert.equal(roiSeasonOf("2026-07-12"), "2025/26");
+  assert.equal(roiSeasonOf("2026-09-06"), "2026/27");
+  assert.equal(roiSeasonOf("2027-01-01"), "2026/27");
+});
+
+test("ROI class and track names collapse every spelling into one row", () => {
+  const { roiClassName, roiTrackName } = loadTemplateFunctions();
+  assert.equal(roiClassName("第三班（條件限制）"), "第三班");
+  assert.equal(roiClassName("C4"), "第四班");
+  assert.equal(roiClassName("Group 1"), "一級賽");
+  assert.equal(roiTrackName('草地, "C+3" 賽道'), "草地 C+3");
+  assert.equal(roiTrackName('草地 - "C+3" 賽道'), "草地 C+3");
+  assert.equal(roiTrackName("全天候跑道"), "全天候");
+  assert.equal(roiTrackName("泥地"), "全天候");
+});
+
+test("ROI season filter keeps totals apart and 'all' still adds up", () => {
+  const { getFilteredROI } = loadTemplateFunctions(roiFixture());
+  const all = getFilteredROI(), now = getFilteredROI("2026/27"), last = getFilteredROI("2025/26");
+  assert.equal(all.total_bets, 4);
+  assert.equal(now.total_bets + last.total_bets, all.total_bets);
+  assert.equal(Math.round((now.total_profit + last.total_profit) * 100), Math.round(all.total_profit * 100));
+  // HappyValley and Happy Valley on the same night are one meeting row
+  assert.equal(now.daily_breakdown.length, 1);
+  assert.equal(now.daily_breakdown[0].bets, 2);
+});
+
+test("ROI breakdowns fill App bets from hkjc_race_meta and merge venue spellings", () => {
+  const data = roiFixture();
+  const { getFilteredROI, roiBreakdowns } = loadTemplateFunctions(data);
+  const dims = Object.fromEntries(roiBreakdowns(getFilteredROI().bets).map(d => [d.key, d]));
+  assert.equal(JSON.stringify(dims.venue.rows.map(r => r.name)), JSON.stringify(["沙田", "跑馬地"]));
+  assert.equal(dims.venue.rows.find(r => r.name === "跑馬地").n, 2);
+  assert.equal(dims.jockey.covered, 4);                          // App bets matched to a jockey
+  assert.equal(dims.jockey.rows.find(r => r.name === "潘頓").n, 3);
+  assert.equal(JSON.stringify(dims.race_class.rows.map(r => r.name)), JSON.stringify(["第三班", "第四班", "第五班"]));   // class order, not profit
+  assert.equal(JSON.stringify(dims.track.rows.map(r => r.name)), JSON.stringify(["草地 A", "草地 C+3", "全天候"]));
+});
+
+test("ROI daily ledger: current season open, last season one summary row", () => {
+  const { getFilteredROI, renderRoiSeasonLedger } = loadTemplateFunctions(roiFixture());
+  const html = renderRoiSeasonLedger(getFilteredROI(), "2026/27", "2026/27");
+  assert.match(html, /今季 2026\/27/);
+  assert.match(html, /上季 2025\/26/);
+  assert.match(html, /📆 2026年11月/);                              // original month bar, Chinese label
+  assert.match(html, /badge--region-hkjc">跑馬地/);                  // one row per night, Chinese venue
+  assert.equal((html.match(/>\+50%</g) || []).length >= 2, true);    // 11-04: +$2 −$1 on $2 → +50%, month bar and day row
+
+  assert.match(html, /2026年11月/);                               // current season months shown
+  assert.doesNotMatch(html, /2026年7月/);                          // last season collapsed
+  assert.match(html, /aria-expanded="false"[^>]*onclick="toggleRoiSeason\('2025\/26'\)"/);
+});
+
+test("ROI jockey board shows the top five by profit, the rest behind 顯示全部", () => {
+  const { renderRoiBoard } = loadTemplateFunctions();
+  const row = (name, n, profit) => ({ name, n, wins: 1, profit, roi: Math.round(profit / n * 1000) / 10 });
+  const d = { key: "jockey", title: "騎師", icon: "🏇", people: true, covered: 30, total: 30,
+    rows: [row("甲", 6, -2), row("乙", 5, 4), row("丙", 4, 1), row("丁", 3, 3), row("戊", 7, 0.5), row("己", 3, -1), row("庚", 2, 9)] };
+  const html = renderRoiBoard(d);
+  const names = [...html.matchAll(/roi-board__name">([^<]+)</g)].map(m => m[1]);
+  assert.equal(JSON.stringify(names), JSON.stringify(["乙", "丁", "丙", "戊", "己"]));   // ≥3 注，按淨利
+  assert.doesNotMatch(html, /庚/);                                                    // 2 注唔入頭五
+  assert.match(html, /顯示全部 7 位/);
 });

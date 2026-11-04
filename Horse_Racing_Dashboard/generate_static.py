@@ -46,6 +46,7 @@ from services.multisport_exporter import build_multisport_feed, sydney_today
 from services.au_display_policy import apply_au_display_policy
 from services.nba_tracking import TRACKING_START_DATE
 from services.hkjc_insights import export_insights as export_hkjc_insights
+from services.hkjc_roi_meta import export_race_meta as export_hkjc_race_meta
 from services.au_market_odds import enrich_au_market_odds
 from models.race import AnalystName, Meeting, Region
 
@@ -726,6 +727,14 @@ def _ensure_region_side_roi(data: dict) -> dict:
         region: compute_side_roi([b for b in bets if b.get("region") == region])
         for region in ("hkjc", "au")
     }
+    # App 記錄嘅注單冇路程／班次／賽道／騎練；ROI 頁用呢份賽事資料喺瀏覽器配對
+    # （2026-11-05）。資料根讀唔到就保留舊嗰份，唔好令 build 失敗。
+    try:
+        race_meta = export_hkjc_race_meta(Path(__file__).resolve().parent.parent)
+        if race_meta:
+            roi["hkjc_race_meta"] = race_meta
+    except Exception as exc:  # noqa: BLE001 — display enrichment only
+        print(f"   ⚠️ HKJC ROI race meta skipped: {exc}")
     return data
 
 
