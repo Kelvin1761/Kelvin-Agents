@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 完成比分收據**。9場198個版本引用全部原文抓取早於定價，但126個現存履歷入庫時間更早，不能代替對應原文版本抓取時間。仍缺逐場完場時計。[EXP-21](docs/experiments/EXP-20261104-21-tennis-terminal-receipt-clocks.md)
+
 **2026-11-04 原發球 profile 重播**。9場18份已存 profile 全部按固定引用重現。F05 用真實曝光加權，兩種發球率最大絕對差分別3.324及4.550百分點，未測準確度或取得逐場完場時間。[EXP-20](docs/experiments/EXP-20261104-20-tennis-serve-profile-parity.md)
 
 **2026-11-04 發球點數留置歸因**。162個未入組 ID 全部對到原留置清單。64個有身份衝突，58個有比分問題（重疊1），其中56個比分來源組有54組標退賽。40個缺可用TML原文／唯一key。[EXP-19](docs/experiments/EXP-20261104-19-tennis-prop-point-source-gap-triage.md)
