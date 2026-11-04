@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 跨入庫反例／候選拒絕**：[EXP-04](docs/experiments/EXP-20261104-04-tennis-book-tour-entry.md)雖然明示tour接線、110測試及初次full通過，但會讓TE首字母resolver將Shaurya接到Siddharth21144；已取消refresh並由Central拒絕，b7／3cf均未入main或runtime，不能交付此版本。[EXP-05](docs/experiments/EXP-20261104-05-tennis-event-identity-proof.md)對原39人、32profile及14公開詳情逐一核對，UTC精確start留下1場／2人proposal，未apply。下一步先做source actor namespace／beforeimage／generation驗證，不重開15 REJECT、不改ruler或挑subset，準確度目標仍未完成。
+
 **2026-11-04 正式交付補證**：[5ff76919](docs/audits/tennis-source-classification-release-20261104.md) full gate exit0／main合併／Tennis activation已核實，兩個現役source bytes一致，四個排程loaded。啟用後尚無新TE history receipt，實際留置率待正常入庫；[全39人tour接線](docs/experiments/EXP-20261104-03-tennis-target-tour-lineage.md)找到21人stored tour已知但主表UNKNOWN，38人normalized receipt亦缺tour。這些只係資料線索，身份／Elo／準確度目標未完成，原ruler及REJECT不變。
 
 **2026-11-04 來源分類候選驗證**：[EXP-20261104-02](docs/experiments/EXP-20261104-02-tennis-te-classification-repair.md)完成同34版C／D／T／DT，原比分／winner完整相同；33日公開隔離入庫22712雙側行，兩個不同detail ID對應相同球員／比分的歧義版本整組留置。71針對測試及quick通過；5ff76919正式full／activation已核對，詳見上方補證。39位缺Elo目標仍無已確認ownership，模型準確度目標未完成。下方記錄保留當時狀態，不將舊取消full當成功。
