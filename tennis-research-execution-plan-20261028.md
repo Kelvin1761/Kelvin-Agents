@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 發球點數留置歸因**。162個未入組 ID 全部對到原留置清單。64個有身份衝突，58個有比分問題（重疊1），其中56個比分來源組有54組標退賽。40個缺可用TML原文／唯一key。[EXP-19](docs/experiments/EXP-20261104-19-tennis-prop-point-source-gap-triage.md)
+
 **2026-11-04 發球點數原文接線**。已存79場 props，9場至少一份雙側 profile 全部引用有點數 tuple。留置同未對上來源仍列原分母，下一步核對完場時間及版本。[EXP-18](docs/experiments/EXP-20261104-18-tennis-prop-point-source-coverage.md)
 
 **2026-11-04 已存 props 時鐘**。全表27,411筆，1,025筆有發球履歷引用，覆蓋79場。41,295引用未見晚於定價嘅入庫或抓取時鐘，只有53引用有獨立append-only觀測，未證實完場／版本資格。[EXP-17](docs/experiments/EXP-20261104-17-tennis-recorded-prop-history-clocks.md)
