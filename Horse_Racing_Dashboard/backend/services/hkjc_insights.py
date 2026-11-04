@@ -4,11 +4,13 @@ Display only: nothing here feeds scoring or selection. Every number is a count
 of finishing places on ONE race day, taken from the official results database
 (`HKJC_Race_Results_Database/hkjc results YYYY YY/<date>/full_day_results.json`);
 no odds, no returns, no season aggregates (Kelvin 2026-11-04: "everything is
-just for that day's race only"). The last few race days are kept so the page
-can look back one meeting at a time.
+just for that day's race only"). Only the newest meeting is shown: once its
+pre-race analysis is done it replaces the last one, every name on the card at
+zero until its results land.
 """
 from __future__ import annotations
 
+import csv
 import json
 import re
 from collections import defaultdict
@@ -19,7 +21,7 @@ VENUES = {"沙田": "ST", "ShaTin": "ST", "跑馬地": "HV", "HappyValley": "HV"
 NOT_STARTED = re.compile(r"^(WV|WX|WXNR)", re.I)
 DRAW_BUCKETS = (("inner", 1, 4), ("middle", 5, 8), ("outer", 9, 99))
 STYLES = ("front", "middle", "back")
-MEETINGS_KEPT = 8
+MEETINGS_KEPT = 1  # only the newest meeting (Kelvin 2026-11-04: no need to show previous race days)
 TABLE_LIMIT = 80
 HK = timezone(timedelta(hours=8))
 
@@ -86,6 +88,37 @@ def load_runners(results_root: Path) -> list[dict]:
     return runners
 
 
+def load_card(racing_root: Path, *, keep: int = MEETINGS_KEPT) -> list[dict]:
+    """Jockey / trainer per declared runner of each meeting the pre-race analysis has finished.
+
+    `HKJC_Auto_Scoring.csv` is written once the auto engine has scored the card, so its
+    presence is the "analysis is made" marker: from then on the meeting shows in
+    即場形勢 with every name at zero until results land (Kelvin 2026-11-04).
+    """
+    card, analysed = [], 0
+    for folder in sorted((p for p in Path(racing_root).glob("????-??-??_*") if p.is_dir()), reverse=True):
+        day, _, venue_name = folder.name.partition("_")
+        venue = VENUES.get(venue_name)
+        path = folder / "HKJC_Auto_Scoring.csv"
+        if not venue or not path.is_file():
+            continue  # facts extracted but not analysed yet: the previous meeting stays
+        if analysed == keep:
+            break
+        analysed += 1
+        try:
+            with path.open(encoding="utf-8-sig", newline="") as handle:
+                rows = list(csv.DictReader(handle))
+        except (OSError, csv.Error):
+            continue
+        for row in rows:
+            race = _int(row.get("race_number"))
+            if race:
+                card.append({"day": day, "venue": venue, "race": race,
+                             "jockey": str(row.get("jockey") or "").strip(),
+                             "trainer": str(row.get("trainer") or "").strip()})
+    return card
+
+
 def draw_bucket(draw):
     return next((name for name, low, high in DRAW_BUCKETS if draw and low <= draw <= high), None)
 
@@ -106,17 +139,23 @@ def _tally(rows):
     return {"starts": starts, "w": counts, "top3": sum(counts[:3]), "top4": sum(counts)}
 
 
-def _standings(rows, key):
-    groups = defaultdict(list)
+def _standings(rows, key, card=()):
+    """Placings from results; names still to ride tonight (from the card) are listed at zero."""
+    groups, rides = defaultdict(list), defaultdict(int)
     for row in rows:
         name = key(row)
         if name and all(name):
             groups[name].append(row)
+    for row in card:
+        name = key(row)
+        if name and all(name):
+            rides[name] += 1
     table = []
-    for name, group in groups.items():
-        table.append({"name": list(name) if isinstance(name, tuple) else name, **_tally(group)})
-    # 馬會排法：冠、亞、季、殿次數，再按出賽少者先。
-    table.sort(key=lambda t: (*(-n for n in t["w"]), t["starts"]))
+    for name in {**groups, **rides}:
+        table.append({"name": list(name) if isinstance(name, tuple) else name, **_tally(groups.get(name, [])),
+                      "rides": len(groups.get(name, [])) + rides.get(name, 0)})
+    # 馬會排法：冠、亞、季、殿次數，再按出賽少者先；未有賽果嘅按今晚坐騎多者先。
+    table.sort(key=lambda t: (*(-n for n in t["w"]), t["starts"], -t["rides"]))
     return table[:TABLE_LIMIT]
 
 
@@ -148,21 +187,28 @@ def _meeting_races(rows):
     return out
 
 
-def build_insights(results_root: Path, *, today: date | None = None, keep: int = MEETINGS_KEPT) -> dict:
+def build_insights(results_root: Path, *, card_root: Path | None = None, today: date | None = None,
+                   keep: int = MEETINGS_KEPT) -> dict:
     runners = load_runners(results_root)
-    if not runners:
+    card = load_card(card_root, keep=keep) if card_root else []
+    if not runners and not card:
         return {"status": "unavailable", "generated_at": datetime.now(timezone.utc).isoformat()}
     today = today or datetime.now(HK).date()
-    days = sorted({r["day"] for r in runners}, reverse=True)[:keep]
+    days = sorted({r["day"] for r in runners + card}, reverse=True)[:keep]
     meetings = []
     for day in days:
         rows = [r for r in runners if r["day"] == day]
+        declared = [r for r in card if r["day"] == day]
+        # Only races still to run come from the card; a finished race's names are its starters.
+        done = {r["race"] for r in rows}
+        upcoming = [r for r in declared if r["race"] not in done]
         meetings.append({
-            "day": day, "venue": rows[0]["venue"],
+            "day": day, "venue": (rows or declared)[0]["venue"],
+            "scheduled": len({r["race"] for r in rows + declared}),
             "races": _meeting_races(rows),
-            "jockeys": _standings(rows, lambda r: r["jockey"]),
-            "trainers": _standings(rows, lambda r: r["trainer"]),
-            "combos": _standings(rows, lambda r: (r["jockey"], r["trainer"])),
+            "jockeys": _standings(rows, lambda r: r["jockey"], upcoming),
+            "trainers": _standings(rows, lambda r: r["trainer"], upcoming),
+            "combos": _standings(rows, lambda r: (r["jockey"], r["trainer"]), upcoming),
             "bias": _bias(rows),
         })
     return {
@@ -181,4 +227,4 @@ def export_insights(repo_root: Path) -> dict:
         from wongchoi_paths import HK_RACING
     finally:
         sys.path.remove(str(Path(repo_root)))
-    return build_insights(Path(HK_RACING) / "HKJC_Race_Results_Database")
+    return build_insights(Path(HK_RACING) / "HKJC_Race_Results_Database", card_root=Path(HK_RACING))
