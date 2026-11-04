@@ -813,7 +813,7 @@ def parse_pdf_overseas_races(pdf_path: Path, brand_no: str, horse_name: str) -> 
         )
         if time_idx is None or time_idx < direction_idx + 5 or time_idx + 1 >= len(tokens):
             continue
-        placing_m = re.fullmatch(r'(\d+)/(\d+)', tokens[direction_idx + 3])
+        placing_m = re.fullmatch(r'\*?(\d+)/(\d+)', tokens[direction_idx + 3])
         if not placing_m:
             continue
         try:

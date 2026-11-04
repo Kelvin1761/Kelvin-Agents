@@ -277,3 +277,20 @@ def test_race_names_never_leak_into_race_type(brand):
     for row in fsc.rows_from_text(_fixture(brand), '2026-11-04'):
         leftover = re.sub(r'\d?yo\+?|G[123]|\bL\b|^-', '', row['Race_Type'])
         assert not re.search(r'[A-Za-z]', leftover), row['Race_Type']
+
+
+def test_amended_placing_row_is_kept_with_the_official_placing(tmp_path):
+    """`*2/8` = 官方改判名次（圖例：`* Promoted from 3rd to 2nd`）。舊 regex 唔收 `*`，
+    成仗靜靜跌咗（32 個賽日 9 行、4 匹馬）；數字本身已經係最終名次。"""
+    pdf = tmp_path / 'starter.md'
+    pdf.write_text(
+        'Overseas Form of 24/25, 25/26 & 26/27 PPs declared to start today (Last 10 starts)\n'
+        '晒冷 INFINITE RESOLVE (AUS) K369 5 b g Deconstruction 6 starts 1-1-2-0-2 520,000\n'
+        '1/9/2024 AUS Wyong, NSW RH 1200 G 1/5 3yo Mdn 126 1.09.63 +1.04L B\n'
+        '25/9/2024 AUS Warwick Farm, NSW RH 1200 G *2/8 3yo BM 68 Hcp 128 1.10.18 -1.22L B/TT\n'
+        '12/10/2024 AUS Rosehill, NSW RH 1400 G 3/10 3yo - 121 1.22.37 -2.96L B/TT\n'
+        '* Promoted from 3rd to 2nd\n',
+        encoding='utf-8')
+    rows = facts.parse_pdf_overseas_races(pdf, 'K369', '')
+    assert [(r['Date'], r['Placing'], r['Field_Size']) for r in rows] == [
+        ('1/9/2024', 1, 5), ('25/9/2024', 2, 8), ('12/10/2024', 3, 10)]
