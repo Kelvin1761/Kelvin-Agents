@@ -9,3 +9,11 @@ EXP-11 的現役紀錄顯示 Tennis 卡中斷後留下 `running`，兩次復原�
 Quick檢查全綠。此checkpoint時完整檢查仍運行，候選只存研究分支。此候選處理可攔截的 SIGTERM，既有殘留 manifest 仍需按原lock與子程序證據作獨立收尾。正式環境寫入0，未新增合格賽前樣本，準確度仍待量度。
 
 外置證據 `tennis-scheduler-sigterm-v1-20261104/`，manifest SHA256 `ce1a9f375b19bbe64a280b85e53d30973b0b6fe070819aa1b469b97c84c8e86f`。
+
+## 獨立發佈及既有紀錄
+
+完整盤點145份Tennis run manifest，3份仍標記running，日期為10月23、10月24及11月4日。均為09:00 card、attempt 1、無operation，超過各自7200秒上限。逾時只作盤點旗標，各舊紀錄仍須獨立核實後收尾。
+
+從當時主線 `82abbc1c` 建立獨立發佈worktree，只套用 runner及測試兩檔。Central dry-run確認code/full政策及四線同步，沒有installer或Dashboard deploy。新worktree的quick閘通過，正式發佈完整閘已啟動。合併及啟用以其terminal結果及不可變release證據為準。
+
+外置預演及盤點 `tennis-scheduler-release-preflight-v1-20261104/`，manifest SHA256 `ce38f4a79eb6c7e8625c384e8bc60823c9a75c50a3f90dda7b825fd175a3d848`。
