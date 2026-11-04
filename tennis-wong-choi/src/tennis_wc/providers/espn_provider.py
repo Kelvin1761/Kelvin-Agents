@@ -1,7 +1,10 @@
 from __future__ import annotations
 import logging
 from datetime import date, timedelta
+from tennis_wc.features.bo_format import detect_match_format
+from tennis_wc.features.round_labels import normalise_round
 from tennis_wc.providers.http import get_json
+from tennis_wc.providers.metadata_utils import TOURNAMENT_METADATA
 from tennis_wc.providers.tennis_provider_base import TennisProvider
 
 logger = logging.getLogger(__name__)
@@ -155,6 +158,16 @@ class EspnTennisProvider(TennisProvider):
         match = self._normalise_match(event, competition, tour)
         if not match:
             return []
+        draw = competition.get('type')
+        explicit_mens_singles = isinstance(draw, dict) and draw.get('slug') == 'mens-singles'
+        known_slam = TOURNAMENT_METADATA.get(match['tournament_name'], {}).get('level') == 'Grand Slam'
+        stage = str(match['round']).strip()
+        main_draw = stage in {'Round 1', 'Round 2', 'Round 3', 'Round 4'} or normalise_round(stage) in {
+            'R128', 'R64', 'R32', 'R16', 'QF', 'SF', 'F',
+        }
+        match_format = 'BO5' if 'men' in str(event.get('name', '')).lower() and 'french open' in str(event.get('name', '')).lower() else 'BO3'
+        if explicit_mens_singles and known_slam and main_draw:
+            match_format = detect_match_format({'tour': tour, 'level': 'GRAND_SLAM', 'round': stage})
         competitors = competition.get('competitors', [])
         rows = []
         for idx, competitor in enumerate(competitors[:2]):
@@ -175,7 +188,7 @@ class EspnTennisProvider(TennisProvider):
                     'tournament_id': match.get('tournament_id'),
                     'tournament_level': match.get('tournament_level'),
                     'round': match.get('round'),
-                    'format': 'BO5' if 'men' in str(event.get('name', '')).lower() and 'french open' in str(event.get('name', '')).lower() else 'BO3',
+                    'format': match_format,
                     'raw': competition,
                 }
             )
