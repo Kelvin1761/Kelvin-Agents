@@ -5430,14 +5430,14 @@ function dimFactorLabel(d) {
 // 近 3 仗第一個沿途位多數決（backend parser_hkjc.run_style_outlook）。「多變」= 冇多數，唔出 label。
 function renderRunStyleOutlook(outlook) {
   if (!outlook || !Array.isArray(outlook.runs) || !outlook.runs.length) return '';
-  const runs = outlook.runs.map(r => `${esc(r.style)}(${esc(String(r.first_call))})`).join('／');
+  // Kelvin 2026-11-05：卡面只顯示跑法；每仗日期同沿途位留喺 tooltip。
   const hit = Number.isFinite(outlook.hit_rate) ? `，歷史命中 ${outlook.hit_rate.toFixed(1)}%` : '';
   const tip = `近${outlook.runs.length}仗第一個沿途位：${outlook.runs.map(r => `${r.date} 第${r.first_call}位`).join('、')}`
     + `${hit}。參考用，唔入評分。`;
   const head = outlook.label
     ? `預計跑法: <strong>${esc(outlook.label)}</strong> · ${esc(outlook.consistency)}`
     : '預計跑法: <strong>多變</strong>';
-  return `<div class="horse-card__run-style" title="${esc(tip)}">🏃 ${head}（近仗 ${runs}）</div>`;
+  return `<div class="horse-card__run-style" title="${esc(tip)}">🏃 ${head}</div>`;
 }
 
 // Kelvin 2026-10-10: show trackwork in detail. Every fast gallop and barrier
@@ -5597,7 +5597,11 @@ function marketRankMap(fieldHorses) {
 function renderMarketLine(horse, marketRanks) {
   const win = horse.market_win_odds;
   const place = horse.market_place_odds;
-  if (win == null && place == null) return '<div class="mkt"><span class="mkt__odds">⚠️ 市場賠率未有資料 · 等候更新</span></div>';
+  if (win == null && place == null) {
+    // HKJC 冇賠率來源（Kelvin 2026-11-05），「等候更新」永遠等唔到，唔好顯示。AU 有來源，照舊提示。
+    if (activeRegion === 'hkjc') return '';
+    return '<div class="mkt"><span class="mkt__odds">⚠️ 市場賠率未有資料 · 等候更新</span></div>';
+  }
 
   let h = '<div class="mkt">';
   const bits = [];

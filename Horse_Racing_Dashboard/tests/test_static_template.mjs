@@ -2566,7 +2566,8 @@ test("horse card shows the 預計跑法 label with runs and hit rate (reference 
            { date: "16/09/2026", first_call: 1, style: "放頭" }],
   });
   assert.match(html, /預計跑法: <strong>放頭<\/strong> · 穩定/);
-  assert.match(html, /近仗 放頭\(2\)／放頭\(3\)／放頭\(1\)/);
+  assert.doesNotMatch(html, /近仗/);                                   // card shows the style only
+  assert.match(html, /28\/10\/2026 第2位/);                             // per-run detail stays in the tooltip
   assert.match(html, /歷史命中 69\.5%/);
   assert.match(html, /唔入評分/);
   const variable = renderRunStyleOutlook({ label: null, consistency: "多變", hit_rate: null,
@@ -2666,4 +2667,13 @@ test("ROI jockey board shows the top five by profit, the rest behind 顯示全�
   assert.equal(JSON.stringify(names), JSON.stringify(["乙", "丁", "丙", "戊", "己"]));   // ≥3 注，按淨利
   assert.doesNotMatch(html, /庚/);                                                    // 2 注唔入頭五
   assert.match(html, /顯示全部 7 位/);
+});
+
+test("HKJC horse card has no odds placeholder (no HKJC odds feed); AU still shows it", () => {
+  const { renderHorseCard, setActiveRegionForTest } = loadTemplateFunctions();
+  const horse = { horse_number: 10, horse_name: "電訊驕陽", final_grade: "A-" };
+  setActiveRegionForTest("hkjc");
+  assert.doesNotMatch(renderHorseCard(horse, 0, 1), /市場賠率未有資料/);
+  setActiveRegionForTest("au");
+  assert.match(renderHorseCard(horse, 0, 1), /市場賠率未有資料/);
 });
