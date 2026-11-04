@@ -116,6 +116,14 @@ class DarwinProcesses:
                                     ctypes.c_void_p, ctypes.POINTER(ctypes.c_size_t),
                                     ctypes.c_void_p, ctypes.c_size_t)
         self.lib.sysctl.restype = ctypes.c_int
+        argmax = ctypes.c_int()
+        size = ctypes.c_size_t(ctypes.sizeof(argmax))
+        mib = (ctypes.c_int * 2)(1, 8)  # CTL_KERN,KERN_ARGMAX
+        if (self.lib.sysctl(mib, 2, ctypes.byref(argmax), ctypes.byref(size), None, 0)
+                or size.value != ctypes.sizeof(argmax)
+                or not 0 < argmax.value <= 4 * 1024 * 1024):
+            raise DiscoveryError('kernel argument limit unavailable')
+        self.argmax = argmax.value
 
     def pids(self):
         result = subprocess.run(['/bin/ps', '-axo', 'pid=,uid='],
@@ -146,7 +154,7 @@ class DarwinProcesses:
         return (value.pid, value.uid, value.start_sec, value.start_usec, value.status)
 
     def argv(self, pid):
-        size = ctypes.c_size_t(4 * 1024 * 1024)
+        size = ctypes.c_size_t(self.argmax)
         buffer = ctypes.create_string_buffer(size.value)
         mib = (ctypes.c_int * 3)(1, 49, pid)  # CTL_KERN,KERN_PROCARGS2,pid
         ctypes.set_errno(0)
