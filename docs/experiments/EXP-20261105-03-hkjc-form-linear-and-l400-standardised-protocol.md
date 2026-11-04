@@ -142,6 +142,31 @@ NDCG@5 ±0.0101、competitive_recall@5 ±0.0101、平均名次 ±0.049。
 - 上線之前：A1 喺 `FormScorer` 實作，唔可以靠 arm 注入；B1 要有 live 嘅 PIT cell 平均表（由賽果庫＋過往 Logic 生成），
   寫入 Logic `_data` 供覆核。
 
+## 更正（2026-11-05，跑任何全紀錄 arm 之前加，候選冇改）
+
+**篩選嘅比較基準錯咗。** 上面「狀態與穩定性」表嘅「現行穩定性」係我由賽果庫用簡單式重砌
+（58 ＋ 前三 ×7 − 八名後 ×5）。但 live 嘅 `consistency_score` 喺 `_apply_mainline_context`
+會俾 `_consistency_shadow_detail`（逐仗連輸距覆核：跑近前列仗數、明顯敗陣仗數、近三仗走勢）覆蓋。
+用存檔 Logic 入面**真正** live 分數重量（2026-04 → 2026-10-10，342 場、3,919 匹，非初出、≥2 仗）：
+
+| 讀法 | AUC | Δ 對 live 穩定性 [95% CI] | 場內 ρ |
+|---|---:|---|---:|
+| live 穩定性 | 0.6689 | — | 1.000 |
+| live 近績分單獨 | 0.6674 | −0.0015 [−0.0081, +0.0050] | 0.919 |
+| live 穩定性分單獨 | 0.6531 | −0.0159 [−0.0254, −0.0070] | 0.890 |
+| 直線名次（A1 leaf） | 0.6679 | −0.0011 [−0.0091, +0.0072] | 0.897 |
+
+所以：
+- A1 嘅 +0.012 係對住一個弱過 live 嘅重砌版；**對 live 係打和**。登記預期由「細改善」改為「冇預期改善」。
+- 「穩定性分單獨差過近績分」仍然成立；但輸距覆核令佢合埋近績分有少少用（−0.0015，CI 跨零），A2 答呢點。
+- B1 唔受影響：篩選比較嘅就係 live 輸入 `raw_l400`。
+- 重現：`docs/experiments/patches/hkjc_live_stability_screen.py <HK_Racing 資料根> <rows.pkl> <repo>`。
+
+**接線修正（smoke，2026-09-28 → 10-01，11 場）**：第一版 A1／A2 喺 harness 0 場郁 ——
+A2 只 patch 咗 `_consistency_score`（之後俾輸距覆核蓋返）；A1 patch 咗
+`hkjc_racing_engine.features.form.FormScorer`，但引擎用 `from form import FormScorer`，係另一個 class。
+修好之後：A1 9/11 場、A2 10/11 場、B1 8/11 場排序郁；初出馬 8 匹穩定性完全唔變。
+
 ## 結果
 
 （未跑）
