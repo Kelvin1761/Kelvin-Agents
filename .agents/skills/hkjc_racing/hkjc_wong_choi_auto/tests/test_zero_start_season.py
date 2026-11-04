@@ -60,6 +60,22 @@ class ZeroStartSeasonTests(unittest.TestCase):
         self.assertAlmostEqual(adjustment["raw_adjustment"], 0.4284, places=6)
         self.assertEqual(class_score, evaluate("季內 (0-0-0-0)")[0])
 
+    def test_distance_fit_leaf_note_states_the_record_not_missing_data(self):
+        # 2026-11-05：leaf 冇寫說明，「評分構成」印「同程表現分 81 ← 資料不足」，
+        # 但下一行就話「3 戰 1 次上名」。
+        cases = {
+            "季內 (0-0-0-0) | 同程 (0-1-0-2)": "今仗路程 3 戰 1 次上名，原始分貢獻 +0.43。",
+            "季內 (0-0-0-0) | 同程 (0-0-0-3)": "今仗路程 3 戰 0 次上名，原始分貢獻 -0.17。",
+        }
+        for stats, expected in cases.items():
+            horse = {"career_tag": "ESTABLISHED", "career_race_starts": 15,
+                     "is_debut": False, "season_stats": stats}
+            auto = RacingEngine(horse, {"distance": "1200"}).analyze_horse()
+            component = auto["matrix_reasoning"]["distance_fit"]["components"][0]
+            self.assertEqual(component["key"], "distance_fit_score")
+            self.assertEqual(component["note"], expected)
+            self.assertNotIn("資料不足", component["note"])
+
     def test_distance_v2_is_recorded_as_shadow_without_replacing_live_v1(self):
         horse = {
             "career_tag": "ESTABLISHED",

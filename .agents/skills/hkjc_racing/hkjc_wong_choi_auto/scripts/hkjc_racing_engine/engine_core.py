@@ -201,6 +201,14 @@ class RacingEngine:
             distance_leaf = 60.0 + float(distance_suitability["raw_adjustment"]) / distance_weight
             feature_scores["distance_fit_score"] = distance_leaf
             matrix_scores["distance_fit"] = round(distance_leaf, 4)
+            # 呢個 leaf 唔喺 FEATURE_KEYS，之前冇人寫說明，「評分構成」就跌落預設
+            # 「資料不足」—— 即使匹馬明明有同程紀錄（2026-11-04 跑馬地 83% 馬有）。
+            feature_notes["distance_fit_score"] = self._distance_fit_note(distance_suitability)
+            self.provenance["distance_fit_score"] = (
+                "same_distance_record"
+                if int(distance_suitability.get("same_distance_starts", 0) or 0) > 0
+                else "missing_neutral"
+            )
         # 維度 band 一律由**顯示尺**判。原始尺上面七個維度有五個永遠出唔到 ✅✅，
         # `馬匹健康` 連 ❌ 都出唔到（原始全距只有 55.2–73.7），所以同一套門檻
         # （✅✅ 85 / ✅ 70 / ➖ 55 / ❌ 40）套落七把唔同嘅尺 = 個符號冇意義。
@@ -832,7 +840,39 @@ class RacingEngine:
             score = clip_score(draw + gain * (float(surface["score"]) - 60.0))
             live_profile = "v3_surface"
             combine = "跑馬地實驗主線：檔位＋個別谷草性能；歷史匹配／近仗消耗不入分"
+        # 顯示用：講清楚邊幾項真係入分、點樣加出 leaf 分（2026-11-05：報告列咗
+        # 三個分但冇講點加，跑馬地真正入分嘅谷草性能反而冇印）。唔郁計分。
+        if live_profile == "v3_surface":
+            surface_score = float(surface["score"])
+            formula = (f"檔位分 {draw:.1f} + {gain:.2f} × (谷草性能 {surface_score:.1f} − 60) "
+                       f"= {score:.1f}")
+            surface_why = (f"有效樣本 {float(surface.get('effective_n', 0) or 0):.1f} 仗"
+                           if surface.get("available") else "冇可用紀錄，按中性 60")
+            terms = [
+                {"label": "檔位分", "score": draw, "scored": True, "why": ""},
+                {"label": "個別谷草性能", "score": surface_score, "scored": True, "why": surface_why},
+                {"label": "走位匹配分", "score": fit_score, "scored": False, "why": fit_why},
+                {"label": "近仗消耗分", "score": trip_score, "scored": False, "why": trip_why},
+            ]
+        elif is_sha_tin:
+            formula = (f"檔位分 {draw:.1f}×{w['sha_tin_draw']:.0%} + 走位匹配分 {fit_score:.1f}×"
+                       f"{w['sha_tin_draw_position_fit']:.0%} + 近仗消耗分 {trip_score:.1f}×"
+                       f"{w['sha_tin_trip_consumption']:.0%} = {score:.1f}")
+            terms = [
+                {"label": "檔位分", "score": draw, "scored": True, "why": ""},
+                {"label": "走位匹配分", "score": fit_score, "scored": True, "why": fit_why},
+                {"label": "近仗消耗分", "score": trip_score, "scored": True, "why": trip_why},
+            ]
+        else:
+            formula = f"檔位分 {draw:.1f} + 走位情境微調 {delta:+.1f} = {score:.1f}"
+            terms = [
+                {"label": "檔位分", "score": draw, "scored": True, "why": ""},
+                {"label": "走位匹配分", "score": fit_score, "scored": False, "why": fit_why},
+                {"label": "近仗消耗分", "score": trip_score, "scored": False, "why": trip_why},
+            ]
         self.race_shape_detail = {
+            "formula": formula,
+            "terms": [dict(t, score=round(float(t["score"]), 1)) for t in terms],
             "draw": round(draw, 1), "fit": round(fit_score, 1), "trip": round(trip_score, 1),
             "fit_why": fit_why, "trip_why": trip_why, "combine": combine, "rail": rail,
             "live_profile": live_profile,
@@ -841,7 +881,7 @@ class RacingEngine:
             "field_tempo": "withheld_insufficient_reliability" if live_profile == "v3_surface" else None,
             "rail_draw_context": self._live_rail_draw_context(),
         }
-        note = f"排{barrier}檔　{score:.0f}分" + (f"（{rail}賽道）" if rail else "")
+        note = f"排{barrier}檔" + (f"（{rail}賽道）" if rail else "") + "，計法見下"
         return score, note, "race_shape_context"
 
     def _live_rail_draw_context(self):
@@ -3333,6 +3373,15 @@ class RacingEngine:
         if len(text) >= 12:
             return text
         return f"近 21 日晨操資料有限，晨操分 {float(features.get('trackwork_trend_score', 60.0)):.0f}，按中性處理。"
+
+    def _distance_fit_note(self, detail):
+        """同程表現分（leaf）嘅評分構成說明：有紀錄就講紀錄同貢獻，冇就講中性原因。"""
+        starts = int(detail.get("same_distance_starts", 0) or 0)
+        places = int(detail.get("same_distance_places", 0) or 0)
+        adjustment = float(detail.get("raw_adjustment", 0.0) or 0.0)
+        if starts:
+            return f"今仗路程 {starts} 戰 {places} 次上名，原始分貢獻 {adjustment:+.2f}。"
+        return self._clean(detail.get("note", "")) or "今仗路程未有正式往績，同程表現按中性 60 處理。"
 
     def _describe_distance_fit_matrix(self, score, features, evidence):
         """同程表現（9D centred 維度）：今仗路程有冇上名實績。"""

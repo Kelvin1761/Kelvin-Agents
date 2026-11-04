@@ -744,6 +744,23 @@ def _race_shape_detail_lines(auto: dict) -> list[str]:
     d = auto.get("race_shape_detail")
     if not isinstance(d, dict):
         return []
+    terms = d.get("terms")
+    if d.get("formula") and isinstance(terms, list):
+        # 先講計法，再分「入分」同「只供參考」，等讀者知道邊個分真係加咗入去。
+        lines = [f"    - 計法：{d['formula']}"]
+        for scored, heading in ((True, "入分"), (False, "只供參考（未入評分）")):
+            group = []
+            for t in terms:
+                if bool(t.get("scored")) is not scored:
+                    continue
+                why = str(t.get("why") or "").strip()
+                group.append(f"      · {t.get('label')} {float(t.get('score', 60)):.1f}" + (f"　{why}" if why else ""))
+            if not scored and d.get("rail"):
+                group.append(f"      · 今場賽道 {d.get('rail')}")
+            if group:
+                lines.append(f"    - {heading}：")
+                lines.extend(group)
+        return lines
     lines = [
         f"    - 檔位分 {float(d.get('draw', 60)):.0f}",
         f"    - 走位匹配分 {float(d.get('fit', 60)):.0f}　{d.get('fit_why', '')}",
