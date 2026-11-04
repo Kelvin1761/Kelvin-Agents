@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261104-18](EXP-20261104-18-tennis-prop-point-source-coverage.md) | 2026-11-04 | Tennis | 已保存 props 發球點數原文 | 9場至少一份雙側profile全部引用有點數，合格0 |
 | [EXP-20261104-17](EXP-20261104-17-tennis-recorded-prop-history-clocks.md) | 2026-11-04 | Tennis | 已保存 props 發球履歷時鐘 | 79場41,295引用未見遲收，合格0 |
 | [EXP-20261104-16](EXP-20261104-16-tennis-history-date-guard-boundary.md) | 2026-11-04 | Tennis | 歷史點數日期閘界線 | 13日後可接納遲收版本，固定71,658組日期粒度核對 |
 | [EXP-20261104-15](EXP-20261104-15-tennis-official-match-reconciliation.md) | 2026-11-04 | Tennis | 跨來源官方逐場核對 | 4場身份及賽事日確認，2場雙側點數核實，合格0 |
