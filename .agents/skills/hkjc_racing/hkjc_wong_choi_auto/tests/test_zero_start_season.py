@@ -198,7 +198,8 @@ class ZeroStartSeasonTests(unittest.TestCase):
         self.assertEqual(result["feature_scores"]["distance_score"], 54.0)
         self.assertIn("distance_record_weak", result["risk_flags"])
         self.assertNotIn("distance_unproven", result["risk_flags"])
-        self.assertIn("同程紀錄未見上名", result["score_breakdown"]["risk_score"]["note"])
+        # 2026-11-05：篩查說明唔入風險分，所以唔再寫入風險分說明；靠上面 risk_flags 守住。
+        self.assertNotIn("同程紀錄", result["score_breakdown"]["risk_score"]["note"])
         self.assertNotIn("路程證明不足", result["score_breakdown"]["risk_score"]["note"])
 
 

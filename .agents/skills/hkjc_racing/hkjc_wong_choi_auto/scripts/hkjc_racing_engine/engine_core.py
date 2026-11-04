@@ -602,11 +602,24 @@ class RacingEngine:
         screen_score, screen_note = self._risk_screen(features)
         self._risk_screen_score = screen_score
         health_score, health_note = self._candidate_health_risk_score()
-        note = self._append_note(
-            self._strip_embedded_score(screen_note, "風險分"),
-            f"{health_note}重算風險分{clip_score(health_score):.1f}。",
-        )
+        # 說明只講真正入分嘅嘢（2026-11-05）。舊版前面接住篩查說明（「檔位分偏低、
+        # 同程紀錄未見上名」），但篩查分由來冇入風險分，令人以為檔位同同程會扣健康分。
+        note = f"{self._risk_medical_note()}；{health_note}重算風險分{clip_score(health_score):.1f}。"
         return clip_score(health_score), note, "th01_health_context"
+
+    def _risk_medical_note(self):
+        """風險分醫療部分嘅來源：賽事短評關鍵字（入分）＋賽會傷患記錄（未入分）。"""
+        medical = self._text("medical_flags")
+        official = self._official_medical_records()
+        if "無醫療事故" in medical and official and scoring.OFFICIAL_INJURY_SCORING == "off":
+            return "賽事短評未見事故；⚠️ 賽會傷患記錄有紀錄（未入分，見健康解讀）"
+        if "無醫療事故" in medical:
+            return "賽事短評未見事故"
+        if self._is_foreign_runner() and not medical:
+            return "海外賽駒，本會醫療欄無記錄，按中性處理"
+        if medical and medical != "N/A":
+            return "賽事短評有醫療事故紀錄"
+        return "醫療欄資料不足"
 
     def _risk_screen(self, features):
         """風險篩查：只產生 risk_flags、說明同 confidence 用嘅篩查分，唔入分。"""
