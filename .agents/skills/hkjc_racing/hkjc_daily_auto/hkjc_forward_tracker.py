@@ -73,7 +73,7 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
     # 即場形勢（hkjc_live_results.py）由 2026-11-04 起逐場記錄賽果同 captured_at。研究問題：
     # 當晚已完成場次嘅場地偏差（檔位、跑法）同騎師／練馬師／騎練合作嘅當晚手風，
     # 可唔可以幫後面場次排名。只數完整賽晚。
-    ForwardTest("live_track_bias", "即場走勢＋騎練手風入評分（研究）", "EXP-20261104-06", "live_nights", 60,
+    ForwardTest("live_track_bias", "即場走勢＋騎練手風入評分（研究）", "EXP-20261104-11", "live_nights", 60,
                 since="2026-11-04",
                 action="夠數之後：用 captured_at 重建每場開跑前已知嘅當晚檔位／跑法偏差同騎師、練馬師、騎練合作戰績，"
                        "先做 leakage audit，再逐個訊號按 model-regression-gate 量（同 reverse-bias shadow 比較，Holm 校正）；"
