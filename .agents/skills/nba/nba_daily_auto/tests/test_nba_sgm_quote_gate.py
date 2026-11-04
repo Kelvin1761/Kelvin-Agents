@@ -171,4 +171,4 @@ def test_report_cache_renews_same_price_quote_instead_of_regenerating(tmp_path, 
     real_requote = q.requote_sidecar
     for price, reused in ((2.2, False), (2, True)):
         monkeypatch.setattr(q, 'requote_sidecar', lambda path, data, price=price: real_requote(path, data, post=post_price(price), now=later))
-        assert orchestrator.report_cache_current(str(report), str(source), str(stats), False) is reused
+        assert orchestrator.report_cache_current(str(report), str(source), str(stats)) is reused

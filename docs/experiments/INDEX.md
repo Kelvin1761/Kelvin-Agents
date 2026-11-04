@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261104-07](EXP-20261104-07-nba-extractor-orchestrator-simplify.md) | 2026-11-04 | NBA | extractor／orchestrator 剷死 code（第三方賠率、新聞、h2h、splits、prop_analytics、fatigue、--legacy／debug／[FILL]、schema 驗證） | **工程簡化，模型不變**：11-05 全 14 場 408 球員 nba_game_data 逐欄一樣（除時間戳同刻意剷走嘅 7 欄）；orchestrator 11-05 乾跑 12 場全流程通過、2 場正確等盤；extractor 1611→935 行 |
 | [EXP-20261104-06](EXP-20261104-06-nba-reflector-sidecar-only.md) | 2026-11-04 | NBA | Reflector／verify_props_hits 只讀 sidecar，剷走 Markdown 腿解析 | **工程重構，結算不變**：12 日 Props_Verification 逐字一樣（282 腿、174 中）；reflector 行只有舊 Markdown 先有嘅 L10 次數／avg／med／SD／CoV 標籤變 None、model_version 變 legacy:hybrid。Markdown 而家冇人 parse |
 | [EXP-20261104-05](EXP-20261104-05-tennis-event-identity-proof.md) | 2026-11-04 | Tennis | 全39人公開事件及source身份proof | **proposal未apply**：全32profile／14詳情，精確雙方＋tour＋UTC start只1場／2人，保存beforeimages；37人保留未確認，forward未新增 |
 | [EXP-20261104-04](EXP-20261104-04-tennis-book-tour-entry.md) | 2026-11-04 | Tennis | 明示tour早期接線及provisional交易 | **REJECT_INPUT_OWNER**：110針對／初次full過仍觸發錯人。Shaurya來源在tour修正後會接入Siddharth21144；b7研究分支保留、3cf refresh取消，Central已拒絕，未合併／啟用 |

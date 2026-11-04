@@ -41,8 +41,8 @@ def test_preseason_roster_retains_rookie_when_five_veterans_have_usage():
     roster.append({'player_id':9,'name':'Rookie','experience':'R'})
     advanced={i:{'USG_PCT':10} for i in range(5)}
     game={'name':'Memphis Grizzlies at Chicago Bulls','date':'2026-10-10T00:00Z','away':{'name':'Memphis Grizzlies','abbreviation':'MEM'},'home':{'name':'Chicago Bulls','abbreviation':'CHI'}}
-    with mock.patch.object(x,'fetch_team_roster',return_value=roster),mock.patch.object(x,'fetch_team_injuries',return_value={}),mock.patch.object(x,'fetch_nba_news',return_value=[]),mock.patch.object(x,'fetch_player_splits',return_value={}),mock.patch.object(x,'compute_prop_analytics',return_value={}),mock.patch.object(x,'compute_fatigue_adjustment',return_value={}),mock.patch.object(x,'fetch_player_gamelog',return_value=None) as history:
-        package=x.extract_single_game(game,advanced,{},{},{},{})
+    with mock.patch.object(x,'fetch_team_roster',return_value=roster),mock.patch.object(x,'fetch_team_injuries',return_value={}),mock.patch.object(x,'fetch_player_gamelog',return_value=None) as history:
+        package=x.extract_single_game(game,advanced,{},{},{})
     assert package['meta']['preseason_rookie_history_contract']==1
     assert len(package['players']['MEM'])==6
     calls=[c for c in history.call_args_list if c.args[0]==9]

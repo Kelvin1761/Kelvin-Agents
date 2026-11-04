@@ -516,7 +516,9 @@ Settlement 會先輸出本機 proposal；未獲明確批准前唔會自動 POST�
 組合標題喺 sidecar 嘅 `heading`；舊引擎（11-04 之前）冇呢欄，用 `NBA_LEGACY_TITLES`。舊 sidecar 冇存 CoV，所以歷史腿嘅
 `coefficient_of_variation` 係 null。Reflector（`verify_props_hits.bound_sidecar`、`nba_reflector_orchestrator.sidecar_rows`）
 亦只讀 sidecar（EXP-20261104-06），所以 **`report.py` 嘅 Markdown 而家係純顯示，冇嘢 parse 佢**。舊 Markdown 先有嘅
-L10 次數／avg／med／SD／CoV 標籤，喺 reflector 行係 None。extractor／orchestrator／scheduler 未重寫。
+L10 次數／avg／med／SD／CoV 標籤，喺 reflector 行係 None。extractor／orchestrator 已剷死 code（EXP-20261104-07）：
+`nba_game_data` 唔再有 `odds`／`news`／`splits`／`h2h`／`prop_analytics`／`fatigue`，extractor 一定要 `--game`，orchestrator
+冇 `--legacy`／`--debug-skip-extractor`／`[FILL]` 流程。scheduler 未重寫。
 
 ## tennis-wong-choi
 

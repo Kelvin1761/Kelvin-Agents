@@ -84,8 +84,8 @@ class PreseasonHistoryTests(unittest.TestCase):
         game = {'name': 'Houston Rockets at Dallas Mavericks', 'date': '2026-10-09T12:10:00Z',
                 'away': {'name': 'Houston Rockets', 'abbreviation': 'HOU'},
                 'home': {'name': 'Dallas Mavericks', 'abbreviation': 'DAL'}}
-        with mock.patch.object(extractor, 'fetch_team_roster', return_value=[]) as roster, mock.patch.object(extractor, 'fetch_team_injuries', return_value={}), mock.patch.object(extractor, 'fetch_nba_news', return_value=[]):
-            package = extractor.extract_single_game(game, {}, {}, {}, {}, {})
+        with mock.patch.object(extractor, 'fetch_team_roster', return_value=[]) as roster, mock.patch.object(extractor, 'fetch_team_injuries', return_value={}):
+            package = extractor.extract_single_game(game, {}, {}, {}, {})
         self.assertTrue(all(c.args[1] == '2026-27' for c in roster.call_args_list))
         self.assertEqual(package['meta']['statistics_season'], '2025-26')
         self.assertEqual(package['meta']['history_mode'], 'previous_season_reference')
@@ -210,7 +210,7 @@ class USGameDateCutoffTests(unittest.TestCase):
 
     def test_unknown_official_game_never_uses_synthetic_fallback(self):
         argv = ['nba_extractor.py', '--date', '20261009', '--game', 'HOU_DAL']
-        with mock.patch.object(sys, 'argv', argv), mock.patch.object(extractor, 'fetch_espn_scoreboard', return_value=[]), mock.patch.object(extractor, 'espn_league_tables', return_value=({}, {})), mock.patch.object(extractor, 'fetch_action_network_odds', return_value={'dummy': {}}), self.assertRaises(SystemExit) as exc:
+        with mock.patch.object(sys, 'argv', argv), mock.patch.object(extractor, 'fetch_espn_scoreboard', return_value=[]), mock.patch.object(extractor, 'espn_league_tables', return_value=({}, {})), self.assertRaises(SystemExit) as exc:
             extractor.main()
         self.assertEqual(exc.exception.code, 1)
         self.assertFalse(hasattr(extractor, 'build_game_info_from_tag'), 'no synthetic game path exists')

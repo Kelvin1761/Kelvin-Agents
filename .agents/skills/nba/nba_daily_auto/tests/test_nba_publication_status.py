@@ -26,14 +26,12 @@ def test_compile_validator_explicitly_accepts_warning_status(tmp_path,monkeypatc
 
 def test_selected_release_ignores_unrelated_started_or_unfinished_report(tmp_path,monkeypatch):
     selected=tmp_path/'Game_BKN_CLE_Full_Analysis.md';selected.write_text('complete report')
-    old=tmp_path/'Game_BOS_LAL_Full_Analysis.md';old.write_text('[FILL] already started')
+    old=tmp_path/'Game_BOS_LAL_Full_Analysis.md';old.write_text('unfinished')
     calls=[]
     monkeypatch.setattr(o,'run_script',lambda script,args,**kwargs:calls.append(args) or True)
     assert o.validate_reports_for_release(str(tmp_path),['BKN_CLE'])
     assert calls==[[str(selected)]]
-    assert o._count_fill_residuals(str(tmp_path),['BKN_CLE'])==0
-    assert o._count_fill_residuals(str(tmp_path))==1
-    assert old.read_text()=='[FILL] already started'
+    assert old.read_text()=='unfinished'
     assert not o.validate_reports_for_release(str(tmp_path),['MIA_CHA'])
 
 
