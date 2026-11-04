@@ -730,11 +730,14 @@ def readiness_digest(meeting_dir: Path) -> str:
     except (OSError, ValueError):
         return ""
     expected = data.get("expected_races") or 0
+    # PDF 失敗：軟閘（2026-11-03 起）用 ⚠️，舊硬閘 readiness 檔照用 ❌。
+    pdf_mark = "✅" if data.get("starter_pdf_ready") else (
+        "⚠️" if data.get("starter_pdf_gate") == "soft" else "❌")
     lines = [
         f"排位表 {data.get('racecards_ready', 0)}/{expected}"
         f" · 賽績 {data.get('formguides_ready', 0)}/{expected}"
         f" · 晨操 {data.get('trackwork_ready', 0)}/{expected}"
-        f" · PDF {'✅' if data.get('starter_pdf_ready') else '❌'}"
+        f" · PDF {pdf_mark}"
     ]
     # 上面幾個數係「今次刷新成功幾多場」。佢哋唔等於「有幾多場有數據」——
     # `_keep_valid_candidate` 刷新失敗時會保留上次有效檔。2026-09-05 09-06 沙田
@@ -763,15 +766,19 @@ def readiness_digest(meeting_dir: Path) -> str:
     if stale:
         lines.append(f"刷新失敗但有舊有效檔（照跑得）：{_fold(stale)}")
 
-    # 發佈閘係 `ready = starter_pdf and 排位表齊 and 賽績齊` —— **晨操唔喺入面**。
-    # 所以 PDF 失敗會單獨卡死成個場次，而之前呢個 digest 一行都冇講過 PDF：
-    # 2026-09-06 沙田連續 22 次 run 過唔到閘（PDF 佔 20 次），而每次通知都
-    # 指住幾場「賽績」，讀者被引去查一個冇壞嘅嘢。真兇一定要出名。
+    # 發佈閘 2026-11-03 起係 `ready = 排位表齊 and 賽績齊` —— **PDF 同晨操都唔喺入面**。
+    # PDF 以前係硬條件（2026-09-06 沙田 22 次 run 有 20 次卡喺佢），而家降做警告：
+    # 海外往績改用 fsc 來港前賽績（見 batch_extract）。但 PDF 出事一定要講出嚟，
+    # 而且要講明「唔阻塞」，唔好令人以為成個場次卡住。舊 readiness 檔冇
+    # `starter_pdf_gate`，嗰陣 PDF 仍然係硬條件，照舊講「卡住」。
     if not data.get("starter_pdf_ready"):
         state = data.get("starter_pdf_state")
         reason = (data.get("starter_pdf_error") or "").strip()
+        soft = data.get("starter_pdf_gate") == "soft"
         if state == "kept":
             head = "⚠️ PDF 刷新失敗但有舊有效檔"
+        elif soft:
+            head = "⚠️ PDF 冇有效檔 —— 唔阻塞發佈；海外往績改用 fsc 來港前賽績，官方傷患記錄缺"
         elif state == "missing":
             head = "⛔ PDF 冇有效檔 —— 呢個就係卡住成個場次嘅嘢"
         else:
@@ -1048,8 +1055,9 @@ def run_prerace(
         log(f"HKJC pre-race dormant: all betting pools closed for {meeting['date']}")
         set_control_outcome("dormant", reason="meeting_pools_closed", meeting=meeting["date"])
         return EXIT_OK
-    # `field_change` 只會由 `run_lineup` 傳入：見 batch_extract 個閘度嘅說明，
-    # 佢只鬆 starter PDF 一格（排位表同賽績照樣要 fresh）。
+    # `field_change` 只會由 `run_lineup` 傳入：見 batch_extract 個閘度嘅說明。
+    # 佢以前只鬆 starter PDF 一格；2026-11-03 起 PDF 已經唔入閘，兩個模式嘅
+    # 閘一樣（排位表同賽績照樣要 fresh），呢個值只係照記低。
     code, output = run_cmd(
         [
             sys.executable,

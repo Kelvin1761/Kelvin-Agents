@@ -23,6 +23,8 @@ import sys
 from pathlib import Path
 from unittest import mock
 
+import json
+
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "batch_extract.py"
@@ -147,27 +149,22 @@ if __name__ == "__main__":
     sys.exit(pytest.main([__file__]))
 
 
-# ───────────────────── 發佈閘：field_change 模式 ─────────────────────
+# ───────────────────── 發佈閘：starter PDF 係軟閘 ─────────────────────
 #
-# `WC_HKJC_GATE=field_change` 只鬆 starter PDF 一格。排位表同賽績照樣要 fresh
-# —— 佢哋決定名單（賽績尤其：`inject_hkjc_fact_anchors` 個馬匹迴圈食嘅就係
-# 佢），鬆咗就會由舊檔重建，隻退出馬返晒嚟。
-#
-# 點解 PDF 鬆得：實測 2026-09-06 沙田嘅 `最終版本` 截止喺 09-05 上午 11:30
-# —— 定義上早過賽事，冇可能載到賽日退出馬；而 `初版`→`最終版本` 2,347 行
-# 只有 3 行抬頭唔同，2,344 行數據逐位元一樣。
+# 2026-11-03 起 starter PDF 唔再入 `ready`。佢喺評分入面嘅唯一用途係自購馬海外
+# 往績，而 `inject_hkjc_fact_anchors` 喺 PDF 冇海外節時會逐匹改用 fsc 來港前賽績。
+# 以前 PDF 一斷就卡死成個場次（2026-09-06 沙田 22 次 run 有 20 次卡喺 PDF）。
+# 排位表同賽績照樣要 fresh —— 佢哋決定名單，鬆咗退出馬就會返晒嚟。
 
 def _gate_source():
     return SCRIPT.read_text(encoding="utf-8")
 
 
-def test_field_change_relaxes_only_the_pdf():
+def test_ready_no_longer_depends_on_the_pdf():
     src = _gate_source()
-    block = src[src.index("gate_mode = os.environ.get"):src.index("ready = pdf_gate")]
-    assert 'pdf_state in ("fresh", "kept")' in block
-    # 個 ready 條式只可以有 PDF 呢一格會隨模式變。
-    ready = src[src.index("ready = pdf_gate"):].splitlines()[0]
-    assert ready.strip() == "ready = pdf_gate and total_rc == len(races) and total_fg == len(races)"
+    ready = src[src.index("    ready = total_rc"):].splitlines()[0]
+    assert ready.strip() == "ready = total_rc == len(races) and total_fg == len(races)"
+    assert "pdf_gate =" not in src
 
 
 def test_racecards_and_formguides_still_require_fresh():
@@ -178,23 +175,67 @@ def test_racecards_and_formguides_still_require_fresh():
 
 
 def test_an_unknown_gate_mode_falls_back_to_strict():
-    """打錯字唔可以靜靜變成放寬 —— 一定要 fail closed。"""
+    """打錯字唔可以靜靜變成另一個模式 —— 一定要 fail closed 兼記低 strict。"""
     src = _gate_source()
     idx = src.index("gate_mode = os.environ.get")
-    block = src[idx:src.index("ready = pdf_gate")]
-    assert 'gate_mode != "strict"' in block
+    block = src[idx:src.index("    ready = total_rc")]
+    assert 'gate_mode not in ("strict", "field_change")' in block
     assert "當 strict 處理" in block
-    # else 分支用嘅係 pdf_ok（fresh only）
-    assert "pdf_gate = pdf_ok" in block
 
 
 def test_the_default_is_strict():
     assert 'os.environ.get("WC_HKJC_GATE", "strict")' in _gate_source()
 
 
-def test_the_gate_mode_is_recorded_in_the_manifest():
-    """事後要查得返「呢次係用邊個閘過嘅」。"""
-    assert '"gate_mode": gate_mode,' in _gate_source()
+def test_the_gate_mode_and_pdf_soft_fail_are_recorded_in_the_manifest():
+    """事後要查得返「呢次係用邊個閘過嘅」同「PDF 有冇出事」。"""
+    src = _gate_source()
+    assert '"gate_mode": gate_mode,' in src
+    assert '"starter_pdf_gate": "soft",' in src
+    assert '"starter_pdf_soft_fail": starter_pdf_soft_fail,' in src
+
+
+def _run_main(tmp_path, monkeypatch, pdf_result, formguide_ok=True):
+    monkeypatch.setattr(sys, "argv", [
+        str(SCRIPT), "--base_url",
+        "https://racing.hkjc.com/zh-hk/local/information/racecard"
+        "?racedate=2026/11/04&Racecourse=HV&RaceNo=1",
+        "--races", "1", "--output_dir", str(tmp_path), "--max_workers", "1",
+    ])
+    race = {"race": 1, "racecard_ok": True, "formguide_ok": formguide_ok,
+            "racecard_state": "fresh",
+            "formguide_state": "fresh" if formguide_ok else "missing", "errors": []}
+    with (
+        mock.patch.object(batch, "extract_starter_pdf", return_value=pdf_result),
+        mock.patch.object(batch, "extract_trackwork_meeting",
+                          return_value={"ok": True, "races": {1: {"json_ok": True, "md_ok": True}},
+                                        "error": ""}),
+        mock.patch.object(batch, "extract_single_race", return_value=race),
+    ):
+        try:
+            batch.main()
+            code = 0
+        except SystemExit as exc:
+            code = exc.code
+    return code, json.loads((tmp_path / "Extraction_Readiness.json").read_text(encoding="utf-8"))
+
+
+@pytest.mark.parametrize("gate", ["strict", "field_change"])
+def test_missing_pdf_alone_does_not_block_the_meeting(tmp_path, monkeypatch, gate):
+    monkeypatch.setenv("WC_HKJC_GATE", gate)
+    code, readiness = _run_main(tmp_path, monkeypatch, (False, "HTTP 404", "missing"))
+    assert code == 0
+    assert readiness["status"] == "ready"
+    assert readiness["starter_pdf_ready"] is False
+    assert readiness["starter_pdf_soft_fail"] is True
+    assert readiness["starter_pdf_error"] == "HTTP 404"
+
+
+def test_missing_formguide_still_blocks_even_with_a_good_pdf(tmp_path, monkeypatch):
+    code, readiness = _run_main(tmp_path, monkeypatch, (True, "", "fresh"), formguide_ok=False)
+    assert code == 75
+    assert readiness["status"] == "waiting_source"
+    assert readiness["starter_pdf_soft_fail"] is False
 
 
 @pytest.mark.parametrize("race_count, expected_timeout", [(2, 300), (11, 660)])
