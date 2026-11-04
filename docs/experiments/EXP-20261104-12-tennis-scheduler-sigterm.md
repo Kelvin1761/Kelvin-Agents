@@ -19,3 +19,5 @@ Quick檢查全綠。此checkpoint時完整檢查仍運行，候選只存研究�
 外置預演及盤點 `tennis-scheduler-release-preflight-v1-20261104/`，manifest SHA256 `ce38f4a79eb6c7e8625c384e8bc60823c9a75c50a3f90dda7b825fd175a3d848`。
 
 三份既有attempt再逐一核對原始hash及鎖，預演前後均未見已知Tennis runner。每份在臨時副本經原生API轉failed，`--force`從attempt 1改選attempt 2。正式manifest未寫入，沒有舊卡重跑。外置預演 `tennis-run-closure-preview-v1-20261104/`，manifest `7a5b933c5f92cb6625d34134b25d7da169024f47f21c7b8f798cb7ae4b98357a`。
+
+研究分支完整檢查已terminal exit 0。Shared Wong Choi 1799項，Tennis 1156項。外置完整log及manifest `tennis-scheduler-sigterm-full-v1-20261104/`，SHA256 `e13b19ce37b9376f03cef7b519f8a4b3afc9a65940fc6b6ba8c60f6f22b7d111`。正式候選 `fb72eca512c6` 的獨立發佈閘此刻仍運行。
