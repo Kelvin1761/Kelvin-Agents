@@ -84,7 +84,10 @@ ENGINE_FILES = ("scoring.py", "matrix_mapper.py", "engine_core.py")
 def engine_fingerprint(platform: str) -> str:
     digest = hashlib.sha256()
     engine_dir = PLATFORMS[platform]["engine"]
-    names = ENGINE_FILES + (("dimensions.py",) if platform == "au" and (engine_dir / "dimensions.py").exists() else ())
+    # AU 引擎已經拆成一個維度一個模組（stability／track_going／jockey_trainer／data_prep…），
+    # 寫死三個檔名會令改呢啲模組時指紋唔郁（2026-11-04 發現）—— AU 一律包晒成個 package。
+    names = (tuple(sorted(p.name for p in engine_dir.glob("*.py"))) if platform == "au"
+             else ENGINE_FILES)
     for name in names:
         path = engine_dir / name
         if path.exists():
