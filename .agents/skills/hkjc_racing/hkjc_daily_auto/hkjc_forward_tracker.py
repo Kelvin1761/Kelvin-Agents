@@ -78,6 +78,12 @@ FORWARD_TESTS: tuple[ForwardTest, ...] = (
                 action="夠數之後：用 captured_at 重建每場開跑前已知嘅當晚檔位／跑法偏差同騎師、練馬師、騎練合作戰績，"
                        "先做 leakage audit，再逐個訊號按 model-regression-gate 量（同 reverse-bias shadow 比較，Holm 校正）；"
                        "上唔上線由 Kelvin 決定"),
+    # 前置習慣 ±4 加「當晚前置唔著數就熄」開關（Kelvin 2026-11-05：偏外檔守中嘅晚上點算）。
+    # 同 live_track_bias 用同一批完整賽晚；門檻 0.0691 同期望上名率已凍結喺協議。
+    ForwardTest("front_habit_night_gate", "前置習慣＋當晚偏差開關", "EXP-20261105-04", "live_nights", 60,
+                since="2026-11-04",
+                action="夠數之後：用 captured_at 重建開跑前已知嘅當晚前置超額，比較 C（開關）vs A_4（一律 ±4）vs base；"
+                       "判決寫死：Gold／Good／NDCG@5 Δ 全部 ≥ 0 先可以提交，上唔上線由 Kelvin 決定"),
     ForwardTest("weight_refit_t02", "權重 refit t02", "EXP-20260928-10", "shadow_profile", 120,
                 profile="weight_refit_t02"),
     # race_shape_v3_hv 已經 experimental live（EXP-20260929-01），由 race_shape_v2_legacy_hv 做 rollback 對照。
