@@ -389,3 +389,4 @@
 - [EXP-20261104-10](EXP-20261104-10-au-betting-edge-results.md) — AU 點樣贏錢：模型對市場**冇**額外資訊（6 個市場 Δlogloss CI 全部跨零）；Sportsbet 定額乜規則都蝕（熱門 −5% 至 −11%），Betfair BSP 同樣規則 ≈ 打和；冇場次類型要避開；Kelly = 0。揸到退出馬扣減陷阱（未扣時假 +18%）同 `au_betting` 結算冇扣減。
 - [EXP-20261104-12](EXP-20261104-12-nba-market-errors-and-late-news-results.md) — NBA：莊家錯價分類（項目／價位／角色／往績／主客／S 分歧）全部負 ROI、0 個候選；21:00 後臨場缺陣 37 宗、隊友腿冇效應（−1.2pp CI 跨零）；21:00→收市價幾乎唔郁
 - [EXP-20261104-12](EXP-20261104-12-au-betting-settlement-scratch-deductions.md) — §7：`au_betting.settle` 加退出馬扣減（估算：Σ1/退出馬位賠 ÷ 派位數）。08-13..11-03 共 1,896 注，106 注中咗有遲退出；ROI −21.82% → −23.59%，以前每日結算報好咗 1.8pp。
+- [EXP-20261104-13](EXP-20261104-13-nba-teammate-absence-shift-results.md) — NBA「缺陣變化」（今日缺陣 − 最近缺陣，按份額）：加入模型 holdout 反而差 +0.0005 → REJECT；接手／復出腿 ROI 同對照一樣；live 模型反而輕微高估接手球員
