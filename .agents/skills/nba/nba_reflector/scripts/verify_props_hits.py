@@ -7,7 +7,8 @@ if hasattr(sys.stdout, 'reconfigure'):
 """
 verify_props_hits.py — NBA Props 命中自動驗證器
 
-讀取 Results_Brief JSON + 分析報告,自動比對每個 SGM Leg 嘅命中/未中。
+讀取 Results_Brief JSON + 每份分析報告嘅 .market_legs.json sidecar（唔讀 Markdown），
+自動比對每個 SGM Leg 嘅命中/未中。
 供 NBA Reflector 覆盤消費,取代 LLM 手動逐 Leg 對比。
 
 Usage:
@@ -20,6 +21,7 @@ Version: 1.0.0
 """
 
 import argparse
+import hashlib
 import json
 import re
 import io
@@ -141,117 +143,61 @@ def compute_actual_value(player_stats, stat_key):
     return None
 
 
-def extract_legs_from_report(report_path):
-    """Extract SGM Legs from an analysis report (V5 or V4 format).
+SIDECAR_SUFFIX = '.market_legs.json'
+STAT_LABELS = {'pts': 'PTS', 'reb': 'REB', 'ast': 'AST', 'fg3m': '3PM'}
 
-    Returns list of dicts: {player, stat, line, odds, combo_id}
+
+def bound_sidecar(report_path):
+    """The report's ``.market_legs.json``, or None when missing or not bound to the report.
+
+    The sidecar is the report's only machine interface; ``report_sha256`` proves it was
+    written with this exact report, so an edited report is never settled from stale data.
     """
-    legs = []
     try:
-        with open(report_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-    except Exception as e:
-        print(f"  ⚠️ 無法讀取報告: {report_path} — {e}")
-        return legs
-
-    # Pattern: Leg lines like "### 🧩 Leg 1: LeBron James PTS 25+ @1.85"
-    # or "Leg 1: LeBron James — Points 25+ @1.85"
-    # or "**Leg 1:** LeBron James PTS Over 25.5 @1.85"
-    leg_pattern = re.compile(
-        r'[Ll]eg\s*\d+[:\s]*'
-        r'([A-Z][a-zA-Z\'\-\.\s]+?)\s+'          # Player name
-        r'(PTS|REB|AST|3PM|PRA|PR|PA|RA|SB|Points|Rebounds|Assists|Threes Made?|'
-        r'Pts\+Reb\+Ast|Pts\+Reb|Pts\+Ast|Reb\+Ast|Stl\+Blk)\s+'  # Stat
-        r'(?:Over\s+)?(\d+(?:\.\d+)?)\+?\s*'      # Line
-        r'(?:@\s*(\d+\.\d+))?',                    # Odds (optional)
-        re.IGNORECASE
-    )
-
-    # Detect combo sections
-    combo_pattern = re.compile(
-        r'(?:###?\s*)?(?:🛡️|🔥|💎|💣)\s*(?:組合|Combo|SGM)\s*(\d+|X)',
-        re.IGNORECASE
-    )
-
-    current_combo = '?'
-    seen = set()
-    for line in content.split('\n'):
-        combo_match = combo_pattern.search(line)
-        if combo_match:
-            current_combo = combo_match.group(1)
-
-        table_leg = _extract_v5_table_leg(line, current_combo)
-        if table_leg:
-            key = (
-                table_leg['combo_id'],
-                table_leg['player'],
-                table_leg['stat_normalized'],
-                table_leg['line'],
-            )
-            if key not in seen:
-                legs.append(table_leg)
-                seen.add(key)
-            continue
-
-        leg_match = leg_pattern.search(line)
-        if leg_match:
-            player = leg_match.group(1).strip()
-            stat = leg_match.group(2).strip()
-            prop_line = float(leg_match.group(3))
-            odds = float(leg_match.group(4)) if leg_match.group(4) else None
-
-            leg = {
-                'player': player,
-                'stat': stat,
-                'stat_normalized': normalize_stat(stat),
-                'line': prop_line,
-                'odds': odds,
-                'combo_id': current_combo,
-            }
-            key = (leg['combo_id'], leg['player'], leg['stat_normalized'], leg['line'])
-            if key not in seen:
-                legs.append(leg)
-                seen.add(key)
-
-    return legs
+        with open(f'{report_path}{SIDECAR_SUFFIX}', 'r', encoding='utf-8') as f:
+            payload = json.load(f)
+        with open(report_path, 'rb') as f:
+            digest = hashlib.sha256(f.read()).hexdigest()
+    except (OSError, ValueError):
+        return None
+    if not isinstance(payload, dict) or payload.get('report_sha256') != digest:
+        return None
+    return payload
 
 
-def _extract_v5_table_leg(line, combo_id):
-    """Extract a leg from V5 markdown table rows.
+def extract_legs_from_report(report_path):
+    """Formal combo legs from the report's bound sidecar (never its Markdown).
 
-    Example:
-    | 🧩 1 | Stephon Castle (SA) AST 6+ | @1.39 | ...
+    Returns list of dicts: {player, stat, stat_normalized, line, odds, combo_id}; [] when
+    the sidecar is missing, stale, or the report has no formal combo.
     """
-    if '| 🧩' not in line and '|🧩' not in line:
-        return None
-
-    cells = [cell.strip() for cell in line.strip().strip('|').split('|')]
-    if len(cells) < 3 or '🧩' not in cells[0]:
-        return None
-
-    option = cells[1]
-    odds_cell = cells[2]
-    option_match = re.match(
-        r"(.+?)(?:\s+\([A-Z]{2,3}\))?\s+"
-        r"(PTS|REB|AST|3PM|PRA|PR|PA|RA|SB|Points|Rebounds|Assists|Threes Made?|"
-        r"Pts\+Reb\+Ast|Pts\+Reb|Pts\+Ast|Reb\+Ast|Stl\+Blk)\s+"
-        r"(\d+(?:\.\d+)?)\+?$",
-        option,
-        re.IGNORECASE,
-    )
-    if not option_match:
-        return None
-
-    odds_match = re.search(r'@?\s*(\d+\.\d+)', odds_cell)
-    stat = option_match.group(2).strip()
-    return {
-        'player': option_match.group(1).strip(),
-        'stat': stat,
-        'stat_normalized': normalize_stat(stat),
-        'line': float(option_match.group(3)),
-        'odds': float(odds_match.group(1)) if odds_match else None,
-        'combo_id': combo_id,
-    }
+    payload = bound_sidecar(report_path)
+    if payload is None:
+        print(f"  ⚠️ sidecar 缺失或者對唔上報告: {os.path.basename(str(report_path))}")
+        return []
+    legs, seen = [], set()
+    for combo in payload.get('combos') or []:
+        for leg in combo.get('legs') or []:
+            if leg.get('market_type') not in (None, 'PLAYER_MILESTONE') or not leg.get('player'):
+                continue
+            market = str(leg.get('market') or '').lower()
+            try:
+                line = float(leg['line'])
+            except (KeyError, TypeError, ValueError):
+                continue
+            item = {
+                'player': str(leg['player']).strip(),
+                'stat': STAT_LABELS.get(market, market.upper()),
+                'stat_normalized': normalize_stat(market),
+                'line': line,
+                'odds': float(leg['price']) if isinstance(leg.get('price'), (int, float)) else None,
+                'combo_id': str(combo.get('combo_id')),
+            }
+            key = (item['combo_id'], item['player'], item['stat_normalized'], item['line'])
+            if key not in seen:
+                legs.append(item)
+                seen.add(key)
+    return legs
 
 
 def verify_legs(legs, game_result):
@@ -340,13 +286,8 @@ def main():
     games = results_brief.get('games', [])
     print(f"📊 載入 {len(games)} 場賽果")
 
-    # Find analysis reports (V5 + V4 format)
-    pred_dir = args.predictions
-    reports = (
-        glob.glob(os.path.join(pred_dir, '*_NBA_*_Analysis.md')) +
-        glob.glob(os.path.join(pred_dir, 'Game_*_Full_Analysis.md')) +
-        glob.glob(os.path.join(pred_dir, 'Game_*_Full_Analysis.txt'))
-    )
+    # Legs come from each report's bound sidecar.
+    reports = sorted(glob.glob(os.path.join(args.predictions, 'Game_*_Full_Analysis.md')))
     print(f"📋 搵到 {len(reports)} 份分析報告")
 
     all_verified = []

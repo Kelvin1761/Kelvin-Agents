@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import csv
 import datetime as dt
-import glob
 import hashlib
 import json
 import math
@@ -31,6 +30,8 @@ PYTHON = "python3" if shutil.which("python3") else "python"
 FETCH_RESULTS = os.path.join(SCRIPT_DIR, "fetch_nba_results.py")
 FETCH_PBP = os.path.join(SCRIPT_DIR, "fetch_nba_pbp.py")
 VERIFY_PROPS = os.path.join(SCRIPT_DIR, "verify_props_hits.py")
+if SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, SCRIPT_DIR)   # verify_props_hits.bound_sidecar
 DB_PATH = str(Path.home() / "WongChoiData" / "NBA" / "nba_reflector.db")
 
 
@@ -187,218 +188,8 @@ def ensure_db(conn: sqlite3.Connection) -> None:
 
 def extract_game_tag_from_filename(path: str) -> str:
     base = os.path.basename(path)
-    patterns = [
-        r"Game_([A-Z]{2,4}_[A-Z]{2,4})_Full_Analysis\.(?:md|txt)$",
-        r"_NBA_([A-Z]{2,4})_([A-Z]{2,4})_Analysis\.md$",
-    ]
-    for pattern in patterns:
-        match = re.search(pattern, base)
-        if not match:
-            continue
-        if len(match.groups()) == 1:
-            return match.group(1)
-        return f"{match.group(1)}_{match.group(2)}"
-    return base
-
-
-def parse_report_metadata(content: str) -> dict[str, str]:
-    odds_source = ""
-    model_version = ""
-    for line in content.splitlines():
-        if not odds_source:
-            match = re.search(r"odds_source\**:\s*([A-Z_]+)", line)
-            if match:
-                odds_source = match.group(1)
-        if not model_version and "引擎版本" in line:
-            match = re.search(r"引擎版本\**:\s*(.+)", line)
-            if match:
-                model_version = match.group(1).strip()
-        if odds_source and model_version:
-            break
-    return {
-        "odds_source": odds_source or "UNKNOWN",
-        "model_version": model_version or "UNKNOWN",
-    }
-
-
-def iter_leg_blocks(content: str):
-    current_combo = "?"
-    current_header = None
-    current_lines: list[str] = []
-    combo_re = re.compile(r"(?:###?\s*)?(?:🛡️|🔥|💎|💣)\s*(?:組合|Combo|SGM)\s*(\d+|X)", re.IGNORECASE)
-    leg_re = re.compile(r"(?:####|###|\*\*)\s*.*Leg\s*\d+", re.IGNORECASE)
-
-    def flush():
-        nonlocal current_header, current_lines
-        if current_header:
-            yield current_combo, current_header, "\n".join(current_lines)
-        current_header = None
-        current_lines = []
-
-    for line in content.splitlines():
-        combo_match = combo_re.search(line)
-        if combo_match:
-            current_combo = combo_match.group(1)
-        if leg_re.search(line):
-            yield from flush()
-            current_header = line.strip()
-            current_lines = [line.strip()]
-            continue
-        if current_header:
-            current_lines.append(line.rstrip())
-    yield from flush()
-
-
-def _extract_float(pattern: str, text: str) -> float | None:
-    match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
-    if not match:
-        return None
-    try:
-        return float(match.group(1))
-    except ValueError:
-        return None
-
-
-def _extract_ints(pattern: str, text: str) -> tuple[int, int, float] | None:
-    match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
-    if not match:
-        return None
-    return int(match.group(1)), int(match.group(2)), float(match.group(3))
-
-
-def _extract_l10_values(text: str) -> list[float]:
-    match = re.search(r"L10(?:\s*逐場)?\**[:：]?\**\s*`?(\[[^\]]+\])`?", text, re.IGNORECASE | re.MULTILINE)
-    if not match:
-        return []
-    raw = match.group(1)
-    try:
-        values = json.loads(raw)
-        return [float(v) for v in values]
-    except Exception:
-        nums = re.findall(r"-?\d+(?:\.\d+)?", raw)
-        return [float(v) for v in nums]
-
-
-def _infer_stats_from_l10(values: list[float]) -> tuple[float | None, float | None, float | None]:
-    if not values:
-        return None, None, None
-    avg = sum(values) / len(values)
-    ordered = sorted(values)
-    if len(ordered) % 2 == 0:
-        med = (ordered[len(ordered) // 2 - 1] + ordered[len(ordered) // 2]) / 2
-    else:
-        med = ordered[len(ordered) // 2]
-    variance = sum((v - avg) ** 2 for v in values) / len(values)
-    return round(avg, 2), round(med, 2), round(math.sqrt(variance), 2)
-
-
-def parse_leg_block(
-    header: str,
-    block_text: str,
-    combo_id: str,
-    analysis_date: str,
-    us_game_date: str,
-    game_tag: str,
-    report_file: str,
-    report_meta: dict[str, str],
-) -> dict | None:
-    header_patterns = [
-        re.compile(
-            r"Leg\s*(\d+)\s*[:：]\s*(.+?)\s*\(([A-Z]{2,4})\)\s*-\s*(\d+(?:\.\d+)?)\+\s*([A-Z0-9+]+)",
-            re.IGNORECASE,
-        ),
-        re.compile(
-            r"Leg\s*(\d+)\s*[:：]\s*(.+?)\s+(PTS|REB|AST|3PM|PRA|PR|PA|RA|SB|STL|BLK|TOV|Points|Rebounds|Assists|Threes Made?)\s*(?:Over\s*)?(\d+(?:\.\d+)?)",
-            re.IGNORECASE,
-        ),
-    ]
-
-    player_name = ""
-    team_abbr = ""
-    stat = ""
-    line = None
-    for pattern in header_patterns:
-        match = pattern.search(header)
-        if not match:
-            continue
-        if pattern is header_patterns[0]:
-            _, player_name, team_abbr, line_str, stat = match.groups()
-        else:
-            _, player_name, stat, line_str = match.groups()
-        player_name = player_name.replace("**", "").strip(" -")
-        stat = normalize_stat(stat)
-        line = float(line_str)
-        break
-
-    if not player_name or line is None or not stat:
-        return None
-
-    odds = _extract_float(r"賠率[^@\n]*@(\d+(?:\.\d+)?)", block_text)
-    implied_prob = _extract_float(r"隱含(?:機率|勝率)\**[^0-9+\-]*(\d+(?:\.\d+)?)%", block_text)
-    predicted_prob = _extract_float(r"預期勝率(?:\(Adj Prob\))?\**[^0-9+\-]*(\d+(?:\.\d+)?)%", block_text)
-    edge_pct = _extract_float(r"Edge\**[:：]?\**\s*([+\-]?\d+(?:\.\d+)?)%", block_text)
-    l10_hit = _extract_ints(r"L10 命中\**[:：]?\**\s*(?:⚠️\s*)?(\d+)\/(\d+)\s*\((\d+(?:\.\d+)?)%\)", block_text)
-    l10_values = _extract_l10_values(block_text)
-    avg = _extract_float(r"AVG\s+([+\-]?\d+(?:\.\d+)?)", block_text)
-    med = _extract_float(r"MED\s+([+\-]?\d+(?:\.\d+)?)", block_text)
-    sd = _extract_float(r"SD\s+([+\-]?\d+(?:\.\d+)?)", block_text)
-    if avg is None or med is None or sd is None:
-        inferred_avg, inferred_med, inferred_sd = _infer_stats_from_l10(l10_values)
-        avg = avg if avg is not None else inferred_avg
-        med = med if med is not None else inferred_med
-        sd = sd if sd is not None else inferred_sd
-
-    cov_match = re.search(r"CoV[:：]\s*(.+)", block_text)
-    cov_label = cov_match.group(1).replace("*", "").strip() if cov_match else ""
-
-    return {
-        "analysis_date": analysis_date,
-        "us_game_date": us_game_date,
-        "game_tag": game_tag,
-        "combo_id": combo_id,
-        "report_file": report_file,
-        "player_name": player_name,
-        "team_abbr": team_abbr or game_tag.split("_")[0],
-        "prop_stat": stat,
-        "line": line,
-        "odds": odds,
-        "implied_prob": implied_prob,
-        "predicted_prob": predicted_prob,
-        "edge_pct": edge_pct,
-        "l10_hit_rate": l10_hit[2] if l10_hit else None,
-        "l10_hits": l10_hit[0] if l10_hit else None,
-        "l10_total": l10_hit[1] if l10_hit else None,
-        "l10_avg": avg,
-        "l10_med": med,
-        "l10_sd": sd,
-        "cov_label": cov_label,
-        "raw_l10_json": json.dumps(l10_values),
-        "odds_source": report_meta["odds_source"],
-        "model_version": report_meta["model_version"],
-        "source_run_key": analysis_date,
-    }
-
-
-# ── Current (Python-generated) report format ────────────────────────────────
-# The legacy parser above only understands the LLM-era "Leg N: Player (TEAM) -
-# 25+ PTS" blocks. Current reports list legs as combo TABLE rows and per-player
-# cards; the structured sidecar carries the leg list. Field provenance (a field
-# a source does not carry stays None -- never a default, never a guess):
-#   sidecar  : combo_id, player, team, stat, line, odds (price), predicted_prob (p_final)
-#   card     : implied_prob, edge_pct, l10 hit rate/hits/total, l10 avg/med/sd, cov_label
-#   combo row: odds, l10 hit, predicted_prob, edge_pct, cov_label (fallback when no sidecar)
-#   header   : odds_source, model_version
-#   NOT in the report (stay None): raw_l10_json (only L5 is printed; L10 values are not)
-_STAT_RE = r"PTS|REB|AST|3PM|PRA|PR|PA|RA|SB|STL|BLK|TOV|Points|Rebounds|Assists|Threes Made?"
-_COMBO_ROW_RE = re.compile(
-    r"^\|\s*🧩\s*\d+\s*\|\s*(?P<player>.+?)\s*(?:\((?P<team>[A-Z]{2,4})\))?\s+(?P<stat>" + _STAT_RE + r")\s+"
-    r"(?P<line>\d+(?:\.\d+)?)\+?\s*\|(?P<rest>.*)$",
-    re.IGNORECASE,
-)
-_CARD_HEAD_RE = re.compile(r"^####\s+(?P<player>.+?)\s+\(#[^,)]*,\s*(?P<team>[A-Z]{2,4})\)\s+—\s+(?P<stat>" + _STAT_RE + r")\s*$", re.IGNORECASE)
-_LINE_ROW_RE = re.compile(r"^\|\s*(?P<line>\d+(?:\.\d+)?)\+\s*\|\s*@(?P<odds>\d+(?:\.\d+)?)\s*\|(?P<rest>.*)$")
-_HIT_RE = re.compile(r"(\d+(?:\.\d+)?)%\s*\((\d+)/(\d+)\)")
-_PCT_RE = re.compile(r"([+\-]?\d+(?:\.\d+)?)%")
+    match = re.search(r"Game_([A-Z]{2,4}_[A-Z]{2,4})_Full_Analysis\.md$", base)
+    return match.group(1) if match else base
 
 
 def _num(value) -> float | None:
@@ -408,178 +199,65 @@ def _num(value) -> float | None:
         return None
 
 
-def parse_player_cards(content: str) -> dict[tuple[str, str, float], dict]:
-    """Per-player card facts keyed by (player lower, stat, line)."""
-    cards: dict[tuple[str, str, float], dict] = {}
-    player = stat = None
-    head: dict = {}
-    for raw in content.splitlines():
-        line = raw.strip()
-        head_match = _CARD_HEAD_RE.match(line)
-        if head_match:
-            player = head_match.group("player").strip().lower()
-            stat = normalize_stat(head_match.group("stat"))
-            head = {}
-            continue
-        if line.startswith("## ") or line.startswith("### "):
-            player = stat = None
-            continue
-        if not player:
-            continue
-        match = re.search(r"L10 均值\**:\s*([+\-]?\d+(?:\.\d+)?)\s*\\?\|\s*\**中位\**:\s*([+\-]?\d+(?:\.\d+)?)", line)
-        if match:
-            head["l10_avg"], head["l10_med"] = float(match.group(1)), float(match.group(2))
-        match = re.search(r"\*\*SD\*\*:\s*([+\-]?\d+(?:\.\d+)?)\s*\\?\|\s*\*\*CoV\*\*:\s*([^|]+?)\s*\|", line)
-        if match:
-            head["l10_sd"], head["cov_label"] = float(match.group(1)), match.group(2).replace("*", "").strip()
-        row = _LINE_ROW_RE.match(line)
-        if row:
-            cells = [c.strip() for c in row.group("rest").split("|")]
-            # 隱含勝率 | L10 命中 | L5 命中 | 預期勝率 | Edge | EV% | 判定
-            if len(cells) < 6:
-                continue
-            implied = _PCT_RE.search(cells[0])
-            hit = _HIT_RE.search(cells[1])
-            predicted = _PCT_RE.search(cells[3])
-            edge = _PCT_RE.search(cells[4])
-            entry = dict(head)
-            entry.update({
-                "odds": float(row.group("odds")),
-                "implied_prob": float(implied.group(1)) if implied else None,
-                "l10_hit_rate": float(hit.group(1)) if hit else None,
-                "l10_hits": int(hit.group(2)) if hit else None,
-                "l10_total": int(hit.group(3)) if hit else None,
-                "predicted_prob": float(predicted.group(1)) if predicted else None,
-                "edge_pct": float(edge.group(1)) if edge else None,
-            })
-            cards[(player, stat, float(row.group("line")))] = entry
-    return cards
+def sidecar_rows(sidecar: dict, report_file: str, analysis_date: str, us_game_date: str, game_tag: str) -> list[dict]:
+    """One reflector row per formal combo leg, from a report's bound sidecar.
 
-
-def parse_combo_table_rows(content: str) -> list[dict]:
-    """Combo leg rows: ``| 🧩 1 | Name (TEAM) REB 6+ | @1.52 | 80.0% (8/10) | **77.0%** | +11.21% | +17.04% | 0.384 🎲神經刀 |``."""
-    rows: list[dict] = []
-    combo_re = re.compile(r"(?:###?\s*)?(?:🛡️|🔥|💎|💣)\s*(?:組合|Combo|SGM)\s*(\d+|X)", re.IGNORECASE)
-    combo_id = "?"
-    for raw in content.splitlines():
-        combo_match = combo_re.search(raw)
-        if combo_match:
-            combo_id = combo_match.group(1)
-        match = _COMBO_ROW_RE.match(raw.strip())
-        if not match:
-            continue
-        cells = [c.strip() for c in match.group("rest").split("|")]
-        # @odds | L10 命中 | 預期勝率 | Edge | EV% | CoV
-        odds = re.search(r"@?\s*(\d+(?:\.\d+)?)", cells[0]) if cells else None
-        hit = _HIT_RE.search(cells[1]) if len(cells) > 1 else None
-        predicted = _PCT_RE.search(cells[2]) if len(cells) > 2 else None
-        edge = _PCT_RE.search(cells[3]) if len(cells) > 3 else None
-        cov = cells[5].replace("*", "").strip() if len(cells) > 5 and cells[5].strip() else None
-        rows.append({
-            "combo_id": combo_id,
-            "player_name": match.group("player").strip(),
-            "team_abbr": match.group("team"),
-            "prop_stat": normalize_stat(match.group("stat")),
-            "line": float(match.group("line")),
-            "odds": float(odds.group(1)) if odds else None,
-            "predicted_prob": float(predicted.group(1)) if predicted else None,
-            "edge_pct": float(edge.group(1)) if edge else None,
-            "l10_hit_rate": float(hit.group(1)) if hit else None,
-            "l10_hits": int(hit.group(2)) if hit else None,
-            "l10_total": int(hit.group(3)) if hit else None,
-            "cov_label": cov,
-        })
-    return rows
-
-
-def load_sidecar_combo_legs(report_path: str, content: str) -> list[dict] | None:
-    """Combo legs from the structured sidecar, or None when absent/unreadable/stale.
-
-    The sidecar is only trusted when its ``report_sha256`` matches the report
-    text it sits next to (same check the market ledger applies).
+    Field provenance (a field the sidecar does not carry stays None -- never a default):
+      combo leg : combo_id, player, team, stat, line, odds (price), predicted_prob (p_final)
+      leg entry : l10_hit_rate (p_l10_base_rate)
+      derived   : implied_prob = 100/odds, edge_pct = predicted - implied (2 dp, as the
+                  old reports printed them)
+      NOT in any sidecar (None): l10 hits/total, l10 avg/med/sd, cov_label, raw L10 values
     """
-    import hashlib
-    sidecar = report_path + ".market_legs.json"
-    try:
-        with open(sidecar, "r", encoding="utf-8") as handle:
-            payload = json.load(handle)
-        with open(report_path, "rb") as handle:
-            report_sha = hashlib.sha256(handle.read()).hexdigest()
-    except (OSError, ValueError):
-        return None
-    if payload.get("report_sha256") != report_sha:
-        return None
-    legs: list[dict] = []
-    for combo in payload.get("combos") or []:
+    references = {(l.get("player"), l.get("market"), _num(l.get("line"))): l
+                  for l in sidecar.get("legs") or [] if isinstance(l, dict)}
+    model_version = sidecar.get("engine") or (
+        f"legacy:{sidecar['engine_mode']}" if sidecar.get("engine_mode") else "UNKNOWN")
+    odds_source = "SPORTSBET_LIVE" if sidecar.get("sportsbet_event_id") else "UNKNOWN"
+    rows: list[dict] = []
+    for combo in sidecar.get("combos") or []:
         for leg in combo.get("legs") or []:
             if leg.get("market_type") not in (None, "PLAYER_MILESTONE") or not leg.get("player"):
                 continue
             line = _num(leg.get("line"))
             if line is None:
                 continue
-            p_final = _num(leg.get("p_final"))
-            legs.append({
+            odds, p_final = _num(leg.get("price")), _num(leg.get("p_final"))
+            l10 = _num(references.get((leg.get("player"), leg.get("market"), line), {}).get("p_l10_base_rate"))
+            implied = round(100 / odds, 2) if odds else None
+            predicted = round(p_final * 100, 2) if p_final is not None else None
+            rows.append({
+                "analysis_date": analysis_date,
+                "us_game_date": us_game_date,
+                "game_tag": game_tag,
                 "combo_id": str(combo.get("combo_id")),
+                "report_file": report_file,
                 "player_name": str(leg["player"]).strip(),
                 "team_abbr": leg.get("team"),
                 "prop_stat": normalize_stat(leg.get("market")),
                 "line": line,
-                "odds": _num(leg.get("price")),
-                "predicted_prob": round(p_final * 100, 2) if p_final is not None else None,
+                "odds": odds,
+                "implied_prob": implied,
+                "predicted_prob": predicted,
+                "edge_pct": round(predicted - implied, 2) if predicted is not None and implied is not None else None,
+                "l10_hit_rate": round(l10 * 100, 2) if l10 is not None else None,
+                "l10_hits": None,
+                "l10_total": None,
+                "l10_avg": None,
+                "l10_med": None,
+                "l10_sd": None,
+                "cov_label": None,
+                "raw_l10_json": None,
+                "odds_source": odds_source,
+                "model_version": model_version,
+                "source_run_key": analysis_date,
             })
-    return legs or None
-
-
-def parse_current_format_rows(
-    report_path: str, content: str, analysis_date: str, us_game_date: str, game_tag: str, report_meta: dict[str, str]
-) -> list[dict]:
-    legs = load_sidecar_combo_legs(report_path, content)
-    from_sidecar = legs is not None
-    if legs is None:
-        legs = parse_combo_table_rows(content)
-    if not legs:
-        return []
-    cards = parse_player_cards(content)
-    out: list[dict] = []
-    for leg in legs:
-        card = cards.get((leg["player_name"].lower(), leg["prop_stat"], float(leg["line"])), {})
-
-        def pick(field):
-            # sidecar/combo-row value wins; the card fills only what is missing
-            return leg[field] if leg.get(field) is not None else card.get(field)
-        out.append({
-            "analysis_date": analysis_date,
-            "us_game_date": us_game_date,
-            "game_tag": game_tag,
-            "combo_id": leg["combo_id"],
-            "report_file": os.path.basename(report_path),
-            "player_name": leg["player_name"],
-            "team_abbr": leg.get("team_abbr") or card.get("team_abbr"),
-            "prop_stat": leg["prop_stat"],
-            "line": float(leg["line"]),
-            "odds": pick("odds"),
-            "implied_prob": card.get("implied_prob"),
-            "predicted_prob": pick("predicted_prob"),
-            "edge_pct": pick("edge_pct"),
-            "l10_hit_rate": pick("l10_hit_rate"),
-            "l10_hits": pick("l10_hits"),
-            "l10_total": pick("l10_total"),
-            "l10_avg": card.get("l10_avg"),
-            "l10_med": card.get("l10_med"),
-            "l10_sd": card.get("l10_sd"),
-            "cov_label": pick("cov_label"),
-            "raw_l10_json": None,
-            "odds_source": report_meta["odds_source"],
-            "model_version": report_meta["model_version"],
-            "source_run_key": analysis_date,
-        })
-    return out
+    return rows
 
 
 def verified_no_combo_reports(target_dir: str, excluded_games=()) -> bool:
     """Accept explicit abstentions only; missing/stale/malformed reports still fail."""
     reports = sorted(Path(target_dir).glob("Game_*_Full_Analysis.md"))
-    reports += sorted(Path(target_dir).glob("Game_*_Full_Analysis.txt"))
     checked = 0
     for report in reports:
         if extract_game_tag_from_filename(str(report)) in excluded_games:
@@ -604,36 +282,17 @@ def verified_no_combo_reports(target_dir: str, excluded_games=()) -> bool:
 
 
 def load_prediction_rows(target_dir: str, analysis_date: str, us_game_date: str) -> list[dict]:
-    reports = sorted(
-        glob.glob(os.path.join(target_dir, "*_NBA_*_Analysis.md"))
-        + glob.glob(os.path.join(target_dir, "Game_*_Full_Analysis.md"))
-        + glob.glob(os.path.join(target_dir, "Game_*_Full_Analysis.txt"))
-    )
+    """Rows from every report's hash-bound sidecar; the Markdown is never parsed."""
+    from verify_props_hits import bound_sidecar
+
     rows: list[dict] = []
-    for report_path in reports:
-        with open(report_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        game_tag = extract_game_tag_from_filename(report_path)
-        report_meta = parse_report_metadata(content)
-        legacy_rows: list[dict] = []
-        for combo_id, header, block_text in iter_leg_blocks(content):
-            row = parse_leg_block(
-                header,
-                block_text,
-                combo_id,
-                analysis_date,
-                us_game_date,
-                game_tag,
-                os.path.basename(report_path),
-                report_meta,
-            )
-            if row:
-                legacy_rows.append(row)
-        if legacy_rows:
-            rows.extend(legacy_rows)
-        else:
-            rows.extend(parse_current_format_rows(
-                report_path, content, analysis_date, us_game_date, game_tag, report_meta))
+    for report in sorted(Path(target_dir).glob("Game_*_Full_Analysis.md")):
+        sidecar = bound_sidecar(str(report))
+        if sidecar is None:
+            print(f"⚠️ {report.name}: sidecar 缺失或者對唔上報告，唔記錄。")
+            continue
+        rows.extend(sidecar_rows(sidecar, report.name, analysis_date, us_game_date,
+                                 extract_game_tag_from_filename(str(report))))
     return rows
 
 
