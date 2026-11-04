@@ -7,6 +7,7 @@
 """
 from __future__ import annotations
 
+import json
 import sys
 import tempfile
 import unittest
@@ -131,13 +132,15 @@ class SettlementTests(unittest.TestCase):
     報衰同報好一樣壞 —— 兩樣都會令人唔信條數。
     """
 
-    def _settle(self, bets, *, results=RESULTS, tags=("morning-rebuild",)):
+    def _settle(self, bets, *, results=RESULTS, tags=("morning-rebuild",), odds=None):
         import au_reflect_notify as R  # noqa: PLC0415
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp) / "2026-09-03 Warrnambool Race 1-2"
             folder.mkdir()
             (folder / "Race_Results_Reflector.md").write_text(results,
                                                               encoding="utf-8")
+            if odds is not None:
+                (folder / "odds_history.json").write_text(json.dumps(odds), encoding="utf-8")
             rows = [{"race": race, "picks": [], "bets": picks, "watch": []}
                     for race, picks in bets]
             with unittest.mock.patch.object(B, "_folders", lambda day: [folder]), \
@@ -220,3 +223,27 @@ class SnapshotTagTests(unittest.TestCase):
         self.assertIn("早更未跑到", stale)
         self.assertIn("當朝定價", fresh)
         self.assertNotIn("早更未跑到", fresh)
+
+
+class ScratchingDeductionTests(unittest.TestCase):
+    """EXP-20261104-10：落注之後先退出嘅馬 → Sportsbet 定額位注中咗要扣減派彩（估算）。"""
+
+    _settle = SettlementTests._settle
+
+    ODDS = {"1": {"2026-09-03T10:05:00|morning-rebuild": {
+        "2": [4.0, 1.8], "4": [11.0, 2.5], "9": [5.5, 2.2], "11": [101.0, 15.0],
+        "7": [3.0, 1.5]}}}          # #7 喺價表但唔喺賽果 = 遲退出
+
+    def test_a_late_scratching_deducts_the_winning_place_bet(self):
+        text = self._settle([(1, [(4, "Johnny Be Good", 2.5)])], odds=self.ODDS)
+        ded = (1 / 1.5) / 3                     # 10 匹派三位
+        got = 1 + 1.5 * (1 - ded)
+        self.assertIn("1 注中咗但有遲退出馬", text)
+        self.assertIn(f"ROI {100 * (got - 1):+.1f}%", text)
+
+    def test_no_scratching_means_no_deduction(self):
+        odds = {"1": {k: {n: v for n, v in snap.items() if n != "7"}
+                      for k, snap in self.ODDS["1"].items()}}
+        text = self._settle([(1, [(4, "Johnny Be Good", 2.5)])], odds=odds)
+        self.assertNotIn("遲退出馬", text)
+        self.assertIn("ROI +150.0%", text)
