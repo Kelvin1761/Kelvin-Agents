@@ -109,6 +109,13 @@ class EspnTennisProvider(TennisProvider):
         return infer_tournament_metadata(name, match_date)
 
     def _normalise_match(self, event: dict, competition: dict, tour: str) -> dict | None:
+        # A tour scoreboard can include other draws from the same tournament.
+        draw = competition.get('type')
+        slug = draw.get('slug') if isinstance(draw, dict) else None
+        if slug in ('mens-doubles', 'womens-doubles', 'mixed-doubles'):
+            return None
+        if (slug == 'mens-singles' and tour != 'ATP') or (slug == 'womens-singles' and tour != 'WTA'):
+            return None
         competitors = competition.get('competitors', [])
         if len(competitors) < 2:
             return None
