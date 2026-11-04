@@ -1,0 +1,86 @@
+legs with publication price + result: 14351 (dev 8516, holdout 5835); with S: 4727
+
+## H1 segments (flat ROI at 21:00 price; calib = actual - 1/price)
+
+A 項目
+  3PM          dev n= 1669 ROI -0.161 calib -0.047 | hold n= 1334 ROI -0.236 calib -0.055
+  AST          dev n= 1478 ROI -0.409 calib -0.058 | hold n= 1042 ROI -0.266 calib -0.059
+  PTS          dev n= 3319 ROI -0.511 calib -0.040 | hold n= 1977 ROI -0.436 calib -0.075
+  REB          dev n= 2050 ROI -0.300 calib -0.045 | hold n= 1482 ROI -0.297 calib -0.060
+
+B 發佈價
+  1.30-1.60    dev n=  680 ROI -0.102 calib -0.072 | hold n=  547 ROI -0.129 calib -0.090
+  1.60-2.20    dev n=  787 ROI -0.101 calib -0.052 | hold n=  635 ROI -0.166 calib -0.088
+  2.20-4.00    dev n= 1143 ROI -0.123 calib -0.041 | hold n=  867 ROI -0.152 calib -0.050
+  4-10         dev n= 1573 ROI -0.263 calib -0.038 | hold n= 1295 ROI -0.358 calib -0.052
+  <1.30        dev n= 1349 ROI -0.083 calib -0.075 | hold n= 1104 ROI -0.111 calib -0.098
+  >=10         dev n= 2984 ROI -0.793 calib -0.030 | hold n= 1387 ROI -0.721 calib -0.035
+
+C 分鐘
+  20-28        dev n= 2567 ROI -0.437 calib -0.059 | hold n= 1742 ROI -0.312 calib -0.068
+  28-34        dev n= 3469 ROI -0.351 calib -0.045 | hold n= 2434 ROI -0.354 calib -0.072
+  <20          dev n=  744 ROI -0.502 calib -0.041 | hold n=  358 ROI -0.455 calib -0.073
+  >=34         dev n= 1736 ROI -0.269 calib -0.028 | hold n= 1301 ROI -0.249 calib -0.040
+
+D 往績
+  其他           dev n= 6130 ROI -0.349 calib -0.041 | hold n= 4406 ROI -0.319 calib -0.068
+  少樣本<15       dev n=  418 ROI -0.239 calib -0.029 | hold n=  311 ROI -0.206 calib +0.014
+  轉隊           dev n= 1968 ROI -0.479 calib -0.064 | hold n= 1118 ROI -0.379 calib -0.068
+
+E 主客
+  主            dev n= 4300 ROI -0.376 calib -0.049 | hold n= 2834 ROI -0.332 calib -0.062
+  客            dev n= 4216 ROI -0.371 calib -0.041 | hold n= 3001 ROI -0.318 calib -0.066
+
+F S-市場
+  -10..-3      dev n=  349 ROI -0.169 calib -0.024 | hold n= 1352 ROI -0.349 calib -0.075
+  -3..3        dev n=  477 ROI -0.613 calib -0.034 | hold n= 1411 ROI -0.478 calib -0.033
+  3..10        dev n=   60 ROI +0.113 calib +0.045 | hold n=  273 ROI -0.124 calib -0.040
+  <=-10        dev n=  117 ROI -0.104 calib -0.067 | hold n=  635 ROI -0.135 calib -0.085
+  >=10         dev n=   16 ROI -0.002 calib -0.025 | hold n=   37 ROI -0.222 calib -0.001
+
+holdout tests for 0 candidate(s), Holm over 0:
+  none
+
+all legs: dev ROI -0.374, holdout ROI -0.324; close-price ROI dev -0.374 holdout -0.319
+
+## H2 late scratches after 21:00 (rotation players, L10 >= 20 min): 37
+   ('2026-10-26', 'DET_PHI', 'DET', 'jalen duren')
+   ('2026-10-26', 'DET_PHI', 'PHI', 'joel embiid')
+   ('2026-10-26', 'IND_BKN', 'BKN', 'mikel brown jr')
+   ('2026-10-26', 'LAC_OKC', 'LAC', 'bradley beal')
+   ('2026-10-26', 'LAC_OKC', 'LAC', 'brandon ingram')
+   ('2026-10-26', 'LAC_OKC', 'LAC', 'jordan miller')
+   ('2026-10-26', 'LAC_OKC', 'LAC', 'max strus')
+   ('2026-10-26', 'LAL_UTA', 'UTA', 'jusuf nurkic')
+   ('2026-10-26', 'MEM_SAC', 'MEM', 'zach edey')
+   ('2026-10-26', 'MEM_SAC', 'SAC', 'dylan cardwell')
+   ('2026-10-26', 'MEM_SAC', 'SAC', 'keegan murray')
+   ('2026-10-26', 'MEM_SAC', 'SAC', 'maxime raynaud')
+   ('2026-10-26', 'ORL_NYK', 'ORL', 'paolo banchero')
+   ('2026-10-26', 'TOR_MIN', 'MIN', 'donte divincenzo')
+   ('2026-10-27', 'IND_MIL', 'IND', 'ivica zubac')
+   ('2026-10-27', 'IND_MIL', 'IND', 'andrew nembhard')
+   ('2026-10-27', 'PHX_OKC', 'OKC', 'cason wallace')
+   ('2026-10-27', 'PHX_OKC', 'OKC', 'jalen williams')
+   ('2026-10-27', 'PHX_OKC', 'OKC', 'chet holmgren')
+   ('2026-10-27', 'ATL_HOU', 'HOU', 'marcus smart')
+   ('2026-10-27', 'CHI_BOS', 'CHI', 'patrick williams')
+   ('2026-10-29', 'PHI_IND', 'IND', 'tyrese haliburton')
+   ('2026-10-29', 'HOU_MIL', 'HOU', 'marcus smart')
+   ('2026-10-29', 'LAL_LAC', 'LAL', 'luka doncic')
+   ('2026-10-29', 'LAL_LAC', 'LAL', 'ziaire williams')
+   ('2026-10-29', 'OKC_DAL', 'DAL', 'naji marshall')
+   ('2026-11-02', 'TOR_LAL', 'LAL', 'ziaire williams')
+   ('2026-11-02', 'BKN_IND', 'IND', 'obi toppin')
+   ('2026-11-03', 'ATL_IND', 'IND', 'aaron nesmith')
+   ('2026-11-03', 'ATL_IND', 'IND', 'andrew nembhard')
+   ('2026-11-03', 'ATL_IND', 'IND', 'pascal siakam')
+   ('2026-11-03', 'BOS_HOU', 'BOS', 'paul george')
+   ('2026-11-03', 'PHX_GSW', 'GSW', 'gui santos')
+   ('2026-11-03', 'TOR_LAC', 'LAC', 'derrick jones jr')
+   ('2026-11-03', 'TOR_LAC', 'LAC', 'rui hachimura')
+   ('2026-11-03', 'WAS_ORL', 'ORL', 'anthony black')
+   ('2026-11-03', 'WAS_ORL', 'WAS', 'alex sarr')
+  dev: affected n=1274 ROI@21:00 -0.384 calib -0.041 | others n=7242 ROI -0.372 | diff -0.013 [-0.099, +0.370] | price 21:00->close median +0.000 | ROI@close -0.399
+  holdout: affected n=639 ROI@21:00 -0.323 calib -0.061 | others n=5196 ROI -0.325 | diff +0.001 [-0.203, +0.149] | price 21:00->close median +0.000 | ROI@close -0.328
+  all: affected n=1913 ROI@21:00 -0.364 calib -0.047 | others n=12438 ROI -0.352 | diff -0.012 [-0.104, +0.087] | price 21:00->close median +0.000 | ROI@close -0.375
