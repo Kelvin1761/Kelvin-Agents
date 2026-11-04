@@ -66,3 +66,46 @@ def test_scoreboard_only_routes_explicit_singles_to_their_own_tour(monkeypatch):
     assert [(row["id"], row["tour"]) for row in history] == [
         ("men-1", "ATP"), ("men-2", "ATP"), ("women-1", "WTA"), ("women-2", "WTA"),
     ]
+
+
+def test_espn_history_format_uses_explicit_draw_and_grand_slam_main_round(monkeypatch):
+    day = "2026-01-30"
+
+    def match(match_id, draw, stage):
+        return {
+            "id": match_id,
+            "date": f"{day}T03:00:00Z",
+            "type": {"slug": draw},
+            "round": {"displayName": stage},
+            "format": {"regulation": {"periods": 5}},
+            "status": {"type": {"completed": True}},
+            "competitors": [{"id": "1", "winner": True}, {"id": "2", "winner": False}],
+        }
+
+    body = {"events": [
+        {"name": "Australian Open", "groupings": [{"competitions": [
+            match("main", "mens-singles", "Semifinal"),
+            match("qual", "mens-singles", "Qualifying Final"),
+            match("women", "womens-singles", "Final"),
+        ]}]},
+        {"name": "Wimbledon", "groupings": [{"competitions": [
+            match("wimbledon-q3", "mens-singles", "Qualifying Final"),
+            match("wimbledon-q2", "mens-singles", "Qualifying 2nd Round"),
+            match("wimbledon-wta-q3", "womens-singles", "Qualifying Final"),
+        ]}]},
+        {"name": "Mutua Madrid Open", "groupings": [{"competitions": [
+            match("masters", "mens-singles", "Final"),
+        ]}]},
+    ]}
+    monkeypatch.setattr(espn_mod, "get_json", lambda *args, **kwargs: body)
+    rows = EspnTennisProvider().fetch_historical_matches(day, day)
+
+    assert {row["id"]: row["format"] for row in rows} == {
+        "main-1": "BO5", "main-2": "BO5",
+        "qual-1": "BO3", "qual-2": "BO3",
+        "wimbledon-q3-1": "BO5", "wimbledon-q3-2": "BO5",
+        "wimbledon-q2-1": "BO3", "wimbledon-q2-2": "BO3",
+        "wimbledon-wta-q3-1": "BO3", "wimbledon-wta-q3-2": "BO3",
+        "masters-1": "BO3", "masters-2": "BO3",
+        "women-1": "BO3", "women-2": "BO3",
+    }
