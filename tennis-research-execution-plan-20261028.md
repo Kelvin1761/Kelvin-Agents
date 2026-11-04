@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-04 已存 props 時鐘**。全表27,411筆，1,025筆有發球履歷引用，覆蓋79場。41,295引用未見晚於定價嘅入庫或抓取時鐘，只有53引用有獨立append-only觀測，未證實完場／版本資格。[EXP-17](docs/experiments/EXP-20261104-17-tennis-recorded-prop-history-clocks.md)
+
 **2026-11-04 歷史點數時間閘**。Madrid F 官方賽事日反例重播，舊13日窗過後可接納遲收版本。固定71,658組再盤點兩來源日期粒度，F02仍需逐版本觀測及完場證據。[EXP-16](docs/experiments/EXP-20261104-16-tennis-history-date-guard-boundary.md)
 
 **2026-11-04 發球點數重疊及排程交付**。72,686個雙側組全查，17組同日跨來源線索全部有事實差異。另按匯入賽事版本key找到4組，日期全不同、3組點數不同。四場已對上官方賽果，兩場完整雙側發球點數同 Sackmann 一致，原預測時間資格仍未證實。[官方逐場核對](docs/experiments/EXP-20261104-15-tennis-official-match-reconciliation.md)。SIGTERM修正 `fb72eca5` 已完整閘、合併及驗證runtime，續驗實際新賽前入庫。[點數盤點](docs/experiments/EXP-20261104-14-tennis-cross-provider-point-overlap.md) · [排程交付](docs/experiments/EXP-20261104-12-tennis-scheduler-sigterm.md)
