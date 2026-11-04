@@ -34,16 +34,23 @@ def norm(text):
 def load_bsp(bsp_dir):
     """→ {(date, horse_norm): [row…]} 同 {(date, venue_norm, race, horse_norm): row}；row = {win, place, won, placed}。"""
     by_key, by_horse = {}, defaultdict(list)
+    race_at = {}   # (場地, event_dt) → 場次號：位市場個 event_name 係「To Be Placed」，冇場次號，要由贏市場對返
     for kind in ("win", "place"):
         for path in sorted(Path(bsp_dir).glob(f"dwbfpricesaus{kind}*.csv")):
             with open(path, newline="", encoding="utf-8", errors="replace") as fh:
                 for r in csv.DictReader(fh):
                     m = re.match(r"(.+?) \(AUS\) (\d+)\w* (\w{3})", r.get("menu_hint") or "")
                     rn = re.match(r"R(\d+)\b", r.get("event_name") or "")
-                    if not m or not rn or m.group(3) not in MONTHS:
+                    if not m or m.group(3) not in MONTHS:
+                        continue
+                    slot = (norm(m.group(1)), r.get("event_dt"))
+                    if kind == "win" and rn:
+                        race_at[slot] = int(rn.group(1))
+                    race_no = int(rn.group(1)) if rn else race_at.get(slot)
+                    if race_no is None:
                         continue
                     date = f"2026-{MONTHS[m.group(3)]:02d}-{int(m.group(2)):02d}"
-                    key = (date, norm(m.group(1)), int(rn.group(1)), norm(r.get("selection_name")))
+                    key = (date, norm(m.group(1)), race_no, norm(r.get("selection_name")))
                     rec = by_key.setdefault(key, {"venue_bf": m.group(1)})
                     try:
                         price = float(r.get("bsp") or 0) or None
@@ -135,12 +142,18 @@ def main():
                                  "pos": x["pos"], "sp": x["sp"], "sb_win": sb.get("Sportsbet-FixedWin"),
                                  "sb_place": sb.get("Sportsbet-FixedPlace"), "bsp_win": bf.get("win"),
                                  "bsp_place": bf.get("place"), "bf_placed": bf.get("placed")})
+                ran = {str(x["n"]) for x in r["rows"]}
+                scr = [v for hn, v in prices.items() if hn not in ran]
                 st["races"] += 1
                 scen[kind]["races"].append(
                     {k: r[k] for k in ("meeting", "date", "venue", "race", "state", "tier", "class", "distance",
                                        "going_family", "field")}
                     | {"start": start.isoformat(), "start_rule": rule, "model_time": t_model.isoformat(),
-                       "snapshot": snap.name, "price_time": price_t.isoformat() if price_t else None, "rows": rows})
+                       "snapshot": snap.name, "price_time": price_t.isoformat() if price_t else None,
+                       # 落注之後先退出嘅馬嘅價 —— 澳洲定額注中咗要按佢扣減（scratching deduction）
+                       "scratched_win": [v.get("Sportsbet-FixedWin") for v in scr if v.get("Sportsbet-FixedWin")],
+                       "scratched_place": [v.get("Sportsbet-FixedPlace") for v in scr if v.get("Sportsbet-FixedPlace")],
+                       "rows": rows})
     for kind, v in scen.items():
         v["stats"] = dict(v["stats"])
         print(kind, json.dumps(v["stats"]))
