@@ -195,8 +195,9 @@ class AutoOutputTests(unittest.TestCase):
                 "trainer_signal": 0.2362,
                 "stability": 0.08847,
                 "race_shape": 0.2737,
-                "class_advantage": 0.1428,
-                "horse_health": 0.0404,
+                # 2026-11-05：負磅分由健康（0.0404 × 38.9%）搬入級數，總權重不變。
+                "class_advantage": 0.1428 + 0.0404 * 0.389,
+                "horse_health": 0.0404 * 0.611,
                 "form_line": 0.0801,
                 "trackwork": 0.00983,
             },

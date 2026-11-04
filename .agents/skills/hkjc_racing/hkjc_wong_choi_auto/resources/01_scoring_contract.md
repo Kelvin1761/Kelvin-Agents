@@ -12,8 +12,8 @@ sets; both are persisted in `python_auto_run_contract`.
 | `trainer_signal` | 騎練訊號 | 0.2362 |
 | `stability` | 狀態與穩定性 | 0.0983 |
 | `race_shape` | 檔位與走位（不含步速） | 0.2737 |
-| `class_advantage` | 級數優勢 | 0.1428 |
-| `horse_health` | 馬匹健康 / 新鮮感 | 0.0404 |
+| `class_advantage` | 級數優勢 | 0.1585156（= 0.1428 + 0.0404 × 0.389） |
+| `horse_health` | 馬匹健康 / 新鮮感 | 0.0246844（= 0.0404 × 0.611） |
 | `form_line` | 賽績線 | 0.0801 |
 
 Debut runners use this separate locked formula:
@@ -21,10 +21,10 @@ Debut runners use this separate locked formula:
 | Key | Weight |
 |---|---:|
 | `trainer_signal` | 0.30 |
-| `horse_health` | 0.30 |
+| `horse_health` | 0.1833（= 0.30 × 0.611） |
 | `race_shape` | 0.20 |
 | `stability` | 0.15 |
-| `class_advantage` | 0.05 |
+| `class_advantage` | 0.1667（= 0.05 + 0.30 × 0.389） |
 | `sectional` | 0.00 |
 | `form_line` | 0.00 |
 
@@ -59,12 +59,12 @@ Debut runners use this separate locked formula:
   pseudo-runners, requires 100 prior runners and 20 prior races, and caps at
   ±4 draw points. AWT, debut runners and insufficient cells are exact no-ops.
 - `form_line` uses `formline_strength_score` 100%. `margin_trend_score` was removed from this dimension after the 2026-07-08 backtest because it duplicated per-run margin credit already represented in stability. Same-distance evidence belongs to distance suitability, not the race-line dimension.
-- `class_advantage` uses class/ratings and weight conversion: `class_score` 75%, `weight_score` 25%. Distance evidence must not be displayed under class advantage.
+- `class_advantage` uses class/ratings and the handicapper's weight: `class_score` 67.6%, `weight_score` 32.4% (debut runners 22.5% / 77.5%). Since 2026-11-05 `weight_score` lives only here; before that it was split between class (25%) and health (38.9%). The move is rank-neutral via `dimensions.LEGACY_WEIGHT_MERGE` (EXP-20261105-02). Distance evidence must not be displayed under class advantage.
 - Same-distance performance enters only through the separately displayed, capped `distance_suitability_adjustment`; `distance_score` remains a diagnostic reference scale and must not be silently folded back into `class_score`.
 - `stability` uses `form_score` 50%, `consistency_score` 40%, `trackwork_trend_score` 10%. `trackwork_trend_score` is a derived readiness signal from `trackwork_digest`, so trackwork momentum lives with state/stability rather than sectional speed.
 - `trainer_signal` uses `jockey_score` 55% and `trainer_score` 45%; `confidence_score` is a data reliability signal, not a positive trainer/jockey edge.
 - Jockey and trainer scorers use materialized two-season master statistics for continuous ratings on live/current or future meetings. Historical/archive scoring must receive a matching `point_in_time` ratings/prior object built from results strictly before the meeting date; otherwise the engine neutralizes the aggregate source and uses the tier/neutral fallback. This prevents full-season jockey/trainer, combination and distance statistics from leaking future results into replay. `resources/05_jockey_trainer_tiers.json` remains the fallback for known names; fully unknown names remain neutral 60.
-- `horse_health` uses `risk_score` 61.1% and `weight_score` 38.9%. `confidence_score` remains display/audit information and does not create a health advantage.
+- `horse_health` uses `risk_score` 100% (weight_score moved to class_advantage on 2026-11-05). `confidence_score` remains display/audit information and does not create a health advantage.
 - Archived normalized-sectional and older 65/35 going blends are research history only. They must not be described as current production scoring.
 
 ## Feature Scores

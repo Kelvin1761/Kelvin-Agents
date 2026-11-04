@@ -21,6 +21,7 @@ from .live_priors import (
     EMBEDDED_LOGIC_PRIOR,
 )
 from .matrix_mapper import (
+    DEBUT_MATRIX_FORMULAS,
     MATRIX_FORMULAS,
     map_features_to_matrix,
     map_features_to_matrix_scores,
@@ -189,7 +190,7 @@ class RacingEngine:
             feature_notes.setdefault(key, "資料不足，中性60分。")
             self.provenance.setdefault(key, "missing_neutral")
 
-        matrix_scores = map_features_to_matrix_scores(feature_scores)
+        matrix_scores = map_features_to_matrix_scores(feature_scores, debut=self._is_debut())
         matrix_scores["trainer_signal"] = self._apply_trainer_signal_v3(matrix_scores["trainer_signal"])
         matrix_scores["horse_health"] = self._apply_health_only_v2(matrix_scores["horse_health"])
         # 同程表現（9D，2026-10-10）：之前係 7D 以外嘅獨立 raw 調整，而家係一個
@@ -364,11 +365,14 @@ class RacingEngine:
 
         clean_class = float(features.get("class_score", 60.0))
         weight_score = float(features.get("weight_score", 60.0))
-        clean_dimension = float(matrix_scores.get("class_advantage", 60.0))
+        # 舊遷移嘅數（EXP-20261007-04）：同程微調入 class_score，再經「班次 75%＋
+        # 負磅 25%、權重 0.1428」嘅舊級數優勢出嚟。2026-11-05 負磅分搬入級數之後，
+        # live 級數優勢唔再係呢條式，所以兩邊都用舊式重砌，唔好讀 matrix_scores。
+        clean_dimension = round(clip_score(clean_class * 0.75 + weight_score * 0.25), 2)
         legacy_class = clip_score(clean_class + micro)
         legacy_dimension = round(clip_score(legacy_class * 0.75 + weight_score * 0.25), 2)
         raw_adjustment = round(
-            (legacy_dimension - clean_dimension) * MATRIX_WEIGHTS["class_advantage"],
+            (legacy_dimension - clean_dimension) * dimensions.LEGACY_CLASS_ADVANTAGE_WEIGHT,
             6,
         )
         output = {
@@ -1058,7 +1062,7 @@ class RacingEngine:
             shadow_features["consistency_score"] = clip_score(shadow_score)
             reason = "影子排序重算 consistency_score，加入輸距權重同近期回暖/回落。"
 
-        matrix_scores = map_features_to_matrix_scores(shadow_features)
+        matrix_scores = map_features_to_matrix_scores(shadow_features, debut=self._is_debut())
         ability_raw = round(self._ability_score(matrix_scores), 2)
         ability_score = round(to_display_scale(ability_raw), 2)
         base_ability = float(auto.get("ability_score", ability_score))
@@ -1151,7 +1155,7 @@ class RacingEngine:
             as_of_date=(self.race_context or {}).get("race_date"),
         ) if eligible and trainer else None
         matrix_scores = {
-            key: round(float(base_matrix.get(key, 60.0)), 6)
+            key: float(base_matrix.get(key, 60.0))
             for key in MATRIX_WEIGHTS
         }
         base_trainer = float(base_features.get("trainer_score", 60.0) or 60.0)
@@ -1316,7 +1320,7 @@ class RacingEngine:
         if not isinstance(base_matrix, dict) or sorted(base_matrix) != sorted(MATRIX_KEYS_ALL):
             return None
 
-        matrix_scores = {key: round(float(base_matrix.get(key, 60.0)), 6) for key in MATRIX_KEYS_ALL}
+        matrix_scores = {key: float(base_matrix.get(key, 60.0)) for key in MATRIX_KEYS_ALL}
         components = None
         v3_applied = False
         if profile_name in {"race_shape_v3_hv", "race_shape_v3_hv_t02"}:
@@ -1344,7 +1348,7 @@ class RacingEngine:
         weights = _WEIGHT_REFIT_T02 if uses_refit and not self._is_debut() else MATRIX_WEIGHTS
         if self._is_debut():
             weights = DEBUT_MATRIX_WEIGHTS
-            matrix_scores = {key: round(float(base_matrix.get(key, 60.0)), 6) for key in MATRIX_KEYS_ALL}
+            matrix_scores = {key: float(base_matrix.get(key, 60.0)) for key in MATRIX_KEYS_ALL}
             v3_applied = False
 
         base_weights = DEBUT_MATRIX_WEIGHTS if self._is_debut() else MATRIX_WEIGHTS
@@ -1528,7 +1532,7 @@ class RacingEngine:
         speed_scorer = SpeedScorer(adjusted_horse, self.race_context)
         speed_score, _speed_note = speed_scorer.compute()
         shadow_features["speed_score"] = clip_score(speed_score)
-        recalculated = map_features_to_matrix_scores(shadow_features)
+        recalculated = map_features_to_matrix_scores(shadow_features, debut=self._is_debut())
         sectional = recalculated["sectional"]
 
         matrix_scores = dict(base_matrix)
@@ -2264,6 +2268,8 @@ class RacingEngine:
             for key, spec in ((spec.key, spec) for spec in dimensions.DIMENSIONS)
         }
         reasoning = {}
+        # 初出馬級數優勢嘅班次／負磅份額唔同（見 dimensions._PRE_MERGE）。
+        formulas = DEBUT_MATRIX_FORMULAS if self._is_debut() else MATRIX_FORMULAS
         for key, (label, feature_keys) in specs.items():
             evidence = self._best_evidence(feature_keys, notes)
             # `score` = 顯示尺（讀者睇嘅、band 用嘅）；`score_raw` = 原始尺
@@ -2279,7 +2285,7 @@ class RacingEngine:
                     "weight": weight,
                     "note": self._clean(notes.get(name, "資料不足，中性60分。")),
                 }
-                for name, weight in MATRIX_FORMULAS[key]
+                for name, weight in formulas[key]
             ]
             reasoning[key] = {
                 "label": label,
@@ -2294,7 +2300,7 @@ class RacingEngine:
             # 矩陣後調整唔喺 sub分加權入面，
             # 唔寫出嚟嘅話「評分構成」加極都對唔返 header 個分 — 呢度補返一行。
             expected = clip_score(sum(clip_score(features.get(name, 60.0)) * weight
-                                      for name, weight in MATRIX_FORMULAS[key]))
+                                      for name, weight in formulas[key]))
             diff = round(float(raw) - expected, 2)
             if abs(diff) >= 0.05:
                 reasoning[key]["adjustment"] = f"矩陣後調整：sub分加權後再{diff:+.1f}"
@@ -3825,18 +3831,8 @@ class RacingEngine:
             weight_txt = f"；體重波幅{span:.0f}lb正常" if span <= 14 else f"；體重波幅{span:.0f}lb偏大"
         else:
             weight_txt = ""
-        # 呢一格 38.9% 嘅份額係 `weight_score`（負磅），唔係健康。負磅方向喺
-        # 2026-09-04 調轉（EXP-20260904-09）之後，一隻醫療乾淨、間隔正常嘅輕磅馬
-        # 都會喺呢一格低分 —— 唔講清楚就會讀成「呢隻馬唔健康」。
-        # 顯示尺唔需要重 fit（原始 SD 3.465→3.439、顯示 SD 10.0→9.9），因為
-        # 21.9% 落／15.3% 升幾乎對沖；要修嘅係敘述，唔係尺。
-        weight_score = float((features or {}).get("weight_score", 60))
-        carried = ""
-        if abs(weight_score - 60.0) >= 4.0:
-            side = "拉高" if weight_score > 60 else "拉低"
-            carried = (f"；⚠️ 呢格 38.9% 份額係負磅（讓磅官評價），"
-                       f"今仗由負磅{side}，同健康無關")
-        return f"{medical_text}{freshness}{weight_txt}{carried}{self._score_close(score)}"
+        # 2026-11-05：負磅分已搬去級數優勢，呢格只剩風險分，唔使再解釋負磅。
+        return f"{medical_text}{freshness}{weight_txt}{self._score_close(score)}"
 
     def _describe_form_line_matrix(self, score, features, evidence):
         strength = self._formline_strength_signal()

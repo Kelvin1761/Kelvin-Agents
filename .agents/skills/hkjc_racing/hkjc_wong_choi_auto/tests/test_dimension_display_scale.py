@@ -41,12 +41,15 @@ from hkjc_racing_engine.scoring import (
 OBSERVED = {
     "race_shape": (39.1, 82.0),
     "trainer_signal": (51.0, 79.0),
-    "class_advantage": (52.8, 76.6),
+    # 2026-11-05 負磅分由健康搬入級數之後重新量（5,365 匹）。
+    "class_advantage": (51.66, 76.37),
     "sectional": (33.6, 85.5),
     "stability": (37.2, 96.0),
     "form_line": (58.0, 96.0),
-    "horse_health": (55.2, 73.7),
+    "horse_health": (48.0, 76.5),
 }
+# 2026-09-04 量嘅舊健康尺（當時健康仲包住負磅分），只用嚟記錄點解要改尺。
+OBSERVED_HEALTH_2026_09 = (55.2, 73.7)
 
 
 def _horse(name, weight, barrier, form):
@@ -122,7 +125,7 @@ class BandsBecomeReachable(unittest.TestCase):
 
     def test_the_raw_ruler_really_was_broken(self):
         """記錄住個原因：舊尺 `馬匹健康` 由 55.2 到 73.7 全部落喺 {✅,➖}。"""
-        lo, hi = OBSERVED["horse_health"]
+        lo, hi = OBSERVED_HEALTH_2026_09
         self.assertEqual({score_band(lo), score_band(hi)}, {"➖", "✅"})
         self.assertEqual(score_band(OBSERVED["form_line"][0]), "➖")   # 58.0 → 從來到唔到 ❌
 

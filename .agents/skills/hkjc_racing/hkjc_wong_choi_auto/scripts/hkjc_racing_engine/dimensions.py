@@ -34,6 +34,28 @@ class DimensionSpec:
     # instead of sharing the sum-to-1 budget. Used when a former raw adjustment
     # becomes a visible dimension without changing any ranking.
     centred: bool = False
+    # Leaf mix for debut runners when it differs from `leaves` (only needed when
+    # a rank-neutral move gives debut and standard runners different shares).
+    debut_leaves: tuple[tuple[str, float], ...] | None = None
+
+
+# 負磅分由「馬匹健康」搬入「級數優勢」（2026-11-05，rank-neutral）。之前負磅分
+# 喺兩個維度各佔一份：健康 0.0404 × 38.9%、級數 0.1428 × 25%。負磅係讓磅官對
+# 能力嘅評價，同健康無關，所以健康只留風險分，負磅分嗰份權重原封搬去級數，
+# 總權重唔變。下面係搬之前嘅數，`LEGACY_WEIGHT_MERGE` shim 同同程舊調整都要用。
+_PRE_MERGE = {
+    "class_weight": 0.1428, "class_debut_weight": 0.05,
+    "class_leaves": (("class_score", 0.75), ("weight_score", 0.25)),
+    "health_weight": 0.0404, "health_debut_weight": 0.30,
+    "health_leaves": (("risk_score", 0.611), ("weight_score", 0.389)),
+}
+_RISK_SHARE = 0.611
+_MOVED = _PRE_MERGE["health_weight"] * (1.0 - _RISK_SHARE)              # 0.0157156
+_MOVED_DEBUT = _PRE_MERGE["health_debut_weight"] * (1.0 - _RISK_SHARE)  # 0.1167
+_CLASS_WEIGHT = _PRE_MERGE["class_weight"] + _MOVED                     # 0.1585156
+_CLASS_DEBUT_WEIGHT = _PRE_MERGE["class_debut_weight"] + _MOVED_DEBUT   # 0.1667
+_CLASS_SHARE = _PRE_MERGE["class_weight"] * 0.75 / _CLASS_WEIGHT        # ≈ 0.6756
+_CLASS_DEBUT_SHARE = _PRE_MERGE["class_debut_weight"] * 0.75 / _CLASS_DEBUT_WEIGHT  # ≈ 0.2250
 
 
 # Order = report display order (Kelvin: 騎練訊號 follows 狀態與穩定性).
@@ -70,8 +92,13 @@ DIMENSIONS: tuple[DimensionSpec, ...] = (
     ),
     DimensionSpec(
         key="horse_health", label="馬匹健康 / 新鮮感", short_label="健康新鮮", role="輔助",
-        leaves=(("risk_score", 0.611), ("weight_score", 0.389)),
-        weight=0.0404, debut_weight=0.30, display_centre=66.9, display_gain=2.8841,
+        # 2026-11-05：負磅分已搬去級數優勢（見 _PRE_MERGE），呢度淨係健康本身。
+        leaves=(("risk_score", 1.00),),
+        weight=_PRE_MERGE["health_weight"] * _RISK_SHARE,
+        debut_weight=_PRE_MERGE["health_debut_weight"] * _RISK_SHARE,
+        # Display ruler re-measured after the merge on 5,365 runners (2026-11-05):
+        # median 69.00, SD 4.711 (risk_score alone).
+        display_centre=69.0, display_gain=2.1228,
         description="醫療紀錄、距上仗日數同體重變化。",
         dashboard_keywords=("健康", "新鮮"),
     ),
@@ -103,8 +130,14 @@ DIMENSIONS: tuple[DimensionSpec, ...] = (
     ),
     DimensionSpec(
         key="class_advantage", label="級數優勢", short_label="班次優勢", role="輔助",
-        leaves=(("class_score", 0.75), ("weight_score", 0.25)),
-        weight=0.1428, debut_weight=0.05, display_centre=64.8, display_gain=1.8311,
+        # 2026-11-05：負磅分由健康搬入嚟，總權重唔變（見 _PRE_MERGE）。初出馬
+        # 之前健康佔 0.30，所以搬入嚟嘅負磅份額大好多，要用另一個組合。
+        leaves=(("class_score", _CLASS_SHARE), ("weight_score", 1.0 - _CLASS_SHARE)),
+        debut_leaves=(("class_score", _CLASS_DEBUT_SHARE), ("weight_score", 1.0 - _CLASS_DEBUT_SHARE)),
+        weight=_CLASS_WEIGHT, debut_weight=_CLASS_DEBUT_WEIGHT,
+        # Display ruler re-measured after the merge on 5,365 runners (2026-11-05):
+        # median 63.24, SD 4.840.
+        display_centre=63.24, display_gain=2.0662,
         description="班次經驗同讓磅官評分（負磅）。",
         dashboard_keywords=("級數", "班次"),
     ),
@@ -125,6 +158,24 @@ LEGACY_STABILITY_SPLIT = {
     "legacy_leaves": (("form_score", 0.50), ("consistency_score", 0.40), ("trackwork_trend_score", 0.10)),
     "child_share": 0.10,
 }
+
+# Transition shim for the rank-neutral 負磅分 merge (2026-11-05). Before the
+# move each of the two dimensions was rounded to 2dp on its own. To stay exact,
+# the new class value is derived from the two old rounded values minus the new
+# health value, so that
+#   W_class' · class + W_health' · health == W_class · old_class + W_health · old_health
+# for both standard and debut weights. Remove when class_advantage is rebuilt.
+LEGACY_WEIGHT_MERGE = {
+    "target": "class_advantage",
+    "donor": "horse_health",
+    "legacy_target_leaves": _PRE_MERGE["class_leaves"],
+    "legacy_donor_leaves": _PRE_MERGE["health_leaves"],
+    "legacy_weights": {"class_advantage": _PRE_MERGE["class_weight"], "horse_health": _PRE_MERGE["health_weight"]},
+    "legacy_debut_weights": {"class_advantage": _PRE_MERGE["class_debut_weight"],
+                             "horse_health": _PRE_MERGE["health_debut_weight"]},
+}
+# 同程表現嘅舊調整係「同程微調入 class_score 再經級數優勢出嚟」嘅差，要用搬之前嘅數。
+LEGACY_CLASS_ADVANTAGE_WEIGHT = _PRE_MERGE["class_weight"]
 
 # Summation / iteration orders inherited from the pre-registry dicts. Float sums
 # depend on order, so these keep the composite bit-identical. A dimension missing
@@ -160,6 +211,10 @@ def debut_weights() -> dict[str, float]:
 
 def formulas() -> dict[str, tuple[tuple[str, float], ...]]:
     return {spec.key: spec.leaves for spec in _ordered(_FORMULA_ORDER)}
+
+
+def debut_formulas() -> dict[str, tuple[tuple[str, float], ...]]:
+    return {spec.key: spec.debut_leaves or spec.leaves for spec in _ordered(_FORMULA_ORDER)}
 
 
 def labels() -> dict[str, str]:
