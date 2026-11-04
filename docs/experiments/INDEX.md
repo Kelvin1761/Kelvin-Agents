@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261104-06](EXP-20261104-06-hkjc-live-track-and-connections-prereg.md) | 2026-11-04 | HKJC | 當晚已完成場次嘅檔位／跑法偏差同騎師、練馬師、騎練合作手風，可唔可以幫後面場次排名 | **預先登記，收集中**：即場 job 逐場記錄賽果＋captured_at；forward tracker 60 個完整賽晚提醒；判法（洩漏審查、逐訊號、Holm）已固定，冇改模型 |
 | [EXP-20261104-05](EXP-20261104-05-tennis-event-identity-proof.md) | 2026-11-04 | Tennis | 全39人公開事件及source身份proof | **proposal未apply**：全32profile／14詳情，精確雙方＋tour＋UTC start只1場／2人，保存beforeimages；37人保留未確認，forward未新增 |
 | [EXP-20261104-04](EXP-20261104-04-tennis-book-tour-entry.md) | 2026-11-04 | Tennis | 明示tour早期接線及provisional交易 | **REJECT_INPUT_OWNER**：110針對／初次full過仍觸發錯人。Shaurya來源在tour修正後會接入Siddharth21144；b7研究分支保留、3cf refresh取消，Central已拒絕，未合併／啟用 |
 | [EXP-20261104-04](EXP-20261104-04-nba-sidecar-only-interface.md) | 2026-11-04 | NBA | Stage 2：dashboard／防火牆／SGM 匯總改為只讀 sidecar，唔再解析 Markdown | **工程重構，模型不變**：27 日 × 3 條匯出路徑 + 55 條 tracking，推薦／價／狀態／腿完全一樣；差異只有 source_row 冇咗、舊腿 CoV→null（舊 sidecar 冇存）、3 條腿 EV 差 1e-4、10-10～15 季前賽冇 sidecar 唔再匯出。Reflector 仍讀 Markdown |

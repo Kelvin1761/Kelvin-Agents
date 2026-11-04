@@ -1272,6 +1272,21 @@ def intraday_window(meeting_dir: Path, *, at: datetime | None = None) -> bool:
     )
 
 
+def live_results_prefix(meeting_date: date) -> dict:
+    """The contiguous R1..Rn already captured by hkjc_live_results.py, in fast_extract_results shape."""
+    path = HK_RACING / "HKJC_Race_Results_Database" / "_live" / f"{meeting_date.isoformat()}.json"
+    try:
+        captured = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    prefix = {}
+    race = 1
+    while isinstance(captured, dict) and str(race) in captured:
+        prefix[str(race)] = captured[str(race)]
+        race += 1
+    return prefix
+
+
 def run_intraday(
     state: dict,
     state_path: Path,
@@ -1301,16 +1316,23 @@ def run_intraday(
     venue_zh = "沙田" if venue == "ShaTin" else "跑馬地"
     with tempfile.TemporaryDirectory(prefix="hkjc-reverse-bias-") as temp_dir:
         results_path = Path(temp_dir) / "partial_results.json"
-        code, output = run_cmd(
-            [
-                sys.executable,
-                str(FAST_RESULTS),
-                meeting_date.isoformat(),
-                str(results_path),
-                venue_zh,
-            ],
-            timeout=600,
-        )
+        # hkjc_live_results.py already fetches each race 5 minutes after its start;
+        # reuse that capture instead of fetching the whole card from HKJC again.
+        live = live_results_prefix(meeting_date)
+        if live:
+            results_path.write_text(json.dumps(live, ensure_ascii=False), encoding="utf-8")
+            code, output = 0, f"live capture R1-R{len(live)}"
+        else:
+            code, output = run_cmd(
+                [
+                    sys.executable,
+                    str(FAST_RESULTS),
+                    meeting_date.isoformat(),
+                    str(results_path),
+                    venue_zh,
+                ],
+                timeout=600,
+            )
         if code != 0:
             log(f"HKJC intraday result extraction pending: {output[-600:]}")
             set_control_outcome("partial", reason="partial_results_unavailable")
