@@ -48,12 +48,12 @@
     "confidence_score"
   ],
   "MATRIX_WEIGHTS": {
-    "stability": 0.37099725005319806,
-    "pace_perf": 0.11389390231594383,
-    "jockey_trainer": 0.6626585553070451,
-    "class_weight": 0.3826193901797637,
-    "track": 0.14114297066700832,
-    "preparation": 0.25244110196132946
+    "stability": 0.3356801031107793,
+    "pace_perf": 0.08792517389716135,
+    "jockey_trainer": 0.8417176483031119,
+    "class_weight": 0.37591890388052396,
+    "track": 0.09599163637133952,
+    "preparation": 0.18651970492137235
   },
   "SCORING_CONTRACT_VERSION": "au/raw-matrix-preparation-v2",
   "MATRIX_FORMULAS": {

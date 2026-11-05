@@ -57,8 +57,9 @@ class TestJockeyContinuityRemoved(unittest.TestCase):
 
     def test_effective_jockey_weight_not_reinflated(self):
         from au_racing_engine.scoring import MATRIX_WEIGHTS
-        self.assertAlmostEqual(MATRIX_WEIGHTS["jockey_trainer"],
-                               .245341972 * 2.4973 / .9245975952, places=10)
+        # EXP-20261105-05 C2 refit 之後係 refit 權重；呢個 test 要守嘅係「冇人再乘返舊 gain」，
+        # 所以釘死現行值（改權重一定要同時改呢度，唔會靜靜重新放大）。
+        self.assertAlmostEqual(MATRIX_WEIGHTS["jockey_trainer"], 0.8417176483031119, places=10)
 
 
 if __name__ == "__main__":

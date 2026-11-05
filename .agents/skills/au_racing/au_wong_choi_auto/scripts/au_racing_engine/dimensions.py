@@ -71,20 +71,23 @@ LEAF_SPECS = (
     LeafSpec('trial_speed_score', '試閘 L600 分', 12, False, False),
 )
 
+# EXP-20261105-05 C2（2026-11-05 USER-ACCEPTED）：六個係數 = 近績質素「跑得好先攞獎金分」之後 §8 walk-forward refit
+# 最後窗共識權重。舊值（rollback）：stability 0.37099725005319806、pace_perf 0.12093934478578448*0.941744、
+# jockey_trainer 0.6626585553070451、class_weight 0.3826193901797637、track 0.14114297066700832、preparation 0.25244110196132946。
 DIMENSION_SPECS = (
     # EXP-20261016-06: one per-run leaf (placing judged by race quality, last 6 runs);
     # coefficient unchanged (§8 fixed arm). Falls back to the old 0.6/0.4 mix inside the leaf.
-    DimensionSpec('stability', '狀態與穩定性', (('form_quality_score', 1.0),), 0.37099725005319806, 0, reasoning_components=('form_quality_score', 'form_score', 'performance_quality_score')),
+    DimensionSpec('stability', '狀態與穩定性', (('form_quality_score', 1.0),), 0.3356801031107793, 0, reasoning_components=('form_quality_score', 'form_score', 'performance_quality_score')),
     # EXP-20261016-01: trial_score left pace_perf. Coefficient = 0.12093934478578448 × 0.941744,
     # so pace_figure's contribution to the composite is unchanged.
-    DimensionSpec('pace_perf', '速度考驗背景', (('pace_figure_score', 1.0),), 0.12093934478578448 * 0.941744, 1, reasoning_components=('pace_figure_score', 'sectional_score'), reasoning_score_default=60.0),
+    DimensionSpec('pace_perf', '速度考驗背景', (('pace_figure_score', 1.0),), 0.08792517389716135, 1, reasoning_components=('pace_figure_score', 'sectional_score'), reasoning_score_default=60.0),
     DimensionSpec('race_shape', '檔位形勢', (('pace_map_score', 1.0),), None, None),
-    DimensionSpec('jockey_trainer', '騎練訊號', (('jockey_score', 0.333333), ('trainer_score', 0.285714), ('jockey_horse_fit_score', 0.380952)), 0.6626585553070451, 2),
-    DimensionSpec('class_weight', '官方評分對位', (("rating_score", RATING_SCORE_SHARE),) + ((("class_score", CLASS_SCORE_LIVE_WEIGHT),) if CLASS_SCORE_LIVE else ()), 0.3826193901797637, 3, reasoning_components=('class_score', 'rating_score', 'weight_score')),
-    DimensionSpec('track', '場地與地況適性', (('track_score', 1.0),), 0.14114297066700832, 4),
+    DimensionSpec('jockey_trainer', '騎練訊號', (('jockey_score', 0.333333), ('trainer_score', 0.285714), ('jockey_horse_fit_score', 0.380952)), 0.8417176483031119, 2),
+    DimensionSpec('class_weight', '官方評分對位', (("rating_score", RATING_SCORE_SHARE),) + ((("class_score", CLASS_SCORE_LIVE_WEIGHT),) if CLASS_SCORE_LIVE else ()), 0.37591890388052396, 3, reasoning_components=('class_score', 'rating_score', 'weight_score')),
+    DimensionSpec('track', '場地與地況適性', (('track_score', 1.0),), 0.09599163637133952, 4),
     DimensionSpec('form_line', '賽績線', (('formline_score', 1.0),), None, None, reasoning_components=('formline_score', 'form_score')),
     # EXP-20261016-77：試閘相關證據集中喺試閘備戰 —— 試閘密度（preparation_score）同試閘速度各半。
-    DimensionSpec('preparation', '試閘備戰', (('preparation_score', 0.5), ('trial_speed_score', 0.5)), 0.25244110196132946, 5),
+    DimensionSpec('preparation', '試閘備戰', (('preparation_score', 0.5), ('trial_speed_score', 0.5)), 0.18651970492137235, 5),
  )
 
 def validate_registry(leaf_specs, dimension_specs):

@@ -559,7 +559,8 @@ def _form_quality_detail_lines(d):
         return []
     if d.get("fallback"):
         return [f"未有最少兩場完整往績或同場有值嘅馬少過 3 匹 → 沿用舊組合分 {float(d.get('final') or 60):.1f}"]
-    lines = ["每仗值 ＝（名次 z ＋ 獎金級別 z）÷ 2；名次 z 按出馬數換算百分位，獎金級別 z 用 log10 獎金"]
+    lines = ["每仗值 ＝（名次 z ＋ 獎金級別 z）÷ 2；名次 z 按出馬數換算百分位，獎金級別 z 用 log10 獎金，"
+             "正數獎金分按名次折算（頭馬全數、最尾 0：大賽輸遠唔會因獎金高而高分）"]
     runs = d.get("runs") or []
     for idx, r in enumerate(runs, start=1):
         recency = "（最近）" if idx == 1 else ""
@@ -568,6 +569,9 @@ def _form_quality_detail_lines(d):
         head = f"第{idx}仗{recency} {r.get('date', '')}{dist}：第{r.get('finish_pos')}名／{r.get('starters')}匹，{prize}"
         if r.get("z_place") is not None and r.get("z_prize") is not None:
             head += f" → 名次 z {float(r['z_place']):+.2f}、獎金級別 z {float(r['z_prize']):+.2f}"
+            raw = r.get("z_prize_raw")
+            if raw is not None and abs(float(raw) - float(r["z_prize"])) > 0.005:
+                head += f"（原 {float(raw):+.2f}，按名次折算）"
         head += f" → 本仗值 {float(r.get('value') or 0):+.2f}"
         if r.get("weight") is not None:
             head += f" × 近期權重 {float(r['weight']):.1f}"
