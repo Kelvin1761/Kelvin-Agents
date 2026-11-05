@@ -60,6 +60,10 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
   經 `alert_now` 推一次（state 記喺 `work/au-forward-tracker-state.json`）。原因：2026-11-01 發現 AU 三個
   forward 測試冇一個會推 Telegram，S2 forward（EXP-20261016-03）連 scheduler step 都冇。
 
+- **Tennis**：精選前向測試（EXP-20261105-08）由 `tennis_daily_schedule.check_featured_forward_milestone`
+  喺每日覆盤後檢查，250／600 注第一次夠數推 Telegram（state：`data/logs/featured-forward-state.json`）。
+  新開 tennis forward 測試要喺同一處加。Tennis 投注推送只有精選（21:00 主 card、23:00／09:00 補充）。
+
 HKJC 每個 forward／shadow 測試（「夠 N 場先判」）都要加入
 `.agents/skills/hkjc_racing/hkjc_daily_auto/hkjc_forward_tracker.py` 嘅 `FORWARD_TESTS`。
 賽後第一次夠數（或者冇累積）會即刻 Telegram 一次；每週 review 列晒進度；規則完全預先登記嘅

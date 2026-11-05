@@ -214,7 +214,14 @@ def main(argv: list[str] | None = None) -> int:
                 ensure_live_network()
                 ensure_live_provider_config()
                 run_cli("init-db")
-                analyse_next_day(today.isoformat(), today=today.isoformat())
+                try:
+                    analyse_next_day(today.isoformat(), today=today.isoformat())
+                finally:
+                    # 09:00 is the backup pass: whatever was priced, top up 精選.
+                    try:
+                        publish_featured(today.isoformat(), "09:00", main=False)
+                    except Exception as exc:  # noqa: BLE001 - never mask the run outcome
+                        log(f"精選 top-up skipped: {exc}")
             except subprocess.CalledProcessError as exc:
                 log(f"Command failed with exit code {exc.returncode}: {' '.join(exc.cmd)}")
                 code = exc.returncode or 1
@@ -512,98 +519,6 @@ def notify_self_test(path: Path | None = None) -> dict:
     return result
 
 
-def daily_bet_message(
-    match_date: str, report_path: str | Path | None, *, early: bool = False
-) -> str:
-    """Render the official report's formal recommendations for Telegram.
-
-    The report is the source of truth. This deliberately ignores watchlists,
-    research-only signals and match-winner model-edge rows, so a reference row
-    can never be promoted into a "what to bet" push by accident.
-
-    ``early`` renders the evening pass over tomorrow's board. That board is
-    genuinely half-open -- measured 2026-08-16, the 18:00 run priced 12 of the
-    next day's matches against 47-56 on the day itself, and rescanning at 21:18
-    moved that to 13 -- so the framing has to say so. It is sent anyway because
-    matches starting in the Sydney small hours are otherwise never pushed at
-    all: the 09:24 card covers a Sydney-dated day whose first nine hours have
-    already happened.
-    """
-    if not report_path:
-        raise ValueError("run-daily returned no report_path")
-    report = Path(report_path)
-    text = report.read_text(encoding="utf-8")
-    start_marker = "## 🎯 今日落注建議"
-    start = text.find(start_marker)
-    if start < 0:
-        raise ValueError(f"formal recommendation section missing in {report}")
-    section = text[start:].splitlines()
-    body: list[str] = []
-    for line in section[1:]:
-        if line.startswith("## "):
-            break
-        body.append(line.rstrip())
-
-    if early:
-        result = [
-            f"🎾 Tennis Wong Choi｜{match_date} 早報（前一晚）",
-            "🌙 呢張係俾凌晨開波嗰批 —— 佢哋喺明早 09:00 張卡出之前就已經開咗波，唔會再推第二次。",
-            "⚠️ 盤口未開齊，明早會有完整一張；呢張淨係補返夜晚嗰段。",
-        ]
-    else:
-        result = [f"🎾 Tennis Wong Choi｜{match_date}", "🎯 今日落注建議"]
-    conclusion_seen = False
-    in_pick = False
-    for line in body:
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped.startswith("⚠️") or (not conclusion_seen and stripped.startswith("·")):
-            result.append(stripped)
-        elif stripped.startswith("今日結論："):
-            conclusion_seen = True
-            result.append(stripped)
-        elif stripped.startswith("（") and conclusion_seen and not in_pick:
-            result.append(stripped)
-        elif stripped.startswith("### 注 "):
-            in_pick = True
-            result.extend(["", stripped.removeprefix("### ")])
-        elif in_pick and stripped.startswith(("- 選擇：", "- 腳 ", "- 開賽：", "- 賠率：", "- 合併賠率：", "- 校準命中概率：", "- 公式可信度：")):
-            result.append("• " + stripped.removeprefix("- "))
-
-    if not conclusion_seen:
-        raise ValueError(f"formal recommendation conclusion missing in {report}")
-    if in_pick:
-        result.extend(["", "只跟以上正式推薦；觀察板、研究訊號同 Match-winner 參考單唔落。"])
-        if early:
-            result.append("盤口仲會郁，落注前格返價；明早完整一張會覆蓋白天嗰批。")
-    elif early:
-        result.extend(["", "明日凌晨場暫時無正式推薦；明早 09:00 有完整一張。"])
-    else:
-        result.extend(["", "今日無正式推薦，唔好用觀察板或研究訊號代替落注。"])
-    return "\n".join(result)
-
-
-def notify_daily_bets(match_date: str, payload: dict, *, early: bool = False) -> bool:
-    """Send the completed card to Kelvin + Heison.
-
-    ``early`` is the evening pass over the next Sydney day; see
-    :func:`daily_bet_message` for why a half-open board is still worth sending.
-    """
-    label = "早報投注訊息" if early else "投注訊息"
-    try:
-        message = daily_bet_message(match_date, payload.get("report_path"), early=early)
-    except Exception as exc:  # noqa: BLE001 - reporting must not break analysis
-        log(f"Betting-card notification skipped: {exc}")
-        notify(
-            f"🎾 Tennis Wong Choi {label}未能整理\n"
-            f"日期：{match_date}\n原因：{exc}",
-            audience="primary",
-        )
-        return False
-    return notify(message, audience="content")
-
-
 def _intish_or_zero(value) -> int:
     try:
         return int(value or 0)
@@ -780,7 +695,9 @@ def daily_performance_snapshot(match_date: str) -> dict:
         else -float(row["stake_units"] or 0.0)
         for row in settled_live
     )
+    featured = _featured_performance(match_date)
     return {
+        "featured": featured,
         "paper": {
             "daily": day.get("formal_player_prop_profile") or {},
             "recent_14": recent_14.get("formal_player_prop_profile") or {},
@@ -797,6 +714,17 @@ def daily_performance_snapshot(match_date: str) -> dict:
         "gate": gate,
         "pending_value_older": int(pending_value_older),
     }
+
+
+def _featured_performance(match_date: str) -> dict:
+    """精選 day + cumulative, priced at the frozen odds each pick was sent at."""
+    from tennis_wc import featured
+    from tennis_wc.database.db import get_connection
+
+    with get_connection() as conn:
+        day = featured.picks_with_results(conn, since=match_date, until=match_date)
+        overall = featured.picks_with_results(conn, until=match_date)
+    return {"daily": featured.performance(day), "overall": featured.performance(overall)}
 
 
 def _roi_row(profile: dict) -> dict:
@@ -828,12 +756,13 @@ def record_roi_board(match_date: str, snapshot: dict) -> bool:
     board; Tennis uses the formal paper recommendations (the card's own bets).
     Returns True when the day had settled formal bets.
     """
-    paper = snapshot.get("paper") or {}
+    # 2026-11-05: the board reports 精選 only (the bets Kelvin is told to place).
+    source = snapshot.get("featured") or snapshot.get("paper") or {}
     entry = _roi_board().record(
         "tennis",
         day=match_date,
-        latest=_roi_row(paper.get("daily") or {}),
-        cumulative=_roi_row(paper.get("overall") or {}),
+        latest=_roi_row(source.get("daily") or {}),
+        cumulative=_roi_row(source.get("overall") or {}),
     )
     return bool((entry.get("latest") or {}).get("bets"))
 
@@ -894,7 +823,50 @@ def review_previous_day(match_date: str) -> dict:
     log(f"Review written. summary={report_path or 'none'} qa={qa_path or 'none'}")
     if os.environ.get("TENNIS_NOTIFY_PERFORMANCE") == "1":
         notify_daily_performance(match_date)
+    check_featured_forward_milestone()
     return payload
+
+
+FEATURED_FORWARD_STATE = "featured-forward-state.json"
+
+
+def check_featured_forward_milestone() -> str | None:
+    """AGENTS.md forward rule: push Kelvin the first time a verdict point is reached.
+
+    EXP-20261105-08 精選 forward test: verdicts at 250 and 600 settled picks.
+    Never changes the model or turns on real money; that is Kelvin's call.
+    """
+    from tennis_wc import featured
+    from tennis_wc.database.db import get_connection
+
+    try:
+        with get_connection() as conn:
+            perf = featured.performance(featured.picks_with_results(conn))
+        state_path = LOG_DIR / FEATURED_FORWARD_STATE
+        state = json.loads(state_path.read_text()) if state_path.exists() else {}
+        verdict = featured.forward_verdict(perf)
+        milestone = (featured.FORWARD_FINAL_VERDICT if perf["settled"] >= featured.FORWARD_FINAL_VERDICT
+                     else featured.FORWARD_FIRST_VERDICT if perf["settled"] >= featured.FORWARD_FIRST_VERDICT
+                     else None)
+        if milestone is None or str(milestone) in state:
+            return None
+        roi = f"{perf['roi']:+.1%}" if perf["roi"] is not None else "—"
+        ci = (f"[{perf['ci_low']:+.1%}, {perf['ci_high']:+.1%}]"
+              if perf["ci_low"] is not None else "—")
+        message = (
+            f"🎾 Tennis 精選前向測試夠數（{milestone} 注）\n"
+            f"已結算 {perf['settled']} 注｜中 {perf['wins']}｜ROI {roi}｜95% CI {ci}\n"
+            f"預先登記判決：{verdict}\n"
+            "EXP-20261105-08。系統唔會自動改模型或者開真錢，由 Kelvin 決定。"
+        )
+        if notify(message, audience="primary"):
+            state[str(milestone)] = {"verdict": verdict, "settled": perf["settled"],
+                                     "sent_at": datetime.now().isoformat()}
+            state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2))
+        return verdict
+    except Exception as exc:  # noqa: BLE001 - the review must still complete
+        log(f"精選 forward milestone check skipped: {exc}")
+        return None
 
 
 def sync_dashboard_settlements(match_date: str) -> bool:
@@ -1083,24 +1055,37 @@ def analyse_next_day(match_date: str, *, today: str | None = None) -> None:
         raise TemporaryDataUnavailable(
             f"analysis for {match_date} is incomplete: {observed}"
         )
-    # Failed/retry cards have already raised above rather than masquerading as
-    # "no bet" advice, so anything reaching here is a completed pass.
-    #
-    # The evening pass used to be barred from sending outright, on the grounds
-    # that tomorrow's board is half-open. It is -- 12 priced next-day matches
-    # against 47-56 same-day, measured 2026-08-16 -- but the bar had a cost
-    # nobody had counted: `match_date` is the Sydney calendar date, so matches
-    # in the small hours are over before the 09:24 card exists. 35.9% of the
-    # matches on a card had already started when it was pushed. A half-open
-    # board that says it is half-open beats no card at all for that cohort.
-    #
-    # Separate switch from TENNIS_NOTIFY_BETS on purpose: the evening card can
-    # be turned off without touching the morning one, and vice versa.
-    if horizon == HORIZON_NEXT_DAY:
-        if os.environ.get("TENNIS_NOTIFY_EARLY_BETS") == "1":
-            notify_daily_bets(match_date, payload, early=True)
-    elif os.environ.get("TENNIS_NOTIFY_BETS") == "1":
-        notify_daily_bets(match_date, payload)
+    # Bets are no longer pushed from here. The old card push sent "資料未就緒"
+    # every day from 2026-10-28 because its gate read cumulative history. The
+    # only betting message is now 精選, sent by `publish_featured`.
+
+
+def publish_featured(match_date: str, run_label: str, *, main: bool) -> list[dict]:
+    """Freeze new 精選 for the date and push them.
+
+    ``main`` (21:00) always sends the full list, even when it is empty. The 23:00
+    and 09:00 passes send only picks they added. Recording never depends on the
+    report's integrity verdict: a match with bad data is simply not a candidate.
+    """
+    from tennis_wc import featured
+    from tennis_wc.database.db import get_connection
+
+    with get_connection() as conn:
+        added = featured.record(conn, match_date, run_label)
+        today = featured.picks_with_results(conn, since=match_date, until=match_date)
+        perf = featured.performance(featured.picks_with_results(conn))
+    log(f"精選 {match_date} @ {run_label}: +{len(added)} (total {len(today)})")
+    if main:
+        message = featured.telegram_message(match_date, today, kind="main", perf=perf)
+    elif added:
+        new_ids = {row["prop_id"] for row in added}
+        fresh = [row for row in today if row["prop_id"] in new_ids]
+        message = featured.telegram_message(match_date, fresh, kind="topup", perf=perf)
+    else:
+        return added
+    if os.environ.get("TENNIS_NOTIFY_BETS") == "1":
+        notify(message, audience="content")
+    return added
 
 
 def archive_previous_day(match_date: str, review_payload: dict) -> None:

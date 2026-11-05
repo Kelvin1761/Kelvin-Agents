@@ -34,6 +34,7 @@ LABELS=(
   com.antigravity.tennis-wong-choi.daily
   com.antigravity.tennis-wong-choi.recovery
   com.antigravity.tennis-wong-choi.preclose
+  com.antigravity.tennis-wong-choi.night
   com.antigravity.central-wong-choi.durability
   com.antigravity.central-wong-choi.research-review
 )

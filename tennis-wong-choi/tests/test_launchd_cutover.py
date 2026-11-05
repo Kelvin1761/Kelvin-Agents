@@ -55,9 +55,12 @@ def test_rendered_launchd_uses_versioned_code_and_existing_runtime(
     recovery = plistlib.load(
         (destination / "com.antigravity.tennis-wong-choi.recovery.plist").open("rb")
     )
+    night = plistlib.load(
+        (destination / "com.antigravity.tennis-wong-choi.night.plist").open("rb")
+    )
     runner = str(PROJECT_DIR / "scripts" / "run_tennis_daily_schedule.sh")
     database_url = f"sqlite:///{runtime / 'tennis_wc.db'}"
-    for payload in (card, daily, recovery):
+    for payload in (card, daily, recovery, night):
         assert payload["WorkingDirectory"] == str(PROJECT_DIR)
         assert payload["EnvironmentVariables"]["DATABASE_URL"] == database_url
         assert payload["EnvironmentVariables"]["TENNIS_ENV_FILE"] == str(
@@ -74,6 +77,14 @@ def test_rendered_launchd_uses_versioned_code_and_existing_runtime(
         )
     assert card["ProgramArguments"][:3] == ["/bin/zsh", runner, "card"]
     assert daily["ProgramArguments"][:2] == ["/bin/zsh", runner]
+    assert night["ProgramArguments"] == [
+        str(python_bin),
+        str(PROJECT_DIR / "scripts" / "tennis_night_card.py"),
+        "--label",
+        "auto",
+    ]
+    assert [(t["Hour"], t["Minute"]) for t in night["StartCalendarInterval"]] == [(21, 0), (23, 0)]
+    assert night["EnvironmentVariables"]["TENNIS_NOTIFY_BETS"] == "1"
     assert recovery["ProgramArguments"] == [
         str(python_bin),
         str(PROJECT_DIR / "scripts" / "tennis_card_recovery.py"),

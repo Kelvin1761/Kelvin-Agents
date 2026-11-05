@@ -216,3 +216,43 @@ def test_inconsistent_settled_combo_is_flagged_without_rewriting_raw_financials(
     assert bad["unit_profit"] is None and "待核實" in bad["integrity_note"]
     assert good["unit_profit"] == 2.0 and not good.get("integrity_note")
     assert before == path.read_bytes()
+
+
+def test_featured_picks_use_frozen_odds_and_stay_separate(tmp_path):
+    path = tmp_path / "db"
+    c = database(path)
+    prop(c, 1)
+    c.execute("UPDATE prop_tracker SET decimal_odds=1.5 WHERE id=1")  # later re-price
+    c.execute(
+        "CREATE TABLE featured_picks(id INTEGER PRIMARY KEY,prop_id INTEGER,match_id INTEGER,"
+        "match_date TEXT,rank INTEGER,run_label TEXT,market_key TEXT,selection TEXT,match_label TEXT,"
+        "feed_market_name TEXT,feed_selection_name TEXT,start_time_utc TEXT,odds REAL,edge REAL,"
+        "ev REAL,model_prob REAL,featured_at TEXT)"
+    )
+    c.execute(
+        "INSERT INTO featured_picks VALUES(1,1,1,'2026-10-27',1,'21:00','first_set_winner_1','Player A',"
+        "'Player A vs Player B','Set 1 Winner','Player A','2026-10-26T22:00:00Z',2.4,0.2,0.1,0.5,"
+        "'2026-10-26T10:00:00Z')"
+    )
+    c.commit()
+    c.close()
+    out = export_tennis_tracking(path)
+    assert out["warnings"] == []
+    featured = [r for r in out["records"] if r["kind"] == "featured"]
+    (pick,) = featured
+    assert pick["id"] == "tennis:featured:1"
+    assert pick["odds"] == 2.4 and pick["unit_profit"] == 1.4
+    assert pick["point_in_time"] is True and pick["featured_rank"] == 1
+    assert pick["sportsbet_market"] == "Set 1 Winner"
+    assert len([r for r in out["records"] if r["kind"] == "prop"]) == 1
+
+
+def test_missing_featured_table_adds_no_warning(tmp_path):
+    path = tmp_path / "db"
+    c = database(path)
+    prop(c, 1)
+    c.commit()
+    c.close()
+    out = export_tennis_tracking(path)
+    assert out["warnings"] == []
+    assert not [r for r in out["records"] if r["kind"] == "featured"]
