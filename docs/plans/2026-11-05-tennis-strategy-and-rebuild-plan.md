@@ -277,6 +277,7 @@ tennis_wc/
    網球頁列出 Challenger 同大量 ITF 賽事（同 Sportsbet 嘅精選範圍重疊）。**技術障礙**：Ladbrokes 網頁冇公開 JSON
    端點（`api.ladbrokes.com.au` 嘅舊 REST 回 500／`Unknown endpoint`），價錢經 `push.ladbrokes.com.au/socket.io`
    websocket 同 GraphQL 推送，要做 socket 客戶端或者無頭瀏覽器先抓到，係一個新數據來源工程，需要 Kelvin 拍板。
+   **Kelvin 2026-11-06：暫時唔做**，等精選前向測試有結果先再決定。
    拍板之後嘅做法：每晚 21:00
    精選出咗之後，抓第二間（Ladbrokes 先）同一場同一盤口嘅價，只記錄唔改精選。判準：夠 100 注配對，第二間價
    高過 Sportsbet 嘅中位數同 bootstrap 95% CI（seed 20260826）；CI 下限 > 0 先值得開戶。唔改模型、唔改精選規則。
