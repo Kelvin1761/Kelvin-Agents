@@ -528,9 +528,12 @@ ON prop_live_bets(placed_at, prop_id);
 
 
 def init_db() -> None:
+    from tennis_wc.select.featured import ensure_schema as ensure_featured
+
     with get_connection() as conn:
         conn.executescript(SCHEMA)
         _ensure_compat_columns(conn)
+        ensure_featured(conn)
 
 
 def _ensure_compat_columns(conn) -> None:

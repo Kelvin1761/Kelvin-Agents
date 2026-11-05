@@ -85,90 +85,41 @@ def export_tennis_tracking(db_path):
             players = {r["id"]: r.get("name", "") for r in (_rows(c, "players") or [])}
             sources = {
                 name: _rows(c, name)
-                for name in (
-                    "prop_tracker",
-                    "combo_tracker",
-                    "clv_tracker",
-                    "predictions",
-                    "market_predictions",
-                    "prop_live_bets",
-                )
+                # One ledger (2026-11-06 rebuild): props, 精選, and real bets.
+                # Older match/market/combo paper rows stay in the database as
+                # history but are no longer shown.
+                for name in ("prop_tracker", "prop_live_bets")
             }
             result["warnings"] = [f"missing_tracking_source:{name}" for name, rows in sources.items() if rows is None]
             records = []
 
-            def make(row, identity, kind, match=None, legs=None):
-                m = match or matches.get(row.get("match_id"), {})
+            def make(row, identity, kind):
+                m = matches.get(row.get("match_id"), {})
                 recorded = _time(row.get("recorded_at") or row.get("created_at"))
-                starts = [_time(m.get("start_time_utc"))]
-                if legs is not None:
-                    starts = [_time(matches.get(l.get("match_id"), {}).get("start_time_utc")) for l in legs]
-                timed = bool(recorded and starts and all(t and recorded < t for t in starts))
+                start = _time(m.get("start_time_utc"))
+                timed = bool(recorded and start and recorded < start)
                 explicit = row.get("is_point_in_time")
                 if explicit == 0:
                     timed = False
-                elif explicit == 1 and not all(starts):
+                elif explicit == 1 and not start:
                     timed = True
-                disputed = (
-                    m.get("fixture_status") == "DISPUTED"
-                    or m.get("source_provider") == "mock"
-                    or any(matches.get(l.get("match_id"), {}).get("fixture_status") == "DISPUTED" for l in (legs or []))
-                )
+                disputed = m.get("fixture_status") == "DISPUTED" or m.get("source_provider") == "mock"
                 if disputed:
                     timed = False
-                start = (
-                    (min(starts) if starts and all(starts) else None)
-                    if legs is not None
-                    else _time(m.get("start_time_utc"))
-                )
-                day = (
-                    start.astimezone(ZoneInfo("Australia/Sydney")).date().isoformat()
-                    if start
-                    else row.get("match_date") or m.get("match_date") or ""
-                )
-                odds = _number(
-                    row.get(
-                        "decimal_odds",
-                        row.get("combo_odds", row.get("odds_taken", row.get("current_market_odds", row.get("odds")))),
-                    )
-                )
-                state = _state(row.get("result_status"))
-                if disputed:
-                    state = "unverified"
+                day = (start.astimezone(ZoneInfo("Australia/Sydney")).date().isoformat() if start
+                       else row.get("match_date") or m.get("match_date") or "")
+                odds = _number(row.get("decimal_odds", row.get("odds_taken", row.get("odds"))))
+                state = "unverified" if disputed else _state(row.get("result_status"))
                 unit = None
                 if odds is not None and odds > 1 and state in ("won", "lost", "void"):
                     stake, pnl = _number(row.get("stake_units")), _number(row.get("profit_loss_units"))
                     if stake and stake > 0 and pnl is not None:
                         unit = pnl / stake
-                    elif kind != "combo":
+                    else:
                         unit = odds - 1 if state == "won" else -1 if state == "lost" else 0
-                    elif state == "void":
-                        unit = 0
-                integrity_note = ""
-                if kind == "combo" and state in ("won", "lost") and unit is not None:
-                    expected = stake * (odds - 1) if state == "won" else -stake
-                    if not math.isclose(pnl, expected, rel_tol=1e-6, abs_tol=0.02):
-                        unit = None
-                        integrity_note = "歷史注碼／盈虧待核實"
                 event = f"{players.get(m.get('player_a_id')) or '?'} vs {players.get(m.get('player_b_id')) or '?'}"
                 if not m:
                     event = row.get("match_label") or "賽事待核實"
-                clean_legs = [
-                    {
-                        **_subject(l, matches.get(l.get("match_id"), {}), players),
-                        "selection": l.get("selection") or l.get("selection_name") or "",
-                        "market": l.get("market_key") or l.get("market") or "",
-                        "match_id": l.get("match_id"),
-                        "state": _state(l.get("result_status") or l.get("status"))
-                        if l.get("result_status") or l.get("status") else "unverified",
-                        "event_name": " vs ".join(
-                            players.get(matches.get(l.get("match_id"), {}).get(key)) or "?"
-                            for key in ("player_a_id", "player_b_id")
-                        ),
-                    }
-                    for l in (legs or [])
-                    if isinstance(l, dict)
-                ]
                 return {
                     "id": identity,
                     **_subject(row, m, players),
@@ -178,26 +129,17 @@ def export_tennis_tracking(db_path):
                     "kind": kind,
                     "tier": row.get("tier") or "模型候選",
                     "tour": m.get("tour") or "",
-                    "selection": row.get("selection")
-                    or row.get("selection_name")
-                    or " + ".join(l["selection"] for l in clean_legs)
-                    or "選項待核實",
-                    "market": row.get("market_key")
-                    or row.get("market_name")
-                    or ("跨場組合" if kind == "combo" else "Match Winner"),
+                    "selection": row.get("selection") or "選項待核實",
+                    "market": row.get("market_key") or "",
                     "odds": odds,
                     "state": state,
                     "unit_profit": unit,
-                    **({"integrity_note": integrity_note} if integrity_note else {}),
                     "point_in_time": timed,
                     "recorded_at": row.get("recorded_at") or row.get("created_at"),
-                    "model_probability": _number(row.get("blended_prob", row.get("model_probability"))),
-                    "legs": clean_legs,
-                    "evidence_note": "賽事身份待核實"
-                    if disputed
-                    else "賽前時間已核實"
-                    if timed
-                    else "未有可核實賽前時間",
+                    "model_probability": _number(row.get("blended_prob")),
+                    "legs": [],
+                    "evidence_note": "賽事身份待核實" if disputed
+                    else "賽前時間已核實" if timed else "未有可核實賽前時間",
                 }
 
             prop_ids = set()
@@ -237,38 +179,6 @@ def export_tennis_tracking(db_path):
                     sportsbet_market=f.get("feed_market_name") or None,
                 )
                 records.append(record)
-            clv_pred = set()
-            clv_market = set()
-            for r in sources["clv_tracker"] or []:
-                typ = r.get("recommendation_type")
-                if typ == "PROP_RECOMMENDATION" and r.get("source_id") in prop_ids:
-                    continue
-                if typ == "MATCH_PREDICTION":
-                    clv_pred.add(r.get("source_id"))
-                if typ == "MARKET_LEG":
-                    clv_market.add(r.get("source_id"))
-                records.append(
-                    make(r, f"tennis:tracking:clv:{r['id']}", "match" if typ == "MATCH_PREDICTION" else "market")
-                )
-            for r in sources["combo_tracker"] or []:
-                raw_legs = _json(r.get("legs_json"))
-                legs = [l for l in raw_legs if isinstance(l, dict)]
-                record = make(r, f"tennis:combo:{r.get('combo_key') or r['id']}", "combo", legs=legs)
-                record["event_name"] = r.get("match_label") or "跨場組合"
-                if not legs or len(legs) != len(raw_legs):
-                    record["point_in_time"] = False
-                    record["evidence_note"] = "組合腳資料待核實"
-                records.append(record)
-            for r in sources["market_predictions"] or []:
-                if r.get("decision") == "BET" and r["id"] not in clv_market:
-                    records.append(make(r, f"tennis:tracking:market:{r['id']}", "market"))
-            latest = {}
-            for r in sources["predictions"] or []:
-                if r["id"] > latest.get(r.get("match_id"), {}).get("id", -1):
-                    latest[r.get("match_id")] = r
-            for r in latest.values():
-                if r.get("decision") == "BET" and r["id"] not in clv_pred:
-                    records.append(make(r, f"tennis:reference:{r['id']}", "match"))
             props = {r["id"]: r for r in sources["prop_tracker"] or []}
             for r in sources["prop_live_bets"] or []:
                 prop = props.get(r.get("prop_id"), {})

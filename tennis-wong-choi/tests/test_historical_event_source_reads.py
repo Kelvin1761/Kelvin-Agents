@@ -2,16 +2,14 @@
 from __future__ import annotations
 
 import json
-from collections import Counter
 
 import pytest
 
 from conftest import configure_test_db
-from tennis_wc.betting.ledger import _match_winner_close
 from tennis_wc.database.db import get_connection
 from tennis_wc.database.migrations import init_db
 from tennis_wc.database.odds_source_reads import OddsSourceReader
-from tennis_wc.props.daily import _rows_for_date
+from tennis_wc.pricing.quotes import rows_for_date as _rows_for_date
 
 
 @pytest.fixture
@@ -39,21 +37,11 @@ def market(conn, raw_id, odds, when):
                  (odds, raw_id, when, when))
 
 
-def close(conn, raw_id, odds, when):
-    conn.execute("""INSERT INTO closing_odds_snapshots(match_id,event_id,bookmaker,market,
-                    player_a_closing_odds,player_b_closing_odds,source_provider,raw_response_id,fetched_at,created_at)
-                    VALUES (1,'123','Sportsbet','h2h',?,1.9,'sportsbet',?,?,?)""",
-                 (odds, raw_id, when, when))
-
-
-def test_opening_drops_wrong_first_without_promoting_later_quote(conn):
+def test_wrong_event_quote_is_dropped_and_verified_one_kept(conn):
     receipt(conn, 1, {"event_id": "999"})
     receipt(conn, 2, {"event_id": "123"})
     market(conn, 1, 2.1, "2026-06-01T08:00:00Z")
     market(conn, 2, 1.8, "2026-06-01T09:00:00Z")
-    counts = Counter()
-    assert _rows_for_date(conn, "2026-06-01", earliest_only=True, source_diagnostics=counts) == []
-    assert counts == {"wrong_event": 1}
     assert [r["odds"] for r in _rows_for_date(conn, "2026-06-01")] == [1.8]
     assert conn.execute("SELECT COUNT(*) FROM market_odds_snapshots").fetchone()[0] == 2
 
@@ -64,18 +52,8 @@ def test_current_bad_batch_is_not_replaced_by_older_quote(conn):
     market(conn, 1, 2.1, "2026-06-01T08:00:00Z")
     market(conn, 2, 1.8, "2026-06-01T09:00:00Z")
     assert _rows_for_date(conn, "2026-06-01") == []
-    assert [r["odds"] for r in _rows_for_date(conn, "2026-06-01", earliest_only=True)] == [2.1]
 
 
-def test_wrong_latest_close_cannot_fall_back_to_older_price(conn):
-    receipt(conn, 1, {"event_id": "123"}, endpoint="/event-odds-preclose")
-    receipt(conn, 2, {"event_id": "999"}, endpoint="/event-odds-preclose")
-    close(conn, 1, 2.1, "2026-06-01T08:00:00Z")
-    close(conn, 2, 1.8, "2026-06-01T11:00:00Z")
-    counts = Counter()
-    assert _match_winner_close(conn, 1, source_diagnostics=counts) is None
-    assert counts == {"wrong_event": 1}
-    assert conn.execute("SELECT COUNT(*) FROM closing_odds_snapshots").fetchone()[0] == 2
 
 
 def test_unverifiable_and_out_of_scope_receipts_are_explicit(conn):

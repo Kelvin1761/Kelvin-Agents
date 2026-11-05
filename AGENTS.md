@@ -60,7 +60,7 @@ import，所以**呢份文件係唯一真源** —— 新規則加喺呢度，�
   經 `alert_now` 推一次（state 記喺 `work/au-forward-tracker-state.json`）。原因：2026-11-01 發現 AU 三個
   forward 測試冇一個會推 Telegram，S2 forward（EXP-20261016-03）連 scheduler step 都冇。
 
-- **Tennis**：精選前向測試（EXP-20261105-08）由 `tennis_daily_schedule.check_featured_forward_milestone`
+- **Tennis**：精選前向測試（EXP-20261105-10）由 `tennis_wc/publish/telegram.py` 嘅 `forward_milestone`
   喺每日覆盤後檢查，250／600 注第一次夠數推 Telegram（state：`data/logs/featured-forward-state.json`）。
   新開 tennis forward 測試要喺同一處加。Tennis 投注推送只有精選（21:00 主 card、23:00／09:00 補充）。
 
@@ -541,40 +541,17 @@ L10 次數／avg／med／SD／CoV 標籤，喺 reflector 行係 None。extractor
 
 ## tennis-wong-choi
 
-### Main entry
+2026-11-06 全面重建（`docs/plans/2026-11-06-tennis-rebuild-log.md`）。結構、命令、排程睇
+[README](tennis-wong-choi/README.md)。要記住嘅幾點：
 
-- `tennis-wong-choi/src/tennis_wc/cli.py`
-
-### What it does
-
-`tennis-wong-choi` 係獨立 tennis pricing / betting engine，提供 CLI workflow，包括：
-
-- DB 初始化
-- provider health / smoke checks
-- upcoming matches / odds / rankings ingestion
-- daily pricing / prediction / report generation
-- agent review
-- performance / backtest / settlement
-
-### Supported run style
-
-目前最穩陣嘅本地跑法係進入 package 目錄後用 package context：
-
-- `cd tennis-wong-choi`
-- `PYTHONPATH=src python -m tennis_wc.cli --help`
-
-### Typical outputs
-
-- `tennis-wong-choi/data/exports/`
-- `tennis-wong-choi/tennis_wc.db`
-- daily report markdown
-- prediction / ledger / backtest artifacts
-
-### Current reality
-
-- mock provider 係預設
-- 真實 provider 設定睇 `tennis-wong-choi/.env.example`
-- tennis 自己有獨立 [README](tennis-wong-choi/README.md)
+- 排程入口：`tennis-wong-choi/scripts/tennis_daily_schedule.py`（`--night`、`--refresh-today`、預設 18:00）；
+  每日流程喺 `src/tennis_wc/run.py`。
+- **一本帳**：`prop_tracker`（每個定價 prop）＋`featured_picks`（精選，第一次出嘅價凍結）＋
+  `prop_live_bets`（Kelvin 人手記嘅實盤）。`clv_tracker`／`combo_tracker`／`market_predictions` 只係歷史，唔再寫。
+- 只為 7 個 family 定價；Aces／雙誤／盤數波膽暫停，全場總局數唔定價（`pricing/props.py` docstring）。
+- **改定價 code 要過重播**：`docs/experiments/patches/tennis_rebuild/replay.py` 喺凍結 DB 上比對每一行
+  `prop_tracker`（包括凍結證據），容差 1e-9。重播唔一樣就係改咗模型，要行 `model-regression-gate`。
+- 未證實賺錢：唔落真錢，`store/live_bets.py` 只收精選、每注最多 0.5 單位。
 
 ## HKJC / AU Reflectors
 

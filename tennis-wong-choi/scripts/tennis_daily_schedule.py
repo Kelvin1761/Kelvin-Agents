@@ -1,1267 +1,63 @@
 #!/usr/bin/env python3
+"""Tennis Wong Choi scheduled runs (Sydney time; launchd templates in ../launchd).
+
+  --night [auto|21:00|23:00]  21:00 prices TOMORROW and always sends 精選;
+                              23:00 re-prices and sends only new picks.
+  --refresh-today             09:00 backup: prices TODAY, sends 補充精選 if any.
+  (default)                   18:00 daily: review yesterday, archive, warm tomorrow.
+
+The night job runs outside the control plane; the 09:00/18:00 jobs run through
+it (``--control-json`` prints the outcome it reads). One lock serialises them.
+Log lines ``run_source=… mode=…`` and ``HEALTH_JSON {…}`` are read by
+tennis_card_recovery.py / verify_scheduled_runs.py.
+"""
 from __future__ import annotations
 
 import argparse
 import fcntl
 import json
 import os
-import re
 import shutil
 import subprocess
 import sys
+import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
-
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:  # pragma: no cover - Python < 3.9 fallback
-    ZoneInfo = None
+from zoneinfo import ZoneInfo
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
-SRC_DIR = PROJECT_DIR / "src"
-if str(SRC_DIR) not in sys.path:
-    sys.path.insert(0, str(SRC_DIR))
+if str(PROJECT_DIR / "src") not in sys.path:
+    sys.path.insert(0, str(PROJECT_DIR / "src"))
 
-from tennis_wc.pipeline_readiness import analysis_retry_reasons, book_fixture_count
-
-
-# Engine runs from local disk; analysis/archive folders stay on Google Drive
-# so Kelvin keeps reading reports where he always has. Falls back to the
-# repo parent when the override is unset or the Drive mount is unavailable.
-def _usable_output_root(candidate: str | None) -> Path | None:
-    """Can we actually WRITE there, not merely stat it.
-
-    `is_dir()` is not a permission check. Under launchd the launcher's own
-    probe -- reading one specific file in the Drive root -- fails on TCC and
-    prints "Drive output root unreadable" every single run, 19 times so far,
-    while `is_dir()` succeeds and the reports land on Drive anyway. So the log
-    carried a warning that contradicted what the run then did, and nobody could
-    act on it because it was not true.
-
-    The same mistake in the other direction is already recorded on the AU side:
-    a directory you can stat is not a directory you can read.
-    """
-    if not candidate:
-        return None
-    root = Path(candidate)
-    probe = root / ".tennis_output_probe"
-    try:
-        probe.touch()
-        probe.unlink()
-    except OSError:
-        return None
-    return root
-
-
-_OUTPUT_ROOT_OVERRIDE = os.environ.get("TENNIS_ANALYSIS_OUTPUT_ROOT")
-ANTIGRAVITY_DIR = _usable_output_root(_OUTPUT_ROOT_OVERRIDE) or PROJECT_DIR.parent
-ARCHIVE_DIR = ANTIGRAVITY_DIR / "Archieve Tennis Analysis"
-# Overridable so the test suite cannot append to the log the live scheduler
-# reads. It had been doing exactly that -- 866,594 lines and 28MB, with
-# "Live network preflight passed" and "Notify skipped" entries from pytest
-# interleaved with the real run history. A record that tests write into is not
-# a record you can diagnose from.
 LOG_DIR = Path(os.environ.get("TENNIS_LOG_DIR") or (PROJECT_DIR / "data" / "logs"))
-_VENV_PYTHON = PROJECT_DIR / ".venv" / "bin" / "python"
-PYTHON = Path(
-    os.environ.get("TENNIS_PYTHON_BIN")
-    or (_VENV_PYTHON if _VENV_PYTHON.exists() else sys.executable)
-)
-DASHBOARD_SETTLEMENT = (
-    PROJECT_DIR.parent / "Horse_Racing_Dashboard" / "settle_dashboard_bets.py"
-)
+LOCK_NAME = "tennis_daily_schedule.lock"
 TIMEZONE = "Australia/Sydney"
-# Nothing bounded this log before, and both passes are now scheduled daily. 8MB
-# per generation and five generations keeps well over the two days the 0.2 exit
-# test needs -- 29 days of real entries occupied 1,075 lines -- while the head
-# and tail caps stop one card's JSON from being 99.88% of the file.
 MAX_LOG_BYTES = 8 * 1024 * 1024
 LOG_BACKUPS = 5
-CAPTURED_HEAD_LINES = 40
-CAPTURED_TAIL_LINES = 40
+NIGHT_LOCK_WAIT_SECONDS = 40 * 60
+DASHBOARD_SETTLEMENT = PROJECT_DIR.parent / "Horse_Racing_Dashboard" / "settle_dashboard_bets.py"
 
 
 class TemporaryDataUnavailable(RuntimeError):
-    """The scheduled run needs live data and should be retried later."""
+    """Live data missing for now; retry later (exit 75)."""
 
 
 class AnalysisBoardMissing(RuntimeError):
-    """The board we price from is absent on a day it cannot legitimately be.
-
-    Distinct from TemporaryDataUnavailable on purpose. "The book is not open
-    yet" and "we can no longer see the book" were the same exception and the
-    same log line until 2026-08-11, and the pipeline spent three days dark
-    without anything looking wrong.
-    """
+    """The board is absent on a day it cannot legitimately be (exit 70)."""
 
 
-def control_return(
-    args: argparse.Namespace,
-    *,
-    mode: str,
-    target_date: str,
-    code: int,
-    status: str,
-    reason: str | None = None,
-) -> int:
-    """Optionally emit one final scheduler envelope for the shared adapter."""
-    if args.control_json:
-        payload = {
-            "status": status,
-            "mode": mode,
-            "target_date": target_date,
-            "exit_code": code,
-        }
-        if reason:
-            payload["reason"] = reason
-        print(json.dumps(payload, ensure_ascii=False, sort_keys=True))
-    return code
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Daily Tennis Wong Choi scheduler runner.")
-    parser.add_argument("--today", help="Override today's date in YYYY-MM-DD for testing.")
-    parser.add_argument("--skip-analysis", action="store_true", help="Skip tomorrow run-daily.")
-    parser.add_argument("--skip-review", action="store_true", help="Skip yesterday review/archive.")
-    parser.add_argument("--no-archive", action="store_true", help="Review yesterday but do not move the folder.")
-    parser.add_argument(
-        "--source", default="manual",
-        help="Who started this run: 'launchd' from the scheduled jobs, "
-             "'manual' otherwise. Logged so the two-day exit test can tell a "
-             "SCHEDULED success from someone running it by hand -- which is "
-             "exactly the distinction that was missing when the morning pass "
-             "stopped being run manually and nobody noticed for three days.",
-    )
-    parser.add_argument(
-        "--notify-self-test",
-        action="store_true",
-        help="Verify the Telegram wiring WITHOUT sending a message (getMe) and exit.",
-    )
-    parser.add_argument(
-        "--refresh-today",
-        action="store_true",
-        help="Same-day mode: run run-daily for TODAY only (no review, no archive). "
-             "This is the pass that produces the betting card, and it is scheduled "
-             "at 09:00 Sydney by com.antigravity.tennis-wong-choi.card. The 18:00 "
-             "job asks Sportsbet for tomorrow, whose book is not open -- its "
-             "listing returns two bytes -- so it settles, reviews and warms "
-             "fixtures instead. 09:00 is also the price the backtest measured: "
-             "earliest_odds=True reads each selection's first snapshot, which for "
-             "almost every date is this run.",
-    )
-    parser.add_argument(
-        "--control-json",
-        action="store_true",
-        help="Emit one final machine-readable control-plane outcome.",
-    )
-    args = parser.parse_args(argv)
-
-    if args.notify_self_test:
-        print(json.dumps(notify_self_test(), ensure_ascii=False, indent=2))
-        return 0
-
-    today = date.fromisoformat(args.today) if args.today else local_today()
-    mode = "card" if args.refresh_today else "daily"
-    target_date = (today if args.refresh_today else today + timedelta(days=1)).isoformat()
-
-    LOG_DIR.mkdir(parents=True, exist_ok=True)
-    for capture in ("launchd.card.stdout.log", "launchd.card.stderr.log",
-                    "launchd.daily.stdout.log", "launchd.daily.stderr.log"):
-        trim_launchd_capture(LOG_DIR / capture)
-    headroom = disk_headroom()
-    if not headroom["ok"]:
-        # Loud and early. On 2026-08-11 the volume filled to zero bytes free; a
-        # run that cannot write produces an absent card, which is what every
-        # other failure produces too.
-        log(f"DISK HEADROOM TOO LOW: {headroom['detail']} -- refusing to start. "
-            f"A run that cannot write looks exactly like a run that found "
-            f"nothing.")
-        return control_return(
-            args,
-            mode=mode,
-            target_date=target_date,
-            code=75,
-            status="partial",
-            reason="disk_headroom_low",
-        )
-    lock_path = LOG_DIR / "tennis_daily_schedule.lock"
-    with lock_path.open("w") as lock_file:
-        try:
-            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError:
-            log("Another Tennis Wong Choi daily run is already active; exiting.")
-            return control_return(
-                args,
-                mode=mode,
-                target_date=target_date,
-                code=0,
-                status="blocked",
-                reason="scheduler_locked",
-            )
-
-        log(f"Reports will be written under {ANTIGRAVITY_DIR}"
-            + ("" if _OUTPUT_ROOT_OVERRIDE and str(ANTIGRAVITY_DIR) == _OUTPUT_ROOT_OVERRIDE
-               else f" (requested {_OUTPUT_ROOT_OVERRIDE or 'nothing'}; not writable "
-                    "from this context)"))
-
-        yesterday = today - timedelta(days=1)
-        tomorrow = today + timedelta(days=1)
-
-        if args.refresh_today:
-            log(f"Starting SAME-DAY refresh for {today} "
-                f"(no review, no archive). run_source={args.source} mode=card")
-            try:
-                ensure_live_network()
-                ensure_live_provider_config()
-                run_cli("init-db")
-                try:
-                    analyse_next_day(today.isoformat(), today=today.isoformat())
-                finally:
-                    # 09:00 is the backup pass: whatever was priced, top up 精選.
-                    try:
-                        publish_featured(today.isoformat(), "09:00", main=False)
-                    except Exception as exc:  # noqa: BLE001 - never mask the run outcome
-                        log(f"精選 top-up skipped: {exc}")
-            except subprocess.CalledProcessError as exc:
-                log(f"Command failed with exit code {exc.returncode}: {' '.join(exc.cmd)}")
-                code = exc.returncode or 1
-                return control_return(
-                    args,
-                    mode=mode,
-                    target_date=target_date,
-                    code=code,
-                    status="partial" if code in (75, 124) else "failed",
-                    reason="domain_command_failed",
-                )
-            except AnalysisBoardMissing as exc:
-                log(f"BOARD MISSING: {exc}")
-                notify_board_missing(str(exc))
-                return control_return(
-                    args,
-                    mode=mode,
-                    target_date=target_date,
-                    code=70,
-                    status="failed",
-                    reason="analysis_board_missing",
-                )
-            except TemporaryDataUnavailable as exc:
-                log(f"TEMPORARY DATA FAILURE: {exc}")
-                return control_return(
-                    args,
-                    mode=mode,
-                    target_date=target_date,
-                    code=75,
-                    status="partial",
-                    reason="temporary_data_unavailable",
-                )
-            except Exception as exc:  # noqa: BLE001
-                log(f"Same-day refresh failed: {exc}")
-                return control_return(
-                    args,
-                    mode=mode,
-                    target_date=target_date,
-                    code=1,
-                    status="failed",
-                    reason=f"{type(exc).__name__}: {exc}",
-                )
-            log("Same-day refresh complete.")
-            return control_return(
-                args,
-                mode=mode,
-                target_date=target_date,
-                code=0,
-                status="succeeded",
-            )
-
-        log(f"Starting scheduled workflow. today={today} review={yesterday} "
-            f"analysis={tomorrow} run_source={args.source} mode=daily")
-
-        try:
-            ensure_live_network()
-            ensure_live_provider_config()
-            run_cli("init-db")
-            if not args.skip_review:
-                review_payload = review_previous_day(yesterday.isoformat())
-                sync_dashboard_settlements(yesterday.isoformat())
-                if not args.no_archive:
-                    archive_previous_day(yesterday.isoformat(), review_payload)
-            if not args.skip_analysis:
-                analyse_next_day(tomorrow.isoformat(), today=today.isoformat())
-            # Sunday: emit the weekly validation review into today's folder.
-            # weekday() == 6 is Sunday; guard so a bad review never fails the run.
-            if today.weekday() == 6:
-                try:
-                    run_cli("weekly-review", "--date", today.isoformat())
-                    log("Weekly review written.")
-                except Exception as exc:  # noqa: BLE001
-                    log(f"Weekly review skipped: {exc}")
-        except subprocess.CalledProcessError as exc:
-            log(f"Command failed with exit code {exc.returncode}: {' '.join(exc.cmd)}")
-            code = exc.returncode or 1
-            return control_return(
-                args,
-                mode=mode,
-                target_date=target_date,
-                code=code,
-                status="partial" if code in (75, 124) else "failed",
-                reason="domain_command_failed",
-            )
-        except AnalysisBoardMissing as exc:
-            log(f"BOARD MISSING: {exc}")
-            notify_board_missing(str(exc))
-            return control_return(
-                args,
-                mode=mode,
-                target_date=target_date,
-                code=70,
-                status="failed",
-                reason="analysis_board_missing",
-            )
-        except TemporaryDataUnavailable as exc:
-            log(f"TEMPORARY DATA FAILURE: {exc}")
-            return control_return(
-                args,
-                mode=mode,
-                target_date=target_date,
-                code=75,
-                status="partial",
-                reason="temporary_data_unavailable",
-            )
-        except Exception as exc:
-            log(f"Workflow failed: {exc}")
-            return control_return(
-                args,
-                mode=mode,
-                target_date=target_date,
-                code=1,
-                status="failed",
-                reason=f"{type(exc).__name__}: {exc}",
-            )
-
-        log("Scheduled workflow complete.")
-        return control_return(
-            args,
-            mode=mode,
-            target_date=target_date,
-            code=0,
-            status="succeeded",
-        )
-
+# --------------------------------------------------------------------------- plumbing
 
 def local_today() -> date:
-    if ZoneInfo is not None:
-        return datetime.now(ZoneInfo(TIMEZONE)).date()
-    return datetime.now().date()
+    return datetime.now(ZoneInfo(TIMEZONE)).date()
 
 
-# The AU side already has a Telegram channel configured here; the tennis
-# pipeline had no way to tell anyone anything, which is the other half of why
-# three dark days went unnoticed. Same file, same chat, no new secrets.
-NOTIFY_ENV_PATH = Path.home() / ".wongchoi_notify.env"
-
-
-def _notify_env_values(path: Path | None = None) -> dict[str, str]:
-    """Read the shared notification file without exporting secrets."""
-    source = path or NOTIFY_ENV_PATH
-    try:
-        text = source.read_text()
-    except OSError:
-        return {}
-    values: dict[str, str] = {}
-    for line in text.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-        if line.startswith("export "):
-            line = line[len("export "):]
-        key, sep, value = line.partition("=")
-        if sep:
-            values[key.strip()] = value.strip().strip("'\"")
-    return values
-
-
-def notify_credentials(path: Path | None = None) -> tuple[str, str] | None:
-    """(token, primary_chat_id) from the shared notify env file, or None."""
-    values = _notify_env_values(path)
-    token = values.get("WC_NOTIFY_TELEGRAM_TOKEN")
-    chat = values.get("WC_NOTIFY_TELEGRAM_CHAT")
-    return (token, chat) if token and chat else None
-
-
-def notify_targets(path: Path | None = None, *, audience: str = "primary") -> list[str]:
-    """Resolve the operational or content audience, preserving stable order.
-
-    Operational health/failure messages stay with the primary owner. Betting
-    content also goes to WC_NOTIFY_TELEGRAM_EXTRA (Heison in production).
-    Extras may be comma- or semicolon-separated; duplicates are removed so a
-    copied chat ID cannot cause the same betting card to arrive twice.
-    """
-    values = _notify_env_values(path)
-    primary = values.get("WC_NOTIFY_TELEGRAM_CHAT")
-    if not primary:
-        return []
-    targets = [primary]
-    if audience == "content":
-        raw = values.get("WC_NOTIFY_TELEGRAM_EXTRA", "")
-        targets.extend(item.strip() for item in re.split(r"[,;]", raw) if item.strip())
-    return list(dict.fromkeys(targets))
-
-
-def _telegram_chunks(text: str, *, limit: int = 3800) -> list[str]:
-    """Split long cards on line boundaries below Telegram's 4096-char cap."""
-    chunks: list[str] = []
-    current = ""
-    for line in text.splitlines():
-        candidate = f"{current}\n{line}" if current else line
-        if len(candidate) <= limit:
-            current = candidate
-            continue
-        if current:
-            chunks.append(current)
-        while len(line) > limit:
-            chunks.append(line[:limit])
-            line = line[limit:]
-        current = line
-    if current:
-        chunks.append(current)
-    return chunks or [""]
-
-
-def notify(
-    text: str,
-    *,
-    path: Path | None = None,
-    audience: str = "primary",
-) -> bool:
-    """Best effort to every target. One failed chat never blocks the others."""
-    credentials = notify_credentials(path)
-    if not credentials:
-        log("Notify skipped: no Telegram credentials in "
-            f"{path or NOTIFY_ENV_PATH}")
-        return False
-    token, _primary = credentials
-    targets = notify_targets(path, audience=audience)
-    sent = 0
-    attempted = 0
-    import urllib.parse
-    import urllib.request
-
-    for chat in targets:
-        target_ok = True
-        for chunk in _telegram_chunks(text):
-            attempted += 1
-            try:
-                body = urllib.parse.urlencode({"chat_id": chat, "text": chunk}).encode()
-                request = urllib.request.Request(
-                    f"https://api.telegram.org/bot{token}/sendMessage", data=body
-                )
-                with urllib.request.urlopen(request, timeout=15) as response:
-                    target_ok = target_ok and 200 <= response.status < 300
-            except Exception as exc:  # noqa: BLE001 - never let this fail a run
-                target_ok = False
-                log(f"Notify failed for one {audience} recipient: {exc}")
-                break
-        sent += int(target_ok)
-    ok = bool(targets) and sent == len(targets)
-    log(
-        f"Notify {audience}: {sent}/{len(targets)} recipients succeeded "
-        f"across {attempted} request(s)."
-    )
-    return ok
-
-
-def notify_self_test(path: Path | None = None) -> dict:
-    """Prove the notification path works WITHOUT sending anything to anybody.
-
-    `getMe` is a read-only Telegram call: it confirms the token is valid and
-    names the bot, and it puts no message in anyone's chat. That makes the
-    wiring verifiable at any time, including from a test run, without deciding
-    on Kelvin's behalf that his phone should buzz.
-    """
-    credentials = notify_credentials(path)
-    if not credentials:
-        return {"ok": False, "reason": "no credentials",
-                "path": str(path or NOTIFY_ENV_PATH)}
-    token, chat = credentials
-    targets = notify_targets(path, audience="content")
-    result: dict = {
-        "chat_id_present": bool(chat),
-        "configured_content_recipients": len(targets),
-    }
-    try:
-        import json as _json
-        import urllib.parse
-        import urllib.request
-
-        with urllib.request.urlopen(
-            f"https://api.telegram.org/bot{token}/getMe", timeout=15
-        ) as response:
-            body = _json.loads(response.read().decode())
-        result["ok"] = bool(body.get("ok"))
-        result["bot"] = ((body.get("result") or {}).get("username"))
-        reachable = 0
-        for target in targets:
-            request = urllib.request.Request(
-                f"https://api.telegram.org/bot{token}/getChat?"
-                + urllib.parse.urlencode({"chat_id": target})
-            )
-            try:
-                with urllib.request.urlopen(request, timeout=15) as response:
-                    chat_body = _json.loads(response.read().decode())
-                reachable += int(bool(chat_body.get("ok")))
-            except Exception:  # noqa: BLE001 - count only; do not leak IDs/names
-                pass
-        result["reachable_content_recipients"] = reachable
-        result["ok"] = result["ok"] and reachable == len(targets)
-    except Exception as exc:  # noqa: BLE001
-        result["ok"] = False
-        result["reason"] = str(exc)
-    return result
-
-
-def _intish_or_zero(value) -> int:
-    try:
-        return int(value or 0)
-    except (TypeError, ValueError):
-        return 0
-
-
-def daily_health_line(match_date: str, payload: dict) -> str:
-    """One line a person can read, every day, including days with no bet.
-
-    An empty card is a legitimate output. That is exactly why it hid a broken
-    pipeline for two months once, and three dark days again in August: nothing
-    errored, nothing printed, and "no bet today" and "no pipeline today" looked
-    identical from the outside. A number that is always emitted cannot be
-    confused with a number that stopped being emitted.
-    """
-    coverage = payload.get("odds_coverage") or {}
-    readiness = payload.get("readiness") or {}
-    trackers = (payload.get("tracker_sync") or {}).get("clv") or {}
-    deploy = payload.get("cloudflare_deploy") or {}
-    props = _prop_counts(match_date)
-    fixtures = coverage.get("fixtures")
-    priced = coverage.get("priced_matches")
-    # The gate divides by the BOOK, not by the calendar, so the health line has
-    # to show the book -- otherwise "賽事 176 · 有價 57" reads as 32% to a person
-    # while the gate is reading 65%, and the two disagreeing silently is exactly
-    # how 2026-08-24 spent three passes blocked on a number nobody could see.
-    book = book_fixture_count(coverage)
-    fixtures_cell = (
-        f"賽事 {fixtures}" if book == _intish_or_zero(fixtures)
-        else f"賽事 {fixtures} (盤面 {book})"
-    )
-    return (
-        f"🎾 {match_date} · {readiness.get('severity') or readiness.get('status') or '?'}"
-        f" ({readiness.get('horizon') or '?'})\n"
-        f"{fixtures_cell} · 有價 {priced} · 已分析 {payload.get('matches_analysed')}\n"
-        f"prop {props['props']} · value {props['value']} · "
-        f"未結算 {props['pending_older']} (三日前)"
-        + (f" · 棄結 {props['voided_today']}" if props.get("voided_today") else "")
-        + "\n"
-        f"CLV 同步 {trackers.get('synced', 0)} (prop {trackers.get('props_synced', 0)}, "
-        f"無標識 {trackers.get('props_without_feed_identity', 0)}) · "
-        f"已計 {trackers.get('clv_updated', 0)}\n"
-        f"{source_health_cell(payload)}\n"
-        f"Dashboard {deploy.get('status') or 'unknown'}"
-    )
-
-
-def _source_names(items) -> str:
-    names = [str((item or {}).get("source") or "?") for item in items]
-    return ", ".join(dict.fromkeys(names))
-
-
-def source_health_cell(payload: dict) -> str:
-    """`來源錯誤 N (names)`, always printed, plus degraded sources when any.
-
-    run-daily stores its source errors as an HTTP 207 row, but nothing a person
-    reads showed them: the schedule only warned when ZERO matches were
-    analysed. A history feed that 404s or a rankings pull served from cache
-    leaves the card looking normal while the inputs freeze -- the Sackmann
-    backbone has been frozen since 2026-06-02 that way. A zero is printed so
-    its absence can be noticed.
-    """
-    errors = payload.get("source_errors") or []
-    warnings = payload.get("source_warnings") or []
-    cell = f"來源錯誤 {len(errors)}"
-    if errors:
-        cell += f" ({_source_names(errors)})"
-    if warnings:
-        cell += f" · 降級 {len(warnings)} ({_source_names(warnings)})"
-    return cell
-
-
-def _prop_counts(match_date: str) -> dict:
-    """Counts straight from the tracker; a health line that guesses is no use."""
-    try:
-        import sqlite3
-
-        database = os.environ.get("DATABASE_URL", "")
-        path = database.split("sqlite:///", 1)[-1] if "sqlite" in database else str(
-            PROJECT_DIR / "tennis_wc.db"
-        )
-        conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True)
-        row = conn.execute(
-            "SELECT COUNT(*), COALESCE(SUM(is_value),0) FROM prop_tracker "
-            "WHERE match_date = ?", (match_date,)
-        ).fetchone()
-        older = conn.execute(
-            "SELECT COUNT(*) FROM prop_tracker WHERE result_status='PENDING' "
-            "AND is_value=1 AND match_date <= date(?, '-3 day')", (match_date,)
-        ).fetchone()
-        # Props the settlement sweep gave up on because no result ever arrived.
-        # Reported because the count going UP is the only outward sign that
-        # results ingestion has stopped: the props would simply stay PENDING,
-        # and "未結算" would drift upward for weeks looking like a backlog
-        # rather than an outage. It sat at 600 -- 32 of them real bets, the
-        # oldest 106 days -- before anything swept them.
-        abandoned = conn.execute(
-            "SELECT COUNT(*) FROM prop_tracker WHERE result_status='VOID' "
-            "AND is_value=1 AND settled_at >= ?", (f"{match_date}T00:00:00Z",)
-        ).fetchone()
-        conn.close()
-        return {"props": row[0], "value": row[1], "pending_older": older[0],
-                "voided_today": abandoned[0]}
-    except Exception as exc:  # noqa: BLE001 - a health line must not fail the run
-        log(f"Health counts unavailable: {exc}")
-        return {"props": "?", "value": "?", "pending_older": "?",
-                "voided_today": "?"}
-
-
-def notify_board_missing(detail: str) -> bool:
-    return notify(
-        "🎾 Tennis Wong Choi — 出唔到咭\n"
-        f"{detail}\n"
-        "同一句訊息以前代表「盤未開」,而家淨係代表「本應開咗但見唔到」。"
-    )
-
-
-def daily_performance_snapshot(match_date: str) -> dict:
-    """One read-only, auditable performance view for the Telegram review.
-
-    Paper recommendations and bets recorded in the manual live ledger are
-    deliberately separate.  Treating every generated recommendation as money
-    actually staked was the main reason old summaries looked more certain than
-    the account evidence justified.
-    """
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.props.settlement import (
-        model_vs_market_scorecard,
-        prop_roi_report,
-    )
-    from tennis_wc.props.strategy import recommendation_gate
-
-    next_date = (date.fromisoformat(match_date) + timedelta(days=1)).isoformat()
-    recent_14_start = (
-        date.fromisoformat(match_date) - timedelta(days=13)
-    ).isoformat()
-    with get_connection() as conn:
-        paper = prop_roi_report(conn, as_of_date=next_date)
-        day = prop_roi_report(
-            conn, as_of_date=next_date, since_date=match_date
-        )
-        recent_14 = prop_roi_report(
-            conn, as_of_date=next_date, since_date=recent_14_start
-        )
-        scorecard = model_vs_market_scorecard(conn, as_of_date=next_date)
-        gate = recommendation_gate(scorecard, paper)
-        live_rows = conn.execute(
-            """
-            SELECT p.result_status, p.market_key, p.profit_loss_units,
-                   b.stake_units, b.odds_taken
-            FROM prop_live_bets b
-            JOIN prop_tracker p ON p.id = b.prop_id
-            WHERE p.match_date <= ?
-              AND p.result_status IN ('WON', 'LOST', 'VOID')
-            ORDER BY p.match_date, p.id
-            """,
-            (match_date,),
-        ).fetchall()
-        pending_value_older = conn.execute(
-            """
-            SELECT COUNT(*) FROM prop_tracker
-            WHERE result_status = 'PENDING' AND is_value = 1
-              AND match_date <= date(?, '-3 day')
-            """,
-            (match_date,),
-        ).fetchone()[0]
-
-    settled_live = [row for row in live_rows if row["result_status"] != "VOID"]
-    live_staked = sum(float(row["stake_units"] or 0.0) for row in settled_live)
-    live_pnl = sum(
-        float(row["stake_units"] or 0.0) * (float(row["odds_taken"]) - 1.0)
-        if row["result_status"] == "WON"
-        else -float(row["stake_units"] or 0.0)
-        for row in settled_live
-    )
-    featured = _featured_performance(match_date)
-    return {
-        "featured": featured,
-        "paper": {
-            "daily": day.get("formal_player_prop_profile") or {},
-            "recent_14": recent_14.get("formal_player_prop_profile") or {},
-            "overall": paper.get("formal_player_prop_profile") or {},
-            "families": paper.get("by_family_formal_profile") or {},
-        },
-        "live": {
-            "settled": len(settled_live),
-            "wins": sum(row["result_status"] == "WON" for row in settled_live),
-            "pnl": round(live_pnl, 3),
-            "roi": round(live_pnl / live_staked, 4) if live_staked else None,
-        },
-        "scorecard": scorecard,
-        "gate": gate,
-        "pending_value_older": int(pending_value_older),
-    }
-
-
-def _featured_performance(match_date: str) -> dict:
-    """精選 day + cumulative, priced at the frozen odds each pick was sent at."""
-    from tennis_wc import featured
-    from tennis_wc.database.db import get_connection
-
-    with get_connection() as conn:
-        day = featured.picks_with_results(conn, since=match_date, until=match_date)
-        overall = featured.picks_with_results(conn, until=match_date)
-    return {"daily": featured.performance(day), "overall": featured.performance(overall)}
-
-
-def _roi_row(profile: dict) -> dict:
-    settled = int(profile.get("settled") or 0)
-    return {
-        "bets": settled,
-        "hits": int(profile.get("wins") or 0),
-        "stake": float(profile.get("staked") or settled),
-        "pnl": float(profile.get("pnl") or 0.0),
-    }
-
-
-def _roi_board():
-    """The shared Wong Choi ROI board (``wongchoi_roi``) beside racing_telegram."""
-    shared = PROJECT_DIR.parent / ".agents" / "skills" / "shared_racing" / "scripts"
-    if str(shared) not in sys.path:
-        sys.path.insert(0, str(shared))
-    import wongchoi_roi
-
-    return wongchoi_roi
-
-
-def record_roi_board(match_date: str, snapshot: dict) -> bool:
-    """Write the formal paper-recommendation day + cumulative into the unified ledger.
-
-    2026-11-05 (Kelvin): the old Tennis performance message mixed paper, 14-day,
-    live, eight market families, Brier and the strategy gate, and nobody could
-    read it. Every Wong Choi now reports only bets / hits / ROI / ROI% on one
-    board; Tennis uses the formal paper recommendations (the card's own bets).
-    Returns True when the day had settled formal bets.
-    """
-    # 2026-11-05: the board reports 精選 only (the bets Kelvin is told to place).
-    source = snapshot.get("featured") or snapshot.get("paper") or {}
-    entry = _roi_board().record(
-        "tennis",
-        day=match_date,
-        latest=_roi_row(source.get("daily") or {}),
-        cumulative=_roi_row(source.get("overall") or {}),
-    )
-    return bool((entry.get("latest") or {}).get("bets"))
-
-
-def notify_daily_performance(match_date: str) -> bool:
-    try:
-        snapshot = daily_performance_snapshot(match_date)
-        if not record_roi_board(match_date, snapshot):
-            log(f"ROI board: no settled formal Tennis bets on {match_date}; not sent.")
-            return False
-        message = _roi_board().render(updated="tennis", today=local_today().isoformat())
-    except Exception as exc:  # noqa: BLE001 - review must still complete
-        log(f"Daily-performance notification skipped: {exc}")
-        return False
-    return notify(message, audience="content")
-
-
-def ensure_live_network() -> None:
-    """Fail before creating misleading reports when the task has no network."""
-    payload = run_cli_json("network-check")
-    diagnosis = str(payload.get("diagnosis") or "unknown")
-    if diagnosis != "network_ready":
-        raise TemporaryDataUnavailable(
-            f"live network preflight failed ({diagnosis}); rerun the scheduled "
-            "script with host network access"
-        )
-    log("Live network preflight passed.")
-
-
-def ensure_live_provider_config() -> None:
-    """Refuse unattended cards that silently fell back to mock providers."""
-    payload = run_cli_json("config-check")
-    mock_providers = [
-        name
-        for name in ("tennis_provider", "odds_provider")
-        if str(payload.get(name) or "mock").strip().lower() == "mock"
-    ]
-    if mock_providers:
-        joined = ", ".join(mock_providers)
-        raise AnalysisBoardMissing(
-            "live provider config invalid: "
-            f"{joined} resolved to mock; check TENNIS_ENV_FILE"
-        )
-    log(
-        "Live provider config passed. "
-        f"tennis={payload.get('tennis_provider')} "
-        f"odds={payload.get('odds_provider')}"
-    )
-
-
-def review_previous_day(match_date: str) -> dict:
-    top_up_lowtier_corpus(match_date)
-    top_up_wta_serve_stats(match_date)
-    log(f"Reviewing previous day: {match_date}")
-    payload = run_cli_json("review-date", "--date", match_date)
-    report_path = payload.get("review_report_path")
-    qa_path = payload.get("settlement_qa_report_path")
-    log(f"Review written. summary={report_path or 'none'} qa={qa_path or 'none'}")
-    if os.environ.get("TENNIS_NOTIFY_PERFORMANCE") == "1":
-        notify_daily_performance(match_date)
-    check_featured_forward_milestone()
-    return payload
-
-
-FEATURED_FORWARD_STATE = "featured-forward-state.json"
-
-
-def check_featured_forward_milestone() -> str | None:
-    """AGENTS.md forward rule: push Kelvin the first time a verdict point is reached.
-
-    EXP-20261105-08 精選 forward test: verdicts at 250 and 600 settled picks.
-    Never changes the model or turns on real money; that is Kelvin's call.
-    """
-    from tennis_wc import featured
-    from tennis_wc.database.db import get_connection
-
-    try:
-        with get_connection() as conn:
-            perf = featured.performance(featured.picks_with_results(conn))
-        state_path = LOG_DIR / FEATURED_FORWARD_STATE
-        state = json.loads(state_path.read_text()) if state_path.exists() else {}
-        verdict = featured.forward_verdict(perf)
-        milestone = (featured.FORWARD_FINAL_VERDICT if perf["settled"] >= featured.FORWARD_FINAL_VERDICT
-                     else featured.FORWARD_FIRST_VERDICT if perf["settled"] >= featured.FORWARD_FIRST_VERDICT
-                     else None)
-        if milestone is None or str(milestone) in state:
-            return None
-        roi = f"{perf['roi']:+.1%}" if perf["roi"] is not None else "—"
-        ci = (f"[{perf['ci_low']:+.1%}, {perf['ci_high']:+.1%}]"
-              if perf["ci_low"] is not None else "—")
-        message = (
-            f"🎾 Tennis 精選前向測試夠數（{milestone} 注）\n"
-            f"已結算 {perf['settled']} 注｜中 {perf['wins']}｜ROI {roi}｜95% CI {ci}\n"
-            f"預先登記判決：{verdict}\n"
-            "EXP-20261105-08。系統唔會自動改模型或者開真錢，由 Kelvin 決定。"
-        )
-        if notify(message, audience="primary"):
-            state[str(milestone)] = {"verdict": verdict, "settled": perf["settled"],
-                                     "sent_at": datetime.now().isoformat()}
-            state_path.write_text(json.dumps(state, ensure_ascii=False, indent=2))
-        return verdict
-    except Exception as exc:  # noqa: BLE001 - the review must still complete
-        log(f"精選 forward milestone check skipped: {exc}")
-        return None
-
-
-def sync_dashboard_settlements(match_date: str) -> bool:
-    """Apply native results to confirmed dashboard bets, best effort.
-
-    This runs after the domain review has settled its own trackers.  The
-    exporter only proposes results backed by those native tables, and the
-    Cloudflare endpoint matches by immutable recommendation ID while retaining
-    Kelvin's actual odds and stake.  A dashboard/network failure must not erase
-    an otherwise successful review or stop tomorrow's card.
-    """
-    if not DASHBOARD_SETTLEMENT.is_file():
-        log(f"Dashboard settlement skipped: missing {DASHBOARD_SETTLEMENT}")
-        return False
-    command = [
-        str(PYTHON), str(DASHBOARD_SETTLEMENT),
-        "--date", match_date, "--apply",
-    ]
-    try:
-        # ⚠️ 一定要 encoding="utf-8", errors="replace" —— 見 `run_cmd` 嘅完整說明。
-        # subprocess 輸出係俾人睇嘅 log，永遠唔應該有能力令 run 死。
-        result = subprocess.run(
-            command,
-            cwd=str(PROJECT_DIR.parent),
-            encoding="utf-8",
-            errors="replace",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            timeout=90,
-        )
-    except Exception as exc:  # noqa: BLE001 - dashboard sync is downstream
-        log(f"WARNING: dashboard auto-settlement failed: {exc}")
-        return False
-    output = (result.stdout or "").strip()
-    if output:
-        log(f"Dashboard settlement: {output[-1200:]}")
-    if result.returncode:
-        log(f"WARNING: dashboard auto-settlement exit {result.returncode}")
-        return False
-    return True
-
-
-def top_up_lowtier_corpus(match_date: str) -> None:
-    """Add yesterday's lower-tier results to the corpus Elo is built from.
-
-    The Sackmann/TennisMyLife files carry no ITF, so without this daily top-up
-    the ITF half of the board never accumulates a rating -- and ITF is ~85% of
-    what we price.
-    """
-    try:
-        payload = run_cli_json("build-lowtier-corpus", "--start", match_date)
-        log(f"Lower-tier corpus: {payload.get('matches')} matches, "
-            f"{payload.get('players_created')} new players")
-    except Exception as exc:  # a feed hiccup must not stop the day's analysis
-        log(f"WARNING: lower-tier corpus top-up failed: {exc}")
-
-
-def top_up_wta_serve_stats(match_date: str) -> None:
-    """Pull the last week of official WTA match stats into `wta_match_stats`.
-
-    WTA serve columns have been empty since 2026-06 (Sackmann froze on
-    2026-05-18; TennisMyLife has no WTA). A week, not a day: a tournament's
-    late rounds and a slow stats feed land after the day they were played,
-    and already-stored matches are skipped, so the overlap costs only the
-    match-list requests. Feeds `wta_match_stats` only -- the serve models do
-    not read it until the wiring change passes its own gate.
-    """
-    try:
-        start = (date.fromisoformat(match_date) - timedelta(days=7)).isoformat()
-        payload = run_cli_json("ingest-wta-stats", "--start", start, "--end", match_date)
-        log(f"WTA serve stats: {payload.get('matches_with_stats')} new with stats, "
-            f"{payload.get('matches_without_stats')} without, "
-            f"{payload.get('already_stored')} already stored, "
-            f"{len(payload.get('errors') or [])} errors")
-    except Exception as exc:  # a feed hiccup must not stop the day's review
-        log(f"WARNING: WTA serve stats top-up failed: {exc}")
-
-
-def analyse_next_day(match_date: str, *, today: str | None = None) -> None:
-    """Price a date. How an empty board is read depends on WHICH date.
-
-    Sportsbet does not open tomorrow's book in the evening -- its own listing
-    returns HTTP 200 and two bytes -- so the 18:00 warm pass finding nothing is
-    the ordinary state of the world. The 09:00 pass finding nothing never is.
-    Until 2026-08-11 both raised the same TEMPORARY DATA FAILURE, and the
-    pipeline ran three days dark while every evening looked normal.
-    """
-    from tennis_wc.pipeline_readiness import (
-        HORIZON_NEXT_DAY, SEVERITY_ERROR, SEVERITY_EXPECTED_EMPTY,
-        SEVERITY_RETRY, analysis_readiness, horizon_for,
-    )
-
-    horizon = horizon_for(match_date, today or local_today().isoformat())
-    log(f"Running analysis for {match_date} (horizon={horizon})")
-    payload = run_cli_json("run-daily", "--date", match_date)
-    matches = intish(payload.get("matches_analysed"))
-    source_errors = payload.get("source_errors") or []
-    log(
-        "Analysis complete. "
-        f"matches={payload.get('matches_analysed')} "
-        f"valid={payload.get('valid_feature_snapshots')} "
-        f"dir={payload.get('analysis_dir')}"
-    )
-
-    # A zero-match run caused by upstream data sources failing is NOT a normal
-    # "no bets today" outcome - it means the pipeline never saw any matches.
-    # Make it loud so it is not silently mistaken for a quiet betting day.
-    if matches == 0 and source_errors:
-        sources = ", ".join(str(err.get("source", "?")) for err in source_errors)
-        log(f"WARNING: 0 matches analysed because data sources failed: {sources}. Details: {compact_json(source_errors)}")
-    elif source_errors:
-        # Matches were analysed, but on partial inputs. Still worth a line.
-        log(f"WARNING: {len(source_errors)} data source(s) failed: "
-            f"{_source_names(source_errors)}. Details: {compact_json(source_errors)}")
-    source_warnings = payload.get("source_warnings") or []
-    if source_warnings:
-        log(f"WARNING: {len(source_warnings)} data source(s) degraded: "
-            f"{_source_names(source_warnings)}. Details: {compact_json(source_warnings)}")
-
-    # run-daily owns tracker sync and post-success dashboard deployment.  Keep
-    # this wrapper scheduling-only so manual and scheduled analysis behave the
-    # same and a scheduled run cannot sync or deploy twice.
-    tracker_sync = payload.get("tracker_sync") or {}
-    deploy = payload.get("cloudflare_deploy") or {}
-    log(
-        "Pipeline-owned post-run steps complete. "
-        f"trackers={compact_json(tracker_sync)} "
-        f"dashboard={compact_json(deploy)}"
-    )
-
-    # The database had no retention of any kind and reached 2.6GB, at which
-    # point `disk_headroom` -- which wants two database-widths -- started
-    # refusing to run recovery on a volume with 3.7GB free. Growth is the bug,
-    # so this runs every day rather than being cleaned up by hand when it next
-    # becomes an outage. No VACUUM here on purpose: rebuilding the file needs
-    # room for a second copy, and the blanked pages are reused in place.
-    try:
-        pruned = run_cli_json("prune-raw-responses", "--keep-days", "7")
-        if pruned.get("rows"):
-            if pruned.get("lossless") is not True:
-                raise ValueError("retention response did not attest lossless preservation")
-            log(
-                f"Compacted {pruned['rows']} superseded API payloads losslessly "
-                f"({pruned['bytes_freed'] / 1024 ** 2:.1f}MB inline text; "
-                f"{pruned.get('gzip_bytes_added', 0) / 1024 ** 2:.1f}MB gzip added; no VACUUM)."
-            )
-    except Exception as exc:  # noqa: BLE001 - housekeeping must not lose the day
-        log(f"Retention step skipped: {exc}")
-
-    readiness = analysis_readiness(payload, horizon=horizon)
-    observed = "; ".join(readiness["observed"]) or "none"
-
-    # Emitted on EVERY outcome, before any raise, so a quiet day and a dead
-    # pipeline stop looking the same from the outside.
-    line = daily_health_line(match_date, payload)
-    log("HEALTH " + line.replace("\n", " | "))
-    coverage = payload.get("odds_coverage") or {}
-    log("HEALTH_JSON " + json.dumps({
-        "date": match_date,
-        "horizon": horizon,
-        "severity": readiness["severity"],
-        "fixtures": coverage.get("fixtures"),
-        "priced": coverage.get("priced_matches"),
-        "analysed": payload.get("matches_analysed"),
-        "deploy": deploy.get("status"),
-        "source_errors": len(source_errors),
-        "source_warnings": len(source_warnings),
-    }, ensure_ascii=False))
-    # The push is OPT-IN. The line is always written to the log, but deciding
-    # that Kelvin's phone should buzz every morning is his call, not this
-    # script's. Set TENNIS_NOTIFY_HEALTH=1 in the launcher to turn it on.
-    if horizon != HORIZON_NEXT_DAY and os.environ.get("TENNIS_NOTIFY_HEALTH") == "1":
-        notify(line)
-    if readiness["severity"] == SEVERITY_EXPECTED_EMPTY:
-        # Not a failure. The warm pass exists to discover fixtures; the prices
-        # arrive on the morning pass, which is where the card comes from.
-        log(f"Book not open for {match_date} yet, as expected on a "
-            f"{HORIZON_NEXT_DAY} pass ({observed}). Fixtures warmed; the card "
-            "comes from the 09:00 same-day pass.")
-        return
-    if readiness["severity"] == SEVERITY_ERROR:
-        raise AnalysisBoardMissing(
-            f"analysis for {match_date} is BROKEN, not merely early: {observed}"
-        )
-    if readiness["severity"] == SEVERITY_RETRY:
-        raise TemporaryDataUnavailable(
-            f"analysis for {match_date} is incomplete: {observed}"
-        )
-    # Bets are no longer pushed from here. The old card push sent "資料未就緒"
-    # every day from 2026-10-28 because its gate read cumulative history. The
-    # only betting message is now 精選, sent by `publish_featured`.
-
-
-def publish_featured(match_date: str, run_label: str, *, main: bool) -> list[dict]:
-    """Freeze new 精選 for the date and push them.
-
-    ``main`` (21:00) always sends the full list, even when it is empty. The 23:00
-    and 09:00 passes send only picks they added. Recording never depends on the
-    report's integrity verdict: a match with bad data is simply not a candidate.
-    """
-    from tennis_wc import featured
-    from tennis_wc.database.db import get_connection
-
-    with get_connection() as conn:
-        added = featured.record(conn, match_date, run_label)
-        today = featured.picks_with_results(conn, since=match_date, until=match_date)
-        perf = featured.performance(featured.picks_with_results(conn))
-    log(f"精選 {match_date} @ {run_label}: +{len(added)} (total {len(today)})")
-    if main:
-        message = featured.telegram_message(match_date, today, kind="main", perf=perf)
-    elif added:
-        new_ids = {row["prop_id"] for row in added}
-        fresh = [row for row in today if row["prop_id"] in new_ids]
-        message = featured.telegram_message(match_date, fresh, kind="topup", perf=perf)
-    else:
-        return added
-    if os.environ.get("TENNIS_NOTIFY_BETS") == "1":
-        notify(message, audience="content")
-    return added
-
-
-def archive_previous_day(match_date: str, review_payload: dict) -> None:
-    source = ANTIGRAVITY_DIR / f"{match_date} Tennis Analysis"
-    destination = ARCHIVE_DIR / source.name
-
-    if not source.exists():
-        if destination.exists():
-            log(f"Archive already contains {destination.name}; no live folder to move.")
-            return
-        log(f"No analysis folder found for {match_date}; archive skipped.")
-        return
-
-    if not can_archive(review_payload):
-        log(f"Review did not confirm result extraction for {match_date}; archive skipped.")
-        return
-
-    try:
-        ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
-        final_destination = destination
-        if final_destination.exists():
-            stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-            final_destination = ARCHIVE_DIR / f"{source.name} rerun {stamp}"
-
-        shutil.move(str(source), str(final_destination))
-    except OSError as exc:
-        # CloudStorage can allow report writes but deny the directory rename
-        # used for archival (macOS TCC did exactly that on 2026-09-09).  Archive
-        # organisation is housekeeping: failing it must not skip tomorrow's
-        # analysis or turn an otherwise complete daily workflow red.  Leave the
-        # source in place so a later run or an operator can retry safely.
-        log(
-            f"Archive deferred for {source.name}: {type(exc).__name__}: {exc}. "
-            "Source remains in place; daily analysis will continue."
-        )
-        return
-    log(f"Archived {source.name} -> {final_destination}")
-
-
-def can_archive(payload: dict) -> bool:
-    if not payload.get("review_report_path") or not payload.get("settlement_qa_report_path"):
-        return False
-
-    settlement = payload.get("settlement") or {}
-    tracker = settlement.get("tracker_settlement") or {}
-    combo = settlement.get("combo_settlement") or {}
-    result_health = ((settlement.get("auto_refresh") or {}).get("results") or {})
-    tml = result_health.get("tennismylife") or {}
-    resolver = result_health.get("resolver") or {}
-
-    extracted = any(
-        intish(value) > 0
-        for value in (
-            result_health.get("imported"),
-            result_health.get("winners_seen"),
-            result_health.get("lookup_winners_seen"),
-            tml.get("results_imported"),
-            tml.get("rows_seen"),
-            tml.get("lookup_rows_seen"),
-            resolver.get("event_result_imported"),
-            resolver.get("provider_rows_imported"),
-            resolver.get("local_history_imported"),
-            settlement.get("settled"),
-            tracker.get("settled"),
-            combo.get("settled"),
-        )
-    )
-    pending = sum(
-        intish(value)
-        for value in (
-            settlement.get("pending_without_result"),
-            tracker.get("pending_without_result"),
-            combo.get("pending_without_result"),
-        )
-    )
-    return extracted or pending == 0
-
-
-def run_cli_json(*args: str) -> dict:
-    output = run_cli(*args)
-    payload = last_top_level_json(output)
-    if isinstance(payload, dict):
-        return payload
-    raise RuntimeError(f"Expected JSON object from {' '.join(args)}, got: {output[-500:]}")
-
-
-def last_top_level_json(output: str) -> object:
-    decoder = json.JSONDecoder()
-    parsed: list[object] = []
-    for match in re.finditer(r"(?m)^\{", output):
-        try:
-            payload, _ = decoder.raw_decode(output[match.start() :])
-        except json.JSONDecodeError:
-            continue
-        parsed.append(payload)
-    if parsed:
-        return parsed[-1]
-    return json.loads(output)
-
-
-def run_cli(*args: str) -> str:
-    python = PYTHON if PYTHON.exists() else Path(sys.executable)
-    env = os.environ.copy()
-    env["PYTHONPATH"] = "src"
-    cmd = [str(python), "-m", "tennis_wc.cli", *args]
-    log(f"$ {' '.join(cmd)}")
-    # ⚠️ 一定要 encoding="utf-8", errors="replace" —— 見 `run_cmd` 嘅完整說明。
-    # subprocess 輸出係俾人睇嘅 log，永遠唔應該有能力令 run 死。
-    completed = subprocess.run(
-        cmd,
-        cwd=PROJECT_DIR,
-        env=env,
-        encoding="utf-8",
-        errors="replace",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        check=False,
-    )
-    output = completed.stdout.strip()
-    if output:
-        log(summarise_captured_output(output))
-    completed.check_returncode()
-    return output
-
-
-def summarise_captured_output(output: str) -> str:
-    """Keep a subprocess's head and tail, and SAY how much was left out.
-
-    The CLI prints the whole card as pretty JSON and this wrote all of it. On
-    2026-08-11 the log was 869,771 lines of which 1,075 carried a timestamp:
-    99.88% of the file was one payload shape repeated 76,477 times, and
-    `verify_scheduled_runs.py` -- the tool the 0.2 exit test is read from --
-    reads the file whole.
-
-    Truncating silently would be worse than the size, so the elision states its
-    own line count. The full payload is not lost either: the card is written to
-    the analysis output root, which is where it is meant to be read.
-    """
-    lines = output.splitlines()
-    if len(lines) <= CAPTURED_HEAD_LINES + CAPTURED_TAIL_LINES:
-        return output
-    elided = len(lines) - CAPTURED_HEAD_LINES - CAPTURED_TAIL_LINES
-    return "\n".join(
-        lines[:CAPTURED_HEAD_LINES]
-        + [f"... {elided} lines elided by the scheduler "
-           f"(kept first {CAPTURED_HEAD_LINES} and last {CAPTURED_TAIL_LINES}; "
-           f"the full card is written to the analysis output root) ..."]
-        + lines[-CAPTURED_TAIL_LINES:]
-    )
-
-
-def compact_json(payload: object) -> str:
-    return json.dumps(payload, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
-
-
-def intish(value: object) -> int:
-    try:
-        return int(value or 0)
-    except (TypeError, ValueError):
-        return 0
-
-
-def rotate_log_if_needed(path: Path) -> bool:
-    """Bound the log, keeping enough history for the two-day exit test.
-
-    Nothing rotated it before -- no RotatingFileHandler, no newsyslog entry --
-    and now that both passes are scheduled it grows every day unattended.
-    Rotation keeps LOG_BACKUPS generations, and `verify_scheduled_runs.py` reads
-    the rotated files too, so a rotation cannot quietly erase the evidence the
-    exit test is judged on.
-    """
+def _rotate(path: Path) -> None:
     try:
         if path.stat().st_size < MAX_LOG_BYTES:
-            return False
+            return
     except OSError:
-        return False
+        return
     oldest = path.with_suffix(path.suffix + f".{LOG_BACKUPS}")
     if oldest.exists():
         oldest.unlink()
@@ -1270,78 +66,293 @@ def rotate_log_if_needed(path: Path) -> bool:
         if source.exists():
             source.rename(path.with_suffix(path.suffix + f".{index + 1}"))
     path.rename(path.with_suffix(path.suffix + ".1"))
-    return True
-
-
-def disk_headroom(db_path: Path | None = None) -> dict:
-    """Is there room to finish a run? Settlement rewrites pages and needs a journal.
-
-    Two database-widths, with a 2GB floor. Not a guess pulled from nowhere: the
-    database is 2.5GB and both the repair and the A/B harness clone it, so the
-    working set is multiples of it, and on 2026-08-11 the volume reached zero
-    bytes free with three such copies alive at once.
-    """
-    import shutil
-
-    database = db_path or (PROJECT_DIR / "tennis_wc.db")
-    try:
-        db_bytes = database.stat().st_size
-    except OSError:
-        db_bytes = 0
-    required = max(int(db_bytes * 2.0), 2 * 1024 ** 3)
-    free = shutil.disk_usage(PROJECT_DIR).free
-    return {
-        "ok": free >= required,
-        "free_bytes": free,
-        "required_bytes": required,
-        "detail": f"{free / 1024 ** 3:.1f}GB free, {required / 1024 ** 3:.1f}GB "
-                  f"required for a {db_bytes / 1024 ** 3:.1f}GB database",
-    }
-
-
-def trim_launchd_capture(path: Path) -> bool:
-    """Bound launchd's own stdout/stderr copy, which nothing else can.
-
-    `StandardOutPath` is a second copy of every line `log()` already prints, and
-    launchd never rotates it -- rotation would need a newsyslog.d entry, which
-    needs root. It cannot simply be dropped either: a failure BEFORE python
-    starts (a missing venv, an unreadable launcher) appears only there, and that
-    silence is the failure mode this whole phase exists to remove.
-
-    So it is trimmed in place to its last MAX_LOG_BYTES, keeping the tail, which
-    is where a fresh failure is. Trimmed rather than renamed on purpose: launchd
-    holds the descriptor open for the current run, and a rename would send this
-    run's output to the file nobody looks at.
-    """
-    try:
-        size = path.stat().st_size
-    except OSError:
-        return False
-    if size < MAX_LOG_BYTES:
-        return False
-    try:
-        with path.open("r+b") as handle:
-            handle.seek(size - MAX_LOG_BYTES // 2)
-            tail = handle.read()
-            handle.seek(0)
-            handle.write(b"... earlier lines trimmed by the scheduler; launchd "
-                         b"does not rotate this file ...\n")
-            handle.write(tail)
-            handle.truncate()
-    except OSError:
-        return False
-    return True
 
 
 def log(message: str) -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.now().astimezone().isoformat(timespec="seconds")
-    line = f"[{timestamp}] {message}"
+    line = f"[{datetime.now().astimezone().isoformat(timespec='seconds')}] {message}"
     print(line, flush=True)
     path = LOG_DIR / "tennis_daily_schedule.log"
-    rotate_log_if_needed(path)
+    _rotate(path)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(line + "\n")
+
+
+def notify(text: str, *, audience: str = "primary") -> bool:
+    from tennis_wc.publish.telegram import notify as send
+
+    return send(text, audience=audience)
+
+
+def disk_headroom(db_path: Path | None = None) -> dict:
+    """Twice the database (VACUUM/backup) and at least 2GB must be free."""
+    try:
+        db_bytes = (db_path or PROJECT_DIR / "tennis_wc.db").stat().st_size
+    except OSError:
+        db_bytes = 0
+    required = max(int(db_bytes * 2.0), 2 * 1024 ** 3)
+    free = shutil.disk_usage(PROJECT_DIR).free
+    return {"ok": free >= required, "free_bytes": free, "required_bytes": required,
+            "detail": f"{free / 1024 ** 3:.1f}GB free, {required / 1024 ** 3:.1f}GB required "
+                      f"for a {db_bytes / 1024 ** 3:.1f}GB database"}
+
+
+def preflight() -> None:
+    from tennis_wc.config import get_settings
+    from tennis_wc.database.migrations import init_db
+    from tennis_wc.diagnostics import run_network_check
+
+    diagnosis = run_network_check().get("diagnosis")
+    if diagnosis != "network_ready":
+        raise TemporaryDataUnavailable(f"live network preflight failed ({diagnosis})")
+    settings = get_settings()
+    mock = [name for name in ("tennis_provider", "odds_provider")
+            if str(getattr(settings, name) or "mock").lower() == "mock"]
+    if mock:
+        raise AnalysisBoardMissing(f"live provider config invalid: {', '.join(mock)} resolved to mock")
+    init_db()
+    log(f"Preflight passed. tennis={settings.tennis_provider} odds={settings.odds_provider}")
+
+
+# --------------------------------------------------------------------------- analysis
+
+def analyse(match_date: str, *, today: str) -> dict:
+    """Price one date; raise when readiness says the board is broken or incomplete."""
+    from tennis_wc import run
+    from tennis_wc.database.db import get_connection
+    from tennis_wc.database.maintenance import prune_raw_response_bodies, prune_superseded_feature_snapshots
+
+    log(f"Running analysis for {match_date} (horizon={run.horizon(match_date, today)})")
+    payload = run.price_day(match_date, today=today)
+    errors, warnings = payload["source_errors"], payload["source_warnings"]
+    log(f"Analysis complete. matches={payload['matches_analysed']} valid={payload['valid_feature_snapshots']} "
+        f"props={payload['props_priced']} report={payload['report_path']}")
+    if errors:
+        log(f"WARNING: {len(errors)} source(s) failed: {json.dumps(errors, ensure_ascii=False)[:2000]}")
+    if warnings:
+        log(f"WARNING: {len(warnings)} source(s) degraded: {json.dumps(warnings, ensure_ascii=False)[:2000]}")
+    try:
+        with get_connection() as conn:
+            pruned = prune_raw_response_bodies(conn, keep_days=7, dry_run=False)
+            prune_superseded_feature_snapshots(conn, keep_days=7, dry_run=False)
+        if pruned.get("rows"):
+            log(f"Compacted {pruned['rows']} superseded API payloads losslessly.")
+    except Exception as exc:  # noqa: BLE001 - retention never fails a run
+        log(f"Retention step skipped: {exc}")
+    ready = payload["readiness"]
+    coverage = payload.get("odds_coverage") or {}
+    log("HEALTH_JSON " + json.dumps({
+        "date": match_date, "horizon": ready["horizon"], "severity": ready["severity"],
+        "fixtures": coverage.get("fixtures"), "priced": coverage.get("priced_matches"),
+        "analysed": payload["matches_analysed"], "props": payload["props_priced"],
+        "deploy": (payload.get("cloudflare_deploy") or {}).get("status"),
+        "source_errors": len(errors), "source_warnings": len(warnings)}, ensure_ascii=False))
+    observed = "; ".join(ready["observed"]) or "none"
+    if ready["severity"] == "error":
+        raise AnalysisBoardMissing(f"analysis for {match_date} is BROKEN, not merely early: {observed}")
+    if ready["severity"] == "retry":
+        raise TemporaryDataUnavailable(f"analysis for {match_date} is incomplete: {observed}")
+    if ready["severity"] == "expected_empty":
+        log(f"Book not open for {match_date} yet ({observed}).")
+    return payload
+
+
+def publish(match_date: str, label: str, *, main: bool) -> list[dict]:
+    from tennis_wc.publish.telegram import publish_featured
+
+    try:
+        return publish_featured(match_date, label, main=main)
+    except Exception as exc:  # noqa: BLE001 - never mask the run outcome
+        log(f"精選 {label} failed: {exc}")
+        return []
+
+
+# --------------------------------------------------------------------------- the three jobs
+
+def night(today: date, label: str) -> int:
+    """21:00 main card / 23:00 top-up for tomorrow. Never raises."""
+    target = (today + timedelta(days=1)).isoformat()
+    main = label == "21:00"
+    failure = None
+    try:
+        preflight()
+        analyse(target, today=today.isoformat())
+    except Exception as exc:  # noqa: BLE001 - still publish what was priced
+        failure = f"{type(exc).__name__}: {exc}"
+        log(f"NIGHT {label}: analysis failed: {failure}")
+    added = publish(target, label, main=main and failure is None)
+    if failure and main:
+        notify(f"⚠️ Tennis 21:00 精選抓盤失敗（{target}）：{failure[:300]}\n"
+               f"已記錄 {len(added)} 注；23:00 同明朝 09:00 會再試。")
+    log(f"NIGHT {label}: done, +{len(added)} 精選")
+    return 1 if failure else 0
+
+
+def card(today: date) -> None:
+    """09:00 backup: price today, top up 精選."""
+    try:
+        preflight()
+        analyse(today.isoformat(), today=today.isoformat())
+    finally:
+        publish(today.isoformat(), "09:00", main=False)
+
+
+def daily(today: date) -> None:
+    """18:00: review + settle yesterday, ROI board, archive; warm tomorrow."""
+    from tennis_wc import run
+    from tennis_wc.publish.telegram import forward_milestone, send_roi_board
+
+    yesterday = (today - timedelta(days=1)).isoformat()
+    preflight()
+    _lowtier_corpus(yesterday)
+    log(f"Reviewing previous day: {yesterday}")
+    review = run.review_day(yesterday)
+    log(f"Review: graded={review['settlement']['graded']} voided={review['settlement']['voided']} "
+        f"pending_for_date={review['pending_for_date']}")
+    if os.environ.get("TENNIS_NOTIFY_PERFORMANCE") == "1":
+        try:
+            send_roi_board(yesterday, today.isoformat())
+        except Exception as exc:  # noqa: BLE001
+            log(f"ROI board skipped: {exc}")
+    try:
+        forward_milestone(LOG_DIR)
+    except Exception as exc:  # noqa: BLE001
+        log(f"精選 forward milestone check skipped: {exc}")
+    _dashboard_settlements(yesterday)
+    if run.results_extracted(review):
+        _archive(yesterday)
+    analyse((today + timedelta(days=1)).isoformat(), today=today.isoformat())
+    if today.weekday() == 6:
+        try:
+            from tennis_wc.publish.weekly import send_weekly
+
+            send_weekly(today.isoformat())
+            log("Weekly review sent.")
+        except Exception as exc:  # noqa: BLE001
+            log(f"Weekly review skipped: {exc}")
+
+
+def _lowtier_corpus(match_date: str) -> None:
+    """TennisExplorer scoreboard -> history (the only ITF source)."""
+    from tennis_wc.ingestion.ingest_tennisexplorer_history import ingest_tennisexplorer_history
+
+    try:
+        summary = ingest_tennisexplorer_history(match_date, None)
+        log(f"Lower-tier corpus: {summary.get('matches')} matches, {summary.get('players_created')} new players")
+    except Exception as exc:  # noqa: BLE001
+        log(f"WARNING: lower-tier corpus top-up failed: {exc}")
+
+
+def _dashboard_settlements(match_date: str) -> None:
+    if not DASHBOARD_SETTLEMENT.is_file():
+        return
+    try:
+        result = subprocess.run([sys.executable, str(DASHBOARD_SETTLEMENT), "--date", match_date, "--apply"],
+                                cwd=str(PROJECT_DIR.parent), stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                encoding="utf-8", errors="replace", timeout=90)
+        if result.stdout.strip():
+            log(f"Dashboard settlement: {result.stdout.strip()[-1200:]}")
+    except Exception as exc:  # noqa: BLE001
+        log(f"WARNING: dashboard auto-settlement failed: {exc}")
+
+
+def _archive(match_date: str) -> None:
+    """Move the Drive analysis folder into 'Archieve Tennis Analysis' once results are in."""
+    from tennis_wc.publish.report import drive_dir
+
+    source = drive_dir(match_date)
+    destination = source.parent / "Archieve Tennis Analysis" / source.name
+    if not source.exists():
+        return
+    try:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if destination.exists():
+            destination = destination.with_name(f"{source.name} rerun {datetime.now():%Y%m%d-%H%M%S}")
+        shutil.move(str(source), str(destination))
+        log(f"Archived {source.name} -> {destination}")
+    except OSError as exc:
+        log(f"Archive deferred for {source.name}: {exc}")
+
+
+# --------------------------------------------------------------------------- entry
+
+def _lock(path: Path, wait_seconds: int):
+    handle = path.open("w")
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            return handle
+        except BlockingIOError:
+            if time.monotonic() >= deadline:
+                handle.close()
+                return None
+            time.sleep(30)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--today", help="Override today's Sydney date (YYYY-MM-DD).")
+    parser.add_argument("--source", default="manual", help="launchd / recovery / manual (logged).")
+    parser.add_argument("--refresh-today", action="store_true", help="09:00 backup pass for today.")
+    parser.add_argument("--night", nargs="?", const="auto", choices=("auto", "21:00", "23:00"))
+    parser.add_argument("--control-json", action="store_true", help="Print the control-plane outcome.")
+    parser.add_argument("--force", action="store_true", help=argparse.SUPPRESS)  # passed by recovery
+    args = parser.parse_args(argv)
+
+    today = date.fromisoformat(args.today) if args.today else local_today()
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+    if args.night:
+        label = args.night
+        if label == "auto":
+            label = "21:00" if datetime.now(ZoneInfo(TIMEZONE)).hour < 22 else "23:00"
+        lock = _lock(LOG_DIR / LOCK_NAME, NIGHT_LOCK_WAIT_SECONDS)
+        if lock is None:
+            log(f"NIGHT {label}: scheduler busy for 40 min; giving up.")
+            notify(f"⚠️ Tennis {label} 精選未能開始：排程塞住 40 分鐘。")
+            return 75
+        with lock:
+            log(f"Starting NIGHT {label} for {today + timedelta(days=1)}. run_source={args.source} mode=night")
+            return night(today, label)
+
+    mode = "card" if args.refresh_today else "daily"
+    target = (today if args.refresh_today else today + timedelta(days=1)).isoformat()
+
+    def done(code: int, status: str, reason: str | None = None) -> int:
+        if args.control_json:
+            out = {"status": status, "mode": mode, "target_date": target, "exit_code": code}
+            if reason:
+                out["reason"] = reason
+            print(json.dumps(out, ensure_ascii=False, sort_keys=True))
+        return code
+
+    headroom = disk_headroom()
+    if not headroom["ok"]:
+        log(f"DISK HEADROOM TOO LOW: {headroom['detail']} -- refusing to start.")
+        return done(75, "partial", "disk_headroom_low")
+    lock = _lock(LOG_DIR / LOCK_NAME, 0)
+    if lock is None:
+        log("Another Tennis Wong Choi run is already active; exiting.")
+        return done(0, "blocked", "scheduler_locked")
+    with lock:
+        log(f"Starting {mode} for {target}. run_source={args.source} mode={mode}")
+        try:
+            if args.refresh_today:
+                card(today)
+            else:
+                daily(today)
+        except AnalysisBoardMissing as exc:
+            log(f"BOARD MISSING: {exc}")
+            notify(f"🎾 Tennis Wong Choi — 出唔到咭\n{exc}")
+            return done(70, "failed", "analysis_board_missing")
+        except TemporaryDataUnavailable as exc:
+            log(f"TEMPORARY DATA FAILURE: {exc}")
+            return done(75, "partial", "temporary_data_unavailable")
+        except Exception as exc:  # noqa: BLE001
+            log(f"{mode} failed: {type(exc).__name__}: {exc}")
+            return done(1, "failed", f"{type(exc).__name__}: {exc}")
+        log(f"{'Same-day refresh' if args.refresh_today else 'Scheduled workflow'} complete.")
+        return done(0, "succeeded")
 
 
 if __name__ == "__main__":

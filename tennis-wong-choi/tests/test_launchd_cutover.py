@@ -79,9 +79,11 @@ def test_rendered_launchd_uses_versioned_code_and_existing_runtime(
     assert daily["ProgramArguments"][:2] == ["/bin/zsh", runner]
     assert night["ProgramArguments"] == [
         str(python_bin),
-        str(PROJECT_DIR / "scripts" / "tennis_night_card.py"),
-        "--label",
+        str(PROJECT_DIR / "scripts" / "tennis_daily_schedule.py"),
+        "--night",
         "auto",
+        "--source",
+        "launchd",
     ]
     assert [(t["Hour"], t["Minute"]) for t in night["StartCalendarInterval"]] == [(21, 0), (23, 0)]
     assert night["EnvironmentVariables"]["TENNIS_NOTIFY_BETS"] == "1"

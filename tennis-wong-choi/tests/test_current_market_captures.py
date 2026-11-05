@@ -7,7 +7,7 @@ from conftest import configure_test_db
 from tennis_wc.database.db import get_connection
 from tennis_wc.database.migrations import init_db
 from tennis_wc.ingestion.ingest_odds import _insert_market_odds
-from tennis_wc.props.daily import _rows_for_date
+from tennis_wc.pricing.quotes import rows_for_date as _rows_for_date
 
 
 def test_new_capture_retires_unobserved_lines_and_markets(tmp_path,monkeypatch):
@@ -27,18 +27,11 @@ def test_new_capture_retires_unobserved_lines_and_markets(tmp_path,monkeypatch):
         _insert_market_odds(c,{**row,'markets':[total(24.5)]},1,'sportsbet',2,'2026-06-01T09:00:00Z')
         live=_rows_for_date(c,'2026-06-01')
         assert len(live)==2 and {r['line'] for r in live}=={24.5}
-        # Historical opening reader retains its original contract-first semantics.
-        assert len(_rows_for_date(c,'2026-06-01',earliest_only=True))==6
         _insert_market_odds(c,{**row,'markets':[]},1,'sportsbet',3,'2026-06-01T10:00:00Z')
         assert _rows_for_date(c,'2026-06-01')==[]
         assert c.execute('SELECT COUNT(*) FROM market_odds_snapshots').fetchone()[0]==6
 
 
-def test_different_books_never_share_a_devig_group():
-    from tennis_wc.reports.daily_report import _group_market_rows
-    base=dict(match_id=1,market_key='total_games',market_name='Total Games',line=22.5,source_provider='feed')
-    grouped=_group_market_rows([{**base,'bookmaker':'Book A'},{**base,'bookmaker':'Book B'}])
-    assert len(grouped)==2
 
 
 def test_exact_player_names_with_shared_first_name_have_correct_sides():

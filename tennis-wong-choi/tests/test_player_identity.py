@@ -182,11 +182,11 @@ def test_run_daily_merges_identities_before_building_features():
     history, so a merge that runs after them fixes nothing until the next day.
     """
     import inspect
-    from tennis_wc import cli
+    from tennis_wc import run
 
-    source = inspect.getsource(cli.run_daily)
+    source = inspect.getsource(run.price_day)
     assert "identity_merge" in source, "the merge stage has no caller again"
-    assert source.index("identity_merge") < source.index("feature_snapshots"), (
+    assert source.index("identity_merge") < source.index("predict_matches("), (
         "identities must be folded together BEFORE features read their history"
     )
 
@@ -202,7 +202,7 @@ def test_the_identity_merge_stage_only_applies_confident_plans(tmp_path, monkeyp
     from tennis_wc.database.migrations import init_db
     from tennis_wc.database.db import get_connection
     from tennis_wc.identity.player_identity import ensure_identity_schema
-    from tennis_wc.cli import _merge_player_identities
+    from tennis_wc.run import merge_identities as _merge_player_identities
 
     init_db()
     with get_connection() as conn:
@@ -242,7 +242,7 @@ def test_the_merge_stage_is_idempotent(tmp_path, monkeypatch):
     from tennis_wc.database.migrations import init_db
     from tennis_wc.database.db import get_connection
     from tennis_wc.identity.player_identity import ensure_identity_schema
-    from tennis_wc.cli import _merge_player_identities
+    from tennis_wc.run import merge_identities as _merge_player_identities
 
     init_db()
     with get_connection() as conn:

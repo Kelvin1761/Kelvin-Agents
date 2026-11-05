@@ -48,7 +48,10 @@ def test_the_tier_rail_reads_the_level_not_the_display_name():
     not a rail -- it is the only thing between the model and ITF, which the
     audit measured at Brier +0.0492 worse than the market with P = 0.000.
     """
-    from tennis_wc.props.daily import _tier_bettable, _tier_of
+    from tennis_wc.pricing.props import BETTABLE_TIERS, tier_of as _tier_of
+
+    def _tier_bettable(name, level):
+        return _tier_of(name, level) in BETTABLE_TIERS
 
     # A name that says nothing; the level says everything.
     assert _tier_of("888-2026", "ATP_500") == "TOUR"

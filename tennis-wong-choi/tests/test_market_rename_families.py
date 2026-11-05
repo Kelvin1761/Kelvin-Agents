@@ -87,7 +87,7 @@ def _row(key, name, sel, line, odds):
 
 
 def test_unbracketed_handicaps_pair_main_market_then_balanced():
-    from tennis_wc.props.daily import _spread_odds
+    from tennis_wc.pricing.quotes import spreads as _spread_odds
 
     rows = [
         _row("game_handicap", "Alternative Game Handicap", "Ben Shelton +1.5", 1.5, 1.08),
@@ -102,11 +102,11 @@ def test_unbracketed_handicaps_pair_main_market_then_balanced():
         _row("game_handicap", "Set 2 Game Handicap", "Karen Khachanov +0.5", 0.5, 1.9),
     ]
     out = _spread_odds(rows, META, "player_game_handicap")
-    assert set(out) == {(60, "player_game_handicap", 1.5), (60, "player_game_handicap", 3.5)}
-    one = out[(60, "player_game_handicap", 1.5)]
+    assert set(out) == {1.5, 3.5}
+    one = out[1.5]
     assert one["a"] == {"odds": 1.55, "handicap": -1.5}, "balanced pair, not the 1.08/7.0 one"
     assert one["b"] == {"odds": 2.4, "handicap": 1.5}
-    three = out[(60, "player_game_handicap", 3.5)]
+    three = out[3.5]
     assert three["market_name"] == "Game Handicap", "main market before Alternative"
     assert three["a"]["odds"] == 1.9 and three["a_name"] == "Ben Shelton -3.5"
 
@@ -114,19 +114,19 @@ def test_unbracketed_handicaps_pair_main_market_then_balanced():
         [_row("game_handicap", "Set 1 Game Handicap", "Ben Shelton -1.5", -1.5, 1.8),
          _row("game_handicap", "Set 1 Game Handicap", "Karen Khachanov +1.5", 1.5, 2.0)],
         META, "player_first_set_game_handicap")
-    assert list(first_set) == [(60, "player_first_set_game_handicap", 1.5)]
+    assert list(first_set) == [1.5]
 
 
 def test_bracketed_handicaps_keep_their_old_meaning():
-    from tennis_wc.props.daily import _spread_odds
+    from tennis_wc.pricing.quotes import spreads as _spread_odds
 
     rows = [
         _row("game_handicap", "Game Handicap 3.5", "Ben Shelton (-3.5)", -3.5, 1.9),
         _row("game_handicap", "Game Handicap 3.5", "Karen Khachanov (+3.5)", 3.5, 1.9),
     ]
     out = _spread_odds(rows, META, "player_game_handicap")
-    assert out[(60, "player_game_handicap", 3.5)]["a"] == {"odds": 1.9, "handicap": -3.5}
-    assert out[(60, "player_game_handicap", 3.5)]["a_name"] == "Ben Shelton (-3.5)"
+    assert out[3.5]["a"] == {"odds": 1.9, "handicap": -3.5}
+    assert out[3.5]["a_name"] == "Ben Shelton (-3.5)"
 
 
 @pytest.mark.parametrize("name,family", [
@@ -139,61 +139,9 @@ def test_bracketed_handicaps_keep_their_old_meaning():
     ("Alternative Set 1 Total Games", "match_total_games"),
 ])
 def test_total_games_family(name, family):
-    from tennis_wc.props.registry import family_for_market
+    from tennis_wc.pricing.families import family_for_market
 
     assert family_for_market("total_games", name) == family
-
-
-def test_restored_families_write_rows(db):
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.props.daily import price_ace_props_for_date
-    from tennis_wc.props.registry import family_for_market
-
-    conn = get_connection()
-    price_ace_props_for_date(conn, DATE, log=True)
-    rows = conn.execute("SELECT * FROM prop_tracker").fetchall()
-    families = {family_for_market(r["market_key"]) for r in rows}
-    assert {"player_game_handicap", "player_set_handicap", "player_total_games",
-            "match_total_games"} <= families
-    match_lines = {float(r["line"]) for r in rows
-                   if family_for_market(r["market_key"]) == "match_total_games"}
-    assert match_lines == {22.5}, "a player total must not be priced as a match total"
-    handicaps = {r["market_key"] for r in rows
-                 if family_for_market(r["market_key"]) == "player_game_handicap"}
-    assert handicaps == {"player_game_handicap_1.5", "player_game_handicap_3.5"}
-    gh = [r for r in rows if r["market_key"] == "player_game_handicap_3.5"]
-    assert gh[0]["feed_market_name"] == "Game Handicap"
-    assert gh[0]["feed_selection_name"] == "Ben Shelton -3.5"
-
-
-def test_absent_family_alert_outlives_the_silent_window(db):
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.props.family_health import silent_prop_families
-
-    conn = get_connection()
-
-    def row(day, key, i):
-        conn.execute(
-            """INSERT INTO prop_tracker (prop_key, match_id, match_date, match_label,
-                   market_key, line, selection, decimal_odds, stake_units, recorded_at,
-                   updated_at)
-               VALUES (?, 60, ?, 'x', ?, 1.5, 'Over', 2.0, 0, 'now', 'now')""",
-            (f"{day}|{key}|{i}", day, key),
-        )
-
-    for d in range(1, 32):
-        row(f"2026-08-{d:02d}", "player_game_handicap_3.5", d)
-        row(f"2026-08-{d:02d}", "player_first_set_match_1_win_first", d)
-    for d in range(1, 31):
-        row(f"2026-09-{d:02d}", "player_win_a_set_1", d)
-    conn.commit()
-    # 2026-09-30: both families died on 08-31, 30 days ago -- outside the
-    # 28-day silent baseline, so only the ABSENT check can still see them.
-    alerts = silent_prop_families(conn, "2026-09-30")
-    assert [(a["source"], a["family"]) for a in alerts] == [
-        ("prop_family_absent", "player_game_handicap")
-    ], "withdrawn first-set-and-match is documented, not alarmed"
-    assert alerts[0]["last_active_date"] == "2026-08-31"
 
 
 def _page(event_id=7, groups=("Top Markets", "Game Handicap Markets",
@@ -279,29 +227,3 @@ def test_suspended_group_selections_are_not_prices():
         300, "Set Handicap",
         [("Ben Shelton -1.5", 2.2, "A"), ("Karen Khachanov +1.5", 1.65, "S")]))
     assert market is None, "one live selection is not a two-way market"
-
-
-def test_market_group_coverage_warns_on_dropped_tabs(db):
-    import json
-
-    from tennis_wc.database.db import get_connection
-    from tennis_wc.props.family_health import market_group_coverage
-
-    conn = get_connection()
-    for i, cov in enumerate([
-        {"num_markets": 40, "page_markets": 4, "group_markets_added": 0,
-         "groups_failed": ["Game Handicap Markets: TimeoutError"]},
-        {"num_markets": 40, "page_markets": 4, "group_markets_added": 36, "groups_failed": []},
-    ]):
-        conn.execute(
-            """INSERT INTO raw_api_responses (provider_name, endpoint, request_url_hash,
-                   request_params_json, response_json, status_code, fetched_at,
-                   entity_type, entity_external_id, created_at)
-               VALUES ('sportsbet', '/event-odds', ?, '{}', ?, 200, '2026-10-10T01:00:00Z',
-                       'odds', 'e', 'now')""",
-            (f"h{i}", json.dumps({"market_coverage": cov})),
-        )
-    conn.commit()
-    alerts = market_group_coverage(conn, DATE)
-    assert len(alerts) == 1 and alerts[0]["coverage"] == 0.55
-    assert market_group_coverage(conn, "2026-10-11") == []

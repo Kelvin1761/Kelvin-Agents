@@ -216,7 +216,7 @@ def test_props_settle_from_an_imported_lower_tier_scoreline(tmp_path, monkeypatc
     from tennis_wc.database.migrations import init_db
     from tennis_wc.database.db import get_connection
     from tennis_wc.ingestion import ingest_tennisexplorer
-    from tennis_wc.props.settlement import settle_props
+    from tennis_wc.settle.props import settle_props
     from tennis_wc.providers.tennisexplorer_provider import ParsedResult
 
     init_db()

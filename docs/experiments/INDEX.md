@@ -4,7 +4,8 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
-| [EXP-20261105-08](EXP-20261105-08-tennis-featured-forward.md) | 2026-11-05 | Tennis | 精選：一場一注（edge 最高）、每日最多 10 注、21:00 出 card；取代每日「資料未就緒」card | **前向測試登記（Kelvin 決定）**。可核實 value 注 1,357 注 −10.7% [−15.7,−5.7]、每 family 都負；同場額外注差 15.1pp [+4.2,+25.9]；按信心揀頭 10 注最差。250 注判一次、600 注終判，唔落真錢直到 ELIGIBLE。模型數學冇改 |
+| [EXP-20261106-01](EXP-20261106-01-tennis-rebuild.md) | 2026-11-06 | Tennis | 全面重建（一本帳、7 個定價 family、剷死 code），輸出要同舊引擎一樣 | **結構重建，已驗證等價**。9 日 978 行定價重播 0 差異；11,712 行結算重播 0 差異。src 36,907→約 17,500 行，CLI 47→7 命令，測試 551 全過。模型數學冇改；抓數層只剷死 code（冇原始 HTML 做重播） |
+| [EXP-20261105-10](EXP-20261105-10-tennis-featured-forward.md) | 2026-11-05 | Tennis | 精選：一場一注（edge 最高）、每日最多 10 注、21:00 出 card；取代每日「資料未就緒」card | **前向測試登記（Kelvin 決定）**。可核實 value 注 1,357 注 −10.7% [−15.7,−5.7]、每 family 都負；同場額外注差 15.1pp [+4.2,+25.9]；按信心揀頭 10 注最差。250 注判一次、600 注終判，唔落真錢直到 ELIGIBLE。模型數學冇改 |
 | [EXP-20261105-tennis-component-blockers](EXP-20261105-tennis-card-component-blockers.md) | 2026-11-05 | Tennis | 固定 card 的資格阻擋及三站官方場地來源 | **診斷／來源核實**。45 賽前場次有 28 active warning、17 無有效 component；六場 Challenger 找齊公開標籤，官方 Hard／Hard／Clay，5/6 雙方完整姓名在 draw 唯一吻合。未套用 metadata，qualification 仍 0 |
 | [EXP-20261105-tennis-merged-source-alias](EXP-20261105-tennis-merged-source-alias.md) | 2026-11-05 | Tennis | 以完整來源姓名／tour／最新合併收據讀取正式 ID | **來源修正**。同 476 actor／478 場，衝突 12→3、阻擋 17→6；464 原有解析 ID 不變；固定封存庫 18→7 場，同九筆 plan hash。53 測試過，live DB 無手動寫入，今日 57 場與恢復 9 人 ID／姓名交集 0，未證實準確度提升 |
 | [EXP-20261105-tennis-pregame-phase](EXP-20261105-tennis-pregame-phase-guard.md) | 2026-11-05 | Tennis | 分離明示 live 原文與賽前定價，檢查建構／定價跨開賽時間 | **資料修正**。固定 57 場有 12 已開賽且原文明示 live，篩後 45 場輸入 SHA 一致。qualification 仍 0，無 accuracy 改善證據，發佈以 Central manifest 為準 |

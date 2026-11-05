@@ -41,7 +41,7 @@ def test_tennismylife_candidate_files_include_quali_and_future_wta_itf():
 
 
 def test_bsd_score_payload_extracts_aces_and_double_faults():
-    from tennis_wc.betting.ledger import _score_from_bsd_raw
+    from tennis_wc.settle.results import _score_from_bsd_raw
 
     payload = _score_from_bsd_raw(
         {
@@ -60,7 +60,7 @@ def test_bsd_score_payload_extracts_aces_and_double_faults():
 
 
 def test_result_lookup_dates_include_adjacent_days():
-    from tennis_wc.betting.ledger import _result_lookup_dates
+    from tennis_wc.settle.results import _result_lookup_dates
 
     assert _result_lookup_dates("2026-05-11") == ["2026-05-11", "2026-05-10", "2026-05-12"]
 

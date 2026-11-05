@@ -132,25 +132,6 @@ def test_publication_label_without_receipt_date_cannot_clear_rejected_source_war
     assert "selection_diagnostics" not in result
 
 
-def test_rejected_ranking_diagnostics_do_not_become_feature_input_sources(monkeypatch):
-    from tennis_wc import cli
-    conn = sqlite3.connect(":memory:")
-    conn.row_factory = sqlite3.Row
-    conn.execute("""CREATE TABLE raw_api_responses(id INTEGER PRIMARY KEY,provider_name TEXT,
-                   endpoint TEXT,response_json TEXT,fetched_at TEXT,created_at TEXT)""")
-    conn.executemany("INSERT INTO raw_api_responses VALUES (?,'feed','/rankings','[]','now','now')",
-                     [(1,), (2,)])
-    monkeypatch.setattr(cli, "get_connection", lambda: conn)
-    snapshot = {"player_a": {"current_rank": {"value": 20, "provenance": {
-        "raw_response_id": 1, "ranking_selection_diagnostics": {"rejected_sources": [{
-            "rejected_raw_response_id": 2, "issue": "ranking_source_date_unverified",
-        }]},
-    }}}}
-    captured = cli._research_raw_responses([{"snapshot": snapshot}])
-    assert set(captured) == {1}
-    assert snapshot["player_a"]["current_rank"]["provenance"]["ranking_selection_diagnostics"]["rejected_sources"][0]["rejected_raw_response_id"] == 2
-
-
 def test_cache_uses_only_valid_recent_sources_and_cannot_resurrect_bad_feed():
     conn = connection()
     rows = cached_rankings(conn, "ATP", "2026-10-30", max_age_hours=168, today=date(2026, 10, 29))

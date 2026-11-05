@@ -31,33 +31,31 @@ def prop(c, i=1, recorded="2026-10-26T20:00:00Z", pit=1):
     )
 
 
-def test_exports_every_value_single_and_combo_without_top_two_cap(tmp_path):
+def test_exports_every_value_single_without_top_two_cap(tmp_path):
     path = tmp_path / "db"
     c = database(path)
     for i in range(1, 8):
         prop(c, i)
-    for i in range(1, 5):
-        c.execute(
-            "INSERT INTO combo_tracker VALUES(?,?,1,?,?,?,?,?,?)",
-            (
-                i,
-                str(i),
-                "2026-10-26",
-                "A + B",
-                json.dumps([{"match_id": 1, "selection": "A"}]),
-                3.0,
-                "PENDING",
-                "2026-10-26T20:00:00Z",
-            ),
-        )
     c.commit()
     c.close()
     out = export_tennis_tracking(path)
     assert out["status"] == "valid"
-    assert len(out["records"]) == 11
-    assert len({r["id"] for r in out["records"]}) == 11
+    assert len(out["records"]) == 7
+    assert len({r["id"] for r in out["records"]}) == 7
     assert out["source_counts"]["prop_tracker"] == 7
     assert {r["day"] for r in out["records"]} == {"2026-10-27"}  # Sydney, not source UTC date
+
+
+def test_old_match_market_and_combo_paper_rows_are_not_shown(tmp_path):
+    path = tmp_path / "db"
+    c = database(path)
+    prop(c, 1)
+    c.execute("INSERT INTO combo_tracker VALUES(1,'k',1,'2026-10-26','A + B','[]',3.0,'PENDING','2026-10-26T20:00:00Z')")
+    c.execute("INSERT INTO predictions VALUES(1,1,'2026-10-26','Player A',1.8,'BET','2026-10-26T20:00:00Z')")
+    c.execute("INSERT INTO market_predictions VALUES(1,1,'Player A',1.8,'BET','2026-10-26T20:00:00Z')")
+    c.commit()
+    c.close()
+    assert [r["kind"] for r in export_tennis_tracking(path)["records"]] == ["prop"]
 
 
 def test_late_disputed_unknown_and_void_stay_visible(tmp_path):
@@ -82,22 +80,6 @@ def test_late_disputed_unknown_and_void_stay_visible(tmp_path):
     assert all(r["state"] == "unverified" and not r["point_in_time"] for r in rows)
 
 
-def test_prop_clv_mirror_deduplicated_but_other_market_preserved(tmp_path):
-    path = tmp_path / "db"
-    c = database(path)
-    prop(c)
-    c.executemany(
-        "INSERT INTO clv_tracker VALUES(?,?,?,?,?,?,?,?,?)",
-        [
-            (1, "PROP_RECOMMENDATION", 1, 1, "2026-10-26", "A", 2.0, "WON", "2026-10-26T20:00:00Z"),
-            (2, "MARKET_LEG", 2, 1, "2026-10-26", "B", 3.0, "PENDING", "2026-10-26T20:00:00Z"),
-        ],
-    )
-    c.commit()
-    c.close()
-    rows = export_tennis_tracking(path)["records"]
-    assert len(rows) == 2 and {r["kind"] for r in rows} == {"prop", "market"}
-
 
 def test_native_actual_bets_are_separate_and_use_taken_odds(tmp_path):
     path = tmp_path / "db"
@@ -113,32 +95,6 @@ def test_native_actual_bets_are_separate_and_use_taken_odds(tmp_path):
     assert "unit_profit" not in out["actual_bets"][0]
 
 
-def test_missing_combo_leg_or_naive_timestamp_never_counts_as_pit(tmp_path):
-    path = tmp_path / "db"
-    c = database(path)
-    prop(c, recorded="2026-10-26 20:00:00", pit=None)
-    legs = json.dumps([{"match_id": 1, "selection": "A"}, {"match_id": 999, "selection": "B"}])
-    c.execute("INSERT INTO combo_tracker VALUES(1,'c',1,'2026-10-26','A+B',?,3.,'WON','2026-10-26T20:00:00Z')", (legs,))
-    c.commit()
-    c.close()
-    out = export_tennis_tracking(path)
-    assert len(out["records"]) == 2
-    assert all(not r["point_in_time"] for r in out["records"])
-
-
-def test_repricing_does_not_resurrect_old_bet_when_latest_is_no_bet(tmp_path):
-    path = tmp_path / "db"
-    c = database(path)
-    c.executemany(
-        "INSERT INTO predictions VALUES(?,?,?,?,?,?,?)",
-        [
-            (1, 1, "2026-10-26", "A", 2.0, "BET", "2026-10-26T20:00:00Z"),
-            (2, 1, "2026-10-26", "A", 2.0, "NO_BET", "2026-10-26T21:00:00Z"),
-        ],
-    )
-    c.commit()
-    c.close()
-    assert export_tennis_tracking(path)["records"] == []
 
 
 def test_read_only_and_missing_db_does_not_create_file(tmp_path):
@@ -172,50 +128,7 @@ def test_boolean_player_props_export_verified_subject_for_both_fixture_sides(tmp
     assert all(r["selection"] == "Yes" for r in rows)  # raw saved selection is unchanged
 
 
-def test_combo_leg_subject_is_resolved_against_its_own_fixture(tmp_path):
-    path = tmp_path / "db"
-    c = database(path)
-    legs = [{"match_id": 1, "market_key": "player_win_a_set_2", "selection": "Yes"},
-            {"match_id": 999, "market_key": "player_win_a_set_1", "selection": "Yes"}]
-    c.execute("INSERT INTO combo_tracker VALUES(1,'c',1,'2026-10-26','A+B',?,3.,'PENDING','2026-10-26T20:00:00Z')", (json.dumps(legs),))
-    c.commit()
-    c.close()
-    row = export_tennis_tracking(path)["records"][0]
-    assert row["legs"][0]["subject_player_name"] == "Player B"
-    assert row["legs"][1]["subject_player_name"] is None
 
-
-def test_combo_missing_leg_status_is_unverified_not_pending(tmp_path):
-    path = tmp_path / "db"
-    c = database(path)
-    legs = [{"match_id": 1, "selection": "A"},
-            {"match_id": 1, "selection": "B", "result_status": "LOST"},
-            {"match_id": 1, "selection": "C", "status": "WON"},
-            {"match_id": 1, "selection": "D", "status": "PENDING"}]
-    c.execute("INSERT INTO combo_tracker VALUES(1,'c',1,'2026-10-26','A+B',?,3.,'LOST','2026-10-26T20:00:00Z')", (json.dumps(legs),))
-    c.commit()
-    c.close()
-    row = export_tennis_tracking(path)["records"][0]
-    assert row["state"] == "lost"
-    assert [leg["state"] for leg in row["legs"]] == ["unverified", "lost", "won", "pending"]
-
-
-def test_inconsistent_settled_combo_is_flagged_without_rewriting_raw_financials(tmp_path):
-    path = tmp_path / "db"
-    c = database(path)
-    c.execute("ALTER TABLE combo_tracker ADD COLUMN stake_units REAL")
-    c.execute("ALTER TABLE combo_tracker ADD COLUMN profit_loss_units REAL")
-    legs = json.dumps([{"match_id": 1, "selection": "A"}])
-    for i, profit in ((1, 1.0), (2, 12.0)):
-        c.execute("INSERT INTO combo_tracker VALUES(?,?,1,'2026-10-26','A',?,3.,'WON','2026-10-26T20:00:00Z',6.,?)", (i, str(i), legs, profit))
-    c.commit()
-    c.close()
-    before = path.read_bytes()
-    bad, good = export_tennis_tracking(path)["records"]
-    assert bad["point_in_time"] is True and bad["state"] == "won"
-    assert bad["unit_profit"] is None and "待核實" in bad["integrity_note"]
-    assert good["unit_profit"] == 2.0 and not good.get("integrity_note")
-    assert before == path.read_bytes()
 
 
 def test_featured_picks_use_frozen_odds_and_stay_separate(tmp_path):

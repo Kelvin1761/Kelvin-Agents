@@ -5,9 +5,9 @@ from contextlib import closing
 
 from tennis_wc.database.db import get_connection
 from tennis_wc.database.ranking_reads import RankingReader
-from tennis_wc.database.history_observations import history_active_clause
-from tennis_wc.features.history_values import clean_history_row
-from tennis_wc.features.history_asof import guard_clause, guard_params
+from tennis_wc.model.history import active_clause
+from tennis_wc.model.history import clean_history_row
+from tennis_wc.model.history import as_of_clause, as_of_params
 from tennis_wc.features.common import avg, med, parse_date, rate, shrink_rate, utc_now
 
 
@@ -82,13 +82,13 @@ def calculate_player_rank_bucket_stats(
         WHERE player_id = ? AND match_date < ? AND match_date >= ?
     """
     params: list = [player_id, as_of_date.isoformat(), _window_start(as_of_date, time_window)]
-    query += guard_clause()
-    params.extend(guard_params(as_of_date.isoformat(), start_time))
+    query += as_of_clause()
+    params.extend(as_of_params(as_of_date.isoformat(), start_time))
     if surface:
         query += " AND lower(surface) = lower(?)"
         params.append(surface)
     with get_connection() as conn:
-        rows = [clean_history_row(row) for row in conn.execute(query + f" AND {history_active_clause(conn)}", params).fetchall()]
+        rows = [clean_history_row(row) for row in conn.execute(query + f" AND {active_clause()}", params).fetchall()]
 
     total_wins = sum(1 for row in rows if row["won"])
     prior = rate(total_wins, len(rows)) or 0.5

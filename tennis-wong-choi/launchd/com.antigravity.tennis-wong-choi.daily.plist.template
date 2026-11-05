@@ -1,17 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!--
-  The evening pass: settle and review yesterday, archive it, warm tomorrow's
-  fixtures. The main card still comes from the 09:00 .card pass — Sportsbet
-  has barely opened tomorrow's book at this hour (12 priced matches against
-  47-56 same-day, measured 2026-08-16, and rescanning at 21:18 moved that to
-  13).
-
-  Since 2026-08-16 it ALSO pushes a clearly-labelled early card. `match_date`
-  is the Sydney calendar date, so matches in the small hours are over before
-  the 09:24 card exists: 35.9% of the matches on a pushed card had already
-  started. This pass already analyses and prices that cohort; it was simply
-  barred from sending. A half-open board that says so beats no card at all.
+  18:00 Sydney: settle yesterday, push the ROI board row, archive, and warm
+  tomorrow's fixtures (the 21:00 night pass prints the card).
 -->
 <plist version="1.0">
 <dict>

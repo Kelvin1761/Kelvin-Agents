@@ -38,7 +38,7 @@ def _history(conn, pid, day, *, hold, ret=0.35, surface="hard", opponent_elo=150
 
 def test_profile_reads_only_matches_before_the_date(tmp_path, monkeypatch):
     """The whole point of an as-of feature: no row from the match or later."""
-    from tennis_wc.features.serve_return import serve_return_profile
+    from tennis_wc.model.serve import serve_return_profile
 
     conn = _setup(tmp_path, monkeypatch)
     for day, hold in (("2026-01-01", 0.60), ("2026-02-01", 0.62), ("2026-03-01", 0.64),
@@ -58,7 +58,7 @@ def test_profile_reads_only_matches_before_the_date(tmp_path, monkeypatch):
 
 def test_thin_history_is_reported_not_hidden(tmp_path, monkeypatch):
     """Half the priced board has no serve history; a caller must be able to tell."""
-    from tennis_wc.features.serve_return import serve_return_profile, MIN_SAMPLES
+    from tennis_wc.model.serve import serve_return_profile, MIN_SAMPLES
 
     conn = _setup(tmp_path, monkeypatch)
     for index in range(MIN_SAMPLES - 1):
@@ -73,7 +73,7 @@ def test_thin_history_is_reported_not_hidden(tmp_path, monkeypatch):
 
 def test_surface_narrows_the_window_but_never_empties_it(tmp_path, monkeypatch):
     """Surface is recorded on 46.2% of rows; a filter would empty half the board."""
-    from tennis_wc.features.serve_return import serve_return_profile
+    from tennis_wc.model.serve import serve_return_profile
 
     conn = _setup(tmp_path, monkeypatch)
     for index in range(8):
@@ -94,7 +94,7 @@ def test_surface_narrows_the_window_but_never_empties_it(tmp_path, monkeypatch):
 
 def test_break_point_ratios_come_with_their_denominator(tmp_path, monkeypatch):
     """A save rate is only as good as the number of break points behind it."""
-    from tennis_wc.features.serve_return import serve_return_profile
+    from tennis_wc.model.serve import serve_return_profile
 
     conn = _setup(tmp_path, monkeypatch)
     for index in range(6):
@@ -111,7 +111,7 @@ def test_break_point_ratios_come_with_their_denominator(tmp_path, monkeypatch):
 
 def test_opponent_strength_travels_with_the_rates(tmp_path, monkeypatch):
     """78% hold against ITF opposition is not 78% against a tour returner."""
-    from tennis_wc.features.serve_return import serve_return_profile
+    from tennis_wc.model.serve import serve_return_profile
 
     conn = _setup(tmp_path, monkeypatch)
     for index in range(6):
@@ -129,8 +129,8 @@ def test_hold_model_reduces_to_the_rolling_average_at_zero_weights():
     against an actual hold SD of 0.1768, which is 0.37% of one standard
     deviation. Real and far too small to move a price against a 5-7% takeout.
     """
-    from tennis_wc.features.serve_return import ServeReturnProfile
-    from tennis_wc.props.hold_model import estimate_hold
+    from tennis_wc.model.serve import ServeReturnProfile
+    from tennis_wc.model.serve import estimate_hold
 
     def profile(hold, return_points, opponent_elo, matches=20):
         return ServeReturnProfile(
@@ -173,7 +173,7 @@ def test_simulator_reproduces_the_settled_record():
     directly.
     """
     import statistics
-    from tennis_wc.props.match_simulator import simulate_match
+    from tennis_wc.model.simulate import simulate_match
 
     even = simulate_match(0.75, 0.75, trials=3000)
     total = statistics.mean(a + b for a, b in zip(even.games_a, even.games_b))
@@ -193,7 +193,7 @@ def test_simulator_reproduces_the_settled_record():
             if min(a, b) == 0
         ) / distribution.trials
 
-    from tennis_wc.props.match_simulator import FITTED_HOLD_GAP_DISPERSION
+    from tennis_wc.model.simulate import FITTED_HOLD_GAP_DISPERSION
 
     fixed = simulate_match(0.80, 0.72, trials=4000, dispersion=0.0)
     dispersed = simulate_match(0.80, 0.72, trials=4000,
@@ -209,7 +209,7 @@ def test_simulator_reproduces_the_settled_record():
 
     lopsided = simulate_match(0.90, 0.60, trials=3000)
     assert lopsided.expected_margin() > 4.0
-    assert lopsided.player_wins_a_set("a") > 0.95
+    assert sum(1 for b in lopsided.sets_b if b <= 1) / lopsided.trials > 0.95  # A wins a set
     assert statistics.mean(
         a + b for a, b in zip(lopsided.games_a, lopsided.games_b)
     ) < total, "a one-sided match is shorter"
@@ -219,8 +219,8 @@ def test_simulator_reproduces_the_settled_record():
             == simulate_match(0.8, 0.7, trials=500).games_a)
 
     # Monotone in the server's hold.
-    weak = simulate_match(0.70, 0.75, trials=2000).player_games_over(9.5)
-    strong = simulate_match(0.85, 0.75, trials=2000).player_games_over(9.5)
+    weak = simulate_match(0.70, 0.75, trials=2000).player_games_over_a(9.5)
+    strong = simulate_match(0.85, 0.75, trials=2000).player_games_over_a(9.5)
     assert strong > weak
 
 
@@ -234,12 +234,12 @@ def test_fitted_hold_model_uses_the_whole_profile():
     server's own hold rate (+0.209), which is the only serve column the
     hand-set model reads at all.
     """
-    from tennis_wc.features.serve_return import ServeReturnProfile
-    from tennis_wc.props.hold_model import (
+    from tennis_wc.model.serve import ServeReturnProfile
+    from tennis_wc.model.serve import (
         estimate_hold, estimate_hold_fitted, fitted_feature_names,
         fitted_feature_row,
     )
-    from tennis_wc.props import hold_coefficients
+    from tennis_wc.model import serve as hold_coefficients
 
     assert set(fitted_feature_names()) == set(hold_coefficients.COEFFICIENTS), (
         "the feature contract and the exported coefficients have diverged; "
@@ -282,9 +282,9 @@ def test_fitted_hold_model_uses_the_whole_profile():
 
 def test_fitted_hold_falls_back_when_the_export_is_stale():
     """A coefficient file that no longer matches the features must degrade."""
-    from tennis_wc.features.serve_return import ServeReturnProfile
-    from tennis_wc.props import hold_coefficients
-    from tennis_wc.props.hold_model import estimate_hold, estimate_hold_fitted
+    from tennis_wc.model.serve import ServeReturnProfile
+    from tennis_wc.model import serve as hold_coefficients
+    from tennis_wc.model.serve import estimate_hold, estimate_hold_fitted
 
     def profile(hold, return_points):
         return ServeReturnProfile(
