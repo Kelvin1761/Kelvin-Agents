@@ -308,7 +308,8 @@ CLASS_MICRO_WEIGHTS = {
 }
 
 CONSISTENCY_MICRO_WEIGHTS = {
-    "career0_base": 52.4,
+    # EXP-20261105-09 研究開關（只喺分支）：WC_AU_DEBUT_NEUTRAL=1 → 初出「冇證據」= 60。
+    "career0_base": 60.0 if os.environ.get("WC_AU_DEBUT_NEUTRAL") == "1" else 52.4,
     "base": 64.6,
     "recent_place_bonus": 7.86,
     "recent_poor_pen": -2.7,
