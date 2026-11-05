@@ -4,7 +4,7 @@ import json
 from collections import defaultdict
 
 from tennis_wc.database.db import get_connection
-from tennis_wc.database.history_observations import history_active_clause
+from tennis_wc.model.history import active_clause
 from tennis_wc.features.elo import elo_probability
 from tennis_wc.ingestion.ingest_sackmann import HISTORY_PROVIDERS
 from tennis_wc.ingestion.ingest_tennisexplorer_history import (
@@ -47,7 +47,7 @@ def build_sackmann_elo(initial_rating: float = 1500.0, k_factor: float | None = 
                        match_date, surface
                 FROM player_match_history
                 WHERE source_provider IN ({_PROVIDER_PLACEHOLDERS}) AND won = 1
-                  AND {history_active_clause(conn)}
+                  AND {active_clause()}
                 ORDER BY match_date, {source_order}
                 """,
                 ELO_PROVIDERS,

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from tennis_wc.database.history_observations import history_active_clause, upsert_history_observation, KNOCKOUT
+from tennis_wc.database.history_observations import upsert_history_observation, KNOCKOUT
+from tennis_wc.model.history import active_clause
 from tennis_wc.features.round_labels import normalise_round
 
-from tennis_wc.features.history_values import clean_history_row
+from tennis_wc.model.history import clean_history_row
 
 import csv
 import re
@@ -251,7 +252,7 @@ def _history_pair_exists(provider: str, winner_id: int, loser_id: int, match_dat
     with get_connection() as conn:
         rows = conn.execute(
             f"""SELECT round, won FROM player_match_history
-                WHERE {history_active_clause(conn)} AND source_provider = ?
+                WHERE {active_clause()} AND source_provider = ?
                   AND player_id = ? AND opponent_id = ? AND tour = ?
                   AND tournament_external_id = ? AND format = ?""",
             (provider, winner_id, loser_id, tour, str(event["tourney_id"]), match_format),

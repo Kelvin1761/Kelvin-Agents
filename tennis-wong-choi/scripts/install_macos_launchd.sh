@@ -1,27 +1,16 @@
 #!/bin/zsh
 set -eu
 
-# Installs the two scheduled passes plus guarded card recovery.
+# Installs the Tennis Wong Choi launchd jobs (Sydney time):
 #
-#   .night  21:00 — 精選 card for TOMORROW; 23:00 top-up (Kelvin 2026-11-05)
-#   .card   09:00 — backup top-up for TODAY (--refresh-today)
-#   .daily  18:00 — settles and reviews yesterday, archives, warms tomorrow
-#   .recovery 10:30/12:30 — restores a missing card OR a stale dashboard
-#   .preclose every 30 min — near-start odds capture for CLV only (preclose
-#             tables; never read by the card or replays)
+#   .night    21:00 精選 card for TOMORROW; 23:00 top-up (new picks only)
+#   .card     09:00 backup: re-prices TODAY, 補充精選 only when new picks appear
+#   .daily    18:00 settles yesterday, ROI board, archive, warms tomorrow
+#   .recovery 10:30/12:30 reruns a failed 09:00 pass or a stale dashboard
+#   .preclose every 30 min: near-start price of each 精選 match (closing price)
 #
-# The split exists because Sportsbet does not open tomorrow's book in the
-# evening. Its own listing returns HTTP 200 and two bytes at 18:07 and 55
-# events for the same date at 09:08, so the evening job structurally cannot
-# price the card. Before 2026-08-11 it was the only scheduled job; the morning
-# pass was run by hand, and when that stopped the pipeline ran three days dark
-# while every evening's log looked normal.
-#
-# 09:00 is also the price the backtest measured: `earliest_odds=True` takes
-# each selection's first snapshot, which for almost every date is this run.
-#
-# Location-independent, unlike the version this replaces, which still pointed
-# at the Google Drive path the repo left in the 2026-07-14 migration.
+# Location-independent: WC_TENNIS_RUNTIME_ROOT points at the live data checkout
+# (database, .venv, logs); the scripts run from this checkout.
 
 PROJECT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 DEST_DIR="$HOME/Library/LaunchAgents"
@@ -79,8 +68,7 @@ mkdir -p "$DEST_DIR" "$TENNIS_LOG_DIR"
 chmod +x "$PROJECT_DIR/scripts/run_tennis_daily_schedule.sh" \
          "$PROJECT_DIR/scripts/tennis_daily_schedule.py" \
          "$PROJECT_DIR/scripts/tennis_card_recovery.py" \
-         "$PROJECT_DIR/scripts/tennis_preclose_refresh.py" \
-         "$PROJECT_DIR/scripts/tennis_night_card.py"
+         "$PROJECT_DIR/scripts/tennis_preclose_refresh.py"
 
 install_one() {
   local label="$1"

@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import date
 
 from tennis_wc.database.db import get_connection
-from tennis_wc.database.history_observations import history_active_clause
-from tennis_wc.features.history_values import clean_history_row
-from tennis_wc.features.history_asof import guard_clause, guard_params
+from tennis_wc.model.history import active_clause
+from tennis_wc.model.history import clean_history_row
+from tennis_wc.model.history import as_of_clause, as_of_params
 from tennis_wc.features.common import avg, rate, shrink_rate, utc_now
 from tennis_wc.features.opponent_rank_buckets import get_opponent_rank_at_match_date
 from tennis_wc.features.common import parse_date
@@ -26,13 +26,13 @@ def _rows(player_id: int, tournament_level: str, surface: str | None, as_of_date
         WHERE player_id = ? AND upper(tournament_level) = upper(?) AND match_date >= ? AND match_date < ?
     """
     params: list = [player_id, tournament_level, start, end]
-    query += guard_clause()
-    params.extend(guard_params(as_of_date.isoformat(), start_time))
+    query += as_of_clause()
+    params.extend(as_of_params(as_of_date.isoformat(), start_time))
     if surface:
         query += " AND lower(surface) = lower(?)"
         params.append(surface)
     with get_connection() as conn:
-        return [clean_history_row(row) for row in conn.execute(query + f" AND {history_active_clause(conn)}", params).fetchall()]
+        return [clean_history_row(row) for row in conn.execute(query + f" AND {active_clause()}", params).fetchall()]
 
 
 def _summarise(rows: list[dict]) -> dict:

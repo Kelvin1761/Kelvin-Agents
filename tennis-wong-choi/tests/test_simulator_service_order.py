@@ -1,7 +1,7 @@
 """ITF Rules 14 and 5(b): service order continues across set boundaries."""
 import pytest
 
-from tennis_wc.props import match_simulator as model
+from tennis_wc.model import simulate as model
 
 
 @pytest.mark.parametrize('first_score,second_server',[

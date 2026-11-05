@@ -3,13 +3,12 @@ from __future__ import annotations
 import pytest
 
 
-def _seed_prop(tmp_path, monkeypatch, *, market_key="player_win_a_set_1"):
+def _seed_prop(tmp_path, monkeypatch, *, market_key="player_win_a_set_1", featured=True):
     from conftest import configure_test_db
 
     configure_test_db(tmp_path, monkeypatch)
     from tennis_wc.database.db import get_connection
     from tennis_wc.database.migrations import init_db
-    from tennis_wc.props.settlement import record_prop
 
     init_db()
     now = "2026-08-13T00:00:00Z"
@@ -30,28 +29,19 @@ def _seed_prop(tmp_path, monkeypatch, *, market_key="player_win_a_set_1"):
             "VALUES (1,'m1','ATP','2026-08-14',1,1,2,'R32','test',?,?)",
             (now, now),
         )
-        record_prop(
-            conn,
-            match_id=1,
-            match_date="2026-08-14",
-            match_label="A v B",
-            market_key=market_key,
-            line=0.5,
-            selection="A",
-            side="over",
-            prop_scope="player_win_set",
-            subject_player_id=1,
-            decimal_odds=1.90,
-            model_prob=0.60,
-            market_prob_fair=0.52,
-            blended_prob=0.56,
-            edge=0.08,
-            ev=0.14,
-            predicted_mean=0.60,
-            stake_units=1.0,
-            is_value=True,
-        )
-        return int(conn.execute("SELECT id FROM prop_tracker").fetchone()[0])
+        conn.execute(
+            "INSERT INTO prop_tracker (prop_key,match_id,match_date,match_label,market_key,line,"
+            "selection,side,prop_scope,subject_player_id,decimal_odds,model_prob,market_prob_fair,"
+            "blended_prob,edge,ev,predicted_mean,stake_units,is_value,result_status,recorded_at,updated_at) "
+            "VALUES ('k',1,'2026-08-14','A v B',?,0.5,'A','over','player_win_set',1,1.9,0.6,0.52,0.56,"
+            "0.08,0.14,0.6,1.0,1,'PENDING',?,?)", (market_key, now, now))
+        prop_id = int(conn.execute("SELECT id FROM prop_tracker").fetchone()[0])
+        if featured:
+            conn.execute(
+                "INSERT INTO featured_picks (prop_id,match_id,match_date,rank,run_label,market_key,selection,"
+                "start_time_utc,odds,featured_at) VALUES (?,1,'2026-08-14',1,'21:00',?,'A',"
+                "'2026-08-14T10:00:00Z',1.9,?)", (prop_id, market_key, now))
+        return prop_id
 
 
 def test_live_prop_ledger_records_only_an_already_placed_manual_bet(
@@ -59,7 +49,7 @@ def test_live_prop_ledger_records_only_an_already_placed_manual_bet(
 ):
     prop_id = _seed_prop(tmp_path, monkeypatch)
     from tennis_wc.database.db import get_connection
-    from tennis_wc.props.live_bets import record_live_prop_bet
+    from tennis_wc.store.live_bets import record_live_prop_bet
 
     payload = record_live_prop_bet(
         prop_id=prop_id,
@@ -82,7 +72,7 @@ def test_live_prop_ledger_refuses_duplicate_or_oversized_records(
     tmp_path, monkeypatch
 ):
     prop_id = _seed_prop(tmp_path, monkeypatch)
-    from tennis_wc.props.live_bets import record_live_prop_bet
+    from tennis_wc.store.live_bets import record_live_prop_bet
 
     with pytest.raises(ValueError, match="exceeds.*0.5u"):
         record_live_prop_bet(prop_id=prop_id, odds_taken=1.90, stake_aud=1.00)
@@ -91,11 +81,9 @@ def test_live_prop_ledger_refuses_duplicate_or_oversized_records(
         record_live_prop_bet(prop_id=prop_id, odds_taken=1.90, stake_aud=0.50)
 
 
-def test_live_prop_ledger_refuses_a_held_back_family(tmp_path, monkeypatch):
-    prop_id = _seed_prop(
-        tmp_path, monkeypatch, market_key="player_game_handicap_1"
-    )
-    from tennis_wc.props.live_bets import record_live_prop_bet
+def test_live_prop_ledger_refuses_a_prop_that_is_not_featured(tmp_path, monkeypatch):
+    prop_id = _seed_prop(tmp_path, monkeypatch, featured=False)
+    from tennis_wc.store.live_bets import record_live_prop_bet
 
-    with pytest.raises(ValueError, match="not on the live family allowlist"):
+    with pytest.raises(ValueError, match="only 精選 picks"):
         record_live_prop_bet(prop_id=prop_id, odds_taken=1.90, stake_aud=0.50)

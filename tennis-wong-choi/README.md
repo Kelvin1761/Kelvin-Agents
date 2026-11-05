@@ -1,121 +1,47 @@
 # Tennis Wong Choi
 
-Python tennis pricing engine for ATP/WTA match and player-prop analysis.
+Prices Sportsbet tennis player props from a match model, picks up to 10 精選
+a day (one per match), and tracks them as a pre-registered paper forward test
+(EXP-20261105-10). No real money until that test passes.
 
-This MVP implements Stage 1-5:
+Rebuilt 2026-11-06 (`docs/plans/2026-11-06-tennis-rebuild-log.md`): one
+ledger, seven priced families, prices proven identical to the old engine by
+replay (`docs/experiments/patches/tennis_rebuild/`).
 
-- Provider interfaces and mock providers
-- Raw API response storage
-- SQLite schema and entity mapping
-- Rankings history and tournament metadata
-- Data provenance validation
-- Opponent rank bucket, tournament level, round, big-match, BO format, and Elo bucket feature builders
-- Feature snapshot builder
-- Weighted probability pricing
-- Fair odds, no-vig market probability, edge, minimum acceptable odds
-- Bet filter and stake sizing
-- Extensible player-prop registry and settlement for player aces, double
-  faults, player games won, player to win at least one set, first-set winner,
-  full-match game handicap, set handicap, and BO3 exact set score
-- Per-family model-vs-market scorecards and evidence-gated recommendations
-- Data-grounded deterministic agent reviews
-- CLI and unit tests
+## Layout (`src/tennis_wc/`)
 
-The system refuses LLM-generated statistics. Numeric features must be backed by provenance from an API response or stored API snapshot.
+| Package | Does |
+|---|---|
+| `ingestion/`, `providers/`, `identity/` | Sportsbet / ESPN / TennisMyLife / TennisExplorer / rankings → SQLite, with event-id, pre-match and identity guards |
+| `features/`, `modelling/` | per-player feature snapshots and the match-win model (Elo backbone + nudges) |
+| `model/` | serve/hold, simulator, set table, market blend, as-of history reads |
+| `pricing/` | prop quotes → ledger rows (`props.price_date`) |
+| `select/featured.py` | 精選: one per match, edge → EV → odds, ≤10 a day, frozen at first price |
+| `store/` | ledger writes, pricing evidence, result consensus, predictions, manual live bets |
+| `settle/` | results fetch and prop settlement |
+| `publish/` | report file, Telegram, weekly timing check, dashboard deploy |
+| `run.py` | the daily pipeline: `price_day`, `review_day`, `settle_backlog`, `readiness` |
 
-Superseded history response and feature bodies are retained losslessly as
-hash-verified gzip BLOBs in the same SQLite database. Recent/latest bodies stay
-inline. Use `tennis_wc.database.payload_archive.read_payload` to read either
-representation: an empty inline body alone does not prove missing source data.
-Full SQLite backups must include `retained_payload_blobs` and
-`retained_payload_refs`. Older readers do not understand this representation;
-restoring older code may require its matching full database backup. Legacy
-empty cells without a retention receipt remain missing. See the
-[retention audit](../docs/audits/tennis-lossless-retention-20261029.md) for the
-storage contract and full-corpus verification; compression grants no new
-point-in-time evidence eligibility.
-
-## Active Betting Strategy
-
-The report separates research prices from registered family recommendation tiers.
-The current rules are generated from the code in [the strategy reference](docs/generated_strategy_reference.md).
-Regenerate it after changing registered limits or gate predicates:
-
-```bash
-PYTHONPATH=src python scripts/generate_strategy_reference.py
-PYTHONPATH=src python scripts/generate_strategy_reference.py --check
-```
-
-`hit_probability` is a model estimate; `confidence_score` describes evidence quality.
-Neither the label nor a historical curve proves live calibration or profit.
-The evidence gate includes Brier, credible-profit and probe routes with sample,
-recency, drawdown and stake restrictions. Missing pricing-time quality receipts
-remain UNKNOWN. Paper results and manually recorded live bets stay separate.
-
-The embedded ace calibration curves are frozen on history strictly before
-2026-05-10, the first available evaluation slate. Rebuild them with
-`scripts/build_ace_calibration.py --before YYYY-MM-DD` whenever validating a
-new historical window, so holdout results never leak into the probability
-curve.
-
-## Quick Start
+## Commands
 
 ```bash
 cd tennis-wong-choi
-python -m tennis_wc.cli init-db
-python -m tennis_wc.cli config-check
-python -m tennis_wc.cli provider-smoke --provider tennis --date 2026-05-08 --tour ATP
-python -m tennis_wc.cli provider-smoke --provider odds --date 2026-05-08
-python -m tennis_wc.cli run-daily --date 2026-05-08
-python -m tennis_wc.cli predict-daily --date 2026-05-08
-python -m tennis_wc.cli run-agents --date 2026-05-08
-python -m tennis_wc.cli generate-report --date 2026-05-08
-python -m tennis_wc.cli performance-report
-python -m tennis_wc.cli record-bet --prediction-id 1 --odds 2.08 --stake 0.5
-python -m tennis_wc.cli fetch-closing-odds --date 2026-05-08
-python -m tennis_wc.cli settle-bets --date 2026-05-08
-python -m tennis_wc.cli backtest --start 2026-05-08 --end 2026-05-08
-python -m tennis_wc.cli fetch-event-odds --event-id SPORTSBET_URL_OR_EVENT_ID --match-id 1
-PYTHONPATH=src .venv/bin/python scripts/replay_prop_strategy.py --through 2026-08-01
-python -m pytest
+PYTHONPATH=src .venv/bin/python -m tennis_wc.cli --help      # init-db, price, review, featured, record-live-prop-bet
+PYTHONPATH=src .venv/bin/python -m pytest -q
 ```
 
-The default provider is `mock`, so no paid API keys are required.
+## Schedule (Sydney, `scripts/tennis_daily_schedule.py`, launchd in `launchd/`)
 
-## Scheduled Telegram Messages
+| When | Job | Telegram |
+|---|---|---|
+| 21:00 | price tomorrow, record 精選 | main card to Kelvin + Heison (always, 0–10 picks) |
+| 23:00 | re-price tomorrow | 補充精選, only if new picks |
+| 09:00 | re-price today | 補充精選, only if new picks |
+| 18:00 | settle yesterday, ROI board, archive, warm tomorrow; Sundays the timing check | ROI board row (if settled picks); weekly check to Kelvin |
+| 10:30, 12:30 | recovery of a failed 09:00 run | failures only |
+| every 30 min | near-start price capture for 精選 matches | none |
 
-macOS launchd可由任何approved code checkout安裝，而毋須外置launcher。安裝時用
-`WC_TENNIS_RUNTIME_ROOT`指向現有live data checkout；生成嘅plist會由approved checkout
-執行versioned scripts，但`DATABASE_URL`、`TENNIS_PYTHON_BIN`（現有`.venv`）、logs同
-`TENNIS_ANALYSIS_OUTPUT_ROOT`仍留喺指定runtime／Google Drive位置。Installer只改scheduler
-設定，唔搬或刪除SQLite、venv同data。
-
-The 09:00 Sydney same-day card sends two separate messages after a successful
-analysis:
-
-- the operational health/completion message goes to
-  `WC_NOTIFY_TELEGRAM_CHAT` only;
-- the formal "what to bet today" card goes to the primary chat and every
-  comma- or semicolon-separated chat in `WC_NOTIFY_TELEGRAM_EXTRA`.
-
-The betting message is built from the final report's `今日落注建議` section.
-It includes only formal `EARLY_MAIN` / `VALIDATED` recommendations and their
-listed odds, stake, estimated hit probability and confidence. Watchlists,
-research-only rows and match-winner reference rows are never promoted into the
-message. A valid no-bet day sends an explicit no-bet conclusion to both
-recipients. Failed or incomplete analysis sends no betting card.
-
-The launchd card job enables this with `TENNIS_NOTIFY_BETS=1`; guarded recovery
-does the same when it successfully rebuilds a missing card. Run
-`scripts/tennis_daily_schedule.py --notify-self-test` to validate the bot and
-all configured content recipients without sending a message.
-
-The 18:00 review job separately enables `TENNIS_NOTIFY_PERFORMANCE=1`. After
-yesterday's settlement it sends a Hong Kong Chinese performance card with
-daily and cumulative formal paper ROI, every player-prop family's fixed recent
-window, model-vs-market Brier, stale pending count and the current evidence
-gate. Paper recommendations and manually recorded live bets are always shown
-as separate ledgers; when no live bet has been recorded the message says so.
+Install: `WC_TENNIS_RUNTIME_ROOT=<live checkout>/tennis-wong-choi scripts/install_macos_launchd.sh`.
 
 ## Provider Notes
 
@@ -155,14 +81,6 @@ python -m tennis_wc.cli fetch-odds --date 2026-05-10
 
 Before real daily analysis, bootstrap the stable historical backbone:
 
-```bash
-python -m tennis_wc.cli bootstrap-sackmann-history --start-year 2025 --end-year 2026
-python -m tennis_wc.cli build-sackmann-elo
-python -m tennis_wc.cli calibrate-sackmann-elo --start 2025-01-01 --end 2026-04-30
-python -m tennis_wc.cli fetch-upcoming-matches --date 2026-05-10
-python -m tennis_wc.cli fetch-odds --date 2026-05-10
-python -m tennis_wc.cli build-features --date 2026-05-10
-```
 
 Safety guard: if core Elo inputs are missing, the bet filter forces `NO_BET`.
 

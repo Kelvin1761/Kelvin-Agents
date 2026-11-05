@@ -5,7 +5,7 @@ import hashlib
 import json
 import re
 
-from tennis_wc.features.history_values import clean_history_row
+from tennis_wc.model.history import clean_history_row
 from tennis_wc.features.round_labels import normalise_round
 from tennis_wc.ingestion.raw_response_store import utc_now
 

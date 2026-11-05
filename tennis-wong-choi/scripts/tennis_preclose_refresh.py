@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scheduled near-start odds capture, so a prop CLOSE can differ from the bet.
+"""Scheduled near-start odds capture, so a 精選 pick has a closing price.
 
 Measured read-only on 2026-10-14 (props since 2026-09-01 with a feed identity
 and a start time): 2,839 of 2,882 props with any pre-start snapshot had EXACTLY
@@ -7,7 +7,7 @@ one, median 3.8h before the start. Close == price evaluated, so prop CLV was
 zero by construction and told us nothing.
 
 Every 30 minutes (launchd `com.antigravity.tennis-wong-choi.preclose`) this
-fetches the event page of each EVALUATED match (prop_tracker / clv_tracker)
+fetches the event page of each match carrying a 精選 pick
 starting 15-75 minutes from now, once per match, 3s apart, at most 30 a tick.
 
 It writes only `preclose_odds_snapshots` / `preclose_market_odds_snapshots`.
@@ -28,13 +28,9 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 try:  # package import under pytest
-    from .tennis_daily_schedule import (
-        LOG_DIR, disk_headroom, local_today, rotate_log_if_needed, trim_launchd_capture,
-    )
+    from .tennis_daily_schedule import LOG_DIR, _rotate, disk_headroom, local_today
 except ImportError:  # direct script execution under launchd
-    from tennis_daily_schedule import (  # type: ignore
-        LOG_DIR, disk_headroom, local_today, rotate_log_if_needed, trim_launchd_capture,
-    )
+    from tennis_daily_schedule import LOG_DIR, _rotate, disk_headroom, local_today  # type: ignore
 
 OWN_LOCK = LOG_DIR / "tennis_preclose_refresh.lock"
 LOG_PATH = LOG_DIR / "tennis_preclose_refresh.log"
@@ -44,7 +40,7 @@ def log(message: str) -> None:
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     line = f"[{datetime.now().astimezone().isoformat(timespec='seconds')}] {message}"
     print(line, flush=True)
-    rotate_log_if_needed(LOG_PATH)
+    _rotate(LOG_PATH)
     with LOG_PATH.open("a", encoding="utf-8") as handle:
         handle.write(line + "\n")
 
@@ -53,10 +49,8 @@ def run_tick(today: str, *, refresh=None) -> dict:
     """Refresh today's and tomorrow's dates (Sydney `match_date`): a match
     shortly after midnight is dated tomorrow but starts within the window."""
     if refresh is None:
-        from tennis_wc.betting.ledger import _ensure_tracking_schema
         from tennis_wc.ingestion.ingest_odds import refresh_pre_start_markets
 
-        _ensure_tracking_schema()
         refresh = refresh_pre_start_markets
     day = datetime.fromisoformat(today).date()
     results = []
@@ -76,8 +70,6 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--today", help="Override Sydney today (YYYY-MM-DD).")
     args = parser.parse_args(argv)
-    for capture in ("launchd.preclose.stdout.log", "launchd.preclose.stderr.log"):
-        trim_launchd_capture(LOG_DIR / capture)
     if os.environ.get("TENNIS_PRECLOSE_DISABLED") == "1":
         log("preclose refresh disabled by TENNIS_PRECLOSE_DISABLED=1")
         return 0

@@ -6,7 +6,7 @@ from datetime import date, timedelta
 import logging
 
 from tennis_wc.config import get_settings
-from tennis_wc.features.history_values import clean_history_row
+from tennis_wc.model.history import clean_history_row
 from tennis_wc.database.db import get_connection
 from tennis_wc.ingestion.entity_mapping import (
     get_internal_entity_id,

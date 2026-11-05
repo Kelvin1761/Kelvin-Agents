@@ -286,6 +286,8 @@ print -r -- "runtime cutover stage: HKJC installer"
 print -r -- "runtime cutover stage: NBA installer"
 /bin/bash "$PROJECT_ROOT/.agents/skills/nba/nba_daily_auto/install_macos_launchd.sh"
 print -r -- "runtime cutover stage: Tennis installer"
+# Tennis jobs all run scripts/tennis_daily_schedule.py (night = --night) except
+# recovery and preclose; see tennis-wong-choi/README.md.
 WC_TENNIS_RUNTIME_ROOT="$TENNIS_RUNTIME_ROOT" \
   TENNIS_PYTHON_BIN="$TENNIS_PYTHON_BIN" \
   TENNIS_LOG_DIR="$TENNIS_RUNTIME_ROOT/data/logs" \

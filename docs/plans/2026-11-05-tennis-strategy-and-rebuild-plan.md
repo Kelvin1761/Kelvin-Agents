@@ -1,8 +1,9 @@
 # Tennis Wong Choi：全面重建 + 盈利策略 + 精選 + 夜晚落注 —— 總計劃
 
 - 建立：2026-11-05（Claude Code，同 Kelvin 對話整理）
-- 狀態：**階段一／二已實作（EXP-20261105-08），等部署**；階段三（全面重建）未開始。Codex 已停手，tennis 由呢份計劃接手。
-- 階段一／二實際做咗：`tennis_wc/featured.py`、`scripts/tennis_night_card.py` + launchd `.night`（21:00／23:00）、
+- 狀態：階段一／二**已上線**（`e0433e12`，2026-11-06，EXP-20261105-10）；階段三**已完成**（EXP-20261106-01，
+  執行紀錄 `2026-11-06-tennis-rebuild-log.md`）；階段五、六見各自段落嘅「進度」。Codex 已停手，tennis 由呢份計劃接手。
+- 階段一／二實際做咗：`tennis_wc/featured.py`（重建後喺 `select/`）、night 入口（重建後併入 `tennis_daily_schedule.py --night`）+ launchd `.night`（21:00／23:00）、
   09:00 card 改補充、取消舊 card／早報／每朝健康心跳推送、統一 ROI 板 tennis 行改精選、前向夠數提示、
   dashboard 精選主位＋其餘紙上注收起。新 code 寫成重建後結構會保留嘅樣（`featured.py` 唔依賴舊 report）。
 - 原則：跟 `AGENTS.md`「改模型嘅規矩」同 `docs/model-evaluation-contract.md`；統一研究計劃
@@ -253,11 +254,31 @@ tennis_wc/
 - 研究參考：外部項目比較筆記 `docs/plans/tennis-external-project-review-notes-20261028.md`、來源清單 `docs/plans/tennis-external-project-sources-20261028.json`、15 個 REJECT 證據喺 `codex-tennis-unified-research-20261028`。
 - 先讀 `codex-tennis-source-owner-guard-20261104` 嘅記錄，再決定接邊幾段。
 
+
+**進度（2026-11-06）**
+
+- 爭議賽果：live DB 119 場（55 場已隔離 DISPUTED），扣住 115 行 10 月 PENDING props，當中可核實 value 注 11 注。
+  決定**明確排除**：爭議過咗 21 日仍未一致就 VOID（`settle/props.py`，`voided_disputed`）；來源之後一致會自動救返重新結算。
+- Codex 分支：唔合併。`codex-tennis-source-owner-guard-20261104` 嘅 actor guard 按 Codex 自己記錄（EXP-20261104-06）
+  係 RESEARCH_ONLY／NOT_DEPLOY_READY（放入舊庫會留置合法舊目標）；SIGTERM 修正已入 main（`fb72eca5`）；
+  `identity-clock`、`point-input-delivery`、`unified-research` 係研究，冇 live 用途。as-of Elo generation 同缺特徵來源
+  要等 304 日來源證據重建（Codex 列明嘅下一步），未開始。
+
 ### 階段六：令精選真係賺錢嘅研究（每項都要預先登記）
 
 1. **更好價錢**：Sportsbet 以外有冇其他莊家／exchange 開同類 props；同一注賠率高 3% = ROI 加 3 個百分點，唔使模型變準。
 2. **模型準過市場**：等階段五數據修好之後再試；Brier 要先贏市場。
 3. 精選再收窄（例如 edge 門檻、賠率範圍）：只可以做新 arm，前向驗。
+
+
+**預先登記（2026-11-06，未開始量）**
+
+1. **更好價錢**：可行性已查（2026-11-06）：Ladbrokes／Neds、bet365、TAB 都有讓局、讓盤、首盤勝方。做法：每晚 21:00
+   精選出咗之後，抓第二間（Ladbrokes 先）同一場同一盤口嘅價，只記錄唔改精選。判準：夠 100 注配對，第二間價
+   高過 Sportsbet 嘅中位數同 bootstrap 95% CI（seed 20260826）；CI 下限 > 0 先值得開戶。唔改模型、唔改精選規則。
+2. **模型準過市場**：觸發條件係階段五數據線完成（來源身份＋as-of Elo）。之前唔試。用 `model-regression-gate`，
+   Brier 要贏市場先講。
+3. **精選再收窄**：只可以喺精選前向測試 250 注判決之後，以新 arm 前向驗；唔准用已發生嘅精選結果揀門檻。
 
 ---
 

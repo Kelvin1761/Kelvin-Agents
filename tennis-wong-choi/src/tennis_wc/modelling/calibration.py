@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from tennis_wc.database.history_observations import history_active_clause
+from tennis_wc.model.history import active_clause
 
 import math
 from collections import defaultdict
@@ -124,7 +124,7 @@ def _winner_rows(start_date: str, end_date: str) -> list[dict]:
                 SELECT provider_match_id, player_id, opponent_id, tour, match_date, surface, tournament_level
                 FROM player_match_history
                 WHERE source_provider = 'jeff_sackmann'
-                  AND won = 1 AND {history_active_clause(conn)}
+                  AND won = 1 AND {active_clause()}
                   AND match_date BETWEEN ? AND ?
                 ORDER BY match_date, {source_order}
                 """,

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-import tennis_wc.featured as F
+import tennis_wc.select.featured as F
 
 
 def cand(prop_id, match_id, edge, ev=0.05, odds=2.0):
@@ -101,7 +101,7 @@ def test_forward_verdict_rules():
 
 
 def test_paused_families_are_not_featured():
-    from tennis_wc.props.registry import family_for_market
+    from tennis_wc.pricing.families import family_for_market
 
     for key in ("player_aces_123", "player_double_faults_9", "player_exact_set_score_4"):
         assert family_for_market(key) not in F.FAMILIES

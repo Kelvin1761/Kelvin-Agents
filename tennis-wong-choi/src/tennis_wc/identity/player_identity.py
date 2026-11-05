@@ -11,7 +11,7 @@ Two jobs:
 """
 from __future__ import annotations
 
-from tennis_wc.database.history_observations import history_active_clause
+from tennis_wc.model.history import active_clause
 
 import sqlite3
 from dataclasses import dataclass, field
@@ -205,7 +205,7 @@ def _history_counts(conn) -> dict[int, int]:
     return {
         int(row[0]): int(row[1])
         for row in conn.execute(
-            f"SELECT player_id, COUNT(*) FROM player_match_history WHERE {history_active_clause(conn)} GROUP BY player_id"
+            f"SELECT player_id, COUNT(*) FROM player_match_history WHERE {active_clause()} GROUP BY player_id"
         )
     }
 
@@ -235,7 +235,7 @@ def _played_each_other(conn, ids: list[int]) -> bool:
         f"""
         SELECT 1 FROM player_match_history
         WHERE player_id IN ({placeholders}) AND opponent_id IN ({placeholders})
-          AND player_id <> opponent_id AND {history_active_clause(conn)}
+          AND player_id <> opponent_id AND {active_clause()}
         LIMIT 1
         """,
         tuple(ids) * 2,
@@ -270,7 +270,7 @@ def derived_tour(conn, player_id: int) -> str | None:
     rows = conn.execute(
         f"""
         SELECT tour, COUNT(*) k FROM player_match_history
-        WHERE player_id = ? AND tour IS NOT NULL AND {history_active_clause(conn)}
+        WHERE player_id = ? AND tour IS NOT NULL AND {active_clause()}
         GROUP BY tour ORDER BY k DESC
         """,
         (player_id,),

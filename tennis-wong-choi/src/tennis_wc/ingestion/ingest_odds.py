@@ -732,8 +732,8 @@ def refresh_pre_start_markets(
     snapshot had EXACTLY ONE (98.5%), median 3.8h before the start. The close
     WAS the price we evaluated at, so prop CLV was zero by construction.
 
-    Which matches: start in (now + lead_min, now + lead_max], at least one
-    prop_tracker or clv_tracker row (the model looked at it), and no preclose
+    Which matches: start in (now + lead_min, now + lead_max], carrying a 精選
+    pick (its closing price measures the timing of the card), and no preclose
     capture yet inside [start - lead_max, start). The scheduler ticks every 30
     minutes against a 60-minute window, so every start falls inside at least
     one tick and the "already captured" guard drops the second.
@@ -760,10 +760,7 @@ def refresh_pre_start_markets(
             WHERE m.match_date = ?
               AND m.start_time_utc IS NOT NULL AND m.start_time_utc != ''
               AND m.start_time_utc > ? AND m.start_time_utc <= ?
-              AND (
-                EXISTS (SELECT 1 FROM prop_tracker p WHERE p.match_id = m.id)
-                OR EXISTS (SELECT 1 FROM clv_tracker t WHERE t.match_id = m.id)
-              )
+              AND EXISTS (SELECT 1 FROM featured_picks f WHERE f.match_id = m.id)
             ORDER BY m.start_time_utc, m.id
             """,
             (match_date, lower, upper),

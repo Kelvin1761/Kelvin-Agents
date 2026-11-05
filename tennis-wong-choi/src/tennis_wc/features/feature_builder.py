@@ -8,12 +8,12 @@ from tennis_wc.database.market_captures import current_market_clause, book_listi
 from tennis_wc.ingestion.fixture_versions import active_fixture_clause
 from tennis_wc.ingestion.confirmed_metadata import outside_confirmed_metadata_dates
 from tennis_wc.database.db import get_connection
-from tennis_wc.database.history_observations import history_active_clause
+from tennis_wc.model.history import active_clause
 from tennis_wc.database.ranking_reads import PUBLISHED_RANKING_SOURCES, RankingReader
 from tennis_wc.features.big_match import calculate_big_match_stats
 from tennis_wc.features.bo_format import calculate_bo_format_stats, detect_match_format
 from tennis_wc.features.common import datapoint, provenance, utc_now
-from tennis_wc.features.history_asof import guard_clause, guard_params
+from tennis_wc.model.history import as_of_clause, as_of_params
 from tennis_wc.features.data_quality import validate_data_freshness
 from tennis_wc.features.rank_reference import canonical_rank_references
 from tennis_wc.features.head_to_head import calculate_head_to_head_stats
@@ -73,7 +73,7 @@ def _latest_history_prov(player_id: int) -> dict:
             SELECT r.provider_name, r.endpoint, r.fetched_at, r.id
             FROM player_match_history h
             JOIN raw_api_responses r ON r.id = h.raw_response_id
-            WHERE h.player_id = ? AND {history_active_clause(conn,"h")}
+            WHERE h.player_id = ? AND {active_clause("h")}
             ORDER BY r.fetched_at DESC
             LIMIT 1
             """,
@@ -292,10 +292,10 @@ def _rest_days(player_id: int, as_of_date: date, *, start_time: str | None = Non
             FROM player_match_history
             WHERE player_id = ?
               AND match_date < ?
-              {guard_clause()}
-              AND {history_active_clause(conn)}
+              {as_of_clause()}
+              AND {active_clause()}
             """,
-            (player_id, as_of_date.isoformat(), *guard_params(as_of_date.isoformat(), start_time)),
+            (player_id, as_of_date.isoformat(), *as_of_params(as_of_date.isoformat(), start_time)),
         ).fetchone()
     if not row or not row["last_match_date"]:
         return None

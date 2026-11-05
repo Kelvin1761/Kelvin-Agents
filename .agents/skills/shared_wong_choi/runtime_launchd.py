@@ -72,7 +72,7 @@ DOMAIN_LABELS: dict[str, dict[str, tuple[str, ...]]] = {
             "tennis-wong-choi/scripts/tennis_preclose_refresh.py",
         ),
         "com.antigravity.tennis-wong-choi.night": (
-            "tennis-wong-choi/scripts/tennis_night_card.py",
+            "tennis-wong-choi/scripts/tennis_daily_schedule.py",
         ),
     },
 }

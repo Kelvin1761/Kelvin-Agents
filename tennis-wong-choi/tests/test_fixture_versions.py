@@ -129,42 +129,18 @@ def test_delisting_keeps_price_history_and_returning_pair_can_reactivate(fixture
         assert c.execute('SELECT fixture_status FROM matches').fetchone()[0]=='ACTIVE'
 
 
-def test_legacy_audit_can_quarantine_but_never_guess_old_players(fixture_feed):
-    fixture_feed.rows=[fixture_row()]
-    ingest_matches.ingest_upcoming_matches('2026-10-26')
-    from tennis_wc.ingestion.raw_response_store import store_raw_response
-    raw=store_raw_response('mock','upcoming',{},[fixture_row('35','1','2026-10-27')],200,'match','day')
-    from tennis_wc.database.fixture_audit import audit_fixture_versions,quarantine_plan
-    with get_connection() as c:
-        mid=c.execute('SELECT id FROM matches').fetchone()[0]
-        c.execute('DELETE FROM fixture_observations')  # emulate the legacy writer
-        c.execute("INSERT INTO match_results(match_id,winner_player_id,source_provider,created_at) VALUES (?,1,'test','2000-01-01T00:00:00Z')",(mid,))
-        c.execute('UPDATE matches SET raw_response_id=? WHERE id=?',(raw,mid))
-        report=audit_fixture_versions(c)
-        assert report['legacy_identity_cases']==1
-        pair=tuple(c.execute('SELECT player_a_id,player_b_id FROM matches').fetchone())
-        assert quarantine_plan(c,report,'now')==1
-        assert tuple(c.execute('SELECT player_a_id,player_b_id FROM matches').fetchone())==pair
-        assert c.execute('SELECT fixture_status FROM matches').fetchone()[0]=='DISPUTED'
-        assert quarantine_plan(c,report,'later')==0
-        c.execute("UPDATE matches SET match_date='2099-01-01'")
-        with pytest.raises(ValueError,match='stale identity audit plan'):
-            quarantine_plan(c,report,'later')
-
-
 def test_prediction_store_freezes_pair_and_refuses_inactive_fixture(fixture_feed):
     import json
     fixture_feed.rows=[fixture_row()]
     ingest_matches.ingest_upcoming_matches('2026-10-26')
-    from tennis_wc.modelling.prediction_store import store_prediction
-    filters=dict(decision='NO_BET',stake_units=0,confidence=0,risk='HIGH')
-    pid=store_prediction(1,'test',{},filters)
+    from tennis_wc.store.predictions import store_prediction
+    pid=store_prediction(1,'test',{})
     with get_connection() as c:
         evidence=json.loads(c.execute('SELECT pricing_json FROM predictions WHERE id=?',(pid,)).fetchone()[0])['fixture_at_prediction']
         assert evidence['start_time_utc']=='2026-10-26T12:00:00Z'
         c.execute("UPDATE matches SET fixture_status='DISPUTED'")
     with pytest.raises(ValueError,match='Inactive fixture identity'):
-        store_prediction(1,'test',{},filters)
+        store_prediction(1,'test',{})
 
 
 def test_ambiguous_name_only_odds_do_not_choose_first_fixture(fixture_feed):

@@ -3,15 +3,9 @@
 <plist version="1.0">
 <dict>
   <!--
-    Near-start odds capture, for CLV only (2026-10-14).
-    98.5% of evaluated props had exactly ONE pre-start snapshot, median 3.8h
-    before the start, so the prop "close" was the price we evaluated at and
-    prop CLV was zero by construction. Every 30 minutes this fetches the event
-    page of each evaluated match starting 15-75 minutes out, once per match,
-    3s apart, at most 30 a tick, into the preclose tables only. The card and
-    every replay never read those tables; selections and stakes cannot move.
-    No Telegram, no control-plane slot, no daily lock.
-    Disable without unloading: TENNIS_PRECLOSE_DISABLED=1.
+    Every 30 minutes: one near-start price per 精選 match (15-75 min before
+    the start), written only to the preclose tables; the weekly timing check
+    reads it as the closing price.
   -->
   <key>Label</key>
   <string>com.antigravity.tennis-wong-choi.preclose</string>
