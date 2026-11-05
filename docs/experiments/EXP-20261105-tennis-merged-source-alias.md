@@ -39,3 +39,7 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=tennis-wong-choi/src python3 docs/experimen
 53 個針對測試通過，覆蓋完整多跳、最新收據衝突、缺證據、首字母、完整循環、三種同期改動、外層捕捉例外的 savepoint 回退，以及真正歷史入口的雙方 ID／hold rate／勝負保存和拒收。quick 通過。完整 gate 與正式啟用以 Central immutable release manifest 為準，未確認啟用前不聲稱 production 已修復。
 
 本次只處理來源接線，沒有模型升級或新夠 N 場判決的 forward 測試。原固定 cohort、dev／holdout、C14 workload qualification、F10 point-skill／joint-market 依賴與 Sportsbet 獨立評估保持。下一個量度重點是正常新入庫後，對真正受影響賽事檢查可用歷史與完整 feature evidence，再按原評估規則比較。
+
+## 2026-11-05 正式交付補證
+
+初次固定 SHA aad7e2f2aeac full gate 全過。main 期間加入獨立 AU 改動 f8c1271a，Central 自動 replay 去 703d3f1e73772f3975436cd53b536cdbbf3086fc，source identity module bytes 保持一致；新 SHA 再跑 full，1,799 Shared／1,180 Tennis tests 全過。main ancestry、正式安裝檔比對及 activation_succeeded 事件已確認，啟用時間 2026-11-05T08:31:42.784755Z。沒有手動回填九筆 live DB alias，後續按正常新入庫驗證。模型 promotion／準確度目標未完成。

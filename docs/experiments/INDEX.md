@@ -4,6 +4,7 @@
 
 | ID | 日期 | 平台 | 假設 | 決定 |
 |---|---|---|---|---|
+| [EXP-20261105-tennis-component-blockers](EXP-20261105-tennis-card-component-blockers.md) | 2026-11-05 | Tennis | 固定 card 的資格阻擋及三站官方場地來源 | **診斷／來源核實**。45 賽前場次有 28 active warning、17 無有效 component；六場 Challenger 找齊公開標籤，官方 Hard／Hard／Clay，5/6 雙方完整姓名在 draw 唯一吻合。未套用 metadata，qualification 仍 0 |
 | [EXP-20261105-tennis-merged-source-alias](EXP-20261105-tennis-merged-source-alias.md) | 2026-11-05 | Tennis | 以完整來源姓名／tour／最新合併收據讀取正式 ID | **來源修正**。同 476 actor／478 場，衝突 12→3、阻擋 17→6；464 原有解析 ID 不變；固定封存庫 18→7 場，同九筆 plan hash。53 測試過，live DB 無手動寫入，今日 57 場與恢復 9 人 ID／姓名交集 0，未證實準確度提升 |
 | [EXP-20261105-tennis-pregame-phase](EXP-20261105-tennis-pregame-phase-guard.md) | 2026-11-05 | Tennis | 分離明示 live 原文與賽前定價，檢查建構／定價跨開賽時間 | **資料修正**。固定 57 場有 12 已開賽且原文明示 live，篩後 45 場輸入 SHA 一致。qualification 仍 0，無 accuracy 改善證據，發佈以 Central manifest 為準 |
 | [EXP-20261105-04](EXP-20261105-04-hkjc-front-habit-and-night-bias-results.md) | 2026-11-05 | HKJC | 全場步速預測準唔準；前置習慣 ±K 入檔位與走位；當晚前置唔著數就熄（偏外檔守中）（[協議](EXP-20261105-04-hkjc-front-habit-and-night-bias-protocol.md)） | **A 全部 REJECT（286 場）**：步速預測 ρ 0.125 唔入分；A4 Gold +1.75pp [+0.33,+3.45]、前三平均名次改善，但 Good 一路細負（沙田三個 K 都負，A6 −2.45pp）→ primary_regression，live 冇改。cohort +8.6pp 唔等於排名收益。**C（當晚開關）照舊 forward**，tracker `front_habit_night_gate` 60 晚 |

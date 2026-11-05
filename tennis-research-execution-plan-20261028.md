@@ -1,5 +1,7 @@
 # Tennis Wong Choi：統一研究執行計劃
 
+**2026-11-05 正式接線交付及下一批輸入**：`703d3f1e` 已完成兩次完整 gate（含 1180 Tennis tests）、main 合併、正式啟用及安裝檔比對。新增[component 逐筆診斷與官方來源](docs/experiments/EXP-20261105-tennis-card-component-blockers.md)，原 45 場賽前輸入全部未過，28 有 unresolved active warnings、17 無有效 component。三站新官方 PDF 證實 Taipei Hard／Charlottesville Hard／Costa do Sauipe Clay，公開標籤對應六場，5/6 雙方完整姓名 membership 確認；未改 metadata 或舊預測資格。下一步按當地日期／完整 alias 整合新來源，再處理 as-of Elo。準確度改善目標仍未完成，原 15 REJECT、C14、F10 及完整 card／forward 規則保持。
+
 **2026-11-05 已合併來源接線**：[正式 ID 驗證與固定重播](docs/experiments/EXP-20261105-tennis-merged-source-alias.md)在完整姓名、tour、每跳最新合併收據及 name alias 一致時讀既有正式 ID，正常寫入有舊值比對與交易內重驗。476 actor／478 場原文，衝突 12→3、被阻擋賽事 17→6，原 464 個 ID 不變；固定封存庫亦同九筆 plan hash，18→7 場，463 原 ID 不變。53 針對測試及 quick 過；live DB 無手動回填。今日 57 場與這 9 人交集 0，仍需解決真正 card 的缺特徵來源，未證實準確度提升；發佈結果以 Central manifest 為準。
 
 **2026-11-05 賽前資料階段防線**：[固定 57 場對照及修正](docs/experiments/EXP-20261105-tennis-pregame-phase-guard.md)確認 12 場預測時已達 start，預測前原文明示 live。候選在入庫、feature build 及三個 CLI 定價入口檢查，45 場保留輸入 SHA 一致。27 針對測試與 quick 通過，正式啟用以 Central manifest 為準。研究 qualification 仍 0，未證實 accuracy 提升，原 15 REJECT／C14／F10 及 Sportsbet forward 判法保持。八個外部項目 URL 仍存於 [來源清單](docs/plans/tennis-external-project-sources-20261028.json)。
